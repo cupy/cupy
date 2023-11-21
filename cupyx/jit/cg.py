@@ -12,11 +12,13 @@ __all__ = ['this_grid', 'this_thread_block',
            'sync', 'wait', 'wait_prior', 'memcpy_async']
 
 
+# To avoid ABI issues (which libcudacxx manages to raise a compile-time error),
+# we always include a header from libcudacxx <cuda/...> before any cg include.
 _header_to_code = {
-    'cg': ("#include <cooperative_groups.h>\n"
+    'cg': ("#include <cuda/barrier>\n"
+           "#include <cooperative_groups.h>\n"
            "namespace cg = cooperative_groups;\n"),
     'cg_memcpy_async': "#include <cooperative_groups/memcpy_async.h>",
-    'cuda_barrier': "#include <cuda/barrier>",
 }
 
 
@@ -97,7 +99,7 @@ class _GridGroup(_ThreadGroup):
 
         Rank of the calling block within ``[0, num_blocks)``.
         """
-        if _runtime.runtimeGetVersion() < 11060:
+        if _runtime._getLocalRuntimeVersion() < 11060:
             raise RuntimeError("block_rank() is supported on CUDA 11.6+")
         _check_include(env, 'cg')
         return _Data(f'{instance.code}.block_rank()', _cuda_types.uint64)
@@ -109,7 +111,7 @@ class _GridGroup(_ThreadGroup):
 
         Total number of threads in the group.
         """
-        if _runtime.runtimeGetVersion() < 11060:
+        if _runtime._getLocalRuntimeVersion() < 11060:
             raise RuntimeError("num_threads() is supported on CUDA 11.6+")
         _check_include(env, 'cg')
         return _Data(f'{instance.code}.num_threads()', _cuda_types.uint64)
@@ -121,7 +123,7 @@ class _GridGroup(_ThreadGroup):
 
         Total number of blocks in the group.
         """
-        if _runtime.runtimeGetVersion() < 11060:
+        if _runtime._getLocalRuntimeVersion() < 11060:
             raise RuntimeError("num_blocks() is supported on CUDA 11.6+")
         _check_include(env, 'cg')
         return _Data(f'{instance.code}.num_blocks()', _cuda_types.uint64)
@@ -133,7 +135,7 @@ class _GridGroup(_ThreadGroup):
 
         Dimensions of the launched grid in units of blocks.
         """
-        if _runtime.runtimeGetVersion() < 11060:
+        if _runtime._getLocalRuntimeVersion() < 11060:
             raise RuntimeError("dim_blocks() is supported on CUDA 11.6+")
         _check_include(env, 'cg')
         return _Data(f'{instance.code}.dim_blocks()', _cuda_types.dim3)
@@ -145,7 +147,7 @@ class _GridGroup(_ThreadGroup):
 
         3-Dimensional index of the block within the launched grid.
         """
-        if _runtime.runtimeGetVersion() < 11060:
+        if _runtime._getLocalRuntimeVersion() < 11060:
             raise RuntimeError("block_index() is supported on CUDA 11.6+")
         _check_include(env, 'cg')
         return _Data(f'{instance.code}.block_index()', _cuda_types.dim3)
@@ -232,7 +234,7 @@ class _ThreadBlockGroup(_ThreadGroup):
 
         Dimensions of the launched block in units of threads.
         """
-        if _runtime.runtimeGetVersion() < 11060:
+        if _runtime._getLocalRuntimeVersion() < 11060:
             raise RuntimeError("dim_threads() is supported on CUDA 11.6+")
         _check_include(env, 'cg')
         return _Data(f'{instance.code}.dim_threads()', _cuda_types.dim3)
@@ -244,7 +246,7 @@ class _ThreadBlockGroup(_ThreadGroup):
 
         Total number of threads in the group.
         """
-        if _runtime.runtimeGetVersion() < 11060:
+        if _runtime._getLocalRuntimeVersion() < 11060:
             raise RuntimeError("num_threads() is supported on CUDA 11.6+")
         _check_include(env, 'cg')
         return _Data(f'{instance.code}.num_threads()', _cuda_types.uint32)
@@ -298,12 +300,6 @@ class _ThisCgGroup(_BuiltinFunc):
         if _runtime.is_hip:
             raise RuntimeError('cooperative group is not supported on HIP')
         if self.group_type == 'grid':
-            if _runtime.runtimeGetVersion() < 11000:
-                raise RuntimeError(
-                    "For pre-CUDA 11, the grid group has very limited "
-                    "functionality (only group.sync() works), and so we "
-                    "disable the grid group support to prepare the transition "
-                    "to support CUDA 11+ only.")
             cg_type = _GridGroup()
         elif self.group_type == 'thread_block':
             cg_type = _ThreadBlockGroup()
@@ -326,8 +322,6 @@ class _Sync(_BuiltinFunc):
         super().__call__()
 
     def call(self, env, group):
-        if _runtime.runtimeGetVersion() < 11000:
-            raise RuntimeError("not supported in CUDA < 11.0")
         if not isinstance(group.ctype, _ThreadGroup):
             raise ValueError("group must be a valid cooperative group")
         _check_include(env, 'cg')
@@ -363,10 +357,6 @@ class _MemcpySync(_BuiltinFunc):
 
     def call(self, env, group, dst, dst_idx, src, src_idx, size, *,
              aligned_size=None):
-        if _runtime.runtimeGetVersion() < 11010:
-            # the overloaded version of memcpy_async that we use does not yet
-            # exist in CUDA 11.0
-            raise RuntimeError("not supported in CUDA < 11.1")
         _check_include(env, 'cg')
         _check_include(env, 'cg_memcpy_async')
 
@@ -390,7 +380,6 @@ class _MemcpySync(_BuiltinFunc):
             if not isinstance(aligned_size, _Constant):
                 raise ValueError(
                     'aligned_size must be a compile-time constant')
-            _check_include(env, 'cuda_barrier')
             size_code = (f'cuda::aligned_size_t<{aligned_size.obj}>'
                          f'({size_code})')
         return _Data(f'cg::memcpy_async({group.code}, &({dst.code}), '
@@ -413,8 +402,6 @@ class _Wait(_BuiltinFunc):
         super().__call__()
 
     def call(self, env, group):
-        if _runtime.runtimeGetVersion() < 11000:
-            raise RuntimeError("not supported in CUDA < 11.0")
         _check_include(env, 'cg')
         return _Data(f'cg::wait({group.code})', _cuda_types.void)
 
@@ -436,8 +423,6 @@ class _WaitPrior(_BuiltinFunc):
         super().__call__()
 
     def call(self, env, group, step):
-        if _runtime.runtimeGetVersion() < 11000:
-            raise RuntimeError("not supported in CUDA < 11.0")
         _check_include(env, 'cg')
         if not isinstance(step, _Constant):
             raise ValueError('step must be a compile-time constant')

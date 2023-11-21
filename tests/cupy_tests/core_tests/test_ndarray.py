@@ -101,6 +101,18 @@ class TestNdarrayInit(unittest.TestCase):
         assert a.flags.f_contiguous == a_cpu.flags.f_contiguous
         assert a.strides == a_cpu.strides
 
+    def test_slots(self):
+        # Test for #7883.
+        a = _core.ndarray((2, 3))
+        with pytest.raises(AttributeError):
+            a.custom_attr = 100
+
+        class UserNdarray(_core.ndarray):
+            pass
+
+        b = UserNdarray((2, 3))
+        b.custom_attr = 100
+
 
 @testing.parameterize(
     *testing.product({

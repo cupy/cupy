@@ -71,7 +71,7 @@ cdef class _ndarray_base:
     cpdef _ndarray_base any(self, axis=*, out=*, keepdims=*)
     cpdef _ndarray_base conj(self)
     cpdef _ndarray_base conjugate(self)
-    cpdef get(self, stream=*, order=*, out=*)
+    cpdef get(self, stream=*, order=*, out=*, blocking=*)
     cpdef set(self, arr, stream=*)
     cpdef _ndarray_base reduced_view(self, dtype=*)
     cpdef _update_c_contiguity(self)

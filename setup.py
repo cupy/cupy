@@ -56,6 +56,8 @@ tests_require = extras_require['test']
 # Notes:
 # - Files only needed in sdist should be added to `MANIFEST.in`.
 # - The following glob (`**`) ignores items starting with `.`.
+# - libcudacxx's test files exceed the default path length limit on Windows, so
+#   we have to exclude them so as to avoid asking users to touch the registry.
 cupy_package_data = [
     'cupy/cuda/cupy_thrust.cu',
     'cupy/cuda/cupy_cub.cu',
@@ -111,6 +113,7 @@ Programming Language :: Python :: 3
 Programming Language :: Python :: 3.9
 Programming Language :: Python :: 3.10
 Programming Language :: Python :: 3.11
+Programming Language :: Python :: 3.12
 Programming Language :: Python :: 3 :: Only
 Programming Language :: Cython
 Topic :: Software Development

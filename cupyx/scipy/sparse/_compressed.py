@@ -537,25 +537,23 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         offsets = new_sp._get_arrayXarray(
             i, j, not_found_val=-1).astype(cupy.int32).ravel()
 
-        if -1 not in offsets:
+        mask = offsets > -1
+        self.data[offsets[mask]] = x[mask]
+
+        if mask.all():
             # only affects existing non-zero cells
-            self.data[offsets] = x
             return
 
-        else:
-            warnings.warn('Changing the sparsity structure of a '
-                          '{}_matrix is expensive.'.format(self.format),
-                          _base.SparseEfficiencyWarning)
-            # replace where possible
-            mask = offsets > -1
-            self.data[offsets[mask]] = x[mask]
-            # only insertions remain
-            mask = ~mask
-            i = i[mask]
-            i[i < 0] += M
-            j = j[mask]
-            j[j < 0] += N
-            self._insert_many(i, j, x[mask])
+        # only insertions remain
+        warnings.warn('Changing the sparsity structure of a '
+                      '{}_matrix is expensive.'.format(self.format),
+                      _base.SparseEfficiencyWarning)
+        mask = ~mask
+        i = i[mask]
+        i[i < 0] += M
+        j = j[mask]
+        j[j < 0] += N
+        self._insert_many(i, j, x[mask])
 
     def _zero_many(self, i, j):
         """Sets value at each (i, j) to zero, preserving sparsity structure.

@@ -162,6 +162,7 @@ class TestStream(unittest.TestCase):
                 with cuda.Device(1):
                     assert stream0 != cuda.get_current_stream()
                     assert cuda.Stream.null == cuda.get_current_stream()
+                    assert stream0 == cuda.get_current_stream(0)
                 assert stream0 == cuda.get_current_stream()
 
     @testing.multi_gpu(2)

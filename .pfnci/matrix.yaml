@@ -256,8 +256,8 @@
   cusparselt: "0.2.0"
   cudnn: "8.8"
   python: "3.11"
-  numpy: "1.24"
-  scipy: "1.10"
+  numpy: "1.25"
+  scipy: "1.11"
   optuna: "3"
   mpi4py: null
   cython: "0.29"
@@ -286,9 +286,9 @@
   cutensor: "1.7"
   cusparselt: "0.2.0"
   cudnn: "8.8"
-  python: "3.11"
-  numpy: "1.24"
-  scipy: "1.10"
+  python: "3.12"
+  numpy: "1.26"
+  scipy: "1.11"
   optuna: "3"
   mpi4py: null
   cython: "0.29"

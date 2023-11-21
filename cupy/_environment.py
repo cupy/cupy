@@ -60,12 +60,13 @@ _preload_libs = {
     'cutensor': None,
 }
 
-_preload_logs = []
+_debug = os.environ.get('CUPY_DEBUG_LIBRARY_LOAD', '0') == '1'
 
 
-def _log(msg):
-    # TODO(kmaehashi): replace with the standard logging
-    _preload_logs.append(msg)
+def _log(msg: str) -> None:
+    if _debug:
+        sys.stderr.write(f'[CUPY_DEBUG_LIBRARY_LOAD] {msg}\n')
+        sys.stderr.flush()
 
 
 def get_cuda_path():
@@ -175,13 +176,9 @@ def _get_cub_path():
     current_dir = os.path.dirname(os.path.abspath(__file__))
 
     if not runtime.is_hip:
-        cuda_path = get_cuda_path()
-        if os.path.isdir(os.path.join(current_dir, '_core/include/cupy/cub')):
+        if os.path.isdir(
+                os.path.join(current_dir, '_core/include/cupy/_cccl/cub')):
             _cub_path = '<bundle>'
-        elif cuda_path is not None and os.path.isdir(
-                os.path.join(cuda_path, 'include/cub')):
-            # use built-in CUB for CUDA 11+
-            _cub_path = '<CUDA>'
         else:
             _cub_path = None
     else:
@@ -293,7 +290,7 @@ def _can_attempt_preload(lib: str) -> bool:
         # Conda-Forge. See here for the configuration files used in
         # Conda-Forge distributions.
         # https://github.com/conda-forge/cupy-feedstock/blob/master/recipe/preload_config/
-        _log(f'Cannot preload {lib} as this is not a wheel installation')
+        _log(f'Not preloading {lib} as this is not a pip wheel installation')
         return False
 
     if lib not in _preload_libs:
@@ -386,10 +383,6 @@ def _preload_library(lib):
                 # Fallback to the standard shared library lookup which only
                 # uses the major version (e.g., `libcudnn.so.X`).
                 _log(f'Library {lib} could not be preloaded: {e}')
-
-
-def _get_preload_logs():
-    return '\n'.join(_preload_logs)
 
 
 def _preload_warning(lib, exc):
