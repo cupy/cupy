@@ -3,8 +3,6 @@ import cupy
 from cupy._core._scalar import get_typename
 from cupy_backends.cuda.api import runtime
 
-# from cupy.cuda import thrust
-
 
 def _get_typename(dtype):
     typename = get_typename(dtype)
@@ -75,11 +73,77 @@ __global__ void get_morton_number(
     out[idx] = mortonNum;
 }
 
+
+template<typename T>
+__global__ void compute_distance_2d(
+        const int n_points, const T* points, const long long* a_idx,
+        const long long* b_idx, int* out) {
+
+    int idx = blockDim.x * blockIdx.x + threadIdx.x;
+    const T* p_c = points + 2 * idx;
+    const T* p_a = points + 2 * a_idx[0];
+    const T* p_b = points + 2 * b_idx[0];
+
+    T abx = p_b[0] - p_a[0];
+    T aby = p_b[1] - p_a[1];
+
+    T acx = p_c[0] - p_a[0];
+    T acy = p_c[1] - p_a[1];
+
+    T dist = abx * acy - aby * acx;
+    int int_dist = __float_as_int( fabs((float) dist) );
+    out[idx] = int_dist;
+}
 '''
 
 _preamble_module = cupy.RawModule(
     code=PREAMBLE_MODULE, options=('-std=c++11',),
-    name_expressions=[f'get_morton_number<{x}>' for x in ['float', 'double']])
+    name_expressions=[
+        f'get_morton_number<{x}>' for x in ['float', 'double']] + [
+            f'compute_distance_2d<{x}>' for x in ['float', 'double']
+    ])
+
+
+def _check_if_coplanar_points(points, pa_idx, pb_idx, pc_idx):
+    pa = points[pa_idx]
+    pb = points[pb_idx]
+    pc = points[pc_idx]
+
+    detleft = (pa[0] - pc[0]) * (pb[1] - pc[1])
+    detright = (pa[1] - pc[1]) * (pb[0] - pc[0])
+    det = detleft - detright
+
+    is_det_left_pos = cupy.where(detleft > 0, True, False)
+    is_det_left_neg = cupy.where(detleft < 0, True, False)
+
+    is_det_right_pos = cupy.where(detright >= 0, True, False)
+    is_det_right_neg = cupy.where(detright <= 0, True, False)
+
+    detsum = 0
+    if is_det_left_pos:
+        if is_det_right_neg:
+            return det
+        else:
+            detsum = detleft + detright
+    elif is_det_left_neg:
+        if is_det_right_pos:
+            return det
+        else:
+            detsum = -detleft - detright
+    else:
+        return det
+
+    epsilon = cupy.finfo(points.dtype)
+    ccwerrboundA = (3.0 + 16.0 * epsilon) * epsilon
+    errbound = ccwerrboundA * detsum
+
+    return cupy.where(
+        cupy.logical_or(det >= errbound, -det >= errbound), det,
+        cupy.asarray(0, dtype=points.dtype))
+
+
+def _compute_triangle_orientation(det):
+    return cupy.where(det > 0, 1, cupy.where(det < 0, -1, 0))
 
 
 def _delaunay_triangulation_2d(points):
@@ -105,14 +169,13 @@ def _delaunay_triangulation_2d(points):
     max_val = points.max()
     range_val = max_val - min_val
 
-    # points_idx = cupy.arange(n_points, dtype=cupy.int32)
     _get_morton_number = _get_module_func(
         _preamble_module, 'get_morton_number', points)
 
-    breakpoint()
-
     block_sz = 128
     n_blocks = (points.shape[0] + block_sz - 1) // block_sz
+
+    # Sort the points spatially according to their Morton numbers
     _get_morton_number(
         (block_sz,), (n_blocks,),
         (n_points - 1, points, min_val, range_val, values))
@@ -120,3 +183,33 @@ def _delaunay_triangulation_2d(points):
     values[-1] = 2 ** 31 - 1
     points_idx = cupy.argsort(values)
     point_vec = point_vec[points_idx]
+
+    # Find extreme points in the x-axis
+    v0 = cupy.argmin(point_vec[:-1, 0])
+    v1 = cupy.argmax(point_vec[:-1, 0])
+
+    _compute_distance_2d = _get_module_func(
+        _preamble_module, 'compute_distance_2d', points)
+
+    # Find furthest point from v0 and v1, a.k.a the biggest triangle available
+    _compute_distance_2d(
+        (block_sz,), (n_blocks,), (n_points, point_vec, v0, v1, values))
+
+    breakpoint()
+    v2 = cupy.argmax(values[:-1])
+
+    # Check if the three points are not coplanar
+    ori = _check_if_coplanar_points(point_vec, v0, v1, v2)
+
+    is_coplanar = cupy.where(ori == 0.0, True, False)
+    if is_coplanar:
+        raise ValueError(
+            'The input is degenerate, the extreme points are close to '
+            'coplanar')
+
+    tri_ort = _compute_triangle_orientation(ori)
+    if tri_ort == -1:
+        v1, v2 = v2, v1
+
+    # Compute the centroid of v0 v1 v2, to be used as the kernel point.
+    point_vec[-1] = point_vec[[v0, v1, v2]].mean(0)
