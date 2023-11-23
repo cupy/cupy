@@ -124,7 +124,7 @@ For example, a kernel that adds two vectors with reversing one of them can be wr
 
 (Note that this is an artificial example and you can write such operation just by ``z = x + y[::-1]`` without defining a new kernel).
 A raw argument can be used like an array.
-The indexing operator ``y[_ind.size() - i - 1]`` involves an indexing computation on ``y``, so ``y`` can be arbitrarily shaped and strode.
+The indexing operator ``y[_ind.size() - i - 1]`` involves an indexing computation on ``y``, so ``y`` can be arbitrarily shaped and stored.
 
 Note that raw arguments are not involved in the broadcasting.
 If you want to mark all arguments as ``raw``, you must specify the ``size`` argument on invocation, which defines the value of ``_ind.size()``.
