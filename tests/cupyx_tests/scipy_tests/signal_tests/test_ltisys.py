@@ -1,3 +1,5 @@
+import sys
+
 import cupy
 from cupyx.scipy.signal import abcd_normalize
 import cupyx.scipy.signal as signal
@@ -569,7 +571,9 @@ class TestPlacePoles:
         self._check(A, B, P, method='KNV0')
         self._check(A, B, P, method='YT')
 
-    @pytest.mark.xfail   # passes locally, fails on windows CI
+    @pytest.mark.xfail(
+        sys.platform.startswith('win32'),
+        reason='passes locally, fails on windows CI')
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_real_2(self, xp, scp):
         # Try to reach the specific case in _YT_real where two singular
