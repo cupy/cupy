@@ -46,6 +46,11 @@ def check_availability(name):
     return True
 
 
+###############################################################################
+# Handle: This class encapsulates the opaque structure `cutensorHandle_t`
+# holding cuTENSOR's library context.
+###############################################################################
+
 cdef class Handle:
     cdef intptr_t _ptr
 
@@ -53,13 +58,19 @@ cdef class Handle:
         self._ptr = cutensor.create()
 
     def __dealloc__(self):
-        cutensor.destroy(self._ptr)
+        if self._ptr is not 0:
+            cutensor.destroy(self._ptr)
         self._ptr = <intptr_t>NULL
 
     @property
     def ptr(self):
         return self._ptr
 
+
+###############################################################################
+# TensorDescriptor: This class encapsulates the opaque structure
+# `cutensorTensorDescriptor_t` representing a tensor descriptor.
+###############################################################################
 
 cdef class TensorDescriptor:
     cdef intptr_t _ptr
@@ -73,7 +84,8 @@ cdef class TensorDescriptor:
         self._cutensor_dtype = cutensor_dtype
 
     def __dealloc__(self):
-        cutensor.destroyTensorDescriptor(self._ptr)
+        if self._ptr is not 0:
+            cutensor.destroyTensorDescriptor(self._ptr)
         self._ptr = <intptr_t>NULL
 
     @property
@@ -85,6 +97,11 @@ cdef class TensorDescriptor:
         return self._cutensor_dtype
 
 
+###############################################################################
+# OperationDescriptor: This class encapsulates the opaque structure
+# `cutensorOperationDescriptor_t` representing any type of problem descriptor.
+###############################################################################
+
 cdef class OperationDescriptor:
     cdef intptr_t _ptr
 
@@ -92,7 +109,7 @@ cdef class OperationDescriptor:
         self._ptr = <intptr_t>NULL
 
     def __dealloc__(self):
-        if self._ptr is not <intptr_t>NULL:
+        if self._ptr is not 0:
             cutensor.destroyOperationDescriptor(self._ptr)
         self._ptr = <intptr_t>NULL
 
@@ -143,6 +160,12 @@ cdef class OperationDescriptor:
         return self._ptr
 
 
+###############################################################################
+# PlanPreference: This class encapsulates the opaque structure
+# `cutensorPlanPreference_t` that narrow down the space of applicable
+# algorithms/variants/kernels.
+###############################################################################
+
 cdef class PlanPreference:
     cdef intptr_t _ptr
 
@@ -150,13 +173,19 @@ cdef class PlanPreference:
         self._ptr = cutensor.createPlanPreference(handle, algo, jit_mode)
 
     def __dealloc__(self):
-        cutensor.destroyPlanPreference(self._ptr)
+        if self._ptr is not 0:
+            cutensor.destroyPlanPreference(self._ptr)
         self._ptr = <intptr_t>NULL
 
     @property
     def ptr(self):
         return self._ptr
 
+
+###############################################################################
+# Plan: This class encapsulates the opaque structure `cutensorPlan_t`
+# representing a plan for ops like contraction, reduction, elementwise.
+###############################################################################
 
 cdef class Plan:
     cdef intptr_t _ptr
@@ -166,7 +195,8 @@ cdef class Plan:
         self._ptr = cutensor.createPlan(handle, desc, pref, ws_limit)
 
     def __dealloc__(self):
-        cutensor.destroyPlan(self._ptr)
+        if self._ptr is not 0:
+            cutensor.destroyPlan(self._ptr)
         self._ptr = <intptr_t>NULL
 
     @property
