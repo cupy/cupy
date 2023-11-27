@@ -341,7 +341,7 @@ def _preload_library(lib):
                 cupy_cuda_lib_path, config['cuda'], lib, version, x,
                 filename)
             for x in ['lib', 'lib64', 'bin']]
-        if lib == 'cutensor' and sys.platform == 'linux':
+        if lib == 'cutensor':
             libpath_cands = (
                 _get_cutensor_from_wheel(version, config['cuda']) +
                 libpath_cands)
@@ -393,9 +393,16 @@ def _get_cutensor_from_wheel(version: str, cuda: str) -> List[str]:
     except pkg_resources.ResolutionError as e:
         _log(f'cuTENSOR wheel could not be loaded: {type(e).__name__}: {e}')
         return []
-    return [os.path.join(
-        dist.module_path, 'cutensor', 'lib',
-        f'libcutensor.so.{version.split(".")[0]}')]
+    if sys.platform == 'linux':
+        shared_lib = os.path.join(
+            dist.module_path, 'cutensor', 'lib',
+            f'libcutensor.so.{version.split(".")[0]}'
+        )
+    else:
+        shared_lib = os.path.join(
+            dist.module_path, 'cutensor', 'bin', 'cutensor.dll'
+        )
+    return [shared_lib]
 
 
 def _preload_warning(lib, exc):
@@ -405,7 +412,7 @@ def _preload_warning(lib, exc):
 
     if config['packaging'] == 'pip':
         cuda = config['cuda']
-        if sys.platform == 'linux' and lib == 'cutensor':
+        if lib == 'cutensor':
             cuda_major = cuda.split('.')[0]
             cmd = f'pip install cutensor-cu{cuda_major}'
         else:
