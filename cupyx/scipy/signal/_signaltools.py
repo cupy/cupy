@@ -1549,6 +1549,7 @@ def sosfilt_zi(sos):
         # Take the difference between the non-adjusted output values and
         # compute which initial output state would cause them to be constant.
         y_zi = cupy.linalg.solve(C1 - C2, y2 - y1)
+        y_zi = cupy.nan_to_num(y_zi, nan=0, posinf=cupy.inf, neginf=-cupy.inf)
         zi_s[0, 2:] = y_zi
         x_s, _ = sosfilt(sos_s, x_s, zi=zi_s)
 
