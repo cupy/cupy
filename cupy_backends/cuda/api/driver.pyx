@@ -21,6 +21,8 @@ from libc.stdint cimport intptr_t
 
 IF CUPY_USE_CUDA_PYTHON:
     from cuda.ccuda cimport *
+    cdef inline void initialize():
+        return
 ELSE:
     include '_driver_extern.pxi'
     pass  # for cython-lint
@@ -41,6 +43,7 @@ from cupy_backends.cuda.api._driver_enum import *
 class CUDADriverError(RuntimeError):
 
     def __init__(self, Result status):
+        initialize()
         self.status = status
         cdef const char *name
         cdef const char *msg
@@ -103,6 +106,7 @@ cpdef bint _is_cuda_python():
 ###############################################################################
 
 cpdef devicePrimaryCtxRelease(Device dev):
+    initialize()
     with nogil:
         status = cuDevicePrimaryCtxRelease(dev)
     check_status(status)
@@ -112,6 +116,7 @@ cpdef devicePrimaryCtxRelease(Device dev):
 ###############################################################################
 
 cpdef intptr_t ctxGetCurrent() except? 0:
+    initialize()
     cdef Context ctx
     with nogil:
         status = cuCtxGetCurrent(&ctx)
@@ -119,11 +124,13 @@ cpdef intptr_t ctxGetCurrent() except? 0:
     return <intptr_t>ctx
 
 cpdef ctxSetCurrent(intptr_t ctx):
+    initialize()
     with nogil:
         status = cuCtxSetCurrent(<Context>ctx)
     check_status(status)
 
 cpdef intptr_t ctxCreate(Device dev) except? 0:
+    initialize()
     cdef Context ctx
     cdef unsigned int flags = 0
     with nogil:
@@ -132,11 +139,13 @@ cpdef intptr_t ctxCreate(Device dev) except? 0:
     return <intptr_t>ctx
 
 cpdef ctxDestroy(intptr_t ctx):
+    initialize()
     with nogil:
         status = cuCtxDestroy(<Context>ctx)
     check_status(status)
 
 cpdef int ctxGetDevice() except? -1:
+    initialize()
     cdef Device dev
     with nogil:
         status = cuCtxGetDevice(&dev)
@@ -149,6 +158,7 @@ cpdef int ctxGetDevice() except? -1:
 ###############################################################################
 
 cpdef intptr_t linkCreate() except? 0:
+    initialize()
     cdef LinkState state
     with nogil:
         status = cuLinkCreate(0, <CUjit_option*>0, <void**>0, &state)
@@ -157,6 +167,7 @@ cpdef intptr_t linkCreate() except? 0:
 
 
 cpdef linkAddData(intptr_t state, int input_type, bytes data, unicode name):
+    initialize()
     cdef const char* data_ptr = data
     cdef size_t data_size = len(data) + 1
     cdef bytes b_name = name.encode()
@@ -169,6 +180,7 @@ cpdef linkAddData(intptr_t state, int input_type, bytes data, unicode name):
 
 
 cpdef linkAddFile(intptr_t state, int input_type, unicode path):
+    initialize()
     cdef bytes b_path = path.encode()
     cdef const char* b_path_ptr = b_path
     with nogil:
@@ -178,6 +190,7 @@ cpdef linkAddFile(intptr_t state, int input_type, unicode path):
 
 
 cpdef bytes linkComplete(intptr_t state):
+    initialize()
     cdef void* cubinOut
     cdef size_t sizeOut
     with nogil:
@@ -187,12 +200,14 @@ cpdef bytes linkComplete(intptr_t state):
 
 
 cpdef linkDestroy(intptr_t state):
+    initialize()
     with nogil:
         status = cuLinkDestroy(<LinkState>state)
     check_status(status)
 
 
 cpdef intptr_t moduleLoad(str filename) except? 0:
+    initialize()
     cdef Module module
     cdef bytes b_filename = filename.encode()
     cdef char* b_filename_ptr = b_filename
@@ -203,6 +218,7 @@ cpdef intptr_t moduleLoad(str filename) except? 0:
 
 
 cpdef intptr_t moduleLoadData(bytes image) except? 0:
+    initialize()
     cdef Module module
     cdef char* image_ptr = image
     with nogil:
@@ -212,12 +228,14 @@ cpdef intptr_t moduleLoadData(bytes image) except? 0:
 
 
 cpdef moduleUnload(intptr_t module):
+    initialize()
     with nogil:
         status = cuModuleUnload(<Module>module)
     check_status(status)
 
 
 cpdef intptr_t moduleGetFunction(intptr_t module, str funcname) except? 0:
+    initialize()
     cdef Function func
     cdef bytes b_funcname = funcname.encode()
     cdef char* b_funcname_ptr = b_funcname
@@ -228,6 +246,7 @@ cpdef intptr_t moduleGetFunction(intptr_t module, str funcname) except? 0:
 
 
 cpdef intptr_t moduleGetGlobal(intptr_t module, str varname) except? 0:
+    initialize()
     cdef Deviceptr var
     cdef size_t size
     cdef bytes b_varname = varname.encode()
@@ -244,6 +263,7 @@ cpdef launchKernel(
         unsigned int block_dim_y, unsigned int block_dim_z,
         unsigned int shared_mem_bytes, intptr_t stream, intptr_t kernel_params,
         intptr_t extra):
+    initialize()
     with nogil:
         status = cuLaunchKernel(
             <Function>f, grid_dim_x, grid_dim_y, grid_dim_z,
@@ -259,6 +279,7 @@ cpdef launchCooperativeKernel(
         unsigned int block_dim_y, unsigned int block_dim_z,
         unsigned int shared_mem_bytes, intptr_t stream,
         intptr_t kernel_params):
+    initialize()
     with nogil:
         status = cuLaunchCooperativeKernel(
             <Function>f, grid_dim_x, grid_dim_y, grid_dim_z,
@@ -273,6 +294,7 @@ cpdef launchCooperativeKernel(
 
 # -1 is reserved by check_attribute_status
 cpdef int funcGetAttribute(int attribute, intptr_t f) except? -2:
+    initialize()
     cdef int pi
     with nogil:
         status = cuFuncGetAttribute(
@@ -284,6 +306,7 @@ cpdef int funcGetAttribute(int attribute, intptr_t f) except? -2:
 
 
 cpdef funcSetAttribute(intptr_t f, int attribute, int value):
+    initialize()
     with nogil:
         status = cuFuncSetAttribute(
             <Function> f,
@@ -298,6 +321,7 @@ cpdef funcSetAttribute(intptr_t f, int attribute, int value):
 
 cpdef int occupancyMaxActiveBlocksPerMultiprocessor(
         intptr_t func, int blockSize, size_t dynamicSMemSize):
+    initialize()
     cdef int numBlocks
     with nogil:
         status = cuOccupancyMaxActiveBlocksPerMultiprocessor(
@@ -308,6 +332,7 @@ cpdef int occupancyMaxActiveBlocksPerMultiprocessor(
 
 cpdef occupancyMaxPotentialBlockSize(intptr_t func, size_t dynamicSMemSize,
                                      int blockSizeLimit):
+    initialize()
     # CUoccupancyB2DSize is set to NULL as there is no way to pass in a
     # unary function from Python.
     cdef int minGridSize, blockSize
@@ -324,6 +349,7 @@ cpdef occupancyMaxPotentialBlockSize(intptr_t func, size_t dynamicSMemSize,
 ###############################################################################
 
 cpdef intptr_t streamGetCtx(intptr_t stream) except? 0:
+    initialize()
     cdef Context ctx
     with nogil:
         status = cuStreamGetCtx(<Stream>stream, &ctx)
