@@ -36,6 +36,7 @@ IF CUPY_USE_CUDA_PYTHON:
     ctypedef cudaDeviceAttr DeviceAttr
     ctypedef cudaMemoryAdvise MemoryAdvise
 
+    ctypedef cudaStream_t Stream
     ctypedef cudaStreamCallback_t StreamCallback
     ctypedef cudaHostFn_t HostFn
 
