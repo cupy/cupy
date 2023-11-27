@@ -22,8 +22,8 @@ else
     SYSTEM_LIBDIR="/usr/lib64"
 fi
 
-CUTENSOR_LIBNAME="$(basename ${SYSTEM_LIBDIR}/libcutensor2.so.?.*)"
-CUTENSORMG_LIBNAME="$(basename ${SYSTEM_LIBDIR}/libcutensor2Mg.so.?.*)"
+CUTENSOR_LIBNAME="$(basename ${SYSTEM_LIBDIR}/libcutensor.so.?.*)"
+CUTENSORMG_LIBNAME="$(basename ${SYSTEM_LIBDIR}/libcutensorMg.so.?.*)"
 
 echo "Changing alternatives configuration:"
 set -x
