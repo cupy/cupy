@@ -978,12 +978,11 @@ def _try_reduction_routine(
         # TODO(asi1024): Support also for F-contiguous array
         return None
 
-    if keepdims:
+    if not keepdims:
         out_arg = out.reshape(
             _reduction._get_out_shape(x._shape, reduce_axis, out_axis, False))
     else:
         out_arg = out
-
     # TODO(kmaeahshi): need to zero out when beta != 0
 
     # TODO(asi1024): Remove temporary fix
