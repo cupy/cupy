@@ -414,7 +414,8 @@ def _preload_warning(lib, exc):
         cuda = config['cuda']
         if lib == 'cutensor':
             cuda_major = cuda.split('.')[0]
-            cmd = f'pip install cutensor-cu{cuda_major}'
+            version = config['cutensor']['version']
+            cmd = f'pip install "cutensor-cu{cuda_major}~={version}"'
         else:
             cmd = f'python -m cupyx.tools.install_library --library {lib} --cuda {cuda}'  # NOQA
     elif config['packaging'] == 'conda':
