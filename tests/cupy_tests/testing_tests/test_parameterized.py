@@ -210,6 +210,11 @@ class TestParameterizePytestImpl:
         ]
     ),
 ])
+# Pytest 7.0.1 creates test with names test_b[A-c-_param_0_{x='D'}-e]
+#  instead of test_b[A-_param_0_{x='D'}-e-c]
+@pytest.mark.skipif(
+    pytest.__version__ > "7.4.2", reason="test name not compatible"
+)
 def test_parameterize_pytest_impl(testdir, src, outcomes):
     testdir.makepyfile('from cupy import testing\n' + src)
     result = testdir.runpytest('-v', '--tb=no')
@@ -217,6 +222,9 @@ def test_parameterize_pytest_impl(testdir, src, outcomes):
         '.*{} {}.*'.format(re.escape(name), res)
         for name, res in outcomes
     ]
+    print("Result", pytest.__version__)
+    print("---")
+    print("Expected", '\n'.join(expected_lines))
     result.stdout.re_match_lines(expected_lines)
     expected_count = collections.Counter(
         [res.lower() for _, res in outcomes]

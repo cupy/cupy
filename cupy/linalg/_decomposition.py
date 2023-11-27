@@ -2,13 +2,8 @@ import numpy
 
 import cupy
 from cupy_backends.cuda.api import runtime
-from cupy_backends.cuda.libs import cublas
-from cupy_backends.cuda.libs import cusolver
 from cupy._core import internal
 from cupy.cuda import device
-from cupyx.cusolver import check_availability
-from cupyx.cusolver import _gesvdj_batched, _gesvd_batched
-from cupyx.cusolver import _geqrf_orgqr_batched
 from cupy.linalg import _util
 
 
@@ -37,6 +32,9 @@ def _lu_factor(a_t, dtype):
     .. seealso:: :func:`scipy.linalg.lu_factor`
 
     """
+    from cupy_backends.cuda.libs import cublas
+    from cupy_backends.cuda.libs import cusolver
+
     orig_shape = a_t.shape
     n = orig_shape[-2]
 
@@ -59,13 +57,13 @@ def _lu_factor(a_t, dtype):
         a_array = cupy.arange(start, stop, step, dtype=cupy.uintp)
 
         if dtype == numpy.float32:
-            getrfBatched = cupy.cuda.cublas.sgetrfBatched
+            getrfBatched = cublas.sgetrfBatched
         elif dtype == numpy.float64:
-            getrfBatched = cupy.cuda.cublas.dgetrfBatched
+            getrfBatched = cublas.dgetrfBatched
         elif dtype == numpy.complex64:
-            getrfBatched = cupy.cuda.cublas.cgetrfBatched
+            getrfBatched = cublas.cgetrfBatched
         elif dtype == numpy.complex128:
-            getrfBatched = cupy.cuda.cublas.zgetrfBatched
+            getrfBatched = cublas.zgetrfBatched
         else:
             assert False
 
@@ -119,6 +117,10 @@ def _potrf_batched(a):
     Returns:
         cupy.ndarray: The lower-triangular matrix.
     """
+    from cupy_backends.cuda.libs import cublas
+    from cupy_backends.cuda.libs import cusolver
+    from cupyx.cusolver import check_availability
+
     if not check_availability('potrfBatched'):
         raise RuntimeError('potrfBatched is not available')
 
@@ -175,6 +177,9 @@ def cholesky(a):
 
     .. seealso:: :func:`numpy.linalg.cholesky`
     """
+    from cupy_backends.cuda.libs import cublas
+    from cupy_backends.cuda.libs import cusolver
+
     _util._assert_cupy_array(a)
     _util._assert_stacked_2d(a)
     _util._assert_stacked_square(a)
@@ -218,6 +223,8 @@ def cholesky(a):
 
 
 def _qr_batched(a, mode):
+    from cupyx.cusolver import _geqrf_orgqr_batched
+
     batch_shape = a.shape[:-2]
     batch_size = internal.prod(batch_shape)
     m, n = a.shape[-2:]
@@ -282,6 +289,8 @@ def qr(a, mode='reduced'):
 
     .. seealso:: :func:`numpy.linalg.qr`
     """
+    from cupy_backends.cuda.libs import cusolver
+
     _util._assert_cupy_array(a)
 
     if mode not in ('reduced', 'complete', 'r', 'raw'):
@@ -386,6 +395,8 @@ def qr(a, mode='reduced'):
 
 
 def _svd_batched(a, full_matrices, compute_uv):
+    from cupyx.cusolver import _gesvdj_batched, _gesvd_batched
+
     batch_shape = a.shape[:-2]
     batch_size = internal.prod(batch_shape)
     n, m = a.shape[-2:]
@@ -485,6 +496,7 @@ def svd(a, full_matrices=True, compute_uv=True):
 
     .. seealso:: :func:`numpy.linalg.svd`
     """
+    from cupy_backends.cuda.libs import cusolver
     _util._assert_cupy_array(a)
     if a.ndim > 2:
         return _svd_batched(a, full_matrices, compute_uv)

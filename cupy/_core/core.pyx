@@ -48,7 +48,6 @@ from cupy.cuda cimport memory
 from cupy.cuda cimport stream as stream_module
 from cupy_backends.cuda cimport stream as _stream_module
 from cupy_backends.cuda.api cimport runtime
-from cupy_backends.cuda.libs cimport cublas
 
 
 # If rop of cupy.ndarray is called, cupy's op is the last chance.
@@ -124,6 +123,7 @@ class ndarray(_ndarray_base):
     """
 
     __module__ = 'cupy'
+    __slots__ = []
 
     def __new__(cls, *args, _obj=None, _no_init=False, **kwargs):
         x = super().__new__(cls, *args, **kwargs)
@@ -278,7 +278,7 @@ cdef class _ndarray_base:
 
         return desc
 
-    def __dlpack__(self, stream=None):
+    def __dlpack__(self, *, stream=None):
         # Note: the stream argument is supplied by the consumer, not by CuPy
         curr_stream = stream_module.get_current_stream()
         curr_stream_ptr = curr_stream.ptr
@@ -1478,9 +1478,9 @@ cdef class _ndarray_base:
 
     @classmethod
     def __class_getitem__(cls, tuple item):
-        from cupy.typing._generic_alias import GenericAlias
+        from types import GenericAlias
         item1, item2 = item
-        return GenericAlias(cupy.ndarray, (item1, item2))
+        return GenericAlias(ndarray, (item1, item2))
 
     # TODO(okuta): Implement __array_wrap__
 
@@ -1579,11 +1579,7 @@ cdef class _ndarray_base:
                 order = 'F' if self._f_contiguous else 'C'
                 tmp = value.ravel(order)
                 ptr = tmp.ctypes.data
-                stream_ptr = stream_module.get_current_stream_ptr()
-                if stream_ptr == 0:
-                    self.data.copy_from_host(ptr, self.nbytes)
-                else:
-                    self.data.copy_from_host_async(ptr, self.nbytes)
+                self.data.copy_from_host_async(ptr, self.nbytes)
             else:
                 raise ValueError(
                     'copying a numpy.ndarray to a cupy.ndarray by empty slice '
@@ -1768,19 +1764,23 @@ cdef class _ndarray_base:
         """CUDA device on which this array resides."""
         return self.data.device
 
-    cpdef get(self, stream=None, order='C', out=None):
+    cpdef get(self, stream=None, order='C', out=None, blocking=True):
         """Returns a copy of the array on host memory.
 
         Args:
-            stream (cupy.cuda.Stream): CUDA stream object. If it is given, the
-                copy runs asynchronously. Otherwise, the copy is synchronous.
-                The default uses CUDA stream object of the current context.
+            stream (cupy.cuda.Stream): CUDA stream object. If given, the
+                stream is used to perform the copy. Otherwise, the current
+                stream is used.
             order ({'C', 'F', 'A'}): The desired memory layout of the host
                 array. When ``order`` is 'A', it uses 'F' if the array is
                 fortran-contiguous and 'C' otherwise. The ``order`` will be
                 ignored if ``out`` is specified.
             out (numpy.ndarray): Output array. In order to enable asynchronous
                 copy, the underlying memory should be a pinned memory.
+            blocking (bool): If set to ``False``, the copy runs asynchronously
+                on the given (if given) or current stream, and users are
+                responsible for ensuring the stream order. Default is ``True``,
+                so the copy is synchronous (with respect to the host).
 
         Returns:
             numpy.ndarray: Copy of the array on host memory.
@@ -1843,19 +1843,17 @@ cdef class _ndarray_base:
                 a_gpu = self
             a_cpu = numpy.empty(self._shape, dtype=self.dtype, order=order)
 
+        if stream is None:
+            stream = stream_module.get_current_stream()
+
         syncdetect._declare_synchronize()
         ptr = a_cpu.ctypes.data
         prev_device = runtime.getDevice()
         try:
             runtime.setDevice(self.device.id)
-            if stream is not None:
-                a_gpu.data.copy_to_host_async(ptr, a_gpu.nbytes, stream)
-            else:
-                stream_ptr = stream_module.get_current_stream_ptr()
-                if stream_ptr == 0:
-                    a_gpu.data.copy_to_host(ptr, a_gpu.nbytes)
-                else:
-                    a_gpu.data.copy_to_host_async(ptr, a_gpu.nbytes)
+            a_gpu.data.copy_to_host_async(ptr, a_gpu.nbytes, stream)
+            if blocking:
+                stream.synchronize()
         finally:
             runtime.setDevice(prev_device)
         return a_cpu
@@ -1865,10 +1863,9 @@ cdef class _ndarray_base:
 
         Args:
             arr (numpy.ndarray): The source array on the host memory.
-            stream (cupy.cuda.Stream): CUDA stream object. If it is given, the
-                copy runs asynchronously. Otherwise, the copy is synchronous.
-                The default uses CUDA stream object of the current context.
-
+            stream (cupy.cuda.Stream): CUDA stream object. If given, the
+                stream is used to perform the copy. Otherwise, the current
+                stream is used.
         """
         if not isinstance(arr, numpy.ndarray):
             raise TypeError('Only numpy.ndarray can be set to cupy.ndarray')
@@ -1886,18 +1883,14 @@ cdef class _ndarray_base:
         else:
             raise RuntimeError('Cannot set to non-contiguous array')
 
+        if stream is None:
+            stream = stream_module.get_current_stream()
+
         ptr = arr.ctypes.data
         prev_device = runtime.getDevice()
         try:
             runtime.setDevice(self.device.id)
-            if stream is not None:
-                self.data.copy_from_host_async(ptr, self.nbytes, stream)
-            else:
-                stream_ptr = stream_module.get_current_stream_ptr()
-                if stream_ptr == 0:
-                    self.data.copy_from_host(ptr, self.nbytes)
-                else:
-                    self.data.copy_from_host_async(ptr, self.nbytes)
+            self.data.copy_from_host_async(ptr, self.nbytes, stream)
         finally:
             runtime.setDevice(prev_device)
 
@@ -2082,7 +2075,6 @@ _HANDLED_TYPES = (ndarray, numpy.ndarray)
 # TODO(niboshi): Move it out of core.pyx
 
 cdef bint _is_hip = runtime._is_hip_environment
-cdef int _cuda_runtime_version = -1
 cdef str _cuda_path = ''  # '' for uninitialized, None for non-existing
 
 cdef list cupy_header_list = [
@@ -2123,10 +2115,6 @@ cdef list _cupy_extra_header_list = [
     'cupy/complex/csqrtf.h',
     'cupy/complex/catrig.h',
     'cupy/complex/catrigf.h',
-    'cupy/swap.cuh',
-    'cupy/tuple/type_traits.h',
-    'cupy/tuple/tuple.h',
-    'cupy/tuple.cuh',
 ]
 
 cdef str _header_path_cache = None
@@ -2141,6 +2129,13 @@ cpdef str _get_header_dir_path():
         _header_path_cache = os.path.abspath(
             os.path.join(os.path.dirname(__file__), 'include'))
     return _header_path_cache
+
+
+cpdef tuple _get_cccl_include_options():
+    # the search paths are made such that they resemble the layout in CTK
+    return (f"-I{_get_header_dir_path()}/cupy/_cccl/cub",
+            f"-I{_get_header_dir_path()}/cupy/_cccl/thrust",
+            f"-I{_get_header_dir_path()}/cupy/_cccl/libcudacxx")
 
 
 cpdef str _get_header_source():
@@ -2197,14 +2192,22 @@ cpdef function.Module compile_with_cache(
 
     if prepend_cupy_headers:
         source = _cupy_header + source
+    if jitify:
+        source = '#include <cupy/cuda_workaround.h>\n' + source
     extra_source = _get_header_source()
-    options += ('-I%s' % _get_header_dir_path(),)
 
-    # The variable _cuda_runtime_version is declared in cupy/_core/core.pyx,
-    # but it might not have been set appropriately before coming here.
-    global _cuda_runtime_version
-    if _cuda_runtime_version < 0:
-        _cuda_runtime_version = runtime.runtimeGetVersion()
+    for op in options:
+        if '-std=c++' in op:
+            if op.endswith('03'):
+                warnings.warn('CCCL requires c++11 or above')
+            break
+    else:
+        options += ('--std=c++11',)
+
+    # make sure bundled CCCL is searched first
+    options = (_get_cccl_include_options()
+               + options
+               + ('-I%s' % _get_header_dir_path(),))
 
     global _cuda_path
     if _cuda_path == '':
@@ -2214,17 +2217,11 @@ cpdef function.Module compile_with_cache(
             _cuda_path = cuda.get_rocm_path()
 
     if not _is_hip:
-        if 10020 <= _cuda_runtime_version < 10030:
-            bundled_include = 'cuda-10.2'
-        elif 11000 <= _cuda_runtime_version < 11010:
-            bundled_include = 'cuda-11.0'
-        elif 11010 <= _cuda_runtime_version < 11020:
-            bundled_include = 'cuda-11.1'
-        elif 11020 <= _cuda_runtime_version < 12000:
-            # CUDA Enhanced Compatibility
+        # CUDA Enhanced Compatibility
+        _cuda_major = runtime._getCUDAMajorVersion()
+        if _cuda_major == 11:
             bundled_include = 'cuda-11'
-        elif 12000 <= _cuda_runtime_version < 13000:
-            # CUDA Enhanced Compatibility
+        elif _cuda_major == 12:
             bundled_include = 'cuda-12'
         else:
             # CUDA versions not yet supported.
@@ -2374,7 +2371,8 @@ _round_ufunc = create_ufunc(
 # -----------------------------------------------------------------------------
 
 cpdef _ndarray_base array(obj, dtype=None, bint copy=True, order='K',
-                          bint subok=False, Py_ssize_t ndmin=0):
+                          bint subok=False, Py_ssize_t ndmin=0,
+                          bint blocking=False):
     # TODO(beam2d): Support subok options
     if subok:
         raise NotImplementedError
@@ -2387,6 +2385,7 @@ cpdef _ndarray_base array(obj, dtype=None, bint copy=True, order='K',
     if hasattr(obj, '__cuda_array_interface__'):
         return _array_from_cuda_array_interface(
             obj, dtype, copy, order, subok, ndmin)
+
     if hasattr(obj, '__cupy_get_ndarray__'):
         return _array_from_cupy_ndarray(
             obj.__cupy_get_ndarray__(), dtype, copy, order, ndmin)
@@ -2395,9 +2394,10 @@ cpdef _ndarray_base array(obj, dtype=None, bint copy=True, order='K',
         _array_info_from_nested_sequence(obj))
     if concat_shape is not None:
         return _array_from_nested_sequence(
-            obj, dtype, order, ndmin, concat_shape, concat_type, concat_dtype)
+            obj, dtype, order, ndmin, concat_shape, concat_type, concat_dtype,
+            blocking)
 
-    return _array_default(obj, dtype, order, ndmin)
+    return _array_default(obj, dtype, order, ndmin, blocking)
 
 
 cdef _ndarray_base _array_from_cupy_ndarray(
@@ -2434,7 +2434,7 @@ cdef _ndarray_base _array_from_cuda_array_interface(
 
 cdef _ndarray_base _array_from_nested_sequence(
         obj, dtype, order, Py_ssize_t ndmin, concat_shape, concat_type,
-        concat_dtype):
+        concat_dtype, bint blocking):
     cdef Py_ssize_t ndim
 
     # resulting array is C order unless 'F' is explicitly specified
@@ -2453,17 +2453,18 @@ cdef _ndarray_base _array_from_nested_sequence(
 
     if concat_type is numpy.ndarray:
         return _array_from_nested_numpy_sequence(
-            obj, concat_dtype, dtype, concat_shape, order, ndmin)
+            obj, concat_dtype, dtype, concat_shape, order, ndmin,
+            blocking)
     elif concat_type is ndarray:  # TODO(takagi) Consider subclases
         return _array_from_nested_cupy_sequence(
-            obj, dtype, concat_shape, order)
+            obj, dtype, concat_shape, order, blocking)
     else:
         assert False
 
 
 cdef _ndarray_base _array_from_nested_numpy_sequence(
         arrays, src_dtype, dst_dtype, const shape_t& shape, order,
-        Py_ssize_t ndmin):
+        Py_ssize_t ndmin, bint blocking):
     a_dtype = get_dtype(dst_dtype)  # convert to numpy.dtype
     if a_dtype.char not in '?bhilqBHILQefdFD':
         raise ValueError('Unsupported dtype %s' % a_dtype)
@@ -2490,7 +2491,7 @@ cdef _ndarray_base _array_from_nested_numpy_sequence(
             a_dtype,
             src_cpu)
         a = ndarray(shape, dtype=a_dtype, order=order)
-        a.data.copy_from_host_async(mem.ptr, nbytes)
+        a.data.copy_from_host_async(mem.ptr, nbytes, stream)
         pinned_memory._add_to_watch_list(stream.record(), mem)
     else:
         # fallback to numpy array and send it to GPU
@@ -2498,12 +2499,16 @@ cdef _ndarray_base _array_from_nested_numpy_sequence(
         a_cpu = numpy.array(arrays, dtype=a_dtype, copy=False, order=order,
                             ndmin=ndmin)
         a = ndarray(shape, dtype=a_dtype, order=order)
-        a.data.copy_from_host(a_cpu.ctypes.data, nbytes)
+        a.data.copy_from_host_async(a_cpu.ctypes.data, nbytes, stream)
+
+    if blocking:
+        stream.synchronize()
 
     return a
 
 
-cdef _ndarray_base _array_from_nested_cupy_sequence(obj, dtype, shape, order):
+cdef _ndarray_base _array_from_nested_cupy_sequence(
+        obj, dtype, shape, order, bint blocking):
     lst = _flatten_list(obj)
 
     # convert each scalar (0-dim) ndarray to 1-dim
@@ -2512,10 +2517,16 @@ cdef _ndarray_base _array_from_nested_cupy_sequence(obj, dtype, shape, order):
     a = _manipulation.concatenate_method(lst, 0)
     a = a.reshape(shape)
     a = a.astype(dtype, order=order, copy=False)
+
+    if blocking:
+        stream = stream_module.get_current_stream()
+        stream.synchronize()
+
     return a
 
 
-cdef _ndarray_base _array_default(obj, dtype, order, Py_ssize_t ndmin):
+cdef _ndarray_base _array_default(
+        obj, dtype, order, Py_ssize_t ndmin, bint blocking):
     if order is not None and len(order) >= 1 and order[0] in 'KAka':
         if isinstance(obj, numpy.ndarray) and obj.flags.fnc:
             order = 'F'
@@ -2534,20 +2545,28 @@ cdef _ndarray_base _array_default(obj, dtype, order, Py_ssize_t ndmin):
         return a
     cdef Py_ssize_t nbytes = a.nbytes
 
+    cdef pinned_memory.PinnedMemoryPointer mem
     stream = stream_module.get_current_stream()
-    # Note: even if obj is already backed by pinned memory, we still need to
-    # allocate an extra buffer and copy from it to avoid potential data race,
-    # see the discussion here:
-    # https://github.com/cupy/cupy/pull/5155#discussion_r621808782
-    cdef pinned_memory.PinnedMemoryPointer mem = (
-        _alloc_async_transfer_buffer(nbytes))
-    if mem is not None:
-        src_cpu = numpy.frombuffer(mem, a_dtype, a_cpu.size)
-        src_cpu[:] = a_cpu.ravel(order)
-        a.data.copy_from_host_async(mem.ptr, nbytes)
-        pinned_memory._add_to_watch_list(stream.record(), mem)
+
+    cdef intptr_t ptr_h = <intptr_t>(a_cpu.ctypes.data)
+    if pinned_memory.is_memory_pinned(ptr_h):
+        a.data.copy_from_host_async(ptr_h, nbytes, stream)
     else:
-        a.data.copy_from_host(a_cpu.ctypes.data, nbytes)
+        # The input numpy array does not live on pinned memory, so we allocate
+        # an extra buffer and copy from it to avoid potential data race, see
+        # the discussion here:
+        # https://github.com/cupy/cupy/pull/5155#discussion_r621808782
+        mem = _alloc_async_transfer_buffer(nbytes)
+        if mem is not None:
+            src_cpu = numpy.frombuffer(mem, a_dtype, a_cpu.size)
+            src_cpu[:] = a_cpu.ravel(order)
+            a.data.copy_from_host_async(mem.ptr, nbytes, stream)
+            pinned_memory._add_to_watch_list(stream.record(), mem)
+        else:
+            a.data.copy_from_host_async(ptr_h, nbytes, stream)
+
+    if blocking:
+        stream.synchronize()
 
     return a
 
@@ -2652,6 +2671,8 @@ cpdef _ndarray_base _internal_ascontiguousarray(_ndarray_base a):
 
 
 cpdef _ndarray_base _internal_asfortranarray(_ndarray_base a):
+    from cupy_backends.cuda.libs import cublas
+
     cdef _ndarray_base newarray
     cdef int m, n
     cdef intptr_t handle

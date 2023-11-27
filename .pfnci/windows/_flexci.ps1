@@ -13,6 +13,8 @@ function ActivatePython($version) {
         $pydir = "Python310"
     } elseif ($version -eq "3.11") {
         $pydir = "Python311"
+    } elseif ($version -eq "3.12") {
+        $pydir = "Python312"
     } else {
         throw "Unsupported Python version: $version"
     }
@@ -46,8 +48,10 @@ function ActivateCUDA($version) {
         $Env:CUDA_PATH = $Env:CUDA_PATH_V12_0
     } elseif ($version -eq "12.1") {
         $Env:CUDA_PATH = $Env:CUDA_PATH_V12_1
+    } elseif ($version -eq "12.2") {
+        $Env:CUDA_PATH = $Env:CUDA_PATH_V12_2
     } elseif ($version -eq "12.x") {
-        $Env:CUDA_PATH = $Env:CUDA_PATH_V12_1
+        $Env:CUDA_PATH = $Env:CUDA_PATH_V12_2
     } else {
         throw "Unsupported CUDA version: $version"
     }
@@ -59,6 +63,8 @@ function ActivateCuDNN($cudnn_version, $cuda_version) {
         $cudnn = "v8.6.0"
     } elseif ($cudnn_version -eq "8.8") {
         $cudnn = "v8.8.1"
+    } elseif ($cudnn_version -eq "8.9") {
+        $cudnn = "v8.9.3"
     } else {
         throw "Unsupported cuDNN version: $cudnn_version"
     }
@@ -87,6 +93,10 @@ function ActivateNVTX1() {
     $Env:PATH = "$base\bin\x64;" + $Env:PATH
 }
 
+function InstallZLIB() {
+    Copy-Item -Path "C:\Development\ZLIB\zlibwapi.dll" -Destination "C:\Windows\System32"
+}
+
 function IsPullRequestTest() {
     return ${Env:FLEXCI_BRANCH} -ne $null -and ${Env:FLEXCI_BRANCH}.StartsWith("refs/pull/")
 }
@@ -97,4 +107,8 @@ function PrioritizeFlexCIDaemon() {
     if (-not $?) {
         throw "Failed to change priority of daemon (exit code = $LastExitCode)"
     }
+}
+
+function EnableLongPaths() {
+    Set-ItemProperty "Registry::HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\FileSystem" -Name LongPathsEnabled -value 1
 }

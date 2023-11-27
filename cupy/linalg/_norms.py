@@ -77,9 +77,9 @@ def norm(x, ord=None, axis=None, keepdims=False):
         axis = (axis,)
 
     if len(axis) == 1:
-        if ord == numpy.Inf:
+        if ord == numpy.inf:
             return abs(x).max(axis=axis, keepdims=keepdims)
-        elif ord == -numpy.Inf:
+        elif ord == -numpy.inf:
             return abs(x).min(axis=axis, keepdims=keepdims)
         elif ord == 0:
             # Zero norm
@@ -126,7 +126,7 @@ def norm(x, ord=None, axis=None, keepdims=False):
             if col_axis > row_axis:
                 col_axis -= 1
             ret = abs(x).sum(axis=row_axis).max(axis=col_axis)
-        elif ord == numpy.Inf:
+        elif ord == numpy.inf:
             if row_axis > col_axis:
                 row_axis -= 1
             ret = abs(x).sum(axis=col_axis).max(axis=row_axis)
@@ -134,7 +134,7 @@ def norm(x, ord=None, axis=None, keepdims=False):
             if col_axis > row_axis:
                 col_axis -= 1
             ret = abs(x).sum(axis=row_axis).min(axis=col_axis)
-        elif ord == -numpy.Inf:
+        elif ord == -numpy.inf:
             if row_axis > col_axis:
                 row_axis -= 1
             ret = abs(x).sum(axis=col_axis).min(axis=row_axis)

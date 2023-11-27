@@ -43,6 +43,18 @@ else:
     _nccl_ops = {}
 
 
+def _get_nccl_dtype_and_count(array, count=None):
+    dtype = array.dtype.char
+    if dtype not in _nccl_dtypes:
+        raise TypeError(f'Unknown dtype {array.dtype} for NCCL')
+    nccl_dtype = _nccl_dtypes[dtype]
+    if count is None:
+        count = array.size
+    if dtype in 'FD':
+        return nccl_dtype, 2 * count
+    return nccl_dtype, count
+
+
 class NCCLBackend(_Backend):
     """Interface that uses NVIDIA's NCCL to perform communications.
 
@@ -103,17 +115,6 @@ class NCCLBackend(_Backend):
         if not array.flags.c_contiguous and not array.flags.f_contiguous:
             raise RuntimeError(
                 'NCCL requires arrays to be either c- or f-contiguous')
-
-    def _get_nccl_dtype_and_count(self, array, count=None):
-        dtype = array.dtype.char
-        if dtype not in _nccl_dtypes:
-            raise TypeError(f'Unknown dtype {array.dtype} for NCCL')
-        nccl_dtype = _nccl_dtypes[dtype]
-        if count is None:
-            count = array.size
-        if dtype in 'FD':
-            return nccl_dtype, 2 * count
-        return nccl_dtype, count
 
     def _get_stream(self, stream):
         if stream is None:
@@ -210,9 +211,6 @@ class NCCLBackend(_Backend):
             in_array (cupy.ndarray): array to be sent.
             out_array (cupy.ndarray): array where the result with be stored.
             count (int): Number of elements to send to each rank.
-            op (str): reduction operation, can be one of
-                ('sum', 'prod', 'min' 'max'), arrays of complex type only
-                support `'sum'`. Defaults to `'sum'`.
             stream (cupy.cuda.Stream, optional): if supported, stream to
                 perform the communication.
         """
@@ -318,7 +316,7 @@ class _DenseNCCLCommunicator:
         comm._check_contiguous(in_array)
         comm._check_contiguous(out_array)
         stream = comm._get_stream(stream)
-        dtype, count = comm._get_nccl_dtype_and_count(in_array)
+        dtype, count = _get_nccl_dtype_and_count(in_array)
         op = comm._get_op(op, in_array.dtype.char)
         comm._comm.allReduce(
             in_array.data.ptr, out_array.data.ptr, count, dtype, op, stream)
@@ -329,7 +327,7 @@ class _DenseNCCLCommunicator:
         if comm.rank == root:
             comm._check_contiguous(out_array)
         stream = comm._get_stream(stream)
-        dtype, count = comm._get_nccl_dtype_and_count(in_array)
+        dtype, count = _get_nccl_dtype_and_count(in_array)
         op = comm._get_op(op, in_array.dtype.char)
         comm._comm.reduce(
             in_array.data.ptr, out_array.data.ptr,
@@ -339,7 +337,7 @@ class _DenseNCCLCommunicator:
     def broadcast(cls, comm, in_out_array, root=0, stream=None):
         comm._check_contiguous(in_out_array)
         stream = comm._get_stream(stream)
-        dtype, count = comm._get_nccl_dtype_and_count(in_out_array)
+        dtype, count = _get_nccl_dtype_and_count(in_out_array)
         comm._comm.broadcast(
             in_out_array.data.ptr, in_out_array.data.ptr,
             count, dtype, root, stream)
@@ -350,7 +348,7 @@ class _DenseNCCLCommunicator:
         comm._check_contiguous(in_array)
         comm._check_contiguous(out_array)
         stream = comm._get_stream(stream)
-        dtype, count = comm._get_nccl_dtype_and_count(in_array, count)
+        dtype, count = _get_nccl_dtype_and_count(in_array, count)
         op = comm._get_op(op, in_array.dtype.char)
         comm._comm.reduceScatter(
             in_array.data.ptr, out_array.data.ptr, count, dtype, op, stream)
@@ -360,7 +358,7 @@ class _DenseNCCLCommunicator:
         comm._check_contiguous(in_array)
         comm._check_contiguous(out_array)
         stream = comm._get_stream(stream)
-        dtype, count = comm._get_nccl_dtype_and_count(in_array, count)
+        dtype, count = _get_nccl_dtype_and_count(in_array, count)
         comm._comm.allGather(
             in_array.data.ptr, out_array.data.ptr, count, dtype, stream)
 
@@ -368,7 +366,7 @@ class _DenseNCCLCommunicator:
     def send(cls, comm, array, peer, stream=None):
         comm._check_contiguous(array)
         stream = comm._get_stream(stream)
-        dtype, count = comm._get_nccl_dtype_and_count(array)
+        dtype, count = _get_nccl_dtype_and_count(array)
         cls._send(comm, array, peer, dtype, count, stream)
 
     @classmethod
@@ -379,7 +377,7 @@ class _DenseNCCLCommunicator:
     def recv(cls, comm, out_array, peer, stream=None):
         comm._check_contiguous(out_array)
         stream = comm._get_stream(stream)
-        dtype, count = comm._get_nccl_dtype_and_count(out_array)
+        dtype, count = _get_nccl_dtype_and_count(out_array)
         cls._recv(comm, out_array, peer, dtype, count, stream)
 
     @classmethod
@@ -391,8 +389,8 @@ class _DenseNCCLCommunicator:
         comm._check_contiguous(in_array)
         comm._check_contiguous(out_array)
         stream = comm._get_stream(stream)
-        idtype, icount = comm._get_nccl_dtype_and_count(in_array)
-        odtype, ocount = comm._get_nccl_dtype_and_count(out_array)
+        idtype, icount = _get_nccl_dtype_and_count(in_array)
+        odtype, ocount = _get_nccl_dtype_and_count(out_array)
         nccl.groupStart()
         cls._send(comm, in_array, peer, idtype, icount, stream)
         cls._recv(comm, out_array, peer, odtype, ocount, stream)
@@ -411,9 +409,9 @@ class _DenseNCCLCommunicator:
         if root == comm.rank:
             for i in range(comm._n_devices):
                 array = in_array[i]
-                idtype, icount = comm._get_nccl_dtype_and_count(array)
+                idtype, icount = _get_nccl_dtype_and_count(array)
                 cls._send(comm, array, i, idtype, icount, stream)
-        dtype, count = comm._get_nccl_dtype_and_count(out_array)
+        dtype, count = _get_nccl_dtype_and_count(out_array)
         cls._recv(comm, out_array, root, dtype, count, stream)
         nccl.groupEnd()
 
@@ -431,9 +429,9 @@ class _DenseNCCLCommunicator:
         if root == comm.rank:
             for i in range(comm._n_devices):
                 array = out_array[i]
-                odtype, ocount = comm._get_nccl_dtype_and_count(array)
+                odtype, ocount = _get_nccl_dtype_and_count(array)
                 cls._recv(comm, array, i, odtype, ocount, stream)
-        dtype, count = comm._get_nccl_dtype_and_count(in_array)
+        dtype, count = _get_nccl_dtype_and_count(in_array)
         cls._send(comm, in_array, root, dtype, count, stream)
         nccl.groupEnd()
 
@@ -451,8 +449,8 @@ class _DenseNCCLCommunicator:
         comm._check_contiguous(in_array)
         comm._check_contiguous(out_array)
         stream = comm._get_stream(stream)
-        idtype, icount = comm._get_nccl_dtype_and_count(in_array[0])
-        odtype, ocount = comm._get_nccl_dtype_and_count(out_array[0])
+        idtype, icount = _get_nccl_dtype_and_count(in_array[0])
+        odtype, ocount = _get_nccl_dtype_and_count(out_array[0])
         # TODO check out dtypes are the same as in dtypes
         nccl.groupStart()
         for i in range(comm._n_devices):
@@ -731,7 +729,7 @@ class _SparseNCCLCommunicator:
         dtype = array.dtype.char
         if dtype not in _nccl_dtypes:
             raise TypeError(f'Unknown dtype {array.dtype} for NCCL')
-        dtype, count = comm._get_nccl_dtype_and_count(array)
+        dtype, count = _get_nccl_dtype_and_count(array)
         stream = comm._get_stream(stream)
         comm._comm.send(array.data.ptr, count, dtype, peer, stream)
 
@@ -760,7 +758,7 @@ class _SparseNCCLCommunicator:
         dtype = dtype.char
         if dtype not in _nccl_dtypes:
             raise TypeError(f'Unknown dtype {out_array.dtype} for NCCL')
-        dtype, count = comm._get_nccl_dtype_and_count(out_array)
+        dtype, count = _get_nccl_dtype_and_count(out_array)
         stream = comm._get_stream(stream)
         comm._comm.recv(out_array.data.ptr, count, dtype, peer, stream)
 

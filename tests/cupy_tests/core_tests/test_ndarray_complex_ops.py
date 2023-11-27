@@ -159,7 +159,7 @@ class TestScalarConversion(unittest.TestCase):
     @testing.for_all_dtypes()
     def test_scalar_conversion(self, dtype):
         scalar = 1 + 1j if numpy.dtype(dtype).kind == 'c' else 1
-        x_1d = cupy.array([scalar]).astype(dtype)
+        x_1d = cupy.array(scalar).astype(dtype)
         assert complex(x_1d) == scalar
 
         x_0d = x_1d.reshape(())

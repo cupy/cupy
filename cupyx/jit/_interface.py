@@ -103,14 +103,16 @@ class _JitRawKernel:
 
             fname = result.func_name
             enable_cg = result.enable_cooperative_groups
-            options = ('-DCUPY_JIT_MODE', '--std=c++14')
+            options = result.options
             backend = result.backend
             if backend == 'nvcc':
                 options += ('-DCUPY_JIT_NVCC',)
+            jitify = result.jitify
             module = core.compile_with_cache(
                 source=result.code,
                 options=options,
-                backend=backend)
+                backend=backend,
+                jitify=jitify)
             kern = module.get_function(fname)
             self._cache[(in_types, device_id)] = (kern, enable_cg)
 

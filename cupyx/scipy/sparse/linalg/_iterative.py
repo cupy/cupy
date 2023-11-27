@@ -2,10 +2,8 @@ import numpy
 
 import cupy
 from cupy import cublas
-from cupyx import cusparse
 from cupy._core import _dtype
 from cupy.cuda import device
-from cupy_backends.cuda.libs import cusparse as _cusparse
 from cupy_backends.cuda.libs import cublas as _cublas
 from cupyx.scipy.sparse import _csr
 from cupyx.scipy.sparse.linalg import _interface
@@ -350,6 +348,9 @@ def _make_system(A, M, x0, b):
 
 
 def _make_fast_matvec(A):
+    from cupy_backends.cuda.libs import cusparse as _cusparse
+    from cupyx import cusparse
+
     matvec = None
     if _csr.isspmatrix_csr(A) and cusparse.check_availability('spmv'):
         handle = device.get_cusparse_handle()

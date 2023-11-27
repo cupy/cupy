@@ -27,7 +27,6 @@ from cupy._core cimport _routines_manipulation as _manipulation
 from cupy._core cimport _routines_math as _math
 from cupy.cuda cimport device
 from cupy_backends.cuda.api cimport runtime
-from cupy_backends.cuda.libs cimport cublas
 
 
 cdef extern from '../../cupy_backends/cupy_complex.h':
@@ -36,9 +35,6 @@ cdef extern from '../../cupy_backends/cupy_complex.h':
 
     ctypedef struct cuDoubleComplex 'cuDoubleComplex':
         double x, y
-
-
-cdef int _cuda_runtime_version = -1
 
 
 cdef list compute_types = [COMPUTE_TYPE_TBD,  # float16
@@ -543,6 +539,8 @@ cpdef _ndarray_base dot(
 cpdef _ndarray_base tensordot_core(
         _ndarray_base a, _ndarray_base b, _ndarray_base out, Py_ssize_t n,
         Py_ssize_t m, Py_ssize_t k, const shape_t& ret_shape):
+    from cupy_backends.cuda.libs import cublas
+
     # out, if specified, must be C-contiguous and have correct shape.
     cdef shape_t shape
     cdef Py_ssize_t transa, transb, lda, ldb
@@ -621,13 +619,8 @@ cpdef _ndarray_base tensordot_core(
             elementwise_copy(copy_to_out, out)
         return out
 
-    global _cuda_runtime_version
-    if _cuda_runtime_version < 0:
-        _cuda_runtime_version = runtime.runtimeGetVersion()
-
     if (
         not runtime._is_hip_environment and
-        _cuda_runtime_version >= 11000 and
         compute_capability >= 50
     ):
         tensordot_core_v11(transb, transa, m, n, k, b, ldb, a, lda, c, m)
@@ -642,29 +635,29 @@ cpdef _ndarray_base tensordot_core(
         coef_dtype = dtype
     one = numpy.array(1.0, dtype=coef_dtype)
     zero = numpy.array(0.0, dtype=coef_dtype)
-    if runtime._is_hip_environment and dtype == 'e':
-        # On HIP, SgemmEx does not work for half precision
-        dtype = 'f'
-        a = a.astype(dtype, order='K', casting=None, subok=None, copy=True)
-        b = b.astype(dtype, order='K', casting=None, subok=None, copy=True)
-        c = _ndarray_init(cupy.ndarray, ret_shape, dtype, None)
-        copy_to_out = c
-        warnings.warn('On ROCm/HIP, there is no specialized API to handle '
-                      'half precision floating numbers, so the computation '
-                      'will be done by casting to single precision')
+
     if dtype == 'e':
         use_tensor_core = (not runtime._is_hip_environment and
-                           _cuda_runtime_version >= 9000 and
-                           compute_capability >= 70)
+                           compute_capability >= 70
+                           ) or runtime._is_hip_environment
         if use_tensor_core:
-            cublas.setMathMode(handle, cublas.CUBLAS_TENSOR_OP_MATH)
+            can_opt_in_tensorcore = not runtime._is_hip_environment
+
+            if can_opt_in_tensorcore:
+                cublas.setMathMode(handle, cublas.CUBLAS_TENSOR_OP_MATH)
+                algo = cublas.CUBLAS_GEMM_DEFAULT_TENSOR_OP
+            else:
+                algo = cublas.CUBLAS_GEMM_DEFAULT
+
             cublas.gemmEx(
                 handle, <int>transb, <int> transa, <int>m, <int>n, <int>k,
                 one.ctypes.data, b.data.ptr, runtime.CUDA_R_16F, <int>ldb,
                 a.data.ptr, runtime.CUDA_R_16F, <int>lda, zero.ctypes.data,
                 c.data.ptr, runtime.CUDA_R_16F, <int>m, runtime.CUDA_R_32F,
-                cublas.CUBLAS_GEMM_DEFAULT_TENSOR_OP)
-            cublas.setMathMode(handle, cublas.CUBLAS_DEFAULT_MATH)
+                algo)
+
+            if can_opt_in_tensorcore:
+                cublas.setMathMode(handle, cublas.CUBLAS_DEFAULT_MATH)
         else:
             cublas.sgemmEx(
                 handle, <int>transb, <int> transa, <int>m, <int>n, <int>k,
@@ -703,6 +696,8 @@ cpdef _ndarray_base tensordot_core_v11(
         Py_ssize_t transa, Py_ssize_t transb, Py_ssize_t m, Py_ssize_t n,
         Py_ssize_t k, _ndarray_base a, Py_ssize_t lda, _ndarray_base b,
         Py_ssize_t ldb, _ndarray_base c, Py_ssize_t ldc):
+    from cupy_backends.cuda.libs import cublas
+
     cdef float one_f, zero_f
     cdef double one_d, zero_d
     cdef cuComplex one_F, zero_F
@@ -832,6 +827,7 @@ cpdef _ndarray_base matmul(
     .. seealso:: :func:`numpy.matmul`
 
     """
+    from cupy_backends.cuda.libs import cublas
 
     cdef Py_ssize_t i, n, m, ka, kb, a_sh, b_sh, c_sh, ldc
     cdef Py_ssize_t batchCount, a_part_outshape, b_part_outshape
@@ -991,10 +987,6 @@ cpdef _ndarray_base matmul(
         if out is not c:
             elementwise_copy(c, out)
         return out
-
-    global _cuda_runtime_version
-    if _cuda_runtime_version < 0:
-        _cuda_runtime_version = runtime.runtimeGetVersion()
 
     cdef intptr_t handle = device.get_cublas_handle()
     cdef int cuda_dtype = to_cuda_dtype(dtype)

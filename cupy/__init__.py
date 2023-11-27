@@ -57,20 +57,19 @@ from cupy._core import ufunc  # NOQA
 # =============================================================================
 from numpy import e  # NOQA
 from numpy import euler_gamma  # NOQA
-from numpy import Inf  # NOQA
 from numpy import inf  # NOQA
-from numpy import Infinity  # NOQA
-from numpy import infty  # NOQA
-from numpy import NAN  # NOQA
-from numpy import NaN  # NOQA
 from numpy import nan  # NOQA
 from numpy import newaxis  # == None  # NOQA
-from numpy import NINF  # NOQA
-from numpy import NZERO  # NOQA
 from numpy import pi  # NOQA
-from numpy import PINF  # NOQA
-from numpy import PZERO  # NOQA
 
+# APIs to be removed in NumPy 2.0.
+# Remove these when bumping the baseline API to NumPy 2.0.
+# https://github.com/cupy/cupy/pull/7800
+PINF = Inf = Infinity = infty = inf  # NOQA
+NINF = -inf  # NOQA
+NAN = NaN = nan  # NOQA
+PZERO = 0.0  # NOQA
+NZERO = -0.0  # NOQA
 
 # =============================================================================
 # Data types (borrowed from NumPy)
@@ -529,9 +528,9 @@ from cupy._logic.comparison import less_equal  # NOQA
 from cupy._logic.comparison import not_equal  # NOQA
 
 from cupy._logic.truth import all  # NOQA
-from cupy._logic.truth import all as alltrue  # NOQA
+from cupy._logic.truth import alltrue  # NOQA
 from cupy._logic.truth import any  # NOQA
-from cupy._logic.truth import any as sometrue  # NOQA
+from cupy._logic.truth import sometrue  # NOQA
 
 # ------------------------------------------------------------------------------
 # Polynomial functions
@@ -577,15 +576,15 @@ from cupy._math.rounding import ceil  # NOQA
 from cupy._math.rounding import fix  # NOQA
 from cupy._math.rounding import floor  # NOQA
 from cupy._math.rounding import rint  # NOQA
+from cupy._math.rounding import round  # NOQA
 from cupy._math.rounding import round_  # NOQA
-from cupy._math.rounding import round_ as round  # NOQA
 from cupy._math.rounding import trunc  # NOQA
 
 from cupy._math.sumprod import prod  # NOQA
-from cupy._math.sumprod import prod as product  # NOQA
+from cupy._math.sumprod import product  # NOQA
 from cupy._math.sumprod import sum  # NOQA
 from cupy._math.sumprod import cumprod  # NOQA
-from cupy._math.sumprod import cumprod as cumproduct  # NOQA
+from cupy._math.sumprod import cumproduct  # NOQA
 from cupy._math.sumprod import cumsum  # NOQA
 from cupy._math.sumprod import ediff1d  # NOQA
 from cupy._math.sumprod import nancumprod  # NOQA
@@ -793,29 +792,35 @@ from cupy._core import fromDlpack  # NOQA
 from cupy._core import from_dlpack  # NOQA
 
 
-def asnumpy(a, stream=None, order='C', out=None):
+def asnumpy(a, stream=None, order='C', out=None, *, blocking=True):
     """Returns an array on the host memory from an arbitrary source array.
 
     Args:
         a: Arbitrary object that can be converted to :class:`numpy.ndarray`.
-        stream (cupy.cuda.Stream): CUDA stream object. If it is specified, then
-            the device-to-host copy runs asynchronously. Otherwise, the copy is
-            synchronous. Note that if ``a`` is not a :class:`cupy.ndarray`
+        stream (cupy.cuda.Stream): CUDA stream object. If given, the
+            stream is used to perform the copy. Otherwise, the current
+            stream is used. Note that if ``a`` is not a :class:`cupy.ndarray`
             object, then this argument has no effect.
         order ({'C', 'F', 'A'}): The desired memory layout of the host
-            array. When ``order`` is 'A', it uses 'F' if ``a`` is
-            fortran-contiguous and 'C' otherwise.
+            array. When ``order`` is 'A', it uses 'F' if the array is
+            fortran-contiguous and 'C' otherwise. The ``order`` will be
+            ignored if ``out`` is specified.
         out (numpy.ndarray): The output array to be written to. It must have
             compatible shape and dtype with those of ``a``'s.
+        blocking (bool): If set to ``False``, the copy runs asynchronously
+            on the given (if given) or current stream, and users are
+            responsible for ensuring the stream order. Default is ``True``,
+            so the copy is synchronous (with respect to the host).
 
     Returns:
         numpy.ndarray: Converted array on the host memory.
 
     """
     if isinstance(a, ndarray):
-        return a.get(stream=stream, order=order, out=out)
+        return a.get(stream=stream, order=order, out=out, blocking=blocking)
     elif hasattr(a, "__cuda_array_interface__"):
-        return array(a).get(stream=stream, order=order, out=out)
+        return array(a).get(
+            stream=stream, order=order, out=out, blocking=blocking)
     else:
         temp = _numpy.asarray(a, order=order)
         if out is not None:

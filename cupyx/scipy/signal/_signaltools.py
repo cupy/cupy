@@ -419,6 +419,67 @@ def _correlate2d(in1, in2, mode, boundary, fillvalue, convolution=False):
                                       boundary, fillvalue, not convolution)
 
 
+def correlation_lags(in1_len, in2_len, mode='full'):
+    r"""
+    Calculates the lag / displacement indices array for 1D cross-correlation.
+
+    Parameters
+    ----------
+    in1_len : int
+        First input size.
+    in2_len : int
+        Second input size.
+    mode : str {'full', 'valid', 'same'}, optional
+        A string indicating the size of the output.
+        See the documentation `correlate` for more information.
+
+    Returns
+    -------
+    lags : array
+        Returns an array containing cross-correlation lag/displacement indices.
+        Indices can be indexed with the np.argmax of the correlation to return
+        the lag/displacement.
+
+    See Also
+    --------
+    correlate : Compute the N-dimensional cross-correlation.
+    scipy.signal.correlation_lags
+    """
+    # calculate lag ranges in different modes of operation
+    if mode == "full":
+        # the output is the full discrete linear convolution
+        # of the inputs. (Default)
+        lags = cupy.arange(-in2_len + 1, in1_len)
+    elif mode == "same":
+        # the output is the same size as `in1`, centered
+        # with respect to the 'full' output.
+        # calculate the full output
+        lags = cupy.arange(-in2_len + 1, in1_len)
+        # determine the midpoint in the full output
+        mid = lags.size // 2
+        # determine lag_bound to be used with respect
+        # to the midpoint
+        lag_bound = in1_len // 2
+        # calculate lag ranges for even and odd scenarios
+        if in1_len % 2 == 0:
+            lags = lags[(mid - lag_bound):(mid + lag_bound)]
+        else:
+            lags = lags[(mid - lag_bound):(mid + lag_bound) + 1]
+    elif mode == "valid":
+        # the output consists only of those elements that do not
+        # rely on the zero-padding. In 'valid' mode, either `in1` or `in2`
+        # must be at least as large as the other in every dimension.
+
+        # the lag_bound will be either negative or positive
+        # this let's us infer how to present the lag range
+        lag_bound = in1_len - in2_len
+        if lag_bound >= 0:
+            lags = cupy.arange(lag_bound + 1)
+        else:
+            lags = cupy.arange(lag_bound, 1)
+    return lags
+
+
 def wiener(im, mysize=None, noise=None):
     """Perform a Wiener filter on an N-dimensional array.
 
@@ -514,9 +575,6 @@ def medfilt(volume, kernel_size=None):
     .. seealso:: :func:`cupyx.scipy.ndimage.median_filter`
     .. seealso:: :func:`scipy.signal.medfilt`
     """
-    if volume.dtype.kind == 'c':
-        # scipy doesn't support complex
-        raise ValueError("complex types not supported")
     if volume.dtype.char == 'e':
         # scipy doesn't support float16
         raise ValueError("float16 type not supported")
@@ -524,6 +582,11 @@ def medfilt(volume, kernel_size=None):
         # scipy doesn't support bool
         raise ValueError("bool type not supported")
     kernel_size = _get_kernel_size(kernel_size, volume.ndim)
+    if volume.dtype == 'F':
+        raise TypeError("complex types not supported")
+    if volume.dtype.kind == 'c':
+        # scipy doesn't support complex
+        raise ValueError("complex types not supported")
     if any(k > s for k, s in zip(kernel_size, volume.shape)):
         warnings.warn('kernel_size exceeds volume extent: '
                       'volume will be zero-padded')
@@ -557,9 +620,6 @@ def medfilt2d(input, kernel_size=3):
     .. seealso:: :func:`cupyx.scipy.signal.medfilt`
     .. seealso:: :func:`scipy.signal.medfilt2d`
     """
-    if input.dtype.kind == 'c':
-        # scipy doesn't support complex
-        raise ValueError("complex types not supported")
     if input.dtype.char == 'e':
         # scipy doesn't support float16
         raise ValueError("float16 type not supported")
@@ -569,6 +629,11 @@ def medfilt2d(input, kernel_size=3):
     if input.ndim != 2:
         raise ValueError('input must be 2d')
     kernel_size = _get_kernel_size(kernel_size, input.ndim)
+    if input.dtype == 'F':
+        raise TypeError("complex types not supported")
+    if input.dtype.kind == 'c':
+        # scipy doesn't support complex
+        raise ValueError("complex types not supported")
     order = kernel_size[0] * kernel_size[1] // 2
     return _filters.rank_filter(
         input, order, size=kernel_size, mode='constant')
@@ -1367,7 +1432,7 @@ def _validate_sos(sos):
     n_sections, m = sos.shape
     if m != 6:
         raise ValueError('sos array must be shape (n_sections, 6)')
-    if not (sos[:, 3] == 1).all():
+    if not (cupy.abs(sos[:, 3] - 1.0) <= 1e-15).all():
         raise ValueError('sos[:, 3] should be all ones')
     return sos, n_sections
 

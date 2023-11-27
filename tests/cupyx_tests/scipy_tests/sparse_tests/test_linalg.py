@@ -68,7 +68,7 @@ class TestLsqr(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    'ord': [None, -numpy.Inf, -2, -1, 0, 1, 2, 3, numpy.Inf, 'fro'],
+    'ord': [None, -numpy.inf, -2, -1, 0, 1, 2, 3, numpy.inf, 'fro'],
     'dtype': [
         numpy.float32,
         numpy.float64,
@@ -84,7 +84,7 @@ class TestMatrixNorm:
                                  accept_error=(ValueError,
                                                NotImplementedError))
     def test_matrix_norm(self, xp, sp):
-        if runtime.is_hip and self.ord in (1, -1, numpy.Inf, -numpy.Inf):
+        if runtime.is_hip and self.ord in (1, -1, numpy.inf, -numpy.inf):
             pytest.xfail('csc spmv is buggy')
         if self.ord == 2:
             pytest.xfail('ord=2 is not implemented in cupy')
@@ -95,7 +95,7 @@ class TestMatrixNorm:
 
 
 @testing.parameterize(*testing.product({
-    'ord': [None, -numpy.Inf, -2, -1, 0, 1, 2, numpy.Inf, 'fro'],
+    'ord': [None, -numpy.inf, -2, -1, 0, 1, 2, numpy.inf, 'fro'],
     'dtype': [
         numpy.float32,
         numpy.float64,
@@ -1009,6 +1009,7 @@ class TestLOBPCG:
                                             largest=False)
         return eigvals, _eigen_vec_transform(eigvecs, xp)
 
+    @testing.with_requires('scipy<1.11')
     @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp',
                                  contiguous_check=False)
     def test_generate_input_for_elastic_rod(self, xp, sp):
@@ -1021,6 +1022,7 @@ class TestLOBPCG:
                                             largest=False)
         return eigvals, _eigen_vec_transform(eigvecs, xp)
 
+    @testing.with_requires('scipy<1.11')
     @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp',
                                  contiguous_check=False)
     def test_generate_input_for_mikota_pair(self, xp, sp):
@@ -1181,7 +1183,7 @@ class TestLOBPCG:
         output = saved_stdout.getvalue().strip()
         return output
 
-    @testing.with_requires('scipy>=1.10')
+    @testing.with_requires('scipy>=1.10', 'scipy<1.11')
     def test_verbosity(self):
         """Check that nonzero verbosity level code runs
            and is identical to scipy's output format.
@@ -1217,6 +1219,14 @@ class TestLOBPCG:
     @pytest.mark.xfail(
         runtime.is_hip and driver.get_build_version() >= 5_00_00000,
         reason='ROCm 5.0+ may have a bug')
+    @pytest.mark.xfail(
+        cupy.cuda.cusolver._getVersion() in (
+            (11, 4, 5),  # CUDA 12.1.1
+            (11, 5, 0),  # CUDA 12.2.0
+        ),
+        reason='cuSOLVER in CUDA 12.1+ may have a bug',
+        strict=False,  # Seems only failing with Volta (V100 / T4)
+    )
     def test_maxit_None(self):
         """Check lobpcg if maxit=None runs 20 iterations (the default)
         by checking the size of the iteration history output, which should

@@ -71,7 +71,7 @@ cdef class _ndarray_base:
     cpdef _ndarray_base any(self, axis=*, out=*, keepdims=*)
     cpdef _ndarray_base conj(self)
     cpdef _ndarray_base conjugate(self)
-    cpdef get(self, stream=*, order=*, out=*)
+    cpdef get(self, stream=*, order=*, out=*, blocking=*)
     cpdef set(self, arr, stream=*)
     cpdef _ndarray_base reduced_view(self, dtype=*)
     cpdef _update_c_contiguity(self)
@@ -106,7 +106,8 @@ cpdef Module compile_with_cache(str source, tuple options=*, arch=*,
 
 # TODO(niboshi): Move to _routines_creation.pyx
 cpdef _ndarray_base array(
-    obj, dtype=*, bint copy=*, order=*, bint subok=*, Py_ssize_t ndmin=*)
+    obj, dtype=*, bint copy=*, order=*, bint subok=*, Py_ssize_t ndmin=*,
+    bint blocking=*)
 cpdef _ndarray_base _convert_object_with_cuda_array_interface(a)
 
 cdef _ndarray_base _ndarray_init(subtype, const shape_t& shape, dtype, obj)

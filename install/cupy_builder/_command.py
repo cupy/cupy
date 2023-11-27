@@ -202,7 +202,7 @@ class custom_build_ext(setuptools.command.build_ext.build_ext):
         # Remove device code from list of sources, and instead add compiled
         # object files to link.
         ext.sources = sources_cpp
-        ext.extra_objects += extra_objects
+        ext.extra_objects = extra_objects + ext.extra_objects
 
         # Let setuptools do the rest of the build process, i.e., compile
         # "*.cpp" files and link object files generated from "*.cu".

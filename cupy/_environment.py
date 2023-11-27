@@ -61,12 +61,13 @@ _preload_libs = {
     'cutensor': None,
 }
 
-_preload_logs = []
+_debug = os.environ.get('CUPY_DEBUG_LIBRARY_LOAD', '0') == '1'
 
 
-def _log(msg):
-    # TODO(kmaehashi): replace with the standard logging
-    _preload_logs.append(msg)
+def _log(msg: str) -> None:
+    if _debug:
+        sys.stderr.write(f'[CUPY_DEBUG_LIBRARY_LOAD] {msg}\n')
+        sys.stderr.flush()
 
 
 def get_cuda_path():
@@ -176,13 +177,9 @@ def _get_cub_path():
     current_dir = os.path.dirname(os.path.abspath(__file__))
 
     if not runtime.is_hip:
-        cuda_path = get_cuda_path()
-        if os.path.isdir(os.path.join(current_dir, '_core/include/cupy/cub')):
+        if os.path.isdir(
+                os.path.join(current_dir, '_core/include/cupy/_cccl/cub')):
             _cub_path = '<bundle>'
-        elif cuda_path is not None and os.path.isdir(
-                os.path.join(cuda_path, 'include/cub')):
-            # use built-in CUB for CUDA 11+
-            _cub_path = '<CUDA>'
         else:
             _cub_path = None
     else:
@@ -201,8 +198,10 @@ def _setup_win32_dll_directory():
     # Setup DLL directory to load CUDA Toolkit libs and shared libraries
     # added during the build process.
     if sys.platform.startswith('win32'):
-        is_conda = ((os.environ.get('CONDA_PREFIX') is not None)
-                    or (os.environ.get('CONDA_BUILD_STATE') is not None))
+        # see _can_attempt_preload()
+        config = get_preload_config()
+        is_conda = (config is not None and (config['packaging'] == 'conda'))
+
         # Path to the CUDA Toolkit binaries
         cuda_path = get_cuda_path()
         if cuda_path is not None:
@@ -292,7 +291,7 @@ def _can_attempt_preload(lib: str) -> bool:
         # Conda-Forge. See here for the configuration files used in
         # Conda-Forge distributions.
         # https://github.com/conda-forge/cupy-feedstock/blob/master/recipe/preload_config/
-        _log(f'Cannot preload {lib} as this is not a wheel installation')
+        _log(f'Not preloading {lib} as this is not a pip wheel installation')
         return False
 
     if lib not in _preload_libs:
@@ -404,10 +403,6 @@ def _get_cutensor_from_wheel(version: str, cuda: str) -> List[str]:
         f'libcutensor.so.{version.split(".")[0]}')]
 
 
-def _get_preload_logs():
-    return '\n'.join(_preload_logs)
-
-
 def _preload_warning(lib, exc):
     config = get_preload_config()
     if config is None or lib not in config:
@@ -419,7 +414,7 @@ def _preload_warning(lib, exc):
             cuda_major = cuda.split('.')[0]
             cmd = f'pip install cutensor-cu{cuda_major}'
         else:
-            cmd = f'python -m cupyx.tools.install_library --library {lib} --cuda {cuda}'
+            cmd = f'python -m cupyx.tools.install_library --library {lib} --cuda {cuda}'  # NOQA
     elif config['packaging'] == 'conda':
         cmd = f'conda install -c conda-forge {lib}'
     else:

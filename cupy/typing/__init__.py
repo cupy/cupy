@@ -1,4 +1,4 @@
-from cupy.typing._generic_alias import ArrayLike  # NOQA
-from cupy.typing._generic_alias import DTypeLike  # NOQA
-from cupy.typing._generic_alias import NBitBase  # NOQA
-from cupy.typing._generic_alias import NDArray  # NOQA
+from cupy.typing._types import ArrayLike  # NOQA
+from cupy.typing._types import DTypeLike  # NOQA
+from cupy.typing._types import NBitBase  # NOQA
+from cupy.typing._types import NDArray  # NOQA

@@ -13,7 +13,6 @@ import cupy
 from cupy._core import _accelerator
 from cupy.cuda import cub
 from cupy.cuda import runtime
-from cupyx import cusparse
 from cupyx.scipy.sparse import _base
 from cupyx.scipy.sparse import _compressed
 from cupyx.scipy.sparse import _csc
@@ -81,6 +80,8 @@ class csr_matrix(_compressed._compressed_sparse_matrix):
         return (x, y)
 
     def _add_sparse(self, other, alpha, beta):
+        from cupyx import cusparse
+
         self.sum_duplicates()
         other = other.tocsr()
         other.sum_duplicates()
@@ -146,6 +147,8 @@ class csr_matrix(_compressed._compressed_sparse_matrix):
         return self._comparison(other, operator.ge, '_ge_')
 
     def __mul__(self, other):
+        from cupyx import cusparse
+
         if cupy.isscalar(other):
             self.sum_duplicates()
             return self._with_data(self.data * other)
@@ -159,7 +162,7 @@ class csr_matrix(_compressed._compressed_sparse_matrix):
             elif cusparse.check_availability('csrgemm'):
                 return cusparse.csrgemm(self, other)
             else:
-                raise NotImplementedError
+                raise AssertionError
         elif _csc.isspmatrix_csc(other):
             self.sum_duplicates()
             other.sum_duplicates()
@@ -175,7 +178,7 @@ class csr_matrix(_compressed._compressed_sparse_matrix):
                 b.sum_duplicates()
                 return cusparse.csrgemm2(self, b)
             else:
-                raise NotImplementedError
+                raise AssertionError
         elif _base.isspmatrix(other):
             return self * other.tocsr()
         elif _base.isdense(other):
@@ -208,7 +211,7 @@ class csr_matrix(_compressed._compressed_sparse_matrix):
                 elif cusparse.check_availability('spmv'):
                     csrmv = cusparse.spmv
                 else:
-                    raise NotImplementedError
+                    raise AssertionError
                 return csrmv(self, other)
             elif other.ndim == 2:
                 self.sum_duplicates()
@@ -217,7 +220,7 @@ class csr_matrix(_compressed._compressed_sparse_matrix):
                 elif cusparse.check_availability('spmm'):
                     csrmm = cusparse.spmm
                 else:
-                    raise NotImplementedError
+                    raise AssertionError
                 return csrmm(self, cupy.asfortranarray(other))
             else:
                 raise ValueError('could not interpret dimensions')
@@ -243,8 +246,12 @@ class csr_matrix(_compressed._compressed_sparse_matrix):
             return multiply_by_scalar(self, d)
         elif _util.isdense(other):
             other = cupy.atleast_2d(other)
+            other = cupy.broadcast_to(other, self.shape)
             check_shape_for_pointwise_op(self.shape, other.shape)
-            return self.todense() / other
+            ret = self.tocoo()
+            ret.data = _cupy_divide_by_dense()(
+                ret.data, ret.row, ret.col, ret.shape[1], other)
+            return ret
         elif _base.isspmatrix(other):
             # Note: If broadcasting is needed, an exception is raised here for
             # compatibility with SciPy, as SciPy does not support broadcasting
@@ -259,10 +266,10 @@ class csr_matrix(_compressed._compressed_sparse_matrix):
             # which can use lots of memory.
             self_dense = self.todense().astype(dtype, copy=False)
             return self_dense / other.todense()
-        raise NotImplementedError
+        return NotImplemented
 
     def __rtruediv__(self, other):
-        raise NotImplementedError
+        return NotImplemented
 
     # TODO(unno): Implement check_format
 
@@ -279,6 +286,8 @@ class csr_matrix(_compressed._compressed_sparse_matrix):
 
     def eliminate_zeros(self):
         """Removes zero entories in place."""
+        from cupyx import cusparse
+
         compress = cusparse.csr2csr_compress(self, 0)
         self.data = compress.data
         self.indices = compress.indices
@@ -372,6 +381,8 @@ class csr_matrix(_compressed._compressed_sparse_matrix):
             Calling this function might synchronize the device.
 
         """
+        from cupyx import cusparse
+
         if not self.has_sorted_indices:
             cusparse.csrsort(self)
             self.has_sorted_indices = True
@@ -390,6 +401,8 @@ class csr_matrix(_compressed._compressed_sparse_matrix):
         .. seealso:: :meth:`scipy.sparse.csr_matrix.toarray`
 
         """
+        from cupyx import cusparse
+
         order = 'C' if order is None else order.upper()
         if self.nnz == 0:
             return cupy.zeros(shape=self.shape, dtype=self.dtype, order=order)
@@ -435,6 +448,8 @@ class csr_matrix(_compressed._compressed_sparse_matrix):
             cupyx.scipy.sparse.coo_matrix: Converted matrix.
 
         """
+        from cupyx import cusparse
+
         if copy:
             data = self.data.copy()
             indices = self.indices.copy()
@@ -456,6 +471,8 @@ class csr_matrix(_compressed._compressed_sparse_matrix):
             cupyx.scipy.sparse.csc_matrix: Converted matrix.
 
         """
+        from cupyx import cusparse
+
         # copy is ignored
         if cusparse.check_availability('csr2csc'):
             csr2csc = cusparse.csr2csc
@@ -508,7 +525,7 @@ class csr_matrix(_compressed._compressed_sparse_matrix):
                 Otherwise, it shared data arrays as much as possible.
 
         Returns:
-            cupyx.scipy.sparse.spmatrix: Transpose matrix.
+            cupyx.scipy.sparse.csc_matrix: `self` with the dimensions reversed.
 
         """
         if axes is not None:
@@ -705,6 +722,18 @@ def cupy_multiply_by_dense():
         ''',
         'cupyx_scipy_sparse_csr_multiply_by_dense',
         preamble=_GET_ROW_ID_
+    )
+
+
+@cupy._util.memoize(for_each_device=True)
+def _cupy_divide_by_dense():
+    return cupy.ElementwiseKernel(
+        'T data, I row, I col, I width, raw T other',
+        'T res',
+        '''
+        res = data / other[row * width + col]
+        ''',
+        'cupyx_scipy_sparse_coo_divide_dense',
     )
 
 
@@ -1108,31 +1137,34 @@ def cupy_binopt_csr_step2(op_name):
 def csr2dense(a, order):
     out = cupy.zeros(a.shape, dtype=a.dtype, order=order)
     m, n = a.shape
-    cupy_csr2dense()(m, n, a.indptr, a.indices, a.data,
-                     (order == 'C'), out)
+    kern = _cupy_csr2dense(a.dtype)
+    kern(m, n, a.indptr, a.indices, a.data, (order == 'C'), out)
     return out
 
 
 @cupy._util.memoize(for_each_device=True)
-def cupy_csr2dense():
+def _cupy_csr2dense(dtype):
+    if dtype == '?':
+        op = "if (DATA) OUT[index] = true;"
+    else:
+        op = "atomicAdd(&OUT[index], DATA);"
+
     return cupy.ElementwiseKernel(
         'int32 M, int32 N, raw I INDPTR, I INDICES, T DATA, bool C_ORDER',
         'raw T OUT',
         '''
         int row = get_row_id(i, 0, M - 1, &(INDPTR[0]));
         int col = INDICES;
-        if (C_ORDER) {
-            OUT[col + N * row] += DATA;
-        } else {
-            OUT[row + M * col] += DATA;
-        }
-        ''',
+        int index = C_ORDER ? col + N * row : row + M * col;
+        ''' + op,
         'cupyx_scipy_sparse_csr2dense',
         preamble=_GET_ROW_ID_
     )
 
 
 def dense2csr(a):
+    from cupyx import cusparse
+
     if a.dtype.char in 'fdFD':
         if cusparse.check_availability('denseToSparse'):
             return cusparse.denseToSparse(a, format='csr')

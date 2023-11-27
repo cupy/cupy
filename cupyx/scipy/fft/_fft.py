@@ -5,10 +5,8 @@ import numpy as np
 
 import cupy
 
-from cupy.cuda import cufft
 from cupy.fft._fft import (_fft, _default_fft_func, hfft as _hfft,
-                           ihfft as _ihfft, _size_last_transform_axis,
-                           _swap_direction)
+                           ihfft as _ihfft, _swap_direction)
 
 _scipy_150 = False
 _scipy_160 = False
@@ -106,6 +104,7 @@ def fft(x, n=None, axis=-1, norm=None, overwrite_x=False, *, plan=None):
 
     .. seealso:: :func:`scipy.fft.fft`
     """
+    from cupy.cuda import cufft
     return _fft(x, (n,), (axis,), norm, cufft.CUFFT_FORWARD,
                 overwrite_x=overwrite_x, plan=plan)
 
@@ -139,6 +138,7 @@ def ifft(x, n=None, axis=-1, norm=None, overwrite_x=False, *, plan=None):
 
     .. seealso:: :func:`scipy.fft.ifft`
     """
+    from cupy.cuda import cufft
     return _fft(x, (n,), (axis,), norm, cufft.CUFFT_INVERSE,
                 overwrite_x=overwrite_x, plan=plan)
 
@@ -237,6 +237,8 @@ def fftn(x, s=None, axes=None, norm=None, overwrite_x=False, *, plan=None):
 
     .. seealso:: :func:`scipy.fft.fftn`
     """
+    from cupy.cuda import cufft
+
     s = _assequence(s)
     axes = _assequence(axes)
     func = _default_fft_func(x, s, axes)
@@ -273,6 +275,8 @@ def ifftn(x, s=None, axes=None, norm=None, overwrite_x=False, *, plan=None):
 
     .. seealso:: :func:`scipy.fft.ifftn`
     """
+    from cupy.cuda import cufft
+
     s = _assequence(s)
     axes = _assequence(axes)
     func = _default_fft_func(x, s, axes)
@@ -313,6 +317,8 @@ def rfft(x, n=None, axis=-1, norm=None, overwrite_x=False, *, plan=None):
     .. seealso:: :func:`scipy.fft.rfft`
 
     """
+    from cupy.cuda import cufft
+
     return _fft(x, (n,), (axis,), norm, cufft.CUFFT_FORWARD, 'R2C',
                 overwrite_x=overwrite_x, plan=plan)
 
@@ -346,6 +352,7 @@ def irfft(x, n=None, axis=-1, norm=None, overwrite_x=False, *, plan=None):
 
     .. seealso:: :func:`scipy.fft.irfft`
     """
+    from cupy.cuda import cufft
     return _fft(x, (n,), (axis,), norm, cufft.CUFFT_INVERSE, 'C2R',
                 overwrite_x=overwrite_x, plan=plan)
 
@@ -453,6 +460,8 @@ def rfftn(x, s=None, axes=None, norm=None, overwrite_x=False, *, plan=None):
 
     .. seealso:: :func:`scipy.fft.rfftn`
     """
+    from cupy.cuda import cufft
+
     s = _assequence(s)
     axes = _assequence(axes)
     func = _default_fft_func(x, s, axes, value_type='R2C')
@@ -493,13 +502,10 @@ def irfftn(x, s=None, axes=None, norm=None, overwrite_x=False, *, plan=None):
 
     .. seealso:: :func:`scipy.fft.irfftn`
     """
+    from cupy.cuda import cufft
+
     s = _assequence(s)
     axes = _assequence(axes)
-    if (10020 >= cupy.cuda.runtime.runtimeGetVersion() >= 10010
-            and int(cupy.cuda.device.get_compute_capability()) < 70
-            and _size_last_transform_axis(x.shape, s, axes) == 2):
-        warnings.warn('Output of irfftn might not be correct due to issue '
-                      'of cuFFT in CUDA 10.1/10.2 on Pascal or older GPUs.')
     func = _default_fft_func(x, s, axes, value_type='C2R')
     return func(x, s, axes, norm, cufft.CUFFT_INVERSE, 'C2R',
                 overwrite_x=overwrite_x, plan=plan)

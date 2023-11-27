@@ -129,9 +129,12 @@ class _RuntimeInfo:
                 cupy.cuda.cublas.CUBLASError)
 
         # cuFFT
-        self.cufft_version = _eval_or_error(
-            cupy.cuda.cufft.getVersion,
-            cupy.cuda.cufft.CuFFTError)
+        try:
+            from cupy.cuda import cufft
+            self.cufft_version = _eval_or_error(
+                cufft.getVersion, cufft.CuFFTError)
+        except ImportError:
+            pass
 
         # cuRAND
         self.curand_version = _eval_or_error(
@@ -154,7 +157,7 @@ class _RuntimeInfo:
         # NVRTC
         self.nvrtc_version = _eval_or_error(
             cupy.cuda.nvrtc.getVersion,
-            cupy.cuda.nvrtc.NVRTCError)
+            (cupy.cuda.nvrtc.NVRTCError, cupy.cuda.runtime.CUDARuntimeError))
 
         # Thrust
         try:
