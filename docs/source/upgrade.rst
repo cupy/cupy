@@ -36,7 +36,7 @@ if set to ``False``, in which case users are responsible for ensuring proper str
 Change in cuTENSOR support
 ----------------------------------------------------------------
 
-Support for cuTENSOR 2.0 will be added starting with CuPy v13, but support for cuTENSOR 1.x will be dropped. This is because there are significant API changes from cuTensor 1.x to 2.0, and from a maintenance perspective, it is not practical to support both the cuTensor 1.x API and 2.0 API simultaneously.
+Support for cuTENSOR 2.0 is added starting with CuPy v13, and support for cuTENSOR 1.x will be dropped. This is because there are significant API changes from cuTENSOR 1.x to 2.0, and from the maintenance perspective, it is not practical to support both the cuTENSOR 1.x APIs and 2.0 APIs simultaneously.
 
 
 CuPy v12
