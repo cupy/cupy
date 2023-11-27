@@ -155,7 +155,7 @@ PyTorch also supports zero-copy data exchange through ``DLPack`` (see :ref:`dlpa
 	import cupy
 	import torch
 
-	from torch.utils.dlpack import from_dlpack
+	from torch import from_dlpack
 
 	# Create a PyTorch tensor.
 	tx1 = torch.randn(1, 2, 3, 4).cuda()
