@@ -6,34 +6,34 @@ from libc.stdint cimport int32_t, uint32_t, int64_t, uint64_t, intptr_t
 
 cpdef enum:
     # cutensorDataType_t
-    R_16F  =  2  # NOQA, real as a half
-    C_16F  =  6  # NOQA, complex as a pair of half numbers
+    R_16F = 2  # NOQA, real as a half
+    C_16F = 6  # NOQA, complex as a pair of half numbers
     R_16BF = 14  # NOQA, real as a nv_bfloat16
     C_16BF = 15  # NOQA, complex as a pair of nv_bfloat16 numbers
-    R_32F  =  0  # NOQA, real as a float
-    C_32F  =  4  # NOQA, complex as a pair of float numbers
-    R_64F  =  1  # NOQA, real as a double
-    C_64F  =  5  # NOQA, complex as a pair of double numbers
-    R_4I   = 16  # NOQA, real as a signed 4-bit int
-    C_4I   = 17  # NOQA, complex as a pair of signed 4-bit int numbers
-    R_4U   = 18  # NOQA, real as a unsigned 4-bit int
-    C_4U   = 19  # NOQA, complex as a pair of unsigned 4-bit int numbers
-    R_8I   =  3  # NOQA, real as a signed 8-bit int
-    C_8I   =  7  # NOQA, complex as a pair of signed 8-bit int numbers
-    R_8U   =  8  # NOQA, real as a unsigned 8-bit int
-    C_8U   =  9  # NOQA, complex as a pair of unsigned 8-bit int numbers
-    R_16I  = 20  # NOQA, real as a signed 16-bit int
-    C_16I  = 21  # NOQA, complex as a pair of signed 16-bit int numbers
-    R_16U  = 22  # NOQA, real as a unsigned 16-bit int
-    C_16U  = 23  # NOQA, complex as a pair of unsigned 16-bit int numbers
-    R_32I  = 10  # NOQA, real as a signed 32-bit int
-    C_32I  = 11  # NOQA, complex as a pair of signed 32-bit int numbers
-    R_32U  = 12  # NOQA, real as a unsigned 32-bit int
-    C_32U  = 13  # NOQA, complex as a pair of unsigned 32-bit int numbers
-    R_64I  = 24  # NOQA, real as a signed 64-bit int
-    C_64I  = 25  # NOQA, complex as a pair of signed 64-bit int numbers
-    R_64U  = 26  # NOQA, real as a unsigned 64-bit int
-    C_64U  = 27  # NOQA, complex as a pair of unsigned 64-bit int numbers
+    R_32F = 0  # NOQA, real as a float
+    C_32F = 4  # NOQA, complex as a pair of float numbers
+    R_64F = 1  # NOQA, real as a double
+    C_64F = 5  # NOQA, complex as a pair of double numbers
+    R_4I = 16  # NOQA, real as a signed 4-bit int
+    C_4I = 17  # NOQA, complex as a pair of signed 4-bit int numbers
+    R_4U = 18  # NOQA, real as a unsigned 4-bit int
+    C_4U = 19  # NOQA, complex as a pair of unsigned 4-bit int numbers
+    R_8I = 3  # NOQA, real as a signed 8-bit int
+    C_8I = 7  # NOQA, complex as a pair of signed 8-bit int numbers
+    R_8U = 8  # NOQA, real as a unsigned 8-bit int
+    C_8U = 9  # NOQA, complex as a pair of unsigned 8-bit int numbers
+    R_16I = 20  # NOQA, real as a signed 16-bit int
+    C_16I = 21  # NOQA, complex as a pair of signed 16-bit int numbers
+    R_16U = 22  # NOQA, real as a unsigned 16-bit int
+    C_16U = 23  # NOQA, complex as a pair of unsigned 16-bit int numbers
+    R_32I = 10  # NOQA, real as a signed 32-bit int
+    C_32I = 11  # NOQA, complex as a pair of signed 32-bit int numbers
+    R_32U = 12  # NOQA, real as a unsigned 32-bit int
+    C_32U = 13  # NOQA, complex as a pair of unsigned 32-bit int numbers
+    R_64I = 24  # NOQA, real as a signed 64-bit int
+    C_64I = 25  # NOQA, complex as a pair of signed 64-bit int numbers
+    R_64U = 26  # NOQA, real as a unsigned 64-bit int
+    C_64U = 27  # NOQA, complex as a pair of unsigned 64-bit int numbers
 
     # cutensorAlgo_t (values > 0 correspond to certain algorithms of GETT)
     ALGO_DEFAULT_PATIENT = -6  # NOQA, Uses the more accurate but also more time-consuming performance model

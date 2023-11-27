@@ -1,5 +1,4 @@
 import numpy as _numpy
-import warnings as _warnings
 
 import cupy as _cupy
 from cupy import _util
@@ -13,8 +12,6 @@ from cupy._core.core cimport _ndarray_base
 from cupy._core cimport internal
 
 from cupy._core cimport core
-from cupy._core cimport _dtype
-from cupy._core cimport _routines_linalg as _linalg
 from cupy._core cimport _reduction
 from cupy.cuda cimport device
 from cupy_backends.cuda.libs cimport cutensor
@@ -205,7 +202,6 @@ cdef class Plan:
 
 
 cpdef Handle _get_handle():
-    cdef Handle handle
     cdef int dev = device.get_device_id()
     if dev not in _handles:
         _handles[dev] = Handle()
@@ -1015,8 +1011,6 @@ cdef inline bint _all_positive(const vector.vector[Py_ssize_t]& args):
 def _try_elementwise_binary_routine(
         _ndarray_base a, _ndarray_base c, dtype, _ndarray_base out, op, alpha,
         gamma):
-    cdef Handle handle
-
     if not check_availability('elementwise'):
         return None
 

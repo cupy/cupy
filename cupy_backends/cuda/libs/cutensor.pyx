@@ -3,7 +3,6 @@
 """Thin wrapper of cuTENSOR."""
 
 cimport cython  # NOQA
-from cpython.mem cimport PyMem_Malloc, PyMem_Free
 from libc.stdint cimport int32_t, uint32_t, int64_t, uint64_t, intptr_t
 
 from cupy_backends.cuda cimport stream as stream_module
