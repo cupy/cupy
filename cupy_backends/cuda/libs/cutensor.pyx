@@ -7,7 +7,7 @@ from cpython.mem cimport PyMem_Malloc, PyMem_Free
 from libc.stdint cimport int32_t, uint32_t, int64_t, uint64_t, intptr_t
 
 from cupy_backends.cuda cimport stream as stream_module
-from cupy_backends.cuda.api cimport driver
+from cupy_backends.cuda.api cimport runtime
 
 cdef extern from '../../cupy_cutensor.h' nogil:
     ctypedef int Status 'cutensorStatus_t'
@@ -53,7 +53,7 @@ cdef extern from '../../cupy_cutensor.h' nogil:
         void* C, cutensorTensorDescriptor_t* descC, int32_t* modeC,
         void* D, cutensorTensorDescriptor_t* descD, int32_t* modeD,
         Operator otAB, Operator otABC,
-        DataType typeScalar, driver.Stream stream)
+        DataType typeScalar, runtime.Stream stream)
 
     int cutensorElementwiseBinary(
         cutensorHandle_t* handle,
@@ -63,14 +63,14 @@ cdef extern from '../../cupy_cutensor.h' nogil:
         void* C, cutensorTensorDescriptor_t* descC, int32_t* modeC,
         void* D, cutensorTensorDescriptor_t* descD, int32_t* modeD,
         Operator otAC,
-        DataType typeScalar, driver.Stream stream)
+        DataType typeScalar, runtime.Stream stream)
 
     int cutensorPermutation(
         cutensorHandle_t* handle,
         void* alpha,
         void* A, cutensorTensorDescriptor_t* descA, int32_t* modeA,
         void* B, cutensorTensorDescriptor_t* descB, int32_t* modeB,
-        DataType typeScalar, driver.Stream stream)
+        DataType typeScalar, runtime.Stream stream)
 
     int cutensorInitContractionDescriptor(
         cutensorHandle_t* handle,
@@ -119,7 +119,7 @@ cdef extern from '../../cupy_cutensor.h' nogil:
         cutensorHandle_t* handle,
         cutensorContractionPlan_t* plan,
         void* alpha, void* A, void* B, void* beta, void* C, void* D,
-        void *workspace, uint64_t workspaceSize, driver.Stream stream)
+        void *workspace, uint64_t workspaceSize, runtime.Stream stream)
 
     int cutensorContractionMaxAlgos(int32_t* maxNumAlgos)
 
@@ -132,7 +132,7 @@ cdef extern from '../../cupy_cutensor.h' nogil:
         void* D, cutensorTensorDescriptor_t* descD, int32_t* modeD,
         Operator opReduce, ComputeType typeCompute,
         void* workspace, uint64_t workspaceSize,
-        driver.Stream stream)
+        runtime.Stream stream)
 
     int cutensorReductionGetWorkspaceSize(
         cutensorHandle_t* handle,
@@ -465,7 +465,7 @@ cpdef elementwiseTrinary(
         <Operator>opAB,
         <Operator>opABC,
         <DataType>typeScalar,
-        <driver.Stream>stream)
+        <runtime.Stream>stream)
     check_status(status)
 
 
@@ -510,7 +510,7 @@ cpdef elementwiseBinary(
         <int32_t*> modeD,
         <Operator> opAC,
         <DataType> typeScalar,
-        <driver.Stream> stream)
+        <runtime.Stream> stream)
     check_status(status)
 
 
@@ -535,7 +535,7 @@ cpdef permutation(
         <cutensorTensorDescriptor_t*> descB._ptr,
         <int32_t*> modeB,
         <DataType> typeScalar,
-        <driver.Stream> stream)
+        <runtime.Stream> stream)
     check_status(status)
 
 
@@ -732,7 +732,7 @@ cpdef contraction(
         <cutensorContractionPlan_t*> plan._ptr,
         <void*> alpha, <void*> A, <void*> B,
         <void*> beta, <void*> C, <void*> D,
-        <void*> workspace, workspaceSize, <driver.Stream> stream)
+        <void*> workspace, workspaceSize, <runtime.Stream> stream)
     check_status(status)
 
 
@@ -899,7 +899,7 @@ cpdef reduction(
         <void*> C, <cutensorTensorDescriptor_t*> descC._ptr, <int32_t*> modeC,
         <void*> D, <cutensorTensorDescriptor_t*> descD._ptr, <int32_t*> modeD,
         <Operator> opReduce, <ComputeType> minTypeCompute,
-        <void*> workspace, workspaceSize, <driver.Stream> stream)
+        <void*> workspace, workspaceSize, <runtime.Stream> stream)
     check_status(status)
 
 
