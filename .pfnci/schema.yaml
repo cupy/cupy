@@ -135,25 +135,17 @@ cutensor:
   # https://developer.nvidia.com/cutensor/downloads
   null:
     spec: null
-  "1.6":
-    spec: "1.6.*"
+  "2.0":
+    spec: "2.0.*"
     cuda:
       # "10.2":  -- cuTENSOR distributed through binary package does not support CUDA 10.2
       # "11.0":
-      # "11.1":
       "11.2":
       "11.3":
       "11.4":
       "11.5":
       "11.6":
       "11.7":
-      "11.8":
-      "12.0":  # v1.6.2+
-  "1.7":
-    spec: "1.7.*"
-    cuda:
-      # "10.2":  -- cuTENSOR distributed through binary package does not support CUDA 10.2
-      # "11.0":
       "11.8":
       "12.0":
       "12.1":  # assumed
