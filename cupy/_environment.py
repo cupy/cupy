@@ -384,12 +384,7 @@ def _get_cutensor_from_wheel(version: str, cuda: str) -> List[str]:
     Returns the list of shared library path candidates for cuTENSOR
     installed via Pip (cutensor-cuXX package).
     """
-    cuda_major_ver, cuda_minor_ver = cuda.split('.')
-    if (cuda_major_ver == '10'
-            or (cuda_major_ver == '11' and cuda_minor_ver == '0')):
-        _log(f'Skiping loading cuTENSOR wheel for CUDA {cuda} '
-             'due to CuPy requirement')
-        return []
+    cuda_major_ver, _ = cuda.split('.')
     import pkg_resources  # defer import # NOQA
     try:
         # load any compatible version (ex: version=1.6.2, load >=1.6.2,<1.7)
