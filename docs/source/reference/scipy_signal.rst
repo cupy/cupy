@@ -161,6 +161,7 @@ LTI representations
    sos2tf
    sos2zpk
    cont2discrete
+   place_poles
 
 
 Continuous-time linear systems
