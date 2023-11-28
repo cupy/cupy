@@ -50,7 +50,7 @@ Additional CUDA Libraries
 
 Part of the CUDA features in CuPy will be activated only when the corresponding libraries are installed.
 
-* `cuTENSOR <https://developer.nvidia.com/cutensor>`_: v1.6 / v1.7
+* `cuTENSOR <https://developer.nvidia.com/cutensor>`_: v2.0
 
     * The library to accelerate tensor operations. See :doc:`../reference/environment` for the details.
 
@@ -81,12 +81,6 @@ Package names are different depending on your CUDA Toolkit version.
 
    * - CUDA
      - Command
-   * - **v10.2** (x86_64 / aarch64)
-     - ``pip install cupy-cuda102``
-   * - **v11.0** (x86_64)
-     - ``pip install cupy-cuda110``
-   * - **v11.1** (x86_64)
-     - ``pip install cupy-cuda111``
    * - **v11.2 ~ 11.8** (x86_64 / aarch64)
      - ``pip install cupy-cuda11x``
    * - **v12.x** (x86_64 / aarch64)
