@@ -33,6 +33,11 @@ leading to potential data race if the resulting array is modified on host immedi
 behavior is changed to be always blocking, with a new optional argument ``blocking`` added to allow the previous nonblocking behavior
 if set to ``False``, in which case users are responsible for ensuring proper stream order.
 
+Change in cuTENSOR support
+--------------------------
+
+Support for cuTENSOR 2.0 is added starting with CuPy v13, and support for cuTENSOR 1.x will be dropped. This is because there are significant API changes from cuTENSOR 1.x to 2.0, and from the maintenance perspective, it is not practical to support both the cuTENSOR 1.x APIs and 2.0 APIs simultaneously.
+
 
 CuPy v12
 ========

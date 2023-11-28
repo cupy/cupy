@@ -132,6 +132,9 @@ def preconfigure_modules(ctx: Context, MODULES, compiler, settings):
             inc_path = os.path.join(cutensor_path, 'include')
             if os.path.exists(inc_path):
                 settings['include_dirs'].append(inc_path)
+            lib_path = os.path.join(cutensor_path, 'lib')
+            if os.path.exists(lib_path):
+                settings['library_dirs'].append(lib_path)
             cuda_version = ctx.features['cuda'].get_version()
             cuda_major = str(cuda_version // 1000)
             cuda_major_minor = cuda_major + '.' + \

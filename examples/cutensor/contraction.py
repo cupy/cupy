@@ -22,19 +22,12 @@ a = a.astype(dtype)
 b = b.astype(dtype)
 c = c.astype(dtype)
 
-desc_a = cutensor.create_tensor_descriptor(a)
-desc_b = cutensor.create_tensor_descriptor(b)
-desc_c = cutensor.create_tensor_descriptor(c)
-
-mode_a = cutensor.create_mode(*mode_a)
-mode_b = cutensor.create_mode(*mode_b)
-mode_c = cutensor.create_mode(*mode_c)
 alpha = 1.1
 beta = 1.0
 
 perf = cupyx.time.repeat(
     cutensor.contraction,
-    (alpha, a, desc_a, mode_a, b, desc_b, mode_b, beta, c, desc_c, mode_c),
+    (alpha, a, mode_a, b, mode_b, beta, c, mode_c),
     n_warmup=1, n_repeat=5)
 
 total_flops = 2 * numpy.prod(numpy.array(list(extent.values())))

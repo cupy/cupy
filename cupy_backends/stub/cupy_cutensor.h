@@ -9,7 +9,7 @@
 
 extern "C" {
 
-    typedef enum {} cudaDataType_t;
+    typedef enum {} cutensorDataType_t;
 
     typedef enum {
 	CUTENSOR_STATUS_SUCCESS = 0,
@@ -17,74 +17,110 @@ extern "C" {
 
     typedef enum {} cutensorAlgo_t;
     typedef enum {} cutensorOperator_t;
+    typedef enum {} cutensorPlan_t;
+    typedef enum {} cutensorPlanPreference_t;
+    typedef enum {} cutensorPlanPreferenceAttribute_t;
+    typedef enum {} cutensorJitMode_t;
+    typedef enum {} cutensorCacheMode_t;
     typedef enum {} cutensorWorksizePreference_t;
-    typedef enum {} cutensorComputeType_t;
 
     typedef void* cutensorHandle_t;
     typedef void* cutensorTensorDescriptor_t;
-    typedef void* cutensorContractionDescriptor_t;
-    typedef void* cutensorContractionFind_t;
-    typedef void* cutensorContractionPlan_t;
+    typedef void* cutensorOperationDescriptor_t;
+    typedef void* cutensorComputeDescriptor_t;
+   
+    const cutensorComputeDescriptor_t CUTENSOR_COMPUTE_DESC_16F = NULL;
+    const cutensorComputeDescriptor_t CUTENSOR_COMPUTE_DESC_16BF = NULL;
+    const cutensorComputeDescriptor_t CUTENSOR_COMPUTE_DESC_TF32 = NULL;
+    const cutensorComputeDescriptor_t CUTENSOR_COMPUTE_DESC_3XTF32 = NULL;
+    const cutensorComputeDescriptor_t CUTENSOR_COMPUTE_DESC_32F = NULL;
+    const cutensorComputeDescriptor_t CUTENSOR_COMPUTE_DESC_64F = NULL;
 
     cutensorStatus_t cutensorInit(...) {
 	return CUTENSOR_STATUS_SUCCESS;
     }
 
-    cutensorStatus_t cutensorInitTensorDescriptor(...) {
+    cutensorStatus_t cutensorCreate(...) {
 	return CUTENSOR_STATUS_SUCCESS;
     }
 
-    cutensorStatus_t cutensorElementwiseTrinary(...) {
+    cutensorStatus_t cutensorDestroy(...) {
 	return CUTENSOR_STATUS_SUCCESS;
     }
 
-    cutensorStatus_t cutensorElementwiseBinary(...) {
+    cutensorStatus_t cutensorCreateTensorDescriptor(...) {
 	return CUTENSOR_STATUS_SUCCESS;
     }
 
-    cutensorStatus_t cutensorPermutation(...) {
-    return CUTENSOR_STATUS_SUCCESS;
-    }
-
-    cutensorStatus_t cutensorInitContractionDescriptor(...) {
+    cutensorStatus_t cutensorDestroyTensorDescriptor(...) {
 	return CUTENSOR_STATUS_SUCCESS;
     }
 
-    cutensorStatus_t cutensorInitContractionFind(...) {
+    cutensorStatus_t cutensorDestroyOperationDescriptor(...) {
 	return CUTENSOR_STATUS_SUCCESS;
     }
 
-    cutensorStatus_t cutensorInitContractionPlan(...) {
+    cutensorStatus_t cutensorCreateElementwiseTrinary(...) {
 	return CUTENSOR_STATUS_SUCCESS;
     }
 
-    cutensorStatus_t cutensorContraction(...) {
+    cutensorStatus_t cutensorElementwiseTrinaryExecute(...) {
 	return CUTENSOR_STATUS_SUCCESS;
     }
 
-    cutensorStatus_t cutensorContractionGetWorkspaceSize(...) {
+    cutensorStatus_t cutensorCreateElementwiseBinary(...) {
 	return CUTENSOR_STATUS_SUCCESS;
     }
 
-    // Deprecated in cuTENSOR 1.5.0
-    cutensorStatus_t cutensorContractionGetWorkspace(...) {
+    cutensorStatus_t cutensorElementwiseBinaryExecute(...) {
 	return CUTENSOR_STATUS_SUCCESS;
     }
 
-    cutensorStatus_t cutensorContractionMaxAlgos(...) {
+    cutensorStatus_t cutensorCreatePermutation(...) {
+        return CUTENSOR_STATUS_SUCCESS;
+    }
+
+    cutensorStatus_t cutensorPermute(...) {
+        return CUTENSOR_STATUS_SUCCESS;
+    }
+
+    cutensorStatus_t cutensorCreateContraction(...) {
 	return CUTENSOR_STATUS_SUCCESS;
     }
 
-    cutensorStatus_t cutensorReduction(...) {
+    cutensorStatus_t cutensorDestroyContraction(...) {
 	return CUTENSOR_STATUS_SUCCESS;
     }
 
-    cutensorStatus_t cutensorReductionGetWorkspaceSize(...) {
+    cutensorStatus_t cutensorCreatePlanPreference(...) {
 	return CUTENSOR_STATUS_SUCCESS;
     }
 
-    // Deprecated in cuTENSOR 1.5.0
-    cutensorStatus_t cutensorReductionGetWorkspace(...) {
+    cutensorStatus_t cutensorDestroyPlanPreference(...) {
+	return CUTENSOR_STATUS_SUCCESS;
+    }
+
+    cutensorStatus_t cutensorCreatePlan(...) {
+	return CUTENSOR_STATUS_SUCCESS;
+    }
+
+    cutensorStatus_t cutensorDestroyPlan(...) {
+	return CUTENSOR_STATUS_SUCCESS;
+    }
+
+    cutensorStatus_t cutensorContract(...) {
+	return CUTENSOR_STATUS_SUCCESS;
+    }
+
+    cutensorStatus_t cutensorEstimateWorkspaceSize(...) {
+	return CUTENSOR_STATUS_SUCCESS;
+    }
+
+    cutensorStatus_t cutensorCreateReduction(...) {
+	return CUTENSOR_STATUS_SUCCESS;
+    }
+
+    cutensorStatus_t cutensorReduce(...) {
 	return CUTENSOR_STATUS_SUCCESS;
     }
 
@@ -93,6 +129,10 @@ extern "C" {
     }
 
     size_t cutensorGetVersion(...) {
+	return CUTENSOR_STATUS_SUCCESS;
+    }
+
+    size_t cutensorGetCudartVersion(...) {
 	return CUTENSOR_STATUS_SUCCESS;
     }
 
