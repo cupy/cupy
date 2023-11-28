@@ -316,18 +316,6 @@ def _preload_library(lib):
 
     _log(f'Preloading triggered for library: {lib}')
 
-    if lib == "cutensor":
-        # If the lib exists in the path specified by the CUTENSOR_PATH
-        # environment variable, load it from there. This is convenient during
-        # development, but should be removed when merging into the main branch.
-        cutensor_path = os.environ.get('CUTENSOR_PATH', '')
-        libpath = os.path.join(cutensor_path, 'lib', 'libcutensor.so')
-        if os.path.exists(libpath):
-            _preload_libs[lib] = {}
-            _preload_libs[lib][libpath] = ctypes.CDLL(libpath)
-            _log('Loaded')
-            return
-
     if not _can_attempt_preload(lib):
         return
     _preload_libs[lib] = {}
