@@ -243,6 +243,9 @@ cpdef TensorDescriptor create_tensor_descriptor(_ndarray_base a):
     """
     handle = _get_handle()
     key = (handle.ptr, a.dtype, tuple(a.shape), tuple(a.strides))
+    alignment_req = 256
+    if a.data.ptr & (alignment_req - 1) != 0:
+        raise ValueError("Missaligned array")
     if key not in _tensor_descriptors:
         num_modes = a.ndim
         extent = _numpy.array(a.shape, dtype=_numpy.int64)
@@ -250,7 +253,7 @@ cpdef TensorDescriptor create_tensor_descriptor(_ndarray_base a):
         cutensor_dtype = _get_cutensor_dtype(a.dtype)
         _tensor_descriptors[key] = TensorDescriptor(
             handle.ptr, num_modes, extent.ctypes.data, stride.ctypes.data,
-            cutensor_dtype)
+            cutensor_dtype, alignment_req=alignment_req)
     return _tensor_descriptors[key]
 
 
@@ -1026,7 +1029,6 @@ def _try_elementwise_binary_routine(
         return None
     if not (_all_positive(a._strides) and _all_positive(c._strides)):
         return None
-
     compute_dtype = a.dtype
 
     if compute_dtype.kind == 'c' and (
