@@ -23,11 +23,11 @@ Requirements
 Python Dependencies
 ~~~~~~~~~~~~~~~~~~~
 
-NumPy/SciPy-compatible API in CuPy v12 is based on NumPy 1.24 and SciPy 1.9, and has been tested against the following versions:
+NumPy/SciPy-compatible API in CuPy v12 is based on NumPy 1.26 and SciPy 1.11, and has been tested against the following versions:
 
-* `NumPy <https://numpy.org/>`_: v1.21 / v1.22 / v1.23 / v1.24
+* `NumPy <https://numpy.org/>`_: v1.21 / v1.22 / v1.23 / v1.24 / v1.25 / v1.26
 
-* `SciPy <https://scipy.org/>`_ (*optional*): v1.7 / v1.8 / v1.9 / v1.10
+* `SciPy <https://scipy.org/>`_ (*optional*): v1.7 / v1.8 / v1.9 / v1.10 / v1.11
 
     * Required only when coping sparse matrices from GPU to CPU (see :doc:`../reference/scipy_sparse`.)
 
