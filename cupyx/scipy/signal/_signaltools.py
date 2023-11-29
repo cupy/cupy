@@ -2,12 +2,17 @@ import warnings
 
 import cupy
 from cupy._core import internal
+from cupy.linalg import lstsq
 
+import cupyx.scipy.fft as sp_fft
 from cupyx.scipy.ndimage import _util
 from cupyx.scipy.ndimage import _filters
 from cupyx.scipy.signal import _signaltools_core as _st_core
-from cupyx.scipy.signal._iir_utils import apply_iir, compute_correction_factors
-from cupyx.scipy.signal._arraytools import axis_slice, axis_assign
+from cupyx.scipy.signal._arraytools import (
+    const_ext, even_ext, odd_ext, axis_reverse, axis_slice, axis_assign)
+from cupyx.scipy.signal._iir_utils import (
+    apply_iir, apply_iir_sos, compute_correction_factors,
+    compute_correction_factors_sos)
 
 
 def convolve(in1, in2, mode='full', method='auto'):
@@ -414,6 +419,67 @@ def _correlate2d(in1, in2, mode, boundary, fillvalue, convolution=False):
                                       boundary, fillvalue, not convolution)
 
 
+def correlation_lags(in1_len, in2_len, mode='full'):
+    r"""
+    Calculates the lag / displacement indices array for 1D cross-correlation.
+
+    Parameters
+    ----------
+    in1_len : int
+        First input size.
+    in2_len : int
+        Second input size.
+    mode : str {'full', 'valid', 'same'}, optional
+        A string indicating the size of the output.
+        See the documentation `correlate` for more information.
+
+    Returns
+    -------
+    lags : array
+        Returns an array containing cross-correlation lag/displacement indices.
+        Indices can be indexed with the np.argmax of the correlation to return
+        the lag/displacement.
+
+    See Also
+    --------
+    correlate : Compute the N-dimensional cross-correlation.
+    scipy.signal.correlation_lags
+    """
+    # calculate lag ranges in different modes of operation
+    if mode == "full":
+        # the output is the full discrete linear convolution
+        # of the inputs. (Default)
+        lags = cupy.arange(-in2_len + 1, in1_len)
+    elif mode == "same":
+        # the output is the same size as `in1`, centered
+        # with respect to the 'full' output.
+        # calculate the full output
+        lags = cupy.arange(-in2_len + 1, in1_len)
+        # determine the midpoint in the full output
+        mid = lags.size // 2
+        # determine lag_bound to be used with respect
+        # to the midpoint
+        lag_bound = in1_len // 2
+        # calculate lag ranges for even and odd scenarios
+        if in1_len % 2 == 0:
+            lags = lags[(mid - lag_bound):(mid + lag_bound)]
+        else:
+            lags = lags[(mid - lag_bound):(mid + lag_bound) + 1]
+    elif mode == "valid":
+        # the output consists only of those elements that do not
+        # rely on the zero-padding. In 'valid' mode, either `in1` or `in2`
+        # must be at least as large as the other in every dimension.
+
+        # the lag_bound will be either negative or positive
+        # this let's us infer how to present the lag range
+        lag_bound = in1_len - in2_len
+        if lag_bound >= 0:
+            lags = cupy.arange(lag_bound + 1)
+        else:
+            lags = cupy.arange(lag_bound, 1)
+    return lags
+
+
 def wiener(im, mysize=None, noise=None):
     """Perform a Wiener filter on an N-dimensional array.
 
@@ -696,7 +762,7 @@ def lfilter(b, a, x, axis=-1, zi=None):
     pad_shape = list(x.shape)
     pad_shape[axis] += num_b
 
-    x_full = cupy.zeros(pad_shape, dtype=x.dtype)
+    x_full = cupy.zeros(pad_shape, dtype=fir_dtype)
     if zi is not None:
         zi = cupy.atleast_1d(zi)
         if num_b > 0:
@@ -849,7 +915,7 @@ def lfilter_zi(b, a):
         y1 = y[:num_a]
         y2 = y[-num_a:]
 
-        C = compute_correction_factors(a_r, a_r.size + 1, a.dtype)
+        C = compute_correction_factors(a_r, a_r.size + 1, a_r.dtype)
         C = C[:, a_r.size:]
         C1 = C[:, :a_r.size].T
         C2 = C[:, -a_r.size:].T
@@ -857,8 +923,431 @@ def lfilter_zi(b, a):
         # Take the difference between the non-adjusted output values and
         # compute which initial output state would cause them to be constant.
         y_zi = cupy.linalg.solve(C1 - C2, y2 - y1)
+        y_zi = cupy.nan_to_num(y_zi, nan=0, posinf=cupy.inf, neginf=-cupy.inf)
         zi = cupy.r_[zi, y_zi]
     return zi
+
+
+def detrend(data, axis=-1, type='linear', bp=0, overwrite_data=False):
+    """
+    Remove linear trend along axis from data.
+
+    Parameters
+    ----------
+    data : array_like
+        The input data.
+    axis : int, optional
+        The axis along which to detrend the data. By default this is the
+        last axis (-1).
+    type : {'linear', 'constant'}, optional
+        The type of detrending. If ``type == 'linear'`` (default),
+        the result of a linear least-squares fit to `data` is subtracted
+        from `data`.
+        If ``type == 'constant'``, only the mean of `data` is subtracted.
+    bp : array_like of ints, optional
+        A sequence of break points. If given, an individual linear fit is
+        performed for each part of `data` between two break points.
+        Break points are specified as indices into `data`. This parameter
+        only has an effect when ``type == 'linear'``.
+    overwrite_data : bool, optional
+        If True, perform in place detrending and avoid a copy. Default is False
+
+    Returns
+    -------
+    ret : ndarray
+        The detrended input data.
+
+    See Also
+    --------
+    scipy.signal.detrend
+
+
+    """
+    if type not in ['linear', 'l', 'constant', 'c']:
+        raise ValueError("Trend type must be 'linear' or 'constant'.")
+    data = cupy.asarray(data)
+    dtype = data.dtype.char
+    if dtype not in 'dfDF':
+        dtype = 'd'
+    if type in ['constant', 'c']:
+        ret = data - cupy.mean(data, axis, keepdims=True)
+        return ret
+    else:
+        dshape = data.shape
+        N = dshape[axis]
+        bp = cupy.sort(cupy.unique(cupy.r_[0, bp, N]))
+        if cupy.any(bp > N):
+            raise ValueError("Breakpoints must be less than length "
+                             "of data along given axis.")
+        bp = bp.tolist()
+        # Restructure data so that axis is along first dimension and
+        #  all other dimensions are collapsed into second dimension
+        rnk = len(dshape)
+        if axis < 0:
+            axis = axis + rnk
+        newdata = cupy.moveaxis(data, axis, 0)
+        newdata_shape = newdata.shape
+        newdata = newdata.reshape(N, -1)
+
+        if not overwrite_data:
+            newdata = newdata.copy()  # make sure we have a copy
+        if newdata.dtype.char not in 'dfDF':
+            newdata = newdata.astype(dtype)
+
+        # Find leastsq fit and remove it for each piece
+        for m in range(len(bp) - 1):
+            Npts = bp[m + 1] - bp[m]
+            A = cupy.ones((Npts, 2), dtype)
+            A[:, 0] = cupy.arange(1, Npts + 1, dtype=dtype) / Npts
+            sl = slice(bp[m], bp[m + 1])
+            coef, resids, rank, s = lstsq(A, newdata[sl], rcond=None)
+            newdata[sl] = newdata[sl] - A @ coef
+
+        # Put data back in original shape.
+        newdata = newdata.reshape(newdata_shape)
+        ret = cupy.moveaxis(newdata, 0, axis)
+        return ret
+
+
+def _filtfilt_gust(b, a, x, axis=-1, irlen=None):
+    """Forward-backward IIR filter that uses Gustafsson's method.
+
+    Apply the IIR filter defined by `(b,a)` to `x` twice, first forward
+    then backward, using Gustafsson's initial conditions [1]_.
+
+    Let ``y_fb`` be the result of filtering first forward and then backward,
+    and let ``y_bf`` be the result of filtering first backward then forward.
+    Gustafsson's method is to compute initial conditions for the forward
+    pass and the backward pass such that ``y_fb == y_bf``.
+
+    Parameters
+    ----------
+    b : scalar or 1-D ndarray
+        Numerator coefficients of the filter.
+    a : scalar or 1-D ndarray
+        Denominator coefficients of the filter.
+    x : ndarray
+        Data to be filtered.
+    axis : int, optional
+        Axis of `x` to be filtered.  Default is -1.
+    irlen : int or None, optional
+        The length of the nonnegligible part of the impulse response.
+        If `irlen` is None, or if the length of the signal is less than
+        ``2 * irlen``, then no part of the impulse response is ignored.
+
+    Returns
+    -------
+    y : ndarray
+        The filtered data.
+    x0 : ndarray
+        Initial condition for the forward filter.
+    x1 : ndarray
+        Initial condition for the backward filter.
+
+    Notes
+    -----
+    Typically the return values `x0` and `x1` are not needed by the
+    caller.  The intended use of these return values is in unit tests.
+
+    References
+    ----------
+    .. [1] F. Gustaffson. Determining the initial states in forward-backward
+           filtering. Transactions on Signal Processing, 46(4):988-992, 1996.
+    """
+    # In the comments, "Gustafsson's paper" and [1] refer to the
+    # paper referenced in the docstring.
+
+    b = cupy.atleast_1d(b)
+    a = cupy.atleast_1d(a)
+
+    order = max(len(b), len(a)) - 1
+    if order == 0:
+        # The filter is just scalar multiplication, with no state.
+        scale = (b[0] / a[0]) ** 2
+        y = scale * x
+        return y, cupy.array([]), cupy.array([])
+
+    if axis != -1 or axis != x.ndim - 1:
+        # Move the axis containing the data to the end.
+        x = cupy.swapaxes(x, axis, x.ndim - 1)
+
+    # n is the number of samples in the data to be filtered.
+    n = x.shape[-1]
+
+    if irlen is None or n <= 2 * irlen:
+        m = n
+    else:
+        m = irlen
+
+    # Create Obs, the observability matrix (called O in the paper).
+    # This matrix can be interpreted as the operator that propagates
+    # an arbitrary initial state to the output, assuming the input is
+    # zero.
+    # In Gustafsson's paper, the forward and backward filters are not
+    # necessarily the same, so he has both O_f and O_b.  We use the same
+    # filter in both directions, so we only need O. The same comment
+    # applies to S below.
+    Obs = cupy.zeros((m, order))
+    x_in = cupy.zeros(m)
+    x_in[0] = 1
+    Obs[:, 0] = lfilter(cupy.ones(1), a, x_in)
+    for k in range(1, order):
+        Obs[k:, k] = Obs[:-k, 0]
+
+    # Obsr is O^R (Gustafsson's notation for row-reversed O)
+    Obsr = Obs[::-1]
+
+    # Create S.  S is the matrix that applies the filter to the reversed
+    # propagated initial conditions.  That is,
+    #     out = S.dot(zi)
+    # is the same as
+    #     tmp, _ = lfilter(b, a, zeros(), zi=zi)  # Propagate ICs.
+    #     out = lfilter(b, a, tmp[::-1])          # Reverse and filter.
+
+    # Equations (5) & (6) of [1]
+    S = lfilter(b, a, Obs[::-1], axis=0)
+
+    # Sr is S^R (row-reversed S)
+    Sr = S[::-1]
+
+    # M is [(S^R - O), (O^R - S)]
+    if m == n:
+        M = cupy.hstack((Sr - Obs, Obsr - S))
+    else:
+        # Matrix described in section IV of [1].
+        M = cupy.zeros((2*m, 2*order))
+        M[:m, :order] = Sr - Obs
+        M[m:, order:] = Obsr - S
+
+    # Naive forward-backward and backward-forward filters.
+    # These have large transients because the filters use zero initial
+    # conditions.
+    y_f = lfilter(b, a, x)
+    y_fb = lfilter(b, a, y_f[..., ::-1])[..., ::-1]
+
+    y_b = lfilter(b, a, x[..., ::-1])[..., ::-1]
+    y_bf = lfilter(b, a, y_b)
+
+    delta_y_bf_fb = y_bf - y_fb
+    if m == n:
+        delta = delta_y_bf_fb
+    else:
+        start_m = delta_y_bf_fb[..., :m]
+        end_m = delta_y_bf_fb[..., -m:]
+        delta = cupy.concatenate((start_m, end_m), axis=-1)
+
+    # ic_opt holds the "optimal" initial conditions.
+    # The following code computes the result shown in the formula
+    # of the paper between equations (6) and (7).
+    if delta.ndim == 1:
+        ic_opt = cupy.linalg.lstsq(M, delta, rcond=None)[0]
+    else:
+        # Reshape delta so it can be used as an array of multiple
+        # right-hand-sides in linalg.lstsq.
+        delta2d = delta.reshape(-1, delta.shape[-1]).T
+        ic_opt0 = cupy.linalg.lstsq(M, delta2d, rcond=None)[0].T
+        ic_opt = ic_opt0.reshape(delta.shape[:-1] + (M.shape[-1],))
+
+    # Now compute the filtered signal using equation (7) of [1].
+    # First, form [S^R, O^R] and call it W.
+    if m == n:
+        W = cupy.hstack((Sr, Obsr))
+    else:
+        W = cupy.zeros((2*m, 2*order))
+        W[:m, :order] = Sr
+        W[m:, order:] = Obsr
+
+    # Equation (7) of [1] says
+    #     Y_fb^opt = Y_fb^0 + W * [x_0^opt; x_{N-1}^opt]
+    # `wic` is (almost) the product on the right.
+    # W has shape (m, 2*order), and ic_opt has shape (..., 2*order),
+    # so we can't use W.dot(ic_opt).  Instead, we dot ic_opt with W.T,
+    # so wic has shape (..., m).
+    wic = ic_opt.dot(W.T)
+
+    # `wic` is "almost" the product of W and the optimal ICs in equation
+    # (7)--if we're using a truncated impulse response (m < n), `wic`
+    # contains only the adjustments required for the ends of the signal.
+    # Here we form y_opt, taking this into account if necessary.
+    y_opt = y_fb
+    if m == n:
+        y_opt += wic
+    else:
+        y_opt[..., :m] += wic[..., :m]
+        y_opt[..., -m:] += wic[..., -m:]
+
+    x0 = ic_opt[..., :order]
+    x1 = ic_opt[..., -order:]
+    if axis != -1 or axis != x.ndim - 1:
+        # Restore the data axis to its original position.
+        x0 = cupy.swapaxes(x0, axis, x.ndim - 1)
+        x1 = cupy.swapaxes(x1, axis, x.ndim - 1)
+        y_opt = cupy.swapaxes(y_opt, axis, x.ndim - 1)
+
+    return y_opt, x0, x1
+
+
+def _validate_pad(padtype, padlen, x, axis, ntaps):
+    """Helper to validate padding for filtfilt"""
+    if padtype not in ['even', 'odd', 'constant', None]:
+        raise ValueError(("Unknown value '%s' given to padtype.  padtype "
+                          "must be 'even', 'odd', 'constant', or None.") %
+                         padtype)
+
+    if padtype is None:
+        padlen = 0
+
+    if padlen is None:
+        # Original padding; preserved for backwards compatibility.
+        edge = ntaps * 3
+    else:
+        edge = padlen
+
+    # x's 'axis' dimension must be bigger than edge.
+    if x.shape[axis] <= edge:
+        raise ValueError("The length of the input vector x must be greater "
+                         "than padlen, which is %d." % edge)
+
+    if padtype is not None and edge > 0:
+        # Make an extension of length `edge` at each
+        # end of the input array.
+        if padtype == 'even':
+            ext = even_ext(x, edge, axis=axis)
+        elif padtype == 'odd':
+            ext = odd_ext(x, edge, axis=axis)
+        else:
+            ext = const_ext(x, edge, axis=axis)
+    else:
+        ext = x
+    return edge, ext
+
+
+def filtfilt(b, a, x, axis=-1, padtype='odd', padlen=None, method='pad',
+             irlen=None):
+    """
+    Apply a digital filter forward and backward to a signal.
+
+    This function applies a linear digital filter twice, once forward and
+    once backwards.  The combined filter has zero phase and a filter order
+    twice that of the original.
+
+    The function provides options for handling the edges of the signal.
+
+    The function `sosfiltfilt` (and filter design using ``output='sos'``)
+    should be preferred over `filtfilt` for most filtering tasks, as
+    second-order sections have fewer numerical problems.
+
+    Parameters
+    ----------
+    b : (N,) array_like
+        The numerator coefficient vector of the filter.
+    a : (N,) array_like
+        The denominator coefficient vector of the filter.  If ``a[0]``
+        is not 1, then both `a` and `b` are normalized by ``a[0]``.
+    x : array_like
+        The array of data to be filtered.
+    axis : int, optional
+        The axis of `x` to which the filter is applied.
+        Default is -1.
+    padtype : str or None, optional
+        Must be 'odd', 'even', 'constant', or None.  This determines the
+        type of extension to use for the padded signal to which the filter
+        is applied.  If `padtype` is None, no padding is used.  The default
+        is 'odd'.
+    padlen : int or None, optional
+        The number of elements by which to extend `x` at both ends of
+        `axis` before applying the filter.  This value must be less than
+        ``x.shape[axis] - 1``.  ``padlen=0`` implies no padding.
+        The default value is ``3 * max(len(a), len(b))``.
+    method : str, optional
+        Determines the method for handling the edges of the signal, either
+        "pad" or "gust".  When `method` is "pad", the signal is padded; the
+        type of padding is determined by `padtype` and `padlen`, and `irlen`
+        is ignored.  When `method` is "gust", Gustafsson's method is used,
+        and `padtype` and `padlen` are ignored.
+    irlen : int or None, optional
+        When `method` is "gust", `irlen` specifies the length of the
+        impulse response of the filter.  If `irlen` is None, no part
+        of the impulse response is ignored.  For a long signal, specifying
+        `irlen` can significantly improve the performance of the filter.
+
+    Returns
+    -------
+    y : ndarray
+        The filtered output with the same shape as `x`.
+
+    See Also
+    --------
+    sosfiltfilt, lfilter_zi, lfilter, lfiltic, savgol_filter, sosfilt
+
+    Notes
+    -----
+    When `method` is "pad", the function pads the data along the given axis
+    in one of three ways: odd, even or constant.  The odd and even extensions
+    have the corresponding symmetry about the end point of the data.  The
+    constant extension extends the data with the values at the end points. On
+    both the forward and backward passes, the initial condition of the
+    filter is found by using `lfilter_zi` and scaling it by the end point of
+    the extended data.
+
+    When `method` is "gust", Gustafsson's method [1]_ is used.  Initial
+    conditions are chosen for the forward and backward passes so that the
+    forward-backward filter gives the same result as the backward-forward
+    filter.
+
+    References
+    ----------
+    .. [1] F. Gustaffson, "Determining the initial states in forward-backward
+           filtering", Transactions on Signal Processing, Vol. 46, pp. 988-992,
+           1996.
+    """
+    b = cupy.atleast_1d(b)
+    a = cupy.atleast_1d(a)
+    x = cupy.asarray(x)
+
+    if method not in {"pad", "gust"}:
+        raise ValueError("method must be 'pad' or 'gust'.")
+
+    const_dtype = cupy.dtype(a.dtype)
+    if const_dtype.kind == 'u':
+        const_dtype = cupy.dtype(const_dtype.char.lower())
+        a = a.astype(const_dtype)
+
+    if method == "gust":
+        y, z1, z2 = _filtfilt_gust(b, a, x, axis=axis, irlen=irlen)
+        return y
+
+    # method == "pad"
+    edge, ext = _validate_pad(padtype, padlen, x, axis,
+                              ntaps=max(len(a), len(b)))
+
+    # Get the steady state of the filter's step response.
+    zi = lfilter_zi(b, a)
+
+    # Reshape zi and create x0 so that zi*x0 broadcasts
+    # to the correct value for the 'zi' keyword argument
+    # to lfilter.
+    zi_shape = [1] * x.ndim
+    zi_shape[axis] = zi.size
+    zi = cupy.reshape(zi, zi_shape)
+    x0 = axis_slice(ext, stop=1, axis=axis)
+
+    # Forward filter.
+    (y, zf) = lfilter(b, a, ext, axis=axis, zi=zi * x0)
+
+    # Backward filter.
+    # Create y0 so zi*y0 broadcasts appropriately.
+    y0 = axis_slice(y, start=-1, axis=axis)
+    (y, zf) = lfilter(b, a, axis_reverse(y, axis=axis), axis=axis, zi=zi * y0)
+
+    # Reverse y.
+    y = axis_reverse(y, axis=axis)
+
+    if edge > 0:
+        # Slice the actual signal from the extended signal.
+        y = axis_slice(y, start=edge, stop=-edge, axis=axis)
+
+    return y
 
 
 def deconvolve(signal, divisor):
@@ -929,3 +1418,331 @@ def _get_kernel_size(kernel_size, ndim):
     if any((k % 2) != 1 for k in kernel_size):
         raise ValueError("Each element of kernel_size should be odd")
     return kernel_size
+
+
+def _validate_sos(sos):
+    """Helper to validate a SOS input"""
+    sos = cupy.atleast_2d(sos)
+    if sos.ndim != 2:
+        raise ValueError('sos array must be 2D')
+    n_sections, m = sos.shape
+    if m != 6:
+        raise ValueError('sos array must be shape (n_sections, 6)')
+    if not (sos[:, 3] == 1).all():
+        raise ValueError('sos[:, 3] should be all ones')
+    return sos, n_sections
+
+
+def _validate_x(x):
+    x = cupy.asarray(x)
+    if x.ndim == 0:
+        raise ValueError('x must be at least 1-D')
+    return x
+
+
+def sosfilt(sos, x, axis=-1, zi=None):
+    """
+    Filter data along one dimension using cascaded second-order sections.
+
+    Filter a data sequence, `x`, using a digital IIR filter defined by
+    `sos`.
+
+    Parameters
+    ----------
+    sos : array_like
+        Array of second-order filter coefficients, must have shape
+        ``(n_sections, 6)``. Each row corresponds to a second-order
+        section, with the first three columns providing the numerator
+        coefficients and the last three providing the denominator
+        coefficients.
+    x : array_like
+        An N-dimensional input array.
+    axis : int, optional
+        The axis of the input data array along which to apply the
+        linear filter. The filter is applied to each subarray along
+        this axis.  Default is -1.
+    zi : array_like, optional
+        Initial conditions for the cascaded filter delays.  It is a (at
+        least 2D) vector of shape ``(n_sections, ..., 4, ...)``, where
+        ``..., 4, ...`` denotes the shape of `x`, but with ``x.shape[axis]``
+        replaced by 4.  If `zi` is None or is not given then initial rest
+        (i.e. all zeros) is assumed.
+        Note that these initial conditions are *not* the same as the initial
+        conditions given by `lfiltic` or `lfilter_zi`.
+
+    Returns
+    -------
+    y : ndarray
+        The output of the digital filter.
+    zf : ndarray, optional
+        If `zi` is None, this is not returned, otherwise, `zf` holds the
+        final filter delay values.
+
+    See Also
+    --------
+    zpk2sos, sos2zpk, sosfilt_zi, sosfiltfilt, sosfreqz
+    """
+    x_ndim = x.ndim
+    axis = internal._normalize_axis_index(axis, x_ndim)
+    out = x
+
+    out = apply_iir_sos(out, sos, axis, zi)
+    return out
+
+
+def sosfilt_zi(sos):
+    """
+    Construct initial conditions for sosfilt for step response steady-state.
+
+    Compute an initial state `zi` for the `sosfilt` function that corresponds
+    to the steady state of the step response.
+
+    A typical use of this function is to set the initial state so that the
+    output of the filter starts at the same value as the first element of
+    the signal to be filtered.
+
+    Parameters
+    ----------
+    sos : array_like
+        Array of second-order filter coefficients, must have shape
+        ``(n_sections, 6)``. See `sosfilt` for the SOS filter format
+        specification.
+
+    Returns
+    -------
+    zi : ndarray
+        Initial conditions suitable for use with ``sosfilt``, shape
+        ``(n_sections, 4)``.
+
+    See Also
+    --------
+    sosfilt, zpk2sos
+    """
+    n_sections = sos.shape[0]
+
+    C = compute_correction_factors_sos(sos, 3, sos.dtype)
+    zi = cupy.zeros((sos.shape[0], 4), dtype=sos.dtype)
+
+    # The initial state for a FIR filter will be always one for a step input
+    x_s = cupy.ones(3, dtype=sos.dtype)
+    for s in range(n_sections):
+        zi_s = cupy.atleast_2d(zi[s])
+        sos_s = cupy.atleast_2d(sos[s])
+
+        # The FIR starting value that guarantees a constant output will be
+        # the same constant input values.
+        zi_s[0, :2] = x_s[:2]
+
+        # Find the non-adjusted values after applying the IIR filter.
+        y_s, _ = sosfilt(sos_s, x_s, zi=zi_s)
+
+        C_s = C[s]
+        y1 = y_s[:2]
+        y2 = y_s[-2:]
+        C1 = C_s[:, :2].T
+        C2 = C_s[:, -2:].T
+
+        # Take the difference between the non-adjusted output values and
+        # compute which initial output state would cause them to be constant.
+        y_zi = cupy.linalg.solve(C1 - C2, y2 - y1)
+        zi_s[0, 2:] = y_zi
+        x_s, _ = sosfilt(sos_s, x_s, zi=zi_s)
+
+    return zi
+
+
+def sosfiltfilt(sos, x, axis=-1, padtype='odd', padlen=None):
+    """
+    A forward-backward digital filter using cascaded second-order sections.
+
+    See `filtfilt` for more complete information about this method.
+
+    Parameters
+    ----------
+    sos : array_like
+        Array of second-order filter coefficients, must have shape
+        ``(n_sections, 6)``. Each row corresponds to a second-order
+        section, with the first three columns providing the numerator
+        coefficients and the last three providing the denominator
+        coefficients.
+    x : array_like
+        The array of data to be filtered.
+    axis : int, optional
+        The axis of `x` to which the filter is applied.
+        Default is -1.
+    padtype : str or None, optional
+        Must be 'odd', 'even', 'constant', or None.  This determines the
+        type of extension to use for the padded signal to which the filter
+        is applied.  If `padtype` is None, no padding is used.  The default
+        is 'odd'.
+    padlen : int or None, optional
+        The number of elements by which to extend `x` at both ends of
+        `axis` before applying the filter.  This value must be less than
+        ``x.shape[axis] - 1``.  ``padlen=0`` implies no padding.
+        The default value is::
+
+            3 * (2 * len(sos) + 1 - min((sos[:, 2] == 0).sum(),
+                                        (sos[:, 5] == 0).sum()))
+
+        The extra subtraction at the end attempts to compensate for poles
+        and zeros at the origin (e.g. for odd-order filters) to yield
+        equivalent estimates of `padlen` to those of `filtfilt` for
+        second-order section filters built with `scipy.signal` functions.
+
+    Returns
+    -------
+    y : ndarray
+        The filtered output with the same shape as `x`.
+
+    See Also
+    --------
+    filtfilt, sosfilt, sosfilt_zi, sosfreqz
+    """
+    sos, n_sections = _validate_sos(sos)
+    x = _validate_x(x)
+
+    # `method` is "pad"...
+    ntaps = 2 * n_sections + 1
+    ntaps -= min((sos[:, 2] == 0).sum().item(), (sos[:, 5] == 0).sum().item())
+    edge, ext = _validate_pad(padtype, padlen, x, axis,
+                              ntaps=ntaps)
+
+    # These steps follow the same form as filtfilt with modifications
+    zi = sosfilt_zi(sos)  # shape (n_sections, 4) --> (n_sections, ..., 4, ...)
+    zi_shape = [1] * x.ndim
+    zi_shape[axis] = 4
+    zi.shape = [n_sections] + zi_shape
+    x_0 = axis_slice(ext, stop=1, axis=axis)
+    (y, zf) = sosfilt(sos, ext, axis=axis, zi=zi * x_0)
+    y_0 = axis_slice(y, start=-1, axis=axis)
+    (y, zf) = sosfilt(sos, axis_reverse(y, axis=axis), axis=axis, zi=zi * y_0)
+    y = axis_reverse(y, axis=axis)
+    if edge > 0:
+        y = axis_slice(y, start=edge, stop=-edge, axis=axis)
+    return y
+
+
+def hilbert(x, N=None, axis=-1):
+    """
+    Compute the analytic signal, using the Hilbert transform.
+
+    The transformation is done along the last axis by default.
+
+    Parameters
+    ----------
+    x : ndarray
+        Signal data.  Must be real.
+    N : int, optional
+        Number of Fourier components.  Default: ``x.shape[axis]``
+    axis : int, optional
+        Axis along which to do the transformation.  Default: -1.
+
+    Returns
+    -------
+    xa : ndarray
+        Analytic signal of `x`, of each 1-D array along `axis`
+
+    Notes
+    -----
+    The analytic signal ``x_a(t)`` of signal ``x(t)`` is:
+
+    .. math:: x_a = F^{-1}(F(x) 2U) = x + i y
+
+    where `F` is the Fourier transform, `U` the unit step function,
+    and `y` the Hilbert transform of `x`. [1]_
+
+    In other words, the negative half of the frequency spectrum is zeroed
+    out, turning the real-valued signal into a complex signal.  The Hilbert
+    transformed signal can be obtained from ``np.imag(hilbert(x))``, and the
+    original signal from ``np.real(hilbert(x))``.
+
+    References
+    ----------
+    .. [1] Wikipedia, "Analytic signal".
+           https://en.wikipedia.org/wiki/Analytic_signal
+
+    See Also
+    --------
+    scipy.signal.hilbert
+
+    """
+    if cupy.iscomplexobj(x):
+        raise ValueError("x must be real.")
+    if N is None:
+        N = x.shape[axis]
+    if N <= 0:
+        raise ValueError("N must be positive.")
+
+    Xf = sp_fft.fft(x, N, axis=axis)
+    h = cupy.zeros(N, dtype=Xf.dtype)
+    if N % 2 == 0:
+        h[0] = h[N // 2] = 1
+        h[1:N // 2] = 2
+    else:
+        h[0] = 1
+        h[1:(N + 1) // 2] = 2
+
+    if x.ndim > 1:
+        ind = [cupy.newaxis] * x.ndim
+        ind[axis] = slice(None)
+        h = h[tuple(ind)]
+    x = sp_fft.ifft(Xf * h, axis=axis)
+    return x
+
+
+def hilbert2(x, N=None):
+    """
+    Compute the '2-D' analytic signal of `x`
+
+    Parameters
+    ----------
+    x : ndarray
+        2-D signal data.
+    N : int or tuple of two ints, optional
+        Number of Fourier components. Default is ``x.shape``
+
+    Returns
+    -------
+    xa : ndarray
+        Analytic signal of `x` taken along axes (0,1).
+
+    See Also
+    --------
+    scipy.signal.hilbert2
+
+    """
+    if x.ndim < 2:
+        x = cupy.atleast_2d(x)
+    if x.ndim > 2:
+        raise ValueError("x must be 2-D.")
+    if cupy.iscomplexobj(x):
+        raise ValueError("x must be real.")
+    if N is None:
+        N = x.shape
+    elif isinstance(N, int):
+        if N <= 0:
+            raise ValueError("N must be positive.")
+        N = (N, N)
+    elif len(N) != 2 or (N[0] <= 0 or N[1] <= 0):
+        raise ValueError("When given as a tuple, N must hold exactly "
+                         "two positive integers")
+
+    Xf = sp_fft.fft2(x, N, axes=(0, 1))
+    h1 = cupy.zeros(N[0], dtype=Xf.dtype)
+    h2 = cupy.zeros(N[1], dtype=Xf.dtype)
+    for h in (h1, h1):
+        N1 = h.shape[0]
+        if N1 % 2 == 0:
+            h[0] = h[N1 // 2] = 1
+            h[1:N1 // 2] = 2
+        else:
+            h[0] = 1
+            h[1:(N1 + 1) // 2] = 2
+
+    h = h1[:, cupy.newaxis] * h2[cupy.newaxis, :]
+    k = x.ndim
+    while k > 2:
+        h = h[:, cupy.newaxis]
+        k -= 1
+    x = sp_fft.ifft2(Xf * h, axes=(0, 1))
+    return x

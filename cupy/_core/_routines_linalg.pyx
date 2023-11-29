@@ -545,8 +545,7 @@ cpdef _ndarray_base tensordot_core(
         Py_ssize_t m, Py_ssize_t k, const shape_t& ret_shape):
     # out, if specified, must be C-contiguous and have correct shape.
     cdef shape_t shape
-    cdef Py_ssize_t inca, incb, transa, transb, lda, ldb
-    cdef Py_ssize_t mode
+    cdef Py_ssize_t transa, transb, lda, ldb
     cdef intptr_t handle
     cdef _ndarray_base copy_to_out = None
     cdef str dtype = a.dtype.char
@@ -643,29 +642,30 @@ cpdef _ndarray_base tensordot_core(
         coef_dtype = dtype
     one = numpy.array(1.0, dtype=coef_dtype)
     zero = numpy.array(0.0, dtype=coef_dtype)
-    if runtime._is_hip_environment and dtype == 'e':
-        # On HIP, SgemmEx does not work for half precision
-        dtype = 'f'
-        a = a.astype(dtype, order='K', casting=None, subok=None, copy=True)
-        b = b.astype(dtype, order='K', casting=None, subok=None, copy=True)
-        c = _ndarray_init(cupy.ndarray, ret_shape, dtype, None)
-        copy_to_out = c
-        warnings.warn('On ROCm/HIP, there is no specialized API to handle '
-                      'half precision floating numbers, so the computation '
-                      'will be done by casting to single precision')
+
     if dtype == 'e':
         use_tensor_core = (not runtime._is_hip_environment and
                            _cuda_runtime_version >= 9000 and
-                           compute_capability >= 70)
+                           compute_capability >= 70
+                           ) or runtime._is_hip_environment
         if use_tensor_core:
-            cublas.setMathMode(handle, cublas.CUBLAS_TENSOR_OP_MATH)
+            can_opt_in_tensorcore = not runtime._is_hip_environment
+
+            if can_opt_in_tensorcore:
+                cublas.setMathMode(handle, cublas.CUBLAS_TENSOR_OP_MATH)
+                algo = cublas.CUBLAS_GEMM_DEFAULT_TENSOR_OP
+            else:
+                algo = cublas.CUBLAS_GEMM_DEFAULT
+
             cublas.gemmEx(
                 handle, <int>transb, <int> transa, <int>m, <int>n, <int>k,
                 one.ctypes.data, b.data.ptr, runtime.CUDA_R_16F, <int>ldb,
                 a.data.ptr, runtime.CUDA_R_16F, <int>lda, zero.ctypes.data,
                 c.data.ptr, runtime.CUDA_R_16F, <int>m, runtime.CUDA_R_32F,
-                cublas.CUBLAS_GEMM_DEFAULT_TENSOR_OP)
-            cublas.setMathMode(handle, cublas.CUBLAS_DEFAULT_MATH)
+                algo)
+
+            if can_opt_in_tensorcore:
+                cublas.setMathMode(handle, cublas.CUBLAS_DEFAULT_MATH)
         else:
             cublas.sgemmEx(
                 handle, <int>transb, <int> transa, <int>m, <int>n, <int>k,
@@ -799,7 +799,6 @@ cpdef _ndarray_base _mat_ptrs(_ndarray_base a):
     """
     cdef int ndim = a._shape.size()
     assert ndim > 2
-    cdef Py_ssize_t sh_, st_
     cdef _ndarray_base idx
     idx = _mat_ptrs_kernel(
         a.data.ptr, a._strides[0],

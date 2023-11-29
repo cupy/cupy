@@ -294,16 +294,18 @@ cdef _ensure_context()
 # Texture
 ##############################################################################
 
-cpdef uintmax_t createTextureObject(intptr_t ResDesc, intptr_t TexDesc)
+cpdef uintmax_t createTextureObject(
+    intptr_t ResDesc, intptr_t TexDesc) except? 0
 cpdef destroyTextureObject(uintmax_t texObject)
-cdef ChannelFormatDesc getChannelDesc(intptr_t array)
-cdef ResourceDesc getTextureObjectResourceDesc(uintmax_t texobj)
-cdef TextureDesc getTextureObjectTextureDesc(uintmax_t texobj)
-cdef Extent make_Extent(size_t w, size_t h, size_t d)
-cdef Pos make_Pos(size_t x, size_t y, size_t z)
-cdef PitchedPtr make_PitchedPtr(intptr_t d, size_t p, size_t xsz, size_t ysz)
+cdef ChannelFormatDesc getChannelDesc(intptr_t array) except*
+cdef ResourceDesc getTextureObjectResourceDesc(uintmax_t texobj) except*
+cdef TextureDesc getTextureObjectTextureDesc(uintmax_t texobj) except*
+cdef Extent make_Extent(size_t w, size_t h, size_t d) except*
+cdef Pos make_Pos(size_t x, size_t y, size_t z) except*
+cdef PitchedPtr make_PitchedPtr(
+    intptr_t d, size_t p, size_t xsz, size_t ysz) except*
 
-cpdef uintmax_t createSurfaceObject(intptr_t ResDesc)
+cpdef uintmax_t createSurfaceObject(intptr_t ResDesc) except? 0
 cpdef destroySurfaceObject(uintmax_t surfObject)
 # TODO(leofang): add cudaGetSurfaceObjectResourceDesc
 

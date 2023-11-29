@@ -106,8 +106,13 @@ from cupyx.scipy.special._basic import log1p  # NOQA
 from cupyx.scipy.special._basic import expm1  # NOQA
 from cupyx.scipy.special._basic import exprel  # NOQA
 from cupyx.scipy.special._basic import cosm1  # NOQA
-from cupy._math.rounding import round_ as round  # NOQA
+from cupy._math.rounding import round  # NOQA
 from cupyx.scipy.special._xlogy import xlogy  # NOQA
 from cupyx.scipy.special._xlogy import xlog1py  # NOQA
 from cupyx.scipy.special._logsumexp import logsumexp  # NOQA
 from cupy._math.special import sinc  # NOQA
+
+# Elliptic functions
+from cupyx.scipy.special._ellip import ellipk  # NOQA
+from cupyx.scipy.special._ellip import ellipkm1  # NOQA
+from cupyx.scipy.special._ellip import ellipj  # NOQA

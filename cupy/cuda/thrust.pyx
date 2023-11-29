@@ -2,16 +2,12 @@
 
 """Thin wrapper of Thrust implementations for CuPy API."""
 
-import numpy
-
-cimport cython  # NOQA
 from libc.stdint cimport intptr_t
 from libcpp cimport vector
 
 from cupy.cuda cimport common
 from cupy.cuda cimport memory
 from cupy.cuda cimport stream
-from cupy_backends.cuda.api cimport runtime
 
 
 ###############################################################################

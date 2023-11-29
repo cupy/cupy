@@ -122,7 +122,7 @@ class TestPermutationSoundness(unittest.TestCase):
 
     @_condition.repeat(3)
     def test_permutation_soundness(self):
-        assert(numpy.sort(self.a) == numpy.arange(self.num)).all()
+        assert (numpy.sort(self.a) == numpy.arange(self.num)).all()
 
 
 @testing.parameterize(*(testing.product({

@@ -1,7 +1,5 @@
 from cpython cimport sequence
 
-from libcpp cimport vector
-
 from cupy._core cimport _carray
 from cupy._core cimport _accelerator
 from cupy._core._carray cimport shape_t
@@ -11,7 +9,6 @@ from cupy._core cimport _kernel
 from cupy._core._kernel cimport _broadcast
 from cupy._core._kernel cimport _check_peer_access
 from cupy._core._kernel cimport _get_arginfos
-from cupy._core._kernel cimport _get_kernel_params
 from cupy._core._kernel cimport _get_out_args_from_optionals
 from cupy._core._kernel cimport _get_out_args_with_params
 from cupy._core._kernel cimport _preprocess_args
@@ -28,7 +25,6 @@ from cupy._core.core cimport _ndarray_base
 from cupy._core cimport internal
 from cupy.cuda cimport device
 from cupy.cuda cimport function
-from cupy.cuda cimport memory
 from cupy_backends.cuda.api cimport runtime
 
 import math
@@ -312,7 +308,6 @@ cdef class _AbstractReductionKernel:
         cdef tuple reduce_axis, out_axis, axis_permutes
         cdef tuple params, opt_params
         cdef tuple shape_and_strides
-        cdef Py_ssize_t i
         cdef Py_ssize_t contiguous_size = -1
         cdef Py_ssize_t block_size, block_stride, out_block_num = 0
         cdef shape_t in_shape, out_shape

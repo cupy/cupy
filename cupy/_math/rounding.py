@@ -1,3 +1,5 @@
+import warnings
+
 from cupy import _core
 from cupy._core import fusion
 from cupy._math import ufunc
@@ -26,7 +28,12 @@ def around(a, decimals=0, out=None):
     return a.round(decimals, out=out)
 
 
+def round(a, decimals=0, out=None):
+    return around(a, decimals, out=out)
+
+
 def round_(a, decimals=0, out=None):
+    warnings.warn('Please use `round` instead.', DeprecationWarning)
     return around(a, decimals, out=out)
 
 

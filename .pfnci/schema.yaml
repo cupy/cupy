@@ -11,9 +11,9 @@ system:
 ###############################################################################
 # Name and version of the operating system to test on.
 os:
-  "ubuntu:18.04":
-    system: "linux"
   "ubuntu:20.04":
+    system: "linux"
+  "ubuntu:22.04":    # CUDA 11.7+
     system: "linux"
   "centos:7":
     system: "linux"
@@ -28,35 +28,44 @@ os:
 # The platform to test with.
 # `cuda` and `rocm` are mutually exclusive; when one is set, the other must be null.
 # `full_version` is the version used in base Docker images.
+# `repository` is the Docker repository. (CUDA only)
+# `packages` is the list of DEB/RPM packages to be installed. (ROCm only)
 # When adding a new CUDA version, you may also need to add the version to the
 # list of supported CUDA versions in the optional libraries.
 cuda:
   null:
     full_version: null
-  "10.2":
-    full_version: "10.2"
-  "11.0":
-    full_version: "11.0.3"
-  "11.1":
-    full_version: "11.1.1"
+    repository: null
   "11.2":
-    full_version: "11.2.1"
+    full_version: "11.2.2"
+    repository: "nvidia/cuda"
   "11.3":
     full_version: "11.3.1"
+    repository: "nvidia/cuda"
   "11.4":
-    full_version: "11.4.0"
+    full_version: "11.4.3"
+    repository: "nvidia/cuda"
   "11.5":
-    full_version: "11.5.0"
+    full_version: "11.5.2"
+    repository: "nvidia/cuda"
   "11.6":
-    full_version: "11.6.0"
+    full_version: "11.6.2"
+    repository: "nvidia/cuda"
   "11.7":
-    full_version: "11.7.0"
+    full_version: "11.7.1"
+    repository: "nvidia/cuda"
   "11.8":
     full_version: "11.8.0"
+    repository: "nvidia/cuda"
   "12.0":
-    full_version: "12.0.0"
+    full_version: "12.0.1"
+    repository: "nvidia/cuda"
   "12.1":
-    full_version: "12.1.0"
+    full_version: "12.1.1"
+    repository: "nvidia/cuda"
+  "12.2":
+    full_version: "12.2.0"
+    repository: "nvidia/cuda"
 rocm:
   null:
     full_version: null
@@ -83,111 +92,55 @@ rocm:
 # The optional libraries to install: NCCL, cuTENSOR, cuSPARSELt and cuDNN.
 # `spec` must be a version specifier accepted by apt and yum.
 # `cuda` lists the supported CUDA version.
-# `cuda.alias` (cuDNN only) is an alias name for package name suffix.
+# `cuda.alias` (cuDNN/NCCL) is an alias name for package name suffix.
 nccl:
   # https://docs.nvidia.com/deeplearning/nccl/archives/
   # https://developer.nvidia.com/nccl/nccl-download
   null:
     spec: null
-  "2.8":
-    spec: "2.8.*"
-    cuda:
-      # "10.1":
-      "10.2":
-      "11.0":
-      "11.1":
-      "11.2":
-  "2.9":
-    spec: "2.9.*"
-    cuda:
-      "10.2":
-      "11.0":
-      "11.3":
-  "2.10":
-    spec: "2.10.*"
-    cuda:
-      "10.2":
-      "11.0":
-      "11.4":
-  "2.11":
-    spec: "2.11.*"
-    cuda:
-      "10.2":
-      "11.0":
-      "11.4":
-      "11.5":
-      "11.6":
-  "2.12":
-    spec: "2.12.*"
-    cuda:
-      "10.2":
-      "11.0":
-      "11.6":
-      "11.7":
-  "2.13":
-    spec: "2.13.*"
-    cuda:
-      "10.2":
-      "11.0":
-      "11.7":
-  "2.14":
-    spec: "2.14.*"
-    cuda:
-      "10.2":
-      "11.0":
-      "11.7":
-  "2.15":
-    spec: "2.15.*"
-    cuda:
-      "10.2":
-      "11.0":
-      "11.8":
   "2.16":
     spec: "2.16.*"
     cuda:
-      "11.0":
+      # Note: DEB package for CUDA 11.x unavailable on Ubuntu 22.04
+      # "11.0":
+      "11.2":  # assumed
+        alias: "11.8"
+      "11.3":  # assumed
+        alias: "11.8"
+      "11.4":  # assumed
+        alias: "11.8"
+      "11.5":  # assumed
+        alias: "11.8"
+      "11.6":  # assumed
+        alias: "11.8"
+      "11.7":  # assumed
+        alias: "11.8"
       "11.8":
       "12.0":
   "2.17":
     spec: "2.17.*"
     cuda:
-      "11.0":
-      "12.0":
+      # "11.0":  -- DEB/RPM packages are unavailable
+      "12.0":  # Note: DEB package unavailable on Ubuntu 22.04
       "12.1":
+  "2.18":
+    spec: "2.18.*"
+    cuda:
+      # "11.0":  -- DEB/RPM packages are unavailable
+      "12.0":  # Note: DEB package unavailable on Ubuntu 22.04
+      "12.1":
+      "12.2":
 cutensor:
   # https://docs.nvidia.com/cuda/cutensor/
   # https://developer.nvidia.com/cutensor/downloads
   null:
     spec: null
-  "1.4":
-    spec: "1.4.*"
-    cuda:
-      # "10.2":  -- cuTENSOR distributed through binary package does not support CUDA 10.2
-      "11.0":
-      "11.1":
-      "11.2":
-      "11.3":
-      "11.4":
-      "11.5":
-      "11.6":
-  "1.5":
-    spec: "1.5.*"
-    cuda:
-      # "10.2":  -- cuTENSOR distributed through binary package does not support CUDA 10.2
-      "11.0":
-      "11.1":
-      "11.2":
-      "11.3":
-      "11.4":
-      "11.5":
-      "11.6":
-      "11.7":
   "1.6":
     spec: "1.6.*"
     cuda:
       # "10.2":  -- cuTENSOR distributed through binary package does not support CUDA 10.2
-      "11.0":
-      "11.1":
+      # "11.0":
+      # "11.1":
       "11.2":
       "11.3":
       "11.4":
@@ -200,16 +153,17 @@ cutensor:
     spec: "1.7.*"
     cuda:
       # "10.2":  -- cuTENSOR distributed through binary package does not support CUDA 10.2
-      "11.0":
+      # "11.0":
       "11.8":
       "12.0":
-      "12.1":
+      "12.1":  # assumed
+      "12.2":  # assumed
 cusparselt:
   # https://docs.nvidia.com/cuda/cusparselt/
   # https://developer.nvidia.com/cusparselt/downloads
   null:
     spec: null
-  "0.2.0":
+  "0.2.0":  # DEB package unavailable on Ubuntu 22.04
     spec: "0.2.0.*"
     cuda:
       "11.2":
@@ -221,160 +175,20 @@ cusparselt:
       "11.8":
       "12.0":  # TODO(kmaehashi): Tentatively use v0.2.0 for CUDA 12
       "12.1":  # TODO(kmaehashi): Tentatively use v0.2.0 for CUDA 12
+      "12.2":  # TODO(kmaehashi): Tentatively use v0.2.0 for CUDA 12
 cudnn:
   # https://docs.nvidia.com/deeplearning/cudnn/support-matrix/index.html
   # https://docs.nvidia.com/deeplearning/cudnn/archives/
   # https://developer.nvidia.com/rdp/cudnn-download
   null:
     spec: null
-  "7.6":
-    spec: "7.6.*"
-    cuda:
-      # "10.0":
-      # "10.1":
-      "10.2":
-  "8.0":
-    spec: "8.0.*"
-    cuda:
-      # "10.1":  # note: RHEL 8 not supported
-      "10.2":
-      "11.0":
-      "11.1":
-  "8.1":
-    spec: "8.1.*"
-    cuda:
-      "10.2":
-      "11.0":
-        alias: "11.2"
-      "11.1":
-        alias: "11.2"
-      "11.2":
-        alias: "11.2"
-  "8.2":
-    spec: "8.2.*"
-    cuda:
-      "10.2":
-      "11.0":
-        alias: "11.4"
-      "11.1":
-        alias: "11.4"
-      "11.2":
-        alias: "11.4"
-      "11.3":
-        alias: "11.4"
-      "11.4":
-        alias: "11.4"
-      "11.5":
-        alias: "11.4"
-  "8.3":
-    spec: "8.3.*"
-    cuda:
-      "10.2":
-      "11.0":
-        alias: "11.5"
-      "11.1":
-        alias: "11.5"
-      "11.2":
-        alias: "11.5"
-      "11.3":
-        alias: "11.5"
-      "11.4":
-        alias: "11.5"
-      "11.5":
-        alias: "11.5"
-      "11.6":
-        alias: "11.5"
-  "8.4":
-    spec: "8.4.*"
-    cuda:
-      "10.2":
-      "11.0":
-        alias: "11.6"
-      "11.1":
-        alias: "11.6"
-      "11.2":
-        alias: "11.6"
-      "11.3":
-        alias: "11.6"
-      "11.4":
-        alias: "11.6"
-      "11.5":
-        alias: "11.6"
-      "11.6":
-        alias: "11.6"
-      "11.7":
-        alias: "11.6"
-  "8.5":
-    spec: "8.5.*"
-    cuda:
-      "10.2":
-      "11.0":
-        alias: "11.7"
-      "11.1":
-        alias: "11.7"
-      "11.2":
-        alias: "11.7"
-      "11.3":
-        alias: "11.7"
-      "11.4":
-        alias: "11.7"
-      "11.5":
-        alias: "11.7"
-      "11.6":
-        alias: "11.7"
-      "11.7":
-        alias: "11.7"
-  "8.6":
-    spec: "8.6.*"
-    cuda:
-      "10.2":
-      "11.0":
-        alias: "11.8"
-      "11.1":
-        alias: "11.8"
-      "11.2":
-        alias: "11.8"
-      "11.3":
-        alias: "11.8"
-      "11.4":
-        alias: "11.8"
-      "11.5":
-        alias: "11.8"
-      "11.6":
-        alias: "11.8"
-      "11.7":
-        alias: "11.8"
-      "11.8":
-        alias: "11.8"
-  "8.7":
-    spec: "8.7.*"
-    cuda:
-      "10.2":
-      "11.0":
-        alias: "11.8"
-      "11.1":
-        alias: "11.8"
-      "11.2":
-        alias: "11.8"
-      "11.3":
-        alias: "11.8"
-      "11.4":
-        alias: "11.8"
-      "11.5":
-        alias: "11.8"
-      "11.6":
-        alias: "11.8"
-      "11.7":
-        alias: "11.8"
-      "11.8":
-        alias: "11.8"
   "8.8":
     spec: "8.8.*"
     cuda:
-      "11.0":
-        alias: "11.8"
-      "11.1":
-        alias: "11.8"
+      # "11.0":
+      #   alias: "11.8"
+      # "11.1":
+      #   alias: "11.8"
       "11.2":
         alias: "11.8"
       "11.3":
@@ -391,9 +205,10 @@ cudnn:
         alias: "11.8"
       "12.0":
         alias: "12.0"
-      "12.1":
+      "12.1":  # TODO(kmaehashi): cuDNN 8.9 should be used
         alias: "12.0"
-
+      "12.2":  # assumed
+        alias: "12.0"
 
 ###############################################################################
 # Python
@@ -403,10 +218,6 @@ cudnn:
 # When adding a new Python version, you may also need to add the version to the
 # list of supported Python versions in the Python libraries.
 python:
-  "3.7":
-    spec: "3.7.11"
-  "3.8":
-    spec: "3.8.11"
   "3.9":
     spec: "3.9.6"
   "3.10":
@@ -424,36 +235,23 @@ python:
 # When adding a new NumPy version, you may also need to add the version to the
 # list of supported Python versions in SciPy.
 numpy:
-  "1.20":
-    spec: "==1.20.*"
-    python:
-      - "3.7"
-      - "3.8"
-      - "3.9"
-  "1.21":
-    spec: "==1.21.*"
-    python:
-      - "3.7"
-      - "3.8"
-      - "3.9"
-      - "3.10"
   "1.22":
     spec: "==1.22.*"
     python:
-      - "3.8"
+      # - "3.8"
       - "3.9"
       - "3.10"
   "1.23":
     spec: "==1.23.*"
     python:
-      - "3.8"
+      # - "3.8"
       - "3.9"
       - "3.10"
       - "3.11"
   "1.24":
     spec: "==1.24.*"
     python:
-      - "3.8"
+      # - "3.8"
       - "3.9"
       - "3.10"
       - "3.11"
@@ -465,23 +263,11 @@ scipy:
     # Note: Optuna depends on SciPy, so Optuna must also be set to null when
     # setting SciPy to null to run tests without SciPy.
     spec: null
-  "1.6":
-    spec: "==1.6.*"
-    python:
-      - "3.7"
-      - "3.8"
-      - "3.9"
-    numpy:
-      # - "1.16"
-      # - "1.17"
-      # - "1.18"
-      # - "1.19"
-      - "1.20"
   "1.7":
     spec: "==1.7.*"
     python:
-      - "3.7"
-      - "3.8"
+      # - "3.7"
+      # - "3.8"
       - "3.9"
       - "3.10"
     numpy:
@@ -489,28 +275,28 @@ scipy:
       # - "1.17"
       # - "1.18"
       # - "1.19"
-      - "1.20"
-      - "1.21"
+      # - "1.20"
+      # - "1.21"
       - "1.22"
   "1.8":
     spec: "==1.8.*"
     python:
-      - "3.8"
+      # - "3.8"
       - "3.9"
       - "3.10"
     numpy:
       # - "1.17"
       # - "1.18"
       # - "1.19"
-      - "1.20"
-      - "1.21"
+      # - "1.20"
+      # - "1.21"
       - "1.22"
       - "1.23"
       - "1.24"
   "1.9":
     spec: "==1.9.*"
     python:
-      - "3.8"
+      # - "3.8"
       - "3.9"
       - "3.10"
       - "3.11"
@@ -518,8 +304,20 @@ scipy:
       # - "1.17"
       # - "1.18"
       # - "1.19"
-      - "1.20"
-      - "1.21"
+      # - "1.20"
+      # - "1.21"
+      - "1.22"
+      - "1.23"
+  "1.10":
+    spec: "==1.10.*"
+    python:
+      # - "3.8"
+      - "3.9"
+      - "3.10"
+      - "3.11"
+    numpy:
+      # - "1.20"
+      # - "1.21"
       - "1.22"
       - "1.23"
       - "1.24"
@@ -552,9 +350,9 @@ cuda-python:
 # Environment Variables
 ###############################################################################
 env:CUPY_ACCELERATORS:
-  null:
-  "":
-  "cub":
+  null:                   # Default ("cub")
+  "":                     # Disable all accelerators
+  # "cub":                # Equivalent to null
   "cutensor":
   "cub,cutensor":
   "cutensor,cub":

@@ -2,7 +2,6 @@ import itertools
 import string
 
 from libcpp cimport vector
-import numpy
 
 from cupy._core cimport _carray
 from cupy._core.core cimport _ndarray_init
@@ -11,16 +10,13 @@ from cupy._core.core cimport _ndarray_base
 from cupy._core cimport internal
 from cupy._core cimport _routines_manipulation as _manipulation
 from cupy_backends.cuda.api cimport driver
-from cupy.cuda cimport function
 from cupy_backends.cuda.api cimport runtime
-from cupy._core cimport _reduction
 
 import cupy as _cupy
 from cupy._core import _dtype
 from cupy import _util
 from cupy._core import _codeblock
 from cupy._core import _fusion_op
-from cupy._core._fusion_variable import _AbstractDim
 from cupy._core._fusion_variable import _TraceVariable
 from cupy._core._fusion_variable import _TraceScalar
 from cupy._core._fusion_variable import _TraceArray
@@ -291,7 +287,6 @@ cdef class FusedKernel:
         """
         cdef list params = []
         cdef list indexers = []
-        cdef list block_strides = []
         cdef _carray.Indexer indexer
 
         for i in range(len(self._params)):

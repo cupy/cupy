@@ -48,7 +48,7 @@ class TestFftlog:
         mu = self.mu
         bias = self.bias
         if self.offset == 'optimal':
-            offset = fhtoffset(dln, mu, bias)
+            offset = fhtoffset(dln.item(), mu, bias)
         else:
             offset = self.offset
 
