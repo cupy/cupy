@@ -13,7 +13,7 @@ configs {
       gpu: 1
     }
     time_limit: {
-      seconds: 21600
+      seconds: 43200
     }
     environment_variables { key: "GPU" value: "1" }
     command: ".pfnci/linux/main-flexci.sh cuda112"
@@ -31,7 +31,7 @@ configs {
       gpu: 2
     }
     time_limit: {
-      seconds: 21600
+      seconds: 43200
     }
     environment_variables { key: "GPU" value: "2" }
     command: ".pfnci/linux/main-flexci.sh cuda112.multi"
@@ -49,7 +49,7 @@ configs {
       gpu: 1
     }
     time_limit: {
-      seconds: 21600
+      seconds: 43200
     }
     environment_variables { key: "GPU" value: "1" }
     command: ".pfnci/linux/main-flexci.sh cuda113"
@@ -67,7 +67,7 @@ configs {
       gpu: 2
     }
     time_limit: {
-      seconds: 21600
+      seconds: 43200
     }
     environment_variables { key: "GPU" value: "2" }
     command: ".pfnci/linux/main-flexci.sh cuda113.multi"
@@ -85,7 +85,7 @@ configs {
       gpu: 1
     }
     time_limit: {
-      seconds: 21600
+      seconds: 43200
     }
     environment_variables { key: "GPU" value: "1" }
     command: ".pfnci/linux/main-flexci.sh cuda114"
@@ -103,7 +103,7 @@ configs {
       gpu: 2
     }
     time_limit: {
-      seconds: 21600
+      seconds: 43200
     }
     environment_variables { key: "GPU" value: "2" }
     command: ".pfnci/linux/main-flexci.sh cuda114.multi"
@@ -121,7 +121,7 @@ configs {
       gpu: 1
     }
     time_limit: {
-      seconds: 21600
+      seconds: 43200
     }
     environment_variables { key: "GPU" value: "1" }
     command: ".pfnci/linux/main-flexci.sh cuda115"
@@ -139,7 +139,7 @@ configs {
       gpu: 2
     }
     time_limit: {
-      seconds: 21600
+      seconds: 43200
     }
     environment_variables { key: "GPU" value: "2" }
     command: ".pfnci/linux/main-flexci.sh cuda115.multi"
@@ -157,7 +157,7 @@ configs {
       gpu: 1
     }
     time_limit: {
-      seconds: 21600
+      seconds: 43200
     }
     environment_variables { key: "GPU" value: "1" }
     command: ".pfnci/linux/main-flexci.sh cuda116"
@@ -175,7 +175,7 @@ configs {
       gpu: 2
     }
     time_limit: {
-      seconds: 21600
+      seconds: 43200
     }
     environment_variables { key: "GPU" value: "2" }
     command: ".pfnci/linux/main-flexci.sh cuda116.multi"
@@ -193,7 +193,7 @@ configs {
       gpu: 1
     }
     time_limit: {
-      seconds: 21600
+      seconds: 43200
     }
     environment_variables { key: "GPU" value: "1" }
     command: ".pfnci/linux/main-flexci.sh cuda117"
@@ -211,7 +211,7 @@ configs {
       gpu: 2
     }
     time_limit: {
-      seconds: 21600
+      seconds: 43200
     }
     environment_variables { key: "GPU" value: "2" }
     command: ".pfnci/linux/main-flexci.sh cuda117.multi"
@@ -229,7 +229,7 @@ configs {
       gpu: 1
     }
     time_limit: {
-      seconds: 21600
+      seconds: 43200
     }
     environment_variables { key: "GPU" value: "1" }
     command: ".pfnci/linux/main-flexci.sh cuda118"
@@ -247,7 +247,7 @@ configs {
       gpu: 2
     }
     time_limit: {
-      seconds: 21600
+      seconds: 43200
     }
     environment_variables { key: "GPU" value: "2" }
     command: ".pfnci/linux/main-flexci.sh cuda118.multi"
@@ -265,7 +265,7 @@ configs {
       gpu: 1
     }
     time_limit: {
-      seconds: 21600
+      seconds: 43200
     }
     environment_variables { key: "GPU" value: "1" }
     command: ".pfnci/linux/main-flexci.sh cuda120"
@@ -283,7 +283,7 @@ configs {
       gpu: 2
     }
     time_limit: {
-      seconds: 21600
+      seconds: 43200
     }
     environment_variables { key: "GPU" value: "2" }
     command: ".pfnci/linux/main-flexci.sh cuda120.multi"
@@ -301,7 +301,7 @@ configs {
       gpu: 1
     }
     time_limit: {
-      seconds: 21600
+      seconds: 43200
     }
     environment_variables { key: "GPU" value: "1" }
     command: ".pfnci/linux/main-flexci.sh cuda121"
@@ -319,7 +319,7 @@ configs {
       gpu: 2
     }
     time_limit: {
-      seconds: 21600
+      seconds: 43200
     }
     environment_variables { key: "GPU" value: "2" }
     command: ".pfnci/linux/main-flexci.sh cuda121.multi"
@@ -337,7 +337,7 @@ configs {
       gpu: 1
     }
     time_limit: {
-      seconds: 21600
+      seconds: 43200
     }
     environment_variables { key: "GPU" value: "1" }
     command: ".pfnci/linux/main-flexci.sh cuda122"
@@ -355,7 +355,7 @@ configs {
       gpu: 2
     }
     time_limit: {
-      seconds: 21600
+      seconds: 43200
     }
     environment_variables { key: "GPU" value: "2" }
     command: ".pfnci/linux/main-flexci.sh cuda122.multi"
@@ -373,7 +373,7 @@ configs {
       gpu: 1
     }
     time_limit: {
-      seconds: 21600
+      seconds: 43200
     }
     environment_variables { key: "GPU" value: "1" }
     command: ".pfnci/linux/main-flexci.sh cuda11x-cuda-python"
@@ -463,7 +463,7 @@ configs {
       gpu: 2
     }
     time_limit: {
-      seconds: 21600
+      seconds: 43200
     }
     environment_variables { key: "GPU" value: "2" }
     command: ".pfnci/linux/main-flexci.sh cuda-head"
@@ -481,7 +481,7 @@ configs {
       gpu: 2
     }
     time_limit: {
-      seconds: 21600
+      seconds: 43200
     }
     environment_variables { key: "GPU" value: "2" }
     command: ".pfnci/linux/main-flexci-stable.sh cuda-head"
@@ -499,7 +499,7 @@ configs {
       gpu: 1
     }
     time_limit: {
-      seconds: 21600
+      seconds: 43200
     }
     environment_variables { key: "GPU" value: "1" }
     command: ".pfnci/linux/main-flexci.sh benchmark"
@@ -516,7 +516,7 @@ configs {
       gpu: 1
     }
     time_limit: {
-      seconds: 21600
+      seconds: 43200
     }
     environment_variables { key: "GPU" value: "1" }
     command: ".pfnci/linux/main-flexci.sh benchmark"
@@ -556,7 +556,7 @@ configs {
       image: "windows"
     }
     time_limit {
-      seconds: 36000
+      seconds: 72000
     }
     checkout_strategy {
       include_dot_git: true
@@ -577,7 +577,7 @@ configs {
       image: "windows"
     }
     time_limit {
-      seconds: 36000
+      seconds: 72000
     }
     checkout_strategy {
       include_dot_git: true
@@ -598,7 +598,7 @@ configs {
       image: "windows"
     }
     time_limit {
-      seconds: 36000
+      seconds: 72000
     }
     checkout_strategy {
       include_dot_git: true
@@ -619,7 +619,7 @@ configs {
       image: "windows"
     }
     time_limit {
-      seconds: 36000
+      seconds: 72000
     }
     checkout_strategy {
       include_dot_git: true
@@ -640,7 +640,7 @@ configs {
       image: "windows"
     }
     time_limit {
-      seconds: 36000
+      seconds: 72000
     }
     checkout_strategy {
       include_dot_git: true
@@ -661,7 +661,7 @@ configs {
       image: "windows"
     }
     time_limit {
-      seconds: 36000
+      seconds: 72000
     }
     checkout_strategy {
       include_dot_git: true
@@ -682,7 +682,7 @@ configs {
       image: "windows"
     }
     time_limit {
-      seconds: 36000
+      seconds: 72000
     }
     checkout_strategy {
       include_dot_git: true
@@ -703,7 +703,7 @@ configs {
       image: "windows"
     }
     time_limit {
-      seconds: 36000
+      seconds: 72000
     }
     checkout_strategy {
       include_dot_git: true
@@ -724,13 +724,13 @@ configs {
       image: "windows"
     }
     time_limit {
-      seconds: 36000
+      seconds: 72000
     }
     checkout_strategy {
       include_dot_git: true
     }
     environment_variables { key: "GPU" value: "2" }
-    command: ".pfnci\\windows\\run.bat 12.1 3.10 test"
+    command: ".pfnci\\windows\\run.bat 12.1 3.11 test"
   }
 }
 
@@ -745,12 +745,12 @@ configs {
       image: "windows"
     }
     time_limit {
-      seconds: 36000
+      seconds: 72000
     }
     checkout_strategy {
       include_dot_git: true
     }
     environment_variables { key: "GPU" value: "2" }
-    command: ".pfnci\\windows\\run.bat 12.2 3.10 test"
+    command: ".pfnci\\windows\\run.bat 12.2 3.12 test"
   }
 }

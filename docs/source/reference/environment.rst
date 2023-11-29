@@ -36,6 +36,13 @@ Here are the environment variables that CuPy uses at runtime.
   If set to ``1``, :envvar:`CUPY_CACHE_DIR` and :envvar:`CUPY_CACHE_SAVE_CUDA_SOURCE` will be ignored, and the cache is in memory.
   This environment variable allows reducing disk I/O, but is ignoed when ``nvcc`` is set to be the compiler backend.
 
+.. envvar:: CUPY_DISABLE_JITIFY_CACHE
+
+  Default: ``0``
+
+  If set to ``1``, headers loaded by Jitify would not be cached on disk (to :envvar:`CUPY_CACHE_DIR`). The default is to
+  always cache.
+
 .. envvar:: CUPY_DUMP_CUDA_SOURCE_ON_ERROR
 
   Default: ``0``

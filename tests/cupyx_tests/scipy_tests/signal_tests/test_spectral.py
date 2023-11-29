@@ -1,4 +1,5 @@
 
+import sys
 import pytest
 
 import numpy as np
@@ -964,3 +965,466 @@ class TestCheckNOLACOLA:
         for setting in settings_fail:
             result.append(scp.signal.check_NOLA(*setting))
         return result
+
+
+@testing.with_requires('scipy>=1.9.0')
+class TestSTFT:
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_average_all_segments(self, xp, scp):
+        x = testing.shaped_random((1024,), xp, xp.float64, scale=1, seed=1234)
+
+        fs = 1.0
+        window = 'hann'
+        nperseg = 16
+        noverlap = 8
+
+        # Compare twosided, because onesided welch doubles non-DC terms to
+        # account for power at negative frequencies. stft doesn't do this,
+        # because it breaks invertibility.
+        f, _, Z = scp.signal.stft(
+            x, fs, window, nperseg, noverlap, padded=False,
+            return_onesided=False, boundary=None)
+
+        return f, Z
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_permute_axes(self, xp, scp):
+        x = testing.shaped_random((1024,), xp, xp.float64, scale=1, seed=1234)
+
+        fs = 1.0
+        window = 'hann'
+        nperseg = 16
+        noverlap = 8
+
+        f1, t1, Z1 = scp.signal.stft(x, fs, window, nperseg, noverlap)
+        f2, t2, Z2 = scp.signal.stft(
+            x.reshape((-1, 1, 1)), fs, window, nperseg, noverlap, axis=0)
+
+        t3, x1 = scp.signal.istft(Z1, fs, window, nperseg, noverlap)
+        t4, x2 = scp.signal.istft(
+            Z2.T, fs, window, nperseg, noverlap, time_axis=0, freq_axis=-1)
+
+        return f1, t1, Z1, f2, t2, Z2, t3, x1, t4, x2.reshape(-1)
+
+    @pytest.mark.parametrize('scaling', ['spectrum', 'psd'])
+    @pytest.mark.parametrize('settings', [
+        ('boxcar', 100, 10, 0),           # Test no overlap
+        ('boxcar', 100, 10, 9),           # Test high overlap
+        ('bartlett', 101, 51, 26),        # Test odd nperseg
+        ('hann', 1024, 256, 128),         # Test defaults
+        (('tukey', 0.5), 1152, 256, 64),  # Test Tukey
+        ('hann', 1024, 256, 255),         # Test overlapped hann
+    ])
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_roundtrip_real(self, scaling, settings, xp, scp):
+        window, N, nperseg, noverlap = settings
+        t = xp.arange(N)
+        x = testing.shaped_random(t.shape, xp, xp.float64, seed=1234)
+
+        _, _, zz = scp.signal.stft(
+            x, nperseg=nperseg, noverlap=noverlap,
+            window=window, detrend=None, padded=False,
+            scaling=scaling)
+
+        tr, xr = scp.signal.istft(
+            zz, nperseg=nperseg, noverlap=noverlap, window=window,
+            scaling=scaling)
+
+        return zz, tr, xr
+
+    @pytest.mark.parametrize('settings', [
+        ('hann', 1024, 256, 128)
+    ])
+    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-5, atol=1e-5)
+    def test_roundtrip_float32(self, settings, xp, scp):
+        window, N, nperseg, noverlap = settings
+        t = xp.arange(N)
+        x = testing.shaped_random(t.shape, xp, xp.float32, seed=1234)
+
+        _, _, zz = scp.signal.stft(
+            x, nperseg=nperseg, noverlap=noverlap,
+            window=window, detrend=None, padded=False)
+
+        tr, xr = scp.signal.istft(zz, nperseg=nperseg, noverlap=noverlap,
+                                  window=window)
+
+        return zz, tr, xr
+
+    @pytest.mark.parametrize('scaling', ['spectrum', 'psd'])
+    @pytest.mark.parametrize('settings', [
+        ('boxcar', 100, 10, 0),           # Test no overlap
+        ('boxcar', 100, 10, 9),           # Test high overlap
+        ('bartlett', 101, 51, 26),        # Test odd nperseg
+        ('hann', 1024, 256, 128),         # Test defaults
+        (('tukey', 0.5), 1152, 256, 64),  # Test Tukey
+        ('hann', 1024, 256, 255),         # Test overlapped hann
+    ])
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_roundtrip_complex(self, scaling, settings, xp, scp):
+        window, N, nperseg, noverlap = settings
+        t = np.arange(N)
+        x_real = testing.shaped_random(t.shape, xp, xp.float64, seed=1234)
+        x_imag = 1j * testing.shaped_random(t.shape, xp, xp.float64)
+        x = x_real + x_imag
+
+        _, _, zz = scp.signal.stft(
+            x, nperseg=nperseg, noverlap=noverlap,
+            window=window, detrend=None, padded=False,
+            return_onesided=False, scaling=scaling)
+
+        tr, xr = scp.signal.istft(
+            zz, nperseg=nperseg, noverlap=noverlap,
+            window=window, input_onesided=False, scaling=scaling)
+
+        return zz, tr, xr
+
+    @pytest.mark.parametrize('settings', [
+        ('boxcar', 100, 10, 0),           # Test no overlap
+        ('boxcar', 100, 10, 9),           # Test high overlap
+    ])
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_roundtrip_boundary_extension(self, settings, xp, scp):
+        # Test against boxcar, since window is all ones, and thus can be fully
+        # recovered with no boundary extension
+        window, N, nperseg, noverlap = settings
+        t = xp.arange(N)
+        x = testing.shaped_random(t.shape, xp, xp.float64, seed=1234)
+
+        results = []
+        _, _, zz = scp.signal.stft(
+            x, nperseg=nperseg, noverlap=noverlap,
+            window=window, detrend=None, padded=True, boundary=None)
+
+        _, xr = scp.signal.istft(
+            zz, noverlap=noverlap, window=window, boundary=False)
+
+        results.append(zz)
+        results.append(xr)
+
+        for boundary in ['even', 'odd', 'constant', 'zeros']:
+            _, _, zz_ext = scp.signal.stft(
+                x, nperseg=nperseg, noverlap=noverlap,
+                window=window, detrend=None, padded=True,
+                boundary=boundary)
+
+            _, xr_ext = scp.signal.istft(
+                zz_ext, noverlap=noverlap, window=window, boundary=True)
+
+            results.append(zz_ext)
+            results.append(xr_ext)
+
+        return results
+
+    @pytest.mark.parametrize('settings', [
+        ('boxcar', 101, 10, 0),
+        ('hann', 1000, 256, 128),
+    ])
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-7)
+    def test_roundtrip_padded_signal(self, settings, xp, scp):
+        window, N, nperseg, noverlap = settings
+        t = xp.arange(N)
+        x = testing.shaped_random(t.shape, xp, xp.float64, seed=1234)
+
+        _, _, zz = scp.signal.stft(
+            x, nperseg=nperseg, noverlap=noverlap,
+            window=window, detrend=None, padded=True)
+
+        tr, xr = scp.signal.istft(zz, noverlap=noverlap, window=window)
+        return zz, tr, xr
+
+    @pytest.mark.parametrize('settings', [
+        ('hann', 1024, 256, 128, 512),
+        ('hann', 1024, 256, 128, 501),
+        ('boxcar', 100, 10, 0, 33),
+        (('tukey', 0.5), 1152, 256, 64, 1024),
+    ])
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_roundtrip_padded_FFT(self, settings, xp, scp):
+        window, N, nperseg, noverlap, nfft = settings
+        t = np.arange(N)
+        x = testing.shaped_random(t.shape, xp, xp.float64, seed=1234)
+        xc = x * xp.exp(1j * xp.pi / 4)
+
+        # real signal
+        _, _, z = scp.signal.stft(
+            x, nperseg=nperseg, noverlap=noverlap, nfft=nfft,
+            window=window, detrend=None, padded=True)
+
+        # complex signal
+        _, _, zc = scp.signal.stft(
+            xc, nperseg=nperseg, noverlap=noverlap, nfft=nfft,
+            window=window, detrend=None, padded=True, return_onesided=False)
+
+        tr, xr = scp.signal.istft(
+            z, nperseg=nperseg, noverlap=noverlap, nfft=nfft, window=window)
+
+        tcr, xcr = scp.signal.istft(
+            zc, nperseg=nperseg, noverlap=noverlap, nfft=nfft,
+            window=window, input_onesided=False)
+        return z, zc, xr, xcr, tr, tcr
+
+    @pytest.mark.parametrize('a', [0, 1, 2])
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_axis_rolling(self, a, xp, scp):
+        x_flat = testing.shaped_random((1024,), xp, xp.float64, seed=1234)
+        _, _, z_flat = scp.signal.stft(x_flat)
+
+        newshape = [1,]*3
+        newshape[a] = -1
+        x = x_flat.reshape(newshape)
+
+        # Positive axis index
+        _, _, z_plus = scp.signal.stft(x, axis=a)
+        # Negative axis index
+        _, _, z_minus = scp.signal.stft(x, axis=a - x.ndim)
+
+        # z_flat has shape [n_freq, n_time]
+
+        # Test vs. transpose
+        _, x_transpose_m = scp.signal.istft(
+            z_flat.T, time_axis=-2, freq_axis=-1)
+        _, x_transpose_p = scp.signal.istft(
+            z_flat.T, time_axis=0, freq_axis=1)
+        return z_plus, z_minus, x_transpose_m, x_transpose_p
+
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-7)
+    def test_roundtrip_scaling(self, xp, scp):
+        """Verify behavior of scaling parameter. """
+        # Create 1024 sample cosine signal with amplitude 2:
+        X = xp.zeros(513, dtype=complex)
+        X[256] = 1024
+        x = xp.fft.irfft(X)
+
+        results = []
+
+        # Calculate magnitude-scaled STFT:
+        Zs = scp.signal.stft(x, boundary='even', scaling='spectrum')[2]
+        results.append(Zs)
+
+        # Test round trip:
+        x1 = scp.signal.istft(Zs, boundary=True, scaling='spectrum')[1]
+        results.append(x1)
+
+        # Calculate two-sided psd-scaled STFT:
+        #  - using 'even' padding since signal is axis symmetric - this ensures
+        #    stationary behavior on the boundaries
+        #  - using the two-sided transform allows determining the spectral
+        #    power by `sum(abs(Zp[:, k])**2) / len(f)` for the k-th time slot.
+        Zp = scp.signal.stft(
+            x, return_onesided=False, boundary='even', scaling='psd')[2]
+        results.append(Zp)
+
+        # Test round trip:
+        x1 = scp.signal.istft(
+            Zp, input_onesided=False, boundary=True, scaling='psd')[1]
+        results.append(x1)
+
+        # The power of the one-sided psd-scaled STFT can be determined
+        # analogously (note that the two sides are not of equal shape):
+        Zp0 = scp.signal.stft(
+            x, return_onesided=True, boundary='even', scaling='psd')[2]
+        results.append(Zp0)
+
+        # Test round trip:
+        x1 = scp.signal.istft(
+            Zp0, input_onesided=True, boundary=True, scaling='psd')[1]
+        results.append(x1)
+        return results
+
+
+@testing.with_requires('scipy')
+class TestVectorstrength:
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_single_1dperiod(self, xp, scp):
+        events = xp.array([.5])
+        period = 5.
+
+        strength, phase = scp.signal.vectorstrength(events, period)
+        return strength, phase
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_single_2dperiod(self, xp, scp):
+        events = xp.array([.5])
+        period = [1, 2, 5.]
+
+        strength, phase = scp.signal.vectorstrength(events, period)
+        return strength, phase
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_equal_1dperiod(self, xp, scp):
+        events = xp.array([.25, .25, .25, .25, .25, .25])
+        period = 2
+        strength, phase = scp.signal.vectorstrength(events, period)
+        return strength, phase
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_equal_2dperiod(self, xp, scp):
+        events = xp.array([.25, .25, .25, .25, .25, .25])
+        period = [1, 2, ]
+
+        strength, phase = scp.signal.vectorstrength(events, period)
+        return strength, phase
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_spaced_1dperiod(self, xp, scp):
+        events = xp.array([.1, 1.1, 2.1, 4.1, 10.1])
+        period = 1
+
+        strength, phase = scp.signal.vectorstrength(events, period)
+        return strength, phase
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_spaced_2dperiod(self, xp, scp):
+        events = xp.array([.1, 1.1, 2.1, 4.1, 10.1])
+        period = [1, .5]
+
+        strength, phase = scp.signal.vectorstrength(events, period)
+        return strength, phase
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_partial_1dperiod(self, xp, scp):
+        events = xp.array([.25, .5, .75])
+        period = 1
+
+        strength, phase = scp.signal.vectorstrength(events, period)
+        return strength, phase
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_partial_2dperiod(self, xp, scp):
+        events = xp.array([.25, .5, .75])
+        period = [1., 1., 1., 1.]
+
+        strength, phase = scp.signal.vectorstrength(events, period)
+        return strength, phase
+
+    @pytest.mark.xfail(
+        condition=(
+            sys.platform == 'linux' and
+            not (11030 <= runtime.runtimeGetVersion() < 11040 and
+                 testing.installed('scipy==1.8.*'))
+        ),
+        reason='It fails in the CI')
+    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-7, atol=1e-7)
+    def test_opposite_1dperiod(self, xp, scp):
+        events = xp.array([0, .25, .5, .75])
+        period = 1.
+
+        strength, phase = scp.signal.vectorstrength(events, period)
+        return strength, phase
+
+    @pytest.mark.xfail(
+        condition=(
+            sys.platform == 'linux' and
+            not (11030 <= runtime.runtimeGetVersion() < 11040 and
+                 testing.installed('scipy==1.8.*'))
+        ),
+        reason='It fails in the CI')
+    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-7, atol=1e-7)
+    def test_opposite_2dperiod(self, xp, scp):
+        events = xp.array([0, .25, .5, .75])
+        period = [1.] * 10
+
+        strength, phase = scp.signal.vectorstrength(events, period)
+        return strength, phase
+
+    @pytest.mark.parametrize('mod', [(cupy, cupyx.scipy), (np, scipy)])
+    def test_2d_events_ValueError(self, mod):
+        xp, scp = mod
+        events = xp.array([[1, 2]])
+        period = 1.
+        with pytest.raises(ValueError):
+            scp.signal.vectorstrength(events, period)
+
+    @pytest.mark.parametrize('mod', [(cupy, cupyx.scipy), (np, scipy)])
+    def test_2d_period_ValueError(self, mod):
+        xp, scp = mod
+        events = 1.
+        period = xp.array([[1]])
+        with pytest.raises(ValueError):
+            scp.signal.vectorstrength(events, period)
+
+    @pytest.mark.parametrize('mod', [(cupy, cupyx.scipy), (np, scipy)])
+    def test_zero_period_ValueError(self, mod):
+        _, scp = mod
+        events = 1.
+        period = 0
+        with pytest.raises(ValueError):
+            scp.signal.vectorstrength(events, period)
+
+    @pytest.mark.parametrize('mod', [(cupy, cupyx.scipy), (np, scipy)])
+    def test_negative_period_ValueError(self, mod):
+        _, scp = mod
+        events = 1.
+        period = -1
+        with pytest.raises(ValueError):
+            scp.signal.vectorstrength(events, period)
+
+
+@testing.with_requires('scipy')
+class TestCoherence:
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_identical_input(self, xp, scp):
+        x = testing.shaped_random((20,), xp, xp.float64, scale=1.0)
+        y = xp.copy(x)  # So `y is x` -> False
+
+        f1, C1 = scp.signal.coherence(x, y, nperseg=10)
+        return f1, C1
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_phase_shifted_input(self, xp, scp):
+        x = testing.shaped_random((20,), xp, xp.float64, scale=1.0)
+        y = -x
+
+        f1, C1 = scp.signal.coherence(x, y, nperseg=10)
+        return f1, C1
+
+
+@testing.with_requires('scipy')
+class TestSpectrogram:
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_average_all_segments(self, xp, scp):
+        x = testing.shaped_random((1024,), xp, xp.float64, scale=1.0)
+
+        fs = 1.0
+        window = ('tukey', 0.25)
+        nperseg = 16
+        noverlap = 2
+
+        f, _, P = scp.signal.spectrogram(x, fs, window, nperseg, noverlap)
+        return f, P
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_window_external(self, xp, scp):
+        x = testing.shaped_random((1024,), xp, xp.float64, scale=1.0)
+
+        fs = 1.0
+        win = scp.signal.get_window(('tukey', 0.25), 16)
+        fe, _, Pe = scp.signal.spectrogram(
+            x, fs, win, nperseg=None, noverlap=2)
+
+        with pytest.raises(ValueError):
+            scp.signal.spectrogram(x, fs, win, nperseg=8)
+
+        win_err = scp.signal.get_window(('tukey', 0.25), 2048)
+        with pytest.raises(ValueError):
+            scp.signal.spectrogram(x, fs, win_err, nperseg=None)
+        return fe, Pe
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_short_data(self, xp, scp):
+        x = testing.shaped_random((1024,), xp, xp.float64, scale=1.0)
+        fs = 1.0
+
+        # for string-like window, input signal length < nperseg value gives
+        # UserWarning, sets nperseg to x.shape[-1]
+        # default nperseg
+        f, _, p = scp.signal.spectrogram(x, fs, window=('tukey', 0.25))
+
+        # user-specified nperseg
+        f1, _, p1 = scp.signal.spectrogram(
+            x, fs, window=('tukey', 0.25), nperseg=1025)
+        # to compare w/default
+        f2, _, p2 = scp.signal.spectrogram(x, fs, nperseg=256)
+        # compare w/user-spec'd
+        f3, _, p3 = scp.signal.spectrogram(x, fs, nperseg=1024)
+        return f, p, f1, p1, f2, p2, f3, p3

@@ -260,10 +260,11 @@ class Tuple(TypeBase):
 
     def __str__(self) -> str:
         types = ', '.join([str(t) for t in self.types])
+        # STD is defined in carray.cuh
         if len(self.types) == 2:
-            return f'thrust::pair<{types}>'
+            return f'STD::pair<{types}>'
         else:
-            return f'thrust::tuple<{types}>'
+            return f'STD::tuple<{types}>'
 
     def __eq__(self, other: object) -> bool:
         assert isinstance(other, TypeBase)

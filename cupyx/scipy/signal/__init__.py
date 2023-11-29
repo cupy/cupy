@@ -22,6 +22,10 @@ from cupyx.scipy.signal._signaltools import sosfiltfilt  # NOQA
 from cupyx.scipy.signal._signaltools import hilbert  # NOQA
 from cupyx.scipy.signal._signaltools import hilbert2  # NOQA
 
+from cupyx.scipy.signal._resample import resample  # NOQA
+from cupyx.scipy.signal._resample import resample_poly  # NOQA
+from cupyx.scipy.signal._resample import decimate  # NOQA
+
 from cupyx.scipy.signal._polyutils import unique_roots  # NOQA
 from cupyx.scipy.signal._polyutils import invres  # NOQA
 from cupyx.scipy.signal._polyutils import invresz  # NOQA
@@ -67,6 +71,7 @@ from cupyx.scipy.signal._iir_filter_conversions import lp2bs_zpk  # NOQA
 
 from cupyx.scipy.signal._iir_filter_conversions import zpk2tf  # NOQA
 from cupyx.scipy.signal._iir_filter_conversions import zpk2sos  # NOQA
+from cupyx.scipy.signal._iir_filter_conversions import zpk2ss   # NOQA
 from cupyx.scipy.signal._iir_filter_conversions import tf2zpk  # NOQA
 from cupyx.scipy.signal._iir_filter_conversions import tf2sos  # NOQA
 from cupyx.scipy.signal._iir_filter_conversions import tf2ss  # NOQA
@@ -98,6 +103,8 @@ from cupyx.scipy.signal._iir_filter_design import iircomb  # NOQA
 from cupyx.scipy.signal._iir_filter_design import iirnotch  # NOQA
 from cupyx.scipy.signal._iir_filter_design import iirpeak  # NOQA
 
+from cupyx.scipy.signal._fir_filter_design import firwin  # NOQA
+from cupyx.scipy.signal._fir_filter_design import firwin2  # NOQA
 from cupyx.scipy.signal._fir_filter_design import firls  # NOQA
 from cupyx.scipy.signal._fir_filter_design import minimum_phase  # NOQA
 
@@ -115,6 +122,7 @@ from cupyx.scipy.signal._waveforms import sawtooth  # NOQA
 from cupyx.scipy.signal._waveforms import square  # NOQA
 from cupyx.scipy.signal._waveforms import unit_impulse  # NOQA
 from cupyx.scipy.signal._waveforms import sweep_poly  # NOQA
+from cupyx.scipy.signal._max_len_seq import max_len_seq  # NOQA
 
 from cupyx.scipy.signal._czt import *   # NOQA
 
@@ -125,6 +133,8 @@ from cupyx.scipy.signal._wavelets import morlet2  # NOQA
 from cupyx.scipy.signal._wavelets import cwt  # NOQA
 
 from cupyx.scipy.signal._lti_conversion import abcd_normalize   # NOQA
+
+from cupyx.scipy.signal._upfirdn import upfirdn  # NOQA
 
 from cupyx.scipy.signal._peak_finding import find_peaks  # NOQA
 from cupyx.scipy.signal._peak_finding import peak_prominences  # NOQA
@@ -146,8 +156,8 @@ from cupyx.scipy.signal._ltisys import dfreqresp  # NOQA
 from cupyx.scipy.signal._ltisys import StateSpace  # NOQA
 from cupyx.scipy.signal._ltisys import TransferFunction  # NOQA
 from cupyx.scipy.signal._ltisys import ZerosPolesGain  # NOQA
-
 from cupyx.scipy.signal._ltisys import cont2discrete  # NOQA
+from cupyx.scipy.signal._ltisys import place_poles  # NOQA
 
 from cupyx.scipy.signal._spectral import lombscargle  # NOQA
 from cupyx.scipy.signal._spectral import periodogram  # NOQA
@@ -155,6 +165,11 @@ from cupyx.scipy.signal._spectral import welch  # NOQA
 from cupyx.scipy.signal._spectral import csd  # NOQA
 from cupyx.scipy.signal._spectral import check_COLA  # NOQA
 from cupyx.scipy.signal._spectral import check_NOLA  # NOQA
+from cupyx.scipy.signal._spectral import stft  # NOQA
+from cupyx.scipy.signal._spectral import istft  # NOQA
+from cupyx.scipy.signal._spectral import spectrogram  # NOQA
+from cupyx.scipy.signal._spectral import vectorstrength  # NOQA
+from cupyx.scipy.signal._spectral import coherence  # NOQA
 
 from cupyx.scipy.signal._peak_finding import argrelextrema  # NOQA
 from cupyx.scipy.signal._peak_finding import argrelmin  # NOQA

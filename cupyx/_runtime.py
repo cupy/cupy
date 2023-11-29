@@ -68,6 +68,7 @@ class _RuntimeInfo:
 
     # CUDA Runtime
     cuda_runtime_version = None
+    cuda_local_runtime_version = None
 
     # CUDA Toolkit
     cublas_version = None
@@ -118,6 +119,9 @@ class _RuntimeInfo:
         # CUDA Runtime
         self.cuda_runtime_version = _eval_or_error(
             cupy.cuda.runtime.runtimeGetVersion,
+            cupy.cuda.runtime.CUDARuntimeError)
+        self.cuda_local_runtime_version = _eval_or_error(
+            cupy.cuda.get_local_runtime_version,
             cupy.cuda.runtime.CUDARuntimeError)
 
         # cuBLAS
@@ -250,7 +254,10 @@ class _RuntimeInfo:
             ('CUDA Build Version', self.cuda_build_version),
             ('CUDA Driver Version', self.cuda_driver_version),
 
-            ('CUDA Runtime Version', self.cuda_runtime_version),
+            ('CUDA Runtime Version', (
+                f'{self.cuda_runtime_version} (linked to CuPy) / '
+                f'{self.cuda_local_runtime_version} (locally installed)'
+            )),
         ]
 
         records += [

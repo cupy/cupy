@@ -132,6 +132,9 @@ def preconfigure_modules(ctx: Context, MODULES, compiler, settings):
             inc_path = os.path.join(cutensor_path, 'include')
             if os.path.exists(inc_path):
                 settings['include_dirs'].append(inc_path)
+            lib_path = os.path.join(cutensor_path, 'lib')
+            if os.path.exists(lib_path):
+                settings['library_dirs'].append(lib_path)
             cuda_version = ctx.features['cuda'].get_version()
             cuda_major = str(cuda_version // 1000)
             cuda_major_minor = cuda_major + '.' + \
@@ -362,11 +365,11 @@ def make_extensions(ctx: Context, compiler, use_cython):
             # compile_args.append('-DJITIFY_PRINT_ALL')
 
             # if any change is made to the Jitify header, we force recompiling
-            s['depends'] = ['./cupy/_core/include/cupy/jitify/jitify.hpp']
+            s['depends'] = ['./cupy/_core/include/cupy/_jitify/jitify.hpp']
 
         if module['name'] == 'dlpack':
             # if any change is made to the DLPack header, we force recompiling
-            s['depends'] = ['./cupy/_core/include/cupy/dlpack/dlpack.h']
+            s['depends'] = ['./cupy/_core/include/cupy/_dlpack/dlpack.h']
 
         for f in module['file']:
             s_file = copy.deepcopy(s)
@@ -392,8 +395,6 @@ def make_extensions(ctx: Context, compiler, use_cython):
                 rpath.append(
                     '{}{}/cupy/.data/lib'.format(_rpath_base(), '/..' * depth))
 
-            if not PLATFORM_WIN32 and not PLATFORM_LINUX:
-                assert False, "macOS is no longer supported"
             if (PLATFORM_LINUX and len(rpath) != 0):
                 ldflag = '-Wl,'
                 if PLATFORM_LINUX:

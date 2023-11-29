@@ -9,7 +9,6 @@ from cupyx import linalg  # NOQA
 from cupyx import time  # NOQA
 from cupyx import scipy  # NOQA
 from cupyx import optimizing  # NOQA
-from cupyx import lapack  # NOQA
 
 from cupyx._ufunc_config import errstate  # NOQA
 from cupyx._ufunc_config import geterr  # NOQA
@@ -23,3 +22,12 @@ from cupyx._pinned_array import zeros_pinned  # NOQA
 from cupyx._pinned_array import zeros_like_pinned  # NOQA
 
 from cupyx._gufunc import GeneralizedUFunc  # NOQA
+
+
+def __getattr__(key):
+    if key == 'lapack':
+        import cupyx.lapack
+        return cupyx.lapack
+
+    raise AttributeError(
+        "module '{}' has no attribute '{}'".format(__name__, key))

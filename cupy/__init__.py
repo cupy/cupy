@@ -792,29 +792,35 @@ from cupy._core import fromDlpack  # NOQA
 from cupy._core import from_dlpack  # NOQA
 
 
-def asnumpy(a, stream=None, order='C', out=None):
+def asnumpy(a, stream=None, order='C', out=None, *, blocking=True):
     """Returns an array on the host memory from an arbitrary source array.
 
     Args:
         a: Arbitrary object that can be converted to :class:`numpy.ndarray`.
-        stream (cupy.cuda.Stream): CUDA stream object. If it is specified, then
-            the device-to-host copy runs asynchronously. Otherwise, the copy is
-            synchronous. Note that if ``a`` is not a :class:`cupy.ndarray`
+        stream (cupy.cuda.Stream): CUDA stream object. If given, the
+            stream is used to perform the copy. Otherwise, the current
+            stream is used. Note that if ``a`` is not a :class:`cupy.ndarray`
             object, then this argument has no effect.
         order ({'C', 'F', 'A'}): The desired memory layout of the host
-            array. When ``order`` is 'A', it uses 'F' if ``a`` is
-            fortran-contiguous and 'C' otherwise.
+            array. When ``order`` is 'A', it uses 'F' if the array is
+            fortran-contiguous and 'C' otherwise. The ``order`` will be
+            ignored if ``out`` is specified.
         out (numpy.ndarray): The output array to be written to. It must have
             compatible shape and dtype with those of ``a``'s.
+        blocking (bool): If set to ``False``, the copy runs asynchronously
+            on the given (if given) or current stream, and users are
+            responsible for ensuring the stream order. Default is ``True``,
+            so the copy is synchronous (with respect to the host).
 
     Returns:
         numpy.ndarray: Converted array on the host memory.
 
     """
     if isinstance(a, ndarray):
-        return a.get(stream=stream, order=order, out=out)
+        return a.get(stream=stream, order=order, out=out, blocking=blocking)
     elif hasattr(a, "__cuda_array_interface__"):
-        return array(a).get(stream=stream, order=order, out=out)
+        return array(a).get(
+            stream=stream, order=order, out=out, blocking=blocking)
     else:
         temp = _numpy.asarray(a, order=order)
         if out is not None:
