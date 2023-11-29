@@ -1223,6 +1223,8 @@ class TestLOBPCG:
         cupy.cuda.cusolver._getVersion() in (
             (11, 4, 5),  # CUDA 12.1.1
             (11, 5, 0),  # CUDA 12.2.0
+            (11, 5, 1),  # CUDA 12.2.1
+            (11, 5, 2),  # CUDA 12.2.2
         ),
         reason='cuSOLVER in CUDA 12.1+ may have a bug',
         strict=False,  # Seems only failing with Volta (V100 / T4)
