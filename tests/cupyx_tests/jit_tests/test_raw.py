@@ -287,6 +287,55 @@ class TestRaw:
             f((1,), (32,), (x, mask))
             y[:mask] += 1
             assert bool((x == y).all())
+            
+    def test_break_and_continue():
+        @jit.rawkernel()
+        def f(w, x, y, z):
+            tid = jit.grid(1)
+            ntid = jit.gridsize(1)
+
+            for i in range(10):
+                #adds 0-9, except for 5. Sum is 40
+                if(i == 5):
+                    continue
+                w[tid] += i
+                
+            i2 = 0
+            while (i2 < 9):
+                #adds 1-9 in a while loop, except for 6, should equal 39
+                i2 += 1
+                if(i2 == 6):
+                    continue
+                x[tid] += i2
+                
+            for i in range(10):
+                #adds 0-4, break at 5. Sum is 10
+                if(i == 5):
+                    break
+                y[tid] += i
+                
+            i2 = 0
+            while (i2 < 9):
+                #adds 1-5 in a while loop, breaks at 6, should equal 15
+                i2 += 1
+                if(i2 == 6):
+                    break
+                z[tid] += i2
+                
+            
+        w = cupy.zeros(32, dtype=int)
+        x = cupy.zeros(32, dtype=int)
+        y = cupy.zeros(32, dtype=int)
+        z = cupy.zeros(32, dtype=int)
+        expected_w = cupy.zeros(32, dtype=int)+40
+        expected_x = cupy.zeros(32, dtype=int)+39
+        expected_y = cupy.zeros(32, dtype=int)+10
+        expected_z = cupy.zeros(32, dtype=int)+15
+        f[1, 32](w, x, y, z)
+        assert bool((w == expected_w).all())
+        assert bool((x == expected_x).all())
+        assert bool((y == expected_y).all())
+        assert bool((z == expected_z).all())
 
     def test_shared_memory_static(self):
         @jit.rawkernel()
