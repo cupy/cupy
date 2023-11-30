@@ -86,28 +86,30 @@ cdef void _initialize() except *:
     global _L
     _L = _get_softlink()
 
+    cdef str version = '_v2' if CUPY_CUDA_VERSION != 0 else ''
+
     global cuGetErrorName
     cuGetErrorName = <F_cuGetErrorName>_L.get('GetErrorName')
     global cuGetErrorString
     cuGetErrorString = <F_cuGetErrorString>_L.get('GetErrorString')
     global cuDevicePrimaryCtxRelease
-    cuDevicePrimaryCtxRelease = <F_cuDevicePrimaryCtxRelease>_L.get('DevicePrimaryCtxRelease')  # NOQA
+    cuDevicePrimaryCtxRelease = <F_cuDevicePrimaryCtxRelease>_L.get(f'DevicePrimaryCtxRelease{version}')  # NOQA
     global cuCtxGetCurrent
     cuCtxGetCurrent = <F_cuCtxGetCurrent>_L.get('CtxGetCurrent')
     global cuCtxSetCurrent
     cuCtxSetCurrent = <F_cuCtxSetCurrent>_L.get('CtxSetCurrent')
     global cuCtxCreate
-    cuCtxCreate = <F_cuCtxCreate>_L.get('CtxCreate')
+    cuCtxCreate = <F_cuCtxCreate>_L.get(f'CtxCreate{version}')
     global cuCtxDestroy
-    cuCtxDestroy = <F_cuCtxDestroy>_L.get('CtxDestroy')
+    cuCtxDestroy = <F_cuCtxDestroy>_L.get(f'CtxDestroy{version}')
     global cuCtxGetDevice
     cuCtxGetDevice = <F_cuCtxGetDevice>_L.get('CtxGetDevice')
     global cuLinkCreate
-    cuLinkCreate = <F_cuLinkCreate>_L.get('LinkCreate')
+    cuLinkCreate = <F_cuLinkCreate>_L.get(f'LinkCreate{version}')
     global cuLinkAddData
-    cuLinkAddData = <F_cuLinkAddData>_L.get('LinkAddData')
+    cuLinkAddData = <F_cuLinkAddData>_L.get(f'LinkAddData{version}')
     global cuLinkAddFile
-    cuLinkAddFile = <F_cuLinkAddFile>_L.get('LinkAddFile')
+    cuLinkAddFile = <F_cuLinkAddFile>_L.get(f'LinkAddFile{version}')
     global cuLinkComplete
     cuLinkComplete = <F_cuLinkComplete>_L.get('LinkComplete')
     global cuLinkDestroy
@@ -121,7 +123,7 @@ cdef void _initialize() except *:
     global cuModuleGetFunction
     cuModuleGetFunction = <F_cuModuleGetFunction>_L.get('ModuleGetFunction')
     global cuModuleGetGlobal
-    cuModuleGetGlobal = <F_cuModuleGetGlobal>_L.get('ModuleGetGlobal')
+    cuModuleGetGlobal = <F_cuModuleGetGlobal>_L.get(f'ModuleGetGlobal{version}')  # NOQA
     global cuLaunchKernel
     cuLaunchKernel = <F_cuLaunchKernel>_L.get('LaunchKernel')
     global cuLaunchCooperativeKernel
