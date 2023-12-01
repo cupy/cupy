@@ -291,11 +291,6 @@ class ContiguousArray(PointerBase):
             s += f'[{self._size[i]}]'
         if(init is None):
             return s
-        elif(f"{init.code}" == "!!lmem"):
-            s = f'{self.base_type} {x}'
-            for var in self._size:
-                s += f'[{var}]'
-            return f"{s} = {{}}"
         else:
             return f'{s} = {init.code}'
 
