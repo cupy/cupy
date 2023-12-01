@@ -227,7 +227,7 @@ class LocalMemory(BuiltinFunc):
         Args:
             dtype (dtype):
                 The dtype of the returned array.
-            size (int or tuple of ints):
+            size (int or tuple):
                 If ``int`` type, the size of static local memory.
                 If ``tuple`` type, the size of a multi-dimensional static local memory.
                 Does not use __extern__ keyword like shared memory does
@@ -237,16 +237,18 @@ class LocalMemory(BuiltinFunc):
 
     def call_const(self, env, dtype, size, alignment=None):
         name = env.get_fresh_variable_name(prefix='_lmem')
-        ctype = _cuda_typerules.to_ctype(dtype)
-        var = Data(name, _cuda_types.LocalMem(ctype, size, alignment))
+        ctype = to_ctype(dtype)
+        if(type(size) is int):
+            size = (size,)
+        if not (isinstance(size, tuple)):
+            raise 'size of local_memory must be integer, or a tuple of integers'
+        var = Data(name, LocalMem(ctype, size, alignment))
         env.decls[name] = var
         env.locals[name] = var
-        if not isinstance(size, tuple):
-            size = (size,)
         return_ctype = ctype
         for i in range(len(size)):
-            return_ctype = _cuda_types.ContiguousArray(return_ctype, size[len(size)-(i+1):])
-        return Data("!!lmem", return_ctype) #non-valid name in order to intercept creation of this
+            return_ctype = ContiguousArray(return_ctype, size[len(size)-(i+1):])
+        return Data(name, return_ctype)
 
 class AtomicOp(BuiltinFunc):
 

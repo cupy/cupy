@@ -248,11 +248,9 @@ class LocalMem(ArrayBase):
     def __init__(
             self,
             child_type: TypeBase,
-            size: Union[int, Tuple[int, ...]],
+            size: Tuple[int, ...],
             alignment: Optional[int] = None,
     ) -> None:
-        if not (isinstance(size, int) or isinstance(size, tuple)):
-            raise 'size of local_memory must be integer, or a tuple of integers'
         if not (isinstance(alignment, int) or alignment is None):
             raise 'alignment must be integer or `None`'
         self._size = size
@@ -261,7 +259,10 @@ class LocalMem(ArrayBase):
 
     def declvar(self, x: str, init: Optional['Data']) -> str:
         assert init is None
-        return "//define local memory later" #emit a comment here, build local memory later
+        code = f'{self.child_type} {x}'
+        for var in self._size:
+            code += f"[{var}]"
+        return code
 
 class Ptr(PointerBase):
 
