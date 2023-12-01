@@ -6,10 +6,10 @@ cdef extern from *:
 
     ctypedef void* Context 'CUcontext'
     ctypedef void* Deviceptr 'CUdeviceptr'
-    ctypedef void* Event 'cudaEvent_t'
+    ctypedef void* Event 'CUevent'
     ctypedef void* Function 'CUfunction'
     ctypedef void* Module 'CUmodule'
-    ctypedef void* Stream 'cudaStream_t'
+    ctypedef void* Stream 'CUstream'
     ctypedef void* LinkState 'CUlinkState'
 
     ctypedef int CUjit_option 'CUjit_option'

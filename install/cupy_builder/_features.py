@@ -469,9 +469,6 @@ class CUDA_cuda(Feature):
             'cusparse.h',
         ]
         self.libraries = (
-            # CUDA Driver
-            ([] if ctx.use_cuda_python else ['cuda']) +
-
             # CUDA Runtime
             _cudart_static_libs +
 

@@ -5,7 +5,6 @@
 cimport cython  # NOQA
 from libcpp cimport vector
 
-from cupy_backends.cuda.api cimport driver
 from cupy_backends.cuda.api cimport runtime
 from cupy_backends.cuda cimport stream as stream_module
 
@@ -128,8 +127,8 @@ cdef extern from '../../cupy_cudnn.h' nogil:
     # Initialization and CUDA cooperation
     int cudnnCreate(Handle* handle)
     int cudnnDestroy(Handle handle)
-    int cudnnSetStream(Handle handle, driver.Stream stream)
-    int cudnnGetStream(Handle handle, driver.Stream* stream)
+    int cudnnSetStream(Handle handle, runtime.Stream stream)
+    int cudnnGetStream(Handle handle, runtime.Stream* stream)
 
     # Tensor manipulation
     int cudnnCreateTensorDescriptor(TensorDescriptor* descriptor)
@@ -841,12 +840,12 @@ cpdef setStream(intptr_t handle, size_t stream):
             'calling cuDNN API during stream capture is currently '
             'unsupported')
 
-    status = cudnnSetStream(<Handle>handle, <driver.Stream>stream)
+    status = cudnnSetStream(<Handle>handle, <runtime.Stream>stream)
     check_status(status)
 
 
 cpdef size_t getStream(intptr_t handle) except? 0:
-    cdef driver.Stream stream
+    cdef runtime.Stream stream
     status = cudnnGetStream(<Handle>handle, &stream)
     check_status(status)
     return <size_t>stream
