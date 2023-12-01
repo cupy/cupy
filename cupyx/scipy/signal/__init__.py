@@ -121,6 +121,7 @@ from cupyx.scipy.signal._waveforms import gausspulse  # NOQA
 from cupyx.scipy.signal._waveforms import sawtooth  # NOQA
 from cupyx.scipy.signal._waveforms import square  # NOQA
 from cupyx.scipy.signal._waveforms import unit_impulse  # NOQA
+from cupyx.scipy.signal._max_len_seq import max_len_seq  # NOQA
 
 from cupyx.scipy.signal._czt import *   # NOQA
 

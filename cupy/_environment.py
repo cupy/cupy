@@ -3,12 +3,13 @@ This file must not depend on any other CuPy modules.
 """
 
 import ctypes
+import importlib.metadata
 import json
 import os
 import os.path
 import shutil
 import sys
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 import warnings
 
 
@@ -340,6 +341,11 @@ def _preload_library(lib):
                 cupy_cuda_lib_path, config['cuda'], lib, version, x,
                 filename)
             for x in ['lib', 'lib64', 'bin']]
+        if lib == 'cutensor':
+            libpath_cands = (
+                _get_cutensor_from_wheel(version, config['cuda']) +
+                libpath_cands)
+
         for libpath in libpath_cands:
             if not os.path.exists(libpath):
                 _log('Rejected candidate (not found): {}'.format(libpath))
@@ -373,38 +379,60 @@ def _preload_library(lib):
                 _log(f'Library {lib} could not be preloaded: {e}')
 
 
+def _get_cutensor_from_wheel(version: str, cuda: str) -> List[str]:
+    """
+    Returns the list of shared library path candidates for cuTENSOR
+    installed via Pip (cutensor-cuXX package).
+    """
+    cuda_major_ver, _ = cuda.split('.')
+    import pkg_resources  # defer import # NOQA
+    try:
+        # load any compatible version (ex: version=1.6.2, load >=1.6.2,<1.7)
+        dist = pkg_resources.get_distribution(
+            f'cutensor-cu{cuda_major_ver}~={version}')
+    except pkg_resources.ResolutionError as e:
+        _log(f'cuTENSOR wheel could not be loaded: {type(e).__name__}: {e}')
+        return []
+    if sys.platform == 'linux':
+        shared_lib = os.path.join(
+            dist.module_path, 'cutensor', 'lib',
+            f'libcutensor.so.{version.split(".")[0]}'
+        )
+    else:
+        shared_lib = os.path.join(
+            dist.module_path, 'cutensor', 'bin', 'cutensor.dll'
+        )
+    return [shared_lib]
+
+
 def _preload_warning(lib, exc):
     config = get_preload_config()
-    if config is not None and lib in config:
-        msg = '''
+    if config is None or lib not in config:
+        return
+
+    if config['packaging'] == 'pip':
+        cuda = config['cuda']
+        if lib == 'cutensor':
+            cuda_major = cuda.split('.')[0]
+            version = config['cutensor']['version']
+            cmd = f'pip install "cutensor-cu{cuda_major}~={version}"'
+        else:
+            cmd = f'python -m cupyx.tools.install_library --library {lib} --cuda {cuda}'  # NOQA
+    elif config['packaging'] == 'conda':
+        cmd = f'conda install -c conda-forge {lib}'
+    else:
+        raise AssertionError
+    warnings.warn(f'''
 {lib} library could not be loaded.
 
-Reason: {exc_type} ({exc})
+Reason: {type(exc).__name__} ({str(exc)})
 
 You can install the library by:
-'''
-        if config['packaging'] == 'pip':
-            msg += '''
-  $ python -m cupyx.tools.install_library --library {lib} --cuda {cuda}
-'''
-        elif config['packaging'] == 'conda':
-            msg += '''
-  $ conda install -c conda-forge {lib}
-'''
-        else:
-            raise AssertionError
-        msg = msg.format(
-            lib=lib, exc_type=type(exc).__name__, exc=str(exc),
-            cuda=config['cuda'])
-        warnings.warn(msg)
+  $ {cmd}
+''')
 
 
 def _detect_duplicate_installation():
-    # importlib.metadata only available in Python 3.8+.
-    if sys.version_info < (3, 8):
-        return
-    import importlib.metadata
-
     # List of all CuPy packages, including out-dated ones.
     known = [
         'cupy',
