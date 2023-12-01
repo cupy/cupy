@@ -295,7 +295,6 @@ cpdef getDeviceProperties(int device):
         properties['clockInstructionRate'] = props.clockInstructionRate
         properties['maxSharedMemoryPerMultiProcessor'] = (
             props.maxSharedMemoryPerMultiProcessor)
-        properties['gcnArch'] = props.gcnArch
         properties['hdpMemFlushCntl'] = <intptr_t>(props.hdpMemFlushCntl)
         properties['hdpRegFlushCntl'] = <intptr_t>(props.hdpRegFlushCntl)
         properties['memPitch'] = props.memPitch
@@ -328,6 +327,8 @@ cpdef getDeviceProperties(int device):
         arch['has3dGrid'] = props.arch.has3dGrid
         arch['hasDynamicParallelism'] = props.arch.hasDynamicParallelism
         properties['arch'] = arch
+    IF 0 < CUPY_HIP_VERSION < 310:  # gcnArchName used after ROCm 3.1+
+        properties['gcnArch'] = props.gcnArch
     IF CUPY_HIP_VERSION >= 310:
         properties['gcnArchName'] = props.gcnArchName
         properties['asicRevision'] = props.asicRevision
@@ -697,13 +698,13 @@ cpdef PointerAttributes pointerGetAttributes(intptr_t ptr):
     cdef _PointerAttributes attrs
     status = cudaPointerGetAttributes(&attrs, <void*>ptr)
     check_status(status)
-    IF CUPY_CUDA_VERSION > 0:
+    IF CUPY_CUDA_VERSION > 0 or CUPY_HIP_VERSION > 60000000:
         return PointerAttributes(
             attrs.device,
             <intptr_t>attrs.devicePointer,
             <intptr_t>attrs.hostPointer,
             attrs.type)
-    ELIF CUPY_HIP_VERSION > 0:
+    ELIF 0 < CUPY_HIP_VERSION < 60000000:
         return PointerAttributes(
             attrs.device,
             <intptr_t>attrs.devicePointer,
