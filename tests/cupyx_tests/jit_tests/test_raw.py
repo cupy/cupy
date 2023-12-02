@@ -317,13 +317,10 @@ class TestRaw:
         x = cupy.zeros(32, dtype=int)
         y = cupy.zeros(32, dtype=int)
         z = cupy.zeros(32, dtype=int)
-        expected_x = cupy.zeros(32, dtype=int)+40
-        expected_y = cupy.zeros(32, dtype=int)+39
-        expected_z = cupy.zeros(32, dtype=int)+38
         f[1, 32](x, y, z)
-        assert bool((x == expected_x).all())
-        assert bool((y == expected_y).all())
-        assert bool((z == expected_z).all())
+        assert bool((x == 40).all())
+        assert bool((y == 39).all())
+        assert bool((z == 38).all())
         
     def test_loop_break():
         @jit.rawkernel()
