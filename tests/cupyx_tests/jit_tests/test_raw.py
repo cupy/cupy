@@ -353,14 +353,10 @@ class TestRaw:
         x = cupy.zeros(32, dtype=int)
         y = cupy.zeros(32, dtype=int)
         z = cupy.zeros(32, dtype=int)
-        expected_x = cupy.zeros(32, dtype=int)+10
-        expected_y = cupy.zeros(32, dtype=int)+15
-        expected_z = cupy.zeros(32, dtype=int)+28
         f[1, 32](x, y, z)
-        print(z)
-        assert bool((x == expected_x).all())
-        assert bool((y == expected_y).all())
-        assert bool((z == expected_z).all())
+        assert bool((x == 10).all())
+        assert bool((y == 15).all())
+        assert bool((z == 28).all())
 
     def test_shared_memory_static(self):
         @jit.rawkernel()
