@@ -288,7 +288,7 @@ class TestRaw:
             y[:mask] += 1
             assert bool((x == y).all())
             
-    def test_loop_continue():
+    def test_loop_continue(self):
         @jit.rawkernel()
         def f(x, y, z):
             tid = jit.grid(1)
@@ -322,7 +322,7 @@ class TestRaw:
         assert bool((y == 39).all())
         assert bool((z == 38).all())
         
-    def test_loop_break():
+    def test_loop_break(self):
         @jit.rawkernel()
         def f(x, y, z):
             tid = jit.grid(1)
