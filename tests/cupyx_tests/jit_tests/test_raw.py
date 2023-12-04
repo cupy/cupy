@@ -382,13 +382,10 @@ class TestRaw:
         x = cupy.zeros(32, dtype=int)
         y = cupy.zeros(32, dtype=int)
         z = cupy.zeros(32, dtype=int)
-        expected_x = cupy.zeros(32, dtype=int)+6
-        expected_y = cupy.zeros(32, dtype=int)+8
-        expected_z = cupy.zeros(32, dtype=int)+16
         f[1, 32](x, y, z)
-        assert bool((x == expected_x).all())
-        assert bool((y == expected_y).all())
-        assert bool((z == expected_z).all())
+        assert bool((x == 6).all())
+        assert bool((y == 8).all())
+        assert bool((z == 16).all())
         
     def test_local_memory_assignment(self):
         @jit.rawkernel()
@@ -419,13 +416,10 @@ class TestRaw:
         x = cupy.zeros(32, dtype=int)
         y = cupy.zeros(32, dtype=int)
         z = cupy.zeros(32, dtype=int)
-        expected_x = cupy.zeros(32, dtype=int)+4
-        expected_y = cupy.zeros(32, dtype=int)+5
-        expected_z = cupy.zeros(32, dtype=int)+6
         f[1, 32](x, y, z)
-        assert bool((x == expected_x).all())
-        assert bool((y == expected_y).all())
-        assert bool((z == expected_z).all())
+        assert bool((x == 4).all())
+        assert bool((y == 5).all())
+        assert bool((z == 6).all())
         
     def test_local_memory_in_device_functions(self):
         @jit.rawkernel(device=True)
@@ -458,11 +452,9 @@ class TestRaw:
         
         x = cupy.zeros(32, dtype=int)
         y = cupy.zeros(32, dtype=int)
-        expected_x = cupy.zeros(32, dtype=int)+2
-        expected_y = cupy.zeros(32, dtype=int)+3
         f[1, 32](x, y)
-        assert bool((x == expected_x).all())
-        assert bool((y == expected_y).all())
+        assert bool((x == 2).all())
+        assert bool((y == 3).all())
 
     @staticmethod
     def _check(a, e):
