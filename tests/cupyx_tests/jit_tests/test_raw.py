@@ -326,7 +326,7 @@ class TestRaw:
         expected = x.reshape(32, 32)[:, ::-1].ravel()
         assert bool((y == expected).all())
 
-    def test_local_vs_shared_memory():
+    def test_local_vs_shared_memory(self):
         @jit.rawkernel()
         def f(x, y):
             tid = jit.grid(1)
@@ -390,7 +390,7 @@ class TestRaw:
         assert bool((y == expected_y).all())
         assert bool((z == expected_z).all())
         
-    def test_local_memory_assignment():
+    def test_local_memory_assignment(self):
         @jit.rawkernel()
         def f(x, y, z):
             tid = jit.grid(1)
@@ -427,7 +427,7 @@ class TestRaw:
         assert bool((y == expected_y).all())
         assert bool((z == expected_z).all())
         
-    def test_local_memory_in_device_functions():
+    def test_local_memory_in_device_functions(self):
         @jit.rawkernel(device=True)
         def device_func(arr):
             lmem = jit.local_memory(numpy.int32, (1, )) #test out 1D tuple of length 1, for good measure
