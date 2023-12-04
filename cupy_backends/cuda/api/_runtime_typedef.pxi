@@ -10,6 +10,7 @@ cdef extern from *:
     ctypedef int DeviceAttr 'cudaDeviceAttr'
     ctypedef int MemoryAdvise 'cudaMemoryAdvise'
 
+    ctypedef void* Stream 'cudaStream_t'
     ctypedef void _StreamCallbackDef(
         driver.Stream stream, Error status, void* userData)
     ctypedef _StreamCallbackDef* StreamCallback 'cudaStreamCallback_t'

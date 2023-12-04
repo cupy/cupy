@@ -315,6 +315,7 @@ def make_extensions(ctx: Context, compiler, use_cython):
         settings['define_macros'].append(('__HIP_PLATFORM_AMD__', '1'))
         # deprecated since ROCm 4.2.0
         settings['define_macros'].append(('__HIP_PLATFORM_HCC__', '1'))
+    settings['define_macros'].append(('CUPY_CACHE_KEY', ctx.cupy_cache_key))
 
     available_modules = []
     if no_cuda:

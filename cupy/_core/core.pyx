@@ -2180,22 +2180,7 @@ cdef inline str _translate_cucomplex_to_thrust(str source):
     return ''.join(lines)
 
 
-cpdef function.Module compile_with_cache(
-        str source, tuple options=(), arch=None, cachd_dir=None,
-        prepend_cupy_headers=True, backend='nvrtc', translate_cucomplex=False,
-        enable_cooperative_groups=False, name_expressions=None,
-        log_stream=None, bint jitify=False):
-    if translate_cucomplex:
-        source = _translate_cucomplex_to_thrust(source)
-        cupy_header_list.append('cupy/cuComplex_bridge.h')
-        prepend_cupy_headers = True
-
-    if prepend_cupy_headers:
-        source = _cupy_header + source
-    if jitify:
-        source = '#include <cupy/cuda_workaround.h>\n' + source
-    extra_source = _get_header_source()
-
+cpdef tuple assemble_cupy_compiler_options(tuple options):
     for op in options:
         if '-std=c++' in op:
             if op.endswith('03'):
@@ -2244,6 +2229,27 @@ cpdef function.Module compile_with_cache(
 
     if _cuda_path is not None:
         options += ('-I' + os.path.join(_cuda_path, 'include'),)
+
+    return options
+
+
+cpdef function.Module compile_with_cache(
+        str source, tuple options=(), arch=None, cachd_dir=None,
+        prepend_cupy_headers=True, backend='nvrtc', translate_cucomplex=False,
+        enable_cooperative_groups=False, name_expressions=None,
+        log_stream=None, bint jitify=False):
+    if translate_cucomplex:
+        source = _translate_cucomplex_to_thrust(source)
+        cupy_header_list.append('cupy/cuComplex_bridge.h')
+        prepend_cupy_headers = True
+
+    if prepend_cupy_headers:
+        source = _cupy_header + source
+    if jitify:
+        source = '#include <cupy/cuda_workaround.h>\n' + source
+    extra_source = _get_header_source()
+
+    options = assemble_cupy_compiler_options(options)
 
     return cuda.compiler._compile_module_with_cache(
         source, options, arch, cachd_dir, extra_source, backend,

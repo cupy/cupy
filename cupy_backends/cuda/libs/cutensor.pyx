@@ -6,7 +6,7 @@ cimport cython  # NOQA
 from libc.stdint cimport int32_t, uint32_t, int64_t, uint64_t, intptr_t
 
 from cupy_backends.cuda cimport stream as stream_module
-from cupy_backends.cuda.api cimport driver
+from cupy_backends.cuda.api cimport runtime
 
 cdef extern from '../../cupy_cutensor.h' nogil:
     ctypedef void* Handle_t 'cutensorHandle_t'
@@ -91,7 +91,7 @@ cdef extern from '../../cupy_cutensor.h' nogil:
         Handle_t handle, Plan_t plan,
         void* alpha, void* A,
         void* beta, void* B,
-        void* gamma, void* C, void* D, driver.Stream stream)
+        void* gamma, void* C, void* D, runtime.Stream stream)
 
     # cutensorElementwiseBinary
     Status_t cutensorCreateElementwiseBinary(
@@ -104,7 +104,7 @@ cdef extern from '../../cupy_cutensor.h' nogil:
     Status_t cutensorElementwiseBinaryExecute(
         Handle_t handle, Plan_t plan,
         void* alpha, void* A,
-        void* gamma, void* C, void* D, driver.Stream stream)
+        void* gamma, void* C, void* D, runtime.Stream stream)
 
     # cutensorPermutation
     Status_t cutensorCreatePermutation(
@@ -116,7 +116,7 @@ cdef extern from '../../cupy_cutensor.h' nogil:
     Status_t cutensorPermute(
         Handle_t handle, Plan_t plan,
         void* alpha, void* A,
-        void* B, driver.Stream stream)
+        void* B, runtime.Stream stream)
 
     # cutensorContraction
     Status_t cutensorCreateContraction(
@@ -131,7 +131,7 @@ cdef extern from '../../cupy_cutensor.h' nogil:
         Handle_t handle, Plan_t plan,
         void* alpha, void* A, void* B,
         void* beta, void* C, void* D,
-        void* workspace, uint64_t workspaceSize, driver.Stream stream)
+        void* workspace, uint64_t workspaceSize, runtime.Stream stream)
 
     # cutensorReduction
     Status_t cutensorCreateReduction(
@@ -145,7 +145,7 @@ cdef extern from '../../cupy_cutensor.h' nogil:
         Handle_t handle, Plan_t plan,
         void* alpha, void* A,
         void* beta, void* C, void* D,
-        void* workspace, uint64_t workspaceSize, driver.Stream stream)
+        void* workspace, uint64_t workspaceSize, runtime.Stream stream)
 
     #
     Status_t cutensorDestroyOperationDescriptor(OperationDescriptor_t desc)
@@ -341,7 +341,7 @@ cpdef elementwiseTrinaryExecute(
             <void*>alpha, <void*>A,
             <void*>beta, <void*>B,
             <void*>gamma, <void*>C, <void*>D,
-            <driver.Stream>stream)
+            <runtime.Stream>stream)
     check_status(status)
 
 ###############################################################################
@@ -375,7 +375,7 @@ cpdef elementwiseBinaryExecute(
             <Handle_t>handle, <Plan_t>plan,
             <void*>alpha, <void*>A,
             <void*>gamma, <void*>C, <void*>D,
-            <driver.Stream>stream)
+            <runtime.Stream>stream)
     check_status(status)
 
 ###############################################################################
@@ -405,7 +405,7 @@ cpdef permute(
         status =cutensorPermute(
             <Handle_t>handle, <Plan_t>plan,
             <void*>alpha, <void*>A,
-            <void*>B, <driver.Stream>stream)
+            <void*>B, <runtime.Stream>stream)
     check_status(status)
 
 ###############################################################################
@@ -442,7 +442,7 @@ cpdef contract(
             <Handle_t>handle, <Plan_t>plan,
             <void*>alpha, <void*>A, <void*>B,
             <void*>beta, <void*>C, <void*>D,
-            <void*>workspace, workspaceSize, <driver.Stream>stream)
+            <void*>workspace, workspaceSize, <runtime.Stream>stream)
     check_status(status)
 
 ###############################################################################
@@ -477,7 +477,7 @@ cpdef reduce(
             <Handle_t>handle, <Plan_t>plan,
             <void*>alpha, <void*>A,
             <void*>beta, <void*>C, <void*>D,
-            <void*>workspace, workspaceSize, <driver.Stream>stream)
+            <void*>workspace, workspaceSize, <runtime.Stream>stream)
     check_status(status)
 
 #
