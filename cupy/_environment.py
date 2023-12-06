@@ -451,7 +451,7 @@ You can install the library by:
 
 def _detect_duplicate_installation():
     # List of all CuPy packages, including out-dated ones.
-    known = [
+    known = {
         'cupy',
         'cupy-cuda80',
         'cupy-cuda90',
@@ -476,10 +476,9 @@ def _detect_duplicate_installation():
         'cupy-rocm-4-2',
         'cupy-rocm-4-3',
         'cupy-rocm-5-0',
-    ]
-    cupy_installed = [
-        name for name in known
-        if list(importlib.metadata.distributions(name=name))]
+    }
+    installed_names = {d.name for d in importlib.metadata.distributions()}
+    cupy_installed = known & installed_names
     if 1 < len(cupy_installed):
         cupy_packages_list = ', '.join(sorted(cupy_installed))
         warnings.warn(f'''
