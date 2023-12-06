@@ -477,7 +477,7 @@ def _detect_duplicate_installation():
         'cupy-rocm-4-3',
         'cupy-rocm-5-0',
     }
-    installed_names = {d.name for d in importlib.metadata.distributions()}
+    installed_names = {d.metadata["Name"] for d in importlib.metadata.distributions()}
     cupy_installed = known & installed_names
     if 1 < len(cupy_installed):
         cupy_packages_list = ', '.join(sorted(cupy_installed))
