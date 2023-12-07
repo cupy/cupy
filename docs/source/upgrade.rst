@@ -34,7 +34,7 @@ The following versions are no longer supported in CuPy v13.
 * cuDNN 8.7 or earlier
 * cuTENSOR 1.x
     * Support for cuTENSOR 2.0 is added starting with CuPy v13, and support for cuTENSOR 1.x will be dropped.
-      This is because there are significant API changes from cuTENSOR 1.x to 2.0, and from the maintenance perspective, it is not practical to support both the cuTENSOR 1.x APIs and 2.0 APIs simultaneously.
+      This is because there are significant API changes from cuTENSOR 1.x to 2.0, and from the maintenance perspective, it is not practical to support both cuTENSOR 1.x and 2.0 APIs simultaneously.
 * Python 3.8 or earlier
 * NumPy 1.21 or earlier
 * Ubuntu 18.04
