@@ -14,7 +14,7 @@ RUN apt-get update -y && \
     update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.6 1
 
 RUN python3 -m pip install --no-cache-dir -U install setuptools pip
-RUN python3 -m pip install --no-cache-dir "cupy-rocm-5-0[all]==12.2.0"
+RUN python3 -m pip install --no-cache-dir "cupy-rocm-5-0[all]==12.3.0"
 
 USER rocm-user
 
