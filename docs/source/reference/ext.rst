@@ -16,6 +16,15 @@ CuPy-specific functions are placed under ``cupyx`` namespace.
    cupyx.zeros_pinned
    cupyx.zeros_like_pinned
 
+non-Scipy compat Signal API
+---------------------------
+
+bla bla bla
+.. autosummary::
+   :toctree: generated/
+
+   cupyx.signal.pulse_compression
+
 Profiling utilities
 -------------------
 
