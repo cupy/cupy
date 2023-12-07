@@ -39,8 +39,8 @@ The following versions are no longer supported in CuPy v13.
 * NumPy 1.21 or earlier
 * Ubuntu 18.04
 
-Baseline API Update
--------------------
+NumPy/SciPy Baseline API Update
+-------------------------------
 
 Baseline API has been bumped from NumPy 1.24 and SciPy 1.9 to NumPy 1.26 and SciPy 1.11.
 CuPy v13 will follow the upstream products' specifications of these baseline versions.
