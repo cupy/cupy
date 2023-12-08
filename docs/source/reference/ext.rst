@@ -16,10 +16,12 @@ CuPy-specific functions are placed under ``cupyx`` namespace.
    cupyx.zeros_pinned
    cupyx.zeros_like_pinned
 
-non-Scipy compat Signal API
+non-SciPy compat Signal API
 ---------------------------
 
-bla bla bla
+The functions under `cupyx.signal` are non-SciPy compat signal API ported from cuSignal 
+through the courtesy of Nvidia cuSignal team.
+
 .. autosummary::
    :toctree: generated/
 
