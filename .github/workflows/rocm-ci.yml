@@ -15,7 +15,7 @@ jobs:
       run: |
         echo 'Hello!'
         ps -ef
-        newgrp docker
+        systemctl show -p User actions.runner.octo-org-octo-repo.runner01.service
         docker --version
         hostname
         id
