@@ -15,6 +15,7 @@ jobs:
       run: |
         echo 'Hello!'
         ps -ef
+        newgrp docker
         docker --version
         hostname
         id
