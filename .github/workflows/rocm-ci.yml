@@ -14,7 +14,7 @@ jobs:
     - name: foo
       run: |
         echo 'Hello!'
-        who
+        ps -ef
         docker --version
         hostname
         id
