@@ -14,7 +14,6 @@ jobs:
     - name: foo
       run: |
         echo 'Hello!'
-        pwd
         docker --version
         hostname
         id
