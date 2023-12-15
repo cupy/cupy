@@ -365,17 +365,17 @@ class TestRaw:
                 for j in range(2):
                     for k in range(2):
                         lmem2[i][j][k] = 1
-                        for l in range(2):
-                            lmem3[i][j][k][l] = 1
-            jit.syncthreads()            
+                        for m in range(2):
+                            lmem3[i][j][k][m] = 1
+            jit.syncthreads()
             for i in range(2):
                 for j in range(3):
                     x[tid] += lmem[i][j]
                 for j in range(2):
                     for k in range(2):
                         y[tid] += lmem2[i][j][k]
-                        for l in range(2):
-                            z[tid] += lmem3[i][j][k][l]
+                        for m in range(2):
+                            z[tid] += lmem3[i][j][k][m]
 
         x = cupy.zeros(32, dtype=int)
         y = cupy.zeros(32, dtype=int)
@@ -435,7 +435,6 @@ class TestRaw:
         @jit.rawkernel()
         def f(x, y):
             tid = jit.grid(1)
-            ntid = jit.gridsize(1)
 
             lmem = jit.local_memory(numpy.int32, (2, ))
             lmem2 = jit.local_memory(numpy.int32, (2, 2, 2))

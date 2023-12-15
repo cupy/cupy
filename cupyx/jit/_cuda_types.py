@@ -243,6 +243,7 @@ class SharedMem(ArrayBase):
             code = f'{code} __shared__ {self.child_type} {x}[{self._size}]'
         return code
 
+
 class LocalMem(ArrayBase):
 
     def __init__(
@@ -264,6 +265,7 @@ class LocalMem(ArrayBase):
             code += f"[{var}]"
         return code
 
+
 class Ptr(PointerBase):
 
     def __init__(self, child_type: TypeBase) -> None:
@@ -272,11 +274,12 @@ class Ptr(PointerBase):
     def __str__(self) -> str:
         return f'{self.child_type}*'
 
+
 class ContiguousArray(PointerBase):
-    #used to define ndarray of local memory, in <dtype>[3][4] format
+    # used to define ndarray of local memory, in <dtype>[3][4] format
     def __init__(self, child_type: TypeBase, size: Tuple[int, ...]) -> None:
         self.base_type = child_type
-        if(type(self.base_type) is ContiguousArray):
+        if (type(self.base_type) is ContiguousArray):
             self.base_type = child_type.base_type
 
         super().__init__(child_type)
@@ -289,10 +292,11 @@ class ContiguousArray(PointerBase):
         s = f'{self.base_type} (*{x})'
         for i in range(1, len(self._size)):
             s += f'[{self._size[i]}]'
-        if(init is None):
+        if (init is None):
             return s
         else:
             return f'{s} = {init.code}'
+
 
 class Tuple(TypeBase):
 
