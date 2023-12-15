@@ -278,13 +278,13 @@ class ContiguousArray(PointerBase):
         self.base_type = child_type
         if(type(self.base_type) is ContiguousArray):
             self.base_type = child_type.base_type
-        
+
         super().__init__(child_type)
         self._size = size
         self.dtype = child_type
         self._c_contiguous = True
         self._index_32_bits = True
-    
+
     def declvar(self, x: str, init: Optional['Data']) -> str:
         s = f'{self.base_type} (*{x})'
         for i in range(1, len(self._size)):
