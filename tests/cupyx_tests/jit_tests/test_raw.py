@@ -287,7 +287,7 @@ class TestRaw:
             f((1,), (32,), (x, mask))
             y[:mask] += 1
             assert bool((x == y).all())
-            
+
     def test_loop_continue(self):
         @jit.rawkernel()
         def f(x, y, z):
@@ -323,7 +323,7 @@ class TestRaw:
         assert bool((x == 40).all())
         assert bool((y == 39).all())
         assert bool((z == 38).all())
-        
+
     def test_loop_break(self):
         @jit.rawkernel()
         def f(x, y, z):
