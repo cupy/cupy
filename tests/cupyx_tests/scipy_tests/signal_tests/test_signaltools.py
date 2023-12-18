@@ -603,6 +603,24 @@ class TestLFilter:
         out, _ = scp.signal.lfilter(b, a, x, zi=zi)
         return out
 
+    @pytest.mark.parametrize(
+        'zeros', [(2,), (1,), (0,), (1, 2), (0, 1), (0, 2), (0, 1, 2)])
+    @testing.numpy_cupy_array_almost_equal(scipy_name='scp', decimal=5)
+    def test_lfilter_zi_with_zeros(self, zeros, xp, scp):
+        fir_order = 3
+        iir_order = 3
+
+        x = xp.ones(20)
+        b = testing.shaped_random((fir_order,), xp, scale=0.3)
+        a = testing.shaped_random((iir_order,), xp, scale=0.3)
+        a[list(zeros)] = 0
+        a = xp.r_[1, a]
+        a = a.astype(x.dtype)
+
+        zi = scp.signal.lfilter_zi(b, a)
+        out, _ = scp.signal.lfilter(b, a, x, zi=zi)
+        return out
+
 
 @testing.with_requires('scipy')
 class TestDeconvolve:
@@ -778,6 +796,19 @@ class TestSosFilt:
         x = xp.ones(20)
         sos = testing.shaped_random((sections, 6), xp, xp.float64, scale=0.2)
         sos[:, 3] = 1
+
+        zi = scp.signal.sosfilt_zi(sos)
+        out, _ = scp.signal.sosfilt(sos, x, zi=zi)
+        return out
+
+    @pytest.mark.parametrize(
+        'zeros', [(4,), (5,), (4, 5)])
+    @testing.numpy_cupy_array_almost_equal(scipy_name='scp', decimal=5)
+    def test_sosfilt_zi_with_zeros(self, zeros, xp, scp):
+        x = xp.ones(20)
+        sos = testing.shaped_random((1, 6), xp, xp.float64, scale=0.2)
+        sos[:, 3] = 1
+        sos[0, list(zeros)] = 0
 
         zi = scp.signal.sosfilt_zi(sos)
         out, _ = scp.signal.sosfilt(sos, x, zi=zi)
