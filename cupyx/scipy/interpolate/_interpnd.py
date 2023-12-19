@@ -1,6 +1,23 @@
 
 import cupy
+from cupy._core._scalar import get_typename
 from cupyx.scipy.spatial._delaunay import Delaunay
+
+
+TYPES = ['double', 'thrust::complex<double>']
+
+
+def _get_module_func(module, func_name, *template_args):
+    def _get_typename(dtype):
+        typename = get_typename(dtype)
+        if dtype.kind == 'c':
+            typename = 'thrust::' + typename
+        return typename
+    args_dtypes = [_get_typename(arg.dtype) for arg in template_args]
+    template = ', '.join(args_dtypes)
+    kernel_name = f'{func_name}<{template}>' if template_args else func_name
+    kernel = module.get_function(kernel_name)
+    return kernel
 
 
 def _ndim_coords_from_arrays(points, ndim=None):
@@ -113,13 +130,15 @@ class NDInterpolatorBase:
             if need_contiguous:
                 self.values = cupy.ascontiguousarray(self.values,
                                                      dtype=cupy.complex128)
-            self.fill_value = complex(fill_value)
+            self.fill_value = cupy.asarray(
+                complex(fill_value), dtype=cupy.complex128)
         else:
             if need_contiguous:
                 self.values = cupy.ascontiguousarray(
                     self.values, dtype=cupy.float64
                 )
-            self.fill_value = float(fill_value)
+            self.fill_value = cupy.asarray(
+                float(fill_value), dtype=cupy.float64)
 
     def _check_call_shape(self, xi):
         xi = cupy.asanyarray(xi)
@@ -171,6 +190,47 @@ class NDInterpolatorBase:
 # ------------------------------------------------------------------------------
 # Linear interpolation in N-D
 # ------------------------------------------------------------------------------
+
+LINEAR_INTERP_ND_DEF = r"""
+#include <cupy/complex.cuh>
+#include <cupy/math_constants.h>
+
+template<typename T>
+__global__ void evaluate_linear_nd_interp(
+        const int num_x, const int ndim, const int values_sz,
+        const T* fill_value, const int* enc_simplices, const int* simplices,
+        const double* coords, const T* values, T* out) {
+
+    const int idx = blockDim.x * blockIdx.x + threadIdx.x;
+
+    if(idx >= num_x * ndim) {
+        return;
+    }
+
+    const int i = idx / ndim;
+    const int k = idx % ndim;
+
+    const int ch_simplex = enc_simplices[i];
+    if(ch_simplex == -1) {
+        out[idx] = fill_value[0];
+        return;
+    }
+
+    const int simplex_sz = ndim + 1;
+    const int* simplex = simplices + simplex_sz * ch_simplex;
+    out[idx] = 0;
+
+    for(int j = 0; j < ndim + 1; j++) {
+        const int m = simplex[j];
+        out[idx] += coords[simplex_sz * i + j] * values[values_sz * m + k];
+    }
+}
+"""
+
+LINEAR_INTERP_ND_MODULE = cupy.RawModule(
+    code=LINEAR_INTERP_ND_DEF, options=('-std=c++11',),
+    name_expressions=[f'evaluate_linear_nd_interp<{t}>' for t in TYPES])
+
 
 class LinearNDInterpolator(NDInterpolatorBase):
     """
@@ -264,3 +324,24 @@ class LinearNDInterpolator(NDInterpolatorBase):
 
     def _evaluate_complex(self, xi):
         return self._do_evaluate(xi, 1.0j)
+
+    def _do_evaluate(self, xi, dummy):
+        isimplices, c = self._find_simplicies(xi)
+        ndim = xi.shape[1]
+        fill_value = self.fill_value
+
+        out = cupy.empty((xi.shape[0], self.values.shape[1]),
+                         dtype=self.values.dtype)
+        nvalues = out.shape[1]
+
+        _eval_linear_nd_interp = _get_module_func(
+            LINEAR_INTERP_ND_MODULE, 'evaluate_linear_nd_interp', out)
+
+        block_sz = 128
+        n_blocks = (out.size + block_sz - 1) // block_sz
+        _eval_linear_nd_interp(
+            (n_blocks,), (block_sz,),
+            (int(xi.shape[0]), int(ndim), int(nvalues), fill_value,
+             isimplices, self.tri.simplices, c, self.values, out))
+
+        return out
