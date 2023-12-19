@@ -14,7 +14,7 @@ class TestPulseCompression:
 
         shape = num_pulses, num_samples_per_pulse
         x = cupy.random.randn(*shape, dtype=dtype) + \
-            1j * cupy.random.rand(*shape, dtype=type)
+            1j * cupy.random.rand(*shape, dtype=dtype)
         template = cupy.random.randn(template_length, dtype=dtype) + \
             1j * cupy.random.randn(template_length, dtype=dtype)
 
