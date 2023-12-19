@@ -363,7 +363,7 @@ class TestRaw:
         @jit.rawkernel(device=True)
         def func(a, b, c):
             a += 1
-            b = 1  # this throws a flake error, but is valid c++
+            b = 1  # noqa: F841
             c -= 1
 
         @jit.rawkernel()
