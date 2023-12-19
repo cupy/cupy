@@ -1,1 +1,1 @@
-from cupyx.signal.radartools._radartools import pulse_compression  # NOQA
+from cupyx.signal.radartools import pulse_compression  # NOQA
