@@ -81,7 +81,7 @@ cdef class _TypeMap:
     # Typedef mapping between C types.
     # This class is immutable.
 
-    cdef:
+    cdef public:
         tuple _pairs
 
     cdef str get_typedef_code(self)
