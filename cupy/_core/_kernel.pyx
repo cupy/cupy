@@ -1497,7 +1497,7 @@ def _ufunc_doc_signature_formatter(ufunc, name):
     )
 
     # join all the parts together
-    return '{name}({in_args}{out_args}, *{kwargs})'.format(
+    return r'{name}({in_args}{out_args}, \*{kwargs})'.format(
         name=name,
         in_args=in_args,
         out_args=out_args,
