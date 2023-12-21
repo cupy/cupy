@@ -925,3 +925,21 @@ def __getattr__(name):
         return getattr(_numpy, name)
 
     raise AttributeError(f"module 'cupy' has no attribute {name!r}")
+
+
+def _embed_signatures(dirs):
+    for name, value in dirs.items():
+        if isinstance(value, ufunc):
+            from cupy._core._kernel import _ufunc_doc_signature_formatter
+            value.__doc__ = (
+                _ufunc_doc_signature_formatter(value, name) +
+                '\n\n' + value._doc
+            )
+
+
+_embed_signatures(globals())
+_embed_signatures(fft.__dict__)
+_embed_signatures(linalg.__dict__)
+_embed_signatures(random.__dict__)
+_embed_signatures(sparse.__dict__)
+_embed_signatures(testing.__dict__)
