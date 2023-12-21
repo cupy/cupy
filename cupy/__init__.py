@@ -927,7 +927,7 @@ def _embed_signatures(dirs):
             from cupy._core._kernel import _ufunc_doc_signature_formatter
             value.__doc__ = (
                 _ufunc_doc_signature_formatter(value, name) +
-                '\n' + value._doc
+                '\n\n' + value._doc
             )
 
 
