@@ -1470,7 +1470,7 @@ cdef class ufunc:
 
 
 def _ufunc_doc_signature_formatter(ufunc, name):
-    # Based on implementation in NumPy (numpy/core/_internal.py)
+    # Based on implementation in NumPy (numpy/_core/_internal.py)
 
     # input arguments are simple
     if ufunc.nin == 1:
