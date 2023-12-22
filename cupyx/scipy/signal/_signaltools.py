@@ -918,6 +918,7 @@ def lfilter_zi(b, a):
         y, _ = lfilter(b, a, cupy.ones(num_a + 1), zi=zi_t)
         y1 = y[:num_a]
         y2 = y[-num_a:]
+        zero_coef = cupy.where(a_r == 0)[0]
 
         C = compute_correction_factors(a_r, a_r.size + 1, a_r.dtype)
         C = C[:, a_r.size:]
@@ -926,9 +927,15 @@ def lfilter_zi(b, a):
 
         # Take the difference between the non-adjusted output values and
         # compute which initial output state would cause them to be constant.
-        y_zi = cupy.linalg.solve(C1 - C2, y2 - y1)
+        if not len(zero_coef):
+            y_zi = cupy.linalg.solve(C1 - C2, y2 - y1)
+        else:
+            # Any zero coefficient would cause the system to be underdetermined
+            # therefore a least square solution is computed instead.
+            y_zi, _, _, _ = cupy.linalg.lstsq(C1 - C2, y2 - y1, rcond=None)
+
         y_zi = cupy.nan_to_num(y_zi, nan=0, posinf=cupy.inf, neginf=-cupy.inf)
-        zi = cupy.r_[zi, y_zi]
+        zi = cupy.r_[zi, y_zi[::-1]]
     return zi
 
 
@@ -1546,11 +1553,19 @@ def sosfilt_zi(sos):
         C1 = C_s[:, :2].T
         C2 = C_s[:, -2:].T
 
+        zero_iir_coef = cupy.where(sos[s, 3:] == 0)[0]
+
         # Take the difference between the non-adjusted output values and
         # compute which initial output state would cause them to be constant.
-        y_zi = cupy.linalg.solve(C1 - C2, y2 - y1)
+        if not len(zero_iir_coef):
+            y_zi = cupy.linalg.solve(C1 - C2, y2 - y1)
+        else:
+            # Any zero coefficient would cause the system to be underdetermined
+            # therefore a least square solution is computed instead.
+            y_zi, _, _, _ = cupy.linalg.lstsq(C1 - C2, y2 - y1, rcond=None)
+
         y_zi = cupy.nan_to_num(y_zi, nan=0, posinf=cupy.inf, neginf=-cupy.inf)
-        zi_s[0, 2:] = y_zi
+        zi_s[0, 2:] = y_zi[::-1]
         x_s, _ = sosfilt(sos_s, x_s, zi=zi_s)
 
     return zi
