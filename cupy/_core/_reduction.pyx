@@ -67,9 +67,9 @@ extern "C" __global__ void ${name}(${params}) {
   _type_reduce *_sdata = reinterpret_cast<_type_reduce*>(_sdata_raw);
   unsigned int _tid = threadIdx.x;
 
-  int _J_offset = _tid >> __popc(_block_stride - 1);  // _tid / _block_stride
+  IndexT _J_offset = _tid >> __popc(_block_stride - 1); // _tid / _block_stride
   ptrdiff_t _j_offset = (ptrdiff_t)_J_offset * _out_ind.size();
-  int _J_stride = ${block_size} >> __popc(_block_stride - 1);
+  IndexT _J_stride = ${block_size} >> __popc(_block_stride - 1);
   ptrdiff_t _j_stride = (ptrdiff_t)_J_stride * _out_ind.size();
 
   for (ptrdiff_t _i_base = (ptrdiff_t)blockIdx.x * _block_stride;
@@ -78,7 +78,7 @@ extern "C" __global__ void ${name}(${params}) {
     _type_reduce _s = _type_reduce(${identity});
     ptrdiff_t _i =
         _i_base + (_tid & (_block_stride - 1));  // _tid % _block_stride
-    int _J = _J_offset;
+    IndexT _J = _J_offset;
     for (ptrdiff_t _j = _i + _j_offset; _j < _in_ind.size();
          _j += _j_stride, _J += _J_stride) {
       _in_ind.set(_j);
@@ -345,6 +345,12 @@ cdef class _AbstractReductionKernel:
         if self.identity == '' and internal.is_in(a_shape, 0):
             raise ValueError(('zero-size array to reduction operation'
                               ' %s which has no identity') % self.name)
+
+        if internal.prod(a_shape) / internal.prod(out_shape) > 0x7fffffff:
+            index_type = ('IndexT', 'int64')
+        else:
+            index_type = ('IndexT', 'int32')
+        type_map = _kernel._TypeMap(type_map._pairs + (index_type,))
 
         in_args = [x if isinstance(x, _ndarray_base) else
                    _scalar.CScalar.from_numpy_scalar_with_dtype(x, t)
