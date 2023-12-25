@@ -27,7 +27,7 @@ import numpy as np
 
 import cupy as cp
 from cupy._core._scalar import get_typename
-from cupyx.signal.convolution import _convolution_utils
+from cupyx.signal._convolution import _convolution_utils
 
 
 CONVOLVE1D3O_KERNEL = """
