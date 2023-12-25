@@ -597,15 +597,15 @@ Compatibility Matrix
      - NumPy 1.26 & SciPy 1.11
      - `latest <https://docs.cupy.dev/en/latest/install.html>`__
    * - v13
-     - 3.5~9.0
-     - 11.2~12.x
-     - 4.3 & 5.0
-     - 2.0
-     - 2.16~2.17
-     - 8.8
-     - 3.9~3.12
-     - 1.22~1.26
-     - 1.7~1.11
+     - 3.5~
+     - 11.2~
+     - 4.3~
+     - 2.0~
+     - 2.16~
+     - 8.8~
+     - 3.9~
+     - 1.22~
+     - 1.7~
      - NumPy 1.26 & SciPy 1.11
      - `stable <https://docs.cupy.dev/en/stable/install.html>`__
    * - v12
