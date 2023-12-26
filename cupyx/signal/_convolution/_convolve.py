@@ -58,7 +58,7 @@ __global__ void _cupy_convolve1D3O( const T *__restrict__ inp,
                 for ( int i = 0; i < kerW; i++ ) {
                     for ( int j = 0; j < kerH; j++ ) {
                         for ( int k = 0; k < kerD; k++ ) {
-                            temp += inp[tid + kerW - i - 1] * inp[tid + kerH - j - 1] * inp[tid + kerD - k - 1] * kernel[ (kerW * i + j) * kerH + k ];
+                            temp += inp[tid + kerW - i - 1] * inp[tid + kerH - j - 1] * inp[tid + kerD - k - 1] * kernel[ (kerH * i + j) * kerD + k ];
                         }
                     }
                 }
