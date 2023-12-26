@@ -23,8 +23,6 @@ FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 """
 
-import numpy as np
-
 import cupy as cp
 from cupy._core._scalar import get_typename
 from cupyx.signal.convolution import _convolution_utils
@@ -39,14 +37,14 @@ CONVOLVE1D3O_KERNEL = """
 
 template<typename T>
 __global__ void _cupy_convolve1D3O( const T *__restrict__ inp,
-                                const int inpW,
-                                const T *__restrict__ kernel,
-                                const int  kerW,
-                                const int  kerH,
-                                const int  kerD,
-                                const int  mode,
-                                T *__restrict__ out,
-                                const int outW ) {
+                                    const int inpW,
+                                    const T *__restrict__ kernel,
+                                    const int  kerW,
+                                    const int  kerH,
+                                    const int  kerD,
+                                    const int  mode,
+                                    T *__restrict__ out,
+                                    const int outW ) {
 
     const int tx { static_cast<int>( blockIdx.x * blockDim.x + threadIdx.x ) };
     const int stride { static_cast<int>( blockDim.x * gridDim.x ) };
@@ -100,33 +98,21 @@ def _convolve1d3o_gpu(inp, out, ker, mode):
     )
     kernel(threadsperblock, blockspergrid, kernel_args)
 
-    return out
-
 
 def _convolve1d3o(in1, in2, mode):
 
     val = _convolution_utils._valfrommode(mode)
+    assert val == _convolution_utils.VALID
 
     # Promote inputs
     promType = cp.promote_types(in1.dtype, in2.dtype)
-    in1 = in1.astype(promType)
-    in2 = in2.astype(promType)
+    in1 = in1.astype(promType, copy=False)
+    in2 = in2.astype(promType, copy=False)
 
-    # Create empty array to hold number of aout dimensions
-    out_dimens = np.empty(in1.ndim, int)
-    if val == _convolution_utils.VALID:
-        for i in range(in1.ndim):
-            out_dimens[i] = in1.shape[i] - in2.shape[i] + 1
-            if out_dimens[i] < 0:
-                raise Exception(
-                    "no part of the output is valid, use option 1 (same) or 2 \
-                     (full) for third argument"
-                )
+    out_dim = in1.shape[0] - max(in2.shape) + 1
+    out = cp.empty(out_dim, dtype=in1.dtype)
 
-    # Create empty array out on GPU
-    out = cp.empty(out_dimens.tolist(), in1.dtype)
-
-    out = _convolve1d3o_gpu(in1, out, in2, val)
+    _convolve1d3o_gpu(in1, out, in2, val)
 
     return out
 
@@ -134,7 +120,7 @@ def _convolve1d3o(in1, in2, mode):
 def convolve1d3o(in1, in2, mode='valid', method='direct'):
     """
     Convolve a 1-dimensional array with a 3rd order filter.
-    This results in a second order convolution.
+    This results in a third order convolution.
 
     Convolve `in1` and `in2`, with the output size determined by the
     `mode` argument.
@@ -142,9 +128,9 @@ def convolve1d3o(in1, in2, mode='valid', method='direct'):
     Parameters
     ----------
     in1 : array_like
-        First input.
+        First input. Should have one dimension.
     in2 : array_like
-        Second input. Should have the same number of dimensions as `in1`.
+        Second input. Should have three dimensions.
     mode : str {'full', 'valid', 'same'}, optional
         A string indicating the size of the output:
 
@@ -184,17 +170,15 @@ def convolve1d3o(in1, in2, mode='valid', method='direct'):
     convolve1d3o
     """
 
-    signal = in1
-    kernel = in2
-    if mode == "valid" and signal.shape[0] < kernel.shape[0]:
-        # Convolution is commutative
-        # order doesn't have any effect on output
-        signal, kernel = kernel, signal
+    if in1.ndim != 1:
+        raise ValueError('in1 should have one dimension')
+    if in2.ndim != 3:
+        raise ValueError('in2 should have three dimension')
 
     if mode in ["same", "full"]:
         raise NotImplementedError("Mode == {} not implemented".format(mode))
 
     if method == "direct":
-        return _convolve1d3o(signal, kernel, mode)
+        return _convolve1d3o(in1, in2, mode)
     else:
         raise NotImplementedError("Only Direct method implemented")
