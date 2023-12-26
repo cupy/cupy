@@ -106,8 +106,8 @@ def _convolve1d3o(in1, in2, mode):
 
     # Promote inputs
     promType = cp.promote_types(in1.dtype, in2.dtype)
-    in1 = in1.astype(promType, copy=False)
-    in2 = in2.astype(promType, copy=False)
+    in1 = in1.astype(promType)
+    in2 = in2.astype(promType)
 
     out_dim = in1.shape[0] - max(in2.shape) + 1
     out = cp.empty(out_dim, dtype=in1.dtype)
