@@ -369,11 +369,11 @@ class TestMedFilt:
             kernel_size = kernel_size[:volume.ndim]
         return scp.signal.medfilt(volume, kernel_size)
 
-    @testing.with_requires('scipy>=1.11.0')
+    @testing.with_requires('scipy>1.11.0')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(
         atol=1e-8, rtol=1e-8, scipy_name='scp',
-        accept_error=(ValueError, TypeError))  # for even kernels
+        accept_error=ValueError)  # for even kernels
     def test_medfilt(self, xp, scp, dtype):
         if sys.platform == 'win32':
             pytest.xfail('medfilt broken for Scipy 1.7.0 in windows')
@@ -404,7 +404,7 @@ class TestMedFilt2d:
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(
         atol=1e-8, rtol=1e-8, scipy_name='scp',
-        accept_error=(ValueError, TypeError))  # for even kernels
+        accept_error=ValueError)  # for even kernels
     def test_medfilt2d(self, xp, scp, dtype):
         if sys.platform == 'win32':
             pytest.xfail('medfilt2d broken for Scipy 1.7.0 in windows')
