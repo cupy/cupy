@@ -142,3 +142,47 @@ def inverse_complex_cepstrum(ceps, ndelay):
     iceps = cupy.fft.ifft(spectrum).real
 
     return iceps
+
+
+_minimum_phase_kernel = cupy.ElementwiseKernel(
+    "T ceps",
+    "T window",
+    """
+    if ( !i ) {
+        window = ceps;
+    } else if ( i < bend ) {
+        window = ceps * 2.0;
+    } else if ( i == bend ) {
+        window = ceps * ( 1 - odd );
+    } else {
+        window = 0;
+    }
+    """,
+    "_minimum_phase_kernel",
+    options=("-std=c++11",),
+    loop_prep="const bool odd { _ind.size() & 1 }; \
+               const int bend { static_cast<int>( 0.5 * \
+                    ( _ind.size() + odd ) ) };",
+)
+
+
+def minimum_phase(x, n=None):
+    r"""Compute the minimum phase reconstruction of a real sequence.
+    x : ndarray
+        Real sequence to compute the minimum phase reconstruction of.
+    n : {None, int}, optional
+        Length of the Fourier transform.
+    Compute the minimum phase reconstruction of a real sequence using the
+    real cepstrum.
+    Returns
+    -------
+    m : ndarray
+        The minimum phase reconstruction of the real sequence `x`.
+    """
+    if n is None:
+        n = len(x)
+    ceps = real_cepstrum(x, n=n)
+    window = _minimum_phase_kernel(ceps)
+    m = cupy.fft.ifft(cupy.exp(cupy.fft.fft(window))).real
+
+    return m

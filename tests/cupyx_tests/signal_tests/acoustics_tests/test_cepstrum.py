@@ -121,6 +121,37 @@ def inverse_complex_cepstrum(ceps, ndelay):
     return x
 
 
+def minimum_phase(x, n=None):
+    r"""Compute the minimum phase reconstruction of a real sequence.
+    x : ndarray
+        Real sequence to compute the minimum phase reconstruction of.
+    n : {None, int}, optional
+        Length of the Fourier transform.
+    Compute the minimum phase reconstruction of a real sequence using the
+    real cepstrum.
+    Returns
+    -------
+    m : ndarray
+        The minimum phase reconstruction of the real sequence `x`.
+    """
+    if n is None:
+        n = len(x)
+    ceps = real_cepstrum(x, n=n)
+    odd = n % 2
+    window = numpy.concatenate(
+        (
+            [1.0],
+            2.0 * numpy.ones((n + odd) // 2 - 1),
+            numpy.ones(1 - odd),
+            numpy.zeros((n + odd) // 2 - 1),
+        )
+    )
+
+    m = numpy.fft.ifft(numpy.exp(numpy.fft.fft(window * ceps))).real
+
+    return m
+
+
 @pytest.mark.parametrize("num_samps", [2**8, 2**14])
 @pytest.mark.parametrize("n", [123, 256])
 def test_complex_cepstrum(num_samps, n):
@@ -149,4 +180,14 @@ def test_inverse_complex_cepstrum(num_samps, n):
     gpu_sig = cupy.array(cpu_sig)
     gpu_out = cupyx.signal.inverse_complex_cepstrum(gpu_sig, n)
     cpu_out = inverse_complex_cepstrum(cpu_sig, n)
+    testing.assert_allclose(cpu_out, gpu_out)
+
+
+@pytest.mark.parametrize("num_samps", [2**8, 2**14])
+@pytest.mark.parametrize("n", [123, 256])
+def test_minimum_phase(num_samps, n):
+    cpu_sig = numpy.random.rand(num_samps)
+    gpu_sig = cupy.array(cpu_sig)
+    gpu_out = cupyx.signal.minimum_phase(gpu_sig, n)
+    cpu_out = minimum_phase(cpu_sig, n)
     testing.assert_allclose(cpu_out, gpu_out)
