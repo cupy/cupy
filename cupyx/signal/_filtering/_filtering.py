@@ -1,7 +1,7 @@
 import cupy
 import cupyx.scipy.linalg
 import cupyx.scipy.signal._signaltools
-from cupyx.signal.filtering._array_utils import (
+from cupyx.signal._filtering._array_utils import (
     _axis_slice,
     _axis_reverse,
     _const_ext,
