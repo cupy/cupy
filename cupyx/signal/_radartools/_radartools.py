@@ -23,7 +23,7 @@ FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 """
 
-import cupy as cupy
+import cupy
 from cupyx.scipy.signal import windows
 
 
@@ -72,17 +72,14 @@ def pulse_compression(x, template, normalize=False, window=None, nfft=None):
         else:
             W = windows.get_window(window, Nx, False)
 
-        template = cupy.multiply(template, W)
+        template = template * W
 
     if normalize is True:
-        template = cupy.divide(template, cupy.linalg.norm(template))
+        template = template / cupy.linalg.norm(template)
 
     fft_x = cupy.fft.fft(x, nfft)
-    fft_template = cupy.conj(
-        cupy.tile(cupy.fft.fft(template, nfft), (num_pulses, 1)))
-    compressedIQ = cupy.fft.ifft(cupy.multiply(fft_x, fft_template), nfft)
-
-    return compressedIQ
+    fft_template = cupy.fft.fft(template, nfft).conj()
+    return cupy.fft.ifft(fft_x * fft_template, nfft)
 
 
 def pulse_doppler(x, window=None, nfft=None):
@@ -121,7 +118,7 @@ def pulse_doppler(x, window=None, nfft=None):
         elif isinstance(window, cupy.ndarray):
             if window.shape != (Nx,):
                 raise ValueError("window must have the same length as data")
-            W = window
+            W = window[cupy.newaxis]
         else:
             W = windows.get_window(window, Nx, False)[cupy.newaxis]
 
