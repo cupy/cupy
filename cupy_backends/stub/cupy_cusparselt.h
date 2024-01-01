@@ -19,6 +19,7 @@ typedef enum {} cusparseComputeType;
 typedef enum {} cusparseLtMatmulDescAttribute_t;
 typedef enum {} cusparseLtMatmulAlg_t;
 typedef enum {} cusparseLtMatmulAlgAttribute_t;
+typedef enum {} cusparseLtSplitKMode_t;
 typedef enum {} cusparseLtPruneAlg_t;
 
 typedef void* cudaStream_t;
