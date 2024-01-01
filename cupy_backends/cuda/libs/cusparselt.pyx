@@ -101,12 +101,12 @@ cdef extern from '../../cupy_cusparselt.h' nogil:
         const cusparseLtHandle_t* handle,
         cusparseLtMatmulAlgSelection_t* algSelection,
         cusparseLtMatmulAlgAttribute_t attribute,
-        const void* data, size_t ataSize)
+        const void* data, size_t dataSize)
     cusparseStatus_t cusparseLtMatmulAlgGetAttribute(
         const cusparseLtHandle_t* handle,
         const cusparseLtMatmulAlgSelection_t* algSelection,
         cusparseLtMatmulAlgAttribute_t attribute,
-        void* data, size_t ataSize)
+        void* data, size_t dataSize)
     cusparseStatus_t cusparseLtMatmulGetWorkspace(
         const cusparseLtHandle_t* handle,
         const cusparseLtMatmulPlan_t* plan,
