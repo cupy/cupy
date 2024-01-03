@@ -161,7 +161,7 @@ class NDInterpolatorBase:
         return self._scale_x(xi), interpolation_points_shape
 
     def _find_simplicies(self, xi):
-        return self.tri._find_simplex_coordinates(xi, find_coords=True)
+        return self.tri._find_simplex_coordinates(xi, 0.0, find_coords=True)
 
     def __call__(self, *args):
         """
@@ -202,27 +202,32 @@ __global__ void evaluate_linear_nd_interp(
         const double* coords, const T* values, T* out) {
 
     const int idx = blockDim.x * blockIdx.x + threadIdx.x;
-
-    if(idx >= num_x * ndim) {
+    if(idx >= num_x) {
         return;
     }
 
-    const int i = idx / ndim;
-    const int k = idx % ndim;
-
-    const int ch_simplex = enc_simplices[i];
+    const int ch_simplex = enc_simplices[idx];
     if(ch_simplex == -1) {
-        out[idx] = fill_value[0];
+        for(int k = 0; k < values_sz; k++) {
+            out[idx * values_sz + k] = fill_value[0];
+        }
         return;
     }
 
     const int simplex_sz = ndim + 1;
     const int* simplex = simplices + simplex_sz * ch_simplex;
-    out[idx] = 0;
+
+    for(int k = 0; k < values_sz; k++) {
+        out[idx * values_sz + k] = 0;
+    }
 
     for(int j = 0; j < ndim + 1; j++) {
         const int m = simplex[j];
-        out[idx] += coords[simplex_sz * i + j] * values[values_sz * m + k];
+        double coord = coords[simplex_sz * idx + j];
+
+        for(int k = 0; k < values_sz; k++) {
+            out[idx * values_sz + k] += coord * values[values_sz * m + k];
+        }
     }
 }
 """
@@ -338,7 +343,7 @@ class LinearNDInterpolator(NDInterpolatorBase):
             LINEAR_INTERP_ND_MODULE, 'evaluate_linear_nd_interp', out)
 
         block_sz = 128
-        n_blocks = (out.size + block_sz - 1) // block_sz
+        n_blocks = (xi.shape[0] + block_sz - 1) // block_sz
         _eval_linear_nd_interp(
             (n_blocks,), (block_sz,),
             (int(xi.shape[0]), int(ndim), int(nvalues), fill_value,
