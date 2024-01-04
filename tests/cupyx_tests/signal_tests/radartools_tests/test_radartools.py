@@ -8,6 +8,7 @@ except ImportError:
 import cupy
 from cupy import testing
 from cupyx import signal
+from cupy import testing
 
 
 def _numpy_pulse_preprocess(x, normalize, window):
@@ -148,3 +149,11 @@ def test_ca_cfar2d(xp, dtype, shape, gc, rc):
 def test_ca_cfar2d_failures(shape, gc, rc):
     with pytest.raises(ValueError):
         _, _ = signal.ca_cfar(cupy.zeros(shape), gc, rc)
+
+
+@testing.for_float_dtypes(no_float16=True)
+def test_mvdr(dtype):
+    x = cupy.array([[1, 2, 3], [4, 5, 7]], dtype=dtype)
+    sv = cupy.array([1, 2], dtype=dtype)
+    out = signal.mvdr(x, sv)
+    testing.assert_array_equal(out, [-2, 1.5])
