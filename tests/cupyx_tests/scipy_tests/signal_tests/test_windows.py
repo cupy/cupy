@@ -276,7 +276,6 @@ class TestKaiser:
                 scp.signal.windows.kaiser(6, 2.7, False),)
 
 
-@pytest.mark.skip('This has not been implemented yet in CuPy')
 class TestKaiserBesselDerived:
     @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-13, atol=1e-13)
     def test_basic(self, xp, scp):
@@ -303,6 +302,7 @@ class TestKaiserBesselDerived:
                "symmetric shapes")
         with assert_raises(ValueError, match=msg):
             scp.signal.windows.kaiser_bessel_derived(M + 1, beta=4., sym=False)
+        return 42
 
 
 class TestNuttall:

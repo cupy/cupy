@@ -28,6 +28,7 @@ The suite of window functions for filtering and spectral estimation.
    hamming
    hann
    kaiser
+   kaiser_bessel_derived
    nuttall
    parzen
    taylor

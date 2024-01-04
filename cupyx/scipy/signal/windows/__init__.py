@@ -14,6 +14,7 @@ from cupyx.scipy.signal.windows._windows import barthann  # NOQA
 from cupyx.scipy.signal.windows._windows import general_hamming  # NOQA
 from cupyx.scipy.signal.windows._windows import hamming  # NOQA
 from cupyx.scipy.signal.windows._windows import kaiser  # NOQA
+from cupyx.scipy.signal.windows._windows import kaiser_bessel_derived  # NOQA
 from cupyx.scipy.signal.windows._windows import gaussian  # NOQA
 from cupyx.scipy.signal.windows._windows import general_gaussian  # NOQA
 from cupyx.scipy.signal.windows._windows import chebwin  # NOQA
