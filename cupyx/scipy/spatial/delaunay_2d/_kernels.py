@@ -5,6 +5,10 @@ import cupy
 KERNEL_DIVISION = r"""
 
 #define INLINE_H_D __forceinline__ __device__
+#define DIM     2
+#define DEG     ( DIM + 1 )
+
+using RealType = double;
 
 struct Point2
 {
@@ -242,10 +246,12 @@ __global__ void kerMakeFirstTri
 Tri*	triArr,
 TriOpp*	oppArr,
 char*	triInfoArr,
-Tri     tri,
+Tri*     initTri,
 int     infIdx
 )
 {
+    Tri tri = initTri[0];
+
     const Tri tris[] = {
         { tri._v[0], tri._v[1], tri._v[2] },
         { tri._v[2], tri._v[1], infIdx },
@@ -284,3 +290,9 @@ int     infIdx
 
 DELAUNAY_MODULE = cupy.RawModule(code=KERNEL_DIVISION, options=('-std=c++11',),
                                  name_expressions=['kerMakeFirstTri'])
+
+
+def make_first_tri(tri_arr, opp_arr, tri_info_arr, tri, inf_idx):
+    ker_make_first_tri = DELAUNAY_MODULE.get_function('kerMakeFirstTri')
+    ker_make_first_tri(
+        (1,), (1,), (tri_arr, opp_arr, tri_info_arr, tri, inf_idx))

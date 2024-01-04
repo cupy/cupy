@@ -3,7 +3,7 @@ import cupy
 
 SCHEWCHUK_DEF = r"""
 
-*****************************************************************************/
+/*****************************************************************************/
 /*                                                                           */
 /*  Routines for Arbitrary Precision Floating-point Arithmetic               */
 /*  and Fast Robust Geometric Predicates                                     */

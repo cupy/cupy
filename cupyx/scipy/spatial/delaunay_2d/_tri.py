@@ -4,6 +4,7 @@ from cupy._core._scalar import get_typename
 from cupy_backends.cuda.api import runtime
 
 from cupyx.scipy.spatial.delaunay_2d._schewchuk import init_predicate
+from cupyx.scipy.spatial.delaunay_2d._kernels import make_first_tri
 
 
 def _get_typename(dtype):
@@ -158,7 +159,7 @@ def _delaunay_triangulation_2d(points):
     triangles = cupy.empty((max_triangles, 3), dtype=cupy.int32)
     triangle_opp = cupy.empty_like(triangles)  # NOQA
     triangle_info = cupy.empty(max_triangles, dtype=cupy.int8)  # NOQA
-    counters = cupy.empty(2, dtype=cupy.int32)  # NOQA
+    counters = cupy.zeros(2, dtype=cupy.int32)  # NOQA
 
     flip = cupy.empty((max_triangles, 2, 2), dtype=cupy.int32)  # NOQA
     tri_msg = cupy.empty((max_triangles, 2), dtype=cupy.int32)  # NOQA
@@ -218,3 +219,7 @@ def _delaunay_triangulation_2d(points):
 
     pred_consts = cupy.empty(18, cupy.float64)
     init_predicate(pred_consts)
+
+    first_tri = cupy.r_[v0, v1, v2].astype(cupy.int32)
+    make_first_tri(triangles, triangle_opp, triangle_info,
+                   first_tri, n_points - 1)
