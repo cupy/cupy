@@ -156,4 +156,5 @@ def test_mvdr(dtype):
     x = cupy.array([[1, 2, 3], [4, 5, 7]], dtype=dtype)
     sv = cupy.array([1, 2], dtype=dtype)
     out = signal.mvdr(x, sv)
+    assert out.dtype == dtype
     testing.assert_array_equal(out, [-2, 1.5])

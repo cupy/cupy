@@ -53,16 +53,8 @@ def mvdr(x, sv, calc_cov=True):
         raise ValueError("Steering Vector and input data do not align")
 
     if calc_cov:
-        R = cp.cov(x)
-    else:
-        R = cp.asarray(x)
+        x = cp.cov(x, dtype=x.dtype)
 
-    R_inv = cp.linalg.inv(R)
-    svh = cp.transpose(cp.conj(sv))
-
-    wB = cp.matmul(R_inv, sv)
-    # wA is a 1x1 scalar
-    wA = cp.matmul(svh, wB)
-    w = wB / wA
-
-    return w
+    wB = cp.linalg.inv(x).dot(sv)
+    wA = sv.conj().dot(wB)  # 1x1 scalar
+    return wB / wA
