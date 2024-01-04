@@ -212,9 +212,11 @@ def _setup_win32_dll_directory():
                 cuda_bin_path = os.path.join(cuda_path, 'bin')
         else:
             cuda_bin_path = None
-            warnings.warn(
-                'CUDA path could not be detected.'
-                ' Set CUDA_PATH environment variable if CuPy fails to load.')
+            if not is_conda:
+                warnings.warn(
+                    'CUDA path could not be detected.'
+                    ' Set CUDA_PATH environment variable if CuPy '
+                    'fails to load.')
         _log('CUDA_PATH: {}'.format(cuda_path))
 
         # Path to shared libraries in wheel
