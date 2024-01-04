@@ -3,6 +3,8 @@ import cupy
 from cupy._core._scalar import get_typename
 from cupy_backends.cuda.api import runtime
 
+from cupyx.scipy.spatial.delaunay_2d._schewchuk import init_predicate
+
 
 def _get_typename(dtype):
     typename = get_typename(dtype)
@@ -213,3 +215,6 @@ def _delaunay_triangulation_2d(points):
 
     # Compute the centroid of v0 v1 v2, to be used as the kernel point.
     point_vec[-1] = point_vec[[v0, v1, v2]].mean(0)
+
+    pred_consts = cupy.empty(18, cupy.float64)
+    init_predicate(pred_consts)
