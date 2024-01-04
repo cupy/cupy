@@ -416,7 +416,6 @@ class TestDPSS:
         assert_raises(ValueError, windows.dpss, -1, 1, 3)  # negative M
 
 
-@pytest.mark.skip('This has not been implemented yet in CuPy')
 class TestLanczos:
     @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-13, atol=1e-13)
     def test_basic(self, xp, scp):
@@ -509,7 +508,7 @@ class TestGetWindow:
             scp.signal.get_window(('general_hamming', 0.7), 5),
             scp.signal.get_window(('general_hamming', 0.7), 5, fftbins=False),)
 
-    @pytest.mark.skip('This has not been implemented yet in CuPy')
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-15)
     def test_lanczos(self, xp, scp):
         return (scp.signal.get_window('lanczos', 6),
                 scp.signal.get_window('lanczos', 6, fftbins=False),

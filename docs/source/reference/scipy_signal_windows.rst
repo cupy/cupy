@@ -32,4 +32,5 @@ The suite of window functions for filtering and spectral estimation.
    parzen
    taylor
    triang
+   lanczos
    tukey
