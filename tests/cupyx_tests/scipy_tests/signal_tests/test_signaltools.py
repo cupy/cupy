@@ -369,7 +369,7 @@ class TestMedFilt:
             kernel_size = kernel_size[:volume.ndim]
         return scp.signal.medfilt(volume, kernel_size)
 
-    @testing.with_requires('scipy>1.11.0')
+    @testing.with_requires('scipy>=1.12.0rc1')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(
         atol=1e-8, rtol=1e-8, scipy_name='scp',
@@ -400,7 +400,7 @@ class TestMedFilt2d:
         kernel_size = self.kernel_size
         return scp.signal.medfilt2d(input, kernel_size)
 
-    @testing.with_requires('scipy>=1.11.0')
+    @testing.with_requires('scipy>=1.12.0rc1')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(
         atol=1e-8, rtol=1e-8, scipy_name='scp',

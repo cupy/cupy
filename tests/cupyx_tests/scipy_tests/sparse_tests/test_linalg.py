@@ -405,7 +405,7 @@ class TestCg:
                 M = sp.linalg.aslinearoperator(M)
         return self._test_cg(dtype, xp, sp, a, M)
 
-    @testing.with_requires('scipy>1.11')
+    @testing.with_requires('scipy>=1.12.0rc1')
     @testing.for_dtypes('fdFD')
     @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
     def test_empty(self, dtype, xp, sp):
@@ -561,7 +561,7 @@ class TestGmres:
                 M = sp.linalg.aslinearoperator(M)
         return self._test_gmres(dtype, xp, sp, a, M)
 
-    @testing.with_requires('scipy>1.11')
+    @testing.with_requires('scipy>=1.12.0rc1')
     @testing.for_dtypes('fdFD')
     @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
     def test_empty(self, dtype, xp, sp):
@@ -1545,7 +1545,7 @@ class TestCgs:
                 M = sp.linalg.aslinearoperator(M)
         return self._test_cgs(dtype, xp, sp, a, M)
 
-    @testing.with_requires('scipy>1.11')
+    @testing.with_requires('scipy>=1.12.0rc1')
     @testing.for_dtypes('fdFD')
     @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
     def test_empty(self, dtype, xp, sp):
