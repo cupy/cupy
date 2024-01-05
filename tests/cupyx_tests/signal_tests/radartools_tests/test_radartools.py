@@ -1,5 +1,6 @@
 import numpy
 import pytest
+import scipy
 
 import cupy
 from cupy import testing
@@ -84,77 +85,57 @@ def test_cfar_alpha(dtype):
     cupy.testing.assert_allclose(gpu, cpu)
 
 
-class TestCaCfar:
-    @pytest.mark.parametrize("length, guard_cells, reference_cells",
-                             [(100, 1, 5), (11, 2, 3), (100, 10, 20)])
-    class TestOneD:
-        def expected(self, length, guard_cells, reference_cells):
-            out = cupy.zeros(length)
-            N = 2 * reference_cells
-            alpha = signal.cfar_alpha(0.001, N)
-            out[guard_cells + reference_cells:
-                -guard_cells - reference_cells] = cupy.ones(length -
-                                                            2 * guard_cells -
-                                                            2 * reference_cells)
-            return (alpha * out)
+@pytest.mark.parametrize(
+    "size,gc,rc", [(100, 1, 5), (11, 2, 3), (100, 10, 20)])
+@testing.for_float_dtypes(no_float16=True)
+@testing.numpy_cupy_allclose(rtol=2e-6, type_check=False)
+def test_ca_cfar1d(xp, dtype, size, gc, rc):
+    array = testing.shaped_random((size,), xp=xp, dtype=dtype)
+    if xp is cupy:
+        return signal.ca_cfar(array, gc, rc)
+    else:
+        assert xp is numpy
+        weight = numpy.ones(((rc + gc) * 2 + 1,), dtype=dtype)
+        weight[rc:-rc] = 0
+        alpha = numpy.zeros((size,), dtype=dtype)
+        alpha[gc+rc:-gc-rc] = signal.cfar_alpha(1e-3, 2 * rc)
+        out = scipy.ndimage.convolve1d(array, weight) * alpha / (2 * rc)
+        return out, array - out > 0
 
-        def test_1d_ones(self, length, guard_cells, reference_cells):
-            array = cupy.ones(length)
-            mask, _ = signal.ca_cfar(array, guard_cells, reference_cells)
-            key = self.expected(length, guard_cells, reference_cells)
-            testing.numpy_cupy_array_equal(mask, key)
 
-    @pytest.mark.parametrize("length, gc, rc",
-                             [(1, 1, 1), (10, 2, 3), (10, 0, 5),
-                              (10, 5, 0)])
-    class TestFailuresOneD:
-        def test_1d_failures(self, length, gc, rc):
-            with pytest.raises(ValueError):
-                _, _ = signal.ca_cfar(cupy.zeros(length), gc, rc)
+@pytest.mark.parametrize(
+    "size,gc,rc", [(1, 1, 1), (10, 2, 3), (10, 0, 5), (10, 5, 0)])
+def test_ca_cfar1d_failures(size, gc, rc):
+    with pytest.raises(ValueError):
+        _, _ = signal.ca_cfar(cupy.zeros(size), gc, rc)
 
-    @pytest.mark.parametrize("shape, gc, rc",
-                             [((10, 10), (1, 1), (2, 2)), ((10, 100), (1, 10),
-                                                           (2, 20))])
-    class TestTwoD:
-        def expected(self, shape, gc, rc):
-            out = cupy.zeros(shape)
-            N = 2 * rc[0] * (2 * rc[1] + 2 * gc[1] + 1)
-            N += 2 * (2 * gc[0] + 1) * rc[1]
-            alpha = signal.cfar_alpha(.001, N)
-            out[gc[0] + rc[0]: -gc[0] - rc[0], gc[1] + rc[1]:
-                - gc[1] - rc[1]] = cupy.ones((shape[0] - 2 * gc[0] - 2 * rc[0],
-                                              shape[1] - 2 * gc[1] - 2 * rc[1]))
-            return (alpha * out)
 
-        def test_2d_ones(self, shape, gc, rc):
-            array = cupy.ones(shape)
-            mask, _ = signal.ca_cfar(array, gc, rc)
-            key = self.expected(shape, gc, rc)
-            testing.numpy_cupy_array_equal(mask, key)
+@pytest.mark.parametrize(
+    "shape,gc,rc", [((10, 10), (1, 1), (2, 2)), ((10, 100), (1, 10), (2, 20))])
+@testing.for_float_dtypes(no_float16=True)
+@testing.numpy_cupy_allclose(rtol=2e-6, type_check=False)
+def test_ca_cfar2d(xp, dtype, shape, gc, rc):
+    array = testing.shaped_random(shape, xp=xp, dtype=dtype)
+    if xp is cupy:
+        return signal.ca_cfar(array, gc, rc)
+    else:
+        assert xp is numpy
+        rcx, rcy = rc
+        gcx, gcy = gc
+        weight = numpy.ones(
+            ((rcx + gcx) * 2 + 1, (rcy + gcy) * 2 + 1), dtype=dtype)
+        weight[rcx:-rcx, rcy:-rcy] = 0
+        alpha = numpy.zeros(shape, dtype=dtype)
+        N = weight.size - (2 * gcx + 1) * (2 * gcy + 1)
+        alpha[gcx+rcx:-gcx-rcx, gcy+rcy:-gcy-rcy] = signal.cfar_alpha(1e-3, N)
+        out = scipy.ndimage.convolve(array, weight) * alpha / N
+        return out, array - out > 0
 
-    @pytest.mark.parametrize("shape, gc, rc",
-                             [((3, 3), (1, 2), (1, 10)),
-                              ((3, 3), (1, 1), (10, 1)),
-                              ((5, 5), (3, 3), (3, 3))])
-    class TestFailuresTwoD:
-        def test_2d_failures(self, shape, gc, rc):
-            with pytest.raises(ValueError):
-                _, _ = signal.ca_cfar(cupy.zeros(shape), gc, rc)
 
-    @pytest.mark.parametrize("shape, gc, rc, points",
-                             [(10, 1, 1, (6,)), (100, 10, 20, (34, 67)),
-                              ((100, 200), (5, 10), (10, 20), [(31, 45),
-                                                               (50, 111)])])
-    class TestDetection:
-        def test_point_detection(self, shape, gc, rc, points):
-            '''
-            Placing points too close together can yield unexpected results.
-            '''
-            array = cupy.zeros(shape)
-            for point in points:
-                array[point] = 1e3
-            threshold, detections = signal.ca_cfar(array, gc, rc)
-            key = array - threshold
-            f = numpy.vectorize(lambda x: True if x > 0 else False)
-            key = f(key.get())
-            testing.numpy_cupy_array_equal(detections, key)
+@pytest.mark.parametrize(
+    "shape,gc,rc", [((3, 3), (1, 2), (1, 10)),
+                    ((3, 3), (1, 1), (10, 1)),
+                    ((5, 5), (3, 3), (3, 3))])
+def test_ca_cfar2d_failures(shape, gc, rc):
+    with pytest.raises(ValueError):
+        _, _ = signal.ca_cfar(cupy.zeros(shape), gc, rc)
