@@ -23,6 +23,12 @@ try:
 except ModuleNotFoundError:
     pylibraft_available = False
 
+try:
+    import cudf  # NOQA
+    rapids_ci = True
+except ModuleNotFoundError:
+    rapids_ci = False
+
 
 def create_random_kd_tree(xp, scp, n, m, n_points=1, x_offset=0, scale=10,
                           leafsize=100):
@@ -49,6 +55,7 @@ def create_small_kd_tree(xp, scp, n_points=1):
 
 
 @testing.with_requires('scipy')
+@pytest.mark.skipif(rapids_ci, reason='Temporarily skip in rapids CI')
 class TestRandomConsistency:
     @pytest.mark.parametrize('args', [
         (100, 4, 1, 0),
@@ -132,6 +139,7 @@ class TestRandomConsistency:
 
 
 @testing.with_requires('scipy')
+@pytest.mark.skipif(rapids_ci, reason='Temporarily skip in rapids CI')
 class TestSmall:
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_nearest(self, xp, scp):
@@ -180,6 +188,7 @@ class TestSmall:
 
 
 @testing.with_requires('scipy')
+@pytest.mark.skipif(rapids_ci, reason='Temporarily skip in rapids CI')
 class TestVectorization:
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_vectorized_query(self, xp, scp):
@@ -220,6 +229,7 @@ class TestVectorization:
                 tree.query(x, k=None)
 
 
+@pytest.mark.skipif(rapids_ci, reason='Temporarily skip in rapids CI')
 class TestPeriodic:
     @pytest.mark.parametrize('off', [0, 1, -1])
     @pytest.mark.parametrize('p', [1, 2, 3.0, np.inf])
@@ -274,6 +284,7 @@ class TestPeriodic:
 
 
 @testing.with_requires('scipy')
+@pytest.mark.skipif(rapids_ci, reason='Temporarily skip in rapids CI')
 class TestBallConsistency:
     @pytest.mark.parametrize('args', [
         (100, 4, 1, 0),
@@ -303,6 +314,7 @@ class TestBallConsistency:
 
 
 @testing.with_requires('scipy')
+@pytest.mark.skipif(rapids_ci, reason='Temporarily skip in rapids CI')
 class TestBallTreeConsistency:
     @pytest.mark.parametrize('args', [
         (100, 4, 1, 0),
@@ -333,6 +345,7 @@ class TestBallTreeConsistency:
 
 
 @testing.with_requires('scipy')
+@pytest.mark.skipif(rapids_ci, reason='Temporarily skip in rapids CI')
 class TestPairs:
     @pytest.mark.parametrize('args', [
         (100, 4, 1, 0),
@@ -346,6 +359,7 @@ class TestPairs:
 
 
 @testing.with_requires('scipy')
+@pytest.mark.skipif(rapids_ci, reason='Temporarily skip in rapids CI')
 @pytest.mark.skipif(not pylibraft_available, reason='pylibraft is required')
 class TestDistance:
     @pytest.mark.parametrize('args', [
