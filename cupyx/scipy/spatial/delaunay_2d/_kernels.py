@@ -1,14 +1,59 @@
 
 import cupy
+from cupyx.scipy.spatial.delaunay_2d._schewchuk import SCHEWCHUK_DEF
 
 
-KERNEL_DIVISION = r"""
+KERNEL_DIVISION = SCHEWCHUK_DEF + r"""
 
 #define INLINE_H_D __forceinline__ __device__
 #define DIM     2
 #define DEG     ( DIM + 1 )
 
 using RealType = double;
+
+#define BLOCK_DIM    blockDim.x
+#define THREAD_IDX   threadIdx.x
+
+__forceinline__ __device__ int getCurThreadIdx()
+{
+    const int threadsPerBlock   = blockDim.x;
+    const int curThreadIdx    = ( blockIdx.x * threadsPerBlock ) + threadIdx.x;
+    return curThreadIdx;
+}
+
+__forceinline__ __device__ int getThreadNum()
+{
+    const int blocksPerGrid     = gridDim.x;
+    const int threadsPerBlock   = blockDim.x;
+    const int threadNum         = blocksPerGrid * threadsPerBlock;
+    return threadNum;
+}
+
+enum Counter {
+    CounterExact,
+    CounterFlag,
+    CounterNum
+};
+
+///////////////////////////////////////////////////////////////////// Orient //
+
+enum Orient
+{
+    OrientNeg   = -1,
+    OrientZero  = +0,
+    OrientPos   = +1
+};
+
+INLINE_H_D Orient flipOrient( Orient ord )
+{
+    return ( OrientPos == ord ) ? OrientNeg : OrientPos;
+}
+
+// Our 2D orientation is the same as Shewchuk
+INLINE_H_D Orient ortToOrient( RealType det )
+{
+    return ( det > 0 ) ? OrientPos : ( ( det < 0 ) ? OrientNeg : OrientZero );
+}
 
 struct Point2
 {
@@ -241,6 +286,25 @@ struct TriOpp
     }
 };
 
+template< typename T >
+__forceinline__ __device__ void cuSwap( T& v0, T& v1 )
+{
+    const T tmp = v0;
+    v0          = v1;
+    v1          = tmp;
+
+    return;
+}
+
+template< typename T>
+__forceinline__ __device__ void storeIntoBuffer(
+        T* s_buffer, int* s_num, const T& item )
+{
+    const int idx = atomicAdd( s_num, 1 );
+
+    s_buffer[ idx ] = item;
+}
+
 __global__ void kerMakeFirstTri
 (
 Tri*	triArr,
@@ -286,13 +350,224 @@ int     infIdx
         oppArr[ i ] = opp;
     }
 }
+
+__device__ const int SplitFaces[6][3] = {
+    /*0*/ { 0, 3 },
+    /*1*/ { 2, 3 },                   /*2*/ { 1, 3 },
+    /*3*/ { 1, 2 },  /*4*/ { 2, 0 },  /*5*/ { 0, 1 }
+};
+
+__device__ const int SplitNext[6][2] = {
+    { 1, 2 },
+    { 3, 4 },               { 5, 3 },
+    { 1, 0 },   { 2, 0 },   { 3, 0 },
+};
+
+__forceinline__ __device__ const Point2& getPoint(
+        int idx, Point2* pointArr )
+{
+    return pointArr[ idx ];
+}
+
+__forceinline__ __device__ Orient doOrient2DFastExact
+(
+const RealType* p0,
+const RealType* p1,
+const RealType* p2,
+RealType*  predConsts
+)
+{
+    const RealType det = orient2dFastExact( predConsts, p0, p1, p2 );
+    return ortToOrient( det );
+}
+
+__forceinline__ __device__ Orient doOrient2DFast(
+        int v0, int v1, int v2, int infIdx,
+        Point2* points, RealType*  predConsts )
+{
+    const RealType* pt[] = {
+        getPoint(v0, points)._p,
+        getPoint(v1, points)._p,
+        getPoint(v2, points)._p };
+
+    RealType det = orient2dFast( predConsts, pt[0], pt[1], pt[2] );
+
+    if ( v0 == infIdx | v1 == infIdx | v2 == infIdx )
+        det = -det;
+
+    return ortToOrient( det );
+}
+
+__forceinline__ __device__ Orient doOrient2DSoSOnly
+(
+const RealType* p0,
+const RealType* p1,
+const RealType* p2,
+int v0,
+int v1,
+int v2
+)
+{
+    ////
+    // Sort points using vertex as key, also note their sorted order
+    ////
+    const RealType* p[DEG] = { p0, p1, p2 };
+    int pn = 1;
+
+    if ( v0 > v1 ) { cuSwap( v0, v1 ); cuSwap( p[0], p[1] ); pn = -pn; }
+    if ( v0 > v2 ) { cuSwap( v0, v2 ); cuSwap( p[0], p[2] ); pn = -pn; }
+    if ( v1 > v2 ) { cuSwap( v1, v2 ); cuSwap( p[1], p[2] ); pn = -pn; }
+
+    RealType result = 0;
+    int depth;
+
+    for ( depth = 1; depth <= 4; ++depth )
+    {
+        switch ( depth )
+        {
+        case 1:
+            result = p[2][0] - p[1][0];
+            break;
+        case 2:
+            result = p[1][1] - p[2][1];
+            break;
+        case 3:
+            result = p[0][0] - p[2][0];
+            break;
+        default:
+            result = 1.0;
+            break;
+        }
+
+        if ( result != 0 )
+            break;
+    }
+
+    const RealType det = result * pn;
+
+    return ortToOrient( det );
+}
+
+__forceinline__ __device__ Orient doOrient2DFastExactSoS(
+int        v0,
+int        v1,
+int        v2,
+int        infIdx,
+Point2*    points,
+int*       orgPointIdx,
+RealType*  predConsts )
+{
+    const RealType* pt[] = {
+        getPoint(v0, points)._p,
+        getPoint(v1, points)._p,
+        getPoint(v2, points)._p };
+
+    // Fast-Exact
+    Orient ord = doOrient2DFastExact( pt[0], pt[1], pt[2], predConsts );
+
+    if ( OrientZero == ord )
+    {
+        // SoS
+        if ( orgPointIdx != NULL )
+        {
+            v0 = orgPointIdx[ v0 ];
+            v1 = orgPointIdx[ v1 ];
+            v2 = orgPointIdx[ v2 ];
+        }
+
+        ord = doOrient2DSoSOnly( pt[0], pt[1], pt[2], v0, v1, v2 );
+    }
+
+    if ( (v0 == infIdx) | (v1 == infIdx) | (v2 == infIdx) )
+        ord = flipOrient( ord );
+
+    return ord;
+}
+
+template<bool doFast>
+__forceinline__ __device__ int initPointLocation(
+int         idx,
+Tri         tri,
+/** predWrapper values **/
+int         infIdx,
+Point2*     points,
+int*        orgPointIdx,
+RealType*   predConsts )
+{
+    if ( tri.has( idx ) || idx == infIdx ) return -1;   // Already inserted
+
+    const int triVert[5] = { tri._v[0], tri._v[1], tri._v[2], infIdx };
+    int face = 0;
+
+    for ( int i = 0; i < 3; ++i )
+    {
+        const int *fv = SplitFaces[ face ];
+
+        Orient ort = ( doFast )
+            ? doOrient2DFast( triVert[ fv[0] ], triVert[ fv[1] ], idx,
+                              infIdx, points, predConsts )
+            : doOrient2DFastExactSoS( triVert[ fv[0] ], triVert[ fv[1] ], idx,
+                                      infIdx, points, orgPointIdx,
+                                      predConsts );
+
+        // Needs exact computation
+        if ( doFast && (ort == OrientZero) ) return -2;
+
+        // Use the reverse direction 'cause the splitting point is Infty!
+        face = SplitNext[ face ][ ( ort == OrientPos ) ? 1 : 0 ];
+    }
+
+    return face;
+}
+
+__global__ void kerInitPointLocationFast
+(
+int*        vertTriVec,
+int         nVert,
+int*        exactCheckArr,
+int*        counter,
+Tri*         tri,
+/** predWrapper values **/
+int         infIdx,
+Point2*     points,
+int*        orgPointIdx,
+RealType*   predConsts
+)
+{
+    // Iterate points
+    for ( int idx = getCurThreadIdx(); idx < nVert; idx += getThreadNum() )
+    {
+        const int loc = initPointLocation<true>(
+            idx, tri[0], infIdx, points, orgPointIdx, predConsts );
+
+        if ( loc != -2 )
+            vertTriVec[ idx ] = loc;
+        else
+            storeIntoBuffer( exactCheckArr, &counter[ CounterExact ], idx );
+    }
+}
 """
 
-DELAUNAY_MODULE = cupy.RawModule(code=KERNEL_DIVISION, options=('-std=c++11',),
-                                 name_expressions=['kerMakeFirstTri'])
+DELAUNAY_MODULE = cupy.RawModule(
+    code=KERNEL_DIVISION, options=('-std=c++11',),
+    name_expressions=['kerMakeFirstTri', 'kerInitPointLocationFast'])
+
+
+N_BLOCKS = 512
+BLOCK_SZ = 128
 
 
 def make_first_tri(tri_arr, opp_arr, tri_info_arr, tri, inf_idx):
     ker_make_first_tri = DELAUNAY_MODULE.get_function('kerMakeFirstTri')
     ker_make_first_tri(
         (1,), (1,), (tri_arr, opp_arr, tri_info_arr, tri, inf_idx))
+
+
+def init_point_location_fast(
+        vert_tri, n_vert, exact_check, counter, tri, inf_idx,
+        point_vec, points_idx, pred_consts):
+    ker_init_point_loc_fast = DELAUNAY_MODULE.get_function(
+        'kerInitPointLocationFast')
+    ker_init_point_loc_fast((N_BLOCKS,), (BLOCK_SZ,), (
+        vert_tri, n_vert, exact_check, counter, tri, inf_idx,
+        point_vec, points_idx, pred_consts))

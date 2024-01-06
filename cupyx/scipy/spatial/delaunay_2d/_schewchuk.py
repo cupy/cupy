@@ -38,6 +38,107 @@ SCHEWCHUK_DEF = r"""
 #define MUL(a,b)    __dmul_rn(a,b)
 using RealType = double;
 
+/* Which of the following two methods of finding the absolute values is      */
+/*   fastest is compiler-dependent.  A few compilers can inline and optimize */
+/*   the fabs() call; but most will incur the overhead of a function call,   */
+/*   which is disastrously slow.  A faster way on IEEE machines might be to  */
+/*   mask the appropriate bit, but that's difficult to do in C.              */
+
+//#define Absolute(a)  ((a) >= 0.0 ? (a) : -(a))
+
+
+/* Many of the operations are broken up into two pieces, a main part that    */
+/*   performs an approximate operation, and a "tail" that computes the       */
+/*   roundoff error of that operation.                                       */
+/*                                                                           */
+/* The operations Fast_Two_Sum(), Fast_Two_Diff(), Two_Sum(), Two_Diff(),    */
+/*   Split(), and Two_Product() are all implemented as described in the      */
+/*   reference.  Each of these macros requires certain variables to be       */
+/*   defined in the calling routine.  The variables `bvirt', `c', `abig',    */
+/*   `_i', `_j', `_k', `_l', `_m', and `_n' are declared `INEXACT' because   */
+/*   they store the result of an operation that may incur roundoff error.    */
+/*   The input parameter `x' (or the highest numbered `x_' parameter) must   */
+/*   also be declared `INEXACT'.                                             */
+
+#define Fast_Two_Sum_Tail(a, b, x, y) \
+    bvirt = x - a; \
+    y = b - bvirt
+
+#define Fast_Two_Sum(a, b, x, y) \
+    x = (RealType) (a + b); \
+    Fast_Two_Sum_Tail(a, b, x, y)
+
+#define Two_Sum_Tail(a, b, x, y) \
+    bvirt = (RealType) (x - a); \
+    avirt = x - bvirt; \
+    bround = b - bvirt; \
+    around = a - avirt; \
+    y = around + bround
+
+#define Two_Sum(a, b, x, y) \
+    x = (RealType) (a + b); \
+    Two_Sum_Tail(a, b, x, y)
+
+#define Two_Diff_Tail(a, b, x, y) \
+    bvirt = (RealType) (a - x); \
+    avirt = x + bvirt; \
+    bround = bvirt - b; \
+    around = a - avirt; \
+    y = around + bround
+
+#define Two_Diff(a, b, x, y) \
+    x = (RealType) (a - b); \
+    Two_Diff_Tail(a, b, x, y)
+
+#define Split(a, ahi, alo) \
+    c = MUL(predConsts[ Splitter ], a); \
+    abig = (RealType) (c - a); \
+    ahi = c - abig; \
+    alo = a - ahi
+
+#define Two_Product_Tail(a, b, x, y) \
+    Split(a, ahi, alo); \
+    Split(b, bhi, blo); \
+    err1 = x - MUL(ahi, bhi); \
+    err2 = err1 - MUL(alo, bhi); \
+    err3 = err2 - MUL(ahi, blo); \
+    y = MUL(alo, blo) - err3
+
+#define Two_Product(a, b, x, y) \
+    x = MUL(a, b); \
+    Two_Product_Tail(a, b, x, y)
+
+/* Two_Product_Presplit() is Two_Product() where one of the inputs has       */
+/*   already been split.  Avoids redundant splitting.                        */
+
+#define Two_Product_Presplit(a, b, bhi, blo, x, y) \
+    x = MUL(a, b); \
+    Split(a, ahi, alo); \
+    err1 = x - MUL(ahi, bhi); \
+    err2 = err1 - MUL(alo, bhi); \
+    err3 = err2 - MUL(ahi, blo); \
+    y = MUL(alo, blo) - err3
+
+/* Macros for summing expansions of various fixed lengths.  These are all    */
+/*   unrolled versions of Expansion_Sum().                                   */
+
+#define Two_One_Diff(a1, a0, b, x2, x1, x0) \
+    Two_Diff(a0, b , _i, x0); \
+    Two_Sum( a1, _i, x2, x1)
+
+#define Two_Two_Diff(a1, a0, b1, b0, x3, x2, x1, x0) \
+    Two_One_Diff(a1, a0, b0, _j, _0, x0); \
+    Two_One_Diff(_j, _0, b1, x3, x2, x1)
+
+/* Macros for multiplying expansions of various fixed lengths.               */
+
+#define Two_One_Product(a1, a0, b, x3, x2, x1, x0) \
+    Split(b, bhi, blo); \
+    Two_Product_Presplit(a0, b, bhi, blo, _i, x0); \
+    Two_Product_Presplit(a1, b, bhi, blo, _j, _0); \
+    Two_Sum(_i, _0, _k, x1); \
+    Fast_Two_Sum(_j, _k, x3, x2)
+
 /*****************************************************************************/
 /*                                                                           */
 /*  exactinit()   Initialize the variables used for exact arithmetic.        */
@@ -83,6 +184,320 @@ enum DPredicateBounds
 
     DPredicateBoundNum  // Number of bounds in this enum
 };
+
+/*****************************************************************************/
+/*                                                                           */
+/*  d_scale_expansion_zeroelim()   Multiply an expansion by a scalar,        */
+/*                               eliminating zero components from the        */
+/*                               output expansion.                           */
+/*                                                                           */
+/*  Sets h = be.  See either version of my paper for details.                */
+/*                                                                           */
+/*  Maintains the nonoverlapping property.  If round-to-even is used (as     */
+/*  with IEEE 754), maintains the strongly nonoverlapping and nonadjacent    */
+/*  properties as well.  (That is, if e has one of these properties, so      */
+/*  will h.)                                                                 */
+/*                                                                           */
+/*****************************************************************************/
+
+/* e and h cannot be the same. */
+__device__ int d_scale_expansion_zeroelim
+(
+const RealType* predConsts,
+int             elen,
+RealType*       e,
+RealType        b,
+RealType*       h
+)
+{
+    RealType Q, sum;
+    RealType hh;
+    RealType product1;
+    RealType product0;
+    int eindex, hindex;
+    RealType enow;
+    RealType bvirt;
+    RealType avirt, bround, around;
+    RealType c;
+    RealType abig;
+    RealType ahi, alo, bhi, blo;
+    RealType err1, err2, err3;
+
+    Split(b, bhi, blo);
+    Two_Product_Presplit(e[0], b, bhi, blo, Q, hh);
+    hindex = 0;
+    if (hh != 0) {
+        h[hindex++] = hh;
+    }
+    for (eindex = 1; eindex < elen; eindex++) {
+        enow = e[eindex];
+        Two_Product_Presplit(enow, b, bhi, blo, product1, product0);
+        Two_Sum(Q, product0, sum, hh);
+        if (hh != 0) {
+            h[hindex++] = hh;
+        }
+        Fast_Two_Sum(product1, sum, Q, hh);
+        if (hh != 0) {
+            h[hindex++] = hh;
+        }
+    }
+    if ((Q != 0.0) || (hindex == 0)) {
+        h[hindex++] = Q;
+    }
+    return hindex;
+}
+
+/*****************************************************************************/
+/*                                                                           */
+/*  d_fast_expansion_sum_zeroelim()   Sum two expansions, eliminating zero   */
+/*                                  components from the output expansion.    */
+/*                                                                           */
+/*  Sets h = e + f.  See the long version of my paper for details.           */
+/*                                                                           */
+/*  If round-to-even is used (as with IEEE 754), maintains the strongly      */
+/*  nonoverlapping property.  (That is, if e is strongly nonoverlapping, h   */
+/*  will be also.)  Does NOT maintain the nonoverlapping or nonadjacent      */
+/*  properties.                                                              */
+/*                                                                           */
+/*****************************************************************************/
+
+/* h cannot be e or f. */
+__device__ int d_fast_expansion_sum_zeroelim
+(
+int      elen,
+RealType *e,
+int      flen,
+RealType *f,
+RealType *h
+)
+{
+    RealType Q;
+    RealType Qnew;
+    RealType hh;
+    RealType bvirt;
+    RealType avirt, bround, around;
+    int eindex, findex, hindex;
+    RealType enow, fnow;
+
+    enow = e[0];
+    fnow = f[0];
+    eindex = findex = 0;
+    if ((fnow > enow) == (fnow > -enow)) {
+        Q = enow;
+        enow = e[++eindex];
+    } else {
+        Q = fnow;
+        fnow = f[++findex];
+    }
+    hindex = 0;
+    if ((eindex < elen) && (findex < flen)) {
+        if ((fnow > enow) == (fnow > -enow)) {
+            Fast_Two_Sum(enow, Q, Qnew, hh);
+            enow = e[++eindex];
+        } else {
+            Fast_Two_Sum(fnow, Q, Qnew, hh);
+            fnow = f[++findex];
+        }
+        Q = Qnew;
+        if (hh != 0.0) {
+            h[hindex++] = hh;
+        }
+        while ((eindex < elen) && (findex < flen)) {
+            if ((fnow > enow) == (fnow > -enow)) {
+                Two_Sum(Q, enow, Qnew, hh);
+                enow = e[++eindex];
+            } else {
+                Two_Sum(Q, fnow, Qnew, hh);
+                fnow = f[++findex];
+            }
+            Q = Qnew;
+            if (hh != 0.0) {
+                h[hindex++] = hh;
+            }
+        }
+    }
+    while (eindex < elen) {
+        Two_Sum(Q, enow, Qnew, hh);
+        enow = e[++eindex];
+        Q = Qnew;
+        if (hh != 0.0) {
+            h[hindex++] = hh;
+        }
+    }
+    while (findex < flen) {
+        Two_Sum(Q, fnow, Qnew, hh);
+        fnow = f[++findex];
+        Q = Qnew;
+        if (hh != 0.0) {
+            h[hindex++] = hh;
+        }
+    }
+    if ((Q != 0.0) || (hindex == 0)) {
+        h[hindex++] = Q;
+    }
+    return hindex;
+}
+
+__device__ RealType d_fast_expansion_sum_sign
+(
+int      elen,
+RealType *e,
+int      flen,
+RealType *f
+)
+{
+    RealType Q;
+    RealType lastTerm;
+    RealType Qnew;
+    RealType hh;
+    RealType bvirt;
+    RealType avirt, bround, around;
+    int eindex, findex;
+    RealType enow, fnow;
+
+    enow = e[0];
+    fnow = f[0];
+    eindex = findex = 0;
+    if ((fnow > enow) == (fnow > -enow)) {
+        Q = enow;
+        enow = e[++eindex];
+    } else {
+        Q = fnow;
+        fnow = f[++findex];
+    }
+    lastTerm = 0.0;
+    if ((eindex < elen) && (findex < flen)) {
+        if ((fnow > enow) == (fnow > -enow)) {
+            Fast_Two_Sum(enow, Q, Qnew, hh);
+            enow = e[++eindex];
+        } else {
+            Fast_Two_Sum(fnow, Q, Qnew, hh);
+            fnow = f[++findex];
+        }
+        Q = Qnew;
+        if (hh != 0.0) {
+            lastTerm = hh;
+        }
+        while ((eindex < elen) && (findex < flen)) {
+            if ((fnow > enow) == (fnow > -enow)) {
+                Two_Sum(Q, enow, Qnew, hh);
+                enow = e[++eindex];
+            } else {
+                Two_Sum(Q, fnow, Qnew, hh);
+                fnow = f[++findex];
+            }
+            Q = Qnew;
+            if (hh != 0.0) {
+                lastTerm = hh;
+            }
+        }
+    }
+    while (eindex < elen) {
+        Two_Sum(Q, enow, Qnew, hh);
+        enow = e[++eindex];
+        Q = Qnew;
+        if (hh != 0.0) {
+            lastTerm = hh;
+        }
+    }
+    while (findex < flen) {
+        Two_Sum(Q, fnow, Qnew, hh);
+        fnow = f[++findex];
+        Q = Qnew;
+        if (hh != 0.0) {
+            lastTerm = hh;
+        }
+    }
+    if ( Q != 0.0 ) {
+        lastTerm = Q;
+    }
+    return lastTerm;
+}
+
+__device__ int d_scale_twice_expansion_zeroelim
+(
+const RealType* predConsts,
+int elen,
+RealType *e,
+RealType b1,
+RealType b2,
+RealType *h
+)
+{
+    RealType Q, sum, Q2, sum2;
+    RealType hh;
+    RealType product1, product2;
+    RealType product0;
+    int eindex, hindex;
+    RealType enow;
+    RealType bvirt;
+    RealType avirt, bround, around;
+    RealType c;
+    RealType abig;
+    RealType ahi, alo, b1hi, b1lo, b2hi, b2lo;
+    RealType err1, err2, err3;
+
+    hindex = 0;
+
+    Split(b1, b1hi, b1lo);
+    Split(b2, b2hi, b2lo);
+    Two_Product_Presplit(e[0], b1, b1hi, b1lo, Q, hh);
+    Two_Product_Presplit(hh, b2, b2hi, b2lo, Q2, hh);
+
+    if (hh != 0) {
+        h[hindex++] = hh;
+    }
+
+    for (eindex = 1; eindex < elen; eindex++) {
+        enow = e[eindex];
+        Two_Product_Presplit(enow, b1, b1hi, b1lo, product1, product0);
+        Two_Sum(Q, product0, sum, hh);
+
+        Two_Product_Presplit(hh, b2, b2hi, b2lo, product2, product0);
+        Two_Sum(Q2, product0, sum2, hh);
+        if (hh != 0) {
+            h[hindex++] = hh;
+        }
+
+        Fast_Two_Sum(product2, sum2, Q2, hh);
+        if (hh != 0) {
+            h[hindex++] = hh;
+        }
+
+        Fast_Two_Sum(product1, sum, Q, hh);
+
+        Two_Product_Presplit(hh, b2, b2hi, b2lo, product2, product0);
+        Two_Sum(Q2, product0, sum2, hh);
+        if (hh != 0) {
+            h[hindex++] = hh;
+        }
+
+        Fast_Two_Sum(product2, sum2, Q2, hh);
+        if (hh != 0) {
+            h[hindex++] = hh;
+        }
+    }
+
+    if (Q != 0) {
+        Two_Product_Presplit(Q, b2, b2hi, b2lo, product2, product0);
+        Two_Sum(Q2, product0, sum2, hh);
+
+        if (hh != 0) {
+            h[hindex++] = hh;
+        }
+
+        Fast_Two_Sum(product2, sum2, Q2, hh);
+        if (hh != 0) {
+            h[hindex++] = hh;
+        }
+    }
+
+    if ((Q2 != 0) || (hindex == 0)) {
+        h[hindex++] = Q2;
+    }
+
+    return hindex;
+}
 
 __global__ void kerInitPredicate( RealType* predConsts )
 {
@@ -139,6 +554,126 @@ __global__ void kerInitPredicate( RealType* predConsts )
     return;
 }
 
+__forceinline__ __device__ RealType orient2dExact
+(
+const RealType* predConsts,
+const RealType* pa,
+const RealType* pb,
+const RealType* pc
+)
+{
+    RealType axby1, axcy1, bxcy1, bxay1, cxay1, cxby1;
+    RealType axby0, axcy0, bxcy0, bxay0, cxay0, cxby0;
+    RealType aterms[4], bterms[4], cterms[4];
+    RealType v[8];
+    int vlength;
+
+    RealType bvirt;
+    RealType avirt, bround, around;
+    RealType c;
+    RealType abig;
+    RealType ahi, alo, bhi, blo;
+    RealType err1, err2, err3;
+    RealType _i, _j;
+    RealType _0;
+
+    Two_Product(pa[0], pb[1], axby1, axby0);
+    Two_Product(pa[0], pc[1], axcy1, axcy0);
+    Two_Two_Diff(axby1, axby0, axcy1, axcy0,
+        aterms[3], aterms[2], aterms[1], aterms[0]);
+
+    Two_Product(pb[0], pc[1], bxcy1, bxcy0);
+    Two_Product(pb[0], pa[1], bxay1, bxay0);
+    Two_Two_Diff(bxcy1, bxcy0, bxay1, bxay0,
+        bterms[3], bterms[2], bterms[1], bterms[0]);
+
+    Two_Product(pc[0], pa[1], cxay1, cxay0);
+    Two_Product(pc[0], pb[1], cxby1, cxby0);
+    Two_Two_Diff(cxay1, cxay0, cxby1, cxby0,
+        cterms[3], cterms[2], cterms[1], cterms[0]);
+
+    vlength = d_fast_expansion_sum_zeroelim(4, aterms, 4, bterms, v);
+
+    return d_fast_expansion_sum_sign(vlength, v, 4, cterms);
+}
+
+__device__ RealType orient2dFast
+(
+const RealType* predConsts,
+const RealType *pa,
+const RealType *pb,
+const RealType *pc
+)
+{
+    RealType detleft, detright, det;
+    RealType detsum, errbound;
+
+    detleft = (pa[0] - pc[0]) * (pb[1] - pc[1]);
+    detright = (pa[1] - pc[1]) * (pb[0] - pc[0]);
+    det = detleft - detright;
+
+    if (detleft > 0.0) {
+        if (detright <= 0.0) {
+            return det;
+        } else {
+            detsum = detleft + detright;
+        }
+    } else if (detleft < 0.0) {
+        if (detright >= 0.0) {
+            return det;
+        } else {
+            detsum = -detleft - detright;
+        }
+    } else {
+        return det;
+    }
+
+    errbound = predConsts[ CcwerrboundA ] * detsum;
+    if ((det >= errbound) || (-det >= errbound)) {
+        return det;
+    }
+
+    return 0.0;
+}
+
+__device__ RealType orient2dFastExact
+(
+const RealType* predConsts,
+const RealType *pa,
+const RealType *pb,
+const RealType *pc
+)
+{
+    RealType detleft, detright, det;
+    RealType detsum, errbound;
+
+    detleft = (pa[0] - pc[0]) * (pb[1] - pc[1]);
+    detright = (pa[1] - pc[1]) * (pb[0] - pc[0]);
+    det = detleft - detright;
+
+    if (detleft > 0.0) {
+        if (detright <= 0.0) {
+            return det;
+        } else {
+            detsum = detleft + detright;
+        }
+    } else if (detleft < 0.0) {
+        if (detright >= 0.0) {
+            return det;
+        } else {
+            detsum = -detleft - detright;
+        }
+    } else {
+        return det;
+    }
+
+    errbound = predConsts[ CcwerrboundA ] * detsum;
+    if ((det >= errbound) || (-det >= errbound)) {
+        return det;
+    }
+
+    return orient2dExact( predConsts, pa, pb, pc );
+}
 """
 
 

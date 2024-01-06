@@ -4,7 +4,8 @@ from cupy._core._scalar import get_typename
 from cupy_backends.cuda.api import runtime
 
 from cupyx.scipy.spatial.delaunay_2d._schewchuk import init_predicate
-from cupyx.scipy.spatial.delaunay_2d._kernels import make_first_tri
+from cupyx.scipy.spatial.delaunay_2d._kernels import (
+    make_first_tri, init_point_location_fast)
 
 
 def _get_typename(dtype):
@@ -165,8 +166,7 @@ def _delaunay_triangulation_2d(points):
     tri_msg = cupy.empty((max_triangles, 2), dtype=cupy.int32)  # NOQA
     values = cupy.empty(n_points, dtype=cupy.int32)
     act_tri = cupy.empty(max_triangles, dtype=cupy.int32)  # NOQA
-    extra1 = cupy.empty(max_triangles, dtype=cupy.int32)  # NOQA
-    extra2 = cupy.empty(max_triangles, dtype=cupy.int32)  # NOQA
+    vert_tri = cupy.empty(n_points, dtype=cupy.int32)
 
     min_val = points.min()
     max_val = points.max()
@@ -220,6 +220,14 @@ def _delaunay_triangulation_2d(points):
     pred_consts = cupy.empty(18, cupy.float64)
     init_predicate(pred_consts)
 
+    # Create the initial triangulation
     first_tri = cupy.r_[v0, v1, v2].astype(cupy.int32)
+
+    # Put the initial triangles at the Inf list
     make_first_tri(triangles, triangle_opp, triangle_info,
                    first_tri, n_points - 1)
+
+    exact_check = cupy.empty(n_points, dtype=cupy.int32)
+    init_point_location_fast(
+        vert_tri, n_points, exact_check, counters, first_tri, n_points - 1,
+        point_vec, points_idx, pred_consts)
