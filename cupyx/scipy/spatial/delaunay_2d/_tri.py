@@ -5,7 +5,7 @@ from cupy_backends.cuda.api import runtime
 
 from cupyx.scipy.spatial.delaunay_2d._schewchuk import init_predicate
 from cupyx.scipy.spatial.delaunay_2d._kernels import (
-    make_first_tri, init_point_location_fast)
+    make_first_tri, init_point_location_fast, init_point_location_exact)
 
 
 def _get_typename(dtype):
@@ -150,84 +150,121 @@ def _compute_triangle_orientation(det):
     return cupy.where(det > 0, 1, cupy.where(det < 0, -1, 0))
 
 
+class GDel2D:
+    def __init__(self, points):
+        self.n_points = points.shape[0] + 1
+        self.max_triangles = 2 * self.n_points
+
+        self.points = cupy.array(points, copy=True)
+        self.point_vec = cupy.empty((self.n_points, 2), dtype=points.dtype)
+        self.point_vec[:-1] = points
+
+        self.triangles = cupy.empty((self.max_triangles, 3), dtype=cupy.int32)
+        self.triangle_opp = cupy.empty_like(self.triangles)
+        self.triangle_info = cupy.empty(self.max_triangles, dtype=cupy.int8)
+        self.counters = cupy.zeros(2, dtype=cupy.int32)
+
+        self.flip = cupy.empty((self.max_triangles, 2, 2), dtype=cupy.int32)
+        self.tri_msg = cupy.empty((self.max_triangles, 2), dtype=cupy.int32)
+        self.values = cupy.empty(self.n_points, dtype=cupy.int32)
+        self.act_tri = cupy.empty(self.max_triangles, dtype=cupy.int32)
+        self.vert_tri = cupy.empty(self.n_points, dtype=cupy.int32)
+
+    def _construct_initial_triangles(self):
+        # Find extreme points in the x-axis
+        v0 = cupy.argmin(self.point_vec[:-1, 0])
+        v1 = cupy.argmax(self.point_vec[:-1, 0])
+
+        block_sz = 128
+        n_blocks = (self.points.shape[0] + block_sz - 1) // block_sz
+
+        _compute_distance_2d = _get_module_func(
+            _preamble_module, 'compute_distance_2d', self.points)
+
+        # Find furthest point from v0 and v1, a.k.a the biggest
+        # triangle available
+        _compute_distance_2d(
+            (block_sz,), (n_blocks,),
+            (self.n_points, self.point_vec, v0, v1, self.values))
+
+        v2 = cupy.argmax(self.values[:-1])
+
+        # Check if the three points are not coplanar
+        ori = _check_if_coplanar_points(self.point_vec, v0, v1, v2)
+
+        is_coplanar = cupy.where(ori == 0.0, True, False)
+        if is_coplanar:
+            raise ValueError(
+                'The input is degenerate, the extreme points are close to '
+                'coplanar')
+
+        tri_ort = _compute_triangle_orientation(ori)
+        tri = cupy.r_[v0, v1].astype(cupy.int32)
+        tri = cupy.where(tri_ort == -1, tri[::-1], tri)
+
+        # Create the initial triangulation
+        # Compute the centroid of v0 v1 v2, to be used as the kernel point.
+        tri = cupy.r_[tri, v2].astype(cupy.int32)
+        self.point_vec[-1] = self.point_vec[tri].mean(0)
+
+        pred_consts = cupy.empty(18, cupy.float64)
+        init_predicate(pred_consts)
+
+        # Put the initial triangles at the Inf list
+        make_first_tri(
+            self.triangles, self.triangle_opp, self.triangle_info,
+            tri, self.n_points - 1)
+
+        exact_check = cupy.empty(self.n_points, dtype=cupy.int32)
+        init_point_location_fast(
+            self.vert_tri, self.n_points, exact_check, self.counters, tri,
+            self.n_points - 1, self.point_vec, self.points_idx, pred_consts)
+
+        breakpoint()
+        init_point_location_exact(
+            self.vert_tri, self.n_points, exact_check, self.counters, tri,
+            self.n_points - 1, self.point_vec, self.points_idx, pred_consts)
+
+        self.available_points = self.n_points - 4
+
+    def _init_for_flip(self):
+        min_val = self.points.min()
+        max_val = self.points.max()
+        range_val = max_val - min_val
+
+        _get_morton_number = _get_module_func(
+            _preamble_module, 'get_morton_number', self.points)
+
+        block_sz = 128
+        n_blocks = (self.points.shape[0] + block_sz - 1) // block_sz
+
+        # Sort the points spatially according to their Morton numbers
+        _get_morton_number(
+            (block_sz,), (n_blocks,),
+            (self.n_points - 1, self.points, min_val, range_val, self.values))
+
+        self.values[-1] = 2 ** 31 - 1
+        self.points_idx = cupy.argsort(self.values)
+        self.point_vec = self.point_vec[self.points_idx]
+
+        self._construct_initial_triangles()
+
+    def _split_tri(self):
+        max_sample_per_tri = 100  # NOQA
+
+        # Rank points
+        tri_num = 4  # NOQA
+
+    def _split_and_flip(self):
+        insert_loop = 0  # NOQA
+        while self.available_points > 0:
+            self._split_tri()
+
+    def compute(self):
+        self._init_for_flip()
+        self._split_and_flip()
+
+
 def _delaunay_triangulation_2d(points):
-    n_points = points.shape[0] + 1
-    max_triangles = 2 * n_points
-
-    point_vec = cupy.empty((n_points, 2), dtype=points.dtype)
-    point_vec[:-1] = points
-
-    triangles = cupy.empty((max_triangles, 3), dtype=cupy.int32)
-    triangle_opp = cupy.empty_like(triangles)  # NOQA
-    triangle_info = cupy.empty(max_triangles, dtype=cupy.int8)  # NOQA
-    counters = cupy.zeros(2, dtype=cupy.int32)  # NOQA
-
-    flip = cupy.empty((max_triangles, 2, 2), dtype=cupy.int32)  # NOQA
-    tri_msg = cupy.empty((max_triangles, 2), dtype=cupy.int32)  # NOQA
-    values = cupy.empty(n_points, dtype=cupy.int32)
-    act_tri = cupy.empty(max_triangles, dtype=cupy.int32)  # NOQA
-    vert_tri = cupy.empty(n_points, dtype=cupy.int32)
-
-    min_val = points.min()
-    max_val = points.max()
-    range_val = max_val - min_val
-
-    _get_morton_number = _get_module_func(
-        _preamble_module, 'get_morton_number', points)
-
-    block_sz = 128
-    n_blocks = (points.shape[0] + block_sz - 1) // block_sz
-
-    # Sort the points spatially according to their Morton numbers
-    _get_morton_number(
-        (block_sz,), (n_blocks,),
-        (n_points - 1, points, min_val, range_val, values))
-
-    values[-1] = 2 ** 31 - 1
-    points_idx = cupy.argsort(values)
-    point_vec = point_vec[points_idx]
-
-    # Find extreme points in the x-axis
-    v0 = cupy.argmin(point_vec[:-1, 0])
-    v1 = cupy.argmax(point_vec[:-1, 0])
-
-    _compute_distance_2d = _get_module_func(
-        _preamble_module, 'compute_distance_2d', points)
-
-    # Find furthest point from v0 and v1, a.k.a the biggest triangle available
-    _compute_distance_2d(
-        (block_sz,), (n_blocks,), (n_points, point_vec, v0, v1, values))
-
-    breakpoint()
-    v2 = cupy.argmax(values[:-1])
-
-    # Check if the three points are not coplanar
-    ori = _check_if_coplanar_points(point_vec, v0, v1, v2)
-
-    is_coplanar = cupy.where(ori == 0.0, True, False)
-    if is_coplanar:
-        raise ValueError(
-            'The input is degenerate, the extreme points are close to '
-            'coplanar')
-
-    tri_ort = _compute_triangle_orientation(ori)
-    if tri_ort == -1:
-        v1, v2 = v2, v1
-
-    # Compute the centroid of v0 v1 v2, to be used as the kernel point.
-    point_vec[-1] = point_vec[[v0, v1, v2]].mean(0)
-
-    pred_consts = cupy.empty(18, cupy.float64)
-    init_predicate(pred_consts)
-
-    # Create the initial triangulation
-    first_tri = cupy.r_[v0, v1, v2].astype(cupy.int32)
-
-    # Put the initial triangles at the Inf list
-    make_first_tri(triangles, triangle_opp, triangle_info,
-                   first_tri, n_points - 1)
-
-    exact_check = cupy.empty(n_points, dtype=cupy.int32)
-    init_point_location_fast(
-        vert_tri, n_points, exact_check, counters, first_tri, n_points - 1,
-        point_vec, points_idx, pred_consts)
+    gdel = GDel2D(points)
+    gdel.compute()

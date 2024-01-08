@@ -546,11 +546,38 @@ RealType*   predConsts
             storeIntoBuffer( exactCheckArr, &counter[ CounterExact ], idx );
     }
 }
+
+__global__ void kerInitPointLocationExact
+(
+int*    vertTriArr,
+int         nVert,
+int*    exactCheckArr,
+int*    counter,
+Tri*     tri,
+/** predWrapper values **/
+int         infIdx,
+Point2*     points,
+int*        orgPointIdx,
+RealType*   predConsts
+)
+{
+    const int exactNum = counter[ CounterExact ];
+
+    // Iterate active triangle
+    for ( int idx = getCurThreadIdx(); idx < exactNum; idx += getThreadNum() )
+    {
+        const int vertIdx = exactCheckArr[ idx ];
+
+        vertTriArr[ vertIdx ] = initPointLocation<false>(
+            vertIdx, tri[0], infIdx, points, orgPointIdx, predConsts );
+    }
+}
 """
 
 DELAUNAY_MODULE = cupy.RawModule(
     code=KERNEL_DIVISION, options=('-std=c++11',),
-    name_expressions=['kerMakeFirstTri', 'kerInitPointLocationFast'])
+    name_expressions=['kerMakeFirstTri', 'kerInitPointLocationFast',
+                      'kerInitPointLocationExact'])
 
 
 N_BLOCKS = 512
@@ -568,6 +595,16 @@ def init_point_location_fast(
         point_vec, points_idx, pred_consts):
     ker_init_point_loc_fast = DELAUNAY_MODULE.get_function(
         'kerInitPointLocationFast')
+    ker_init_point_loc_fast((N_BLOCKS,), (BLOCK_SZ,), (
+        vert_tri, n_vert, exact_check, counter, tri, inf_idx,
+        point_vec, points_idx, pred_consts))
+
+
+def init_point_location_exact(
+        vert_tri, n_vert, exact_check, counter, tri, inf_idx,
+        point_vec, points_idx, pred_consts):
+    ker_init_point_loc_fast = DELAUNAY_MODULE.get_function(
+        'kerInitPointLocationExact')
     ker_init_point_loc_fast((N_BLOCKS,), (BLOCK_SZ,), (
         vert_tri, n_vert, exact_check, counter, tri, inf_idx,
         point_vec, points_idx, pred_consts))
