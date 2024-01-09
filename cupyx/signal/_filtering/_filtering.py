@@ -1,12 +1,12 @@
 import cupy
 import cupyx.scipy.linalg
 import cupyx.scipy.signal._signaltools
-from cupyx.signal._filtering._array_utils import (
-    _axis_slice,
-    _axis_reverse,
-    _const_ext,
-    _even_ext,
-    _odd_ext,
+from cupyx.scipy.signal._arraytools import (
+    axis_slice,
+    axis_reverse,
+    const_ext,
+    even_ext,
+    odd_ext,
 )
 
 
@@ -190,11 +190,11 @@ def _validate_pad(padtype, padlen, x, axis, ntaps):
         # Make an extension of length `edge` at each
         # end of the input array.
         if padtype == "even":
-            ext = _even_ext(x, edge, axis=axis)
+            ext = even_ext(x, edge, axis=axis)
         elif padtype == "odd":
-            ext = _odd_ext(x, edge, axis=axis)
+            ext = odd_ext(x, edge, axis=axis)
         else:
-            ext = _const_ext(x, edge, axis=axis)
+            ext = const_ext(x, edge, axis=axis)
     else:
         ext = x
     return edge, ext
@@ -286,21 +286,21 @@ def firfilter2(
     zi_shape = [1] * x.ndim
     zi_shape[axis] = zi.size
     zi = cupy.reshape(zi, zi_shape)
-    x0 = _axis_slice(ext, stop=1, axis=axis)
+    x0 = axis_slice(ext, stop=1, axis=axis)
 
     # Forward filter.
     (y, zf) = firfilter(b, ext, axis=axis, zi=zi * x0)
 
     # Backward filter.
     # Create y0 so zi*y0 broadcasts appropriately.
-    y0 = _axis_slice(y, start=-1, axis=axis)
-    (y, zf) = firfilter(b, _axis_reverse(y, axis=axis), axis=axis, zi=zi * y0)
+    y0 = axis_slice(y, start=-1, axis=axis)
+    (y, zf) = firfilter(b, axis_reverse(y, axis=axis), axis=axis, zi=zi * y0)
 
     # Reverse y.
-    y = _axis_reverse(y, axis=axis)
+    y = axis_reverse(y, axis=axis)
 
     if edge > 0:
         # Slice the actual signal from the extended signal.
-        y = _axis_slice(y, start=edge, stop=-edge, axis=axis)
+        y = axis_slice(y, start=edge, stop=-edge, axis=axis)
 
     return cupy.copy(y)

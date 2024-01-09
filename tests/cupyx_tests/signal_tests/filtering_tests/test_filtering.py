@@ -42,10 +42,11 @@ def test_firfilter_zi(dtype, filter_len):
 @pytest.mark.parametrize('dtype', [cupy.float32, cupy.float64])
 @pytest.mark.parametrize("num_samps", [2**14, 2**18])
 @pytest.mark.parametrize("filter_len", [8, 32, 128])
-def test_firfilter2(dtype, num_samps, filter_len):
+@pytest.mark.parametrize("padtype", ["odd", "even", "constant"])
+def test_firfilter2(dtype, num_samps, filter_len, padtype):
     cpu_sig, gpu_sig = linspace_data_gen(0, 10, num_samps, endpoint=False)
     cpu_filter, _ = scipy.signal.butter(filter_len, 0.5)
     gpu_filter = cupy.asarray(cpu_filter)
-    cpu_output = scipy.signal.filtfilt(cpu_filter, 1, cpu_sig)
-    gpu_output = cupyx.signal.firfilter2(gpu_filter, gpu_sig)
+    cpu_output = scipy.signal.filtfilt(cpu_filter, 1, cpu_sig, padtype=padtype)
+    gpu_output = cupyx.signal.firfilter2(gpu_filter, gpu_sig, padtype=padtype)
     testing.assert_allclose(gpu_output, cpu_output, atol=1e-3, rtol=1e-3)
