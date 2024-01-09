@@ -9,10 +9,9 @@ def _log_mean(logx):
 
 def _log_var(logx):
     # compute log of variance of x from log(x)
-    logmean = _log_mean(logx)
-    pij = cupy.full_like(logx, cupy.pi * 1j, dtype=cupy.complex128)
-    logxmu = special.logsumexp(cupy.asarray([logx, logmean + pij]), axis=0)
-    return cupy.real(special.logsumexp(2 * logxmu, axis=0)) - cupy.log(len(logx))
+    neg_logmean = cupy.broadcast_to(_log_mean(logx) - cupy.pi * 1j, logx.shape)
+    logxmu = special.logsumexp(cupy.asarray([logx, neg_logmean]), axis=0)
+    return special.logsumexp(2 * logxmu, axis=0).real - cupy.log(len(logx))
 
 
 def boxcox_llf(lmb, data):
