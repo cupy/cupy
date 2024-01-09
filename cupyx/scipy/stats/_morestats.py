@@ -1,4 +1,18 @@
 import cupy
+from cupyx.scipy import special
+
+
+def _log_mean(logx):
+    # compute log of mean of x from log(x)
+    return special.logsumexp(logx, axis=0) - cupy.log(len(logx))
+
+
+def _log_var(logx):
+    # compute log of variance of x from log(x)
+    logmean = _log_mean(logx)
+    pij = cupy.full_like(logx, cupy.pi * 1j, dtype=cupy.complex128)
+    logxmu = special.logsumexp(cupy.asarray([logx, logmean + pij]), axis=0)
+    return cupy.real(special.logsumexp(2 * logxmu, axis=0)) - cupy.log(len(logx))
 
 
 def boxcox_llf(lmb, data):
@@ -41,7 +55,9 @@ def boxcox_llf(lmb, data):
     # Compute the variance of the transformed data
     if lmb == 0:
         variance = cupy.var(logdata, axis=0)
+        logvar = cupy.log(variance)
     else:
-        variance = cupy.var(data**lmb / lmb, axis=0)
+        logx = lmb * logdata - cupy.log(abs(lmb))
+        logvar = _log_var(logx)
 
-    return (lmb - 1) * cupy.sum(logdata, axis=0) - N/2 * cupy.log(variance)
+    return (lmb - 1) * cupy.sum(logdata, axis=0) - N/2 * logvar
