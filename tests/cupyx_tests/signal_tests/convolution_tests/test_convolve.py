@@ -8,14 +8,14 @@ from cupyx import signal
 
 def _convolve1d3o(in1, in2):
     dtype = in1.dtype
-    ker_shape = in2.shape
-    out_dim = in1.shape[0] - max(ker_shape) + 1
+    W, H, D = in2.shape
+    size = in1.shape[0] - max(W, H, D) + 1
     s = numpy.dtype(dtype).itemsize
     from numpy.lib.stride_tricks import as_strided
-    X = numpy.flip(as_strided(in1, (out_dim, *ker_shape), (s, s, 0, 0)), 1)
-    Y = numpy.flip(as_strided(in1, (out_dim, *ker_shape), (s, 0, s, 0)), 2)
-    Z = numpy.flip(as_strided(in1, (out_dim, *ker_shape), (s, 0, 0, s)), 3)
-    return (X * Y * Z * in2).sum(axis=(1, 2, 3))
+    X = as_strided(in1, (size, W), (s, s))[:, ::-1]
+    Y = as_strided(in1, (size, H), (s, s))[:, ::-1]
+    Z = as_strided(in1, (size, D), (s, s))[:, ::-1]
+    return numpy.einsum('ix,iy,iz,xyz->i', X, Y, Z, in2)
 
 
 class TestConvolve1d3o:
@@ -28,10 +28,9 @@ class TestConvolve1d3o:
         b = testing.shaped_random(shape, xp=xp, dtype=dtype, scale=2) - 1
         if xp is cupy:
             return signal.convolve1d3o(a, b)
-        elif xp is numpy:
-            return _convolve1d3o(a, b)
         else:
-            assert False
+            assert xp is numpy
+            return _convolve1d3o(a, b)
 
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(rtol=2e-3)
@@ -44,7 +43,6 @@ class TestConvolve1d3o:
             shape, xp=xp, dtype=dtype, scale=2) - (1 + 1j)
         if xp is cupy:
             return signal.convolve1d3o(a, b)
-        elif xp is numpy:
-            return _convolve1d3o(a, b)
         else:
-            assert False
+            assert xp is numpy
+            return _convolve1d3o(a, b)
