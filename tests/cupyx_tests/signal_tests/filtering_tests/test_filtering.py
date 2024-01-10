@@ -5,6 +5,7 @@ import scipy
 
 import cupy
 import cupyx.signal
+import cupyx.scipy.signal
 from cupy import testing
 
 

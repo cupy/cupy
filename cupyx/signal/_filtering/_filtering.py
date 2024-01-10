@@ -43,66 +43,8 @@ def firfilter(b, x, axis=-1, zi=None):
         If `zi` is None, this is not returned, otherwise, `zf` holds the
         final filter delay values.
     """
-    b = cupy.asarray(b)
-    if b.ndim != 1:
-        raise ValueError("object of too small depth for desired array")
 
-    if x.ndim == 0:
-        raise ValueError("x must be at least 1-D")
-
-    inputs = [b, x]
-    if zi is not None:
-        # _linear_filter does not broadcast zi, but does do expansion of
-        # singleton dims.
-        zi = cupy.asarray(zi)
-        if zi.ndim != x.ndim:
-            raise ValueError("object of too small depth for desired array")
-        expected_shape = list(x.shape)
-        expected_shape[axis] = b.shape[0] - 1
-        expected_shape = tuple(expected_shape)
-        # check the trivial case where zi is the right shape first
-        if zi.shape != expected_shape:
-            strides = zi.ndim * [None]
-            if axis < 0:
-                axis += zi.ndim
-            for k in range(zi.ndim):
-                if k == axis and zi.shape[k] == expected_shape[k]:
-                    strides[k] = zi.strides[k]
-                elif k != axis and zi.shape[k] == expected_shape[k]:
-                    strides[k] = zi.strides[k]
-                elif k != axis and zi.shape[k] == 1:
-                    strides[k] = 0
-                else:
-                    raise ValueError(
-                        "Unexpected shape for zi: expected "
-                        "%s, found %s." % (expected_shape, zi.shape)
-                    )
-            zi = cupy.lib.stride_tricks.as_strided(zi, expected_shape, strides)
-        inputs.append(zi)
-    dtype = cupy.result_type(*inputs)
-
-    if dtype.char not in "fdgFDGO":
-        raise NotImplementedError("input type '%s' not supported" % dtype)
-
-    b = cupy.array(b, dtype=dtype)
-    x = cupy.array(x, dtype=dtype, copy=False)
-
-    out_full = cupy.apply_along_axis(lambda y: cupy.convolve(b, y), axis, x)
-
-    ind = out_full.ndim * [slice(None)]
-    if zi is not None:
-        ind[axis] = slice(zi.shape[axis])
-        out_full[tuple(ind)] += zi
-
-    ind[axis] = slice(out_full.shape[axis] - len(b) + 1)
-    out = out_full[tuple(ind)]
-
-    if zi is None:
-        return out
-    else:
-        ind[axis] = slice(out_full.shape[axis] - len(b) + 1, None)
-        zf = out_full[tuple(ind)]
-        return out, zf
+    return cupyx.scipy.signal.lfilter(b, cupy.ones((1,)), x, axis, zi)
 
 
 def firfilter_zi(b):
