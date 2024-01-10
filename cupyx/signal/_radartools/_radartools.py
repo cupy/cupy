@@ -23,7 +23,7 @@ FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 """
 
-import cupy as cp
+import cupy
 from cupyx.scipy.signal import windows
 
 
@@ -64,22 +64,90 @@ def pulse_compression(x, template, normalize=False, window=None, nfft=None):
     if window is not None:
         Nx = len(template)
         if callable(window):
-            W = window(cp.fft.fftfreq(Nx))
-        elif isinstance(window, cp.ndarray):
+            W = window(cupy.fft.fftfreq(Nx))
+        elif isinstance(window, cupy.ndarray):
             if window.shape != (Nx,):
                 raise ValueError("window must have the same length as data")
             W = window
         else:
             W = windows.get_window(window, Nx, False)
 
-        template = cp.multiply(template, W)
+        template = template * W
 
     if normalize is True:
-        template = cp.divide(template, cp.linalg.norm(template))
+        template = template / cupy.linalg.norm(template)
 
-    fft_x = cp.fft.fft(x, nfft)
-    fft_template = cp.conj(
-        cp.tile(cp.fft.fft(template, nfft), (num_pulses, 1)))
-    compressedIQ = cp.fft.ifft(cp.multiply(fft_x, fft_template), nfft)
+    fft_x = cupy.fft.fft(x, nfft)
+    fft_template = cupy.fft.fft(template, nfft).conj()
+    return cupy.fft.ifft(fft_x * fft_template, nfft)
 
-    return compressedIQ
+
+def pulse_doppler(x, window=None, nfft=None):
+    """
+    Pulse doppler processing yields a range/doppler data matrix that represents
+    moving target data that's separated from clutter. An estimation of the
+    doppler shift can also be obtained from pulse doppler processing. FFT taken
+    across slow-time (pulse) dimension.
+
+    Parameters
+    ----------
+    x : ndarray
+        Received signal, assume 2D array with [num_pulses, sample_per_pulse]
+
+    window : array_like, callable, string, float, or tuple, optional
+        Specifies the window applied to the signal in the Fourier
+        domain.
+
+    nfft : int, size of FFT for pulse compression. Default is number of
+        samples per pulse
+
+    Returns
+    -------
+    pd_dataMatrix : ndarray
+        Pulse-doppler output (range/doppler matrix)
+    """
+    [num_pulses, samples_per_pulse] = x.shape
+
+    if nfft is None:
+        nfft = num_pulses
+
+    if window is not None:
+        Nx = num_pulses
+        if callable(window):
+            W = window(cupy.fft.fftfreq(Nx))
+        elif isinstance(window, cupy.ndarray):
+            if window.shape != (Nx,):
+                raise ValueError("window must have the same length as data")
+            W = window[cupy.newaxis]
+        else:
+            W = windows.get_window(window, Nx, False)[cupy.newaxis]
+
+        pd_dataMatrix = cupy.fft.fft(
+            cupy.multiply(x, cupy.tile(W.T, (1, samples_per_pulse))),
+            nfft, axis=0
+        )
+    else:
+        pd_dataMatrix = cupy.fft.fft(x, nfft, axis=0)
+
+    return pd_dataMatrix
+
+
+def cfar_alpha(pfa, N):
+    """
+    Computes the value of alpha corresponding to a given probability
+    of false alarm and number of reference cells N.
+
+    Parameters
+    ----------
+    pfa : float
+        Probability of false alarm.
+
+    N : int
+        Number of reference cells.
+
+    Returns
+    -------
+    alpha : float
+        Alpha value.
+    """
+    return N * (pfa ** (-1.0 / N) - 1)
