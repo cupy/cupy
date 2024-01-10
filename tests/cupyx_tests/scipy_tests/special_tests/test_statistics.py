@@ -214,7 +214,10 @@ class TestThreeArgumentDistributions(_TestDistributionsBase):
         This method uses first two arguments with mostly non-negative values.
         In some cases, the last argument is constrained to range [0, 1]
         """
-        if function in ['btdtr', 'btdtri'] and testing.installed('scipy>=1.12.0rc1'):
+        if (
+            function in ['btdtr', 'btdtri'] and
+            testing.installed('scipy>=1.12.0rc1')
+        ):
             pytest.skip('btdtr and btdtri are deprecated since SciPy 1.12')
 
         import scipy.special  # NOQA
