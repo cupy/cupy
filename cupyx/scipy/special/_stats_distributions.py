@@ -867,6 +867,8 @@ __device__ double nbdtri(int k, int n, double y)
     }
     dk = k + 1;
     dn = n;
+    if (y <= 0.0) return 0.0;
+    if (y >= 1.0) return 1.0;
     w = incbi(dn, dk, y);
     return (w);
 }
