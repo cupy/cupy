@@ -572,12 +572,182 @@ RealType*   predConsts
             vertIdx, tri[0], infIdx, points, orgPointIdx, predConsts );
     }
 }
+
+__device__ RealType orient2dDet
+(
+const RealType* predConsts,
+const RealType *pa,
+const RealType *pb,
+const RealType *pc
+)
+{
+    RealType detleft, detright;
+
+    detleft = (pa[0] - pc[0]) * (pb[1] - pc[1]);
+    detright = (pa[1] - pc[1]) * (pb[0] - pc[0]);
+
+    return detleft - detright;
+}
+
+__forceinline__ __device__ RealType incircleDet
+(
+const RealType* predConsts,
+const RealType* pa,
+const RealType* pb,
+const RealType* pc,
+const RealType* pd
+)
+{
+    RealType adx, bdx, cdx, ady, bdy, cdy;
+    RealType bdxcdy, cdxbdy, cdxady, adxcdy, adxbdy, bdxady;
+    RealType alift, blift, clift;
+    RealType det;
+
+    adx = pa[0] - pd[0];
+    bdx = pb[0] - pd[0];
+    cdx = pc[0] - pd[0];
+    ady = pa[1] - pd[1];
+    bdy = pb[1] - pd[1];
+    cdy = pc[1] - pd[1];
+
+    bdxcdy = bdx * cdy;
+    cdxbdy = cdx * bdy;
+    alift = adx * adx + ady * ady;
+
+    cdxady = cdx * ady;
+    adxcdy = adx * cdy;
+    blift = bdx * bdx + bdy * bdy;
+
+    adxbdy = adx * bdy;
+    bdxady = bdx * ady;
+    clift = cdx * cdx + cdy * cdy;
+
+    det = alift * (bdxcdy - cdxbdy)
+        + blift * (cdxady - adxcdy)
+        + clift * (adxbdy - bdxady);
+
+    return det;
+}
+
+__forceinline__ __device__ float inCircleDet
+(
+Tri tri,
+int vert,
+/** predWrapper values **/
+int         infIdx,
+Point2*     points,
+RealType*   predConsts
+)
+{
+    const RealType* pt[] = {
+        getPoint( tri._v[0], points )._p,
+        getPoint( tri._v[1], points )._p,
+        getPoint( tri._v[2], points )._p,
+        getPoint( vert, points )._p };
+
+    float det;
+
+    if ( tri.has( infIdx ) )
+    {
+        const int infVi = tri.getIndexOf( infIdx );
+
+        det = orient2dDet(
+            predConsts, pt[ (infVi + 1) % 3 ], pt[ (infVi + 2) % 3 ], pt[3] );
+    }
+    else
+        det = incircleDet( predConsts, pt[0], pt[1], pt[2], pt[3] );
+
+    return det;
+}
+
+
+__global__ void
+kerVoteForPoint
+(
+int*        vertexTriVec,
+int         nVert,
+Tri*        triArr,
+int*        vertCircleArr,
+int*        triCircleArr,
+int         noSample,
+/** predWrapper values **/
+int         infIdx,
+Point2*     points,
+RealType*   predConsts
+)
+{
+    const float rate = float(nVert) / noSample;
+
+    // Iterate uninserted points
+    for ( int idx = getCurThreadIdx(); idx < noSample; idx += getThreadNum() )
+    {
+        const int vert = int( idx * rate );
+
+        //*** Compute insphere value
+        const int triIdx   = vertexTriVec[ vert ];
+
+        if ( -1 == triIdx ) continue;
+
+        const Tri tri = triArr[ triIdx ];
+        float cval    = /*hash( idx );*/ inCircleDet(
+            tri, vert, infIdx, points, predConsts );
+
+        //*** Sanitize and store sphere value
+
+        if ( cval <= 0 )
+            cval = 0;
+
+        int ival = __float_as_int(cval);
+
+        vertCircleArr[ idx ] =  ival;
+
+        //*** Vote
+        if ( triCircleArr[ triIdx ] < ival )
+            atomicMax( &triCircleArr[ triIdx ], ival );
+    }
+
+    return;
+}
+
+__global__ void
+kerPickWinnerPoint
+(
+int*         vertexTriVec,
+int          nVert,
+int*         vertCircleArr,
+int*         triCircleArr,
+int*         triVertArr,
+int          noSample
+)
+{
+    const float rate = float(nVert) / noSample;
+
+    // Iterate uninserted points
+    for ( int idx = getCurThreadIdx(); idx < noSample; idx += getThreadNum() )
+    {
+        const int vert   = int( idx * rate );
+        const int triIdx = vertexTriVec[ vert ];
+
+        if ( triIdx == -1 ) continue;
+
+        const int vertSVal = vertCircleArr[ idx ];
+        const int winSVal  = triCircleArr[ triIdx ];
+
+        // Check if vertex is winner
+
+        if ( winSVal == vertSVal )
+            atomicMin( &triVertArr[ triIdx ], vert );
+    }
+
+    return;
+}
 """
 
 DELAUNAY_MODULE = cupy.RawModule(
     code=KERNEL_DIVISION, options=('-std=c++11',),
     name_expressions=['kerMakeFirstTri', 'kerInitPointLocationFast',
-                      'kerInitPointLocationExact'])
+                      'kerInitPointLocationExact', 'kerVoteForPoint',
+                      'kerPickWinnerPoint'])
 
 
 N_BLOCKS = 512
@@ -608,3 +778,19 @@ def init_point_location_exact(
     ker_init_point_loc_fast((N_BLOCKS,), (BLOCK_SZ,), (
         vert_tri, n_vert, exact_check, counter, tri, inf_idx,
         point_vec, points_idx, pred_consts))
+
+
+def vote_for_point(vert_tri, n_vert, tri, vert_circle, tri_circle,
+                   no_sample, inf_idx, points, pred_consts):
+    ker_vote_for_point = DELAUNAY_MODULE.get_function('kerVoteForPoint')
+    ker_vote_for_point((N_BLOCKS,), (BLOCK_SZ,), (
+        vert_tri, n_vert, tri, vert_circle, tri_circle,
+        no_sample, inf_idx, points, pred_consts
+    ))
+
+
+def pick_winner_point(vert_tri, n_vert, vert_circle, tri_circle,
+                      tri_to_vert, no_sample):
+    ker_pick_winner_point = DELAUNAY_MODULE.get_function('kerPickWinnerPoint')
+    ker_pick_winner_point((N_BLOCKS,), (BLOCK_SZ,), (
+        vert_tri, n_vert, vert_circle, tri_circle, tri_to_vert, no_sample))

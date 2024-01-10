@@ -5,7 +5,8 @@ from cupy_backends.cuda.api import runtime
 
 from cupyx.scipy.spatial.delaunay_2d._schewchuk import init_predicate
 from cupyx.scipy.spatial.delaunay_2d._kernels import (
-    make_first_tri, init_point_location_fast, init_point_location_exact)
+    make_first_tri, init_point_location_fast, init_point_location_exact,
+    vote_for_point, pick_winner_point)
 
 
 def _get_typename(dtype):
@@ -154,6 +155,7 @@ class GDel2D:
     def __init__(self, points):
         self.n_points = points.shape[0] + 1
         self.max_triangles = 2 * self.n_points
+        self.tri_num = 0
 
         self.points = cupy.array(points, copy=True)
         self.point_vec = cupy.empty((self.n_points, 2), dtype=points.dtype)
@@ -207,8 +209,8 @@ class GDel2D:
         tri = cupy.r_[tri, v2].astype(cupy.int32)
         self.point_vec[-1] = self.point_vec[tri].mean(0)
 
-        pred_consts = cupy.empty(18, cupy.float64)
-        init_predicate(pred_consts)
+        self.pred_consts = cupy.empty(18, cupy.float64)
+        init_predicate(self.pred_consts)
 
         # Put the initial triangles at the Inf list
         make_first_tri(
@@ -218,14 +220,16 @@ class GDel2D:
         exact_check = cupy.empty(self.n_points, dtype=cupy.int32)
         init_point_location_fast(
             self.vert_tri, self.n_points, exact_check, self.counters, tri,
-            self.n_points - 1, self.point_vec, self.points_idx, pred_consts)
+            self.n_points - 1, self.point_vec, self.points_idx,
+            self.pred_consts)
 
-        breakpoint()
         init_point_location_exact(
             self.vert_tri, self.n_points, exact_check, self.counters, tri,
-            self.n_points - 1, self.point_vec, self.points_idx, pred_consts)
+            self.n_points - 1, self.point_vec, self.points_idx,
+            self.pred_consts)
 
         self.available_points = self.n_points - 4
+        self.tri_num = 4
 
     def _init_for_flip(self):
         min_val = self.points.min()
@@ -250,13 +254,44 @@ class GDel2D:
         self._construct_initial_triangles()
 
     def _split_tri(self):
-        max_sample_per_tri = 100  # NOQA
+        max_sample_per_tri = 100
 
         # Rank points
-        tri_num = 4  # NOQA
+        no_sample = self.n_points
+
+        if no_sample / self.tri_num > max_sample_per_tri:
+            no_sample = self.tri_num * max_sample_per_tri
+
+        tri_circle = cupy.full(
+            self.max_triangles, cupy.iinfo(cupy.int32).min, dtype=cupy.int32)
+
+        vert_circle = cupy.empty(self.n_points, dtype=cupy.int32)
+        vote_for_point(self.vert_tri, self.n_points, self.triangles,
+                       vert_circle, tri_circle, no_sample,
+                       self.n_points - 1, self.point_vec, self.pred_consts)
+        breakpoint()
+        tri_to_vert = cupy.full(
+            self.max_triangles, 0x7FFFFFFF, dtype=cupy.int32)
+        pick_winner_point(self.vert_tri, self.n_points, vert_circle,
+                          tri_circle, tri_to_vert, no_sample)
+
+        del vert_circle
+        del tri_circle
+
+        split_tri_vec = cupy.where(tri_to_vert < 0x7FFFFFFF - 1)[0]
+        split_tri_vec = split_tri_vec.astype(cupy.int32)
+
+        self.ins_num = split_tri_vec.shape[0]
+        extra_tri_num = 2 * self.ins_num
+        split_tri_num = self.tri_num + extra_tri_num  # NOQA
+
+        if (self.available_points - self.ins_num < self.ins_num and
+                self.ins_num < 0.1 * self.n_points):
+            self.do_flipping = False
 
     def _split_and_flip(self):
         insert_loop = 0  # NOQA
+        self.do_flipping = True
         while self.available_points > 0:
             self._split_tri()
 
