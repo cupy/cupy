@@ -39,11 +39,18 @@ def _numpy_pulse_compression(x, t, normalize, window):
     return out.astype(dtype)
 
 
+tol = {
+    numpy.float32: 2e-3,
+    numpy.float64: 1e-7,
+    numpy.complex64: 2e-3,
+    numpy.complex128: 1e-7,
+}
+
+
 @pytest.mark.parametrize('normalize', [True, False])
 @pytest.mark.parametrize('window', [None, 'hamming', numpy.negative])
 @testing.for_dtypes('fdFD')
-@testing.numpy_cupy_allclose(
-    rtol=1e-3, type_check=False, contiguous_check=False)
+@testing.numpy_cupy_allclose(rtol=tol, contiguous_check=False)
 def test_pulse_compression(xp, normalize, window, dtype):
     x = testing.shaped_random((8, 700), xp=xp, dtype=dtype)
     template = testing.shaped_random((100,), xp=xp, dtype=dtype)
@@ -57,8 +64,7 @@ def test_pulse_compression(xp, normalize, window, dtype):
 
 @pytest.mark.parametrize('window', [None, 'hamming', numpy.negative])
 @testing.for_dtypes('fdFD')
-@testing.numpy_cupy_allclose(
-    rtol=1e-3, type_check=False, contiguous_check=False)
+@testing.numpy_cupy_allclose(rtol=tol, contiguous_check=False)
 def test_pulse_doppler(xp, window, dtype):
     x = testing.shaped_random((8, 700), xp=xp, dtype=dtype)
 

@@ -27,6 +27,25 @@ import cupy
 from cupyx.scipy.signal import windows
 
 
+def _pulse_preprocess(x, normalize, window):
+    if window is not None:
+        n = x.shape[-1]
+        if callable(window):
+            w = window(cupy.fft.fftfreq(n).astype(x.dtype))
+        elif isinstance(window, cupy.ndarray):
+            if window.shape != (n,):
+                raise ValueError("window must have the same length as data")
+            w = window
+        else:
+            w = windows.get_window(window, n, False).astype(x.dtype)
+        x = x * w
+
+    if normalize:
+        x = x / cupy.linalg.norm(x)
+
+    return x
+
+
 def pulse_compression(x, template, normalize=False, window=None, nfft=None):
     """
     Pulse Compression is used to increase the range resolution and SNR
@@ -56,30 +75,19 @@ def pulse_compression(x, template, normalize=False, window=None, nfft=None):
     compressedIQ : ndarray
         Pulse compressed output
     """
-    [num_pulses, samples_per_pulse] = x.shape
+    num_pulses, samples_per_pulse = x.shape
+    dtype = cupy.result_type(x, template)
 
     if nfft is None:
         nfft = samples_per_pulse
 
-    if window is not None:
-        Nx = len(template)
-        if callable(window):
-            W = window(cupy.fft.fftfreq(Nx))
-        elif isinstance(window, cupy.ndarray):
-            if window.shape != (Nx,):
-                raise ValueError("window must have the same length as data")
-            W = window
-        else:
-            W = windows.get_window(window, Nx, False)
-
-        template = template * W
-
-    if normalize is True:
-        template = template / cupy.linalg.norm(template)
-
+    t = _pulse_preprocess(template, normalize, window)
     fft_x = cupy.fft.fft(x, nfft)
-    fft_template = cupy.fft.fft(template, nfft).conj()
-    return cupy.fft.ifft(fft_x * fft_template, nfft)
+    fft_t = cupy.fft.fft(t, nfft)
+    out = cupy.fft.ifft(fft_x * fft_t.conj(), nfft)
+    if dtype.kind != 'c':
+        out = out.real
+    return out
 
 
 def pulse_doppler(x, window=None, nfft=None):
@@ -106,30 +114,13 @@ def pulse_doppler(x, window=None, nfft=None):
     pd_dataMatrix : ndarray
         Pulse-doppler output (range/doppler matrix)
     """
-    [num_pulses, samples_per_pulse] = x.shape
+    num_pulses, samples_per_pulse = x.shape
 
     if nfft is None:
         nfft = num_pulses
 
-    if window is not None:
-        Nx = num_pulses
-        if callable(window):
-            W = window(cupy.fft.fftfreq(Nx))[cupy.newaxis]
-        elif isinstance(window, cupy.ndarray):
-            if window.shape != (Nx,):
-                raise ValueError("window must have the same length as data")
-            W = window[cupy.newaxis]
-        else:
-            W = windows.get_window(window, Nx, False)[cupy.newaxis]
-
-        pd_dataMatrix = cupy.fft.fft(
-            cupy.multiply(x, cupy.tile(W.T, (1, samples_per_pulse))),
-            nfft, axis=0
-        )
-    else:
-        pd_dataMatrix = cupy.fft.fft(x, nfft, axis=0)
-
-    return pd_dataMatrix
+    xT = _pulse_preprocess(x.T, False, window)
+    return cupy.fft.fft(xT, nfft).T
 
 
 def cfar_alpha(pfa, N):
