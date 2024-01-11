@@ -114,7 +114,7 @@ def pulse_doppler(x, window=None, nfft=None):
     if window is not None:
         Nx = num_pulses
         if callable(window):
-            W = window(cupy.fft.fftfreq(Nx))
+            W = window(cupy.fft.fftfreq(Nx))[cupy.newaxis]
         elif isinstance(window, cupy.ndarray):
             if window.shape != (Nx,):
                 raise ValueError("window must have the same length as data")
