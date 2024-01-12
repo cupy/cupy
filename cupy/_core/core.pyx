@@ -224,6 +224,9 @@ cdef class _ndarray_base:
             bound = cupy._core._memory_range.get_bound(self)
             self._index_32_bits = bound[1] - bound[0] <= (1 << 31)
 
+        # writeable
+        self._writeable = True
+
     cdef _init_fast(self, const shape_t& shape, dtype, bint c_order):
         """ For internal ndarray creation. """
         cdef Py_ssize_t itemsize
@@ -236,6 +239,7 @@ cdef class _ndarray_base:
         self._set_contiguous_strides(itemsize, c_order)
         self.data = memory.alloc(self.size * itemsize)
         self._index_32_bits = (self.size * itemsize) <= (1 << 31)
+        self._writeable = True
 
     @property
     def __cuda_array_interface__(self):
@@ -272,9 +276,9 @@ cdef class _ndarray_base:
         else:
             desc['strides'] = self.strides
         if self.size > 0:
-            desc['data'] = (self.data.ptr, False)
+            desc['data'] = (self.data.ptr, not self._writeable)
         else:
-            desc['data'] = (0, False)
+            desc['data'] = (0, not self._writeable)
 
         return desc
 
@@ -354,8 +358,7 @@ cdef class _ndarray_base:
         .. seealso:: :attr:`numpy.ndarray.flags`
 
         """
-        return flags.Flags(self._c_contiguous, self._f_contiguous,
-                           self.base is None)
+        return flags.Flags(self)
 
     property shape:
         """Lengths of axes.
@@ -1995,6 +1998,7 @@ cdef class _ndarray_base:
         v.dtype = self.dtype
         v._c_contiguous = self._c_contiguous
         v._f_contiguous = self._f_contiguous
+        v._writeable = self._writeable
         v._index_32_bits = self._index_32_bits
         v._set_shape_and_strides(
             shape, strides, update_c_contiguity, update_f_contiguity)

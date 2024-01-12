@@ -15,6 +15,7 @@ cdef class _ndarray_base:
         public strides_t _strides
         readonly bint _c_contiguous
         readonly bint _f_contiguous
+        public bint _writeable
         # To do fast indexing in the CArray class
         readonly bint _index_32_bits
         readonly object dtype
