@@ -1087,6 +1087,7 @@ cdef _ndarray_base _diagonal(
         a.shape[:-2] + (diag_size,),
         a.strides[:-2] + (a.strides[-1] + a.strides[-2],),
         True, True)
+    ret._writeable = False
     return ret
 
 

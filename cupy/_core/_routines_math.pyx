@@ -72,6 +72,7 @@ cdef _ndarray_base _ndarray_imag_getter(_ndarray_base self):
         return view
     new_array = core.ndarray.__new__(type(self), self.shape, dtype=self.dtype)
     new_array.fill(0)
+    new_array._writeable = False
     return new_array
 
 
