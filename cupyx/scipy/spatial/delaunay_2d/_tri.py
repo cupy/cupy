@@ -6,7 +6,8 @@ from cupy_backends.cuda.api import runtime
 from cupyx.scipy.spatial.delaunay_2d._schewchuk import init_predicate
 from cupyx.scipy.spatial.delaunay_2d._kernels import (
     make_first_tri, init_point_location_fast, init_point_location_exact,
-    vote_for_point, pick_winner_point)
+    vote_for_point, pick_winner_point, shift, shift_opp_tri,
+    shift_tri_idx)
 
 
 def _get_typename(dtype):
@@ -161,9 +162,9 @@ class GDel2D:
         self.point_vec = cupy.empty((self.n_points, 2), dtype=points.dtype)
         self.point_vec[:-1] = points
 
-        self.triangles = cupy.empty((self.max_triangles, 3), dtype=cupy.int32)
+        self.triangles = cupy.empty((4, 3), dtype=cupy.int32)
         self.triangle_opp = cupy.empty_like(self.triangles)
-        self.triangle_info = cupy.empty(self.max_triangles, dtype=cupy.int8)
+        self.triangle_info = cupy.empty(4, dtype=cupy.int8)
         self.counters = cupy.zeros(2, dtype=cupy.int32)
 
         self.flip = cupy.empty((self.max_triangles, 2, 2), dtype=cupy.int32)
@@ -253,10 +254,38 @@ class GDel2D:
 
         self._construct_initial_triangles()
 
+    def _shift_replace(self, shift_vec, data, size, type_str):
+        shift_values = cupy.empty(size, dtype=data.dtype)
+        shift(shift_vec, data, shift_values, type_str)
+        return shift_values
+
+    def _shift_opp_tri(self, shift_vec, size):
+        shift_values = cupy.empty((size, 3), dtype=cupy.int32)
+        shift_opp_tri(shift_vec, self.triangle_opp, shift_values)
+        return shift_values
+
+    def _shift_tri(self, tri_to_vert, split_tri_vec):
+        tri_num = self.tri_num + 2 * split_tri_vec.shape[0]
+        shift_vec = cupy.arange(
+            0, 2 * tri_to_vert.shape[0], 2, dtype=cupy.int32)
+
+        self.triangles = self._shift_replace(
+            shift_vec, self.triangles, (tri_num, 3), 'Tri')
+        self.triangle_info = self._shift_replace(
+            shift_vec, self.triangle_info, tri_num, 'char')
+        tri_to_vert = self._shift_replace(
+            shift_vec, tri_to_vert, tri_num, 'int')
+
+        self.triangle_opp = self._shift_opp_tri(shift_vec, tri_num)
+
+        shift_tri_idx(self.vert_tri, shift_vec)
+        shift_tri_idx(split_tri_vec, shift_vec)
+
     def _split_tri(self):
         max_sample_per_tri = 100
 
         # Rank points
+        tri_num = self.tri_num
         no_sample = self.n_points
 
         if no_sample / self.tri_num > max_sample_per_tri:
@@ -269,7 +298,7 @@ class GDel2D:
         vote_for_point(self.vert_tri, self.n_points, self.triangles,
                        vert_circle, tri_circle, no_sample,
                        self.n_points - 1, self.point_vec, self.pred_consts)
-        breakpoint()
+
         tri_to_vert = cupy.full(
             self.max_triangles, 0x7FFFFFFF, dtype=cupy.int32)
         pick_winner_point(self.vert_tri, self.n_points, vert_circle,
@@ -280,6 +309,7 @@ class GDel2D:
 
         split_tri_vec = cupy.where(tri_to_vert < 0x7FFFFFFF - 1)[0]
         split_tri_vec = split_tri_vec.astype(cupy.int32)
+        tri_to_vert = tri_to_vert[split_tri_vec]
 
         self.ins_num = split_tri_vec.shape[0]
         extra_tri_num = 2 * self.ins_num
@@ -288,6 +318,17 @@ class GDel2D:
         if (self.available_points - self.ins_num < self.ins_num and
                 self.ins_num < 0.1 * self.n_points):
             self.do_flipping = False
+
+        if self.do_flipping:
+            self._shift_tri(tri_to_vert, split_tri_vec)
+            tri_num = -1
+
+        breakpoint()
+        sz = split_tri_num if tri_num < 0 else tri_num
+
+        ins_tri_map = cupy.full(sz, -1, dtype=cupy.int32)
+        ins_tri_map[split_tri_vec] = cupy.arange(
+            split_tri_vec.shape[0], dtype=cupy.int32)
 
     def _split_and_flip(self):
         insert_loop = 0  # NOQA

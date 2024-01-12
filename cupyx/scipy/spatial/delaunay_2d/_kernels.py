@@ -741,13 +741,76 @@ int          noSample
 
     return;
 }
+
+template< typename T >
+__global__ void
+kerShiftValues
+(
+int*        shiftVec,
+int         nShift,
+T*          src,
+T*          dest
+)
+{
+    for ( int idx = getCurThreadIdx(); idx < nShift; idx += getThreadNum() )
+    {
+        const int shift = shiftVec[ idx ];
+        dest[ idx + shift ] = src[ idx ];
+    }
+}
+
+__global__ void
+kerShiftOpp
+(
+int*        shiftVec,
+int         nShift,
+TriOpp*     src,
+TriOpp*     dest
+)
+{
+    for ( int idx = getCurThreadIdx(); idx < nShift; idx += getThreadNum() )
+    {
+        const int shift = shiftVec[ idx ];
+
+        TriOpp opp = src[ idx ];
+
+        for ( int vi = 0; vi < 3; ++vi )
+        {
+            const int oppTri = opp.getOppTri( vi );
+            opp.setOppTri( vi, oppTri + shiftVec[ oppTri ] );
+        }
+
+        // CudaAssert( idx + shift < destSize );
+
+        dest[ idx + shift ] = opp;
+    }
+}
+
+__global__ void
+kerShiftTriIdx
+(
+int*        idxVec,
+int         nIdx,
+int*        shiftArr
+)
+{
+    for ( int idx = getCurThreadIdx(); idx < nIdx; idx += getThreadNum() )
+    {
+        const int oldIdx = idxVec[ idx ];
+
+        if ( oldIdx != -1 )
+            idxVec[ idx ] = oldIdx + shiftArr[ oldIdx ];
+    }
+}
 """
 
 DELAUNAY_MODULE = cupy.RawModule(
     code=KERNEL_DIVISION, options=('-std=c++11',),
     name_expressions=['kerMakeFirstTri', 'kerInitPointLocationFast',
                       'kerInitPointLocationExact', 'kerVoteForPoint',
-                      'kerPickWinnerPoint'])
+                      'kerPickWinnerPoint', 'kerShiftValues<Tri>',
+                      'kerShiftValues<char>', 'kerShiftValues<int>',
+                      'kerShiftOpp', 'kerShiftTriIdx'])
 
 
 N_BLOCKS = 512
@@ -794,3 +857,21 @@ def pick_winner_point(vert_tri, n_vert, vert_circle, tri_circle,
     ker_pick_winner_point = DELAUNAY_MODULE.get_function('kerPickWinnerPoint')
     ker_pick_winner_point((N_BLOCKS,), (BLOCK_SZ,), (
         vert_tri, n_vert, vert_circle, tri_circle, tri_to_vert, no_sample))
+
+
+def shift(shift_idx, in_arr, out_arr, type_str):
+    ker_shift = DELAUNAY_MODULE.get_function(f'kerShiftValues<{type_str}>')
+    ker_shift((N_BLOCKS,), (BLOCK_SZ,), (
+        shift_idx, int(shift_idx.shape[0]), in_arr, out_arr))
+
+
+def shift_opp_tri(shift_idx, in_arr, out_arr):
+    ker_shift = DELAUNAY_MODULE.get_function('kerShiftOpp')
+    ker_shift((N_BLOCKS,), (BLOCK_SZ,), (
+        shift_idx, int(shift_idx.shape[0]), in_arr, out_arr))
+
+
+def shift_tri_idx(idx, shift_idx):
+    ker_shift = DELAUNAY_MODULE.get_function('kerShiftTriIdx')
+    ker_shift((N_BLOCKS,), (BLOCK_SZ,), (
+        idx, int(idx.shape[0]), shift_idx))
