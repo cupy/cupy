@@ -1450,6 +1450,7 @@ def kaiser_bessel_derived(M, beta, sym=True):
     See Also
     --------
     kaiser
+    scipy.signal.windows.kaiser_bessel_derived
 
     Notes
     -----
@@ -1462,32 +1463,7 @@ def kaiser_bessel_derived(M, beta, sym=True):
     ----------
     .. [1] Bosi, Marina, and Richard E. Goldberg. Introduction to Digital
            Audio Coding and Standards. Dordrecht: Kluwer, 2003.
-    .. [2] Wikipedia, "Kaiser window",
-           https://en.wikipedia.org/wiki/Kaiser_window
 
-    Examples
-    --------
-    Plot the Kaiser-Bessel derived window based on the wikipedia
-    reference [2]_:
-
-    >>> import numpy as np
-    >>> from scipy import signal
-    >>> import matplotlib.pyplot as plt
-    >>> fig, ax = plt.subplots()
-    >>> N = 50
-    >>> for alpha in [0.64, 2.55, 7.64, 31.83]:
-    ...     ax.plot(signal.windows.kaiser_bessel_derived(2*N, np.pi*alpha),
-    ...             label=f"{alpha=}")
-    >>> ax.grid(True)
-    >>> ax.set_title("Kaiser-Bessel derived window")
-    >>> ax.set_ylabel("Amplitude")
-    >>> ax.set_xlabel("Sample")
-    >>> ax.set_xticks([0, N, 2*N-1])
-    >>> ax.set_xticklabels(["0", "N", "2N+1"])  # doctest: +SKIP
-    >>> ax.set_yticks([0.0, 0.2, 0.4, 0.6, 0.707, 0.8, 1.0])
-    >>> fig.legend(loc="center")
-    >>> fig.tight_layout()
-    >>> fig.show()
     """
     if not sym:
         raise ValueError(
