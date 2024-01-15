@@ -737,6 +737,8 @@ cdef class _ndarray_base:
             value = value.astype(self.dtype, copy=False).item()
 
         if value == 0 and self._c_contiguous:
+            if not self._writeable:
+                raise ValueError('assignment destination is read-only')
             self.data.memset_async(0, self.nbytes)
         else:
             fill_kernel(value, self)
@@ -1576,6 +1578,8 @@ cdef class _ndarray_base:
                 and slices == slice(None, None, None)
                 and isinstance(value, numpy.ndarray)
         ):
+            if not self._writeable:
+                raise ValueError('assignment destination is read-only')
             if (self.dtype == value.dtype
                     and self.shape == value.shape
                     and (self._f_contiguous or self._c_contiguous)):
