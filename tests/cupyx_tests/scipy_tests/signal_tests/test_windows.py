@@ -276,6 +276,7 @@ class TestKaiser:
                 scp.signal.windows.kaiser(6, 2.7, False),)
 
 
+@testing.with_requires('scipy >= 1.10')
 class TestKaiserBesselDerived:
     @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-13, atol=1e-13)
     def test_basic(self, xp, scp):
@@ -416,6 +417,7 @@ class TestDPSS:
         assert_raises(ValueError, windows.dpss, -1, 1, 3)  # negative M
 
 
+@testing.with_requires("scipy >= 1.10")
 class TestLanczos:
     @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-13, atol=1e-13)
     def test_basic(self, xp, scp):
@@ -508,6 +510,7 @@ class TestGetWindow:
             scp.signal.get_window(('general_hamming', 0.7), 5),
             scp.signal.get_window(('general_hamming', 0.7), 5, fftbins=False),)
 
+    @testing.with_requires("scipy >= 1.10")
     @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-15)
     def test_lanczos(self, xp, scp):
         return (scp.signal.get_window('lanczos', 6),
@@ -573,6 +576,13 @@ def test_needs_params(windows):
                    'dss', 'dpss', 'general cosine', 'general_cosine',
                    'chebwin', 'cheb', 'general hamming', 'general_hamming',
                    ]:
+        assert_raises(ValueError, windows.get_window, winstr, 7)
+
+
+@testing.with_requires("scipy >= 1.10")
+@pytest.mark.parametrize('windows', [cu_windows, cpu_windows])
+def test_needs_params_2(windows):
+    for winstr in ['kaiser_bessel_derived']:
         assert_raises(ValueError, windows.get_window, winstr, 7)
 
 
