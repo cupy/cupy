@@ -1424,6 +1424,67 @@ def kaiser(M, beta, sym=True):
     return _truncate(w, needs_trunc)
 
 
+def kaiser_bessel_derived(M, beta, sym=True):
+    """Return a Kaiser-Bessel derived window.
+
+    Parameters
+    ----------
+    M : int
+        Number of points in the output window. If zero, an empty array
+        is returned. An exception is thrown when it is negative.
+        Note that this window is only defined for an even
+        number of points.
+    beta : float
+        Kaiser window shape parameter.
+    sym : bool, optional
+        This parameter only exists to comply with the interface offered by
+        the other window functions and to be callable by `get_window`.
+        When True (default), generates a symmetric window, for use in filter
+        design.
+
+    Returns
+    -------
+    w : ndarray
+        The window, normalized to fulfil the Princen-Bradley condition.
+
+    See Also
+    --------
+    kaiser
+    scipy.signal.windows.kaiser_bessel_derived
+
+    Notes
+    -----
+    It is designed to be suitable for use with the modified discrete cosine
+    transform (MDCT) and is mainly used in audio signal processing and
+    audio coding. [1]_
+
+
+    References
+    ----------
+    .. [1] Bosi, Marina, and Richard E. Goldberg. Introduction to Digital
+           Audio Coding and Standards. Dordrecht: Kluwer, 2003.
+
+    """
+    if not sym:
+        raise ValueError(
+            "Kaiser-Bessel Derived windows are only defined for symmetric "
+            "shapes"
+        )
+    elif M < 1:
+        return np.array([])
+    elif M % 2:
+        raise ValueError(
+            "Kaiser-Bessel Derived windows are only defined for even number "
+            "of points"
+        )
+
+    kaiser_window = kaiser(M // 2 + 1, beta)
+    csum = cupy.cumsum(kaiser_window)
+    half_window = cupy.sqrt(csum[:-1] / csum[-1])
+    w = cupy.concatenate((half_window, half_window[::-1]), axis=0)
+    return w
+
+
 _gaussian_kernel = cupy.ElementwiseKernel(
     "float64 std",
     "float64 w",
@@ -2036,6 +2097,64 @@ def taylor(M, nbar=4, sll=30, norm=True, sym=True):
     return _truncate(w, needs_trunc)
 
 
+def lanczos(M, sym=True):
+    r"""Return a Lanczos window also known as a sinc window.
+
+    Parameters
+    ----------
+    M : int
+        Number of points in the output window. If zero, an empty array
+        is returned. An exception is thrown when it is negative.
+    sym : bool, optional
+        When True (default), generates a symmetric window, for use in filter
+        design.
+        When False, generates a periodic window, for use in spectral analysis.
+
+    Returns
+    -------
+    w : ndarray
+        The window, with the maximum value normalized to 1 (though the value 1
+        does not appear if `M` is even and `sym` is True).
+
+    Notes
+    -----
+    The Lanczos window is defined as
+
+    .. math::  w(n) = sinc \left( \frac{2n}{M - 1} - 1 \right)
+
+    where
+
+    .. math::  sinc(x) = \frac{\sin(\pi x)}{\pi x}
+
+    The Lanczos window has reduced Gibbs oscillations and is widely used for
+    filtering climate timeseries with good properties in the physical and
+    spectral domains.
+
+    See Also
+    --------
+    scipy.signal.windows.lanczos
+
+    """
+    if _len_guards(M):
+        return cupy.ones(M)
+    M, needs_trunc = _extend(M, sym)
+
+    # To make sure that the window is symmetric, we concatenate the right hand
+    # half of the window and the flipped one which is the left hand half of
+    # the window.
+    def _calc_right_side_lanczos(n, m):
+        return cupy.sinc(2. * cupy.arange(n, m) / (m - 1) - 1.0)
+
+    if M % 2 == 0:
+        wh = _calc_right_side_lanczos(M/2, M)
+        w = cupy.r_[cupy.flip(wh), wh]
+    else:
+        wh = _calc_right_side_lanczos((M+1)/2, M)
+        w = cupy.r_[cupy.flip(wh), 1.0, wh]
+
+    return _truncate(w, needs_trunc)
+
+
 def _fftautocorr(x):
     """Compute the autocorrelation of a real array and crop the result."""
     N = x.shape[-1]
@@ -2071,7 +2190,9 @@ _win_equiv_raw = {
     ('general hamming', 'general_hamming'): (general_hamming, True),
     ("hamming", "hamm", "ham"): (hamming, False),
     ("hanning", "hann", "han"): (hann, False),
+    ('lanczos', 'sinc'): (lanczos, False),
     ("kaiser", "ksr"): (kaiser, True),
+    ('kaiser bessel derived', 'kbd'): (kaiser_bessel_derived, True),
     ("nuttall", "nutl", "nut"): (nuttall, False),
     ("parzen", "parz", "par"): (parzen, False),
     # ('slepian', 'slep', 'optimal', 'dpss', 'dss'): (slepian, True),
