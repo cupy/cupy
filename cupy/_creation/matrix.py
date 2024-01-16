@@ -36,7 +36,9 @@ def diag(v, k=0):
     if ndim == 1:
         size = v.size + abs(k)
         ret = cupy.zeros((size, size), dtype=v.dtype)
-        ret.diagonal(k)[:] = v
+        diag = ret.diagonal(k).view()
+        diag.flags.writeable = True
+        diag[:] = v
         return ret
     elif ndim == 2:
         return cupy.array(v.diagonal(k))
