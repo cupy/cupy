@@ -7,7 +7,7 @@ from cupyx.scipy.spatial.delaunay_2d._schewchuk import init_predicate
 from cupyx.scipy.spatial.delaunay_2d._kernels import (
     make_first_tri, init_point_location_fast, init_point_location_exact,
     vote_for_point, pick_winner_point, shift, shift_opp_tri,
-    shift_tri_idx)
+    shift_tri_idx, split_points_fast, split_points_exact, split_tri)
 
 
 def _get_typename(dtype):
@@ -164,14 +164,26 @@ class GDel2D:
 
         self.triangles = cupy.empty((4, 3), dtype=cupy.int32)
         self.triangle_opp = cupy.empty_like(self.triangles)
-        self.triangle_info = cupy.empty(4, dtype=cupy.int8)
-        self.counters = cupy.zeros(2, dtype=cupy.int32)
+        self.triangle_info = cupy.zeros(4, dtype=cupy.int8)
+        self._counters = cupy.zeros(8192, dtype=cupy.int32)
+        self.counters_offset = 0
+        self.counters_size = 2
 
         self.flip = cupy.empty((self.max_triangles, 2, 2), dtype=cupy.int32)
         self.tri_msg = cupy.empty((self.max_triangles, 2), dtype=cupy.int32)
         self.values = cupy.empty(self.n_points, dtype=cupy.int32)
         self.act_tri = cupy.empty(self.max_triangles, dtype=cupy.int32)
         self.vert_tri = cupy.empty(self.n_points, dtype=cupy.int32)
+
+    @property
+    def counters(self):
+        return self._counters[self.counters_offset:]
+
+    def _renew_counters(self):
+        self.counters_offset += self.counters_size
+        if self.counters_offset > 8192:
+            self.counters_offset = 0
+            self._counters[:] = 0
 
     def _construct_initial_triangles(self):
         # Find extreme points in the x-axis
@@ -218,14 +230,17 @@ class GDel2D:
             self.triangles, self.triangle_opp, self.triangle_info,
             tri, self.n_points - 1)
 
+        self._renew_counters()
+
         exact_check = cupy.empty(self.n_points, dtype=cupy.int32)
         init_point_location_fast(
-            self.vert_tri, self.n_points, exact_check, self.counters, tri,
-            self.n_points - 1, self.point_vec, self.points_idx,
-            self.pred_consts)
+            self.vert_tri, self.n_points, exact_check,
+            self.counters, tri, self.n_points - 1, self.point_vec,
+            self.points_idx, self.pred_consts)
 
         init_point_location_exact(
-            self.vert_tri, self.n_points, exact_check, self.counters, tri,
+            self.vert_tri, self.n_points, exact_check,
+            self.counters, tri,
             self.n_points - 1, self.point_vec, self.points_idx,
             self.pred_consts)
 
@@ -254,8 +269,9 @@ class GDel2D:
 
         self._construct_initial_triangles()
 
-    def _shift_replace(self, shift_vec, data, size, type_str):
-        shift_values = cupy.empty(size, dtype=data.dtype)
+    def _shift_replace(self, shift_vec, data, size, type_str, zeros=False):
+        init = cupy.empty if not zeros else cupy.zeros
+        shift_values = init(size, dtype=data.dtype)
         shift(shift_vec, data, shift_values, type_str)
         return shift_values
 
@@ -272,7 +288,7 @@ class GDel2D:
         self.triangles = self._shift_replace(
             shift_vec, self.triangles, (tri_num, 3), 'Tri')
         self.triangle_info = self._shift_replace(
-            shift_vec, self.triangle_info, tri_num, 'char')
+            shift_vec, self.triangle_info, tri_num, 'char', zeros=True)
         tri_to_vert = self._shift_replace(
             shift_vec, tri_to_vert, tri_num, 'int')
 
@@ -280,6 +296,7 @@ class GDel2D:
 
         shift_tri_idx(self.vert_tri, shift_vec)
         shift_tri_idx(split_tri_vec, shift_vec)
+        return tri_to_vert
 
     def _split_tri(self):
         max_sample_per_tri = 100
@@ -320,15 +337,39 @@ class GDel2D:
             self.do_flipping = False
 
         if self.do_flipping:
-            self._shift_tri(tri_to_vert, split_tri_vec)
+            tri_to_vert = self._shift_tri(tri_to_vert, split_tri_vec)
             tri_num = -1
 
-        breakpoint()
         sz = split_tri_num if tri_num < 0 else tri_num
 
         ins_tri_map = cupy.full(sz, -1, dtype=cupy.int32)
         ins_tri_map[split_tri_vec] = cupy.arange(
             split_tri_vec.shape[0], dtype=cupy.int32)
+
+        # Update the location of the points
+        exact_check = cupy.empty(self.n_points, dtype=cupy.int32)
+        self._renew_counters()
+
+        split_points_fast(
+            self.vert_tri, tri_to_vert, self.triangles, ins_tri_map,
+            exact_check, self.counters, tri_num,
+            self.ins_num, self.n_points - 1, self.point_vec, self.points_idx,
+            self.pred_consts)
+
+        split_points_exact(
+            self.vert_tri, tri_to_vert, self.triangles, ins_tri_map,
+            exact_check, self.counters, tri_num,
+            self.ins_num, self.n_points - 1, self.point_vec, self.points_idx,
+            self.pred_consts)
+
+        del exact_check
+
+        # Split old into new triangle and copy them to new array
+        split_tri(split_tri_vec, self.triangles, self.triangle_opp,
+                  self.triangle_info, ins_tri_map, tri_to_vert,
+                  tri_num, self.ins_num)
+
+        self.available_points -= self.ins_num
 
     def _split_and_flip(self):
         insert_loop = 0  # NOQA

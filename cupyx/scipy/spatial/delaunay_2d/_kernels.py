@@ -14,6 +14,8 @@ using RealType = double;
 #define BLOCK_DIM    blockDim.x
 #define THREAD_IDX   threadIdx.x
 
+#define INT_MAX   0x7FFFFFFF
+
 __forceinline__ __device__ int getCurThreadIdx()
 {
     const int threadsPerBlock   = blockDim.x;
@@ -285,6 +287,57 @@ struct TriOpp
         return getOppValVi( _t[ vi ] );
     }
 };
+
+// Tri info
+// 76543210
+//     ^^^^ 0: Dead      1: Alive
+//     |||_ 0: Checked   1: Changed
+//     ||__ PairType
+
+enum TriCheckState
+{
+    Checked,
+    Changed,
+};
+
+enum PairType
+{
+    PairNone    = 0,
+    PairSingle  = 1,
+    PairDouble  = 2,
+    PairConcave = 3
+};
+
+INLINE_H_D bool isTriAlive( char c )
+{
+    return isBitSet( c, 0 );
+}
+
+INLINE_H_D void setTriAliveState( char& c, bool b )
+{
+    setBitState( c, 0, b );
+}
+
+INLINE_H_D TriCheckState getTriCheckState( char c )
+{
+    return isBitSet( c, 1 ) ? Changed : Checked;
+}
+
+INLINE_H_D void setTriCheckState( char& c, TriCheckState s )
+{
+    if ( Checked == s ) setBitState( c, 1, false );
+    else                setBitState( c, 1, true );
+}
+
+INLINE_H_D void setTriPairType( char& c, PairType p )
+{
+    c = ( c & 0xF3 ) | ( p << 2 );
+}
+
+INLINE_H_D PairType getTriPairType( char c )
+{
+    return (PairType) (( c >> 2 ) & 3);
+}
 
 template< typename T >
 __forceinline__ __device__ void cuSwap( T& v0, T& v1 )
@@ -802,6 +855,225 @@ int*        shiftArr
             idxVec[ idx ] = oldIdx + shiftArr[ oldIdx ];
     }
 }
+
+template < bool doFast >
+__forceinline__ __device__ bool splitPoints
+(
+int     vertex,
+int&    vertTriIdx,
+int*    triToVert,
+Tri*    triArr,
+int*    insTriMap,
+int     triNum,
+int     insTriNum,
+/** predWrapper values **/
+int         infIdx,
+Point2*     points,
+int*        orgPointIdx,
+RealType*   predConsts
+)
+{
+    int triIdx = vertTriIdx;
+
+    if ( triIdx == -1 ) return true;   // Point inserted
+
+    const int splitVertex = triToVert[ triIdx ];
+
+    // Vertex's triangle will not be split in this round
+    if ( splitVertex >= INT_MAX - 1 ) return true;
+
+    // Fast mode, *this* vertex will split its triangle
+    if ( doFast && vertex == splitVertex )
+    {
+        vertTriIdx = -1;
+        return true;
+    }
+
+    const Tri tri         = triArr[ triIdx ];
+    const int newBeg      = ( triNum >= 0 ) ? (
+        triNum + 2 * insTriMap[ triIdx ] ) : ( triIdx + 1 );
+    const int triVert[4]  = { tri._v[0], tri._v[1], tri._v[2], splitVertex };
+
+    int face = 0;
+
+    for ( int i = 0; i < 2; ++i )
+    {
+        const int *fv = SplitFaces[ face ];
+
+        Orient ort = ( doFast )
+            ? doOrient2DFast(
+                triVert[ fv[0] ], triVert[ fv[1] ], vertex, infIdx, points,
+                predConsts )
+            : doOrient2DFastExactSoS(
+                triVert[ fv[0] ], triVert[ fv[1] ], vertex, infIdx, points,
+                orgPointIdx, predConsts );
+
+        // Needs exact computation
+        if ( doFast && (ort == OrientZero) ) return false;
+
+        face = SplitNext[ face ][ ( ort == OrientPos ) ? 0 : 1 ];
+    }
+
+    vertTriIdx = ( ( face == 3 ) ? triIdx : (newBeg + face - 4) );
+
+    return true;
+}
+
+__global__ void
+kerSplitPointsFast
+(
+int*        vertTriVec,
+int         vertTriNum,
+int*        triToVert,
+Tri*        triArr,
+int*        insTriMap,
+int*        exactCheckArr,
+int*        counter,
+int         triNum,
+int         insTriNum,
+/** predWrapper values **/
+int         infIdx,
+Point2*     points,
+int*        orgPointIdx,
+RealType*   predConsts
+)
+{
+    // Iterate points
+    for ( int idx = getCurThreadIdx(); idx < vertTriNum; idx += getThreadNum())
+    {
+        bool ret = splitPoints<true>( idx, vertTriVec[ idx ], triToVert,
+            triArr, insTriMap, triNum, insTriNum, infIdx, points, orgPointIdx,
+            predConsts);
+
+        if ( !ret )
+            storeIntoBuffer( exactCheckArr, &counter[ CounterExact ], idx );
+    }
+}
+
+__global__ void
+kerSplitPointsExactSoS
+(
+int*    vertTriArr,
+int*    triToVert,
+Tri*    triArr,
+int*    insTriMap,
+int*    exactCheckArr,
+int*    counter,
+int     triNum,
+int     insTriNum,
+/** predWrapper values **/
+int         infIdx,
+Point2*     points,
+int*        orgPointIdx,
+RealType*   predConsts
+)
+{
+    const int exactNum = counter[ CounterExact ];
+
+    // Iterate active triangle
+    for ( int idx = getCurThreadIdx(); idx < exactNum; idx += getThreadNum() )
+    {
+        const int vertIdx = exactCheckArr[ idx ];
+
+        splitPoints< false >( vertIdx, vertTriArr[ vertIdx ], triToVert,
+            triArr, insTriMap, triNum, insTriNum, infIdx, points, orgPointIdx,
+            predConsts );
+    }
+}
+
+__global__ void
+kerSplitTri
+(
+int*        splitTriArr,
+int         nSplitTri,
+Tri*        triArr,
+TriOpp*     oppArr,
+char*       triInfoArr,
+int*        insTriMap,
+int*        triToVert,
+int         triNum,
+int         insTriNum
+)
+{
+    // Iterate current triangles
+    for ( int idx = getCurThreadIdx(); idx < nSplitTri; idx += getThreadNum() )
+    {
+        const int triIdx         = splitTriArr[ idx ];
+        const int newBeg         = ( triNum >= 0 ) ? (
+            triNum + 2 * insTriMap[ triIdx ] ) : ( triIdx + 1 );
+        const int newTriIdx[DEG] = { triIdx, newBeg, newBeg + 1 };
+        TriOpp newOpp[3]         = {
+            { -1, -1, -1 },
+            { -1, -1, -1 },
+            { -1, -1, -1 }
+        };
+
+        // Set adjacency of 3 internal faces of 3 new triangles
+        newOpp[ 0 ].setOpp( 0, newTriIdx[ 1 ], 1 );
+        newOpp[ 0 ].setOpp( 1, newTriIdx[ 2 ], 0 );
+        newOpp[ 1 ].setOpp( 0, newTriIdx[ 2 ], 1 );
+        newOpp[ 1 ].setOpp( 1, newTriIdx[ 0 ], 0 );
+        newOpp[ 2 ].setOpp( 0, newTriIdx[ 0 ], 1 );
+        newOpp[ 2 ].setOpp( 1, newTriIdx[ 1 ], 0 );
+
+        // Set adjacency of 4 external faces
+        const TriOpp oldOpp       = oppArr[ triIdx ];
+
+        // Iterate faces of old triangle
+        for ( int ni = 0; ni < DEG; ++ni )
+        {
+            if ( -1 == oldOpp._t[ ni ] ) continue; // No neighbour at this face
+
+            int neiTriIdx = oldOpp.getOppTri( ni );
+            int neiTriVi  = oldOpp.getOppVi( ni );
+
+            // Check if neighbour has split
+            const int neiNewBeg = insTriMap[ neiTriIdx ];
+
+            if ( -1 == neiNewBeg ) // Neighbour is un-split
+            {
+                // Point un-split neighbour back to this new triangle
+                oppArr[ neiTriIdx ].setOpp( neiTriVi, newTriIdx[ ni ], 2 );
+            }
+            else // Neighbour has split
+            {
+                // Get neighbour's new split triangle that has this face
+                if ( triNum >= 0 )
+                    neiTriIdx = (( 0 == neiTriVi ) ? neiTriIdx : (
+                        triNum + 2 * neiNewBeg + neiTriVi - 1));
+                else
+                    neiTriIdx += neiTriVi;
+
+                neiTriVi  = 2;
+            }
+
+            // Point this triangle to neighbour
+            newOpp[ ni ].setOpp( 2, neiTriIdx, neiTriVi );
+        }
+
+        // Write split triangle and opp
+        // Note: This slot will be overwritten below
+        const Tri tri           = triArr[ triIdx ];
+        const int splitVertex   = triToVert[ triIdx ];
+
+        for ( int ti = 0; ti < DEG; ++ti )
+        {
+            const Tri newTri = {
+                tri._v[ ( ti + 1 ) % DEG ],
+                tri._v[ ( ti + 2 ) % DEG ],
+                splitVertex
+            };
+
+            const int toTriIdx = newTriIdx[ ti ];
+            triArr[ toTriIdx ] = newTri;
+            oppArr[ toTriIdx ] = newOpp[ ti ];
+            setTriAliveState( triInfoArr[ toTriIdx ], true );
+            setTriCheckState( triInfoArr[ toTriIdx ], Changed );
+        }
+    }
+
+    return;
+}
 """
 
 DELAUNAY_MODULE = cupy.RawModule(
@@ -810,11 +1082,16 @@ DELAUNAY_MODULE = cupy.RawModule(
                       'kerInitPointLocationExact', 'kerVoteForPoint',
                       'kerPickWinnerPoint', 'kerShiftValues<Tri>',
                       'kerShiftValues<char>', 'kerShiftValues<int>',
-                      'kerShiftOpp', 'kerShiftTriIdx'])
+                      'kerShiftOpp', 'kerShiftTriIdx',
+                      'kerSplitPointsFast', 'kerSplitPointsExactSoS',
+                      'kerSplitTri'])
 
 
 N_BLOCKS = 512
 BLOCK_SZ = 128
+
+PRED_N_BLOCKS = 64
+PRED_BLOCK_SZ = 32
 
 
 def make_first_tri(tri_arr, opp_arr, tri_info_arr, tri, inf_idx):
@@ -838,7 +1115,7 @@ def init_point_location_exact(
         point_vec, points_idx, pred_consts):
     ker_init_point_loc_fast = DELAUNAY_MODULE.get_function(
         'kerInitPointLocationExact')
-    ker_init_point_loc_fast((N_BLOCKS,), (BLOCK_SZ,), (
+    ker_init_point_loc_fast((PRED_N_BLOCKS,), (PRED_BLOCK_SZ,), (
         vert_tri, n_vert, exact_check, counter, tri, inf_idx,
         point_vec, points_idx, pred_consts))
 
@@ -875,3 +1152,32 @@ def shift_tri_idx(idx, shift_idx):
     ker_shift = DELAUNAY_MODULE.get_function('kerShiftTriIdx')
     ker_shift((N_BLOCKS,), (BLOCK_SZ,), (
         idx, int(idx.shape[0]), shift_idx))
+
+
+def split_points_fast(vert_tri, tri_to_vert, tri, ins_tri_map,
+                      exact_check, counter, tri_num, ins_tri_num,
+                      inf_idx, points, points_idx, pred_consts):
+    ker_split_points_fast = DELAUNAY_MODULE.get_function('kerSplitPointsFast')
+    ker_split_points_fast((N_BLOCKS,), (BLOCK_SZ,), (
+        vert_tri, int(vert_tri.shape[0]), tri_to_vert, tri, ins_tri_map,
+        exact_check, counter, int(tri_num), int(ins_tri_num), inf_idx, points,
+        points_idx, pred_consts))
+
+
+def split_points_exact(vert_tri, tri_to_vert, tri, ins_tri_map,
+                       exact_check, counter, tri_num, ins_tri_num,
+                       inf_idx, points, points_idx, pred_consts):
+    ker_split_points_exact = DELAUNAY_MODULE.get_function(
+        'kerSplitPointsExactSoS')
+    ker_split_points_exact((PRED_BLOCK_SZ,), (PRED_N_BLOCKS,), (
+        vert_tri, tri_to_vert, tri, ins_tri_map,
+        exact_check, counter, int(tri_num), int(ins_tri_num), inf_idx, points,
+        points_idx, pred_consts))
+
+
+def split_tri(split_tri, tri, tri_opp, tri_info, ins_tri_map, tri_to_vert,
+              tri_num, ins_tri_num):
+    ker_split_tri = DELAUNAY_MODULE.get_function('kerSplitTri')
+    ker_split_tri((N_BLOCKS,), (32,), (
+        split_tri, int(split_tri.shape[0]), tri, tri_opp, tri_info,
+        ins_tri_map, tri_to_vert, int(tri_num), int(ins_tri_num)))
