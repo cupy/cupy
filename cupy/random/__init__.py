@@ -50,9 +50,9 @@ def __getattr__(key):
     # users use the class for type annotation.
     if key == 'Generator':
         # Lazy import libraries depending on cuRAND
-        from cupy.random._generator_api import Generator
-        _cupy.random.Generator = Generator
-        return Generator
+        import cupy.random._generator_api as _generator_api
+        _cupy.random.Generator = _generator_api.Generator
+        return _generator_api.Generator
     raise AttributeError(f"module '{__name__}' has no attribute '{key}'")
 
 
