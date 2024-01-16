@@ -175,3 +175,53 @@ class TestWriteableFlags:
             assert x.flags.writeable is True
             assert y.flags.writeable is False
             assert z.flags.writeable is True
+
+
+class TestWriteableFalse:
+
+    def test_ufunc_out(self):
+        for xp in (numpy, cupy):
+            out = xp.array([0, 0, 0])
+            out.flags.writeable = False
+            x = xp.array([1, 2, 3])
+            with pytest.raises(ValueError, match='read-only'):
+                xp.negative(x, out=out)
+
+    def test_setitem(self):
+        for xp in (numpy, cupy):
+            out = xp.array([1, 2, 3])
+            out.flags.writeable = False
+            with pytest.raises(ValueError, match='read-only'):
+                out[0] = 100
+
+    def test_copy(self):
+        for xp in (numpy, cupy):
+            out = xp.array([0, 0, 0])
+            out.flags.writeable = False
+            x = xp.array([1, 2, 3])
+            with pytest.raises(ValueError, match='read-only'):
+                out[:] = x
+
+    def test_inplace_add(self):
+        for xp in (numpy, cupy):
+            out = xp.array([1, 2, 3])
+            out.flags.writeable = False
+            with pytest.raises(ValueError, match='read-only'):
+                out += 100
+
+    def test_reduction_out(self):
+        for xp in (numpy, cupy):
+            out = xp.array([0, 0, 0])
+            out.flags.writeable = False
+            x = xp.array([[1, 2, 3], [4, 5, 6]])
+            with pytest.raises(ValueError, match='read-only'):
+                xp.sum(x, axis=0, out=out)
+
+    def test_matmul(self):
+        for xp in (numpy, cupy):
+            out = xp.zeros((10, 15), dtype=numpy.float32)
+            out.flags.writeable = False
+            x1 = xp.zeros((10, 12), dtype=numpy.float32)
+            x2 = xp.zeros((12, 15), dtype=numpy.float32)
+            with pytest.raises(ValueError, match='read-only'):
+                xp.matmul(x1, x2, out=out)
