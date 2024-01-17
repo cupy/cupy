@@ -1074,6 +1074,14 @@ int         insTriNum
 
     return;
 }
+
+__global__ void isTriActive(char* triInfo, bool* out, int nTriInfo) {
+    for ( int idx = getCurThreadIdx(); idx < nTriInfo; idx += getThreadNum() )
+    {
+        out[idx] = ( isTriAlive( triInfo[idx] ) && (
+            Changed == getTriCheckState( triInfo[idx] ) ) );
+    }
+}
 """
 
 DELAUNAY_MODULE = cupy.RawModule(
@@ -1084,7 +1092,7 @@ DELAUNAY_MODULE = cupy.RawModule(
                       'kerShiftValues<char>', 'kerShiftValues<int>',
                       'kerShiftOpp', 'kerShiftTriIdx',
                       'kerSplitPointsFast', 'kerSplitPointsExactSoS',
-                      'kerSplitTri'])
+                      'kerSplitTri', 'isTriActive'])
 
 
 N_BLOCKS = 512
@@ -1181,3 +1189,11 @@ def split_tri(split_tri, tri, tri_opp, tri_info, ins_tri_map, tri_to_vert,
     ker_split_tri((N_BLOCKS,), (32,), (
         split_tri, int(split_tri.shape[0]), tri, tri_opp, tri_info,
         ins_tri_map, tri_to_vert, int(tri_num), int(ins_tri_num)))
+
+
+def is_tri_active(tri_info):
+    out = cupy.empty_like(tri_info, dtype=cupy.bool_)
+    ker_is_tri_active = DELAUNAY_MODULE.get_function('isTriActive')
+    ker_is_tri_active((N_BLOCKS,), (BLOCK_SZ,), (
+        tri_info, out, tri_info.shape[0]))
+    return out

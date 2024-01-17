@@ -7,7 +7,8 @@ from cupyx.scipy.spatial.delaunay_2d._schewchuk import init_predicate
 from cupyx.scipy.spatial.delaunay_2d._kernels import (
     make_first_tri, init_point_location_fast, init_point_location_exact,
     vote_for_point, pick_winner_point, shift, shift_opp_tri,
-    shift_tri_idx, split_points_fast, split_points_exact, split_tri)
+    shift_tri_idx, split_points_fast, split_points_exact, split_tri,
+    is_tri_active)
 
 
 def _get_typename(dtype):
@@ -152,6 +153,16 @@ def _compute_triangle_orientation(det):
     return cupy.where(det > 0, 1, cupy.where(det < 0, -1, 0))
 
 
+class CheckDelaunayMode:
+    CircleFastOrientFast = 0
+    CircleExactOrientSoS = 1
+
+
+class ActTriMode:
+    ActTriMarkCompact = 0
+    ActTriCollectCompact = 1
+
+
 class GDel2D:
     def __init__(self, points):
         self.n_points = points.shape[0] + 1
@@ -282,8 +293,10 @@ class GDel2D:
 
     def _shift_tri(self, tri_to_vert, split_tri_vec):
         tri_num = self.tri_num + 2 * split_tri_vec.shape[0]
-        shift_vec = cupy.arange(
-            0, 2 * tri_to_vert.shape[0], 2, dtype=cupy.int32)
+        shift_vec = cupy.cumsum(cupy.where(tri_to_vert < 0x7FFFFFFF - 1, 2, 0))
+        shift_vec = shift_vec.astype(cupy.int32)
+        shift_vec[1:] = shift_vec[:-1]
+        shift_vec[0] = 0
 
         self.triangles = self._shift_replace(
             shift_vec, self.triangles, (tri_num, 3), 'Tri')
@@ -309,15 +322,15 @@ class GDel2D:
             no_sample = self.tri_num * max_sample_per_tri
 
         tri_circle = cupy.full(
-            self.max_triangles, cupy.iinfo(cupy.int32).min, dtype=cupy.int32)
+            tri_num, cupy.iinfo(cupy.int32).min, dtype=cupy.int32)
 
-        vert_circle = cupy.empty(self.n_points, dtype=cupy.int32)
+        vert_circle = cupy.empty(no_sample, dtype=cupy.int32)
         vote_for_point(self.vert_tri, self.n_points, self.triangles,
                        vert_circle, tri_circle, no_sample,
                        self.n_points - 1, self.point_vec, self.pred_consts)
 
         tri_to_vert = cupy.full(
-            self.max_triangles, 0x7FFFFFFF, dtype=cupy.int32)
+            tri_num, 0x7FFFFFFF, dtype=cupy.int32)
         pick_winner_point(self.vert_tri, self.n_points, vert_circle,
                           tri_circle, tri_to_vert, no_sample)
 
@@ -326,11 +339,11 @@ class GDel2D:
 
         split_tri_vec = cupy.where(tri_to_vert < 0x7FFFFFFF - 1)[0]
         split_tri_vec = split_tri_vec.astype(cupy.int32)
-        tri_to_vert = tri_to_vert[split_tri_vec]
+        # tri_to_vert = tri_to_vert[split_tri_vec]
 
         self.ins_num = split_tri_vec.shape[0]
         extra_tri_num = 2 * self.ins_num
-        split_tri_num = self.tri_num + extra_tri_num  # NOQA
+        split_tri_num = self.tri_num + extra_tri_num
 
         if (self.available_points - self.ins_num < self.ins_num and
                 self.ins_num < 0.1 * self.n_points):
@@ -370,12 +383,67 @@ class GDel2D:
                   tri_num, self.ins_num)
 
         self.available_points -= self.ins_num
+        self.tri_num = self.triangles.shape[0]
+
+    def _relocate_all(self):
+        if self._flip_vec.shape[0] == 0:
+            return
+
+    def _do_flipping(self, check_mode):
+        tri_num = self.triangles.shape[0]
+        if self._act_tri_mode == ActTriMode.ActTriMarkCompact:
+            active_tri = is_tri_active(self.triangle_info)
+            self._act_tri = cupy.where(active_tri)[0].astype(cupy.int32)
+        elif self._act_tri_mode == ActTriMode.ActTriCollectCompact:
+            self._act_tri = self._act_tri[self._act_tri >= 0]
+
+        org_act_num = self._act_tri.shape[0]
+
+        # Check actNum, switch mode or quit if necessary
+        if org_act_num == 0:
+            # No more work
+            return False
+
+        if (check_mode != CheckDelaunayMode.CircleExactOrientSoS and
+                org_act_num < 64 * 32):
+            # Little work, leave it for the Exact iterations
+            return False
+
+        # See if there's little work enough to switch to collect mode.
+        if (org_act_num < 512 * 128 and
+                org_act_num * 2 < self.max_triangles and
+                org_act_num * 2 < tri_num):
+            self._act_tri_mode = ActTriMode.ActTriCollectCompact
+        else:
+            self._act_tri_mode = ActTriMode.ActTriMarkCompact
+
+        # Vote for flips
+        tri_vote = cupy.full(tri_num, 0x7FFFFFFF, dtype=cupy.int32)  # NOQA
+
+    def _do_flipping_loop(self, check_mode):
+        self._flip_vec = cupy.empty((0, 4), dtype=cupy.int32)
+        self._tri_msg = cupy.full((0, 2), -1, dtype=cupy.int32)
+
+        self._act_tri_mode = ActTriMode.ActTriMarkCompact
+
+        flip_loop = 0
+        while self._do_flipping(check_mode):
+            flip_loop += 1
+
+        self._relocate_all()
+
+        self._flip_vec = None
+        self._act_tri = None
+        self._tri_msg = None
 
     def _split_and_flip(self):
-        insert_loop = 0  # NOQA
+        insert_loop = 0
         self.do_flipping = True
         while self.available_points > 0:
             self._split_tri()
+            if self.do_flipping:
+                self._do_flipping_loop(CheckDelaunayMode.CircleFastOrientFast)
+            insert_loop += 1
 
     def compute(self):
         self._init_for_flip()
