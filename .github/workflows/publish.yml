@@ -10,6 +10,7 @@ on:
         options:
           - main
           - v12
+          - v13
       release:
         description: "Release to Publish (draft/tag, e.g., v13.0.0a1)"
         default: "v13.0.0rc9"
