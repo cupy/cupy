@@ -339,6 +339,32 @@ INLINE_H_D PairType getTriPairType( char c )
     return (PairType) (( c >> 2 ) & 3);
 }
 
+enum CheckDelaunayMode
+{
+    CircleFastOrientFast,
+    CircleExactOrientSoS
+};
+
+enum ActTriMode
+{
+    ActTriMarkCompact,
+    ActTriCollectCompact
+};
+
+/////////////////////////////////////////////////////////////////////// Side //
+
+enum Side
+{
+    SideIn   = -1,
+    SideZero = +0,
+    SideOut  = +1
+};
+
+INLINE_H_D Side cicToSide( RealType det )
+{
+    return ( det < 0 ) ? SideOut : ( ( det > 0 ) ? SideIn : SideZero );
+}
+
 template< typename T >
 __forceinline__ __device__ void cuSwap( T& v0, T& v1 )
 {
@@ -1082,17 +1108,555 @@ __global__ void isTriActive(char* triInfo, bool* out, int nTriInfo) {
             Changed == getTriCheckState( triInfo[idx] ) ) );
     }
 }
+
+__global__ void
+kerMarkSpecialTris
+(
+char*        triInfoVec,
+TriOpp*      oppArr,
+int          nTriInfo
+)
+{
+    for ( int idx = getCurThreadIdx(); idx < nTriInfo; idx += getThreadNum() )
+    {
+        if ( !isTriAlive( triInfoVec[ idx ] ) ) continue;
+
+        TriOpp opp = oppArr[ idx ];
+
+        bool changed = false;
+
+        for ( int vi = 0; vi < DEG; ++vi )
+        {
+            if ( -1 == opp._t[ vi ] ) continue;
+
+            if ( opp.isOppSpecial( vi ) )
+                changed = true;
+        }
+
+        if ( changed )
+            setTriCheckState( triInfoVec[ idx ], Changed );
+    }
+}
+
+__forceinline__ __device__ int encode( int triIdx, int vi )
+{
+    return ( triIdx << 2 ) | vi;
+}
+
+__forceinline__ __device__ void decode( int code, int* idx, int* vi )
+{
+    *idx = ( code >> 2 );
+    *vi = ( code & 3 );
+}
+
+__forceinline__ __device__ void
+voteForFlip
+(
+int* triVoteArr,
+int  botTi,
+int  topTi,
+int  botVi
+)
+{
+    const int voteVal = encode( botTi, botVi );
+
+    atomicMin( &triVoteArr[ botTi ],  voteVal );
+    atomicMin( &triVoteArr[ topTi ],  voteVal );
+}
+
+/////////////////////////////////////////////////////////////////// InCircle //
+
+__forceinline__ __device__ Side doInCircleFast(
+Tri         tri,
+int         vert,
+/** predWrapper values **/
+int         infIdx,
+Point2*     points,
+RealType*   predConsts
+)
+{
+    const RealType* pt[] = {
+        getPoint( tri._v[0], points )._p,
+        getPoint( tri._v[1], points )._p,
+        getPoint( tri._v[2], points )._p,
+        getPoint( vert, points )._p };
+
+    if ( vert == infIdx )
+        return SideOut;
+
+    RealType det;
+
+    if ( tri.has( infIdx ) )
+    {
+        const int infVi = tri.getIndexOf( infIdx );
+
+        det = orient2dFast(
+            predConsts, pt[ (infVi + 1) % 3 ], pt[ (infVi + 2) % 3 ], pt[3] );
+    }
+    else
+        det = incircleFast( predConsts, pt[0], pt[1], pt[2], pt[3] );
+
+    return cicToSide( det );
+}
+
+__forceinline__ __device__ Side doInCircleFastExact(
+    const RealType* p0, const RealType* p1, const RealType* p2,
+    const RealType* p3, RealType*   predConsts )
+{
+    RealType det = incircleFastAdaptExact( predConsts, p0, p1, p2, p3 );
+
+    return cicToSide( det );
+}
+
+__forceinline__ __device__ RealType doOrient1DExact_Lifted
+(
+const RealType* p0,
+const RealType* p1,
+RealType*       predConsts
+)
+{
+    const RealType det = orient1dExact_Lifted( predConsts, p0, p1 );
+    return det;
+}
+
+__forceinline__ __device__ RealType doOrient2DExact_Lifted
+(
+const RealType* p0,
+const RealType* p1,
+const RealType* p2,
+bool            lifted,
+RealType*       predConsts
+)
+{
+    const RealType det = orient2dExact_Lifted( predConsts, p0, p1, p2, lifted);
+    return det;
+}
+
+// Exact Incircle check must have failed (i.e. returned 0)
+// No Infinity point here!!!
+__forceinline__ __device__ Side doInCircleSoSOnly(
+    const RealType* p0, const RealType* p1, const RealType* p2,
+    const RealType* p3, int v0, int v1, int v2, int v3, RealType* predConsts )
+{
+    ////
+    // Sort points using vertex as key, also note their sorted order
+    ////
+
+    const int NUM = DEG + 1;
+    const RealType* p[NUM] = { p0, p1, p2, p3 };
+    int pn = 1;
+
+    if ( v0 > v2 ) { cuSwap( v0, v2 ); cuSwap( p[0], p[2] ); pn = -pn; }
+    if ( v1 > v3 ) { cuSwap( v1, v3 ); cuSwap( p[1], p[3] ); pn = -pn; }
+    if ( v0 > v1 ) { cuSwap( v0, v1 ); cuSwap( p[0], p[1] ); pn = -pn; }
+    if ( v2 > v3 ) { cuSwap( v2, v3 ); cuSwap( p[2], p[3] ); pn = -pn; }
+    if ( v1 > v2 ) { cuSwap( v1, v2 ); cuSwap( p[1], p[2] ); pn = -pn; }
+
+    RealType result = 0;
+    RealType pa2[2], pb2[2], pc2[2];
+    int depth;
+
+    for ( depth = 0; depth < 14; ++depth )
+    {
+        bool lifted = false;
+
+        switch ( depth )
+        {
+        case 0:
+            //printf("Here %i", depth);
+            pa2[0] = p[1][0];   pa2[1] = p[1][1];
+            pb2[0] = p[2][0];   pb2[1] = p[2][1];
+            pc2[0] = p[3][0];   pc2[1] = p[3][1];
+            break;
+        case 1: lifted = true;
+            //printf("Here %i", depth);
+            //pa2[0] = p[1][0];   pa2[1] = p[1][1];
+            //pb2[0] = p[2][0];   pb2[1] = p[2][1];
+            //pc2[0] = p[3][0];   pc2[1] = p[3][1];
+            break;
+        case 2: lifted = true;
+            //printf("Here %i", depth);
+            pa2[0] = p[1][1];   pa2[1] = p[1][0];
+            pb2[0] = p[2][1];   pb2[1] = p[2][0];
+            pc2[0] = p[3][1];   pc2[1] = p[3][0];
+            break;
+        case 3:
+            //printf("Here %i", depth);
+            pa2[0] = p[0][0];   pa2[1] = p[0][1];
+            pb2[0] = p[2][0];   pb2[1] = p[2][1];
+            pc2[0] = p[3][0];   pc2[1] = p[3][1];
+            break;
+        case 4:
+            //printf("Here %i", depth);
+            result = p[2][0] - p[3][0];
+            break;
+        case 5:
+            //printf("Here %i", depth);
+            result = p[2][1] - p[3][1];
+            break;
+        case 6: lifted = true;
+           // printf("Here %i\n", depth);
+            //pa2[0] = p[0][0];   pa2[1] = p[0][1];
+            //pb2[0] = p[2][0];   pb2[1] = p[2][1];
+            //pc2[0] = p[3][0];   pc2[1] = p[3][1];
+            break;
+        case 7: lifted = true;
+            //printf("Here %i\n", depth);
+            pa2[0] = p[2][0];   pa2[1] = p[2][1];
+            pb2[0] = p[3][0];   pb2[1] = p[3][1];
+            break;
+        case 8: lifted = true;
+           // printf("Here %i\n", depth);
+            pa2[0] = p[0][1];   pa2[1] = p[0][0];
+            pb2[0] = p[2][1];   pb2[1] = p[2][0];
+            pc2[0] = p[3][1];   pc2[1] = p[3][0];
+            break;
+        case 9:
+            //printf("Here %i\n", depth);
+            pa2[0] = p[0][0];   pa2[1] = p[0][1];
+            pb2[0] = p[1][0];   pb2[1] = p[1][1];
+            pc2[0] = p[3][0];   pc2[1] = p[3][1];
+            break;
+        case 10:
+            //printf("Here %i\n", depth);
+            result = p[1][0] - p[3][0];
+            break;
+        case 11:
+           // printf("Here %i\n", depth);
+            result = p[1][1] - p[3][1];
+            break;
+        case 12:
+            //printf("Here %i\n", depth);
+            result = p[0][0] - p[3][0];
+            break;
+        default:
+           // printf("Here %i\n", depth);
+            result = 1.0;
+            break;
+        }
+
+        switch ( depth )
+        {
+        // 2D orientation determinant
+        case 0: case 3: case 9:
+        // 2D orientation involving the lifted coordinate
+        case 1: case 2: case 6: case 8:
+            result = doOrient2DExact_Lifted(
+                pa2, pb2, pc2, lifted, predConsts );
+            break;
+
+        // 1D orientation involving the lifted coordinate
+        case 7:
+            result = doOrient1DExact_Lifted( pa2, pb2, predConsts );
+            break;
+        }
+
+        if ( result != 0 )
+            break;
+    }
+
+    switch ( depth )
+    {
+    case 1: case 3: case 5: case 8: case 10:
+        result = -result;
+    }
+
+    const RealType det = result * pn;
+
+    return cicToSide( det );
+}
+
+
+__forceinline__ __device__ Side doInCircleFastExactSoS(
+Tri         tri,
+int         vert,
+/** predWrapper values **/
+int         infIdx,
+Point2*     points,
+int*        orgPointIdx,
+RealType*   predConsts )
+{
+    if ( vert == infIdx )
+        return SideOut;
+
+    const RealType* pt[] = {
+        getPoint( tri._v[0], points )._p,
+        getPoint( tri._v[1], points )._p,
+        getPoint( tri._v[2], points )._p,
+        getPoint( vert, points )._p };
+
+    if ( tri.has( infIdx ) )
+    {
+        const int infVi = tri.getIndexOf( infIdx );
+
+        const Orient ort = doOrient2DFastExactSoS(
+            tri._v[ (infVi + 1) % 3 ], tri._v[ (infVi + 2) % 3 ], vert,
+            infIdx, points, orgPointIdx, predConsts );
+
+        return cicToSide( ort );
+    }
+
+    const Side s0 = doInCircleFastExact(
+        pt[0], pt[1], pt[2], pt[3], predConsts );
+
+    if ( SideZero != s0 )
+        return s0;
+
+    // SoS
+    if ( orgPointIdx != NULL )
+    {
+        tri._v[0] = orgPointIdx[ tri._v[0] ];
+        tri._v[1] = orgPointIdx[ tri._v[1] ];
+        tri._v[2] = orgPointIdx[ tri._v[2] ];
+        vert      = orgPointIdx[ vert ];
+    }
+
+    const Side s1 = doInCircleSoSOnly(
+        pt[0], pt[1], pt[2], pt[3], tri._v[0], tri._v[1], tri._v[2], vert,
+        predConsts );
+
+    return s1;
+}
+
+
+template < CheckDelaunayMode checkMode >
+__forceinline__ __device__ void
+checkDelaunayFast
+(
+int*    actTriArr,
+Tri*    triArr,
+TriOpp* oppArr,
+char*   triInfoArr,
+int*    triVoteArr,
+int2*   exactCheckVi,
+int     actTriNum,
+int*    counter,
+int*    dbgCircleCountArr,
+/** predWrapper values **/
+int         infIdx,
+Point2*     points,
+RealType*   predConsts
+)
+{
+    // Iterate active triangle
+    for ( int idx = getCurThreadIdx(); idx < actTriNum; idx += getThreadNum() )
+    {
+        const int botTi = actTriArr[ idx ];
+
+        ////
+        // Check which side needs to be checked
+        ////
+        int checkVi         = 1;
+        const TriOpp botOpp = oppArr[ botTi ];
+
+        for ( int botVi = 0; botVi < DEG; ++botVi )
+            if ( -1 != botOpp._t[ botVi ]         // No neighbour at this face
+                && !botOpp.isOppConstraint( botVi ) )   // or is a constraint
+            {
+                const int topTi = botOpp.getOppTri( botVi );
+                const int topVi = botOpp.getOppVi( botVi );
+
+                if ( ( ( botTi < topTi ) ||
+                        Checked == getTriCheckState( triInfoArr[ topTi ] ) ) )
+                    checkVi = (checkVi << 2) | botVi;
+            }
+
+        // Nothing to check?
+        if ( checkVi != 1 )
+        {
+            ////
+            // Do circle check
+            ////
+            const Tri botTri = triArr[ botTi ];
+
+            int dbgCount = 0;
+            bool hasFlip = false;
+            int exactVi  = 1;
+
+            // Check 2-3 flips
+            for ( ; checkVi > 1; checkVi >>= 2 )
+            {
+                const int botVi   = ( checkVi & 3 );
+                const int topTi   = botOpp.getOppTri( botVi );
+                const int topVi   = botOpp.getOppVi( botVi );
+
+                const int topVert = triArr[ topTi ]._v[ topVi ];
+
+                Side side = doInCircleFast(
+                    botTri, topVert, infIdx, points, predConsts );
+
+                ++dbgCount;
+
+                if ( SideZero == side )
+                    if ( checkMode == CircleFastOrientFast )
+                        // Store for future exact mode
+                        oppArr[ botTi ].setOppSpecial( botVi, true );
+                    else
+                        // Pass to next kernel - exact kernel
+                        exactVi = (exactVi << 2) | botVi;
+
+                // No incircle failure at this face
+                if ( SideIn != side ) continue;
+
+                // We have incircle failure, vote!
+                voteForFlip( triVoteArr, botTi, topTi, botVi );
+                hasFlip = true;
+                break;
+            }
+
+            if ( ( checkMode == CircleExactOrientSoS ) &&
+                    ( !hasFlip ) && ( exactVi != 1 ) )
+                storeIntoBuffer( exactCheckVi, &counter[ CounterExact ],
+                                 make_int2( botTi, exactVi ) );
+
+            if ( NULL != dbgCircleCountArr )
+                dbgCircleCountArr[ botTi ] = dbgCount;
+        }
+    }
+
+    return;
+}
+
+__global__ void
+kerCheckDelaunayFast
+(
+int*    actTriArr,
+Tri*    triArr,
+TriOpp* oppArr,
+char*   triInfoArr,
+int*    triVoteArr,
+int     actTriNum,
+/** predWrapper values **/
+int         infIdx,
+Point2*     points,
+RealType*   predConsts
+)
+{
+    checkDelaunayFast< CircleFastOrientFast >(
+        actTriArr,
+        triArr,
+        oppArr,
+        triInfoArr,
+        triVoteArr,
+        NULL,
+        actTriNum,
+        NULL,
+        NULL,
+        infIdx,
+        points,
+        predConsts );
+    return;
+}
+
+__global__ void
+kerCheckDelaunayExact_Fast
+(
+int*    actTriArr,
+Tri*    triArr,
+TriOpp* oppArr,
+char*   triInfoArr,
+int*    triVoteArr,
+int2*   exactCheckVi,
+int     actTriNum,
+int*    counter,
+/** predWrapper values **/
+int         infIdx,
+Point2*     points,
+RealType*   predConsts
+)
+{
+    checkDelaunayFast< CircleExactOrientSoS >(
+        actTriArr,
+        triArr,
+        oppArr,
+        triInfoArr,
+        triVoteArr,
+        exactCheckVi,
+        actTriNum,
+        counter,
+        NULL,
+        infIdx,
+        points,
+        predConsts );
+    return;
+}
+
+__global__ void
+kerCheckDelaunayExact_Exact
+(
+Tri*    triArr,
+TriOpp* oppArr,
+int*    triVoteArr,
+int2*   exactCheckVi,
+int*    counter,
+/** predWrapper values **/
+int         infIdx,
+Point2*     points,
+int*        orgPointIdx,
+RealType*   predConsts
+)
+{
+    int* dbgCircleCountArr = NULL;
+    const int exactNum = counter[ CounterExact ];
+
+    // Iterate active triangle
+    for ( int idx = getCurThreadIdx(); idx < exactNum; idx += getThreadNum() )
+    {
+        int2 val    = exactCheckVi[ idx ];
+        int botTi   = val.x;
+        int exactVi = val.y;
+
+        exactCheckVi[ idx ] = make_int2( -1, -1 );
+
+        ////
+        // Do circle check
+        ////
+        TriOpp botOpp    = oppArr[ botTi ];
+        const Tri botTri = triArr[ botTi ];
+
+        int dbgCount    = 0;
+
+        if ( NULL != dbgCircleCountArr )
+            dbgCount = dbgCircleCountArr[ botTi ];
+
+        for ( ; exactVi > 1; exactVi >>= 2 )
+        {
+            const int botVi = ( exactVi & 3 );
+
+            const int topTi     = botOpp.getOppTri( botVi );
+            const int topVi     = botOpp.getOppVi( botVi );
+            const int topVert   = triArr[ topTi ]._v[ topVi ];
+
+            const Side side = doInCircleFastExactSoS(
+                botTri, topVert, infIdx, points, orgPointIdx, predConsts );
+
+            ++dbgCount;
+
+            if ( SideIn != side ) continue; // No incircle failure at this face
+
+            voteForFlip( triVoteArr, botTi, topTi, botVi );
+            break;
+        } // Check faces of triangle
+
+        if ( NULL != dbgCircleCountArr )
+            dbgCircleCountArr[ botTi ] = dbgCount;
+    }
+
+    return;
+}
 """
 
 DELAUNAY_MODULE = cupy.RawModule(
-    code=KERNEL_DIVISION, options=('-std=c++11',),
+    code=KERNEL_DIVISION, options=('-std=c++11', '-w'),
     name_expressions=['kerMakeFirstTri', 'kerInitPointLocationFast',
                       'kerInitPointLocationExact', 'kerVoteForPoint',
                       'kerPickWinnerPoint', 'kerShiftValues<Tri>',
                       'kerShiftValues<char>', 'kerShiftValues<int>',
                       'kerShiftOpp', 'kerShiftTriIdx',
                       'kerSplitPointsFast', 'kerSplitPointsExactSoS',
-                      'kerSplitTri', 'isTriActive'])
+                      'kerSplitTri', 'isTriActive', 'kerMarkSpecialTris',
+                      'kerCheckDelaunayFast', 'kerCheckDelaunayExact_Fast',
+                      'kerCheckDelaunayExact_Exact'])
 
 
 N_BLOCKS = 512
@@ -1197,3 +1761,40 @@ def is_tri_active(tri_info):
     ker_is_tri_active((N_BLOCKS,), (BLOCK_SZ,), (
         tri_info, out, tri_info.shape[0]))
     return out
+
+
+def mark_special_tris(tri_info, tri_opp):
+    ker_mark_special_tris = DELAUNAY_MODULE.get_function('kerMarkSpecialTris')
+    ker_mark_special_tris((N_BLOCKS,), (BLOCK_SZ,), (
+        tri_info, tri_opp, tri_info.shape[0]))
+
+
+def check_delaunay_fast(act_tri, tri, tri_opp, tri_info,
+                        tri_vote, act_tri_num, inf_idx,
+                        points, pred_consts):
+    ker_check_delaunay_fast = DELAUNAY_MODULE.get_function(
+        'kerCheckDelaunayFast')
+    ker_check_delaunay_fast((N_BLOCKS,), (BLOCK_SZ,), (
+        act_tri, tri, tri_opp, tri_info, tri_vote, act_tri_num,
+        inf_idx, points, pred_consts))
+
+
+def check_delaunay_exact_fast(act_tri, tri, tri_opp, tri_info,
+                              tri_vote, exact_check_vi, act_tri_num,
+                              counter, inf_idx, points, pred_consts):
+    ker_check_delaunay_e_f = DELAUNAY_MODULE.get_function(
+        'kerCheckDelaunayExact_Fast')
+    ker_check_delaunay_e_f((N_BLOCKS,), (BLOCK_SZ,), (
+        act_tri, tri, tri_opp, tri_info, tri_vote, exact_check_vi, act_tri_num,
+        counter, inf_idx, points, pred_consts))
+
+
+def check_delaunay_exact_exact(tri, tri_opp, tri_vote, exact_check_vi,
+                               counter, inf_idx, points, org_point_idx,
+                               pred_consts):
+    ker_check_delaunay_e_e = DELAUNAY_MODULE.get_function(
+        'kerCheckDelaunayExact_Exact')
+
+    ker_check_delaunay_e_e((PRED_N_BLOCKS,), (PRED_BLOCK_SZ,), (
+        tri, tri_opp, tri_vote, exact_check_vi, counter, inf_idx,
+        points, org_point_idx, pred_consts))

@@ -674,11 +674,476 @@ const RealType *pc
 
     return orient2dExact( predConsts, pa, pb, pc );
 }
+
+__forceinline__ __device__ void two_mult_sub
+(
+const RealType *predConsts,
+const RealType *pa,
+const RealType *pb,
+RealType       *ab
+)
+{
+    RealType axby1, axby0, bxay1, bxay0;
+
+    RealType bvirt;
+    RealType avirt, bround, around;
+    RealType c;
+    RealType abig;
+    RealType ahi, alo, bhi, blo;
+    RealType err1, err2, err3;
+    RealType _i, _j;
+    RealType _0;
+
+    Two_Product(pa[0], pb[1], axby1, axby0);
+    Two_Product(pb[0], pa[1], bxay1, bxay0);
+    Two_Two_Diff(axby1, axby0, bxay1, bxay0, ab[3], ab[2], ab[1], ab[0]);
+}
+
+
+__noinline__ __device__ int calc_det
+(
+const RealType  *predConsts,
+RealType        *a,
+RealType        *b,
+RealType        *c,
+RealType        fx0,
+RealType        fx1,
+RealType        fy0,
+RealType        fy1,
+RealType        *temp2,
+RealType        *temp3,
+RealType        *detx,
+RealType        *dety,
+RealType        *ret
+)
+{
+    int temp2len = d_fast_expansion_sum_zeroelim( 4, a, 4, b, temp2 );
+    int temp3len = d_fast_expansion_sum_zeroelim(
+        temp2len, temp2, 4, c, temp3 );
+
+    int xlen = d_scale_twice_expansion_zeroelim(
+        predConsts, temp3len, temp3, fx0, fx1, detx );
+    int ylen = d_scale_twice_expansion_zeroelim(
+        predConsts, temp3len, temp3, fy0, fy1, dety );
+
+    return d_fast_expansion_sum_zeroelim( xlen, detx, ylen, dety, ret );
+}
+
+__device__ RealType incircleExact
+(
+const RealType* predConsts,
+const RealType* pa,
+const RealType* pb,
+const RealType* pc,
+const RealType* pd
+)
+{
+    RealType ab[4], bc[4], cd[4], da[4], ac[4], bd[4];
+    RealType temp8[8];
+    RealType temp12[12];
+    RealType det48x[48], det48y[48];
+    RealType bdet[96], cdet[96];
+    int alen, blen, clen, dlen;
+    RealType bcdet[192], addet[192];
+    int bclen, adlen;
+    int i;
+
+    RealType *adet = bdet;
+    RealType *ddet = cdet;
+
+    RealType bvirt;
+    RealType avirt, bround, around;
+    RealType c;
+    RealType abig;
+    RealType ahi, alo, bhi, blo;
+    RealType err1, err2, err3;
+    RealType _i, _j;
+    RealType _0;
+
+    two_mult_sub( predConsts, pa, pb, ab );
+    two_mult_sub( predConsts, pb, pc, bc );
+    two_mult_sub( predConsts, pc, pd, cd );
+    two_mult_sub( predConsts, pd, pa, da );
+    two_mult_sub( predConsts, pa, pc, ac );
+    two_mult_sub( predConsts, pb, pd, bd );
+
+    blen = calc_det( predConsts, cd, da, ac, pb[0], -pb[0], pb[1], -pb[1],
+        temp8, temp12, det48x, det48y, bdet );
+    clen = calc_det( predConsts, da, ab, bd, pc[0], pc[0], pc[1], pc[1],
+        temp8, temp12, det48x, det48y, cdet );
+
+    bclen = d_fast_expansion_sum_zeroelim(blen, bdet, clen, cdet, bcdet);
+
+    for (i = 0; i < 4; i++) {
+        bd[i] = -bd[i];
+        ac[i] = -ac[i];
+    }
+
+    dlen = calc_det( predConsts, ab, bc, ac, pd[0], -pd[0], pd[1], -pd[1],
+        temp8, temp12, det48x, det48y, ddet );
+    alen = calc_det( predConsts, bc, cd, bd, pa[0], pa[0], pa[1], pa[1],
+        temp8, temp12, det48x, det48y, adet );
+
+    adlen = d_fast_expansion_sum_zeroelim(alen, adet, dlen, ddet, addet);
+
+    return d_fast_expansion_sum_sign( bclen, bcdet, adlen, addet );
+}
+
+__noinline__ __device__ int calc_det_adapt
+(
+const RealType  *predConsts,
+RealType        adx,
+RealType        ady,
+RealType        bdx,
+RealType        bdy,
+RealType        cdx,
+RealType        cdy,
+RealType        *temp4,
+RealType        *temp16x,
+RealType        *temp16y,
+RealType        *ret
+)
+{
+    RealType axby1, axby0, bxay1, bxay0;
+
+    RealType bvirt;
+    RealType avirt, bround, around;
+    RealType c;
+    RealType abig;
+    RealType ahi, alo, bhi, blo;
+    RealType err1, err2, err3;
+    RealType _i, _j;
+    RealType _0;
+
+    Two_Product(adx, bdy, axby1, axby0);
+    Two_Product(bdx, ady, bxay1, bxay0);
+    Two_Two_Diff(
+        axby1, axby0, bxay1, bxay0, temp4[3], temp4[2], temp4[1], temp4[0]);
+
+    int temp16xlen = d_scale_twice_expansion_zeroelim(
+        predConsts, 4, temp4, cdx, cdx, temp16x);
+    int temp16ylen = d_scale_twice_expansion_zeroelim(
+        predConsts, 4, temp4, cdy, cdy, temp16y);
+
+    return d_fast_expansion_sum_zeroelim(
+        temp16xlen, temp16x, temp16ylen, temp16y, ret );
+}
+
+__device__ RealType incircleAdaptExact
+(
+const RealType* predConsts,
+const RealType* pa,
+const RealType* pb,
+const RealType* pc,
+const RealType* pd,
+const RealType  permanent
+)
+{
+    RealType adx, bdx, cdx, ady, bdy, cdy;
+    RealType det, errbound;
+
+    RealType temp4[4];
+    RealType temp16x[16], temp16y[16];
+    RealType adet[32], bdet[32];
+    int alen, blen, clen;
+    RealType abdet[64];
+    int ablen;
+
+    RealType* cdet = adet;
+
+    RealType adxtail, bdxtail, cdxtail, adytail, bdytail, cdytail;
+
+    RealType bvirt;
+    RealType avirt, bround, around;
+    RealType c;
+    RealType abig;
+    RealType ahi, alo, bhi, blo;
+    RealType err1, err2, err3;
+    RealType _i, _j;
+    RealType _0;
+
+    adx = (RealType) (pa[0] - pd[0]);
+    bdx = (RealType) (pb[0] - pd[0]);
+    cdx = (RealType) (pc[0] - pd[0]);
+    ady = (RealType) (pa[1] - pd[1]);
+    bdy = (RealType) (pb[1] - pd[1]);
+    cdy = (RealType) (pc[1] - pd[1]);
+
+    alen = calc_det_adapt(
+        predConsts, bdx, bdy, cdx, cdy, adx, ady, temp4, temp16x,
+        temp16y, adet );
+    blen = calc_det_adapt( predConsts, cdx, cdy, adx, ady, bdx, bdy,
+                           temp4, temp16x, temp16y, bdet );
+
+    ablen = d_fast_expansion_sum_zeroelim( alen, adet, blen, bdet, abdet );
+
+    clen = calc_det_adapt( predConsts, adx, ady, bdx, bdy, cdx, cdy,
+                           temp4, temp16x, temp16y, cdet );
+
+    det = d_fast_expansion_sum_sign( ablen, abdet, clen, cdet );
+
+    errbound = predConsts[ IccerrboundB ] * permanent;
+    if ((det >= errbound) || (-det >= errbound)) {
+        return det;
+    }
+
+    Two_Diff_Tail(pa[0], pd[0], adx, adxtail);
+    Two_Diff_Tail(pa[1], pd[1], ady, adytail);
+    Two_Diff_Tail(pb[0], pd[0], bdx, bdxtail);
+    Two_Diff_Tail(pb[1], pd[1], bdy, bdytail);
+    Two_Diff_Tail(pc[0], pd[0], cdx, cdxtail);
+    Two_Diff_Tail(pc[1], pd[1], cdy, cdytail);
+    if ((adxtail == 0.0) && (bdxtail == 0.0) && (cdxtail == 0.0)
+        && (adytail == 0.0) && (bdytail == 0.0) && (cdytail == 0.0)) {
+            return det;
+    }
+
+    errbound = ( predConsts[ IccerrboundC ] * permanent +
+                 predConsts[ Resulterrbound ] * Absolute(det) );
+    det += ((adx * adx + ady * ady) * ((bdx * cdytail + cdy * bdxtail)
+        - (bdy * cdxtail + cdx * bdytail))
+        + 2.0 * (adx * adxtail + ady * adytail) * (bdx * cdy - bdy * cdx))
+        + ((bdx * bdx + bdy * bdy) * ((cdx * adytail + ady * cdxtail)
+        - (cdy * adxtail + adx * cdytail))
+        + 2.0 * (bdx * bdxtail + bdy * bdytail) * (cdx * ady - cdy * adx))
+        + ((cdx * cdx + cdy * cdy) * ((adx * bdytail + bdy * adxtail)
+        - (ady * bdxtail + bdx * adytail))
+        + 2.0 * (cdx * cdxtail + cdy * cdytail) * (adx * bdy - ady * bdx));
+    if ((det >= errbound) || (-det >= errbound)) {
+        return det;
+    }
+
+    return incircleExact( predConsts, pa, pb, pc, pd );
+}
+
+__forceinline__ __device__ RealType incircleFastAdaptExact
+(
+const RealType* predConsts,
+const RealType* pa,
+const RealType* pb,
+const RealType* pc,
+const RealType* pd
+)
+{
+    RealType adx, bdx, cdx, ady, bdy, cdy;
+    RealType bdxcdy, cdxbdy, cdxady, adxcdy, adxbdy, bdxady;
+    RealType alift, blift, clift;
+    RealType det;
+    RealType permanent, errbound;
+
+    adx = pa[0] - pd[0];
+    bdx = pb[0] - pd[0];
+    cdx = pc[0] - pd[0];
+    ady = pa[1] - pd[1];
+    bdy = pb[1] - pd[1];
+    cdy = pc[1] - pd[1];
+
+    bdxcdy = bdx * cdy;
+    cdxbdy = cdx * bdy;
+    alift = adx * adx + ady * ady;
+
+    cdxady = cdx * ady;
+    adxcdy = adx * cdy;
+    blift = bdx * bdx + bdy * bdy;
+
+    adxbdy = adx * bdy;
+    bdxady = bdx * ady;
+    clift = cdx * cdx + cdy * cdy;
+
+    det = alift * (bdxcdy - cdxbdy)
+        + blift * (cdxady - adxcdy)
+        + clift * (adxbdy - bdxady);
+
+    permanent = (Absolute(bdxcdy) + Absolute(cdxbdy)) * alift
+        + (Absolute(cdxady) + Absolute(adxcdy)) * blift
+        + (Absolute(adxbdy) + Absolute(bdxady)) * clift;
+    errbound = predConsts[ IccerrboundA ] * permanent;
+    if ((det > errbound) || (-det > errbound)) {
+        return det;
+    }
+
+    // Needs exact predicate
+    return incircleAdaptExact( predConsts, pa, pb, pc, pd, permanent );
+}
+
+__forceinline__ __device__ RealType incircleFast
+(
+const RealType* predConsts,
+const RealType* pa,
+const RealType* pb,
+const RealType* pc,
+const RealType* pd
+)
+{
+    RealType adx, bdx, cdx, ady, bdy, cdy;
+    RealType bdxcdy, cdxbdy, cdxady, adxcdy, adxbdy, bdxady;
+    RealType alift, blift, clift;
+    RealType det;
+    RealType permanent, errbound;
+
+    adx = pa[0] - pd[0];
+    bdx = pb[0] - pd[0];
+    cdx = pc[0] - pd[0];
+    ady = pa[1] - pd[1];
+    bdy = pb[1] - pd[1];
+    cdy = pc[1] - pd[1];
+
+    bdxcdy = bdx * cdy;
+    cdxbdy = cdx * bdy;
+    alift = adx * adx + ady * ady;
+
+    cdxady = cdx * ady;
+    adxcdy = adx * cdy;
+    blift = bdx * bdx + bdy * bdy;
+
+    adxbdy = adx * bdy;
+    bdxady = bdx * ady;
+    clift = cdx * cdx + cdy * cdy;
+
+    det = alift * (bdxcdy - cdxbdy)
+        + blift * (cdxady - adxcdy)
+        + clift * (adxbdy - bdxady);
+
+    permanent = (Absolute(bdxcdy) + Absolute(cdxbdy)) * alift
+        + (Absolute(cdxady) + Absolute(adxcdy)) * blift
+        + (Absolute(adxbdy) + Absolute(bdxady)) * clift;
+    errbound = predConsts[ IccerrboundA ] * permanent;
+    if ((det > errbound) || (-det > errbound)) {
+        return det;
+    }
+
+    return 0;   // Needs exact predicate
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+// det  = ( pa[0]^2 + pa[1]^2 ) - ( pb[0]^2 + pb[1]^2 )
+__device__ RealType orient1dExact_Lifted
+(
+const RealType* predConsts,
+const RealType* pa,
+const RealType* pb
+)
+{
+    RealType axax1, ayay1, bxbx1, byby1;
+    RealType axax0, ayay0, bxbx0, byby0;
+    RealType aterms[4], bterms[4];
+
+    RealType bvirt;
+    RealType avirt, bround, around;
+    RealType c;
+    RealType abig;
+    RealType ahi, alo, bhi, blo;
+    RealType err1, err2, err3;
+    RealType _i, _j;
+    RealType _0;
+
+    Two_Product(pa[0], pa[0], axax1, axax0);
+    Two_Product(pb[0], pb[0], bxbx1, bxbx0);
+    Two_Two_Diff(axax1, axax0, bxbx1, bxbx0,
+        aterms[3], aterms[2], aterms[1], aterms[0]);
+
+    Two_Product(pa[1], pa[1], ayay1, ayay0);
+    Two_Product(pb[1], pb[1], byby1, byby0);
+    Two_Two_Diff(ayay1, ayay0, byby1, byby0,
+        bterms[3], bterms[2], bterms[1], bterms[0]);
+
+    return d_fast_expansion_sum_sign(4, aterms, 4, bterms);
+}
+
+__device__ RealType orient2dExact_Lifted
+(
+const RealType* predConsts,
+const RealType* pa,
+const RealType* pb,
+const RealType* pc,
+bool            lifted
+)
+{
+    RealType aax1, aax0, aay1, aay0;
+    RealType palift[4], pblift[4], pclift[4];
+    RealType xy1terms[8], xy2terms[8];
+    RealType aterms[16], bterms[16];
+    RealType v[32];
+
+    RealType* cterms = aterms;
+
+    int palen, pblen, pclen;
+    int xy1len, xy2len;
+    int alen, blen, clen;
+    int vlen;
+
+    RealType bvirt;
+    RealType avirt, bround, around;
+    RealType c;
+    RealType abig;
+    RealType ahi, alo, bhi, blo;
+    RealType err1, err2, err3;
+    RealType _i, _j;
+    RealType _0;
+
+    // Compute the lifted coordinate
+    if (lifted)
+    {
+        Two_Product(pa[0], pa[0], aax1, aax0);
+        Two_Product(-pa[1], pa[1], aay1, aay0);
+        Two_Two_Diff(
+            aax1, aax0, aay1, aay0, palift[3], palift[2],
+            palift[1], palift[0]);
+        palen = 4;
+
+        Two_Product(pb[0], pb[0], aax1, aax0);
+        Two_Product(-pb[1], pb[1], aay1, aay0);
+        Two_Two_Diff(
+            aax1, aax0, aay1, aay0, pblift[3], pblift[2],
+            pblift[1], pblift[0]);
+        pblen = 4;
+
+        Two_Product(pc[0], pc[0], aax1, aax0);
+        Two_Product(-pc[1], pc[1], aay1, aay0);
+        Two_Two_Diff(
+            aax1, aax0, aay1, aay0, pclift[3], pclift[2],
+            pclift[1], pclift[0]);
+        pclen = 4;
+    }
+    else {
+        palen = 1; palift[0] = pa[1];
+        pblen = 1; pblift[0] = pb[1];
+        pclen = 1; pclift[0] = pc[1];
+    }
+
+    // Compute the determinant as usual
+    xy1len = d_scale_expansion_zeroelim(
+        predConsts, pblen, pblift, pa[0], xy1terms);
+    xy2len = d_scale_expansion_zeroelim(
+        predConsts, pclen, pclift, -pa[0], xy2terms);
+    alen = d_fast_expansion_sum_zeroelim(
+        xy1len, xy1terms, xy2len, xy2terms, aterms);
+
+    xy1len = d_scale_expansion_zeroelim(
+        predConsts, pclen, pclift, pb[0], xy1terms);
+    xy2len = d_scale_expansion_zeroelim(
+        predConsts, palen, palift, -pb[0], xy2terms);
+    blen = d_fast_expansion_sum_zeroelim(
+        xy1len, xy1terms, xy2len, xy2terms, bterms);
+
+    vlen = d_fast_expansion_sum_zeroelim(alen, aterms, blen, bterms, v);
+
+    xy1len = d_scale_expansion_zeroelim(
+        predConsts, palen, palift, pc[0], xy1terms);
+    xy2len = d_scale_expansion_zeroelim(
+        predConsts, pblen, pblift, -pc[0], xy2terms);
+    clen = d_fast_expansion_sum_zeroelim(
+        xy1len, xy1terms, xy2len, xy2terms, cterms);
+
+    return d_fast_expansion_sum_sign(vlen, v, clen, cterms);
+}
+
 """
 
 
 SCHEWCHUK_MODULE = cupy.RawModule(
-    code=SCHEWCHUK_DEF, options=('-std=c++11',),
+    code=SCHEWCHUK_DEF, options=('-std=c++11', '-w'),
     name_expressions=['kerInitPredicate'])
 
 

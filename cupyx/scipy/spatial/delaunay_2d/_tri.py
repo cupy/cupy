@@ -8,7 +8,8 @@ from cupyx.scipy.spatial.delaunay_2d._kernels import (
     make_first_tri, init_point_location_fast, init_point_location_exact,
     vote_for_point, pick_winner_point, shift, shift_opp_tri,
     shift_tri_idx, split_points_fast, split_points_exact, split_tri,
-    is_tri_active)
+    is_tri_active, mark_special_tris, check_delaunay_fast,
+    check_delaunay_exact_fast, check_delaunay_exact_exact)
 
 
 def _get_typename(dtype):
@@ -311,6 +312,21 @@ class GDel2D:
         shift_tri_idx(split_tri_vec, shift_vec)
         return tri_to_vert
 
+    def _expand_copy(self, in_arr, new_size, zeros=False):
+        init = cupy.empty if not zeros else cupy.zeros
+        out = init(new_size, dtype=in_arr.dtype)
+        out[:in_arr.shape[0]] = in_arr
+        return out
+
+    def _expand_tri(self, new_tri_num):
+        if new_tri_num > self.tri_num:
+            self.triangles = self._expand_copy(
+                self.triangles, (new_tri_num, 3))
+            self.triangle_opp = self._expand_copy(
+                self.triangle_opp, (new_tri_num, 3))
+            self.triangle_info = self._expand_copy(
+                self.triangle_info, new_tri_num, zeros=True)
+
     def _split_tri(self):
         max_sample_per_tri = 100
 
@@ -339,7 +355,6 @@ class GDel2D:
 
         split_tri_vec = cupy.where(tri_to_vert < 0x7FFFFFFF - 1)[0]
         split_tri_vec = split_tri_vec.astype(cupy.int32)
-        # tri_to_vert = tri_to_vert[split_tri_vec]
 
         self.ins_num = split_tri_vec.shape[0]
         extra_tri_num = 2 * self.ins_num
@@ -358,6 +373,8 @@ class GDel2D:
         ins_tri_map = cupy.full(sz, -1, dtype=cupy.int32)
         ins_tri_map[split_tri_vec] = cupy.arange(
             split_tri_vec.shape[0], dtype=cupy.int32)
+
+        self._expand_tri(split_tri_num)
 
         # Update the location of the points
         exact_check = cupy.empty(self.n_points, dtype=cupy.int32)
@@ -389,6 +406,27 @@ class GDel2D:
         if self._flip_vec.shape[0] == 0:
             return
 
+    def _dispatch_check_delaunay(self, check_mode, org_act_num, tri_vote):
+        if check_mode == CheckDelaunayMode.CircleFastOrientFast:
+            check_delaunay_fast(
+                self._act_tri, self.triangles, self.triangle_opp,
+                self.triangle_info, tri_vote, org_act_num, self.n_points - 1,
+                self.point_vec, self.pred_consts)
+        elif check_mode == CheckDelaunayMode.CircleExactOrientSoS:
+            exact_check_vi = self._tri_msg
+            self._renew_counters()
+
+            check_delaunay_exact_fast(
+                self._act_tri, self.triangles, self.triangle_opp,
+                self.triangle_info, tri_vote, exact_check_vi, org_act_num,
+                self.counters, self.n_points - 1, self.point_vec,
+                self.pred_consts)
+
+            check_delaunay_exact_exact(
+                self.triangles, self.triangle_opp, tri_vote, exact_check_vi,
+                self.counters, self.n_points - 1, self.point_vec, org_act_num,
+                self.pred_consts)
+
     def _do_flipping(self, check_mode):
         tri_num = self.triangles.shape[0]
         if self._act_tri_mode == ActTriMode.ActTriMarkCompact:
@@ -418,11 +456,13 @@ class GDel2D:
             self._act_tri_mode = ActTriMode.ActTriMarkCompact
 
         # Vote for flips
-        tri_vote = cupy.full(tri_num, 0x7FFFFFFF, dtype=cupy.int32)  # NOQA
+        tri_vote = cupy.full(tri_num, 0x7FFFFFFF, dtype=cupy.int32)
+        self._dispatch_check_delaunay(check_mode, org_act_num, tri_vote)
 
     def _do_flipping_loop(self, check_mode):
         self._flip_vec = cupy.empty((0, 4), dtype=cupy.int32)
-        self._tri_msg = cupy.full((0, 2), -1, dtype=cupy.int32)
+        self._tri_msg = cupy.full(
+            (self.max_triangles, 2), -1, dtype=cupy.int32)
 
         self._act_tri_mode = ActTriMode.ActTriMarkCompact
 
@@ -439,11 +479,18 @@ class GDel2D:
     def _split_and_flip(self):
         insert_loop = 0
         self.do_flipping = True
+
         while self.available_points > 0:
             self._split_tri()
             if self.do_flipping:
                 self._do_flipping_loop(CheckDelaunayMode.CircleFastOrientFast)
             insert_loop += 1
+
+        if not self.do_flipping:
+            self._do_flipping_loop(CheckDelaunayMode.CircleFastOrientFast)
+
+        mark_special_tris(self.triangle_info, self.triangle_opp)
+        self._do_flipping_loop(CheckDelaunayMode.CircleExactOrientSoS)
 
     def compute(self):
         self._init_for_flip()
