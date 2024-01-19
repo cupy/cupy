@@ -746,9 +746,6 @@ def conda_update_dirs(include_dirs, library_dirs):
             include_dirs.append(f'{os.environ["PREFIX"]}/include')
             library_dirs.append(f'{os.environ["PREFIX"]}/lib')
         else:
-            include_dirs.append(
-                f'{os.environ["BUILD_PREFIX"]}/Library/include/targets/'
-                f'{conda_get_target_name()}')  # for CCCL headers
             # there seems to be no stubs for windows
             # for optional dependencies
             include_dirs.append(
