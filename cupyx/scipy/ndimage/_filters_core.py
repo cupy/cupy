@@ -1,13 +1,11 @@
-"""A vendored subset of cupyx.scipy.ndimage._filters_core"""
 import warnings
 
 import cupy
 import numpy
 
-from cucim.skimage._vendored import (
-    _internal as internal,
-    _ndimage_util as _util,
-)
+from cupy_backends.cuda.api import runtime
+from cupy._core import internal
+from cupyx.scipy.ndimage import _util
 
 
 def _origins_to_offsets(origins, w_shape):
@@ -185,13 +183,18 @@ def _call_kernel(
     return output
 
 
-_ndimage_includes = r"""
+if runtime.is_hip:
+    _ndimage_includes = r"""
+// workaround for HIP: line begins with #include
+#include <cupy/math_constants.h>\n
+"""
+else:
+    _ndimage_includes = r"""
 #include <type_traits>  // let Jitify handle this
 #include <cupy/math_constants.h>
 
 template<> struct std::is_floating_point<float16> : std::true_type {};
 template<> struct std::is_signed<float16> : std::true_type {};
-template<class T> struct std::is_signed<complex<T>> : std::is_signed<T> {};
 """
 
 
