@@ -263,7 +263,7 @@ def _find_static_library(name: str) -> str:
         libdirs = ['lib64', 'lib']
     elif PLATFORM_WIN32:
         filename = f'{name}.lib'
-        libdirs = ['lib\\x64']
+        libdirs = ['lib\\x64', 'lib']
     else:
         raise Exception('not supported on this platform')
 
