@@ -9,7 +9,8 @@ from cupyx.scipy.spatial.delaunay_2d._kernels import (
     vote_for_point, pick_winner_point, shift, shift_opp_tri,
     shift_tri_idx, split_points_fast, split_points_exact, split_tri,
     is_tri_active, mark_special_tris, check_delaunay_fast,
-    check_delaunay_exact_fast, check_delaunay_exact_exact)
+    check_delaunay_exact_fast, check_delaunay_exact_exact, mark_rejected_flips,
+    flip, update_opp)
 
 
 def _get_typename(dtype):
@@ -186,6 +187,8 @@ class GDel2D:
         self.values = cupy.empty(self.n_points, dtype=cupy.int32)
         self.act_tri = cupy.empty(self.max_triangles, dtype=cupy.int32)
         self.vert_tri = cupy.empty(self.n_points, dtype=cupy.int32)
+
+        self._org_flip_num = []
 
     @property
     def counters(self):
@@ -459,8 +462,69 @@ class GDel2D:
         tri_vote = cupy.full(tri_num, 0x7FFFFFFF, dtype=cupy.int32)
         self._dispatch_check_delaunay(check_mode, org_act_num, tri_vote)
 
+        # Mark rejected flips
+        flip_to_tri = cupy.empty(org_act_num, dtype=cupy.int32)
+        mark_rejected_flips(
+            self._act_tri, self.triangle_opp, tri_vote, self.triangle_info,
+            flip_to_tri, org_act_num)
+
+        del tri_vote
+
+        # Compact flips
+        breakpoint()
+        flip_to_tri = flip_to_tri[flip_to_tri >= 0]
+        flip_num = flip_to_tri.shape[0]
+
+        if flip_num == 0:
+            return False
+
+        # Expand flip vector
+        org_flip_num = self._flip_vec.shape[0]
+        exp_flip_num = org_flip_num + flip_num
+
+        if exp_flip_num > self._flip_vec_cap:
+            self._relocate_all()
+            org_flip_num = 0
+            exp_flip_num = flip_num
+            self._flip_vec_cap = exp_flip_num
+
+        self._flip_vec = self._expand_copy(self._flip_vec, (exp_flip_num, 4))
+
+        # self._tri_msg contains two components.
+        # - .x is the encoded new neighbor information
+        # - .y is the flipIdx as in the flipVec (i.e. globIdx)
+        # As such, we do not need to initialize it to -1 to
+        # know which tris are not flipped in the current round.
+        # We can rely on the flipIdx being > or < than orgFlipIdx.
+        # Note that we have to initialize everything to -1
+        # when we clear the flipVec and reset the flip indexing.
+        if self.triangles.shape[0] > self._tri_msg.shape[0]:
+            self._tri_msg = cupy.empty(
+                (self.triangles.shape[0], 2), dtype=cupy.int32)
+        else:
+            self._tri_msg = self._tri_msg[:self.triangles.shape[0]]
+
+        # Expand active tri vector
+        if self._act_tri_mode == ActTriMode.ActTriCollectCompact:
+            self._act_tri = self._expand_copy(
+                self._act_tri, org_act_num + flip_num)
+
+        # Flipping
+        flip(flip_to_tri, self.triangles, self.triangle_opp,
+             self.triangle_info, self._tri_msg, self._act_tri, self._flip_vec,
+             org_flip_num, org_act_num)
+
+        self._org_flip_num.append(org_flip_num)
+
+        # Update oppTri
+        update_opp(self._flip_vec[org_flip_num:], self.triangle_opp,
+                   self._tri_msg, flip_to_tri, org_flip_num, flip_num)
+
+        return True
+
     def _do_flipping_loop(self, check_mode):
         self._flip_vec = cupy.empty((0, 4), dtype=cupy.int32)
+        self._flip_vec_cap = self.max_triangles
         self._tri_msg = cupy.full(
             (self.max_triangles, 2), -1, dtype=cupy.int32)
 

@@ -57,6 +57,17 @@ INLINE_H_D Orient ortToOrient( RealType det )
     return ( det > 0 ) ? OrientPos : ( ( det < 0 ) ? OrientNeg : OrientZero );
 }
 
+INLINE_H_D void setTriIdxVi(
+int &output,
+int oldVi,
+int ni,
+int newVi
+)
+{
+    output -= ( 0xF ) << ( oldVi * 4 );
+    output += ( ( ni << 2) + newVi ) << ( oldVi * 4 );
+}
+
 struct Point2
 {
     RealType _p[ 2 ];
@@ -1644,6 +1655,341 @@ RealType*   predConsts
 
     return;
 }
+
+// Note: triVoteArr should *not* be modified here
+__global__ void
+kerMarkRejectedFlips
+(
+int*        actTriArr,
+TriOpp*     oppArr,
+int*        triVoteArr,
+char*       triInfoArr,
+int*        flipToTri,
+int         actTriNum
+)
+{
+    int* dbgRejFlipArr = NULL;
+    for ( int idx = getCurThreadIdx(); idx < actTriNum; idx += getThreadNum() )
+    {
+        int output = -1;
+
+        const int triIdx  = actTriArr[ idx ];
+        const int voteVal = triVoteArr[ triIdx ];
+
+        if ( INT_MAX == voteVal )
+        {
+            setTriCheckState( triInfoArr[ triIdx ], Checked );
+            actTriArr[ idx ] = -1;
+        }
+        else
+        {
+            int bossTriIdx, botVi;
+
+            decode( voteVal, &bossTriIdx, &botVi );
+
+            if ( bossTriIdx == triIdx ) // Boss of myself
+            {
+                const TriOpp& opp    = oppArr[ triIdx ];
+                const int topTriIdx  = opp.getOppTri( botVi );
+                const int topVoteVal = triVoteArr[ topTriIdx ];
+
+                if ( topVoteVal == voteVal )
+                    output = voteVal;
+            }
+
+            if ( NULL != dbgRejFlipArr && output == -1 )
+                dbgRejFlipArr[ triIdx ] = 1;
+        }
+
+        flipToTri[ idx ] = output;
+    }
+
+    return;
+}
+
+struct FlipItem {
+    int _v[2];
+    int _t[2];
+};
+
+struct FlipItemTriIdx {
+    int _t[2];
+};
+
+__forceinline__ __device__
+void storeFlip( FlipItem* flipArr, int idx, const FlipItem& item )
+{
+    int4 t = { item._v[0], item._v[1], item._t[0], item._t[1] };
+
+    ( ( int4 * ) flipArr )[ idx ] = t;
+}
+
+// idx    Constraint index
+// vi     The vertex opposite the next intersected edge. vi = 3 if this is the
+//         last triangle
+//        --> vi+1 is on the right, vi+2 is on the left of the constraint
+// side   Which side of the constraint the vertex vi lies on; 0-cw, 1-ccw,
+//        2-start, 3-end
+__forceinline__ __device__ int encode_constraint( int idx, int vi, int side )
+{
+    return ( idx << 4 ) | ( vi << 2 ) | side;
+}
+
+__forceinline__ __device__ int decode_cIdx( int label )
+{
+    return ( label >> 4 );
+}
+
+__forceinline__ __device__ int decode_cVi( int label )
+{
+    return ( label >> 2 ) & 3;
+}
+
+__forceinline__ __device__ int decode_cSide( int label )
+{
+    return ( label & 3);
+}
+
+__global__ void
+kerFlip
+(
+int*        flipToTri,
+int         nFlip,
+Tri*        triArr,
+TriOpp*     oppArr,
+char*       triInfoArr,
+int2*       triMsgArr,
+int*        actTriArr,
+FlipItem*   flipArr,
+int         orgFlipNum,
+int         actTriNum
+)
+{
+    int*        triConsArr = NULL;
+    int*        vertTriArr = NULL;
+    // Iterate flips
+    for ( int flipIdx = getCurThreadIdx(); flipIdx < nFlip;
+          flipIdx += getThreadNum() )
+    {
+        int botIdx, botVi;
+
+        const int voteVal = flipToTri[ flipIdx ];
+
+        decode( voteVal, &botIdx, &botVi );
+
+        // Bottom triangle
+        Tri botTri            = triArr[ botIdx ];
+        const TriOpp& botOpp  = oppArr[ botIdx ];
+
+        // Top triangle
+        const int topIdx = botOpp.getOppTri( botVi );
+        const int topVi  = botOpp.getOppVi( botVi );
+        Tri topTri       = triArr[ topIdx ];
+
+        const int globFlipIdx = orgFlipNum + flipIdx;
+
+        const int botAVi = ( botVi + 1 ) % 3;
+        const int botBVi = ( botVi + 2 ) % 3;
+        const int topAVi = ( topVi + 2 ) % 3;
+        const int topBVi = ( topVi + 1 ) % 3;
+
+        // Create new triangle
+        const int topVert = topTri._v[ topVi ];
+        const int botVert = botTri._v[ botVi ];
+        const int botA    = botTri._v[ botAVi ];
+        const int botB    = botTri._v[ botBVi ];
+
+        // Update the bottom and top triangle
+        botTri = makeTri( botVert, botA, topVert );
+        topTri = makeTri( topVert, botB, botVert );
+
+        triArr[ botIdx ] = botTri;
+        triArr[ topIdx ] = topTri;
+
+        int newBotNei = 0xffff;
+        int newTopNei = 0xffff;
+
+        setTriIdxVi( newBotNei, botAVi, 1, 0 );
+        setTriIdxVi( newBotNei, botBVi, 3, 2 );
+        setTriIdxVi( newTopNei, topAVi, 3, 2 );
+        setTriIdxVi( newTopNei, topBVi, 0, 0 );
+
+        // Write down the new triangle idx
+        triMsgArr[ botIdx ] = make_int2( newBotNei, globFlipIdx );
+        triMsgArr[ topIdx ] = make_int2( newTopNei, globFlipIdx );
+
+        // Record the flip
+        FlipItem flipItem = { botVert, topVert, botIdx, topIdx };
+        storeFlip( flipArr, globFlipIdx, flipItem );
+
+        // Prepare for the next round
+        if ( actTriArr != NULL )
+            actTriArr[ actTriNum + flipIdx ] =
+                ( Checked == getTriCheckState( triInfoArr[ topIdx ] ) )
+                ? topIdx : -1;
+
+        if ( triConsArr == NULL )       // Standard flipping
+            triInfoArr[ topIdx ] = 3;  // Alive + Changed
+        else
+        {
+            vertTriArr[ botA ] = botIdx;
+            vertTriArr[ botB ] = topIdx;
+
+            // Update constraint intersection info
+            int botLabel = triConsArr[ botIdx ];
+            int topLabel = triConsArr[ topIdx ];
+
+            const int consIdx   = decode_cIdx( botLabel );
+            const int botSide   = decode_cSide( botLabel );
+                  int topSide   = decode_cSide( topLabel );
+
+            if ( topSide < 2 )  // Not the last triangle
+                topSide = ( decode_cVi( topLabel ) == topAVi ? 0 : 1 );
+
+            switch ( botSide )      // Cannto be 3
+            {
+            case 0:
+                switch ( topSide )
+                {
+                case 0:
+                    botLabel = -1;
+                    topLabel = encode_constraint( consIdx, 2, 0 );
+                    break;
+                case 1:
+                    botLabel = encode_constraint( consIdx, 0, 0 );
+                    topLabel = encode_constraint( consIdx, 1, 1 );
+                    break;
+                case 3:
+                    botLabel = -1;
+                    topLabel = encode_constraint( consIdx, 0, 3 );
+                    break;
+                }
+                break;
+            case 1:
+                switch ( topSide )
+                {
+                case 0:
+                    botLabel = encode_constraint( consIdx, 1, 0 );
+                    topLabel = encode_constraint( consIdx, 2, 1 );
+                    break;
+                case 1:
+                    botLabel = encode_constraint( consIdx, 0, 1 );
+                    topLabel = -1;
+                    break;
+                case 3:
+                    botLabel = encode_constraint( consIdx, 2, 3 );
+                    topLabel = -1;
+                    break;
+                }
+                break;
+            case 2:
+                botLabel = ( topSide == 1 ? encode_constraint(
+                    consIdx, 0, 2 ) : -1 );
+                topLabel = ( topSide == 0 ? encode_constraint(
+                    consIdx, 2, 2 ) : -1 );
+                break;
+            }
+
+            triConsArr[ botIdx ] = botLabel;
+            triConsArr[ topIdx ] = topLabel;
+        }
+    }
+
+    return;
+}
+
+__global__ void
+kerUpdateOpp
+(
+FlipItem*    flipVec,
+TriOpp*      oppArr,
+int2*        triMsgArr,
+int*         flipToTri,
+int          orgFlipNum,
+int          flipNum
+)
+{
+    // Iterate flips
+    for ( int flipIdx = getCurThreadIdx(); flipIdx < flipNum;
+            flipIdx += getThreadNum() )
+    {
+        int botIdx, botVi;
+
+        int voteVal = flipToTri[ flipIdx ];
+
+        decode( voteVal, &botIdx, &botVi );
+
+        int     extOpp[4];
+        TriOpp  opp;
+
+        opp = oppArr[ botIdx ];
+
+        extOpp[ 0 ] = opp.getOppTriVi( (botVi + 1) % 3 );
+        extOpp[ 1 ] = opp.getOppTriVi( (botVi + 2) % 3 );
+
+        int topIdx      = opp.getOppTri( botVi );
+        const int topVi = opp.getOppVi( botVi );
+
+        opp = oppArr[ topIdx ];
+
+        extOpp[ 2 ] = opp.getOppTriVi( (topVi + 2) % 3 );
+        extOpp[ 3 ] = opp.getOppTriVi( (topVi + 1) % 3 );
+
+        // Ok, update with neighbors
+        for ( int i = 0; i < 4; ++i )
+        {
+            int newTriIdx, vi;
+            int triOpp  = extOpp[ i ];
+            bool isCons = isOppValConstraint( triOpp );
+
+            // No neighbor
+            if ( -1 == triOpp ) continue;
+
+            int oppIdx = getOppValTri( triOpp );
+            int oppVi  = getOppValVi( triOpp );
+
+            const int2 msg = triMsgArr[ oppIdx ];
+
+            if ( msg.y < orgFlipNum )    // Neighbor not flipped
+            {
+                // Set my neighbor's opp
+                newTriIdx = ( (i & 1) == 0 ? topIdx : botIdx );
+                vi        = ( i == 0 || i == 3 ) ? 0 : 2;
+
+                oppArr[ oppIdx ].setOpp( oppVi, newTriIdx, vi, isCons );
+            }
+            else
+            {
+                const int oppFlipIdx = msg.y - orgFlipNum;
+
+                // Update my own opp
+                const int newLocOppIdx = getTriIdx( msg.x, oppVi );
+
+                if ( newLocOppIdx != 3 )
+                    oppIdx = flipVec[ oppFlipIdx ]._t[ newLocOppIdx ];
+
+                oppVi = getTriVi( msg.x, oppVi );
+
+                setOppValTriVi( extOpp[ i ], oppIdx, oppVi );
+            }
+        }
+
+        // Now output
+        opp._t[ 0 ] = extOpp[ 3 ];
+        opp.setOpp( 1, topIdx, 1 );
+        opp._t[ 2 ] = extOpp[ 1 ];
+
+        oppArr[ botIdx ] = opp;
+
+        opp._t[ 0 ] = extOpp[ 0 ];
+        opp.setOpp( 1, botIdx, 1 );
+        opp._t[ 2 ] = extOpp[ 2 ];
+
+        oppArr[ topIdx ] = opp;
+    }
+
+    return;
+}
 """
 
 DELAUNAY_MODULE = cupy.RawModule(
@@ -1656,7 +2002,8 @@ DELAUNAY_MODULE = cupy.RawModule(
                       'kerSplitPointsFast', 'kerSplitPointsExactSoS',
                       'kerSplitTri', 'isTriActive', 'kerMarkSpecialTris',
                       'kerCheckDelaunayFast', 'kerCheckDelaunayExact_Fast',
-                      'kerCheckDelaunayExact_Exact'])
+                      'kerCheckDelaunayExact_Exact', 'kerMarkRejectedFlips',
+                      'kerFlip', 'kerUpdateOpp'])
 
 
 N_BLOCKS = 512
@@ -1798,3 +2145,26 @@ def check_delaunay_exact_exact(tri, tri_opp, tri_vote, exact_check_vi,
     ker_check_delaunay_e_e((PRED_N_BLOCKS,), (PRED_BLOCK_SZ,), (
         tri, tri_opp, tri_vote, exact_check_vi, counter, inf_idx,
         points, org_point_idx, pred_consts))
+
+
+def mark_rejected_flips(act_tri, tri_opp, tri_vote, tri_info,
+                        flip_to_tri, act_tri_num):
+    ker_mark_rejected_flips = DELAUNAY_MODULE.get_function(
+        'kerMarkRejectedFlips')
+    ker_mark_rejected_flips((N_BLOCKS,), (BLOCK_SZ,), (
+        act_tri, tri_opp, tri_vote, tri_info, flip_to_tri, act_tri_num))
+
+
+def flip(flip_to_tri, tri, tri_opp, tri_info, tri_msg, act_tri, flip_arr,
+         org_flip_num, act_tri_num):
+    ker_flip = DELAUNAY_MODULE.get_function('kerFlip')
+    ker_flip((N_BLOCKS,), (32,), (
+        flip_to_tri, flip_to_tri.shape[0], tri, tri_opp, tri_info,
+        tri_msg, act_tri, flip_arr, org_flip_num, act_tri_num))
+
+
+def update_opp(flip_vec, tri_opp, tri_msg, flip_to_tri,
+               org_flip_num, flip_num):
+    ker_update_opp = DELAUNAY_MODULE.get_function('kerUpdateOpp')
+    ker_update_opp((BLOCK_SZ,), (32,), (
+        flip_vec, tri_opp, tri_msg, flip_to_tri, org_flip_num, flip_num))
