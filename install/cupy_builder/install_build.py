@@ -716,8 +716,7 @@ def conda_update_dirs(include_dirs, library_dirs):
     include_dirs = list(include_dirs)
     library_dirs = list(library_dirs)
 
-    if (PLATFORM_LINUX
-            and int(os.environ.get('CONDA_BUILD_CROSS_COMPILATION', 0)) == 1):
+    if (int(os.environ.get('CONDA_BUILD_CROSS_COMPILATION', 0)) == 1):
         # If we're cross compiling, we need to generate stub files that are
         # executable in the build environment, not the target environment.
         # This assumes, however, that the build/host environments see the same
