@@ -403,15 +403,12 @@ def reduced_binary_einsum(arr0, sub0, arr1, sub1, sub_others):
                 arr_out = cupy.empty(out_shape, arr0.dtype)
                 arr0 = cupy.ascontiguousarray(arr0)
                 arr1 = cupy.ascontiguousarray(arr1)
-                desc_0 = cutensor.create_tensor_descriptor(arr0)
-                desc_1 = cutensor.create_tensor_descriptor(arr1)
-                desc_out = cutensor.create_tensor_descriptor(arr_out)
                 arr_out = cutensor.contraction(
                     1.0,
-                    arr0, desc_0, sub0,
-                    arr1, desc_1, sub1,
+                    arr0, sub0,
+                    arr1, sub1,
                     0.0,
-                    arr_out, desc_out, sub_out)
+                    arr_out, sub_out)
                 return arr_out, sub_out
 
     tmp0, shapes0 = _flatten_transpose(arr0, [bs0, ts0, cs0])

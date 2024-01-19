@@ -52,8 +52,7 @@ cpdef int _is_fp16_supported() except -2:
     # TODO(leofang): make sure if this is really OK
     if runtime._is_hip_environment:
         _has_fp16 = 1  # tested on ROCm 3.5.0 + gfx906
-    elif (int(device.get_compute_capability()) < 53
-          or runtime.runtimeGetVersion() < 9020):
+    elif int(device.get_compute_capability()) < 53:
         _has_fp16 = 0
     else:
         _has_fp16 = 1

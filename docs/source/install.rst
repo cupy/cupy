@@ -23,11 +23,11 @@ Requirements
 Python Dependencies
 ~~~~~~~~~~~~~~~~~~~
 
-NumPy/SciPy-compatible API in CuPy v12 is based on NumPy 1.24 and SciPy 1.10, and has been tested against the following versions:
+NumPy/SciPy-compatible API in CuPy v13 is based on NumPy 1.26 and SciPy 1.11, and has been tested against the following versions:
 
-* `NumPy <https://numpy.org/>`_: v1.22 / v1.23 / v1.24
+* `NumPy <https://numpy.org/>`_: v1.22 / v1.23 / v1.24 / v1.25 / v1.26
 
-* `SciPy <https://scipy.org/>`_ (*optional*): v1.7 / v1.8 / v1.9 / v1.10
+* `SciPy <https://scipy.org/>`_ (*optional*): v1.7 / v1.8 / v1.9 / v1.10 / v1.11
 
     * Required only when coping sparse matrices from GPU to CPU (see :doc:`../reference/scipy_sparse`.)
 
@@ -50,7 +50,7 @@ Additional CUDA Libraries
 
 Part of the CUDA features in CuPy will be activated only when the corresponding libraries are installed.
 
-* `cuTENSOR <https://developer.nvidia.com/cutensor>`_: v1.6 / v1.7
+* `cuTENSOR <https://developer.nvidia.com/cutensor>`_: v2.0
 
     * The library to accelerate tensor operations. See :doc:`../reference/environment` for the details.
 
@@ -81,12 +81,6 @@ Package names are different depending on your CUDA Toolkit version.
 
    * - CUDA
      - Command
-   * - **v10.2** (x86_64 / aarch64)
-     - ``pip install cupy-cuda102``
-   * - **v11.0** (x86_64)
-     - ``pip install cupy-cuda110``
-   * - **v11.1** (x86_64)
-     - ``pip install cupy-cuda111``
    * - **v11.2 ~ 11.8** (x86_64 / aarch64)
      - ``pip install cupy-cuda11x``
    * - **v12.x** (x86_64 / aarch64)

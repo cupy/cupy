@@ -5,14 +5,11 @@ on:
   workflow_dispatch:
     inputs:
       branch:
-        description: "Source: cupy-release-tools"
-        type: choice
-        options:
-          - main
-          - v12
+        description: "Source Branch (e.g., v13)"
+        default: "main"
       release:
-        description: "Release to Publish (draft/tag, e.g., v13.0.0a1)"
-        default: "v13.0.0rc9"
+        description: "Release to Publish (draft/tag, e.g., v14.0.0a1)"
+        default: "v14.0.0rc9"
 
 jobs:
   precheck:

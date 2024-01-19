@@ -71,6 +71,7 @@ from cupyx.scipy.signal._iir_filter_conversions import lp2bs_zpk  # NOQA
 
 from cupyx.scipy.signal._iir_filter_conversions import zpk2tf  # NOQA
 from cupyx.scipy.signal._iir_filter_conversions import zpk2sos  # NOQA
+from cupyx.scipy.signal._iir_filter_conversions import zpk2ss   # NOQA
 from cupyx.scipy.signal._iir_filter_conversions import tf2zpk  # NOQA
 from cupyx.scipy.signal._iir_filter_conversions import tf2sos  # NOQA
 from cupyx.scipy.signal._iir_filter_conversions import tf2ss  # NOQA
@@ -120,6 +121,8 @@ from cupyx.scipy.signal._waveforms import gausspulse  # NOQA
 from cupyx.scipy.signal._waveforms import sawtooth  # NOQA
 from cupyx.scipy.signal._waveforms import square  # NOQA
 from cupyx.scipy.signal._waveforms import unit_impulse  # NOQA
+from cupyx.scipy.signal._waveforms import sweep_poly  # NOQA
+from cupyx.scipy.signal._max_len_seq import max_len_seq  # NOQA
 
 from cupyx.scipy.signal._czt import *   # NOQA
 
@@ -153,8 +156,8 @@ from cupyx.scipy.signal._ltisys import dfreqresp  # NOQA
 from cupyx.scipy.signal._ltisys import StateSpace  # NOQA
 from cupyx.scipy.signal._ltisys import TransferFunction  # NOQA
 from cupyx.scipy.signal._ltisys import ZerosPolesGain  # NOQA
-
 from cupyx.scipy.signal._ltisys import cont2discrete  # NOQA
+from cupyx.scipy.signal._ltisys import place_poles  # NOQA
 
 from cupyx.scipy.signal._spectral import lombscargle  # NOQA
 from cupyx.scipy.signal._spectral import periodogram  # NOQA

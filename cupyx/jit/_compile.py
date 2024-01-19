@@ -664,9 +664,9 @@ def _transpile_stmt(
     if isinstance(stmt, ast.Pass):
         return [';']
     if isinstance(stmt, ast.Break):
-        raise NotImplementedError('Not implemented.')
+        return ['break;']
     if isinstance(stmt, ast.Continue):
-        raise NotImplementedError('Not implemented.')
+        return ['continue;']
     assert False
 
 

@@ -4,7 +4,8 @@ from cupy import _core
 from cupy._core import fusion
 
 
-def array(obj, dtype=None, copy=True, order='K', subok=False, ndmin=0):
+def array(obj, dtype=None, copy=True, order='K', subok=False, ndmin=0, *,
+          blocking=False):
     """Creates an array on the current device.
 
     This function currently does not support the ``subok`` option.
@@ -28,6 +29,12 @@ def array(obj, dtype=None, copy=True, order='K', subok=False, ndmin=0):
             array (default).
         ndmin (int): Minimum number of dimensions. Ones are inserted to the
             head of the shape if needed.
+        blocking (bool): Default is ``False``, meaning if a H2D copy is needed
+            it would run asynchronously on the current stream, and users are
+            responsible for ensuring the stream order. For example, writing to
+            the source ``obj`` without proper ordering while copying would
+            result in a race condition. If set to ``True``, the copy is
+            synchronous (with respect to the host).
 
     Returns:
         cupy.ndarray: An array on the current device.
@@ -43,10 +50,10 @@ def array(obj, dtype=None, copy=True, order='K', subok=False, ndmin=0):
     .. seealso:: :func:`numpy.array`
 
     """
-    return _core.array(obj, dtype, copy, order, subok, ndmin)
+    return _core.array(obj, dtype, copy, order, subok, ndmin, blocking)
 
 
-def asarray(a, dtype=None, order=None):
+def asarray(a, dtype=None, order=None, *, blocking=False):
     """Converts an object to array.
 
     This is equivalent to ``array(a, dtype, copy=False, order=order)``.
@@ -59,6 +66,12 @@ def asarray(a, dtype=None, order=None):
             memory representation. Defaults to ``'K'``. ``order`` is ignored
             for objects that are not :class:`cupy.ndarray`, but have the
             ``__cuda_array_interface__`` attribute.
+        blocking (bool): Default is ``False``, meaning if a H2D copy is needed
+            it would run asynchronously on the current stream, and users are
+            responsible for ensuring the stream order. For example, writing to
+            the source ``a`` without proper ordering while copying would
+            result in a race condition. If set to ``True``, the copy is
+            synchronous (with respect to the host).
 
     Returns:
         cupy.ndarray: An array on the current device. If ``a`` is already on
@@ -72,10 +85,10 @@ def asarray(a, dtype=None, order=None):
     .. seealso:: :func:`numpy.asarray`
 
     """
-    return _core.array(a, dtype, False, order)
+    return _core.array(a, dtype, False, order, blocking=blocking)
 
 
-def asanyarray(a, dtype=None, order=None):
+def asanyarray(a, dtype=None, order=None, *, blocking=False):
     """Converts an object to array.
 
     This is currently equivalent to :func:`cupy.asarray`, since there is no
@@ -86,7 +99,7 @@ def asanyarray(a, dtype=None, order=None):
     .. seealso:: :func:`cupy.asarray`, :func:`numpy.asanyarray`
 
     """
-    return _core.array(a, dtype, False, order)
+    return _core.array(a, dtype, False, order, blocking=blocking)
 
 
 def ascontiguousarray(a, dtype=None):

@@ -93,16 +93,12 @@ Texture and surface memory
    cupy.cuda.texture.SurfaceObject
 
 
-Profiler
---------
+NVTX
+----
 
 .. autosummary::
    :toctree: generated/
 
-   cupy.cuda.profile
-   cupy.cuda.profiler.initialize
-   cupy.cuda.profiler.start
-   cupy.cuda.profiler.stop
    cupy.cuda.nvtx.Mark
    cupy.cuda.nvtx.MarkC
    cupy.cuda.nvtx.RangePush
@@ -123,6 +119,14 @@ NCCL
    cupy.cuda.nccl.groupStart
    cupy.cuda.nccl.groupEnd
 
+
+Version
+-------
+
+.. autosummary::
+   :toctree: generated/
+
+   cupy.cuda.get_local_runtime_version
 
 .. _runtime_api:
 
@@ -207,3 +211,5 @@ to use these functions.
    cupy.cuda.runtime.ipcCloseMemHandle
    cupy.cuda.runtime.ipcGetEventHandle
    cupy.cuda.runtime.ipcOpenEventHandle
+   cupy.cuda.runtime.profilerStart
+   cupy.cuda.runtime.profilerStop

@@ -1838,14 +1838,6 @@ def ellipap(N, rp, rs):
     ellip : Filter design function using this prototype
     scipy.signal.elliap
 
-    References
-    ----------
-    .. [1] Lutova, Tosic, and Evans, "Filter Design for Signal Processing",
-           Chapters 5 and 12.
-
-    .. [2] Orfanidis, "Lecture Notes on Elliptic Filter Design",
-           https://www.ece.rutgers.edu/~orfanidi/ece521/notes.pdf
-
     """
     if abs(int(N)) != N:
         raise ValueError("Filter order must be a nonnegative integer")
