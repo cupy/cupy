@@ -1,12 +1,13 @@
+"""A vendored subset of cupyx.scipy.ndimage._filters_core"""
 import warnings
 
-import numpy
 import cupy
+import numpy
 
-from cupy_backends.cuda.api import runtime
-from cupy import _core
-from cupy._core import internal
-from cupyx.scipy.ndimage import _util
+from cucim.skimage._vendored import (
+    _internal as internal,
+    _ndimage_util as _util,
+)
 
 
 def _origins_to_offsets(origins, w_shape):
@@ -62,21 +63,34 @@ def _convert_1d_args(ndim, weights, origin, axis):
     return weights, tuple(origins)
 
 
-def _check_nd_args(input, weights, mode, origin, wghts_name="filter weights"):
+def _check_nd_args(
+    input, weights, mode, origin, wghts_name="filter weights", sizes=None
+):
     _util._check_mode(mode)
-    # Weights must always be less than 2 GiB
-    if weights.nbytes >= (1 << 31):
-        raise RuntimeError("weights must be 2 GiB or less, use FFTs instead")
-    weight_dims = [x for x in weights.shape if x != 0]
-    if len(weight_dims) != input.ndim:
-        raise RuntimeError("{} array has incorrect shape".format(wghts_name))
+    if weights is not None:
+        # Weights must always be less than 2 GiB
+        if weights.nbytes >= (1 << 31):
+            raise RuntimeError(
+                "weights must be 2 GiB or less, use FFTs instead"
+            )
+        weight_dims = [x for x in weights.shape if x != 0]
+        if len(weight_dims) != input.ndim:
+            raise RuntimeError(
+                "{} array has incorrect shape".format(wghts_name)
+            )
+    elif sizes is None:
+        raise ValueError("must specify either weights array or sizes")
+    else:
+        weight_dims = sizes
     origins = _util._fix_sequence_arg(origin, len(weight_dims), "origin", int)
     for origin, width in zip(origins, weight_dims):
         _util._check_origin(origin, width)
     return tuple(origins), _util._get_inttype(input)
 
 
-def _run_1d_filters(filters, input, args, output, mode, cval, origin=0):
+def _run_1d_filters(
+    filters, input, args, output, mode, cval, origin=0, **filter_kwargs
+):
     """
     Runs a series of 1D filters forming an nd filter. The filters must be a
     list of callables that take input, arg, axis, output, mode, cval, origin.
@@ -91,28 +105,30 @@ def _run_1d_filters(filters, input, args, output, mode, cval, origin=0):
     origins = _util._fix_sequence_arg(origin, input.ndim, "origin", int)
     n_filters = sum(filter is not None for filter in filters)
     if n_filters == 0:
-        _core.elementwise_copy(input, output)
+        output[:] = input
         return output
     # We can't operate in-place efficiently, so use a 2-buffer system
-    temp = _util._get_output(output.dtype, input) if n_filters > 1 else None
+    temp = (
+        _util._get_output(output.dtype, input) if n_filters > 1 else None
+    )  # noqa
     iterator = zip(filters, args, modes, origins)
-    # skip any axes where the filter is None
     for axis, (fltr, arg, mode, origin) in enumerate(iterator):
-        if fltr is not None:
+        if fltr is None:
+            continue
+        else:
             break
-    # To avoid need for any additional copies, we have to start with a
-    # different output array depending on whether the total number of filters
-    # is odd or even.
     if n_filters % 2 == 0:
-        fltr(input, arg, axis, temp, mode, cval, origin)
+        fltr(input, arg, axis, temp, mode, cval, origin, **filter_kwargs)
         input = temp
     else:
-        fltr(input, arg, axis, output, mode, cval, origin)
+        fltr(input, arg, axis, output, mode, cval, origin, **filter_kwargs)
+        if n_filters == 1:
+            return output
         input, output = output, temp
     for axis, (fltr, arg, mode, origin) in enumerate(iterator, start=axis + 1):
         if fltr is None:
             continue
-        fltr(input, arg, axis, output, mode, cval, origin)
+        fltr(input, arg, axis, output, mode, cval, origin, **filter_kwargs)
         input, output = output, input
     return input
 
@@ -154,34 +170,32 @@ def _call_kernel(
     if structure is not None:
         structure = cupy.ascontiguousarray(structure, structure_dtype)
         args.append(structure)
-    output = _util._get_output(output, input, None, complex_output)
+    output = _util._get_output(output, input, None, complex_output)  # noqa
     needs_temp = cupy.shares_memory(output, input, "MAY_SHARE_BOUNDS")
     if needs_temp:
-        output, temp = _util._get_output(output.dtype, input), output
+        output, temp = (
+            _util._get_output(output.dtype, input, None, complex_output),
+            output,
+        )  # noqa
     args.append(output)
     kernel(*args)
     if needs_temp:
-        _core.elementwise_copy(temp, output)
+        output[:] = temp
         output = temp
     return output
 
 
-if runtime.is_hip:
-    includes = r"""
-// workaround for HIP: line begins with #include
-#include <cupy/math_constants.h>\n
-"""
-else:
-    includes = r"""
+_ndimage_includes = r"""
 #include <type_traits>  // let Jitify handle this
 #include <cupy/math_constants.h>
 
 template<> struct std::is_floating_point<float16> : std::true_type {};
 template<> struct std::is_signed<float16> : std::true_type {};
+template<class T> struct std::is_signed<complex<T>> : std::is_signed<T> {};
 """
 
 
-_CAST_FUNCTION = """
+_ndimage_CAST_FUNCTION = """
 // Implements a casting function to make it compatible with scipy
 // Use like cast<to_type>(value)
 template <class B, class A>
@@ -349,7 +363,7 @@ def _generate_nd_kernel(
         name += "_with_structure"
     if has_mask:
         name += "_with_mask"
-    preamble = includes + _CAST_FUNCTION + preamble
+    preamble = _ndimage_includes + _ndimage_CAST_FUNCTION + preamble
     options += ("--std=c++11", "-DCUPY_USE_JITIFY")
     return cupy.ElementwiseKernel(
         in_params,
