@@ -1153,7 +1153,8 @@ cdef class ufunc:
         readonly tuple _params_with_where
         readonly dict _routine_cache
         readonly dict _kernel_memo
-        readonly object __doc__
+        readonly object _doc
+        public object __doc__
         readonly object __name__
         readonly object __module__
 
@@ -1170,11 +1171,13 @@ cdef class ufunc:
         self._out_ops = out_ops
         self._preamble = preamble
         self._loop_prep = loop_prep
+        self._doc = doc
         self.__doc__ = doc
         if default_casting is None:
             self._default_casting = 'same_kind'
         else:
             self._default_casting = default_casting
+
         if cutensor_op is not None and cuda_cutensor is not None:
             self._cutensor_op, self._cutensor_alpha, self._cutensor_gamma = (
                 getattr(cuda_cutensor, cutensor_op[0]),
@@ -1464,6 +1467,42 @@ cdef class ufunc:
             return array._add_reduceat(indices, axis, dtype, out)
         raise NotImplementedError(
             f'`{self.name}.reduceat` is not supported yet')
+
+
+def _ufunc_doc_signature_formatter(ufunc, name):
+    # Based on implementation in NumPy (numpy/_core/_internal.py)
+
+    # input arguments are simple
+    if ufunc.nin == 1:
+        in_args = 'x'
+    else:
+        in_args = ', '.join(f'x{i+1}' for i in range(ufunc.nin))
+
+    # output arguments are both keyword or positional
+    if ufunc.nout == 0:
+        out_args = ', /, out=()'
+    elif ufunc.nout == 1:
+        out_args = ', /, out=None'
+    else:
+        out_args = '[, {positional}], / [, out={default}]'.format(
+            positional=', '.join(
+                'out{}'.format(i+1) for i in range(ufunc.nout)),
+            default=repr((None,)*ufunc.nout)
+        )
+
+    # keyword only args depend on whether this is a gufunc
+    kwargs = (
+        f", casting='{ufunc._default_casting}'"
+        ", dtype=None"
+    )
+
+    # join all the parts together
+    return r'{name}({in_args}{out_args}, \*{kwargs})'.format(
+        name=name,
+        in_args=in_args,
+        out_args=out_args,
+        kwargs=kwargs
+    )
 
 
 cdef class _Op:

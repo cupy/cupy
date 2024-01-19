@@ -175,9 +175,9 @@ __global__ void ${name}(${params}) {
 
           // some pre_map_expr uses _J internally...
           #if defined FIRST_PASS
-          int _J = (segment_idx + i + e_idx);
+          IndexT _J = (segment_idx + i + e_idx);
           #else  // only one pass
-          int _J = (segment_idx + i + e_idx) % _seg_size;
+          IndexT _J = (segment_idx + i + e_idx) % _seg_size;
           #endif
 
           if (e_idx < tile_size) {

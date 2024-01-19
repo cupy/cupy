@@ -83,6 +83,11 @@ class TestSearch:
         a = testing.shaped_random((0, 1), xp, dtype)
         return a.argmax(axis=1)
 
+    @testing.slow
+    def test_argmax_int32_overflow(self):
+        a = testing.shaped_arange((2 ** 32 + 1,), cupy, numpy.float64)
+        assert a.argmax().item() == 2 ** 32
+
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose()
     def test_argmin_all(self, xp, dtype):
@@ -156,6 +161,12 @@ class TestSearch:
     def test_argmin_zero_size_axis1(self, xp, dtype):
         a = testing.shaped_random((0, 1), xp, dtype)
         return a.argmin(axis=1)
+
+    @testing.slow
+    def test_argmin_int32_overflow(self):
+        a = testing.shaped_arange((2 ** 32 + 1,), cupy, numpy.float64)
+        cupy.negative(a, out=a)
+        assert a.argmin().item() == 2 ** 32
 
 
 # TODO(leofang): remove this once CUDA 9.0 is dropped

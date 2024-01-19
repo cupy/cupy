@@ -1306,10 +1306,11 @@ class TestCsrMatrixPowScipyComparison:
             with pytest.raises(ValueError):
                 m ** 1.5
 
+    @testing.with_requires('scipy>=1.12.0rc1')
     def test_pow_list(self):
         for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
             m = _make_square(xp, sp, self.dtype)
-            with pytest.raises(TypeError):
+            with pytest.raises(ValueError):
                 m ** []
 
 

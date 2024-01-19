@@ -337,13 +337,15 @@ class TestFirls:
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_compare(self, xp, scp):
         # compare to OCTAVE output
-        taps = scp.signal.firls(9, [0, 0.5, 0.55, 1], [1, 1, 0, 0], [1, 2])
+        taps = scp.signal.firls(
+            9, [0, 0.5, 0.55, 1], [1, 1, 0, 0], weight=[1, 2])
         return taps
 
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_compare_2(self, xp, scp):
         # compare to MATLAB output
-        taps = scp.signal.firls(11, [0, 0.5, 0.5, 1], [1, 1, 0, 0], [1, 2])
+        taps = scp.signal.firls(
+            11, [0, 0.5, 0.5, 1], [1, 1, 0, 0], weight=[1, 2])
         return taps
 
     @testing.numpy_cupy_allclose(scipy_name='scp')

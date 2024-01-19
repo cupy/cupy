@@ -161,6 +161,7 @@ LTI representations
    sos2tf
    sos2zpk
    cont2discrete
+   place_poles
 
 
 Continuous-time linear systems
@@ -204,9 +205,11 @@ Waveforms
 
    chirp
    gausspulse
+   max_len_seq
    sawtooth
    square
    unit_impulse
+   sweep_poly
 
 
 Window functions

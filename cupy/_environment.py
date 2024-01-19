@@ -3,12 +3,14 @@ This file must not depend on any other CuPy modules.
 """
 
 import ctypes
+import importlib.metadata
 import json
 import os
 import os.path
+import re
 import shutil
 import sys
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional, Tuple
 import warnings
 
 
@@ -210,9 +212,11 @@ def _setup_win32_dll_directory():
                 cuda_bin_path = os.path.join(cuda_path, 'bin')
         else:
             cuda_bin_path = None
-            warnings.warn(
-                'CUDA path could not be detected.'
-                ' Set CUDA_PATH environment variable if CuPy fails to load.')
+            if not is_conda:
+                warnings.warn(
+                    'CUDA path could not be detected.'
+                    ' Set CUDA_PATH environment variable if CuPy '
+                    'fails to load.')
         _log('CUDA_PATH: {}'.format(cuda_path))
 
         # Path to shared libraries in wheel
@@ -340,6 +344,11 @@ def _preload_library(lib):
                 cupy_cuda_lib_path, config['cuda'], lib, version, x,
                 filename)
             for x in ['lib', 'lib64', 'bin']]
+        if lib == 'cutensor':
+            libpath_cands = (
+                _get_cutensor_from_wheel(version, config['cuda']) +
+                libpath_cands)
+
         for libpath in libpath_cands:
             if not os.path.exists(libpath):
                 _log('Rejected candidate (not found): {}'.format(libpath))
@@ -373,40 +382,78 @@ def _preload_library(lib):
                 _log(f'Library {lib} could not be preloaded: {e}')
 
 
+def _parse_version(version: str) -> Tuple[int, int, int]:
+    parts = re.split(r'[^\d]', version, maxsplit=3)
+    major = int(parts[0])
+    minor = int(parts[1]) if len(parts) >= 2 else 0
+    patch = int(parts[2]) if len(parts) >= 3 else 0
+    return major, minor, patch
+
+
+def _get_cutensor_from_wheel(version: str, cuda: str) -> List[str]:
+    """
+    Returns the list of shared library path candidates for cuTENSOR
+    installed via Pip (cutensor-cuXX package).
+    """
+    cuda_major_ver, _ = cuda.split('.')
+    cutensor_pkg = f'cutensor-cu{cuda_major_ver}'
+    try:
+        cutensor_dist = importlib.metadata.distribution(cutensor_pkg)
+    except importlib.metadata.PackageNotFoundError:
+        _log(f'cuTENSOR wheel package not installed: {cutensor_pkg}')
+        return []
+
+    actual = _parse_version(cutensor_dist.version)
+    expected = _parse_version(version)
+    is_compatible = (
+        actual[0] == expected[0] and
+        actual[1] >= expected[1] and
+        actual[2] >= expected[2]
+    )
+    if not is_compatible:
+        _log('cuTENSOR wheel incompatible: '
+             f'expected {version}, found {cutensor_dist.version}')
+        return []
+
+    if sys.platform == 'linux':
+        shared_lib = cutensor_dist.locate_file(
+            f'cutensor/lib/libcutensor.so.{version.split(".")[0]}'
+        )
+    else:
+        shared_lib = cutensor_dist.locate_file('cutensor\\bin\\cutensor.dll')
+    return [str(shared_lib)]
+
+
 def _preload_warning(lib, exc):
     config = get_preload_config()
-    if config is not None and lib in config:
-        msg = '''
+    if config is None or lib not in config:
+        return
+
+    if config['packaging'] == 'pip':
+        cuda = config['cuda']
+        if lib == 'cutensor':
+            cuda_major = cuda.split('.')[0]
+            version = config['cutensor']['version']
+            cmd = f'pip install "cutensor-cu{cuda_major}~={version}"'
+        else:
+            cmd = f'python -m cupyx.tools.install_library --library {lib} --cuda {cuda}'  # NOQA
+    elif config['packaging'] == 'conda':
+        cmd = f'conda install -c conda-forge {lib}'
+    else:
+        raise AssertionError
+    warnings.warn(f'''
 {lib} library could not be loaded.
 
-Reason: {exc_type} ({exc})
+Reason: {type(exc).__name__} ({str(exc)})
 
 You can install the library by:
-'''
-        if config['packaging'] == 'pip':
-            msg += '''
-  $ python -m cupyx.tools.install_library --library {lib} --cuda {cuda}
-'''
-        elif config['packaging'] == 'conda':
-            msg += '''
-  $ conda install -c conda-forge {lib}
-'''
-        else:
-            raise AssertionError
-        msg = msg.format(
-            lib=lib, exc_type=type(exc).__name__, exc=str(exc),
-            cuda=config['cuda'])
-        warnings.warn(msg)
+  $ {cmd}
+''')
 
 
 def _detect_duplicate_installation():
-    # importlib.metadata only available in Python 3.8+.
-    if sys.version_info < (3, 8):
-        return
-    import importlib.metadata
-
     # List of all CuPy packages, including out-dated ones.
-    known = [
+    known = {
         'cupy',
         'cupy-cuda80',
         'cupy-cuda90',
@@ -431,10 +478,10 @@ def _detect_duplicate_installation():
         'cupy-rocm-4-2',
         'cupy-rocm-4-3',
         'cupy-rocm-5-0',
-    ]
-    cupy_installed = [
-        name for name in known
-        if list(importlib.metadata.distributions(name=name))]
+    }
+    installed_names = {d.metadata["Name"]
+                       for d in importlib.metadata.distributions()}
+    cupy_installed = known & installed_names
     if 1 < len(cupy_installed):
         cupy_packages_list = ', '.join(sorted(cupy_installed))
         warnings.warn(f'''

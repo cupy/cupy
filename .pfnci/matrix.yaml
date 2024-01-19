@@ -12,7 +12,7 @@
   cuda: "11.2"
   rocm: null
   nccl: "2.16"
-  cutensor: "1.6"
+  cutensor: null
   cusparselt: "0.2.0"
   cudnn: "8.8"
   python: "3.9"
@@ -42,7 +42,7 @@
   cuda: "11.3"
   rocm: null
   nccl: "2.16"
-  cutensor: "1.6"
+  cutensor: "2.0"
   cusparselt: null
   cudnn: "8.8"
   python: "3.10"
@@ -72,7 +72,7 @@
   cuda: "11.4"
   rocm: null
   nccl: "2.16"
-  cutensor: "1.6"
+  cutensor: "2.0"
   cusparselt: "0.2.0"
   cudnn: "8.8"
   python: "3.11"
@@ -102,7 +102,7 @@
   cuda: "11.5"
   rocm: null
   nccl: "2.16"
-  cutensor: "1.6"
+  cutensor: "2.0"
   cusparselt: "0.2.0"
   cudnn: "8.8"
   python: "3.9"
@@ -132,7 +132,7 @@
   cuda: "11.6"
   rocm: null
   nccl: "2.16"
-  cutensor: "1.6"
+  cutensor: "2.0"
   cusparselt: "0.2.0"
   cudnn: "8.8"
   python: "3.10"
@@ -162,7 +162,7 @@
   cuda: "11.7"
   rocm: null
   nccl: "2.16"
-  cutensor: "1.6"
+  cutensor: "2.0"
   cusparselt: "0.2.0"
   cudnn: "8.8"
   python: "3.11"
@@ -192,7 +192,7 @@
   cuda: "11.8"
   rocm: null
   nccl: "2.16"
-  cutensor: "1.7"
+  cutensor: "2.0"
   cusparselt: "0.2.0"
   cudnn: "8.8"
   python: "3.11"
@@ -222,7 +222,7 @@
   cuda: "12.0"
   rocm: null
   nccl: "2.17"
-  cutensor: "1.7"
+  cutensor: "2.0"
   cusparselt: "0.2.0"
   cudnn: "8.8"
   python: "3.9"
@@ -252,7 +252,7 @@
   cuda: "12.1"
   rocm: null
   nccl: "2.17"
-  cutensor: "1.7"
+  cutensor: "2.0"
   cusparselt: "0.2.0"
   cudnn: "8.8"
   python: "3.11"
@@ -283,7 +283,7 @@
   cuda: "12.2"
   rocm: null
   nccl: "2.18"
-  cutensor: "1.7"
+  cutensor: "2.0"
   cusparselt: "0.2.0"
   cudnn: "8.8"
   python: "3.12"
@@ -398,7 +398,7 @@
   cuda: "11.8"
   rocm: null
   nccl: "2.16"
-  cutensor: "1.6"
+  cutensor: "2.0"
   cusparselt: "0.2.0"
   cudnn: "8.8"
   python: "3.11"
@@ -428,7 +428,7 @@
   cuda: "11.8"
   rocm: null
   nccl: "2.16"
-  cutensor: "1.6"
+  cutensor: "2.0"
   cusparselt: "0.2.0"
   cudnn: "8.8"
   python: "3.9"
@@ -455,7 +455,7 @@
   cuda: "11.8"
   rocm: null
   nccl: "2.16"
-  cutensor: "1.6"
+  cutensor: "2.0"
   cusparselt: "0.2.0"
   cudnn: "8.8"
   python: "3.11"
@@ -481,7 +481,7 @@
   cuda: "11.6"
   rocm: null
   nccl: "2.16"
-  cutensor: "1.6"
+  cutensor: "2.0"
   cusparselt: "0.2.0"
   cudnn: "8.8"
   python: "3.10"
