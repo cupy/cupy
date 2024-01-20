@@ -260,14 +260,22 @@ def _rpath_base():
 def _find_static_library(name: str) -> str:
     if PLATFORM_LINUX:
         filename = f'lib{name}.a'
-        libdirs = ['lib64', 'lib']
+        if (int(os.environ.get('CONDA_BUILD_CROSS_COMPILATION', 0)) == 1 and
+                os.environ.get('CONDA_OVERRIDE_CUDA', '0').startswith('11')):
+            # CUDA 11 on conda-forge has an ad hoc layout to support cross compiling
+            libdirs = ['lib']
+            cuda_path = (f'{build.get_cuda_path()}/targets/'
+                         f'{build.conda_get_target_name()}/')
+        else:
+            libdirs = ['lib64', 'lib']
+            cuda_path = build.get_cuda_path()
     elif PLATFORM_WIN32:
         filename = f'{name}.lib'
         libdirs = ['lib\\x64', 'lib']
+        cuda_path = build.get_cuda_path()
     else:
         raise Exception('not supported on this platform')
 
-    cuda_path = build.get_cuda_path()
     if cuda_path is None:
         raise Exception(f'Could not find {filename}: CUDA path unavailable')
     for libdir in libdirs:
