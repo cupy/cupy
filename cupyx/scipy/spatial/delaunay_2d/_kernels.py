@@ -1724,6 +1724,16 @@ void storeFlip( FlipItem* flipArr, int idx, const FlipItem& item )
     ( ( int4 * ) flipArr )[ idx ] = t;
 }
 
+__forceinline__ __device__
+FlipItem loadFlip( FlipItem* flipArr, int idx )
+{
+    int4 t = ( ( int4 * ) flipArr )[ idx ];
+
+    FlipItem flip = { t.x, t.y, t.z, t.w };
+
+    return flip;
+}
+
 // idx    Constraint index
 // vi     The vertex opposite the next intersected edge. vi = 3 if this is the
 //         last triangle
@@ -1990,6 +2000,294 @@ int          flipNum
 
     return;
 }
+
+__global__ void
+kerUpdateFlipTrace
+(
+FlipItem*   flipArr,
+int*        triToFlip,
+int         orgFlipNum,
+int         flipNum
+)
+{
+    for ( int idx = getCurThreadIdx(); idx < flipNum; idx += getThreadNum() )
+    {
+        const int flipIdx   = orgFlipNum + idx;
+        FlipItem flipItem   = loadFlip( flipArr, flipIdx );
+
+        int triIdx, nextFlip;
+
+        triIdx              = flipItem._t[ 0 ];
+        nextFlip            = triToFlip[ triIdx ];
+        flipItem._t[ 0 ]    = (
+            ( nextFlip == -1 ) ? ( triIdx << 1 ) | 0 : nextFlip);
+        triToFlip[ triIdx ] = ( flipIdx << 1 ) | 1;
+
+        triIdx              = flipItem._t[ 1 ];
+        nextFlip            = triToFlip[ triIdx ];
+        flipItem._t[ 1 ]    = (
+            ( nextFlip == -1 ) ? ( triIdx << 1 ) | 0 : nextFlip);
+        triToFlip[ triIdx ] = ( flipIdx << 1 ) | 1;
+
+        storeFlip( flipArr, flipIdx, flipItem );
+    }
+}
+
+template<bool doFast>
+__forceinline__ __device__ bool
+relocatePoints
+(
+int         vertex,
+int&        location,
+int*        triToFlip,
+FlipItem*   flipArr,
+/** predWrapper values **/
+int         infIdx,
+Point2*     points,
+int*        orgPointIdx,
+RealType*   predConsts
+)
+{
+    const int triIdx = location;
+
+    if ( triIdx == -1 ) return true;
+
+    int nextIdx = ( doFast ) ? triToFlip[ triIdx ] : triIdx;
+
+    if ( nextIdx == -1 ) return true;   // No flip
+
+    int flag              = nextIdx & 1;
+    int destIdx           = nextIdx >> 1;
+
+    while ( flag == 1 )
+    {
+        const FlipItem flipItem = loadFlip( flipArr, destIdx );
+
+        const Orient ord = doFast
+            ? doOrient2DFast(
+                flipItem._v[ 0 ], flipItem._v[ 1 ], vertex,
+                infIdx, points, predConsts)
+            : doOrient2DFastExactSoS(
+                flipItem._v[ 0 ], flipItem._v[ 1 ], vertex, infIdx,
+                points, orgPointIdx, predConsts );
+
+        if ( doFast && ( OrientZero == ord ) )
+        {
+            location = nextIdx;
+            return false;
+        }
+
+        nextIdx = flipItem._t[ ( OrientPos == ord ) ? 1 : 0 ];
+        flag    = nextIdx & 1;
+        destIdx = nextIdx >> 1;
+    }
+
+    location = destIdx; // Write back
+
+    return true;
+}
+
+__global__ void
+kerRelocatePointsFast
+(
+int*        vertTriVec,
+int         nVertTri,
+int*        triToFlip,
+FlipItem*   flipArr,
+int*        exactCheckArr,
+int*        counter,
+/** predWrapper values **/
+int         infIdx,
+Point2*     points,
+int*        orgPointIdx,
+RealType*   predConsts
+)
+{
+    // Iterate points
+    for ( int idx = getCurThreadIdx(); idx < nVertTri; idx += getThreadNum() )
+    {
+        bool ret = relocatePoints<true>(
+            idx, vertTriVec[ idx ], triToFlip, flipArr, infIdx, points,
+            orgPointIdx, predConsts );
+
+        if ( !ret )
+            storeIntoBuffer( exactCheckArr, &counter[ CounterExact ], idx );
+    }
+}
+
+__global__ void
+kerRelocatePointsExact
+(
+int*        vertTriArr,
+int*        triToFlip,
+FlipItem*   flipArr,
+int*        exactCheckArr,
+int*        counter,
+/** predWrapper values **/
+int         infIdx,
+Point2*     points,
+int*        orgPointIdx,
+RealType*   predConsts
+)
+{
+    const int exactNum = counter[ CounterExact ];
+
+    // Iterate active triangle
+    for ( int idx = getCurThreadIdx(); idx < exactNum; idx += getThreadNum() )
+    {
+        const int vertIdx = exactCheckArr[ idx ];
+
+        relocatePoints< false >(
+            vertIdx, vertTriArr[ vertIdx ], triToFlip, flipArr, infIdx, points,
+            orgPointIdx, predConsts );
+    }
+}
+
+__global__ void
+kerMarkInfinityTri
+(
+Tri*        triVec,
+int         nTri,
+char*       triInfoArr,
+TriOpp*     oppArr,
+int         infIdx
+)
+{
+    for ( int idx = getCurThreadIdx(); idx < nTri; idx += getThreadNum() )
+    {
+        if ( !triVec[ idx ].has( infIdx ) ) continue;
+
+        // Mark as deleted
+        setTriAliveState( triInfoArr[ idx ], false );
+
+        TriOpp opp = oppArr[ idx ];
+
+        for ( int vi = 0; vi < DEG; ++vi )
+        {
+            if ( opp._t[ vi ] < 0 ) continue;
+
+            const int oppIdx = opp.getOppTri( vi );
+            const int oppVi  = opp.getOppVi( vi );
+
+            oppArr[ oppIdx ]._t[ oppVi ] = -1;
+        }
+    }
+}
+
+__global__ void
+kerCollectFreeSlots
+(
+char* triInfoArr,
+int*  prefixArr,
+int*  freeArr,
+int   newTriNum
+)
+{
+    for ( int idx = getCurThreadIdx(); idx < newTriNum; idx += getThreadNum() )
+    {
+        if ( isTriAlive( triInfoArr[ idx ] ) ) continue;
+
+        int freeIdx = idx - prefixArr[ idx ];
+
+        freeArr[ freeIdx ] = idx;
+    }
+}
+
+__global__ void
+kerMakeCompactMap
+(
+char*        triInfoVec,
+int          nTriInfo,
+int*         prefixArr,
+int*         freeArr,
+int          newTriNum
+)
+{
+    for ( int idx = newTriNum + getCurThreadIdx();
+          idx < nTriInfo; idx += getThreadNum() )
+    {
+        if ( !isTriAlive( triInfoVec[ idx ] ) )
+        {
+            prefixArr[ idx ] = -1;
+            continue;
+        }
+
+        int freeIdx     = newTriNum - prefixArr[ idx ];
+        int newTriIdx   = freeArr[ freeIdx ];
+
+        prefixArr[ idx ] = newTriIdx;
+    }
+}
+
+__global__ void
+kerCompactTris
+(
+char*        triInfoVec,
+int          nTriInfo,
+int*         prefixArr,
+Tri*         triArr,
+TriOpp*      oppArr,
+int          newTriNum
+)
+{
+    for ( int idx = newTriNum + getCurThreadIdx();
+          idx < nTriInfo; idx += getThreadNum() )
+    {
+        int newTriIdx = prefixArr[ idx ];
+
+        if ( newTriIdx == -1 ) continue;
+
+        triArr[ newTriIdx ]          = triArr[ idx ];
+        triInfoVec[ newTriIdx ] = triInfoVec[ idx ];
+
+        TriOpp opp = oppArr[ idx ];
+
+        for ( int vi = 0; vi < DEG; ++vi )
+        {
+            if ( opp._t[ vi ] < 0 ) continue;
+
+            const int oppIdx = opp.getOppTri( vi );
+
+            if ( oppIdx >= newTriNum )
+            {
+                const int oppNewIdx = prefixArr[ oppIdx ];
+
+                opp.setOppTri( vi, oppNewIdx );
+            }
+            else
+            {
+                const int oppVi = opp.getOppVi( vi );
+
+                oppArr[ oppIdx ].setOppTri( oppVi, newTriIdx );
+            }
+        }
+
+        oppArr[ newTriIdx ] = opp;
+    }
+}
+
+__global__ void
+kerUpdateVertIdx
+(
+Tri*        triVec,
+int         nTri,
+char*       triInfoArr,
+int*        orgPointIdx
+)
+{
+    for ( int idx = getCurThreadIdx(); idx < nTri; idx += getThreadNum() )
+    {
+        if ( !isTriAlive( triInfoArr[ idx ] ) ) continue;
+
+        Tri tri = triVec[ idx ];
+
+        for ( int i = 0; i < DEG; ++i )
+            tri._v[ i ] = orgPointIdx[ tri._v[i] ];
+
+        triVec._arr[ idx ] = tri;
+    }
+}
+
 """
 
 DELAUNAY_MODULE = cupy.RawModule(
@@ -2003,7 +2301,11 @@ DELAUNAY_MODULE = cupy.RawModule(
                       'kerSplitTri', 'isTriActive', 'kerMarkSpecialTris',
                       'kerCheckDelaunayFast', 'kerCheckDelaunayExact_Fast',
                       'kerCheckDelaunayExact_Exact', 'kerMarkRejectedFlips',
-                      'kerFlip', 'kerUpdateOpp'])
+                      'kerFlip', 'kerUpdateOpp', 'kerUpdateFlipTrace',
+                      'kerRelocatePointsFast', 'kerRelocatePointsExact',
+                      'kerMarkInfinityTri', 'kerCollectFreeSlots',
+                      'kerMakeCompactMap', 'kerCompactTris',
+                      'kerUpdateVertIdx'])
 
 
 N_BLOCKS = 512
@@ -2168,3 +2470,58 @@ def update_opp(flip_vec, tri_opp, tri_msg, flip_to_tri,
     ker_update_opp = DELAUNAY_MODULE.get_function('kerUpdateOpp')
     ker_update_opp((BLOCK_SZ,), (32,), (
         flip_vec, tri_opp, tri_msg, flip_to_tri, org_flip_num, flip_num))
+
+
+def update_flip_trace(flip_arr, tri_to_flip, org_flip_num, flip_num):
+    ker_update_flip_trace = DELAUNAY_MODULE.get_function('kerUpdateFlipTrace')
+    ker_update_flip_trace((N_BLOCKS,), (BLOCK_SZ,), (
+        flip_arr, tri_to_flip, org_flip_num, flip_num))
+
+
+def relocate_points_fast(vert_tri, tri_to_flip, flip_arr, exact_check,
+                         counter, inf_idx, points, org_point_idx, pred_consts):
+    ker_relocate_points_fast = DELAUNAY_MODULE.get_function(
+        'kerRelocatePointsFast')
+    ker_relocate_points_fast((N_BLOCKS,), (BLOCK_SZ,), (
+        vert_tri, vert_tri.shape[0], tri_to_flip, flip_arr, exact_check,
+        counter, inf_idx, points, org_point_idx, pred_consts))
+
+
+def relocate_points_exact(vert_tri, tri_to_flip, flip_arr, exact_check,
+                          counter, inf_idx, points, org_point_idx,
+                          pred_consts):
+    ker_relocate_points_exact = DELAUNAY_MODULE.get_function(
+        'kerRelocatePointsExact')
+    ker_relocate_points_exact((N_BLOCKS,), (BLOCK_SZ,), (
+        vert_tri, tri_to_flip, flip_arr, exact_check, counter, inf_idx,
+        points, org_point_idx, pred_consts))
+
+
+def mark_inf_tri(tri, tri_info, opp, inf_idx):
+    ker_mark_inf_tri = DELAUNAY_MODULE.get_function('kerMarkInfinityTri')
+    ker_mark_inf_tri((N_BLOCKS,), (BLOCK_SZ,), (
+        tri, tri.shape[0], tri_info, opp, inf_idx))
+
+
+def collect_free_slots(tri_info, prefix, free_arr, new_tri_num):
+    ker_collect_free = DELAUNAY_MODULE.get_function('kerCollectFreeSlots')
+    ker_collect_free((N_BLOCKS,), (BLOCK_SZ,), (
+        tri_info, prefix, free_arr, new_tri_num))
+
+
+def make_compact_map(tri_info, prefix, free_arr, new_tri_num):
+    ker_make_compact = DELAUNAY_MODULE.get_function('kerMakeCompactMap')
+    ker_make_compact((N_BLOCKS,), (BLOCK_SZ,), (
+        tri_info, tri_info.shape[0], prefix, free_arr, new_tri_num))
+
+
+def compact_tris(tri_info, prefix, tri, tri_opp, new_tri_num):
+    ker_compact_tris = DELAUNAY_MODULE.get_function('kerCompactTris')
+    ker_compact_tris((N_BLOCKS,), (BLOCK_SZ,), (
+        tri_info, tri_info.shape[0], prefix, tri, tri_opp, new_tri_num))
+
+
+def update_vert_idx(tri, tri_info, org_point_idx):
+    ker_map_tri = DELAUNAY_MODULE.get_function('kerUpdateVertIdx')
+    ker_map_tri((N_BLOCKS,), (BLOCK_SZ,), (
+        tri, tri.shape[0], tri_info, org_point_idx))

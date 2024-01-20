@@ -10,7 +10,9 @@ from cupyx.scipy.spatial.delaunay_2d._kernels import (
     shift_tri_idx, split_points_fast, split_points_exact, split_tri,
     is_tri_active, mark_special_tris, check_delaunay_fast,
     check_delaunay_exact_fast, check_delaunay_exact_exact, mark_rejected_flips,
-    flip, update_opp)
+    flip, update_opp, update_flip_trace, relocate_points_fast,
+    relocate_points_exact, mark_inf_tri, collect_free_slots, make_compact_map,
+    compact_tris, update_vert_idx)
 
 
 def _get_typename(dtype):
@@ -409,6 +411,39 @@ class GDel2D:
         if self._flip_vec.shape[0] == 0:
             return
 
+        if self.available_points > 0:
+            tri_num = self.triangles.shape[0]
+            tri_to_flip = cupy.empty(tri_num, dtype=cupy.int32)
+
+            # Rebuild the pointers from back to forth
+            next_flip_num = self._flip_vec.shape[0]
+            for i in range(len(self._org_flip_num) - 1, -1, -1):
+                prev_flip_num = self._org_flip_num[i]
+                flip_num = next_flip_num - prev_flip_num
+                update_flip_trace(
+                    self._flip_vec, tri_to_flip, prev_flip_num, flip_num)
+                next_flip_num = prev_flip_num
+
+            # Relocate points
+            exact_check = cupy.empty(self.n_points)
+            self._renew_counters()
+
+            relocate_points_fast(
+                self.vert_tri, tri_to_flip, self._flip_vec,
+                exact_check, self.counters, self.n_points - 1, self.point_vec,
+                self.points_idx, self.pred_consts)
+
+            relocate_points_exact(
+                self.vert_tri, tri_to_flip, self._flip_vec,
+                exact_check, self.counters, self.n_points - 1, self.point_vec,
+                self.points_idx, self.pred_consts)
+
+        self._flip_vec = cupy.empty((0, 4), dtype=cupy.int32)
+        self._flip_vec_cap = self.max_triangles
+        self._tri_msg = cupy.full(
+            (self.max_triangles, 2), -1, dtype=cupy.int32)
+        self._org_flip_num = []
+
     def _dispatch_check_delaunay(self, check_mode, org_act_num, tri_vote):
         if check_mode == CheckDelaunayMode.CircleFastOrientFast:
             check_delaunay_fast(
@@ -471,7 +506,6 @@ class GDel2D:
         del tri_vote
 
         # Compact flips
-        breakpoint()
         flip_to_tri = flip_to_tri[flip_to_tri >= 0]
         flip_num = flip_to_tri.shape[0]
 
@@ -488,7 +522,8 @@ class GDel2D:
             exp_flip_num = flip_num
             self._flip_vec_cap = exp_flip_num
 
-        self._flip_vec = self._expand_copy(self._flip_vec, (exp_flip_num, 4))
+        self._flip_vec = self._expand_copy(
+            self._flip_vec, (exp_flip_num, 4), zeros=True)
 
         # self._tri_msg contains two components.
         # - .x is the encoded new neighbor information
@@ -555,10 +590,46 @@ class GDel2D:
 
         mark_special_tris(self.triangle_info, self.triangle_opp)
         self._do_flipping_loop(CheckDelaunayMode.CircleExactOrientSoS)
+        self._do_flipping_loop(CheckDelaunayMode.CircleFastOrientFast)
+
+        mark_special_tris(self.triangle_info, self.triangle_opp)
+        self._do_flipping_loop(CheckDelaunayMode.CircleExactOrientSoS)
+
+    def _compact_tris(self):
+        tri_num = self.triangles.shape[0]
+        prefix = cupy.cumsum(self.triangle_info, dtype=cupy.int32)
+
+        new_tri_num = prefix[tri_num - 1]
+        free_num = tri_num - new_tri_num
+
+        free_vec = cupy.empty(free_num, dtype=cupy.int32)
+        collect_free_slots(self.triangle_info, prefix, free_vec, new_tri_num)
+
+        # Make map
+        make_compact_map(self.triangle_info, prefix, free_vec, new_tri_num)
+
+        # Reorder the triangles
+        compact_tris(
+            self.triangle_info, prefix, self.triangles,
+            self.triangle_opp, new_tri_num)
+
+        self.triangles = self.triangles[:new_tri_num]
+        self.triangle_opp = self.triangle_opp[:new_tri_num]
+        self.triangle_info = self.triangle_info[:new_tri_num]
+
+    def _output(self):
+        mark_inf_tri(
+            self.triangles, self.triangle_info, self.triangle_opp,
+            self.n_points - 1)
+
+        self._compact_tris()
+
+        update_vert_idx(self.triangles, self.triangle_info, self.points_idx)
 
     def compute(self):
         self._init_for_flip()
         self._split_and_flip()
+        self._output()
 
 
 def _delaunay_triangulation_2d(points):
