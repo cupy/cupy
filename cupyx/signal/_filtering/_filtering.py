@@ -246,3 +246,35 @@ def firfilter2(
         y = axis_slice(y, start=edge, stop=-edge, axis=axis)
 
     return cupy.copy(y)
+
+
+_freq_shift_kernel = cupy.ElementwiseKernel(
+    "T x, float64 freq, float64 fs",
+    "complex128 out",
+    """
+    thrust::complex<double> temp(0, neg2pi * freq / fs * i);
+    out = x * exp(temp);
+    """,
+    "_freq_shift_kernel",
+    options=("-std=c++11",),
+    loop_prep="const double neg2pi { -1 * 2 * M_PI };",
+)
+
+
+def freq_shift(x, freq, fs):
+    """
+    Frequency shift signal by freq at fs sample rate
+
+    Parameters
+    ----------
+    x : array_like, complex valued
+        The data to be shifted.
+    freq : float
+        Shift by this many (Hz)
+    fs : float
+        Sampling rate of the signal
+    domain : string
+        freq or time
+    """
+    x = cupy.asarray(x)
+    return _freq_shift_kernel(x, freq, fs)
