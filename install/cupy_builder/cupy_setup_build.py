@@ -262,7 +262,8 @@ def _find_static_library(name: str) -> str:
         filename = f'lib{name}.a'
         if (int(os.environ.get('CONDA_BUILD_CROSS_COMPILATION', 0)) == 1 and
                 os.environ.get('CONDA_OVERRIDE_CUDA', '0').startswith('11')):
-            # CUDA 11 on conda-forge has an ad hoc layout to support cross compiling
+            # CUDA 11 on conda-forge has an ad hoc layout to support cross
+            # compiling
             libdirs = ['lib']
             cuda_path = (f'{build.get_cuda_path()}/targets/'
                          f'{build.conda_get_target_name()}/')
