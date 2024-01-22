@@ -12,7 +12,7 @@ from cupyx.scipy.spatial.delaunay_2d._kernels import (
     check_delaunay_exact_fast, check_delaunay_exact_exact, mark_rejected_flips,
     flip, update_opp, update_flip_trace, relocate_points_fast,
     relocate_points_exact, mark_inf_tri, collect_free_slots, make_compact_map,
-    compact_tris, update_vert_idx)
+    compact_tris, update_vert_idx, find_closest_tri_to_point)
 
 
 def _get_typename(dtype):
@@ -173,7 +173,8 @@ class GDel2D:
         self.max_triangles = 2 * self.n_points
         self.tri_num = 0
 
-        self.points = cupy.array(points, copy=True)
+        # self.points = cupy.array(points, copy=True)
+        self.points = points
         self.point_vec = cupy.empty((self.n_points, 2), dtype=points.dtype)
         self.point_vec[:-1] = points
 
@@ -599,7 +600,7 @@ class GDel2D:
         tri_num = self.triangles.shape[0]
         prefix = cupy.cumsum(self.triangle_info, dtype=cupy.int32)
 
-        new_tri_num = prefix[tri_num - 1]
+        new_tri_num = prefix[tri_num - 1].item()
         free_num = tri_num - new_tri_num
 
         free_vec = cupy.empty(free_num, dtype=cupy.int32)
@@ -630,6 +631,17 @@ class GDel2D:
         self._init_for_flip()
         self._split_and_flip()
         self._output()
+        return self.triangles, self.triangle_opp
+
+    def find_point_in_triangulation(self, xi, eps, find_coords=False):
+        out = cupy.empty((xi.shape[0],), dtype=cupy.int32)
+        c = cupy.empty(0, dtype=cupy.float64)
+        if find_coords:
+            c = cupy.empty((xi.shape[0], xi.shape[-1] + 1), dtype=cupy.float64)
+
+        find_closest_tri_to_point(xi, self.points, self.triangles,
+                                  out, c, eps, find_coords)
+        return out, c
 
 
 def _delaunay_triangulation_2d(points):

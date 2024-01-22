@@ -2272,7 +2272,7 @@ kerUpdateVertIdx
 Tri*        triVec,
 int         nTri,
 char*       triInfoArr,
-int*        orgPointIdx
+long long*  orgPointIdx
 )
 {
     for ( int idx = getCurThreadIdx(); idx < nTri; idx += getThreadNum() )
@@ -2284,10 +2284,73 @@ int*        orgPointIdx
         for ( int i = 0; i < DEG; ++i )
             tri._v[ i ] = orgPointIdx[ tri._v[i] ];
 
-        triVec._arr[ idx ] = tri;
+        triVec[ idx ] = tri;
     }
 }
 
+__device__ bool isPointInTriangle(
+        const Point2 p, const Point2 p0, const Point2 p1, const Point2 p2,
+        RealType* s, RealType* t, double eps) {
+
+    RealType A = 0.5 * (
+        -p1._p[1] * p2._p[0] +
+        p0._p[1] * (-p1._p[0] + p2._p[0]) +
+        p0._p[0] * (p1._p[1] - p2._p[1]) +
+        p1._p[0] * p2._p[1]);
+
+    RealType sign = A < 0 ? -1 : 1;
+    *s = (p0._p[1] * p2._p[0] - p0._p[0] * p2._p[1] +
+          (p2._p[1] - p0._p[1]) * p._p[0] +
+          (p0._p[0] - p2._p[0]) * p._p[1]) * sign;
+
+    *t = (p0._p[0] * p1._p[1] - p0._p[1] * p1._p[0] +
+          (p0._p[1] - p1._p[1]) * p._p[0] +
+          (p1._p[0] - p0._p[0]) * p._p[1]) * sign;
+
+    return (*s > 0 &&
+            *t > 0 &&
+            ((*s + *t + 2 * eps) < 2 * A * sign ||
+             (*s + *t - 2 * eps) < 2 * A * sign));
+}
+
+__global__ void findClosestTriToPoint(
+        Point2* points, int nPoints, Point2* triPoints,
+        int* triangles, int nTriangles, int* out, RealType* cOut, double eps,
+        bool findCoords) {
+
+    int idx = blockDim.x * blockIdx.x + threadIdx.x;
+    if(idx >= nPoints) {
+        return;
+    }
+
+    Point2 point = points[idx];
+    bool isInTri = false;
+
+    int trianglePos = -1;
+    RealType s = -1.0;
+    RealType t = -1.0;
+
+    for(int i = 0; i < nTriangles && !isInTri; i++) {
+        int* triangle = triangles + 3 * i;
+
+        Point2 p0 = triPoints[triangle[0]];
+        Point2 p1 = triPoints[triangle[1]];
+        Point2 p2 = triPoints[triangle[2]];
+
+        isInTri = isPointInTriangle(point, p0, p1, p2, &s, &t, eps);
+        if(isInTri) {
+            trianglePos = i;
+        }
+    }
+
+    out[idx] = trianglePos;
+    if(findCoords) {
+        RealType* cOutOff = cOut + 3 * idx;
+        cOutOff[0] = s;
+        cOutOff[1] = t;
+        cOutOff[2] = 1 - s - t;
+    }
+}
 """
 
 DELAUNAY_MODULE = cupy.RawModule(
@@ -2305,7 +2368,7 @@ DELAUNAY_MODULE = cupy.RawModule(
                       'kerRelocatePointsFast', 'kerRelocatePointsExact',
                       'kerMarkInfinityTri', 'kerCollectFreeSlots',
                       'kerMakeCompactMap', 'kerCompactTris',
-                      'kerUpdateVertIdx'])
+                      'kerUpdateVertIdx', 'findClosestTriToPoint'])
 
 
 N_BLOCKS = 512
@@ -2525,3 +2588,15 @@ def update_vert_idx(tri, tri_info, org_point_idx):
     ker_map_tri = DELAUNAY_MODULE.get_function('kerUpdateVertIdx')
     ker_map_tri((N_BLOCKS,), (BLOCK_SZ,), (
         tri, tri.shape[0], tri_info, org_point_idx))
+
+
+def find_closest_tri_to_point(xi, points, triangles, out, c_out,
+                              eps, find_coords):
+    ker_find_closest_tri = DELAUNAY_MODULE.get_function(
+        'findClosestTriToPoint')
+    block_sz = 128
+    n_blocks = (xi.shape[0] + block_sz - 1) // block_sz
+
+    ker_find_closest_tri((n_blocks,), (block_sz,), (
+        xi, xi.shape[0], points, triangles, triangles.shape[0], out,
+        c_out, eps, find_coords))
