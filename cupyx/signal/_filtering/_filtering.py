@@ -277,4 +277,5 @@ def freq_shift(x, freq, fs):
         freq or time
     """
     x = cupy.asarray(x)
-    return _freq_shift_kernel(x, freq, fs)
+    c = -2 * math.pi * freq / fs
+    return _freq_shift_kernel(x, c)
