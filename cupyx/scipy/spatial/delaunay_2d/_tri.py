@@ -282,7 +282,10 @@ class GDel2D:
             (self.n_points - 1, self.points, min_val, range_val, self.values))
 
         self.values[-1] = 2 ** 31 - 1
-        self.points_idx = cupy.argsort(self.values)
+        unique_values = cupy.unique(self.values)
+        if unique_values.shape[0] != self.values.shape[0]:
+            self.values = unique_values
+        self.points_idx = cupy.argsort(self.values).astype(cupy.int32)
         self.point_vec = self.point_vec[self.points_idx]
 
         self._construct_initial_triangles()
@@ -463,8 +466,8 @@ class GDel2D:
 
             check_delaunay_exact_exact(
                 self.triangles, self.triangle_opp, tri_vote, exact_check_vi,
-                self.counters, self.n_points - 1, self.point_vec, org_act_num,
-                self.pred_consts)
+                self.counters, self.n_points - 1, self.point_vec,
+                self.points_idx, self.pred_consts)
 
     def _do_flipping(self, check_mode):
         tri_num = self.triangles.shape[0]
@@ -642,8 +645,3 @@ class GDel2D:
         find_closest_tri_to_point(xi, self.points, self.triangles,
                                   out, c, eps, find_coords)
         return out, c
-
-
-def _delaunay_triangulation_2d(points):
-    gdel = GDel2D(points)
-    gdel.compute()

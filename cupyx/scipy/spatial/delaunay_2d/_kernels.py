@@ -2272,7 +2272,7 @@ kerUpdateVertIdx
 Tri*        triVec,
 int         nTri,
 char*       triInfoArr,
-long long*  orgPointIdx
+int*        orgPointIdx
 )
 {
     for ( int idx = getCurThreadIdx(); idx < nTri; idx += getThreadNum() )
