@@ -1,3 +1,5 @@
+import math
+
 import cupy
 import cupyx.scipy.linalg
 import cupyx.scipy.signal._signaltools
