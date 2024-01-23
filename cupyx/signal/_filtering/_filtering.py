@@ -249,15 +249,9 @@ def firfilter2(
 
 
 _freq_shift_kernel = cupy.ElementwiseKernel(
-    "T x, float64 freq, float64 fs",
-    "complex128 out",
-    """
-    thrust::complex<double> temp(0, neg2pi * freq / fs * i);
-    out = x * exp(temp);
-    """,
+    "float64 x, float64 c", "complex128 out",
+    "out = thrust::polar(x, c * i);",
     "_freq_shift_kernel",
-    options=("-std=c++11",),
-    loop_prep="const double neg2pi { -1 * 2 * M_PI };",
 )
 
 
