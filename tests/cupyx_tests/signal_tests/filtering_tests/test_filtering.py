@@ -51,3 +51,31 @@ def test_firfilter2(dtype, num_samps, filter_len, padtype):
     cpu_output = scipy.signal.filtfilt(cpu_filter, 1, cpu_sig, padtype=padtype)
     gpu_output = cupyx.signal.firfilter2(gpu_filter, gpu_sig, padtype=padtype)
     testing.assert_allclose(gpu_output, cpu_output, atol=1e-3, rtol=1e-3)
+
+
+def freq_shift_cpu(x, freq, fs):
+    """
+    Frequency shift signal by freq at fs sample rate
+    Parameters
+    ----------
+    x : array_like, complex valued
+        The data to be shifted.
+    freq : float
+        Shift by this many (Hz)
+    fs : float
+        Sampling rate of the signal
+    domain : string
+        freq or time
+    """
+    x = numpy.asarray(x)
+    return x * numpy.exp(-1j * 2 * numpy.pi * freq / fs * numpy.arange(x.size))
+
+
+@pytest.mark.parametrize("dtype", [cupy.float64, cupy.complex128])
+@pytest.mark.parametrize("num_samps", [2**8])
+@pytest.mark.parametrize("freq", numpy.fft.fftfreq(10, 0.1))
+@pytest.mark.parametrize("fs", [0.3])
+def test_freq_shift(dtype, num_samps, freq, fs):
+    cpu_output = freq_shift_cpu(freq, fs, num_samps)
+    gpu_output = cupyx.signal.freq_shift(freq, fs, num_samps)
+    testing.assert_allclose(gpu_output, cpu_output)
