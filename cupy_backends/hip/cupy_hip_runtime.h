@@ -530,7 +530,11 @@ cudaError_t cudaGraphLaunch(cudaGraphExec_t graphExec, cudaStream_t stream) {
 }
 
 cudaError_t cudaGraphUpload(...) {
+#if HIP_VERSION < 60000000
     return hipErrorUnknown;
+#else
+    return hipSuccess;
+#endif
 }
 
 } // extern "C"

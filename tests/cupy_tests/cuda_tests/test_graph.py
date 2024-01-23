@@ -6,8 +6,6 @@ from cupy import testing
 import cupyx
 
 
-@pytest.mark.skipif(cuda.runtime.is_hip,
-                    reason='HIP does not support this')
 @pytest.mark.skipif(cuda.driver.get_build_version() < 10010,
                     reason='Only CUDA 10.1+ supports this')
 class TestGraph:
