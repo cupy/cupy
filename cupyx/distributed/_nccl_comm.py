@@ -124,7 +124,7 @@ class NCCLBackend(_Backend):
     def _get_op(self, op, dtype):
         if op not in _nccl_ops:
             raise RuntimeError(f'Unknown op {op} for NCCL')
-        if dtype in 'FD' and op != nccl.NCCL_SUM:
+        if dtype in 'FD' and op != 'sum':
             raise ValueError(
                 'Only nccl.SUM is supported for complex arrays')
         return _nccl_ops[op]

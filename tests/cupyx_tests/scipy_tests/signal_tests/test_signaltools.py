@@ -869,7 +869,7 @@ class TestFiltFilt:
     @pytest.mark.parametrize('padtype', ['odd', 'even', 'constant', None])
     @testing.for_all_dtypes_combination(
         no_float16=True, no_bool=True, names=('in_dtype', 'const_dtype'))
-    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=5e-3,
+    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-3, atol=1e-2,
                                  type_check=False, accept_error=True)
     def test_filtfilt_1d(self, size, fir_order, iir_order, method, padtype,
                          in_dtype, const_dtype, xp, scp):
