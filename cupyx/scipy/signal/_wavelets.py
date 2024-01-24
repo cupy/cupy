@@ -33,7 +33,8 @@ from cupyx.scipy.signal._signaltools import convolve
 
 
 _deprecate_msg = (
-    "All wavelet functions have been deprecated since CuPy v14. "
+    "Following the change in SciPy 1.12, all wavelet functions have been "
+    "deprecated in CuPy v14 and are planned to be removed in the future. "
     "To request continued support of the features, "
     "please leave a comment at https://github.com/cupy/cupy/pull/8061."
 )
