@@ -81,7 +81,7 @@ cudaError_t cudaDeviceGetLimit(size_t* pValue, cudaLimit limit) {
 
 cudaError_t cudaDeviceSetLimit(cudaLimit limit, size_t value) {
     // see https://github.com/ROCm-Developer-Tools/HIP/issues/1632
-    return hipErrorUnknown;
+    return hipDeviceSetLimit(limit, value);
 }
 
 // IPC operations
@@ -90,11 +90,9 @@ cudaError_t cudaIpcCloseMemHandle(void* devPtr) {
 }
 
 cudaError_t cudaIpcGetEventHandle(cudaIpcEventHandle_t* handle, cudaEvent_t event) {
-    return hipErrorUnknown;
-
     // TODO(leofang): this is supported after ROCm-Developer-Tools/HIP#1996 is released;
     // as of ROCm 3.5.0 it is still not supported
-    //return hipIpcGetEventHandle(handle, event);
+    return hipIpcGetEventHandle(handle, event);
 }
 
 cudaError_t cudaIpcGetMemHandle(cudaIpcMemHandle_t* handle, void* devPtr) {
@@ -102,11 +100,9 @@ cudaError_t cudaIpcGetMemHandle(cudaIpcMemHandle_t* handle, void* devPtr) {
 }
 
 cudaError_t cudaIpcOpenEventHandle(cudaEvent_t* event, cudaIpcEventHandle_t handle) {
-    return hipErrorUnknown;
-
     // TODO(leofang): this is supported after ROCm-Developer-Tools/HIP#1996 is released;
     // as of ROCm 3.5.0 it is still not supported
-    //return hipIpcOpenEventHandle(event, handle);
+    return hipIpcOpenEventHandle(event, handle);
 }
 
 cudaError_t cudaIpcOpenMemHandle(void** devPtr, cudaIpcMemHandle_t handle, unsigned int flags) {
@@ -377,7 +373,7 @@ cudaError_t cudaStreamAddCallback(cudaStream_t stream,
 }
 
 cudaError_t cudaLaunchHostFunc(cudaStream_t stream, cudaHostFn_t fn, void* userData) {
-    return hipErrorUnknown;
+    return hipLaunchHostFunc(stream, fn, userData);
 }
 
 cudaError_t cudaStreamQuery(cudaStream_t stream) {
@@ -529,11 +525,11 @@ cudaError_t cudaGraphLaunch(cudaGraphExec_t graphExec, cudaStream_t stream) {
 #endif
 }
 
-cudaError_t cudaGraphUpload(...) {
-#if HIP_VERSION < 60000000
-    return hipErrorUnknown;
+cudaError_t cudaGraphUpload(cudaGraphExec_t graphExec, cudaStream_t stream) {
+#if HIP_VERSION >= 60000000
+    return hipGraphUpload(graphExec, stream);
 #else
-    return hipSuccess;
+    return hipErrorUnknown;
 #endif
 }
 

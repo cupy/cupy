@@ -107,8 +107,6 @@ cdef class Memory(BaseMemory):
 
 
 cdef inline void check_async_alloc_supported(int device_id) except*:
-    if runtime._is_hip_environment:
-        raise RuntimeError('HIP does not support memory_async')
     if runtime.runtimeGetVersion() < 11020:
         raise RuntimeError("memory_async is supported since CUDA 11.2")
     cdef int dev_id
@@ -404,10 +402,7 @@ cdef class MemoryPointer:
 
         """
         stream_ptr = stream_module.get_current_stream_ptr()
-        if (
-            not runtime._is_hip_environment
-            and runtime.streamIsCapturing(stream_ptr)
-        ):
+        if runtime.streamIsCapturing(stream_ptr):
             raise RuntimeError(
                 'the current stream is capturing, so synchronous API calls '
                 'are disallowed')
@@ -451,10 +446,7 @@ cdef class MemoryPointer:
 
         """
         stream_ptr = stream_module.get_current_stream_ptr()
-        if (
-            not runtime._is_hip_environment
-            and runtime.streamIsCapturing(stream_ptr)
-        ):
+        if runtime.streamIsCapturing(stream_ptr):
             raise RuntimeError(
                 'the current stream is capturing, so synchronous API calls '
                 'are disallowed')
@@ -478,10 +470,7 @@ cdef class MemoryPointer:
             stream_ptr = stream_module.get_current_stream_ptr()
         else:
             stream_ptr = stream.ptr
-        if (
-            not runtime._is_hip_environment
-            and runtime.streamIsCapturing(stream_ptr)
-        ):
+        if runtime.streamIsCapturing(stream_ptr):
             raise RuntimeError(
                 'the current stream is capturing, so H2D transfers '
                 'are disallowed')
@@ -549,10 +538,7 @@ cdef class MemoryPointer:
 
         """
         stream_ptr = stream_module.get_current_stream_ptr()
-        if (
-            not runtime._is_hip_environment
-            and runtime.streamIsCapturing(stream_ptr)
-        ):
+        if runtime.streamIsCapturing(stream_ptr):
             raise RuntimeError(
                 'the current stream is capturing, so synchronous API calls '
                 'are disallowed')
@@ -576,10 +562,7 @@ cdef class MemoryPointer:
             stream_ptr = stream_module.get_current_stream_ptr()
         else:
             stream_ptr = stream.ptr
-        if (
-            not runtime._is_hip_environment
-            and runtime.streamIsCapturing(stream_ptr)
-        ):
+        if runtime.streamIsCapturing(stream_ptr):
             raise RuntimeError(
                 'the current stream is capturing, so D2H transfers '
                 'are disallowed')
@@ -603,10 +586,7 @@ cdef class MemoryPointer:
 
         """
         stream_ptr = stream_module.get_current_stream_ptr()
-        if (
-            not runtime._is_hip_environment
-            and runtime.streamIsCapturing(stream_ptr)
-        ):
+        if runtime.streamIsCapturing(stream_ptr):
             raise RuntimeError(
                 'the current stream is capturing, so synchronous API calls '
                 'are disallowed')
