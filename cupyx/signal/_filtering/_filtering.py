@@ -1,3 +1,5 @@
+import math
+
 import cupy
 import cupyx.scipy.linalg
 import cupyx.scipy.signal._signaltools
@@ -246,3 +248,30 @@ def firfilter2(
         y = axis_slice(y, start=edge, stop=-edge, axis=axis)
 
     return cupy.copy(y)
+
+
+_freq_shift_kernel = cupy.ElementwiseKernel(
+    "float64 x, float64 c", "complex128 out",
+    "out = thrust::polar(x, c * i);",
+    "_freq_shift_kernel",
+)
+
+
+def freq_shift(x, freq, fs):
+    """
+    Frequency shift signal by freq at fs sample rate
+
+    Parameters
+    ----------
+    x : array_like, complex valued
+        The data to be shifted.
+    freq : float
+        Shift by this many (Hz)
+    fs : float
+        Sampling rate of the signal
+    domain : string
+        freq or time
+    """
+    x = cupy.asarray(x)
+    c = -2 * math.pi * freq / fs
+    return _freq_shift_kernel(x, c)
