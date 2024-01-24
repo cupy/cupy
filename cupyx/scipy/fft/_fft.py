@@ -6,8 +6,7 @@ import numpy as np
 import cupy
 
 from cupy.fft._fft import (_fft, _default_fft_func, hfft as _hfft,
-                           ihfft as _ihfft, _size_last_transform_axis,
-                           _swap_direction)
+                           ihfft as _ihfft, _swap_direction)
 
 _scipy_150 = False
 _scipy_160 = False
@@ -507,11 +506,6 @@ def irfftn(x, s=None, axes=None, norm=None, overwrite_x=False, *, plan=None):
 
     s = _assequence(s)
     axes = _assequence(axes)
-    if (10020 >= cupy.cuda.runtime.runtimeGetVersion() >= 10010
-            and int(cupy.cuda.device.get_compute_capability()) < 70
-            and _size_last_transform_axis(x.shape, s, axes) == 2):
-        warnings.warn('Output of irfftn might not be correct due to issue '
-                      'of cuFFT in CUDA 10.1/10.2 on Pascal or older GPUs.')
     func = _default_fft_func(x, s, axes, value_type='C2R')
     return func(x, s, axes, norm, cufft.CUFFT_INVERSE, 'C2R',
                 overwrite_x=overwrite_x, plan=plan)

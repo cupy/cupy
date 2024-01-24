@@ -178,7 +178,7 @@ def get_compiler_setting(ctx: Context, use_hip):
     cupy_header = os.path.join(
         cupy_builder.get_context().source_root, 'cupy/_core/include')
     global _jitify_path
-    _jitify_path = os.path.join(cupy_header, 'cupy/jitify')
+    _jitify_path = os.path.join(cupy_header, 'cupy/_jitify')
     global _cub_path
     if rocm_path:
         _cub_path = os.path.join(rocm_path, 'include', 'hipcub')
@@ -188,10 +188,9 @@ def get_compiler_setting(ctx: Context, use_hip):
         _libcudacxx_path = None
     else:
         # all bundled together under cccl
-        _cub_path = os.path.join(cupy_header, 'cupy/cccl/cub')
-        _thrust_path = os.path.join(cupy_header, 'cupy/cccl/thrust')
-        _libcudacxx_path = os.path.join(
-            cupy_header, 'cupy/cccl/libcudacxx/include')
+        _cub_path = os.path.join(cupy_header, 'cupy/_cccl/cub')
+        _thrust_path = os.path.join(cupy_header, 'cupy/_cccl/thrust')
+        _libcudacxx_path = os.path.join(cupy_header, 'cupy/_cccl/libcudacxx')
     include_dirs.insert(0, cupy_header)
     include_dirs.insert(0, _cub_path)
     if _thrust_path and _libcudacxx_path:
@@ -639,7 +638,7 @@ def check_cutensor_version(compiler, settings):
 
     _cutensor_version = int(out)
 
-    if _cutensor_version < 1000:
+    if _cutensor_version < 2000:
         utils.print_warning(
             'Unsupported cuTENSOR version: {}'.format(_cutensor_version)
         )

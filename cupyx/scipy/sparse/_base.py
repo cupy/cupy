@@ -1,3 +1,5 @@
+import numbers
+
 import numpy
 
 import cupy
@@ -16,6 +18,9 @@ except ImportError:
 
     class SparseEfficiencyWarning(SparseWarning):  # type: ignore
         pass
+
+
+# TODO(asi1024): Implement _spbase
 
 
 class spmatrix(object):
@@ -142,7 +147,7 @@ class spmatrix(object):
         return self.tocsr().__truediv__(other)
 
     def __rtruediv__(self, other):
-        return self.tocsr().__rdtrueiv__(other)
+        return self.tocsr().__rtruediv__(other)
 
     def __neg__(self):
         return -self.tocsr()
@@ -179,6 +184,8 @@ class spmatrix(object):
         m, n = self.shape
         if m != n:
             raise TypeError('matrix is not square')
+        if not isinstance(other, numbers.Integral):
+            raise ValueError("exponent must be an integer")
 
         if _util.isintlike(other):
             other = int(other)

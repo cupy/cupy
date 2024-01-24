@@ -574,6 +574,93 @@ def chirp(t, f0, t1, f1, method="linear", phi=0, vertex_zero=True):
         )
 
 
+def sweep_poly(t, poly, phi=0):
+    """
+    Frequency-swept cosine generator, with a time-dependent frequency.
+
+    This function generates a sinusoidal function whose instantaneous
+    frequency varies with time.  The frequency at time `t` is given by
+    the `poly` array.
+
+    Parameters
+    ----------
+    t : ndarray
+        Times at which to evaluate the waveform.
+    poly : 1-D array_like or instance of numpy.poly1d
+        The desired frequency expressed as a polynomial.  If `poly` is
+        a list or ndarray of length n, then the elements of `poly` are
+        the coefficients of the polynomial, and the instantaneous
+        frequency is
+
+          ``f(t) = poly[0]*t**(n-1) + poly[1]*t**(n-2) + ... + poly[n-1]``
+
+        If `poly` is an instance of cupy.poly1d, then the
+        instantaneous frequency is
+
+          ``f(t) = poly(t)``
+
+    phi : float, optional
+        Phase offset, in degrees, Default: 0.
+
+    Returns
+    -------
+    sweep_poly : ndarray
+        A numpy array containing the signal evaluated at `t` with the
+        requested time-varying frequency.  More precisely, the function
+        returns ``cos(phase + (pi/180)*phi)``, where `phase` is the integral
+        (from 0 to t) of ``2 * pi * f(t)``; ``f(t)`` is defined above.
+
+    See Also
+    --------
+    scipy.signal.sweep_poly
+    chirp
+
+    Notes
+    -----
+
+    If `poly` is an ndarray of length `n`, then the elements of
+    `poly` are the coefficients of the polynomial, and the instantaneous
+    frequency is:
+
+        ``f(t) = poly[0]*t**(n-1) + poly[1]*t**(n-2) + ... + poly[n-1]``
+
+    If `poly` is an instance of `numpy.poly1d`, then the instantaneous
+    frequency is:
+
+          ``f(t) = poly(t)``
+
+    Finally, the output `s` is:
+
+        ``cos(phase + (pi/180)*phi)``
+
+    where `phase` is the integral from 0 to `t` of ``2 * pi * f(t)``,
+    ``f(t)`` as defined above.
+    """
+    # 'phase' is computed in _sweep_poly_phase, to make testing easier.
+    phase = _sweep_poly_phase(t, poly)
+    # Convert to radians.
+    phi *= cupy.pi / 180
+    return cupy.cos(phase + phi)
+
+
+def _sweep_poly_phase(t, poly):
+    """
+    Calculate the phase used by sweep_poly to generate its output.
+
+    See `sweep_poly` for a description of the arguments.
+
+    """
+    if isinstance(poly, cupy.poly1d):
+        poly = poly.coeffs
+
+    # a replacement for `intpoly = np.polyint(poly)`
+    intpoly = cupy.zeros(poly.shape[0] + 1)
+    intpoly[:-1] = poly / cupy.arange(1, poly.shape[0] + 1)[::-1]
+
+    phase = 2 * cupy.pi * cupy.polyval(intpoly, t)
+    return phase
+
+
 if runtime.is_hip:
     KERNEL_BASE = r"""
     #include <hip/hip_runtime.h>

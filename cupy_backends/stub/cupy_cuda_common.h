@@ -35,9 +35,11 @@ struct CUlinkState_st;
 
 
 typedef struct CUctx_st* CUcontext;
+typedef struct CUevent_st* CUevent;
 typedef struct CUevent_st* cudaEvent_t;
 typedef struct CUfunc_st* CUfunction;
 typedef struct CUmod_st* CUmodule;
+typedef struct CUstream_st* CUstream;
 typedef struct CUstream_st* cudaStream_t;
 typedef struct CUgraph_st* cudaGraph_t;
 typedef struct CUgraphExec_st* cudaGraphExec_t;

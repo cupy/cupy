@@ -582,8 +582,6 @@ def medfilt(volume, kernel_size=None):
         # scipy doesn't support bool
         raise ValueError("bool type not supported")
     kernel_size = _get_kernel_size(kernel_size, volume.ndim)
-    if volume.dtype == 'F':
-        raise TypeError("complex types not supported")
     if volume.dtype.kind == 'c':
         # scipy doesn't support complex
         raise ValueError("complex types not supported")
@@ -629,8 +627,6 @@ def medfilt2d(input, kernel_size=3):
     if input.ndim != 2:
         raise ValueError('input must be 2d')
     kernel_size = _get_kernel_size(kernel_size, input.ndim)
-    if input.dtype == 'F':
-        raise TypeError("complex types not supported")
     if input.dtype.kind == 'c':
         # scipy doesn't support complex
         raise ValueError("complex types not supported")
@@ -918,6 +914,7 @@ def lfilter_zi(b, a):
         y, _ = lfilter(b, a, cupy.ones(num_a + 1), zi=zi_t)
         y1 = y[:num_a]
         y2 = y[-num_a:]
+        zero_coef = cupy.where(a_r == 0)[0]
 
         C = compute_correction_factors(a_r, a_r.size + 1, a_r.dtype)
         C = C[:, a_r.size:]
@@ -926,9 +923,15 @@ def lfilter_zi(b, a):
 
         # Take the difference between the non-adjusted output values and
         # compute which initial output state would cause them to be constant.
-        y_zi = cupy.linalg.solve(C1 - C2, y2 - y1)
+        if not len(zero_coef):
+            y_zi = cupy.linalg.solve(C1 - C2, y2 - y1)
+        else:
+            # Any zero coefficient would cause the system to be underdetermined
+            # therefore a least square solution is computed instead.
+            y_zi, _, _, _ = cupy.linalg.lstsq(C1 - C2, y2 - y1, rcond=None)
+
         y_zi = cupy.nan_to_num(y_zi, nan=0, posinf=cupy.inf, neginf=-cupy.inf)
-        zi = cupy.r_[zi, y_zi]
+        zi = cupy.r_[zi, y_zi[::-1]]
     return zi
 
 
@@ -1432,7 +1435,7 @@ def _validate_sos(sos):
     n_sections, m = sos.shape
     if m != 6:
         raise ValueError('sos array must be shape (n_sections, 6)')
-    if not (sos[:, 3] == 1).all():
+    if not (cupy.abs(sos[:, 3] - 1.0) <= 1e-15).all():
         raise ValueError('sos[:, 3] should be all ones')
     return sos, n_sections
 
@@ -1546,10 +1549,19 @@ def sosfilt_zi(sos):
         C1 = C_s[:, :2].T
         C2 = C_s[:, -2:].T
 
+        zero_iir_coef = cupy.where(sos[s, 3:] == 0)[0]
+
         # Take the difference between the non-adjusted output values and
         # compute which initial output state would cause them to be constant.
-        y_zi = cupy.linalg.solve(C1 - C2, y2 - y1)
-        zi_s[0, 2:] = y_zi
+        if not len(zero_iir_coef):
+            y_zi = cupy.linalg.solve(C1 - C2, y2 - y1)
+        else:
+            # Any zero coefficient would cause the system to be underdetermined
+            # therefore a least square solution is computed instead.
+            y_zi, _, _, _ = cupy.linalg.lstsq(C1 - C2, y2 - y1, rcond=None)
+
+        y_zi = cupy.nan_to_num(y_zi, nan=0, posinf=cupy.inf, neginf=-cupy.inf)
+        zi_s[0, 2:] = y_zi[::-1]
         x_s, _ = sosfilt(sos_s, x_s, zi=zi_s)
 
     return zi

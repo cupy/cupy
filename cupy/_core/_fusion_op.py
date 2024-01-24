@@ -271,9 +271,9 @@ __device__ void ${name}(
     extern __shared__ char _sdata_raw[];
     _type_reduce *sdata = reinterpret_cast<_type_reduce*>(_sdata_raw);
     unsigned int tid = threadIdx.x;
-    int _J = tid >> __popc(block_stride - 1);
+    IndexT _J = tid >> __popc(block_stride - 1);
     ptrdiff_t _j = (ptrdiff_t)_J * out_ind.size();
-    int J_stride = blockDim.x >> __popc(block_stride - 1);
+    IndexT J_stride = blockDim.x >> __popc(block_stride - 1);
     ptrdiff_t j_stride = (ptrdiff_t)J_stride * out_ind.size();
 
     for (ptrdiff_t _i = (ptrdiff_t)blockIdx.x * block_stride; _i < out_ind.size(); _i += (ptrdiff_t)gridDim.x * block_stride) {

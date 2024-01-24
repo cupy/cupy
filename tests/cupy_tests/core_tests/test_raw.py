@@ -1333,8 +1333,6 @@ class TestRawJitify(unittest.TestCase):
         options = ('-DCUB_DISABLE_BF16_SUPPORT',)
 
         if self.jitify:
-            if sys.platform.startswith('win32'):
-                pytest.xfail('macro preprocessing in NVRTC is likely buggy')
             # Jitify will make it work
             self._helper(hdr, options)
         else:

@@ -23,12 +23,12 @@ setup_requires = [
     'fastrlock>=0.5',
 ]
 install_requires = [
-    'numpy>=1.22,<1.27',  # see #4773
+    'numpy>=1.22,<1.29',  # see #4773
     'fastrlock>=0.5',
 ]
 extras_require = {
     'all': [
-        'scipy>=1.7,<1.13',  # see #4773
+        'scipy>=1.7,<1.14',  # see #4773
         'Cython>=0.29.22,<3',
         'optuna>=2.0',
     ],
@@ -71,16 +71,10 @@ cupy_package_data = [
     'cupyx/scipy/ndimage/cuda/LICENSE',
     'cupyx/scipy/ndimage/cuda/pba_kernels_2d.h',
     'cupyx/scipy/ndimage/cuda/pba_kernels_3d.h',
+] + [
+    x for x in glob.glob('cupy/_core/include/cupy/**', recursive=True)
+    if os.path.isfile(x)
 ]
-cupy_package_include = list(set(
-    [x for x in glob.iglob('cupy/_core/include/cupy/**', recursive=True)
-     if os.path.isfile(x)
-     ]) - set(
-    [x for x in glob.iglob(
-     'cupy/_core/include/cupy/cccl/libcudacxx/**/test/**', recursive=True)
-     if os.path.isfile(x)
-     ]))
-cupy_package_data += cupy_package_include
 
 package_data = {
     'cupy': [
@@ -119,6 +113,7 @@ Programming Language :: Python :: 3
 Programming Language :: Python :: 3.9
 Programming Language :: Python :: 3.10
 Programming Language :: Python :: 3.11
+Programming Language :: Python :: 3.12
 Programming Language :: Python :: 3 :: Only
 Programming Language :: Cython
 Topic :: Software Development

@@ -29,6 +29,12 @@ DEALINGS IN THE SOFTWARE.
 from math import ceil
 import cupy
 
+_upfirdn_modes = [
+    'constant', 'wrap', 'edge', 'smooth', 'symmetric', 'reflect',
+    'antisymmetric', 'antireflect', 'line',
+]
+
+
 UPFIRDN_KERNEL = r'''
 #include <cupy/complex.cuh>
 
@@ -225,18 +231,18 @@ extern "C" __global__ void __launch_bounds__( 64 ) _cupy_upfirdn2D_float32( cons
         inp, inpH, h_trans_flip, up, down, axis, x_shape_a, h_per_phase, padded_len, out, outW, outH );
 }
 
-extern "C" __global__ void __launch_bounds__( 64 ) _cupy_upfirdn2D_float64( const double *__restrict__ inp,
-                                                                            const int inpH,
-                                                                            const double *__restrict__ h_trans_flip,
-                                                                            const int up,
-                                                                            const int down,
-                                                                            const int axis,
-                                                                            const int x_shape_a,
-                                                                            const int h_per_phase,
-                                                                            const int padded_len,
-                                                                            double *__restrict__ out,
-                                                                            const int outW,
-                                                                            const int outH ) {
+extern "C" __global__ void _cupy_upfirdn2D_float64( const double *__restrict__ inp,
+                                                    const int inpH,
+                                                    const double *__restrict__ h_trans_flip,
+                                                    const int up,
+                                                    const int down,
+                                                    const int axis,
+                                                    const int x_shape_a,
+                                                    const int h_per_phase,
+                                                    const int padded_len,
+                                                    double *__restrict__ out,
+                                                    const int outW,
+                                                    const int outH ) {
     _cupy_upfirdn2D<double>(
         inp, inpH, h_trans_flip, up, down, axis, x_shape_a, h_per_phase, padded_len, out, outW, outH );
 }
@@ -489,6 +495,6 @@ def upfirdn(
     if mode is not None or cval != 0:
         raise NotImplementedError(f"{mode = } and {cval =} not implemented.")
 
-    ufd = _UpFIRDn(h, x.dtype, up, down)
+    ufd = _UpFIRDn(h, x.dtype, int(up), int(down))
     # This is equivalent to (but faster than) using cp.apply_along_axis
     return ufd.apply_filter(x, axis)
