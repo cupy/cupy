@@ -3,6 +3,7 @@ import pytest
 import cupy
 from cupy import cuda
 from cupy import testing
+from cupy_backends.cuda.api import runtime
 import cupyx
 
 
@@ -143,10 +144,8 @@ class TestGraph:
             # cudaStreamLegacy is unhappy when a blocking stream is capturing
             with pytest.raises(cuda.runtime.CUDARuntimeError) as e:
                 cuda.Stream.null.is_capturing()
-                if _runtime.is_hip:
-                    assert 'hipErrorStreamCaptureImplicit' in str(e.value)
-                else:
-                    assert 'cudaErrorStreamCaptureImplicit' in str(e.value)
+            assert ('hipErrorStreamCaptureImplicit' if runtime.is_hip
+                    else 'cudaErrorStreamCaptureImplicit') in str(e.value)
             g = s.end_capture()
         assert not s.is_capturing()
         assert not cuda.Stream.null.is_capturing()
@@ -165,11 +164,14 @@ class TestGraph:
             s.begin_capture()
             with pytest.raises(cuda.runtime.CUDARuntimeError) as e:
                 s.synchronize()
-            assert 'cudaErrorStreamCaptureUnsupported' in str(e.value)
+            assert ('hipErrorStreamCaptureUnsupported' if runtime.is_hip
+                    else 'cudaErrorStreamCaptureUnsupported') in str(e.value)
             # invalid operation causes the capture sequence to be invalidated
             with pytest.raises(cuda.runtime.CUDARuntimeError) as e:
                 g = s.end_capture()  # noqa
-            assert 'cudaErrorStreamCaptureInvalidated' in str(e.value)
+            print(str(e.value))
+            assert ('hipErrorStreamCaptureInvalidated' if runtime.is_hip
+                else 'cudaErrorStreamCaptureInvalidated') in str(e.value)
 
         # check s left the capture mode and permits normal usage
         assert not s.is_capturing()
@@ -185,18 +187,21 @@ class TestGraph:
             s1.begin_capture()
             with pytest.raises(cuda.runtime.CUDARuntimeError) as e:
                 g = s2.end_capture()
-            assert 'cudaErrorIllegalState' in str(e.value)
+            assert ('hipErrorIllegalState' if runtime.is_hip 
+                    else 'cudaErrorIllegalState') in str(e.value)
             e2.record(s1)
             s2.wait_event(e2)
             with s2:
                 b = a**3  # noqa
             with pytest.raises(cuda.runtime.CUDARuntimeError) as e:
                 g = s2.end_capture()
-            assert 'cudaErrorStreamCaptureUnmatched' in str(e.value)
+            assert ('hipErrorStreamCaptureUnmatched' if runtime.is_hip 
+                    else 'cudaErrorStreamCaptureUnmatched') in str(e.value)
             # invalid operation causes the capture sequence to be invalidated
             with pytest.raises(cuda.runtime.CUDARuntimeError) as e:
                 g = s1.end_capture()  # noqa
-            assert 'cudaErrorStreamCaptureInvalidated' in str(e.value)
+            assert ('hipErrorStreamCaptureInvalidated' if runtime.is_hip 
+                    else 'cudaErrorStreamCaptureInvalidated') in str(e.value)
 
         # check both s1 and s2 left the capture mode and permit normal usage
         assert not s1.is_capturing()
@@ -223,7 +228,8 @@ class TestGraph:
             # invalid operation causes the capture sequence to be invalidated
             with pytest.raises(cuda.runtime.CUDARuntimeError) as e:
                 g = s1.end_capture()  # noqa
-            assert 'cudaErrorStreamCaptureUnjoined' in str(e.value)
+            assert ('hipErrorStreamCaptureImplicit' if runtime.is_hip 
+                    else 'cudaErrorStreamCaptureUnjoined') in str(e.value)
 
         # check both s1 and s2 left the capture mode and permit normal usage
         assert not s1.is_capturing()
@@ -238,9 +244,11 @@ class TestGraph:
             s.begin_capture()
             # query the stream status is illegal during capturing
             s.done
+
             with pytest.raises(cuda.runtime.CUDARuntimeError) as e:
                 s.end_capture()
-            assert 'cudaErrorStreamCaptureInvalidated' in str(e.value)
+            assert ('hipErrorStreamCaptureImplicit' if runtime.is_hip 
+                    else 'cudaErrorStreamCaptureInvalidated') in str(e.value)
 
         # check s left the capture mode and permits normal usage
         assert not s.is_capturing()
@@ -272,10 +280,12 @@ class TestGraph:
             # synchronize the stream is illegal during capturing
             with pytest.raises(cuda.runtime.CUDARuntimeError) as e:
                 s.synchronize()
-            assert 'cudaErrorStreamCaptureUnsupported' in str(e.value)
+            assert ('hipErrorStreamCaptureUnsupported' if runtime.is_hip 
+                    else 'cudaErrorStreamCaptureUnsupported') in str(e.value)
             with pytest.raises(cuda.runtime.CUDARuntimeError) as e:
                 s.end_capture()
-            assert 'cudaErrorStreamCaptureInvalidated' in str(e.value)
+            assert ('hipErrorStreamCaptureInvalidated' if runtime.is_hip 
+                    else 'cudaErrorStreamCaptureInvalidated') in str(e.value)
 
         # check s left the capture mode and permits normal usage
         assert not s.is_capturing()
