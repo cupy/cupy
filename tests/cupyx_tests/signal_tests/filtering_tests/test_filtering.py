@@ -79,3 +79,85 @@ def test_freq_shift(dtype, num_samps, freq, fs):
     cpu_output = freq_shift_cpu(freq, fs, num_samps)
     gpu_output = cupyx.signal.freq_shift(freq, fs, num_samps)
     testing.assert_allclose(gpu_output, cpu_output)
+
+
+def rand_data_gen(num_samps, dim=1, dtype=numpy.float64):
+    if dtype is numpy.float32 or dtype is numpy.float64:
+        inp = tuple(numpy.ones(dim, dtype=int) * num_samps)
+        cpu_sig = numpy.random.random(inp)
+        cpu_sig = cpu_sig.astype(dtype)
+        gpu_sig = cupy.asarray(cpu_sig)
+    else:
+        inp = tuple(numpy.ones(dim, dtype=int) * num_samps)
+        cpu_sig = numpy.random.random(inp) + 1j * numpy.random.random(inp)
+        cpu_sig = cpu_sig.astype(dtype)
+        gpu_sig = cupy.asarray(cpu_sig)
+
+    return cpu_sig, gpu_sig
+
+
+def channelize_poly_cpu(x, h, n_chans):
+    """
+    Polyphase channelize signal into n channels
+    Parameters
+    ----------
+    x : array_like
+        The input data to be channelized
+    h : array_like
+        The 1-D input filter; will be split into n
+        channels of int number of taps
+    n_chans : int
+        Number of channels for channelizer
+    Returns
+    ----------
+    yy : channelized output matrix
+    Notes
+    ----------
+    Currently only supports simple channelizer where channel
+    spacing is equivalent to the number of channels used
+    """
+
+    # number of taps in each h_n filter
+    n_taps = int(len(h) / n_chans)
+
+    # number of outputs
+    n_pts = int(len(x) / n_chans)
+
+    dtype = cupy.promote_types(x.dtype, h.dtype)
+
+    # order F if input from MATLAB
+    h = numpy.conj(numpy.reshape(h.astype(dtype=dtype), (n_taps, n_chans)).T)
+
+    vv = numpy.empty(n_chans, dtype=dtype)
+
+    if x.dtype == numpy.float32 or x.dtype == numpy.complex64:
+        yy = numpy.empty((n_chans, n_pts), dtype=numpy.complex64)
+    elif x.dtype == numpy.float64 or x.dtype == numpy.complex128:
+        yy = numpy.empty((n_chans, n_pts), dtype=numpy.complex128)
+
+    reg = numpy.zeros((n_chans, n_taps), dtype=dtype)
+
+    # instead of n_chans here, this could be channel separation
+    for i, nn in enumerate(range(0, len(x), n_chans)):
+        reg[:, 1:n_taps] = reg[:, 0: (n_taps - 1)]
+        reg[:, 0] = numpy.conj(numpy.flipud(x[nn: (nn + n_chans)]))
+        for mm in range(n_chans):
+            vv[mm] = numpy.dot(reg[mm, :], numpy.atleast_2d(h[mm, :]).T)[0]
+
+        yy[:, i] = numpy.conj(scipy.fft.fft(vv))
+
+    return yy
+
+
+@pytest.mark.parametrize(
+    "dtype", [cupy.float32, cupy.float64, cupy.complex64, cupy.complex128]
+)
+@pytest.mark.parametrize("num_samps", [2**12])
+@pytest.mark.parametrize("filt_samps", [2048])
+@pytest.mark.parametrize("n_chan", [64, 128, 256])
+def test_channelize_poly(dtype, num_samps, filt_samps, n_chan):
+    cpu_sig, gpu_sig = rand_data_gen(num_samps, 1, dtype)
+    cpu_filt, gpu_filt = rand_data_gen(filt_samps, 1, dtype)
+    cpu_output = channelize_poly_cpu(cpu_sig, cpu_filt, n_chan)
+    gpu_output = cupyx.signal.channelize_poly(gpu_sig, gpu_filt, n_chan)
+    testing.assert_allclose(gpu_output, cpu_output, atol=1e-3, rtol=1e-3)
