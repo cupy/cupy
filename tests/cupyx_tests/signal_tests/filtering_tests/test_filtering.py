@@ -83,13 +83,14 @@ def test_freq_shift(dtype, num_samps, freq, fs):
 
 def rand_data_gen(num_samps, dim=1, dtype=numpy.float64):
     if dtype is numpy.float32 or dtype is numpy.float64:
-        inp = tuple(numpy.ones(dim, dtype=int) * num_samps)
-        cpu_sig = numpy.random.random(inp)
+        cpu_sig = testing.shaped_random((num_samps,), xp=numpy, scale=1)
         cpu_sig = cpu_sig.astype(dtype)
         gpu_sig = cupy.asarray(cpu_sig)
     else:
-        inp = tuple(numpy.ones(dim, dtype=int) * num_samps)
-        cpu_sig = numpy.random.random(inp) + 1j * numpy.random.random(inp)
+        cpu_sig = (
+            testing.shaped_random((num_samps,), xp=numpy, scale=1) +
+            1j * testing.shaped_random((num_samps,), xp=numpy, scale=1)
+        )
         cpu_sig = cpu_sig.astype(dtype)
         gpu_sig = cupy.asarray(cpu_sig)
 
