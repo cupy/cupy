@@ -150,6 +150,9 @@ def channelize_poly_cpu(x, h, n_chans):
     return yy
 
 
+@pytest.mark.skipif(
+    cupy.cuda.runtime.runtimeGetVersion() < 11040,
+    reason='Requires CUDA 11.4 or greater')
 @pytest.mark.parametrize(
     "dtype", [cupy.float32, cupy.float64, cupy.complex64, cupy.complex128]
 )
