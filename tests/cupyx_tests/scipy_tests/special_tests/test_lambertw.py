@@ -1,5 +1,4 @@
 from cupy import testing
-import cupyx.scipy.special  # NOQA
 
 
 @testing.with_requires('scipy')
@@ -9,8 +8,6 @@ class TestLambertW:
     @testing.for_dtypes('il', name='branch_dtype')
     @testing.numpy_cupy_allclose(atol=1e-13, rtol=1e-10, scipy_name='scp')
     def test_values(self, xp, scp, dtype, branch_dtype):
-        import scipy.special  # NOQA
-
         k = xp.repeat(xp.arange(-3, 3, dtype=branch_dtype), 24)
         x = xp.linspace(-20, 20, 12, dtype=dtype)
         y = xp.linspace(-20, 20, 12, dtype=dtype)
