@@ -366,8 +366,8 @@ class _BaseStream:
             https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__STREAM.html#group__CUDART__STREAM_1g793d7d4e474388ddfda531603dc34aa3
 
         """
-       # if self.ptr == 0 or self.ptr == 1:
-       #     raise RuntimeError('cannot capture on the default (legacy) stream')
+        if self.ptr == 0 or self.ptr == 1:
+            raise RuntimeError('cannot capture on the default (legacy) stream')
         if mode is None:
             # We default to the relaxed mode for the following reason: During
             # the capture the memory pool might need to increase size. If it's

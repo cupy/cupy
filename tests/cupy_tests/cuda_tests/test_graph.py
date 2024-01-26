@@ -157,6 +157,8 @@ class TestGraph:
         s.synchronize()
         testing.assert_array_equal(b, a + 4)
 
+    @pytest.mark.skipif(cuda.runtime.is_hip,
+                                reason='HIP does not support this')
     def test_stream_capture_failure1(self):
         s = cupy.cuda.Stream(non_blocking=True)
 
@@ -176,6 +178,8 @@ class TestGraph:
         assert not s.is_capturing()
         s.synchronize()
 
+    @pytest.mark.skipif(cuda.runtime.is_hip,
+                                reason='HIP does not support this')
     def test_stream_capture_failure2(self):
         s1 = cupy.cuda.Stream(non_blocking=True)
         s2 = cupy.cuda.Stream(non_blocking=True)
@@ -208,6 +212,8 @@ class TestGraph:
         s1.synchronize()
         s2.synchronize()
 
+    @pytest.mark.skipif(cuda.runtime.is_hip,
+                                reason='HIP does not support this')
     def test_stream_capture_failure3(self):
         s1 = cupy.cuda.Stream(non_blocking=True)
         s2 = cupy.cuda.Stream(non_blocking=True)
@@ -236,6 +242,8 @@ class TestGraph:
         s1.synchronize()
         s2.synchronize()
 
+    @pytest.mark.skipif(cuda.runtime.is_hip,
+                                reason='HIP does not support this')
     def test_stream_capture_failure4(self):
         s = cupy.cuda.Stream(non_blocking=True)
 
@@ -243,7 +251,6 @@ class TestGraph:
             s.begin_capture()
             # query the stream status is illegal during capturing
             s.done
-
             with pytest.raises(cuda.runtime.CUDARuntimeError) as e:
                 s.end_capture()
             assert ('hipErrorStreamCaptureImplicit' if runtime.is_hip 
@@ -270,7 +277,9 @@ class TestGraph:
         # check s left the capture mode and permits normal usage
         assert not s.is_capturing()
         s.synchronize()
-
+    
+    @pytest.mark.skipif(cuda.runtime.is_hip,
+                                reason='HIP does not support this')
     def test_stream_capture_failure6(self):
         s = cupy.cuda.Stream(non_blocking=True)
 
