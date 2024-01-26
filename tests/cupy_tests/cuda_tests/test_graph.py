@@ -158,7 +158,7 @@ class TestGraph:
         testing.assert_array_equal(b, a + 4)
 
     @pytest.mark.skipif(cuda.runtime.is_hip,
-                                reason='HIP does not support this')
+                        reason='HIP does not support this')
     def test_stream_capture_failure1(self):
         s = cupy.cuda.Stream(non_blocking=True)
 
@@ -172,14 +172,14 @@ class TestGraph:
             with pytest.raises(cuda.runtime.CUDARuntimeError) as e:
                 g = s.end_capture()  # noqa
             assert ('hipErrorStreamCaptureInvalidated' if runtime.is_hip
-                else 'cudaErrorStreamCaptureInvalidated') in str(e.value)
+                    else 'cudaErrorStreamCaptureInvalidated') in str(e.value)
 
         # check s left the capture mode and permits normal usage
         assert not s.is_capturing()
         s.synchronize()
 
     @pytest.mark.skipif(cuda.runtime.is_hip,
-                                reason='HIP does not support this')
+                        reason='HIP does not support this')
     def test_stream_capture_failure2(self):
         s1 = cupy.cuda.Stream(non_blocking=True)
         s2 = cupy.cuda.Stream(non_blocking=True)
@@ -190,7 +190,7 @@ class TestGraph:
             s1.begin_capture()
             with pytest.raises(cuda.runtime.CUDARuntimeError) as e:
                 g = s2.end_capture()
-            assert ('hipErrorIllegalState' if runtime.is_hip 
+            assert ('hipErrorIllegalState' if runtime.is_hip
                     else 'cudaErrorIllegalState') in str(e.value)
             e2.record(s1)
             s2.wait_event(e2)
@@ -198,12 +198,12 @@ class TestGraph:
                 b = a**3  # noqa
             with pytest.raises(cuda.runtime.CUDARuntimeError) as e:
                 g = s2.end_capture()
-            assert ('hipErrorStreamCaptureUnmatched' if runtime.is_hip 
+            assert ('hipErrorStreamCaptureUnmatched' if runtime.is_hip
                     else 'cudaErrorStreamCaptureUnmatched') in str(e.value)
             # invalid operation causes the capture sequence to be invalidated
             with pytest.raises(cuda.runtime.CUDARuntimeError) as e:
                 g = s1.end_capture()  # noqa
-            assert ('hipErrorStreamCaptureInvalidated' if runtime.is_hip 
+            assert ('hipErrorStreamCaptureInvalidated' if runtime.is_hip
                     else 'cudaErrorStreamCaptureInvalidated') in str(e.value)
 
         # check both s1 and s2 left the capture mode and permit normal usage
@@ -213,7 +213,7 @@ class TestGraph:
         s2.synchronize()
 
     @pytest.mark.skipif(cuda.runtime.is_hip,
-                                reason='HIP does not support this')
+                        reason='HIP does not support this')
     def test_stream_capture_failure3(self):
         s1 = cupy.cuda.Stream(non_blocking=True)
         s2 = cupy.cuda.Stream(non_blocking=True)
@@ -233,7 +233,7 @@ class TestGraph:
             # invalid operation causes the capture sequence to be invalidated
             with pytest.raises(cuda.runtime.CUDARuntimeError) as e:
                 g = s1.end_capture()  # noqa
-            assert ('hipErrorStreamCaptureUnjoined' if runtime.is_hip 
+            assert ('hipErrorStreamCaptureUnjoined' if runtime.is_hip
                     else 'cudaErrorStreamCaptureUnjoined') in str(e.value)
 
         # check both s1 and s2 left the capture mode and permit normal usage
@@ -243,7 +243,7 @@ class TestGraph:
         s2.synchronize()
 
     @pytest.mark.skipif(cuda.runtime.is_hip,
-                                reason='HIP does not support this')
+                        reason='HIP does not support this')
     def test_stream_capture_failure4(self):
         s = cupy.cuda.Stream(non_blocking=True)
 
@@ -253,7 +253,7 @@ class TestGraph:
             s.done
             with pytest.raises(cuda.runtime.CUDARuntimeError) as e:
                 s.end_capture()
-            assert ('hipErrorStreamCaptureImplicit' if runtime.is_hip 
+            assert ('hipErrorStreamCaptureImplicit' if runtime.is_hip
                     else 'cudaErrorStreamCaptureInvalidated') in str(e.value)
 
         # check s left the capture mode and permits normal usage
@@ -277,9 +277,9 @@ class TestGraph:
         # check s left the capture mode and permits normal usage
         assert not s.is_capturing()
         s.synchronize()
-    
+
     @pytest.mark.skipif(cuda.runtime.is_hip,
-                                reason='HIP does not support this')
+                        reason='HIP does not support this')
     def test_stream_capture_failure6(self):
         s = cupy.cuda.Stream(non_blocking=True)
 
@@ -288,11 +288,11 @@ class TestGraph:
             # synchronize the stream is illegal during capturing
             with pytest.raises(cuda.runtime.CUDARuntimeError) as e:
                 s.synchronize()
-            assert ('hipErrorStreamCaptureUnsupported' if runtime.is_hip 
+            assert ('hipErrorStreamCaptureUnsupported' if runtime.is_hip
                     else 'cudaErrorStreamCaptureUnsupported') in str(e.value)
             with pytest.raises(cuda.runtime.CUDARuntimeError) as e:
                 s.end_capture()
-            assert ('hipErrorStreamCaptureInvalidated' if runtime.is_hip 
+            assert ('hipErrorStreamCaptureInvalidated' if runtime.is_hip
                     else 'cudaErrorStreamCaptureInvalidated') in str(e.value)
 
         # check s left the capture mode and permits normal usage
@@ -344,7 +344,7 @@ class TestGraph:
         # check s left the capture mode and permits normal usage
         assert not s.is_capturing()
         s.synchronize()
-    
+
     def test_stream_capture_failure_cusparse(self):
         s = cupy.cuda.Stream(non_blocking=True)
         a = cupy.zeros((3, 4))
