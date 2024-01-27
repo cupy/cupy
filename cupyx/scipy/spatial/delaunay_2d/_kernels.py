@@ -1772,11 +1772,17 @@ int2*       triMsgArr,
 int*        actTriArr,
 FlipItem*   flipArr,
 int         orgFlipNum,
-int         actTriNum
+int         actTriNum,
+int         useActTri
 )
 {
     int*        triConsArr = NULL;
     int*        vertTriArr = NULL;
+
+    if(!useActTri) {
+        actTriArr = NULL;
+    }
+
     // Iterate flips
     for ( int flipIdx = getCurThreadIdx(); flipIdx < nFlip;
           flipIdx += getThreadNum() )
@@ -2521,11 +2527,11 @@ def mark_rejected_flips(act_tri, tri_opp, tri_vote, tri_info,
 
 
 def flip(flip_to_tri, tri, tri_opp, tri_info, tri_msg, act_tri, flip_arr,
-         org_flip_num, act_tri_num):
+         org_flip_num, act_tri_num, mode):
     ker_flip = DELAUNAY_MODULE.get_function('kerFlip')
     ker_flip((N_BLOCKS,), (32,), (
         flip_to_tri, flip_to_tri.shape[0], tri, tri_opp, tri_info,
-        tri_msg, act_tri, flip_arr, org_flip_num, act_tri_num))
+        tri_msg, act_tri, flip_arr, org_flip_num, act_tri_num, mode))
 
 
 def update_opp(flip_vec, tri_opp, tri_msg, flip_to_tri,

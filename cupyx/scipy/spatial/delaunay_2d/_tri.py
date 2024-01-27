@@ -46,6 +46,10 @@ __global__ void get_morton_number(
         int* out) {
 
     int idx = blockDim.x * blockIdx.x + threadIdx.x;
+    if(idx >= n_points) {
+        return;
+    }
+
     const T* point = points + 2 * idx;
 
     const int Gap08 = 0x00FF00FF;   // Creates 16-bit gap between value bits
@@ -186,10 +190,8 @@ class GDel2D:
         self.counters_size = 2
 
         self.flip = cupy.empty((self.max_triangles, 2, 2), dtype=cupy.int32)
-        self.tri_msg = cupy.empty((self.max_triangles, 2), dtype=cupy.int32)
         self.values = cupy.empty(self.n_points, dtype=cupy.int32)
-        self.act_tri = cupy.empty(self.max_triangles, dtype=cupy.int32)
-        self.vert_tri = cupy.empty(self.n_points, dtype=cupy.int32)
+        self.vert_tri = cupy.zeros(self.n_points, dtype=cupy.int32)
 
         self._org_flip_num = []
 
@@ -282,10 +284,18 @@ class GDel2D:
             (self.n_points - 1, self.points, min_val, range_val, self.values))
 
         self.values[-1] = 2 ** 31 - 1
-        unique_values = cupy.unique(self.values)
+        unique_values, unique_index = cupy.unique(
+            self.values, return_index=True)
         if unique_values.shape[0] != self.values.shape[0]:
-            self.values = unique_values
-        self.points_idx = cupy.argsort(self.values).astype(cupy.int32)
+            self.n_points = unique_values.shape[0]
+            self.values[:self.n_points] = unique_values
+            self.values = self.values[:self.n_points]
+            self.points_idx = unique_index.astype(cupy.int32)
+            self.max_triangles = 2 * self.n_points
+            self.values = self.values[:self.n_points]
+            self.vert_tri = self.vert_tri[:self.n_points]
+        else:
+            self.points_idx = cupy.argsort(self.values).astype(cupy.int32)
         self.point_vec = self.point_vec[self.points_idx]
 
         self._construct_initial_triangles()
@@ -362,7 +372,8 @@ class GDel2D:
         del vert_circle
         del tri_circle
 
-        split_tri_vec = cupy.where(tri_to_vert < 0x7FFFFFFF - 1)[0]
+        split_tri_vec = cupy.arange(0, tri_to_vert.shape[0])[
+            tri_to_vert < 0x7FFFFFFF - 1]
         split_tri_vec = split_tri_vec.astype(cupy.int32)
 
         self.ins_num = split_tri_vec.shape[0]
@@ -412,20 +423,20 @@ class GDel2D:
         self.tri_num = self.triangles.shape[0]
 
     def _relocate_all(self):
-        if self._flip_vec.shape[0] == 0:
+        if self.flip_vec.shape[0] == 0:
             return
 
         if self.available_points > 0:
             tri_num = self.triangles.shape[0]
-            tri_to_flip = cupy.empty(tri_num, dtype=cupy.int32)
+            tri_to_flip = cupy.full(tri_num, -1, dtype=cupy.int32)
 
             # Rebuild the pointers from back to forth
-            next_flip_num = self._flip_vec.shape[0]
+            next_flip_num = self.flip_vec.shape[0]
             for i in range(len(self._org_flip_num) - 1, -1, -1):
                 prev_flip_num = self._org_flip_num[i]
                 flip_num = next_flip_num - prev_flip_num
                 update_flip_trace(
-                    self._flip_vec, tri_to_flip, prev_flip_num, flip_num)
+                    self.flip_vec, tri_to_flip, prev_flip_num, flip_num)
                 next_flip_num = prev_flip_num
 
             # Relocate points
@@ -433,19 +444,22 @@ class GDel2D:
             self._renew_counters()
 
             relocate_points_fast(
-                self.vert_tri, tri_to_flip, self._flip_vec,
+                self.vert_tri, tri_to_flip, self.flip_vec,
                 exact_check, self.counters, self.n_points - 1, self.point_vec,
                 self.points_idx, self.pred_consts)
 
             relocate_points_exact(
-                self.vert_tri, tri_to_flip, self._flip_vec,
+                self.vert_tri, tri_to_flip, self.flip_vec,
                 exact_check, self.counters, self.n_points - 1, self.point_vec,
                 self.points_idx, self.pred_consts)
 
-        self._flip_vec = cupy.empty((0, 4), dtype=cupy.int32)
+        self._flip_vec = cupy.empty((self.max_triangles, 4), dtype=cupy.int32)
         self._flip_vec_cap = self.max_triangles
+        self._flip_vec_sz = 0
+
         self._tri_msg = cupy.full(
             (self.max_triangles, 2), -1, dtype=cupy.int32)
+        self._tri_msg_sz = 0
         self._org_flip_num = []
 
     def _dispatch_check_delaunay(self, check_mode, org_act_num, tri_vote):
@@ -455,7 +469,7 @@ class GDel2D:
                 self.triangle_info, tri_vote, org_act_num, self.n_points - 1,
                 self.point_vec, self.pred_consts)
         elif check_mode == CheckDelaunayMode.CircleExactOrientSoS:
-            exact_check_vi = self._tri_msg
+            exact_check_vi = self.tri_msg
             self._renew_counters()
 
             check_delaunay_exact_fast(
@@ -473,7 +487,8 @@ class GDel2D:
         tri_num = self.triangles.shape[0]
         if self._act_tri_mode == ActTriMode.ActTriMarkCompact:
             active_tri = is_tri_active(self.triangle_info)
-            self._act_tri = cupy.where(active_tri)[0].astype(cupy.int32)
+            self._act_tri = cupy.arange(0, active_tri.shape[0])
+            self._act_tri = self._act_tri[active_tri].astype(cupy.int32)
         elif self._act_tri_mode == ActTriMode.ActTriCollectCompact:
             self._act_tri = self._act_tri[self._act_tri >= 0]
 
@@ -517,17 +532,15 @@ class GDel2D:
             return False
 
         # Expand flip vector
-        org_flip_num = self._flip_vec.shape[0]
+        org_flip_num = self._flip_vec_sz
         exp_flip_num = org_flip_num + flip_num
 
         if exp_flip_num > self._flip_vec_cap:
             self._relocate_all()
             org_flip_num = 0
             exp_flip_num = flip_num
-            self._flip_vec_cap = exp_flip_num
 
-        self._flip_vec = self._expand_copy(
-            self._flip_vec, (exp_flip_num, 4), zeros=True)
+        self._grow_flip_vec(exp_flip_num)
 
         # self._tri_msg contains two components.
         # - .x is the encoded new neighbor information
@@ -537,11 +550,7 @@ class GDel2D:
         # We can rely on the flipIdx being > or < than orgFlipIdx.
         # Note that we have to initialize everything to -1
         # when we clear the flipVec and reset the flip indexing.
-        if self.triangles.shape[0] > self._tri_msg.shape[0]:
-            self._tri_msg = cupy.empty(
-                (self.triangles.shape[0], 2), dtype=cupy.int32)
-        else:
-            self._tri_msg = self._tri_msg[:self.triangles.shape[0]]
+        self._resize_tri_msg(self.triangles.shape[0])
 
         # Expand active tri vector
         if self._act_tri_mode == ActTriMode.ActTriCollectCompact:
@@ -550,22 +559,52 @@ class GDel2D:
 
         # Flipping
         flip(flip_to_tri, self.triangles, self.triangle_opp,
-             self.triangle_info, self._tri_msg, self._act_tri, self._flip_vec,
-             org_flip_num, org_act_num)
+             self.triangle_info, self.tri_msg, self._act_tri, self.flip_vec,
+             org_flip_num, org_act_num,
+             int(self._act_tri_mode == ActTriMode.ActTriCollectCompact))
 
         self._org_flip_num.append(org_flip_num)
 
         # Update oppTri
-        update_opp(self._flip_vec[org_flip_num:], self.triangle_opp,
-                   self._tri_msg, flip_to_tri, org_flip_num, flip_num)
+        update_opp(self.flip_vec[org_flip_num:], self.triangle_opp,
+                   self.tri_msg, flip_to_tri, org_flip_num, flip_num)
 
         return True
 
+    @property
+    def flip_vec(self):
+        if self._flip_vec is not None:
+            return self._flip_vec[:self._flip_vec_sz]
+
+    @property
+    def tri_msg(self):
+        if self._tri_msg is not None:
+            return self._tri_msg[:self._tri_msg_sz]
+
+    def _grow_flip_vec(self, size):
+        if size > self._flip_vec_cap:
+            self._flip_vec = self._expand_copy(
+                self._flip_vec, (size, 4), zeros=True)
+            self._flip_vec_cap = size
+            self._flip_vec_sz = size
+        else:
+            if size < self._flip_vec_sz:
+                raise ValueError('New size must be larger than current one')
+            self._flip_vec_sz = size
+
+    def _resize_tri_msg(self, size):
+        if size > self._tri_msg.shape[0]:
+            self._tri_msg = cupy.empty((size, 2), dtype=cupy.int32)
+        self._tri_msg_sz = size
+
     def _do_flipping_loop(self, check_mode):
-        self._flip_vec = cupy.empty((0, 4), dtype=cupy.int32)
+        self._flip_vec = cupy.empty((self.max_triangles, 4), dtype=cupy.int32)
         self._flip_vec_cap = self.max_triangles
+        self._flip_vec_sz = 0
+
         self._tri_msg = cupy.full(
             (self.max_triangles, 2), -1, dtype=cupy.int32)
+        self._tri_msg_sz = 0
 
         self._act_tri_mode = ActTriMode.ActTriMarkCompact
 
