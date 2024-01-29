@@ -27,7 +27,8 @@ through the courtesy of Nvidia cuSignal team.
 
    cupyx.signal.convolve1d3o
    cupyx.signal.pulse_compression
-
+   cupyx.signal.freq_shift
+   
 Profiling utilities
 -------------------
 
