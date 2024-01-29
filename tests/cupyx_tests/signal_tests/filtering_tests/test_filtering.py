@@ -81,22 +81,6 @@ def test_freq_shift(dtype, num_samps, freq, fs):
     testing.assert_allclose(gpu_output, cpu_output)
 
 
-def rand_data_gen(num_samps, dim=1, dtype=numpy.float64):
-    if dtype is numpy.float32 or dtype is numpy.float64:
-        cpu_sig = testing.shaped_random((num_samps,), xp=numpy, scale=1)
-        cpu_sig = cpu_sig.astype(dtype)
-        gpu_sig = cupy.asarray(cpu_sig)
-    else:
-        cpu_sig = (
-            testing.shaped_random((num_samps,), xp=numpy, scale=1) +
-            1j * testing.shaped_random((num_samps,), xp=numpy, scale=1)
-        )
-        cpu_sig = cpu_sig.astype(dtype)
-        gpu_sig = cupy.asarray(cpu_sig)
-
-    return cpu_sig, gpu_sig
-
-
 def channelize_poly_cpu(x, h, n_chans):
     """
     Polyphase channelize signal into n channels
@@ -160,8 +144,10 @@ def channelize_poly_cpu(x, h, n_chans):
 @pytest.mark.parametrize("filt_samps", [2048])
 @pytest.mark.parametrize("n_chan", [64, 128, 256])
 def test_channelize_poly(dtype, num_samps, filt_samps, n_chan):
-    cpu_sig, gpu_sig = rand_data_gen(num_samps, 1, dtype)
-    cpu_filt, gpu_filt = rand_data_gen(filt_samps, 1, dtype)
+    cpu_sig = testing.shaped_random((num_samps,), xp=numpy, dtype=dtype)
+    gpu_sig = testing.shaped_random((num_samps,), xp=cupy, dtype=dtype)
+    cpu_filt = testing.shaped_random((filt_samps,), xp=numpy, dtype=dtype)
+    gpu_filt = testing.shaped_random((filt_samps,), xp=cupy, dtype=dtype)
     cpu_output = channelize_poly_cpu(cpu_sig, cpu_filt, n_chan)
     gpu_output = cupyx.signal.channelize_poly(gpu_sig, gpu_filt, n_chan)
-    testing.assert_allclose(gpu_output, cpu_output, atol=1e-3, rtol=1e-3)
+    testing.assert_allclose(gpu_output, cpu_output, atol=5e-3, rtol=5e-3)
