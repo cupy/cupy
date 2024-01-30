@@ -488,7 +488,7 @@ cpdef setStream(intptr_t handle, size_t stream):
     # https://docs.nvidia.com/cuda/cublas/index.html#CUDA-graphs
     # Before we come up with a robust strategy to test the support conditions,
     # we disable this functionality.
-    if not runtime._is_hip_environment and runtime.streamIsCapturing(stream):
+    if runtime.streamIsCapturing(stream):
         raise NotImplementedError(
             'calling cuBLAS API during stream capture is currently '
             'unsupported')

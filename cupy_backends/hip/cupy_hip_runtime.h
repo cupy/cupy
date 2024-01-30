@@ -80,8 +80,12 @@ cudaError_t cudaDeviceGetLimit(size_t* pValue, cudaLimit limit) {
 }
 
 cudaError_t cudaDeviceSetLimit(cudaLimit limit, size_t value) {
+#if HIP_VERSION >= 50300000
+    return hipDeviceSetLimit(limit, value);
+#else
     // see https://github.com/ROCm-Developer-Tools/HIP/issues/1632
     return hipErrorUnknown;
+#endif
 }
 
 // IPC operations
@@ -90,11 +94,13 @@ cudaError_t cudaIpcCloseMemHandle(void* devPtr) {
 }
 
 cudaError_t cudaIpcGetEventHandle(cudaIpcEventHandle_t* handle, cudaEvent_t event) {
-    return hipErrorUnknown;
-
+#if HIP_VERSION >= 40300000
+    return hipIpcGetEventHandle(handle, event);
+#else
     // TODO(leofang): this is supported after ROCm-Developer-Tools/HIP#1996 is released;
     // as of ROCm 3.5.0 it is still not supported
-    //return hipIpcGetEventHandle(handle, event);
+    return hipErrorUnknown;
+#endif
 }
 
 cudaError_t cudaIpcGetMemHandle(cudaIpcMemHandle_t* handle, void* devPtr) {
@@ -102,11 +108,13 @@ cudaError_t cudaIpcGetMemHandle(cudaIpcMemHandle_t* handle, void* devPtr) {
 }
 
 cudaError_t cudaIpcOpenEventHandle(cudaEvent_t* event, cudaIpcEventHandle_t handle) {
-    return hipErrorUnknown;
-
+#if HIP_VERSION >= 40300000
+    return hipIpcOpenEventHandle(event, handle);
+#else
     // TODO(leofang): this is supported after ROCm-Developer-Tools/HIP#1996 is released;
     // as of ROCm 3.5.0 it is still not supported
-    //return hipIpcOpenEventHandle(event, handle);
+    return hipErrorUnknown;
+#endif
 }
 
 cudaError_t cudaIpcOpenMemHandle(void** devPtr, cudaIpcMemHandle_t handle, unsigned int flags) {
@@ -377,7 +385,11 @@ cudaError_t cudaStreamAddCallback(cudaStream_t stream,
 }
 
 cudaError_t cudaLaunchHostFunc(cudaStream_t stream, cudaHostFn_t fn, void* userData) {
+#if HIP_VERSION >= 50300000
+    return hipLaunchHostFunc(stream, fn, userData);
+#else
     return hipErrorUnknown;
+#endif
 }
 
 cudaError_t cudaStreamQuery(cudaStream_t stream) {
@@ -529,8 +541,12 @@ cudaError_t cudaGraphLaunch(cudaGraphExec_t graphExec, cudaStream_t stream) {
 #endif
 }
 
-cudaError_t cudaGraphUpload(...) {
+cudaError_t cudaGraphUpload(cudaGraphExec_t graphExec, cudaStream_t stream) {
+#if HIP_VERSION >= 60000000
+    return hipGraphUpload(graphExec, stream);
+#else
     return hipErrorUnknown;
+#endif
 }
 
 } // extern "C"

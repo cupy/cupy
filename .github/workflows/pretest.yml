@@ -30,6 +30,7 @@ jobs:
 
     - name: Setup pre-commit
       run: |
+        pip install --upgrade autopep8
         pip install pre-commit
 
     - name: Check

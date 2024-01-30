@@ -507,8 +507,6 @@ cpdef intptr_t mallocArray(intptr_t descPtr, size_t width, size_t height,
 
 cpdef intptr_t mallocAsync(size_t size, intptr_t stream) except? 0:
     cdef void* ptr
-    if _is_hip_environment:
-        raise RuntimeError('HIP does not support mallocAsync')
     if runtimeGetVersion() < 11020:
         raise RuntimeError('mallocAsync is supported since CUDA 11.2')
     with nogil:
@@ -519,8 +517,6 @@ cpdef intptr_t mallocAsync(size_t size, intptr_t stream) except? 0:
 cpdef intptr_t mallocFromPoolAsync(
         size_t size, intptr_t pool, intptr_t stream) except? 0:
     cdef void* ptr
-    if _is_hip_environment:
-        raise RuntimeError('HIP does not support mallocFromPoolAsync')
     if runtimeGetVersion() < 11020:
         raise RuntimeError('mallocFromPoolAsync is supported since CUDA 11.2')
     with nogil:
@@ -562,8 +558,6 @@ cpdef freeArray(intptr_t ptr):
     check_status(status)
 
 cpdef freeAsync(intptr_t ptr, intptr_t stream):
-    if _is_hip_environment:
-        raise RuntimeError('HIP does not support freeAsync')
     if runtimeGetVersion() < 11020:
         raise RuntimeError('freeAsync is supported since CUDA 11.2')
     with nogil:
@@ -715,8 +709,6 @@ cpdef PointerAttributes pointerGetAttributes(intptr_t ptr):
 
 cpdef intptr_t deviceGetDefaultMemPool(int device) except? 0:
     '''Get the default mempool on the current device.'''
-    if _is_hip_environment:
-        raise RuntimeError('HIP does not support deviceGetDefaultMemPool')
     if runtimeGetVersion() < 11020:
         raise RuntimeError('deviceGetDefaultMemPool is supported since '
                            'CUDA 11.2')
@@ -728,8 +720,6 @@ cpdef intptr_t deviceGetDefaultMemPool(int device) except? 0:
 
 cpdef intptr_t deviceGetMemPool(int device) except? 0:
     '''Get the current mempool on the current device.'''
-    if _is_hip_environment:
-        raise RuntimeError('HIP does not support deviceGetMemPool')
     if runtimeGetVersion() < 11020:
         raise RuntimeError('deviceGetMemPool is supported since '
                            'CUDA 11.2')
@@ -741,8 +731,6 @@ cpdef intptr_t deviceGetMemPool(int device) except? 0:
 
 cpdef deviceSetMemPool(int device, intptr_t pool):
     '''Set the current mempool on the current device to pool.'''
-    if _is_hip_environment:
-        raise RuntimeError('HIP does not support deviceSetMemPool')
     if runtimeGetVersion() < 11020:
         raise RuntimeError('deviceSetMemPool is supported since '
                            'CUDA 11.2')
@@ -751,8 +739,6 @@ cpdef deviceSetMemPool(int device, intptr_t pool):
     check_status(status)
 
 cpdef intptr_t memPoolCreate(MemPoolProps props) except? 0:
-    if _is_hip_environment:
-        raise RuntimeError('HIP does not support memPoolCreate')
     if runtimeGetVersion() < 11020:
         raise RuntimeError('memPoolCreate is supported since CUDA 11.2')
 
@@ -770,8 +756,6 @@ cpdef intptr_t memPoolCreate(MemPoolProps props) except? 0:
     return <intptr_t>pool
 
 cpdef memPoolDestroy(intptr_t pool):
-    if _is_hip_environment:
-        raise RuntimeError('HIP does not support memPoolDestroy')
     if runtimeGetVersion() < 11020:
         raise RuntimeError('memPoolDestroy is supported since CUDA 11.2')
     with nogil:
@@ -779,8 +763,6 @@ cpdef memPoolDestroy(intptr_t pool):
     check_status(status)
 
 cpdef memPoolTrimTo(intptr_t pool, size_t size):
-    if _is_hip_environment:
-        raise RuntimeError('HIP does not support memPoolTrimTo')
     if runtimeGetVersion() < 11020:
         raise RuntimeError('memPoolTrimTo is supported since CUDA 11.2')
     with nogil:
@@ -788,8 +770,6 @@ cpdef memPoolTrimTo(intptr_t pool, size_t size):
     check_status(status)
 
 cpdef memPoolGetAttribute(intptr_t pool, int attr):
-    if _is_hip_environment:
-        raise RuntimeError('HIP does not support memPoolGetAttribute')
     if runtimeGetVersion() < 11020:
         raise RuntimeError('memPoolGetAttribute is supported since CUDA 11.2')
     cdef int val1
@@ -805,8 +785,6 @@ cpdef memPoolGetAttribute(intptr_t pool, int attr):
     return val1 if attr <= 0x3 else val2
 
 cpdef memPoolSetAttribute(intptr_t pool, int attr, object value):
-    if _is_hip_environment:
-        raise RuntimeError('HIP does not support memPoolSetAttribute')
     if runtimeGetVersion() < 11020:
         raise RuntimeError('memPoolSetAttribute is supported since CUDA 11.2')
     cdef int val1
@@ -870,9 +848,6 @@ cdef _HostFnFunc(void* func_arg) with gil:
 
 cpdef streamAddCallback(intptr_t stream, callback, intptr_t arg,
                         unsigned int flags=0):
-    if _is_hip_environment and stream == 0:
-        raise RuntimeError('HIP does not allow adding callbacks to the '
-                           'default (null) stream')
     func_arg = (callback, arg)
     cpython.Py_INCREF(func_arg)
     with nogil:
@@ -883,9 +858,6 @@ cpdef streamAddCallback(intptr_t stream, callback, intptr_t arg,
 
 
 cpdef launchHostFunc(intptr_t stream, callback, intptr_t arg):
-    if _is_hip_environment:
-        raise RuntimeError('This feature is not supported on HIP')
-
     func_arg = (callback, arg)
     cpython.Py_INCREF(func_arg)
     with nogil:
@@ -907,8 +879,6 @@ cpdef streamWaitEvent(intptr_t stream, intptr_t event, unsigned int flags=0):
 
 
 cpdef streamBeginCapture(intptr_t stream, int mode=streamCaptureModeRelaxed):
-    if _is_hip_environment:
-        raise RuntimeError('streamBeginCapture is not supported in ROCm')
     # TODO(leofang): check and raise if stream == 0?
     with nogil:
         status = cudaStreamBeginCapture(<driver.Stream>stream,
@@ -919,8 +889,6 @@ cpdef streamBeginCapture(intptr_t stream, int mode=streamCaptureModeRelaxed):
 cpdef intptr_t streamEndCapture(intptr_t stream) except? 0:
     # TODO(leofang): check and raise if stream == 0?
     cdef Graph g
-    if _is_hip_environment:
-        raise RuntimeError('streamEndCapture is not supported in ROCm')
     with nogil:
         status = cudaStreamEndCapture(<driver.Stream>stream, &g)
     check_status(status)
@@ -929,8 +897,6 @@ cpdef intptr_t streamEndCapture(intptr_t stream) except? 0:
 
 cpdef bint streamIsCapturing(intptr_t stream) except*:
     cdef StreamCaptureStatus s
-    if _is_hip_environment:
-        raise RuntimeError('streamIsCapturing is not supported in ROCm')
     with nogil:
         status = cudaStreamIsCapturing(<driver.Stream>stream, &s)
     check_status(status)  # cudaErrorStreamCaptureImplicit could be raised here

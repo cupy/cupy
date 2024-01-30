@@ -366,8 +366,6 @@ class _BaseStream:
             https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__STREAM.html#group__CUDART__STREAM_1g793d7d4e474388ddfda531603dc34aa3
 
         """
-        if runtime._is_hip_environment:
-            raise RuntimeError('This function is not supported on HIP')
         if self.ptr == 0 or self.ptr == 1:
             raise RuntimeError('cannot capture on the default (legacy) stream')
         if mode is None:
@@ -396,8 +394,6 @@ class _BaseStream:
             https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__STREAM.html#group__CUDART__STREAM_1gf5a0efebc818054ceecd1e3e5e76d93e
 
         """
-        if runtime._is_hip_environment:
-            raise RuntimeError('This function is not supported on HIP')
         cdef intptr_t g = runtime.streamEndCapture(self.ptr)
         return graph.Graph.from_stream(g)
 
@@ -412,9 +408,6 @@ class _BaseStream:
                 Programming Guide for detail.
 
         """
-        # TODO(leofang): is it better to be a property?
-        if runtime._is_hip_environment:
-            raise RuntimeError('This function is not supported on HIP')
         try:
             return runtime.streamIsCapturing(self.ptr)
         except RuntimeError:  # can be RuntimeError or CUDARuntimeError
@@ -462,9 +455,6 @@ class Stream(_BaseStream):
             ptr = 0
             device_id = -1
         elif ptds:
-            if runtime._is_hip_environment:
-                raise ValueError('HIP does not support per-thread '
-                                 'default stream (ptds)')
             ptr = runtime.streamPerThread
             device_id = -1
         elif non_blocking:
@@ -520,5 +510,4 @@ class ExternalStream(_BaseStream):
 
 
 Stream.null = Stream(null=True)
-if not runtime._is_hip_environment:
-    Stream.ptds = Stream(ptds=True)
+Stream.ptds = Stream(ptds=True)
