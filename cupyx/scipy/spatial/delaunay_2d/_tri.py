@@ -1,9 +1,6 @@
 
 import cupy
-from cupy._core._scalar import get_typename
-from cupy_backends.cuda.api import runtime
 
-from cupyx.scipy.spatial.delaunay_2d._schewchuk import init_predicate
 from cupyx.scipy.spatial.delaunay_2d._kernels import (
     make_first_tri, init_point_location_fast, init_point_location_exact,
     vote_for_point, pick_winner_point, shift, shift_opp_tri,
@@ -12,111 +9,9 @@ from cupyx.scipy.spatial.delaunay_2d._kernels import (
     check_delaunay_exact_fast, check_delaunay_exact_exact, mark_rejected_flips,
     flip, update_opp, update_flip_trace, relocate_points_fast,
     relocate_points_exact, mark_inf_tri, collect_free_slots, make_compact_map,
-    compact_tris, update_vert_idx, find_closest_tri_to_point)
-
-
-def _get_typename(dtype):
-    typename = get_typename(dtype)
-    if cupy.dtype(dtype).kind == 'c':
-        typename = 'thrust::' + typename
-    elif typename == 'float16':
-        if runtime.is_hip:
-            # 'half' in name_expressions weirdly raises
-            # HIPRTC_ERROR_NAME_EXPRESSION_NOT_VALID in getLoweredName() on
-            # ROCm
-            typename = '__half'
-        else:
-            typename = 'half'
-    return typename
-
-
-def _get_module_func(module, func_name, *template_args):
-    args_dtypes = [_get_typename(arg.dtype) for arg in template_args]
-    template = ', '.join(args_dtypes)
-    kernel_name = f'{func_name}<{template}>' if template_args else func_name
-    kernel = module.get_function(kernel_name)
-    return kernel
-
-
-PREAMBLE_MODULE = r'''
-
-template<typename T>
-__global__ void get_morton_number(
-        const int n_points, const T* points, const T* min_val, const T* range,
-        int* out) {
-
-    int idx = blockDim.x * blockIdx.x + threadIdx.x;
-    if(idx >= n_points) {
-        return;
-    }
-
-    const T* point = points + 2 * idx;
-
-    const int Gap08 = 0x00FF00FF;   // Creates 16-bit gap between value bits
-    const int Gap04 = 0x0F0F0F0F;   // ... and so on ...
-    const int Gap02 = 0x33333333;   // ...
-    const int Gap01 = 0x55555555;   // ...
-
-    const int minInt = 0x0;
-    const int maxInt = 0x7FFF;
-
-    int mortonNum = 0;
-
-    // Iterate coordinates of point
-    for ( int vi = 0; vi < 2; ++vi )
-    {
-        // Read
-        int v = int( ( point[ vi ] - min_val[0] ) / range[0] * 32768.0 );
-
-        if ( v < minInt )
-            v = minInt;
-
-        if ( v > maxInt )
-            v = maxInt;
-
-        // Create 1-bit gaps between the 10 value bits
-        // Ex: 1010101010101010101
-        v = ( v | ( v <<  8 ) ) & Gap08;
-        v = ( v | ( v <<  4 ) ) & Gap04;
-        v = ( v | ( v <<  2 ) ) & Gap02;
-        v = ( v | ( v <<  1 ) ) & Gap01;
-
-        // Interleave bits of x-y coordinates
-        mortonNum |= ( v << vi );
-    }
-
-    out[idx] = mortonNum;
-}
-
-
-template<typename T>
-__global__ void compute_distance_2d(
-        const int n_points, const T* points, const long long* a_idx,
-        const long long* b_idx, int* out) {
-
-    int idx = blockDim.x * blockIdx.x + threadIdx.x;
-    const T* p_c = points + 2 * idx;
-    const T* p_a = points + 2 * a_idx[0];
-    const T* p_b = points + 2 * b_idx[0];
-
-    T abx = p_b[0] - p_a[0];
-    T aby = p_b[1] - p_a[1];
-
-    T acx = p_c[0] - p_a[0];
-    T acy = p_c[1] - p_a[1];
-
-    T dist = abx * acy - aby * acx;
-    int int_dist = __float_as_int( fabs((float) dist) );
-    out[idx] = int_dist;
-}
-'''
-
-_preamble_module = cupy.RawModule(
-    code=PREAMBLE_MODULE, options=('-std=c++11',),
-    name_expressions=[
-        f'get_morton_number<{x}>' for x in ['float', 'double']] + [
-            f'compute_distance_2d<{x}>' for x in ['float', 'double']
-    ])
+    compact_tris, update_vert_idx, find_closest_tri_to_point,
+    get_morton_number, compute_distance_2d, init_predicate,
+    make_key_from_tri_has_vert)
 
 
 def _check_if_coplanar_points(points, pa_idx, pb_idx, pc_idx):
@@ -210,17 +105,9 @@ class GDel2D:
         v0 = cupy.argmin(self.point_vec[:-1, 0])
         v1 = cupy.argmax(self.point_vec[:-1, 0])
 
-        block_sz = 128
-        n_blocks = (self.points.shape[0] + block_sz - 1) // block_sz
-
-        _compute_distance_2d = _get_module_func(
-            _preamble_module, 'compute_distance_2d', self.points)
-
         # Find furthest point from v0 and v1, a.k.a the biggest
         # triangle available
-        _compute_distance_2d(
-            (block_sz,), (n_blocks,),
-            (self.n_points, self.point_vec, v0, v1, self.values))
+        compute_distance_2d(self.point_vec, v0, v1, self.values)
 
         v2 = cupy.argmax(self.values[:-1])
 
@@ -272,16 +159,9 @@ class GDel2D:
         max_val = self.points.max()
         range_val = max_val - min_val
 
-        _get_morton_number = _get_module_func(
-            _preamble_module, 'get_morton_number', self.points)
-
-        block_sz = 128
-        n_blocks = (self.points.shape[0] + block_sz - 1) // block_sz
-
         # Sort the points spatially according to their Morton numbers
-        _get_morton_number(
-            (block_sz,), (n_blocks,),
-            (self.n_points - 1, self.points, min_val, range_val, self.values))
+        get_morton_number(self.points, self.n_points - 1, min_val,
+                          range_val, self.values)
 
         self.values[-1] = 2 ** 31 - 1
         unique_values, unique_index = cupy.unique(
@@ -313,10 +193,14 @@ class GDel2D:
 
     def _shift_tri(self, tri_to_vert, split_tri_vec):
         tri_num = self.tri_num + 2 * split_tri_vec.shape[0]
-        shift_vec = cupy.cumsum(cupy.where(tri_to_vert < 0x7FFFFFFF - 1, 2, 0))
-        shift_vec = shift_vec.astype(cupy.int32)
-        shift_vec[1:] = shift_vec[:-1]
+
+        shift_vec = cupy.empty(tri_to_vert.shape[0] + 1, dtype=cupy.int32)
+        make_key_from_tri_has_vert(tri_to_vert, shift_vec[1:])
+
         shift_vec[0] = 0
+        shift_vec = cupy.cumsum(shift_vec)
+        shift_vec = shift_vec.astype(cupy.int32)
+        shift_vec = shift_vec[:-1]
 
         self.triangles = self._shift_replace(
             shift_vec, self.triangles, (tri_num, 3), 'Tri')

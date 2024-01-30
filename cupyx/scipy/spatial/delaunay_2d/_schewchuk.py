@@ -1,6 +1,4 @@
 
-import cupy
-
 SCHEWCHUK_DEF = r"""
 
 /*****************************************************************************/
@@ -1140,13 +1138,3 @@ bool            lifted
 }
 
 """
-
-
-SCHEWCHUK_MODULE = cupy.RawModule(
-    code=SCHEWCHUK_DEF, options=('-std=c++11', '-w'),
-    name_expressions=['kerInitPredicate'])
-
-
-def init_predicate(pred_values):
-    ker_init_predicate = SCHEWCHUK_MODULE.get_function('kerInitPredicate')
-    ker_init_predicate((1,), (1,), (pred_values))

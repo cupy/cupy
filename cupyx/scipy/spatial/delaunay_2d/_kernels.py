@@ -2357,6 +2357,86 @@ __global__ void findClosestTriToPoint(
         cOutOff[2] = 1 - s - t;
     }
 }
+
+__global__ void getMortonNumber(
+        const double* points, const int n_points, const double* min_val,
+        const double* range, int* out) {
+
+    for ( int idx = getCurThreadIdx(); idx < n_points; idx += getThreadNum() )
+    {
+        const double* point = points + 2 * idx;
+
+        // Creates 16-bit gap between value bits
+        const int Gap08 = 0x00FF00FF;
+        const int Gap04 = 0x0F0F0F0F;   // ... and so on ...
+        const int Gap02 = 0x33333333;   // ...
+        const int Gap01 = 0x55555555;   // ...
+
+        const int minInt = 0x0;
+        const int maxInt = 0x7FFF;
+
+        int mortonNum = 0;
+
+        // Iterate coordinates of point
+        for ( int vi = 0; vi < 2; ++vi )
+        {
+            // Read
+            int v = int( ( point[ vi ] - min_val[0] ) / range[0] * 32768.0 );
+
+            if ( v < minInt )
+                v = minInt;
+
+            if ( v > maxInt )
+                v = maxInt;
+
+            // Create 1-bit gaps between the 10 value bits
+            // Ex: 1010101010101010101
+            v = ( v | ( v <<  8 ) ) & Gap08;
+            v = ( v | ( v <<  4 ) ) & Gap04;
+            v = ( v | ( v <<  2 ) ) & Gap02;
+            v = ( v | ( v <<  1 ) ) & Gap01;
+
+            // Interleave bits of x-y coordinates
+            mortonNum |= ( v << vi );
+        }
+
+        out[idx] = mortonNum;
+    }
+}
+
+__global__ void computeDistance2D(
+        const double* points, const int n_points, const long long* a_idx,
+        const long long* b_idx, int* out) {
+
+    for ( int idx = getCurThreadIdx(); idx < n_points; idx += getThreadNum() )
+    {
+        const double* p_c = points + 2 * idx;
+        const double* p_a = points + 2 * a_idx[0];
+        const double* p_b = points + 2 * b_idx[0];
+
+        double abx = p_b[0] - p_a[0];
+        double aby = p_b[1] - p_a[1];
+
+        double acx = p_c[0] - p_a[0];
+        double acy = p_c[1] - p_a[1];
+
+        double dist = abx * acy - aby * acx;
+        int int_dist = __float_as_int( fabs((float) dist) );
+        out[idx] = int_dist;
+    }
+}
+
+__global__ void makeKeyFromTriHasVert
+(
+int* triHasVert,
+int  nTri,
+int* out
+)
+{
+    for ( int idx = getCurThreadIdx(); idx < nTri; idx += getThreadNum() ) {
+        out[idx] = triHasVert[idx] < INT_MAX - 1 ? 2 : 0;
+    }
+}
 """
 
 DELAUNAY_MODULE = cupy.RawModule(
@@ -2374,7 +2454,9 @@ DELAUNAY_MODULE = cupy.RawModule(
                       'kerRelocatePointsFast', 'kerRelocatePointsExact',
                       'kerMarkInfinityTri', 'kerCollectFreeSlots',
                       'kerMakeCompactMap', 'kerCompactTris',
-                      'kerUpdateVertIdx', 'findClosestTriToPoint'])
+                      'kerUpdateVertIdx', 'findClosestTriToPoint',
+                      'getMortonNumber', 'computeDistance2D',
+                      'kerInitPredicate', 'makeKeyFromTriHasVert'])
 
 
 N_BLOCKS = 512
@@ -2606,3 +2688,26 @@ def find_closest_tri_to_point(xi, points, triangles, out, c_out,
     ker_find_closest_tri((n_blocks,), (block_sz,), (
         xi, xi.shape[0], points, triangles, triangles.shape[0], out,
         c_out, eps, find_coords))
+
+
+def get_morton_number(points, n_points, min_val, range_val, values):
+    ker_morton = DELAUNAY_MODULE.get_function('getMortonNumber')
+    ker_morton((N_BLOCKS,), (BLOCK_SZ,), (
+        points, n_points, min_val, range_val, values))
+
+
+def compute_distance_2d(points, v0, v1, values):
+    ker_dist = DELAUNAY_MODULE.get_function('computeDistance2D')
+    ker_dist((N_BLOCKS,), (BLOCK_SZ,), (
+        points, points.shape[0], v0, v1, values))
+
+
+def init_predicate(pred_values):
+    ker_init_predicate = DELAUNAY_MODULE.get_function('kerInitPredicate')
+    ker_init_predicate((1,), (1,), (pred_values))
+
+
+def make_key_from_tri_has_vert(tri_has_vert, out):
+    ker_key = DELAUNAY_MODULE.get_function('makeKeyFromTriHasVert')
+    ker_key((N_BLOCKS,), (BLOCK_SZ,), (
+        tri_has_vert, tri_has_vert.shape[0], out))
