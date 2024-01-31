@@ -24,10 +24,10 @@ class Feature:
         # This is used only for testing availability of the feature.
         self.includes: List[str] = []
 
-        # Shared libraries to be linked.
+        # Libraries (shared/static) on the search path to be linked.
         self.libraries: List[str] = []
 
-        # Static libraries to be linked.
+        # Static libraries (manually searched) to be linked.
         self.static_libraries: List[str] = []
 
         # Version of the feature.
@@ -147,7 +147,8 @@ _cuda_files = [
 
 # Libraries required for cudart_static
 _cudart_static_libs = (
-    ['pthread', 'rt', 'dl'] if sys.platform == 'linux' else []
+    ['cudart_static'] +
+    (['pthread', 'rt', 'dl'] if sys.platform == 'linux' else [])
 )
 
 
@@ -271,10 +272,6 @@ def get_features(ctx: Context) -> Dict[str, Feature]:
             'cub/util_namespace.cuh',  # dummy
         ],
         'libraries': list(_cudart_static_libs),
-        'static_libraries': [
-            # Dependency from CUB header files
-            'cudart_static',
-        ],
         'check_method': build.check_cub_version,
         'version_method': build.get_cub_version,
     }
@@ -294,10 +291,6 @@ def get_features(ctx: Context) -> Dict[str, Feature]:
             'cuda',
             'nvrtc',
         ] + _cudart_static_libs,
-        'static_libraries': [
-            # Dependency from Jitify header files
-            'cudart_static',
-        ],
         'check_method': build.check_jitify_version,
         'version_method': build.get_jitify_version,
     }
@@ -314,9 +307,6 @@ def get_features(ctx: Context) -> Dict[str, Feature]:
         'libraries': [
             'curand',
         ] + _cudart_static_libs,
-        'static_libraries': [
-            'cudart_static',
-        ],
     }
     HIP_random = {
         'name': 'random',
@@ -405,10 +395,6 @@ def get_features(ctx: Context) -> Dict[str, Feature]:
             'thrust/sort.h',
         ],
         'libraries': list(_cudart_static_libs),
-        'static_libraries': [
-            # Dependency from Thrust header files
-            'cudart_static',
-        ],
         'check_method': build.check_thrust_version,
         'version_method': build.get_thrust_version,
     }
@@ -475,7 +461,6 @@ class CUDA_cuda(Feature):
             # CUDA Toolkit
             ['cublas', 'cufft', 'curand', 'cusparse']
         )
-        self.static_libraries = ['cudart_static']
         self._version = self._UNDETERMINED
 
     def configure(self, compiler: Any, settings: Any) -> bool:
