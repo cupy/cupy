@@ -28,6 +28,9 @@ through the courtesy of Nvidia cuSignal team.
    cupyx.signal.channelize_poly
    cupyx.signal.convolve1d3o
    cupyx.signal.pulse_compression
+   cupyx.signal.pulse_doppler
+   cupyx.signal.cfar_alpha
+   cupyx.signal.ca_cfar
    cupyx.signal.freq_shift
    
 Profiling utilities
