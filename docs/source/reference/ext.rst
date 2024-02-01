@@ -25,6 +25,7 @@ through the courtesy of Nvidia cuSignal team.
 .. autosummary::
    :toctree: generated/
 
+   cupyx.signal.channelize_poly
    cupyx.signal.convolve1d3o
    cupyx.signal.pulse_compression
    cupyx.signal.freq_shift
