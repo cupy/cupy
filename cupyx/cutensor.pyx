@@ -243,7 +243,8 @@ cpdef TensorDescriptor create_tensor_descriptor(_ndarray_base a):
     """
     handle = _get_handle()
     alignment_req = a.itemsize
-    key = (handle.ptr, a.dtype, tuple(a.shape), tuple(a.strides), alignment_req)
+    key = (handle.ptr, a.dtype, tuple(a.shape),
+           tuple(a.strides), alignment_req)
     if a.data.ptr & (alignment_req - 1) != 0:
         raise ValueError("Missaligned array")
     if key not in _tensor_descriptors:
