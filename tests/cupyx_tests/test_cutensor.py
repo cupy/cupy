@@ -344,22 +344,11 @@ class TestCuTensorContraction:
     'shape': [(30, 40, 30, 35)],
     'alpha': [0.5, 1.0],
     'beta': [0.0, 1.0],
+    'order': ['C', 'F']
 }))
 @pytest.mark.skipif(not ct.available, reason='cuTensor is unavailable')
 class TestCuTensorIncontiguous:
     _tol = {'e': 1e-3, 'f': 2e-6, 'd': 1e-12}
-
-    def make_random_array(self, shape, dtype):
-        r_dtype = dtype
-        if dtype == numpy.complex64:
-            r_dtype = numpy.float32
-        elif dtype == numpy.complex128:
-            r_dtype = numpy.float64
-        a = testing.shaped_random(shape, cupy, dtype=r_dtype, scale=1)
-        if dtype.char in 'FD':
-            a = a + 1j * \
-                testing.shaped_random(shape, cupy, dtype=r_dtype, scale=1)
-        return a
 
     @pytest.fixture(autouse=True)
     def setUp(self):
@@ -374,9 +363,12 @@ class TestCuTensorIncontiguous:
         mode_b = cutensor.create_mode('c', 'd', 'b')
         mode_c = cutensor.create_mode('d', 'a')
         a, b, c, d = self.shape
-        self.a = self.make_random_array((a, b, c), self.dtype)
-        self.b = self.make_random_array((c, d, b), self.dtype)
-        self.c = self.make_random_array((d, a), self.dtype)
+        self.a = testing.shaped_random(
+            (a, b, c), cupy, dtype=self.dtype, order=self.order)
+        self.b = testing.shaped_random(
+            (c, d, b), cupy, dtype=self.dtype, order=self.order)
+        self.c = testing.shaped_random(
+            (d, a), cupy, dtype=self.dtype, order=self.order)
         delta = 7
         c_ref = self.c.copy()
         c_ref = cutensor.contraction(self.alpha,
@@ -399,8 +391,10 @@ class TestCuTensorIncontiguous:
         mode_a = cutensor.create_mode('a', 'b', 'c')
         mode_c = cutensor.create_mode('b')
         a, b, c, _ = self.shape
-        self.a = self.make_random_array((a, b, c), self.dtype)
-        self.c = self.make_random_array((b,), self.dtype)
+        self.a = testing.shaped_random(
+            (a, b, c), cupy, dtype=self.dtype, order=self.order)
+        self.c = testing.shaped_random(
+            (b,), cupy, dtype=self.dtype, order=self.order)
 
         c_ref = self.c.copy()
         c_ref = cutensor.reduction(self.alpha,
@@ -421,8 +415,10 @@ class TestCuTensorIncontiguous:
         mode_a = cutensor.create_mode('a', 'b', 'c')
         mode_c = cutensor.create_mode('c', 'a', 'b')
         a, b, c, _ = self.shape
-        self.a = self.make_random_array((a, b, c), self.dtype)
-        self.c = self.make_random_array((c, a, b), self.dtype)
+        self.a = testing.shaped_random(
+            (a, b, c), cupy, dtype=self.dtype, order=self.order)
+        self.c = testing.shaped_random(
+            (c, a, b), cupy, dtype=self.dtype, order=self.order)
 
         c_ref = self.c.copy()
         c_ref = cutensor.elementwise_binary(self.alpha,
@@ -445,9 +441,12 @@ class TestCuTensorIncontiguous:
         mode_b = cutensor.create_mode('b', 'c', 'a')
         mode_c = cutensor.create_mode('c', 'a', 'b')
         a, b, c, _ = self.shape
-        self.a = self.make_random_array((a, b, c), self.dtype)
-        self.b = self.make_random_array((b, c, a), self.dtype)
-        self.c = self.make_random_array((c, a, b), self.dtype)
+        self.a = testing.shaped_random(
+            (a, b, c), cupy, dtype=self.dtype, order=self.order)
+        self.b = testing.shaped_random(
+            (b, c, a), cupy, dtype=self.dtype, order=self.order)
+        self.c = testing.shaped_random(
+            (c, a, b), cupy, dtype=self.dtype, order=self.order)
 
         for gamma in [0.0, 1.0]:
             c_ref = self.c.copy()
