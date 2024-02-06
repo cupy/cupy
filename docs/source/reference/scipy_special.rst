@@ -146,6 +146,7 @@ Other special functions
    expn
    exprel
    softmax
+   lambertw
    log_softmax
    zeta
    zetac

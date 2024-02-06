@@ -1,5 +1,9 @@
 import unittest
 
+import numpy
+import pytest
+
+import cupy
 from cupy._core import flags
 from cupy import testing
 
@@ -65,3 +69,21 @@ class TestContiguityFlags(unittest.TestCase):
     def test_c_contiguous(self, xp):
         self.init_flags(xp)
         return self.flags.c_contiguous
+
+    def test_c_contiguous_setter(self):
+        for xp in (numpy, cupy):
+            self.init_flags(xp)
+            with pytest.raises(AttributeError):
+                self.flags.c_contiguous = True
+
+    def test_f_contiguous_setter(self):
+        for xp in (numpy, cupy):
+            self.init_flags(xp)
+            with pytest.raises(AttributeError):
+                self.flags.f_contiguous = True
+
+    def test_owndata_setter(self):
+        for xp in (numpy, cupy):
+            self.init_flags(xp)
+            with pytest.raises(AttributeError):
+                self.flags.owndata = True

@@ -1,3 +1,5 @@
+import numbers
+
 import numpy
 
 import cupy
@@ -182,6 +184,8 @@ class spmatrix(object):
         m, n = self.shape
         if m != n:
             raise TypeError('matrix is not square')
+        if not isinstance(other, numbers.Integral):
+            raise ValueError("exponent must be an integer")
 
         if _util.isintlike(other):
             other = int(other)

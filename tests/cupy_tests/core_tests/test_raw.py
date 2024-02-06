@@ -685,7 +685,9 @@ class TestRaw(unittest.TestCase):
         x = cupy.zeros((N,), dtype=cupy.float32)
         use_ptx = os.environ.get(
             'CUPY_COMPILE_WITH_PTX', False)
-        if self.backend == 'nvrtc' and (
+        if self.jitify:
+            error = cupy.cuda.compiler.JitifyException
+        elif self.backend == 'nvrtc' and (
                 use_ptx or
                 (cupy.cuda.driver._is_cuda_python()
                  and cupy.cuda.runtime.runtimeGetVersion() < 11010) or

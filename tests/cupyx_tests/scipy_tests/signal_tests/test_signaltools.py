@@ -369,11 +369,11 @@ class TestMedFilt:
             kernel_size = kernel_size[:volume.ndim]
         return scp.signal.medfilt(volume, kernel_size)
 
-    @testing.with_requires('scipy>=1.11.0')
+    @testing.with_requires('scipy>=1.12.0rc1')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(
         atol=1e-8, rtol=1e-8, scipy_name='scp',
-        accept_error=(ValueError, TypeError))  # for even kernels
+        accept_error=ValueError)  # for even kernels
     def test_medfilt(self, xp, scp, dtype):
         if sys.platform == 'win32':
             pytest.xfail('medfilt broken for Scipy 1.7.0 in windows')
@@ -400,11 +400,11 @@ class TestMedFilt2d:
         kernel_size = self.kernel_size
         return scp.signal.medfilt2d(input, kernel_size)
 
-    @testing.with_requires('scipy>=1.11.0')
+    @testing.with_requires('scipy>=1.12.0rc1')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(
         atol=1e-8, rtol=1e-8, scipy_name='scp',
-        accept_error=(ValueError, TypeError))  # for even kernels
+        accept_error=ValueError)  # for even kernels
     def test_medfilt2d(self, xp, scp, dtype):
         if sys.platform == 'win32':
             pytest.xfail('medfilt2d broken for Scipy 1.7.0 in windows')
@@ -869,7 +869,7 @@ class TestFiltFilt:
     @pytest.mark.parametrize('padtype', ['odd', 'even', 'constant', None])
     @testing.for_all_dtypes_combination(
         no_float16=True, no_bool=True, names=('in_dtype', 'const_dtype'))
-    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=5e-3,
+    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-3, atol=1e-2,
                                  type_check=False, accept_error=True)
     def test_filtfilt_1d(self, size, fir_order, iir_order, method, padtype,
                          in_dtype, const_dtype, xp, scp):

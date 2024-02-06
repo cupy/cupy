@@ -24,7 +24,7 @@ except ImportError:
     cupyx_scipy_ufuncs = set()
 
 
-@testing.with_requires("scipy")
+@testing.with_requires("scipy>=1.12.0rc1")
 @pytest.mark.parametrize("ufunc", sorted(cupyx_scipy_ufuncs & scipy_ufuncs))
 class TestUfunc:
     def _should_skip(self, f):
