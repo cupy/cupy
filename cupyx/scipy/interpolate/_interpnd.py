@@ -350,3 +350,150 @@ class LinearNDInterpolator(NDInterpolatorBase):
              isimplices, self.tri.simplices, c, self.values, out))
 
         return out
+
+
+def estimate_gradients_2d_global(tri, y, maxiter=400, tol=1e-6):
+    indptr, indices = tri.vertex_neighbor_vertices()  # NOQA
+
+
+class CloughTocher2DInterpolator(NDInterpolatorBase):
+    """CloughTocher2DInterpolator(points, values, tol=1e-6).
+
+    Piecewise cubic, C1 smooth, curvature-minimizing interpolator in 2D.
+
+    Methods
+    -------
+    __call__
+
+    Parameters
+    ----------
+    points : ndarray of floats, shape (npoints, ndims); or Delaunay
+        2-D array of data point coordinates, or a precomputed Delaunay
+        triangulation.
+    values : ndarray of float or complex, shape (npoints, ...)
+        N-D array of data values at `points`. The length of `values` along the
+        first axis must be equal to the length of `points`. Unlike some
+        interpolators, the interpolation axis cannot be changed.
+    fill_value : float, optional
+        Value used to fill in for requested points outside of the
+        convex hull of the input points.  If not provided, then
+        the default is ``nan``.
+    tol : float, optional
+        Absolute/relative tolerance for gradient estimation.
+    maxiter : int, optional
+        Maximum number of iterations in gradient estimation.
+    rescale : bool, optional
+        Rescale points to unit cube before performing interpolation.
+        This is useful if some of the input dimensions have
+        incommensurable units and differ by many orders of magnitude.
+
+    Notes
+    -----
+    The interpolant is constructed by triangulating the input data
+    with GDel2D [1]_, and constructing a piecewise cubic
+    interpolating Bezier polynomial on each triangle, using a
+    Clough-Tocher scheme [CT]_.  The interpolant is guaranteed to be
+    continuously differentiable.
+
+    The gradients of the interpolant are chosen so that the curvature
+    of the interpolating surface is approximatively minimized. The
+    gradients necessary for this are estimated using the global
+    algorithm described in [Nielson83]_ and [Renka84]_.
+
+    .. note:: For data on a regular grid use `interpn` instead.
+
+    Examples
+    --------
+    We can interpolate values on a 2D plane:
+
+    >>> from scipy.interpolate import CloughTocher2DInterpolator
+    >>> import numpy as np
+    >>> import matplotlib.pyplot as plt
+    >>> rng = np.random.default_rng()
+    >>> x = rng.random(10) - 0.5
+    >>> y = rng.random(10) - 0.5
+    >>> z = np.hypot(x, y)
+    >>> X = np.linspace(min(x), max(x))
+    >>> Y = np.linspace(min(y), max(y))
+    >>> X, Y = np.meshgrid(X, Y)  # 2D grid for interpolation
+    >>> interp = CloughTocher2DInterpolator(list(zip(x, y)), z)
+    >>> Z = interp(X, Y)
+    >>> plt.pcolormesh(X, Y, Z, shading='auto')
+    >>> plt.plot(x, y, "ok", label="input point")
+    >>> plt.legend()
+    >>> plt.colorbar()
+    >>> plt.axis("equal")
+    >>> plt.show()
+
+    See also
+    --------
+    griddata :
+        Interpolate unstructured D-D data.
+    LinearNDInterpolator :
+        Piecewise linear interpolator in N > 1 dimensions.
+    NearestNDInterpolator :
+        Nearest-neighbor interpolator in N > 1 dimensions.
+    interpn : Interpolation on a regular grid or rectilinear grid.
+    RegularGridInterpolator : Interpolator on a regular or rectilinear grid
+                              in arbitrary dimensions (`interpn` wraps this
+                              class).
+
+    References
+    ----------
+    .. [1] A GPU accelerated algorithm for 3D Delaunay triangulation (2014).
+    Thanh-Tung Cao, Ashwin Nanjappa, Mingcen Gao, Tiow-Seng Tan.
+    Proc. 18th ACM SIGGRAPH Symp. Interactive 3D Graphics and Games, 47-55.
+
+    .. [CT] See, for example,
+       P. Alfeld,
+       ''A trivariate Clough-Tocher scheme for tetrahedral data''.
+       Computer Aided Geometric Design, 1, 169 (1984);
+       G. Farin,
+       ''Triangular Bernstein-Bezier patches''.
+       Computer Aided Geometric Design, 3, 83 (1986).
+
+    .. [Nielson83] G. Nielson,
+       ''A method for interpolating scattered data based upon a minimum norm
+       network''.
+       Math. Comp., 40, 253 (1983).
+
+    .. [Renka84] R. J. Renka and A. K. Cline.
+       ''A Triangle-based C1 interpolation method.'',
+       Rocky Mountain J. Math., 14, 223 (1984).
+
+    """
+
+    def __init__(self, points, values, fill_value=cupy.nan,
+                 tol=1e-6, maxiter=400, rescale=False):
+        self._tol = tol
+        self._maxiter = maxiter
+        NDInterpolatorBase.__init__(self, points, values, ndim=2,
+                                    fill_value=fill_value, rescale=rescale,
+                                    need_values=False)
+
+    def _set_values(self, values, fill_value=cupy.nan,
+                    need_contiguous=True, ndim=None):
+        """
+        Sets the values of the interpolation points.
+
+        Parameters
+        ----------
+        values : ndarray of float or complex, shape (npoints, ...)
+            Data values.
+        """
+        NDInterpolatorBase._set_values(
+            self, values, fill_value=fill_value,
+            need_contiguous=need_contiguous, ndim=ndim)
+
+        if self.values is not None:
+            self.grad = estimate_gradients_2d_global(
+                self.tri, self.values, tol=self._tol, maxiter=self._maxiter)
+
+    def _calculate_triangulation(self, points):
+        self.tri = Delaunay(points)
+
+    def _evaluate_double(self, xi):
+        return self._do_evaluate(xi, 1.0)
+
+    def _evaluate_complex(self, xi):
+        return self._do_evaluate(xi, 1.0j)
