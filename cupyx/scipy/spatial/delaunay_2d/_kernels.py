@@ -2499,6 +2499,100 @@ RealType* det
 
     *det = 0;
 
+__global__ void kerFindVertexNeighbors
+(
+Tri*  tri,
+int   nTri,
+int   nPoints,
+bool*  out
+)
+{
+    for ( int idx = getCurThreadIdx(); idx < nTri; idx += getThreadNum() ) {
+        Tri curTri = tri[idx];
+        for( int i = 0; i < DEG; i++ ) {
+            for(int j = i + 1; j < DEG; j++) {
+                out[nPoints * curTri._v[i] + curTri._v[j]] = true;
+                out[nPoints * curTri._v[j] + curTri._v[i]] = true;
+            }
+        }
+    }
+}
+
+
+__global__ void kerComputeBoundingBoxes
+(
+Tri*    tri,
+int     nTri,
+Point2* points,
+Point2* out
+)
+{
+    for ( int idx = getCurThreadIdx(); idx < nTri; idx += getThreadNum() ) {
+        Tri curTri = tri[idx];
+        Point2* triOut = out + 2 * idx;
+
+        RealType maxX = -CUDART_INF;
+        RealType minX = CUDART_INF;
+        RealType maxY = -CUDART_INF;
+        RealType minY = CUDART_INF;
+
+        for( int i = 0; i < DEG; i++ ) {
+            Point2 curPoint = points[curTri._v[i]];
+            maxX = curPoint._p[0] > maxX ? curPoint._p[0] : maxX;
+            minX = curPoint._p[0] < minX ? curPoint._p[0] : minX;
+            maxY = curPoint._p[1] > maxY ? curPoint._p[1] : maxY;
+            minY = curPoint._p[1] < minY ? curPoint._p[1] : minY;
+        }
+
+        Point2 minPoint = Point2{ { minX, minY } };
+        Point2 maxPoint = Point2{ { maxX, maxY } };
+
+        triOut[0] = minPoint;
+        triOut[1] = maxPoint;
+    }
+}
+
+__global__ void kerEncBoundingBoxes
+(
+RealType*           bboxes,
+int                 nBBoxes,
+const double*       minVal,
+const double*       range,
+bool                encTwice,
+long long*          out
+) {
+    int off = encTwice ? 2 : 4;
+    for ( int idx = getCurThreadIdx(); idx < nBBoxes; idx += getThreadNum() ) {
+        RealType* bbox = bboxes + off * idx;
+        long long encoding = 0;
+
+        const long long minInt = 0x0;
+        const long long maxInt = 0x7fff;
+
+        for(int i = 0; i < 4; i++) {
+            int bIdx = encTwice ? i % 2 : i;
+            RealType v = bbox[bIdx];
+            long long x = ( ( v - minVal[0] ) / range[0] * 32768.0 );
+
+            if ( x < minInt )
+                x = minInt;
+
+            if ( x > maxInt )
+                x = maxInt;
+
+            x &= 0x7fff;
+            x = (x | (x << 32)) & 0x7800000007ff;
+            x = (x | (x << 16)) & 0x780007c0003f;
+            x = (x | (x << 8)) & 0x40380700c03807;
+            x = (x | (x << 4)) & 0x43084308430843;
+            x = (x | (x << 2)) & 0x109090909090909;
+            x = (x | (x << 1)) & 0x111111111111111;
+
+            encoding |= (x << i);
+        }
+
+        out[idx] = encoding;
+    }
 }
 """
 
@@ -2520,7 +2614,8 @@ DELAUNAY_MODULE = cupy.RawModule(
                       'kerUpdateVertIdx', 'findClosestTriToPoint',
                       'getMortonNumber', 'computeDistance2D',
                       'kerInitPredicate', 'makeKeyFromTriHasVert',
-                      'kerCheckIfCoplanarPoints'])
+                      'kerCheckIfCoplanarPoints', 'kerFindVertexNeighbors',
+                      'kerComputeBoundingBoxes', 'kerEncBoundingBoxes'])
 
 
 N_BLOCKS = 512
@@ -2780,3 +2875,20 @@ def make_key_from_tri_has_vert(tri_has_vert, out):
 def check_if_coplanar_points(points, pa_idx, pb_idx, pc_idx, det):
     ker_ori = DELAUNAY_MODULE.get_function('kerCheckIfCoplanarPoints')
     ker_ori((1,), (1,), (points, pa_idx, pb_idx, pc_idx, det))
+
+
+def find_vertex_neighbors(tri, n_points, out):
+    ker_find_vertex = DELAUNAY_MODULE.get_function('kerFindVertexNeighbors')
+    ker_find_vertex((N_BLOCKS,), (BLOCK_SZ,), (
+        tri, tri.shape[0], n_points, out))
+
+
+def compute_bounding_boxes(tri, points, out):
+    ker_bb = DELAUNAY_MODULE.get_function('kerComputeBoundingBoxes')
+    ker_bb((N_BLOCKS,), (BLOCK_SZ,), (tri, tri.shape[0], points, out))
+
+
+def encode_bounding_boxes(bboxes, min_val, range_val, encode_twice, out):
+    ker_enc = DELAUNAY_MODULE.get_function('kerEncBoundingBoxes')
+    ker_enc((N_BLOCKS,), (BLOCK_SZ,), (
+        bboxes, bboxes.shape[0], min_val, range_val, encode_twice, out))

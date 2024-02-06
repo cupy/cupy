@@ -11,7 +11,8 @@ from cupyx.scipy.spatial.delaunay_2d._kernels import (
     relocate_points_exact, mark_inf_tri, collect_free_slots, make_compact_map,
     compact_tris, update_vert_idx, find_closest_tri_to_point,
     get_morton_number, compute_distance_2d, init_predicate,
-    make_key_from_tri_has_vert, check_if_coplanar_points)
+    make_key_from_tri_has_vert, check_if_coplanar_points,
+    find_vertex_neighbors, compute_bounding_boxes, encode_bounding_boxes)
 
 
 def _compute_triangle_orientation(det):
@@ -51,6 +52,7 @@ class GDel2D:
         self.vert_tri = cupy.zeros(self.n_points, dtype=cupy.int32)
 
         self._org_flip_num = []
+        self._node_neighbors = None
 
     @property
     def counters(self):
@@ -118,13 +120,13 @@ class GDel2D:
         self.tri_num = 4
 
     def _init_for_flip(self):
-        min_val = self.points.min()
-        max_val = self.points.max()
-        range_val = max_val - min_val
+        self.min_val = self.points.min()
+        self.max_val = self.points.max()
+        self.range_val = self.max_val - self.min_val
 
         # Sort the points spatially according to their Morton numbers
-        get_morton_number(self.points, self.n_points - 1, min_val,
-                          range_val, self.values)
+        get_morton_number(self.points, self.n_points - 1, self.min_val,
+                          self.range_val, self.values)
 
         self.values[-1] = 2 ** 31 - 1
         unique_values, unique_index = cupy.unique(
@@ -531,3 +533,38 @@ class GDel2D:
         find_closest_tri_to_point(xi, self.points, self.triangles,
                                   out, c, eps, find_coords)
         return out, c
+
+    def vertex_neighbor_vertices(self):
+        if self._node_neighbors is None:
+            full_neighbors = cupy.zeros(
+                (self.n_points - 1, self.n_points - 1), dtype=cupy.bool_)
+
+            find_vertex_neighbors(
+                self.triangles, self.n_points - 1, full_neighbors)
+            indptr = cupy.empty(self.n_points, cupy.int32)
+            cupy.cumsum(cupy.sum(full_neighbors, -1, cupy.int32),
+                        dtype=cupy.int32, out=indptr[1:])
+            indptr[0] = 0
+
+            _, indices = cupy.where(full_neighbors)
+            self._node_neighbors = indptr, indices.astype(cupy.int32)
+        return self._node_neighbors
+
+    def triangle_bounding_boxes(self):
+        out = cupy.empty((self.triangles.shape[0], 2, 2), dtype=cupy.float64)
+        compute_bounding_boxes(self.triangles, self.points, out)
+        return out
+
+    def encode_bounding_boxes(self, points=None):
+        encode_twice = False
+        if points is None:
+            out = cupy.empty(self.triangles.shape[0], dtype=cupy.int64)
+            bboxes = self.triangle_bounding_boxes()
+        else:
+            out = cupy.empty(points.shape[0], dtype=cupy.int64)
+            encode_twice = True
+            bboxes = points
+
+        encode_bounding_boxes(bboxes, self.min_val, self.range_val,
+                              encode_twice, out)
+        return out, bboxes

@@ -156,3 +156,13 @@ class Delaunay:
             raise ValueError('Delaunay only supports 2D inputs at the moment.')
 
         return self._find_simplex_coordinates(xi, eps)
+
+    def vertex_neighbor_vertices(self):
+        """
+        Neighboring vertices of vertices.
+
+        Tuple of two ndarrays of int: (indptr, indices). The indices of
+        neighboring vertices of vertex `k` are
+        ``indices[indptr[k]:indptr[k+1]]``.
+        """
+        return self._triangulator.vertex_neighbor_vertices()
