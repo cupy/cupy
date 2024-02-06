@@ -85,7 +85,7 @@ class TestBeta:
                                 3.1811881124242447, rtol=1e-14, atol=0)
 
 
-@testing.with_requires('scipy')
+@testing.with_requires('scipy>=1.12.0rc1')
 class TestBetaInc:
 
     @pytest.mark.parametrize('function', ['betainc', 'betaincinv'])

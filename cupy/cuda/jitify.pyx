@@ -226,8 +226,11 @@ cpdef void _init_module() except*:
     # start time, for enabling CCCL + CuPy developers?
     global _jitify_cache_versions
     if _jitify_cache_versions is None:
+        # jitify version could be "<unknown>" and the angular brakets are not
+        # valid characters on Windows, so we need to strip them
+        _jitify_version = re.sub(r'<([^>]*)>', r'\1', get_build_version())
         _jitify_cache_versions = (
-            f"{get_build_version()}_{cub.get_build_version()}_"
+            f"{_jitify_version}_{cub.get_build_version()}_"
             f"{get_cuda_version()}_{build_num}_{cupy_cache_key.decode()}")
 
     _init_cupy_headers()
