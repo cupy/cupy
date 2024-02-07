@@ -242,8 +242,9 @@ cpdef TensorDescriptor create_tensor_descriptor(_ndarray_base a):
         (TensorDescriptor): A instance of class TensorDescriptor.
     """
     handle = _get_handle()
-    key = (handle.ptr, a.dtype, tuple(a.shape), tuple(a.strides))
-    alignment_req = 256
+    alignment_req = a.itemsize
+    key = (handle.ptr, a.dtype, tuple(a.shape),
+           tuple(a.strides), alignment_req)
     if a.data.ptr & (alignment_req - 1) != 0:
         raise ValueError("Missaligned array")
     if key not in _tensor_descriptors:
@@ -479,9 +480,6 @@ def elementwise_binary(
     Examples:
         See examples/cutensor/elementwise_binary.py
     """
-    if not (A._c_contiguous and C._c_contiguous):
-        raise ValueError('The inputs should be contiguous arrays.')
-
     if out is None:
         out = core._ndarray_init(
             _cupy.ndarray, C._shape, dtype=C.dtype, obj=None)
@@ -489,8 +487,6 @@ def elementwise_binary(
         raise ValueError('dtype mismatch: {} != {}'.format(C.dtype, out.dtype))
     elif not internal.vector_equal(C._shape, out._shape):
         raise ValueError('shape mismatch: {} != {}'.format(C.shape, out.shape))
-    elif not out._c_contiguous:
-        raise ValueError('`out` should be a contiguous array.')
 
     desc_A = create_tensor_descriptor(A)
     desc_C = create_tensor_descriptor(C)
@@ -625,9 +621,6 @@ def elementwise_trinary(
     Examples:
         See examples/cutensor/elementwise_trinary.py
     """
-    if not (A._c_contiguous and B._c_contiguous and C._c_contiguous):
-        raise ValueError('The inputs should be contiguous arrays.')
-
     if out is None:
         out = core._ndarray_init(
             _cupy.ndarray, C._shape, dtype=C.dtype, obj=None)
@@ -635,8 +628,6 @@ def elementwise_trinary(
         raise ValueError('dtype mismatch: {} != {}'.format(C.dtype, out.dtype))
     elif not internal.vector_equal(C._shape, out._shape):
         raise ValueError('shape mismatch: {} != {}'.format(C.shape, out.shape))
-    elif not out._c_contiguous:
-        raise ValueError('`out` should be a contiguous array.')
 
     desc_A = create_tensor_descriptor(A)
     desc_B = create_tensor_descriptor(B)
@@ -783,9 +774,6 @@ def contraction(
     Examples:
         See examples/cutensor/contraction.py
     """
-    if not (A._c_contiguous and B._c_contiguous and C._c_contiguous):
-        raise ValueError('The inputs should be contiguous arrays.')
-
     desc_A = create_tensor_descriptor(A)
     desc_B = create_tensor_descriptor(B)
     desc_C = create_tensor_descriptor(C)
@@ -876,7 +864,7 @@ def reduction(
 
     This routine computes the tensor reduction:
 
-        C = alpha * reduce_op(op_A(A)) + beta * op_C(C))
+        C = alpha * reduce_op(op_A(A)) + beta * op_C(C)
 
     Args:
         alpha (scalar): Scaling factor for A.
@@ -897,9 +885,6 @@ def reduction(
     Examples:
         See examples/cutensor/reduction.py
     """
-    if not (A._c_contiguous and C._c_contiguous):
-        raise ValueError('The inputs should be contiguous arrays.')
-
     desc_A = create_tensor_descriptor(A)
     desc_C = create_tensor_descriptor(C)
     mode_A = _auto_create_mode(A, mode_A)
