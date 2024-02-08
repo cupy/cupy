@@ -1,5 +1,6 @@
 import numpy
 import pytest
+import scipy
 
 import cupy
 from cupy import testing
@@ -82,3 +83,59 @@ def test_cfar_alpha(dtype):
     gpu = signal.cfar_alpha(pfa, N)
     cpu = N * (pfa ** (-1.0 / N) - 1)
     cupy.testing.assert_allclose(gpu, cpu)
+
+
+@pytest.mark.parametrize(
+    "size,gc,rc", [(100, 1, 5), (11, 2, 3), (100, 10, 20)])
+@testing.for_float_dtypes(no_float16=True)
+@testing.numpy_cupy_allclose(rtol=2e-6, type_check=False)
+def test_ca_cfar1d(xp, dtype, size, gc, rc):
+    array = testing.shaped_random((size,), xp=xp, dtype=dtype)
+    if xp is cupy:
+        return signal.ca_cfar(array, gc, rc)
+    else:
+        assert xp is numpy
+        weight = numpy.ones(((rc + gc) * 2 + 1,), dtype=dtype)
+        weight[rc:-rc] = 0
+        alpha = numpy.zeros((size,), dtype=dtype)
+        alpha[gc+rc:-gc-rc] = signal.cfar_alpha(1e-3, 2 * rc)
+        out = scipy.ndimage.convolve1d(array, weight) * alpha / (2 * rc)
+        return out, array - out > 0
+
+
+@pytest.mark.parametrize(
+    "size,gc,rc", [(1, 1, 1), (10, 2, 3), (10, 0, 5), (10, 5, 0)])
+def test_ca_cfar1d_failures(size, gc, rc):
+    with pytest.raises(ValueError):
+        _, _ = signal.ca_cfar(cupy.zeros(size), gc, rc)
+
+
+@pytest.mark.parametrize(
+    "shape,gc,rc", [((10, 10), (1, 1), (2, 2)), ((10, 100), (1, 10), (2, 20))])
+@testing.for_float_dtypes(no_float16=True)
+@testing.numpy_cupy_allclose(rtol=2e-6, type_check=False)
+def test_ca_cfar2d(xp, dtype, shape, gc, rc):
+    array = testing.shaped_random(shape, xp=xp, dtype=dtype)
+    if xp is cupy:
+        return signal.ca_cfar(array, gc, rc)
+    else:
+        assert xp is numpy
+        rcx, rcy = rc
+        gcx, gcy = gc
+        weight = numpy.ones(
+            ((rcx + gcx) * 2 + 1, (rcy + gcy) * 2 + 1), dtype=dtype)
+        weight[rcx:-rcx, rcy:-rcy] = 0
+        alpha = numpy.zeros(shape, dtype=dtype)
+        N = weight.size - (2 * gcx + 1) * (2 * gcy + 1)
+        alpha[gcx+rcx:-gcx-rcx, gcy+rcy:-gcy-rcy] = signal.cfar_alpha(1e-3, N)
+        out = scipy.ndimage.convolve(array, weight) * alpha / N
+        return out, array - out > 0
+
+
+@pytest.mark.parametrize(
+    "shape,gc,rc", [((3, 3), (1, 2), (1, 10)),
+                    ((3, 3), (1, 1), (10, 1)),
+                    ((5, 5), (3, 3), (3, 3))])
+def test_ca_cfar2d_failures(shape, gc, rc):
+    with pytest.raises(ValueError):
+        _, _ = signal.ca_cfar(cupy.zeros(shape), gc, rc)
