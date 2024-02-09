@@ -24,4 +24,3 @@ htmlcov/
 .pytest_cache/
 cupy/.data/
 cupy/cuda/thrust.h
-.vscode/

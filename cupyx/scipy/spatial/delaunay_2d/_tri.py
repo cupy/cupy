@@ -11,45 +11,7 @@ from cupyx.scipy.spatial.delaunay_2d._kernels import (
     relocate_points_exact, mark_inf_tri, collect_free_slots, make_compact_map,
     compact_tris, update_vert_idx, find_closest_tri_to_point,
     get_morton_number, compute_distance_2d, init_predicate,
-    make_key_from_tri_has_vert)
-
-
-def _check_if_coplanar_points(points, pa_idx, pb_idx, pc_idx):
-    pa = points[pa_idx]
-    pb = points[pb_idx]
-    pc = points[pc_idx]
-
-    detleft = (pa[0] - pc[0]) * (pb[1] - pc[1])
-    detright = (pa[1] - pc[1]) * (pb[0] - pc[0])
-    det = detleft - detright
-
-    is_det_left_pos = cupy.where(detleft > 0, True, False)
-    is_det_left_neg = cupy.where(detleft < 0, True, False)
-
-    is_det_right_pos = cupy.where(detright >= 0, True, False)
-    is_det_right_neg = cupy.where(detright <= 0, True, False)
-
-    detsum = 0
-    if is_det_left_pos:
-        if is_det_right_neg:
-            return det
-        else:
-            detsum = detleft + detright
-    elif is_det_left_neg:
-        if is_det_right_pos:
-            return det
-        else:
-            detsum = -detleft - detright
-    else:
-        return det
-
-    epsilon = cupy.finfo(points.dtype)
-    ccwerrboundA = (3.0 + 16.0 * epsilon) * epsilon
-    errbound = ccwerrboundA * detsum
-
-    return cupy.where(
-        cupy.logical_or(det >= errbound, -det >= errbound), det,
-        cupy.asarray(0, dtype=points.dtype))
+    make_key_from_tri_has_vert, check_if_coplanar_points)
 
 
 def _compute_triangle_orientation(det):
@@ -112,7 +74,8 @@ class GDel2D:
         v2 = cupy.argmax(self.values[:-1])
 
         # Check if the three points are not coplanar
-        ori = _check_if_coplanar_points(self.point_vec, v0, v1, v2)
+        ori = cupy.empty(tuple(), dtype=self.point_vec.dtype)
+        check_if_coplanar_points(self.point_vec, v0, v1, v2, ori)
 
         is_coplanar = cupy.where(ori == 0.0, True, False)
         if is_coplanar:

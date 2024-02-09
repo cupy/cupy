@@ -2305,18 +2305,21 @@ __device__ bool isPointInTriangle(
         p1._p[0] * p2._p[1]);
 
     RealType sign = A < 0 ? -1 : 1;
-    *s = (p0._p[1] * p2._p[0] - p0._p[0] * p2._p[1] +
+    RealType unS = (p0._p[1] * p2._p[0] - p0._p[0] * p2._p[1] +
           (p2._p[1] - p0._p[1]) * p._p[0] +
           (p0._p[0] - p2._p[0]) * p._p[1]) * sign;
 
-    *t = (p0._p[0] * p1._p[1] - p0._p[1] * p1._p[0] +
+    RealType unT = (p0._p[0] * p1._p[1] - p0._p[1] * p1._p[0] +
           (p0._p[1] - p1._p[1]) * p._p[0] +
           (p1._p[0] - p0._p[0]) * p._p[1]) * sign;
 
-    return (*s > 0 &&
-            *t > 0 &&
-            ((*s + *t + 2 * eps) < 2 * A * sign ||
-             (*s + *t - 2 * eps) < 2 * A * sign));
+    *s = 1.0 / (2.0 * A) * unS;
+    *t = 1.0 / (2.0 * A) * unT;
+
+    return (unS >= 0 &&
+            unT >= 0 &&
+            ((unS + unT + eps) <= 2 * A * sign ||
+             (unS + unT - eps) <= 2 * A * sign));
 }
 
 __global__ void findClosestTriToPoint(
@@ -2352,9 +2355,9 @@ __global__ void findClosestTriToPoint(
     out[idx] = trianglePos;
     if(findCoords) {
         RealType* cOutOff = cOut + 3 * idx;
-        cOutOff[0] = s;
-        cOutOff[1] = t;
-        cOutOff[2] = 1 - s - t;
+        cOutOff[0] = 1 - s - t;
+        cOutOff[1] = s;
+        cOutOff[2] = t;
     }
 }
 
@@ -2437,6 +2440,66 @@ int* out
         out[idx] = triHasVert[idx] < INT_MAX - 1 ? 2 : 0;
     }
 }
+
+#define DBL_EPSILON     2.220440492503130e-16
+
+__global__ void kerCheckIfCoplanarPoints
+(
+RealType* points,
+long long*       paIdx,
+long long*       pbIdx,
+long long*       pcIdx,
+RealType* det
+) {
+    RealType* pa = points + 2 * *paIdx;
+    RealType* pb = points + 2 * *pbIdx;
+    RealType* pc = points + 2 * *pcIdx;
+
+    RealType detLeft = (pa[0] - pc[0]) * (pb[1] - pc[1]);
+    RealType detRight = (pa[1] - pc[1]) * (pb[0] - pc[0]);
+    RealType detFull = detLeft - detRight;
+
+    bool isDetLeftPos = detLeft > 0;
+    bool isDetLeftNeg = detLeft < 0;
+
+    bool isDetRightPos = detRight >= 0;
+    bool isDetRightNeg = detRight <= 0;
+
+    bool inspectMore = false;
+    RealType detSum = 0;
+
+    if(isDetLeftPos) {
+        if(isDetRightNeg) {
+            *det = detFull;
+        } else {
+            detSum = detLeft + detRight;
+            inspectMore = true;
+        }
+    } else if (isDetLeftNeg) {
+        if(isDetRightPos) {
+            *det = detFull;
+        } else {
+            detSum = -detLeft - detRight;
+            inspectMore = true;
+        }
+    } else {
+        *det = detFull;
+    }
+
+    if(!inspectMore) {
+        return;
+    }
+
+    RealType ccwerrboundA = (3.0 + 16.0 * DBL_EPSILON) * DBL_EPSILON;
+    RealType errBound = ccwerrboundA * detSum;
+
+    if(detFull >= errBound || -detFull >= errBound ) {
+        *det = detFull;
+    }
+
+    *det = 0;
+
+}
 """
 
 DELAUNAY_MODULE = cupy.RawModule(
@@ -2456,7 +2519,8 @@ DELAUNAY_MODULE = cupy.RawModule(
                       'kerMakeCompactMap', 'kerCompactTris',
                       'kerUpdateVertIdx', 'findClosestTriToPoint',
                       'getMortonNumber', 'computeDistance2D',
-                      'kerInitPredicate', 'makeKeyFromTriHasVert'])
+                      'kerInitPredicate', 'makeKeyFromTriHasVert',
+                      'kerCheckIfCoplanarPoints'])
 
 
 N_BLOCKS = 512
@@ -2711,3 +2775,8 @@ def make_key_from_tri_has_vert(tri_has_vert, out):
     ker_key = DELAUNAY_MODULE.get_function('makeKeyFromTriHasVert')
     ker_key((N_BLOCKS,), (BLOCK_SZ,), (
         tri_has_vert, tri_has_vert.shape[0], out))
+
+
+def check_if_coplanar_points(points, pa_idx, pb_idx, pc_idx, det):
+    ker_ori = DELAUNAY_MODULE.get_function('kerCheckIfCoplanarPoints')
+    ker_ori((1,), (1,), (points, pa_idx, pb_idx, pc_idx, det))
