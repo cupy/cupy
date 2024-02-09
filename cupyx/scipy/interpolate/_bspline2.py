@@ -541,4 +541,3 @@ def _make_periodic_spline(x, y, t, k, axis):
     coef = cupy.ascontiguousarray(coef.reshape((n + k - 1,) + y.shape[1:]))
     return BSpline.construct_fast(t, coef, k,
                                   extrapolate='periodic', axis=axis)
-

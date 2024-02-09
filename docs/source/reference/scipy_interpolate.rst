@@ -21,6 +21,7 @@ Univariate interpolation
    Akima1DInterpolator
    PPoly
    BPoly
+   CubicSpline
 
 1-D Splines
 -----------
