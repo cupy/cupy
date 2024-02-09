@@ -2498,6 +2498,7 @@ RealType* det
     }
 
     *det = 0;
+}
 
 __global__ void kerFindVertexNeighbors
 (
