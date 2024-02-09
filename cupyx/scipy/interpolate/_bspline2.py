@@ -5,31 +5,10 @@ from numpy.core.multiarray import normalize_axis_index
 import cupy
 from cupyx.scipy import sparse
 from cupyx.scipy.sparse.linalg import spsolve
+from cupyx.scipy.interpolate._bspline import _get_dtype, _as_float_array
 
 from cupyx.scipy.interpolate._bspline import (
     _get_module_func, INTERVAL_MODULE, D_BOOR_MODULE, BSpline)
-
-
-def _get_dtype(dtype):
-    """Return np.complex128 for complex dtypes, np.float64 otherwise."""
-    if cupy.issubdtype(dtype, cupy.complexfloating):
-        return cupy.complex_
-    else:
-        return cupy.float_
-
-
-def _as_float_array(x, check_finite=False):
-    """Convert the input into a C contiguous float array.
-
-    NB: Upcasts half- and single-precision floats to double precision.
-    """
-    x = cupy.asarray(x)
-    x = cupy.ascontiguousarray(x)
-    dtyp = _get_dtype(x.dtype)
-    x = x.astype(dtyp, copy=False)
-    if check_finite and not cupy.isfinite(x).all():
-        raise ValueError("Array must not contain infs or nans.")
-    return x
 
 
 # vendored from scipy/_lib/_util.py
@@ -562,3 +541,4 @@ def _make_periodic_spline(x, y, t, k, axis):
     coef = cupy.ascontiguousarray(coef.reshape((n + k - 1,) + y.shape[1:]))
     return BSpline.construct_fast(t, coef, k,
                                   extrapolate='periodic', axis=axis)
+
