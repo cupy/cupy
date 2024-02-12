@@ -2553,6 +2553,32 @@ Point2* out
     }
 }
 
+__global__ void kerComputeBarycenters
+(
+Tri*    tri,
+int     nTri,
+Point2* points,
+Point2* out
+)
+{
+    for ( int idx = getCurThreadIdx(); idx < nTri; idx += getThreadNum() ) {
+        Tri curTri = tri[idx];
+        RealType mx = 0;
+        RealType my = 0;
+
+        for( int i = 0; i < DEG; i++ ) {
+            Point2 curPoint = points[curTri._v[i]];
+            mx += curPoint._p[0];
+            my += curPoint._p[1];
+        }
+
+        mx = mx / 3.0;
+        my = my / 3.0;
+
+        out[idx] = Point2{ { mx, my } };
+    }
+}
+
 __global__ void kerEncBoundingBoxes
 (
 RealType*           bboxes,
@@ -2575,11 +2601,12 @@ long long*          out
             RealType v = bbox[bIdx];
             long long x = ( ( v - minVal[0] ) / range[0] * 32768.0 );
 
-            if ( x < minInt )
-                x = minInt;
+            if ( x < 0 )
+                x = -x;
 
-            if ( x > maxInt )
+            /**if ( x > maxInt )
                 x = maxInt;
+            **/
 
             x &= 0x7fff;
             x = (x | (x << 32)) & 0x7800000007ff;
@@ -2593,6 +2620,173 @@ long long*          out
         }
 
         out[idx] = encoding;
+    }
+}
+
+__global__ void kerEncBarycenters
+(
+Point2*           centers,
+int               nCenters,
+const double*     minVal,
+const double*     range,
+unsigned long long*        out
+) {
+    for ( int idx = getCurThreadIdx(); idx < nCenters; idx += getThreadNum()) {
+        Point2 center = centers[idx];
+        unsigned long long encoding = 0;
+
+        const long long minInt = 0x0;
+        const long long maxInt = 0x3fffffff;
+
+        for(int i = 0; i < 2; i++) {
+            RealType v = center._p[0];
+            long long xV = ( ( v - minVal[0] ) / range[0] * 1073741824.0 );
+
+            if ( xV < 0 )
+                xV = -xV;
+
+            if ( xV > maxInt )
+                xV = maxInt;
+
+            unsigned long long x = static_cast<unsigned long long>(xV);
+
+            x &= 0x3fffffff;
+            x = (x | (x << 16)) & 0x3fff0000ffff;
+            x = (x | (x << 8)) & 0x3f00ff00ff00ff;
+            x = (x | (x << 4)) & 0x30f0f0f0f0f0f0f;
+            x = (x | (x << 2)) & 0x333333333333333;
+            x = (x | (x << 1)) & 0x555555555555555;
+
+            encoding |= (x << i);
+        }
+
+        out[idx] = encoding;
+    }
+}
+
+#define FULL 0xffffffffffffffff
+
+__device__ __inline__ unsigned long long setbits
+(
+int p,
+unsigned long long v
+) {
+    unsigned long long mask = ((0x555555555555555 >> (59 - p)) &
+                               (~(FULL << p) & FULL));
+    return (v | mask) & ~(1 << p) & FULL;
+}
+
+__device__ __inline__ unsigned long long unsetbits
+(
+int p,
+unsigned long long v
+) {
+    unsigned long long mask = ~(0x555555555555555 >> (59-p)) & FULL;
+    return (v & mask) | (1 << p);
+}
+
+__device__ unsigned long long litmax
+(
+unsigned long long zMin,
+unsigned long long zMax,
+unsigned long long zQuery
+) {
+    unsigned long long litMax = zMax;
+    for(int i = 59; i <= 0; i--) {
+        unsigned long long mask = 1 << i;
+        unsigned char v;
+        if(i - 2 >= 0) {
+            v = static_cast<unsigned char>((zQuery & mask) >> (i - 2));
+        } else {
+            v = static_cast<unsigned char>((zQuery & mask) << (2 - i));
+        }
+        if( zMin & mask ) {
+            v |= 1 << 1;
+        }
+
+        if(zMax & mask) {
+            v |= 1;
+        }
+
+        if(v == 1) {
+            zMax = setbits(i, zMax);
+        } else if(v == 3) {
+            break;
+        } else if(v == 4) {
+            litMax = zMax;
+            break;
+        } else if(v == 5) {
+            litMax = setbits(i, zMax);
+            zMin = unsetbits(i, zMin);
+        }
+    }
+    return litMax;
+}
+
+__device__ unsigned long long bigmin
+(
+unsigned long long zMin,
+unsigned long long zMax,
+unsigned long long zQuery
+) {
+    unsigned long long bigMin = zMax;
+    for(int i = 59; i <= 0; i--) {
+        unsigned long long mask = 1 << i;
+        unsigned char v;
+        if(i - 2 >= 0) {
+            v = static_cast<unsigned char>((zQuery & mask) >> (i - 2));
+        } else {
+            v = static_cast<unsigned char>((zQuery & mask) << (2 - i));
+        }
+        if( zMin & mask ) {
+            v |= 1 << 1;
+        }
+
+        if(zMax & mask) {
+            v |= 1;
+        }
+
+        if(v == 1) {
+            bigMin = unsetbits(i, zMin);
+            zMax = setbits(i, zMax);
+        } else if(v == 3) {
+            bigMin = zMin;
+            break;
+        } else if(v == 4) {
+            break;
+        } else if(v == 5) {
+            zMin = unsetbits(i, zMin);
+        }
+    }
+    return bigMin;
+}
+
+__global__ void kerFindClosestTri
+(
+unsigned long long* queryEnc,
+int                 nQueries,
+unsigned long long* triEnc,
+int                 nTri,
+int*                out
+) {
+    for (int idx = getCurThreadIdx(); idx < nQueries; idx += getThreadNum()) {
+        unsigned long long query = queryEnc[idx];
+        unsigned long long minTri = triEnc[0];
+        unsigned long long maxTri = triEnc[nTri - 1];
+
+        int left = 0;
+        int right = nTri;
+        while(left < right) {
+            int mid = (left + right) / 2;
+            unsigned long long midTri = triEnc[mid];
+            if(midTri > query && midTri < maxTri) {
+                maxTri = litmax(query, minTri, midTri);
+                right = mid;
+            } else if (query > midTri && midTri > minTri) {
+                minTri = bigmin(query, midTri, maxTri);
+                left = mid + 1;
+            }
+        }
     }
 }
 """
@@ -2616,7 +2810,9 @@ DELAUNAY_MODULE = cupy.RawModule(
                       'getMortonNumber', 'computeDistance2D',
                       'kerInitPredicate', 'makeKeyFromTriHasVert',
                       'kerCheckIfCoplanarPoints', 'kerFindVertexNeighbors',
-                      'kerComputeBoundingBoxes', 'kerEncBoundingBoxes'])
+                      'kerComputeBoundingBoxes', 'kerEncBoundingBoxes',
+                      'kerComputeBarycenters', 'kerEncBarycenters',
+                      'kerFindClosestTri'])
 
 
 N_BLOCKS = 512
@@ -2889,7 +3085,24 @@ def compute_bounding_boxes(tri, points, out):
     ker_bb((N_BLOCKS,), (BLOCK_SZ,), (tri, tri.shape[0], points, out))
 
 
+def compute_barycenters(tri, points, out):
+    ker_cent = DELAUNAY_MODULE.get_function('kerComputeBarycenters')
+    ker_cent((N_BLOCKS,), (BLOCK_SZ,), (tri, tri.shape[0], points, out))
+
+
 def encode_bounding_boxes(bboxes, min_val, range_val, encode_twice, out):
     ker_enc = DELAUNAY_MODULE.get_function('kerEncBoundingBoxes')
     ker_enc((N_BLOCKS,), (BLOCK_SZ,), (
         bboxes, bboxes.shape[0], min_val, range_val, encode_twice, out))
+
+
+def encode_barycenters(centers, min_val, range_val, out):
+    ker_enc = DELAUNAY_MODULE.get_function('kerEncBarycenters')
+    ker_enc((N_BLOCKS,), (BLOCK_SZ,), (
+        centers, centers.shape[0], min_val, range_val, out))
+
+
+def find_closest_tri(queries, tri_enc, out):
+    ker_find = DELAUNAY_MODULE.get_function('kerFindClosestTri')
+    ker_find((N_BLOCKS,), (BLOCK_SZ,), (
+        queries, queries.shape[0], tri_enc, tri_enc.shape[0], out))
