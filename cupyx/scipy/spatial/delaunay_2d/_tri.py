@@ -588,7 +588,8 @@ class GDel2D:
 
     def find_closest_tri(self, points):
         tri_enc, _ = self.encode_barycenters()
+        sort_enc = cupy.argsort(tri_enc)
         points_enc, _ = self.encode_barycenters(points)
 
         out = cupy.empty(points.shape[0], dtype=cupy.int32)
-        find_closest_tri(points_enc, tri_enc, out)
+        find_closest_tri(points_enc, sort_enc, tri_enc, out)

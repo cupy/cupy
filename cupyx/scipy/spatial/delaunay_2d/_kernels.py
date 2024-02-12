@@ -2765,20 +2765,22 @@ __global__ void kerFindClosestTri
 (
 unsigned long long* queryEnc,
 int                 nQueries,
+long long*          encIdx,
 unsigned long long* triEnc,
 int                 nTri,
 int*                out
 ) {
     for (int idx = getCurThreadIdx(); idx < nQueries; idx += getThreadNum()) {
         unsigned long long query = queryEnc[idx];
-        unsigned long long minTri = triEnc[0];
-        unsigned long long maxTri = triEnc[nTri - 1];
+        unsigned long long minTri = triEnc[encIdx[0]];
+        unsigned long long maxTri = triEnc[encIdx[nTri - 1]];
 
         int left = 0;
         int right = nTri;
         while(left < right) {
             int mid = (left + right) / 2;
-            unsigned long long midTri = triEnc[mid];
+            long long midIdx = encIdx[mid];
+            unsigned long long midTri = triEnc[midIdx];
             if(midTri > query && midTri < maxTri) {
                 maxTri = litmax(query, minTri, midTri);
                 right = mid;
@@ -3102,7 +3104,7 @@ def encode_barycenters(centers, min_val, range_val, out):
         centers, centers.shape[0], min_val, range_val, out))
 
 
-def find_closest_tri(queries, tri_enc, out):
+def find_closest_tri(queries, enc_idx, tri_enc, out):
     ker_find = DELAUNAY_MODULE.get_function('kerFindClosestTri')
     ker_find((N_BLOCKS,), (BLOCK_SZ,), (
-        queries, queries.shape[0], tri_enc, tri_enc.shape[0], out))
+        queries, queries.shape[0], enc_idx, tri_enc, tri_enc.shape[0], out))
