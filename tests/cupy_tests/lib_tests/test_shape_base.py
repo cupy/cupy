@@ -106,3 +106,11 @@ def test_apply_along_axis_invalid_axis():
         for axis in [-3, 2]:
             with pytest.raises(numpy.AxisError):
                 xp.apply_along_axis(xp.sum, axis, a)
+
+
+class TestApplyOverAxes(unittest.TestCase):
+    @testing.numpy_cupy_array_equal()
+    def test_simple(self,xp):
+        a = xp.arange(24).reshape(2, 3, 4)
+        aoa_a = xp.apply_over_axes(xp.sum, a, [0, 2])
+        return aoa_a
