@@ -230,6 +230,7 @@ def _as_float_array(x, check_finite=False):
     """Convert the input into a C contiguous float array.
     NB: Upcasts half- and single-precision floats to double precision.
     """
+    x = cupy.asarray(x)
     x = cupy.ascontiguousarray(x)
     dtyp = _get_dtype(x.dtype)
     x = x.astype(dtyp, copy=False)

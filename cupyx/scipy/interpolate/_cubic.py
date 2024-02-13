@@ -580,13 +580,6 @@ class CubicSpline(CubicHermiteSpline):
         Interpolation axis. The same axis which was passed to the
         constructor.
 
-    Methods
-    -------
-    __call__
-    derivative
-    antiderivative
-    integrate
-
     See Also
     --------
     scipy.interpolate.CubicSpline

@@ -1,4 +1,5 @@
 import operator
+from math import prod
 
 from numpy.core.multiarray import normalize_axis_index
 
@@ -9,19 +10,6 @@ from cupyx.scipy.interpolate._bspline import _get_dtype, _as_float_array
 
 from cupyx.scipy.interpolate._bspline import (
     _get_module_func, INTERVAL_MODULE, D_BOOR_MODULE, BSpline)
-
-
-# vendored from scipy/_lib/_util.py
-def prod(iterable):
-    """
-    Product of a sequence of numbers.
-    Faster than np.prod for short lists like array shapes, and does
-    not overflow if using Python integers.
-    """
-    product = 1
-    for x in iterable:
-        product *= x
-    return product
 
 
 #################################
