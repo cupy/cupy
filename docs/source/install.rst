@@ -23,11 +23,11 @@ Requirements
 Python Dependencies
 ~~~~~~~~~~~~~~~~~~~
 
-NumPy/SciPy-compatible API in CuPy v12 is based on NumPy 1.24 and SciPy 1.10, and has been tested against the following versions:
+NumPy/SciPy-compatible API in CuPy v13 is based on NumPy 1.26 and SciPy 1.11, and has been tested against the following versions:
 
-* `NumPy <https://numpy.org/>`_: v1.22 / v1.23 / v1.24
+* `NumPy <https://numpy.org/>`_: v1.22 / v1.23 / v1.24 / v1.25 / v1.26
 
-* `SciPy <https://scipy.org/>`_ (*optional*): v1.7 / v1.8 / v1.9 / v1.10
+* `SciPy <https://scipy.org/>`_ (*optional*): v1.7 / v1.8 / v1.9 / v1.10 / v1.11
 
     * Required only when coping sparse matrices from GPU to CPU (see :doc:`../reference/scipy_sparse`.)
 
@@ -50,7 +50,7 @@ Additional CUDA Libraries
 
 Part of the CUDA features in CuPy will be activated only when the corresponding libraries are installed.
 
-* `cuTENSOR <https://developer.nvidia.com/cutensor>`_: v1.6 / v1.7
+* `cuTENSOR <https://developer.nvidia.com/cutensor>`_: v2.0
 
     * The library to accelerate tensor operations. See :doc:`../reference/environment` for the details.
 
@@ -81,12 +81,6 @@ Package names are different depending on your CUDA Toolkit version.
 
    * - CUDA
      - Command
-   * - **v10.2** (x86_64 / aarch64)
-     - ``pip install cupy-cuda102``
-   * - **v11.0** (x86_64)
-     - ``pip install cupy-cuda110``
-   * - **v11.1** (x86_64)
-     - ``pip install cupy-cuda111``
    * - **v11.2 ~ 11.8** (x86_64 / aarch64)
      - ``pip install cupy-cuda11x``
    * - **v12.x** (x86_64 / aarch64)
@@ -116,7 +110,7 @@ Please make sure that only one CuPy package (``cupy`` or ``cupy-cudaXX`` where X
 Installing CuPy from Conda-Forge
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Conda/Anaconda is a cross-platform package management solution widely used in scientific computing and other fields.
+Conda is a cross-language, cross-platform package management solution widely used in scientific computing and other fields.
 The above ``pip install`` instruction is compatible with ``conda`` environments. Alternatively, for both Linux (x86_64,
 ppc64le, aarch64-sbsa) and
 Windows once the CUDA driver is correctly set up, you can also install CuPy from the ``conda-forge`` channel::
@@ -124,9 +118,16 @@ Windows once the CUDA driver is correctly set up, you can also install CuPy from
     $ conda install -c conda-forge cupy
 
 and ``conda`` will install a pre-built CuPy binary package for you, along with the CUDA runtime libraries
-(``cudatoolkit``). It is not necessary to install CUDA Toolkit in advance.
+(``cudatoolkit`` for CUDA 11 and below, or ``cuda-XXXXX`` for CUDA 12 and above). It is not necessary to install CUDA Toolkit in advance.
 
-Conda has a built-in mechanism to determine and install the latest version of ``cudatoolkit`` supported by your driver.
+If you aim at minimizing the installation footprint, you can install the ``cupy-core`` package::
+
+    $ conda install -c conda-forge cupy-core
+
+which only depends on ``numpy``. None of the CUDA libraries will be installed this way, and it is your responsibility to install the needed
+dependencies youself, either from conda-forge or elsewhere. This is equivalent of the ``cupy-cudaXX`` wheel installation.
+
+Conda has a built-in mechanism to determine and install the latest version of ``cudatoolkit`` or any other CUDA components supported by your driver.
 However, if for any reason you need to force-install a particular CUDA version (say 11.8), you can do::
 
     $ conda install -c conda-forge cupy cuda-version=11.8
@@ -147,10 +148,12 @@ However, if for any reason you need to force-install a particular CUDA version (
 
 .. note::
 
-    If you did not install CUDA Toolkit by yourself, the ``nvcc`` compiler might not be available, as
+    If you did not install CUDA Toolkit by yourself, for CUDA 11 and below the ``nvcc`` compiler might not be available, as
     the ``cudatoolkit`` package from ``conda-forge`` does not include the ``nvcc`` compiler toolchain. If you would like to use
     it from a local CUDA installation, you need to make sure the version of CUDA Toolkit matches that of ``cudatoolkit`` to
-    avoid surprises.
+    avoid surprises. For CUDA 12 and above, ``nvcc`` can be installed on a per-``conda`` environment basis via
+
+        $ conda install -c conda-forge cuda-nvcc
 
 
 .. _install_cupy_from_source:

@@ -22,3 +22,12 @@ from cupyx._pinned_array import zeros_pinned  # NOQA
 from cupyx._pinned_array import zeros_like_pinned  # NOQA
 
 from cupyx._gufunc import GeneralizedUFunc  # NOQA
+
+
+def __getattr__(key):
+    if key == 'lapack':
+        import cupyx.lapack
+        return cupyx.lapack
+
+    raise AttributeError(
+        "module '{}' has no attribute '{}'".format(__name__, key))

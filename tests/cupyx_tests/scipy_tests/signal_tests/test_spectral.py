@@ -1,4 +1,3 @@
-
 import pytest
 
 import numpy as np
@@ -1229,3 +1228,185 @@ class TestSTFT:
             Zp0, input_onesided=True, boundary=True, scaling='psd')[1]
         results.append(x1)
         return results
+
+
+@testing.with_requires('scipy')
+class TestVectorstrength:
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_single_1dperiod(self, xp, scp):
+        events = xp.array([.5])
+        period = 5.
+
+        strength, phase = scp.signal.vectorstrength(events, period)
+        return strength, phase
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_single_2dperiod(self, xp, scp):
+        events = xp.array([.5])
+        period = [1, 2, 5.]
+
+        strength, phase = scp.signal.vectorstrength(events, period)
+        return strength, phase
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_equal_1dperiod(self, xp, scp):
+        events = xp.array([.25, .25, .25, .25, .25, .25])
+        period = 2
+        strength, phase = scp.signal.vectorstrength(events, period)
+        return strength, phase
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_equal_2dperiod(self, xp, scp):
+        events = xp.array([.25, .25, .25, .25, .25, .25])
+        period = [1, 2, ]
+
+        strength, phase = scp.signal.vectorstrength(events, period)
+        return strength, phase
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_spaced_1dperiod(self, xp, scp):
+        events = xp.array([.1, 1.1, 2.1, 4.1, 10.1])
+        period = 1
+
+        strength, phase = scp.signal.vectorstrength(events, period)
+        return strength, phase
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_spaced_2dperiod(self, xp, scp):
+        events = xp.array([.1, 1.1, 2.1, 4.1, 10.1])
+        period = [1, .5]
+
+        strength, phase = scp.signal.vectorstrength(events, period)
+        return strength, phase
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_partial_1dperiod(self, xp, scp):
+        events = xp.array([.25, .5, .75])
+        period = 1
+
+        strength, phase = scp.signal.vectorstrength(events, period)
+        return strength, phase
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_partial_2dperiod(self, xp, scp):
+        events = xp.array([.25, .5, .75])
+        period = [1., 1., 1., 1.]
+
+        strength, phase = scp.signal.vectorstrength(events, period)
+        return strength, phase
+
+    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-7, atol=1e-7)
+    def test_opposite_1dperiod(self, xp, scp):
+        events = xp.array([0, .25, .5, .75])
+        period = 1.
+        strength, _ = scp.signal.vectorstrength(events, period)
+        return strength
+
+    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-7, atol=1e-7)
+    def test_opposite_2dperiod(self, xp, scp):
+        events = xp.array([0, .25, .5, .75])
+        period = [1.] * 10
+        strength, _ = scp.signal.vectorstrength(events, period)
+        return strength
+
+    @pytest.mark.parametrize('mod', [(cupy, cupyx.scipy), (np, scipy)])
+    def test_2d_events_ValueError(self, mod):
+        xp, scp = mod
+        events = xp.array([[1, 2]])
+        period = 1.
+        with pytest.raises(ValueError):
+            scp.signal.vectorstrength(events, period)
+
+    @pytest.mark.parametrize('mod', [(cupy, cupyx.scipy), (np, scipy)])
+    def test_2d_period_ValueError(self, mod):
+        xp, scp = mod
+        events = 1.
+        period = xp.array([[1]])
+        with pytest.raises(ValueError):
+            scp.signal.vectorstrength(events, period)
+
+    @pytest.mark.parametrize('mod', [(cupy, cupyx.scipy), (np, scipy)])
+    def test_zero_period_ValueError(self, mod):
+        _, scp = mod
+        events = 1.
+        period = 0
+        with pytest.raises(ValueError):
+            scp.signal.vectorstrength(events, period)
+
+    @pytest.mark.parametrize('mod', [(cupy, cupyx.scipy), (np, scipy)])
+    def test_negative_period_ValueError(self, mod):
+        _, scp = mod
+        events = 1.
+        period = -1
+        with pytest.raises(ValueError):
+            scp.signal.vectorstrength(events, period)
+
+
+@testing.with_requires('scipy')
+class TestCoherence:
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_identical_input(self, xp, scp):
+        x = testing.shaped_random((20,), xp, xp.float64, scale=1.0)
+        y = xp.copy(x)  # So `y is x` -> False
+
+        f1, C1 = scp.signal.coherence(x, y, nperseg=10)
+        return f1, C1
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_phase_shifted_input(self, xp, scp):
+        x = testing.shaped_random((20,), xp, xp.float64, scale=1.0)
+        y = -x
+
+        f1, C1 = scp.signal.coherence(x, y, nperseg=10)
+        return f1, C1
+
+
+@testing.with_requires('scipy')
+class TestSpectrogram:
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_average_all_segments(self, xp, scp):
+        x = testing.shaped_random((1024,), xp, xp.float64, scale=1.0)
+
+        fs = 1.0
+        window = ('tukey', 0.25)
+        nperseg = 16
+        noverlap = 2
+
+        f, _, P = scp.signal.spectrogram(x, fs, window, nperseg, noverlap)
+        return f, P
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_window_external(self, xp, scp):
+        x = testing.shaped_random((1024,), xp, xp.float64, scale=1.0)
+
+        fs = 1.0
+        win = scp.signal.get_window(('tukey', 0.25), 16)
+        fe, _, Pe = scp.signal.spectrogram(
+            x, fs, win, nperseg=None, noverlap=2)
+
+        with pytest.raises(ValueError):
+            scp.signal.spectrogram(x, fs, win, nperseg=8)
+
+        win_err = scp.signal.get_window(('tukey', 0.25), 2048)
+        with pytest.raises(ValueError):
+            scp.signal.spectrogram(x, fs, win_err, nperseg=None)
+        return fe, Pe
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_short_data(self, xp, scp):
+        x = testing.shaped_random((1024,), xp, xp.float64, scale=1.0)
+        fs = 1.0
+
+        # for string-like window, input signal length < nperseg value gives
+        # UserWarning, sets nperseg to x.shape[-1]
+        # default nperseg
+        f, _, p = scp.signal.spectrogram(x, fs, window=('tukey', 0.25))
+
+        # user-specified nperseg
+        f1, _, p1 = scp.signal.spectrogram(
+            x, fs, window=('tukey', 0.25), nperseg=1025)
+        # to compare w/default
+        f2, _, p2 = scp.signal.spectrogram(x, fs, nperseg=256)
+        # compare w/user-spec'd
+        f3, _, p3 = scp.signal.spectrogram(x, fs, nperseg=1024)
+        return f, p, f1, p1, f2, p2, f3, p3

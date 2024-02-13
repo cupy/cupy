@@ -7,9 +7,6 @@ from cupy.linalg import _util
 from cupy._core import _dtype
 
 
-_cuda_runtime_version = -1
-
-
 def _syevd(a, UPLO, with_eigen_vector, overwrite_a=False):
     from cupy_backends.cuda.libs import cublas
     from cupy_backends.cuda.libs import cusolver
@@ -40,11 +37,7 @@ def _syevd(a, UPLO, with_eigen_vector, overwrite_a=False):
     else:  # UPLO == 'U'
         uplo = cublas.CUBLAS_FILL_MODE_UPPER
 
-    global _cuda_runtime_version
-    if _cuda_runtime_version < 0:
-        _cuda_runtime_version = runtime.runtimeGetVersion()
-
-    if not runtime.is_hip and _cuda_runtime_version >= 11010:
+    if not runtime.is_hip:
         if dtype.char not in 'fdFD':
             raise RuntimeError('Only float32, float64, complex64, and '
                                'complex128 are supported')

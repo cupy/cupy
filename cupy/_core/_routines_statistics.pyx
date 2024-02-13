@@ -186,10 +186,10 @@ cdef _min_max_preamble = '''
 template <typename T>
 struct min_max_st{
     T value;
-    int index;
+    IndexT index;
     __device__ min_max_st() : index(-1) { }
     __device__ min_max_st(T v) : value(v), index(0) { }
-    __device__ min_max_st(T v, int i) : value(v), index(i) { }
+    __device__ min_max_st(T v, IndexT(i)) : value(v), index(i) { }
 };
 
 template <typename T>

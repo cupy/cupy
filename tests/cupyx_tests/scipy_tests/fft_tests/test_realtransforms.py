@@ -46,7 +46,7 @@ else:
         }
     )
 )
-@testing.with_requires('scipy>=1.4')
+@testing.with_requires('scipy>=1.12.0rc1')
 class TestDctDst:
 
     def _run_transform(self, dct_func, xp, dtype):
@@ -133,7 +133,7 @@ class TestDctDst:
         )
     )
 )
-@testing.with_requires('scipy>=1.4')
+@testing.with_requires('scipy>=1.12.0rc1')
 class TestDctnDstn():
 
     def _run_transform(self, dct_func, xp, dtype):

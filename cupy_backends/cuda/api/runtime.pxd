@@ -36,6 +36,7 @@ IF CUPY_USE_CUDA_PYTHON:
     ctypedef cudaDeviceAttr DeviceAttr
     ctypedef cudaMemoryAdvise MemoryAdvise
 
+    ctypedef cudaStream_t Stream
     ctypedef cudaStreamCallback_t StreamCallback
     ctypedef cudaHostFn_t HostFn
 
@@ -172,6 +173,7 @@ cpdef check_status(int status)
 
 cpdef int driverGetVersion() except? -1
 cpdef int runtimeGetVersion() except? -1
+cpdef int _getCUDAMajorVersion() except? -1
 
 
 ###############################################################################
@@ -319,3 +321,11 @@ cpdef graphExecDestroy(intptr_t graphExec)
 cpdef intptr_t graphInstantiate(intptr_t graph) except? 0
 cpdef graphLaunch(intptr_t graphExec, intptr_t stream)
 cpdef graphUpload(intptr_t graphExec, intptr_t stream)
+
+
+##############################################################################
+# Profiler
+##############################################################################
+
+cpdef profilerStart()
+cpdef profilerStop()

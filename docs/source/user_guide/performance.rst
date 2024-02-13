@@ -67,6 +67,12 @@ The compiled code is also cached in the directory ``${HOME}/.cupy/kernel_cache``
 This allows reusing the compiled kernel binary across the process.
 
 
+Testing with CI/CD
+------------------
+
+When running CI/CD to test CuPy or any downstream packages that heavily rely on CuPy, depending on the use cases the developers/users may find that JIT compilation takes a non-negligible amount of time. To accelerate testing, it is advised to store the artifacts generated under the cache directory (see the above section) in a persistent location (say, a cloud storage) after the test is finished, regardless of success or failure, so that the artifacts can be re-used across runs, avoiding JIT'ing kernels at test time.
+
+
 In-depth profiling
 ------------------
 

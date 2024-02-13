@@ -10,6 +10,7 @@
 namespace jitify {
 namespace detail {
 const char* jitify_ver = _xstr_(CUPY_JITIFY_VERSION_CODE);
+const char* cupy_cache_key = _xstr_(CUPY_CACHE_KEY);
 }  // namespace detail
 }  // namespace jitify
 
@@ -19,6 +20,7 @@ namespace jitify {
 namespace detail {
 
 const char* jitify_ver = _xstr_(CUPY_JITIFY_VERSION_CODE);
+const char* cupy_cache_key = _xstr_(CUPY_CACHE_KEY);
 std::map<std::string, std::string>& get_jitsafe_headers_map();
 const int preinclude_jitsafe_headers_count = 0;
 const char* preinclude_jitsafe_header_names[] = {};
