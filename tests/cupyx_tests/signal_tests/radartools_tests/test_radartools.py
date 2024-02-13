@@ -5,7 +5,6 @@ import scipy
 import cupy
 from cupy import testing
 from cupyx import signal
-from cupy import testing
 
 
 def _numpy_pulse_preprocess(x, normalize, window):
