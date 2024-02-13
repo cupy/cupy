@@ -510,6 +510,100 @@ def _from_spline(spl):
 
 
 class CubicSpline(CubicHermiteSpline):
+    """Cubic spline data interpolator.
+
+    Interpolate data with a piecewise cubic polynomial which is twice
+    continuously differentiable. The result is represented as a `PPoly`
+    instance with breakpoints matching the given data.
+
+    Parameters
+    ----------
+    x : array_like, shape (n,)
+        1-D array containing values of the independent variable.
+        Values must be real, finite and in strictly increasing order.
+    y : array_like, shape (n,)
+        Array containing values of the dependent variable. It can have
+        arbitrary number of dimensions, but the length along ``axis``
+        (see below) must match the length of ``x``. Values must be finite.
+    axis : int, optional
+        Axis along which `y` is assumed to be varying. Meaning that for
+        ``x[i]`` the corresponding values are ``np.take(y, i, axis=axis)``.
+        Default is 0.
+    bc_type : string or 2-tuple, optional
+        Boundary condition type. Two additional equations, given by the
+        boundary conditions, are required to determine all coefficients of
+        polynomials on each segment.
+
+        If `bc_type` is a string, then the specified condition will be applied
+        at both ends of a spline. Available conditions are:
+
+        * 'not-a-knot' (default): The first and second segment at a curve end
+          are the same polynomial. It is a good default when there is no
+          information on boundary conditions.
+        * 'periodic': The interpolated functions is assumed to be periodic
+          of period ``x[-1] - x[0]``. The first and last value of `y` must be
+          identical: ``y[0] == y[-1]``. This boundary condition will result in
+          ``y'[0] == y'[-1]`` and ``y''[0] == y''[-1]``.
+        * 'clamped': The first derivative at curves ends are zero. Assuming
+          a 1D `y`, ``bc_type=((1, 0.0), (1, 0.0))`` is the same condition.
+        * 'natural': The second derivative at curve ends are zero. Assuming
+          a 1D `y`, ``bc_type=((2, 0.0), (2, 0.0))`` is the same condition.
+
+        If `bc_type` is a 2-tuple, the first and the second value will be
+        applied at the curve start and end respectively. The tuple values can
+        be one of the previously mentioned strings (except 'periodic') or a
+        tuple `(order, deriv_values)` allowing to specify arbitrary
+        derivatives at curve ends:
+
+        * ``order``: the derivative order, 1 or 2.
+        * ``deriv_value``: array_like containing derivative values, shape must
+          be the same as `y`, excluding ``axis`` dimension. For example, if
+          `y` is 1-D, then `deriv_value` must be a scalar. If `y` is 3-D with
+          the shape (n0, n1, n2) and axis=2, then `deriv_value` must be 2-D
+          and have the shape (n0, n1).
+    extrapolate : {bool, 'periodic', None}, optional
+        If bool, determines whether to extrapolate to out-of-bounds points
+        based on first and last intervals, or to return NaNs. If 'periodic',
+        periodic extrapolation is used. If None (default), ``extrapolate`` is
+        set to 'periodic' for ``bc_type='periodic'`` and to True otherwise.
+
+    Attributes
+    ----------
+    x : ndarray, shape (n,)
+        Breakpoints. The same ``x`` which was passed to the constructor.
+    c : ndarray, shape (4, n-1, ...)
+        Coefficients of the polynomials on each segment. The trailing
+        dimensions match the dimensions of `y`, excluding ``axis``.
+        For example, if `y` is 1-d, then ``c[k, i]`` is a coefficient for
+        ``(x-x[i])**(3-k)`` on the segment between ``x[i]`` and ``x[i+1]``.
+    axis : int
+        Interpolation axis. The same axis which was passed to the
+        constructor.
+
+    Methods
+    -------
+    __call__
+    derivative
+    antiderivative
+    integrate
+
+    See Also
+    --------
+    scipy.interpolate.CubicSpline
+
+    Notes
+    -----
+    Parameters `bc_type` and ``extrapolate`` work independently, i.e. the
+    former controls only construction of a spline, and the latter only
+    evaluation.
+
+    When a boundary condition is 'not-a-knot' and n = 2, it is replaced by
+    a condition that the first derivative is equal to the linear interpolant
+    slope. When both boundary conditions are 'not-a-knot' and n = 3, the
+    solution is sought as a parabola passing through given points.
+
+    """
+
     def __init__(self, x, y, axis=0, bc_type='not-a-knot', extrapolate=None):
         x = cupy.asarray(x)
         y = cupy.asarray(y)
