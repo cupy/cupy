@@ -14,5 +14,6 @@ export NVCC="ccache nvcc"
 CXX=/usr/lib/ccache/g++ CUDA_PATH="/usr/local/cuda" pip install -v ".[test]"
 "$ACTIONS/unittest.sh" "not slow" \
     "cupyx_tests/scipy_tests/sparse_tests/csgraph_tests" \
-    "cupyx_tests/scipy_tests/spatial_tests"
+    "cupyx_tests/scipy_tests/spatial_tests/test_kdtree_pylibraft.py" \
+    "cupyx_tests/scipy_tests/spatial_tests/test_distance.py"
 "$ACTIONS/cleanup.sh"
