@@ -12,8 +12,7 @@ from cupyx.scipy.spatial.delaunay_2d._kernels import (
     compact_tris, update_vert_idx, find_closest_tri_to_point,
     get_morton_number, compute_distance_2d, init_predicate,
     make_key_from_tri_has_vert, check_if_coplanar_points,
-    find_vertex_neighbors, compute_bounding_boxes, encode_bounding_boxes,
-    compute_barycenters, encode_barycenters, find_closest_tri)
+    find_vertex_neighbors, encode_barycenters, find_closest_tri)
 
 
 def _compute_triangle_orientation(det):
@@ -54,6 +53,10 @@ class GDel2D:
 
         self._org_flip_num = []
         self._node_neighbors = None
+
+        self._tri_enc = None
+        self._enc_idx = None
+        self._centers = None
 
     @property
     def counters(self):
@@ -551,45 +554,26 @@ class GDel2D:
             self._node_neighbors = indptr, indices.astype(cupy.int32)
         return self._node_neighbors
 
-    def triangle_bounding_boxes(self):
-        out = cupy.empty((self.triangles.shape[0], 2, 2), dtype=cupy.float64)
-        compute_bounding_boxes(self.triangles, self.points, out)
+    def encode_barycenters(self):
+        out = cupy.empty(self.triangles.shape[0], dtype=cupy.uint64)
+        encode_barycenters(self.triangles, self.points, self.min_val,
+                           self.range_val, out)
         return out
 
-    def triangle_barycenters(self):
-        out = cupy.empty((self.triangles.shape[0], 2), dtype=cupy.float64)
-        compute_barycenters(self.triangles, self.points, out)
-        return out
+    def find_closest_tri(self, points, eps=0.0, find_coords=False):
+        if self._tri_enc is None:
+            self._tri_enc = self.encode_barycenters()
+            self._enc_idx = cupy.argsort(self._tri_enc)
 
-    def encode_bounding_boxes(self, points=None):
-        encode_twice = False
-        if points is None:
-            out = cupy.empty(self.triangles.shape[0], dtype=cupy.int64)
-            bboxes = self.triangle_bounding_boxes()
-        else:
-            out = cupy.empty(points.shape[0], dtype=cupy.int64)
-            encode_twice = True
-            bboxes = points
-
-        encode_bounding_boxes(bboxes, self.min_val, self.range_val,
-                              encode_twice, out)
-        return out, bboxes
-
-    def encode_barycenters(self, points=None):
-        if points is None:
-            out = cupy.empty(self.triangles.shape[0], dtype=cupy.uint64)
-            centers = self.triangle_barycenters()
-        else:
-            out = cupy.empty(points.shape[0], dtype=cupy.uint64)
-            centers = points
-
-        encode_barycenters(centers, self.min_val, self.range_val, out)
-        return out, centers
-
-    def find_closest_tri(self, points):
-        tri_enc, _ = self.encode_barycenters()
-        sort_enc = cupy.argsort(tri_enc)
-        points_enc, _ = self.encode_barycenters(points)
-
+        coords = None
         out = cupy.empty(points.shape[0], dtype=cupy.int32)
-        find_closest_tri(points_enc, sort_enc, tri_enc, out)
+        if find_coords:
+            coords = cupy.empty((points.shape[0], points.shape[-1] + 1),
+                                dtype=cupy.float64)
+
+        find_closest_tri(points, self.triangles, self._enc_idx, self._tri_enc,
+                         self.points, self.min_val, self.range_val, eps,
+                         find_coords, out, coords)
+        if find_coords:
+            return out, coords
+        return out
