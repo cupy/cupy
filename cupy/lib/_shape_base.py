@@ -100,8 +100,7 @@ def apply_over_axes(func, a, axes):
     Notes
     -----
     This function is equivalent to tuple axis arguments to reorderable ufuncs
-    with keepdims=True. Tuple axis arguments to ufuncs have been available since
-    version 1.7.0.
+    with keepdims=True. Tuple axis arguments to ufuncs have been available.
 
     Examples
     --------
@@ -120,7 +119,7 @@ def apply_over_axes(func, a, axes):
     >>> np.apply_over_axes(np.sum, a, [0,2])
     array([[[ 60],
             [ 92],
-            [124]]])zsd
+            [124]]])
 
     Tuple axis arguments to ufuncs are equivalent:
 
@@ -137,8 +136,7 @@ def apply_over_axes(func, a, axes):
     for axis in axes:
         if axis < 0:
             axis = N + axis
-        args = (val, axis)
-        res = func(*args)
+        res = func(val, axis)
         if res.ndim == val.ndim:
             val = res
         else:
