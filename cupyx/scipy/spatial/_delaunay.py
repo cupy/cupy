@@ -87,8 +87,7 @@ class Delaunay:
             raise ValueError(
                 'incremental argument is not supported by CuPy.')
 
-        self.points = cupy.array(points, cupy.float64, copy=True)
-        # self._points = cupy.unique(self._points, axis=0)
+        self.points = points
         self._triangulator = GDel2D(self.points)
         self.simplices, self.neighbors = self._triangulator.compute()
 
