@@ -116,7 +116,7 @@ class TestRandomState(unittest.TestCase):
     def test_seed_not_none(self, dtype):
         self.check_seed(dtype(0))
 
-    @testing.for_dtypes([numpy.complex_])
+    @testing.for_dtypes([numpy.complex128])
     def test_seed_invalid_type_complex(self, dtype):
         with self.assertRaises(TypeError):
             self.rs.seed(dtype(0))

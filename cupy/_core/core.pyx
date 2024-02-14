@@ -1551,7 +1551,7 @@ cdef class _ndarray_base:
             >>> import cupy
             >>> a = cupy.zeros((2,))
             >>> i = cupy.arange(10000) % 2
-            >>> v = cupy.arange(10000).astype(cupy.float_)
+            >>> v = cupy.arange(10000).astype(cupy.float64)
             >>> a[i] = v
             >>> a  # doctest: +SKIP
             array([9150., 9151.])
@@ -1562,7 +1562,7 @@ cdef class _ndarray_base:
             >>> import numpy
             >>> a_cpu = numpy.zeros((2,))
             >>> i_cpu = numpy.arange(10000) % 2
-            >>> v_cpu = numpy.arange(10000).astype(numpy.float_)
+            >>> v_cpu = numpy.arange(10000).astype(numpy.float64)
             >>> a_cpu[i_cpu] = v_cpu
             >>> a_cpu
             array([9998., 9999.])
