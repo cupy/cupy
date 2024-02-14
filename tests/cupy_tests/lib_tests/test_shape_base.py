@@ -110,7 +110,20 @@ def test_apply_along_axis_invalid_axis():
 
 class TestApplyOverAxes(unittest.TestCase):
     @testing.numpy_cupy_array_equal()
-    def test_simple(self,xp):
+    def test_simple(self, xp):
         a = xp.arange(24).reshape(2, 3, 4)
         aoa_a = xp.apply_over_axes(xp.sum, a, [0, 2])
         return aoa_a
+
+    def test_apply_over_axis_invalid_0darr(self):
+        for xp in [numpy, cupy]:
+            a = xp.array(42)
+            with pytest.raises(AttributeError):
+                xp.apply_over_axes(xp.sum, 0, a)
+
+    def test_apply_over_axis_invalid_axis(self):
+        for xp in [numpy, cupy]:
+            a = xp.ones((8, 4))
+            for axis in [-3, 2]:
+                with pytest.raises(AttributeError):
+                    xp.apply_over_axes(xp.sum, axis, a)

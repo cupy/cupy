@@ -2,9 +2,6 @@ from numpy.lib import index_tricks
 
 import cupy
 from cupy._core import internal
-from cupy._creation.from_data import array, asarray
-from cupy._manipulation.dims import expand_dims
-from cupy._manipulation.kind import asfarray
 
 
 def apply_along_axis(func1d, axis, arr, *args, **kwargs):
@@ -64,6 +61,7 @@ def apply_along_axis(func1d, axis, arr, *args, **kwargs):
         buff = cupy.moveaxis(buff, -1, axis)
 
     return buff
+
 
 def apply_over_axes(func, a, axes):
     """
@@ -129,18 +127,17 @@ def apply_over_axes(func, a, axes):
             [124]]])
 
     """
-    val = asarray(a)
+    val = cupy.asarray(a)
     N = a.ndim
-    if array(axes).ndim == 0:
+    if cupy.array(axes).ndim == 0:
         axes = (axes,)
     for axis in axes:
-        if axis < 0:
-            axis = N + axis
+        axis = internal._normalize_axis_index(axis, N)
         res = func(val, axis)
         if res.ndim == val.ndim:
             val = res
         else:
-            res = expand_dims(res, axis)
+            res = cupy.expand_dims(res, axis)
             if res.ndim == val.ndim:
                 val = res
             else:
