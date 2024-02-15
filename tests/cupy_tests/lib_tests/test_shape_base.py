@@ -119,7 +119,7 @@ class TestApplyOverAxes(unittest.TestCase):
         for xp in [numpy, cupy]:
             a = xp.array(42)
             with pytest.raises(AttributeError):
-                xp.apply_over_axes(xp.sum, 0, a)
+                xp.apply_over_axes(xp.sum, a, 0)
 
     def test_apply_over_axis_invalid_axis(self):
         for xp in [numpy, cupy]:
