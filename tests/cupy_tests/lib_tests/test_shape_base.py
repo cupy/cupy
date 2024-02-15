@@ -116,14 +116,30 @@ class TestApplyOverAxes(unittest.TestCase):
         return aoa_a
 
     def test_apply_over_axis_invalid_0darr(self):
-        for xp in [numpy, cupy]:
-            a = xp.array(42)
-            with pytest.raises(AttributeError):
-                xp.apply_over_axes(xp.sum, a, 0)
+        # cupy will not accept 0darr, but numpy does
+        with pytest.raises(numpy.AxisError):
+            a = cupy.array(42)
+            cupy.apply_over_axes(cupy.sum, a, 0)
+        # test for numpy, it can run without error
+        a = numpy.array(42)
+        numpy.apply_over_axes(numpy.sum, a, 0)
+
+    @testing.numpy_cupy_array_equal()
+    def test_apply_over_axis_shape_preserve_func(self, xp):
+        a = xp.arange(10).reshape(2, 5, 1)
+
+        def normalize(arr, axis):
+            """shape-preserve operation, return {x_i/sum(x)}"""
+            row_sums = arr.sum(axis=axis)
+            return a / row_sums[:, xp.newaxis]
+
+        aoa_a = xp.apply_over_axes(normalize, a, 1)
+        assert a.shape == aoa_a.shape
+        return aoa_a
 
     def test_apply_over_axis_invalid_axis(self):
         for xp in [numpy, cupy]:
             a = xp.ones((8, 4))
-            for axis in [-3, 2]:
-                with pytest.raises(AttributeError):
-                    xp.apply_over_axes(xp.sum, a, axis)
+            axis = 3
+            with pytest.raises(numpy.AxisError):
+                xp.apply_over_axes(xp.sum, a, axis)
