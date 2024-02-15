@@ -126,4 +126,4 @@ class TestApplyOverAxes(unittest.TestCase):
             a = xp.ones((8, 4))
             for axis in [-3, 2]:
                 with pytest.raises(AttributeError):
-                    xp.apply_over_axes(xp.sum, axis, a)
+                    xp.apply_over_axes(xp.sum, a, axis)
