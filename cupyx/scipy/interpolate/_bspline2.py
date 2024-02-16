@@ -1,48 +1,15 @@
 import operator
+from math import prod
 
 from numpy.core.multiarray import normalize_axis_index
 
 import cupy
 from cupyx.scipy import sparse
 from cupyx.scipy.sparse.linalg import spsolve
+from cupyx.scipy.interpolate._bspline import _get_dtype, _as_float_array
 
 from cupyx.scipy.interpolate._bspline import (
     _get_module_func, INTERVAL_MODULE, D_BOOR_MODULE, BSpline)
-
-
-def _get_dtype(dtype):
-    """Return np.complex128 for complex dtypes, np.float64 otherwise."""
-    if cupy.issubdtype(dtype, cupy.complexfloating):
-        return cupy.complex_
-    else:
-        return cupy.float_
-
-
-def _as_float_array(x, check_finite=False):
-    """Convert the input into a C contiguous float array.
-
-    NB: Upcasts half- and single-precision floats to double precision.
-    """
-    x = cupy.asarray(x)
-    x = cupy.ascontiguousarray(x)
-    dtyp = _get_dtype(x.dtype)
-    x = x.astype(dtyp, copy=False)
-    if check_finite and not cupy.isfinite(x).all():
-        raise ValueError("Array must not contain infs or nans.")
-    return x
-
-
-# vendored from scipy/_lib/_util.py
-def prod(iterable):
-    """
-    Product of a sequence of numbers.
-    Faster than np.prod for short lists like array shapes, and does
-    not overflow if using Python integers.
-    """
-    product = 1
-    for x in iterable:
-        product *= x
-    return product
 
 
 #################################
