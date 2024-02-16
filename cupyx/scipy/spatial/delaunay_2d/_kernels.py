@@ -2299,7 +2299,7 @@ __device__ bool isPointInTriangle(
         RealType* s, RealType* t, double eps) {
 
     RealType A = 0.5 * (
-        -p1._p[1] * p2._p[0] +
+        (-p1._p[1]) * p2._p[0] +
         p0._p[1] * (-p1._p[0] + p2._p[0]) +
         p0._p[0] * (p1._p[1] - p2._p[1]) +
         p1._p[0] * p2._p[1]);
@@ -2316,10 +2316,12 @@ __device__ bool isPointInTriangle(
     *s = 1.0 / (2.0 * A) * unS;
     *t = 1.0 / (2.0 * A) * unT;
 
+    /**
     return (unS >= 0 &&
             unT >= 0 &&
             ((unS + unT + eps) <= 2 * A * sign ||
-             (unS + unT - eps) <= 2 * A * sign));
+             (unS + unT - eps) <= 2 * A * sign));**/
+    return unT >= unS >= 0 && unS + unT <= 2 * A * sign;
 }
 
 __global__ void findClosestTriToPoint(
@@ -2531,11 +2533,11 @@ const double*     range
     const long long maxInt = 0x3fffffff;
 
     for(int i = 0; i < 2; i++) {
-        RealType v = center._p[0];
+        RealType v = center._p[i];
         long long xV = ( ( v - minVal[0] ) / range[0] * 1073741824.0 );
 
         if ( xV < 0 )
-            xV = -xV;
+            xV = 0;
 
         if ( xV > maxInt )
             xV = maxInt;
@@ -2601,8 +2603,11 @@ bool                leftEnd
 
         if(midTri > query) {
             right = mid - 1;
-        } else {
+        } else if(query > midTri) {
             left = mid + 1;
+        } else {
+            left = mid;
+            right = mid;
         }
     }
 
@@ -2625,18 +2630,24 @@ double              eps,
 bool                findCoords,
 int*                out,
 RealType*           coords
+// int*                debug
 ) {
     for (int idx = getCurThreadIdx(); idx < nQueries; idx += getThreadNum()) {
         Point2 query = queries[idx];
         Point2 lower = Point2 {
-            (query._p[0] - eps) * 0.5,
-            (query._p[1] - eps) * 0.5
+            {
+                (query._p[0] - eps) * 0.25,
+                (query._p[1] - eps) * 0.25
+            }
         };
         Point2 upper = Point2 {
-            (query._p[0] + eps) * 1.5,
-            (query._p[1] + eps) * 1.5
+            {
+                (query._p[0] + eps) * 1.25,
+                (query._p[1] + eps) * 1.25
+            }
         };
 
+        unsigned long long enc = zCurvePoint2(query, minVal, range);
         unsigned long long lowerEnc = zCurvePoint2(lower, minVal, range);
         unsigned long long upperEnc = zCurvePoint2(upper, minVal, range);
 
@@ -2646,15 +2657,20 @@ RealType*           coords
             upperEnc = tmp;
         }
 
+        if(enc > upperEnc) {
+            upperEnc = enc;
+        }
+
         int start = zCurveBisect(lowerEnc, encIdx, triEnc, nTri, true);
         int end = zCurveBisect(upperEnc, encIdx, triEnc, nTri, false);
 
         bool isInTri = false;
         int trianglePos = -1;
+        int stoppedAt = -1;
         RealType s = -1.0;
         RealType t = -1.0;
 
-        for(int i = start; i < end && !isInTri; i++) {
+        for(int i = start; i <= end && !isInTri; i++) {
             Tri curTri = tri[encIdx[i]];
 
             Point2 p0 = triPoints[curTri._v[0]];
@@ -2664,6 +2680,7 @@ RealType*           coords
             isInTri = isPointInTriangle(query, p0, p1, p2, &s, &t, eps);
             if(isInTri) {
                 trianglePos = encIdx[i];
+                stoppedAt = i;
             }
         }
 
@@ -2976,4 +2993,5 @@ def find_closest_tri(queries, tri, enc_idx, tri_enc, tri_points,
     ker_find = DELAUNAY_MODULE.get_function('kerFindClosestTri')
     ker_find((N_BLOCKS,), (BLOCK_SZ,), (
         queries, queries.shape[0], tri, tri.shape[0], enc_idx, tri_enc,
-        tri_points, min_val, range_val, eps, find_coords, out, coords))
+        tri_points, min_val, range_val, eps, find_coords, out, coords,
+    ))
