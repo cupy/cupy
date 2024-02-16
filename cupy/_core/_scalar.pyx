@@ -61,8 +61,8 @@ cdef object _numpy_float32 = numpy.float32
 cdef object _numpy_float64 = numpy.float64
 cdef object _numpy_complex64 = numpy.complex64
 cdef object _numpy_complex128 = numpy.complex128
-cdef object _numpy_float_ = numpy.float_
-cdef object _numpy_complex_ = numpy.complex_
+cdef object _numpy_float_ = numpy.float64
+cdef object _numpy_complex_ = numpy.complex128
 
 
 cpdef str get_typename(dtype):
