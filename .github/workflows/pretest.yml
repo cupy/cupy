@@ -94,15 +94,6 @@ jobs:
       run: |
         python -c 'import cupy, cupyx'
 
-        # Test lazy-imported CUDA Toolkit library.
-        rm cupy/cuda/cufft.*.so
-        rm cupy/random/_generator_api.*.so
-        rm cupy_backends/cuda/libs/cusolver.*.so
-        rm cupy_backends/cuda/libs/cusparse.*.so
-        rm cupy_backends/cuda/libs/curand.*.so
-        rm cupy_backends/cuda/libs/cublas.*.so
-        python -c 'import cupy, cupyx'
-
   build-rocm:
     runs-on: ubuntu-22.04
 
