@@ -100,6 +100,22 @@ struct Point2
     {
         return !equals( pt );
     }
+
+    INLINE_H_D Point2 operator - ( const Point2& pt ) const
+    {
+        return Point2{{ _p[0] - pt._p[0], _p[1] -  pt._p[1]}};
+    }
+
+    INLINE_H_D Point2 operator + ( const Point2& pt ) const
+    {
+        return Point2{{ _p[0] + pt._p[0], _p[1] + pt._p[1]}};
+    }
+
+    INLINE_H_D Point2 operator * ( const double v ) const
+    {
+        return Point2{{ _p[0] * v, _p[1] * v}};
+    }
+
 };
 
 struct Tri
@@ -2321,7 +2337,7 @@ __device__ bool isPointInTriangle(
             unT >= 0 &&
             ((unS + unT + eps) <= 2 * A * sign ||
              (unS + unT - eps) <= 2 * A * sign));**/
-    return unT >= unS >= 0 && unS + unT <= 2 * A * sign;
+    return unT >= 0 && unS >= 0 && unS + unT <= 2 * A * sign;
 }
 
 __global__ void findClosestTriToPoint(
@@ -2521,20 +2537,20 @@ bool*  out
     }
 }
 
-__device__ unsigned long long zCurvePoint2
+__device__ unsigned int zCurvePoint2
 (
 Point2            center,
 const double*     minVal,
 const double*     range
 ) {
-    unsigned long long encoding = 0;
+    unsigned int encoding = 0;
 
-    const long long minInt = 0x0;
-    const long long maxInt = 0x3fffffff;
+    const int minInt = 0x0;
+    const int maxInt = 0x7fff;
 
     for(int i = 0; i < 2; i++) {
         RealType v = center._p[i];
-        long long xV = ( ( v - minVal[0] ) / range[0] * 1073741824.0 );
+        int xV = ( ( v - minVal[0] ) / range[0] * 32768.0 );
 
         if ( xV < 0 )
             xV = 0;
@@ -2542,16 +2558,15 @@ const double*     range
         if ( xV > maxInt )
             xV = maxInt;
 
-        unsigned long long x = static_cast<unsigned long long>(xV);
+        unsigned int x = static_cast<unsigned int>(xV);
 
-        x &= 0x3fffffff;
-        x = (x | (x << 16)) & 0x3fff0000ffff;
-        x = (x | (x << 8)) & 0x3f00ff00ff00ff;
-        x = (x | (x << 4)) & 0x30f0f0f0f0f0f0f;
-        x = (x | (x << 2)) & 0x333333333333333;
-        x = (x | (x << 1)) & 0x555555555555555;
+        x &= 0x7fff;
+        x = (x | (x << 8)) & 0x7f00ff;
+        x = (x | (x << 4)) & 0x70f0f0f;
+        x = (x | (x << 2)) & 0x13333333;
+        x = (x | (x << 1)) & 0x15555555;
 
-        encoding |= (x << i);
+        encoding |= (x << (1 - i));
     }
 
     return encoding;
@@ -2564,13 +2579,15 @@ int                 nTri,
 Point2*             points,
 const double*       minVal,
 const double*       range,
-unsigned long long* out
+unsigned int*       out,
+Point2*             centers
 ) {
     for ( int idx = getCurThreadIdx(); idx < nTri; idx += getThreadNum()) {
         Tri curTri = tri[idx];
         RealType mx = 0;
         RealType my = 0;
 
+        // Point2 prevPoint = points[curTri._v[0]];
         for( int i = 0; i < DEG; i++ ) {
             Point2 curPoint = points[curTri._v[i]];
             mx += curPoint._p[0];
@@ -2582,6 +2599,7 @@ unsigned long long* out
 
         Point2 center = Point2{ { mx, my } };
         out[idx] = zCurvePoint2(center, minVal, range);
+        centers[idx] = center;
     }
 }
 
@@ -2589,7 +2607,7 @@ __device__ int zCurveBisect
 (
 unsigned long long query,
 long long*          encIdx,
-unsigned long long* triEnc,
+unsigned int*       triEnc,
 int                 nTri,
 bool                leftEnd
 ) {
@@ -2599,7 +2617,7 @@ bool                leftEnd
     while(left < right) {
         int mid = (left + right) / 2;
         long long midIdx = encIdx[mid];
-        unsigned long long midTri = triEnc[midIdx];
+        unsigned int midTri = triEnc[midIdx];
 
         if(midTri > query) {
             right = mid - 1;
@@ -2615,54 +2633,173 @@ bool                leftEnd
 }
 
 
+__device__ bool checkPointInTriangle
+(
+int        i,
+Tri*       tri,
+long long* encIdx,
+Point2*    triPoints,
+Point2     query,
+RealType*  s,
+RealType*  t,
+double     eps,
+bool       indirect
+) {
+    int search_idx = indirect ? encIdx[i] : i;
+    Tri curTri = tri[search_idx];
+
+    Point2 p0 = triPoints[curTri._v[0]];
+    Point2 p1 = triPoints[curTri._v[1]];
+    Point2 p2 = triPoints[curTri._v[2]];
+
+    return isPointInTriangle(query, p0, p1, p2, s, t, eps);
+}
+
+
+__device__ bool isQueryInRange
+(
+Point2 query,
+Point2 minRange,
+Point2 maxRange
+) {
+    return (query._p[0] >= minRange._p[0] &&
+            query._p[0] <= maxRange._p[0] &&
+            query._p[1] >= minRange._p[1] &&
+            query._p[1] <= maxRange._p[1]);
+}
+
+__device__ double computePointDist
+(
+Point2 a,
+Point2 b
+) {
+    double xDiff = a._p[0] - b._p[0];
+    double yDiff = a._p[1] - b._p[1];
+
+    return xDiff * xDiff + yDiff * yDiff;
+}
+
+__device__ double dot(Point2 a, Point2 b) {
+    return a._p[0] * b._p[0] + a._p[1] * b._p[1];
+}
+
+__device__ Point2 findClosestPointToTri
+(
+Point2 p,
+Point2 a,
+Point2 b,
+Point2 c
+) {
+    const Point2 ab = b - a;
+    const Point2 ac = c - a;
+    const Point2 ap = p - a;
+
+    const double d1 = dot(ab, ap);
+    const double d2 = dot(ac, ap);
+    if (d1 <= 0.f && d2 <= 0.f) return a; //#1
+
+    const Point2 bp = p - b;
+    const double d3 = dot(ab, bp);
+    const double d4 = dot(ac, bp);
+    if (d3 >= 0.f && d4 <= d3) return b; //#2
+
+    const Point2 cp = p - c;
+    const double d5 = dot(ab, cp);
+    const double d6 = dot(ac, cp);
+    if (d6 >= 0.f && d5 <= d6) return c; //#3
+
+    const double vc = d1 * d4 - d3 * d2;
+    if (vc <= 0.0 && d1 >= 0.0 && d3 <= 0.0)
+    {
+        const double v = d1 / (d1 - d3);
+        return a + ab * v; //#4
+    }
+
+    const double vb = d5 * d2 - d1 * d6;
+    if (vb <= 0.0 && d2 >= 0.0 && d6 <= 0.0)
+    {
+        const double v = d2 / (d2 - d6);
+        return a + ac * v; //#5
+    }
+
+    const double va = d3 * d6 - d5 * d4;
+    if (va <= 0.0 && (d4 - d3) >= 0.0 && (d5 - d6) >= 0.0)
+    {
+        const double v = (d4 - d3) / ((d4 - d3) + (d5 - d6));
+        return b + (c - b) * v; //#6
+    }
+
+    const double denom = 1.0 / (va + vb + vc);
+    const double v = vb * denom;
+    const double w = vc * denom;
+    return a + ab * v + ac * w; //#0
+}
+
+__device__ double computePointTriDist
+(
+int     i,
+Point2  query,
+Point2* centers,
+Tri*    tri,
+Point2* triPoints,
+double* centerDist
+) {
+    Tri curTri = tri[i];
+    Point2 center = centers[i];
+
+    Point2 p0 = triPoints[curTri._v[0]];
+    Point2 p1 = triPoints[curTri._v[1]];
+    Point2 p2 = triPoints[curTri._v[2]];
+
+    Point2 closestToTri = findClosestPointToTri(query, p0, p1, p2);
+    *centerDist = computePointDist(query, center);
+    return computePointDist(query, closestToTri);
+
+}
+
+__device__ bool visitedAlready(int v, int* visited, int maxLen) {
+    bool visitFound = false;
+    for(int i = 0; i < maxLen && !visitFound; i++) {
+        visitFound = visited[i] == v;
+    }
+    return visitFound;
+}
+
 __global__ void kerFindClosestTri
 (
 Point2*             queries,
 int                 nQueries,
 Tri*                tri,
 int                 nTri,
+TriOpp*             triOpp,
 long long*          encIdx,
-unsigned long long* triEnc,
+unsigned int*       triEnc,
 Point2*             triPoints,
+Point2*             centers,
 const double*       minVal,
 const double*       range,
+Point2*             minAxis,
+Point2*             maxAxis,
 double              eps,
 bool                findCoords,
 int*                out,
 RealType*           coords
-// int*                debug
 ) {
+    // For debugging
+    // int* debug = NULL;
+
     for (int idx = getCurThreadIdx(); idx < nQueries; idx += getThreadNum()) {
         Point2 query = queries[idx];
-        Point2 lower = Point2 {
-            {
-                (query._p[0] - eps) * 0.25,
-                (query._p[1] - eps) * 0.25
-            }
-        };
-        Point2 upper = Point2 {
-            {
-                (query._p[0] + eps) * 1.25,
-                (query._p[1] + eps) * 1.25
-            }
-        };
 
-        unsigned long long enc = zCurvePoint2(query, minVal, range);
-        unsigned long long lowerEnc = zCurvePoint2(lower, minVal, range);
-        unsigned long long upperEnc = zCurvePoint2(upper, minVal, range);
-
-        if(lowerEnc > upperEnc) {
-            unsigned long long tmp = lowerEnc;
-            lowerEnc = upperEnc;
-            upperEnc = tmp;
+        if(!isQueryInRange(query, minAxis[0], maxAxis[0])) {
+            out[idx] = -1;
+            continue;
         }
 
-        if(enc > upperEnc) {
-            upperEnc = enc;
-        }
+        unsigned int enc = zCurvePoint2(query, minVal, range);
 
-        int start = zCurveBisect(lowerEnc, encIdx, triEnc, nTri, true);
-        int end = zCurveBisect(upperEnc, encIdx, triEnc, nTri, false);
+        int off = 0;
+        int pos = zCurveBisect(enc, encIdx, triEnc, nTri, true);
 
         bool isInTri = false;
         int trianglePos = -1;
@@ -2670,19 +2807,131 @@ RealType*           coords
         RealType s = -1.0;
         RealType t = -1.0;
 
-        for(int i = start; i <= end && !isInTri; i++) {
-            Tri curTri = tri[encIdx[i]];
+        int startingPos = pos;
+        double minDist = CUDART_INF;
+        double minCenterDist = CUDART_INF;
 
-            Point2 p0 = triPoints[curTri._v[0]];
-            Point2 p1 = triPoints[curTri._v[1]];
-            Point2 p2 = triPoints[curTri._v[2]];
+        // Check if query is inside the triangle represented by the found
+        // center or a radius of two
+        isInTri = checkPointInTriangle(pos, tri, encIdx, triPoints,
+                                       query, &s, &t, eps, true);
 
-            isInTri = isPointInTriangle(query, p0, p1, p2, &s, &t, eps);
+        if(isInTri) {
+            trianglePos = encIdx[pos];
+            stoppedAt = 0;
+        } else {
+            minDist = computePointTriDist(
+                encIdx[pos], query, centers, tri, triPoints, &minCenterDist);
+        }
+
+        if(!isInTri && pos + 1 < nTri) {
+            isInTri = checkPointInTriangle(pos + 1, tri, encIdx, triPoints,
+                                            query, &s, &t, eps, true);
+
             if(isInTri) {
-                trianglePos = encIdx[i];
-                stoppedAt = i;
+                trianglePos = encIdx[pos + 1];
+                stoppedAt = 0;
+            } else {
+                double centerDist;
+                double dist = computePointTriDist(
+                    encIdx[pos + 1], query, centers, tri, triPoints,
+                    &centerDist);
+                if(dist < minDist) {
+                    minDist = dist;
+                    startingPos = pos + 1;
+                } else if(dist == minDist && centerDist < minCenterDist) {
+                    minDist = dist;
+                    minCenterDist = centerDist;
+                    startingPos = pos + 1;
+                }
             }
         }
+
+        if(!isInTri && pos - 1 >= 0) {
+            isInTri = checkPointInTriangle(pos - 1, tri, encIdx, triPoints,
+                                           query, &s, &t, eps, true);
+            if(isInTri) {
+                trianglePos = encIdx[pos - 1];
+                stoppedAt = 0;
+            } else {
+                double centerDist;
+                double dist = computePointTriDist(
+                    encIdx[pos - 1], query, centers, tri, triPoints,
+                    &centerDist);
+                if(dist < minDist) {
+                    minDist = dist;
+                    startingPos = pos - 1;
+                } else if(dist == minDist && centerDist < minCenterDist) {
+                    minDist = dist;
+                    minCenterDist = centerDist;
+                    startingPos = pos - 1;
+                }
+            }
+        }
+
+
+        if(!isInTri) {
+            // Find the nearest opposite triangle to the query point from
+            // the nearest center found.
+            TriOpp nearest = triOpp[encIdx[startingPos]];
+            int maxSkips = 9;
+
+            int nextNearest = encIdx[startingPos];
+            int visited[10] = {nextNearest, -1, -1, -1, -1, -1,
+                               -1, -1, -1, -1};
+
+            while(off < maxSkips && !isInTri) {
+                int prevNearest = nextNearest;
+                nextNearest = -1;
+
+                minDist = CUDART_INF;
+                minCenterDist = CUDART_INF;
+                for(int i = 0; i < DEG && !isInTri; i++) {
+                    int oppTriIdx = nearest.getOppTri(i);
+
+                    if(visitedAlready(oppTriIdx, visited, off + 1)) {
+                        continue;
+                    }
+
+                    isInTri = checkPointInTriangle(
+                        oppTriIdx, tri, NULL, triPoints, query, &s, &t,
+                        eps, false);
+
+                    if(!isInTri) {
+                        double centerDist;
+                        double dist = computePointTriDist(
+                            oppTriIdx, query, centers, tri, triPoints,
+                            &centerDist);
+
+                        if(dist < minDist) {
+                            minDist = dist;
+                            nextNearest = oppTriIdx;
+                        } else if(dist == minDist &&
+                                  centerDist < minCenterDist) {
+                            minDist = dist;
+                            minCenterDist = centerDist;
+                            nextNearest = oppTriIdx;
+                        }
+                    } else {
+                        trianglePos = oppTriIdx;
+                        stoppedAt = off;
+                    }
+                }
+
+                if(!isInTri) {
+                    nearest = triOpp[nextNearest];
+                    visited[off + 1] = nextNearest;
+                }
+                off++;
+            }
+        }
+
+
+        /**if(debug != NULL) {
+            debug[3 * idx] = pos;
+            debug[3 * idx + 1] = stoppedAt;
+            debug[3 * idx + 2] = off;
+        }**/
 
         out[idx] = trianglePos;
         if(findCoords) {
@@ -2696,7 +2945,7 @@ RealType*           coords
 """
 
 DELAUNAY_MODULE = cupy.RawModule(
-    code=KERNEL_DIVISION, options=('-std=c++11', '-w'),
+    code=KERNEL_DIVISION, options=('-std=c++11', '-w',),
     name_expressions=['kerMakeFirstTri', 'kerInitPointLocationFast',
                       'kerInitPointLocationExact', 'kerVoteForPoint',
                       'kerPickWinnerPoint', 'kerShiftValues<Tri>',
@@ -2982,16 +3231,18 @@ def find_vertex_neighbors(tri, n_points, out):
         tri, tri.shape[0], n_points, out))
 
 
-def encode_barycenters(tri, tri_points, min_val, range_val, out):
+def encode_barycenters(tri, tri_points, min_val, range_val, out, centers):
     ker_enc = DELAUNAY_MODULE.get_function('kerEncBarycenters')
     ker_enc((N_BLOCKS,), (BLOCK_SZ,), (
-        tri, tri.shape[0], tri_points, min_val, range_val, out))
+        tri, tri.shape[0], tri_points, min_val, range_val, out, centers))
 
 
-def find_closest_tri(queries, tri, enc_idx, tri_enc, tri_points,
-                     min_val, range_val, eps, find_coords, out, coords):
+def find_closest_tri(queries, tri, tri_opp, enc_idx, tri_enc, tri_points,
+                     centers, min_val, range_val, min_axis, max_axis,
+                     eps, find_coords, out, coords):
     ker_find = DELAUNAY_MODULE.get_function('kerFindClosestTri')
     ker_find((N_BLOCKS,), (BLOCK_SZ,), (
-        queries, queries.shape[0], tri, tri.shape[0], enc_idx, tri_enc,
-        tri_points, min_val, range_val, eps, find_coords, out, coords,
+        queries, queries.shape[0], tri, tri.shape[0], tri_opp,
+        enc_idx, tri_enc, tri_points, centers, min_val, range_val,
+        min_axis, max_axis, eps, find_coords, out, coords
     ))

@@ -57,6 +57,8 @@ class GDel2D:
         self._tri_enc = None
         self._enc_idx = None
         self._centers = None
+        self._max_axis = None
+        self._min_axis = None
 
     @property
     def counters(self):
@@ -556,15 +558,18 @@ class GDel2D:
         return self._node_neighbors
 
     def encode_barycenters(self):
-        out = cupy.empty(self.triangles.shape[0], dtype=cupy.uint64)
-        encode_barycenters(self.triangles, self.points, self.min_val,
-                           self.range_val, out)
-        return out
+        out = cupy.empty(self.triangles.shape[0], dtype=cupy.uint32)
+        centers = cupy.empty((self.triangles.shape[0], 2), dtype=cupy.float64)
+        encode_barycenters(self.triangles, self.points,
+                           self.min_val, self.range_val, out, centers)
+        return out, centers
 
     def find_point_in_triangulation(self, points, eps=0.0, find_coords=False):
         if self._tri_enc is None:
-            self._tri_enc = self.encode_barycenters()
+            self._tri_enc, self._tri_centers = self.encode_barycenters()
             self._enc_idx = cupy.argsort(self._tri_enc)
+            self._max_axis = self.points.max(0)
+            self._min_axis = self.points.min(0)
 
         coords = None
         out = cupy.empty(points.shape[0], dtype=cupy.int32)
@@ -572,9 +577,12 @@ class GDel2D:
             coords = cupy.empty((points.shape[0], points.shape[-1] + 1),
                                 dtype=cupy.float64)
 
-        find_closest_tri(points, self.triangles, self._enc_idx, self._tri_enc,
-                         self.points, self.min_val, self.range_val, eps,
-                         find_coords, out, coords)
+        find_closest_tri(points, self.triangles, self.triangle_opp,
+                         self._enc_idx, self._tri_enc, self.points,
+                         self._tri_centers, self.min_val, self.range_val,
+                         self._min_axis, self._max_axis, eps, find_coords, out,
+                         coords)
+
         if find_coords:
             return out, coords
         return out
