@@ -2332,11 +2332,12 @@ __device__ bool isPointInTriangle(
     *s = 1.0 / (2.0 * A) * unS;
     *t = 1.0 / (2.0 * A) * unT;
 
-    /**
-    return (unS >= 0 &&
-            unT >= 0 &&
-            ((unS + unT + eps) <= 2 * A * sign ||
-             (unS + unT - eps) <= 2 * A * sign));**/
+    if(eps != 0.0) {
+        return (unS >= 0 &&
+                unT >= 0 &&
+                ((unS + unT + eps) <= 2 * A * sign ||
+                 (unS + unT - eps) <= 2 * A * sign));
+    }
     return unT >= 0 && unS >= 0 && unS + unT <= 2 * A * sign;
 }
 
