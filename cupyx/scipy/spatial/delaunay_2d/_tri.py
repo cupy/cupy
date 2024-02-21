@@ -9,9 +9,8 @@ from cupyx.scipy.spatial.delaunay_2d._kernels import (
     check_delaunay_exact_fast, check_delaunay_exact_exact, mark_rejected_flips,
     flip, update_opp, update_flip_trace, relocate_points_fast,
     relocate_points_exact, mark_inf_tri, collect_free_slots, make_compact_map,
-    compact_tris, update_vert_idx,  # find_closest_tri_to_point,
-    get_morton_number, compute_distance_2d, init_predicate,
-    make_key_from_tri_has_vert, check_if_coplanar_points,
+    compact_tris, update_vert_idx, get_morton_number, compute_distance_2d,
+    init_predicate, make_key_from_tri_has_vert, check_if_coplanar_points,
     find_vertex_neighbors, encode_barycenters, find_closest_tri)
 
 
@@ -529,17 +528,6 @@ class GDel2D:
         self._split_and_flip()
         self._output()
         return self.triangles, self.triangle_opp
-
-    # def find_point_in_triangulation(self, xi, eps, find_coords=False):
-    #     out = cupy.empty((xi.shape[0],), dtype=cupy.int32)
-    #     c = cupy.empty(0, dtype=cupy.float64)
-    #     if find_coords:
-    #         c = cupy.empty((xi.shape[0], xi.shape[-1] + 1),
-    #                        dtype=cupy.float64)
-
-    #     find_closest_tri_to_point(xi, self.points, self.triangles,
-    #                               out, c, eps, find_coords)
-    #     return out, c
 
     def vertex_neighbor_vertices(self):
         if self._node_neighbors is None:
