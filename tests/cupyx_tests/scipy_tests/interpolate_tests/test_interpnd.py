@@ -15,17 +15,6 @@ except ImportError:
 
 
 class TestLinearNDInterpolator:
-    # @testing.numpy_cupy_allclose(scipy_name='scp')
-    # def test_smoketest(self, xp, scp):
-    #     # Test at single points
-    #     x = xp.array([(0, 0), (-0.5, -0.5), (-0.5, 0.5),
-    #                   (0.5, 0.5), (0.25, 0.3)],
-    #                  dtype=xp.float64)
-    #     y = xp.arange(x.shape[0], dtype=xp.float64)
-
-    #     yi = scp.interpolate.LinearNDInterpolator(x, y)(x[:1])
-    #     return yi
-
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_interpolate(self, xp, scp):
         # Test at single points

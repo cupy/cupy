@@ -583,6 +583,4 @@ class GDel2D:
                          self._min_axis, self._max_axis, eps, find_coords, out,
                          coords)
 
-        if find_coords:
-            return out, coords
-        return out
+        return out, coords
