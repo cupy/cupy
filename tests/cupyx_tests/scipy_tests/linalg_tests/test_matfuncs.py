@@ -103,3 +103,8 @@ class TestExpM:
     def test_nx2x2_input(self, xp, scp, a):
         a = xp.asarray(a)
         return scp.linalg.expm(a)
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_complex(self, xp, scp):
+        a = xp.eye(2, dtype=xp.complex128)
+        return scp.linalg.exmp(a)

@@ -1,4 +1,5 @@
 import math
+import cmath
 
 import cupy
 from cupy.linalg import _util
@@ -124,7 +125,9 @@ def expm(a):
         x = x @ x
 
     # undo preprocessing
-    x *= math.exp(mu)
+    emu = cmath.exp(mu) if cupy.issubdtype(
+        mu.dtype, cupy.complexfloating) else math.exp(mu)
+    x *= emu
 
     return x
 
