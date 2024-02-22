@@ -82,6 +82,13 @@ class TestArrayReduction(unittest.TestCase):
         a = xp.array([float('nan')*1.j, 1.j, -1.j], dtype, order=self.order)
         return a.max()
 
+    @testing.for_float_dtypes()
+    @testing.numpy_cupy_allclose(contiguous_check=False)
+    def test_max_inf(self, xp, dtype):
+        # cupy/cupy#8180
+        a = xp.array([-float('inf'), -float('inf')], dtype, order=self.order)
+        return a.max()
+
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(contiguous_check=False)
     def test_min_all(self, xp, dtype):
@@ -148,6 +155,13 @@ class TestArrayReduction(unittest.TestCase):
     @testing.numpy_cupy_allclose(contiguous_check=False)
     def test_min_nan_imag(self, xp, dtype):
         a = xp.array([float('nan')*1.j, 1.j, -1.j], dtype, order=self.order)
+        return a.min()
+
+    @testing.for_float_dtypes()
+    @testing.numpy_cupy_allclose(contiguous_check=False)
+    def test_min_inf(self, xp, dtype):
+        # cupy/cupy#8180
+        a = xp.array([float('inf'), float('inf')], dtype, order=self.order)
         return a.min()
 
     # skip bool: numpy's ptp raises a TypeError on bool inputs
