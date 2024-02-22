@@ -56,6 +56,44 @@ struct FpLimits<complex<double>>
 template <> struct NumericTraits<complex<float>>  : BaseTraits<FLOATING_POINT, true, false, unsigned int, complex<float>> {};
 template <> struct NumericTraits<complex<double>> : BaseTraits<FLOATING_POINT, true, false, unsigned long long, complex<double>> {};
 
+// need specializations for initial values
+namespace std {
+
+template <>
+class numeric_limits<thrust::complex<float>> {
+  public:
+    static __host__ __device__ thrust::complex<float> infinity() noexcept {
+        return thrust::complex<float>(std::numeric_limits<float>::infinity(), std::numeric_limits<float>::infinity());
+    }
+
+    static constexpr bool has_infinity = true;
+};
+
+template <>
+class numeric_limits<thrust::complex<double>> {
+  public:
+    static __host__ __device__ thrust::complex<double> infinity() noexcept {
+        return thrust::complex<double>(std::numeric_limits<double>::infinity(), std::numeric_limits<double>::infinity());
+    }
+
+    static constexpr bool has_infinity = true;
+};
+
+template <>
+class numeric_limits<__half> {
+  public:
+    static __host__ __device__ constexpr __half infinity() noexcept {
+        unsigned short inf_half = 0x7C00U;
+        __half inf_value = *reinterpret_cast<__half*>(&inf_half);
+        return inf_value;
+    }
+
+    static constexpr bool has_infinity = true;
+};
+
+}  // namespace std
+
+
 #else
 
 // hipCUB internally uses std::numeric_limits, so we should provide specializations for the complex numbers.
@@ -669,8 +707,17 @@ struct _cub_reduce_min {
     void operator()(void* workspace, size_t& workspace_size, void* x, void* y,
         int num_items, cudaStream_t s)
     {
-        DeviceReduce::Min(workspace, workspace_size, static_cast<T*>(x),
-            static_cast<T*>(y), num_items, s);
+        if constexpr (std::numeric_limits<T>::has_infinity)
+        {
+            DeviceReduce::Reduce(workspace, workspace_size, static_cast<T*>(x),
+                static_cast<T*>(y), num_items,
+                cub::Min(), std::numeric_limits<T>::infinity(), s);
+        }
+        else
+        {
+            DeviceReduce::Min(workspace, workspace_size, static_cast<T*>(x),
+                static_cast<T*>(y), num_items, s);
+        }
     }
 };
 
@@ -679,9 +726,19 @@ struct _cub_segmented_reduce_min {
     void operator()(void* workspace, size_t& workspace_size, void* x, void* y,
         int num_segments, seg_offset_itr offset_start, cudaStream_t s)
     {
-        DeviceSegmentedReduce::Min(workspace, workspace_size,
-            static_cast<T*>(x), static_cast<T*>(y), num_segments,
-            offset_start, offset_start+1, s);
+        if constexpr (std::numeric_limits<T>::has_infinity)
+        {
+            DeviceSegmentedReduce::Reduce(workspace, workspace_size,
+                static_cast<T*>(x), static_cast<T*>(y), num_segments,
+                offset_start, offset_start+1,
+                cub::Min(), std::numeric_limits<T>::infinity(), s);
+        }
+        else
+        {
+            DeviceSegmentedReduce::Min(workspace, workspace_size,
+                static_cast<T*>(x), static_cast<T*>(y), num_segments,
+                offset_start, offset_start+1, s);
+        }
     }
 };
 
@@ -693,8 +750,17 @@ struct _cub_reduce_max {
     void operator()(void* workspace, size_t& workspace_size, void* x, void* y,
         int num_items, cudaStream_t s)
     {
-        DeviceReduce::Max(workspace, workspace_size, static_cast<T*>(x),
-            static_cast<T*>(y), num_items, s);
+        if constexpr (std::numeric_limits<T>::has_infinity)
+        {
+            DeviceReduce::Reduce(workspace, workspace_size, static_cast<T*>(x),
+                static_cast<T*>(y), num_items,
+                cub::Max(), -std::numeric_limits<T>::infinity(), s);
+        }
+        else
+        {
+            DeviceReduce::Max(workspace, workspace_size, static_cast<T*>(x),
+                static_cast<T*>(y), num_items, s);
+        }
     }
 };
 
@@ -703,9 +769,19 @@ struct _cub_segmented_reduce_max {
     void operator()(void* workspace, size_t& workspace_size, void* x, void* y,
         int num_segments, seg_offset_itr offset_start, cudaStream_t s)
     {
-        DeviceSegmentedReduce::Max(workspace, workspace_size,
-            static_cast<T*>(x), static_cast<T*>(y), num_segments,
-            offset_start, offset_start+1, s);
+        if constexpr (std::numeric_limits<T>::has_infinity)
+        {
+            DeviceSegmentedReduce::Reduce(workspace, workspace_size,
+                static_cast<T*>(x), static_cast<T*>(y), num_segments,
+                offset_start, offset_start+1,
+                cub::Max(), -std::numeric_limits<T>::infinity(), s);
+        }
+        else
+        {
+            DeviceSegmentedReduce::Max(workspace, workspace_size,
+                static_cast<T*>(x), static_cast<T*>(y), num_segments,
+                offset_start, offset_start+1, s);
+        }
     }
 };
 
