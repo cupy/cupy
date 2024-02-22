@@ -139,7 +139,10 @@ cdef str warmup_kernel = r"""cupy_jitify_exercise
 
 #include <cub/block/block_reduce.cuh>
 #include <cub/block/block_load.cuh>
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 700
+// not supported before CC 7.0
 #include <cuda/barrier>
+#endif
 #include <cooperative_groups.h>
 #include <cooperative_groups/memcpy_async.h>
 
