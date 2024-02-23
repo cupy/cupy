@@ -104,7 +104,8 @@ class TestExpM:
         a = xp.asarray(a)
         return scp.linalg.expm(a)
 
+    @testing.for_all_dtypes(no_bool=True, no_float16=True)
     @testing.numpy_cupy_allclose(scipy_name='scp')
-    def test_complex(self, xp, scp):
-        a = xp.eye(2, dtype=xp.complex128)
-        return scp.linalg.exmp(a)
+    def test_dtypes(self, xp, scp, dtype):
+        a = xp.eye(2, dtype=dtype)
+        return scp.linalg.expm(a)
