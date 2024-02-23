@@ -2480,25 +2480,6 @@ RealType* det
     *det = 0;
 }
 
-__global__ void kerFindVertexNeighbors
-(
-Tri*  tri,
-int   nTri,
-int   nPoints,
-bool*  out
-)
-{
-    for ( int idx = getCurThreadIdx(); idx < nTri; idx += getThreadNum() ) {
-        Tri curTri = tri[idx];
-        for( int i = 0; i < DEG; i++ ) {
-            for(int j = i + 1; j < DEG; j++) {
-                out[nPoints * curTri._v[i] + curTri._v[j]] = true;
-                out[nPoints * curTri._v[j] + curTri._v[i]] = true;
-            }
-        }
-    }
-}
-
 __device__ unsigned int zCurvePoint2
 (
 Point2            center,
@@ -2534,6 +2515,114 @@ const double*     range
     return encoding;
 }
 
+__device__ int zCurveBisect
+(
+unsigned int        query,
+long long*          encIdx,
+unsigned int*       triEnc,
+int                 nTri,
+bool                leftEnd
+) {
+    int left = 0;
+    int right = nTri - 1;
+
+    bool indirect = encIdx != NULL;
+
+    while(left < right) {
+        int mid = (left + right) / 2;
+        long long midIdx = indirect ? encIdx[mid] : mid;
+        unsigned int midTri = triEnc[midIdx];
+
+        if(midTri > query) {
+            right = mid - 1;
+        } else if(query > midTri) {
+            left = mid + 1;
+        } else {
+            left = mid;
+            right = mid;
+        }
+    }
+
+    return leftEnd ? left : right + 1;
+}
+
+__global__ void kerEncodeEdges
+(
+Tri*          tri,
+int           nTri,
+Point2*       triPoints,
+RealType*     minVal,
+RealType*     range,
+unsigned int* edgeEnc,
+int*          edges
+)
+{
+    for ( int idx = getCurThreadIdx(); idx < nTri; idx += getThreadNum() ) {
+        Tri curTri = tri[idx];
+        // int* curEdge = edges + 2 * idx;
+
+        int prevVi = curTri._v[0];
+        Point2 prevP = triPoints[prevVi];
+        for( int i = 1; i <= DEG; i++ ) {
+            int vi = curTri._v[i % DEG];
+
+            Point2 curP = triPoints[vi];
+            Point2 mid = Point2{{
+                (prevP._p[0] + curP._p[0]) / 2.0,
+                (prevP._p[1] + curP._p[1]) / 2.0
+            }};
+
+            unsigned int enc = zCurvePoint2(mid, minVal, range);
+            edgeEnc[3 * idx + (i - 1)] = enc;
+            edges[6 * idx + 2 * (i - 1)] = prevVi;
+            edges[6 * idx + 2 * (i - 1) + 1] = vi;
+
+            prevP = curP;
+            prevVi = vi;
+
+        }
+    }
+}
+
+__global__ void kerCountVertexNeighbors
+(
+int*          edges,
+int           nEdges,
+int*          vertexCount,
+int           nVertices
+) {
+    for ( int idx = getCurThreadIdx(); idx < nEdges; idx += getThreadNum() ) {
+        int* edge = edges + 2 * idx;
+        int fromVi = edge[0];
+        int toVi = edge[1];
+
+        int pos1 = atomicAdd(vertexCount + fromVi, 1);
+        int pos2 = atomicAdd(vertexCount + toVi, 1);
+    }
+}
+
+__global__ void kerFillVertexNeighbors
+(
+int*             edges,
+int              nEdges,
+long long*       vertexOff,
+int*             vertexCount,
+int*             vertexNeighbors
+) {
+    for ( int idx = getCurThreadIdx(); idx < nEdges; idx += getThreadNum() ) {
+        int* edge = edges + 2 * idx;
+        int fromVi = edge[0];
+        int toVi = edge[1];
+
+        int pos = atomicSub(vertexCount + fromVi, 1);
+        vertexNeighbors[vertexOff[fromVi] + pos - 1] = toVi;
+
+        int pos2 = atomicSub(vertexCount + toVi, 1);
+        vertexNeighbors[vertexOff[toVi] + pos2 - 1] = fromVi;
+
+    }
+}
+
 __global__ void kerEncBarycenters
 (
 Tri*                tri,
@@ -2564,36 +2653,6 @@ Point2*             centers
         centers[idx] = center;
     }
 }
-
-__device__ int zCurveBisect
-(
-unsigned long long query,
-long long*          encIdx,
-unsigned int*       triEnc,
-int                 nTri,
-bool                leftEnd
-) {
-    int left = 0;
-    int right = nTri - 1;
-
-    while(left < right) {
-        int mid = (left + right) / 2;
-        long long midIdx = encIdx[mid];
-        unsigned int midTri = triEnc[midIdx];
-
-        if(midTri > query) {
-            right = mid - 1;
-        } else if(query > midTri) {
-            left = mid + 1;
-        } else {
-            left = mid;
-            right = mid;
-        }
-    }
-
-    return leftEnd ? left : right + 1;
-}
-
 
 __device__ bool checkPointInTriangle
 (
@@ -2928,8 +2987,9 @@ DELAUNAY_MODULE = cupy.RawModule(
                       'kerUpdateVertIdx', 'getMortonNumber',
                       'computeDistance2D', 'kerInitPredicate',
                       'makeKeyFromTriHasVert', 'kerCheckIfCoplanarPoints',
-                      'kerFindVertexNeighbors', 'kerEncBarycenters',
-                      'kerFindClosestTri'])
+                      'kerEncodeEdges', 'kerEncBarycenters',
+                      'kerFindClosestTri', 'kerCountVertexNeighbors',
+                      'kerFillVertexNeighbors'])
 
 
 N_BLOCKS = 512
@@ -3179,10 +3239,10 @@ def check_if_coplanar_points(points, pa_idx, pb_idx, pc_idx, det):
     ker_ori((1,), (1,), (points, pa_idx, pb_idx, pc_idx, det))
 
 
-def find_vertex_neighbors(tri, n_points, out):
-    ker_find_vertex = DELAUNAY_MODULE.get_function('kerFindVertexNeighbors')
-    ker_find_vertex((N_BLOCKS,), (BLOCK_SZ,), (
-        tri, tri.shape[0], n_points, out))
+def encode_edges(tri, tri_points, min_val, range_val, out, edges):
+    ker_enc_edges = DELAUNAY_MODULE.get_function('kerEncodeEdges')
+    ker_enc_edges((N_BLOCKS,), (BLOCK_SZ,), (
+        tri, tri.shape[0], tri_points, min_val, range_val, out, edges))
 
 
 def encode_barycenters(tri, tri_points, min_val, range_val, out, centers):
@@ -3200,3 +3260,15 @@ def find_closest_tri(queries, tri, tri_opp, enc_idx, tri_enc, tri_points,
         enc_idx, tri_enc, tri_points, centers, min_val, range_val,
         min_axis, max_axis, eps, find_coords, out, coords
     ))
+
+
+def count_vertex_neighbors(edges, vertex_count):
+    ker_count = DELAUNAY_MODULE.get_function('kerCountVertexNeighbors')
+    ker_count((N_BLOCKS,), (BLOCK_SZ,),
+              (edges, edges.shape[0], vertex_count, vertex_count.shape[0]))
+
+
+def fill_vertex_neighbors(edges, vertex_off, vertex_count, vertex_neighbors):
+    ker_fill = DELAUNAY_MODULE.get_function('kerFillVertexNeighbors')
+    ker_fill((N_BLOCKS,), (BLOCK_SZ,), (
+        edges, edges.shape[0], vertex_off, vertex_count, vertex_neighbors))
