@@ -218,12 +218,10 @@ class DeviceCompilerUnix(DeviceCompilerBase):
         base_opts = build.get_compiler_base_options(rocm_path)
         compiler_so = rocm_path
 
-        hip_version = build.get_hip_version()
         postargs = ['-O2', '-fPIC', '--include', 'hip_runtime.h']
-        if hip_version >= 402:
-            postargs += ['--std=c++14']
-        else:
-            postargs += ['--std=c++11']
+        # Note: we only support ROCm 4.3+ since CuPy v11.0.0.
+        # Bumping C++ standard from C++14 to C++17 for "if constexpr"
+        postargs += ['--std=c++17']
         print('HIPCC options:', postargs)
         self.spawn(compiler_so + base_opts + cc_args + [src, '-o', obj] +
                    postargs)

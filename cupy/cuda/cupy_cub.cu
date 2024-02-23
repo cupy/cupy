@@ -28,6 +28,7 @@
 //   numbers as in general the comparison is ill defined.
 // - DO NOT USE THIS STUB for supporting CUB sorting!!!!!!
 using namespace cub;
+#define CUPY_CUB_NAMESPACE cub
 
 template <>
 struct FpLimits<complex<float>>
@@ -99,6 +100,7 @@ class numeric_limits<__half> {
 // hipCUB internally uses std::numeric_limits, so we should provide specializations for the complex numbers.
 // Note that there's std::complex, so to avoid name collision we must use the full decoration (thrust::complex)!
 // TODO(leofang): wrap CuPy's thrust namespace with another one (say, cupy::thrust) for safer scope resolution?
+#define CUPY_CUB_NAMESPACE hipcub
 
 namespace std {
 template <>
@@ -111,6 +113,12 @@ class numeric_limits<thrust::complex<float>> {
     static __host__ __device__ thrust::complex<float> lowest() noexcept {
         return thrust::complex<float>(-std::numeric_limits<float>::max(), -std::numeric_limits<float>::max());
     }
+
+    static __host__ __device__ thrust::complex<float> infinity() noexcept {
+        return thrust::complex<float>(std::numeric_limits<float>::infinity(), std::numeric_limits<float>::infinity());
+    }
+
+    static constexpr bool has_infinity = true;
 };
 
 template <>
@@ -123,6 +131,12 @@ class numeric_limits<thrust::complex<double>> {
     static __host__ __device__ thrust::complex<double> lowest() noexcept {
         return thrust::complex<double>(-std::numeric_limits<double>::max(), -std::numeric_limits<double>::max());
     }
+
+    static __host__ __device__ thrust::complex<double> infinity() noexcept {
+        return thrust::complex<double>(std::numeric_limits<double>::infinity(), std::numeric_limits<double>::infinity());
+    }
+
+    static constexpr bool has_infinity = true;
 };
 
 // Copied from https://github.com/ROCmSoftwarePlatform/hipCUB/blob/master-rocm-3.5/hipcub/include/hipcub/backend/rocprim/device/device_reduce.hpp
@@ -142,12 +156,27 @@ class numeric_limits<__half> {
         __half lowest_value = *reinterpret_cast<__half*>(&lowest_half);
         return lowest_value;
     }
+
+    static __host__ __device__ __half infinity() noexcept {
+        unsigned short inf_half = 0x7C00U;
+        __half inf_value = *reinterpret_cast<__half*>(&inf_half);
+        return inf_value;
+    }
+
+    static constexpr bool has_infinity = true;
 };
 }  // namespace std
 
 using namespace hipcub;
 
 #endif  // ifndef CUPY_USE_HIP
+
+__host__ __device__ __half half_negate_inf() {
+    unsigned short minf_half = 0xFC00U;
+    __half* minf_value = reinterpret_cast<__half*>(&minf_half);
+    return *minf_value;
+}
+
 /* ------------------------------------ end of boilerplate ------------------------------------ */
 
 
@@ -711,7 +740,7 @@ struct _cub_reduce_min {
         {
             DeviceReduce::Reduce(workspace, workspace_size, static_cast<T*>(x),
                 static_cast<T*>(y), num_items,
-                cub::Min(), std::numeric_limits<T>::infinity(), s);
+                CUPY_CUB_NAMESPACE::Min(), std::numeric_limits<T>::infinity(), s);
         }
         else
         {
@@ -731,7 +760,7 @@ struct _cub_segmented_reduce_min {
             DeviceSegmentedReduce::Reduce(workspace, workspace_size,
                 static_cast<T*>(x), static_cast<T*>(y), num_segments,
                 offset_start, offset_start+1,
-                cub::Min(), std::numeric_limits<T>::infinity(), s);
+                CUPY_CUB_NAMESPACE::Min(), std::numeric_limits<T>::infinity(), s);
         }
         else
         {
@@ -752,9 +781,20 @@ struct _cub_reduce_max {
     {
         if constexpr (std::numeric_limits<T>::has_infinity)
         {
-            DeviceReduce::Reduce(workspace, workspace_size, static_cast<T*>(x),
-                static_cast<T*>(y), num_items,
-                cub::Max(), -std::numeric_limits<T>::infinity(), s);
+            // to avoid compiler error: invalid argument type '__half' to unary expression on HIP...
+            if constexpr (std::is_same_v<T, __half>)
+            {
+                DeviceReduce::Reduce(workspace, workspace_size, static_cast<T*>(x),
+                    static_cast<T*>(y), num_items,
+                    CUPY_CUB_NAMESPACE::Max(), half_negate_inf(), s);
+            }
+            else
+            {
+                DeviceReduce::Reduce(workspace, workspace_size, static_cast<T*>(x),
+                    static_cast<T*>(y), num_items,
+                    CUPY_CUB_NAMESPACE::Max(), -std::numeric_limits<T>::infinity(), s);
+
+            }
         }
         else
         {
@@ -771,10 +811,21 @@ struct _cub_segmented_reduce_max {
     {
         if constexpr (std::numeric_limits<T>::has_infinity)
         {
-            DeviceSegmentedReduce::Reduce(workspace, workspace_size,
-                static_cast<T*>(x), static_cast<T*>(y), num_segments,
-                offset_start, offset_start+1,
-                cub::Max(), -std::numeric_limits<T>::infinity(), s);
+            // to avoid compiler error: invalid argument type '__half' to unary expression on HIP...
+            if constexpr (std::is_same_v<T, __half>)
+            {
+                DeviceSegmentedReduce::Reduce(workspace, workspace_size,
+                    static_cast<T*>(x), static_cast<T*>(y), num_segments,
+                    offset_start, offset_start+1,
+                    CUPY_CUB_NAMESPACE::Max(), half_negate_inf(), s);
+            }
+            else
+            {
+                DeviceSegmentedReduce::Reduce(workspace, workspace_size,
+                    static_cast<T*>(x), static_cast<T*>(y), num_segments,
+                    offset_start, offset_start+1,
+                    CUPY_CUB_NAMESPACE::Max(), -std::numeric_limits<T>::infinity(), s);
+            }
         }
         else
         {
