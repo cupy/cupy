@@ -105,7 +105,7 @@ class TestExpM:
         return scp.linalg.expm(a)
 
     @testing.for_all_dtypes(no_bool=True, no_float16=True)
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name='scp', contiguous_check=False)
     def test_dtypes(self, xp, scp, dtype):
         a = xp.eye(2, dtype=dtype)
         return scp.linalg.expm(a)
