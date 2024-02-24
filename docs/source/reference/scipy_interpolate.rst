@@ -31,6 +31,7 @@ Univariate interpolation
 
    BSpline
    make_interp_spline
+   make_lsq_spline
 
    splder
    splantider

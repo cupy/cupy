@@ -11,6 +11,7 @@ from cupyx.scipy.interpolate._cubic import (  # NOQA
 # 1-D Splines
 from cupyx.scipy.interpolate._bspline import BSpline, splantider, splder  # NOQA
 from cupyx.scipy.interpolate._bspline2 import make_interp_spline  # NOQA
+from cupyx.scipy.interpolate._bspline2 import make_lsq_spline    # NOQA
 
 # Radial basis functions
 from cupyx.scipy.interpolate._rbfinterp import RBFInterpolator  # NOQA
