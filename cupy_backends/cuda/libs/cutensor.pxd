@@ -142,7 +142,7 @@ cpdef enum:
 
     # cutensorMgAlgo_t
     CUTENSORMG_ALGO_DEFAULT = -1
-    
+
 # Version information
 cpdef size_t get_version()
 cpdef size_t get_cudart_version()

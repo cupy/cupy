@@ -498,11 +498,12 @@ class TestCuTensorMg:
             (n, n, n, n), cupy, dtype=self.dtype)
         self.c = cupyx.empty_pinned((n, n, n, n), dtype=self.dtype)
         c_ref = numpy.einsum('kijl,kadl->iajd', self.a, self.b.get())
-        mga = cutensor.ndarray_mg(self.a, block_size=[8,8,8,8])
-        cutensor.contractionMg(1, mga, 'kijl', self.b, 'kadl', 0, self.c, 'iajd')
+        mga = cutensor.ndarray_mg(self.a, block_size=[8, 8, 8, 8])
+        cutensor.contractionMg(1, mga, 'kijl', self.b,
+                               'kadl', 0, self.c, 'iajd')
         cupy.cuda.Device(0).synchronize()
         cupy.testing.assert_allclose(self.c, c_ref, rtol=self.tol,
-            atol=self.tol)
+                                     atol=self.tol)
 
     def test_copy(self):
         n = self.shape
@@ -517,4 +518,5 @@ class TestCuTensorMg:
             (n, n, n, n), cupy, dtype=self.dtype)
         cutensor.copyMg(self.b, 'cabd', self.a, 'abcd')
         cupy.cuda.Device(0).synchronize()
-        cupy.testing.assert_allclose(self.b.get(), self.a.transpose((2,0,1,3)), rtol=self.tol, atol=self.tol)
+        cupy.testing.assert_allclose(self.b.get(), self.a.transpose(
+            (2, 0, 1, 3)), rtol=self.tol, atol=self.tol)

@@ -159,7 +159,8 @@ cdef extern from '../../cupy_cutensor.h' nogil:
     ctypedef int CudaDataType_t 'cudaDataType_t'
 
     # cuTENSORMg TensorDescriptor creation and destruction
-    Status_t cutensorMgCreate(MgHandle_t* handle, uint32_t numDevices, int32_t* devices)
+    Status_t cutensorMgCreate(MgHandle_t* handle, uint32_t numDevices,
+                              int32_t* devices)
     Status_t cutensorMgDestroy(MgHandle_t handle)
     Status_t cutensorMgCreateTensorDescriptor(
         MgHandle_t handle,
@@ -208,7 +209,7 @@ cdef extern from '../../cupy_cutensor.h' nogil:
         runtime.Stream* stream)
 
     # cuTENSORMg Contraction
-    ctypedef void* MgContractionDescriptor_t 'cutensorMgContractionDescriptor_t' # NOQA
+    ctypedef void* MgContractionDescriptor_t 'cutensorMgContractionDescriptor_t'  # NOQA
     ctypedef void* MgContractionFind_t 'cutensorMgContractionFind_t'
     ctypedef void* MgContractionPlan_t 'cutensorMgContractionPlan_t'
     ctypedef int MgAlgo_t 'cutensorMgAlgo_t'
@@ -224,7 +225,7 @@ cdef extern from '../../cupy_cutensor.h' nogil:
         MgTensorDescriptor_t descD,
         int32_t* modesD,
         ComputeType_t compute)
-    Status_t cutensorMgDestroyContractionDescriptor(MgContractionDescriptor_t desc) # NOQA
+    Status_t cutensorMgDestroyContractionDescriptor(MgContractionDescriptor_t desc)  # NOQA
     Status_t cutensorMgCreateContractionFind(
         MgHandle_t handle,
         MgContractionFind_t* find,
@@ -598,7 +599,8 @@ cpdef destroyOperationDescriptor(intptr_t desc):
 cpdef intptr_t createMg(uint32_t numDevices, intptr_t devices) except? 0:
     cdef MgHandle_t handle
     with nogil:
-        status = cutensorMgCreate(&handle, numDevices, <int32_t*> devices) # NOQA
+        status = cutensorMgCreate(&handle, numDevices, <int32_t*> devices)  # NOQA
+    check_status(status)
     return <intptr_t>handle
 
 cpdef destroyMg(intptr_t handle):
@@ -711,10 +713,10 @@ cpdef _copyMg(
     for i in range(numDevices):
         streams[i] = stream_module.get_stream_ptr(devices[i])
     with nogil:
-        status = cutensorMgCopy(<MgHandle_t>handle,
-        <MgCopyPlan_t>plan, <void**>ptrDst, <const void**>ptrSrc,
-        <void**>workspaceDevice, <void*>workspaceHost,
-        <runtime.Stream*>streams)
+        status = cutensorMgCopy(
+            <MgHandle_t>handle, <MgCopyPlan_t>plan, <void**>ptrDst,
+            <const void**>ptrSrc, <void**>workspaceDevice,
+            <void*>workspaceHost, <runtime.Stream*>streams)
     check_status(status)
 
 ###############################################################################
@@ -746,7 +748,7 @@ cpdef intptr_t createMgContractionDescriptor(
 
 cpdef destroyMgContractionDescriptor(intptr_t desc):
     with nogil:
-        status = cutensorMgDestroyContractionDescriptor(<MgContractionDescriptor_t>desc) # NOQA
+        status = cutensorMgDestroyContractionDescriptor(<MgContractionDescriptor_t>desc)  # NOQA
     check_status(status)
 
 ###############################################################################
@@ -828,9 +830,10 @@ cpdef _contractMg(
     for i in range(numDevices):
         streams[i] = stream_module.get_stream_ptr(devices[i])
     with nogil:
-        status = cutensorMgContraction(<MgHandle_t>handle,
-        <MgContractionPlan_t>plan, <void*>alpha, <const void**>A, <const void**>B,
-        <void*>beta, <const void**>C, <void**>D,
-        <void**>workspaceDevice, <void*>workspaceHost,
-        <runtime.Stream*>streams)
+        status = cutensorMgContraction(
+            <MgHandle_t>handle, <MgContractionPlan_t>plan,
+            <void*>alpha, <const void**>A, <const void**>B,
+            <void*>beta, <const void**>C, <void**>D,
+            <void**>workspaceDevice, <void*>workspaceHost,
+            <runtime.Stream*>streams)
     check_status(status)
