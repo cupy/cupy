@@ -110,27 +110,6 @@ def test_apply_along_axis_invalid_axis():
 
 class TestPutAlongAxis(unittest.TestCase):
 
-    def test_replace_max(self):
-        arr_base = cupy.array([[10, 30, 20], [60, 40, 50]])
-
-        # The case "axis=None" has been moved to a seperate test
-        for axis in list(range(arr_base.ndim)):
-            # we mutate this in the loop
-            arr = arr_base.copy()
-            indices_max = cupy.argmax(arr, axis=axis, keepdims=True)
-            # replace the max with a small value
-            cupy.put_along_axis(arr, indices_max, -99, axis=axis)
-            # find the new minimum, which should max
-            indices_min = cupy.argmin(arr, axis=axis, keepdims=True)
-            testing.assert_array_equal(indices_min, indices_max)
-
-    def test_replace_max_axis_none(self):
-        for xp in [numpy, cupy]:
-            a = xp.array([[10, 30, 20], [60, 40, 50]])
-            i_max = xp.argmax(a, axis=None, keepdims=True)
-            with pytest.raises(ValueError):
-                xp.put_along_axis(a, i_max, -99, axis=None)
-
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_put_along_axis_empty(self, xp, dtype):
@@ -147,5 +126,49 @@ class TestPutAlongAxis(unittest.TestCase):
         a = testing.shaped_arange((3, 3, 3), xp, dtype)
         indices_max = xp.argmax(a, axis=0, keepdims=True)
         ret = xp.put_along_axis(a, indices_max, 0, axis=0)
+        assert ret is None
+        return a
+
+    @testing.for_all_dtypes()
+    def test_indices_values_arr_diff_dims(self, dtype):
+        for xp in [numpy, cupy]:
+            a = testing.shaped_arange((3, 3, 3), xp, dtype)
+            # indices_max.ndim = 0
+            i_max = xp.argmax(a, axis=0, keepdims=False)
+            with pytest.raises(ValueError):
+                xp.put_along_axis(a, i_max, -99, axis=None)
+
+
+@testing.parameterize(*testing.product({
+    'axis': [0, 1],
+}))
+class TestPutAlongAxes(unittest.TestCase):
+
+    def test_replace_max(self):
+        arr = cupy.array([[10, 30, 20], [60, 40, 50]])
+        indices_max = cupy.argmax(arr, axis=self.axis, keepdims=True)
+        # replace the max with a small value
+        cupy.put_along_axis(arr, indices_max, -99, axis=self.axis)
+        # find the new minimum, which should max
+        indices_min = cupy.argmin(arr, axis=self.axis, keepdims=True)
+        testing.assert_array_equal(indices_min, indices_max)
+
+
+class TestPutAlongAxisNone(unittest.TestCase):
+
+    def test_axis_none_err(self):
+        for xp in [numpy, cupy]:
+            a = xp.array([[10, 30, 20], [60, 40, 50]])
+            i_max = xp.argmax(a, axis=None, keepdims=True)
+            with pytest.raises(ValueError):
+                xp.put_along_axis(a, i_max, -99, axis=None)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_axis_none(self, xp, dtype):
+        a = testing.shaped_arange((3, 3), xp, dtype)
+        i = xp.array([1, 3])
+        val = xp.array([99, 100])
+        ret = xp.put_along_axis(a, i, val, axis=None)
         assert ret is None
         return a
