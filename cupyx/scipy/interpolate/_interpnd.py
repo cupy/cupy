@@ -380,10 +380,11 @@ __global__ void estimate_gradients_2d(
         int* vertex_neighbors, double tol, double* err,
         double* prev_grad, double* grad) {
 
+    double max_err = 0.0;
+    __shared__ double block_err[512];
+
     for (int idx = getCurThreadIdx(); idx < n_points; idx += getThreadNum()) {
-        if(err[idx] < tol) {
-            continue;
-        }
+        block_err[threadIdx.x] = 0;
 
         double Q[4] = {0.0, 0.0, 0.0, 0.0};
         double s[2] = {0.0, 0.0};
@@ -405,7 +406,7 @@ __global__ void estimate_gradients_2d(
 
             Q[0] += 4 * ex * ex / L3;
             Q[1] += 4 * ex * ey / L3;
-            Q[2] += 4 * ey * ey / L3;
+            Q[3] += 4 * ey * ey / L3;
 
             s[0] += (6 * (f1 - f2) - 2 * df2) * ex / L3;
             s[1] += (6 * (f1 - f2) - 2 * df2) * ey / L3;
@@ -413,7 +414,7 @@ __global__ void estimate_gradients_2d(
 
         Q[2] = Q[1];
 
-        det = Q[0] * Q[3] - Q[1] * Q[2]
+        double det = Q[0] * Q[3] - Q[1] * Q[2];
         r[0] = (Q[3] * s[0] - Q[1] * s[1]) / det;
         r[1] = (-Q[2] * s[0] + Q[0] * s[1]) / det;
 
@@ -424,8 +425,24 @@ __global__ void estimate_gradients_2d(
         grad[2 * idx + 1] = -r[1];
 
         change /= fmax(1.0, fmax(fabs(r[0]), fabs(r[1])));
-        err[idx] = fmax(err[idx], change);
+        block_err[idx] = fmax(block_err[idx], change);
+
+        __syncthreads();
+
+        for(int stride = blockDim.x / 2; stride > 0; stride /= 2) {
+            if (threadIdx.x < stride) {
+                float lhs = block_err[threadIdx.x];
+                float rhs = block_err[threadIdx.x + stride];
+                block_err[threadIdx.x] = lhs < rhs ? rhs : lhs;
+            }
+            __syncthreads();
+        }
+
+        if(threadIdx.x == 0) {
+            err[threadIdx.x] = fmax(err[threadIdx.x], block_err[threadIdx.x]);
+        }
     }
+
 }
 """
 
@@ -435,9 +452,9 @@ CT_MODULE = cupy.RawModule(code=CT_DEF, options=('-std=c++11',),
 
 def estimate_gradients_2d_global(tri, y, maxiter=400, tol=1e-6):
     indptr, indices = tri.vertex_neighbor_vertices()
-    err = cupy.zeros(indptr.shape[0], dtype=cupy.float64)
-    grad = cupy.zeros((indptr.shape[0], 2), dtype=cupy.float64)
-    prev_grad = cupy.zeros((indptr.shape[0], 2), dtype=cupy.float64)
+    err = cupy.zeros(512, dtype=cupy.float64)
+    grad = cupy.zeros((indptr.shape[0] - 1, 2), dtype=cupy.float64)
+    prev_grad = cupy.zeros((indptr.shape[0] - 1, 2), dtype=cupy.float64)
 
     estimate_gradients_2d = CT_MODULE.get_function('estimate_gradients_2d')
     for iter in range(maxiter):
@@ -450,6 +467,7 @@ def estimate_gradients_2d_global(tri, y, maxiter=400, tol=1e-6):
             break
 
         prev_grad[:] = grad[:]
+        err.fill(0)
 
     if iter == maxiter - 1:
         warnings.warn("Gradient estimation did not converge, "
