@@ -3,6 +3,8 @@ import cupy
 from cupy._core._scalar import get_typename
 from cupyx.scipy.spatial._delaunay import Delaunay
 
+import warnings
+
 
 TYPES = ['double', 'thrust::complex<double>']
 
@@ -187,9 +189,9 @@ class NDInterpolatorBase:
             interpolation_points_shape[:-1] + self.values_shape)
 
 
-# ------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 # Linear interpolation in N-D
-# ------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 
 LINEAR_INTERP_ND_DEF = r"""
 #include <cupy/complex.cuh>
@@ -352,8 +354,108 @@ class LinearNDInterpolator(NDInterpolatorBase):
         return out
 
 
+# -----------------------------------------------------------------------------
+# Clough-Tocher interpolation in 2D
+# -----------------------------------------------------------------------------
+
+CT_DEF = r"""
+
+__forceinline__ __device__ int getCurThreadIdx()
+{
+    const int threadsPerBlock   = blockDim.x;
+    const int curThreadIdx    = ( blockIdx.x * threadsPerBlock ) + threadIdx.x;
+    return curThreadIdx;
+}
+
+__forceinline__ __device__ int getThreadNum()
+{
+    const int blocksPerGrid     = gridDim.x;
+    const int threadsPerBlock   = blockDim.x;
+    const int threadNum         = blocksPerGrid * threadsPerBlock;
+    return threadNum;
+}
+
+__global__ void estimate_gradients_2d(
+        double* points, int n_points, double* values, long long* vertex_off,
+        int* vertex_neighbors, double tol, double* err,
+        double* prev_grad, double* grad) {
+
+    for (int idx = getCurThreadIdx(); idx < n_points; idx += getThreadNum()) {
+        if(err[idx] < tol) {
+            continue;
+        }
+
+        double Q[4] = {0.0, 0.0, 0.0, 0.0};
+        double s[2] = {0.0, 0.0};
+        double r[2];
+
+        for(int n = vertex_off[idx]; n < vertex_off[idx + 1]; n++) {
+            int nidx = vertex_neighbors[n];
+
+            double ex = points[2 * nidx] - points[2 * idx];
+            double ey = points[2 * nidx + 1] - points[2 * idx + 1];
+            double L = sqrt(ex * ex + ey * ey);
+            double L3 = L * L * L;
+
+            double f1 = values[idx];
+            double f2 = values[nidx];
+
+            double df2 = (
+                -ex * prev_grad[2 * nidx] - ey * prev_grad[2 * nidx + 1]);
+
+            Q[0] += 4 * ex * ex / L3;
+            Q[1] += 4 * ex * ey / L3;
+            Q[2] += 4 * ey * ey / L3;
+
+            s[0] += (6 * (f1 - f2) - 2 * df2) * ex / L3;
+            s[1] += (6 * (f1 - f2) - 2 * df2) * ey / L3;
+        }
+
+        Q[2] = Q[1];
+
+        det = Q[0] * Q[3] - Q[1] * Q[2]
+        r[0] = (Q[3] * s[0] - Q[1] * s[1]) / det;
+        r[1] = (-Q[2] * s[0] + Q[0] * s[1]) / det;
+
+        double change = fmax(fabs(prev_grad[2 * idx + 0] + r[0]),
+                             fabs(prev_grad[2 * idx + 1] + r[1]));
+
+        grad[2 * idx + 0] = -r[0];
+        grad[2 * idx + 1] = -r[1];
+
+        change /= fmax(1.0, fmax(fabs(r[0]), fabs(r[1])));
+        err[idx] = fmax(err[idx], change);
+    }
+}
+"""
+
+CT_MODULE = cupy.RawModule(code=CT_DEF, options=('-std=c++11',),
+                           name_expressions=['estimate_gradients_2d'])
+
+
 def estimate_gradients_2d_global(tri, y, maxiter=400, tol=1e-6):
-    indptr, indices = tri.vertex_neighbor_vertices()  # NOQA
+    indptr, indices = tri.vertex_neighbor_vertices()
+    err = cupy.zeros(indptr.shape[0], dtype=cupy.float64)
+    grad = cupy.zeros((indptr.shape[0], 2), dtype=cupy.float64)
+    prev_grad = cupy.zeros((indptr.shape[0], 2), dtype=cupy.float64)
+
+    estimate_gradients_2d = CT_MODULE.get_function('estimate_gradients_2d')
+    for iter in range(maxiter):
+        estimate_gradients_2d((512,), (128,), (
+            tri.points, grad.shape[0], y, indptr, indices, float(tol), err,
+            prev_grad, grad))
+
+        all_converged = (cupy.max(err) < tol).item()
+        if all_converged:
+            break
+
+        prev_grad[:] = grad[:]
+
+    if iter == maxiter - 1:
+        warnings.warn("Gradient estimation did not converge, "
+                      "the results may be inaccurate")
+
+    return grad
 
 
 class CloughTocher2DInterpolator(NDInterpolatorBase):
