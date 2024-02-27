@@ -1,8 +1,10 @@
+import platform
 import unittest
 
 from cupy import testing
 import cupyx.scipy.special  # NOQA
 import numpy
+import pytest
 
 import warnings
 
@@ -42,6 +44,9 @@ class TestPolygamma(unittest.TestCase):
         return scp.special.polygamma(
             dtype(2.), dtype(1.5)).astype(numpy.float32)
 
+    @pytest.mark.xfail(
+        platform.processor() == "aarch64",
+        reason="aarch64 scipy is buggy")
     @testing.with_requires('scipy>=1.1.0')
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(atol=1e-2, rtol=1e-3, scipy_name='scp')
@@ -55,4 +60,6 @@ class TestPolygamma(unittest.TestCase):
         b = xp.asarray(b)
         with warnings.catch_warnings():
             warnings.simplefilter('ignore')
-            return scp.special.polygamma(a, b)
+            y = scp.special.polygamma(a, b)
+            print(dtype, y)
+            return y
