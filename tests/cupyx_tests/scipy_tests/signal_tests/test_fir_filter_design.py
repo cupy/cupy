@@ -317,7 +317,8 @@ class TestFirls:
         # negative weight
         # assert_raises(ValueError, firls, 11, [0.1, 0.2], [0, 0], [-1])
 
-    @pytest.mark.xfail(
+    # SciPy from conda-forge works, but from PyPI fails
+    @pytest.mark.skipif(
         platform.processor() == "aarch64",
         reason="aarch64 scipy is buggy")
     @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-13)
