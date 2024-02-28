@@ -4,7 +4,6 @@ import math
 import cupy
 from cupy._core import internal  # NOQA
 from cupy._core._scalar import get_typename  # NOQA
-from cupy_backends.cuda.api import runtime
 from cupyx.scipy import special as spec
 from cupyx.scipy.interpolate._bspline import BSpline, _get_dtype
 
@@ -122,15 +121,7 @@ INTERVAL_MODULE = cupy.RawModule(
     name_expressions=[
         'find_breakpoint_position_1d', 'find_breakpoint_position_nd'])
 
-if runtime.is_hip:
-    BASE_HEADERS = """#include <hip/hip_runtime.h>
-"""
-else:
-    BASE_HEADERS = """#include <cuda_runtime.h>
-#include <device_launch_parameters.h>
-"""
-
-PPOLY_KERNEL = BASE_HEADERS + r"""
+PPOLY_KERNEL = r"""
 #include <cupy/complex.cuh>
 #include <cupy/math_constants.h>
 
@@ -404,7 +395,7 @@ PPOLY_MODULE = cupy.RawModule(
         [f'fix_continuity<{type_name}>' for type_name in TYPES] +
         [f'integrate<{type_name}>' for type_name in TYPES]))
 
-BPOLY_KERNEL = BASE_HEADERS + r"""
+BPOLY_KERNEL = r"""
 #include <cupy/complex.cuh>
 #include <cupy/math_constants.h>
 
