@@ -376,14 +376,19 @@ __forceinline__ __device__ int getThreadNum()
 }
 
 __global__ void estimate_gradients_2d(
-        double* points, int n_points, double* values, long long* vertex_off,
-        int* vertex_neighbors, double tol, double* err,
+        double* points, int n_points, double* values, int values_dim,
+        long long* vertex_off, int* vertex_neighbors, double tol, double* err,
         double* prev_grad, double* grad) {
 
-    double max_err = 0.0;
     __shared__ double block_err[512];
 
-    for (int idx = getCurThreadIdx(); idx < n_points; idx += getThreadNum()) {
+    double max_err = 0.0;
+    int dim_idx = getCurThreadIdx() % values_dim;
+
+    for (int idx = getCurThreadIdx() / values_dim;
+            idx < n_points;
+            idx += getThreadNum()) {
+
         block_err[threadIdx.x] = 0;
 
         double Q[4] = {0.0, 0.0, 0.0, 0.0};
@@ -398,11 +403,12 @@ __global__ void estimate_gradients_2d(
             double L = sqrt(ex * ex + ey * ey);
             double L3 = L * L * L;
 
-            double f1 = values[idx];
-            double f2 = values[nidx];
+            double f1 = values[dim_idx * n_points + idx];
+            double f2 = values[dim_idx * n_points + nidx];
 
             double df2 = (
-                -ex * prev_grad[2 * nidx] - ey * prev_grad[2 * nidx + 1]);
+                -ex * prev_grad[2 * n_points * dim_idx + 2 * nidx] -
+                 ey * prev_grad[2 * n_points * dim_idx + 2 * nidx + 1]);
 
             Q[0] += 4 * ex * ex / L3;
             Q[1] += 4 * ex * ey / L3;
@@ -418,11 +424,12 @@ __global__ void estimate_gradients_2d(
         r[0] = (Q[3] * s[0] - Q[1] * s[1]) / det;
         r[1] = (-Q[2] * s[0] + Q[0] * s[1]) / det;
 
-        double change = fmax(fabs(prev_grad[2 * idx + 0] + r[0]),
-                             fabs(prev_grad[2 * idx + 1] + r[1]));
+        double change = fmax(
+            fabs(prev_grad[2 * n_points * dim_idx + 2 * idx + 0] + r[0]),
+            fabs(prev_grad[2 * n_points * dim_idx + 2 * idx + 1] + r[1]));
 
-        grad[2 * idx + 0] = -r[0];
-        grad[2 * idx + 1] = -r[1];
+        grad[2 * n_points * dim_idx + 2 * idx + 0] = -r[0];
+        grad[2 * n_points * dim_idx + 2 * idx + 1] = -r[1];
 
         change /= fmax(1.0, fmax(fabs(r[0]), fabs(r[1])));
         block_err[idx] = fmax(block_err[idx], change);
@@ -444,6 +451,38 @@ __global__ void estimate_gradients_2d(
     }
 
 }
+
+template<typename T>
+__global__ void clough_tocher_2d(
+        const double* points, int n_points, const int* simplices,
+        const int* found_simplices, const double* bary, int n_queries,
+        const T* values, int values_sz,
+        const T* grad, const T* fill_value, T* out) {
+
+    int value_dim = getCurThreadIdx() % values_sz;
+    T f[3];
+    T df[3 * 2];
+
+    for (int idx = getCurThreadIdx() / values_sz;
+            idx < n_queries; idx += getThreadNum()) {
+        const int isimplex = found_simplices[idx];
+        const int* chosen_simplex = simplices + 3 * isimplex;
+
+        if(isimplex == -1) {
+            out[idx * values_sz + value_dim] = fill_value[0];
+            return;
+        }
+
+        for(int j = 0; j < 3; j++) {
+            int vi = chosen_simplex[j];
+            f[j] = values[values_sz * vi + value_dim];
+            df[2 * j] = grad[2 * values_sz * vi + 2 * value_dim];
+            df[2 * j + 1] = grad[2 * values_sz * vi + 2 * value_dim + 1];
+        }
+
+
+    }
+}
 """
 
 CT_MODULE = cupy.RawModule(code=CT_DEF, options=('-std=c++11',),
@@ -451,16 +490,36 @@ CT_MODULE = cupy.RawModule(code=CT_DEF, options=('-std=c++11',),
 
 
 def estimate_gradients_2d_global(tri, y, maxiter=400, tol=1e-6):
+    if cupy.issubdtype(y.dtype, cupy.complexfloating):
+        rg = estimate_gradients_2d_global(
+            tri, y.real, maxiter=maxiter, tol=tol)
+        ig = estimate_gradients_2d_global(
+            tri, y.imag, maxiter=maxiter, tol=tol)
+        r = cupy.zeros(rg.shape, dtype=cupy.complex128)
+        r.real = rg
+        r.imag = ig
+        return r
+
     indptr, indices = tri.vertex_neighbor_vertices()
+
+    y_shape = y.shape
+    if y.ndim == 1:
+        y = y[:, None]
+
+    y = y.reshape(indptr.shape[0] - 1, -1).T
+    y = cupy.ascontiguousarray(y, dtype=cupy.float64)
+
     err = cupy.zeros(512, dtype=cupy.float64)
-    grad = cupy.zeros((indptr.shape[0] - 1, 2), dtype=cupy.float64)
-    prev_grad = cupy.zeros((indptr.shape[0] - 1, 2), dtype=cupy.float64)
+    grad = cupy.zeros((y.shape[0], indptr.shape[0] - 1, 2),
+                      dtype=cupy.float64)
+    prev_grad = cupy.zeros((y.shape[0], indptr.shape[0] - 1, 2),
+                           dtype=cupy.float64)
 
     estimate_gradients_2d = CT_MODULE.get_function('estimate_gradients_2d')
     for iter in range(maxiter):
         estimate_gradients_2d((512,), (128,), (
-            tri.points, grad.shape[0], y, indptr, indices, float(tol), err,
-            prev_grad, grad))
+            tri.points, grad.shape[1], y, y.shape[0], indptr, indices,
+            float(tol), err, prev_grad, grad))
 
         all_converged = (cupy.max(err) < tol).item()
         if all_converged:
@@ -473,7 +532,7 @@ def estimate_gradients_2d_global(tri, y, maxiter=400, tol=1e-6):
         warnings.warn("Gradient estimation did not converge, "
                       "the results may be inaccurate")
 
-    return grad
+    return grad.transpose(1, 0, 2).reshape(y_shape + (2,))
 
 
 class CloughTocher2DInterpolator(NDInterpolatorBase):
@@ -617,3 +676,12 @@ class CloughTocher2DInterpolator(NDInterpolatorBase):
 
     def _evaluate_complex(self, xi):
         return self._do_evaluate(xi, 1.0j)
+
+    def _do_evaluate(self, xi, dummy):
+        isimplices, c = self._find_simplicies(xi)  # NOQA
+        ndim = xi.shape[1]  # NOQA
+        fill_value = self.fill_value  # NOQA
+
+        out = cupy.zeros((xi.shape[0], self.values.shape[1]),  # NOQA
+                         dtype=self.values.dtype)  # NOQA
+        nvalues = out.shape[1]  # NOQA
