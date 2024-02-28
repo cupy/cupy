@@ -133,10 +133,9 @@ class TestPutAlongAxis(unittest.TestCase):
     def test_indices_values_arr_diff_dims(self, dtype):
         for xp in [numpy, cupy]:
             a = testing.shaped_arange((3, 3, 3), xp, dtype)
-            # indices_max.ndim = 0
             i_max = xp.argmax(a, axis=0, keepdims=False)
             with pytest.raises(ValueError):
-                xp.put_along_axis(a, i_max, -99, axis=None)
+                xp.put_along_axis(a, i_max, -99, axis=1)
 
 
 @testing.parameterize(*testing.product({
@@ -155,13 +154,6 @@ class TestPutAlongAxes(unittest.TestCase):
 
 
 class TestPutAlongAxisNone(unittest.TestCase):
-
-    def test_axis_none_err(self):
-        for xp in [numpy, cupy]:
-            a = xp.array([[10, 30, 20], [60, 40, 50]])
-            i_max = xp.argmax(a, axis=None, keepdims=True)
-            with pytest.raises(ValueError):
-                xp.put_along_axis(a, i_max, -99, axis=None)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()

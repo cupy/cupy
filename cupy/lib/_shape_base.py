@@ -119,13 +119,11 @@ def put_along_axis(arr, indices, values, axis):
 
     # normalize inputs
     if axis is None:
-        # Tuple indexing isn't supported for flatiter.
-        arr = arr.ravel()
-        axis = 0
-        arr_shape = (len(arr),)
+        # put is roughly equivalent to a.flat[ind] = values
+        cupy.put(arr, indices, values)
     else:
         axis = internal._normalize_axis_index(axis, arr.ndim)
         arr_shape = arr.shape
 
-    # use the fancy index
-    arr[_make_along_axis_idx(arr_shape, indices, axis)] = values
+        # use the fancy index
+        arr[_make_along_axis_idx(arr_shape, indices, axis)] = values
