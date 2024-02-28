@@ -1729,7 +1729,6 @@ def contractionMg(alpha, A, modeA, B, modeB, beta, C, modeC,
         hostBufSize = cutensor.getMgContractionWorkspace(
             handle.ptr, desc.ptr, find.ptr, ws_pref,
             deviceBufSize.ctypes.data)
-        print(deviceBufSize, hostBufSize)
     if hostBuf is None:
         mem = alloc_pinned_memory(hostBufSize)
         hostBuf = _numpy.ndarray((hostBufSize), dtype=_numpy.int8, buffer=mem)
