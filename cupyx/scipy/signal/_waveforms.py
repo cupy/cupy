@@ -661,17 +661,7 @@ def _sweep_poly_phase(t, poly):
     return phase
 
 
-if runtime.is_hip:
-    KERNEL_BASE = r"""
-    #include <hip/hip_runtime.h>
-"""
-else:
-    KERNEL_BASE = r"""
-#include <cuda_runtime.h>
-#include <device_launch_parameters.h>
-"""
-
-UNIT_KERNEL = KERNEL_BASE + r'''
+UNIT_KERNEL = r'''
 #include <cupy/math_constants.h>
 #include <cupy/carray.cuh>
 #include <cupy/complex.cuh>
