@@ -119,6 +119,7 @@ Adding and removing elements
    resize
    unique
    trim_zeros
+   insert
 
 
 Rearranging elements
