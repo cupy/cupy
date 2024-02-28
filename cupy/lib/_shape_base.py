@@ -119,6 +119,9 @@ def put_along_axis(arr, indices, values, axis):
 
     # normalize inputs
     if axis is None:
+        if indices.ndim != 1:
+            raise NotImplementedError(
+                "Tuple setitem isn't supported for flatiter.")
         # put is roughly equivalent to a.flat[ind] = values
         cupy.put(arr, indices, values)
     else:
