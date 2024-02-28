@@ -1722,7 +1722,7 @@ def contractionMg(alpha, A, modeA, B, modeB, beta, C, modeC,
     desc = create_mg_contraction_descriptor(
         descA, modeA, descB, modeB, descC, modeC, descD, modeD,
         compute_desc, devices)
-    find = create_mg_contraction_find()
+    find = create_mg_contraction_find(devices=devices)
     num_devices = handle.num_devices
     deviceBufSize = _numpy.zeros((num_devices,), dtype=_numpy.int64)
     if deviceBuf is None or hostBuf is None:
@@ -1748,7 +1748,8 @@ def contractionMg(alpha, A, modeA, B, modeB, beta, C, modeC,
             deviceBufptr[i] = deviceBuf[i].data.ptr
         else:
             deviceBufptr[i] = 0
-    plan = create_mg_contraction_plan(desc, find, deviceBufSize, hostBufSize)
+    plan = create_mg_contraction_plan(
+        desc, find, deviceBufSize, hostBufSize, devices=devices)
     streams = _numpy.zeros((handle.num_devices,), dtype=_numpy.int64)
     scalar_dtype = _get_scalar_dtype(C.dtype)
     cutensor._contractMg(
