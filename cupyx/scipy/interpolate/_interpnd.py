@@ -359,6 +359,7 @@ class LinearNDInterpolator(NDInterpolatorBase):
 # -----------------------------------------------------------------------------
 
 CT_DEF = r"""
+#include <cupy/complex.cuh>
 
 __forceinline__ __device__ int getCurThreadIdx()
 {
@@ -382,7 +383,6 @@ __global__ void estimate_gradients_2d(
 
     __shared__ double block_err[512];
 
-    double max_err = 0.0;
     int dim_idx = getCurThreadIdx() % values_dim;
 
     for (int idx = getCurThreadIdx() / values_dim;
@@ -452,11 +452,164 @@ __global__ void estimate_gradients_2d(
 
 }
 
+__device__ void compute_barycentric_coordinates(
+        const double* p, const double* p0, const double* p1, const double* p2,
+        double* s, double* t) {
+
+    double A = 0.5 * (
+        (-p1[1]) * p2[0] + p0[1] * (-p1[0] + p2[0]) +
+         p0[0] * (p1[1] - p2[1]) + p1[0] * p2[1]);
+
+    double sign = A < 0 ? -1 : 1;
+    double unS = (
+        p0[1] * p2[0] - p0[0] * p2[1] +
+        (p2[1] - p0[1]) * p[0] +
+        (p0[0] - p2[0]) * p[1]) * sign;
+
+    double unT = (
+        p0[0] * p1[1] - p0[1] * p1[0] +
+        (p0[1] - p1[1]) * p[0] +
+        (p1[0] - p0[0]) * p[1]) * sign;
+
+    *s = 1.0 / (2.0 * A) * unS;
+    *t = 1.0 / (2.0 * A) * unT;
+}
+
+template<typename T>
+__device__ T clough_tocher_2d_single(
+        const double* points, const double* b, T* f, T* df, const int isimplex,
+        const int* simplices, const int* neighbors
+) {
+    T  c3000, c0300, c0030, c0003, c2100, c2010, c2001, c0210, c0201, c0021;
+    T  c1200, c1020, c1002, c0120, c0102, c0012;
+    T  c1101, c1011, c0111;
+    T f1, f2, f3, df12, df13, df21, df23, df31, df32;
+    double g[3];
+    double e12x, e12y, e23x, e23y, e31x, e31y;
+    T w;
+    double minval;
+    double b1, b2, b3, b4;
+    int itri;
+    double c[3];
+    double y[2];
+
+    e12x = (+ points[0 + 2 * simplices[3 * isimplex + 1]]
+            - points[0 + 2 * simplices[3 * isimplex + 0]]);
+    e12y = (+ points[1 + 2 * simplices[3 * isimplex + 1]]
+            - points[1 + 2 * simplices[3 * isimplex + 0]]);
+
+    e23x = (+ points[0 + 2 * simplices[3 * isimplex + 2]]
+            - points[0 + 2 * simplices[3 * isimplex + 1]]);
+    e23y = (+ points[1 + 2 * simplices[3 * isimplex + 2]]
+            - points[1 + 2 * simplices[3 * isimplex + 1]]);
+
+    e31x = (+ points[0 + 2 * simplices[3 * isimplex + 0]]
+            - points[0 + 2 * simplices[3 * isimplex + 2]]);
+    e31y = (+ points[1 + 2 * simplices[3 * isimplex + 0]]
+            - points[1 + 2 * simplices[3 * isimplex + 2]]);
+
+    f1 = f[0];
+    f2 = f[1];
+    f3 = f[2];
+
+    df12 = +(df[2 * 0 + 0] * e12x + df[2 * 0 + 1] * e12y);
+    df21 = -(df[2 * 1 + 0] * e12x + df[2 * 1 + 1] * e12y);
+    df23 = +(df[2 * 1 + 0] * e23x + df[2 * 1 + 1] * e23y);
+    df32 = -(df[2 * 2 + 0] * e23x + df[2 * 2 + 1] * e23y);
+    df31 = +(df[2 * 2 + 0] * e31x + df[2 * 2 + 1] * e31y);
+    df13 = -(df[2 * 0 + 0] * e31x + df[2 * 0 + 1] * e31y);
+
+    c3000 = f1;
+    c2100 = (df12 + 3.0 * c3000) / 3.0;
+    c2010 = (df13 + 3.0 * c3000) / 3.0;
+    c0300 = f2;
+    c1200 = (df21 + 3.0 * c0300) / 3.0;
+    c0210 = (df23 + 3.0 * c0300) / 3.0;
+    c0030 = f3;
+    c1020 = (df31 + 3.0 * c0030) / 3.0;
+    c0120 = (df32 + 3.0 * c0030) / 3.0;
+
+    c2001 = (c2100 + c2010 + c3000) / 3.0;
+    c0201 = (c1200 + c0300 + c0210) / 3.0;
+    c0021 = (c1020 + c0120 + c0030) / 3.0;
+
+    const double* p0 = points + 2 * simplices[3 * isimplex];
+    const double* p1 = points + 2 * simplices[3 * isimplex + 1];
+    const double* p2 = points + 2 * simplices[3 * isimplex + 2];
+
+    for(int k = 0; k < 3; k++) {
+        int tri_opp = neighbors[3 * isimplex + k];
+        if(tri_opp == -1) {
+            g[k] = -0.5;
+            continue;
+        }
+
+        itri = tri_opp >> 4;
+        y[0] = (+ points[0 + 2 * simplices[3 * itri + 0]]
+                + points[0 + 2 * simplices[3 * itri + 1]]
+                + points[0 + 2 * simplices[3 * itri + 2]]) / 3;
+
+        y[1] = (+ points[1 + 2 * simplices[3 * itri + 0]]
+                + points[1 + 2 * simplices[3 * itri + 1]]
+                + points[1 + 2 * simplices[3 * itri + 2]]) / 3;
+
+        compute_barycentric_coordinates(y, p0, p1, p2, &c[1], &c[2]);
+        c[0] = 1 - c[1] - c[2];
+
+        if(k == 0) {
+            g[k] = (2 * c[2] + c[1] - 1) / (2.0 - 3 * c[2] - 3 * c[1]);
+        } else if(k == 1) {
+            g[k] = (2 * c[0] + c[2] - 1) / (2 - 3 * c[0] - 3 * c[2]);
+        } else {
+            g[k] = (2 * c[1] + c[0] - 1) / (2 - 3 * c[1] - 3 * c[0]);
+        }
+    }
+
+    c0111 = (g[0] * (-c0300 + 3.0 * c0210 - 3.0 * c0120 + c0030)
+             + (-c0300 + 2.0 * c0210 - c0120 + c0021 + c0201)) / 2.0;
+    c1011 = (g[1] * (-c0030 + 3.0 * c1020 - 3.0 * c2010 + c3000)
+             + (-c0030 + 2.0 * c1020 - c2010 + c2001 + c0021)) / 2.0;
+    c1101 = (g[2] * (-c3000 + 3.0 * c2100 - 3.0 * c1200 + c0300)
+             + (-c3000 + 2.0 * c2100 - c1200 + c2001 + c0201)) / 2.0;
+
+    c1002 = (c1101 + c1011 + c2001) / 3.0;
+    c0102 = (c1101 + c0111 + c0201) / 3.0;
+    c0012 = (c1011 + c0111 + c0021) / 3.0;
+
+    c0003 = (c1002 + c0102 + c0012) / 3.0;
+
+    minval = b[0];
+    for(int k = 0; k < 3; k++) {
+        if(b[k] < minval) {
+            minval = b[k];
+        }
+    }
+
+    b1 = b[0] - minval;
+    b2 = b[1] - minval;
+    b3 = b[2] - minval;
+    b4 = 3 * minval;
+
+    w = (b1*b1*b1*c3000 + 3.0*b1*b1*b2*c2100 +
+         3.0*b1*b1*b3*c2010 +
+         3.0*b1*b1*b4*c2001 + 3.0*b1*b2*b2*c1200 +
+         6.0*b1*b2*b4*c1101 + 3.0*b1*b3*b3*c1020 + 6.0*b1*b3*b4*c1011 +
+         3.0*b1*b4*b4*c1002 + b2*b2*b2*c0300 +
+         3.0*b2*b2*b3*c0210 +
+         3.0*b2*b2*b4*c0201 + 3.0*b2*b3*b3*c0120 +
+         6.0*b2*b3*b4*c0111 +
+         3.0*b2*b4*b4*c0102 + b3*b3*b3*c0030 +
+         3.0*b3*b3*b4*c0021 +
+         3.0*b3*b4*b4*c0012 + pow(b4, 3.0)*c0003);
+
+    return w;
+}
+
 template<typename T>
 __global__ void clough_tocher_2d(
         const double* points, int n_points, const int* simplices,
-        const int* found_simplices, const double* bary, int n_queries,
-        const T* values, int values_sz,
+        const int* tri_opp, const int* found_simplices, const double* bary,
+        int n_queries, const T* values, int values_sz,
         const T* grad, const T* fill_value, T* out) {
 
     int value_dim = getCurThreadIdx() % values_sz;
@@ -480,13 +633,18 @@ __global__ void clough_tocher_2d(
             df[2 * j + 1] = grad[2 * values_sz * vi + 2 * value_dim + 1];
         }
 
+        T w = clough_tocher_2d_single(
+            points, bary + 3 * idx, f, df, isimplex, simplices, tri_opp);
 
+        out[values_sz * idx + value_dim] = w;
     }
 }
 """
 
-CT_MODULE = cupy.RawModule(code=CT_DEF, options=('-std=c++11',),
-                           name_expressions=['estimate_gradients_2d'])
+CT_MODULE = cupy.RawModule(
+    code=CT_DEF, options=('-std=c++11',),
+    name_expressions=['estimate_gradients_2d'] +
+                     [f'clough_tocher_2d<{t}>' for t in TYPES])
 
 
 def estimate_gradients_2d_global(tri, y, maxiter=400, tol=1e-6):
@@ -677,11 +835,18 @@ class CloughTocher2DInterpolator(NDInterpolatorBase):
     def _evaluate_complex(self, xi):
         return self._do_evaluate(xi, 1.0j)
 
-    def _do_evaluate(self, xi, dummy):
-        isimplices, c = self._find_simplicies(xi)  # NOQA
-        ndim = xi.shape[1]  # NOQA
-        fill_value = self.fill_value  # NOQA
+    def _do_evaluate(self, xi, dummy=None):
+        isimplices, c = self._find_simplicies(xi)
+        fill_value = self.fill_value
 
-        out = cupy.zeros((xi.shape[0], self.values.shape[1]),  # NOQA
-                         dtype=self.values.dtype)  # NOQA
-        nvalues = out.shape[1]  # NOQA
+        out = cupy.zeros((xi.shape[0], self.values.shape[1]),
+                         dtype=self.values.dtype)
+
+        clough_tocher_2d = _get_module_func(
+            CT_MODULE, 'clough_tocher_2d', self.values)
+        clough_tocher_2d((512,), (128,), (
+            self.tri.points, self.tri.points.shape[0], self.tri.simplices,
+            self.tri.neighbors, isimplices, c, xi.shape[0], self.values,
+            self.values.shape[1], self.grad, fill_value, out
+        ))
+        return out
