@@ -2851,6 +2851,10 @@ RealType*           coords
                 for(int i = 0; i < DEG && !isInTri; i++) {
                     int oppTriIdx = nearest.getOppTri(i);
 
+                    if(oppTriIdx == -1) {
+                        continue;
+                    }
+
                     if(visitedAlready(oppTriIdx, visited, off + 1)) {
                         continue;
                     }
