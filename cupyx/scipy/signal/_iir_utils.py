@@ -35,17 +35,7 @@ TYPE_NAMES = [_get_typename(t) for t in TYPES]
 TYPE_PAIR_NAMES = [(_get_typename(x), _get_typename(y)) for x, y in TYPE_PAIRS]
 
 
-if runtime.is_hip:
-    IIR_KERNEL_BASE = r"""
-    #include <hip/hip_runtime.h>
-"""
-else:
-    IIR_KERNEL_BASE = r"""
-#include <cuda_runtime.h>
-#include <device_launch_parameters.h>
-"""
-
-IIR_KERNEL = IIR_KERNEL_BASE + r"""
+IIR_KERNEL = r"""
 #include <cupy/math_constants.h>
 #include <cupy/carray.cuh>
 #include <cupy/complex.cuh>
@@ -200,7 +190,7 @@ __global__ void second_pass_iir(
 }
 """
 
-IIR_SOS_KERNEL = IIR_KERNEL_BASE + r"""
+IIR_SOS_KERNEL = r"""
 #include <cupy/math_constants.h>
 #include <cupy/carray.cuh>
 #include <cupy/complex.cuh>
