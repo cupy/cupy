@@ -445,6 +445,8 @@ class Stream(_BaseStream):
             per-thread default stream object.
         non_blocking (bool): If ``True`` and both ``null`` and ``ptds`` are
             ``False``, the stream does not synchronize with the NULL stream.
+        priority (int): Priority of the stream. Lower numbers represent higher
+        priorities.
 
     Attributes:
         ~Stream.ptr (intptr_t): Raw stream handle.
