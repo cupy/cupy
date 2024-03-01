@@ -432,7 +432,7 @@ __global__ void estimate_gradients_2d(
         grad[2 * n_points * dim_idx + 2 * idx + 1] = -r[1];
 
         change /= fmax(1.0, fmax(fabs(r[0]), fabs(r[1])));
-        block_err[idx] = fmax(block_err[idx], change);
+        block_err[threadIdx.x] = fmax(block_err[threadIdx.x], change);
 
         __syncthreads();
 

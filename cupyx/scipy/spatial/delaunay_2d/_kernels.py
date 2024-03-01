@@ -2320,6 +2320,11 @@ __device__ bool isPointInTriangle(
         p0._p[0] * (p1._p[1] - p2._p[1]) +
         p1._p[0] * p2._p[1]);
 
+    if(A <= 1e-13) {
+        // Omit close to colinear triangles
+        return false;
+    }
+
     RealType sign = A < 0 ? -1 : 1;
     RealType unS = (p0._p[1] * p2._p[0] - p0._p[0] * p2._p[1] +
           (p2._p[1] - p0._p[1]) * p._p[0] +
@@ -2889,7 +2894,6 @@ RealType*           coords
                 }
             }
         }
-
 
         if(!isInTri) {
             // Find the nearest opposite triangle to the query point from
