@@ -130,7 +130,8 @@ def apply_over_axes(func, a, axes):
     """
     val = cupy.asarray(a)
     N = a.ndim
-    if numpy.array(axes).ndim == 0:  # axes is short, no need to use `cupy.array`
+    # axes is short, no need to use `cupy.array`
+    if numpy.array(axes).ndim == 0:
         axes = (axes,)
     for axis in axes:
         axis = internal._normalize_axis_index(axis, N)
