@@ -143,6 +143,8 @@ class TestApplyOverAxes(unittest.TestCase):
             axis = 3
             with pytest.raises(numpy.AxisError):
                 xp.apply_over_axes(xp.sum, a, axis)
+
+
 class TestPutAlongAxis(unittest.TestCase):
 
     @testing.for_all_dtypes()
