@@ -488,6 +488,23 @@ configs {
   }
 }
 
+# CUDA Build & Import without CUDA
+configs {
+  key: "cupy.linux.cuda-build"
+  value {
+    requirement {
+      cpu: 8
+      memory: 50
+      disk: 20
+    }
+    time_limit: {
+      seconds: 3600
+    }
+    environment_variables { key: "GPU" value: "0" }
+    command: ".pfnci/linux/main-flexci.sh cuda-build"
+  }
+}
+
 # BENCHMARK
 configs {
   key: "cupy.linux.benchmark.head"

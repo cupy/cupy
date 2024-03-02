@@ -196,6 +196,11 @@
         "full",
         "rapids"
     ],
+    "cupy.linux.cuda-build": [
+        "@push",
+        "full",
+        "mini"
+    ],
     "cupy.linux.array-api": [
         "array-api"
     ],
