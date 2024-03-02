@@ -198,3 +198,33 @@ Be sure to do this before any other CuPy operations.
 
    # Disable memory pool for pinned memory (CPU).
    cupy.cuda.set_pinned_memory_allocator(None)
+
+
+Grace-Hopper support (**experimental!**)
+........................................
+
+It is possible to make both NumPy and CuPy to use and share the system memory on NVIDIA Grace Hopper Superchip. To activate this capability,
+currently you need to:
+
+1. Build CuPy from source and install `numpy_allocator <https://github.com/inaccel/numpy-allocator/>`_
+2. Set the environment variable ``CUPY_ENABLE_HMM=1``
+3. Make a memory pool for CuPy to draw system memory
+
+.. code-block:: py
+
+    import cupy as cp
+    cp.cuda.set_allocator(cp.cuda.MemoryPool(cp.cuda.memory.malloc_system).malloc)
+
+4. Switch to the aligned allocator for NumPy to draw system memory
+
+.. code-block:: py
+   
+    import cupy._core.numpy_allocator as ac
+    import numpy_allocator
+    import ctypes
+    lib = ctypes.CDLL(ac.__file__)
+    class my_allocator(metaclass=numpy_allocator.type):
+        _calloc_ = ctypes.addressof(lib._calloc)
+        _malloc_ = ctypes.addressof(lib._malloc)
+        _realloc_ = ctypes.addressof(lib._realloc)
+    my_allocator.__enter__()  # change the allocator globally
