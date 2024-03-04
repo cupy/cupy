@@ -839,7 +839,8 @@ cpdef intptr_t streamCreateWithFlags(unsigned int flags) except? 0:
     return <intptr_t>stream
 
 
-cpdef intptr_t streamCreateWithPriority(unsigned int flags, int priority) except? 0:
+cpdef intptr_t streamCreateWithPriority(unsigned int flags,
+                                        int priority) except? 0:
     cdef driver.Stream stream
     status = cudaStreamCreateWithPriority(&stream, flags, priority)
     check_status(status)

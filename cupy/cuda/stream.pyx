@@ -459,7 +459,8 @@ class Stream(_BaseStream):
     null = None
     ptds = None
 
-    def __init__(self, null=False, non_blocking=False, ptds=False, priority=None):
+    def __init__(self, null=False, non_blocking=False, ptds=False, 
+                 priority=None):
         if null:
             # TODO(pentschev): move to streamLegacy. This wasn't possible
             # because of a NCCL bug that should be fixed in the version
@@ -472,12 +473,14 @@ class Stream(_BaseStream):
                                  'default stream (ptds)')
             ptr = runtime.streamPerThread
             device_id = -1
-        elif priority:
-            ptr = runtime.streamCreateWithPriority(runtime.streamNonBlocking, priority)
-            device_id = runtime.getDevice()
         elif non_blocking:
-            ptr = runtime.streamCreateWithFlags(runtime.streamNonBlocking)
-            device_id = runtime.getDevice()
+            if priority:
+                ptr = runtime.streamCreateWithPriority(runtime.streamNonBlocking,
+                                                       priority)
+                device_id = runtime.getDevice()
+            else:
+                ptr = runtime.streamCreateWithFlags(runtime.streamNonBlocking)
+                device_id = runtime.getDevice()
         else:
             ptr = runtime.streamCreate()
             device_id = runtime.getDevice()
