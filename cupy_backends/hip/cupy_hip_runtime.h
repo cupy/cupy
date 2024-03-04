@@ -345,7 +345,7 @@ cudaError_t cudaStreamCreateWithFlags(cudaStream_t *stream,
     return hipStreamCreateWithFlags(stream, flags);
 }
 
-cudaError_t cudaStreamCreatewithPriority(cudaStream_t *stream,
+cudaError_t cudaStreamCreateWithPriority(cudaStream_t *stream,
                                          unsigned int flags,
                                          int priority) {
     return hipStreamCreateWithPriority(stream, flags, priority);

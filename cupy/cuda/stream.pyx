@@ -459,7 +459,7 @@ class Stream(_BaseStream):
     null = None
     ptds = None
 
-    def __init__(self, null=False, non_blocking=False, ptds=False, 
+    def __init__(self, null=False, non_blocking=False, ptds=False,
                  priority=None):
         if null:
             # TODO(pentschev): move to streamLegacy. This wasn't possible
@@ -475,8 +475,8 @@ class Stream(_BaseStream):
             device_id = -1
         elif non_blocking:
             if priority:
-                ptr = runtime.streamCreateWithPriority(runtime.streamNonBlocking,
-                                                       priority)
+                ptr = runtime.streamCreateWithPriority(
+                    runtime.streamNonBlocking, priority)
                 device_id = runtime.getDevice()
             else:
                 ptr = runtime.streamCreateWithFlags(runtime.streamNonBlocking)

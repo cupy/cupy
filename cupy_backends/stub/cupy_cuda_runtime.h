@@ -292,7 +292,7 @@ cudaError_t cudaStreamCreateWithFlags(...) {
     return cudaSuccess;
 }
 
-cudaError_t cudaStreamCreatewithPriority(...) {
+cudaError_t cudaStreamCreateWithPriority(...) {
     return cudaSuccess;
 }
 
