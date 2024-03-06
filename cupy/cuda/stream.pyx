@@ -473,16 +473,19 @@ class Stream(_BaseStream):
                                  'default stream (ptds)')
             ptr = runtime.streamPerThread
             device_id = -1
-        elif non_blocking:
-            if priority:
+        else:
+            if priority is not None and non_blocking:
                 ptr = runtime.streamCreateWithPriority(
                     runtime.streamNonBlocking, priority)
-                device_id = runtime.getDevice()
-            else:
-                ptr = runtime.streamCreateWithFlags(runtime.streamNonBlocking)
-                device_id = runtime.getDevice()
-        else:
-            ptr = runtime.streamCreate()
+            elif priority is not None and not non_blocking:
+                # default stream creation flag
+                ptr = runtime.streamCreateWithPriority(
+                    runtime.streamDefault, priority)
+            elif priority is None and non_blocking:
+                ptr = runtime.streamCreateWithFlags(
+                    runtime.streamNonBlocking)
+            else:  # priority is None and not non_blocking
+                ptr = runtime.streamCreate()
             device_id = runtime.getDevice()
         super().__init__(ptr, device_id)
 
