@@ -1281,9 +1281,13 @@ cpdef MgHandle _get_mg_handle(devices=None):
 
 class ndarray_mg:
     """A wrapper to catch all attributes for multi-GPU array.
+
+    This interface is experimental and may be changed in the future.
     """
     def __init__(self, x, **kwgs):
         """
+        This interface is experimental and may be changed in the future.
+
         Args:
             x (numpy.ndarray or cupy.ndarray or list of cupy.ndarray): Arrays
                 to wrap. Non-distributed host(device) storage scheme is meaned
@@ -1557,6 +1561,38 @@ def copyMg(dst, mode_Dst, src, mode_Src, deviceBuf=None, hostBuf=None,
                      streams.ctypes.data)
 
 
+def copyMgWorkspace(dst, mode_Dst, src, mode_Src, devices=None):
+    """Getting the workspace needed to perform the multi-GPU copy.
+
+    Args:
+        dst (numpy.ndarray or cupy.ndarray or ndarray_mg):
+        mode_Dst (tuple of int/str or Mode):
+        src (numpy.ndarray or cupy.ndarray or ndarray_mg):
+        mode_Src (tuple of int/str or Mode):
+        devices (Sequence): device list to determine the multi-GPU handle.
+
+    Returns:
+        hostBufSize (Int): Host buffer needed in bytes.
+        deviceBufSize (numpy.ndarray): Device buffer needed in bytes.
+    """
+    handle = _get_mg_handle(devices)
+    dst = to_mg_ndarray(dst)
+    src = to_mg_ndarray(src)
+    descDst = create_mg_tensor_descriptor(dst, devices)
+    descSrc = create_mg_tensor_descriptor(src, devices)
+    mode_Dst = create_mode(*mode_Dst)
+    mode_Src = create_mode(*mode_Src)
+    desc = create_mg_copy_descriptor(descDst, mode_Dst, descSrc, mode_Src,
+                                     devices)
+    num_devices = handle.num_devices
+
+    deviceBufSize = _numpy.empty(num_devices, dtype=_numpy.int64)
+    hostBufSize = cutensor.getMgCopyWorkspace(
+        handle.ptr, desc.ptr, deviceBufSize.ctypes.data
+    )
+    return hostBufSize, deviceBufSize
+
+
 cpdef MgContractionDescriptor create_mg_contraction_descriptor(
         MgTensorDescriptor descA, Mode modeA,
         MgTensorDescriptor descB, Mode modeB,
@@ -1757,3 +1793,70 @@ def contractionMg(alpha, A, modeA, B, modeB, beta, C, modeC,
         B.ptr, _create_scalar(beta, scalar_dtype).ptr, C.ptr, D.ptr,
         deviceBufptr.ctypes.data, hostBufptr, handle.num_devices,
         handle.devices.ctypes.data, streams.ctypes.data)
+
+
+def contractionMgWorkspace(
+        alpha, A, modeA, B, modeB, beta, C, modeC, D=None, modeD=None,
+        int compute_desc=0, int ws_pref=cutensor.WORKSPACE_RECOMMENDED,
+        devices=None):
+    """Getting the workspace needed to perform the multi-GPU contraction.
+
+    Args:
+        alpha (scalar): Scaling factor for A * B.
+        A (numpy.ndarray or cupy.ndarray or ndarray_mg): Input tensor.
+        modeA (tuple of int/str or Mode): A mode for tensor A.
+        B (numpy.ndarray or cupy.ndarray or ndarray_mg): Input tensor.
+        modeB (tuple of int/str or Mode): A mode for tensor B.
+        beta (scalar): Scaling factor for C.
+        C (numpy.ndarray or cupy.ndarray or ndarray_mg): Input tensor.
+        modeC (tuple of int/str or Mode): A mode for tensor C.
+        D (numpy.ndarray or cupy.ndarray or ndarray_mg or None): Output
+            tensor. Default value `None` means using C for output.
+        modeD (tuple of int/str or Mode or None): A mode for tensor D.
+            Default value `None` means the same as modeC.
+        compute_desc (cutensorComputeDescriptor_t): Datatype used in
+            contraction. Default value is `0`, means determined by dtype
+            of tensors. Other choices are:
+                COMPUTE_DESC_16F = 1
+                COMPUTE_DESC_16BF = 1024
+                COMPUTE_DESC_TF32 = 4096
+                COMPUTE_DESC_3xTF32 = 8192
+                COMPUTE_DESC_32F = 4
+                COMPUTE_DESC_64F = 16
+        ws_pref (cutensorWorksizePreference_t): User preference for the
+            workspace of cuTensor. Defaule value is
+            'cutensor.WORKSPACE_RECOMMENDED'.
+        devices (Sequence): device list to determine the multi-GPU handle.
+
+    Returns:
+        hostBufSize (Int): Host buffer needed in bytes.
+        deviceBufSize (numpy.ndarray): Device buffer needed in bytes.
+    """
+    handle = _get_mg_handle(devices)
+    A = to_mg_ndarray(A)
+    B = to_mg_ndarray(B)
+    C = to_mg_ndarray(C)
+    descA = create_mg_tensor_descriptor(A, devices)
+    descB = create_mg_tensor_descriptor(B, devices)
+    descC = create_mg_tensor_descriptor(C, devices)
+    modeA = create_mode(*modeA)
+    modeB = create_mode(*modeB)
+    modeC = create_mode(*modeC)
+    if D is None:
+        D = C
+        descD = descC
+        modeD = modeC
+    else:
+        D = to_mg_ndarray(D)
+        descD = create_mg_tensor_descriptor(D, devices)
+        modeD = create_mode(*modeD)
+    desc = create_mg_contraction_descriptor(
+        descA, modeA, descB, modeB, descC, modeC, descD, modeD,
+        compute_desc, devices)
+    find = create_mg_contraction_find(devices=devices)
+    num_devices = handle.num_devices
+    deviceBufSize = _numpy.zeros((num_devices,), dtype=_numpy.int64)
+    hostBufSize = cutensor.getMgContractionWorkspace(
+        handle.ptr, desc.ptr, find.ptr, ws_pref,
+        deviceBufSize.ctypes.data)
+    return hostBufSize, deviceBufSize
