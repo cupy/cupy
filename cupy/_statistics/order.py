@@ -233,9 +233,7 @@ def _quantile_unchecked(a, q, axis=None, out=None,
     elif method == 'midpoint':
         indices = 0.5 * (cupy.floor(indices) + cupy.ceil(indices))
     elif method == 'nearest':
-        # TODO(hvy): Implement nearest using around
-        raise ValueError('\'nearest\' method is not yet supported. '
-                         'Please use any other method.')
+        indices = cupy.around(indices).astype(cupy.int32)
     elif method == 'linear':
         pass
     else:
