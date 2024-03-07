@@ -297,7 +297,7 @@ cpdef _copyMg(
     intptr_t handle, intptr_t plan,
     intptr_t ptrDst, const intptr_t ptrSrc,
     intptr_t workspaceDevice, intptr_t workspaceHost,
-    uint32_t numDevices, intptr_t _devices, intptr_t _streams)
+    intptr_t _streams)
 
 # MgContractionDescriptor creation and destruction
 cpdef intptr_t createMgContractionDescriptor(
@@ -343,5 +343,4 @@ cpdef _contractMg(
     const intptr_t C, intptr_t D,
     intptr_t workspaceDevice,
     intptr_t workspaceHost,
-    uint32_t numDevices, intptr_t _devices,
     intptr_t _streams)

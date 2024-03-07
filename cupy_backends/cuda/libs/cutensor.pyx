@@ -706,12 +706,8 @@ cpdef _copyMg(
         intptr_t handle, intptr_t plan,
         intptr_t ptrDst, const intptr_t ptrSrc,
         intptr_t workspaceDevice, intptr_t workspaceHost,
-        uint32_t numDevices, intptr_t _devices, intptr_t _streams):
-    cdef int32_t* devices = <int32_t*>_devices
+        intptr_t _streams):
     cdef intptr_t* streams = <intptr_t*>_streams
-    cdef int i
-    for i in range(numDevices):
-        streams[i] = stream_module.get_stream_ptr(devices[i])
     with nogil:
         status = cutensorMgCopy(
             <MgHandle_t>handle, <MgCopyPlan_t>plan, <void**>ptrDst,
@@ -822,13 +818,8 @@ cpdef _contractMg(
         const intptr_t C, intptr_t D,
         intptr_t workspaceDevice,
         intptr_t workspaceHost,
-        uint32_t numDevices, intptr_t _devices,
         intptr_t _streams):
-    cdef int32_t* devices = <int32_t*>_devices
     cdef intptr_t* streams = <intptr_t*>_streams
-    cdef int i
-    for i in range(numDevices):
-        streams[i] = stream_module.get_stream_ptr(devices[i])
     with nogil:
         status = cutensorMgContraction(
             <MgHandle_t>handle, <MgContractionPlan_t>plan,

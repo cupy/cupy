@@ -12,6 +12,7 @@ from cupy._core.core cimport _ndarray_base
 from cupy._core cimport internal
 
 from cupy_backends.cuda.api.runtime cimport getDeviceCount
+from cupy_backends.cuda cimport stream as stream_module
 
 from cupy._core cimport core
 from cupy._core cimport _reduction
@@ -1499,7 +1500,7 @@ cpdef MgCopyPlan create_mg_copy_plan(
 
 
 def copyMg(dst, mode_Dst, src, mode_Src, deviceBuf=None, hostBuf=None,
-           devices=None):
+           streams=None, devices=None):
     """Copy according to the MgTensorDescriptors and modes.
 
     Args:
@@ -1511,6 +1512,7 @@ def copyMg(dst, mode_Dst, src, mode_Src, deviceBuf=None, hostBuf=None,
             when needed.
         hostBuf (numpy.ndarray or None): Pinned memory. `None` means allocated
             when needed.
+        streams (Sequence of Stream or None): The streams to perform the copy.
         devices (Sequence): device list to determine the multi-GPU handle.
 
     Returns:
@@ -1545,19 +1547,24 @@ def copyMg(dst, mode_Dst, src, mode_Src, deviceBuf=None, hostBuf=None,
         for i in range(num_devices):
             deviceBufSize[i] = deviceBuf[i].nbytes
     hostBufptr = 0 if hostBufSize == 0 else hostBuf.ctypes.data
-    deviceBufptr = _numpy.zeros((handle.num_devices,), dtype=_numpy.uint64)
-    for i in range(handle.num_devices):
+    deviceBufptr = _numpy.zeros(num_devices, dtype=_numpy.uint64)
+    for i in range(num_devices):
         if deviceBufSize[i] != 0:
             deviceBufptr[i] = deviceBuf[i].data.ptr
         else:
             deviceBufptr[i] = 0
     plan = create_mg_copy_plan(desc, deviceBufSize, hostBufSize)
-    for i in range(handle.num_devices):
+    for i in range(num_devices):
         deviceBufptr[i] = deviceBuf[i].data.ptr
-    streams = _numpy.zeros((handle.num_devices,), dtype=_numpy.int64)
+    streamPtrs = _numpy.zeros(num_devices, dtype=_numpy.int64)
+    if streams is None:
+        for i in range(num_devices):
+            streamPtrs[i] = stream_module.get_stream_ptr(devices[i])
+    else:
+        for i in range(num_devices):
+            streamPtrs[i] = streams[i].ptr
     cutensor._copyMg(handle.ptr, plan.ptr, dst.ptr, src.ptr,
                      deviceBufptr.ctypes.data, hostBufptr,
-                     handle.num_devices, handle.devices.ctypes.data,
                      streams.ctypes.data)
 
 
@@ -1700,7 +1707,8 @@ cpdef MgContractionPlan create_mg_contraction_plan(
 def contractionMg(alpha, A, modeA, B, modeB, beta, C, modeC,
                   D=None, modeD=None, int compute_desc=0,
                   int ws_pref=cutensor.WORKSPACE_RECOMMENDED,
-                  deviceBuf=None, hostBuf=None, devices=None):
+                  deviceBuf=None, hostBuf=None, streams=None,
+                  devices=None):
     """Multi-GPU contraction.
 
     Args:
@@ -1732,6 +1740,8 @@ def contractionMg(alpha, A, modeA, B, modeB, beta, C, modeC,
             when needed.
         hostBuf (numpy.ndarray or None): Pinned memory. `None` means allocated
             when needed.
+        streams (Sequence of Stream or None): The streams to perform the
+            contraction.
         devices (Sequence): device list to determine the multi-GPU handle.
 
     Returns:
@@ -1778,21 +1788,26 @@ def contractionMg(alpha, A, modeA, B, modeB, beta, C, modeC,
         for i in range(num_devices):
             deviceBufSize[i] = deviceBuf[i].nbytes
     hostBufptr = 0 if hostBufSize == 0 else hostBuf.ctypes.data
-    deviceBufptr = _numpy.zeros((handle.num_devices,), dtype=_numpy.uint64)
-    for i in range(handle.num_devices):
+    deviceBufptr = _numpy.zeros(num_devices, dtype=_numpy.uint64)
+    for i in range(num_devices):
         if deviceBufSize[i] != 0:
             deviceBufptr[i] = deviceBuf[i].data.ptr
         else:
             deviceBufptr[i] = 0
     plan = create_mg_contraction_plan(
         desc, find, deviceBufSize, hostBufSize, devices=devices)
-    streams = _numpy.zeros((handle.num_devices,), dtype=_numpy.int64)
+    streamPtrs = _numpy.zeros(num_devices, dtype=_numpy.int64)
+    if streams is None:
+        for i in range(num_devices):
+            streamPtrs[i] = stream_module.get_stream_ptr(devices[i])
+    else:
+        for i in range(num_devices):
+            streamPtrs[i] = streams[i].ptr
     scalar_dtype = _get_scalar_dtype(C.dtype)
     cutensor._contractMg(
         handle.ptr, plan.ptr, _create_scalar(alpha, scalar_dtype).ptr, A.ptr,
         B.ptr, _create_scalar(beta, scalar_dtype).ptr, C.ptr, D.ptr,
-        deviceBufptr.ctypes.data, hostBufptr, handle.num_devices,
-        handle.devices.ctypes.data, streams.ctypes.data)
+        deviceBufptr.ctypes.data, hostBufptr, streamPtrs.ctypes.data)
 
 
 def contractionMgWorkspace(
