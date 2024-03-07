@@ -1282,13 +1282,9 @@ cpdef MgHandle _get_mg_handle(devices=None):
 
 class ndarray_mg:
     """A wrapper to catch all attributes for multi-GPU array.
-
-    This interface is experimental and may be changed in the future.
     """
     def __init__(self, x, **kwgs):
         """
-        This interface is experimental and may be changed in the future.
-
         Args:
             x (numpy.ndarray or cupy.ndarray or list of cupy.ndarray): Arrays
                 to wrap. Non-distributed host(device) storage scheme is meaned
@@ -1315,6 +1311,7 @@ class ndarray_mg:
                 device_count (Sequence): The number of devices that each mode
                     is distributed across in a block-cyclic fashion.
         """
+        _util.experimental("cupy.cutensor.ndarray_mg")
         self.x = x
         if isinstance(x, list):
             self.dtype = x[0].dtype
@@ -1518,6 +1515,7 @@ def copyMg(dst, mode_Dst, src, mode_Src, deviceBuf=None, hostBuf=None,
     Returns:
         (None):
     """
+    _util.experimental("cupy.cutensor.copyMg")
     handle = _get_mg_handle(devices)
     dst = to_mg_ndarray(dst)
     src = to_mg_ndarray(src)
@@ -1582,6 +1580,7 @@ def copyMgWorkspace(dst, mode_Dst, src, mode_Src, devices=None):
         hostBufSize (Int): Host buffer needed in bytes.
         deviceBufSize (numpy.ndarray): Device buffer needed in bytes.
     """
+    _util.experimental("cupy.cutensor.copyMgWorkspace")
     handle = _get_mg_handle(devices)
     dst = to_mg_ndarray(dst)
     src = to_mg_ndarray(src)
@@ -1747,6 +1746,7 @@ def contractionMg(alpha, A, modeA, B, modeB, beta, C, modeC,
     Returns:
         (None):
     """
+    _util.experimental("cupy.cutensor.contractionMg")
     handle = _get_mg_handle(devices)
     A = to_mg_ndarray(A)
     B = to_mg_ndarray(B)
@@ -1847,6 +1847,7 @@ def contractionMgWorkspace(
         hostBufSize (Int): Host buffer needed in bytes.
         deviceBufSize (numpy.ndarray): Device buffer needed in bytes.
     """
+    _util.experimental("cupy.cutensor.contractionMgWorkspace")
     handle = _get_mg_handle(devices)
     A = to_mg_ndarray(A)
     B = to_mg_ndarray(B)
