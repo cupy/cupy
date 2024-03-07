@@ -309,7 +309,7 @@ def percentile(a, q, axis=None, out=None,
             function completes is undefined.
         method (str): Interpolation method when a quantile lies between
             two data points. ``linear`` interpolation is used by default.
-            Supported interpolations are``lower``, ``higher``, ``midpoint``,
+            Supported interpolations are ``lower``, ``higher``, ``midpoint``,
             ``nearest`` and ``linear``.
         keepdims (bool): If ``True``, the axis is remained as an axis of
             size one.
@@ -356,7 +356,7 @@ def quantile(a, q, axis=None, out=None,
             function completes is undefined.
         method (str): Interpolation method when a quantile lies between
             two data points. ``linear`` interpolation is used by default.
-            Supported interpolations are``lower``, ``higher``, ``midpoint``,
+            Supported interpolations are ``lower``, ``higher``, ``midpoint``,
             ``nearest`` and ``linear``.
         keepdims (bool): If ``True``, the axis is remained as an axis of
             size one.
