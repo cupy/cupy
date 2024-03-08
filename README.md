@@ -79,7 +79,9 @@ $ docker run --gpus all -it cupy/cupy
 - [Projects using CuPy](https://github.com/cupy/cupy/wiki/Projects-using-CuPy)
 - [Contribution Guide](https://docs.cupy.dev/en/stable/contribution.html)
 - [GPU Acceleration in Python using CuPy and Numba (GTC November 2021 Technical Session)](https://www.nvidia.com/en-us/on-demand/session/gtcfall21-a31149/)
-- [GPU-Acceleration of Signal Processing Workflows using CuPy and cuSignal (ICASSP'21 Tutorial)](https://github.com/awthomp/cusignal-icassp-tutorial)
+- [GPU-Acceleration of Signal Processing Workflows using CuPy and cuSignal[^1] (ICASSP'21 Tutorial)](https://github.com/awthomp/cusignal-icassp-tutorial)
+
+[^1]: cuSignal is now part of CuPy starting v13.0.0.
 
 ## License
 
