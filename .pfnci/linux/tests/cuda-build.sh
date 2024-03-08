@@ -18,8 +18,8 @@ export CUPY_NVCC_GENERATE_CODE="arch=compute_70,code=sm_70"
 
 # Make sure that CuPy can be imported without CUDA Toolkit installed.
 rm -rf /usr/local/cuda*
-pushd /
-python3 -c 'import cupy, cupyx; cupy.show_config(_full=True)'
+pushd tests/import_tests
+python3 test_import.py
 popd
 
 "$ACTIONS/cleanup.sh"
