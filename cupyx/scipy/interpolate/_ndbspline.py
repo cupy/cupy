@@ -134,7 +134,7 @@ __global__ void compute_nd_bsplines(
         double* splines, bool* invalid) {
 
     int start = getCurThreadIdx() / ndim;
-    int dim_idx = getCurThreadIdx() % values_dim;
+    int dim_idx = getCurThreadIdx() % ndim;
 
     for(int idx = start; idx < n_xi; idx += getThreadNum()) {
         double xd = xi[ndim * idx + dim_idx];
@@ -143,7 +143,7 @@ __global__ void compute_nd_bsplines(
         const long long dim_t_sz = t_sz[dim_idx];
 
         long long interval = find_interval(
-            dim_t, xd, dim_k, dim_t_sz, extrapolate);
+            dim_t, xd, dim_k, dim_t_sz - dim_k - 1, extrapolate);
 
         if(interval < 0) {
             invalid[idx] = true;
@@ -174,7 +174,11 @@ __global__ void eval_nd_bspline(
             continue;
         }
 
-        const double* idx_splines = b + ndim * (2 * max_k + 2) * idx;
+        for(int i = 0; i < num_c; i++) {
+            out[num_c * idx + i] = 0;
+        }
+
+        const double* idx_splines = b + ndim * (2 * max_k[0] + 2) * idx;
 
         for(long long iflat = 0; iflat < *volume; iflat++) {
             const long long* idx_b = indices_k1d + ndim * iflat;
@@ -185,8 +189,8 @@ __global__ void eval_nd_bspline(
                 const double* dim_splines = (
                     idx_splines + (2 * max_k[0] + 2) * d);
                 factor *= dim_splines[idx_b[d]];
-                d_idx = idx_b[d] + intervals[ndim * idx + d] - k[d];
-                idx_cflat_base += idx * strides_c1[d];
+                long long d_idx = idx_b[d] + intervals[ndim * idx + d] - k[d];
+                idx_cflat_base += d_idx * strides_c1[d];
             }
 
             for(int i = 0; i < num_c; i++) {
@@ -282,7 +286,7 @@ def evaluate_ndbspline(
     max_k = k.max()
     volume = cupy.prod(k + 1)
     intervals = cupy.empty((xi.shape[0], t.shape[0]), dtype=cupy.int64)
-    splines = cupy.empty((xi.shape[0], t.shape[0], 2 * max(k) + 2),
+    splines = cupy.empty((xi.shape[0], t.shape[0], 2 * max_k.item() + 2),
                          dtype=cupy.float64)
     invalid = cupy.zeros(xi.shape[0], dtype=cupy.bool_)
 
@@ -442,7 +446,7 @@ class NdBSpline:
                 raise ValueError(
                     f"invalid number of derivative orders {nu = } for "
                     f"ndim = {len(self.t)}.")
-            if any(nu < 0):
+            if cupy.any(nu < 0).item():
                 raise ValueError(f"derivatives must be positive, got {nu = }")
 
         # prepare xi : shape (..., m1, ..., md) -> (1, m1, ..., md)
@@ -468,7 +472,7 @@ class NdBSpline:
         # tabulate the flat indices for iterating over the (k+1)**ndim subarray
         shape = tuple(kd + 1 for kd in self.k)
         indices = cupy.unravel_index(cupy.arange(prod(shape)), shape)
-        _indices_k1d = cupy.asarray(indices, dtype=cupy.int64).T
+        _indices_k1d = cupy.asarray(indices, dtype=cupy.int64).T.copy()
 
         # prepare the coefficients: flatten the trailing dimensions
         c1 = self.c.reshape(self.c.shape[:ndim] + (-1,))
