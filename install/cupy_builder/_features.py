@@ -390,9 +390,7 @@ def get_features(ctx: Context) -> Dict[str, Feature]:
             ('cupy.cuda.thrust', ['cupy/cuda/cupy_thrust.cu']),
         ],
         'include': [
-            'thrust/device_ptr.h',
-            'thrust/sequence.h',
-            'thrust/sort.h',
+            'thrust/version.h',
         ],
         'libraries': list(_cudart_static_libs),
         'check_method': build.check_thrust_version,
