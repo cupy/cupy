@@ -356,7 +356,7 @@ cudaError_t cudaStreamGetFlags(cudaStream_t stream, unsigned int *flags) {
 }
 
 cudaError_t cudaStreamGetPriority(cudaStream_t stream, int *priority) {
-    return hipStreamGetFlags(stream, priority);
+    return hipStreamGetPriority(stream, priority);
 }
 
 cudaError_t cudaStreamDestroy(cudaStream_t stream) {
