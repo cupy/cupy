@@ -268,6 +268,8 @@ cpdef intptr_t streamCreate() except? 0
 cpdef intptr_t streamCreateWithFlags(unsigned int flags) except? 0
 cpdef intptr_t streamCreateWithPriority(unsigned int flags,
                                         int priority) except? 0
+cpdef unsigned int streamGetFlags(intptr_t stream) except? 0
+cpdef int streamGetPriority(intptr_t stream) except? 0
 cpdef streamDestroy(intptr_t stream)
 cpdef streamSynchronize(intptr_t stream)
 cpdef streamAddCallback(intptr_t stream, callback, intptr_t arg,

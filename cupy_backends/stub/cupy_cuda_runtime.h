@@ -296,6 +296,14 @@ cudaError_t cudaStreamCreateWithPriority(...) {
     return cudaSuccess;
 }
 
+cudaError_t cudaStreamGetFlags(...) {
+    return cudaSuccess;
+}
+
+cudaError_t cudaStreamGetPriority(...) {
+    return cudaSuccess;
+}
+
 cudaError_t cudaStreamDestroy(...) {
     return cudaSuccess;
 }

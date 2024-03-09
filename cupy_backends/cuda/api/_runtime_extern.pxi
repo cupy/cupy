@@ -112,6 +112,8 @@ cdef extern from '../../cupy_backend_runtime.h' nogil:
                                   unsigned int flags)
     int cudaStreamCreateWithPriority(driver.Stream* pStream,
                                      unsigned int flags, int priority)
+    int cudaStreamGetFlags(driver.Stream pStream, unsigned int* flags)
+    int cudaStreamGetPriority(driver.Stream pStream, int* priority)
     int cudaStreamDestroy(driver.Stream stream)
     int cudaStreamSynchronize(driver.Stream stream)
     int cudaStreamAddCallback(driver.Stream stream, StreamCallback callback,

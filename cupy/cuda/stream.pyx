@@ -423,6 +423,38 @@ class _BaseStream:
         except RuntimeError:  # can be RuntimeError or CUDARuntimeError
             raise
 
+    def get_stream_flags(self):
+        """Query the flags of a stream.
+
+        Returns:
+            bool:
+                The return value is True, if the stream is non_blocking,
+                else False is returned to indicate the default stream
+                creation flag.
+        """
+        cdef unsigned int flags
+        flags = runtime.streamGetFlags(self.ptr)
+        if flags == runtime.streamNonBlocking:
+            return True
+        return False
+
+    def get_stream_priority(self):
+        """Query the priority of a stream.
+
+        Returns:
+            signed int:
+                  Lower numbers represent higher priorities.
+
+        .. seealso:: `cudaStreamGetPriority()`_
+
+        .. _cudaStreamGetPriority():
+            https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__STREAM.html#group__CUDART__STREAM_1g192bb727d15c4407c119747de7d198a6
+
+        """
+        cdef int priority
+        priority = runtime.streamGetPriority(self.ptr)
+        return priority
+
 
 class Stream(_BaseStream):
 
@@ -474,18 +506,13 @@ class Stream(_BaseStream):
             ptr = runtime.streamPerThread
             device_id = -1
         else:
-            if priority is not None and non_blocking:
-                ptr = runtime.streamCreateWithPriority(
-                    runtime.streamNonBlocking, priority)
-            elif priority is not None and not non_blocking:
-                # default stream creation flag
-                ptr = runtime.streamCreateWithPriority(
-                    runtime.streamDefault, priority)
-            elif priority is None and non_blocking:
-                ptr = runtime.streamCreateWithFlags(
-                    runtime.streamNonBlocking)
-            else:  # priority is None and not non_blocking
-                ptr = runtime.streamCreate()
+            if priority is None:
+                priority = 0  # default
+            if non_blocking:
+                flag = runtime.streamNonBlocking
+            else:
+                flag = runtime.streamDefault
+            ptr = runtime.streamCreateWithPriority(flag, priority)
             device_id = runtime.getDevice()
         super().__init__(ptr, device_id)
 

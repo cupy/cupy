@@ -847,6 +847,20 @@ cpdef intptr_t streamCreateWithPriority(unsigned int flags,
     return <intptr_t>stream
 
 
+cpdef unsigned int streamGetFlags(intptr_t stream) except? 0:
+    cdef unsigned int flags
+    status = cudaStreamGetFlags(<driver.Stream>stream, &flags)
+    check_status(status)
+    return flags
+
+
+cpdef int streamGetPriority(intptr_t stream) except? 0:
+    cdef int priority
+    status = cudaStreamGetPriority(<driver.Stream>stream, &priority)
+    check_status(status)
+    return priority
+
+
 cpdef streamDestroy(intptr_t stream):
     status = cudaStreamDestroy(<driver.Stream>stream)
     check_status(status)
