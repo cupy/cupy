@@ -19,6 +19,7 @@ from cupy._core cimport _reduction
 from cupy.cuda cimport device
 from cupy.cuda.pinned_memory cimport alloc_pinned_memory, is_memory_pinned
 from cupy_backends.cuda.libs cimport cutensor
+from cupy.cuda import Device
 
 cdef dict _handles = {}
 cdef dict _tensor_descriptors = {}
@@ -1273,7 +1274,7 @@ cpdef MgHandle _get_mg_handle(devices=None):
     if devices is None:
         devices = _numpy.arange(getDeviceCount(), dtype=_numpy.int32)
     else:
-        devices = _numpy.asarray(sorted(devices), dtype=_numpy.int32)
+        devices = _numpy.asarray(devices, dtype=_numpy.int32)
     key = tuple(devices)
     if key not in _mg_handles:
         _mg_handles[key] = MgHandle(devices)
@@ -1297,10 +1298,6 @@ class ndarray_mg:
                     between two adjacent elements in each mode. When x is
                     a non-distributed array, the default value is
                     `x.shape // x.itemsize`.
-                devices (Sequence): The devices that the blocks are
-                    distributed across, in column-major order, i.e., stride-1
-                    first. When x is a non-distributed array, the default
-                    value is respectively detetmined.
                 block_size (Sequence): The size of a block in each mode. If
                     this parameter is not set, means an unblocked tensor
                     (i.e., each mode only has a single block that is equal to
@@ -1318,12 +1315,17 @@ class ndarray_mg:
             self._extent = _numpy.asarray(kwgs['extent'], dtype=_numpy.int64)
             self._element_stride = _numpy.asarray(kwgs['element_stride'],
                                                   dtype=_numpy.int64)
-            self.data = _numpy.empty(len(x), dtype=_numpy.int64)
-            for i in range(len(x)):
+            self.num_devices = len(x)
+            self.data = _numpy.empty(self.num_devices, dtype=_numpy.int64)
+            self._devices = _numpy.empty(self.num_devices, dtype=_numpy.int64)
+            for i in range(self.num_devices):
+                self._devices[i] = x[i].device.id
+            for i in range(self.num_devices):
+                assert isinstance(x[i], _ndarray_base), "Distributed array can only on GPU"  # NOQA
                 self.data[i] = x[i].data.ptr
-            self._devices = _numpy.asarray(kwgs['devices'], dtype=_numpy.int32)
-        else:
+        elif isinstance(x, _numpy.ndarray) or isinstance(x, _ndarray_base):
             self.dtype = x.dtype
+            self.num_devices = 1
             self._extent = _numpy.asarray(kwgs.get('extent', x.shape),
                                           dtype=_numpy.int64)
             if 'element_stride' in kwgs:
@@ -1347,6 +1349,8 @@ class ndarray_mg:
                     self._devices = _numpy.asarray(
                         [cutensor.CUTENSOR_MG_DEVICE_HOST],
                         dtype=_numpy.int32)
+        else:
+            raise ValueError("Unexpected input type")
         self.key = [self.dtype, tuple(self._extent),
                     tuple(self._element_stride),
                     tuple(self._devices)]
@@ -1400,10 +1404,6 @@ class ndarray_mg:
             return 0
         else:
             return self._device_count.ctypes.data
-
-    @property
-    def num_devices(self):
-        return len(self._devices)
 
     @property
     def devices(self):
@@ -1515,7 +1515,6 @@ def copyMg(dst, mode_Dst, src, mode_Src, deviceBuf=None, hostBuf=None,
     Returns:
         (None):
     """
-    _util.experimental("cupy.cutensor.copyMg")
     handle = _get_mg_handle(devices)
     dst = to_mg_ndarray(dst)
     src = to_mg_ndarray(src)
@@ -1536,13 +1535,18 @@ def copyMg(dst, mode_Dst, src, mode_Src, deviceBuf=None, hostBuf=None,
         hostBuf = _numpy.ndarray((hostBufSize),
                                  dtype=_numpy.int8, buffer=mem)
     else:
+        assert is_memory_pinned(hostBuf.ctypes.data), "Host buffer must be pinned memory"  # NOQA
         hostBufSize = hostBuf.nbytes
     if deviceBuf is None:
-        deviceBuf = [core._ndarray_init(_cupy.ndarray,
-                     shape_t(1, s), dtype=_numpy.int8, obj=None)
-                     for s in deviceBufSize]
+        deviceBuf = []
+        for idevice, s in zip(handle.devices, deviceBufSize):
+            with Device(idevice):
+                deviceBuf.append(core._ndarray_init(
+                    _cupy.ndarray, shape_t(1, s),
+                    dtype=_numpy.int8, obj=None))
     else:
         for i in range(num_devices):
+            assert deviceBuf[i].device.id == handle.devices[i], "Device buffer list must be on devices "+ str(handle.devices)   # NOQA
             deviceBufSize[i] = deviceBuf[i].nbytes
     hostBufptr = 0 if hostBufSize == 0 else hostBuf.ctypes.data
     deviceBufptr = _numpy.zeros(num_devices, dtype=_numpy.uint64)
@@ -1557,13 +1561,13 @@ def copyMg(dst, mode_Dst, src, mode_Src, deviceBuf=None, hostBuf=None,
     streamPtrs = _numpy.zeros(num_devices, dtype=_numpy.int64)
     if streams is None:
         for i in range(num_devices):
-            streamPtrs[i] = stream_module.get_stream_ptr(devices[i])
+            streamPtrs[i] = stream_module.get_stream_ptr(handle.devices[i])
     else:
         for i in range(num_devices):
             streamPtrs[i] = streams[i].ptr
     cutensor._copyMg(handle.ptr, plan.ptr, dst.ptr, src.ptr,
                      deviceBufptr.ctypes.data, hostBufptr,
-                     streams.ctypes.data)
+                     streamPtrs.ctypes.data)
 
 
 def copyMgWorkspace(dst, mode_Dst, src, mode_Src, devices=None):
@@ -1580,7 +1584,6 @@ def copyMgWorkspace(dst, mode_Dst, src, mode_Src, devices=None):
         hostBufSize (Int): Host buffer needed in bytes.
         deviceBufSize (numpy.ndarray): Device buffer needed in bytes.
     """
-    _util.experimental("cupy.cutensor.copyMgWorkspace")
     handle = _get_mg_handle(devices)
     dst = to_mg_ndarray(dst)
     src = to_mg_ndarray(src)
@@ -1746,7 +1749,6 @@ def contractionMg(alpha, A, modeA, B, modeB, beta, C, modeC,
     Returns:
         (None):
     """
-    _util.experimental("cupy.cutensor.contractionMg")
     handle = _get_mg_handle(devices)
     A = to_mg_ndarray(A)
     B = to_mg_ndarray(B)
@@ -1779,13 +1781,18 @@ def contractionMg(alpha, A, modeA, B, modeB, beta, C, modeC,
         mem = alloc_pinned_memory(hostBufSize)
         hostBuf = _numpy.ndarray((hostBufSize), dtype=_numpy.int8, buffer=mem)
     else:
+        assert is_memory_pinned(hostBuf.ctypes.data), "Host buffer must be pinned memory"  # NOQA
         hostBufSize = hostBuf.nbytes
     if deviceBuf is None:
-        deviceBuf = [core._ndarray_init(
-            _cupy.ndarray, shape_t(1, s), dtype=_numpy.int8, obj=None)
-            for s in deviceBufSize]
+        deviceBuf = []
+        for idevice, s in zip(handle.devices, deviceBufSize):
+            with Device(idevice):
+                deviceBuf.append(core._ndarray_init(
+                    _cupy.ndarray, shape_t(1, s),
+                    dtype=_numpy.int8, obj=None))
     else:
         for i in range(num_devices):
+            assert deviceBuf[i].device.id == handle.devices[i], "Device buffer list must be on devices "+ str(handle.devices)   # NOQA
             deviceBufSize[i] = deviceBuf[i].nbytes
     hostBufptr = 0 if hostBufSize == 0 else hostBuf.ctypes.data
     deviceBufptr = _numpy.zeros(num_devices, dtype=_numpy.uint64)
@@ -1799,7 +1806,7 @@ def contractionMg(alpha, A, modeA, B, modeB, beta, C, modeC,
     streamPtrs = _numpy.zeros(num_devices, dtype=_numpy.int64)
     if streams is None:
         for i in range(num_devices):
-            streamPtrs[i] = stream_module.get_stream_ptr(devices[i])
+            streamPtrs[i] = stream_module.get_stream_ptr(handle.devices[i])
     else:
         for i in range(num_devices):
             streamPtrs[i] = streams[i].ptr
@@ -1847,7 +1854,6 @@ def contractionMgWorkspace(
         hostBufSize (Int): Host buffer needed in bytes.
         deviceBufSize (numpy.ndarray): Device buffer needed in bytes.
     """
-    _util.experimental("cupy.cutensor.contractionMgWorkspace")
     handle = _get_mg_handle(devices)
     A = to_mg_ndarray(A)
     B = to_mg_ndarray(B)
