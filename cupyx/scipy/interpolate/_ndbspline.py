@@ -5,6 +5,7 @@ from math import prod
 import cupy
 
 from cupyx.scipy.interpolate._bspline import _get_dtype, _get_module_func
+from cupyx.scipy.sparse import csr_matrix
 
 
 TYPES = ['double', 'thrust::complex<double>']
@@ -130,8 +131,8 @@ __device__ void d_boor(
 __global__ void compute_nd_bsplines(
         const double* xi, int n_xi, const double* t, const long long* t_sz,
         int ndim, int max_t, const long long* k, const long long* max_k,
-        const int* nu, bool extrapolate, long long* intervals,
-        double* splines, bool* invalid) {
+        const int* nu, bool extrapolate, bool check_all_validity,
+        long long* intervals, double* splines, bool* invalid) {
 
     int start = getCurThreadIdx() / ndim;
     int dim_idx = getCurThreadIdx() % ndim;
@@ -146,7 +147,7 @@ __global__ void compute_nd_bsplines(
             dim_t, xd, dim_k, dim_t_sz - dim_k - 1, extrapolate);
 
         if(interval < 0) {
-            invalid[idx] = true;
+            invalid[check_all_validity ? idx : blockIdx.x] = true;
             continue;
         }
 
@@ -199,11 +200,41 @@ __global__ void eval_nd_bspline(
         }
     }
 }
+
+
+__global__ void store_nd_bsplines(
+        const long long* indices_k1d, const long long* strides_c1,
+        const double* b, const long long* intervals, const long long* k,
+        long long* volume, int ndim, int n_xi, const long long* max_k,
+        long long* out_idx, double* out) {
+
+    int start = getCurThreadIdx() / volume[0];
+    int iflat = getCurThreadIdx() % volume[0];
+
+    for(int idx = start; idx < n_xi; idx += getThreadNum()) {
+        const double* idx_splines = b + ndim * (2 * max_k[0] + 2) * idx;
+        const long long* idx_b = indices_k1d + ndim * iflat;
+
+        long long idx_cflat_base = 0;
+        double factor = 1.0;
+
+        for(int d = 0; d < ndim; d++) {
+            const double* dim_splines = (
+                idx_splines + (2 * max_k[0] + 2) * d);
+            factor *= dim_splines[idx_b[d]];
+            long long d_idx = idx_b[d] + intervals[ndim * idx + d] - k[d];
+            idx_cflat_base += d_idx * strides_c1[d];
+        }
+
+        out_idx[volume[0] * idx + iflat] = idx_cflat_base;
+        out[volume[0] * idx + iflat] = factor;
+    }
+}
 """
 
 NDBSPL_MOD = cupy.RawModule(
     code=NDBSPL_DEF, options=('-std=c++11',),
-    name_expressions=['compute_nd_bsplines'] +
+    name_expressions=['compute_nd_bsplines', 'store_nd_bsplines'] +
                      [f'eval_nd_bspline<{t}>' for t in TYPES])
 
 
@@ -251,7 +282,7 @@ def evaluate_ndbspline(
         array of shape ``[k[d] + 1) for d in range(ndim)`` and
         ndim-dimensional indices of the ``(k+1,)*ndim`` dimensional array.
         This is essentially a transposed version of
-        ``np.unravel_index(np.arange((k+1)**ndim), (k+1,)*ndim)``.
+        ``cupy.unravel_index(cupy.arange((k+1)**ndim), (k+1,)*ndim)``.
     out : ndarray, shape (npoints, num_c_tr)
         Output values of the b-spline at given ``xi`` points.
 
@@ -274,7 +305,7 @@ def evaluate_ndbspline(
     result = 0
     iters = [range(i[d] - self.k[d], i[d] + 1) for d in range(ndim)]
     for idx in itertools.product(*iters):
-        term = self.c[idx] * np.prod([B(x[d], self.k[d], idx[d], self.t[d])
+        term = self.c[idx] * cupy.prod([B(x[d], self.k[d], idx[d], self.t[d])
                                         for d in range(ndim)])
         result += term
     ```
@@ -293,13 +324,114 @@ def evaluate_ndbspline(
     compute_nd_bsplines = NDBSPL_MOD.get_function('compute_nd_bsplines')
     compute_nd_bsplines((512,), (128,), (
         xi, xi.shape[0], t, len_t, xi.shape[1], t.shape[1], k, max_k,
-        nu, extrapolate, intervals, splines, invalid
+        nu, extrapolate, True, intervals, splines, invalid
     ))
 
     eval_nd_bspline = _get_module_func(NDBSPL_MOD, 'eval_nd_bspline', c1r)
     eval_nd_bspline((512,), (128,), (
         indices_k1d, strides_c1, splines, intervals, k, invalid, c1r, volume,
         xi.shape[1], num_c_tr, xi.shape[0], max_k, out))
+
+
+def colloc_nd(xvals, t, len_t, k):
+    """Construct the N-D tensor product collocation matrix as a CSR array.
+
+    In the dense representation, each row of the collocation matrix corresponds
+    to a data point and contains non-zero b-spline basis functions which are
+    non-zero at this data point.
+
+    Parameters
+    ----------
+    xvals : ndarray, shape(size, ndim)
+        Data points. ``xvals[j, :]`` gives the ``j``-th data point as an
+        ``ndim``-dimensional array.
+    t : tuple of 1D arrays, length-ndim
+        Tuple of knot vectors
+    k : ndarray, shape (ndim,)
+        Spline degrees
+
+    Returns
+    -------
+    csr_data, csr_indices, csr_indptr
+        The collocation matrix in the CSR array format.
+
+    Notes
+    -----
+    Algorithm: given `xvals` and the tuple of knots `t`, we construct a tensor
+    product spline, i.e. a linear combination of
+
+        B(x1; i1, t1) * B(x2; i2, t2) * ... * B(xN; iN, tN)
+
+
+    Here ``B(x; i, t)`` is the ``i``-th b-spline defined by the knot vector
+    ``t`` evaluated at ``x``.
+
+    Since ``B`` functions are localized, for each point `(x1, ..., xN)` we
+    loop over the dimensions, and
+    - find the the location in the knot array, `t[i] <= x < t[i+1]`,
+    - compute all non-zero `B` values
+    - place these values into the relevant row
+
+    In the dense representation, the collocation matrix would have had a row
+    per data point, and each row has the values of the basis elements
+    (i.e., tensor products of B-splines) evaluated at this data point.
+    Since the matrix is very sparse (has size = len(x)**ndim, with only
+    (k+1)**ndim non-zero elements per row), we construct it in the CSR format.
+    """
+    size = xvals.shape[0]
+    ndim = xvals.shape[1]
+
+    max_k = k.max()
+    volume = cupy.prod(k + 1)
+    cpu_volume = volume.get()
+
+    intervals = cupy.empty((xvals.shape[0], t.shape[0]), dtype=cupy.int64)
+    splines = cupy.empty((xvals.shape[0], t.shape[0], 2 * max_k.item() + 2),
+                         dtype=cupy.float64)
+    invalid = cupy.zeros(512, dtype=cupy.bool_)
+    nu = cupy.zeros(ndim, dtype=cupy.int64)
+
+    k1_shape = tuple(kd + 1 for kd in k.get())
+
+    # Precompute the shape and strides of the coefficients array.
+    # This would have been the NdBSpline coefficients; in the present context
+    # this is a helper to compute the indices into the collocation matrix.
+    c_shape = tuple(len(t[d]) - k1_shape[d] for d in range(ndim))
+
+    # The computation is equivalent to
+    # >>> x = cupy.empty(c_shape)
+    # >>> cstrides = [s // 8 for s in x.strides]
+    cs = cupy.asarray(c_shape[1:] + (1,))
+    cstrides = cupy.cumprod(cs[::-1], dtype=cupy.int64)[::-1].copy()
+
+    # tabulate flat indices for iterating over the (k+1)**ndim subarray of
+    # non-zero b-spline elements
+    indices = cupy.unravel_index(cupy.arange(cpu_volume), k1_shape)
+    _indices_k1d = cupy.asarray(indices, dtype=cupy.int64).T.copy()
+
+    # Allocate the collocation matrix in the CSR format.
+    # If dense, this would have been
+    # >>> matr = cupy.zeros((size, max_row_index), dtype=float)
+    csr_indices = cupy.empty(shape=(size * cpu_volume,), dtype=cupy.int64)
+    csr_data = cupy.empty(shape=(size * cpu_volume,), dtype=cupy.float64)
+    csr_indptr = cupy.arange(
+        0, cpu_volume * size + 1, cpu_volume, dtype=cupy.int64)
+
+    compute_nd_bsplines = NDBSPL_MOD.get_function('compute_nd_bsplines')
+    compute_nd_bsplines((512,), (128,), (
+        xvals, xvals.shape[0], t, len_t, xvals.shape[1], t.shape[1], k, max_k,
+        nu, True, False, intervals, splines, invalid
+    ))
+
+    if cupy.any(invalid).item():
+        raise ValueError('Out of bounds')
+
+    store_nd_splines = NDBSPL_MOD.get_function('store_nd_bsplines')
+    store_nd_splines((512,), (128,), (
+        _indices_k1d, cstrides, splines, intervals, k, volume, int(ndim),
+        int(size), max_k, csr_indices, csr_data
+    ))
+    return csr_data, csr_indices, csr_indptr
 
 
 class NdBSpline:
@@ -498,3 +630,51 @@ class NdBSpline:
                            out,)
 
         return out.reshape(xi_shape[:-1] + self.c.shape[ndim:])
+
+    @classmethod
+    def design_matrix(cls, xvals, t, k, extrapolate=True):
+        """Construct the design matrix as a CSR format sparse array.
+
+        Parameters
+        ----------
+        xvals :  ndarray, shape(npts, ndim)
+            Data points. ``xvals[j, :]`` gives the ``j``-th data point as an
+            ``ndim``-dimensional array.
+        t : tuple of 1D ndarrays, length-ndim
+            Knot vectors in directions 1, 2, ... ndim,
+        k : int
+            B-spline degree.
+        extrapolate : bool, optional
+            Whether to extrapolate out-of-bounds values of raise a `ValueError`
+
+        Returns
+        -------
+        design_matrix : a CSR matrix
+            Each row of the design matrix corresponds to a value in `xvals` and
+            contains values of b-spline basis elements which are non-zero
+            at this value.
+
+        """
+        xvals = cupy.asarray(xvals, dtype=cupy.float64)
+        ndim = xvals.shape[-1]
+        if len(t) != ndim:
+            raise ValueError(
+                f"Data and knots are inconsistent: len(t) = {len(t)} for "
+                f" {ndim = }."
+            )
+        try:
+            len(k)
+        except TypeError:
+            # make k a tuple
+            k = (k,)*ndim
+
+        len_t = [len(ti) for ti in t]
+        _t = cupy.empty((ndim, max(len_t)), dtype=float)
+        _t.fill(cupy.nan)
+        for d in range(ndim):
+            _t[d, :len(t[d])] = t[d]
+        len_t = cupy.asarray(len_t, dtype=cupy.int64)
+
+        kk = cupy.asarray(k, dtype=cupy.int64)
+        data, indices, indptr = colloc_nd(xvals, _t, len_t, kk)
+        return csr_matrix((data, indices, indptr))

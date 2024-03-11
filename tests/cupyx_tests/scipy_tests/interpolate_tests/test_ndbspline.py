@@ -376,3 +376,16 @@ class TestNdBSpline:
 
         bspl3 = scp.interpolate.NdBSpline(t3, c3, k=3)
         return bspl3((1, 2, 3))
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_design_matrix(self, xp, scp):
+        t3, c3, k = self.make_3d_case(xp, scp)
+
+        xi = xp.asarray([[1, 2, 3], [4, 5, 6]])
+        dm = scp.interpolate.NdBSpline(t3, c3, k).design_matrix(xi, t3, k)
+        dm1 = scp.interpolate.NdBSpline.design_matrix(xi, t3, [k, k, k])
+
+        with pytest.raises(ValueError):
+            scp.interpolate.NdBSpline.design_matrix([[1, 2]], t3, [k]*3)
+
+        return dm.todense(), dm1.todense()
