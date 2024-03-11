@@ -423,34 +423,23 @@ class _BaseStream:
         except RuntimeError:  # can be RuntimeError or CUDARuntimeError
             raise
 
-    def get_stream_flags(self):
-        """Query the flags of a stream.
+    @property
+    def is_non_blocking(self):
+        """True if the stream is non_blocking."""
+        cdef unsigned int flag
+        flag = runtime.streamGetFlags(self.ptr)
+        return flag == runtime.streamNonBlocking
 
-        Returns:
-            bool:
-                The return value is True, if the stream is non_blocking,
-                else False is returned to indicate the default stream
-                creation flag.
-        """
-        cdef unsigned int flags
-        flags = runtime.streamGetFlags(self.ptr)
-        if flags == runtime.streamNonBlocking:
-            return True
-        return False
+    @property
+    def is_default(self):
+        """True indicates the default stream creation flag."""
+        cdef unsigned int flag
+        flag = runtime.streamGetFlags(self.ptr)
+        return flag == runtime.streamDefault
 
-    def get_stream_priority(self):
-        """Query the priority of a stream.
-
-        Returns:
-            signed int:
-                  Lower numbers represent higher priorities.
-
-        .. seealso:: `cudaStreamGetPriority()`_
-
-        .. _cudaStreamGetPriority():
-            https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__STREAM.html#group__CUDART__STREAM_1g192bb727d15c4407c119747de7d198a6
-
-        """
+    @property
+    def priority(self):
+        """Query the priority of a stream."""
         cdef int priority
         priority = runtime.streamGetPriority(self.ptr)
         return priority
