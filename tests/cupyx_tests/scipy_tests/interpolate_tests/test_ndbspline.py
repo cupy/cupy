@@ -12,6 +12,7 @@ import pytest
 import itertools
 
 
+@testing.with_requires('scipy>=1.12')
 class TestNdBSpline:
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_1D(self, xp, scp):
@@ -377,6 +378,7 @@ class TestNdBSpline:
         bspl3 = scp.interpolate.NdBSpline(t3, c3, k=3)
         return bspl3((1, 2, 3))
 
+    @testing.with_requires('scipy>=1.13')
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_design_matrix(self, xp, scp):
         t3, c3, k = self.make_3d_case(xp, scp)
