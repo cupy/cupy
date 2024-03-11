@@ -55,6 +55,7 @@ Unstructured data:
    :toctree: generated/
 
    LinearNDInterpolator
+   NearestNDInterpolator
    CloughTocher2DInterpolator
    RBFInterpolator
 
