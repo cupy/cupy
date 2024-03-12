@@ -51,7 +51,6 @@ def _ndim_coords_from_arrays(points, ndim=None):
 def _check_init_shape(points, values, ndim=None):
     """
     Check shape of points and values arrays
-
     """
     if values.shape[0] != points.shape[0]:
         raise ValueError("different number of values and points")
@@ -245,10 +244,6 @@ class LinearNDInterpolator(NDInterpolatorBase):
 
     Piecewise linear interpolant in N > 1 dimensions.
 
-    Methods
-    -------
-    __call__
-
     Parameters
     ----------
     points : ndarray of floats, shape (npoints, ndims); or :class:`Delaunay`
@@ -314,8 +309,8 @@ class LinearNDInterpolator(NDInterpolatorBase):
     References
     ----------
     .. [1] A GPU accelerated algorithm for 3D Delaunay triangulation (2014).
-    Thanh-Tung Cao, Ashwin Nanjappa, Mingcen Gao, Tiow-Seng Tan.
-    Proc. 18th ACM SIGGRAPH Symp. Interactive 3D Graphics and Games, 47-55.
+        Thanh-Tung Cao, Ashwin Nanjappa, Mingcen Gao, Tiow-Seng Tan.
+        Proc. 18th ACM SIGGRAPH Symp. Interactive 3D Graphics and Games, 47-55.
 
     """
 
@@ -446,7 +441,7 @@ __global__ void estimate_gradients_2d(
         }
 
         if(threadIdx.x == 0) {
-            err[threadIdx.x] = fmax(err[threadIdx.x], block_err[threadIdx.x]);
+            err[blockIdx.x] = fmax(err[blockIdx.x], block_err[threadIdx.x]);
         }
     }
 
@@ -698,10 +693,6 @@ class CloughTocher2DInterpolator(NDInterpolatorBase):
 
     Piecewise cubic, C1 smooth, curvature-minimizing interpolator in 2D.
 
-    Methods
-    -------
-    __call__
-
     Parameters
     ----------
     points : ndarray of floats, shape (npoints, ndims); or Delaunay
@@ -778,8 +769,8 @@ class CloughTocher2DInterpolator(NDInterpolatorBase):
     References
     ----------
     .. [1] A GPU accelerated algorithm for 3D Delaunay triangulation (2014).
-    Thanh-Tung Cao, Ashwin Nanjappa, Mingcen Gao, Tiow-Seng Tan.
-    Proc. 18th ACM SIGGRAPH Symp. Interactive 3D Graphics and Games, 47-55.
+        Thanh-Tung Cao, Ashwin Nanjappa, Mingcen Gao, Tiow-Seng Tan.
+        Proc. 18th ACM SIGGRAPH Symp. Interactive 3D Graphics and Games, 47-55.
 
     .. [CT] See, for example,
        P. Alfeld,
@@ -797,7 +788,6 @@ class CloughTocher2DInterpolator(NDInterpolatorBase):
     .. [Renka84] R. J. Renka and A. K. Cline.
        ''A Triangle-based C1 interpolation method.'',
        Rocky Mountain J. Math., 14, 223 (1984).
-
     """
 
     def __init__(self, points, values, fill_value=cupy.nan,
