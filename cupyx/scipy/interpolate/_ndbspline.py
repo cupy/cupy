@@ -474,11 +474,6 @@ class NdBSpline:
         Whether to extrapolate or return nans for out-of-bounds inputs.
         Defaults to true.
 
-    Methods
-    -------
-    __call__
-    design_matrix
-
     See Also
     --------
     BSpline : a one-dimensional B-spline object
