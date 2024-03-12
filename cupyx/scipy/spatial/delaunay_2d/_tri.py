@@ -9,9 +9,9 @@ from cupyx.scipy.spatial.delaunay_2d._kernels import (
     check_delaunay_exact_fast, check_delaunay_exact_exact, mark_rejected_flips,
     flip, update_opp, update_flip_trace, relocate_points_fast,
     relocate_points_exact, mark_inf_tri, collect_free_slots, make_compact_map,
-    compact_tris, update_vert_idx, find_closest_tri_to_point,
-    get_morton_number, compute_distance_2d, init_predicate,
-    make_key_from_tri_has_vert, check_if_coplanar_points)
+    compact_tris, update_vert_idx, get_morton_number, compute_distance_2d,
+    init_predicate, make_key_from_tri_has_vert, check_if_coplanar_points,
+    find_vertex_neighbors, encode_barycenters, find_closest_tri)
 
 
 def _compute_triangle_orientation(det):
@@ -51,6 +51,13 @@ class GDel2D:
         self.vert_tri = cupy.zeros(self.n_points, dtype=cupy.int32)
 
         self._org_flip_num = []
+        self._node_neighbors = None
+
+        self._tri_enc = None
+        self._enc_idx = None
+        self._centers = None
+        self._max_axis = None
+        self._min_axis = None
 
     @property
     def counters(self):
@@ -118,13 +125,13 @@ class GDel2D:
         self.tri_num = 4
 
     def _init_for_flip(self):
-        min_val = self.points.min()
-        max_val = self.points.max()
-        range_val = max_val - min_val
+        self.min_val = self.points.min()
+        self.max_val = self.points.max()
+        self.range_val = self.max_val - self.min_val
 
         # Sort the points spatially according to their Morton numbers
-        get_morton_number(self.points, self.n_points - 1, min_val,
-                          range_val, self.values)
+        get_morton_number(self.points, self.n_points - 1, self.min_val,
+                          self.range_val, self.values)
 
         self.values[-1] = 2 ** 31 - 1
         unique_values, unique_index = cupy.unique(
@@ -522,12 +529,46 @@ class GDel2D:
         self._output()
         return self.triangles, self.triangle_opp
 
-    def find_point_in_triangulation(self, xi, eps, find_coords=False):
-        out = cupy.empty((xi.shape[0],), dtype=cupy.int32)
-        c = cupy.empty(0, dtype=cupy.float64)
-        if find_coords:
-            c = cupy.empty((xi.shape[0], xi.shape[-1] + 1), dtype=cupy.float64)
+    def vertex_neighbor_vertices(self):
+        if self._node_neighbors is None:
+            full_neighbors = cupy.zeros(
+                (self.n_points - 1, self.n_points - 1), dtype=cupy.bool_)
 
-        find_closest_tri_to_point(xi, self.points, self.triangles,
-                                  out, c, eps, find_coords)
-        return out, c
+            find_vertex_neighbors(
+                self.triangles, self.n_points - 1, full_neighbors)
+            indptr = cupy.empty(self.n_points, cupy.int32)
+            cupy.cumsum(cupy.sum(full_neighbors, -1, cupy.int32),
+                        dtype=cupy.int32, out=indptr[1:])
+            indptr[0] = 0
+
+            _, indices = cupy.where(full_neighbors)
+            self._node_neighbors = indptr, indices.astype(cupy.int32)
+        return self._node_neighbors
+
+    def encode_barycenters(self):
+        out = cupy.empty(self.triangles.shape[0], dtype=cupy.uint32)
+        centers = cupy.empty((self.triangles.shape[0], 2), dtype=cupy.float64)
+        encode_barycenters(self.triangles, self.points,
+                           self.min_val, self.range_val, out, centers)
+        return out, centers
+
+    def find_point_in_triangulation(self, points, eps=0.0, find_coords=False):
+        if self._tri_enc is None:
+            self._tri_enc, self._tri_centers = self.encode_barycenters()
+            self._enc_idx = cupy.argsort(self._tri_enc)
+            self._max_axis = self.points.max(0)
+            self._min_axis = self.points.min(0)
+
+        coords = None
+        out = cupy.empty(points.shape[0], dtype=cupy.int32)
+        if find_coords:
+            coords = cupy.empty((points.shape[0], points.shape[-1] + 1),
+                                dtype=cupy.float64)
+
+        find_closest_tri(points, self.triangles, self.triangle_opp,
+                         self._enc_idx, self._tri_enc, self.points,
+                         self._tri_centers, self.min_val, self.range_val,
+                         self._min_axis, self._max_axis, eps, find_coords, out,
+                         coords)
+
+        return out, coords
