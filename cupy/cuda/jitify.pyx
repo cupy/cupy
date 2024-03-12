@@ -11,9 +11,11 @@ import json
 import os
 import re
 import tempfile
+import warnings
 
 from cupy._environment import get_cuda_path
 from cupy.cuda import cub
+from cupy import _util
 
 
 ###############################################################################
@@ -185,6 +187,12 @@ cdef inline void _init_cupy_headers_from_scratch() except*:
     cupy_headers[b"type_traits"] = b"#include <cupy/cuda_workaround.h>\n"
     # Same for tuple
     cupy_headers[b"tuple"] = b"#include <cupy/cuda_workaround.h>\n"
+
+    # Ensure users know this is normal and not hanging...
+    warnings.warn(
+        "Jitify is performing a one-time only warm-up to populate the "
+        "persistent cache, this may take a few seconds and will be improved "
+        "in a future release...", _util.PerformanceWarning)
 
     # Compile a dummy kernel to further populate the cache (with bundled
     # headers)
