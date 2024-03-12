@@ -425,17 +425,11 @@ class _BaseStream:
 
     @property
     def is_non_blocking(self):
-        """True if the stream is non_blocking."""
-        cdef unsigned int flag
-        flag = runtime.streamGetFlags(self.ptr)
-        return flag == runtime.streamNonBlocking
-
-    @property
-    def is_default(self):
-        """True indicates the default stream creation flag."""
-        cdef unsigned int flag
-        flag = runtime.streamGetFlags(self.ptr)
-        return flag == runtime.streamDefault
+        """True if the stream is non_blocking.
+        False indicates the default stream creation flag."""
+        cdef unsigned int flags
+        flags = runtime.streamGetFlags(self.ptr)
+        return (flags & runtime.streamNonBlocking) != 0
 
     @property
     def priority(self):

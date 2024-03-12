@@ -246,10 +246,8 @@ class TestStream(unittest.TestCase):
     def test_create_with_flags(self):
         s1 = cuda.Stream()
         s2 = cuda.Stream(non_blocking=True)
-        assert s1.is_default is True
         assert s1.is_non_blocking is False
         assert s2.is_non_blocking is True
-        assert s2.is_default is False
 
     def test_create_with_priority(self):
         # parameterize wasn't used since priority gets
