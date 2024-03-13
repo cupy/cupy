@@ -193,6 +193,7 @@ to use these functions.
    cupy.cuda.runtime.pointerGetAttributes
    cupy.cuda.runtime.streamCreate
    cupy.cuda.runtime.streamCreateWithFlags
+   cupy.cuda.runtime.streamCreateWithPriority
    cupy.cuda.runtime.streamDestroy
    cupy.cuda.runtime.streamSynchronize
    cupy.cuda.runtime.streamAddCallback
