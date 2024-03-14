@@ -549,7 +549,7 @@ class GDel2D:
 
             count_vertex_neighbors(self.edges, vertex_count[1:])
 
-            self.vertex_off = cupy.cumsum(vertex_count)
+            self.vertex_off = cupy.cumsum(vertex_count).astype(cupy.int64)
             self.vertex_neighbors = cupy.empty(
                 self.vertex_off[-1].item(), dtype=cupy.int32)
 
