@@ -85,8 +85,8 @@ function Main {
 
     echo "Building..."
     $build_retval = 0
-    RunOrDie python -m pip install -U "numpy<1.24" "scipy<1.10.0"
-    python -m pip install ".[all,test]" -vvv > cupy_build_log.txt
+    RunOrDie python -m pip install -U "numpy" "scipy"
+    python -m pip install ".[all,test]" -v > cupy_build_log.txt
     if (-not $?) {
         $build_retval = $LastExitCode
     }
@@ -128,15 +128,13 @@ function Main {
 
     # Install dependency for cuDNN 8.3+
     echo ">> Installing zlib"
-    RunOrDie curl.exe -LO http://www.winimage.com/zLibDll/zlib123dllx64.zip
-    RunOrDie 7z x "zlib123dllx64.zip"
-    Copy-Item -Path "dll_x64\zlibwapi.dll" -Destination "C:\Windows\System32"
+    InstallZLIB
 
     pushd tests
     echo "CuPy Configuration:"
     RunOrDie python -c "import cupy; print(cupy); cupy.show_config()"
     echo "Running test..."
-    $test_retval = RunWithTimeout -timeout 32766 -output ../cupy_test_log.txt -- python -m pytest -rfEX @pytest_opts .
+    $test_retval = RunWithTimeout -timeout 18000 -output ../cupy_test_log.txt -- python -m pytest -rfEX @pytest_opts .
     popd
 
     if (-Not $is_pull_request) {

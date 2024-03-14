@@ -474,19 +474,18 @@ __noinline__ __device__ double incbet(double aa, double bb, double xx)
     double a, b, t, x, xc, w, y;
     int flag;
 
-    if (aa <= 0.0 || bb <= 0.0)
-    {
+    if (!isfinite(aa) || !isfinite(bb) || isnan(xx)) {
+        return CUDART_NAN;
+    }
+    if (aa <= 0.0 || bb <= 0.0 || xx < 0 || xx > 1) {
         return CUDART_NAN;
     }
 
-    if ((xx <= 0.0) || (xx >= 1.0)) {
-        if (xx == 0.0) {
-            return 0.0;
-        }
-        if (xx == 1.0) {
-            return 1.0;
-        }
-        return CUDART_NAN;
+    if (xx == 0.0) {
+        return 0.0;
+    }
+    if (xx == 1.0) {
+        return 1.0;
     }
 
     flag = 0;
@@ -829,11 +828,19 @@ __noinline__ __device__ double incbi(double aa, double bb, double yy0)
     double a, b, y0, d, y, x, x0, x1, lgm, yp, di, dithresh, yl, yh, xt;
     int i, rflg, dir, nflg;
 
+    if (isnan(aa) || isnan(bb) || isnan(yy0)) {
+        return CUDART_NAN;
+    }
+    if (aa <= 0.0 || bb <= 0.0 || yy0 < 0 || yy0 > 1) {
+        return CUDART_NAN;
+    }
+
     i = 0;
-    if (yy0 <= 0) {
+    if (yy0 == 0) {
         return 0.0;
     }
-    if (yy0 >= 1.0) {
+
+    if (yy0 == 1.0) {
         return 1.0;
     }
     x0 = 0.0;

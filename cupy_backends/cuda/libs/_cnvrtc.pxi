@@ -127,14 +127,14 @@ cdef SoftLink _get_softlink():
     cdef object libname = None
 
     if CUPY_CUDA_VERSION != 0:
-        runtime_version = runtime.runtimeGetVersion()
-        if 11020 <= runtime_version < 12000:
+        runtime_version = runtime._getCUDAMajorVersion()
+        if runtime_version == 11:
             # CUDA 11.x (11.2+)
             if _sys.platform == 'linux':
                 libname = 'libnvrtc.so.11.2'
             else:
                 libname = 'nvrtc64_112_0.dll'
-        elif 12000 <= runtime_version < 13000:
+        elif runtime_version == 12:
             # CUDA 12.x
             if _sys.platform == 'linux':
                 libname = 'libnvrtc.so.12'

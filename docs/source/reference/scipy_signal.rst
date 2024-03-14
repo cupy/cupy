@@ -99,6 +99,7 @@ Filter design
    residuez
    invres
    invresz
+   BadCoefficients
 
 
 Matlab-style IIR filter design
@@ -127,6 +128,20 @@ Low-level filter design functions
    :toctree: generated/
 
    abcd_normalize
+   band_stop_obj
+   buttap
+   cheb1ap
+   cheb2ap
+   ellipap
+   lp2bp
+   lp2bp_zpk
+   lp2bs
+   lp2bs_zpk
+   lp2hp
+   lp2hp_zpk
+   lp2lp
+   lp2lp_zpk
+   normalize
 
 
 LTI representations
@@ -137,12 +152,16 @@ LTI representations
 
    zpk2tf
    zpk2sos
+   zpk2ss
    tf2zpk
    tf2sos
    tf2ss
    ss2tf
+   ss2zpk
    sos2tf
    sos2zpk
+   cont2discrete
+   place_poles
 
 
 Continuous-time linear systems
@@ -186,9 +205,11 @@ Waveforms
 
    chirp
    gausspulse
+   max_len_seq
    sawtooth
    square
    unit_impulse
+   sweep_poly
 
 
 Window functions
@@ -241,7 +262,10 @@ Spectral analysis
    periodogram
    welch
    csd
+   coherence
+   spectrogram
    lombscargle
+   vectorstrength
    stft
    istft
    check_COLA

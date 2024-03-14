@@ -41,10 +41,7 @@ Choose the right package for your platform.
 
 | Platform              | Architecture      | Command                                                       |
 | --------------------- | ----------------- | ------------------------------------------------------------- |
-| CUDA 10.2             | x86_64 / aarch64  | `pip install cupy-cuda102`                                    |
-| CUDA 11.0             | x86_64            | `pip install cupy-cuda110`                                    |
-| CUDA 11.1             | x86_64            | `pip install cupy-cuda111`                                    |
-| CUDA 11.2 ~ 11.8      | x86_64 / aarch64  | `pip install cupy-cuda11x`                                    |
+| CUDA 11.x (11.2+)     | x86_64 / aarch64  | `pip install cupy-cuda11x`                                    |
 | CUDA 12.x             | x86_64 / aarch64  | `pip install cupy-cuda12x`                                    |
 | ROCm 4.3 (*[experimental](https://docs.cupy.dev/en/latest/install.html#using-cupy-on-amd-gpu-experimental)*)          | x86_64            | `pip install cupy-rocm-4-3`                                   |
 | ROCm 5.0 (*[experimental](https://docs.cupy.dev/en/latest/install.html#using-cupy-on-amd-gpu-experimental)*)          | x86_64            | `pip install cupy-rocm-5-0`                                   |
@@ -60,7 +57,9 @@ Binary packages are also available for Linux and Windows on [Conda-Forge](https:
 | --------------------- | --------------------------- | ------------------------------------------------------------- |
 | CUDA                  | x86_64 / aarch64 / ppc64le  | `conda install -c conda-forge cupy`                           |
 
-If you need to use a particular CUDA version (say 11.8), you can do `conda install -c conda-forge cupy cuda-version=11.8`.
+If you need a slim installation (without also getting CUDA dependencies installed), you can do `conda install -c conda-forge cupy-core`.
+
+If you need to use a particular CUDA version (say 12.0), you can use the `cuda-version` metapackage to select the version, e.g. `conda install -c conda-forge cupy cuda-version=12.0`.
 
 > [!NOTE]\
 > If you encounter any problem with CuPy installed from `conda-forge`, please feel free to report to [cupy-feedstock](https://github.com/conda-forge/cupy-feedstock/issues), and we will help investigate if it is just a packaging issue in `conda-forge`'s recipe or a real issue in CuPy.
@@ -79,6 +78,10 @@ $ docker run --gpus all -it cupy/cupy
 - [Release Notes](https://github.com/cupy/cupy/releases)
 - [Projects using CuPy](https://github.com/cupy/cupy/wiki/Projects-using-CuPy)
 - [Contribution Guide](https://docs.cupy.dev/en/stable/contribution.html)
+- [GPU Acceleration in Python using CuPy and Numba (GTC November 2021 Technical Session)](https://www.nvidia.com/en-us/on-demand/session/gtcfall21-a31149/)
+- [GPU-Acceleration of Signal Processing Workflows using CuPy and cuSignal[^1] (ICASSP'21 Tutorial)](https://github.com/awthomp/cusignal-icassp-tutorial)
+
+[^1]: cuSignal is now part of CuPy starting v13.0.0.
 
 ## License
 

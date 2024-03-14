@@ -16,6 +16,23 @@ CuPy-specific functions are placed under ``cupyx`` namespace.
    cupyx.zeros_pinned
    cupyx.zeros_like_pinned
 
+non-SciPy compat Signal API
+---------------------------
+
+The functions under `cupyx.signal` are non-SciPy compat signal API ported from cuSignal 
+through the courtesy of Nvidia cuSignal team.
+
+.. autosummary::
+   :toctree: generated/
+
+   cupyx.signal.channelize_poly
+   cupyx.signal.convolve1d3o
+   cupyx.signal.pulse_compression
+   cupyx.signal.pulse_doppler
+   cupyx.signal.cfar_alpha
+   cupyx.signal.ca_cfar
+   cupyx.signal.freq_shift
+   
 Profiling utilities
 -------------------
 

@@ -37,6 +37,7 @@ ELSE:
 class NVRTCError(RuntimeError):
 
     def __init__(self, status):
+        initialize()
         self.status = status
         cdef bytes msg = nvrtcGetErrorString(<nvrtcResult>status)
         super(NVRTCError, self).__init__(
@@ -67,8 +68,6 @@ cpdef tuple getSupportedArchs():
     cdef vector.vector[int] archs
     if runtime._is_hip_environment:
         raise RuntimeError("HIP does not support getSupportedArchs")
-    if runtime.runtimeGetVersion() < 11020:
-        raise RuntimeError("getSupportedArchs is supported since CUDA 11.2")
     with nogil:
         status = nvrtcGetNumSupportedArchs(&num_archs)
         if status == 0:
@@ -166,8 +165,6 @@ cpdef bytes getCUBIN(intptr_t prog):
     cdef char* cubin_ptr = NULL
     if runtime._is_hip_environment:
         raise RuntimeError("HIP does not support getCUBIN")
-    if runtime.runtimeGetVersion() < 11010:
-        raise RuntimeError("getCUBIN is supported since CUDA 11.1")
     with nogil:
         status = nvrtcGetCUBINSize(<Program>prog, &cubinSizeRet)
     check_status(status)

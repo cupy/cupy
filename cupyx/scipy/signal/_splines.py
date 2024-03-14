@@ -1,7 +1,6 @@
 
 import cupy
 from cupy._core._scalar import get_typename
-from cupy_backends.cuda.api import runtime
 from cupy._core.internal import _normalize_axis_index
 
 from cupyx.scipy.signal._signaltools import lfilter
@@ -10,16 +9,7 @@ from cupyx.scipy.signal._arraytools import (
 from cupyx.scipy.signal._iir_utils import collapse_2d, apply_iir_sos
 
 
-if runtime.is_hip:
-    SYMIIR2_KERNEL = r"""#include <hip/hip_runtime.h>
-"""
-else:
-    SYMIIR2_KERNEL = r"""
-#include <cuda_runtime.h>
-#include <device_launch_parameters.h>
-"""
-
-SYMIIR2_KERNEL = SYMIIR2_KERNEL + r"""
+SYMIIR2_KERNEL = r"""
 #include <cupy/math_constants.h>
 #include <cupy/carray.cuh>
 

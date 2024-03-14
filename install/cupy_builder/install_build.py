@@ -178,7 +178,7 @@ def get_compiler_setting(ctx: Context, use_hip):
     cupy_header = os.path.join(
         cupy_builder.get_context().source_root, 'cupy/_core/include')
     global _jitify_path
-    _jitify_path = os.path.join(cupy_header, 'cupy/jitify')
+    _jitify_path = os.path.join(cupy_header, 'cupy/_jitify')
     global _cub_path
     if rocm_path:
         _cub_path = os.path.join(rocm_path, 'include', 'hipcub')
@@ -528,7 +528,9 @@ def check_cub_version(compiler, settings):
         # could be in a git submodule?
         try:
             # CuPy's bundle
-            cupy_cub_include = _cub_path
+            cupy_cub_include = os.path.join(
+                cupy_builder.get_context().source_root,
+                "third_party/cccl")
             a = subprocess.run(' '.join(['git', 'describe', '--tags']),
                                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                shell=True, cwd=cupy_cub_include)
@@ -578,7 +580,9 @@ def check_jitify_version(compiler, settings):
     global _jitify_version
 
     try:
-        cupy_jitify_include = _jitify_path
+        cupy_jitify_include = os.path.join(
+            cupy_builder.get_context().source_root,
+            "third_party/jitify")
         # Unfortunately Jitify does not have any identifiable name (branch,
         # tag, etc), so we must use the commit here
         a = subprocess.run(' '.join(['git', 'rev-parse', '--short', 'HEAD']),
@@ -638,7 +642,7 @@ def check_cutensor_version(compiler, settings):
 
     _cutensor_version = int(out)
 
-    if _cutensor_version < 1000:
+    if _cutensor_version < 2000:
         utils.print_warning(
             'Unsupported cuTENSOR version: {}'.format(_cutensor_version)
         )

@@ -19,8 +19,6 @@ from cupy_backends.cuda.libs import nvrtc
 from cupy import _util
 
 _cuda_hip_version = driver.get_build_version()
-if not runtime.is_hip and _cuda_hip_version > 0:
-    from cupy.cuda import jitify
 
 
 _nvrtc_version = None
@@ -166,12 +164,8 @@ def _get_arch_for_options_for_nvrtc(arch=None):
     # generate cubin (SASS) instead of PTX. See #5097 for details.
     if arch is None:
         arch = _get_arch()
-    if driver._is_cuda_python():
-        version = runtime.runtimeGetVersion()
-    else:
-        version = _cuda_hip_version
     if (
-        not _use_ptx and version >= 11010
+        not _use_ptx
         and arch <= _get_max_compute_capability()
     ):
         return f'-arch=sm_{arch}', 'cubin'
@@ -230,10 +224,13 @@ _jitify_header_source_map_populated = False
 
 
 def _jitify_prep(source, options, cu_path):
+    from cupy.cuda import jitify
+
     # TODO(leofang): refactor this?
     global _jitify_header_source_map_populated
     if not _jitify_header_source_map_populated:
         from cupy._core import core
+        jitify._init_module()
         jitify._add_sources(core._get_header_source_map())
         _jitify_header_source_map_populated = True
 
@@ -284,6 +281,15 @@ def compile_using_nvrtc(source, options=(), arch=None, filename='kern.cu',
             source, options, cu_path, name_expressions, log_stream, jitify,
             method):
 
+        if method is not None:
+            assert method == "lto"
+            options += (f'-arch=compute_{arch}',)
+        elif not runtime.is_hip:
+            arch_opt, method = _get_arch_for_options_for_nvrtc(arch)
+            options += (arch_opt,)
+        else:
+            method = 'ptx'
+
         if jitify:
             options, headers, include_names = _jitify_prep(
                 source, options, cu_path)
@@ -294,15 +300,6 @@ def compile_using_nvrtc(source, options=(), arch=None, filename='kern.cu',
                 # Starting with CUDA 12.0, even without using jitify, some
                 # tests cause an error if the following option is not included.
                 options += ('--device-as-default-execution-space',)
-
-        if method is not None:
-            assert method == "lto"
-            options += (f'-arch=compute_{arch}',)
-        elif not runtime.is_hip:
-            arch_opt, method = _get_arch_for_options_for_nvrtc(arch)
-            options += (arch_opt,)
-        else:
-            method = 'ptx'
 
         prog = _NVRTCProgram(source, cu_path, headers, include_names,
                              name_expressions=name_expressions, method=method)

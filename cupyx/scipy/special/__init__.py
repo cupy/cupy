@@ -92,6 +92,7 @@ from cupyx.scipy.special._softmax import softmax  # NOQA
 from cupyx.scipy.special._logsoftmax import log_softmax  # NOQA
 from cupyx.scipy.special._zeta import zeta  # NOQA
 from cupyx.scipy.special._zetac import zetac  # NOQA
+from cupyx.scipy.special._lambertw import lambertw  # NOQA
 
 # Convenience functions
 from cupyx.scipy.special._basic import cbrt  # NOQA
