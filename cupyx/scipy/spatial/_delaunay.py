@@ -87,8 +87,7 @@ class Delaunay:
             raise ValueError(
                 'incremental argument is not supported by CuPy.')
 
-        self.points = cupy.array(points, cupy.float64, copy=True)
-        # self._points = cupy.unique(self._points, axis=0)
+        self.points = points
         self._triangulator = GDel2D(self.points)
         self.simplices, self.neighbors = self._triangulator.compute()
 
@@ -156,3 +155,13 @@ class Delaunay:
             raise ValueError('Delaunay only supports 2D inputs at the moment.')
 
         return self._find_simplex_coordinates(xi, eps)
+
+    def vertex_neighbor_vertices(self):
+        """
+        Neighboring vertices of vertices.
+
+        Tuple of two ndarrays of int: (indptr, indices). The indices of
+        neighboring vertices of vertex `k` are
+        ``indices[indptr[k]:indptr[k+1]]``.
+        """
+        return self._triangulator.vertex_neighbor_vertices()
