@@ -15,9 +15,11 @@ from cupy._core._kernel import ElementwiseKernel
 from cupy._core._ufuncs import elementwise_copy
 from cupy._core import flags
 from cupy._core import syncdetect
+from cupy._core.ipc_handle import IPCHandle
 from cupy import cuda
 from cupy.cuda import memory as memory_module
 from cupy.cuda import stream as stream_mod
+from cupy.cuda.runtime import ipcGetMemHandle
 
 
 from cupy_backends.cuda.api.runtime import CUDARuntimeError
@@ -2055,6 +2057,38 @@ cdef class _ndarray_base:
 
         """
         return dlpack.toDlpack(self)
+
+    def get_ipc_handle(self):
+        """
+        Returns an instance of :class:`IPCHandle`, a serializable class which
+        holds array information and IPC handle for the array. This instance
+        can be passed to other processes (e.g. via multiprocessing).
+
+        On the destination process, use the .get() method to create a new
+        :class:`ndarray` object that shares the allocation from the original process.
+        The IPC handle can be closed manually by calling the .close() method.
+        After that, the destination can no longer use the shared array object.
+        Otherwise, the handle is closed automatically when the instance is deleted
+        using del or goes out of scope.
+
+        Note:
+            The handle cannot be open on the source process or on a destination
+            process created using the 'fork' method.
+
+        Returns:
+            cupy._core.ipc.IPCHandle: Serializable class with
+            Array information and IPC handle.
+
+        Example:
+            >>> # Source process
+            >>> import cupy
+            >>> arr = cupy.ones((3,3))
+            >>> arr_ipc = arr.get_ipc_handle()
+            >>> # Destination process
+            >>> arr = arr_ipc.get()
+        """
+        handle = ipcGetMemHandle(self.data.ptr)
+        return IPCHandle(self.shape, self.size, self.dtype, self.strides, handle)
 
 
 cdef inline _carray.CArray _CArray_from_ndarray(_ndarray_base arr):
