@@ -1,5 +1,3 @@
-import os
-
 import cupy as cp
 import numpy as np
 
@@ -8,48 +6,53 @@ code = r"""
 #include <cufftXt.h>
 
 struct cb_params {
-	unsigned window_N;
-	unsigned signal_size;
+    unsigned window_N;
+    unsigned signal_size;
 };
 
 __device__ cufftComplex cufftJITCallbackLoadComplex(void *input,
                                                     size_t index,
                                                     void *info,
                                                     void *sharedmem) {
-	const cb_params* params = static_cast<const cb_params*>(info);
-	cufftComplex* cb_output = static_cast<cufftComplex*>(input);
-	const unsigned sample   = index % params->signal_size;
+    const cb_params* params = static_cast<const cb_params*>(info);
+    cufftComplex* cb_output = static_cast<cufftComplex*>(input);
+    const unsigned sample   = index % params->signal_size;
 
-    return (sample < params->window_N) ? cb_output[index] : cufftComplex{0.f, 0.f};
+    return (sample < params->window_N) ? cb_output[index] \
+                                       : cufftComplex{0.f, 0.f};
 }
 """
 
 
 # Problem input parameters
-batches             = 830
-signal_size         = 328
-window_size         =  32
+batches = 830
+signal_size = 328
+window_size = 32
 complex_signal_size = signal_size // 2 + 1
 
 # Wave parameters
-waves               = 12
-signal_max_A        = 20.
-signal_max_f        = 500.
-sampling_dt         = 1e-3
+waves = 12
+signal_max_A = 20.
+signal_max_f = 500.
+sampling_dt = 1e-3
 
 # Precision threshold
-threshold = 1e-6;
+threshold = 1e-6
 
 # Initialize the input signal as a composite of sine waves
 # with random amplitudes and frequencies
-wave_amplitudes = signal_max_A * cp.random.random((batches, waves), dtype=cp.float32)
-wave_frequencies = signal_max_f * cp.random.random((batches, waves), dtype=cp.float32)
+wave_amplitudes = signal_max_A * \
+    cp.random.random((batches, waves), dtype=cp.float32)
+wave_frequencies = signal_max_f * \
+    cp.random.random((batches, waves), dtype=cp.float32)
 
 # Compose the signal
 input_signals = cp.empty((batches, signal_size), dtype=cp.float32)
 time = 0.
 for s in range(signal_size):
-    input_signals[..., s] = cp.sum(wave_amplitudes[...] * cp.sin(2 * cp.pi * wave_frequencies[...] * time), axis=-1)
+    input_signals[..., s] = cp.sum(
+        wave_amplitudes[...] *
+        cp.sin(2 * cp.pi * wave_frequencies[...] * time), axis=-1)
     time += sampling_dt
 
 # Define a structure used to pass in the window size
@@ -59,7 +62,7 @@ cb_params_dtype = np.dtype(
     {'names': ('window_N', 'signal_size'),
      'formats': (np.uint32, np.uint32),
      'itemsize': 8,
-    }, align=True
+     }, align=True
 )
 cb_params_h = np.empty(1, dtype=cb_params_dtype)
 cb_params_h['window_N'] = window_size
@@ -72,11 +75,11 @@ memptr_d = cp.cuda.alloc(cb_params_h.nbytes)
 memptr_d.copy_from_host(cb_params_h.ctypes.data, cb_params_h.nbytes)
 
 # Transform signal forward
-print("Transforming signal with rfft (cufftExecR2C)");
+print("Transforming signal with rfft (cufftExecR2C)")
 out = cp.fft.rfft(input_signals)
 
 # Apply window via load callback and inverse-transform the signal
-print("Transforming signal with irfft (cufftExecC2R)");
+print("Transforming signal with irfft (cufftExecC2R)")
 with cp.fft.config.set_cufft_callbacks(cb_load=code,
                                        cb_load_data=memptr_d,
                                        cb_ver='jit'):

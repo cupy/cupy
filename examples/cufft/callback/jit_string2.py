@@ -1,5 +1,3 @@
-import os
-
 import cupy as cp
 
 # a load callback that overwrites the input array to 1
@@ -31,5 +29,6 @@ c = cp.fft.fft(cp.ones_like(a))
 # result agrees
 assert cp.allclose(b, c)
 
-# "static" plans are also cached, but are distinct from their no-callback counterparts
+# "static" plans are also cached, but are distinct from their no-callback
+# counterparts
 cp.fft.config.get_plan_cache().show_info()

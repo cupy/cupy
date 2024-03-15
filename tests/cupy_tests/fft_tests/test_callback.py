@@ -9,7 +9,7 @@ try:
     import Cython
 except ImportError:
     Cython = None
-except:
+else:
     if Cython.__version__ < '0.29.0':
         Cython = None
 import numpy as np
@@ -294,7 +294,7 @@ class Test1dCallbacks:
                 load_types = ('x', 'cufftReal', 'cufftCallbackLoadR',
                               'cufftJITCallbackLoadReal')
                 store_types = ('x.y', 'cufftComplex', 'cufftCallbackStoreC',
-                              'cufftJITCallbackStoreComplex')
+                               'cufftJITCallbackStoreComplex')
             else:  # float64
                 load_types = ('x', 'cufftDoubleReal', 'cufftCallbackLoadD',
                               'cufftJITCallbackLoadDoubleReal')
@@ -506,21 +506,24 @@ class Test1dCallbacks:
 @testing.parameterize(*(
     testing.product_dict(
         [
-        {'shape': (3, 4), 's': None, 'axes': None, 'norm': None},
-        {'shape': (3, 4), 's': (1, None), 'axes': None, 'norm': None},
-        {'shape': (3, 4), 's': (1, 5), 'axes': None, 'norm': None},
-        {'shape': (3, 4), 's': None, 'axes': (-2, -1), 'norm': None},
-        {'shape': (3, 4), 's': None, 'axes': None, 'norm': 'ortho'},
-        {'shape': (2, 3, 4), 's': None, 'axes': None, 'norm': None},
-        {'shape': (2, 3, 4), 's': (1, 4, None), 'axes': None, 'norm': None},
-        {'shape': (2, 3, 4), 's': (1, 4, 10), 'axes': None, 'norm': None},
-        {'shape': (2, 3, 4), 's': None, 'axes': (-3, -2, -1), 'norm': None},
-        {'shape': (2, 3, 4), 's': None, 'axes': None, 'norm': 'ortho'},
-        {'shape': (2, 3, 4), 's': (2, 3), 'axes': (0, 1, 2), 'norm': 'ortho'},
+            {'shape': (3, 4), 's': None, 'axes': None, 'norm': None},
+            {'shape': (3, 4), 's': (1, None), 'axes': None, 'norm': None},
+            {'shape': (3, 4), 's': (1, 5), 'axes': None, 'norm': None},
+            {'shape': (3, 4), 's': None, 'axes': (-2, -1), 'norm': None},
+            {'shape': (3, 4), 's': None, 'axes': None, 'norm': 'ortho'},
+            {'shape': (2, 3, 4), 's': None, 'axes': None, 'norm': None},
+            {'shape': (2, 3, 4), 's': (1, 4, None),
+             'axes': None, 'norm': None},
+            {'shape': (2, 3, 4), 's': (1, 4, 10), 'axes': None, 'norm': None},
+            {'shape': (2, 3, 4), 's': None,
+             'axes': (-3, -2, -1), 'norm': None},
+            {'shape': (2, 3, 4), 's': None, 'axes': None, 'norm': 'ortho'},
+            {'shape': (2, 3, 4), 's': (2, 3), 'axes': (
+                0, 1, 2), 'norm': 'ortho'},
         ],
 
         testing.product(
-        {'cb_ver': cb_ver_for_test,},
+            {'cb_ver': cb_ver_for_test, },
         ),
     )
 ))
@@ -692,7 +695,7 @@ class TestNdCallbacks:
                 load_types = ('x', 'cufftReal', 'cufftCallbackLoadR',
                               'cufftJITCallbackLoadReal')
                 store_types = ('x.y', 'cufftComplex', 'cufftCallbackStoreC',
-                              'cufftJITCallbackStoreComplex')
+                               'cufftJITCallbackStoreComplex')
             else:  # float64
                 load_types = ('x', 'cufftDoubleReal', 'cufftCallbackLoadD',
                               'cufftJITCallbackLoadDoubleReal')
@@ -710,7 +713,7 @@ class TestNdCallbacks:
                     'x.x', 'cufftDoubleComplex', 'cufftCallbackLoadZ',
                     'cufftJITCallbackLoadDoubleComplex')
                 store_types = ('x', 'cufftDoubleReal', 'cufftCallbackStoreD',
-                    'cufftJITCallbackStoreDoubleReal')
+                               'cufftJITCallbackStoreDoubleReal')
         cb_load = _set_load_cb(load_code, *load_types, cb_ver=self.cb_ver)
         cb_store = _set_store_cb(store_code, *store_types, cb_ver=self.cb_ver)
 
@@ -789,7 +792,7 @@ class TestNdCallbacks:
                 load_types = ('x', 'cufftReal', 'cufftCallbackLoadR',
                               'cufftJITCallbackLoadReal', 'float')
                 store_types = ('x.y', 'cufftComplex', 'cufftCallbackStoreC',
-                              'cufftJITCallbackStoreComplex', 'float')
+                               'cufftJITCallbackStoreComplex', 'float')
             else:  # float64
                 load_types = ('x', 'cufftDoubleReal', 'cufftCallbackLoadD',
                               'cufftJITCallbackLoadDoubleReal', 'double')
@@ -807,7 +810,7 @@ class TestNdCallbacks:
                     'x.x', 'cufftDoubleComplex', 'cufftCallbackLoadZ',
                     'cufftJITCallbackLoadDoubleComplex', 'double')
                 store_types = ('x', 'cufftDoubleReal', 'cufftCallbackStoreD',
-                    'cufftJITCallbackStoreDoubleReal', 'double')
+                               'cufftJITCallbackStoreDoubleReal', 'double')
         cb_load = _set_load_cb(load_code, *load_types, cb_ver=self.cb_ver)
         cb_store = _set_store_cb(store_code, *store_types, cb_ver=self.cb_ver)
 

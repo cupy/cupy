@@ -166,7 +166,6 @@ class _JitRawKernel:
                 )
                 self._cached_codes[in_types] = result
 
-            fname = result.func_name
             options = (
                 '-DCUPY_JIT_MODE', '--std=c++14', '-dlto',
                 f'-arch=compute_{_get_arch()}')
@@ -189,7 +188,8 @@ class _JitRawKernel:
                 # this statement is still valid now that we fix the CCCL issues
                 if major_version >= 12:
                     # Starting with CUDA 12.0, even without using jitify, some
-                    # tests cause an error if the following option is not included.
+                    # tests cause an error if the following option is not
+                    # included.
                     options += ('--device-as-default-execution-space',)
             program = _NVRTCProgram(
                 source, cu_path, headers, include_names, method='lto')

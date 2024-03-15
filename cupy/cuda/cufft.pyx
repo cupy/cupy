@@ -23,7 +23,7 @@ ctypedef Result (*F_cufftXtSetJITCallback)(
 cdef F_cufftXtSetJITCallback cufftXtSetJITCallback
 
 
-################ SoftLink utilities ################
+# ****************** SoftLink utilities ******************
 
 cdef SoftLink _L = None
 
