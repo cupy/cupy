@@ -35,7 +35,7 @@ class TestIPCHandle(unittest.TestCase):
 
         error_queue = self.spawn_context.Queue()
         p = self.spawn_context.Process(target=self.modify_array,
-                                 args=(handle, error_queue))
+                                       args=(handle, error_queue))
         p.start()
         p.join()
 
@@ -51,7 +51,7 @@ class TestIPCHandle(unittest.TestCase):
 
         error_queue = self.fork_context.Queue()
         p = self.fork_context.Process(target=self.modify_array,
-                                 args=(handle, error_queue))
+                                      args=(handle, error_queue))
         p.start()
         p.join()
         assert not error_queue.empty(), "No RuntimeError was raised"
@@ -59,7 +59,7 @@ class TestIPCHandle(unittest.TestCase):
 
         error_queue = self.spawn_context.Queue()
         p = self.spawn_context.Process(target=self.get_twice,
-                                 args=(handle, error_queue))
+                                       args=(handle, error_queue))
         p.start()
         p.join()
         assert not error_queue.empty(), "No RuntimeError was raised"
