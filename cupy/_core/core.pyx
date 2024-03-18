@@ -15,11 +15,10 @@ from cupy._core._kernel import ElementwiseKernel
 from cupy._core._ufuncs import elementwise_copy
 from cupy._core import flags
 from cupy._core import syncdetect
-from cupy._core.ipc_handle import IPCHandle
+from cupy.cuda._ipc_handle import IPCMemoryHandle
 from cupy import cuda
 from cupy.cuda import memory as memory_module
 from cupy.cuda import stream as stream_mod
-from cupy.cuda.runtime import ipcGetMemHandle
 
 
 from cupy_backends.cuda.api.runtime import CUDARuntimeError
@@ -2064,16 +2063,20 @@ cdef class _ndarray_base:
         holds array information and IPC handle for the array. This instance
         can be passed to other processes (e.g. via multiprocessing).
 
-        On the destination process, use the .get() method to create a new
-        :class:`ndarray` object that shares the allocation from the original process.
-        The IPC handle can be closed manually by calling the .close() method.
-        After that, the destination can no longer use the shared array object.
-        Otherwise, the handle is closed automatically when the instance is deleted
-        using del or goes out of scope.
+        On the destination process, use the .open() method to create a new
+        :class:`ndarray` object that shares the allocation from the original
+        process. The IPC handle can be closed manually by calling the .close()
+        method. After that, the destination can no longer use the shared array
+        object. Otherwise, the handle is closed automatically when the instance
+        is deleted using del or goes out of scope.
 
         Note:
+            Users are responsible for keeping the IPC instance alive in the
+            source process for the lifetime of the corresponding array in
+            the destination process.
             The handle cannot be open on the source process or on a destination
-            process created using the 'fork' method.
+            process which is a direct 'forked' decendant of the process on
+            which the handle is created.
 
         Returns:
             cupy._core.ipc.IPCHandle: Serializable class with
@@ -2084,11 +2087,11 @@ cdef class _ndarray_base:
             >>> import cupy
             >>> arr = cupy.ones((3,3))
             >>> arr_ipc = arr.get_ipc_handle()
+            >>>
             >>> # Destination process
-            >>> arr = arr_ipc.get()
+            >>> arr = arr_ipc.open()
         """
-        handle = ipcGetMemHandle(self.data.ptr)
-        return IPCHandle(self.shape, self.size, self.dtype, self.strides, handle)
+        return IPCMemoryHandle(self)
 
 
 cdef inline _carray.CArray _CArray_from_ndarray(_ndarray_base arr):
