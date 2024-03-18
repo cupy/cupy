@@ -3,6 +3,7 @@ import warnings
 from multiprocessing import get_start_method
 
 from cupy.cuda.memory import UnownedMemory, MemoryPointer
+
 from cupy.cuda.runtime import ipcGetMemHandle
 from cupy.cuda.runtime import ipcOpenMemHandle
 from cupy.cuda.runtime import ipcCloseMemHandle

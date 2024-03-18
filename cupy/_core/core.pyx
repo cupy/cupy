@@ -15,10 +15,11 @@ from cupy._core._kernel import ElementwiseKernel
 from cupy._core._ufuncs import elementwise_copy
 from cupy._core import flags
 from cupy._core import syncdetect
-from cupy.cuda._ipc_handle import IPCMemoryHandle
+
 from cupy import cuda
 from cupy.cuda import memory as memory_module
 from cupy.cuda import stream as stream_mod
+from cupy.cuda._ipc_handle import IPCMemoryHandle
 
 
 from cupy_backends.cuda.api.runtime import CUDARuntimeError
