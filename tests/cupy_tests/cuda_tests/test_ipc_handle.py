@@ -51,7 +51,3 @@ class TestIPCHandle(unittest.TestCase):
         p.join()
         assert not error_queue.empty(), "No RuntimeError was raised"
         assert isinstance(error_queue.get(), RuntimeError)
-
-
-if __name__ == '__main__':
-    unittest.main()
