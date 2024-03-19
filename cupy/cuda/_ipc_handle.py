@@ -27,15 +27,16 @@ class IPCMemoryHandle:
 
         if type(ndarray_instance) is not ndarray \
                 and isinstance(ndarray_instance, ndarray):
-            warnings.warn("The provided object is of a subclass of "
-                          "cupy.ndarray, not cupy.ndarray itself. "
-                          "The open method will always return a "
-                          "cupy.ndarray object.")
+            warnings.warn("The provided object is an instance of a "
+                          "subclass of cupy.ndarray, not cupy.ndarray "
+                          "itself. The .open() method will always return "
+                          "a cupy.ndarray object.")
 
         if not isinstance(ndarray_instance, ndarray):
-            raise RuntimeError(
-                "The provided object is a neither of cupy.ndarray, "
-                "nor of a subclass of cupy.ndarray."
+            raise TypeError(
+                "The provided object is neither an instance of "
+                "cupy.ndarray, nor an instance of a subclass of "
+                "cupy.ndarray."
             )
 
         self.dtype = ndarray_instance.dtype
