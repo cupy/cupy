@@ -759,7 +759,7 @@ template<typename T>
 struct array_data {};  // opaque type always used as a pointer type
 
 template<typename T>
-__device__ T get_index(array_data<T> *value, int id, ssize_t state_size) {
+__device__ T get_index(array_data<T> *value, ssize_t id, ssize_t state_size) {
     int64_t* data = reinterpret_cast<int64_t*>(value);
     intptr_t ptr = reinterpret_cast<intptr_t>(data[0]);
     int ndim = data[1];
@@ -772,11 +772,11 @@ __device__ T get_index(array_data<T> *value, int id, ssize_t state_size) {
 }
 
 template<typename T>
-__device__ typename std::enable_if<std::is_arithmetic<T>::value, T>::type get_index(T value, int id, ssize_t state_size) {
+__device__ typename std::enable_if<std::is_arithmetic<T>::value, T>::type get_index(T value, ssize_t id, ssize_t state_size) {
     return value;
 }
 
-__device__ rk_binomial_state* get_index(rk_binomial_state *value, int id, ssize_t state_size) {
+__device__ rk_binomial_state* get_index(rk_binomial_state *value, ssize_t id, ssize_t state_size) {
     return (value + id % state_size);
 }
 
@@ -785,7 +785,7 @@ __global__ void execute_dist( intptr_t state, ssize_t state_size, intptr_t out, 
     R* out_ptr = reinterpret_cast<R*>(out);
     F func;
     T random(blockIdx.x * blockDim.x + threadIdx.x, state);
-    for (int id = blockIdx.x * blockDim.x + threadIdx.x; 
+    for (ssize_t id = blockIdx.x * blockDim.x + threadIdx.x;
              id < size; 
              id += state_size) {
         out_ptr[id] = func(random, (get_index(args, id, state_size))...);
