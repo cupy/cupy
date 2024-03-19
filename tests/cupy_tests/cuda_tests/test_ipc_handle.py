@@ -30,7 +30,7 @@ class TestIPCHandle(unittest.TestCase):
 
         result_queue = self.context.Queue()
         p = self.context.Process(target=self.modify_array,
-                                       args=(handle, result_queue))
+                                 args=(handle, result_queue))
         p.start()
         p.join()
 
@@ -46,7 +46,7 @@ class TestIPCHandle(unittest.TestCase):
 
         error_queue = self.context.Queue()
         p = self.context.Process(target=self.get_twice,
-                                       args=(handle, error_queue))
+                                 args=(handle, error_queue))
         p.start()
         p.join()
         assert not error_queue.empty(), "No RuntimeError was raised"
