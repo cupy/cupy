@@ -80,10 +80,10 @@ THRUST_OPTIONAL_CPP11_CONSTEXPR
 #endif
 bool _tuple_less(const thrust::tuple<size_t, T>& lhs,
 		 const thrust::tuple<size_t, T>& rhs) {
-    const size_t& lhs_k = lhs.template get<0>();
-    const size_t& rhs_k = rhs.template get<0>();
-    const T& lhs_v = lhs.template get<1>();
-    const T& rhs_v = rhs.template get<1>();
+    const size_t& lhs_k = thrust::get<0>(lhs);
+    const size_t& rhs_k = thrust::get<0>(rhs);
+    const T& lhs_v = thrust::get<1>(lhs);
+    const T& rhs_v = thrust::get<1>(rhs);
     const thrust::less<T> _less;
 
     // tuple's comparison rule: compare the 1st member, then 2nd, then 3rd, ...,
