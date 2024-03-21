@@ -14,7 +14,10 @@ cpdef enum:
 
     # cusparseComputeType
     CUSPARSE_COMPUTE_32I = 0
-    CUSPARSE_COMPUTE_32F = 1
+    CUSPARSE_COMPUTE_16F = 1
+    CUSPARSE_COMPUTE_32F = 2
+
+    # cusparseLtMatDescAttribute_t
 
     # cusparseLtMatmulDescAttribute_t
     CUSPARSELT_MATMUL_ACTIVATION_RELU = 0             # READ/WRITE
@@ -39,8 +42,9 @@ cpdef enum:
     CUSPARSELT_MATMUL_SPLIT_K_BUFFERS=5      # NOQA, READ/WRITE
 
     # cusparseLtSplitKMode_t
-    CUSPARSELT_SPLIT_K_MODE_ONE_KERNEL  = 0
-    CUSPARSELT_SPLIT_K_MODE_TWO_KERNELS = 1
+    CUSPARSELT_INVALID_MODE = 0
+    CUSPARSELT_SPLIT_K_MODE_ONE_KERNEL  = 1
+    CUSPARSELT_SPLIT_K_MODE_TWO_KERNELS = 2
 
     # cusparseLtPruneAlg_t
     CUSPARSELT_PRUNE_SPMMA_TILE = 0

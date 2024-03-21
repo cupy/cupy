@@ -86,7 +86,6 @@ cusparselt.matmulSearch(handle, plan, alpha.ctypes.data, A_compressed.data.ptr, 
 
 cusparselt.matmulPlanInit(handle, plan, matmul, alg_sel)
 
-# workspace_size = numpy.array(1, dtype='uint32')
 workspace_size = cusparselt.matmulGetWorkspace(handle, plan)
 workspace = cupy.zeros(workspace_size, dtype='uint8')
 cusparselt.matmul(handle, plan, alpha.ctypes.data, A_compressed.data.ptr,

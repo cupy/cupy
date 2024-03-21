@@ -11,6 +11,13 @@ from cupy_backends.cuda.api cimport runtime
 from cupy_backends.cuda.libs import cusparse as _cusparse
 
 
+###############################################################################
+# Types
+###############################################################################
+cdef extern from *:
+    ctypedef void* LibraryPropertyType 'libraryPropertyType_t'
+
+
 cdef extern from '../../cupy_cusparselt.h' nogil:
     ctypedef int cusparseStatus_t 'cusparseStatus_t'
     ctypedef int cusparseOrder_t 'cusparseOrder_t'
@@ -36,12 +43,14 @@ cdef extern from '../../cupy_cusparselt.h' nogil:
     ctypedef int cusparseOperation_t 'cusparseOperation_t'
     ctypedef int cusparseLtMatmulAlg_t 'cusparseLtMatmulAlg_t'
     ctypedef int cusparseLtMatmulAlgAttribute_t 'cusparseLtMatmulAlgAttribute_t'  # NOQA
-    ctypedef int cusparseLtPruneAlg_t 'cusparseLtPruneAlg_t'
     ctypedef int cusparseLtSplitKMode_t 'cusparseLtSplitKMode_t'
+    ctypedef int cusparseLtPruneAlg_t 'cusparseLtPruneAlg_t'
 
     # Management Functions
     cusparseStatus_t cusparseLtInit(cusparseLtHandle_t* handle)
     cusparseStatus_t cusparseLtDestroy(const cusparseLtHandle_t* handle)
+    cusparseStatus_t cusparseLtGetVersion(const cusparseLtHandle_t* handle, int* version)
+    cusparseStatus_t cusparseLtGetProperty(LibraryPropertyType propertyType, int* value)
 
     # Matmul Functions
     cusparseStatus_t cusparseLtDenseDescriptorInit(
@@ -138,7 +147,7 @@ cdef extern from '../../cupy_cusparselt.h' nogil:
     cusparseStatus_t cusparseLtSpMMAPruneCheck(
         const cusparseLtHandle_t* handle,
         const cusparseLtMatmulDescriptor_t* matmulDescr,
-        const void* d_in, int* valid, runtime.Stream stream)
+        const void* d_in, int* d_valid, runtime.Stream stream)
     cusparseStatus_t cusparseLtSpMMAPrune2(
         const cusparseLtHandle_t* handle,
         const cusparseLtMatDescriptor_t* sparseMatDescr,
@@ -466,13 +475,13 @@ cpdef spMMAPrune(Handle handle, MatmulDescriptor matmulDescr,
     check_status(status)
 
 cpdef spMMAPruneCheck(Handle handle, MatmulDescriptor matmulDescr,
-                      size_t d_in, size_t valid):
+                      size_t d_in, size_t d_valid):
     """Checks the correctness of the pruning structure"""
     cdef intptr_t stream = stream_module.get_current_stream_ptr()
     status = cusparseLtSpMMAPruneCheck(
         <const cusparseLtHandle_t*> handle._ptr,
         <const cusparseLtMatmulDescriptor_t*> matmulDescr._ptr,
-        <const void*> d_in, <int*> valid, <runtime.Stream> stream)
+        <const void*> d_in, <int*> d_valid, <runtime.Stream> stream)
     check_status(status)
 
 cpdef spMMAPrune2(Handle handle, MatDescriptor sparseMatDescr, isSparseA,
