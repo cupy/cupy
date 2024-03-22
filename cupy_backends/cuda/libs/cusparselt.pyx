@@ -36,6 +36,7 @@ cdef extern from '../../cupy_cusparselt.h' nogil:
     ctypedef int cusparseOperation_t 'cusparseOperation_t'
     ctypedef int cusparseLtMatmulAlg_t 'cusparseLtMatmulAlg_t'
     ctypedef int cusparseLtMatmulAlgAttribute_t 'cusparseLtMatmulAlgAttribute_t'  # NOQA
+    ctypedef int cusparseLtSplitMode_t 'cusparseLtSplitMode_t'
     ctypedef int cusparseLtPruneAlg_t 'cusparseLtPruneAlg_t'
 
     # Management Functions
@@ -98,14 +99,13 @@ cdef extern from '../../cupy_cusparselt.h' nogil:
         const void* data, size_t ataSize)
     cusparseStatus_t cusparseLtMatmulGetWorkspace(
         const cusparseLtHandle_t* handle,
-        const cusparseLtMatmulAlgSelection_t* algSelection,
+        const cusparseLtMatmulPlan_t* plan,
         size_t* workspaceSize)
     cusparseStatus_t cusparseLtMatmulPlanInit(
         const cusparseLtHandle_t* handle,
         cusparseLtMatmulPlan_t* plan,
         const cusparseLtMatmulDescriptor_t* matmulDescr,
-        const cusparseLtMatmulAlgSelection_t* algSelection,
-        size_t workspaceSize)
+        const cusparseLtMatmulAlgSelection_t* algSelection)
     cusparseStatus_t cusparseLtMatmulPlanDestroy(
         const cusparseLtMatmulPlan_t* plan)
     cusparseStatus_t cusparseLtMatmul(
@@ -136,19 +136,19 @@ cdef extern from '../../cupy_cusparselt.h' nogil:
         runtime.Stream stream)
     cusparseStatus_t cusparseLtSpMMACompressedSize(
         const cusparseLtHandle_t* handle, const cusparseLtMatmulPlan_t* plan,
-        size_t* compressedSize)
+        size_t* compressedSize, size_t* compressedBufferSize)
     cusparseStatus_t cusparseLtSpMMACompress(
         const cusparseLtHandle_t* handle, const cusparseLtMatmulPlan_t* plan,
-        const void* d_dense, void* d_compressed, runtime.Stream stream)
+        const void* d_dense, void* d_compressed, void* d_compressed_buffer, runtime.Stream stream)
     cusparseStatus_t cusparseLtSpMMACompressedSize2(
         const cusparseLtHandle_t* handle,
         const cusparseLtMatDescriptor_t* sparseMatDescr,
-        size_t* compressedSize)
+        size_t* compressedSize, size_t* compressedSizeBuffer)
     cusparseStatus_t cusparseLtSpMMACompress2(
         const cusparseLtHandle_t* handle,
         const cusparseLtMatDescriptor_t* sparseMatDescr,
         int isSparseA, cusparseOperation_t op, const void* d_dense,
-        void* d_compressed, runtime.Stream stream)
+        void* d_compressed, void* d_compressed_buffer, runtime.Stream stream)
 
     # Build-time version
     int CUSPARSELT_VERSION
