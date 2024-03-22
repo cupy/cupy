@@ -507,7 +507,8 @@ cpdef spMMAPruneCheck2(Handle handle, MatDescriptor sparseMatDescr, isSparseA,
         <int*> d_valid, <runtime.Stream> stream)
     check_status(status)
 
-cpdef spMMACompressedSize(Handle handle, MatmulPlan plan, size_t compressedSize, size_t compressBufferSize):
+cpdef spMMACompressedSize(Handle handle, MatmulPlan plan,
+                          size_t compressedSize, size_t compressBufferSize):
     """Provides the size of the compressed matrix"""
     status = cusparseLtSpMMACompressedSize(
         <const cusparseLtHandle_t*> handle._ptr,
@@ -516,16 +517,19 @@ cpdef spMMACompressedSize(Handle handle, MatmulPlan plan, size_t compressedSize,
     check_status(status)
 
 cpdef spMMACompress(Handle handle, MatmulPlan plan,
-                    size_t d_dense, size_t d_compressed, size_t d_compressed_buffer):
+                    size_t d_dense, size_t d_compressed,
+                    size_t d_compressed_buffer):
     """Compresses a dense matrix d_dense."""
     cdef intptr_t stream = stream_module.get_current_stream_ptr()
     status = cusparseLtSpMMACompress(
         <const cusparseLtHandle_t*> handle._ptr,
         <const cusparseLtMatmulPlan_t*> plan._ptr,
-        <const void*> d_dense, <void*> d_compressed, <void*> d_compressed_buffer, <runtime.Stream> stream)
+        <const void*> d_dense, <void*> d_compressed,
+        <void*> d_compressed_buffer, <runtime.Stream> stream)
     check_status(status)
 
-cpdef spMMACompressedSize2(Handle handle, MatDescriptor sparseMatDescr, size_t compressedSize, size_t compressBufferSize):
+cpdef spMMACompressedSize2(Handle handle, MatDescriptor sparseMatDescr,
+                           size_t compressedSize, size_t compressBufferSize):
     """Provides the size of the compressed matrix"""
     status = cusparseLtSpMMACompressedSize2(
         <const cusparseLtHandle_t*> handle._ptr,
@@ -535,14 +539,16 @@ cpdef spMMACompressedSize2(Handle handle, MatDescriptor sparseMatDescr, size_t c
     return compressedSize
 
 cpdef spMMACompress2(Handle handle, MatDescriptor sparseMatDescr,
-                     isSparseA, op, size_t d_dense, size_t d_compressed, size_t d_compressed_buffer):
+                     isSparseA, op, size_t d_dense,
+                     size_t d_compressed, size_t d_compressed_buffer):
     """Compresses a dense matrix d_dense."""
     cdef intptr_t stream = stream_module.get_current_stream_ptr()
     status = cusparseLtSpMMACompress2(
         <const cusparseLtHandle_t*> handle._ptr,
         <const cusparseLtMatDescriptor_t*> sparseMatDescr._ptr,
         <int> isSparseA, <cusparseOperation_t> op, <const void*> d_dense,
-        <void*> d_compressed, <void*> d_compressed_buffer, <runtime.Stream> stream)
+        <void*> d_compressed, <void*> d_compressed_buffer,
+        <runtime.Stream> stream)
     check_status(status)
 
 def get_build_version():

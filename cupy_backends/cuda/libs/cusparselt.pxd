@@ -17,8 +17,6 @@ cpdef enum:
     CUSPARSE_COMPUTE_16F = 1
     CUSPARSE_COMPUTE_32F = 2
 
-    # cusparseLtMatDescAttribute_t
-
     # cusparseLtMatmulDescAttribute_t
     CUSPARSELT_MATMUL_ACTIVATION_RELU = 0             # READ/WRITE
     CUSPARSELT_MATMUL_ACTIVATION_RELU_UPPERBOUND = 1  # READ/WRITE

@@ -69,11 +69,13 @@ cusparselt.spMMAPruneCheck(handle, matmul, A.data.ptr, is_valid.ctypes.data)
 #
 compressed_size = numpy.array(1, dtype='uint32')
 compressed_buffer_size = numpy.array(1, dtype='uint32')
-cusparselt.spMMACompressedSize(handle, plan, compressed_size.ctypes.data, compressed_buffer_size.ctypes.data)
+cusparselt.spMMACompressedSize(handle, plan, compressed_size.ctypes.data,
+                               compressed_buffer_size.ctypes.data)
 
 A_compressed = cupy.zeros(compressed_size, dtype='uint8')
 A_compressedBuffer = cupy.zeros(compressed_buffer_size, dtype='uint8')
-cusparselt.spMMACompress(handle, plan, A.data.ptr, A_compressed.data.ptr, A_compressedBuffer.data.ptr)
+cusparselt.spMMACompress(handle, plan, A.data.ptr, A_compressed.data.ptr,
+                         A_compressedBuffer.data.ptr)
 
 #
 # matmul: C = A @ B
@@ -82,7 +84,9 @@ alpha = numpy.array(1.0, dtype='float32')
 beta = numpy.array(0.0, dtype='float32')
 null = numpy.array(0, dtype='uint32')
 
-cusparselt.matmulSearch(handle, plan, alpha.ctypes.data, A_compressed.data.ptr, B.data.ptr, beta.ctypes.data, C.data.ptr, C.data.ptr, null.ctypes.data)
+cusparselt.matmulSearch(handle, plan, alpha.ctypes.data,
+                        A_compressed.data.ptr, B.data.ptr, beta.ctypes.data,
+                        C.data.ptr, C.data.ptr, null.ctypes.data)
 
 cusparselt.matmulPlanInit(handle, plan, matmul, alg_sel)
 
