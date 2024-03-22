@@ -370,28 +370,25 @@ cpdef matmulAlgSetAttribute(Handle handle, MatmulAlgSelection algSelection,
         <const void*> data, <size_t> dataSize)
     check_status(status)
 
-cpdef size_t matmulGetWorkspace(Handle handle,
-                                MatmulAlgSelection algSelection):
+cpdef size_t matmulGetWorkspace(Handle handle, MatmulPlan plan):
     """Determines the required workspace size"""
     cdef size_t workspaceSize
     status = cusparseLtMatmulGetWorkspace(
         <const cusparseLtHandle_t*> handle._ptr,
-        <const cusparseLtMatmulAlgSelection_t*> algSelection._ptr,
+        <const cusparseLtMatmulPlan_t*> plan._ptr,
         &workspaceSize)
     check_status(status)
     return workspaceSize
 
 cpdef matmulPlanInit(Handle handle, MatmulPlan plan,
                      MatmulDescriptor matmulDescr,
-                     MatmulAlgSelection algSelection,
-                     size_t workspaceSize):
+                     MatmulAlgSelection algSelection):
     """Initializes the plan."""
     status = cusparseLtMatmulPlanInit(
         <const cusparseLtHandle_t*> handle._ptr,
         <cusparseLtMatmulPlan_t*> plan._ptr,
         <const cusparseLtMatmulDescriptor_t*> matmulDescr._ptr,
-        <const cusparseLtMatmulAlgSelection_t*> algSelection._ptr,
-        <size_t> workspaceSize)
+        <const cusparseLtMatmulAlgSelection_t*> algSelection._ptr)
     check_status(status)
 
 cpdef matmulPlanDestroy(MatmulPlan plan):
@@ -463,42 +460,48 @@ cpdef spMMAPruneCheck2(Handle handle, MatDescriptor sparseMatDescr, isSparseA,
 cpdef size_t spMMACompressedSize(Handle handle, MatmulPlan plan):
     """Provides the size of the compressed matrix"""
     cdef size_t compressedSize
+    cdef size_t compressedSizeBuffer
     status = cusparseLtSpMMACompressedSize(
         <const cusparseLtHandle_t*> handle._ptr,
         <const cusparseLtMatmulPlan_t*> plan._ptr,
-        &compressedSize)
+        &compressedSize, &compressedSizeBuffer)
     check_status(status)
-    return compressedSize
+    return compressedSize, compressedSizeBuffer
 
 cpdef spMMACompress(Handle handle, MatmulPlan plan,
-                    size_t d_dense, size_t d_compressed):
+                    size_t d_dense, size_t d_compressed,
+                    size_t d_compressed_buffer):
     """Compresses a dense matrix d_dense."""
     cdef intptr_t stream = stream_module.get_current_stream_ptr()
     status = cusparseLtSpMMACompress(
         <const cusparseLtHandle_t*> handle._ptr,
         <const cusparseLtMatmulPlan_t*> plan._ptr,
-        <const void*> d_dense, <void*> d_compressed, <runtime.Stream> stream)
+        <const void*> d_dense, <void*> d_compressed, 
+        <void*> d_compressed_buffer, <runtime.Stream> stream)
     check_status(status)
 
 cpdef size_t spMMACompressedSize2(Handle handle, MatDescriptor sparseMatDescr):
     """Provides the size of the compressed matrix"""
     cdef size_t compressedSize
+    cdef size_t compressedSizeBuffer
     status = cusparseLtSpMMACompressedSize2(
         <const cusparseLtHandle_t*> handle._ptr,
         <const cusparseLtMatDescriptor_t*> sparseMatDescr._ptr,
-        &compressedSize)
+        &compressedSize, &compressedSizeBuffer)
     check_status(status)
-    return compressedSize
+    return compressedSize, compressedSizeBuffer
 
 cpdef spMMACompress2(Handle handle, MatDescriptor sparseMatDescr,
-                     isSparseA, op, size_t d_dense, size_t d_compressed):
+                     isSparseA, op, size_t d_dense, size_t d_compressed,
+                     size_t d_compressed_buffer):
     """Compresses a dense matrix d_dense."""
     cdef intptr_t stream = stream_module.get_current_stream_ptr()
     status = cusparseLtSpMMACompress2(
         <const cusparseLtHandle_t*> handle._ptr,
         <const cusparseLtMatDescriptor_t*> sparseMatDescr._ptr,
         <int> isSparseA, <cusparseOperation_t> op, <const void*> d_dense,
-        <void*> d_compressed, <runtime.Stream> stream)
+        <void*> d_compressed, <void*> d_compressed_buffer,
+        <runtime.Stream> stream)
     check_status(status)
 
 
