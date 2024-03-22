@@ -56,9 +56,9 @@ alg = numpy.array(0, dtype='int32')
 cusparselt.matmulAlgSetAttribute(handle, alg_sel,
                                  cusparselt.CUSPARSELT_MATMUL_ALG_CONFIG_ID,
                                  alg.ctypes.data, 4)
-workspace_size = cusparselt.matmulGetWorkspace(handle, alg_sel)
+workspace_size = cusparselt.matmulGetWorkspace(handle, plan)
 workspace = cupy.empty(workspace_size, dtype='int8')
-cusparselt.matmulPlanInit(handle, plan, matmul, alg_sel, workspace_size)
+cusparselt.matmulPlanInit(handle, plan, matmul, alg_sel)
 
 #
 # prunes the matrix A in-place and checks the correstness
@@ -73,9 +73,11 @@ cusparselt.spMMAPruneCheck(handle, matmul, A.data.ptr, is_valid.ctypes.data)
 #
 # compresses the matrix A
 #
-compressed_size = cusparselt.spMMACompressedSize(handle, plan)
+compressed_size, buffer_size = cusparselt.spMMACompressedSize(handle, plan)
 A_compressed = cupy.zeros(compressed_size, dtype='uint8')
-cusparselt.spMMACompress(handle, plan, A.data.ptr, A_compressed.data.ptr)
+tmp_buffer = cupy.zeros(buffer_size, dtype='uint8')
+cusparselt.spMMACompress(handle, plan, A.data.ptr, A_compressed.data.ptr,
+                         tmp_buffer.ptr)
 
 #
 # matmul: C = A @ B
