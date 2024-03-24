@@ -260,6 +260,7 @@ cdef class MatmulPlan:
         return <intptr_t>self._ptr
 
 
+
 ###############################################################################
 # Error handling
 ###############################################################################
@@ -317,23 +318,23 @@ cpdef matDescriptorDestroy(MatDescriptor matDescr):
     check_status(status)
 
 cpdef matDescSetAttribute(Handle handle, MatDescriptor matDescr,
-                          matAttribute, size_t data, size_t dataSize):
+                          matAttribute, data, size_t dataSize):
     """Sets the attribute related to matrix descriptor."""
     status = cusparseLtMatDescSetAttribute(
         <const cusparseLtHandle_t*> handle._ptr,
         <cusparseLtMatDescriptor_t*> matDescr._ptr,
         <cusparseLtMatDescAttribute_t> matAttribute,
-        <const void*> data, dataSize)
+        <const void*> data, <size_t> dataSize)
     check_status(status)
 
 cpdef matDescGetAttribute(Handle handle, MatDescriptor matDescr,
-                          matAttribute, size_t data, size_t dataSize):
+                          matAttribute, data, size_t dataSize):
     """Gets the attribute related to matrix descriptor."""
     status = cusparseLtMatDescGetAttribute(
         <const cusparseLtHandle_t*> handle._ptr,
         <const cusparseLtMatDescriptor_t*> matDescr._ptr,
         <cusparseLtMatDescAttribute_t> matAttribute,
-        <void*> data, dataSize)
+        <void*> data, <size_t> dataSize)
     check_status(status)
 
 cpdef matmulDescriptorInit(Handle handle,
@@ -358,23 +359,23 @@ cpdef matmulDescriptorInit(Handle handle,
     check_status(status)
 
 cpdef matmulDescSetAttribute(Handle handle, MatmulDescriptor matmulDescr,
-                             matmulAttribute, size_t data, size_t dataSize):
+                             matmulAttribute, data, size_t dataSize):
     """Sets the attribute related to matmul descriptor."""
     status = cusparseLtMatmulDescSetAttribute(
         <const cusparseLtHandle_t*> handle._ptr,
         <cusparseLtMatmulDescriptor_t*> matmulDescr._ptr,
         <cusparseLtMatmulDescAttribute_t> matmulAttribute,
-        <const void*> data, dataSize)
+        <const void*> data, <size_t> dataSize)
     check_status(status)
 
 cpdef matmulDescGetAttribute(Handle handle, MatmulDescriptor matmulDescr,
-                             matmulAttribute, size_t data, size_t dataSize):
+                             matmulAttribute, data, size_t dataSize):
     """Gets the attribute related to matmul descriptor."""
     status = cusparseLtMatmulDescGetAttribute(
         <const cusparseLtHandle_t*> handle._ptr,
         <const cusparseLtMatmulDescriptor_t*> matmulDescr._ptr,
         <cusparseLtMatmulDescAttribute_t> matmulAttribute,
-        <void*> data, dataSize)
+        <void*> data, <size_t> dataSize)
     check_status(status)
 
 cpdef matmulAlgSelectionInit(Handle handle, MatmulAlgSelection algSelection,
@@ -388,7 +389,8 @@ cpdef matmulAlgSelectionInit(Handle handle, MatmulAlgSelection algSelection,
     check_status(status)
 
 cpdef matmulAlgSetAttribute(Handle handle, MatmulAlgSelection algSelection,
-                            attribute, size_t data, size_t dataSize):
+                            attribute,
+                            data, size_t dataSize):
     """Sets the attribute related to algorithm selection descriptor."""
     status = cusparseLtMatmulAlgSetAttribute(
         <const cusparseLtHandle_t*> handle._ptr,
@@ -398,7 +400,8 @@ cpdef matmulAlgSetAttribute(Handle handle, MatmulAlgSelection algSelection,
     check_status(status)
 
 cpdef matmulAlgGetAttribute(Handle handle, MatmulAlgSelection algSelection,
-                            attribute, size_t data, size_t dataSize):
+                            attribute,
+                            data, size_t dataSize):
     """Gets the attribute related to algorithm selection descriptor."""
     status = cusparseLtMatmulAlgGetAttribute(
         <const cusparseLtHandle_t*> handle._ptr,
@@ -414,7 +417,7 @@ cpdef size_t matmulGetWorkspace(Handle handle,
     status = cusparseLtMatmulGetWorkspace(
         <const cusparseLtHandle_t*> handle._ptr,
         <const cusparseLtMatmulPlan_t*> plan._ptr,
-        &workspaceSize)
+        <size_t*> &workspaceSize)
     check_status(status)
     return workspaceSize
 
@@ -436,8 +439,8 @@ cpdef matmulPlanDestroy(MatmulPlan plan):
     check_status(status)
 
 cpdef matmul(Handle handle, MatmulPlan plan,
-             size_t alpha, size_t d_A, size_t d_B,
-             size_t beta, size_t d_C, size_t d_D, size_t workspace):
+             alpha, d_A, d_B,
+             beta, d_C, d_D, workspace):
     """Computes the matrix multiplication"""
     status = cusparseLtMatmul(
         <const cusparseLtHandle_t*> handle._ptr,
@@ -459,12 +462,12 @@ cpdef matmulSearch(Handle handle, MatmulPlan plan,
         <void*> workspace, <runtime.Stream*> NULL, <int32_t> 0)
     check_status(status)
 
-###############################################################################
+############<void*> ###################################################################
 # cuSPARSELt: Helper Functions
 ###############################################################################
 
 cpdef spMMAPrune(Handle handle, MatmulDescriptor matmulDescr,
-                 size_t d_in, size_t d_out, pruneAlg):
+                 d_in, d_out, pruneAlg):
     """Prunes a dense matrix d_in"""
     cdef intptr_t stream = stream_module.get_current_stream_ptr()
     status = cusparseLtSpMMAPrune(
@@ -475,7 +478,7 @@ cpdef spMMAPrune(Handle handle, MatmulDescriptor matmulDescr,
     check_status(status)
 
 cpdef spMMAPruneCheck(Handle handle, MatmulDescriptor matmulDescr,
-                      size_t d_in, size_t d_valid):
+                      d_in, int d_valid):
     """Checks the correctness of the pruning structure"""
     cdef intptr_t stream = stream_module.get_current_stream_ptr()
     status = cusparseLtSpMMAPruneCheck(
@@ -484,8 +487,8 @@ cpdef spMMAPruneCheck(Handle handle, MatmulDescriptor matmulDescr,
         <const void*> d_in, <int*> d_valid, <runtime.Stream> stream)
     check_status(status)
 
-cpdef spMMAPrune2(Handle handle, MatDescriptor sparseMatDescr, isSparseA,
-                  op, size_t d_in, size_t d_out, pruneAlg):
+cpdef spMMAPrune2(Handle handle, MatDescriptor sparseMatDescr, int isSparseA,
+                  op, d_in, d_out, pruneAlg):
     """Prunes a dense matrix d_in"""
     cdef intptr_t stream = stream_module.get_current_stream_ptr()
     status = cusparseLtSpMMAPrune2(
@@ -497,7 +500,7 @@ cpdef spMMAPrune2(Handle handle, MatDescriptor sparseMatDescr, isSparseA,
     check_status(status)
 
 cpdef spMMAPruneCheck2(Handle handle, MatDescriptor sparseMatDescr, isSparseA,
-                       op, size_t d_in, size_t d_valid):
+                       op, d_in, int d_valid):
     """Checks the correctness of the pruning structure"""
     cdef intptr_t stream = stream_module.get_current_stream_ptr()
     status = cusparseLtSpMMAPruneCheck2(
@@ -507,40 +510,40 @@ cpdef spMMAPruneCheck2(Handle handle, MatDescriptor sparseMatDescr, isSparseA,
         <int*> d_valid, <runtime.Stream> stream)
     check_status(status)
 
-cpdef spMMACompressedSize(Handle handle, MatmulPlan plan,
-                          size_t compressedSize, size_t compressBufferSize):
+cpdef spMMACompressedSize(Handle handle, MatmulPlan plan):
     """Provides the size of the compressed matrix"""
+    cdef size_t compressedSize, compressBufferSize
     status = cusparseLtSpMMACompressedSize(
         <const cusparseLtHandle_t*> handle._ptr,
         <const cusparseLtMatmulPlan_t*> plan._ptr,
-        <size_t*>compressedSize, <size_t*>compressBufferSize)
+        <size_t*> &compressedSize, <size_t*> &compressBufferSize)
     check_status(status)
+    return compressedSize, compressBufferSize
 
-cpdef spMMACompress(Handle handle, MatmulPlan plan,
-                    size_t d_dense, size_t d_compressed,
-                    size_t d_compressed_buffer):
+cpdef spMMACompress(Handle handle, MatmulPlan plan, d_dense,
+                    d_compressed, d_compressed_buffer):
     """Compresses a dense matrix d_dense."""
     cdef intptr_t stream = stream_module.get_current_stream_ptr()
     status = cusparseLtSpMMACompress(
         <const cusparseLtHandle_t*> handle._ptr,
-        <const cusparseLtMatmulPlan_t*> plan._ptr,
-        <const void*> d_dense, <void*> d_compressed,
-        <void*> d_compressed_buffer, <runtime.Stream> stream)
+        <const cusparseLtMatmulPlan_t*> plan._ptr, <const void*> d_dense,
+        <void*> d_compressed, <void*> d_compressed_buffer,
+        <runtime.Stream> stream)
     check_status(status)
 
-cpdef spMMACompressedSize2(Handle handle, MatDescriptor sparseMatDescr,
-                           size_t compressedSize, size_t compressBufferSize):
+cpdef spMMACompressedSize2(Handle handle, MatDescriptor sparseMatDescr):
     """Provides the size of the compressed matrix"""
+    cdef size_t compressedSize, compressBufferSize
     status = cusparseLtSpMMACompressedSize2(
         <const cusparseLtHandle_t*> handle._ptr,
         <const cusparseLtMatDescriptor_t*> sparseMatDescr._ptr,
-        <size_t*>compressedSize, <size_t*>compressBufferSize)
+        <size_t*> &compressedSize, <size_t*> &compressBufferSize)
     check_status(status)
-    return compressedSize
+    return compressedSize, compressBufferSize
 
 cpdef spMMACompress2(Handle handle, MatDescriptor sparseMatDescr,
-                     isSparseA, op, size_t d_dense,
-                     size_t d_compressed, size_t d_compressed_buffer):
+                     isSparseA, op, d_dense,
+                     d_compressed, d_compressed_buffer):
     """Compresses a dense matrix d_dense."""
     cdef intptr_t stream = stream_module.get_current_stream_ptr()
     status = cusparseLtSpMMACompress2(
