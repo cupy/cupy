@@ -478,7 +478,7 @@ cpdef spMMAPrune(Handle handle, MatmulDescriptor matmulDescr,
     check_status(status)
 
 cpdef spMMAPruneCheck(Handle handle, MatmulDescriptor matmulDescr,
-                      size_t d_in, int d_valid):
+                      size_t d_in, size_t d_valid):
     """Checks the correctness of the pruning structure"""
     cdef intptr_t stream = stream_module.get_current_stream_ptr()
     status = cusparseLtSpMMAPruneCheck(
@@ -500,7 +500,7 @@ cpdef spMMAPrune2(Handle handle, MatDescriptor sparseMatDescr, int isSparseA,
     check_status(status)
 
 cpdef spMMAPruneCheck2(Handle handle, MatDescriptor sparseMatDescr, isSparseA,
-                       op, size_t d_in, int d_valid):
+                       op, size_t d_in, size_t d_valid):
     """Checks the correctness of the pruning structure"""
     cdef intptr_t stream = stream_module.get_current_stream_ptr()
     status = cusparseLtSpMMAPruneCheck2(
