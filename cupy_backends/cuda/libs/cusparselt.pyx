@@ -439,8 +439,8 @@ cpdef matmulPlanDestroy(MatmulPlan plan):
     check_status(status)
 
 cpdef matmul(Handle handle, MatmulPlan plan,
-             alpha, d_A, d_B,
-             beta, d_C, d_D, workspace):
+             size_t alpha, size_t d_A, size_t d_B,
+             size_t beta, size_t d_C, size_t d_D, size_t workspace):
     """Computes the matrix multiplication"""
     status = cusparseLtMatmul(
         <const cusparseLtHandle_t*> handle._ptr,
@@ -467,7 +467,7 @@ cpdef matmulSearch(Handle handle, MatmulPlan plan,
 ###############################################################################
 
 cpdef spMMAPrune(Handle handle, MatmulDescriptor matmulDescr,
-                 d_in, d_out, pruneAlg):
+                 size_t d_in, size_t d_out, pruneAlg):
     """Prunes a dense matrix d_in"""
     cdef intptr_t stream = stream_module.get_current_stream_ptr()
     status = cusparseLtSpMMAPrune(
@@ -478,7 +478,7 @@ cpdef spMMAPrune(Handle handle, MatmulDescriptor matmulDescr,
     check_status(status)
 
 cpdef spMMAPruneCheck(Handle handle, MatmulDescriptor matmulDescr,
-                      d_in, int d_valid):
+                      size_t d_in, int d_valid):
     """Checks the correctness of the pruning structure"""
     cdef intptr_t stream = stream_module.get_current_stream_ptr()
     status = cusparseLtSpMMAPruneCheck(
@@ -488,7 +488,7 @@ cpdef spMMAPruneCheck(Handle handle, MatmulDescriptor matmulDescr,
     check_status(status)
 
 cpdef spMMAPrune2(Handle handle, MatDescriptor sparseMatDescr, int isSparseA,
-                  op, d_in, d_out, pruneAlg):
+                  op, size_t d_in, size_t d_out, pruneAlg):
     """Prunes a dense matrix d_in"""
     cdef intptr_t stream = stream_module.get_current_stream_ptr()
     status = cusparseLtSpMMAPrune2(
@@ -500,7 +500,7 @@ cpdef spMMAPrune2(Handle handle, MatDescriptor sparseMatDescr, int isSparseA,
     check_status(status)
 
 cpdef spMMAPruneCheck2(Handle handle, MatDescriptor sparseMatDescr, isSparseA,
-                       op, d_in, int d_valid):
+                       op, size_t d_in, int d_valid):
     """Checks the correctness of the pruning structure"""
     cdef intptr_t stream = stream_module.get_current_stream_ptr()
     status = cusparseLtSpMMAPruneCheck2(
@@ -520,8 +520,8 @@ cpdef spMMACompressedSize(Handle handle, MatmulPlan plan):
     check_status(status)
     return compressedSize, compressBufferSize
 
-cpdef spMMACompress(Handle handle, MatmulPlan plan, d_dense,
-                    d_compressed, d_compressed_buffer):
+cpdef spMMACompress(Handle handle, MatmulPlan plan, size_t d_dense,
+                    size_t d_compressed, size_t d_compressed_buffer):
     """Compresses a dense matrix d_dense."""
     cdef intptr_t stream = stream_module.get_current_stream_ptr()
     status = cusparseLtSpMMACompress(
@@ -542,8 +542,8 @@ cpdef spMMACompressedSize2(Handle handle, MatDescriptor sparseMatDescr):
     return compressedSize, compressBufferSize
 
 cpdef spMMACompress2(Handle handle, MatDescriptor sparseMatDescr,
-                     isSparseA, op, d_dense,
-                     d_compressed, d_compressed_buffer):
+                     isSparseA, op, size_t d_dense,
+                     size_t d_compressed, size_t d_compressed_buffer):
     """Compresses a dense matrix d_dense."""
     cdef intptr_t stream = stream_module.get_current_stream_ptr()
     status = cusparseLtSpMMACompress2(
