@@ -451,8 +451,8 @@ cpdef matmul(Handle handle, MatmulPlan plan,
     check_status(status)
 
 cpdef matmulSearch(Handle handle, MatmulPlan plan,
-             size_t alpha, size_t d_A, size_t d_B,
-             size_t beta, size_t d_C, size_t d_D, size_t workspace):
+                   size_t alpha, size_t d_A, size_t d_B,
+                   size_t beta, size_t d_C, size_t d_D, size_t workspace):
     """Evaluates all available algorithms for the matrix multiplication"""
     status = cusparseLtMatmulSearch(
         <const cusparseLtHandle_t*> handle._ptr,
