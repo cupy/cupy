@@ -462,7 +462,7 @@ cpdef matmulSearch(Handle handle, MatmulPlan plan,
         <void*> workspace, <runtime.Stream*> NULL, <int32_t> 0)
     check_status(status)
 
-############<void*> ###################################################################
+###############################################################################
 # cuSPARSELt: Helper Functions
 ###############################################################################
 
