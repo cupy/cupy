@@ -318,7 +318,7 @@ cpdef matDescriptorDestroy(MatDescriptor matDescr):
     check_status(status)
 
 cpdef matDescSetAttribute(Handle handle, MatDescriptor matDescr,
-                          matAttribute, size_t data, size_t dataSize):
+                          matAttribute, data, size_t dataSize):
     """Sets the attribute related to matrix descriptor."""
     status = cusparseLtMatDescSetAttribute(
         <const cusparseLtHandle_t*> handle._ptr,
@@ -328,7 +328,7 @@ cpdef matDescSetAttribute(Handle handle, MatDescriptor matDescr,
     check_status(status)
 
 cpdef matDescGetAttribute(Handle handle, MatDescriptor matDescr,
-                          matAttribute, size_t data, size_t dataSize):
+                          matAttribute, data, size_t dataSize):
     """Gets the attribute related to matrix descriptor."""
     status = cusparseLtMatDescGetAttribute(
         <const cusparseLtHandle_t*> handle._ptr,
@@ -359,7 +359,7 @@ cpdef matmulDescriptorInit(Handle handle,
     check_status(status)
 
 cpdef matmulDescSetAttribute(Handle handle, MatmulDescriptor matmulDescr,
-                             matmulAttribute, size_t data, size_t dataSize):
+                             matmulAttribute, data, size_t dataSize):
     """Sets the attribute related to matmul descriptor."""
     status = cusparseLtMatmulDescSetAttribute(
         <const cusparseLtHandle_t*> handle._ptr,
@@ -369,7 +369,7 @@ cpdef matmulDescSetAttribute(Handle handle, MatmulDescriptor matmulDescr,
     check_status(status)
 
 cpdef matmulDescGetAttribute(Handle handle, MatmulDescriptor matmulDescr,
-                             matmulAttribute, size_t data, size_t dataSize):
+                             matmulAttribute, data, size_t dataSize):
     """Gets the attribute related to matmul descriptor."""
     status = cusparseLtMatmulDescGetAttribute(
         <const cusparseLtHandle_t*> handle._ptr,
@@ -390,7 +390,7 @@ cpdef matmulAlgSelectionInit(Handle handle, MatmulAlgSelection algSelection,
 
 cpdef matmulAlgSetAttribute(Handle handle, MatmulAlgSelection algSelection,
                             attribute,
-                            size_t data, size_t dataSize):
+                            data, size_t dataSize):
     """Sets the attribute related to algorithm selection descriptor."""
     status = cusparseLtMatmulAlgSetAttribute(
         <const cusparseLtHandle_t*> handle._ptr,
@@ -401,7 +401,7 @@ cpdef matmulAlgSetAttribute(Handle handle, MatmulAlgSelection algSelection,
 
 cpdef matmulAlgGetAttribute(Handle handle, MatmulAlgSelection algSelection,
                             attribute,
-                            size_t data, size_t dataSize):
+                            data, size_t dataSize):
     """Gets the attribute related to algorithm selection descriptor."""
     status = cusparseLtMatmulAlgGetAttribute(
         <const cusparseLtHandle_t*> handle._ptr,
