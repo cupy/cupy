@@ -17,10 +17,10 @@ if not cupy_builder.preflight_check(ctx):
     sys.exit(1)
 
 
-# TODO(kmaehashi): migrate to pyproject.toml (see #4727, #4619)
 setup_requires = [
-    'Cython>=0.29.22,<3',
-    'fastrlock>=0.5',
+    # Keep the list in sync with `pyproject.toml`.
+    "Cython>=0.29.22,<3",
+    "fastrlock>=0.5",
 ]
 install_requires = [
     'numpy>=1.22,<1.29',  # see #4773
@@ -50,6 +50,10 @@ extras_require = {
     ],
 }
 tests_require = extras_require['test']
+
+if ctx.use_cuda_python:
+    setup_requires += ['cuda-python']
+    install_requires += ['cuda-python']
 
 
 # List of files that needs to be in the distribution (sdist/wheel).
@@ -85,7 +89,7 @@ package_data = {
 package_data['cupy'] += cupy_setup_build.prepare_wheel_libs(ctx)
 
 
-if len(sys.argv) < 2 or sys.argv[1] == 'egg_info':
+if len(sys.argv) < 2 or sys.argv[1] in ('egg_info', 'dist_info'):
     # Extensions are unnecessary for egg_info generation as all sources files
     # can be enumerated via MANIFEST.in.
     ext_modules = []
