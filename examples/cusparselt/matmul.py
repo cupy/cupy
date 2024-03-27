@@ -67,7 +67,8 @@ cusparselt.spMMAPruneCheck(handle, matmul, A.data.ptr, is_valid.ctypes.data)
 #
 # compresses the matrix A
 #
-compressed_size, compressed_buffer_size = cusparselt.spMMACompressedSize(handle, plan)
+compressed_size, compressed_buffer_size = cusparselt.spMMACompressedSize(
+    handle, plan)
 
 A_compressed = cupy.zeros(compressed_size, dtype='uint8')
 A_compressedBuffer = cupy.zeros(compressed_buffer_size, dtype='uint8')
