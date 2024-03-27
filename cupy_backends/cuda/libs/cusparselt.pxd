@@ -41,7 +41,7 @@ cpdef enum:
 
     # cusparseLtSplitKMode_t
     CUSPARSELT_INVALID_MODE = 0
-    CUSPARSELT_SPLIT_K_MODE_ONE_KERNEL  = 1
+    CUSPARSELT_SPLIT_K_MODE_ONE_KERNEL = 1
     CUSPARSELT_SPLIT_K_MODE_TWO_KERNELS = 2
 
     # cusparseLtPruneAlg_t

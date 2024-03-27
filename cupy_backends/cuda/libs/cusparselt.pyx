@@ -49,8 +49,10 @@ cdef extern from '../../cupy_cusparselt.h' nogil:
     # Management Functions
     cusparseStatus_t cusparseLtInit(cusparseLtHandle_t* handle)
     cusparseStatus_t cusparseLtDestroy(const cusparseLtHandle_t* handle)
-    cusparseStatus_t cusparseLtGetVersion(const cusparseLtHandle_t* handle, int* version)
-    cusparseStatus_t cusparseLtGetProperty(LibraryPropertyType propertyType, int* value)
+    cusparseStatus_t cusparseLtGetVersion(
+        const cusparseLtHandle_t* handle, int* version)
+    cusparseStatus_t cusparseLtGetProperty(
+        LibraryPropertyType propertyType, int* value)
 
     # Matmul Functions
     cusparseStatus_t cusparseLtDenseDescriptorInit(
@@ -259,11 +261,10 @@ cdef class MatmulPlan:
     def ptr(self):
         return <intptr_t>self._ptr
 
-
-
 ###############################################################################
 # Error handling
 ###############################################################################
+
 
 @cython.profile(False)
 cpdef inline check_status(int status):
@@ -318,7 +319,7 @@ cpdef matDescriptorDestroy(MatDescriptor matDescr):
     check_status(status)
 
 cpdef matDescSetAttribute(Handle handle, MatDescriptor matDescr,
-                          matAttribute, data, size_t dataSize):
+                          matAttribute, size_t data, size_t dataSize):
     """Sets the attribute related to matrix descriptor."""
     status = cusparseLtMatDescSetAttribute(
         <const cusparseLtHandle_t*> handle._ptr,
@@ -328,7 +329,7 @@ cpdef matDescSetAttribute(Handle handle, MatDescriptor matDescr,
     check_status(status)
 
 cpdef matDescGetAttribute(Handle handle, MatDescriptor matDescr,
-                          matAttribute, data, size_t dataSize):
+                          matAttribute, size_t data, size_t dataSize):
     """Gets the attribute related to matrix descriptor."""
     status = cusparseLtMatDescGetAttribute(
         <const cusparseLtHandle_t*> handle._ptr,
@@ -359,7 +360,7 @@ cpdef matmulDescriptorInit(Handle handle,
     check_status(status)
 
 cpdef matmulDescSetAttribute(Handle handle, MatmulDescriptor matmulDescr,
-                             matmulAttribute, data, size_t dataSize):
+                             matmulAttribute, size_t data, size_t dataSize):
     """Sets the attribute related to matmul descriptor."""
     status = cusparseLtMatmulDescSetAttribute(
         <const cusparseLtHandle_t*> handle._ptr,
@@ -369,7 +370,7 @@ cpdef matmulDescSetAttribute(Handle handle, MatmulDescriptor matmulDescr,
     check_status(status)
 
 cpdef matmulDescGetAttribute(Handle handle, MatmulDescriptor matmulDescr,
-                             matmulAttribute, data, size_t dataSize):
+                             matmulAttribute, size_t data, size_t dataSize):
     """Gets the attribute related to matmul descriptor."""
     status = cusparseLtMatmulDescGetAttribute(
         <const cusparseLtHandle_t*> handle._ptr,
@@ -390,7 +391,7 @@ cpdef matmulAlgSelectionInit(Handle handle, MatmulAlgSelection algSelection,
 
 cpdef matmulAlgSetAttribute(Handle handle, MatmulAlgSelection algSelection,
                             attribute,
-                            data, size_t dataSize):
+                            size_t data, size_t dataSize):
     """Sets the attribute related to algorithm selection descriptor."""
     status = cusparseLtMatmulAlgSetAttribute(
         <const cusparseLtHandle_t*> handle._ptr,
@@ -401,7 +402,7 @@ cpdef matmulAlgSetAttribute(Handle handle, MatmulAlgSelection algSelection,
 
 cpdef matmulAlgGetAttribute(Handle handle, MatmulAlgSelection algSelection,
                             attribute,
-                            data, size_t dataSize):
+                            size_t data, size_t dataSize):
     """Gets the attribute related to algorithm selection descriptor."""
     status = cusparseLtMatmulAlgGetAttribute(
         <const cusparseLtHandle_t*> handle._ptr,
@@ -553,6 +554,7 @@ cpdef spMMACompress2(Handle handle, MatDescriptor sparseMatDescr,
         <void*> d_compressed, <void*> d_compressed_buffer,
         <runtime.Stream> stream)
     check_status(status)
+
 
 def get_build_version():
     return CUSPARSELT_VERSION
