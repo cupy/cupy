@@ -47,6 +47,7 @@ extras_require = {
         # pytest < 7.2 has some different behavior that makes our CI fail
         'pytest>=7.2',
         'hypothesis>=6.37.2,<6.55.0',
+        'mpmath'
     ],
 }
 tests_require = extras_require['test']
