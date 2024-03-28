@@ -153,6 +153,111 @@ cdef extern from '../../cupy_cutensor.h' nogil:
     # build-time version
     int CUTENSOR_VERSION
 
+    # cuTENSORMg handle
+    ctypedef void* MgHandle_t 'cutensorMgHandle_t'
+    ctypedef void* MgTensorDescriptor_t 'cutensorMgTensorDescriptor_t'
+    ctypedef int CudaDataType_t 'cudaDataType_t'
+
+    # cuTENSORMg TensorDescriptor creation and destruction
+    Status_t cutensorMgCreate(MgHandle_t* handle, uint32_t numDevices,
+                              int32_t* devices)
+    Status_t cutensorMgDestroy(MgHandle_t handle)
+    Status_t cutensorMgCreateTensorDescriptor(
+        MgHandle_t handle,
+        MgTensorDescriptor_t* desc,
+        uint32_t numModes,
+        int64_t* extent,
+        int64_t* elementStride,
+        int64_t* blockSize,
+        int64_t* blockStride,
+        int32_t* deviceCount,
+        uint32_t numDevices,
+        int32_t* devices,
+        CudaDataType_t dataType)
+    Status_t cutensorMgDestroyTensorDescriptor(MgTensorDescriptor_t desc)
+
+    # cuTENSORMg Copy
+    ctypedef void* MgCopyDescriptor_t 'cutensorMgCopyDescriptor_t'
+    ctypedef void* MgCopyPlan_t 'cutensorMgCopyPlan_t'
+    Status_t cutensorMgCreateCopyDescriptor(
+        MgHandle_t handle,
+        MgCopyDescriptor_t* desc,
+        MgCopyDescriptor_t descDst,
+        int32_t* modesDst,
+        MgCopyDescriptor_t descSrc,
+        int32_t* modesSrc)
+    Status_t cutensorMgDestroyCopyDescriptor(MgCopyDescriptor_t desc)
+    Status_t cutensorMgCopyGetWorkspace(
+        MgHandle_t handle,
+        MgCopyDescriptor_t desc,
+        int64_t* deviceWorkspaceSize,
+        int64_t* hostWorkspaceSize)
+    Status_t cutensorMgCreateCopyPlan(
+        MgHandle_t handle,
+        MgCopyPlan_t* plan,
+        MgCopyDescriptor_t desc,
+        int64_t* deviceWorkspaceSize,
+        int64_t hostWorkspaceSize)
+    Status_t cutensorMgDestroyCopyPlan(MgCopyPlan_t plan)
+    Status_t cutensorMgCopy(
+        MgHandle_t handle,
+        MgCopyPlan_t plan,
+        void** ptrDst,
+        void** ptrSrc,
+        void** deviceWorkspaceSize,
+        void* hostWorkspaceSize,
+        runtime.Stream* stream)
+
+    # cuTENSORMg Contraction
+    ctypedef void* MgContractionDescriptor_t 'cutensorMgContractionDescriptor_t'  # NOQA
+    ctypedef void* MgContractionFind_t 'cutensorMgContractionFind_t'
+    ctypedef void* MgContractionPlan_t 'cutensorMgContractionPlan_t'
+    ctypedef int MgAlgo_t 'cutensorMgAlgo_t'
+    Status_t cutensorMgCreateContractionDescriptor(
+        MgHandle_t handle,
+        MgContractionDescriptor_t* desc,
+        MgTensorDescriptor_t descA,
+        int32_t* modesA,
+        MgTensorDescriptor_t descB,
+        int32_t* modesB,
+        MgTensorDescriptor_t descC,
+        int32_t* modesC,
+        MgTensorDescriptor_t descD,
+        int32_t* modesD,
+        ComputeType_t compute)
+    Status_t cutensorMgDestroyContractionDescriptor(MgContractionDescriptor_t desc)  # NOQA
+    Status_t cutensorMgCreateContractionFind(
+        MgHandle_t handle,
+        MgContractionFind_t* find,
+        MgAlgo_t algo)
+    Status_t cutensorMgDestroyContractionFind(MgContractionFind_t find)
+    Status_t cutensorMgContractionGetWorkspace(
+        MgHandle_t handle,
+        MgContractionDescriptor_t desc,
+        MgContractionFind_t find,
+        WorksizePreference_t preference,
+        int64_t* deviceWorkspaceSize,
+        int64_t* hostWorkspaceSize)
+    Status_t cutensorMgCreateContractionPlan(
+        MgHandle_t handle,
+        MgContractionPlan_t* plan,
+        MgContractionDescriptor_t desc,
+        MgContractionFind_t find,
+        int64_t* deviceWorkspaceSize,
+        int64_t hostWorkspaceSize)
+    Status_t cutensorMgDestroyContractionPlan(MgContractionPlan_t plan)
+    Status_t cutensorMgContraction(
+        MgHandle_t handle,
+        MgContractionPlan_t plan,
+        void* alpha,
+        void** prtA,
+        void** ptrB,
+        void* beta,
+        void** ptrC,
+        void** prtD,
+        void** deviceWorkspaceSize,
+        void* hostWorkspaceSize,
+        runtime.Stream* stream)
 
 available = True
 
@@ -485,4 +590,241 @@ cpdef destroyOperationDescriptor(intptr_t desc):
     with nogil:
         status = cutensorDestroyOperationDescriptor(
             <OperationDescriptor_t>desc)
+    check_status(status)
+
+###############################################################################
+# cutensorMgHandle creation and destruction
+###############################################################################
+
+cpdef intptr_t createMg(uint32_t numDevices, intptr_t devices) except? 0:
+    cdef MgHandle_t handle
+    with nogil:
+        status = cutensorMgCreate(&handle, numDevices, <int32_t*> devices)  # NOQA
+    check_status(status)
+    return <intptr_t>handle
+
+cpdef destroyMg(intptr_t handle):
+    with nogil:
+        status = cutensorMgDestroy(<MgHandle_t>handle)
+    check_status(status)
+
+###############################################################################
+# cutensorMgTensorDescriptor: creation and destruction
+###############################################################################
+
+cpdef intptr_t createMgTensorDescriptor(
+        intptr_t handle,
+        uint32_t numModes,
+        intptr_t extent,
+        intptr_t elementStride,
+        intptr_t blockSize,
+        intptr_t blockStride,
+        intptr_t deviceCount,
+        uint32_t numDevices,
+        intptr_t devices,
+        int dataType) except? 0:
+    cdef MgTensorDescriptor_t desc
+    with nogil:
+        status = cutensorMgCreateTensorDescriptor(
+            <MgHandle_t>handle, &desc,
+            numModes, <int64_t*>extent, <int64_t*>elementStride,
+            <int64_t*>blockSize, <int64_t*>blockStride,
+            <int32_t*>deviceCount, numDevices, <int32_t*>devices,
+            <CudaDataType_t>dataType)
+    check_status(status)
+    return <intptr_t>desc
+
+cpdef destroyMgTensorDescriptor(intptr_t desc):
+    with nogil:
+        status = cutensorMgDestroyTensorDescriptor(<MgTensorDescriptor_t>desc)
+    check_status(status)
+
+###############################################################################
+# cutensorMgCopyDescriptor: creation and destruction
+###############################################################################
+
+cpdef intptr_t createMgCopyDescriptor(
+        intptr_t handle,
+        intptr_t descDst,
+        intptr_t modesDst,
+        intptr_t descSrc,
+        intptr_t modesSrc) except? 0:
+    cdef MgCopyDescriptor_t desc
+    with nogil:
+        status = cutensorMgCreateCopyDescriptor(
+            <MgHandle_t>handle, &desc,
+            <MgTensorDescriptor_t>descDst, <int32_t*>modesDst,
+            <MgTensorDescriptor_t>descSrc, <int32_t*>modesSrc)
+    check_status(status)
+    return <intptr_t>desc
+
+cpdef destroyMgCopyDescriptor(intptr_t desc):
+    with nogil:
+        status = cutensorMgDestroyCopyDescriptor(<MgCopyDescriptor_t>desc)
+    check_status(status)
+
+cpdef int64_t getMgCopyWorkspace(
+        intptr_t handle,
+        intptr_t desc,
+        intptr_t workspaceDeviceSize):
+    cdef int64_t workspaceHostSize
+    with nogil:
+        status = cutensorMgCopyGetWorkspace(
+            <MgHandle_t>handle, <MgCopyDescriptor_t>desc,
+            <int64_t*>workspaceDeviceSize, &workspaceHostSize)
+    check_status(status)
+
+    return workspaceHostSize
+
+###############################################################################
+# cutensorCopyPlan: creation and destruction
+###############################################################################
+
+cpdef intptr_t createMgCopyPlan(
+        intptr_t handle,
+        intptr_t desc,
+        intptr_t workspaceDeviceSize,
+        int64_t workspaceHostSize) except? 0:
+    cdef MgCopyPlan_t plan
+    with nogil:
+        status = cutensorMgCreateCopyPlan(
+            <MgHandle_t>handle, &plan, <MgCopyDescriptor_t>desc,
+            <int64_t*>workspaceDeviceSize, workspaceHostSize)
+    check_status(status)
+    return <intptr_t>plan
+
+cpdef destroyMgCopyPlan(intptr_t plan):
+    with nogil:
+        status = cutensorMgDestroyCopyPlan(<MgCopyPlan_t>plan)
+    check_status(status)
+
+###############################################################################
+# cutensorMgCopy
+###############################################################################
+
+cpdef _copyMg(
+        intptr_t handle, intptr_t plan,
+        intptr_t ptrDst, const intptr_t ptrSrc,
+        intptr_t workspaceDevice, intptr_t workspaceHost,
+        intptr_t _streams):
+    cdef intptr_t* streams = <intptr_t*>_streams
+    with nogil:
+        status = cutensorMgCopy(
+            <MgHandle_t>handle, <MgCopyPlan_t>plan, <void**>ptrDst,
+            <const void**>ptrSrc, <void**>workspaceDevice,
+            <void*>workspaceHost, <runtime.Stream*>streams)
+    check_status(status)
+
+###############################################################################
+# cutensorMgContractionDescriptor: creation and destruction
+###############################################################################
+
+cpdef intptr_t createMgContractionDescriptor(
+        intptr_t handle,
+        intptr_t descA,
+        intptr_t modesA,
+        intptr_t descB,
+        intptr_t modesB,
+        intptr_t descC,
+        intptr_t modesC,
+        intptr_t descD,
+        intptr_t modesD,
+        int compute) except? 0:
+    cdef MgContractionDescriptor_t desc
+    with nogil:
+        status = cutensorMgCreateContractionDescriptor(
+            <MgHandle_t>handle, &desc,
+            <MgTensorDescriptor_t>descA, <int32_t*>modesA,
+            <MgTensorDescriptor_t>descB, <int32_t*>modesB,
+            <MgTensorDescriptor_t>descC, <int32_t*>modesC,
+            <MgTensorDescriptor_t>descD, <int32_t*>modesD,
+            <ComputeType_t>compute)
+    check_status(status)
+    return <intptr_t>desc
+
+cpdef destroyMgContractionDescriptor(intptr_t desc):
+    with nogil:
+        status = cutensorMgDestroyContractionDescriptor(<MgContractionDescriptor_t>desc)  # NOQA
+    check_status(status)
+
+###############################################################################
+# cutensorMgContractionFind: creation and destruction
+###############################################################################
+
+cpdef intptr_t createMgContractionFind(
+        intptr_t handle,
+        int algo) except? 0:
+    cdef MgContractionFind_t find
+    with nogil:
+        status = cutensorMgCreateContractionFind(
+            <MgHandle_t>handle, &find,
+            <MgAlgo_t>algo)
+    check_status(status)
+    return <intptr_t>find
+
+cpdef destroyMgContractionFind(intptr_t find):
+    with nogil:
+        status = cutensorMgDestroyContractionFind(<MgContractionFind_t>find)
+    check_status(status)
+
+cpdef int64_t getMgContractionWorkspace(
+        intptr_t handle,
+        intptr_t desc,
+        intptr_t find,
+        int preference,
+        intptr_t workspaceDeviceSize):
+    cdef int64_t workspaceHostSize
+    with nogil:
+        status = cutensorMgContractionGetWorkspace(
+            <MgHandle_t>handle, <MgContractionDescriptor_t>desc,
+            <MgContractionFind_t>find, <WorksizePreference_t>preference,
+            <int64_t*>workspaceDeviceSize, &workspaceHostSize)
+    check_status(status)
+
+    return workspaceHostSize
+
+###############################################################################
+# cutensorContractionPlan: creation and destruction
+###############################################################################
+
+cpdef intptr_t createMgContractionPlan(
+        intptr_t handle,
+        intptr_t desc,
+        intptr_t find,
+        intptr_t workspaceDeviceSize,
+        int64_t workspaceHostSize) except? 0:
+    cdef MgContractionPlan_t plan
+    with nogil:
+        status = cutensorMgCreateContractionPlan(
+            <MgHandle_t>handle, &plan,
+            <MgContractionDescriptor_t>desc, <MgContractionFind_t>find,
+            <int64_t*>workspaceDeviceSize, workspaceHostSize)
+    check_status(status)
+    return <intptr_t>plan
+
+cpdef destroyMgContractionPlan(intptr_t plan):
+    with nogil:
+        status = cutensorMgDestroyContractionPlan(<MgContractionPlan_t>plan)
+    check_status(status)
+
+###############################################################################
+# cutensorMgContraction
+###############################################################################
+
+cpdef _contractMg(
+        intptr_t handle, intptr_t plan,
+        intptr_t alpha, const intptr_t A,
+        const intptr_t B, intptr_t beta,
+        const intptr_t C, intptr_t D,
+        intptr_t workspaceDevice,
+        intptr_t workspaceHost,
+        intptr_t _streams):
+    cdef intptr_t* streams = <intptr_t*>_streams
+    with nogil:
+        status = cutensorMgContraction(
+            <MgHandle_t>handle, <MgContractionPlan_t>plan,
+            <void*>alpha, <const void**>A, <const void**>B,
+            <void*>beta, <const void**>C, <void**>D,
+            <void**>workspaceDevice, <void*>workspaceHost,
+            <runtime.Stream*>streams)
     check_status(status)
