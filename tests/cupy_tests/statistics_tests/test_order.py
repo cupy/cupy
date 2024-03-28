@@ -13,7 +13,7 @@ _all_methods = (
     # 'inverted_cdf',               # TODO(takagi) Not implemented
     # 'averaged_inverted_cdf',      # TODO(takagi) Not implemented
     # 'closest_observation',        # TODO(takagi) Not implemented
-    # 'interpolated_inverted_cdf',  # TODO(takagi) Not implemented
+    'interpolated_inverted_cdf',  # TODO(takagi) Not implemented
     # 'hazen',                      # TODO(takagi) Not implemented
     # 'weibull',                    # TODO(takagi) Not implemented
     'linear',
