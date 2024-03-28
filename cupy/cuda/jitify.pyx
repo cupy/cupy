@@ -145,9 +145,6 @@ cdef str warmup_kernel = r"""cupy_jitify_exercise
 // not supported before CC 7.0
 #include <cuda/barrier>
 #endif
-#include <cooperative_groups.h>
-#include <cooperative_groups/memcpy_async.h>
-
 
 extern "C" __global__ void jitify_exercise() { }
 """
