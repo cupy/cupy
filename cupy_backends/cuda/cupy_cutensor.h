@@ -2,7 +2,7 @@
 #define INCLUDE_GUARD_CUDA_CUPY_CUTENSOR_H
 
 #include <library_types.h>
-#include <cutensor.h>
+#include <cutensorMg.h>
 
 #if CUTENSOR_VERSION < 10500
 

@@ -4,6 +4,7 @@ import numpy
 import pytest
 
 import cupy
+import cupyx
 from cupy._core import _routines_linalg as _linalg
 from cupy import testing
 from cupy.cuda import device
@@ -466,3 +467,56 @@ class TestCuTensorIncontiguous:
                 cupy.testing.assert_allclose(self.c[:, a0:a0+delta],
                                              c_ref[:, a0:a0+delta],
                                              rtol=self.tol, atol=self.tol)
+
+
+@testing.parameterize(*testing.product({
+    'dtype_char': ['e', 'f', 'd', 'F', 'D'],
+    'shape': [32],
+}))
+@pytest.mark.skipif(not ct.available, reason='cuTensor is unavailable')
+class TestCuTensorMg:
+    _tol = {'e': 1e-3, 'f': 2e-6, 'd': 1e-12}
+
+    @pytest.fixture(autouse=True)
+    def setUp(self):
+        compute_capability = int(device.get_compute_capability())
+        if compute_capability < 70 and self.dtype_char == 'e':
+            pytest.skip("Not supported")
+        self.dtype = numpy.dtype(self.dtype_char)
+        self.tol = self._tol[self.dtype_char.lower()]
+
+    def test_contraction(self):
+        n = self.shape
+        if self.dtype == 'e':
+            # 16-bit result host pageable tensors are not supported in the
+            # contraction routines.
+            self.a = cupyx.empty_pinned((n, n, n, n), dtype=self.dtype)
+        else:
+            self.a = testing.shaped_random(
+                (n, n, n, n), numpy, dtype=self.dtype)
+        self.b = testing.shaped_random(
+            (n, n, n, n), cupy, dtype=self.dtype)
+        self.c = cupyx.empty_pinned((n, n, n, n), dtype=self.dtype)
+        c_ref = numpy.einsum('kijl,kadl->iajd', self.a, self.b.get())
+        mga = cutensor.ndarray_mg(self.a, block_size=[8, 8, 8, 8])
+        cutensor.contractionMg(1, mga, 'kijl', self.b,
+                               'kadl', 0, self.c, 'iajd')
+        cupy.cuda.Device(0).synchronize()
+        cupy.testing.assert_allclose(self.c, c_ref, rtol=self.tol,
+                                     atol=self.tol)
+
+    def test_copy(self):
+        n = self.shape
+        if self.dtype == 'e':
+            # 16-bit result host pageable tensors are not supported in the
+            # contraction routines.
+            self.a = cupyx.empty_pinned((n, n, n, n), dtype=self.dtype)
+        else:
+            self.a = testing.shaped_random(
+                (n, n, n, n), numpy, dtype=self.dtype)
+        self.b = testing.shaped_random(
+            (n, n, n, n), cupy, dtype=self.dtype)
+        cutensor.copyMg(self.b, 'cabd', self.a, 'abcd')
+        cupy.cuda.Device(0).synchronize()
+        cupy.testing.assert_allclose(self.b.get(), self.a.transpose(
+            (2, 0, 1, 3)), rtol=self.tol, atol=self.tol)
