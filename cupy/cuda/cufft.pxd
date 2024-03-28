@@ -4,19 +4,25 @@
 
 from libc.stdint cimport intptr_t
 
+
 cdef extern from *:
     ctypedef float Float 'cufftReal'
     ctypedef double Double 'cufftDoubleReal'
     ctypedef int Result 'cufftResult_t'
 
     IF CUPY_HIP_VERSION > 0:
-        ctypedef int Handle 'cufftHandle'
-    ELSE:
         ctypedef struct hipHandle 'hipfftHandle_t':
             pass
         ctypedef hipHandle* Handle 'cufftHandle'
+    ELSE:
+        ctypedef int Handle 'cufftHandle'
 
     ctypedef enum Type 'cufftType_t':
+        pass
+
+
+cdef extern from "<cufftXt.h>":
+    ctypedef enum callbackType 'cufftXtCallbackType':
         pass
 
 
@@ -43,6 +49,10 @@ cpdef enum:
 
 cpdef get_current_plan()
 cpdef int getVersion() except? -1
+cpdef void check_result(int result) except*
+cpdef void setJITCallback(
+    intptr_t plan, bytes callback, int callback_type,
+    intptr_t caller_info) except*
 
 
 cdef class Plan1d:
