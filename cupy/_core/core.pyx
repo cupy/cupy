@@ -2060,16 +2060,17 @@ cdef class _ndarray_base:
 
     def get_ipc_handle(self):
         """
-        Returns an instance of :class:`IPCHandle`, a serializable class which
-        holds array information and IPC handle for the array. This instance
-        can be passed to other processes (e.g. via multiprocessing).
+        Returns an instance of :class:`IPCMemoryHandle`, a serializable class
+        which holds array information and IPC handle for the array.
+        This instance can be passed to other processes, for example, using
+        Python's multiprocessing module.
 
         On the destination process, use the .open() method to create a new
         :class:`ndarray` object that shares the allocation from the original
         process. The IPC handle can be closed manually by calling the .close()
         method. After that, the destination can no longer use the shared array
-        object. Otherwise, the handle is closed automatically when the instance
-        is deleted using del or goes out of scope.
+        object. The handle is closed automatically when the instance is deleted
+        using del or goes out of scope.
 
         Note:
             Users are responsible for keeping the IPC instance alive in the
@@ -2080,7 +2081,7 @@ cdef class _ndarray_base:
             which the handle is created.
 
         Returns:
-            cupy._core.ipc.IPCHandle: Serializable class with
+            cupy.cuda._ipc_handle.IPCMemoryHandle: Serializable class with
             Array information and IPC handle.
 
         Example:
