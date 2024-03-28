@@ -44,6 +44,9 @@ Unstructured data:
 .. autosummary::
    :toctree: generated/
 
+   LinearNDInterpolator
+   NearestNDInterpolator
+   CloughTocher2DInterpolator
    RBFInterpolator
 
 
