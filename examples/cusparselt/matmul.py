@@ -47,18 +47,12 @@ cusparselt.denseDescriptorInit(handle, matC, C.shape[0], C.shape[1],
 #
 opA = cusparse.CUSPARSE_OPERATION_NON_TRANSPOSE
 opB = cusparse.CUSPARSE_OPERATION_NON_TRANSPOSE
-compute_type = cusparselt.CUSPARSE_COMPUTE_16F
+compute_type = cusparselt.CUSPARSE_COMPUTE_32F
 cusparselt.matmulDescriptorInit(handle, matmul, opA, opB, matA, matB, matC,
                                 matC, compute_type)
 cusparselt.matmulAlgSelectionInit(handle, alg_sel, matmul,
                                   cusparselt.CUSPARSELT_MATMUL_ALG_DEFAULT)
-alg = numpy.array(0, dtype='int32')
-cusparselt.matmulAlgSetAttribute(handle, alg_sel,
-                                 cusparselt.CUSPARSELT_MATMUL_ALG_CONFIG_ID,
-                                 alg.ctypes.data, 4)
-workspace_size = cusparselt.matmulGetWorkspace(handle, alg_sel)
-workspace = cupy.empty(workspace_size, dtype='int8')
-cusparselt.matmulPlanInit(handle, plan, matmul, alg_sel, workspace_size)
+cusparselt.matmulPlanInit(handle, plan, matmul, alg_sel)
 
 #
 # prunes the matrix A in-place and checks the correstness
@@ -73,15 +67,29 @@ cusparselt.spMMAPruneCheck(handle, matmul, A.data.ptr, is_valid.ctypes.data)
 #
 # compresses the matrix A
 #
-compressed_size = cusparselt.spMMACompressedSize(handle, plan)
+compressed_size, compressed_buffer_size = cusparselt.spMMACompressedSize(
+    handle, plan)
+
 A_compressed = cupy.zeros(compressed_size, dtype='uint8')
-cusparselt.spMMACompress(handle, plan, A.data.ptr, A_compressed.data.ptr)
+A_compressedBuffer = cupy.zeros(compressed_buffer_size, dtype='uint8')
+cusparselt.spMMACompress(handle, plan, A.data.ptr, A_compressed.data.ptr,
+                         A_compressedBuffer.data.ptr)
 
 #
 # matmul: C = A @ B
 #
 alpha = numpy.array(1.0, dtype='float32')
 beta = numpy.array(0.0, dtype='float32')
+null = numpy.array(0, dtype='uint32')
+
+cusparselt.matmulSearch(handle, plan, alpha.ctypes.data,
+                        A_compressed.data.ptr, B.data.ptr, beta.ctypes.data,
+                        C.data.ptr, C.data.ptr, null.ctypes.data)
+
+cusparselt.matmulPlanInit(handle, plan, matmul, alg_sel)
+
+workspace_size = cusparselt.matmulGetWorkspace(handle, plan)
+workspace = cupy.zeros(workspace_size, dtype='uint8')
 cusparselt.matmul(handle, plan, alpha.ctypes.data, A_compressed.data.ptr,
                   B.data.ptr, beta.ctypes.data, C.data.ptr, C.data.ptr,
                   workspace.data.ptr)
