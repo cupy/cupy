@@ -36,6 +36,15 @@ Univariate interpolation
    splder
    splantider
 
+Smoothing Splines
+-----------------
+
+.. autosummary::
+   :toctree: generated/
+
+   UnivariateSpline
+   InterpolatedUnivariateSpline
+   LSQUnivariateSpline
 
 Multivariate interpolation
 --------------------------

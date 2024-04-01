@@ -1,7 +1,8 @@
-""" Replicate FITPACK's logic for constructing smoothing spline functions and curves.
+""" Replicate FITPACK's logic for smoothing spline functions and curves.
 
     Currently provides analogs of splrep and splprep python routines, i.e.
-    curfit.f and parcur.f routines (the drivers are fpcurf.f and fppara.f, respectively)
+    curfit.f and parcur.f routines (the drivers are fpcurf.f and fppara.f,
+    respectively)
 
     The Fortran sources are from
     https://github.com/scipy/scipy/blob/maintenance/1.11.x/scipy/interpolate/fitpack/
@@ -12,9 +13,10 @@
         :doi:`10.1016/0146-664X(82)90043-0`.
     .. [2] P. Dierckx, "Curve and surface fitting with splines", Monographs on
          Numerical Analysis, Oxford University Press, 1993.
-    .. [3] P. Dierckx, "An algorithm for smoothing, differentiation and integration
-         of experimental data using spline functions",
-         Journal of Computational and Applied Mathematics, vol. I, no 3, p. 165 (1975).
+    .. [3] P. Dierckx, "An algorithm for smoothing, differentiation and
+         integration of experimental data using spline functions",
+         Journal of Computational and Applied Mathematics, vol. I, no 3,
+         p. 165 (1975).
          https://doi.org/10.1016/0771-050X(75)90034-0
 """
 import warnings
@@ -33,7 +35,7 @@ def fpcheck(x, t, k):
 
     Return None if inputs are consistent, raises a ValueError otherwise.
     """
-    # This routine is a clone of the `fpchec` Fortran routine, 
+    # This routine is a clone of the `fpchec` Fortran routine,
     # https://github.com/scipy/scipy/blob/main/scipy/interpolate/fitpack/fpchec.f
     # which carries the following comment:
     #
@@ -55,7 +57,9 @@ def fpcheck(x, t, k):
     t = cupy.asarray(t)
 
     if x.ndim != 1 or t.ndim != 1:
-        raise ValueError(f"Expect `x` and `t` be 1D sequences. Got {x = } and {t = }")
+        raise ValueError(
+            f"Expect `x` and `t` be 1D sequences. Got {x = } and {t = }"
+        )
 
     m = x.shape[0]
     n = t.shape[0]
@@ -64,7 +68,9 @@ def fpcheck(x, t, k):
     # check condition no 1
     # c      1) k+1 <= n-k-1 <= m
     if not (k + 1 <= nk1 <= m):
-        raise ValueError(f"Need k+1 <= n-k-1 <= m. Got {m = }, {n = } and {k = }.")
+        raise ValueError(
+            f"Need k+1 <= n-k-1 <= m. Got {m = }, {n = } and {k = }."
+        )
 
     # check condition no 2
     # c      2) t(1) <= t(2) <= ... <= t(k+1)
@@ -97,15 +103,15 @@ def fpcheck(x, t, k):
         raise ValueError(mesg)
 
     m = x.shape[0]
-    l = k+1
+    ll = k+1
     nk3 = n - k - 3
     if nk3 < 2:
         return
     for j in range(1, nk3+1):
         tj = t[j]
-        l += 1
-        tl = t[l]
-        i = np.argmax(x > tj)
+        ll += 1
+        tl = t[ll]
+        i = cupy.argmax(x > tj)
         if i >= m-1:
             raise ValueError(mesg)
         if x[i] >= tl:
@@ -133,7 +139,8 @@ def _get_residuals(x, y, t, k, w):
     # >>> spl = make_lsq_spline(x, y, w=w2, t=t, k=k)
     # NB:
     #     1. y is assumed to be 2D here. For 1D case (parametric=False),
-    #        the call must have been preceded by y = y[:, None] (cf _validate_inputs)
+    #        the call must have been preceded by y = y[:, None]
+    #        (cf _validate_inputs)
     #     2. We always sum the squares across axis=1:
     #         * For 1D (parametric=False), the last dimension has size one,
     #           so the summation is a no-op.
@@ -163,10 +170,7 @@ def _split(x, t, k, residuals):
         carry = carries[i] / 2
         fparts[i] += carry
         fparts[i+1] -= carry
-
     fparts[-1] += residuals[-1]       # add the contribution of the last knot
-
-    ## assert_allclose(sum(fparts), sum(residuals), atol=1e-15)
 
     return fparts, ix
 
@@ -175,7 +179,7 @@ def add_knot(x, t, k, residuals):
     """Add a new knot.
 
     (Approximately) replicate FITPACK's logic:
-      1. split the `x` array into knot intervals, ``t(j+k) <= x(i) <= t(j+k+1)``
+      1. split the `x` array into knot intervals, `t(j+k) <= x(i) <= t(j+k+1)`
       2. find the interval with the maximum sum of residuals
       3. insert a new knot into the middle of that interval.
 
@@ -188,8 +192,6 @@ def add_knot(x, t, k, residuals):
 
     and https://github.com/scipy/scipy/blob/v1.11.4/scipy/interpolate/fitpack/fpknot.f
     """
-
-
     fparts, ix = _split(x, t, k, residuals)
 
     # find the interval with max fparts and non-zero number of x values inside
@@ -201,7 +203,9 @@ def add_knot(x, t, k, residuals):
             fpart_max = fparts[i]
 
     if idx_max == -101:
-        raise ValueError("Internal error, please report it to CuPy developers.")
+        raise ValueError(
+            "Internal error, please report it to CuPy developers."
+        )
 
     # round up, like Dierckx does? This is really arbitrary though.
     idx_newknot = (ix[idx_max] + ix[idx_max+1] + 1) // 2
@@ -232,10 +236,14 @@ def _validate_inputs(x, y, w, k, s, xb, xe, parametric):
     parametric = bool(parametric)
     if parametric:
         if y.ndim != 2:
-            raise ValueError(f"{y.ndim = } != 2 not supported with {parametric =}.")
+            raise ValueError(
+                f"{y.ndim = } != 2 not supported with {parametric =}."
+            )
     else:
         if y.ndim != 1:
-            raise ValueError(f"{y.ndim = } != 1 not supported with {parametric =}.")
+            raise ValueError(
+                f"{y.ndim = } != 1 not supported with {parametric =}."
+            )
         # all _impl functions expect y.ndim = 2
         y = y[:, None]
 
@@ -243,7 +251,9 @@ def _validate_inputs(x, y, w, k, s, xb, xe, parametric):
         raise ValueError(f"Weights is incompatible: {w.shape =} != {x.shape}.")
 
     if x.shape[0] != y.shape[0]:
-        raise ValueError(f"Data is incompatible: {x.shape = } and {y.shape = }.")
+        raise ValueError(
+            f"Data is incompatible: {x.shape = } and {y.shape = }."
+        )
     if x.ndim != 1 or (x[1:] < x[:-1]).any():
         raise ValueError("Expect `x` to be an ordered 1D sequence.")
 
@@ -288,8 +298,8 @@ def generate_knots(x, y, *, w=None, xb=None, xe=None, k=3, s=0, nest=None):
         Knot vectors with an increasing number of knots.
         The generator is finite: it stops when the smoothing critetion is
         satisfied, or when then number of knots exceeds the maximum value:
-        the user-provided `nest` or `x.size + k + 1` --- which is the knot vector
-        for the interpolating spline.
+        the user-provided `nest` or `x.size + k + 1` --- which is the knot
+        vector for the interpolating spline.
 
     Examples
     --------
@@ -321,20 +331,19 @@ def generate_knots(x, y, *, w=None, xb=None, xe=None, k=3, s=0, nest=None):
 
     Notes
     -----
-    The routine generates successive knots vectors of increasing length, starting
-    from ``2*(k+1)`` to ``len(x) + k + 1``, trying to make knots more dense
-    in the regions where the deviation of the LSQ spline from data is large.
+    The routine generates successive knots vectors of increasing length,
+    starting from ``2*(k+1)`` to ``len(x) + k + 1``, trying to make knots more
+    dense in the regions where the deviation of the LSQ spline from data is
+    large.
 
     When the maximum number of knots, ``len(x) + k + 1`` is reached
     (this happens when ``s`` is small and ``nest`` is large), the generator
     stops, and the last output is the knots for the interpolation with the
     not-a-knot boundary condition.
 
-    Knots are located at data sites, unless ``k`` is even and the number of knots
-    is ``len(x) + k + 1``. In that case, the last output of the generator
+    Knots are located at data sites, unless ``k`` is even and the number of
+    knots is ``len(x) + k + 1``. In that case, the last output of the generator
     has internal knots at Greville sites, ``(x[1:] + x[:-1]) / 2``.
-
-    .. versionadded:: 1.14.0
 
     """
     if s == 0:
@@ -348,10 +357,13 @@ def generate_knots(x, y, *, w=None, xb=None, xe=None, k=3, s=0, nest=None):
         x, y, w, k, s, xb, xe, parametric=cupy.ndim(y) == 2
     )
 
-    yield from _generate_knots_impl(x, y, w=w, xb=xb, xe=xe, k=k, s=s, nest=nest)
+    yield from _generate_knots_impl(
+        x, y, w=w, xb=xb, xe=xe, k=k, s=s, nest=nest
+    )
 
 
-def _generate_knots_impl(x, y, *, w=None, xb=None, xe=None, k=3, s=0, nest=None):
+def _generate_knots_impl(x, y, *, w=None, xb=None, xe=None, k=3, s=0,
+                         nest=None):
 
     acc = s * TOL
     m = x.size    # the number of data points
@@ -362,9 +374,11 @@ def _generate_knots_impl(x, y, *, w=None, xb=None, xe=None, k=3, s=0, nest=None)
         nest = max(m + k + 1, 2*k + 3)
     else:
         if nest < 2*(k + 1):
-            raise ValueError(f"`nest` too small: {nest = } < 2*(k+1) = {2*(k+1)}.")
+            raise ValueError(
+                f"`nest` too small: {nest = } < 2*(k+1) = {2*(k+1)}."
+            )
 
-    nmin = 2*(k + 1)    # the number of knots for an LSQ polynomial approximation
+    nmin = 2*(k + 1)    # the number of knots for an LSQ polynomial approx
     nmax = m + k + 1  # the number of knots for the spline interpolation
 
     # start from no internal knots
@@ -460,7 +474,10 @@ def prodd(t, i, j, k):
 
 
 def disc(t, k):
-    """Discontinuity matrix: jumps of k-th derivatives of b-splines at internal knots.
+    """Discontinuity matrix.
+
+    Matrix elements are jumps of k-th derivatives of b-splines at
+    internal knots.
 
     See Eqs. (9)-(10) of Ref. [1], or, equivalently, Eq. (3.43) of Ref. [2].
 
@@ -489,15 +506,15 @@ def disc(t, k):
 
         (delta / nrint)**k / k!
 
-    where ``delta`` is the length of the interval spanned by internal knots, and
-    ``nrint`` is one less the number of internal knots (i.e., the number of
+    where ``delta`` is the length of the interval spanned by internal knots,
+    and ``nrint`` is one less the number of internal knots (i.e., the number of
     subintervals between them).
 
     References
     ----------
-    .. [1] Paul Dierckx, Algorithms for smoothing data with periodic and parametric
-           splines, Computer Graphics and Image Processing, vol. 20, p. 171 (1982).
-           :doi:`10.1016/0146-664X(82)90043-0`
+    .. [1] Paul Dierckx, Algorithms for smoothing data with periodic and
+           parametric splines, Computer Graphics and Image Processing, vol. 20,
+           p. 171 (1982). :doi:`10.1016/0146-664X(82)90043-0`
 
     .. [2] Tom Lyche and Knut Morken, Spline methods,
         http://www.uio.no/studier/emner/matnat/ifi/INF-MAT5340/v05/undervisningsmateriale/
@@ -517,11 +534,12 @@ def disc(t, k):
             i = jj + ii
             matr[jj, ii] = (t[i + k + 1] - t[i]) / prodd(t, i, j, k)
         # NB: equivalent to
-        # row = [(t[i + k + 1] - t[i]) / prodd(t, i, j, k) for i in range(j-k-1, j+1)]
+        # row = [(t[i + k + 1] - t[i]) / prodd(t, i, j, k)
+        #        for i in range(j-k-1, j+1)]
         # assert (matr[j-k-1, :] == row).all()
 
     # follow FITPACK
-    matr *= (delta/ nrint)**k
+    matr *= (delta / nrint)**k
 
     # make it packed
     offset = cupy.array([i for i in range(nrint-1)])
@@ -544,16 +562,18 @@ class F:
     `A` only once and update the QR factorization only of the `B` rows of the
     augmented matrix |A, B/p|.
 
-    The system of equations is Eq. (15) Ref. [1]_, the strategy and implementation
-    follows that of FITPACK, see specific links below.
+    The system of equations is Eq. (15) Ref. [1]_, the strategy and
+    implementation follows that of FITPACK, see specific links below.
 
     References
     ----------
-    [1] P. Dierckx, Algorithms for Smoothing Data with Periodic and Parametric Splines,
-        COMPUTER GRAPHICS AND IMAGE PROCESSING vol. 20, pp 171-184 (1982.)
+    [1] P. Dierckx, Algorithms for Smoothing Data with Periodic and Parametric
+        Splines, COMPUTER GRAPHICS AND IMAGE PROCESSING vol. 20,
+        pp 171-184 (1982).
         https://doi.org/10.1016/0146-664X(82)90043-0
 
     """
+
     def __init__(self, x, y, t, k, s, w=None, *, R=None, Y=None):
         self.x = x
         self.y = y
@@ -566,7 +586,8 @@ class F:
         self.s = s
 
         if y.ndim != 2:
-            raise ValueError(f"F: expected y.ndim == 2, got {y.ndim = } instead.")
+            raise ValueError(
+                f"F: expected y.ndim == 2, got {y.ndim = } instead.")
 
         # ### precompute what we can ###
 
@@ -576,11 +597,11 @@ class F:
         b, b_offset, b_nc = disc(t, k)
 
         # the QR factorization of the data matrix, if not provided
-        # NB: otherwise, must be consistent with x,y & s, but this is not checked
+        # NB: otherwise, must be consistent with x,y & s; this is not checked
         if R is None and Y is None:
             R, Y, _ = _lsq_solve_qr(x, y, t, k, w)
 
-        # prepare to combine R and the discontinuity matrix (AB); also r.h.s. (YY)
+        # prepare to combine R and the disc matrix (AB); also r.h.s. (YY)
         # https://github.com/scipy/scipy/blob/maintenance/1.11.x/scipy/interpolate/fitpack/fpcurf.f#L269
         # c  the rows of matrix b with weight 1/p are rotated into the
         # c  triangularised observation matrix a which is stored in g.
@@ -597,7 +618,7 @@ class F:
         AA = cupy.zeros((nc + b.shape[0], self.k+2), dtype=float)
         AA[:nc, :nz] = R[:nc, :]
         # AA[nc:, :] = b.a / p  # done in __call__(self, p)
-        self.AA  = AA
+        self.AA = AA
         self.offset = cupy.r_[cupy.arange(nc, dtype=cupy.intp), b_offset]
 
         self.nc = nc
@@ -605,7 +626,7 @@ class F:
 
     def __call__(self, p):
         # https://github.com/scipy/scipy/blob/maintenance/1.11.x/scipy/interpolate/fitpack/fpcurf.f#L279
-        # c  the row of matrix b is rotated into triangle by givens transformation
+        # c  the row of matrix b is rotated into triangle by Givens transforms
 
         # copy the precomputed matrices over for in-place work
         # R = PackedMatrix(self.AB.a.copy(), self.AB.offset.copy(), nc)
@@ -617,7 +638,6 @@ class F:
         QY = self.YY.copy()
 
         # heavy lifting happens here, in-place
-        #_qr_reduce(AB, offset, nc, QY, startrow=nc)
         qr_reduce = _get_module_func(QR_MODULE, 'qr_reduce')
         qr_reduce((1,), (1,),
                   (AB, AB.shape[0], AB.shape[1],
@@ -625,7 +645,6 @@ class F:
                    nc,
                    QY, QY.shape[1], nc)
                   )
-
 
         # solve for the coefficients
         c = fpback(AB, nc, QY)
@@ -646,9 +665,9 @@ def fprati(p1, f1, p2, f2, p3, f3):
     The FITPACK analog adjusts the bounds, and we do not
     https://github.com/scipy/scipy/blob/maintenance/1.11.x/scipy/interpolate/fitpack/fprati.f
 
-    NB: FITPACK uses p < 0 to encode p=infinity. We just use the infinity itself.
-    Since the bracket is ``p1 <= p2 <= p3``, ``p3`` can be infinite (in fact,
-    this is what the minimizer starts with, ``p3=inf``).
+    NB: FITPACK uses p < 0 to encode p=infinity. We just use the infinity
+    itself. Since the bracket is ``p1 <= p2 <= p3``, ``p3`` can be infinite
+    (in fact, this is what the minimizer starts with, ``p3=inf``).
     """
     h1 = f1 * (f2 - f3)
     h2 = f2 * (f3 - f1)
@@ -664,42 +683,44 @@ class Bunch:
 
 
 _iermesg = {
-2: """error. a theoretically impossible result was found during
-the iteration process for finding a smoothing spline with
-fp = s. probably causes : s too small.
-there is an approximation returned but the corresponding
-weighted sum of squared residuals does not satisfy the
-condition abs(fp-s)/s < tol.
-""",
-3: """error. the maximal number of iterations maxit (set to 20
-by the program) allowed for finding a smoothing spline
-with fp=s has been reached. probably causes : s too small
-there is an approximation returned but the corresponding
-weighted sum of squared residuals does not satisfy the
-condition abs(fp-s)/s < tol.
-"""
+    2: """A theoretically impossible result was found during
+    the iteration process for finding a smoothing spline with
+    fp = s. probably causes : s too small.
+    there is an approximation returned but the corresponding
+    weighted sum of squared residuals does not satisfy the
+    condition abs(fp-s)/s < tol.
+    """,
+    3: """The maximal number of iterations maxit (set to 20
+    by the program) allowed for finding a smoothing spline
+    with fp=s has been reached. probably causes : s too small
+    there is an approximation returned but the corresponding
+    weighted sum of squared residuals does not satisfy the
+    condition abs(fp-s)/s < tol.
+    """
 }
 
 
 def root_rati(f, p0, bracket, acc):
     """Solve `f(p) = 0` using a rational function approximation.
 
-    In a nutshell, since the function f(p) is known to be monotonically decreasing, we
+    In a nutshell, since the function f(p) is known to be monotonically
+    decreasing, we
        - maintain the bracket (p1, f1), (p2, f2) and (p3, f3)
        - at each iteration step, approximate f(p) by a rational function
          r(p) = (u*p + v) / (p + w)
          and make a step to p_new to the root of f(p): r(p_new) = 0.
-         The coefficients u, v and w are found from the bracket values p1..3 and f1...3
+         The coefficients u, v and w are found from the bracket values,
+         p1..3 and f1...3
 
     The algorithm and implementation follows
     https://github.com/scipy/scipy/blob/maintenance/1.11.x/scipy/interpolate/fitpack/fpcurf.f#L229
     and
     https://github.com/scipy/scipy/blob/maintenance/1.11.x/scipy/interpolate/fitpack/fppara.f#L290
 
-    Note that the latter is for parametric splines and the former is for 1D spline
-    functions. The minimization is indentical though [modulo a summation over the
-    dimensions in the computation of f(p)], so we reuse the minimizer for both
-    d=1 and d>1.
+    Note that the latter is for parametric splines and the former is for 1D
+    spline functions. The minimization is indentical though [modulo a summation
+    over the dimensions in the computation of f(p)], so we reuse the minimizer
+    for both d=1 and d>1.
     """
     # Magic values from
     # https://github.com/scipy/scipy/blob/maintenance/1.11.x/scipy/interpolate/fitpack/fpcurf.f#L27
@@ -711,7 +732,7 @@ def root_rati(f, p0, bracket, acc):
     # https://github.com/scipy/scipy/blob/maintenance/1.11.x/scipy/interpolate/fitpack/fppara.f#L365
     ich1, ich3 = 0, 0
 
-    (p1, f1), (p3, f3)  = bracket
+    (p1, f1), (p3, f3) = bracket
     p = p0
 
     for it in range(MAXIT):
@@ -730,7 +751,7 @@ def root_rati(f, p0, bracket, acc):
                 f3 = f2
                 p = p*con4
                 if p <= p1:
-                     p = p1*con9 + p2*con1
+                    p = p1*con9 + p2*con1
                 continue
             else:
                 if f2 < 0:
@@ -743,13 +764,14 @@ def root_rati(f, p0, bracket, acc):
                 f1 = f2
                 p = p/con4
                 if p3 != cupy.inf and p <= p3:
-                     p = p2*con1 + p3*con9
+                    p = p2*con1 + p3*con9
                 continue
             else:
                 if f2 > 0:
                     ich1 = 1
 
-        # c  test whether the iteration process proceeds as theoretically expected.
+        # c  test whether the iteration process proceeds as theoretically
+        # c  expected.
         # [f(p) should be monotonically decreasing]
         if f1 <= f2 or f2 <= f3:
             ier, converged = 2, False
@@ -774,7 +796,8 @@ def root_rati(f, p0, bracket, acc):
     return Bunch(converged=converged, root=p, iterations=it, ier=ier)
 
 
-def _make_splrep_impl(x, y, *, w=None, xb=None, xe=None, k=3, s=0, t=None, nest=None):
+def _make_splrep_impl(x, y, *, w=None, xb=None, xe=None, k=3, s=0, t=None,
+                      nest=None):
     """Shared infra for make_splrep and make_splprep.
     """
     acc = s * TOL
@@ -786,12 +809,15 @@ def _make_splrep_impl(x, y, *, w=None, xb=None, xe=None, k=3, s=0, t=None, nest=
         nest = max(m + k + 1, 2*k + 3)
     else:
         if nest < 2*(k + 1):
-            raise ValueError(f"`nest` too small: {nest = } < 2*(k+1) = {2*(k+1)}.")    
+            raise ValueError(
+                f"`nest` too small: {nest = } < 2*(k+1) = {2*(k+1)}."
+            )
         if t is not None:
             raise ValueError("Either supply `t` or `nest`.")
 
     if t is None:
-        gen = _generate_knots_impl(x, y, w=w, k=k, s=s, xb=xb, xe=xe, nest=nest)
+        gen = _generate_knots_impl(x, y, w=w, k=k, s=s, xb=xb, xe=xe,
+                                   nest=nest)
         t = list(gen)[-1]
     else:
         fpcheck(x, t, k)
@@ -799,14 +825,16 @@ def _make_splrep_impl(x, y, *, w=None, xb=None, xe=None, k=3, s=0, t=None, nest=
     if t.shape[0] == 2 * (k + 1):
         # nothing to optimize
         _, _, c = _lsq_solve_qr(x, y, t, k, w)
-        return BSpline(t, c, k)
+        ier = -2
+        res = Bunch(ier=ier)
+        return BSpline(t, c, k), res
 
-    ### solve ###
+    # ### solve ###
 
     # c  initial value for p.
     # https://github.com/scipy/scipy/blob/maintenance/1.11.x/scipy/interpolate/fitpack/fpcurf.f#L253
     R, Y, _ = _lsq_solve_qr(x, y, t, k, w)
-    nc = t.shape[0] -k -1
+    nc = t.shape[0] - k - 1
     p = nc / R[:, 0].sum()
 
     # ### bespoke solver ####
@@ -824,21 +852,14 @@ def _make_splrep_impl(x, y, *, w=None, xb=None, xe=None, k=3, s=0, t=None, nest=
     # solve
     bracket = (0, fp0), (cupy.inf, fpinf)
     f = F(x, y, t, k=k, s=s, w=w, R=R, Y=Y)
-    _ = root_rati(f, p, bracket, acc)
-
-    # solve ALTERNATIVE: is roughly equivalent, gives slightly different results
-    # starting from scratch, that would have probably been tolerable;
-    # backwards compatibility dictates that we replicate the FITPACK minimizer though.
- #   f = F(x, y, t, k=k, s=s, w=w, R=R, Y=Y)
- #   from scipy.optimize import root_scalar
- #   res_ = root_scalar(f, x0=p, rtol=acc)
- #   assert res_.converged
+    res = root_rati(f, p, bracket, acc)
 
     # f.spl is the spline corresponding to the found `p` value
-    return f.spl
+    return f.spl, res
 
 
-def make_splrep(x, y, *, w=None, xb=None, xe=None, k=3, s=0, t=None, nest=None):
+def make_splrep(x, y, *, w=None, xb=None, xe=None, k=3, s=0, t=None,
+                nest=None):
     r"""Find the B-spline representation of a 1D function.
 
     Given the set of data points ``(x[i], y[i])``, determine a smooth spline
@@ -849,10 +870,10 @@ def make_splrep(x, y, *, w=None, xb=None, xe=None, k=3, s=0, t=None, nest=None):
     x, y : array_like, shape (m,)
         The data points defining a curve ``y = f(x)``.
     w : array_like, shape (m,), optional
-        Strictly positive 1D array of weights, of the same length as `x` and `y`.
-        The weights are used in computing the weighted least-squares spline
-        fit. If the errors in the y values have standard-deviation given by the
-        vector ``d``, then `w` should be ``1/d``.
+        Strictly positive 1D array of weights, of the same length as `x` and
+        `y`. The weights are used in computing the weighted least-squares
+        spline fit. If the errors in the y values have standard-deviation given
+        by the vector ``d``, then `w` should be ``1/d``.
         Default is ``np.ones(m)``.
     xb, xe : float, optional
         The interval to fit.  If None, these default to ``x[0]`` and ``x[-1]``,
@@ -868,9 +889,9 @@ def make_splrep(x, y, *, w=None, xb=None, xe=None, k=3, s=0, t=None, nest=None):
             sum((w * (g(x)  - y))**2 ) <= s
 
         where ``g(x)`` is the smoothed fit to ``(x, y)``. The user can use `s`
-        to control the tradeoff between closeness to data and smoothness of fit.
-        Larger `s` means more smoothing while smaller values of `s` indicate less
-        smoothing.
+        to control the tradeoff between closeness to data and smoothness of
+        fit. Larger `s` means more smoothing while smaller values of `s`
+        indicate less smoothing.
         Recommended values of `s` depend on the weights, `w`. If the weights
         represent the inverse of the standard deviation of `y`, then a good `s`
         value should be found in the range ``(m-sqrt(2*m), m+sqrt(2*m))`` where
@@ -892,8 +913,8 @@ def make_splrep(x, y, *, w=None, xb=None, xe=None, k=3, s=0, t=None, nest=None):
     -------
     spl : a `BSpline` instance
         For `s=0`,  ``spl(x) == y``.
-        For non-zero values of `s` the `spl` represents the smoothed approximation
-        to `(x, y)`, generally with fewer knots.
+        For non-zero values of `s` the `spl` represents the smoothed
+        approximation to `(x, y)`, generally with fewer knots.
 
     See Also
     --------
@@ -937,8 +958,8 @@ def make_splrep(x, y, *, w=None, xb=None, xe=None, k=3, s=0, t=None, nest=None):
     where :math:`s > 0` is the input parameter.
 
     In other words, we balance maximizing the smoothness (measured as the jumps
-    of the derivative, the first criterion), and the deviation of :math:`g(x_j)`
-    from the data :math:`y_j` (the second criterion).
+    of the derivative, the first criterion), and the deviation of
+    :math:`g(x_j)` from the data :math:`y_j` (the second criterion).
 
     Note that the summation in the second criterion is over all data points,
     and in the first criterion it is over the internal spline knots (i.e.
@@ -954,24 +975,39 @@ def make_splrep(x, y, *, w=None, xb=None, xe=None, k=3, s=0, t=None, nest=None):
             \sum w_j \times (g(x_j) - y_j)^2 \to \mathrm{min}
 
     for a spline function :math:`g(x)` with a _fixed_ knot vector ``t``.
-
-    .. versionadded:: 1.14.0
     """
+    # Implementation detail: make_splrep._res.ier communicates the status
+    # of the optimization. This is later consumed by UnivariateSpline
+    # ._res.ier = -1 means an interpolating spline
+    # ._res.ier = -2 means a single degree-k LSQ polynomial (no internal knots)
+    # The values match FITPACK
     if s == 0:
         if t is not None or w is not None or nest is not None:
             raise ValueError("s==0 is for interpolation only")
+        res = Bunch(ier=-1)
+        make_splrep._res = res
         return make_interp_spline(x, y, k=k)
 
-    x, y, w, k, s, xb, xe = _validate_inputs(x, y, w, k, s, xb, xe, parametric=False)
+    x, y, w, k, s, xb, xe = _validate_inputs(
+        x, y, w, k, s, xb, xe, parametric=False
+    )
 
-    spl = _make_splrep_impl(x, y, w=w, xb=xb, xe=xe, k=k, s=s, t=t, nest=nest)
+    spl, res = _make_splrep_impl(
+        x, y, w=w, xb=xb, xe=xe, k=k, s=s, t=t, nest=nest
+    )
 
-    # postprocess: squeeze out the last dimension: was added to simplify the internals.
+    # ugly: attach the optimization bunch with ier status
+    make_splrep._res = res
+
+    # postprocess: squeeze out the last dimension: was added to simplify
+    # the internals.
     spl.c = spl.c[:, 0]
     return spl
 
 
-def make_splprep(x, *, w=None, u=None, ub=None, ue=None, k=3, s=0, t=None, nest=None):
+def make_splprep(
+        x, *, w=None, u=None, ub=None, ue=None, k=3, s=0, t=None, nest=None
+):
     r"""
     Find a smoothed B-spline representation of a parametric N-D curve.
 
@@ -998,11 +1034,12 @@ def make_splprep(x, *, w=None, u=None, ub=None, ue=None, k=3, s=0, t=None, nest=
             u[i] = v[i] / v[-1]
 
     ub, ue : float, optional
-        The end-points of the parameters interval. Default to ``u[0]`` and ``u[-1]``.
+        The end-points of the parameters interval.
+        Default to ``u[0]`` and ``u[-1]``.
     k : int, optional
         Degree of the spline. Cubic splines, ``k=3``, are recommended.
-        Even values of `k` should be avoided especially with a small ``s`` value.
-        Default is ``k=3``
+        Even values of `k` should be avoided especially with a small ``s``
+        value. Default is ``k=3``
     s : float, optional
         A smoothing condition.  The amount of smoothness is determined by
         satisfying the conditions::
@@ -1011,11 +1048,12 @@ def make_splprep(x, *, w=None, u=None, ub=None, ue=None, k=3, s=0, t=None, nest=
 
         where ``g(u)`` is the smoothed approximation to ``x``.  The user can
         use `s` to control the trade-off between closeness and smoothness
-        of fit.  Larger ``s`` means more smoothing while smaller values of ``s``
-        indicate less smoothing.
-        Recommended values of ``s`` depend on the weights, ``w``.  If the weights
-        represent the inverse of the standard deviation of ``x``, then a good
-        ``s`` value should be found in the range ``(m - sqrt(2*m), m + sqrt(2*m))``,
+        of fit.  Larger ``s`` means more smoothing while smaller values of
+        ``s`` indicate less smoothing.
+        Recommended values of ``s`` depend on the weights, ``w``.  If the
+        weights represent the inverse of the standard deviation of ``x``,
+        then a good ``s`` value should be found in the range
+        ``(m - sqrt(2*m), m + sqrt(2*m))``,
         where ``m`` is the number of data points in ``x`` and ``w``.
     t : array_like, optional
         The spline knots. If None (default), the knots will be constructed
@@ -1033,8 +1071,8 @@ def make_splprep(x, *, w=None, u=None, ub=None, ue=None, k=3, s=0, t=None, nest=
     -------
     spl : a `BSpline` instance
         For `s=0`,  ``spl(u) == x``.
-        For non-zero values of ``s``, `spl` represents the smoothed approximation
-        to ``x``, generally with fewer knots.
+        For non-zero values of ``s``, `spl` represents the smoothed
+        approximation to ``x``, generally with fewer knots.
     u : ndarray
         The values of the parameters
 
@@ -1048,8 +1086,9 @@ def make_splprep(x, *, w=None, u=None, ub=None, ue=None, k=3, s=0, t=None, nest=
 
     Notes
     -----
-    Given a set of :math:`m` data points in :math:`D` dimensions, :math:`\vec{x}_j`,
-    with :math:`j=1, ..., m` and :math:`\vec{x}_j = (x_{j; 1}, ..., x_{j; D})`,
+    Given a set of :math:`m` data points in :math:`D` dimensions,
+    :math:`\vec{x}_j`, with :math:`j=1, ..., m` and
+    :math:`\vec{x}_j = (x_{j; 1}, ..., x_{j; D})`,
     this routine constructs the parametric spline curve :math:`g_a(u)` with
     :math:`a=1, ..., D`, to minimize the sum of jumps, :math:`D_{i; a}`, of the
     ``k``-th derivative at the internal knots (:math:`u_b < t_i < u_e`), where
@@ -1069,21 +1108,21 @@ def make_splprep(x, *, w=None, u=None, ub=None, ue=None, k=3, s=0, t=None, nest=
 
         .. math::
 
-            \sum_{j=1}^m \sum_{a=1}^D (w_j \times (g_a(u_j) - x_{j; a}))^2 \leqslant s
+            \sum_{j=1}^m \sum_{a=1}^D (w_j \times (g_a(u_j) - x_{j; a}))^2
+            \leqslant s
 
-    where :math:`u_j` is the value of the parameter corresponding to the data point
-    :math:`(x_{j; 1}, ..., x_{j; D})`, and :math:`s > 0` is the input parameter.
+    where :math:`u_j` is the value of the parameter corresponding to the data
+    point :math:`(x_{j; 1}, ..., x_{j; D})`, and :math:`s > 0` is the input
+    parameter.
 
-    In other words, we balance maximizing the smoothness (measured as the jumps
-    of the derivative, the first criterion), and the deviation of :math:`g(u_j)`
-    from the data :math:`x_j` (the second criterion).
+    In other words, we balance maximizing the smoothness (measured as the
+    jumps of the derivative, the first criterion), and the deviation of
+    :math:`g(u_j)` from the data :math:`x_j` (the second criterion).
 
     Note that the summation in the second criterion is over all data points,
     and in the first criterion it is over the internal spline knots (i.e.
     those with ``ub < t[i] < ue``). The spline knots are in general a subset
     of data, see `generate_knots` for details.
-
-    .. versionadded:: 1.14.0
 
     References
     ----------
@@ -1106,9 +1145,13 @@ def make_splprep(x, *, w=None, u=None, ub=None, ue=None, k=3, s=0, t=None, nest=
             raise ValueError("s==0 is for interpolation only")
         return make_interp_spline(u, x.T, k=k, axis=1), u
 
-    u, x, w, k, s, ub, ue = _validate_inputs(u, x, w, k, s, ub, ue, parametric=True)
+    u, x, w, k, s, ub, ue = _validate_inputs(
+        u, x, w, k, s, ub, ue, parametric=True
+    )
 
-    spl = _make_splrep_impl(u, x, w=w, xb=ub, xe=ue, k=k, s=s, t=t, nest=nest)
+    spl, res = _make_splrep_impl(
+        u, x, w=w, xb=ub, xe=ue, k=k, s=s, t=t, nest=nest
+    )
 
     # posprocess: `axis=1` so that spl(u).shape == cupy.shape(x)
     # when `x` is a list of 1D arrays (cf original splPrep)
@@ -1117,3 +1160,431 @@ def make_splprep(x, *, w=None, u=None, ub=None, ue=None, k=3, s=0, t=None, nest=
 
     return spl1, u
 
+
+# #################### Public FITPACK interface, OOP ################
+
+# UnivariateSpline, ext parameter can be an int or a string
+_extrap_modes = {0: 0, 'extrapolate': 0,
+                 1: 1, 'zeros': 1,
+                 2: 2, 'raise': 2,
+                 3: 3, 'const': 3}
+
+
+class UnivariateSpline:
+    """
+    1-D smoothing spline fit to a given set of data points.
+
+    Fits a spline y = spl(x) of degree `k` to the provided `x`, `y` data.  `s`
+    specifies the number of knots by specifying a smoothing condition.
+
+    Parameters
+    ----------
+    x : (N,) array_like
+        1-D array of independent input data. Must be increasing;
+        must be strictly increasing if `s` is 0.
+    y : (N,) array_like
+        1-D array of dependent input data, of the same length as `x`.
+    w : (N,) array_like, optional
+        Weights for spline fitting.  Must be positive.  If `w` is None,
+        weights are all 1. Default is None.
+    bbox : (2,) array_like, optional
+        2-sequence specifying the boundary of the approximation interval. If
+        `bbox` is None, ``bbox=[x[0], x[-1]]``. Default is None.
+    k : int, optional
+        Degree of the smoothing spline.
+        ``k = 3`` is a cubic spline. Default is 3.
+    s : float or None, optional
+        Positive smoothing factor used to choose the number of knots.  Number
+        of knots will be increased until the smoothing condition is satisfied::
+
+            sum((w[i] * (y[i]-spl(x[i])))**2, axis=0) <= s
+
+        However, because of numerical issues, the actual condition is::
+
+            abs(sum((w[i] * (y[i]-spl(x[i])))**2, axis=0) - s) < 0.001 * s
+
+        If `s` is None, `s` will be set as `len(w)` for a smoothing spline
+        that uses all data points.
+        If 0, spline will interpolate through all data points. This is
+        equivalent to `InterpolatedUnivariateSpline`.
+        Default is None.
+        The user can use the `s` to control the tradeoff between closeness
+        and smoothness of fit. Larger `s` means more smoothing while smaller
+        values of `s` indicate less smoothing.
+        Recommended values of `s` depend on the weights, `w`. If the weights
+        represent the inverse of the standard-deviation of `y`, then a good
+        `s` value should be found in the range (m-sqrt(2*m),m+sqrt(2*m))
+        where m is the number of datapoints in `x`, `y`, and `w`. This means
+        ``s = len(w)`` should be a good value if ``1/w[i]`` is an
+        estimate of the standard deviation of ``y[i]``.
+    ext : int or str, optional
+        Controls the extrapolation mode for elements
+        not in the interval defined by the knot sequence.
+
+        * if ext=0 or 'extrapolate', return the extrapolated value.
+        * if ext=1 or 'zeros', return 0
+        * if ext=2 or 'raise', raise a ValueError
+        * if ext=3 or 'const', return the boundary value.
+
+        Default is 0.
+
+    See Also
+    --------
+    scipy.interpolate.UnivariateSpline
+    """
+
+    def __init__(self, x, y, w=None, bbox=[None]*2, k=3, s=None, ext=0):
+        # NB removed the checkfinite arg: it requires .any()
+
+        if w is not None:
+            raise NotImplementedError(
+                "weighted spline fitting is not implemented"
+            )
+
+        x = cupy.asarray(x, dtype=float)
+        y = cupy.asarray(y, dtype=float)
+        xb, xe = bbox
+
+        self.ext = ext
+        self._xb = xb if xb else x[0]
+        self._xe = xe if xe else x[-1]
+        self._x = x
+        self._y = y
+        self._w = w
+        self._k = k
+
+        if s is None:
+            # cf scipy/interpolate/src/fitpack.pyf, fpcurf0 wrapper
+            s = len(x)
+
+        self.set_smoothing_factor(s)
+        self._reset_class()
+
+    @classmethod
+    def _from_spl(cls, spl, residual, xe, xb, ext=0):
+        self = cls.__new__(cls)
+        self._spl = spl
+        self.ext = ext
+        self._residual = residual
+        self._xb = xb
+        self._xe = xe
+
+    def _reset_class(self):
+        ier = self._res.ier
+        if ier == 0:
+            # the spline returned has a residual sum of squares fp
+            # such that abs(fp-s)/s <= tol with tol a relative
+            # tolerance set to 0.001 by the program
+            pass
+        elif ier == -1:
+            # the spline returned is an interpolating spline
+            self._set_class(InterpolatedUnivariateSpline)
+        elif ier == -2:
+            # the spline returned is the weighted least-squares
+            # polynomial of degree k. In this extreme case fp gives
+            # the upper bound fp0 for the smoothing factor s.
+            self._set_class(LSQUnivariateSpline)
+        else:
+            # error
+            if ier == 1:
+                self._set_class(LSQUnivariateSpline)
+
+    def _set_class(self, cls):
+        self._spline_class = cls
+        if self.__class__ in (UnivariateSpline, InterpolatedUnivariateSpline,
+                              LSQUnivariateSpline):
+            self.__class__ = cls
+        else:
+            # It's an unknown subclass -- don't change class. cf. #731
+            pass
+
+    def set_smoothing_factor(self, s, t=None):
+        """ Continue spline computation with the given smoothing
+        factor s and with the knots found at the last call.
+
+        This routine modifies the spline in place.
+
+        """
+        x, y, w, k = self._x, self._y, self._w, self._k
+        xb, xe = self._xb, self._xe
+        self._spl = make_splrep(x, y, k=k, w=w, xb=xb, xe=xe, s=s)
+        self._res = make_splrep._res
+
+        self._s = s
+        if w is None:
+            w = cupy.ones(y.shape[0], dtype=float)
+        if t is None:
+            t = self._spl.t
+        self._residual = _get_residuals(x, y[:, None], t, k, w=w).sum()
+        self._reset_class()
+
+    def __call__(self, x, nu=0, ext=None):
+        """
+        Evaluate spline (or its nu-th derivative) at positions x.
+
+        Parameters
+        ----------
+        x : ndarray
+            A 1-D array of points at which to return the value of the smoothed
+            spline or its derivatives. Note: `x` can be unordered but the
+            evaluation is more efficient if `x` is (partially) ordered.
+        nu  : int
+            The order of derivative of the spline to compute.
+        ext : int
+            Controls the value returned for elements of `x` not in the
+            interval defined by the knot sequence.
+
+            * if ext=0 or 'extrapolate', return the extrapolated value.
+            * if ext=1 or 'zeros', return 0
+            * if ext=2 or 'raise', raise a ValueError
+            * if ext=3 or 'const', return the boundary value.
+
+            The default value is 0, passed from the initialization of
+            UnivariateSpline.
+
+        """
+        result = self._spl(x, nu)
+
+        if ext is None:
+            ext = self.ext
+        else:
+            ext = _extrap_modes.get(ext)
+            if ext is None:
+                raise ValueError("Unknown extrapolation mode %s." % ext)
+
+        # default is to extrapolate, do extra work for other modes
+        if ext != 0:
+            xb, xe = self._xb, self._xe
+            if ext == 1:   # "zeros"
+                result[(x < xb) | (x > xe)] = 0.
+            elif ext == 2:   # raise
+                if any((x < xb) | (x > xe)):
+                    raise ValueError(f"Out of bounds {x=} with ext='raise'.")
+            elif ext == 3:   # "const"
+                result[x < xb] = self._spl(xb)
+                result[x > xe] = self._spl(xe)
+
+        return result
+
+    def get_knots(self):
+        """ Return positions of interior knots of the spline.
+
+        Internally, the knot vector contains ``2*k`` additional boundary knots.
+        """
+        k = self._spl.k
+        return self._spl.t[k:-k]
+
+    def get_coeffs(self):
+        """Return spline coefficients."""
+        return self._spl.c
+
+    def get_residual(self):
+        """Return weighted sum of squared residuals of the spline approx.
+
+           This is equivalent to::
+
+                sum((w[i] * (y[i]-spl(x[i])))**2, axis=0
+        """
+        return self._residual
+
+    def integral(self, a, b):
+        """ Return definite integral of the spline between two given points.
+
+        Parameters
+        ----------
+        a : float
+            Lower limit of integration.
+        b : float
+            Upper limit of integration.
+
+        Returns
+        -------
+        integral : float
+            The value of the definite integral of the spline between limits.
+        """
+        cond = ((a <= self._xb and b <= self._xb) or
+                (a >= self._xe and b >= self._xe))
+        if cond:
+            return cupy.array(0.)
+        return self._spl.integrate(a, b)
+
+    def derivatives(self, x):
+        """Return all derivatives of the spline at the point x.
+
+        Parameters
+        ----------
+        x : float
+            The point to evaluate the derivatives at.
+
+        Returns
+        -------
+        der : ndarray, shape(k+1,)
+            Derivatives of the orders 0 to k.
+        """
+        # return _fitpack_impl.spalde(x, self._eval_args)
+        lst = [self._spl(x, nu) for nu in range(self._spl.k+1)]
+        return cupy.r_[lst]
+
+    def derivative(self, n=1):
+        """
+        Construct a new spline representing the derivative of this spline.
+
+        Parameters
+        ----------
+        n : int, optional
+            Order of derivative to evaluate. Default: 1
+
+        Returns
+        -------
+        spline : UnivariateSpline
+            Spline of order k2=k-n representing the derivative of this
+            spline.
+        """
+        spl = self._spl.derivative(n)
+        # if self.ext is 'const', derivative.ext will be 'zeros'
+        ext = 1 if self.ext == 3 else self.ext
+        return UnivariateSpline._from_spl(
+            spl, ext=ext, residual=self._residual, xb=self._xb, xe=self._xe
+        )
+
+    def antiderivative(self, n=1):
+        """
+        Construct a new spline representing the antiderivative of this spline.
+
+        Parameters
+        ----------
+        n : int, optional
+            Order of antiderivative to evaluate. Default: 1
+
+        Returns
+        -------
+        spline : UnivariateSpline
+            Spline of order k2=k+n representing the antiderivative of this
+            spline.
+        """
+        # tck = _fitpack_impl.splantider(self._eval_args, n)
+        # return UnivariateSpline._from_tck(tck, self.ext)
+        spl = self._spl.antiderivative(n)
+        return UnivariateSpline._from_spl(
+            spl, ext=self.ext, residual=self._residual,
+            xb=self._xb, xe=self._xe
+        )
+
+
+class InterpolatedUnivariateSpline(UnivariateSpline):
+    """
+    1-D interpolating spline for a given set of data points.
+
+    Fits a spline y = spl(x) of degree `k` to the provided `x`, `y` data.
+    Spline function passes through all provided points. Equivalent to
+    `UnivariateSpline` with  `s` = 0.
+
+    Parameters
+    ----------
+    x : (N,) array_like
+        Input dimension of data points -- must be strictly increasing
+    y : (N,) array_like
+        input dimension of data points
+    w : (N,) array_like, optional
+        Weights for spline fitting.  Must be positive.  If None (default),
+        weights are all 1.
+    bbox : (2,) array_like, optional
+        2-sequence specifying the boundary of the approximation interval. If
+        None (default), ``bbox=[x[0], x[-1]]``.
+    k : int, optional
+        Degree of the smoothing spline. Default is
+        ``k = 3``, a cubic spline.
+    ext : int or str, optional
+        Controls the extrapolation mode for elements
+        not in the interval defined by the knot sequence.
+
+        * if ext=0 or 'extrapolate', return the extrapolated value.
+        * if ext=1 or 'zeros', return 0
+        * if ext=2 or 'raise', raise a ValueError
+        * if ext=3 of 'const', return the boundary value.
+
+        The default value is 0.
+
+    See Also
+    --------
+    scipy.interpolate.InterpolatedUnivariateSpline
+    """
+
+    def __init__(self, x, y, w=None, bbox=[None]*2, k=3, ext=0):
+        super().__init__(x, y, s=0, w=w, bbox=bbox, k=k, ext=ext)
+
+
+class LSQUnivariateSpline(UnivariateSpline):
+    """
+    1-D spline with explicit internal knots.
+
+    Fits a spline y = spl(x) of degree `k` to the provided `x`, `y` data.  `t`
+    specifies the internal knots of the spline
+
+    Parameters
+    ----------
+    x : (N,) array_like
+        Input dimension of data points -- must be increasing
+    y : (N,) array_like
+        Input dimension of data points
+    t : (M,) array_like
+        interior knots of the spline.  Must be in ascending order and::
+
+            bbox[0] < t[0] < ... < t[-1] < bbox[-1]
+
+    w : (N,) array_like, optional
+        weights for spline fitting. Must be positive. If None (default),
+        weights are all 1.
+    bbox : (2,) array_like, optional
+        2-sequence specifying the boundary of the approximation interval. If
+        None (default), ``bbox = [x[0], x[-1]]``.
+    k : int, optional
+        Degree of the smoothing spline.
+        Default is `k` = 3, a cubic spline.
+    ext : int or str, optional
+        Controls the extrapolation mode for elements
+        not in the interval defined by the knot sequence.
+
+        * if ext=0 or 'extrapolate', return the extrapolated value.
+        * if ext=1 or 'zeros', return 0
+        * if ext=2 or 'raise', raise a ValueError
+        * if ext=3 of 'const', return the boundary value.
+
+        The default value is 0.
+
+    Raises
+    ------
+    ValueError
+        If the interior knots do not satisfy the Schoenberg-Whitney conditions
+
+    See Also
+    --------
+    scipy.interpolate.LSQUnivariateSpline
+    """
+
+    def __init__(self, x, y, t, w=None, bbox=[None]*2, k=3, ext=0):
+        # NB cannot call UnivariateSpline.__init__ : has no `t` arg
+        if w is not None:
+            raise NotImplementedError(
+                "weighted spline fitting is not implemented"
+            )
+
+        x = cupy.asarray(x, dtype=float)
+        y = cupy.asarray(y, dtype=float)
+        xb, xe = bbox
+
+        self.ext = ext
+        self._xb = xb if xb else x[0]
+        self._xe = xe if xe else x[-1]
+        self._x = x
+        self._y = y
+        self._w = w
+        self._k = k
+
+        # cf scipy/interpolate/src/fitpack.pyf, fpcurf0 wrapper
+        s = len(x)
+
+        fpcheck(x, t, k)
+
+        self.set_smoothing_factor(s, t)
+        self._reset_class()

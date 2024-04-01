@@ -20,3 +20,8 @@ from cupyx.scipy.interpolate._rgi import interpn  # NOQA
 
 # Backward compatibility
 pchip = PchipInterpolator  # NOQA
+
+# FITPACK smoothing splines
+from cupyx.scipy.interpolate._fitpack_repro import UnivariateSpline   # NOQA
+from cupyx.scipy.interpolate._fitpack_repro import InterpolatedUnivariateSpline   # NOQA
+from cupyx.scipy.interpolate._fitpack_repro import LSQUnivariateSpline   # NOQA
