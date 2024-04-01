@@ -157,6 +157,7 @@ def get_features(ctx: Context) -> Dict[str, Feature]:
     # the HIP stubs (hip/cupy_*.h) would cause many symbols
     # to leak into all these modules even if unused. It's easier for all of
     # them to link to the same set of shared libraries.
+    rocm_version = utils.get_rocm_version()
     HIP_cuda_nvtx_cusolver = {
         # TODO(leofang): call this "rocm" or "hip" to avoid confusion?
         'name': 'cuda',
@@ -169,12 +170,12 @@ def get_features(ctx: Context) -> Dict[str, Feature]:
         'include': [
             'hip/hip_runtime_api.h',
             'hip/hiprtc.h',
-            'hipblas.h',
+            'hipblas/hipblas.h' if rocm_version >= 560 else 'hipblas.h',
             'hiprand/hiprand.h',
-            'hipsparse.h',
-            'hipfft.h',
+            'hipsparse/hipsparse.h' if rocm_version >= 560 else 'hipsparse.h',
+            'hipfft/hipfft.h' if rocm_version >= 560 else 'hipfft.h',
             'roctx.h',
-            'rocsolver.h',
+            'rocsolver/rocsolver.h' if rocm_version >= 560 else 'rocsolver.h',
         ],
         'libraries': [
             'amdhip64',  # was hiprtc and hip_hcc before ROCm 3.8.0
@@ -363,7 +364,7 @@ def get_features(ctx: Context) -> Dict[str, Feature]:
             'cupy_backends.cuda.libs.nccl',
         ],
         'include': [
-            'rccl.h',
+            'rccl/rccl.h' if rocm_version >= 560 else 'rccl.h',
         ],
         'libraries': [
             'rccl',

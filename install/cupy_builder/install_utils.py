@@ -20,3 +20,12 @@ def search_on_path(filenames: List[str]) -> Optional[str]:
             if os.path.exists(full):
                 return os.path.abspath(full)
     return None
+
+def get_rocm_version() -> int:
+    rocm_version = -1
+    if os.getenv("ROCM_HOME"):
+        rocm_home = str(os.getenv("ROCM_HOME"))
+        version_path = os.path.join(rocm_home, ".info", "version")
+        rocm_version = int(
+            open(version_path).read().split("-")[0].replace(".", ""))
+    return rocm_version
