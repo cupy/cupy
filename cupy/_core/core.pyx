@@ -2077,7 +2077,7 @@ cdef class _ndarray_base:
             source process for the lifetime of the corresponding array in
             the destination process.
             The handle cannot be open on the source process or on a destination
-            process which is a direct 'forked' decendant of the process on
+            process which is a direct 'forked' descendant of the process on
             which the handle is created.
 
         Returns:

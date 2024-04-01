@@ -85,7 +85,7 @@ class IPCMemoryHandle:
         if get_start_method() == "fork":
             warnings.warn(
                 "This method was called on a forked process. "
-                "The handle cannot be opened on a direct forked decendant "
+                "The handle cannot be opened on a direct forked descendant "
                 "of the process on which the handle was created.")
 
         from cupy._core.core import ndarray
@@ -95,7 +95,7 @@ class IPCMemoryHandle:
         except Exception as e:
             print("Error:", str(e))
             print("Possible reason: An attempt was made to open the handle "
-                  "in a process that is a direct forked decendant of the "
+                  "in a process that is a direct forked descendant of the "
                   "process on which the handle was created.")
 
         mem = UnownedMemory(self.arr_ptr, self.size, owner=self)
