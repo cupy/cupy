@@ -398,6 +398,7 @@ class TestSpgemm:
             # Lower memory algorithms for spgemm not available in CUDA < 12.0
             with pytest.raises(_cusparse.CuSparseError):
                 cusparse.spgemm(a, b)
+            return
 
         c = cusparse.spgemm(a, b, alpha=self.alpha)
         if (self.shape[0] == 100000):
