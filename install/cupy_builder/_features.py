@@ -257,6 +257,7 @@ def get_features(ctx: Context) -> Dict[str, Feature]:
         ],
         'libraries': [
             'cutensor',
+            'cutensorMg',
             'cublas',
         ],
         'check_method': build.check_cutensor_version,
