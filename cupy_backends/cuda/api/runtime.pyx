@@ -318,7 +318,6 @@ cpdef getDeviceProperties(int device):
         properties['clockInstructionRate'] = props.clockInstructionRate
         properties['maxSharedMemoryPerMultiProcessor'] = (
             props.maxSharedMemoryPerMultiProcessor)
-        properties['gcnArch'] = props.gcnArch
         properties['hdpMemFlushCntl'] = <intptr_t>(props.hdpMemFlushCntl)
         properties['hdpRegFlushCntl'] = <intptr_t>(props.hdpRegFlushCntl)
         properties['memPitch'] = props.memPitch
@@ -716,7 +715,7 @@ cpdef PointerAttributes pointerGetAttributes(intptr_t ptr):
     cdef _PointerAttributes attrs
     status = cudaPointerGetAttributes(&attrs, <void*>ptr)
     check_status(status)
-    IF CUPY_CUDA_VERSION > 0 or CUPY_HIP_VERSION > 60000000:
+    IF CUPY_CUDA_VERSION > 0 or CUPY_HIP_VERSION >= 60000000:
         return PointerAttributes(
             attrs.device,
             <intptr_t>attrs.devicePointer,
