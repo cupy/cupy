@@ -739,12 +739,11 @@ def make_ndbspl(points, values, k=3):
     vals_shape = (prod(v_shape[:ndim]), prod(v_shape[ndim:]))
     vals = values.reshape(vals_shape)
 
-#    if solver != ssl.spsolve:
-#        solver = functools.partial(_iter_solve, solver=solver)
-#        if "atol" not in solver_args:
-#            # avoid a DeprecationWarning, grumble grumble
-#            solver_args["atol"] = 1e-6
-
-    coef = spsolve(matr, vals)
+    if cupy.issubdtype(vals.dtype, cupy.complexfloating):
+        # avoid upcasting the l.h.s. to complex (that doubles the memory)
+        coef = (spsolve(matr, vals.real) +
+                spsolve(matr, vals.imag) * 1.j)
+    else:
+        coef = spsolve(matr, vals)
     coef = coef.reshape(xi_shape + v_shape[ndim:])
     return NdBSpline(t, coef, k)

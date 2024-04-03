@@ -7,6 +7,7 @@ from cupyx.scipy.interpolate._cubic import PchipInterpolator
 from cupyx.scipy.interpolate._interpolate import _ndim_coords_from_arrays
 from cupyx.scipy.interpolate._ndbspline import make_ndbspl
 
+
 def _check_points(points):
     descending_dimensions = []
     grid = []
@@ -58,8 +59,7 @@ class RegularGridInterpolator:
         strictly ascending or descending.
 
     values : ndarray, shape (m1, ..., mn, ...)
-        The data on the regular grid in n dimensions. Complex data is accepted
-        acceptable.
+        The data on the regular grid in n dimensions.
 
     method : str, optional
         The method of interpolation to perform. Supported are "linear",
@@ -91,10 +91,17 @@ class RegularGridInterpolator:
     tensor-product spline interpolators, where `k` is the spline degree,
     If any dimension has fewer points than `k` + 1, an error will be raised.
 
-
     If the input data is such that dimensions have incommensurate
     units and differ by many orders of magnitude, the interpolant may have
     numerical artifacts. Consider rescaling the data before interpolating.
+
+    ** Choosing a spline method **
+
+    Spline methods, "slinear", "cubic" and "quintic" involve solving a large
+    sparse linear system at instantiation time. Alternatively, you may instead
+    use the legacy methods, "slinear_legacy", "cubic_legacy" and
+    "quintic_legacy". These methods allow faster construction but evaluations
+    will be much slower.
 
     Examples
     --------
@@ -192,9 +199,9 @@ class RegularGridInterpolator:
     # see https://github.com/JohannesBuchner/regulargrid
 
     _SPLINE_DEGREE_MAP = {"slinear": 1, "cubic": 3, "quintic": 5, 'pchip': 3,
-                          "slinear_legacy": 1, "cubic_legacy": 3, "quintic_legacy": 5,}
+                          "slinear_legacy": 1, "cubic_legacy": 3, "quintic_legacy": 5, }
     _SPLINE_METHODS_recursive = {"slinear_legacy", "cubic_legacy",
-                                "quintic_legacy", "pchip"}
+                                 "quintic_legacy", "pchip"}
     _SPLINE_METHODS_ndbspl = {"slinear", "cubic", "quintic"}
     _SPLINE_METHODS = list(_SPLINE_DEGREE_MAP.keys())
     _ALL_METHODS = ["linear", "nearest"] + _SPLINE_METHODS
@@ -219,8 +226,8 @@ class RegularGridInterpolator:
 
     def _construct_spline(self, method, solver=None):
         spl = make_ndbspl(
-                self.grid, self.values, self._SPLINE_DEGREE_MAP[method],
-              )
+            self.grid, self.values, self._SPLINE_DEGREE_MAP[method],
+        )
         return spl
 
     def _check_dimensionality(self, grid, values):
@@ -592,8 +599,9 @@ def interpn(points, values, xi, method="linear", bounds_error=True,
                                           resampling)
     """
     # sanity check 'method' kwarg
-    if method not in ["linear", "nearest", "slinear", "cubic",
-                      "quintic", "pchip"]:
+    if method not in ["linear", "nearest", "slinear", "cubic", "quintic",
+                      "pchip",
+                      "slinear_legacy", "cubic_legacy", "quintic_legacy"]:
         raise ValueError(
             "interpn only understands the methods 'linear', 'nearest', "
             "'slinear', 'cubic', 'quintic' and 'pchip'. "

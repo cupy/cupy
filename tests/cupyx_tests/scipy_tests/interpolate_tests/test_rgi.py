@@ -10,7 +10,8 @@ from cupyx.scipy.interpolate import RegularGridInterpolator, interpn
 
 methods = ['linear', 'nearest']
 if not runtime.is_hip:
-    methods += ["slinear", "cubic", "quintic", 'pchip']
+    methods += ["slinear", "cubic", "quintic", 'pchip',
+                "slinear_legacy", "cubic_legacy", "quintic_legacy"]
 
 parametrize_rgi_interp_methods = pytest.mark.parametrize("method", methods)
 
