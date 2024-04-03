@@ -30,7 +30,7 @@ import cupy
 
 from cupy._core._scalar import get_typename
 from cupy_backends.cuda.api import runtime
-from cupyx.scipy.signal._wavelets import cwt, ricker
+from cupyx.scipy.signal._wavelets import _cwt, _ricker
 
 from cupyx import jit
 
@@ -1882,19 +1882,13 @@ def _scoreatpercentile(data, per, limit=(), alphap=.4, betap=.4):
 
 
 _NOISE_MODULE_SRC = r"""
-#include <cstddef>  // for std::size_t
-#include <type_traits>
-
-#include <thrust/sort.h>
-#include <thrust/functional.h>
-#include <thrust/execution_policy.h>
 
 __device__ inline float clip(float value, float lb, float ub) {
     return value < lb ? lb : ((value > ub) ? ub : value);
 }
 
 template<typename T>
-__global__ cwt_noise(
+__global__ void cwt_noise(
         const int n_points,
         const int window_size,
         const float prob,
@@ -1912,10 +1906,10 @@ __global__ cwt_noise(
     const int odd = window_size % 2;
 
     const int left_pos = min(idx - win_half_size, 0);
-    const int right_pos = min(idx + win_half_size + odd, n);
+    const int right_pos = min(idx + win_half_size + odd, n_points);
     const int n = right_pos - left_pos;
 
-    thrust::sort(thrust::device, cwt_row + left_pos, cwt_row + right_pos);
+    // thrust::sort(thrust::device, cwt_row + left_pos, cwt_row + right_pos);
 
     float aleph = n * prob + m;
     int k = floor(clip(aleph, 1, n - 1));
@@ -1928,7 +1922,6 @@ __global__ cwt_noise(
 
 _noise_module = cupy.RawModule(
     code=_NOISE_MODULE_SRC, options=('-std=c++11',),
-    jitify=True,
     name_expressions=['cwt_noise<double>', 'cwt_noise<float>'])
 
 
@@ -1983,6 +1976,23 @@ def _filter_ridge_lines(cwt, ridge_lines, window_size=None, min_length=None,
     p = noise_perc / 100.0
     m = alphap + p * (1.0 - alphap - betap)
     n_points = row_one.shape[0]
+
+    win_half_size = window_size // 2
+    odd = window_size % 2
+
+    idx = cupy.arange(num_points)
+    left_pos = cupy.maximum(idx - win_half_size, 0)
+    right_pos = cupy.minimum(idx + win_half_size + odd, n_points)
+    n = right_pos - left_pos
+
+    aleph = n * p + m
+    k = cupy.floor(cupy.clip(aleph, 1, n - 1)).astype(np.int32)
+    gamma = cupy.clip(aleph - k, 0, 1)  # NOQA
+
+    win_sz = k + 1
+    cum_win_sz = cupy.cumsum(win_sz)
+    total_win = cum_win_sz[-1].item()
+    all_win = cupy.empty(total_win, dtype=np.int32)  # NOQA
 
     _cwt_noise = _get_module_func(_noise_module, 'cwt_noise', noises)
 
@@ -2131,9 +2141,9 @@ def find_peaks_cwt(vector, widths, wavelet=None, max_distances=None,
     if max_distances is None:
         max_distances = widths / 4.0
     if wavelet is None:
-        wavelet = ricker
+        wavelet = _ricker
 
-    cwt_dat = cwt(vector, wavelet, widths)
+    cwt_dat = _cwt(vector, wavelet, widths)
     cwt_dat = cupy.where(abs(cwt_dat) < 1e-8, 0.0, cwt_dat)
     ridge_lines = _identify_ridge_lines(cwt_dat, max_distances, gap_thresh)
     filtered = _filter_ridge_lines(cwt_dat, ridge_lines, min_length=min_length,

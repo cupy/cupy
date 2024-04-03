@@ -208,6 +208,10 @@ def ricker(points, a):
     return _ricker_kernel(a, size=int(points))
 
 
+def _ricker(points, a):
+    return _ricker_kernel(a, size=int(points))
+
+
 _morlet2_kernel = cupy.ElementwiseKernel(
     "float64 w, float64 s",
     "complex128 output",
@@ -351,7 +355,10 @@ def cwt(data, wavelet, widths):
 
     """  # NOQA
     warnings.warn(_deprecate_msg, DeprecationWarning)
+    return _cwt(data, wavelet, widths)
 
+
+def _cwt(data, wavelet, widths):
     if cupy.asarray(wavelet(1, 1)).dtype.char in "FDG":
         dtype = cupy.complex128
     else:
