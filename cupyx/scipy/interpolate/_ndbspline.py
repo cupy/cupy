@@ -398,12 +398,12 @@ def colloc_nd(xvals, t, len_t, k):
     # Precompute the shape and strides of the coefficients array.
     # This would have been the NdBSpline coefficients; in the present context
     # this is a helper to compute the indices into the collocation matrix.
-    c_shape = tuple(len(t[d]) - k1_shape[d] for d in range(ndim))
+    c_shape = len_t - cupy.asarray(k1_shape, dtype=len_t.dtype)
 
     # The computation is equivalent to
     # >>> x = cupy.empty(c_shape)
     # >>> cstrides = [s // 8 for s in x.strides]
-    cs = cupy.asarray(c_shape[1:] + (1,))
+    cs = cupy.r_[c_shape[1:], 1]
     cstrides = cupy.cumprod(cs[::-1], dtype=cupy.int64)[::-1].copy()
 
     # tabulate flat indices for iterating over the (k+1)**ndim subarray of
