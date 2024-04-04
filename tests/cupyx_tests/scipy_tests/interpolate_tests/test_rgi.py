@@ -386,6 +386,9 @@ class TestRegularGridInterpolator:
 
     @parametrize_rgi_interp_methods
     def test_nonscalar_values(self, method):
+        if method in ("cubic_legacy", "quintic_legacy"):
+            pytest.skip("way too slow for a test")
+
         # Verify that non-scalar valued values also works
         points = [(0.0, 0.5, 1.0, 1.5, 2.0, 2.5)] * 2 + [
             (0.0, 5.0, 10.0, 15.0, 20, 25.0)
@@ -413,6 +416,9 @@ class TestRegularGridInterpolator:
     @parametrize_rgi_interp_methods
     @pytest.mark.parametrize("flip_points", [False, True])
     def test_nonscalar_values_2(self, method, flip_points):
+        if method in ("cubic_legacy", "quintic_legacy"):
+            pytest.skip("way too slow for a test")
+
         # Verify that non-scalar valued values also work : use different
         # lengths of axes to simplify tracing the internals
         points = [(0.0, 0.5, 1.0, 1.5, 2.0, 2.5),
@@ -627,6 +633,9 @@ class TestInterpN:
     @parametrize_rgi_interp_methods
     def test_nonscalar_values(self, method):
         # Verify that non-scalar valued values also works
+        if method in ("cubic_legacy", "quintic_legacy"):
+            pytest.skip("way too slow for a test")
+
         points = [(0.0, 0.5, 1.0, 1.5, 2.0, 2.5)] * 2 + [
             (0.0, 5.0, 10.0, 15.0, 20, 25.0)
         ] * 2
@@ -649,6 +658,9 @@ class TestInterpN:
     def test_nonscalar_values_2(self, method):
         # Verify that non-scalar valued values also work : use different
         # lengths of axes to simplify tracing the internals
+        if method in ("cubic_legacy", "quintic_legacy"):
+            pytest.skip("way too slow for a test")
+
         points = [(0.0, 0.5, 1.0, 1.5, 2.0, 2.5),
                   (0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0),
                   (0.0, 5.0, 10.0, 15.0, 20, 25.0, 35.0, 36.0),

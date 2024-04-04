@@ -1,5 +1,6 @@
 import numpy
 import cupy
+from cupy.cuda import runtime
 from cupy import testing
 
 import cupyx.scipy.interpolate  # NOQA
@@ -413,6 +414,7 @@ class TestNdBSpline:
         return dm.indices.astype(xp.int64)
 
 
+@pytest.mark.skipif(runtime.is_hip, reason='csrlsvqr not available')
 @testing.with_requires('scipy>=1.13')
 class TestMakeND:
 
