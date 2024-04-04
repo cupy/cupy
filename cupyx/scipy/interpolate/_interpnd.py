@@ -378,11 +378,12 @@ __global__ void estimate_gradients_2d(
 
     __shared__ double block_err[512];
 
-    int dim_idx = getCurThreadIdx() % values_dim;
+    int total = n_points * values_dim;
 
-    for (int idx = getCurThreadIdx() / values_dim;
-            idx < n_points;
-            idx += getThreadNum()) {
+    for (int midx = getCurThreadIdx(); midx < total; midx += getThreadNum()) {
+
+        int idx = midx / values_dim;
+        int dim_idx = midx % values_dim;
 
         block_err[threadIdx.x] = 0;
 
@@ -607,12 +608,14 @@ __global__ void clough_tocher_2d(
         int n_queries, const T* values, int values_sz,
         const T* grad, const T* fill_value, T* out) {
 
-    int value_dim = getCurThreadIdx() % values_sz;
+    int total = n_queries * values_sz;
     T f[3];
     T df[3 * 2];
 
-    for (int idx = getCurThreadIdx() / values_sz;
-            idx < n_queries; idx += getThreadNum()) {
+    for (int midx = getCurThreadIdx(); midx < total; midx += getThreadNum()) {
+        int idx = midx / values_sz;
+        int value_dim = midx % values_sz;
+
         const int isimplex = found_simplices[idx];
         const int* chosen_simplex = simplices + 3 * isimplex;
 
