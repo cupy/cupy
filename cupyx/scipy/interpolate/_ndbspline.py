@@ -136,10 +136,12 @@ __global__ void compute_nd_bsplines(
         const int* nu, bool extrapolate, bool check_all_validity,
         long long* intervals, double* splines, bool* invalid) {
 
-    int start = getCurThreadIdx() / ndim;
-    int dim_idx = getCurThreadIdx() % ndim;
+    int total = n_xi * ndim;
 
-    for(int idx = start; idx < n_xi; idx += getThreadNum()) {
+    for(int midx = getCurThreadIdx(); midx < total; midx += getThreadNum()) {
+        int idx = midx / ndim;
+        int dim_idx = midx % ndim;
+
         double xd = xi[ndim * idx + dim_idx];
         const double* dim_t = t + max_t * dim_idx;
         const long long dim_k = k[dim_idx];
@@ -210,10 +212,12 @@ __global__ void store_nd_bsplines(
         long long* volume, int ndim, int n_xi, const long long* max_k,
         long long* out_idx, double* out) {
 
-    int start = getCurThreadIdx() / volume[0];
-    int iflat = getCurThreadIdx() % volume[0];
+    int total = n_xi * volume[0];
 
-    for(int idx = start; idx < n_xi; idx += getThreadNum()) {
+    for(int midx = getCurThreadIdx(); midx < total; midx += getThreadNum()) {
+        int idx = midx / volume[0];
+        int iflat = midx % volume[0];
+
         const double* idx_splines = b + ndim * (2 * max_k[0] + 2) * idx;
         const long long* idx_b = indices_k1d + ndim * iflat;
 
