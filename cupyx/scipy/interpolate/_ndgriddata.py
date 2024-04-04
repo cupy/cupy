@@ -18,10 +18,6 @@ class NearestNDInterpolator(NDInterpolatorBase):
 
     Nearest-neighbor interpolator in N > 1 dimensions.
 
-    Methods
-    -------
-    __call__
-
     Parameters
     ----------
     x : (npoints, ndims) 2-D ndarray of floats
