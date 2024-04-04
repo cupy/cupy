@@ -199,7 +199,8 @@ class RegularGridInterpolator:
     # see https://github.com/JohannesBuchner/regulargrid
 
     _SPLINE_DEGREE_MAP = {"slinear": 1, "cubic": 3, "quintic": 5, 'pchip': 3,
-                          "slinear_legacy": 1, "cubic_legacy": 3, "quintic_legacy": 5, }
+                          "slinear_legacy": 1, "cubic_legacy": 3,
+                          "quintic_legacy": 5, }
     _SPLINE_METHODS_recursive = {"slinear_legacy", "cubic_legacy",
                                  "quintic_legacy", "pchip"}
     _SPLINE_METHODS_ndbspl = {"slinear", "cubic", "quintic"}

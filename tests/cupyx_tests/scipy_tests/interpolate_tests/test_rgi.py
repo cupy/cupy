@@ -488,9 +488,9 @@ class TestRegularGridInterpolator:
 
     def test_derivatives(self):
         points, values = self._get_sample_4d()
-        sample = cp.array([[0.1 , 0.1 , 1.  , 0.9 ],
-                           [0.2 , 0.1 , 0.45, 0.8 ],
-                           [0.5 , 0.5 , 0.5 , 0.5 ]])
+        sample = cp.array([[0.1, 0.1, 1., 0.9],
+                           [0.2, 0.1, 0.45, 0.8],
+                           [0.5, 0.5, 0.5, 0.5]])
         interp = RegularGridInterpolator(points, values, method="slinear")
 
         with assert_raises(ValueError):

@@ -406,12 +406,10 @@ class TestNdBSpline:
 
         t = (xp.array([0., 0., 0., 0., 2., 3., 5., 5., 5., 5.]),
              xp.array([1.5, 1.5, 2.5, 3.5, 4.5, 5.5, 6.5, 7.5, 7.5])
-             # xp.array([1.5, 1.5, 2.5, 3.5, 4.5, 5.5, 6.5, 7.5, 7.5, 8.5])  # equal lengths
              )
 
         dm = scp.interpolate.NdBSpline.design_matrix(xvals, t, k)
-#        return dm.todense()
-        return dm.indices.astype(xp.int64)
+        return dm.todense()
 
 
 @pytest.mark.skipif(runtime.is_hip, reason='csrlsvqr not available')
