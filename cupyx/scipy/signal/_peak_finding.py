@@ -1883,17 +1883,57 @@ def _scoreatpercentile(data, per, limit=(), alphap=.4, betap=.4):
 
 _NOISE_MODULE_SRC = r"""
 
-__device__ inline float clip(float value, float lb, float ub) {
-    return value < lb ? lb : ((value > ub) ? ub : value);
+template<typename T>
+__device__ void insort(T value, T* win, const int k) {
+    if(value > win[k - 1]) {
+        return;
+    }
+
+    long long left = 0;
+    long long right = k - 1;
+
+    while(left != right) {
+        long long pos = (left + right) / 2;
+        if(win[pos] < value) {
+            left = pos + 1;
+        } else {
+            right = pos;
+        }
+    }
+
+    T to_insert = value;
+    for(long long i = left; i < k; i++) {
+        T tmp = win[i];
+        win[i] = to_insert;
+        to_insert = tmp;
+    }
+}
+
+template<typename T>
+__device__ void search_in_window
+(
+const long long start,
+const long long end,
+const int k,
+const T* cwt_row,
+T* win
+) {
+    for(long long i = start; i < end; i++) {
+        T value = cwt_row[i];
+        insort(value, win, k);
+    }
 }
 
 template<typename T>
 __global__ void cwt_noise(
         const int n_points,
-        const int window_size,
-        const float prob,
-        const float m,
-        const T* __restrict__ cwt_row,
+        const long long* win_start,
+        const long long* win_end,
+        const long long* search_start,
+        const int* k,
+        const double* gamma,
+        const T* cwt_row,
+        T* search_results,
         T* out) {
 
     int idx = blockDim.x * blockIdx.x + threadIdx.x;
@@ -1902,21 +1942,15 @@ __global__ void cwt_noise(
         return;
     }
 
-    const int win_half_size = window_size / 2;
-    const int odd = window_size % 2;
+    const long long cur_win_start = win_start[idx];
+    const long long cur_win_end = win_end[idx];
+    T* search_win = search_results + search_start[idx];
 
-    const int left_pos = min(idx - win_half_size, 0);
-    const int right_pos = min(idx + win_half_size + odd, n_points);
-    const int n = right_pos - left_pos;
+    search_in_window(cur_win_start, cur_win_end,
+                     k[idx] + 1, cwt_row, search_win);
 
-    // thrust::sort(thrust::device, cwt_row + left_pos, cwt_row + right_pos);
-
-    float aleph = n * prob + m;
-    int k = floor(clip(aleph, 1, n - 1));
-    float gamma = clip(aleph - k, 0, 1);
-
-    const T* x = cwt_row + left_pos;
-    out[idx] = (1.0 - gamma) * x[k - 1] + gamma * x[k];
+    out[idx] = ((1.0 - gamma[idx]) * search_win[k[idx] - 1] +
+                gamma[idx] * search_win[k[idx]]);
 }
 """
 
@@ -1992,26 +2026,27 @@ def _filter_ridge_lines(cwt, ridge_lines, window_size=None, min_length=None,
     win_sz = k + 1
     cum_win_sz = cupy.cumsum(win_sz)
     total_win = cum_win_sz[-1].item()
-    all_win = cupy.empty(total_win, dtype=np.int32)  # NOQA
+    win_start = cum_win_sz - win_sz
+    all_win = cupy.full(total_win, np.inf, dtype=cwt.dtype)  # NOQA
 
+    # noises2 = cupy.empty_like(row_one)
     _cwt_noise = _get_module_func(_noise_module, 'cwt_noise', noises)
 
     block_sz = 128
     n_blocks = (n_points + block_sz - 1) // block_sz
 
-    breakpoint()
-    _cwt_noise((block_sz,), (n_blocks),
-               (int(n_points), window_size, float(p), float(m),
-                row_one, noises))
+    # breakpoint()
+    _cwt_noise((block_sz,), (n_blocks,),
+               (int(n_points), left_pos, right_pos, win_start,
+                k, gamma, row_one, all_win, noises))
 
     # Filter based on SNR
-    row_one = cwt[0, :].get()
-    noises2 = np.empty_like(row_one)
-    for ind in range(row_one.shape[0]):
-        window_start = max(ind - hf_window, 0)
-        window_end = min(ind + hf_window + odd, num_points)
-        noises2[ind] = _scoreatpercentile(row_one[window_start:window_end],
-                                          per=noise_perc)
+    # row_one = cwt[0, :].get()
+    # for ind in range(row_one.shape[0]):
+    #     window_start = max(ind - hf_window, 0)
+    #     window_end = min(ind + hf_window + odd, num_points)
+    #     noises2[ind] = _scoreatpercentile(row_one[window_start:window_end],
+    #                                       per=noise_perc)
 
     # ridge_rows, ridge_cols, ridge_len, ridge_offset = ridge_lines
     # ridge_start = cupy.r_[0, ridge_offset[:-1]]
