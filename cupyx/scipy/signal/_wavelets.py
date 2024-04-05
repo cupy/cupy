@@ -371,6 +371,6 @@ def _cwt(data, wavelet, widths):
 
     for ind, width in enumerate(widths):
         N = np.min([10 * width, len(data)])
-        wavelet_data = cupy.conj(wavelet(N, int(width)))[::-1]
+        wavelet_data = cupy.conj(wavelet(N, width))[::-1]
         output[ind, :] = convolve(data, wavelet_data, mode="same")
     return output
