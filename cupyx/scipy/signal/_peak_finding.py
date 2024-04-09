@@ -1699,14 +1699,206 @@ def _identify_ridge_lines(matr, max_distances, gap_thresh):
         cols[sortargs] = line[1]
         out_lines.append([rows, cols])
 
+    breakpoint()
     return out_lines
+
+
+join_or_new_kern = cupy.RawKernel(r"""
+#include <cupy/math_constants.h>
+
+__forceinline__ __device__ int getCurThreadIdx()
+{
+    const int threadsPerBlock   = blockDim.x;
+    const int curThreadIdx    = ( blockIdx.x * threadsPerBlock ) + threadIdx.x;
+    return curThreadIdx;
+}
+
+__forceinline__ __device__ int getThreadNum()
+{
+    const int blocksPerGrid     = gridDim.x;
+    const int threadsPerBlock   = blockDim.x;
+    const int threadNum         = blocksPerGrid * threadsPerBlock;
+    return threadNum;
+}
+
+
+extern "C" __global__ void join_or_new_line
+(
+const int           row,
+const int           act_row,
+const double*       distances,
+const int           gap_thresh,
+const long long*    peaks_start,
+const long long*    peaks_end,
+// const long long*    n_peaks,
+const long long*    cols,
+unsigned int*       gaps,
+long long*          heads,
+unsigned int*       n_lines,
+// unsigned int*       new_lines,
+// long long*          cons,
+long long*          tails,
+unsigned int*       votes,
+unsigned int*       lengths
+) {
+    const long long peak_start = peaks_start[row];
+    const long long peak_end = peaks_end[row];
+    const double row_dist = distances[act_row];
+    long long start = getCurThreadIdx() + peak_start;
+
+    for(long long idx = start; idx < peak_end; idx += getThreadNum()) {
+        const long long cur_col = cols[idx];
+        double min_dist = CUDART_INF;
+        int min_row = -1;
+
+        for(int i = 0; i < n_lines[0]; i++) {
+            const unsigned int line_gap = gaps[i];
+            if(line_gap > gap_thresh) {
+                continue;
+            }
+
+            const long long line_tail = tails[i];
+            const long long tail_col = cols[line_tail];
+            double dist = abs(cur_col - tail_col);
+            if(dist <= row_dist) {
+                min_dist = dist;
+                min_row = i;
+            }
+        }
+
+        if(min_row != -1) {
+            unsigned int vote = atomicAdd(votes + min_row, 1);
+            if(vote == 0) {
+                // cons[tails[min_row]] = idx;
+                tails[min_row] = idx;
+                gaps[min_row] = 0;
+                lengths[min_row] += 1;
+            }
+        } else {
+            unsigned int new_line_nxt = atomicAdd(n_lines, 1);
+            heads[new_line_nxt] = idx;
+            tails[new_line_nxt] = idx;
+            gaps[new_line_nxt] = 0;
+            lengths[new_line_nxt] = 1;
+        }
+    }
+}
+""", 'join_or_new_line')
+
+
+def _identify_ridge_lines2(matr, max_distances, gap_thresh):
+    """
+    Identify ridges in the 2-D matrix.
+
+    Expect that the width of the wavelet feature increases with increasing row
+    number.
+
+    Parameters
+    ----------
+    matr : 2-D ndarray
+        Matrix in which to identify ridge lines.
+    max_distances : 1-D sequence
+        At each row, a ridge line is only connected
+        if the relative max at row[n] is within
+        `max_distances`[n] from the relative max at row[n+1].
+    gap_thresh : int
+        If a relative maximum is not found within `max_distances`,
+        there will be a gap. A ridge line is discontinued if
+        there are more than `gap_thresh` points without connecting
+        a new relative maximum.
+
+    Returns
+    -------
+    ridge_lines : tuple
+        Tuple of 2 1-D sequences. `ridge_lines`[ii][0] are the rows of the
+        ii-th ridge-line, `ridge_lines`[ii][1] are the columns. Empty if none
+        found.  Each ridge-line will be sorted by row (increasing), but the
+        order of the ridge lines is not specified.
+
+    References
+    ----------
+    .. [1] Bioinformatics (2006) 22 (17): 2059-2065.
+       :doi:`10.1093/bioinformatics/btl355`
+
+    Examples
+    --------
+    >>> import cupy
+    >>> from cupyx.scipy.signal._peak_finding import _identify_ridge_lines
+    >>> rng = cupy.random.default_rng()
+    >>> data = rng.random((5,5))
+    >>> max_dist = 3
+    >>> max_distances = cupy.full(20, max_dist)
+    >>> ridge_lines = _identify_ridge_lines(data, max_distances, 1)
+
+    Notes
+    -----
+    This function is intended to be used in conjunction with `cwt`
+    as part of `find_peaks_cwt`.
+
+    """
+    if len(max_distances) < matr.shape[0]:
+        raise ValueError('Max_distances must have at least as many rows '
+                         'as matr')
+    all_max_cols = _boolrelextrema(matr, cupy.greater, axis=1, order=1)
+    peaks_per_row = all_max_cols.sum(-1)
+    peaks_end = cupy.cumsum(peaks_per_row)
+    peaks_start = peaks_end - peaks_per_row
+
+    rows, cols = cupy.nonzero(all_max_cols)
+    rows = rows.copy()
+    cols = cols.copy()
+
+    if rows.shape[0] == 0:
+        return (rows, cols, cupy.empty(0, dtype=cupy.int64),
+                cupy.empty(0, dtype=cupy.uint32))
+
+    unique_rows = cupy.unique(rows).tolist()
+    max_row = rows.max()
+
+    max_row_pos = cupy.nonzero(rows == max_row)[0]
+    heads = cupy.full(rows.shape[0], -1, dtype=cupy.int64)
+    heads[:max_row_pos.shape[0]] = max_row_pos
+
+    n_lines_cpu = max_row_pos.shape[0]
+    n_lines = cupy.asarray(max_row_pos.shape[0], dtype=cupy.uint32)
+    lengths = cupy.zeros(rows.shape[0], dtype=cupy.uint32)
+    lengths[:max_row_pos.shape[0]] = 1
+
+    # cons = cupy.full(rows.shape[0], -1, dtype=cupy.int64)
+    tails = cupy.full_like(lengths, -1, dtype=cupy.int64)
+    tails[:max_row_pos.shape[0]] = max_row_pos
+
+    votes = cupy.zeros(all_max_cols.shape[-1], dtype=cupy.uint32)
+    gaps = cupy.full_like(heads, np.inf, dtype=cupy.uint32)
+    gaps[:max_row_pos.shape[0]] = 0
+
+    prev_row = unique_rows[-1]
+    for row in range(len(unique_rows) - 2, -1, -1):
+        cur_row = unique_rows[row]
+        gaps[:n_lines_cpu] += prev_row - cur_row
+
+        join_or_new_kern((512,), (128,),
+                         (row, cur_row, max_distances, gap_thresh,
+                          peaks_start, peaks_end, cols, gaps, heads, n_lines,
+                          # cons,
+                          tails, votes, lengths))
+
+        n_lines_cpu = n_lines.get()
+        votes.fill(0)
+        prev_row = cur_row
+
+    lengths = lengths[:n_lines_cpu]
+    tails = tails[:n_lines_cpu]
+    breakpoint()
+    # lines_end = cupy.cumsum(lengths)
+    # lines_start = lines_end - lengths
+    return rows, cols, tails, lengths
 
 
 _filter_ridge_kernel = cupy.RawKernel(r"""
 extern "C" __global__ void filter_ridges(
         const int n_ridges, long long* ridge_rows, long long* ridge_cols,
-        long long* ridge_length, long long* ridge_offsets,
-        const double* __restrict__ noises,
+        long long* ridge_lengths, const double* __restrict__ noises,
         const double* __restrict__ cwt, const long long cwt_stride,
         const double min_snr, const long long min_length) {
 
@@ -2071,7 +2263,7 @@ def _filter_ridge_lines(cwt, ridge_lines, window_size=None, min_length=None,
     #     # if snr < min_snr:
     #     #     return False
     #     # return True
-
+    return []
     # return list(filter(filt_func, ridge_lines))
 
 
@@ -2180,7 +2372,7 @@ def find_peaks_cwt(vector, widths, wavelet=None, max_distances=None,
 
     cwt_dat = _cwt(vector, wavelet, widths)
     cwt_dat = cupy.where(abs(cwt_dat) < 1e-8, 0.0, cwt_dat)
-    ridge_lines = _identify_ridge_lines(cwt_dat, max_distances, gap_thresh)
+    ridge_lines = _identify_ridge_lines2(cwt_dat, max_distances, gap_thresh)
     filtered = _filter_ridge_lines(cwt_dat, ridge_lines, min_length=min_length,
                                    window_size=window_size, min_snr=min_snr,
                                    noise_perc=noise_perc)
