@@ -249,6 +249,7 @@ Peak finding
    argrelmax
    argrelextrema
    find_peaks
+   find_peaks_cwt
    peak_prominences
    peak_widths
 
