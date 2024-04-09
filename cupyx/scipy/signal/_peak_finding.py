@@ -35,8 +35,6 @@ from cupyx.scipy.signal._wavelets import _cwt, _ricker
 from cupyx import jit
 
 import numpy as np
-import numpy.ma as ma
-from numpy.ma import masked, nomask
 
 
 def _get_typename(dtype):
@@ -1489,220 +1487,6 @@ def argrelextrema(data, comparator, axis=0, order=1, mode="clip"):
     return cupy.nonzero(results)
 
 
-_reduce_peaks = cupy.RawKernel(r"""
-#include <cupy/math_constants.h>
-#define MAX_SZ 1024
-
-extern "C" __global__ void reduce_peaks(
-        const int row_idx,
-        const int gap_thresh,
-        const double* __restrict__ max_distances,
-        const long long* __restrict__ rows,
-        const long long* __restrict__ peaks_cols,
-        const long long* __restrict__ peaks_per_row,
-        const long long* __restrict__ peak_row_offsets,
-        const long long* __restrict__ ridge_gap,
-        const int n_ridges,
-        long long* peak_ridges,
-        long long* ridges_col,
-        long long* valid_ridges,
-        long long* row_ridges) {
-
-    extern __shared__ int sh_ridge_gap[MAX_SZ];
-    extern __shared__ long long ridge_lines[MAX_SZ];
-    extern __shared__ long long ridge_line_cols[MAX_SZ];
-
-    const int base_idx = blockDim.x * blockIdx.x + threadIdx.x;
-
-    const long long row = rows[row_idx];
-    const long long row_peaks = peaks_per_row[row_idx];
-    const long long row_peak_offset = peak_row_offsets[row_idx];
-    const long long idx = base_idx + row_peak_offset;
-
-    const int ridge_partitions = (n_ridges + blockDim.x - 1) / blockDim.x;
-
-    double dist = max_distances[row] + 1e-6;
-    const long long col = peaks_cols[idx];
-    long long chosen_ridge = -1;
-
-    for(int i = 0; i < ridge_partitions; i++) {
-        int ridge_sz = blockDim.x;
-        if(i == ridge_partitions - 1 && n_ridges % blockDim.x > 0) {
-            ridge_sz = n_ridges % blockDim.x;
-        }
-
-        if(threadIdx.x < ridge_sz) {
-            const int ridge_idx = blockDim.x * i + threadIdx.x;
-            ridge_lines[threadIdx.x] = valid_ridges[ridge_idx];
-            ridge_line_cols[threadIdx.x] = ridges_col[ridge_idx];
-            sh_ridge_gap[threadIdx.x] = ridge_gap[ridge_idx];
-        }
-
-        __syncthreads();
-
-        if(base_idx < row_peaks) {
-            for(int j = 0; j < ridge_sz; j++) {
-                const long long gap = sh_ridge_gap[j];
-                if(gap <= gap_thresh) {
-                    const long long other_col = ridge_line_cols[j];
-                    double diff = abs(col - other_col);
-                    if(diff <= max_distances[row]) {
-                        if(diff < dist) {
-                            chosen_ridge = ridge_lines[j];
-                            dist = diff;
-                        }
-                    }
-                }
-            }
-        }
-
-        __syncthreads();
-    }
-
-    if(base_idx < row_peaks) {
-        if(chosen_ridge != -1) {
-            peak_ridges[idx] = chosen_ridge;
-            row_ridges[base_idx] = chosen_ridge;
-        } else {
-            row_ridges[base_idx] = idx;
-        }
-    }
-}
-""", 'reduce_peaks')
-
-
-def _identify_ridge_lines(matr, max_distances, gap_thresh):
-    """
-    Identify ridges in the 2-D matrix.
-
-    Expect that the width of the wavelet feature increases with increasing row
-    number.
-
-    Parameters
-    ----------
-    matr : 2-D ndarray
-        Matrix in which to identify ridge lines.
-    max_distances : 1-D sequence
-        At each row, a ridge line is only connected
-        if the relative max at row[n] is within
-        `max_distances`[n] from the relative max at row[n+1].
-    gap_thresh : int
-        If a relative maximum is not found within `max_distances`,
-        there will be a gap. A ridge line is discontinued if
-        there are more than `gap_thresh` points without connecting
-        a new relative maximum.
-
-    Returns
-    -------
-    ridge_lines : tuple
-        Tuple of 2 1-D sequences. `ridge_lines`[ii][0] are the rows of the
-        ii-th ridge-line, `ridge_lines`[ii][1] are the columns. Empty if none
-        found.  Each ridge-line will be sorted by row (increasing), but the
-        order of the ridge lines is not specified.
-
-    References
-    ----------
-    .. [1] Bioinformatics (2006) 22 (17): 2059-2065.
-       :doi:`10.1093/bioinformatics/btl355`
-
-    Examples
-    --------
-    >>> import cupy
-    >>> from cupyx.scipy.signal._peak_finding import _identify_ridge_lines
-    >>> rng = cupy.random.default_rng()
-    >>> data = rng.random((5,5))
-    >>> max_dist = 3
-    >>> max_distances = cupy.full(20, max_dist)
-    >>> ridge_lines = _identify_ridge_lines(data, max_distances, 1)
-
-    Notes
-    -----
-    This function is intended to be used in conjunction with `cwt`
-    as part of `find_peaks_cwt`.
-
-    """
-    if len(max_distances) < matr.shape[0]:
-        raise ValueError('Max_distances must have at least as many rows '
-                         'as matr')
-
-    all_max_cols = _boolrelextrema(matr, cupy.greater, axis=1, order=1)
-
-    # Highest row for which there are any relative maxima
-    has_relmax = cupy.nonzero(all_max_cols.any(axis=1))[0]
-    if len(has_relmax) == 0:
-        return []
-
-    # Move points into CPU since building the lines there is faster than trying
-    # to define a GPU kernel without overhead costs (both in space and time)
-    all_max_cols = all_max_cols.get()
-    max_distances = max_distances.get()
-    start_row = has_relmax[-1].get()
-
-    # Each ridge line is a 3-tuple:
-    # rows, cols, Gap number
-    ridge_lines = [[[start_row],
-                   [col],
-                   0] for col in np.nonzero(all_max_cols[start_row])[0]]
-    final_lines = []
-    rows = np.arange(start_row - 1, -1, -1)
-    cols = np.arange(0, matr.shape[1])
-    for row in rows:
-        this_max_cols = cols[all_max_cols[row]]
-
-        # Increment gap number of each line,
-        # set it to zero later if appropriate
-        for line in ridge_lines:
-            line[2] += 1
-
-        # XXX These should always be all_max_cols[row]
-        # But the order might be different. Might be an efficiency gain
-        # to make sure the order is the same and avoid this iteration
-        prev_ridge_cols = np.array([line[1][-1] for line in ridge_lines])
-        # Look through every relative maximum found at current row
-        # Attempt to connect them with existing ridge lines.
-        for ind, col in enumerate(this_max_cols):
-            # If there is a previous ridge line within
-            # the max_distance to connect to, do so.
-            # Otherwise start a new one.
-            line = None
-            if len(prev_ridge_cols) > 0:
-                diffs = np.abs(col - prev_ridge_cols)
-                closest = np.argmin(diffs)
-                if diffs[closest] <= max_distances[row]:
-                    line = ridge_lines[closest]
-            if line is not None:
-                # Found a point close enough, extend current ridge line
-                line[1].append(col)
-                line[0].append(row)
-                line[2] = 0
-            else:
-                new_line = [[row],
-                            [col],
-                            0]
-                ridge_lines.append(new_line)
-
-        # Remove the ridge lines with gap_number too high
-        # XXX Modifying a list while iterating over it.
-        # Should be safe, since we iterate backwards, but
-        # still tacky.
-        for ind in range(len(ridge_lines) - 1, -1, -1):
-            line = ridge_lines[ind]
-            if line[2] > gap_thresh:
-                final_lines.append(line)
-                del ridge_lines[ind]
-
-    out_lines = []
-    for line in (final_lines + ridge_lines):
-        sortargs = np.array(np.argsort(line[0]))
-        rows, cols = np.zeros_like(sortargs), np.zeros_like(sortargs)
-        rows[sortargs] = line[0]
-        cols[sortargs] = line[1]
-        out_lines.append([rows, cols])
-
-    breakpoint()
-    return out_lines
-
-
 join_or_new_kern = cupy.RawKernel(r"""
 #include <cupy/math_constants.h>
 
@@ -1730,13 +1514,9 @@ const double*       distances,
 const int           gap_thresh,
 const long long*    peaks_start,
 const long long*    peaks_end,
-// const long long*    n_peaks,
 const long long*    cols,
 unsigned int*       gaps,
-long long*          heads,
 unsigned int*       n_lines,
-// unsigned int*       new_lines,
-// long long*          cons,
 long long*          tails,
 unsigned int*       votes,
 unsigned int*       lengths
@@ -1769,14 +1549,12 @@ unsigned int*       lengths
         if(min_row != -1) {
             unsigned int vote = atomicAdd(votes + min_row, 1);
             if(vote == 0) {
-                // cons[tails[min_row]] = idx;
                 tails[min_row] = idx;
                 gaps[min_row] = 0;
                 lengths[min_row] += 1;
             }
         } else {
             unsigned int new_line_nxt = atomicAdd(n_lines, 1);
-            heads[new_line_nxt] = idx;
             tails[new_line_nxt] = idx;
             gaps[new_line_nxt] = 0;
             lengths[new_line_nxt] = 1;
@@ -1856,20 +1634,17 @@ def _identify_ridge_lines2(matr, max_distances, gap_thresh):
     max_row = rows.max()
 
     max_row_pos = cupy.nonzero(rows == max_row)[0]
-    heads = cupy.full(rows.shape[0], -1, dtype=cupy.int64)
-    heads[:max_row_pos.shape[0]] = max_row_pos
 
     n_lines_cpu = max_row_pos.shape[0]
     n_lines = cupy.asarray(max_row_pos.shape[0], dtype=cupy.uint32)
     lengths = cupy.zeros(rows.shape[0], dtype=cupy.uint32)
     lengths[:max_row_pos.shape[0]] = 1
 
-    # cons = cupy.full(rows.shape[0], -1, dtype=cupy.int64)
     tails = cupy.full_like(lengths, -1, dtype=cupy.int64)
     tails[:max_row_pos.shape[0]] = max_row_pos
 
     votes = cupy.zeros(all_max_cols.shape[-1], dtype=cupy.uint32)
-    gaps = cupy.full_like(heads, np.inf, dtype=cupy.uint32)
+    gaps = cupy.full_like(lengths, np.inf, dtype=cupy.uint32)
     gaps[:max_row_pos.shape[0]] = 0
 
     prev_row = unique_rows[-1]
@@ -1879,8 +1654,7 @@ def _identify_ridge_lines2(matr, max_distances, gap_thresh):
 
         join_or_new_kern((512,), (128,),
                          (row, cur_row, max_distances, gap_thresh,
-                          peaks_start, peaks_end, cols, gaps, heads, n_lines,
-                          # cons,
+                          peaks_start, peaks_end, cols, gaps, n_lines,
                           tails, votes, lengths))
 
         n_lines_cpu = n_lines.get()
@@ -1889,188 +1663,7 @@ def _identify_ridge_lines2(matr, max_distances, gap_thresh):
 
     lengths = lengths[:n_lines_cpu]
     tails = tails[:n_lines_cpu]
-    breakpoint()
-    # lines_end = cupy.cumsum(lengths)
-    # lines_start = lines_end - lengths
     return rows, cols, tails, lengths
-
-
-_filter_ridge_kernel = cupy.RawKernel(r"""
-extern "C" __global__ void filter_ridges(
-        const int n_ridges, long long* ridge_rows, long long* ridge_cols,
-        long long* ridge_lengths, const double* __restrict__ noises,
-        const double* __restrict__ cwt, const long long cwt_stride,
-        const double min_snr, const long long min_length) {
-
-    int idx = blockDim.x * blockIdx.x + threadIdx.x;
-    if(idx >= n_ridges) {
-        return;
-    }
-
-    long long ridge_len = ridge_length[idx];
-    long long offset = ridge_offsets[idx];
-    long long ridge_row = ridge_rows[offset];
-    long long ridge_col = ridge_cols[offset];
-
-    if(ridge_len < min_length) {
-        ridge_offsets[idx] = -1;
-        return;
-    }
-
-    double signal = cwt[ridge_row * cwt_stride + ridge_col];
-    double noise = noises[ridge_col];
-    double snr = abs(signal / noise);
-
-    if(snr < min_snr) {
-        ridge_offsets[idx] = -1;
-        return;
-    }
-}
-""", 'filter_ridges')
-
-
-def _mquantiles(a, prob=list([.25, .5, .75]), alphap=.4, betap=.4, axis=None,
-                limit=()):
-    """
-    Computes empirical quantiles for a data array.
-
-    Samples quantile are defined by ``Q(p) = (1-gamma)*x[j] + gamma*x[j+1]``,
-    where ``x[j]`` is the j-th order statistic, and gamma is a function of
-    ``j = floor(n*p + m)``, ``m = alphap + p*(1 - alphap - betap)`` and
-    ``g = n*p + m - j``.
-
-    Reinterpreting the above equations to compare to **R** lead to the
-    equation: ``p(k) = (k - alphap)/(n + 1 - alphap - betap)``
-
-    Typical values of (alphap,betap) are:
-        - (0,1)    : ``p(k) = k/n`` : linear interpolation of cdf
-          (**R** type 4)
-        - (.5,.5)  : ``p(k) = (k - 1/2.)/n`` : piecewise linear function
-          (**R** type 5)
-        - (0,0)    : ``p(k) = k/(n+1)`` :
-          (**R** type 6)
-        - (1,1)    : ``p(k) = (k-1)/(n-1)``: p(k) = mode[F(x[k])].
-          (**R** type 7, **R** default)
-        - (1/3,1/3): ``p(k) = (k-1/3)/(n+1/3)``: Then p(k) ~ median[F(x[k])].
-          The resulting quantile estimates are approximately median-unbiased
-          regardless of the distribution of x.
-          (**R** type 8)
-        - (3/8,3/8): ``p(k) = (k-3/8)/(n+1/4)``: Blom.
-          The resulting quantile estimates are approximately unbiased
-          if x is normally distributed
-          (**R** type 9)
-        - (.4,.4)  : approximately quantile unbiased (Cunnane)
-        - (.35,.35): APL, used with PWM
-
-    Parameters
-    ----------
-    a : array_like
-        Input data, as a sequence or array of dimension at most 2.
-    prob : array_like, optional
-        List of quantiles to compute.
-    alphap : float, optional
-        Plotting positions parameter, default is 0.4.
-    betap : float, optional
-        Plotting positions parameter, default is 0.4.
-    axis : int, optional
-        Axis along which to perform the trimming.
-        If None (default), the input array is first flattened.
-    limit : tuple, optional
-        Tuple of (lower, upper) values.
-        Values of `a` outside this open interval are ignored.
-
-    Returns
-    -------
-    mquantiles : MaskedArray
-        An array containing the calculated quantiles.
-
-    Notes
-    -----
-    This formulation is very similar to **R** except the calculation of
-    ``m`` from ``alphap`` and ``betap``, where in **R** ``m`` is defined
-    with each type.
-
-    References
-    ----------
-    .. [1] *R* statistical software: https://www.r-project.org/
-    .. [2] *R* ``quantile`` function:
-            http://stat.ethz.ch/R-manual/R-devel/library/stats/html/quantile.html
-
-    Examples
-    --------
-    >>> import numpy as np
-    >>> from scipy.stats.mstats import mquantiles
-    >>> a = np.array([6., 47., 49., 15., 42., 41., 7., 39., 43., 40., 36.])
-    >>> mquantiles(a)
-    array([ 19.2,  40. ,  42.8])
-
-    Using a 2D array, specifying axis and limit.
-
-    >>> data = np.array([[   6.,    7.,    1.],
-    ...                  [  47.,   15.,    2.],
-    ...                  [  49.,   36.,    3.],
-    ...                  [  15.,   39.,    4.],
-    ...                  [  42.,   40., -999.],
-    ...                  [  41.,   41., -999.],
-    ...                  [   7., -999., -999.],
-    ...                  [  39., -999., -999.],
-    ...                  [  43., -999., -999.],
-    ...                  [  40., -999., -999.],
-    ...                  [  36., -999., -999.]])
-    >>> print(mquantiles(data, axis=0, limit=(0, 50)))
-    [[19.2  14.6   1.45]
-     [40.   37.5   2.5 ]
-     [42.8  40.05  3.55]]
-
-    >>> data[:, 2] = -999.
-    >>> print(mquantiles(data, axis=0, limit=(0, 50)))
-    [[19.200000000000003 14.6 --]
-     [40.0 37.5 --]
-     [42.800000000000004 40.05 --]]
-
-    """
-    def _quantiles1D(data, m, p):
-        x = np.sort(data.compressed())
-        n = len(x)
-        if n == 0:
-            return ma.array(np.empty(len(p), dtype=float), mask=True)
-        elif n == 1:
-            return ma.array(np.resize(x, p.shape), mask=nomask)
-        aleph = (n*p + m)
-        k = np.floor(aleph.clip(1, n-1)).astype(int)
-        gamma = (aleph-k).clip(0, 1)
-        return (1.-gamma)*x[(k-1).tolist()] + gamma*x[k.tolist()]
-
-    data = ma.array(a, copy=False)
-    if data.ndim > 2:
-        raise TypeError("Array should be 2D at most !")
-
-    if limit:
-        condition = (limit[0] < data) & (data < limit[1])
-        data[~condition.filled(True)] = masked
-
-    p = np.array(prob, copy=False, ndmin=1)
-    m = alphap + p*(1.-alphap-betap)
-    # Computes quantiles along axis (or globally)
-    if (axis is None):
-        return _quantiles1D(data, m, p)
-
-    return ma.apply_along_axis(_quantiles1D, axis, data, m, p)
-
-
-def _scoreatpercentile(data, per, limit=(), alphap=.4, betap=.4):
-    """Calculate the score at the given 'per' percentile of the
-    sequence a.  For example, the score at per=50 is the median.
-
-    This function is a shortcut to mquantile
-
-    """
-    if (per < 0) or (per > 100.):
-        raise ValueError("The percentile should be between 0. and 100. !"
-                         " (got %s)" % per)
-
-    return _mquantiles(data, prob=[per/100.], alphap=alphap, betap=betap,
-                       limit=limit, axis=0).squeeze()
 
 
 _NOISE_MODULE_SRC = r"""
@@ -2203,68 +1796,36 @@ def _filter_ridge_lines(cwt, ridge_lines, window_size=None, min_length=None,
     m = alphap + p * (1.0 - alphap - betap)
     n_points = row_one.shape[0]
 
-    win_half_size = window_size // 2
-    odd = window_size % 2
-
     idx = cupy.arange(num_points)
-    left_pos = cupy.maximum(idx - win_half_size, 0)
-    right_pos = cupy.minimum(idx + win_half_size + odd, n_points)
+    left_pos = cupy.maximum(idx - hf_window, 0)
+    right_pos = cupy.minimum(idx + hf_window + odd, n_points)
     n = right_pos - left_pos
 
     aleph = n * p + m
     k = cupy.floor(cupy.clip(aleph, 1, n - 1)).astype(np.int32)
-    gamma = cupy.clip(aleph - k, 0, 1)  # NOQA
+    gamma = cupy.clip(aleph - k, 0, 1)
 
     win_sz = k + 1
     cum_win_sz = cupy.cumsum(win_sz)
     total_win = cum_win_sz[-1].item()
     win_start = cum_win_sz - win_sz
-    all_win = cupy.full(total_win, np.inf, dtype=cwt.dtype)  # NOQA
+    all_win = cupy.full(total_win, np.inf, dtype=cwt.dtype)
 
-    # noises2 = cupy.empty_like(row_one)
     _cwt_noise = _get_module_func(_noise_module, 'cwt_noise', noises)
 
     block_sz = 128
     n_blocks = (n_points + block_sz - 1) // block_sz
 
-    # breakpoint()
     _cwt_noise((block_sz,), (n_blocks,),
                (int(n_points), left_pos, right_pos, win_start,
                 k, gamma, row_one, all_win, noises))
 
     # Filter based on SNR
-    # row_one = cwt[0, :].get()
-    # for ind in range(row_one.shape[0]):
-    #     window_start = max(ind - hf_window, 0)
-    #     window_end = min(ind + hf_window + odd, num_points)
-    #     noises2[ind] = _scoreatpercentile(row_one[window_start:window_end],
-    #                                       per=noise_perc)
-
-    # ridge_rows, ridge_cols, ridge_len, ridge_offset = ridge_lines
-    # ridge_start = cupy.r_[0, ridge_offset[:-1]]
-
-    # block_sz = 128
-    # n_blocks = (ridge_len.shape[0] + block_sz - 1) // block_sz
-    # _filter_ridge_kernel((n_blocks,), (block_sz,),
-    #                      (ridge_len.shape[0], ridge_rows, ridge_cols,
-    #                       ridge_len, ridge_start, noises, cwt, cwt.shape[1],
-    #                       float(min_snr), int(min_length)))
-
-    # valid_offsets = ridge_start >= 0
-    # ridge_offset = ridge_offset[valid_offsets]
-    # ridge_len = ridge_len[valid_offsets]
-
-    # return ridge_cols[ridge_offset - ridge_len]
-    # def filt_func(line):
-    #     if len(line[0]) < min_length:
-    #         return False
-    #     snr = abs(cwt[line[0][0], line[1][0]] / noises[line[1][0]])
-    #     return cupy.where(snr < min_snr, False, True)
-    #     # if snr < min_snr:
-    #     #     return False
-    #     # return True
-    return []
-    # return list(filter(filt_func, ridge_lines))
+    rows, cols, tails, lengths = ridge_lines
+    valid_tails = tails[lengths >= min_length]
+    valid_cols = cols[valid_tails]
+    snr = cupy.abs(cwt[rows[valid_tails], valid_cols] / noises[valid_cols])
+    return valid_cols[snr >= min_snr]
 
 
 def find_peaks_cwt(vector, widths, wavelet=None, max_distances=None,
@@ -2376,7 +1937,6 @@ def find_peaks_cwt(vector, widths, wavelet=None, max_distances=None,
     filtered = _filter_ridge_lines(cwt_dat, ridge_lines, min_length=min_length,
                                    window_size=window_size, min_snr=min_snr,
                                    noise_perc=noise_perc)
-    max_locs = cupy.asarray([x[1][0] for x in filtered])
-    max_locs.sort()
+    filtered.sort()
 
-    return max_locs
+    return filtered
