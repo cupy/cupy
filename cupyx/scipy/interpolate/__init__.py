@@ -10,6 +10,8 @@ from cupyx.scipy.interpolate._cubic import (  # NOQA
 
 # Multivariate interpolation
 from cupyx.scipy.interpolate._interpnd import LinearNDInterpolator  # NOQA
+from cupyx.scipy.interpolate._interpnd import (  # NOQA
+    CloughTocher2DInterpolator)  # NOQA
 
 # 1-D Splines
 from cupyx.scipy.interpolate._bspline import BSpline, splantider, splder  # NOQA
