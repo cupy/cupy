@@ -191,7 +191,7 @@ def add_knot(x, t, k, residuals):
     (cf _split function)
 
     and https://github.com/scipy/scipy/blob/v1.11.4/scipy/interpolate/fitpack/fpknot.f
-    """
+    """  # NOQA
     fparts, ix = _split(x, t, k, residuals)
 
     # find the interval with max fparts and non-zero number of x values inside
