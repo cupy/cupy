@@ -1593,10 +1593,14 @@ def _identify_ridge_lines2(matr, max_distances, gap_thresh):
         found.  Each ridge-line will be sorted by row (increasing), but the
         order of the ridge lines is not specified.
 
+    Notes
+    -----
+    See _[1] for more information
+
     References
     ----------
     .. [1] Bioinformatics (2006) 22 (17): 2059-2065.
-       :doi:`10.1093/bioinformatics/btl355`
+       `10.1093/bioinformatics/btl355 <https://doi.org/10.1093/bioinformatics/btl355>`_.
 
     Examples
     --------
@@ -1613,7 +1617,7 @@ def _identify_ridge_lines2(matr, max_distances, gap_thresh):
     This function is intended to be used in conjunction with `cwt`
     as part of `find_peaks_cwt`.
 
-    """
+    """  # NOQA
     if len(max_distances) < matr.shape[0]:
         raise ValueError('Max_distances must have at least as many rows '
                          'as matr')
