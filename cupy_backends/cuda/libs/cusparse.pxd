@@ -145,9 +145,9 @@ cpdef enum:
     CUSPARSE_SPGEMM_DEFAULT = 0
     CUSPARSE_SPGEMM_CSR_ALG_DETERMINITIC = 1
     CUSPARSE_SPGEMM_CSR_ALG_NONDETERMINITIC = 2
-    CUSPARSE_SPGEMM_ALG1 = 3 # Default, fastest algorithm
-    CUSPARSE_SPGEMM_ALG2 = 4 # Balance between memory and time
-    CUSPARSE_SPGEMM_ALG3 = 5 # Low memory requirement, chunk computation
+    CUSPARSE_SPGEMM_ALG1 = 3  # Default, fastest algorithm
+    CUSPARSE_SPGEMM_ALG2 = 4  # Balance between memory and time
+    CUSPARSE_SPGEMM_ALG3 = 5  # Low memory requirement, chunk computation
 
     # cusparseSparseToDenseAlg_t
     CUSPARSE_SPARSETODENSE_ALG_DEFAULT = 0

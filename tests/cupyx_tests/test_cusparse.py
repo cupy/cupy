@@ -402,7 +402,7 @@ class TestSpgemm:
 
         c = cusparse.spgemm(a, b, alpha=self.alpha)
         if (self.shape[0] == 100000):
-            return # skip the comparison with scipy on large tests
+            return  # skip the comparison with scipy on large tests
         expect = self.alpha * self.a.dot(self.b)
         testing.assert_array_almost_equal(c.toarray(), expect.toarray())
 
