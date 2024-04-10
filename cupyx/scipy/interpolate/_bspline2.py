@@ -701,7 +701,7 @@ qr_reduce(double *a, int m, int nz, // a(m, nz), packed
     } // for(i = ...
 }
 
-'''
+'''  # NOQA
 
 
 TYPES = ['double']
