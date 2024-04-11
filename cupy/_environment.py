@@ -416,12 +416,20 @@ def _get_cutensor_from_wheel(version: str, cuda: str) -> List[str]:
         return []
 
     if sys.platform == 'linux':
-        shared_lib = cutensor_dist.locate_file(
-            f'cutensor/lib/libcutensor.so.{version.split(".")[0]}'
-        )
+        shared_libs = [
+            cutensor_dist.locate_file(
+                f'cutensor/lib/libcutensor.so.{version.split(".")[0]}'
+            ),
+            cutensor_dist.locate_file(
+                f'cutensor/lib/libcutensorMg.so.{version.split(".")[0]}'
+            ),
+        ]
     else:
-        shared_lib = cutensor_dist.locate_file('cutensor\\bin\\cutensor.dll')
-    return [str(shared_lib)]
+        shared_libs = [
+            cutensor_dist.locate_file('cutensor\\bin\\cutensor.dll'),
+            cutensor_dist.locate_file('cutensor\\bin\\cutensorMg.dll'),
+        ]
+    return [str(lib) for lib in shared_libs]
 
 
 def _preload_warning(lib, exc):
