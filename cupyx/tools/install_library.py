@@ -95,11 +95,14 @@ def __make_cutensor_record(
         'assets': {
             'Linux': {
                 'url': _make_cutensor_url('linux', filename_linux),
-                'filenames': ['libcutensor.so.{}'.format(public_version)],
+                'filenames': [
+                    'libcutensor.so.{}'.format(public_version),
+                    'libcutensorMg.so.{}'.format(public_version),
+                ],
             },
             'Windows': {
                 'url': _make_cutensor_url('windows', filename_windows),
-                'filenames': ['cutensor.dll'],
+                'filenames': ['cutensor.dll', 'cutensorMg.dll'],
             },
         }
     }
