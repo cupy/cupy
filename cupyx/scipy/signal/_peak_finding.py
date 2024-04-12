@@ -1593,10 +1593,6 @@ def _identify_ridge_lines2(matr, max_distances, gap_thresh):
         found.  Each ridge-line will be sorted by row (increasing), but the
         order of the ridge lines is not specified.
 
-    Notes
-    -----
-    See _[1] for more information
-
     References
     ----------
     .. [1] Bioinformatics (2006) 22 (17): 2059-2065.
@@ -1615,7 +1611,7 @@ def _identify_ridge_lines2(matr, max_distances, gap_thresh):
     Notes
     -----
     This function is intended to be used in conjunction with `cwt`
-    as part of `find_peaks_cwt`.
+    as part of `find_peaks_cwt`. See [1]_ for more information.
 
     """  # NOQA
     if len(max_distances) < matr.shape[0]:
@@ -1780,9 +1776,12 @@ def _filter_ridge_lines(cwt, ridge_lines, window_size=None, min_length=None,
     References
     ----------
     .. [1] Bioinformatics (2006) 22 (17): 2059-2065.
-       :doi:`10.1093/bioinformatics/btl355`
+       `10.1093/bioinformatics/btl355 <https://doi.org/10.1093/bioinformatics/btl355>`_.
 
-    """
+    Notes
+    -----
+    See [1]_ for more information.
+    """  # NOQA
     num_points = cwt.shape[1]
     if min_length is None:
         min_length = np.ceil(cwt.shape[0] / 4)
@@ -1908,12 +1907,12 @@ def find_peaks_cwt(vector, widths, wavelet=None, max_distances=None,
         at each row, connected across adjacent rows. See identify_ridge_lines
      3. Filter the ridge_lines using filter_ridge_lines.
 
-    .. versionadded:: 0.11.0
+    See [1]_ for more information.
 
     References
     ----------
     .. [1] Bioinformatics (2006) 22 (17): 2059-2065.
-       :doi:`10.1093/bioinformatics/btl355`
+       `10.1093/bioinformatics/btl355 <https://doi.org/10.1093/bioinformatics/btl355>`_.
 
     Examples
     --------
@@ -1925,7 +1924,7 @@ def find_peaks_cwt(vector, widths, wavelet=None, max_distances=None,
     >>> peakind, xs[peakind], data[peakind]
     ([32], array([ 1.6]), array([ 0.9995736]))
 
-    """
+    """  # NOQA
     widths = cupy.array(widths, copy=False, ndmin=1)
 
     if gap_thresh is None:
