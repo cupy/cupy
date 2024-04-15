@@ -110,9 +110,9 @@ def __make_cutensor_record(
 
 def _make_cutensor_record(cuda_version):
     return __make_cutensor_record(
-        cuda_version, '2.0.0',
-        'libcutensor-linux-x86_64-2.0.0.7-archive.tar.xz',
-        'libcutensor-windows-x86_64-2.0.0.7-archive.zip')
+        cuda_version, '2.0.1',
+        'libcutensor-linux-x86_64-2.0.1.2-archive.tar.xz',
+        'libcutensor-windows-x86_64-2.0.1.2-archive.zip')
 
 
 _cutensor_records.append(_make_cutensor_record('12.x'))
