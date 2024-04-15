@@ -35,6 +35,7 @@ class TestNearestNDInterpolator:
         return NI(xp.asarray([0.1, 0.9]),
                   xp.asarray([0.1, 0.9])).astype(xp.float64)
 
+    @testing.with_requires('scipy>=1.12')
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_nearest_query_options(self, xp, scp):
         nd = xp.array([[0, 0.5, 0, 1],
@@ -60,6 +61,7 @@ class TestNearestNDInterpolator:
         r3 = NI(query_points, distance_upper_bound=distance_upper_bound)
         return r1, r2, r3
 
+    @testing.with_requires('scipy>=1.12')
     @pytest.mark.parametrize('xp,scp', [(np, scipy), (cupy, cupyx.scipy)])
     def test_nearest_query_valid_inputs(self, xp, scp):
         nd = xp.array([[0, 1, 0, 1],
