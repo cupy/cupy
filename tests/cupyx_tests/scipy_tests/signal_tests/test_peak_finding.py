@@ -450,7 +450,7 @@ class TestArgrel:
         return rel_max_rows, rel_max_cols
 
 
-@testing.with_requires('scipy')
+@testing.with_requires('scipy>=1.9')
 class TestFindPeaksCwt:
 
     @testing.numpy_cupy_allclose(scipy_name="scp")
