@@ -32,8 +32,16 @@ through the courtesy of Nvidia cuSignal team.
    cupyx.signal.cfar_alpha
    cupyx.signal.ca_cfar
    cupyx.signal.freq_shift
+   
+Profiling utilities
+-------------------
 
+.. autosummary::
+   :toctree: generated/
 
+   cupyx.profiler.benchmark
+   cupyx.profiler.time_range
+   cupyx.profiler.profile
 
 DLPack utilities
 ----------------
@@ -50,17 +58,6 @@ For further detail see :ref:`dlpack`.
 
 .. _kernel_param_opt:
 
-Profiling utilities
--------------------
-
-.. module:: cupyx.profiler
-.. autosummary::
-   :toctree: generated/
-
-   cupyx.profiler.benchmark
-   cupyx.profiler.time_range
-   cupyx.profiler.profile
-
 Automatic Kernel Parameters Optimizations (:mod:`cupyx.optimizing`)
 -------------------------------------------------------------------
 
@@ -69,4 +66,3 @@ Automatic Kernel Parameters Optimizations (:mod:`cupyx.optimizing`)
    :toctree: generated/
 
    cupyx.optimizing.optimize
-
