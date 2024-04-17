@@ -163,6 +163,7 @@ def get_features(ctx: Context) -> Dict[str, Feature]:
         'name': 'cuda',
         'required': True,
         'file': _cuda_files + [
+            'cupy_backends.cuda.libs.curand_hip',
             'cupy_backends.cuda.libs.nvtx',
             'cupy_backends.cuda.libs.cusolver',
             'cupyx.cusolver',
