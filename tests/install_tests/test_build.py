@@ -18,7 +18,7 @@ class TestCheckVersion(unittest.TestCase):
         ctx = Context('.', _env={}, _argv=[])
         self.compiler = ccompiler.new_compiler()
         sysconfig.customize_compiler(self.compiler)
-        self.settings = build.get_compiler_setting(ctx, False)
+        self.settings = build.get_compiler_setting(ctx, test_hip)
 
     @pytest.mark.skipif(not test_hip, reason='For ROCm/HIP environment')
     def test_check_hip_version(self):
