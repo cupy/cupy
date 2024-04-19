@@ -1307,6 +1307,7 @@ class TestInterp1D:
         with assert_raises(ValueError):
             cupyx.scipy.interpolate.interp1d(x, y, kind='cubic')
 
+    @testing.with_requires("scipy>=1.10")
     @pytest.mark.parametrize(
         "kind", ("linear", "nearest", "nearest-up", "previous", "next")
     )
