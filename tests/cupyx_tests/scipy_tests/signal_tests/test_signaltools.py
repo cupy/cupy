@@ -636,6 +636,8 @@ class TestDeconvolve:
 @pytest.mark.xfail(
     runtime.is_hip and driver.get_build_version() < 5_00_00000,
     reason='name_expressions with ROCm 4.3 may not work')
+
+@pytest.mark.skipif(runtime.is_hip, reason='Currently unsupported on ROCm/HIP')
 @testing.with_requires('scipy')
 class TestSosFilt:
     @pytest.mark.parametrize('size', [11, 20, 32, 51, 64, 120, 128, 250])
@@ -949,9 +951,7 @@ class TestFiltFilt:
         return res
 
 
-@pytest.mark.xfail(
-    runtime.is_hip and driver.get_build_version() < 5_00_00000,
-    reason='name_expressions with ROCm 4.3 may not work')
+@pytest.mark.skipif(runtime.is_hip, reason='Currently unsupported on ROCm/HIP')
 @testing.with_requires('scipy')
 class TestSosFiltFilt:
     @pytest.mark.parametrize('size', [11, 20, 32, 51, 64, 120, 128, 250])

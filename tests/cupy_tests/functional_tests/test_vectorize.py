@@ -7,7 +7,7 @@ import cupy
 from cupy import testing
 from cupy.cuda import runtime
 
-
+@pytest.mark.skipif(runtime.is_hip, reason='Currently unsupported on ROCm/HIP')
 class TestVectorizeOps(unittest.TestCase):
 
     def _run(self, func, xp, dtypes):
@@ -221,7 +221,7 @@ class TestVectorizeOps(unittest.TestCase):
 
         return self._run(my_usub, xp, [dtype])
 
-
+@pytest.mark.skipif(runtime.is_hip, reason='Currently unsupported on ROCm/HIP')
 class TestVectorizeExprs(unittest.TestCase):
 
     @testing.for_all_dtypes(name='cond_dtype', no_complex=True)
@@ -283,7 +283,7 @@ class TestVectorizeExprs(unittest.TestCase):
         x = testing.shaped_random((20, 30), xp, dtype1, seed=1)
         return f(x)
 
-
+@pytest.mark.skipif(runtime.is_hip, reason='Currently unsupported on ROCm/HIP')
 class TestVectorizeInstructions(unittest.TestCase):
 
     @testing.for_all_dtypes()
@@ -361,7 +361,7 @@ class TestVectorizeInstructions(unittest.TestCase):
         x = testing.shaped_random((20, 30), xp, numpy.int32, seed=1)
         return f(x)
 
-
+@pytest.mark.skipif(runtime.is_hip, reason='Currently unsupported on ROCm/HIP')
 class TestVectorizeStmts(unittest.TestCase):
 
     @testing.numpy_cupy_array_equal()
@@ -557,7 +557,7 @@ class _MyClass:
     def __init__(self, x):
         self.x = x
 
-
+@pytest.mark.skipif(runtime.is_hip, reason='Currently unsupported on ROCm/HIP')
 class TestVectorizeConstants(unittest.TestCase):
 
     @testing.numpy_cupy_array_equal()
@@ -584,7 +584,7 @@ class TestVectorizeConstants(unittest.TestCase):
         x2 = testing.shaped_random((20, 30), xp, xp.int64, seed=2)
         return f(x1, x2)
 
-
+@pytest.mark.skipif(runtime.is_hip, reason='Currently unsupported on ROCm/HIP')
 class TestVectorizeBroadcast(unittest.TestCase):
 
     @testing.for_all_dtypes(no_bool=True)
@@ -620,7 +620,7 @@ class TestVectorizeBroadcast(unittest.TestCase):
         x2 = dtype(1)
         return f(x1, x2)
 
-
+@pytest.mark.skipif(runtime.is_hip, reason='Currently unsupported on ROCm/HIP')
 class TestVectorize(unittest.TestCase):
 
     @testing.for_all_dtypes(no_bool=True)

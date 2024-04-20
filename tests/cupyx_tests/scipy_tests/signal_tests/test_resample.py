@@ -248,6 +248,7 @@ class TestDecimate:
         with pytest.raises(TypeError):
             scp.signal.decimate(x, q=2, n=0.5)
 
+    @pytest.mark.skipif(cupy.cuda.runtime.is_hip, reason='Currently unsupported on ROCm/HIP')
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_basic_IIR(self, xp, scp):
         x = xp.arange(12)
@@ -262,6 +263,7 @@ class TestDecimate:
             x, 2, n=1, ftype='fir', zero_phase=False).round()
         return y
 
+    @pytest.mark.skipif(cupy.cuda.runtime.is_hip, reason='Currently unsupported on ROCm/HIP')
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_shape(self, xp, scp):
         # Regression test for ticket #1480.

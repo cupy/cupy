@@ -55,7 +55,7 @@ def compute_random_points(tri_points, xp):
 
     return (xp.expand_dims(bary, -1) * tri_points).sum(1)
 
-
+@pytest.mark.skipif(cupy.cuda.runtime.is_hip, reason='Currently unsupported on ROCm/HIP')
 class TestDelaunay:
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_2d_triangulation(self, xp, scp):

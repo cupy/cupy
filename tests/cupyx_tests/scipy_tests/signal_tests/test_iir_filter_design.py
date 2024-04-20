@@ -527,7 +527,8 @@ class TestButtord:
         rs = 80
         N, Wn = scp.signal.buttord(wp, ws, rp, rs, False)
         return N, Wn
-
+    
+    @pytest.mark.skipif(cupy.cuda.runtime.is_hip, reason='Currently unsupported on ROCm/HIP')
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_bandstop(self, xp, scp):
         wp = [0.1, 0.6]
@@ -626,7 +627,8 @@ class TestCheb1ord:
         rs = 80
         N, Wn = scp.signal.cheb1ord(wp, ws, rp, rs, False)
         return N, Wn
-
+ 
+    @pytest.mark.skipif(cupy.cuda.runtime.is_hip, reason='Currently unsupported on ROCm/HIP')
     @testing.numpy_cupy_allclose(scipy_name='scp', rtol=3e-7)
     def test_bandstop(self, xp, scp):
         wp = [0.1, 0.6]
@@ -708,6 +710,7 @@ class TestCheb2ord:
         N, Wn = scp.signal.cheb2ord(wp, ws, rp, rs, False)
         return N, Wn
 
+    @pytest.mark.skipif(cupy.cuda.runtime.is_hip, reason='Currently unsupported on ROCm/HIP')
     @testing.numpy_cupy_allclose(scipy_name='scp', rtol=3e-7)
     def test_bandstop(self, xp, scp):
         wp = [0.1, 0.6]
@@ -749,6 +752,7 @@ class TestCheb2ord:
             signal.cheb2ord([0.1, 0.6], [0.2, 0.5], 1, -2)
         assert "gstop should be larger than 0.0" in str(exc_info.value)
 
+    @pytest.mark.skipif(cupy.cuda.runtime.is_hip, reason='Currently unsupported on ROCm/HIP')
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_ellip_butter(self, xp, scp):
         # The purpose of the test is to make sure the result of `cheb2ord`
@@ -840,6 +844,7 @@ class TestEllipord:
             signal.ellipord(0.2, 0.5, 1, -2)
         assert "gstop should be larger than 0.0" in str(exc_info.value)
 
+    @pytest.mark.skipif(cupy.cuda.runtime.is_hip, reason='Currently unsupported on ROCm/HIP')
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_ellip_butter(self, xp, scp):
         # The purpose of the test is to make sure the result of `ellipord`

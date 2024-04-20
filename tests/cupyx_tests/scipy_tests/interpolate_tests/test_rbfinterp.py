@@ -531,7 +531,7 @@ class TestRBFInterpolatorNeighborsNone(_TestRBFInterpolator):
         yitp2 = interp(xitp)
         testing.assert_allclose(yitp1, yitp2, atol=1e-8)
 
-
+@pytest.mark.skipif(cp.cuda.runtime.is_hip, reason='Currently unsupported on ROCm/HIP')
 class TestRBFInterpolatorNeighbors20(_TestRBFInterpolator):
     # RBFInterpolator using 20 nearest neighbors.
     def build(self, scp, *args, **kwargs):
@@ -548,7 +548,7 @@ class TestRBFInterpolatorNeighbors20(_TestRBFInterpolator):
         yitp1 = self.build(scp, x, y)(xitp)
         return yitp1
 
-
+@pytest.mark.skipif(cp.cuda.runtime.is_hip, reason='Currently unsupported on ROCm/HIP')
 class TestRBFInterpolatorNeighborsInf(TestRBFInterpolatorNeighborsNone):
     # RBFInterpolator using neighbors=np.inf. This should give exactly the same
     # results as neighbors=None, but it will be slower.

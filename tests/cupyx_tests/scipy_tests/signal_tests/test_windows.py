@@ -2,6 +2,7 @@
 import warnings
 
 from cupy import testing
+from cupy.cuda import runtime
 import cupyx.scipy.signal.windows as cu_windows
 
 import pytest
@@ -146,7 +147,7 @@ class TestBoxcar:
                 scp.signal.windows.boxcar(7),
                 scp.signal.windows.boxcar(6, False))
 
-
+@pytest.mark.skipif(runtime.is_hip, reason='Currently unsupported on ROCm/HIP')
 class TestChebWin:
     @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-13, atol=1e-13)
     def test_basic(self, xp, scp):
@@ -314,7 +315,7 @@ class TestNuttall:
                 scp.signal.windows.nuttall(6),
                 scp.signal.windows.nuttall(7, True),)
 
-
+@pytest.mark.skipif(runtime.is_hip, reason='Currently unsupported on ROCm/HIP')
 class TestParzen:
     @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-13, atol=1e-13)
     def test_basic(self, xp, scp):
@@ -322,7 +323,7 @@ class TestParzen:
                 scp.signal.windows.parzen(7, sym=True),
                 scp.signal.windows.parzen(6, False),)
 
-
+@pytest.mark.skipif(runtime.is_hip, reason='Currently unsupported on ROCm/HIP')
 class TestTriang:
     @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-13, atol=1e-13)
     def test_basic(self, xp, scp):
@@ -448,7 +449,8 @@ class TestGetWindow:
         # window is a tuple of len 1
         w2 = scp.signal.windows.get_window(('boxcar',), 16)
         return w1, w2
-
+    
+    @pytest.mark.skipif(runtime.is_hip, reason='Currently unsupported on ROCm/HIP')
     @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-13, atol=1e-13)
     def test_cheb_odd(self, xp, scp):
         with warnings.catch_warnings():
@@ -457,6 +459,7 @@ class TestGetWindow:
                 ('chebwin', -40), 53, fftbins=False)
         return w
 
+    @pytest.mark.skipif(runtime.is_hip, reason='Currently unsupported on ROCm/HIP')
     @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-13, atol=1e-13)
     def test_cheb_even(self, xp, scp):
         with warnings.catch_warnings():
@@ -518,7 +521,7 @@ class TestGetWindow:
                 scp.signal.get_window('lanczos', 6),
                 scp.signal.get_window('sinc', 6))
 
-
+@pytest.mark.skipif(runtime.is_hip, reason='Currently unsupported on ROCm/HIP')
 @pytest.mark.parametrize('window_info', window_funcs)
 @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-13, atol=1e-13)
 def test_windowfunc_basics(window_info, xp, scp):

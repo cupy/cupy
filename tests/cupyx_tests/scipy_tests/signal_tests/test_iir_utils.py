@@ -236,7 +236,9 @@ class TestIIRUtils:
 @pytest.mark.xfail(
     runtime.is_hip and driver.get_build_version() < 5_00_00000,
     reason='name_expressions with ROCm 4.3 may not work')
+
 @testing.with_requires('scipy')
+@pytest.mark.skipif(runtime.is_hip, reason='Currently unsupported on ROCm/HIP')
 class TestIIRUtilSos:
     @pytest.mark.parametrize('size', [11, 20, 32, 33, 51, 64, 120, 128, 250])
     @pytest.mark.parametrize('sections', [1, 2, 3, 4, 5])

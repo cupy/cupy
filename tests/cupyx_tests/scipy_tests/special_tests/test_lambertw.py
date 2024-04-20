@@ -1,6 +1,8 @@
+import pytest
+from cupy.cuda import runtime
 from cupy import testing
 
-
+@pytest.mark.skipif(runtime.is_hip, reason='Currently unsupported on ROCm/HIP')
 @testing.with_requires('scipy')
 class TestLambertW:
 

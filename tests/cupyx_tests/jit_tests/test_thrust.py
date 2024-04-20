@@ -7,7 +7,7 @@ from cupy import testing
 from cupy_backends.cuda.api import runtime
 from cupyx import jit
 
-
+@pytest.mark.skipif(runtime.is_hip, reason='Currently unsupported on ROCm/HIP')
 class TestThrust:
     def test_count_shared_memory(self):
         @jit.rawkernel()

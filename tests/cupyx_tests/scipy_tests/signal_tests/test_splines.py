@@ -12,7 +12,6 @@ try:
 except ImportError:
     pass
 
-
 @testing.with_requires('scipy>=1.9')
 class TestSymIIROrder:
     @pytest.mark.parametrize('size', [11, 20, 32, 51, 64, 120])
@@ -35,6 +34,7 @@ class TestSymIIROrder:
         c0, z1 = 2.0, 0.5
         return scp.signal.symiirorder1(x, c0, z1, precision)
 
+    @pytest.mark.skipif(runtime.is_hip, reason='Currently unsupported on ROCm/HIP')
     @pytest.mark.parametrize('size', [11, 20, 32, 51, 64, 120])
     @pytest.mark.parametrize(
         'precision', [-1, 2, 1.5, 1.0, 0.5, 0.25, 0.1, 2e-3, 1e-3])

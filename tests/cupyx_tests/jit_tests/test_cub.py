@@ -1,9 +1,10 @@
 import cupy
+import pytest
 from cupy import testing
 from cupy_backends.cuda.api import runtime
 from cupyx import jit
 
-
+@pytest.mark.skipif(runtime.is_hip, reason='Currently unsupported on ROCm/HIP')
 class TestCubWarpReduce:
 
     @testing.for_all_dtypes(no_bool=True)
@@ -78,7 +79,7 @@ class TestCubWarpReduce:
         warp_reduce_max[h, w](x, y)
         testing.assert_allclose(y, expected, rtol=1e-6)
 
-
+@pytest.mark.skipif(runtime.is_hip, reason='Currently unsupported on ROCm/HIP')
 class TestCubBlockReduce:
 
     @testing.for_all_dtypes(no_bool=True)

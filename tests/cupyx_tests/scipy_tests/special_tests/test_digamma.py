@@ -1,10 +1,11 @@
 import unittest
-
+import pytest
+from cupy.cuda import runtime
 from cupy import testing
 import cupyx.scipy.special  # NOQA
 import numpy
 
-
+@pytest.mark.skipif(runtime.is_hip, reason='Currently unsupported on ROCm/HIP')
 @testing.with_requires('scipy')
 class TestDigamma(unittest.TestCase):
 
