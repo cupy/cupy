@@ -399,6 +399,8 @@ def make_extensions(ctx: Context, compiler, use_cython):
         if module['name'] == 'jitify':
             # this fixes RTD (no_cuda) builds...
             compile_args.append('--std=c++11')
+            # suppress printing Jitify logging to stdout
+            compile_args.append('-DJITIFY_PRINT_LOG=0')
             # Uncomment to diagnose Jitify issues.
             # compile_args.append('-DJITIFY_PRINT_ALL')
 

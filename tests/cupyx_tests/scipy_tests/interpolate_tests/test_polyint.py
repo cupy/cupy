@@ -394,15 +394,12 @@ class TestZeroSizeArrays:
     # The two methods below are _almost_ the same, but not quite:
     # one is for objects which have the `bc_type` argument (CubicSpline)
     # and the other one is for those which do not (Pchip, Akima1D)
-
-    # XXX: add CubicSpline to the test loop, when implemented
-
     @testing.numpy_cupy_allclose(scipy_name='scp')
     @pytest.mark.parametrize('y_shape', [(10, 0, 5), (10, 5, 0)])
     @pytest.mark.parametrize('bc_type',
                              ['not-a-knot', 'periodic', 'natural', 'clamped'])
     @pytest.mark.parametrize('axis', [0, 1, 2])
-    @pytest.mark.parametrize('klass', ['make_interp_spline', ])
+    @pytest.mark.parametrize('klass', ['make_interp_spline', 'CubicSpline'])
     def test_zero_size(self, xp, scp, klass, y_shape, bc_type, axis):
         if runtime.is_hip and bc_type == 'periodic':
             pytest.xfail('Not implemented on HIP/ROCm')
@@ -615,3 +612,134 @@ class TestAkima1D:
         y = testing.shaped_random((6, 1), xp)
         s = scp.interpolate.Akima1DInterpolator(x, y)
         return s(x), s(x, 1)
+
+
+@testing.with_requires("scipy")
+class TestCubicSpline:
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=2e-14)
+    @pytest.mark.parametrize('n', [2, 3, 8])    # 8 is x.size
+    @pytest.mark.parametrize('bc_type',
+                             ['not-a-knot', 'clamped', 'natural',
+                                 ((1, 0), (1, 0)), ((1, 0), (2, 1.0))]
+                             )
+    def test_general(self, xp, scp, n, bc_type):
+        x = xp.array([-1, 0, 0.5, 2, 4, 4.5, 5.5, 9])
+        y = xp.array([0, -0.5, 2, 3, 2.5, 1, 1, 0.5])
+
+        spl = scp.interpolate.CubicSpline(x[:n], y[:n])
+        q = xp.linspace(0, x[:n], 11)
+        return spl(q)
+
+    @pytest.mark.parametrize('n', [2, 3, 5])
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=2e-14)
+    def test_periodic(self, xp, scp, n):
+        x = xp.linspace(0, 2 * xp.pi, n)
+        y = xp.cos(x)
+        S = scp.interpolate.CubicSpline(x, y, bc_type='periodic')
+        q = xp.linspace(0, 2*xp.pi, 3*n)
+        return S(q)
+
+    @pytest.mark.parametrize('n', [3, 5])
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=2e-14)
+    def test_periodic_2(self, xp, scp, n):
+        x = xp.linspace(0, 2 * xp.pi, n)
+        y = xp.cos(x)
+        Y = xp.empty((2, n, 2))
+        Y[0, :, 0] = y
+        Y[0, :, 1] = y + 2
+        Y[1, :, 0] = y - 1
+        Y[1, :, 1] = y + 5
+        S = scp.interpolate.CubicSpline(x, Y, axis=1, bc_type='periodic')
+        q = xp.linspace(0, 2*xp.pi, 3*n)
+        return S(q)
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_periodic_eval(self, xp, scp):
+        x = xp.linspace(0, 2 * xp.pi, 10)
+        y = xp.cos(x)
+        S = scp.interpolate.CubicSpline(x, y, bc_type='periodic')
+        return S(1), S(1 + 2 * xp.pi)
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_second_derivative_continuity_gh_11758(self, xp, scp):
+        # gh-11758: C2 continuity fail
+        x = xp.array([0.9, 1.3, 1.9, 2.1, 2.6, 3.0, 3.9, 4.4, 4.7, 5.0, 6.0,
+                      7.0, 8.0, 9.2, 10.5, 11.3, 11.6, 12.0, 12.6, 13.0, 13.3])
+        y = xp.array([1.3, 1.5, 1.85, 2.1, 2.6, 2.7, 2.4, 2.15, 2.05, 2.1,
+                      2.25, 2.3, 2.25, 1.95, 1.4, 0.9, 0.7, 0.6, 0.5, 0.4,
+                      1.3])
+        S = scp.interpolate.CubicSpline(
+            x, y, bc_type='periodic', extrapolate='periodic')
+        q = xp.linspace(0.9, 13.3, 21)
+        return S(q)
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_three_points(self, xp, scp):
+        # gh-11758: Fails computing a_m2_m1
+        # In this case, s (first derivatives) could be found manually by
+        # solving system of 2 linear equations. Due to solution of this system,
+        # s[i] = (h1m2 + h2m1) / (h1 + h2), where
+        # h1 = x[1] - x[0], h2 = x[2] - x[1],
+        # m1 = (y[1] - y[0]) / h1, m2 = (y[2] - y[1]) / h2
+        x = xp.array([1.0, 2.75, 3.0])
+        y = xp.array([1.0, 15.0, 1.0])
+        S = scp.interpolate.CubicSpline(x, y, bc_type='periodic')
+        return S.derivative(1)(x)
+
+    @testing.with_requires("scipy >= 1.13")
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_periodic_three_points_multidim(self, xp, scp):
+        # make sure one multidimensional interpolator does the same as multiple
+        # one-dimensional interpolators
+        x = xp.array([0.0, 1.0, 3.0])
+        y = xp.array([[0.0, 1.0], [1.0, 0.0], [0.0, 1.0]])
+        S = scp.interpolate.CubicSpline(x, y, bc_type="periodic")
+        q = xp.linspace(0, 2, 5)
+        return S(q)
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_dtypes_1(self, xp, scp):
+        x = xp.array([0, 1, 2, 3], dtype=int)
+        y = xp.array([-5, 2, 3, 1], dtype=int)
+        S = scp.interpolate.CubicSpline(x, y)
+        q = xp.linspace(0, 3, 7)
+        return S(q)
+
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-15)
+    def test_dtypes_2(self, xp, scp):
+        x = xp.array([0, 1, 2, 3], dtype=int)
+        y = xp.array([-1+1j, 0.0, 1-1j, 0.5-1.5j])
+        S = scp.interpolate.CubicSpline(x, y)
+        q = xp.linspace(0, 3, 7)
+        return S(q)
+
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=2e-14)
+    def test_dtypes_3(self, xp, scp):
+        x = xp.array([0, 1, 2, 3], dtype=int)
+        S = scp.interpolate.CubicSpline(
+            x, x ** 3, bc_type=("natural", (1, 2j)))
+        q = xp.linspace(0, 3, 7)
+        return S(q)
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_dtypes_4(self, xp, scp):
+        x = xp.array([0, 1, 2, 3], dtype=int)
+        y = xp.array([-5, 2, 3, 1])
+        S = scp.interpolate.CubicSpline(
+            x, y, bc_type=[(1, 2 + 0.5j), (2, 0.5 - 1j)])
+        q = xp.linspace(0, 3, 11)
+        return S(q)
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_small_dx(self, xp, scp):
+        # make sure the sample is the same: generate random variates on CPU
+        import numpy as np
+        rng = np.random.RandomState(0)
+        x = np.sort(rng.uniform(size=100))
+        y = 1e4 + rng.uniform(size=100)
+
+        x = xp.asarray(x)
+        y = xp.asarray(y)
+        S = scp.interpolate.CubicSpline(x, y)
+        q = xp.linspace(0, 1, 201)
+        return S(q)

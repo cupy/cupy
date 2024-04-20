@@ -1,4 +1,5 @@
 import math
+import cmath
 
 import cupy
 from cupy.linalg import _util
@@ -90,9 +91,13 @@ def expm(a):
 
     n = a.shape[0]
 
+    # follow scipy.linalg.expm dtype handling
+    a_dtype = a.dtype if cupy.issubdtype(
+        a.dtype, cupy.inexact) else cupy.float64
+
     # try reducing the norm
     mu = cupy.diag(a).sum() / n
-    A = a - cupy.eye(n)*mu
+    A = a - cupy.eye(n, dtype=a_dtype)*mu
 
     # scale factor
     nrmA = cupy.linalg.norm(A, ord=1).item()
@@ -110,9 +115,10 @@ def expm(a):
     A4 = A2 @ A2
     A6 = A2 @ A4
 
-    E = cupy.eye(A.shape[0])
+    E = cupy.eye(A.shape[0], dtype=a_dtype)
+    bb = cupy.asarray(b, dtype=a_dtype)
 
-    u1, u2, v1, v2 = _expm_inner(E, A, A2, A4, A6, cupy.asarray(b))
+    u1, u2, v1, v2 = _expm_inner(E, A, A2, A4, A6, bb)
     u = A @ (A6 @ u1 + u2)
     v = A6 @ v1 + v2
 
@@ -124,7 +130,9 @@ def expm(a):
         x = x @ x
 
     # undo preprocessing
-    x *= math.exp(mu)
+    emu = cmath.exp(mu) if cupy.issubdtype(
+        mu.dtype, cupy.complexfloating) else math.exp(mu)
+    x *= emu
 
     return x
 

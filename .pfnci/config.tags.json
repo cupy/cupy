@@ -118,6 +118,32 @@
         "multi",
         "cuda122"
     ],
+    "cupy.linux.cuda123": [
+        "@push",
+        "full",
+        "mini",
+        "cuda123"
+    ],
+    "cupy.linux.cuda123.multi": [
+        "@push",
+        "full",
+        "mini",
+        "multi",
+        "cuda123"
+    ],
+    "cupy.linux.cuda124": [
+        "@push",
+        "full",
+        "mini",
+        "cuda124"
+    ],
+    "cupy.linux.cuda124.multi": [
+        "@push",
+        "full",
+        "mini",
+        "multi",
+        "cuda124"
+    ],
     "cupy.linux.cuda-slow": [
         "slow"
     ],
@@ -191,10 +217,29 @@
         "windows",
         "cuda122"
     ],
+    "cupy.win.cuda123": [
+        "@push",
+        "full",
+        "mini",
+        "windows",
+        "cuda123"
+    ],
+    "cupy.win.cuda124": [
+        "@push",
+        "full",
+        "mini",
+        "windows",
+        "cuda124"
+    ],
     "cupy.linux.cuda-rapids": [
         "@push",
         "full",
         "rapids"
+    ],
+    "cupy.linux.cuda-build": [
+        "@push",
+        "full",
+        "mini"
     ],
     "cupy.linux.array-api": [
         "array-api"

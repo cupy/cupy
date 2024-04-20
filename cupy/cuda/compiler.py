@@ -280,6 +280,12 @@ def compile_using_nvrtc(source, options=(), arch=None, filename='kern.cu',
     def _compile(
             source, options, cu_path, name_expressions, log_stream, jitify):
 
+        if not runtime.is_hip:
+            arch_opt, method = _get_arch_for_options_for_nvrtc(arch)
+            options += (arch_opt,)
+        else:
+            method = 'ptx'
+
         if jitify:
             options, headers, include_names = _jitify_prep(
                 source, options, cu_path)
@@ -290,12 +296,6 @@ def compile_using_nvrtc(source, options=(), arch=None, filename='kern.cu',
                 # Starting with CUDA 12.0, even without using jitify, some
                 # tests cause an error if the following option is not included.
                 options += ('--device-as-default-execution-space',)
-
-        if not runtime.is_hip:
-            arch_opt, method = _get_arch_for_options_for_nvrtc(arch)
-            options += (arch_opt,)
-        else:
-            method = 'ptx'
 
         prog = _NVRTCProgram(source, cu_path, headers, include_names,
                              name_expressions=name_expressions, method=method)

@@ -11,9 +11,11 @@ import json
 import os
 import re
 import tempfile
+import warnings
 
 from cupy._environment import get_cuda_path
 from cupy.cuda import cub
+from cupy import _util
 
 
 ###############################################################################
@@ -42,7 +44,7 @@ cdef extern from 'cupy_jitify.h' namespace "jitify::detail" nogil:
 # users.
 cdef extern from *:
     """
-    const int build_num = 2;
+    const int build_num = 3;
     """
     const int build_num
 
@@ -139,10 +141,10 @@ cdef str warmup_kernel = r"""cupy_jitify_exercise
 
 #include <cub/block/block_reduce.cuh>
 #include <cub/block/block_load.cuh>
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 700
+// not supported before CC 7.0
 #include <cuda/barrier>
-#include <cooperative_groups.h>
-#include <cooperative_groups/memcpy_async.h>
-
+#endif
 
 extern "C" __global__ void jitify_exercise() { }
 """
@@ -182,6 +184,12 @@ cdef inline void _init_cupy_headers_from_scratch() except*:
     cupy_headers[b"type_traits"] = b"#include <cupy/cuda_workaround.h>\n"
     # Same for tuple
     cupy_headers[b"tuple"] = b"#include <cupy/cuda_workaround.h>\n"
+
+    # Ensure users know this is normal and not hanging...
+    warnings.warn(
+        "Jitify is performing a one-time only warm-up to populate the "
+        "persistent cache, this may take a few seconds and will be improved "
+        "in a future release...", _util.PerformanceWarning)
 
     # Compile a dummy kernel to further populate the cache (with bundled
     # headers)
@@ -226,8 +234,11 @@ cpdef void _init_module() except*:
     # start time, for enabling CCCL + CuPy developers?
     global _jitify_cache_versions
     if _jitify_cache_versions is None:
+        # jitify version could be "<unknown>" and the angular brakets are not
+        # valid characters on Windows, so we need to strip them
+        _jitify_version = re.sub(r'<([^>]*)>', r'\1', get_build_version())
         _jitify_cache_versions = (
-            f"{get_build_version()}_{cub.get_build_version()}_"
+            f"{_jitify_version}_{cub.get_build_version()}_"
             f"{get_cuda_version()}_{build_num}_{cupy_cache_key.decode()}")
 
     _init_cupy_headers()

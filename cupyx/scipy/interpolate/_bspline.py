@@ -221,15 +221,16 @@ def _get_module_func(module, func_name, *template_args):
 def _get_dtype(dtype):
     """Return np.complex128 for complex dtypes, np.float64 otherwise."""
     if cupy.issubdtype(dtype, cupy.complexfloating):
-        return cupy.complex_
+        return cupy.complex128
     else:
-        return cupy.float_
+        return cupy.float64
 
 
 def _as_float_array(x, check_finite=False):
     """Convert the input into a C contiguous float array.
     NB: Upcasts half- and single-precision floats to double precision.
     """
+    x = cupy.asarray(x)
     x = cupy.ascontiguousarray(x)
     dtyp = _get_dtype(x.dtype)
     x = x.astype(dtyp, copy=False)

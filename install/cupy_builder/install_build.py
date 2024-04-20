@@ -533,7 +533,9 @@ def check_cub_version(compiler, settings):
         # could be in a git submodule?
         try:
             # CuPy's bundle
-            cupy_cub_include = _cub_path
+            cupy_cub_include = os.path.join(
+                cupy_builder.get_context().source_root,
+                "third_party/cccl")
             a = subprocess.run(' '.join(['git', 'describe', '--tags']),
                                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                shell=True, cwd=cupy_cub_include)
@@ -583,7 +585,9 @@ def check_jitify_version(compiler, settings):
     global _jitify_version
 
     try:
-        cupy_jitify_include = _jitify_path
+        cupy_jitify_include = os.path.join(
+            cupy_builder.get_context().source_root,
+            "third_party/jitify")
         # Unfortunately Jitify does not have any identifiable name (branch,
         # tag, etc), so we must use the commit here
         a = subprocess.run(' '.join(['git', 'rev-parse', '--short', 'HEAD']),

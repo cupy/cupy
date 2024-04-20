@@ -6,15 +6,20 @@ from cupy.cuda import device as _device
 
 cimport cython
 from libcpp cimport vector
-from libc.stdint cimport intptr_t, uint32_t, uint64_t
+from libc.stdint cimport intptr_t, uint32_t, uint64_t, int64_t
 from cupy._core._carray cimport shape_t
 from cupy._core.core cimport _ndarray_base
 from cupy._core cimport internal
 
+from cupy_backends.cuda.api.runtime cimport getDeviceCount
+from cupy_backends.cuda cimport stream as stream_module
+
 from cupy._core cimport core
 from cupy._core cimport _reduction
 from cupy.cuda cimport device
+from cupy.cuda.pinned_memory cimport alloc_pinned_memory, is_memory_pinned
 from cupy_backends.cuda.libs cimport cutensor
+from cupy.cuda import Device
 
 cdef dict _handles = {}
 cdef dict _tensor_descriptors = {}
@@ -26,11 +31,20 @@ cdef dict _elementwise_binary_operators = {}
 cdef dict _elementwise_trinary_operators = {}
 cdef dict _reduction_operators = {}
 cdef dict _contraction_operators = {}
+cdef dict _mg_handles = {}
+cdef dict _mg_tensor_descriptors = {}
+cdef dict _mg_copy_descriptors = {}
+cdef dict _mg_copy_plans = {}
+cdef dict _mg_contraction_descriptors = {}
+cdef dict _mg_contraction_finds = {}
+cdef dict _mg_contraction_plans = {}
 
 cdef dict _available_compute_capability = {
     'contraction': 60,
     'reduction': 60,
     'elementwise': 60,
+    'copyMg': 60,
+    'contractMg': 60,
 }
 
 
@@ -242,8 +256,9 @@ cpdef TensorDescriptor create_tensor_descriptor(_ndarray_base a):
         (TensorDescriptor): A instance of class TensorDescriptor.
     """
     handle = _get_handle()
-    key = (handle.ptr, a.dtype, tuple(a.shape), tuple(a.strides))
-    alignment_req = 256
+    alignment_req = a.itemsize
+    key = (handle.ptr, a.dtype, tuple(a.shape),
+           tuple(a.strides), alignment_req)
     if a.data.ptr & (alignment_req - 1) != 0:
         raise ValueError("Missaligned array")
     if key not in _tensor_descriptors:
@@ -479,9 +494,6 @@ def elementwise_binary(
     Examples:
         See examples/cutensor/elementwise_binary.py
     """
-    if not (A._c_contiguous and C._c_contiguous):
-        raise ValueError('The inputs should be contiguous arrays.')
-
     if out is None:
         out = core._ndarray_init(
             _cupy.ndarray, C._shape, dtype=C.dtype, obj=None)
@@ -489,8 +501,6 @@ def elementwise_binary(
         raise ValueError('dtype mismatch: {} != {}'.format(C.dtype, out.dtype))
     elif not internal.vector_equal(C._shape, out._shape):
         raise ValueError('shape mismatch: {} != {}'.format(C.shape, out.shape))
-    elif not out._c_contiguous:
-        raise ValueError('`out` should be a contiguous array.')
 
     desc_A = create_tensor_descriptor(A)
     desc_C = create_tensor_descriptor(C)
@@ -625,9 +635,6 @@ def elementwise_trinary(
     Examples:
         See examples/cutensor/elementwise_trinary.py
     """
-    if not (A._c_contiguous and B._c_contiguous and C._c_contiguous):
-        raise ValueError('The inputs should be contiguous arrays.')
-
     if out is None:
         out = core._ndarray_init(
             _cupy.ndarray, C._shape, dtype=C.dtype, obj=None)
@@ -635,8 +642,6 @@ def elementwise_trinary(
         raise ValueError('dtype mismatch: {} != {}'.format(C.dtype, out.dtype))
     elif not internal.vector_equal(C._shape, out._shape):
         raise ValueError('shape mismatch: {} != {}'.format(C.shape, out.shape))
-    elif not out._c_contiguous:
-        raise ValueError('`out` should be a contiguous array.')
 
     desc_A = create_tensor_descriptor(A)
     desc_B = create_tensor_descriptor(B)
@@ -762,10 +767,10 @@ def contraction(
         A (cupy.ndarray): Input tensor.
         mode_A (tuple of int/str or Mode): A mode for tensor A.
         B (cupy.ndarray): Input tensor.
-        mode_A (tuple of int/str or Mode): A mode for tensor B.
+        mode_B (tuple of int/str or Mode): A mode for tensor B.
         beta (scalar): Scaling factor for C.
         C (cupy.ndarray): Input/output tensor.
-        mode_A (tuple of int/str or Mode): A mode for tensor C.
+        mode_C (tuple of int/str or Mode): A mode for tensor C.
         algo (cutensorAlgo_t): Allows users to select a specific algorithm.
             ALGO_DEFAULT lets the heuristic choose the algorithm.
             Any value >= 0 selects a specific GEMM-like algorithm and
@@ -783,9 +788,6 @@ def contraction(
     Examples:
         See examples/cutensor/contraction.py
     """
-    if not (A._c_contiguous and B._c_contiguous and C._c_contiguous):
-        raise ValueError('The inputs should be contiguous arrays.')
-
     desc_A = create_tensor_descriptor(A)
     desc_B = create_tensor_descriptor(B)
     desc_C = create_tensor_descriptor(C)
@@ -876,7 +878,7 @@ def reduction(
 
     This routine computes the tensor reduction:
 
-        C = alpha * reduce_op(op_A(A)) + beta * op_C(C))
+        C = alpha * reduce_op(op_A(A)) + beta * op_C(C)
 
     Args:
         alpha (scalar): Scaling factor for A.
@@ -897,9 +899,6 @@ def reduction(
     Examples:
         See examples/cutensor/reduction.py
     """
-    if not (A._c_contiguous and C._c_contiguous):
-        raise ValueError('The inputs should be contiguous arrays.')
-
     desc_A = create_tensor_descriptor(A)
     desc_C = create_tensor_descriptor(C)
     mode_A = _auto_create_mode(A, mode_A)
@@ -1081,3 +1080,805 @@ def _try_elementwise_binary_routine(
             out=out, op_AC=op)
     except ValueError:
         return None
+
+###############################################################################
+# MgHandle: This class encapsulates the opaque structure `cutensorMgHandle_t`
+# holding cuTENSORMG's library context.
+###############################################################################
+
+
+cdef class MgHandle:
+    cdef intptr_t _ptr
+    cdef object _devices
+
+    def __init__(self, devices):
+        num_devices = len(devices)
+        self._ptr = cutensor.createMg(num_devices, devices.ctypes.data)
+        self._devices = devices
+
+    def __dealloc__(self):
+        if self._ptr is not 0:
+            cutensor.destroyMg(self._ptr)
+        self._ptr = <intptr_t>NULL
+
+    @property
+    def ptr(self):
+        return self._ptr
+
+    @property
+    def num_devices(self):
+        return len(self._devices)
+
+    @property
+    def devices(self):
+        return self._devices
+
+
+###############################################################################
+# MgTensorDescriptor: This class encapsulates the opaque structure
+# `cutensorMgTensorDescriptor_t` representing a multi-GPU tensor descriptor.
+###############################################################################
+
+cdef class MgTensorDescriptor:
+    cdef intptr_t _ptr
+    cdef int _cutensor_dtype
+    # It seems that cuda_type is the same as cutensor_type,
+    # so just reuse the cutensor_type here
+
+    def __init__(self, intptr_t handle, uint32_t num_modes, intptr_t extent,
+                 intptr_t element_stride, intptr_t block_size,
+                 intptr_t block_stride, intptr_t device_count,
+                 uint32_t num_device, intptr_t devices,
+                 int cutensor_dtype):
+        self._ptr = cutensor.createMgTensorDescriptor(
+            handle, num_modes, extent, element_stride, block_size,
+            block_stride, device_count, num_device, devices, cutensor_dtype)
+        self._cutensor_dtype = cutensor_dtype
+
+    def __dealloc__(self):
+        if self._ptr is not 0:
+            cutensor.destroyMgTensorDescriptor(self._ptr)
+        self._ptr = <intptr_t>NULL
+
+    @property
+    def ptr(self):
+        return self._ptr
+
+    @property
+    def cutensor_dtype(self):
+        return self._cutensor_dtype
+
+
+###############################################################################
+# MgCopyDescriptor: This class encapsulates the opaque structure
+# `cutensorMgCopyDescriptor_t` representing a multi-GPU copy descriptor.
+###############################################################################
+
+cdef class MgCopyDescriptor:
+    cdef intptr_t _ptr
+
+    def __init__(self, intptr_t handle, intptr_t descDst,
+                 intptr_t modeDst, intptr_t descSrc,
+                 intptr_t modeSrc):
+        self._ptr = cutensor.createMgCopyDescriptor(
+            handle, descDst, modeDst,
+            descSrc, modeSrc)
+
+    def __dealloc__(self):
+        if self._ptr is not 0:
+            cutensor.destroyMgCopyDescriptor(self._ptr)
+        self._ptr = <intptr_t>NULL
+
+    @property
+    def ptr(self):
+        return self._ptr
+
+
+###############################################################################
+# MgCopyPlan: This class encapsulates the opaque structure
+# `cutensorMgCopyPlan_t` representing a plan for multi-GPU copy.
+###############################################################################
+
+cdef class MgCopyPlan:
+    cdef intptr_t _ptr
+
+    def __init__(self, intptr_t handle, intptr_t desc,
+                 intptr_t workspaceDeviceSize,
+                 uint64_t workspaceHostSize):
+        self._ptr = cutensor.createMgCopyPlan(
+            handle, desc, workspaceDeviceSize, workspaceHostSize)
+
+    def __dealloc__(self):
+        if self._ptr is not 0:
+            cutensor.destroyMgCopyPlan(self._ptr)
+        self._ptr = <intptr_t>NULL
+
+    @property
+    def ptr(self):
+        return self._ptr
+
+
+###############################################################################
+# MgContractionDescriptor: This class encapsulates the opaque structure
+# `cutensorMgContractionDescriptor_t` representing a plan for multi-GPU
+# contraction.
+###############################################################################
+
+cdef class MgContractionDescriptor:
+    cdef intptr_t _ptr
+
+    def __init__(self, intptr_t handle, intptr_t descA, intptr_t modeA,
+                 intptr_t descB, intptr_t modeB, intptr_t descC,
+                 intptr_t modeC, intptr_t descD, intptr_t modeD,
+                 int compute):
+        self._ptr = cutensor.createMgContractionDescriptor(
+            handle, descA, modeA, descB, modeB, descC, modeC, descD,
+            modeD, compute)
+
+    def __dealloc__(self):
+        if self._ptr is not 0:
+            cutensor.destroyMgContractionDescriptor(self._ptr)
+        self._ptr = <intptr_t>NULL
+
+    @property
+    def ptr(self):
+        return self._ptr
+
+
+###############################################################################
+# MgContractionFind: This class encapsulates the opaque structure
+# `cutensorMgContractionFind_t` representing a find object to set
+# preferences for algorithm selection.
+###############################################################################
+
+cdef class MgContractionFind:
+    cdef intptr_t _ptr
+
+    def __init__(self, intptr_t handle, int algo):
+        self._ptr = cutensor.createMgContractionFind(handle, algo)
+
+    def __dealloc__(self):
+        if self._ptr is not 0:
+            cutensor.destroyMgContractionFind(self._ptr)
+        self._ptr = <intptr_t>NULL
+
+    @property
+    def ptr(self):
+        return self._ptr
+
+
+###############################################################################
+# MgContractionPlan: This class encapsulates the opaque structure
+# `cutensorMgContractionPlan_t` representing a plan for multi-GPU contraction.
+###############################################################################
+
+cdef class MgContractionPlan:
+    cdef intptr_t _ptr
+
+    def __init__(self, intptr_t handle, intptr_t desc, intptr_t find,
+                 intptr_t workspaceDeviceSize,
+                 uint64_t workspaceHostSize):
+        self._ptr = cutensor.createMgContractionPlan(
+            handle, desc, find, workspaceDeviceSize, workspaceHostSize)
+
+    def __dealloc__(self):
+        if self._ptr is not 0:
+            cutensor.destroyMgContractionPlan(self._ptr)
+        self._ptr = <intptr_t>NULL
+
+    @property
+    def ptr(self):
+        return self._ptr
+
+cpdef MgHandle _get_mg_handle(devices=None):
+    if devices is None:
+        devices = _numpy.arange(getDeviceCount(), dtype=_numpy.int32)
+    else:
+        devices = _numpy.asarray(devices, dtype=_numpy.int32)
+    key = tuple(devices)
+    if key not in _mg_handles:
+        _mg_handles[key] = MgHandle(devices)
+    return _mg_handles[key]
+
+
+class ndarray_mg:
+    """A wrapper to catch all attributes for multi-GPU array.
+    """
+    def __init__(self, x, **kwgs):
+        """
+        Args:
+            x (numpy.ndarray or cupy.ndarray or list of cupy.ndarray): Arrays
+                to wrap. Non-distributed host(device) storage scheme is meaned
+                if x is a numpy(cupy) ndarray. Both pinned memory and pageable
+                host memory are allowed.
+            **kwargs: Arbitrary keyword arguments.
+                extent (Sequence): The size of the multi-GPU array. When x is
+                    a non-distributed array, the default value is `x.shape`.
+                element_stride (Sequence): The offset (in linear memory)
+                    between two adjacent elements in each mode. When x is
+                    a non-distributed array, the default value is
+                    `x.shape // x.itemsize`.
+                block_size (Sequence): The size of a block in each mode. If
+                    this parameter is not set, means an unblocked tensor
+                    (i.e., each mode only has a single block that is equal to
+                    its extent).
+                block_stride (Sequence): The offset (in linear memory) between
+                    two adjacent blocks in each mode. If this parameter is not
+                    set, means a dense block-interleaved layout.
+                device_count (Sequence): The number of devices that each mode
+                    is distributed across in a block-cyclic fashion.
+        """
+        _util.experimental("cupy.cutensor.ndarray_mg")
+        self.x = x
+        if isinstance(x, list):
+            self.dtype = x[0].dtype
+            self._extent = _numpy.asarray(kwgs['extent'], dtype=_numpy.int64)
+            self._element_stride = _numpy.asarray(kwgs['element_stride'],
+                                                  dtype=_numpy.int64)
+            self.num_devices = len(x)
+            self.data = _numpy.empty(self.num_devices, dtype=_numpy.int64)
+            self._devices = _numpy.empty(self.num_devices, dtype=_numpy.int64)
+            for i in range(self.num_devices):
+                self._devices[i] = x[i].device.id
+            for i in range(self.num_devices):
+                assert isinstance(x[i], _ndarray_base), "Distributed array can only on GPU"  # NOQA
+                self.data[i] = x[i].data.ptr
+        elif isinstance(x, _numpy.ndarray) or isinstance(x, _ndarray_base):
+            self.dtype = x.dtype
+            self.num_devices = 1
+            self._extent = _numpy.asarray(kwgs.get('extent', x.shape),
+                                          dtype=_numpy.int64)
+            if 'element_stride' in kwgs:
+                self._element_stride = _numpy.asarray(
+                    kwgs['element_stride'], dtype=_numpy.int64)
+            else:
+                self._element_stride = _numpy.asarray(
+                    x.strides, dtype=_numpy.int64) // x.itemsize
+            self.data = _numpy.empty(1, dtype=_numpy.uint64)
+            if isinstance(x, _ndarray_base):
+                self.data[0] = x.data.ptr
+                self._devices = _numpy.asarray([x.device.id],
+                                               dtype=_numpy.int32)
+            else:
+                self.data[0] = x.ctypes.data
+                if is_memory_pinned(x.ctypes.data):
+                    self._devices = _numpy.asarray(
+                        [cutensor.CUTENSOR_MG_DEVICE_HOST_PINNED],
+                        dtype=_numpy.int32)
+                else:
+                    self._devices = _numpy.asarray(
+                        [cutensor.CUTENSOR_MG_DEVICE_HOST],
+                        dtype=_numpy.int32)
+        else:
+            raise ValueError("Unexpected input type")
+        self.key = [self.dtype, tuple(self._extent),
+                    tuple(self._element_stride),
+                    tuple(self._devices)]
+        if 'block_size' in kwgs:
+            self._block_size = _numpy.asarray(kwgs['block_size'],
+                                              dtype=_numpy.int64)
+            self.key.append(tuple(self._block_size))
+        else:
+            self._block_size = None
+            self.key.append(None)
+        if 'block_stride' in kwgs:
+            self._block_stride = _numpy.asarray(kwgs['block_stride'],
+                                                dtype=_numpy.int64)
+            self.key.append(tuple(self._block_stride))
+        else:
+            self._block_stride = None
+            self.key.append(None)
+        if 'device_count' in kwgs:
+            self._device_count = _numpy.asarray(kwgs['device_count'],
+                                                dtype=_numpy.int32)
+            self.key.append(tuple(self._device_count))
+        else:
+            self._device_count = None
+            self.key.append(None)
+
+    @property
+    def extent(self):
+        return self._extent.ctypes.data
+
+    @property
+    def element_stride(self):
+        return self._element_stride.ctypes.data
+
+    @property
+    def block_size(self):
+        if self._block_size is None:
+            return 0
+        else:
+            return self._block_size.ctypes.data
+
+    @property
+    def block_stride(self):
+        if self._block_stride is None:
+            return 0
+        else:
+            return self._block_stride.ctypes.data
+
+    @property
+    def device_count(self):
+        if self._device_count is None:
+            return 0
+        else:
+            return self._device_count.ctypes.data
+
+    @property
+    def devices(self):
+        return self._devices.ctypes.data
+
+    @property
+    def ptr(self):
+        return self.data.ctypes.data
+
+    @property
+    def ndim(self):
+        return len(self._extent)
+
+
+def to_mg_ndarray(x, **kwgs):
+    if isinstance(x, ndarray_mg):
+        return x
+    else:
+        return ndarray_mg(x, **kwgs)
+
+
+cpdef MgTensorDescriptor create_mg_tensor_descriptor(a, devices=None):
+    """Create a multi-GPU tensor descriptor
+
+    Args:
+        a (cupy.ndarrayMg): The multi-GPU tensor for which a descritpor are
+            created.
+        devices: device list to determine the multi-GPU handle.
+
+    Returns:
+        (MgTensorDescriptor): A instance of class MgTensorDescriptor.
+    """
+    handle = _get_mg_handle(devices)
+    key = (handle.ptr, *a.key)
+    if key not in _mg_tensor_descriptors:
+        # It seems that cuda_type is the same as cutensor_type,
+        # so just reuse the cutensor_type here
+        cutensor_dtype = _get_cutensor_dtype(a.dtype)
+        _mg_tensor_descriptors[key] = MgTensorDescriptor(
+            handle.ptr, a.ndim, a.extent,
+            a.element_stride, a.block_size,
+            a.block_stride, a.device_count,
+            a.num_devices, a.devices, cutensor_dtype)
+    return _mg_tensor_descriptors[key]
+
+
+cpdef MgCopyDescriptor create_mg_copy_descriptor(
+        MgTensorDescriptor descDst, Mode modeDst, MgTensorDescriptor descSrc,
+        Mode modeSrc, devices=None):
+    """Create a multi-GPU copy descriptor.
+
+    Args:
+        descDst (MgTensorDescriptor):
+        Mode modeDst (Mode):
+        descSrc (MgTensorDescriptor):
+        Mode modeSrc (Mode):
+        devices (Sequence): device list to determine the multi-GPU handle.
+
+    Returns:
+        (MgCopyDescriptor): A instance of class MgCopyDescriptor.
+    """
+    handle = _get_mg_handle(devices)
+    key = (handle.ptr, descDst.ptr, modeDst.data, descSrc.ptr, modeSrc.data)
+    if key not in _mg_copy_descriptors:
+        _mg_copy_descriptors[key] = MgCopyDescriptor(
+            handle.ptr, descDst.ptr, modeDst.data,
+            descSrc.ptr, modeSrc.data)
+    return _mg_copy_descriptors[key]
+
+
+cpdef MgCopyPlan create_mg_copy_plan(
+        MgCopyDescriptor desc, workspaceDeviceSize,
+        uint64_t workspaceHostSize, devices=None):
+    """Create a copy plan
+
+    Args:
+        desc (MgCopyDescriptor):
+        workspaceDeviceSize (numpy.ndarray):
+        workspaceHostSize (int):
+
+    Returns:
+        (MgCopyPlan): A instance of class MgCopyPlan.
+    """
+    handle = _get_mg_handle(devices)
+    key = (handle.ptr, desc.ptr, tuple(workspaceDeviceSize), workspaceHostSize)
+    if key not in _mg_copy_plans:
+        _mg_copy_plans[key] = MgCopyPlan(
+            handle.ptr, desc.ptr, workspaceDeviceSize.ctypes.data,
+            workspaceHostSize)
+    return _mg_copy_plans[key]
+
+
+def copyMg(dst, mode_Dst, src, mode_Src, deviceBuf=None, hostBuf=None,
+           streams=None, devices=None):
+    """Copy according to the MgTensorDescriptors and modes.
+
+    Args:
+        dst (numpy.ndarray or cupy.ndarray or ndarray_mg):
+        mode_Dst (tuple of int/str or Mode):
+        src (numpy.ndarray or cupy.ndarray or ndarray_mg):
+        mode_Src (tuple of int/str or Mode):
+        deviceBuf (list of cupy.ndarray or None): `None` means allocated
+            when needed.
+        hostBuf (numpy.ndarray or None): Pinned memory. `None` means allocated
+            when needed.
+        streams (Sequence of Stream or None): The streams to perform the copy.
+        devices (Sequence): device list to determine the multi-GPU handle.
+
+    Returns:
+        (None):
+    """
+    handle = _get_mg_handle(devices)
+    dst = to_mg_ndarray(dst)
+    src = to_mg_ndarray(src)
+    descDst = create_mg_tensor_descriptor(dst, devices)
+    descSrc = create_mg_tensor_descriptor(src, devices)
+    mode_Dst = create_mode(*mode_Dst)
+    mode_Src = create_mode(*mode_Src)
+    desc = create_mg_copy_descriptor(descDst, mode_Dst, descSrc, mode_Src,
+                                     devices)
+    num_devices = handle.num_devices
+    deviceBufSize = _numpy.empty(num_devices, dtype=_numpy.int64)
+    if deviceBuf is None or hostBuf is None:
+        hostBufSize = cutensor.getMgCopyWorkspace(
+            handle.ptr, desc.ptr, deviceBufSize.ctypes.data
+        )
+    if hostBuf is None:
+        mem = alloc_pinned_memory(hostBufSize)
+        hostBuf = _numpy.ndarray((hostBufSize),
+                                 dtype=_numpy.int8, buffer=mem)
+    else:
+        assert is_memory_pinned(hostBuf.ctypes.data), "Host buffer must be pinned memory"  # NOQA
+        hostBufSize = hostBuf.nbytes
+    if deviceBuf is None:
+        deviceBuf = []
+        for idevice, s in zip(handle.devices, deviceBufSize):
+            with Device(idevice):
+                deviceBuf.append(core._ndarray_init(
+                    _cupy.ndarray, shape_t(1, s),
+                    dtype=_numpy.int8, obj=None))
+    else:
+        for i in range(num_devices):
+            assert deviceBuf[i].device.id == handle.devices[i], "Device buffer list must be on devices "+ str(handle.devices)   # NOQA
+            deviceBufSize[i] = deviceBuf[i].nbytes
+    hostBufptr = 0 if hostBufSize == 0 else hostBuf.ctypes.data
+    deviceBufptr = _numpy.zeros(num_devices, dtype=_numpy.uint64)
+    for i in range(num_devices):
+        if deviceBufSize[i] != 0:
+            deviceBufptr[i] = deviceBuf[i].data.ptr
+        else:
+            deviceBufptr[i] = 0
+    plan = create_mg_copy_plan(desc, deviceBufSize, hostBufSize)
+    for i in range(num_devices):
+        deviceBufptr[i] = deviceBuf[i].data.ptr
+    streamPtrs = _numpy.zeros(num_devices, dtype=_numpy.int64)
+    if streams is None:
+        for i in range(num_devices):
+            streamPtrs[i] = stream_module.get_stream_ptr(handle.devices[i])
+    else:
+        for i in range(num_devices):
+            streamPtrs[i] = streams[i].ptr
+    cutensor._copyMg(handle.ptr, plan.ptr, dst.ptr, src.ptr,
+                     deviceBufptr.ctypes.data, hostBufptr,
+                     streamPtrs.ctypes.data)
+
+
+def copyMgWorkspace(dst, mode_Dst, src, mode_Src, devices=None):
+    """Getting the workspace needed to perform the multi-GPU copy.
+
+    Args:
+        dst (numpy.ndarray or cupy.ndarray or ndarray_mg):
+        mode_Dst (tuple of int/str or Mode):
+        src (numpy.ndarray or cupy.ndarray or ndarray_mg):
+        mode_Src (tuple of int/str or Mode):
+        devices (Sequence): device list to determine the multi-GPU handle.
+
+    Returns:
+        hostBufSize (Int): Host buffer needed in bytes.
+        deviceBufSize (numpy.ndarray): Device buffer needed in bytes.
+    """
+    handle = _get_mg_handle(devices)
+    dst = to_mg_ndarray(dst)
+    src = to_mg_ndarray(src)
+    descDst = create_mg_tensor_descriptor(dst, devices)
+    descSrc = create_mg_tensor_descriptor(src, devices)
+    mode_Dst = create_mode(*mode_Dst)
+    mode_Src = create_mode(*mode_Src)
+    desc = create_mg_copy_descriptor(descDst, mode_Dst, descSrc, mode_Src,
+                                     devices)
+    num_devices = handle.num_devices
+
+    deviceBufSize = _numpy.empty(num_devices, dtype=_numpy.int64)
+    hostBufSize = cutensor.getMgCopyWorkspace(
+        handle.ptr, desc.ptr, deviceBufSize.ctypes.data
+    )
+    return hostBufSize, deviceBufSize
+
+
+cpdef MgContractionDescriptor create_mg_contraction_descriptor(
+        MgTensorDescriptor descA, Mode modeA,
+        MgTensorDescriptor descB, Mode modeB,
+        MgTensorDescriptor descC, Mode modeC,
+        MgTensorDescriptor descD, Mode modeD,
+        int compute_desc=0, devices=None):
+    """Create a multi-GPU contraction descriptor.
+
+    Args:
+        descA (MgTensorDescriptor):
+        ModeA (Mode):
+        descB (MgTensorDescriptor):
+        ModeB (Mode):
+        descC (MgTensorDescriptor):
+        ModeC (Mode):
+        descD (MgTensorDescriptor):
+        ModeD (Mode):
+        compute_desc (cutensorComputeDescriptor_t): Datatype used in
+            contraction. Default value is `0`, means determined by dtype
+            of tensors. Other choices are:
+                COMPUTE_DESC_16F = 1
+                COMPUTE_DESC_16BF = 1024
+                COMPUTE_DESC_TF32 = 4096
+                COMPUTE_DESC_3xTF32 = 8192
+                COMPUTE_DESC_32F = 4
+                COMPUTE_DESC_64F = 16
+        devices (Sequence): device list to determine the multi-GPU handle.
+
+    Returns:
+        (MgContractionDescriptor): A instance of class
+            MgContractionDescriptor.
+    """
+    compute_descs = _contraction_compute_descs
+    ct_dtype_A = descA.cutensor_dtype
+    ct_dtype_B = descB.cutensor_dtype
+    ct_dtype_C = descC.cutensor_dtype
+    if not (ct_dtype_A in compute_descs and
+            ct_dtype_B in compute_descs[ct_dtype_A] and
+            ct_dtype_C in compute_descs[ct_dtype_A][ct_dtype_B]):
+        raise ValueError(
+            'This cutensor dtype combination is not supported in contraction'
+            ' ({}, {}, {})'.format(ct_dtype_A, ct_dtype_B, ct_dtype_C))
+    if compute_desc == 0:
+        compute_desc = compute_descs[ct_dtype_A][ct_dtype_B][ct_dtype_C]
+    handle = _get_mg_handle(devices)
+    key = (handle.ptr,
+           descA.ptr, modeA.data,
+           descB.ptr, modeB.data,
+           descC.ptr, modeC.data,
+           descD.ptr, modeD.data,
+           compute_desc)
+    if key not in _mg_contraction_descriptors:
+        _mg_contraction_descriptors[key]=MgContractionDescriptor(
+            handle.ptr,
+            descA.ptr, modeA.data,
+            descB.ptr, modeB.data,
+            descC.ptr, modeC.data,
+            descD.ptr, modeD.data, compute_desc)
+    return _mg_contraction_descriptors[key]
+
+cpdef MgContractionFind create_mg_contraction_find(
+        int algo=cutensor.CUTENSORMG_ALGO_DEFAULT, devices=None):
+    """Create a multi-GPU contraction find descriptor.
+
+    Args:
+        algo (cutensorMgAlgo_t): Currently, only the default value
+            `CUTENSORMG_ALGO_DEFAULT` is allowed.
+        devices (Sequence): device list to determine the multi-GPU handle.
+
+    Returns:
+        (MgContractionFind): A instance of class MgContractionFind.
+    """
+    handle = _get_mg_handle(devices)
+    key = (handle.ptr, algo)
+    if key not in _mg_contraction_finds:
+        _mg_contraction_finds[key]=MgContractionFind(
+            handle.ptr, algo)
+    return _mg_contraction_finds[key]
+
+cpdef MgContractionPlan create_mg_contraction_plan(
+        MgContractionDescriptor desc, MgContractionFind find,
+        workspaceDeviceSize, int64_t workspaceHostSize, devices=None):
+    """Create a multi-GPU contraction find descriptor.
+
+    Args:
+        desc (MgContractionDescriptor):
+        find (MgContractionFind):
+        workspaceDeviceSize (numpy.ndarray):
+        workspaceHostSize (int):
+        devices (Sequence): device list to determine the multi-GPU handle.
+
+    Returns:
+        (MgContractionPlan): A instance of class MgContractionPlan.
+    """
+    handle = _get_mg_handle(devices)
+    key = (handle.ptr, desc.ptr, find.ptr, tuple(workspaceDeviceSize),
+           workspaceHostSize)
+    if key not in _mg_contraction_plans:
+        _mg_contraction_plans[key]=MgContractionPlan(
+            handle.ptr, desc.ptr, find.ptr, workspaceDeviceSize.ctypes.data,
+            workspaceHostSize)
+    return _mg_contraction_plans[key]
+
+
+def contractionMg(alpha, A, modeA, B, modeB, beta, C, modeC,
+                  D=None, modeD=None, int compute_desc=0,
+                  int ws_pref=cutensor.WORKSPACE_RECOMMENDED,
+                  deviceBuf=None, hostBuf=None, streams=None,
+                  devices=None):
+    """Multi-GPU contraction.
+
+    Args:
+        alpha (scalar): Scaling factor for A * B.
+        A (numpy.ndarray or cupy.ndarray or ndarray_mg): Input tensor.
+        modeA (tuple of int/str or Mode): A mode for tensor A.
+        B (numpy.ndarray or cupy.ndarray or ndarray_mg): Input tensor.
+        modeB (tuple of int/str or Mode): A mode for tensor B.
+        beta (scalar): Scaling factor for C.
+        C (numpy.ndarray or cupy.ndarray or ndarray_mg): Input tensor.
+        modeC (tuple of int/str or Mode): A mode for tensor C.
+        D (numpy.ndarray or cupy.ndarray or ndarray_mg or None): Output
+            tensor. Default value `None` means using C for output.
+        modeD (tuple of int/str or Mode or None): A mode for tensor D.
+            Default value `None` means the same as modeC.
+        compute_desc (cutensorComputeDescriptor_t): Datatype used in
+            contraction. Default value is `0`, means determined by dtype
+            of tensors. Other choices are:
+                COMPUTE_DESC_16F = 1
+                COMPUTE_DESC_16BF = 1024
+                COMPUTE_DESC_TF32 = 4096
+                COMPUTE_DESC_3xTF32 = 8192
+                COMPUTE_DESC_32F = 4
+                COMPUTE_DESC_64F = 16
+        ws_pref (cutensorWorksizePreference_t): User preference for the
+            workspace of cuTensor. Defaule value is
+            'cutensor.WORKSPACE_RECOMMENDED'.
+        deviceBuf (list of cupy.ndarray or None): `None` means allocated
+            when needed.
+        hostBuf (numpy.ndarray or None): Pinned memory. `None` means allocated
+            when needed.
+        streams (Sequence of Stream or None): The streams to perform the
+            contraction.
+        devices (Sequence): device list to determine the multi-GPU handle.
+
+    Returns:
+        (None):
+    """
+    handle = _get_mg_handle(devices)
+    A = to_mg_ndarray(A)
+    B = to_mg_ndarray(B)
+    C = to_mg_ndarray(C)
+    descA = create_mg_tensor_descriptor(A, devices)
+    descB = create_mg_tensor_descriptor(B, devices)
+    descC = create_mg_tensor_descriptor(C, devices)
+    modeA = create_mode(*modeA)
+    modeB = create_mode(*modeB)
+    modeC = create_mode(*modeC)
+    if D is None:
+        D = C
+        descD = descC
+        modeD = modeC
+    else:
+        D = to_mg_ndarray(D)
+        descD = create_mg_tensor_descriptor(D, devices)
+        modeD = create_mode(*modeD)
+    desc = create_mg_contraction_descriptor(
+        descA, modeA, descB, modeB, descC, modeC, descD, modeD,
+        compute_desc, devices)
+    find = create_mg_contraction_find(devices=devices)
+    num_devices = handle.num_devices
+    deviceBufSize = _numpy.zeros((num_devices,), dtype=_numpy.int64)
+    if deviceBuf is None or hostBuf is None:
+        hostBufSize = cutensor.getMgContractionWorkspace(
+            handle.ptr, desc.ptr, find.ptr, ws_pref,
+            deviceBufSize.ctypes.data)
+    if hostBuf is None:
+        mem = alloc_pinned_memory(hostBufSize)
+        hostBuf = _numpy.ndarray((hostBufSize), dtype=_numpy.int8, buffer=mem)
+    else:
+        assert is_memory_pinned(hostBuf.ctypes.data), "Host buffer must be pinned memory"  # NOQA
+        hostBufSize = hostBuf.nbytes
+    if deviceBuf is None:
+        deviceBuf = []
+        for idevice, s in zip(handle.devices, deviceBufSize):
+            with Device(idevice):
+                deviceBuf.append(core._ndarray_init(
+                    _cupy.ndarray, shape_t(1, s),
+                    dtype=_numpy.int8, obj=None))
+    else:
+        for i in range(num_devices):
+            assert deviceBuf[i].device.id == handle.devices[i], "Device buffer list must be on devices "+ str(handle.devices)   # NOQA
+            deviceBufSize[i] = deviceBuf[i].nbytes
+    hostBufptr = 0 if hostBufSize == 0 else hostBuf.ctypes.data
+    deviceBufptr = _numpy.zeros(num_devices, dtype=_numpy.uint64)
+    for i in range(num_devices):
+        if deviceBufSize[i] != 0:
+            deviceBufptr[i] = deviceBuf[i].data.ptr
+        else:
+            deviceBufptr[i] = 0
+    plan = create_mg_contraction_plan(
+        desc, find, deviceBufSize, hostBufSize, devices=devices)
+    streamPtrs = _numpy.zeros(num_devices, dtype=_numpy.int64)
+    if streams is None:
+        for i in range(num_devices):
+            streamPtrs[i] = stream_module.get_stream_ptr(handle.devices[i])
+    else:
+        for i in range(num_devices):
+            streamPtrs[i] = streams[i].ptr
+    scalar_dtype = _get_scalar_dtype(C.dtype)
+    cutensor._contractMg(
+        handle.ptr, plan.ptr, _create_scalar(alpha, scalar_dtype).ptr, A.ptr,
+        B.ptr, _create_scalar(beta, scalar_dtype).ptr, C.ptr, D.ptr,
+        deviceBufptr.ctypes.data, hostBufptr, streamPtrs.ctypes.data)
+
+
+def contractionMgWorkspace(
+        alpha, A, modeA, B, modeB, beta, C, modeC, D=None, modeD=None,
+        int compute_desc=0, int ws_pref=cutensor.WORKSPACE_RECOMMENDED,
+        devices=None):
+    """Getting the workspace needed to perform the multi-GPU contraction.
+
+    Args:
+        alpha (scalar): Scaling factor for A * B.
+        A (numpy.ndarray or cupy.ndarray or ndarray_mg): Input tensor.
+        modeA (tuple of int/str or Mode): A mode for tensor A.
+        B (numpy.ndarray or cupy.ndarray or ndarray_mg): Input tensor.
+        modeB (tuple of int/str or Mode): A mode for tensor B.
+        beta (scalar): Scaling factor for C.
+        C (numpy.ndarray or cupy.ndarray or ndarray_mg): Input tensor.
+        modeC (tuple of int/str or Mode): A mode for tensor C.
+        D (numpy.ndarray or cupy.ndarray or ndarray_mg or None): Output
+            tensor. Default value `None` means using C for output.
+        modeD (tuple of int/str or Mode or None): A mode for tensor D.
+            Default value `None` means the same as modeC.
+        compute_desc (cutensorComputeDescriptor_t): Datatype used in
+            contraction. Default value is `0`, means determined by dtype
+            of tensors. Other choices are:
+                COMPUTE_DESC_16F = 1
+                COMPUTE_DESC_16BF = 1024
+                COMPUTE_DESC_TF32 = 4096
+                COMPUTE_DESC_3xTF32 = 8192
+                COMPUTE_DESC_32F = 4
+                COMPUTE_DESC_64F = 16
+        ws_pref (cutensorWorksizePreference_t): User preference for the
+            workspace of cuTensor. Defaule value is
+            'cutensor.WORKSPACE_RECOMMENDED'.
+        devices (Sequence): device list to determine the multi-GPU handle.
+
+    Returns:
+        hostBufSize (Int): Host buffer needed in bytes.
+        deviceBufSize (numpy.ndarray): Device buffer needed in bytes.
+    """
+    handle = _get_mg_handle(devices)
+    A = to_mg_ndarray(A)
+    B = to_mg_ndarray(B)
+    C = to_mg_ndarray(C)
+    descA = create_mg_tensor_descriptor(A, devices)
+    descB = create_mg_tensor_descriptor(B, devices)
+    descC = create_mg_tensor_descriptor(C, devices)
+    modeA = create_mode(*modeA)
+    modeB = create_mode(*modeB)
+    modeC = create_mode(*modeC)
+    if D is None:
+        D = C
+        descD = descC
+        modeD = modeC
+    else:
+        D = to_mg_ndarray(D)
+        descD = create_mg_tensor_descriptor(D, devices)
+        modeD = create_mode(*modeD)
+    desc = create_mg_contraction_descriptor(
+        descA, modeA, descB, modeB, descC, modeC, descD, modeD,
+        compute_desc, devices)
+    find = create_mg_contraction_find(devices=devices)
+    num_devices = handle.num_devices
+    deviceBufSize = _numpy.zeros((num_devices,), dtype=_numpy.int64)
+    hostBufSize = cutensor.getMgContractionWorkspace(
+        handle.ptr, desc.ptr, find.ptr, ws_pref,
+        deviceBufSize.ctypes.data)
+    return hostBufSize, deviceBufSize

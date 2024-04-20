@@ -423,6 +423,21 @@ class _BaseStream:
         except RuntimeError:  # can be RuntimeError or CUDARuntimeError
             raise
 
+    @property
+    def is_non_blocking(self):
+        """True if the stream is non_blocking.
+        False indicates the default stream creation flag."""
+        cdef unsigned int flags
+        flags = runtime.streamGetFlags(self.ptr)
+        return (flags & runtime.streamNonBlocking) != 0
+
+    @property
+    def priority(self):
+        """Query the priority of a stream."""
+        cdef int priority
+        priority = runtime.streamGetPriority(self.ptr)
+        return priority
+
 
 class Stream(_BaseStream):
 
@@ -445,6 +460,8 @@ class Stream(_BaseStream):
             per-thread default stream object.
         non_blocking (bool): If ``True`` and both ``null`` and ``ptds`` are
             ``False``, the stream does not synchronize with the NULL stream.
+        priority (int): Priority of the stream. Lower numbers represent higher
+            priorities.
 
     Attributes:
         ~Stream.ptr (intptr_t): Raw stream handle.
@@ -457,7 +474,8 @@ class Stream(_BaseStream):
     null = None
     ptds = None
 
-    def __init__(self, null=False, non_blocking=False, ptds=False):
+    def __init__(self, null=False, non_blocking=False, ptds=False,
+                 priority=None):
         if null:
             # TODO(pentschev): move to streamLegacy. This wasn't possible
             # because of a NCCL bug that should be fixed in the version
@@ -470,11 +488,14 @@ class Stream(_BaseStream):
                                  'default stream (ptds)')
             ptr = runtime.streamPerThread
             device_id = -1
-        elif non_blocking:
-            ptr = runtime.streamCreateWithFlags(runtime.streamNonBlocking)
-            device_id = runtime.getDevice()
         else:
-            ptr = runtime.streamCreate()
+            if priority is None:
+                priority = 0  # default
+            if non_blocking:
+                flag = runtime.streamNonBlocking
+            else:
+                flag = runtime.streamDefault
+            ptr = runtime.streamCreateWithPriority(flag, priority)
             device_id = runtime.getDevice()
         super().__init__(ptr, device_id)
 
