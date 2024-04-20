@@ -18,7 +18,7 @@ except ImportError:
 
 
 if cupy.cuda.runtime.runtimeGetVersion() < 11000:
-    # Workarounds precison issues in CUDA 10.2 + float16
+    # Workarounds precision issues in CUDA 10.2 + float16
     default_atol = 5e-2
     default_rtol = 1e-1
 else:
