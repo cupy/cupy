@@ -562,7 +562,6 @@ class TestVectorizeConstants(unittest.TestCase):
 
     @testing.numpy_cupy_array_equal()
     def test_vectorize_const_value(self, xp):
-
         def my_func(x1, x2):
             return x1 - x2 + const
 
@@ -574,7 +573,6 @@ class TestVectorizeConstants(unittest.TestCase):
 
     @testing.numpy_cupy_array_equal()
     def test_vectorize_const_attr(self, xp):
-
         def my_func(x1, x2):
             return x1 - x2 + const.x
 
@@ -717,8 +715,32 @@ class TestVectorizeExclude(unittest.TestCase):
         def my_func(x1, x2, x3):
             return x1 + x2 + x3
 
-        f = xp.vectorize(my_func, excluded='x1')
+        f = xp.vectorize(my_func, excluded=['x1'])
         x1 = testing.shaped_random((1, 1), xp, dtype)[0][0]
         x2 = testing.shaped_random((30,), xp, dtype, seed=2)
         x3 = testing.shaped_random((20, 30), xp, dtype, seed=3)
+        return f(x1, x2, x3)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-5)
+    def test_excluded_shape(self, xp, dtype):
+        def my_func(x1, x2, x3):
+            return x1 + x2 + x2 * x1
+
+        f = xp.vectorize(my_func, excluded=['x2'])
+        x1 = testing.shaped_random((20, 30, 40), xp, dtype, seed=12)
+        x2 = testing.shaped_random((30, 40), xp, dtype, seed=2)
+        x3 = testing.shaped_random((20, 30, 40), xp, dtype, seed=5)
+        return f(x1, x2, x3)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-5)
+    def test_excluded_shape_flat(self, xp, dtype):
+        def my_func(x1: xp, x2, x3):
+            return x1 + x2 + x2 * x1
+
+        f = xp.vectorize(my_func, excluded=['x2'])
+        x1 = testing.shaped_random((20, 30, 40), xp, dtype, seed=12)
+        x2 = testing.shaped_random((40,), xp, dtype, seed=2)
+        x3 = testing.shaped_random((20, 30, 40), xp, dtype, seed=5)
         return f(x1, x2, x3)
