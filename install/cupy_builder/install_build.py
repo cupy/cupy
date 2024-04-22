@@ -45,11 +45,9 @@ def get_rocm_path():
     # Use a magic word to represent the cache not filled because None is a
     # valid return value.
     if _rocm_path != 'NOT_INITIALIZED':
-        print('NOT_INITIALIZED')
         return _rocm_path
 
     _rocm_path = os.environ.get('ROCM_HOME', '')
-    print(_rocm_path)
     return _rocm_path
 
 
@@ -131,10 +129,9 @@ def get_hipcc_path() -> List[str]:
 def get_compiler_setting(ctx: Context, use_hip):
     cuda_path = None
     rocm_path = None
-    print("use_hip?",use_hip)
+    
     if use_hip:
         rocm_path = get_rocm_path()
-        print("rocm_path:",rocm_path)
     else:
         cuda_path = get_cuda_path()
 
@@ -153,7 +150,6 @@ def get_compiler_setting(ctx: Context, use_hip):
             library_dirs.append(os.path.join(cuda_path, 'lib'))
 
     if rocm_path:
-        print("Im in rocm path")
         include_dirs.append(os.path.join(rocm_path, 'include'))
         include_dirs.append(os.path.join(rocm_path, 'include', 'hip'))
         include_dirs.append(os.path.join(rocm_path, 'include', 'rocrand'))

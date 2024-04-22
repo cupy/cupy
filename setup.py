@@ -18,7 +18,6 @@ if not cupy_builder.preflight_check(ctx):
     sys.exit(1)
 
 # Used for generating HIP equivalent files.
-# Necessary for CUDA/Stub builds.
 if get_rocm_version() > 0 or ctx.use_stub:
     # run hipify.
     from hipify_torch import hipify_python
