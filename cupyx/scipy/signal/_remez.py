@@ -22,7 +22,7 @@ extern "C" __global__ void ker_band_len(
 ''', 'ker_band_len')
 
 
-ker_t2_band_init = cupy.RawKernel(r'''
+ker_t12_band_init = cupy.RawKernel(r'''
 #define CUDART_PI  3.1415926535897931e+0
 
 __device__ int find_band(
@@ -46,9 +46,10 @@ __device__ int find_band(
 }
 
 
-extern "C" __global__ void ker_t2_band_init(
-    int n_band_items, int n_bands, const long long* band_map,
-    const double* freqs, const long long* fbands_start, double* fbands
+extern "C" __global__ void ker_t12_band_init(
+    int n_band_items, int n_bands, bool t2, const long long* band_map,
+    const long long* band_start, const double* freqs,
+    const long long* fbands_start, double* fbands, long long* freq_bands
 ) {
     int idx = blockDim.x * blockIdx.x + threadIdx.x;
     if(idx >= n_band_items) {
@@ -56,24 +57,69 @@ extern "C" __global__ void ker_t2_band_init(
     }
 
     int band = find_band(idx, n_bands, band_map);
-    idx += band;
 
-    if(idx == band_map[band]) {
-        fbands[idx] = CUDART_PI * freqs[2 * band];
+    if(idx == band_start[band]) {
+        fbands[idx + band] = CUDART_PI * freqs[2 * band];
+        freq_bands[idx + band] = band;
     }
 
-    if(freqs[2 * idx + 1] == 1.0) {
+    if(t2 && freqs[2 * idx + 1] == 1.0) {
         if(freqs[2 * idx] < 0.9999) {
-            fbands[idx + 1] = CUDART_PI * 0.9999;
+            fbands[idx + band + 1] = CUDART_PI * 0.9999;
         } else {
-            fbands[idx + 1] = CUDART_PI * (freqs[2 * idx] + 1) / 2;
+            fbands[idx + band + 1] = CUDART_PI * (freqs[2 * idx] + 1) / 2;
         }
     } else {
-        fbands[idx + 1] = CUDART_PI * freqs[2 * idx + 1];
+        fbands[idx + band + 1] = CUDART_PI * freqs[2 * idx + 1];
     }
 
+    freq_bands[idx + band + 1] = band;
+
 }
-''', 'ker_t2_band_init')
+''', 'ker_t12_band_init')
+
+
+ker_bandconv = cupy.RawKernel(r'''
+extern "C" __global__ void bandconv(
+    int n, bool inverse, const long long* freq_bands,
+    const long long* band_bounds, const double* in,
+    double* out, long long* mapping, bool* out_space
+) {
+    int idx = blockDim.x * blockIdx.x + threadIdx.x;
+    if(idx >= n) {
+        return;
+    }
+
+    int inv_pos = n - 1 - idx;
+    int band = freq_bands[inv_pos];
+    int band_bound = band_bounds[band];
+    int act_pos = band_bound - 1 - inv_pos;
+    int band_start = band == 0 ? 0 : band_bounds[band - 1];
+
+    if(inverse) {
+        out[idx] = acos(in[act_pos + band_start]);
+    } else {
+        out[idx] = cos(in[act_pos + band_start]);
+    }
+    mapping[idx] = act_pos + band_start;
+    out_space[idx] = !out_space[idx];
+}
+''', 'bandconv')
+
+
+ker_sort_bands = cupy.RawKernel(r'''
+extern "C" __global__ void sort_bands(
+    const long long* band_length, double* cbands
+) {
+    int band = blockIdx.x;
+    int pos = threadIdx.x;
+    int length = band_length[band];
+
+    if(pos >= length) {
+        return;
+    }
+}
+''')
 
 
 def parks_mclellan_bp(n, freqs, amplitudes, weights, eps=0.01, nmax=4):
@@ -98,15 +144,24 @@ def parks_mclellan_bp(n, freqs, amplitudes, weights, eps=0.01, nmax=4):
     nall_bands = band_length.sum().item()
 
     fbands = cupy.empty(nall_bands + band_start.shape[0], dtype=cupy.float64)
+    freq_bands = cupy.empty_like(fbands, dtype=cupy.int64)
     breakpoint()
-    if n % 2 == 0:
-        # Type I filter
-        pass
-    else:
-        # Type II filter
-        n_blocks = (nall_bands + block_sz - 1) // block_sz
-        ker_t2_band_init((n_blocks,), (block_sz,), (
-            nall_bands, nbands.item(), band_map, freqs, fbands_displ, fbands))
+
+    is_type_2 = n % 2 != 0
+    n_blocks = (nall_bands + block_sz - 1) // block_sz
+    ker_t12_band_init((n_blocks,), (block_sz,), (
+        nall_bands, nbands.item(), is_type_2, band_map, band_start,
+        freqs, fbands_displ, fbands, freq_bands))
+
+    fspace = cupy.zeros_like(fbands, dtype=cupy.bool_)
+    cmapping = cupy.empty_like(fbands, dtype=cupy.int64)
+    cbands = cupy.empty_like(fbands)
+    cspace = cupy.zeros_like(fspace)
+
+    n_blocks = (fbands.shape[0] + block_sz - 1) // block_sz
+    ker_bandconv((n_blocks,), (block_sz,), (
+        fbands.shape[0], False, freq_bands, fbands_displ, fbands,
+        cbands, cmapping, cspace))
 
 
 def parks_mclellan(n, freqs, amplitudes, weights,
