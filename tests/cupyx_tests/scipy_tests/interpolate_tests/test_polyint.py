@@ -852,6 +852,7 @@ class TestInterp1D:
         yp = scp.interpolate.interp1d(x, y, kind='linear')(x)
         return yp
 
+    @testing.with_requires("scipy>=1.10")
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_linear_dtypes_2(self, xp, scp):
         # regression test for gh-14531, where 1D linear interpolation has been
@@ -885,6 +886,7 @@ class TestInterp1D:
         f = scp.interpolate.interp1d(x10, y10, kind='cubic')
         return f(x10), f(xp.asarray([2.4, 5.6, 6.0]))
 
+    @testing.with_requires("scipy>=1.10")
     @pytest.mark.parametrize('kind',
                              ['nearest', 'nearest-up', 'previous', 'next']
                              )
@@ -901,6 +903,7 @@ class TestInterp1D:
         xe = xp.asarray([-1., 0, 9, 11])
         return f(1.2), f(1.5), f(xval), fe(xe)
 
+    @testing.with_requires("scipy>=1.10")
     @pytest.mark.parametrize('kind', ['previous', 'next'])
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_previous_2(self, xp, scp, kind):
@@ -923,6 +926,7 @@ class TestInterp1D:
                 interpolator2D(xval),
                 interpolator2DAxis0(xval2))
 
+    @testing.with_requires("scipy>=1.10")
     @pytest.mark.parametrize('kind', ['previous', 'next'])
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_previous_3(self, xp, scp, kind):
