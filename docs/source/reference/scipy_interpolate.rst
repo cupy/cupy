@@ -22,6 +22,7 @@ Univariate interpolation
    PPoly
    BPoly
    CubicSpline
+   interp1d
 
 1-D Splines
 -----------
