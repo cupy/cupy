@@ -22,6 +22,16 @@ Nearest-neighbor queries
 
    KDTree
 
+
+Delaunay triangulation
+----------------------
+
+.. autosummary::
+   :toctree: generated/
+
+   Delaunay
+
+
 Functions
 ---------
 
