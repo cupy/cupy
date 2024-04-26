@@ -21,7 +21,7 @@ or may be absent in `hipFFT`_/`rocFFT`_ targeting AMD GPUs.
 SciPy FFT backend
 -----------------
 
-Since SciPy v1.4 a backend mechanism is provided so that users can register different FFT backends and use SciPy's API to perform the actual transform
+Since SciPy v1.4, a backend mechanism is provided so that users can register different FFT backends and use SciPy's API to perform the actual transform
 with the target backend, such as CuPy's :mod:`cupyx.scipy.fft` module. For a one-time only usage, a context manager :func:`scipy.fft.set_backend` can be used:
 
 .. code-block:: python
