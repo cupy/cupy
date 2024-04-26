@@ -109,17 +109,44 @@ extern "C" __global__ void bandconv(
 
 ker_sort_bands = cupy.RawKernel(r'''
 extern "C" __global__ void sort_bands(
-    const long long* band_length, double* cbands
+    const long long* band_length, const long long* band_bounds, double* cbands
 ) {
-    int band = blockIdx.x;
+    int nband = blockIdx.x;
     int pos = threadIdx.x;
-    int length = band_length[band];
+
+    const long long length = band_length[nband];
+    const long long start = band_bounds[nband] - length;
 
     if(pos >= length) {
         return;
     }
+
+    double* band = cbands + start;
+    long long l = length % 2 == 0 ? length / 2 : (length / 2) + 1;
+
+    for(long long i = 0; i < l; i++) {
+        if(!(pos & 1) && pos < (length - 1)) {
+            if(band[pos] > band[pos + 1]) {
+                double temp = band[pos];
+                band[pos] = band[pos + 1];
+                band[pos + 1] = temp;
+            }
+        }
+
+        __syncthreads();
+
+        if((pos & 1) && pos < (length - 1)) {
+            if(band[pos] > band[pos + 1]) {
+                double temp = band[pos];
+                band[pos] = band[pos + 1];
+                band[pos + 1] = temp;
+            }
+        }
+
+        __syncthreads();
+    }
 }
-''')
+''', 'sort_bands')
 
 
 def parks_mclellan_bp(n, freqs, amplitudes, weights, eps=0.01, nmax=4):
@@ -162,6 +189,12 @@ def parks_mclellan_bp(n, freqs, amplitudes, weights, eps=0.01, nmax=4):
     ker_bandconv((n_blocks,), (block_sz,), (
         fbands.shape[0], False, freq_bands, fbands_displ, fbands,
         cbands, cmapping, cspace))
+
+    cbands_length = band_length[::-1].copy() + 1
+    cbands_displ = cupy.cumsum(cbands_length)
+
+    ker_sort_bands((cbands_length.shape[0],), (block_sz,), (
+        cbands_length, cbands_displ, cbands))
 
 
 def parks_mclellan(n, freqs, amplitudes, weights,
