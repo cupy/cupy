@@ -1,3 +1,4 @@
+import cupy
 import numpy
 import pytest
 
@@ -139,6 +140,58 @@ class TestBinaryOpeningAndClosing:
             pytest.skip('redundant')
         x = xp.asarray(self.data, dtype=self.x_dtype)
         return self._filter(xp, scp, x)
+
+
+@testing.parameterize(*(
+    testing.product({
+        'border_value': [0, 1],
+        'structure': [2, (3, 1), (1, 3), (3, 3)],
+        'data': [[[0, 1, 0, 0, 0, 0, 0, 0],
+                  [1, 1, 1, 0, 0, 0, 0, 0],
+                  [0, 1, 0, 0, 0, 1, 0, 0],
+                  [0, 0, 0, 1, 1, 1, 1, 0],
+                  [0, 0, 1, 1, 0, 1, 0, 0],
+                  [0, 1, 1, 1, 1, 1, 1, 0],
+                  [0, 0, 1, 0, 0, 1, 0, 0],
+                  [0, 0, 0, 0, 0, 0, 0, 0]],
+
+                 [[1, 1, 1, 0, 0, 0, 0, 0],
+                  [1, 1, 1, 0, 0, 0, 0, 0],
+                  [1, 1, 1, 1, 1, 1, 1, 0],
+                  [0, 0, 1, 1, 1, 1, 1, 0],
+                  [0, 1, 1, 1, 0, 1, 1, 0],
+                  [0, 1, 1, 1, 1, 1, 1, 0],
+                  [0, 1, 1, 1, 1, 1, 1, 0],
+                  [0, 0, 0, 0, 0, 0, 0, 0]],
+                 ],
+        'filter': ['binary_erosion', 'binary_dilation', 'binary_opening',
+                   'binary_closing']}
+    ))
+)
+@testing.with_requires('scipy>=1.1.0')
+class TestBinaryMorphologyTupleFootprint:
+    def _filter(self, x, structure):
+        filter = getattr(cupyx.scipy.ndimage, self.filter)
+        return filter(x, structure, iterations=1, output=None, origin=0,
+                      mask=None, border_value=self.border_value,
+                      brute_force=True)
+
+    def test_binary_opening_and_closing(self):
+        """Compare tuple-based footprint to a matching ndarray one.
+
+        SciPy doesn't support specifying the footprint as a tuple (the overhead
+        of small array allocation is much less on the CPU), so we compare
+        CuPy with tuple to CuPy with an equivalent ndarray instead.
+        """
+        x = cupy.asarray(self.data, dtype=bool)
+        if numpy.isscalar(self.structure):
+            ndarray_structure = cupy.ones((self.structure, ) * x.ndim,
+                                          dtype=bool)
+        else:
+            ndarray_structure = cupy.ones(self.structure, dtype=bool)
+        tuple_result = self._filter(x, self.structure)
+        ndarray_result = self._filter(x, ndarray_structure)
+        testing.assert_array_equal(tuple_result, ndarray_result)
 
 
 @testing.parameterize(*(
