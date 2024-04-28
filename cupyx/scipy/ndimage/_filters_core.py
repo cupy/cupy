@@ -217,7 +217,7 @@ def _generate_nd_kernel(name, pre, found, post, mode, w_shape, int_type,
     sizes = [size.format(j=j) for j in range(ndim)]
     inds = _util._generate_indices_ops(ndim, int_type, offsets)
     # CArray: remove expr entirely
-    expr = ' + '.join(['ix_{}'.format(j) for j in range(ndim)])
+    expr = ' + '.join([f'ix_{j}' for j in range(ndim)])
 
     ws_init = ws_pre = ws_post = ''
     if has_weights or has_structure:
@@ -234,24 +234,23 @@ def _generate_nd_kernel(name, pre, found, post, mode, w_shape, int_type,
     for j in range(ndim):
         if w_shape[j] == 1:
             # CArray: string becomes 'inds[{j}] = ind_{j};', remove (int_)type
-            loops.append('{{ {type} ix_{j} = ind_{j} * xstride_{j};'.
-                         format(j=j, type=int_type))
+            loops.append(f'{{ {int_type} ix_{j} = ind_{j} * xstride_{j};')
         else:
             boundary = _util._generate_boundary_condition_ops(
-                mode, 'ix_{}'.format(j), 'xsize_{}'.format(j), int_type)
+                mode, f'ix_{j}', f'xsize_{j}', int_type)
             # CArray: last line of string becomes inds[{j}] = ix_{j};
-            loops.append('''
-    for (int iw_{j} = 0; iw_{j} < {wsize}; iw_{j}++)
+            loops.append(f'''
+    for (int iw_{j} = 0; iw_{j} < {w_shape[j]}; iw_{j}++)
     {{
-        {type} ix_{j} = ind_{j} + iw_{j};
+        {int_type} ix_{j} = ind_{j} + iw_{j};
         {boundary}
         ix_{j} *= xstride_{j};
-        '''.format(j=j, wsize=w_shape[j], boundary=boundary, type=int_type))
+        ''')
 
     # CArray: string becomes 'x[inds]', no format call needed
-    value = '(*(X*)&data[{expr}])'.format(expr=expr)
+    value = f'(*(X*)&data[{expr}])'
     if mode == 'constant':
-        cond = ' || '.join(['(ix_{} < 0)'.format(j) for j in range(ndim)])
+        cond = ' || '.join([f'(ix_{j} < 0)' for j in range(ndim)])
 
     if cval is numpy.nan:
         cval = 'CUDART_NAN'
@@ -264,8 +263,7 @@ def _generate_nd_kernel(name, pre, found, post, mode, w_shape, int_type,
         found = found.format(cond=cond, value=value)
     else:
         if mode == 'constant':
-            value = '(({cond}) ? cast<{ctype}>({cval}) : {value})'.format(
-                cond=cond, ctype=ctype, cval=cval, value=value)
+            value = f'(({cond}) ? cast<{ctype}>({cval}) : {value})'
         found = found.format(value=value)
 
     # CArray: replace comment and next line in string with
@@ -292,7 +290,7 @@ def _generate_nd_kernel(name, pre, found, post, mode, w_shape, int_type,
 
     mode_str = mode.replace('-', '_')  # avoid potential hyphen in kernel name
     name = 'cupyx_scipy_ndimage_{}_{}d_{}_w{}'.format(
-        name, ndim, mode_str, '_'.join(['{}'.format(x) for x in w_shape]))
+        name, ndim, mode_str, '_'.join([f'{x}' for x in w_shape]))
     if all_weights_nonzero:
         name += '_all_nonzero'
     if int_type == 'ptrdiff_t':
