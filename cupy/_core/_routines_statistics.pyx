@@ -412,7 +412,7 @@ cpdef _ndarray_base _median(
         sz = a.size
     else:
         if axis < -keep_ndim or axis >= keep_ndim:
-            raise numpy.AxisError('Axis overrun')
+            raise numpy.exceptions.AxisError('Axis overrun')
         sz = a.shape[axis]
     if sz % 2 == 0:
         szh = sz // 2

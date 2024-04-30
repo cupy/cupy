@@ -975,7 +975,7 @@ def _call_reduction(fusion_op, *args, **kwargs):
     else:
         ndim = 0
     if ndim < 0:
-        raise numpy.AxisError(axis, src_ndim)
+        raise numpy.exceptions.AxisError(axis, src_ndim)
 
     _thread_local.history.ndim = ndim
     if ndim >= 1:
