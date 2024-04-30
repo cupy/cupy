@@ -319,7 +319,7 @@ cdef class _AbstractReductionKernel:
         cdef bint cub_success
 
         if dtype is not None:
-            dtype = get_dtype(dtype).type
+            dtype = get_dtype(dtype)
 
         (
             map_expr, reduce_expr, post_map_expr,
@@ -641,26 +641,25 @@ cdef class _SimpleReductionKernel(_AbstractReductionKernel):
             reduce_type = _get_typename(op.out_types[0])
 
         if out_args:
-            out_type = out_args[0].dtype.type
+            out_type = out_args[0].dtype
         else:
-            out_type = op.out_types[0]
+            out_type = op._out_dtypes[0]
 
         # We guessed a routine that requires a C2R casting for the input
-        if (in_args[0].dtype.kind == 'c'
-                and numpy.dtype(op.in_types[0]).kind == 'f'):
+        if (in_args[0].dtype.kind == 'c' and op._in_dtypes[0].kind == 'f'):
             warnings.warn(
                 'Casting complex values to real discards the imaginary part',
                 numpy.ComplexWarning)
             in_args[0] = in_args[0].real
 
         type_map = _kernel._TypeMap((
-            ('type_in0_raw', in_args[0].dtype.type),
+            ('type_in0_raw', in_args[0].dtype),
             ('type_out0_raw', out_type),
         ))
 
         return (
             map_expr, reduce_expr, post_map_expr,
-            op.in_types, op.out_types, reduce_type,
+            op._in_dtypes, op._out_dtypes, reduce_type,
             type_map)
 
     cdef list _get_out_args(
