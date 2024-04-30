@@ -44,6 +44,7 @@ from cupy import random  # NOQA
 # `cupy.sparse` is deprecated in v8
 from cupy import sparse  # NOQA
 from cupy import testing  # NOQA  # NOQA
+from cupy import exceptions
 
 
 # import class and function
@@ -242,6 +243,9 @@ from cupy._manipulation.transpose import rollaxis  # NOQA
 from cupy._manipulation.transpose import swapaxes  # NOQA
 from cupy._manipulation.transpose import transpose  # NOQA
 
+# NumPy 2.0 aliases
+permute_dims = transpose
+
 from cupy._manipulation.dims import atleast_1d  # NOQA
 from cupy._manipulation.dims import atleast_2d  # NOQA
 from cupy._manipulation.dims import atleast_3d  # NOQA
@@ -258,6 +262,9 @@ from cupy._manipulation.join import hstack  # NOQA
 from cupy._manipulation.join import stack  # NOQA
 from cupy._manipulation.join import vstack  # NOQA
 from cupy._manipulation.join import vstack as row_stack  # NOQA
+
+# NumPy 2.0 alias
+concat = concatenate
 
 from cupy._manipulation.kind import asarray_chkfinite  # NOQA
 from cupy._manipulation.kind import asfarray  # NOQA
@@ -299,6 +306,11 @@ from cupy._binary.elementwise import bitwise_not  # NOQA
 from cupy._binary.elementwise import invert  # NOQA
 from cupy._binary.elementwise import left_shift  # NOQA
 from cupy._binary.elementwise import right_shift  # NOQA
+
+# NumPy 2.0 aliases
+bitwise_left_shift = left_shift
+bitwise_right_shift = right_shift
+bitwise_invert = invert
 
 from cupy._binary.packing import packbits  # NOQA
 from cupy._binary.packing import unpackbits  # NOQA
@@ -544,6 +556,13 @@ from cupy._math.trigonometric import arccos  # NOQA
 from cupy._math.trigonometric import arcsin  # NOQA
 from cupy._math.trigonometric import arctan  # NOQA
 from cupy._math.trigonometric import arctan2  # NOQA
+
+# a(rc)trig aliases, following NumPy 2.0
+atan = arctan
+atan2 = arctan2
+asin = arcsin
+acos = arccos
+
 from cupy._math.trigonometric import cos  # NOQA
 from cupy._math.trigonometric import deg2rad  # NOQA
 from cupy._math.trigonometric import degrees  # NOQA
@@ -560,6 +579,11 @@ from cupy._math.hyperbolic import arctanh  # NOQA
 from cupy._math.hyperbolic import cosh  # NOQA
 from cupy._math.hyperbolic import sinh  # NOQA
 from cupy._math.hyperbolic import tanh  # NOQA
+
+# a(rc)hyp aliases, following NumPy 2.0
+acosh = arccosh
+asinh = arcsinh
+atanh = arctanh
 
 from cupy._math.rounding import around  # NOQA
 from cupy._math.rounding import ceil  # NOQA
@@ -628,6 +652,8 @@ from cupy._math.arithmetic import remainder  # NOQA
 from cupy._math.arithmetic import remainder as mod  # NOQA
 from cupy._math.arithmetic import subtract  # NOQA
 from cupy._math.arithmetic import true_divide  # NOQA
+
+pow = power
 
 from cupy._math.arithmetic import angle  # NOQA
 from cupy._math.arithmetic import conjugate as conj  # NOQA
