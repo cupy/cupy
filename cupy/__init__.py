@@ -248,7 +248,6 @@ from cupy._manipulation.join import vstack  # NOQA
 from cupy._manipulation.join import vstack as row_stack  # NOQA
 
 from cupy._manipulation.kind import asarray_chkfinite  # NOQA
-from cupy._manipulation.kind import asfarray  # NOQA
 from cupy._manipulation.kind import asfortranarray  # NOQA
 from cupy._manipulation.kind import require  # NOQA
 
@@ -508,9 +507,7 @@ from cupy._logic.comparison import less_equal  # NOQA
 from cupy._logic.comparison import not_equal  # NOQA
 
 from cupy._logic.truth import all  # NOQA
-from cupy._logic.truth import alltrue  # NOQA
 from cupy._logic.truth import any  # NOQA
-from cupy._logic.truth import sometrue  # NOQA
 
 # ------------------------------------------------------------------------------
 # Polynomial functions
@@ -555,14 +552,11 @@ from cupy._math.rounding import fix  # NOQA
 from cupy._math.rounding import floor  # NOQA
 from cupy._math.rounding import rint  # NOQA
 from cupy._math.rounding import round  # NOQA
-from cupy._math.rounding import round_  # NOQA
 from cupy._math.rounding import trunc  # NOQA
 
 from cupy._math.sumprod import prod  # NOQA
-from cupy._math.sumprod import product  # NOQA
 from cupy._math.sumprod import sum  # NOQA
 from cupy._math.sumprod import cumprod  # NOQA
-from cupy._math.sumprod import cumproduct  # NOQA
 from cupy._math.sumprod import cumsum  # NOQA
 from cupy._math.sumprod import ediff1d  # NOQA
 from cupy._math.sumprod import nancumprod  # NOQA
@@ -644,10 +638,8 @@ from cupy._math.misc import convolve  # NOQA
 # -----------------------------------------------------------------------------
 # Miscellaneous routines
 # -----------------------------------------------------------------------------
-from cupy._misc.byte_bounds import byte_bounds  # NOQA
 from cupy._misc.memory_ranges import may_share_memory  # NOQA
 from cupy._misc.memory_ranges import shares_memory  # NOQA
-from cupy._misc.who import who  # NOQA
 
 # Borrowed from NumPy
 from numpy import iterable  # NOQA
@@ -677,7 +669,6 @@ from cupy._sorting.search import where  # NOQA
 from cupy._sorting.sort import argpartition  # NOQA
 from cupy._sorting.sort import argsort  # NOQA
 from cupy._sorting.sort import lexsort  # NOQA
-from cupy._sorting.sort import msort  # NOQA
 from cupy._sorting.sort import sort_complex  # NOQA
 from cupy._sorting.sort import partition  # NOQA
 from cupy._sorting.sort import sort  # NOQA
@@ -908,7 +899,7 @@ _np2_removed_names = {
     'set_string_function': 'set_printoptions',
 
     'PINF' : 'inf',
-    'Inf' : 'inf, 
+    'Inf' : 'inf', 
     'Infinity': 'inf',
     'infty': 'inf',
     'NINF': '-inf',
@@ -916,6 +907,12 @@ _np2_removed_names = {
     'NaN': 'nan',
     'PZERO': '0.0',
     'NZERO':'-0.0',
+
+    'asfarray': '`asarray` with a proper dtype',
+    'round_': 'round',
+    'who': 'an IDE variable explorer or `locals()`',
+    'byte_bounds': '`cupy.lib.array_utils.byte_bounds`',
+
 }
 
 

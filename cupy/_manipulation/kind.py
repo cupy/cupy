@@ -27,24 +27,6 @@ def asarray_chkfinite(a, dtype=None, order=None):
     return a
 
 
-def asfarray(a, dtype=cupy.float64):
-    """Converts array elements to float type.
-
-    Args:
-        a (cupy.ndarray): Source array.
-        dtype: str or dtype object, optional
-
-    Returns:
-        cupy.ndarray: The input array ``a`` as a float ndarray.
-
-    .. seealso:: :func:`numpy.asfarray`
-
-    """
-    if not cupy.issubdtype(dtype, cupy.inexact):
-        dtype = cupy.float64
-    return cupy.asarray(a, dtype=dtype)
-
-
 def asfortranarray(a, dtype=None):
     """Return an array laid out in Fortran order in memory.
 
