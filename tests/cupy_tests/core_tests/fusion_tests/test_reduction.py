@@ -17,11 +17,11 @@ class TestFusionReductionAxis(unittest.TestCase):
         x = testing.shaped_random(self.shape, xp, 'int64', scale=10, seed=0)
         return (x,), {}
 
-    @fusion_utils.check_fusion(accept_error=numpy.AxisError)
+    @fusion_utils.check_fusion(accept_error=numpy.exceptions.AxisError)
     def test_sum_axis(self, xp):
         return lambda x: cupy.sum(x, self.axis)
 
-    @fusion_utils.check_fusion(accept_error=numpy.AxisError)
+    @fusion_utils.check_fusion(accept_error=numpy.exceptions.AxisError)
     def test_sum_kwargs_axis(self, xp):
         return lambda x: cupy.sum(x, axis=self.axis)
 
@@ -40,11 +40,11 @@ class TestFusionReductionMultiAxis(unittest.TestCase):
         x = testing.shaped_random(self.shape, xp, 'int64', scale=10, seed=0)
         return (x,), {}
 
-    @fusion_utils.check_fusion(accept_error=(ValueError, numpy.AxisError))
+    @fusion_utils.check_fusion(accept_error=(ValueError, numpy.exceptions.AxisError))
     def test_sum_axis(self, xp):
         return lambda x: cupy.sum(x, self.axis)
 
-    @fusion_utils.check_fusion(accept_error=(ValueError, numpy.AxisError))
+    @fusion_utils.check_fusion(accept_error=(ValueError, numpy.exceptions.AxisError))
     def test_sum_kwargs_axis(self, xp):
         return lambda x: cupy.sum(x, axis=self.axis)
 
