@@ -2538,7 +2538,7 @@ cdef _ndarray_base _array_default(
             order = 'F'
         else:
             order = 'C'
-    a_cpu = numpy.array(obj, dtype=dtype, copy=False, order=order,
+    a_cpu = numpy.array(obj, dtype=dtype, copy=None, order=order,
                         ndmin=ndmin)
     if a_cpu.dtype.char not in '?bhilqBHILQefdFD':
         raise ValueError('Unsupported dtype %s' % a_cpu.dtype)

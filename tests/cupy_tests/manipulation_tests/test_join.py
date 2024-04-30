@@ -230,7 +230,7 @@ class TestJoin:
                 xp.concatenate((a, b), out=out, dtype=xp.int64)
 
     @testing.with_requires('numpy>=1.20.0')
-    @pytest.mark.filterwarnings('error::numpy.ComplexWarning')
+    @pytest.mark.filterwarnings('error::numpy.exceptions.ComplexWarning')
     @pytest.mark.parametrize('casting', [
         'no',
         'equiv',
@@ -240,7 +240,7 @@ class TestJoin:
     ])
     @testing.for_all_dtypes_combination(names=['dtype1', 'dtype2'])
     @testing.numpy_cupy_array_equal(
-        accept_error=(TypeError, numpy.ComplexWarning))
+        accept_error=(TypeError, numpy.exceptions.ComplexWarning))
     def test_concatenate_casting(self, xp, dtype1, dtype2, casting):
         a = testing.shaped_arange((3, 4), xp, dtype1)
         b = testing.shaped_arange((3, 4), xp, dtype1)
@@ -308,7 +308,7 @@ class TestJoin:
     ])
     @testing.for_all_dtypes_combination(names=['dtype1', 'dtype2'])
     @testing.numpy_cupy_array_equal(
-        accept_error=(TypeError, numpy.ComplexWarning))
+        accept_error=(TypeError, numpy.exceptions.ComplexWarning))
     def test_hstack_casting(self, xp, dtype1, dtype2, casting):
         a = testing.shaped_arange((3, 4), xp, dtype1)
         b = testing.shaped_arange((3, 4), xp, dtype1)
@@ -351,7 +351,7 @@ class TestJoin:
     ])
     @testing.for_all_dtypes_combination(names=['dtype1', 'dtype2'])
     @testing.numpy_cupy_array_equal(
-        accept_error=(TypeError, numpy.ComplexWarning))
+        accept_error=(TypeError, numpy.exceptions.ComplexWarning))
     def test_vstack_casting(self, xp, dtype1, dtype2, casting):
         a = testing.shaped_arange((3, 4), xp, dtype1)
         b = testing.shaped_arange((3, 4), xp, dtype1)
@@ -495,7 +495,7 @@ class TestJoin:
     ])
     @testing.for_all_dtypes_combination(names=['dtype1', 'dtype2'])
     @testing.numpy_cupy_array_equal(
-        accept_error=(TypeError, numpy.ComplexWarning))
+        accept_error=(TypeError, numpy.exceptions.ComplexWarning))
     def test_stack_casting(self, xp, dtype1, dtype2, casting):
         a = testing.shaped_arange((3, 4), xp, dtype1)
         b = testing.shaped_arange((3, 4), xp, dtype1)

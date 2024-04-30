@@ -272,7 +272,7 @@ class TestVectorizeExprs(unittest.TestCase):
 
     @testing.for_all_dtypes_combination(names=('dtype1', 'dtype2'), full=True)
     @testing.numpy_cupy_array_equal(
-        accept_error=(TypeError, numpy.ComplexWarning))
+        accept_error=(TypeError, numpy.exceptions.ComplexWarning))
     def test_vectorize_typecast(self, xp, dtype1, dtype2):
         typecast = xp.dtype(dtype2).type
 
