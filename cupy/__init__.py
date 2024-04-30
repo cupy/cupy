@@ -133,8 +133,6 @@ from numpy import uint64  # NOQA
 from numpy import half  # NOQA
 from numpy import single  # NOQA
 from numpy import double  # NOQA
-from numpy import float_  # NOQA
-from numpy import longfloat  # NOQA
 from numpy import float16  # NOQA
 from numpy import float32  # NOQA
 from numpy import float64  # NOQA
@@ -147,10 +145,7 @@ from numpy import float64  # NOQA
 # Complex floating-point numbers
 # -----------------------------------------------------------------------------
 from numpy import csingle  # NOQA
-from numpy import singlecomplex  # NOQA
 from numpy import cdouble  # NOQA
-from numpy import cfloat  # NOQA
-from numpy import complex_  # NOQA
 from numpy import complex64  # NOQA
 from numpy import complex128  # NOQA
 
@@ -361,23 +356,17 @@ def result_type(*arrays_and_dtypes):
 
 from cupy._core.core import min_scalar_type  # NOQA
 
-from numpy import obj2sctype  # NOQA
 from numpy import promote_types  # NOQA
 
 from numpy import dtype  # NOQA
-from numpy import format_parser  # NOQA
 
 from numpy import finfo  # NOQA
 from numpy import iinfo  # NOQA
 
-from numpy import find_common_type  # NOQA
-from numpy import issctype  # NOQA
-from numpy import issubclass_  # NOQA
 from numpy import issubdtype  # NOQA
-from numpy import issubsctype  # NOQA
 
 from numpy import mintypecode  # NOQA
-from numpy import sctype2char  # NOQA
+
 from numpy import typename  # NOQA
 
 # -----------------------------------------------------------------------------
@@ -423,7 +412,7 @@ from cupy._indexing.insert import diag_indices_from  # NOQA
 from cupy._indexing.iterate import flatiter  # NOQA
 
 # Borrowed from NumPy
-from numpy import get_array_wrap  # NOQA
+# from numpy import get_array_wrap  # NOQA
 from numpy import index_exp  # NOQA
 from numpy import ndindex  # NOQA
 from numpy import s_  # NOQA
@@ -454,11 +443,9 @@ def base_repr(number, base=2, padding=0):  # NOQA (needed to avoid redefinition 
 
 
 # Borrowed from NumPy
-from numpy import DataSource  # NOQA
 from numpy import get_printoptions  # NOQA
 from numpy import set_printoptions  # NOQA
 from numpy import printoptions  # NOQA
-from numpy import set_string_function  # NOQA
 
 
 # -----------------------------------------------------------------------------
@@ -545,8 +532,6 @@ from cupy.lib._routines_poly import polyfit  # NOQA
 from cupy.lib._routines_poly import polyval  # NOQA
 from cupy.lib._routines_poly import roots  # NOQA
 
-# Borrowed from NumPy
-from numpy import RankWarning  # NOQA
 
 # -----------------------------------------------------------------------------
 # Mathematical functions
@@ -673,10 +658,7 @@ from cupy._misc.memory_ranges import shares_memory  # NOQA
 from cupy._misc.who import who  # NOQA
 
 # Borrowed from NumPy
-from numpy import disp  # NOQA
 from numpy import iterable  # NOQA
-from numpy import safe_eval  # NOQA
-from numpy import AxisError  # NOQA
 
 
 # -----------------------------------------------------------------------------
@@ -740,14 +722,6 @@ from cupy._statistics.histogram import digitize  # NOQA
 from cupy._statistics.histogram import histogram  # NOQA
 from cupy._statistics.histogram import histogram2d  # NOQA
 from cupy._statistics.histogram import histogramdd  # NOQA
-
-# -----------------------------------------------------------------------------
-# Classes without their own docs
-# -----------------------------------------------------------------------------
-from numpy import ComplexWarning  # NOQA
-from numpy import ModuleDeprecationWarning  # NOQA
-from numpy import TooHardError  # NOQA
-from numpy import VisibleDeprecationWarning  # NOQA
 
 
 # -----------------------------------------------------------------------------
@@ -921,9 +895,36 @@ _deprecated_apis = [
 ]
 
 
+_np2_removed_names = {
+    'AxisError': 'exceptions.AxisError',
+    'ComplexWarning': 'exceptions.ComplexWarning',
+    'ModuleDeprecationWarning': 'exceptions.ModuleDeprecationWarning',
+    'TooHardError': 'TooHardError',
+    'VisibleDeprecationWarning': 'VisibleDeprecationWarning',
+    'float_': 'float64',
+    'longfloat': 'longdouble',
+    'singlecomplex': 'complex64',
+    'complex_': 'complex128',
+    'cfloat': 'complex128',
+
+    'format_parser': 'numpy.rec.format_parser',
+    'find_common_type': '`promote_types` or `result_type`',
+    'issubclass_': '`issubclass` builtin',
+    'issubsctype': 'issubdtype',
+    'sctype2char': '`np.dtype(obj).char`',
+    'DataSource': '`np.lib.npyio.DataSource`',
+    'set_string_function': 'set_printoptions',
+}
+
+
 def __getattr__(name):
     if name in _deprecated_apis:
         return getattr(_numpy, name)
+
+    if name in _np2_removed_names:
+        raise AttributeError(
+            f"{name =} was removed in the NumPy 2.0 release. Use "
+            f"{_np2_removed_names[name]} instead.")
 
     raise AttributeError(f"module 'cupy' has no attribute {name!r}")
 

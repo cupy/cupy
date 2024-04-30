@@ -390,7 +390,7 @@ cpdef _ndarray_base _transpose(
     for i in range(axes_size):
         axis = axes[i]
         if axis < -ndim or axis >= ndim:
-            raise numpy.AxisError(axis, ndim)
+            raise numpy.exceptions.AxisError(axis, ndim)
         axis %= ndim
         a_axes.push_back(axis)
         if axis_flags[axis]:

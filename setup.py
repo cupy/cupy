@@ -23,7 +23,7 @@ setup_requires = [
     'fastrlock>=0.5',
 ]
 install_requires = [
-    'numpy>=1.22,<1.29',  # see #4773
+    'numpy>=2.0.0rc1',
     'fastrlock>=0.5',
 ]
 extras_require = {

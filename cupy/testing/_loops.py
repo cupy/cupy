@@ -106,7 +106,7 @@ def _call_func_numpy_cupy(impl, args, kw, name, sp_name, scipy_name):
 _numpy_errors = [
     AttributeError, Exception, IndexError, TypeError, ValueError,
     NotImplementedError, DeprecationWarning,
-    numpy.AxisError, numpy.linalg.LinAlgError,
+    numpy.exceptions.AxisError, numpy.linalg.LinAlgError,
 ]
 
 

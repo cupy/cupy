@@ -1,4 +1,4 @@
-from numpy.lib import index_tricks
+import numpy.lib._index_tricks_impl as index_tricks
 
 import cupy
 from cupy._core import internal
