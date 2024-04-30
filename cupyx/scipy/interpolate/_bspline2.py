@@ -1,7 +1,7 @@
 import operator
 from math import prod
 
-from numpy.core.multiarray import normalize_axis_index
+from numpy.lib.array_utils import normalize_axis_index
 
 import cupy
 from cupyx.scipy import sparse
