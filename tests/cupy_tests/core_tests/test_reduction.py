@@ -120,7 +120,7 @@ class TestSimpleReductionFunctionInvalidAxis:
     def test_axis_overrun(self, axis):
         for xp in (numpy, cupy):
             a = xp.ones((2, 2))
-            with pytest.raises(numpy.AxisError):
+            with pytest.raises(numpy.exceptions.AxisError):
                 a.sum(axis=axis)
 
     @pytest.mark.parametrize('axis', [

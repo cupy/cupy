@@ -51,16 +51,16 @@ class TestMedian:
     def test_median_invalid_axis(self):
         for xp in [numpy, cupy]:
             a = testing.shaped_random((3, 4, 5), xp)
-            with pytest.raises(numpy.AxisError):
+            with pytest.raises(numpy.exceptions.AxisError):
                 return xp.median(a, -a.ndim - 1, keepdims=False)
 
-            with pytest.raises(numpy.AxisError):
+            with pytest.raises(numpy.exceptions.AxisError):
                 return xp.median(a, a.ndim, keepdims=False)
 
-            with pytest.raises(numpy.AxisError):
+            with pytest.raises(numpy.exceptions.AxisError):
                 return xp.median(a, (-a.ndim - 1, 1), keepdims=False)
 
-            with pytest.raises(numpy.AxisError):
+            with pytest.raises(numpy.exceptions.AxisError):
                 return xp.median(a, (0, a.ndim,), keepdims=False)
 
     @testing.for_dtypes('efdFD')

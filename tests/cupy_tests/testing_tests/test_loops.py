@@ -176,7 +176,7 @@ class TestCheckCupyNumpyError(unittest.TestCase):
             @testing.numpy_cupy_raises()
             def dummy_axis_error(self, xp):
                 if xp is cupy:
-                    raise numpy.AxisError(self.tbs.get(cupy))
+                    raise numpy.exceptions.AxisError(self.tbs.get(cupy))
                 elif xp is numpy:
                     raise TypeError(self.tbs.get(numpy))
 
@@ -190,7 +190,7 @@ class TestCheckCupyNumpyError(unittest.TestCase):
             @testing.numpy_cupy_raises()
             def dummy_axis_error(self, xp):
                 if xp is cupy:
-                    raise numpy.AxisError(self.tbs.get(cupy))
+                    raise numpy.exceptions.AxisError(self.tbs.get(cupy))
                 elif xp is numpy:
                     raise ValueError(self.tbs.get(numpy))
 
@@ -204,7 +204,7 @@ class TestCheckCupyNumpyError(unittest.TestCase):
             @testing.numpy_cupy_raises()
             def dummy_axis_error(self, xp):
                 if xp is cupy:
-                    raise numpy.AxisError(self.tbs.get(cupy))
+                    raise numpy.exceptions.AxisError(self.tbs.get(cupy))
                 elif xp is numpy:
                     raise IndexError(self.tbs.get(numpy))
 

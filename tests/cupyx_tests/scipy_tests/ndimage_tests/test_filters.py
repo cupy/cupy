@@ -766,9 +766,9 @@ class TestInvalidAxis(FilterTestCaseBase):
         self.axis = len(self.shape)
         try:
             return self._filter(xp, scp)
-        except numpy.AxisError:
-            # numpy.AxisError is a subclass of ValueError
-            # currently cupyx is raising numpy.AxisError but scipy is still
+        except numpy.exceptions.AxisError:
+            # numpy.exceptions.AxisError is a subclass of ValueError
+            # currently cupyx is raising numpy.exceptions.AxisError but scipy is still
             # raising ValueError
             raise ValueError('invalid axis')
 
@@ -778,7 +778,7 @@ class TestInvalidAxis(FilterTestCaseBase):
         self.axis = -len(self.shape) - 1
         try:
             return self._filter(xp, scp)
-        except numpy.AxisError:
+        except numpy.exceptions.AxisError:
             raise ValueError('invalid axis')
 
 

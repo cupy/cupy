@@ -427,7 +427,7 @@ class TestJoin:
 
     def test_stack_out_of_bounds2(self):
         a = testing.shaped_arange((2, 3), cupy)
-        with pytest.raises(numpy.AxisError):
+        with pytest.raises(numpy.exceptions.AxisError):
             return cupy.stack([a, a], axis=3)
 
     @testing.for_all_dtypes(name='dtype')
