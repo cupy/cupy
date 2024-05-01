@@ -14,7 +14,7 @@ def polyvander(x, deg):
     .. seealso:: :func:`numpy.polynomial.polynomial.polyvander`
 
     """
-    deg = cupy.polynomial.polyutils._deprecate_as_int(deg, 'deg')
+    deg = cupy.polynomial.polyutils._as_int(deg, 'deg')
     if deg < 0:
         raise ValueError('degree must be non-negative')
     if x.ndim == 0:
