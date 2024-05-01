@@ -169,3 +169,32 @@ class TestTranspose(unittest.TestCase):
     def test_external_transpose_all(self, xp):
         a = testing.shaped_arange((2, 3, 4), xp)
         return xp.transpose(a)
+
+
+ARRAY_SHAPES_TO_TEST = (
+    (5, 2),
+    (5, 2, 3),
+    (5, 2, 3, 4),
+)
+
+
+class TestMatrixTranspose:
+    def test_matrix_transpose_raises_error_for_1d(self):
+        msg = "matrix transpose with ndim < 2 is undefined"
+        arr = cupy.arange(48)
+        with pytest.raises(ValueError, match=msg):
+            arr.mT
+
+    @testing.numpy_cupy_array_equal()
+    def test_matrix_transpose_equals_transpose_2d(self, xp):
+        arr = xp.arange(48).reshape((6, 8))
+        return arr
+
+
+    @pytest.mark.parametrize("shape", ARRAY_SHAPES_TO_TEST)
+    @testing.numpy_cupy_array_equal()
+    def test_matrix_transpose_equals_swapaxes(self, xp, shape):
+        num_of_axes = len(shape)
+        vec = xp.arange(shape[-1])
+        arr = xp.broadcast_to(vec, shape)
+        return arr.mT

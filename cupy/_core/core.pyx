@@ -434,6 +434,18 @@ cdef class _ndarray_base:
             return _manipulation._T(self)
 
     @property
+    def mT(self):
+        """Matrix-transpose view of the array.
+
+
+        If ndim < 2, raise a ValueError.
+        """
+        if self.ndim < 2:
+            raise ValueError("matrix transpose with ndim < 2 is undefined")
+        else:
+            return self.swapaxes(-1, -2)
+
+    @property
     def flat(self):
         return cupy.flatiter(self)
 
