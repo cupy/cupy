@@ -114,7 +114,7 @@ cpdef void _raise_if_invalid_cast(
             # Complex warning, we are dropping the imagine part:
             warnings.warn(
                 'Casting complex values to real discards the imaginary part',
-                numpy.ComplexWarning)
+                numpy.exceptions.ComplexWarning)
 
         return
 

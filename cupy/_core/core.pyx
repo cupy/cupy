@@ -587,7 +587,7 @@ cdef class _ndarray_base:
                 warnings.warn(
                     'Casting complex values to real discards the imaginary '
                     'part',
-                    numpy.ComplexWarning)
+                    numpy.exceptions.ComplexWarning)
         else:
             elementwise_copy(self, newarray)
         return newarray
