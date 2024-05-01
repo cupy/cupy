@@ -193,6 +193,7 @@ from cupy._creation.basic import ones  # NOQA
 from cupy._creation.basic import ones_like  # NOQA
 from cupy._creation.basic import zeros  # NOQA
 from cupy._creation.basic import zeros_like  # NOQA
+from cupy._creation.basic import astype
 
 from cupy._creation.from_data import copy  # NOQA
 from cupy._creation.from_data import array  # NOQA
