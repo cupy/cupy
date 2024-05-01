@@ -129,7 +129,7 @@ def get_hipcc_path() -> List[str]:
 def get_compiler_setting(ctx: Context, use_hip):
     cuda_path = None
     rocm_path = None
-    
+
     if use_hip:
         rocm_path = get_rocm_path()
     else:

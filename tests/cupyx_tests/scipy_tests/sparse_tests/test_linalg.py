@@ -1220,8 +1220,8 @@ class TestLOBPCG:
         reason='cuSOLVER in CUDA 12.1+ may have a bug',
         strict=False,  # Seems only failing with Volta (V100 / T4)
     )
-
-    @pytest.mark.skipif(runtime.is_hip, reason='Currently unsupported on ROCm/HIP')
+    @pytest.mark.skipif(runtime.is_hip,
+                        reason='Currently unsupported on ROCm/HIP')
     def test_maxit_None(self):
         """Check lobpcg if maxit=None runs 20 iterations (the default)
         by checking the size of the iteration history output, which should

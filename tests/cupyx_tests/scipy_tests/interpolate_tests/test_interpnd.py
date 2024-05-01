@@ -2,7 +2,6 @@ import cupy
 import pytest
 from cupy import testing
 from cupy.cuda import runtime
-import pytest
 import cupyx.scipy.interpolate  # NOQA
 import cupyx.scipy.spatial  # NOQA
 
@@ -17,6 +16,7 @@ try:
     import scipy.spatial  # NOQA
 except ImportError:
     pass
+
 
 @pytest.mark.skipif(runtime.is_hip, reason='Currently unsupported on ROCm/HIP')
 class TestLinearNDInterpolator:

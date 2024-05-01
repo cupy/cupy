@@ -636,7 +636,6 @@ class TestDeconvolve:
 @pytest.mark.xfail(
     runtime.is_hip and driver.get_build_version() < 5_00_00000,
     reason='name_expressions with ROCm 4.3 may not work')
-
 @pytest.mark.skipif(runtime.is_hip, reason='Currently unsupported on ROCm/HIP')
 @testing.with_requires('scipy')
 class TestSosFilt:

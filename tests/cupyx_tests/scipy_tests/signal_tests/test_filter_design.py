@@ -576,8 +576,9 @@ class TestSOSFreqz:
         sos = scp.signal.cheby2(N, 60, Wn, 'stop', output='sos')
         w, h = scp.signal.sosfreqz(sos)
         return w, h
-    
-    @pytest.mark.skipif(cupy.cuda.runtime.is_hip, reason='Currently unsupported on ROCm/HIP')
+
+    @pytest.mark.skipif(cupy.cuda.runtime.is_hip,
+                        reason='Currently unsupported on ROCm/HIP')
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_sosfrez_design_cheb2_2(self, xp, scp):
         N, Wn = scp.signal.cheb2ord([0.1, 0.6], [0.2, 0.5], 3, 150)
@@ -827,7 +828,8 @@ class TestGammatone:
 
     # Verify that the filter's frequency response is approximately
     # 1 at the cutoff frequency.
-    @pytest.mark.skipif(cupy.cuda.runtime.is_hip, reason='Currently unsupported on ROCm/HIP')
+    @pytest.mark.skipif(cupy.cuda.runtime.is_hip,
+                        reason='Currently unsupported on ROCm/HIP')
     @pytest.mark.parametrize('ftype', ['fir', 'iir'])
     @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-5, atol=1e-5)
     def test_frequency_response(self, ftype, xp, scp):
@@ -840,7 +842,8 @@ class TestGammatone:
     # symmetrical poles and zeros. Then ba representation (using
     # numpy.poly) will be purely real instead of having negligible
     # imaginary parts.
-    @pytest.mark.skipif(cupy.cuda.runtime.is_hip, reason='Currently unsupported on ROCm/HIP')
+    @pytest.mark.skipif(cupy.cuda.runtime.is_hip,
+                        reason='Currently unsupported on ROCm/HIP')
     @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-5, atol=1e-5)
     def test_iir_symmetry(self, xp, scp):
         b, a = scp.signal.gammatone(440, 'iir', fs=24000)
@@ -848,14 +851,16 @@ class TestGammatone:
 
     # Verify FIR filter coefficients with the paper's
     # Mathematica implementation
-    @pytest.mark.skipif(cupy.cuda.runtime.is_hip, reason='Currently unsupported on ROCm/HIP')
+    @pytest.mark.skipif(cupy.cuda.runtime.is_hip,
+                        reason='Currently unsupported on ROCm/HIP')
     @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-5, atol=1e-5)
     def test_fir_ba_output(self, xp, scp):
         b, _ = scp.signal.gammatone(15, 'fir', fs=1000)
         return b
 
     # Verify IIR filter coefficients with the paper's MATLAB implementation
-    @pytest.mark.skipif(cupy.cuda.runtime.is_hip, reason='Currently unsupported on ROCm/HIP')
+    @pytest.mark.skipif(cupy.cuda.runtime.is_hip,
+                        reason='Currently unsupported on ROCm/HIP')
     @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-5, atol=1e-5)
     def test_iir_ba_output(self, xp, scp):
         b, a = scp.signal.gammatone(440, 'iir', fs=16000)

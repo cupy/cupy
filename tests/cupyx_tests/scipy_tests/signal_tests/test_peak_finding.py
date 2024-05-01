@@ -47,7 +47,7 @@ class TestPeakProminences:
         """
         out = scp.signal.peak_prominences(x, [])
         return out
-    
+
     @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_basic(self, xp, scp):
         """
@@ -136,8 +136,9 @@ class TestPeakWidths:
         """
         widths = scp.signal.peak_widths(x, [])
         return widths
-    
-    @pytest.mark.skipif(runtime.is_hip, reason='Currently unsupported on ROCm/HIP')
+
+    @pytest.mark.skipif(runtime.is_hip,
+                        reason='Currently unsupported on ROCm/HIP')
     @pytest.mark.filterwarnings("ignore:some peaks have a width of 0")
     @pytest.mark.parametrize('rel_height', [0, 0.25, 0.5, 0.75, 1.0, 2.0, 3.0])
     @testing.numpy_cupy_allclose(scipy_name="scp")
@@ -150,7 +151,8 @@ class TestPeakWidths:
         out = scp.signal.peak_widths(x, [3], rel_height)
         return out
 
-    @pytest.mark.skipif(runtime.is_hip, reason='Currently unsupported on ROCm/HIP')
+    @pytest.mark.skipif(runtime.is_hip,
+                        reason='Currently unsupported on ROCm/HIP')
     @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_non_contiguous(self, xp, scp):
         """
@@ -193,7 +195,8 @@ class TestPeakWidths:
                 scp.signal.peak_widths(
                     [1, 2, 1], [1], prominence_data=(None, None, None))
 
-    @pytest.mark.skipif(runtime.is_hip, reason='Currently unsupported on ROCm/HIP')
+    @pytest.mark.skipif(runtime.is_hip,
+                        reason='Currently unsupported on ROCm/HIP')
     def test_mismatching_prominence_data(self):
         """Test with mismatching peak and / or prominence data."""
         for xp, scp in [(cupy, cupyx.scipy), (np, scipy)]:
@@ -222,7 +225,8 @@ class TestPeakWidths:
                     scp.signal.peak_widths(
                         x, peak, prominence_data=prominence_data)
 
-    @pytest.mark.skipif(runtime.is_hip, reason='Currently unsupported on ROCm/HIP')
+    @pytest.mark.skipif(runtime.is_hip,
+                        reason='Currently unsupported on ROCm/HIP')
     @pytest.mark.filterwarnings("ignore:some peaks have a width of 0")
     @pytest.mark.parametrize('rel_height', [0, 2/3])
     @testing.numpy_cupy_allclose(scipy_name="scp")

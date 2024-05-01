@@ -10,7 +10,8 @@ from cupy import testing
 
 class TestDeviceFunction(unittest.TestCase):
 
-    @pytest.mark.skipif(cupy.cuda.runtime.is_hip, reason='Currently unsupported on ROCm/HIP')
+    @pytest.mark.skipif(cupy.cuda.runtime.is_hip,
+                        reason='Currently unsupported on ROCm/HIP')
     def test_device_function(self):
         @jit.rawkernel()
         def f(x, y, z):
@@ -29,7 +30,8 @@ class TestDeviceFunction(unittest.TestCase):
         f((1,), (30,), (x, y, z))
         assert (z == (x + y + 1) * 2).all()
 
-    @pytest.mark.skipif(cupy.cuda.runtime.is_hip, reason='Currently unsupported on ROCm/HIP')
+    @pytest.mark.skipif(cupy.cuda.runtime.is_hip,
+                        reason='Currently unsupported on ROCm/HIP')
     def test_device_function_duplicated_names(self):
         @jit.rawkernel()
         def f(x, y, z):
@@ -66,7 +68,8 @@ class TestDeviceFunction(unittest.TestCase):
         with pytest.raises(ValueError):
             f((1,), (30,), (x, y, z))
 
-    @pytest.mark.skipif(cupy.cuda.runtime.is_hip, reason='Currently unsupported on ROCm/HIP')
+    @pytest.mark.skipif(cupy.cuda.runtime.is_hip,
+                        reason='Currently unsupported on ROCm/HIP')
     def test_device_function_template_recursion(self):
         @jit.rawkernel()
         def f(x, y):
@@ -91,7 +94,8 @@ class TestDeviceFunction(unittest.TestCase):
         f((1,), (256,), (x, y))
         assert y[0] == x.sum()
 
-    @pytest.mark.skipif(cupy.cuda.runtime.is_hip, reason='Currently unsupported on ROCm/HIP')
+    @pytest.mark.skipif(cupy.cuda.runtime.is_hip,
+                        reason='Currently unsupported on ROCm/HIP')
     def test_device_function_called_once(self):
         @jit.rawkernel(device=True)
         def g(x):

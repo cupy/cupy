@@ -47,13 +47,15 @@ class TestCSpline:
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_cspline_zero(self, xp, scp):
         return scp.signal.cspline1d(xp.asarray([0]))
-    
-    @pytest.mark.skipif(cupy.cuda.runtime.is_hip, reason='Currently unsupported on ROCm/HIP')
+
+    @pytest.mark.skipif(cupy.cuda.runtime.is_hip,
+                        reason='Currently unsupported on ROCm/HIP')
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_cspline_lambda_nonzero(self, xp, scp):
         return scp.signal.cspline1d(xp.asarray([1., 2, 3, 4, 5]), 1)
 
-    @pytest.mark.skipif(cupy.cuda.runtime.is_hip, reason='Currently unsupported on ROCm/HIP')
+    @pytest.mark.skipif(cupy.cuda.runtime.is_hip,
+                        reason='Currently unsupported on ROCm/HIP')
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_cspline(self, xp, scp):
         return scp.signal.cspline1d(xp.asarray([1., 2, 3, 4, 5]))
@@ -70,7 +72,8 @@ class TestQSpline:
             with pytest.raises(ValueError):
                 scp.signal.qspline1d(xp.asarray([1., 2, 3, 4, 5]), 1)
 
-    @pytest.mark.skipif(cupy.cuda.runtime.is_hip, reason='Currently unsupported on ROCm/HIP')
+    @pytest.mark.skipif(cupy.cuda.runtime.is_hip,
+                        reason='Currently unsupported on ROCm/HIP')
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_qspline(self, xp, scp):
         return scp.signal.qspline1d(xp.asarray([1., 2, 3, 4, 5]))
@@ -81,8 +84,9 @@ class TestCSplineEval:
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_cspline_eval_zero(self, xp, scp):
         return scp.signal.cspline1d_eval(xp.asarray([0., 0]), xp.asarray([0.]))
-    
-    @pytest.mark.skipif(cupy.cuda.runtime.is_hip, reason='Currently unsupported on ROCm/HIP')
+
+    @pytest.mark.skipif(cupy.cuda.runtime.is_hip,
+                        reason='Currently unsupported on ROCm/HIP')
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_cspline_eval(self, xp, scp):
         x = [-3, -2, -1, 0, 1, 2, 3, 4, 5, 6]
@@ -104,7 +108,8 @@ class TestQSplineEval:
     def test_qspline_eval_zero(self, xp, scp):
         return scp.signal.qspline1d_eval(xp.asarray([0., 0]), xp.asarray([0.]))
 
-    @pytest.mark.skipif(cupy.cuda.runtime.is_hip, reason='Currently unsupported on ROCm/HIP')
+    @pytest.mark.skipif(cupy.cuda.runtime.is_hip,
+                        reason='Currently unsupported on ROCm/HIP')
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_qspline_eval(self, xp, scp):
         x = [-3, -2, -1, 0, 1, 2, 3, 4, 5, 6]
@@ -123,14 +128,16 @@ class TestQSplineEval:
 @testing.with_requires('scipy')
 class TestCSpline2D:
 
-    @pytest.mark.skipif(cupy.cuda.runtime.is_hip, reason='Currently unsupported on ROCm/HIP')
+    @pytest.mark.skipif(cupy.cuda.runtime.is_hip,
+                        reason='Currently unsupported on ROCm/HIP')
     @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-4, rtol=1e-4)
     def test_cspline2d_iir1(self, xp, scp):
         image = testing.shaped_random((71, 73), xp, xp.float64,
                                       scale=1, seed=181819142)
         return scp.signal.cspline2d(image, -1.0)
 
-    @pytest.mark.skipif(cupy.cuda.runtime.is_hip, reason='Currently unsupported on ROCm/HIP')
+    @pytest.mark.skipif(cupy.cuda.runtime.is_hip,
+                        reason='Currently unsupported on ROCm/HIP')
     @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-4, rtol=1e-4)
     def test_cspline2d_iir2(self, xp, scp):
         image = testing.shaped_random((71, 73), xp, xp.float64,
@@ -141,7 +148,8 @@ class TestCSpline2D:
 @testing.with_requires('scipy')
 class TestQSpline2D:
 
-    @pytest.mark.skipif(cupy.cuda.runtime.is_hip, reason='Currently unsupported on ROCm/HIP')
+    @pytest.mark.skipif(cupy.cuda.runtime.is_hip,
+                        reason='Currently unsupported on ROCm/HIP')
     @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-4, rtol=1e-4)
     def test_qspline2d_iir1(self, xp, scp):
         image = testing.shaped_random((71, 73), xp, xp.float64,
@@ -155,8 +163,9 @@ class TestSplineFilter:
         for xp, scp in [(cupy, cupyx.scipy), (np, scipy)]:
             with pytest.raises(ValueError):
                 scp.signal.spline_filter(xp.asarray([0.]), 0)
-     
-    @pytest.mark.skipif(cupy.cuda.runtime.is_hip, reason='Currently unsupported on ROCm/HIP')
+
+    @pytest.mark.skipif(cupy.cuda.runtime.is_hip,
+                        reason='Currently unsupported on ROCm/HIP')
     @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-4, rtol=1e-4)
     def test_spline_filter(self, xp, scp):
         data = testing.shaped_random(

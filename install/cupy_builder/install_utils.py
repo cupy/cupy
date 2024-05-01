@@ -21,6 +21,7 @@ def search_on_path(filenames: List[str]) -> Optional[str]:
                 return os.path.abspath(full)
     return None
 
+
 def get_rocm_version() -> int:
     rocm_version = -1
     if os.getenv("ROCM_HOME"):

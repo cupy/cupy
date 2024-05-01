@@ -155,7 +155,8 @@ class TestBasic:
     def test_copyto_where_multigpu_raises_6(self, dtype):
         self._check_copyto_where_multigpu_raises(dtype, 6)
 
-    @pytest.mark.skipif(cupy.cuda.runtime.is_hip, reason='Currently unsupported on ROCm/HIP')
+    @pytest.mark.skipif(cupy.cuda.runtime.is_hip,
+                        reason='Currently unsupported on ROCm/HIP')
     @testing.multi_gpu(2)
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
@@ -167,7 +168,8 @@ class TestBasic:
         xp.copyto(b, a)
         return b
 
-    @pytest.mark.skipif(cupy.cuda.runtime.is_hip, reason='Currently unsupported on ROCm/HIP')
+    @pytest.mark.skipif(cupy.cuda.runtime.is_hip,
+                        reason='Currently unsupported on ROCm/HIP')
     @testing.multi_gpu(2)
     @testing.for_all_dtypes()
     def test_copyto_multigpu_noncontinguous(self, dtype):
