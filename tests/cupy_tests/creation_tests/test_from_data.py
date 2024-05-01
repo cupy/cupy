@@ -286,7 +286,7 @@ class TestFromData(unittest.TestCase):
     @testing.numpy_cupy_array_equal()
     def test_array_no_copy(self, xp, dtype, order):
         a = testing.shaped_arange((2, 3, 4), xp, dtype)
-        b = xp.array(a, copy=False, order=order)
+        b = xp.array(a, copy=None, order=order)
         a.fill(0)
         return b
 
@@ -295,14 +295,14 @@ class TestFromData(unittest.TestCase):
     @testing.numpy_cupy_array_equal()
     def test_array_f_contiguous_input(self, xp, dtype, order):
         a = testing.shaped_arange((2, 3, 4), xp, dtype, order='F')
-        b = xp.array(a, copy=False, order=order)
+        b = xp.array(a, copy=None, order=order)
         return b
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_array_f_contiguous_output(self, xp, dtype):
         a = testing.shaped_arange((2, 3, 4), xp, dtype)
-        b = xp.array(a, copy=False, order='F')
+        b = xp.array(a, copy=None, order='F')
         assert b.flags.f_contiguous
         return b
 
@@ -334,7 +334,7 @@ class TestFromData(unittest.TestCase):
     @testing.numpy_cupy_array_equal()
     def test_array_no_copy_ndmin(self, xp, dtype):
         a = testing.shaped_arange((2, 3, 4), xp, dtype)
-        b = xp.array(a, copy=False, ndmin=5)
+        b = xp.array(a, copy=None, ndmin=5)
         assert a.shape == (2, 3, 4)
         a.fill(0)
         return b
