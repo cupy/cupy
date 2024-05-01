@@ -57,14 +57,21 @@ def _convert_1d_args(ndim, weights, origin, axis):
     return weights, tuple(origins)
 
 
-def _check_nd_args(input, weights, mode, origin, wghts_name='filter weights'):
+def _check_nd_args(input, weights, mode, origin, wghts_name='filter weights',
+                   sizes=None):
     _util._check_mode(mode)
-    # Weights must always be less than 2 GiB
-    if weights.nbytes >= (1 << 31):
-        raise RuntimeError('weights must be 2 GiB or less, use FFTs instead')
-    weight_dims = [x for x in weights.shape if x != 0]
-    if len(weight_dims) != input.ndim:
-        raise RuntimeError('{} array has incorrect shape'.format(wghts_name))
+    if weights is not None:
+        # Weights must always be less than 2 GiB
+        if weights.nbytes >= (1 << 31):
+            raise RuntimeError(
+                'weights must be 2 GiB or less, use FFTs instead')
+        weight_dims = [x for x in weights.shape if x != 0]
+        if len(weight_dims) != input.ndim:
+            raise RuntimeError(f'{wghts_name} array has incorrect shape')
+    elif sizes is None:
+        raise ValueError("must specify either weights array or sizes")
+    else:
+        weight_dims = sizes
     origins = _util._fix_sequence_arg(origin, len(weight_dims), 'origin', int)
     for origin, width in zip(origins, weight_dims):
         _util._check_origin(origin, width)

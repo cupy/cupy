@@ -769,6 +769,10 @@ def _min_or_max_filter(input, size, ftprnt, structure, output, mode, cval,
     # structure is used by morphology.grey_erosion() and grey_dilation()
     # and not by the regular min/max filters
 
+    if isinstance(ftprnt, tuple) and size is None:
+        size = ftprnt
+        ftprnt = None
+
     sizes, ftprnt, structure = _filters_core._check_size_footprint_structure(
         input.ndim, size, ftprnt, structure)
     if cval is cupy.nan:
@@ -781,8 +785,9 @@ def _min_or_max_filter(input, size, ftprnt, structure, output, mode, cval,
             [fltr if size > 1 else None for size in sizes],
             input, sizes, output, mode, cval, origin)
 
-    origins, int_type = _filters_core._check_nd_args(input, ftprnt,
-                                                     mode, origin, 'footprint')
+    origins, int_type = _filters_core._check_nd_args(input, ftprnt, mode,
+                                                     origin, 'footprint',
+                                                     sizes=sizes)
     if structure is not None and structure.ndim != input.ndim:
         raise RuntimeError('structure array has incorrect shape')
 

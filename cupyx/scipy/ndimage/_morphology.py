@@ -1,3 +1,4 @@
+import math
 import operator
 import warnings
 
@@ -67,14 +68,16 @@ def _get_binary_erosion_kernel(
     name = 'binary_erosion'
     if false_val:
         name += '_invert'
+    has_weights = not all_weights_nonzero
+
     return _filters_core._generate_nd_kernel(
         name,
         pre,
         found,
         '',
-        'constant', w_shape, int_type, offsets, 0, ctype='Y', has_weights=True,
-        has_structure=False, has_mask=masked, binary_morphology=True,
-        all_weights_nonzero=all_weights_nonzero)
+        'constant', w_shape, int_type, offsets, 0, ctype='Y',
+        has_weights=has_weights, has_structure=False, has_mask=masked,
+        binary_morphology=True)
 
 
 def _center_is_true(structure, origin):
@@ -163,18 +166,24 @@ def _binary_erosion(input, structure, iterations, mask, output, border_value,
         structure = generate_binary_structure(input.ndim, 1)
         all_weights_nonzero = input.ndim == 1
         center_is_true = True
-        default_structure = True
+        structure_shape = structure.shape
+    elif isinstance(structure, tuple):
+        # For a structure that is true everywhere, can just provide the shape
+        structure_shape = structure
+        if len(structure_shape) == 0:
+            raise RuntimeError("structure must not be empty")
     else:
         structure = structure.astype(dtype=bool, copy=False)
+        structure_shape = structure.shape
         # transfer to CPU for use in determining if it is fully dense
         # structure_cpu = cupy.asnumpy(structure)
-        default_structure = False
-    if structure.ndim != input.ndim:
-        raise RuntimeError('structure and input must have same dimensionality')
-    if not structure.flags.c_contiguous:
-        structure = cupy.ascontiguousarray(structure)
-    if structure.size < 1:
-        raise RuntimeError('structure must not be empty')
+        if structure.ndim != input.ndim:
+            raise RuntimeError(
+                'structure and input must have same dimensionality')
+        if not structure.flags.c_contiguous:
+            structure = cupy.ascontiguousarray(structure)
+        if structure.size < 1:
+            raise RuntimeError('structure must not be empty')
 
     if mask is not None:
         if mask.shape != input.shape:
@@ -197,17 +206,21 @@ def _binary_erosion(input, structure, iterations, mask, output, border_value,
         # input and output arrays cannot share memory
         temp = output
         output = _util._get_output(output.dtype, input)
-    if structure.ndim == 0:
+    if len(structure_shape) == 0:
         # kernel doesn't handle ndim=0, so special case it here
-        if float(structure):
+        if isinstance(structure, tuple) or float(structure):
             output[...] = cupy.asarray(input, dtype=bool)
         else:
             output[...] = ~cupy.asarray(input, dtype=bool)
         return output
     origin = tuple(origin)
     int_type = _util._get_inttype(input)
-    offsets = _filters_core._origins_to_offsets(origin, structure.shape)
-    if not default_structure:
+    offsets = _filters_core._origins_to_offsets(origin, structure_shape)
+    if isinstance(structure, tuple):
+        nnz = math.prod(structure_shape)
+        all_weights_nonzero = True
+        center_is_true = True
+    else:
         # synchronize required to determine if all weights are non-zero
         nnz = int(cupy.count_nonzero(structure))
         all_weights_nonzero = nnz == structure.size
@@ -217,15 +230,22 @@ def _binary_erosion(input, structure, iterations, mask, output, border_value,
             center_is_true = _center_is_true(structure, origin)
 
     erode_kernel = _get_binary_erosion_kernel(
-        structure.shape, int_type, offsets, center_is_true, border_value,
+        structure_shape, int_type, offsets, center_is_true, border_value,
         invert, masked, all_weights_nonzero,
     )
+    if all_weights_nonzero:
+        if masked:
+            in_args = (input, mask)
+        else:
+            in_args = (input,)
+    else:
+        if masked:
+            in_args = (input, structure, mask)
+        else:
+            in_args = (input, structure)
 
     if iterations == 1:
-        if masked:
-            output = erode_kernel(input, structure, mask, output)
-        else:
-            output = erode_kernel(input, structure, output)
+        output = erode_kernel(*in_args, output)
     elif center_is_true and not brute_force:
         raise NotImplementedError(
             'only brute_force iteration has been implemented'
@@ -237,19 +257,23 @@ def _binary_erosion(input, structure, iterations, mask, output, border_value,
         tmp_out = output
         if iterations >= 1 and not iterations & 1:
             tmp_in, tmp_out = tmp_out, tmp_in
-        if masked:
-            tmp_out = erode_kernel(input, structure, mask, tmp_out)
-        else:
-            tmp_out = erode_kernel(input, structure, tmp_out)
+        tmp_out = erode_kernel(*in_args, tmp_out)
         # TODO: kernel doesn't return the changed status, so determine it here
         changed = not (input == tmp_out).all()  # synchronize!
         ii = 1
         while ii < iterations or ((iterations < 1) and changed):
             tmp_in, tmp_out = tmp_out, tmp_in
-            if masked:
-                tmp_out = erode_kernel(tmp_in, structure, mask, tmp_out)
+            if all_weights_nonzero:
+                if masked:
+                    in_args = (tmp_in, mask)
+                else:
+                    in_args = (tmp_in,)
             else:
-                tmp_out = erode_kernel(tmp_in, structure, tmp_out)
+                if masked:
+                    in_args = (tmp_in, structure, mask)
+                else:
+                    in_args = (tmp_in, structure)
+            tmp_out = erode_kernel(*in_args, tmp_out)
             changed = not (tmp_in == tmp_out).all()
             ii += 1
             if not changed and (not ii & 1):  # synchronize!
@@ -261,6 +285,24 @@ def _binary_erosion(input, structure, iterations, mask, output, border_value,
         _core.elementwise_copy(output, temp)
         output = temp
     return output
+
+
+def _prep_structure(structure, ndim):
+    if structure is None:
+        structure = generate_binary_structure(ndim, 1)
+        return structure, structure.shape, True
+    if isinstance(structure, int):
+        structure = (structure,) * ndim
+    elif isinstance(structure, list):
+        structure = tuple(structure)
+    if isinstance(structure, tuple):
+        symmetric_structure = True
+        structure_shape = structure
+    else:
+        # if user-provided, it is not guaranteed to be symmetric
+        symmetric_structure = False
+        structure_shape = structure.shape
+    return structure, structure_shape, symmetric_structure
 
 
 def binary_erosion(input, structure=None, iterations=1, mask=None, output=None,
@@ -305,6 +347,7 @@ def binary_erosion(input, structure=None, iterations=1, mask=None, output=None,
 
     .. seealso:: :func:`scipy.ndimage.binary_erosion`
     """
+    structure, _, _ = _prep_structure(structure, input.ndim)
     return _binary_erosion(input, structure, iterations, mask, output,
                            border_value, origin, 0, brute_force)
 
@@ -348,13 +391,15 @@ def binary_dilation(input, structure=None, iterations=1, mask=None,
 
     .. seealso:: :func:`scipy.ndimage.binary_dilation`
     """
-    if structure is None:
-        structure = generate_binary_structure(input.ndim, 1)
+    structure, structure_shape, symmetric = _prep_structure(structure,
+                                                            input.ndim)
     origin = _util._fix_sequence_arg(origin, input.ndim, 'origin', int)
-    structure = structure[tuple([slice(None, None, -1)] * structure.ndim)]
+    # no point in flipping if already symmetric
+    if not symmetric:
+        structure = structure[tuple([slice(None, None, -1)] * structure.ndim)]
     for ii in range(len(origin)):
         origin[ii] = -origin[ii]
-        if not structure.shape[ii] & 1:
+        if not structure_shape[ii] & 1:
             origin[ii] -= 1
     return _binary_erosion(input, structure, iterations, mask, output,
                            border_value, origin, 1, brute_force)
@@ -371,10 +416,14 @@ def binary_opening(input, structure=None, iterations=1, output=None, origin=0,
     Args:
         input(cupy.ndarray): The input binary array to be opened.
             Non-zero (True) elements form the subset to be opened.
-        structure(cupy.ndarray, optional): The structuring element used for the
-            opening. Non-zero elements are considered True. If no structuring
-            element is provided an element is generated with a square
-            connectivity equal to one. (Default value = None).
+        structure(cupy.ndarray or tuple or int, optional): The structuring
+            element used for the erosion. Non-zero elements are considered
+            True. If no structuring element is provided an element is generated
+            with a square connectivity equal to one. (Default value = None). If
+            a tuple of integers is provided, a structuring element of the
+            specified shape is used (all elements True). If an integer is
+            provided, the structuring element will have the same size along all
+            axes.
         iterations(int, optional): The opening is repeated ``iterations`` times
             (one, by default). If iterations is less than 1, the opening is
             repeated until the result does not change anymore. Only an integer
@@ -403,9 +452,7 @@ def binary_opening(input, structure=None, iterations=1, output=None, origin=0,
 
     .. seealso:: :func:`scipy.ndimage.binary_opening`
     """
-    if structure is None:
-        rank = input.ndim
-        structure = generate_binary_structure(rank, 1)
+    structure, _, _ = _prep_structure(structure, input.ndim)
     tmp = binary_erosion(input, structure, iterations, mask, None,
                          border_value, origin, brute_force)
     return binary_dilation(tmp, structure, iterations, mask, output,
@@ -423,10 +470,14 @@ def binary_closing(input, structure=None, iterations=1, output=None, origin=0,
     Args:
         input(cupy.ndarray): The input binary array to be closed.
             Non-zero (True) elements form the subset to be closed.
-        structure(cupy.ndarray, optional): The structuring element used for the
-            closing. Non-zero elements are considered True. If no structuring
-            element is provided an element is generated with a square
-            connectivity equal to one. (Default value = None).
+        structure(cupy.ndarray or tuple or int, optional): The structuring
+            element used for the erosion. Non-zero elements are considered
+            True. If no structuring element is provided an element is generated
+            with a square connectivity equal to one. (Default value = None). If
+            a tuple of integers is provided, a structuring element of the
+            specified shape is used (all elements True). If an integer is
+            provided, the structuring element will have the same size along all
+            axes.
         iterations(int, optional): The closing is repeated ``iterations`` times
             (one, by default). If iterations is less than 1, the closing is
             repeated until the result does not change anymore. Only an integer
@@ -455,9 +506,7 @@ def binary_closing(input, structure=None, iterations=1, output=None, origin=0,
 
     .. seealso:: :func:`scipy.ndimage.binary_closing`
     """
-    if structure is None:
-        rank = input.ndim
-        structure = generate_binary_structure(rank, 1)
+    structure, _, _ = _prep_structure(structure, input.ndim)
     tmp = binary_dilation(input, structure, iterations, mask, None,
                           border_value, origin, brute_force)
     return binary_erosion(tmp, structure, iterations, mask, output,
