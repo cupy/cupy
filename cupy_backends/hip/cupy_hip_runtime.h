@@ -270,6 +270,7 @@ cudaError_t cudaPointerGetAttributes(cudaPointerAttributes *attributes,
                                      const void* ptr) {
     cudaError_t status = hipPointerGetAttributes(attributes, ptr);
     if (status == cudaSuccess) {
+#if HIP_VERSION >= 600
         switch (attributes->type) {
             case 0 /* hipMemoryTypeHost */:
                 attributes->type = (hipMemoryType)1; /* cudaMemoryTypeHost */
@@ -277,6 +278,15 @@ cudaError_t cudaPointerGetAttributes(cudaPointerAttributes *attributes,
             case 1 /* hipMemoryTypeDevice */:
                 attributes->type = (hipMemoryType)2; /* cudaMemoryTypeDevice */
                 return status;
+#elif
+       switch (attributes->memoryType) {
+            case 0 /* hipMemoryTypeHost */:
+                attributes->memoryType = (hipMemoryType)1; /* cudaMemoryTypeHost */
+                return status;
+            case 1 /* hipMemoryTypeDevice */:
+                attributes->memoryType = (hipMemoryType)2; /* cudaMemoryTypeDevice */
+                return status;
+#endif
             default:
                 /* we don't care the rest of possibilities */
                 return status;
