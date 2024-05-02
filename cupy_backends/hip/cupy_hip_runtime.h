@@ -270,12 +270,12 @@ cudaError_t cudaPointerGetAttributes(cudaPointerAttributes *attributes,
                                      const void* ptr) {
     cudaError_t status = hipPointerGetAttributes(attributes, ptr);
     if (status == cudaSuccess) {
-        switch (attributes->memoryType) {
+        switch (attributes->type) {
             case 0 /* hipMemoryTypeHost */:
-                attributes->memoryType = (hipMemoryType)1; /* cudaMemoryTypeHost */
+                attributes->type = (hipMemoryType)1; /* cudaMemoryTypeHost */
                 return status;
             case 1 /* hipMemoryTypeDevice */:
-                attributes->memoryType = (hipMemoryType)2; /* cudaMemoryTypeDevice */
+                attributes->type = (hipMemoryType)2; /* cudaMemoryTypeDevice */
                 return status;
             default:
                 /* we don't care the rest of possibilities */
