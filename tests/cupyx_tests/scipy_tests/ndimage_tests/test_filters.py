@@ -35,10 +35,10 @@ class FilterTestCaseBase:
     mode = 'reflect'
 
     # Params that need to be possibly shortened to the right number of dims
-    DIMS_PARAMS = ('origin', 'sigma')
+    DIMS_PARAMS = ('origin', 'sigma', 'axes', 'mode', 'radius')
 
     # Params that need no processing and just go into kwargs
-    KWARGS_PARAMS = ('output', 'axis', 'mode', 'cval', 'truncate')+DIMS_PARAMS
+    KWARGS_PARAMS = ('output', 'axis', 'cval', 'truncate') + DIMS_PARAMS
 
     # Params that need no processing go before weights in the arguments
     ARGS_PARAMS = ('rank', 'percentile',
@@ -67,9 +67,14 @@ class FilterTestCaseBase:
 
         is_1d = self.filter.endswith('1d')
         for param in FilterTestCaseBase.DIMS_PARAMS:
+            ndim_filtered = self._ndim
+            if 'axes' in kwargs:
+                axes_ = kwargs["axes"]
+                if axes_ is not None:
+                    ndim_filtered = 1 if numpy.isscalar(axes_) else len(axes_)
             if param in kwargs and isinstance(kwargs[param], tuple):
                 value = kwargs[param]
-                kwargs[param] = value[0] if is_1d else value[:self._ndim]
+                kwargs[param] = value[0] if is_1d else value[:ndim_filtered]
 
         # The array we are filtering
         arr = testing.shaped_random(self.shape, xp, self.dtype)
@@ -278,8 +283,14 @@ def dummy_deriv_func(input, axis, output, mode, cval, *args, **kwargs):
             'sigma': [1.5, 2],
             'truncate': [2.75, 4],
         }) + testing.product({
-            'filter': ['gaussian_filter', 'gaussian_laplace',
-                       'gaussian_gradient_magnitude'],
+            'filter': ['gaussian_filter'],
+            'sigma': [1.5, 2.25, (1.5, 2.25, 1.0, 3.0)],
+            'radius': [None, 2, (1, 2, 3, 4)],
+            'mode': [('reflect', 'nearest', 'mirror', 'wrap')],
+            'axes': [None, (0, -1)],
+            'truncate': [2.75, 4],
+        }) + testing.product({
+            'filter': ['gaussian_laplace', 'gaussian_gradient_magnitude'],
             'sigma': [1.5, 2.25, (1.5, 2.25, 1.0, 3.0)],
             'truncate': [2.75, 4],
         }) + testing.product({
@@ -755,6 +766,26 @@ class TestSpecialCases1D(FilterTestCaseBase):
                                  accept_error=RuntimeError)
     def test_0_dim(self, xp, scp):
         self.ksize = 0
+        return self._filter(xp, scp)
+
+
+# Tests special weights (1D)
+@testing.parameterize(*testing.product({
+    'filter': ['uniform_filter'],
+    'shape': [(15, 13), (7, 8, 9)],
+    'kshape': [(3, 4, 5)],
+    'axes': [None, 1, (0,), (-2, -1)],
+    'dtype': [numpy.float64],
+    'mode': ['reflect', 'nearest', ('constant', 'wrap', 'mirror')],
+    'cval': [0, 2],
+}))
+@testing.with_requires('scipy')
+class TestUniformFilterAxes(FilterTestCaseBase):
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp',
+                                 accept_error=RuntimeError)
+    def test_axes(self, xp, scp):
+        if isinstance(self.kshape, tuple):
+            self.kshape = self.kshape[:len(self.shape)]
         return self._filter(xp, scp)
 
 
