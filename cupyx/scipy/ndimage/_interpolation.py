@@ -552,7 +552,8 @@ def rotate(input, angle, axes=(1, 0), reshape=True, output=None, order=3,
         out_bounds = rot_matrix @ [[0, 0, iy, iy],
                                    [0, ix, 0, ix]]
         # Compute the shape of the transformed input plane
-        out_plane_shape = (out_bounds.ptp(axis=1) + 0.5).astype(cupy.int64)
+        out_plane_shape = (numpy.ptp(out_bounds, axis=1) +
+                           0.5).astype(cupy.int64)
     else:
         out_plane_shape = img_shape[axes]
 
