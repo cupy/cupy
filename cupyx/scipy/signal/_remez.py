@@ -149,6 +149,26 @@ extern "C" __global__ void sort_bands(
 ''', 'sort_bands')
 
 
+ker_bandwidths = cupy.RawKernel(r'''
+extern "C" __global__ void ker_bandwidths(
+    int n, const double* freqs, const long long* band_length,
+    const long long* band_end, double* bandwidths, long long* xs
+) {
+    int idx = blockDim.x * blockIdx.x + threadIdx.x;
+    if(idx >= n) {
+        return;
+    }
+
+    const long long length = band_length[idx];
+    const long long end = band_end[idx] - 1;
+    const long long start = end - length;
+
+    bandwidths[idx] = freqs[end] - freqs[start];
+    xs[idx] = 1;
+}
+''', 'ker_bandwidths')
+
+
 def parks_mclellan_bp(n, freqs, amplitudes, weights, eps=0.01, nmax=4):
     band_idx = cupy.arange(weights.shape[0])
     band_mask = cupy.zeros(weights.shape[0], dtype=cupy.bool_)
@@ -195,6 +215,20 @@ def parks_mclellan_bp(n, freqs, amplitudes, weights, eps=0.01, nmax=4):
 
     ker_sort_bands((cbands_length.shape[0],), (block_sz,), (
         cbands_length, cbands_displ, cbands))
+
+    bandwidths = cupy.empty(band_length.shape[0], dtype=cupy.float64)
+    xs = cupy.empty_like(bandwidths, dtype=cupy.int64)
+
+    n_blocks = (band_length.shape[0] + block_sz - 1) // block_sz
+    ker_bandwidths((n_blocks,), (block_sz,), (
+        band_length.shape[0], fbands, band_length, fbands_displ,
+        bandwidths, xs))
+
+    omega = cupy.empty(n // 2 + 2, dtype=cupy.float64)
+    non_point_bands = cupy.where(bandwidths > 0.0)[0]
+    avg_dist = (  # NOQA
+        bandwidths[non_point_bands].sum() / (
+            omega.shape[0] - bandwidths.shape[0]))  # NOQA
 
 
 def parks_mclellan(n, freqs, amplitudes, weights,
