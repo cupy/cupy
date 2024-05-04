@@ -78,7 +78,7 @@ def _check_nd_args(input, weights, mode, origin, wghts_name='filter weights',
     return tuple(origins), _util._get_inttype(input)
 
 
-def _run_1d_filters(filters, input, args, output, mode, cval, origin=0):
+def _run_1d_filters(filters, input, axes, args, output, modes, cval, origin=0):
     """
     Runs a series of 1D filters forming an nd filter. The filters must be a
     list of callables that take input, arg, axis, output, mode, cval, origin.
@@ -86,20 +86,22 @@ def _run_1d_filters(filters, input, args, output, mode, cval, origin=0):
     filter. Individual filters can be None causing that axis to be skipped.
     """
     output = _util._get_output(output, input)
-    modes = _util._fix_sequence_arg(mode, input.ndim, 'mode',
+    axes = _util._check_axes(axes, input.ndim)
+    num_axes = len(axes)
+    modes = _util._fix_sequence_arg(modes, num_axes, 'mode',
                                     _util._check_mode)
     # for filters, "wrap" is a synonym for "grid-wrap".
     modes = ['grid-wrap' if m == 'wrap' else m for m in modes]
-    origins = _util._fix_sequence_arg(origin, input.ndim, 'origin', int)
+    origins = _util._fix_sequence_arg(origin, num_axes, 'origin', int)
     n_filters = sum(filter is not None for filter in filters)
     if n_filters == 0:
         _core.elementwise_copy(input, output)
         return output
     # We can't operate in-place efficiently, so use a 2-buffer system
     temp = _util._get_output(output.dtype, input) if n_filters > 1 else None
-    iterator = zip(filters, args, modes, origins)
+    iterator = zip(axes, filters, args, modes, origins)
     # skip any axes where the filter is None
-    for axis, (fltr, arg, mode, origin) in enumerate(iterator):
+    for (axis, fltr, arg, mode, origin) in iterator:
         if fltr is not None:
             break
     # To avoid need for any additional copies, we have to start with a
@@ -111,7 +113,7 @@ def _run_1d_filters(filters, input, args, output, mode, cval, origin=0):
     else:
         fltr(input, arg, axis, output, mode, cval, origin)
         input, output = output, temp
-    for axis, (fltr, arg, mode, origin) in enumerate(iterator, start=axis + 1):
+    for (axis, fltr, arg, mode, origin) in iterator:
         if fltr is None:
             continue
         fltr(input, arg, axis, output, mode, cval, origin)
