@@ -58,8 +58,12 @@ def _convert_1d_args(ndim, weights, origin, axis):
 
 
 def _check_nd_args(input, weights, mode, origin, wghts_name='filter weights',
-                   sizes=None):
-    _util._check_mode(mode)
+                   sizes=None, axes=None):
+    axes = _util._check_axes(axes, input.ndim)
+    num_axes = len(axes)
+    modes = _util._fix_sequence_arg(mode, num_axes, 'origin', str)
+    for mode in modes:
+        _util._check_mode(mode)
     if weights is not None:
         # Weights must always be less than 2 GiB
         if weights.nbytes >= (1 << 31):
@@ -71,11 +75,13 @@ def _check_nd_args(input, weights, mode, origin, wghts_name='filter weights',
     elif sizes is None:
         raise ValueError("must specify either weights array or sizes")
     else:
+        if len(sizes) != num_axes:
+            raise ValueError("sizes must match len(axes)")
         weight_dims = sizes
-    origins = _util._fix_sequence_arg(origin, len(weight_dims), 'origin', int)
+    origins = _util._fix_sequence_arg(origin, num_axes, 'origin', int)
     for origin, width in zip(origins, weight_dims):
         _util._check_origin(origin, width)
-    return tuple(origins), _util._get_inttype(input)
+    return tuple(origins), tuple(modes), _util._get_inttype(input)
 
 
 def _run_1d_filters(filters, input, axes, args, output, modes, cval, origin=0):
@@ -198,7 +204,7 @@ __device__ __forceinline__ bool nonzero(T x) { return x != static_cast<T>(0); }
 """
 
 
-def _generate_nd_kernel(name, pre, found, post, mode, w_shape, int_type,
+def _generate_nd_kernel(name, pre, found, post, modes, w_shape, int_type,
                         offsets, cval, ctype='X', preamble='', options=(),
                         has_weights=True, has_structure=False, has_mask=False,
                         binary_morphology=False, all_weights_nonzero=False):
@@ -217,8 +223,16 @@ def _generate_nd_kernel(name, pre, found, post, mode, w_shape, int_type,
         in_params += ', raw M mask'
     out_params = 'Y y'
 
-    # for filters, "wrap" is a synonym for "grid-wrap"
-    mode = 'grid-wrap' if mode == 'wrap' else mode
+    constant_mode = False
+
+    if isinstance(modes, str):
+        modes = 'grid-wrap' if modes == 'wrap' else modes
+        modes = (modes,) * ndim
+        num_unique_modes = 1
+    else:
+        modes = tuple('grid-wrap' if m == 'wrap' else m for m in modes)
+        num_unique_modes = len(set(modes))
+    constant_mode = (num_unique_modes == 1 and modes[0] == 'constant')
 
     # CArray: remove xstride_{j}=... from string
     size = ('%s xsize_{j}=x.shape()[{j}], ysize_{j} = _raw_y.shape()[{j}]'
@@ -246,7 +260,7 @@ def _generate_nd_kernel(name, pre, found, post, mode, w_shape, int_type,
             loops.append(f'{{ {int_type} ix_{j} = ind_{j} * xstride_{j};')
         else:
             boundary = _util._generate_boundary_condition_ops(
-                mode, f'ix_{j}', f'xsize_{j}', int_type)
+                modes[j], f'ix_{j}', f'xsize_{j}', int_type)
             # CArray: last line of string becomes inds[{j}] = ix_{j};
             loops.append(f'''
     for (int iw_{j} = 0; iw_{j} < {w_shape[j]}; iw_{j}++)
@@ -258,7 +272,7 @@ def _generate_nd_kernel(name, pre, found, post, mode, w_shape, int_type,
 
     # CArray: string becomes 'x[inds]', no format call needed
     value = f'(*(X*)&data[{expr}])'
-    if mode == 'constant':
+    if constant_mode:
         cond = ' || '.join([f'(ix_{j} < 0)' for j in range(ndim)])
 
     if cval is numpy.nan:
@@ -271,7 +285,7 @@ def _generate_nd_kernel(name, pre, found, post, mode, w_shape, int_type,
     if binary_morphology:
         found = found.format(cond=cond, value=value)
     else:
-        if mode == 'constant':
+        if constant_mode:
             value = f'(({cond}) ? cast<{ctype}>({cval}) : {value})'
         found = found.format(value=value)
 
@@ -297,7 +311,11 @@ def _generate_nd_kernel(name, pre, found, post, mode, w_shape, int_type,
                ws_init=ws_init, ws_pre=ws_pre, ws_post=ws_post,
                loops='\n'.join(loops), found=found, end_loops='}'*ndim)
 
-    mode_str = mode.replace('-', '_')  # avoid potential hyphen in kernel name
+    # avoid potential hyphen in kernel name
+    if num_unique_modes > 1:
+        mode_str = '_'.join(m.replace('-', '_') for m in modes)
+    else:
+        mode_str = modes[0].replace('-', '_')
     name = 'cupyx_scipy_ndimage_{}_{}d_{}_w{}'.format(
         name, ndim, mode_str, '_'.join([f'{x}' for x in w_shape]))
     if all_weights_nonzero:

@@ -152,12 +152,13 @@ def convolve1d(input, weights, axis=-1, output=None, mode="reflect", cval=0.0,
 
 def _correlate_or_convolve(input, weights, output, mode, cval, origin,
                            convolution=False):
-    origins, int_type = _filters_core._check_nd_args(input, weights,
-                                                     mode, origin)
+    origins, modes, int_type = _filters_core._check_nd_args(input, weights,
+                                                            mode, origin)
     if weights.size == 0:
         return cupy.zeros_like(input)
 
-    _util._check_cval(mode, cval, _util._is_integer_output(output, input))
+    for mode in modes:
+        _util._check_cval(mode, cval, _util._is_integer_output(output, input))
 
     if convolution:
         weights = weights[tuple([slice(None, None, -1)] * weights.ndim)]
@@ -172,7 +173,7 @@ def _correlate_or_convolve(input, weights, output, mode, cval, origin,
         weights = weights.conj()
     weights_dtype = _util._get_weights_dtype(input, weights)
     offsets = _filters_core._origins_to_offsets(origins, weights.shape)
-    kernel = _get_correlate_kernel(mode, weights.shape, int_type,
+    kernel = _get_correlate_kernel(modes, weights.shape, int_type,
                                    offsets, cval)
     output = _filters_core._call_kernel(kernel, input, weights, output,
                                         weights_dtype=weights_dtype)
@@ -180,13 +181,13 @@ def _correlate_or_convolve(input, weights, output, mode, cval, origin,
 
 
 @cupy._util.memoize(for_each_device=True)
-def _get_correlate_kernel(mode, w_shape, int_type, offsets, cval):
+def _get_correlate_kernel(modes, w_shape, int_type, offsets, cval):
     return _filters_core._generate_nd_kernel(
         'correlate',
         'W sum = (W)0;',
         'sum += cast<W>({value}) * wval;',
         'y = cast<Y>(sum);',
-        mode, w_shape, int_type, offsets, cval, ctype='W')
+        modes, w_shape, int_type, offsets, cval, ctype='W')
 
 
 def _run_1d_correlates(input, axes, params, get_weights, output, modes, cval,
@@ -749,7 +750,7 @@ def gaussian_gradient_magnitude(input, sigma, output=None, mode="reflect",
 
 
 def minimum_filter(input, size=None, footprint=None, output=None,
-                   mode="reflect", cval=0.0, origin=0):
+                   mode="reflect", cval=0.0, origin=0, axes=None):
     """Multi-dimensional minimum filter.
 
     Args:
@@ -778,11 +779,11 @@ def minimum_filter(input, size=None, footprint=None, output=None,
     .. seealso:: :func:`scipy.ndimage.minimum_filter`
     """
     return _min_or_max_filter(input, size, footprint, None, output, mode,
-                              cval, origin, 'min')
+                              cval, origin, 'min', axes)
 
 
 def maximum_filter(input, size=None, footprint=None, output=None,
-                   mode="reflect", cval=0.0, origin=0):
+                   mode="reflect", cval=0.0, origin=0, axes=None):
     """Multi-dimensional maximum filter.
 
     Args:
@@ -811,11 +812,11 @@ def maximum_filter(input, size=None, footprint=None, output=None,
     .. seealso:: :func:`scipy.ndimage.maximum_filter`
     """
     return _min_or_max_filter(input, size, footprint, None, output, mode,
-                              cval, origin, 'max')
+                              cval, origin, 'max', axes)
 
 
 def _min_or_max_filter(input, size, ftprnt, structure, output, mode, cval,
-                       origin, func):
+                       origin, func, axes):
     # structure is used by morphology.grey_erosion() and grey_dilation()
     # and not by the regular min/max filters
 
@@ -836,16 +837,19 @@ def _min_or_max_filter(input, size, ftprnt, structure, output, mode, cval,
             [fltr if size > 1 else None for size in sizes],
             input, axes, sizes, output, mode, cval, origin)
 
-    origins, int_type = _filters_core._check_nd_args(input, ftprnt, mode,
-                                                     origin, 'footprint',
-                                                     sizes=sizes)
+    axes = _util._check_axes(axes, input.ndim)
+    origins, modes, int_type = _filters_core._check_nd_args(input, ftprnt,
+                                                            mode, origin,
+                                                            'footprint',
+                                                            sizes=sizes,
+                                                            axes=axes)
     if structure is not None and structure.ndim != input.ndim:
         raise RuntimeError('structure array has incorrect shape')
 
     if ftprnt.size == 0:
         return cupy.zeros_like(input)
     offsets = _filters_core._origins_to_offsets(origins, ftprnt.shape)
-    kernel = _get_min_or_max_kernel(mode, ftprnt.shape, func,
+    kernel = _get_min_or_max_kernel(modes, ftprnt.shape, func,
                                     offsets, float(cval), int_type,
                                     has_structure=structure is not None,
                                     has_central_value=bool(ftprnt[offsets]))
@@ -912,17 +916,19 @@ def _min_or_max_1d(input, size, axis=-1, output=None, mode="reflect", cval=0.0,
     ftprnt = cupy.ones(size, dtype=bool)
     ftprnt, origin = _filters_core._convert_1d_args(input.ndim, ftprnt,
                                                     origin, axis)
-    origins, int_type = _filters_core._check_nd_args(input, ftprnt,
-                                                     mode, origin, 'footprint')
+    origins, modes, int_type = _filters_core._check_nd_args(input, ftprnt,
+                                                            mode, origin,
+                                                            'footprint',
+                                                            axes=None)
     offsets = _filters_core._origins_to_offsets(origins, ftprnt.shape)
-    kernel = _get_min_or_max_kernel(mode, ftprnt.shape, func, offsets,
+    kernel = _get_min_or_max_kernel(modes, ftprnt.shape, func, offsets,
                                     float(cval), int_type, has_weights=False)
     return _filters_core._call_kernel(kernel, input, None, output,
                                       weights_dtype=bool)
 
 
 @cupy._util.memoize(for_each_device=True)
-def _get_min_or_max_kernel(mode, w_shape, func, offsets, cval, int_type,
+def _get_min_or_max_kernel(modes, w_shape, func, offsets, cval, int_type,
                            has_weights=True, has_structure=False,
                            has_central_value=True):
     # When there are no 'weights' (the footprint, for the 1D variants) then
@@ -950,7 +956,7 @@ def _get_min_or_max_kernel(mode, w_shape, func, offsets, cval, int_type,
     return _filters_core._generate_nd_kernel(
         func, pre.format(ctype),
         found.format(func=func, value=value), 'y = cast<Y>(value);',
-        mode, w_shape, int_type, offsets, cval, ctype=ctype,
+        modes, w_shape, int_type, offsets, cval, ctype=ctype,
         has_weights=has_weights, has_structure=has_structure)
 
 
@@ -1070,13 +1076,15 @@ def percentile_filter(input, percentile, size=None, footprint=None,
 
 
 def _rank_filter(input, get_rank, size=None, footprint=None, output=None,
-                 mode="reflect", cval=0.0, origin=0):
+                 mode="reflect", cval=0.0, origin=0, axes=None):
     _, footprint, _ = _filters_core._check_size_footprint_structure(
         input.ndim, size, footprint, None, force_footprint=True)
     if cval is cupy.nan:
         raise NotImplementedError("NaN cval is unsupported")
-    origins, int_type = _filters_core._check_nd_args(input, footprint,
-                                                     mode, origin, 'footprint')
+    origins, modes, int_type = _filters_core._check_nd_args(input, footprint,
+                                                            mode, origin,
+                                                            'footprint',
+                                                            axes=axes)
     if footprint.size == 0:
         return cupy.zeros_like(input)
     filter_size = int(footprint.sum())
@@ -1084,13 +1092,13 @@ def _rank_filter(input, get_rank, size=None, footprint=None, output=None,
     if rank < 0 or rank >= filter_size:
         raise RuntimeError('rank not within filter footprint size')
     if rank == 0:
-        return _min_or_max_filter(input, None, footprint, None, output, mode,
-                                  cval, origins, 'min')
+        return _min_or_max_filter(input, None, footprint, None, output, modes,
+                                  cval, origins, 'min', axes)
     if rank == filter_size - 1:
-        return _min_or_max_filter(input, None, footprint, None, output, mode,
-                                  cval, origins, 'max')
+        return _min_or_max_filter(input, None, footprint, None, output, modes,
+                                  cval, origins, 'max', axes)
     offsets = _filters_core._origins_to_offsets(origins, footprint.shape)
-    kernel = _get_rank_kernel(filter_size, rank, mode, footprint.shape,
+    kernel = _get_rank_kernel(filter_size, rank, modes, footprint.shape,
                               offsets, float(cval), int_type)
     return _filters_core._call_kernel(kernel, input, footprint, output,
                                       weights_dtype=bool)
@@ -1123,7 +1131,7 @@ def _get_shell_gap(filter_size):
 
 
 @cupy._util.memoize(for_each_device=True)
-def _get_rank_kernel(filter_size, rank, mode, w_shape, offsets, cval,
+def _get_rank_kernel(filter_size, rank, modes, w_shape, offsets, cval,
                      int_type):
     s_rank = min(rank, filter_size - rank - 1)
     # The threshold was set based on the measurements on a V100
@@ -1174,7 +1182,7 @@ def _get_rank_kernel(filter_size, rank, mode, w_shape, offsets, cval,
         'rank_{}_{}'.format(filter_size, rank),
         'int iv = 0;\nX values[{}];'.format(array_size),
         'values[iv++] = {value};' + found_post, post,
-        mode, w_shape, int_type, offsets, cval, preamble=sorter)
+        modes, w_shape, int_type, offsets, cval, preamble=sorter)
 
 
 def generic_filter(input, function, size=None, footprint=None,
@@ -1227,15 +1235,17 @@ def generic_filter(input, function, size=None, footprint=None,
     _, footprint, _ = _filters_core._check_size_footprint_structure(
         input.ndim, size, footprint, None, 2, True)
     filter_size = int(footprint.sum())
-    origins, int_type = _filters_core._check_nd_args(input, footprint,
-                                                     mode, origin, 'footprint')
+    origins, modes, int_type = _filters_core._check_nd_args(input, footprint,
+                                                            mode, origin,
+                                                            'footprint')
     in_dtype = input.dtype
     sub = _filters_generic._get_sub_kernel(function)
     if footprint.size == 0:
         return cupy.zeros_like(input)
     output = _util._get_output(output, input)
     offsets = _filters_core._origins_to_offsets(origins, footprint.shape)
-    args = (filter_size, mode, footprint.shape, offsets, float(cval), int_type)
+    args = (filter_size, modes, footprint.shape,
+            offsets, float(cval), int_type)
     if isinstance(sub, cupy.RawKernel):
         kernel = _filters_generic._get_generic_filter_raw(sub, *args)
     elif isinstance(sub, cupy.ReductionKernel):
