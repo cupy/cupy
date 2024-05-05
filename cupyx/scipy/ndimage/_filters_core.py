@@ -58,30 +58,59 @@ def _convert_1d_args(ndim, weights, origin, axis):
 
 
 def _check_nd_args(input, weights, mode, origin, wghts_name='filter weights',
-                   sizes=None, axes=None):
+                   sizes=None, axes=None, raise_on_zero_size_weight=False):
     axes = _util._check_axes(axes, input.ndim)
     num_axes = len(axes)
     modes = _util._fix_sequence_arg(mode, num_axes, 'origin', str)
     for mode in modes:
         _util._check_mode(mode)
+    origins = _util._fix_sequence_arg(origin, num_axes, 'origin', int)
+    if isinstance(weights, cupy.ndarray) and num_axes < input.ndim:
+        # In case of explicit footprint, we insert a singletone dimension
+        # on all non-filtered axes and insert values for origins, modes on any
+        # non-filtered axes.
+
+        # set origin = 0 on any axis not being filtered
+        origins_temp = [0,] * input.ndim
+        for o, ax in zip(origins, axes):
+            origins_temp[ax] = o
+        origins = origins_temp
+
+        modes_temp = ['constant'] * input.ndim
+        for m, ax in zip(modes, axes):
+            modes_temp[ax] = m
+        modes = modes_temp
+
+        # insert singleton dimension on footprint for non-filtered axes
+        weights = cupy.expand_dims(
+            weights,
+            tuple(ax for ax in range(input.ndim) if ax not in axes)
+        )
+
+        # now filter all axes
+        axes = tuple(range(input.ndim))
     if weights is not None:
         # Weights must always be less than 2 GiB
         if weights.nbytes >= (1 << 31):
             raise RuntimeError(
                 'weights must be 2 GiB or less, use FFTs instead')
         weight_dims = [x for x in weights.shape if x != 0]
+        if raise_on_zero_size_weight and any(w == 0 for w in weights.shape):
+            raise ValueError('All-zero footprint is not supported')
         if len(weight_dims) != input.ndim:
             raise RuntimeError(f'{wghts_name} array has incorrect shape')
     elif sizes is None:
         raise ValueError("must specify either weights array or sizes")
     else:
+        if numpy.isscalar(sizes):
+            sizes = (sizes,) * num_axes
         if len(sizes) != num_axes:
             raise ValueError("sizes must match len(axes)")
         weight_dims = sizes
-    origins = _util._fix_sequence_arg(origin, num_axes, 'origin', int)
     for origin, width in zip(origins, weight_dims):
         _util._check_origin(origin, width)
-    return tuple(origins), tuple(modes), _util._get_inttype(input)
+    int_type = _util._get_inttype(input)
+    return axes, weights, tuple(origins), tuple(modes), int_type
 
 
 def _run_1d_filters(filters, input, axes, args, output, modes, cval, origin=0):
@@ -224,7 +253,6 @@ def _generate_nd_kernel(name, pre, found, post, modes, w_shape, int_type,
     out_params = 'Y y'
 
     constant_mode = False
-
     if isinstance(modes, str):
         modes = 'grid-wrap' if modes == 'wrap' else modes
         modes = (modes,) * ndim
