@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cuda/std/type_traits>
+
 
 /* The code below is heavily inspired by the cuDF version */
 template<typename IntT, typename CharT>
@@ -32,7 +34,7 @@ integer_to_string(const IntT value, int strlen, CharT *ptr_orig)
     }
 
     /* zero fill unused chunk */
-    while (strenlen--) {
+    while (strlen--) {
         *ptr++ = 0;
     }
 }
@@ -112,29 +114,18 @@ public:
         return *this;
     }
 
-    // TODO: Howto best template it for all integers?!
-    __host__ __device__ NumPyString& operator=(const long &value)
-    {
-        integer_to_string(value, maxlen_, this->data);
-        return *this;
-    }
-    __host__ __device__ NumPyString& operator=(const long long &value)
+    template<typename IntT, typename cuda::std::enable_if<cuda::std::is_integral<IntT>::value, bool>::type = true>
+    __host__ __device__ NumPyString& operator=(const IntT &value)
     {
         integer_to_string(value, maxlen_, this->data);
         return *this;
     }
 
-
-    // TODO: Howto best template it for all integers?!
-    __host__ __device__ operator long()
+    template<typename IntT, typename cuda::std::enable_if<cuda::std::is_integral<IntT>::value, bool>::type = true>
+    __host__ __device__ operator IntT()
     {
-        return string_to_integer<long>(maxlen_, this->data);
+        return string_to_integer<IntT>(maxlen_, this->data);
     }
-    __host__ __device__ operator long long()
-    {
-        return string_to_integer<long long>(maxlen_, this->data);
-    }
-
 
     template<typename OT, int Olen>
     __host__ __device__ bool operator==(const NumPyString<OT, Olen> &other) const
