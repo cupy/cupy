@@ -20,7 +20,12 @@ if not cupy_builder.preflight_check(ctx):
 # Used for generating HIP equivalent files.
 if get_rocm_version() > 0 or ctx.use_stub:
     # run hipify.
-    from hipify_torch import hipify_python
+    try:
+        from hipify_torch import hipify_python
+    except ImportError:
+        print("hipify_torch not found, please install via pip install "
+              "git+https://github.com/ROCmSoftwarePlatform/hipify_torch.git")
+
     proj_dir = os.path.join(source_root, "cupy_backends", "cuda")
     print("INFO: hipification of cupy_backends in progress ...")
     with hipify_python.GeneratedFileCleaner(keep_intermediates=True) as \
