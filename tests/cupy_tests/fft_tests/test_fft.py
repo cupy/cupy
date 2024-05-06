@@ -1,4 +1,5 @@
 import functools
+import warnings
 
 import numpy as np
 import pytest
@@ -97,7 +98,7 @@ def multi_gpu_config(gpu_configs=None):
 @testing.parameterize(*testing.product({
     'n': [None, 0, 5, 10, 15],
     'shape': [(0,), (10, 0), (10,), (10, 10)],
-    'norm': [None, 'backward', 'ortho', 'forward', ''],
+    'norm': [None, 'backward', 'ortho', 'forward'],
 }))
 class TestFft:
 
@@ -185,7 +186,7 @@ def _skip_multi_gpu_bug(shape, gpus):
 @testing.parameterize(*testing.product({
     'n': [None, 0, 64],
     'shape': [(0,), (0, 10), (64,), (4, 64)],
-    'norm': [None, 'backward', 'ortho', 'forward', ''],
+    'norm': [None, 'backward', 'ortho', 'forward'],
 }))
 @testing.multi_gpu(2)
 @pytest.mark.skipif(cupy.cuda.runtime.is_hip,
@@ -393,7 +394,7 @@ class TestFftAllocate:
         {'shape': (3, 4), 's': (0, 5), 'axes': None},
         {'shape': (3, 4), 's': (1, 0), 'axes': None},
     ],
-        testing.product({'norm': [None, 'backward', 'ortho', 'forward', '']})
+        testing.product({'norm': [None, 'backward', 'ortho', 'forward']})
     )
 ))
 class TestFft2:
@@ -408,7 +409,11 @@ class TestFft2:
         a = testing.shaped_random(self.shape, xp, dtype)
         if order == 'F':
             a = xp.asfortranarray(a)
-        out = xp.fft.fft2(a, s=self.s, axes=self.axes, norm=self.norm)
+
+        with warnings.catch_warnings():
+            # axis=None and s != None, NumPy 2.0
+            warnings.simplefilter('ignore', DeprecationWarning)
+            out = xp.fft.fft2(a, s=self.s, axes=self.axes, norm=self.norm)
 
         if self.axes is not None and not self.axes:
             assert out is a
@@ -429,7 +434,11 @@ class TestFft2:
         a = testing.shaped_random(self.shape, xp, dtype)
         if order == 'F':
             a = xp.asfortranarray(a)
-        out = xp.fft.ifft2(a, s=self.s, axes=self.axes, norm=self.norm)
+
+        with warnings.catch_warnings():
+            # axis=None and s != None, NumPy 2.0
+            warnings.simplefilter('ignore', DeprecationWarning)
+            out = xp.fft.ifft2(a, s=self.s, axes=self.axes, norm=self.norm)
 
         if self.axes is not None and not self.axes:
             assert out is a
@@ -469,7 +478,7 @@ class TestFft2:
         {'shape': (2, 0, 5), 's': None, 'axes': None},
         {'shape': (0, 0, 5), 's': None, 'axes': None},
     ],
-        testing.product({'norm': [None, 'backward', 'ortho', 'forward', '']})
+        testing.product({'norm': [None, 'backward', 'ortho', 'forward']})
     )
 ))
 class TestFftn:
@@ -484,7 +493,11 @@ class TestFftn:
         a = testing.shaped_random(self.shape, xp, dtype)
         if order == 'F':
             a = xp.asfortranarray(a)
-        out = xp.fft.fftn(a, s=self.s, axes=self.axes, norm=self.norm)
+
+        with warnings.catch_warnings():
+            # axis=None and s != None, NumPy 2.0
+            warnings.simplefilter('ignore', DeprecationWarning)
+            out = xp.fft.fftn(a, s=self.s, axes=self.axes, norm=self.norm)
 
         if self.axes is not None and not self.axes:
             assert out is a
@@ -505,7 +518,11 @@ class TestFftn:
         a = testing.shaped_random(self.shape, xp, dtype)
         if order == 'F':
             a = xp.asfortranarray(a)
-        out = xp.fft.ifftn(a, s=self.s, axes=self.axes, norm=self.norm)
+
+        with warnings.catch_warnings():
+            # axis=None and s != None, NumPy 2.0
+            warnings.simplefilter('ignore', DeprecationWarning)
+            out = xp.fft.ifftn(a, s=self.s, axes=self.axes, norm=self.norm)
 
         if self.axes is not None and not self.axes:
             assert out is a
@@ -565,7 +582,10 @@ class TestPlanCtxManagerFftn:
             with plan:
                 out = xp.fft.fftn(a, s=self.s, axes=self.axes, norm=self.norm)
         else:
-            out = xp.fft.fftn(a, s=self.s, axes=self.axes, norm=self.norm)
+            with warnings.catch_warnings():
+                # axis=None and s != None, NumPy 2.0
+                warnings.simplefilter('ignore', DeprecationWarning)
+                out = xp.fft.fftn(a, s=self.s, axes=self.axes, norm=self.norm)
 
         if xp is np and dtype is np.complex64:
             out = out.astype(np.complex64)
@@ -585,7 +605,10 @@ class TestPlanCtxManagerFftn:
             with plan:
                 out = xp.fft.ifftn(a, s=self.s, axes=self.axes, norm=self.norm)
         else:
-            out = xp.fft.ifftn(a, s=self.s, axes=self.axes, norm=self.norm)
+            with warnings.catch_warnings():
+                # axis=None and s != None, NumPy 2.0
+                warnings.simplefilter('ignore', DeprecationWarning)
+                out = xp.fft.ifftn(a, s=self.s, axes=self.axes, norm=self.norm)
 
         if xp is np and dtype is np.complex64:
             out = out.astype(np.complex64)
@@ -975,7 +998,11 @@ class TestRfft2:
         a = testing.shaped_random(self.shape, xp, dtype)
         if order == 'F':
             a = xp.asfortranarray(a)
-        out = xp.fft.rfft2(a, s=self.s, axes=self.axes, norm=self.norm)
+
+        with warnings.catch_warnings():
+            # axis=None and s != None, NumPy 2.0
+            warnings.simplefilter('ignore', DeprecationWarning)
+            out = xp.fft.rfft2(a, s=self.s, axes=self.axes, norm=self.norm)
 
         if xp is np and dtype in [np.float16, np.float32, np.complex64]:
             out = out.astype(np.complex64)
@@ -997,7 +1024,11 @@ class TestRfft2:
         a = testing.shaped_random(self.shape, xp, dtype)
         if order == 'F':
             a = xp.asfortranarray(a)
-        out = xp.fft.irfft2(a, s=self.s, axes=self.axes, norm=self.norm)
+
+        with warnings.catch_warnings():
+             # axis=None and s != None, NumPy 2.0
+             warnings.simplefilter('ignore', DeprecationWarning)
+             out = xp.fft.irfft2(a, s=self.s, axes=self.axes, norm=self.norm)
 
         if xp is np and dtype in [np.float16, np.float32, np.complex64]:
             out = out.astype(np.float32)
@@ -1060,7 +1091,10 @@ class TestRfftn:
         a = testing.shaped_random(self.shape, xp, dtype)
         if order == 'F':
             a = xp.asfortranarray(a)
-        out = xp.fft.rfftn(a, s=self.s, axes=self.axes, norm=self.norm)
+        with warnings.catch_warnings():
+            # axis=None and s != None, NumPy 2.0
+            warnings.simplefilter('ignore', DeprecationWarning)
+            out = xp.fft.rfftn(a, s=self.s, axes=self.axes, norm=self.norm)
 
         if xp is np and dtype in [np.float16, np.float32, np.complex64]:
             out = out.astype(np.complex64)
@@ -1083,7 +1117,11 @@ class TestRfftn:
         a = testing.shaped_random(self.shape, xp, dtype)
         if order == 'F':
             a = xp.asfortranarray(a)
-        out = xp.fft.irfftn(a, s=self.s, axes=self.axes, norm=self.norm)
+
+        with warnings.catch_warnings():
+            # axis=None and s != None, NumPy 2.0
+            warnings.simplefilter('ignore', DeprecationWarning)
+            out = xp.fft.irfftn(a, s=self.s, axes=self.axes, norm=self.norm)
 
         if xp is np and dtype in [np.float16, np.float32, np.complex64]:
             out = out.astype(np.float32)
@@ -1109,7 +1147,7 @@ class TestRfftn:
         {'shape': (2, 3, 4), 's': None, 'axes': None},
         {'shape': (2, 3, 4), 's': (2, 3), 'axes': (0, 1, 2)},
     ],
-        testing.product({'norm': [None, 'backward', 'ortho', 'forward', '']})
+        testing.product({'norm': [None, 'backward', 'ortho', 'forward']})
     )
 ))
 class TestPlanCtxManagerRfftn:
@@ -1136,7 +1174,10 @@ class TestPlanCtxManagerRfftn:
             with plan:
                 out = xp.fft.rfftn(a, s=self.s, axes=self.axes, norm=self.norm)
         else:
-            out = xp.fft.rfftn(a, s=self.s, axes=self.axes, norm=self.norm)
+            with warnings.catch_warnings():
+                # axis=None and s != None, NumPy 2.0
+                warnings.simplefilter("ignore", DeprecationWarning)
+                out = xp.fft.rfftn(a, s=self.s, axes=self.axes, norm=self.norm)
 
         if xp is np and dtype in [np.float16, np.float32, np.complex64]:
             out = out.astype(np.complex64)
@@ -1159,7 +1200,10 @@ class TestPlanCtxManagerRfftn:
                 out = xp.fft.irfftn(
                     a, s=self.s, axes=self.axes, norm=self.norm)
         else:
-            out = xp.fft.irfftn(a, s=self.s, axes=self.axes, norm=self.norm)
+            with warnings.catch_warnings():
+                # axis=None and s != None, NumPy 2.0
+                warnings.simplefilter("ignore", DeprecationWarning)
+                out = xp.fft.irfftn(a, s=self.s, axes=self.axes, norm=self.norm)
 
         if xp is np and dtype in [np.float16, np.float32, np.complex64]:
             out = out.astype(np.float32)
@@ -1186,7 +1230,7 @@ class TestPlanCtxManagerRfftn:
         {'shape': (2, 3, 4), 's': None, 'axes': None},
         {'shape': (2, 3, 4, 5), 's': None, 'axes': None},
     ],
-        testing.product({'norm': [None, 'backward', 'ortho', 'forward', '']})
+        testing.product({'norm': [None, 'backward', 'ortho', 'forward']})
     )
 ))
 class TestRfftnContiguity:
@@ -1256,7 +1300,7 @@ class TestRfftnEmptyAxes:
 @testing.parameterize(*testing.product({
     'n': [None, 5, 10, 15],
     'shape': [(10,), (10, 10)],
-    'norm': [None, 'backward', 'ortho', 'forward', ''],
+    'norm': [None, 'backward', 'ortho', 'forward'],
 }))
 class TestHfft:
 
