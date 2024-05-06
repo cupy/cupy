@@ -3,72 +3,6 @@
 #include <cuda/std/type_traits>
 
 
-/* The code below is heavily inspired by the cuDF version */
-template<typename IntT, typename CharT>
-__host__ __device__ inline void
-integer_to_string(const IntT value, int strlen, CharT *ptr_orig)
-{
-    /* create large enough temporary char string, also to flip later */
-    // TODO: 21 is large enough for 64bit integers but this should use
-    //       std::numeric_limits or similar?
-    char digits[21];
-
-    bool const is_negative = value < 0;
-    IntT absval = is_negative ? -value : value;
-
-    int digits_idx = 0;
-    do {
-        digits[digits_idx++] = '0' + absval % (IntT)10;
-        // next digit
-        absval = absval / (IntT)10;
-    } while (absval != 0);
-
-    CharT *ptr = ptr_orig;
-    if (is_negative) {
-        *ptr++ = '-';
-        strlen--;
-    }
-    // digits are backwards, reverse the string into the output
-    while (digits_idx-- > 0 && strlen-- > 0) {
-        *ptr++ = digits[digits_idx];
-    }
-
-    /* zero fill unused chunk */
-    while (strlen--) {
-        *ptr++ = 0;
-    }
-}
-
-
-/* The code below is heavily inspired by the cuDF version */
-template<typename IntT, typename CharT>
-__host__ __device__ inline IntT
-string_to_integer(int strlen, CharT *ptr)
-{
-    IntT value = 0;
-
-    if (strlen == 0) {
-        return value;
-    }
-    int sign = 1;
-    if (*ptr == '-' || *ptr == '+') {
-        sign = (*ptr == '-' ? -1 : 1);
-        ++ptr;
-        --strlen;
-    }
-    for (int idx = 0; idx < strlen; idx++, ptr++) {
-        CharT chr = *ptr;
-        if (chr < '0' || chr > '9') {
-            // TODO: Maybe it would be good to set INT_MIN/UINT_MAX for real
-            //       invalid numbers (at this point could be NULL terminated).
-            break;
-        }
-        value = (value * (IntT)10) + static_cast<IntT>(chr - '0');
-    }
-    return value * sign;
-}
-
-
 template<typename T, int maxlen_>
 class NumPyString {
 public:
@@ -117,14 +51,65 @@ public:
     template<typename IntT, typename cuda::std::enable_if<cuda::std::is_integral<IntT>::value, bool>::type = true>
     __host__ __device__ NumPyString& operator=(const IntT &value)
     {
-        integer_to_string(value, maxlen_, this->data);
+        /* The code below is heavily inspired by the cuDF version */
+        char digits[21];  // TODO: 21 is larger than necessary for most ints
+
+        bool const is_negative = value < 0;
+        // TODO: The below misbehaves for the -int_min == int_min.
+        IntT absval = is_negative ? -value : value;
+
+        int digits_idx = 0;
+        int length = maxlen;
+        do {
+            digits[digits_idx++] = '0' + absval % (IntT)10;
+            // next digit
+            absval = absval / (IntT)10;
+        } while (absval != 0);
+
+        T *ptr = data;
+        if (is_negative) {
+            *ptr++ = '-';
+            length--;
+        }
+        // digits are backwards, reverse the string into the output
+        while (digits_idx-- > 0 && length-- > 0) {
+            *ptr++ = digits[digits_idx];
+        }
+
+        /* zero fill unused chunk */
+        while (length-- > 0) {
+            *ptr++ = 0;
+        }
         return *this;
     }
 
     template<typename IntT, typename cuda::std::enable_if<cuda::std::is_integral<IntT>::value, bool>::type = true>
     __host__ __device__ operator IntT()
     {
-        return string_to_integer<IntT>(maxlen_, this->data);
+        /* The code below is heavily inspired by the cuDF version */
+        IntT value = 0;
+
+        if (maxlen == 0) {
+            return value;
+        }
+        int length = maxlen;
+        T *ptr = data;
+        int sign = 1;
+        if (*ptr == '-' || *ptr == '+') {
+            sign = (*ptr == '-' ? -1 : 1);
+            ++ptr;
+            --length;
+        }
+        for (int idx = 0; idx < length; idx++, ptr++) {
+            T chr = *ptr;
+            if (chr < '0' || chr > '9') {
+                // TODO: Maybe it would be good to set INT_MIN/UINT_MAX for real
+                //       invalid numbers (at this point could be NULL terminated).
+                break;
+            }
+            value = (value * (IntT)10) + static_cast<IntT>(chr - '0');
+        }
+        return value * sign;
     }
 
     template<typename OT, int Olen>
