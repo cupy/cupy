@@ -10,7 +10,8 @@ CuPy provides a ``ndarray``, sparse matrices, and the associated routines for GP
 
 * **N-dimensional array** (``ndarray``): :doc:`cupy.ndarray <reference/ndarray>`
 
-  * Data types (dtypes): boolean (``bool_``), integer (``int8``, ``int16``, ``int32``, ``int64``, ``uint8``, ``uint16``, ``uint32``, ``uint64``), float (``float16``, ``float32``, ``float64``), and complex (``complex64``, ``complex128``)
+  * Data types (dtypes): boolean (``bool_``), integer (``int8``, ``int16``, ``int32``, ``int64``, ``uint8``, ``uint16``, ``uint32``, ``uint64``), float (``float16``, ``float32``, ``float64``), and complex (``complex64``, ``complex128``).
+    ``str_`` and ``bytes_`` are only supported for a subset of operations and full support is not planned.
   * Supports the semantics identical to :class:`numpy.ndarray`, including basic / advanced indexing and broadcasting
 
 * **Sparse matrices**: :doc:`cupyx.scipy.sparse <reference/scipy_sparse>`
