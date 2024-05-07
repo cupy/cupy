@@ -396,30 +396,6 @@ class TestArgsort(unittest.TestCase):
         return self.argsort(a)
 
 
-@pytest.mark.filterwarnings('ignore:.*msort.*:DeprecationWarning')
-class TestMsort(unittest.TestCase):
-
-    # Test base cases
-
-    def test_msort_zero_dim(self):
-        for xp in (numpy, cupy):
-            a = testing.shaped_random((), xp)
-            with pytest.raises(AxisError):
-                xp.msort(a)
-
-    @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_equal()
-    def test_msort_one_dim(self, xp, dtype):
-        a = testing.shaped_random((10,), xp, dtype)
-        return xp.msort(a)
-
-    @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_equal()
-    def test_msort_multi_dim(self, xp, dtype):
-        a = testing.shaped_random((2, 3), xp, dtype)
-        return xp.msort(a)
-
-
 class TestSort_complex(unittest.TestCase):
 
     def test_sort_complex_zero_dim(self):
