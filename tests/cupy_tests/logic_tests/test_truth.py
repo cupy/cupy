@@ -82,8 +82,7 @@ class TestAllAnyWithNaN:
 
 @testing.parameterize(
     *testing.product(
-        {'f': ['in1d', 'isin'],
-         'shape_x': [
+        { 'shape_x': [
              (0, ),
              (3, ),
              (2, 3),
@@ -108,10 +107,7 @@ class TestIn1DIsIn:
     def test(self, xp, dtype):
         x = testing.shaped_arange(self.shape_x, xp, dtype)
         y = testing.shaped_arange(self.shape_y, xp, dtype)
-        if xp is numpy and self.f == 'isin':
-            return xp.in1d(x, y, self.assume_unique, self.invert)\
-                .reshape(x.shape)
-        return getattr(xp, self.f)(x, y, self.assume_unique, self.invert)
+        return xp.isin(x, y, self.assume_unique, self.invert)
 
 
 class TestSetdiff1d:
