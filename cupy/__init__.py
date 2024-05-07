@@ -931,7 +931,7 @@ _np2_removed_names = {
     'set_string_function': 'set_printoptions',
 
     'PINF' : 'inf',
-    'Inf' : 'inf', 
+    'Inf' : 'inf',
     'Infinity': 'inf',
     'infty': 'inf',
     'NINF': '-inf',
