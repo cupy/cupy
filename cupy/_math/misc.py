@@ -221,11 +221,7 @@ fabs = _core.create_ufunc(
 
 _unsigned_sign = 'out0 = in0 > 0'
 _complex_sign = '''
-if (in0.real() == 0) {
-  out0 = (in0.imag() > 0) - (in0.imag() < 0);
-} else {
-  out0 = (in0.real() > 0) - (in0.real() < 0);
-}
+out0 = in0 / abs(in0)
 '''
 sign = _core.create_ufunc(
     'cupy_sign',
