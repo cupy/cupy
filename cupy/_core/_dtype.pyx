@@ -126,7 +126,7 @@ cpdef void _raise_if_invalid_cast(
         f'according to the rule \'{casting}\'')
 
 
-# TODO(sebeg): I need to make this resolution available on the NumPy side.
+# TODO(sebeg): In newer NumPy versions we can use numpy.dtypes.StrDType.
 cdef tuple _numpy_string_dts = (type(numpy.dtype("S")), type(numpy.dtype("U")))
 
 cpdef _resolve_dtype_cast(from_dt, to):
@@ -148,6 +148,10 @@ cpdef _resolve_dtype_cast(from_dt, to):
         return from_dt
 
     if to in _numpy_string_dts:
+        if from_dt.kind == "U" and to is _numpy_string_dts[0]:
+            # Casting unicode to string is OK, but the itemsize is shorter.
+            return numpy.dtype(f"S{from_dt.itemsize // 4}")
+        # Otherwise, use promotion to get the same string sizes as NumPy.
         res = numpy.promote_types(from_dt, to.type)
         if not isinstance(res, to):
             raise TypeError(f"Unable to cast dtype '{from_dt}' to {to}.")

@@ -113,14 +113,53 @@ public:
     }
 
     template<typename OT, int Olen>
-    __host__ __device__ bool operator==(const NumPyString<OT, Olen> &other) const
+    __host__ __device__ int total_order(const NumPyString<OT, Olen> &other) const
     {
         int longer = this->maxlen > other.maxlen ? this->maxlen : other.maxlen;
         for (int i = 0; i < longer; i++) {
-            if ((*this)[i] != other[i]) {
-                return false;
+            if ((*this)[i] < other[i]) {
+                return -1;
+            }
+            if ((*this)[i] > other[i]) {
+                return 1;
             }
         }
-        return true;
+        return 0;
+    }
+
+    template<typename OT, int Olen>
+    __host__ __device__ bool operator==(const NumPyString<OT, Olen> &other) const
+    {
+        return this->total_order(other) == 0;
+    }
+
+    template<typename OT, int Olen>
+    __host__ __device__ bool operator<(const NumPyString<OT, Olen> &other) const
+    {
+        return this->total_order(other) < 0;
+    }
+
+    template<typename OT, int Olen>
+    __host__ __device__ bool operator<=(const NumPyString<OT, Olen> &other) const
+    {
+        return this->total_order(other) <= 0;
+    }
+
+    template<typename OT, int Olen>
+    __host__ __device__ bool operator>(const NumPyString<OT, Olen> &other) const
+    {
+        return this->total_order(other) > 0;
+    }
+
+    template<typename OT, int Olen>
+    __host__ __device__ bool operator>=(const NumPyString<OT, Olen> &other) const
+    {
+        return this->total_order(other) >= 0;
+    }
+
+    template<typename OT, int Olen>
+    __host__ __device__ bool operator!=(const NumPyString<OT, Olen> &other) const
+    {
+        return this->total_order(other) != 0;
     }
 };
