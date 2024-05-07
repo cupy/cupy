@@ -1,5 +1,4 @@
 import unittest
-import pytest
 
 from cupy_backends.cuda import stream as stream_module
 import cupy
@@ -28,11 +27,12 @@ class DummyObjectWithCudaArrayInterface(object):
             'version': self.ver,
         }
         if self.ver == 3:
-            if not cupy_backends.cuda.api.runtime.is_hip:
-                desc['stream'] = cupy.cuda.runtime.streamLegacy if stream.ptr == 0 else stream.ptr
-            else: # Only non-default streams use their actual ptr values. (ROCm)
-                stream = cupy.cuda.get_current_stream()
+            stream = cupy.cuda.get_current_stream()
+            # Only non-default streams use their actual ptr values. (ROCm)
+            if cupy_backends.cuda.api.runtime.is_hip:
                 desc['stream'] = stream.ptr
+            else:
+                desc['stream'] = 1 if stream.ptr == 0 else stream.ptr  # noqa: F821, E501
         return desc
 
 
@@ -40,8 +40,6 @@ class DummyObjectWithCudaArrayInterface(object):
     'stream': ('null', 'new'),
     'ver': (2, 3),
 }))
-
-
 class TestArrayUfunc(unittest.TestCase):
 
     def setUp(self):
@@ -76,8 +74,6 @@ class TestArrayUfunc(unittest.TestCase):
     'stream': ('null', 'new'),
     'ver': (2, 3),
 }))
-
-
 class TestElementwiseKernel(unittest.TestCase):
 
     def setUp(self):
@@ -113,8 +109,6 @@ class TestElementwiseKernel(unittest.TestCase):
     'stream': ('null', 'new'),
     'ver': (2, 3),
 }))
-
-
 class TestSimpleReductionFunction(unittest.TestCase):
 
     def setUp(self):
@@ -152,8 +146,6 @@ class TestSimpleReductionFunction(unittest.TestCase):
     'stream': ('null', 'new'),
     'ver': (2, 3),
 }))
-
-
 class TestReductionKernel(unittest.TestCase):
 
     def setUp(self):
@@ -196,8 +188,6 @@ class TestReductionKernel(unittest.TestCase):
     {'shape': (10, 10), 'slices': (slice(2, None), slice(2, None))},
     {'shape': (10, 10), 'slices': (slice(2, None), slice(4, None))},
 )
-
-
 class TestSlicingMemoryPointer(unittest.TestCase):
 
     @testing.for_all_dtypes_combination(names=['dtype'])
@@ -286,8 +276,6 @@ class TestCUDAArrayInterfaceCompliance(unittest.TestCase):
 @testing.parameterize(*testing.product({
     'stream': ('null', 'new', 'ptds'),
 }))
-
-
 class TestCUDAArrayInterfaceStream(unittest.TestCase):
     def setUp(self):
         if self.stream == 'null':
