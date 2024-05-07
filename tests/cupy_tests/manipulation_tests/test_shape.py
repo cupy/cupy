@@ -127,7 +127,7 @@ class TestReshape:
     @testing.numpy_cupy_array_equal()
     def test_ndim_limit1(self, xp, dtype, order):
         # from cupy/cupy#4193
-        a = self._test_ndim_limit(xp, 32, dtype, order)
+        a = self._test_ndim_limit(xp, 64, dtype, order)
         return a
 
     @testing.for_orders('CFA')
@@ -136,7 +136,7 @@ class TestReshape:
         # from cupy/cupy#4193
         for xp in (numpy, cupy):
             with pytest.raises(ValueError):
-                self._test_ndim_limit(xp, 33, dtype, order)
+                self._test_ndim_limit(xp, 65, dtype, order)
 
 
 class TestRavel:

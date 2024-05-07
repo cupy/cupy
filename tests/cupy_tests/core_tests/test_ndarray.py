@@ -147,7 +147,7 @@ class TestNdarrayInitRaise(unittest.TestCase):
         for xp in (numpy, cupy):
             with pytest.raises(ValueError):
                 xp.ndarray(
-                    shape=[1 for i in range(33)], dtype=xp.int8)
+                    shape=[1 for i in range(65)], dtype=xp.int8)
 
 
 @testing.parameterize(
