@@ -271,6 +271,7 @@ class TestUnion1d:
     def test_union1d(self, xp, dtype):
         x = xp.array([4, 1, 1, 1, 9, 9, 9], dtype=dtype)
         y = xp.array([4, 0, 5, 2, 0, 0, 5], dtype=dtype)
+        breakpoint()
         return xp.union1d(x, y)
 
     @testing.for_all_dtypes()
