@@ -44,8 +44,8 @@ from cupy import polynomial  # NOQA
 from cupy import random  # NOQA
 # `cupy.sparse` is deprecated in v8
 from cupy import sparse  # NOQA
-from cupy import testing  # NOQA  # NOQA
-from cupy import exceptions
+from cupy import testing  # NOQA
+from cupy import exceptions  # NOQA
 
 
 # import class and function
