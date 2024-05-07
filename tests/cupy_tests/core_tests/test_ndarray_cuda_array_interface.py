@@ -30,11 +30,12 @@ class DummyObjectWithCudaArrayInterface:
             'version': self.ver,
         }
         if self.ver == 3:
-            if not cupy_backends.cuda.api.runtime.is_hip:
-                desc['stream'] = cupy.cuda.runtime.streamLegacy if stream.ptr == 0 else stream.ptr
-            else: # Only non-default streams use their actual ptr values. (ROCm)
-                stream = cupy.cuda.get_current_stream()
+            stream = cupy.cuda.get_current_stream()
+            # Only non-default streams use their actual ptr values. (ROCm)
+            if cupy_backends.cuda.api.runtime.is_hip:
                 desc['stream'] = stream.ptr
+            else:
+                desc['stream'] = 1 if stream.ptr == 0 else stream.ptr  # noqa: F821, E501
         return desc
 
 

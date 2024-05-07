@@ -600,8 +600,6 @@ max_cuda_array_interface_version = 3
     'ver': tuple(range(max_cuda_array_interface_version+1)),
     'strides': (False, None, True),
 }))
-
-
 class TestCudaArrayInterface(unittest.TestCase):
     @testing.for_all_dtypes()
     def test_base(self, dtype):
