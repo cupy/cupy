@@ -55,17 +55,13 @@ cdef _any = create_reduction_func(
 
 
 def _fix_to_sctype(dtype, sctype):
+    # This function doesn't do much (or anything) but it could do more complex
+    # type resolution if needed allowing comparison between bytes and strings
+    # (but NumPy only supports this for == and != returning all False so raise)
     if dtype.type == sctype:
         return dtype
-    elif dtype.kind == "S":
-        length = dtype.itemsize
-    elif dtype.kind == "U":
-        length = dtype.itemsize // 4
-    else:
-        raise ValueError(
-            "Strings can currently only be compared with strings.")
 
-    return np.dtype((sctype, length))
+    raise TypeError("Cannot compare bytes and string dtypes")
 
 
 def _s_cmp_resolver(op, in_dtypes, out_dtypes):
