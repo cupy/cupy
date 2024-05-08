@@ -1714,6 +1714,9 @@ cdef class _Ops:
 
     cpdef _Op _guess_routine_from_in_types(
             self, tuple in_types, object can_cast=_numpy_can_cast):
+        # TODO(seberg): Full complexity here requires a new design.
+        # NumPy solves this issue now by implementing a promotion step which
+        # can be customized per-ufunc.  After that matching must be exact.
         cdef _Op op
         cdef tuple op_types
         cdef Py_ssize_t n = len(in_types)
@@ -1726,14 +1729,14 @@ cdef class _Ops:
                 if isinstance(it, tuple):
                     if not can_cast(it[0], ot) and not can_cast(it[1], ot):
                         break
-                    elif ot in _numpy_strings:
-                        # NumPy can-cast is imprecise for strings, reject them
+                    elif ot in (numpy.str_, numpy.bytes_):
+                        # Can-cast is bad for strings only accept exact match
                         # (in this branch we must have numerical types).
                         break
                 elif not can_cast(it, ot):
                     break
-                elif ot in _numpy_strings and it.kind != "US":
-                    # NumPy can-cast is imprecise for strings, reject them.
+                elif ot in (numpy.str_, numpy.bytes_) and it.type != ot:
+                    # Can-cast is bad for strings only accept exact match.
                     break
             else:
                 return op
