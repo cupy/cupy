@@ -1726,7 +1726,14 @@ cdef class _Ops:
                 if isinstance(it, tuple):
                     if not can_cast(it[0], ot) and not can_cast(it[1], ot):
                         break
+                    elif ot in _numpy_strings:
+                        # NumPy can-cast is imprecise for strings, reject them
+                        # (in this branch we must have numerical types).
+                        break
                 elif not can_cast(it, ot):
+                    break
+                elif ot in _numpy_strings and it.kind != "US":
+                    # NumPy can-cast is imprecise for strings, reject them.
                     break
             else:
                 return op
