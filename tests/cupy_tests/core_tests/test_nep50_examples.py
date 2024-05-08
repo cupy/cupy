@@ -5,7 +5,6 @@ import pytest
 from pytest import raises as assert_raises
 
 
-# expression    old result   new_result
 examples = [
     "uint8(1) + 2",
     "array([1], uint8) + int64(1)",
@@ -33,6 +32,8 @@ examples = [
     "float32(5) + 5j",
     "bool_(True) + 1",
     "True + uint8(2)",
+   # not in the NEP
+    '1.0 + array([1, 2, 3], int8)',
 ]
 
 
@@ -43,6 +44,7 @@ examples = [
 def test_nep50_examples(xp, example):
     dct = {'array': xp.array, 'uint8': xp.uint8, 'int64': xp.int64,
            'float32': xp.float32, 'float64': xp.float64, 'int16': xp.int16,
-           'bool_': xp.bool_, 'int32': xp.int32, 'complex64': xp.complex64}
+           'bool_': xp.bool_, 'int32': xp.int32, 'complex64': xp.complex64,
+           'int8': xp.int8,}
     result = eval(example, dct)
     return result
