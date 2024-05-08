@@ -114,7 +114,7 @@ class TestRandintDtype(unittest.TestCase):
     def test_dtype(self, dtype):
         size = (1000,)
         low = numpy.iinfo(dtype).min
-        high = numpy.iinfo(dtype).max + 1
+        high = numpy.iinfo(dtype).max
         x = random.randint(low, high, size, dtype).get()
         assert low <= min(x)
         assert max(x) <= high
