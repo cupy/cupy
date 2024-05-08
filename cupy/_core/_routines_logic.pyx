@@ -91,8 +91,14 @@ cpdef create_comparison(name, op, doc='', no_complex_dtype=True):
     custom_ops=[
         # Note, mixing right now would cast, but we the code can really do
         # without (C++ might optimize that away.)
-        _Op((np.bytes_, np.bytes_), (np.bool_,), f'out0 = in0 {op} in1', None, _s_cmp_resolver),
-        _Op((np.str_, np.str_), (np.bool_,), f'out0 = in0 {op} in1', None, _s_cmp_resolver),
+        _Op(
+            (np.bytes_, np.bytes_), (np.bool_,), f'out0 = in0 {op} in1', None,
+            _s_cmp_resolver
+        ),
+        _Op(
+            (np.str_, np.str_), (np.bool_,), f'out0 = in0 {op} in1', None,
+            _s_cmp_resolver
+        )
     ]
 
     return create_ufunc(

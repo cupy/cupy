@@ -120,7 +120,7 @@ def _guess_routine(func, args, dtype):
         func.name, func._routine_cache, dummy_args, dtype, None)
 
     in_out_dtypes = op.resolve_dtypes(dtypes[:func.nin], dtypes[func.nin:])
-    return  in_out_dtypes[0], in_out_dtypes[1], op.routine
+    return in_out_dtypes[0], in_out_dtypes[1], op.routine
 
 
 def _base(array):

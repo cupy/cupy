@@ -19,11 +19,11 @@ from cupy._core cimport _accelerator
 from cupy._core cimport _carray
 from cupy._core cimport _scalar
 from cupy._core._dtype cimport (
-        get_dtype, _raise_if_invalid_cast, _resolve_dtype_cast)
+    get_dtype, _raise_if_invalid_cast, _resolve_dtype_cast)
 from cupy._core._memory_range cimport may_share_bounds
 from cupy._core._scalar import (
-        get_typename as _get_typename,
-        get_typename_with_preamble as _get_typename_with_preamble)
+    get_typename as _get_typename,
+    get_typename_with_preamble as _get_typename_with_preamble)
 from cupy._core cimport core
 from cupy._core.core cimport _convert_object_with_cuda_array_interface
 from cupy._core.core cimport _ndarray_init
@@ -596,8 +596,8 @@ cdef tuple _decide_params_type_core(
                 p_dtype = get_dtype(p.dtype)
                 if a == p_dtype:
                     ctype = p.ctype
-                elif type(a) == type(p_dtype):
-                    # a is the same type, but it is parametric (i.e. string length)
+                elif type(a) is type(p_dtype):
+                    # a has same type, but is parametric (i.e. string length)
                     ctype = _get_typename(a)
                 else:
                     raise TypeError(
@@ -624,7 +624,7 @@ cdef tuple _decide_params_type_core(
             p_dtype = get_dtype(p.dtype)
             if a == p_dtype:
                 pass
-            elif type(a) == type(p_dtype):
+            elif type(a) is type(p_dtype):
                 # a is the same type, but it is parametric (i.e. string length)
                 pass
             else:
@@ -733,7 +733,7 @@ cdef list _get_out_args_with_params(
         a = out_args[i]
         if a is None:
             out_args[i] = _ndarray_init(
-                    cupy.ndarray, out_shape, out_types[i], None)
+                cupy.ndarray, out_shape, out_types[i], None)
             continue
         if not isinstance(a, _ndarray_base):
             raise TypeError(
@@ -1403,8 +1403,7 @@ cdef class ufunc:
                 template = in_arg
                 break
 
-        core_in_dtypes, core_out_dtypes = op.resolve_dtypes(
-                in_args, out_args)
+        core_in_dtypes, core_out_dtypes = op.resolve_dtypes(in_args, out_args)
 
         out_args = _get_out_args_from_optionals(
             subtype, out_args, core_out_dtypes, shape, casting, template)
