@@ -9,8 +9,17 @@ from cupy import testing
 
 
 class TestStrings:
+    def test_from_scalar(self):
+        # Conversion from scalar and 0-D works (via NumPy)
+        a = cupy.asarray("a")
+        assert a.dtype == numpy.dtype("U1")
+        a = cupy.asarray(b"a")
+        assert a.dtype == numpy.dtype("S1")
+        a = cupy.asarray(numpy.asarray("test"))
+        assert a.dtype == numpy.dtype("U4")
+
     @testing.for_dtypes(["S", "U", "S10", "U10"])
-    def test_roundtrip_numpy(self, dtype):
+    def test_roundtrip_numpy_array(self, dtype):
         a = numpy.array(["spam", "cushion", "parrot", "pirate"], dtype=dtype)
         c = cupy.asarray(a)
         assert c.dtype == a.dtype
@@ -30,6 +39,15 @@ class TestStrings:
     def test_string_comparisons_simple(self, xp, dtype, cmp):
         a = xp.array(["0", "", "9", "10", "100", "2", "1000"], dtype=dtype)
         b = xp.array(["10"], dtype=dtype)
+        op = getattr(operator, cmp)
+        return op(a, b)
+
+    @testing.for_dtypes(["S4", "U5"])
+    @pytest.mark.parametrize("cmp", ["eq", "ne", "lt", "le", "gt", "ge"])
+    @testing.numpy_cupy_array_equal()
+    def test_string_comparisons_scalar(self, xp, dtype, cmp):
+        a = xp.array(["0", "", "9", "10", "100", "2", "1000"], dtype=dtype)
+        b = b"10" if a.dtype.kind == "S" else "10"
         op = getattr(operator, cmp)
         return op(a, b)
 

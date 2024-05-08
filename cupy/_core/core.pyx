@@ -2547,7 +2547,7 @@ cdef _ndarray_base _array_default(
     a_dtype = a_cpu.dtype
     cdef shape_t a_shape = a_cpu.shape
     cdef _ndarray_base a = ndarray(a_shape, dtype=a_dtype, order=order)
-    if a_cpu.ndim == 0:
+    if a_cpu.ndim == 0 and a_dtype.char in '?bhilqBHILQefdFD':
         a.fill(a_cpu)
         return a
     cdef Py_ssize_t nbytes = a.nbytes

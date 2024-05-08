@@ -149,6 +149,9 @@ cdef inline _preprocess_arg(int dev_id, arg, bint use_c_scalar):
         else:
             s = _scalar.scalar_to_numpy_scalar(arg)
         if s is None:
+            # For strings, use 0-D arrays (could use this always?)
+            if type(arg) in (str, bytes, numpy.str_, numpy.bytes_):
+                return cupy.array(arg)
             raise TypeError('Unsupported type %s' % type(arg))
     return s
 
