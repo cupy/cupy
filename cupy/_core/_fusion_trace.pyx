@@ -111,8 +111,10 @@ def _guess_routine(func, args, dtype):
             obj = core.ndarray((0,), x.dtype)
         dummy_args.append(obj)
 
+    # XXX: weaks
+    weaks = tuple([False for _ in dummy_args])
     op = func._ops.guess_routine(
-        func.name, func._routine_cache, dummy_args, dtype, None)
+        func.name, func._routine_cache, dummy_args, weaks, dtype, None)
     return op.get_in_dtypes(), op.get_out_dtypes(), op.routine
 
 
