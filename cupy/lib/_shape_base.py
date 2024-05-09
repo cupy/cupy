@@ -76,8 +76,8 @@ def _make_along_axis_idx(arr_shape, indices, axis):
     dest_dims = list(range(axis)) + [None] + \
         list(range(axis + 1, indices.ndim))
 
-    # build a fancy index, consisting of orthogonal arranges, with the
-    # requested index inserted at the right location
+    # build a fancy index, consisting of orthogonal cupy.arange calls,
+    # with the requested index inserted at the right location
     fancy_index = []
     for dim, n in zip(dest_dims, arr_shape):
         if dim is None:
