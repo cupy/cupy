@@ -3,6 +3,7 @@ from cupyx.scipy.interpolate._polyint import BarycentricInterpolator  # NOQA
 from cupyx.scipy.interpolate._polyint import KroghInterpolator  # NOQA
 from cupyx.scipy.interpolate._polyint import barycentric_interpolate  # NOQA
 from cupyx.scipy.interpolate._polyint import krogh_interpolate  # NOQA
+from cupyx.scipy.interpolate._polyint import interp1d  # NOQA
 from cupyx.scipy.interpolate._interpolate import PPoly, BPoly, NdPPoly  # NOQA
 from cupyx.scipy.interpolate._cubic import (  # NOQA
     CubicHermiteSpline, PchipInterpolator, pchip_interpolate,  # NOQA
