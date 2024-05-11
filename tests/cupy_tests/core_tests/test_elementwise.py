@@ -92,14 +92,14 @@ class TestElementwiseType(unittest.TestCase):
     @testing.numpy_cupy_array_equal()
     def test_large_int_upper_1(self, xp, dtype):
         a = xp.array([0], dtype=xp.int8)
-        b = xp.iinfo(dtype).max
+        b = xp.asarray(xp.iinfo(dtype).max)
         return a + b
 
     @testing.for_int_dtypes(no_bool=True)
     @testing.numpy_cupy_array_equal()
     def test_large_int_upper_2(self, xp, dtype):
         a = xp.array([1], dtype=xp.int8)
-        b = xp.iinfo(dtype).max - 1
+        b = xp.asarray(xp.iinfo(dtype).max - 1)
         return a + b
 
     @testing.for_int_dtypes(no_bool=True)
@@ -120,14 +120,14 @@ class TestElementwiseType(unittest.TestCase):
     @testing.numpy_cupy_array_equal()
     def test_large_int_lower_1(self, xp, dtype):
         a = xp.array([0], dtype=xp.int8)
-        b = xp.iinfo(dtype).min
+        b = xp.asarray(xp.iinfo(dtype).min)
         return a + b
 
     @testing.for_int_dtypes(no_bool=True)
     @testing.numpy_cupy_array_equal()
     def test_large_int_lower_2(self, xp, dtype):
         a = xp.array([-1], dtype=xp.int8)
-        b = xp.iinfo(dtype).min + 1
+        b = xp.asarray(xp.iinfo(dtype).min + 1)
         return a + b
 
     @testing.for_int_dtypes(no_bool=True)
