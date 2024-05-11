@@ -420,49 +420,30 @@ class TestArrayElementwiseOp:
     def test_array_reversed_mul(self):
         self.check_array_reversed_op(operator.mul)
 
+
+    @pytest.mark.parametrize('val',
+        [True, False,
+         0, -127, 255, -32768, 65535, -2147483648, 4294967295,
+         0.0, 100000.0])
+    @pytest.mark.parametrize('op', [operator.add, operator.sub,
+                                    operator.mul, ])
     @testing.for_all_dtypes(no_bool=True)
-    def check_typecast(self, val, dtype):
-        operators = [
-            operator.add, operator.sub, operator.mul, operator.truediv]
+    @testing.numpy_cupy_allclose(accept_error=OverflowError)
+    def test_typecast_(self, xp, op, dtype, val):
+        a = op(val, (testing.shaped_arange((5,), xp, dtype) - 2))
+        return a
 
-        for op in operators:
-            with numpy.errstate(divide='ignore', invalid='ignore'):
-                a = op(val, (testing.shaped_arange((5,), numpy, dtype) - 2))
-            b = op(val, (testing.shaped_arange((5,), cupy, dtype) - 2))
-            assert a.dtype == b.dtype
-
-    def test_typecast_bool1(self):
-        self.check_typecast(True)
-
-    def test_typecast_bool2(self):
-        self.check_typecast(False)
-
-    def test_typecast_int1(self):
-        self.check_typecast(0)
-
-    def test_typecast_int2(self):
-        self.check_typecast(-127)
-
-    def test_typecast_int3(self):
-        self.check_typecast(255)
-
-    def test_typecast_int4(self):
-        self.check_typecast(-32768)
-
-    def test_typecast_int5(self):
-        self.check_typecast(65535)
-
-    def test_typecast_int6(self):
-        self.check_typecast(-2147483648)
-
-    def test_typecast_int7(self):
-        self.check_typecast(4294967295)
-
-    def test_typecast_float1(self):
-        self.check_typecast(0.0)
-
-    def test_typecast_float2(self):
-        self.check_typecast(100000.0)
+    @pytest.mark.parametrize('val',
+        [True, False,
+         0, -127, 255, -32768, 65535, -2147483648, 4294967295,
+         0.0, 100000.0])
+    @testing.for_all_dtypes(no_bool=True)
+    def test_typecast_2(self, dtype, val):
+        op = operator.truediv
+        with numpy.errstate(divide='ignore', invalid='ignore'):
+            a = op(val, (testing.shaped_arange((5,), numpy, dtype) - 2))
+        b = op(val, (testing.shaped_arange((5,), cupy, dtype) - 2))
+        assert a.dtype == b.dtype
 
     # Skip float16 because of NumPy #19514
     @testing.for_all_dtypes(name='x_type', no_float16=True)
