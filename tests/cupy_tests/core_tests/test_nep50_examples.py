@@ -32,11 +32,9 @@ examples = [
     "float32(5) + 5j",
     "bool_(True) + 1",
     "True + uint8(2)",
-   # not in the NEP
+    # not in the NEP
     '1.0 + array([1, 2, 3], int8)',
 ]
-
-
 
 
 @pytest.mark.parametrize('example', examples)
@@ -45,6 +43,6 @@ def test_nep50_examples(xp, example):
     dct = {'array': xp.array, 'uint8': xp.uint8, 'int64': xp.int64,
            'float32': xp.float32, 'float64': xp.float64, 'int16': xp.int16,
            'bool_': xp.bool_, 'int32': xp.int32, 'complex64': xp.complex64,
-           'int8': xp.int8,}
+           'int8': xp.int8, }
     result = eval(example, dct)
     return result
