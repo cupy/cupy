@@ -103,18 +103,20 @@ def _guess_routine(func, args, dtype):
 
     # Feeds dummy arguments with appropriate dtypes passed to `guess_routine`.
     dummy_args = []
+    weaks = []
     for x in args:
         if isinstance(x, _TraceScalar):
             obj = x.dtype.type(0)
+            is_weak = True
         else:
             assert isinstance(x, _TraceArray)
             obj = core.ndarray((0,), x.dtype)
+            is_weak = False
         dummy_args.append(obj)
+        weaks.append(is_weak)
 
-    # XXX: weaks
-    weaks = tuple([False for _ in dummy_args])
     op = func._ops.guess_routine(
-        func.name, func._routine_cache, dummy_args, weaks, dtype, None)
+        func.name, func._routine_cache, dummy_args, tuple(weaks), dtype, None)
     return op.get_in_dtypes(), op.get_out_dtypes(), op.routine
 
 
