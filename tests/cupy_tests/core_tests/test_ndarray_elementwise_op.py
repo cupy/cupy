@@ -420,11 +420,10 @@ class TestArrayElementwiseOp:
     def test_array_reversed_mul(self):
         self.check_array_reversed_op(operator.mul)
 
-
     @pytest.mark.parametrize('val',
-        [True, False,
-         0, -127, 255, -32768, 65535, -2147483648, 4294967295,
-         0.0, 100000.0])
+                             [True, False,
+                              0, -127, 255, -32768, 65535, -2147483648, 4294967295,
+                              0.0, 100000.0])
     @pytest.mark.parametrize('op', [operator.add, operator.sub,
                                     operator.mul, ])
     @testing.for_all_dtypes(no_bool=True)
@@ -434,9 +433,9 @@ class TestArrayElementwiseOp:
         return a
 
     @pytest.mark.parametrize('val',
-        [True, False,
-         0, -127, 255, -32768, 65535, -2147483648, 4294967295,
-         0.0, 100000.0])
+                             [True, False,
+                              0, -127, 255, -32768, 65535, -2147483648, 4294967295,
+                              0.0, 100000.0])
     @testing.for_all_dtypes(no_bool=True)
     def test_typecast_2(self, dtype, val):
         op = operator.truediv
