@@ -202,7 +202,6 @@ cdef list _preprocess_optional_args(int dev_id, args, bint use_c_scalar):
       - If use_c_scalar is False, into NumPy scalars.
     """
     cdef list ret = []
-    cdef list weaks = []
     for arg in args:
         if arg is None:
             ret.append(None)
@@ -1593,7 +1592,7 @@ cdef class _Ops:
         if dtype is None:
             assert all([isinstance(a, (_ndarray_base, numpy.generic)) for a in in_args])
             in_types = tuple([a.dtype.type for a in in_args])
- 
+
             op = cache.get((in_types, weaks), ())
             if op is ():
                 op = self._guess_routine_from_in_types(in_types, weaks)
@@ -1657,7 +1656,7 @@ cdef class _Ops:
         if max_category == -1:
             # all in_args are scalars
             _weaks = (False,)*n
-        else: 
+        else:
             _weaks = list(weaks)
             for i in range(n):
                 if weaks[i] and _get_kind_score2(in_types[i]) > max_category:
