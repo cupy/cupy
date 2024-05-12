@@ -860,6 +860,8 @@ class Fusion(object):
                 arg_types = ', '.join(repr(type(a)) for a in args)
                 raise TypeError(mes.format(self.name, arg_types))
 
+        print("fusion 1: ", args, [type(arg) for arg in args])
+
         # Cache the result of execution path analysis
         cdef list params_info = []
         for arg in args:
@@ -882,6 +884,9 @@ class Fusion(object):
                 assert False
 
         cdef tuple key = tuple(params_info)
+
+        print("fusion 2: key = ", key, "memo = ", self._memo, ' / ', key in self._memo ,"\n")
+
         if key not in self._memo:
             try:
                 history = _FusionHistory()
@@ -890,15 +895,23 @@ class Fusion(object):
                 try:
                     self._memo[key] = history.get_fusion(
                         self.func, args, self.name)
+
+                    print("fusion 2.5: ", self._memo)
+
                 except Exception:
                     self.new_fusion = new_fusion.Fusion(self.func, self.name)
                     _thread_local.history = None
                     _thread_local.is_old_fusing = False
+
+                    print("fusion except: ", args)
+
                     return self.new_fusion(*args)
             finally:
                 _thread_local.history = None
                 _thread_local.is_old_fusing = False
         kernel, kwargs = self._memo[key]
+
+        print("fusion 3: kernel = ", kernel, kernel.cached_codes)
 
         return kernel(
             *[a for a in args if a is not None],
