@@ -1,10 +1,9 @@
 import cupy as cp
 
-
 import pytest
-from pytest import raises as assert_raises
 
-
+# "example string" or
+# ("example string", "xfail message")
 examples = [
     "uint8(1) + 2",
     "array([1], uint8) + int64(1)",
@@ -33,7 +32,8 @@ examples = [
     "bool_(True) + 1",
     "True + uint8(2)",
     # not in the NEP
-    '1.0 + array([1, 2, 3], int8)',
+    "1.0 + array([1, 2, 3], int8)",
+    "array([1], float32) + 1j",
 ]
 
 
@@ -44,5 +44,10 @@ def test_nep50_examples(xp, example):
            'float32': xp.float32, 'float64': xp.float64, 'int16': xp.int16,
            'bool_': xp.bool_, 'int32': xp.int32, 'complex64': xp.complex64,
            'int8': xp.int8, }
+
+    if isinstance(example, tuple):
+        example, mesg = example
+        pytest.xfail(mesg)
+
     result = eval(example, dct)
     return result
