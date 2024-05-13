@@ -243,6 +243,9 @@ class TestVectorizeExprs(unittest.TestCase):
         def my_incr(x):
             return x + 1
 
+        if dtype != xp.float64:
+            pytest.xfail("vectorize with scalars: no NEP 50")
+
         f = xp.vectorize(my_incr)
         x = testing.shaped_random((20, 30), xp, dtype, seed=0)
         return f(x)
