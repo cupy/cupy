@@ -132,6 +132,34 @@ cdef inline int _get_kind_score2(dtype):
     return _dct[dtype]
 
 
+cdef inline int _get_precision_score(dtype):
+    """fp type 'precision'."""
+    _dct = {
+        cupy.bool_: 0,
+        # unsigned int
+        cupy.uint8: 0,
+        cupy.uint16: 0,
+        cupy.uint32: 0,
+        cupy.uint64: 0,
+        cupy.ulonglong: 0,
+        # signed int
+        cupy.int8: 0,
+        cupy.int16: 0,
+        cupy.int32: 0,
+        cupy.int64: 0,
+        cupy.longlong: 0,
+        # float
+        cupy.float16: 1,
+        cupy.float32: 2,
+        cupy.float64: 3,
+        # complex
+        cupy.complex64: 2,    # == float32
+        cupy.complex128: 3,   # == float64
+        }
+    return _dct[dtype]
+
+
+
 @cython.profile(False)
 cpdef inline _check_peer_access(_ndarray_base arr, int device_id):
     if arr.data.device_id == device_id:
@@ -1653,6 +1681,10 @@ cdef class _Ops:
                          for i in range(n)]
         max_category = max(in_categories)
 
+        in_prec = [-1 if weaks[i] else _get_precision_score(in_types[i])
+                   for i in range(n)]
+        max_prec = max(in_prec)
+
         if max_category == -1:
             # all in_args are scalars
             _weaks = (False,)*n
@@ -1670,6 +1702,12 @@ cdef class _Ops:
                 it = in_types[i]
                 ot = op_types[i]
                 is_weak = _weaks[i]
+
+                # special case: f32 array + 1j -> c64 (not c128)
+                if weaks[i] and it == numpy.complex128 and max_prec == 2:
+                    it = numpy.complex64
+                    is_weak = False
+
                 if isinstance(it, tuple):
                     # XXX: account for weaks
                     if not can_cast(it[0], ot) and not can_cast(it[1], ot):
