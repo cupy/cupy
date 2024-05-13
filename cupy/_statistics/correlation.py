@@ -207,6 +207,6 @@ def cov(a, y=None, rowvar=True, bias=False, ddof=None,
         X_T = X.T
     else:
         X_T = (X * w).T
-    out = X.dot(X_T.conj()) * (1 / cupy.float64(fact))
+    out = X.dot(X_T.conj()) / fact
 
     return out.squeeze()
