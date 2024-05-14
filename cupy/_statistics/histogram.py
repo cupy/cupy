@@ -332,8 +332,6 @@ def histogramdd(sample, bins=10, range=None, weights=None, density=False):
     elif len(range) != ndim:
         raise ValueError('range argument must have one entry per dimension')
 
- #   breakpoint()
-
     # Create edge arrays
     for i in _range(ndim):
         if cupy.ndim(bins[i]) == 0:
@@ -345,7 +343,6 @@ def histogramdd(sample, bins=10, range=None, weights=None, density=False):
             num = int(bins[i] + 1)  # synchronize!
             dtyp = (sample.dtype
                     if issubclass(sample.dtype.type, numpy.inexact)
-#                    if sample.dtype.type == numpy.float32
                     else numpy.float64)
             edges[i] = cupy.linspace(smin, smax, num, dtype=dtyp)
         elif cupy.ndim(bins[i]) == 1:

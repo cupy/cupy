@@ -127,8 +127,7 @@ cdef inline int _get_kind_score2(dtype):
         cupy.float64: 2,
         # complex
         cupy.complex64: 3,
-        cupy.complex128: 3,
-        }
+        cupy.complex128: 3, }
     return _dct[dtype]
 
 
@@ -153,11 +152,9 @@ cdef inline int _get_precision_score(dtype):
         cupy.float32: 2,
         cupy.float64: 3,
         # complex
-        cupy.complex64: 2,    # == float32
-        cupy.complex128: 3,   # == float64
-        }
+        cupy.complex64: 2,     # == float32
+        cupy.complex128: 3, }  # == float64
     return _dct[dtype]
-
 
 
 @cython.profile(False)
@@ -927,7 +924,7 @@ cdef class ElementwiseKernel:
                 return arg.__cupy_override_elementwise_kernel__(
                     self, *args, **kwargs)
         dev_id = device.get_device_id()
-        arg_list, weaks = _preprocess_args(dev_id, args, True)
+        arg_list, _ = _preprocess_args(dev_id, args, True)
 
         out_args = arg_list[self.nin:]
         # _broadcast updates shape
@@ -1362,7 +1359,8 @@ cdef class ufunc:
                     return ret
 
         op = self._ops.guess_routine(
-            self.name, self._routine_cache, in_args, weaks, dtype, self._out_ops)
+            self.name, self._routine_cache, in_args, weaks, dtype,
+            self._out_ops)
 
         # Determine a template object from which we initialize the output when
         # inputs have subclass instances
@@ -1615,10 +1613,12 @@ cdef class _Ops:
         return _Ops(tuple(ops_))
 
     cpdef _Op guess_routine(
-            self, str name, dict cache, list in_args, tuple weaks, dtype, _Ops out_ops):
+            self, str name, dict cache, list in_args, tuple weaks, dtype,
+            _Ops out_ops):
         cdef _Ops ops_
         if dtype is None:
-            assert all([isinstance(a, (_ndarray_base, numpy.generic)) for a in in_args])
+            assert all([isinstance(a, (_ndarray_base, numpy.generic))
+                        for a in in_args])
             in_types = tuple([a.dtype.type for a in in_args])
 
             op = cache.get((in_types, weaks), ())
@@ -1651,18 +1651,20 @@ cdef class _Ops:
                         if issubclass(typ, numpy.signedinteger):
 
                             if issubclass(out_type, numpy.signedinteger):
-                                ok = (<int64_t>iinfo.min <= <int64_t>arg <= <int64_t>iinfo.max)
+                                ok = (<int64_t>iinfo.min <=
+                                      <int64_t>arg <=
+                                      <int64_t>iinfo.max)
                             else:
-                                ok = (arg >= 0) and (<uint64_t>arg <= <uint64_t>iinfo.max)
+                                ok = ((arg >= 0) and
+                                      (<uint64_t>arg <= <uint64_t>iinfo.max))
 
                         elif issubclass(typ, numpy.unsignedinteger):
                             # arg >= 0
                             ok = <uint64_t>arg <= <uint64_t>iinfo.max
 
                         if not ok:
-                            raise OverflowError(
-                                f"Python integer {arg} out of bounds for {out_type}."
-                            )
+                            raise OverflowError(f"Python integer {arg} out of "
+                                                f"bounds for {out_type}.")
             return op
 
         if dtype is None:
@@ -1671,7 +1673,8 @@ cdef class _Ops:
                         (dtype, name))
 
     cpdef _Op _guess_routine_from_in_types(
-            self, tuple in_types, tuple weaks, object can_cast=_numpy_can_cast):
+            self, tuple in_types, tuple weaks, object can_cast=_numpy_can_cast
+    ):
         cdef _Op op
         cdef tuple op_types
         cdef Py_ssize_t n = len(in_types)
