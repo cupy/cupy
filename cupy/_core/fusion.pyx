@@ -885,8 +885,6 @@ class Fusion(object):
 
         cdef tuple key = tuple(params_info)
 
-        print("fusion 2: key = ", key, "memo = ", self._memo, ' / ', key in self._memo ,"\n")
-
         if key not in self._memo:
             try:
                 history = _FusionHistory()
@@ -895,9 +893,6 @@ class Fusion(object):
                 try:
                     self._memo[key] = history.get_fusion(
                         self.func, args, self.name)
-
-                    print("fusion 2.5: ", self._memo)
-
                 except Exception:
                     self.new_fusion = new_fusion.Fusion(self.func, self.name)
                     _thread_local.history = None
