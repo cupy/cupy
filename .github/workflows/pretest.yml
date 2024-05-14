@@ -112,4 +112,4 @@ jobs:
         sudo rm -rf "$AGENT_TOOLSDIRECTORY"
 
         # Launch rocm base docker 
-        docker run --rm -v "${PWD}:/src" -w /src "rocm/dev-ubuntu-22.04:6.1" bash .github/workflows/pretest-rocm-test.sh
+        docker run --rm -v "${PWD}:/src" -w /src "rocm/dev-ubuntu-22.04:6.1-complete" bash .github/workflows/pretest-rocm-test.sh
