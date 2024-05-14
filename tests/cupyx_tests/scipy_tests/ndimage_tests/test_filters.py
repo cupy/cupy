@@ -768,8 +768,8 @@ class TestInvalidAxis(FilterTestCaseBase):
             return self._filter(xp, scp)
         except numpy.exceptions.AxisError:
             # numpy.exceptions.AxisError is a subclass of ValueError
-            # currently cupyx is raising numpy.exceptions.AxisError but scipy is still
-            # raising ValueError
+            # currently cupyx is raising numpy.exceptions.AxisError but
+            # scipy is still raising ValueError
             raise ValueError('invalid axis')
 
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp',

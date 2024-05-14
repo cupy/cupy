@@ -1026,9 +1026,9 @@ class TestRfft2:
             a = xp.asfortranarray(a)
 
         with warnings.catch_warnings():
-             # axis=None and s != None, NumPy 2.0
-             warnings.simplefilter('ignore', DeprecationWarning)
-             out = xp.fft.irfft2(a, s=self.s, axes=self.axes, norm=self.norm)
+            # axis=None and s != None, NumPy 2.0
+            warnings.simplefilter('ignore', DeprecationWarning)
+            out = xp.fft.irfft2(a, s=self.s, axes=self.axes, norm=self.norm)
 
         if xp is np and dtype in [np.float16, np.float32, np.complex64]:
             out = out.astype(np.float32)
@@ -1203,7 +1203,8 @@ class TestPlanCtxManagerRfftn:
             with warnings.catch_warnings():
                 # axis=None and s != None, NumPy 2.0
                 warnings.simplefilter("ignore", DeprecationWarning)
-                out = xp.fft.irfftn(a, s=self.s, axes=self.axes, norm=self.norm)
+                out = xp.fft.irfftn(
+                    a, s=self.s, axes=self.axes, norm=self.norm)
 
         if xp is np and dtype in [np.float16, np.float32, np.complex64]:
             out = out.astype(np.float32)

@@ -3,6 +3,7 @@ from cupy import testing
 
 from cupy.lib.array_utils import byte_bounds
 
+
 class TestByteBounds:
 
     @testing.for_all_dtypes()

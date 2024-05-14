@@ -1,7 +1,7 @@
 import cupy
 
 import operator
-import warnings
+
 
 def _as_int(x, desc):
     """

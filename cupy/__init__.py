@@ -181,7 +181,7 @@ from cupy._creation.basic import ones  # NOQA
 from cupy._creation.basic import ones_like  # NOQA
 from cupy._creation.basic import zeros  # NOQA
 from cupy._creation.basic import zeros_like  # NOQA
-from cupy._creation.basic import astype
+from cupy._creation.basic import astype  # NOQA
 
 from cupy._creation.from_data import copy  # NOQA
 from cupy._creation.from_data import array  # NOQA
@@ -930,21 +930,21 @@ _np2_removed_names = {
     'DataSource': '`np.lib.npyio.DataSource`',
     'set_string_function': 'set_printoptions',
 
-    'PINF' : 'inf',
-    'Inf' : 'inf',
+    'PINF': 'inf',
+    'Inf': 'inf',
     'Infinity': 'inf',
     'infty': 'inf',
     'NINF': '-inf',
     'NAN': 'nan',
     'NaN': 'nan',
     'PZERO': '0.0',
-    'NZERO':'-0.0',
+    'NZERO': '-0.0',
 
     'asfarray': '`asarray` with a proper dtype',
     'round_': 'round',
     'who': 'an IDE variable explorer or `locals()`',
     'byte_bounds': '`cupy.lib.array_utils.byte_bounds`',
-    'trapz' : 'trapezoid',
+    'trapz': 'trapezoid',
 }
 
 
