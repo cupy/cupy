@@ -1,12 +1,12 @@
-sudo rm -rf /usr/share/dotnet
-sudo rm -rf /opt/ghc
-sudo rm -rf "/usr/local/share/boost"
-sudo rm -rf "$AGENT_TOOLSDIRECTORY"
-
 #!/bin/bash
 
 set -uex
 export DEBIAN_FRONTEND=noninteractive
+
+# Add the deadsnakes PPA and update package lists
+apt-get update && apt-get install -y software-properties-common
+add-apt-repository ppa:deadsnakes/ppa
+apt-get update
 
 # Install necessary tools and dependencies
 apt-get install -y python3.9-dev python3-pip
