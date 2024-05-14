@@ -18,7 +18,7 @@ if not cupy_builder.preflight_check(ctx):
     sys.exit(1)
 
 # Used for generating HIP equivalent files.
-if get_rocm_version() > 0 or ctx.use_stub:
+if get_rocm_version() > 0:
     # run hipify.
     try:
         from hipify_torch import hipify_python
