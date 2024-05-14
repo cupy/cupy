@@ -9,7 +9,11 @@ add-apt-repository ppa:deadsnakes/ppa
 apt-get update
 
 # Install necessary tools and dependencies
-apt-get install -y python3.9-dev python3-pip python3.9-distutils
+apt-get install -y python3.9-dev \
+    python3-pip \
+    python3.9-distutils \
+    git 
+    
 python3.9 -m pip install -U pip wheel
 
 # Install hipify-torch (pin for stability) 
