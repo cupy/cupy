@@ -43,9 +43,6 @@ def copyto(dst, src, casting='same_kind', where=None):
             raise ValueError(
                 'non-scalar numpy.ndarray cannot be used for copyto')
         src_dtype = src.dtype
-        # XXX: can_cast chokes on numpy scalars. Can remove the `asarray` call
-        # below after https://github.com/numpy/numpy/pull/26372 lands in NumPy
-        src = numpy.asarray(src)
         can_cast = numpy.can_cast(src, dst.dtype, casting)
         src = src.item()
         src_is_numpy_scalar = True
