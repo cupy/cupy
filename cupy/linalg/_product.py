@@ -64,7 +64,7 @@ def dot(a, b, out=None):
     return a.dot(b, out)
 
 
-def vdot(a, b):
+def vdot(a, b, /):
     """Returns the dot product of two vectors.
 
     The input arrays are flattened into 1-D vectors and then it performs inner
@@ -259,7 +259,7 @@ def linalg_cross(x1, x2, /, *, axis=-1):
     return cross(x1, x2, axis=axis)
 
 
-def inner(a, b):
+def inner(a, b, /):
     """Returns the inner product of two arrays.
 
     It uses the last axis of each argument to take sum product.

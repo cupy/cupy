@@ -4,7 +4,7 @@ from cupy._manipulation import join
 from cupy._sorting import search
 
 
-def may_share_memory(a, b, max_work=None):
+def may_share_memory(a, b, /, max_work=None):
     if max_work is None:
         return _memory_range.may_share_bounds(a, b)
 
@@ -27,7 +27,7 @@ def _get_memory_ptrs(x):
     ])
 
 
-def shares_memory(a, b, max_work=None):
+def shares_memory(a, b, /, max_work=None):
     if a is b and a.size != 0:
         return True
     if max_work == 'MAY_SHARE_BOUNDS':

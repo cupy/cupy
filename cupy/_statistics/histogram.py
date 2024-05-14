@@ -481,7 +481,7 @@ _bincount_with_weight_kernel = _core.ElementwiseKernel(
     'cupy_bincount_with_weight_kernel')
 
 
-def bincount(x, weights=None, minlength=None):
+def bincount(x, /, weights=None, minlength=None):
     """Count number of occurrences of each value in array of non-negative ints.
 
     Args:
