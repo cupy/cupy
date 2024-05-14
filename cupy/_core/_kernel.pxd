@@ -137,7 +137,8 @@ cdef class _Ops:
 
     # Queries a single op from input arguments.
     cpdef _Op guess_routine(
-        self, str name, dict cache, list in_args, tuple weaks, dtype, _Ops out_ops)
+        self, str name, dict cache, list in_args, tuple weaks, dtype,
+        _Ops out_ops)
 
     cpdef _Op _guess_routine_from_in_types(
         self, tuple in_types, tuple weaks, object can_cast=*)

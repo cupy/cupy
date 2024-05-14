@@ -1043,9 +1043,7 @@ _subtract = create_arithmetic(
 # -2 to uint8_t at initialization (modulo UINT8_MAX, likely).
 _true_divide = create_ufunc(
     'cupy_true_divide',
-    (
-     #'bb->d', 'BB->d', 'hh->d', 'HH->d', 'ii->d', 'II->d', 'll->d', 'LL->d',
-     'qq->d', 'QQ->d',
+    ('qq->d', 'QQ->d',
      'ee->e', 'ff->f', 'dd->d', 'FF->F', 'DD->D'),
     'out0 = static_cast<out0_type>(in0) / static_cast<out0_type>(in1)',
     doc='''Elementwise true division (i.e. division as floating values).

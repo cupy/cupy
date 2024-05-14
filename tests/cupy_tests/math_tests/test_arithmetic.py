@@ -202,7 +202,7 @@ class ArithmeticBinaryBase:
         dtype1 = np1.dtype
         dtype2 = np2.dtype
 
-        if self.name == 'true_divide' and self.use_dtype == False:
+        if self.name == 'true_divide' and self.use_dtype is False:
             cond1 = (isinstance(self.arg1, numpy.ndarray) and
                      dtype1 == numpy.uint64 and
                      isinstance(self.arg2, int) and self.arg2 < 0)
@@ -324,7 +324,7 @@ class TestArithmeticBinary(ArithmeticBinaryBase):
         'name': ['power', 'true_divide', 'subtract', 'float_power'],
         'dtype': [numpy.float64],
         'use_dtype': [True, False],
-    })+ testing.product({
+    }) + testing.product({
         'arg1': [numpy.array([-3, -2, -1, 1, 2, 3], dtype=d)
                  for d in negative_no_complex_types
                  ] + [0, 0.0, 2, 2.0, -2, -2.0, True, False],
@@ -345,13 +345,14 @@ class TestArithmeticBinary2(ArithmeticBinaryBase):
 class TestArithmeticBinary3(ArithmeticBinaryBase):
 
     @pytest.mark.parametrize('arg1',
-        [testing.shaped_arange((2, 3), numpy, dtype=d)
-         for d in no_complex_types
-        ] + [0, 0.0, 2, 2.0, -2, -2.0, True, False])
+                             [testing.shaped_arange((2, 3), numpy, dtype=d)
+                              for d in no_complex_types
+                              ] + [0, 0.0, 2, 2.0, -2, -2.0, True, False])
     @pytest.mark.parametrize('arg2',
-        [testing.shaped_reverse_arange((2, 3), numpy, dtype=d)
-         for d in no_complex_types
-        ] + [0, 0.0, 2, 2.0, -2, -2.0, True, False])
+                             [testing.shaped_reverse_arange((2, 3),
+                              numpy, dtype=d)
+                              for d in no_complex_types
+                              ] + [0, 0.0, 2, 2.0, -2, -2.0, True, False])
     @pytest.mark.parametrize('name', ['floor_divide', 'fmod', 'remainder'])
     @pytest.mark.parametrize('dtype', [numpy.float64])
     @pytest.mark.parametrize('use_dtype', [True, False])
@@ -364,7 +365,7 @@ class TestArithmeticBinary3(ArithmeticBinaryBase):
         if isinstance(arg2, numpy.ndarray):
             arg2 = xp.asarray(arg2)
 
-        dtype_arg = {'dtype': dtype}  if use_dtype else {}
+        dtype_arg = {'dtype': dtype} if use_dtype else {}
         with numpy.errstate(divide='ignore'):
             with warnings.catch_warnings():
                 warnings.filterwarnings('ignore')
