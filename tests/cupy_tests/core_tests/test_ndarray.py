@@ -263,8 +263,6 @@ class TestNdarrayShape(unittest.TestCase):
             assert 'incompatible shape' in str(e.value).lower()
 
 
-@pytest.mark.skipif(cupy.cuda.runtime.is_hip,
-                    reason='HIP does not support this')
 class TestNdarrayCudaInterface(unittest.TestCase):
 
     def test_cuda_array_interface(self):
@@ -325,8 +323,6 @@ class TestNdarrayCudaInterface(unittest.TestCase):
     'stream': ('null', 'new', 'ptds'),
     'ver': (2, 3),
 }))
-@pytest.mark.skipif(cupy.cuda.runtime.is_hip,
-                    reason='HIP does not support this')
 class TestNdarrayCudaInterfaceStream(unittest.TestCase):
     def setUp(self):
         if self.stream == 'null':
@@ -368,20 +364,22 @@ class TestNdarrayCudaInterfaceStream(unittest.TestCase):
                 assert iface['stream'] == stream.ptr
 
 
-@pytest.mark.skipif(not cupy.cuda.runtime.is_hip,
-                    reason='This is supported on CUDA')
-class TestNdarrayCudaInterfaceNoneCUDA(unittest.TestCase):
+class TestNdarrayCudaInterfaceAttr(unittest.TestCase):
 
     def setUp(self):
         self.arr = cupy.zeros(shape=(2, 3), dtype=cupy.float64)
 
     def test_cuda_array_interface_hasattr(self):
-        assert not hasattr(self.arr, '__cuda_array_interface__')
+        assert hasattr(self.arr, '__cuda_array_interface__')
 
     def test_cuda_array_interface_getattr(self):
-        with pytest.raises(AttributeError) as e:
-            getattr(self.arr, '__cuda_array_interface__')
-        assert 'HIP' in str(e.value)
+        try:
+            interface = getattr(self.arr, '__cuda_array_interface__')
+            self.assertIsNotNone(interface)
+        except AttributeError as e:
+            self.fail(
+                "__cuda_array_interface__ should be present, "
+                f"but got an AttributeError: {str(e)}")
 
 
 @testing.parameterize(
