@@ -103,13 +103,13 @@ jobs:
       with:
         submodules: recursive
 
-    - name: Build & Test
+    - name: Clean up disk space 
       run: |
-        # Clean up disc space
         sudo rm -rf /usr/share/dotnet
         sudo rm -rf /opt/ghc
         sudo rm -rf "/usr/local/share/boost"
         sudo rm -rf "$AGENT_TOOLSDIRECTORY"
 
-        # Launch rocm base docker 
+    - name: Build & Test
+      run: 
         docker run --rm -v "${PWD}:/src" -w /src "rocm/dev-ubuntu-22.04:6.1-complete" bash .github/workflows/pretest-rocm-test.sh
