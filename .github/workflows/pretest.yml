@@ -105,4 +105,11 @@ jobs:
 
     - name: Build & Test
       run: |
+        # Clean up disc space
+        sudo rm -rf /usr/share/dotnet
+        sudo rm -rf /opt/ghc
+        sudo rm -rf "/usr/local/share/boost"
+        sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+
+        # Launch rocm base docker 
         docker run --rm -v "${PWD}:/src" -w /src "rocm/dev-ubuntu-22.04:6.1" bash .github/workflows/pretest-rocm-test.sh
