@@ -128,10 +128,10 @@ class _Interpolator1D:
     def _set_dtype(self, dtype, union=False):
         if cupy.issubdtype(dtype, cupy.complexfloating) \
                 or cupy.issubdtype(self.dtype, cupy.complexfloating):
-            self.dtype = cupy.complex_
+            self.dtype = cupy.complex128
         else:
-            if not union or self.dtype != cupy.complex_:
-                self.dtype = cupy.float_
+            if not union or self.dtype != cupy.complex128:
+                self.dtype = cupy.float64
 
 
 class _Interpolator1DWithDerivatives(_Interpolator1D):
@@ -234,7 +234,7 @@ class BarycentricInterpolator(_Interpolator1D):
     def __init__(self, xi, yi=None, axis=0):
         _Interpolator1D.__init__(self, xi, yi, axis)
 
-        self.xi = xi.astype(cupy.float_)
+        self.xi = xi.astype(cupy.float64)
         self.set_yi(yi)
         self.n = len(self.xi)
 
@@ -423,7 +423,7 @@ class KroghInterpolator(_Interpolator1DWithDerivatives):
     def __init__(self, xi, yi, axis=0):
         _Interpolator1DWithDerivatives.__init__(self, xi, yi, axis)
 
-        self.xi = xi.astype(cupy.float_)
+        self.xi = xi.astype(cupy.float64)
         self.yi = self._reshape_yi(yi)
         self.n, self.r = self.yi.shape
 
