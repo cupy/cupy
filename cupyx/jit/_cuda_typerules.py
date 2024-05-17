@@ -153,9 +153,9 @@ def guess_routine(
     if dtype is not None:
         return ufunc._ops._guess_routine_from_dtype(dtype)
     can_cast = numpy.can_cast if mode == 'numpy' else _cuda_can_cast
-    weaks = tuple([False for _ in in_types])
+
     return ufunc._ops._guess_routine_from_in_types(
-        tuple(in_types), weaks, can_cast
+        tuple(in_types), None, can_cast
     )
 
 

@@ -625,7 +625,7 @@ cdef class _SimpleReductionKernel(_AbstractReductionKernel):
         cdef _kernel._Op op
 
         # XXX: weaks
-        weaks = tuple([False for _ in in_args])
+        weaks = None
         op = self._ops.guess_routine(
             self.name, self._routine_cache, in_args, weaks, dtype, self._ops)
         map_expr, reduce_expr, post_map_expr, reduce_type = op.routine
