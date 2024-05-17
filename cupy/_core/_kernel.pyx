@@ -1087,7 +1087,7 @@ cdef dict _mst_unsigned_to_signed = {
 
 
 cdef inline int _get_kind_score(type kind):
-    if issubclass(kind, bool):
+    if issubclass(kind, numpy.bool_):
         return 0
     if issubclass(kind, (numpy.integer, int)):
         return 1
