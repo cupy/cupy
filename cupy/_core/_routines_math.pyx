@@ -1041,9 +1041,12 @@ _subtract = create_arithmetic(
 # `cupy.arange(3, dtype=cp.uint8) / (-2)`. It would select the 'BB->d' loop,
 # and the kernel would have a declaration `uint8_t in1;`, this converts
 # -2 to uint8_t at initialization (modulo UINT8_MAX, likely).
+# The family of qq loops is a work-around to achieve almost correct promotion.
+# TODO(seberg): Per-ufunc promotion or per-loop type resolution is probably
+#               needed for a full fix.
 _true_divide = create_ufunc(
     'cupy_true_divide',
-    ('qq->d', 'QQ->d',
+    ('qq->d', 'qQ->d', 'Qq->d', 'QQ->d',
      'ee->e', 'ff->f', 'dd->d', 'FF->F', 'DD->D'),
     'out0 = static_cast<out0_type>(in0) / static_cast<out0_type>(in1)',
     doc='''Elementwise true division (i.e. division as floating values).
