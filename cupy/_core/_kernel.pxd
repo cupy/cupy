@@ -141,7 +141,7 @@ cdef class _Ops:
         _Ops out_ops)
 
     cpdef _Op _guess_routine_from_in_types(
-        self, tuple in_types, tuple weaks, object can_cast=*)
+        self, tuple in_types, tuple weaks=*, object can_cast=*)
 
     cpdef _Op _guess_routine_from_dtype(self, object dtype)
 

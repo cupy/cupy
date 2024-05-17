@@ -95,68 +95,6 @@ cdef function.Function _get_simple_elementwise_kernel(
     return _get_simple_elementwise_kernel_from_code(name, code, options)
 
 
-cdef inline int _get_kind_score(int kind):
-    if b'b' == kind:
-        return 0
-    if b'u' == kind or b'i' == kind:
-        return 1
-    if b'f' == kind or b'c' == kind:
-        return 2
-    return -1
-
-
-cdef inline int _get_kind_score2(dtype):
-    """Use different scores for floating real and complex."""
-    _dct = {
-        cupy.bool_: 0,
-        # unsigned int
-        cupy.uint8: 1,
-        cupy.uint16: 1,
-        cupy.uint32: 1,
-        cupy.uint64: 1,
-        cupy.ulonglong: 1,
-        # signed int
-        cupy.int8: 1,
-        cupy.int16: 1,
-        cupy.int32: 1,
-        cupy.int64: 1,
-        cupy.longlong: 1,
-        # float
-        cupy.float16: 2,
-        cupy.float32: 2,
-        cupy.float64: 2,
-        # complex
-        cupy.complex64: 3,
-        cupy.complex128: 3, }
-    return _dct[dtype]
-
-
-cdef inline int _get_precision_score(dtype):
-    """fp type 'precision'."""
-    _dct = {
-        cupy.bool_: 0,
-        # unsigned int
-        cupy.uint8: 0,
-        cupy.uint16: 0,
-        cupy.uint32: 0,
-        cupy.uint64: 0,
-        cupy.ulonglong: 0,
-        # signed int
-        cupy.int8: 0,
-        cupy.int16: 0,
-        cupy.int32: 0,
-        cupy.int64: 0,
-        cupy.longlong: 0,
-        # float
-        cupy.float16: 1,
-        cupy.float32: 2,
-        cupy.float64: 3,
-        # complex
-        cupy.complex64: 2,     # == float32
-        cupy.complex128: 3, }  # == float64
-    return _dct[dtype]
-
-
 @cython.profile(False)
 cpdef inline _check_peer_access(_ndarray_base arr, int device_id):
     if arr.data.device_id == device_id:
@@ -178,7 +116,7 @@ cpdef inline _check_peer_access(_ndarray_base arr, int device_id):
 
 
 cdef inline _preprocess_arg(int dev_id, arg, bint use_c_scalar):
-    is_weak = False
+    weak_t = False
     if isinstance(arg, _ndarray_base):
         s = arg
         _check_peer_access(<_ndarray_base>s, dev_id)
@@ -191,14 +129,14 @@ cdef inline _preprocess_arg(int dev_id, arg, bint use_c_scalar):
         s = arg.__cupy_get_ndarray__()
         _check_peer_access(<_ndarray_base>s, dev_id)
     else:  # scalars or invalid args
-        is_weak = type(arg) in [int, float, complex]
+        weak_t = type(arg) if type(arg) in [int, float, complex] else False
         if use_c_scalar:
             s = _scalar.scalar_to_c_scalar(arg)
         else:
             s = _scalar.scalar_to_numpy_scalar(arg)
         if s is None:
             raise TypeError('Unsupported type %s' % type(arg))
-    return s, is_weak
+    return s, weak_t
 
 
 cdef tuple _preprocess_args(int dev_id, args, bint use_c_scalar):
@@ -212,9 +150,9 @@ cdef tuple _preprocess_args(int dev_id, args, bint use_c_scalar):
     cdef list ret = []
     cdef list weaks = []
     for arg in args:
-        p_arg, is_weak = _preprocess_arg(dev_id, arg, use_c_scalar)
+        p_arg, weak_t = _preprocess_arg(dev_id, arg, use_c_scalar)
         ret.append(p_arg)
-        weaks.append(is_weak)
+        weaks.append(weak_t)
     return ret, tuple(weaks)
 
 
@@ -1148,6 +1086,44 @@ cdef dict _mst_unsigned_to_signed = {
                  for i in "BHILQ"]}
 
 
+cdef inline int _get_kind_score(type kind):
+    if issubclass(kind, bool):
+        return 0
+    if issubclass(kind, (numpy.integer, int)):
+        return 1
+    if issubclass(kind, (numpy.inexact, float, complex)):
+        return 2
+    # unknown type, assume higher score
+    return 3
+
+
+cdef inline bint _check_should_use_weak_scalar(tuple in_types, tuple weaks) except? -1:
+    """The promotion strategy of finding the first matching loop is not
+    equipped to deal with correct promotion when mixing weak scalars and
+    arrays/strong types.
+    To fix this we (also NumPy when it uses this strategy) check if the scalars
+    have a higher kind and do not use them if they do.
+
+    This prevents e.g. `uint8(1) + 0.` from picking a float64 loop.
+    """
+    cdef int kind, max_array_kind, max_scalar_kind
+    cdef bint all_scalars
+    all_scalars = True
+    max_array_kind = -1
+    max_scalar_kind = -1
+    for in_t, w_t in zip(in_types, weaks):
+        if w_t:
+            kind = _get_kind_score(w_t)
+            max_scalar_kind = max(max_scalar_kind, kind)
+        else:
+            kind = _get_kind_score(in_t)
+            max_array_kind = max(max_array_kind, kind)
+
+    all_scalars_or_arrays = max_scalar_kind == -1 or max_array_kind == -1
+
+    return not all_scalars_or_arrays and max_array_kind >= max_scalar_kind
+
+
 cdef class ufunc:
 
     """Universal function.
@@ -1673,50 +1649,37 @@ cdef class _Ops:
                         (dtype, name))
 
     cpdef _Op _guess_routine_from_in_types(
-            self, tuple in_types, tuple weaks, object can_cast=_numpy_can_cast
+            self, tuple in_types, tuple weaks=None, object can_cast=_numpy_can_cast
     ):
         cdef _Op op
         cdef tuple op_types
         cdef Py_ssize_t n = len(in_types)
         cdef Py_ssize_t i
 
-        in_categories = [-1 if weaks[i] else _get_kind_score2(in_types[i])
-                         for i in range(n)]
-        max_category = max(in_categories)
-
-        in_prec = [-1 if weaks[i] else _get_precision_score(in_types[i])
-                   for i in range(n)]
-        max_prec = max(in_prec)
-
-        if max_category == -1:
-            # all in_args are scalars
-            _weaks = (False,)*n
-        else:
-            _weaks = list(weaks)
-            for i in range(n):
-                if weaks[i] and _get_kind_score2(in_types[i]) > max_category:
-                    _weaks[i] = False
-                else:
-                    _weaks[i] = weaks[i]
+        if weaks is None or not _check_should_use_weak_scalar(in_types, weaks):
+            weaks = (False,) * n
 
         for op in self.ops:
             op_types = op.in_types
             for i in range(n):
                 it = in_types[i]
                 ot = op_types[i]
-                is_weak = _weaks[i]
+                is_weak = weaks[i]
 
-                # special case: f32 array + 1j -> c64 (not c128)
-                if weaks[i] and it == numpy.complex128 and max_prec == 2:
-                    it = numpy.complex64
-                    is_weak = False
+                # XXX: Remove assert (reachable only for pre NEP 50 logic)
+                assert(not isinstance(it, tuple))
 
-                if isinstance(it, tuple):
-                    # XXX: account for weaks
-                    if not can_cast(it[0], ot) and not can_cast(it[1], ot):
+                if not can_cast(it, ot):
+                    if not is_weak:
                         break
-                elif not is_weak and not can_cast(it, ot):
-                    break
+
+                    # If `result_type` doesn't return `ot` then the weak
+                    # scalar caused promotion and operand cannot be used.
+                    try:
+                        if numpy.result_type(is_weak(0), ot) != ot:
+                            break
+                    except TypeError:
+                        break
             else:
                 return op
         return None
