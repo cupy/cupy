@@ -171,12 +171,13 @@ class _TraceScalar(_TraceVariable):
 
     # TODO(asi1024): Remove index argument.
     def __init__(
-            self, index, serial_number, dtype, input_index=None, *,
+            self, index, serial_number, dtype, sctype, input_index=None, *,
             const_value=None,):
         super().__init__(
             index, serial_number, dtype, (), (), input_index, None)
 
         self.const_value = const_value
+        self.pytype = sctype if sctype in (int, float, complex) else False
 
     @property
     def var_name(self):
