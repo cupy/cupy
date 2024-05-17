@@ -10,7 +10,6 @@ from cupy import _util
 cimport cython  # NOQA
 
 from libcpp cimport vector
-from libc.stdint cimport uint64_t, int64_t
 
 from cupy.cuda cimport device
 from cupy.cuda cimport function
@@ -1097,7 +1096,9 @@ cdef inline int _get_kind_score(type kind):
     return 3
 
 
-cdef inline bint _check_should_use_weak_scalar(tuple in_types, tuple weaks) except? -1:
+cdef inline bint _check_should_use_weak_scalar(
+    tuple in_types, tuple weaks
+) except? -1:
     """The promotion strategy of finding the first matching loop is not
     equipped to deal with correct promotion when mixing weak scalars and
     arrays/strong types.
@@ -1107,8 +1108,8 @@ cdef inline bint _check_should_use_weak_scalar(tuple in_types, tuple weaks) exce
     This prevents e.g. `uint8(1) + 0.` from picking a float64 loop.
     """
     cdef int kind, max_array_kind, max_scalar_kind
-    cdef bint all_scalars
-    all_scalars = True
+    cdef bint all_scalars_or_arrays
+
     max_array_kind = -1
     max_scalar_kind = -1
     for in_t, w_t in zip(in_types, weaks):
@@ -1625,7 +1626,7 @@ cdef class _Ops:
             for i in range(len(in_args)):
                 if weaks[i] is not int:
                     continue
-                # Note: For simplicity, check even if output is actually a float
+                # Note: For simplicity, check even if `in_type` is e.g. float
                 integer_argument = int(in_args[i])
                 in_type = op.in_types[i]
                 in_type(integer_argument)  # Check if user input fits loop
@@ -1638,7 +1639,8 @@ cdef class _Ops:
                         (dtype, name))
 
     cpdef _Op _guess_routine_from_in_types(
-            self, tuple in_types, tuple weaks=None, object can_cast=_numpy_can_cast
+            self, tuple in_types, tuple weaks=None,
+            object can_cast=_numpy_can_cast
     ):
         cdef _Op op
         cdef tuple op_types
