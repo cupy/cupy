@@ -107,13 +107,13 @@ def _guess_routine(func, args, dtype):
     for x in args:
         if isinstance(x, _TraceScalar):
             obj = x.dtype.type(0)
-            is_weak = True
+            weak_t = x.pytype
         else:
             assert isinstance(x, _TraceArray)
             obj = core.ndarray((0,), x.dtype)
-            is_weak = False
+            weak_t = False
         dummy_args.append(obj)
-        weaks.append(is_weak)
+        weaks.append(weak_t)
 
     op = func._ops.guess_routine(
         func.name, func._routine_cache, dummy_args, tuple(weaks), dtype, None)
@@ -170,10 +170,12 @@ class _VariableCoordinator:
         ret.memory.base_ashape = ret.ashape
         return ret
 
-    def generate_new_scalar(self, dtype, **kwargs):
+    def generate_new_scalar(self, sctype, **kwargs):
         """Generate new _TraceScalar object with a new memory space.
         """
-        return self._generate_new_variable(_TraceScalar, dtype, **kwargs)
+        dtype = numpy.dtype(sctype)
+        return self._generate_new_variable(
+            _TraceScalar, dtype, sctype=sctype, **kwargs)
 
     def make_view(self, var, **kwargs):
         assert isinstance(var, _TraceArray)
@@ -266,8 +268,7 @@ class TraceImpl:
         if isinstance(x, _VariableProxy):
             return x.content
         if isinstance(x, _accepted_types):
-            dtype = numpy.dtype(type(x))
-            return self.vc.generate_new_scalar(dtype, const_value=x)
+            return self.vc.generate_new_scalar(type(x), const_value=x)
         if isinstance(x, (numpy.ndarray, core.ndarray)):
             raise TypeError('Concrete ndarray is not supported in fusion.')
         raise TypeError('{} type is not supported'.format(type(x)))
@@ -528,9 +529,8 @@ class TraceImpl:
                 memory_dict[base_id] = input_index
             else:
                 # Scalar input.
-                dtype = numpy.dtype(type(arg))
                 var = self.vc.generate_new_scalar(
-                    dtype, input_index=input_index)
+                    type(arg), input_index=input_index)
             in_params.append(var)
 
         # Call the target function.
