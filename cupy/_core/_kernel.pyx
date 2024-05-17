@@ -1646,19 +1646,19 @@ cdef class _Ops:
             for i in range(n):
                 it = in_types[i]
                 ot = op_types[i]
-                is_weak = weaks[i]
+                weak_t = weaks[i]
 
                 # XXX: Remove assert (reachable only for pre NEP 50 logic)
                 assert(not isinstance(it, tuple))
 
                 if not can_cast(it, ot):
-                    if not is_weak:
+                    if not weak_t:
                         break
 
                     # If `result_type` doesn't return `ot` then the weak
                     # scalar caused promotion and operand cannot be used.
                     try:
-                        if numpy.result_type(is_weak(0), ot) != ot:
+                        if numpy.result_type(weak_t(0), ot) != ot:
                             break
                     except TypeError:
                         break
