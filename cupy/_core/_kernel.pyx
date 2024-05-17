@@ -1592,10 +1592,17 @@ cdef class _Ops:
             self, str name, dict cache, list in_args, tuple weaks, dtype,
             _Ops out_ops):
         cdef _Ops ops_
+
+        if weaks is None:
+            weaks = (False,) * len(in_args)
+
         if dtype is None:
             assert all([isinstance(a, (_ndarray_base, numpy.generic))
                         for a in in_args])
             in_types = tuple([a.dtype.type for a in in_args])
+
+            if not _check_should_use_weak_scalar(in_types, weaks):
+                weaks = (False,) * len(in_args)
 
             op = cache.get((in_types, weaks), ())
             if op is ():
@@ -1615,13 +1622,13 @@ cdef class _Ops:
             # check for overflow in operands. Consider `np.uint8(1) + 300`.
             # Per NEP 50 this raises OverflowError because 300 overflows uint8.
             # We can only check it after the operand types are known
-            out_type = op.out_types[0]
-            for i, weak_t in enumerate(weaks):
-                if weak_t is not int:
+            for i in range(len(in_args)):
+                if weaks[i] is not int:
                     continue
                 # Note: For simplicity, check even if output is actually a float
                 integer_argument = int(in_args[i])
-                out_type(integer_argument)  # Check if user input fits loop
+                in_type = op.in_types[i]
+                in_type(integer_argument)  # Check if user input fits loop
 
             return op
 
@@ -1638,15 +1645,12 @@ cdef class _Ops:
         cdef Py_ssize_t n = len(in_types)
         cdef Py_ssize_t i
 
-        if weaks is None or not _check_should_use_weak_scalar(in_types, weaks):
-            weaks = (False,) * n
-
         for op in self.ops:
             op_types = op.in_types
             for i in range(n):
                 it = in_types[i]
                 ot = op_types[i]
-                weak_t = weaks[i]
+                weak_t = weaks[i] if weaks is not None else False
 
                 # XXX: Remove assert (reachable only for pre NEP 50 logic)
                 assert(not isinstance(it, tuple))
