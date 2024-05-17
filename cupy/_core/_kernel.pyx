@@ -1614,33 +1614,15 @@ cdef class _Ops:
 
             # check for overflow in operands. Consider `np.uint8(1) + 300`.
             # Per NEP 50 this raises OverflowError because 300 overflows uint8.
-            # We can only check it after the output dtype is known, which is
-            # op.out_types here.
+            # We can only check it after the operand types are known
             out_type = op.out_types[0]
-            if issubclass(out_type, numpy.integer):
-                iinfo = numpy.iinfo(out_type)
-                for i in range(len(in_args)):
-                    arg = in_args[i]
-                    typ = arg.dtype.type
+            for i, weak_t in enumerate(weaks):
+                if weak_t is not int:
+                    continue
+                # Note: For simplicity, check even if output is actually a float
+                integer_argument = int(in_args[i])
+                out_type(integer_argument)  # Check if user input fits loop
 
-                    if weaks[i] and issubclass(typ, numpy.integer):
-                        if issubclass(typ, numpy.signedinteger):
-
-                            if issubclass(out_type, numpy.signedinteger):
-                                ok = (<int64_t>iinfo.min <=
-                                      <int64_t>arg <=
-                                      <int64_t>iinfo.max)
-                            else:
-                                ok = ((arg >= 0) and
-                                      (<uint64_t>arg <= <uint64_t>iinfo.max))
-
-                        elif issubclass(typ, numpy.unsignedinteger):
-                            # arg >= 0
-                            ok = <uint64_t>arg <= <uint64_t>iinfo.max
-
-                        if not ok:
-                            raise OverflowError(f"Python integer {arg} out of "
-                                                f"bounds for {out_type}.")
             return op
 
         if dtype is None:
