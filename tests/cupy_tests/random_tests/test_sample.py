@@ -109,12 +109,13 @@ class TestRandint2(unittest.TestCase):
 
 class TestRandintDtype(unittest.TestCase):
 
+    @pytest.mark.xfail(reason="XXX: np2.0: comparisons broken in numpy 1.26")
     @testing.for_dtypes([
         numpy.int8, numpy.uint8, numpy.int16, numpy.uint16, numpy.int32])
     def test_dtype(self, dtype):
         size = (1000,)
         low = numpy.iinfo(dtype).min
-        high = numpy.iinfo(dtype).max
+        high = numpy.iinfo(dtype).max + 1
         x = random.randint(low, high, size, dtype).get()
         assert low <= min(x)
         assert max(x) <= high
