@@ -514,8 +514,8 @@ class _FusionHistory(object):
                 raise Exception('Shape mismatch')
         if isinstance(arg, (int, float, bool, complex, numpy.generic)):
             pytype = type(arg)
-            is_weak = type(arg) if [bool, int, float, complex] else False
-            var = self._fresh_local(numpy.dtype(type(arg)), const_value=arg)
+            is_weak = pytype if [bool, int, float, complex] else False
+            var = self._fresh_local(numpy.dtype(pytype), const_value=arg)
             return _FusionVarScalar(var, -1, self._has_reduction(), is_weak)
         raise TypeError('Unsupported type {}'.format(type(arg)))
 
@@ -523,52 +523,10 @@ class _FusionHistory(object):
         nin = ufunc.nin
         nout = ufunc.nout
 
-        # Corresponds to _check_should_use_min_scalar in elementwise.pxi
-        # This function decides which typecast rule to use.
-        def _should_use_min_scalar(in_args):
-            max_array_kind = -2
-            max_scalar_kind = -1
-            for arg in in_args:
-                kind = _kind_score[arg.dtype.kind]
-                if isinstance(arg, _FusionVarArray):
-                    max_array_kind = max(max_array_kind, kind)
-                elif isinstance(arg, _FusionVarScalar):
-                    max_scalar_kind = max(max_scalar_kind, kind)
-                else:
-                    assert False
-            return (max_scalar_kind != -1 and
-                    max_array_kind >= max_scalar_kind)
-
-        def can_cast1(args, in_dtypes):
-            for i in range(nin):
-                arg = args[i]
-                if isinstance(arg, _FusionVarArray):
-                    if not numpy.can_cast(arg.dtype, in_dtypes[i]):
-                        return False
-                elif isinstance(arg, _FusionVarScalar):
-                    scalar_value = arg._var.const_value
-                    if scalar_value is None:
-                        # This typecast is not safe.
-                        # The result of a typecast of an element-wise operation
-                        # between a numpy ndarray and a numpy scalar is not
-                        # decidable statically, because it depends on the value
-                        # of the scalar variable.
-                        scalar_value = arg.dtype.type(0)
-                    if not numpy.can_cast(scalar_value, in_dtypes[i]):
-                        return False
-                else:
-                    assert False
-            return True
-
-        def can_cast2(args, in_dtypes):
-            for i in range(nin):
-                if not numpy.can_cast(args[i].dtype, in_dtypes[i]):
-                    return False
-            return True
-
         def make_fusion_var(var, ndim, is_weak):
             if ndim == -1:
-                return _FusionVarScalar(var, ndim, self._has_reduction(), is_weak)
+                return _FusionVarScalar(var, ndim, self._has_reduction(),
+                                        is_weak)
             else:
                 return _FusionVarArray(var, ndim, self._has_reduction())
 
@@ -600,8 +558,6 @@ class _FusionHistory(object):
             raise ValueError('non-broadcastable output operand')
 
         # Typecast and add an operation
-       # in_dtypes = tuple([a.dtype for a in in_vars])
-       # in_sctypes = tuple([dt.type for dt in in_dtypes])
         in_sctypes = tuple([a.dtype.type for a in in_vars])
         weaks = tuple([a.is_weak if hasattr(a, 'is_weak') else False
                        for a in in_vars])
