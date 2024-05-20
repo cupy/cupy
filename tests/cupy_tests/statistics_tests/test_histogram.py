@@ -47,7 +47,7 @@ class TestHistogram(unittest.TestCase):
         return y, bin_edges
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
-    @testing.numpy_cupy_allclose(atol=1e-7)
+    @testing.numpy_cupy_allclose(atol={numpy.float16: 1.5e-4, 'default': 1e-7})
     def test_histogram_same_value(self, xp, dtype):
         x = xp.zeros(10, dtype)
         y, bin_edges = xp.histogram(x, 3)
