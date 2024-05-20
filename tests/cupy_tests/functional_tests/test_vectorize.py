@@ -19,7 +19,7 @@ class TestVectorizeOps(unittest.TestCase):
         return f(*args)
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(rtol=1e-6)
+    @testing.numpy_cupy_allclose(rtol={'default': 1e-6, numpy.float16: 1.5e-3})
     def test_vectorize_reciprocal(self, xp, dtype):
         def my_reciprocal(x):
             scalar = xp.dtype(dtype).type(10)
