@@ -559,8 +559,7 @@ class _FusionHistory(object):
 
         # Typecast and add an operation
         in_sctypes = tuple([a.dtype.type for a in in_vars])
-        weaks = tuple([a.is_weak if hasattr(a, 'is_weak') else False
-                       for a in in_vars])
+        weaks = tuple([getattr(a, 'is_weak', False) for a in in_vars])
 
         op = ufunc._ops._guess_routine_from_in_types(in_sctypes, weaks)
 
