@@ -126,10 +126,11 @@ def _get_module_func(module, func_name, *template_args):
 
 def _find_initial_cond(all_valid, cum_poly, n, off=0, axis=-1):
     indices = cupy.where(all_valid)[0] + 1 + off
-    zi = cupy.nan
+    zi = cupy.array(cupy.nan, dtype=cum_poly.dtype)
     if indices.size > 0:
         zi = cupy.where(
-            indices[0] >= n, cupy.nan,
+            indices[0] >= n,
+            cupy.array(cupy.nan, dtype=cum_poly.dtype),
             axis_slice(cum_poly, indices[0] - 1 - off,
                        indices[0] - off, axis=axis))
     return zi
