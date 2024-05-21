@@ -83,7 +83,7 @@ class TestCooperativeGroups:
         assert x[0] == 1
         assert x[1] == 64
         assert (x[2], x[3], x[4]) == (2, 1, 1)
-        # TODO (ev-br): revert back to x[5:] == -1 after the edge case of
+        # XXX: np2.0: revert back to x[5:] == -1 after the edge case of
         # uint64_array == UINT64_MAX is fixed. Here and in
         # test_grid_group_cu116_new_APIs below.
         assert (x[5:] == cupy.uint64(2**64-1)).all()
