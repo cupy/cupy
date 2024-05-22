@@ -224,9 +224,9 @@ _complex_sign = '''
 if (isnan(in0)) {
   out0 = nan("");
 } else if (in0.real() == 0) {
-  out0 = (in0.imag() > 0) ? 1 : (in0.imag() < 0) ? -1 : 0;
+  out0 = (in0.imag() > 0) - (in0.imag() < 0);
 } else {
-  out0 = (in0.real() > 0) ? 1 : (in0.real() < 0) ? -1 : 0;
+  out0 = (in0.real() > 0) - (in0.real() < 0);
 }
 '''
 sign = _core.create_ufunc(
