@@ -618,8 +618,8 @@ cublasStatus_t cublasCtrsmBatched(cublasHandle_t handle, cublasSideMode_t size, 
                                convert_hipblasDiagType_t(diag),
                                m, n,
                                reinterpret_cast<const hipblasComplex*>(alpha),
-                               reinterpret_cast<const hipblasComplex* const []>(A), lda,
-                               reinterpret_cast<cuComplex* const []>(B), ldb, batchCount);
+                               reinterpret_cast<const hipblasComplex* const*>(A), lda,
+                               reinterpret_cast<hipblasComplex* const*>(B), ldb, batchCount);
 }
 
 cublasStatus_t cublasZtrsmBatched(cublasHandle_t handle, cublasSideMode_t size, cublasFillMode_t uplo, cublasOperation_t trans,
@@ -632,8 +632,8 @@ cublasStatus_t cublasZtrsmBatched(cublasHandle_t handle, cublasSideMode_t size, 
                                convert_hipblasDiagType_t(diag),
                                m, n,
                                reinterpret_cast<const hipblasDoubleComplex*>(alpha),
-                               reinterpret_cast<const hipblasDoubleComplex* const []>(A), lda,
-                               reinterpret_cast<hipblasDoubleComplex* const []>(B), ldb, batchCount);
+                               reinterpret_cast<const hipblasDoubleComplex* const*>(A), lda,
+                               reinterpret_cast<hipblasDoubleComplex* const*>(B), ldb, batchCount);
 }
 
 cublasStatus_t cublasSsyrk(cublasHandle_t handle, cublasFillMode_t uplo, cublasOperation_t trans, int n, int k,
