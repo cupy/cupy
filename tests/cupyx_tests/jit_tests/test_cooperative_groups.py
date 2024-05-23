@@ -120,7 +120,7 @@ class TestCooperativeGroups:
         assert x[5] == 1
         assert x[6] == 2
         assert (x[7], x[8], x[9]) == (1, 0, 0)
-        assert (x[10:] ==  cupy.uint64(2**64-1)).all()
+        assert (x[10:] == cupy.uint64(2**64-1)).all()
 
     @pytest.mark.skipif(runtime.deviceGetAttribute(
         runtime.cudaDevAttrCooperativeLaunch, 0) == 0,
