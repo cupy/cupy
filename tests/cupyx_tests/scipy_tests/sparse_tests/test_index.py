@@ -110,7 +110,6 @@ class TestSetitemIndexing:
                             _get_index_combos(1)):
             self._run(maj, min, data=x)
 
-
     @pytest.mark.xfail(reason="XXX: np2.0: scipy1.13")
     @testing.with_requires('scipy>=1.5.0')
     def test_set_zero_dim_bool_mask(self):
