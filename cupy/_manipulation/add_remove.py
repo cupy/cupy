@@ -4,7 +4,12 @@ import numpy
 
 import cupy
 import math
+import itertools
+
 from cupy import _core
+from cupy._core._scalar import get_typename
+# from cupy._core._dtype import
+from cupy_backends.cuda.api import runtime
 
 
 def delete(arr, indices, axis=None):
@@ -175,7 +180,38 @@ def _unique_update_mask_equal_nan(mask, x0):
     mask[:] = cupy.logical_and(mask, mask1)
 
 
+def _get_typename(dtype):
+    typename = get_typename(dtype)
+    if numpy.dtype(dtype).kind == 'c':
+        typename = 'thrust::' + typename
+    elif typename == 'float16':
+        if runtime.is_hip:
+            # 'half' in name_expressions weirdly raises
+            # HIPRTC_ERROR_NAME_EXPRESSION_NOT_VALID in getLoweredName() on
+            # ROCm
+            typename = '__half'
+        else:
+            typename = 'half'
+    return typename
+
+
+_64bitd = itertools.product(
+    [cupy.complex128, cupy.float64, cupy.int64, cupy.uint64], [cupy.uint64])
+_32bitd = itertools.product(
+    [cupy.complex64, cupy.float32, cupy.int32, cupy.uint32], [cupy.uint32])
+_16bitd = itertools.product(
+    [cupy.float16, cupy.int16, cupy.uint16], [cupy.uint16])
+_8bitd = itertools.product([cupy.bool_, cupy.int8, cupy.uint8], [cupy.uint8])
+_all_types_i = itertools.chain(_64bitd, _32bitd, _16bitd, _8bitd)
+_all_types = [(_get_typename(x), _get_typename(y)) for x, y in _all_types_i]
+_type_map = dict(_all_types)
+
+map_crc_def = [f'map_crc<{x}, {y}>' for x, y in _all_types]
+
 _unique_nd_module = _core.RawModule(code='''
+#include <cupy/carray.cuh>
+#include <cupy/complex.cuh>
+
 static const __device__ unsigned long long crc64_tab[256] = {
     0x0000000000000000, 0x7ad870c830358979,
     0xf5b0e190606b12f2, 0x8f689158505e9b8b,
@@ -307,44 +343,211 @@ static const __device__ unsigned long long crc64_tab[256] = {
     0x536fa08fdfd90e51, 0x29b7d047efec8728,
 };
 
-__device__ unsigned long long crc64(
-    const unsigned long long s,
-    unsigned long long crc
-) {
-    unsigned long long j;
-    unsigned long long mask = 0xff;
+static const __device__ unsigned int crc32_tab[256] = {
+	0x00000000L, 0xF26B8303L, 0xE13B70F7L, 0x1350F3F4L,
+	0xC79A971FL, 0x35F1141CL, 0x26A1E7E8L, 0xD4CA64EBL,
+	0x8AD958CFL, 0x78B2DBCCL, 0x6BE22838L, 0x9989AB3BL,
+	0x4D43CFD0L, 0xBF284CD3L, 0xAC78BF27L, 0x5E133C24L,
+	0x105EC76FL, 0xE235446CL, 0xF165B798L, 0x030E349BL,
+	0xD7C45070L, 0x25AFD373L, 0x36FF2087L, 0xC494A384L,
+	0x9A879FA0L, 0x68EC1CA3L, 0x7BBCEF57L, 0x89D76C54L,
+	0x5D1D08BFL, 0xAF768BBCL, 0xBC267848L, 0x4E4DFB4BL,
+	0x20BD8EDEL, 0xD2D60DDDL, 0xC186FE29L, 0x33ED7D2AL,
+	0xE72719C1L, 0x154C9AC2L, 0x061C6936L, 0xF477EA35L,
+	0xAA64D611L, 0x580F5512L, 0x4B5FA6E6L, 0xB93425E5L,
+	0x6DFE410EL, 0x9F95C20DL, 0x8CC531F9L, 0x7EAEB2FAL,
+	0x30E349B1L, 0xC288CAB2L, 0xD1D83946L, 0x23B3BA45L,
+	0xF779DEAEL, 0x05125DADL, 0x1642AE59L, 0xE4292D5AL,
+	0xBA3A117EL, 0x4851927DL, 0x5B016189L, 0xA96AE28AL,
+	0x7DA08661L, 0x8FCB0562L, 0x9C9BF696L, 0x6EF07595L,
+	0x417B1DBCL, 0xB3109EBFL, 0xA0406D4BL, 0x522BEE48L,
+	0x86E18AA3L, 0x748A09A0L, 0x67DAFA54L, 0x95B17957L,
+	0xCBA24573L, 0x39C9C670L, 0x2A993584L, 0xD8F2B687L,
+	0x0C38D26CL, 0xFE53516FL, 0xED03A29BL, 0x1F682198L,
+	0x5125DAD3L, 0xA34E59D0L, 0xB01EAA24L, 0x42752927L,
+	0x96BF4DCCL, 0x64D4CECFL, 0x77843D3BL, 0x85EFBE38L,
+	0xDBFC821CL, 0x2997011FL, 0x3AC7F2EBL, 0xC8AC71E8L,
+	0x1C661503L, 0xEE0D9600L, 0xFD5D65F4L, 0x0F36E6F7L,
+	0x61C69362L, 0x93AD1061L, 0x80FDE395L, 0x72966096L,
+	0xA65C047DL, 0x5437877EL, 0x4767748AL, 0xB50CF789L,
+	0xEB1FCBADL, 0x197448AEL, 0x0A24BB5AL, 0xF84F3859L,
+	0x2C855CB2L, 0xDEEEDFB1L, 0xCDBE2C45L, 0x3FD5AF46L,
+	0x7198540DL, 0x83F3D70EL, 0x90A324FAL, 0x62C8A7F9L,
+	0xB602C312L, 0x44694011L, 0x5739B3E5L, 0xA55230E6L,
+	0xFB410CC2L, 0x092A8FC1L, 0x1A7A7C35L, 0xE811FF36L,
+	0x3CDB9BDDL, 0xCEB018DEL, 0xDDE0EB2AL, 0x2F8B6829L,
+	0x82F63B78L, 0x709DB87BL, 0x63CD4B8FL, 0x91A6C88CL,
+	0x456CAC67L, 0xB7072F64L, 0xA457DC90L, 0x563C5F93L,
+	0x082F63B7L, 0xFA44E0B4L, 0xE9141340L, 0x1B7F9043L,
+	0xCFB5F4A8L, 0x3DDE77ABL, 0x2E8E845FL, 0xDCE5075CL,
+	0x92A8FC17L, 0x60C37F14L, 0x73938CE0L, 0x81F80FE3L,
+	0x55326B08L, 0xA759E80BL, 0xB4091BFFL, 0x466298FCL,
+	0x1871A4D8L, 0xEA1A27DBL, 0xF94AD42FL, 0x0B21572CL,
+	0xDFEB33C7L, 0x2D80B0C4L, 0x3ED04330L, 0xCCBBC033L,
+	0xA24BB5A6L, 0x502036A5L, 0x4370C551L, 0xB11B4652L,
+	0x65D122B9L, 0x97BAA1BAL, 0x84EA524EL, 0x7681D14DL,
+	0x2892ED69L, 0xDAF96E6AL, 0xC9A99D9EL, 0x3BC21E9DL,
+	0xEF087A76L, 0x1D63F975L, 0x0E330A81L, 0xFC588982L,
+	0xB21572C9L, 0x407EF1CAL, 0x532E023EL, 0xA145813DL,
+	0x758FE5D6L, 0x87E466D5L, 0x94B49521L, 0x66DF1622L,
+	0x38CC2A06L, 0xCAA7A905L, 0xD9F75AF1L, 0x2B9CD9F2L,
+	0xFF56BD19L, 0x0D3D3E1AL, 0x1E6DCDEEL, 0xEC064EEDL,
+	0xC38D26C4L, 0x31E6A5C7L, 0x22B65633L, 0xD0DDD530L,
+	0x0417B1DBL, 0xF67C32D8L, 0xE52CC12CL, 0x1747422FL,
+	0x49547E0BL, 0xBB3FFD08L, 0xA86F0EFCL, 0x5A048DFFL,
+	0x8ECEE914L, 0x7CA56A17L, 0x6FF599E3L, 0x9D9E1AE0L,
+	0xD3D3E1ABL, 0x21B862A8L, 0x32E8915CL, 0xC083125FL,
+	0x144976B4L, 0xE622F5B7L, 0xF5720643L, 0x07198540L,
+	0x590AB964L, 0xAB613A67L, 0xB831C993L, 0x4A5A4A90L,
+	0x9E902E7BL, 0x6CFBAD78L, 0x7FAB5E8CL, 0x8DC0DD8FL,
+	0xE330A81AL, 0x115B2B19L, 0x020BD8EDL, 0xF0605BEEL,
+	0x24AA3F05L, 0xD6C1BC06L, 0xC5914FF2L, 0x37FACCF1L,
+	0x69E9F0D5L, 0x9B8273D6L, 0x88D28022L, 0x7AB90321L,
+	0xAE7367CAL, 0x5C18E4C9L, 0x4F48173DL, 0xBD23943EL,
+	0xF36E6F75L, 0x0105EC76L, 0x12551F82L, 0xE03E9C81L,
+	0x34F4F86AL, 0xC69F7B69L, 0xD5CF889DL, 0x27A40B9EL,
+	0x79B737BAL, 0x8BDCB4B9L, 0x988C474DL, 0x6AE7C44EL,
+	0xBE2DA0A5L, 0x4C4623A6L, 0x5F16D052L, 0xAD7D5351L
+};
 
-    for (j = 0; j < 8; j++) {
+static const unsigned short crc16_tab[256] =
+{
+    0x0000, 0x1189, 0x2312, 0x329B, 0x4624, 0x57AD, 0x6536, 0x74BF,
+    0x8C48, 0x9DC1, 0xAF5A, 0xBED3, 0xCA6C, 0xDBE5, 0xE97E, 0xF8F7,
+    0x1081, 0x0108, 0x3393, 0x221A, 0x56A5, 0x472C, 0x75B7, 0x643E,
+    0x9CC9, 0x8D40, 0xBFDB, 0xAE52, 0xDAED, 0xCB64, 0xF9FF, 0xE876,
+    0x2102, 0x308B, 0x0210, 0x1399, 0x6726, 0x76AF, 0x4434, 0x55BD,
+    0xAD4A, 0xBCC3, 0x8E58, 0x9FD1, 0xEB6E, 0xFAE7, 0xC87C, 0xD9F5,
+    0x3183, 0x200A, 0x1291, 0x0318, 0x77A7, 0x662E, 0x54B5, 0x453C,
+    0xBDCB, 0xAC42, 0x9ED9, 0x8F50, 0xFBEF, 0xEA66, 0xD8FD, 0xC974,
+    0x4204, 0x538D, 0x6116, 0x709F, 0x0420, 0x15A9, 0x2732, 0x36BB,
+    0xCE4C, 0xDFC5, 0xED5E, 0xFCD7, 0x8868, 0x99E1, 0xAB7A, 0xBAF3,
+    0x5285, 0x430C, 0x7197, 0x601E, 0x14A1, 0x0528, 0x37B3, 0x263A,
+    0xDECD, 0xCF44, 0xFDDF, 0xEC56, 0x98E9, 0x8960, 0xBBFB, 0xAA72,
+    0x6306, 0x728F, 0x4014, 0x519D, 0x2522, 0x34AB, 0x0630, 0x17B9,
+    0xEF4E, 0xFEC7, 0xCC5C, 0xDDD5, 0xA96A, 0xB8E3, 0x8A78, 0x9BF1,
+    0x7387, 0x620E, 0x5095, 0x411C, 0x35A3, 0x242A, 0x16B1, 0x0738,
+    0xFFCF, 0xEE46, 0xDCDD, 0xCD54, 0xB9EB, 0xA862, 0x9AF9, 0x8B70,
+    0x8408, 0x9581, 0xA71A, 0xB693, 0xC22C, 0xD3A5, 0xE13E, 0xF0B7,
+    0x0840, 0x19C9, 0x2B52, 0x3ADB, 0x4E64, 0x5FED, 0x6D76, 0x7CFF,
+    0x9489, 0x8500, 0xB79B, 0xA612, 0xD2AD, 0xC324, 0xF1BF, 0xE036,
+    0x18C1, 0x0948, 0x3BD3, 0x2A5A, 0x5EE5, 0x4F6C, 0x7DF7, 0x6C7E,
+    0xA50A, 0xB483, 0x8618, 0x9791, 0xE32E, 0xF2A7, 0xC03C, 0xD1B5,
+    0x2942, 0x38CB, 0x0A50, 0x1BD9, 0x6F66, 0x7EEF, 0x4C74, 0x5DFD,
+    0xB58B, 0xA402, 0x9699, 0x8710, 0xF3AF, 0xE226, 0xD0BD, 0xC134,
+    0x39C3, 0x284A, 0x1AD1, 0x0B58, 0x7FE7, 0x6E6E, 0x5CF5, 0x4D7C,
+    0xC60C, 0xD785, 0xE51E, 0xF497, 0x8028, 0x91A1, 0xA33A, 0xB2B3,
+    0x4A44, 0x5BCD, 0x6956, 0x78DF, 0x0C60, 0x1DE9, 0x2F72, 0x3EFB,
+    0xD68D, 0xC704, 0xF59F, 0xE416, 0x90A9, 0x8120, 0xB3BB, 0xA232,
+    0x5AC5, 0x4B4C, 0x79D7, 0x685E, 0x1CE1, 0x0D68, 0x3FF3, 0x2E7A,
+    0xE70E, 0xF687, 0xC41C, 0xD595, 0xA12A, 0xB0A3, 0x8238, 0x93B1,
+    0x6B46, 0x7ACF, 0x4854, 0x59DD, 0x2D62, 0x3CEB, 0x0E70, 0x1FF9,
+    0xF78F, 0xE606, 0xD49D, 0xC514, 0xB1AB, 0xA022, 0x92B9, 0x8330,
+    0x7BC7, 0x6A4E, 0x58D5, 0x495C, 0x3DE3, 0x2C6A, 0x1EF1, 0x0F78
+};
+
+static const unsigned char crc8_tab[] = {
+    0x00, 0x07, 0x0e, 0x09, 0x1c, 0x1b, 0x12, 0x15, 0x38, 0x3f, 0x36, 0x31,
+    0x24, 0x23, 0x2a, 0x2d, 0x70, 0x77, 0x7e, 0x79, 0x6c, 0x6b, 0x62, 0x65,
+    0x48, 0x4f, 0x46, 0x41, 0x54, 0x53, 0x5a, 0x5d, 0xe0, 0xe7, 0xee, 0xe9,
+    0xfc, 0xfb, 0xf2, 0xf5, 0xd8, 0xdf, 0xd6, 0xd1, 0xc4, 0xc3, 0xca, 0xcd,
+    0x90, 0x97, 0x9e, 0x99, 0x8c, 0x8b, 0x82, 0x85, 0xa8, 0xaf, 0xa6, 0xa1,
+    0xb4, 0xb3, 0xba, 0xbd, 0xc7, 0xc0, 0xc9, 0xce, 0xdb, 0xdc, 0xd5, 0xd2,
+    0xff, 0xf8, 0xf1, 0xf6, 0xe3, 0xe4, 0xed, 0xea, 0xb7, 0xb0, 0xb9, 0xbe,
+    0xab, 0xac, 0xa5, 0xa2, 0x8f, 0x88, 0x81, 0x86, 0x93, 0x94, 0x9d, 0x9a,
+    0x27, 0x20, 0x29, 0x2e, 0x3b, 0x3c, 0x35, 0x32, 0x1f, 0x18, 0x11, 0x16,
+    0x03, 0x04, 0x0d, 0x0a, 0x57, 0x50, 0x59, 0x5e, 0x4b, 0x4c, 0x45, 0x42,
+    0x6f, 0x68, 0x61, 0x66, 0x73, 0x74, 0x7d, 0x7a, 0x89, 0x8e, 0x87, 0x80,
+    0x95, 0x92, 0x9b, 0x9c, 0xb1, 0xb6, 0xbf, 0xb8, 0xad, 0xaa, 0xa3, 0xa4,
+    0xf9, 0xfe, 0xf7, 0xf0, 0xe5, 0xe2, 0xeb, 0xec, 0xc1, 0xc6, 0xcf, 0xc8,
+    0xdd, 0xda, 0xd3, 0xd4, 0x69, 0x6e, 0x67, 0x60, 0x75, 0x72, 0x7b, 0x7c,
+    0x51, 0x56, 0x5f, 0x58, 0x4d, 0x4a, 0x43, 0x44, 0x19, 0x1e, 0x17, 0x10,
+    0x05, 0x02, 0x0b, 0x0c, 0x21, 0x26, 0x2f, 0x28, 0x3d, 0x3a, 0x33, 0x34,
+    0x4e, 0x49, 0x40, 0x47, 0x52, 0x55, 0x5c, 0x5b, 0x76, 0x71, 0x78, 0x7f,
+    0x6a, 0x6d, 0x64, 0x63, 0x3e, 0x39, 0x30, 0x37, 0x22, 0x25, 0x2c, 0x2b,
+    0x06, 0x01, 0x08, 0x0f, 0x1a, 0x1d, 0x14, 0x13, 0xae, 0xa9, 0xa0, 0xa7,
+    0xb2, 0xb5, 0xbc, 0xbb, 0x96, 0x91, 0x98, 0x9f, 0x8a, 0x8d, 0x84, 0x83,
+    0xde, 0xd9, 0xd0, 0xd7, 0xc2, 0xc5, 0xcc, 0xcb, 0xe6, 0xe1, 0xe8, 0xef,
+    0xfa, 0xfd, 0xf4, 0xf3
+};
+
+
+template<typename T>
+__device__ const T* get_crc_table() {
+    return nullptr;
+}
+
+template<>
+__device__ const unsigned long long* get_crc_table() {
+    return crc64_tab;
+}
+
+template<>
+__device__ const unsigned int* get_crc_table() {
+    return crc32_tab;
+}
+
+template<>
+__device__ const unsigned short* get_crc_table() {
+    return crc16_tab;
+}
+
+template<>
+__device__ const unsigned char* get_crc_table() {
+    return crc8_tab;
+}
+
+template<typename T>
+__device__ T ccrc(
+    const T s,
+    T crc
+) {
+    T j;
+    T mask = 0xff;
+    const T* tab = get_crc_table<T>();
+
+    for (j = 0; j < sizeof(T); j++) {
         unsigned char byte = (s & mask) >> (8 * j);
-        crc = crc64_tab[(unsigned char)crc ^ byte] ^ (crc >> 8);
+        crc = tab[(unsigned char)crc ^ byte] ^ (crc >> 8);
         mask <<= 8;
     }
     return crc;
 }
 
-__global__ void map_crc64(
-    double* x,
-    unsigned long long* crc,
-    int n
+template<typename U, typename T>
+__global__ void map_crc(
+    U* x,
+    T* crc,
+    const int n_rows,
+    const int row_sz,
+    const int blocks_per_row,
+    bool map_x
 ) {
-    __shared__ unsigned long long block_crc[512];
+    extern __shared__ __align__(sizeof(T)) unsigned long long block_crc_a[512];
+    T* block_crc = reinterpret_cast<T*>(block_crc_a);
 
     int idx = blockDim.x * blockIdx.x + threadIdx.x;
     int n_threads = gridDim.x * blockDim.x;
+
     for(int row = idx / blockDim.x; row < n_rows; row += n_threads) {
-        for(int pos = idx; pos < row_sz; pos += blockDim.x) {
-            unsigned long long* x_u = reinterpret_cast<unsigned long long*>(x);
-            unsigned long long x_crc = crc64(x_u[row_sz * row + pos], 0);
-            block_crc[blockIdx.x] = x_crc;
+        for(int pos = idx % blockDim.x; pos < row_sz; pos += blockDim.x) {
+            T x_crc;
+            if(map_x) {
+                T* x_u = reinterpret_cast<T*>(x);
+                x_crc = ccrc<T>(x_u[row_sz * row + pos], 0);
+
+            } else {
+                x_crc = crc[row_sz * row + pos];
+            }
+            block_crc[threadIdx.x] = x_crc;
 
             __syncthreads();
 
             for(int stride = blockDim.x / 2; stride > 0; stride /= 2) {
                 if (threadIdx.x < stride) {
-                    unsigned long long this_crc = block_crc[threadIdx.x];
-                    unsigned long long other_crc = block_crc[threadIdx.x + stride];
-                    // int other_len = ((64 - __clzll(other_crc)) + 8 - 1) / 8;
-                    block_crc[threadIdx.x] = crc64(other_crc, this_crc);
+                    T this_crc = block_crc[threadIdx.x];
+                    T other_crc = block_crc[threadIdx.x + stride];
+                    block_crc[threadIdx.x] = ccrc(other_crc, this_crc);
                 }
                 __syncthreads();
             }
@@ -358,7 +561,44 @@ __global__ void map_crc64(
     }
 }
 
-''', options=('-std=c++11',), name_expressions=['map_crc64'])  # NOQA
+__global__ void bitonic_sort_step(
+    unsigned long long* idx,
+    T* values,
+    int row_sz,
+    int j,
+    int k
+) {
+    __shared__ bool cmp_mask[512];
+    unsigned int i, other_idx;
+    i = threadIdx.x + blockDim.x * blockIdx.x;
+
+    other_idx = i ^ j;
+
+    /* The threads with the lowest ids sort the array. */
+    if (other_idx > i) {
+        if ((i & k) == 0) {
+            /* Sort ascending */
+            if (dev_values[i] > dev_values[other_idx]) {
+                /* exchange(i,other_idx); */
+                float temp = dev_values[i];
+                dev_values[i] = dev_values[other_idx];
+                dev_values[other_idx] = temp;
+            }
+        }
+        if ((i & k) != 0) {
+            /* Sort descending */
+            if (dev_values[i] < dev_values[other_idx]) {
+                /* exchange(i,other_idx); */
+                float temp = dev_values[i];
+                dev_values[i] = dev_values[other_idx];
+                dev_values[other_idx] = temp;
+            }
+        }
+    }
+}
+
+
+''', options=('-std=c++11',), name_expressions=map_crc_def)  # NOQA
 
 
 def unique(ar, return_index=False, return_inverse=False,
@@ -417,107 +657,72 @@ def unique(ar, return_index=False, return_inverse=False,
 
     .. seealso:: :func:`numpy.unique`
     """
-    if axis is None:
-        ret = _unique_1d(ar, return_index=return_index,
-                         return_inverse=return_inverse,
-                         return_counts=return_counts,
-                         equal_nan=equal_nan, inverse_shape=ar.shape)
-        return ret
+    orig_ret_index = return_index
+    if axis is not None:
+        ar = cupy.moveaxis(ar, axis, 0)
 
-    ar = cupy.moveaxis(ar, axis, 0)
+        # The array is reshaped into a contiguous 2D array
+        orig_shape = ar.shape
+        ar2 = ar.reshape(orig_shape[0], math.prod(orig_shape[1:]))
+        ar2 = cupy.ascontiguousarray(ar2)
+        is_complex = cupy.iscomplexobj(ar2)
 
-    # The array is reshaped into a contiguous 2D array
-    orig_shape = ar.shape
-    idx = cupy.arange(0, orig_shape[0], dtype=cupy.uint64)
-    ar = ar.reshape(orig_shape[0], math.prod(orig_shape[1:]))
-    ar = cupy.ascontiguousarray(ar)
-    is_unsigned = cupy.issubdtype(ar.dtype, cupy.unsignedinteger)
-    is_complex = cupy.iscomplexobj(ar)
+        n_rows, row_sz = ar.shape
+        if is_complex:
+            row_sz *= 2
 
-    block_sz = 512
-    n = ar.size
-    n_blocks = (n + block_sz - 1) // block_sz
+        n_blocks = min(n_rows, 512)
+        block_sz = min(row_sz, 512)
 
-    breakpoint()
-    crc = cupy.empty_like(ar, dtype=cupy.uint64)
-    crc_comp = _unique_nd_module.get_function('map_crc64')
-    crc_comp((n_blocks,), (block_sz,), (ar, crc, n))
+        blocks_per_row = (row_sz + block_sz - 1) // block_sz
 
-    ar_cmp = ar
-    if is_unsigned:
-        ar_cmp = ar.astype(cupy.intp)
+        crc = cupy.empty((n_rows, blocks_per_row), dtype=cupy.uint64)
+        in_type = _get_typename(ar.dtype)
+        crc_type = _type_map[in_type]
 
-    def compare_axis_elems(idx1, idx2):
-        left, right = ar_cmp[idx1], ar_cmp[idx2]
-        comp = cupy.trim_zeros(left - right, 'f')
-        if comp.shape[0] > 0:
-            diff = comp[0]
-            if is_complex and cupy.isnan(diff):
-                return True
-            return diff < 0
-        return False
+        crc_comp = _unique_nd_module.get_function(
+            f'map_crc<{in_type}, {crc_type}>')
+        crc_comp((n_blocks,), (block_sz,), (
+            ar2, crc, n_rows, row_sz, blocks_per_row, True))
 
-    # The array is sorted lexicographically using the first item of each
-    # element on the axis
-    sorted_indices = cupy.empty(orig_shape[0], dtype=cupy.intp)
-    queue = [(idx.tolist(), 0)]
-    while queue != []:
-        current, off = queue.pop(0)
-        if current == []:
-            continue
+        if blocks_per_row > 1:
+            while blocks_per_row > 1:
+                new_blocks_per_row = (
+                    blocks_per_row + block_sz - 1) // block_sz
+                crc_comp((n_blocks,), (block_sz,), (
+                    None, crc, n_rows, blocks_per_row,
+                    new_blocks_per_row, False))
+                blocks_per_row = new_blocks_per_row
 
-        mid_elem = current[0]
-        left = []
-        right = []
-        for i in range(1, len(current)):
-            if compare_axis_elems(current[i], mid_elem):
-                left.append(current[i])
-            else:
-                right.append(current[i])
+            crc = crc[:, 0].copy()
 
-        elem_pos = off + len(left)
-        queue.append((left, off))
-        queue.append((right, elem_pos + 1))
+        ar = cupy.squeeze(crc)
+        return_index = True
 
-        sorted_indices[elem_pos] = mid_elem
+    ret = _unique_1d(ar, return_index=return_index,
+                     return_inverse=return_inverse,
+                     return_counts=return_counts,
+                     equal_nan=equal_nan)
 
-    ar = ar[sorted_indices]
+    if axis is not None:
+        _, index, *rest = ret
+        unique_values = ar2[index]
+        k = 2
+        while k <= unique_values.shape[0]:
+            j = k >> 1
+            while j > 0:
+                j >>= 1
+            k <<= 1
 
-    if ar.size > 0:
-        mask = cupy.empty(ar.shape, dtype=cupy.bool_)
-        mask[:1] = True
-        mask[1:] = ar[1:] != ar[:-1]
+        unique_values = unique_values.reshape(
+            unique_values.shape[0], *orig_shape[1:])
+        unique_values = cupy.moveaxis(unique_values, 0, axis)
 
-        mask = cupy.any(mask, axis=1)
-    else:
-        # If empty, then the mask should grab the first empty array as the
-        # unique one
-        mask = cupy.ones((ar.shape[0]), dtype=cupy.bool_)
-        mask[1:] = False
+        ret = (unique_values,)
+        if orig_ret_index:
+            ret += (index,)
+        ret += rest
 
-    # Index the input array with the unique elements and reshape it into the
-    # original size and dimension order
-    ar = ar[mask]
-    ar = ar.reshape(mask.sum().item(), *orig_shape[1:])
-    ar = cupy.moveaxis(ar, 0, axis)
-
-    ret = ar,
-    if return_index:
-        ret += sorted_indices[mask],
-    if return_inverse:
-        imask = cupy.cumsum(mask) - 1
-        inv_idx = cupy.empty(mask.shape, dtype=cupy.intp)
-        inv_idx[sorted_indices] = imask
-        ret += inv_idx,
-    if return_counts:
-        nonzero = cupy.nonzero(mask)[0]  # may synchronize
-        idx = cupy.empty((nonzero.size + 1,), nonzero.dtype)
-        idx[:-1] = nonzero
-        idx[-1] = mask.size
-        ret += idx[1:] - idx[:-1],
-
-    if len(ret) == 1:
-        ret = ret[0]
     return ret
 
 
