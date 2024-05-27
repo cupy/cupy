@@ -441,11 +441,11 @@ class TestFilterFastAxes(FilterTestCaseBase):
             return
         if self.ksize != 3:
             return
-        invalids = [(25, (1, 3, 4, 5)),
-                    (50, (3, 4, 5)),
-                    (-25, (1, 3, 4, 5))]
-        if (self.percentile, self.shape) in invalids:
-            pytest.xfail('ROCm/HIP may have a bug')
+        # TODO: run on HIP to see if any specific cases need to be skipped
+        # (as done for TestFilterFast)
+        # invalids = [(15, (3, 4, 5, 6))]
+        # if (self.percentile, self.shape) in invalids:
+        #     pytest.xfail('ROCm/HIP may have a bug')
 
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
     def test_filter(self, xp, scp):
