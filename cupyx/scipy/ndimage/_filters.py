@@ -338,6 +338,7 @@ def gaussian_filter1d(input, sigma, axis=-1, order=0, output=None,
         When the output data type is integral (or when no output is provided
         and input is integral) the results may not perfectly match the results
         from SciPy due to floating-point rounding of intermediate results.
+
     """
     radius = int(float(truncate) * float(sigma) + 0.5)
     weights_dtype = _util._init_weights_dtype(input)
@@ -397,6 +398,7 @@ def gaussian_filter(input, sigma, order=0, output=None, mode="reflect",
         When the output data type is integral (or when no output is provided
         and input is integral) the results may not perfectly match the results
         from SciPy due to floating-point rounding of intermediate results.
+
     """
     axes = _util._check_axes(axes, input.ndim)
     num_axes = len(axes)
