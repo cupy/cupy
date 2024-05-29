@@ -37,6 +37,9 @@ def solve_triangular(a, b, trans=0, lower=False, unit_diagonal=False,
         cupy.ndarray:
             The matrix with dimension ``(..., M,)`` or ``(..., M, N)``.
 
+    .. note::
+       Unlike the SciPy counterpart, the CuPy implementation supports batches
+       of matrices.
     .. seealso:: :func:`scipy.linalg.solve_triangular`
     """
 
