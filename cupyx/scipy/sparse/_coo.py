@@ -472,7 +472,7 @@ class coo_matrix(sparse_data._data_matrix):
         return self.tocsr().toarray(order=order, out=out)
 
     def tocoo(self, copy=False):
-        """Converts the matrix to coordinate format.
+        """Converts the matrix to COOrdinate format.
 
         Args:
             copy (bool): If ``False``, it shares data arrays as much as

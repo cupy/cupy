@@ -438,7 +438,7 @@ class csr_matrix(_compressed._compressed_sparse_matrix):
         raise NotImplementedError
 
     def tocoo(self, copy=False):
-        """Converts the matrix to coordinate format.
+        """Converts the matrix to COOrdinate format.
 
         Args:
             copy (bool): If ``False``, it shares data arrays as much as
