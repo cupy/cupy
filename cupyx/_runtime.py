@@ -15,7 +15,7 @@ is_hip = cupy_backends.cuda.api.runtime.is_hip
 
 def _eval_or_error(func, errors):
     # Evaluates `func` and return the result.
-    # If an error specified by `errors` occured, it returns a string
+    # If an error specified by `errors` occurred, it returns a string
     # representing the error.
     try:
         return func()

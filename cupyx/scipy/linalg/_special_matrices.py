@@ -151,7 +151,7 @@ def hankel(c, r=None):
     Args:
         c (cupy.ndarray): First column of the matrix. Whatever the actual shape
             of ``c``, it will be converted to a 1-D array.
-        r (cupy.ndarray, optionnal): Last row of the matrix. If None,
+        r (cupy.ndarray, optional): Last row of the matrix. If None,
             ``r = zeros_like(c)`` is assumed. ``r[0]`` is ignored; the last row
             of the returned matrix is ``[c[-1], r[1:]]``. Whatever the actual
             shape of ``r``, it will be converted to a 1-D array.

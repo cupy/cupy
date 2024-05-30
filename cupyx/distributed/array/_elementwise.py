@@ -155,7 +155,7 @@ def _execute_kernel(
     for chunk in chain.from_iterable(out_chunks_map.values()):
         if not isinstance(chunk.array, (ndarray, _chunk._ArrayPlaceholder)):
             raise RuntimeError(
-                'Kernels returning other than signle array are not supported')
+                'Kernels returning other than single array are not supported')
 
     shape = comms = None
     for arg in (args or kwargs.values()):
@@ -209,7 +209,7 @@ def _execute_peer_access(
     if len(out_types) != 1:
         print(out_types)
         raise RuntimeError(
-            'Kernels returning other than signle array are not supported')
+            'Kernels returning other than single array are not supported')
     dtype = out_types[0]
 
     shape = a.shape

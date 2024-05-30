@@ -63,7 +63,7 @@ def repeat_with_success_at_least(times, min_success):
                 result = QuietTestRunner().run(suite)
                 if len(result.skipped) == 1:
                     # "Skipped" is a special case of "Successful".
-                    # When the test has been skipped, immedeately quit the
+                    # When the test has been skipped, immediately quit the
                     # test regardleess of `times` and `min_success` by raising
                     # SkipTest exception using the original reason.
                     instance.skipTest(result.skipped[0][1])

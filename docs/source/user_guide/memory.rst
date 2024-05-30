@@ -145,7 +145,7 @@ which may or may not be desired.
 Stream Ordered Memory Allocator is a new feature added since CUDA 11.2. CuPy provides an *experimental* interface to it.
 Similar to CuPy's memory pool, Stream Ordered Memory Allocator also allocates/deallocates memory *asynchronously* from/to
 a memory pool in a stream-ordered fashion. The key difference is that it is a built-in feature implemented in the CUDA
-driver by NVIDIA, so other CUDA applications in the same processs can easily allocate memory from the same pool.
+driver by NVIDIA, so other CUDA applications in the same process can easily allocate memory from the same pool.
 
 To enable a memory pool that manages stream ordered memory, you can construct a new :class:`~cupy.cuda.MemoryAsyncPool`
 instance:
