@@ -61,7 +61,7 @@ class TestFusionBroadcast(unittest.TestCase):
     def test_broadcast(self, xp):
         return lambda x, y: x + y
 
-    # TODO(asi1024): Uncomment after replace fusion implementaiton.
+    # TODO(asi1024): Uncomment after replace fusion implementation.
 
     # @fusion_utils.check_fusion(accept_error=ValueError)
     # def test_broadcast_inplace(self, xp):

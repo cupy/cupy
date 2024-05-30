@@ -29,7 +29,7 @@ Fast Fourier Transforms (FFTs)
 
 Code compatibility features
 ---------------------------
-1. As with other FFT modules in CuPy, FFT functions in this module can take advantage of an existing cuFFT plan (returned by :func:`~cupyx.scipy.fftpack.get_fft_plan`) to accelarate the computation. The plan can be either passed in explicitly via the ``plan`` argument or used as a context manager. The argument ``plan`` is currently experimental and the interface may be changed in the future version. The :func:`~cupyx.scipy.fftpack.get_fft_plan` function has no counterpart in ``scipy.fftpack``.
+1. As with other FFT modules in CuPy, FFT functions in this module can take advantage of an existing cuFFT plan (returned by :func:`~cupyx.scipy.fftpack.get_fft_plan`) to accelerate the computation. The plan can be either passed in explicitly via the ``plan`` argument or used as a context manager. The argument ``plan`` is currently experimental and the interface may be changed in the future version. The :func:`~cupyx.scipy.fftpack.get_fft_plan` function has no counterpart in ``scipy.fftpack``.
 
 2. The boolean switch :data:`cupy.fft.config.enable_nd_planning` also affects the FFT functions in this module, see :doc:`./fft`. This switch is neglected when planning manually using :func:`~cupyx.scipy.fftpack.get_fft_plan`.
 

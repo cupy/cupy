@@ -34,7 +34,7 @@ def logsumexp(a, axis=None, b=None, keepdims=False, return_sign=False):
     sgn : cupy.ndarray
         If return_sign is True, this will be an array of floating-point
         numbers matching res and +1, 0, or -1 depending on the sign of
-        the result. If False, only onw result is returned
+        the result. If False, only one result is returned.
 
     See Also
     --------

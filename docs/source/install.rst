@@ -125,7 +125,7 @@ If you aim at minimizing the installation footprint, you can install the ``cupy-
     $ conda install -c conda-forge cupy-core
 
 which only depends on ``numpy``. None of the CUDA libraries will be installed this way, and it is your responsibility to install the needed
-dependencies youself, either from conda-forge or elsewhere. This is equivalent of the ``cupy-cudaXX`` wheel installation.
+dependencies yourself, either from conda-forge or elsewhere. This is equivalent of the ``cupy-cudaXX`` wheel installation.
 
 Conda has a built-in mechanism to determine and install the latest version of ``cudatoolkit`` or any other CUDA components supported by your driver.
 However, if for any reason you need to force-install a particular CUDA version (say 11.8), you can do::
@@ -330,7 +330,7 @@ CuPy always raises ``cupy.cuda.compiler.CompileException``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 If CuPy raises a ``CompileException`` for almost everything, it is possible that CuPy cannot detect CUDA installed on your system correctly.
-The followings are error messages commonly observed in such cases.
+The following are error messages commonly observed in such cases.
 
 * ``nvrtc: error: failed to load builtins``
 * ``catastrophic error: cannot open source file "cuda_fp16.h"``

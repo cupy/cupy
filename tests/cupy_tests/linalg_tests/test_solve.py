@@ -236,7 +236,7 @@ class TestLstsq:
             cupy.linalg.lstsq(a, b, rcond=None)
 
     def test_lstsq_solutions(self):
-        # Comapres numpy.linalg.lstsq and cupy.linalg.lstsq solutions for:
+        # Compares numpy.linalg.lstsq and cupy.linalg.lstsq solutions for:
         #   a shapes range from (3, 3) to (5, 3) and (3, 5)
         #   b shapes range from (i, 3) to (i, )
         #   sets a random seed for deterministic testing

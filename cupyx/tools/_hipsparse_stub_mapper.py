@@ -5,7 +5,7 @@ from typing import Tuple
 
 # Take cupy_backends/stub/cupy_cusparse.h and generate
 # cupy_backends/hip/cupy_hipsparse.h, with all return values replaced by an
-# error if not supprted. This script mainly focuses on getting the CUDA ->
+# error if not supported. This script mainly focuses on getting the CUDA ->
 # HIP API mapping done correctly; structs, enums, etc, are handled
 # automatically to the maximal extent.
 #
