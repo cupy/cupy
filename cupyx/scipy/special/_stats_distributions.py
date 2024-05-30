@@ -67,7 +67,7 @@ log_ndtr = _core.create_ufunc(
     preamble=log_ndtr_definition,
     doc="""Logarithm of Gaussian cumulative distribution function.
 
-    Returns the log of the area under the standard Gaussian propability
+    Returns the log of the area under the standard Gaussian probability
     density function.
 
     Parameters

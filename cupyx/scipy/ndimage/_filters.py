@@ -779,7 +779,7 @@ def _min_or_max_filter(input, size, ftprnt, structure, output, mode, cval,
         raise NotImplementedError("NaN cval is unsupported")
 
     if sizes is not None:
-        # Seperable filter, run as a series of 1D filters
+        # Separable filter, run as a series of 1D filters
         fltr = minimum_filter1d if func == 'min' else maximum_filter1d
         return _filters_core._run_1d_filters(
             [fltr if size > 1 else None for size in sizes],
