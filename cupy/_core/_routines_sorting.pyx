@@ -27,7 +27,7 @@ cdef _ndarray_sort(_ndarray_base self, int axis):
 
     if ndim == 0:
         raise AxisError('Sorting arrays with the rank of zero is not '
-                              'supported')  # as numpy.sort() raises
+                        'supported')  # as numpy.sort() raises
 
     # TODO(takagi): Support sorting views
     if not self._c_contiguous:
@@ -130,7 +130,7 @@ cdef _ndarray_partition(_ndarray_base self, kth, int axis):
 
     if ndim == 0:
         raise AxisError('Sorting arrays with the rank of zero is not '
-                              'supported')
+                        'supported')
 
     if not self._c_contiguous:
         raise NotImplementedError('Sorting non-contiguous array is not '

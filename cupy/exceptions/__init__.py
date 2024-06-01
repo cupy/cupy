@@ -1,3 +1,4 @@
+# mypy: ignore-errors
 import numpy
 
 if numpy.__version__ < '2':

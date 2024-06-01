@@ -52,6 +52,7 @@ from cupy_backends.cuda.api cimport runtime
 
 NUMPY_1x = numpy.__version__ < '2'
 
+
 # If rop of cupy.ndarray is called, cupy's op is the last chance.
 # If op of cupy.ndarray is called and the `other` is cupy.ndarray, too,
 # it is safe to call cupy's op.

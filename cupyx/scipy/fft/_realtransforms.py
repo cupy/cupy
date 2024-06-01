@@ -35,8 +35,6 @@ import math
 import numbers
 import operator
 
-import numpy
-
 import cupy
 from cupy import _core
 from cupy.fft._fft import _cook_shape
