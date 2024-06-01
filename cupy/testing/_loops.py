@@ -10,6 +10,7 @@ import warnings
 import numpy
 
 import cupy
+from cupy.exceptions import AxisError
 from cupy.testing import _array
 from cupy.testing import _parameterized
 import cupyx
@@ -106,7 +107,7 @@ def _call_func_numpy_cupy(impl, args, kw, name, sp_name, scipy_name):
 _numpy_errors = [
     AttributeError, Exception, IndexError, TypeError, ValueError,
     NotImplementedError, DeprecationWarning,
-    numpy.exceptions.AxisError, numpy.linalg.LinAlgError,
+    AxisError, numpy.linalg.LinAlgError,
 ]
 
 

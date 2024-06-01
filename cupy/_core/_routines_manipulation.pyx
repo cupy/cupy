@@ -6,6 +6,7 @@ import numpy
 from cupy._core._kernel import ElementwiseKernel
 from cupy._core._ufuncs import elementwise_copy
 import cupy._core.core as core
+from cupy.exceptions import AxisError
 
 cimport cpython  # NOQA
 cimport cython  # NOQA
@@ -390,7 +391,7 @@ cpdef _ndarray_base _transpose(
     for i in range(axes_size):
         axis = axes[i]
         if axis < -ndim or axis >= ndim:
-            raise numpy.exceptions.AxisError(axis, ndim)
+            raise AxisError(axis, ndim)
         axis %= ndim
         a_axes.push_back(axis)
         if axis_flags[axis]:

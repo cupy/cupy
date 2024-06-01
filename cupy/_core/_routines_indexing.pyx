@@ -6,6 +6,7 @@ import numpy
 
 import cupy
 import cupy._core.core as core
+from cupy.exceptions import AxisError
 from cupy._core._kernel import ElementwiseKernel, _get_warpsize
 from cupy._core._ufuncs import elementwise_copy
 
@@ -1054,7 +1055,7 @@ cdef _ndarray_base _diagonal(
         Py_ssize_t axis2=1):
     cdef Py_ssize_t ndim = a.ndim
     if not (-ndim <= axis1 < ndim and -ndim <= axis2 < ndim):
-        raise numpy.exceptions.AxisError(
+        raise AxisError(
             'axis1(={0}) and axis2(={1}) must be within range '
             '(ndim={2})'.format(axis1, axis2, ndim))
 

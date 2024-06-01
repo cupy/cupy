@@ -14,7 +14,7 @@ from cupy._core import _fusion_thread_local
 from cupy._core import _reduction
 from cupy._core import core
 from cupy._core import new_fusion
-
+from cupy.exceptions import AxisError
 
 _is_fusing = _fusion_thread_local.is_fusing  # NOQA
 _thread_local = _fusion_thread_local.thread_local
@@ -975,7 +975,7 @@ def _call_reduction(fusion_op, *args, **kwargs):
     else:
         ndim = 0
     if ndim < 0:
-        raise numpy.exceptions.AxisError(axis, src_ndim)
+        raise AxisError(axis, src_ndim)
 
     _thread_local.history.ndim = ndim
     if ndim >= 1:
