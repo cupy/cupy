@@ -11,6 +11,7 @@ import types
 
 import numpy
 
+from cupy.exceptions import ComplexWarning
 from cupy_backends.cuda.api import runtime
 from cupy._core._codeblock import CodeBlock, _CodeType
 from cupy._core import _kernel
@@ -1006,7 +1007,7 @@ def _astype_scalar(
         if to_t.kind != 'b':
             warnings.warn(
                 'Casting complex values to real discards the imaginary part',
-                numpy.ComplexWarning)
+                ComplexWarning)
         return Data(f'({ctype})({x.code}.real())', ctype)
     return Data(f'({ctype})({x.code})', ctype)
 
