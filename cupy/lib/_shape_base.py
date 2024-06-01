@@ -2,7 +2,7 @@ import numpy
 if numpy.__version__ < '2':
     from numpy.lib import index_tricks
 else:
-    import numpy.lib._index_tricks_impl as index_tricks
+    import numpy.lib._index_tricks_impl as index_tricks  # type: ignore[no-redef]  # NOQA
 
 import cupy
 from cupy._core import internal
