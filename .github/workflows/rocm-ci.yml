@@ -13,4 +13,4 @@ jobs:
         submodules: recursive
     - name: Build & Test
       run: |
-        .pfnci/linux/run.sh rocm-5-3 build test
+        .pfnci/linux/run.sh rocm-6-1 build test
