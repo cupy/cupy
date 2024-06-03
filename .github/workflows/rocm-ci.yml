@@ -11,15 +11,6 @@ jobs:
       uses: actions/checkout@v4
       with:
         submodules: recursive
-    - name: foo
-      run: |
-        echo 'Hello!'
-        ps -ef
-        docker --version
-        hostname
-        id
-        cat /etc/group | grep docker
-        docker ps
     - name: Build & Test
       run: |
         .pfnci/linux/run.sh rocm-5-3 build test
