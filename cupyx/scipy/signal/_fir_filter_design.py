@@ -118,7 +118,7 @@ def kaiserord(ripple, width):
     A = abs(ripple)  # in case somebody is confused as to what's meant
     if A < 8:
         # Formula for N is not valid in this range.
-        raise ValueError("Requested maximum ripple attentuation %f is too "
+        raise ValueError("Requested maximum ripple attenuation %f is too "
                          "small for the Kaiser formula." % A)
     beta = kaiser_beta(A)
 
@@ -706,7 +706,7 @@ def firls(numtaps, bands, desired, weight=None, fs=2):
 
     # We have that:
     #     q(n) = 1/π ∫W(ω)cos(nω)dω (over 0->π)
-    # Using our nomalization ω=πf and with a constant weight W over each
+    # Using our normalization ω=πf and with a constant weight W over each
     # interval f1->f2 we get:
     #     q(n) = W∫cos(πnf)df (0->1) = Wf sin(πnf)/πnf
     # integrated over each f1->f2 pair (i.e., value at f2 - value at f1).

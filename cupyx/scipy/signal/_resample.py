@@ -344,7 +344,7 @@ def resample(x, num, t=None, axis=0, window=None, domain="time"):
             X *= W.reshape(newshape_W)
 
     # Copy each half of the original spectrum to the output spectrum, either
-    # truncating high frequences (downsampling) or zero-padding them
+    # truncating high frequencies (downsampling) or zero-padding them
     # (upsampling)
 
     # Placeholder array for output spectrum
@@ -513,7 +513,7 @@ def resample_poly(x, up, down, axis=0, window=("kaiser", 5.0),
         raise ValueError("up and down must be >= 1")
 
     # Determine our up and down factors
-    # Use a rational approimation to save computation time on really long
+    # Use a rational approximation to save computation time on really long
     # signals
     g_ = gcd(up, down)
     up //= g_

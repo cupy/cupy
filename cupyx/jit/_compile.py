@@ -754,7 +754,7 @@ def _transpile_expr_internal(
             if not func._device:
                 raise TypeError(
                     f'Calling __global__ function {func._func.__name__} '
-                    'from __global__ funcion is not allowed.')
+                    'from __global__ function is not allowed.')
             args = [Data.init(x, env) for x in args]
             in_types = tuple([x.ctype for x in args])
             fname, return_type = _transpile_func_obj(
