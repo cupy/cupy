@@ -919,6 +919,8 @@ def issubclass_(arg1, arg2):
         return False
 
 # https://github.com/numpy/numpy/blob/v1.26.0/numpy/core/numerictypes.py#L229-L280   # NOQA
+
+
 def obj2sctype(rep, default=None):
     """
     Return the scalar dtype or NumPy equivalent of Python type of an object.
@@ -938,14 +940,14 @@ def obj2sctype(rep, default=None):
 
     """
     # prevent abstract classes being upcast
-    if isinstance(rep, type) and issubclass(rep, numpy.generic):
+    if isinstance(rep, type) and issubclass(rep, _numpy.generic):
         return rep
     # extract dtype from arrays
-    if isinstance(rep, numpy.ndarray):
+    if isinstance(rep, _numpy.ndarray):
         return rep.dtype.type
     # fall back on dtype to convert
     try:
-        res = numpy.dtype(rep)
+        res = _numpy.dtype(rep)
     except Exception:
         return default
     else:
@@ -997,7 +999,7 @@ def sctype2char(sctype):
     sctype = obj2sctype(sctype)
     if sctype is None:
         raise ValueError("unrecognized type")
-    return numpy.dtype(sctype).char
+    return _numpy.dtype(sctype).char
 
 
 # https://github.com/numpy/numpy/blob/v1.26.0/numpy/core/numerictypes.py#L184  # NOQA
@@ -1017,11 +1019,11 @@ def issctype(rep):
         Boolean result of check whether `rep` is a scalar dtype.
 
     """
-    if not isinstance(rep, (type, numpy.dtype)):
+    if not isinstance(rep, (type, _numpy.dtype)):
         return False
     try:
         res = obj2sctype(rep)
-        if res and res != numpy.object_:
+        if res and res != _numpy.object_:
             return True
         return False
     except Exception:
@@ -1033,7 +1035,7 @@ if _numpy.__version__ < "2":
     from numpy import format_parser  # NOQA
     from numpy import DataSource     # NOQA
 else:
-    from numpy.rec import format_parser  # NOQA
+    from numpy.rec import format_parser   # type: ignore [no-redef]  # NOQA
     from numpy.lib.npyio import DataSource  # NOQA
 
 
@@ -1056,25 +1058,26 @@ v2 installed. If you rely on this function and you cannot modify
 the code to use {recommendation}, please downgrade NumPy to v1.26
 or earlier.
 '''
+
     def find_common_type(*args, **kwds):
         mesg = _template.format(
             recommendation='`promote_types` or `result_type`'
         )
         raise RuntimeError(mesg)
 
-    def set_string_function(*args, **kwds):
+    def set_string_function(*args, **kwds):   # type: ignore [misc]
         mesg = _template.format(recommendation='`np.set_printoptions`')
         raise RuntimeError(mesg)
 
-    def get_array_wrap(*args, **kwds):
+    def get_array_wrap(*args, **kwds):       # type: ignore [no-redef]
         mesg = _template.format(recommendation="<no replacement>")
         raise RuntimeError(mesg)
 
-    def disp(*args, **kwds):
+    def disp(*args, **kwds):   # type: ignore [misc]
         mesg = _template.format(recommendation="your own print function")
         raise RuntimeError(mesg)
 
-    def safe_eval(*args, **kwds):
+    def safe_eval(*args, **kwds):  # type: ignore [misc]
         mesg = _template.format(recommendation="`ast.literal_eval`")
         raise RuntimeError(mesg)
 
