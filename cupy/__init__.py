@@ -1029,7 +1029,7 @@ def issctype(rep):
 
 
 # np 2.0: XXX shims for things moved in np 2.0
-if numpy.__version__ < "2":
+if _numpy.__version__ < "2":
     from numpy import format_parser  # NOQA
     from numpy import DataSource     # NOQA
 else:
@@ -1038,7 +1038,7 @@ else:
 
 
 # np 2.0: XXX shims for things removed without replacement
-if numpy.__version__ < "2":
+if _numpy.__version__ < "2":
     from numpy import find_common_type   # NOQA
     from numpy import set_string_function  # NOQA
     from numpy import get_array_wrap  # NOQA
