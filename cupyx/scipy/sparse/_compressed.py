@@ -206,7 +206,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             indptr = x.indptr
 
             if arg1.format != self.format:
-                # When formats are differnent, all arrays are already copied
+                # When formats are different, all arrays are already copied
                 copy = False
 
             if shape is None:

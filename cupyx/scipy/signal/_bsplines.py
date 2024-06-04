@@ -523,7 +523,7 @@ def spline_filter(Iin, lmbda=5.0):
     Returns
     -------
     res : ndarray
-        filterd input data
+        filtered input data
 
     """
     intype = Iin.dtype.char

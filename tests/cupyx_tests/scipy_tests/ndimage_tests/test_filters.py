@@ -79,7 +79,7 @@ class FilterTestCaseBase:
             # w is actually a tuple of (None, footprint)
             wghts, kwargs['footprint'] = wghts
 
-        # Bulid the arguments
+        # Build the arguments
         args = [getattr(self, param)
                 for param in FilterTestCaseBase.ARGS_PARAMS
                 if hasattr(self, param)]
