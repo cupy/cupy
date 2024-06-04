@@ -25,7 +25,7 @@
 #endif  // #if !defined(CUSPARSE_VERSION)
 
 /*
- * Generic APIs are not suppoted in CUDA 10.1/10.2 on Windows.
+ * Generic APIs are not supported in CUDA 10.1/10.2 on Windows.
  * These APIs are available in headers in CUDA 10.1 and 10.1 Update 1,
  * but hidden in 10.1 Update 2 and 10.2 on Windows.
  */

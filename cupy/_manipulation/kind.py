@@ -27,7 +27,7 @@ def asarray_chkfinite(a, dtype=None, order=None):
     return a
 
 
-def asfarray(a, dtype=cupy.float_):
+def asfarray(a, dtype=cupy.float64):
     """Converts array elements to float type.
 
     Args:
@@ -41,7 +41,7 @@ def asfarray(a, dtype=cupy.float_):
 
     """
     if not cupy.issubdtype(dtype, cupy.inexact):
-        dtype = cupy.float_
+        dtype = cupy.float64
     return cupy.asarray(a, dtype=dtype)
 
 

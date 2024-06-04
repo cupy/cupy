@@ -709,7 +709,7 @@ class TestSearchSortedNanInf:
 
 class TestSearchSortedInvalid:
 
-    # Cant test unordered bins due to numpy undefined
+    # Can't test unordered bins due to numpy undefined
     # behavior for searchsorted
 
     def test_searchsorted_ndbins(self):

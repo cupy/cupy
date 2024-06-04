@@ -214,7 +214,7 @@ class TestFusionKernelName(unittest.TestCase):
 
             with mock.patch(target_full_name) as kernel:  # NOQA
                 func(a, b, c)
-                # TODO(asi1024): Uncomment after replace fusion implementaiton.
+                # TODO(asi1024): Uncomment after replace fusion implementation.
                 # kernel.assert_called_once()
                 # self.assertEqual(kernel.call_args.args[0], expected_name)
 

@@ -188,7 +188,7 @@ class TestArrayElementwiseOp:
         return operator.pow(a, b)
 
     def test_pow_array(self):
-        # There are some precission issues in HIP that prevent
+        # There are some precision issues in HIP that prevent
         # checking with atol=0
         if cupy.cuda.runtime.is_hip:
             self.check_pow_array()
@@ -292,7 +292,7 @@ class TestArrayElementwiseOp:
         return operator.pow(a, b)
 
     def test_broadcasted_pow(self):
-        # There are some precission issues in HIP that prevent
+        # There are some precision issues in HIP that prevent
         # checking with atol=0
         if cupy.cuda.runtime.is_hip:
             self.check_broadcasted_pow()
