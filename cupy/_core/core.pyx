@@ -222,7 +222,8 @@ cdef class _ndarray_base:
         else:
             self.data = memptr
             bound = cupy._core._memory_range.get_bound(self)
-            self._index_32_bits = bound[1] - bound[0] <= (1 << 31)
+            max_diff = max(bound[1] - bound[0], self.size * itemsize)
+            self._index_32_bits = max_diff <= (1 << 31)
 
     cdef _init_fast(self, const shape_t& shape, dtype, bint c_order):
         """ For internal ndarray creation. """
