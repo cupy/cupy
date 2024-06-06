@@ -207,6 +207,7 @@ _all_types = [(_get_typename(x), _get_typename(y)) for x, y in _all_types_i]
 _type_map = dict(_all_types)
 
 map_crc_def = [f'map_crc<{x}, {y}>' for x, y in _all_types]
+bitonic_def = [f'bitonic_sort_step<{x}>' for x in _type_map]
 
 _unique_nd_module = _core.RawModule(code='''
 #include <cupy/carray.cuh>
@@ -561,44 +562,118 @@ __global__ void map_crc(
     }
 }
 
+template<typename T>
 __global__ void bitonic_sort_step(
     unsigned long long* idx,
+    unsigned long long* o_idx,
     T* values,
+    int n_idx,
     int row_sz,
     int j,
     int k
 ) {
     __shared__ bool cmp_mask[512];
+    __shared__ bool eq_mask[512];
+    __shared__ unsigned long long min_idx[512];
+    __shared__ bool break_flag;
+
     unsigned int i, other_idx;
-    i = threadIdx.x + blockDim.x * blockIdx.x;
+    // i = threadIdx.x + blockDim.x * blockIdx.x;
+    i = blockIdx.x;
+    cmp_mask[threadIdx.x] = false;
+    eq_mask[threadIdx.x] = false;
+
+    if(threadIdx.x >= row_sz || i >= n_idx) {
+        return;
+    }
+
+    if(threadIdx.x == 0) {
+        break_flag = false;
+    }
 
     other_idx = i ^ j;
+    if (other_idx <= i) {
+        return;
+    }
 
     /* The threads with the lowest ids sort the array. */
-    if (other_idx > i) {
-        if ((i & k) == 0) {
-            /* Sort ascending */
-            if (dev_values[i] > dev_values[other_idx]) {
-                /* exchange(i,other_idx); */
-                float temp = dev_values[i];
-                dev_values[i] = dev_values[other_idx];
-                dev_values[other_idx] = temp;
+    if ((i & k) == 0) {
+        /* Sort ascending */
+        for(int off = threadIdx.x; off < row_sz && !break_flag;
+                off += blockDim.x) {
+            cmp_mask[threadIdx.x] = false;
+            eq_mask[threadIdx.x] = false;
+
+            if(idx[other_idx] < n_idx) {
+                if(idx[i] < n_idx) {
+                    T this_value = values[row_sz * o_idx[idx[i]] + off];
+                    T other_value = values[row_sz * o_idx[idx[other_idx]] + off];
+                    cmp_mask[threadIdx.x] = this_value > other_value;
+                    eq_mask[threadIdx.x] = this_value == other_value;
+                } else {
+                    cmp_mask[threadIdx.x] = true;
+                }
             }
+
+            __syncthreads();
+
+            for(int stride = blockDim.x / 2; stride > 0; stride /= 2) {
+                if (threadIdx.x < stride) {
+                    cmp_mask[threadIdx.x] = cmp_mask[threadIdx.x + stride];
+                }
+                __syncthreads();
+            }
+
+            if(threadIdx.x == 0 && cmp_mask[threadIdx.x]) {
+                unsigned long long temp = idx[i];
+                idx[i] = idx[other_idx];
+                idx[other_idx] = temp;
+                break_flag = true;
+            }
+
+            __syncthreads();
         }
-        if ((i & k) != 0) {
-            /* Sort descending */
-            if (dev_values[i] < dev_values[other_idx]) {
-                /* exchange(i,other_idx); */
-                float temp = dev_values[i];
-                dev_values[i] = dev_values[other_idx];
-                dev_values[other_idx] = temp;
+    }
+    if ((i & k) != 0) {
+        /* Sort descending */
+        for(int off = threadIdx.x; off < row_sz && !break_flag;
+                off += blockDim.x) {
+            cmp_mask[threadIdx.x] = false;
+
+            if(idx[other_idx] >= n_idx) {
+                cmp_mask[threadIdx.x] = true;
+            } else {
+                if(idx[i] < n_idx) {
+                    T this_value = values[row_sz * o_idx[idx[i]] + off];
+                    T other_value = values[row_sz * o_idx[idx[other_idx]] + off];
+                    cmp_mask[threadIdx.x] = this_value < other_value;
+                } else {
+                    cmp_mask[threadIdx.x] = false;
+                }
             }
+            __syncthreads();
+
+            for(int stride = blockDim.x / 2; stride > 0; stride /= 2) {
+                if (threadIdx.x < stride) {
+                    cmp_mask[threadIdx.x] |= cmp_mask[threadIdx.x + stride];
+                }
+                __syncthreads();
+            }
+
+            if(threadIdx.x == 0 && cmp_mask[threadIdx.x]) {
+                unsigned long long temp = idx[i];
+                idx[i] = idx[other_idx];
+                idx[other_idx] = temp;
+                break_flag = true;
+            }
+
+            __syncthreads();
         }
     }
 }
 
 
-''', options=('-std=c++11',), name_expressions=map_crc_def)  # NOQA
+''', options=('-std=c++11',), name_expressions=map_crc_def + bitonic_def)  # NOQA
 
 
 def unique(ar, return_index=False, return_inverse=False,
@@ -667,7 +742,7 @@ def unique(ar, return_index=False, return_inverse=False,
         ar2 = cupy.ascontiguousarray(ar2)
         is_complex = cupy.iscomplexobj(ar2)
 
-        n_rows, row_sz = ar.shape
+        n_rows, row_sz = ar2.shape
         if is_complex:
             row_sz *= 2
 
@@ -705,15 +780,28 @@ def unique(ar, return_index=False, return_inverse=False,
                      equal_nan=equal_nan)
 
     if axis is not None:
+        bitonic_sort_step = _unique_nd_module.get_function(
+            f'bitonic_sort_step<{in_type}>')
+
         _, index, *rest = ret
-        unique_values = ar2[index]
+
+        s_idx = cupy.arange(2**int(numpy.ceil(numpy.log2(index.shape[0]))),
+                            dtype=cupy.int64)
+        # s_idx[:index.shape[0]] = index
+
+        block_sz = 512
+        # n_blocks = (s_idx.shape[0] + block_sz - 1) // block_sz
+
         k = 2
-        while k <= unique_values.shape[0]:
+        while k <= s_idx.shape[0]:
             j = k >> 1
             while j > 0:
+                bitonic_sort_step((index.shape[0],), (block_sz,), (
+                    s_idx, index, ar2, index.shape[0], ar2.shape[1], j, k))
                 j >>= 1
             k <<= 1
 
+        unique_values = ar2[index]
         unique_values = unique_values.reshape(
             unique_values.shape[0], *orig_shape[1:])
         unique_values = cupy.moveaxis(unique_values, 0, axis)
