@@ -84,12 +84,16 @@ template <>
 class numeric_limits<__half> {
   public:
     static __host__ __device__ constexpr __half infinity() noexcept {
-        unsigned short inf_half = 0x7C00U;
+        constexpr unsigned short inf_half = 0x7C00U;
+        #if (defined(_MSC_VER) && _MSC_VER >= 1920)
         // WAR:
         // - we want a constexpr here, but reinterpret_cast cannot be used
         // - we want to use std::bit_cast, but it requires C++20 which is too new
         // - we use the compiler builtin, fortunately both gcc and msvc have it
         return __builtin_bit_cast(__half, inf_half);
+        #else
+        return *reinterpret_cast<__half*>(&inf_half);
+        #endif
     }
 
     static constexpr bool has_infinity = true;
