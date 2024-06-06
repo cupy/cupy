@@ -32,8 +32,6 @@ from cupy._core._scalar import get_typename
 from cupy_backends.cuda.api import runtime
 from cupyx.scipy.signal._wavelets import _cwt, _ricker
 
-from cupyx import jit
-
 import numpy as np
 
 
@@ -764,14 +762,27 @@ def _arg_peaks_as_expected(value):
     return value
 
 
-@jit.rawkernel()
-def _check_prominence_invalid(n, peaks, left_bases, right_bases, out):
-    tid = jit.blockIdx.x * jit.blockDim.x + jit.threadIdx.x
-    i_min = left_bases[tid]
-    i_max = right_bases[tid]
-    peak = peaks[tid]
-    valid = 0 <= i_min and i_min <= peak and peak <= i_max and i_max < n
-    out[tid] = not valid
+_check_prominence_invalid = cupy.RawKernel(r"""
+extern "C" __global__ void check_prominence_invalid
+(
+int n,
+long long* peaks,
+long long* left_bases,
+long long* right_bases,
+bool* out
+) {
+    int idx = blockDim.x * blockIdx.x + threadIdx.x;
+    if(idx >= n) {
+        return;
+    }
+
+    long long i_min = left_bases[idx];
+    long long i_max = right_bases[idx];
+    long long peak = peaks[idx];
+    bool valid = 0 <= i_min && i_min <= peak && peak <= i_max && i_max < n;
+    out[idx] = valid;
+}
+""", 'check_prominence_invalid')
 
 
 def _peak_prominences(x, peaks, wlen=None, check=False):
@@ -817,7 +828,7 @@ def _peak_widths(x, peaks, rel_height, prominences, left_bases, right_bases,
         invalid = cupy.zeros(n, dtype=cupy.bool_)
         _check_prominence_invalid(
             (n_blocks,), (block_sz,),
-            (x.shape[0], peaks, left_bases, right_bases, invalid))
+            (n, peaks, left_bases, right_bases, invalid))
         if cupy.any(invalid):
             raise ValueError("prominence data is invalid")
 
