@@ -973,7 +973,7 @@ def for_signed_dtypes(name='dtype'):
 
 
 def for_unsigned_dtypes(name='dtype'):
-    """Decorator that checks the fixture with unsinged dtypes.
+    """Decorator that checks the fixture with unsigned dtypes.
 
     Args:
          name(str): Argument name to which specified dtypes are passed.

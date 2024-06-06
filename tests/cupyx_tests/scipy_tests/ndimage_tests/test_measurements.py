@@ -438,7 +438,7 @@ class TestLabeledComprehension():
             def func(x, pos):
                 return xp.sum(x + pos > 50)
         else:
-            # simple function to apply to each lable
+            # simple function to apply to each label
             func = xp.sum
 
         op = getattr(scp.ndimage, 'labeled_comprehension')
