@@ -85,6 +85,9 @@ class Fusion:
         # Create cache keys to find a kernel already emitted:
         #     param_key: ndims and dtypes of the arguments.
         #     shape_key: shapes of the arguments.
+
+        print("new_fusion 1: ", args, [type(arg) for arg in args])
+
         for i in range(nargs):
             arg = args[i]
             if isinstance(arg, core.ndarray):
@@ -165,6 +168,8 @@ class Fusion:
 def fuse(*args, **kwargs):
     """Decorator that fuses a function.
     """
+
+    print("fuse 0: ", args, kwargs)
 
     def wrapper(f, kernel_name=None):
         return Fusion(f, kernel_name)

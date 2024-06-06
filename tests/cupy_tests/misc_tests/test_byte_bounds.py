@@ -1,6 +1,8 @@
 import cupy
 from cupy import testing
 
+from cupy.lib.array_utils import byte_bounds
+
 
 class TestByteBounds:
 
@@ -10,7 +12,7 @@ class TestByteBounds:
         itemsize = a.itemsize
         a_low = a.data.ptr
         a_high = a.data.ptr + 12 * itemsize
-        assert cupy.byte_bounds(a) == (a_low, a_high)
+        assert byte_bounds(a) == (a_low, a_high)
 
     @testing.for_all_dtypes()
     def test_2d_contiguous(self, dtype):
@@ -18,7 +20,7 @@ class TestByteBounds:
         itemsize = a.itemsize
         a_low = a.data.ptr
         a_high = a.data.ptr + 4 * 7 * itemsize
-        assert cupy.byte_bounds(a) == (a_low, a_high)
+        assert byte_bounds(a) == (a_low, a_high)
 
     @testing.for_all_dtypes()
     def test_1d_noncontiguous_pos_stride(self, dtype):
@@ -27,7 +29,7 @@ class TestByteBounds:
         b = a[::2]
         b_low = b.data.ptr
         b_high = b.data.ptr + 11 * itemsize  # a[10]
-        assert cupy.byte_bounds(b) == (b_low, b_high)
+        assert byte_bounds(b) == (b_low, b_high)
 
     @testing.for_all_dtypes()
     def test_2d_noncontiguous_pos_stride(self, dtype):
@@ -36,7 +38,7 @@ class TestByteBounds:
         itemsize = b.itemsize
         b_low = a.data.ptr
         b_high = b.data.ptr + 3 * 7 * itemsize  # a[2][6]
-        assert cupy.byte_bounds(b) == (b_low, b_high)
+        assert byte_bounds(b) == (b_low, b_high)
 
     @testing.for_all_dtypes()
     def test_1d_contiguous_neg_stride(self, dtype):
@@ -45,7 +47,7 @@ class TestByteBounds:
         itemsize = b.itemsize
         b_low = b.data.ptr - 11 * itemsize
         b_high = b.data.ptr + 1 * itemsize
-        assert cupy.byte_bounds(b) == (b_low, b_high)
+        assert byte_bounds(b) == (b_low, b_high)
 
     @testing.for_all_dtypes()
     def test_2d_noncontiguous_neg_stride(self, dtype):
@@ -55,7 +57,7 @@ class TestByteBounds:
         b_low = b.data.ptr - 2 * 7 * itemsize * \
             (2 - 1) - 2 * itemsize * (4 - 1)
         b_high = b.data.ptr + 1 * itemsize
-        assert cupy.byte_bounds(b) == (b_low, b_high)
+        assert byte_bounds(b) == (b_low, b_high)
 
     @testing.for_all_dtypes()
     def test_2d_noncontiguous_posneg_stride_1(self, dtype):
@@ -64,7 +66,7 @@ class TestByteBounds:
         itemsize = b.itemsize
         b_low = b.data.ptr - itemsize * (7 - 1)
         b_high = b.data.ptr + 1 * itemsize + 7 * itemsize * (4 - 1)
-        assert cupy.byte_bounds(b) == (b_low, b_high)
+        assert byte_bounds(b) == (b_low, b_high)
 
     @testing.for_all_dtypes()
     def test_2d_noncontiguous_posneg_stride_2(self, dtype):
@@ -73,4 +75,4 @@ class TestByteBounds:
         itemsize = b.itemsize
         b_low = b.data.ptr - 2 * itemsize * (4 - 1)
         b_high = b.data.ptr + 1 * itemsize + 2 * 7 * itemsize * (2 - 1)
-        assert cupy.byte_bounds(b) == (b_low, b_high)
+        assert byte_bounds(b) == (b_low, b_high)

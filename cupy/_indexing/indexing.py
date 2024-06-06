@@ -213,7 +213,7 @@ def select(condlist, choicelist, default=0):
                                              choicelist[0])[0].shape
 
     result = cupy.empty(result_shape, dtype)
-    cupy.copyto(result, default)
+    cupy.copyto(result, dtype.type(default))
 
     choicelist = choicelist[-2::-1]
     condlist = condlist[::-1]

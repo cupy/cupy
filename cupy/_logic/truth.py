@@ -1,5 +1,3 @@
-import warnings
-
 import cupy
 from cupy._core import _routines_logic as _logic
 from cupy._core import _fusion_thread_local
@@ -316,13 +314,3 @@ def union1d(arr1, arr2):
 
     """
     return cupy.unique(cupy.concatenate((arr1, arr2), axis=None))
-
-
-def alltrue(a, axis=None, out=None, keepdims=False):
-    warnings.warn('Please use `all` instead.', DeprecationWarning)
-    return all(a, axis, out, keepdims)
-
-
-def sometrue(a, axis=None, out=None, keepdims=False):
-    warnings.warn('Please use `any` instead.', DeprecationWarning)
-    return any(a, axis, out, keepdims)

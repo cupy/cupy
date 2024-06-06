@@ -106,7 +106,7 @@ class TestSimpleReductionFunctionComplexWarning(unittest.TestCase):
     @testing.for_float_dtypes(name='f_dtype')
     @testing.numpy_cupy_allclose()
     def test_warns(self, xp, c_dtype, f_dtype):
-        with pytest.warns(numpy.ComplexWarning):
+        with pytest.warns(numpy.exceptions.ComplexWarning):
             out = xp.ones((8,), dtype=c_dtype).sum(dtype=f_dtype)
         return out
 
@@ -120,7 +120,7 @@ class TestSimpleReductionFunctionInvalidAxis:
     def test_axis_overrun(self, axis):
         for xp in (numpy, cupy):
             a = xp.ones((2, 2))
-            with pytest.raises(numpy.AxisError):
+            with pytest.raises(numpy.exceptions.AxisError):
                 a.sum(axis=axis)
 
     @pytest.mark.parametrize('axis', [

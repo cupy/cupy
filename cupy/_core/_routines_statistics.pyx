@@ -412,7 +412,7 @@ cpdef _ndarray_base _median(
         sz = a.size
     else:
         if axis < -keep_ndim or axis >= keep_ndim:
-            raise numpy.AxisError('Axis overrun')
+            raise numpy.exceptions.AxisError('Axis overrun')
         sz = a.shape[axis]
     if sz % 2 == 0:
         szh = sz // 2
@@ -451,9 +451,11 @@ cpdef _ndarray_base _median(
 
     out = _mean(
         part[indexer], axis=axis, dtype=None, out=out, keepdims=keepdims)
+
     if part.dtype.kind in 'fc':
         isnan = _exists_nan(part, axis=axis, keepdims=keepdims)
-        out = cupy.where(isnan, numpy.nan, out)
+        tnan = cupy.asarray(numpy.nan, dtype=out.dtype)
+        out = cupy.where(isnan, tnan, out)
     if out_shape is not None:
         out = out.reshape(out_shape)
     return out

@@ -133,12 +133,12 @@ class TestAliases(unittest.TestCase):
 
 
 @pytest.mark.parametrize('name', [
-    'AxisError',
-    'ComplexWarning',
-    'ModuleDeprecationWarning',
-    'RankWarning',
-    'TooHardError',
-    'VisibleDeprecationWarning',
+    'exceptions.AxisError',
+    'exceptions.ComplexWarning',
+    'exceptions.ModuleDeprecationWarning',
+    'exceptions.RankWarning',
+    'exceptions.TooHardError',
+    'exceptions.VisibleDeprecationWarning',
     'linalg.LinAlgError'
 ])
 def test_error_classes(name):

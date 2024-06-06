@@ -860,6 +860,8 @@ class Fusion(object):
                 arg_types = ', '.join(repr(type(a)) for a in args)
                 raise TypeError(mes.format(self.name, arg_types))
 
+        print("fusion 1: ", args, [type(arg) for arg in args])
+
         # Cache the result of execution path analysis
         cdef list params_info = []
         for arg in args:
@@ -882,6 +884,7 @@ class Fusion(object):
                 assert False
 
         cdef tuple key = tuple(params_info)
+
         if key not in self._memo:
             try:
                 history = _FusionHistory()
@@ -894,11 +897,16 @@ class Fusion(object):
                     self.new_fusion = new_fusion.Fusion(self.func, self.name)
                     _thread_local.history = None
                     _thread_local.is_old_fusing = False
+
+                    print("fusion except: ", args)
+
                     return self.new_fusion(*args)
             finally:
                 _thread_local.history = None
                 _thread_local.is_old_fusing = False
         kernel, kwargs = self._memo[key]
+
+        print("fusion 3: kernel = ", kernel, kernel.cached_codes)
 
         return kernel(
             *[a for a in args if a is not None],
@@ -975,7 +983,7 @@ def _call_reduction(fusion_op, *args, **kwargs):
     else:
         ndim = 0
     if ndim < 0:
-        raise numpy.AxisError(axis, src_ndim)
+        raise numpy.exceptions.AxisError(axis, src_ndim)
 
     _thread_local.history.ndim = ndim
     if ndim >= 1:

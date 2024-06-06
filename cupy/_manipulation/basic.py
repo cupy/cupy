@@ -35,7 +35,9 @@ def copyto(dst, src, casting='same_kind', where=None):
         fusion._FusionVarScalar, _fusion_interface._ScalarProxy)
     if src_is_python_scalar:
         src_dtype = numpy.dtype(type(src))
-        can_cast = numpy.can_cast(src, dst.dtype, casting)
+        # XXX: np.can_cast(scalar, dtype) errors in NumPy 2.0.0rc1. The error
+        # mentions this may be relaxed in a future NumPy version.
+        can_cast = numpy.can_cast(numpy.asarray(src), dst.dtype, casting)
     elif isinstance(src, numpy.ndarray) or numpy.isscalar(src):
         if src.size != 1:
             raise ValueError(

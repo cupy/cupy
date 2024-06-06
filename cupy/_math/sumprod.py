@@ -1,5 +1,3 @@
-import warnings
-
 import numpy
 
 import cupy
@@ -579,7 +577,7 @@ def ediff1d(arr, to_end=None, to_begin=None):
 # TODO(okuta): Implement cross
 
 
-def trapz(y, x=None, dx=1.0, axis=-1):
+def trapezoid(y, x=None, dx=1.0, axis=-1):
     """
     Integrate along the given axis using the composite trapezoidal rule.
     Integrate `y` (`x`) along the given axis.
@@ -597,7 +595,7 @@ def trapz(y, x=None, dx=1.0, axis=-1):
         cupy.ndarray: Definite integral as approximated by the trapezoidal
         rule.
 
-    .. seealso:: :func:`numpy.trapz`
+    .. seealso:: :func:`numpy.trapezoid`
     """
     if not isinstance(y, cupy.ndarray):
         raise TypeError('`y` should be of type cupy.ndarray')
@@ -626,13 +624,3 @@ def trapz(y, x=None, dx=1.0, axis=-1):
     except ValueError:
         ret = cupy.add.reduce(product, axis)
     return ret
-
-
-def product(a, axis=None, dtype=None, out=None, keepdims=False):
-    warnings.warn('Please use `prod` instead.', DeprecationWarning)
-    return prod(a, axis, dtype, out, keepdims)
-
-
-def cumproduct(a, axis=None, dtype=None, out=None):
-    warnings.warn('Please use `cumprod` instead.', DeprecationWarning)
-    return cumprod(a, axis, dtype, out)

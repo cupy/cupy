@@ -80,3 +80,34 @@ def transpose(a, axes=None):
     """
     # TODO(okuta): check type
     return a.transpose(axes)
+
+
+def matrix_transpose(x, /):
+    """
+    Transposes a matrix (or a stack of matrices) ``x``.
+
+    This function is Array API compatible.
+
+    Parameters
+    ----------
+    x : ndarray
+        Input array having shape (..., M, N) and whose two innermost
+        dimensions form ``MxN`` matrices.
+
+    Returns
+    -------
+    out : ndarray
+        An array containing the transpose for each matrix and having shape
+        (..., N, M).
+
+    See Also
+    --------
+    transpose : Generic transpose method.
+    numpy.matrix_transpose
+
+    """
+    if x.ndim < 2:
+        raise ValueError(
+            f"Input array must be at least 2-dimensional, but it is {x.ndim}"
+        )
+    return swapaxes(x, -1, -2)

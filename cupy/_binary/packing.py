@@ -24,7 +24,7 @@ _packbits_kernel = {
 }
 
 
-def packbits(a, axis=None, bitorder='big'):
+def packbits(a, /, axis=None, bitorder='big'):
     """Packs the elements of a binary-valued array into bits in a uint8 array.
 
     This function currently does not support ``axis`` option.
@@ -76,7 +76,7 @@ _unpackbits_kernel = {
 }
 
 
-def unpackbits(a, axis=None, bitorder='big'):
+def unpackbits(a, /, axis=None, bitorder='big'):
     """Unpacks elements of a uint8 array into a binary-valued output array.
 
     This function currently does not support ``axis`` option.

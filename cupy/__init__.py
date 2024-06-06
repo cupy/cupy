@@ -44,7 +44,8 @@ from cupy import polynomial  # NOQA
 from cupy import random  # NOQA
 # `cupy.sparse` is deprecated in v8
 from cupy import sparse  # NOQA
-from cupy import testing  # NOQA  # NOQA
+from cupy import testing  # NOQA
+from cupy import exceptions  # NOQA
 
 
 # import class and function
@@ -62,14 +63,6 @@ from numpy import nan  # NOQA
 from numpy import newaxis  # == None  # NOQA
 from numpy import pi  # NOQA
 
-# APIs to be removed in NumPy 2.0.
-# Remove these when bumping the baseline API to NumPy 2.0.
-# https://github.com/cupy/cupy/pull/7800
-PINF = Inf = Infinity = infty = inf  # NOQA
-NINF = -inf  # NOQA
-NAN = NaN = nan  # NOQA
-PZERO = 0.0  # NOQA
-NZERO = -0.0  # NOQA
 
 # =============================================================================
 # Data types (borrowed from NumPy)
@@ -133,8 +126,6 @@ from numpy import uint64  # NOQA
 from numpy import half  # NOQA
 from numpy import single  # NOQA
 from numpy import double  # NOQA
-from numpy import float_  # NOQA
-from numpy import longfloat  # NOQA
 from numpy import float16  # NOQA
 from numpy import float32  # NOQA
 from numpy import float64  # NOQA
@@ -147,10 +138,7 @@ from numpy import float64  # NOQA
 # Complex floating-point numbers
 # -----------------------------------------------------------------------------
 from numpy import csingle  # NOQA
-from numpy import singlecomplex  # NOQA
 from numpy import cdouble  # NOQA
-from numpy import cfloat  # NOQA
-from numpy import complex_  # NOQA
 from numpy import complex64  # NOQA
 from numpy import complex128  # NOQA
 
@@ -193,6 +181,7 @@ from cupy._creation.basic import ones  # NOQA
 from cupy._creation.basic import ones_like  # NOQA
 from cupy._creation.basic import zeros  # NOQA
 from cupy._creation.basic import zeros_like  # NOQA
+from cupy._creation.basic import astype  # NOQA
 
 from cupy._creation.from_data import copy  # NOQA
 from cupy._creation.from_data import array  # NOQA
@@ -243,6 +232,9 @@ from cupy._manipulation.transpose import rollaxis  # NOQA
 from cupy._manipulation.transpose import swapaxes  # NOQA
 from cupy._manipulation.transpose import transpose  # NOQA
 
+# NumPy 2.0 aliases
+permute_dims = transpose
+
 from cupy._manipulation.dims import atleast_1d  # NOQA
 from cupy._manipulation.dims import atleast_2d  # NOQA
 from cupy._manipulation.dims import atleast_3d  # NOQA
@@ -260,8 +252,10 @@ from cupy._manipulation.join import stack  # NOQA
 from cupy._manipulation.join import vstack  # NOQA
 from cupy._manipulation.join import vstack as row_stack  # NOQA
 
+# NumPy 2.0 alias
+concat = concatenate
+
 from cupy._manipulation.kind import asarray_chkfinite  # NOQA
-from cupy._manipulation.kind import asfarray  # NOQA
 from cupy._manipulation.kind import asfortranarray  # NOQA
 from cupy._manipulation.kind import require  # NOQA
 
@@ -278,6 +272,11 @@ from cupy._manipulation.add_remove import delete  # NOQA
 from cupy._manipulation.add_remove import append  # NOQA
 from cupy._manipulation.add_remove import resize  # NOQA
 from cupy._manipulation.add_remove import unique  # NOQA
+from cupy._manipulation.add_remove import unique_all  # NOQA
+from cupy._manipulation.add_remove import unique_counts  # NOQA
+from cupy._manipulation.add_remove import unique_values  # NOQA
+from cupy._manipulation.add_remove import unique_inverse  # NOQA
+
 from cupy._manipulation.add_remove import trim_zeros  # NOQA
 
 from cupy._manipulation.rearrange import flip  # NOQA
@@ -300,6 +299,11 @@ from cupy._binary.elementwise import bitwise_not  # NOQA
 from cupy._binary.elementwise import invert  # NOQA
 from cupy._binary.elementwise import left_shift  # NOQA
 from cupy._binary.elementwise import right_shift  # NOQA
+
+# NumPy 2.0 aliases
+bitwise_left_shift = left_shift
+bitwise_right_shift = right_shift
+bitwise_invert = invert
 
 from cupy._binary.packing import packbits  # NOQA
 from cupy._binary.packing import unpackbits  # NOQA
@@ -361,23 +365,17 @@ def result_type(*arrays_and_dtypes):
 
 from cupy._core.core import min_scalar_type  # NOQA
 
-from numpy import obj2sctype  # NOQA
 from numpy import promote_types  # NOQA
 
 from numpy import dtype  # NOQA
-from numpy import format_parser  # NOQA
 
 from numpy import finfo  # NOQA
 from numpy import iinfo  # NOQA
 
-from numpy import find_common_type  # NOQA
-from numpy import issctype  # NOQA
-from numpy import issubclass_  # NOQA
 from numpy import issubdtype  # NOQA
-from numpy import issubsctype  # NOQA
 
 from numpy import mintypecode  # NOQA
-from numpy import sctype2char  # NOQA
+
 from numpy import typename  # NOQA
 
 # -----------------------------------------------------------------------------
@@ -423,7 +421,7 @@ from cupy._indexing.insert import diag_indices_from  # NOQA
 from cupy._indexing.iterate import flatiter  # NOQA
 
 # Borrowed from NumPy
-from numpy import get_array_wrap  # NOQA
+# from numpy import get_array_wrap  # NOQA
 from numpy import index_exp  # NOQA
 from numpy import ndindex  # NOQA
 from numpy import s_  # NOQA
@@ -454,11 +452,9 @@ def base_repr(number, base=2, padding=0):  # NOQA (needed to avoid redefinition 
 
 
 # Borrowed from NumPy
-from numpy import DataSource  # NOQA
 from numpy import get_printoptions  # NOQA
 from numpy import set_printoptions  # NOQA
 from numpy import printoptions  # NOQA
-from numpy import set_string_function  # NOQA
 
 
 # -----------------------------------------------------------------------------
@@ -529,9 +525,7 @@ from cupy._logic.comparison import less_equal  # NOQA
 from cupy._logic.comparison import not_equal  # NOQA
 
 from cupy._logic.truth import all  # NOQA
-from cupy._logic.truth import alltrue  # NOQA
 from cupy._logic.truth import any  # NOQA
-from cupy._logic.truth import sometrue  # NOQA
 
 # ------------------------------------------------------------------------------
 # Polynomial functions
@@ -545,8 +539,6 @@ from cupy.lib._routines_poly import polyfit  # NOQA
 from cupy.lib._routines_poly import polyval  # NOQA
 from cupy.lib._routines_poly import roots  # NOQA
 
-# Borrowed from NumPy
-from numpy import RankWarning  # NOQA
 
 # -----------------------------------------------------------------------------
 # Mathematical functions
@@ -555,6 +547,13 @@ from cupy._math.trigonometric import arccos  # NOQA
 from cupy._math.trigonometric import arcsin  # NOQA
 from cupy._math.trigonometric import arctan  # NOQA
 from cupy._math.trigonometric import arctan2  # NOQA
+
+# a(rc)trig aliases, following NumPy 2.0
+atan = arctan
+atan2 = arctan2
+asin = arcsin
+acos = arccos
+
 from cupy._math.trigonometric import cos  # NOQA
 from cupy._math.trigonometric import deg2rad  # NOQA
 from cupy._math.trigonometric import degrees  # NOQA
@@ -572,20 +571,22 @@ from cupy._math.hyperbolic import cosh  # NOQA
 from cupy._math.hyperbolic import sinh  # NOQA
 from cupy._math.hyperbolic import tanh  # NOQA
 
+# a(rc)hyp aliases, following NumPy 2.0
+acosh = arccosh
+asinh = arcsinh
+atanh = arctanh
+
 from cupy._math.rounding import around  # NOQA
 from cupy._math.rounding import ceil  # NOQA
 from cupy._math.rounding import fix  # NOQA
 from cupy._math.rounding import floor  # NOQA
 from cupy._math.rounding import rint  # NOQA
 from cupy._math.rounding import round  # NOQA
-from cupy._math.rounding import round_  # NOQA
 from cupy._math.rounding import trunc  # NOQA
 
 from cupy._math.sumprod import prod  # NOQA
-from cupy._math.sumprod import product  # NOQA
 from cupy._math.sumprod import sum  # NOQA
 from cupy._math.sumprod import cumprod  # NOQA
-from cupy._math.sumprod import cumproduct  # NOQA
 from cupy._math.sumprod import cumsum  # NOQA
 from cupy._math.sumprod import ediff1d  # NOQA
 from cupy._math.sumprod import nancumprod  # NOQA
@@ -594,7 +595,7 @@ from cupy._math.sumprod import nansum  # NOQA
 from cupy._math.sumprod import nanprod  # NOQA
 from cupy._math.sumprod import diff  # NOQA
 from cupy._math.sumprod import gradient  # NOQA
-from cupy._math.sumprod import trapz  # NOQA
+from cupy._math.sumprod import trapezoid  # NOQA
 from cupy._math.window import bartlett  # NOQA
 from cupy._math.window import blackman  # NOQA
 from cupy._math.window import hamming  # NOQA
@@ -640,6 +641,8 @@ from cupy._math.arithmetic import remainder as mod  # NOQA
 from cupy._math.arithmetic import subtract  # NOQA
 from cupy._math.arithmetic import true_divide  # NOQA
 
+pow = power
+
 from cupy._math.arithmetic import angle  # NOQA
 from cupy._math.arithmetic import conjugate as conj  # NOQA
 from cupy._math.arithmetic import conjugate  # NOQA
@@ -667,16 +670,11 @@ from cupy._math.misc import convolve  # NOQA
 # -----------------------------------------------------------------------------
 # Miscellaneous routines
 # -----------------------------------------------------------------------------
-from cupy._misc.byte_bounds import byte_bounds  # NOQA
 from cupy._misc.memory_ranges import may_share_memory  # NOQA
 from cupy._misc.memory_ranges import shares_memory  # NOQA
-from cupy._misc.who import who  # NOQA
 
 # Borrowed from NumPy
-from numpy import disp  # NOQA
 from numpy import iterable  # NOQA
-from numpy import safe_eval  # NOQA
-from numpy import AxisError  # NOQA
 
 
 # -----------------------------------------------------------------------------
@@ -703,7 +701,6 @@ from cupy._sorting.search import where  # NOQA
 from cupy._sorting.sort import argpartition  # NOQA
 from cupy._sorting.sort import argsort  # NOQA
 from cupy._sorting.sort import lexsort  # NOQA
-from cupy._sorting.sort import msort  # NOQA
 from cupy._sorting.sort import sort_complex  # NOQA
 from cupy._sorting.sort import partition  # NOQA
 from cupy._sorting.sort import sort  # NOQA
@@ -740,14 +737,6 @@ from cupy._statistics.histogram import digitize  # NOQA
 from cupy._statistics.histogram import histogram  # NOQA
 from cupy._statistics.histogram import histogram2d  # NOQA
 from cupy._statistics.histogram import histogramdd  # NOQA
-
-# -----------------------------------------------------------------------------
-# Classes without their own docs
-# -----------------------------------------------------------------------------
-from numpy import ComplexWarning  # NOQA
-from numpy import ModuleDeprecationWarning  # NOQA
-from numpy import TooHardError  # NOQA
-from numpy import VisibleDeprecationWarning  # NOQA
 
 
 # -----------------------------------------------------------------------------
@@ -921,9 +910,52 @@ _deprecated_apis = [
 ]
 
 
+_np2_removed_names = {
+    'AxisError': 'exceptions.AxisError',
+    'ComplexWarning': 'exceptions.ComplexWarning',
+    'ModuleDeprecationWarning': 'exceptions.ModuleDeprecationWarning',
+    'TooHardError': 'TooHardError',
+    'VisibleDeprecationWarning': 'VisibleDeprecationWarning',
+    'float_': 'float64',
+    'longfloat': 'longdouble',
+    'singlecomplex': 'complex64',
+    'complex_': 'complex128',
+    'cfloat': 'complex128',
+
+    'format_parser': 'numpy.rec.format_parser',
+    'find_common_type': '`promote_types` or `result_type`',
+    'issubclass_': '`issubclass` builtin',
+    'issubsctype': 'issubdtype',
+    'sctype2char': '`np.dtype(obj).char`',
+    'DataSource': '`np.lib.npyio.DataSource`',
+    'set_string_function': 'set_printoptions',
+
+    'PINF': 'inf',
+    'Inf': 'inf',
+    'Infinity': 'inf',
+    'infty': 'inf',
+    'NINF': '-inf',
+    'NAN': 'nan',
+    'NaN': 'nan',
+    'PZERO': '0.0',
+    'NZERO': '-0.0',
+
+    'asfarray': '`asarray` with a proper dtype',
+    'round_': 'round',
+    'who': 'an IDE variable explorer or `locals()`',
+    'byte_bounds': '`cupy.lib.array_utils.byte_bounds`',
+    'trapz': 'trapezoid',
+}
+
+
 def __getattr__(name):
     if name in _deprecated_apis:
         return getattr(_numpy, name)
+
+    if name in _np2_removed_names:
+        raise AttributeError(
+            f"{name =} was removed in the NumPy 2.0 release. Use "
+            f"{_np2_removed_names[name]} instead.")
 
     raise AttributeError(f"module 'cupy' has no attribute {name!r}")
 
