@@ -300,6 +300,6 @@ class TestUnion1d:
 
     @testing.numpy_cupy_array_equal()
     def test_union1d_3(self, xp):
-        x = xp.zeros((2, 2), dtype=xp.complex_)
+        x = xp.zeros((2, 2), dtype=xp.complex128)
         y = xp.array([[1+1j, 2+3j], [4+1j, 0+7j]])
         return xp.union1d(x, y)
