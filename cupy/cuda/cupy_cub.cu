@@ -84,7 +84,7 @@ template <>
 class numeric_limits<__half> {
   public:
     static __host__ __device__ constexpr __half infinity() noexcept {
-        constexpr unsigned short inf_half = 0x7C00U;
+        unsigned short inf_half = 0x7C00U;
         #if (defined(_MSC_VER) && _MSC_VER >= 1920)
         // WAR:
         // - we want a constexpr here, but reinterpret_cast cannot be used
