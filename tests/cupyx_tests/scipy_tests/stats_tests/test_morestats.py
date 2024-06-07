@@ -141,3 +141,23 @@ class TestBoxcox_llf:
             return numpy.array(result)
         else:
             return result
+
+
+class TestKstat:
+    def test_moments_normal_distribution(self):
+        cupy.random.seed(32149)
+        data = cupy.random.randn(12345)
+        moments = [cupyx.scipy.stats.kstat(data, n) for n in [1, 2, 3, 4]]
+
+        expected = [0.011315, 1.017931, 0.05811052, 0.0754134]
+        # assert_allclose(moments, expected, rtol=1e-4)
+        for m, e in zip(moments, expected):
+            assert cupy.allclose(m, e, rtol=1e-4)
+
+        
+    def test_nan_input(self):
+        data = cupy.arange(10.)
+        data[6] = cupy.nan
+
+        assert cupy.isnan(cupyx.scipy.stats.kstat(data))
+            
