@@ -291,7 +291,7 @@ numpy:
       - "3.11"
       - "3.12"
   "pre":
-    spec: ">=0a0"  # latest, including pre-releases
+    spec: ">=0a0,<2"  # latest NumPy v1.x, including pre-releases
 scipy:
   # https://docs.scipy.org/doc/scipy/dev/toolchain.html#numpy
   null:
