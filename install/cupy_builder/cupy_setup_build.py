@@ -3,6 +3,7 @@
 import copy
 from distutils import ccompiler
 from distutils import sysconfig
+import logging
 import os
 import shutil
 import sys
@@ -277,6 +278,7 @@ def _find_static_library(name: str) -> str:
     else:
         raise Exception('not supported on this platform')
 
+    logging.debug(f"{cuda_path=}")
     if cuda_path is None:
         raise Exception(f'Could not find {filename}: CUDA path unavailable')
     for libdir in libdirs:
