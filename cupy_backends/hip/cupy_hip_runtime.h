@@ -278,7 +278,7 @@ cudaError_t cudaPointerGetAttributes(cudaPointerAttributes *attributes,
             case 1 /* hipMemoryTypeDevice */:
                 attributes->type = (hipMemoryType)2; /* cudaMemoryTypeDevice */
                 return status;
-#elif
+#else
        switch (attributes->memoryType) {
             case 0 /* hipMemoryTypeHost */:
                 attributes->memoryType = (hipMemoryType)1; /* cudaMemoryTypeHost */
