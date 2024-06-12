@@ -187,6 +187,13 @@ class _RuntimeInfo:
             pass
 
         # NCCL
+        if cupy._environment._can_attempt_preload('nccl'):
+            if full:
+                cupy._environment._preload_library('nccl')
+            else:
+                self.nccl_build_version = (
+                    '(not loaded; try `import cupy.cuda.nccl` first)')
+                self.nccl_runtime_version = self.nccl_build_version
         try:
             import cupy_backends.cuda.libs.nccl as nccl
             self.nccl_build_version = nccl.get_build_version()

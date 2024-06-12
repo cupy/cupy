@@ -10,7 +10,6 @@ from cupy import _version
 _environment._detect_duplicate_installation()  # NOQA
 _environment._setup_win32_dll_directory()  # NOQA
 _environment._preload_library('cutensor')  # NOQA
-_environment._preload_library('nccl')  # NOQA
 
 
 try:
@@ -133,8 +132,8 @@ from numpy import uint64  # NOQA
 from numpy import half  # NOQA
 from numpy import single  # NOQA
 from numpy import double  # NOQA
-from numpy import float_  # NOQA
-from numpy import longfloat  # NOQA
+from numpy import float64 as float_  # NOQA
+# from numpy import longfloat  # NOQA   # XXX
 from numpy import float16  # NOQA
 from numpy import float32  # NOQA
 from numpy import float64  # NOQA
@@ -147,10 +146,10 @@ from numpy import float64  # NOQA
 # Complex floating-point numbers
 # -----------------------------------------------------------------------------
 from numpy import csingle  # NOQA
-from numpy import singlecomplex  # NOQA
+from numpy import complex64 as singlecomplex  # NOQA
 from numpy import cdouble  # NOQA
-from numpy import cfloat  # NOQA
-from numpy import complex_  # NOQA
+from numpy import complex128 as cfloat  # NOQA
+from numpy import complex128 as complex_  # NOQA
 from numpy import complex64  # NOQA
 from numpy import complex128  # NOQA
 
@@ -361,23 +360,16 @@ def result_type(*arrays_and_dtypes):
 
 from cupy._core.core import min_scalar_type  # NOQA
 
-from numpy import obj2sctype  # NOQA
 from numpy import promote_types  # NOQA
 
 from numpy import dtype  # NOQA
-from numpy import format_parser  # NOQA
 
 from numpy import finfo  # NOQA
 from numpy import iinfo  # NOQA
 
-from numpy import find_common_type  # NOQA
-from numpy import issctype  # NOQA
-from numpy import issubclass_  # NOQA
 from numpy import issubdtype  # NOQA
-from numpy import issubsctype  # NOQA
 
 from numpy import mintypecode  # NOQA
-from numpy import sctype2char  # NOQA
 from numpy import typename  # NOQA
 
 # -----------------------------------------------------------------------------
@@ -423,7 +415,6 @@ from cupy._indexing.insert import diag_indices_from  # NOQA
 from cupy._indexing.iterate import flatiter  # NOQA
 
 # Borrowed from NumPy
-from numpy import get_array_wrap  # NOQA
 from numpy import index_exp  # NOQA
 from numpy import ndindex  # NOQA
 from numpy import s_  # NOQA
@@ -454,11 +445,9 @@ def base_repr(number, base=2, padding=0):  # NOQA (needed to avoid redefinition 
 
 
 # Borrowed from NumPy
-from numpy import DataSource  # NOQA
 from numpy import get_printoptions  # NOQA
 from numpy import set_printoptions  # NOQA
 from numpy import printoptions  # NOQA
-from numpy import set_string_function  # NOQA
 
 
 # -----------------------------------------------------------------------------
@@ -546,7 +535,7 @@ from cupy.lib._routines_poly import polyval  # NOQA
 from cupy.lib._routines_poly import roots  # NOQA
 
 # Borrowed from NumPy
-from numpy import RankWarning  # NOQA
+from cupy.exceptions import RankWarning  # NOQA
 
 # -----------------------------------------------------------------------------
 # Mathematical functions
@@ -673,10 +662,8 @@ from cupy._misc.memory_ranges import shares_memory  # NOQA
 from cupy._misc.who import who  # NOQA
 
 # Borrowed from NumPy
-from numpy import disp  # NOQA
 from numpy import iterable  # NOQA
-from numpy import safe_eval  # NOQA
-from numpy import AxisError  # NOQA
+from cupy.exceptions import AxisError  # NOQA
 
 
 # -----------------------------------------------------------------------------
@@ -744,10 +731,10 @@ from cupy._statistics.histogram import histogramdd  # NOQA
 # -----------------------------------------------------------------------------
 # Classes without their own docs
 # -----------------------------------------------------------------------------
-from numpy import ComplexWarning  # NOQA
-from numpy import ModuleDeprecationWarning  # NOQA
-from numpy import TooHardError  # NOQA
-from numpy import VisibleDeprecationWarning  # NOQA
+from cupy.exceptions import ComplexWarning  # NOQA
+from cupy.exceptions import ModuleDeprecationWarning  # NOQA
+from cupy.exceptions import TooHardError  # NOQA
+from cupy.exceptions import VisibleDeprecationWarning  # NOQA
 
 
 # -----------------------------------------------------------------------------
@@ -919,6 +906,179 @@ _deprecated_apis = [
     'uint0',
     'bool8',
 ]
+
+
+# np 2.0: XXX shims for things removed in np 2.0
+
+# https://github.com/numpy/numpy/blob/v1.26.4/numpy/core/numerictypes.py#L283-L322   # NOQA
+def issubclass_(arg1, arg2):
+    try:
+        return issubclass(arg1, arg2)
+    except TypeError:
+        return False
+
+# https://github.com/numpy/numpy/blob/v1.26.0/numpy/core/numerictypes.py#L229-L280   # NOQA
+
+
+def obj2sctype(rep, default=None):
+    """
+    Return the scalar dtype or NumPy equivalent of Python type of an object.
+
+    Parameters
+    ----------
+    rep : any
+        The object of which the type is returned.
+    default : any, optional
+        If given, this is returned for objects whose types can not be
+        determined. If not given, None is returned for those objects.
+
+    Returns
+    -------
+    dtype : dtype or Python type
+        The data type of `rep`.
+
+    """
+    # prevent abstract classes being upcast
+    if isinstance(rep, type) and issubclass(rep, _numpy.generic):
+        return rep
+    # extract dtype from arrays
+    if isinstance(rep, _numpy.ndarray):
+        return rep.dtype.type
+    # fall back on dtype to convert
+    try:
+        res = _numpy.dtype(rep)
+    except Exception:
+        return default
+    else:
+        return res.type
+
+
+# https://github.com/numpy/numpy/blob/v1.26.0/numpy/core/numerictypes.py#L326C1-L355C1  # NOQA
+def issubsctype(arg1, arg2):
+    """
+    Determine if the first argument is a subclass of the second argument.
+
+    Parameters
+    ----------
+    arg1, arg2 : dtype or dtype specifier
+        Data-types.
+
+    Returns
+    -------
+    out : bool
+        The result.
+
+    """
+    return issubclass(obj2sctype(arg1), obj2sctype(arg2))
+
+
+# https://github.com/numpy/numpy/blob/v1.26.0/numpy/core/numerictypes.py#L457  # NOQA
+def sctype2char(sctype):
+    """
+    Return the string representation of a scalar dtype.
+
+    Parameters
+    ----------
+    sctype : scalar dtype or object
+        If a scalar dtype, the corresponding string character is
+        returned. If an object, `sctype2char` tries to infer its scalar type
+        and then return the corresponding string character.
+
+    Returns
+    -------
+    typechar : str
+        The string character corresponding to the scalar type.
+
+    Raises
+    ------
+    ValueError
+        If `sctype` is an object for which the type can not be inferred.
+
+    """
+    sctype = obj2sctype(sctype)
+    if sctype is None:
+        raise ValueError("unrecognized type")
+    return _numpy.dtype(sctype).char
+
+
+# https://github.com/numpy/numpy/blob/v1.26.0/numpy/core/numerictypes.py#L184  # NOQA
+def issctype(rep):
+    """
+    Determines whether the given object represents a scalar data-type.
+
+    Parameters
+    ----------
+    rep : any
+        If `rep` is an instance of a scalar dtype, True is returned. If not,
+        False is returned.
+
+    Returns
+    -------
+    out : bool
+        Boolean result of check whether `rep` is a scalar dtype.
+
+    """
+    if not isinstance(rep, (type, _numpy.dtype)):
+        return False
+    try:
+        res = obj2sctype(rep)
+        if res and res != _numpy.object_:
+            return True
+        return False
+    except Exception:
+        return False
+
+
+# np 2.0: XXX shims for things moved in np 2.0
+if _numpy.__version__ < "2":
+    from numpy import format_parser  # NOQA
+    from numpy import DataSource     # NOQA
+else:
+    from numpy.rec import format_parser   # type: ignore [no-redef]  # NOQA
+    from numpy.lib.npyio import DataSource  # NOQA
+
+
+# np 2.0: XXX shims for things removed without replacement
+if _numpy.__version__ < "2":
+    from numpy import find_common_type   # NOQA
+    from numpy import set_string_function  # NOQA
+    from numpy import get_array_wrap  # NOQA
+    from numpy import disp  # NOQA
+    from numpy import safe_eval  # NOQA
+else:
+
+    _template = '''\
+''This function has been removed in NumPy v2.
+Use {recommendation} instead.
+
+CuPy has been providing this function as an alias to the NumPy
+implementation, so it cannot be used in environments with NumPy
+v2 installed. If you rely on this function and you cannot modify
+the code to use {recommendation}, please downgrade NumPy to v1.26
+or earlier.
+'''
+
+    def find_common_type(*args, **kwds):
+        mesg = _template.format(
+            recommendation='`promote_types` or `result_type`'
+        )
+        raise RuntimeError(mesg)
+
+    def set_string_function(*args, **kwds):   # type: ignore [misc]
+        mesg = _template.format(recommendation='`np.set_printoptions`')
+        raise RuntimeError(mesg)
+
+    def get_array_wrap(*args, **kwds):       # type: ignore [no-redef]
+        mesg = _template.format(recommendation="<no replacement>")
+        raise RuntimeError(mesg)
+
+    def disp(*args, **kwds):   # type: ignore [misc]
+        mesg = _template.format(recommendation="your own print function")
+        raise RuntimeError(mesg)
+
+    def safe_eval(*args, **kwds):  # type: ignore [misc]
+        mesg = _template.format(recommendation="`ast.literal_eval`")
+        raise RuntimeError(mesg)
 
 
 def __getattr__(name):

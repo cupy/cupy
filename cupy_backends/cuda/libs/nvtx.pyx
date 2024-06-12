@@ -104,7 +104,7 @@ cpdef MarkC(message, uint32_t color=0):
         color (uint32): Color code for a marker.
     """
     cdef bytes b_message = message.encode()
-    if NVTX_VERSION != 1 and NVTX_VERSION != 2:
+    if NVTX_VERSION < 1:
         nvtxMarkA(<const char*>b_message)
         return
 
@@ -132,7 +132,7 @@ cpdef Mark(message, int id_color=-1):
         id_color (int): ID of color for a marker.
     """
     cdef bytes b_message = message.encode()
-    if id_color < 0 or (NVTX_VERSION != 1 and NVTX_VERSION != 2):
+    if id_color < 0 or NVTX_VERSION < 1:
         nvtxMarkA(<const char*>b_message)
         return
 
@@ -166,7 +166,7 @@ cpdef RangePushC(message, uint32_t color=0):
         color (uint32): ARGB color for a range.
     """
     cdef bytes b_message = message.encode()
-    if NVTX_VERSION != 1 and NVTX_VERSION != 2:
+    if NVTX_VERSION < 1:
         nvtxRangePushA(<const char*>b_message)
         return
 
@@ -208,7 +208,7 @@ cpdef RangePush(message, int id_color=-1):
         id_color (int): ID of color for a range.
     """
     cdef bytes b_message = message.encode()
-    if id_color < 0 or (NVTX_VERSION != 1 and NVTX_VERSION != 2):
+    if id_color < 0 or NVTX_VERSION < 1:
         nvtxRangePushA(<const char*>b_message)
         return
 
