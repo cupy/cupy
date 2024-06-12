@@ -74,6 +74,9 @@ class TestSolveTriangular(unittest.TestCase):
         self.check_shape((3, 3), (2,))
         self.check_shape((3, 3), (2, 2))
         self.check_shape((3, 3, 4), (3,))
+        self.check_shape((3, 3, 3), (3,))
+        self.check_shape((3, 3, 3), (2, 3))
+        self.check_shape((3, 3, 3), (3, 2))
 
     def check_infinite(self, a_shape, b_shape):
         for xp, sp in ((numpy, scipy), (cupy, cupyx.scipy)):
@@ -93,3 +96,45 @@ class TestSolveTriangular(unittest.TestCase):
             self.check_infinite((4, 4), (4,))
             self.check_infinite((5, 5), (5, 2))
             self.check_infinite((5, 5), (5, 5))
+
+    @testing.for_dtypes('fdFD')
+    def check_batched(self, a_shape, b_shape, dtype):
+        a_cpu = numpy.random.randint(1, 10, size=a_shape).astype(dtype)
+        b_cpu = numpy.random.randint(1, 10, size=b_shape).astype(dtype)
+        a_cpu = numpy.tril(a_cpu)
+
+        if self.lower is False:
+            a_dim = tuple(range(len(a_cpu.shape)))
+            a_dim = a_dim[:-2] + (a_dim[-1], a_dim[-2])
+            a_cpu = numpy.transpose(a_cpu, a_dim)
+        if self.unit_diagonal is True:
+            for i in range(a_cpu.shape[0]):
+                numpy.fill_diagonal(a_cpu[i], 1)
+
+        a_gpu = cupy.asarray(a_cpu)
+        b_gpu = cupy.asarray(b_cpu)
+        a_gpu_copy = a_gpu.copy()
+        b_gpu_copy = b_gpu.copy()
+
+        result_cpu = []
+        for i in range(a_cpu.shape[0]):
+            result_cpu_single = scipy.linalg.solve_triangular(
+                a_cpu[i], b_cpu[i], trans=self.trans, lower=self.lower,
+                unit_diagonal=self.unit_diagonal, overwrite_b=self.overwrite_b,
+                check_finite=self.check_finite)
+            result_cpu.append(result_cpu_single)
+        result_cpu = numpy.array(result_cpu)
+        result_gpu = cupyx.scipy.linalg.solve_triangular(
+            a_gpu, b_gpu, trans=self.trans, lower=self.lower,
+            unit_diagonal=self.unit_diagonal, overwrite_b=self.overwrite_b,
+            check_finite=self.check_finite)
+        assert result_cpu.dtype == result_gpu.dtype
+        cupy.testing.assert_allclose(result_cpu, result_gpu, atol=1e-3)
+        cupy.testing.assert_array_equal(a_gpu_copy, a_gpu)
+        if not self.overwrite_b:
+            cupy.testing.assert_array_equal(b_gpu_copy, b_gpu)
+
+    def test_solve_batched(self):
+        self.check_batched((4, 4, 4), (4, 4))
+        self.check_batched((5, 5, 5), (5, 5, 2))
+        self.check_batched((5, 5, 5), (5, 5, 5))

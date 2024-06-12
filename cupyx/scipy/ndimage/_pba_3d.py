@@ -121,7 +121,7 @@ def _get_encode3d_kernel(size_max, marker=-2147483648):
 
 def encode3d(arr, marker=-2147483648, bit_depth=32, size_max=1024):
     if arr.ndim != 3:
-        raise ValueError("only 3d arr suppported")
+        raise ValueError("only 3d arr supported")
     if bit_depth not in [32, 64]:
         raise ValueError("only bit_depth of 32 or 64 is supported")
     if size_max > 1024:

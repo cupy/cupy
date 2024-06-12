@@ -97,7 +97,7 @@ def get_fft_plan(a, shape=None, axes=None, value_type='C2C'):
         elif n > 3:
             raise ValueError('Only up to three axes is supported')
 
-    # Note that "shape" here refers to the shape along trasformed axes, not
+    # Note that "shape" here refers to the shape along transformed axes, not
     # the shape of the output array, and we need to convert it to the latter.
     # The result is as if "a=_cook_shape(a); return a.shape" is called.
     # Because of this, we need to use (possibly unsorted) axes.

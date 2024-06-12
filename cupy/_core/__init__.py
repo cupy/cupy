@@ -5,7 +5,7 @@ from cupy._core import fusion  # NOQA
 from cupy._core import internal  # NOQA
 
 
-# internal APIs for testing and developement
+# internal APIs for testing and development
 from cupy._core._accelerator import set_elementwise_accelerators  # NOQA
 from cupy._core._accelerator import set_reduction_accelerators  # NOQA
 from cupy._core._accelerator import set_routine_accelerators  # NOQA

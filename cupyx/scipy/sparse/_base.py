@@ -490,7 +490,7 @@ class spmatrix(object):
         """Sums the matrix elements over a given axis.
 
         Args:
-            axis (int or ``None``): Axis along which the sum is comuted.
+            axis (int or ``None``): Axis along which the sum is computed.
                 If it is ``None``, it computes the sum of all the elements.
                 Select from ``{None, 0, 1, -2, -1}``.
             dtype: The type of returned matrix. If it is not specified, type

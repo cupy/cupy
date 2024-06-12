@@ -410,7 +410,7 @@ def spsolve_triangular(A, b, lower=True, overwrite_A=False, overwrite_b=False,
         b (cupy.ndarray):
             Dense vector or matrix with dimension ``(M)`` or ``(M, K)``.
         lower (bool):
-            Whether ``A`` is a lower or upper trinagular matrix.
+            Whether ``A`` is a lower or upper triangular matrix.
             If True, it is lower triangular, otherwise, upper triangular.
         overwrite_A (bool):
             (not supported)

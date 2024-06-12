@@ -50,6 +50,9 @@ from cupy_backends.cuda cimport stream as _stream_module
 from cupy_backends.cuda.api cimport runtime
 
 
+NUMPY_1x = numpy.__version__ < '2'
+
+
 # If rop of cupy.ndarray is called, cupy's op is the last chance.
 # If op of cupy.ndarray is called and the `other` is cupy.ndarray, too,
 # it is safe to call cupy's op.
@@ -222,7 +225,8 @@ cdef class _ndarray_base:
         else:
             self.data = memptr
             bound = cupy._core._memory_range.get_bound(self)
-            self._index_32_bits = bound[1] - bound[0] <= (1 << 31)
+            max_diff = max(bound[1] - bound[0], self.size * itemsize)
+            self._index_32_bits = max_diff <= (1 << 31)
 
     cdef _init_fast(self, const shape_t& shape, dtype, bint c_order):
         """ For internal ndarray creation. """
@@ -2538,7 +2542,8 @@ cdef _ndarray_base _array_default(
             order = 'F'
         else:
             order = 'C'
-    a_cpu = numpy.array(obj, dtype=dtype, copy=False, order=order,
+    copy = False if NUMPY_1x else None
+    a_cpu = numpy.array(obj, dtype=dtype, copy=copy, order=order,
                         ndmin=ndmin)
     if a_cpu.dtype.char not in '?bhilqBHILQefdFD':
         raise ValueError('Unsupported dtype %s' % a_cpu.dtype)

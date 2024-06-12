@@ -299,6 +299,22 @@ cublasStatus_t cublasZtrsm(...) {
     return CUBLAS_STATUS_SUCCESS;
 }
 
+cublasStatus_t cublasStrsmBatched(...) {
+    return CUBLAS_STATUS_SUCCESS;
+}
+
+cublasStatus_t cublasDtrsmBatched(...) {
+    return CUBLAS_STATUS_SUCCESS;
+}
+
+cublasStatus_t cublasCtrsmBatched(...) {
+    return CUBLAS_STATUS_SUCCESS;
+}
+
+cublasStatus_t cublasZtrsmBatched(...) {
+    return CUBLAS_STATUS_SUCCESS;
+}
+
 cublasStatus_t cublasSsyrk(...) {
     return CUBLAS_STATUS_SUCCESS;
 }

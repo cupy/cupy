@@ -209,7 +209,7 @@ def generate_matrix(
             matrices. It must be broadcastable to shape :math:`(B..., K)`.
 
     Returns:
-        numpy.ndarray or cupy.ndarray: A random matrix that has specifiec
+        numpy.ndarray or cupy.ndarray: A random matrix that has specific
         singular values.
     """
 

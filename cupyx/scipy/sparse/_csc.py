@@ -262,7 +262,7 @@ class csc_matrix(_compressed._compressed_sparse_matrix):
     # TODO(unno): Implement tobsr
 
     def tocoo(self, copy=False):
-        """Converts the matrix to COOdinate format.
+        """Converts the matrix to COOrdinate format.
 
         Args:
             copy (bool): If ``False``, it shares data arrays as much as

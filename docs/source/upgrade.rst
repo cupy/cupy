@@ -350,7 +350,7 @@ Python 3.5 is no longer supported in CuPy v9.
 NCCL and cuDNN No Longer Included in Wheels
 -------------------------------------------
 
-NCCL and cuDNN shared libraires are no longer included in wheels (see `#4850 <https://github.com/cupy/cupy/issues/4850>`_ for discussions). 
+NCCL and cuDNN shared libraries are no longer included in wheels (see `#4850 <https://github.com/cupy/cupy/issues/4850>`_ for discussions). 
 You can manually install them after installing wheel if you don't have a previous installation; see :doc:`install` for details.
 
 cuTENSOR Enabled in Wheels

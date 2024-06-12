@@ -59,7 +59,7 @@ class TestInstallLibrary:
             for filename in filenames:
                 if filename in files:
                     return
-        pytest.fail('expected file cound not be found')
+        pytest.fail('expected file could not be found')
 
     @pytest.mark.parametrize('library', _libraries)
     def test_urls(self, library):

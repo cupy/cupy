@@ -381,3 +381,10 @@ class TestSelect(unittest.TestCase):
         choicelist = [a, b]
         with pytest.raises(TypeError):
             cupy.select(condlist, choicelist, [dtype(2)])
+
+    @testing.numpy_cupy_array_equal()
+    def test_indexing_overflows(self, xp):
+        a = xp.arange(2, dtype=xp.int32)
+        a = xp.lib.stride_tricks.as_strided(
+            a, shape=(2, 2 ** 32), strides=(4, 0))
+        return a[xp.array([1]), xp.array([1])]

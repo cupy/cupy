@@ -802,7 +802,7 @@ class TestGroupDelay:
 
 @testing.with_requires('scipy')
 class TestGammatone:
-    # Test erroneus input cases.
+    # Test erroneous input cases.
     def test_invalid_input(self):
         for scp in [cupyx.scipy, scipy]:
             # Cutoff frequency is <= 0 or >= fs / 2.

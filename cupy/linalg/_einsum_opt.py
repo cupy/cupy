@@ -283,7 +283,7 @@ def _update_other_results(results, best):
     Returns
     -------
     mod_results : list
-        The list of modifed results, updated with outcome of ``best`` contraction.  # NOQA
+        The list of modified results, updated with outcome of ``best`` contraction.  # NOQA
     """
 
     best_con = best[1]

@@ -2895,7 +2895,7 @@ RealType*           coords
             }
         }
 
-        if(!isInTri) {
+        if(!isInTri && nTri > 1) {
             // Find the nearest opposite triangle to the query point from
             // the nearest center found.
             TriOpp nearest = triOpp[encIdx[startingPos]];
@@ -2954,7 +2954,6 @@ RealType*           coords
                 off++;
             }
         }
-
 
         /**if(debug != NULL) {
             debug[3 * idx] = pos;

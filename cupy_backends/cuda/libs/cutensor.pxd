@@ -97,7 +97,7 @@ cpdef enum:
     STATUS_IO_ERROR = 21
 
     # cutensorComputeType_t
-    # (*) compute types added in versoin 1.2
+    # (*) compute types added in version 1.2
     COMPUTE_16F = 1     # NOQA, half
     COMPUTE_16BF = 1024  # NOQA, bfloat
     COMPUTE_TF32 = 4096  # NOQA, tensor-float-32
@@ -108,7 +108,7 @@ cpdef enum:
     COMPUTE_8I = 256   # NOQA, int8
     COMPUTE_32U = 128   # NOQA, uint32
     COMPUTE_32I = 512   # NOQA, int32
-    # (*) compute types below will be deprecated in the furture release.
+    # (*) compute types below will be deprecated in the future release.
     R_MIN_16F = 1    # NOQA, real as a half
     C_MIN_16F = 2    # NOQA, complex as a half
     R_MIN_32F = 4    # NOQA, real as a float
@@ -123,7 +123,7 @@ cpdef enum:
     R_MIN_TF32 = 2048  # NOQA, real as a tensorfloat32
     C_MIN_TF32 = 4096  # NOQA, complex as a tensorfloat32
 
-    # cutensorComputeDescriptor_t altenatives
+    # cutensorComputeDescriptor_t alternatives
     COMPUTE_DESC_16F = 1
     COMPUTE_DESC_16BF = 1024
     COMPUTE_DESC_TF32 = 4096

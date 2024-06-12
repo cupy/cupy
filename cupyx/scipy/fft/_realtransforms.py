@@ -35,13 +35,11 @@ import math
 import numbers
 import operator
 
-import numpy
-
 import cupy
 from cupy import _core
 from cupy.fft._fft import _cook_shape
 from cupyx.scipy.fft import _fft
-
+from cupy.exceptions import AxisError
 
 __all__ = ['dct', 'dctn', 'dst', 'dstn', 'idct', 'idctn', 'idst', 'idstn']
 
@@ -163,7 +161,7 @@ def _dct_or_dst_type2(
         The transformed array.
     """
     if axis < -x.ndim or axis >= x.ndim:
-        raise numpy.AxisError('axis out of range')
+        raise AxisError('axis out of range')
     if axis < 0:
         axis += x.ndim
     if n is not None and n < 1:
@@ -284,7 +282,7 @@ def _dct_or_dst_type3(
 
     """
     if axis < -x.ndim or axis >= x.ndim:
-        raise numpy.AxisError('axis out of range')
+        raise AxisError('axis out of range')
     if axis < 0:
         axis += x.ndim
     if n is not None and n < 1:

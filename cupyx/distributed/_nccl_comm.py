@@ -491,7 +491,7 @@ class _SparseNCCLCommunicator:
     @classmethod
     def _get_internal_arrays(cls, array):
         if sparse.isspmatrix_coo(array):
-            array.sum_duplicates()  # set it to cannonical form
+            array.sum_duplicates()  # set it to canonical form
             return (array.data, array.row, array.col)
         elif sparse.isspmatrix_csr(array) or sparse.isspmatrix_csc(array):
             return (array.data, array.indptr, array.indices)
@@ -667,7 +667,7 @@ class _SparseNCCLCommunicator:
         if comm.rank != root:
             arrays = [
                 cupy.empty(s, dtype=a.dtype) for s, a in zip(sizes, arrays)]
-        # TODO(ecastill): measure if its faster to just contatenate
+        # TODO(ecastill): measure if its faster to just concatenate
         # the arrays in a single one and send it
         nccl.groupStart()
         for a in arrays:

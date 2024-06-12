@@ -159,7 +159,7 @@ def ca_cfar(array, guard_cells, reference_cells, pfa=1e-3):
     reference_cells_x : int
         one-sided reference cell count in the first dimension.
     reference_cells_y : int
-        one-sided referenc cell count in the second dimension.
+        one-sided reference cell count in the second dimension.
     pfa : float
         Probability of false alarm.
     Returns

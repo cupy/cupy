@@ -115,7 +115,7 @@ def gmres(A, b, x0=None, tol=1e-5, restart=None, maxiter=None, M=None,
             ``callback_type``.
         callback_type (str): 'x' or 'pr_norm'. If 'x', the current solution
             vector is used as an argument of callback function. if 'pr_norm',
-            relative (preconditioned) residual norm is used as an arugment.
+            relative (preconditioned) residual norm is used as an argument.
         atol (float): Tolerance for convergence.
 
     Returns:
@@ -188,7 +188,7 @@ def gmres(A, b, x0=None, tol=1e-5, restart=None, maxiter=None, M=None,
                 V[:, j+1] = v
 
         # Note: The least-square solution to equation Hy = e is computed on CPU
-        # because it is faster if tha matrix size is small.
+        # because it is faster if the matrix size is small.
         ret = numpy.linalg.lstsq(cupy.asnumpy(H), e)
         y = cupy.array(ret[0])
         x += V @ y

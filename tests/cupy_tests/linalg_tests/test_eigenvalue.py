@@ -63,7 +63,7 @@ class TestEigenvalue:
         # NumPy, cuSOLVER, rocSOLVER all sort in ascending order,
         # so w's should be directly comparable. However, both cuSOLVER
         # and rocSOLVER pick a different convention for constructing
-        # eigenvectors, so v's are not directly comparible and we verify
+        # eigenvectors, so v's are not directly comparable and we verify
         # them through the eigen equation A*v=w*v.
         A = _get_hermitian(xp, a, self.UPLO)
         for i in range(a.shape[0]):
@@ -81,7 +81,7 @@ class TestEigenvalue:
         # NumPy, cuSOLVER, rocSOLVER all sort in ascending order,
         # so w's should be directly comparable. However, both cuSOLVER
         # and rocSOLVER pick a different convention for constructing
-        # eigenvectors, so v's are not directly comparible and we verify
+        # eigenvectors, so v's are not directly comparable and we verify
         # them through the eigen equation A*v=w*v.
         A = _get_hermitian(xp, a, self.UPLO)
         for i in range(a.shape[0]):

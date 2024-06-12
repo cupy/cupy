@@ -8,6 +8,7 @@ from libc.stdint cimport uint32_t
 import warnings
 
 import numpy
+from cupy.exceptions import AxisError
 
 from cupy._core.core cimport _ndarray_base
 
@@ -434,7 +435,7 @@ cpdef Py_ssize_t _normalize_axis_index(
 
     """
     if not (-ndim <= axis < ndim):
-        raise numpy.AxisError(axis, ndim)
+        raise AxisError(axis, ndim)
     if axis < 0:
         axis += ndim
     return axis

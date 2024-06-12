@@ -140,7 +140,7 @@ IF CUPY_HIP_VERSION > 0:
         cudaDevAttrMaxTexture3DWidth
         cudaDevAttrMaxTexture3DHeight
         cudaDevAttrMaxTexture3DDepth
-        # The following attributes do not exist in CUDA and cause segfualts
+        # The following attributes do not exist in CUDA and cause segfaults
         # if we try to access them
         # hipDeviceAttributeHdpMemFlushCntl
         # hipDeviceAttributeHdpRegFlushCntl

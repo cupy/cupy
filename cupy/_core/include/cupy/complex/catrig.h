@@ -462,7 +462,7 @@ __host__ __device__ inline complex<double> clog_for_large_values(complex<double>
    * Divide x and y by E, and then add 1 to the logarithm.  This depends
    * on E being larger than sqrt(2).
    * Dividing by E causes an insignificant loss of accuracy; however
-   * this method is still poor since it is uneccessarily slow.
+   * this method is still poor since it is unnecessarily slow.
    */
   if (ax > DBL_MAX / 2)
     return (complex<double>(log(hypot(x / m_e, y / m_e)) + 1, atan2(y, x)));

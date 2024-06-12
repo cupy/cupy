@@ -485,7 +485,7 @@ class TestSingleDeviceMemoryPool(unittest.TestCase):
         del p2
 
     def test_free_all_blocks_split(self):
-        # do not free splitted blocks
+        # do not free split blocks
         p = self.pool.malloc(self.unit * 4)
         del p
         head = self.pool.malloc(self.unit * 2)
@@ -1049,7 +1049,7 @@ class TestMallocAsync(unittest.TestCase):
             assert memptr.mem.stream_ref().ptr == s.ptr
 
     def test_stream3(self):
-        # Check: destory stream does not affect memory deallocation
+        # Check: destroy stream does not affect memory deallocation
         s = cupy.cuda.Stream()
         with s:
             memptr = memory.alloc(100)

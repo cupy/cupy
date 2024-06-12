@@ -327,7 +327,7 @@ class TestDiaMatrixSum(unittest.TestCase):
             HIP_version = driver.get_build_version()
             if HIP_version < 5_00_00000:
                 # internally a temporary CSC matrix is generated and thus
-                # casues problems (see test_csc.py)
+                # causes problems (see test_csc.py)
                 pytest.xfail('spmv is buggy (trans=True)')
 
     @testing.numpy_cupy_allclose(sp_name='sp')

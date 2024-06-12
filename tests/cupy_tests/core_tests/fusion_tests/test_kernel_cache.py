@@ -18,7 +18,7 @@ class CreateMock(object):
         return self.target(*args, **kwargs)
 
     def check_call_count(self, xp, count):
-        # TODO(asi1024): Uncomment after replace fusion implementaiton.
+        # TODO(asi1024): Uncomment after replace fusion implementation.
 
         # assert xp in (numpy, cupy)
         # assert isinstance(count, int)
