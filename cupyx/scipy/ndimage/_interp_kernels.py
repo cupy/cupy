@@ -501,7 +501,7 @@ def _get_map_kernel(ndim, large_int, mode, cval=0.0, order=1,
         coord_func=_get_coord_map,
         ndim=ndim,
         large_int=large_int,
-        yshape=None, # input image coordinates are not needed
+        yshape=None,  # input image coordinates are not needed
         mode=mode,
         cval=cval,
         order=order,
