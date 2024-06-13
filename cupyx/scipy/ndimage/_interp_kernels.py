@@ -231,7 +231,8 @@ def _generate_interp_custom(coord_func, ndim, large_int, yshape, mode, cval,
             transformation. See for example, `_get_coord_shift`.
         ndim (int): The number of dimensions.
         large_int (bool): If true use Py_ssize_t instead of int for indexing.
-        yshape (tuple): Shape of the output array. Can be None if not needed in the kernel.
+        yshape (tuple): Shape of the output array. Can be None if not needed
+            in the kernel.
         mode (str): Signal extension mode to use at the array boundaries
         cval (float): constant value used when `mode == 'constant'`.
         name (str): base name for the interpolation kernel
