@@ -55,11 +55,12 @@ cdef class _ThreadLocal:
     cdef void replace_base_stream(self, stream, int device_id) except*:
         assert device_id >= 0
         # should not replace base stream if there are any other streams
-        # pushed onto the stack. e.g. .use() should not be called inside "with" blocks
+        # pushed onto the stack. e.g. .use() should not be called inside
+        # "with" blocks
         if (len(self.current_stream_stack[device_id]) > 1):
-          raise RuntimeError(
-            'Calling .use() on a stream while using a stream context manager'
-            ' is no longer supported.')
+            raise RuntimeError(
+                'Calling .use() on a stream while using a stream context'
+                ' manager is no longer supported.')
         self.current_stream_stack[device_id][0] = stream
 
     cdef set_current_stream(self, stream):
