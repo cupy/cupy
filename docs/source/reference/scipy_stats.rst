@@ -14,6 +14,7 @@ Summary statistics
 
    trim_mean
    entropy
+   tmin
 
 
 Other statistical functionality

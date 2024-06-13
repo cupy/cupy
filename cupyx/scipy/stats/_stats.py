@@ -8,6 +8,7 @@ References
    York. 2000.
 """
 import cupy as cp
+from cupy._core import _routines_statistics as _statistics
 
 
 def trim_mean(a, proportiontocut, axis=0):
@@ -75,3 +76,87 @@ def trim_mean(a, proportiontocut, axis=0):
     sl = [slice(None)] * atmp.ndim
     sl[axis] = slice(lowercut, uppercut)
     return cp.mean(atmp[tuple(sl)], axis=axis)
+
+
+def tmin(a, lowerlimit=None, axis=0, inclusive=True, nan_policy='propagate'):
+    """Compute the trimmed minimum.
+
+    This function finds the miminum value of an array `a` along the
+    specified axis, but only considering values greater than a specified
+    lower limit.
+
+    Parameters
+    ----------
+    a : cupy.ndarray
+        Array of values.
+    lowerlimit : None or float, optional
+        Values in the input array less than the given limit will be ignored.
+        When lowerlimit is None, then all values are used. The default value
+        is None.
+    axis : int or None, optional
+        Axis along which to operate. Default is 0. If None, compute over the
+        whole array `a`.
+    inclusive : {True, False}, optional
+        This flag determines whether values exactly equal to the lower limit
+        are included.  The default value is True.
+    nan_policy : {'propagate', 'raise', 'omit'}, optional
+        Defines how to handle when input contains nan.
+        The following options are available (default is 'propagate'):
+
+          * 'propagate': returns nan
+          * 'raise': throws an error
+          * 'omit': performs the calculations ignoring nan values
+
+    Returns
+    -------
+    tmin : float, int or ndarray
+        Trimmed minimum.
+
+    Examples
+    --------
+    >>> import cupy as cp
+    >>> from cupyx.scipy import stats
+    >>> x = cp.arange(20)
+    >>> stats.tmin(x)
+    0
+
+    >>> stats.tmin(x, 13)
+    13
+
+    >>> stats.tmin(x, 13, inclusive=False)
+    14
+
+    """
+    if a.size == 0:
+        raise ValueError("No array values within given limits")
+    if axis is None:
+        a = a.ravel()
+        axis = 0
+    if a.ndim == 0:
+        a = cp.atleast_1d(a).astype(a.dtype, copy=False)
+
+    policies = ['propagate', 'raise', 'omit']
+
+    if nan_policy not in policies:
+        raise ValueError("nan_policy must be one of {%s}" %
+                         ', '.join("'%s'" % s for s in policies))
+
+    lowerlimit = cp.atleast_1d(-cp.inf if lowerlimit is None else lowerlimit)
+    lowerlimit = lowerlimit.astype(
+        cp.float16, copy=False) if a.dtype == cp.float16 else lowerlimit
+
+    inf = cp.iinfo(a.dtype).max if cp.dtype(a.dtype).kind in 'iu' else cp.inf
+
+    if nan_policy == 'raise':
+        if cp.isnan(cp.sum(a)):
+            raise ValueError("The input contains nan values")
+
+    if lowerlimit == -cp.inf and nan_policy == 'propagate':
+        return cp.amin(a, axis=axis)
+    max_element = cp.max(a, keepdims=True)
+    if (max_element > lowerlimit or (cp.allclose(max_element, lowerlimit)
+                                     and inclusive) or cp.isnan(cp.sum(a))):
+        return _statistics._tmin(a.astype(cp.float64, copy=False), lowerlimit,
+                                 inclusive, nan_policy == 'propagate',
+                                 inf, axis=axis).astype(a.dtype, copy=False)
+    raise ValueError("No array values within given limits")

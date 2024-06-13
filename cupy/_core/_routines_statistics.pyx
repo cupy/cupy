@@ -607,6 +607,15 @@ __device__ double my_norm(const complex<double>& x) { return norm(x); }
 '''
 
 
+cdef _tmin_preamble = '''
+template <typename S>
+__device__ S my_tmin_propagate(S a, S b){
+if (a!=a) return a;
+if (b!=b) return b;
+return min(a,b);
+}
+'''
+
 cdef _var_core_float16 = ReductionKernel(
     'S x, T mean, float32 alpha', 'float16 out',
     'my_norm(x - mean)',
@@ -633,6 +642,77 @@ cdef _var_core_out = ReductionKernel(
     'my_norm(x - mean)',
     'a + b', 'out = alpha * a', '0', 'cupy_var_core_out',
     preamble=_norm_preamble)
+
+
+cdef _tmin_kernel_omit_inclusive = ReductionKernel(
+    'S x1 , T limit , S infinity ',
+    'float64 out',
+    '(limit-x1) <= 1e-4  ? x1 : infinity',
+    'min(a,b)',
+    'out=a',
+    'CUDART_INF',
+    name='tmin',
+    preamble=_tmin_preamble
+
+
+)
+
+cdef _tmin_kernel_propagate_inclusive = ReductionKernel(
+    'S x1 , T limit , S infinity',
+    'float64 out',
+    '(limit-x1) <= 1e-4 || (limit-x1)!=(limit-x1) ? x1 : infinity',
+    'my_tmin_propagate(a,b)',
+    'out=a',
+    'CUDART_INF',
+    name='tmin',
+    preamble=_tmin_preamble
+
+
+)
+cdef _tmin_kernel_omit_exclusive = ReductionKernel(
+    'S x1 , T limit , S infinity',
+    'float64 out',
+    '(limit-x1)<0 ? x1 : infinity',
+    'min(a,b)',
+    'out=a',
+    'CUDART_INF',
+    name='tmin',
+    preamble=_tmin_preamble
+
+
+)
+
+cdef _tmin_kernel_propagate_exclusive = ReductionKernel(
+    'S x1 , T limit , S infinity ',
+    'float64 out',
+    '(limit-x1)<0 || x1!=x1 ? x1 :infinity',
+    'my_tmin_propagate(a,b)',
+    'out=a',
+    'CUDART_INF',
+    name='tmin',
+    preamble=_tmin_preamble
+
+
+)
+
+
+cpdef _ndarray_base _tmin(
+        _ndarray_base a, limit, inclusive, propagate_nan, infinity, axis):
+
+    if inclusive:
+        if propagate_nan:
+            out = _tmin_kernel_propagate_inclusive(
+                a, limit, infinity, axis=axis)
+        else:
+            out = _tmin_kernel_omit_inclusive(a, limit, infinity, axis=axis)
+    else:
+        if propagate_nan:
+            out = _tmin_kernel_propagate_exclusive(
+                a, limit, infinity, axis=axis)
+        else:
+            out = _tmin_kernel_omit_exclusive(a, limit, infinity, axis=axis)
+
+    return out
 
 
 # TODO(okuta) needs cast
@@ -701,7 +781,6 @@ cpdef _ndarray_base _nanvar(_ndarray_base a, axis, dtype, out, ddof, keepdims):
 
     _count = _count_non_nan(a, axis=axis, keepdims=True)
     arrsum = _math._nansum(a, axis=axis, dtype=dtype, out=None, keepdims=True)
-
     if out is None:
         if a.dtype == cupy.complex64 or dtype == cupy.complex64:
             nanvar_core = _nanvar_core_complex64
