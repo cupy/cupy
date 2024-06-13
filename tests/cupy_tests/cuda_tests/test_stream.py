@@ -197,6 +197,17 @@ class TestStream:
         assert cuda.get_current_stream() == cuda.Stream.null
 
     @restore_stream()
+    def test_mix_use_context_reset(self):
+        # See cupy/cupy#8377
+        s1 = cuda.Stream()
+        s2 = cuda.Stream()
+        s1.use()
+        assert cuda.get_current_stream() == s1
+        with s2:
+            assert cuda.get_current_stream() == s2
+        assert cuda.get_current_stream() == s1
+
+    @restore_stream()
     def test_stream_thread(self):
         s1 = None
 
