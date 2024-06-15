@@ -858,7 +858,7 @@ def _min_or_max_filter(input, size, ftprnt, structure, output, mode, cval,
         fltr = minimum_filter1d if func == 'min' else maximum_filter1d
         return _filters_core._run_1d_filters(
             [fltr if size > 1 else None for size in sizes],
-            input, axes, sizes, output, modes, cval, origin)
+            input, axes, sizes, output, modes, cval, origins)
 
     if structure is not None and structure.ndim != input.ndim:
         raise RuntimeError('structure array has incorrect shape')
