@@ -410,6 +410,8 @@ def gaussian_filter(input, sigma, order=0, output=None, mode="reflect",
     # omit any axes with sigma ~= 0.0
     params = [(axes[ii], sigmas[ii], orders[ii], modes[ii], radiuses[ii])
               for ii in range(num_axes) if sigmas[ii] > 1e-15]
+    # update arguments in case any were filtered out due to sigma ~= 0.0
+    axes, sigmas, orders, modes, radiuses = zip(*params)
 
     def get(param):
         _, sigma, order, _, radius = param
