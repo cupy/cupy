@@ -401,6 +401,14 @@ def gaussian_filter(input, sigma, order=0, output=None, mode="reflect",
     axes = _util._check_axes(axes, input.ndim)
     num_axes = len(axes)
     sigmas = _util._fix_sequence_arg(sigma, num_axes, 'sigma', float)
+    sigma_threshold = 1e-15
+    if num_axes == 0 or all(s < sigma_threshold for s in sigmas):
+        if output is None:
+            return input.copy()
+        else:
+            output = _util._get_output(output, input)
+            output[:] = input
+            return output
     orders = _util._fix_sequence_arg(order, num_axes, 'order', int)
     modes = _util._fix_sequence_arg(mode, num_axes, 'mode', str)
     radiuses = _util._fix_sequence_arg(radius, num_axes, 'radius')
