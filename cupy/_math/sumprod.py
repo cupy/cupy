@@ -516,7 +516,7 @@ def ediff1d(arr, to_end=None, to_begin=None):
     Args:
         arr (cupy.ndarray): Input array.
         to_end (cupy.ndarray, optional): Numbers to append at the end
-            of the returend differences.
+            of the returned differences.
         to_begin (cupy.ndarray, optional): Numbers to prepend at the
             beginning of the returned differences.
 
@@ -563,7 +563,7 @@ def ediff1d(arr, to_end=None, to_begin=None):
         to_end = to_end.ravel()
         l_end = len(to_end)
 
-    # calulating using in place operation
+    # calculating using in place operation
     l_diff = max(len(arr) - 1, 0)
     result = cupy.empty(l_diff + l_begin + l_end, dtype=arr.dtype)
     # Cupy does not support subclassing a ndarray

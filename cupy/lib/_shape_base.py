@@ -1,4 +1,8 @@
-from numpy.lib import index_tricks
+import numpy
+if numpy.__version__ < '2':
+    from numpy.lib import index_tricks
+else:
+    import numpy.lib._index_tricks_impl as index_tricks  # type: ignore[no-redef]  # NOQA
 
 import cupy
 from cupy._core import internal
@@ -76,8 +80,8 @@ def _make_along_axis_idx(arr_shape, indices, axis):
     dest_dims = list(range(axis)) + [None] + \
         list(range(axis + 1, indices.ndim))
 
-    # build a fancy index, consisting of orthogonal aranges, with the
-    # requested index inserted at the right location
+    # build a fancy index, consisting of orthogonal cupy.arange calls,
+    # with the requested index inserted at the right location
     fancy_index = []
     for dim, n in zip(dest_dims, arr_shape):
         if dim is None:

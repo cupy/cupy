@@ -982,14 +982,14 @@ class TestIIRNotch:
 
     @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_ba_output(self, xp, scp):
-        # Compare coeficients with Matlab ones
+        # Compare coefficients with Matlab ones
         # for the equivalent input:
         b, a = scp.signal.iirnotch(0.06, 30)
         return b, a
 
     @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_frequency_response(self, xp, scp):
-        # Get filter coeficients
+        # Get filter coefficients
         b, a = scp.signal.iirnotch(0.3, 30)
         return b, a
 
@@ -1005,7 +1005,7 @@ class TestIIRNotch:
 
     @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_fs_param(self, xp, scp):
-        # Get filter coeficients
+        # Get filter coefficients
         b, a = scp.signal.iirnotch(1500, 30, fs=10000)
         return b, a
 
@@ -1015,14 +1015,14 @@ class TestIIRPeak:
 
     @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_ba_output(self, xp, scp):
-        # Compare coeficients with Matlab ones
+        # Compare coefficients with Matlab ones
         # for the equivalent input:
         b, a = scp.signal.iirpeak(0.06, 30)
         return b, a
 
     @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_frequency_response(self, xp, scp):
-        # Get filter coeficients
+        # Get filter coefficients
         b, a = scp.signal.iirpeak(0.3, 30)
         return b, a
 
@@ -1038,7 +1038,7 @@ class TestIIRPeak:
 
     @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_fs_param(self, xp, scp):
-        # Get filter coeficients
+        # Get filter coefficients
         b, a = scp.signal.iirpeak(1200, 30, fs=8000)
         return b, a
 

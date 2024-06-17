@@ -1,8 +1,7 @@
 import unittest
 
-import numpy
-
 import cupy
+from cupy.exceptions import AxisError
 from cupy import testing
 from cupy_tests.core_tests.fusion_tests import fusion_utils
 
@@ -17,11 +16,11 @@ class TestFusionReductionAxis(unittest.TestCase):
         x = testing.shaped_random(self.shape, xp, 'int64', scale=10, seed=0)
         return (x,), {}
 
-    @fusion_utils.check_fusion(accept_error=numpy.AxisError)
+    @fusion_utils.check_fusion(accept_error=AxisError)
     def test_sum_axis(self, xp):
         return lambda x: cupy.sum(x, self.axis)
 
-    @fusion_utils.check_fusion(accept_error=numpy.AxisError)
+    @fusion_utils.check_fusion(accept_error=AxisError)
     def test_sum_kwargs_axis(self, xp):
         return lambda x: cupy.sum(x, axis=self.axis)
 
@@ -40,11 +39,11 @@ class TestFusionReductionMultiAxis(unittest.TestCase):
         x = testing.shaped_random(self.shape, xp, 'int64', scale=10, seed=0)
         return (x,), {}
 
-    @fusion_utils.check_fusion(accept_error=(ValueError, numpy.AxisError))
+    @fusion_utils.check_fusion(accept_error=(ValueError, AxisError))
     def test_sum_axis(self, xp):
         return lambda x: cupy.sum(x, self.axis)
 
-    @fusion_utils.check_fusion(accept_error=(ValueError, numpy.AxisError))
+    @fusion_utils.check_fusion(accept_error=(ValueError, AxisError))
     def test_sum_kwargs_axis(self, xp):
         return lambda x: cupy.sum(x, axis=self.axis)
 
@@ -120,7 +119,7 @@ class TestFusionReductionAndElementwise(unittest.TestCase):
     def test_premap_postmap(self, xp):
         return lambda x, y: xp.sum(xp.sqrt(x) + y, self.axis) * 2 + y
 
-    # TODO(asi1024): Uncomment after replace fusion implementaiton.
+    # TODO(asi1024): Uncomment after replace fusion implementation.
     # @fusion_utils.check_fusion()
     # def test_premap_inplace(self, xp):
     #     def impl(x, y):

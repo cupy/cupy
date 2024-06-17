@@ -1310,7 +1310,7 @@ class TestLOBPCGForDiagInput:
         X = testing.shaped_random((n, m), xp=xp, dtype=xp.dtype(self.X_dtype),
                                   seed=1234)
 
-        # Require tht returned eigenvectors be in the orthogonal
+        # Require that returned eigenvectors be in the orthogonal
         # complement of the first few standard basis vectors
         # (Cannot be sparse array)
         m_excluded = 3

@@ -70,7 +70,7 @@ def _from_dict(d: Dict[str, Any], ctx: Context) -> Feature:
     f.libraries = d['libraries']
     f.static_libraries = d.get('static_libraries', [])
 
-    # Note: the followings are renamed
+    # Note: the following are renamed
     f.modules = d['file']
     f.includes = d['include']
     if 'check_method' in d:
@@ -82,7 +82,7 @@ def _from_dict(d: Dict[str, Any], ctx: Context) -> Feature:
 
 
 # The value of the key 'file' is a list that contains extension names
-# or tuples of an extension name and a list of other souces files
+# or tuples of an extension name and a list of other sources files
 # required to build the extension such as .cpp files and .cu files.
 #
 #   <extension name> | (<extension name>, a list of <other source>)

@@ -19,7 +19,7 @@ def skip_forward_backward(request):
 
 
 def nd_planning_states(states=[True, False], name='enable_nd'):
-    """Decorator for parameterized tests with and wihout nd planning
+    """Decorator for parameterized tests with and without nd planning
 
     Tests are repeated with config.enable_nd_planning set to True and False
 

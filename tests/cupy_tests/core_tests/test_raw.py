@@ -1266,7 +1266,7 @@ class TestRawPicklable(unittest.TestCase):
         # run another process to check the pickle
         s = subprocess.run([sys.executable, 'TestRawPicklable.py'] + test_args,
                            cwd=self.temp_dir)
-        s.check_returncode()  # raise if unsuccess
+        s.check_returncode()  # raise if unsuccessful
 
 
 # a slightly more realistic kernel involving std utilities
