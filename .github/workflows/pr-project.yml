@@ -17,37 +17,19 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - name: Generate Token
-        uses: tibdex/github-app-token@b62528385c34dbc9f38e5f4225ac829252d1ea92  # v1.8.0
+        uses: actions/create-github-app-token@v1
         id: token
         with:
-          app_id: 349488
-          private_key: ${{ secrets.GH_APP_PROJECT_AUTOMATION_PEM }}
+          app-id: 349488
+          private-key: ${{ secrets.GH_APP_PROJECT_AUTOMATION_PEM }}
 
       # Get the pull-request number.
       - name: Download artifact
-        uses: actions/github-script@v6
+        uses: actions/download-artifact@v4
         with:
-          script: |
-            const workflow_run_id = ${{ github.event.workflow_run.id }};
-            core.notice(`Triggered by: https://github.com/cupy/cupy/actions/runs/${workflow_run_id}`);
-
-            var artifacts = await github.rest.actions.listWorkflowRunArtifacts({
-               owner: context.repo.owner,
-               repo: context.repo.repo,
-               run_id: workflow_run_id,
-            });
-            var matchArtifact = artifacts.data.artifacts.filter((artifact) => {
-              return artifact.name == "PULL_REQUEST_NUMBER"
-            })[0];
-            var download = await github.rest.actions.downloadArtifact({
-               owner: context.repo.owner,
-               repo: context.repo.repo,
-               artifact_id: matchArtifact.id,
-               archive_format: 'zip',
-            });
-            var fs = require('fs');
-            fs.writeFileSync('${{github.workspace}}/PULL_REQUEST_NUMBER.zip', Buffer.from(download.data));
-      - run: unzip PULL_REQUEST_NUMBER.zip
+          name: PULL_REQUEST_NUMBER
+          github-token: ${{ steps.token.outputs.token }}
+          run-id: ${{ github.event.workflow_run.id }}
 
       - name: Update Status
         shell: /usr/bin/bash -uex "{0}"
@@ -55,7 +37,7 @@ jobs:
           GH_TOKEN: ${{ steps.token.outputs.token }}
         run: |
           PULL_REQUEST="$(cat 'PULL_REQUEST_NUMBER')"
-          echo "::notice::Pull-Request: #${PULL_REQUEST}"
+          echo "::notice::Pull-Request: #${PULL_REQUEST} (triggered by https://github.com/cupy/cupy/actions/runs/${{ github.event.workflow_run.id }})"
 
           # https://github.com/orgs/cupy/projects/4
           gh api graphql -F "pull_request=${PULL_REQUEST}" -f query='
@@ -114,11 +96,3 @@ jobs:
               }
             }
           '
-
-      - name: Revoke Token
-        uses: actions/github-script@v6
-        if: always() && steps.token.outcome == 'success'
-        with:
-          github-token: ${{ steps.token.outputs.token }}
-          script: |
-            await github.rest.apps.revokeInstallationAccessToken();
