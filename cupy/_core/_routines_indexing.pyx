@@ -751,7 +751,10 @@ cpdef _prepare_mask_indexing_single(
         raise IndexError('too many indices for array')
 
     mask = _manipulation.broadcast_to(mask, a_shape)
-    if mask.size <= 2 ** 31 - 1:
+
+    if mask.size == 0:
+        return mask, mask, masked_shape
+    elif mask.size <= 2 ** 31 - 1:
         mask_type = numpy.int32
     else:
         mask_type = numpy.int64
@@ -1022,6 +1025,8 @@ cdef _scatter_op(_ndarray_base a, slices, value, op):
             if y.data.ptr == x.data.ptr:
                 return  # Skip since x and y are the same array
             elif y._c_contiguous and x.dtype == y.dtype:
+                if not y._writeable:
+                    raise ValueError('assignment destination is read-only')
                 y.data.copy_from_device_async(x.data, x.nbytes)
                 return
         elementwise_copy(x, y)
@@ -1088,6 +1093,7 @@ cdef _ndarray_base _diagonal(
         a.shape[:-2] + (diag_size,),
         a.strides[:-2] + (a.strides[-1] + a.strides[-2],),
         True, True)
+    ret._writeable = False
     return ret
 
 
