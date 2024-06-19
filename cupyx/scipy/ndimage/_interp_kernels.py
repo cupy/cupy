@@ -203,21 +203,20 @@ def _get_coord_affine(ndim, nprepad=0):
     return ops
 
 
-def _unravel_loop_index(shape, uint_t='unsigned int'):
+def _unravel_loop_index(ndim, uint_t='unsigned int'):
     """
     declare a multi-index array in_coord and unravel the 1D index, i into it.
     This code assumes that the array is a C-ordered array.
     """
-    ndim = len(shape)
     code = [f'''
         {uint_t} in_coord[{ndim}];
         {uint_t} s, t, idx = i;''']
     for j in range(ndim - 1, 0, -1):
-        code.append(f'''
-        s = {shape[j]};
-        t = idx / s;
-        in_coord[{j}] = idx - t * s;
-        idx = t;''')
+        code.append(f'''        
+            s = yshape[{j}];
+            t = idx / s;
+            in_coord[{j}] = idx - t * s;
+            idx = t;''')
     code.append('''
         in_coord[0] = idx;''')
     return '\n'.join(code)
@@ -232,7 +231,6 @@ def _generate_interp_custom(coord_func, ndim, large_int, yshape, mode, cval,
             transformation. See for example, `_get_coord_shift`.
         ndim (int): The number of dimensions.
         large_int (bool): If true use Py_ssize_t instead of int for indexing.
-        yshape (tuple): Shape of the output array.
         mode (str): Signal extension mode to use at the array boundaries
         cval (float): constant value used when `mode == 'constant'`.
         name (str): base name for the interpolation kernel
@@ -266,7 +264,7 @@ def _generate_interp_custom(coord_func, ndim, large_int, yshape, mode, cval,
 
     if not omit_in_coord:
         # create in_coords array to store the unraveled indices
-        ops.append(_unravel_loop_index(yshape, uint_t))
+        ops.append(_unravel_loop_index(ndim, uint_t))
 
     # compute the transformed (target) coordinates, c_j
     ops = ops + coord_func(ndim, nprepad)
@@ -559,13 +557,13 @@ def _get_zoom_shift_kernel(ndim, large_int, yshape, mode, cval=0.0, order=1,
 @cupy._util.memoize(for_each_device=True)
 def _get_zoom_kernel(ndim, large_int, yshape, mode, cval=0.0, order=1,
                      integer_output=False, grid_mode=False, nprepad=0):
-    in_params = 'raw X x, raw W zoom'
+    in_params = 'raw X x, raw W zoom, raw int32 yshape'
     out_params = 'Y y'
     operation, name = _generate_interp_custom(
         coord_func=_get_coord_zoom_grid if grid_mode else _get_coord_zoom,
         ndim=ndim,
         large_int=large_int,
-        yshape=yshape,
+        yshape=tuple([1]*ndim),  # yshape is not used in the coord_func
         mode=mode,
         cval=cval,
         order=order,
