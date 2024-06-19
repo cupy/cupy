@@ -25,8 +25,9 @@ def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
             :class:`cupyx.scipy.sparse.linalg.LinearOperator`.
         k (int): The number of eigenvalues and eigenvectors to compute. Must be
             ``1 <= k < n``.
-        which (str): 'LM' or 'LA'. 'LM': finds ``k`` largest (in magnitude)
-            eigenvalues. 'LA': finds ``k`` largest (algebraic) eigenvalues.
+        which (str): 'LM' or 'LA' or 'SA'.
+            'LM': finds ``k`` largest (in magnitude) eigenvalues.
+            'LA': finds ``k`` largest (algebraic) eigenvalues.
             'SA': finds ``k`` smallest (algebraic) eigenvalues.
 
         v0 (ndarray): Starting vector for iteration. If ``None``, a random
