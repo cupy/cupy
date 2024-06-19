@@ -212,7 +212,7 @@ def _unravel_loop_index(ndim, uint_t='unsigned int'):
         {uint_t} in_coord[{ndim}];
         {uint_t} s, t, idx = i;''']
     for j in range(ndim - 1, 0, -1):
-        code.append(f'''        
+        code.append(f'''
             s = yshape[{j}];
             t = idx / s;
             in_coord[{j}] = idx - t * s;
@@ -487,7 +487,7 @@ def _generate_interp_custom(coord_func, ndim, large_int, yshape, mode, cval,
 
 
 @cupy._util.memoize(for_each_device=True)
-def _get_map_kernel(ndim, large_int, yshape, mode, cval=0.0, order=1,
+def _get_map_kernel(ndim, large_int, mode, cval=0.0, order=1,
                     integer_output=False, nprepad=0):
     in_params = 'raw X x, raw W coords'
     out_params = 'Y y'
@@ -495,7 +495,6 @@ def _get_map_kernel(ndim, large_int, yshape, mode, cval=0.0, order=1,
         coord_func=_get_coord_map,
         ndim=ndim,
         large_int=large_int,
-        yshape=yshape,
         mode=mode,
         cval=cval,
         order=order,
@@ -509,15 +508,14 @@ def _get_map_kernel(ndim, large_int, yshape, mode, cval=0.0, order=1,
 
 
 @cupy._util.memoize(for_each_device=True)
-def _get_shift_kernel(ndim, large_int, yshape, mode, cval=0.0, order=1,
+def _get_shift_kernel(ndim, large_int, mode, cval=0.0, order=1,
                       integer_output=False, nprepad=0):
-    in_params = 'raw X x, raw W shift'
+    in_params = 'raw X x, raw W shift, raw int32 yshape'
     out_params = 'Y y'
     operation, name = _generate_interp_custom(
         coord_func=_get_coord_shift,
         ndim=ndim,
         large_int=large_int,
-        yshape=yshape,
         mode=mode,
         cval=cval,
         order=order,
@@ -530,9 +528,9 @@ def _get_shift_kernel(ndim, large_int, yshape, mode, cval=0.0, order=1,
 
 
 @cupy._util.memoize(for_each_device=True)
-def _get_zoom_shift_kernel(ndim, large_int, yshape, mode, cval=0.0, order=1,
+def _get_zoom_shift_kernel(ndim, large_int, mode, cval=0.0, order=1,
                            integer_output=False, grid_mode=False, nprepad=0):
-    in_params = 'raw X x, raw W shift, raw W zoom'
+    in_params = 'raw X x, raw W shift, raw W zoom, raw int32 yshape'
     out_params = 'Y y'
     if grid_mode:
         zoom_shift_func = _get_coord_zoom_and_shift_grid
@@ -542,7 +540,6 @@ def _get_zoom_shift_kernel(ndim, large_int, yshape, mode, cval=0.0, order=1,
         coord_func=zoom_shift_func,
         ndim=ndim,
         large_int=large_int,
-        yshape=yshape,
         mode=mode,
         cval=cval,
         order=order,
@@ -555,7 +552,7 @@ def _get_zoom_shift_kernel(ndim, large_int, yshape, mode, cval=0.0, order=1,
 
 
 @cupy._util.memoize(for_each_device=True)
-def _get_zoom_kernel(ndim, large_int, yshape, mode, cval=0.0, order=1,
+def _get_zoom_kernel(ndim, large_int, mode, cval=0.0, order=1,
                      integer_output=False, grid_mode=False, nprepad=0):
     in_params = 'raw X x, raw W zoom, raw int32 yshape'
     out_params = 'Y y'
@@ -563,7 +560,6 @@ def _get_zoom_kernel(ndim, large_int, yshape, mode, cval=0.0, order=1,
         coord_func=_get_coord_zoom_grid if grid_mode else _get_coord_zoom,
         ndim=ndim,
         large_int=large_int,
-        yshape=tuple([1]*ndim),  # yshape is not used in the coord_func
         mode=mode,
         cval=cval,
         order=order,
@@ -576,15 +572,14 @@ def _get_zoom_kernel(ndim, large_int, yshape, mode, cval=0.0, order=1,
 
 
 @cupy._util.memoize(for_each_device=True)
-def _get_affine_kernel(ndim, large_int, yshape, mode, cval=0.0, order=1,
+def _get_affine_kernel(ndim, large_int, mode, cval=0.0, order=1,
                        integer_output=False, nprepad=0):
-    in_params = 'raw X x, raw W mat'
+    in_params = 'raw X x, raw W mat, raw int32 yshape'
     out_params = 'Y y'
     operation, name = _generate_interp_custom(
         coord_func=_get_coord_affine,
         ndim=ndim,
         large_int=large_int,
-        yshape=yshape,
         mode=mode,
         cval=cval,
         order=order,
