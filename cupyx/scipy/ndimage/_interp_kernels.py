@@ -223,8 +223,7 @@ def _unravel_loop_index(ndim, uint_t='unsigned int'):
 
 
 def _generate_interp_custom(coord_func, ndim, large_int, yshape, mode, cval,
-                            order, name='', integer_output=False, nprepad=0,
-                            omit_in_coord=False):
+                            order, name='', integer_output=False, nprepad=0):
     """
     Args:
         coord_func (function): generates code to do the coordinate
@@ -262,7 +261,7 @@ def _generate_interp_custom(coord_func, ndim, large_int, yshape, mode, cval,
     for j in range(ndim - 1, 0, -1):
         ops.append(f'const {uint_t} sx_{j - 1} = sx_{j} * xsize_{j};')
 
-    if not omit_in_coord:
+    if yshape is not None:
         # create in_coords array to store the unraveled indices
         ops.append(_unravel_loop_index(ndim, uint_t))
 
@@ -478,9 +477,13 @@ def _generate_interp_custom(coord_func, ndim, large_int, yshape, mode, cval,
     operation = '\n'.join(ops)
 
     mode_str = mode.replace('-', '_')  # avoid hyphen in kernel name
-    name = 'cupyx_scipy_ndimage_interpolate_{}_order{}_{}_{}d_y{}'.format(
-        name, order, mode_str, ndim, '_'.join([f'{j}' for j in yshape]),
+
+    name = 'cupyx_scipy_ndimage_interpolate_{}_order{}_{}_{}d'.format(
+        name, order, mode_str, ndim,
     )
+
+    if yshape is not None:
+        name += '_y'+'_'.join([f'{j}' for j in yshape])
     if uint_t == 'size_t':
         name += '_i64'
     return operation, name
@@ -501,7 +504,6 @@ def _get_map_kernel(ndim, large_int, mode, cval=0.0, order=1,
         name='map',
         integer_output=integer_output,
         nprepad=nprepad,
-        omit_in_coord=True,  # input image coordinates are not needed
     )
     return cupy.ElementwiseKernel(in_params, out_params, operation, name,
                                   preamble=math_constants_preamble)
