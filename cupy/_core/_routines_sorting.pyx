@@ -3,6 +3,7 @@ import string
 import numpy
 
 import cupy
+from cupy.exceptions import AxisError
 from cupy._core._scalar import get_typename as _get_typename
 from cupy._core._ufuncs import elementwise_copy
 import cupy._core.core as core
@@ -25,8 +26,8 @@ cdef _ndarray_sort(_ndarray_base self, int axis):
                            'reinstall CuPy after uninstalling it.')
 
     if ndim == 0:
-        raise numpy.AxisError('Sorting arrays with the rank of zero is not '
-                              'supported')  # as numpy.sort() raises
+        raise AxisError('Sorting arrays with the rank of zero is not '
+                        'supported')  # as numpy.sort() raises
 
     # TODO(takagi): Support sorting views
     if not self._c_contiguous:
@@ -128,8 +129,8 @@ cdef _ndarray_partition(_ndarray_base self, kth, int axis):
     cdef _ndarray_base data
 
     if ndim == 0:
-        raise numpy.AxisError('Sorting arrays with the rank of zero is not '
-                              'supported')
+        raise AxisError('Sorting arrays with the rank of zero is not '
+                        'supported')
 
     if not self._c_contiguous:
         raise NotImplementedError('Sorting non-contiguous array is not '

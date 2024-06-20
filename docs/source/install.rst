@@ -23,9 +23,9 @@ Requirements
 Python Dependencies
 ~~~~~~~~~~~~~~~~~~~
 
-NumPy/SciPy-compatible API in CuPy v13 is based on NumPy 1.26 and SciPy 1.11, and has been tested against the following versions:
+NumPy/SciPy-compatible API in CuPy v14 is based on NumPy 2.0 and SciPy 1.13, and has been tested against the following versions:
 
-* `NumPy <https://numpy.org/>`_: v1.22 / v1.23 / v1.24 / v1.25 / v1.26
+* `NumPy <https://numpy.org/>`_: v1.22 / v1.23 / v1.24 / v1.25 / v1.26 / v2.0
 
 * `SciPy <https://scipy.org/>`_ (*optional*): v1.7 / v1.8 / v1.9 / v1.10 / v1.11
 
@@ -62,7 +62,7 @@ Part of the CUDA features in CuPy will be activated only when the corresponding 
 
     * The library to accelerate deep neural network computations.
 
-* `cuSPARSELt <https://docs.nvidia.com/cuda/cusparselt/>`_: v0.2.0
+* `cuSPARSELt <https://docs.nvidia.com/cuda/cusparselt/>`_: v0.6.0 / v0.6.1
 
     * The library to accelerate sparse matrix-matrix multiplication.
 
