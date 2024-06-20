@@ -375,7 +375,7 @@
   rocm: null
   nccl: "2.20"
   cutensor: "2.0"
-  cusparselt: "0.2.0"
+  cusparselt: "0.6.1"
   cudnn: "8.8"
   python: "3.12"
   numpy: "1.26"
