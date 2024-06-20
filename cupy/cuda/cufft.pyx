@@ -3,14 +3,61 @@ from cpython.mem cimport PyMem_Malloc, PyMem_Free
 from libc.string cimport memset as c_memset
 from libcpp cimport vector
 
-import numpy
+from cupy_backends.cuda._softlink cimport SoftLink
+
+import sys as _sys
 import threading
+
+import numpy
 
 import cupy
 from cupy.cuda import device
 from cupy.cuda import memory
 from cupy.cuda import runtime
 from cupy.cuda import stream
+
+
+ctypedef Result (*F_cufftXtSetJITCallback)(
+    Handle plan, const void* callback, size_t callback_size,
+    callbackType callback_type, void **caller_info) nogil
+cdef F_cufftXtSetJITCallback cufftXtSetJITCallback
+
+
+# ****************** SoftLink utilities ******************
+
+cdef SoftLink _L = None
+
+cdef inline void initialize() except *:
+    global _L
+    if _L is not None:
+        return
+    _initialize()
+
+cdef inline void _initialize() except *:
+    global _L
+    _L = _get_softlink()
+
+    global cufftXtSetJITCallback
+    cufftXtSetJITCallback = <F_cufftXtSetJITCallback>_L.get('XtSetJITCallback')
+
+cdef SoftLink _get_softlink():
+    cdef int runtime_version
+    cdef str prefix = 'cufft'
+    cdef str libname = None
+
+    if CUPY_CUDA_VERSION != 0:
+        runtime_version = runtime.runtimeGetVersion()
+        if 12020 <= runtime_version < 13000:
+            # CUDA 12.2+
+            if _sys.platform == 'linux':
+                libname = 'libcufft.so.11'
+
+    if libname is None:
+        raise NotImplementedError
+
+    return SoftLink(libname, prefix, mandatory=True)
+
+####################################################
 
 
 cdef object _thread_local = threading.local()
@@ -127,8 +174,6 @@ cdef extern from 'cupy_cufft.h' nogil:
 IF CUPY_CUFFT_STATIC:
     # cuFFT callback
     cdef extern from 'cupy_cufftXt.h' nogil:
-        ctypedef enum callbackType 'cufftXtCallbackType':
-            pass
         Result set_callback(Handle, callbackType, bint, void**)
 
 
@@ -274,7 +319,7 @@ cdef _XtFree(intptr_t ptr):
 
 cdef class Plan1d:
     def __init__(self, int nx, int fft_type, int batch, *,
-                 devices=None, out=None):
+                 devices=None, out=None, intptr_t prealloc_plan=0):
         cdef Handle plan
         cdef bint use_multi_gpus = 0 if devices is None else 1
         cdef int result
@@ -283,11 +328,14 @@ cdef class Plan1d:
         self.xtArr = <intptr_t>0  # pointer to metadata for multi-GPU buffer
         self.xtArr_buffer = None  # actual multi-GPU intermediate buffer
 
-        with nogil:
-            result = cufftCreate(&plan)
-            if result == 0:
-                result = cufftSetAutoAllocation(plan, 0)
-        check_result(result)
+        if prealloc_plan:
+            plan = <Handle>prealloc_plan
+        else:
+            with nogil:
+                result = cufftCreate(&plan)
+                if result == 0:
+                    result = cufftSetAutoAllocation(plan, 0)
+            check_result(result)
 
         self.handle = <intptr_t>plan
         self.work_area = None
@@ -742,7 +790,8 @@ cdef class Plan1d:
 cdef class PlanNd:
     def __init__(self, object shape, object inembed, int istride,
                  int idist, object onembed, int ostride, int odist,
-                 int fft_type, int batch, str order, int last_axis, last_size):
+                 int fft_type, int batch, str order, int last_axis, last_size,
+                 *, intptr_t prealloc_plan=0):
         cdef Handle plan
         cdef size_t work_size
         cdef int ndim, result
@@ -769,11 +818,14 @@ cdef class PlanNd:
             onembed_arr = onembed
             onembed_ptr = onembed_arr.data()
 
-        with nogil:
-            result = cufftCreate(&plan)
-            if result == 0:
-                result = cufftSetAutoAllocation(plan, 0)
-        check_result(result)
+        if prealloc_plan:
+            plan = <Handle>prealloc_plan
+        else:
+            with nogil:
+                result = cufftCreate(&plan)
+                if result == 0:
+                    result = cufftSetAutoAllocation(plan, 0)
+            check_result(result)
 
         self.handle = <intptr_t>plan
         self.gpus = None  # TODO(leofang): support multi-GPU PlanNd
@@ -914,7 +966,8 @@ cdef class XtPlanNd:
                  inembed, long long int istride, long long int idist, idtype,
                  onembed, long long int ostride, long long int odist, odtype,
                  long long int batch, edtype, *,
-                 str order, int last_axis, last_size):
+                 str order, int last_axis, last_size,
+                 intptr_t prealloc_plan=0):
         # Note: we don't pass in fft_type here because it's redundant and
         # does not cover exotic types like complex32 or bf16
 
@@ -943,11 +996,14 @@ cdef class XtPlanNd:
             onembed_arr = onembed
             onembed_ptr = onembed_arr.data()
 
-        with nogil:
-            result = cufftCreate(&plan)
-            if result == 0:
-                result = cufftSetAutoAllocation(plan, 0)
-        check_result(result)
+        if prealloc_plan:
+            plan = <Handle>(prealloc_plan)
+        else:
+            with nogil:
+                result = cufftCreate(&plan)
+                if result == 0:
+                    result = cufftSetAutoAllocation(plan, 0)
+            check_result(result)
 
         self.handle = <intptr_t>plan
         self.gpus = None  # TODO(leofang): support multi-GPU plans
@@ -1186,7 +1242,7 @@ cpdef XtExec(intptr_t plan, intptr_t idata, intptr_t odata, int direction):
 
 
 cpdef intptr_t setCallback(
-        intptr_t plan, int cb_type, bint is_load, intptr_t aux_arr=0):
+        intptr_t plan, int cb_type, bint is_load, intptr_t aux_arr=0) except*:
     cdef Handle h = <Handle>plan  # no-cython-lint
     cdef int result  # no-cython-lint
     cdef void** callerInfo  # no-cython-lint
@@ -1203,3 +1259,19 @@ cpdef intptr_t setCallback(
     ELSE:
         raise RuntimeError('cuFFT is dynamically linked and thus does not '
                            'support callback')
+
+
+cpdef void setJITCallback(
+        intptr_t plan, bytes callback, int callback_type,
+        intptr_t caller_info) except*:
+    initialize()
+    cdef Handle h = <Handle>plan  # no-cython-lint
+    cdef char* callback_ptr = callback
+    cdef size_t callback_size = len(callback)
+    cdef void* caller_info_ptr = <void*>(caller_info)
+
+    with nogil:
+        result = cufftXtSetJITCallback(
+            h, callback_ptr, callback_size, <callbackType>callback_type,
+            &caller_info_ptr)
+    check_result(result)
