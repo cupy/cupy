@@ -1,0 +1,3 @@
+[build-system]
+requires = ["setuptools", "Cython>=0.29.22,<3", "fastrlock>=0.5"]
+build-backend = "setuptools.build_meta"

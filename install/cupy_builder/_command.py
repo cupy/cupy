@@ -111,7 +111,6 @@ class custom_build_ext(setuptools.command.build_ext.build_ext):
         compile_time_env: Dict[str, Any] = {}
 
         # Enable CUDA Python.
-        # TODO: add `cuda` to `setup_requires` only when this flag is set
         use_cuda_python = ctx.use_cuda_python
         compile_time_env['CUPY_USE_CUDA_PYTHON'] = use_cuda_python
         if use_cuda_python:
