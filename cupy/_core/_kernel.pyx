@@ -1226,6 +1226,14 @@ cdef class ufunc:
                 specified by the ``out`` argument.
             out (cupy.ndarray): Output array. It outputs to new arrays
                 default.
+            where (cupy.ndarray):
+                This condition is broadcast over the input.
+                At locations where the condition is True, the out array will
+                be set to the ufunc result.
+                Elsewhere, the out array will retain its original value.
+                Note that if an uninitialized out array is created via the
+                default ``out=None``, locations within it where the condition
+                is False will remain uninitialized.
             dtype: Data type specifier.
 
         Returns:
@@ -1245,7 +1253,7 @@ cdef class ufunc:
         cdef shape_t shape
 
         out = kwargs.pop('out', None)
-        where = kwargs.pop('_where', None)
+        where = kwargs.pop('where', None)
         cdef bint has_where = where is not None
         dtype = kwargs.pop('dtype', None)
         # Note default behavior of casting is 'same_kind' on numpy>=1.10
