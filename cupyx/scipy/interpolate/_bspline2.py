@@ -287,6 +287,7 @@ def make_interp_spline(x, y, k=3, t=None, bc_type=None, axis=0,
     if nleft > 0:
         x0 = cupy.array([x[0]], dtype=x.dtype)
         rows = cupy.zeros((nleft, nt), dtype=float)
+
         for j, m in enumerate(deriv_l_ords):
             # place the derivatives of the order m at x[0] into `temp`
             d_boor_kernel((1,), (1,),
