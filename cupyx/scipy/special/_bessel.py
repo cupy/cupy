@@ -29,6 +29,25 @@ j1 = _core.create_ufunc(
     ''')
 
 
+jn = _core.create_ufunc(
+    'cupyx_scipy_special_jn',
+    (('ff->f', 'out0 = jnf((int)in0, in1)'),
+     'dd->d'),
+    'out0 = jn((int)in0, in1)',
+    doc='''Bessel function of the first kind of order n.
+
+    Args:
+        n (cupy.ndarray): order (integer)
+        x (cupy.ndarray): argument (float)
+
+    Returns:
+        cupy.ndarray: The result.
+
+    .. seealso:: :meth:`scipy.special.jn`
+
+    ''')
+
+
 y0 = _core.create_ufunc(
     'cupyx_scipy_special_y0', ('f->f', 'd->d'),
     'out0 = y0(in0)',
@@ -52,7 +71,9 @@ y1 = _core.create_ufunc(
 # Note: oddly, unlike for y0 or y1, SciPy always returns double for yn
 # dd->d because SciPy will accept 2.0
 yn = _core.create_ufunc(
-    'cupyx_scipy_special_yn', ('id->d', 'dd->d'),
+    'cupyx_scipy_special_yn',
+    (('ff->f', 'out0 = ynf((int)in0, in1)'),
+     'dd->d'),
     'out0 = yn((int)in0, in1)',
     doc='''Bessel function of the second kind of order n.
 
