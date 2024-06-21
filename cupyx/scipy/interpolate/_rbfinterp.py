@@ -640,7 +640,7 @@ class RBFInterpolator:
             degree = int(degree)
             if degree < -1:
                 raise ValueError("`degree` must be at least -1.")
-            elif degree < min_degree:
+            elif -1 < degree < min_degree:
                 warnings.warn(
                     f"`degree` should not be below {min_degree} when `kernel` "
                     f"is '{kernel}'. The interpolant may not be uniquely "
