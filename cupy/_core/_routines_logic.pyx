@@ -1,4 +1,6 @@
-from cupy._core._kernel import create_ufunc
+import numpy as np
+
+from cupy._core._kernel import create_ufunc, _Op
 from cupy._core._reduction import create_reduction_func
 
 from cupy._core.core cimport _ndarray_base
@@ -52,6 +54,26 @@ cdef _any = create_reduction_func(
     'false', '')
 
 
+def _fix_to_sctype(dtype, sctype):
+    # This function doesn't do much (or anything) but it could do more complex
+    # type resolution if needed allowing comparison between bytes and strings
+    # (but NumPy only supports this for == and != returning all False so raise)
+    if dtype.type == sctype:
+        return dtype
+
+    raise TypeError("Cannot compare bytes and string dtypes")
+
+
+def _s_cmp_resolver(op, in_dtypes, out_dtypes):
+    # Support only U->S and S->U casts right now
+
+    in1_dtype = _fix_to_sctype(in_dtypes[0], op.in_types[0])
+    in2_dtype = _fix_to_sctype(in_dtypes[1], op.in_types[1])
+    out_dtype = np.dtype("?")
+
+    return (in1_dtype, in2_dtype), (out_dtype,)
+
+
 cpdef create_comparison(name, op, doc='', no_complex_dtype=True):
 
     if no_complex_dtype:
@@ -62,11 +84,25 @@ cpdef create_comparison(name, op, doc='', no_complex_dtype=True):
                'll->?', 'LL->?', 'qq->?', 'QQ->?', 'ee->?', 'ff->?', 'dd->?',
                'FF->?', 'DD->?')
 
+    custom_ops=[
+        # Note, mixing right now would cast, but we the code can really do
+        # without (C++ might optimize that away.)
+        _Op(
+            (np.bytes_, np.bytes_), (np.bool_,), f'out0 = in0 {op} in1', None,
+            _s_cmp_resolver
+        ),
+        _Op(
+            (np.str_, np.str_), (np.bool_,), f'out0 = in0 {op} in1', None,
+            _s_cmp_resolver
+        )
+    ]
+
     return create_ufunc(
         'cupy_' + name,
         ops,
         'out0 = in0 %s in1' % op,
-        doc=doc)
+        doc=doc,
+        custom_ops=custom_ops)
 
 
 cdef _greater = create_comparison(

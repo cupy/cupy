@@ -127,7 +127,9 @@ This is because the use of :class:`numpy.matrix` is no longer recommended since 
 Data types
 ----------
 
-Data type of CuPy arrays cannot be non-numeric like strings or objects.
+CuPy arrays have only very limited support for non-numeric data and do not
+aim to provide full support.  Object arrays are unsupported and
+string arrays only support a very limited set of operations.
 See :ref:`overview` for details.
 
 
