@@ -104,6 +104,13 @@ jobs:
       with:
         submodules: recursive
 
-    - name: Build & Test
+    - name: Clean up disk space 
       run: |
-        docker run --rm -v "${PWD}:/src" -w /src "rocm/dev-ubuntu-20.04:5.0-complete" bash .github/workflows/pretest-rocm-test.sh
+        sudo rm -rf /usr/share/dotnet
+        sudo rm -rf /opt/ghc
+        sudo rm -rf "/usr/local/share/boost"
+        sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+
+    - name: Build & Test
+      run: 
+        docker run --rm -v "${PWD}:/src" -w /src "rocm/dev-ubuntu-22.04:6.1-complete" bash .github/workflows/pretest-rocm-test.sh
