@@ -22,6 +22,7 @@ import urllib.request
 
 _cudnn_records = []
 _cutensor_records = []
+_cusparselt_records = []
 _nccl_records = []
 library_records = {}
 
@@ -120,6 +121,44 @@ _cutensor_records.append(_make_cutensor_record('11.x'))  # CUDA 11.2+
 library_records['cutensor'] = _cutensor_records
 
 
+def _make_cusparselt_url(platform, filename):
+    # https://developer.download.nvidia.com/compute/cusparselt/redist/libcusparse_lt/linux-x86_64/libcusparse_lt-linux-x86_64-0.6.1.0-archive.tar.xz
+    return (
+        'https://developer.download.nvidia.com/compute/cusparselt/' +
+        f'redist/libcusparse_lt/{platform}-x86_64/{filename}')
+
+
+def __make_cusparselt_record(
+        cuda_version, public_version, filename_linux, filename_windows):
+    return {
+        'cuda': cuda_version,
+        'cusparselt': public_version,
+        'assets': {
+            'Linux': {
+                'url': _make_cusparselt_url('linux', filename_linux),
+                'filenames': [
+                    'libcusparseLt.so.{}'.format(public_version),
+                ],
+            },
+            'Windows': {
+                'url': _make_cusparselt_url('windows', filename_windows),
+                'filenames': ['cusparseLt.dll'],
+            },
+        }
+    }
+
+
+def _make_cusparselt_record(cuda_version):
+    return __make_cusparselt_record(
+        cuda_version, '0.6.1',
+        'libcusparse_lt-linux-x86_64-0.6.1.0-archive.tar.xz',
+        'libcusparse_lt-windows-x86_64-0.6.1.0-archive.zip')
+
+
+_cusparselt_records.append(_make_cusparselt_record('12.x'))  # CUDA 12.0+ only
+library_records['cusparselt'] = _cusparselt_records
+
+
 def _make_nccl_url(public_version, filename):
     # https://developer.download.nvidia.com/compute/redist/nccl/v2.8/nccl_2.8.4-1+cuda11.2_x86_64.txz
     return (
@@ -213,6 +252,12 @@ The current platform ({}) is not supported.'''.format(target_platform))
               ' conditions of the NVIDIA cuTENSOR Software License Agreement:')
         print('  https://docs.nvidia.com/cuda/cutensor/license.html')
         print()
+    elif library == 'cusparselt':
+        print('By downloading and using cuSPARSELt, you accept the terms'
+              ' and conditions of the NVIDIA cuSPARSELt'
+              ' Software License Agreement:')
+        print('  https://docs.nvidia.com/cuda/cusparselt/license.html')
+        print()
     elif library == 'nccl':
         pass  # BSD
     else:
@@ -247,7 +292,7 @@ The current platform ({}) is not supported.'''.format(target_platform))
                 cuda = '11'
             elif cuda.startswith('12.'):
                 cuda = '12'
-            license = 'LICENSE'
+            license_name = 'LICENSE'
             shutil.move(
                 os.path.join(outdir, dir_name, 'include'),
                 os.path.join(destination, 'include'))
@@ -255,7 +300,19 @@ The current platform ({}) is not supported.'''.format(target_platform))
                 os.path.join(outdir, dir_name, 'lib', cuda),
                 os.path.join(destination, 'lib'))
             shutil.move(
-                os.path.join(outdir, dir_name, license), destination)
+                os.path.join(outdir, dir_name, license_name), destination)
+        elif library == 'cusparselt':
+            if cuda.startswith('12.'):
+                cuda = '12'
+            license_name = 'LICENSE'
+            shutil.move(
+                os.path.join(outdir, dir_name, 'include'),
+                os.path.join(destination, 'include'))
+            shutil.move(
+                os.path.join(outdir, dir_name, 'lib', cuda),
+                os.path.join(destination, 'lib'))
+            shutil.move(
+                os.path.join(outdir, dir_name, license_name), destination)
         elif library == 'nccl':
             shutil.move(os.path.join(outdir, dir_name), destination)
         else:
@@ -276,7 +333,7 @@ def main(args):
     parser = argparse.ArgumentParser()
 
     parser.add_argument('--library',
-                        choices=['cudnn', 'cutensor', 'nccl'],
+                        choices=['cudnn', 'cutensor', 'cusparselt', 'nccl'],
                         required=True,
                         help='Library to install')
     parser.add_argument('--cuda', type=str, required=True,
