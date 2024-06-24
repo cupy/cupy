@@ -341,7 +341,10 @@ def histogramdd(sample, bins=10, range=None, weights=None, density=False):
                 )
             smin, smax = _get_outer_edges(sample[:, i], range[i])
             num = int(bins[i] + 1)  # synchronize!
-            edges[i] = cupy.linspace(smin, smax, num)
+            dtyp = (sample.dtype
+                    if issubclass(sample.dtype.type, numpy.inexact)
+                    else numpy.float64)
+            edges[i] = cupy.linspace(smin, smax, num, dtype=dtyp)
         elif cupy.ndim(bins[i]) == 1:
             if not isinstance(bins[i], cupy.ndarray):
                 raise ValueError('array-like bins not supported')

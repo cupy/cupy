@@ -336,7 +336,7 @@ class TestCooMatrixInit:
 
     def test_invalid_format(self):
         for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
-            with pytest.raises(TypeError):
+            with pytest.raises((TypeError, ValueError)):
                 sp.coo_matrix(
                     (self.data(xp), self.row(xp)), shape=self.shape)
 

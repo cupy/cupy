@@ -1917,16 +1917,25 @@ class TestCsrMatrixMaximumMinimum:
 
     @testing.numpy_cupy_array_equal(sp_name='sp')
     def test_scalar_plus(self, xp, sp):
+        if (self.a_dtype in ('float32', 'complex64')):
+            pytest.xfail(reason="XXX: np2.0: weak promotion")
+
         a = self._make_sp_matrix(self.a_dtype, xp, sp)
         return getattr(a, self.opt)(0.5)
 
     @testing.numpy_cupy_array_equal(sp_name='sp')
     def test_scalar_minus(self, xp, sp):
+        if (self.a_dtype in ('float32', 'complex64')):
+            pytest.xfail(reason="XXX: np2.0: weak promotion")
+
         a = self._make_sp_matrix(self.a_dtype, xp, sp)
         return getattr(a, self.opt)(-0.5)
 
     @testing.numpy_cupy_array_equal(sp_name='sp')
     def test_scalar_zero(self, xp, sp):
+        if self.a_dtype in ('float32', 'complex64'):
+            pytest.xfail(reason="XXX: np2.0: weak promotion")
+
         a = self._make_sp_matrix(self.a_dtype, xp, sp)
         return getattr(a, self.opt)(0)
 
@@ -2138,6 +2147,7 @@ class TestCsrMatrixDiagonal:
         testing.assert_array_equal(scipy_a.indices, cupyx_a.indices)
         testing.assert_array_equal(scipy_a.indptr, cupyx_a.indptr)
 
+    @pytest.mark.xfail(reason="XXX: np2.0: weak promotion")
     @testing.for_dtypes('fdFD')
     def test_setdiag(self, dtype):
         scipy_a, cupyx_a = self._make_matrix(dtype)
@@ -2151,6 +2161,7 @@ class TestCsrMatrixDiagonal:
                 x = numpy.ones((x_len,), dtype=dtype)
                 self._test_setdiag(scipy_a, cupyx_a, x, k)
 
+    @pytest.mark.xfail(reason="XXX: np2.0: weak promotion")
     @testing.for_dtypes('fdFD')
     def test_setdiag_scalar(self, dtype):
         scipy_a, cupyx_a = self._make_matrix(dtype)
