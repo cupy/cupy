@@ -1790,6 +1790,9 @@ cdef class _ndarray_base:
             numpy.ndarray: Copy of the array on host memory.
 
         """
+        if stream is None:
+            stream = stream_module.get_current_stream()
+
         if out is not None:
             if not isinstance(out, numpy.ndarray):
                 raise TypeError('Only numpy.ndarray can be obtained from'
@@ -1807,14 +1810,15 @@ cdef class _ndarray_base:
                 prev_device = runtime.getDevice()
                 try:
                     runtime.setDevice(self.device.id)
-                    if out.flags.c_contiguous:
-                        a_gpu = _internal_ascontiguousarray(self)
-                    elif out.flags.f_contiguous:
-                        a_gpu = _internal_asfortranarray(self)
-                    else:
-                        raise RuntimeError(
-                            '`out` cannot be specified when copying to '
-                            'non-contiguous ndarray')
+                    with stream:
+                        if out.flags.c_contiguous:
+                            a_gpu = _internal_ascontiguousarray(self)
+                        elif out.flags.f_contiguous:
+                            a_gpu = _internal_asfortranarray(self)
+                        else:
+                            raise RuntimeError(
+                                '`out` cannot be specified when copying to '
+                                'non-contiguous ndarray')
                 finally:
                     runtime.setDevice(prev_device)
             else:
@@ -1835,20 +1839,19 @@ cdef class _ndarray_base:
                 prev_device = runtime.getDevice()
                 try:
                     runtime.setDevice(self.device.id)
-                    if order == 'C':
-                        a_gpu = _internal_ascontiguousarray(self)
-                    elif order == 'F':
-                        a_gpu = _internal_asfortranarray(self)
-                    else:
-                        raise ValueError('unsupported order: {}'.format(order))
+                    with stream:
+                        if order == 'C':
+                            a_gpu = _internal_ascontiguousarray(self)
+                        elif order == 'F':
+                            a_gpu = _internal_asfortranarray(self)
+                        else:
+                            raise ValueError(
+                                'unsupported order: {}'.format(order))
                 finally:
                     runtime.setDevice(prev_device)
             else:
                 a_gpu = self
             a_cpu = numpy.empty(self._shape, dtype=self.dtype, order=order)
-
-        if stream is None:
-            stream = stream_module.get_current_stream()
 
         syncdetect._declare_synchronize()
         ptr = a_cpu.ctypes.data
