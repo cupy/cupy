@@ -20,7 +20,7 @@ _nvcc_path = ''
 _rocm_path = ''
 _hipcc_path = ''
 _cub_path = ''
-
+_nvrtc_path = ''
 """
 Library Preloading
 ------------------
@@ -86,6 +86,13 @@ def get_nvcc_path():
         _nvcc_path = _get_nvcc_path()
     return _nvcc_path
 
+def get_nvrtc_path():
+    # Returns the path to the nvcc command or None if not found.
+    global _nvrtc_path
+    if _nvrtc_path == '':
+        _nvrtc_path = _get_nvrtc_path()
+    return _nvrtc_path
+
 
 def get_rocm_path():
     # Returns the ROCm installation path or None if not found.
@@ -122,12 +129,25 @@ def _get_cuda_path():
     if nvcc_path is not None:
         return os.path.dirname(os.path.dirname(nvcc_path))
 
+    # Use nvrtc dll path
+    nvrtc_path = get_nvrtc_path()
+    if nvrtc_path is not None:
+        return os.path.dirname(os.path.dirname(nvrtc_path))
+
     # Use typical path
     if os.path.exists('/usr/local/cuda'):
         return '/usr/local/cuda'
 
     return None
 
+def _get_nvrtc_path():
+    # Use nvrtc dll path
+    import ctypes.util
+    from cupy_backends.cuda.libs import nvrtc
+    nvrtc_path = ctypes.util.find_library(nvrtc._libname)
+    if nvrtc_path is not None:
+        return nvrtc_path
+    return None
 
 def _get_nvcc_path():
     # Honor the "NVCC" env var
