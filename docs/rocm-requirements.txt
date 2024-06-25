@@ -1,0 +1,2 @@
+# ROCm Requirements 
+git+https://github.com/ROCmSoftwarePlatform/hipify_torch.git

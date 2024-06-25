@@ -616,6 +616,7 @@ class TestAkima1D:
         return s(x), s(x, 1)
 
 
+@pytest.mark.skipif(runtime.is_hip, reason='Currently unsupported on ROCm/HIP')
 @testing.with_requires("scipy")
 class TestCubicSpline:
     @testing.numpy_cupy_allclose(scipy_name='scp', atol=2e-14)

@@ -9,6 +9,7 @@ from cupy.cuda import device
 from cupy.cuda import runtime
 
 
+@pytest.mark.skipif(runtime.is_hip, reason='Currently unsupported on ROCm/HIP')
 class TestRaw:
 
     def test_raw_grid_1D(self):
