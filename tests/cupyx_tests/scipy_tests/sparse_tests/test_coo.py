@@ -249,6 +249,15 @@ class TestCooMatrix:
             [[1, 0, 0, 0, 0, 2, 0, 0, 0, 0, 3, 0]], dtype=self.dtype)
         cupy.testing.assert_allclose(m, expect)
 
+    def test_repr(self):
+        _repr = repr(self.m)
+        _equals = (
+            f"<3x4 sparse matrix " \
+            f"of type '{self.m.dtype}'\n " \
+            f"on device {cupy.cuda.get_device_id()} with {self.m.getnnz()} "
+            f"stored elements in COOrdinate format>"
+        )
+        assert _repr == _equals
 
 @testing.parameterize(*testing.product({
     'dtype': "?fdFD",
