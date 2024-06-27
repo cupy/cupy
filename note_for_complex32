@@ -1,0 +1,15 @@
+Follow this file
+https://github.com/numpy/numpy/blob/master/numpy/core/src/umath/_rational_tests.c.src
+to define a customized Python type complex32 and then dtype
+
+All numpy built-in types are defined in this file:
+https://github.com/numpy/numpy/blob/master/numpy/core/src/multiarray/arraytypes.c.src
+
+Refs:
+https://github.com/numpy/numpy/blob/master/numpy/core/src/multiarray/_multiarray_tests.c.src
+https://docs.python.org/3/extending/newtypes_tutorial.html
+https://github.com/rainwoodman/gaepsi/blob/860b662d7a4f99acdfd44c0862cf93b4d5bc777a/gaepsi/compiledbase/npydtype.pxd
+https://github.com/gidden/cyclopts/blob/e346b1721c8d8722af2862823844ab2e7864141b/cyclopts/dtypes.pyx
+https://github.com/sglyon/SGLcapstone/blob/3c15048ca01b53cc302d83fa72345de8a85ef54c/code/xdress/hsfpy/stlcontainers.pyx
+
+
