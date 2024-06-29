@@ -139,5 +139,8 @@ cdef SoftLink _get_softlink():
         elif runtime_version < 6_00_00000:
             # ROCm 5.x
             libname = 'libamdhip64.so.5'
+        elif runtime_version < 7_00_00000:
+            # ROCm 6.x
+            libname = 'libamdhip64.so.6'
 
     return SoftLink(libname, prefix, mandatory=True)
