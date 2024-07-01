@@ -33,5 +33,7 @@ def get_nvtx_path() -> Optional[str]:
         nvtx = candidates[-1]
         print(f'Using NVTX at: {nvtx}')
         return nvtx
+    if os.environ.get('CONDA_BUILD', '0') == '1':
+        return os.environ['PREFIX']
     print('NVTX could not be found')
     return None

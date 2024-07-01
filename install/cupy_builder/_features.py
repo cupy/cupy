@@ -147,7 +147,6 @@ _cuda_files = [
 
 # Libraries required for cudart_static
 _cudart_static_libs = (
-    ['cudart_static'] +
     (['pthread', 'rt', 'dl'] if sys.platform == 'linux' else [])
 )
 
@@ -273,6 +272,7 @@ def get_features(ctx: Context) -> Dict[str, Feature]:
             'cub/util_namespace.cuh',  # dummy
         ],
         'libraries': list(_cudart_static_libs),
+        'static_libraries': ['cudart_static'],
         'check_method': build.check_cub_version,
         'version_method': build.get_cub_version,
     }
@@ -292,6 +292,7 @@ def get_features(ctx: Context) -> Dict[str, Feature]:
             'cuda',
             'nvrtc',
         ] + _cudart_static_libs,
+        'static_libraries': ['cudart_static'],
         'check_method': build.check_jitify_version,
         'version_method': build.get_jitify_version,
     }
@@ -308,6 +309,7 @@ def get_features(ctx: Context) -> Dict[str, Feature]:
         'libraries': [
             'curand',
         ] + _cudart_static_libs,
+        'static_libraries': ['cudart_static'],
     }
     HIP_random = {
         'name': 'random',
@@ -394,6 +396,7 @@ def get_features(ctx: Context) -> Dict[str, Feature]:
             'thrust/version.h',
         ],
         'libraries': list(_cudart_static_libs),
+        'static_libraries': ['cudart_static'],
         'check_method': build.check_thrust_version,
         'version_method': build.get_thrust_version,
     }
@@ -460,6 +463,7 @@ class CUDA_cuda(Feature):
             # CUDA Toolkit
             ['cublas', 'cufft', 'curand', 'cusparse']
         )
+        self.static_libraries = ['cudart_static']
         self._version = self._UNDETERMINED
 
     def configure(self, compiler: Any, settings: Any) -> bool:
