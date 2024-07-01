@@ -809,8 +809,7 @@ class RandomState(object):
             if isinstance(seed, numpy.ndarray):
                 seed = int(hashlib.md5(seed).hexdigest()[:16], 16)
             else:
-                seed = int(
-                    numpy.asarray(seed).astype(numpy.uint64, casting='safe'))
+                seed = int(numpy.asarray(seed, dtype=numpy.uint64))
 
         curand.setPseudoRandomGeneratorSeed(self._generator, seed)
         if (self.method not in (curand.CURAND_RNG_PSEUDO_MT19937,
