@@ -20,7 +20,9 @@
 #include <cupy/complex/complex.h>
 #include <cupy/complex/math_private.h>
 
-namespace thrust {
+#include <thrust/detail/config.h>
+
+THRUST_NAMESPACE_BEGIN
 
 /* --- Binary Arithmetic Operators --- */
 
@@ -311,4 +313,5 @@ __host__ __device__ inline complex<T> polar(const T& m,
                                            const T& theta) {
   return complex<T>(m * cos(theta), m * sin(theta));
 }
-}
+
+THRUST_NAMESPACE_END
