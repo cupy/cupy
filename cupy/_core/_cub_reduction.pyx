@@ -46,9 +46,10 @@ cdef function.Function _create_cub_reduction_function(
         backend = 'nvcc'  # this is confusing...
         jitify = False
     else:
-        # use jitify + nvrtc
+        # use nvrtc
         backend = 'nvrtc'
-        jitify = True
+        # We rely on the type traits in cccl to avoid using jitify
+        jitify = False
 
     # TODO(leofang): try splitting the for-loop into full tiles and partial
     # tiles to utilize LoadDirectBlockedVectorized? See, for example,
@@ -261,6 +262,7 @@ cdef str _get_cub_header_include():
         _cub_header = '''
 #include <cub/block/block_reduce.cuh>
 #include <cub/block/block_load.cuh>
+#include <cupy/cuda_workaround.h>
 '''
     elif _cub_path == '<ROCm>':
         # As of ROCm 3.5.0, the block headers cannot be included by themselves
