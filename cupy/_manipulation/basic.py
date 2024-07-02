@@ -35,7 +35,7 @@ def copyto(dst, src, casting='same_kind', where=None):
         fusion._FusionVarScalar, _fusion_interface._ScalarProxy)
     if src_is_python_scalar:
         src_dtype = numpy.dtype(type(src))
-        # When the cast is safe, we check wether the value fits (for now)
+        # When the cast is safe, we check wether the value fits (for now). See #8408
         can_cast = numpy.can_cast(
             src_dtype, dst.dtype, casting if casting != "safe" else "same_kind")
         if casting == "safe":
