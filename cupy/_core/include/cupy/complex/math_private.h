@@ -36,7 +36,7 @@
 #include <cfloat>
 #endif  // defined(_MSC_VER)
 
-#include <thrust/detail/config.h>
+#include <cupy/complex/namespace.h>
 
 THRUST_NAMESPACE_BEGIN
 

@@ -20,7 +20,7 @@
 #include <cupy/complex/complex.h>
 #include <cupy/complex/math_private.h>
 
-#include <thrust/detail/config.h>
+#include <cupy/complex/namespace.h>
 
 THRUST_NAMESPACE_BEGIN
 
