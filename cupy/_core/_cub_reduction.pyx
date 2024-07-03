@@ -262,7 +262,6 @@ cdef str _get_cub_header_include():
         _cub_header = '''
 #include <cub/block/block_reduce.cuh>
 #include <cub/block/block_load.cuh>
-#include <cupy/cuda_workaround.h>
 '''
     elif _cub_path == '<ROCm>':
         # As of ROCm 3.5.0, the block headers cannot be included by themselves
