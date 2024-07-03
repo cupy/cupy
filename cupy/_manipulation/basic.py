@@ -82,7 +82,7 @@ def copyto(dst, src, casting='same_kind', where=None):
             src = src.squeeze(tuple(range(squeeze_ndim)))
 
     if where is not None:
-        _core.elementwise_copy(src, dst, _where=where)
+        _core.elementwise_copy(src, dst, where=where)
         return
 
     if dst.size == 0:
