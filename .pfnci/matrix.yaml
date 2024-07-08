@@ -334,7 +334,6 @@
   test: "unit-multi"
 
 # CUDA 12.4 | Linux
-# The latest CUDA version matrix is intended to cover the highest supported combination.
 - project: "cupy.linux.cuda124"
   target: "cuda124"
   tags: ["@push", "full", "mini", "cuda124"]
