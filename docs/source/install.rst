@@ -29,7 +29,7 @@ NumPy/SciPy-compatible API in CuPy v14 is based on NumPy 2.0 and SciPy 1.13, and
 
 * `SciPy <https://scipy.org/>`_ (*optional*): v1.7 / v1.8 / v1.9 / v1.10 / v1.11
 
-    * Required only when coping sparse matrices from GPU to CPU (see :doc:`../reference/scipy_sparse`.)
+    * Required only when copying sparse matrices from GPU to CPU (see :doc:`../reference/scipy_sparse`.)
 
 * `Optuna <https://optuna.org/>`_ (*optional*): v3.x
 
