@@ -35,6 +35,7 @@ def copyto(dst, src, casting='same_kind', where=None):
         # NumPy 1.x and 2.0 make implementing copyto cast safety hard, so
         # test whether NumPy copy allows the copy operation:
         numpy.copyto(dst_arr, src, casting=casting)
+        can_cast = True
         src_is_scalar = True
     elif src_type in (fusion._FusionVarScalar, _fusion_interface._ScalarProxy):
         src_dtype = src.dtype
