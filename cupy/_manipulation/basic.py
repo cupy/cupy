@@ -38,7 +38,7 @@ def copyto(dst, src, casting='same_kind', where=None):
         # When the cast is safe, we check whether the value fits (for now).
         # See #8408
         can_cast = numpy.can_cast(
-            src_dtype, dst.dtype,
+            src, dst.dtype,
             casting if casting != "safe" else "same_kind")
         if casting == "safe":
             can_cast = numpy.array(src, dtype=dst.dtype) == src
