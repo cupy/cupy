@@ -810,7 +810,7 @@ class RandomState(object):
                 seed = int(hashlib.md5(seed).hexdigest()[:16], 16)
             else:
                 seed_arr = numpy.asarray(seed)
-                if seed_arr.dtype.kind not in 'iu':
+                if seed_arr.dtype.kind not in 'biu':
                     raise TypeError('Seed must be an integer.')
                 seed = int(seed_arr)
                 # Check that no integer overflow occurred during the cast
