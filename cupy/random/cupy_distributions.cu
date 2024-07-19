@@ -35,12 +35,8 @@ struct curand_pseudo_state {
     __device__ double rk_double() {
         // Curand returns (0, 1] while the functions
         // below rely on [0, 1)
-#ifdef CUPY_USE_HIP
-        double r = curand_uniform(&_state);
-#else
         double r = curand_uniform_double(&_state);
-#endif
-        if (r >= 1.0) { 
+        if (r >= 1.0) {
            r = 0.0;
         }
         return r;
