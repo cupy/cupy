@@ -569,26 +569,37 @@ __global__ void bitonic_sort_step(
     T* values,
     int n_idx,
     int row_sz,
+    int n_pow,
     int j,
     int k
 ) {
-    __shared__ bool cmp_mask[512];
+    __shared__ bool lt_mask[512];
     __shared__ bool eq_mask[512];
-    __shared__ unsigned long long min_idx[512];
+    __shared__ bool gt_mask[512];
+    __shared__ unsigned long long lt_idx[512];
+    __shared__ unsigned long long gt_idx[512];
     __shared__ bool break_flag;
 
-    unsigned int i, other_idx;
-    // i = threadIdx.x + blockDim.x * blockIdx.x;
-    i = blockIdx.x;
-    cmp_mask[threadIdx.x] = false;
-    eq_mask[threadIdx.x] = false;
+    bool swap_gt_flag;
+    bool swap_lt_flag;
+    bool overflow = false;
 
-    if(threadIdx.x >= row_sz || i >= n_idx) {
+    unsigned int i, other_idx;
+
+    i = blockIdx.x;
+    lt_mask[threadIdx.x] = false;
+    eq_mask[threadIdx.x] = false;
+    lt_idx[threadIdx.x] = 0xffffffffffffffff;
+    gt_idx[threadIdx.x] = 0xffffffffffffffff;
+
+    if(threadIdx.x >= row_sz || i >= n_pow) {
         return;
     }
 
     if(threadIdx.x == 0) {
         break_flag = false;
+        swap_gt_flag = false;
+        swap_lt_flag = false;
     }
 
     other_idx = i ^ j;
@@ -596,79 +607,84 @@ __global__ void bitonic_sort_step(
         return;
     }
 
-    /* The threads with the lowest ids sort the array. */
-    if ((i & k) == 0) {
-        /* Sort ascending */
-        for(int off = threadIdx.x; off < row_sz && !break_flag;
-                off += blockDim.x) {
-            cmp_mask[threadIdx.x] = false;
-            eq_mask[threadIdx.x] = false;
-
-            if(idx[other_idx] < n_idx) {
-                if(idx[i] < n_idx) {
-                    T this_value = values[row_sz * o_idx[idx[i]] + off];
-                    T other_value = values[row_sz * o_idx[idx[other_idx]] + off];
-                    cmp_mask[threadIdx.x] = this_value > other_value;
-                    eq_mask[threadIdx.x] = this_value == other_value;
-                } else {
-                    cmp_mask[threadIdx.x] = true;
-                }
-            }
-
-            __syncthreads();
-
-            for(int stride = blockDim.x / 2; stride > 0; stride /= 2) {
-                if (threadIdx.x < stride) {
-                    cmp_mask[threadIdx.x] = cmp_mask[threadIdx.x + stride];
-                }
-                __syncthreads();
-            }
-
-            if(threadIdx.x == 0 && cmp_mask[threadIdx.x]) {
-                unsigned long long temp = idx[i];
-                idx[i] = idx[other_idx];
-                idx[other_idx] = temp;
-                break_flag = true;
-            }
-
-            __syncthreads();
-        }
-    }
-    if ((i & k) != 0) {
-        /* Sort descending */
-        for(int off = threadIdx.x; off < row_sz && !break_flag;
-                off += blockDim.x) {
-            cmp_mask[threadIdx.x] = false;
-
-            if(idx[other_idx] >= n_idx) {
-                cmp_mask[threadIdx.x] = true;
+    for(int off = threadIdx.x; off < row_sz && !break_flag; off += blockDim.x) {
+        if(idx[other_idx] < n_idx) {
+            if(idx[i] < n_idx) {
+                T this_value = values[row_sz * o_idx[idx[i]] + off];
+                T other_value = values[row_sz * o_idx[idx[other_idx]] + off];
+                lt_mask[threadIdx.x] = this_value < other_value;
+                gt_mask[threadIdx.x] = this_value > other_value;
+                eq_mask[threadIdx.x] = this_value == other_value;
             } else {
-                if(idx[i] < n_idx) {
-                    T this_value = values[row_sz * o_idx[idx[i]] + off];
-                    T other_value = values[row_sz * o_idx[idx[other_idx]] + off];
-                    cmp_mask[threadIdx.x] = this_value < other_value;
-                } else {
-                    cmp_mask[threadIdx.x] = false;
+                overflow = true;
+                swap_lt_flag = false;
+                swap_gt_flag = (i & k) == 0;
+            }
+        } else {
+            overflow = true;
+            if(idx[i] < n_idx) {
+                swap_lt_flag = (i & k) != 0;
+                swap_gt_flag = false;
+            } else {
+                swap_gt_flag = false;
+                swap_lt_flag = false;
+            }
+        }
+
+        __syncthreads();
+
+        if(!overflow) {
+            if(threadIdx.x > 0) {
+                if(eq_mask[threadIdx.x - 1] && lt_mask[threadIdx.x]) {
+                    lt_idx[threadIdx.x] = threadIdx.x;
+                } else if(eq_mask[threadIdx.x - 1] && gt_mask[threadIdx.x]) {
+                    gt_idx[threadIdx.x] = threadIdx.x;
+                }
+            } else {
+                if(lt_mask[threadIdx.x]) {
+                    lt_idx[threadIdx.x] = threadIdx.x;
+                } else if(gt_mask[threadIdx.x]) {
+                    gt_idx[threadIdx.x] = threadIdx.x;
                 }
             }
+
             __syncthreads();
 
             for(int stride = blockDim.x / 2; stride > 0; stride /= 2) {
                 if (threadIdx.x < stride) {
-                    cmp_mask[threadIdx.x] |= cmp_mask[threadIdx.x + stride];
+                    lt_idx[threadIdx.x] = min(
+                        lt_idx[threadIdx.x], lt_idx[threadIdx.x + stride]);
+                    gt_idx[threadIdx.x] = min(
+                        gt_idx[threadIdx.x], gt_idx[threadIdx.x + stride]);
                 }
                 __syncthreads();
             }
 
-            if(threadIdx.x == 0 && cmp_mask[threadIdx.x]) {
+        }
+
+        if(threadIdx.x == 0) {
+            if(!overflow) {
+                swap_lt_flag = lt_idx[threadIdx.x] < gt_idx[threadIdx.x];
+                swap_gt_flag = gt_idx[threadIdx.x] < lt_idx[threadIdx.x];
+            }
+
+            if(((i & k) == 0 && swap_gt_flag) || ((i & k) != 0 && swap_lt_flag)) {
                 unsigned long long temp = idx[i];
                 idx[i] = idx[other_idx];
                 idx[other_idx] = temp;
                 break_flag = true;
             }
 
-            __syncthreads();
         }
+
+        lt_mask[threadIdx.x] = false;
+        gt_mask[threadIdx.x] = false;
+        eq_mask[threadIdx.x] = false;
+        lt_idx[threadIdx.x] = 0xffffffffffffffff;
+        gt_idx[threadIdx.x] = 0xffffffffffffffff;
+        overflow = false;
+
+        __syncthreads();
     }
 }
 
@@ -785,30 +801,29 @@ def unique(ar, return_index=False, return_inverse=False,
 
         _, index, *rest = ret
 
-        s_idx = cupy.arange(2**int(numpy.ceil(numpy.log2(index.shape[0]))),
-                            dtype=cupy.int64)
-        # s_idx[:index.shape[0]] = index
-
         block_sz = 512
-        # n_blocks = (s_idx.shape[0] + block_sz - 1) // block_sz
+        n_pow = 2 ** int(numpy.ceil(numpy.log2(index.shape[0])))
+        s_idx = cupy.arange(n_pow, dtype=cupy.int64)
 
         k = 2
         while k <= s_idx.shape[0]:
             j = k >> 1
             while j > 0:
-                bitonic_sort_step((index.shape[0],), (block_sz,), (
-                    s_idx, index, ar2, index.shape[0], ar2.shape[1], j, k))
+                bitonic_sort_step((n_pow,), (block_sz,), (
+                    s_idx, index, ar2, index.shape[0], ar2.shape[1],
+                    n_pow, j, k))
                 j >>= 1
             k <<= 1
 
-        unique_values = ar2[index]
+        sorted_index = index[s_idx[:index.shape[0]]]
+        unique_values = ar2[sorted_index]
         unique_values = unique_values.reshape(
             unique_values.shape[0], *orig_shape[1:])
         unique_values = cupy.moveaxis(unique_values, 0, axis)
 
         ret = (unique_values,)
         if orig_ret_index:
-            ret += (index,)
+            ret += (sorted_index,)
         ret += rest
 
     return ret
