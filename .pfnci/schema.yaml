@@ -72,6 +72,9 @@ cuda:
   "12.4":
     full_version: "12.4.0"
     repository: "nvidia/cuda"
+  "12.5":
+    full_version: "12.5.0"
+    repository: "nvidia/cuda"
 rocm:
   null:
     full_version: null
@@ -150,6 +153,10 @@ nccl:
       "12.2":  # Note: DEB package unavailable on Ubuntu 22.04
       "12.3":
       "12.4":
+  "2.21":
+    spec: "2.21.*"
+    cuda:
+      "12.5":
 cutensor:
   # https://docs.nvidia.com/cuda/cutensor/
   # https://developer.nvidia.com/cutensor/downloads
@@ -172,6 +179,7 @@ cutensor:
       "12.2":  # assumed
       "12.3":  # assumed
       "12.4":  # assumed
+      "12.5":  # assumed
 cusparselt:
   # https://docs.nvidia.com/cuda/cusparselt/
   # https://developer.nvidia.com/cusparselt/downloads
@@ -185,6 +193,7 @@ cusparselt:
       "12.2":
       "12.3":
       "12.4":
+      "12.5":
 cudnn:
   # https://docs.nvidia.com/deeplearning/cudnn/support-matrix/index.html
   # https://docs.nvidia.com/deeplearning/cudnn/archives/
@@ -221,6 +230,8 @@ cudnn:
       "12.3":  # assumed
         alias: "12.0"
       "12.4":  # assumed
+        alias: "12.0"
+      "12.5": # assumed
         alias: "12.0"
 
 ###############################################################################
