@@ -59,10 +59,11 @@ def _run_cc(cmd, cwd, backend, log_stream=None):
                 path = extra_path + os.pathsep + os.environ.get('PATH', '')
                 env = copy.deepcopy(env)
                 env['PATH'] = path
-        log = subprocess.check_output(cmd, cwd=cwd, env=env,
-                                      stderr=subprocess.STDOUT,
-                                      universal_newlines=True,
-                                      creationflags=(subprocess.CREATE_NO_WINDOW if _win32 else 0))
+        log = subprocess.check_output(
+            cmd, cwd=cwd, env=env,
+            stderr=subprocess.STDOUT,
+            universal_newlines=True,
+            creationflags=(subprocess.CREATE_NO_WINDOW if _win32 else 0))
         if log_stream is not None:
             log_stream.write(log)
         return log
