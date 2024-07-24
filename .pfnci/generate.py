@@ -119,7 +119,11 @@ class LinuxGenerator:
             assert os_version in ('7', '8')
             if os_version == '7':
                 lines += [
-                    'RUN yum -y install centos-release-scl && \\',
+                    'COPY setup/setup-yum-centos7-pre.sh setup/setup-yum-centos7-post.sh /',  # NOQA
+                    '',
+                    'RUN /setup-yum-centos7-pre.sh && \\',
+                    '    yum -y install centos-release-scl && \\',
+                    '    /setup-yum-centos7-post.sh && \\',
                     '    yum -y install devtoolset-7-gcc-c++',
                     'ENV PATH "/opt/rh/devtoolset-7/root/usr/bin:${PATH}"',
                     'ENV LD_LIBRARY_PATH "/opt/rh/devtoolset-7/root/usr/lib64:/opt/rh/devtoolset-7/root/usr/lib:${LD_LIBRARY_PATH}"',  # NOQA
