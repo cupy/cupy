@@ -119,7 +119,7 @@ class LinuxGenerator:
             assert os_version in ('7', '8')
             if os_version == '7':
                 lines += [
-                    'COPY setup/setup-yum-centos7-pre.sh setup/setup-yum-centos7-post.sh /',
+                    'COPY setup/setup-yum-centos7-pre.sh setup/setup-yum-centos7-post.sh /',  # NOQA
                     '',
                     'RUN /setup-yum-centos7-pre.sh && \\',
                     '    yum -y install centos-release-scl && \\',
