@@ -1216,12 +1216,7 @@ class TestLOBPCG:
         runtime.is_hip and driver.get_build_version() >= 5_00_00000,
         reason='ROCm 5.0+ may have a bug')
     @pytest.mark.xfail(
-        cupy.cuda.cusolver._getVersion() in (
-            (11, 4, 5),  # CUDA 12.1.1
-            (11, 5, 0),  # CUDA 12.2.0
-            (11, 5, 1),  # CUDA 12.2.1
-            (11, 5, 2),  # CUDA 12.2.2
-        ),
+        cupy.cuda.cusolver._getVersion() >= (11, 4, 5),  # CUDA 12.1.1+
         reason='cuSOLVER in CUDA 12.1+ may have a bug',
         strict=False,  # Seems only failing with Volta (V100 / T4)
     )
@@ -1313,7 +1308,7 @@ class TestLOBPCGForDiagInput:
         X = testing.shaped_random((n, m), xp=xp, dtype=xp.dtype(self.X_dtype),
                                   seed=1234)
 
-        # Require tht returned eigenvectors be in the orthogonal
+        # Require that returned eigenvectors be in the orthogonal
         # complement of the first few standard basis vectors
         # (Cannot be sparse array)
         m_excluded = 3

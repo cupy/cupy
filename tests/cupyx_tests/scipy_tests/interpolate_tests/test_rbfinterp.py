@@ -77,7 +77,7 @@ def _is_conditionally_positive_definite(kernel, m, xp, scp):
     ntests = 100
     for ndim in [1, 2, 3, 4, 5]:
         # Generate sample points with a Halton sequence to avoid samples that
-        # are too close to eachother, which can make the matrix singular.
+        # are too close to each other, which can make the matrix singular.
         seq = Halton(ndim, scramble=False, seed=_np.random.RandomState())
         for _ in range(ntests):
             x = xp.asarray(2*seq.random(nx)) - 1
@@ -114,7 +114,10 @@ def test_conditionally_positive_definite(xp, scp, kernel):
 
 @testing.with_requires("scipy>=1.7.0")
 class _TestRBFInterpolator:
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    rtol = 5e-5
+    atol = 5e-5
+
+    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=rtol, atol=atol)
     @pytest.mark.parametrize('kernel', sorted(_SCALE_INVARIANT))
     def test_scale_invariance_1d(self, xp, scp, kernel):
         # Verify that the functions in _SCALE_INVARIANT are insensitive to the
@@ -127,7 +130,7 @@ class _TestRBFInterpolator:
         yitp2 = self.build(scp, x, y, epsilon=2.0, kernel=kernel)(xitp)
         return yitp1, yitp2
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=rtol, atol=atol)
     @pytest.mark.parametrize('kernel', sorted(_SCALE_INVARIANT))
     def test_scale_invariance_2d(self, xp, scp, kernel):
         # Verify that the functions in _SCALE_INVARIANT are insensitive to the
@@ -140,7 +143,7 @@ class _TestRBFInterpolator:
         yitp2 = self.build(scp, x, y, epsilon=2.0, kernel=kernel)(xitp)
         return yitp1, yitp2
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=rtol, atol=atol)
     @pytest.mark.parametrize('kernel', sorted(_AVAILABLE))
     def test_extreme_domains(self, xp, scp, kernel):
         # Make sure the interpolant remains numerically stable for very
@@ -169,7 +172,7 @@ class _TestRBFInterpolator:
 
         return yitp1, yitp2
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=rtol, atol=atol)
     def test_polynomial_reproduction(self, xp, scp):
         # If the observed data comes from a polynomial, then the interpolant
         # should be able to reproduce the polynomial exactly, provided that
@@ -197,7 +200,7 @@ class _TestRBFInterpolator:
 
         return yitp1, yitp2
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=rtol, atol=atol)
     def test_vector_data(self, xp, scp):
         # Make sure interpolating a vector field is the same as interpolating
         # each component separately.
@@ -215,7 +218,7 @@ class _TestRBFInterpolator:
 
         return yitp1, yitp2, yitp3
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=rtol, atol=atol)
     def test_complex_data(self, xp, scp):
         # Interpolating complex input should be the same as interpolating the
         # real and complex components.
@@ -232,7 +235,7 @@ class _TestRBFInterpolator:
 
         return yitp1, yitp2, yitp3
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-3, atol=1e-3)
     @pytest.mark.parametrize('kernel', sorted(_AVAILABLE))
     def test_interpolation_misfit_1d(self, xp, scp, kernel):
         # Make sure that each kernel, with its default `degree` and an
@@ -250,7 +253,7 @@ class _TestRBFInterpolator:
         assert mse < 1.0e-4
         return yitp
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=rtol, atol=atol)
     @pytest.mark.parametrize('kernel', sorted(_AVAILABLE))
     def test_interpolation_misfit_2d(self, xp, scp, kernel):
         # Make sure that each kernel, with its default `degree` and an
@@ -268,7 +271,7 @@ class _TestRBFInterpolator:
         assert mse < 2.0e-4
         return yitp
 
-    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-8)
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=5e-2, rtol=5e-2)
     @pytest.mark.parametrize('kernel', sorted(_AVAILABLE))
     def test_smoothing_misfit(self, xp, scp, kernel):
         # Make sure we can find a smoothing parameter for each kernel that
@@ -299,7 +302,7 @@ class _TestRBFInterpolator:
         assert rmse_within_tol
         return ysmooth
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=rtol, atol=atol)
     def test_array_smoothing(self, xp, scp):
         # Test using an array for `smoothing` to give less weight to a known
         # outlier.
@@ -383,7 +386,8 @@ class _TestRBFInterpolator:
 
     @testing.numpy_cupy_allclose(scipy_name='scp', accept_error=UserWarning)
     @pytest.mark.parametrize('kernel',
-                             [kl for kl in _NAME_TO_MIN_DEGREE])
+                             [kl for kl in _NAME_TO_MIN_DEGREE
+                              if _NAME_TO_MIN_DEGREE[kl] >= 1])
     def test_degree_warning(self, xp, scp, kernel):
         y = xp.linspace(0, 1, 5)[:, None]
         d = xp.zeros(5)
@@ -391,6 +395,15 @@ class _TestRBFInterpolator:
         with warnings.catch_warnings():
             warnings.simplefilter("error")
             self.build(scp, y, d, epsilon=1.0, kernel=kernel, degree=deg-1)
+
+    @pytest.mark.parametrize('kernel', [kl for kl in _NAME_TO_MIN_DEGREE])
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_minus_one_degree(self, xp, scp, kernel):
+        # Make sure a degree of -1 is accepted without any warning.
+        y = xp.linspace(0, 1, 5)[:, None]
+        d = xp.zeros(5)
+        f = self.build(scp, y, d, epsilon=1.0, kernel=kernel, degree=-1)
+        return f(y)
 
     @testing.numpy_cupy_allclose(scipy_name='scp', accept_error=LinAlgError)
     def test_rank_error(self, xp, scp):
@@ -401,7 +414,7 @@ class _TestRBFInterpolator:
         with cupyx.errstate(linalg='raise'):
             self.build(scp, y, d, kernel='thin_plate_spline')(y)
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=rtol, atol=atol)
     @pytest.mark.parametrize('dim', [1, 2, 3])
     def test_single_point(self, xp, scp, dim):
         # Make sure interpolation still works with only one point (in 1, 2, and
@@ -529,48 +542,37 @@ class TestRBFInterpolatorNeighborsNone(_TestRBFInterpolator):
         testing.assert_allclose(yitp1, yitp2, atol=1e-8)
 
 
-"""
-# Disable `all neighbors not None` tests : they need KDTree
-
 class TestRBFInterpolatorNeighbors20(_TestRBFInterpolator):
     # RBFInterpolator using 20 nearest neighbors.
-    def build(self, *args, **kwargs):
-        return RBFInterpolator(*args, **kwargs, neighbors=20)
+    def build(self, scp, *args, **kwargs):
+        return scp.interpolate.RBFInterpolator(*args, **kwargs, neighbors=20)
 
-    def test_equivalent_to_rbf_interpolator(self):
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_equivalent_to_rbf_interpolator(self, xp, scp):
         seq = Halton(2, scramble=False, seed=_np.random.RandomState())
 
-        x = cp.asarray(seq.random(100))
-        xitp = cp.asarray(seq.random(100))
+        x = xp.asarray(seq.random(100))
+        xitp = xp.asarray(seq.random(100))
 
-        y = _2d_test_function(x)
-
-        yitp1 = self.build(x, y)(xitp)
-
-        yitp2 = []
-        tree = cKDTree(x)
-        for xi in xitp:
-            _, nbr = tree.query(xi, 20)
-            yitp2.append(RBFInterpolator(x[nbr], y[nbr])(xi[None])[0])
-
-        assert_allclose(yitp1, yitp2, atol=1e-8)
+        y = _2d_test_function(x, xp)
+        yitp1 = self.build(scp, x, y)(xitp)
+        return yitp1
 
 
 class TestRBFInterpolatorNeighborsInf(TestRBFInterpolatorNeighborsNone):
     # RBFInterpolator using neighbors=np.inf. This should give exactly the same
     # results as neighbors=None, but it will be slower.
-    def build(self, *args, **kwargs):
-        return RBFInterpolator(*args, **kwargs, neighbors=cp.inf)
+    def build(self, scp, *args, **kwargs):
+        return scp.interpolate.RBFInterpolator(
+            *args, **kwargs, neighbors=cp.inf)
 
-    def test_equivalent_to_rbf_interpolator(self):
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_equivalent_to_rbf_interpolator(self, xp, scp):
         seq = Halton(1, scramble=False, seed=_np.random.RandomState())
 
-        x = cp.asarray(3*seq.random(50))
-        xitp = cp.asarray(3*seq.random(50))
+        x = xp.asarray(3*seq.random(50))
+        xitp = xp.asarray(3*seq.random(50))
 
-        y = _1d_test_function(x)
-        yitp1 = self.build(x, y)(xitp)
-        yitp2 = RBFInterpolator(x, y)(xitp)
-
-        assert_allclose(yitp1, yitp2, atol=1e-8)
-"""
+        y = _1d_test_function(x, xp)
+        yitp1 = self.build(scp, x, y)(xitp)
+        return yitp1

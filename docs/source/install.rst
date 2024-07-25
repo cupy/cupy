@@ -6,7 +6,7 @@ Requirements
 
 * `NVIDIA CUDA GPU <https://developer.nvidia.com/cuda-gpus>`_ with the Compute Capability 3.0 or larger.
 
-* `CUDA Toolkit <https://developer.nvidia.com/cuda-toolkit>`_: v11.2 / v11.3 / v11.4 / v11.5 / v11.6 / v11.7 / v11.8 / v12.0 / v12.1 / v12.2
+* `CUDA Toolkit <https://developer.nvidia.com/cuda-toolkit>`_: v11.2 / v11.3 / v11.4 / v11.5 / v11.6 / v11.7 / v11.8 / v12.0 / v12.1 / v12.2 / v12.3 / v12.4 / v12.5
 
     * If you have multiple versions of CUDA Toolkit installed, CuPy will automatically choose one of the CUDA installations.
       See :ref:`install_cuda` for details.
@@ -23,13 +23,13 @@ Requirements
 Python Dependencies
 ~~~~~~~~~~~~~~~~~~~
 
-NumPy/SciPy-compatible API in CuPy v13 is based on NumPy 1.26 and SciPy 1.11, and has been tested against the following versions:
+NumPy/SciPy-compatible API in CuPy v14 is based on NumPy 2.0 and SciPy 1.13, and has been tested against the following versions:
 
-* `NumPy <https://numpy.org/>`_: v1.22 / v1.23 / v1.24 / v1.25 / v1.26
+* `NumPy <https://numpy.org/>`_: v1.22 / v1.23 / v1.24 / v1.25 / v1.26 / v2.0
 
 * `SciPy <https://scipy.org/>`_ (*optional*): v1.7 / v1.8 / v1.9 / v1.10 / v1.11
 
-    * Required only when coping sparse matrices from GPU to CPU (see :doc:`../reference/scipy_sparse`.)
+    * Required only when copying sparse matrices from GPU to CPU (see :doc:`../reference/scipy_sparse`.)
 
 * `Optuna <https://optuna.org/>`_ (*optional*): v3.x
 
@@ -62,7 +62,7 @@ Part of the CUDA features in CuPy will be activated only when the corresponding 
 
     * The library to accelerate deep neural network computations.
 
-* `cuSPARSELt <https://docs.nvidia.com/cuda/cusparselt/>`_: v0.2.0
+* `cuSPARSELt <https://docs.nvidia.com/cuda/cusparselt/>`_: v0.6.0 / v0.6.1
 
     * The library to accelerate sparse matrix-matrix multiplication.
 
@@ -125,7 +125,7 @@ If you aim at minimizing the installation footprint, you can install the ``cupy-
     $ conda install -c conda-forge cupy-core
 
 which only depends on ``numpy``. None of the CUDA libraries will be installed this way, and it is your responsibility to install the needed
-dependencies youself, either from conda-forge or elsewhere. This is equivalent of the ``cupy-cudaXX`` wheel installation.
+dependencies yourself, either from conda-forge or elsewhere. This is equivalent of the ``cupy-cudaXX`` wheel installation.
 
 Conda has a built-in mechanism to determine and install the latest version of ``cudatoolkit`` or any other CUDA components supported by your driver.
 However, if for any reason you need to force-install a particular CUDA version (say 11.8), you can do::
@@ -330,7 +330,7 @@ CuPy always raises ``cupy.cuda.compiler.CompileException``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 If CuPy raises a ``CompileException`` for almost everything, it is possible that CuPy cannot detect CUDA installed on your system correctly.
-The followings are error messages commonly observed in such cases.
+The following are error messages commonly observed in such cases.
 
 * ``nvrtc: error: failed to load builtins``
 * ``catastrophic error: cannot open source file "cuda_fp16.h"``

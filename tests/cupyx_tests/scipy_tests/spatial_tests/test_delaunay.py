@@ -43,6 +43,19 @@ pathological_data_2 = np.array([
 ])
 
 
+def compute_random_points(tri_points, xp):
+    bary = xp.empty((tri_points.shape[0], 3), xp.float64)
+    s = testing.shaped_random((tri_points.shape[0],), np, np.float64,
+                              scale=1.0)
+    t = testing.shaped_random((tri_points.shape[0],), np, np.float64,
+                              scale=1-s)
+    bary[:, 0] = xp.asarray(s)
+    bary[:, 1] = xp.asarray(t)
+    bary[:, 2] = xp.asarray(1 - s - t)
+
+    return (xp.expand_dims(bary, -1) * tri_points).sum(1)
+
+
 class TestDelaunay:
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_2d_triangulation(self, xp, scp):
@@ -89,3 +102,13 @@ class TestDelaunay:
         tri_index = tri.find_simplex(search_point)
         triangle = tri.simplices[tri_index]
         return xp.sort(triangle)
+
+    @pytest.mark.parametrize('n_points', [10, 20, 50, 100])
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_find_simplex_multiple_points(self, n_points, xp, scp):
+        points = testing.shaped_random((n_points, 2), xp, dtype=xp.float64)
+        tri = scp.spatial.Delaunay(points)
+
+        search_points = compute_random_points(points[tri.simplices], xp)
+        out = tri.find_simplex(search_points)
+        return xp.sort(out)

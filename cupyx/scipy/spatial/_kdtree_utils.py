@@ -29,17 +29,7 @@ TYPES = FLOAT_TYPES + INT_TYPES + UNSIGNED_TYPES + COMPLEX_TYPES  # type: ignore
 TYPE_NAMES = [_get_typename(t) for t in TYPES]
 
 
-if runtime.is_hip:
-    KERNEL_BASE = r"""
-    #include <hip/hip_runtime.h>
-"""
-else:
-    KERNEL_BASE = r"""
-#include <cuda_runtime.h>
-#include <device_launch_parameters.h>
-"""
-
-KD_KERNEL = KERNEL_BASE + r'''
+KD_KERNEL = r'''
 #include <cupy/math_constants.h>
 #include <cupy/carray.cuh>
 #include <cupy/complex.cuh>
@@ -202,7 +192,7 @@ __global__ void tag_pairs(
 }
 '''
 
-KNN_KERNEL = KERNEL_BASE + r'''
+KNN_KERNEL = r'''
 #include <cupy/math_constants.h>
 #include <cupy/carray.cuh>
 #include <cupy/complex.cuh>

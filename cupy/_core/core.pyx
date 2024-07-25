@@ -54,6 +54,9 @@ from cupy_backends.cuda cimport stream as _stream_module
 from cupy_backends.cuda.api cimport runtime
 
 
+NUMPY_1x = numpy.__version__ < '2'
+
+
 # If rop of cupy.ndarray is called, cupy's op is the last chance.
 # If op of cupy.ndarray is called and the `other` is cupy.ndarray, too,
 # it is safe to call cupy's op.
@@ -237,7 +240,8 @@ cdef class _ndarray_base:
         else:
             self.data = memptr
             bound = cupy._core._memory_range.get_bound(self)
-            self._index_32_bits = bound[1] - bound[0] <= (1 << 31)
+            max_diff = max(bound[1] - bound[0], self.size * itemsize)
+            self._index_32_bits = max_diff <= (1 << 31)
 
     cdef _init_fast(self, const shape_t& shape, dtype, bint c_order):
         """ For internal ndarray creation. """
@@ -1844,7 +1848,10 @@ cdef class _ndarray_base:
             numpy.ndarray: Copy of the array on host memory.
 
         """
+        if stream is None:
+            stream = stream_module.get_current_stream()
         a_cpu = None
+
         if out is not None:
             if not isinstance(out, numpy.ndarray):
                 raise TypeError('Only numpy.ndarray can be obtained from'
@@ -1862,14 +1869,15 @@ cdef class _ndarray_base:
                 prev_device = runtime.getDevice()
                 try:
                     runtime.setDevice(self.device.id)
-                    if out.flags.c_contiguous:
-                        a_gpu = _internal_ascontiguousarray(self)
-                    elif out.flags.f_contiguous:
-                        a_gpu = _internal_asfortranarray(self)
-                    else:
-                        raise RuntimeError(
-                            '`out` cannot be specified when copying to '
-                            'non-contiguous ndarray')
+                    with stream:
+                        if out.flags.c_contiguous:
+                            a_gpu = _internal_ascontiguousarray(self)
+                        elif out.flags.f_contiguous:
+                            a_gpu = _internal_asfortranarray(self)
+                        else:
+                            raise RuntimeError(
+                                '`out` cannot be specified when copying to '
+                                'non-contiguous ndarray')
                 finally:
                     runtime.setDevice(prev_device)
             else:
@@ -1904,20 +1912,19 @@ cdef class _ndarray_base:
                 prev_device = runtime.getDevice()
                 try:
                     runtime.setDevice(self.device.id)
-                    if order == 'C':
-                        a_gpu = _internal_ascontiguousarray(self)
-                    elif order == 'F':
-                        a_gpu = _internal_asfortranarray(self)
-                    else:
-                        raise ValueError('unsupported order: {}'.format(order))
+                    with stream:
+                        if order == 'C':
+                            a_gpu = _internal_ascontiguousarray(self)
+                        elif order == 'F':
+                            a_gpu = _internal_asfortranarray(self)
+                        else:
+                            raise ValueError(
+                                'unsupported order: {}'.format(order))
                 finally:
                     runtime.setDevice(prev_device)
             else:
                 a_gpu = self
             a_cpu = numpy.empty(self._shape, dtype=self.dtype, order=order)
-
-        if stream is None:
-            stream = stream_module.get_current_stream()
 
         syncdetect._declare_synchronize()
         ptr = a_cpu.ctypes.data
@@ -2688,7 +2695,7 @@ cdef inline _ndarray_base _try_skip_h2d_copy(
 
 
 cdef _ndarray_base _array_default(
-        obj, dtype, bint copy, order, Py_ssize_t ndmin, bint blocking):
+        obj, dtype, copy, order, Py_ssize_t ndmin, bint blocking):
     cdef _ndarray_base a
 
     # Fast path: zero-copy a NumPy array if possible
@@ -2702,7 +2709,8 @@ cdef _ndarray_base _array_default(
             order = 'F'
         else:
             order = 'C'
-    a_cpu = numpy.array(obj, dtype=dtype, copy=False, order=order,
+    copy = False if NUMPY_1x else None
+    a_cpu = numpy.array(obj, dtype=dtype, copy=copy, order=order,
                         ndmin=ndmin)
     if a_cpu.dtype.char not in _dtype.all_type_chars:
         raise ValueError('Unsupported dtype %s' % a_cpu.dtype)

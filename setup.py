@@ -23,7 +23,7 @@ setup_requires = [
     'fastrlock>=0.5',
 ]
 install_requires = [
-    'numpy>=1.22,<1.29',  # see #4773
+    'numpy>=1.22,<2.3',
     'fastrlock>=0.5',
 ]
 extras_require = {
@@ -47,6 +47,7 @@ extras_require = {
         # pytest < 7.2 has some different behavior that makes our CI fail
         'pytest>=7.2',
         'hypothesis>=6.37.2,<6.55.0',
+        'mpmath'
     ],
 }
 tests_require = extras_require['test']

@@ -139,5 +139,7 @@ def check_fusion(
 def can_use_grid_synchronization():
     return (
         not cupy.cuda.runtime.is_hip and
-        int(cupy.cuda.device.get_compute_capability()) >= 70
+        int(cupy.cuda.device.get_compute_capability()) >= 70 and
+        (cupy.cuda.runtime.runtimeGetVersion() <=
+         cupy.cuda.runtime.driverGetVersion())  # depends on PTX
     )

@@ -22,6 +22,7 @@ Univariate interpolation
    PPoly
    BPoly
    CubicSpline
+   interp1d
 
 1-D Splines
 -----------
@@ -31,10 +32,20 @@ Univariate interpolation
 
    BSpline
    make_interp_spline
+   make_lsq_spline
 
    splder
    splantider
 
+Smoothing Splines
+-----------------
+
+.. autosummary::
+   :toctree: generated/
+
+   UnivariateSpline
+   InterpolatedUnivariateSpline
+   LSQUnivariateSpline
 
 Multivariate interpolation
 --------------------------
@@ -44,6 +55,9 @@ Unstructured data:
 .. autosummary::
    :toctree: generated/
 
+   LinearNDInterpolator
+   NearestNDInterpolator
+   CloughTocher2DInterpolator
    RBFInterpolator
 
 
@@ -61,3 +75,4 @@ Tensor product polynomials:
    :toctree: generated/
 
    NdPPoly
+   NdBSpline

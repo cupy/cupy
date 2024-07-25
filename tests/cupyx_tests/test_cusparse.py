@@ -369,7 +369,7 @@ class TestCsrgemm2InvalidCases:
 
 @testing.parameterize(*testing.product({
     'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
-    'shape': [(2, 3, 4), (4, 3, 2)]
+    'shape': [(2, 3, 4), (4, 3, 2), (100000, 100000, 50)]
 }))
 @testing.with_requires('scipy>=1.2.0')
 class TestSpgemm:
@@ -393,7 +393,16 @@ class TestSpgemm:
     def test_spgemm_ab(self):
         a = sparse.csr_matrix(self.a)
         b = sparse.csr_matrix(self.b)
+
+        if (self.shape[0] == 100000) and cusparse.getVersion() < 12000:
+            # Lower memory algorithms for spgemm not available in CUDA < 12.0
+            with pytest.raises(_cusparse.CuSparseError):
+                cusparse.spgemm(a, b)
+            return
+
         c = cusparse.spgemm(a, b, alpha=self.alpha)
+        if (self.shape[0] == 100000):
+            return  # skip the comparison with scipy on large tests
         expect = self.alpha * self.a.dot(self.b)
         testing.assert_array_almost_equal(c.toarray(), expect.toarray())
 
@@ -1089,7 +1098,7 @@ class TestSpsm:
         if not cusparse.check_availability('spsm'):
             pytest.skip('spsm is not available')
         if not runtime.is_hip and _cusparse.get_build_version() < 11701:
-            # eariler than CUDA 11.6
+            # earlier than CUDA 11.6
             if b_order == 'c':
                 pytest.skip("Older CUDA has a bug")
         if runtime.is_hip:

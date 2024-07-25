@@ -649,8 +649,8 @@ class TestSOSFreqz:
         w_mp = np.array([float(x) for x in w_mp])
         h_mp = np.array([complex(x) for x in h_mp])
 
-        sos = signal.butter(order, Wn, output='sos')
-        w, h = signal.sosfreqz(sos, worN=N)
+        sos = cupyx.scipy.signal.butter(order, Wn, output='sos')
+        w, h = cupyx.scipy.signal.sosfreqz(sos, worN=N)
         assert_allclose(w, w_mp, rtol=1e-12, atol=1e-14)
         assert_allclose(h, h_mp, rtol=1e-12, atol=1e-14)
 
@@ -802,7 +802,7 @@ class TestGroupDelay:
 
 @testing.with_requires('scipy')
 class TestGammatone:
-    # Test erroneus input cases.
+    # Test erroneous input cases.
     def test_invalid_input(self):
         for scp in [cupyx.scipy, scipy]:
             # Cutoff frequency is <= 0 or >= fs / 2.

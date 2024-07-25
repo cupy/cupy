@@ -4,7 +4,6 @@ import math
 import cupy
 from cupy._core import internal  # NOQA
 from cupy._core._scalar import get_typename  # NOQA
-from cupy_backends.cuda.api import runtime
 from cupyx.scipy import special as spec
 from cupyx.scipy.interpolate._bspline import BSpline, _get_dtype
 
@@ -122,15 +121,7 @@ INTERVAL_MODULE = cupy.RawModule(
     name_expressions=[
         'find_breakpoint_position_1d', 'find_breakpoint_position_nd'])
 
-if runtime.is_hip:
-    BASE_HEADERS = """#include <hip/hip_runtime.h>
-"""
-else:
-    BASE_HEADERS = """#include <cuda_runtime.h>
-#include <device_launch_parameters.h>
-"""
-
-PPOLY_KERNEL = BASE_HEADERS + r"""
+PPOLY_KERNEL = r"""
 #include <cupy/complex.cuh>
 #include <cupy/math_constants.h>
 
@@ -404,7 +395,7 @@ PPOLY_MODULE = cupy.RawModule(
         [f'fix_continuity<{type_name}>' for type_name in TYPES] +
         [f'integrate<{type_name}>' for type_name in TYPES]))
 
-BPOLY_KERNEL = BASE_HEADERS + r"""
+BPOLY_KERNEL = r"""
 #include <cupy/complex.cuh>
 #include <cupy/math_constants.h>
 
@@ -877,9 +868,9 @@ class _PPolyBase:
     def _get_dtype(self, dtype):
         if (cupy.issubdtype(dtype, cupy.complexfloating)
                 or cupy.issubdtype(self.c.dtype, cupy.complexfloating)):
-            return cupy.complex_
+            return cupy.complex128
         else:
-            return cupy.float_
+            return cupy.float64
 
     @classmethod
     def construct_fast(cls, c, x, extrapolate=None, axis=0):
@@ -1023,7 +1014,7 @@ class _PPolyBase:
             extrapolate = self.extrapolate
         x = cupy.asarray(x)
         x_shape, x_ndim = x.shape, x.ndim
-        x = cupy.ascontiguousarray(x.ravel(), dtype=cupy.float_)
+        x = cupy.ascontiguousarray(x.ravel(), dtype=cupy.float64)
 
         # With periodic extrapolation we map x to the segment
         # [self.x[0], self.x[-1]].
@@ -1936,9 +1927,9 @@ class BPoly(_PPolyBase):
         dta, dtb = ya.dtype, yb.dtype
         if (cupy.issubdtype(dta, cupy.complexfloating) or
                 cupy.issubdtype(dtb, cupy.complexfloating)):
-            dt = cupy.complex_
+            dt = cupy.complex128
         else:
-            dt = cupy.float_
+            dt = cupy.float64
 
         na, nb = len(ya), len(yb)
         n = na + nb
@@ -2058,9 +2049,9 @@ class NdPPoly:
     def _get_dtype(self, dtype):
         if (cupy.issubdtype(dtype, cupy.complexfloating)
                 or cupy.issubdtype(self.c.dtype, cupy.complexfloating)):
-            return cupy.complex_
+            return cupy.complex128
         else:
-            return cupy.float_
+            return cupy.float64
 
     def _ensure_c_contiguous(self):
         if not self.c.flags.c_contiguous:

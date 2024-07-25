@@ -438,7 +438,7 @@ class csr_matrix(_compressed._compressed_sparse_matrix):
         raise NotImplementedError
 
     def tocoo(self, copy=False):
-        """Converts the matrix to COOdinate format.
+        """Converts the matrix to COOrdinate format.
 
         Args:
             copy (bool): If ``False``, it shares data arrays as much as
@@ -774,7 +774,7 @@ def multiply_by_csr(a, b):
     d_data = cupy.empty(d_nnz, dtype=dtype)
     d_indices = cupy.empty(d_nnz, dtype=a.indices.dtype)
 
-    # remove zero elements in matric c
+    # remove zero elements in matrix c
     cupy_multiply_by_csr_step2()(c_data, c_indices, flags, d_data, d_indices)
 
     return csr_matrix((d_data, d_indices, d_indptr), shape=(m, n))

@@ -66,6 +66,15 @@ cuda:
   "12.2":
     full_version: "12.2.0"
     repository: "nvidia/cuda"
+  "12.3":
+    full_version: "12.3.0"
+    repository: "nvidia/cuda"
+  "12.4":
+    full_version: "12.4.0"
+    repository: "nvidia/cuda"
+  "12.5":
+    full_version: "12.5.0"
+    repository: "nvidia/cuda"
 rocm:
   null:
     full_version: null
@@ -128,8 +137,26 @@ nccl:
     cuda:
       # "11.0":  -- DEB/RPM packages are unavailable
       "12.0":  # Note: DEB package unavailable on Ubuntu 22.04
-      "12.1":
       "12.2":
+  "2.19":
+    spec: "2.19.*"
+    cuda:
+      # "11.0":  -- DEB/RPM packages are unavailable
+      "12.0":  # Note: DEB package unavailable on Ubuntu 22.04
+      "12.2":
+      "12.3":
+  "2.20":
+    spec: "2.20.*"
+    cuda:
+      # "11.0":  -- DEB/RPM packages are unavailable
+      "12.0":  # Note: DEB package unavailable on Ubuntu 22.04
+      "12.2":  # Note: DEB package unavailable on Ubuntu 22.04
+      "12.3":
+      "12.4":
+  "2.21":
+    spec: "2.21.*"
+    cuda:
+      "12.5":
 cutensor:
   # https://docs.nvidia.com/cuda/cutensor/
   # https://developer.nvidia.com/cutensor/downloads
@@ -150,24 +177,23 @@ cutensor:
       "12.0":
       "12.1":  # assumed
       "12.2":  # assumed
+      "12.3":  # assumed
+      "12.4":  # assumed
+      "12.5":  # assumed
 cusparselt:
   # https://docs.nvidia.com/cuda/cusparselt/
   # https://developer.nvidia.com/cusparselt/downloads
   null:
     spec: null
-  "0.2.0":  # DEB package unavailable on Ubuntu 22.04
-    spec: "0.2.0.*"
+  "0.6.1":
+    spec: "0.6.1.*"
     cuda:
-      "11.2":
-      "11.3":
-      "11.4":
-      "11.5":
-      "11.6":
-      "11.7":
-      "11.8":
-      "12.0":  # TODO(kmaehashi): Tentatively use v0.2.0 for CUDA 12
-      "12.1":  # TODO(kmaehashi): Tentatively use v0.2.0 for CUDA 12
-      "12.2":  # TODO(kmaehashi): Tentatively use v0.2.0 for CUDA 12
+      "12.0":
+      "12.1":
+      "12.2":
+      "12.3":
+      "12.4":
+      "12.5":
 cudnn:
   # https://docs.nvidia.com/deeplearning/cudnn/support-matrix/index.html
   # https://docs.nvidia.com/deeplearning/cudnn/archives/
@@ -200,6 +226,12 @@ cudnn:
       "12.1":  # TODO(kmaehashi): cuDNN 8.9 should be used
         alias: "12.0"
       "12.2":  # assumed
+        alias: "12.0"
+      "12.3":  # assumed
+        alias: "12.0"
+      "12.4":  # assumed
+        alias: "12.0"
+      "12.5": # assumed
         alias: "12.0"
 
 ###############################################################################
