@@ -330,6 +330,11 @@ numpy: {}'''.format(cupy_r.dtype, numpy_r.dtype))
             for cupy_r, numpy_r in cupy_numpy_result_ndarrays:
                 assert cupy_r.shape == numpy_r.shape
 
+            # Check flags
+            for cupy_r, numpy_r in cupy_numpy_result_ndarrays:
+                if numpy_r.ndim > 0:
+                    assert cupy_r.flags.writeable == numpy_r.flags.writeable
+
             masks = [None] * len(cupy_result)
             if _contains_signed_and_unsigned(kw):
                 needs_mask = [

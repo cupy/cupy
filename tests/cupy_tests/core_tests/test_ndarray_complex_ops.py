@@ -141,17 +141,19 @@ class TestRealImag(unittest.TestCase):
         expected = cupy.ones((2, 3), dtype=dtype)
         assert cupy.all(x == expected)
 
-    @testing.for_all_dtypes()
-    def test_imag_inplace(self, dtype):
-        x = cupy.zeros((2, 3), dtype=dtype)
-
-        # TODO(kmaehashi) The following line should raise error for real
-        # dtypes, but currently ignored silently.
+    @testing.for_complex_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_imag_inplace(self, xp, dtype):
+        x = xp.zeros((2, 3), dtype=dtype)
         x.imag[:] = 1
+        return x
 
-        expected = cupy.zeros((2, 3), dtype=dtype) + (
-            1j if x.dtype.kind == 'c' else 0)
-        assert cupy.all(x == expected)
+    @testing.for_all_dtypes(no_complex=True)
+    def test_imag_inplace_real(self, dtype):
+        for xp in (numpy, cupy):
+            x = xp.zeros((2, 3), dtype=dtype)
+            with pytest.raises(ValueError, match='read-only'):
+                x.imag[:] = 1
 
 
 class TestScalarConversion(unittest.TestCase):
