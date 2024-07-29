@@ -2608,34 +2608,6 @@ cdef _ndarray_base _array_from_nested_cupy_sequence(
     return a
 
 
-# TODO(leofang): move this to internal.pyx
-cdef inline bint _is_layout_expected(
-        const bint c_contiguous, const bint f_contiguous,
-        expected_order) except*:
-    cdef int order_char = internal._normalize_order(expected_order)
-    order_char = internal._update_order_char(
-        c_contiguous, f_contiguous, order_char)
-    # order_char is either C or F from now on
-    if c_contiguous and f_contiguous:
-        return True
-    if c_contiguous and order_char == b'C':
-        return True
-    elif f_contiguous and order_char == b'F':
-        return True
-    else:
-        return False
-
-# TODO(leofang): move this to internal.pyx
-cdef inline bint _is_alignment_expected(intptr_t ptr, int min_size) noexcept:
-    cdef int alignment = 1
-    # TODO(leofang): use the chunk size from memory.pyx and don't hard-code?
-    while ptr % alignment == 0 and alignment < 256:
-        alignment *= 2
-    if alignment < min_size:
-        return False
-    return True
-
-
 cdef inline _ndarray_base _try_skip_h2d_copy(
         obj, dtype, bint copy, order, Py_ssize_t ndmin):
     if copy:
@@ -2662,7 +2634,7 @@ cdef inline _ndarray_base _try_skip_h2d_copy(
 
     # strides and the requested order could mismatch
     obj_flags = obj.flags
-    if not _is_layout_expected(
+    if not internal._is_layout_expected(
             obj_flags.c_contiguous, obj_flags.f_contiguous, order):
         return None
 
