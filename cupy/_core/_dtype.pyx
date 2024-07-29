@@ -126,39 +126,26 @@ cpdef void _raise_if_invalid_cast(
         f'according to the rule \'{casting}\'')
 
 
+cdef dict dtype_format = {
+    intern("?"): intern("?"),
+    intern("b"): intern("b"),
+    intern("h"): intern("h"),
+    intern("i"): intern("i"),
+    intern("l"): intern("l"),
+    intern("q"): intern("q"),
+    intern("B"): intern("B"),
+    intern("H"): intern("H"),
+    intern("I"): intern("I"),
+    intern("L"): intern("L"),
+    intern("Q"): intern("Q"),
+    intern("e"): intern("e"),
+    intern("f"): intern("f"),
+    intern("d"): intern("d"),
+    intern("F"): intern("Zf"),
+    intern("D"): intern("Zd"),
+}
+
+
 @cython.profile(False)
 cdef void populate_format(Py_buffer* buf, str dtype) except*:
-    if dtype == "?":
-        buf.format = '?'
-    elif dtype == "b":
-        buf.format = 'b'
-    elif dtype == "h":
-        buf.format = 'h'
-    elif dtype == "i":
-        buf.format = 'i'
-    elif dtype == "l":
-        buf.format = 'l'
-    elif dtype == "q":
-        buf.format = 'q'
-    elif dtype == "B":
-        buf.format = 'B'
-    elif dtype == "H":
-        buf.format = 'H'
-    elif dtype == "I":
-        buf.format = 'I'
-    elif dtype == "L":
-        buf.format = 'L'
-    elif dtype == "Q":
-        buf.format = 'Q'
-    elif dtype == "e":
-        buf.format = 'e'
-    elif dtype == "f":
-        buf.format = 'f'
-    elif dtype == "d":
-        buf.format = 'd'
-    elif dtype == "F":
-        buf.format = 'Zf'
-    elif dtype == "D":
-        buf.format = 'Zd'
-    else:
-        raise RuntimeError
+    buf.format = dtype_format[dtype]

@@ -54,9 +54,6 @@ from cupy_backends.cuda cimport stream as _stream_module
 from cupy_backends.cuda.api cimport runtime
 
 
-NUMPY_1x = numpy.__version__ < '2'
-
-
 # If rop of cupy.ndarray is called, cupy's op is the last chance.
 # If op of cupy.ndarray is called and the `other` is cupy.ndarray, too,
 # it is safe to call cupy's op.
@@ -2695,7 +2692,7 @@ cdef inline _ndarray_base _try_skip_h2d_copy(
 
 
 cdef _ndarray_base _array_default(
-        obj, dtype, copy, order, Py_ssize_t ndmin, bint blocking):
+        obj, dtype, bint copy, order, Py_ssize_t ndmin, bint blocking):
     cdef _ndarray_base a
 
     # Fast path: zero-copy a NumPy array if possible
@@ -2709,7 +2706,6 @@ cdef _ndarray_base _array_default(
             order = 'F'
         else:
             order = 'C'
-    copy = False if NUMPY_1x else None
     a_cpu = numpy.array(obj, dtype=dtype, copy=copy, order=order,
                         ndmin=ndmin)
     if a_cpu.dtype.char not in _dtype.all_type_chars:
