@@ -932,7 +932,7 @@ configs {
       image: "windows"
     }
     time_limit {
-      seconds: 36000
+      seconds: 72000
     }
     checkout_strategy {
       include_dot_git: true
