@@ -1143,7 +1143,7 @@ void test_grid_sync(const float* x1, const float* x2, float* y, int n) {
     'block': [64, 256],
 }))
 @unittest.skipIf(
-    find_nvcc_ver() > 12020,
+    find_nvcc_ver() >= 12020,
     "fp16 header compatibility issue, see cupy#8412")
 @unittest.skipUnless(
     9000 <= cupy.cuda.runtime.runtimeGetVersion(),
