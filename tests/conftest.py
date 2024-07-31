@@ -79,22 +79,6 @@ if int(os.environ.get('CUPY_ENABLE_HMM', 0)) != 0:
     import cupy as cp
     cp.cuda.set_allocator(cp.cuda.MemoryPool(cp.cuda.memory.malloc_system).malloc)
 
-    ## Tell NumPy to not cache small arrays
-    #import numpy_allocator
-    #class alloc_always(metaclass=numpy_allocator.type):
-    #    pass
-    #alloc_always.__enter__()
-
-    #import paged_aligned_allocator
-    #allocator = paged_aligned_allocator.page_aligned_allocator
-    #allocator.__enter__()
-
-    # for some reason this segfaults...
-    #import cupy._core.numpy_allocator as ac
-    #allocator = ac.get_aligned_host_allocator()
-    #print(allocator)
-    #allocator.__enter__()
-
     import cupy._core.numpy_allocator as ac
     import numpy_allocator
     import ctypes

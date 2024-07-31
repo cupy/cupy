@@ -128,7 +128,6 @@ _cuda_files = [
     'cupy._core.internal',
     'cupy._core.fusion',
     'cupy._core.new_fusion',
-    'cupy._core.numpy_allocator',
     'cupy._core.raw',
     'cupy.cuda.common',
     'cupy.cuda.cufft',
