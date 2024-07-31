@@ -172,7 +172,8 @@ def device_reduce(_ndarray_base x, op, tuple reduce_axis, tuple out_axis,
         y = _core.ndarray((), x.dtype)
     else:  # argmin and argmax
         # cub::KeyValuePair has 1 int + 1 arbitrary type
-        kv_bytes = (4 + x.dtype.itemsize)
+        # Note that the key may be padded to make the value aligned.
+        kv_bytes = (x.dtype.alignment + x.dtype.itemsize)
         y = _core.ndarray((kv_bytes,), numpy.int8)
     x_ptr = <void *>x.data.ptr
     y_ptr = <void *>y.data.ptr
