@@ -766,6 +766,7 @@ _check_prominence_invalid = cupy.RawKernel(r"""
 extern "C" __global__ void check_prominence_invalid
 (
 int n,
+int x_n,
 long long* peaks,
 long long* left_bases,
 long long* right_bases,
@@ -779,8 +780,8 @@ bool* out
     long long i_min = left_bases[idx];
     long long i_max = right_bases[idx];
     long long peak = peaks[idx];
-    bool valid = 0 <= i_min && i_min <= peak && peak <= i_max && i_max < n;
-    out[idx] = valid;
+    bool valid = 0 <= i_min && i_min <= peak && peak <= i_max && i_max < x_n;
+    out[idx] = !valid;
 }
 """, 'check_prominence_invalid')
 
@@ -828,7 +829,7 @@ def _peak_widths(x, peaks, rel_height, prominences, left_bases, right_bases,
         invalid = cupy.zeros(n, dtype=cupy.bool_)
         _check_prominence_invalid(
             (n_blocks,), (block_sz,),
-            (n, peaks, left_bases, right_bases, invalid))
+            (n, x.shape[0], peaks, left_bases, right_bases, invalid))
         if cupy.any(invalid):
             raise ValueError("prominence data is invalid")
 
