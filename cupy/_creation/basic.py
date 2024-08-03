@@ -178,7 +178,7 @@ def ones(
     .. seealso:: :func:`numpy.ones`
 
     """
-    a = cupy.ndarray(shape, dtype, order=order)
+    a = empty(shape, dtype, order=order)
     a.fill(1)
     return a
 
@@ -245,7 +245,7 @@ def zeros(
     .. seealso:: :func:`numpy.zeros`
 
     """
-    a = cupy.ndarray(shape, dtype, order=order)
+    a = empty(shape, dtype, order=order)
     a.data.memset_async(0, a.nbytes)
     return a
 
@@ -321,7 +321,7 @@ def full(
             dtype = fill_value.dtype
         else:
             dtype = numpy.array(fill_value).dtype
-    a = cupy.ndarray(shape, dtype, order=order)
+    a = empty(shape, dtype, order=order)
     cupy.copyto(a, fill_value, casting='unsafe')
     return a
 
