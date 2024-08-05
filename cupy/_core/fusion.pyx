@@ -954,7 +954,7 @@ def _call_reduction(fusion_op, *args, **kwargs):
     if ndim >= 1:
         return _FusionVarArray(var, ndim, True)
     else:
-        return _FusionVarScalar(var, -1, True)
+        return _FusionVarScalar(var, -1, True, False)
 
 
 def _create_astype_ufunc(dtype):
