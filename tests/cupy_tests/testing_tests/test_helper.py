@@ -5,6 +5,7 @@ import pytest
 
 import cupy
 from cupy import testing
+from numpy.exceptions import AxisError
 
 
 class TestPackageRequirements:
@@ -178,8 +179,8 @@ class TestAssertFunctionIsCalled(unittest.TestCase):
 
     def test_inner_error(self):
         orig = cupy.ndarray
-        with pytest.raises(numpy.AxisError):
+        with pytest.raises(AxisError):
             with testing.AssertFunctionIsCalled('cupy.ndarray'):
                 cupy.ndarray((2, 3), numpy.float32)
-                raise numpy.AxisError('foo')
+                raise AxisError('foo')
         assert cupy.ndarray is orig

@@ -7,6 +7,7 @@ import pytest
 import cupy
 from cupy import cuda
 from cupy import testing
+from numpy.exceptions import ComplexWarning
 
 
 class TestBasic:
@@ -216,7 +217,7 @@ class TestCopytoFromNumpyScalar:
         dst = xp.zeros((2, 3, 4), dtype=dtype1)
         src = numpy.array(1, dtype=dtype2)
         with warnings.catch_warnings():
-            warnings.simplefilter('ignore', numpy.ComplexWarning)
+            warnings.simplefilter('ignore', ComplexWarning)
             xp.copyto(dst, src, casting)
         return dst
 
@@ -229,7 +230,7 @@ class TestCopytoFromNumpyScalar:
         dst = xp.zeros((2, 3, 4), dtype=dtype)
         src = make_src(dtype)
         with warnings.catch_warnings():
-            warnings.simplefilter('ignore', numpy.ComplexWarning)
+            warnings.simplefilter('ignore', ComplexWarning)
             xp.copyto(dst, src, casting)
         return dst
 
@@ -241,7 +242,7 @@ class TestCopytoFromNumpyScalar:
         src = numpy.array(1, dtype=dtype2)
         mask = (testing.shaped_arange(shape, xp, dtype1) % 2).astype(xp.bool_)
         with warnings.catch_warnings():
-            warnings.simplefilter('ignore', numpy.ComplexWarning)
+            warnings.simplefilter('ignore', ComplexWarning)
             xp.copyto(dst, src, casting=casting, where=mask)
         return dst
 

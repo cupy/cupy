@@ -13,6 +13,7 @@ from cupy import _core
 from cupy import cuda
 from cupy import get_array_module
 from cupy import testing
+from numpy.exceptions import AxisError
 
 
 def wrap_take(array, *args, **kwargs):
@@ -486,12 +487,12 @@ class TestNdarrayTakeErrorAxisOverRun(unittest.TestCase):
     def test_axis_overrun1(self):
         for xp in (numpy, cupy):
             a = testing.shaped_arange(self.shape, xp)
-            with pytest.raises(numpy.AxisError):
+            with pytest.raises(AxisError):
                 wrap_take(a, self.indices, axis=self.axis)
 
     def test_axis_overrun2(self):
         a = testing.shaped_arange(self.shape, cupy)
-        with pytest.raises(numpy.AxisError):
+        with pytest.raises(AxisError):
             wrap_take(a, self.indices, axis=self.axis)
 
 
