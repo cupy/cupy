@@ -105,6 +105,9 @@ class custom_build_ext(setuptools.command.build_ext.build_ext):
             'profile': ctx.profile,
             # Embed signatures for Sphinx documentation.
             'embedsignature': True,
+            # Allow not implementing reversed method
+            # https://github.com/cupy/cupy/issues/5893#issuecomment-944909015
+            'c_api_binop_methods': True,
         }
 
         # Compile-time constants to be used in Cython code
