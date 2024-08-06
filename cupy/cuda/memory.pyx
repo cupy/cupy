@@ -260,10 +260,15 @@ cdef class ManagedMemory(BaseMemory):
 
 @cython.no_gc
 cdef class SystemMemory(BaseMemory):
-    """Memory allocation on an HMM-enabled system (such as Grace Hopper).
+    """Memory allocation on an HMM/ATS enabled system.
 
     HMM stands for heterogeneous memory management. It is a kernel-level
     feature allowing memory allocated via the system ``malloc`` to be
+    accessible by both CPU and GPU.
+
+    ATS stands for Address Translation Services. It is a hardware/software
+    feature on Grace Hopper that enables the CPU and GPU to share a single
+    per-process page table, allowing memory allocated by the system to be
     accessible by both CPU and GPU.
 
     This class provides an RAII interface of the memory allocation.
@@ -438,24 +443,6 @@ cdef class MemoryPointer:
         self.ptr = mem.ptr + offset
         self.device_id = mem.device_id
         self.mem = mem
-
-#    def __dealloc__(self):
-#        # Note: Cannot raise in the destructor! (cython/cython#1613)
-#        cdef MemoryPool pool
-#        cdef SingleDeviceMemoryPool mp
-#        # TODO(leofang): Check if HMM is enabled
-#        mem = self.mem
-#        if (isinstance(mem, SystemMemory)
-#                and mem._owner is not None
-#                and mem.size > 0
-#                and mem.size % ALLOCATION_UNIT_SIZE == 0
-#                and mem.ptr % ALLOCATION_UNIT_SIZE == 0):
-#            # TODO(leofang): get the current mempool properly
-#            pool = cupy._default_memory_pool
-#            if pool is not None:
-#                mp = <SingleDeviceMemoryPool>(pool)._pools[
-#                    device.get_device_id()]
-#                mp.expand_pool(mem)
 
     def __int__(self):
         """Returns the pointer value."""
@@ -804,7 +791,7 @@ cpdef MemoryPointer malloc_managed(size_t size):
 
 
 cpdef MemoryPointer malloc_system(size_t size):
-    """Allocate memory on an HMM-enabled system.
+    """Allocate memory on an HMM/ATS enabled system.
 
     This method can be used as a CuPy memory allocator. The simplest way to
     use system memory as the default allocator is the following code::
@@ -819,6 +806,12 @@ cpdef MemoryPointer malloc_system(size_t size):
     feature allowing memory allocated via the system ``malloc`` to be
     accessible by both CPU and GPU. Read more at:
     https://developer.nvidia.com/blog/simplifying-gpu-application-development-with-heterogeneous-memory-management  # NOQA
+
+    ATS stands for Address Translation Services. It is a hardware/software
+    feature on Grace Hopper that enables the CPU and GPU to share a single
+    per-process page table, allowing memory allocated by the system to be
+    accessible by both CPU and GPU. Read more at:
+    https://developer.nvidia.com/blog/nvidia-grace-hopper-superchip-architecture-in-depth/  # NOQA
 
     Args:
         size (int): Size of the memory allocation in bytes.
@@ -1334,44 +1327,6 @@ cdef class SingleDeviceMemoryPool:
             arena.append_to_free_list(chunk)
         finally:
             _unlock_no_gc(self._free_lock, gc_mode)
-
-#    cdef expand_pool(self, BaseMemory mem):
-#        # First, wrap mem as a chunk
-#        cdef _Chunk chunk = _Chunk.__new__(_Chunk)
-#        stream_ident = _get_stream_identifier(
-#            stream_module.get_current_stream_ptr())
-#        chunk._init(mem, 0, mem.size, stream_ident)
-#
-#        ## I think this is just wrong, it braks the pool invariants
-#        #rlock.lock_fastrlock(self._in_use_lock, -1, True)
-#        #try:
-#        #    self._in_use[chunk.ptr()] = chunk
-#        #finally:
-#        #    rlock.unlock_fastrlock(self._in_use_lock)
-#
-#        # Next, put the chunk back into the arena, as if it was
-#        # freed from a pool
-#        # TODO(leofang): honor the pool size limit?
-#        gc_mode = _lock_no_gc(self._free_lock)
-#        try:
-#            arena = self._arena(stream_ident)
-#
-#            c = chunk.next
-#            if c is not None and arena.remove_from_free_list(c):
-#                chunk.merge(c)
-#
-#            c = chunk.prev
-#            if c is not None and arena.remove_from_free_list(c):
-#                c.merge(chunk)
-#                chunk = c
-#
-#            arena.append_to_free_list(chunk)
-#        finally:
-#            _unlock_no_gc(self._free_lock, gc_mode)
-#
-#        # Update the pool size for consistency
-#        with LockAndNoGc(self._total_bytes_lock):
-#            self._total_bytes += mem.size
 
     cpdef free_all_blocks(self, stream=None):
         """Free all **non-split** chunks"""

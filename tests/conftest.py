@@ -74,7 +74,7 @@ class DeferPlugin:
         print(f'CUDA_VISIBLE_DEVICES={devices}')
 
 
-if int(os.environ.get('CUPY_ENABLE_HMM', 0)) != 0:
+if int(os.environ.get('CUPY_ENABLE_SAM', 0)) != 0:
     # Make sure malloc is used in a stream-ordered fashion
     import cupy as cp
     cp.cuda.set_allocator(cp.cuda.MemoryPool(cp.cuda.memory.malloc_system).malloc)
@@ -87,4 +87,5 @@ if int(os.environ.get('CUPY_ENABLE_HMM', 0)) != 0:
         _calloc_ = ctypes.addressof(lib._calloc)
         _malloc_ = ctypes.addressof(lib._malloc)
         _realloc_ = ctypes.addressof(lib._realloc)
+        _free_ = ctypes.addressof(lib._free)
     my_allocator.__enter__()

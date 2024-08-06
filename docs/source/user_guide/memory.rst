@@ -227,6 +227,7 @@ It is possible to make both NumPy and CuPy use and share system allocated memory
         _calloc_ = ctypes.addressof(lib._calloc)
         _malloc_ = ctypes.addressof(lib._malloc)
         _realloc_ = ctypes.addressof(lib._realloc)
+        _free_ = ctypes.addressof(lib._free)
     my_allocator.__enter__()  # change the allocator globally
 
 For CuPy, alternatively you can use the CuPy allocator from RAPIDS Memory Manager (RMM):

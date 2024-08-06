@@ -358,13 +358,8 @@ cdef class _ndarray_base:
                 or not self.is_host_accessible()):
             raise RuntimeError(
                 'Accessing a CuPy ndarry on CPU is not allowed except when '
-                'using system memory (on HMM-enabled systems, need to set '
-                'CUPY_ENABLE_HMM=1) or managed memory')
-
-        # TODO(leofang): it seems prefetch is slow...?
-        #self.data.mem.prefetch(
-        #    stream_module.get_current_stream(),
-        #    device_id=runtime.cudaCpuDeviceId)
+                'using system memory (on HMM or ATS enabled systems, need to '
+                'set CUPY_ENABLE_SAM=1) or managed memory')
 
         populate_format(buf, self.dtype.char)
         buf.buf = <void*><intptr_t>self.data.ptr
@@ -1893,7 +1888,7 @@ cdef class _ndarray_base:
                 else:
                     return a_cpu
 
-        # out is None, and no HMM support, so we allocate explicitly
+        # out is None, and no HMM/ATS support, so we allocate explicitly
         if a_cpu is None:
             if self.size == 0:
                 return numpy.ndarray(self._shape, dtype=self.dtype)
