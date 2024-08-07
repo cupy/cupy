@@ -6,7 +6,7 @@ import pytest
 import cupy
 from cupy.cuda import runtime
 from cupy import testing
-from numpy.exceptions import AxisError
+from cupy.exceptions import AxisError
 
 
 class TestDims(unittest.TestCase):

@@ -13,7 +13,7 @@ from cupy import _core
 from cupy import cuda
 from cupy import get_array_module
 from cupy import testing
-from numpy.exceptions import AxisError
+from cupy.exceptions import AxisError
 
 
 def wrap_take(array, *args, **kwargs):

@@ -7,7 +7,7 @@ import cupy
 import cupy._core._accelerator as _acc
 from cupy import _core
 from cupy import testing
-from numpy.exceptions import ComplexWarning, AxisError
+from cupy.exceptions import ComplexWarning, AxisError
 
 
 _noncontiguous_params = [

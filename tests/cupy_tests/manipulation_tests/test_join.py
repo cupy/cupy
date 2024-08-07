@@ -4,7 +4,7 @@ import pytest
 import cupy
 from cupy import testing
 from cupy import cuda
-from numpy.exceptions import AxisError
+from cupy.exceptions import AxisError
 
 
 class TestJoin:

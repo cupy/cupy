@@ -7,7 +7,7 @@ import pytest
 import cupy
 from cupy import cuda
 from cupy import testing
-from numpy.exceptions import ComplexWarning
+from cupy.exceptions import ComplexWarning
 
 
 class TestBasic:

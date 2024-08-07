@@ -9,7 +9,7 @@ import cupy._core._accelerator as _acc
 import cupy.cuda.cutensor
 from cupy._core import _cub_reduction
 from cupy import testing
-from numpy.exceptions import AxisError
+from cupy.exceptions import AxisError
 
 
 class TestSumprod:

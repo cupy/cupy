@@ -6,7 +6,7 @@ import pytest
 
 import cupy
 from cupy import testing
-from numpy.exceptions import ComplexWarning
+from cupy.exceptions import ComplexWarning
 
 
 float_types = [numpy.float16, numpy.float32, numpy.float64]

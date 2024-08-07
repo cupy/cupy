@@ -7,7 +7,7 @@ import pytest
 import cupy
 from cupy import testing
 from cupy.testing import _loops
-from numpy.exceptions import AxisError
+from cupy.exceptions import AxisError
 
 
 class _Exception1(Exception):
