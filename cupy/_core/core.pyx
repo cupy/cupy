@@ -2691,9 +2691,7 @@ cdef _ndarray_base _array_default(
     a_dtype = a_cpu.dtype
 
     # We already made a copy, we should be able to use it
-    # TODO(leofang) :we can probably make this cheaper by skipping all
-    # the checks?
-    if _is_sam_enabled and not copy:
+    if _is_sam_enabled:
         a = _try_skip_h2d_copy(a_cpu, a_dtype, False, order, ndmin)
         assert a is not None
         return a
