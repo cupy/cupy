@@ -33,11 +33,9 @@ class TestKind(unittest.TestCase):
         a = cupy.asarray([1, 2, 3])
         a_gpu = cupy.asfarray(a, dtype)
         # Original: a_cpu = numpy.asfarray(a.get(), dtype)
-        # >>> Backport >>>
         if not numpy.issubdtype(dtype, numpy.inexact):
             dtype = numpy.float64
         a_cpu = numpy.asarray(a.get(), dtype)
-        # >>> Backport >>>
         assert a_cpu.dtype == a_gpu.dtype
 
     @testing.for_all_dtypes()
