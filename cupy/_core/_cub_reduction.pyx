@@ -46,9 +46,10 @@ cdef function.Function _create_cub_reduction_function(
         backend = 'nvcc'  # this is confusing...
         jitify = False
     else:
-        # use jitify + nvrtc
+        # use nvrtc
         backend = 'nvrtc'
-        jitify = True
+        # We rely on the type traits in cccl to avoid using jitify
+        jitify = False
 
     # TODO(leofang): try splitting the for-loop into full tiles and partial
     # tiles to utilize LoadDirectBlockedVectorized? See, for example,
