@@ -416,17 +416,23 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
     def _minor_index_fancy(self, idx):
         """Index along the minor axis where idx is an array of ints.
         """
-        M, _ = self._swap(*self.shape)
+        M, N_org = self._swap(*self.shape)
         N = idx.size
         new_shape = self._swap(M, N)
         if self.nnz == 0 or N == 0:
             return self.__class__(new_shape, dtype=self.dtype)
-
         if idx.size * M < self.nnz:
             # TODO (asi1024): Implement faster algorithm.
             pass
-
-        return self._tocsx()._major_index_fancy(idx)._tocsx()
+        if self.has_sorted_indices:
+            needs_sorting = True
+        new = self.__class__(
+            _index._csr_col_index(self.data, self.indices, self.indptr, idx,N_org),
+            shape=new_shape, copy=False)
+        new.eliminate_zeros()
+        if needs_sorting and not new.has_sorted_indices:
+            new.sort_indices()
+        return new
 
     def _major_slice(self, idx, copy=False):
         """Index along the major axis where idx is a slice object.
