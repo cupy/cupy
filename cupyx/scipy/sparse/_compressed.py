@@ -424,15 +424,16 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         if idx.size * M < self.nnz:
             # TODO (asi1024): Implement faster algorithm.
             pass
-        if self.has_sorted_indices:
-            needs_sorting = True
-        new = self.__class__(
-            _index._csr_col_index(self.data, self.indices, self.indptr, idx,N_org),
-            shape=new_shape, copy=False)
-        new.eliminate_zeros()
-        if needs_sorting and not new.has_sorted_indices:
-            new.sort_indices()
-        return new
+
+        idx_is_sorted = cupy.all(idx[:-1] <= idx[1:])
+        if not self.has_sorted_indices or idx_is_sorted:
+            new = self.__class__(
+                _index._csr_col_index(self.data, self.indices, self.indptr, idx,N_org),
+                shape=new_shape, copy=False)
+            new.eliminate_zeros()
+            return new
+        else:
+            return self._tocsx()._major_index_fancy(idx)._tocsx()
 
     def _major_slice(self, idx, copy=False):
         """Index along the major axis where idx is a slice object.
