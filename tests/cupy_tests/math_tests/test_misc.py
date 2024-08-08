@@ -183,6 +183,9 @@ class TestMisc:
     def test_sign_negative(self):
         self.check_unary_negative('sign', no_bool=True)
 
+    def test_sign_inf_nan(self):
+        self.check_unary_inf_nan('sign')
+
     def test_maximum(self):
         self.check_binary('maximum')
 
