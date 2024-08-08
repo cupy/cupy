@@ -124,3 +124,39 @@ cpdef void _raise_if_invalid_cast(
     raise TypeError(
         f'Cannot cast {argname} from {from_dt!r} to {to_dt!r} '
         f'according to the rule \'{casting}\'')
+
+
+# TODO(sebeg): In newer NumPy versions we can use numpy.dtypes.StrDType.
+cdef tuple _numpy_string_dts = (type(numpy.dtype("S")), type(numpy.dtype("U")))
+
+cpdef _resolve_dtype_cast(from_dt, to):
+    """
+    Find the result dtype of casting from_dt to `to`. `to` can be a DType
+    class or an S0 or U0 instance, in which case a special path is taken.
+
+    NumPy should make this functionality directly available.
+    """
+    if isinstance(to, _dtype):
+        # If it is not a "flexible instance" (S0 or U0) we just return it,
+        # `to` must be the correct choice for the result.
+        if to.itemsize != 0 or not isinstance(to, _numpy_string_dts):
+            return to
+        # Otherwise, we may have to find the string length:
+        to = type(to)
+
+    if isinstance(from_dt, to):
+        return from_dt
+
+    if to in _numpy_string_dts:
+        if from_dt.kind == "U" and to is _numpy_string_dts[0]:
+            # Casting unicode to string is OK, but the itemsize is shorter.
+            return numpy.dtype(f"S{from_dt.itemsize // 4}")
+        # Otherwise, use promotion to get the same string sizes as NumPy.
+        res = numpy.promote_types(from_dt, to.type)
+        if not isinstance(res, to):
+            raise TypeError(f"Unable to cast dtype '{from_dt}' to {to}.")
+        return res
+
+    # Assume that we can just return the default until NumPy does a better job
+    # or the need arises:
+    return to()

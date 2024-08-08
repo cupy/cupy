@@ -566,6 +566,7 @@ cdef class _ndarray_base:
         order_char = internal._update_order_char(
             self._c_contiguous, self._f_contiguous, order_char)
 
+        dtype = _dtype._resolve_dtype_cast(self.dtype, dtype)
         if order_char == b'K':
             strides = internal._get_strides_for_order_K(self, dtype)
             newarray = _ndarray_init(ndarray, self._shape, dtype, None)
@@ -2489,7 +2490,7 @@ cdef _ndarray_base _array_from_nested_numpy_sequence(
         arrays, src_dtype, dst_dtype, const shape_t& shape, order,
         Py_ssize_t ndmin, bint blocking):
     a_dtype = get_dtype(dst_dtype)  # convert to numpy.dtype
-    if a_dtype.char not in '?bhilqBHILQefdFD':
+    if a_dtype.char not in '?bhilqBHILQefdFDUS':
         raise ValueError('Unsupported dtype %s' % a_dtype)
     cdef _ndarray_base a  # allocate it after pinned memory is secured
     cdef size_t itemcount = internal.prod(shape)
@@ -2558,13 +2559,13 @@ cdef _ndarray_base _array_default(
     copy = False if NUMPY_1x else None
     a_cpu = numpy.array(obj, dtype=dtype, copy=copy, order=order,
                         ndmin=ndmin)
-    if a_cpu.dtype.char not in '?bhilqBHILQefdFD':
+    if a_cpu.dtype.char not in '?bhilqBHILQefdFDUS':
         raise ValueError('Unsupported dtype %s' % a_cpu.dtype)
     a_cpu = a_cpu.astype(a_cpu.dtype.newbyteorder('<'), copy=False)
     a_dtype = a_cpu.dtype
     cdef shape_t a_shape = a_cpu.shape
     cdef _ndarray_base a = ndarray(a_shape, dtype=a_dtype, order=order)
-    if a_cpu.ndim == 0:
+    if a_cpu.ndim == 0 and a_dtype.char in '?bhilqBHILQefdFD':
         a.fill(a_cpu)
         return a
     cdef Py_ssize_t nbytes = a.nbytes
