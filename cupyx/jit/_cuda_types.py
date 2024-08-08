@@ -1,4 +1,4 @@
-from typing import Mapping, Optional, Sequence, Union, TYPE_CHECKING
+from typing import Mapping, Optional, Sequence, Union, Tuple, TYPE_CHECKING
 
 import numpy
 import numpy.typing as npt
@@ -244,6 +244,28 @@ class SharedMem(ArrayBase):
         return code
 
 
+class LocalMem(ArrayBase):
+
+    def __init__(
+            self,
+            child_type: TypeBase,
+            size: Tuple[int, ...],
+            alignment: Optional[int] = None,
+    ) -> None:
+        if not (isinstance(alignment, int) or alignment is None):
+            raise 'alignment must be integer or `None`'
+        self._size = size
+        self._alignment = alignment
+        super().__init__(child_type, 1)
+
+    def declvar(self, x: str, init: Optional['Data']) -> str:
+        assert init is None
+        code = f'{self.child_type} {x}'
+        for var in self._size:
+            code += f"[{var}]"
+        return code
+
+
 class Ptr(PointerBase):
 
     def __init__(self, child_type: TypeBase) -> None:
@@ -251,6 +273,29 @@ class Ptr(PointerBase):
 
     def __str__(self) -> str:
         return f'{self.child_type}*'
+
+
+class ContiguousArray(PointerBase):
+    # used to define ndarray of local memory, in <dtype>[3][4] format
+    def __init__(self, child_type: TypeBase, size: Tuple[int, ...]) -> None:
+        self.base_type = child_type
+        if (type(self.base_type) is ContiguousArray):
+            self.base_type = child_type.base_type
+
+        super().__init__(child_type)
+        self._size = size
+        self.dtype = child_type
+        self._c_contiguous = True
+        self._index_32_bits = True
+
+    def declvar(self, x: str, init: Optional['Data']) -> str:
+        s = f'{self.base_type} (*{x})'
+        for i in range(1, len(self._size)):
+            s += f'[{self._size[i]}]'
+        if (init is None):
+            return s
+        else:
+            return f'{s} = {init.code}'
 
 
 class Tuple(TypeBase):
