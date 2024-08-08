@@ -138,9 +138,15 @@ cdef extern from *:
             int device
             void* devicePointer
             void* hostPointer
-    ELIF CUPY_HIP_VERSION > 0:
+    ELIF 0 < CUPY_HIP_VERSION < 600:
         ctypedef struct _PointerAttributes 'cudaPointerAttributes':
             int memoryType
+            int device
+            void* devicePointer
+            void* hostPointer
+    ELIF CUPY_HIP_VERSION >= 600:
+        ctypedef struct _PointerAttributes 'cudaPointerAttributes':
+            int type
             int device
             void* devicePointer
             void* hostPointer
