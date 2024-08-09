@@ -48,6 +48,7 @@ from cupy.cuda cimport memory
 from cupy.cuda cimport stream as stream_module
 from cupy_backends.cuda cimport stream as _stream_module
 from cupy_backends.cuda.api cimport runtime
+from cupy_backends.cuda.libs cimport nvrtc
 
 
 NUMPY_1x = numpy.__version__ < '2'
@@ -2083,6 +2084,7 @@ _HANDLED_TYPES = (ndarray, numpy.ndarray)
 
 cdef bint _is_hip = runtime._is_hip_environment
 cdef str _cuda_path = ''  # '' for uninitialized, None for non-existing
+cdef str _bundled_include = ''  # '' for uninitialized, None for non-existing
 
 cdef list cupy_header_list = [
     'cupy/complex.cuh',
@@ -2210,24 +2212,32 @@ cpdef tuple assemble_cupy_compiler_options(tuple options):
 
     if not _is_hip:
         # CUDA Enhanced Compatibility
-        _cuda_major = runtime._getCUDAMajorVersion()
-        if _cuda_major == 11:
-            bundled_include = 'cuda-11'
-        elif _cuda_major == 12:
-            bundled_include = 'cuda-12'
-        else:
-            # CUDA versions not yet supported.
-            bundled_include = None
+        global _bundled_include
+        if _bundled_include == '':
+            _cuda_major = runtime._getCUDAMajorVersion()
+            if _cuda_major == 11:
+                _bundled_include = 'cuda-11'
+            elif _cuda_major == 12:
+                _, minor = nvrtc.getVersion()
+                # TODO(leofang): update the upper bound when a new release
+                # is out
+                if minor < 2 or minor > 5:
+                    _bundled_include = 'cuda-12'
+                else:
+                    _bundled_include = f'cuda-12.{minor}'
+            else:
+                # CUDA versions not yet supported.
+                _bundled_include = None
 
-        if bundled_include is None and _cuda_path is None:
+        if _bundled_include is None and _cuda_path is None:
             raise RuntimeError(
                 'Failed to auto-detect CUDA root directory. '
                 'Please specify `CUDA_PATH` environment variable if you '
                 'are using CUDA versions not yet supported by CuPy.')
 
-        if bundled_include is not None:
+        if _bundled_include is not None:
             options += ('-I' + os.path.join(
-                _get_header_dir_path(), 'cupy', '_cuda', bundled_include),)
+                _get_header_dir_path(), 'cupy', '_cuda', _bundled_include),)
     elif _is_hip:
         if _cuda_path is None:
             raise RuntimeError(

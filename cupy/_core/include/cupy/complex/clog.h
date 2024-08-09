@@ -48,7 +48,9 @@
 #include <cupy/complex/complex.h>
 #include <cupy/complex/math_private.h>
 
-namespace thrust {
+#include <cupy/complex/namespace.h>
+
+THRUST_NAMESPACE_BEGIN
 namespace detail {
 namespace complex {
 
@@ -200,4 +202,4 @@ __host__ __device__ inline complex<ValueType> log10(const complex<ValueType>& z)
   return thrust::log(z) / ValueType(2.30258509299404568402);
 }
 
-}  // namespace thrust
+THRUST_NAMESPACE_END

@@ -2,6 +2,7 @@
 #include <cupy/type_dispatcher.cuh>
 
 #ifndef CUPY_USE_HIP
+#include <cfloat> // For FLT_MAX definitions
 #include <cub/device/device_reduce.cuh>
 #include <cub/device/device_segmented_reduce.cuh>
 #include <cub/device/device_spmv.cuh>
