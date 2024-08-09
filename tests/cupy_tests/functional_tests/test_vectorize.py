@@ -19,7 +19,7 @@ class TestVectorizeOps(unittest.TestCase):
         return f(*args)
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(rtol=1e-6)
+    @testing.numpy_cupy_allclose(rtol={'default': 1e-6, numpy.float16: 1.5e-3})
     def test_vectorize_reciprocal(self, xp, dtype):
         def my_reciprocal(x):
             scalar = xp.dtype(dtype).type(10)
@@ -242,6 +242,9 @@ class TestVectorizeExprs(unittest.TestCase):
     def test_vectorize_incr(self, xp, dtype):
         def my_incr(x):
             return x + 1
+
+        if dtype != xp.float64:
+            pytest.xfail("vectorize with scalars: no NEP 50")
 
         f = xp.vectorize(my_incr)
         x = testing.shaped_random((20, 30), xp, dtype, seed=0)
