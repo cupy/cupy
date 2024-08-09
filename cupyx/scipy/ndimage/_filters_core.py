@@ -168,7 +168,7 @@ if runtime.is_hip:
 '''
 else:
     includes = r'''
-#include <type_traits>  // let Jitify handle this
+#include <cupy/cuda_workaround.h>  // provide C++ std:: coverage
 #include <cupy/math_constants.h>
 
 template<> struct std::is_floating_point<float16> : std::true_type {};
@@ -307,7 +307,7 @@ def _generate_nd_kernel(name, pre, found, post, mode, w_shape, int_type,
     if has_mask:
         name += '_with_mask'
     preamble = includes + _CAST_FUNCTION + preamble
-    options += ('--std=c++11', '-DCUPY_USE_JITIFY')
+    options += ('--std=c++11', )
     return cupy.ElementwiseKernel(in_params, out_params, operation, name,
                                   reduce_dims=False, preamble=preamble,
                                   options=options)

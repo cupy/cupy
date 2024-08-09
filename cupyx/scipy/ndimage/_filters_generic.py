@@ -198,9 +198,15 @@ def _get_generic_filter1d(rk, length, n_lines, filter_size, origin, mode, cval,
                     loop.format(end, in_length, b))
 
     name = 'generic1d_{}_{}_{}'.format(length, filter_size, rk.name)
+    if runtime.is_hip:
+        include_type_traits = ''
+    else:
+        include_type_traits = '''
+#include <cupy/cuda_workaround.h>  // provide C++ std:: coverage
+'''
     code = '''#include "cupy/carray.cuh"
 #include "cupy/complex.cuh"
-{include_type_traits}  // let Jitify handle this
+{include_type_traits}
 
 namespace raw_kernel {{\n{rk_code}\n}}
 
@@ -261,8 +267,6 @@ void {name}(const byte* input, byte* output, const idx_t* x) {{
              # wouldn't compile if code only contains device functions, so this
              # is necessary.
              rk_code=rk.code.replace('__global__', '__device__'),
-             include_type_traits=(
-                 '' if runtime.is_hip else '#include <type_traits>\n'),
+             include_type_traits=include_type_traits,
              CAST=_filters_core._CAST_FUNCTION)
-    return cupy.RawKernel(code, name, ('--std=c++11',) + rk.options,
-                          jitify=True)
+    return cupy.RawKernel(code, name, ('--std=c++11',) + rk.options)
