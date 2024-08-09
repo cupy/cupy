@@ -3,7 +3,7 @@
 cimport cpython  # NOQA
 cimport cython  # NOQA
 from libcpp cimport bool as cpp_bool
-from libc.stdint cimport uint32_t
+from libc.stdint cimport intptr_t, uint32_t
 
 import warnings
 
@@ -535,3 +535,30 @@ cpdef tuple _broadcast_shapes(shapes):
         result_shape.append(out_dim)
 
     return tuple(result_shape)
+
+
+cdef bint _is_layout_expected(
+        const bint c_contiguous, const bint f_contiguous,
+        expected_order) except*:
+    cdef int order_char = _normalize_order(expected_order)
+    order_char = _update_order_char(
+        c_contiguous, f_contiguous, order_char)
+    # order_char is either C or F from now on
+    if c_contiguous and f_contiguous:
+        return True
+    if c_contiguous and order_char == b'C':
+        return True
+    elif f_contiguous and order_char == b'F':
+        return True
+    else:
+        return False
+
+
+cdef bint _is_alignment_expected(intptr_t ptr, int min_size) noexcept:
+    cdef int alignment = 1
+    # TODO(leofang): use the chunk size from memory.pyx and don't hard-code?
+    while ptr % alignment == 0 and alignment < 256:
+        alignment *= 2
+    if alignment < min_size:
+        return False
+    return True

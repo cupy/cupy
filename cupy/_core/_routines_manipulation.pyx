@@ -616,7 +616,7 @@ cpdef _ndarray_base concatenate_method(
     ndim0 = a0._shape.size()
     for o in arrays[1:]:
         a = o
-        if a._shape.size() != ndim0:
+        if <int>(a._shape.size()) != ndim0:
             raise ValueError(
                 'All arrays to concatenate must have the same ndim')
 

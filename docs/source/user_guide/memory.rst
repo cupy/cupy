@@ -198,3 +198,60 @@ Be sure to do this before any other CuPy operations.
 
    # Disable memory pool for pinned memory (CPU).
    cupy.cuda.set_pinned_memory_allocator(None)
+
+
+System allocated memory (SAM) support (**experimental!**)
+.........................................................
+
+It is possible to make both NumPy and CuPy use and share system allocated memory on Heterogeneous Memory Management
+(HMM) enabled systems or the NVIDIA Grace Hopper Superchip. To activate this capability, currently you need to:
+
+1. Build CuPy from source and install `numpy_allocator <https://github.com/inaccel/numpy-allocator/>`_
+2. Set the environment variable ``CUPY_ENABLE_SAM=1``
+3. Make a memory pool for CuPy to draw system memory
+
+.. code-block:: py
+
+    import cupy as cp
+    cp.cuda.set_allocator(cp.cuda.MemoryPool(cp.cuda.memory.malloc_system).malloc)
+
+4. Switch to the aligned allocator for NumPy to draw system memory
+
+.. code-block:: py
+   
+    import cupy._core.numpy_allocator as ac
+    import numpy_allocator
+    import ctypes
+    lib = ctypes.CDLL(ac.__file__)
+    class my_allocator(metaclass=numpy_allocator.type):
+        _calloc_ = ctypes.addressof(lib._calloc)
+        _malloc_ = ctypes.addressof(lib._malloc)
+        _realloc_ = ctypes.addressof(lib._realloc)
+        _free_ = ctypes.addressof(lib._free)
+    my_allocator.__enter__()  # change the allocator globally
+
+For CuPy, alternatively you can use the CuPy allocator from RAPIDS Memory Manager (RMM):
+
+.. code-block:: py
+
+    import cupy as cp
+    import rmm
+    mr = rmm.mr.SystemMemoryResource()
+    rmm.mr.set_current_device_resource(mr)
+    cp.cuda.set_allocator(rmm.allocators.cupy.rmm_cupy_allocator)
+
+Currently on Grace Hopper, SAM can be migrated to the GPU, but is never migrated back to the host. If GPU memory is
+over-subscribed, this can cause other CUDA calls to fail with out-of-memory errors. To work around this problem, when
+using a system memory resource, you can reserve some GPU memory as headroom for other CUDA calls, and only conditionally
+set its preferred location to the GPU if the allocation would not eat into the headroom:
+
+.. code-block:: py
+
+    import cupy as cp
+    import rmm
+    headroom = 1 << 30  # 1 GiB
+    mr = rmm.mr.SamHeadroomMemoryResource(headroom=headroom)
+    rmm.mr.set_current_device_resource(mr)
+    cp.cuda.set_allocator(rmm.allocators.cupy.rmm_cupy_allocator)
+
+The size of the headroom may need to be adjusted depending on the application.
