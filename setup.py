@@ -19,7 +19,7 @@ if not cupy_builder.preflight_check(ctx):
 
 # TODO(kmaehashi): migrate to pyproject.toml (see #4727, #4619)
 setup_requires = [
-    'Cython>=0.29.22,<3',
+    'Cython>=0.29.22',
     'fastrlock>=0.5',
 ]
 install_requires = [
@@ -29,7 +29,7 @@ install_requires = [
 extras_require = {
     'all': [
         'scipy>=1.7,<1.14',  # see #4773
-        'Cython>=0.29.22,<3',
+        'Cython>=0.29.22',
         'optuna>=2.0',
     ],
     # TODO(kmaehashi): remove stylecheck and update the contribution guide
