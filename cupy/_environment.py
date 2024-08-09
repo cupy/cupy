@@ -479,7 +479,13 @@ def _detect_duplicate_installation():
         'cupy-rocm-4-3',
         'cupy-rocm-5-0',
     }
-    installed_names = {d.metadata["Name"]
+    # use metadata.get to be resilient to namespace packages
+    # that may be leftover in the user's path???
+    # something else might be triggering "Name" not existing
+    # But without a safe ".get" a KeyError might be raised
+    # not allowing us to get through the setup
+    # https://github.com/cupy/cupy/issues/8440
+    installed_names = {d.metadata.get("Name", None)
                        for d in importlib.metadata.distributions()}
     cupy_installed = known & installed_names
     if 1 < len(cupy_installed):
