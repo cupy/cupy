@@ -7,6 +7,7 @@ import pytest
 import cupy
 from cupy import testing
 from cupy.testing import _loops
+from cupy.exceptions import AxisError
 
 
 class _Exception1(Exception):
@@ -176,7 +177,7 @@ class TestCheckCupyNumpyError(unittest.TestCase):
             @testing.numpy_cupy_raises()
             def dummy_axis_error(self, xp):
                 if xp is cupy:
-                    raise numpy.AxisError(self.tbs.get(cupy))
+                    raise AxisError(self.tbs.get(cupy))
                 elif xp is numpy:
                     raise TypeError(self.tbs.get(numpy))
 
@@ -190,7 +191,7 @@ class TestCheckCupyNumpyError(unittest.TestCase):
             @testing.numpy_cupy_raises()
             def dummy_axis_error(self, xp):
                 if xp is cupy:
-                    raise numpy.AxisError(self.tbs.get(cupy))
+                    raise AxisError(self.tbs.get(cupy))
                 elif xp is numpy:
                     raise ValueError(self.tbs.get(numpy))
 
@@ -204,7 +205,7 @@ class TestCheckCupyNumpyError(unittest.TestCase):
             @testing.numpy_cupy_raises()
             def dummy_axis_error(self, xp):
                 if xp is cupy:
-                    raise numpy.AxisError(self.tbs.get(cupy))
+                    raise AxisError(self.tbs.get(cupy))
                 elif xp is numpy:
                     raise IndexError(self.tbs.get(numpy))
 

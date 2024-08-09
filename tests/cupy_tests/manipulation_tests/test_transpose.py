@@ -5,6 +5,7 @@ import pytest
 
 import cupy
 from cupy import testing
+from cupy.exceptions import AxisError
 
 
 class TestTranspose(unittest.TestCase):
@@ -43,38 +44,38 @@ class TestTranspose(unittest.TestCase):
     def test_moveaxis_invalid1_1(self):
         for xp in (numpy, cupy):
             a = testing.shaped_arange((2, 3, 4), xp)
-            with pytest.raises(numpy.AxisError):
+            with pytest.raises(AxisError):
                 xp.moveaxis(a, [0, 1], [1, 3])
 
     def test_moveaxis_invalid1_2(self):
         for xp in (numpy, cupy):
             a = testing.shaped_arange((2, 3, 4), xp)
-            with pytest.raises(numpy.AxisError):
+            with pytest.raises(AxisError):
                 xp.moveaxis(a, [0, 1], [1, 3])
 
     def test_moveaxis_invalid1_3(self):
         for xp in (numpy, cupy):
             a = testing.shaped_arange((2, 3, 4), xp)
-            with pytest.raises(numpy.AxisError):
+            with pytest.raises(AxisError):
                 xp.moveaxis(a, 0, 3)
 
     # dim is too small
     def test_moveaxis_invalid2_1(self):
         for xp in (numpy, cupy):
             a = testing.shaped_arange((2, 3, 4), xp)
-            with pytest.raises(numpy.AxisError):
+            with pytest.raises(AxisError):
                 xp.moveaxis(a, [0, -4], [1, 2])
 
     def test_moveaxis_invalid2_2(self):
         for xp in (numpy, cupy):
             a = testing.shaped_arange((2, 3, 4), xp)
-            with pytest.raises(numpy.AxisError):
+            with pytest.raises(AxisError):
                 xp.moveaxis(a, [0, -4], [1, 2])
 
     def test_moveaxis_invalid2_3(self):
         for xp in (numpy, cupy):
             a = testing.shaped_arange((2, 3, 4), xp)
-            with pytest.raises(numpy.AxisError):
+            with pytest.raises(AxisError):
                 xp.moveaxis(a, -4, 0)
 
     # len(source) != len(destination)
@@ -107,7 +108,7 @@ class TestTranspose(unittest.TestCase):
     def test_moveaxis_invalid5_1(self):
         for xp in (numpy, cupy):
             a = testing.shaped_arange((2, 3, 4), xp)
-            with pytest.raises(numpy.AxisError):
+            with pytest.raises(AxisError):
                 xp.moveaxis(a, [1, -1], [1, 3])
 
     def test_moveaxis_invalid5_2(self):
