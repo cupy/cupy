@@ -414,7 +414,7 @@ def _get_channelizer_8x8_module():
             '_cupy_channelizer_8x8<complex<float>,complex<float>>',
             '_cupy_channelizer_8x8<double,complex<double>>',
             '_cupy_channelizer_8x8<complex<double>,complex<double>>'],
-        jitify=True)
+    )
 
 
 _CHANNELIZER_16X16_KERNEL = _CHANNELIZER_KERNEL_PREAMBLE + r"""
@@ -529,7 +529,7 @@ def _get_channelizer_16x16_module():
             '_cupy_channelizer_16x16<complex<float>,complex<float>>',
             '_cupy_channelizer_16x16<double,complex<double>>',
             '_cupy_channelizer_16x16<complex<double>,complex<double>>'],
-        jitify=True)
+    )
 
 
 _CHANNELIZER_32X32_KERNEL = _CHANNELIZER_KERNEL_PREAMBLE + r"""
@@ -643,7 +643,7 @@ def _get_channelizer_32x32_module():
             '_cupy_channelizer_32x32<complex<float>,complex<float>>',
             '_cupy_channelizer_32x32<double,complex<double>>',
             '_cupy_channelizer_32x32<complex<double>,complex<double>>'],
-        jitify=True)
+    )
 
 
 def _check_supported_type(np_type, k_type):
