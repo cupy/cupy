@@ -46,7 +46,7 @@ class TestPolygamma(unittest.TestCase):
 
     @pytest.mark.xfail(
         platform.processor() == "aarch64",
-        reason="aarch64 scipy does not match cupy/x86 see Scipy")
+        reason="aarch64 scipy does not match cupy/x86 see Scipy #20159")
     @testing.with_requires('scipy>=1.1.0')
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(atol=1e-2, rtol=1e-3, scipy_name='scp')

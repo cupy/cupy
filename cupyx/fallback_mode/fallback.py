@@ -321,12 +321,7 @@ class ndarray(object):
                     if self._numpy_array is None:
                         self._numpy_array = base._numpy_array.view(type=_type)
                         self._numpy_array.shape = self._cupy_array.shape
-                        # In some scenarios, the numpy array strides may be
-                        # different. Copying the strides directly will cause
-                        # cause errors. This has been observed in ARM systems
-                        cupy_strides = self._cupy_array.strides
-                        if self._numpy_array.strides != cupy_strides:
-                            self._numpy_array.strides = cupy_strides
+                        self._numpy_array.strides = self._cupy_array.strides
         else:
             # not cupy-compatible
             if base is not None:
