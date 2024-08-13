@@ -34,10 +34,10 @@ extras_require = {
     ],
     # TODO(kmaehashi): remove stylecheck and update the contribution guide
     'stylecheck': [
-        'autopep8==1.5.5',
+        'autopep8==1.5.5'
         'flake8==3.8.4',
         'pbr==5.5.1',
-        'pycodestyle==2.6.0',
+        'ruff==0.5.7',
 
         'mypy==1.4.1',
         'types-setuptools==57.4.14',
