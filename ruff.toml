@@ -11,7 +11,8 @@ docstring-code-format = true
 
 [lint]
 ignore = [
-  "E74", # ambiguous-XXX-name
+  "E721", # type-comparison
+  "E74",  # ambiguous-XXX-name
 
   # Conflicts with ruff format
   "COM812",
