@@ -8,7 +8,6 @@ from typing import TYPE_CHECKING, List, Tuple, Union
 
 if TYPE_CHECKING:
     from ._typing import Dtype
-    from collections.abc import Sequence
 
 import cupy as np
 

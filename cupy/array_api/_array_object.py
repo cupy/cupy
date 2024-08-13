@@ -29,12 +29,11 @@ from ._dtypes import (
     _dtype_categories,
 )
 
-from typing import TYPE_CHECKING, Optional, Tuple, Union, Any, SupportsIndex
+from typing import TYPE_CHECKING, Optional, Tuple, Union, SupportsIndex
 import types
 
 if TYPE_CHECKING:
-    from ._typing import Any, PyCapsule, Device, Dtype
-    import numpy.typing as npt
+    from ._typing import PyCapsule, Device, Dtype
 
 import cupy as np
 from cupy.cuda import Device as _Device
@@ -516,7 +515,7 @@ class Array:
     def __getitem__(
         self: Array,
         key: Union[
-            int, slice, ellipsis, Tuple[Union[int, slice, ellipsis], ...], Array
+            int, slice, types.EllipsisType, Tuple[Union[int, slice, types.EllipsisType], ...], Array
         ],
         /,
     ) -> Array:
@@ -710,7 +709,7 @@ class Array:
     def __setitem__(
         self,
         key: Union[
-            int, slice, ellipsis, Tuple[Union[int, slice, ellipsis], ...], Array
+            int, slice, types.EllipsisType, Tuple[Union[int, slice, types.EllipsisType], ...], Array
         ],
         value: Union[int, float, bool, Array],
         /,

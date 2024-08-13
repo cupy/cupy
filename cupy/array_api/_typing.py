@@ -22,9 +22,6 @@ __all__ = [
 import sys
 from typing import (
     Any,
-    Literal,
-    Sequence,
-    Type,
     Union,
     TYPE_CHECKING,
     TypeVar,

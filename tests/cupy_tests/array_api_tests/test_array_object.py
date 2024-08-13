@@ -4,7 +4,7 @@ from numpy.testing import assert_raises
 import cupy as cp
 import pytest
 
-from cupy.array_api import ones, asarray, reshape, result_type, all, equal
+from cupy.array_api import ones, asarray, result_type
 from cupy.array_api._dtypes import (
     _all_dtypes,
     _boolean_dtypes,
@@ -264,7 +264,7 @@ def test_python_scalar_construtors():
     i = asarray(0)
     f = asarray(0.0)
 
-    assert bool(b) == False
+    assert not bool(b)
     assert int(i) == 0
     assert float(f) == 0.0
     assert operator.index(i) == 0

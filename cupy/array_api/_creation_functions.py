@@ -11,7 +11,6 @@ if TYPE_CHECKING:
         NestedSequence,
         SupportsBufferProtocol,
     )
-    from collections.abc import Sequence
 from ._dtypes import _all_dtypes
 
 import cupy as np
