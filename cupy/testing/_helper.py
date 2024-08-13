@@ -9,7 +9,6 @@ from importlib import metadata
 from unittest import mock
 
 import numpy
-from packaging.requirements import Requirement
 
 import cupy
 import cupyx
@@ -56,6 +55,9 @@ def installed(*specifiers: str) -> bool:
     Args:
         specifiers: Version specifiers (e.g., `numpy>=1.20.0`).
     """
+    # Make `packaging` a soft requirement
+    from packaging.requirements import Requirement
+
     for spec in specifiers:
         req = Requirement(spec)
         found = metadata.version(req.name)
