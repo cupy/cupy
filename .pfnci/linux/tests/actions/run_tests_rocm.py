@@ -1,6 +1,5 @@
 import os
 import argparse
-import re
 
 TEST_ROOT = os.path.dirname("./")
 CUPY_TESTS = [
@@ -75,6 +74,7 @@ TEST_SUITES = [
     'typing_tests'
 ]
 
+
 def run_all_tests(pytest_opts):
     initial_cmd = 'CUPY_TEST_GPU_LIMIT=4 CUPY_INSTALL_USE_HIP=1 ' + \
         'python3 -m pytest -k "not compile_cuda" ' + pytest_opts
@@ -94,10 +94,12 @@ def run_all_tests(pytest_opts):
             print("Running : " + cmd)
             os.system(cmd)
 
+
 def main():
     all_tests = args.all_tests
     if all_tests:
         run_all_tests(args.pytest_opts)
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
