@@ -1,0 +1,45 @@
+# TODO: Migrate to pyproject.toml once ready
+
+# Use the lowest supported version
+target-version = "py39"
+# Default value of autopep8
+line-length = 80
+exclude = ["docs/source/*", "third_party/*"]
+
+[format]
+docstring-code-format = true
+
+[lint]
+ignore = [
+  "E74", # ambiguous-XXX-name
+
+  # Conflicts with ruff format
+  "COM812",
+  "COM819",
+  "D206",
+  "D300",
+  "E111",
+  "E114",
+  "E117",
+  "ISC001",
+  "ISC002",
+  "Q000",
+  "Q001",
+  "Q002",
+  "Q003",
+  "W191",
+]
+
+[lint.per-file-ignores]
+"__init__.py" = [
+  "F401", # unused-import
+]
+"cupy/array_api/__init__.py" = [
+  "E402", # module-import-not-at-top-of-file
+]
+"cupyx/scipy/special/_gammainc.py" = [
+  "E501", # line-too-long (numerical constants)
+]
+
+[lint.pydocstyle]
+convention = "numpy"
