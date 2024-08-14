@@ -6,40 +6,34 @@ target-version = "py39"
 line-length = 80
 exclude = ["docs/source/*", "third_party/*"]
 
-[format]
-docstring-code-format = true
-
 [lint]
+extend-select = [
+  "I", # isort
+  "Q", # flake8-quotes
+]
 ignore = [
-  "E74", # ambiguous-XXX-name
-
-  # Conflicts with ruff format
-  "COM812",
-  "COM819",
-  "D206",
-  "D300",
-  "E111",
-  "E114",
-  "E117",
-  "ISC001",
-  "ISC002",
-  "Q000",
-  "Q001",
-  "Q002",
-  "Q003",
-  "W191",
+  "E402", # module-import-not-at-top-of-file
+  "E721", # type-comparison
+  "E74",  # ambiguous-XXX-name
 ]
 
 [lint.per-file-ignores]
 "__init__.py" = [
   "F401", # unused-import
 ]
-"cupy/array_api/__init__.py" = [
-  "E402", # module-import-not-at-top-of-file
+"cupy/array_api/**/*.py" = [
+  "F401", # unused-import
+]
+"tests/cupy_tests/array_api_tests/**/*.py" = [
+  "F401", # unused-import
 ]
 "cupyx/scipy/special/_gammainc.py" = [
   "E501", # line-too-long (numerical constants)
 ]
 
+# Added for future use
 [lint.pydocstyle]
 convention = "numpy"
+
+[format]
+docstring-code-format = true
