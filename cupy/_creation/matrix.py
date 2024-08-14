@@ -41,7 +41,7 @@ def diag(v, k=0):
     elif ndim == 2:
         return cupy.array(v.diagonal(k))
     else:
-        raise ValueError('Input must be 1- or 2-d.')
+        raise ValueError("Input must be 1- or 2-d.")
 
 
 def diagflat(v, k=0):
@@ -64,14 +64,14 @@ def diagflat(v, k=0):
 
 
 _tri_kernel = _core.ElementwiseKernel(
-    'int32 m, int32 k',
-    'T out',
-    '''
+    "int32 m, int32 k",
+    "T out",
+    """
     int row = i / m;
     int col = i % m;
     out = (col <= row + k);
-    ''',
-    'cupy_tri',
+    """,
+    "cupy_tri",
 )
 
 

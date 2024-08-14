@@ -17,16 +17,16 @@ from cupy._core import _accelerator
 from cupy.cuda import compiler, memory
 from cupy_backends.cuda.libs import nvrtc
 
-_test_source1 = r'''
+_test_source1 = r"""
 extern "C" __global__
 void test_sum(const float* x1, const float* x2, float* y, unsigned int N) {
     int tid = blockDim.x * blockIdx.x + threadIdx.x;
     if (tid < N)
         y[tid] = x1[tid] + x2[tid];
 }
-'''
+"""
 
-_test_compile_src = r'''
+_test_compile_src = r"""
 extern "C" __global__
 void test_op(const float* x1, const float* x2, float* y, unsigned int N) {
     int tid = blockDim.x * blockIdx.x + threadIdx.x;
@@ -34,10 +34,10 @@ void test_op(const float* x1, const float* x2, float* y, unsigned int N) {
     if (tid < N)
         y[tid] = x1[tid] OP x2[tid];
 }
-'''
+"""
 
 # test compiling and invoking multiple kernels in one single .cubin
-_test_source2 = r'''
+_test_source2 = r"""
 extern "C"{
 
 __global__ void test_sum(const float* x1, const float* x2, float* y, \
@@ -61,10 +61,10 @@ __global__ void test_multiply(const float* x1, const float* x2, float* y, \
 }
 
 }
-'''
+"""
 
 # test C macros
-_test_source3 = r'''
+_test_source3 = r"""
 #ifndef PRECISION
     #define PRECISION 2
 #endif
@@ -100,10 +100,10 @@ __global__ void test_multiply(const TYPE* x1, const TYPE* x2, TYPE* y, \
 }
 
 }
-'''
+"""
 
 # dynamic parallelism
-_test_source4 = r'''
+_test_source4 = r"""
 extern "C"{
 
 __global__ void test_kernel_inner(float *arr, int N)
@@ -123,19 +123,19 @@ __global__ void test_kernel(float *arr, int N, int inner_blk)
 }
 
 }
-'''
+"""
 
 # to generate cubin/ptx
-_test_source5 = r'''
+_test_source5 = r"""
 extern "C" __global__
 void test_div(const float* x1, const float* x2, float* y, unsigned int N) {
     int tid = blockDim.x * blockIdx.x + threadIdx.x;
     if (tid < N)
         y[tid] = x1[tid] / (x2[tid] + 1.0);
 }
-'''
+"""
 
-_test_cuComplex = r'''
+_test_cuComplex = r"""
 #include <cuComplex.h>
 #define N 100
 
@@ -299,9 +299,9 @@ __global__ void test_addf_scalar(cuComplex* arr, cuComplex scalar,
 }
 
 }
-'''
+"""
 
-test_const_mem = r'''
+test_const_mem = r"""
 extern "C"{
 __constant__ float some_array[100];
 
@@ -313,9 +313,9 @@ __global__ void multiply_by_const(float* x, int N) {
     }
 }
 }
-'''
+"""
 
-test_cxx_template = r'''
+test_cxx_template = r"""
 #include <cupy/complex.cuh>
 
 template<typename T>
@@ -332,9 +332,9 @@ __global__ void my_func(double* input, int N) {
     input[x] *= input[x];
   }
 }
-'''
+"""
 
-test_cast = r'''
+test_cast = r"""
 extern "C" __global__ void my_func(void* input, int N) {
   double* arr = (double*)(input);
   unsigned int x = blockIdx.x * blockDim.x + threadIdx.x;
@@ -342,13 +342,13 @@ extern "C" __global__ void my_func(void* input, int N) {
     arr[x] = 3.0 * arr[x] - 8.0;
   }
 }
-'''
+"""
 
 
 @contextlib.contextmanager
 def use_temporary_cache_dir():
-    target1 = 'cupy.cuda.compiler.get_cache_dir'
-    target2 = 'cupy.cuda.compiler._empty_file_preprocess_cache'
+    target1 = "cupy.cuda.compiler.get_cache_dir"
+    target2 = "cupy.cuda.compiler._empty_file_preprocess_cache"
     temp_cache = {}
     with tempfile.TemporaryDirectory() as path:
         with mock.patch(target1, lambda: path):
@@ -358,10 +358,10 @@ def use_temporary_cache_dir():
 
 @contextlib.contextmanager
 def compile_in_memory(in_memory):
-    target = 'cupy.cuda.compiler._get_bool_env_variable'
+    target = "cupy.cuda.compiler._get_bool_env_variable"
 
     def new_target(name, default):
-        if name == 'CUPY_CACHE_IN_MEMORY':
+        if name == "CUPY_CACHE_IN_MEMORY":
             return in_memory
         else:
             # below is the source code of _get_bool_env_variable
@@ -378,36 +378,36 @@ def compile_in_memory(in_memory):
 
 
 def find_nvcc_ver():
-    nvcc_ver_pattern = r'release (\d+\.\d+)'
+    nvcc_ver_pattern = r"release (\d+\.\d+)"
     cmd = cupy.cuda.get_nvcc_path().split()
-    cmd += ['--version']
+    cmd += ["--version"]
     cache_ctx = use_temporary_cache_dir()
     with cache_ctx as cache_path:
-        output = compiler._run_cc(cmd, cache_path, 'nvcc')
+        output = compiler._run_cc(cmd, cache_path, "nvcc")
     match = re.search(nvcc_ver_pattern, output)
     assert match
 
     # convert to driver ver format
-    major, minor = match.group(1).split('.')
+    major, minor = match.group(1).split(".")
     return int(major) * 1000 + int(minor) * 10
 
 
 @testing.parameterize(
     # First test NVRTC
-    {'backend': 'nvrtc', 'in_memory': False},
+    {"backend": "nvrtc", "in_memory": False},
     # this run will read from in-memory cache
-    {'backend': 'nvrtc', 'in_memory': True},
+    {"backend": "nvrtc", "in_memory": True},
     # this run will force recompilation
-    {'backend': 'nvrtc', 'in_memory': True, 'clean_up': True},
+    {"backend": "nvrtc", "in_memory": True, "clean_up": True},
     # Below is the same set of NVRTC tests, with Jitify turned on. For tests
     # that can already pass, it shouldn't matter whether Jitify is on or not,
     # and the only side effect is to add overhead. It doesn't make sense to
     # test NVCC + Jitify.
-    {'backend': 'nvrtc', 'in_memory': False, 'jitify': True},
-    {'backend': 'nvrtc', 'in_memory': True, 'jitify': True},
-    {'backend': 'nvrtc', 'in_memory': True, 'clean_up': True, 'jitify': True},
+    {"backend": "nvrtc", "in_memory": False, "jitify": True},
+    {"backend": "nvrtc", "in_memory": True, "jitify": True},
+    {"backend": "nvrtc", "in_memory": True, "clean_up": True, "jitify": True},
     # Finally, we test NVCC
-    {'backend': 'nvcc', 'in_memory': False},
+    {"backend": "nvcc", "in_memory": False},
 )
 class TestRaw(unittest.TestCase):
 
@@ -415,19 +415,19 @@ class TestRaw(unittest.TestCase):
     _nvrtc_ver = None
 
     def setUp(self):
-        if hasattr(self, 'clean_up'):
+        if hasattr(self, "clean_up"):
             if cupy.cuda.runtime.is_hip:
                 # Clearing memo triggers recompiling kernels using name
                 # expressions in other tests, e.g. dot and matmul, which
                 # hits a nvrtc bug. See #5843, #5945 and #6725.
-                self.skipTest('Clearing memo hits a nvrtc bug in other tests')
+                self.skipTest("Clearing memo hits a nvrtc bug in other tests")
             _util.clear_memo()
         self.dev = cupy.cuda.runtime.getDevice()
         assert self.dev != 1
-        if not hasattr(self, 'jitify'):
+        if not hasattr(self, "jitify"):
             self.jitify = False
         if cupy.cuda.runtime.is_hip and self.jitify:
-            self.skipTest('Jitify does not support ROCm/HIP')
+            self.skipTest("Jitify does not support ROCm/HIP")
 
         self.temporary_cache_dir_context = use_temporary_cache_dir()
         self.in_memory_context = compile_in_memory(self.in_memory)
@@ -435,14 +435,14 @@ class TestRaw(unittest.TestCase):
         self.in_memory_context.__enter__()
 
         self.kern = cupy.RawKernel(
-            _test_source1, 'test_sum',
+            _test_source1, "test_sum",
             backend=self.backend, jitify=self.jitify)
         self.mod2 = cupy.RawModule(
             code=_test_source2,
             backend=self.backend, jitify=self.jitify)
         self.mod3 = cupy.RawModule(
             code=_test_source3,
-            options=('-DPRECISION=2',),
+            options=("-DPRECISION=2",),
             backend=self.backend, jitify=self.jitify)
 
     def tearDown(self):
@@ -453,7 +453,7 @@ class TestRaw(unittest.TestCase):
             # kernel uses nvcc, with which I/O cannot be avoided
             files = os.listdir(self.cache_dir)
             for f in files:
-                if f == 'test_load_cubin.cu':
+                if f == "test_load_cubin.cu":
                     count = 1
                     break
             else:
@@ -477,16 +477,16 @@ class TestRaw(unittest.TestCase):
 
     def test_kernel_attributes(self):
         attrs = self.kern.attributes
-        for attribute in ['binary_version',
-                          'cache_mode_ca',
-                          'const_size_bytes',
-                          'local_size_bytes',
-                          'max_dynamic_shared_size_bytes',
-                          'max_threads_per_block',
-                          'num_regs',
-                          'preferred_shared_memory_carveout',
-                          'ptx_version',
-                          'shared_size_bytes']:
+        for attribute in ["binary_version",
+                          "cache_mode_ca",
+                          "const_size_bytes",
+                          "local_size_bytes",
+                          "max_dynamic_shared_size_bytes",
+                          "max_threads_per_block",
+                          "num_regs",
+                          "preferred_shared_memory_carveout",
+                          "ptx_version",
+                          "shared_size_bytes"]:
             assert attribute in attrs
         # TODO(leofang): investigate why this fails on ROCm 3.5.0
         if not cupy.cuda.runtime.is_hip:
@@ -496,8 +496,8 @@ class TestRaw(unittest.TestCase):
 
     def test_module(self):
         module = self.mod2
-        ker_sum = module.get_function('test_sum')
-        ker_times = module.get_function('test_multiply')
+        ker_sum = module.get_function("test_sum")
+        ker_times = module.get_function("test_multiply")
 
         x1, x2, y = self._helper(ker_sum, cupy.float32)
         assert cupy.allclose(y, x1 + x2)
@@ -507,8 +507,8 @@ class TestRaw(unittest.TestCase):
 
     def test_compiler_flag(self):
         module = self.mod3
-        ker_sum = module.get_function('test_sum')
-        ker_times = module.get_function('test_multiply')
+        ker_sum = module.get_function("test_sum")
+        ker_times = module.get_function("test_multiply")
 
         x1, x2, y = self._helper(ker_sum, cupy.float64)
         assert cupy.allclose(y, x1 + x2)
@@ -517,8 +517,8 @@ class TestRaw(unittest.TestCase):
         assert cupy.allclose(y, x1 * x2)
 
     def test_invalid_compiler_flag(self):
-        if cupy.cuda.runtime.is_hip and self.backend == 'nvrtc':
-            self.skipTest('hiprtc does not handle #error macro properly')
+        if cupy.cuda.runtime.is_hip and self.backend == "nvrtc":
+            self.skipTest("hiprtc does not handle #error macro properly")
 
         if self.jitify:
             ex_type = cupy.cuda.compiler.JitifyException
@@ -527,13 +527,13 @@ class TestRaw(unittest.TestCase):
 
         with pytest.raises(ex_type) as ex:
             mod = cupy.RawModule(code=_test_source3,
-                                 options=('-DPRECISION=3',),
+                                 options=("-DPRECISION=3",),
                                  backend=self.backend,
                                  jitify=self.jitify)
-            mod.get_function('test_sum')  # enforce compilation
+            mod.get_function("test_sum")  # enforce compilation
 
         if not self.jitify:
-            assert 'precision not supported' in str(ex.value)
+            assert "precision not supported" in str(ex.value)
 
     def _find_nvcc_ver(self):
         if self._nvcc_ver:
@@ -569,70 +569,70 @@ class TestRaw(unittest.TestCase):
 
         if not cupy.cuda.runtime.is_hip:
             cc = cupy.cuda.get_nvcc_path()
-            arch = '-gencode=arch=compute_{CC},code=sm_{CC}'.format(
+            arch = "-gencode=arch=compute_{CC},code=sm_{CC}".format(
                 CC=compiler._get_arch())
             code = _test_source5
         else:
             # TODO(leofang): expose get_hipcc_path() to cupy.cuda?
             cc = cupy._environment.get_hipcc_path()
-            arch = '-v'  # dummy
+            arch = "-v"  # dummy
             code = compiler._convert_to_hip_source(_test_source5, None, False)
         # split() is needed because nvcc could come from the env var NVCC
         cmd = cc.split()
-        source = '{}/test_load_cubin.cu'.format(self.cache_dir)
-        file_path = self.cache_dir + 'test_load_cubin'
-        with open(source, 'w') as f:
+        source = "{}/test_load_cubin.cu".format(self.cache_dir)
+        file_path = self.cache_dir + "test_load_cubin"
+        with open(source, "w") as f:
             f.write(code)
         if not cupy.cuda.runtime.is_hip:
-            if ext == 'cubin':
-                file_path += '.cubin'
-                flag = '-cubin'
-            elif ext == 'ptx':
-                file_path += '.ptx'
-                flag = '-ptx'
+            if ext == "cubin":
+                file_path += ".cubin"
+                flag = "-cubin"
+            elif ext == "ptx":
+                file_path += ".ptx"
+                flag = "-ptx"
             else:
                 raise ValueError
         else:
-            file_path += '.hsaco'
-            flag = '--genco'
-        cmd += [arch, flag, source, '-o', file_path]
-        cc = 'nvcc' if not cupy.cuda.runtime.is_hip else 'hipcc'
+            file_path += ".hsaco"
+            flag = "--genco"
+        cmd += [arch, flag, source, "-o", file_path]
+        cc = "nvcc" if not cupy.cuda.runtime.is_hip else "hipcc"
         compiler._run_cc(cmd, self.cache_dir, cc)
 
         return file_path
 
-    @unittest.skipIf(cupy.cuda.runtime.is_hip, 'HIP uses hsaco, not cubin')
+    @unittest.skipIf(cupy.cuda.runtime.is_hip, "HIP uses hsaco, not cubin")
     def test_load_cubin(self):
         # generate cubin in the temp dir
-        file_path = self._generate_file('cubin')
+        file_path = self._generate_file("cubin")
 
         # load cubin and test the kernel
         mod = cupy.RawModule(path=file_path, backend=self.backend)
-        ker = mod.get_function('test_div')
+        ker = mod.get_function("test_div")
         x1, x2, y = self._helper(ker, cupy.float32)
         assert cupy.allclose(y, x1 / (x2 + 1.0))
 
-    @unittest.skipIf(cupy.cuda.runtime.is_hip, 'HIP uses hsaco, not ptx')
+    @unittest.skipIf(cupy.cuda.runtime.is_hip, "HIP uses hsaco, not ptx")
     def test_load_ptx(self):
         # use nvcc to generate ptx in the temp dir
-        self._check_ptx_loadable('nvcc')
-        file_path = self._generate_file('ptx')
+        self._check_ptx_loadable("nvcc")
+        file_path = self._generate_file("ptx")
 
         # load ptx and test the kernel
         mod = cupy.RawModule(path=file_path, backend=self.backend)
-        ker = mod.get_function('test_div')
+        ker = mod.get_function("test_div")
         x1, x2, y = self._helper(ker, cupy.float32)
         assert cupy.allclose(y, x1 / (x2 + 1.0))
 
     @unittest.skipIf(not cupy.cuda.runtime.is_hip,
-                     'CUDA uses cubin/ptx, not hsaco')
+                     "CUDA uses cubin/ptx, not hsaco")
     def test_load_hsaco(self):
         # generate hsaco in the temp dir
-        file_path = self._generate_file('hsaco')
+        file_path = self._generate_file("hsaco")
 
         # load cubin and test the kernel
         mod = cupy.RawModule(path=file_path, backend=self.backend)
-        ker = mod.get_function('test_div')
+        ker = mod.get_function("test_div")
         x1, x2, y = self._helper(ker, cupy.float32)
         assert cupy.allclose(y, x1 / (x2 + 1.0))
 
@@ -642,11 +642,11 @@ class TestRaw(unittest.TestCase):
         # let us do it here
         with pytest.raises(cupy.cuda.driver.CUDADriverError) as ex:
             mod = cupy.RawModule(
-                path=os.path.expanduser('~/this_does_not_exist.cubin'),
+                path=os.path.expanduser("~/this_does_not_exist.cubin"),
                 backend=self.backend)
-            mod.get_function('nonexisting_kernel')  # enforce loading
-        assert ('CUDA_ERROR_FILE_NOT_FOUND' in str(ex.value)  # CUDA
-                or 'hipErrorFileNotFound' in str(ex.value))  # HIP
+            mod.get_function("nonexisting_kernel")  # enforce loading
+        assert ("CUDA_ERROR_FILE_NOT_FOUND" in str(ex.value)  # CUDA
+                or "hipErrorFileNotFound" in str(ex.value))  # HIP
 
     def test_module_neither_code_nor_path(self):
         with pytest.raises(TypeError):
@@ -656,22 +656,22 @@ class TestRaw(unittest.TestCase):
         with pytest.raises(TypeError):
             cupy.RawModule(
                 code=_test_source1,
-                path='test.cubin')
+                path="test.cubin")
 
     def test_get_function_failure(self):
         # in principle this test is better done in test_driver.py, but
         # this error is more likely to appear when using RawModule, so
         # let us do it here
         with pytest.raises(cupy.cuda.driver.CUDADriverError) as ex:
-            self.mod2.get_function('no_such_kernel')
-        assert ('CUDA_ERROR_NOT_FOUND' in str(ex.value)  # for CUDA
-                or 'hipErrorNotFound' in str(ex.value))  # for HIP
+            self.mod2.get_function("no_such_kernel")
+        assert ("CUDA_ERROR_NOT_FOUND" in str(ex.value)  # for CUDA
+                or "hipErrorNotFound" in str(ex.value))  # for HIP
 
     @unittest.skipIf(cupy.cuda.runtime.is_hip,
-                     'ROCm/HIP does not support dynamic parallelism')
+                     "ROCm/HIP does not support dynamic parallelism")
     def test_dynamical_parallelism(self):
-        self._check_ptx_loadable('nvrtc')
-        ker = cupy.RawKernel(_test_source4, 'test_kernel', options=('-dc',),
+        self._check_ptx_loadable("nvrtc")
+        ker = cupy.RawKernel(_test_source4, "test_kernel", options=("-dc",),
                              backend=self.backend, jitify=self.jitify)
         N = 169
         inner_chunk = 13
@@ -681,16 +681,16 @@ class TestRaw(unittest.TestCase):
 
     def test_dynamical_parallelism_compile_failure(self):
         # no option for separate compilation is given should cause an error
-        ker = cupy.RawKernel(_test_source4, 'test_kernel',
+        ker = cupy.RawKernel(_test_source4, "test_kernel",
                              backend=self.backend, jitify=self.jitify)
         N = 10
         inner_chunk = 2
         x = cupy.zeros((N,), dtype=cupy.float32)
         use_ptx = os.environ.get(
-            'CUPY_COMPILE_WITH_PTX', False)
+            "CUPY_COMPILE_WITH_PTX", False)
         if self.jitify:
             error = cupy.cuda.compiler.JitifyException
-        elif self.backend == 'nvrtc' and (
+        elif self.backend == "nvrtc" and (
                 use_ptx or
                 (cupy.cuda.driver._is_cuda_python()
                  and cupy.cuda.runtime.runtimeGetVersion() < 11010) or
@@ -705,7 +705,7 @@ class TestRaw(unittest.TestCase):
             ker((1,), (N//inner_chunk,), (x, N, inner_chunk))
 
     @unittest.skipIf(cupy.cuda.runtime.is_hip,
-                     'HIP code should not use cuFloatComplex')
+                     "HIP code should not use cuFloatComplex")
     def test_cuFloatComplex(self):
         N = 100
         block = 32
@@ -726,51 +726,51 @@ class TestRaw(unittest.TestCase):
         out_float = cupy.zeros((N,), dtype=cupy.float32)
         out_up = cupy.zeros((N,), dtype=cupy.complex128)
 
-        ker = mod.get_function('test_addf')
+        ker = mod.get_function("test_addf")
         ker((grid,), (block,), (a, b, out))
         assert (out == a + b).all()
 
-        ker = mod.get_function('test_subf')
+        ker = mod.get_function("test_subf")
         ker((grid,), (block,), (a, b, out))
         assert (out == a - b).all()
 
-        ker = mod.get_function('test_mulf')
+        ker = mod.get_function("test_mulf")
         ker((grid,), (block,), (a, b, out))
         assert cupy.allclose(out, a * b)
 
-        ker = mod.get_function('test_divf')
+        ker = mod.get_function("test_divf")
         ker((grid,), (block,), (a, b, out))
         assert (out == a / b).all()
 
-        ker = mod.get_function('test_conjf')
+        ker = mod.get_function("test_conjf")
         ker((grid,), (block,), (a, out))
         assert (out == cupy.conj(a)).all()
 
-        ker = mod.get_function('test_absf')
+        ker = mod.get_function("test_absf")
         ker((grid,), (block,), (a, out_float))
         assert (out_float == cupy.abs(a)).all()
 
-        ker = mod.get_function('test_fmaf')
+        ker = mod.get_function("test_fmaf")
         ker((grid,), (block,), (a, b, c, out))
         assert cupy.allclose(out, a * b + c)
 
-        ker = mod.get_function('test_makef')
+        ker = mod.get_function("test_makef")
         ker((grid,), (block,), (out,))
         # because of precision issue, the (A==B).all() semantics would fail
         assert cupy.allclose(out, 1.8 - 1j * 8.7)
 
-        ker = mod.get_function('test_upcast')
+        ker = mod.get_function("test_upcast")
         ker((grid,), (block,), (a, out_up))
         assert (out_up == a.astype(cupy.complex128)).all()
 
         # NumPy scalars.
         b = cupy.complex64(2 + 3j)
-        ker = mod.get_function('test_addf_scalar')
+        ker = mod.get_function("test_addf_scalar")
         ker((grid,), (block,), (a, b, out))
         assert (out == a + b).all()
 
     @unittest.skipIf(cupy.cuda.runtime.is_hip,
-                     'HIP code should not use cuDoubleComplex')
+                     "HIP code should not use cuDoubleComplex")
     def test_cuDoubleComplex(self):
         N = 100
         block = 32
@@ -791,51 +791,51 @@ class TestRaw(unittest.TestCase):
         out_float = cupy.zeros((N,), dtype=cupy.float64)
         out_down = cupy.zeros((N,), dtype=cupy.complex64)
 
-        ker = mod.get_function('test_add')
+        ker = mod.get_function("test_add")
         ker((grid,), (block,), (a, b, out))
         assert (out == a + b).all()
 
-        ker = mod.get_function('test_sub')
+        ker = mod.get_function("test_sub")
         ker((grid,), (block,), (a, b, out))
         assert (out == a - b).all()
 
-        ker = mod.get_function('test_mul')
+        ker = mod.get_function("test_mul")
         ker((grid,), (block,), (a, b, out))
         assert cupy.allclose(out, a * b)
 
-        ker = mod.get_function('test_div')
+        ker = mod.get_function("test_div")
         ker((grid,), (block,), (a, b, out))
         assert (out == a / b).all()
 
-        ker = mod.get_function('test_conj')
+        ker = mod.get_function("test_conj")
         ker((grid,), (block,), (a, out))
         assert (out == cupy.conj(a)).all()
 
-        ker = mod.get_function('test_abs')
+        ker = mod.get_function("test_abs")
         ker((grid,), (block,), (a, out_float))
         assert (out_float == cupy.abs(a)).all()
 
-        ker = mod.get_function('test_fma')
+        ker = mod.get_function("test_fma")
         ker((grid,), (block,), (a, b, c, out))
         assert cupy.allclose(out, a * b + c)
 
-        ker = mod.get_function('test_make')
+        ker = mod.get_function("test_make")
         ker((grid,), (block,), (out,))
         assert (out == 1.8 - 1j * 8.7).all()
 
-        ker = mod.get_function('test_downcast')
+        ker = mod.get_function("test_downcast")
         ker((grid,), (block,), (a, out_down))
         assert (out_down == a.astype(cupy.complex64)).all()
 
         # NumPy scalars.
         b = cupy.complex128(2 + 3j)
-        ker = mod.get_function('test_add_scalar')
+        ker = mod.get_function("test_add_scalar")
         ker((grid,), (block,), (a, b, out))
         assert (out == a + b).all()
 
         # Python scalars.
         b = 2 + 3j
-        ker = mod.get_function('test_add_scalar')
+        ker = mod.get_function("test_add_scalar")
         ker((grid,), (block,), (a, b, out))
         assert (out == a + b).all()
 
@@ -843,8 +843,8 @@ class TestRaw(unittest.TestCase):
         mod = cupy.RawModule(code=test_const_mem,
                              backend=self.backend,
                              jitify=self.jitify)
-        ker = mod.get_function('multiply_by_const')
-        mem_ptr = mod.get_global('some_array')
+        ker = mod.get_function("multiply_by_const")
+        mem_ptr = mod.get_global("some_array")
         const_arr = cupy.ndarray((100,), cupy.float32, mem_ptr)
         data = cupy.arange(100, dtype=cupy.float32)
         const_arr[...] = data
@@ -853,25 +853,25 @@ class TestRaw(unittest.TestCase):
         assert (data == output_arr).all()
 
     def test_template_specialization(self):
-        if self.backend == 'nvcc':
-            self.skipTest('nvcc does not support template specialization')
+        if self.backend == "nvcc":
+            self.skipTest("nvcc does not support template specialization")
 
         # TODO(leofang): investigate why hiprtc generates a wrong source code
         # when the same code is compiled and discarded. It seems hiprtc has
         # an internal cache that conflicts with the 2nd compilation attempt.
-        if cupy.cuda.runtime.is_hip and hasattr(self, 'clean_up'):
-            self.skipTest('skip a potential hiprtc bug')
+        if cupy.cuda.runtime.is_hip and hasattr(self, "clean_up"):
+            self.skipTest("skip a potential hiprtc bug")
 
         # compile code
         if cupy.cuda.runtime.is_hip:
             # ROCm 5.0 returns HIP_HIPRTC_ERROR_NAME_EXPRESSION_NOT_VALID for
             # my_sqrt<complex<double>>, so we use thrust::complex<double>
             # instead.
-            name_expressions = ['my_sqrt<int>', 'my_sqrt<float>',
-                                'my_sqrt<thrust::complex<double>>', 'my_func']
+            name_expressions = ["my_sqrt<int>", "my_sqrt<float>",
+                                "my_sqrt<thrust::complex<double>>", "my_func"]
         else:
-            name_expressions = ['my_sqrt<int>', 'my_sqrt<float>',
-                                'my_sqrt<complex<double>>', 'my_func']
+            name_expressions = ["my_sqrt<int>", "my_sqrt<float>",
+                                "my_sqrt<complex<double>>", "my_func"]
         mod = cupy.RawModule(code=test_cxx_template,
                              name_expressions=name_expressions,
                              jitify=self.jitify)
@@ -883,7 +883,7 @@ class TestRaw(unittest.TestCase):
                 # TODO(leofang): investigate why getLoweredName has no error
                 # but returns an empty string for my_sqrt<complex<double>>
                 mangled_name = mod.module.mapping.get(ker_T)
-                if mangled_name == '':
+                if mangled_name == "":
                     continue
             ker = mod.get_function(ker_T)
 
@@ -898,41 +898,41 @@ class TestRaw(unittest.TestCase):
             assert cupy.allclose(in_arr, out_arr)
 
     def test_template_failure(self):
-        name_expressions = ['my_sqrt<int>']
+        name_expressions = ["my_sqrt<int>"]
 
         # 1. nvcc is disabled for this feature
-        if self.backend == 'nvcc':
+        if self.backend == "nvcc":
             with pytest.raises(ValueError) as e:
                 cupy.RawModule(code=test_cxx_template, backend=self.backend,
                                name_expressions=name_expressions)
-            assert 'nvrtc' in str(e.value)
+            assert "nvrtc" in str(e.value)
             return  # the rest of tests do not apply to nvcc
 
         # 2. compile code without specializations
         mod = cupy.RawModule(code=test_cxx_template,
                              jitify=self.jitify)
         # ...try to get a specialized kernel
-        match = ('named symbol not found' if not cupy.cuda.runtime.is_hip else
-                 'hipErrorNotFound')
+        match = ("named symbol not found" if not cupy.cuda.runtime.is_hip else
+                 "hipErrorNotFound")
         with pytest.raises(cupy.cuda.driver.CUDADriverError, match=match):
-            mod.get_function('my_sqrt<int>')
+            mod.get_function("my_sqrt<int>")
 
         # 3. try to fetch something we didn't specialize for
         mod = cupy.RawModule(code=test_cxx_template,
                              name_expressions=name_expressions,
                              jitify=self.jitify)
         if cupy.cuda.runtime.is_hip:
-            msg = 'hipErrorNotFound'
+            msg = "hipErrorNotFound"
         else:
-            msg = 'named symbol not found'
+            msg = "named symbol not found"
         with pytest.raises(cupy.cuda.driver.CUDADriverError, match=msg):
-            mod.get_function('my_sqrt<double>')
+            mod.get_function("my_sqrt<double>")
 
     def test_raw_pointer(self):
         mod = cupy.RawModule(code=test_cast,
                              backend=self.backend,
                              jitify=self.jitify)
-        ker = mod.get_function('my_func')
+        ker = mod.get_function("my_func")
 
         a = cupy.ones((100,), dtype=cupy.float64)
         memptr = memory.alloc(100 * a.dtype.itemsize)
@@ -960,10 +960,10 @@ class TestRaw(unittest.TestCase):
         # in this test, re-compiling happens at 2nd get_function()
         module = self.mod2
         with cupy.cuda.Device(0):
-            module.get_function('test_sum')
+            module.get_function("test_sum")
 
         with cupy.cuda.Device(1):
-            ker_sum = module.get_function('test_sum')
+            ker_sum = module.get_function("test_sum")
             x1, x2, y = self._helper(ker_sum, cupy.float32)
             assert cupy.allclose(y, x1 + x2)
 
@@ -973,7 +973,7 @@ class TestRaw(unittest.TestCase):
         # in this test, re-compiling happens at kernel launch
         module = self.mod2
         with cupy.cuda.Device(0):
-            ker_sum = module.get_function('test_sum')
+            ker_sum = module.get_function("test_sum")
 
         with cupy.cuda.Device(1):
             x1, x2, y = self._helper(ker_sum, cupy.float32)
@@ -990,13 +990,13 @@ class TestRaw(unittest.TestCase):
             raise pytest.skip()
 
         with device0:
-            file_path = self._generate_file('cubin')
+            file_path = self._generate_file("cubin")
             mod = cupy.RawModule(path=file_path, backend=self.backend)
-            mod.get_function('test_div')
+            mod.get_function("test_div")
 
         # in this test, reloading happens at 2nd get_function()
         with device1:
-            ker = mod.get_function('test_div')
+            ker = mod.get_function("test_div")
             x1, x2, y = self._helper(ker, cupy.float32)
             assert cupy.allclose(y, x1 / (x2 + 1.0))
 
@@ -1011,9 +1011,9 @@ class TestRaw(unittest.TestCase):
             raise pytest.skip()
 
         with device0:
-            file_path = self._generate_file('cubin')
+            file_path = self._generate_file("cubin")
             mod = cupy.RawModule(path=file_path, backend=self.backend)
-            ker = mod.get_function('test_div')
+            ker = mod.get_function("test_div")
 
         # in this test, reloading happens at kernel launch
         with device1:
@@ -1024,11 +1024,11 @@ class TestRaw(unittest.TestCase):
     def test_context_switch_RawModule5(self):
         # run test_template_specialization() on another device
         # in this test, re-compiling happens at get_function()
-        if self.backend == 'nvcc':
-            self.skipTest('nvcc does not support template specialization')
+        if self.backend == "nvcc":
+            self.skipTest("nvcc does not support template specialization")
 
         # compile code
-        name_expressions = ['my_sqrt<unsigned int>']
+        name_expressions = ["my_sqrt<unsigned int>"]
         name = name_expressions[0]
         with cupy.cuda.Device(0):
             mod = cupy.RawModule(code=test_cxx_template,
@@ -1057,11 +1057,11 @@ class TestRaw(unittest.TestCase):
     def test_context_switch_RawModule6(self):
         # run test_template_specialization() on another device
         # in this test, re-compiling happens at kernel launch
-        if self.backend == 'nvcc':
-            self.skipTest('nvcc does not support template specialization')
+        if self.backend == "nvcc":
+            self.skipTest("nvcc does not support template specialization")
 
         # compile code
-        name_expressions = ['my_sqrt<unsigned int>']
+        name_expressions = ["my_sqrt<unsigned int>"]
         name = name_expressions[0]
         with cupy.cuda.Device(0):
             mod = cupy.RawModule(code=test_cxx_template,
@@ -1084,38 +1084,38 @@ class TestRaw(unittest.TestCase):
             assert cupy.allclose(in_arr, out_arr)
 
     @unittest.skipUnless(not cupy.cuda.runtime.is_hip,
-                         'only CUDA raises warning')
+                         "only CUDA raises warning")
     def test_compile_kernel(self):
         kern = cupy.RawKernel(
-            _test_compile_src, 'test_op',
-            options=('-DOP=+',),
+            _test_compile_src, "test_op",
+            options=("-DOP=+",),
             backend=self.backend,
             jitify=self.jitify)
         log = io.StringIO()
         with use_temporary_cache_dir():
             kern.compile(log_stream=log)
-        assert 'warning' in log.getvalue()
+        assert "warning" in log.getvalue()
         x1, x2, y = self._helper(kern, cupy.float32)
         assert cupy.allclose(y, x1 + x2)
 
     @unittest.skipUnless(not cupy.cuda.runtime.is_hip,
-                         'only CUDA raises warning')
+                         "only CUDA raises warning")
     def test_compile_module(self):
         module = cupy.RawModule(
             code=_test_compile_src,
             backend=self.backend,
-            options=('-DOP=+',),
+            options=("-DOP=+",),
             jitify=self.jitify)
         log = io.StringIO()
         with use_temporary_cache_dir():
             module.compile(log_stream=log)
-        assert 'warning' in log.getvalue()
-        kern = module.get_function('test_op')
+        assert "warning" in log.getvalue()
+        kern = module.get_function("test_op")
         x1, x2, y = self._helper(kern, cupy.float32)
         assert cupy.allclose(y, x1 + x2)
 
 
-_test_grid_sync = r'''
+_test_grid_sync = r"""
 #include <cooperative_groups.h>
 
 extern "C" __global__
@@ -1132,34 +1132,34 @@ void test_grid_sync(const float* x1, const float* x2, float* y, int n) {
         y[i] += x2[i];
     }
 }
-'''
+"""
 
 
 @testing.parameterize(*testing.product({
-    'n': [10, 100, 1000],
-    'block': [64, 256],
+    "n": [10, 100, 1000],
+    "block": [64, 256],
 }))
 @unittest.skipIf(
     find_nvcc_ver() >= 12020,
     "fp16 header compatibility issue, see cupy#8412")
 @unittest.skipUnless(
     9000 <= cupy.cuda.runtime.runtimeGetVersion(),
-    'Requires CUDA 9.x or later')
+    "Requires CUDA 9.x or later")
 @unittest.skipUnless(
     60 <= int(cupy.cuda.device.get_compute_capability()),
-    'Requires compute capability 6.0 or later')
-@unittest.skipIf(cupy.cuda.runtime.is_hip, 'Skip on HIP')
+    "Requires compute capability 6.0 or later")
+@unittest.skipIf(cupy.cuda.runtime.is_hip, "Skip on HIP")
 class TestRawGridSync(unittest.TestCase):
 
     def test_grid_sync_rawkernel(self):
         n = self.n
         with use_temporary_cache_dir():
             kern_grid_sync = cupy.RawKernel(
-                _test_grid_sync, 'test_grid_sync', backend='nvcc',
+                _test_grid_sync, "test_grid_sync", backend="nvcc",
                 enable_cooperative_groups=True)
-            x1 = cupy.arange(n ** 2, dtype='float32').reshape(n, n)
-            x2 = cupy.ones((n, n), dtype='float32')
-            y = cupy.zeros((n, n), dtype='float32')
+            x1 = cupy.arange(n ** 2, dtype="float32").reshape(n, n)
+            x2 = cupy.ones((n, n), dtype="float32")
+            y = cupy.zeros((n, n), dtype="float32")
             block = self.block
             grid = (n * n + block - 1) // block
             kern_grid_sync((grid,), (block,), (x1, x2, y, n ** 2))
@@ -1169,19 +1169,19 @@ class TestRawGridSync(unittest.TestCase):
         n = self.n
         with use_temporary_cache_dir():
             mod_grid_sync = cupy.RawModule(
-                code=_test_grid_sync, backend='nvcc',
+                code=_test_grid_sync, backend="nvcc",
                 enable_cooperative_groups=True)
-            x1 = cupy.arange(n ** 2, dtype='float32').reshape(n, n)
-            x2 = cupy.ones((n, n), dtype='float32')
-            y = cupy.zeros((n, n), dtype='float32')
-            kern = mod_grid_sync.get_function('test_grid_sync')
+            x1 = cupy.arange(n ** 2, dtype="float32").reshape(n, n)
+            x2 = cupy.ones((n, n), dtype="float32")
+            y = cupy.zeros((n, n), dtype="float32")
+            kern = mod_grid_sync.get_function("test_grid_sync")
             block = self.block
             grid = (n * n + block - 1) // block
             kern((grid,), (block,), (x1, x2, y, n ** 2))
             assert cupy.allclose(y, x1 + x2)
 
 
-_test_script = r'''
+_test_script = r"""
 import pickle
 import sys
 
@@ -1201,21 +1201,21 @@ if len(sys.argv) == 2:
 ker((1,), (100,), (a, b, c, N))
 assert cp.allclose(a + b, c)
 assert ker.enable_cooperative_groups
-'''
+"""
 
 
 # Pickling/unpickling a RawModule should always success, whereas
 # pickling/unpickling a RawKernel would fail if we don't enforce
 # recompiling after unpickling it.
 @testing.parameterize(*testing.product({
-    'compile': (False, True),
-    'raw': ('ker', 'mod', 'mod_ker'),
+    "compile": (False, True),
+    "raw": ("ker", "mod", "mod_ker"),
 }))
 @unittest.skipUnless(
     60 <= int(cupy.cuda.device.get_compute_capability()),
-    'Requires compute capability 6.0 or later')
+    "Requires compute capability 6.0 or later")
 @unittest.skipIf(cupy.cuda.runtime.is_hip,
-                 'HIP does not support enable_cooperative_groups')
+                 "HIP does not support enable_cooperative_groups")
 class TestRawPicklable(unittest.TestCase):
 
     def setUp(self):
@@ -1223,13 +1223,13 @@ class TestRawPicklable(unittest.TestCase):
         self.temp_dir = self.temporary_dir_context.__enter__()
 
         # test if kw-only arguments are properly handled or not
-        if self.raw == 'ker':
-            self.ker = cupy.RawKernel(_test_source1, 'test_sum',
-                                      backend='nvcc',
+        if self.raw == "ker":
+            self.ker = cupy.RawKernel(_test_source1, "test_sum",
+                                      backend="nvcc",
                                       enable_cooperative_groups=True)
         else:
             self.mod = cupy.RawModule(code=_test_source1,
-                                      backend='nvcc',
+                                      backend="nvcc",
                                       enable_cooperative_groups=True)
 
     def tearDown(self):
@@ -1240,10 +1240,10 @@ class TestRawPicklable(unittest.TestCase):
         x1 = cupy.arange(N**2, dtype=cupy.float32).reshape(N, N)
         x2 = cupy.ones((N, N), dtype=cupy.float32)
         y = cupy.zeros((N, N), dtype=cupy.float32)
-        if self.raw == 'ker':
+        if self.raw == "ker":
             ker = self.ker
         else:
-            ker = self.mod.get_function('test_sum')
+            ker = self.mod.get_function("test_sum")
         ker((N,), (N,), (x1, x2, y, N**2))
         assert cupy.allclose(x1 + x2, y)
 
@@ -1252,31 +1252,31 @@ class TestRawPicklable(unittest.TestCase):
         if self.compile:
             self._helper()
 
-        if self.raw == 'ker':
+        if self.raw == "ker":
             # pickle the RawKernel
             obj = self.ker
-        elif self.raw == 'mod':
+        elif self.raw == "mod":
             # pickle the RawModule
             obj = self.mod
-        elif self.raw == 'mod_ker':
+        elif self.raw == "mod_ker":
             # pickle the RawKernel fetched from the RawModule
-            obj = self.mod.get_function('test_sum')
-        with open(self.temp_dir + '/raw.pkl', 'wb') as f:
+            obj = self.mod.get_function("test_sum")
+        with open(self.temp_dir + "/raw.pkl", "wb") as f:
             pickle.dump(obj, f)
 
         # dump test script to temp dir
-        with open(self.temp_dir + '/TestRawPicklable.py', 'w') as f:
+        with open(self.temp_dir + "/TestRawPicklable.py", "w") as f:
             f.write(_test_script)
-        test_args = ['test_sum'] if self.raw == 'mod' else []
+        test_args = ["test_sum"] if self.raw == "mod" else []
 
         # run another process to check the pickle
-        s = subprocess.run([sys.executable, 'TestRawPicklable.py'] + test_args,
+        s = subprocess.run([sys.executable, "TestRawPicklable.py"] + test_args,
                            cwd=self.temp_dir)
         s.check_returncode()  # raise if unsuccessful
 
 
 # a slightly more realistic kernel involving std utilities
-std_code = r'''
+std_code = r"""
 #include <type_traits>
 
 template<typename T,
@@ -1287,14 +1287,14 @@ __global__ void shift (T* a, int N) {
         a[tid] += 100;
     }
 }
-'''
+"""
 
 
 @testing.parameterize(*testing.product({
-    'jitify': (False, True),
+    "jitify": (False, True),
 }))
 @unittest.skipIf(cupy.cuda.runtime.is_hip,
-                 'Jitify does not support ROCm/HIP')
+                 "Jitify does not support ROCm/HIP")
 class TestRawJitify(unittest.TestCase):
 
     def setUp(self):
@@ -1308,7 +1308,7 @@ class TestRawJitify(unittest.TestCase):
         code = header
         code += _test_source1
         mod1 = cupy.RawModule(code=code,
-                              backend='nvrtc',
+                              backend="nvrtc",
                               options=options,
                               jitify=self.jitify)
 
@@ -1316,15 +1316,15 @@ class TestRawJitify(unittest.TestCase):
         x1 = cupy.arange(N**2, dtype=cupy.float32).reshape(N, N)
         x2 = cupy.ones((N, N), dtype=cupy.float32)
         y = cupy.zeros((N, N), dtype=cupy.float32)
-        ker = mod1.get_function('test_sum')
+        ker = mod1.get_function("test_sum")
         ker((N,), (N,), (x1, x2, y, N**2))
         assert cupy.allclose(x1 + x2, y)
 
     def _helper2(self, type_str):
         mod2 = cupy.RawModule(code=std_code,
                               jitify=self.jitify,
-                              name_expressions=('shift<%s>' % type_str,))
-        ker = mod2.get_function('shift<%s>' % type_str)
+                              name_expressions=("shift<%s>" % type_str,))
+        ker = mod2.get_function("shift<%s>" % type_str)
         N = 256
         a = cupy.random.random_integers(0, 7, N).astype(cupy.int32)
         b = a.copy()
@@ -1333,12 +1333,12 @@ class TestRawJitify(unittest.TestCase):
 
     def test_jitify1(self):
         # simply prepend an unused header
-        hdr = '#include <cub/block/block_reduce.cuh>\n'
+        hdr = "#include <cub/block/block_reduce.cuh>\n"
         # Starting CUDA 12.2, fp16/bf16 headers are intertwined, but due to
         # license issue we can't yet bundle bf16 headers. CUB offers us a
         # band-aid solution to avoid including the latter (NVIDIA/cub#478,
         # nvbugs 3641496).
-        options = ('-DCUB_DISABLE_BF16_SUPPORT',)
+        options = ("-DCUB_DISABLE_BF16_SUPPORT",)
 
         # Compiling CUB headers now works with or without Jitify.
         self._helper(hdr, options)
@@ -1347,11 +1347,11 @@ class TestRawJitify(unittest.TestCase):
         # NVRTC cannot compile any code involving std
         if self.jitify:
             # Jitify will make it work
-            self._helper2('int')
+            self._helper2("int")
         else:
             with pytest.raises(cupy.cuda.compiler.CompileException) as ex:
-                self._helper2('int')
-            assert 'cannot open source file' in str(ex.value)
+                self._helper2("int")
+            assert "cannot open source file" in str(ex.value)
 
     def test_jitify3(self):
         # We supply a type impossible to specialize. Jitify is still able to
@@ -1360,17 +1360,17 @@ class TestRawJitify(unittest.TestCase):
         # messages.
         ex_type = cupy.cuda.compiler.CompileException
         with pytest.raises(ex_type) as ex:
-            self._helper2('float')
+            self._helper2("float")
         if self.jitify:
-            assert 'Error in parsing name expression' in str(ex.value)
+            assert "Error in parsing name expression" in str(ex.value)
         else:
-            assert 'cannot open source file' in str(ex.value)
+            assert "cannot open source file" in str(ex.value)
 
     def test_jitify4(self):
         # ensure JitifyException is raised with a broken code
-        code = r'''
+        code = r"""
         __global__ void i_am_broken() {
-        '''
+        """
 
         if self.jitify:
             ex_type = cupy.cuda.compiler.JitifyException
@@ -1388,17 +1388,17 @@ class TestRawJitify(unittest.TestCase):
         # comment it out and proceed. If this header is actually unused, then
         # everything would run just fine.
 
-        hdr = 'I_INCLUDE_SOMETHING.h'
-        with open(self.temp_dir + '/' + hdr, 'w') as f:
-            dummy = '#include <cupy/I_DO_NOT_EXIST_WAH_HA_HA.h>\n'
+        hdr = "I_INCLUDE_SOMETHING.h"
+        with open(self.temp_dir + "/" + hdr, "w") as f:
+            dummy = "#include <cupy/I_DO_NOT_EXIST_WAH_HA_HA.h>\n"
             f.write(dummy)
         hdr = '#include "' + hdr + '"\n'
 
         if self.jitify:
             # Jitify would print a warning "[jitify] File not found" to stdout,
             # but as mentioned above and elsewhere, we can't capture it.
-            self._helper(hdr, options=('-I'+self.temp_dir,))
+            self._helper(hdr, options=("-I"+self.temp_dir,))
         else:
             with pytest.raises(cupy.cuda.compiler.CompileException) as ex:
-                self._helper(hdr, options=('-I'+self.temp_dir,))
-            assert 'cannot open source file' in str(ex.value)
+                self._helper(hdr, options=("-I"+self.temp_dir,))
+            assert "cannot open source file" in str(ex.value)

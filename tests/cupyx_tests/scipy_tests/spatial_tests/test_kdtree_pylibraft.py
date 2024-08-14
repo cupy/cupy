@@ -18,17 +18,17 @@ def create_random_kd_tree(xp, scp, n, m, n_points=1, x_offset=0, scale=10,
     return x, tree
 
 
-@testing.with_requires('scipy')
-@pytest.mark.skipif(not pylibraft_available, reason='pylibraft is required')
+@testing.with_requires("scipy")
+@pytest.mark.skipif(not pylibraft_available, reason="pylibraft is required")
 class TestDistance:
-    @pytest.mark.parametrize('args', [
+    @pytest.mark.parametrize("args", [
         (100, 4, 1, 0),
         (100, 4, 1, 10)
     ])
     @testing.numpy_cupy_allclose(
-        scipy_name='scp', type_check=False, rtol=5e-7, atol=5e-7)
+        scipy_name="scp", type_check=False, rtol=5e-7, atol=5e-7)
     def test_sparse_distance_matrix(self, xp, scp, args):
         _, tree = create_random_kd_tree(xp, scp, *args, scale=1.0)
         _, tree2 = create_random_kd_tree(xp, scp, *args, scale=1.0)
-        res = tree.sparse_distance_matrix(tree2, 0.5, output_type='coo_matrix')
+        res = tree.sparse_distance_matrix(tree2, 0.5, output_type="coo_matrix")
         return res.todense()

@@ -83,8 +83,8 @@ def optimize(*, key=None, path=None, readonly=False, **config_dict):
     """
     if not _optuna_available:
         raise RuntimeError(
-            'Optuna is required to run optimization. '
-            'See https://optuna.org/ for the installation instructions.')
+            "Optuna is required to run optimization. "
+            "See https://optuna.org/ for the installation instructions.")
 
     old_context = _optimize_config.get_current_context()
     context = _optimize_config.get_new_context(key, _optimize, config_dict)
@@ -94,10 +94,10 @@ def optimize(*, key=None, path=None, readonly=False, **config_dict):
         if os.path.exists(path):
             context.load(path)
         elif readonly:
-            warnings.warn('''
+            warnings.warn("""
 The specified path {} could not be found, and the readonly option is set.
 The optimization results will never be stored.
-'''.format(path))
+""".format(path))
 
     try:
         yield context

@@ -138,9 +138,9 @@ configs_b = [
 @testing.multi_gpu(4)
 class TestDistributedMatMul:
     @pytest.mark.parametrize(
-        'config',
+        "config",
         [config_1x2_2x2, config_2x2_2x2, config_1x4_4x1, config_2x3_3x2])
-    @pytest.mark.parametrize('mode', [REPLICA, SUM])
+    @pytest.mark.parametrize("mode", [REPLICA, SUM])
     def test_matmul(self, config, mode):
         np_a, d_a, np_b, d_b = config.instantiate(mode)
         np_c = np_a @ np_b
@@ -150,7 +150,7 @@ class TestDistributedMatMul:
     def test_incompatible_blockings(self):
         wrong_config = MatMulConfig(config_1x2_2x2.a, config_2x3_3x2.b)
         np_a, d_a, np_b, d_b = wrong_config.instantiate()
-        with pytest.raises(RuntimeError, match=r'Inconsistent'):
+        with pytest.raises(RuntimeError, match=r"Inconsistent"):
             d_a @ d_b
 
     def test_high_dim(self):
@@ -164,8 +164,8 @@ class TestDistributedMatMul:
 
         testing.assert_array_equal(d_c.get(), np_c)
 
-    @pytest.mark.parametrize('config_a', configs_a)
-    @pytest.mark.parametrize('config_b', configs_b)
+    @pytest.mark.parametrize("config_a", configs_a)
+    @pytest.mark.parametrize("config_b", configs_b)
     def test_1d(self, config_a, config_b):
         np_a, d_a = config_a.instantiate()
         np_b, d_b = config_b.instantiate()
@@ -173,8 +173,8 @@ class TestDistributedMatMul:
         d_c = d_a @ d_b
         testing.assert_array_equal(d_c.get(), np_c, strict=True)
 
-    @pytest.mark.parametrize('config', [config_1x2_2x2])
-    @pytest.mark.parametrize('mode', [REPLICA, SUM])
+    @pytest.mark.parametrize("config", [config_1x2_2x2])
+    @pytest.mark.parametrize("mode", [REPLICA, SUM])
     def test_matmul_various_ops(self, config, mode):
         config = MatMulConfig(
             config.a,

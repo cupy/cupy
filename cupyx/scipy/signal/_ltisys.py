@@ -30,9 +30,9 @@ class LinearTimeInvariant:
     def __new__(cls, *system, **kwargs):
         """Create a new object, don't allow direct instances."""
         if cls is LinearTimeInvariant:
-            raise NotImplementedError('The LinearTimeInvariant class is not '
-                                      'meant to be used directly, use `lti` '
-                                      'or `dlti` instead.')
+            raise NotImplementedError("The LinearTimeInvariant class is not "
+                                      "meant to be used directly, use `lti` "
+                                      "or `dlti` instead.")
         return super().__new__(cls)
 
     def __init__(self):
@@ -57,7 +57,7 @@ class LinearTimeInvariant:
         if self.dt is None:
             return {}
         else:
-            return {'dt': self.dt}
+            return {"dt": self.dt}
 
     @property
     def zeros(self):
@@ -218,7 +218,7 @@ class lti(LinearTimeInvariant):
         """
         return freqresp(self, w=w, n=n)
 
-    def to_discrete(self, dt, method='zoh', alpha=None):
+    def to_discrete(self, dt, method="zoh", alpha=None):
         """Return a discretized version of the current system.
 
         Parameters: See `cont2discrete` for details.
@@ -227,8 +227,8 @@ class lti(LinearTimeInvariant):
         -------
         sys: instance of `dlti`
         """
-        raise NotImplementedError('to_discrete is not implemented for this '
-                                  'system class.')
+        raise NotImplementedError("to_discrete is not implemented for this "
+                                  "system class.")
 
 
 class dlti(LinearTimeInvariant):
@@ -299,7 +299,7 @@ class dlti(LinearTimeInvariant):
 
         The heavy lifting is done by the subclasses.
         """
-        dt = kwargs.pop('dt', True)
+        dt = kwargs.pop("dt", True)
         super().__init__(*system, **kwargs)
 
         self.dt = dt
@@ -410,7 +410,7 @@ class TransferFunction(LinearTimeInvariant):
 
         # Choose whether to inherit from `lti` or from `dlti`
         if cls is TransferFunction:
-            if kwargs.get('dt') is None:
+            if kwargs.get("dt") is None:
                 return TransferFunctionContinuous.__new__(
                     TransferFunctionContinuous,
                     *system,
@@ -440,7 +440,7 @@ class TransferFunction(LinearTimeInvariant):
 
     def __repr__(self):
         """Return representation of the system's transfer function"""
-        return '{}(\n{},\n{},\ndt: {}\n)'.format(
+        return "{}(\n{},\n{},\ndt: {}\n)".format(
             self.__class__.__name__,
             repr(self.num),
             repr(self.den),
@@ -618,7 +618,7 @@ class TransferFunctionContinuous(TransferFunction, lti):
 
     """
 
-    def to_discrete(self, dt, method='zoh', alpha=None):
+    def to_discrete(self, dt, method="zoh", alpha=None):
         """
         Returns the discretized `TransferFunction` system.
 
@@ -731,7 +731,7 @@ class ZerosPolesGain(LinearTimeInvariant):
 
         # Choose whether to inherit from `lti` or from `dlti`
         if cls is ZerosPolesGain:
-            if kwargs.get('dt') is None:
+            if kwargs.get("dt") is None:
                 return ZerosPolesGainContinuous.__new__(
                     ZerosPolesGainContinuous,
                     *system,
@@ -762,7 +762,7 @@ class ZerosPolesGain(LinearTimeInvariant):
 
     def __repr__(self):
         """Return representation of the `ZerosPolesGain` system."""
-        return '{}(\n{},\n{},\n{},\ndt: {}\n)'.format(
+        return "{}(\n{},\n{},\n{},\ndt: {}\n)".format(
             self.__class__.__name__,
             repr(self.zeros),
             repr(self.poles),
@@ -909,7 +909,7 @@ class ZerosPolesGainContinuous(ZerosPolesGain, lti):
 
     """
 
-    def to_discrete(self, dt, method='zoh', alpha=None):
+    def to_discrete(self, dt, method="zoh", alpha=None):
         """
         Returns the discretized `ZerosPolesGain` system.
 
@@ -1022,7 +1022,7 @@ class StateSpace(LinearTimeInvariant):
 
         # Choose whether to inherit from `lti` or from `dlti`
         if cls is StateSpace:
-            if kwargs.get('dt') is None:
+            if kwargs.get("dt") is None:
                 return StateSpaceContinuous.__new__(StateSpaceContinuous,
                                                     *system, **kwargs)
             else:
@@ -1050,7 +1050,7 @@ class StateSpace(LinearTimeInvariant):
 
     def __repr__(self):
         """Return representation of the `StateSpace` system."""
-        return '{}(\n{},\n{},\n{},\n{},\ndt: {}\n)'.format(
+        return "{}(\n{},\n{},\n{},\n{},\ndt: {}\n)".format(
             self.__class__.__name__,
             repr(self.A),
             repr(self.B),
@@ -1087,7 +1087,7 @@ class StateSpace(LinearTimeInvariant):
                 return NotImplemented
 
             if self.dt != other.dt:
-                raise TypeError('Cannot multiply systems with different `dt`.')
+                raise TypeError("Cannot multiply systems with different `dt`.")
 
             n1 = self.A.shape[0]
             n2 = other.A.shape[0]
@@ -1155,11 +1155,11 @@ class StateSpace(LinearTimeInvariant):
         if isinstance(other, StateSpace):
             # Disallow mix of discrete and continuous systems.
             if type(other) is not type(self):
-                raise TypeError('Cannot add {} and {}'.format(type(self),
+                raise TypeError("Cannot add {} and {}".format(type(self),
                                                               type(other)))
 
             if self.dt != other.dt:
-                raise TypeError('Cannot add systems with different `dt`.')
+                raise TypeError("Cannot add systems with different `dt`.")
             # Interconnection of systems
             # x1' = A1 x1 + B1 u
             # y1  = C1 x1 + D1 u
@@ -1367,7 +1367,7 @@ class StateSpaceContinuous(StateSpace, lti):
     ``sys = sys.to_zpk()`` before accessing/changing the zeros, poles or gain.
     """
 
-    def to_discrete(self, dt, method='zoh', alpha=None):
+    def to_discrete(self, dt, method="zoh", alpha=None):
         """
         Returns the discretized `StateSpace` system.
 
@@ -1479,8 +1479,8 @@ def lsim(system, U, T, X0=None, interp=True):
     if isinstance(system, lti):
         sys = system._as_ss()
     elif isinstance(system, dlti):
-        raise AttributeError('lsim can only be used with continuous-time '
-                             'systems.')
+        raise AttributeError("lsim can only be used with continuous-time "
+                             "systems.")
     else:
         sys = lti(*system)._as_ss()
     T = cupy.atleast_1d(T)
@@ -1670,8 +1670,8 @@ def impulse(system, X0=None, T=None, N=None):
     if isinstance(system, lti):
         sys = system._as_ss()
     elif isinstance(system, dlti):
-        raise AttributeError('impulse can only be used with continuous-time '
-                             'systems.')
+        raise AttributeError("impulse can only be used with continuous-time "
+                             "systems.")
     else:
         sys = lti(*system)._as_ss()
     if X0 is None:
@@ -1733,8 +1733,8 @@ def step(system, X0=None, T=None, N=None):
     if isinstance(system, lti):
         sys = system._as_ss()
     elif isinstance(system, dlti):
-        raise AttributeError('step can only be used with continuous-time '
-                             'systems.')
+        raise AttributeError("step can only be used with continuous-time "
+                             "systems.")
     else:
         sys = lti(*system)._as_ss()
     if N is None:
@@ -1847,8 +1847,8 @@ def freqresp(system, w=None, n=10000):
         else:
             sys = system._as_zpk()
     elif isinstance(system, dlti):
-        raise AttributeError('freqresp can only be used with continuous-time '
-                             'systems.')
+        raise AttributeError("freqresp can only be used with continuous-time "
+                             "systems.")
     else:
         sys = lti(*system)._as_zpk()
 
@@ -1912,7 +1912,7 @@ def _valid_inputs(A, B, poles, method, rtol, maxiter):
                              "more than rank(B) times")
     # Choose update method
     update_loop = _YT_loop
-    if method not in ('KNV0', 'YT'):
+    if method not in ("KNV0", "YT"):
         raise ValueError("The method keyword must be one of 'YT' or 'KNV0'")
 
     if method == "KNV0":
@@ -2409,7 +2409,7 @@ def place_poles(A, B, poles, method="YT", rtol=1e-3, maxiter=30):
     # to debug with numpy qr uncomment the line below
     # u, z = np.linalg.qr(B, mode="complete")
     # u, z = s_qr(B, mode="full")
-    u, z = cupy.linalg.qr(B, mode='complete')
+    u, z = cupy.linalg.qr(B, mode="complete")
     rankB = cupy.linalg.matrix_rank(B)
 
     u0 = u[:, :rankB]
@@ -2623,8 +2623,8 @@ def dlsim(system, u, t=None, x0=None):
     """
     # Convert system to dlti-StateSpace
     if isinstance(system, lti):
-        raise AttributeError('dlsim can only be used with discrete-time dlti '
-                             'systems.')
+        raise AttributeError("dlsim can only be used with discrete-time dlti "
+                             "systems.")
     elif not isinstance(system, dlti):
         system = dlti(*system[:-1], dt=system[-1])
 
@@ -2719,8 +2719,8 @@ def dimpulse(system, x0=None, t=None, n=None):
     if isinstance(system, dlti):
         system = system._as_ss()
     elif isinstance(system, lti):
-        raise AttributeError('dimpulse can only be used with discrete-time '
-                             'dlti systems.')
+        raise AttributeError("dimpulse can only be used with discrete-time "
+                             "dlti systems.")
     else:
         system = dlti(*system[:-1], dt=system[-1])._as_ss()
 
@@ -2793,8 +2793,8 @@ def dstep(system, x0=None, t=None, n=None):
     if isinstance(system, dlti):
         system = system._as_ss()
     elif isinstance(system, lti):
-        raise AttributeError('dstep can only be used with discrete-time dlti '
-                             'systems.')
+        raise AttributeError("dstep can only be used with discrete-time dlti "
+                             "systems.")
     else:
         system = dlti(*system[:-1], dt=system[-1])._as_ss()
 
@@ -2874,8 +2874,8 @@ def dfreqresp(system, w=None, n=10000, whole=False):
     """
     if not isinstance(system, dlti):
         if isinstance(system, lti):
-            raise AttributeError('dfreqresp can only be used with '
-                                 'discrete-time systems.')
+            raise AttributeError("dfreqresp can only be used with "
+                                 "discrete-time systems.")
 
         system = dlti(*system[:-1], dt=system[-1])
 
@@ -2884,7 +2884,7 @@ def dfreqresp(system, w=None, n=10000, whole=False):
         system = system._as_tf()
 
     if not isinstance(system, (TransferFunction, ZerosPolesGain)):
-        raise ValueError('Unknown system type')
+        raise ValueError("Unknown system type")
 
     if system.inputs != 1 or system.outputs != 1:
         raise ValueError("dfreqresp requires a SISO (single input, single "
@@ -3037,7 +3037,7 @@ def cont2discrete(system, dt, method="zoh", alpha=None):
         raise ValueError("First argument must either be a tuple of 2 (tf), "
                          "3 (zpk), or 4 (ss) arrays.")
 
-    if method == 'gbt':
+    if method == "gbt":
         if alpha is None:
             raise ValueError("Alpha parameter must be specified for the "
                              "generalized bilinear transform (gbt) method")
@@ -3045,7 +3045,7 @@ def cont2discrete(system, dt, method="zoh", alpha=None):
             raise ValueError("Alpha parameter must be within the interval "
                              "[0,1] for the gbt method")
 
-    if method == 'gbt':
+    if method == "gbt":
         # This parameter is used repeatedly - compute once here
         ima = cupy.eye(a.shape[0]) - alpha*dt*a
         rhs = cupy.eye(a.shape[0]) + (1.0 - alpha)*dt*a
@@ -3057,16 +3057,16 @@ def cont2discrete(system, dt, method="zoh", alpha=None):
         cd = cd.T
         dd = d + alpha*(c @ bd)
 
-    elif method == 'bilinear' or method == 'tustin':
+    elif method == "bilinear" or method == "tustin":
         return cont2discrete(system, dt, method="gbt", alpha=0.5)
 
-    elif method == 'euler' or method == 'forward_diff':
+    elif method == "euler" or method == "forward_diff":
         return cont2discrete(system, dt, method="gbt", alpha=0.0)
 
-    elif method == 'backward_diff':
+    elif method == "backward_diff":
         return cont2discrete(system, dt, method="gbt", alpha=1.0)
 
-    elif method == 'zoh':
+    elif method == "zoh":
         # Build an exponential matrix
         em_upper = cupy.hstack((a, b))
 
@@ -3086,7 +3086,7 @@ def cont2discrete(system, dt, method="zoh", alpha=None):
         cd = c
         dd = d
 
-    elif method == 'foh':
+    elif method == "foh":
         # Size parameters for convenience
         n = a.shape[0]
         m = b.shape[1]
@@ -3111,7 +3111,7 @@ def cont2discrete(system, dt, method="zoh", alpha=None):
         cd = c
         dd = d + c @ ms13
 
-    elif method == 'impulse':
+    elif method == "impulse":
         if not cupy.allclose(d, 0):
             raise ValueError("Impulse method is only applicable"
                              "to strictly proper systems")

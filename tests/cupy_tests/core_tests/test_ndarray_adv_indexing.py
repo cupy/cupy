@@ -13,8 +13,8 @@ def perm(iterable):
 
 @testing.parameterize(
     *testing.product({
-        'shape': [(4, 4, 4)],
-        'indexes': (
+        "shape": [(4, 4, 4)],
+        "indexes": (
             perm(([1, 0], slice(None))) +
             perm(([1, 0], Ellipsis)) +
             perm(([1, 2], None, slice(None))) +
@@ -44,89 +44,89 @@ class TestArrayAdvancedIndexingGetitemPerm:
 
 
 @testing.parameterize(
-    {'shape': (2, 3, 4), 'indexes': numpy.array(-1)},
-    {'shape': (2, 3, 4), 'indexes': (None, [1, 0], [0, 2], slice(None))},
-    {'shape': (2, 3, 4), 'indexes': (None, [0, 1], None, [2, 1], slice(None))},
-    {'shape': (2, 3, 4), 'indexes': numpy.array([1, 0])},
-    {'shape': (2, 3, 4), 'indexes': [1]},
-    {'shape': (2, 3, 4), 'indexes': [1, 1]},
-    {'shape': (2, 3, 4), 'indexes': [1, -1]},
-    {'shape': (2, 3, 4), 'indexes': ([0, 1], slice(None), [[2, 1], [3, 1]])},
+    {"shape": (2, 3, 4), "indexes": numpy.array(-1)},
+    {"shape": (2, 3, 4), "indexes": (None, [1, 0], [0, 2], slice(None))},
+    {"shape": (2, 3, 4), "indexes": (None, [0, 1], None, [2, 1], slice(None))},
+    {"shape": (2, 3, 4), "indexes": numpy.array([1, 0])},
+    {"shape": (2, 3, 4), "indexes": [1]},
+    {"shape": (2, 3, 4), "indexes": [1, 1]},
+    {"shape": (2, 3, 4), "indexes": [1, -1]},
+    {"shape": (2, 3, 4), "indexes": ([0, 1], slice(None), [[2, 1], [3, 1]])},
     # mask
-    {'shape': (10,), 'indexes': (numpy.random.choice([False, True], (10,)),)},
-    {'shape': (2, 3, 4), 'indexes': (1, numpy.array([True, False, True]))},
-    {'shape': (2, 3, 4), 'indexes': (numpy.array([True, False]), 1)},
-    {'shape': (2, 3, 4),
-     'indexes': (slice(None), 2, numpy.array([True, False, True, False]))},
-    {'shape': (2, 3, 4), 'indexes': (slice(None), 2, False)},
-    {'shape': (2, 3, 4),
-     'indexes': (numpy.random.choice([False, True], (2, 3, 4)),)},
-    {'shape': (2, 3, 4),
-     'indexes': (slice(None), numpy.array([True, False, True]))},
-    {'shape': (2, 3, 4),
-     'indexes': (slice(None), slice(None),
+    {"shape": (10,), "indexes": (numpy.random.choice([False, True], (10,)),)},
+    {"shape": (2, 3, 4), "indexes": (1, numpy.array([True, False, True]))},
+    {"shape": (2, 3, 4), "indexes": (numpy.array([True, False]), 1)},
+    {"shape": (2, 3, 4),
+     "indexes": (slice(None), 2, numpy.array([True, False, True, False]))},
+    {"shape": (2, 3, 4), "indexes": (slice(None), 2, False)},
+    {"shape": (2, 3, 4),
+     "indexes": (numpy.random.choice([False, True], (2, 3, 4)),)},
+    {"shape": (2, 3, 4),
+     "indexes": (slice(None), numpy.array([True, False, True]))},
+    {"shape": (2, 3, 4),
+     "indexes": (slice(None), slice(None),
                  numpy.array([True, False, False, True]))},
-    {'shape': (2, 3, 4),
-     'indexes': (1, 2,
+    {"shape": (2, 3, 4),
+     "indexes": (1, 2,
                  numpy.array([True, False, False, True]))},
-    {'shape': (2, 3, 4),
-     'indexes': (slice(None), numpy.random.choice([False, True], (3, 4)))},
-    {'shape': (2, 3, 4),
-     'indexes': numpy.random.choice([False, True], (2, 3))},
-    {'shape': (2, 3, 4),
-     'indexes': (1, None, numpy.array([True, False, True]))},
+    {"shape": (2, 3, 4),
+     "indexes": (slice(None), numpy.random.choice([False, True], (3, 4)))},
+    {"shape": (2, 3, 4),
+     "indexes": numpy.random.choice([False, True], (2, 3))},
+    {"shape": (2, 3, 4),
+     "indexes": (1, None, numpy.array([True, False, True]))},
     # empty arrays
-    {'shape': (2, 3, 4), 'indexes': []},
-    {'shape': (2, 3, 4), 'indexes': numpy.array([], dtype=numpy.int32)},
-    {'shape': (2, 3, 4), 'indexes': numpy.array([[]], dtype=numpy.int32)},
-    {'shape': (2, 3, 4), 'indexes': (slice(None), [])},
-    {'shape': (2, 3, 4), 'indexes': ([], [])},
-    {'shape': (2, 3, 4), 'indexes': ([[]],)},
-    {'shape': (2, 3, 4), 'indexes': numpy.array([], dtype=numpy.bool_)},
-    {'shape': (2, 3, 4),
-     'indexes': (slice(None), numpy.array([], dtype=numpy.bool_))},
-    {'shape': (2, 3, 4), 'indexes': numpy.array([[], []], dtype=numpy.bool_)},
-    {'shape': (2, 3, 4), 'indexes': numpy.empty((0, 0, 4), bool)},
+    {"shape": (2, 3, 4), "indexes": []},
+    {"shape": (2, 3, 4), "indexes": numpy.array([], dtype=numpy.int32)},
+    {"shape": (2, 3, 4), "indexes": numpy.array([[]], dtype=numpy.int32)},
+    {"shape": (2, 3, 4), "indexes": (slice(None), [])},
+    {"shape": (2, 3, 4), "indexes": ([], [])},
+    {"shape": (2, 3, 4), "indexes": ([[]],)},
+    {"shape": (2, 3, 4), "indexes": numpy.array([], dtype=numpy.bool_)},
+    {"shape": (2, 3, 4),
+     "indexes": (slice(None), numpy.array([], dtype=numpy.bool_))},
+    {"shape": (2, 3, 4), "indexes": numpy.array([[], []], dtype=numpy.bool_)},
+    {"shape": (2, 3, 4), "indexes": numpy.empty((0, 0, 4), bool)},
     # multiple masks
-    {'shape': (2, 3, 4), 'indexes': (True, [True, False])},
-    {'shape': (2, 3, 4), 'indexes': (False, [True, False])},
-    {'shape': (2, 3, 4), 'indexes': (True, [[1]], slice(1, 2))},
-    {'shape': (2, 3, 4), 'indexes': (False, [[1]], slice(1, 2))},
-    {'shape': (2, 3, 4), 'indexes': (True, [[1]], slice(1, 2), True)},
-    {'shape': (2, 3, 4), 'indexes': (True, [[1]], slice(1, 2), False)},
-    {'shape': (2, 3, 4),
-     'indexes': (Ellipsis, [[1, 1, -3], [0, 2, 2]], [True, False, True, True])
+    {"shape": (2, 3, 4), "indexes": (True, [True, False])},
+    {"shape": (2, 3, 4), "indexes": (False, [True, False])},
+    {"shape": (2, 3, 4), "indexes": (True, [[1]], slice(1, 2))},
+    {"shape": (2, 3, 4), "indexes": (False, [[1]], slice(1, 2))},
+    {"shape": (2, 3, 4), "indexes": (True, [[1]], slice(1, 2), True)},
+    {"shape": (2, 3, 4), "indexes": (True, [[1]], slice(1, 2), False)},
+    {"shape": (2, 3, 4),
+     "indexes": (Ellipsis, [[1, 1, -3], [0, 2, 2]], [True, False, True, True])
      },
-    {'shape': (2, 3, 4),
-     'indexes': (numpy.empty((0, 3), bool), numpy.empty(0, bool))},
+    {"shape": (2, 3, 4),
+     "indexes": (numpy.empty((0, 3), bool), numpy.empty(0, bool))},
     # zero-dim and zero-sized arrays
-    {'shape': (), 'indexes': Ellipsis},
-    {'shape': (), 'indexes': ()},
-    {'shape': (), 'indexes': None},
-    {'shape': (), 'indexes': True},
-    {'shape': (), 'indexes': (True,)},
-    {'shape': (), 'indexes': (False, True, True)},
-    {'shape': (), 'indexes': numpy.ones((), dtype=numpy.bool_)},
-    {'shape': (), 'indexes': numpy.zeros((), dtype=numpy.bool_)},
-    {'shape': (0,), 'indexes': None},
-    {'shape': (0,), 'indexes': ()},
-    {'shape': (2, 0), 'indexes': ([1],)},
-    {'shape': (0, 3), 'indexes': (slice(None), [1])},
-    {'shape': (0,), 'indexes': True},
-    {'shape': (0,), 'indexes': (True,)},
-    {'shape': (0,), 'indexes': (False, True, True)},
-    {'shape': (0,), 'indexes': numpy.ones((), dtype=numpy.bool_)},
-    {'shape': (0,), 'indexes': numpy.zeros((), dtype=numpy.bool_)},
+    {"shape": (), "indexes": Ellipsis},
+    {"shape": (), "indexes": ()},
+    {"shape": (), "indexes": None},
+    {"shape": (), "indexes": True},
+    {"shape": (), "indexes": (True,)},
+    {"shape": (), "indexes": (False, True, True)},
+    {"shape": (), "indexes": numpy.ones((), dtype=numpy.bool_)},
+    {"shape": (), "indexes": numpy.zeros((), dtype=numpy.bool_)},
+    {"shape": (0,), "indexes": None},
+    {"shape": (0,), "indexes": ()},
+    {"shape": (2, 0), "indexes": ([1],)},
+    {"shape": (0, 3), "indexes": (slice(None), [1])},
+    {"shape": (0,), "indexes": True},
+    {"shape": (0,), "indexes": (True,)},
+    {"shape": (0,), "indexes": (False, True, True)},
+    {"shape": (0,), "indexes": numpy.ones((), dtype=numpy.bool_)},
+    {"shape": (0,), "indexes": numpy.zeros((), dtype=numpy.bool_)},
     # ellipsis
-    {'shape': (2, 3, 4), 'indexes': (1, Ellipsis, 2)},
+    {"shape": (2, 3, 4), "indexes": (1, Ellipsis, 2)},
     # issue #1512
-    {'shape': (2, 3, 4), 'indexes': (Ellipsis, numpy.array(False))},
-    {'shape': (2, 3, 4), 'indexes': (Ellipsis, numpy.ones((3, 4), bool))},
+    {"shape": (2, 3, 4), "indexes": (Ellipsis, numpy.array(False))},
+    {"shape": (2, 3, 4), "indexes": (Ellipsis, numpy.ones((3, 4), bool))},
     # issue #4799
-    {'shape': (3, 4, 5),
-     'indexes': (slice(None), [0, 1], Ellipsis, [0, 1])},
-    {'shape': (2, 3, 4),
-     'indexes': (slice(None), [1, 0], Ellipsis, numpy.ones((5, 2), int))},
+    {"shape": (3, 4, 5),
+     "indexes": (slice(None), [0, 1], Ellipsis, [0, 1])},
+    {"shape": (2, 3, 4),
+     "indexes": (slice(None), [1, 0], Ellipsis, numpy.ones((5, 2), int))},
     _ids=False,  # Do not generate ids from randomly generated params
 )
 class TestArrayAdvancedIndexingGetitemParametrized:
@@ -140,17 +140,17 @@ class TestArrayAdvancedIndexingGetitemParametrized:
 
 @testing.parameterize(
     # empty arrays (list indexes)
-    {'shape': (2, 3, 4), 'indexes': [[]]},
-    {'shape': (2, 3, 4), 'indexes': [[[]]]},
-    {'shape': (2, 3, 4), 'indexes': [[[[]]]]},
-    {'shape': (2, 3, 4, 5), 'indexes': [[[[]]]]},
-    {'shape': (2, 3, 4, 5), 'indexes': [[[[[]]]]]},
+    {"shape": (2, 3, 4), "indexes": [[]]},
+    {"shape": (2, 3, 4), "indexes": [[[]]]},
+    {"shape": (2, 3, 4), "indexes": [[[[]]]]},
+    {"shape": (2, 3, 4, 5), "indexes": [[[[]]]]},
+    {"shape": (2, 3, 4, 5), "indexes": [[[[[]]]]]},
     # list indexes
-    {'shape': (2, 3, 4), 'indexes': [[1]]},
-    {'shape': (2, 3, 4), 'indexes': [[1, 1]]},
-    {'shape': (2, 3, 4), 'indexes': [[1], [1]]},
+    {"shape": (2, 3, 4), "indexes": [[1]]},
+    {"shape": (2, 3, 4), "indexes": [[1, 1]]},
+    {"shape": (2, 3, 4), "indexes": [[1], [1]]},
 )
-@testing.with_requires('numpy>=1.23')
+@testing.with_requires("numpy>=1.23")
 class TestArrayAdvancedIndexingGetitemParametrized2:
 
     @testing.for_all_dtypes()
@@ -162,11 +162,11 @@ class TestArrayAdvancedIndexingGetitemParametrized2:
 
 @testing.parameterize(
     # list indexes
-    {'shape': (2, 3, 4), 'indexes': [[1, 1], 1]},
-    {'shape': (2, 3, 4), 'indexes': [[1], slice(1, 2)]},
-    {'shape': (2, 3, 4), 'indexes': [[[1]], slice(1, 2)]},
+    {"shape": (2, 3, 4), "indexes": [[1, 1], 1]},
+    {"shape": (2, 3, 4), "indexes": [[1], slice(1, 2)]},
+    {"shape": (2, 3, 4), "indexes": [[[1]], slice(1, 2)]},
 )
-@testing.with_requires('numpy>=1.24')
+@testing.with_requires("numpy>=1.24")
 class TestArrayAdvancedIndexingGetitemParametrizedValueError:
 
     @testing.for_all_dtypes()
@@ -178,10 +178,10 @@ class TestArrayAdvancedIndexingGetitemParametrizedValueError:
 
 
 @testing.parameterize(
-    {'shape': (2, 3, 4), 'transpose': (1, 2, 0),
-     'indexes': (slice(None), [1, 0])},
-    {'shape': (2, 3, 4), 'transpose': (1, 0, 2),
-     'indexes': (None, [1, 2], [0, -1])},
+    {"shape": (2, 3, 4), "transpose": (1, 2, 0),
+     "indexes": (slice(None), [1, 0])},
+    {"shape": (2, 3, 4), "transpose": (1, 0, 2),
+     "indexes": (None, [1, 2], [0, -1])},
 )
 class TestArrayAdvancedIndexingGetitemParametrizedTransp:
 
@@ -245,26 +245,26 @@ class TestArrayAdvancedIndexingGetitemCupyIndices:
 
 
 @testing.parameterize(
-    {'shape': (2**3 + 1, 2**4), 'indexes': (
+    {"shape": (2**3 + 1, 2**4), "indexes": (
         numpy.array([2**3], dtype=numpy.int8),
         numpy.array([1], dtype=numpy.int8))},
-    {'shape': (2**4 + 1, 2**4), 'indexes': (
+    {"shape": (2**4 + 1, 2**4), "indexes": (
         numpy.array([2**4], dtype=numpy.uint8),
         numpy.array([1], dtype=numpy.uint8))},
-    {'shape': (2**7 + 1, 2**8), 'indexes': (
+    {"shape": (2**7 + 1, 2**8), "indexes": (
         numpy.array([2**7], dtype=numpy.int16),
         numpy.array([1], dtype=numpy.int16))},
-    {'shape': (2**8 + 1, 2**8), 'indexes': (
+    {"shape": (2**8 + 1, 2**8), "indexes": (
         numpy.array([2**8], dtype=numpy.uint16),
         numpy.array([1], dtype=numpy.uint16))},
-    {'shape': (2**7 + 1, 2**8), 'indexes': (
+    {"shape": (2**7 + 1, 2**8), "indexes": (
         numpy.array([2**7], dtype=numpy.int16),
         numpy.array([1], dtype=numpy.int32))},
-    {'shape': (2**7 + 1, 2**8), 'indexes': (
+    {"shape": (2**7 + 1, 2**8), "indexes": (
         numpy.array([2**7], dtype=numpy.int16),
         numpy.array([1], dtype=numpy.int8))},
     # Three-dimensional case
-    {'shape': (2**3 + 1, 3, 2**4), 'indexes': (
+    {"shape": (2**3 + 1, 3, 2**4), "indexes": (
         numpy.array([2**3], dtype=numpy.int8),
         slice(None),
         numpy.array([1], dtype=numpy.int8))},
@@ -298,34 +298,34 @@ class TestArrayAdvancedIndexingOverflow:
 
 
 @testing.parameterize(
-    {'shape': (), 'indexes': (-1,)},
-    {'shape': (), 'indexes': (0,)},
-    {'shape': (), 'indexes': (1,)},
-    {'shape': (), 'indexes': ([0],)},
-    {'shape': (), 'indexes': (numpy.array([0]),)},
-    {'shape': (), 'indexes': (numpy.array(0),)},
-    {'shape': (), 'indexes': numpy.array([True])},
-    {'shape': (), 'indexes': numpy.array([False, True, True])},
-    {'shape': (), 'indexes': ([False],)},
-    {'shape': (0,), 'indexes': (-1,)},
-    {'shape': (0,), 'indexes': (0,)},
-    {'shape': (0,), 'indexes': (1,)},
-    {'shape': (0,), 'indexes': ([0],)},
-    {'shape': (0,), 'indexes': (numpy.array([0]),)},
-    {'shape': (0,), 'indexes': (numpy.array(0),)},
-    {'shape': (0,), 'indexes': numpy.array([True])},
-    {'shape': (0,), 'indexes': numpy.array([False, True, True])},
-    {'shape': (0, 1), 'indexes': (0, Ellipsis)},
-    {'shape': (2, 3), 'indexes': (slice(None), [1, 2], slice(None))},
-    {'shape': (2, 3), 'indexes': numpy.array([], dtype=numpy.float64)},
-    {'shape': (3, 4), 'indexes': ([1, 0], [True, True])},
-    {'shape': (2, 3, 4),
-     'indexes': ([True, True], [[True, True, False, False]])},
-    {'shape': (2, 3, 4),
-     'indexes': ([True, True], [[True], [True], [False]])},
-    {'shape': (2, 3, 4), 'indexes': numpy.empty((0, 1), bool)},
-    {'shape': (2, 3, 4),
-     'indexes': (numpy.empty(0, bool), numpy.empty((0, 2), bool))},
+    {"shape": (), "indexes": (-1,)},
+    {"shape": (), "indexes": (0,)},
+    {"shape": (), "indexes": (1,)},
+    {"shape": (), "indexes": ([0],)},
+    {"shape": (), "indexes": (numpy.array([0]),)},
+    {"shape": (), "indexes": (numpy.array(0),)},
+    {"shape": (), "indexes": numpy.array([True])},
+    {"shape": (), "indexes": numpy.array([False, True, True])},
+    {"shape": (), "indexes": ([False],)},
+    {"shape": (0,), "indexes": (-1,)},
+    {"shape": (0,), "indexes": (0,)},
+    {"shape": (0,), "indexes": (1,)},
+    {"shape": (0,), "indexes": ([0],)},
+    {"shape": (0,), "indexes": (numpy.array([0]),)},
+    {"shape": (0,), "indexes": (numpy.array(0),)},
+    {"shape": (0,), "indexes": numpy.array([True])},
+    {"shape": (0,), "indexes": numpy.array([False, True, True])},
+    {"shape": (0, 1), "indexes": (0, Ellipsis)},
+    {"shape": (2, 3), "indexes": (slice(None), [1, 2], slice(None))},
+    {"shape": (2, 3), "indexes": numpy.array([], dtype=numpy.float64)},
+    {"shape": (3, 4), "indexes": ([1, 0], [True, True])},
+    {"shape": (2, 3, 4),
+     "indexes": ([True, True], [[True, True, False, False]])},
+    {"shape": (2, 3, 4),
+     "indexes": ([True, True], [[True], [True], [False]])},
+    {"shape": (2, 3, 4), "indexes": numpy.empty((0, 1), bool)},
+    {"shape": (2, 3, 4),
+     "indexes": (numpy.empty(0, bool), numpy.empty((0, 2), bool))},
 )
 class TestArrayInvalidIndexAdvGetitem:
 
@@ -337,11 +337,11 @@ class TestArrayInvalidIndexAdvGetitem:
 
 
 @testing.parameterize(
-    {'shape': (0,), 'indexes': ([False],)},
-    {'shape': (2, 3, 4),
-     'indexes': (slice(None), numpy.random.choice([False, True], (3, 1)))},
-    {'shape': (2, 3, 4),
-     'indexes': numpy.random.choice([False, True], (1, 3))},
+    {"shape": (0,), "indexes": ([False],)},
+    {"shape": (2, 3, 4),
+     "indexes": (slice(None), numpy.random.choice([False, True], (3, 1)))},
+    {"shape": (2, 3, 4),
+     "indexes": numpy.random.choice([False, True], (1, 3))},
     _ids=False,  # Do not generate ids from randomly generated params
 )
 class TestArrayInvalidIndexAdvGetitem2:
@@ -354,9 +354,9 @@ class TestArrayInvalidIndexAdvGetitem2:
 
 
 @testing.parameterize(
-    {'shape': (2, 3, 4), 'indexes': [1, [1, [1]]]},
+    {"shape": (2, 3, 4), "indexes": [1, [1, [1]]]},
 )
-@testing.with_requires('numpy>=1.24')
+@testing.with_requires("numpy>=1.24")
 class TestArrayInvalidValueAdvGetitem:
 
     def test_invalid_adv_getitem(self):
@@ -368,149 +368,149 @@ class TestArrayInvalidValueAdvGetitem:
 
 @testing.parameterize(
     # array only
-    {'shape': (2, 3, 4), 'indexes': numpy.array(-1), 'value': 1},
-    {'shape': (2, 3, 4), 'indexes': numpy.array([1, 0]), 'value': 1},
-    {'shape': (2, 3, 4), 'indexes': [1, 0], 'value': 1},
-    {'shape': (2, 3, 4), 'indexes': [1, -1], 'value': 1},
-    {'shape': (2, 3, 4), 'indexes': (slice(None), [1, 2]), 'value': 1},
-    {'shape': (2, 3, 4),
-     'indexes': (slice(None), [[1, 2], [0, -1]],), 'value': 1},
-    {'shape': (2, 3, 4),
-     'indexes': (slice(None), slice(None), [[1, 2], [0, -1]]), 'value': 1},
+    {"shape": (2, 3, 4), "indexes": numpy.array(-1), "value": 1},
+    {"shape": (2, 3, 4), "indexes": numpy.array([1, 0]), "value": 1},
+    {"shape": (2, 3, 4), "indexes": [1, 0], "value": 1},
+    {"shape": (2, 3, 4), "indexes": [1, -1], "value": 1},
+    {"shape": (2, 3, 4), "indexes": (slice(None), [1, 2]), "value": 1},
+    {"shape": (2, 3, 4),
+     "indexes": (slice(None), [[1, 2], [0, -1]],), "value": 1},
+    {"shape": (2, 3, 4),
+     "indexes": (slice(None), slice(None), [[1, 2], [0, -1]]), "value": 1},
     # slice and array
-    {'shape': (2, 3, 4),
-     'indexes': (slice(None), slice(1, 2), [[1, 2], [0, -1]]), 'value': 1},
+    {"shape": (2, 3, 4),
+     "indexes": (slice(None), slice(1, 2), [[1, 2], [0, -1]]), "value": 1},
     # None and array
-    {'shape': (2, 3, 4),
-     'indexes': (None, [1, -1]), 'value': 1},
-    {'shape': (2, 3, 4),
-     'indexes': (None, [1, -1], None), 'value': 1},
-    {'shape': (2, 3, 4),
-     'indexes': (None, None, None, [1, -1]), 'value': 1},
+    {"shape": (2, 3, 4),
+     "indexes": (None, [1, -1]), "value": 1},
+    {"shape": (2, 3, 4),
+     "indexes": (None, [1, -1], None), "value": 1},
+    {"shape": (2, 3, 4),
+     "indexes": (None, None, None, [1, -1]), "value": 1},
     # None, slice and array
-    {'shape': (2, 3, 4),
-     'indexes': (slice(0, 1), None, [1, -1]), 'value': 1},
-    {'shape': (2, 3, 4),
-     'indexes': (slice(0, 1), slice(1, 2), [1, -1]), 'value': 1},
-    {'shape': (2, 3, 4),
-     'indexes': (slice(0, 1), None, slice(1, 2), [1, -1]), 'value': 1},
+    {"shape": (2, 3, 4),
+     "indexes": (slice(0, 1), None, [1, -1]), "value": 1},
+    {"shape": (2, 3, 4),
+     "indexes": (slice(0, 1), slice(1, 2), [1, -1]), "value": 1},
+    {"shape": (2, 3, 4),
+     "indexes": (slice(0, 1), None, slice(1, 2), [1, -1]), "value": 1},
     # mask
-    {'shape': (2, 3, 4),
-     'indexes': numpy.array([True, False]), 'value': 1},
-    {'shape': (2, 3, 4),
-     'indexes': (1, numpy.array([True, False, True])), 'value': 1},
-    {'shape': (2, 3, 4),
-     'indexes': (numpy.array([True, False]), 1), 'value': 1},
-    {'shape': (2, 3, 4),
-     'indexes': (slice(None), numpy.array([True, False, True])), 'value': 1},
-    {'shape': (2, 3, 4),
-     'indexes': (slice(None), 2, numpy.array([True, False, True, False])),
-     'value': 1},
-    {'shape': (2, 3, 4),
-     'indexes': (slice(None), 2, False), 'value': 1},
-    {'shape': (2, 3, 4),
-     'indexes': (slice(None), slice(None),
+    {"shape": (2, 3, 4),
+     "indexes": numpy.array([True, False]), "value": 1},
+    {"shape": (2, 3, 4),
+     "indexes": (1, numpy.array([True, False, True])), "value": 1},
+    {"shape": (2, 3, 4),
+     "indexes": (numpy.array([True, False]), 1), "value": 1},
+    {"shape": (2, 3, 4),
+     "indexes": (slice(None), numpy.array([True, False, True])), "value": 1},
+    {"shape": (2, 3, 4),
+     "indexes": (slice(None), 2, numpy.array([True, False, True, False])),
+     "value": 1},
+    {"shape": (2, 3, 4),
+     "indexes": (slice(None), 2, False), "value": 1},
+    {"shape": (2, 3, 4),
+     "indexes": (slice(None), slice(None),
                  numpy.random.choice([False, True], (4,))),
-     'value': 1},
-    {'shape': (2, 3, 4),
-     'indexes': (numpy.random.choice([False, True], (2, 3)),), 'value': 1},
-    {'shape': (2, 3, 4),
-     'indexes': (slice(None), numpy.random.choice([False, True], (3, 4)),),
-     'value': 1},
-    {'shape': (2, 3, 4),
-     'indexes': (numpy.random.choice([False, True], (2, 3, 4)),), 'value': 1},
-    {'shape': (2, 3, 4),
-     'indexes': (1, None, numpy.array([True, False, True])), 'value': 1},
+     "value": 1},
+    {"shape": (2, 3, 4),
+     "indexes": (numpy.random.choice([False, True], (2, 3)),), "value": 1},
+    {"shape": (2, 3, 4),
+     "indexes": (slice(None), numpy.random.choice([False, True], (3, 4)),),
+     "value": 1},
+    {"shape": (2, 3, 4),
+     "indexes": (numpy.random.choice([False, True], (2, 3, 4)),), "value": 1},
+    {"shape": (2, 3, 4),
+     "indexes": (1, None, numpy.array([True, False, True])), "value": 1},
     # multiple arrays
-    {'shape': (2, 3, 4), 'indexes': ([0, -1], [1, -1]), 'value': 1},
-    {'shape': (2, 3, 4),
-     'indexes': ([0, -1], [1, -1], [2, 1]), 'value': 1},
-    {'shape': (2, 3, 4), 'indexes': ([0, -1], 1), 'value': 1},
-    {'shape': (2, 3, 4), 'indexes': ([0, -1], slice(None), [1, -1]),
-     'value': 1},
-    {'shape': (2, 3, 4), 'indexes': ([0, -1], 1, 2), 'value': 1},
-    {'shape': (2, 3, 4), 'indexes': ([1, 0], slice(None), [[2, 0], [3, 1]]),
-     'value': 1},
+    {"shape": (2, 3, 4), "indexes": ([0, -1], [1, -1]), "value": 1},
+    {"shape": (2, 3, 4),
+     "indexes": ([0, -1], [1, -1], [2, 1]), "value": 1},
+    {"shape": (2, 3, 4), "indexes": ([0, -1], 1), "value": 1},
+    {"shape": (2, 3, 4), "indexes": ([0, -1], slice(None), [1, -1]),
+     "value": 1},
+    {"shape": (2, 3, 4), "indexes": ([0, -1], 1, 2), "value": 1},
+    {"shape": (2, 3, 4), "indexes": ([1, 0], slice(None), [[2, 0], [3, 1]]),
+     "value": 1},
     # multiple arrays and basic indexing
-    {'shape': (2, 3, 4), 'indexes': ([0, -1], None, [1, 0]), 'value': 1},
-    {'shape': (2, 3, 4), 'indexes': ([0, -1], slice(0, 2), [1, 0]),
-     'value': 1},
-    {'shape': (2, 3, 4), 'indexes': ([0, -1], None, slice(0, 2), [1, 0]),
-     'value': 1},
-    {'shape': (1, 1, 2, 3, 4),
-     'indexes': (None, slice(None), slice(None), [1, 0], [2, -1], 1),
-     'value': 1},
-    {'shape': (1, 1, 2, 3, 4),
-     'indexes': (None, slice(None), 0, [1, 0], slice(0, 2, 2), [2, -1]),
-     'value': 1},
-    {'shape': (2, 3, 4),
-     'indexes': (slice(None), [0, -1], [[1, 0], [0, 1], [-1, 1]]), 'value': 1},
+    {"shape": (2, 3, 4), "indexes": ([0, -1], None, [1, 0]), "value": 1},
+    {"shape": (2, 3, 4), "indexes": ([0, -1], slice(0, 2), [1, 0]),
+     "value": 1},
+    {"shape": (2, 3, 4), "indexes": ([0, -1], None, slice(0, 2), [1, 0]),
+     "value": 1},
+    {"shape": (1, 1, 2, 3, 4),
+     "indexes": (None, slice(None), slice(None), [1, 0], [2, -1], 1),
+     "value": 1},
+    {"shape": (1, 1, 2, 3, 4),
+     "indexes": (None, slice(None), 0, [1, 0], slice(0, 2, 2), [2, -1]),
+     "value": 1},
+    {"shape": (2, 3, 4),
+     "indexes": (slice(None), [0, -1], [[1, 0], [0, 1], [-1, 1]]), "value": 1},
     # empty arrays
-    {'shape': (2, 3, 4), 'indexes': [], 'value': 1},
-    {'shape': (2, 3, 4), 'indexes': [],
-     'value': numpy.array([1, 1, 1, 1])},
-    {'shape': (2, 3, 4), 'indexes': [],
-     'value': numpy.random.uniform(size=(3, 4))},
-    {'shape': (2, 3, 4), 'indexes': numpy.array([], dtype=numpy.int32),
-     'value': 1},
-    {'shape': (2, 3, 4), 'indexes': numpy.array([[]], dtype=numpy.int32),
-     'value': numpy.random.uniform(size=(3, 4))},
-    {'shape': (2, 3, 4), 'indexes': (slice(None), []),
-     'value': 1},
-    {'shape': (2, 3, 4), 'indexes': ([], []),
-     'value': 1},
-    {'shape': (2, 3, 4), 'indexes': numpy.array([], dtype=numpy.bool_),
-     'value': 1},
-    {'shape': (2, 3, 4),
-     'indexes': (slice(None), numpy.array([], dtype=numpy.bool_)),
-     'value': 1},
-    {'shape': (2, 3, 4), 'indexes': numpy.array([[], []], dtype=numpy.bool_),
-     'value': numpy.random.uniform(size=(4,))},
-    {'shape': (2, 3, 4), 'indexes': numpy.empty((0, 0, 4), bool), 'value': 1},
+    {"shape": (2, 3, 4), "indexes": [], "value": 1},
+    {"shape": (2, 3, 4), "indexes": [],
+     "value": numpy.array([1, 1, 1, 1])},
+    {"shape": (2, 3, 4), "indexes": [],
+     "value": numpy.random.uniform(size=(3, 4))},
+    {"shape": (2, 3, 4), "indexes": numpy.array([], dtype=numpy.int32),
+     "value": 1},
+    {"shape": (2, 3, 4), "indexes": numpy.array([[]], dtype=numpy.int32),
+     "value": numpy.random.uniform(size=(3, 4))},
+    {"shape": (2, 3, 4), "indexes": (slice(None), []),
+     "value": 1},
+    {"shape": (2, 3, 4), "indexes": ([], []),
+     "value": 1},
+    {"shape": (2, 3, 4), "indexes": numpy.array([], dtype=numpy.bool_),
+     "value": 1},
+    {"shape": (2, 3, 4),
+     "indexes": (slice(None), numpy.array([], dtype=numpy.bool_)),
+     "value": 1},
+    {"shape": (2, 3, 4), "indexes": numpy.array([[], []], dtype=numpy.bool_),
+     "value": numpy.random.uniform(size=(4,))},
+    {"shape": (2, 3, 4), "indexes": numpy.empty((0, 0, 4), bool), "value": 1},
     # multiple masks
-    {'shape': (2, 3, 4), 'indexes': (True, [True, False]), 'value': 1},
-    {'shape': (2, 3, 4), 'indexes': (False, [True, False]), 'value': 1},
-    {'shape': (2, 3, 4), 'indexes': (True, [[1]], slice(1, 2)), 'value': 1},
-    {'shape': (2, 3, 4), 'indexes': (False, [[1]], slice(1, 2)), 'value': 1},
-    {'shape': (2, 3, 4),
-     'indexes': (True, [[1]], slice(1, 2), True), 'value': 1},
-    {'shape': (2, 3, 4),
-     'indexes': (True, [[1]], slice(1, 2), False), 'value': 1},
-    {'shape': (2, 3, 4),
-     'indexes': (Ellipsis, [[1, 1, -3], [0, 2, 2]], [True, False, True, True]),
-     'value': [[1, 2, 3], [4, 5, 6]]},
-    {'shape': (2, 3, 4),
-     'indexes': (numpy.empty((0, 3), bool), numpy.empty(0, bool)),
-     'value': 1},
+    {"shape": (2, 3, 4), "indexes": (True, [True, False]), "value": 1},
+    {"shape": (2, 3, 4), "indexes": (False, [True, False]), "value": 1},
+    {"shape": (2, 3, 4), "indexes": (True, [[1]], slice(1, 2)), "value": 1},
+    {"shape": (2, 3, 4), "indexes": (False, [[1]], slice(1, 2)), "value": 1},
+    {"shape": (2, 3, 4),
+     "indexes": (True, [[1]], slice(1, 2), True), "value": 1},
+    {"shape": (2, 3, 4),
+     "indexes": (True, [[1]], slice(1, 2), False), "value": 1},
+    {"shape": (2, 3, 4),
+     "indexes": (Ellipsis, [[1, 1, -3], [0, 2, 2]], [True, False, True, True]),
+     "value": [[1, 2, 3], [4, 5, 6]]},
+    {"shape": (2, 3, 4),
+     "indexes": (numpy.empty((0, 3), bool), numpy.empty(0, bool)),
+     "value": 1},
     # zero-dim and zero-sized arrays
-    {'shape': (), 'indexes': Ellipsis, 'value': 1},
-    {'shape': (), 'indexes': (), 'value': 1},
-    {'shape': (), 'indexes': None, 'value': 1},
-    {'shape': (), 'indexes': True, 'value': 1},
-    {'shape': (), 'indexes': (True,), 'value': 1},
-    {'shape': (), 'indexes': (False, True, True), 'value': 1},
-    {'shape': (), 'indexes': numpy.ones((), dtype=numpy.bool_), 'value': 1},
-    {'shape': (), 'indexes': numpy.zeros((), dtype=numpy.bool_), 'value': 1},
-    {'shape': (0,), 'indexes': None, 'value': 1},
-    {'shape': (0,), 'indexes': (), 'value': 1},
-    {'shape': (0,), 'indexes': True, 'value': 1},
-    {'shape': (0,), 'indexes': (True,), 'value': 1},
-    {'shape': (0,), 'indexes': (False, True, True), 'value': 1},
-    {'shape': (0,), 'indexes': numpy.ones((), dtype=numpy.bool_), 'value': 1},
-    {'shape': (0,), 'indexes': numpy.zeros((), dtype=numpy.bool_), 'value': 1},
+    {"shape": (), "indexes": Ellipsis, "value": 1},
+    {"shape": (), "indexes": (), "value": 1},
+    {"shape": (), "indexes": None, "value": 1},
+    {"shape": (), "indexes": True, "value": 1},
+    {"shape": (), "indexes": (True,), "value": 1},
+    {"shape": (), "indexes": (False, True, True), "value": 1},
+    {"shape": (), "indexes": numpy.ones((), dtype=numpy.bool_), "value": 1},
+    {"shape": (), "indexes": numpy.zeros((), dtype=numpy.bool_), "value": 1},
+    {"shape": (0,), "indexes": None, "value": 1},
+    {"shape": (0,), "indexes": (), "value": 1},
+    {"shape": (0,), "indexes": True, "value": 1},
+    {"shape": (0,), "indexes": (True,), "value": 1},
+    {"shape": (0,), "indexes": (False, True, True), "value": 1},
+    {"shape": (0,), "indexes": numpy.ones((), dtype=numpy.bool_), "value": 1},
+    {"shape": (0,), "indexes": numpy.zeros((), dtype=numpy.bool_), "value": 1},
     # ellipsis
-    {'shape': (2, 3, 4), 'indexes': (1, Ellipsis, 2), 'value': 1},
+    {"shape": (2, 3, 4), "indexes": (1, Ellipsis, 2), "value": 1},
     # issue #1512
-    {'shape': (2, 3, 4),
-     'indexes': (Ellipsis, numpy.array(False)), 'value': 1},
-    {'shape': (2, 3, 4),
-     'indexes': (Ellipsis, numpy.ones((3, 4), bool)), 'value': 1},
+    {"shape": (2, 3, 4),
+     "indexes": (Ellipsis, numpy.array(False)), "value": 1},
+    {"shape": (2, 3, 4),
+     "indexes": (Ellipsis, numpy.ones((3, 4), bool)), "value": 1},
     # issue #4799
-    {'shape': (3, 4, 5),
-     'indexes': (slice(None), [0, 1], Ellipsis, [0, 1]), 'value': 1},
-    {'shape': (2, 3, 4),
-     'indexes': (slice(None), [1, 0], Ellipsis, numpy.ones((5, 2), int)),
-     'value': 1},
+    {"shape": (3, 4, 5),
+     "indexes": (slice(None), [0, 1], Ellipsis, [0, 1]), "value": 1},
+    {"shape": (2, 3, 4),
+     "indexes": (slice(None), [1, 0], Ellipsis, numpy.ones((5, 2), int)),
+     "value": 1},
     _ids=False,  # Do not generate ids from randomly generated params
 )
 class TestArrayAdvancedIndexingSetitemScalarValue:
@@ -525,17 +525,17 @@ class TestArrayAdvancedIndexingSetitemScalarValue:
 
 @testing.parameterize(
     # empty arrays (list indexes)
-    {'shape': (2, 3, 4), 'indexes': [[]], 'value': 1},
-    {'shape': (2, 3, 4), 'indexes': [[[]]], 'value': 1},
-    {'shape': (2, 3, 4), 'indexes': [[[[]]]], 'value': 1},
-    {'shape': (2, 3, 4, 5), 'indexes': [[[[]]]], 'value': 1},
-    {'shape': (2, 3, 4, 5), 'indexes': [[[[[]]]]], 'value': 1},
+    {"shape": (2, 3, 4), "indexes": [[]], "value": 1},
+    {"shape": (2, 3, 4), "indexes": [[[]]], "value": 1},
+    {"shape": (2, 3, 4), "indexes": [[[[]]]], "value": 1},
+    {"shape": (2, 3, 4, 5), "indexes": [[[[]]]], "value": 1},
+    {"shape": (2, 3, 4, 5), "indexes": [[[[[]]]]], "value": 1},
     # list indexes
-    {'shape': (2, 3, 4), 'indexes': [[1]], 'value': 1},
-    {'shape': (2, 3, 4), 'indexes': [[1, 0]], 'value': 1},
-    {'shape': (2, 3, 4), 'indexes': [[1], [0]], 'value': 1},
+    {"shape": (2, 3, 4), "indexes": [[1]], "value": 1},
+    {"shape": (2, 3, 4), "indexes": [[1, 0]], "value": 1},
+    {"shape": (2, 3, 4), "indexes": [[1], [0]], "value": 1},
 )
-@testing.with_requires('numpy>=1.23')
+@testing.with_requires("numpy>=1.23")
 class TestArrayAdvancedIndexingSetitemScalarValue2:
 
     @testing.for_all_dtypes()
@@ -548,10 +548,10 @@ class TestArrayAdvancedIndexingSetitemScalarValue2:
 
 @testing.parameterize(
     # zero-dim and zero-sized arrays
-    {'shape': (), 'indexes': numpy.array([True]), 'value': 1},
-    {'shape': (), 'indexes': numpy.array([False, True, True]), 'value': 1},
-    {'shape': (0,), 'indexes': numpy.array([True]), 'value': 1},
-    {'shape': (0,), 'indexes': numpy.array([False, True, True]), 'value': 1},
+    {"shape": (), "indexes": numpy.array([True]), "value": 1},
+    {"shape": (), "indexes": numpy.array([False, True, True]), "value": 1},
+    {"shape": (0,), "indexes": numpy.array([True]), "value": 1},
+    {"shape": (0,), "indexes": numpy.array([False, True, True]), "value": 1},
 )
 class TestArrayAdvancedIndexingSetitemScalarValueIndexError:
 
@@ -564,11 +564,11 @@ class TestArrayAdvancedIndexingSetitemScalarValueIndexError:
 
 @testing.parameterize(
     # list indexes
-    {'shape': (2, 3, 4), 'indexes': [[1, 0], 2], 'value': 1},
-    {'shape': (2, 3, 4), 'indexes': [[1], slice(1, 2)], 'value': 1},
-    {'shape': (2, 3, 4), 'indexes': [[[1]], slice(1, 2)], 'value': 1},
+    {"shape": (2, 3, 4), "indexes": [[1, 0], 2], "value": 1},
+    {"shape": (2, 3, 4), "indexes": [[1], slice(1, 2)], "value": 1},
+    {"shape": (2, 3, 4), "indexes": [[[1]], slice(1, 2)], "value": 1},
 )
-@testing.with_requires('numpy>=1.24')
+@testing.with_requires("numpy>=1.24")
 class TestArrayAdvancedIndexingSetitemScalarValueValueError2:
 
     @testing.for_all_dtypes()
@@ -580,49 +580,49 @@ class TestArrayAdvancedIndexingSetitemScalarValueValueError2:
 
 
 @testing.parameterize(
-    {'shape': (2, 3, 4), 'indexes': numpy.array(1),
-     'value': numpy.array([1])},
-    {'shape': (2, 3, 4), 'indexes': numpy.array(1),
-     'value': numpy.array([1, 2, 3, 4])},
-    {'shape': (2, 3, 4), 'indexes': (slice(None), [0, -1]),
-     'value': numpy.arange(2 * 2 * 4).reshape(2, 2, 4)},
-    {'shape': (2, 5, 4), 'indexes': (slice(None), [[0, 2], [1, -1]]),
-     'value': numpy.arange(2 * 2 * 2 * 4).reshape(2, 2, 2, 4)},
+    {"shape": (2, 3, 4), "indexes": numpy.array(1),
+     "value": numpy.array([1])},
+    {"shape": (2, 3, 4), "indexes": numpy.array(1),
+     "value": numpy.array([1, 2, 3, 4])},
+    {"shape": (2, 3, 4), "indexes": (slice(None), [0, -1]),
+     "value": numpy.arange(2 * 2 * 4).reshape(2, 2, 4)},
+    {"shape": (2, 5, 4), "indexes": (slice(None), [[0, 2], [1, -1]]),
+     "value": numpy.arange(2 * 2 * 2 * 4).reshape(2, 2, 2, 4)},
     # mask
-    {'shape': (2, 3, 4), 'indexes': numpy.random.choice([False, True], (2, 3)),
-     'value': numpy.arange(4)},
-    {'shape': (2, 3, 4),
-     'indexes': (slice(None), numpy.array([True, False, True])),
-     'value': numpy.arange(2 * 2 * 4).reshape(2, 2, 4)},
-    {'shape': (2, 3, 4),
-     'indexes': (numpy.array([[True, False, False], [False, True, True]]),),
-     'value': numpy.arange(3 * 4).reshape(3, 4)},
-    {'shape': (2, 2, 2),
-     'indexes': (slice(None), numpy.array([[True, False], [False, True]]),),
-     'value': numpy.arange(2 * 2).reshape(2, 2)},
-    {'shape': (2, 2, 2),
-     'indexes': (numpy.array(
+    {"shape": (2, 3, 4), "indexes": numpy.random.choice([False, True], (2, 3)),
+     "value": numpy.arange(4)},
+    {"shape": (2, 3, 4),
+     "indexes": (slice(None), numpy.array([True, False, True])),
+     "value": numpy.arange(2 * 2 * 4).reshape(2, 2, 4)},
+    {"shape": (2, 3, 4),
+     "indexes": (numpy.array([[True, False, False], [False, True, True]]),),
+     "value": numpy.arange(3 * 4).reshape(3, 4)},
+    {"shape": (2, 2, 2),
+     "indexes": (slice(None), numpy.array([[True, False], [False, True]]),),
+     "value": numpy.arange(2 * 2).reshape(2, 2)},
+    {"shape": (2, 2, 2),
+     "indexes": (numpy.array(
          [[[True, False], [True, False]], [[True, True], [False, False]]]),),
-     'value': numpy.arange(4)},
-    {'shape': (5,),
-     'indexes': numpy.array([True, False, False, True, True]),
-     'value': numpy.arange(3)},
+     "value": numpy.arange(4)},
+    {"shape": (5,),
+     "indexes": numpy.array([True, False, False, True, True]),
+     "value": numpy.arange(3)},
     # multiple arrays
-    {'shape': (2, 3, 4), 'indexes': ([1, 0], [2, 1]),
-     'value': numpy.arange(2 * 4).reshape(2, 4)},
-    {'shape': (2, 3, 4), 'indexes': ([1, 0], slice(None), [2, 1]),
-     'value': numpy.arange(2 * 3).reshape(2, 3)},
-    {'shape': (2, 3, 4), 'indexes': ([1, 0], slice(None), [[2, 0], [3, 1]]),
-     'value': numpy.arange(2 * 2 * 3).reshape(2, 2, 3)},
-    {'shape': (2, 3, 4),
-     'indexes': ([[1, 0], [1, 0]], slice(None), [[2, 0], [3, 1]]),
-     'value': numpy.arange(2 * 2 * 3).reshape(2, 2, 3)},
-    {'shape': (2, 3, 4),
-     'indexes': (1, slice(None), [[2, 0], [3, 1]]),
-     'value': numpy.arange(2 * 2 * 3).reshape(2, 2, 3)},
+    {"shape": (2, 3, 4), "indexes": ([1, 0], [2, 1]),
+     "value": numpy.arange(2 * 4).reshape(2, 4)},
+    {"shape": (2, 3, 4), "indexes": ([1, 0], slice(None), [2, 1]),
+     "value": numpy.arange(2 * 3).reshape(2, 3)},
+    {"shape": (2, 3, 4), "indexes": ([1, 0], slice(None), [[2, 0], [3, 1]]),
+     "value": numpy.arange(2 * 2 * 3).reshape(2, 2, 3)},
+    {"shape": (2, 3, 4),
+     "indexes": ([[1, 0], [1, 0]], slice(None), [[2, 0], [3, 1]]),
+     "value": numpy.arange(2 * 2 * 3).reshape(2, 2, 3)},
+    {"shape": (2, 3, 4),
+     "indexes": (1, slice(None), [[2, 0], [3, 1]]),
+     "value": numpy.arange(2 * 2 * 3).reshape(2, 2, 3)},
     # list indexes
-    {'shape': (2, 3, 4), 'indexes': [1],
-     'value': numpy.arange(3 * 4).reshape(3, 4)},
+    {"shape": (2, 3, 4), "indexes": [1],
+     "value": numpy.arange(3 * 4).reshape(3, 4)},
     _ids=False,  # Do not generate ids from randomly generated params
 )
 class TestArrayAdvancedIndexingVectorValue:
@@ -678,7 +678,7 @@ class TestArrayAdvancedIndexingSetitemCupyIndices:
 
 class TestArrayAdvancedIndexingSetitemDifferentDtypes:
 
-    @testing.for_all_dtypes_combination(names=['src_dtype', 'dst_dtype'],
+    @testing.for_all_dtypes_combination(names=["src_dtype", "dst_dtype"],
                                         no_complex=True)
     @testing.numpy_cupy_array_equal()
     def test_differnt_dtypes(self, xp, src_dtype, dst_dtype):
@@ -688,7 +688,7 @@ class TestArrayAdvancedIndexingSetitemDifferentDtypes:
         a[:, indexes] = xp.array(1, dtype=dst_dtype)
         return a
 
-    @testing.for_all_dtypes_combination(names=['src_dtype', 'dst_dtype'],
+    @testing.for_all_dtypes_combination(names=["src_dtype", "dst_dtype"],
                                         no_complex=True)
     @testing.numpy_cupy_array_equal()
     def test_differnt_dtypes_mask(self, xp, src_dtype, dst_dtype):

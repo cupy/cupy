@@ -19,21 +19,21 @@ _bool_scalar_types = (bool, numpy.bool_)
 
 
 _compress_getitem_kern = _core.ElementwiseKernel(
-    'T d, S ind, int32 minor', 'raw T answer',
-    'if (ind == minor) atomicAdd(&answer[0], d);',
-    'cupyx_scipy_sparse_compress_getitem')
+    "T d, S ind, int32 minor", "raw T answer",
+    "if (ind == minor) atomicAdd(&answer[0], d);",
+    "cupyx_scipy_sparse_compress_getitem")
 
 
 _compress_getitem_complex_kern = _core.ElementwiseKernel(
-    'T real, T imag, S ind, int32 minor',
-    'raw T answer_real, raw T answer_imag',
-    '''
+    "T real, T imag, S ind, int32 minor",
+    "raw T answer_real, raw T answer_imag",
+    """
     if (ind == minor) {
     atomicAdd(&answer_real[0], real);
     atomicAdd(&answer_imag[0], imag);
     }
-    ''',
-    'cupyx_scipy_sparse_compress_getitem_complex')
+    """,
+    "cupyx_scipy_sparse_compress_getitem_complex")
 
 
 def _get_csr_submatrix_major_axis(Ax, Aj, Ap, start, stop):
@@ -90,10 +90,10 @@ def _get_csr_submatrix_minor_axis(Ax, Aj, Ap, start, stop):
 
 
 _csr_row_index_ker = _core.ElementwiseKernel(
-    'int32 out_rows, raw I rows, '
-    'raw int32 Ap, raw int32 Aj, raw T Ax, raw int32 Bp',
-    'int32 Bj, T Bx',
-    '''
+    "int32 out_rows, raw I rows, "
+    "raw int32 Ap, raw int32 Aj, raw T Ax, raw int32 Bp",
+    "int32 Bj, T Bx",
+    """
     const I row = rows[out_rows];
 
     // Look up starting offset
@@ -103,7 +103,7 @@ _csr_row_index_ker = _core.ElementwiseKernel(
 
     Bj = Aj[starting_input_offset + output_offset];
     Bx = Ax[starting_input_offset + output_offset];
-''', 'cupyx_scipy_sparse_csr_row_index_ker')
+""", "cupyx_scipy_sparse_csr_row_index_ker")
 
 
 def _csr_row_index(Ax, Aj, Ap, rows):
@@ -140,8 +140,8 @@ def _csr_indptr_to_coo_rows(nnz, Bp):
     # constructing a whole COO object.
     handle = device.get_cusparse_handle()
     if runtime.is_hip and nnz == 0:
-        raise ValueError('hipSPARSE currently cannot handle '
-                         'sparse matrices with null ptrs')
+        raise ValueError("hipSPARSE currently cannot handle "
+                         "sparse matrices with null ptrs")
     cusparse.xcsr2coo(
         handle, Bp.data.ptr, nnz, Bp.size-1, out_rows.data.ptr,
         cusparse.CUSPARSE_INDEX_BASE_ZERO)
@@ -161,7 +161,7 @@ def _select_last_indices(i, j, x, idx_dtype):
     indices_inserts = j[order]
     data_inserts = x[order]
 
-    mask = cupy.ones(indptr_inserts.size, dtype='bool')
+    mask = cupy.ones(indptr_inserts.size, dtype="bool")
     _unique_mask_kern(indptr_inserts, indices_inserts, order, mask,
                       size=indptr_inserts.size-1)
 
@@ -169,9 +169,9 @@ def _select_last_indices(i, j, x, idx_dtype):
 
 
 _insert_many_populate_arrays = _core.ElementwiseKernel(
-    '''raw I insert_indices, raw T insert_values, raw I insertion_indptr,
-        raw I Ap, raw I Aj, raw T Ax, raw I Bp''',
-    'raw I Bj, raw T Bx', '''
+    """raw I insert_indices, raw T insert_values, raw I insertion_indptr,
+        raw I Ap, raw I Aj, raw T Ax, raw I Bp""",
+    "raw I Bj, raw T Bx", """
 
         const I input_row_start = Ap[i];
         const I input_row_end = Ap[i+1];
@@ -259,13 +259,13 @@ _insert_many_populate_arrays = _core.ElementwiseKernel(
 
             output_n++;
         }
-    ''', 'cupyx_scipy_sparse_csr_copy_existing_indices_kern', no_return=True)
+    """, "cupyx_scipy_sparse_csr_copy_existing_indices_kern", no_return=True)
 
 
 # Create a filter mask based on the lowest value of order
 _unique_mask_kern = _core.ElementwiseKernel(
-    '''raw I rows, raw I cols, raw I order''',
-    '''raw bool mask''',
+    """raw I rows, raw I cols, raw I order""",
+    """raw bool mask""",
     """
     I cur_row = rows[i];
     I next_row = rows[i+1];
@@ -283,7 +283,7 @@ _unique_mask_kern = _core.ElementwiseKernel(
             mask[i+1] = false;
     }
     """,
-    'cupyx_scipy_sparse_unique_mask_kern',
+    "cupyx_scipy_sparse_unique_mask_kern",
     no_return=True
 )
 
@@ -315,9 +315,9 @@ def _csr_sample_values(n_row, n_col,
 
 
 _csr_sample_values_kern = _core.ElementwiseKernel(
-    '''I n_row, I n_col, raw I Ap, raw I Aj, raw T Ax,
-    raw I Bi, raw I Bj, I not_found_val''',
-    'raw T Bx', '''
+    """I n_row, I n_col, raw I Ap, raw I Aj, raw T Ax,
+    raw I Bi, raw I Bj, I not_found_val""",
+    "raw T Bx", """
     const I j = Bi[i]; // sample row
     const I k = Bj[i]; // sample column
     const I row_start = Ap[j];
@@ -331,7 +331,7 @@ _csr_sample_values_kern = _core.ElementwiseKernel(
         }
     }
     Bx[i] = val_found ? x : not_found_val;
-''', 'cupyx_scipy_sparse_csr_sample_values_kern')
+""", "cupyx_scipy_sparse_csr_sample_values_kern")
 
 
 class IndexMixin(object):
@@ -344,7 +344,7 @@ class IndexMixin(object):
         # For testing- Scipy >= 1.4.0 is needed to guarantee
         # results match.
         if scipy_available and numpy.lib.NumpyVersion(
-                scipy.__version__) < '1.4.0':
+                scipy.__version__) < "1.4.0":
             raise NotImplementedError(
                 "Sparse __getitem__() requires Scipy >= 1.4.0")
 
@@ -358,7 +358,7 @@ class IndexMixin(object):
                 return self._get_intXslice(row, col)
             elif col.ndim == 1:
                 return self._get_intXarray(row, col)
-            raise IndexError('index results in >2 dimensions')
+            raise IndexError("index results in >2 dimensions")
         elif isinstance(row, slice):
             if isinstance(col, _int_scalar_types):
                 return self._get_sliceXint(row, col)
@@ -368,7 +368,7 @@ class IndexMixin(object):
                 return self._get_sliceXslice(row, col)
             elif col.ndim == 1:
                 return self._get_sliceXarray(row, col)
-            raise IndexError('index results in >2 dimensions')
+            raise IndexError("index results in >2 dimensions")
         elif row.ndim == 1:
             if isinstance(col, _int_scalar_types):
                 return self._get_arrayXint(row, col)
@@ -378,7 +378,7 @@ class IndexMixin(object):
             if isinstance(col, _int_scalar_types):
                 return self._get_arrayXint(row, col)
             elif isinstance(col, slice):
-                raise IndexError('index results in >2 dimensions')
+                raise IndexError("index results in >2 dimensions")
             elif row.shape[1] == 1 and (col.ndim == 1 or col.shape[0] == 1):
                 # special case for outer indexing
                 return self._get_columnXarray(row[:, 0], col.ravel())
@@ -386,7 +386,7 @@ class IndexMixin(object):
         # The only remaining case is inner (fancy) indexing
         row, col = cupy.broadcast_arrays(row, col)
         if row.shape != col.shape:
-            raise IndexError('number of row and column indices differ')
+            raise IndexError("number of row and column indices differ")
         if row.size == 0:
             return self.__class__(cupy.atleast_2d(row).shape, dtype=self.dtype)
         return self._get_arrayXarray(row, col)
@@ -398,7 +398,7 @@ class IndexMixin(object):
                 isinstance(col, _int_scalar_types):
             x = cupy.asarray(x, dtype=self.dtype)
             if x.size != 1:
-                raise ValueError('Trying to assign a sequence to an item')
+                raise ValueError("Trying to assign a sequence to an item")
             self._set_intXint(row, col, x.flat[0])
             return
 
@@ -416,7 +416,7 @@ class IndexMixin(object):
 
         i, j = cupy.broadcast_arrays(row, col)
         if i.shape != j.shape:
-            raise IndexError('number of row and column indices differ')
+            raise IndexError("number of row and column indices differ")
 
         if isspmatrix(x):
             if i.ndim == 1:
@@ -427,7 +427,7 @@ class IndexMixin(object):
             broadcast_col = x.shape[1] == 1 and i.shape[1] != 1
             if not ((broadcast_row or x.shape[0] == i.shape[0]) and
                     (broadcast_col or x.shape[1] == i.shape[1])):
-                raise ValueError('shape mismatch in assignment')
+                raise ValueError("shape mismatch in assignment")
             if x.size == 0:
                 return
             x = x.tocoo(copy=True)
@@ -462,12 +462,12 @@ class IndexMixin(object):
         # here to minimize the impact of nested exception catching
 
         if isinstance(row, _int_scalar_types):
-            row = _normalize_index(row, M, 'row')
+            row = _normalize_index(row, M, "row")
         elif not isinstance(row, slice):
             row = self._asindices(row, M)
 
         if isinstance(col, _int_scalar_types):
-            col = _normalize_index(col, N, 'column')
+            col = _normalize_index(col, N, "column")
         elif not isinstance(col, slice):
             col = self._asindices(col, N)
 
@@ -483,10 +483,10 @@ class IndexMixin(object):
         try:
             x = cupy.asarray(idx, dtype=self.indices.dtype)
         except (ValueError, TypeError, MemoryError):
-            raise IndexError('invalid index')
+            raise IndexError("invalid index")
 
         if x.ndim not in (1, 2):
-            raise IndexError('Index dimension must be <= 2')
+            raise IndexError("Index dimension must be <= 2")
 
         return x % length
 
@@ -500,7 +500,7 @@ class IndexMixin(object):
             cupyx.scipy.sparse.spmatrix: Sparse matrix with single row
         """
         M, N = self.shape
-        i = _normalize_index(i, M, 'index')
+        i = _normalize_index(i, M, "index")
         return self._get_intXslice(i, slice(None))
 
     def getcol(self, i):
@@ -513,7 +513,7 @@ class IndexMixin(object):
             cupyx.scipy.sparse.spmatrix: Sparse matrix with single column
         """
         M, N = self.shape
-        i = _normalize_index(i, N, 'index')
+        i = _normalize_index(i, N, "index")
         return self._get_sliceXint(slice(None), i)
 
     def _get_intXint(self, row, col):
@@ -580,7 +580,7 @@ def _unpack_index(index):
     if ((isinstance(index, (spmatrix, cupy.ndarray,
                             numpy.ndarray))
          or _try_is_scipy_spmatrix(index))
-            and index.ndim == 2 and index.dtype.kind == 'b'):
+            and index.ndim == 2 and index.dtype.kind == "b"):
         return index.nonzero()
 
     # Parse any ellipses.
@@ -593,7 +593,7 @@ def _unpack_index(index):
         elif len(index) == 1:
             row, col = index[0], slice(None)
         else:
-            raise IndexError('invalid number of indices')
+            raise IndexError("invalid number of indices")
     else:
         idx = _compatible_boolean_index(index)
         if idx is None:
@@ -607,9 +607,9 @@ def _unpack_index(index):
         # Supporting sparse boolean indexing with both row and col does
         # not work because spmatrix.ndim is always 2.
         raise IndexError(
-            'Indexing with sparse matrices is not supported '
-            'except boolean indexing where matrix and index '
-            'are equal shapes.')
+            "Indexing with sparse matrices is not supported "
+            "except boolean indexing where matrix and index "
+            "are equal shapes.")
     bool_row = _compatible_boolean_index(row)
     bool_col = _compatible_boolean_index(col)
     if bool_row is not None:
@@ -657,7 +657,7 @@ def _eliminate_ellipsis(index):
 
 def _normalize_index(x, dim, name):
     if x < -dim or x >= dim:
-        raise IndexError('{} ({}) out of range'.format(name, x))
+        raise IndexError("{} ({}) out of range".format(name, x))
     if x < 0:
         x += dim
     return x
@@ -683,17 +683,17 @@ def _compatible_boolean_index(idx):
     integer array. Returns None if no such array exists.
     """
     # presence of attribute `ndim` indicates a compatible array type.
-    if hasattr(idx, 'ndim'):
-        if idx.dtype.kind == 'b':
+    if hasattr(idx, "ndim"):
+        if idx.dtype.kind == "b":
             return idx
     # non-ndarray bool collection should be converted to ndarray
     elif _first_element_bool(idx):
-        return cupy.asarray(idx, dtype='bool')
+        return cupy.asarray(idx, dtype="bool")
     return None
 
 
 def _boolean_index_to_array(idx):
     if idx.ndim > 1:
-        raise IndexError('invalid index shape')
+        raise IndexError("invalid index shape")
     idx = cupy.array(idx, dtype=idx.dtype)
     return cupy.where(idx)[0]

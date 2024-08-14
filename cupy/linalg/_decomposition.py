@@ -38,7 +38,7 @@ def _lu_factor(a_t, dtype):
     n = orig_shape[-2]
 
     # copy is necessary to present `a` to be overwritten.
-    a_t = a_t.astype(dtype, order='C').reshape(-1, n, n)
+    a_t = a_t.astype(dtype, order="C").reshape(-1, n, n)
     batch_size = a_t.shape[0]
     ipiv = cupy.empty((batch_size, n), dtype=numpy.int32)
     dev_info = cupy.empty((batch_size,), dtype=numpy.int32)
@@ -119,23 +119,23 @@ def _potrf_batched(a):
     from cupy_backends.cuda.libs import cublas, cusolver
     from cupyx.cusolver import check_availability
 
-    if not check_availability('potrfBatched'):
-        raise RuntimeError('potrfBatched is not available')
+    if not check_availability("potrfBatched"):
+        raise RuntimeError("potrfBatched is not available")
 
     dtype, out_dtype = _util.linalg_common_type(a)
     if a.size == 0:
         return cupy.empty(a.shape, out_dtype)
 
-    if dtype == 'f':
+    if dtype == "f":
         potrfBatched = cusolver.spotrfBatched
-    elif dtype == 'd':
+    elif dtype == "d":
         potrfBatched = cusolver.dpotrfBatched
-    elif dtype == 'F':
+    elif dtype == "F":
         potrfBatched = cusolver.cpotrfBatched
     else:  # dtype == 'D':
         potrfBatched = cusolver.zpotrfBatched
 
-    x = a.astype(dtype, order='C', copy=True)
+    x = a.astype(dtype, order="C", copy=True)
     xp = cupy._core._mat_ptrs(x)
     n = x.shape[-1]
     ldx = x.strides[-2] // x.dtype.itemsize
@@ -188,18 +188,18 @@ def cholesky(a):
     if a.size == 0:
         return cupy.empty(a.shape, out_dtype)
 
-    x = a.astype(dtype, order='C', copy=True)
+    x = a.astype(dtype, order="C", copy=True)
     n = len(a)
     handle = device.get_cusolver_handle()
     dev_info = cupy.empty(1, dtype=numpy.int32)
 
-    if dtype == 'f':
+    if dtype == "f":
         potrf = cusolver.spotrf
         potrf_bufferSize = cusolver.spotrf_bufferSize
-    elif dtype == 'd':
+    elif dtype == "d":
         potrf = cusolver.dpotrf
         potrf_bufferSize = cusolver.dpotrf_bufferSize
-    elif dtype == 'F':
+    elif dtype == "F":
         potrf = cusolver.cpotrf
         potrf_bufferSize = cusolver.cpotrf_bufferSize
     else:  # dtype == 'D':
@@ -232,15 +232,15 @@ def _qr_batched(a, mode):
         # support float32, float64, complex64, and complex128
         dtype, out_dtype = _util.linalg_common_type(a)
 
-        if mode == 'reduced':
+        if mode == "reduced":
             return (cupy.empty(batch_shape + (m, k), out_dtype),
                     cupy.empty(batch_shape + (k, n), out_dtype))
-        elif mode == 'complete':
+        elif mode == "complete":
             q = _util.stacked_identity(batch_shape, m, out_dtype)
             return (q, cupy.empty(batch_shape + (m, n), out_dtype))
-        elif mode == 'r':
+        elif mode == "r":
             return cupy.empty(batch_shape + (k, n), out_dtype)
-        elif mode == 'raw':
+        elif mode == "raw":
             return (cupy.empty(batch_shape + (n, m), out_dtype),
                     cupy.empty(batch_shape + (k,), out_dtype))
 
@@ -248,16 +248,16 @@ def _qr_batched(a, mode):
     a = a.reshape(-1, *(a.shape[-2:]))
     out = _geqrf_orgqr_batched(a, mode)
 
-    if mode == 'r':
+    if mode == "r":
         return out.reshape(batch_shape + out.shape[-2:])
     q, r = out
     q = q.reshape(batch_shape + q.shape[-2:])
-    idx = -1 if mode == 'raw' else -2
+    idx = -1 if mode == "raw" else -2
     r = r.reshape(batch_shape + r.shape[idx:])
     return (q, r)
 
 
-def qr(a, mode='reduced'):
+def qr(a, mode="reduced"):
     """QR decomposition.
 
     Decompose a given two-dimensional matrix into ``Q * R``, where ``Q``
@@ -290,11 +290,11 @@ def qr(a, mode='reduced'):
 
     _util._assert_cupy_array(a)
 
-    if mode not in ('reduced', 'complete', 'r', 'raw'):
-        if mode in ('f', 'full', 'e', 'economic'):
-            msg = 'The deprecated mode \'{}\' is not supported'.format(mode)
+    if mode not in ("reduced", "complete", "r", "raw"):
+        if mode in ("f", "full", "e", "economic"):
+            msg = "The deprecated mode '{}' is not supported".format(mode)
         else:
-            msg = 'Unrecognized mode \'{}\''.format(mode)
+            msg = "Unrecognized mode '{}'".format(mode)
         raise ValueError(msg)
     if a.ndim > 2:
         return _qr_batched(a, mode)
@@ -305,34 +305,34 @@ def qr(a, mode='reduced'):
     m, n = a.shape
     k = min(m, n)
     if k == 0:
-        if mode == 'reduced':
+        if mode == "reduced":
             return cupy.empty((m, 0), out_dtype), cupy.empty((0, n), out_dtype)
-        elif mode == 'complete':
+        elif mode == "complete":
             return cupy.identity(m, out_dtype), cupy.empty((m, n), out_dtype)
-        elif mode == 'r':
+        elif mode == "r":
             return cupy.empty((0, n), out_dtype)
         else:  # mode == 'raw'
             return cupy.empty((n, m), out_dtype), cupy.empty((0,), out_dtype)
 
-    x = a.transpose().astype(dtype, order='C', copy=True)
+    x = a.transpose().astype(dtype, order="C", copy=True)
     handle = device.get_cusolver_handle()
     dev_info = cupy.empty(1, dtype=numpy.int32)
 
-    if dtype == 'f':
+    if dtype == "f":
         geqrf_bufferSize = cusolver.sgeqrf_bufferSize
         geqrf = cusolver.sgeqrf
-    elif dtype == 'd':
+    elif dtype == "d":
         geqrf_bufferSize = cusolver.dgeqrf_bufferSize
         geqrf = cusolver.dgeqrf
-    elif dtype == 'F':
+    elif dtype == "F":
         geqrf_bufferSize = cusolver.cgeqrf_bufferSize
         geqrf = cusolver.cgeqrf
-    elif dtype == 'D':
+    elif dtype == "D":
         geqrf_bufferSize = cusolver.zgeqrf_bufferSize
         geqrf = cusolver.zgeqrf
     else:
-        msg = ('dtype must be float32, float64, complex64 or complex128'
-               ' (actual: {})'.format(a.dtype))
+        msg = ("dtype must be float32, float64, complex64 or complex128"
+               " (actual: {})".format(a.dtype))
         raise ValueError(msg)
 
     # compute working space of geqrf and solve R
@@ -344,16 +344,16 @@ def qr(a, mode='reduced'):
     cupy.linalg._util._check_cusolver_dev_info_if_synchronization_allowed(
         geqrf, dev_info)
 
-    if mode == 'r':
+    if mode == "r":
         r = x[:, :k].transpose()
         return _util._triu(r).astype(out_dtype, copy=False)
 
-    if mode == 'raw':
+    if mode == "raw":
         return (
             x.astype(out_dtype, copy=False),
             tau.astype(out_dtype, copy=False))
 
-    if mode == 'complete' and m > n:
+    if mode == "complete" and m > n:
         mc = m
         q = cupy.empty((m, m), dtype)
     else:
@@ -362,16 +362,16 @@ def qr(a, mode='reduced'):
     q[:n] = x
 
     # compute working space of orgqr and solve Q
-    if dtype == 'f':
+    if dtype == "f":
         orgqr_bufferSize = cusolver.sorgqr_bufferSize
         orgqr = cusolver.sorgqr
-    elif dtype == 'd':
+    elif dtype == "d":
         orgqr_bufferSize = cusolver.dorgqr_bufferSize
         orgqr = cusolver.dorgqr
-    elif dtype == 'F':
+    elif dtype == "F":
         orgqr_bufferSize = cusolver.cungqr_bufferSize
         orgqr = cusolver.cungqr
-    elif dtype == 'D':
+    elif dtype == "D":
         orgqr_bufferSize = cusolver.zungqr_bufferSize
         orgqr = cusolver.zungqr
 
@@ -432,7 +432,7 @@ def _svd_batched(a, full_matrices, compute_uv):
     a = a.reshape(-1, *(a.shape[-2:]))
     if runtime.is_hip or (m <= 32 and n <= 32):
         # copy is done in _gesvdj_batched, so let's try not to do it here
-        a = a.astype(dtype, order='C', copy=False)
+        a = a.astype(dtype, order="C", copy=False)
         out = _gesvdj_batched(a, full_matrices, compute_uv, False)
     else:
         # manually loop over cusolverDn<t>gesvd()
@@ -522,11 +522,11 @@ def svd(a, full_matrices=True, compute_uv=True):
 
     # `a` must be copied because xgesvd destroys the matrix
     if m >= n:
-        x = a.astype(dtype, order='C', copy=True)
+        x = a.astype(dtype, order="C", copy=True)
         trans_flag = False
     else:
         m, n = a.shape
-        x = a.transpose().astype(dtype, order='C', copy=True)
+        x = a.transpose().astype(dtype, order="C", copy=True)
         trans_flag = True
 
     k = n  # = min(m, n) where m >= n is ensured above
@@ -534,29 +534,29 @@ def svd(a, full_matrices=True, compute_uv=True):
         if full_matrices:
             u = cupy.empty((m, m), dtype=dtype)
             vt = x[:, :n]
-            job_u = ord('A')
-            job_vt = ord('O')
+            job_u = ord("A")
+            job_vt = ord("O")
         else:
             u = x
             vt = cupy.empty((k, n), dtype=dtype)
-            job_u = ord('O')
-            job_vt = ord('S')
+            job_u = ord("O")
+            job_vt = ord("S")
         u_ptr, vt_ptr = u.data.ptr, vt.data.ptr
     else:
         u_ptr, vt_ptr = 0, 0  # Use nullptr
-        job_u = ord('N')
-        job_vt = ord('N')
+        job_u = ord("N")
+        job_vt = ord("N")
     s = cupy.empty(k, dtype=real_dtype)
     handle = device.get_cusolver_handle()
     dev_info = cupy.empty(1, dtype=numpy.int32)
 
-    if dtype == 'f':
+    if dtype == "f":
         gesvd = cusolver.sgesvd
         gesvd_bufferSize = cusolver.sgesvd_bufferSize
-    elif dtype == 'd':
+    elif dtype == "d":
         gesvd = cusolver.dgesvd
         gesvd_bufferSize = cusolver.dgesvd_bufferSize
-    elif dtype == 'F':
+    elif dtype == "F":
         gesvd = cusolver.cgesvd
         gesvd_bufferSize = cusolver.cgesvd_bufferSize
     else:  # dtype == 'D':

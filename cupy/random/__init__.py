@@ -36,8 +36,8 @@ def default_rng(seed=None):  # NOQA  avoid redefinition of seed
     from cupy.random._generator_api import Generator
 
     if _runtime.is_hip and int(str(_runtime.runtimeGetVersion())[:3]) < 403:
-        raise RuntimeError('Generator API not supported in ROCm<4.3,'
-                           ' please use the legacy one or update ROCm.')
+        raise RuntimeError("Generator API not supported in ROCm<4.3,"
+                           " please use the legacy one or update ROCm.")
     if isinstance(seed, BitGenerator):
         return Generator(seed)
     elif isinstance(seed, Generator):
@@ -48,7 +48,7 @@ def default_rng(seed=None):  # NOQA  avoid redefinition of seed
 def __getattr__(key):
     # TODO(kmaehashi): Split cuRAND dependency from Generator class to allow
     # users use the class for type annotation.
-    if key == 'Generator':
+    if key == "Generator":
         # Lazy import libraries depending on cuRAND
         import cupy.random._generator_api
         Generator = cupy.random._generator_api.Generator

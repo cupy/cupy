@@ -17,7 +17,7 @@ from cupyx.scipy import sparse
 
 
 def _get_index_combos(idx):
-    return [dict['arr_fn'](idx, dtype=dict['dtype'])
+    return [dict["arr_fn"](idx, dtype=dict["dtype"])
             for dict in testing.product({
                 "arr_fn": [numpy.array, cupy.array],
                 "dtype": [numpy.int32, numpy.int64]
@@ -32,13 +32,13 @@ def _check_shares_memory(xp, sp, x, y):
 
 
 @testing.parameterize(*testing.product({
-    'format': ['csr', 'csc'],
-    'density': [0.9],
-    'dtype': ['float32', 'float64', 'complex64', 'complex128'],
-    'n_rows': [25, 150],
-    'n_cols': [25, 150]
+    "format": ["csr", "csc"],
+    "density": [0.9],
+    "dtype": ["float32", "float64", "complex64", "complex128"],
+    "n_rows": [25, 150],
+    "n_cols": [25, 150]
 }))
-@testing.with_requires('scipy>=1.4.0')
+@testing.with_requires("scipy>=1.4.0")
 class TestSetitemIndexing:
 
     def _run(self, maj, min=None, data=5):
@@ -86,7 +86,7 @@ class TestSetitemIndexing:
 
     def test_set_sparse(self):
 
-        x = cupyx.scipy.sparse.random(1, 5, format='csr', density=0.8)
+        x = cupyx.scipy.sparse.random(1, 5, format="csr", density=0.8)
 
         # Test inner indexing with sparse data
         for maj, min in zip(_get_index_combos([0, 1, 2, 3, 5]),
@@ -111,7 +111,7 @@ class TestSetitemIndexing:
                             _get_index_combos(1)):
             self._run(maj, min, data=x)
 
-    @testing.with_requires('scipy>=1.5.0')
+    @testing.with_requires("scipy>=1.5.0")
     def test_set_zero_dim_bool_mask(self):
 
         zero_dim_data = [numpy.array(5), cupy.array(5)]
@@ -279,7 +279,7 @@ class TestSetitemIndexing:
         self._run(slice(10, 2, 5), slice(None))
         self._run(slice(10, 0, 10), slice(None))
 
-    @testing.with_requires('scipy>=1.5.0')
+    @testing.with_requires("scipy>=1.5.0")
     def test_fancy_setting_bool(self):
         # Unfortunately, boolean setting is implemented slightly
         # differently between Scipy 1.4 and 1.5. Using the most
@@ -351,11 +351,11 @@ _int_array_index = [
 
 
 @testing.parameterize(*testing.product({
-    'format': ['csr', 'csc'],
-    'density': [0.0, 0.5],
-    'n_rows': [1, 25],
-    'n_cols': [1, 25],
-    'indices': (
+    "format": ["csr", "csc"],
+    "density": [0.0, 0.5],
+    "n_rows": [1, 25],
+    "n_cols": [1, 25],
+    "indices": (
         # Int
         _int_index
         # Slice
@@ -379,12 +379,12 @@ _int_array_index = [
         ]
     ),
 }))
-@testing.with_requires('scipy>=1.4.0')
+@testing.with_requires("scipy>=1.4.0")
 class TestSliceIndexing(IndexingTestBase):
 
-    @testing.for_dtypes('fdFD')
+    @testing.for_dtypes("fdFD")
     @testing.numpy_cupy_array_equal(
-        sp_name='sp', type_check=False, accept_error=IndexError)
+        sp_name="sp", type_check=False, accept_error=IndexError)
     def test_indexing(self, xp, sp, dtype):
         a = self._make_matrix(sp, dtype)
         res = a[self.indices]
@@ -400,8 +400,8 @@ def skip_HIP_0_size_matrix():
                 impl(self, *args, **kw)
             except AssertionError as e:
                 if runtime.is_hip:
-                    assert 'ValueError: hipSPARSE' in str(e)
-                    pytest.xfail('may be buggy')
+                    assert "ValueError: hipSPARSE" in str(e)
+                    pytest.xfail("may be buggy")
                 raise
         return test_func
     return decorator
@@ -421,11 +421,11 @@ def _check_bounds(indices, n_rows, n_cols, **kwargs):
 
 
 @testing.parameterize(*[params for params in testing.product({
-    'format': ['csr', 'csc'],
-    'density': [0.0, 0.5],
-    'n_rows': [1, 25],
-    'n_cols': [1, 25],
-    'indices': (
+    "format": ["csr", "csc"],
+    "density": [0.0, 0.5],
+    "n_rows": [1, 25],
+    "n_cols": [1, 25],
+    "indices": (
         # Array
         _int_array_index
         # Array x Int
@@ -447,13 +447,13 @@ def _check_bounds(indices, n_rows, n_cols, **kwargs):
         ]
     )
 }) if _check_bounds(**params)])
-@testing.with_requires('scipy>=1.4.0')
+@testing.with_requires("scipy>=1.4.0")
 class TestArrayIndexing(IndexingTestBase):
 
     @skip_HIP_0_size_matrix()
-    @testing.for_dtypes('fdFD')
+    @testing.for_dtypes("fdFD")
     @testing.numpy_cupy_array_equal(
-        sp_name='sp', type_check=False, accept_error=IndexError)
+        sp_name="sp", type_check=False, accept_error=IndexError)
     def test_list_indexing(self, xp, sp, dtype):
         a = self._make_matrix(sp, dtype)
         res = a[self.indices]
@@ -461,10 +461,10 @@ class TestArrayIndexing(IndexingTestBase):
         return res
 
     @skip_HIP_0_size_matrix()
-    @testing.for_dtypes('fdFD')
-    @testing.for_dtypes('il', name='ind_dtype')
+    @testing.for_dtypes("fdFD")
+    @testing.for_dtypes("il", name="ind_dtype")
     @testing.numpy_cupy_array_equal(
-        sp_name='sp', type_check=False, accept_error=IndexError)
+        sp_name="sp", type_check=False, accept_error=IndexError)
     def test_numpy_ndarray_indexing(self, xp, sp, dtype, ind_dtype):
         a = self._make_matrix(sp, dtype)
         indices = self._make_indices(numpy, ind_dtype)
@@ -473,10 +473,10 @@ class TestArrayIndexing(IndexingTestBase):
         return res
 
     @skip_HIP_0_size_matrix()
-    @testing.for_dtypes('fdFD')
-    @testing.for_dtypes('il', name='ind_dtype')
+    @testing.for_dtypes("fdFD")
+    @testing.for_dtypes("il", name="ind_dtype")
     @testing.numpy_cupy_array_equal(
-        sp_name='sp', type_check=False, accept_error=IndexError)
+        sp_name="sp", type_check=False, accept_error=IndexError)
     def test_cupy_ndarray_indexing(self, xp, sp, dtype, ind_dtype):
         a = self._make_matrix(sp, dtype)
         indices = self._make_indices(xp, ind_dtype)
@@ -486,9 +486,9 @@ class TestArrayIndexing(IndexingTestBase):
 
 
 @testing.parameterize(*testing.product({
-    'format': ['csr', 'csc'],
-    'density': [0.0, 0.5],
-    'indices': [
+    "format": ["csr", "csc"],
+    "density": [0.0, 0.5],
+    "indices": [
         # Bool array x Int
         ([True, False, True], 3),
         (2, [True, False, True, False, True]),
@@ -502,7 +502,7 @@ class TestArrayIndexing(IndexingTestBase):
         ([True, False, True], [True, False, True]),
     ],
 }))
-@testing.with_requires('scipy>=1.4.0')
+@testing.with_requires("scipy>=1.4.0")
 class TestBoolMaskIndexing(IndexingTestBase):
 
     n_rows = 3
@@ -510,17 +510,17 @@ class TestBoolMaskIndexing(IndexingTestBase):
 
     # In older environments (e.g., py35, scipy 1.4), scipy sparse arrays are
     # crashing when indexed with native Python boolean list.
-    @testing.with_requires('scipy>=1.5.0')
-    @testing.for_dtypes('fdFD')
-    @testing.numpy_cupy_array_equal(sp_name='sp', type_check=False)
+    @testing.with_requires("scipy>=1.5.0")
+    @testing.for_dtypes("fdFD")
+    @testing.numpy_cupy_array_equal(sp_name="sp", type_check=False)
     def test_bool_mask(self, xp, sp, dtype):
         a = self._make_matrix(sp, dtype)
         res = a[self.indices]
         _check_shares_memory(xp, sp, a, res)
         return res
 
-    @testing.for_dtypes('fdFD')
-    @testing.numpy_cupy_array_equal(sp_name='sp', type_check=False)
+    @testing.for_dtypes("fdFD")
+    @testing.numpy_cupy_array_equal(sp_name="sp", type_check=False)
     def test_numpy_bool_mask(self, xp, sp, dtype):
         a = self._make_matrix(sp, dtype)
         indices = self._make_indices(numpy)
@@ -528,8 +528,8 @@ class TestBoolMaskIndexing(IndexingTestBase):
         _check_shares_memory(xp, sp, a, res)
         return res
 
-    @testing.for_dtypes('fdFD')
-    @testing.numpy_cupy_array_equal(sp_name='sp', type_check=False)
+    @testing.for_dtypes("fdFD")
+    @testing.numpy_cupy_array_equal(sp_name="sp", type_check=False)
     def test_cupy_bool_mask(self, xp, sp, dtype):
         a = self._make_matrix(sp, dtype)
         indices = self._make_indices(xp)
@@ -539,18 +539,18 @@ class TestBoolMaskIndexing(IndexingTestBase):
 
 
 @testing.parameterize(*testing.product({
-    'format': ['csr', 'csc'],
-    'density': [0.4],
-    'dtype': ['float32', 'float64', 'complex64', 'complex128'],
-    'n_rows': [25, 150],
-    'n_cols': [25, 150],
-    'indices': [
-        ('foo',),
-        (2, 'foo'),
+    "format": ["csr", "csc"],
+    "density": [0.4],
+    "dtype": ["float32", "float64", "complex64", "complex128"],
+    "n_rows": [25, 150],
+    "n_cols": [25, 150],
+    "indices": [
+        ("foo",),
+        (2, "foo"),
         ([[0, 0], [1, 1]]),
     ],
 }))
-@testing.with_requires('scipy>=1.4.0')
+@testing.with_requires("scipy>=1.4.0")
 class TestIndexingIndexError(IndexingTestBase):
 
     def test_indexing_index_error(self):
@@ -561,16 +561,16 @@ class TestIndexingIndexError(IndexingTestBase):
 
 
 @testing.parameterize(*testing.product({
-    'format': ['csr', 'csc'],
-    'density': [0.4],
-    'dtype': ['float32', 'float64', 'complex64', 'complex128'],
-    'n_rows': [25, 150],
-    'n_cols': [25, 150],
-    'indices': [
+    "format": ["csr", "csc"],
+    "density": [0.4],
+    "dtype": ["float32", "float64", "complex64", "complex128"],
+    "n_rows": [25, 150],
+    "n_cols": [25, 150],
+    "indices": [
         ([1, 2, 3], [1, 2, 3, 4]),
     ],
 }))
-@testing.with_requires('scipy>=1.4.0')
+@testing.with_requires("scipy>=1.4.0")
 class TestIndexingValueError(IndexingTestBase):
 
     def test_indexing_value_error(self):

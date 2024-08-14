@@ -9,7 +9,7 @@ _lambertw_scalar = _core.create_ufunc(
     ("Dld->D", "Fif->f"),
     "out0 = special::lambertw(in0, in1, in2)",
     preamble=lambertw_preamble,
-    doc='''Internal function. Do not use.''')
+    doc="""Internal function. Do not use.""")
 
 
 def lambertw(z, k=0, tol=1e-8):

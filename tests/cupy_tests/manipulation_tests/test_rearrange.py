@@ -8,22 +8,22 @@ from cupy import testing
 
 
 @testing.parameterize(
-    {'shape': (10,), 'shift': 2, 'axis': None},
-    {'shape': (5, 2), 'shift': 1, 'axis': None},
-    {'shape': (5, 2), 'shift': -2, 'axis': None},
-    {'shape': (5, 2), 'shift': 1, 'axis': 0},
-    {'shape': (5, 2), 'shift': 1, 'axis': -1},
-    {'shape': (10,), 'shift': 35, 'axis': None},
-    {'shape': (5, 2), 'shift': 11, 'axis': 0},
-    {'shape': (), 'shift': 5, 'axis': None},
-    {'shape': (5, 2), 'shift': 1, 'axis': (0, 1)},
-    {'shape': (5, 2), 'shift': 1, 'axis': (0, 0)},
-    {'shape': (5, 2), 'shift': 50, 'axis': 0},
-    {'shape': (5, 2), 'shift': (2, 1), 'axis': (0, 1)},
-    {'shape': (5, 2), 'shift': (2, 1), 'axis': (0, -1)},
-    {'shape': (5, 2), 'shift': (2, 1), 'axis': (1, -1)},
-    {'shape': (5, 2), 'shift': (2, 1, 3), 'axis': 0},
-    {'shape': (5, 2), 'shift': (2, 1, 3), 'axis': None},
+    {"shape": (10,), "shift": 2, "axis": None},
+    {"shape": (5, 2), "shift": 1, "axis": None},
+    {"shape": (5, 2), "shift": -2, "axis": None},
+    {"shape": (5, 2), "shift": 1, "axis": 0},
+    {"shape": (5, 2), "shift": 1, "axis": -1},
+    {"shape": (10,), "shift": 35, "axis": None},
+    {"shape": (5, 2), "shift": 11, "axis": 0},
+    {"shape": (), "shift": 5, "axis": None},
+    {"shape": (5, 2), "shift": 1, "axis": (0, 1)},
+    {"shape": (5, 2), "shift": 1, "axis": (0, 0)},
+    {"shape": (5, 2), "shift": 50, "axis": 0},
+    {"shape": (5, 2), "shift": (2, 1), "axis": (0, 1)},
+    {"shape": (5, 2), "shift": (2, 1), "axis": (0, -1)},
+    {"shape": (5, 2), "shift": (2, 1), "axis": (1, -1)},
+    {"shape": (5, 2), "shift": (2, 1, 3), "axis": 0},
+    {"shape": (5, 2), "shift": (2, 1, 3), "axis": None},
 )
 class TestRoll(unittest.TestCase):
 
@@ -49,22 +49,22 @@ class TestRollTypeError(unittest.TestCase):
         for xp in (numpy, cupy):
             x = testing.shaped_arange((5, 2), xp)
             with pytest.raises(TypeError):
-                xp.roll(x, '0', axis=0)
+                xp.roll(x, "0", axis=0)
 
     def test_roll_invalid_axis_type(self):
         for xp in (numpy, cupy):
             x = testing.shaped_arange((5, 2), xp)
             with pytest.raises(TypeError):
-                xp.roll(x, 2, axis='0')
+                xp.roll(x, 2, axis="0")
 
 
 @testing.parameterize(
-    {'shape': (5, 2, 3), 'shift': (2, 2, 2), 'axis': (0, 1)},
-    {'shape': (5, 2), 'shift': 1, 'axis': 2},
-    {'shape': (5, 2), 'shift': 1, 'axis': -3},
-    {'shape': (5, 2, 2), 'shift': (1, 0), 'axis': (0, 1, 2)},
-    {'shape': (5, 2), 'shift': 1, 'axis': -3},
-    {'shape': (5, 2), 'shift': 1, 'axis': (1, -3)},
+    {"shape": (5, 2, 3), "shift": (2, 2, 2), "axis": (0, 1)},
+    {"shape": (5, 2), "shift": 1, "axis": 2},
+    {"shape": (5, 2), "shift": 1, "axis": -3},
+    {"shape": (5, 2, 2), "shift": (1, 0), "axis": (0, 1, 2)},
+    {"shape": (5, 2), "shift": 1, "axis": -3},
+    {"shape": (5, 2), "shift": 1, "axis": (1, -3)},
 )
 class TestRollValueError(unittest.TestCase):
     def test_roll_invalid(self):

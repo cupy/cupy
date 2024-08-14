@@ -23,7 +23,7 @@ class TestThrust:
         count[1, 32](x, y)
         testing.assert_array_equal(y, cupy.ones(size, dtype=cupy.int32))
 
-    @pytest.mark.parametrize('order', ['C', 'F'])
+    @pytest.mark.parametrize("order", ["C", "F"])
     def test_adjacent_difference(self, order):
         @jit.rawkernel()
         def adjacent_difference(x, y):
@@ -41,7 +41,7 @@ class TestThrust:
         testing.assert_array_equal(y[:, 0], x[:, 0])
         testing.assert_array_equal(y[:, 1:], x[:, 1:] - x[:, :-1])
 
-    @pytest.mark.parametrize('order', ['C', 'F'])
+    @pytest.mark.parametrize("order", ["C", "F"])
     def test_binary_search(self, order):
         @jit.rawkernel()
         def binary_search(x, y):
@@ -61,7 +61,7 @@ class TestThrust:
         assert 70 < expected.sum().item() < 80
         testing.assert_array_equal(y, expected)
 
-    @pytest.mark.parametrize('order', ['C', 'F'])
+    @pytest.mark.parametrize("order", ["C", "F"])
     def test_binary_search_vec(self, order):
         @jit.rawkernel()
         def binary_search(x, y, z):
@@ -87,7 +87,7 @@ class TestThrust:
         expected = (x[:, :, None] == y[:, None, :]).any(axis=1)
         testing.assert_array_equal(z, expected)
 
-    @pytest.mark.parametrize('order', ['C', 'F'])
+    @pytest.mark.parametrize("order", ["C", "F"])
     def test_count_iterator(self, order):
         @jit.rawkernel()
         def count(x, y):
@@ -106,7 +106,7 @@ class TestThrust:
         expected = (x[..., None] == cupy.arange(4)).sum(axis=2)
         testing.assert_array_equal(y, expected)
 
-    @pytest.mark.parametrize('order', ['C', 'F'])
+    @pytest.mark.parametrize("order", ["C", "F"])
     def test_copy_iterator(self, order):
         @jit.rawkernel()
         def copy(x, y):
@@ -126,11 +126,11 @@ class TestThrust:
         copy[1, 256](x, y)
         testing.assert_array_equal(x, y)
 
-    @pytest.mark.parametrize('order', ['C', 'F'])
+    @pytest.mark.parametrize("order", ["C", "F"])
     def test_equal(self, order):
         if runtime.is_hip:
             # TODO(asi1024): Fix compile error.
-            pytest.skip('Skip rocm thrust::equal test')
+            pytest.skip("Skip rocm thrust::equal test")
 
         @jit.rawkernel()
         def equal(x, y, z):
@@ -153,7 +153,7 @@ class TestThrust:
         equal[1, 256](x, y, z)
         testing.assert_array_equal(z, (x == y).all(axis=1))
 
-    @pytest.mark.parametrize('order', ['C', 'F'])
+    @pytest.mark.parametrize("order", ["C", "F"])
     def test_equal_range(self, order):
         @jit.rawkernel()
         def equal_range(x, y):
@@ -173,7 +173,7 @@ class TestThrust:
         expected = (x == 100).sum(axis=-1)
         testing.assert_array_equal(y, expected)
 
-    @pytest.mark.parametrize('order', ['C', 'F'])
+    @pytest.mark.parametrize("order", ["C", "F"])
     def test_exclusive_scan(self, order):
         @jit.rawkernel()
         def exclusive_scan(x, y):
@@ -192,7 +192,7 @@ class TestThrust:
         expected = x.cumsum(axis=-1)[:, :-1]
         testing.assert_array_equal(y[:, 1:], expected)
 
-    @pytest.mark.parametrize('order', ['C', 'F'])
+    @pytest.mark.parametrize("order", ["C", "F"])
     def test_exclusive_scan_init(self, order):
         @jit.rawkernel()
         def exclusive_scan_init(x, y):
@@ -225,7 +225,7 @@ class TestThrust:
         expected = cupy.array([5, 6, 7, 5, 6, 5, 5, 6, 7, 8])
         testing.assert_array_equal(value, expected)
 
-    @pytest.mark.parametrize('order', ['C', 'F'])
+    @pytest.mark.parametrize("order", ["C", "F"])
     def test_fill(self, order):
         @jit.rawkernel()
         def fill(x):
@@ -239,7 +239,7 @@ class TestThrust:
         expected = cupy.full((n1, n2), 10, dtype=numpy.int32)
         testing.assert_array_equal(x, expected)
 
-    @pytest.mark.parametrize('order', ['C', 'F'])
+    @pytest.mark.parametrize("order", ["C", "F"])
     def test_find(self, order):
         @jit.rawkernel()
         def find(x, y):
@@ -264,7 +264,7 @@ class TestThrust:
                     expected[i, j, elem] = min(expected[i, j, elem], k)
         testing.assert_array_equal(y, expected)
 
-    @pytest.mark.parametrize('order', ['C', 'F'])
+    @pytest.mark.parametrize("order", ["C", "F"])
     def test_gather(self, order):
         @jit.rawkernel()
         def gather(x, y, z):
@@ -286,7 +286,7 @@ class TestThrust:
         expected = y[x]
         testing.assert_array_equal(z, expected)
 
-    @pytest.mark.parametrize('order', ['C', 'F'])
+    @pytest.mark.parametrize("order", ["C", "F"])
     def test_inclusive_scan(self, order):
         @jit.rawkernel()
         def inclusive_scan(x, y):
@@ -319,7 +319,7 @@ class TestThrust:
         expected = cupy.array([1, 2, 3, 1, 2, 1, 1, 2, 3, 4])
         testing.assert_array_equal(value, expected)
 
-    @pytest.mark.parametrize('order', ['C', 'F'])
+    @pytest.mark.parametrize("order", ["C", "F"])
     def test_inner_product(self, order):
         @jit.rawkernel()
         def inner_product(a, b, c):
@@ -339,7 +339,7 @@ class TestThrust:
         expected = (x * y).sum(axis=1)
         testing.assert_allclose(z, expected, rtol=1e-6)
 
-    @pytest.mark.parametrize('order', ['C', 'F'])
+    @pytest.mark.parametrize("order", ["C", "F"])
     def test_is_sorted(self, order):
         @jit.rawkernel()
         def is_sorted(x, out):
@@ -357,7 +357,7 @@ class TestThrust:
         expected = cupy.array([False, True])
         testing.assert_array_equal(out, expected)
 
-    @pytest.mark.parametrize('order', ['C', 'F'])
+    @pytest.mark.parametrize("order", ["C", "F"])
     def test_is_sorted_until(self, order):
         @jit.rawkernel()
         def is_sorted_until(x, out):
@@ -376,7 +376,7 @@ class TestThrust:
         expected = cupy.array([4, 3])
         testing.assert_array_equal(out, expected)
 
-    @pytest.mark.parametrize('order', ['C', 'F'])
+    @pytest.mark.parametrize("order", ["C", "F"])
     def test_lower_bound(self, order):
         @jit.rawkernel()
         def lower_bound(x, v, out):
@@ -392,10 +392,10 @@ class TestThrust:
         out = cupy.zeros(n1, dtype=numpy.int32)
         lower_bound[1, n1](x, values, out)
 
-        expected = cupy.searchsorted(x, values, side='left')
+        expected = cupy.searchsorted(x, values, side="left")
         testing.assert_array_equal(out, expected)
 
-    @pytest.mark.parametrize('order', ['C', 'F'])
+    @pytest.mark.parametrize("order", ["C", "F"])
     def test_lower_bound_vec(self, order):
         @jit.rawkernel()
         def lower_bound(x, v, out):
@@ -413,7 +413,7 @@ class TestThrust:
         out = cupy.zeros((n1, n3), dtype=numpy.int32)
         lower_bound[1, n1](x, values, out)
 
-        expected = cupy.searchsorted(x, values, side='left')
+        expected = cupy.searchsorted(x, values, side="left")
         testing.assert_array_equal(out, expected)
 
     def test_make_constant_iterator(self):
@@ -444,10 +444,10 @@ class TestThrust:
         expected = cupy.arange(n) ** 2 + cupy.arange(n)
         testing.assert_array_equal(out, expected)
 
-    @pytest.mark.parametrize('order', ['C', 'F'])
+    @pytest.mark.parametrize("order", ["C", "F"])
     def test_mismatch_iterator(self, order):
         if runtime.is_hip:
-            pytest.xfail('HIP does not support pair of pointer type')
+            pytest.xfail("HIP does not support pair of pointer type")
 
         @jit.rawkernel()
         def mismatch(x1, x2, out1, out2):
@@ -478,7 +478,7 @@ class TestThrust:
         testing.assert_array_equal(out1, [0, 100, 30, 200, w])
         testing.assert_array_equal(out2, [0, 100, 30, 200, w])
 
-    @pytest.mark.parametrize('order', ['C', 'F'])
+    @pytest.mark.parametrize("order", ["C", "F"])
     def test_reduce(self, order):
         @jit.rawkernel()
         def reduce(x, y):
@@ -494,7 +494,7 @@ class TestThrust:
         expected = x.sum(axis=-1)
         testing.assert_array_equal(out, expected)
 
-    @pytest.mark.parametrize('order', ['C', 'F'])
+    @pytest.mark.parametrize("order", ["C", "F"])
     def test_reduce_init(self, order):
         @jit.rawkernel()
         def reduce(x, y):
@@ -565,7 +565,7 @@ class TestThrust:
         testing.assert_array_equal(
             result[:4], cupy.array([3, 4, 5, 9], dtype=numpy.int32))
 
-    @pytest.mark.parametrize('order', ['C', 'F'])
+    @pytest.mark.parametrize("order", ["C", "F"])
     def test_replace(self, order):
         @jit.rawkernel()
         def replace(x):
@@ -583,7 +583,7 @@ class TestThrust:
         expected[mask] = 999
         testing.assert_array_equal(x, expected)
 
-    @pytest.mark.parametrize('order', ['C', 'F'])
+    @pytest.mark.parametrize("order", ["C", "F"])
     def test_replace_copy(self, order):
         @jit.rawkernel()
         def replace_copy(x, out):
@@ -603,7 +603,7 @@ class TestThrust:
         expected[mask] = 999
         testing.assert_array_equal(out, expected)
 
-    @pytest.mark.parametrize('order', ['C', 'F'])
+    @pytest.mark.parametrize("order", ["C", "F"])
     def test_reverse(self, order):
         @jit.rawkernel()
         def reverse(x):
@@ -618,7 +618,7 @@ class TestThrust:
 
         testing.assert_array_equal(x, expected)
 
-    @pytest.mark.parametrize('order', ['C', 'F'])
+    @pytest.mark.parametrize("order", ["C", "F"])
     def test_reverse_copy(self, order):
         @jit.rawkernel()
         def reverse_copy(x, out):
@@ -634,7 +634,7 @@ class TestThrust:
         expected = x[:, ::-1]
         testing.assert_array_equal(out, expected)
 
-    @pytest.mark.parametrize('order', ['C', 'F'])
+    @pytest.mark.parametrize("order", ["C", "F"])
     def test_scatter(self, order):
         @jit.rawkernel()
         def scatter(values, map, result):
@@ -652,7 +652,7 @@ class TestThrust:
             cupy.array([1, 3, 5, 7, 9, 2, 4, 6, 8, 10]),
         )
 
-    @pytest.mark.parametrize('order', ['C', 'F'])
+    @pytest.mark.parametrize("order", ["C", "F"])
     def test_sequence(self, order):
         @jit.rawkernel()
         def sequence(x):
@@ -667,7 +667,7 @@ class TestThrust:
         expected = expected + cupy.zeros((n1, n2), dtype=numpy.int32)
         testing.assert_array_equal(x, expected)
 
-    @pytest.mark.parametrize('order', ['C', 'F'])
+    @pytest.mark.parametrize("order", ["C", "F"])
     def test_sequence_init(self, order):
         @jit.rawkernel()
         def sequence(x):
@@ -682,7 +682,7 @@ class TestThrust:
         expected = expected + cupy.ones((n1, n2), dtype=numpy.int32)
         testing.assert_array_equal(x, expected)
 
-    @pytest.mark.parametrize('order', ['C', 'F'])
+    @pytest.mark.parametrize("order", ["C", "F"])
     def test_sequence_step(self, order):
         @jit.rawkernel()
         def sequence(x):
@@ -698,10 +698,10 @@ class TestThrust:
         expected = expected + cupy.arange(n1, dtype=numpy.int32)[:, None]
         testing.assert_array_equal(x, expected)
 
-    @pytest.mark.parametrize('order', ['C', 'F'])
+    @pytest.mark.parametrize("order", ["C", "F"])
     def test_set_difference(self, order):
         if runtime.is_hip:
-            pytest.xfail('HIP does not support thrust set operations.')
+            pytest.xfail("HIP does not support thrust set operations.")
 
         @jit.rawkernel()
         def set_difference(x, y, out, size):
@@ -721,10 +721,10 @@ class TestThrust:
         testing.assert_array_equal(size, cupy.array([3]))
         testing.assert_array_equal(out[:3], cupy.array([0, 4, 6]))
 
-    @pytest.mark.parametrize('order', ['C', 'F'])
+    @pytest.mark.parametrize("order", ["C", "F"])
     def test_set_difference_by_key(self, order):
         if runtime.is_hip:
-            pytest.xfail('HIP does not support thrust set operations.')
+            pytest.xfail("HIP does not support thrust set operations.")
 
         @jit.rawkernel()
         def set_difference_by_key(
@@ -753,10 +753,10 @@ class TestThrust:
         testing.assert_array_equal(keys_out[:3], cupy.array([0, 4, 6]))
         testing.assert_array_equal(vals_out[:3], cupy.array([2, 2, 2]))
 
-    @pytest.mark.parametrize('order', ['C', 'F'])
+    @pytest.mark.parametrize("order", ["C", "F"])
     def test_set_intersection(self, order):
         if runtime.is_hip:
-            pytest.xfail('HIP does not support thrust set operations.')
+            pytest.xfail("HIP does not support thrust set operations.")
 
         @jit.rawkernel()
         def set_intersection(x, y, out, size):
@@ -776,10 +776,10 @@ class TestThrust:
         testing.assert_array_equal(size, cupy.array([3]))
         testing.assert_array_equal(out[:3], cupy.array([1, 3, 5]))
 
-    @pytest.mark.parametrize('order', ['C', 'F'])
+    @pytest.mark.parametrize("order", ["C", "F"])
     def test_set_intersection_by_key(self, order):
         if runtime.is_hip:
-            pytest.xfail('HIP does not support thrust set operations.')
+            pytest.xfail("HIP does not support thrust set operations.")
 
         @jit.rawkernel()
         def set_intersection_by_key(
@@ -806,10 +806,10 @@ class TestThrust:
         testing.assert_array_equal(keys_out[:3], cupy.array([1, 3, 5]))
         testing.assert_array_equal(vals_out[:3], cupy.array([2, 2, 2]))
 
-    @pytest.mark.parametrize('order', ['C', 'F'])
+    @pytest.mark.parametrize("order", ["C", "F"])
     def test_set_symmetric_difference(self, order):
         if runtime.is_hip:
-            pytest.xfail('HIP does not support thrust set operations.')
+            pytest.xfail("HIP does not support thrust set operations.")
 
         @jit.rawkernel()
         def set_symmetric_difference(x, y, out, size):
@@ -829,10 +829,10 @@ class TestThrust:
         testing.assert_array_equal(size, cupy.array([6]))
         testing.assert_array_equal(out[:6], cupy.array([0, 4, 5, 6, 7, 8]))
 
-    @pytest.mark.parametrize('order', ['C', 'F'])
+    @pytest.mark.parametrize("order", ["C", "F"])
     def test_set_symmetric_difference_by_key(self, order):
         if runtime.is_hip:
-            pytest.xfail('HIP does not support thrust set operations.')
+            pytest.xfail("HIP does not support thrust set operations.")
 
         @jit.rawkernel()
         def set_symmetric_difference_by_key(
@@ -863,10 +863,10 @@ class TestThrust:
         testing.assert_array_equal(
             vals_out[:6], cupy.array([1, 1, 2, 1, 1, 2]))
 
-    @pytest.mark.parametrize('order', ['C', 'F'])
+    @pytest.mark.parametrize("order", ["C", "F"])
     def test_set_union(self, order):
         if runtime.is_hip:
-            pytest.xfail('HIP does not support thrust set operations.')
+            pytest.xfail("HIP does not support thrust set operations.")
 
         @jit.rawkernel()
         def set_union(x, y, out, size):
@@ -887,10 +887,10 @@ class TestThrust:
         testing.assert_array_equal(
             out[:8], cupy.array([0, 1, 2, 4, 5, 6, 7, 8]))
 
-    @pytest.mark.parametrize('order', ['C', 'F'])
+    @pytest.mark.parametrize("order", ["C", "F"])
     def test_set_union_by_key(self, order):
         if runtime.is_hip:
-            pytest.xfail('HIP does not support thrust set operations.')
+            pytest.xfail("HIP does not support thrust set operations.")
 
         @jit.rawkernel()
         def set_union_by_key(
@@ -921,10 +921,10 @@ class TestThrust:
         testing.assert_array_equal(
             vals_out[:8], cupy.array([1, 1, 1, 1, 2, 1, 1, 2]))
 
-    @pytest.mark.parametrize('order', ['C', 'F'])
+    @pytest.mark.parametrize("order", ["C", "F"])
     def test_sort(self, order):
         if runtime.is_hip:
-            pytest.skip('See https://github.com/cupy/cupy/pull/7162')
+            pytest.skip("See https://github.com/cupy/cupy/pull/7162")
 
         @jit.rawkernel()
         def sort(x):
@@ -940,10 +940,10 @@ class TestThrust:
 
         testing.assert_array_equal(x, numpy.sort(x_numpy, axis=-1))
 
-    @pytest.mark.parametrize('order', ['C', 'F'])
+    @pytest.mark.parametrize("order", ["C", "F"])
     def test_sort_by_key(self, order):
         if runtime.is_hip:
-            pytest.skip('See https://github.com/cupy/cupy/pull/7162')
+            pytest.skip("See https://github.com/cupy/cupy/pull/7162")
 
         @jit.rawkernel()
         def sort_by_key(x, y):
@@ -973,10 +973,10 @@ class TestThrust:
         testing.assert_array_equal(x, x_expected)
         testing.assert_array_equal(y, y_expected)
 
-    @pytest.mark.parametrize('order', ['C', 'F'])
+    @pytest.mark.parametrize("order", ["C", "F"])
     def test_stable_sort(self, order):
         if runtime.is_hip:
-            pytest.skip('See https://github.com/cupy/cupy/pull/7162')
+            pytest.skip("See https://github.com/cupy/cupy/pull/7162")
 
         @jit.rawkernel()
         def stable_sort(x):
@@ -993,10 +993,10 @@ class TestThrust:
 
         testing.assert_array_equal(x, numpy.sort(x_numpy, axis=-1))
 
-    @pytest.mark.parametrize('order', ['C', 'F'])
+    @pytest.mark.parametrize("order", ["C", "F"])
     def test_stable_sort_by_key(self, order):
         if runtime.is_hip:
-            pytest.skip('See https://github.com/cupy/cupy/pull/7162')
+            pytest.skip("See https://github.com/cupy/cupy/pull/7162")
 
         @jit.rawkernel()
         def stable_sort_by_key(x, y):
@@ -1026,10 +1026,10 @@ class TestThrust:
         testing.assert_array_equal(x, x_expected)
         testing.assert_array_equal(y, y_expected)
 
-    @pytest.mark.parametrize('order', ['C', 'F'])
+    @pytest.mark.parametrize("order", ["C", "F"])
     def test_swap_ranges(self, order):
         if runtime.is_hip:
-            pytest.skip('See https://github.com/cupy/cupy/pull/7162')
+            pytest.skip("See https://github.com/cupy/cupy/pull/7162")
 
         @jit.rawkernel()
         def swap_ranges(x, y):
@@ -1049,7 +1049,7 @@ class TestThrust:
         testing.assert_array_equal(x_expected, x)
         testing.assert_array_equal(y_expected, y)
 
-    @pytest.mark.parametrize('order', ['C', 'F'])
+    @pytest.mark.parametrize("order", ["C", "F"])
     def test_unique(self, order):
 
         @jit.rawkernel()
@@ -1064,7 +1064,7 @@ class TestThrust:
         testing.assert_array_equal(size, cupy.array([4], dtype=numpy.int32))
         testing.assert_array_equal(x[:4], cupy.array([1, 3, 2, 1]))
 
-    @pytest.mark.parametrize('order', ['C', 'F'])
+    @pytest.mark.parametrize("order", ["C", "F"])
     def test_unique_by_key(self, order):
 
         @jit.rawkernel()
@@ -1083,7 +1083,7 @@ class TestThrust:
         testing.assert_array_equal(keys[:4], cupy.array([1, 3, 2, 1]))
         testing.assert_array_equal(values[:4], cupy.array([9, 8, 5, 3]))
 
-    @pytest.mark.parametrize('order', ['C', 'F'])
+    @pytest.mark.parametrize("order", ["C", "F"])
     def test_upper_bound(self, order):
         @jit.rawkernel()
         def upper_bound(x, v, out):
@@ -1099,10 +1099,10 @@ class TestThrust:
         out = cupy.zeros(n1, dtype=numpy.int32)
         upper_bound[1, n1](x, values, out)
 
-        expected = cupy.searchsorted(x, values, side='right')
+        expected = cupy.searchsorted(x, values, side="right")
         testing.assert_array_equal(out, expected)
 
-    @pytest.mark.parametrize('order', ['C', 'F'])
+    @pytest.mark.parametrize("order", ["C", "F"])
     def test_upper_bound_vec(self, order):
         @jit.rawkernel()
         def upper_bound(x, v, out):
@@ -1120,5 +1120,5 @@ class TestThrust:
         out = cupy.zeros((n1, n3), dtype=numpy.int32)
         upper_bound[1, n1](x, values, out)
 
-        expected = cupy.searchsorted(x, values, side='right')
+        expected = cupy.searchsorted(x, values, side="right")
         testing.assert_array_equal(out, expected)

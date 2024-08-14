@@ -10,13 +10,13 @@ from cupyx import cusolver, lapack
 
 
 @testing.parameterize(*testing.product({
-    'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
-    'n': [3],
-    'nrhs': [None, 1, 4],
-    'order': ['C', 'F'],
+    "dtype": [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
+    "n": [3],
+    "nrhs": [None, 1, 4],
+    "order": ["C", "F"],
 }))
 class TestGesv(unittest.TestCase):
-    _tol = {'f': 1e-5, 'd': 1e-12}
+    _tol = {"f": 1e-5, "d": 1e-12}
 
     def _make_array(self, shape, alpha, beta):
         a = testing.shaped_random(shape, cupy, dtype=self.dtype.char.lower(),
@@ -25,7 +25,7 @@ class TestGesv(unittest.TestCase):
 
     def _make_matrix(self, shape, alpha, beta):
         a = self._make_array(shape, alpha, beta)
-        if self.dtype.char in 'FD':
+        if self.dtype.char in "FD":
             a = a + 1j * self._make_array(shape, alpha, beta)
         return a
 
@@ -49,7 +49,7 @@ class TestGesv(unittest.TestCase):
         if self.nrhs is None or self.nrhs == 1:
             self.b = b.copy(order=self.order)
         else:
-            self.b = b.copy(order='F')
+            self.b = b.copy(order="F")
         self.x_ref = x.reshape(b_shape)
         self.tol = self._tol[self.dtype.char.lower()]
 
@@ -73,25 +73,25 @@ class TestGesv(unittest.TestCase):
         ng_a = cupy.ones((self.n+1, self.n+1), dtype=self.dtype)
         with pytest.raises(ValueError):
             lapack.gesv(ng_a, self.b)
-        ng_a = cupy.ones(self.a.shape, dtype='i')
+        ng_a = cupy.ones(self.a.shape, dtype="i")
         with pytest.raises(TypeError):
             lapack.gesv(ng_a, self.b)
-        ng_a = cupy.ones((2, self.n, self.n), dtype=self.dtype, order='F')[0]
+        ng_a = cupy.ones((2, self.n, self.n), dtype=self.dtype, order="F")[0]
         with pytest.raises(ValueError):
             lapack.gesv(ng_a, self.b)
-        ng_b = self.b.copy(order='C')
+        ng_b = self.b.copy(order="C")
         with pytest.raises(ValueError):
             lapack.gesv(self.a, ng_b)
 
 
 @testing.parameterize(*testing.product({
-    'shape': [(4, 4), (5, 4), (4, 5)],
-    'nrhs': [None, 1, 4],
+    "shape": [(4, 4), (5, 4), (4, 5)],
+    "nrhs": [None, 1, 4],
 }))
 class TestGels(unittest.TestCase):
-    _tol = {'f': 1e-5, 'd': 1e-12}
+    _tol = {"f": 1e-5, "d": 1e-12}
 
-    @testing.for_dtypes('fdFD')
+    @testing.for_dtypes("fdFD")
     def test_gels(self, dtype):
         b_shape = [self.shape[0]]
         if self.nrhs is not None:
@@ -105,21 +105,21 @@ class TestGels(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    'shape': [(3, 4, 2, 2), (5, 3, 3), (7, 7)],
-    'nrhs': [None, 1, 4]
+    "shape": [(3, 4, 2, 2), (5, 3, 3), (7, 7)],
+    "nrhs": [None, 1, 4]
 }))
 class TestPosv(unittest.TestCase):
 
     def setUp(self):
-        if not cusolver.check_availability('potrsBatched'):
-            pytest.skip('potrsBatched is not available')
+        if not cusolver.check_availability("potrsBatched"):
+            pytest.skip("potrsBatched is not available")
 
-    @testing.for_dtypes('fdFD')
+    @testing.for_dtypes("fdFD")
     @testing.numpy_cupy_allclose(atol=1e-5)
     def test_posv(self, xp, dtype):
         # TODO: cusolver does not support nrhs > 1 for potrsBatched
         if len(self.shape) > 2 and self.nrhs and self.nrhs > 1:
-            pytest.skip('cusolver does not support nrhs > 1 for potrsBatched')
+            pytest.skip("cusolver does not support nrhs > 1 for potrsBatched")
 
         a = self._create_posdef_matrix(xp, self.shape, dtype)
         b_shape = list(self.shape[:-1])
@@ -142,20 +142,20 @@ class TestPosv(unittest.TestCase):
 
 # TODO: cusolver does not support nrhs > 1 for potrsBatched
 @testing.parameterize(*testing.product({
-    'shape': [(2, 3, 3)],
-    'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
+    "shape": [(2, 3, 3)],
+    "dtype": [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
 }))
 class TestXFailBatchedPosv(unittest.TestCase):
 
     def test_posv(self):
-        if not cusolver.check_availability('potrsBatched'):
-            pytest.skip('potrsBatched is not available')
+        if not cusolver.check_availability("potrsBatched"):
+            pytest.skip("potrsBatched is not available")
         a = self._create_posdef_matrix(cupy, self.shape, self.dtype)
         n = a.shape[-1]
         identity_matrix = cupy.eye(n, dtype=a.dtype)
         b = cupy.empty(a.shape, a.dtype)
         b[...] = identity_matrix
-        with cupyx.errstate(linalg='ignore'):
+        with cupyx.errstate(linalg="ignore"):
             with pytest.raises(cupy.cuda.cusolver.CUSOLVERError):
                 lapack.posv(a, b)
 

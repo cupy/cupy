@@ -100,7 +100,7 @@ def _design_resample_poly(up, down, window):
     return h
 
 
-def decimate(x, q, n=None, ftype='iir', axis=-1, zero_phase=True):
+def decimate(x, q, n=None, ftype="iir", axis=-1, zero_phase=True):
     """
     Downsample the signal after applying an anti-aliasing filter.
 
@@ -152,18 +152,18 @@ def decimate(x, q, n=None, ftype='iir', axis=-1, zero_phase=True):
         # upcast integers and float16 to float64
         result_type = cupy.float64
 
-    if ftype == 'fir':
+    if ftype == "fir":
         if n is None:
             half_len = 10 * q  # reasonable cutoff for our sinc-like function
             n = 2 * half_len
-        b, a = firwin(n+1, 1. / q, window='hamming'), 1.
+        b, a = firwin(n+1, 1. / q, window="hamming"), 1.
         b = cupy.asarray(b, dtype=result_type)
         a = cupy.asarray(a, dtype=result_type)
-    elif ftype == 'iir':
+    elif ftype == "iir":
         iir_use_sos = True
         if n is None:
             n = 8
-        sos = cheby1(n, 0.05, 0.8 / q, output='sos')
+        sos = cheby1(n, 0.05, 0.8 / q, output="sos")
         sos = cupy.asarray(sos, dtype=result_type)
     elif isinstance(ftype, dlti):
         system = ftype._as_zpk()
@@ -171,7 +171,7 @@ def decimate(x, q, n=None, ftype='iir', axis=-1, zero_phase=True):
             # FIR
             system = ftype._as_tf()
             b, a = system.num, system.den
-            ftype = 'fir'
+            ftype = "fir"
         elif (any(cupy.iscomplex(system.poles))
               or any(cupy.iscomplex(system.poles))
               or cupy.iscomplex(system.gain)):
@@ -184,11 +184,11 @@ def decimate(x, q, n=None, ftype='iir', axis=-1, zero_phase=True):
             sos = zpk2sos(system.zeros, system.poles, system.gain)
             sos = cupy.asarray(sos, dtype=result_type)
     else:
-        raise ValueError('invalid ftype')
+        raise ValueError("invalid ftype")
 
     sl = [slice(None)] * x.ndim
 
-    if ftype == 'fir':
+    if ftype == "fir":
         b = b / a
         if zero_phase:
             y = resample_poly(x, 1, q, axis=axis, window=b)
@@ -306,7 +306,7 @@ def resample(x, num, t=None, axis=0, window=None, domain="time"):
     >>> plt.legend(['data', 'resampled'], loc='best')
     >>> plt.show()
     """
-    if domain not in ('time', 'freq'):
+    if domain not in ("time", "freq"):
         raise ValueError("Acceptable domain flags are 'time' or"
                          " 'freq', not domain={}".format(domain))
 
@@ -316,7 +316,7 @@ def resample(x, num, t=None, axis=0, window=None, domain="time"):
     # Check if we can use faster real FFT
     real_input = cupy.isrealobj(x)
 
-    if domain == 'time':
+    if domain == "time":
         # Forward transform
         if real_input:
             X = rfft(x, axis=axis)
@@ -331,7 +331,7 @@ def resample(x, num, t=None, axis=0, window=None, domain="time"):
             W = window(fftfreq(Nx))
         elif isinstance(window, cupy.ndarray):
             if window.shape != (Nx,):
-                raise ValueError('window must have the same length as data')
+                raise ValueError("window must have the same length as data")
             W = window
         else:
             W = ifftshift(get_window(window, Nx))
@@ -409,7 +409,7 @@ def resample(x, num, t=None, axis=0, window=None, domain="time"):
 
 
 def resample_poly(x, up, down, axis=0, window=("kaiser", 5.0),
-                  padtype='constant', cval=None):
+                  padtype="constant", cval=None):
     """
     Resample `x` along the given axis using polyphase filtering.
 
@@ -506,9 +506,9 @@ def resample_poly(x, up, down, axis=0, window=("kaiser", 5.0),
     >>> plt.show()
     """
 
-    if padtype != 'constant' or cval is not None:
+    if padtype != "constant" or cval is not None:
         raise ValueError(
-            'padtype and cval arguments are not supported by upfirdn')
+            "padtype and cval arguments are not supported by upfirdn")
 
     x = cupy.asarray(x)
     up = int(up)

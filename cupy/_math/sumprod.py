@@ -27,7 +27,7 @@ def sum(a, axis=None, dtype=None, out=None, keepdims=False):
     if _fusion_thread_local.is_fusing():
         if keepdims:
             raise NotImplementedError(
-                'cupy.sum does not support `keepdims` in fusion yet.')
+                "cupy.sum does not support `keepdims` in fusion yet.")
         if dtype is None:
             func = _math.sum_auto_dtype
         else:
@@ -59,7 +59,7 @@ def prod(a, axis=None, dtype=None, out=None, keepdims=False):
     if _fusion_thread_local.is_fusing():
         if keepdims:
             raise NotImplementedError(
-                'cupy.prod does not support `keepdims` in fusion yet.')
+                "cupy.prod does not support `keepdims` in fusion yet.")
         if dtype is None:
             func = _math._prod_auto_dtype
         else:
@@ -92,8 +92,8 @@ def nansum(a, axis=None, dtype=None, out=None, keepdims=False):
     if _fusion_thread_local.is_fusing():
         if keepdims:
             raise NotImplementedError(
-                'cupy.nansum does not support `keepdims` in fusion yet.')
-        if a.dtype.char in 'FD':
+                "cupy.nansum does not support `keepdims` in fusion yet.")
+        if a.dtype.char in "FD":
             func = _math._nansum_complex_dtype
         elif dtype is None:
             func = _math._nansum_auto_dtype
@@ -127,7 +127,7 @@ def nanprod(a, axis=None, dtype=None, out=None, keepdims=False):
     if _fusion_thread_local.is_fusing():
         if keepdims:
             raise NotImplementedError(
-                'cupy.nanprod does not support `keepdims` in fusion yet.')
+                "cupy.nanprod does not support `keepdims` in fusion yet.")
         if dtype is None:
             func = _math._nanprod_auto_dtype
         else:
@@ -218,8 +218,8 @@ def nancumprod(a, axis=None, dtype=None, out=None):
 
 
 _replace_nan_kernel = cupy._core._kernel.ElementwiseKernel(
-    'T a, T val', 'T out', 'if (a == a) {out = a;} else {out = val;}',
-    'cupy_replace_nan')
+    "T a, T val", "T out", "if (a == a) {out = a;} else {out = val;}",
+    "cupy_replace_nan")
 
 
 def _replace_nan(a, val, out=None):
@@ -526,7 +526,7 @@ def ediff1d(arr, to_end=None, to_begin=None):
     .. seealso:: :func:`numpy.ediff1d`
     """
     if not isinstance(arr, cupy.ndarray):
-        raise TypeError('`arr` should be of type cupy.ndarray')
+        raise TypeError("`arr` should be of type cupy.ndarray")
 
     # to flattened array.
     arr = arr.ravel()
@@ -542,7 +542,7 @@ def ediff1d(arr, to_end=None, to_begin=None):
         l_begin = 0
     else:
         if not isinstance(to_begin, cupy.ndarray):
-            raise TypeError('`to_begin` should be of type cupy.ndarray')
+            raise TypeError("`to_begin` should be of type cupy.ndarray")
         if not cupy.can_cast(to_begin, dtype_req, casting="same_kind"):
             raise TypeError("dtype of `to_begin` must be compatible "
                             "with input `arr` under the `same_kind` rule.")
@@ -554,7 +554,7 @@ def ediff1d(arr, to_end=None, to_begin=None):
         l_end = 0
     else:
         if not isinstance(to_end, cupy.ndarray):
-            raise TypeError('`to_end` should be of type cupy.ndarray')
+            raise TypeError("`to_end` should be of type cupy.ndarray")
         if not cupy.can_cast(to_end, dtype_req, casting="same_kind"):
             raise TypeError("dtype of `to_end` must be compatible "
                             "with input `arr` under the `same_kind` rule.")
@@ -599,13 +599,13 @@ def trapz(y, x=None, dx=1.0, axis=-1):
     .. seealso:: :func:`numpy.trapz`
     """
     if not isinstance(y, cupy.ndarray):
-        raise TypeError('`y` should be of type cupy.ndarray')
+        raise TypeError("`y` should be of type cupy.ndarray")
 
     if x is None:
         d = dx
     else:
         if not isinstance(x, cupy.ndarray):
-            raise TypeError('`x` should be of type cupy.ndarray')
+            raise TypeError("`x` should be of type cupy.ndarray")
         if x.ndim == 1:
             d = diff(x)
             # reshape to correct shape
@@ -628,10 +628,10 @@ def trapz(y, x=None, dx=1.0, axis=-1):
 
 
 def product(a, axis=None, dtype=None, out=None, keepdims=False):
-    warnings.warn('Please use `prod` instead.', DeprecationWarning)
+    warnings.warn("Please use `prod` instead.", DeprecationWarning)
     return prod(a, axis, dtype, out, keepdims)
 
 
 def cumproduct(a, axis=None, dtype=None, out=None):
-    warnings.warn('Please use `cumprod` instead.', DeprecationWarning)
+    warnings.warn("Please use `cumprod` instead.", DeprecationWarning)
     return cumprod(a, axis, dtype, out)

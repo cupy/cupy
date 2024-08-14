@@ -70,7 +70,7 @@ class TestFourierShift:
         if complex_axes:
             a = scp.fft.ifftn(a, axes=complex_axes)
         a = scp.fft.irfft(a, axis=real_axis)
-        if not x.dtype.kind == 'c':
+        if not x.dtype.kind == "c":
             a = a.real
         return xp.ascontiguousarray(a)
 
@@ -78,7 +78,7 @@ class TestFourierShift:
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name="scp")
     def test_real_fft_axis0(self, xp, scp):
         x = testing.shaped_random(self.shape, xp, self.dtype)
-        if x.dtype.kind == 'c':
+        if x.dtype.kind == "c":
             # skip: can't use rfft on complex-valued x
             return x
         return self._test_real_nd(xp, scp, x, 0)
@@ -87,7 +87,7 @@ class TestFourierShift:
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name="scp")
     def test_real_fft_axis1(self, xp, scp):
         x = testing.shaped_random(self.shape, xp, self.dtype)
-        if x.dtype.kind == 'c' or x.ndim < 2:
+        if x.dtype.kind == "c" or x.ndim < 2:
             # skip: can't use rfft along axis 1 on complex-valued x or 1d x
             return x
         return self._test_real_nd(xp, scp, x, 1)
@@ -98,7 +98,7 @@ class TestFourierShift:
         a = scp.fftpack.fftn(x)
         a = scp.ndimage.fourier_shift(a, self.shift)
         a = scp.fftpack.ifftn(a)
-        if not x.dtype.kind == 'c':
+        if not x.dtype.kind == "c":
             a = a.real
         return xp.ascontiguousarray(a)
 
@@ -108,7 +108,7 @@ class TestFourierShift:
         a = scp.fftpack.fftn(x)
         scp.ndimage.fourier_shift(a, self.shift, output=a)
         a = scp.fftpack.ifftn(a)
-        if not x.dtype.kind == 'c':
+        if not x.dtype.kind == "c":
             a = a.real
         return xp.ascontiguousarray(a)
 
@@ -157,7 +157,7 @@ class TestFourierGaussian:
         if complex_axes:
             a = scp.fft.ifftn(a, axes=complex_axes)
         a = scp.fft.irfft(a, axis=real_axis)
-        if not x.dtype.kind == 'c':
+        if not x.dtype.kind == "c":
             a = a.real
         return xp.ascontiguousarray(a)
 
@@ -165,7 +165,7 @@ class TestFourierGaussian:
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name="scp")
     def test_real_fft_axis0(self, xp, scp):
         x = testing.shaped_random(self.shape, xp, self.dtype)
-        if x.dtype.kind == 'c':
+        if x.dtype.kind == "c":
             # skip: can't use rfft on complex-valued x
             return x
         return self._test_real_nd(xp, scp, x, 0)
@@ -174,7 +174,7 @@ class TestFourierGaussian:
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name="scp")
     def test_real_fft_axis1(self, xp, scp):
         x = testing.shaped_random(self.shape, xp, self.dtype)
-        if x.dtype.kind == 'c' or x.ndim < 2:
+        if x.dtype.kind == "c" or x.ndim < 2:
             # skip: can't use rfft along axis 1 on complex-valued x or 1d x
             return x
         return self._test_real_nd(xp, scp, x, 1)
@@ -185,7 +185,7 @@ class TestFourierGaussian:
         a = scp.fftpack.fftn(x)
         a = scp.ndimage.fourier_gaussian(a, self.sigma)
         a = scp.fftpack.ifftn(a)
-        if not x.dtype.kind == 'c':
+        if not x.dtype.kind == "c":
             a = a.real
         return xp.ascontiguousarray(a)
 
@@ -195,7 +195,7 @@ class TestFourierGaussian:
         a = scp.fftpack.fftn(x)
         scp.ndimage.fourier_gaussian(a, self.sigma, output=a)
         a = scp.fftpack.ifftn(a)
-        if not x.dtype.kind == 'c':
+        if not x.dtype.kind == "c":
             a = a.real
         return xp.ascontiguousarray(a)
 
@@ -244,7 +244,7 @@ class TestFourierUniform:
         if complex_axes:
             a = scp.fft.ifftn(a, axes=complex_axes)
         a = scp.fft.irfft(a, axis=real_axis)
-        if not x.dtype.kind == 'c':
+        if not x.dtype.kind == "c":
             a = a.real
         return xp.ascontiguousarray(a)
 
@@ -252,7 +252,7 @@ class TestFourierUniform:
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name="scp")
     def test_real_fft_axis0(self, xp, scp):
         x = testing.shaped_random(self.shape, xp, self.dtype)
-        if x.dtype.kind == 'c':
+        if x.dtype.kind == "c":
             # skip: can't use rfft on complex-valued x
             return x
         return self._test_real_nd(xp, scp, x, 0)
@@ -261,7 +261,7 @@ class TestFourierUniform:
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name="scp")
     def test_real_fft_axis1(self, xp, scp):
         x = testing.shaped_random(self.shape, xp, self.dtype)
-        if x.dtype.kind == 'c' or x.ndim < 2:
+        if x.dtype.kind == "c" or x.ndim < 2:
             # skip: can't use rfft along axis 1 on complex-valued x or 1d x
             return x
         return self._test_real_nd(xp, scp, x, 1)
@@ -272,7 +272,7 @@ class TestFourierUniform:
         a = scp.fftpack.fftn(x)
         a = scp.ndimage.fourier_uniform(a, self.size)
         a = scp.fftpack.ifftn(a)
-        if not x.dtype.kind == 'c':
+        if not x.dtype.kind == "c":
             a = a.real
         return xp.ascontiguousarray(a)
 
@@ -282,7 +282,7 @@ class TestFourierUniform:
         a = scp.fftpack.fftn(x)
         scp.ndimage.fourier_uniform(a, self.size, output=a)
         a = scp.fftpack.ifftn(a)
-        if not x.dtype.kind == 'c':
+        if not x.dtype.kind == "c":
             a = a.real
         return xp.ascontiguousarray(a)
 
@@ -291,30 +291,30 @@ class TestFourierUniform:
     *(
         testing.product(
             {
-                'shape': [(32, 16), (31, 15)],
-                'size': [1, (5, 5), (3, 5)],
+                "shape": [(32, 16), (31, 15)],
+                "size": [1, (5, 5), (3, 5)],
             }
         )
         + testing.product(
             {
-                'shape': [(5, 16, 7)],
-                'size': [3, (1, 2, 4)],
+                "shape": [(5, 16, 7)],
+                "size": [3, (1, 2, 4)],
             }
         )
         + testing.product(
             {
-                'shape': [(15, ), ],
-                'size': [8, (5,)],
+                "shape": [(15, ), ],
+                "size": [8, (5,)],
             }
         )
     )
 )
-@testing.with_requires('scipy')
+@testing.with_requires("scipy")
 class TestFourierEllipsoid():
     def _test_real_nd(self, xp, scp, x, real_axis):
-        if x.ndim == 1 and scipy_version < '1.5.3':
+        if x.ndim == 1 and scipy_version < "1.5.3":
             # 1D case gives an incorrect result in SciPy < 1.5.3
-            pytest.skip('scipy version to old')
+            pytest.skip("scipy version to old")
 
         a = scp.fft.rfft(x, axis=real_axis)
         # complex-valued FFTs on all other axes
@@ -329,20 +329,20 @@ class TestFourierEllipsoid():
         if complex_axes:
             a = scp.fft.ifftn(a, axes=complex_axes)
         a = scp.fft.irfft(a, axis=real_axis)
-        if not x.dtype.kind == 'c':
+        if not x.dtype.kind == "c":
             a = a.real
         return xp.ascontiguousarray(a)
 
-    @testing.with_requires('scipy>=1.4.0')
+    @testing.with_requires("scipy>=1.4.0")
     @testing.for_all_dtypes(no_complex=True)
-    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name="scp")
     def test_real_fft_axis0(self, xp, scp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
         return self._test_real_nd(xp, scp, x, 0)
 
-    @testing.with_requires('scipy>=1.4.0')
+    @testing.with_requires("scipy>=1.4.0")
     @testing.for_all_dtypes(no_complex=True)
-    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name="scp")
     def test_real_fft_axis1(self, xp, scp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
         if x.ndim < 2:
@@ -351,39 +351,39 @@ class TestFourierEllipsoid():
         return self._test_real_nd(xp, scp, x, 1)
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name="scp")
     def test_complex_fft(self, xp, scp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
-        if x.ndim == 1 and scipy_version < '1.5.3':
+        if x.ndim == 1 and scipy_version < "1.5.3":
             # 1D case gives an incorrect result in SciPy < 1.5.3
-            pytest.skip('scipy version to old')
+            pytest.skip("scipy version to old")
         a = scp.fftpack.fftn(x)
         a = scp.ndimage.fourier_ellipsoid(a, self.size)
         a = scp.fftpack.ifftn(a)
-        if not x.dtype.kind == 'c':
+        if not x.dtype.kind == "c":
             a = a.real
         return xp.ascontiguousarray(a)
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name="scp")
     def test_complex_fft_with_output(self, xp, scp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
-        if x.ndim == 1 and scipy_version < '1.5.3':
+        if x.ndim == 1 and scipy_version < "1.5.3":
             # 1D case gives an incorrect result in SciPy < 1.5.3
-            pytest.skip('scipy version to old')
+            pytest.skip("scipy version to old")
         a = scp.fftpack.fftn(x)
         scp.ndimage.fourier_ellipsoid(a.copy(), self.size, output=a)
         a = scp.fftpack.ifftn(a)
-        if not x.dtype.kind == 'c':
+        if not x.dtype.kind == "c":
             a = a.real
         return xp.ascontiguousarray(a)
 
 
-@testing.with_requires('scipy')
+@testing.with_requires("scipy")
 class TestFourierEllipsoidInvalid():
 
     # SciPy < 1.5 raises ValueError instead of AxisError
-    @testing.with_requires('scipy>=1.5.0')
+    @testing.with_requires("scipy>=1.5.0")
     def test_0d_input(self):
         for xp, scp in zip((numpy, cupy), (scipy, cupyx.scipy)):
             with pytest.raises(AxisError):
@@ -400,7 +400,7 @@ class TestFourierEllipsoidInvalid():
         return
 
     # SciPy < 1.5 raises ValueError instead of AxisError
-    @testing.with_requires('scipy>=1.5.0')
+    @testing.with_requires("scipy>=1.5.0")
     def test_invalid_axis(self):
         # SciPy should raise here too because >3d isn't implemented, but
         # as of 1.5.4, it does not.

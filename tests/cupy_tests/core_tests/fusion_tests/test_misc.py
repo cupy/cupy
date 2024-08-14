@@ -72,8 +72,8 @@ class TestFusionTuple(FusionTestBase):
     @fusion_utils.check_fusion(generate_inputs_args=(3,))
     def test_multiple_outputdifferent_type_same_ufunc(self, xp, dtype):
         def func(x, y, z):
-            x = x.astype('int32')
-            y = x.astype('float32')
+            x = x.astype("int32")
+            y = x.astype("float32")
             return x + y, y + z, z + x
 
         return func
@@ -96,7 +96,7 @@ class TestFusionTuple(FusionTestBase):
 
     @unittest.skipUnless(
         fusion_utils.can_use_grid_synchronization(),
-        'Requires CUDA grid synchronization')
+        "Requires CUDA grid synchronization")
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
     @fusion_utils.check_fusion(generate_inputs_args=(2,))
     def test_various_shape(self, xp, dtype):
@@ -186,8 +186,8 @@ class TestFusionDecorator(unittest.TestCase):
             """Fuse without parentheses"""
             return x + x
 
-        assert func_wo_paren.__name__ == 'func_wo_paren'
-        assert func_wo_paren.__doc__ == 'Fuse without parentheses'
+        assert func_wo_paren.__name__ == "func_wo_paren"
+        assert func_wo_paren.__doc__ == "Fuse without parentheses"
 
     def test_with_paren(self):
         @cupy.fuse()
@@ -195,21 +195,21 @@ class TestFusionDecorator(unittest.TestCase):
             """Fuse with parentheses"""
             return x + x
 
-        assert func_w_paren.__name__ == 'func_w_paren'
-        assert func_w_paren.__doc__ == 'Fuse with parentheses'
+        assert func_w_paren.__name__ == "func_w_paren"
+        assert func_w_paren.__doc__ == "Fuse with parentheses"
 
 
 class TestFusionKernelName(unittest.TestCase):
 
     def check(self, xp, func, expected_name, is_elementwise):
-        a = xp.arange(0, 12, dtype='d').reshape(3, 4)
-        b = xp.arange(5, 17, dtype='d').reshape(3, 4)
-        c = xp.arange(13, 25, dtype='d').reshape(3, 4)
+        a = xp.arange(0, 12, dtype="d").reshape(3, 4)
+        b = xp.arange(5, 17, dtype="d").reshape(3, 4)
+        c = xp.arange(13, 25, dtype="d").reshape(3, 4)
 
         # Test kernel name (with mock)
         if xp is cupy:
             target = cupy._core._fusion_kernel.FusedKernel
-            target_full_name = '{}.{}'.format(
+            target_full_name = "{}.{}".format(
                 target.__module__, target.__name__)
 
             with mock.patch(target_full_name) as kernel:  # NOQA
@@ -230,18 +230,18 @@ class TestFusionKernelName(unittest.TestCase):
 
             return func_a1(a, b, c)
 
-        return self.check(xp, func, 'func_a1', True)
+        return self.check(xp, func, "func_a1", True)
 
     @testing.numpy_cupy_allclose(atol=1e-5)
     def test_elementwise_with_name(self, xp):
         def func(a, b, c):
-            @cupy.fuse(kernel_name='abc')
+            @cupy.fuse(kernel_name="abc")
             def func_a1(x, y, z):
                 return (x + y) * z
 
             return func_a1(a, b, c)
 
-        return self.check(xp, func, 'abc', True)
+        return self.check(xp, func, "abc", True)
 
     @testing.numpy_cupy_allclose(atol=1e-5)
     def test_reduction_premap(self, xp):
@@ -252,7 +252,7 @@ class TestFusionKernelName(unittest.TestCase):
 
             return func_a1(a, b, c)
 
-        return self.check(xp, func, 'func_a1', False)
+        return self.check(xp, func, "func_a1", False)
 
     @testing.numpy_cupy_allclose(atol=1e-5)
     def test_reduction_postmap(self, xp):
@@ -263,7 +263,7 @@ class TestFusionKernelName(unittest.TestCase):
 
             return func_a1(a)
 
-        return self.check(xp, func, 'func_a1', False)
+        return self.check(xp, func, "func_a1", False)
 
     @testing.numpy_cupy_allclose(atol=1e-5)
     def test_reduction_01(self, xp):
@@ -274,18 +274,18 @@ class TestFusionKernelName(unittest.TestCase):
 
             return func_a1(a, b, c)
 
-        return self.check(xp, func, 'func_a1', False)
+        return self.check(xp, func, "func_a1", False)
 
     @testing.numpy_cupy_allclose(atol=1e-5)
     def test_reduction_with_name(self, xp):
         def func(a, b, c):
-            @cupy.fuse(kernel_name='abc')
+            @cupy.fuse(kernel_name="abc")
             def func_a1(x, y, z):
                 return xp.sum((x + y) * z)
 
             return func_a1(a, b, c)
 
-        return self.check(xp, func, 'abc', False)
+        return self.check(xp, func, "abc", False)
 
 
 class TestFusionComposition(unittest.TestCase):

@@ -14,11 +14,11 @@ from cupyx.scipy import sparse
 
 
 @testing.parameterize(*testing.product({
-    'shape': [(8, 3), (4, 4), (3, 8)],
-    'a_format': ['dense', 'csr', 'csc', 'coo'],
-    'out_format': [None, 'csr', 'csc'],
+    "shape": [(8, 3), (4, 4), (3, 8)],
+    "a_format": ["dense", "csr", "csc", "coo"],
+    "out_format": [None, "csr", "csc"],
 }))
-@unittest.skipUnless(scipy_available, 'requires scipy')
+@unittest.skipUnless(scipy_available, "requires scipy")
 class TestExtract(unittest.TestCase):
 
     density = 0.75
@@ -27,18 +27,18 @@ class TestExtract(unittest.TestCase):
         a = testing.shaped_random(self.shape, numpy, dtype=dtype)
         a[a > self.density] = 0
         b = cupy.array(a)
-        if self.a_format == 'csr':
+        if self.a_format == "csr":
             a = scipy.sparse.csr_matrix(a)
             b = sparse.csr_matrix(b)
-        elif self.a_format == 'csc':
+        elif self.a_format == "csc":
             a = scipy.sparse.csc_matrix(a)
             b = sparse.csc_matrix(b)
-        elif self.a_format == 'coo':
+        elif self.a_format == "coo":
             a = scipy.sparse.coo_matrix(a)
             b = sparse.coo_matrix(b)
         return a, b
 
-    @testing.for_dtypes('fdFD')
+    @testing.for_dtypes("fdFD")
     def test_tril(self, dtype):
         np_a, cp_a = self._make_matrix(dtype)
         m, n = self.shape
@@ -49,7 +49,7 @@ class TestExtract(unittest.TestCase):
             assert np_out.nnz == cp_out.nnz
             cupy.testing.assert_allclose(np_out.todense(), cp_out.todense())
 
-    @testing.for_dtypes('fdFD')
+    @testing.for_dtypes("fdFD")
     def test_triu(self, dtype):
         np_a, cp_a = self._make_matrix(dtype)
         m, n = self.shape
@@ -60,7 +60,7 @@ class TestExtract(unittest.TestCase):
             assert np_out.nnz == cp_out.nnz
             cupy.testing.assert_allclose(np_out.todense(), cp_out.todense())
 
-    @testing.for_dtypes('fdFD')
+    @testing.for_dtypes("fdFD")
     def test_find(self, dtype):
         if self.out_format is not None:
             unittest.SkipTest()

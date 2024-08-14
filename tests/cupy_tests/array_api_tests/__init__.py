@@ -13,7 +13,7 @@ import pytest
 from cupy_backends.cuda.api import runtime
 
 if sys.version_info < (3, 8):
-    pytest.skip('Python array API requires Python 3.8+',
+    pytest.skip("Python array API requires Python 3.8+",
                 allow_module_level=True)
 
 
@@ -21,5 +21,5 @@ if sys.version_info < (3, 8):
 # temporarily skip the Python array API tests on ROCm until it is fixed.
 # See #5843
 if runtime.is_hip:
-    pytest.skip('Python array API tests are temporarily skipped on ROCm',
+    pytest.skip("Python array API tests are temporarily skipped on ROCm",
                 allow_module_level=True)

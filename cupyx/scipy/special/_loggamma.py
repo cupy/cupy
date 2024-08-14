@@ -198,14 +198,14 @@ __device__ complex<double> loggamma_taylor(complex<double> z)
 
 
 loggamma = _core.create_ufunc(
-    'cupyx_scipy_loggamma',
+    "cupyx_scipy_loggamma",
     (
-        ('f->f', 'out0 = out0_type(loggamma_real(in0))'),
-        ('d->d', 'out0 = loggamma_real(in0)'),
-        'F->F',
-        'D->D'
+        ("f->f", "out0 = out0_type(loggamma_real(in0))"),
+        ("d->d", "out0 = loggamma_real(in0)"),
+        "F->F",
+        "D->D"
     ),
-    'out0 = out0_type(loggamma(in0))',
+    "out0 = out0_type(loggamma(in0))",
     preamble=loggamma_definition,
     doc="""Principal branch of the logarithm of the gamma function.
 

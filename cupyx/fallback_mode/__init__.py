@@ -4,4 +4,4 @@ from cupy import _util
 # Auto-execute numpy method when corresponding cupy method is not found
 from cupyx.fallback_mode.fallback import numpy  # NOQA
 
-_util.experimental('cupyx.fallback_mode.numpy')
+_util.experimental("cupyx.fallback_mode.numpy")

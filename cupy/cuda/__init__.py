@@ -42,43 +42,43 @@ from cupy.cuda import cub  # NOQA
 try:
     from cupy_backends.cuda.libs import nvtx  # NOQA
 except ImportError:
-    nvtx = _UnavailableModule('cupy.cuda.nvtx')
+    nvtx = _UnavailableModule("cupy.cuda.nvtx")
 
 try:
     from cupy.cuda import thrust  # NOQA
 except ImportError:
-    thrust = _UnavailableModule('cupy.cuda.thrust')
+    thrust = _UnavailableModule("cupy.cuda.thrust")
 
 
 def __getattr__(key):
-    if key == 'cusolver':
+    if key == "cusolver":
         from cupy_backends.cuda.libs import cusolver
         _cupy.cuda.cusolver = cusolver
         return cusolver
-    elif key == 'cusparse':
+    elif key == "cusparse":
         from cupy_backends.cuda.libs import cusparse
         _cupy.cuda.cusparse = cusparse
         return cusparse
-    elif key == 'curand':
+    elif key == "curand":
         from cupy_backends.cuda.libs import curand
         _cupy.cuda.curand = curand
         return curand
-    elif key == 'cublas':
+    elif key == "cublas":
         from cupy_backends.cuda.libs import cublas
         _cupy.cuda.cublas = cublas
         return cublas
-    elif key == 'jitify':
+    elif key == "jitify":
         if not runtime.is_hip and driver.get_build_version() > 0:
             import cupy.cuda.jitify as jitify
         else:
-            jitify = _UnavailableModule('cupy.cuda.jitify')
+            jitify = _UnavailableModule("cupy.cuda.jitify")
         _cupy.cuda.jitify = jitify
         return jitify
 
     # `nvtx_enabled` flags are kept for backward compatibility with Chainer.
     # Note: module-level getattr only runs on Python 3.7+.
     for mod in [nvtx]:
-        flag = '{}_enabled'.format(mod.__name__.split('.')[-1])
+        flag = "{}_enabled".format(mod.__name__.split(".")[-1])
         if key == flag:
             warnings.warn('''
 cupy.cuda.{} has been deprecated in CuPy v8 and will be removed in the future release.
@@ -98,9 +98,9 @@ def is_available():
             _available = runtime.getDeviceCount() > 0
         except Exception as e:
             if (not runtime.is_hip and e.args[0] !=
-                    'cudaErrorNoDevice: no CUDA-capable device is detected'):
+                    "cudaErrorNoDevice: no CUDA-capable device is detected"):
                 raise
-            elif runtime.is_hip and 'hipErrorNoDevice' not in e.args[0]:
+            elif runtime.is_hip and "hipErrorNoDevice" not in e.args[0]:
                 raise
     return _available
 
@@ -196,9 +196,9 @@ def profile():
         :class:`cupyx.profiler.profile` instead.
     """
     warnings.warn(
-        'cupy.cuda.profile has been deprecated since CuPy v10 '
-        'and will be removed in the future. Use cupyx.profiler.profile '
-        'instead.')
+        "cupy.cuda.profile has been deprecated since CuPy v10 "
+        "and will be removed in the future. Use cupyx.profiler.profile "
+        "instead.")
 
     profiler.start()
     try:

@@ -6,7 +6,7 @@ except ImportError:
     pass
 
 
-@testing.with_requires('scipy')
+@testing.with_requires("scipy")
 class TestEllipk:
     @testing.numpy_cupy_allclose(scipy_name="scp", rtol=1e-15)
     def test_basic_ellipk(self, xp, scp):
@@ -19,7 +19,7 @@ class TestEllipk:
         return scp.special.ellipkm1(1./x)
 
 
-@testing.with_requires('scipy')
+@testing.with_requires("scipy")
 class TestEllipj:
     @testing.numpy_cupy_allclose(scipy_name="scp", rtol=1e-13)
     def test_basic(self, xp, scp):
@@ -27,10 +27,10 @@ class TestEllipj:
         return el
 
 
-@testing.with_requires('scipy')
+@testing.with_requires("scipy")
 class TestEllipkinc:
-    @testing.for_dtypes('fd')
-    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-15)
+    @testing.for_dtypes("fd")
+    @testing.numpy_cupy_allclose(scipy_name="scp", rtol=1e-15)
     def test_values(self, xp, scp, dtype):
         phi = xp.linspace(-xp.pi, xp.pi, 5)
         m = xp.linspace(-1.0, 1.0, 5)
@@ -40,10 +40,10 @@ class TestEllipkinc:
         return scp.special.ellipkinc(phi, m)
 
 
-@testing.with_requires('scipy')
+@testing.with_requires("scipy")
 class TestEllipeinc:
-    @testing.for_dtypes('fd')
-    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-15)
+    @testing.for_dtypes("fd")
+    @testing.numpy_cupy_allclose(scipy_name="scp", rtol=1e-15)
     def test_values(self, xp, scp, dtype):
         phi = xp.linspace(-xp.pi, xp.pi, 5)
         m = xp.linspace(-1.0, 1.0, 5)

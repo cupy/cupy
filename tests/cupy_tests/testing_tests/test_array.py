@@ -9,11 +9,11 @@ from cupy import testing
 
 @testing.parameterize(
     *testing.product({
-        'assertion': ['assert_allclose', 'assert_array_almost_equal',
-                      'assert_array_almost_equal_nulp',
-                      'assert_array_max_ulp', 'assert_array_equal'],
-        'array_module_x': [numpy, cupy],
-        'array_module_y': [numpy, cupy]
+        "assertion": ["assert_allclose", "assert_array_almost_equal",
+                      "assert_array_almost_equal_nulp",
+                      "assert_array_max_ulp", "assert_array_equal"],
+        "array_module_x": [numpy, cupy],
+        "array_module_y": [numpy, cupy]
     })
 )
 class TestEqualityAssertion(unittest.TestCase):
@@ -34,9 +34,9 @@ class TestEqualityAssertion(unittest.TestCase):
 
 
 def _convert_array(xs, array_module):
-    if array_module == 'all_numpy':
+    if array_module == "all_numpy":
         return xs
-    elif array_module == 'all_cupy':
+    elif array_module == "all_cupy":
         return [
             cupy.asarray(x)
             for x in xs
@@ -50,8 +50,8 @@ def _convert_array(xs, array_module):
 
 @testing.parameterize(
     *testing.product({
-        'array_module_x': ['all_numpy', 'all_cupy', 'random'],
-        'array_module_y': ['all_numpy', 'all_cupy', 'random']
+        "array_module_x": ["all_numpy", "all_cupy", "random"],
+        "array_module_y": ["all_numpy", "all_cupy", "random"]
     })
 )
 class TestListEqualityAssertion(unittest.TestCase):
@@ -68,14 +68,14 @@ class TestListEqualityAssertion(unittest.TestCase):
     def test_inequality_numpy(self):
         self.xs[0] += 1
         with self.assertRaisesRegex(
-                AssertionError, '^\nArrays are not equal'):
+                AssertionError, "^\nArrays are not equal"):
             testing.assert_array_list_equal(self.xs, self.ys)
 
 
 @testing.parameterize(
     *testing.product({
-        'array_module_x': [numpy, cupy],
-        'array_module_y': [numpy, cupy]
+        "array_module_x": [numpy, cupy],
+        "array_module_y": [numpy, cupy]
     })
 )
 class TestStridesEqualityAssertion(unittest.TestCase):
@@ -96,8 +96,8 @@ class TestStridesEqualityAssertion(unittest.TestCase):
 
 @testing.parameterize(
     *testing.product({
-        'array_module_x': [numpy, cupy],
-        'array_module_y': [numpy, cupy]
+        "array_module_x": [numpy, cupy],
+        "array_module_y": [numpy, cupy]
     })
 )
 class TestLessAssertion(unittest.TestCase):

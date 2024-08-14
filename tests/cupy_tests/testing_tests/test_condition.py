@@ -2,7 +2,7 @@ import unittest
 
 from cupy.testing import _condition
 
-SKIP_REASON = 'test skip reason'
+SKIP_REASON = "test skip reason"
 
 
 # The test fixtures of this TestCase is used to be decorated by
@@ -57,10 +57,10 @@ def _should_fail(self, f):
     try:
         f(self.unit_test)
         self.fail(
-            'AssertionError is expected to be raised, but none is raised')
+            "AssertionError is expected to be raised, but none is raised")
     except AssertionError as e:
         # check if the detail is included in the error object
-        assert 'first error message:' in str(e)
+        assert "first error message:" in str(e)
 
 
 def _should_pass(self, f):
@@ -71,7 +71,7 @@ def _should_skip(self, f):
     try:
         f(self.unit_test)
         self.fail(
-            'SkipTest is expected to be raised, but none is raised')
+            "SkipTest is expected to be raised, but none is raised")
     except unittest.SkipTest as e:
         assert SKIP_REASON in str(e)
 

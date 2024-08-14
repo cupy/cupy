@@ -8,16 +8,16 @@ from cupy_backends.cuda.api import runtime
 
 def _get_typename(dtype):
     typename = get_typename(dtype)
-    if cupy.dtype(dtype).kind == 'c':
-        typename = 'thrust::' + typename
-    elif typename == 'float16':
+    if cupy.dtype(dtype).kind == "c":
+        typename = "thrust::" + typename
+    elif typename == "float16":
         if runtime.is_hip:
             # 'half' in name_expressions weirdly raises
             # HIPRTC_ERROR_NAME_EXPRESSION_NOT_VALID in getLoweredName() on
             # ROCm
-            typename = '__half'
+            typename = "__half"
         else:
-            typename = 'half'
+            typename = "half"
     return typename
 
 
@@ -29,7 +29,7 @@ TYPES = FLOAT_TYPES + INT_TYPES + UNSIGNED_TYPES + COMPLEX_TYPES  # type: ignore
 TYPE_NAMES = [_get_typename(t) for t in TYPES]
 
 
-KD_KERNEL = r'''
+KD_KERNEL = r"""
 #include <cupy/math_constants.h>
 #include <cupy/carray.cuh>
 #include <cupy/complex.cuh>
@@ -190,9 +190,9 @@ __global__ void tag_pairs(
         cur_out[2 * i + 1] = cur_pairs[i];
     }
 }
-'''
+"""
 
-KNN_KERNEL = r'''
+KNN_KERNEL = r"""
 #include <cupy/math_constants.h>
 #include <cupy/carray.cuh>
 #include <cupy/complex.cuh>
@@ -687,25 +687,25 @@ __global__ void query_ball_periodic(
 
     node_count[idx] = count;
 }
-'''
+"""
 
 
 KD_MODULE = cupy.RawModule(
-    code=KD_KERNEL, options=('-std=c++11',),
-    name_expressions=['update_tags', 'tag_pairs'] + [
-        f'compute_bounds<{x}>' for x in TYPE_NAMES])
+    code=KD_KERNEL, options=("-std=c++11",),
+    name_expressions=["update_tags", "tag_pairs"] + [
+        f"compute_bounds<{x}>" for x in TYPE_NAMES])
 
 KNN_MODULE = cupy.RawModule(
-    code=KNN_KERNEL, options=('-std=c++11',),
-    name_expressions=['knn_periodic', 'query_ball_periodic'] +
-    [f'knn<{x}>' for x in TYPE_NAMES] +
-    [f'query_ball<{x}>' for x in TYPE_NAMES])
+    code=KNN_KERNEL, options=("-std=c++11",),
+    name_expressions=["knn_periodic", "query_ball_periodic"] +
+    [f"knn<{x}>" for x in TYPE_NAMES] +
+    [f"query_ball<{x}>" for x in TYPE_NAMES])
 
 
 def _get_module_func(module, func_name, *template_args):
     args_dtypes = [_get_typename(arg.dtype) for arg in template_args]
-    template = ', '.join(args_dtypes)
-    kernel_name = f'{func_name}<{template}>' if template_args else func_name
+    template = ", ".join(args_dtypes)
+    kernel_name = f"{func_name}<{template}>" if template_args else func_name
     kernel = module.get_function(kernel_name)
     return kernel
 
@@ -748,7 +748,7 @@ def asm_kd_tree(points):
 
     block_sz = 128
     n_blocks = (length + block_sz - 1) // block_sz
-    update_tags = KD_MODULE.get_function('update_tags')
+    update_tags = KD_MODULE.get_function("update_tags")
     x_tags = cupy.empty((2, length), dtype=x.dtype)
 
     level = 0
@@ -778,7 +778,7 @@ def compute_tree_bounds(tree):
     n, n_dims = tree.shape
     bounds = cupy.empty((n, n_dims, 2), dtype=tree.dtype)
     n_levels = int(np.log2(n))
-    compute_bounds = _get_module_func(KD_MODULE, 'compute_bounds', tree)
+    compute_bounds = _get_module_func(KD_MODULE, "compute_bounds", tree)
 
     block_sz = 128
     for level in range(n_levels, -1, -1):
@@ -807,12 +807,12 @@ def compute_knn(points, tree, index, boxdata, bounds, k=1, eps=0.0, p=2.0,
         n_points, n_dims = points.shape
 
     if n_dims != tree.shape[-1]:
-        raise ValueError('The number of dimensions of the query points must '
-                         'match with the tree ones. '
-                         f'Expected {tree.shape[-1]}, got: {n_dims}')
+        raise ValueError("The number of dimensions of the query points must "
+                         "match with the tree ones. "
+                         f"Expected {tree.shape[-1]}, got: {n_dims}")
 
     if cupy.dtype(points.dtype) is not cupy.dtype(tree.dtype):
-        raise ValueError('Query points dtype must match the tree one.')
+        raise ValueError("Query points dtype must match the tree one.")
 
     distances = cupy.full((n_points, max_k), cupy.inf, dtype=cupy.float64)
     nodes = cupy.full((n_points, max_k), tree.shape[0], dtype=cupy.int64)
@@ -820,7 +820,7 @@ def compute_knn(points, tree, index, boxdata, bounds, k=1, eps=0.0, p=2.0,
     block_sz = 128
     n_blocks = (n_points + block_sz - 1) // block_sz
     knn_fn, fn_args = (
-        ('knn', (points,)) if not adjust_to_box else ('knn_periodic', tuple()))
+        ("knn", (points,)) if not adjust_to_box else ("knn_periodic", tuple()))
     knn = _get_module_func(KNN_MODULE, knn_fn, *fn_args)
     knn((n_blocks,), (block_sz,),
         (max_k, tree.shape[0], n_points, n_dims, eps, p, distance_upper_bound,
@@ -866,12 +866,12 @@ def find_nodes_in_radius(points, tree, index, boxdata, bounds, r,
         n_points, n_dims = points.shape
 
     if n_dims != tree.shape[-1]:
-        raise ValueError('The number of dimensions of the query points must '
-                         'match with the tree ones. '
-                         f'Expected {tree.shape[-1]}, got: {n_dims}')
+        raise ValueError("The number of dimensions of the query points must "
+                         "match with the tree ones. "
+                         f"Expected {tree.shape[-1]}, got: {n_dims}")
 
     if points.dtype != tree.dtype:
-        raise ValueError('Query points dtype must match the tree one.')
+        raise ValueError("Query points dtype must match the tree one.")
 
     nodes = cupy.full((n_points, tree_length), tree.shape[0], dtype=cupy.int64)
     total_nodes = cupy.empty((n_points,), cupy.int64)
@@ -881,8 +881,8 @@ def find_nodes_in_radius(points, tree, index, boxdata, bounds, r,
     block_sz = 128
     n_blocks = (n_points + block_sz - 1) // block_sz
     query_ball_fn, fn_args = (
-        ('query_ball', (points,)) if not adjust_to_box else
-        ('query_ball_periodic', tuple()))
+        ("query_ball", (points,)) if not adjust_to_box else
+        ("query_ball_periodic", tuple()))
     query_ball = _get_module_func(KNN_MODULE, query_ball_fn, *fn_args)
     query_ball((n_blocks,), (block_sz,),
                (tree_length, n_points, n_dims, float(r), eps, float(p),
@@ -901,7 +901,7 @@ def find_nodes_in_radius(points, tree, index, boxdata, bounds, r,
         cum_total = total_nodes.cumsum()
         n_pairs = int(cum_total[-1])
         result = cupy.empty((n_pairs, 2), dtype=cupy.int64)
-        tag_pairs = KD_MODULE.get_function('tag_pairs')
+        tag_pairs = KD_MODULE.get_function("tag_pairs")
         tag_pairs((n_blocks,), (block_sz,),
                   (tree_length, n_points, total_nodes, nodes,
                    cum_total, result))

@@ -11,14 +11,14 @@ class TestPacking(unittest.TestCase):
 
     @testing.for_int_dtypes()
     @testing.numpy_cupy_array_equal()
-    def check_packbits(self, data, xp, dtype, bitorder='big'):
+    def check_packbits(self, data, xp, dtype, bitorder="big"):
         # Note numpy <= 1.9 raises an Exception when an input array is bool.
         # See https://github.com/numpy/numpy/issues/5377
         a = xp.array(data, dtype=dtype)
         return xp.packbits(a, bitorder=bitorder)
 
     @testing.numpy_cupy_array_equal()
-    def check_unpackbits(self, data, xp, bitorder='big'):
+    def check_unpackbits(self, data, xp, bitorder="big"):
         a = xp.array(data, dtype=xp.uint8)
         return xp.unpackbits(a, bitorder=bitorder)
 
@@ -31,7 +31,7 @@ class TestPacking(unittest.TestCase):
         self.check_packbits(numpy.arange(24).reshape((2, 3, 4)) % 2)
 
     def test_packbits_order(self):
-        for bo in ['big', 'little']:
+        for bo in ["big", "little"]:
             self.check_packbits([0], bitorder=bo)
             self.check_packbits([1], bitorder=bo)
             self.check_packbits([0, 1], bitorder=bo)
@@ -47,7 +47,7 @@ class TestPacking(unittest.TestCase):
 
     def test_pack_invalid_order(self):
         a = cupy.array([10, 20, 30])
-        pytest.raises(ValueError, cupy.packbits, a, bitorder='ascendant')
+        pytest.raises(ValueError, cupy.packbits, a, bitorder="ascendant")
         pytest.raises(ValueError, cupy.packbits, a, bitorder=10.4)
 
     def test_pack_invalid_array(self):
@@ -67,7 +67,7 @@ class TestPacking(unittest.TestCase):
         pytest.raises(TypeError, cupy.unpackbits, a.astype(float))
 
     def test_pack_unpack_order(self):
-        for bo in ['big', 'little']:
+        for bo in ["big", "little"]:
             self.check_unpackbits([], bitorder=bo)
             self.check_unpackbits([0], bitorder=bo)
             self.check_unpackbits([1], bitorder=bo)
@@ -76,5 +76,5 @@ class TestPacking(unittest.TestCase):
 
     def test_unpack_invalid_order(self):
         a = cupy.array([10, 20, 30], dtype=cupy.uint8)
-        pytest.raises(ValueError, cupy.unpackbits, a, bitorder='r')
+        pytest.raises(ValueError, cupy.unpackbits, a, bitorder="r")
         pytest.raises(ValueError, cupy.unpackbits, a, bitorder=10)

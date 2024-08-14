@@ -40,7 +40,7 @@ class TestCooperativeGroups:
 
     @pytest.mark.skipif(
         runtime._getLocalRuntimeVersion() < 11060,
-        reason='not supported until CUDA 11.6')
+        reason="not supported until CUDA 11.6")
     def test_thread_block_group_cu116_new_APIs(self):
         @jit.rawkernel()
         def test_thread_block(x):
@@ -61,7 +61,7 @@ class TestCooperativeGroups:
 
     @pytest.mark.skipif(runtime.deviceGetAttribute(
         runtime.cudaDevAttrCooperativeLaunch, 0) == 0,
-        reason='cooperative launch is not supported on device 0')
+        reason="cooperative launch is not supported on device 0")
     def test_grid_group(self):
         @jit.rawkernel()
         def test_grid(x):
@@ -87,10 +87,10 @@ class TestCooperativeGroups:
 
     @pytest.mark.skipif(
         runtime._getLocalRuntimeVersion() < 11060,
-        reason='not supported until CUDA 11.6')
+        reason="not supported until CUDA 11.6")
     @pytest.mark.skipif(runtime.deviceGetAttribute(
         runtime.cudaDevAttrCooperativeLaunch, 0) == 0,
-        reason='cooperative launch is not supported on device 0')
+        reason="cooperative launch is not supported on device 0")
     def test_grid_group_cu116_new_APIs(self):
         @jit.rawkernel()
         def test_grid(x):
@@ -121,7 +121,7 @@ class TestCooperativeGroups:
 
     @pytest.mark.skipif(runtime.deviceGetAttribute(
         runtime.cudaDevAttrCooperativeLaunch, 0) == 0,
-        reason='cooperative launch is not supported on device 0')
+        reason="cooperative launch is not supported on device 0")
     def test_cg_sync(self):
         @jit.rawkernel()
         def test_sync():
@@ -133,7 +133,7 @@ class TestCooperativeGroups:
         test_sync[2, 64]()
 
     @pytest.mark.parametrize(
-        'test_aligned', (True, False),
+        "test_aligned", (True, False),
     )
     def test_cg_memcpy_async_wait_for_wait(self, test_aligned):
         @jit.rawkernel()

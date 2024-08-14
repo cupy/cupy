@@ -28,7 +28,7 @@ def sort(a, axis=-1, kind=None):
     .. seealso:: :func:`numpy.sort`
 
     """
-    if kind is not None and kind != 'stable':
+    if kind is not None and kind != "stable":
         raise ValueError("kind can only be None or 'stable'")
     if axis is None:
         ret = a.flatten()
@@ -62,25 +62,25 @@ def lexsort(keys):
     # TODO(takagi): Support axis argument.
 
     if not cupy.cuda.thrust.available:
-        raise RuntimeError('Thrust is needed to use cupy.lexsort. Please '
-                           'install CUDA Toolkit with Thrust then reinstall '
-                           'CuPy after uninstalling it.')
+        raise RuntimeError("Thrust is needed to use cupy.lexsort. Please "
+                           "install CUDA Toolkit with Thrust then reinstall "
+                           "CuPy after uninstalling it.")
 
     if keys.ndim == ():
         # as numpy.lexsort() raises
-        raise TypeError('need sequence of keys with len > 0 in lexsort')
+        raise TypeError("need sequence of keys with len > 0 in lexsort")
 
     if keys.ndim == 1:
         return cupy.array(0, dtype=numpy.intp)
 
     # TODO(takagi): Support ranks of three or more.
     if keys.ndim > 2:
-        raise NotImplementedError('Keys with the rank of three or more is not '
-                                  'supported in lexsort')
+        raise NotImplementedError("Keys with the rank of three or more is not "
+                                  "supported in lexsort")
 
     # thrust.lexsort() assumes a C-contiguous array
     if not keys.flags.c_contiguous:
-        keys = keys.copy('C')
+        keys = keys.copy("C")
 
     idx_array = cupy.ndarray(keys._shape[1:], dtype=numpy.intp)
     k = keys._shape[0]
@@ -111,7 +111,7 @@ def argsort(a, axis=-1, kind=None):
     .. seealso:: :func:`numpy.argsort`
 
     """
-    if kind is not None and kind != 'stable':
+    if kind is not None and kind != "stable":
         raise ValueError("kind can only be None or 'stable'")
     return a.argsort(axis=axis)
 
@@ -133,7 +133,7 @@ def msort(a):
 
     """
     warnings.warn(
-        'msort is deprecated, use cupy.sort(a, axis=0) instead',
+        "msort is deprecated, use cupy.sort(a, axis=0) instead",
         DeprecationWarning)
     return sort(a, axis=0)
 
@@ -151,10 +151,10 @@ def sort_complex(a):
     .. seealso:: :func:`numpy.sort_complex`
 
     """
-    if a.dtype.char in 'bhBHF':
-        a = a.astype('F')
+    if a.dtype.char in "bhBHF":
+        a = a.astype("F")
     else:
-        a = a.astype('D')
+        a = a.astype("D")
     a.sort()
     return a
 

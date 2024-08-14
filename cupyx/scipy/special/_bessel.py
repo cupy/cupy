@@ -10,51 +10,51 @@ from cupy import _core
 from cupyx.scipy.special._gamma import chbevl_implementation
 
 j0 = _core.create_ufunc(
-    'cupyx_scipy_special_j0', ('f->f', 'd->d'),
-    'out0 = j0(in0)',
-    doc='''Bessel function of the first kind of order 0.
+    "cupyx_scipy_special_j0", ("f->f", "d->d"),
+    "out0 = j0(in0)",
+    doc="""Bessel function of the first kind of order 0.
 
     .. seealso:: :meth:`scipy.special.j0`
 
-    ''')
+    """)
 
 
 j1 = _core.create_ufunc(
-    'cupyx_scipy_special_j1', ('f->f', 'd->d'),
-    'out0 = j1(in0)',
-    doc='''Bessel function of the first kind of order 1.
+    "cupyx_scipy_special_j1", ("f->f", "d->d"),
+    "out0 = j1(in0)",
+    doc="""Bessel function of the first kind of order 1.
 
     .. seealso:: :meth:`scipy.special.j1`
 
-    ''')
+    """)
 
 
 y0 = _core.create_ufunc(
-    'cupyx_scipy_special_y0', ('f->f', 'd->d'),
-    'out0 = y0(in0)',
-    doc='''Bessel function of the second kind of order 0.
+    "cupyx_scipy_special_y0", ("f->f", "d->d"),
+    "out0 = y0(in0)",
+    doc="""Bessel function of the second kind of order 0.
 
     .. seealso:: :meth:`scipy.special.y0`
 
-    ''')
+    """)
 
 
 y1 = _core.create_ufunc(
-    'cupyx_scipy_special_y1', ('f->f', 'd->d'),
-    'out0 = y1(in0)',
-    doc='''Bessel function of the second kind of order 1.
+    "cupyx_scipy_special_y1", ("f->f", "d->d"),
+    "out0 = y1(in0)",
+    doc="""Bessel function of the second kind of order 1.
 
     .. seealso:: :meth:`scipy.special.y1`
 
-    ''')
+    """)
 
 
 # Note: oddly, unlike for y0 or y1, SciPy always returns double for yn
 # dd->d because SciPy will accept 2.0
 yn = _core.create_ufunc(
-    'cupyx_scipy_special_yn', ('id->d', 'dd->d'),
-    'out0 = yn((int)in0, in1)',
-    doc='''Bessel function of the second kind of order n.
+    "cupyx_scipy_special_yn", ("id->d", "dd->d"),
+    "out0 = yn((int)in0, in1)",
+    doc="""Bessel function of the second kind of order n.
 
     Args:
         n (cupy.ndarray): order (integer)
@@ -69,47 +69,47 @@ yn = _core.create_ufunc(
     32-bit integer.
 
     .. seealso:: :meth:`scipy.special.yn`
-    ''')
+    """)
 
 
 i0 = _core.create_ufunc(
-    'cupyx_scipy_special_i0', ('f->f', 'd->d'),
-    'out0 = cyl_bessel_i0(in0)',
-    doc='''Modified Bessel function of order 0.
+    "cupyx_scipy_special_i0", ("f->f", "d->d"),
+    "out0 = cyl_bessel_i0(in0)",
+    doc="""Modified Bessel function of order 0.
 
     .. seealso:: :meth:`scipy.special.i0`
 
-    ''')
+    """)
 
 
 i0e = _core.create_ufunc(
-    'cupyx_scipy_special_i0e', ('f->f', 'd->d'),
-    'out0 = exp(-abs(in0)) * cyl_bessel_i0(in0)',
-    doc='''Exponentially scaled modified Bessel function of order 0.
+    "cupyx_scipy_special_i0e", ("f->f", "d->d"),
+    "out0 = exp(-abs(in0)) * cyl_bessel_i0(in0)",
+    doc="""Exponentially scaled modified Bessel function of order 0.
 
     .. seealso:: :meth:`scipy.special.i0e`
 
-    ''')
+    """)
 
 
 i1 = _core.create_ufunc(
-    'cupyx_scipy_special_i1', ('f->f', 'd->d'),
-    'out0 = cyl_bessel_i1(in0)',
-    doc='''Modified Bessel function of order 1.
+    "cupyx_scipy_special_i1", ("f->f", "d->d"),
+    "out0 = cyl_bessel_i1(in0)",
+    doc="""Modified Bessel function of order 1.
 
     .. seealso:: :meth:`scipy.special.i1`
 
-    ''')
+    """)
 
 
 i1e = _core.create_ufunc(
-    'cupyx_scipy_special_i1e', ('f->f', 'd->d'),
-    'out0 = exp(-abs(in0)) * cyl_bessel_i1(in0)',
-    doc='''Exponentially scaled modified Bessel function of order 1.
+    "cupyx_scipy_special_i1e", ("f->f", "d->d"),
+    "out0 = exp(-abs(in0)) * cyl_bessel_i1(in0)",
+    doc="""Exponentially scaled modified Bessel function of order 1.
 
     .. seealso:: :meth:`scipy.special.i1e`
 
-    ''')
+    """)
 
 
 k_preamble = chbevl_implementation + """
@@ -391,11 +391,11 @@ __device__ float k1f(float x){
 
 
 k0 = _core.create_ufunc(
-    'cupyx_scipy_special_k0',
-    (('f->f', 'out0 = k0f(in0)'), 'd->d'),
-    'out0 = k0(in0)',
+    "cupyx_scipy_special_k0",
+    (("f->f", "out0 = k0f(in0)"), "d->d"),
+    "out0 = k0(in0)",
     preamble=k_preamble,
-    doc='''Modified Bessel function of the second kind of order 0.
+    doc="""Modified Bessel function of the second kind of order 0.
 
     Args:
         x (cupy.ndarray): argument (float)
@@ -405,15 +405,15 @@ k0 = _core.create_ufunc(
 
     .. seealso:: :meth:`scipy.special.k0`
 
-    ''')
+    """)
 
 
 k0e = _core.create_ufunc(
-    'cupyx_scipy_special_k0e',
-    (('f->f', 'out0 = expf(in0) * k0f(in0)'), 'd->d'),
-    'out0 = exp(in0) * k0(in0)',
+    "cupyx_scipy_special_k0e",
+    (("f->f", "out0 = expf(in0) * k0f(in0)"), "d->d"),
+    "out0 = exp(in0) * k0(in0)",
     preamble=k_preamble,
-    doc='''Exponentially scaled modified Bessel function K of order 0
+    doc="""Exponentially scaled modified Bessel function K of order 0
 
     Args:
         x (cupy.ndarray): argument (float)
@@ -423,15 +423,15 @@ k0e = _core.create_ufunc(
 
     .. seealso:: :meth:`scipy.special.k0e`
 
-    ''')
+    """)
 
 
 k1 = _core.create_ufunc(
-    'cupyx_scipy_special_k1',
-    (('f->f', 'out0 = k1f(in0)'), 'd->d'),
-    'out0 = k1(in0)',
+    "cupyx_scipy_special_k1",
+    (("f->f", "out0 = k1f(in0)"), "d->d"),
+    "out0 = k1(in0)",
     preamble=k_preamble,
-    doc='''Modified Bessel function of the second kind of order 1.
+    doc="""Modified Bessel function of the second kind of order 1.
 
     Args:
         x (cupy.ndarray): argument (float)
@@ -441,15 +441,15 @@ k1 = _core.create_ufunc(
 
     .. seealso:: :meth:`scipy.special.k1`
 
-    ''')
+    """)
 
 
 k1e = _core.create_ufunc(
-    'cupyx_scipy_special_k1e',
-    (('f->f', 'out0 = expf(in0) * k1f(in0)'), 'd->d'),
-    'out0 = exp(in0) * k1(in0)',
+    "cupyx_scipy_special_k1e",
+    (("f->f", "out0 = expf(in0) * k1f(in0)"), "d->d"),
+    "out0 = exp(in0) * k1(in0)",
     preamble=k_preamble,
-    doc='''Exponentially scaled modified Bessel function K of order 1
+    doc="""Exponentially scaled modified Bessel function K of order 1
 
     Args:
         x (cupy.ndarray): argument (float)
@@ -459,4 +459,4 @@ k1e = _core.create_ufunc(
 
     .. seealso:: :meth:`scipy.special.k1e`
 
-    ''')
+    """)

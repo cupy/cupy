@@ -299,8 +299,8 @@ zetac_preamble = (polevl_definition+p1evl_definition +
                   _lanczos_preamble+zetac_definition)
 
 zetac = _core.create_ufunc(
-    'cupyx_scipy_special_zetac', ('f->f', 'd->d'),
-    'out0 = zetac(in0)',
+    "cupyx_scipy_special_zetac", ("f->f", "d->d"),
+    "out0 = zetac(in0)",
     preamble=zetac_preamble,
     doc="""Riemann zeta function minus 1.
 

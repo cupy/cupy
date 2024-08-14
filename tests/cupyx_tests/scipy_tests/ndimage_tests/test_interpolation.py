@@ -20,27 +20,27 @@ except ImportError:
     pass
 
 # testing these modes can only be tested against SciPy >= 1.6.0+
-scipy16_modes = ['wrap', 'grid-wrap', 'reflect', 'grid-mirror',
-                 'grid-constant']
+scipy16_modes = ["wrap", "grid-wrap", "reflect", "grid-mirror",
+                 "grid-constant"]
 # these modes are okay to test on older SciPy
-legacy_modes = ['constant', 'nearest', 'mirror']
+legacy_modes = ["constant", "nearest", "mirror"]
 
 
 def _conditional_scipy_version_skip(mode, order):
-    if ((mode in scipy16_modes or (mode != 'mirror' and order > 1)) and
-            (scipy_version < '1.6.0')):
+    if ((mode in scipy16_modes or (mode != "mirror" and order > 1)) and
+            (scipy_version < "1.6.0")):
         pytest.skip(
-            'SciPy >= 1.6.0 needed to test this mode/order combination.')
+            "SciPy >= 1.6.0 needed to test this mode/order combination.")
 
 
 @testing.parameterize(*testing.product({
-    'output': [None, numpy.float64, 'f', float, 'empty'],
-    'order': [0, 1, 2, 3, 4, 5],
-    'mode': ['constant', 'nearest', 'mirror'] + scipy16_modes,
-    'cval': [1.0],
-    'prefilter': [True],
+    "output": [None, numpy.float64, "f", float, "empty"],
+    "order": [0, 1, 2, 3, 4, 5],
+    "mode": ["constant", "nearest", "mirror"] + scipy16_modes,
+    "cval": [1.0],
+    "prefilter": [True],
 }))
-@testing.with_requires('scipy')
+@testing.with_requires("scipy")
 class TestMapCoordinates:
 
     _multiprocess_can_split = True
@@ -48,7 +48,7 @@ class TestMapCoordinates:
     def _map_coordinates(self, xp, scp, a, coordinates):
         _conditional_scipy_version_skip(self.mode, self.order)
         map_coordinates = scp.ndimage.map_coordinates
-        if self.output == 'empty':
+        if self.output == "empty":
             output = xp.empty(coordinates.shape[1:], dtype=a.dtype)
             return_value = map_coordinates(a, coordinates, output, self.order,
                                            self.mode, self.cval,
@@ -60,29 +60,29 @@ class TestMapCoordinates:
                                    self.mode, self.cval, self.prefilter)
 
     @testing.for_float_dtypes(no_float16=True)
-    @testing.numpy_cupy_allclose(atol=1e-4, scipy_name='scp')
+    @testing.numpy_cupy_allclose(atol=1e-4, scipy_name="scp")
     def test_map_coordinates_float(self, xp, scp, dtype):
         a = testing.shaped_random((100, 100), xp, dtype)
         coordinates = testing.shaped_random((a.ndim, 100), xp, dtype)
         return self._map_coordinates(xp, scp, a, coordinates)
 
     @testing.for_complex_dtypes()
-    @testing.numpy_cupy_allclose(atol=1e-4, scipy_name='scp')
-    @testing.with_requires('scipy>=1.6.0')
+    @testing.numpy_cupy_allclose(atol=1e-4, scipy_name="scp")
+    @testing.with_requires("scipy>=1.6.0")
     def test_map_coordinates_complex_float(self, xp, scp, dtype):
         # promote output to a complex dtype
         if self.output == numpy.float64:
             self.output = numpy.complex128
         elif self.output == float:
             self.output = complex
-        elif self.output == 'f':
-            self.output = 'F'
+        elif self.output == "f":
+            self.output = "F"
         a = testing.shaped_random((100, 100), xp, dtype)
         coordinates = testing.shaped_random((a.ndim, 100), xp, xp.float64)
         return self._map_coordinates(xp, scp, a, coordinates)
 
     @testing.for_float_dtypes(no_float16=True)
-    @testing.numpy_cupy_allclose(atol=1e-4, scipy_name='scp')
+    @testing.numpy_cupy_allclose(atol=1e-4, scipy_name="scp")
     def test_map_coordinates_fortran_order(self, xp, scp, dtype):
         a = testing.shaped_random((100, 100), xp, dtype)
         coordinates = testing.shaped_random((a.ndim, 100), xp, dtype)
@@ -91,7 +91,7 @@ class TestMapCoordinates:
         return self._map_coordinates(xp, scp, a, coordinates)
 
     @testing.for_float_dtypes(no_float16=True)
-    @testing.numpy_cupy_allclose(atol=1e-4, scipy_name='scp')
+    @testing.numpy_cupy_allclose(atol=1e-4, scipy_name="scp")
     def test_map_coordinates_float_nd_coords(self, xp, scp, dtype):
         a = testing.shaped_random((100, 100), xp, dtype)
         coordinates = testing.shaped_random((a.ndim, 10, 10), xp, dtype,
@@ -99,12 +99,12 @@ class TestMapCoordinates:
         return self._map_coordinates(xp, scp, a, coordinates)
 
     @testing.for_int_dtypes(no_bool=True)
-    @testing.numpy_cupy_allclose(atol=1e-4, scipy_name='scp')
+    @testing.numpy_cupy_allclose(atol=1e-4, scipy_name="scp")
     def test_map_coordinates_int(self, xp, scp, dtype):
-        if numpy.lib.NumpyVersion(scipy.__version__) < '1.0.0':
-            if dtype in (numpy.dtype('l'), numpy.dtype('q')):
+        if numpy.lib.NumpyVersion(scipy.__version__) < "1.0.0":
+            if dtype in (numpy.dtype("l"), numpy.dtype("q")):
                 dtype = numpy.int64
-            elif dtype in (numpy.dtype('L'), numpy.dtype('Q')):
+            elif dtype in (numpy.dtype("L"), numpy.dtype("Q")):
                 dtype = numpy.uint64
 
         a = testing.shaped_random((100, 100), xp, dtype)
@@ -118,10 +118,10 @@ class TestMapCoordinates:
 
 
 @testing.parameterize(*testing.product({
-    'order': [0, 1, 2, 3, 4, 5],
-    'mode': ['constant', 'nearest', 'mirror'] + scipy16_modes,
+    "order": [0, 1, 2, 3, 4, 5],
+    "mode": ["constant", "nearest", "mirror"] + scipy16_modes,
 }))
-@testing.with_requires('scipy')
+@testing.with_requires("scipy")
 class TestMapCoordinatesHalfInteger:
 
     def _map_coordinates(self, xp, scp, a, coordinates):
@@ -130,7 +130,7 @@ class TestMapCoordinatesHalfInteger:
         return map_coordinates(a, coordinates, None, self.order, self.mode)
 
     @testing.for_float_dtypes(no_float16=True)
-    @testing.numpy_cupy_allclose(atol=1e-4, scipy_name='scp')
+    @testing.numpy_cupy_allclose(atol=1e-4, scipy_name="scp")
     def test_map_coordinates_float(self, xp, scp, dtype):
         # Half integer coordinate rounding test case from:
         # https://github.com/cupy/cupy/issues/4550
@@ -140,16 +140,16 @@ class TestMapCoordinatesHalfInteger:
 
 
 @testing.parameterize(*testing.product({
-    'matrix_shape': [(2,), (2, 2), (2, 3), (3, 3)],
-    'offset': [0.3, [-1.3, 1.3]],
-    'output_shape': [None],
-    'output': [None, numpy.float64, 'empty'],
-    'order': [0, 1, 2, 3, 4, 5],
-    'mode': legacy_modes + scipy16_modes,
-    'cval': [1.0],
-    'prefilter': [False, True],
+    "matrix_shape": [(2,), (2, 2), (2, 3), (3, 3)],
+    "offset": [0.3, [-1.3, 1.3]],
+    "output_shape": [None],
+    "output": [None, numpy.float64, "empty"],
+    "order": [0, 1, 2, 3, 4, 5],
+    "mode": legacy_modes + scipy16_modes,
+    "cval": [1.0],
+    "prefilter": [False, True],
 }))
-@testing.with_requires('scipy')
+@testing.with_requires("scipy")
 class TestAffineTransform:
 
     _multiprocess_can_split = True
@@ -157,14 +157,14 @@ class TestAffineTransform:
     def _affine_transform(self, xp, scp, a, matrix):
         _conditional_scipy_version_skip(self.mode, self.order)
         ver = numpy.lib.NumpyVersion(scipy.__version__)
-        if ver < '1.0.0' and matrix.ndim == 2 and matrix.shape[1] == 3:
+        if ver < "1.0.0" and matrix.ndim == 2 and matrix.shape[1] == 3:
             return xp.empty(0)
 
         if matrix.shape == (3, 3):
             matrix[-1, 0:-1] = 0
             matrix[-1, -1] = 1
         affine_transform = scp.ndimage.affine_transform
-        if self.output == 'empty':
+        if self.output == "empty":
             output = xp.empty_like(a)
             return_value = affine_transform(a, matrix, self.offset,
                                             self.output_shape, output,
@@ -178,15 +178,15 @@ class TestAffineTransform:
                                     self.cval, self.prefilter)
 
     @testing.for_float_dtypes(no_float16=True)
-    @testing.numpy_cupy_allclose(atol=1e-5, scipy_name='scp')
+    @testing.numpy_cupy_allclose(atol=1e-5, scipy_name="scp")
     def test_affine_transform_float(self, xp, scp, dtype):
         a = testing.shaped_random((100, 100), xp, dtype)
         matrix = testing.shaped_random(self.matrix_shape, xp, dtype)
         return self._affine_transform(xp, scp, a, matrix)
 
     @testing.for_complex_dtypes()
-    @testing.numpy_cupy_allclose(rtol=1e-6, atol=1e-5, scipy_name='scp')
-    @testing.with_requires('scipy>=1.6.0')
+    @testing.numpy_cupy_allclose(rtol=1e-6, atol=1e-5, scipy_name="scp")
+    @testing.with_requires("scipy>=1.6.0")
     def test_affine_transform_complex_float(self, xp, scp, dtype):
         if self.output == numpy.float64:
             # must promote output to a complex dtype
@@ -196,7 +196,7 @@ class TestAffineTransform:
         return self._affine_transform(xp, scp, a, matrix)
 
     @testing.for_float_dtypes(no_float16=True)
-    @testing.numpy_cupy_allclose(atol=1e-5, scipy_name='scp')
+    @testing.numpy_cupy_allclose(atol=1e-5, scipy_name="scp")
     def test_affine_transform_fortran_order(self, xp, scp, dtype):
         a = testing.shaped_random((100, 100), xp, dtype)
         a = xp.asfortranarray(a)
@@ -208,19 +208,19 @@ class TestAffineTransform:
         if (runtime.is_hip
                 and self.matrix_shape in [(2,), (2, 2)]
                 and self.order in [2, 3, 4, 5]
-                and self.output in [None, 'empty']
+                and self.output in [None, "empty"]
                 and self.prefilter):
-            pytest.xfail('ROCm/HIP may have a bug')
+            pytest.xfail("ROCm/HIP may have a bug")
 
     @testing.for_int_dtypes(no_bool=True)
-    @testing.numpy_cupy_allclose(atol=1e-5, scipy_name='scp')
+    @testing.numpy_cupy_allclose(atol=1e-5, scipy_name="scp")
     def test_affine_transform_int(self, xp, scp, dtype):
         self._hip_skip_invalid_condition()
 
-        if numpy.lib.NumpyVersion(scipy.__version__) < '1.0.0':
-            if dtype in (numpy.dtype('l'), numpy.dtype('q')):
+        if numpy.lib.NumpyVersion(scipy.__version__) < "1.0.0":
+            if dtype in (numpy.dtype("l"), numpy.dtype("q")):
                 dtype = numpy.int64
-            elif dtype in (numpy.dtype('L'), numpy.dtype('Q')):
+            elif dtype in (numpy.dtype("L"), numpy.dtype("Q")):
                 dtype = numpy.uint64
 
         a = testing.shaped_random((100, 100), xp, dtype)
@@ -233,7 +233,7 @@ class TestAffineTransform:
         return out
 
 
-@testing.with_requires('scipy')
+@testing.with_requires("scipy")
 class TestAffineExceptions:
 
     def test_invalid_affine_ndim(self):
@@ -258,7 +258,7 @@ class TestAffineExceptions:
             with pytest.raises(RuntimeError):
                 ndi.affine_transform(x, xp.eye(x.ndim)[:, :-1])
 
-    @testing.with_requires('scipy>=1.6.0')
+    @testing.with_requires("scipy>=1.6.0")
     def test_invalid_output_dtype(self):
         # real output array with complex input is not allowed
         ndimage_modules = (scipy.ndimage, cupyx.scipy.ndimage)
@@ -270,7 +270,7 @@ class TestAffineExceptions:
 
     def test_invalid_texture_arguments(self):
         if runtime.is_hip:
-            pytest.skip('texture memory not supported yet')
+            pytest.skip("texture memory not supported yet")
 
         aft = cupyx.scipy.ndimage.affine_transform
         x = [cupy.ones((8, ) * n, dtype=cupy.float32) for n in range(1, 5)]
@@ -292,11 +292,11 @@ class TestAffineExceptions:
                     texture_memory=True)
         # wrong output
         with pytest.raises(ValueError):
-            aft(x[2], cupy.eye(3, dtype=cupy.float32), output='wrong',
+            aft(x[2], cupy.eye(3, dtype=cupy.float32), output="wrong",
                 texture_memory=True)
         # wrong mode
-        for m in ['mirror', 'reflect', 'wrap', 'grid-mirror',
-                  'grid-wrap', 'grid-constant', 'opencv']:
+        for m in ["mirror", "reflect", "wrap", "grid-mirror",
+                  "grid-wrap", "grid-constant", "opencv"]:
             with pytest.raises(ValueError):
                 aft(x[2], cupy.eye(3, dtype=cupy.float32), mode=m,
                     texture_memory=True)
@@ -311,16 +311,16 @@ class TestAffineExceptions:
                 texture_memory=True)
 
 
-@pytest.mark.skipif(runtime.is_hip, reason='texture memory not supported yet')
+@pytest.mark.skipif(runtime.is_hip, reason="texture memory not supported yet")
 @testing.parameterize(*testing.product({
-    'output': [None, numpy.float32, 'empty'],
-    'output_shape': [None, 10],
-    'order': [0, 1],
-    'mode': ['constant', 'nearest'],
-    'shape': [(100, 100), (10, 20), (10, 10, 10), (10, 20, 30)],
-    'theta': [0, 90, 180, 270]
+    "output": [None, numpy.float32, "empty"],
+    "output_shape": [None, 10],
+    "order": [0, 1],
+    "mode": ["constant", "nearest"],
+    "shape": [(100, 100), (10, 20), (10, 10, 10), (10, 20, 30)],
+    "theta": [0, 90, 180, 270]
 }))
-@testing.with_requires('scipy')
+@testing.with_requires("scipy")
 class TestAffineTransformTextureMemory:
 
     _multiprocess_can_split = True
@@ -367,7 +367,7 @@ class TestAffineTransformTextureMemory:
         ], numpy.float32))
         return m
 
-    @testing.numpy_cupy_allclose(atol=0.1, scipy_name='scp')
+    @testing.numpy_cupy_allclose(atol=0.1, scipy_name="scp")
     def test_affine_transform_texture_memory(self, xp, scp):
         a = xp.ones(self.shape, dtype=xp.float32)
         center = numpy.divide(numpy.subtract(self.shape, 1), 2)
@@ -377,13 +377,13 @@ class TestAffineTransformTextureMemory:
         elif len(self.shape) == 3:
             matrix = self._3d_rotation_matrix(self.theta, center)
         else:
-            return pytest.xfail('Unsupported shape')
+            return pytest.xfail("Unsupported shape")
 
-        if self.output == 'empty':
+        if self.output == "empty":
             output = xp.empty(self.shape, dtype=xp.float32)
             if self.output_shape:
-                return pytest.skip('This combination is tested in '
-                                   'test_invalid_texture_arguments')
+                return pytest.skip("This combination is tested in "
+                                   "test_invalid_texture_arguments")
         else:
             output = self.output
 
@@ -405,7 +405,7 @@ class TestAffineTransformTextureMemory:
                      mode=self.mode)
 
 
-@testing.with_requires('opencv-python')
+@testing.with_requires("opencv-python")
 class TestAffineTransformOpenCV:
 
     _multiprocess_can_split = True
@@ -419,33 +419,33 @@ class TestAffineTransformOpenCV:
         matrix = testing.shaped_random((2, 3), xp, dtype)
         if xp == cupy:
             return cupyx.scipy.ndimage.affine_transform(a, matrix, order=1,
-                                                        mode='opencv')
+                                                        mode="opencv")
         else:
             return cv2.warpAffine(a, matrix, (a.shape[1], a.shape[0]))
 
 
 @testing.parameterize(*(
     testing.product({
-        'angle': [-10, 1000],
-        'axes': [(1, 0)],
-        'reshape': [False, True],
-        'output': [None, numpy.float64, 'empty'],
-        'order': [0, 1],
-        'mode': legacy_modes,
-        'cval': [1.0],
-        'prefilter': [True],
+        "angle": [-10, 1000],
+        "axes": [(1, 0)],
+        "reshape": [False, True],
+        "output": [None, numpy.float64, "empty"],
+        "order": [0, 1],
+        "mode": legacy_modes,
+        "cval": [1.0],
+        "prefilter": [True],
     }) + testing.product({
-        'angle': [-15],
-        'axes': [(1, 0)],
-        'reshape': [False],
-        'output': [None],
-        'order': [0, 1, 3],
-        'mode': legacy_modes + scipy16_modes,
-        'cval': [1.0],
-        'prefilter': [True],
+        "angle": [-15],
+        "axes": [(1, 0)],
+        "reshape": [False],
+        "output": [None],
+        "order": [0, 1, 3],
+        "mode": legacy_modes + scipy16_modes,
+        "cval": [1.0],
+        "prefilter": [True],
     })
 ))
-@testing.with_requires('scipy')
+@testing.with_requires("scipy")
 class TestRotate:
 
     _multiprocess_can_split = True
@@ -453,7 +453,7 @@ class TestRotate:
     def _rotate(self, xp, scp, a):
         _conditional_scipy_version_skip(self.mode, self.order)
         rotate = scp.ndimage.rotate
-        if self.output == 'empty':
+        if self.output == "empty":
             output = rotate(a, self.angle, self.axes,
                             self.reshape, None, self.order,
                             self.mode, self.cval, self.prefilter)
@@ -468,14 +468,14 @@ class TestRotate:
                           self.mode, self.cval, self.prefilter)
 
     @testing.for_float_dtypes(no_float16=True)
-    @testing.numpy_cupy_allclose(atol=1e-5, scipy_name='scp')
+    @testing.numpy_cupy_allclose(atol=1e-5, scipy_name="scp")
     def test_rotate_float(self, xp, scp, dtype):
         a = testing.shaped_random((10, 10), xp, dtype)
         return self._rotate(xp, scp, a)
 
     @testing.for_complex_dtypes()
-    @testing.numpy_cupy_allclose(atol=1e-5, scipy_name='scp')
-    @testing.with_requires('scipy>=1.6.0')
+    @testing.numpy_cupy_allclose(atol=1e-5, scipy_name="scp")
+    @testing.with_requires("scipy>=1.6.0")
     def test_rotate_complex_float(self, xp, scp, dtype):
         if self.output == numpy.float64:
             self.output = numpy.complex128
@@ -483,7 +483,7 @@ class TestRotate:
         return self._rotate(xp, scp, a)
 
     @testing.for_float_dtypes(no_float16=True)
-    @testing.numpy_cupy_allclose(atol=1e-5, scipy_name='scp')
+    @testing.numpy_cupy_allclose(atol=1e-5, scipy_name="scp")
     def test_rotate_fortran_order(self, xp, scp, dtype):
         a = testing.shaped_random((10, 10), xp, dtype)
         a = xp.asfortranarray(a)
@@ -492,25 +492,25 @@ class TestRotate:
     def _hip_skip_invalid_condition(self):
         if runtime.is_hip:
             if (self.angle in [-10, 1000]
-                    and self.mode in ['constant', 'nearest', 'mirror']
+                    and self.mode in ["constant", "nearest", "mirror"]
                     and self.output == numpy.float64
                     and self.reshape):
-                pytest.xfail('ROCm/HIP may have a bug')
+                pytest.xfail("ROCm/HIP may have a bug")
             if (self.angle == -15
                     and self.mode in [
-                        'nearest', 'grid-wrap', 'reflect', 'grid-mirror']
+                        "nearest", "grid-wrap", "reflect", "grid-mirror"]
                     and self.order == 3):
-                pytest.xfail('ROCm/HIP may have a bug')
+                pytest.xfail("ROCm/HIP may have a bug")
 
     @testing.for_int_dtypes(no_bool=True)
-    @testing.numpy_cupy_allclose(atol=1e-5, scipy_name='scp')
+    @testing.numpy_cupy_allclose(atol=1e-5, scipy_name="scp")
     def test_rotate_int(self, xp, scp, dtype):
         self._hip_skip_invalid_condition()
 
-        if numpy.lib.NumpyVersion(scipy.__version__) < '1.0.0':
-            if dtype in (numpy.dtype('l'), numpy.dtype('q')):
+        if numpy.lib.NumpyVersion(scipy.__version__) < "1.0.0":
+            if dtype in (numpy.dtype("l"), numpy.dtype("q")):
                 dtype = numpy.int64
-            elif dtype in (numpy.dtype('L'), numpy.dtype('Q')):
+            elif dtype in (numpy.dtype("L"), numpy.dtype("Q")):
                 dtype = numpy.uint64
 
         a = testing.shaped_random((10, 10), xp, dtype)
@@ -522,7 +522,7 @@ class TestRotate:
 
 
 # Scipy older than 1.3.0 raises IndexError instead of ValueError
-@testing.with_requires('scipy>=1.3.0')
+@testing.with_requires("scipy>=1.3.0")
 class TestRotateExceptions:
 
     def test_rotate_invalid_plane(self):
@@ -537,25 +537,25 @@ class TestRotateExceptions:
 
 
 @testing.parameterize(
-    {'axes': (-1, -2)},
-    {'axes': (0, 1)},
-    {'axes': (2, 0)},
-    {'axes': (-2, 2)},
+    {"axes": (-1, -2)},
+    {"axes": (0, 1)},
+    {"axes": (2, 0)},
+    {"axes": (-2, 2)},
 )
-@testing.with_requires('scipy')
+@testing.with_requires("scipy")
 class TestRotateAxes:
 
     _multiprocess_can_split = True
 
     @testing.for_float_dtypes(no_float16=True)
-    @testing.numpy_cupy_allclose(atol=1e-5, scipy_name='scp')
+    @testing.numpy_cupy_allclose(atol=1e-5, scipy_name="scp")
     def test_rotate_axes(self, xp, scp, dtype):
         a = testing.shaped_random((10, 10, 10), xp, dtype)
         rotate = scp.ndimage.rotate
         return rotate(a, 1, self.axes, order=1)
 
 
-@testing.with_requires('opencv-python')
+@testing.with_requires("opencv-python")
 class TestRotateOpenCV:
 
     _multiprocess_can_split = True
@@ -566,7 +566,7 @@ class TestRotateOpenCV:
         a = testing.shaped_random((100, 100), xp, dtype)
         if xp == cupy:
             return cupyx.scipy.ndimage.rotate(a, 10, reshape=False,
-                                              order=1, mode='opencv')
+                                              order=1, mode="opencv")
         else:
             matrix = cv2.getRotationMatrix2D((49.5, 49.5), 10, 1)
             return cv2.warpAffine(a, matrix, (a.shape[1], a.shape[0]))
@@ -574,22 +574,22 @@ class TestRotateOpenCV:
 
 @testing.parameterize(*(
     testing.product({
-        'shift': [0.1, -10, (5, -5)],
-        'output': [None, numpy.float64, 'empty'],
-        'order': [0, 1, 3],
-        'mode': legacy_modes + scipy16_modes,
-        'cval': [1.0],
-        'prefilter': [True],
+        "shift": [0.1, -10, (5, -5)],
+        "output": [None, numpy.float64, "empty"],
+        "order": [0, 1, 3],
+        "mode": legacy_modes + scipy16_modes,
+        "cval": [1.0],
+        "prefilter": [True],
     }) + testing.product({
-        'shift': [0.1, ],
-        'output': [None, numpy.float64, 'empty'],
-        'order': [0, 1, 3],
-        'mode': ['constant', ],
-        'cval': [cupy.nan, cupy.inf, -cupy.inf],
-        'prefilter': [True],
+        "shift": [0.1, ],
+        "output": [None, numpy.float64, "empty"],
+        "order": [0, 1, 3],
+        "mode": ["constant", ],
+        "cval": [cupy.nan, cupy.inf, -cupy.inf],
+        "prefilter": [True],
     })
 ))
-@testing.with_requires('scipy')
+@testing.with_requires("scipy")
 class TestShift:
 
     _multiprocess_can_split = True
@@ -597,7 +597,7 @@ class TestShift:
     def _shift(self, xp, scp, a):
         shift = scp.ndimage.shift
         _conditional_scipy_version_skip(self.mode, self.order)
-        if self.output == 'empty':
+        if self.output == "empty":
             output = xp.empty_like(a)
             return_value = shift(a, self.shift, output, self.order,
                                  self.mode, self.cval, self.prefilter)
@@ -608,14 +608,14 @@ class TestShift:
                          self.mode, self.cval, self.prefilter)
 
     @testing.for_float_dtypes(no_float16=True)
-    @testing.numpy_cupy_allclose(atol=1e-5, scipy_name='scp')
+    @testing.numpy_cupy_allclose(atol=1e-5, scipy_name="scp")
     def test_shift_float(self, xp, scp, dtype):
         a = testing.shaped_random((100, 100), xp, dtype)
         return self._shift(xp, scp, a)
 
     @testing.for_complex_dtypes()
-    @testing.numpy_cupy_allclose(atol=1e-5, scipy_name='scp')
-    @testing.with_requires('scipy>=1.6.0')
+    @testing.numpy_cupy_allclose(atol=1e-5, scipy_name="scp")
+    @testing.with_requires("scipy>=1.6.0")
     def test_shift_complex_float(self, xp, scp, dtype):
         if self.output == numpy.float64:
             self.output = numpy.complex128
@@ -623,7 +623,7 @@ class TestShift:
         return self._shift(xp, scp, a)
 
     @testing.for_float_dtypes(no_float16=True)
-    @testing.numpy_cupy_allclose(atol=1e-5, scipy_name='scp')
+    @testing.numpy_cupy_allclose(atol=1e-5, scipy_name="scp")
     def test_shift_fortran_order(self, xp, scp, dtype):
         a = testing.shaped_random((100, 100), xp, dtype)
         a = xp.asfortranarray(a)
@@ -633,25 +633,25 @@ class TestShift:
         if (runtime.is_hip
                 and self.cval == 1.0
                 and self.order == 3
-                and self.output in [None, 'empty']
+                and self.output in [None, "empty"]
                 and self.shift == 0.1):
-            pytest.xfail('ROCm/HIP may have a bug')
+            pytest.xfail("ROCm/HIP may have a bug")
 
     @testing.for_int_dtypes(no_bool=True)
-    @testing.numpy_cupy_allclose(atol=1e-5, scipy_name='scp')
+    @testing.numpy_cupy_allclose(atol=1e-5, scipy_name="scp")
     def test_shift_int(self, xp, scp, dtype):
         self._hip_skip_invalid_condition()
 
-        if self.mode == 'constant' and not xp.isfinite(self.cval):
-            if self.output is None or self.output == 'empty':
+        if self.mode == "constant" and not xp.isfinite(self.cval):
+            if self.output is None or self.output == "empty":
                 # Non-finite cval with integer output array is not supported
                 # CuPy exception is tested in TestInterpolationInvalidCval
                 return xp.asarray([])
 
-        if numpy.lib.NumpyVersion(scipy.__version__) < '1.0.0':
-            if dtype in (numpy.dtype('l'), numpy.dtype('q')):
+        if numpy.lib.NumpyVersion(scipy.__version__) < "1.0.0":
+            if dtype in (numpy.dtype("l"), numpy.dtype("q")):
                 dtype = numpy.int64
-            elif dtype in (numpy.dtype('L'), numpy.dtype('Q')):
+            elif dtype in (numpy.dtype("L"), numpy.dtype("Q")):
                 dtype = numpy.uint64
 
         a = testing.shaped_random((100, 100), xp, dtype)
@@ -664,15 +664,15 @@ class TestShift:
 
 # non-finite cval with integer valued output is not allowed for CuPy
 @testing.parameterize(*testing.product({
-    'output': [None, numpy.float64, numpy.int32, 'empty'],
-    'order': [0, 1],
-    'mode': ['constant', 'nearest'],
-    'cval': [cupy.nan, cupy.inf, -cupy.inf],
+    "output": [None, numpy.float64, numpy.int32, "empty"],
+    "order": [0, 1],
+    "mode": ["constant", "nearest"],
+    "cval": [cupy.nan, cupy.inf, -cupy.inf],
 }))
 class TestInterpolationInvalidCval:
 
     def _prep_output(self, a):
-        if self.output == 'empty':
+        if self.output == "empty":
             return cupy.zeros_like(a)
         return self.output
 
@@ -681,7 +681,7 @@ class TestInterpolationInvalidCval:
         a = cupy.ones((32,), dtype=dtype)
         shift = cupyx.scipy.ndimage.shift
         output = self._prep_output(a)
-        if _util._is_integer_output(output, a) and self.mode == 'constant':
+        if _util._is_integer_output(output, a) and self.mode == "constant":
             with pytest.raises(NotImplementedError):
                 shift(a, 1, output=output, order=self.order, mode=self.mode,
                       cval=self.cval)
@@ -694,7 +694,7 @@ class TestInterpolationInvalidCval:
         a = cupy.ones((32,), dtype=dtype)
         zoom = cupyx.scipy.ndimage.zoom
         output = self._prep_output(a)
-        if _util._is_integer_output(output, a) and self.mode == 'constant':
+        if _util._is_integer_output(output, a) and self.mode == "constant":
             with pytest.raises(NotImplementedError):
                 # zoom of 1.0 to keep same shape
                 zoom(a, 1, output=output, order=self.order, mode=self.mode,
@@ -708,7 +708,7 @@ class TestInterpolationInvalidCval:
         a = cupy.ones((16, 16), dtype=dtype)
         rotate = cupyx.scipy.ndimage.rotate
         output = self._prep_output(a)
-        if _util._is_integer_output(output, a) and self.mode == 'constant':
+        if _util._is_integer_output(output, a) and self.mode == "constant":
             with pytest.raises(NotImplementedError):
                 # rotate by 0 to keep same shape
                 rotate(a, 0, output=output, order=self.order, mode=self.mode,
@@ -723,7 +723,7 @@ class TestInterpolationInvalidCval:
         affine = cupy.eye(2)
         affine_transform = cupyx.scipy.ndimage.affine_transform
         output = self._prep_output(a)
-        if _util._is_integer_output(output, a) and self.mode == 'constant':
+        if _util._is_integer_output(output, a) and self.mode == "constant":
             with pytest.raises(NotImplementedError):
                 affine_transform(a, affine, output=output, order=self.order,
                                  mode=self.mode, cval=self.cval)
@@ -737,7 +737,7 @@ class TestInterpolationInvalidCval:
         coords = cupy.arange(32)[cupy.newaxis, :] + 2.5
         map_coordinates = cupyx.scipy.ndimage.map_coordinates
         output = self._prep_output(a)
-        if _util._is_integer_output(output, a) and self.mode == 'constant':
+        if _util._is_integer_output(output, a) and self.mode == "constant":
             with pytest.raises(NotImplementedError):
                 map_coordinates(a, coords, output=output, order=self.order,
                                 mode=self.mode, cval=self.cval)
@@ -746,7 +746,7 @@ class TestInterpolationInvalidCval:
                             mode=self.mode, cval=self.cval)
 
 
-@testing.with_requires('opencv-python')
+@testing.with_requires("opencv-python")
 class TestShiftOpenCV:
 
     _multiprocess_can_split = True
@@ -758,21 +758,21 @@ class TestShiftOpenCV:
         shift = testing.shaped_random((2,), xp, dtype)
         if xp == cupy:
             return cupyx.scipy.ndimage.shift(a, shift, order=1,
-                                             mode='opencv')
+                                             mode="opencv")
         else:
             matrix = numpy.array([[1, 0, shift[1]], [0, 1, shift[0]]])
             return cv2.warpAffine(a, matrix, (a.shape[1], a.shape[0]))
 
 
 @testing.parameterize(*testing.product({
-    'zoom': [0.1, 10, (0.1, 10)],
-    'output': [None, numpy.float64, 'empty'],
-    'order': [0, 1],
-    'mode': legacy_modes,
-    'cval': [1.0],
-    'prefilter': [True],
+    "zoom": [0.1, 10, (0.1, 10)],
+    "output": [None, numpy.float64, "empty"],
+    "order": [0, 1],
+    "mode": legacy_modes,
+    "cval": [1.0],
+    "prefilter": [True],
 }))
-@testing.with_requires('scipy')
+@testing.with_requires("scipy")
 class TestZoom:
 
     _multiprocess_can_split = True
@@ -780,7 +780,7 @@ class TestZoom:
     def _zoom(self, xp, scp, a):
         _conditional_scipy_version_skip(self.mode, self.order)
         zoom = scp.ndimage.zoom
-        if self.output == 'empty':
+        if self.output == "empty":
             output = zoom(a, self.zoom, None, self.order,
                           self.mode, self.cval, self.prefilter)
             return_value = zoom(a, self.zoom, output, self.order,
@@ -792,14 +792,14 @@ class TestZoom:
                         self.mode, self.cval, self.prefilter)
 
     @testing.for_float_dtypes(no_float16=True)
-    @testing.numpy_cupy_allclose(atol=1e-5, scipy_name='scp')
+    @testing.numpy_cupy_allclose(atol=1e-5, scipy_name="scp")
     def test_zoom_float(self, xp, scp, dtype):
         a = testing.shaped_random((100, 100), xp, dtype)
         return self._zoom(xp, scp, a)
 
     @testing.for_complex_dtypes()
-    @testing.numpy_cupy_allclose(atol=1e-5, scipy_name='scp')
-    @testing.with_requires('scipy>=1.6.0')
+    @testing.numpy_cupy_allclose(atol=1e-5, scipy_name="scp")
+    @testing.with_requires("scipy>=1.6.0")
     def test_zoom_complex_float(self, xp, scp, dtype):
         if self.output == numpy.float64:
             self.output = numpy.complex128
@@ -807,19 +807,19 @@ class TestZoom:
         return self._zoom(xp, scp, a)
 
     @testing.for_float_dtypes(no_float16=True)
-    @testing.numpy_cupy_allclose(atol=1e-5, scipy_name='scp')
+    @testing.numpy_cupy_allclose(atol=1e-5, scipy_name="scp")
     def test_zoom_fortran_order(self, xp, scp, dtype):
         a = testing.shaped_random((100, 100), xp, dtype)
         a = xp.asfortranarray(a)
         return self._zoom(xp, scp, a)
 
     @testing.for_int_dtypes(no_bool=True)
-    @testing.numpy_cupy_allclose(atol=1e-5, scipy_name='scp')
+    @testing.numpy_cupy_allclose(atol=1e-5, scipy_name="scp")
     def test_zoom_int(self, xp, scp, dtype):
-        if numpy.lib.NumpyVersion(scipy.__version__) < '1.0.0':
-            if dtype in (numpy.dtype('l'), numpy.dtype('q')):
+        if numpy.lib.NumpyVersion(scipy.__version__) < "1.0.0":
+            if dtype in (numpy.dtype("l"), numpy.dtype("q")):
                 dtype = numpy.int64
-            elif dtype in (numpy.dtype('L'), numpy.dtype('Q')):
+            elif dtype in (numpy.dtype("L"), numpy.dtype("Q")):
                 dtype = numpy.uint64
 
         a = testing.shaped_random((100, 100), xp, dtype)
@@ -831,9 +831,9 @@ class TestZoom:
 
 
 @testing.parameterize(*testing.product({
-    'shape': [(2, 3), (4, 4)],
-    'zoom': [(1, 1), (3, 5), (8, 2), (8, 8)],
-    'mode': ['nearest', 'reflect', 'mirror', 'grid-wrap', 'grid-constant'],
+    "shape": [(2, 3), (4, 4)],
+    "zoom": [(1, 1), (3, 5), (8, 2), (8, 8)],
+    "mode": ["nearest", "reflect", "mirror", "grid-wrap", "grid-constant"],
 }))
 class TestZoomOrder0IntegerGrid():
 
@@ -852,17 +852,17 @@ class TestZoomOrder0IntegerGrid():
 
 
 @testing.parameterize(*testing.product({
-    'shape': [(5, 5, 2)],
-    'zoom': [(2, 2, 0.5)],  # selected to give output.shape[-1] == 1
-    'mode': legacy_modes + scipy16_modes,
-    'order': [0, 1, 2, 3, 4, 5],
-    'grid_mode': [False, True],
+    "shape": [(5, 5, 2)],
+    "zoom": [(2, 2, 0.5)],  # selected to give output.shape[-1] == 1
+    "mode": legacy_modes + scipy16_modes,
+    "order": [0, 1, 2, 3, 4, 5],
+    "grid_mode": [False, True],
 }))
 class TestZoomOutputSize1():
 
     @testing.for_float_dtypes(no_float16=True)
-    @testing.numpy_cupy_allclose(atol=1e-5, scipy_name='scp')
-    @testing.with_requires('scipy>=1.6.0')
+    @testing.numpy_cupy_allclose(atol=1e-5, scipy_name="scp")
+    @testing.with_requires("scipy>=1.6.0")
     def test_zoom_output_size1(self, xp, scp, dtype):
         x = xp.zeros(self.shape, dtype=dtype)
         x[1, 1, 1] = 1
@@ -871,10 +871,10 @@ class TestZoomOutputSize1():
 
 
 @testing.parameterize(
-    {'zoom': 3},
-    {'zoom': 0.3},
+    {"zoom": 3},
+    {"zoom": 0.3},
 )
-@testing.with_requires('opencv-python')
+@testing.with_requires("opencv-python")
 class TestZoomOpenCV:
 
     _multiprocess_can_split = True
@@ -885,7 +885,7 @@ class TestZoomOpenCV:
         a = testing.shaped_random((100, 100), xp, dtype)
         if xp == cupy:
             return cupyx.scipy.ndimage.zoom(a, self.zoom, order=1,
-                                            mode='opencv')
+                                            mode="opencv")
         else:
             output_shape = numpy.rint(numpy.multiply(a.shape, self.zoom))
             return cv2.resize(a, tuple(output_shape.astype(int)))
@@ -896,7 +896,7 @@ class TestZoomOpenCV:
         a = testing.shaped_random((100, 100, 1), xp, dtype)
         if xp == cupy:
             return cupyx.scipy.ndimage.zoom(a, (self.zoom, self.zoom, 1),
-                                            order=1, mode='opencv')
+                                            order=1, mode="opencv")
         else:
             output_shape = numpy.rint(numpy.multiply(a.shape[:2], self.zoom))
             return numpy.expand_dims(
@@ -905,27 +905,27 @@ class TestZoomOpenCV:
 
 @testing.parameterize(*testing.product({
     # these 3 modes have analytical spline boundary conditions
-    'mode': ['mirror', 'grid-wrap', 'reflect'],
-    'order': [0, 1, 2, 3, 4, 5],
-    'dtype': [numpy.uint8, numpy.float64],
-    'output': [numpy.float64, numpy.float32],
-    'axis': [0, 1, 2, -1],
+    "mode": ["mirror", "grid-wrap", "reflect"],
+    "order": [0, 1, 2, 3, 4, 5],
+    "dtype": [numpy.uint8, numpy.float64],
+    "output": [numpy.float64, numpy.float32],
+    "axis": [0, 1, 2, -1],
 }))
-@testing.with_requires('scipy')
+@testing.with_requires("scipy")
 class TestSplineFilter1d:
-    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name="scp")
     def test_spline_filter1d(self, xp, scp):
-        if self.mode == 'grid-wrap' and scipy_version < '1.6.0':
-            pytest.skip('testing mode grid-wrap requires scipy >= 1.6.0')
+        if self.mode == "grid-wrap" and scipy_version < "1.6.0":
+            pytest.skip("testing mode grid-wrap requires scipy >= 1.6.0")
         x = testing.shaped_random((16, 12, 11), dtype=self.dtype, xp=xp)
         return scp.ndimage.spline_filter1d(x, order=self.order, axis=self.axis,
                                            output=self.output, mode=self.mode)
 
-    @testing.for_CF_orders(name='array_order')
-    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
+    @testing.for_CF_orders(name="array_order")
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name="scp")
     def test_spline_filter1d_output(self, xp, scp, array_order):
-        if self.mode == 'grid-wrap' and scipy_version < '1.6.0':
-            pytest.skip('testing mode grid-wrap requires scipy >= 1.6.0')
+        if self.mode == "grid-wrap" and scipy_version < "1.6.0":
+            pytest.skip("testing mode grid-wrap requires scipy >= 1.6.0")
         x = testing.shaped_random((16, 12, 11), dtype=self.dtype, xp=xp,
                                   order=array_order)
         output = xp.empty(x.shape, dtype=self.output, order=array_order)
@@ -936,14 +936,14 @@ class TestSplineFilter1d:
 
 # See #5537
 @testing.slow
-@testing.with_requires('scipy')
+@testing.with_requires("scipy")
 class TestSplineFilter1dLargeArray:
 
-    @pytest.mark.parametrize('mode', ['mirror', 'grid-wrap', 'reflect'])
-    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
+    @pytest.mark.parametrize("mode", ["mirror", "grid-wrap", "reflect"])
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name="scp")
     def test_spline_filter1d_large_array(self, xp, scp, mode):
-        if mode == 'grid-wrap' and scipy_version < '1.6.0':
-            pytest.skip('testing mode grid-wrap requires scipy >= 1.6.0')
+        if mode == "grid-wrap" and scipy_version < "1.6.0":
+            pytest.skip("testing mode grid-wrap requires scipy >= 1.6.0")
         # Test input that cannot be indexed by int32 in bytes, i.e.
         # x.size * dtype.itemsize >= 2 ** 31
         x = xp.empty((2**20, 2**9), numpy.float32)
@@ -956,17 +956,17 @@ class TestSplineFilter1dLargeArray:
 
 @testing.parameterize(*testing.product({
     # these 3 modes have analytical spline boundary conditions
-    'mode': ['mirror', 'grid-wrap', 'reflect'],
-    'order': [0, 1, 2, 3, 4, 5],
-    'dtype': [numpy.uint8, numpy.float64],
-    'output': [numpy.float64, numpy.float32],
+    "mode": ["mirror", "grid-wrap", "reflect"],
+    "order": [0, 1, 2, 3, 4, 5],
+    "dtype": [numpy.uint8, numpy.float64],
+    "output": [numpy.float64, numpy.float32],
 }))
-@testing.with_requires('scipy')
+@testing.with_requires("scipy")
 class TestSplineFilter:
-    @testing.numpy_cupy_allclose(atol=1e-4, rtol=1e-4, scipy_name='scp')
+    @testing.numpy_cupy_allclose(atol=1e-4, rtol=1e-4, scipy_name="scp")
     def test_spline_filter(self, xp, scp):
-        if self.mode == 'grid-wrap' and scipy_version < '1.6.0':
-            pytest.skip('testing mode grid-wrap requires scipy >= 1.6.0')
+        if self.mode == "grid-wrap" and scipy_version < "1.6.0":
+            pytest.skip("testing mode grid-wrap requires scipy >= 1.6.0")
         x = testing.shaped_random((16, 12, 11), dtype=self.dtype, xp=xp)
         if self.order < 2:
             with pytest.raises(RuntimeError):
@@ -976,11 +976,11 @@ class TestSplineFilter:
         return scp.ndimage.spline_filter(x, order=self.order,
                                          output=self.output, mode=self.mode)
 
-    @testing.for_CF_orders(name='array_order')
-    @testing.numpy_cupy_allclose(atol=1e-4, rtol=1e-4, scipy_name='scp')
+    @testing.for_CF_orders(name="array_order")
+    @testing.numpy_cupy_allclose(atol=1e-4, rtol=1e-4, scipy_name="scp")
     def test_spline_filter_with_output(self, xp, scp, array_order):
-        if self.mode == 'grid-wrap' and scipy_version < '1.6.0':
-            pytest.skip('testing mode grid-wrap requires scipy >= 1.6.0')
+        if self.mode == "grid-wrap" and scipy_version < "1.6.0":
+            pytest.skip("testing mode grid-wrap requires scipy >= 1.6.0")
         x = testing.shaped_random((16, 12, 11), dtype=self.dtype, xp=xp,
                                   order=array_order)
         output = xp.empty(x.shape, dtype=self.output, order=array_order)
@@ -995,26 +995,26 @@ class TestSplineFilter:
 
 
 @testing.parameterize(*testing.product({
-    'mode': ['mirror', 'wrap', 'reflect'],
-    'order': [2, 3, 4, 5],
-    'dtype': [numpy.complex64, numpy.complex128],
-    'output': [numpy.complex64, numpy.complex128],
+    "mode": ["mirror", "wrap", "reflect"],
+    "order": [2, 3, 4, 5],
+    "dtype": [numpy.complex64, numpy.complex128],
+    "output": [numpy.complex64, numpy.complex128],
 }))
-@testing.with_requires('scipy')
+@testing.with_requires("scipy")
 class TestSplineFilterComplex:
 
-    @testing.with_requires('scipy>=1.6')
-    @testing.numpy_cupy_allclose(atol=1e-4, rtol=1e-4, scipy_name='scp')
+    @testing.with_requires("scipy>=1.6")
+    @testing.numpy_cupy_allclose(atol=1e-4, rtol=1e-4, scipy_name="scp")
     def test_spline_filter_complex(self, xp, scp):
         x = testing.shaped_random((16, 12, 11), dtype=self.dtype, xp=xp)
         return scp.ndimage.spline_filter(x, order=self.order,
                                          output=self.output, mode=self.mode)
 
     # the following test case is for SciPy versions lacking complex support
-    @testing.with_requires('scipy<1.6')
+    @testing.with_requires("scipy<1.6")
     def test_spline_filter_complex2(self):
-        if self.mode == 'wrap':
-            pytest.skip('mode cannot be tested against SciPy < 1.6')
+        if self.mode == "wrap":
+            pytest.skip("mode cannot be tested against SciPy < 1.6")
         cpu_func = scipy.ndimage.spline_filter
         gpu_func = cupyx.scipy.ndimage.spline_filter
         x = testing.shaped_random((16, 12, 11), dtype=self.dtype, xp=numpy)

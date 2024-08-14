@@ -11,4 +11,4 @@ try:
 except ImportError as e:
     available = False
     from cupy._environment import _preload_warning
-    _preload_warning('cutensor', e)
+    _preload_warning("cutensor", e)

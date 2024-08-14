@@ -9,7 +9,7 @@ from cupyx.distributed import _store
 nccl_available = nccl.available
 
 
-@pytest.mark.skipif(not nccl_available, reason='nccl is not installed')
+@pytest.mark.skipif(not nccl_available, reason="nccl is not installed")
 class TestTCPStore(unittest.TestCase):
 
     @_condition.retry(10)
@@ -18,10 +18,10 @@ class TestTCPStore(unittest.TestCase):
         store.run()
         try:
             proxy = _store.TCPStoreProxy()
-            proxy['test-value'] = 1234
-            assert proxy['test-value'] == 1234
-            proxy['test-bytes'] = b'123\x00123'
-            assert proxy['test-bytes'] == b'123\x00123'
+            proxy["test-value"] = 1234
+            assert proxy["test-value"] == 1234
+            proxy["test-bytes"] = b"123\x00123"
+            assert proxy["test-bytes"] == b"123\x00123"
         finally:
             store.stop()
 
@@ -32,7 +32,7 @@ class TestTCPStore(unittest.TestCase):
             store.run()
             proxy = _store.TCPStoreProxy()
             with pytest.raises(ValueError):
-                proxy['test-value'] = 1234.0
+                proxy["test-value"] = 1234.0
             with pytest.raises(ValueError):
                 proxy[123] = 1234
             with pytest.raises(ValueError):

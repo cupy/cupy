@@ -125,21 +125,21 @@ def sliding_window_view(x, window_shape, axis=None, *,
     window_shape_array = _cupy.array(window_shape)
     for dim in window_shape_array:
         if dim < 0:
-            raise ValueError('`window_shape` cannot contain negative values')
+            raise ValueError("`window_shape` cannot contain negative values")
 
     if axis is None:
         axis = tuple(range(x.ndim))
         if len(window_shape) != len(axis):
-            raise ValueError(f'Since axis is `None`, must provide '
-                             f'window_shape for all dimensions of `x`; '
-                             f'got {len(window_shape)} window_shape elements '
-                             f'and `x.ndim` is {x.ndim}.')
+            raise ValueError(f"Since axis is `None`, must provide "
+                             f"window_shape for all dimensions of `x`; "
+                             f"got {len(window_shape)} window_shape elements "
+                             f"and `x.ndim` is {x.ndim}.")
     else:
         axis = _cupy._core.internal._normalize_axis_indices(axis, x.ndim)
         if len(window_shape) != len(axis):
-            raise ValueError(f'Must provide matching length window_shape and '
-                             f'axis; got {len(window_shape)} window_shape '
-                             f'elements and {len(axis)} axes elements.')
+            raise ValueError(f"Must provide matching length window_shape and "
+                             f"axis; got {len(window_shape)} window_shape "
+                             f"elements and {len(axis)} axes elements.")
 
     out_strides = x.strides + tuple(x.strides[ax] for ax in axis)
 
@@ -148,7 +148,7 @@ def sliding_window_view(x, window_shape, axis=None, *,
     for ax, dim in zip(axis, window_shape):
         if x_shape_trimmed[ax] < dim:
             raise ValueError(
-                'window shape cannot be larger than input array shape')
+                "window shape cannot be larger than input array shape")
         x_shape_trimmed[ax] -= dim - 1
     out_shape = tuple(x_shape_trimmed) + window_shape
     return as_strided(x, strides=out_strides, shape=out_shape)

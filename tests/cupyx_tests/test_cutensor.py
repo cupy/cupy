@@ -15,13 +15,13 @@ if ct.available:
 
 
 @testing.parameterize(
-    {'dtype': numpy.float16, 'tol': 3e-3},
-    {'dtype': numpy.float32, 'tol': 1e-6},
-    {'dtype': numpy.float64, 'tol': 1e-12},
-    {'dtype': numpy.complex64, 'tol': 1e-6},
-    {'dtype': numpy.complex128, 'tol': 1e-12},
+    {"dtype": numpy.float16, "tol": 3e-3},
+    {"dtype": numpy.float32, "tol": 1e-6},
+    {"dtype": numpy.float64, "tol": 1e-12},
+    {"dtype": numpy.complex64, "tol": 1e-6},
+    {"dtype": numpy.complex128, "tol": 1e-12},
 )
-@pytest.mark.skipif(not ct.available, reason='cuTensor is unavailable')
+@pytest.mark.skipif(not ct.available, reason="cuTensor is unavailable")
 class TestCuTensor:
 
     @pytest.fixture(autouse=True)
@@ -32,9 +32,9 @@ class TestCuTensor:
             (40, 30, 20), cupy, self.dtype, seed=1)
         self.c = testing.shaped_random(
             (30, 20, 40), cupy, self.dtype, seed=2)
-        self.mode_a = ('y', 'z', 'x')
-        self.mode_b = ('z', 'x', 'y')
-        self.mode_c = ('x', 'y', 'z')
+        self.mode_a = ("y", "z", "x")
+        self.mode_b = ("z", "x", "y")
+        self.mode_c = ("x", "y", "z")
         self.alpha = 1.1
         self.beta = 1.2
         self.gamma = 1.3
@@ -113,7 +113,7 @@ class TestCuTensor:
     def test_contraction(self):
         compute_capability = int(device.get_compute_capability())
         if compute_capability < 70 and self.dtype == numpy.float16:
-            pytest.skip('Not supported.')
+            pytest.skip("Not supported.")
 
         d = cutensor.contraction(
             self.alpha, self.a, self.mode_a,
@@ -131,14 +131,14 @@ class TestCuTensor:
 
     def test_reduction(self):
         if self.dtype == numpy.float16:
-            pytest.skip('Not supported.')
+            pytest.skip("Not supported.")
 
         c = testing.shaped_random((30,), cupy, self.dtype, seed=2)
         c_orig = c.copy()
 
         d = cutensor.reduction(
             self.alpha, self.a, self.mode_a,
-            self.beta, c, ('x',)
+            self.beta, c, ("x",)
         )
 
         assert c is d
@@ -150,18 +150,18 @@ class TestCuTensor:
         )
 
 
-@pytest.mark.skipif(not ct.available, reason='cuTensor is unavailable')
+@pytest.mark.skipif(not ct.available, reason="cuTensor is unavailable")
 class TestMode:
 
     def test_create_mode_int(self):
         m = cutensor.create_mode(10, 11, 12)
         assert m.ndim == 3
-        assert repr(m) == 'mode(10, 11, 12)'
+        assert repr(m) == "mode(10, 11, 12)"
 
     def test_create_mode_ascii(self):
-        m = cutensor.create_mode('x', 'y')
+        m = cutensor.create_mode("x", "y")
         assert m.ndim == 2
-        assert repr(m) == 'mode(120, 121)'
+        assert repr(m) == "mode(120, 121)"
 
     def test_mode_compare(self):
         m1 = cutensor.create_mode(10, 11, 12)
@@ -174,15 +174,15 @@ class TestMode:
         assert m1.data != m2.data
 
 
-@pytest.mark.skipif(not ct.available, reason='cuTensor is unavailable')
+@pytest.mark.skipif(not ct.available, reason="cuTensor is unavailable")
 class TestScalar:
 
     def test_create(self):
         s = cutensor._Scalar(10, cupy.float32)
-        assert repr(s) == 'scalar(10.0, dtype=float32)'
+        assert repr(s) == "scalar(10.0, dtype=float32)"
 
 
-@pytest.mark.skipif(not ct.available, reason='cuTensor is unavailable')
+@pytest.mark.skipif(not ct.available, reason="cuTensor is unavailable")
 class TestCuTensorDescriptor:
 
     @pytest.fixture(autouse=True)
@@ -193,9 +193,9 @@ class TestCuTensorDescriptor:
             (40, 30, 20), cupy, numpy.float32, seed=1)
         self.c = testing.shaped_random(
             (30, 20, 40), cupy, numpy.float32, seed=2)
-        self.mode_a = ('y', 'z', 'x')
-        self.mode_b = ('z', 'x', 'y')
-        self.mode_c = ('x', 'y', 'z')
+        self.mode_a = ("y", "z", "x")
+        self.mode_b = ("z", "x", "y")
+        self.mode_c = ("x", "y", "z")
         self.alpha = 1.1
         self.beta = 1.2
         self.gamma = 1.3
@@ -240,7 +240,7 @@ class TestCuTensorDescriptor:
 
         d = cutensor.reduction(
             self.alpha, self.a, self.mode_a,
-            self.beta, c, ('x',),
+            self.beta, c, ("x",),
             op_A=ct.OP_COS, op_C=ct.OP_TANH,
             op_reduce=ct.OP_MAX
         )
@@ -255,15 +255,15 @@ class TestCuTensorDescriptor:
 
 
 @testing.parameterize(*testing.product({
-    'dtype_combo': ['eee', 'fff', 'ddd', 'FFF', 'DDD', 'dDD', 'DdD'],
-    'compute_type_hint': [None, 'down-convert', 'TF32'],
-    'shape': [(40, 20, 20)],  # let last two dim be the same for testing cache
-    'alpha': [1.0],
-    'beta': [0.0, 1.0],
+    "dtype_combo": ["eee", "fff", "ddd", "FFF", "DDD", "dDD", "DdD"],
+    "compute_type_hint": [None, "down-convert", "TF32"],
+    "shape": [(40, 20, 20)],  # let last two dim be the same for testing cache
+    "alpha": [1.0],
+    "beta": [0.0, 1.0],
 }))
-@pytest.mark.skipif(not ct.available, reason='cuTensor is unavailable')
+@pytest.mark.skipif(not ct.available, reason="cuTensor is unavailable")
 class TestCuTensorContraction:
-    _tol = {'e': 1e-3, 'f': 1e-6, 'd': 1e-12}
+    _tol = {"e": 1e-3, "f": 1e-6, "d": 1e-12}
 
     def make_random_array(self, shape, dtype):
         return testing.shaped_random(shape, cupy, dtype=dtype, scale=1)
@@ -275,14 +275,14 @@ class TestCuTensorContraction:
         elif dtype == numpy.complex128:
             r_dtype = numpy.float64
         a = self.make_random_array(shape, r_dtype)
-        if dtype.char in 'FD':
+        if dtype.char in "FD":
             a = a + 1j * self.make_random_array(shape, r_dtype)
         return a
 
     @pytest.fixture(autouse=True)
     def setUp(self):
         compute_capability = int(device.get_compute_capability())
-        if compute_capability < 70 and 'e' in self.dtype_combo:
+        if compute_capability < 70 and "e" in self.dtype_combo:
             pytest.skip("Not supported")
         dtype_chars = list(self.dtype_combo)
         self.a_dtype = numpy.dtype(dtype_chars[0])
@@ -290,17 +290,17 @@ class TestCuTensorContraction:
         self.c_dtype = numpy.dtype(dtype_chars[2])
         self.tol = self._tol[dtype_chars[2].lower()]
         self.compute_type = _linalg.COMPUTE_TYPE_DEFAULT
-        if self.compute_type_hint == 'down-convert':
-            if self.c_dtype.char in 'fF':
+        if self.compute_type_hint == "down-convert":
+            if self.c_dtype.char in "fF":
                 self.compute_type = _linalg.COMPUTE_TYPE_FP16
-                self.tol = self._tol['e']
-            elif self.c_dtype.char in 'dD':
+                self.tol = self._tol["e"]
+            elif self.c_dtype.char in "dD":
                 self.compute_type = _linalg.COMPUTE_TYPE_FP32
-                self.tol = self._tol['f']
-        elif self.compute_type_hint == 'TF32':
-            if self.c_dtype.char in 'fF':
+                self.tol = self._tol["f"]
+        elif self.compute_type_hint == "TF32":
+            if self.c_dtype.char in "fF":
                 self.compute_type = _linalg.COMPUTE_TYPE_TF32
-                self.tol = self._tol['e']
+                self.tol = self._tol["e"]
         m, n, k = self.shape
         self.a = self.make_matrix((m, k), self.a_dtype)
         self.b = self.make_matrix((k, n), self.b_dtype)
@@ -313,9 +313,9 @@ class TestCuTensorContraction:
         cupy._core.set_compute_type(self.c_dtype, old_compute_type)
 
     def test_contraction(self):
-        mode_a = cutensor.create_mode('m', 'k')
-        mode_b = cutensor.create_mode('k', 'n')
-        mode_c = cutensor.create_mode('m', 'n')
+        mode_a = cutensor.create_mode("m", "k")
+        mode_b = cutensor.create_mode("k", "n")
+        mode_c = cutensor.create_mode("m", "n")
         cutensor.contraction(self.alpha,
                              self.a, mode_a,
                              self.b, mode_b,
@@ -327,7 +327,7 @@ class TestCuTensorContraction:
         # test the contraction descriptor cache (issues #7318, #7812)
         del mode_b
         gc.collect()
-        mode_b = cutensor.create_mode('n', 'k')  # flipped
+        mode_b = cutensor.create_mode("n", "k")  # flipped
         self.c_ref = self.alpha * cupy.matmul(self.a, self.b.T)
         self.c_ref += self.beta * self.c
         cutensor.contraction(self.alpha,
@@ -340,28 +340,28 @@ class TestCuTensorContraction:
 
 
 @testing.parameterize(*testing.product({
-    'dtype_char': ['e', 'f', 'd', 'F', 'D'],
-    'shape': [(30, 40, 30, 35)],
-    'alpha': [0.5, 1.0],
-    'beta': [0.0, 1.0],
-    'order': ['C', 'F']
+    "dtype_char": ["e", "f", "d", "F", "D"],
+    "shape": [(30, 40, 30, 35)],
+    "alpha": [0.5, 1.0],
+    "beta": [0.0, 1.0],
+    "order": ["C", "F"]
 }))
-@pytest.mark.skipif(not ct.available, reason='cuTensor is unavailable')
+@pytest.mark.skipif(not ct.available, reason="cuTensor is unavailable")
 class TestCuTensorIncontiguous:
-    _tol = {'e': 1e-3, 'f': 2e-6, 'd': 1e-12}
+    _tol = {"e": 1e-3, "f": 2e-6, "d": 1e-12}
 
     @pytest.fixture(autouse=True)
     def setUp(self):
         compute_capability = int(device.get_compute_capability())
-        if compute_capability < 70 and self.dtype_char == 'e':
+        if compute_capability < 70 and self.dtype_char == "e":
             pytest.skip("Not supported")
         self.dtype = numpy.dtype(self.dtype_char)
         self.tol = self._tol[self.dtype_char.lower()]
 
     def test_contraction(self):
-        mode_a = cutensor.create_mode('a', 'b', 'c')
-        mode_b = cutensor.create_mode('c', 'd', 'b')
-        mode_c = cutensor.create_mode('d', 'a')
+        mode_a = cutensor.create_mode("a", "b", "c")
+        mode_b = cutensor.create_mode("c", "d", "b")
+        mode_c = cutensor.create_mode("d", "a")
         a, b, c, d = self.shape
         self.a = testing.shaped_random(
             (a, b, c), cupy, dtype=self.dtype, order=self.order)
@@ -388,8 +388,8 @@ class TestCuTensorIncontiguous:
                                              rtol=self.tol, atol=self.tol)
 
     def test_reduction(self):
-        mode_a = cutensor.create_mode('a', 'b', 'c')
-        mode_c = cutensor.create_mode('b')
+        mode_a = cutensor.create_mode("a", "b", "c")
+        mode_c = cutensor.create_mode("b")
         a, b, c, _ = self.shape
         self.a = testing.shaped_random(
             (a, b, c), cupy, dtype=self.dtype, order=self.order)
@@ -412,8 +412,8 @@ class TestCuTensorIncontiguous:
                                          rtol=self.tol, atol=self.tol)
 
     def test_elementwise_binary(self):
-        mode_a = cutensor.create_mode('a', 'b', 'c')
-        mode_c = cutensor.create_mode('c', 'a', 'b')
+        mode_a = cutensor.create_mode("a", "b", "c")
+        mode_c = cutensor.create_mode("c", "a", "b")
         a, b, c, _ = self.shape
         self.a = testing.shaped_random(
             (a, b, c), cupy, dtype=self.dtype, order=self.order)
@@ -437,9 +437,9 @@ class TestCuTensorIncontiguous:
                                          rtol=self.tol, atol=self.tol)
 
     def test_elementwise_trinary(self):
-        mode_a = cutensor.create_mode('a', 'b', 'c')
-        mode_b = cutensor.create_mode('b', 'c', 'a')
-        mode_c = cutensor.create_mode('c', 'a', 'b')
+        mode_a = cutensor.create_mode("a", "b", "c")
+        mode_b = cutensor.create_mode("b", "c", "a")
+        mode_c = cutensor.create_mode("c", "a", "b")
         a, b, c, _ = self.shape
         self.a = testing.shaped_random(
             (a, b, c), cupy, dtype=self.dtype, order=self.order)
@@ -469,24 +469,24 @@ class TestCuTensorIncontiguous:
 
 
 @testing.parameterize(*testing.product({
-    'dtype_char': ['e', 'f', 'd', 'F', 'D'],
-    'shape': [32],
+    "dtype_char": ["e", "f", "d", "F", "D"],
+    "shape": [32],
 }))
-@pytest.mark.skipif(not ct.available, reason='cuTensor is unavailable')
+@pytest.mark.skipif(not ct.available, reason="cuTensor is unavailable")
 class TestCuTensorMg:
-    _tol = {'e': 1e-3, 'f': 2e-6, 'd': 1e-12}
+    _tol = {"e": 1e-3, "f": 2e-6, "d": 1e-12}
 
     @pytest.fixture(autouse=True)
     def setUp(self):
         compute_capability = int(device.get_compute_capability())
-        if compute_capability < 70 and self.dtype_char == 'e':
+        if compute_capability < 70 and self.dtype_char == "e":
             pytest.skip("Not supported")
         self.dtype = numpy.dtype(self.dtype_char)
         self.tol = self._tol[self.dtype_char.lower()]
 
     def test_contraction(self):
         n = self.shape
-        if self.dtype == 'e':
+        if self.dtype == "e":
             # 16-bit result host pageable tensors are not supported in the
             # contraction routines.
             self.a = cupyx.empty_pinned((n, n, n, n), dtype=self.dtype)
@@ -496,17 +496,17 @@ class TestCuTensorMg:
         self.b = testing.shaped_random(
             (n, n, n, n), cupy, dtype=self.dtype)
         self.c = cupyx.empty_pinned((n, n, n, n), dtype=self.dtype)
-        c_ref = numpy.einsum('kijl,kadl->iajd', self.a, self.b.get())
+        c_ref = numpy.einsum("kijl,kadl->iajd", self.a, self.b.get())
         mga = cutensor.ndarray_mg(self.a, block_size=[8, 8, 8, 8])
-        cutensor.contractionMg(1, mga, 'kijl', self.b,
-                               'kadl', 0, self.c, 'iajd')
+        cutensor.contractionMg(1, mga, "kijl", self.b,
+                               "kadl", 0, self.c, "iajd")
         cupy.cuda.Device(0).synchronize()
         cupy.testing.assert_allclose(self.c, c_ref, rtol=self.tol,
                                      atol=self.tol)
 
     def test_copy(self):
         n = self.shape
-        if self.dtype == 'e':
+        if self.dtype == "e":
             # 16-bit result host pageable tensors are not supported in the
             # contraction routines.
             self.a = cupyx.empty_pinned((n, n, n, n), dtype=self.dtype)
@@ -515,7 +515,7 @@ class TestCuTensorMg:
                 (n, n, n, n), numpy, dtype=self.dtype)
         self.b = testing.shaped_random(
             (n, n, n, n), cupy, dtype=self.dtype)
-        cutensor.copyMg(self.b, 'cabd', self.a, 'abcd')
+        cutensor.copyMg(self.b, "cabd", self.a, "abcd")
         cupy.cuda.Device(0).synchronize()
         cupy.testing.assert_allclose(self.b.get(), self.a.transpose(
             (2, 0, 1, 3)), rtol=self.tol, atol=self.tol)

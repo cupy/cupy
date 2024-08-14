@@ -55,13 +55,13 @@ def who(vardict=None):
             var = vardict[name]
             idv = id(var)
             if idv in cache.keys():
-                namestr = '{} ({})'.format(name, cache[idv])
+                namestr = "{} ({})".format(name, cache[idv])
                 original = 0
             else:
                 cache[idv] = name
                 namestr = name
                 original = 1
-            shapestr = ' x '.join(map(str, var.shape))
+            shapestr = " x ".join(map(str, var.shape))
             bytestr = str(var.nbytes)
             sta.append(
                 [namestr, shapestr, bytestr, var.dtype.name, original]
@@ -86,22 +86,22 @@ def who(vardict=None):
         sp1 = max(10, maxname)
         sp2 = max(10, maxshape)
         sp3 = max(10, maxbyte)
-        prval = 'Name {} Shape {} Bytes {} Type'.format(
-            sp1 * ' ', sp2 * ' ', sp3 * ' '
+        prval = "Name {} Shape {} Bytes {} Type".format(
+            sp1 * " ", sp2 * " ", sp3 * " "
         )
         print("{}\n{}\n".format(prval, "=" * (len(prval) + 5)))
 
     for k in range(len(sta)):
         val = sta[k]
         print(
-            '{} {} {} {} {} {} {}'.format(
+            "{} {} {} {} {} {} {}".format(
                 val[0],
-                ' ' * (sp1 - len(val[0]) + 4),
+                " " * (sp1 - len(val[0]) + 4),
                 val[1],
-                ' ' * (sp2 - len(val[1]) + 5),
+                " " * (sp2 - len(val[1]) + 5),
                 val[2],
-                ' ' * (sp3 - len(val[2]) + 5),
+                " " * (sp3 - len(val[2]) + 5),
                 val[3],
             )
         )
-    print('\nUpper bound on total bytes  =       {}'.format(totalbytes))
+    print("\nUpper bound on total bytes  =       {}".format(totalbytes))

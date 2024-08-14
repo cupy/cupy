@@ -408,12 +408,12 @@ __global__ void _cupy_channelizer_8x8( const int n_chans,
 @_util.memoize(for_each_device=True)
 def _get_channelizer_8x8_module():
     return cupy.RawModule(
-        code=_CHANNELIZER_8X8_KERNEL, options=('-std=c++17',),
+        code=_CHANNELIZER_8X8_KERNEL, options=("-std=c++17",),
         name_expressions=[
-            '_cupy_channelizer_8x8<float,complex<float>>',
-            '_cupy_channelizer_8x8<complex<float>,complex<float>>',
-            '_cupy_channelizer_8x8<double,complex<double>>',
-            '_cupy_channelizer_8x8<complex<double>,complex<double>>'],
+            "_cupy_channelizer_8x8<float,complex<float>>",
+            "_cupy_channelizer_8x8<complex<float>,complex<float>>",
+            "_cupy_channelizer_8x8<double,complex<double>>",
+            "_cupy_channelizer_8x8<complex<double>,complex<double>>"],
     )
 
 
@@ -523,12 +523,12 @@ __global__ void _cupy_channelizer_16x16( const int n_chans,
 @_util.memoize(for_each_device=True)
 def _get_channelizer_16x16_module():
     return cupy.RawModule(
-        code=_CHANNELIZER_16X16_KERNEL, options=('-std=c++17',),
+        code=_CHANNELIZER_16X16_KERNEL, options=("-std=c++17",),
         name_expressions=[
-            '_cupy_channelizer_16x16<float,complex<float>>',
-            '_cupy_channelizer_16x16<complex<float>,complex<float>>',
-            '_cupy_channelizer_16x16<double,complex<double>>',
-            '_cupy_channelizer_16x16<complex<double>,complex<double>>'],
+            "_cupy_channelizer_16x16<float,complex<float>>",
+            "_cupy_channelizer_16x16<complex<float>,complex<float>>",
+            "_cupy_channelizer_16x16<double,complex<double>>",
+            "_cupy_channelizer_16x16<complex<double>,complex<double>>"],
     )
 
 
@@ -637,12 +637,12 @@ __global__ void _cupy_channelizer_32x32( const int n_chans,
 @_util.memoize(for_each_device=True)
 def _get_channelizer_32x32_module():
     return cupy.RawModule(
-        code=_CHANNELIZER_32X32_KERNEL, options=('-std=c++17',),
+        code=_CHANNELIZER_32X32_KERNEL, options=("-std=c++17",),
         name_expressions=[
-            '_cupy_channelizer_32x32<float,complex<float>>',
-            '_cupy_channelizer_32x32<complex<float>,complex<float>>',
-            '_cupy_channelizer_32x32<double,complex<double>>',
-            '_cupy_channelizer_32x32<complex<double>,complex<double>>'],
+            "_cupy_channelizer_32x32<float,complex<float>>",
+            "_cupy_channelizer_32x32<complex<float>,complex<float>>",
+            "_cupy_channelizer_32x32<double,complex<double>>",
+            "_cupy_channelizer_32x32<complex<double>,complex<double>>"],
     )
 
 
@@ -683,7 +683,7 @@ def _channelizer(x, h, y, n_chans, n_taps, n_pts):
         raise AssertionError()
     x_typename = get_typename(x.dtype)
     y_typename = get_typename(y.dtype)
-    kernel_name = f'_cupy_{k_type}<{x_typename},{y_typename}>'
+    kernel_name = f"_cupy_{k_type}<{x_typename},{y_typename}>"
     kernel = mod.get_function(kernel_name)
 
     args = (n_chans, n_taps, n_pts, x, h, y)

@@ -23,33 +23,33 @@ from typing import Tuple
 
 # some cuSPARSE APIs are removed in recent CUDA 11.x, so we also need to
 # look up older CUDA to fetch the API signatures
-cusparse_h = '/usr/local/cuda-{0}/include/cusparse.h'
-cu_versions = ('11.3', '11.0', '10.2')
+cusparse_h = "/usr/local/cuda-{0}/include/cusparse.h"
+cu_versions = ("11.3", "11.0", "10.2")
 
 
-hipsparse_url = ('https://raw.githubusercontent.com/ROCmSoftwarePlatform/'
-                 'hipSPARSE/rocm-{0}/library/include/hipsparse.h')
+hipsparse_url = ("https://raw.githubusercontent.com/ROCmSoftwarePlatform/"
+                 "hipSPARSE/rocm-{0}/library/include/hipsparse.h")
 hip_versions = ("3.5.0", "3.7.0", "3.8.0", "3.9.0", "4.0.0", "4.2.0")
 
 
 # typedefs
 typedefs: Tuple[str, ...]
-typedefs = ('cusparseIndexBase_t', 'cusparseStatus_t', 'cusparseHandle_t',
-            'cusparseMatDescr_t', 'csrsv2Info_t', 'csrsm2Info_t',
-            'csric02Info_t', 'bsric02Info_t', 'csrilu02Info_t',
-            'bsrilu02Info_t', 'csrgemm2Info_t',
-            'cusparseMatrixType_t', 'cusparseFillMode_t', 'cusparseDiagType_t',
-            'cusparsePointerMode_t', 'cusparseAction_t', 'cusparseDirection_t',
-            'cusparseSolvePolicy_t', 'cusparseOperation_t')
+typedefs = ("cusparseIndexBase_t", "cusparseStatus_t", "cusparseHandle_t",
+            "cusparseMatDescr_t", "csrsv2Info_t", "csrsm2Info_t",
+            "csric02Info_t", "bsric02Info_t", "csrilu02Info_t",
+            "bsrilu02Info_t", "csrgemm2Info_t",
+            "cusparseMatrixType_t", "cusparseFillMode_t", "cusparseDiagType_t",
+            "cusparsePointerMode_t", "cusparseAction_t", "cusparseDirection_t",
+            "cusparseSolvePolicy_t", "cusparseOperation_t")
 
 
 # typedefs for generic API
-typedefs += ('cusparseSpVecDescr_t', 'cusparseDnVecDescr_t',
-             'cusparseSpMatDescr_t', 'cusparseDnMatDescr_t',
-             'cusparseIndexType_t', 'cusparseFormat_t', 'cusparseOrder_t',
-             'cusparseSpMVAlg_t', 'cusparseSpMMAlg_t',
-             'cusparseSparseToDenseAlg_t', 'cusparseDenseToSparseAlg_t',
-             'cusparseCsr2CscAlg_t',)
+typedefs += ("cusparseSpVecDescr_t", "cusparseDnVecDescr_t",
+             "cusparseSpMatDescr_t", "cusparseDnMatDescr_t",
+             "cusparseIndexType_t", "cusparseFormat_t", "cusparseOrder_t",
+             "cusparseSpMVAlg_t", "cusparseSpMMAlg_t",
+             "cusparseSparseToDenseAlg_t", "cusparseDenseToSparseAlg_t",
+             "cusparseCsr2CscAlg_t",)
 
 
 # helpers
@@ -109,7 +109,7 @@ def get_idx_to_func(cu_h, cu_func):
 
 def get_hip_ver_num(hip_version):
     # "3.5.0" -> 305
-    hip_version = hip_version.split('.')
+    hip_version = hip_version.split(".")
     return int(hip_version[0]) * 100 + int(hip_version[1])
 
 
@@ -120,12 +120,12 @@ def merge_bad_broken_lines(cu_sig):
     skip_line = None
     for line, s in enumerate(cu_sig):
         if line != skip_line:
-            if s.endswith(',') or s.endswith(')'):
+            if s.endswith(",") or s.endswith(")"):
                 cu_sig_processed.append(s)
             else:
-                break_idx = s.find(',')
+                break_idx = s.find(",")
                 if break_idx == -1:
-                    break_idx = s.find(')')
+                    break_idx = s.find(")")
                 if break_idx == -1:
                     cu_sig_processed.append(s + cu_sig[line+1])
                     skip_line = line+1
@@ -140,67 +140,67 @@ def process_func_args(s, hip_sig, decl, hip_func):
     # being a one-liner...
     # TODO(leofang): I am being silly here; these can probably be handled more
     # elegantly using regex...
-    if 'const cuComplex*' in s:
+    if "const cuComplex*" in s:
         s = s.split()
-        arg = '(' + s[-1][:-1] + ')' + s[-1][-1]
-        cast = 'reinterpret_cast<const hipComplex*>'
-    elif 'const cuDoubleComplex*' in s:
+        arg = "(" + s[-1][:-1] + ")" + s[-1][-1]
+        cast = "reinterpret_cast<const hipComplex*>"
+    elif "const cuDoubleComplex*" in s:
         s = s.split()
-        arg = '(' + s[-1][:-1] + ')' + s[-1][-1]
-        cast = 'reinterpret_cast<const hipDoubleComplex*>'
-    elif 'cuComplex*' in s:
+        arg = "(" + s[-1][:-1] + ")" + s[-1][-1]
+        cast = "reinterpret_cast<const hipDoubleComplex*>"
+    elif "cuComplex*" in s:
         s = s.split()
-        arg = '(' + s[-1][:-1] + ')' + s[-1][-1]
-        cast = 'reinterpret_cast<hipComplex*>'
-    elif 'cuDoubleComplex*' in s:
+        arg = "(" + s[-1][:-1] + ")" + s[-1][-1]
+        cast = "reinterpret_cast<hipComplex*>"
+    elif "cuDoubleComplex*" in s:
         s = s.split()
-        arg = '(' + s[-1][:-1] + ')' + s[-1][-1]
-        cast = 'reinterpret_cast<hipDoubleComplex*>'
-    elif 'cuComplex' in s:
+        arg = "(" + s[-1][:-1] + ")" + s[-1][-1]
+        cast = "reinterpret_cast<hipDoubleComplex*>"
+    elif "cuComplex" in s:
         s = s.split()
-        decl += '  hipComplex blah;\n'
-        decl += f'  blah.x={s[-1][:-1]}.x;\n  blah.y={s[-1][:-1]}.y;\n'
-        arg = 'blah' + s[-1][-1]
-        cast = ''
-    elif 'cuDoubleComplex' in s:
+        decl += "  hipComplex blah;\n"
+        decl += f"  blah.x={s[-1][:-1]}.x;\n  blah.y={s[-1][:-1]}.y;\n"
+        arg = "blah" + s[-1][-1]
+        cast = ""
+    elif "cuDoubleComplex" in s:
         s = s.split()
-        decl += '  hipDoubleComplex blah;\n'
-        decl += f'  blah.x={s[-1][:-1]}.x;\n  blah.y={s[-1][:-1]}.y;\n'
-        arg = 'blah' + s[-1][-1]
-        cast = ''
-    elif 'cudaDataType*' in s:
+        decl += "  hipDoubleComplex blah;\n"
+        decl += f"  blah.x={s[-1][:-1]}.x;\n  blah.y={s[-1][:-1]}.y;\n"
+        arg = "blah" + s[-1][-1]
+        cast = ""
+    elif "cudaDataType*" in s:
         s = s.split()
-        arg = '(' + s[-1][:-1] + ')' + s[-1][-1]
-        cast = 'reinterpret_cast<hipDataType*>'
-    elif 'cudaDataType' in s:
+        arg = "(" + s[-1][:-1] + ")" + s[-1][-1]
+        cast = "reinterpret_cast<hipDataType*>"
+    elif "cudaDataType" in s:
         s = s.split()
-        decl += '  hipDataType blah = convert_hipDatatype('
-        decl += s[-1][:-1] + ');\n'
-        arg = 'blah' + s[-1][-1]
-        cast = ''
-    elif 'cusparseOrder_t*' in s:
+        decl += "  hipDataType blah = convert_hipDatatype("
+        decl += s[-1][:-1] + ");\n"
+        arg = "blah" + s[-1][-1]
+        cast = ""
+    elif "cusparseOrder_t*" in s:
         s = s.split()
-        decl += '  hipsparseOrder_t blah2 = '
-        decl += 'convert_hipsparseOrder_t(*' + s[-1][:-1] + ');\n'
-        arg = '&blah2' + s[-1][-1]
-        cast = ''
-    elif 'cusparseOrder_t' in s:
+        decl += "  hipsparseOrder_t blah2 = "
+        decl += "convert_hipsparseOrder_t(*" + s[-1][:-1] + ");\n"
+        arg = "&blah2" + s[-1][-1]
+        cast = ""
+    elif "cusparseOrder_t" in s:
         s = s.split()
-        decl += '  hipsparseOrder_t blah2 = '
-        decl += 'convert_hipsparseOrder_t(' + s[-1][:-1] + ');\n'
-        arg = 'blah2' + s[-1][-1]
-        cast = ''
-    elif ('const void*' in s
-            and hip_func == 'hipsparseSpVV_bufferSize'):
+        decl += "  hipsparseOrder_t blah2 = "
+        decl += "convert_hipsparseOrder_t(" + s[-1][:-1] + ");\n"
+        arg = "blah2" + s[-1][-1]
+        cast = ""
+    elif ("const void*" in s
+            and hip_func == "hipsparseSpVV_bufferSize"):
         # work around HIP's bad typing...
         s = s.split()
-        arg = '(' + s[-1][:-1] + ')' + s[-1][-1]
-        cast = 'const_cast<void*>'
+        arg = "(" + s[-1][:-1] + ")" + s[-1][-1]
+        cast = "const_cast<void*>"
     else:
         s = s.split()
         arg = s[-1]
-        cast = ''
-    hip_sig += (cast + arg + ' ')
+        cast = ""
+    hip_sig += (cast + arg + " ")
     return hip_sig, decl
 
 
@@ -215,26 +215,26 @@ def main(hip_h, cu_h, stubs, hip_version, init):
             hip_stub_h.append(line)
             if hip_version == 305:
                 # insert the include after the include guard
-                hip_stub_h.append('#include <hipsparse.h>')
+                hip_stub_h.append("#include <hipsparse.h>")
                 hip_stub_h.append(
-                    '#include <hip/hip_version.h>    // for HIP_VERSION')
+                    "#include <hip/hip_version.h>    // for HIP_VERSION")
                 hip_stub_h.append(
-                    '#include <hip/library_types.h>  // for hipDataType')
+                    "#include <hip/library_types.h>  // for hipDataType")
                 hip_stub_h.append(cudaDataType_converter)
                 hip_stub_h.append(default_return_code)
 
-        elif line.startswith('typedef'):
-            old_line = ''
+        elif line.startswith("typedef"):
+            old_line = ""
             typedef_found = False
             typedef_needed = True
             for t in typedefs:
                 if t in line and t not in processed_typedefs:
-                    hip_t = 'hip' + t[2:] if t.startswith('cu') else t
+                    hip_t = "hip" + t[2:] if t.startswith("cu") else t
                     if hip_t in hip_h:
                         old_line = line
                         if t != hip_t:
                             old_line = line
-                            line = 'typedef ' + hip_t + ' ' + t + ';'
+                            line = "typedef " + hip_t + " " + t + ";"
                         else:
                             if hip_version == 305:
                                 line = None
@@ -249,30 +249,30 @@ def main(hip_h, cu_h, stubs, hip_version, init):
 
             if line is not None:
                 # hack...
-                if t == 'cusparseOrder_t' and hip_version == 402:
+                if t == "cusparseOrder_t" and hip_version == 402:
                     hip_stub_h.append(cusparseOrder_converter)
 
                 elif typedef_found and hip_version > 305:
                     if typedef_needed:
-                        hip_stub_h.append(f'#if HIP_VERSION >= {hip_version}')
+                        hip_stub_h.append(f"#if HIP_VERSION >= {hip_version}")
                     else:
-                        hip_stub_h.append(f'#if HIP_VERSION < {hip_version}')
+                        hip_stub_h.append(f"#if HIP_VERSION < {hip_version}")
 
                 # hack...
-                if not (t == 'cusparseOrder_t' and hip_version == 402):
+                if not (t == "cusparseOrder_t" and hip_version == 402):
                     hip_stub_h.append(line)
 
                 if typedef_found and hip_version > 305:
 
                     if typedef_needed:
-                        hip_stub_h.append('#else')
+                        hip_stub_h.append("#else")
                         hip_stub_h.append(old_line)
-                    hip_stub_h.append('#endif\n')
+                    hip_stub_h.append("#endif\n")
 
             if t is not None and typedef_found:
                 processed_typedefs.add(t)
 
-        elif '...' in line:
+        elif "..." in line:
             # ex: line = "cusparseStatus_t cusparseDestroyMatDescr(...) {"
             sig = line.split()
             try:
@@ -284,8 +284,8 @@ def main(hip_h, cu_h, stubs, hip_version, init):
             # strip the prefix "cu" and the args "(...)", and assume HIP has
             # the same function
             cu_func = sig[1]
-            cu_func = cu_func[:cu_func.find('(')]
-            hip_func = 'hip' + cu_func[2:]
+            cu_func = cu_func[:cu_func.find("(")]
+            hip_func = "hip" + cu_func[2:]
 
             # find the full signature from cuSPARSE header
             cu_sig = get_idx_to_func(cu_h, cu_func)
@@ -302,57 +302,57 @@ def main(hip_h, cu_h, stubs, hip_version, init):
                       file=sys.stderr)
                 can_map = False
             else:
-                end_idx = cu_h[cu_sig:].find(')')
+                end_idx = cu_h[cu_sig:].find(")")
                 assert end_idx != -1
                 cu_sig = cu_h[cu_sig:cu_sig+end_idx+1]
 
                 # pretty print
-                cu_sig = cu_sig.split('\n')
-                new_cu_sig = cu_sig[0] + '\n'
+                cu_sig = cu_sig.split("\n")
+                new_cu_sig = cu_sig[0] + "\n"
                 for s in cu_sig[1:]:
-                    new_cu_sig += (' ' * (len(sig[0]) + 1)) + s + '\n'
+                    new_cu_sig += (" " * (len(sig[0]) + 1)) + s + "\n"
                 cu_sig = new_cu_sig[:-1]
 
                 sig[1] = cu_sig
                 can_map = True
-            hip_stub_h.append(' '.join(sig))
+            hip_stub_h.append(" ".join(sig))
 
             # now we have the full signature, map the return to HIP's function;
             # note that the "return" line is in the next two lines
             line = stubs[i+1]
-            if 'return' not in line:
+            if "return" not in line:
                 line = stubs[i+2]
-                assert 'return' in line
+                assert "return" in line
             if can_map:
-                cu_sig = cu_sig.split('\n')
+                cu_sig = cu_sig.split("\n")
                 cu_sig = merge_bad_broken_lines(cu_sig)
 
                 if hip_version != 305:
                     hip_stub_h.append(f"#if HIP_VERSION >= {hip_version}")
-                hip_sig = '  return ' + hip_func + '('
-                decl = ''
+                hip_sig = "  return " + hip_func + "("
+                decl = ""
                 for s in cu_sig:
                     hip_sig, decl = process_func_args(
                         s, hip_sig, decl, hip_func)
-                hip_sig = hip_sig[:-1] + ';'
+                hip_sig = hip_sig[:-1] + ";"
                 hip_stub_h.append(decl+hip_sig)
                 if hip_version != 305:
                     hip_stub_h.append("#else")
                     hip_stub_h.append(
-                        '  return HIPSPARSE_STATUS_NOT_SUPPORTED;')
+                        "  return HIPSPARSE_STATUS_NOT_SUPPORTED;")
                     hip_stub_h.append("#endif")
             else:
                 hip_stub_h.append(
-                    (line[:line.find('return')+6]
-                     + ' HIPSPARSE_STATUS_NOT_SUPPORTED;'))
+                    (line[:line.find("return")+6]
+                     + " HIPSPARSE_STATUS_NOT_SUPPORTED;"))
 
-        elif 'return' in line:
-            if 'CUSPARSE_STATUS' in line:
+        elif "return" in line:
+            if "CUSPARSE_STATUS" in line:
                 # don't do anything, as we handle the return when
                 # parsing "(...)"
                 pass
-            elif 'HIPSPARSE_STATUS_NOT_SUPPORTED' in line:
-                if '#else' in stubs[i-1]:
+            elif "HIPSPARSE_STATUS_NOT_SUPPORTED" in line:
+                if "#else" in stubs[i-1]:
                     # just copy from the stub
                     hip_stub_h.append(line)
             else:
@@ -363,16 +363,16 @@ def main(hip_h, cu_h, stubs, hip_version, init):
             # just copy from the stub
             hip_stub_h.append(line)
 
-    return ('\n'.join(hip_stub_h)) + '\n'
+    return ("\n".join(hip_stub_h)) + "\n"
 
 
-if __name__ == '__main__':
-    with open('cupy_backends/stub/cupy_cusparse.h', 'r') as f:
+if __name__ == "__main__":
+    with open("cupy_backends/stub/cupy_cusparse.h", "r") as f:
         stubs = f.read()
 
     init = False
     for cu_ver in cu_versions:
-        with open(cusparse_h.format(cu_ver), 'r') as f:
+        with open(cusparse_h.format(cu_ver), "r") as f:
             cu_h = f.read()
 
         x = 0
@@ -388,14 +388,14 @@ if __name__ == '__main__':
 
     # more hacks...
     stubs = stubs.replace(
-        '#define CUSPARSE_VERSION -1',
-        ('#define CUSPARSE_VERSION '
-         '(hipsparseVersionMajor*100000+hipsparseVersionMinor*100'
-         '+hipsparseVersionPatch)'))
+        "#define CUSPARSE_VERSION -1",
+        ("#define CUSPARSE_VERSION "
+         "(hipsparseVersionMajor*100000+hipsparseVersionMinor*100"
+         "+hipsparseVersionPatch)"))
     stubs = stubs.replace(
-        'INCLUDE_GUARD_STUB_CUPY_CUSPARSE_H',
-        'INCLUDE_GUARD_HIP_CUPY_HIPSPARSE_H')
-    stubs = stubs[stubs.find('\n'):]
+        "INCLUDE_GUARD_STUB_CUPY_CUSPARSE_H",
+        "INCLUDE_GUARD_HIP_CUPY_HIPSPARSE_H")
+    stubs = stubs[stubs.find("\n"):]
 
-    with open('cupy_backends/hip/cupy_hipsparse.h', 'w') as f:
+    with open("cupy_backends/hip/cupy_hipsparse.h", "w") as f:
         f.write(stubs)

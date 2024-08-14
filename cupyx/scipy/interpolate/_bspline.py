@@ -8,10 +8,10 @@ from cupy._core import internal
 from cupy._core._scalar import get_typename
 from cupyx.scipy.sparse import csr_matrix
 
-TYPES = ['double', 'thrust::complex<double>']
-INT_TYPES = ['int', 'long long']
+TYPES = ["double", "thrust::complex<double>"]
+INT_TYPES = ["int", "long long"]
 
-INTERVAL_KERNEL = r'''
+INTERVAL_KERNEL = r"""
 #include <cupy/complex.cuh>
 extern "C" {
 __global__ void find_interval(
@@ -63,14 +63,14 @@ __global__ void find_interval(
     out[idx] = result - 1;
 }
 }
-'''
+"""
 
 INTERVAL_MODULE = cupy.RawModule(
-    code=INTERVAL_KERNEL, options=('-std=c++11',),)
+    code=INTERVAL_KERNEL, options=("-std=c++11",),)
 #    name_expressions=[f'find_interval<{type_name}>' for type_name in TYPES])
 
 
-D_BOOR_KERNEL = r'''
+D_BOOR_KERNEL = r"""
 #include <cupy/complex.cuh>
 #include <cupy/math_constants.h>
 #define COMPUTE_LINEAR 0x1
@@ -166,14 +166,14 @@ __global__ void d_boor(
     }
 
 }
-'''
+"""
 
 D_BOOR_MODULE = cupy.RawModule(
-    code=D_BOOR_KERNEL, options=('-std=c++11',),
-    name_expressions=[f'd_boor<{type_name}>' for type_name in TYPES])
+    code=D_BOOR_KERNEL, options=("-std=c++11",),
+    name_expressions=[f"d_boor<{type_name}>" for type_name in TYPES])
 
 
-DESIGN_MAT_KERNEL = r'''
+DESIGN_MAT_KERNEL = r"""
 #include <cupy/complex.cuh>
 
 template<typename U>
@@ -196,23 +196,23 @@ __global__ void compute_design_matrix(
         indices[m] = (U) (interval - k + j);
     }
 }
-'''
+"""
 
 DESIGN_MAT_MODULE = cupy.RawModule(
-    code=DESIGN_MAT_KERNEL, options=('-std=c++11',),
-    name_expressions=[f'compute_design_matrix<{itype}>'
+    code=DESIGN_MAT_KERNEL, options=("-std=c++11",),
+    name_expressions=[f"compute_design_matrix<{itype}>"
                       for itype in INT_TYPES])
 
 
 def _get_module_func(module, func_name, *template_args):
     def _get_typename(dtype):
         typename = get_typename(dtype)
-        if dtype.kind == 'c':
-            typename = 'thrust::' + typename
+        if dtype.kind == "c":
+            typename = "thrust::" + typename
         return typename
     args_dtypes = [_get_typename(arg.dtype) for arg in template_args]
-    template = ', '.join(args_dtypes)
-    kernel_name = f'{func_name}<{template}>' if template_args else func_name
+    template = ", ".join(args_dtypes)
+    kernel_name = f"{func_name}<{template}>" if template_args else func_name
     kernel = module.get_function(kernel_name)
     return kernel
 
@@ -262,14 +262,14 @@ def _evaluate_spline(t, c, k, xp, nu, extrapolate, out):
     intervals = cupy.empty_like(xp, dtype=cupy.int64)
 
     # Compute intervals for each value
-    interval_kernel = _get_module_func(INTERVAL_MODULE, 'find_interval')
+    interval_kernel = _get_module_func(INTERVAL_MODULE, "find_interval")
     interval_kernel(((xp.shape[0] + 128 - 1) // 128,), (128,),
                     (t, xp, intervals, k, n, extrapolate, xp.shape[0]))
 
     # Compute interpolation
     num_c = int(np.prod(c.shape[1:]))
     temp = cupy.empty(xp.shape[0] * (2 * k + 1))
-    d_boor_kernel = _get_module_func(D_BOOR_MODULE, 'd_boor', c)
+    d_boor_kernel = _get_module_func(D_BOOR_MODULE, "d_boor", c)
     d_boor_kernel(((xp.shape[0] + 128 - 1) // 128,), (128,),
                   (t, c, k, nu, xp, intervals, out, temp, num_c, 1,
                    xp.shape[0]))
@@ -307,20 +307,20 @@ def _make_design_matrix(x, t, k, extrapolate, indices):
     intervals = cupy.empty_like(x, dtype=cupy.int64)
 
     # Compute intervals for each value
-    interval_kernel = _get_module_func(INTERVAL_MODULE, 'find_interval')
+    interval_kernel = _get_module_func(INTERVAL_MODULE, "find_interval")
     interval_kernel(((x.shape[0] + 128 - 1) // 128,), (128,),
                     (t, x, intervals, k, n, extrapolate, x.shape[0]))
 
     # Compute interpolation
     bspline_basis = cupy.empty(x.shape[0] * (2 * k + 1))
-    d_boor_kernel = _get_module_func(D_BOOR_MODULE, 'd_boor', x)
+    d_boor_kernel = _get_module_func(D_BOOR_MODULE, "d_boor", x)
     d_boor_kernel(((x.shape[0] + 128 - 1) // 128,), (128,),
                   (t, None, k, 0, x, intervals, None, bspline_basis, 0, 0,
                    x.shape[0]))
 
     data = cupy.zeros(x.shape[0] * (k + 1), dtype=cupy.float64)
     design_mat_kernel = _get_module_func(
-        DESIGN_MAT_MODULE, 'compute_design_matrix', indices)
+        DESIGN_MAT_MODULE, "compute_design_matrix", indices)
     design_mat_kernel(((x.shape[0] + 128 - 1) // 128,), (128,),
                       (k, intervals, bspline_basis, data, indices,
                        x.shape[0]))
@@ -520,7 +520,7 @@ class BSpline:
         self.c = cupy.asarray(c)
         self.t = cupy.ascontiguousarray(t, dtype=cupy.float64)
 
-        if extrapolate == 'periodic':
+        if extrapolate == "periodic":
             self.extrapolate = extrapolate
         else:
             self.extrapolate = bool(extrapolate)
@@ -658,7 +658,7 @@ class BSpline:
         x = _as_float_array(x, True)
         t = _as_float_array(t, True)
 
-        if extrapolate != 'periodic':
+        if extrapolate != "periodic":
             extrapolate = bool(extrapolate)
 
         if k < 0:
@@ -673,7 +673,7 @@ class BSpline:
         if len(t) < 2 * k + 2:
             raise ValueError(f"Length t is not enough for k={k}.")
 
-        if extrapolate == 'periodic':
+        if extrapolate == "periodic":
             # With periodic extrapolation we map x to the segment
             # [t[k], t[n]].
             n = t.size - k - 1
@@ -683,7 +683,7 @@ class BSpline:
             (min(x) < t[k]) or (max(x) > t[t.shape[0] - k - 1])
         ):
             # Checks from `find_interval` function
-            raise ValueError(f'Out of bounds w/ x = {x}.')
+            raise ValueError(f"Out of bounds w/ x = {x}.")
 
         # Compute number of non-zeros of final CSR array in order to determine
         # the dtype of indices and indptr of the CSR array.
@@ -736,7 +736,7 @@ class BSpline:
 
         # With periodic extrapolation we map x to the segment
         # [self.t[k], self.t[n]].
-        if extrapolate == 'periodic':
+        if extrapolate == "periodic":
             n = self.t.size - self.k - 1
             x = self.t[self.k] + (x - self.t[self.k]) % (self.t[n] -
                                                          self.t[self.k])
@@ -828,7 +828,7 @@ class BSpline:
             c = cupy.r_[c, cupy.zeros((ct,) + c.shape[1:])]
         tck = splantider((self.t, c, self.k), nu)
 
-        if self.extrapolate == 'periodic':
+        if self.extrapolate == "periodic":
             extrapolate = False
         else:
             extrapolate = self.extrapolate
@@ -891,7 +891,7 @@ class BSpline:
             c = cupy.r_[c, cupy.zeros((ct,) + c.shape[1:])]
         ta, ca, ka = splantider((self.t, c, self.k), 1)
 
-        if extrapolate == 'periodic':
+        if extrapolate == "periodic":
             # Split the integral into the part over period (can be several
             # of them) and the remaining part.
 

@@ -7,11 +7,11 @@ import cupyx.scipy.special  # NOQA
 from cupy import testing
 
 
-@testing.with_requires('scipy')
+@testing.with_requires("scipy")
 class TestGammaln:
 
     @testing.for_all_dtypes(no_complex=True)
-    @testing.numpy_cupy_allclose(atol=1e-5, scipy_name='scp')
+    @testing.numpy_cupy_allclose(atol=1e-5, scipy_name="scp")
     def test_arange(self, xp, scp, dtype):
         import scipy.special  # NOQA
 
@@ -19,7 +19,7 @@ class TestGammaln:
         return scp.special.gammaln(a)
 
     @testing.for_all_dtypes(no_complex=True, no_bool=True)
-    @testing.numpy_cupy_allclose(atol=1e-4, rtol=1e-5, scipy_name='scp')
+    @testing.numpy_cupy_allclose(atol=1e-4, rtol=1e-5, scipy_name="scp")
     def test_linspace(self, xp, scp, dtype):
         import scipy.special  # NOQA
 
@@ -28,14 +28,14 @@ class TestGammaln:
         return scp.special.gammaln(a)
 
     @testing.for_all_dtypes(no_complex=True)
-    @testing.numpy_cupy_allclose(atol=1e-2, rtol=1e-3, scipy_name='scp')
+    @testing.numpy_cupy_allclose(atol=1e-2, rtol=1e-3, scipy_name="scp")
     def test_scalar(self, xp, scp, dtype):
         import scipy.special  # NOQA
 
         return scp.special.gammaln(dtype(1.5))
 
     @testing.for_float_dtypes()
-    @testing.numpy_cupy_allclose(atol=1e-2, rtol=1e-3, scipy_name='scp')
+    @testing.numpy_cupy_allclose(atol=1e-2, rtol=1e-3, scipy_name="scp")
     def test_inf_and_nan(self, xp, scp, dtype):
         import scipy.special  # NOQA
 
@@ -43,12 +43,12 @@ class TestGammaln:
         return scp.special.gammaln(a)
 
 
-@testing.with_requires('scipy')
+@testing.with_requires("scipy")
 class TestMultigammaln:
 
-    @pytest.mark.parametrize('d', [1, 5, 15])
+    @pytest.mark.parametrize("d", [1, 5, 15])
     @testing.for_all_dtypes(no_complex=True, no_bool=True)
-    @testing.numpy_cupy_allclose(atol=1e-4, rtol=1e-5, scipy_name='scp')
+    @testing.numpy_cupy_allclose(atol=1e-4, rtol=1e-5, scipy_name="scp")
     def test_linspace(self, xp, scp, dtype, d):
         import scipy.special  # NOQA
 
@@ -56,27 +56,27 @@ class TestMultigammaln:
         a = xp.linspace(minval, minval + 50, 1000, dtype=dtype)
         return scp.special.multigammaln(a, d)
 
-    @pytest.mark.parametrize('d', [1, 5, 15])
+    @pytest.mark.parametrize("d", [1, 5, 15])
     @testing.for_all_dtypes(no_complex=True, no_bool=True)
-    @testing.numpy_cupy_allclose(atol=1e-2, rtol=1e-3, scipy_name='scp')
+    @testing.numpy_cupy_allclose(atol=1e-2, rtol=1e-3, scipy_name="scp")
     def test_scalar(self, xp, scp, dtype, d):
         import scipy.special  # NOQA
 
         return scp.special.multigammaln(dtype(30), d)
 
-    @pytest.mark.parametrize('d', [1, 5, 15])
-    @pytest.mark.parametrize('a', ['nan', 'inf'])
+    @pytest.mark.parametrize("d", [1, 5, 15])
+    @pytest.mark.parametrize("a", ["nan", "inf"])
     @testing.for_float_dtypes()
-    @testing.numpy_cupy_allclose(atol=1e-2, rtol=1e-3, scipy_name='scp')
+    @testing.numpy_cupy_allclose(atol=1e-2, rtol=1e-3, scipy_name="scp")
     def test_nonfinite_scalar(self, xp, scp, dtype, a, d):
         import scipy.special  # NOQA
 
         a = getattr(xp, a)
         return scp.special.multigammaln(dtype(a), d)
 
-    @pytest.mark.parametrize('d', [1, 5, 15])
+    @pytest.mark.parametrize("d", [1, 5, 15])
     @testing.for_float_dtypes()
-    @testing.numpy_cupy_allclose(atol=1e-2, rtol=1e-3, scipy_name='scp')
+    @testing.numpy_cupy_allclose(atol=1e-2, rtol=1e-3, scipy_name="scp")
     def test_nonfinite_array(self, xp, scp, dtype, d):
         import scipy.special  # NOQA
 
@@ -88,23 +88,23 @@ class TestMultigammaln:
             scp.special.multigammaln(a, d)
         return xp.zeros(0)
 
-    @pytest.mark.parametrize('d', ['array', 1.5])
+    @pytest.mark.parametrize("d", ["array", 1.5])
     @testing.for_all_dtypes(no_complex=True)
-    @testing.numpy_cupy_allclose(atol=1e-2, rtol=1e-3, scipy_name='scp')
+    @testing.numpy_cupy_allclose(atol=1e-2, rtol=1e-3, scipy_name="scp")
     def test_invalid_d(self, xp, scp, dtype, d):
         import scipy.special  # NOQA
 
         a = xp.array([5.0, 10.0, 15.0]).astype(dtype)
-        if d == 'array':
+        if d == "array":
             d = xp.arange(10, 20, dtype=int)
 
         with pytest.raises(ValueError):
             scp.special.multigammaln(a, d)
         return xp.zeros(0)
 
-    @pytest.mark.parametrize('d', [1, 5, 15])
+    @pytest.mark.parametrize("d", [1, 5, 15])
     @testing.for_all_dtypes(no_complex=True, no_bool=True)
-    @testing.numpy_cupy_allclose(atol=1e-4, rtol=1e-5, scipy_name='scp')
+    @testing.numpy_cupy_allclose(atol=1e-4, rtol=1e-5, scipy_name="scp")
     def test_invalid_a(self, xp, scp, dtype, d):
         import scipy.special  # NOQA
 

@@ -160,7 +160,7 @@ class TestSort(unittest.TestCase):
 
     # Test NaN ordering
 
-    @testing.for_dtypes('efdFD')
+    @testing.for_dtypes("efdFD")
     @testing.numpy_cupy_array_equal()
     def test_nan1(self, xp, dtype):
         a = testing.shaped_random((10,), xp, dtype)
@@ -168,7 +168,7 @@ class TestSort(unittest.TestCase):
         out = xp.sort(a)
         return out
 
-    @testing.for_dtypes('efdFD')
+    @testing.for_dtypes("efdFD")
     @testing.numpy_cupy_array_equal()
     def test_nan2(self, xp, dtype):
         a = testing.shaped_random((2, 3, 4), xp, dtype)
@@ -176,7 +176,7 @@ class TestSort(unittest.TestCase):
         out = xp.sort(a, axis=0)
         return out
 
-    @testing.for_dtypes('efdFD')
+    @testing.for_dtypes("efdFD")
     @testing.numpy_cupy_array_equal()
     def test_nan3(self, xp, dtype):
         a = testing.shaped_random((2, 3, 4), xp, dtype)
@@ -184,7 +184,7 @@ class TestSort(unittest.TestCase):
         out = xp.sort(a, axis=1)
         return out
 
-    @testing.for_dtypes('efdFD')
+    @testing.for_dtypes("efdFD")
     @testing.numpy_cupy_array_equal()
     def test_nan4(self, xp, dtype):
         a = testing.shaped_random((2, 3, 4), xp, dtype)
@@ -206,7 +206,7 @@ class TestLexsort(unittest.TestCase):
     # Test ranks
 
     # TODO(niboshi): Fix xfail
-    @pytest.mark.xfail(reason='Explicit error types required')
+    @pytest.mark.xfail(reason="Explicit error types required")
     def test_lexsort_zero_dim(self):
         for xp in (numpy, cupy):
             a = testing.shaped_random((), xp)
@@ -239,21 +239,21 @@ class TestLexsort(unittest.TestCase):
 
     # Test NaN ordering
 
-    @testing.for_dtypes('efdFD')
+    @testing.for_dtypes("efdFD")
     @testing.numpy_cupy_array_equal()
     def test_nan1(self, xp, dtype):
         a = testing.shaped_random((2, 10), xp, dtype)
         a[0, 2] = a[0, 6] = xp.nan
         return xp.lexsort(a)
 
-    @testing.for_dtypes('efdFD')
+    @testing.for_dtypes("efdFD")
     @testing.numpy_cupy_array_equal()
     def test_nan2(self, xp, dtype):
         a = testing.shaped_random((2, 10), xp, dtype)
         a[1, 2] = a[0, 6] = xp.nan
         return xp.lexsort(a)
 
-    @testing.for_dtypes('efdFD')
+    @testing.for_dtypes("efdFD")
     @testing.numpy_cupy_array_equal()
     def test_nan3(self, xp, dtype):
         a = testing.shaped_random((2, 10), xp, dtype)
@@ -279,7 +279,7 @@ class TestLexsort(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    'external': [False, True],
+    "external": [False, True],
 }))
 class TestArgsort(unittest.TestCase):
 
@@ -381,14 +381,14 @@ class TestArgsort(unittest.TestCase):
 
     # Test NaN ordering
 
-    @testing.for_dtypes('efdFD')
+    @testing.for_dtypes("efdFD")
     @testing.numpy_cupy_array_equal()
     def test_nan1(self, xp, dtype):
         a = testing.shaped_random((10,), xp, dtype)
         a[2] = a[6] = xp.nan
         return self.argsort(a)
 
-    @testing.for_dtypes('efdFD')
+    @testing.for_dtypes("efdFD")
     @testing.numpy_cupy_array_equal()
     def test_nan2(self, xp, dtype):
         a = testing.shaped_random((2, 3, 4), xp, dtype)
@@ -396,7 +396,7 @@ class TestArgsort(unittest.TestCase):
         return self.argsort(a)
 
 
-@pytest.mark.filterwarnings('ignore:.*msort.*:DeprecationWarning')
+@pytest.mark.filterwarnings("ignore:.*msort.*:DeprecationWarning")
 class TestMsort(unittest.TestCase):
 
     # Test base cases
@@ -440,7 +440,7 @@ class TestSort_complex(unittest.TestCase):
         a = testing.shaped_random((2, 5, 3), xp, dtype)
         return a, xp.sort_complex(a)
 
-    @testing.for_dtypes('efdFD')
+    @testing.for_dtypes("efdFD")
     @testing.numpy_cupy_array_equal()
     def test_sort_complex_nan(self, xp, dtype):
         a = testing.shaped_random((2, 3, 5), xp, dtype)
@@ -449,8 +449,8 @@ class TestSort_complex(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    'external': [False, True],
-    'length': [10, 20000],
+    "external": [False, True],
+    "length": [10, 20000],
 }))
 class TestPartition(unittest.TestCase):
 
@@ -599,7 +599,7 @@ class TestPartition(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    'external': [False, True],
+    "external": [False, True],
 }))
 class TestArgpartition(unittest.TestCase):
 
@@ -670,7 +670,7 @@ class TestArgpartition(unittest.TestCase):
 
     @testing.numpy_cupy_equal()
     def test_argpartition_non_contiguous(self, xp):
-        a = testing.shaped_random((10,), xp, 'i', 100)[::2]
+        a = testing.shaped_random((10,), xp, "i", 100)[::2]
         kth = 2
         idx = self.argpartition(a, kth)
         assert (a[idx[:kth]] < a[idx[kth]]).all()

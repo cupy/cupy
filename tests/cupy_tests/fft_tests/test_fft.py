@@ -17,12 +17,12 @@ from cupy.testing._loops import _wraps_partial
 
 @pytest.fixture
 def skip_forward_backward(request):
-    if request.instance.norm in ('backward', 'forward'):
-        if not (np.lib.NumpyVersion(np.__version__) >= '1.20.0'):
-            pytest.skip('forward/backward is supported by NumPy 1.20+')
+    if request.instance.norm in ("backward", "forward"):
+        if not (np.lib.NumpyVersion(np.__version__) >= "1.20.0"):
+            pytest.skip("forward/backward is supported by NumPy 1.20+")
 
 
-def nd_planning_states(states=[True, False], name='enable_nd'):
+def nd_planning_states(states=[True, False], name="enable_nd"):
     """Decorator for parameterized tests with and without nd planning
 
     Tests are repeated with config.enable_nd_planning set to True and False
@@ -50,7 +50,7 @@ def nd_planning_states(states=[True, False], name='enable_nd'):
                         kw[name] = nd_planning
                         impl(self, *args, **kw)
                     except Exception:
-                        print(name, 'is', nd_planning)
+                        print(name, "is", nd_planning)
                         raise
             finally:
                 # restore original global planning state
@@ -79,14 +79,14 @@ def multi_gpu_config(gpu_configs=None):
                 for gpus in gpu_configs:
                     try:
                         nGPUs = len(gpus)
-                        assert nGPUs >= 2, 'Must use at least two gpus'
+                        assert nGPUs >= 2, "Must use at least two gpus"
                         config.use_multi_gpus = True
                         config.set_cufft_gpus(gpus)
                         self.gpus = gpus
 
                         impl(self, *args, **kw)
                     except Exception:
-                        print('GPU config is:', gpus)
+                        print("GPU config is:", gpus)
                         raise
             finally:
                 config.use_multi_gpus = use_multi_gpus
@@ -97,11 +97,11 @@ def multi_gpu_config(gpu_configs=None):
     return decorator
 
 
-@pytest.mark.usefixtures('skip_forward_backward')
+@pytest.mark.usefixtures("skip_forward_backward")
 @testing.parameterize(*testing.product({
-    'n': [None, 0, 5, 10, 15],
-    'shape': [(0,), (10, 0), (10,), (10, 10)],
-    'norm': [None, 'backward', 'ortho', 'forward', ''],
+    "n": [None, 0, 5, 10, 15],
+    "shape": [(0,), (10, 0), (10,), (10, 10)],
+    "norm": [None, "backward", "ortho", "forward", ""],
 }))
 class TestFft:
 
@@ -122,8 +122,8 @@ class TestFft:
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     # NumPy 1.17.0 and 1.17.1 raises ZeroDivisonError due to a bug
-    @testing.with_requires('numpy!=1.17.0')
-    @testing.with_requires('numpy!=1.17.1')
+    @testing.with_requires("numpy!=1.17.0")
+    @testing.with_requires("numpy!=1.17.1")
     def test_ifft(self, xp, dtype):
         a = testing.shaped_random(self.shape, xp, dtype)
         out = xp.fft.ifft(a, n=self.n, norm=self.norm)
@@ -135,9 +135,9 @@ class TestFft:
 
 
 @testing.parameterize(*testing.product({
-    'shape': [(0, 10), (10, 0, 10), (10, 10), (10, 5, 10)],
-    'data_order': ['F', 'C'],
-    'axis': [0, 1, -1],
+    "shape": [(0, 10), (10, 0, 10), (10, 10), (10, 5, 10)],
+    "data_order": ["F", "C"],
+    "axis": [0, 1, -1],
 }))
 class TestFftOrder:
 
@@ -146,7 +146,7 @@ class TestFftOrder:
                                  contiguous_check=False)
     def test_fft(self, xp, dtype):
         a = testing.shaped_random(self.shape, xp, dtype)
-        if self.data_order == 'F':
+        if self.data_order == "F":
             a = xp.asfortranarray(a)
         out = xp.fft.fft(a, axis=self.axis)
 
@@ -161,7 +161,7 @@ class TestFftOrder:
                                  contiguous_check=False)
     def test_ifft(self, xp, dtype):
         a = testing.shaped_random(self.shape, xp, dtype)
-        if self.data_order == 'F':
+        if self.data_order == "F":
             a = xp.asfortranarray(a)
         out = xp.fft.ifft(a, axis=self.axis)
 
@@ -179,21 +179,21 @@ def _skip_multi_gpu_bug(shape, gpus):
     if (11000 <= cupy.cuda.runtime.runtimeGetVersion() < 11020
             and len(shape) == 1
             and gpus == [1, 0]):
-        pytest.skip('avoid CUDA 11 bug')
+        pytest.skip("avoid CUDA 11 bug")
 
 
 # Almost identical to the TestFft class, except that
 # 1. multi-GPU cuFFT is used
 # 2. the tested parameter combinations are adjusted to meet the requirements
-@pytest.mark.usefixtures('skip_forward_backward')
+@pytest.mark.usefixtures("skip_forward_backward")
 @testing.parameterize(*testing.product({
-    'n': [None, 0, 64],
-    'shape': [(0,), (0, 10), (64,), (4, 64)],
-    'norm': [None, 'backward', 'ortho', 'forward', ''],
+    "n": [None, 0, 64],
+    "shape": [(0,), (0, 10), (64,), (4, 64)],
+    "norm": [None, "backward", "ortho", "forward", ""],
 }))
 @testing.multi_gpu(2)
 @pytest.mark.skipif(cupy.cuda.runtime.is_hip,
-                    reason='hipFFT does not support multi-GPU FFT')
+                    reason="hipFFT does not support multi-GPU FFT")
 class TestMultiGpuFft:
 
     @multi_gpu_config(gpu_configs=[[0, 1], [1, 0]])
@@ -217,8 +217,8 @@ class TestMultiGpuFft:
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     # NumPy 1.17.0 and 1.17.1 raises ZeroDivisonError due to a bug
-    @testing.with_requires('numpy!=1.17.0')
-    @testing.with_requires('numpy!=1.17.1')
+    @testing.with_requires("numpy!=1.17.0")
+    @testing.with_requires("numpy!=1.17.1")
     def test_ifft(self, xp, dtype):
         _skip_multi_gpu_bug(self.shape, self.gpus)
 
@@ -236,13 +236,13 @@ class TestMultiGpuFft:
 # 1. multi-GPU cuFFT is used
 # 2. the tested parameter combinations are adjusted to meet the requirements
 @testing.parameterize(*testing.product({
-    'shape': [(10, 10), (10, 5, 10)],
-    'data_order': ['F', 'C'],
-    'axis': [0, 1, -1],
+    "shape": [(10, 10), (10, 5, 10)],
+    "data_order": ["F", "C"],
+    "axis": [0, 1, -1],
 }))
 @testing.multi_gpu(2)
 @pytest.mark.skipif(cupy.cuda.runtime.is_hip,
-                    reason='hipFFT does not support multi-GPU FFT')
+                    reason="hipFFT does not support multi-GPU FFT")
 class TestMultiGpuFftOrder:
     @multi_gpu_config(gpu_configs=[[0, 1], [1, 0]])
     @testing.for_complex_dtypes()
@@ -252,7 +252,7 @@ class TestMultiGpuFftOrder:
         _skip_multi_gpu_bug(self.shape, self.gpus)
 
         a = testing.shaped_random(self.shape, xp, dtype)
-        if self.data_order == 'F':
+        if self.data_order == "F":
             a = xp.asfortranarray(a)
         out = xp.fft.fft(a, axis=self.axis)
 
@@ -270,7 +270,7 @@ class TestMultiGpuFftOrder:
         _skip_multi_gpu_bug(self.shape, self.gpus)
 
         a = testing.shaped_random(self.shape, xp, dtype)
-        if self.data_order == 'F':
+        if self.data_order == "F":
             a = xp.asfortranarray(a)
         out = xp.fft.ifft(a, axis=self.axis)
 
@@ -316,7 +316,7 @@ class TestDefaultPlanType:
         ca = cupy.random.random((4, 2, 6))
         for s, axes in zip([(3, 4), None, (8, 7, 5)],
                            [(-2, -1), (0, 1), None]):
-            fft_func = _default_fft_func(ca, s=s, axes=axes, value_type='R2C')
+            fft_func = _default_fft_func(ca, s=s, axes=axes, value_type="R2C")
             if enable_nd:
                 # TODO(leofang): test newer ROCm versions
                 if axes == (0, 1) and cupy.cuda.runtime.is_hip:
@@ -327,13 +327,13 @@ class TestDefaultPlanType:
                 assert fft_func is _fft
 
         # nd plan not possible if last axis is not 0 or ndim-1
-        assert _default_fft_func(ca, axes=(2, 1), value_type='R2C') is _fft
+        assert _default_fft_func(ca, axes=(2, 1), value_type="R2C") is _fft
 
         # for irfftn
         ca = cupy.random.random((4, 2, 6)).astype(cupy.complex128)
         for s, axes in zip([(3, 4), None, (8, 7, 5)],
                            [(-2, -1), (0, 1), None]):
-            fft_func = _default_fft_func(ca, s=s, axes=axes, value_type='C2R')
+            fft_func = _default_fft_func(ca, s=s, axes=axes, value_type="C2R")
             if enable_nd:
                 # To get around hipFFT's bug, we don't use PlanNd for C2R
                 # TODO(leofang): test newer ROCm versions
@@ -345,11 +345,11 @@ class TestDefaultPlanType:
                 assert fft_func is _fft
 
         # nd plan not possible if last axis is not 0 or ndim-1
-        assert _default_fft_func(ca, axes=(2, 1), value_type='C2R') is _fft
+        assert _default_fft_func(ca, axes=(2, 1), value_type="C2R") is _fft
 
 
 @pytest.mark.skipif(10010 <= cupy.cuda.runtime.runtimeGetVersion() <= 11010,
-                    reason='avoid a cuFFT bug (cupy/cupy#3777)')
+                    reason="avoid a cuFFT bug (cupy/cupy#3777)")
 @testing.slow
 class TestFftAllocate:
 
@@ -370,47 +370,47 @@ class TestFftAllocate:
         cupy.fft.config.clear_plan_cache()
 
 
-@pytest.mark.usefixtures('skip_forward_backward')
+@pytest.mark.usefixtures("skip_forward_backward")
 @testing.parameterize(*(
     testing.product_dict([
-        {'shape': (3, 4), 's': None, 'axes': None},
-        {'shape': (3, 4), 's': (1, None), 'axes': None},
-        {'shape': (3, 4), 's': (1, 5), 'axes': None},
-        {'shape': (3, 4), 's': None, 'axes': (-2, -1)},
-        {'shape': (3, 4), 's': None, 'axes': (-1, -2)},
-        {'shape': (3, 4), 's': None, 'axes': (0,)},
-        {'shape': (3, 4), 's': None, 'axes': None},
-        {'shape': (3, 4), 's': None, 'axes': ()},
-        {'shape': (2, 3, 4), 's': None, 'axes': None},
-        {'shape': (2, 3, 4), 's': (1, 4, None), 'axes': None},
-        {'shape': (2, 3, 4), 's': (1, 4, 10), 'axes': None},
-        {'shape': (2, 3, 4), 's': None, 'axes': (-3, -2, -1)},
-        {'shape': (2, 3, 4), 's': None, 'axes': (-1, -2, -3)},
-        {'shape': (2, 3, 4), 's': None, 'axes': (0, 1)},
-        {'shape': (2, 3, 4), 's': None, 'axes': None},
-        {'shape': (2, 3, 4), 's': None, 'axes': ()},
-        {'shape': (2, 3, 4), 's': (2, 3), 'axes': (0, 1, 2)},
-        {'shape': (2, 3, 4, 5), 's': None, 'axes': None},
-        {'shape': (0, 5), 's': None, 'axes': None},
-        {'shape': (2, 0, 5), 's': None, 'axes': None},
-        {'shape': (0, 0, 5), 's': None, 'axes': None},
-        {'shape': (3, 4), 's': (0, 5), 'axes': None},
-        {'shape': (3, 4), 's': (1, 0), 'axes': None},
+        {"shape": (3, 4), "s": None, "axes": None},
+        {"shape": (3, 4), "s": (1, None), "axes": None},
+        {"shape": (3, 4), "s": (1, 5), "axes": None},
+        {"shape": (3, 4), "s": None, "axes": (-2, -1)},
+        {"shape": (3, 4), "s": None, "axes": (-1, -2)},
+        {"shape": (3, 4), "s": None, "axes": (0,)},
+        {"shape": (3, 4), "s": None, "axes": None},
+        {"shape": (3, 4), "s": None, "axes": ()},
+        {"shape": (2, 3, 4), "s": None, "axes": None},
+        {"shape": (2, 3, 4), "s": (1, 4, None), "axes": None},
+        {"shape": (2, 3, 4), "s": (1, 4, 10), "axes": None},
+        {"shape": (2, 3, 4), "s": None, "axes": (-3, -2, -1)},
+        {"shape": (2, 3, 4), "s": None, "axes": (-1, -2, -3)},
+        {"shape": (2, 3, 4), "s": None, "axes": (0, 1)},
+        {"shape": (2, 3, 4), "s": None, "axes": None},
+        {"shape": (2, 3, 4), "s": None, "axes": ()},
+        {"shape": (2, 3, 4), "s": (2, 3), "axes": (0, 1, 2)},
+        {"shape": (2, 3, 4, 5), "s": None, "axes": None},
+        {"shape": (0, 5), "s": None, "axes": None},
+        {"shape": (2, 0, 5), "s": None, "axes": None},
+        {"shape": (0, 0, 5), "s": None, "axes": None},
+        {"shape": (3, 4), "s": (0, 5), "axes": None},
+        {"shape": (3, 4), "s": (1, 0), "axes": None},
     ],
-        testing.product({'norm': [None, 'backward', 'ortho', 'forward', '']})
+        testing.product({"norm": [None, "backward", "ortho", "forward", ""]})
     )
 ))
 class TestFft2:
 
     @nd_planning_states()
-    @testing.for_orders('CF')
+    @testing.for_orders("CF")
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_fft2(self, xp, dtype, order, enable_nd):
         assert config.enable_nd_planning == enable_nd
         a = testing.shaped_random(self.shape, xp, dtype)
-        if order == 'F':
+        if order == "F":
             a = xp.asfortranarray(a)
         out = xp.fft.fft2(a, s=self.s, axes=self.axes, norm=self.norm)
 
@@ -424,14 +424,14 @@ class TestFft2:
         return out
 
     @nd_planning_states()
-    @testing.for_orders('CF')
+    @testing.for_orders("CF")
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_ifft2(self, xp, dtype, order, enable_nd):
         assert config.enable_nd_planning == enable_nd
         a = testing.shaped_random(self.shape, xp, dtype)
-        if order == 'F':
+        if order == "F":
             a = xp.asfortranarray(a)
         out = xp.fft.ifft2(a, s=self.s, axes=self.axes, norm=self.norm)
 
@@ -445,48 +445,48 @@ class TestFft2:
         return out
 
 
-@pytest.mark.usefixtures('skip_forward_backward')
+@pytest.mark.usefixtures("skip_forward_backward")
 @testing.parameterize(*(
     testing.product_dict([
-        {'shape': (3, 4), 's': None, 'axes': None},
-        {'shape': (3, 4), 's': (1, None), 'axes': None},
-        {'shape': (3, 4), 's': (1, 5), 'axes': None},
-        {'shape': (3, 4), 's': None, 'axes': (-2, -1)},
-        {'shape': (3, 4), 's': None, 'axes': (-1, -2)},
-        {'shape': (3, 4), 's': None, 'axes': [-1, -2]},
-        {'shape': (3, 4), 's': None, 'axes': (0,)},
-        {'shape': (3, 4), 's': None, 'axes': ()},
-        {'shape': (3, 4), 's': None, 'axes': None},
-        {'shape': (2, 3, 4), 's': None, 'axes': None},
-        {'shape': (2, 3, 4), 's': (1, 4, None), 'axes': None},
-        {'shape': (2, 3, 4), 's': (1, 4, 10), 'axes': None},
-        {'shape': (2, 3, 4), 's': None, 'axes': (-3, -2, -1)},
-        {'shape': (2, 3, 4), 's': None, 'axes': (-1, -2, -3)},
-        {'shape': (2, 3, 4), 's': None, 'axes': (-1, -3)},
-        {'shape': (2, 3, 4), 's': None, 'axes': (0, 1)},
-        {'shape': (2, 3, 4), 's': None, 'axes': None},
-        {'shape': (2, 3, 4), 's': None, 'axes': ()},
-        {'shape': (2, 3, 4), 's': (2, 3), 'axes': (0, 1, 2)},
-        {'shape': (2, 3, 4), 's': (4, 3, 2), 'axes': (2, 0, 1)},
-        {'shape': (2, 3, 4, 5), 's': None, 'axes': None},
-        {'shape': (0, 5), 's': None, 'axes': None},
-        {'shape': (2, 0, 5), 's': None, 'axes': None},
-        {'shape': (0, 0, 5), 's': None, 'axes': None},
+        {"shape": (3, 4), "s": None, "axes": None},
+        {"shape": (3, 4), "s": (1, None), "axes": None},
+        {"shape": (3, 4), "s": (1, 5), "axes": None},
+        {"shape": (3, 4), "s": None, "axes": (-2, -1)},
+        {"shape": (3, 4), "s": None, "axes": (-1, -2)},
+        {"shape": (3, 4), "s": None, "axes": [-1, -2]},
+        {"shape": (3, 4), "s": None, "axes": (0,)},
+        {"shape": (3, 4), "s": None, "axes": ()},
+        {"shape": (3, 4), "s": None, "axes": None},
+        {"shape": (2, 3, 4), "s": None, "axes": None},
+        {"shape": (2, 3, 4), "s": (1, 4, None), "axes": None},
+        {"shape": (2, 3, 4), "s": (1, 4, 10), "axes": None},
+        {"shape": (2, 3, 4), "s": None, "axes": (-3, -2, -1)},
+        {"shape": (2, 3, 4), "s": None, "axes": (-1, -2, -3)},
+        {"shape": (2, 3, 4), "s": None, "axes": (-1, -3)},
+        {"shape": (2, 3, 4), "s": None, "axes": (0, 1)},
+        {"shape": (2, 3, 4), "s": None, "axes": None},
+        {"shape": (2, 3, 4), "s": None, "axes": ()},
+        {"shape": (2, 3, 4), "s": (2, 3), "axes": (0, 1, 2)},
+        {"shape": (2, 3, 4), "s": (4, 3, 2), "axes": (2, 0, 1)},
+        {"shape": (2, 3, 4, 5), "s": None, "axes": None},
+        {"shape": (0, 5), "s": None, "axes": None},
+        {"shape": (2, 0, 5), "s": None, "axes": None},
+        {"shape": (0, 0, 5), "s": None, "axes": None},
     ],
-        testing.product({'norm': [None, 'backward', 'ortho', 'forward', '']})
+        testing.product({"norm": [None, "backward", "ortho", "forward", ""]})
     )
 ))
 class TestFftn:
 
     @nd_planning_states()
-    @testing.for_orders('CF')
+    @testing.for_orders("CF")
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_fftn(self, xp, dtype, order, enable_nd):
         assert config.enable_nd_planning == enable_nd
         a = testing.shaped_random(self.shape, xp, dtype)
-        if order == 'F':
+        if order == "F":
             a = xp.asfortranarray(a)
         out = xp.fft.fftn(a, s=self.s, axes=self.axes, norm=self.norm)
 
@@ -500,14 +500,14 @@ class TestFftn:
         return out
 
     @nd_planning_states()
-    @testing.for_orders('CF')
+    @testing.for_orders("CF")
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_ifftn(self, xp, dtype, order, enable_nd):
         assert config.enable_nd_planning == enable_nd
         a = testing.shaped_random(self.shape, xp, dtype)
-        if order == 'F':
+        if order == "F":
             a = xp.asfortranarray(a)
         out = xp.fft.ifftn(a, s=self.s, axes=self.axes, norm=self.norm)
 
@@ -521,28 +521,28 @@ class TestFftn:
         return out
 
 
-@pytest.mark.usefixtures('skip_forward_backward')
+@pytest.mark.usefixtures("skip_forward_backward")
 @testing.parameterize(*(
     testing.product_dict([
-        {'shape': (3, 4), 's': None, 'axes': None},
-        {'shape': (3, 4), 's': (1, 5), 'axes': None},
-        {'shape': (3, 4), 's': None, 'axes': (-2, -1)},
-        {'shape': (3, 4), 's': None, 'axes': (-1, -2)},
-        {'shape': (3, 4), 's': None, 'axes': (0,)},
-        {'shape': (3, 4), 's': None, 'axes': None},
-        {'shape': (2, 3, 4), 's': None, 'axes': None},
-        {'shape': (2, 3, 4), 's': (1, 4, 10), 'axes': None},
-        {'shape': (2, 3, 4), 's': None, 'axes': (-3, -2, -1)},
-        {'shape': (2, 3, 4), 's': None, 'axes': (-1, -2, -3)},
-        {'shape': (2, 3, 4), 's': None, 'axes': (0, 1)},
-        {'shape': (2, 3, 4), 's': None, 'axes': None},
-        {'shape': (2, 3, 4), 's': (2, 3), 'axes': None},
-        {'shape': (2, 3, 4), 's': (2, 3), 'axes': (0, 1, 2)},
-        {'shape': (0, 5), 's': None, 'axes': None},
-        {'shape': (2, 0, 5), 's': None, 'axes': None},
-        {'shape': (0, 0, 5), 's': None, 'axes': None},
+        {"shape": (3, 4), "s": None, "axes": None},
+        {"shape": (3, 4), "s": (1, 5), "axes": None},
+        {"shape": (3, 4), "s": None, "axes": (-2, -1)},
+        {"shape": (3, 4), "s": None, "axes": (-1, -2)},
+        {"shape": (3, 4), "s": None, "axes": (0,)},
+        {"shape": (3, 4), "s": None, "axes": None},
+        {"shape": (2, 3, 4), "s": None, "axes": None},
+        {"shape": (2, 3, 4), "s": (1, 4, 10), "axes": None},
+        {"shape": (2, 3, 4), "s": None, "axes": (-3, -2, -1)},
+        {"shape": (2, 3, 4), "s": None, "axes": (-1, -2, -3)},
+        {"shape": (2, 3, 4), "s": None, "axes": (0, 1)},
+        {"shape": (2, 3, 4), "s": None, "axes": None},
+        {"shape": (2, 3, 4), "s": (2, 3), "axes": None},
+        {"shape": (2, 3, 4), "s": (2, 3), "axes": (0, 1, 2)},
+        {"shape": (0, 5), "s": None, "axes": None},
+        {"shape": (2, 0, 5), "s": None, "axes": None},
+        {"shape": (0, 0, 5), "s": None, "axes": None},
     ],
-        testing.product({'norm': [None, 'backward', 'ortho', 'forward']})
+        testing.product({"norm": [None, "backward", "ortho", "forward"]})
     )
 ))
 class TestPlanCtxManagerFftn:
@@ -600,7 +600,7 @@ class TestPlanCtxManagerFftn:
     @testing.for_complex_dtypes()
     def test_fftn_error_on_wrong_plan(self, dtype, enable_nd):
         if 0 in self.shape:
-            pytest.skip('0 in shape')
+            pytest.skip("0 in shape")
         # This test ensures the context manager plan is picked up
 
         from cupy.fft import fftn
@@ -627,14 +627,14 @@ class TestPlanCtxManagerFftn:
         with pytest.raises(ValueError) as ex, plan_wrong:
             fftn(a, s=self.s, axes=self.axes, norm=self.norm)
         # targeting a particular error
-        assert 'The cuFFT plan and a.shape do not match' in str(ex.value)
+        assert "The cuFFT plan and a.shape do not match" in str(ex.value)
 
 
-@pytest.mark.usefixtures('skip_forward_backward')
+@pytest.mark.usefixtures("skip_forward_backward")
 @testing.parameterize(*testing.product({
-    'n': [None, 5, 10, 15],
-    'shape': [(10,), ],
-    'norm': [None, 'backward', 'ortho', 'forward'],
+    "n": [None, 5, 10, 15],
+    "shape": [(10,), ],
+    "norm": [None, "backward", "ortho", "forward"],
 }))
 class TestPlanCtxManagerFft:
 
@@ -695,21 +695,21 @@ class TestPlanCtxManagerFft:
         with pytest.raises(ValueError) as ex, plan_wrong:
             fft(a, n=self.n, norm=self.norm)
         # targeting a particular error
-        assert 'Target array size does not match the plan.' in str(ex.value)
+        assert "Target array size does not match the plan." in str(ex.value)
 
 
 # Almost identical to the TestPlanCtxManagerFft class, except that
 # 1. multi-GPU cuFFT is used
 # 2. the tested parameter combinations are adjusted to meet the requirements
-@pytest.mark.usefixtures('skip_forward_backward')
+@pytest.mark.usefixtures("skip_forward_backward")
 @testing.parameterize(*testing.product({
-    'n': [None, 64],
-    'shape': [(64,), (128,)],
-    'norm': [None, 'backward', 'ortho', 'forward', ''],
+    "n": [None, 64],
+    "shape": [(64,), (128,)],
+    "norm": [None, "backward", "ortho", "forward", ""],
 }))
 @testing.multi_gpu(2)
 @pytest.mark.skipif(cupy.cuda.runtime.is_hip,
-                    reason='hipFFT does not support multi-GPU FFT')
+                    reason="hipFFT does not support multi-GPU FFT")
 class TestMultiGpuPlanCtxManagerFft:
 
     @multi_gpu_config(gpu_configs=[[0, 1], [1, 0]])
@@ -776,30 +776,30 @@ class TestMultiGpuPlanCtxManagerFft:
         with pytest.raises(ValueError) as ex, plan_wrong:
             fft(a, n=self.n, norm=self.norm)
         # targeting a particular error
-        if self.norm == '':
+        if self.norm == "":
             # if norm is invalid, we still get ValueError, but it's raised
             # when checking norm, earlier than the plan check
             return  # skip
-        assert 'Target array size does not match the plan.' in str(ex.value)
+        assert "Target array size does not match the plan." in str(ex.value)
 
 
-@pytest.mark.usefixtures('skip_forward_backward')
+@pytest.mark.usefixtures("skip_forward_backward")
 @testing.parameterize(*(
     testing.product_dict([
-        {'shape': (3, 4), 's': None, 'axes': None},
-        {'shape': (3, 4), 's': None, 'axes': (-2, -1)},
-        {'shape': (3, 4), 's': None, 'axes': (-1, -2)},
-        {'shape': (3, 4), 's': None, 'axes': (0,)},
-        {'shape': (3, 4), 's': None, 'axes': None},
-        {'shape': (2, 3, 4), 's': (1, 4, None), 'axes': None},
-        {'shape': (2, 3, 4), 's': (1, 4, 10), 'axes': None},
-        {'shape': (2, 3, 4), 's': None, 'axes': (-3, -2, -1)},
-        {'shape': (2, 3, 4), 's': None, 'axes': (-1, -2, -3)},
-        {'shape': (2, 3, 4), 's': None, 'axes': (0, 1)},
-        {'shape': (2, 3, 4), 's': None, 'axes': None},
-        {'shape': (2, 3, 4, 5), 's': None, 'axes': (-3, -2, -1)},
+        {"shape": (3, 4), "s": None, "axes": None},
+        {"shape": (3, 4), "s": None, "axes": (-2, -1)},
+        {"shape": (3, 4), "s": None, "axes": (-1, -2)},
+        {"shape": (3, 4), "s": None, "axes": (0,)},
+        {"shape": (3, 4), "s": None, "axes": None},
+        {"shape": (2, 3, 4), "s": (1, 4, None), "axes": None},
+        {"shape": (2, 3, 4), "s": (1, 4, 10), "axes": None},
+        {"shape": (2, 3, 4), "s": None, "axes": (-3, -2, -1)},
+        {"shape": (2, 3, 4), "s": None, "axes": (-1, -2, -3)},
+        {"shape": (2, 3, 4), "s": None, "axes": (0, 1)},
+        {"shape": (2, 3, 4), "s": None, "axes": None},
+        {"shape": (2, 3, 4, 5), "s": None, "axes": (-3, -2, -1)},
     ],
-        testing.product({'norm': [None, 'backward', 'ortho', 'forward', '']})
+        testing.product({"norm": [None, "backward", "ortho", "forward", ""]})
     )
 ))
 class TestFftnContiguity:
@@ -807,9 +807,9 @@ class TestFftnContiguity:
     @nd_planning_states([True])
     @testing.for_all_dtypes()
     def test_fftn_orders(self, dtype, enable_nd):
-        for order in ['C', 'F']:
+        for order in ["C", "F"]:
             a = testing.shaped_random(self.shape, cupy, dtype)
-            if order == 'F':
+            if order == "F":
                 a = cupy.asfortranarray(a)
             out = cupy.fft.fftn(a, s=self.s, axes=self.axes)
 
@@ -825,10 +825,10 @@ class TestFftnContiguity:
     @nd_planning_states([True])
     @testing.for_all_dtypes()
     def test_ifftn_orders(self, dtype, enable_nd):
-        for order in ['C', 'F']:
+        for order in ["C", "F"]:
 
             a = testing.shaped_random(self.shape, cupy, dtype)
-            if order == 'F':
+            if order == "F":
                 a = cupy.asfortranarray(a)
             out = cupy.fft.ifftn(a, s=self.s, axes=self.axes)
 
@@ -842,11 +842,11 @@ class TestFftnContiguity:
                 pass
 
 
-@pytest.mark.usefixtures('skip_forward_backward')
+@pytest.mark.usefixtures("skip_forward_backward")
 @testing.parameterize(*testing.product({
-    'n': [None, 5, 10, 15],
-    'shape': [(10,), (10, 10)],
-    'norm': [None, 'backward', 'ortho', 'forward', ''],
+    "n": [None, 5, 10, 15],
+    "shape": [(10,), (10, 10)],
+    "norm": [None, "backward", "ortho", "forward", ""],
 }))
 class TestRfft:
 
@@ -875,11 +875,11 @@ class TestRfft:
         return out
 
 
-@pytest.mark.usefixtures('skip_forward_backward')
+@pytest.mark.usefixtures("skip_forward_backward")
 @testing.parameterize(*testing.product({
-    'n': [None, 5, 10, 15],
-    'shape': [(10,)],
-    'norm': [None, 'backward', 'ortho', 'forward'],
+    "n": [None, 5, 10, 15],
+    "shape": [(10,)],
+    "norm": [None, "backward", "ortho", "forward"],
 }))
 class TestPlanCtxManagerRfft:
 
@@ -892,7 +892,7 @@ class TestPlanCtxManagerRfft:
         if xp is cupy:
             from cupyx.scipy.fftpack import get_fft_plan
             shape = (self.n,) if self.n is not None else None
-            plan = get_fft_plan(a, shape=shape, value_type='R2C')
+            plan = get_fft_plan(a, shape=shape, value_type="R2C")
             assert isinstance(plan, cupy.cuda.cufft.Plan1d)
             with plan:
                 out = xp.fft.rfft(a, n=self.n, norm=self.norm)
@@ -913,7 +913,7 @@ class TestPlanCtxManagerRfft:
         if xp is cupy:
             from cupyx.scipy.fftpack import get_fft_plan
             shape = (self.n,) if self.n is not None else None
-            plan = get_fft_plan(a, shape=shape, value_type='C2R')
+            plan = get_fft_plan(a, shape=shape, value_type="C2R")
             assert isinstance(plan, cupy.cuda.cufft.Plan1d)
             with plan:
                 out = xp.fft.irfft(a, n=self.n, norm=self.norm)
@@ -935,49 +935,49 @@ class TestPlanCtxManagerRfft:
         a = testing.shaped_random(self.shape, cupy, dtype)
         bad_shape = tuple(5*i for i in self.shape)
         b = testing.shaped_random(bad_shape, cupy, dtype)
-        plan_wrong = get_fft_plan(b, value_type='R2C')
+        plan_wrong = get_fft_plan(b, value_type="R2C")
         assert isinstance(plan_wrong, cupy.cuda.cufft.Plan1d)
 
         with pytest.raises(ValueError) as ex, plan_wrong:
             rfft(a, n=self.n, norm=self.norm)
         # targeting a particular error
-        assert 'Target array size does not match the plan.' in str(ex.value)
+        assert "Target array size does not match the plan." in str(ex.value)
 
 
-@pytest.mark.usefixtures('skip_forward_backward')
+@pytest.mark.usefixtures("skip_forward_backward")
 @testing.parameterize(*(
     testing.product_dict([
-        {'shape': (3, 4), 's': None, 'axes': None},
-        {'shape': (3, 4), 's': (1, None), 'axes': None},
-        {'shape': (3, 4), 's': (1, 5), 'axes': None},
-        {'shape': (3, 4), 's': None, 'axes': (-2, -1)},
-        {'shape': (3, 4), 's': None, 'axes': (-1, -2)},
-        {'shape': (3, 4), 's': None, 'axes': (0,)},
-        {'shape': (3, 4), 's': None, 'axes': None},
-        {'shape': (2, 3, 4), 's': None, 'axes': None},
-        {'shape': (2, 3, 4), 's': (1, 4, None), 'axes': None},
-        {'shape': (2, 3, 4), 's': (1, 4, 10), 'axes': None},
-        {'shape': (2, 3, 4), 's': None, 'axes': (-3, -2, -1)},
-        {'shape': (2, 3, 4), 's': None, 'axes': (-1, -2, -3)},
-        {'shape': (2, 3, 4), 's': None, 'axes': (0, 1)},
-        {'shape': (2, 3, 4), 's': None, 'axes': None},
-        {'shape': (2, 3, 4), 's': (2, 3), 'axes': (0, 1, 2)},
-        {'shape': (2, 3, 4, 5), 's': None, 'axes': None},
+        {"shape": (3, 4), "s": None, "axes": None},
+        {"shape": (3, 4), "s": (1, None), "axes": None},
+        {"shape": (3, 4), "s": (1, 5), "axes": None},
+        {"shape": (3, 4), "s": None, "axes": (-2, -1)},
+        {"shape": (3, 4), "s": None, "axes": (-1, -2)},
+        {"shape": (3, 4), "s": None, "axes": (0,)},
+        {"shape": (3, 4), "s": None, "axes": None},
+        {"shape": (2, 3, 4), "s": None, "axes": None},
+        {"shape": (2, 3, 4), "s": (1, 4, None), "axes": None},
+        {"shape": (2, 3, 4), "s": (1, 4, 10), "axes": None},
+        {"shape": (2, 3, 4), "s": None, "axes": (-3, -2, -1)},
+        {"shape": (2, 3, 4), "s": None, "axes": (-1, -2, -3)},
+        {"shape": (2, 3, 4), "s": None, "axes": (0, 1)},
+        {"shape": (2, 3, 4), "s": None, "axes": None},
+        {"shape": (2, 3, 4), "s": (2, 3), "axes": (0, 1, 2)},
+        {"shape": (2, 3, 4, 5), "s": None, "axes": None},
     ],
-        testing.product({'norm': [None, 'backward', 'ortho', 'forward', '']})
+        testing.product({"norm": [None, "backward", "ortho", "forward", ""]})
     )
 ))
 class TestRfft2:
 
     @nd_planning_states()
-    @testing.for_orders('CF')
+    @testing.for_orders("CF")
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_rfft2(self, xp, dtype, order, enable_nd):
         assert config.enable_nd_planning == enable_nd
         a = testing.shaped_random(self.shape, xp, dtype)
-        if order == 'F':
+        if order == "F":
             a = xp.asfortranarray(a)
         out = xp.fft.rfft2(a, s=self.s, axes=self.axes, norm=self.norm)
 
@@ -986,7 +986,7 @@ class TestRfft2:
         return out
 
     @nd_planning_states()
-    @testing.for_orders('CF')
+    @testing.for_orders("CF")
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -996,10 +996,10 @@ class TestRfft2:
                 and int(cupy.cuda.device.get_compute_capability()) < 70
                 and _size_last_transform_axis(
                     self.shape, self.s, self.axes) == 2):
-            pytest.skip('work-around for cuFFT issue')
+            pytest.skip("work-around for cuFFT issue")
 
         a = testing.shaped_random(self.shape, xp, dtype)
-        if order == 'F':
+        if order == "F":
             a = xp.asfortranarray(a)
         out = xp.fft.irfft2(a, s=self.s, axes=self.axes, norm=self.norm)
 
@@ -1009,8 +1009,8 @@ class TestRfft2:
 
 
 @testing.parameterize(
-    {'shape': (3, 4), 's': None, 'axes': (), 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': (), 'norm': None},
+    {"shape": (3, 4), "s": None, "axes": (), "norm": None},
+    {"shape": (2, 3, 4), "s": None, "axes": (), "norm": None},
 )
 class TestRfft2EmptyAxes:
 
@@ -1029,40 +1029,40 @@ class TestRfft2EmptyAxes:
                 xp.fft.irfft2(a, s=self.s, axes=self.axes, norm=self.norm)
 
 
-@pytest.mark.usefixtures('skip_forward_backward')
+@pytest.mark.usefixtures("skip_forward_backward")
 @testing.parameterize(*(
     testing.product_dict([
-        {'shape': (3, 4), 's': None, 'axes': None},
-        {'shape': (3, 4), 's': (1, None), 'axes': None},
-        {'shape': (3, 4), 's': (1, 5), 'axes': None},
-        {'shape': (3, 4), 's': None, 'axes': (-2, -1)},
-        {'shape': (3, 4), 's': None, 'axes': (-1, -2)},
-        {'shape': (3, 4), 's': None, 'axes': (0,)},
-        {'shape': (3, 4), 's': None, 'axes': None},
-        {'shape': (2, 3, 4), 's': None, 'axes': None},
-        {'shape': (2, 3, 4), 's': (1, 4, None), 'axes': None},
-        {'shape': (2, 3, 4), 's': (1, 4, 10), 'axes': None},
-        {'shape': (2, 3, 4), 's': None, 'axes': (-3, -2, -1)},
-        {'shape': (2, 3, 4), 's': None, 'axes': (-1, -2, -3)},
-        {'shape': (2, 3, 4), 's': None, 'axes': (0, 1)},
-        {'shape': (2, 3, 4), 's': None, 'axes': None},
-        {'shape': (2, 3, 4), 's': (2, 3), 'axes': (0, 1, 2)},
-        {'shape': (2, 3, 4, 5), 's': None, 'axes': None},
+        {"shape": (3, 4), "s": None, "axes": None},
+        {"shape": (3, 4), "s": (1, None), "axes": None},
+        {"shape": (3, 4), "s": (1, 5), "axes": None},
+        {"shape": (3, 4), "s": None, "axes": (-2, -1)},
+        {"shape": (3, 4), "s": None, "axes": (-1, -2)},
+        {"shape": (3, 4), "s": None, "axes": (0,)},
+        {"shape": (3, 4), "s": None, "axes": None},
+        {"shape": (2, 3, 4), "s": None, "axes": None},
+        {"shape": (2, 3, 4), "s": (1, 4, None), "axes": None},
+        {"shape": (2, 3, 4), "s": (1, 4, 10), "axes": None},
+        {"shape": (2, 3, 4), "s": None, "axes": (-3, -2, -1)},
+        {"shape": (2, 3, 4), "s": None, "axes": (-1, -2, -3)},
+        {"shape": (2, 3, 4), "s": None, "axes": (0, 1)},
+        {"shape": (2, 3, 4), "s": None, "axes": None},
+        {"shape": (2, 3, 4), "s": (2, 3), "axes": (0, 1, 2)},
+        {"shape": (2, 3, 4, 5), "s": None, "axes": None},
     ],
-        testing.product({'norm': [None, 'backward', 'ortho', 'forward', '']})
+        testing.product({"norm": [None, "backward", "ortho", "forward", ""]})
     )
 ))
 class TestRfftn:
 
     @nd_planning_states()
-    @testing.for_orders('CF')
+    @testing.for_orders("CF")
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_rfftn(self, xp, dtype, order, enable_nd):
         assert config.enable_nd_planning == enable_nd
         a = testing.shaped_random(self.shape, xp, dtype)
-        if order == 'F':
+        if order == "F":
             a = xp.asfortranarray(a)
         out = xp.fft.rfftn(a, s=self.s, axes=self.axes, norm=self.norm)
 
@@ -1072,7 +1072,7 @@ class TestRfftn:
         return out
 
     @nd_planning_states()
-    @testing.for_orders('CF')
+    @testing.for_orders("CF")
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -1082,10 +1082,10 @@ class TestRfftn:
                 and int(cupy.cuda.device.get_compute_capability()) < 70
                 and _size_last_transform_axis(
                     self.shape, self.s, self.axes) == 2):
-            pytest.skip('work-around for cuFFT issue')
+            pytest.skip("work-around for cuFFT issue")
 
         a = testing.shaped_random(self.shape, xp, dtype)
-        if order == 'F':
+        if order == "F":
             a = xp.asfortranarray(a)
         out = xp.fft.irfftn(a, s=self.s, axes=self.axes, norm=self.norm)
 
@@ -1096,24 +1096,24 @@ class TestRfftn:
 
 
 # Only those tests in which a legit plan can be obtained are kept
-@pytest.mark.usefixtures('skip_forward_backward')
+@pytest.mark.usefixtures("skip_forward_backward")
 @testing.parameterize(*(
     testing.product_dict([
-        {'shape': (3, 4), 's': None, 'axes': None},
-        {'shape': (3, 4), 's': (1, None), 'axes': None},
-        {'shape': (3, 4), 's': (1, 5), 'axes': None},
-        {'shape': (3, 4), 's': None, 'axes': (-2, -1)},
-        {'shape': (3, 4), 's': None, 'axes': (0,)},
-        {'shape': (3, 4), 's': None, 'axes': None},
-        {'shape': (2, 3, 4), 's': None, 'axes': None},
-        {'shape': (2, 3, 4), 's': (1, 4, None), 'axes': None},
-        {'shape': (2, 3, 4), 's': (1, 4, 10), 'axes': None},
-        {'shape': (2, 3, 4), 's': None, 'axes': (-3, -2, -1)},
-        {'shape': (2, 3, 4), 's': None, 'axes': (0, 1)},
-        {'shape': (2, 3, 4), 's': None, 'axes': None},
-        {'shape': (2, 3, 4), 's': (2, 3), 'axes': (0, 1, 2)},
+        {"shape": (3, 4), "s": None, "axes": None},
+        {"shape": (3, 4), "s": (1, None), "axes": None},
+        {"shape": (3, 4), "s": (1, 5), "axes": None},
+        {"shape": (3, 4), "s": None, "axes": (-2, -1)},
+        {"shape": (3, 4), "s": None, "axes": (0,)},
+        {"shape": (3, 4), "s": None, "axes": None},
+        {"shape": (2, 3, 4), "s": None, "axes": None},
+        {"shape": (2, 3, 4), "s": (1, 4, None), "axes": None},
+        {"shape": (2, 3, 4), "s": (1, 4, 10), "axes": None},
+        {"shape": (2, 3, 4), "s": None, "axes": (-3, -2, -1)},
+        {"shape": (2, 3, 4), "s": None, "axes": (0, 1)},
+        {"shape": (2, 3, 4), "s": None, "axes": None},
+        {"shape": (2, 3, 4), "s": (2, 3), "axes": (0, 1, 2)},
     ],
-        testing.product({'norm': [None, 'backward', 'ortho', 'forward', '']})
+        testing.product({"norm": [None, "backward", "ortho", "forward", ""]})
     )
 ))
 class TestPlanCtxManagerRfftn:
@@ -1136,7 +1136,7 @@ class TestPlanCtxManagerRfftn:
         a = testing.shaped_random(self.shape, xp, dtype)
         if xp is cupy:
             from cupyx.scipy.fftpack import get_fft_plan
-            plan = get_fft_plan(a, self.s, self.axes, value_type='R2C')
+            plan = get_fft_plan(a, self.s, self.axes, value_type="R2C")
             with plan:
                 out = xp.fft.rfftn(a, s=self.s, axes=self.axes, norm=self.norm)
         else:
@@ -1158,7 +1158,7 @@ class TestPlanCtxManagerRfftn:
         a = testing.shaped_random(self.shape, xp, dtype)
         if xp is cupy:
             from cupyx.scipy.fftpack import get_fft_plan
-            plan = get_fft_plan(a, self.s, self.axes, value_type='C2R')
+            plan = get_fft_plan(a, self.s, self.axes, value_type="C2R")
             with plan:
                 out = xp.fft.irfftn(
                     a, s=self.s, axes=self.axes, norm=self.norm)
@@ -1173,24 +1173,24 @@ class TestPlanCtxManagerRfftn:
     # TODO(leofang): write test_rfftn_error_on_wrong_plan()?
 
 
-@pytest.mark.usefixtures('skip_forward_backward')
+@pytest.mark.usefixtures("skip_forward_backward")
 @testing.parameterize(*(
     testing.product_dict([
-        {'shape': (3, 4), 's': None, 'axes': None},
-        {'shape': (3, 4), 's': None, 'axes': (-2, -1)},
-        {'shape': (3, 4), 's': None, 'axes': (-1, -2)},
-        {'shape': (3, 4), 's': None, 'axes': (0,)},
-        {'shape': (3, 4), 's': None, 'axes': None},
-        {'shape': (2, 3, 4), 's': None, 'axes': None},
-        {'shape': (2, 3, 4), 's': (1, 4, None), 'axes': None},
-        {'shape': (2, 3, 4), 's': (1, 4, 10), 'axes': None},
-        {'shape': (2, 3, 4), 's': None, 'axes': (-3, -2, -1)},
-        {'shape': (2, 3, 4), 's': None, 'axes': (-1, -2, -3)},
-        {'shape': (2, 3, 4), 's': None, 'axes': (0, 1)},
-        {'shape': (2, 3, 4), 's': None, 'axes': None},
-        {'shape': (2, 3, 4, 5), 's': None, 'axes': None},
+        {"shape": (3, 4), "s": None, "axes": None},
+        {"shape": (3, 4), "s": None, "axes": (-2, -1)},
+        {"shape": (3, 4), "s": None, "axes": (-1, -2)},
+        {"shape": (3, 4), "s": None, "axes": (0,)},
+        {"shape": (3, 4), "s": None, "axes": None},
+        {"shape": (2, 3, 4), "s": None, "axes": None},
+        {"shape": (2, 3, 4), "s": (1, 4, None), "axes": None},
+        {"shape": (2, 3, 4), "s": (1, 4, 10), "axes": None},
+        {"shape": (2, 3, 4), "s": None, "axes": (-3, -2, -1)},
+        {"shape": (2, 3, 4), "s": None, "axes": (-1, -2, -3)},
+        {"shape": (2, 3, 4), "s": None, "axes": (0, 1)},
+        {"shape": (2, 3, 4), "s": None, "axes": None},
+        {"shape": (2, 3, 4, 5), "s": None, "axes": None},
     ],
-        testing.product({'norm': [None, 'backward', 'ortho', 'forward', '']})
+        testing.product({"norm": [None, "backward", "ortho", "forward", ""]})
     )
 ))
 class TestRfftnContiguity:
@@ -1198,14 +1198,14 @@ class TestRfftnContiguity:
     @nd_planning_states([True])
     @testing.for_float_dtypes()
     def test_rfftn_orders(self, dtype, enable_nd):
-        for order in ['C', 'F']:
+        for order in ["C", "F"]:
             a = testing.shaped_random(self.shape, cupy, dtype)
-            if order == 'F':
+            if order == "F":
                 a = cupy.asfortranarray(a)
             out = cupy.fft.rfftn(a, s=self.s, axes=self.axes)
 
             fft_func = _default_fft_func(a, s=self.s, axes=self.axes,
-                                         value_type='R2C')
+                                         value_type="R2C")
             if fft_func is _fftn:
                 # nd plans have output with contiguity matching the input
                 assert out.flags.c_contiguous == a.flags.c_contiguous
@@ -1217,15 +1217,15 @@ class TestRfftnContiguity:
     @nd_planning_states([True])
     @testing.for_all_dtypes()
     def test_ifftn_orders(self, dtype, enable_nd):
-        for order in ['C', 'F']:
+        for order in ["C", "F"]:
 
             a = testing.shaped_random(self.shape, cupy, dtype)
-            if order == 'F':
+            if order == "F":
                 a = cupy.asfortranarray(a)
             out = cupy.fft.irfftn(a, s=self.s, axes=self.axes)
 
             fft_func = _default_fft_func(a, s=self.s, axes=self.axes,
-                                         value_type='C2R')
+                                         value_type="C2R")
             if fft_func is _fftn:
                 # nd plans have output with contiguity matching the input
                 assert out.flags.c_contiguous == a.flags.c_contiguous
@@ -1236,8 +1236,8 @@ class TestRfftnContiguity:
 
 
 @testing.parameterize(
-    {'shape': (3, 4), 's': None, 'axes': (), 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': (), 'norm': None},
+    {"shape": (3, 4), "s": None, "axes": (), "norm": None},
+    {"shape": (2, 3, 4), "s": None, "axes": (), "norm": None},
 )
 class TestRfftnEmptyAxes:
 
@@ -1256,11 +1256,11 @@ class TestRfftnEmptyAxes:
                 xp.fft.irfftn(a, s=self.s, axes=self.axes, norm=self.norm)
 
 
-@pytest.mark.usefixtures('skip_forward_backward')
+@pytest.mark.usefixtures("skip_forward_backward")
 @testing.parameterize(*testing.product({
-    'n': [None, 5, 10, 15],
-    'shape': [(10,), (10, 10)],
-    'norm': [None, 'backward', 'ortho', 'forward', ''],
+    "n": [None, 5, 10, 15],
+    "shape": [(10,), (10, 10)],
+    "norm": [None, "backward", "ortho", "forward", ""],
 }))
 class TestHfft:
 
@@ -1290,9 +1290,9 @@ class TestHfft:
 
 
 @testing.parameterize(
-    {'n': 1, 'd': 1},
-    {'n': 10, 'd': 0.5},
-    {'n': 100, 'd': 2},
+    {"n": 1, "d": 1},
+    {"n": 10, "d": 0.5},
+    {"n": 100, "d": 2},
 )
 class TestFftfreq:
 
@@ -1312,13 +1312,13 @@ class TestFftfreq:
 
 
 @testing.parameterize(
-    {'shape': (5,), 'axes': None},
-    {'shape': (5,), 'axes': 0},
-    {'shape': (10,), 'axes': None},
-    {'shape': (10,), 'axes': 0},
-    {'shape': (10, 10), 'axes': None},
-    {'shape': (10, 10), 'axes': 0},
-    {'shape': (10, 10), 'axes': (0, 1)},
+    {"shape": (5,), "axes": None},
+    {"shape": (5,), "axes": 0},
+    {"shape": (10,), "axes": None},
+    {"shape": (10,), "axes": 0},
+    {"shape": (10, 10), "axes": None},
+    {"shape": (10, 10), "axes": 0},
+    {"shape": (10, 10), "axes": (0, 1)},
 )
 class TestFftshift:
 

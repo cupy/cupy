@@ -19,16 +19,16 @@ from cupyx.scipy.sparse import _construct
 
 
 @testing.parameterize(*testing.product({
-    'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
-    'format': ['csr', 'csc', 'coo'],
-    'm': [3],
-    'n': [None, 3, 2],
-    'k': [0, 1],
+    "dtype": [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
+    "format": ["csr", "csc", "coo"],
+    "m": [3],
+    "n": [None, 3, 2],
+    "k": [0, 1],
 }))
-@testing.with_requires('scipy')
+@testing.with_requires("scipy")
 class TestEye:
 
-    @testing.numpy_cupy_allclose(sp_name='sp')
+    @testing.numpy_cupy_allclose(sp_name="sp")
     def test_eye(self, xp, sp):
         x = sp.eye(
             self.m, n=self.n, k=self.k, dtype=self.dtype, format=self.format)
@@ -38,13 +38,13 @@ class TestEye:
 
 
 @testing.parameterize(*testing.product({
-    'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
-    'format': ['csr', 'csc', 'coo'],
+    "dtype": [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
+    "format": ["csr", "csc", "coo"],
 }))
-@testing.with_requires('scipy')
+@testing.with_requires("scipy")
 class TestIdentity:
 
-    @testing.numpy_cupy_allclose(sp_name='sp')
+    @testing.numpy_cupy_allclose(sp_name="sp")
     def test_eye(self, xp, sp):
         x = sp.identity(3, dtype=self.dtype, format=self.format)
         assert isinstance(x, sp.spmatrix)
@@ -53,21 +53,21 @@ class TestIdentity:
 
 
 @testing.parameterize(*testing.product({
-    'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
+    "dtype": [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
 }))
-@testing.with_requires('scipy')
+@testing.with_requires("scipy")
 class TestSpdiags:
 
-    @testing.numpy_cupy_allclose(sp_name='sp')
+    @testing.numpy_cupy_allclose(sp_name="sp")
     def test_spdiags(self, xp, sp):
         data = xp.arange(12, dtype=self.dtype).reshape(3, 4)
-        diags = xp.array([0, -1, 2], dtype='i')
+        diags = xp.array([0, -1, 2], dtype="i")
         x = sp.spdiags(data, diags, 3, 4)
         return x
 
 
 @testing.parameterize(*testing.product({
-    'dtype': [numpy.float32, numpy.float64]
+    "dtype": [numpy.float32, numpy.float64]
 }))
 class TestVstack:
 
@@ -121,7 +121,7 @@ class TestVstack:
 
 
 @testing.parameterize(*testing.product({
-    'dtype': [numpy.float32, numpy.float64]
+    "dtype": [numpy.float32, numpy.float64]
 }))
 class TestHstack:
 
@@ -166,7 +166,7 @@ class TestHstack:
 
 
 @testing.parameterize(*testing.product({
-    'dtype': [numpy.float32, numpy.float64]
+    "dtype": [numpy.float32, numpy.float64]
 }))
 class TestBmat:
 
@@ -231,22 +231,22 @@ class TestBmat:
 
         A, B, C, D = self.data()
 
-        match = r'.*Got blocks\[{}\]\.shape\[{}\] == 1, expected 2'
+        match = r".*Got blocks\[{}\]\.shape\[{}\] == 1, expected 2"
 
         # test failure cases
-        message1 = re.compile(match.format('1,0', '1'))
+        message1 = re.compile(match.format("1,0", "1"))
         with pytest.raises(ValueError, match=message1):
             _construct.bmat([[A], [B]], dtype=self.dtype)
 
-        message2 = re.compile(match.format('0,1', '0'))
+        message2 = re.compile(match.format("0,1", "0"))
         with pytest.raises(ValueError, match=message2):
             _construct.bmat([[A, C]], dtype=self.dtype)
 
 
 @testing.parameterize(*testing.product({
-    'random_method': ['random', 'rand'],
-    'dtype': [numpy.float32, numpy.float64],
-    'format': ['csr', 'csc', 'coo'],
+    "random_method": ["random", "rand"],
+    "dtype": [numpy.float32, numpy.float64],
+    "format": ["csr", "csc", "coo"],
 }))
 class TestRandom:
 
@@ -293,8 +293,8 @@ class TestRandom:
         testing.assert_array_equal(x.toarray(), y.toarray())
 
     def test_random_with_data_rvs(self):
-        if self.random_method == 'rand':
-            pytest.skip('cupyx.scipy.sparse.rand does not support data_rvs')
+        if self.random_method == "rand":
+            pytest.skip("cupyx.scipy.sparse.rand does not support data_rvs")
         data_rvs = mock.MagicMock(side_effect=cupy.zeros)
         x = getattr(sparse, self.random_method)(
             3, 4, density=0.1, data_rvs=data_rvs,
@@ -308,7 +308,7 @@ class TestRandom:
         assert isinstance(data_rvs.call_args[0][0], int)
 
 
-@testing.with_requires('scipy')
+@testing.with_requires("scipy")
 class TestRandomInvalidArgument:
 
     def test_too_small_density(self):
@@ -324,17 +324,17 @@ class TestRandomInvalidArgument:
     def test_invalid_dtype(self):
         # Note: SciPy 1.12+ accepts integer.
         with pytest.raises(NotImplementedError):
-            sparse.random(3, 4, dtype='i')
+            sparse.random(3, 4, dtype="i")
 
 
 @testing.parameterize(*testing.product({
-    'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
-    'format': ['dia', 'csr', 'csc', 'coo'],
+    "dtype": [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
+    "format": ["dia", "csr", "csc", "coo"],
 }))
-@testing.with_requires('scipy')
+@testing.with_requires("scipy")
 class TestDiags:
 
-    @testing.numpy_cupy_allclose(sp_name='sp')
+    @testing.numpy_cupy_allclose(sp_name="sp")
     def test_diags_scalar_offset(self, xp, sp):
         x = sp.diags(
             xp.arange(16), offsets=0, dtype=self.dtype, format=self.format)
@@ -342,7 +342,7 @@ class TestDiags:
         assert x.format == self.format
         return x
 
-    @testing.numpy_cupy_allclose(sp_name='sp')
+    @testing.numpy_cupy_allclose(sp_name="sp")
     def test_diags_single_element_lists(self, xp, sp):
         x = sp.diags(
             [xp.arange(16)], offsets=[0], dtype=self.dtype, format=self.format)
@@ -350,7 +350,7 @@ class TestDiags:
         assert x.format == self.format
         return x
 
-    @testing.numpy_cupy_allclose(sp_name='sp')
+    @testing.numpy_cupy_allclose(sp_name="sp")
     def test_diags_multiple(self, xp, sp):
         x = sp.diags(
             [xp.arange(15), xp.arange(16), xp.arange(15), xp.arange(13)],
@@ -360,7 +360,7 @@ class TestDiags:
         assert x.format == self.format
         return x
 
-    @testing.numpy_cupy_allclose(sp_name='sp')
+    @testing.numpy_cupy_allclose(sp_name="sp")
     def test_diags_offsets_as_array(self, xp, sp):
         x = sp.diags(
             [xp.arange(15), xp.arange(16), xp.arange(15), xp.arange(13)],
@@ -370,7 +370,7 @@ class TestDiags:
         assert x.format == self.format
         return x
 
-    @testing.numpy_cupy_allclose(sp_name='sp')
+    @testing.numpy_cupy_allclose(sp_name="sp")
     def test_diags_non_square(self, xp, sp):
         x = sp.diags(
             [xp.arange(5), xp.arange(3)],
@@ -406,20 +406,20 @@ def skip_HIP_0_size_matrix():
                 impl(self, *args, **kw)
             except AssertionError as e:
                 if runtime.is_hip:
-                    assert 'ValueError: hipSPARSE' in str(e)
-                    pytest.xfail('may be buggy')
+                    assert "ValueError: hipSPARSE" in str(e)
+                    pytest.xfail("may be buggy")
                 raise
         return test_func
     return decorator
 
 
 @testing.parameterize(*testing.product({
-    'dtype': (numpy.float32, numpy.float64, numpy.complex64, numpy.complex128),
-    'format': ('csr', 'csc', 'coo'),
-    'arrA': _arrs_kron,
-    'arrB': _arrs_kron,
+    "dtype": (numpy.float32, numpy.float64, numpy.complex64, numpy.complex128),
+    "format": ("csr", "csc", "coo"),
+    "arrA": _arrs_kron,
+    "arrB": _arrs_kron,
 }))
-@testing.with_requires('scipy>=1.6')
+@testing.with_requires("scipy>=1.6")
 class TestKron:
 
     def _make_sp_mat(self, xp, sp, arr, dtype):
@@ -428,7 +428,7 @@ class TestKron:
         return a
 
     @skip_HIP_0_size_matrix()
-    @testing.numpy_cupy_allclose(sp_name='sp')
+    @testing.numpy_cupy_allclose(sp_name="sp")
     def test_kron(self, xp, sp):
         a = self._make_sp_mat(xp, sp, self.arrA, self.dtype)
         b = self._make_sp_mat(xp, sp, self.arrB, self.dtype)
@@ -453,12 +453,12 @@ _arrs_kronsum = [
 
 
 @testing.parameterize(*testing.product({
-    'dtype': (numpy.float32, numpy.float64, numpy.complex64, numpy.complex128),
-    'format': ('csr', 'csc', 'coo'),
-    'arrA': _arrs_kronsum,
-    'arrB': _arrs_kronsum,
+    "dtype": (numpy.float32, numpy.float64, numpy.complex64, numpy.complex128),
+    "format": ("csr", "csc", "coo"),
+    "arrA": _arrs_kronsum,
+    "arrB": _arrs_kronsum,
 }))
-@testing.with_requires('scipy>=1.6')
+@testing.with_requires("scipy>=1.6")
 class TestKronsum:
 
     def _make_sp_mat(self, xp, sp, arr, dtype):
@@ -467,7 +467,7 @@ class TestKronsum:
         return a
 
     @skip_HIP_0_size_matrix()
-    @testing.numpy_cupy_allclose(sp_name='sp')
+    @testing.numpy_cupy_allclose(sp_name="sp")
     def test_kronsum(self, xp, sp):
         a = self._make_sp_mat(xp, sp, self.arrA, self.dtype)
         b = self._make_sp_mat(xp, sp, self.arrB, self.dtype)

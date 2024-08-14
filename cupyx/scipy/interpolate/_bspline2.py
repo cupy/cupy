@@ -3,7 +3,7 @@ from math import prod
 
 import numpy
 
-if numpy.__version__ < '2':
+if numpy.__version__ < "2":
     from numpy.core.multiarray import normalize_axis_index
 else:
     from numpy.lib.array_utils import normalize_axis_index
@@ -135,7 +135,7 @@ def make_interp_spline(x, y, k=3, t=None, bc_type=None, axis=0,
 
     """
     # convert string aliases for the boundary conditions
-    if bc_type is None or bc_type == 'not-a-knot' or bc_type == 'periodic':
+    if bc_type is None or bc_type == "not-a-knot" or bc_type == "periodic":
         deriv_l, deriv_r = None, None
     elif isinstance(bc_type, str):
         deriv_l, deriv_r = bc_type, bc_type
@@ -155,11 +155,11 @@ def make_interp_spline(x, y, k=3, t=None, bc_type=None, axis=0,
     y = cupy.moveaxis(y, axis, 0)    # now internally interp axis is zero
 
     # sanity check the input
-    if bc_type == 'periodic' and not cupy.allclose(y[0], y[-1], atol=1e-15):
+    if bc_type == "periodic" and not cupy.allclose(y[0], y[-1], atol=1e-15):
         raise ValueError("First and last points does not match while "
                          "periodic case expected")
     if x.size != y.shape[0]:
-        raise ValueError('Shapes of x {} and y {} are incompatible'
+        raise ValueError("Shapes of x {} and y {} are incompatible"
                          .format(x.shape, y.shape))
     if (x[1:] == x[:-1]).any():
         raise ValueError("Expect x to not have duplicates")
@@ -188,7 +188,7 @@ def make_interp_spline(x, y, k=3, t=None, bc_type=None, axis=0,
 
     k = operator.index(k)
 
-    if bc_type == 'periodic' and t is not None:
+    if bc_type == "periodic" and t is not None:
         raise NotImplementedError("For periodic case t is constructed "
                                   "automatically and can not be passed "
                                   "manually")
@@ -196,7 +196,7 @@ def make_interp_spline(x, y, k=3, t=None, bc_type=None, axis=0,
     # come up with a sensible knot vector, if needed
     if t is None:
         if deriv_l is None and deriv_r is None:
-            if bc_type == 'periodic':
+            if bc_type == "periodic":
                 t = _periodic_knots(x, k)
             elif k == 2:
                 # OK, it's a bit ad hoc: Greville sites + omit
@@ -217,12 +217,12 @@ def make_interp_spline(x, y, k=3, t=None, bc_type=None, axis=0,
     if t.ndim != 1 or (t[1:] < t[:-1]).any():
         raise ValueError("Expect t to be a 1-D sorted array_like.")
     if t.size < x.size + k + 1:
-        raise ValueError('Got %d knots, need at least %d.' %
+        raise ValueError("Got %d knots, need at least %d." %
                          (t.size, x.size + k + 1))
     if (x[0] < t[k]) or (x[-1] > t[-k]):
-        raise ValueError('Out of bounds w/ x = %s.' % x)
+        raise ValueError("Out of bounds w/ x = %s." % x)
 
-    if bc_type == 'periodic':
+    if bc_type == "periodic":
         return _make_periodic_spline(x, y, t, k, axis)
 
     # Here : deriv_l, r = [(nu, value), ...]
@@ -279,11 +279,11 @@ def make_interp_spline(x, y, k=3, t=None, bc_type=None, axis=0,
         dummy_c = cupy.empty((nt, num_c), dtype=float)
         out = cupy.empty((1, 1), dtype=dummy_c.dtype)
 
-        d_boor_kernel = _get_module_func(D_BOOR_MODULE, 'd_boor', dummy_c)
+        d_boor_kernel = _get_module_func(D_BOOR_MODULE, "d_boor", dummy_c)
 
         # find the intervals for x[0] and x[-1]
         intervals_bc = cupy.empty(2, dtype=cupy.int64)
-        interval_kernel = _get_module_func(INTERVAL_MODULE, 'find_interval')
+        interval_kernel = _get_module_func(INTERVAL_MODULE, "find_interval")
         interval_kernel((1,), (2,),
                         (t, cupy.r_[x[0], x[-1]], intervals_bc, k, nt,
                          False, 2))
@@ -356,7 +356,7 @@ def _make_interp_spline_full_matrix(x, y, k, t, bc_type):
         This version is O(N**2) in memory and O(N**3) in flop count.
     """
     # convert string aliases for the boundary conditions
-    if bc_type is None or bc_type == 'not-a-knot':
+    if bc_type is None or bc_type == "not-a-knot":
         deriv_l, deriv_r = None, None
     elif isinstance(bc_type, str):
         deriv_l, deriv_r = bc_type, bc_type
@@ -404,7 +404,7 @@ def _make_interp_spline_full_matrix(x, y, k, t, bc_type):
 
     # 1. Compute intervals for each value
     intervals = cupy.empty_like(x, dtype=cupy.int64)
-    interval_kernel = _get_module_func(INTERVAL_MODULE, 'find_interval')
+    interval_kernel = _get_module_func(INTERVAL_MODULE, "find_interval")
     interval_kernel(((x.shape[0] + 128 - 1) // 128,), (128,),
                     (t, x, intervals, k, nt, False, x.shape[0]))
 
@@ -418,7 +418,7 @@ def _make_interp_spline_full_matrix(x, y, k, t, bc_type):
 
     num_c = prod(dummy_c.shape[1:])
     temp = cupy.empty(x.shape[0] * (2 * k + 1))
-    d_boor_kernel = _get_module_func(D_BOOR_MODULE, 'd_boor', dummy_c)
+    d_boor_kernel = _get_module_func(D_BOOR_MODULE, "d_boor", dummy_c)
     d_boor_kernel(((x.shape[0] + 128 - 1) // 128,), (128,),
                   (t, dummy_c, k, 0, x, intervals, out, temp, num_c, 0,
                    x.shape[0]))
@@ -501,7 +501,7 @@ def _make_periodic_spline(x, y, t, k, axis):
     dummy_c = cupy.empty((t.size - k - 1, num_c), dtype=float)
     out = cupy.empty((2, 1), dtype=dummy_c.dtype)
 
-    d_boor_kernel = _get_module_func(D_BOOR_MODULE, 'd_boor', dummy_c)
+    d_boor_kernel = _get_module_func(D_BOOR_MODULE, "d_boor", dummy_c)
 
     # find the intervals for x[0] and x[-1]
     x0 = cupy.r_[x[0], x[-1]]
@@ -536,7 +536,7 @@ def _make_periodic_spline(x, y, t, k, axis):
     coef = spsolve(matr_csr, rhs)
     coef = cupy.ascontiguousarray(coef.reshape((n + k - 1,) + y.shape[1:]))
     return BSpline.construct_fast(t, coef, k,
-                                  extrapolate='periodic', axis=axis)
+                                  extrapolate="periodic", axis=axis)
 
 
 # ### LSQ spline helpers
@@ -713,12 +713,12 @@ qr_reduce(double *a, int m, int nz, // a(m, nz), packed
 '''  # NOQA
 
 
-TYPES = ['double']
+TYPES = ["double"]
 
 QR_MODULE = cupy.RawModule(
-    code=QR_KERNEL, options=('-std=c++14',),
+    code=QR_KERNEL, options=("-std=c++14",),
     name_expressions=[
-        f'dlartg<{type_name}>' for type_name in TYPES] + ['qr_reduce'],
+        f"dlartg<{type_name}>" for type_name in TYPES] + ["qr_reduce"],
 )
 
 
@@ -742,7 +742,7 @@ def _lsq_solve_qr(x, y, t, k, w):
     y_w = y * w[:, None]
 
     # solve the LSQ problem: triangularize the l.h.s.
-    qr_reduce = _get_module_func(QR_MODULE, 'qr_reduce')
+    qr_reduce = _get_module_func(QR_MODULE, "qr_reduce")
     qr_reduce((1,), (1,),
               (R, m, k+1,
                offset,
@@ -854,12 +854,12 @@ def make_lsq_spline(x, y, t, k=3, w=None, axis=0, check_finite=True, *,
         raise ValueError("Expect t to be a 1D strictly increasing sequence.")
     if x.size != y.shape[0]:
         raise ValueError(
-            f'Shapes of x {x.shape} and y {y.shape} are incompatible')
+            f"Shapes of x {x.shape} and y {y.shape} are incompatible")
     if k > 0 and any((x < t[k]) | (x > t[-k])):
-        raise ValueError('Out of bounds w/ x = %s.' % x)
+        raise ValueError("Out of bounds w/ x = %s." % x)
     if x.size != w.size:
         raise ValueError(
-            f'Shapes of x {x.shape} and w {w.shape} are incompatible')
+            f"Shapes of x {x.shape} and w {w.shape} are incompatible")
     if method != "qr":
         raise ValueError(f"{method = } is not supported.")
     if any(x[1:] - x[:-1] < 0):

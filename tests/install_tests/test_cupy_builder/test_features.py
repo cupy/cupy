@@ -9,7 +9,7 @@ import cupy
 
 
 def get_compiler_settings():
-    ctx = Context('.', _env={}, _argv=[])
+    ctx = Context(".", _env={}, _argv=[])
     sysconfig.get_config_vars()
     compiler = ccompiler.new_compiler()
     sysconfig.customize_compiler(compiler)
@@ -17,9 +17,9 @@ def get_compiler_settings():
     return compiler, settings
 
 
-@pytest.mark.skipif(cupy.cuda.runtime.is_hip, reason='For CUDA environment')
+@pytest.mark.skipif(cupy.cuda.runtime.is_hip, reason="For CUDA environment")
 def test_CUDA_cuda():
-    ctx = Context('.', _env={}, _argv=[])
+    ctx = Context(".", _env={}, _argv=[])
     feat = CUDA_cuda(ctx)
     compiler, settings = get_compiler_settings()
     feat.configure(compiler, settings)

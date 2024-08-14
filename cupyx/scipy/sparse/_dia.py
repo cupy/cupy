@@ -30,7 +30,7 @@ class dia_matrix(_data._data_matrix):
 
     """
 
-    format = 'dia'
+    format = "dia"
 
     def __init__(self, arg1, shape=None, dtype=None, copy=False):
         if _scipy_available and scipy.sparse.issparse(arg1):
@@ -43,37 +43,37 @@ class dia_matrix(_data._data_matrix):
         elif isinstance(arg1, tuple):
             data, offsets = arg1
             if shape is None:
-                raise ValueError('expected a shape argument')
+                raise ValueError("expected a shape argument")
 
         else:
             raise ValueError(
-                'unrecognized form for dia_matrix constructor')
+                "unrecognized form for dia_matrix constructor")
 
         data = cupy.array(data, dtype=dtype, copy=copy)
         data = cupy.atleast_2d(data)
-        offsets = cupy.array(offsets, dtype='i', copy=copy)
+        offsets = cupy.array(offsets, dtype="i", copy=copy)
         offsets = cupy.atleast_1d(offsets)
 
         if offsets.ndim != 1:
-            raise ValueError('offsets array must have rank 1')
+            raise ValueError("offsets array must have rank 1")
 
         if data.ndim != 2:
-            raise ValueError('data array must have rank 2')
+            raise ValueError("data array must have rank 2")
 
         if data.shape[0] != len(offsets):
             raise ValueError(
-                'number of diagonals (%d) does not match the number of '
-                'offsets (%d)'
+                "number of diagonals (%d) does not match the number of "
+                "offsets (%d)"
                 % (data.shape[0], len(offsets)))
 
         sorted_offsets = cupy.sort(offsets)
         if (sorted_offsets[:-1] == sorted_offsets[1:]).any():
-            raise ValueError('offset array contains duplicate values')
+            raise ValueError("offset array contains duplicate values")
 
         self.data = data
         self.offsets = offsets
         if not _util.isshape(shape):
-            raise ValueError('invalid shape (must be a 2-tuple of int)')
+            raise ValueError("invalid shape (must be a 2-tuple of int)")
         self._shape = int(shape[0]), int(shape[1])
 
     def _with_data(self, data, copy=True):
@@ -97,7 +97,7 @@ class dia_matrix(_data._data_matrix):
 
         """
         if not _scipy_available:
-            raise RuntimeError('scipy is not available')
+            raise RuntimeError("scipy is not available")
         data = self.data.get(stream)
         offsets = self.offsets.get(stream)
         return scipy.sparse.dia_matrix((data, offsets), shape=self._shape)
@@ -122,13 +122,13 @@ class dia_matrix(_data._data_matrix):
         """
         if axis is not None:
             raise NotImplementedError(
-                'getnnz over an axis is not implemented for DIA format')
+                "getnnz over an axis is not implemented for DIA format")
 
         m, n = self.shape
         nnz = _core.ReductionKernel(
-            'int32 offsets, int32 m, int32 n', 'int32 nnz',
-            'offsets > 0 ? min(m, n - offsets) : min(m + offsets, n)',
-            'a + b', 'nnz = a', '0', 'dia_nnz')(self.offsets, m, n)
+            "int32 offsets, int32 m, int32 n", "int32 nnz",
+            "offsets > 0 ? min(m, n - offsets) : min(m + offsets, n)",
+            "a + b", "nnz = a", "0", "dia_nnz")(self.offsets, m, n)
         return int(nnz)
 
     def toarray(self, order=None, out=None):
@@ -154,21 +154,21 @@ class dia_matrix(_data._data_matrix):
         num_offsets, offset_len = self.data.shape
 
         row, mask = _core.ElementwiseKernel(
-            'int32 offset_len, int32 offsets, int32 num_rows, '
-            'int32 num_cols, T data',
-            'int32 row, bool mask',
-            '''
+            "int32 offset_len, int32 offsets, int32 num_rows, "
+            "int32 num_cols, T data",
+            "int32 row, bool mask",
+            """
             int offset_inds = i % offset_len;
             row = offset_inds - offsets;
             mask = (row >= 0 && row < num_rows && offset_inds < num_cols
                     && data != T(0));
-            ''',
-            'cupyx_scipy_sparse_dia_tocsc')(offset_len, self.offsets[:, None],
+            """,
+            "cupyx_scipy_sparse_dia_tocsc")(offset_len, self.offsets[:, None],
                                             num_rows, num_cols, self.data)
-        indptr = cupy.zeros(num_cols + 1, dtype='i')
+        indptr = cupy.zeros(num_cols + 1, dtype="i")
         indptr[1: offset_len + 1] = cupy.cumsum(mask.sum(axis=0))
         indptr[offset_len + 1:] = indptr[offset_len]
-        indices = row.T[mask.T].astype('i', copy=False)
+        indices = row.T[mask.T].astype("i", copy=False)
         data = self.data.T[mask.T]
         return _csc.csc_matrix(
             (data, indices, indptr), shape=self.shape, dtype=self.dtype)

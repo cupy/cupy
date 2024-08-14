@@ -7,7 +7,7 @@ from ctypes import sizeof
 
 from cupyx.distributed import _klv_utils, _store_actions
 
-_DEFAULT_HOST = '127.0.0.1'
+_DEFAULT_HOST = "127.0.0.1"
 _DEFAULT_PORT = 13333
 
 _exit_mode = False
@@ -47,7 +47,7 @@ class TCPStore:
         self.storage = {}
         self._process = None
         self._world_size = world_size
-        self._run = multiprocessing.Value('b', 1)
+        self._run = multiprocessing.Value("b", 1)
         # For implementing a barrier
         self._lock = threading.Lock()
         self._current_barrier = None
@@ -66,7 +66,7 @@ class TCPStore:
             if len(action_bytes) > 0:
                 action_m = _klv_utils.action_t.from_buffer_copy(action_bytes)
                 if action_m.length > 256:
-                    raise ValueError('Invalid length for message')
+                    raise ValueError("Invalid length for message")
                 value = bytearray(action_m.value)[:action_m.length]
                 r = _store_actions.execute_action(action_m.action, value, self)
                 if r is not None:
@@ -135,10 +135,10 @@ class TCPStoreProxy:
                         if result.status == 0:
                             return action.decode_result(value)
                         else:
-                            raise RuntimeError(value.decode('utf-8'))
+                            raise RuntimeError(value.decode("utf-8"))
             except ConnectionRefusedError:
                 time.sleep(TCPStoreProxy.DELAY_FOR_RETRY)
-        raise RuntimeError('TCPStore is not available')
+        raise RuntimeError("TCPStore is not available")
 
     def __getitem__(self, key):
         return self._send_recv(_store_actions.Get(key))

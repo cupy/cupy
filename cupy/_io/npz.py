@@ -4,7 +4,7 @@ import numpy
 
 import cupy
 
-_support_allow_pickle = (numpy.lib.NumpyVersion(numpy.__version__) >= '1.10.0')
+_support_allow_pickle = (numpy.lib.NumpyVersion(numpy.__version__) >= "1.10.0")
 
 
 class NpzFile(object):
@@ -63,7 +63,7 @@ def load(file, mmap_mode=None, allow_pickle=None):
         obj = numpy.load(file, mmap_mode, allow_pickle)
     else:
         if allow_pickle is not None:
-            warnings.warn('allow_pickle option is not supported in NumPy 1.9')
+            warnings.warn("allow_pickle option is not supported in NumPy 1.9")
         obj = numpy.load(file, mmap_mode)
 
     if isinstance(obj, numpy.ndarray):
@@ -101,7 +101,7 @@ def save(file, arr, allow_pickle=None):
         numpy.save(file, cupy.asnumpy(arr), allow_pickle)
     else:
         if allow_pickle is not None:
-            warnings.warn('allow_pickle option is not supported in NumPy 1.9')
+            warnings.warn("allow_pickle option is not supported in NumPy 1.9")
         numpy.save(file, cupy.asnumpy(arr))
 
 

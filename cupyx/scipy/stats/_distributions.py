@@ -7,7 +7,7 @@ from cupyx.scipy import special
 def _normalize(x, axis):
     """Normalize, preserving floating point precision of x."""
     x_sum = x.sum(axis=axis, keepdims=True)
-    if x.dtype.kind == 'f':
+    if x.dtype.kind == "f":
         x /= x_sum
     else:
         x = x / x_sum
@@ -39,10 +39,10 @@ def entropy(pk, qk=None, base=None, axis=0):
         S (cupy.ndarray): The calculated entropy.
 
     """
-    if pk.dtype.kind == 'c' or qk is not None and qk.dtype.kind == 'c':
+    if pk.dtype.kind == "c" or qk is not None and qk.dtype.kind == "c":
         raise TypeError("complex dtype not supported")
 
-    float_type = cupy.float32 if pk.dtype.char in 'ef' else cupy.float64
+    float_type = cupy.float32 if pk.dtype.char in "ef" else cupy.float64
     pk = pk.astype(float_type, copy=False)
     pk = _normalize(pk, axis)
     if qk is None:

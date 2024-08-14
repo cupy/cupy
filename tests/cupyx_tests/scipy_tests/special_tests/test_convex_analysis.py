@@ -8,7 +8,7 @@ import cupyx.scipy.special
 from cupy import testing
 
 
-@testing.with_requires('scipy')
+@testing.with_requires("scipy")
 class TestSpecialConvex(unittest.TestCase):
 
     def test_huber_basic(self):
@@ -19,14 +19,14 @@ class TestSpecialConvex(unittest.TestCase):
                                 2 * (2.5 - 0.5 * 2))
 
     @testing.for_float_dtypes()
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_huber(self, xp, scp, dtype):
         import scipy.special  # NOQA
         z = testing.shaped_random((10, 2), xp=xp, dtype=dtype)
         return scp.special.huber(z[:, 0], z[:, 1])
 
     @testing.for_float_dtypes()
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_entr(self, xp, scp, dtype):
         import scipy.special  # NOQA
         values = (0, 0.5, 1.0, cupy.inf)
@@ -38,7 +38,7 @@ class TestSpecialConvex(unittest.TestCase):
         return scp.special.entr(z)
 
     @testing.for_float_dtypes()
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_rel_entr(self, xp, scp, dtype):
         import scipy.special  # NOQA
         values = (0, 0.5, 1.0)
@@ -51,7 +51,7 @@ class TestSpecialConvex(unittest.TestCase):
         return scp.special.kl_div(z[:, 0], z[:, 1])
 
     @testing.for_float_dtypes()
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_pseudo_huber(self, xp, scp, dtype):
         import scipy.special  # NOQA
         z = testing.shaped_random((10, 2), xp=numpy, dtype=dtype).tolist()

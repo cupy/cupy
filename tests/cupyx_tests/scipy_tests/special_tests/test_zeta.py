@@ -6,11 +6,11 @@ import cupyx.scipy.special  # NOQA
 from cupy import testing
 
 
-@testing.with_requires('scipy')
+@testing.with_requires("scipy")
 class TestZeta(unittest.TestCase):
 
     @testing.for_all_dtypes(no_complex=True)
-    @testing.numpy_cupy_allclose(atol=1e-5, scipy_name='scp')
+    @testing.numpy_cupy_allclose(atol=1e-5, scipy_name="scp")
     def test_arange(self, xp, scp, dtype):
         import scipy.special  # NOQA
 
@@ -19,7 +19,7 @@ class TestZeta(unittest.TestCase):
         return scp.special.zeta(a, b)
 
     @testing.for_all_dtypes(no_complex=True, no_bool=True)
-    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-6, scipy_name='scp')
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-6, scipy_name="scp")
     def test_linspace(self, xp, scp, dtype):
         import scipy.special  # NOQA
 
@@ -30,14 +30,14 @@ class TestZeta(unittest.TestCase):
         return scp.special.zeta(a, b)
 
     @testing.for_all_dtypes(no_complex=True)
-    @testing.numpy_cupy_allclose(atol=1e-2, rtol=1e-3, scipy_name='scp')
+    @testing.numpy_cupy_allclose(atol=1e-2, rtol=1e-3, scipy_name="scp")
     def test_scalar(self, xp, scp, dtype):
         import scipy.special  # NOQA
 
         return scp.special.zeta(dtype(2.), dtype(1.5))
 
     @testing.for_all_dtypes(no_complex=True)
-    @testing.numpy_cupy_allclose(atol=1e-2, rtol=1e-3, scipy_name='scp')
+    @testing.numpy_cupy_allclose(atol=1e-2, rtol=1e-3, scipy_name="scp")
     def test_inf_and_nan(self, xp, scp, dtype):
         import scipy.special  # NOQA
 

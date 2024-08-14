@@ -27,7 +27,7 @@ def poly(A):
     dt = seq_of_zeros.dtype
     a = np.ones((1,), dtype=dt)
     for zero in seq_of_zeros:
-        a = np.convolve(a, np.r_[1, -zero], mode='full')
+        a = np.convolve(a, np.r_[1, -zero], mode="full")
 
     if issubclass(a.dtype.type, cupy.complexfloating):
         # if complex roots are all complex conjugates, the roots are real.
@@ -65,7 +65,7 @@ def _polydiv(u, v):
     return q, r
 
 
-def unique_roots(p, tol=1e-3, rtype='min'):
+def unique_roots(p, tol=1e-3, rtype="min"):
     """Determine unique roots and their multiplicities from a list of roots.
 
     Parameters
@@ -111,11 +111,11 @@ def unique_roots(p, tol=1e-3, rtype='min'):
     determined. For a more general routine, see `numpy.unique`.
 
     """
-    if rtype in ['max', 'maximum']:
+    if rtype in ["max", "maximum"]:
         reduce = cupy.max
-    elif rtype in ['min', 'minimum']:
+    elif rtype in ["min", "minimum"]:
         reduce = cupy.min
-    elif rtype in ['avg', 'mean']:
+    elif rtype in ["avg", "mean"]:
         reduce = cupy.mean
     else:
         raise ValueError("`rtype` must be one of "
@@ -199,7 +199,7 @@ def _compute_residues(poles, multiplicity, numerator):
     return cupy.asarray(residues)
 
 
-def invres(r, p, k, tol=1e-3, rtype='avg'):
+def invres(r, p, k, tol=1e-3, rtype="avg"):
     """Compute b(s) and a(s) from partial fraction expansion.
 
     If `M` is the degree of numerator `b` and `N` the degree of denominator
@@ -258,7 +258,7 @@ def invres(r, p, k, tol=1e-3, rtype='avg'):
     """
     r = cupy.atleast_1d(r)
     p = cupy.atleast_1d(p)
-    k = cupy.trim_zeros(cupy.atleast_1d(k), 'f')
+    k = cupy.trim_zeros(cupy.atleast_1d(k), "f")
 
     unique_poles, multiplicity = unique_roots(p, tol, rtype)
     factors, denominator = _compute_factors(unique_poles, multiplicity,
@@ -275,7 +275,7 @@ def invres(r, p, k, tol=1e-3, rtype='avg'):
     return numerator, denominator
 
 
-def invresz(r, p, k, tol=1e-3, rtype='avg'):
+def invresz(r, p, k, tol=1e-3, rtype="avg"):
     """Compute b(z) and a(z) from partial fraction expansion.
 
     If `M` is the degree of numerator `b` and `N` the degree of denominator
@@ -333,7 +333,7 @@ def invresz(r, p, k, tol=1e-3, rtype='avg'):
     """
     r = cupy.atleast_1d(r)
     p = cupy.atleast_1d(p)
-    k = cupy.trim_zeros(cupy.atleast_1d(k), 'b')
+    k = cupy.trim_zeros(cupy.atleast_1d(k), "b")
 
     unique_poles, multiplicity = unique_roots(p, tol, rtype)
     factors, denominator = _compute_factors(unique_poles, multiplicity,
@@ -350,7 +350,7 @@ def invresz(r, p, k, tol=1e-3, rtype='avg'):
     return numerator[::-1], denominator
 
 
-def residue(b, a, tol=1e-3, rtype='avg'):
+def residue(b, a, tol=1e-3, rtype="avg"):
     """Compute partial-fraction expansion of b(s) / a(s).
 
     If `M` is the degree of numerator `b` and `N` the degree of denominator
@@ -439,8 +439,8 @@ def residue(b, a, tol=1e-3, rtype='avg'):
         b = b.astype(float)
         a = a.astype(float)
 
-    b = cupy.trim_zeros(cupy.atleast_1d(b), 'f')
-    a = cupy.trim_zeros(cupy.atleast_1d(a), 'f')
+    b = cupy.trim_zeros(cupy.atleast_1d(b), "f")
+    a = cupy.trim_zeros(cupy.atleast_1d(a), "f")
 
     if a.size == 0:
         raise ValueError("Denominator `a` is zero.")
@@ -468,7 +468,7 @@ def residue(b, a, tol=1e-3, rtype='avg'):
     return residues / a[0], poles, k
 
 
-def residuez(b, a, tol=1e-3, rtype='avg'):
+def residuez(b, a, tol=1e-3, rtype="avg"):
     """Compute partial-fraction expansion of b(z) / a(z).
 
     If `M` is the degree of numerator `b` and `N` the degree of denominator
@@ -538,8 +538,8 @@ def residuez(b, a, tol=1e-3, rtype='avg'):
         b = b.astype(float)
         a = a.astype(float)
 
-    b = cupy.trim_zeros(cupy.atleast_1d(b), 'b')
-    a = cupy.trim_zeros(cupy.atleast_1d(a), 'b')
+    b = cupy.trim_zeros(cupy.atleast_1d(b), "b")
+    a = cupy.trim_zeros(cupy.atleast_1d(a), "b")
 
     if a.size == 0:
         raise ValueError("Denominator `a` is zero.")

@@ -9,14 +9,14 @@ from cupy import testing
 
 class TestKind(unittest.TestCase):
 
-    @testing.for_orders('CFAK')
+    @testing.for_orders("CFAK")
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_asarray_chkfinite(self, xp, dtype, order):
         a = [0, 4, 0, 5]
         return xp.asarray_chkfinite(a, dtype=dtype, order=order)
 
-    @testing.for_orders('CFAK')
+    @testing.for_orders("CFAK")
     @testing.for_all_dtypes(no_bool=True)
     def test_asarray_chkfinite_non_finite_vals(self, dtype, order):
         a = [-numpy.inf, 0., numpy.inf, numpy.nan]
@@ -90,7 +90,7 @@ class TestKind(unittest.TestCase):
 
     @testing.for_all_dtypes()
     def test_require_flag_check(self, dtype):
-        possible_flags = [['C_CONTIGUOUS'], ['F_CONTIGUOUS']]
+        possible_flags = [["C_CONTIGUOUS"], ["F_CONTIGUOUS"]]
         x = cupy.zeros((2, 3, 4), dtype)
         for flags in possible_flags:
             arr = cupy.require(x, dtype, flags)
@@ -102,29 +102,29 @@ class TestKind(unittest.TestCase):
     def test_require_owndata(self, dtype):
         x = cupy.zeros((2, 3, 4), dtype)
         arr = x.view()
-        arr = cupy.require(arr, dtype, ['O'])
-        assert arr.flags['OWNDATA']
+        arr = cupy.require(arr, dtype, ["O"])
+        assert arr.flags["OWNDATA"]
 
     @testing.for_all_dtypes()
     def test_require_C_and_F_flags(self, dtype):
         x = cupy.zeros((2, 3, 4), dtype)
         with pytest.raises(ValueError):
-            cupy.require(x, dtype, ['C', 'F'])
+            cupy.require(x, dtype, ["C", "F"])
 
     @testing.for_all_dtypes()
     def test_require_incorrect_requirments(self, dtype):
         x = cupy.zeros((2, 3, 4), dtype)
         with pytest.raises(ValueError):
-            cupy.require(x, dtype, ['W'])
+            cupy.require(x, dtype, ["W"])
 
     @testing.for_all_dtypes()
     def test_require_incorrect_dtype(self, dtype):
         x = cupy.zeros((2, 3, 4), dtype)
         with pytest.raises(ValueError):
-            cupy.require(x, 'random', 'C')
+            cupy.require(x, "random", "C")
 
     @testing.for_all_dtypes()
     def test_require_empty_requirements(self, dtype):
         x = cupy.zeros((2, 3, 4), dtype)
         x = cupy.require(x, dtype, [])
-        assert x.flags['C_CONTIGUOUS']
+        assert x.flags["C_CONTIGUOUS"]

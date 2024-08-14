@@ -1,7 +1,7 @@
 # mypy: ignore-errors
 import numpy
 
-if numpy.__version__ < '2':
+if numpy.__version__ < "2":
     from numpy import AxisError  # NOQA
     from numpy import ComplexWarning  # NOQA
     from numpy import ModuleDeprecationWarning  # NOQA

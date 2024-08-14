@@ -12,42 +12,42 @@ except ImportError:
     pass
 
 
-@testing.with_requires('scipy')
+@testing.with_requires("scipy")
 class TestChirp:
 
     @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_linear_at_zero(self, xp, scp):
         w = scp.signal.chirp(
-            t=0.0, f0=1.0, f1=2.0, t1=1.0, method='linear')
+            t=0.0, f0=1.0, f1=2.0, t1=1.0, method="linear")
         return w
 
     @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_quadratic_at_zero(self, xp, scp):
         w = scp.signal.chirp(
-            t=0, f0=1.0, f1=2.0, t1=1.0, method='quadratic')
+            t=0, f0=1.0, f1=2.0, t1=1.0, method="quadratic")
         return w
 
     @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_quadratic_at_zero2(self, xp, scp):
         w = scp.signal.chirp(
-            t=0, f0=1.0, f1=2.0, t1=1.0, method='quadratic', vertex_zero=False)
+            t=0, f0=1.0, f1=2.0, t1=1.0, method="quadratic", vertex_zero=False)
         return w
 
     @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_logarithmic_at_zero(self, xp, scp):
         w = scp.signal.chirp(
-            t=0, f0=1.0, f1=2.0, t1=1.0, method='logarithmic')
+            t=0, f0=1.0, f1=2.0, t1=1.0, method="logarithmic")
         return w
 
     @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_hyperbolic_at_zero(self, xp, scp):
         w = scp.signal.chirp(
-            t=0, f0=10.0, f1=1.0, t1=1.0, method='hyperbolic')
+            t=0, f0=10.0, f1=1.0, t1=1.0, method="hyperbolic")
         return w
 
     def test_hyperbolic_zero_freq(self):
         # f0=0 or f1=0 must raise a ValueError.
-        method = 'hyperbolic'
+        method = "hyperbolic"
         t1 = 1.0
 
         for xp, scp in [(cupy, cupyx.scipy), (np, scipy)]:
@@ -116,49 +116,49 @@ class TestChirp:
         return float_result, int_result
 
 
-@testing.with_requires('scipy')
+@testing.with_requires("scipy")
 class TestGaussPulse:
     @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_integer_fc(self, xp, scp):
-        float_result = scp.signal.gausspulse('cutoff', fc=1000.0)
-        int_result = scp.signal.gausspulse('cutoff', fc=1000)
+        float_result = scp.signal.gausspulse("cutoff", fc=1000.0)
+        int_result = scp.signal.gausspulse("cutoff", fc=1000)
         return float_result, int_result
 
     @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_integer_bw(self, xp, scp):
-        float_result = scp.signal.gausspulse('cutoff', bw=1.0)
-        int_result = scp.signal.gausspulse('cutoff', bw=1)
+        float_result = scp.signal.gausspulse("cutoff", bw=1.0)
+        int_result = scp.signal.gausspulse("cutoff", bw=1)
         return float_result, int_result
 
     @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_integer_bwr(self, xp, scp):
-        float_result = scp.signal.gausspulse('cutoff', bwr=-6.0)
-        int_result = scp.signal.gausspulse('cutoff', bwr=-6)
+        float_result = scp.signal.gausspulse("cutoff", bwr=-6.0)
+        int_result = scp.signal.gausspulse("cutoff", bwr=-6)
         return float_result, int_result
 
     @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_integer_tpr(self, xp, scp):
-        float_result = scp.signal.gausspulse('cutoff', tpr=-60.0)
-        int_result = scp.signal.gausspulse('cutoff', tpr=-60)
+        float_result = scp.signal.gausspulse("cutoff", tpr=-60.0)
+        int_result = scp.signal.gausspulse("cutoff", tpr=-60)
         return float_result, int_result
 
 
-@testing.with_requires('scipy')
+@testing.with_requires("scipy")
 class TestUnitImpulse:
-    @pytest.mark.parametrize('size', [7, (3, 3)])
+    @pytest.mark.parametrize("size", [7, (3, 3)])
     @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_no_index(self, size, xp, scp):
         return scp.signal.unit_impulse(size)
 
-    @pytest.mark.parametrize('args', [(10, 3), ((3, 3), (1, 1)), ((4, 4), 2)])
+    @pytest.mark.parametrize("args", [(10, 3), ((3, 3), (1, 1)), ((4, 4), 2)])
     @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_index(self, args, xp, scp):
         return scp.signal.unit_impulse(*args)
 
-    @pytest.mark.parametrize('size', [(3, 3), 9])
+    @pytest.mark.parametrize("size", [(3, 3), 9])
     @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_mid(self, size, xp, scp):
-        return scp.signal.unit_impulse(size, 'mid')
+        return scp.signal.unit_impulse(size, "mid")
 
     @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_dtype(self, xp, scp):
@@ -168,25 +168,25 @@ class TestUnitImpulse:
         return imp1, imp2, imp3
 
 
-@testing.with_requires('scipy')
+@testing.with_requires("scipy")
 class TestSawtooth:
-    @pytest.mark.parametrize('width', [1.0, 0.5, 3.0])
+    @pytest.mark.parametrize("width", [1.0, 0.5, 3.0])
     @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_sawtooth(self, width, xp, scp):
         t = xp.linspace(0, 1, 500)
         return scp.signal.sawtooth(t, width)
 
 
-@testing.with_requires('scipy')
+@testing.with_requires("scipy")
 class TestSquare:
-    @pytest.mark.parametrize('duty', [1.0, 0.5, 3.0])
+    @pytest.mark.parametrize("duty", [1.0, 0.5, 3.0])
     @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_square(self, duty, xp, scp):
         t = xp.linspace(0, 1, 500)
         return scp.signal.square(t, duty)
 
 
-@testing.with_requires('scipy')
+@testing.with_requires("scipy")
 class TestSweepPoly:
 
     @testing.numpy_cupy_allclose(scipy_name="scp")

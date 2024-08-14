@@ -15,7 +15,7 @@ def linspace_data_gen(start, stop, n, endpoint=False, dtype=numpy.float64):
     return cpu_sig, gpu_sig
 
 
-@pytest.mark.parametrize('dtype', [cupy.float32, cupy.float64])
+@pytest.mark.parametrize("dtype", [cupy.float32, cupy.float64])
 @pytest.mark.parametrize("num_samps", [2**14, 2**18])
 @pytest.mark.parametrize("filter_len", [8, 32, 128])
 def test_firfilter(dtype, num_samps, filter_len):
@@ -27,7 +27,7 @@ def test_firfilter(dtype, num_samps, filter_len):
     testing.assert_allclose(gpu_output, cpu_output, atol=1e-3, rtol=1e-3)
 
 
-@pytest.mark.parametrize('dtype', [cupy.float32, cupy.float64])
+@pytest.mark.parametrize("dtype", [cupy.float32, cupy.float64])
 @pytest.mark.parametrize("filter_len", [8, 32, 128])
 def test_firfilter_zi(dtype, filter_len):
     cpu_filter, _ = scipy.signal.butter(filter_len, 0.5)
@@ -39,7 +39,7 @@ def test_firfilter_zi(dtype, filter_len):
     assert cupy.real(gpu_output).dtype == dtype
 
 
-@pytest.mark.parametrize('dtype', [cupy.float32, cupy.float64])
+@pytest.mark.parametrize("dtype", [cupy.float32, cupy.float64])
 @pytest.mark.parametrize("num_samps", [2**14, 2**18])
 @pytest.mark.parametrize("filter_len", [8, 32, 128])
 @pytest.mark.parametrize("padtype", ["odd", "even", "constant"])
@@ -135,7 +135,7 @@ def channelize_poly_cpu(x, h, n_chans):
 
 @pytest.mark.skipif(
     cupy.cuda.runtime.runtimeGetVersion() < 11040,
-    reason='Requires CUDA 11.4 or greater')
+    reason="Requires CUDA 11.4 or greater")
 @pytest.mark.parametrize(
     "dtype", [cupy.float32, cupy.float64, cupy.complex64, cupy.complex128]
 )

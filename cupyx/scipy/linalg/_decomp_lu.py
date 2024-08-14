@@ -8,7 +8,7 @@ from cupy.linalg import _util
 from cupyx.scipy.linalg import _uarray
 
 
-@_uarray.implements('lu_factor')
+@_uarray.implements("lu_factor")
 def lu_factor(a, overwrite_a=False, check_finite=True):
     """LU decomposition.
 
@@ -39,7 +39,7 @@ def lu_factor(a, overwrite_a=False, check_finite=True):
     return _lu_factor(a, overwrite_a, check_finite)
 
 
-@_uarray.implements('lu')
+@_uarray.implements("lu")
 def lu(a, permute_l=False, overwrite_a=False, check_finite=True):
     """LU decomposition.
 
@@ -80,7 +80,7 @@ def lu(a, permute_l=False, overwrite_a=False, check_finite=True):
         _cupy_laswp(L, 0, k-1, piv, -1)
         return (L, U)
     else:
-        r_dtype = numpy.float32 if lu.dtype.char in 'fF' else numpy.float64
+        r_dtype = numpy.float32 if lu.dtype.char in "fF" else numpy.float64
         P = cupy.diag(cupy.ones((m,), dtype=r_dtype))
         _cupy_laswp(P, 0, k-1, piv, -1)
         return (P, L, U)
@@ -94,28 +94,28 @@ def _lu_factor(a, overwrite_a=False, check_finite=True):
 
     dtype = a.dtype
 
-    if dtype.char == 'f':
+    if dtype.char == "f":
         getrf = cusolver.sgetrf
         getrf_bufferSize = cusolver.sgetrf_bufferSize
-    elif dtype.char == 'd':
+    elif dtype.char == "d":
         getrf = cusolver.dgetrf
         getrf_bufferSize = cusolver.dgetrf_bufferSize
-    elif dtype.char == 'F':
+    elif dtype.char == "F":
         getrf = cusolver.cgetrf
         getrf_bufferSize = cusolver.cgetrf_bufferSize
-    elif dtype.char == 'D':
+    elif dtype.char == "D":
         getrf = cusolver.zgetrf
         getrf_bufferSize = cusolver.zgetrf_bufferSize
     else:
-        msg = 'Only float32, float64, complex64 and complex128 are supported.'
+        msg = "Only float32, float64, complex64 and complex128 are supported."
         raise NotImplementedError(msg)
 
-    a = a.astype(dtype, order='F', copy=(not overwrite_a))
+    a = a.astype(dtype, order="F", copy=(not overwrite_a))
 
     if check_finite:
-        if a.dtype.kind == 'f' and not cupy.isfinite(a).all():
+        if a.dtype.kind == "f" and not cupy.isfinite(a).all():
             raise ValueError(
-                'array must not contain infs or NaNs')
+                "array must not contain infs or NaNs")
 
     cusolver_handle = device.get_cusolver_handle()
     dev_info = cupy.empty(1, dtype=numpy.int32)
@@ -133,10 +133,10 @@ def _lu_factor(a, overwrite_a=False, check_finite=True):
 
     if not runtime.is_hip and dev_info[0] < 0:
         # rocSOLVER does not inform us this info
-        raise ValueError('illegal value in %d-th argument of '
-                         'internal getrf (lu_factor)' % -dev_info[0])
+        raise ValueError("illegal value in %d-th argument of "
+                         "internal getrf (lu_factor)" % -dev_info[0])
     elif dev_info[0] > 0:
-        warn('Diagonal number %d is exactly zero. Singular matrix.'
+        warn("Diagonal number %d is exactly zero. Singular matrix."
              % dev_info[0], RuntimeWarning, stacklevel=2)
 
     # cuSolver uses 1-origin while SciPy uses 0-origin
@@ -145,11 +145,11 @@ def _lu_factor(a, overwrite_a=False, check_finite=True):
     return (a, ipiv)
 
 
-def _cupy_split_lu(LU, order='C'):
+def _cupy_split_lu(LU, order="C"):
     assert LU._f_contiguous
     m, n = LU.shape
     k = min(m, n)
-    order = 'F' if order == 'F' else 'C'
+    order = "F" if order == "F" else "C"
     L = cupy.empty((m, k), order=order, dtype=LU.dtype)
     U = cupy.empty((k, n), order=order, dtype=LU.dtype)
     size = m * n
@@ -157,7 +157,7 @@ def _cupy_split_lu(LU, order='C'):
     return (L, U)
 
 
-_device_get_index = '''
+_device_get_index = """
 __device__ inline int get_index(int row, int col, int num_rows, int num_cols,
                                 bool c_contiguous)
 {
@@ -167,12 +167,12 @@ __device__ inline int get_index(int row, int col, int num_rows, int num_cols,
         return row + num_rows * col;
     }
 }
-'''
+"""
 
 _kernel_cupy_split_lu = cupy.ElementwiseKernel(
-    'raw T LU, int32 M, int32 N, int32 K, bool C_CONTIGUOUS',
-    'raw T L, raw T U',
-    '''
+    "raw T LU, int32 M, int32 N, int32 K, bool C_CONTIGUOUS",
+    "raw T L, raw T U",
+    """
     // LU: shape: (M, N)
     // L: shape: (M, K)
     // U: shape: (K, N)
@@ -205,8 +205,8 @@ _kernel_cupy_split_lu = cupy.ElementwiseKernel(
     if (row < K) {
         ptr_U[get_index(row, col, K, N, C_CONTIGUOUS)] = u_val;
     }
-    ''',
-    'cupyx_scipy_linalg_split_lu', preamble=_device_get_index
+    """,
+    "cupyx_scipy_linalg_split_lu", preamble=_device_get_index
 )
 
 
@@ -219,10 +219,10 @@ def _cupy_laswp(A, k1, k2, ipiv, incx):
 
 
 _kernel_cupy_laswp = cupy.ElementwiseKernel(
-    'int32 M, int32 N, int32 K1, int32 K2, raw I IPIV, int32 INCX, '
-    'bool C_CONTIGUOUS',
-    'raw T A',
-    '''
+    "int32 M, int32 N, int32 K1, int32 K2, raw I IPIV, int32 INCX, "
+    "bool C_CONTIGUOUS",
+    "raw T A",
+    """
     // IPIV: 0-based pivot indices. shape: (K,)  (*) K > K2
     // A: shape: (M, N)
     T* ptr_A = &(A[0]);
@@ -249,12 +249,12 @@ _kernel_cupy_laswp = cupy.ElementwiseKernel(
         if (row1 == row_end) break;
         row1 += row_inc;
     }
-    ''',
-    'cupyx_scipy_linalg_laswp', preamble=_device_get_index
+    """,
+    "cupyx_scipy_linalg_laswp", preamble=_device_get_index
 )
 
 
-@_uarray.implements('lu_solve')
+@_uarray.implements("lu_solve")
 def lu_solve(lu_and_piv, b, trans=0, overwrite_b=False, check_finite=True):
     """Solve an equation system, ``a * x = b``, given the LU factorization of ``a``
 
@@ -295,19 +295,19 @@ def lu_solve(lu_and_piv, b, trans=0, overwrite_b=False, check_finite=True):
 
     m = lu.shape[0]
     if m != b.shape[0]:
-        raise ValueError('incompatible dimensions.')
+        raise ValueError("incompatible dimensions.")
 
     dtype = lu.dtype
-    if dtype.char == 'f':
+    if dtype.char == "f":
         getrs = cusolver.sgetrs
-    elif dtype.char == 'd':
+    elif dtype.char == "d":
         getrs = cusolver.dgetrs
-    elif dtype.char == 'F':
+    elif dtype.char == "F":
         getrs = cusolver.cgetrs
-    elif dtype.char == 'D':
+    elif dtype.char == "D":
         getrs = cusolver.zgetrs
     else:
-        msg = 'Only float32, float64, complex64 and complex128 are supported.'
+        msg = "Only float32, float64, complex64 and complex128 are supported."
         raise NotImplementedError(msg)
 
     if trans == 0:
@@ -317,24 +317,24 @@ def lu_solve(lu_and_piv, b, trans=0, overwrite_b=False, check_finite=True):
     elif trans == 2:
         trans = cublas.CUBLAS_OP_C
     else:
-        raise ValueError('unknown trans')
+        raise ValueError("unknown trans")
 
-    lu = lu.astype(dtype, order='F', copy=False)
-    ipiv = ipiv.astype(ipiv.dtype, order='F', copy=True)
+    lu = lu.astype(dtype, order="F", copy=False)
+    ipiv = ipiv.astype(ipiv.dtype, order="F", copy=True)
     # cuSolver uses 1-origin while SciPy uses 0-origin
     ipiv += 1
-    b = b.astype(dtype, order='F', copy=(not overwrite_b))
+    b = b.astype(dtype, order="F", copy=(not overwrite_b))
 
     if check_finite:
-        if lu.dtype.kind == 'f' and not cupy.isfinite(lu).all():
+        if lu.dtype.kind == "f" and not cupy.isfinite(lu).all():
             raise ValueError(
-                'array must not contain infs or NaNs.\n'
-                'Note that when a singular matrix is given, unlike '
-                'scipy.linalg.lu_factor, cupyx.scipy.linalg.lu_factor '
-                'returns an array containing NaN.')
-        if b.dtype.kind == 'f' and not cupy.isfinite(b).all():
+                "array must not contain infs or NaNs.\n"
+                "Note that when a singular matrix is given, unlike "
+                "scipy.linalg.lu_factor, cupyx.scipy.linalg.lu_factor "
+                "returns an array containing NaN.")
+        if b.dtype.kind == "f" and not cupy.isfinite(b).all():
             raise ValueError(
-                'array must not contain infs or NaNs')
+                "array must not contain infs or NaNs")
 
     n = 1 if b.ndim == 1 else b.shape[1]
     cusolver_handle = device.get_cusolver_handle()
@@ -348,7 +348,7 @@ def lu_solve(lu_and_piv, b, trans=0, overwrite_b=False, check_finite=True):
 
     if not runtime.is_hip and dev_info[0] < 0:
         # rocSOLVER does not inform us this info
-        raise ValueError('illegal value in %d-th argument of '
-                         'internal getrs (lu_solve)' % -dev_info[0])
+        raise ValueError("illegal value in %d-th argument of "
+                         "internal getrs (lu_solve)" % -dev_info[0])
 
     return b

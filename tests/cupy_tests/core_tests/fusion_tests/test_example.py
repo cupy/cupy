@@ -9,12 +9,12 @@ from cupy_tests.core_tests.fusion_tests import fusion_utils
 
 @testing.slow
 @pytest.mark.skipif(
-    cupy.cuda.runtime.is_hip, reason='HIP does not support this')
+    cupy.cuda.runtime.is_hip, reason="HIP does not support this")
 class TestFusionExample(unittest.TestCase):
     def generate_inputs(self, xp):
         shape = (8, 64, 112, 112)
         _, chan, _, _ = shape
-        x = testing.shaped_random(shape, xp, 'float32', scale=10, seed=0)
+        x = testing.shaped_random(shape, xp, "float32", scale=10, seed=0)
         gamma = xp.ones(chan)
         beta = xp.zeros(chan)
         running_mean = xp.zeros(chan)

@@ -14,7 +14,7 @@ class TestGammainc(object):
     @pytest.mark.skipif(
         cp.cuda.runtime.is_hip and
         cp.cuda.runtime.runtimeGetVersion() < 5_00_00000,
-        reason='ROCm/HIP fails in ROCm 4.x')
+        reason="ROCm/HIP fails in ROCm 4.x")
     @pytest.mark.parametrize("a, x", INVALID_POINTS)
     def test_domain(self, a, x):
         assert cp.isnan(sc.gammainc(a, x))
@@ -41,7 +41,7 @@ class TestGammainc(object):
     @pytest.mark.skipif(
         cp.cuda.runtime.is_hip and
         cp.cuda.runtime.runtimeGetVersion() < 5_00_00000,
-        reason='ROCm/HIP fails in ROCm 4.x')
+        reason="ROCm/HIP fails in ROCm 4.x")
     def test_infinite_limits(self):
         # Test that large arguments converge to the hard-coded limits
         # at infinity.
@@ -60,7 +60,7 @@ class TestGammainc(object):
     @pytest.mark.skipif(
         cp.cuda.runtime.is_hip and
         cp.cuda.runtime.runtimeGetVersion() < 5_00_00000,
-        reason='ROCm/HIP fails in ROCm 4.x')
+        reason="ROCm/HIP fails in ROCm 4.x")
     def test_limit_check(self):
         result = sc.gammainc(1e-10, 1)
         limit = sc.gammainc(0, 1)
@@ -99,7 +99,7 @@ class TestGammainc(object):
     @pytest.mark.skipif(
         cp.cuda.runtime.is_hip and
         cp.cuda.runtime.runtimeGetVersion() < 5_00_00000,
-        reason='ROCm/HIP fails in ROCm 4.x')
+        reason="ROCm/HIP fails in ROCm 4.x")
     def test_roundtrip(self):
         a = cp.logspace(-5, 10, 100)
         x = cp.logspace(-5, 10, 100)
@@ -135,7 +135,7 @@ class TestGammaincc(object):
     @pytest.mark.skipif(
         cp.cuda.runtime.is_hip and
         cp.cuda.runtime.runtimeGetVersion() < 5_00_00000,
-        reason='ROCm/HIP fails in ROCm 4.x')
+        reason="ROCm/HIP fails in ROCm 4.x")
     def test_infinite_limits(self):
         # Test that large arguments converge to the hard-coded limits
         # at infinity.
@@ -159,7 +159,7 @@ class TestGammaincc(object):
     @pytest.mark.skipif(
         cp.cuda.runtime.is_hip and
         cp.cuda.runtime.runtimeGetVersion() < 5_00_00000,
-        reason='ROCm/HIP fails in ROCm 4.x')
+        reason="ROCm/HIP fails in ROCm 4.x")
     def test_roundtrip(self):
         a = cp.logspace(-5, 10, 100)
         x = cp.logspace(-5, 10, 100)

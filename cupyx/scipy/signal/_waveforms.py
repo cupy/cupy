@@ -34,16 +34,16 @@ from cupy_backends.cuda.api import runtime
 
 def _get_typename(dtype):
     typename = get_typename(dtype)
-    if cupy.dtype(dtype).kind == 'c':
-        typename = 'thrust::' + typename
-    elif typename == 'float16':
+    if cupy.dtype(dtype).kind == "c":
+        typename = "thrust::" + typename
+    elif typename == "float16":
         if runtime.is_hip:
             # 'half' in name_expressions weirdly raises
             # HIPRTC_ERROR_NAME_EXPRESSION_NOT_VALID in getLoweredName() on
             # ROCm
-            typename = '__half'
+            typename = "__half"
         else:
-            typename = 'half'
+            typename = "half"
     return typename
 
 
@@ -57,8 +57,8 @@ TYPE_NAMES = [_get_typename(t) for t in TYPES]
 
 def _get_module_func(module, func_name, *template_args):
     args_dtypes = [_get_typename(arg.dtype) for arg in template_args]
-    template = ', '.join(args_dtypes)
-    kernel_name = f'{func_name}<{template}>' if template_args else func_name
+    template = ", ".join(args_dtypes)
+    kernel_name = f"{func_name}<{template}>" if template_args else func_name
     kernel = module.get_function(kernel_name)
     return kernel
 
@@ -536,14 +536,14 @@ def chirp(t, f0, t1, f1, method="linear", phi=0, vertex_zero=True):
         t = t.astype(cupy.float64)
 
     phi *= np.pi / 180
-    type = 'real'
+    type = "real"
 
     if method in ["linear", "lin", "li"]:
         if type == "real":
             return _chirp_phase_lin_kernel_real(t, f0, t1, f1, phi)
         elif type == "complex":
             # type hard-coded to 'real' above, so this code path is never used
-            if t.real.dtype.kind == 'f' and t.dtype.itemsize == 8:
+            if t.real.dtype.kind == "f" and t.dtype.itemsize == 8:
                 phase = cupy.empty(t.shape, dtype=cupy.complex128)
             else:
                 phase = cupy.empty(t.shape, dtype=cupy.complex64)
@@ -663,7 +663,7 @@ def _sweep_poly_phase(t, poly):
     return phase
 
 
-UNIT_KERNEL = r'''
+UNIT_KERNEL = r"""
 #include <cupy/math_constants.h>
 #include <cupy/carray.cuh>
 #include <cupy/complex.cuh>
@@ -683,11 +683,11 @@ __global__ void unit_impulse(const int n, const int iidx, T* out) {
         out[idx] = 0;
     }
 }
-'''
+"""
 
 UNIT_MODULE = cupy.RawModule(
-    code=UNIT_KERNEL, options=('-std=c++11',),
-    name_expressions=[f'unit_impulse<{x}>' for x in TYPE_NAMES])
+    code=UNIT_KERNEL, options=("-std=c++11",),
+    name_expressions=[f"unit_impulse<{x}>" for x in TYPE_NAMES])
 
 
 def unit_impulse(shape, idx=None, dtype=float):
@@ -751,7 +751,7 @@ def unit_impulse(shape, idx=None, dtype=float):
 
     if idx is None:
         idx = (0,) * len(shape)
-    elif idx == 'mid':
+    elif idx == "mid":
         idx = tuple(shape // 2)
     elif not hasattr(idx, "__iter__"):
         idx = (idx,) * len(shape)
@@ -762,6 +762,6 @@ def unit_impulse(shape, idx=None, dtype=float):
     block_sz = 128
     n_blocks = (n + block_sz - 1) // block_sz
 
-    unit_impulse_kernel = _get_module_func(UNIT_MODULE, 'unit_impulse', out)
+    unit_impulse_kernel = _get_module_func(UNIT_MODULE, "unit_impulse", out)
     unit_impulse_kernel((n_blocks,), (block_sz,), (n, pos, out))
     return out

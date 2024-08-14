@@ -8,20 +8,20 @@ from cupy import testing
 
 def _get_logspace_max(dtype):
     # keep logspace within range of the float dtype
-    if dtype.char == 'd':
+    if dtype.char == "d":
         return 200
-    elif dtype.char == 'f':
+    elif dtype.char == "f":
         return 30
-    elif dtype.char == 'e':
+    elif dtype.char == "e":
         return 5
 
 
-@testing.with_requires('scipy')
+@testing.with_requires("scipy")
 class TestBeta:
 
-    @pytest.mark.parametrize('function', ['beta', 'betaln'])
+    @pytest.mark.parametrize("function", ["beta", "betaln"])
     @testing.for_all_dtypes(no_complex=True)
-    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name="scp")
     def test_arange(self, xp, scp, dtype, function):
         import scipy.special  # NOQA
 
@@ -33,10 +33,10 @@ class TestBeta:
     @pytest.mark.skipif(
         cupy.cuda.runtime.is_hip and
         cupy.cuda.runtime.runtimeGetVersion() < 5_00_00000,
-        reason='ROCm/HIP fails in ROCm 4.x')
-    @pytest.mark.parametrize('function', ['beta', 'betaln'])
+        reason="ROCm/HIP fails in ROCm 4.x")
+    @pytest.mark.parametrize("function", ["beta", "betaln"])
     @testing.for_float_dtypes()
-    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name="scp")
     def test_linspace(self, xp, scp, dtype, function):
         import scipy.special  # NOQA
 
@@ -46,9 +46,9 @@ class TestBeta:
         x = xp.linspace(-20, 21, 50, dtype=dtype)
         return func(x[:, xp.newaxis], x[xp.newaxis, :])
 
-    @pytest.mark.parametrize('function', ['beta', 'betaln'])
+    @pytest.mark.parametrize("function", ["beta", "betaln"])
     @testing.for_float_dtypes()
-    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name="scp")
     def test_logspace(self, xp, scp, dtype, function):
         import scipy.special  # NOQA
 
@@ -57,9 +57,9 @@ class TestBeta:
         x = xp.logspace(-lmax, lmax, 32, dtype=dtype)
         return func(x[:, xp.newaxis], x[xp.newaxis, :])
 
-    @pytest.mark.parametrize('function', ['beta', 'betaln'])
+    @pytest.mark.parametrize("function", ["beta", "betaln"])
     @testing.for_float_dtypes()
-    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name="scp")
     def test_inf_and_nan(self, xp, scp, dtype, function):
         import scipy.special  # NOQA
         func = getattr(scp.special, function)
@@ -85,12 +85,12 @@ class TestBeta:
                                 3.1811881124242447, rtol=1e-14, atol=0)
 
 
-@testing.with_requires('scipy>=1.12.0rc1')
+@testing.with_requires("scipy>=1.12.0rc1")
 class TestBetaInc:
 
-    @pytest.mark.parametrize('function', ['betainc', 'betaincinv'])
+    @pytest.mark.parametrize("function", ["betainc", "betaincinv"])
     @testing.for_all_dtypes(no_complex=True)
-    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name="scp")
     def test_arange(self, xp, scp, dtype, function):
         import scipy.special  # NOQA
 
@@ -101,9 +101,9 @@ class TestBetaInc:
         # return scp.special.betainc(a, b, x)
         return func(a, b, x)
 
-    @pytest.mark.parametrize('function', ['betainc', 'betaincinv'])
+    @pytest.mark.parametrize("function", ["betainc", "betaincinv"])
     @testing.for_float_dtypes()
-    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name="scp")
     def test_linspace(self, xp, scp, dtype, function):
         import scipy.special  # NOQA
 
@@ -116,9 +116,9 @@ class TestBetaInc:
         x = xp.linspace(0, 1, 5, dtype=dtype)[xp.newaxis, xp.newaxis, :]
         return func(a, b, x)
 
-    @pytest.mark.parametrize('function', ['betainc', 'betaincinv'])
+    @pytest.mark.parametrize("function", ["betainc", "betaincinv"])
     @testing.for_float_dtypes()
-    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name="scp")
     def test_beta_inf_and_nan(self, xp, scp, dtype, function):
         import scipy.special  # NOQA
         func = getattr(scp.special, function)

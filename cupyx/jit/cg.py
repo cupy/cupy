@@ -6,17 +6,17 @@ from cupyx.jit._internal_types import Data as _Data
 from cupyx.jit._internal_types import wraps_class_method as _wraps_class_method
 
 # public interface of this module
-__all__ = ['this_grid', 'this_thread_block',
-           'sync', 'wait', 'wait_prior', 'memcpy_async']
+__all__ = ["this_grid", "this_thread_block",
+           "sync", "wait", "wait_prior", "memcpy_async"]
 
 
 # To avoid ABI issues (which libcudacxx manages to raise a compile-time error),
 # we always include a header from libcudacxx <cuda/...> before any cg include.
 _header_to_code = {
-    'cg': ("#include <cuda/barrier>\n"
+    "cg": ("#include <cuda/barrier>\n"
            "#include <cooperative_groups.h>\n"
            "namespace cg = cooperative_groups;\n"),
-    'cg_memcpy_async': "#include <cooperative_groups/memcpy_async.h>",
+    "cg_memcpy_async": "#include <cooperative_groups/memcpy_async.h>",
 }
 
 
@@ -37,11 +37,11 @@ class _ThreadGroup(_cuda_types.TypeBase):
         raise NotImplementedError
 
     def __str__(self):
-        return f'{self.child_type}'
+        return f"{self.child_type}"
 
     def _sync(self, env, instance):
-        _check_include(env, 'cg')
-        return _Data(f'{instance.code}.sync()', _cuda_types.void)
+        _check_include(env, "cg")
+        return _Data(f"{instance.code}.sync()", _cuda_types.void)
 
 
 class _GridGroup(_ThreadGroup):
@@ -54,7 +54,7 @@ class _GridGroup(_ThreadGroup):
     """  # NOQA
 
     def __init__(self):
-        self.child_type = 'cg::grid_group'
+        self.child_type = "cg::grid_group"
 
     @_wraps_class_method
     def is_valid(self, env, instance):
@@ -63,8 +63,8 @@ class _GridGroup(_ThreadGroup):
 
         Returns whether the grid_group can synchronize.
         """
-        _check_include(env, 'cg')
-        return _Data(f'{instance.code}.is_valid()', _cuda_types.bool_)
+        _check_include(env, "cg")
+        return _Data(f"{instance.code}.is_valid()", _cuda_types.bool_)
 
     @_wraps_class_method
     def sync(self, env, instance):
@@ -87,8 +87,8 @@ class _GridGroup(_ThreadGroup):
 
         Rank of the calling thread within ``[0, num_threads)``.
         """
-        _check_include(env, 'cg')
-        return _Data(f'{instance.code}.thread_rank()', _cuda_types.uint64)
+        _check_include(env, "cg")
+        return _Data(f"{instance.code}.thread_rank()", _cuda_types.uint64)
 
     @_wraps_class_method
     def block_rank(self, env, instance):
@@ -99,8 +99,8 @@ class _GridGroup(_ThreadGroup):
         """
         if _runtime._getLocalRuntimeVersion() < 11060:
             raise RuntimeError("block_rank() is supported on CUDA 11.6+")
-        _check_include(env, 'cg')
-        return _Data(f'{instance.code}.block_rank()', _cuda_types.uint64)
+        _check_include(env, "cg")
+        return _Data(f"{instance.code}.block_rank()", _cuda_types.uint64)
 
     @_wraps_class_method
     def num_threads(self, env, instance):
@@ -111,8 +111,8 @@ class _GridGroup(_ThreadGroup):
         """
         if _runtime._getLocalRuntimeVersion() < 11060:
             raise RuntimeError("num_threads() is supported on CUDA 11.6+")
-        _check_include(env, 'cg')
-        return _Data(f'{instance.code}.num_threads()', _cuda_types.uint64)
+        _check_include(env, "cg")
+        return _Data(f"{instance.code}.num_threads()", _cuda_types.uint64)
 
     @_wraps_class_method
     def num_blocks(self, env, instance):
@@ -123,8 +123,8 @@ class _GridGroup(_ThreadGroup):
         """
         if _runtime._getLocalRuntimeVersion() < 11060:
             raise RuntimeError("num_blocks() is supported on CUDA 11.6+")
-        _check_include(env, 'cg')
-        return _Data(f'{instance.code}.num_blocks()', _cuda_types.uint64)
+        _check_include(env, "cg")
+        return _Data(f"{instance.code}.num_blocks()", _cuda_types.uint64)
 
     @_wraps_class_method
     def dim_blocks(self, env, instance):
@@ -135,8 +135,8 @@ class _GridGroup(_ThreadGroup):
         """
         if _runtime._getLocalRuntimeVersion() < 11060:
             raise RuntimeError("dim_blocks() is supported on CUDA 11.6+")
-        _check_include(env, 'cg')
-        return _Data(f'{instance.code}.dim_blocks()', _cuda_types.dim3)
+        _check_include(env, "cg")
+        return _Data(f"{instance.code}.dim_blocks()", _cuda_types.dim3)
 
     @_wraps_class_method
     def block_index(self, env, instance):
@@ -147,8 +147,8 @@ class _GridGroup(_ThreadGroup):
         """
         if _runtime._getLocalRuntimeVersion() < 11060:
             raise RuntimeError("block_index() is supported on CUDA 11.6+")
-        _check_include(env, 'cg')
-        return _Data(f'{instance.code}.block_index()', _cuda_types.dim3)
+        _check_include(env, "cg")
+        return _Data(f"{instance.code}.block_index()", _cuda_types.dim3)
 
     @_wraps_class_method
     def size(self, env, instance):
@@ -158,8 +158,8 @@ class _GridGroup(_ThreadGroup):
         Total number of threads in the group.
         """
         # despite it is an alias of num_threads, we need it for earlier 11.x
-        _check_include(env, 'cg')
-        return _Data(f'{instance.code}.size()', _cuda_types.uint64)
+        _check_include(env, "cg")
+        return _Data(f"{instance.code}.size()", _cuda_types.uint64)
 
     @_wraps_class_method
     def group_dim(self, env, instance):
@@ -169,8 +169,8 @@ class _GridGroup(_ThreadGroup):
         Dimensions of the launched grid in units of blocks.
         """
         # despite it is an alias of dim_blocks, we need it for earlier 11.x
-        _check_include(env, 'cg')
-        return _Data(f'{instance.code}.group_dim()', _cuda_types.dim3)
+        _check_include(env, "cg")
+        return _Data(f"{instance.code}.group_dim()", _cuda_types.dim3)
 
 
 class _ThreadBlockGroup(_ThreadGroup):
@@ -184,7 +184,7 @@ class _ThreadBlockGroup(_ThreadGroup):
     """
 
     def __init__(self):
-        self.child_type = 'cg::thread_block'
+        self.child_type = "cg::thread_block"
 
     @_wraps_class_method
     def sync(self, env, instance):
@@ -202,8 +202,8 @@ class _ThreadBlockGroup(_ThreadGroup):
 
         Rank of the calling thread within ``[0, num_threads)``.
         """
-        _check_include(env, 'cg')
-        return _Data(f'{instance.code}.thread_rank()', _cuda_types.uint32)
+        _check_include(env, "cg")
+        return _Data(f"{instance.code}.thread_rank()", _cuda_types.uint32)
 
     @_wraps_class_method
     def group_index(self, env, instance):
@@ -212,8 +212,8 @@ class _ThreadBlockGroup(_ThreadGroup):
 
         3-Dimensional index of the block within the launched grid.
         """
-        _check_include(env, 'cg')
-        return _Data(f'{instance.code}.group_index()', _cuda_types.dim3)
+        _check_include(env, "cg")
+        return _Data(f"{instance.code}.group_index()", _cuda_types.dim3)
 
     @_wraps_class_method
     def thread_index(self, env, instance):
@@ -222,8 +222,8 @@ class _ThreadBlockGroup(_ThreadGroup):
 
         3-Dimensional index of the thread within the launched block.
         """
-        _check_include(env, 'cg')
-        return _Data(f'{instance.code}.thread_index()', _cuda_types.dim3)
+        _check_include(env, "cg")
+        return _Data(f"{instance.code}.thread_index()", _cuda_types.dim3)
 
     @_wraps_class_method
     def dim_threads(self, env, instance):
@@ -234,8 +234,8 @@ class _ThreadBlockGroup(_ThreadGroup):
         """
         if _runtime._getLocalRuntimeVersion() < 11060:
             raise RuntimeError("dim_threads() is supported on CUDA 11.6+")
-        _check_include(env, 'cg')
-        return _Data(f'{instance.code}.dim_threads()', _cuda_types.dim3)
+        _check_include(env, "cg")
+        return _Data(f"{instance.code}.dim_threads()", _cuda_types.dim3)
 
     @_wraps_class_method
     def num_threads(self, env, instance):
@@ -246,8 +246,8 @@ class _ThreadBlockGroup(_ThreadGroup):
         """
         if _runtime._getLocalRuntimeVersion() < 11060:
             raise RuntimeError("num_threads() is supported on CUDA 11.6+")
-        _check_include(env, 'cg')
-        return _Data(f'{instance.code}.num_threads()', _cuda_types.uint32)
+        _check_include(env, "cg")
+        return _Data(f"{instance.code}.num_threads()", _cuda_types.uint32)
 
     @_wraps_class_method
     def size(self, env, instance):
@@ -257,8 +257,8 @@ class _ThreadBlockGroup(_ThreadGroup):
         Total number of threads in the group.
         """
         # despite it is an alias of num_threads, we need it for earlier 11.x
-        _check_include(env, 'cg')
-        return _Data(f'{instance.code}.size()', _cuda_types.uint32)
+        _check_include(env, "cg")
+        return _Data(f"{instance.code}.size()", _cuda_types.uint32)
 
     @_wraps_class_method
     def group_dim(self, env, instance):
@@ -268,8 +268,8 @@ class _ThreadBlockGroup(_ThreadGroup):
         Dimensions of the launched block in units of threads.
         """
         # despite it is an alias of dim_threads, we need it for earlier 11.x
-        _check_include(env, 'cg')
-        return _Data(f'{instance.code}.group_dim()', _cuda_types.dim3)
+        _check_include(env, "cg")
+        return _Data(f"{instance.code}.group_dim()", _cuda_types.dim3)
 
 
 class _ThisCgGroup(_BuiltinFunc):
@@ -278,7 +278,7 @@ class _ThisCgGroup(_BuiltinFunc):
         if group_type == "grid":
             name = "grid group"
             typename = "_GridGroup"
-        elif group_type == 'thread_block':
+        elif group_type == "thread_block":
             name = "thread block group"
             typename = "_ThreadBlockGroup"
         else:
@@ -296,12 +296,12 @@ class _ThisCgGroup(_BuiltinFunc):
 
     def call_const(self, env):
         if _runtime.is_hip:
-            raise RuntimeError('cooperative group is not supported on HIP')
-        if self.group_type == 'grid':
+            raise RuntimeError("cooperative group is not supported on HIP")
+        if self.group_type == "grid":
             cg_type = _GridGroup()
-        elif self.group_type == 'thread_block':
+        elif self.group_type == "thread_block":
             cg_type = _ThreadBlockGroup()
-        return _Data(f'cg::this_{self.group_type}()', cg_type)
+        return _Data(f"cg::this_{self.group_type}()", cg_type)
 
 
 class _Sync(_BuiltinFunc):
@@ -322,8 +322,8 @@ class _Sync(_BuiltinFunc):
     def call(self, env, group):
         if not isinstance(group.ctype, _ThreadGroup):
             raise ValueError("group must be a valid cooperative group")
-        _check_include(env, 'cg')
-        return _Data(f'cg::sync({group.code})', _cuda_types.void)
+        _check_include(env, "cg")
+        return _Data(f"cg::sync({group.code})", _cuda_types.void)
 
 
 class _MemcpySync(_BuiltinFunc):
@@ -355,33 +355,33 @@ class _MemcpySync(_BuiltinFunc):
 
     def call(self, env, group, dst, dst_idx, src, src_idx, size, *,
              aligned_size=None):
-        _check_include(env, 'cg')
-        _check_include(env, 'cg_memcpy_async')
+        _check_include(env, "cg")
+        _check_include(env, "cg_memcpy_async")
 
         dst = _Data.init(dst, env)
         src = _Data.init(src, env)
         for arr in (dst, src):
             if not isinstance(
                     arr.ctype, (_cuda_types.CArray, _cuda_types.Ptr)):
-                raise TypeError('dst/src must be of array type.')
+                raise TypeError("dst/src must be of array type.")
         dst = _compile._indexing(dst, dst_idx, env)
         src = _compile._indexing(src, src_idx, env)
 
         size = _compile._astype_scalar(
             # it's very unlikely that the size would exceed 2^32, so we just
             # pick uint32 for simplicity
-            size, _cuda_types.uint32, 'same_kind', env)
+            size, _cuda_types.uint32, "same_kind", env)
         size = _Data.init(size, env)
-        size_code = f'{size.code}'
+        size_code = f"{size.code}"
 
         if aligned_size:
             if not isinstance(aligned_size, _Constant):
                 raise ValueError(
-                    'aligned_size must be a compile-time constant')
-            size_code = (f'cuda::aligned_size_t<{aligned_size.obj}>'
-                         f'({size_code})')
-        return _Data(f'cg::memcpy_async({group.code}, &({dst.code}), '
-                     f'&({src.code}), {size_code})', _cuda_types.void)
+                    "aligned_size must be a compile-time constant")
+            size_code = (f"cuda::aligned_size_t<{aligned_size.obj}>"
+                         f"({size_code})")
+        return _Data(f"cg::memcpy_async({group.code}, &({dst.code}), "
+                     f"&({src.code}), {size_code})", _cuda_types.void)
 
 
 class _Wait(_BuiltinFunc):
@@ -400,8 +400,8 @@ class _Wait(_BuiltinFunc):
         super().__call__()
 
     def call(self, env, group):
-        _check_include(env, 'cg')
-        return _Data(f'cg::wait({group.code})', _cuda_types.void)
+        _check_include(env, "cg")
+        return _Data(f"cg::wait({group.code})", _cuda_types.void)
 
 
 class _WaitPrior(_BuiltinFunc):
@@ -421,15 +421,15 @@ class _WaitPrior(_BuiltinFunc):
         super().__call__()
 
     def call(self, env, group, step):
-        _check_include(env, 'cg')
+        _check_include(env, "cg")
         if not isinstance(step, _Constant):
-            raise ValueError('step must be a compile-time constant')
-        return _Data(f'cg::wait_prior<{step.obj}>({group.code})',
+            raise ValueError("step must be a compile-time constant")
+        return _Data(f"cg::wait_prior<{step.obj}>({group.code})",
                      _cuda_types.void)
 
 
-this_grid = _ThisCgGroup('grid')
-this_thread_block = _ThisCgGroup('thread_block')
+this_grid = _ThisCgGroup("grid")
+this_thread_block = _ThisCgGroup("thread_block")
 sync = _Sync()
 wait = _Wait()
 wait_prior = _WaitPrior()

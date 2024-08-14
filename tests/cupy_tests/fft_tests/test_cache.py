@@ -155,7 +155,7 @@ class TestPlanCache(unittest.TestCase):
         # Testing in the current thread: in setUp() we ensure all caches
         # are initialized
         stdout = intercept_stdout(config.show_plan_cache_info)
-        assert 'uninitialized' not in stdout
+        assert "uninitialized" not in stdout
 
         def thread_show_plan_cache_info(queue):
             # allow output from another thread to be accessed by the
@@ -172,7 +172,7 @@ class TestPlanCache(unittest.TestCase):
         thread.start()
         thread.join()
         stdout = q.get()
-        assert stdout.count('uninitialized') == n_devices
+        assert stdout.count("uninitialized") == n_devices
 
         def thread_init_caches(gpus, queue):
             cupy.cuda.Device().use()
@@ -185,7 +185,7 @@ class TestPlanCache(unittest.TestCase):
         thread.start()
         thread.join()
         stdout = q.get()
-        assert stdout.count('uninitialized') == n_devices - 1
+        assert stdout.count("uninitialized") == n_devices - 1
 
         # ...and this time both devices
         thread = threading.Thread(target=thread_init_caches,
@@ -193,7 +193,7 @@ class TestPlanCache(unittest.TestCase):
         thread.start()
         thread.join()
         stdout = q.get()
-        assert stdout.count('uninitialized') == n_devices - 2
+        assert stdout.count("uninitialized") == n_devices - 2
 
     @testing.multi_gpu(2)
     def test_LRU_cache6(self):
@@ -351,7 +351,7 @@ class TestPlanCache(unittest.TestCase):
         curr_size = 0
         size = 2
         curr_memsize = 0
-        memsize = '(unlimited)'  # default
+        memsize = "(unlimited)"  # default
 
         a = testing.shaped_random((16, 16), cupy, cupy.float32)
         cupy.fft.fft2(a)
@@ -360,8 +360,8 @@ class TestPlanCache(unittest.TestCase):
         curr_size += 1
         curr_memsize += node1.plan.work_area.mem.size
         stdout = intercept_stdout(cache.show_info)
-        assert '{0} / {1} (counts)'.format(curr_size, size) in stdout
-        assert '{0} / {1} (bytes)'.format(curr_memsize, memsize) in stdout
+        assert "{0} / {1} (counts)".format(curr_size, size) in stdout
+        assert "{0} / {1} (bytes)".format(curr_memsize, memsize) in stdout
         assert str(node1) in stdout
 
         a = testing.shaped_random((1024,), cupy, cupy.complex64)
@@ -371,9 +371,9 @@ class TestPlanCache(unittest.TestCase):
         curr_size += 1
         curr_memsize += node2.plan.work_area.mem.size
         stdout = intercept_stdout(cache.show_info)
-        assert '{0} / {1} (counts)'.format(curr_size, size) in stdout
-        assert '{0} / {1} (bytes)'.format(curr_memsize, memsize) in stdout
-        assert str(node2) + '\n' + str(node1) in stdout
+        assert "{0} / {1} (counts)".format(curr_size, size) in stdout
+        assert "{0} / {1} (bytes)".format(curr_memsize, memsize) in stdout
+        assert str(node2) + "\n" + str(node1) in stdout
 
         # test deletion
         key = node2.key
@@ -382,8 +382,8 @@ class TestPlanCache(unittest.TestCase):
         curr_size -= 1
         curr_memsize -= node2.plan.work_area.mem.size
         stdout = intercept_stdout(cache.show_info)
-        assert '{0} / {1} (counts)'.format(curr_size, size) in stdout
-        assert '{0} / {1} (bytes)'.format(curr_memsize, memsize) in stdout
+        assert "{0} / {1} (counts)".format(curr_size, size) in stdout
+        assert "{0} / {1} (bytes)".format(curr_memsize, memsize) in stdout
         assert str(node2) not in stdout
 
     @multi_gpu_config(gpu_configs=[[0, 1], [1, 0]])
@@ -441,7 +441,7 @@ class TestPlanCache(unittest.TestCase):
         with pytest.raises(RuntimeError) as e:
             c = testing.shaped_random((128,), cupy, cupy.complex64)
             cupy.fft.fft(c)
-        assert 'plan memsize is too large for device 1' in str(e.value)
+        assert "plan memsize is too large for device 1" in str(e.value)
         assert cache0.get_curr_size() == 0 <= cache0.get_size()
         assert cache1.get_curr_size() == 0 <= cache1.get_size()
 
@@ -474,7 +474,7 @@ class TestPlanCache(unittest.TestCase):
         a = testing.shaped_random((128,), cupy, cupy.complex128)
         with pytest.raises(RuntimeError) as e:
             cupy.fft.ifft(a)
-        assert 'memsize is too large' in str(e.value)
+        assert "memsize is too large" in str(e.value)
         # the cache remains intact
         assert cache.get_curr_size() == 1 <= cache.get_size()
         assert cache.get_curr_memsize() == 1024 == cache.get_memsize()

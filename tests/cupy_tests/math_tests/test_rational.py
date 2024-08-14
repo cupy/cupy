@@ -8,7 +8,7 @@ from cupy import testing
 
 class TestRational(unittest.TestCase):
 
-    @testing.for_dtypes(['?', 'e', 'f', 'd', 'F', 'D'])
+    @testing.for_dtypes(["?", "e", "f", "d", "F", "D"])
     def test_gcd_dtype_check(self, dtype):
         a = cupy.random.randint(-10, 10, size=(10, 10)).astype(dtype)
         b = cupy.random.randint(-10, 10, size=(10, 10)).astype(dtype)
@@ -22,7 +22,7 @@ class TestRational(unittest.TestCase):
         b = xp.array([0, 5, -10, -5, 20, 51, 6, 42])
         return xp.gcd(a, b)
 
-    @testing.for_dtypes(['?', 'e', 'f', 'd', 'F', 'D'])
+    @testing.for_dtypes(["?", "e", "f", "d", "F", "D"])
     def test_lcm_dtype_check(self, dtype):
         a = cupy.random.randint(-10, 10, size=(10, 10)).astype(dtype)
         b = cupy.random.randint(-10, 10, size=(10, 10)).astype(dtype)

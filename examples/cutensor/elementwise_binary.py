@@ -9,10 +9,10 @@ from cupyx import cutensor
 
 dtype = numpy.float32
 
-mode_a = ('z', 'y', 'x')
-mode_c = ('x', 'y', 'z')
+mode_a = ("z", "y", "x")
+mode_c = ("x", "y", "z")
 
-extent = {'x': 400, 'y': 200, 'z': 300}
+extent = {"x": 400, "y": 200, "z": 300}
 
 a = cupy.random.random([extent[i] for i in mode_a])
 c = cupy.random.random([extent[i] for i in mode_c])
@@ -36,6 +36,6 @@ if gamma != 0.0:
 elapsed = perf.gpu_times.mean()
 gbs = transfer_byte / elapsed / 1e9
 
-print('dtype: {}'.format(numpy.dtype(dtype).name))
+print("dtype: {}".format(numpy.dtype(dtype).name))
 print(perf)
-print('effective memory bandwidth (GB/s): {}'.format(gbs))
+print("effective memory bandwidth (GB/s): {}".format(gbs))

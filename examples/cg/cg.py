@@ -14,7 +14,7 @@ def timer(message):
     yield
     cupy.cuda.Stream.null.synchronize()
     end = time.time()
-    print('%s:  %f sec' % (message, end - start))
+    print("%s:  %f sec" % (message, end - start))
 
 
 def fit(A, b, tol, max_iter):
@@ -33,7 +33,7 @@ def fit(A, b, tol, max_iter):
         b = xp.inner(r1, r1) / xp.inner(r0, r0)
         p = r1 + b * p
         r0 = r1
-    print('Failed to converge. Increase max-iter or tol.')
+    print("Failed to converge. Increase max-iter or tol.")
     return x
 
 
@@ -48,7 +48,7 @@ def run(gpu_id, tol, max_iter):
 
     """
     for repeat in range(3):
-        print('Trial: %d' % repeat)
+        print("Trial: %d" % repeat)
         # Create the large symmetric matrix 'A'.
         N = 2000
         A = np.random.randint(-50, 50, size=(N, N))
@@ -56,29 +56,29 @@ def run(gpu_id, tol, max_iter):
         x_ans = np.random.randint(-50, 50, size=N).astype(np.float64)
         b = np.dot(A, x_ans)
 
-        print('Running CPU...')
-        with timer(' CPU '):
+        print("Running CPU...")
+        with timer(" CPU "):
             x_cpu = fit(A, b, tol, max_iter)
         print(np.linalg.norm(x_cpu - x_ans))
 
         with cupy.cuda.Device(gpu_id):
             A_gpu = cupy.asarray(A)
             b_gpu = cupy.asarray(b)
-            print('Running GPU...')
-            with timer(' GPU '):
+            print("Running GPU...")
+            with timer(" GPU "):
                 x_gpu = fit(A_gpu, b_gpu, tol, max_iter)
             print(np.linalg.norm(cupy.asnumpy(x_gpu) - x_ans))
 
         print()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--gpu-id', '-g', default=0, type=int,
-                        help='ID of GPU.')
-    parser.add_argument('--tol', '-t', default=0.1, type=float,
-                        help='tolerance to stop iteration')
-    parser.add_argument('--max-iter', '-m', default=5000, type=int,
-                        help='number of iterations')
+    parser.add_argument("--gpu-id", "-g", default=0, type=int,
+                        help="ID of GPU.")
+    parser.add_argument("--tol", "-t", default=0.1, type=float,
+                        help="tolerance to stop iteration")
+    parser.add_argument("--max-iter", "-m", default=5000, type=int,
+                        help="number of iterations")
     args = parser.parse_args()
     run(args.gpu_id, args.tol, args.max_iter)

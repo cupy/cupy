@@ -60,14 +60,14 @@ def make_case(up, down, h, x_dtype, case):
     # replacement for the UpFIRDnCase class from the SciPy tests
     rng = np.random.RandomState(17)
     h = np.atleast_1d(h)
-    x = {'tiny': np.ones(1, dtype=x_dtype),
-         'ones': np.ones(10, dtype=x_dtype),
-         'randn': rng.randn(10).astype(x_dtype),
-         'ramp': np.arange(10).astype(x_dtype),
+    x = {"tiny": np.ones(1, dtype=x_dtype),
+         "ones": np.ones(10, dtype=x_dtype),
+         "randn": rng.randn(10).astype(x_dtype),
+         "ramp": np.arange(10).astype(x_dtype),
          # XXX: add 2D / 3D cases from UpFIRDnCase
          }[case]
 
-    if 'case' == 'randn' and x_dtype in (np.complex64, np.complex128):
+    if "case" == "randn" and x_dtype in (np.complex64, np.complex128):
         x += 1j * rng.randn(10)
     return x, h
 
@@ -77,14 +77,14 @@ def make_case_2D(up, down, h, x_dtype, case):
     rng = np.random.RandomState(17)
     h = np.atleast_1d(h)
 
-    if case == '2D':
+    if case == "2D":
         # 2D, random
         size = (3, 5)
         x = rng.randn(*size).astype(x_dtype)
         if x_dtype in (np.complex64, np.complex128):
             x += 1j * rng.randn(*size)
         return x, h
-    elif case == '2D_noncontig':
+    elif case == "2D_noncontig":
         # 2D, random, non-contiguous
         size = (3, 7)
         x = rng.randn(*size).astype(x_dtype)
@@ -99,17 +99,17 @@ def make_case_2D(up, down, h, x_dtype, case):
 _UPFIRDN_TYPES = (int, np.float32, np.complex64, float, complex)
 
 _upfirdn_modes = [
-    'constant', 'wrap', 'edge', 'smooth', 'symmetric', 'reflect',
-    'antisymmetric', 'antireflect', 'line',
+    "constant", "wrap", "edge", "smooth", "symmetric", "reflect",
+    "antisymmetric", "antireflect", "line",
 ]
 
 
-@testing.with_requires('scipy')
+@testing.with_requires("scipy")
 class TestUpfirdn:
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
-    @pytest.mark.parametrize('len_h', [1, 2, 3, 4, 5])
-    @pytest.mark.parametrize('len_x', [1, 2, 3, 4, 5])
+    @testing.numpy_cupy_allclose(scipy_name="scp")
+    @pytest.mark.parametrize("len_h", [1, 2, 3, 4, 5])
+    @pytest.mark.parametrize("len_x", [1, 2, 3, 4, 5])
     def test_singleton(self, xp, scp, len_h, len_x):
         # gh-9844: lengths producing expected outputs
         h = xp.zeros(len_h)
@@ -118,7 +118,7 @@ class TestUpfirdn:
         y = scp.signal.upfirdn(h, x, 1, 1)
         return y
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_shift_x(self, xp, scp):
         # gh-9844: shifted x can change values?
         y = scp.signal.upfirdn(xp.asarray([1, 1]), xp.asarray([1.]), 1, 1)
@@ -128,8 +128,8 @@ class TestUpfirdn:
     # A bunch of lengths/factors chosen because they exposed differences
     # between the "old way" and new way of computing length, and then
     # got `expected` from MATLAB
-    @testing.numpy_cupy_allclose(scipy_name='scp')
-    @pytest.mark.parametrize('len_h, len_x, up, down, expected', [
+    @testing.numpy_cupy_allclose(scipy_name="scp")
+    @pytest.mark.parametrize("len_h, len_x, up, down, expected", [
         (2, 2, 5, 2, [1, 0, 0, 0]),
         (2, 3, 6, 3, [1, 0, 1, 0, 1]),
         (2, 4, 4, 3, [1, 0, 0, 0, 1]),
@@ -144,13 +144,13 @@ class TestUpfirdn:
         y = scp.signal.upfirdn(h, x, up, down)
         return y
 
-    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-15)
-    @pytest.mark.parametrize('down, want_len', [  # lengths from MATLAB
+    @testing.numpy_cupy_allclose(scipy_name="scp", atol=1e-15)
+    @pytest.mark.parametrize("down, want_len", [  # lengths from MATLAB
         (2, 5015),
         (11, 912),
         (79, 127),
     ])
-    @pytest.mark.parametrize('dtype', _UPFIRDN_TYPES)
+    @pytest.mark.parametrize("dtype", _UPFIRDN_TYPES)
     def test_vs_convolve(self, xp, scp, dtype, down, want_len):
         random_state = np.random.RandomState(17)
         size = 10000
@@ -161,13 +161,13 @@ class TestUpfirdn:
 
         x = xp.asarray(x)
 
-        h = scp.signal.firwin(31, 1. / down, window='hamming')
+        h = scp.signal.firwin(31, 1. / down, window="hamming")
         y = scp.signal.upfirdn(h, x, up=1, down=down)
         return y
 
     @pytest.mark.xfail(reason="upfirdn `mode=...` not implemented")
     @pytest.mark.parametrize(
-        'size, h_len, mode, dtype',
+        "size, h_len, mode, dtype",
         product(
             [8],
             [4, 5, 26],  # include cases with h_len > 2*size
@@ -175,7 +175,7 @@ class TestUpfirdn:
             [np.float32, np.float64, np.complex64, np.complex128],
         )
     )
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_modes(self, xp, scp, size, h_len, mode, dtype):
         random_state = np.random.RandomState(5)
         x = random_state.randn(size).astype(dtype)
@@ -188,11 +188,11 @@ class TestUpfirdn:
         y = scp.signal.upfirdn(h, x, up=1, down=1, mode=mode)
         return y
 
-    @pytest.mark.parametrize('x_dtype', _UPFIRDN_TYPES)
-    @pytest.mark.parametrize('h', (1., 1j))
-    @pytest.mark.parametrize('up, down', [(1, 1), (2, 2), (3, 2), (2, 3)])
-    @pytest.mark.parametrize('case', ['tiny', 'ones', 'randn', 'ramp'])
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @pytest.mark.parametrize("x_dtype", _UPFIRDN_TYPES)
+    @pytest.mark.parametrize("h", (1., 1j))
+    @pytest.mark.parametrize("up, down", [(1, 1), (2, 2), (3, 2), (2, 3)])
+    @pytest.mark.parametrize("case", ["tiny", "ones", "randn", "ramp"])
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_vs_naive_delta(self, x_dtype, h, up, down, case, xp, scp):
         x, h = make_case(up, down, h, x_dtype, case)
         x = xp.asarray(x)
@@ -200,12 +200,12 @@ class TestUpfirdn:
         y = scp.signal.upfirdn(h, x, up, down)
         return y
 
-    @pytest.mark.parametrize('x_dtype', _UPFIRDN_TYPES)
-    @pytest.mark.parametrize('h', (1., 1j))
-    @pytest.mark.parametrize('up, down', [(1, 1), (2, 2), (3, 2), (2, 3)])
-    @pytest.mark.parametrize('case', ['2D', '2D_noncontig'])
-    @pytest.mark.parametrize('axis', [0, 1, -1])
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @pytest.mark.parametrize("x_dtype", _UPFIRDN_TYPES)
+    @pytest.mark.parametrize("h", (1., 1j))
+    @pytest.mark.parametrize("up, down", [(1, 1), (2, 2), (3, 2), (2, 3)])
+    @pytest.mark.parametrize("case", ["2D", "2D_noncontig"])
+    @pytest.mark.parametrize("axis", [0, 1, -1])
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_vs_naive_delta_2D(self, axis, x_dtype, h, up, down,
                                case, xp, scp):
         x, h = make_case_2D(up, down, h, x_dtype, case)
@@ -214,12 +214,12 @@ class TestUpfirdn:
         y = scp.signal.upfirdn(h, x, up, down, axis=axis)
         return y
 
-    @pytest.mark.parametrize('x_dtype', _UPFIRDN_TYPES)
-    @pytest.mark.parametrize('h_dtype', _UPFIRDN_TYPES)
-    @pytest.mark.parametrize('p_max, q_max',
+    @pytest.mark.parametrize("x_dtype", _UPFIRDN_TYPES)
+    @pytest.mark.parametrize("h_dtype", _UPFIRDN_TYPES)
+    @pytest.mark.parametrize("p_max, q_max",
                              list(product((10, 100), (10, 100))))
-    @pytest.mark.parametrize('case', ['tiny', 'ones', 'randn', 'ramp'])
-    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-7)
+    @pytest.mark.parametrize("case", ["tiny", "ones", "randn", "ramp"])
+    @testing.numpy_cupy_allclose(scipy_name="scp", atol=1e-7)
     def test_vs_naive(self, xp, scp, case, x_dtype, h_dtype, p_max, q_max):
         n_reps = 3
         longest_h = 25

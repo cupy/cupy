@@ -44,7 +44,7 @@ def check_number_of_ops(
         loops, memories, variables, lookup, mutate):
     def wrapper(test_method):
         def new_impl(self, *args, **kwargs):
-            target = 'cupy._core._fusion_trace.TraceImpl'
+            target = "cupy._core._fusion_trace.TraceImpl"
             with mock.patch(target, CreateMock(target)) as m:
                 result = test_method(self, *args, **kwargs)
                 m.check_number_of_ops(
@@ -57,17 +57,17 @@ def check_number_of_ops(
 class TestOptimizations(unittest.TestCase):
 
     def generate_inputs(self, xp):
-        x = testing.shaped_random((3, 4), xp, 'int64', scale=10, seed=0)
-        y = testing.shaped_random((3, 4), xp, 'int64', scale=10, seed=1)
+        x = testing.shaped_random((3, 4), xp, "int64", scale=10, seed=0)
+        y = testing.shaped_random((3, 4), xp, "int64", scale=10, seed=1)
         return (x, y), {}
 
     def generate_input_broadcast(self, xp):
-        x = testing.shaped_random((3, 1, 4), xp, 'int64', scale=10, seed=0)
-        y = testing.shaped_random((3, 5, 4), xp, 'int64', scale=10, seed=1)
+        x = testing.shaped_random((3, 1, 4), xp, "int64", scale=10, seed=0)
+        y = testing.shaped_random((3, 5, 4), xp, "int64", scale=10, seed=1)
         return (x, y), {}
 
     def generate_input_same_memory(self, xp):
-        x = testing.shaped_random((4, 4), xp, 'int64', scale=10, seed=0)
+        x = testing.shaped_random((4, 4), xp, "int64", scale=10, seed=0)
         return (x, x, x.T), {}
 
     @check_number_of_ops(
@@ -125,7 +125,7 @@ class TestOptimizations(unittest.TestCase):
     @check_number_of_ops(
         loops=2, memories=4, variables=6, lookup=[1, 3], mutate=[1, 1])
     @fusion_utils.check_fusion(
-        generate_inputs_name='generate_input_broadcast')
+        generate_inputs_name="generate_input_broadcast")
     def test_different_shapes(self, xp):
         def impl(x, y):
             r1 = x + x
@@ -156,7 +156,7 @@ class TestOptimizations(unittest.TestCase):
     @check_number_of_ops(
         loops=1, memories=1, variables=1, lookup=[1], mutate=[1])
     @fusion_utils.check_fusion(
-        generate_inputs_name='generate_input_same_memory')
+        generate_inputs_name="generate_input_same_memory")
     def test_inplace_same_variable(self, xp):
         def impl(x, y, z):
             x += y
@@ -167,7 +167,7 @@ class TestOptimizations(unittest.TestCase):
         loops=4, memories=3, variables=4,
         lookup=[1, 2, 1, 2], mutate=[1, 1, 1, 1])
     @fusion_utils.check_fusion(
-        generate_inputs_name='generate_input_same_memory')
+        generate_inputs_name="generate_input_same_memory")
     def test_inplace_same_memory_space(self, xp):
         def impl(x, y, z):
             x += z

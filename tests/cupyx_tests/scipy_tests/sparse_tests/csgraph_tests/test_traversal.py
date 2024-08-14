@@ -18,15 +18,15 @@ from cupy import testing
 
 
 @testing.parameterize(*testing.product({
-    'dtype': ['float32', 'float64'],
-    'm': [5, 10, 20],
-    'nnz_per_row': [1, 2, 3],
-    'directed': [True, False],
-    'connection': ['weak', 'strong'],
-    'return_labels': [True, False],
+    "dtype": ["float32", "float64"],
+    "m": [5, 10, 20],
+    "nnz_per_row": [1, 2, 3],
+    "directed": [True, False],
+    "connection": ["weak", "strong"],
+    "return_labels": [True, False],
 }))
 @unittest.skipUnless(scipy_available and pylibcugraph_available,
-                     'requires scipy and pylibcugraph')
+                     "requires scipy and pylibcugraph")
 class TestConnectedComponents(unittest.TestCase):
 
     def _make_matrix(self, dtype, xp):
@@ -37,7 +37,7 @@ class TestConnectedComponents(unittest.TestCase):
         a[a > 1] = 0
         return a
 
-    @testing.numpy_cupy_array_equal(sp_name='sp')
+    @testing.numpy_cupy_array_equal(sp_name="sp")
     def test_connected_components(self, xp, sp):
         a = self._make_matrix(self.dtype, xp)
         a = sp.csr_matrix(a)

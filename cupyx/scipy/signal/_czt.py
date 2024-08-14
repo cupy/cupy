@@ -36,21 +36,21 @@ from numpy import pi
 import cupy
 from cupyx.scipy.fft import fft, ifft, next_fast_len
 
-__all__ = ['czt', 'zoom_fft', 'CZT', 'ZoomFFT', 'czt_points']
+__all__ = ["czt", "zoom_fft", "CZT", "ZoomFFT", "czt_points"]
 
 
 def _validate_sizes(n, m):
     if n < 1 or not isinstance(n, numbers.Integral):
-        raise ValueError('Invalid number of CZT data '
-                         f'points ({n}) specified. '
-                         'n must be positive and integer type.')
+        raise ValueError("Invalid number of CZT data "
+                         f"points ({n}) specified. "
+                         "n must be positive and integer type.")
 
     if m is None:
         m = n
     elif m < 1 or not isinstance(m, numbers.Integral):
-        raise ValueError('Invalid number of CZT output '
-                         f'points ({m}) specified. '
-                         'm must be positive and integer type.')
+        raise ValueError("Invalid number of CZT output "
+                         f"points ({m}) specified. "
+                         "m must be positive and integer type.")
 
     return m
 
@@ -312,7 +312,7 @@ class ZoomFFT(CZT):
         elif cupy.size(fn) == 1:
             f1, f2 = 0.0, fn
         else:
-            raise ValueError('fn must be a scalar or 2-length sequence')
+            raise ValueError("fn must be a scalar or 2-length sequence")
 
         self.f1, self.f2, self.fs = f1, f2, fs
 

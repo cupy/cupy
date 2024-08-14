@@ -44,7 +44,7 @@ class LineProfileHook(memory_hook.MemoryHook):
             Default is 0 (no limit).
     """
 
-    name = 'LineProfileHook'
+    name = "LineProfileHook"
 
     def __init__(self, max_depth=0):
         self._memory_frames = {}
@@ -96,17 +96,17 @@ class LineProfileHook(memory_hook.MemoryHook):
 
     def print_report(self, file=sys.stdout):
         """Prints a report of line memory profiling."""
-        line = '_root (%s, %s)\n' % self._root.humanized_bytes()
+        line = "_root (%s, %s)\n" % self._root.humanized_bytes()
         file.write(line)
         for child in self._root.children:
             self._print_frame(child, depth=1, file=file)
         file.flush()
 
     def _print_frame(self, memory_frame, depth=0, file=sys.stdout):
-        indent = ' ' * (depth * 2)
+        indent = " " * (depth * 2)
         st = memory_frame.stackframe
         used_bytes, acquired_bytes = memory_frame.humanized_bytes()
-        line = '%s%s:%s:%s (%s, %s)\n' % (
+        line = "%s%s:%s:%s (%s, %s)\n" % (
             indent, st.filename, st.lineno, st.name,
             used_bytes, acquired_bytes)
         file.write(line)
@@ -164,8 +164,8 @@ class MemoryFrame(object):
             parent.children.append(self)
 
     def _humanized_size(self, size):
-        for unit in ['', 'K', 'M', 'G', 'T', 'P', 'E']:
+        for unit in ["", "K", "M", "G", "T", "P", "E"]:
             if size < 1024.0:
-                return '%3.2f%sB' % (size, unit)
+                return "%3.2f%sB" % (size, unit)
             size /= 1024.0
-        return '%.2f%sB' % (size, 'Z')
+        return "%.2f%sB" % (size, "Z")

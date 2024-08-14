@@ -16,7 +16,7 @@ from cupy.typing._types import (
 def empty(
         shape: _ShapeLike,
         dtype: DTypeLike = float,
-        order: _OrderCF = 'C',
+        order: _OrderCF = "C",
 ) -> NDArray[Any]:
     """Returns an array without initializing the elements.
 
@@ -43,23 +43,23 @@ def _new_like_order_and_strides(
     (see: numpy/core/src/multiarray/ctors.c)
     """
     order = order.upper()
-    if order not in ['C', 'F', 'K', 'A']:
-        raise ValueError('order not understood: {}'.format(order))
+    if order not in ["C", "F", "K", "A"]:
+        raise ValueError("order not understood: {}".format(order))
 
     if numpy.isscalar(shape):
         shape = (shape,)
 
     # Fallback to c_contiguous if keep order and number of dimensions
     # of new shape mismatch
-    if order == 'K' and shape is not None and len(shape) != a.ndim:
-        return 'C', None, None
+    if order == "K" and shape is not None and len(shape) != a.ndim:
+        return "C", None, None
 
     order = chr(_update_order_char(
         a.flags.c_contiguous, a.flags.f_contiguous, ord(order)))
 
-    if order == 'K':
+    if order == "K":
         strides = _get_strides_for_order_K(a, numpy.dtype(dtype), shape)
-        order = 'C'
+        order = "C"
         memptr = cupy.empty(a.size, dtype=dtype).data if get_memptr else None
         return order, strides, memptr
     else:
@@ -69,7 +69,7 @@ def _new_like_order_and_strides(
 def empty_like(
         prototype: NDArray[Any],
         dtype: DTypeLike = None,
-        order: _OrderKACF = 'K',
+        order: _OrderKACF = "K",
         subok: None = None,
         shape: Optional[_ShapeLike] = None,
 ) -> NDArray[Any]:
@@ -98,7 +98,7 @@ def empty_like(
 
     """
     if subok is not None:
-        raise TypeError('subok is not supported yet')
+        raise TypeError("subok is not supported yet")
     if dtype is None:
         dtype = prototype.dtype
 
@@ -113,7 +113,7 @@ def eye(
         M: Optional[int] = None,
         k: int = 0,
         dtype: DTypeLike = float,
-        order: _OrderCF = 'C',
+        order: _OrderCF = "C",
 ) -> NDArray[Any]:
     """Returns a 2-D array with ones on the diagonals and zeros elsewhere.
 
@@ -164,7 +164,7 @@ def identity(n: int, dtype: DTypeLike = float) -> NDArray[Any]:
 def ones(
         shape: _ShapeLike,
         dtype: DTypeLike = float,
-        order: _OrderCF = 'C',
+        order: _OrderCF = "C",
 ) -> NDArray[Any]:
     """Returns a new array of given shape and dtype, filled with ones.
 
@@ -190,7 +190,7 @@ def ones(
 def ones_like(
         a: NDArray[Any],
         dtype: DTypeLike = None,
-        order: _OrderKACF = 'K',
+        order: _OrderKACF = "K",
         subok: None = None,
         shape: Optional[_ShapeLike] = None,
 ) -> NDArray[Any]:
@@ -218,7 +218,7 @@ def ones_like(
 
     """
     if subok is not None:
-        raise TypeError('subok is not supported yet')
+        raise TypeError("subok is not supported yet")
     if dtype is None:
         dtype = a.dtype
 
@@ -233,7 +233,7 @@ def ones_like(
 def zeros(
         shape: _ShapeLike,
         dtype: DTypeLike = float,
-        order: _OrderCF = 'C',
+        order: _OrderCF = "C",
 ) -> NDArray[Any]:
     """Returns a new array of given shape and dtype, filled with zeros.
 
@@ -257,7 +257,7 @@ def zeros(
 def zeros_like(
         a: NDArray[Any],
         dtype: DTypeLike = None,
-        order: _OrderKACF = 'K',
+        order: _OrderKACF = "K",
         subok: None = None,
         shape: Optional[_ShapeLike] = None,
 ) -> NDArray[Any]:
@@ -285,7 +285,7 @@ def zeros_like(
 
     """
     if subok is not None:
-        raise TypeError('subok is not supported yet')
+        raise TypeError("subok is not supported yet")
     if dtype is None:
         dtype = a.dtype
 
@@ -301,7 +301,7 @@ def full(
         shape: _ShapeLike,
         fill_value: Any,
         dtype: DTypeLike = None,
-        order: _OrderCF = 'C',
+        order: _OrderCF = "C",
 ) -> NDArray[Any]:
     """Returns a new array of given shape and dtype, filled with a given value.
 
@@ -326,7 +326,7 @@ def full(
         else:
             dtype = numpy.array(fill_value).dtype
     a = cupy.ndarray(shape, dtype, order=order)
-    cupy.copyto(a, fill_value, casting='unsafe')
+    cupy.copyto(a, fill_value, casting="unsafe")
     return a
 
 
@@ -334,7 +334,7 @@ def full_like(
         a: NDArray[Any],
         fill_value: Any,
         dtype: DTypeLike = None,
-        order: _OrderKACF = 'K',
+        order: _OrderKACF = "K",
         subok: None = None,
         shape: Optional[_ShapeLike] = None,
 ) -> NDArray[Any]:
@@ -363,7 +363,7 @@ def full_like(
 
     """
     if subok is not None:
-        raise TypeError('subok is not supported yet')
+        raise TypeError("subok is not supported yet")
     if dtype is None:
         dtype = a.dtype
 
@@ -371,5 +371,5 @@ def full_like(
                                                          shape)
     shape = shape if shape else a.shape
     a = cupy.ndarray(shape, dtype, memptr, strides, order)
-    cupy.copyto(a, fill_value, casting='unsafe')
+    cupy.copyto(a, fill_value, casting="unsafe")
     return a

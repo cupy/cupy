@@ -33,52 +33,52 @@ def round(a, decimals=0, out=None):
 
 
 def round_(a, decimals=0, out=None):
-    warnings.warn('Please use `round` instead.', DeprecationWarning)
+    warnings.warn("Please use `round` instead.", DeprecationWarning)
     return around(a, decimals, out=out)
 
 
 rint = ufunc.create_math_ufunc(
-    'rint', 1, 'cupy_rint',
-    '''Rounds each element of an array to the nearest integer.
+    "rint", 1, "cupy_rint",
+    """Rounds each element of an array to the nearest integer.
 
     .. seealso:: :data:`numpy.rint`
 
-    ''')
+    """)
 
 
 floor = ufunc.create_math_ufunc(
-    'floor', 1, 'cupy_floor',
-    '''Rounds each element of an array to its floor integer.
+    "floor", 1, "cupy_floor",
+    """Rounds each element of an array to its floor integer.
 
     .. seealso:: :data:`numpy.floor`
 
-    ''', support_complex=False)
+    """, support_complex=False)
 
 
 ceil = ufunc.create_math_ufunc(
-    'ceil', 1, 'cupy_ceil',
-    '''Rounds each element of an array to its ceiling integer.
+    "ceil", 1, "cupy_ceil",
+    """Rounds each element of an array to its ceiling integer.
 
     .. seealso:: :data:`numpy.ceil`
 
-    ''', support_complex=False)
+    """, support_complex=False)
 
 
 trunc = ufunc.create_math_ufunc(
-    'trunc', 1, 'cupy_trunc',
-    '''Rounds each element of an array towards zero.
+    "trunc", 1, "cupy_trunc",
+    """Rounds each element of an array towards zero.
 
     .. seealso:: :data:`numpy.trunc`
 
-    ''', support_complex=False)
+    """, support_complex=False)
 
 
 fix = _core.create_ufunc(
-    'cupy_fix', ('e->e', 'f->f', 'd->d'),
-    'out0 = (in0 >= 0.0) ? floor(in0): ceil(in0)',
-    doc='''If given value x is positive, it return floor(x).
+    "cupy_fix", ("e->e", "f->f", "d->d"),
+    "out0 = (in0 >= 0.0) ? floor(in0): ceil(in0)",
+    doc="""If given value x is positive, it return floor(x).
     Else, it return ceil(x).
 
     .. seealso:: :func:`numpy.fix`
 
-    ''')
+    """)

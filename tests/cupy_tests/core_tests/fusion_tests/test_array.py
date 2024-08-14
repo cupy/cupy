@@ -10,15 +10,15 @@ class FusionArrayTestBase(unittest.TestCase):
 
     def _get_argument(self, xp, dtype, seed, value_type):
         dtype = numpy.dtype(dtype)
-        if value_type == 'array':
+        if value_type == "array":
             x = testing.shaped_random((3, 4), xp, dtype, scale=5, seed=seed)
             # Avoid zero-division
             # TODO(imanishi): Doing this only in division tests.
             x[x == 0] = 1
             return x
-        if value_type == 'scalar':
+        if value_type == "scalar":
             return dtype.type(3)
-        if value_type == 'primitive':
+        if value_type == "primitive":
             return dtype.type(3).tolist()
         assert False
 
@@ -30,31 +30,31 @@ class FusionArrayTestBase(unittest.TestCase):
 
 @testing.parameterize(*testing._parameterized.product_dict(
     [
-        {'name': 'neg', 'func': lambda x, y: -x},
-        {'name': 'add', 'func': lambda x, y: x + y},
-        {'name': 'sub', 'func': lambda x, y: x - y},
-        {'name': 'mul', 'func': lambda x, y: x * y},
-        {'name': 'div', 'func': lambda x, y: x / y},
-        {'name': 'pow', 'func': lambda x, y: x ** y},
-        {'name': 'eq', 'func': lambda x, y: x == y},
-        {'name': 'ne', 'func': lambda x, y: x != y},
-        {'name': 'lt', 'func': lambda x, y: x < y},
-        {'name': 'le', 'func': lambda x, y: x <= y},
-        {'name': 'gt', 'func': lambda x, y: x > y},
-        {'name': 'ge', 'func': lambda x, y: x >= y},
+        {"name": "neg", "func": lambda x, y: -x},
+        {"name": "add", "func": lambda x, y: x + y},
+        {"name": "sub", "func": lambda x, y: x - y},
+        {"name": "mul", "func": lambda x, y: x * y},
+        {"name": "div", "func": lambda x, y: x / y},
+        {"name": "pow", "func": lambda x, y: x ** y},
+        {"name": "eq", "func": lambda x, y: x == y},
+        {"name": "ne", "func": lambda x, y: x != y},
+        {"name": "lt", "func": lambda x, y: x < y},
+        {"name": "le", "func": lambda x, y: x <= y},
+        {"name": "gt", "func": lambda x, y: x > y},
+        {"name": "ge", "func": lambda x, y: x >= y},
     ],
     [
-        {'left_value': 'array', 'right_value': 'array'},
-        {'left_value': 'array', 'right_value': 'scalar'},
-        {'left_value': 'array', 'right_value': 'primitive'},
-        {'left_value': 'scalar', 'right_value': 'array'},
-        {'left_value': 'primitive', 'right_value': 'array'},
+        {"left_value": "array", "right_value": "array"},
+        {"left_value": "array", "right_value": "scalar"},
+        {"left_value": "array", "right_value": "primitive"},
+        {"left_value": "scalar", "right_value": "array"},
+        {"left_value": "primitive", "right_value": "array"},
     ]
 ))
 class TestFusionArrayOperator(FusionArrayTestBase):
 
     @testing.for_all_dtypes_combination(
-        names=('dtype1', 'dtype2'), no_bool=True)
+        names=("dtype1", "dtype2"), no_bool=True)
     @fusion_utils.check_fusion()
     def test_operator(self, xp, dtype1, dtype2):
         return self.func
@@ -62,31 +62,31 @@ class TestFusionArrayOperator(FusionArrayTestBase):
 
 @testing.parameterize(*testing._parameterized.product_dict(
     [
-        {'name': 'lshift', 'func': lambda x, y: x << y},
-        {'name': 'rshift', 'func': lambda x, y: x >> y},
-        {'name': 'and', 'func': lambda x, y: x & y},
-        {'name': 'or', 'func': lambda x, y: x | y},
-        {'name': 'xor', 'func': lambda x, y: x ^ y},
-        {'name': 'invert', 'func': lambda x, y: ~x},
+        {"name": "lshift", "func": lambda x, y: x << y},
+        {"name": "rshift", "func": lambda x, y: x >> y},
+        {"name": "and", "func": lambda x, y: x & y},
+        {"name": "or", "func": lambda x, y: x | y},
+        {"name": "xor", "func": lambda x, y: x ^ y},
+        {"name": "invert", "func": lambda x, y: ~x},
     ],
     [
-        {'left_value': 'array', 'right_value': 'array'},
-        {'left_value': 'array', 'right_value': 'scalar'},
-        {'left_value': 'array', 'right_value': 'primitive'},
-        {'left_value': 'scalar', 'right_value': 'array'},
-        {'left_value': 'primitive', 'right_value': 'array'},
+        {"left_value": "array", "right_value": "array"},
+        {"left_value": "array", "right_value": "scalar"},
+        {"left_value": "array", "right_value": "primitive"},
+        {"left_value": "scalar", "right_value": "array"},
+        {"left_value": "primitive", "right_value": "array"},
     ]
 ))
 class TestFusionArrayBitwiseOperator(FusionArrayTestBase):
 
     def _is_uint64(self, x):
-        return not isinstance(x, int) and x.dtype == 'uint64'
+        return not isinstance(x, int) and x.dtype == "uint64"
 
     def _is_signed_int(self, x):
-        return isinstance(x, int) or x.dtype.kind == 'i'
+        return isinstance(x, int) or x.dtype.kind == "i"
 
     @testing.for_int_dtypes_combination(
-        names=('dtype1', 'dtype2'), no_bool=True)
+        names=("dtype1", "dtype2"), no_bool=True)
     @fusion_utils.check_fusion()
     def test_operator(self, xp, dtype1, dtype2):
         def func(x, y):
@@ -100,16 +100,16 @@ class TestFusionArrayBitwiseOperator(FusionArrayTestBase):
 
 
 @testing.parameterize(
-    {'left_value': 'array', 'right_value': 'array'},
-    {'left_value': 'array', 'right_value': 'scalar'},
-    {'left_value': 'array', 'right_value': 'primitive'},
-    {'left_value': 'scalar', 'right_value': 'array'},
-    {'left_value': 'primitive', 'right_value': 'array'},
+    {"left_value": "array", "right_value": "array"},
+    {"left_value": "array", "right_value": "scalar"},
+    {"left_value": "array", "right_value": "primitive"},
+    {"left_value": "scalar", "right_value": "array"},
+    {"left_value": "primitive", "right_value": "array"},
 )
 class TestFusionArrayFloorDivide(FusionArrayTestBase):
 
     @testing.for_all_dtypes_combination(
-        names=('dtype1', 'dtype2'), no_bool=True, no_complex=True)
+        names=("dtype1", "dtype2"), no_bool=True, no_complex=True)
     @fusion_utils.check_fusion()
     def test_floor_divide(self, xp, dtype1, dtype2):
         return lambda x, y: x // y
@@ -118,9 +118,9 @@ class TestFusionArrayFloorDivide(FusionArrayTestBase):
 # TODO(imanishi): Fix TypeError in use of dtypes_combination test.
 @testing.parameterize(*testing._parameterized.product_dict(
     [
-        {'left_value': 'array', 'right_value': 'array'},
-        {'left_value': 'array', 'right_value': 'scalar'},
-        {'left_value': 'array', 'right_value': 'primitive'},
+        {"left_value": "array", "right_value": "array"},
+        {"left_value": "array", "right_value": "scalar"},
+        {"left_value": "array", "right_value": "primitive"},
     ]
 ))
 class TestFusionArrayInplaceOperator(FusionArrayTestBase):
@@ -230,8 +230,8 @@ class TestFusionArrayInplaceOperator(FusionArrayTestBase):
 class TestFusionArraySetItem(unittest.TestCase):
 
     def generate_inputs(self, xp):
-        x = testing.shaped_random((3, 4), xp, 'int32', scale=10, seed=0)
-        y = testing.shaped_random((3, 4), xp, 'int32', scale=10, seed=1)
+        x = testing.shaped_random((3, 4), xp, "int32", scale=10, seed=0)
+        y = testing.shaped_random((3, 4), xp, "int32", scale=10, seed=1)
         return (x, y), {}
 
     # TODO(imanishi): Fix TypeError in use of dtypes_combination test.
@@ -302,8 +302,8 @@ class TestFusionArrayAsType(unittest.TestCase):
         return (x,), {}
 
     # TODO(asi1024): Raise complex warnings.
-    @testing.for_all_dtypes(name='dtype1', no_complex=True)
-    @testing.for_all_dtypes(name='dtype2')
+    @testing.for_all_dtypes(name="dtype1", no_complex=True)
+    @testing.for_all_dtypes(name="dtype2")
     @fusion_utils.check_fusion()
     def test_astype(self, xp, dtype1, dtype2):
         return lambda x: x.astype(dtype2)

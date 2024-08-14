@@ -36,10 +36,10 @@ class flatiter:
             return
 
         if isinstance(ind, tuple):
-            raise IndexError('unsupported iterator index')
+            raise IndexError("unsupported iterator index")
 
         if isinstance(ind, bool):
-            raise IndexError('unsupported iterator index')
+            raise IndexError("unsupported iterator index")
 
         if numpy.isscalar(ind):
             ind = int(ind)
@@ -67,17 +67,17 @@ class flatiter:
             _flatiter_setitem_slice(value, s_start, s_step, base, size=size)
             return
 
-        raise IndexError('unsupported iterator index')
+        raise IndexError("unsupported iterator index")
 
     def __getitem__(self, ind):
         if ind is Ellipsis:
             return self[:]
 
         if isinstance(ind, tuple):
-            raise IndexError('unsupported iterator index')
+            raise IndexError("unsupported iterator index")
 
         if isinstance(ind, bool):
-            raise IndexError('unsupported iterator index')
+            raise IndexError("unsupported iterator index")
 
         if numpy.isscalar(ind):
             ind = int(ind)
@@ -102,7 +102,7 @@ class flatiter:
                 size = (size + 1) // s_step + 1
             return _flatiter_getitem_slice(base, s_start, s_step, size=size)
 
-        raise IndexError('unsupported iterator index')
+        raise IndexError("unsupported iterator index")
 
     def __iter__(self):
         return self
@@ -144,12 +144,12 @@ class flatiter:
 
 
 _flatiter_setitem_slice = _core.ElementwiseKernel(
-    'raw T val, int64 start, int64 step', 'raw T a',
-    'a[start + i * step] = val[i % val.size()]',
-    'cupy_flatiter_setitem_slice')
+    "raw T val, int64 start, int64 step", "raw T a",
+    "a[start + i * step] = val[i % val.size()]",
+    "cupy_flatiter_setitem_slice")
 
 
 _flatiter_getitem_slice = _core.ElementwiseKernel(
-    'raw T a, int64 start, int64 step', 'T o',
-    'o = a[start + i * step]',
-    'cupy_flatiter_getitem_slice')
+    "raw T a, int64 start, int64 step", "T o",
+    "o = a[start + i * step]",
+    "cupy_flatiter_getitem_slice")

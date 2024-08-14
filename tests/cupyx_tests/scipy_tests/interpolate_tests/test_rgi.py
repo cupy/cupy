@@ -10,9 +10,9 @@ from cupy.testing import (
 from cupy_backends.cuda.api import runtime
 from cupyx.scipy.interpolate import RegularGridInterpolator, interpn
 
-methods = ['linear', 'nearest']
+methods = ["linear", "nearest"]
 if not runtime.is_hip:
-    methods += ["slinear", "cubic", "quintic", 'pchip',
+    methods += ["slinear", "cubic", "quintic", "pchip",
                 "slinear_legacy", "cubic_legacy", "quintic_legacy"]
 
 parametrize_rgi_interp_methods = pytest.mark.parametrize("method", methods)
@@ -194,7 +194,7 @@ class TestRegularGridInterpolator:
 
     def test_fillvalue_type(self):
         # from #3703; test that interpolator object construction succeeds
-        values = cp.ones((10, 20, 30), dtype='>f4')
+        values = cp.ones((10, 20, 30), dtype=">f4")
         points = [cp.arange(n) for n in values.shape]
         # xi = [(1, 1, 1)]
         RegularGridInterpolator(points, values)
@@ -244,7 +244,7 @@ class TestRegularGridInterpolator:
                         atol=1e-15)
 
     @pytest.mark.parametrize("fill_value", [None, cp.nan, cp.pi])
-    @pytest.mark.parametrize("method", ['linear', 'nearest'])
+    @pytest.mark.parametrize("method", ["linear", "nearest"])
     def test_length_one_axis2(self, fill_value, method):
         options = {"fill_value": fill_value, "bounds_error": False,
                    "method": method}
@@ -271,7 +271,7 @@ class TestRegularGridInterpolator:
         else:
             assert_allclose(zb, fill_value)
 
-    @pytest.mark.parametrize("method", ['nearest', 'linear'])
+    @pytest.mark.parametrize("method", ["nearest", "linear"])
     def test_nan_x_1d(self, method):
         # gh-6624 : if x is nan, result should be nan
         f = RegularGridInterpolator((cp.array([1, 2, 3]),),
@@ -302,14 +302,14 @@ class TestRegularGridInterpolator:
         assert cp.isnan(f([cp.nan, 1]))
         assert cp.isnan(f([1, cp.nan]))
 
-    @pytest.mark.parametrize("method", ['nearest', 'linear'])
+    @pytest.mark.parametrize("method", ["nearest", "linear"])
     def test_nan_x_2d(self, method):
         x, y = cp.array([0, 1, 2]), cp.array([1, 3, 7])
 
         def f(x, y):
             return x**2 + y**2
 
-        xg, yg = cp.meshgrid(x, y, indexing='ij', sparse=True)
+        xg, yg = cp.meshgrid(x, y, indexing="ij", sparse=True)
         data = f(xg, yg)
         interp = RegularGridInterpolator((x, y), data,
                                          method=method, bounds_error=False)
@@ -347,7 +347,7 @@ class TestRegularGridInterpolator:
         z = cp.linspace(7, 9, 33)
         points = (x, y, z)
         values = val_func_3d(
-            *cp.meshgrid(*points, indexing='ij', sparse=True))
+            *cp.meshgrid(*points, indexing="ij", sparse=True))
         my_interpolating_function = RegularGridInterpolator(points,
                                                             values,
                                                             method=method)
@@ -360,7 +360,7 @@ class TestRegularGridInterpolator:
         z_descending = z[::-1]
         points_shuffled = (x_descending, y_descending, z_descending)
         values_shuffled = val_func_3d(
-            *cp.meshgrid(*points_shuffled, indexing='ij', sparse=True))
+            *cp.meshgrid(*points_shuffled, indexing="ij", sparse=True))
         my_interpolating_function = RegularGridInterpolator(
             points_shuffled, values_shuffled, method=method)
         test_result = my_interpolating_function(pts)
@@ -374,7 +374,7 @@ class TestRegularGridInterpolator:
         x = cp.array([.5, 2., 0., 4., 5.5])  # not ascending or descending
         y = cp.array([.5, 2., 3., 4., 5.5])
         points = (x, y)
-        values = val_func_2d(*cp.meshgrid(*points, indexing='ij',
+        values = val_func_2d(*cp.meshgrid(*points, indexing="ij",
                                           sparse=True))
         match = "must be strictly ascending or descending"
         with pytest.raises(ValueError, match=match):
@@ -459,7 +459,7 @@ class TestRegularGridInterpolator:
 
     def test_nonscalar_values_linear_2D(self):
         # Verify that non-scalar values work in the 2D fast path
-        method = 'linear'
+        method = "linear"
         points = [(0.0, 0.5, 1.0, 1.5, 2.0, 2.5),
                   (0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0), ]
 
@@ -604,12 +604,12 @@ class TestInterpN:
         cp.random.seed(1234)
         sample = cp.random.rand(2, 3, 4)
 
-        v1 = interpn(points, values, sample, method='nearest',
+        v1 = interpn(points, values, sample, method="nearest",
                      bounds_error=False)
         assert_array_equal(v1.shape, (2, 3))
 
         v2 = interpn(points, values, sample.reshape(-1, 4),
-                     method='nearest', bounds_error=False)
+                     method="nearest", bounds_error=False)
         assert_allclose(v1, v2.reshape(v1.shape))
 
     @parametrize_rgi_interp_methods
@@ -735,7 +735,7 @@ class TestInterpN:
         x4 = cp.array([0, .1, .2, .30])
         points = (x1, x2, x3, x4)
         values = value_func_4d(
-            *cp.meshgrid(*points, indexing='ij', sparse=True))
+            *cp.meshgrid(*points, indexing="ij", sparse=True))
         pts = (cp.array(0.1),
                cp.array(0.3),
                cp.transpose(cp.linspace(0, 30, 4)),
@@ -748,7 +748,7 @@ class TestInterpN:
         x4_descend = x4[::-1]
         points_shuffled = (x1_descend, x2_descend, x3_descend, x4_descend)
         values_shuffled = value_func_4d(
-            *cp.meshgrid(*points_shuffled, indexing='ij', sparse=True))
+            *cp.meshgrid(*points_shuffled, indexing="ij", sparse=True))
         test_result = interpn(points_shuffled, values_shuffled, pts)
 
         assert_array_equal(correct_result, test_result)

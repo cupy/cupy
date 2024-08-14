@@ -50,9 +50,9 @@ def _asarray_validated(a, check_finite=True,
     if not sparse_ok:
         import cupyx.scipy.sparse
         if cupyx.scipy.sparse.issparse(a):
-            msg = ('Sparse matrices are not supported by this function. '
-                   'Perhaps one of the cupyx.scipy.sparse.linalg functions '
-                   'would work instead.')
+            msg = ("Sparse matrices are not supported by this function. "
+                   "Perhaps one of the cupyx.scipy.sparse.linalg functions "
+                   "would work instead.")
             raise ValueError(msg)
 
     # TODO: remove these comments when CuPy supports masked arrays

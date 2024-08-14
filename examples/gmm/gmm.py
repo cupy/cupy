@@ -16,7 +16,7 @@ def timer(message):
     yield
     cupy.cuda.Stream.null.synchronize()
     end = time.time()
-    print('%s:  %f sec' % (message, end - start))
+    print("%s:  %f sec" % (message, end - start))
 
 
 def estimate_log_prob(X, inv_cov, means):
@@ -66,7 +66,7 @@ def train_gmm(X, max_iter, tol, means, covariances):
             break
 
     if not converged:
-        print('Failed to converge. Increase max-iter or tol.')
+        print("Failed to converge. Increase max-iter or tol.")
 
     return inv_cov, means, weights, covariances
 
@@ -86,8 +86,8 @@ def calc_acc(X_train, y_train, X_test, y_test, max_iter, tol, means,
     train_accuracy = xp.mean(y_train_pred == y_train) * 100
     y_test_pred = predict(X_test, inv_cov, means, weights)
     test_accuracy = xp.mean(y_test_pred == y_test) * 100
-    print('train_accuracy : %f' % train_accuracy)
-    print('test_accuracy : %f' % test_accuracy)
+    print("train_accuracy : %f" % train_accuracy)
+    print("test_accuracy : %f" % test_accuracy)
     return y_test_pred, means, cov
 
 
@@ -101,8 +101,8 @@ def draw(X, pred, means, covariances, output):
     if xp is cupy:
         means = means.get()
         covariances = covariances.get()
-    plt.scatter(means[:, 0], means[:, 1], s=120, marker='s', facecolors='y',
-                edgecolors='k')
+    plt.scatter(means[:, 0], means[:, 1], s=120, marker="s", facecolors="y",
+                edgecolors="k")
     x = np.linspace(-5, 5, 1000)
     y = np.linspace(-5, 5, 1000)
     X, Y = np.meshgrid(x, y)
@@ -137,8 +137,8 @@ def run(gpuid, num, dim, max_iter, tol, output):
     mean2 = np.random.normal(-1, scale, size=dim)
     means = np.stack([mean1, mean2])
     covariances = np.random.rand(2, dim)
-    print('Running CPU...')
-    with timer(' CPU '):
+    print("Running CPU...")
+    with timer(" CPU "):
         y_test_pred, means, cov = \
             calc_acc(X_train, y_train, X_test, y_test, max_iter, tol,
                      means, covariances)
@@ -150,8 +150,8 @@ def run(gpuid, num, dim, max_iter, tol, output):
         X_test_gpu = cupy.array(X_test)
         means = cupy.array(means)
         covariances = cupy.array(covariances)
-        print('Running GPU...')
-        with timer(' GPU '):
+        print("Running GPU...")
+        with timer(" GPU "):
             y_test_pred, means, cov = \
                 calc_acc(X_train_gpu, y_train_gpu, X_test_gpu, y_test_gpu,
                          max_iter, tol, means, covariances)
@@ -159,19 +159,19 @@ def run(gpuid, num, dim, max_iter, tol, output):
             draw(X_test_gpu, y_test_pred, means, cov, output)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--gpu-id', '-g', default=0, type=int,
-                        help='ID of GPU.')
-    parser.add_argument('--num', '-n', default=500000, type=int,
-                        help='number of train data')
-    parser.add_argument('--dim', '-d', default=2, type=int,
-                        help='dimension of each data')
-    parser.add_argument('--max-iter', '-m', default=30, type=int,
-                        help='number of iterations')
-    parser.add_argument('--tol', '-t', default=1e-3, type=float,
-                        help='error tolerance to stop iterations')
-    parser.add_argument('--output-image', '-o', default=None, type=str,
-                        dest='output', help='output image file name')
+    parser.add_argument("--gpu-id", "-g", default=0, type=int,
+                        help="ID of GPU.")
+    parser.add_argument("--num", "-n", default=500000, type=int,
+                        help="number of train data")
+    parser.add_argument("--dim", "-d", default=2, type=int,
+                        help="dimension of each data")
+    parser.add_argument("--max-iter", "-m", default=30, type=int,
+                        help="number of iterations")
+    parser.add_argument("--tol", "-t", default=1e-3, type=float,
+                        help="error tolerance to stop iterations")
+    parser.add_argument("--output-image", "-o", default=None, type=str,
+                        dest="output", help="output image file name")
     args = parser.parse_args()
     run(args.gpu_id, args.num, args.dim, args.max_iter, args.tol, args.output)

@@ -28,9 +28,9 @@ def time_range(message, color_id=None, argb_color=None, sync=False):
         :class:`cupyx.profiler.time_range` instead.
     """
     warnings.warn(
-        'cupy.prof.time_range has been deprecated since CuPy v10 '
-        'and will be removed in the future. Use cupyx.profiler.time_range '
-        'instead.')
+        "cupy.prof.time_range has been deprecated since CuPy v10 "
+        "and will be removed in the future. Use cupyx.profiler.time_range "
+        "instead.")
 
     with _time_range(message, color_id, argb_color, sync):
         yield
@@ -71,8 +71,8 @@ class TimeRangeDecorator:
                  sync=False):
 
         warnings.warn(
-            'cupy.prof.TimeRangeDecorator has been deprecated since CuPy v10 '
-            'and will be removed in the future. Use cupyx.profiler.time_range '
-            'instead.')
+            "cupy.prof.TimeRangeDecorator has been deprecated since CuPy v10 "
+            "and will be removed in the future. Use cupyx.profiler.time_range "
+            "instead.")
 
         self._init(message, color_id, argb_color, sync)

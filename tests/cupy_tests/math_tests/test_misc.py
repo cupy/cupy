@@ -10,7 +10,7 @@ class TestMisc:
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(atol=1e-5)
     def check_unary(self, name, xp, dtype, no_bool=False):
-        if no_bool and numpy.dtype(dtype).char == '?':
+        if no_bool and numpy.dtype(dtype).char == "?":
             return numpy.int_(0)
         a = testing.shaped_arange((2, 3), xp, dtype)
         return getattr(xp, name)(a)
@@ -18,27 +18,27 @@ class TestMisc:
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(atol=1e-5)
     def check_binary(self, name, xp, dtype, no_bool=False):
-        if no_bool and numpy.dtype(dtype).char == '?':
+        if no_bool and numpy.dtype(dtype).char == "?":
             return numpy.int_(0)
         a = testing.shaped_arange((2, 3), xp, dtype)
         b = testing.shaped_reverse_arange((2, 3), xp, dtype)
         return getattr(xp, name)(a, b)
 
-    @testing.for_dtypes(['?', 'b', 'h', 'i', 'q', 'e', 'f', 'd', 'F', 'D'])
+    @testing.for_dtypes(["?", "b", "h", "i", "q", "e", "f", "d", "F", "D"])
     @testing.numpy_cupy_allclose(atol=1e-5)
     def check_unary_negative(self, name, xp, dtype, no_bool=False):
-        if no_bool and numpy.dtype(dtype).char == '?':
+        if no_bool and numpy.dtype(dtype).char == "?":
             return numpy.int_(0)
         a = xp.array([-3, -2, -1, 1, 2, 3], dtype=dtype)
-        if numpy.dtype(dtype).kind == 'c':
+        if numpy.dtype(dtype).kind == "c":
             a += (a * 1j).astype(dtype)
         return getattr(xp, name)(a)
 
-    @testing.for_dtypes(['e', 'f', 'd', 'F', 'D'])
+    @testing.for_dtypes(["e", "f", "d", "F", "D"])
     @testing.numpy_cupy_allclose(atol=1e-5)
     def check_unary_inf(self, name, xp, dtype, **kwargs):
         inf = numpy.inf
-        if numpy.dtype(dtype).kind != 'c':
+        if numpy.dtype(dtype).kind != "c":
             a = xp.array([0, -1, 1, -inf, inf], dtype=dtype)
         else:
             a = xp.array([complex(x, y)
@@ -47,11 +47,11 @@ class TestMisc:
                          dtype=dtype)
         return getattr(xp, name)(a, **kwargs)
 
-    @testing.for_dtypes(['e', 'f', 'd', 'F', 'D'])
+    @testing.for_dtypes(["e", "f", "d", "F", "D"])
     @testing.numpy_cupy_allclose(atol=1e-5)
     def check_unary_nan(self, name, xp, dtype, **kwargs):
         nan = numpy.nan
-        if numpy.dtype(dtype).kind != 'c':
+        if numpy.dtype(dtype).kind != "c":
             a = xp.array([0, -1, 1, -nan, nan], dtype=dtype)
         else:
             a = xp.array([complex(x, y)
@@ -60,12 +60,12 @@ class TestMisc:
                          dtype=dtype)
         return getattr(xp, name)(a, **kwargs)
 
-    @testing.for_dtypes(['e', 'f', 'd', 'F', 'D'])
+    @testing.for_dtypes(["e", "f", "d", "F", "D"])
     @testing.numpy_cupy_allclose(atol=1e-5)
     def check_unary_inf_nan(self, name, xp, dtype):
         inf = numpy.inf
         nan = numpy.nan
-        if numpy.dtype(dtype).kind != 'c':
+        if numpy.dtype(dtype).kind != "c":
             a = xp.array([0, -1, 1, -inf, inf, -nan, nan], dtype=dtype)
         else:
             a = xp.array([complex(x, y)
@@ -74,7 +74,7 @@ class TestMisc:
                          dtype=dtype)
         return getattr(xp, name)(a)
 
-    @testing.for_dtypes(['e', 'f', 'd', 'F', 'D'])
+    @testing.for_dtypes(["e", "f", "d", "F", "D"])
     @testing.numpy_cupy_array_equal()
     def check_binary_nan(self, name, xp, dtype):
         a = xp.array([-3, numpy.nan, -1, numpy.nan, 0, numpy.nan, 2],
@@ -148,7 +148,7 @@ class TestMisc:
         return a.clip(a_min, a_max)
 
     def test_sqrt(self):
-        self.check_unary('sqrt')
+        self.check_unary("sqrt")
 
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(atol=1e-5)
@@ -157,13 +157,13 @@ class TestMisc:
         return xp.cbrt(a)
 
     def test_square(self):
-        self.check_unary('square')
+        self.check_unary("square")
 
     def test_absolute(self):
-        self.check_unary('absolute')
+        self.check_unary("absolute")
 
     def test_absolute_negative(self):
-        self.check_unary_negative('absolute')
+        self.check_unary_negative("absolute")
 
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(atol=1e-5)
@@ -178,65 +178,65 @@ class TestMisc:
         return xp.fabs(a)
 
     def test_sign(self):
-        self.check_unary('sign', no_bool=True)
+        self.check_unary("sign", no_bool=True)
 
     def test_sign_negative(self):
-        self.check_unary_negative('sign', no_bool=True)
+        self.check_unary_negative("sign", no_bool=True)
 
     def test_maximum(self):
-        self.check_binary('maximum')
+        self.check_binary("maximum")
 
     def test_maximum_nan(self):
-        self.check_binary_nan('maximum')
+        self.check_binary_nan("maximum")
 
     def test_minimum(self):
-        self.check_binary('minimum')
+        self.check_binary("minimum")
 
     def test_minimum_nan(self):
-        self.check_binary_nan('minimum')
+        self.check_binary_nan("minimum")
 
     def test_fmax(self):
-        self.check_binary('fmax')
+        self.check_binary("fmax")
 
     def test_fmax_nan(self):
-        self.check_binary_nan('fmax')
+        self.check_binary_nan("fmax")
 
     def test_fmin(self):
-        self.check_binary('fmin')
+        self.check_binary("fmin")
 
     def test_fmin_nan(self):
-        self.check_binary_nan('fmin')
+        self.check_binary_nan("fmin")
 
     def test_nan_to_num(self):
-        self.check_unary('nan_to_num')
+        self.check_unary("nan_to_num")
 
     def test_nan_to_num_negative(self):
-        self.check_unary_negative('nan_to_num')
+        self.check_unary_negative("nan_to_num")
 
     def test_nan_to_num_for_old_numpy(self):
-        self.check_unary('nan_to_num', no_bool=True)
+        self.check_unary("nan_to_num", no_bool=True)
 
     def test_nan_to_num_negative_for_old_numpy(self):
-        self.check_unary_negative('nan_to_num', no_bool=True)
+        self.check_unary_negative("nan_to_num", no_bool=True)
 
     def test_nan_to_num_inf(self):
-        self.check_unary_inf('nan_to_num')
+        self.check_unary_inf("nan_to_num")
 
     def test_nan_to_num_nan(self):
-        self.check_unary_nan('nan_to_num')
+        self.check_unary_nan("nan_to_num")
 
     @testing.numpy_cupy_allclose(atol=1e-5)
     def test_nan_to_num_scalar_nan(self, xp):
         return xp.nan_to_num(xp.nan)
 
     def test_nan_to_num_inf_nan(self):
-        self.check_unary_inf_nan('nan_to_num')
+        self.check_unary_inf_nan("nan_to_num")
 
     def test_nan_to_num_nan_arg(self):
-        self.check_unary_nan('nan_to_num', nan=1.0)
+        self.check_unary_nan("nan_to_num", nan=1.0)
 
     def test_nan_to_num_inf_arg(self):
-        self.check_unary_inf('nan_to_num', posinf=1.0, neginf=-1.0)
+        self.check_unary_inf("nan_to_num", posinf=1.0, neginf=-1.0)
 
     @testing.numpy_cupy_array_equal()
     def test_nan_to_num_copy(self, xp):
@@ -252,7 +252,7 @@ class TestMisc:
         assert x is y
         return y
 
-    @pytest.mark.parametrize('kwarg', ['nan', 'posinf', 'neginf'])
+    @pytest.mark.parametrize("kwarg", ["nan", "posinf", "neginf"])
     def test_nan_to_num_broadcast(self, kwarg):
         for xp in (numpy, cupy):
             x = xp.asarray([0, 1, xp.nan, 4], dtype=xp.float64)
@@ -332,8 +332,8 @@ class TestMisc:
         assert x.dtype == out.dtype
         return out
 
-    @testing.for_all_dtypes(name='dtype_x', no_bool=True, no_complex=True)
-    @testing.for_all_dtypes(name='dtype_y', no_bool=True)
+    @testing.for_all_dtypes(name="dtype_x", no_bool=True, no_complex=True)
+    @testing.for_all_dtypes(name="dtype_y", no_bool=True)
     @testing.numpy_cupy_allclose(atol=1e-5)
     def test_interp(self, xp, dtype_y, dtype_x):
         # interpolate at points on and outside the boundaries
@@ -342,8 +342,8 @@ class TestMisc:
         fy = xp.sin(fx).astype(dtype_y)
         return xp.interp(x, fx, fy)
 
-    @testing.for_all_dtypes(name='dtype_x', no_bool=True, no_complex=True)
-    @testing.for_all_dtypes(name='dtype_y', no_bool=True)
+    @testing.for_all_dtypes(name="dtype_x", no_bool=True, no_complex=True)
+    @testing.for_all_dtypes(name="dtype_y", no_bool=True)
     @testing.numpy_cupy_allclose(atol=1e-5)
     def test_interp_period(self, xp, dtype_y, dtype_x):
         # interpolate at points on and outside the boundaries
@@ -352,8 +352,8 @@ class TestMisc:
         fy = xp.sin(fx).astype(dtype_y)
         return xp.interp(x, fx, fy, period=5)
 
-    @testing.for_all_dtypes(name='dtype_x', no_bool=True, no_complex=True)
-    @testing.for_all_dtypes(name='dtype_y', no_bool=True)
+    @testing.for_all_dtypes(name="dtype_x", no_bool=True, no_complex=True)
+    @testing.for_all_dtypes(name="dtype_y", no_bool=True)
     @testing.numpy_cupy_allclose(atol=1e-5)
     def test_interp_left_right(self, xp, dtype_y, dtype_x):
         # interpolate at points on and outside the boundaries
@@ -364,9 +364,9 @@ class TestMisc:
         right = 20
         return xp.interp(x, fx, fy, left, right)
 
-    @testing.with_requires('numpy>=1.17.0')
-    @testing.for_all_dtypes(name='dtype_x', no_bool=True, no_complex=True)
-    @testing.for_dtypes('efdFD', name='dtype_y')
+    @testing.with_requires("numpy>=1.17.0")
+    @testing.for_all_dtypes(name="dtype_x", no_bool=True, no_complex=True)
+    @testing.for_dtypes("efdFD", name="dtype_y")
     @testing.numpy_cupy_allclose(atol=1e-5)
     def test_interp_nan_fy(self, xp, dtype_y, dtype_x):
         # interpolate at points on and outside the boundaries
@@ -376,9 +376,9 @@ class TestMisc:
         fy[0] = fy[2] = fy[-1] = numpy.nan
         return xp.interp(x, fx, fy)
 
-    @testing.with_requires('numpy>=1.17.0')
-    @testing.for_float_dtypes(name='dtype_x')
-    @testing.for_dtypes('efdFD', name='dtype_y')
+    @testing.with_requires("numpy>=1.17.0")
+    @testing.for_float_dtypes(name="dtype_x")
+    @testing.for_dtypes("efdFD", name="dtype_y")
     @testing.numpy_cupy_allclose(atol=1e-5)
     def test_interp_nan_fx(self, xp, dtype_y, dtype_x):
         # interpolate at points on and outside the boundaries
@@ -388,9 +388,9 @@ class TestMisc:
         fx[-1] = numpy.nan  # x and fx must remain sorted (NaNs are the last)
         return xp.interp(x, fx, fy)
 
-    @testing.with_requires('numpy>=1.17.0')
-    @testing.for_float_dtypes(name='dtype_x')
-    @testing.for_dtypes('efdFD', name='dtype_y')
+    @testing.with_requires("numpy>=1.17.0")
+    @testing.for_float_dtypes(name="dtype_x")
+    @testing.for_dtypes("efdFD", name="dtype_y")
     @testing.numpy_cupy_allclose(atol=1e-5)
     def test_interp_nan_x(self, xp, dtype_y, dtype_x):
         # interpolate at points on and outside the boundaries
@@ -400,9 +400,9 @@ class TestMisc:
         x[-1] = numpy.nan  # x and fx must remain sorted (NaNs are the last)
         return xp.interp(x, fx, fy)
 
-    @testing.with_requires('numpy>=1.17.0')
-    @testing.for_all_dtypes(name='dtype_x', no_bool=True, no_complex=True)
-    @testing.for_dtypes('efdFD', name='dtype_y')
+    @testing.with_requires("numpy>=1.17.0")
+    @testing.for_all_dtypes(name="dtype_x", no_bool=True, no_complex=True)
+    @testing.for_dtypes("efdFD", name="dtype_y")
     @testing.numpy_cupy_allclose(atol=1e-5)
     def test_interp_inf_fy(self, xp, dtype_y, dtype_x):
         # interpolate at points on and outside the boundaries
@@ -412,9 +412,9 @@ class TestMisc:
         fy[0] = fy[2] = fy[-1] = numpy.inf
         return xp.interp(x, fx, fy)
 
-    @testing.with_requires('numpy>=1.17.0')
-    @testing.for_float_dtypes(name='dtype_x')
-    @testing.for_dtypes('efdFD', name='dtype_y')
+    @testing.with_requires("numpy>=1.17.0")
+    @testing.for_float_dtypes(name="dtype_x")
+    @testing.for_dtypes("efdFD", name="dtype_y")
     @testing.numpy_cupy_allclose(atol=1e-5)
     def test_interp_inf_fx(self, xp, dtype_y, dtype_x):
         # interpolate at points on and outside the boundaries
@@ -424,9 +424,9 @@ class TestMisc:
         fx[-1] = numpy.inf  # x and fx must remain sorted
         return xp.interp(x, fx, fy)
 
-    @testing.with_requires('numpy>=1.17.0')
-    @testing.for_float_dtypes(name='dtype_x')
-    @testing.for_dtypes('efdFD', name='dtype_y')
+    @testing.with_requires("numpy>=1.17.0")
+    @testing.for_float_dtypes(name="dtype_x")
+    @testing.for_dtypes("efdFD", name="dtype_y")
     @testing.numpy_cupy_allclose(atol=1e-5)
     def test_interp_inf_x(self, xp, dtype_y, dtype_x):
         # interpolate at points on and outside the boundaries
@@ -436,8 +436,8 @@ class TestMisc:
         x[-1] = numpy.inf  # x and fx must remain sorted
         return xp.interp(x, fx, fy)
 
-    @testing.for_all_dtypes(name='dtype_x', no_bool=True, no_complex=True)
-    @testing.for_all_dtypes(name='dtype_y', no_bool=True)
+    @testing.for_all_dtypes(name="dtype_x", no_bool=True, no_complex=True)
+    @testing.for_all_dtypes(name="dtype_y", no_bool=True)
     @testing.numpy_cupy_allclose(atol=1e-5)
     def test_interp_size1(self, xp, dtype_y, dtype_x):
         # interpolate at points on and outside the boundaries
@@ -448,9 +448,9 @@ class TestMisc:
         right = 20
         return xp.interp(x, fx, fy, left, right)
 
-    @testing.with_requires('numpy>=1.17.0')
-    @testing.for_float_dtypes(name='dtype_x')
-    @testing.for_dtypes('efdFD', name='dtype_y')
+    @testing.with_requires("numpy>=1.17.0")
+    @testing.for_float_dtypes(name="dtype_x")
+    @testing.for_dtypes("efdFD", name="dtype_y")
     @testing.numpy_cupy_allclose(atol=1e-5)
     def test_interp_inf_to_nan(self, xp, dtype_y, dtype_x):
         # from NumPy's test_non_finite_inf
@@ -459,16 +459,16 @@ class TestMisc:
         fy = xp.asarray([0, 10], dtype=dtype_y)
         return xp.interp(x, fx, fy)
 
-    @testing.for_all_dtypes(name='dtype_2', no_bool=True, no_complex=True)
-    @testing.for_all_dtypes(name='dtype_1', no_bool=True, no_complex=True)
+    @testing.for_all_dtypes(name="dtype_2", no_bool=True, no_complex=True)
+    @testing.for_all_dtypes(name="dtype_1", no_bool=True, no_complex=True)
     @testing.numpy_cupy_array_equal()
     def test_heaviside(self, xp, dtype_1, dtype_2):
         x = testing.shaped_random((10, ), xp, dtype_1)
         h = xp.asarray([10], dtype=dtype_2)
         return xp.heaviside(x, h)
 
-    @testing.for_all_dtypes(name='dtype_2', no_bool=True, no_complex=True)
-    @testing.for_float_dtypes(name='dtype_1')
+    @testing.for_all_dtypes(name="dtype_2", no_bool=True, no_complex=True)
+    @testing.for_float_dtypes(name="dtype_1")
     @testing.numpy_cupy_array_equal()
     def test_heaviside_nan_inf(self, xp, dtype_1, dtype_2):
         x = xp.asarray([-2., 0., 3., xp.nan, xp.inf, -xp.inf], dtype=dtype_1)
@@ -477,9 +477,9 @@ class TestMisc:
 
 
 @testing.parameterize(*testing.product({
-    'mode': ['valid', 'same', 'full'],
-    'shape1': [(), (5,), (6,), (20,), (21,)],
-    'shape2': [(), (5,), (6,), (20,), (21,)],
+    "mode": ["valid", "same", "full"],
+    "shape1": [(), (5,), (6,), (20,), (21,)],
+    "shape2": [(), (5,), (6,), (20,), (21,)],
 }))
 class TestConvolveShapeCombination:
 
@@ -491,7 +491,7 @@ class TestConvolveShapeCombination:
         return xp.convolve(a, b, mode=self.mode)
 
 
-@pytest.mark.parametrize('mode', ['valid', 'same', 'full'])
+@pytest.mark.parametrize("mode", ["valid", "same", "full"])
 class TestConvolve:
 
     @testing.for_all_dtypes(no_float16=True)
@@ -508,7 +508,7 @@ class TestConvolve:
         b = testing.shaped_arange((100,), xp, dtype)
         return xp.convolve(a[200::], b[10::70], mode=mode)
 
-    @testing.for_all_dtypes_combination(names=['dtype1', 'dtype2'])
+    @testing.for_all_dtypes_combination(names=["dtype1", "dtype2"])
     @testing.numpy_cupy_allclose(rtol=1e-2)
     def test_convolve_diff_types(self, xp, dtype1, dtype2, mode):
         a = testing.shaped_random((200,), xp, dtype1)
@@ -517,7 +517,7 @@ class TestConvolve:
 
 
 @testing.parameterize(*testing.product({
-    'mode': ['valid', 'same', 'full']
+    "mode": ["valid", "same", "full"]
 }))
 class TestConvolveInvalid:
 

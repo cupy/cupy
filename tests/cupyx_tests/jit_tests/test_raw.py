@@ -67,7 +67,7 @@ class TestRaw:
             f((1,), (1,), ())
 
     def test_raw_grid_invalid3(self):
-        for n in (0, 4, 'abc', [0], (1,)):
+        for n in (0, 4, "abc", [0], (1,)):
             @jit.rawkernel()
             def f():
                 x = jit.grid(n)  # n can only be 1, 2, 3 (as int)  # NOQA
@@ -402,7 +402,7 @@ class TestRaw:
         else:
             testing.assert_allclose(a, e, rtol=1e-5, atol=1e-5)
 
-    @testing.for_dtypes('iILQfd' if runtime.is_hip else 'iILQefd')
+    @testing.for_dtypes("iILQfd" if runtime.is_hip else "iILQefd")
     def test_atomic_add(self, dtype):
         @jit.rawkernel()
         def f(x, index, out):
@@ -419,7 +419,7 @@ class TestRaw:
         cupy.add.at(expected, index, x)
         self._check(out, expected)
 
-    @testing.for_dtypes('iI')
+    @testing.for_dtypes("iI")
     def test_atomic_sub(self, dtype):
         @jit.rawkernel()
         def f(x, out):
@@ -433,7 +433,7 @@ class TestRaw:
         expected = cupy.zeros_like(out)
         self._check(out, expected)
 
-    @testing.for_dtypes('iILQf')
+    @testing.for_dtypes("iILQf")
     def test_atomic_exch(self, dtype):
         @jit.rawkernel()
         def f(x, out):
@@ -447,7 +447,7 @@ class TestRaw:
         expected = x[::-1]
         self._check(out, expected)
 
-    @testing.for_dtypes('iILQ')
+    @testing.for_dtypes("iILQ")
     def test_atomic_min(self, dtype):
         @jit.rawkernel()
         def f(x, out):
@@ -460,7 +460,7 @@ class TestRaw:
         f((32,), (32,), (x, out))  # effectively copy x to out
         self._check(out, x)
 
-    @testing.for_dtypes('iILQ')
+    @testing.for_dtypes("iILQ")
     def test_atomic_max(self, dtype):
         @jit.rawkernel()
         def f(x, out):
@@ -506,7 +506,7 @@ class TestRaw:
         expected = x
         self._check(out, expected)
 
-    @testing.for_dtypes('iILQ' if runtime.is_hip else 'iHILQ')
+    @testing.for_dtypes("iILQ" if runtime.is_hip else "iHILQ")
     def test_atomic_cas(self, dtype):
         if dtype == cupy.uint16:
             if (
@@ -514,7 +514,7 @@ class TestRaw:
                 runtime.runtimeGetVersion() < 10010 or
                 int(device.get_compute_capability()) < 70
             ):
-                self.skipTest('not supported')
+                self.skipTest("not supported")
 
         @jit.rawkernel()
         def f(x, y, out):
@@ -532,7 +532,7 @@ class TestRaw:
         expected = cupy.zeros_like(out)
         self._check(out, expected)
 
-    @testing.for_dtypes('iILQ')
+    @testing.for_dtypes("iILQ")
     def test_atomic_and(self, dtype):
         @jit.rawkernel()
         def f(x, out):
@@ -547,7 +547,7 @@ class TestRaw:
         expected[1::2] = 1
         self._check(out, expected)
 
-    @testing.for_dtypes('iILQ')
+    @testing.for_dtypes("iILQ")
     def test_atomic_or(self, dtype):
         @jit.rawkernel()
         def f(x, out):
@@ -562,7 +562,7 @@ class TestRaw:
         expected = x | y
         self._check(out, expected)
 
-    @testing.for_dtypes('iILQ')
+    @testing.for_dtypes("iILQ")
     def test_atomic_xor(self, dtype):
         @jit.rawkernel()
         def f(x, out):
@@ -597,7 +597,7 @@ class TestRaw:
         assert bool((x == y).all())
 
     # TODO(leofang): test float16 ('e') once cupy/cupy#5346 is resolved
-    @testing.for_dtypes('iIlqfd' if runtime.is_hip else 'iIlLqQfd')
+    @testing.for_dtypes("iIlqfd" if runtime.is_hip else "iIlLqQfd")
     def test_shfl(self, dtype):
         # strictly speaking this function is invalid in Python (see the
         # discussion in cupy/cupy#5340), but it serves for our purpose
@@ -630,7 +630,7 @@ class TestRaw:
             assert (b == c).all()
 
     # TODO(leofang): test float16 ('e') once cupy/cupy#5346 is resolved
-    @testing.for_dtypes('iIlqfd' if runtime.is_hip else 'iIlLqQfd')
+    @testing.for_dtypes("iIlqfd" if runtime.is_hip else "iIlLqQfd")
     def test_shfl_up(self, dtype):
         N = 5
 
@@ -645,7 +645,7 @@ class TestRaw:
         assert (a == cupy.asarray(expected, dtype=dtype)).all()
 
     # TODO(leofang): test float16 ('e') once cupy/cupy#5346 is resolved
-    @testing.for_dtypes('iIlqfd' if runtime.is_hip else 'iIlLqQfd')
+    @testing.for_dtypes("iIlqfd" if runtime.is_hip else "iIlLqQfd")
     def test_shfl_down(self, dtype):
         N = 5
         # __shfl_down() on HIP does not seem to have the same behavior...
@@ -663,7 +663,7 @@ class TestRaw:
         assert (a == cupy.asarray(expected, dtype=dtype)).all()
 
     # TODO(leofang): test float16 ('e') once cupy/cupy#5346 is resolved
-    @testing.for_dtypes('iIlqfd' if runtime.is_hip else 'iIlLqQfd')
+    @testing.for_dtypes("iIlqfd" if runtime.is_hip else "iIlLqQfd")
     def test_shfl_xor(self, dtype):
         @jit.rawkernel()
         def f_shfl_xor(a):
@@ -686,7 +686,7 @@ class TestRaw:
             return unknown_var  # NOQA
 
         x = cupy.zeros((10,), dtype=numpy.float32)
-        with pytest.raises(NameError, match='Unbound name: unknown_var'):
+        with pytest.raises(NameError, match="Unbound name: unknown_var"):
             f((1,), (1,), (x,))
 
     def test_laneid(self):
@@ -784,7 +784,7 @@ class TestRaw:
         assert len(f.cached_codes) == 2
 
     @pytest.mark.parametrize(
-        'unroll', (True, False, None, 5)
+        "unroll", (True, False, None, 5)
     )
     def test_range(self, unroll):
 
@@ -806,15 +806,15 @@ class TestRaw:
         f[3, 10](x)
         assert (x == y + 10).all()
         if unroll is True:
-            assert '#pragma unroll\n' in f.cached_code
+            assert "#pragma unroll\n" in f.cached_code
         elif unroll is False:
-            assert '#pragma unroll(1)\n' in f.cached_code
+            assert "#pragma unroll(1)\n" in f.cached_code
         elif unroll is None:
-            assert 'unroll' not in f.cached_code
+            assert "unroll" not in f.cached_code
         elif unroll >= 0:
-            assert f'#pragma unroll({unroll})\n' in f.cached_code
+            assert f"#pragma unroll({unroll})\n" in f.cached_code
 
-    @pytest.mark.parametrize('ctype', (bool, int, float, complex))
+    @pytest.mark.parametrize("ctype", (bool, int, float, complex))
     def test_scalar_args(self, ctype):
         @jit.rawkernel()
         def f(x, y):

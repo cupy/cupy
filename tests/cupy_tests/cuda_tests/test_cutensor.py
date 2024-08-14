@@ -4,7 +4,7 @@ import unittest
 from cupy.cuda import cutensor
 
 
-@unittest.skipUnless(cutensor.available, 'cuTensor is unavailable')
+@unittest.skipUnless(cutensor.available, "cuTensor is unavailable")
 class TestExceptionPicklable(unittest.TestCase):
 
     def test(self):

@@ -5,9 +5,9 @@ from cupy import _core
 from cupy._logic import content
 
 _is_close = _core.create_ufunc(
-    'cupy_is_close',
-    ('eeee?->?', 'ffff?->?', 'dddd?->?'),
-    '''
+    "cupy_is_close",
+    ("eeee?->?", "ffff?->?", "dddd?->?"),
+    """
     bool equal_nan = in4;
     if (isfinite(in0) && isfinite(in1)) {
       out0 = fabs(in0 - in1) <= in3 + in2 * fabs(in1);
@@ -16,16 +16,16 @@ _is_close = _core.create_ufunc(
     } else {
       out0 = (in0 == in1);
     }
-    '''
+    """
 )
 
 # Note that in cupy/_core/include/cupy/complex.cuh, we already got isfinite and
 # isnan working for complex numbers, so just replace fabs above by abs (from
 # thrust) and we are ready to go
 _is_close_complex = _core.create_ufunc(
-    'cupy_is_close_complex',
-    ('FFff?->?', 'DDdd?->?'),
-    '''
+    "cupy_is_close_complex",
+    ("FFff?->?", "DDdd?->?"),
+    """
     bool equal_nan = in4;
     if (isfinite(in0) && isfinite(in1)) {
       out0 = abs(in0 - in1) <= in3 + in2 * abs(in1);
@@ -34,7 +34,7 @@ _is_close_complex = _core.create_ufunc(
     } else {
       out0 = (in0 == in1);
     }
-    '''
+    """
 )
 
 

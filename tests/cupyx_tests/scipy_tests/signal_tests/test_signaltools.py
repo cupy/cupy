@@ -15,39 +15,39 @@ except ImportError:
 
 
 @testing.parameterize(*testing.product({
-    'size1': [(10,), (5, 10), (10, 3), (3, 4, 10)],
-    'size2': [3, 4, 5, 10],
-    'mode': ['full', 'same', 'valid'],
+    "size1": [(10,), (5, 10), (10, 3), (3, 4, 10)],
+    "size2": [3, 4, 5, 10],
+    "mode": ["full", "same", "valid"],
 }))
-@testing.with_requires('scipy')
+@testing.with_requires("scipy")
 class TestConvolveCorrelate:
     def _filter(self, func, dtype, xp, scp):
         in1 = testing.shaped_random(self.size1, xp, dtype)
         in2 = testing.shaped_random((self.size2,)*in1.ndim, xp, dtype)
-        return getattr(scp.signal, func)(in1, in2, self.mode, method='direct')
+        return getattr(scp.signal, func)(in1, in2, self.mode, method="direct")
 
     tols = {np.float32: 1e-5, np.complex64: 1e-5,
-            np.float16: 1e-3, 'default': 1e-10}
+            np.float16: 1e-3, "default": 1e-10}
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(atol=tols, rtol=tols, scipy_name='scp',
+    @testing.numpy_cupy_allclose(atol=tols, rtol=tols, scipy_name="scp",
                                  accept_error=ValueError)
     def test_convolve(self, xp, scp, dtype):
-        return self._filter('convolve', dtype, xp, scp)
+        return self._filter("convolve", dtype, xp, scp)
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(atol=tols, rtol=tols, scipy_name='scp',
+    @testing.numpy_cupy_allclose(atol=tols, rtol=tols, scipy_name="scp",
                                  accept_error=ValueError)
     def test_correlate(self, xp, scp, dtype):
-        return self._filter('correlate', dtype, xp, scp)
+        return self._filter("correlate", dtype, xp, scp)
 
 
 @testing.parameterize(*testing.product({
-    'size1': [(10,), (5, 10), (10, 3), (3, 4, 10)],
-    'size2': [3, 4, 5, 10],
-    'mode': ['full', 'same', 'valid'],
+    "size1": [(10,), (5, 10), (10, 3), (3, 4, 10)],
+    "size2": [3, 4, 5, 10],
+    "mode": ["full", "same", "valid"],
 }))
-@testing.with_requires('scipy')
+@testing.with_requires("scipy")
 class TestFFTConvolve:
     def _filter(self, func, dtype, xp, scp, **kwargs):
         in1 = testing.shaped_random(self.size1, xp, dtype)
@@ -55,47 +55,47 @@ class TestFFTConvolve:
         return getattr(scp.signal, func)(in1, in2, self.mode, **kwargs)
 
     tols = {np.float32: 1e-3, np.complex64: 1e-3,
-            np.float16: 1e-3, 'default': 1e-8}
+            np.float16: 1e-3, "default": 1e-8}
 
     def _hip_skip_invalid_condition(self):
         invalid_condition = [
-            ('full', 3), ('full', 4), ('full', 5), ('full', 10),
-            ('same', 3), ('same', 4), ('same', 5), ('same', 10),
-            ('valid', 3), ('valid', 10)]
+            ("full", 3), ("full", 4), ("full", 5), ("full", 10),
+            ("same", 3), ("same", 4), ("same", 5), ("same", 10),
+            ("valid", 3), ("valid", 10)]
         if (runtime.is_hip and self.size1 == (3, 4, 10)
                 and (self.mode, self.size2) in invalid_condition):
-            pytest.xfail('ROCm/HIP may have a bug')
+            pytest.xfail("ROCm/HIP may have a bug")
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(atol=tols, rtol=tols, scipy_name='scp',
+    @testing.numpy_cupy_allclose(atol=tols, rtol=tols, scipy_name="scp",
                                  accept_error=ValueError)
     def test_fftconvolve(self, xp, scp, dtype):
         self._hip_skip_invalid_condition()
-        return self._filter('fftconvolve', dtype, xp, scp)
+        return self._filter("fftconvolve", dtype, xp, scp)
 
     @testing.for_all_dtypes(no_bool=True)
-    @testing.numpy_cupy_allclose(atol=tols, rtol=tols, scipy_name='scp',
+    @testing.numpy_cupy_allclose(atol=tols, rtol=tols, scipy_name="scp",
                                  accept_error=ValueError)
     def test_convolve_fft(self, xp, scp, dtype):
         self._hip_skip_invalid_condition()
-        return self._filter('convolve', dtype, xp, scp, method='fft')
+        return self._filter("convolve", dtype, xp, scp, method="fft")
 
     @testing.for_all_dtypes(no_bool=True)
-    @testing.numpy_cupy_allclose(atol=tols, rtol=tols, scipy_name='scp',
+    @testing.numpy_cupy_allclose(atol=tols, rtol=tols, scipy_name="scp",
                                  accept_error=ValueError)
     def test_correlate_fft(self, xp, scp, dtype):
         self._hip_skip_invalid_condition()
-        return self._filter('correlate', dtype, xp, scp, method='fft')
+        return self._filter("correlate", dtype, xp, scp, method="fft")
 
 
 def tupleid(shape):
-    return ''.join(str(s) for s in shape)
+    return "".join(str(s) for s in shape)
 
 
-@testing.with_requires('scipy')
+@testing.with_requires("scipy")
 class TestFFTConvolveFastShape:
-    @pytest.mark.parametrize('mode', ['full', 'same', 'valid'])
-    @pytest.mark.parametrize(('shape1', 'shape2'), [
+    @pytest.mark.parametrize("mode", ["full", "same", "valid"])
+    @pytest.mark.parametrize(("shape1", "shape2"), [
         ((1,), (7,)),
         ((3,), (1,)),
         ((5, 4), (3, 1)),
@@ -103,8 +103,8 @@ class TestFFTConvolveFastShape:
         ((), ()),
         ((5, 1, 1), (1, 4, 1)),
     ], ids=tupleid)
-    @testing.for_dtypes('efdFD')
-    @testing.numpy_cupy_allclose(atol=1e-3, rtol=1e-3, scipy_name='scp')
+    @testing.for_dtypes("efdFD")
+    @testing.numpy_cupy_allclose(atol=1e-3, rtol=1e-3, scipy_name="scp")
     def test_fftconvolve1(self, xp, scp, dtype, shape1, shape2, mode):
         in1 = testing.shaped_random(shape1, xp, dtype)
         in2 = testing.shaped_random(shape2, xp, dtype)
@@ -113,29 +113,29 @@ class TestFFTConvolveFastShape:
     # SciPy says "For 'valid' mode, one must be at least as large as the
     # other in every dimension". So 'valid' is excluded from the testcases,
     # while SciPy fails to reject them.
-    @pytest.mark.parametrize('mode', ['full', 'same'])
-    @pytest.mark.parametrize(('shape1', 'shape2'), [
+    @pytest.mark.parametrize("mode", ["full", "same"])
+    @pytest.mark.parametrize(("shape1", "shape2"), [
         ((5, 1), (1, 4)),
         ((5, 1, 1), (1, 4, 1)),
     ], ids=tupleid)
-    @testing.for_dtypes('efdFD')
-    @testing.numpy_cupy_allclose(atol=1e-3, rtol=1e-3, scipy_name='scp')
+    @testing.for_dtypes("efdFD")
+    @testing.numpy_cupy_allclose(atol=1e-3, rtol=1e-3, scipy_name="scp")
     def test_fftconvolve1_incomparable_shape(
             self, xp, scp, dtype, shape1, shape2, mode):
         in1 = testing.shaped_random(shape1, xp, dtype)
         in2 = testing.shaped_random(shape2, xp, dtype)
         return scp.signal.fftconvolve(in1, in2, mode=mode)
 
-    @pytest.mark.parametrize('mode', ['full', 'same', 'valid'])
-    @pytest.mark.parametrize(('shape1', 'shape2', 'axes'), [
+    @pytest.mark.parametrize("mode", ["full", "same", "valid"])
+    @pytest.mark.parametrize(("shape1", "shape2", "axes"), [
         ((1, 4), (2, 4), (0,)),
         # ((3, 3), (3, 3), ()), => ValueError. Only reduced axes can be empty.
         ((2, 5, 5), (2, 1, 3), (1, 2)),
         ((2, 5, 5), (2, 1, 1), (1, 2)),
         ((1, 5, 5), (2, 1, 3), (1, 2)),  # broadcast
     ], ids=tupleid)
-    @testing.for_dtypes('efdFD')
-    @testing.numpy_cupy_allclose(atol=1e-3, rtol=1e-3, scipy_name='scp')
+    @testing.for_dtypes("efdFD")
+    @testing.numpy_cupy_allclose(atol=1e-3, rtol=1e-3, scipy_name="scp")
     def test_fftconvolve1_axes(
             self, xp, scp, dtype, shape1, shape2, axes, mode):
         in1 = testing.shaped_random(shape1, xp, dtype)
@@ -144,21 +144,21 @@ class TestFFTConvolveFastShape:
 
 
 @testing.parameterize(*testing.product({
-    'size1': [(10,), (5, 10), (10, 3), (3, 10, 15)],
-    'size2': [3, 4, 5, 10, None],
-    'mode': ['full', 'same', 'valid'],
+    "size1": [(10,), (5, 10), (10, 3), (3, 10, 15)],
+    "size2": [3, 4, 5, 10, None],
+    "mode": ["full", "same", "valid"],
 }))
-@testing.with_requires('scipy')
+@testing.with_requires("scipy")
 class TestOAConvolve:
     tols = {np.float32: 1e-3, np.complex64: 1e-3,
-            np.float16: 1e-3, 'default': 1e-8}
+            np.float16: 1e-3, "default": 1e-8}
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(atol=tols, rtol=tols, scipy_name='scp',
+    @testing.numpy_cupy_allclose(atol=tols, rtol=tols, scipy_name="scp",
                                  accept_error=ValueError)
     def test_oaconvolve(self, xp, scp, dtype):
         if runtime.is_hip and self.size2 in [5, None]:
-            pytest.xfail('ROCm/HIP may have a bug')
+            pytest.xfail("ROCm/HIP may have a bug")
         in1 = testing.shaped_random(self.size1, xp, dtype)
         shape2 = self.size1 if self.size2 is None else (self.size2,)*in1.ndim
         in2 = testing.shaped_random(shape2, xp, dtype)
@@ -166,52 +166,52 @@ class TestOAConvolve:
 
 
 @testing.parameterize(*(testing.product({
-    'size1': [(5, 10), (10, 7)],
-    'size2': [(3, 2), (3, 3), (2, 2), (10, 10), (11, 11)],
-    'mode': ['full', 'same', 'valid'],
-    'boundary': ['fill'],
-    'fillvalue': [0, 1, -1],
+    "size1": [(5, 10), (10, 7)],
+    "size2": [(3, 2), (3, 3), (2, 2), (10, 10), (11, 11)],
+    "mode": ["full", "same", "valid"],
+    "boundary": ["fill"],
+    "fillvalue": [0, 1, -1],
 }) + testing.product({
-    'size1': [(5, 10), (10, 7)],
-    'size2': [(3, 2), (3, 3), (2, 2), (10, 10), (11, 11)],
-    'mode': ['full', 'same', 'valid'],
-    'boundary': ['wrap', 'symm'],
-    'fillvalue': [0],
+    "size1": [(5, 10), (10, 7)],
+    "size2": [(3, 2), (3, 3), (2, 2), (10, 10), (11, 11)],
+    "mode": ["full", "same", "valid"],
+    "boundary": ["wrap", "symm"],
+    "fillvalue": [0],
 })))
-@testing.with_requires('scipy')
+@testing.with_requires("scipy")
 class TestConvolveCorrelate2D:
     def _filter(self, func, dtype, xp, scp):
-        if self.mode == 'full' and self.boundary != 'fill':
+        if self.mode == "full" and self.boundary != "fill":
             # See https://github.com/scipy/scipy/issues/12685
-            pytest.skip('broken in scipy')
-        if np.dtype(dtype).kind == 'u' and self.fillvalue < 0:
-            pytest.skip('fillvalue overflow')
+            pytest.skip("broken in scipy")
+        if np.dtype(dtype).kind == "u" and self.fillvalue < 0:
+            pytest.skip("fillvalue overflow")
         in1 = testing.shaped_random(self.size1, xp, dtype)
         in2 = testing.shaped_random(self.size2, xp, dtype)
         return getattr(scp.signal, func)(in1, in2, self.mode, self.boundary,
                                          self.fillvalue)
 
     tols = {np.float32: 5e-4, np.complex64: 5e-4,
-            np.float16: 1e-3, 'default': 1e-10}
+            np.float16: 1e-3, "default": 1e-10}
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(atol=tols, rtol=tols, scipy_name='scp',
+    @testing.numpy_cupy_allclose(atol=tols, rtol=tols, scipy_name="scp",
                                  accept_error=ValueError)
     def test_convolve2d(self, xp, scp, dtype):
-        return self._filter('convolve2d', dtype, xp, scp)
+        return self._filter("convolve2d", dtype, xp, scp)
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(atol=tols, rtol=tols, scipy_name='scp',
+    @testing.numpy_cupy_allclose(atol=tols, rtol=tols, scipy_name="scp",
                                  accept_error=ValueError)
     def test_correlate2d(self, xp, scp, dtype):
-        return self._filter('correlate2d', dtype, xp, scp)
+        return self._filter("correlate2d", dtype, xp, scp)
 
 
-@testing.with_requires('scipy')
+@testing.with_requires("scipy")
 @pytest.mark.parametrize("mode", ["valid", "same", "full"])
 @pytest.mark.parametrize("behind", [True, False])
 @pytest.mark.parametrize("input_size", [100, 101, 1000, 1001, 10000, 10001])
-@testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-15)
+@testing.numpy_cupy_allclose(scipy_name="scp", atol=1e-15)
 def test_correlation_lags(mode, xp, scp, behind, input_size):
     # generate random data
     rng = np.random.RandomState(0)
@@ -231,11 +231,11 @@ def test_correlation_lags(mode, xp, scp, behind, input_size):
     return lags
 
 
-@testing.with_requires('scipy')
+@testing.with_requires("scipy")
 class TestConvolve2DEdgeCase:
 
-    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
-    @testing.with_requires('scipy>=1.10')
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name="scp")
+    @testing.with_requires("scipy>=1.10")
     def test_convolve2d_1(self, xp, scp):
         # Meant a gray-scale image
         data = testing.shaped_random(
@@ -245,16 +245,16 @@ class TestConvolve2DEdgeCase:
              [-10+0j, 0+0j, +10+0j],
              [-3+3j, 0+10j, +3+3j]])  # Gx + j*Gy
         return scp.signal.convolve2d(
-            data, scharr, boundary='symm', mode='same')
+            data, scharr, boundary="symm", mode="same")
 
-    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name="scp")
     def test_convolve2d_2(self, xp, scp):
         # see cupy/cupy#6047
         a = xp.array([[257]], dtype="uint64")
         b = xp.array([[1]], dtype="uint8")
         return scp.signal.convolve2d(a, b, mode="same")
 
-    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name="scp")
     def test_convolve2d_3(self, xp, scp):
         # see cupy/cupy#6047
         a = xp.array([[257]], dtype="uint64")
@@ -263,30 +263,30 @@ class TestConvolve2DEdgeCase:
 
 
 @testing.parameterize(*testing.product({
-    'mode': ['valid', 'same', 'full']
+    "mode": ["valid", "same", "full"]
 }))
 class TestChooseConvMethod:
 
-    @testing.for_dtypes('efdFD')
+    @testing.for_dtypes("efdFD")
     def test_choose_conv_method1(self, dtype):
         a = testing.shaped_arange((10000,), cupy, dtype)
         b = testing.shaped_arange((5000,), cupy, dtype)
         assert cupyx.scipy.signal.choose_conv_method(
-            a, b, mode=self.mode) == 'fft'
+            a, b, mode=self.mode) == "fft"
 
-    @testing.for_dtypes('efdFD')
+    @testing.for_dtypes("efdFD")
     def test_choose_conv_method2(self, dtype):
         a = testing.shaped_arange((5000,), cupy, dtype)
         b = testing.shaped_arange((10000,), cupy, dtype)
         assert cupyx.scipy.signal.choose_conv_method(
-            a, b, mode=self.mode) == 'fft'
+            a, b, mode=self.mode) == "fft"
 
     @testing.for_int_dtypes()
     def test_choose_conv_method_int(self, dtype):
         a = testing.shaped_arange((10,), cupy, dtype)
         b = testing.shaped_arange((5,), cupy, dtype)
         assert cupyx.scipy.signal.choose_conv_method(
-            a, b, mode=self.mode) == 'direct'
+            a, b, mode=self.mode) == "direct"
 
     @testing.for_all_dtypes()
     def test_choose_conv_method_ndim(self, dtype):
@@ -304,17 +304,17 @@ class TestChooseConvMethod:
 
 
 @testing.parameterize(*testing.product({
-    'im': [(10,), (5, 10), (10, 3), (3, 4, 10)],
-    'mysize': [3, 4, (3, 4, 5)],
-    'noise': [False, True],
+    "im": [(10,), (5, 10), (10, 3), (3, 4, 10)],
+    "mysize": [3, 4, (3, 4, 5)],
+    "noise": [False, True],
 }))
-@testing.with_requires('scipy')
+@testing.with_requires("scipy")
 class TestWiener:
     tols = {np.float32: 1e-5, np.complex64: 1e-5,
-            np.float16: 1e-3, 'default': 1e-10}
+            np.float16: 1e-3, "default": 1e-10}
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(atol=tols, rtol=tols, scipy_name='scp')
+    @testing.numpy_cupy_allclose(atol=tols, rtol=tols, scipy_name="scp")
     def test_wiener(self, xp, scp, dtype):
         im = testing.shaped_random(self.im, xp, dtype)
         mysize = self.mysize
@@ -326,20 +326,20 @@ class TestWiener:
         # Always returns float64 or complex128 data  in both scipy and
         # cupyx.scipy. Per-datatype tolerances are based on the output
         # data type but quality is based on input data type (if floating point)
-        assert out.dtype == (np.complex128 if out.dtype.kind == 'c' else
+        assert out.dtype == (np.complex128 if out.dtype.kind == "c" else
                              np.float64)
         return out.astype(dtype, copy=False) if dtype in self.tols else out
 
 
 @testing.parameterize(*testing.product({
-    'a': [(10,), (5, 10), (10, 3), (3, 4, 10)],
-    'domain': [3, 4, (3, 3, 5)],
-    'rank': [0, 1, 2],
+    "a": [(10,), (5, 10), (10, 3), (3, 4, 10)],
+    "domain": [3, 4, (3, 3, 5)],
+    "rank": [0, 1, 2],
 }))
-@testing.with_requires('scipy')
+@testing.with_requires("scipy")
 class TestOrderFilter:
     @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
-    @testing.numpy_cupy_allclose(atol=1e-8, rtol=1e-8, scipy_name='scp',
+    @testing.numpy_cupy_allclose(atol=1e-8, rtol=1e-8, scipy_name="scp",
                                  accept_error=ValueError)  # for even kernels
     def test_order_filter(self, xp, scp, dtype):
         a = testing.shaped_random(self.a, xp, dtype)
@@ -351,31 +351,31 @@ class TestOrderFilter:
 
 
 @testing.parameterize(*testing.product({
-    'volume': [(10,), (5, 10), (10, 5), (5, 6, 10)],
-    'kernel_size': [3, 4, (3, 3, 5)],
+    "volume": [(10,), (5, 10), (10, 5), (5, 6, 10)],
+    "kernel_size": [3, 4, (3, 3, 5)],
 }))
 class TestMedFilt:
-    @testing.with_requires('scipy>=1.7.0', 'scipy<1.11.0')
+    @testing.with_requires("scipy>=1.7.0", "scipy<1.11.0")
     @testing.for_all_dtypes(no_complex=True)
-    @testing.numpy_cupy_allclose(atol=1e-8, rtol=1e-8, scipy_name='scp',
+    @testing.numpy_cupy_allclose(atol=1e-8, rtol=1e-8, scipy_name="scp",
                                  accept_error=ValueError)  # for even kernels
     def test_medfilt_no_complex(self, xp, scp, dtype):
-        if sys.platform == 'win32':
-            pytest.xfail('medfilt broken for Scipy 1.7.0 in windows')
+        if sys.platform == "win32":
+            pytest.xfail("medfilt broken for Scipy 1.7.0 in windows")
         volume = testing.shaped_random(self.volume, xp, dtype)
         kernel_size = self.kernel_size
         if isinstance(kernel_size, tuple):
             kernel_size = kernel_size[:volume.ndim]
         return scp.signal.medfilt(volume, kernel_size)
 
-    @testing.with_requires('scipy>=1.12.0rc1')
+    @testing.with_requires("scipy>=1.12.0rc1")
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(
-        atol=1e-8, rtol=1e-8, scipy_name='scp',
+        atol=1e-8, rtol=1e-8, scipy_name="scp",
         accept_error=ValueError)  # for even kernels
     def test_medfilt(self, xp, scp, dtype):
-        if sys.platform == 'win32':
-            pytest.xfail('medfilt broken for Scipy 1.7.0 in windows')
+        if sys.platform == "win32":
+            pytest.xfail("medfilt broken for Scipy 1.7.0 in windows")
         volume = testing.shaped_random(self.volume, xp, dtype)
         kernel_size = self.kernel_size
         if isinstance(kernel_size, tuple):
@@ -384,46 +384,46 @@ class TestMedFilt:
 
 
 @testing.parameterize(*testing.product({
-    'input': [(5, 10), (10, 5)],
-    'kernel_size': [3, 4, (3, 5)],
+    "input": [(5, 10), (10, 5)],
+    "kernel_size": [3, 4, (3, 5)],
 }))
 class TestMedFilt2d:
-    @testing.with_requires('scipy>=1.7.0', 'scipy<1.11.0')
+    @testing.with_requires("scipy>=1.7.0", "scipy<1.11.0")
     @testing.for_all_dtypes(no_complex=True)
-    @testing.numpy_cupy_allclose(atol=1e-8, rtol=1e-8, scipy_name='scp',
+    @testing.numpy_cupy_allclose(atol=1e-8, rtol=1e-8, scipy_name="scp",
                                  accept_error=ValueError)  # for even kernels
     def test_medfilt2d_no_complex(self, xp, scp, dtype):
-        if sys.platform == 'win32':
-            pytest.xfail('medfilt2d broken for Scipy 1.7.0 in windows')
+        if sys.platform == "win32":
+            pytest.xfail("medfilt2d broken for Scipy 1.7.0 in windows")
         input = testing.shaped_random(self.input, xp, dtype)
         kernel_size = self.kernel_size
         return scp.signal.medfilt2d(input, kernel_size)
 
-    @testing.with_requires('scipy>=1.12.0rc1')
+    @testing.with_requires("scipy>=1.12.0rc1")
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(
-        atol=1e-8, rtol=1e-8, scipy_name='scp',
+        atol=1e-8, rtol=1e-8, scipy_name="scp",
         accept_error=ValueError)  # for even kernels
     def test_medfilt2d(self, xp, scp, dtype):
-        if sys.platform == 'win32':
-            pytest.xfail('medfilt2d broken for Scipy 1.7.0 in windows')
+        if sys.platform == "win32":
+            pytest.xfail("medfilt2d broken for Scipy 1.7.0 in windows")
         input = testing.shaped_random(self.input, xp, dtype)
         kernel_size = self.kernel_size
         return scp.signal.medfilt2d(input, kernel_size)
 
 
-@testing.with_requires('scipy')
+@testing.with_requires("scipy")
 class TestLFilter:
-    @pytest.mark.parametrize('size', [11, 20, 32, 51, 64, 120, 128, 250])
-    @pytest.mark.parametrize('fir_order', [1, 2, 3, 4, 5])
-    @pytest.mark.parametrize('iir_order', [0, 1, 2, 3, 4, 5])
+    @pytest.mark.parametrize("size", [11, 20, 32, 51, 64, 120, 128, 250])
+    @pytest.mark.parametrize("fir_order", [1, 2, 3, 4, 5])
+    @pytest.mark.parametrize("iir_order", [0, 1, 2, 3, 4, 5])
     @testing.for_all_dtypes_combination(
-        no_float16=True, no_bool=True, names=('in_dtype', 'const_dtype'))
-    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=5e-3, type_check=False)
+        no_float16=True, no_bool=True, names=("in_dtype", "const_dtype"))
+    @testing.numpy_cupy_allclose(scipy_name="scp", rtol=5e-3, type_check=False)
     def test_fir_iir_order(self, size, fir_order, iir_order,
                            in_dtype, const_dtype, xp, scp):
         out_dtype = xp.result_type(in_dtype, const_dtype)
-        if xp.dtype(out_dtype).kind in {'i', 'u'}:
+        if xp.dtype(out_dtype).kind in {"i", "u"}:
             pytest.skip()
         if (
             runtime.is_hip and driver.get_build_version() < 5_00_00000
@@ -431,7 +431,7 @@ class TestLFilter:
         ):
             # ROCm 4.3 raises in Module.get_function()
             pytest.skip()
-        x_scale = 0.5 if xp.dtype(in_dtype).kind not in {'i', 'u'} else 1
+        x_scale = 0.5 if xp.dtype(in_dtype).kind not in {"i", "u"} else 1
 
         x = testing.shaped_random((size,), xp, in_dtype, scale=x_scale)
         b = testing.shaped_random((fir_order,), xp, dtype=const_dtype, scale=1)
@@ -443,19 +443,19 @@ class TestLFilter:
         res = xp.nan_to_num(res, nan=xp.nan, posinf=xp.nan, neginf=xp.nan)
         return res
 
-    @pytest.mark.parametrize('size', [11, 20, 32, 51, 64, 120])
-    @pytest.mark.parametrize('fir_order', [1, 2, 3])
-    @pytest.mark.parametrize('iir_order', [0, 1, 2, 3])
-    @pytest.mark.parametrize('axis', [0, 1, 2, 3])
+    @pytest.mark.parametrize("size", [11, 20, 32, 51, 64, 120])
+    @pytest.mark.parametrize("fir_order", [1, 2, 3])
+    @pytest.mark.parametrize("iir_order", [0, 1, 2, 3])
+    @pytest.mark.parametrize("axis", [0, 1, 2, 3])
     @testing.for_all_dtypes_combination(
-        no_float16=True, no_bool=True, names=('in_dtype', 'const_dtype'))
+        no_float16=True, no_bool=True, names=("in_dtype", "const_dtype"))
     @testing.numpy_cupy_array_almost_equal(
-        scipy_name='scp', decimal=5, type_check=False)
+        scipy_name="scp", decimal=5, type_check=False)
     def test_fir_iir_order_ndim(
             self, size, fir_order, iir_order, axis, in_dtype,
             const_dtype, xp, scp):
         out_dtype = xp.result_type(in_dtype, const_dtype)
-        if xp.dtype(out_dtype).kind in {'i', 'u'}:
+        if xp.dtype(out_dtype).kind in {"i", "u"}:
             pytest.skip()
         if (
             runtime.is_hip and driver.get_build_version() < 5_00_00000
@@ -464,8 +464,8 @@ class TestLFilter:
             # ROCm 4.3 raises in Module.get_function()
             pytest.skip()
 
-        x_scale = 0.5 if xp.dtype(in_dtype).kind not in {'i', 'u'} else 1
-        c_scale = 0.2 if xp.dtype(const_dtype).kind not in {'i', 'u'} else 1
+        x_scale = 0.5 if xp.dtype(in_dtype).kind not in {"i", "u"} else 1
+        c_scale = 0.2 if xp.dtype(const_dtype).kind not in {"i", "u"} else 1
 
         x = testing.shaped_random((4, 5, 3, size), xp, in_dtype, scale=x_scale)
         b = testing.shaped_random(
@@ -479,17 +479,17 @@ class TestLFilter:
         res = xp.nan_to_num(res, nan=xp.nan, posinf=xp.nan, neginf=xp.nan)
         return res
 
-    @pytest.mark.parametrize('size', [11, 20, 32, 51, 64, 120, 128, 250])
-    @pytest.mark.parametrize('fir_order', [1, 2, 3, 4, 5])
-    @pytest.mark.parametrize('iir_order', [0, 1, 2, 3, 4, 5])
+    @pytest.mark.parametrize("size", [11, 20, 32, 51, 64, 120, 128, 250])
+    @pytest.mark.parametrize("fir_order", [1, 2, 3, 4, 5])
+    @pytest.mark.parametrize("iir_order", [0, 1, 2, 3, 4, 5])
     @testing.for_all_dtypes_combination(
-        no_float16=True, no_bool=True, names=('in_dtype', 'const_dtype'))
+        no_float16=True, no_bool=True, names=("in_dtype", "const_dtype"))
     @testing.numpy_cupy_array_almost_equal(
-        scipy_name='scp', decimal=5, type_check=False)
+        scipy_name="scp", decimal=5, type_check=False)
     def test_fir_iir_zi(self, size, fir_order, iir_order,
                         in_dtype, const_dtype, xp, scp):
         out_dtype = xp.result_type(in_dtype, const_dtype)
-        if xp.dtype(out_dtype).kind in {'i', 'u'}:
+        if xp.dtype(out_dtype).kind in {"i", "u"}:
             pytest.skip()
         if (
             runtime.is_hip and driver.get_build_version() < 5_00_00000
@@ -498,8 +498,8 @@ class TestLFilter:
             # ROCm 4.3 raises in Module.get_function()
             pytest.skip()
 
-        x_scale = 0.5 if xp.dtype(in_dtype).kind not in {'i', 'u'} else 1
-        c_scale = 0.2 if xp.dtype(const_dtype).kind not in {'i', 'u'} else 1
+        x_scale = 0.5 if xp.dtype(in_dtype).kind not in {"i", "u"} else 1
+        c_scale = 0.2 if xp.dtype(const_dtype).kind not in {"i", "u"} else 1
 
         x = testing.shaped_random((size,), xp, in_dtype, scale=x_scale)
         b = testing.shaped_random(
@@ -519,19 +519,19 @@ class TestLFilter:
         res = xp.nan_to_num(res, nan=xp.nan, posinf=xp.nan, neginf=xp.nan)
         return res
 
-    @pytest.mark.parametrize('size', [11, 20, 32, 51, 64, 120])
-    @pytest.mark.parametrize('fir_order', [1, 2, 3])
-    @pytest.mark.parametrize('iir_order', [0, 1, 2, 3])
-    @pytest.mark.parametrize('axis', [0, 1, 2, 3])
+    @pytest.mark.parametrize("size", [11, 20, 32, 51, 64, 120])
+    @pytest.mark.parametrize("fir_order", [1, 2, 3])
+    @pytest.mark.parametrize("iir_order", [0, 1, 2, 3])
+    @pytest.mark.parametrize("axis", [0, 1, 2, 3])
     @testing.for_all_dtypes_combination(
-        no_float16=True, no_bool=True, names=('in_dtype', 'const_dtype'))
+        no_float16=True, no_bool=True, names=("in_dtype", "const_dtype"))
     @testing.numpy_cupy_array_almost_equal(
-        scipy_name='scp', decimal=5, type_check=False)
+        scipy_name="scp", decimal=5, type_check=False)
     def test_fir_iir_zi_ndim(
             self, size, fir_order, iir_order, axis, in_dtype,
             const_dtype, xp, scp):
         out_dtype = xp.result_type(in_dtype, const_dtype)
-        if xp.dtype(out_dtype).kind in {'i', 'u'}:
+        if xp.dtype(out_dtype).kind in {"i", "u"}:
             pytest.skip()
         if (
             runtime.is_hip and driver.get_build_version() < 5_00_00000
@@ -540,8 +540,8 @@ class TestLFilter:
             # ROCm 4.3 raises in Module.get_function()
             pytest.skip()
 
-        x_scale = 0.5 if xp.dtype(in_dtype).kind not in {'i', 'u'} else 1
-        c_scale = 0.2 if xp.dtype(const_dtype).kind not in {'i', 'u'} else 1
+        x_scale = 0.5 if xp.dtype(in_dtype).kind not in {"i", "u"} else 1
+        c_scale = 0.2 if xp.dtype(const_dtype).kind not in {"i", "u"} else 1
 
         x = testing.shaped_random((4, 5, 3, size), xp, in_dtype, scale=x_scale)
         b = testing.shaped_random(
@@ -572,9 +572,9 @@ class TestLFilter:
         res = xp.nan_to_num(res, nan=xp.nan, posinf=xp.nan, neginf=xp.nan)
         return res
 
-    @pytest.mark.parametrize('fir_order', [1, 2, 3])
-    @pytest.mark.parametrize('iir_order', [0, 1, 2, 3])
-    @testing.numpy_cupy_array_almost_equal(scipy_name='scp', decimal=5)
+    @pytest.mark.parametrize("fir_order", [1, 2, 3])
+    @pytest.mark.parametrize("iir_order", [0, 1, 2, 3])
+    @testing.numpy_cupy_array_almost_equal(scipy_name="scp", decimal=5)
     def test_lfiltic(self, fir_order, iir_order, xp, scp):
         x = testing.shaped_random((20,), xp)
         b = testing.shaped_random((fir_order,), xp, scale=0.3)
@@ -588,9 +588,9 @@ class TestLFilter:
         out, _ = scp.signal.lfilter(b, a, x, zi=zi)
         return out
 
-    @pytest.mark.parametrize('fir_order', [1, 2, 3])
-    @pytest.mark.parametrize('iir_order', [1, 2, 3])
-    @testing.numpy_cupy_array_almost_equal(scipy_name='scp', decimal=5)
+    @pytest.mark.parametrize("fir_order", [1, 2, 3])
+    @pytest.mark.parametrize("iir_order", [1, 2, 3])
+    @testing.numpy_cupy_array_almost_equal(scipy_name="scp", decimal=5)
     def test_lfilter_zi(self, fir_order, iir_order, xp, scp):
         x = xp.ones(20)
         b = testing.shaped_random((fir_order,), xp, scale=0.3)
@@ -603,8 +603,8 @@ class TestLFilter:
         return out
 
     @pytest.mark.parametrize(
-        'zeros', [(2,), (1,), (0,), (1, 2), (0, 1), (0, 2), (0, 1, 2)])
-    @testing.numpy_cupy_array_almost_equal(scipy_name='scp', decimal=5)
+        "zeros", [(2,), (1,), (0,), (1, 2), (0, 1), (0, 2), (0, 1, 2)])
+    @testing.numpy_cupy_array_almost_equal(scipy_name="scp", decimal=5)
     def test_lfilter_zi_with_zeros(self, zeros, xp, scp):
         fir_order = 3
         iir_order = 3
@@ -621,10 +621,10 @@ class TestLFilter:
         return out
 
 
-@testing.with_requires('scipy')
+@testing.with_requires("scipy")
 class TestDeconvolve:
-    @pytest.mark.parametrize('order', [1, 2, 3])
-    @testing.numpy_cupy_array_almost_equal(scipy_name='scp', decimal=3)
+    @pytest.mark.parametrize("order", [1, 2, 3])
+    @testing.numpy_cupy_array_almost_equal(scipy_name="scp", decimal=3)
     def test_deconvolve(self, order, xp, scp):
         x = testing.shaped_random((20,), xp)
         b = testing.shaped_random((order,), xp, scale=0.3)
@@ -634,55 +634,55 @@ class TestDeconvolve:
 
 @pytest.mark.xfail(
     runtime.is_hip and driver.get_build_version() < 5_00_00000,
-    reason='name_expressions with ROCm 4.3 may not work')
-@testing.with_requires('scipy')
+    reason="name_expressions with ROCm 4.3 may not work")
+@testing.with_requires("scipy")
 class TestSosFilt:
-    @pytest.mark.parametrize('size', [11, 20, 32, 51, 64, 120, 128, 250])
-    @pytest.mark.parametrize('sections', [1, 2, 3, 4, 5])
+    @pytest.mark.parametrize("size", [11, 20, 32, 51, 64, 120, 128, 250])
+    @pytest.mark.parametrize("sections", [1, 2, 3, 4, 5])
     @testing.for_all_dtypes_combination(
-        no_float16=True, no_bool=True, names=('dtype',))
-    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=5e-5)
+        no_float16=True, no_bool=True, names=("dtype",))
+    @testing.numpy_cupy_allclose(scipy_name="scp", rtol=5e-5)
     def test_sections(self, size, sections, dtype, xp, scp):
-        if xp.dtype(dtype).kind in {'i', 'u'}:
+        if xp.dtype(dtype).kind in {"i", "u"}:
             pytest.skip()
 
-        x_scale = 0.5 if xp.dtype(dtype).kind not in {'i', 'u'} else 1
-        c_scale = 0.2 if xp.dtype(dtype).kind not in {'i', 'u'} else 1
+        x_scale = 0.5 if xp.dtype(dtype).kind not in {"i", "u"} else 1
+        c_scale = 0.2 if xp.dtype(dtype).kind not in {"i", "u"} else 1
 
         x = testing.shaped_random((size,), xp, dtype, scale=x_scale)
         sos = testing.shaped_random((sections, 6), xp, dtype, scale=c_scale)
         sos[:, 3] = 1
         return scp.signal.sosfilt(sos, x)
 
-    @pytest.mark.parametrize('size', [11, 20, 32, 51, 64, 120, 128, 250])
-    @pytest.mark.parametrize('sections', [1, 2, 3, 4, 5])
-    @pytest.mark.parametrize('axis', [0, 1, 2, 3])
+    @pytest.mark.parametrize("size", [11, 20, 32, 51, 64, 120, 128, 250])
+    @pytest.mark.parametrize("sections", [1, 2, 3, 4, 5])
+    @pytest.mark.parametrize("axis", [0, 1, 2, 3])
     @testing.for_all_dtypes_combination(
-        no_float16=True, no_bool=True, names=('dtype',))
-    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=5e-5)
+        no_float16=True, no_bool=True, names=("dtype",))
+    @testing.numpy_cupy_allclose(scipy_name="scp", rtol=5e-5)
     def test_sections_nd(self, size, sections, axis, dtype, xp, scp):
-        if xp.dtype(dtype).kind in {'i', 'u'}:
+        if xp.dtype(dtype).kind in {"i", "u"}:
             pytest.skip()
 
-        x_scale = 0.5 if xp.dtype(dtype).kind not in {'i', 'u'} else 1
-        c_scale = 0.2 if xp.dtype(dtype).kind not in {'i', 'u'} else 1
+        x_scale = 0.5 if xp.dtype(dtype).kind not in {"i", "u"} else 1
+        c_scale = 0.2 if xp.dtype(dtype).kind not in {"i", "u"} else 1
 
         x = testing.shaped_random((4, 5, 3, size,), xp, dtype, scale=x_scale)
         sos = testing.shaped_random((sections, 6), xp, dtype, scale=c_scale)
         sos[:, 3] = 1
         return scp.signal.sosfilt(sos, x, axis=axis)
 
-    @pytest.mark.parametrize('size', [11, 20, 32, 51, 64, 120, 128, 250])
-    @pytest.mark.parametrize('sections', [1, 2, 3, 4, 5])
+    @pytest.mark.parametrize("size", [11, 20, 32, 51, 64, 120, 128, 250])
+    @pytest.mark.parametrize("sections", [1, 2, 3, 4, 5])
     @testing.for_all_dtypes_combination(
-        no_float16=True, no_bool=True, names=('dtype',))
-    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=5e-5)
+        no_float16=True, no_bool=True, names=("dtype",))
+    @testing.numpy_cupy_allclose(scipy_name="scp", rtol=5e-5)
     def test_zi_zeros(self, size, sections, dtype, xp, scp):
-        if xp.dtype(dtype).kind in {'i', 'u'}:
+        if xp.dtype(dtype).kind in {"i", "u"}:
             pytest.skip()
 
-        x_scale = 0.5 if xp.dtype(dtype).kind not in {'i', 'u'} else 1
-        c_scale = 0.2 if xp.dtype(dtype).kind not in {'i', 'u'} else 1
+        x_scale = 0.5 if xp.dtype(dtype).kind not in {"i", "u"} else 1
+        c_scale = 0.2 if xp.dtype(dtype).kind not in {"i", "u"} else 1
 
         x = testing.shaped_random((size,), xp, dtype, scale=x_scale)
         sos = testing.shaped_random((sections, 6), xp, dtype, scale=c_scale)
@@ -694,18 +694,18 @@ class TestSosFilt:
         out, _ = scp.signal.sosfilt(sos, x, zi=zi)
         return out
 
-    @pytest.mark.parametrize('size', [11, 20, 32, 51, 64, 120, 128, 250])
-    @pytest.mark.parametrize('sections', [1, 2, 3, 4, 5])
-    @pytest.mark.parametrize('axis', [0, 1, 2, 3])
+    @pytest.mark.parametrize("size", [11, 20, 32, 51, 64, 120, 128, 250])
+    @pytest.mark.parametrize("sections", [1, 2, 3, 4, 5])
+    @pytest.mark.parametrize("axis", [0, 1, 2, 3])
     @testing.for_all_dtypes_combination(
-        no_float16=True, no_bool=True, names=('dtype',))
-    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=5e-5)
+        no_float16=True, no_bool=True, names=("dtype",))
+    @testing.numpy_cupy_allclose(scipy_name="scp", rtol=5e-5)
     def test_zi_zeros_nd(self, size, sections, axis, dtype, xp, scp):
-        if xp.dtype(dtype).kind in {'i', 'u'}:
+        if xp.dtype(dtype).kind in {"i", "u"}:
             pytest.skip()
 
-        x_scale = 0.5 if xp.dtype(dtype).kind not in {'i', 'u'} else 1
-        c_scale = 0.2 if xp.dtype(dtype).kind not in {'i', 'u'} else 1
+        x_scale = 0.5 if xp.dtype(dtype).kind not in {"i", "u"} else 1
+        c_scale = 0.2 if xp.dtype(dtype).kind not in {"i", "u"} else 1
 
         x = testing.shaped_random((4, 5, 3, size,), xp, dtype, scale=x_scale)
         sos = testing.shaped_random((sections, 6), xp, dtype, scale=c_scale)
@@ -719,17 +719,17 @@ class TestSosFilt:
         out, _ = scp.signal.sosfilt(sos, x, zi=zi, axis=axis)
         return out
 
-    @pytest.mark.parametrize('size', [11, 20, 32, 51, 64, 120, 128, 250])
-    @pytest.mark.parametrize('sections', [1, 2, 3, 4, 5])
+    @pytest.mark.parametrize("size", [11, 20, 32, 51, 64, 120, 128, 250])
+    @pytest.mark.parametrize("sections", [1, 2, 3, 4, 5])
     @testing.for_all_dtypes_combination(
-        no_float16=True, no_bool=True, no_complex=True, names=('dtype',))
-    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=5e-5)
+        no_float16=True, no_bool=True, no_complex=True, names=("dtype",))
+    @testing.numpy_cupy_allclose(scipy_name="scp", rtol=5e-5)
     def test_zi(self, size, sections, dtype, xp, scp):
-        if xp.dtype(dtype).kind in {'i', 'u'}:
+        if xp.dtype(dtype).kind in {"i", "u"}:
             pytest.skip()
 
-        x_scale = 0.5 if xp.dtype(dtype).kind not in {'i', 'u'} else 1
-        c_scale = 0.2 if xp.dtype(dtype).kind not in {'i', 'u'} else 1
+        x_scale = 0.5 if xp.dtype(dtype).kind not in {"i", "u"} else 1
+        c_scale = 0.2 if xp.dtype(dtype).kind not in {"i", "u"} else 1
 
         x = testing.shaped_random((size,), xp, dtype, scale=x_scale)
         sos = testing.shaped_random((sections, 6), xp, dtype, scale=c_scale)
@@ -748,18 +748,18 @@ class TestSosFilt:
         out, _ = scp.signal.sosfilt(sos, x, zi=zi)
         return out
 
-    @pytest.mark.parametrize('size', [11, 20, 32, 51, 64, 120, 128, 250])
-    @pytest.mark.parametrize('sections', [1, 2, 3, 4, 5])
-    @pytest.mark.parametrize('axis', [0, 1, 2, 3])
+    @pytest.mark.parametrize("size", [11, 20, 32, 51, 64, 120, 128, 250])
+    @pytest.mark.parametrize("sections", [1, 2, 3, 4, 5])
+    @pytest.mark.parametrize("axis", [0, 1, 2, 3])
     @testing.for_all_dtypes_combination(
-        no_float16=True, no_bool=True, names=('dtype',))
-    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=5e-5, atol=5e-5)
+        no_float16=True, no_bool=True, names=("dtype",))
+    @testing.numpy_cupy_allclose(scipy_name="scp", rtol=5e-5, atol=5e-5)
     def test_zi_nd(self, size, sections, axis, dtype, xp, scp):
-        if xp.dtype(dtype).kind in {'i', 'u'}:
+        if xp.dtype(dtype).kind in {"i", "u"}:
             pytest.skip()
 
-        x_scale = 0.5 if xp.dtype(dtype).kind not in {'i', 'u'} else 1
-        c_scale = 0.2 if xp.dtype(dtype).kind not in {'i', 'u'} else 1
+        x_scale = 0.5 if xp.dtype(dtype).kind not in {"i", "u"} else 1
+        c_scale = 0.2 if xp.dtype(dtype).kind not in {"i", "u"} else 1
 
         x = testing.shaped_random((4, 5, 3, size,), xp, dtype, scale=x_scale)
         sos = testing.shaped_random((sections, 6), xp, dtype, scale=c_scale)
@@ -789,8 +789,8 @@ class TestSosFilt:
         out, _ = scp.signal.sosfilt(sos, x, zi=zi, axis=axis)
         return out
 
-    @pytest.mark.parametrize('sections', [1, 2, 3, 4, 5])
-    @testing.numpy_cupy_array_almost_equal(scipy_name='scp', decimal=5)
+    @pytest.mark.parametrize("sections", [1, 2, 3, 4, 5])
+    @testing.numpy_cupy_array_almost_equal(scipy_name="scp", decimal=5)
     def test_sosfilt_zi(self, sections, xp, scp):
         x = xp.ones(20)
         sos = testing.shaped_random((sections, 6), xp, xp.float64, scale=0.2)
@@ -801,8 +801,8 @@ class TestSosFilt:
         return out
 
     @pytest.mark.parametrize(
-        'zeros', [(4,), (5,), (4, 5)])
-    @testing.numpy_cupy_array_almost_equal(scipy_name='scp', decimal=5)
+        "zeros", [(4,), (5,), (4, 5)])
+    @testing.numpy_cupy_array_almost_equal(scipy_name="scp", decimal=5)
     def test_sosfilt_zi_with_zeros(self, zeros, xp, scp):
         x = xp.ones(20)
         sos = testing.shaped_random((1, 6), xp, xp.float64, scale=0.2)
@@ -814,7 +814,7 @@ class TestSosFilt:
         return out
 
 
-@testing.with_requires('scipy')
+@testing.with_requires("scipy")
 class TestDetrend:
 
     def test_basic(self):
@@ -831,9 +831,9 @@ class TestDetrend:
         inplace = detrend(x, overwrite_data=True)
         testing.assert_array_almost_equal(copy_array, inplace)
 
-    @pytest.mark.parametrize('kind', ['linear', 'constant'])
-    @pytest.mark.parametrize('axis', [0, 1, 2])
-    @testing.numpy_cupy_allclose(scipy_name='scp', atol=4e-13)
+    @pytest.mark.parametrize("kind", ["linear", "constant"])
+    @pytest.mark.parametrize("axis", [0, 1, 2])
+    @testing.numpy_cupy_allclose(scipy_name="scp", atol=4e-13)
     def test_axis(self, axis, kind, xp, scp):
         detrend = scp.signal.detrend
         data = xp.arange(5*6*7).reshape(5, 6, 7)
@@ -845,7 +845,7 @@ class TestDetrend:
         data = [0, 1, 2] + [5, 0, -5, -10]
         detrend = cupyx.scipy.signal.detrend
 
-        detrended = detrend(data, type='linear', bp=3)
+        detrended = detrend(data, type="linear", bp=3)
         testing.assert_allclose(detrended, 0, atol=1e-14)
 
         # repeat with ndim > 1 and axis
@@ -859,21 +859,21 @@ class TestDetrend:
             detrend(data, type="linear", bp=3)
 
 
-@testing.with_requires('scipy')
+@testing.with_requires("scipy")
 class TestFiltFilt:
-    @pytest.mark.parametrize('size', [11, 20, 32, 51, 64, 120, 128, 250])
-    @pytest.mark.parametrize('fir_order', [1, 2, 3])
-    @pytest.mark.parametrize('iir_order', [1, 2, 3])
-    @pytest.mark.parametrize('method', ['pad', 'gust'])
-    @pytest.mark.parametrize('padtype', ['odd', 'even', 'constant', None])
+    @pytest.mark.parametrize("size", [11, 20, 32, 51, 64, 120, 128, 250])
+    @pytest.mark.parametrize("fir_order", [1, 2, 3])
+    @pytest.mark.parametrize("iir_order", [1, 2, 3])
+    @pytest.mark.parametrize("method", ["pad", "gust"])
+    @pytest.mark.parametrize("padtype", ["odd", "even", "constant", None])
     @testing.for_all_dtypes_combination(
-        no_float16=True, no_bool=True, names=('in_dtype', 'const_dtype'))
-    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-3, atol=1e-2,
+        no_float16=True, no_bool=True, names=("in_dtype", "const_dtype"))
+    @testing.numpy_cupy_allclose(scipy_name="scp", rtol=1e-3, atol=1e-2,
                                  type_check=False, accept_error=True)
     def test_filtfilt_1d(self, size, fir_order, iir_order, method, padtype,
                          in_dtype, const_dtype, xp, scp):
         out_dtype = xp.result_type(in_dtype, const_dtype)
-        if xp.dtype(out_dtype).kind in {'i', 'u'}:
+        if xp.dtype(out_dtype).kind in {"i", "u"}:
             pytest.skip()
         if (
             runtime.is_hip and driver.get_build_version() < 5_00_00000
@@ -888,8 +888,8 @@ class TestFiltFilt:
             # The tests fail on CUDA 10.2
             pytest.skip()
 
-        x_scale = 0.1 if xp.dtype(in_dtype).kind not in {'i', 'u'} else 1
-        c_scale = 0.1 if xp.dtype(const_dtype).kind not in {'i', 'u'} else 1
+        x_scale = 0.1 if xp.dtype(in_dtype).kind not in {"i", "u"} else 1
+        c_scale = 0.1 if xp.dtype(const_dtype).kind not in {"i", "u"} else 1
 
         x = testing.shaped_random((size,), xp, in_dtype, scale=x_scale)
         b = testing.shaped_random(
@@ -903,21 +903,21 @@ class TestFiltFilt:
         res = xp.nan_to_num(res, nan=xp.nan, posinf=xp.nan, neginf=xp.nan)
         return res
 
-    @pytest.mark.parametrize('size', [11, 20, 32, 51, 64, 120])
-    @pytest.mark.parametrize('fir_order', [1, 2, 3])
-    @pytest.mark.parametrize('iir_order', [1, 2, 3])
-    @pytest.mark.parametrize('axis', [0, 1, 2, 3])
-    @pytest.mark.parametrize('method', ['pad', 'gust'])
-    @pytest.mark.parametrize('padtype', ['odd', 'even', 'constant', None])
+    @pytest.mark.parametrize("size", [11, 20, 32, 51, 64, 120])
+    @pytest.mark.parametrize("fir_order", [1, 2, 3])
+    @pytest.mark.parametrize("iir_order", [1, 2, 3])
+    @pytest.mark.parametrize("axis", [0, 1, 2, 3])
+    @pytest.mark.parametrize("method", ["pad", "gust"])
+    @pytest.mark.parametrize("padtype", ["odd", "even", "constant", None])
     @testing.for_all_dtypes_combination(
-        no_float16=True, no_bool=True, names=('in_dtype', 'const_dtype'))
+        no_float16=True, no_bool=True, names=("in_dtype", "const_dtype"))
     @testing.numpy_cupy_array_almost_equal(
-        scipy_name='scp', decimal=5, type_check=False, accept_error=True)
+        scipy_name="scp", decimal=5, type_check=False, accept_error=True)
     def test_filtfilt_ndim(
             self, size, fir_order, iir_order, axis, method, padtype, in_dtype,
             const_dtype, xp, scp):
         out_dtype = xp.result_type(in_dtype, const_dtype)
-        if xp.dtype(out_dtype).kind in {'i', 'u'}:
+        if xp.dtype(out_dtype).kind in {"i", "u"}:
             pytest.skip()
         if (
             runtime.is_hip and driver.get_build_version() < 5_00_00000
@@ -932,8 +932,8 @@ class TestFiltFilt:
             # The tests fail on CUDA 10.2
             pytest.skip()
 
-        x_scale = 0.1 if xp.dtype(in_dtype).kind not in {'i', 'u'} else 1
-        c_scale = 0.1 if xp.dtype(const_dtype).kind not in {'i', 'u'} else 1
+        x_scale = 0.1 if xp.dtype(in_dtype).kind not in {"i", "u"} else 1
+        c_scale = 0.1 if xp.dtype(const_dtype).kind not in {"i", "u"} else 1
 
         x = testing.shaped_random((4, 5, 3, size), xp, in_dtype, scale=x_scale)
         b = testing.shaped_random(
@@ -950,18 +950,18 @@ class TestFiltFilt:
 
 @pytest.mark.xfail(
     runtime.is_hip and driver.get_build_version() < 5_00_00000,
-    reason='name_expressions with ROCm 4.3 may not work')
-@testing.with_requires('scipy')
+    reason="name_expressions with ROCm 4.3 may not work")
+@testing.with_requires("scipy")
 class TestSosFiltFilt:
-    @pytest.mark.parametrize('size', [11, 20, 32, 51, 64, 120, 128, 250])
-    @pytest.mark.parametrize('sections', [1, 2, 3])
-    @pytest.mark.parametrize('padtype', ['odd', 'even', 'constant', None])
+    @pytest.mark.parametrize("size", [11, 20, 32, 51, 64, 120, 128, 250])
+    @pytest.mark.parametrize("sections", [1, 2, 3])
+    @pytest.mark.parametrize("padtype", ["odd", "even", "constant", None])
     @testing.for_all_dtypes_combination(
-        no_float16=True, no_bool=True, names=('dtype',))
-    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=5e-3,
+        no_float16=True, no_bool=True, names=("dtype",))
+    @testing.numpy_cupy_allclose(scipy_name="scp", rtol=5e-3,
                                  type_check=False, accept_error=True)
     def test_sosfiltfilt_1d(self, size, sections, padtype, dtype, xp, scp):
-        if xp.dtype(dtype).kind in {'i', 'u'}:
+        if xp.dtype(dtype).kind in {"i", "u"}:
             pytest.skip()
         x_scale = 0.1
         c_scale = 0.1
@@ -975,17 +975,17 @@ class TestSosFiltFilt:
         res = xp.nan_to_num(res, nan=xp.nan, posinf=xp.nan, neginf=xp.nan)
         return res
 
-    @pytest.mark.parametrize('size', [11, 20, 32, 51, 64, 120, 128, 250])
-    @pytest.mark.parametrize('sections', [1, 2, 3])
-    @pytest.mark.parametrize('axis', [0, 1, 2, 3])
-    @pytest.mark.parametrize('padtype', ['odd', 'even', 'constant', None])
+    @pytest.mark.parametrize("size", [11, 20, 32, 51, 64, 120, 128, 250])
+    @pytest.mark.parametrize("sections", [1, 2, 3])
+    @pytest.mark.parametrize("axis", [0, 1, 2, 3])
+    @pytest.mark.parametrize("padtype", ["odd", "even", "constant", None])
     @testing.for_all_dtypes_combination(
-        no_float16=True, no_bool=True, names=('dtype',))
+        no_float16=True, no_bool=True, names=("dtype",))
     @testing.numpy_cupy_array_almost_equal(
-        scipy_name='scp', decimal=5, type_check=False, accept_error=True)
+        scipy_name="scp", decimal=5, type_check=False, accept_error=True)
     def test_filtfilt_ndim(
             self, size, sections, axis, padtype, dtype, xp, scp):
-        if xp.dtype(dtype).kind in {'i', 'u'}:
+        if xp.dtype(dtype).kind in {"i", "u"}:
             pytest.skip()
 
         x_scale = 0.1
@@ -1012,7 +1012,7 @@ class TestHilbert:
         with pytest.raises(ValueError):
             cupyx.scipy.signal.hilbert(x, N=0)
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_hilbert_theoretical(self, xp, scp):
         # test cases by Ariel Rokem
         pi = xp.pi
@@ -1026,7 +1026,7 @@ class TestHilbert:
         h = scp.signal.hilbert(a)
         return h
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_hilbert_axisN(self, xp, scp):
         # tests for axis and N arguments
         a = xp.arange(18).reshape(3, 6)
@@ -1035,8 +1035,8 @@ class TestHilbert:
         aan = scp.signal.hilbert(a, N=20, axis=-1)
         return aa, aan
 
-    @pytest.mark.parametrize('dtype', [np.float32, np.float64])
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @pytest.mark.parametrize("dtype", [np.float32, np.float64])
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     @testing.with_requires("scipy>=1.9")
     def test_hilbert_types(self, dtype, xp, scp):
         in_typed = xp.zeros(8, dtype=dtype)
@@ -1068,8 +1068,8 @@ class TestHilbert2:
         with pytest.raises(ValueError):
             cupyx.scipy.signal.hilbert2(x, N=(2,))
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
-    @pytest.mark.parametrize('dtype', [np.float32, np.float64])
+    @testing.numpy_cupy_allclose(scipy_name="scp")
+    @pytest.mark.parametrize("dtype", [np.float32, np.float64])
     @testing.with_requires("scipy>=1.9")
     def test_hilbert2_types(self, dtype, xp, scp):
         in_typed = xp.zeros((2, 32), dtype=dtype)

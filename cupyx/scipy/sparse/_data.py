@@ -6,9 +6,9 @@ from cupy._core import internal
 from cupyx.scipy.sparse import _base, _coo, _sputils
 
 _ufuncs = [
-    'arcsin', 'arcsinh', 'arctan', 'arctanh', 'ceil', 'deg2rad', 'expm1',
-    'floor', 'log1p', 'rad2deg', 'rint', 'sign', 'sin', 'sinh', 'sqrt', 'tan',
-    'tanh', 'trunc',
+    "arcsin", "arcsinh", "arctan", "arctanh", "ceil", "deg2rad", "expm1",
+    "floor", "log1p", "rad2deg", "rint", "sign", "sin", "sinh", "sqrt", "tan",
+    "tanh", "trunc",
 ]
 
 
@@ -284,7 +284,7 @@ class _minmax_mixin(object):
 
         """
         if explicit:
-            api_name = 'explicit of cupyx.scipy.sparse.{}.max'.format(
+            api_name = "explicit of cupyx.scipy.sparse.{}.max".format(
                 self.__class__.__name__)
             _util.experimental(api_name)
         return self._min_or_max(axis, out, cupy.max, explicit)
@@ -320,7 +320,7 @@ class _minmax_mixin(object):
 
         """
         if explicit:
-            api_name = 'explicit of cupyx.scipy.sparse.{}.min'.format(
+            api_name = "explicit of cupyx.scipy.sparse.{}.min".format(
                 self.__class__.__name__)
             _util.experimental(api_name)
         return self._min_or_max(axis, out, cupy.min, explicit)
@@ -382,7 +382,7 @@ def _install_ufunc(func_name):
         result = ufunc(self.data)
         return self._with_data(result)
 
-    f.__doc__ = 'Elementwise %s.' % func_name
+    f.__doc__ = "Elementwise %s." % func_name
     f.__name__ = func_name
 
     setattr(_data_matrix, func_name, f)

@@ -85,7 +85,7 @@ def pulse_compression(x, template, normalize=False, window=None, nfft=None):
     fft_x = cupy.fft.fft(x, nfft)
     fft_t = cupy.fft.fft(t, nfft)
     out = cupy.fft.ifft(fft_x * fft_t.conj(), nfft)
-    if dtype.kind != 'c':
+    if dtype.kind != "c":
         out = out.real
     return out
 
@@ -171,12 +171,12 @@ def ca_cfar(array, guard_cells, reference_cells, pfa=1e-3):
     """
     shape = array.shape
     if len(shape) > 2:
-        raise TypeError('Only 1D and 2D arrays are currently supported.')
+        raise TypeError("Only 1D and 2D arrays are currently supported.")
     mask = cupy.zeros(shape, dtype=cupy.float32)
 
     if len(shape) == 1:
         if len(array) <= 2 * guard_cells + 2 * reference_cells:
-            raise ValueError('Array too small for given parameters')
+            raise ValueError("Array too small for given parameters")
         intermediate = cupy.cumsum(array, axis=0, dtype=cupy.float32)
         N = 2 * reference_cells
         alpha = cfar_alpha(pfa, N)
@@ -188,16 +188,16 @@ def ca_cfar(array, guard_cells, reference_cells, pfa=1e-3):
                                       guard_cells, reference_cells))
     elif len(shape) == 2:
         if len(guard_cells) != 2 or len(reference_cells) != 2:
-            raise TypeError('Guard and reference cells must be two '
-                            'dimensional.')
+            raise TypeError("Guard and reference cells must be two "
+                            "dimensional.")
         guard_cells_x, guard_cells_y = guard_cells
         reference_cells_x, reference_cells_y = reference_cells
         if shape[0] - 2 * guard_cells_x - 2 * reference_cells_x <= 0:
-            raise ValueError('Array first dimension too small for given '
-                             'parameters.')
+            raise ValueError("Array first dimension too small for given "
+                             "parameters.")
         if shape[1] - 2 * guard_cells_y - 2 * reference_cells_y <= 0:
-            raise ValueError('Array second dimension too small for given '
-                             'parameters.')
+            raise ValueError("Array second dimension too small for given "
+                             "parameters.")
         intermediate = cupy.cumsum(array, axis=0, dtype=cupy.float32)
         intermediate = cupy.cumsum(intermediate, axis=1, dtype=cupy.float32)
         N = 2 * reference_cells_x * (2 * reference_cells_y +
@@ -217,7 +217,7 @@ def ca_cfar(array, guard_cells, reference_cells, pfa=1e-3):
     return (mask, array - mask > 0)
 
 
-_ca_cfar_2d_kernel = cupy.RawKernel(r'''
+_ca_cfar_2d_kernel = cupy.RawKernel(r"""
 extern "C" __global__ void
 _ca_cfar_2d_kernel(float * array, float * intermediate, float * mask,
                    int width, int height, int N, float alpha,
@@ -275,10 +275,10 @@ _ca_cfar_2d_kernel(float * array, float * intermediate, float * mask,
         }
     }
 }
-''', '_ca_cfar_2d_kernel')
+""", "_ca_cfar_2d_kernel")
 
 
-_ca_cfar_1d_kernel = cupy.RawKernel(r'''
+_ca_cfar_1d_kernel = cupy.RawKernel(r"""
 extern "C" __global__ void
 _ca_cfar_1d_kernel(float * array, float * intermediate, float * mask,
                    int width, int N, float alpha,
@@ -306,4 +306,4 @@ _ca_cfar_1d_kernel(float * array, float * intermediate, float * mask,
         mask[x] = T;
     }
 }
-''', '_ca_cfar_1d_kernel')
+""", "_ca_cfar_1d_kernel")

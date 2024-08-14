@@ -4,7 +4,7 @@ import numpy
 
 import cupy
 
-code = '''
+code = """
 __device__ double3 operator+(const double3& lhs, const double3& rhs) {
     return make_double3(lhs.x + rhs.x,
                         lhs.y + rhs.y,
@@ -17,12 +17,12 @@ extern "C" __global__ void sum_kernel(const double3* lhs,
   int i = threadIdx.x;
   out[i] = lhs[i] + rhs;
 }
-'''
+"""
 
 double3 = numpy.dtype(
     {
-        'names': ['x', 'y', 'z'],
-        'formats': [numpy.float64]*3
+        "names": ["x", "y", "z"],
+        "formats": [numpy.float64]*3
     }
 )
 
@@ -37,7 +37,7 @@ def main():
     rhs = numpy.random.rand(3).astype(numpy.float64)
     out = cupy.empty_like(lhs)
 
-    kernel = cupy.RawKernel(code, 'sum_kernel')
+    kernel = cupy.RawKernel(code, "sum_kernel")
     args = (lhs, rhs.view(double3), out)
     kernel((1,), (N,), args)
 
@@ -46,5 +46,5 @@ def main():
     print("Kernel output matches expected value.")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     sys.exit(main())

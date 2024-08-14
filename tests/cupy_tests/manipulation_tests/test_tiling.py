@@ -8,13 +8,13 @@ from cupy import testing
 
 
 @testing.parameterize(
-    {'repeats': 0, 'axis': None},
-    {'repeats': 2, 'axis': None},
-    {'repeats': 2, 'axis': 1},
-    {'repeats': 2, 'axis': -1},
-    {'repeats': [0, 0, 0], 'axis': 1},
-    {'repeats': [1, 2, 3], 'axis': 1},
-    {'repeats': [1, 2, 3], 'axis': -2},
+    {"repeats": 0, "axis": None},
+    {"repeats": 2, "axis": None},
+    {"repeats": 2, "axis": 1},
+    {"repeats": 2, "axis": -1},
+    {"repeats": [0, 0, 0], "axis": 1},
+    {"repeats": [1, 2, 3], "axis": 1},
+    {"repeats": [1, 2, 3], "axis": -2},
 )
 class TestRepeat(unittest.TestCase):
 
@@ -29,19 +29,19 @@ class TestRepeatRepeatsNdarray(unittest.TestCase):
     def test_func(self):
         a = testing.shaped_arange((2, 3, 4), cupy)
         repeats = cupy.array([2, 3], dtype=cupy.int32)
-        with pytest.raises(ValueError, match=r'repeats'):
+        with pytest.raises(ValueError, match=r"repeats"):
             cupy.repeat(a, repeats)
 
     def test_method(self):
         a = testing.shaped_arange((2, 3, 4), cupy)
         repeats = cupy.array([2, 3], dtype=cupy.int32)
-        with pytest.raises(ValueError, match=r'repeats'):
+        with pytest.raises(ValueError, match=r"repeats"):
             a.repeat(repeats)
 
 
 @testing.parameterize(
-    {'repeats': [2], 'axis': None},
-    {'repeats': [2], 'axis': 1},
+    {"repeats": [2], "axis": None},
+    {"repeats": [2], "axis": 1},
 )
 class TestRepeatListBroadcast(unittest.TestCase):
 
@@ -57,11 +57,11 @@ class TestRepeatListBroadcast(unittest.TestCase):
 
 
 @testing.parameterize(
-    {'repeats': 0, 'axis': None},
-    {'repeats': 2, 'axis': None},
-    {'repeats': 2, 'axis': 0},
-    {'repeats': [1, 2, 3, 4], 'axis': None},
-    {'repeats': [1, 2, 3, 4], 'axis': 0},
+    {"repeats": 0, "axis": None},
+    {"repeats": 2, "axis": None},
+    {"repeats": 2, "axis": 0},
+    {"repeats": [1, 2, 3, 4], "axis": None},
+    {"repeats": [1, 2, 3, 4], "axis": 0},
 )
 class TestRepeat1D(unittest.TestCase):
 
@@ -72,8 +72,8 @@ class TestRepeat1D(unittest.TestCase):
 
 
 @testing.parameterize(
-    {'repeats': [2], 'axis': None},
-    {'repeats': [2], 'axis': 0},
+    {"repeats": [2], "axis": None},
+    {"repeats": [2], "axis": 0},
 )
 class TestRepeat1DListBroadcast(unittest.TestCase):
 
@@ -86,12 +86,12 @@ class TestRepeat1DListBroadcast(unittest.TestCase):
 
 
 @testing.parameterize(
-    {'repeats': -3, 'axis': None},
-    {'repeats': [-3, -3], 'axis': 0},
-    {'repeats': [1, 2, 3], 'axis': None},
-    {'repeats': [1, 2], 'axis': 1},
-    {'repeats': 2, 'axis': -4},
-    {'repeats': 2, 'axis': 3},
+    {"repeats": -3, "axis": None},
+    {"repeats": [-3, -3], "axis": 0},
+    {"repeats": [1, 2, 3], "axis": None},
+    {"repeats": [1, 2], "axis": 1},
+    {"repeats": 2, "axis": -4},
+    {"repeats": 2, "axis": 3},
 )
 class TestRepeatFailure(unittest.TestCase):
 
@@ -103,12 +103,12 @@ class TestRepeatFailure(unittest.TestCase):
 
 
 @testing.parameterize(
-    {'reps': 0},
-    {'reps': 1},
-    {'reps': 2},
-    {'reps': (0, 1)},
-    {'reps': (2, 3)},
-    {'reps': (2, 3, 4, 5)},
+    {"reps": 0},
+    {"reps": 1},
+    {"reps": 2},
+    {"reps": (0, 1)},
+    {"reps": (2, 3)},
+    {"reps": (2, 3, 4, 5)},
 )
 class TestTile(unittest.TestCase):
 
@@ -119,8 +119,8 @@ class TestTile(unittest.TestCase):
 
 
 @testing.parameterize(
-    {'reps': -1},
-    {'reps': (-1, -2)},
+    {"reps": -1},
+    {"reps": (-1, -2)},
 )
 class TestTileFailure(unittest.TestCase):
 

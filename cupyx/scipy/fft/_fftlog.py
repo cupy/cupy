@@ -1,6 +1,6 @@
-'''Fast Hankel transforms using the FFTLog algorithm.
+"""Fast Hankel transforms using the FFTLog algorithm.
 The implementation closely follows the Fortran code of Hamilton (2000).
-'''
+"""
 
 import math
 from warnings import warn
@@ -22,7 +22,7 @@ except ImportError:
     _scipy_fft = _DummyModule()
 
 # Note scipy also defines fhtoffset but this only operates on scalars
-__all__ = ['fht', 'ifht']
+__all__ = ["fht", "ifht"]
 
 
 # constants
@@ -151,8 +151,8 @@ def ifht(A, dln, mu, offset=0.0, bias=0.0):
 
 
 def fhtcoeff(n, dln, mu, offset=0.0, bias=0.0):
-    '''Compute the coefficient array for a fast Hankel transform.
-    '''
+    """Compute the coefficient array for a fast Hankel transform.
+    """
 
     lnkr, q = offset, bias
 
@@ -191,22 +191,22 @@ def fhtcoeff(n, dln, mu, offset=0.0, bias=0.0):
 
 
 def _fhtq(a, u, inverse=False):
-    '''Compute the biased fast Hankel transform.
+    """Compute the biased fast Hankel transform.
 
     This is the basic FFTLog routine.
-    '''
+    """
 
     # size of transform
     n = a.shape[-1]
 
     # check for singular transform or singular inverse transform
     if cupy.isinf(u[0]) and not inverse:
-        warn('singular transform; consider changing the bias')
+        warn("singular transform; consider changing the bias")
         # fix coefficient to obtain (potentially correct) transform anyway
         u = u.copy()
         u[0] = 0
     elif u[0] == 0 and inverse:
-        warn('singular inverse transform; consider changing the bias')
+        warn("singular inverse transform; consider changing the bias")
         # fix coefficient to obtain (potentially correct) inverse anyway
         u = u.copy()
         u[0] = cupy.inf

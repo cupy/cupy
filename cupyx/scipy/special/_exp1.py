@@ -38,9 +38,9 @@ static __device__ T exp1(T x) {
 
 
 exp1 = _core.create_ufunc(
-    'cupyx_scipy_special_exp1',
-    ('f->f', 'd->d'),
-    'out0 = exp1(in0)',
+    "cupyx_scipy_special_exp1",
+    ("f->f", "d->d"),
+    "out0 = exp1(in0)",
     preamble=math_constants_and_eul + exp1_definition,
     doc="""Exponential integral E1.
 

@@ -106,17 +106,17 @@ __global__ void compute_symiirorder2_bwd_sc(
 """
 
 SYMIIR2_MODULE = cupy.RawModule(
-    code=SYMIIR2_KERNEL, options=('-std=c++11',),
-    name_expressions=[f'compute_symiirorder2_bwd_sc<{t}>'
-                      for t in ['float', 'double']] +
-    [f'compute_symiirorder2_fwd_sc<{t}>'
-     for t in ['float', 'double']])
+    code=SYMIIR2_KERNEL, options=("-std=c++11",),
+    name_expressions=[f"compute_symiirorder2_bwd_sc<{t}>"
+                      for t in ["float", "double"]] +
+    [f"compute_symiirorder2_fwd_sc<{t}>"
+     for t in ["float", "double"]])
 
 
 def _get_module_func(module, func_name, *template_args):
     args_dtypes = [get_typename(arg.dtype) for arg in template_args]
-    template = ', '.join(args_dtypes)
-    kernel_name = f'{func_name}<{template}>' if template_args else func_name
+    template = ", ".join(args_dtypes)
+    kernel_name = f"{func_name}<{template}>" if template_args else func_name
     kernel = module.get_function(kernel_name)
     return kernel
 
@@ -140,7 +140,7 @@ def _symiirorder1_nd(input, c0, z1, precision=-1.0, axis=-1):
         input, input_shape = collapse_2d(input, axis)
 
     if cupy.abs(z1) >= 1:
-        raise ValueError('|z1| must be less than 1.0')
+        raise ValueError("|z1| must be less than 1.0")
 
     if precision <= 0.0 or precision > 1.0:
         if input.dtype is cupy.dtype(cupy.float64):
@@ -165,7 +165,7 @@ def _symiirorder1_nd(input, c0, z1, precision=-1.0, axis=-1):
 
     if cupy.any(cupy.isnan(zi)):
         raise ValueError(
-            'Sum to find symmetric boundary conditions did not converge.')
+            "Sum to find symmetric boundary conditions did not converge.")
 
     # Apply first the system 1 / (1 - z1 * z^-1)
     zi_shape = (1, 4)
@@ -239,7 +239,7 @@ def symiirorder1(input, c0, z1, precision=-1.0):
     z1 = cupy.asarray([z1], input.dtype)
 
     if cupy.abs(z1) >= 1:
-        raise ValueError('|z1| must be less than 1.0')
+        raise ValueError("|z1| must be less than 1.0")
 
     if precision <= 0.0 or precision > 1.0:
         precision = cupy.finfo(input.dtype).resolution
@@ -256,7 +256,7 @@ def symiirorder1(input, c0, z1, precision=-1.0):
 
     if cupy.isnan(zi):
         raise ValueError(
-            'Sum to find symmetric boundary conditions did not converge.')
+            "Sum to find symmetric boundary conditions did not converge.")
 
     a = cupy.r_[1, -z1]
     a = a.astype(input.dtype)
@@ -311,7 +311,7 @@ def _compute_symiirorder2_bwd_hs(k, cs, rsq, omega):
 
 def _symiirorder2_nd(input, r, omega, precision=-1.0, axis=-1):
     if r >= 1.0:
-        raise ValueError('r must be less than 1.0')
+        raise ValueError("r must be less than 1.0")
 
     if precision <= 0.0 or precision > 1.0:
         if input.dtype is cupy.dtype(cupy.float64):
@@ -340,7 +340,7 @@ def _symiirorder2_nd(input, r, omega, precision=-1.0, axis=-1):
 
     # First compute the symmetric forward starting conditions
     compute_symiirorder2_fwd_sc = _get_module_func(
-        SYMIIR2_MODULE, 'compute_symiirorder2_fwd_sc', cs)
+        SYMIIR2_MODULE, "compute_symiirorder2_fwd_sc", cs)
 
     diff = cupy.empty((block_sz + 1,), dtype=cs.dtype)
     all_valid = cupy.empty((block_sz + 1,), dtype=cupy.bool_)
@@ -381,7 +381,7 @@ def _symiirorder2_nd(input, r, omega, precision=-1.0, axis=-1):
 
     if cupy.any(cupy.isnan(cupy.r_[y0, y1])):
         raise ValueError(
-            'Sum to find symmetric boundary conditions did not converge.')
+            "Sum to find symmetric boundary conditions did not converge.")
 
     # Apply the system cs / (1 - a2 * z^-1 - a3 * z^-2)
     zi_shape = (1, 4)
@@ -404,7 +404,7 @@ def _symiirorder2_nd(input, r, omega, precision=-1.0, axis=-1):
 
     # Then compute the symmetric backward starting conditions
     compute_symiirorder2_bwd_sc = _get_module_func(
-        SYMIIR2_MODULE, 'compute_symiirorder2_bwd_sc', cs)
+        SYMIIR2_MODULE, "compute_symiirorder2_bwd_sc", cs)
 
     diff = cupy.empty((block_sz,), dtype=cs.dtype)
     all_valid = cupy.empty((block_sz,), dtype=cupy.bool_)
@@ -427,7 +427,7 @@ def _symiirorder2_nd(input, r, omega, precision=-1.0, axis=-1):
 
     if cupy.any(cupy.isnan(y0)):
         raise ValueError(
-            'Sum to find symmetric boundary conditions did not converge.')
+            "Sum to find symmetric boundary conditions did not converge.")
 
     y1 = cupy.nan
     for i in range(0, input.shape[-1] + 1, block_sz):
@@ -446,7 +446,7 @@ def _symiirorder2_nd(input, r, omega, precision=-1.0, axis=-1):
 
     if cupy.any(cupy.isnan(y1)):
         raise ValueError(
-            'Sum to find symmetric boundary conditions did not converge.')
+            "Sum to find symmetric boundary conditions did not converge.")
 
     all_zi = axis_assign(all_zi, y0, 2, 3)
     all_zi = axis_assign(all_zi, y1, 3, 4)

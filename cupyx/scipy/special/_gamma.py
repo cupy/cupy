@@ -40,12 +40,12 @@ __device__ complex<double> cgamma(complex<double> z)
 
 
 gamma = _core.create_ufunc(
-    'cupyx_scipy_gamma',
+    "cupyx_scipy_gamma",
     (
-        'f->f',
-        'd->d',
-        ('F->F', 'out0 = out0_type(cgamma(in0))'),
-        ('D->D', 'out0 = cgamma(in0)')
+        "f->f",
+        "d->d",
+        ("F->F", "out0 = out0_type(cgamma(in0))"),
+        ("D->D", "out0 = cgamma(in0)")
     ),
     _gamma_body,
     preamble=cgamma_definition,
@@ -197,14 +197,14 @@ __device__ complex<double> crgamma(complex<double> z)
 
 
 rgamma = _core.create_ufunc(
-    'cupyx_scipy_rgamma',
+    "cupyx_scipy_rgamma",
     (
-        'f->f',
-        'd->d',
-        ('F->F', 'out0 = out0_type(crgamma(in0))'),
-        ('D->D', 'out0 = crgamma(in0)')
+        "f->f",
+        "d->d",
+        ("F->F", "out0 = out0_type(crgamma(in0))"),
+        ("D->D", "out0 = crgamma(in0)")
     ),
-    'out0 = out0_type(rgamma(in0))',
+    "out0 = out0_type(rgamma(in0))",
     preamble=rgamma_implementation + crgamma_implementation,
     doc="""Reciprocal gamma function.
 

@@ -5,18 +5,18 @@ import cupy
 from cupy._core._scalar import get_typename
 from cupyx.scipy.spatial._delaunay import Delaunay
 
-TYPES = ['double', 'thrust::complex<double>']
+TYPES = ["double", "thrust::complex<double>"]
 
 
 def _get_module_func(module, func_name, *template_args):
     def _get_typename(dtype):
         typename = get_typename(dtype)
-        if dtype.kind == 'c':
-            typename = 'thrust::' + typename
+        if dtype.kind == "c":
+            typename = "thrust::" + typename
         return typename
     args_dtypes = [_get_typename(arg.dtype) for arg in template_args]
-    template = ', '.join(args_dtypes)
-    kernel_name = f'{func_name}<{template}>' if template_args else func_name
+    template = ", ".join(args_dtypes)
+    kernel_name = f"{func_name}<{template}>" if template_args else func_name
     kernel = module.get_function(kernel_name)
     return kernel
 
@@ -233,8 +233,8 @@ __global__ void evaluate_linear_nd_interp(
 """
 
 LINEAR_INTERP_ND_MODULE = cupy.RawModule(
-    code=LINEAR_INTERP_ND_DEF, options=('-std=c++11',),
-    name_expressions=[f'evaluate_linear_nd_interp<{t}>' for t in TYPES])
+    code=LINEAR_INTERP_ND_DEF, options=("-std=c++11",),
+    name_expressions=[f"evaluate_linear_nd_interp<{t}>" for t in TYPES])
 
 
 class LinearNDInterpolator(NDInterpolatorBase):
@@ -336,7 +336,7 @@ class LinearNDInterpolator(NDInterpolatorBase):
         nvalues = out.shape[1]
 
         _eval_linear_nd_interp = _get_module_func(
-            LINEAR_INTERP_ND_MODULE, 'evaluate_linear_nd_interp', out)
+            LINEAR_INTERP_ND_MODULE, "evaluate_linear_nd_interp", out)
 
         block_sz = 128
         n_blocks = (xi.shape[0] + block_sz - 1) // block_sz
@@ -639,9 +639,9 @@ __global__ void clough_tocher_2d(
 """
 
 CT_MODULE = cupy.RawModule(
-    code=CT_DEF, options=('-std=c++11',),
-    name_expressions=['estimate_gradients_2d'] +
-                     [f'clough_tocher_2d<{t}>' for t in TYPES])
+    code=CT_DEF, options=("-std=c++11",),
+    name_expressions=["estimate_gradients_2d"] +
+                     [f"clough_tocher_2d<{t}>" for t in TYPES])
 
 
 def estimate_gradients_2d_global(tri, y, maxiter=400, tol=1e-6):
@@ -670,7 +670,7 @@ def estimate_gradients_2d_global(tri, y, maxiter=400, tol=1e-6):
     prev_grad = cupy.zeros((y.shape[0], indptr.shape[0] - 1, 2),
                            dtype=cupy.float64)
 
-    estimate_gradients_2d = CT_MODULE.get_function('estimate_gradients_2d')
+    estimate_gradients_2d = CT_MODULE.get_function("estimate_gradients_2d")
     for iter in range(maxiter):
         estimate_gradients_2d((512,), (128,), (
             tri.points, grad.shape[1], y, y.shape[0], indptr, indices,
@@ -835,7 +835,7 @@ class CloughTocher2DInterpolator(NDInterpolatorBase):
                          dtype=self.values.dtype)
 
         clough_tocher_2d = _get_module_func(
-            CT_MODULE, 'clough_tocher_2d', self.values)
+            CT_MODULE, "clough_tocher_2d", self.values)
         clough_tocher_2d((512,), (128,), (
             self.tri.points, self.tri.points.shape[0], self.tri.simplices,
             self.tri.neighbors, isimplices, c, xi.shape[0], self.values,

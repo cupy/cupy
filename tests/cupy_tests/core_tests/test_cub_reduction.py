@@ -11,7 +11,7 @@ from cupy.cuda import memory
 # This test class and its children below only test if CUB backend can be used
 # or not; they don't verify its correctness as it's already extensively covered
 # by existing tests
-@unittest.skipIf(_environment.get_cub_path() is None, 'CUB not found')
+@unittest.skipIf(_environment.get_cub_path() is None, "CUB not found")
 class CubReductionTestBase(unittest.TestCase):
     """
     Note: call self.can_use() when arrays are already allocated, otherwise
@@ -21,12 +21,12 @@ class CubReductionTestBase(unittest.TestCase):
     def setUp(self):
         if cupy.cuda.runtime.is_hip:
             if _environment.get_hipcc_path() is None:
-                self.skipTest('hipcc is not found')
+                self.skipTest("hipcc is not found")
 
         self.can_use = cupy._core._cub_reduction._can_use_cub_block_reduction
 
         self.old_accelerators = _accelerator.get_reduction_accelerators()
-        _accelerator.set_reduction_accelerators(['cub'])
+        _accelerator.set_reduction_accelerators(["cub"])
 
     def tearDown(self):
         _accelerator.set_reduction_accelerators(self.old_accelerators)
@@ -40,8 +40,8 @@ class CubReductionTestBase(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    'shape': [(2,), (2, 3), (2, 3, 4), (2, 3, 4, 5)],
-    'order': ('C', 'F'),
+    "shape": [(2,), (2, 3), (2, 3, 4), (2, 3, 4, 5)],
+    "order": ("C", "F"),
 }))
 class TestSimpleCubReductionKernelContiguity(CubReductionTestBase):
 
@@ -80,7 +80,7 @@ class TestSimpleCubReductionKernelMisc(CubReductionTestBase):
 
     def test_can_use_cub_nonsense_input2(self):
         # reduce_axis and out_axis do not add up to full axis set
-        self._test_can_use((2, 3, 4), (2, 3), (2,), (0,), 'C', False)
+        self._test_can_use((2, 3, 4), (2, 3), (2,), (0,), "C", False)
 
     def test_can_use_cub_nonsense_input3(self):
         # array is neither C- nor F- contiguous
@@ -91,7 +91,7 @@ class TestSimpleCubReductionKernelMisc(CubReductionTestBase):
         assert self.can_use([a], [b], (1, 2), (0,)) is None
 
     def test_can_use_cub_zero_size_input(self):
-        self._test_can_use((2, 0, 3), (), (0, 1, 2), (), 'C', False)
+        self._test_can_use((2, 0, 3), (), (0, 1, 2), (), "C", False)
 
     # We actually just wanna test shapes, no need to allocate large memory.
     def test_can_use_cub_oversize_input1(self):
@@ -130,8 +130,8 @@ class TestSimpleCubReductionKernelMisc(CubReductionTestBase):
 
         a = cupy.random.random((10, 10))
         # this is the only function we can mock; the rest is cdef'd
-        func_name = ''.join(('cupy._core._cub_reduction.',
-                             '_SimpleCubReductionKernel_get_cached_function'))
+        func_name = "".join(("cupy._core._cub_reduction.",
+                             "_SimpleCubReductionKernel_get_cached_function"))
         func = _cub_reduction._SimpleCubReductionKernel_get_cached_function
         with testing.AssertFunctionIsCalled(
                 func_name, wraps=func, times_called=2):  # two passes

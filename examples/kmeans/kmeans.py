@@ -15,25 +15,25 @@ def timer(message):
     yield
     cupy.cuda.Stream.null.synchronize()
     end = time.time()
-    print('%s:  %f sec' % (message, end - start))
+    print("%s:  %f sec" % (message, end - start))
 
 
 var_kernel = cupy.ElementwiseKernel(
-    'T x0, T x1, T c0, T c1', 'T out',
-    'out = (x0 - c0) * (x0 - c0) + (x1 - c1) * (x1 - c1)',
-    'var_kernel'
+    "T x0, T x1, T c0, T c1", "T out",
+    "out = (x0 - c0) * (x0 - c0) + (x1 - c1) * (x1 - c1)",
+    "var_kernel"
 )
 sum_kernel = cupy.ReductionKernel(
-    'T x, S mask', 'T out',
-    'mask ? x : 0',
-    'a + b', 'out = a', '0',
-    'sum_kernel'
+    "T x, S mask", "T out",
+    "mask ? x : 0",
+    "a + b", "out = a", "0",
+    "sum_kernel"
 )
 count_kernel = cupy.ReductionKernel(
-    'T mask', 'float32 out',
-    'mask ? 1.0 : 0.0',
-    'a + b', 'out = a', '0.0',
-    'count_kernel'
+    "T mask", "float32 out",
+    "mask ? 1.0 : 0.0",
+    "a + b", "out = a", "0.0",
+    "count_kernel"
 )
 
 
@@ -107,8 +107,8 @@ def draw(X, n_clusters, centers, pred, output):
         labels = X[pred == i]
         plt.scatter(labels[:, 0], labels[:, 1], c=numpy.random.rand(3))
     plt.scatter(
-        centers[:, 0], centers[:, 1], s=120, marker='s', facecolors='y',
-        edgecolors='k')
+        centers[:, 0], centers[:, 1], s=120, marker="s", facecolors="y",
+        edgecolors="k")
     plt.savefig(output)
 
 
@@ -116,13 +116,13 @@ def run(gpuid, n_clusters, num, max_iter, use_custom_kernel, output):
     samples = numpy.random.randn(num, 2)
     X_train = numpy.r_[samples + 1, samples - 1]
 
-    with timer(' CPU '):
+    with timer(" CPU "):
         centers, pred = fit_xp(X_train, n_clusters, max_iter)
 
     with cupy.cuda.Device(gpuid):
         X_train = cupy.asarray(X_train)
 
-        with timer(' GPU '):
+        with timer(" GPU "):
             if use_custom_kernel:
                 centers, pred = fit_custom(X_train, n_clusters, max_iter)
             else:
@@ -134,20 +134,20 @@ def run(gpuid, n_clusters, num, max_iter, use_custom_kernel, output):
                  pred[index].get(), output)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--gpu-id', '-g', default=0, type=int,
-                        help='ID of GPU.')
-    parser.add_argument('--n-clusters', '-n', default=2, type=int,
-                        help='number of clusters')
-    parser.add_argument('--num', default=5000000, type=int,
-                        help='number of samples')
-    parser.add_argument('--max-iter', '-m', default=10, type=int,
-                        help='number of iterations')
-    parser.add_argument('--use-custom-kernel', action='store_true',
-                        default=False, help='use Elementwise kernel')
-    parser.add_argument('--output-image', '-o', default=None, type=str,
-                        help='output image file name')
+    parser.add_argument("--gpu-id", "-g", default=0, type=int,
+                        help="ID of GPU.")
+    parser.add_argument("--n-clusters", "-n", default=2, type=int,
+                        help="number of clusters")
+    parser.add_argument("--num", default=5000000, type=int,
+                        help="number of samples")
+    parser.add_argument("--max-iter", "-m", default=10, type=int,
+                        help="number of iterations")
+    parser.add_argument("--use-custom-kernel", action="store_true",
+                        default=False, help="use Elementwise kernel")
+    parser.add_argument("--output-image", "-o", default=None, type=str,
+                        help="output image file name")
     args = parser.parse_args()
     run(args.gpu_id, args.n_clusters, args.num, args.max_iter,
         args.use_custom_kernel, args.output_image)

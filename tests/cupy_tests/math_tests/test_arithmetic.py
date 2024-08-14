@@ -25,13 +25,13 @@ no_complex_types = [numpy.bool_] + float_types + int_types
 
 @testing.parameterize(*(
     testing.product({
-        'nargs': [1],
-        'name': ['reciprocal', 'conj', 'conjugate', 'angle'],
+        "nargs": [1],
+        "name": ["reciprocal", "conj", "conjugate", "angle"],
     }) + testing.product({
-        'nargs': [2],
-        'name': [
-            'add', 'multiply', 'divide', 'power', 'subtract', 'true_divide',
-            'floor_divide', 'float_power', 'fmod', 'remainder'],
+        "nargs": [2],
+        "name": [
+            "add", "multiply", "divide", "power", "subtract", "true_divide",
+            "floor_divide", "float_power", "fmod", "remainder"],
     })
 ))
 class TestArithmeticRaisesWithNumpyInput:
@@ -53,27 +53,27 @@ class TestArithmeticRaisesWithNumpyInput:
 
 @testing.parameterize(*(
     testing.product({
-        'arg1': ([testing.shaped_arange((2, 3), numpy, dtype=d)
+        "arg1": ([testing.shaped_arange((2, 3), numpy, dtype=d)
                   for d in all_types
                   ] + [0, 0.0j, 0j, 2, 2.0, 2j, True, False]),
-        'name': ['conj', 'conjugate', 'real', 'imag'],
+        "name": ["conj", "conjugate", "real", "imag"],
     }) + testing.product({
-        'arg1': ([testing.shaped_arange((2, 3), numpy, dtype=d)
+        "arg1": ([testing.shaped_arange((2, 3), numpy, dtype=d)
                   for d in all_types
                   ] + [0, 0.0j, 0j, 2, 2.0, 2j, True, False]),
-        'deg': [True, False],
-        'name': ['angle'],
+        "deg": [True, False],
+        "name": ["angle"],
     }) + testing.product({
-        'arg1': ([numpy.array([-3, -2, -1, 1, 2, 3], dtype=d)
+        "arg1": ([numpy.array([-3, -2, -1, 1, 2, 3], dtype=d)
                   for d in negative_types_wo_fp16
                   ] + [0, 0.0j, 0j, 2, 2.0, 2j, -2, -2.0, -2j, True, False]),
-        'deg': [True, False],
-        'name': ['angle'],
+        "deg": [True, False],
+        "name": ["angle"],
     }) + testing.product({
-        'arg1': ([testing.shaped_arange((2, 3), numpy, dtype=d) + 1
+        "arg1": ([testing.shaped_arange((2, 3), numpy, dtype=d) + 1
                   for d in all_types
                   ] + [2, 2.0, 2j, True]),
-        'name': ['reciprocal'],
+        "name": ["reciprocal"],
     })
 ))
 class TestArithmeticUnary:
@@ -84,12 +84,12 @@ class TestArithmeticUnary:
         if isinstance(arg1, numpy.ndarray):
             arg1 = xp.asarray(arg1)
 
-        if self.name in {'angle'}:
+        if self.name in {"angle"}:
             y = getattr(xp, self.name)(arg1, self.deg)
         else:
             y = getattr(xp, self.name)(arg1)
 
-        if self.name in ('real', 'imag'):
+        if self.name in ("real", "imag"):
             # Some NumPy functions return Python scalars for Python scalar
             # inputs.
             # We need to convert them to arrays to compare with CuPy outputs.
@@ -108,7 +108,7 @@ class TestArithmeticUnary:
 
 
 @testing.parameterize(*testing.product({
-    'shape': [(3, 2), (), (3, 0, 2)],
+    "shape": [(3, 2), (), (3, 0, 2)],
 }))
 class TestComplex:
 
@@ -202,7 +202,7 @@ class ArithmeticBinaryBase:
         dtype1 = np1.dtype
         dtype2 = np2.dtype
 
-        if self.name == 'power' or self.name == 'float_power':
+        if self.name == "power" or self.name == "float_power":
             # TODO(niboshi): Fix this: power(0, 1j)
             #     numpy => 1+0j
             #     cupy => 0j
@@ -222,15 +222,15 @@ class ArithmeticBinaryBase:
             arg2 = xp.asarray(arg2)
 
         # Subtraction between booleans is not allowed.
-        if (self.name == 'subtract'
+        if (self.name == "subtract"
                 and dtype1 == numpy.bool_
                 and dtype2 == numpy.bool_):
             return xp.array(True)
 
         func = getattr(xp, self.name)
-        with numpy.errstate(divide='ignore'):
+        with numpy.errstate(divide="ignore"):
             with warnings.catch_warnings():
-                warnings.filterwarnings('ignore')
+                warnings.filterwarnings("ignore")
                 if self.use_dtype:
                     y = func(arg1, arg2, dtype=self.dtype)
                 else:
@@ -240,7 +240,7 @@ class ArithmeticBinaryBase:
         #    numpy returns complex64
         #    cupy returns complex128
         if (xp is cupy and isinstance(arg2, complex)
-                and self.name != 'float_power'):
+                and self.name != "float_power"):
             if dtype1 in (numpy.float16, numpy.float32):
                 y = y.astype(numpy.complex64)
 
@@ -248,7 +248,7 @@ class ArithmeticBinaryBase:
         # depending on the architecture.
         # As it is not possible for CuPy to replicate this behavior, we ignore
         # the difference here.
-        if self.name in ('floor_divide', 'remainder'):
+        if self.name in ("floor_divide", "remainder"):
             if y.dtype in (float_types + complex_types) and (np2 == 0).any():
                 y = xp.asarray(y)
                 y[y == numpy.inf] = numpy.nan
@@ -260,21 +260,21 @@ class ArithmeticBinaryBase:
 @testing.parameterize(*(
     testing.product({
         # TODO(unno): boolean subtract causes DeprecationWarning in numpy>=1.13
-        'arg1': [testing.shaped_arange((2, 3), numpy, dtype=d)
+        "arg1": [testing.shaped_arange((2, 3), numpy, dtype=d)
                  for d in all_types
                  ] + [0, 0.0, 0j, 2, 2.0, 2j, True, False],
-        'arg2': [testing.shaped_reverse_arange((2, 3), numpy, dtype=d)
+        "arg2": [testing.shaped_reverse_arange((2, 3), numpy, dtype=d)
                  for d in all_types
                  ] + [0, 0.0, 0j, 2, 2.0, 2j, True, False],
-        'name': ['add', 'multiply', 'power', 'subtract', 'float_power'],
+        "name": ["add", "multiply", "power", "subtract", "float_power"],
     }) + testing.product({
-        'arg1': [numpy.array([-3, -2, -1, 1, 2, 3], dtype=d)
+        "arg1": [numpy.array([-3, -2, -1, 1, 2, 3], dtype=d)
                  for d in negative_types
                  ] + [0, 0.0, 0j, 2, 2.0, 2j, -2, -2.0, -2j, True, False],
-        'arg2': [numpy.array([-3, -2, -1, 1, 2, 3], dtype=d)
+        "arg2": [numpy.array([-3, -2, -1, 1, 2, 3], dtype=d)
                  for d in negative_types
                  ] + [0, 0.0, 0j, 2, 2.0, 2j, -2, -2.0, -2j, True, False],
-        'name': ['divide', 'true_divide', 'subtract'],
+        "name": ["divide", "true_divide", "subtract"],
     })
 ))
 class TestArithmeticBinary(ArithmeticBinaryBase):
@@ -286,53 +286,53 @@ class TestArithmeticBinary(ArithmeticBinaryBase):
 
 @testing.parameterize(*(
     testing.product({
-        'arg1': [numpy.array([3, 2, 1, 1, 2, 3], dtype=d)
+        "arg1": [numpy.array([3, 2, 1, 1, 2, 3], dtype=d)
                  for d in unsigned_int_types
                  ] + [0, 0.0, 2, 2.0, -2, -2.0, True, False],
-        'arg2': [numpy.array([3, 2, 1, 1, 2, 3], dtype=d)
+        "arg2": [numpy.array([3, 2, 1, 1, 2, 3], dtype=d)
                  for d in unsigned_int_types
                  ] + [0, 0.0, 2, 2.0, -2, -2.0, True, False],
-        'name': ['true_divide'],
-        'dtype': [numpy.float64],
-        'use_dtype': [True, False],
+        "name": ["true_divide"],
+        "dtype": [numpy.float64],
+        "use_dtype": [True, False],
     }) + testing.product({
-        'arg1': [numpy.array([-3, -2, -1, 1, 2, 3], dtype=d)
+        "arg1": [numpy.array([-3, -2, -1, 1, 2, 3], dtype=d)
                  for d in signed_int_types
                  ] + [0, 0.0, 2, 2.0, -2, -2.0, True, False],
-        'arg2': [numpy.array([-3, -2, -1, 1, 2, 3], dtype=d)
+        "arg2": [numpy.array([-3, -2, -1, 1, 2, 3], dtype=d)
                  for d in signed_int_types
                  ] + [0, 0.0, 2, 2.0, -2, -2.0, True, False],
-        'name': ['true_divide'],
-        'dtype': [numpy.float64],
-        'use_dtype': [True, False],
+        "name": ["true_divide"],
+        "dtype": [numpy.float64],
+        "use_dtype": [True, False],
     }) + testing.product({
-        'arg1': [numpy.array([-3, -2, -1, 1, 2, 3], dtype=d)
+        "arg1": [numpy.array([-3, -2, -1, 1, 2, 3], dtype=d)
                  for d in float_types] + [0.0, 2.0, -2.0],
-        'arg2': [numpy.array([-3, -2, -1, 1, 2, 3], dtype=d)
+        "arg2": [numpy.array([-3, -2, -1, 1, 2, 3], dtype=d)
                  for d in float_types] + [0.0, 2.0, -2.0],
-        'name': ['power', 'true_divide', 'subtract', 'float_power'],
-        'dtype': [numpy.float64],
-        'use_dtype': [True, False],
+        "name": ["power", "true_divide", "subtract", "float_power"],
+        "dtype": [numpy.float64],
+        "use_dtype": [True, False],
     }) + testing.product({
-        'arg1': [testing.shaped_arange((2, 3), numpy, dtype=d)
+        "arg1": [testing.shaped_arange((2, 3), numpy, dtype=d)
                  for d in no_complex_types
                  ] + [0, 0.0, 2, 2.0, -2, -2.0, True, False],
-        'arg2': [testing.shaped_reverse_arange((2, 3), numpy, dtype=d)
+        "arg2": [testing.shaped_reverse_arange((2, 3), numpy, dtype=d)
                  for d in no_complex_types
                  ] + [0, 0.0, 2, 2.0, -2, -2.0, True, False],
-        'name': ['floor_divide', 'fmod', 'remainder'],
-        'dtype': [numpy.float64],
-        'use_dtype': [True, False],
+        "name": ["floor_divide", "fmod", "remainder"],
+        "dtype": [numpy.float64],
+        "use_dtype": [True, False],
     }) + testing.product({
-        'arg1': [numpy.array([-3, -2, -1, 1, 2, 3], dtype=d)
+        "arg1": [numpy.array([-3, -2, -1, 1, 2, 3], dtype=d)
                  for d in negative_no_complex_types
                  ] + [0, 0.0, 2, 2.0, -2, -2.0, True, False],
-        'arg2': [numpy.array([-3, -2, -1, 1, 2, 3], dtype=d)
+        "arg2": [numpy.array([-3, -2, -1, 1, 2, 3], dtype=d)
                  for d in negative_no_complex_types
                  ] + [0, 0.0, 2, 2.0, -2, -2.0, True, False],
-        'name': ['floor_divide', 'fmod', 'remainder'],
-        'dtype': [numpy.float64],
-        'use_dtype': [True, False],
+        "name": ["floor_divide", "fmod", "remainder"],
+        "dtype": [numpy.float64],
+        "use_dtype": [True, False],
     })
 ))
 class TestArithmeticBinary2(ArithmeticBinaryBase):
@@ -348,12 +348,12 @@ class UfuncTestBase:
         a = testing.shaped_arange((2, 3), xp, in0_type)
         b = testing.shaped_arange((2, 3), xp, in1_type)
         c = xp.zeros((2, 3), out_type)
-        if casting != 'unsafe':
+        if casting != "unsafe":
             # may raise TypeError
             return xp.add(a, b, out=c, casting=casting)
 
         with warnings.catch_warnings(record=True) as ws:
-            warnings.simplefilter('always')
+            warnings.simplefilter("always")
             ret = xp.add(a, b, out=c, casting=casting)
         ws = [w.category for w in ws]
         assert all([w == ComplexWarning for w in ws]), str(ws)
@@ -363,13 +363,13 @@ class UfuncTestBase:
     def check_casting_dtype(self, in0_type, in1_type, dtype, casting, xp):
         a = testing.shaped_arange((2, 3), xp, in0_type)
         b = testing.shaped_arange((2, 3), xp, in1_type)
-        if casting != 'unsafe':
+        if casting != "unsafe":
             # may raise TypeError
             return xp.add(a, b, dtype=dtype, casting=casting)
 
         with warnings.catch_warnings(record=True) as ws:
-            warnings.simplefilter('always')
-            ret = xp.add(a, b, dtype=dtype, casting='unsafe')
+            warnings.simplefilter("always")
+            ret = xp.add(a, b, dtype=dtype, casting="unsafe")
         ws = [w.category for w in ws]
         assert all([w == ComplexWarning for w in ws]), str(ws)
         return ret, xp.array(len(ws))
@@ -381,79 +381,79 @@ class UfuncTestBase:
         a = testing.shaped_arange((2, 3), xp, in0_type)
         b = testing.shaped_arange((2, 3), xp, in1_type)
         with warnings.catch_warnings():
-            warnings.simplefilter('ignore')
-            return xp.add(a, b, dtype=dtype, casting='unsafe')
+            warnings.simplefilter("ignore")
+            return xp.add(a, b, dtype=dtype, casting="unsafe")
 
 
 class TestUfunc(UfuncTestBase):
 
-    @pytest.mark.parametrize('casting', [
-        'no',
-        'equiv',
-        'safe',
-        'same_kind',
-        'unsafe',
+    @pytest.mark.parametrize("casting", [
+        "no",
+        "equiv",
+        "safe",
+        "same_kind",
+        "unsafe",
     ])
     @testing.for_all_dtypes_combination(
-        names=['in_type', 'out_type'])
+        names=["in_type", "out_type"])
     def test_casting_out_only(self, in_type, out_type, casting):
         self.check_casting_out(in_type, in_type, out_type, casting)
 
-    @pytest.mark.parametrize('casting', [
-        pytest.param('no', marks=pytest.mark.skip('flaky xfail')),
-        pytest.param('equiv', marks=pytest.mark.skip('flaky xfail')),
-        'safe',
-        'same_kind',
-        'unsafe',
+    @pytest.mark.parametrize("casting", [
+        pytest.param("no", marks=pytest.mark.skip("flaky xfail")),
+        pytest.param("equiv", marks=pytest.mark.skip("flaky xfail")),
+        "safe",
+        "same_kind",
+        "unsafe",
     ])
     @testing.for_all_dtypes_combination(
-        names=['in0_type', 'in1_type', 'out_type'], full=False)
+        names=["in0_type", "in1_type", "out_type"], full=False)
     def test_casting_in_out(self, in0_type, in1_type, out_type, casting):
         self.check_casting_out(in0_type, in1_type, out_type, casting)
 
     @pytest.mark.xfail()
-    @pytest.mark.parametrize('casting', [
-        'no',
-        'equiv',
+    @pytest.mark.parametrize("casting", [
+        "no",
+        "equiv",
     ])
-    @pytest.mark.parametrize(('in0_type', 'in1_type', 'out_type'), [
+    @pytest.mark.parametrize(("in0_type", "in1_type", "out_type"), [
         (numpy.int16, numpy.int32, numpy.int32),
     ])
     def test_casting_in_xfail1(self, in0_type, in1_type, out_type, casting):
         self.check_casting_out(in0_type, in1_type, out_type, casting)
 
-    @pytest.mark.skip('flaky xfail')
-    @pytest.mark.parametrize('casting', [
-        'no',
-        'equiv',
-        'safe',
-        'same_kind',
-        'unsafe',
+    @pytest.mark.skip("flaky xfail")
+    @pytest.mark.parametrize("casting", [
+        "no",
+        "equiv",
+        "safe",
+        "same_kind",
+        "unsafe",
     ])
     @testing.for_all_dtypes_combination(
-        names=['in0_type', 'in1_type', 'dtype'], full=False)
+        names=["in0_type", "in1_type", "dtype"], full=False)
     def test_casting_dtype(self, in0_type, in1_type, dtype, casting):
         self.check_casting_dtype(in0_type, in1_type, dtype, casting)
 
     @pytest.mark.xfail()
-    @pytest.mark.parametrize('casting', [
-        'no',
-        'equiv',
+    @pytest.mark.parametrize("casting", [
+        "no",
+        "equiv",
     ])
-    @pytest.mark.parametrize(('in0_type', 'in1_type', 'dtype'), [
+    @pytest.mark.parametrize(("in0_type", "in1_type", "dtype"), [
         (numpy.int16, numpy.int32, numpy.int32),
     ])
     def test_casting_dtype_xfail1(self, in0_type, in1_type, dtype, casting):
         self.check_casting_dtype(in0_type, in1_type, dtype, casting)
 
     @pytest.mark.xfail()
-    @pytest.mark.parametrize('casting', [
-        'no',
-        'equiv',
-        'safe',
-        'same_kind',
+    @pytest.mark.parametrize("casting", [
+        "no",
+        "equiv",
+        "safe",
+        "same_kind",
     ])
-    @pytest.mark.parametrize(('in0_type', 'in1_type', 'dtype'), [
+    @pytest.mark.parametrize(("in0_type", "in1_type", "dtype"), [
         (numpy.int32, numpy.int32, numpy.bool_),
         (numpy.float64, numpy.float64, numpy.int32),
     ])
@@ -461,7 +461,7 @@ class TestUfunc(UfuncTestBase):
         self.check_casting_dtype(in0_type, in1_type, dtype, casting)
 
     @testing.for_all_dtypes_combination(
-        names=['in0_type', 'in1_type', 'dtype'], full=False)
+        names=["in0_type", "in1_type", "dtype"], full=False)
     def test_casting_dtype_unsafe_ignore_warnings(
             self, in0_type, in1_type, dtype):
         self.check_casting_dtype_unsafe_ignore_warnings(
@@ -471,33 +471,33 @@ class TestUfunc(UfuncTestBase):
 
 @testing.slow
 class TestUfuncSlow(UfuncTestBase):
-    @pytest.mark.parametrize('casting', [
-        pytest.param('no', marks=pytest.mark.xfail()),
-        pytest.param('equiv', marks=pytest.mark.xfail()),
-        'safe',
-        'same_kind',
-        'unsafe',
+    @pytest.mark.parametrize("casting", [
+        pytest.param("no", marks=pytest.mark.xfail()),
+        pytest.param("equiv", marks=pytest.mark.xfail()),
+        "safe",
+        "same_kind",
+        "unsafe",
     ])
     @testing.for_all_dtypes_combination(
-        names=['in0_type', 'in1_type', 'out_type'], full=True)
+        names=["in0_type", "in1_type", "out_type"], full=True)
     def test_casting_out(self, in0_type, in1_type, out_type, casting):
         self.check_casting_out(in0_type, in1_type, out_type, casting)
 
     @pytest.mark.xfail()
-    @pytest.mark.parametrize('casting', [
-        'no',
-        'equiv',
-        'safe',
-        'same_kind',
-        'unsafe',
+    @pytest.mark.parametrize("casting", [
+        "no",
+        "equiv",
+        "safe",
+        "same_kind",
+        "unsafe",
     ])
     @testing.for_all_dtypes_combination(
-        names=['in0_type', 'in1_type', 'dtype'], full=True)
+        names=["in0_type", "in1_type", "dtype"], full=True)
     def test_casting_dtype(self, in0_type, in1_type, dtype, casting):
         self.check_casting_dtype(in0_type, in1_type, dtype, casting)
 
     @testing.for_all_dtypes_combination(
-        names=['in0_type', 'in1_type', 'dtype'], full=True)
+        names=["in0_type", "in1_type", "dtype"], full=True)
     def test_casting_dtype_unsafe_ignore_warnings(
             self, in0_type, in1_type, dtype):
         self.check_casting_dtype_unsafe_ignore_warnings(
@@ -519,8 +519,8 @@ class TestArithmeticModf:
 
 
 @testing.parameterize(*testing.product({
-    'xp': [numpy, cupy],
-    'shape': [(3, 2), (), (3, 0, 2)]
+    "xp": [numpy, cupy],
+    "shape": [(3, 2), (), (3, 0, 2)]
 }))
 class TestBoolSubtract:
 

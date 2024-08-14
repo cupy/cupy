@@ -20,13 +20,13 @@ def _get_sub_kernel(f):
         return f
     elif isinstance(f, cupy.ReductionKernel):
         if f.nin != 1 or f.nout != 1:
-            raise TypeError('ReductionKernel must have 1 input and output')
+            raise TypeError("ReductionKernel must have 1 input and output")
         return f
     elif isinstance(f, cupy.ElementwiseKernel):
         # special error message for ElementwiseKernels
-        raise TypeError('only ReductionKernel allowed (not ElementwiseKernel)')
+        raise TypeError("only ReductionKernel allowed (not ElementwiseKernel)")
     else:
-        raise TypeError('bad function type')
+        raise TypeError("bad function type")
 
 
 @_util.memoize(for_each_device=True)
@@ -41,25 +41,25 @@ def _get_generic_filter_red(rk, in_dtype, out_dtype, filter_size, mode,
             in_dtype if out_param.ctype == in_param.ctype else out_dtype)
 
     # Get code chunks
-    setup = '''
+    setup = """
     int iv = 0;
     X values[{size}];
     CArray<X, 1, true, true> sub_in(values, {{{size}}});
     {out_ctype} val_out;
     CArray<{out_ctype}, 1, true, true> sub_out(&val_out, {{1}});
-    '''.format(size=filter_size, out_ctype=out_ctype)
+    """.format(size=filter_size, out_ctype=out_ctype)
 
-    sub_call = '''reduction_kernel::{}(sub_in, sub_out);
-    y = cast<Y>(val_out);'''.format(rk.name)
+    sub_call = """reduction_kernel::{}(sub_in, sub_out);
+    y = cast<Y>(val_out);""".format(rk.name)
 
     sub_kernel = _reduction_kernel_code(rk, filter_size, out_dtype, in_dtype)
 
     # Get the final kernel
     return _filters_core._generate_nd_kernel(
-        'generic_{}_{}'.format(filter_size, rk.name),
-        setup, 'values[iv++] = {value};', sub_call,
+        "generic_{}_{}".format(filter_size, rk.name),
+        setup, "values[iv++] = {value};", sub_call,
         mode, wshape, int_type, offsets, cval, preamble=sub_kernel,
-        options=getattr(rk, 'options', ()))
+        options=getattr(rk, "options", ()))
 
 
 def _reduction_kernel_code(rk, filter_size, out_dtype, in_dtype):
@@ -76,10 +76,10 @@ def _reduction_kernel_code(rk, filter_size, out_dtype, in_dtype):
     in_param, out_param = rk.in_params[0], rk.out_params[0]
     in_ctype = _get_type_info(in_param, in_dtype, types)
     out_ctype = _get_type_info(out_param, out_dtype, types)
-    types = '\n'.join('typedef {} {};'.format(typ, name)
+    types = "\n".join("typedef {} {};".format(typ, name)
                       for name, typ in types.items())
 
-    return '''namespace reduction_kernel {{
+    return """namespace reduction_kernel {{
 {type_preamble}
 {preamble}
 __device__
@@ -105,14 +105,14 @@ void {name}({in_const} CArray<{in_ctype}, 1, true, true>& _raw_{in_name},
     #undef REDUCE
     #undef POST_MAP
 }}
-}}'''.format(
+}}""".format(
         name=rk.name, type_preamble=types, preamble=rk.preamble,
-        in_const='const' if in_param.is_const else '',
+        in_const="const" if in_param.is_const else "",
         in_ctype=in_ctype, in_name=in_param.name,
         out_ctype=out_ctype, out_name=out_param.name,
 
         pre_map_expr=rk.map_expr,
-        identity='' if rk.identity is None else rk.identity,
+        identity="" if rk.identity is None else rk.identity,
         size=filter_size,
         reduce_type=rk.reduce_type, reduce_expr=rk.reduce_expr,
         post_map_expr=rk.post_map_expr,
@@ -132,24 +132,24 @@ def _get_type_info(param, dtype, types):
 def _get_generic_filter_raw(rk, filter_size, mode, wshape, offsets, cval,
                             int_type):
     """Generic filter implementation based on a raw kernel."""
-    setup = '''
+    setup = """
     int iv = 0;
     double values[{}];
-    double val_out;'''.format(filter_size)
+    double val_out;""".format(filter_size)
 
-    sub_call = '''raw_kernel::{}(values, {}, &val_out);
-    y = cast<Y>(val_out);'''.format(rk.name, filter_size)
+    sub_call = """raw_kernel::{}(values, {}, &val_out);
+    y = cast<Y>(val_out);""".format(rk.name, filter_size)
 
     return _filters_core._generate_nd_kernel(
-        'generic_{}_{}'.format(filter_size, rk.name),
-        setup, 'values[iv++] = cast<double>({value});', sub_call,
+        "generic_{}_{}".format(filter_size, rk.name),
+        setup, "values[iv++] = cast<double>({value});", sub_call,
         mode, wshape, int_type, offsets, cval,
-        preamble='namespace raw_kernel {{\n{}\n}}'.format(
+        preamble="namespace raw_kernel {{\n{}\n}}".format(
             # Users can test RawKernel independently, but when passed to here
             # it must be used as a device function here. In fact, RawKernel
             # wouldn't compile if code only contains device functions, so this
             # is necessary.
-            rk.code.replace('__global__', '__device__')),
+            rk.code.replace("__global__", "__device__")),
         options=rk.options)
 
 
@@ -165,46 +165,46 @@ def _get_generic_filter1d(rk, length, n_lines, filter_size, origin, mode, cval,
     start = filter_size // 2 + origin
     end = start + length
 
-    if mode == 'constant':
-        boundary, boundary_early = '', '''
+    if mode == "constant":
+        boundary, boundary_early = "", """
         for (idx_t j = 0; j < {start}; ++j) {{ input_line[j] = {cval}; }}
         for (idx_t j = {end}; j<{in_length}; ++j) {{ input_line[j] = {cval}; }}
-        '''.format(start=start, end=end, in_length=in_length, cval=cval)
+        """.format(start=start, end=end, in_length=in_length, cval=cval)
     else:
         if length == 1:
-            a = b = 'j_ = 0;'
-        elif mode == 'reflect':
-            j = ('j_ = ({j}) % ({length} * 2);\n'
-                 'j_ = min(j_, 2 * {length} - 1 - j_);')
-            a = j.format(j='-1 - j_', length=length)
-            b = j.format(j='j_', length=length)
-        elif mode == 'mirror':
-            j = ('j_ = 1 + (({j}) - 1) % (({length} - 1) * 2);\n'
-                 'j_ = min(j_, 2 * {length} - 2 - j_);')
-            a = j.format(j='-j_', length=length)
-            b = j.format(j='j_', length=length)
-        elif mode == 'nearest':
-            a, b = 'j_ = 0;', 'j_ = {length}-1;'.format(length=length)
-        elif mode == 'wrap':
-            a = 'j_ = j_ % {length} + {length};'.format(length=length)
-            b = 'j_ = j_ % {length};'.format(length=length)
-        loop = '''for (idx_t j = {{}}; j < {{}}; ++j) {{{{
+            a = b = "j_ = 0;"
+        elif mode == "reflect":
+            j = ("j_ = ({j}) % ({length} * 2);\n"
+                 "j_ = min(j_, 2 * {length} - 1 - j_);")
+            a = j.format(j="-1 - j_", length=length)
+            b = j.format(j="j_", length=length)
+        elif mode == "mirror":
+            j = ("j_ = 1 + (({j}) - 1) % (({length} - 1) * 2);\n"
+                 "j_ = min(j_, 2 * {length} - 2 - j_);")
+            a = j.format(j="-j_", length=length)
+            b = j.format(j="j_", length=length)
+        elif mode == "nearest":
+            a, b = "j_ = 0;", "j_ = {length}-1;".format(length=length)
+        elif mode == "wrap":
+            a = "j_ = j_ % {length} + {length};".format(length=length)
+            b = "j_ = j_ % {length};".format(length=length)
+        loop = """for (idx_t j = {{}}; j < {{}}; ++j) {{{{
             idx_t j_ = j - {start};
             {{}}
             input_line[j] = input_line[j_ + {start}];
-        }}}}'''.format(start=start)
-        boundary_early = ''
-        boundary = (loop.format(0, start, a) + '\n' +
+        }}}}""".format(start=start)
+        boundary_early = ""
+        boundary = (loop.format(0, start, a) + "\n" +
                     loop.format(end, in_length, b))
 
-    name = 'generic1d_{}_{}_{}'.format(length, filter_size, rk.name)
+    name = "generic1d_{}_{}_{}".format(length, filter_size, rk.name)
     if runtime.is_hip:
-        include_type_traits = ''
+        include_type_traits = ""
     else:
-        include_type_traits = '''
+        include_type_traits = """
 #include <cupy/cuda_workaround.h>  // provide C++ std:: coverage
-'''
-    code = '''#include "cupy/carray.cuh"
+"""
+    code = """#include "cupy/carray.cuh"
 #include "cupy/complex.cuh"
 {include_type_traits}
 
@@ -258,7 +258,7 @@ void {name}(const byte* input, byte* output, const idx_t* x) {{
             *(Y*)(output_+j*out_elem_stride) = cast<Y>(output_line[j]);
         }}
     }}
-}}'''.format(n_lines=n_lines, length=length, in_length=in_length, start=start,
+}}""".format(n_lines=n_lines, length=length, in_length=in_length, start=start,
              in_ctype=in_ctype, out_ctype=out_ctype, int_type=int_type,
              boundary_early=boundary_early, boundary=boundary,
              name=name, rk_name=rk.name,
@@ -266,7 +266,7 @@ void {name}(const byte* input, byte* output, const idx_t* x) {{
              # it must be used as a device function here. In fact, RawKernel
              # wouldn't compile if code only contains device functions, so this
              # is necessary.
-             rk_code=rk.code.replace('__global__', '__device__'),
+             rk_code=rk.code.replace("__global__", "__device__"),
              include_type_traits=include_type_traits,
              CAST=_filters_core._CAST_FUNCTION)
-    return cupy.RawKernel(code, name, ('--std=c++11',) + rk.options)
+    return cupy.RawKernel(code, name, ("--std=c++11",) + rk.options)

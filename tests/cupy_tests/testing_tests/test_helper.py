@@ -10,24 +10,24 @@ from cupy.exceptions import AxisError
 
 class TestPackageRequirements:
     def test_installed(self):
-        assert testing.installed('cupy')
-        assert testing.installed('cupy>9', 'numpy>=1.12')
-        assert testing.installed('numpy>=1.10,<=2.0')
-        assert not testing.installed('numpy>=2.0')
-        assert not testing.installed('numpy>1.10,<1.9')
+        assert testing.installed("cupy")
+        assert testing.installed("cupy>9", "numpy>=1.12")
+        assert testing.installed("numpy>=1.10,<=2.0")
+        assert not testing.installed("numpy>=2.0")
+        assert not testing.installed("numpy>1.10,<1.9")
 
     def test_numpy_satisfies(self):
-        assert testing.numpy_satisfies('>1.10')
-        assert not testing.numpy_satisfies('>=2.10')
+        assert testing.numpy_satisfies(">1.10")
+        assert not testing.numpy_satisfies(">=2.10")
 
-    @testing.with_requires('numpy>2.0')
+    @testing.with_requires("numpy>2.0")
     def test_with_requires(self):
-        assert False, 'this should not happen'
+        assert False, "this should not happen"
 
 
 @testing.parameterize(*testing.product({
-    'xp': [numpy, cupy],
-    'shape': [(3, 2), (), (3, 0, 2)],
+    "xp": [numpy, cupy],
+    "shape": [(3, 2), (), (3, 0, 2)],
 }))
 class TestShapedRandom(unittest.TestCase):
 
@@ -56,7 +56,7 @@ class TestShapedRandom(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    'xp': [numpy, cupy],
+    "xp": [numpy, cupy],
 }))
 class TestShapedRandomBool(unittest.TestCase):
 
@@ -66,12 +66,12 @@ class TestShapedRandomBool(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    'dtype': [
+    "dtype": [
         numpy.float16, numpy.float32, numpy.float64,
         numpy.complex64, numpy.complex128,
     ],
-    'xp': [numpy, cupy],
-    'x_s_shapes': [
+    "xp": [numpy, cupy],
+    "x_s_shapes": [
         ((0, 0), (0,)),
         ((2, 2), (2,)),
         ((2, 3), (2,)),
@@ -142,7 +142,7 @@ class TestAssertFunctionIsCalled(unittest.TestCase):
 
     def test_patch_ndarray(self):
         orig = cupy.ndarray
-        with testing.AssertFunctionIsCalled('cupy.ndarray'):
+        with testing.AssertFunctionIsCalled("cupy.ndarray"):
             a = cupy.ndarray((2, 3), numpy.float32)
         assert cupy.ndarray is orig
         assert not isinstance(a, cupy.ndarray)
@@ -150,7 +150,7 @@ class TestAssertFunctionIsCalled(unittest.TestCase):
     def test_spy_ndarray(self):
         orig = cupy.ndarray
         with testing.AssertFunctionIsCalled(
-                'cupy.ndarray', wraps=cupy.ndarray):
+                "cupy.ndarray", wraps=cupy.ndarray):
             a = cupy.ndarray((2, 3), numpy.float32)
         assert cupy.ndarray is orig
         assert isinstance(a, cupy.ndarray)
@@ -158,21 +158,21 @@ class TestAssertFunctionIsCalled(unittest.TestCase):
     def test_fail_not_called(self):
         orig = cupy.ndarray
         with pytest.raises(AssertionError):
-            with testing.AssertFunctionIsCalled('cupy.ndarray'):
+            with testing.AssertFunctionIsCalled("cupy.ndarray"):
                 pass
         assert cupy.ndarray is orig
 
     def test_fail_called_twice(self):
         orig = cupy.ndarray
         with pytest.raises(AssertionError):
-            with testing.AssertFunctionIsCalled('cupy.ndarray'):
+            with testing.AssertFunctionIsCalled("cupy.ndarray"):
                 cupy.ndarray((2, 3), numpy.float32)
                 cupy.ndarray((2, 3), numpy.float32)
         assert cupy.ndarray is orig
 
     def test_times_called(self):
         orig = cupy.ndarray
-        with testing.AssertFunctionIsCalled('cupy.ndarray', times_called=2):
+        with testing.AssertFunctionIsCalled("cupy.ndarray", times_called=2):
             cupy.ndarray((2, 3), numpy.float32)
             cupy.ndarray((2, 3), numpy.float32)
         assert cupy.ndarray is orig
@@ -180,7 +180,7 @@ class TestAssertFunctionIsCalled(unittest.TestCase):
     def test_inner_error(self):
         orig = cupy.ndarray
         with pytest.raises(AxisError):
-            with testing.AssertFunctionIsCalled('cupy.ndarray'):
+            with testing.AssertFunctionIsCalled("cupy.ndarray"):
                 cupy.ndarray((2, 3), numpy.float32)
-                raise AxisError('foo')
+                raise AxisError("foo")
         assert cupy.ndarray is orig

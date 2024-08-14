@@ -47,11 +47,11 @@ class time_range:
     def __init__(
             self, message=None, color_id=None, argb_color=None, sync=False):
         if not cuda.nvtx.available:
-            raise RuntimeError('nvtx is not installed')
+            raise RuntimeError("nvtx is not installed")
 
         if color_id is not None and argb_color is not None:
             raise ValueError(
-                'Only either color_id or argb_color can be specified'
+                "Only either color_id or argb_color can be specified"
             )
         self.message = message
         self.color_id = color_id if color_id is not None else -1
@@ -61,8 +61,8 @@ class time_range:
     def __enter__(self):
         if self.message is None:
             raise ValueError(
-                'when used as a context manager, the message argument cannot '
-                'be None')
+                "when used as a context manager, the message argument cannot "
+                "be None")
         if self.sync:
             runtime.deviceSynchronize()
         if self.argb_color is not None:

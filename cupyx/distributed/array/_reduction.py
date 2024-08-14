@@ -8,18 +8,18 @@ from cupyx.distributed.array import _array, _chunk, _data_transfer, _modes
 
 
 def _execute(
-    arr: '_array.DistributedArray', kernel, axis: int, dtype: DTypeLike,
+    arr: "_array.DistributedArray", kernel, axis: int, dtype: DTypeLike,
 ) -> Any:
     overwrites = False
     mode_overrides = {
-        'cupy_max': _modes.MAX,
-        'cupy_min': _modes.MIN,
-        'cupy_sum': _modes.SUM,
-        'cupy_prod': _modes.PROD,
+        "cupy_max": _modes.MAX,
+        "cupy_min": _modes.MIN,
+        "cupy_sum": _modes.SUM,
+        "cupy_prod": _modes.PROD,
     }
     if kernel.name not in mode_overrides:
 
-        raise RuntimeError(f'Unsupported kernel: {kernel.name}')
+        raise RuntimeError(f"Unsupported kernel: {kernel.name}")
     mode = mode_overrides[kernel.name]
     if mode in (_modes.MAX, _modes.MIN):
         if arr._mode is not mode:

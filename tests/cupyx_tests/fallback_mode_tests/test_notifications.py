@@ -23,42 +23,42 @@ class TestNotifications(NotificationTestBase):
     def test_seterr_geterr(self):
 
         default = _ufunc_config.geterr()
-        assert default['fallback_mode'] == 'ignore'
+        assert default["fallback_mode"] == "ignore"
 
-        old = _ufunc_config.seterr(fallback_mode='warn')
+        old = _ufunc_config.seterr(fallback_mode="warn")
         current = _ufunc_config.geterr()
-        assert old['fallback_mode'] == 'ignore'
-        assert current['fallback_mode'] == 'warn'
+        assert old["fallback_mode"] == "ignore"
+        assert current["fallback_mode"] == "warn"
         _ufunc_config.seterr(**old)
 
     def test_errstate(self):
 
-        old = _ufunc_config.seterr(fallback_mode='print')
+        old = _ufunc_config.seterr(fallback_mode="print")
         before = _ufunc_config.geterr()
 
-        with _ufunc_config.errstate(fallback_mode='raise'):
+        with _ufunc_config.errstate(fallback_mode="raise"):
             inside = _ufunc_config.geterr()
-            assert inside['fallback_mode'] == 'raise'
+            assert inside["fallback_mode"] == "raise"
 
         after = _ufunc_config.geterr()
-        assert before['fallback_mode'] == after['fallback_mode']
+        assert before["fallback_mode"] == after["fallback_mode"]
         _ufunc_config.seterr(**old)
 
 
 @testing.parameterize(
-    {'func_name': 'get_include'},
+    {"func_name": "get_include"},
 )
 class TestNotificationModes(NotificationTestBase):
 
     @property
     def func(self):
-        if self.func_name == 'get_include':
+        if self.func_name == "get_include":
             return fallback_mode.numpy.get_include
         assert False
 
     def test_notification_ignore(self):
 
-        old = _ufunc_config.seterr(fallback_mode='ignore')
+        old = _ufunc_config.seterr(fallback_mode="ignore")
         saved_stdout = io.StringIO()
 
         with contextlib.redirect_stdout(saved_stdout):
@@ -70,7 +70,7 @@ class TestNotificationModes(NotificationTestBase):
 
     def test_notification_print(self):
 
-        old = _ufunc_config.seterr(fallback_mode='print')
+        old = _ufunc_config.seterr(fallback_mode="print")
         saved_stdout = io.StringIO()
 
         with contextlib.redirect_stdout(saved_stdout):
@@ -85,14 +85,14 @@ class TestNotificationModes(NotificationTestBase):
 
     def test_notification_warn(self):
 
-        _ufunc_config.seterr(fallback_mode='warn')
+        _ufunc_config.seterr(fallback_mode="warn")
 
         with pytest.warns(fallback_mode.notification.FallbackWarning):
             self.func()
 
     def test_notification_raise(self):
 
-        old = _ufunc_config.seterr(fallback_mode='raise')
+        old = _ufunc_config.seterr(fallback_mode="raise")
 
         with pytest.raises(AttributeError):
             self.func()
@@ -105,7 +105,7 @@ class TestNotificationVectorize(NotificationTestBase):
     @test_utils.enable_slice_copy
     def test_custom_or_builtin_pyfunc(self):
 
-        old = _ufunc_config.seterr(fallback_mode='print')
+        old = _ufunc_config.seterr(fallback_mode="print")
         saved_stdout = io.StringIO()
 
         with contextlib.redirect_stdout(saved_stdout):
@@ -132,7 +132,7 @@ class TestNotificationVectorize(NotificationTestBase):
     @test_utils.enable_slice_copy
     def test_cupy_supported_pyfunc(self):
 
-        old = _ufunc_config.seterr(fallback_mode='print')
+        old = _ufunc_config.seterr(fallback_mode="print")
         saved_stdout = io.StringIO()
 
         with contextlib.redirect_stdout(saved_stdout):
@@ -149,11 +149,11 @@ class TestNotificationVectorize(NotificationTestBase):
         msg2 += "falling back to its numpy implementation"
         assert output == ("Warning: " + msg1 + "\nWarning: " + msg2)
 
-    @pytest.mark.skip(reason='#6282 implemented cupy.fabs')
+    @pytest.mark.skip(reason="#6282 implemented cupy.fabs")
     @test_utils.enable_slice_copy
     def test_numpy_only_pyfunc(self):
 
-        old = _ufunc_config.seterr(fallback_mode='print')
+        old = _ufunc_config.seterr(fallback_mode="print")
         saved_stdout = io.StringIO()
 
         with contextlib.redirect_stdout(saved_stdout):

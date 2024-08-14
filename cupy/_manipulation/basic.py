@@ -8,7 +8,7 @@ from cupy._sorting import search
 from cupy_backends.cuda.api import runtime
 
 
-def copyto(dst, src, casting='same_kind', where=None):
+def copyto(dst, src, casting="same_kind", where=None):
     """Copies values from one array to another with broadcasting.
 
     This function can be called for arrays on different devices. In this case,
@@ -43,7 +43,7 @@ def copyto(dst, src, casting='same_kind', where=None):
     elif isinstance(src, numpy.ndarray) or numpy.isscalar(src):
         if src.size != 1:
             raise ValueError(
-                'non-scalar numpy.ndarray cannot be used for copyto')
+                "non-scalar numpy.ndarray cannot be used for copyto")
         src_dtype = src.dtype
         can_cast = numpy.can_cast(src, dst.dtype, casting)
         src = src.item()
@@ -53,7 +53,7 @@ def copyto(dst, src, casting='same_kind', where=None):
         can_cast = numpy.can_cast(src_dtype, dst.dtype, casting)
 
     if not can_cast:
-        raise TypeError('Cannot cast %s to %s in %s casting mode' %
+        raise TypeError("Cannot cast %s to %s in %s casting mode" %
                         (src_dtype, dst.dtype, casting))
 
     if fusion._is_fusing():

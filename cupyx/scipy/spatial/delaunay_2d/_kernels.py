@@ -2972,26 +2972,26 @@ RealType*           coords
 """
 
 DELAUNAY_MODULE = cupy.RawModule(
-    code=KERNEL_DIVISION, options=('-std=c++11', '-w',),
-    name_expressions=['kerMakeFirstTri', 'kerInitPointLocationFast',
-                      'kerInitPointLocationExact', 'kerVoteForPoint',
-                      'kerPickWinnerPoint', 'kerShiftValues<Tri>',
-                      'kerShiftValues<char>', 'kerShiftValues<int>',
-                      'kerShiftOpp', 'kerShiftTriIdx',
-                      'kerSplitPointsFast', 'kerSplitPointsExactSoS',
-                      'kerSplitTri', 'isTriActive', 'kerMarkSpecialTris',
-                      'kerCheckDelaunayFast', 'kerCheckDelaunayExact_Fast',
-                      'kerCheckDelaunayExact_Exact', 'kerMarkRejectedFlips',
-                      'kerFlip', 'kerUpdateOpp', 'kerUpdateFlipTrace',
-                      'kerRelocatePointsFast', 'kerRelocatePointsExact',
-                      'kerMarkInfinityTri', 'kerCollectFreeSlots',
-                      'kerMakeCompactMap', 'kerCompactTris',
-                      'kerUpdateVertIdx', 'getMortonNumber',
-                      'computeDistance2D', 'kerInitPredicate',
-                      'makeKeyFromTriHasVert', 'kerCheckIfCoplanarPoints',
-                      'kerEncodeEdges', 'kerEncBarycenters',
-                      'kerFindClosestTri', 'kerCountVertexNeighbors',
-                      'kerFillVertexNeighbors'])
+    code=KERNEL_DIVISION, options=("-std=c++11", "-w",),
+    name_expressions=["kerMakeFirstTri", "kerInitPointLocationFast",
+                      "kerInitPointLocationExact", "kerVoteForPoint",
+                      "kerPickWinnerPoint", "kerShiftValues<Tri>",
+                      "kerShiftValues<char>", "kerShiftValues<int>",
+                      "kerShiftOpp", "kerShiftTriIdx",
+                      "kerSplitPointsFast", "kerSplitPointsExactSoS",
+                      "kerSplitTri", "isTriActive", "kerMarkSpecialTris",
+                      "kerCheckDelaunayFast", "kerCheckDelaunayExact_Fast",
+                      "kerCheckDelaunayExact_Exact", "kerMarkRejectedFlips",
+                      "kerFlip", "kerUpdateOpp", "kerUpdateFlipTrace",
+                      "kerRelocatePointsFast", "kerRelocatePointsExact",
+                      "kerMarkInfinityTri", "kerCollectFreeSlots",
+                      "kerMakeCompactMap", "kerCompactTris",
+                      "kerUpdateVertIdx", "getMortonNumber",
+                      "computeDistance2D", "kerInitPredicate",
+                      "makeKeyFromTriHasVert", "kerCheckIfCoplanarPoints",
+                      "kerEncodeEdges", "kerEncBarycenters",
+                      "kerFindClosestTri", "kerCountVertexNeighbors",
+                      "kerFillVertexNeighbors"])
 
 
 N_BLOCKS = 512
@@ -3002,7 +3002,7 @@ PRED_BLOCK_SZ = 32
 
 
 def make_first_tri(tri_arr, opp_arr, tri_info_arr, tri, inf_idx):
-    ker_make_first_tri = DELAUNAY_MODULE.get_function('kerMakeFirstTri')
+    ker_make_first_tri = DELAUNAY_MODULE.get_function("kerMakeFirstTri")
     ker_make_first_tri(
         (1,), (1,), (tri_arr, opp_arr, tri_info_arr, tri, inf_idx))
 
@@ -3011,7 +3011,7 @@ def init_point_location_fast(
         vert_tri, n_vert, exact_check, counter, tri, inf_idx,
         point_vec, points_idx, pred_consts):
     ker_init_point_loc_fast = DELAUNAY_MODULE.get_function(
-        'kerInitPointLocationFast')
+        "kerInitPointLocationFast")
     ker_init_point_loc_fast((N_BLOCKS,), (BLOCK_SZ,), (
         vert_tri, n_vert, exact_check, counter, tri, inf_idx,
         point_vec, points_idx, pred_consts))
@@ -3021,7 +3021,7 @@ def init_point_location_exact(
         vert_tri, n_vert, exact_check, counter, tri, inf_idx,
         point_vec, points_idx, pred_consts):
     ker_init_point_loc_fast = DELAUNAY_MODULE.get_function(
-        'kerInitPointLocationExact')
+        "kerInitPointLocationExact")
     ker_init_point_loc_fast((PRED_N_BLOCKS,), (PRED_BLOCK_SZ,), (
         vert_tri, n_vert, exact_check, counter, tri, inf_idx,
         point_vec, points_idx, pred_consts))
@@ -3029,7 +3029,7 @@ def init_point_location_exact(
 
 def vote_for_point(vert_tri, n_vert, tri, vert_circle, tri_circle,
                    no_sample, inf_idx, points, pred_consts):
-    ker_vote_for_point = DELAUNAY_MODULE.get_function('kerVoteForPoint')
+    ker_vote_for_point = DELAUNAY_MODULE.get_function("kerVoteForPoint")
     ker_vote_for_point((N_BLOCKS,), (BLOCK_SZ,), (
         vert_tri, n_vert, tri, vert_circle, tri_circle,
         no_sample, inf_idx, points, pred_consts
@@ -3038,25 +3038,25 @@ def vote_for_point(vert_tri, n_vert, tri, vert_circle, tri_circle,
 
 def pick_winner_point(vert_tri, n_vert, vert_circle, tri_circle,
                       tri_to_vert, no_sample):
-    ker_pick_winner_point = DELAUNAY_MODULE.get_function('kerPickWinnerPoint')
+    ker_pick_winner_point = DELAUNAY_MODULE.get_function("kerPickWinnerPoint")
     ker_pick_winner_point((N_BLOCKS,), (BLOCK_SZ,), (
         vert_tri, n_vert, vert_circle, tri_circle, tri_to_vert, no_sample))
 
 
 def shift(shift_idx, in_arr, out_arr, type_str):
-    ker_shift = DELAUNAY_MODULE.get_function(f'kerShiftValues<{type_str}>')
+    ker_shift = DELAUNAY_MODULE.get_function(f"kerShiftValues<{type_str}>")
     ker_shift((N_BLOCKS,), (BLOCK_SZ,), (
         shift_idx, int(shift_idx.shape[0]), in_arr, out_arr))
 
 
 def shift_opp_tri(shift_idx, in_arr, out_arr):
-    ker_shift = DELAUNAY_MODULE.get_function('kerShiftOpp')
+    ker_shift = DELAUNAY_MODULE.get_function("kerShiftOpp")
     ker_shift((N_BLOCKS,), (BLOCK_SZ,), (
         shift_idx, int(shift_idx.shape[0]), in_arr, out_arr))
 
 
 def shift_tri_idx(idx, shift_idx):
-    ker_shift = DELAUNAY_MODULE.get_function('kerShiftTriIdx')
+    ker_shift = DELAUNAY_MODULE.get_function("kerShiftTriIdx")
     ker_shift((N_BLOCKS,), (BLOCK_SZ,), (
         idx, int(idx.shape[0]), shift_idx))
 
@@ -3064,7 +3064,7 @@ def shift_tri_idx(idx, shift_idx):
 def split_points_fast(vert_tri, tri_to_vert, tri, ins_tri_map,
                       exact_check, counter, tri_num, ins_tri_num,
                       inf_idx, points, points_idx, pred_consts):
-    ker_split_points_fast = DELAUNAY_MODULE.get_function('kerSplitPointsFast')
+    ker_split_points_fast = DELAUNAY_MODULE.get_function("kerSplitPointsFast")
     ker_split_points_fast((N_BLOCKS,), (BLOCK_SZ,), (
         vert_tri, int(vert_tri.shape[0]), tri_to_vert, tri, ins_tri_map,
         exact_check, counter, int(tri_num), int(ins_tri_num), inf_idx, points,
@@ -3075,7 +3075,7 @@ def split_points_exact(vert_tri, tri_to_vert, tri, ins_tri_map,
                        exact_check, counter, tri_num, ins_tri_num,
                        inf_idx, points, points_idx, pred_consts):
     ker_split_points_exact = DELAUNAY_MODULE.get_function(
-        'kerSplitPointsExactSoS')
+        "kerSplitPointsExactSoS")
     ker_split_points_exact((PRED_BLOCK_SZ,), (PRED_N_BLOCKS,), (
         vert_tri, tri_to_vert, tri, ins_tri_map,
         exact_check, counter, int(tri_num), int(ins_tri_num), inf_idx, points,
@@ -3084,7 +3084,7 @@ def split_points_exact(vert_tri, tri_to_vert, tri, ins_tri_map,
 
 def split_tri(split_tri, tri, tri_opp, tri_info, ins_tri_map, tri_to_vert,
               tri_num, ins_tri_num):
-    ker_split_tri = DELAUNAY_MODULE.get_function('kerSplitTri')
+    ker_split_tri = DELAUNAY_MODULE.get_function("kerSplitTri")
     ker_split_tri((N_BLOCKS,), (32,), (
         split_tri, int(split_tri.shape[0]), tri, tri_opp, tri_info,
         ins_tri_map, tri_to_vert, int(tri_num), int(ins_tri_num)))
@@ -3092,14 +3092,14 @@ def split_tri(split_tri, tri, tri_opp, tri_info, ins_tri_map, tri_to_vert,
 
 def is_tri_active(tri_info):
     out = cupy.empty_like(tri_info, dtype=cupy.bool_)
-    ker_is_tri_active = DELAUNAY_MODULE.get_function('isTriActive')
+    ker_is_tri_active = DELAUNAY_MODULE.get_function("isTriActive")
     ker_is_tri_active((N_BLOCKS,), (BLOCK_SZ,), (
         tri_info, out, tri_info.shape[0]))
     return out
 
 
 def mark_special_tris(tri_info, tri_opp):
-    ker_mark_special_tris = DELAUNAY_MODULE.get_function('kerMarkSpecialTris')
+    ker_mark_special_tris = DELAUNAY_MODULE.get_function("kerMarkSpecialTris")
     ker_mark_special_tris((N_BLOCKS,), (BLOCK_SZ,), (
         tri_info, tri_opp, tri_info.shape[0]))
 
@@ -3108,7 +3108,7 @@ def check_delaunay_fast(act_tri, tri, tri_opp, tri_info,
                         tri_vote, act_tri_num, inf_idx,
                         points, pred_consts):
     ker_check_delaunay_fast = DELAUNAY_MODULE.get_function(
-        'kerCheckDelaunayFast')
+        "kerCheckDelaunayFast")
     ker_check_delaunay_fast((N_BLOCKS,), (BLOCK_SZ,), (
         act_tri, tri, tri_opp, tri_info, tri_vote, act_tri_num,
         inf_idx, points, pred_consts))
@@ -3118,7 +3118,7 @@ def check_delaunay_exact_fast(act_tri, tri, tri_opp, tri_info,
                               tri_vote, exact_check_vi, act_tri_num,
                               counter, inf_idx, points, pred_consts):
     ker_check_delaunay_e_f = DELAUNAY_MODULE.get_function(
-        'kerCheckDelaunayExact_Fast')
+        "kerCheckDelaunayExact_Fast")
     ker_check_delaunay_e_f((N_BLOCKS,), (BLOCK_SZ,), (
         act_tri, tri, tri_opp, tri_info, tri_vote, exact_check_vi, act_tri_num,
         counter, inf_idx, points, pred_consts))
@@ -3128,7 +3128,7 @@ def check_delaunay_exact_exact(tri, tri_opp, tri_vote, exact_check_vi,
                                counter, inf_idx, points, org_point_idx,
                                pred_consts):
     ker_check_delaunay_e_e = DELAUNAY_MODULE.get_function(
-        'kerCheckDelaunayExact_Exact')
+        "kerCheckDelaunayExact_Exact")
 
     ker_check_delaunay_e_e((PRED_N_BLOCKS,), (PRED_BLOCK_SZ,), (
         tri, tri_opp, tri_vote, exact_check_vi, counter, inf_idx,
@@ -3138,14 +3138,14 @@ def check_delaunay_exact_exact(tri, tri_opp, tri_vote, exact_check_vi,
 def mark_rejected_flips(act_tri, tri_opp, tri_vote, tri_info,
                         flip_to_tri, act_tri_num):
     ker_mark_rejected_flips = DELAUNAY_MODULE.get_function(
-        'kerMarkRejectedFlips')
+        "kerMarkRejectedFlips")
     ker_mark_rejected_flips((N_BLOCKS,), (BLOCK_SZ,), (
         act_tri, tri_opp, tri_vote, tri_info, flip_to_tri, act_tri_num))
 
 
 def flip(flip_to_tri, tri, tri_opp, tri_info, tri_msg, act_tri, flip_arr,
          org_flip_num, act_tri_num, mode):
-    ker_flip = DELAUNAY_MODULE.get_function('kerFlip')
+    ker_flip = DELAUNAY_MODULE.get_function("kerFlip")
     ker_flip((N_BLOCKS,), (32,), (
         flip_to_tri, flip_to_tri.shape[0], tri, tri_opp, tri_info,
         tri_msg, act_tri, flip_arr, org_flip_num, act_tri_num, mode))
@@ -3153,13 +3153,13 @@ def flip(flip_to_tri, tri, tri_opp, tri_info, tri_msg, act_tri, flip_arr,
 
 def update_opp(flip_vec, tri_opp, tri_msg, flip_to_tri,
                org_flip_num, flip_num):
-    ker_update_opp = DELAUNAY_MODULE.get_function('kerUpdateOpp')
+    ker_update_opp = DELAUNAY_MODULE.get_function("kerUpdateOpp")
     ker_update_opp((BLOCK_SZ,), (32,), (
         flip_vec, tri_opp, tri_msg, flip_to_tri, org_flip_num, flip_num))
 
 
 def update_flip_trace(flip_arr, tri_to_flip, org_flip_num, flip_num):
-    ker_update_flip_trace = DELAUNAY_MODULE.get_function('kerUpdateFlipTrace')
+    ker_update_flip_trace = DELAUNAY_MODULE.get_function("kerUpdateFlipTrace")
     ker_update_flip_trace((N_BLOCKS,), (BLOCK_SZ,), (
         flip_arr, tri_to_flip, org_flip_num, flip_num))
 
@@ -3167,7 +3167,7 @@ def update_flip_trace(flip_arr, tri_to_flip, org_flip_num, flip_num):
 def relocate_points_fast(vert_tri, tri_to_flip, flip_arr, exact_check,
                          counter, inf_idx, points, org_point_idx, pred_consts):
     ker_relocate_points_fast = DELAUNAY_MODULE.get_function(
-        'kerRelocatePointsFast')
+        "kerRelocatePointsFast")
     ker_relocate_points_fast((N_BLOCKS,), (BLOCK_SZ,), (
         vert_tri, vert_tri.shape[0], tri_to_flip, flip_arr, exact_check,
         counter, inf_idx, points, org_point_idx, pred_consts))
@@ -3177,78 +3177,78 @@ def relocate_points_exact(vert_tri, tri_to_flip, flip_arr, exact_check,
                           counter, inf_idx, points, org_point_idx,
                           pred_consts):
     ker_relocate_points_exact = DELAUNAY_MODULE.get_function(
-        'kerRelocatePointsExact')
+        "kerRelocatePointsExact")
     ker_relocate_points_exact((N_BLOCKS,), (BLOCK_SZ,), (
         vert_tri, tri_to_flip, flip_arr, exact_check, counter, inf_idx,
         points, org_point_idx, pred_consts))
 
 
 def mark_inf_tri(tri, tri_info, opp, inf_idx):
-    ker_mark_inf_tri = DELAUNAY_MODULE.get_function('kerMarkInfinityTri')
+    ker_mark_inf_tri = DELAUNAY_MODULE.get_function("kerMarkInfinityTri")
     ker_mark_inf_tri((N_BLOCKS,), (BLOCK_SZ,), (
         tri, tri.shape[0], tri_info, opp, inf_idx))
 
 
 def collect_free_slots(tri_info, prefix, free_arr, new_tri_num):
-    ker_collect_free = DELAUNAY_MODULE.get_function('kerCollectFreeSlots')
+    ker_collect_free = DELAUNAY_MODULE.get_function("kerCollectFreeSlots")
     ker_collect_free((N_BLOCKS,), (BLOCK_SZ,), (
         tri_info, prefix, free_arr, new_tri_num))
 
 
 def make_compact_map(tri_info, prefix, free_arr, new_tri_num):
-    ker_make_compact = DELAUNAY_MODULE.get_function('kerMakeCompactMap')
+    ker_make_compact = DELAUNAY_MODULE.get_function("kerMakeCompactMap")
     ker_make_compact((N_BLOCKS,), (BLOCK_SZ,), (
         tri_info, tri_info.shape[0], prefix, free_arr, new_tri_num))
 
 
 def compact_tris(tri_info, prefix, tri, tri_opp, new_tri_num):
-    ker_compact_tris = DELAUNAY_MODULE.get_function('kerCompactTris')
+    ker_compact_tris = DELAUNAY_MODULE.get_function("kerCompactTris")
     ker_compact_tris((N_BLOCKS,), (BLOCK_SZ,), (
         tri_info, tri_info.shape[0], prefix, tri, tri_opp, new_tri_num))
 
 
 def update_vert_idx(tri, tri_info, org_point_idx):
-    ker_map_tri = DELAUNAY_MODULE.get_function('kerUpdateVertIdx')
+    ker_map_tri = DELAUNAY_MODULE.get_function("kerUpdateVertIdx")
     ker_map_tri((N_BLOCKS,), (BLOCK_SZ,), (
         tri, tri.shape[0], tri_info, org_point_idx))
 
 
 def get_morton_number(points, n_points, min_val, range_val, values):
-    ker_morton = DELAUNAY_MODULE.get_function('getMortonNumber')
+    ker_morton = DELAUNAY_MODULE.get_function("getMortonNumber")
     ker_morton((N_BLOCKS,), (BLOCK_SZ,), (
         points, n_points, min_val, range_val, values))
 
 
 def compute_distance_2d(points, v0, v1, values):
-    ker_dist = DELAUNAY_MODULE.get_function('computeDistance2D')
+    ker_dist = DELAUNAY_MODULE.get_function("computeDistance2D")
     ker_dist((N_BLOCKS,), (BLOCK_SZ,), (
         points, points.shape[0], v0, v1, values))
 
 
 def init_predicate(pred_values):
-    ker_init_predicate = DELAUNAY_MODULE.get_function('kerInitPredicate')
+    ker_init_predicate = DELAUNAY_MODULE.get_function("kerInitPredicate")
     ker_init_predicate((1,), (1,), (pred_values))
 
 
 def make_key_from_tri_has_vert(tri_has_vert, out):
-    ker_key = DELAUNAY_MODULE.get_function('makeKeyFromTriHasVert')
+    ker_key = DELAUNAY_MODULE.get_function("makeKeyFromTriHasVert")
     ker_key((N_BLOCKS,), (BLOCK_SZ,), (
         tri_has_vert, tri_has_vert.shape[0], out))
 
 
 def check_if_coplanar_points(points, pa_idx, pb_idx, pc_idx, det):
-    ker_ori = DELAUNAY_MODULE.get_function('kerCheckIfCoplanarPoints')
+    ker_ori = DELAUNAY_MODULE.get_function("kerCheckIfCoplanarPoints")
     ker_ori((1,), (1,), (points, pa_idx, pb_idx, pc_idx, det))
 
 
 def encode_edges(tri, tri_points, min_val, range_val, out, edges):
-    ker_enc_edges = DELAUNAY_MODULE.get_function('kerEncodeEdges')
+    ker_enc_edges = DELAUNAY_MODULE.get_function("kerEncodeEdges")
     ker_enc_edges((N_BLOCKS,), (BLOCK_SZ,), (
         tri, tri.shape[0], tri_points, min_val, range_val, out, edges))
 
 
 def encode_barycenters(tri, tri_points, min_val, range_val, out, centers):
-    ker_enc = DELAUNAY_MODULE.get_function('kerEncBarycenters')
+    ker_enc = DELAUNAY_MODULE.get_function("kerEncBarycenters")
     ker_enc((N_BLOCKS,), (BLOCK_SZ,), (
         tri, tri.shape[0], tri_points, min_val, range_val, out, centers))
 
@@ -3256,7 +3256,7 @@ def encode_barycenters(tri, tri_points, min_val, range_val, out, centers):
 def find_closest_tri(queries, tri, tri_opp, enc_idx, tri_enc, tri_points,
                      centers, min_val, range_val, min_axis, max_axis,
                      eps, find_coords, out, coords):
-    ker_find = DELAUNAY_MODULE.get_function('kerFindClosestTri')
+    ker_find = DELAUNAY_MODULE.get_function("kerFindClosestTri")
     ker_find((N_BLOCKS,), (BLOCK_SZ,), (
         queries, queries.shape[0], tri, tri.shape[0], tri_opp,
         enc_idx, tri_enc, tri_points, centers, min_val, range_val,
@@ -3265,12 +3265,12 @@ def find_closest_tri(queries, tri, tri_opp, enc_idx, tri_enc, tri_points,
 
 
 def count_vertex_neighbors(edges, vertex_count):
-    ker_count = DELAUNAY_MODULE.get_function('kerCountVertexNeighbors')
+    ker_count = DELAUNAY_MODULE.get_function("kerCountVertexNeighbors")
     ker_count((N_BLOCKS,), (BLOCK_SZ,),
               (edges, edges.shape[0], vertex_count, vertex_count.shape[0]))
 
 
 def fill_vertex_neighbors(edges, vertex_off, vertex_count, vertex_neighbors):
-    ker_fill = DELAUNAY_MODULE.get_function('kerFillVertexNeighbors')
+    ker_fill = DELAUNAY_MODULE.get_function("kerFillVertexNeighbors")
     ker_fill((N_BLOCKS,), (BLOCK_SZ,), (
         edges, edges.shape[0], vertex_off, vertex_count, vertex_neighbors))

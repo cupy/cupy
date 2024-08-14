@@ -11,26 +11,26 @@ from cupy._creation import from_data
 
 @testing.parameterize(
     *testing.product({
-        'stream_name': ['null', 'ptds'],
+        "stream_name": ["null", "ptds"],
     }))
 class TestStream(unittest.TestCase):
 
     def setUp(self):
-        if cuda.runtime.is_hip and self.stream_name == 'ptds':
-            self.skipTest('HIP does not support PTDS')
+        if cuda.runtime.is_hip and self.stream_name == "ptds":
+            self.skipTest("HIP does not support PTDS")
 
         self._prev_stream = cuda.get_current_stream()
 
-        if self.stream_name == 'null':
+        if self.stream_name == "null":
             self.stream = cuda.Stream.null
-        elif self.stream_name == 'ptds':
+        elif self.stream_name == "ptds":
             self.stream = cuda.Stream.ptds
         self.stream.use()
 
     def tearDown(self):
         self._prev_stream.use()
 
-    @unittest.skipIf(cuda.runtime.is_hip, 'This test is only for CUDA')
+    @unittest.skipIf(cuda.runtime.is_hip, "This test is only for CUDA")
     def test_eq_cuda(self):
         null0 = self.stream
         if self.stream == cuda.Stream.null:
@@ -48,7 +48,7 @@ class TestStream(unittest.TestCase):
         assert null2 != null3
         assert null2 != null4
 
-    @unittest.skipIf(not cuda.runtime.is_hip, 'This test is only for HIP')
+    @unittest.skipIf(not cuda.runtime.is_hip, "This test is only for HIP")
     def test_eq_hip(self):
         null0 = self.stream
         null1 = cuda.Stream(True)
@@ -118,7 +118,7 @@ class TestStream(unittest.TestCase):
         assert all(s == stream.ptr for s in stream_list)
 
     @unittest.skipIf(cuda.runtime.is_hip,
-                     'HIP does not support launch_host_func')
+                     "HIP does not support launch_host_func")
     def test_launch_host_func(self):
         N = 100
         cupy_arrays = [testing.shaped_random((2, 3)) for _ in range(N)]
@@ -210,7 +210,7 @@ class TestStream(unittest.TestCase):
                 cupy.arange(10)
                 errors[tid] = False
             except Exception as e:
-                print(f'error in {tid}: {e}')
+                print(f"error in {tid}: {e}")
 
         def f2(barrier, errors):
             global s1
@@ -226,7 +226,7 @@ class TestStream(unittest.TestCase):
                 cupy.arange(10)
                 errors[tid] = False
             except Exception as e:
-                print(f'error in {tid}: {e}')
+                print(f"error in {tid}: {e}")
 
         barrier = threading.Barrier(2)
         errors = [True, True]
@@ -286,7 +286,7 @@ class TestExternalStream(unittest.TestCase):
         assert out == list(range(N))
 
     @unittest.skipIf(cuda.runtime.is_hip,
-                     'HIP does not support launch_host_func')
+                     "HIP does not support launch_host_func")
     def test_launch_host_func(self):
         N = 100
         cupy_arrays = [testing.shaped_random((2, 3)) for _ in range(N)]

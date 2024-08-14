@@ -59,7 +59,7 @@ def moveaxis(a, source, destination):
     """
     # TODO(fukatani): check type
     # checking __len__ attribute is faster than cupy.isscalar or isinstance
-    if not (hasattr(source, '__len__') or hasattr(destination, '__len__')):
+    if not (hasattr(source, "__len__") or hasattr(destination, "__len__")):
         return _routines_manipulation._move_single_axis(a, source, destination)
     return _core.moveaxis(a, source, destination)
 

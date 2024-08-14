@@ -20,7 +20,7 @@ import pytest
 
 
 class TestLinearNDInterpolator:
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_interpolate(self, xp, scp):
         # Test at single points
         x = xp.array([(0, 0), (-0.5, -0.5), (-0.5, 0.5),
@@ -35,7 +35,7 @@ class TestLinearNDInterpolator:
         yi = scp.interpolate.LinearNDInterpolator(x, y)(x_test)
         return yi
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_smoketest_alternate(self, xp, scp):
         # Test at single points, alternate calling convention
         x = xp.array([(0, 0), (-0.5, -0.5), (-0.5, 0.5),
@@ -51,7 +51,7 @@ class TestLinearNDInterpolator:
             (x[:, 0], x[:, 1]), y)(x_test[:, 0], x_test[:, 1])
         return yi
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_complex_smoketest(self, xp, scp):
         # Test at single points
         x = xp.array([(0, 0), (-0.5, -0.5), (-0.5, 0.5),
@@ -67,7 +67,7 @@ class TestLinearNDInterpolator:
         yi = scp.interpolate.LinearNDInterpolator(x, y)(x_test)
         return yi
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_tri_input(self, xp, scp):
         # Test at single points
         x = xp.array([(0, 0), (-0.5, -0.5), (-0.5, 0.5),
@@ -84,7 +84,7 @@ class TestLinearNDInterpolator:
         yi = scp.interpolate.LinearNDInterpolator(tri, y)(x_test)
         return yi
 
-    @testing.numpy_cupy_allclose(scipy_name='scp', atol=0.5)
+    @testing.numpy_cupy_allclose(scipy_name="scp", atol=0.5)
     def test_square(self, xp, scp):
         # Test barycentric interpolation on a square against a manual
         # implementation
@@ -101,7 +101,7 @@ class TestLinearNDInterpolator:
         zi = scp.interpolate.LinearNDInterpolator(points, values)(xi)
         return zi
 
-    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1.0)
+    @testing.numpy_cupy_allclose(scipy_name="scp", atol=1.0)
     def test_square_rescale(self, xp, scp):
         # Test barycentric interpolation on a rectangle with rescaling
         # agaings the same implementation without rescaling
@@ -121,13 +121,13 @@ class TestLinearNDInterpolator:
 
 
 class TestEstimateGradients2DGlobal:
-    @pytest.mark.parametrize('func', [
+    @pytest.mark.parametrize("func", [
         (lambda x, y: 0*x + 1),
         (lambda x, y: 0 + x),
         (lambda x, y: -2 + y),
         (lambda x, y: 3 + 3*x + 14.15*y)
     ])
-    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1.0, atol=1e-6)
+    @testing.numpy_cupy_allclose(scipy_name="scp", rtol=1.0, atol=1e-6)
     def test_smoketest(self, func, xp, scp):
         x = xp.array([(0, 0), (0, 2),
                       (1, 0), (1, 2),
@@ -184,34 +184,34 @@ class TestCloughTocher2DInterpolator:
             a = ip(p[:, 0], p[:, 1])
         return a
 
-    @pytest.mark.parametrize('func', [
+    @pytest.mark.parametrize("func", [
         lambda x, y: 0*x + 1,
         lambda x, y: 0 + x,
         lambda x, y: -2 + y,
         lambda x, y: 3 + 3*x + 14.15*y,
     ])
-    @pytest.mark.parametrize('alternate', [False, True])
-    @pytest.mark.parametrize('rescale', [False, True])
-    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1.0, atol=1e-6)
+    @pytest.mark.parametrize("alternate", [False, True])
+    @pytest.mark.parametrize("rescale", [False, True])
+    @testing.numpy_cupy_allclose(scipy_name="scp", rtol=1.0, atol=1e-6)
     def test_linear_smoketest(self, func, alternate, rescale, xp, scp):
         # Should be exact for linear functions, independent of triangulation
         return self._check_accuracy(
             xp, scp, func, tol=1e-13, atol=1e-7, rtol=1e-7,
             alternate=alternate, rescale=rescale)
 
-    @pytest.mark.parametrize('func', [
+    @pytest.mark.parametrize("func", [
         lambda x, y: x**2,
         lambda x, y: y**2,
         lambda x, y: x**2 - y**2,
         lambda x, y: x*y,
     ])
-    @pytest.mark.parametrize('rescale', [False, True])
-    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1.0, atol=1e-6)
+    @pytest.mark.parametrize("rescale", [False, True])
+    @testing.numpy_cupy_allclose(scipy_name="scp", rtol=1.0, atol=1e-6)
     def test_quadratic_smoketest(self, func, rescale, xp, scp):
         # Should be reasonably accurate for quadratic functions
         return self._check_accuracy(xp, scp, func, tol=1e-9, rescale=rescale)
 
-    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1.0, atol=1e-6)
+    @testing.numpy_cupy_allclose(scipy_name="scp", rtol=1.0, atol=1e-6)
     def test_tri_input(self, xp, scp):
         # Test at single points
         x = xp.array([(0, 0), (-0.5, -0.5), (-0.5, 0.5),
@@ -224,7 +224,7 @@ class TestCloughTocher2DInterpolator:
         yi = scp.interpolate.CloughTocher2DInterpolator(tri, y)(x)
         return yi
 
-    @pytest.mark.parametrize('xp,scp', [(cupy, cupyx.scipy), (np, scipy)])
+    @pytest.mark.parametrize("xp,scp", [(cupy, cupyx.scipy), (np, scipy)])
     def test_tri_input_rescale(self, xp, scp):
         # Test at single points
         x = xp.array([(0, 0), (-5, -5), (-5, 5), (5, 5), (2.5, 3)],
@@ -238,15 +238,15 @@ class TestCloughTocher2DInterpolator:
         with pytest.raises(ValueError, match=match):
             scp.interpolate.CloughTocher2DInterpolator(tri, y, rescale=True)(x)
 
-    @pytest.mark.parametrize('func', [
+    @pytest.mark.parametrize("func", [
         lambda x, y: x**2,
         lambda x, y: y**2,
         lambda x, y: x**2 - y**2,
         lambda x, y: x*y,
         lambda x, y: np.cos(2*np.pi*x)*np.sin(2*np.pi*y)
     ])
-    @pytest.mark.parametrize('rescale', [False, True])
-    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1.0, atol=1e-6)
+    @pytest.mark.parametrize("rescale", [False, True])
+    @testing.numpy_cupy_allclose(scipy_name="scp", rtol=1.0, atol=1e-6)
     def test_dense(self, func, rescale, xp, scp):
         # Should be more accurate for dense meshes
         grid = xp.r_[xp.array([(0, 0), (0, 1), (1, 0), (1, 1)],
@@ -256,7 +256,7 @@ class TestCloughTocher2DInterpolator:
 
         return self._check_accuracy(xp, scp, func, x=grid, tol=1e-9)
 
-    @pytest.mark.parametrize('xp,scp', [(cupy, cupyx.scipy), (np, scipy)])
+    @pytest.mark.parametrize("xp,scp", [(cupy, cupyx.scipy), (np, scipy)])
     def test_wrong_ndim(self, xp, scp):
         x = testing.shaped_random((30, 3), xp, xp.float64)
         y = testing.shaped_random((30,), xp, xp.float64)

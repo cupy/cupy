@@ -19,21 +19,21 @@ def _memoize(f: Callable) -> Callable:
 
 @_memoize
 def get_nvtx_path() -> Optional[str]:
-    assert sys.platform == 'win32'
+    assert sys.platform == "win32"
 
-    prog = os.environ.get('ProgramFiles', 'C:\\Program Files')
+    prog = os.environ.get("ProgramFiles", "C:\\Program Files")
     pattern = os.path.join(
-        prog, 'NVIDIA Corporation', 'Nsight Systems *', 'target-windows-x64',
-        'nvtx',
+        prog, "NVIDIA Corporation", "Nsight Systems *", "target-windows-x64",
+        "nvtx",
     )
-    print(f'Looking for NVTX: {pattern}')
+    print(f"Looking for NVTX: {pattern}")
     candidates = sorted(glob.glob(pattern))
     if len(candidates) != 0:
         # Pick the latest one
         nvtx = candidates[-1]
-        print(f'Using NVTX at: {nvtx}')
+        print(f"Using NVTX at: {nvtx}")
         return nvtx
-    if os.environ.get('CONDA_BUILD', '0') == '1':
-        return os.environ['PREFIX']
-    print('NVTX could not be found')
+    if os.environ.get("CONDA_BUILD", "0") == "1":
+        return os.environ["PREFIX"]
+    print("NVTX could not be found")
     return None

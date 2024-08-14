@@ -44,7 +44,7 @@ def lsqr(A, b):
     from cupy_backends.cuda.libs import cusolver
 
     if runtime.is_hip:
-        raise RuntimeError('HIP does not support lsqr')
+        raise RuntimeError("HIP does not support lsqr")
     if not sparse.isspmatrix_csr(A):
         A = sparse.csr_matrix(A)
     # csr_matrix is 2d
@@ -52,13 +52,13 @@ def lsqr(A, b):
     _util._assert_cupy_array(b)
     m = A.shape[0]
     if b.ndim != 1 or len(b) != m:
-        raise ValueError('b must be 1-d array whose size is same as A')
+        raise ValueError("b must be 1-d array whose size is same as A")
 
     # Cast to float32 or float64
-    if A.dtype == 'f' or A.dtype == 'd':
+    if A.dtype == "f" or A.dtype == "d":
         dtype = A.dtype
     else:
-        dtype = numpy.promote_types(A.dtype, 'f')
+        dtype = numpy.promote_types(A.dtype, "f")
 
     handle = device.get_cusolver_sp_handle()
     nnz = A.nnz
@@ -67,7 +67,7 @@ def lsqr(A, b):
     x = cupy.empty(m, dtype=dtype)
     singularity = numpy.empty(1, numpy.int32)
 
-    if dtype == 'f':
+    if dtype == "f":
         csrlsvqr = cusolver.scsrlsvqr
     else:
         csrlsvqr = cusolver.dcsrlsvqr
@@ -176,7 +176,7 @@ def lsmr(A, b, x0=None, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8,
         x = cupy.zeros((n,), dtype=A.dtype)
     else:
         if not (x0.shape == (n,) or x0.shape == (n, 1)):
-            raise ValueError('x0 has incompatible dimensions')
+            raise ValueError("x0 has incompatible dimensions")
         x = x0.astype(A.dtype).ravel()
         u -= matvec(x)
         beta = cublas.nrm2(u)
@@ -426,38 +426,38 @@ def spsolve_triangular(A, b, lower=True, overwrite_A=False, overwrite_b=False,
     """
     from cupyx import cusparse
 
-    if not (cusparse.check_availability('spsm') or
-            cusparse.check_availability('csrsm2')):
+    if not (cusparse.check_availability("spsm") or
+            cusparse.check_availability("csrsm2")):
         raise NotImplementedError
 
     if not sparse.isspmatrix(A):
-        raise TypeError('A must be cupyx.scipy.sparse.spmatrix')
+        raise TypeError("A must be cupyx.scipy.sparse.spmatrix")
     if not isinstance(b, cupy.ndarray):
-        raise TypeError('b must be cupy.ndarray')
+        raise TypeError("b must be cupy.ndarray")
     if A.shape[0] != A.shape[1]:
-        raise ValueError(f'A must be a square matrix (A.shape: {A.shape})')
+        raise ValueError(f"A must be a square matrix (A.shape: {A.shape})")
     if b.ndim not in [1, 2]:
-        raise ValueError(f'b must be 1D or 2D array (b.shape: {b.shape})')
+        raise ValueError(f"b must be 1D or 2D array (b.shape: {b.shape})")
     if A.shape[0] != b.shape[0]:
-        raise ValueError('The size of dimensions of A must be equal to the '
-                         'size of the first dimension of b '
-                         f'(A.shape: {A.shape}, b.shape: {b.shape})')
-    if A.dtype.char not in 'fdFD':
-        raise TypeError(f'unsupported dtype (actual: {A.dtype})')
+        raise ValueError("The size of dimensions of A must be equal to the "
+                         "size of the first dimension of b "
+                         f"(A.shape: {A.shape}, b.shape: {b.shape})")
+    if A.dtype.char not in "fdFD":
+        raise TypeError(f"unsupported dtype (actual: {A.dtype})")
 
-    if cusparse.check_availability('spsm') and _should_use_spsm(b):
+    if cusparse.check_availability("spsm") and _should_use_spsm(b):
         if not (sparse.isspmatrix_csr(A) or
                 sparse.isspmatrix_csc(A) or
                 sparse.isspmatrix_coo(A)):
-            warnings.warn('CSR, CSC or COO format is required. Converting to '
-                          'CSR format.', sparse.SparseEfficiencyWarning)
+            warnings.warn("CSR, CSC or COO format is required. Converting to "
+                          "CSR format.", sparse.SparseEfficiencyWarning)
             A = A.tocsr()
         A.sum_duplicates()
         x = cusparse.spsm(A, b, lower=lower, unit_diag=unit_diagonal)
-    elif cusparse.check_availability('csrsm2'):
+    elif cusparse.check_availability("csrsm2"):
         if not (sparse.isspmatrix_csr(A) or sparse.isspmatrix_csc(A)):
-            warnings.warn('CSR or CSC format is required. Converting to CSR '
-                          'format.', sparse.SparseEfficiencyWarning)
+            warnings.warn("CSR or CSC format is required. Converting to CSR "
+                          "format.", sparse.SparseEfficiencyWarning)
             A = A.tocsr()
         A.sum_duplicates()
 
@@ -471,9 +471,9 @@ def spsolve_triangular(A, b, lower=True, overwrite_A=False, overwrite_b=False,
     else:
         assert False
 
-    if x.dtype.char in 'fF':
+    if x.dtype.char in "fF":
         # Note: This is for compatibility with SciPy.
-        dtype = numpy.promote_types(x.dtype, 'float64')
+        dtype = numpy.promote_types(x.dtype, "float64")
         x = x.astype(dtype)
     return x
 
@@ -493,23 +493,23 @@ def spsolve(A, b):
     """
     import cupyx.cusolver
 
-    if not cupyx.cusolver.check_availability('csrlsvqr'):
+    if not cupyx.cusolver.check_availability("csrlsvqr"):
         raise NotImplementedError
     if not sparse.isspmatrix(A):
-        raise TypeError('A must be cupyx.scipy.sparse.spmatrix')
+        raise TypeError("A must be cupyx.scipy.sparse.spmatrix")
     if not isinstance(b, cupy.ndarray):
-        raise TypeError('b must be cupy.ndarray')
+        raise TypeError("b must be cupy.ndarray")
     if A.shape[0] != A.shape[1]:
-        raise ValueError('A must be a square matrix (A.shape: {})'.
+        raise ValueError("A must be a square matrix (A.shape: {})".
                          format(A.shape))
     if not (b.ndim == 1 or b.ndim == 2):
-        raise ValueError('Invalid b.shape (b.shape: {})'.format(b.shape))
+        raise ValueError("Invalid b.shape (b.shape: {})".format(b.shape))
     if A.shape[0] != b.shape[0]:
-        raise ValueError('matrix dimension mismatch (A.shape: {}, b.shape: {})'
+        raise ValueError("matrix dimension mismatch (A.shape: {}, b.shape: {})"
                          .format(A.shape, b.shape))
 
     if not sparse.isspmatrix_csr(A):
-        warnings.warn('CSR format is required. Converting to CSR format.',
+        warnings.warn("CSR format is required. Converting to CSR format.",
                       sparse.SparseEfficiencyWarning)
         A = A.tocsr()
     A.sum_duplicates()
@@ -519,7 +519,7 @@ def spsolve(A, b):
         res = cupy.empty_like(b)
         for j in range(res.shape[1]):
             res[:, j] = cupyx.cusolver.csrlsvqr(A, b[:, j])
-        res = cupy.asarray(res, order='F')
+        res = cupy.asarray(res, order="F")
         return res
     else:
         return cupyx.cusolver.csrlsvqr(A, b)
@@ -535,9 +535,9 @@ class SuperLU():
                 matrix, computed by `scipy.sparse.linalg.splu`, etc.
         """
         if not scipy_available:
-            raise RuntimeError('scipy is not available')
+            raise RuntimeError("scipy is not available")
         if not isinstance(obj, scipy.sparse.linalg.SuperLU):
-            raise TypeError('obj must be scipy.sparse.linalg.SuperLU')
+            raise TypeError("obj must be scipy.sparse.linalg.SuperLU")
 
         self.shape = obj.shape
         self.nnz = obj.nnz
@@ -549,7 +549,7 @@ class SuperLU():
         self._perm_r_rev = cupy.argsort(self.perm_r)
         self._perm_c_rev = cupy.argsort(self.perm_c)
 
-    def solve(self, rhs, trans='N'):
+    def solve(self, rhs, trans="N"):
         """Solves linear system of equations with one or several right-hand sides.
 
         Args:
@@ -567,21 +567,21 @@ class SuperLU():
         from cupyx import cusparse
 
         if not isinstance(rhs, cupy.ndarray):
-            raise TypeError('ojb must be cupy.ndarray')
+            raise TypeError("ojb must be cupy.ndarray")
         if rhs.ndim not in (1, 2):
-            raise ValueError('rhs.ndim must be 1 or 2 (actual: {})'.
+            raise ValueError("rhs.ndim must be 1 or 2 (actual: {})".
                              format(rhs.ndim))
         if rhs.shape[0] != self.shape[0]:
-            raise ValueError('shape mismatch (self.shape: {}, rhs.shape: {})'
+            raise ValueError("shape mismatch (self.shape: {}, rhs.shape: {})"
                              .format(self.shape, rhs.shape))
-        if trans not in ('N', 'T', 'H'):
-            raise ValueError('trans must be \'N\', \'T\', or \'H\'')
+        if trans not in ("N", "T", "H"):
+            raise ValueError("trans must be 'N', 'T', or 'H'")
 
-        if cusparse.check_availability('spsm') and _should_use_spsm(rhs):
+        if cusparse.check_availability("spsm") and _should_use_spsm(rhs):
             def spsm(A, B, lower, transa):
                 return cusparse.spsm(A, B, lower=lower, transa=transa)
             sm = spsm
-        elif cusparse.check_availability('csrsm2'):
+        elif cusparse.check_availability("csrsm2"):
             def csrsm2(A, B, lower, transa):
                 cusparse.csrsm2(A, B, lower=lower, transa=transa)
                 return B
@@ -590,7 +590,7 @@ class SuperLU():
             raise NotImplementedError
 
         x = rhs.astype(self.L.dtype)
-        if trans == 'N':
+        if trans == "N":
             if self.perm_r is not None:
                 if x.ndim == 2 and x._f_contiguous:
                     x = x.T[:, self._perm_r_rev].T  # want to keep f-order
@@ -613,7 +613,7 @@ class SuperLU():
 
         if not x._f_contiguous:
             # For compatibility with SciPy
-            x = x.copy(order='F')
+            x = x.copy(order="F")
         return x
 
 
@@ -627,9 +627,9 @@ class CusparseLU(SuperLU):
                 sparse matrix, computed by `cusparse.csrilu02`.
         """
         if not scipy_available:
-            raise RuntimeError('scipy is not available')
+            raise RuntimeError("scipy is not available")
         if not sparse.isspmatrix_csr(a):
-            raise TypeError('a must be cupyx.scipy.sparse.csr_matrix')
+            raise TypeError("a must be cupyx.scipy.sparse.csr_matrix")
 
         self.shape = a.shape
         self.nnz = a.nnz
@@ -693,14 +693,14 @@ def splu(A, permc_spec=None, diag_pivot_thresh=None, relax=None,
     .. seealso:: :func:`scipy.sparse.linalg.splu`
     """
     if not scipy_available:
-        raise RuntimeError('scipy is not available')
+        raise RuntimeError("scipy is not available")
     if not sparse.isspmatrix(A):
-        raise TypeError('A must be cupyx.scipy.sparse.spmatrix')
+        raise TypeError("A must be cupyx.scipy.sparse.spmatrix")
     if A.shape[0] != A.shape[1]:
-        raise ValueError('A must be a square matrix (A.shape: {})'
+        raise ValueError("A must be a square matrix (A.shape: {})"
                          .format(A.shape))
-    if A.dtype.char not in 'fdFD':
-        raise TypeError('Invalid dtype (actual: {})'.format(A.dtype))
+    if A.dtype.char not in "fdFD":
+        raise TypeError("Invalid dtype (actual: {})".format(A.dtype))
 
     a = A.get().tocsc()
     a_inv = scipy.sparse.linalg.splu(
@@ -746,14 +746,14 @@ def spilu(A, drop_tol=None, fill_factor=None, drop_rule=None,
     from cupyx import cusparse
 
     if not scipy_available:
-        raise RuntimeError('scipy is not available')
+        raise RuntimeError("scipy is not available")
     if not sparse.isspmatrix(A):
-        raise TypeError('A must be cupyx.scipy.sparse.spmatrix')
+        raise TypeError("A must be cupyx.scipy.sparse.spmatrix")
     if A.shape[0] != A.shape[1]:
-        raise ValueError('A must be a square matrix (A.shape: {})'
+        raise ValueError("A must be a square matrix (A.shape: {})"
                          .format(A.shape))
-    if A.dtype.char not in 'fdFD':
-        raise TypeError('Invalid dtype (actual: {})'.format(A.dtype))
+    if A.dtype.char not in "fdFD":
+        raise TypeError("Invalid dtype (actual: {})".format(A.dtype))
 
     if fill_factor == 1:
         # Computes ILU(0) on the GPU using cuSparse functions
@@ -855,7 +855,7 @@ def minres(A, b, x0=None, shift=0.0, tol=1e-5, maxiter=None,
     beta1 = cupy.inner(r1, y)
 
     if beta1 < 0:
-        raise ValueError('indefinite preconditioner')
+        raise ValueError("indefinite preconditioner")
     elif beta1 == 0:
         return x, 0
 
@@ -865,11 +865,11 @@ def minres(A, b, x0=None, shift=0.0, tol=1e-5, maxiter=None,
     if check:
         # see if A is symmetric
         if not _check_symmetric(A, Ax, x, eps):
-            raise ValueError('non-symmetric matrix')
+            raise ValueError("non-symmetric matrix")
 
         # see if M is symmetric
         if not _check_symmetric(M, y, r1, eps):
-            raise ValueError('non-symmetric preconditioner')
+            raise ValueError("non-symmetric preconditioner")
 
     oldb = 0
     beta = beta1
@@ -911,7 +911,7 @@ def minres(A, b, x0=None, shift=0.0, tol=1e-5, maxiter=None,
         beta = beta.get().item()
         beta = numpy.sqrt(beta)
         if beta < 0:
-            raise ValueError('non-symmetric matrix')
+            raise ValueError("non-symmetric matrix")
 
         tnorm2 += alpha ** 2 + oldb ** 2 + beta ** 2
 

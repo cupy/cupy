@@ -44,7 +44,7 @@ def get_config_linalg():
     try:
         value = _config.linalg
     except AttributeError:
-        value = _config.linalg = 'ignore'
+        value = _config.linalg = "ignore"
     return value
 
 
@@ -52,7 +52,7 @@ def get_config_fallback_mode():
     try:
         value = _config.fallback_mode
     except AttributeError:
-        value = _config.fallback_mode = 'ignore'
+        value = _config.fallback_mode = "ignore"
     return value
 
 
@@ -87,18 +87,18 @@ def seterr(*, divide=None, over=None, under=None,
     if invalid is not None:
         raise NotImplementedError()
     if linalg is not None:
-        if linalg in ('ignore', 'raise'):
+        if linalg in ("ignore", "raise"):
             _config.linalg = linalg
         else:
             raise NotImplementedError()
     if fallback_mode is not None:
-        if fallback_mode in ['print', 'warn', 'ignore', 'raise']:
+        if fallback_mode in ["print", "warn", "ignore", "raise"]:
             _config.fallback_mode = fallback_mode
-        elif fallback_mode in ['log', 'call']:
+        elif fallback_mode in ["log", "call"]:
             raise NotImplementedError
         else:
             raise ValueError(
-                '{} is not a valid dispatch type'.format(fallback_mode))
+                "{} is not a valid dispatch type".format(fallback_mode))
 
     _config.divide = divide
     _config.under = under

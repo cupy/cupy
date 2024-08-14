@@ -1,8 +1,8 @@
 # This program is public domain
 # Authors: Paul Kienzle, Nadav Horesh
-'''
+"""
 A unit test module for czt.py
-'''
+"""
 from math import pi
 
 import numpy as np
@@ -70,41 +70,41 @@ def _gen_random_signal():
 @testing.with_requires("scipy >= 1.8.0")
 class Test1D:
 
-    @pytest.mark.parametrize('func', zf_checks)
-    @pytest.mark.parametrize('x', pw2_ranges)
+    @pytest.mark.parametrize("func", zf_checks)
+    @pytest.mark.parametrize("x", pw2_ranges)
     @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_near_pow2(self, xp, scp, x, func):
         x = xp.asarray(x)
         return func(x, xp, scp)
 
-    @pytest.mark.parametrize('func', zf_checks)
+    @pytest.mark.parametrize("func", zf_checks)
     @testing.numpy_cupy_allclose(scipy_name="scp", atol=1e-14)
     def test_gauss(self, xp, scp, func):
         t = xp.linspace(-2, 2, 128)
         x = xp.exp(-t**2/0.01)
         return func(x, xp, scp)
 
-    @pytest.mark.parametrize('func', zf_checks)
+    @pytest.mark.parametrize("func", zf_checks)
     @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_linear(self, xp, scp, func):
         x = xp.asarray([1, 2, 3, 4, 5, 6, 7])
         return func(x, xp, scp)
 
-    @pytest.mark.parametrize('func', zf_checks)
+    @pytest.mark.parametrize("func", zf_checks)
     @testing.numpy_cupy_allclose(scipy_name="scp", atol=1e-13)
     def test_spikes(self, xp, scp, func):
         t = xp.linspace(0, 1, 128)
         x = xp.sin(2*pi*t*5) + xp.sin(2*pi*t*13)
         return func(x, xp, scp)
 
-    @pytest.mark.parametrize('func', zf_checks)
+    @pytest.mark.parametrize("func", zf_checks)
     @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_sines(self, xp, scp, func):
         x = xp.zeros(100, dtype=complex)
         x[[1, 5, 21]] = 1
         return func(x, xp, scp)
 
-    @pytest.mark.parametrize('func', zf_checks)
+    @pytest.mark.parametrize("func", zf_checks)
     @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_sines_plus(self, xp, scp, func):
         x = xp.zeros(100, dtype=complex)
@@ -112,7 +112,7 @@ class Test1D:
         x += 1j*xp.linspace(0, 0.5, x.shape[0])
         return func(x, xp, scp)
 
-    @pytest.mark.parametrize('func', zf_checks)
+    @pytest.mark.parametrize("func", zf_checks)
     @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_random(self, xp, scp, func):
         x = testing.shaped_random((101,), xp, dtype=float)
@@ -135,7 +135,7 @@ class Test1D:
         y2 = scp.signal.zoom_fft(x[2, 0, :], [0, 2], endpoint=False)
         return y1, y2
 
-    @pytest.mark.parametrize('func', zf_checks)
+    @pytest.mark.parametrize("func", zf_checks)
     @pytest.mark.parametrize("x", list(_gen_random_signal()))
     @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_random_signals(self, xp, scp, x, func):
@@ -156,42 +156,42 @@ class Test1D:
 @testing.with_requires("scipy >= 1.8.0")
 class TestErrors:
 
-    @pytest.mark.parametrize('size', [0, -5, 3.5, 4.0])
+    @pytest.mark.parametrize("size", [0, -5, 3.5, 4.0])
     def test_nonsense_size(self, size):
         # Numpy and Scipy fft() give ValueError for 0 output size
-        with pytest.raises(ValueError, match='Invalid number of CZT'):
+        with pytest.raises(ValueError, match="Invalid number of CZT"):
             signal.CZT(size, 3)
-        with pytest.raises(ValueError, match='Invalid number of CZT'):
+        with pytest.raises(ValueError, match="Invalid number of CZT"):
             signal.ZoomFFT(size, 0.2, 3)
-        with pytest.raises(ValueError, match='Invalid number of CZT'):
+        with pytest.raises(ValueError, match="Invalid number of CZT"):
             signal.CZT(3, size)
-        with pytest.raises(ValueError, match='Invalid number of CZT'):
+        with pytest.raises(ValueError, match="Invalid number of CZT"):
             signal.ZoomFFT(3, 0.2, size)
-        with pytest.raises(ValueError, match='Invalid number of CZT'):
+        with pytest.raises(ValueError, match="Invalid number of CZT"):
             signal.czt([1, 2, 3], size)
-        with pytest.raises(ValueError, match='Invalid number of CZT'):
+        with pytest.raises(ValueError, match="Invalid number of CZT"):
             signal.zoom_fft([1, 2, 3], 0.2, size)
 
     def test_invalid_range(self):
-        with pytest.raises(ValueError, match='2-length sequence'):
+        with pytest.raises(ValueError, match="2-length sequence"):
             signal.ZoomFFT(100, [1, 2, 3])
 
-    @pytest.mark.parametrize('m', [0, -11, 5.5, 4.0])
+    @pytest.mark.parametrize("m", [0, -11, 5.5, 4.0])
     def test_czt_points_errors(self, m):
         # Invalid number of points
-        with pytest.raises(ValueError, match='Invalid number of CZT'):
+        with pytest.raises(ValueError, match="Invalid number of CZT"):
             signal.czt_points(m)
 
     def test_empty_input(self):
-        with pytest.raises(ValueError, match='Invalid number of CZT'):
+        with pytest.raises(ValueError, match="Invalid number of CZT"):
             signal.czt([])
-        with pytest.raises(ValueError, match='Invalid number of CZT'):
+        with pytest.raises(ValueError, match="Invalid number of CZT"):
             signal.zoom_fft([], 0.5)
 
     def test_0_rank_input(self):
-        with pytest.raises(IndexError, match='tuple index out of range'):
+        with pytest.raises(IndexError, match="tuple index out of range"):
             signal.czt(5)
-        with pytest.raises(IndexError, match='tuple index out of range'):
+        with pytest.raises(IndexError, match="tuple index out of range"):
             signal.zoom_fft(5, 0.5)
 
 
@@ -223,20 +223,20 @@ class TestCZTPoints:
 @pytest.mark.slow
 def test_czt_vs_fft():
     cupy.random.seed(123)
-    random_lengths = cupy.random.exponential(100000, size=10).astype('int')
+    random_lengths = cupy.random.exponential(100000, size=10).astype("int")
     for n in random_lengths:
         a = cupy.random.randn(int(n))
         assert_allclose(signal.czt(a), fft.fft(a), rtol=1e-11)
 
 
-@pytest.mark.parametrize('impulse', ([0, 0, 1], [0, 0, 1, 0, 0],
+@pytest.mark.parametrize("impulse", ([0, 0, 1], [0, 0, 1, 0, 0],
                                      cupy.concatenate((cupy.array([0, 0, 1]),
                                                        cupy.zeros(100)))))
-@pytest.mark.parametrize('m', (1, 3, 5, 8, 101, 1021))
-@pytest.mark.parametrize('a', (1, 2, 0.5, 1.1))
+@pytest.mark.parametrize("m", (1, 3, 5, 8, 101, 1021))
+@pytest.mark.parametrize("a", (1, 2, 0.5, 1.1))
 # Step that tests away from the unit circle, but not so far it explodes from
 # numerical error
-@pytest.mark.parametrize('w', (None, 0.98534 + 0.17055j))
+@pytest.mark.parametrize("w", (None, 0.98534 + 0.17055j))
 def test_czt_math(impulse, m, w, a):
     # z-transform of an impulse is 1 everywhere
     assert_allclose(signal.czt(impulse[2:], m=m, w=w, a=a),

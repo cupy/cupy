@@ -18,7 +18,7 @@ from cupyx.scipy import sparse
 
 def _make(xp, sp, dtype):
     data = xp.array([[0, 1, 2], [3, 4, 5]], dtype)
-    offsets = xp.array([0, -1], 'i')
+    offsets = xp.array([0, -1], "i")
     # 0, 0, 0, 0
     # 3, 1, 0, 0
     # 0, 4, 2, 0
@@ -29,7 +29,7 @@ def _make_complex(xp, sp, dtype):
     data = xp.array([[0, 1, 2], [3, 4, 5]], dtype)
     if dtype in [numpy.complex64, numpy.complex128]:
         data = data - 1j
-    offsets = xp.array([0, -1], 'i')
+    offsets = xp.array([0, -1], "i")
     # 0, 0, 0, 0
     # 3 - 1j, 1 - 1j, 0, 0
     # 0, 4 - 1j, 2 - 1j, 0
@@ -37,13 +37,13 @@ def _make_complex(xp, sp, dtype):
 
 
 def _make_empty(xp, sp, dtype):
-    data = xp.array([[]], 'f')
-    offsets = xp.array([0], 'i')
+    data = xp.array([[]], "f")
+    offsets = xp.array([0], "i")
     return sp.dia_matrix((data, offsets), shape=(3, 4))
 
 
 @testing.parameterize(*testing.product({
-    'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
+    "dtype": [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
 }))
 class TestDiaMatrix(unittest.TestCase):
 
@@ -61,7 +61,7 @@ class TestDiaMatrix(unittest.TestCase):
     def test_offsets(self):
         if (runtime.is_hip and self.dtype == numpy.float32
                 and driver.get_build_version() == 400):
-            pytest.xfail('generated wrong result -- may be buggy?')
+            pytest.xfail("generated wrong result -- may be buggy?")
         assert self.m.offsets.dtype == numpy.int32
         testing.assert_array_equal(
             self.m.offsets, cupy.array([0, -1], self.dtype))
@@ -83,18 +83,18 @@ class TestDiaMatrix(unittest.TestCase):
         n = _make_complex(cupy, sparse, self.dtype)
         cupy.testing.assert_array_equal(n.conjugate().data, n.data.conj())
 
-    @unittest.skipUnless(scipy_available, 'requires scipy')
+    @unittest.skipUnless(scipy_available, "requires scipy")
     def test_str(self):
-        if numpy.dtype(self.dtype).kind == 'f':
-            expect = '''  (1, 1)\t1.0
+        if numpy.dtype(self.dtype).kind == "f":
+            expect = """  (1, 1)\t1.0
   (2, 2)\t2.0
   (1, 0)\t3.0
-  (2, 1)\t4.0'''
+  (2, 1)\t4.0"""
         else:
-            expect = '''  (1, 1)\t(1+0j)
+            expect = """  (1, 1)\t(1+0j)
   (2, 2)\t(2+0j)
   (1, 0)\t(3+0j)
-  (2, 1)\t(4+0j)'''
+  (2, 1)\t(4+0j)"""
         assert str(self.m) == expect
 
     def test_toarray(self):
@@ -131,9 +131,9 @@ class TestDiaMatrix(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
+    "dtype": [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
 }))
-@unittest.skipUnless(scipy_available, 'requires scipy')
+@unittest.skipUnless(scipy_available, "requires scipy")
 class TestDiaMatrixInit(unittest.TestCase):
 
     def setUp(self):
@@ -143,7 +143,7 @@ class TestDiaMatrixInit(unittest.TestCase):
         return xp.array([[1, 2, 3], [4, 5, 6]], self.dtype)
 
     def offsets(self, xp):
-        return xp.array([0, -1], 'i')
+        return xp.array([0, -1], "i")
 
     def test_shape_none(self):
         for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
@@ -163,7 +163,7 @@ class TestDiaMatrixInit(unittest.TestCase):
         assert (s_h.data == s_h2.data).all()
         assert (s_h.offsets == s_h2.offsets).all()
 
-    @testing.numpy_cupy_allclose(sp_name='sp', atol=1e-5)
+    @testing.numpy_cupy_allclose(sp_name="sp", atol=1e-5)
     def test_intlike_shape(self, xp, sp):
         s = sp.dia_matrix((self.data(xp), self.offsets(xp)),
                           shape=(xp.array(self.shape[0]),
@@ -186,43 +186,43 @@ class TestDiaMatrixInit(unittest.TestCase):
 
     def test_data_offsets_different_size(self):
         for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
-            offsets = xp.array([0, -1, 1], 'i')
+            offsets = xp.array([0, -1, 1], "i")
             with pytest.raises(ValueError):
                 sp.dia_matrix(
                     (self.data(xp), offsets), shape=self.shape)
 
     def test_duplicated_offsets(self):
         for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
-            offsets = xp.array([1, 1], 'i')
+            offsets = xp.array([1, 1], "i")
             with pytest.raises(ValueError):
                 sp.dia_matrix(
                     (self.data(xp), offsets), shape=self.shape)
 
-    @testing.numpy_cupy_equal(sp_name='sp')
+    @testing.numpy_cupy_equal(sp_name="sp")
     def test_conj(self, xp, sp):
         n = _make_complex(xp, sp, self.dtype)
         cupy.testing.assert_array_equal(n.conj().data, n.data.conj())
 
 
 @testing.parameterize(*testing.product({
-    'make_method': ['_make', '_make_empty'],
-    'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
+    "make_method": ["_make", "_make_empty"],
+    "dtype": [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
 }))
-@unittest.skipUnless(scipy_available, 'requires scipy')
+@unittest.skipUnless(scipy_available, "requires scipy")
 class TestDiaMatrixScipyComparison(unittest.TestCase):
 
     def setUp(self):
         if runtime.is_hip:
-            if self.make_method in ('_make_empty',):
+            if self.make_method in ("_make_empty",):
                 # xcsr2coo could raise HIPSPARSE_STATUS_INVALID_VALUE, maybe
                 # because we have a zero matrix (nnz=0)?
-                pytest.xfail('may be buggy')
+                pytest.xfail("may be buggy")
 
     @property
     def make(self):
         return globals()[self.make_method]
 
-    @testing.numpy_cupy_equal(sp_name='sp')
+    @testing.numpy_cupy_equal(sp_name="sp")
     def test_nnz_axis(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         return m.nnz
@@ -233,12 +233,12 @@ class TestDiaMatrixScipyComparison(unittest.TestCase):
             with pytest.raises(NotImplementedError):
                 m.getnnz(axis=0)
 
-    @testing.numpy_cupy_allclose(sp_name='sp')
+    @testing.numpy_cupy_allclose(sp_name="sp")
     def test_toarray(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         return m.toarray()
 
-    @testing.numpy_cupy_allclose(sp_name='sp')
+    @testing.numpy_cupy_allclose(sp_name="sp")
     def test_A(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         return m.A
@@ -261,48 +261,48 @@ class TestDiaMatrixScipyComparison(unittest.TestCase):
             with pytest.raises(ValueError):
                 m.sum(axis=3)
 
-    @testing.numpy_cupy_allclose(sp_name='sp')
+    @testing.numpy_cupy_allclose(sp_name="sp")
     def test_tocoo(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         return m.tocoo()
 
-    @testing.numpy_cupy_allclose(sp_name='sp')
+    @testing.numpy_cupy_allclose(sp_name="sp")
     def test_tocoo_copy(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         n = m.tocoo(copy=True)
         assert m.data is not n.data
         return n
 
-    @testing.numpy_cupy_allclose(sp_name='sp')
+    @testing.numpy_cupy_allclose(sp_name="sp")
     def test_tocsc(self, xp, sp):
         m = _make(xp, sp, self.dtype)
         return m.tocsc()
 
-    @testing.numpy_cupy_allclose(sp_name='sp')
+    @testing.numpy_cupy_allclose(sp_name="sp")
     def test_tocsc_copy(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         n = m.tocsc(copy=True)
         assert m.data is not n.data
         return n
 
-    @testing.numpy_cupy_allclose(sp_name='sp')
+    @testing.numpy_cupy_allclose(sp_name="sp")
     def test_tocsr(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         return m.tocsr()
 
-    @testing.numpy_cupy_allclose(sp_name='sp')
+    @testing.numpy_cupy_allclose(sp_name="sp")
     def test_tocsr_copy(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         n = m.tocsr(copy=True)
         assert m.data is not n.data
         return n
 
-    @testing.numpy_cupy_allclose(sp_name='sp', _check_sparse_format=False)
+    @testing.numpy_cupy_allclose(sp_name="sp", _check_sparse_format=False)
     def test_transpose(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         return m.transpose()
 
-    @testing.with_requires('scipy>=1.5.0')
+    @testing.with_requires("scipy>=1.5.0")
     def test_diagonal_error(self):
         # Before scipy 1.5.0 dia_matrix diagonal raised
         # `ValueError`, now returns empty array.
@@ -314,11 +314,11 @@ class TestDiaMatrixScipyComparison(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    'dtype': [numpy.float32, numpy.float64],
-    'ret_dtype': [None, numpy.float32, numpy.float64],
-    'axis': [None, 0, 1, -1, -2],
+    "dtype": [numpy.float32, numpy.float64],
+    "ret_dtype": [None, numpy.float32, numpy.float64],
+    "axis": [None, 0, 1, -1, -2],
 }))
-@unittest.skipUnless(scipy_available, 'requires scipy')
+@unittest.skipUnless(scipy_available, "requires scipy")
 class TestDiaMatrixSum(unittest.TestCase):
 
     def setUp(self):
@@ -327,14 +327,14 @@ class TestDiaMatrixSum(unittest.TestCase):
             if HIP_version < 5_00_00000:
                 # internally a temporary CSC matrix is generated and thus
                 # causes problems (see test_csc.py)
-                pytest.xfail('spmv is buggy (trans=True)')
+                pytest.xfail("spmv is buggy (trans=True)")
 
-    @testing.numpy_cupy_allclose(sp_name='sp')
+    @testing.numpy_cupy_allclose(sp_name="sp")
     def test_sum(self, xp, sp):
         m = _make(xp, sp, self.dtype)
         return m.sum(axis=self.axis, dtype=self.ret_dtype)
 
-    @testing.numpy_cupy_allclose(sp_name='sp')
+    @testing.numpy_cupy_allclose(sp_name="sp")
     def test_sum_with_out(self, xp, sp):
         m = _make(xp, sp, self.dtype)
         if self.axis is None:
@@ -355,15 +355,15 @@ class TestIsspmatrixDia(unittest.TestCase):
 
     def test_dia(self):
         x = sparse.dia_matrix(
-            (cupy.array([], 'f'),
-             cupy.array([0], 'i')),
-            shape=(0, 0), dtype='f')
+            (cupy.array([], "f"),
+             cupy.array([0], "i")),
+            shape=(0, 0), dtype="f")
         assert sparse.isspmatrix_dia(x) is True
 
     def test_csr(self):
         x = sparse.csr_matrix(
-            (cupy.array([], 'f'),
-             cupy.array([], 'i'),
-             cupy.array([0], 'i')),
-            shape=(0, 0), dtype='f')
+            (cupy.array([], "f"),
+             cupy.array([], "i"),
+             cupy.array([0], "i")),
+            shape=(0, 0), dtype="f")
         assert sparse.isspmatrix_dia(x) is False

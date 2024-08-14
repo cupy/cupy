@@ -7,13 +7,13 @@ from cupy_tests.core_tests.fusion_tests import fusion_utils
 
 
 @testing.parameterize(*testing.product({
-    'shape': [(1,), (3, 4), (2, 1, 4), (2, 0, 3)],
-    'axis': [-4, -3, -2, -1, 0, 1, 2, 3, 4],
+    "shape": [(1,), (3, 4), (2, 1, 4), (2, 0, 3)],
+    "axis": [-4, -3, -2, -1, 0, 1, 2, 3, 4],
 }))
 class TestFusionReductionAxis(unittest.TestCase):
 
     def generate_inputs(self, xp):
-        x = testing.shaped_random(self.shape, xp, 'int64', scale=10, seed=0)
+        x = testing.shaped_random(self.shape, xp, "int64", scale=10, seed=0)
         return (x,), {}
 
     @fusion_utils.check_fusion(accept_error=AxisError)
@@ -26,8 +26,8 @@ class TestFusionReductionAxis(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    'shape': [(1,), (3, 4), (2, 1, 4), (2, 0, 3), (2, 3, 2, 2, 3)],
-    'axis': [
+    "shape": [(1,), (3, 4), (2, 1, 4), (2, 0, 3), (2, 3, 2, 2, 3)],
+    "axis": [
         None, (0,), (1,), (0, 1), (1, 2), (0, 2), (1, 3)
         # TODO(asi1024): Fix core.simple_reduction_kernel to raise Error.
         # (0, 0), (-1, 1)
@@ -36,7 +36,7 @@ class TestFusionReductionAxis(unittest.TestCase):
 class TestFusionReductionMultiAxis(unittest.TestCase):
 
     def generate_inputs(self, xp):
-        x = testing.shaped_random(self.shape, xp, 'int64', scale=10, seed=0)
+        x = testing.shaped_random(self.shape, xp, "int64", scale=10, seed=0)
         return (x,), {}
 
     @fusion_utils.check_fusion(accept_error=(ValueError, AxisError))
@@ -49,19 +49,19 @@ class TestFusionReductionMultiAxis(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    'shape': [
+    "shape": [
         (120, 128, 144),
         (119, 127, 143),
         (128, 128, 128),
         (32, 1024, 1024)
     ],
-    'axis': [None, 0, 1, 2, (0, 1), (0, 2), (1, 2)],
+    "axis": [None, 0, 1, 2, (0, 1), (0, 2), (1, 2)],
 }))
 @testing.slow
 class TestFusionReductionLarge(unittest.TestCase):
 
     def generate_inputs(self, xp):
-        x = testing.shaped_random(self.shape, xp, 'int64', scale=10, seed=0)
+        x = testing.shaped_random(self.shape, xp, "int64", scale=10, seed=0)
         return (x,), {}
 
     @fusion_utils.check_fusion()
@@ -77,20 +77,20 @@ class TestFusionReductionSpecifyDtype(unittest.TestCase):
         return (x,), {}
 
     @testing.for_all_dtypes_combination(
-        names=('dtype1', 'dtype2'), no_bool=True, no_complex=True)
+        names=("dtype1", "dtype2"), no_bool=True, no_complex=True)
     @fusion_utils.check_fusion(accept_error=TypeError)
     def test_sum(self, xp, dtype1, dtype2):
         return lambda x: x.sum(axis=0, dtype=dtype2)
 
 
 @testing.parameterize(*testing.product({
-    'axis': [None, 0, 1],
+    "axis": [None, 0, 1],
 }))
 class TestFusionReductionAndElementwise(unittest.TestCase):
 
     def generate_inputs(self, xp):
-        x = testing.shaped_random((3, 4), xp, 'int64', scale=10, seed=0)
-        y = testing.shaped_random((3, 4), xp, 'int64', scale=10, seed=1)
+        x = testing.shaped_random((3, 4), xp, "int64", scale=10, seed=0)
+        y = testing.shaped_random((3, 4), xp, "int64", scale=10, seed=1)
         return (x, y), {}
 
     @fusion_utils.check_fusion()
@@ -107,14 +107,14 @@ class TestFusionReductionAndElementwise(unittest.TestCase):
 
     @unittest.skipUnless(
         fusion_utils.can_use_grid_synchronization(),
-        'Requires CUDA grid synchronization')
+        "Requires CUDA grid synchronization")
     @fusion_utils.check_fusion(accept_error=ValueError)
     def test_postmap_two_arrays(self, xp):
         return lambda x, y: xp.sum(x, self.axis) + y
 
     @unittest.skipUnless(
         fusion_utils.can_use_grid_synchronization(),
-        'Requires CUDA grid synchronization')
+        "Requires CUDA grid synchronization")
     @fusion_utils.check_fusion(accept_error=ValueError)
     def test_premap_postmap(self, xp):
         return lambda x, y: xp.sum(xp.sqrt(x) + y, self.axis) * 2 + y
@@ -130,7 +130,7 @@ class TestFusionReductionAndElementwise(unittest.TestCase):
 
     @unittest.skipUnless(
         fusion_utils.can_use_grid_synchronization(),
-        'Requires CUDA grid synchronization')
+        "Requires CUDA grid synchronization")
     @fusion_utils.check_fusion(accept_error=ValueError)
     def test_postmap_inplace(self, xp):
         def impl(x, y):
@@ -141,26 +141,26 @@ class TestFusionReductionAndElementwise(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    'axis1': [None, 0, 1],
-    'axis2': [None, 0, 1],
+    "axis1": [None, 0, 1],
+    "axis2": [None, 0, 1],
 }))
 class TestFusionMultipleReductions(unittest.TestCase):
 
     def generate_inputs(self, xp):
-        x = testing.shaped_random((3, 4), xp, 'int64', scale=10, seed=0)
-        y = testing.shaped_random((3, 4), xp, 'int64', scale=10, seed=1)
+        x = testing.shaped_random((3, 4), xp, "int64", scale=10, seed=0)
+        y = testing.shaped_random((3, 4), xp, "int64", scale=10, seed=1)
         return (x, y), {}
 
     @unittest.skipUnless(
         fusion_utils.can_use_grid_synchronization(),
-        'Requires CUDA grid synchronization')
+        "Requires CUDA grid synchronization")
     @fusion_utils.check_fusion()
     def test_two_distinct_reductions(self, xp):
         return lambda x, y: (x.sum(self.axis1), y.sum(self.axis2))
 
     @unittest.skipUnless(
         fusion_utils.can_use_grid_synchronization(),
-        'Requires CUDA grid synchronization')
+        "Requires CUDA grid synchronization")
     @fusion_utils.check_fusion(accept_error=ValueError)
     def test_two_reductions_and_elementwise(self, xp):
         return lambda x, y: x.sum(self.axis1) + y.sum(self.axis2)
@@ -169,19 +169,19 @@ class TestFusionMultipleReductions(unittest.TestCase):
 class TestFusionMultistageReductions(unittest.TestCase):
 
     def generate_inputs(self, xp):
-        x = testing.shaped_random((3, 4, 5), xp, 'int64', scale=10, seed=0)
+        x = testing.shaped_random((3, 4, 5), xp, "int64", scale=10, seed=0)
         return (x,), {}
 
     @unittest.skipUnless(
         fusion_utils.can_use_grid_synchronization(),
-        'Requires CUDA grid synchronization')
+        "Requires CUDA grid synchronization")
     @fusion_utils.check_fusion()
     def test_multistage_reductions(self, xp):
         return lambda x: x.prod(axis=1).sum(axis=1)
 
     @unittest.skipUnless(
         fusion_utils.can_use_grid_synchronization(),
-        'Requires CUDA grid synchronization')
+        "Requires CUDA grid synchronization")
     @fusion_utils.check_fusion()
     def test_multistage_reductions_and_elementwise(self, xp):
         return lambda x: (xp.sqrt(x).prod(axis=0) + x).sum(axis=1) * 2
@@ -190,12 +190,12 @@ class TestFusionMultistageReductions(unittest.TestCase):
 class TestFusionMultistageReductionsMultiAxis(unittest.TestCase):
 
     def generate_inputs(self, xp):
-        x = testing.shaped_random((3, 4, 5, 6), xp, 'int64', scale=10, seed=0)
+        x = testing.shaped_random((3, 4, 5, 6), xp, "int64", scale=10, seed=0)
         return (x,), {}
 
     @unittest.skipUnless(
         fusion_utils.can_use_grid_synchronization(),
-        'Requires CUDA grid synchronization')
+        "Requires CUDA grid synchronization")
     @fusion_utils.check_fusion()
     def test_multistage_reductions(self, xp):
         return lambda x: x.prod(axis=(-1, 1)).sum(axis=(0, 1))
@@ -204,7 +204,7 @@ class TestFusionMultistageReductionsMultiAxis(unittest.TestCase):
 class TestFusionReductionRoutines(unittest.TestCase):
 
     def generate_inputs(self, xp):
-        x = testing.shaped_random((30,), xp, 'int64', scale=10, seed=0)
+        x = testing.shaped_random((30,), xp, "int64", scale=10, seed=0)
         return (x,), {}
 
     @fusion_utils.check_fusion()
@@ -227,12 +227,12 @@ class TestFusionReductionRoutines(unittest.TestCase):
 class TestFusionMisc(unittest.TestCase):
 
     def generate_inputs(self, xp):
-        x = testing.shaped_random((3, 4), xp, 'int64', scale=10, seed=0)
+        x = testing.shaped_random((3, 4), xp, "int64", scale=10, seed=0)
         return (x,), {}
 
     @unittest.skipUnless(
         fusion_utils.can_use_grid_synchronization(),
-        'Requires CUDA grid synchronization')
+        "Requires CUDA grid synchronization")
     @fusion_utils.check_fusion()
     def test_sum_div_clip(self, xp):
         def impl(x):

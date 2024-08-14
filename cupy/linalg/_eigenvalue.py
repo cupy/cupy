@@ -9,8 +9,8 @@ from cupy.linalg import _util
 def _syevd(a, UPLO, with_eigen_vector, overwrite_a=False):
     from cupy_backends.cuda.libs import cublas, cusolver
 
-    if UPLO not in ('L', 'U'):
-        raise ValueError('UPLO argument must be \'L\' or \'U\'')
+    if UPLO not in ("L", "U"):
+        raise ValueError("UPLO argument must be 'L' or 'U'")
 
     # reject_float16=False for backward compatibility
     dtype, v_dtype = _util.linalg_common_type(a, reject_float16=False)
@@ -18,7 +18,7 @@ def _syevd(a, UPLO, with_eigen_vector, overwrite_a=False):
     w_dtype = v_dtype.char.lower()
 
     # Note that cuSolver assumes fortran array
-    v = a.astype(dtype, order='F', copy=not overwrite_a)
+    v = a.astype(dtype, order="F", copy=not overwrite_a)
 
     m, lda = a.shape
     w = cupy.empty(m, real_dtype)
@@ -30,15 +30,15 @@ def _syevd(a, UPLO, with_eigen_vector, overwrite_a=False):
     else:
         jobz = cusolver.CUSOLVER_EIG_MODE_NOVECTOR
 
-    if UPLO == 'L':
+    if UPLO == "L":
         uplo = cublas.CUBLAS_FILL_MODE_LOWER
     else:  # UPLO == 'U'
         uplo = cublas.CUBLAS_FILL_MODE_UPPER
 
     if not runtime.is_hip:
-        if dtype.char not in 'fdFD':
-            raise RuntimeError('Only float32, float64, complex64, and '
-                               'complex128 are supported')
+        if dtype.char not in "fdFD":
+            raise RuntimeError("Only float32, float64, complex64, and "
+                               "complex128 are supported")
         type_v = _dtype.to_cuda_dtype(dtype)
         type_w = _dtype.to_cuda_dtype(real_dtype)
         params = cusolver.createParams()
@@ -46,8 +46,8 @@ def _syevd(a, UPLO, with_eigen_vector, overwrite_a=False):
             work_device_size, work_host_sizse = cusolver.xsyevd_bufferSize(
                 handle, params, jobz, uplo, m, type_v, v.data.ptr, lda,
                 type_w, w.data.ptr, type_v)
-            work_device = cupy.empty(work_device_size, 'b')
-            work_host = numpy.empty(work_host_sizse, 'b')
+            work_device = cupy.empty(work_device_size, "b")
+            work_host = numpy.empty(work_host_sizse, "b")
             cusolver.xsyevd(
                 handle, params, jobz, uplo, m, type_v, v.data.ptr, lda,
                 type_w, w.data.ptr, type_v,
@@ -58,21 +58,21 @@ def _syevd(a, UPLO, with_eigen_vector, overwrite_a=False):
         cupy.linalg._util._check_cusolver_dev_info_if_synchronization_allowed(
             cusolver.xsyevd, dev_info)
     else:
-        if dtype == 'f':
+        if dtype == "f":
             buffer_size = cusolver.ssyevd_bufferSize
             syevd = cusolver.ssyevd
-        elif dtype == 'd':
+        elif dtype == "d":
             buffer_size = cusolver.dsyevd_bufferSize
             syevd = cusolver.dsyevd
-        elif dtype == 'F':
+        elif dtype == "F":
             buffer_size = cusolver.cheevd_bufferSize
             syevd = cusolver.cheevd
-        elif dtype == 'D':
+        elif dtype == "D":
             buffer_size = cusolver.zheevd_bufferSize
             syevd = cusolver.zheevd
         else:
-            raise RuntimeError('Only float32, float64, complex64, and '
-                               'complex128 are supported')
+            raise RuntimeError("Only float32, float64, complex64, and "
+                               "complex128 are supported")
 
         work_size = buffer_size(
             handle, jobz, uplo, m, v.data.ptr, lda, w.data.ptr)
@@ -89,7 +89,7 @@ def _syevd(a, UPLO, with_eigen_vector, overwrite_a=False):
 # TODO(okuta): Implement eig
 
 
-def eigh(a, UPLO='L'):
+def eigh(a, UPLO="L"):
     """
     Return the eigenvalues and eigenvectors of a complex Hermitian
     (conjugate symmetric) or a real symmetric matrix.
@@ -142,7 +142,7 @@ def eigh(a, UPLO='L'):
 # TODO(okuta): Implement eigvals
 
 
-def eigvalsh(a, UPLO='L'):
+def eigvalsh(a, UPLO="L"):
     """
     Compute the eigenvalues of a complex Hermitian or real symmetric matrix.
 

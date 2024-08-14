@@ -5,14 +5,14 @@ from cupy.testing._pytest_impl import check_available, is_available
 if is_available():
     import pytest
 
-    _gpu_limit = int(os.getenv('CUPY_TEST_GPU_LIMIT', '-1'))
+    _gpu_limit = int(os.getenv("CUPY_TEST_GPU_LIMIT", "-1"))
 
     def slow(*args, **kwargs):
         return pytest.mark.slow(*args, **kwargs)
 
 else:
     def _dummy_callable(*args, **kwargs):
-        check_available('pytest attributes')
+        check_available("pytest attributes")
         assert False  # Not reachable
 
     slow = _dummy_callable
@@ -28,7 +28,7 @@ def multi_gpu(gpu_num):
     be skipped.
     """
 
-    check_available('multi_gpu attribute')
+    check_available("multi_gpu attribute")
     # at this point we know pytest is available for sure
 
     assert 1 < gpu_num
@@ -36,6 +36,6 @@ def multi_gpu(gpu_num):
     def _wrapper(f):
         return pytest.mark.skipif(
             0 <= _gpu_limit < gpu_num,
-            reason='{} GPUs required'.format(gpu_num))(
+            reason="{} GPUs required".format(gpu_num))(
                 pytest.mark.multi_gpu(f))
     return _wrapper

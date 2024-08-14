@@ -64,8 +64,8 @@ class TestNpz(unittest.TestCase):
 
         sio = io.BytesIO(s)
         with cupy.load(sio) as d:
-            b1 = d['arr_0']
-            b2 = d['arr_1']
+            b1 = d["arr_0"]
+            b2 = d["arr_1"]
         sio.close()
 
         testing.assert_array_equal(a1, b1)

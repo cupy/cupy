@@ -1,13 +1,13 @@
 import cupy as cp
 
 _log_softmax_kernel = cp._core.ReductionKernel(
-    'T x1',
-    'T y',
-    'exp(x1)',
-    'a + b',
-    'y = log(a)',
-    '0',
-    name='log_softmax'
+    "T x1",
+    "T y",
+    "exp(x1)",
+    "a + b",
+    "y = log(a)",
+    "0",
+    name="log_softmax"
 )
 
 
@@ -40,7 +40,7 @@ def log_softmax(x, axis=None):
 
     tmp = x - x_max
 
-    if tmp.dtype.kind in 'iu':
+    if tmp.dtype.kind in "iu":
         for out_dtype in [cp.float16, cp.float32, cp.float64]:
             if cp.can_cast(tmp.dtype, out_dtype):
                 tmp = tmp.astype(out_dtype)

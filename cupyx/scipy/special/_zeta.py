@@ -10,7 +10,7 @@
 
 from cupy import _core
 
-zeta_definition = '''
+zeta_definition = """
 /* Expansion coefficients
  * for Euler-Maclaurin summation formula
  * (2k)! / B2k
@@ -107,12 +107,12 @@ double __device__ zeta(double x, double q)
     }
     return s;
 }
-'''
+"""
 
 
 zeta = _core.create_ufunc(
-    'cupyx_scipy_special_zeta', ('ff->f', 'dd->d'),
-    'out0 = zeta(in0, in1)',
+    "cupyx_scipy_special_zeta", ("ff->f", "dd->d"),
+    "out0 = zeta(in0, in1)",
     preamble=zeta_definition,
     doc="""Hurwitz zeta function.
 

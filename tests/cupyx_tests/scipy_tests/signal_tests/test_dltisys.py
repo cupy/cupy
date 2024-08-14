@@ -7,10 +7,10 @@ import cupyx.scipy.signal as signal
 from cupy import testing
 
 
-@testing.with_requires('scipy')
+@testing.with_requires("scipy")
 class TestDLTI:
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_dlsim(self, xp, scp):
         a = xp.asarray([[0.9, 0.1], [-0.2, 0.9]])
         b = xp.asarray([[0.4, 0.1, -0.1], [0.0, 0.05, 0.0]])
@@ -32,7 +32,7 @@ class TestDLTI:
         # Make sure input with single-dimension doesn't raise error
         signal.dlsim((1, 2, 3), 4)
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_dlsim_3(self, xp, scp):
         a = xp.asarray([[0.9, 0.1], [-0.2, 0.9]])
         b = xp.asarray([[0.4, 0.1, -0.1], [0.0, 0.05, 0.0]])
@@ -55,7 +55,7 @@ class TestDLTI:
             (a, b, c, d, dt), u_sparse, t_sparse)
         return tout, yout, xout
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_dlsim_4(self, xp, scp):
 
         # Create an input matrix with inputs down the columns (3 cols) and its
@@ -73,7 +73,7 @@ class TestDLTI:
         tout, yout = scp.signal.dlsim((num, den, 0.5), u[:, 0], t_in)
         return tout, yout
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_dlsim_5(self, xp, scp):
         # Retest the same with a 1-D input vector
         u = xp.hstack((xp.linspace(0, 4.0, num=5)[:, None],
@@ -90,7 +90,7 @@ class TestDLTI:
         tout, yout = scp.signal.dlsim((num, den, 0.5), uflat, t_in)
         return tout, yout
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_dlsim_6(self, xp, scp):
         # zeros-poles-gain representation
         zd = xp.array([0.5, -0.5])
@@ -114,7 +114,7 @@ class TestDLTI:
         with assert_raises(AttributeError):
             signal.dlsim(system, u)
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_dstep(self, xp, scp):
         a = xp.asarray([[0.9, 0.1], [-0.2, 0.9]])
         b = xp.asarray([[0.4, 0.1, -0.1], [0.0, 0.05, 0.0]])
@@ -127,14 +127,14 @@ class TestDLTI:
         # NB: yout is a 3-tuple, unpack it
         return tout, *yout
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_dstep_2(self, xp, scp):
         # Check that the other two inputs (tf, zpk) will work as well
         tfin = ([1.0], [1.0, 1.0], 0.5)
         tout, yout = scp.signal.dstep(tfin, n=3)
         return tout, *yout
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_dstep_3(self, xp, scp):
         tfin = ([1.0], [1.0, 1.0], 0.5)
         zpkin = scp.signal.tf2zpk(tfin[0], tfin[1]) + (0.5,)
@@ -147,7 +147,7 @@ class TestDLTI:
         with assert_raises(AttributeError):
             signal.dstep(system)
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_dimpulse(self, xp, scp):
         a = xp.asarray([[0.9, 0.1], [-0.2, 0.9]])
         b = xp.asarray([[0.4, 0.1, -0.1], [0.0, 0.05, 0.0]])
@@ -158,14 +158,14 @@ class TestDLTI:
         tout, yout = scp.signal.dimpulse((a, b, c, d, dt), n=10)
         return tout, *yout
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_dimpulse_2(self, xp, scp):
         # Check that the other two inputs (tf, zpk) will work as well
         tfin = ([1.0], [1.0, 1.0], 0.5)
         tout, yout = scp.signal.dimpulse(tfin, n=3)
         return tout, *yout
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_dimpulse_3(self, xp, scp):
         tfin = ([1.0], [1.0, 1.0], 0.5)
         zpkin = scp.signal.tf2zpk(tfin[0], tfin[1]) + (0.5,)
@@ -177,7 +177,7 @@ class TestDLTI:
         system = signal.lti([1], [1, 1])
         assert_raises(AttributeError, signal.dimpulse, system)
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_dlsim_trivial(self, xp, scp):
         a = xp.array([[0.0]])
         b = xp.array([[0.0]])
@@ -188,7 +188,7 @@ class TestDLTI:
         tout, yout, xout = scp.signal.dlsim((a, b, c, d, 1), u)
         return tout, yout, xout
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_dlsim_simple1d(self, xp, scp):
         a = xp.array([[0.5]])
         b = xp.array([[0.0]])
@@ -199,7 +199,7 @@ class TestDLTI:
         tout, yout, xout = scp.signal.dlsim((a, b, c, d, 1), u, x0=1)
         return tout, yout, xout
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_dlsim_simple2d(self, xp, scp):
         lambda1 = 0.5
         lambda2 = 0.25
@@ -216,7 +216,7 @@ class TestDLTI:
         tout, yout, xout = scp.signal.dlsim((a, b, c, d, 1), u, x0=1)
         return tout, yout, xout
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_more_step_and_impulse(self, xp, scp):
         lambda1 = 0.5
         lambda2 = 0.75
@@ -233,7 +233,7 @@ class TestDLTI:
         ts, ys = scp.signal.dstep((a, b, c, d, 1), n=n)
         return ts, *ys
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_more_step_and_impulse_2(self, xp, scp):
         # Check an impulse response with an initial condition.
         lambda1 = 0.5
@@ -251,7 +251,7 @@ class TestDLTI:
         ti, yi = scp.signal.dimpulse((a, b, c, d, 1), n=n, x0=x0)
         return ti, *yi
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_more_step_and_impulse_3(self, xp, scp):
         # Check that dt=0.1, n=3 gives 3 time values.
         system = ([1.0], [1.0, -0.5], 0.1)
@@ -373,10 +373,10 @@ class TestZerosPolesGain:
         assert s.to_zpk() is not s
 
 
-@testing.with_requires('scipy')
+@testing.with_requires("scipy")
 class Test_dfreqresp:
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_manual(self, xp, scp):
         # Test dfreqresp() real part calculation (manual sanity check).
         # 1st order low-pass filter: H(z) = 1 / (z - 0.2),
@@ -385,7 +385,7 @@ class Test_dfreqresp:
         w, H = scp.signal.dfreqresp(system, w=w)
         return w, H
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_auto(self, xp, scp):
         # Test dfreqresp() real part calculation.
         # 1st order low-pass filter: H(z) = 1 / (z - 0.2),
@@ -394,7 +394,7 @@ class Test_dfreqresp:
         w, H = scp.signal.dfreqresp(system, w=w)
         return w, H
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_freq_range(self, xp, scp):
         # Test that freqresp() finds a reasonable frequency range.
         # 1st order low-pass filter: H(z) = 1 / (z - 0.2),
@@ -404,7 +404,7 @@ class Test_dfreqresp:
         w, H = scp.signal.dfreqresp(system, n=n)
         return w, H
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_pole_one(self, xp, scp):
         # Test that freqresp() doesn't fail on a system with a pole at 0.
         # integrator, pole at zero: H(s) = 1 / s
@@ -417,7 +417,7 @@ class Test_dfreqresp:
         system = signal.lti([1], [1, 1])
         assert_raises(AttributeError, signal.dfreqresp, system)
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_from_state_space(self, xp, scp):
         # H(z) = 2 / z^3 - 0.5 * z^2
         system_TF = scp.signal.dlti([2], [1, -0.5, 0, 0])
@@ -435,7 +435,7 @@ class Test_dfreqresp:
         w2, H2 = scp.signal.dfreqresp(system_SS, w=w)
         return w1, H1, w2, H2
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_from_zpk(self, xp, scp):
         # 1st order low-pass filter: H(s) = 0.3 / (z - 0.2),
         system_ZPK = scp.signal.dlti([], [0.2], 0.3)
@@ -446,10 +446,10 @@ class Test_dfreqresp:
         return w1, H1, w2, H2
 
 
-@testing.with_requires('scipy')
+@testing.with_requires("scipy")
 class Test_bode:
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_manual(self, xp, scp):
         # Test bode() magnitude calculation (manual sanity check).
         # 1st order low-pass filter: H(s) = 0.3 / (z - 0.2),
@@ -459,7 +459,7 @@ class Test_bode:
         w2, mag, phase = scp.signal.dbode(system, w=w)
         return w2, mag, phase
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_auto(self, xp, scp):
         # Test bode() magnitude calculation.
         # 1st order low-pass filter: H(s) = 0.3 / (z - 0.2),
@@ -468,7 +468,7 @@ class Test_bode:
         w2, mag, phase = scp.signal.dbode(system, w=w)
         return w2, mag, phase
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_range(self, xp, scp):
         # Test that bode() finds a reasonable frequency range.
         # 1st order low-pass filter: H(s) = 0.3 / (z - 0.2),
@@ -477,7 +477,7 @@ class Test_bode:
         w, mag, phase = scp.signal.dbode(system, n=n)
         return w, mag, phase
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_pole_one(self, xp, scp):
         # Test that freqresp() doesn't fail on a system with a pole at 0.
         # integrator, pole at zero: H(s) = 1 / s
@@ -498,11 +498,11 @@ class Test_bode:
         assert_raises(AttributeError, signal.dbode, system)
 
 
-@testing.with_requires('scipy')
+@testing.with_requires("scipy")
 class TestTransferFunctionZConversion:
     """Test private conversions between 'z' and 'z**-1' polynomials."""
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_full(self, xp, scp):
         # Numerator and denominator same order
         num = [2, 3, 4]
@@ -513,7 +513,7 @@ class TestTransferFunctionZConversion:
         # convert to 1D arrays to help the comparator
         return xp.atleast_1d(num2, den2, num3, den3)
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_numerator(self, xp, scp):
         # Numerator lower order than denominator
         num = [2, 3]
@@ -522,7 +522,7 @@ class TestTransferFunctionZConversion:
         num3, den3 = scp.signal.TransferFunction._zinv_to_z(num, den)
         return xp.atleast_1d(num2, den2, num3, den3)
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_denominator(self, xp, scp):
         # Numerator higher order than denominator
         num = [2, 3, 4]

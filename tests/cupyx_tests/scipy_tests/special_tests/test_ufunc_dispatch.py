@@ -33,7 +33,7 @@ class TestUfunc:
                 cupy.cuda.runtime.is_hip
                 and cupy.cuda.runtime.runtimeGetVersion() < 5_00_00000
             ):
-                pytest.skip('ROCm/HIP fails in ROCm 4.x')
+                pytest.skip("ROCm/HIP fails in ROCm 4.x")
 
     @testing.numpy_cupy_allclose(atol=1e-4)
     def test_dispatch(self, xp, ufunc):
@@ -41,10 +41,10 @@ class TestUfunc:
         ufunc = getattr(scipy.special, ufunc)
         # some ufunc (like sph_harm) do not work with float inputs
         # therefore we retrieve the types from the ufunc itself
-        if ufunc.__name__ in ['bdtr', 'bdtrc', 'bdtri']:
+        if ufunc.__name__ in ["bdtr", "bdtrc", "bdtri"]:
             # Make sure non-deprecated types are used.
             # (avoids DeprecationWarning from SciPy >=1.7)
-            types = 'dld->d'
+            types = "dld->d"
         else:
             types = ufunc.types[0]
         args = [

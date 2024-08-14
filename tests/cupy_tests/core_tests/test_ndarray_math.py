@@ -6,7 +6,7 @@ from cupy import testing
 
 
 @testing.parameterize(*testing.product({
-    'decimals': [-2, -1, 0, 1, 2],
+    "decimals": [-2, -1, 0, 1, 2],
 }))
 class TestRound(unittest.TestCase):
 
@@ -28,7 +28,7 @@ class TestRound(unittest.TestCase):
 
     @testing.numpy_cupy_array_equal()
     def test_round_out(self, xp):
-        a = testing.shaped_random(self.shape, xp, scale=100, dtype='d')
+        a = testing.shaped_random(self.shape, xp, scale=100, dtype="d")
         out = xp.empty_like(a)
         a.round(self.decimals, out)
         return out
@@ -38,7 +38,7 @@ class TestRound(unittest.TestCase):
     # limit to:
     # * <=0: values like 0.35 and 0.035 cannot be expressed exactly in IEEE 754
     # * >-4: to avoid float16 overflow
-    'decimals': [-3, -2, -1, 0],
+    "decimals": [-3, -2, -1, 0],
 }))
 class TestRoundHalfway(unittest.TestCase):
 
@@ -90,23 +90,23 @@ class TestRoundHalfway(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    'decimals': [-5, -4, -3, -2, -1, 0]
+    "decimals": [-5, -4, -3, -2, -1, 0]
 }))
 class TestRoundMinMax(unittest.TestCase):
 
-    @unittest.skip('Known incompatibility: see core.pyx')
+    @unittest.skip("Known incompatibility: see core.pyx")
     @testing.numpy_cupy_array_equal()
     def _test_round_int64(self, xp):
         a = xp.array([-2**62, 2**62], dtype=xp.int64)
         return a.round(self.decimals)
 
-    @unittest.skip('Known incompatibility: see core.pyx')
+    @unittest.skip("Known incompatibility: see core.pyx")
     @testing.numpy_cupy_array_equal()
     def test_round_uint64(self, xp):
         a = xp.array([2**63], dtype=xp.uint64)
         return a.round(self.decimals)
 
-    @unittest.skip('Known incompatibility: see core.pyx')
+    @unittest.skip("Known incompatibility: see core.pyx")
     @testing.for_int_dtypes(no_bool=True)
     @testing.numpy_cupy_array_equal()
     def test_round_minmax(self, xp, dtype):

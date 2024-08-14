@@ -119,7 +119,7 @@ Still TODO in this module are:
 import sys
 
 if sys.version_info < (3, 8):
-    raise RuntimeError('cupy.array_api requires Python 3.8+')
+    raise RuntimeError("cupy.array_api requires Python 3.8+")
 
 
 import warnings

@@ -7,7 +7,7 @@ scalar_types = (numpy.generic, int, float, complex)
 
 
 def check_fusion(
-        generate_inputs_name='generate_inputs',
+        generate_inputs_name="generate_inputs",
         generate_inputs_args=None,
         check_array=None,
         check_array_kwargs=None,
@@ -34,7 +34,7 @@ def check_fusion(
         check_array = testing.assert_allclose
     if check_array_kwargs is None:
         # TODO(imanishi): Relax tolerances only when comparing float16 arrays.
-        check_array_kwargs = {'rtol': 3e-3, 'atol': 3e-3}
+        check_array_kwargs = {"rtol": 3e-3, "atol": 3e-3}
     if not isinstance(accept_error, (tuple, list)):
         accept_error = (accept_error,)
 

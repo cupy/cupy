@@ -11,7 +11,7 @@ although it is now no longer used in digamma.
 
 from cupy import _core
 
-polevl_definition = '''
+polevl_definition = """
 template<int N> static __device__ double polevl(double x, double coef[])
 {
     double ans;
@@ -26,15 +26,15 @@ template<int N> static __device__ double polevl(double x, double coef[])
 
     return ans;
 }
-'''
+"""
 
 
 digamma_preamble = "#include <cupy/special/digamma.h>"
 
 
 digamma = _core.create_ufunc(
-    'cupyx_scipy_special_digamma', ('f->f', 'd->d', 'F->F', 'D->D'),
-    'out0 = special::digamma(in0)',
+    "cupyx_scipy_special_digamma", ("f->f", "d->d", "F->F", "D->D"),
+    "out0 = special::digamma(in0)",
     preamble=digamma_preamble,
     doc="""The digamma function.
 

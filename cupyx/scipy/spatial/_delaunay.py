@@ -49,15 +49,15 @@ class Delaunay:
 
     def __init__(self, points, furthest_site=False, incremental=False):
         if points.shape[-1] != 2:
-            raise ValueError('Delaunay only supports 2D inputs at the moment.')
+            raise ValueError("Delaunay only supports 2D inputs at the moment.")
 
         if furthest_site:
             raise ValueError(
-                'furthest_site argument is not supported by CuPy.')
+                "furthest_site argument is not supported by CuPy.")
 
         if incremental:
             raise ValueError(
-                'incremental argument is not supported by CuPy.')
+                "incremental argument is not supported by CuPy.")
 
         self.points = points
         self._triangulator = GDel2D(self.points)
@@ -124,7 +124,7 @@ class Delaunay:
             eps = float(tol)
 
         if xi.shape[-1] != 2:
-            raise ValueError('Delaunay only supports 2D inputs at the moment.')
+            raise ValueError("Delaunay only supports 2D inputs at the moment.")
 
         return self._find_simplex_coordinates(xi, eps)
 

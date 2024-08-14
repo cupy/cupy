@@ -33,7 +33,7 @@ extern "C" __global__ void max_len_seq(
 }
 """
 
-_max_len_seq = cupy.RawKernel(MAX_LEN_SEQ_KERNEL, 'max_len_seq')
+_max_len_seq = cupy.RawKernel(MAX_LEN_SEQ_KERNEL, "max_len_seq")
 
 
 def max_len_seq(nbits, state=None, length=None, taps=None):
@@ -81,14 +81,14 @@ def max_len_seq(nbits, state=None, length=None, taps=None):
     if taps is None:
         if nbits not in _mls_taps:
             known_taps = cupy.array(list(_mls_taps.keys()))
-            raise ValueError('nbits must be between %s and %s if taps is None'
+            raise ValueError("nbits must be between %s and %s if taps is None"
                              % (known_taps.min(), known_taps.max()))
         taps = cupy.array(_mls_taps[nbits], cupy.int64)
     else:
         taps = cupy.unique(cupy.array(taps, cupy.int64))[::-1]
         if cupy.any(taps < 0) or cupy.any(taps > nbits) or taps.size < 1:
-            raise ValueError('taps must be non-empty with values between '
-                             'zero and nbits (inclusive)')
+            raise ValueError("taps must be non-empty with values between "
+                             "zero and nbits (inclusive)")
         taps = cupy.array(taps)  # needed for Cython and Pythran
 
     n_max = (2 ** nbits) - 1
@@ -97,21 +97,21 @@ def max_len_seq(nbits, state=None, length=None, taps=None):
     else:
         length = int(length)
         if length < 0:
-            raise ValueError('length must be greater than or equal to 0')
+            raise ValueError("length must be greater than or equal to 0")
 
     # We use int8 instead of bool here because NumPy arrays of bools
     # don't seem to work nicely with Cython
     if state is None:
-        state = cupy.ones(nbits, dtype=cupy.int8, order='c')
+        state = cupy.ones(nbits, dtype=cupy.int8, order="c")
     else:
         # makes a copy if need be, ensuring it's 0's and 1's
-        state = cupy.array(state, dtype=bool, order='c').astype(cupy.int8)
+        state = cupy.array(state, dtype=bool, order="c").astype(cupy.int8)
     if state.ndim != 1 or state.size != nbits:
-        raise ValueError('state must be a 1-D array of size nbits')
+        raise ValueError("state must be a 1-D array of size nbits")
     if cupy.all(state == 0):
-        raise ValueError('state must not be all zeros')
+        raise ValueError("state must not be all zeros")
 
-    seq = cupy.empty(length, dtype=cupy.int8, order='c')
+    seq = cupy.empty(length, dtype=cupy.int8, order="c")
     n_taps = len(taps)
 
     _max_len_seq((1,), (nbits,), (length, n_taps, nbits, taps, state, seq))

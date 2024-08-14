@@ -543,10 +543,10 @@ def check_COLA(window, nperseg, noverlap, tol=1e-10):
     nperseg = int(nperseg)
 
     if nperseg < 1:
-        raise ValueError('nperseg must be a positive integer')
+        raise ValueError("nperseg must be a positive integer")
 
     if noverlap >= nperseg:
-        raise ValueError('noverlap must be less than nperseg.')
+        raise ValueError("noverlap must be less than nperseg.")
     noverlap = int(noverlap)
 
     if isinstance(window, str) or type(window) is tuple:
@@ -554,9 +554,9 @@ def check_COLA(window, nperseg, noverlap, tol=1e-10):
     else:
         win = cupy.asarray(window)
         if len(win.shape) != 1:
-            raise ValueError('window must be 1-D')
+            raise ValueError("window must be 1-D")
         if win.shape[0] != nperseg:
-            raise ValueError('window must have length of nperseg')
+            raise ValueError("window must have length of nperseg")
 
     step = nperseg - noverlap
     binsums = sum(win[ii * step:(ii + 1) * step]
@@ -632,12 +632,12 @@ def check_NOLA(window, nperseg, noverlap, tol=1e-10):
     nperseg = int(nperseg)
 
     if nperseg < 1:
-        raise ValueError('nperseg must be a positive integer')
+        raise ValueError("nperseg must be a positive integer")
 
     if noverlap >= nperseg:
-        raise ValueError('noverlap must be less than nperseg')
+        raise ValueError("noverlap must be less than nperseg")
     if noverlap < 0:
-        raise ValueError('noverlap must be a nonnegative integer')
+        raise ValueError("noverlap must be a nonnegative integer")
     noverlap = int(noverlap)
 
     if isinstance(window, str) or type(window) is tuple:
@@ -645,9 +645,9 @@ def check_NOLA(window, nperseg, noverlap, tol=1e-10):
     else:
         win = cupy.asarray(window)
         if len(win.shape) != 1:
-            raise ValueError('window must be 1-D')
+            raise ValueError("window must be 1-D")
         if win.shape[0] != nperseg:
-            raise ValueError('window must have length of nperseg')
+            raise ValueError("window must have length of nperseg")
 
     step = nperseg - noverlap
     binsums = sum(win[ii * step:(ii + 1) * step] ** 2
@@ -671,7 +671,7 @@ def stft(
     boundary="zeros",
     padded=True,
     axis=-1,
-    scaling='spectrum'
+    scaling="spectrum"
 ):
     r"""
     Compute the Short Time Fourier Transform (STFT).
@@ -819,9 +819,9 @@ def stft(
     >>> plt.xlabel('Time [sec]')
     >>> plt.show()
     """
-    if scaling == 'psd':
-        scaling = 'density'
-    elif scaling != 'spectrum':
+    if scaling == "psd":
+        scaling = "density"
+    elif scaling != "spectrum":
         raise ValueError(f"Parameter {scaling=} not in ['spectrum', 'psd']!")
 
     freqs, time, Zxx = _spectral_helper(
@@ -855,7 +855,7 @@ def istft(
     boundary=True,
     time_axis=-1,
     freq_axis=-2,
-    scaling='spectrum'
+    scaling="spectrum"
 ):
     r"""
     Perform the inverse Short Time Fourier transform (iSTFT).
@@ -1112,9 +1112,9 @@ def istft(
     if cupy.result_type(win, xsubs) != xsubs.dtype:
         win = win.astype(xsubs.dtype)
 
-    if scaling == 'spectrum':
+    if scaling == "spectrum":
         xsubs *= win.sum()
-    elif scaling == 'psd':
+    elif scaling == "psd":
         xsubs *= cupy.sqrt(fs * cupy.sum(win**2))
     else:
         raise ValueError(f"Parameter {scaling=} not in ['spectrum', 'psd']!")

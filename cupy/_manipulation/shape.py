@@ -20,7 +20,7 @@ def shape(a):
         return numpy.shape(a)
 
 
-def reshape(a, newshape, order='C'):
+def reshape(a, newshape, order="C"):
     """Returns an array with new shape and same elements.
 
     It tries to return a view if possible, otherwise returns a copy.
@@ -55,7 +55,7 @@ def reshape(a, newshape, order='C'):
     return a.reshape(newshape, order=order)
 
 
-def ravel(a, order='C'):
+def ravel(a, order="C"):
     """Returns a flattened array.
 
     It tries to return a view if possible, otherwise returns a copy.

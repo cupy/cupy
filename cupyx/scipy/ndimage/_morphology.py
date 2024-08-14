@@ -59,17 +59,17 @@ def _get_binary_erosion_kernel(
             }}}}
         }}}}"""
 
-    name = 'binary_erosion'
+    name = "binary_erosion"
     if false_val:
-        name += '_invert'
+        name += "_invert"
     has_weights = not all_weights_nonzero
 
     return _filters_core._generate_nd_kernel(
         name,
         pre,
         found,
-        '',
-        'constant', w_shape, int_type, offsets, 0, ctype='Y',
+        "",
+        "constant", w_shape, int_type, offsets, 0, ctype="Y",
         has_weights=has_weights, has_structure=False, has_mask=masked,
         binary_morphology=True)
 
@@ -112,7 +112,7 @@ def iterate_structure(structure, iterations, origin=None):
     if origin is None:
         return out
     else:
-        origin = _util._fix_sequence_arg(origin, structure.ndim, 'origin', int)
+        origin = _util._fix_sequence_arg(origin, structure.ndim, "origin", int)
         origin = [iterations * o for o in origin]
         return out, origin
 
@@ -152,10 +152,10 @@ def _binary_erosion(input, structure, iterations, mask, output, border_value,
     try:
         iterations = operator.index(iterations)
     except TypeError:
-        raise TypeError('iterations parameter should be an integer')
+        raise TypeError("iterations parameter should be an integer")
 
-    if input.dtype.kind == 'c':
-        raise TypeError('Complex type not supported')
+    if input.dtype.kind == "c":
+        raise TypeError("Complex type not supported")
     if structure is None:
         structure = generate_binary_structure(input.ndim, 1)
         all_weights_nonzero = input.ndim == 1
@@ -173,29 +173,29 @@ def _binary_erosion(input, structure, iterations, mask, output, border_value,
         # structure_cpu = cupy.asnumpy(structure)
         if structure.ndim != input.ndim:
             raise RuntimeError(
-                'structure and input must have same dimensionality')
+                "structure and input must have same dimensionality")
         if not structure.flags.c_contiguous:
             structure = cupy.ascontiguousarray(structure)
         if structure.size < 1:
-            raise RuntimeError('structure must not be empty')
+            raise RuntimeError("structure must not be empty")
 
     if mask is not None:
         if mask.shape != input.shape:
-            raise RuntimeError('mask and input must have equal sizes')
+            raise RuntimeError("mask and input must have equal sizes")
         if not mask.flags.c_contiguous:
             mask = cupy.ascontiguousarray(mask)
         masked = True
     else:
         masked = False
-    origin = _util._fix_sequence_arg(origin, input.ndim, 'origin', int)
+    origin = _util._fix_sequence_arg(origin, input.ndim, "origin", int)
 
     if isinstance(output, cupy.ndarray):
-        if output.dtype.kind == 'c':
-            raise TypeError('Complex output type not supported')
+        if output.dtype.kind == "c":
+            raise TypeError("Complex output type not supported")
     else:
         output = bool
     output = _util._get_output(output, input)
-    temp_needed = cupy.shares_memory(output, input, 'MAY_SHARE_BOUNDS')
+    temp_needed = cupy.shares_memory(output, input, "MAY_SHARE_BOUNDS")
     if temp_needed:
         # input and output arrays cannot share memory
         temp = output
@@ -242,11 +242,11 @@ def _binary_erosion(input, structure, iterations, mask, output, border_value,
         output = erode_kernel(*in_args, output)
     elif center_is_true and not brute_force:
         raise NotImplementedError(
-            'only brute_force iteration has been implemented'
+            "only brute_force iteration has been implemented"
         )
     else:
-        if cupy.shares_memory(output, input, 'MAY_SHARE_BOUNDS'):
-            raise ValueError('output and input may not overlap in memory')
+        if cupy.shares_memory(output, input, "MAY_SHARE_BOUNDS"):
+            raise ValueError("output and input may not overlap in memory")
         tmp_in = cupy.empty_like(input, dtype=output.dtype)
         tmp_out = output
         if iterations >= 1 and not iterations & 1:
@@ -387,7 +387,7 @@ def binary_dilation(input, structure=None, iterations=1, mask=None,
     """
     structure, structure_shape, symmetric = _prep_structure(structure,
                                                             input.ndim)
-    origin = _util._fix_sequence_arg(origin, input.ndim, 'origin', int)
+    origin = _util._fix_sequence_arg(origin, input.ndim, "origin", int)
     # no point in flipping if already symmetric
     if not symmetric:
         structure = structure[tuple([slice(None, None, -1)] * structure.ndim)]
@@ -548,11 +548,11 @@ def binary_hit_or_miss(input, structure1=None, structure2=None, output=None,
         structure1 = generate_binary_structure(input.ndim, 1)
     if structure2 is None:
         structure2 = cupy.logical_not(structure1)
-    origin1 = _util._fix_sequence_arg(origin1, input.ndim, 'origin1', int)
+    origin1 = _util._fix_sequence_arg(origin1, input.ndim, "origin1", int)
     if origin2 is None:
         origin2 = origin1
     else:
-        origin2 = _util._fix_sequence_arg(origin2, input.ndim, 'origin2', int)
+        origin2 = _util._fix_sequence_arg(origin2, input.ndim, "origin2", int)
 
     tmp1 = _binary_erosion(input, structure1, 1, None, None, 0, origin1, 0,
                            False)
@@ -642,7 +642,7 @@ def binary_fill_holes(input, structure=None, output=None, origin=0):
 
 
 def grey_erosion(input, size=None, footprint=None, structure=None, output=None,
-                 mode='reflect', cval=0.0, origin=0):
+                 mode="reflect", cval=0.0, origin=0):
     """Calculates a greyscale erosion.
 
     Args:
@@ -675,14 +675,14 @@ def grey_erosion(input, size=None, footprint=None, structure=None, output=None,
     """
 
     if size is None and footprint is None and structure is None:
-        raise ValueError('size, footprint or structure must be specified')
+        raise ValueError("size, footprint or structure must be specified")
 
     return _filters._min_or_max_filter(input, size, footprint, structure,
-                                       output, mode, cval, origin, 'min')
+                                       output, mode, cval, origin, "min")
 
 
 def grey_dilation(input, size=None, footprint=None, structure=None,
-                  output=None, mode='reflect', cval=0.0, origin=0):
+                  output=None, mode="reflect", cval=0.0, origin=0):
     """Calculates a greyscale dilation.
 
     Args:
@@ -715,7 +715,7 @@ def grey_dilation(input, size=None, footprint=None, structure=None,
     """
 
     if size is None and footprint is None and structure is None:
-        raise ValueError('size, footprint or structure must be specified')
+        raise ValueError("size, footprint or structure must be specified")
     if structure is not None:
         structure = cupy.array(structure)
         structure = structure[tuple([slice(None, None, -1)] * structure.ndim)]
@@ -723,7 +723,7 @@ def grey_dilation(input, size=None, footprint=None, structure=None,
         footprint = cupy.array(footprint)
         footprint = footprint[tuple([slice(None, None, -1)] * footprint.ndim)]
 
-    origin = _util._fix_sequence_arg(origin, input.ndim, 'origin', int)
+    origin = _util._fix_sequence_arg(origin, input.ndim, "origin", int)
     for i in range(len(origin)):
         origin[i] = -origin[i]
         if footprint is not None:
@@ -738,11 +738,11 @@ def grey_dilation(input, size=None, footprint=None, structure=None,
             origin[i] -= 1
 
     return _filters._min_or_max_filter(input, size, footprint, structure,
-                                       output, mode, cval, origin, 'max')
+                                       output, mode, cval, origin, "max")
 
 
 def grey_closing(input, size=None, footprint=None, structure=None,
-                 output=None, mode='reflect', cval=0.0, origin=0):
+                 output=None, mode="reflect", cval=0.0, origin=0):
     """Calculates a multi-dimensional greyscale closing.
 
     Args:
@@ -774,7 +774,7 @@ def grey_closing(input, size=None, footprint=None, structure=None,
     .. seealso:: :func:`scipy.ndimage.grey_closing`
     """
     if (size is not None) and (footprint is not None):
-        warnings.warn('ignoring size because footprint is set', UserWarning,
+        warnings.warn("ignoring size because footprint is set", UserWarning,
                       stacklevel=2)
     tmp = grey_dilation(input, size, footprint, structure, None, mode, cval,
                         origin)
@@ -783,7 +783,7 @@ def grey_closing(input, size=None, footprint=None, structure=None,
 
 
 def grey_opening(input, size=None, footprint=None, structure=None,
-                 output=None, mode='reflect', cval=0.0, origin=0):
+                 output=None, mode="reflect", cval=0.0, origin=0):
     """Calculates a multi-dimensional greyscale opening.
 
     Args:
@@ -815,7 +815,7 @@ def grey_opening(input, size=None, footprint=None, structure=None,
     .. seealso:: :func:`scipy.ndimage.grey_opening`
     """
     if (size is not None) and (footprint is not None):
-        warnings.warn('ignoring size because footprint is set', UserWarning,
+        warnings.warn("ignoring size because footprint is set", UserWarning,
                       stacklevel=2)
     tmp = grey_erosion(input, size, footprint, structure, None, mode, cval,
                        origin)
@@ -829,7 +829,7 @@ def morphological_gradient(
     footprint=None,
     structure=None,
     output=None,
-    mode='reflect',
+    mode="reflect",
     cval=0.0,
     origin=0,
 ):
@@ -888,7 +888,7 @@ def morphological_laplace(
     footprint=None,
     structure=None,
     output=None,
-    mode='reflect',
+    mode="reflect",
     cval=0.0,
     origin=0,
 ):
@@ -950,7 +950,7 @@ def white_tophat(
     footprint=None,
     structure=None,
     output=None,
-    mode='reflect',
+    mode="reflect",
     cval=0.0,
     origin=0,
 ):
@@ -987,7 +987,7 @@ def white_tophat(
     """
     if (size is not None) and (footprint is not None):
         warnings.warn(
-            'ignoring size because footprint is set', UserWarning, stacklevel=2
+            "ignoring size because footprint is set", UserWarning, stacklevel=2
         )
     tmp = grey_erosion(
         input, size, footprint, structure, None, mode, cval, origin
@@ -1008,7 +1008,7 @@ def black_tophat(
     footprint=None,
     structure=None,
     output=None,
-    mode='reflect',
+    mode="reflect",
     cval=0.0,
     origin=0,
 ):
@@ -1045,7 +1045,7 @@ def black_tophat(
     """
     if (size is not None) and (footprint is not None):
         warnings.warn(
-            'ignoring size because footprint is set', UserWarning, stacklevel=2
+            "ignoring size because footprint is set", UserWarning, stacklevel=2
         )
     tmp = grey_dilation(
         input, size, footprint, structure, None, mode, cval, origin

@@ -12,11 +12,11 @@ except ImportError:
 
 
 atol = {
-    'default': 1e-6,
+    "default": 1e-6,
     cupy.float16: 1e-2,
 }
 rtol = {
-    'default': 1e-6,
+    "default": 1e-6,
     cupy.float16: 1e-2,
 }
 

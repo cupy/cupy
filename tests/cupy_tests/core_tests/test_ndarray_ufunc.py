@@ -15,7 +15,7 @@ class C(cupy.ndarray):
     def __array_finalize__(self, obj):
         if obj is None:
             return
-        self.info = getattr(obj, 'info', None)
+        self.info = getattr(obj, "info", None)
 
 
 class TestArrayUfunc:
@@ -96,7 +96,7 @@ class TestArrayUfunc:
 
     @testing.numpy_cupy_array_equal()
     def test_shares_memory(self, xp):
-        a = cupy.testing.shaped_arange((1000, 1000), xp, 'int64')
+        a = cupy.testing.shaped_arange((1000, 1000), xp, "int64")
         b = xp.transpose(a)
         a += b
         return a
@@ -181,9 +181,9 @@ class TestArrayUfunc:
 
 
 class TestUfunc:
-    @pytest.mark.parametrize('ufunc', [
-        'add',
-        'sin',
+    @pytest.mark.parametrize("ufunc", [
+        "add",
+        "sin",
     ])
     @testing.numpy_cupy_equal()
     def test_types(self, xp, ufunc):
@@ -194,7 +194,7 @@ class TestUfunc:
                 sig for sig in types
                 # CuPy does not support the following dtypes:
                 # (c)longdouble, datetime, timedelta, and object.
-                if not any(t in sig for t in 'GgMmO')
+                if not any(t in sig for t in "GgMmO")
             ))
         return types
 

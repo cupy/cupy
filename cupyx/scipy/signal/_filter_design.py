@@ -33,7 +33,7 @@ def _try_convert_to_int(x):
         return value, False
 
 
-def findfreqs(num, den, N, kind='ba'):
+def findfreqs(num, den, N, kind="ba"):
     """
     Find array of frequencies for computing the response of an analog filter.
 
@@ -76,10 +76,10 @@ def findfreqs(num, den, N, kind='ba'):
              3.16227766e-01,   1.00000000e+00,   3.16227766e+00,
              1.00000000e+01,   3.16227766e+01,   1.00000000e+02])
     """
-    if kind == 'ba':
+    if kind == "ba":
         ep = cupy.atleast_1d(roots(den)) + 0j
         tz = cupy.atleast_1d(roots(num)) + 0j
-    elif kind == 'zp':
+    elif kind == "zp":
         ep = cupy.atleast_1d(den) + 0j
         tz = cupy.atleast_1d(num) + 0j
     else:
@@ -200,15 +200,15 @@ def freqs_zpk(z, p, k, worN=200):
     """
     k = cupy.asarray(k)
     if k.size > 1:
-        raise ValueError('k must be a single scalar gain')
+        raise ValueError("k must be a single scalar gain")
 
     if worN is None:
         # For backwards compatibility
-        w = findfreqs(z, p, 200, kind='zp')
+        w = findfreqs(z, p, 200, kind="zp")
     else:
         N, _is_int = _try_convert_to_int(worN)
         if _is_int:
-            w = findfreqs(z, p, worN, kind='zp')
+            w = findfreqs(z, p, worN, kind="zp")
         else:
             w = worN
 
@@ -425,7 +425,7 @@ def freqz(b, a=1, worN=512, whole=False, plot=None, fs=2*pi,
     N, _is_int = _try_convert_to_int(worN)
     if _is_int:
         if N < 0:
-            raise ValueError(f'worN must be nonnegative, got {N}')
+            raise ValueError(f"worN must be nonnegative, got {N}")
         lastpoint = 2 * pi if whole else pi
 
         # if include_nyquist is true and whole is false, w should
@@ -557,12 +557,12 @@ def _validate_sos(sos):
     """Helper to validate a SOS input"""
     sos = cupy.atleast_2d(sos)
     if sos.ndim != 2:
-        raise ValueError('sos array must be 2D')
+        raise ValueError("sos array must be 2D")
     n_sections, m = sos.shape
     if m != 6:
-        raise ValueError('sos array must be shape (n_sections, 6)')
+        raise ValueError("sos array must be shape (n_sections, 6)")
     if ((sos[:, 3] - 1) > 1e-15).any():
-        raise ValueError('sos[:, 3] should be all ones')
+        raise ValueError("sos[:, 3] should be all ones")
     return sos, n_sections
 
 
@@ -620,7 +620,7 @@ def sosfreqz(sos, worN=512, whole=False, fs=2*pi):
     """
     sos, n_sections = _validate_sos(sos)
     if n_sections == 0:
-        raise ValueError('Cannot compute frequencies with no sections')
+        raise ValueError("Cannot compute frequencies with no sections")
     h = 1.
     for row in sos:
         w, rowh = freqz(row[:3], row[3:], worN=worN, whole=whole, fs=fs)
@@ -758,15 +758,15 @@ def gammatone(freq, ftype, order=None, numtaps=None, fs=None):
 
     # Check for invalid cutoff frequency or filter type
     ftype = ftype.lower()
-    filter_types = ['fir', 'iir']
+    filter_types = ["fir", "iir"]
     if not 0 < freq < fs / 2:
         raise ValueError("The frequency must be between 0 and {}"
                          " (nyquist), but given {}.".format(fs / 2, freq))
     if ftype not in filter_types:
-        raise ValueError('ftype must be either fir or iir.')
+        raise ValueError("ftype must be either fir or iir.")
 
     # Calculate FIR gammatone filter
-    if ftype == 'fir':
+    if ftype == "fir":
         # Set order and numtaps if not passed
         if order is None:
             order = 4
@@ -796,12 +796,12 @@ def gammatone(freq, ftype, order=None, numtaps=None, fs=None):
         a = [1.0]
 
     # Calculate IIR gammatone filter
-    elif ftype == 'iir':
+    elif ftype == "iir":
         # Raise warning if order and/or numtaps is passed
         if order is not None:
-            warnings.warn('order is not used for IIR gammatone filter.')
+            warnings.warn("order is not used for IIR gammatone filter.")
         if numtaps is not None:
-            warnings.warn('numtaps is not used for IIR gammatone filter.')
+            warnings.warn("numtaps is not used for IIR gammatone filter.")
 
         # Create empty filter coefficient lists
         b = cupy.empty(5)

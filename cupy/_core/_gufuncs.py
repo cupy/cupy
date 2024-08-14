@@ -10,36 +10,36 @@ from cupy._core._dtype import _raise_if_invalid_cast, get_dtype
 # Signature parsing code and dimension accessing has been borrowed
 # from dask
 # https://github.com/dask/dask/blob/61b578f5a3ad88cbc6a8b9a73ce08c551bd969fa/dask/array/gufunc.py#L12-L55
-_DIMENSION_NAME = r'\w+\?*'
-_CORE_DIMENSION_LIST = '(?:{0:}(?:,{0:})*,?)?'.format(_DIMENSION_NAME)
-_ARGUMENT = r'\({}\)'.format(_CORE_DIMENSION_LIST)
-_INPUT_ARGUMENTS = '(?:{0:}(?:,{0:})*,?)?'.format(_ARGUMENT)
-_OUTPUT_ARGUMENTS = '{0:}(?:,{0:})*'.format(
+_DIMENSION_NAME = r"\w+\?*"
+_CORE_DIMENSION_LIST = "(?:{0:}(?:,{0:})*,?)?".format(_DIMENSION_NAME)
+_ARGUMENT = r"\({}\)".format(_CORE_DIMENSION_LIST)
+_INPUT_ARGUMENTS = "(?:{0:}(?:,{0:})*,?)?".format(_ARGUMENT)
+_OUTPUT_ARGUMENTS = "{0:}(?:,{0:})*".format(
     _ARGUMENT
 )  # Use `'{0:}(?:,{0:})*,?'` if gufunc-
 # signature should be allowed for length 1 tuple returns
-_SIGNATURE = '^{0:}->{1:}$'.format(_INPUT_ARGUMENTS, _OUTPUT_ARGUMENTS)
+_SIGNATURE = "^{0:}->{1:}$".format(_INPUT_ARGUMENTS, _OUTPUT_ARGUMENTS)
 
 
 def _parse_gufunc_signature(signature):
     # The code has been modified from dask to support optional dimensions
     if not isinstance(signature, str):
-        raise TypeError('Signature is not a string')
+        raise TypeError("Signature is not a string")
 
-    if signature == '' or signature is None:
-        raise ValueError('Signature cannot be empty')
+    if signature == "" or signature is None:
+        raise ValueError("Signature cannot be empty")
 
-    signature = signature.replace(' ', '')
+    signature = signature.replace(" ", "")
     if not re.match(_SIGNATURE, signature):
-        raise ValueError('Not a valid gufunc signature: {}'.format(signature))
-    in_txt, out_txt = signature.split('->')
-    ins = [tuple(x.split(',')) if x != '' else ()
-           for x in in_txt[1:-1].split('),(')]
-    outs = [tuple(y.split(',')) if y != '' else ()
-            for y in out_txt[1:-1].split('),(')]
+        raise ValueError("Not a valid gufunc signature: {}".format(signature))
+    in_txt, out_txt = signature.split("->")
+    ins = [tuple(x.split(",")) if x != "" else ()
+           for x in in_txt[1:-1].split("),(")]
+    outs = [tuple(y.split(",")) if y != "" else ()
+            for y in out_txt[1:-1].split("),(")]
     # TODO(ecastill) multiple output support
     if len(outs) > 1:
-        raise ValueError('Currently more than 1 output is not supported')
+        raise ValueError("Currently more than 1 output is not supported")
     return ins, outs
 
 
@@ -55,9 +55,9 @@ def _validate_normalize_axes(
 
     if axes is not None and axis is not None:
         raise ValueError(
-            'Only one of `axis` or `axes` keyword arguments should be given')
+            "Only one of `axis` or `axes` keyword arguments should be given")
     if axes and not isinstance(axes, list):
-        raise ValueError('`axes` has to be of type list')
+        raise ValueError("`axes` has to be of type list")
 
     # output_coredimss = output_coredimss if nout > 1 else [output_coredimss]
     filtered_core_dims = list(filter(len, input_coredimss))
@@ -66,23 +66,23 @@ def _validate_normalize_axes(
 
     if keepdims:
         if nr_outputs_with_coredims > 0:
-            raise ValueError('`keepdims` can only be used for scalar outputs')
+            raise ValueError("`keepdims` can only be used for scalar outputs")
         output_coredimss = len(output_coredimss) * [filtered_core_dims[0]]
 
     core_dims = input_coredimss + output_coredimss
     if axis is not None:
         if not isinstance(axis, int):
-            raise ValueError('`axis` argument has to be an integer value')
+            raise ValueError("`axis` argument has to be an integer value")
         if filtered_core_dims:
             cd0 = filtered_core_dims[0]
             if len(cd0) != 1:
                 raise ValueError(
-                    '`axis` can be used only, if one core dimension is present'
+                    "`axis` can be used only, if one core dimension is present"
                 )
             for cd in filtered_core_dims:
                 if cd0 != cd:
                     raise ValueError(
-                        'To use `axis`, all core dimensions have to be equal'
+                        "To use `axis`, all core dimensions have to be equal"
                     )
 
     # Expand defaults or axis
@@ -100,8 +100,8 @@ def _validate_normalize_axes(
         and (nin + nout != len(axes))
     ) or ((nr_outputs_with_coredims > 0) and (nin + nout != len(axes))):
         raise ValueError(
-            'The number of `axes` entries is not equal the number'
-            ' of input and output arguments')
+            "The number of `axes` entries is not equal the number"
+            " of input and output arguments")
 
     # Treat outputs
     output_axes = axes[nin:]
@@ -116,24 +116,24 @@ def _validate_normalize_axes(
     for idx, (iax, icd) in enumerate(zip(input_axes, input_coredimss)):
         if len(iax) != len(icd):
             raise ValueError(
-                f'The number of `axes` entries for argument #{idx}'
-                ' is not equal the number of respective input core'
-                ' dimensions in signature')
+                f"The number of `axes` entries for argument #{idx}"
+                " is not equal the number of respective input core"
+                " dimensions in signature")
     if not keepdims:
         for idx, (oax, ocd) in enumerate(zip(output_axes, output_coredimss)):
             if len(oax) != len(ocd):
                 raise ValueError(
-                    f'The number of `axes` entries for argument #{idx}'
-                    ' is not equal the number of respective output core'
-                    ' dimensions in signature')
+                    f"The number of `axes` entries for argument #{idx}"
+                    " is not equal the number of respective output core"
+                    " dimensions in signature")
     else:
         if input_coredimss:
             icd0 = input_coredimss[0]
             for icd in input_coredimss:
                 if icd0 != icd:
                     raise ValueError(
-                        'To use `keepdims`, all core dimensions'
-                        ' have to be equal')
+                        "To use `keepdims`, all core dimensions"
+                        " have to be equal")
             iax0 = input_axes[0]
             output_axes = [iax0 for _ in output_coredimss]
 
@@ -141,17 +141,17 @@ def _validate_normalize_axes(
 
 
 class _OpsRegister:
-    '''
+    """
     Holds the ops for each dtypes signature like ('ff->f', func1)
     and allows to do look ups for these
-    '''
+    """
     class _Op:
         def __init__(self, in_types, out_types, func):
             self.func = func
             self.in_types = tuple(numpy.dtype(i) for i in in_types)
             self.out_types = tuple(numpy.dtype(o) for o in out_types)
-            self.sig_str = (''.join(
-                in_t.char for in_t in self.in_types) + '->' + ''.join(
+            self.sig_str = ("".join(
+                in_t.char for in_t in self.in_types) + "->" + "".join(
                     out_t.char for out_t in self.out_types))
 
     def __init__(self, signatures, default_func, nin, nout, name):
@@ -162,10 +162,10 @@ class _OpsRegister:
         self._name = name
 
     def _sig_str_to_tuple(self, sig):
-        sig = sig.replace(' ', '')
-        toks = sig.split('->')
+        sig = sig.replace(" ", "")
+        toks = sig.split("->")
         if len(toks) != 2:
-            raise ValueError(f'signature {sig} for dtypes is invalid')
+            raise ValueError(f"signature {sig} for dtypes is invalid")
         else:
             ins, outs = toks
         return ins, outs
@@ -181,12 +181,12 @@ class _OpsRegister:
             # Check the number of inputs and outputs matches the gufunc sig
             if len(ins) != self._nin:
                 raise ValueError(
-                    f'signature {sig} for dtypes is invalid number of inputs '
-                    'is not consistent with general signature')
+                    f"signature {sig} for dtypes is invalid number of inputs "
+                    "is not consistent with general signature")
             if len(outs) != self._nout:
                 raise ValueError(
-                    f'signature {sig} for dtypes is invalid number of inputs '
-                    'is not consistent with general signature')
+                    f"signature {sig} for dtypes is invalid number of inputs "
+                    "is not consistent with general signature")
 
             ops.append(_OpsRegister._Op(ins, outs, op))
         return ops
@@ -222,17 +222,17 @@ class _OpsRegister:
             # create a string to do a look-up on the ops
             if len(signature) == 1:
                 raise TypeError(
-                    'The use of a length 1 tuple for the ufunc `signature` is'
-                    ' not allowed. Use `dtype` or  fill the tuple with'
-                    ' `None`s.')
+                    "The use of a length 1 tuple for the ufunc `signature` is"
+                    " not allowed. Use `dtype` or  fill the tuple with"
+                    " `None`s.")
             nin = self._nin
             nout = self._nout
             if len(signature) != (nin + nout):
                 raise TypeError(
-                    'A type-tuple must be specified of length 1 or 3 for ufunc'
-                    f' {self._name}')
-            signature = ''.join(
-                numpy.dtype(t).char for t in signature[:nin]) + '->' + ''.join(
+                    "A type-tuple must be specified of length 1 or 3 for ufunc"
+                    f" {self._name}")
+            signature = "".join(
+                numpy.dtype(t).char for t in signature[:nin]) + "->" + "".join(
                     numpy.dtype(t).char for t in signature[nin:nin+nout])
 
         if isinstance(signature, str):
@@ -247,8 +247,8 @@ class _OpsRegister:
                 else:
                     if op.sig_str == signature:
                         return op
-        raise TypeError('No loop matching the specified signature and'
-                        f' casting was found for ufunc {self._name}')
+        raise TypeError("No loop matching the specified signature and"
+                        f" casting was found for ufunc {self._name}")
 
     def determine_dtype(self, args, dtype, casting, signature):
         ret_dtype = None
@@ -260,7 +260,7 @@ class _OpsRegister:
         elif dtype is not None:
             if type(dtype) == tuple:
                 # TODO(ecastill) support dtype tuples
-                raise RuntimeError('dtype with tuple is not yet supported')
+                raise RuntimeError("dtype with tuple is not yet supported")
             op = self._determine_from_dtype(dtype)
         else:
             op = self._determine_from_args(args, casting)
@@ -276,7 +276,7 @@ class _OpsRegister:
         else:
             # Convert args to the op specified in_types
             n_args = []
-            def argname(): return f'ufunc {self._name} input {i}'
+            def argname(): return f"ufunc {self._name} input {i}"
             for i, (arg, in_type) in enumerate(zip(args, op.in_types)):
                 _raise_if_invalid_cast(arg.dtype, in_type, casting, argname)
 
@@ -289,7 +289,7 @@ class _OpsRegister:
 
 
 class _GUFunc:
-    '''
+    """
     Creates a Generalized Universal Function by wrapping a user
     provided function with the signature.
 
@@ -328,27 +328,27 @@ class _GUFunc:
         doc (str, optional):
             Docstring for the GUFunc object. If not specified, ``func.__doc__``
             is used.
-    '''
+    """
 
     def __init__(self, func, signature, **kwargs):
         # We would like to create gufuncs from cupy regular ufuncs
         # so we can avoid most of the __call__ stuff
         self._func = func
         self._signature = signature
-        self.__name__ = kwargs.pop('name', func.__name__)
-        self.__doc__ = kwargs.pop('doc', func.__doc__)
+        self.__name__ = kwargs.pop("name", func.__name__)
+        self.__doc__ = kwargs.pop("doc", func.__doc__)
 
         # The following are attributes to avoid applying certain steps
         # when wrapping cupy functions that do some of the gufunc
         # stuff internally due to CUDA libraries requirements
-        self._supports_batched = kwargs.pop('supports_batched', False)
-        self._supports_out = kwargs.pop('supports_out', False)
-        signatures = kwargs.pop('signatures', [])
+        self._supports_batched = kwargs.pop("supports_batched", False)
+        self._supports_out = kwargs.pop("supports_out", False)
+        signatures = kwargs.pop("signatures", [])
 
         if kwargs:
             raise TypeError(
-                'got unexpected keyword arguments: '
-                + ', '.join([repr(k) for k in kwargs])
+                "got unexpected keyword arguments: "
+                + ", ".join([repr(k) for k in kwargs])
             )
 
         # Preprocess the signature here
@@ -361,7 +361,7 @@ class _GUFunc:
         self._min_dims = [0] * len(input_coredimss)
         for i, inp in enumerate(input_coredimss):
             for d in inp:
-                if d[-1] != '?':
+                if d[-1] != "?":
                     self._min_dims[i] += 1
 
         # Determine nout: nout = None for functions of one
@@ -433,14 +433,14 @@ class _GUFunc:
             nds = len(shape)
             # For the inputs that has missing dimensions we need to reshape
             if nds < md:
-                raise ValueError(f'Input operand {i} does not have enough'
-                                 f' dimensions (has {nds}, gufunc core with'
-                                 f' signature {self._signature} requires {md}')
+                raise ValueError(f"Input operand {i} does not have enough"
+                                 f" dimensions (has {nds}, gufunc core with"
+                                 f" signature {self._signature} requires {md}")
             optionals = len(input_coredims) - nds
             if optionals > 0:
                 # Look for optional dimensions
                 # We only allow the first or the last dimensions to be optional
-                if input_coredims[0][-1] == '?':
+                if input_coredims[0][-1] == "?":
                     shape = (1,) * optionals + shape
                     missing_dims.update(set(input_coredims[:optionals]))
                 else:
@@ -489,7 +489,7 @@ class _GUFunc:
 
         loop_input_dimss = [
             tuple(
-                '__loopdim%d__' % d for d in range(
+                "__loopdim%d__" % d for d in range(
                     max_loopdims - n, max_loopdims)
             )
             for n in num_loopdims
@@ -512,31 +512,31 @@ class _GUFunc:
         for dim, sizes in dimsizess.items():
             if set(sizes).union({1}) != {1, max(sizes)}:
                 raise ValueError(
-                    f'Dimension {dim} with different lengths in arrays'
+                    f"Dimension {dim} with different lengths in arrays"
                 )
 
         return args, dimsizess, loop_output_dims, outs, missing_dims
 
     def _determine_order(self, args, order):
-        if order.upper() in ('C', 'K'):
+        if order.upper() in ("C", "K"):
             # Order is determined to be C to allocate the out array
             # but we will change the strides of the out array
             # to be K later in __call__
-            return 'C'
-        elif order.upper() == 'A':
+            return "C"
+        elif order.upper() == "A":
             # order is F if all arrays are strictly F
-            order = ('F' if all([a.flags.f_contiguous
+            order = ("F" if all([a.flags.f_contiguous
                                  and not a.flags.c_contiguous
-                                 for a in args]) else 'C')
+                                 for a in args]) else "C")
             return order
 
-        elif order.upper() == 'F':
-            return 'F'
+        elif order.upper() == "F":
+            return "F"
         else:
-            raise RuntimeError(f'Unknown order {order}')
+            raise RuntimeError(f"Unknown order {order}")
 
     def __call__(self, *args, **kwargs):
-        '''
+        """
         Apply a generalized ufunc.
 
         Args:
@@ -604,23 +604,23 @@ class _GUFunc:
 
         Returns:
             Output array or a tuple of output arrays.
-        '''
+        """
 
         #  This argument cannot be used for generalized ufuncs
         #  as those take non-scalar input.
         # where = kwargs.pop('where', None)
 
-        outs = kwargs.pop('out', None)
-        axes = kwargs.pop('axes', None)
-        axis = kwargs.pop('axis', None)
-        order = kwargs.pop('order', 'K')
-        dtype = kwargs.pop('dtype', None)
-        keepdims = kwargs.pop('keepdims', False)
-        signature = kwargs.pop('signature', None)
-        casting = kwargs.pop('casting', 'same_kind')
+        outs = kwargs.pop("out", None)
+        axes = kwargs.pop("axes", None)
+        axis = kwargs.pop("axis", None)
+        order = kwargs.pop("order", "K")
+        dtype = kwargs.pop("dtype", None)
+        keepdims = kwargs.pop("keepdims", False)
+        signature = kwargs.pop("signature", None)
+        casting = kwargs.pop("casting", "same_kind")
         if len(kwargs) > 0:
             raise RuntimeError(
-                'Unknown kwargs {}'.format(' '.join(kwargs.keys())))
+                "Unknown kwargs {}".format(" ".join(kwargs.keys())))
 
         ret_dtype = None
         func = self._func
@@ -630,20 +630,20 @@ class _GUFunc:
             args, dtype, casting, signature)
 
         if not type(self._signature) == str:
-            raise TypeError('`signature` has to be of type string')
+            raise TypeError("`signature` has to be of type string")
 
         if outs is not None and type(outs) != tuple:
             if isinstance(outs, cupy.ndarray):
                 outs = (outs,)
             else:
-                raise TypeError('`outs` must be a tuple or `cupy.ndarray`')
+                raise TypeError("`outs` must be a tuple or `cupy.ndarray`")
 
         filter_order = self._determine_order(args, order)
 
         input_coredimss = self._input_coredimss
         output_coredimss = self._output_coredimss
         if outs is not None and type(outs) != tuple:
-            raise TypeError('`outs` must be a tuple')
+            raise TypeError("`outs` must be a tuple")
         # Axes
         input_axes, output_axes = _validate_normalize_axes(
             axes, axis, keepdims, input_coredimss, output_coredimss
@@ -651,8 +651,8 @@ class _GUFunc:
 
         if len(input_coredimss) != len(args):
             ValueError(
-                'According to `signature`, `func` requires %d arguments,'
-                ' but %s given' % (len(input_coredimss), len(args)))
+                "According to `signature`, `func` requires %d arguments,"
+                " but %s given" % (len(input_coredimss), len(args)))
 
         args, dimsizess, loop_output_dims, outs, m_dims = self._get_args_transposed(  # NOQA
             args, input_axes, outs, output_axes)
@@ -666,15 +666,15 @@ class _GUFunc:
 
         if outs is None:
             outs = cupy.empty(out_shape, dtype=ret_dtype, order=filter_order)
-            if order == 'K':
+            if order == "K":
                 strides = internal._get_strides_for_order_K(
                     outs, ret_dtype, out_shape)
                 outs._set_shape_and_strides(out_shape, strides, True, True)
             outs = (outs,)
         else:
             if outs[0].shape != out_shape:
-                raise ValueError(f'Invalid shape for out {outs[0].shape}'
-                                 f' needs {out_shape}')
+                raise ValueError(f"Invalid shape for out {outs[0].shape}"
+                                 f" needs {out_shape}")
 
             _raise_if_invalid_cast(
                 ret_dtype, outs[0].dtype, casting, "out dtype")

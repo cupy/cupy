@@ -43,7 +43,7 @@ class TestBadwidth:
         n = 20
         a = 5
         b = 4
-        R = np.zeros([n, n], dtype=dtype, order='F')
+        R = np.zeros([n, n], dtype=dtype, order="F")
         # form a banded matrix inplace
         R[[x for x in range(n)], [x for x in range(n)]] = 1
         R[[x for x in range(a, n)], [x for x in range(n - a)]] = 1
@@ -54,7 +54,7 @@ class TestBadwidth:
     def test_bandwidth_square_inputs_f(self, dtype):
         n = 10
         for k in range(1, 10):
-            R = np.zeros([n, n], dtype=dtype, order='F')
+            R = np.zeros([n, n], dtype=dtype, order="F")
             # form a banded matrix inplace
             R[[x for x in range(n)], [x for x in range(n)]] = 1
             R[[x for x in range(n - k)], [x for x in range(k, n)]] = 1
@@ -78,7 +78,7 @@ class TestBadwidth:
     def test_bandwidth_rect_inputs_f(self, dtype):
         n, m = 10, 20
         k = 5
-        R = np.zeros([n, m], dtype=dtype, order='F')
+        R = np.zeros([n, m], dtype=dtype, order="F")
         # form a banded matrix inplace
         R[[x for x in range(n)], [x for x in range(n)]] = 1
         R[[x for x in range(n - k)], [x for x in range(k, n)]] = 1

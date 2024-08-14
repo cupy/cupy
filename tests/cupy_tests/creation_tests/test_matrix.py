@@ -103,9 +103,9 @@ class TestMatrix(unittest.TestCase):
 
 
 @testing.parameterize(
-    {'shape': (2,)},
-    {'shape': (3, 3)},
-    {'shape': (4, 3)},
+    {"shape": (2,)},
+    {"shape": (3, 3)},
+    {"shape": (4, 3)},
 )
 class TestTri(unittest.TestCase):
 
@@ -126,10 +126,10 @@ class TestTri(unittest.TestCase):
 
 
 @testing.parameterize(
-    {'shape': (2,)},
-    {'shape': (3, 3)},
-    {'shape': (4, 3)},
-    {'shape': (2, 3, 4)},
+    {"shape": (2,)},
+    {"shape": (3, 3)},
+    {"shape": (4, 3)},
+    {"shape": (2, 3, 4)},
 )
 class TestTriLowerAndUpper(unittest.TestCase):
 
@@ -180,8 +180,8 @@ class TestTriLowerAndUpper(unittest.TestCase):
 
 @testing.parameterize(
     *testing.product({
-        'N': [None, 0, 1, 2, 3],
-        'increasing': [False, True]
+        "N": [None, 0, 1, 2, 3],
+        "increasing": [False, True]
     })
 )
 class TestVander(unittest.TestCase):

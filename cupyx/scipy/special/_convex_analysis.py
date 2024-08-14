@@ -1,6 +1,6 @@
 from cupy import _core
 
-_float_preamble = '''
+_float_preamble = """
 #include <cupy/math_constants.h>
 
 double __device__ entr(double x) {
@@ -61,59 +61,59 @@ double __device__ pseudo_huber(double delta, double r) {
     }
 }
 
-'''
+"""
 
 
 entr = _core.create_ufunc(
-    'cupyx_scipy_special_entr', ('f->f', 'd->d'),
-    'out0 = out0_type(entr(in0));',
+    "cupyx_scipy_special_entr", ("f->f", "d->d"),
+    "out0 = out0_type(entr(in0));",
     preamble=_float_preamble,
-    doc='''Elementwise function for computing entropy.
+    doc="""Elementwise function for computing entropy.
 
     .. seealso:: :meth:`scipy.special.entr`
 
-    ''')
+    """)
 
 
 kl_div = _core.create_ufunc(
-    'cupyx_scipy_special_kl_div', ('ff->f', 'dd->d'),
-    'out0 = out0_type(kl_div(in0, in1));',
+    "cupyx_scipy_special_kl_div", ("ff->f", "dd->d"),
+    "out0 = out0_type(kl_div(in0, in1));",
     preamble=_float_preamble,
-    doc='''Elementwise function for computing Kullback-Leibler divergence.
+    doc="""Elementwise function for computing Kullback-Leibler divergence.
 
     .. seealso:: :meth:`scipy.special.kl_div`
 
-    ''')
+    """)
 
 
 rel_entr = _core.create_ufunc(
-    'cupyx_scipy_special_rel_entr', ('ff->f', 'dd->d'),
-    'out0 = out0_type(rel_entr(in0, in1));',
+    "cupyx_scipy_special_rel_entr", ("ff->f", "dd->d"),
+    "out0 = out0_type(rel_entr(in0, in1));",
     preamble=_float_preamble,
-    doc='''Elementwise function for computing relative entropy.
+    doc="""Elementwise function for computing relative entropy.
 
     .. seealso:: :meth:`scipy.special.rel_entr`
 
-    ''')
+    """)
 
 
 huber = _core.create_ufunc(
-    'cupyx_scipy_special_huber', ('ff->f', 'dd->d'),
-    'out0 = out0_type(huber(in0, in1));',
+    "cupyx_scipy_special_huber", ("ff->f", "dd->d"),
+    "out0 = out0_type(huber(in0, in1));",
     preamble=_float_preamble,
-    doc='''Elementwise function for computing the Huber loss.
+    doc="""Elementwise function for computing the Huber loss.
 
     .. seealso:: :meth:`scipy.special.huber`
 
-    ''')
+    """)
 
 
 pseudo_huber = _core.create_ufunc(
-    'cupyx_scipy_special_pseudo_huber', ('ff->f', 'dd->d'),
-    'out0 = out0_type(pseudo_huber(in0, in1));',
+    "cupyx_scipy_special_pseudo_huber", ("ff->f", "dd->d"),
+    "out0 = out0_type(pseudo_huber(in0, in1));",
     preamble=_float_preamble,
-    doc='''Elementwise function for computing the Pseudo-Huber loss.
+    doc="""Elementwise function for computing the Pseudo-Huber loss.
 
     .. seealso:: :meth:`scipy.special.pseudo_huber`
 
-    ''')
+    """)

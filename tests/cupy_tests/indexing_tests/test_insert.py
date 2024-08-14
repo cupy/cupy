@@ -8,8 +8,8 @@ from cupy import testing
 
 
 @testing.parameterize(*testing.product({
-    'shape': [(7,), (2, 3), (4, 3, 2)],
-    'n_vals': [0, 1, 3, 15],
+    "shape": [(7,), (2, 3), (4, 3, 2)],
+    "n_vals": [0, 1, 3, 15],
 }))
 class TestPlace(unittest.TestCase):
 
@@ -29,13 +29,13 @@ class TestPlace(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    'shape': [(7,), (2, 3), (4, 3, 2)],
+    "shape": [(7,), (2, 3), (4, 3, 2)],
 }))
 class TestPlaceRaises(unittest.TestCase):
 
     # NumPy 1.9 performs illegal memory access.
     # https://github.com/numpy/numpy/pull/5821
-    @testing.with_requires('numpy>=1.10')
+    @testing.with_requires("numpy>=1.10")
     @testing.for_all_dtypes()
     def test_place_empty_value_error(self, dtype):
         for xp in (numpy, cupy):
@@ -58,9 +58,9 @@ class TestPlaceRaises(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    'shape': [(7,), (2, 3), (4, 3, 2)],
-    'mode': ['raise', 'wrap', 'clip'],
-    'n_vals': [0, 1, 3, 4, 5],
+    "shape": [(7,), (2, 3), (4, 3, 2)],
+    "mode": ["raise", "wrap", "clip"],
+    "n_vals": [0, 1, 3, 4, 5],
 }))
 class TestPut(unittest.TestCase):
 
@@ -69,7 +69,7 @@ class TestPut(unittest.TestCase):
     def test_put(self, xp, dtype):
         a = testing.shaped_arange(self.shape, xp, dtype)
         # Take care so that actual indices don't overlap.
-        if self.mode == 'raise':
+        if self.mode == "raise":
             inds = xp.array([2, -1, 3, 0])
         else:
             inds = xp.array([2, -8, 3, 7])
@@ -79,7 +79,7 @@ class TestPut(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    'shape': [(7,), (2, 3), (4, 3, 2)],
+    "shape": [(7,), (2, 3), (4, 3, 2)],
 }))
 class TestPutScalars(unittest.TestCase):
 
@@ -104,7 +104,7 @@ class TestPutScalars(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    'shape': [(7,), (2, 3)],
+    "shape": [(7,), (2, 3)],
 }))
 class TestPutRaises(unittest.TestCase):
 
@@ -115,7 +115,7 @@ class TestPutRaises(unittest.TestCase):
             inds = xp.array([2, -8, 3, 0])
             vals = testing.shaped_random((4,), xp, dtype)
             with pytest.raises(IndexError):
-                xp.put(a, inds, vals, mode='raise')
+                xp.put(a, inds, vals, mode="raise")
 
     @testing.for_all_dtypes()
     def test_put_inds_overflow_error(self, dtype):
@@ -124,9 +124,9 @@ class TestPutRaises(unittest.TestCase):
             inds = xp.array([2, -1, 3, 7])
             vals = testing.shaped_random((4,), xp, dtype)
             with pytest.raises(IndexError):
-                xp.put(a, inds, vals, mode='raise')
+                xp.put(a, inds, vals, mode="raise")
 
-    @testing.with_requires('numpy>=1.19')
+    @testing.with_requires("numpy>=1.19")
     @testing.for_all_dtypes()
     def test_put_mode_error(self, dtype):
         for xp in (numpy, cupy):
@@ -134,12 +134,12 @@ class TestPutRaises(unittest.TestCase):
             inds = xp.array([2, -1, 3, 0])
             vals = testing.shaped_random((4,), xp, dtype)
             with pytest.raises(ValueError):
-                xp.put(a, inds, vals, mode='unknown')
+                xp.put(a, inds, vals, mode="unknown")
 
 
 @testing.parameterize(
     *testing.product(
-        {'shape': [(0,), (1,), (2, 3), (2, 3, 4)]}))
+        {"shape": [(0,), (1,), (2, 3), (2, 3, 4)]}))
 class TestPutmaskSameShape(unittest.TestCase):
 
     @testing.for_all_dtypes()
@@ -155,8 +155,8 @@ class TestPutmaskSameShape(unittest.TestCase):
 
 @testing.parameterize(
     *testing.product(
-        {'shape': [(0,), (1,), (2, 3), (2, 3, 4)],
-         'values_shape': [(2,), (3, 1), (5,)]}))
+        {"shape": [(0,), (1,), (2, 3), (2, 3, 4)],
+         "values_shape": [(2,), (3, 1), (5,)]}))
 class TestPutmaskDifferentShapes(unittest.TestCase):
 
     @testing.for_all_dtypes()
@@ -197,7 +197,7 @@ class TestPutmask(unittest.TestCase):
 
 class TestPutmaskDifferentDtypes(unittest.TestCase):
 
-    @testing.for_all_dtypes_combination(names=['a_dtype', 'val_dtype'])
+    @testing.for_all_dtypes_combination(names=["a_dtype", "val_dtype"])
     def test_putmask_differnt_dtypes_raises(self, a_dtype, val_dtype):
         shape = (2, 3)
         for xp in (numpy, cupy):
@@ -220,9 +220,9 @@ class TestPutmaskDifferentDtypes(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    'shape': [(3, 3), (2, 2, 2), (3, 5), (5, 3)],
-    'val': [1, 0, (2,), (2, 2)],
-    'wrap': [True, False],
+    "shape": [(3, 3), (2, 2, 2), (3, 5), (5, 3)],
+    "val": [1, 0, (2,), (2, 2)],
+    "wrap": [True, False],
 }))
 class TestFillDiagonal(unittest.TestCase):
 
@@ -245,7 +245,7 @@ class TestFillDiagonal(unittest.TestCase):
     def test_columnar_slice(self, xp, dtype):  # see cupy#2970
         if self.shape == (2, 2, 2):
             pytest.skip(
-                'The length of each dimension must be the same after slicing')
+                "The length of each dimension must be the same after slicing")
         a = testing.shaped_arange(self.shape, xp, dtype)
         val = self._compute_val(xp)
         xp.fill_diagonal(a[:, 1:], val=val, wrap=self.wrap)
@@ -261,8 +261,8 @@ class TestFillDiagonal(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    'n': [2, 4, -3, 0],
-    'ndim': [2, 3, 1, 0, -2],
+    "n": [2, 4, -3, 0],
+    "ndim": [2, 3, 1, 0, -2],
 }))
 class TestDiagIndices(unittest.TestCase):
 
@@ -272,8 +272,8 @@ class TestDiagIndices(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    'n': [-3, 0],
-    'ndim': [1, 0, -2],
+    "n": [-3, 0],
+    "ndim": [1, 0, -2],
 }))
 class TestDiagIndicesInvalidValues(unittest.TestCase):
 
@@ -283,7 +283,7 @@ class TestDiagIndicesInvalidValues(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    'shape': [(3, 3), (0, 0), (2, 2, 2)],
+    "shape": [(3, 3), (0, 0), (2, 2, 2)],
 }))
 class TestDiagIndicesFrom(unittest.TestCase):
 
@@ -294,7 +294,7 @@ class TestDiagIndicesFrom(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    'shape': [(3, 5), (3, 3, 4), (5,), (0,), (-1,)],
+    "shape": [(3, 5), (3, 3, 4), (5,), (0,), (-1,)],
 }))
 class TestDiagIndicesFromRaises(unittest.TestCase):
 

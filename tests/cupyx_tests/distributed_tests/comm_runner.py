@@ -31,7 +31,7 @@ def _launch_workers(func, args=(), n_workers=N_WORKERS):
 
 
 def broadcast(dtype, use_mpi=False):
-    if dtype in 'hH':
+    if dtype in "hH":
         return  # nccl does not support int16
 
     def run_broadcast(rank, root, dtype, use_mpi=False):
@@ -57,15 +57,15 @@ def broadcast(dtype, use_mpi=False):
 
 
 def reduce(dtype, use_mpi=False):
-    if dtype in 'hH':
+    if dtype in "hH":
         return  # nccl does not support int16
 
     def run_reduce(rank, root, dtype, use_mpi=False):
         dev = cuda.Device(rank)
         dev.use()
         comm = NCCLBackend(N_WORKERS, rank, use_mpi=use_mpi)
-        in_array = cupy.arange(2 * 3 * 4, dtype='f').reshape(2, 3, 4)
-        out_array = cupy.zeros((2, 3, 4), dtype='f')
+        in_array = cupy.arange(2 * 3 * 4, dtype="f").reshape(2, 3, 4)
+        out_array = cupy.zeros((2, 3, 4), dtype="f")
         comm.reduce(in_array, out_array, root)
         if rank == root:
             testing.assert_allclose(out_array, 2 * in_array)
@@ -81,15 +81,15 @@ def reduce(dtype, use_mpi=False):
 
 
 def all_reduce(dtype, use_mpi=False):
-    if dtype in 'hH':
+    if dtype in "hH":
         return  # nccl does not support int16
 
     def run_all_reduce(rank, dtype, use_mpi=False):
         dev = cuda.Device(rank)
         dev.use()
         comm = NCCLBackend(N_WORKERS, rank, use_mpi=use_mpi)
-        in_array = cupy.arange(2 * 3 * 4, dtype='f').reshape(2, 3, 4)
-        out_array = cupy.zeros((2, 3, 4), dtype='f')
+        in_array = cupy.arange(2 * 3 * 4, dtype="f").reshape(2, 3, 4)
+        out_array = cupy.zeros((2, 3, 4), dtype="f")
 
         comm.all_reduce(in_array, out_array)
         testing.assert_allclose(out_array, 2 * in_array)
@@ -103,7 +103,7 @@ def all_reduce(dtype, use_mpi=False):
 
 
 def reduce_scatter(dtype, use_mpi=False):
-    if dtype in 'hH':
+    if dtype in "hH":
         return  # nccl does not support int16
 
     def run_reduce_scatter(rank, dtype, use_mpi=False):
@@ -111,8 +111,8 @@ def reduce_scatter(dtype, use_mpi=False):
         dev.use()
         comm = NCCLBackend(N_WORKERS, rank, use_mpi=use_mpi)
         in_array = 1 + cupy.arange(
-            N_WORKERS * 10, dtype='f').reshape(N_WORKERS, 10)
-        out_array = cupy.zeros((10,), dtype='f')
+            N_WORKERS * 10, dtype="f").reshape(N_WORKERS, 10)
+        out_array = cupy.zeros((10,), dtype="f")
 
         comm.reduce_scatter(in_array, out_array, 10)
         testing.assert_allclose(out_array, 2 * in_array[rank])
@@ -126,7 +126,7 @@ def reduce_scatter(dtype, use_mpi=False):
 
 
 def all_gather(dtype, use_mpi=False):
-    if dtype in 'hH':
+    if dtype in "hH":
         return  # nccl does not support int16
 
     def run_all_gather(rank, dtype, use_mpi=False):
@@ -134,12 +134,12 @@ def all_gather(dtype, use_mpi=False):
         dev.use()
         comm = NCCLBackend(N_WORKERS, rank, use_mpi=use_mpi)
         in_array = (rank + 1) * cupy.arange(
-            N_WORKERS * 10, dtype='f').reshape(N_WORKERS, 10)
-        out_array = cupy.zeros((N_WORKERS, 10), dtype='f')
+            N_WORKERS * 10, dtype="f").reshape(N_WORKERS, 10)
+        out_array = cupy.zeros((N_WORKERS, 10), dtype="f")
         comm.all_gather(in_array, out_array, 10)
         expected = 1 + cupy.arange(N_WORKERS).reshape(N_WORKERS, 1)
         expected = expected * cupy.broadcast_to(
-            cupy.arange(10, dtype='f'), (N_WORKERS, 10))
+            cupy.arange(10, dtype="f"), (N_WORKERS, 10))
         testing.assert_allclose(out_array, expected)
 
     if use_mpi:
@@ -151,15 +151,15 @@ def all_gather(dtype, use_mpi=False):
 
 
 def send_and_recv(dtype, use_mpi=False):
-    if dtype in 'hH':
+    if dtype in "hH":
         return  # nccl does not support int16
 
     def run_send_and_recv(rank, dtype, use_mpi=False):
         dev = cuda.Device(rank)
         dev.use()
         comm = NCCLBackend(N_WORKERS, rank, use_mpi=use_mpi)
-        in_array = cupy.arange(10, dtype='f')
-        out_array = cupy.zeros((10,), dtype='f')
+        in_array = cupy.arange(10, dtype="f")
+        out_array = cupy.zeros((10,), dtype="f")
         if rank == 0:
             comm.send(in_array, 1)
         else:
@@ -175,16 +175,16 @@ def send_and_recv(dtype, use_mpi=False):
 
 
 def send_recv(dtype, use_mpi=False):
-    if dtype in 'hH':
+    if dtype in "hH":
         return  # nccl does not support int16
 
     def run_send_recv(rank, dtype, use_mpi=False):
         dev = cuda.Device(rank)
         dev.use()
         comm = NCCLBackend(N_WORKERS, rank, use_mpi=use_mpi)
-        in_array = cupy.arange(10, dtype='f')
+        in_array = cupy.arange(10, dtype="f")
         for i in range(N_WORKERS):
-            out_array = cupy.zeros((10,), dtype='f')
+            out_array = cupy.zeros((10,), dtype="f")
             comm.send_recv(in_array, out_array, i)
             testing.assert_allclose(out_array, in_array)
 
@@ -197,7 +197,7 @@ def send_recv(dtype, use_mpi=False):
 
 
 def scatter(dtype, use_mpi=False):
-    if dtype in 'hH':
+    if dtype in "hH":
         return  # nccl does not support int16
 
     def run_scatter(rank, root, dtype, use_mpi=False):
@@ -205,8 +205,8 @@ def scatter(dtype, use_mpi=False):
         dev.use()
         comm = NCCLBackend(N_WORKERS, rank, use_mpi=use_mpi)
         in_array = 1 + cupy.arange(
-            N_WORKERS * 10, dtype='f').reshape(N_WORKERS, 10)
-        out_array = cupy.zeros((10,), dtype='f')
+            N_WORKERS * 10, dtype="f").reshape(N_WORKERS, 10)
+        out_array = cupy.zeros((10,), dtype="f")
 
         comm.scatter(in_array, out_array, root)
         if rank > 0:
@@ -223,20 +223,20 @@ def scatter(dtype, use_mpi=False):
 
 
 def gather(dtype, use_mpi=False):
-    if dtype in 'hH':
+    if dtype in "hH":
         return  # nccl does not support int16
 
     def run_gather(rank, root, dtype, use_mpi=False):
         dev = cuda.Device(rank)
         dev.use()
         comm = NCCLBackend(N_WORKERS, rank, use_mpi=use_mpi)
-        in_array = (rank + 1) * cupy.arange(10, dtype='f')
-        out_array = cupy.zeros((N_WORKERS, 10), dtype='f')
+        in_array = (rank + 1) * cupy.arange(10, dtype="f")
+        out_array = cupy.zeros((N_WORKERS, 10), dtype="f")
         comm.gather(in_array, out_array, root)
         if rank == root:
             expected = 1 + cupy.arange(N_WORKERS).reshape(N_WORKERS, 1)
             expected = expected * cupy.broadcast_to(
-                cupy.arange(10, dtype='f'), (N_WORKERS, 10))
+                cupy.arange(10, dtype="f"), (N_WORKERS, 10))
             testing.assert_allclose(out_array, expected)
 
     if use_mpi:
@@ -250,7 +250,7 @@ def gather(dtype, use_mpi=False):
 
 
 def all_to_all(dtype, use_mpi=False):
-    if dtype in 'hH':
+    if dtype in "hH":
         return  # nccl does not support int16
 
     def run_all_to_all(rank, dtype, use_mpi=False):
@@ -258,11 +258,11 @@ def all_to_all(dtype, use_mpi=False):
         dev.use()
         comm = NCCLBackend(N_WORKERS, rank, use_mpi=use_mpi)
         in_array = cupy.arange(
-            N_WORKERS * 10, dtype='f').reshape(N_WORKERS, 10)
-        out_array = cupy.zeros((N_WORKERS, 10), dtype='f')
+            N_WORKERS * 10, dtype="f").reshape(N_WORKERS, 10)
+        out_array = cupy.zeros((N_WORKERS, 10), dtype="f")
         comm.all_to_all(in_array, out_array)
         expected = (10 * rank) + cupy.broadcast_to(
-            cupy.arange(10, dtype='f'), (N_WORKERS, 10))
+            cupy.arange(10, dtype="f"), (N_WORKERS, 10))
         testing.assert_allclose(out_array, expected)
 
     if use_mpi:
@@ -317,15 +317,15 @@ def init(use_mpi=False):
 
 def _make_sparse(dtype):
     data = cupy.array([1, 3, 2, 5, 1, 1], dtype)
-    indices = cupy.array([0, 3, 1, 3, 0, 2], 'i')
-    indptr = cupy.array([0, 2, 3, 4, 6], 'i')
+    indices = cupy.array([0, 3, 1, 3, 0, 2], "i")
+    indptr = cupy.array([0, 2, 3, 4, 6], "i")
     return sparse.csr_matrix((data, indices, indptr), shape=(4, 4))
 
 
 def _make_sparse_empty(dtype):
     data = cupy.array([0], dtype)
-    indices = cupy.array([0], 'i')
-    indptr = cupy.array([0], 'i')
+    indices = cupy.array([0], "i")
+    indptr = cupy.array([0], "i")
     return sparse.csr_matrix((data, indices, indptr), shape=(0, 0))
 
 
@@ -337,7 +337,7 @@ def sparse_send_and_recv(dtype, use_mpi=False):
         in_array = _make_sparse(dtype)
         out_array = _make_sparse_empty(dtype)
         warnings.filterwarnings(
-            'ignore', '.*transferring sparse.*', UserWarning)
+            "ignore", ".*transferring sparse.*", UserWarning)
         if rank == 0:
             comm.send(in_array, 1)
         else:
@@ -360,7 +360,7 @@ def sparse_send_recv(dtype, use_mpi=False):
         in_array = _make_sparse(dtype)
         out_array = _make_sparse_empty(dtype)
         warnings.filterwarnings(
-            'ignore', '.*transferring sparse.*', UserWarning)
+            "ignore", ".*transferring sparse.*", UserWarning)
         if rank == 0:
             comm.send_recv(in_array, out_array, 1)
         else:
@@ -383,7 +383,7 @@ def sparse_broadcast(dtype, use_mpi=False):
         comm = NCCLBackend(N_WORKERS, rank, use_mpi=use_mpi)
         expected = _make_sparse(dtype)
         warnings.filterwarnings(
-            'ignore', '.*transferring sparse.*', UserWarning)
+            "ignore", ".*transferring sparse.*", UserWarning)
         if rank == root:
             in_array = expected
         else:
@@ -410,10 +410,10 @@ def sparse_reduce(dtype, use_mpi=False):
         in_array = _make_sparse(dtype)
         out_array = _make_sparse_empty(dtype)
         warnings.filterwarnings(
-            'ignore', '.*transferring sparse.*', UserWarning)
+            "ignore", ".*transferring sparse.*", UserWarning)
         comm.reduce(in_array, out_array, root, op)
         if rank == root:
-            if op == 'sum':
+            if op == "sum":
                 testing.assert_allclose(
                     out_array.todense(), 2 * in_array.todense())
             else:
@@ -424,11 +424,11 @@ def sparse_reduce(dtype, use_mpi=False):
     if use_mpi:
         from mpi4py import MPI
         # This process was run with mpiexec
-        run_reduce(MPI.COMM_WORLD.Get_rank(), 0, dtype, 'sum', True)
-        run_reduce(MPI.COMM_WORLD.Get_rank(), 1, dtype, 'prod', True)
+        run_reduce(MPI.COMM_WORLD.Get_rank(), 0, dtype, "sum", True)
+        run_reduce(MPI.COMM_WORLD.Get_rank(), 1, dtype, "prod", True)
     else:
-        _launch_workers(run_reduce, (0, dtype, 'sum'))
-        _launch_workers(run_reduce, (1, dtype, 'prod'))
+        _launch_workers(run_reduce, (0, dtype, "sum"))
+        _launch_workers(run_reduce, (1, dtype, "prod"))
 
 
 def sparse_all_reduce(dtype, use_mpi=False):
@@ -440,9 +440,9 @@ def sparse_all_reduce(dtype, use_mpi=False):
         in_array = _make_sparse(dtype)
         out_array = _make_sparse_empty(dtype)
         warnings.filterwarnings(
-            'ignore', '.*transferring sparse.*', UserWarning)
+            "ignore", ".*transferring sparse.*", UserWarning)
         comm.all_reduce(in_array, out_array, op)
-        if op == 'sum':
+        if op == "sum":
             testing.assert_allclose(
                 out_array.todense(), 2 * in_array.todense())
         else:
@@ -453,11 +453,11 @@ def sparse_all_reduce(dtype, use_mpi=False):
     if use_mpi:
         from mpi4py import MPI
         # This process was run with mpiexec
-        run_all_reduce(MPI.COMM_WORLD.Get_rank(), dtype, 'sum', True)
-        run_all_reduce(MPI.COMM_WORLD.Get_rank(), dtype, 'prod', True)
+        run_all_reduce(MPI.COMM_WORLD.Get_rank(), dtype, "sum", True)
+        run_all_reduce(MPI.COMM_WORLD.Get_rank(), dtype, "prod", True)
     else:
-        _launch_workers(run_all_reduce, (dtype, 'sum'))
-        _launch_workers(run_all_reduce, (dtype, 'prod'))
+        _launch_workers(run_all_reduce, (dtype, "sum"))
+        _launch_workers(run_all_reduce, (dtype, "prod"))
 
 
 def sparse_scatter(dtype, use_mpi=False):
@@ -469,7 +469,7 @@ def sparse_scatter(dtype, use_mpi=False):
         in_arrays = [_make_sparse(dtype), 2*_make_sparse(dtype)]
         out_array = _make_sparse_empty(dtype)
         warnings.filterwarnings(
-            'ignore', '.*transferring sparse.*', UserWarning)
+            "ignore", ".*transferring sparse.*", UserWarning)
         comm.scatter(in_arrays, out_array, root)
         testing.assert_allclose(
             out_array.todense(), in_arrays[rank].todense())
@@ -493,7 +493,7 @@ def sparse_gather(dtype, use_mpi=False):
         in_array = (rank + 1) * _make_sparse(dtype)
         out_arrays = []
         warnings.filterwarnings(
-            'ignore', '.*transferring sparse.*', UserWarning)
+            "ignore", ".*transferring sparse.*", UserWarning)
         comm.gather(in_array, out_arrays, root)
         if rank == root:
             expected = [_make_sparse(dtype), 2 * _make_sparse(dtype)]
@@ -521,7 +521,7 @@ def sparse_all_gather(dtype, use_mpi=False):
         in_array = (rank + 1) * _make_sparse(dtype)
         out_arrays = []
         warnings.filterwarnings(
-            'ignore', '.*transferring sparse.*', UserWarning)
+            "ignore", ".*transferring sparse.*", UserWarning)
         comm.all_gather(in_array, out_arrays, 0)
         expected = [_make_sparse(dtype), 2 * _make_sparse(dtype)]
         testing.assert_allclose(
@@ -548,7 +548,7 @@ def sparse_all_to_all(dtype, use_mpi=False):
         in_arrays = [_make_sparse(dtype), 2 * _make_sparse(dtype)]
         out_array = []
         warnings.filterwarnings(
-            'ignore', '.*transferring sparse.*', UserWarning)
+            "ignore", ".*transferring sparse.*", UserWarning)
         comm.all_to_all(in_arrays, out_array)
         testing.assert_allclose(
             out_array[0].todense(), (rank + 1) * in_arrays[0].todense())
@@ -575,7 +575,7 @@ def sparse_reduce_scatter(dtype, use_mpi=False):
                      (rank + 2) * _make_sparse(dtype)]
         out_array = _make_sparse_empty(dtype)
         warnings.filterwarnings(
-            'ignore', '.*transferring sparse.*', UserWarning)
+            "ignore", ".*transferring sparse.*", UserWarning)
         comm.reduce_scatter(in_arrays, out_array, 2)
         target = ((rank + 1) * _make_sparse(dtype)
                   + (rank + 2) * _make_sparse(dtype))
@@ -592,7 +592,7 @@ def sparse_reduce_scatter(dtype, use_mpi=False):
         _launch_workers(run_reduce_scatter, (1, dtype))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # Run the templatized test
     func = globals()[sys.argv[1]]
     # dtype is the char representation

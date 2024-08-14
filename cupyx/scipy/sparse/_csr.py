@@ -52,7 +52,7 @@ class csr_matrix(_compressed._compressed_sparse_matrix):
 
     """
 
-    format = 'csr'
+    format = "csr"
 
     def get(self, stream=None):
         """Returns a copy of the array on host memory.
@@ -66,7 +66,7 @@ class csr_matrix(_compressed._compressed_sparse_matrix):
 
         """
         if not _scipy_available:
-            raise RuntimeError('scipy is not available')
+            raise RuntimeError("scipy is not available")
         data = self.data.get(stream)
         indices = self.indices.get(stream)
         indptr = self.indptr.get(stream)
@@ -86,9 +86,9 @@ class csr_matrix(_compressed._compressed_sparse_matrix):
         self.sum_duplicates()
         other = other.tocsr()
         other.sum_duplicates()
-        if cusparse.check_availability('csrgeam2'):
+        if cusparse.check_availability("csrgeam2"):
             csrgeam = cusparse.csrgeam2
-        elif cusparse.check_availability('csrgeam'):
+        elif cusparse.check_availability("csrgeam"):
             csrgeam = cusparse.csrgeam
         else:
             raise NotImplementedError
@@ -98,7 +98,7 @@ class csr_matrix(_compressed._compressed_sparse_matrix):
         if _util.isscalarlike(other):
             data = cupy.asarray(other, dtype=self.dtype).reshape(1)
             if numpy.isnan(data[0]):
-                if op_name == '_ne_':
+                if op_name == "_ne_":
                     return csr_matrix(cupy.ones(self.shape, dtype=numpy.bool_))
                 else:
                     return csr_matrix(self.shape, dtype=numpy.bool_)
@@ -111,41 +111,41 @@ class csr_matrix(_compressed._compressed_sparse_matrix):
         elif isspmatrix_csr(other):
             self.sum_duplicates()
             other.sum_duplicates()
-            if op_name in ('_ne_', '_lt_', '_gt_'):
+            if op_name in ("_ne_", "_lt_", "_gt_"):
                 return binopt_csr(self, other, op_name)
 
             warnings.warn(
                 "Comparing sparse matrices using ==, <=, and >= is "
                 "inefficient, try using !=, <, or > instead.",
                 SparseEfficiencyWarning)
-            if op_name == '_eq_':
-                opposite_op_name = '_ne_'
-            elif op_name == '_le_':
-                opposite_op_name = '_gt_'
-            elif op_name == '_ge_':
-                opposite_op_name = '_lt_'
+            if op_name == "_eq_":
+                opposite_op_name = "_ne_"
+            elif op_name == "_le_":
+                opposite_op_name = "_gt_"
+            elif op_name == "_ge_":
+                opposite_op_name = "_lt_"
             res = binopt_csr(self, other, opposite_op_name)
             out = cupy.logical_not(res.toarray())
             return csr_matrix(out)
         raise NotImplementedError
 
     def __eq__(self, other):
-        return self._comparison(other, operator.eq, '_eq_')
+        return self._comparison(other, operator.eq, "_eq_")
 
     def __ne__(self, other):
-        return self._comparison(other, operator.ne, '_ne_')
+        return self._comparison(other, operator.ne, "_ne_")
 
     def __lt__(self, other):
-        return self._comparison(other, operator.lt, '_lt_')
+        return self._comparison(other, operator.lt, "_lt_")
 
     def __gt__(self, other):
-        return self._comparison(other, operator.gt, '_gt_')
+        return self._comparison(other, operator.gt, "_gt_")
 
     def __le__(self, other):
-        return self._comparison(other, operator.le, '_le_')
+        return self._comparison(other, operator.le, "_le_")
 
     def __ge__(self, other):
-        return self._comparison(other, operator.ge, '_ge_')
+        return self._comparison(other, operator.ge, "_ge_")
 
     def __mul__(self, other):
         from cupyx import cusparse
@@ -156,25 +156,25 @@ class csr_matrix(_compressed._compressed_sparse_matrix):
         elif isspmatrix_csr(other):
             self.sum_duplicates()
             other.sum_duplicates()
-            if cusparse.check_availability('spgemm'):
+            if cusparse.check_availability("spgemm"):
                 return cusparse.spgemm(self, other)
-            elif cusparse.check_availability('csrgemm2'):
+            elif cusparse.check_availability("csrgemm2"):
                 return cusparse.csrgemm2(self, other)
-            elif cusparse.check_availability('csrgemm'):
+            elif cusparse.check_availability("csrgemm"):
                 return cusparse.csrgemm(self, other)
             else:
                 raise AssertionError
         elif _csc.isspmatrix_csc(other):
             self.sum_duplicates()
             other.sum_duplicates()
-            if cusparse.check_availability('csrgemm') and not runtime.is_hip:
+            if cusparse.check_availability("csrgemm") and not runtime.is_hip:
                 # trans=True is still buggy as of ROCm 4.2.0
                 return cusparse.csrgemm(self, other.T, transb=True)
-            elif cusparse.check_availability('spgemm'):
+            elif cusparse.check_availability("spgemm"):
                 b = other.tocsr()
                 b.sum_duplicates()
                 return cusparse.spgemm(self, b)
-            elif cusparse.check_availability('csrgemm2'):
+            elif cusparse.check_availability("csrgemm2"):
                 b = other.tocsr()
                 b.sum_duplicates()
                 return cusparse.csrgemm2(self, b)
@@ -203,28 +203,28 @@ class csr_matrix(_compressed._compressed_sparse_matrix):
                         return cub.device_csrmv(
                             self.shape[0], self.shape[1], self.nnz,
                             self.data, self.indptr, self.indices, other)
-                if (cusparse.check_availability('csrmvEx') and self.nnz > 0 and
+                if (cusparse.check_availability("csrmvEx") and self.nnz > 0 and
                         cusparse.csrmvExIsAligned(self, other)):
                     # csrmvEx does not work if nnz == 0
                     csrmv = cusparse.csrmvEx
-                elif cusparse.check_availability('csrmv'):
+                elif cusparse.check_availability("csrmv"):
                     csrmv = cusparse.csrmv
-                elif cusparse.check_availability('spmv'):
+                elif cusparse.check_availability("spmv"):
                     csrmv = cusparse.spmv
                 else:
                     raise AssertionError
                 return csrmv(self, other)
             elif other.ndim == 2:
                 self.sum_duplicates()
-                if cusparse.check_availability('csrmm2'):
+                if cusparse.check_availability("csrmm2"):
                     csrmm = cusparse.csrmm2
-                elif cusparse.check_availability('spmm'):
+                elif cusparse.check_availability("spmm"):
                     csrmm = cusparse.spmm
                 else:
                     raise AssertionError
                 return csrmm(self, cupy.asfortranarray(other))
             else:
-                raise ValueError('could not interpret dimensions')
+                raise ValueError("could not interpret dimensions")
         else:
             return NotImplemented
 
@@ -260,7 +260,7 @@ class csr_matrix(_compressed._compressed_sparse_matrix):
             check_shape_for_pointwise_op(self.shape, other.shape,
                                          allow_broadcasting=False)
             dtype = numpy.promote_types(self.dtype, other.dtype)
-            if dtype.char not in 'FD':
+            if dtype.char not in "FD":
                 dtype = numpy.promote_types(numpy.float64, dtype)
             # Note: The following implementation converts two sparse matrices
             # into dense matrices and then performs a point-wise division,
@@ -326,11 +326,11 @@ class csr_matrix(_compressed._compressed_sparse_matrix):
         raise NotImplementedError
 
     def maximum(self, other):
-        return self._maximum_minimum(other, cupy.maximum, '_maximum_',
+        return self._maximum_minimum(other, cupy.maximum, "_maximum_",
                                      lambda x: x > 0)
 
     def minimum(self, other):
-        return self._maximum_minimum(other, cupy.minimum, '_minimum_',
+        return self._maximum_minimum(other, cupy.minimum, "_minimum_",
                                      lambda x: x < 0)
 
     def multiply(self, other):
@@ -346,7 +346,7 @@ class csr_matrix(_compressed._compressed_sparse_matrix):
             other.sum_duplicates()
             return multiply_by_csr(self, other)
         else:
-            msg = 'expected scalar, dense matrix/vector or csr matrix'
+            msg = "expected scalar, dense matrix/vector or csr matrix"
             raise TypeError(msg)
 
     # TODO(unno): Implement prune
@@ -357,7 +357,7 @@ class csr_matrix(_compressed._compressed_sparse_matrix):
         row_st, col_st = max(0, -k), max(0, k)
         x_len = min(rows - row_st, cols - col_st)
         if x_len <= 0:
-            raise ValueError('k exceeds matrix dimensions')
+            raise ValueError("k exceeds matrix dimensions")
         values = values.astype(self.dtype)
         if values.ndim == 0:
             # broadcast
@@ -365,9 +365,9 @@ class csr_matrix(_compressed._compressed_sparse_matrix):
         else:
             x_len = min(x_len, values.size)
             x_data = values[:x_len]
-        x_indices = cupy.arange(col_st, col_st + x_len, dtype='i')
-        x_indptr = cupy.zeros((rows + 1,), dtype='i')
-        x_indptr[row_st:row_st+x_len+1] = cupy.arange(x_len+1, dtype='i')
+        x_indices = cupy.arange(col_st, col_st + x_len, dtype="i")
+        x_indptr = cupy.zeros((rows + 1,), dtype="i")
+        x_indptr[row_st:row_st+x_len+1] = cupy.arange(x_len+1, dtype="i")
         x_indptr[row_st+x_len+1:] = x_len
         x_data -= self.diagonal(k=k)[:x_len]
         y = self + csr_matrix((x_data, x_indices, x_indptr), shape=self.shape)
@@ -404,35 +404,35 @@ class csr_matrix(_compressed._compressed_sparse_matrix):
         """
         from cupyx import cusparse
 
-        order = 'C' if order is None else order.upper()
+        order = "C" if order is None else order.upper()
         if self.nnz == 0:
             return cupy.zeros(shape=self.shape, dtype=self.dtype, order=order)
 
-        if self.dtype.char not in 'fdFD':
+        if self.dtype.char not in "fdFD":
             return csr2dense(self, order)
 
         x = self.copy()
         x.has_canonical_format = False  # need to enforce sum_duplicates
         x.sum_duplicates()
-        if (cusparse.check_availability('sparseToDense')
+        if (cusparse.check_availability("sparseToDense")
                 and (not runtime.is_hip or (x.nnz > 0))):
             # On HIP, nnz=0 is problematic as of ROCm 4.2.0
             y = cusparse.sparseToDense(x)
-            if order == 'F':
+            if order == "F":
                 return y
-            elif order == 'C':
+            elif order == "C":
                 return cupy.ascontiguousarray(y)
             else:
-                raise ValueError('order not understood')
+                raise ValueError("order not understood")
         else:
             # csr2dense returns F-contiguous array.
-            if order == 'C':
+            if order == "C":
                 # To return C-contiguous array, it uses transpose.
                 return cusparse.csc2dense(x.T).T
-            elif order == 'F':
+            elif order == "F":
                 return cusparse.csr2dense(x)
             else:
-                raise ValueError('order not understood')
+                raise ValueError("order not understood")
 
     def tobsr(self, blocksize=None, copy=False):
         # TODO(unno): Implement tobsr
@@ -475,9 +475,9 @@ class csr_matrix(_compressed._compressed_sparse_matrix):
         from cupyx import cusparse
 
         # copy is ignored
-        if cusparse.check_availability('csr2csc'):
+        if cusparse.check_availability("csr2csc"):
             csr2csc = cusparse.csr2csc
-        elif cusparse.check_availability('csr2cscEx2'):
+        elif cusparse.check_availability("csr2cscEx2"):
             csr2csc = cusparse.csr2cscEx2
         else:
             raise NotImplementedError
@@ -531,8 +531,8 @@ class csr_matrix(_compressed._compressed_sparse_matrix):
         """
         if axes is not None:
             raise ValueError(
-                'Sparse matrices do not support an \'axes\' parameter because '
-                'swapping dimensions is the only logical permutation.')
+                "Sparse matrices do not support an 'axes' parameter because "
+                "swapping dimensions is the only logical permutation.")
 
         shape = self.shape[1], self.shape[0]
         trans = _csc.csc_matrix(
@@ -607,12 +607,12 @@ def check_shape_for_pointwise_op(a_shape, b_shape, allow_broadcasting=True):
         a_m, a_n = a_shape
         b_m, b_n = b_shape
         if not (a_m == b_m or a_m == 1 or b_m == 1):
-            raise ValueError('inconsistent shape')
+            raise ValueError("inconsistent shape")
         if not (a_n == b_n or a_n == 1 or b_n == 1):
-            raise ValueError('inconsistent shape')
+            raise ValueError("inconsistent shape")
     else:
         if a_shape != b_shape:
-            raise ValueError('inconsistent shape')
+            raise ValueError("inconsistent shape")
 
 
 def multiply_by_scalar(sp, a):
@@ -648,7 +648,7 @@ def multiply_by_dense(sp, dn):
     return csr_matrix((data, indices, indptr), shape=(m, n))
 
 
-_GET_ROW_ID_ = '''
+_GET_ROW_ID_ = """
 __device__ inline int get_row_id(int i, int min, int max, const int *indptr) {
     int row = (min + max) / 2;
     while (min < max) {
@@ -663,9 +663,9 @@ __device__ inline int get_row_id(int i, int min, int max, const int *indptr) {
     }
     return row;
 }
-'''
+"""
 
-_FIND_INDEX_HOLDING_COL_IN_ROW_ = '''
+_FIND_INDEX_HOLDING_COL_IN_ROW_ = """
 __device__ inline int find_index_holding_col_in_row(
         int row, int col, const int *indptr, const int *indices) {
     int j_min = indptr[row];
@@ -683,20 +683,20 @@ __device__ inline int find_index_holding_col_in_row(
     }
     return -1;
 }
-'''
+"""
 
 
 @cupy._util.memoize(for_each_device=True)
 def cupy_multiply_by_dense():
     return cupy.ElementwiseKernel(
-        '''
+        """
         raw S SP_DATA, raw I SP_INDPTR, raw I SP_INDICES,
         int32 SP_M, int32 SP_N,
         raw D DN_DATA, int32 DN_M, int32 DN_N,
         raw I OUT_INDPTR, int32 OUT_M, int32 OUT_N
-        ''',
-        'O OUT_DATA, I OUT_INDICES',
-        '''
+        """,
+        "O OUT_DATA, I OUT_INDICES",
+        """
         int i_out = i;
         int m_out = get_row_id(i_out, 0, OUT_M - 1, &(OUT_INDPTR[0]));
         int i_sp = i_out;
@@ -720,8 +720,8 @@ def cupy_multiply_by_dense():
         }
         OUT_DATA = (O)(SP_DATA[i_sp] * DN_DATA[n_dn + (DN_N * m_dn)]);
         OUT_INDICES = n_out;
-        ''',
-        'cupyx_scipy_sparse_csr_multiply_by_dense',
+        """,
+        "cupyx_scipy_sparse_csr_multiply_by_dense",
         preamble=_GET_ROW_ID_
     )
 
@@ -729,12 +729,12 @@ def cupy_multiply_by_dense():
 @cupy._util.memoize(for_each_device=True)
 def _cupy_divide_by_dense():
     return cupy.ElementwiseKernel(
-        'T data, I row, I col, I width, raw T other',
-        'T res',
-        '''
+        "T data, I row, I col, I width, raw T other",
+        "T res",
+        """
         res = data / other[row * width + col]
-        ''',
-        'cupyx_scipy_sparse_coo_divide_dense',
+        """,
+        "cupyx_scipy_sparse_coo_divide_dense",
     )
 
 
@@ -784,13 +784,13 @@ def multiply_by_csr(a, b):
 @cupy._util.memoize(for_each_device=True)
 def cupy_multiply_by_csr_step1():
     return cupy.ElementwiseKernel(
-        '''
+        """
         raw A A_DATA, raw I A_INDPTR, raw I A_INDICES, int32 A_M, int32 A_N,
         raw B B_DATA, raw I B_INDPTR, raw I B_INDICES, int32 B_M, int32 B_N,
         raw I C_INDPTR, int32 C_M, int32 C_N
-        ''',
-        'C C_DATA, I C_INDICES, raw I FLAGS, raw I NNZ_EACH_ROW',
-        '''
+        """,
+        "C C_DATA, I C_INDICES, raw I FLAGS, raw I NNZ_EACH_ROW",
+        """
         int i_c = i;
         int m_c = get_row_id(i_c, 0, C_M - 1, &(C_INDPTR[0]));
 
@@ -821,8 +821,8 @@ def cupy_multiply_by_csr_step1():
             C_DATA = (C)(A_DATA[i_a] * B_DATA[i_b]);
             C_INDICES = n_c;
         }
-        ''',
-        'cupyx_scipy_sparse_csr_multiply_by_csr_step1',
+        """,
+        "cupyx_scipy_sparse_csr_multiply_by_csr_step1",
         preamble=_GET_ROW_ID_ + _FIND_INDEX_HOLDING_COL_IN_ROW_
     )
 
@@ -830,59 +830,59 @@ def cupy_multiply_by_csr_step1():
 @cupy._util.memoize(for_each_device=True)
 def cupy_multiply_by_csr_step2():
     return cupy.ElementwiseKernel(
-        'T C_DATA, I C_INDICES, raw I FLAGS',
-        'raw D D_DATA, raw I D_INDICES',
-        '''
+        "T C_DATA, I C_INDICES, raw I FLAGS",
+        "raw D D_DATA, raw I D_INDICES",
+        """
         int j = FLAGS[i];
         if (j < FLAGS[i+1]) {
             D_DATA[j] = (D)(C_DATA);
             D_INDICES[j] = C_INDICES;
         }
-        ''',
-        'cupyx_scipy_sparse_csr_multiply_by_csr_step2'
+        """,
+        "cupyx_scipy_sparse_csr_multiply_by_csr_step2"
     )
 
 
-_BINOPT_MAX_ = '''
+_BINOPT_MAX_ = """
 __device__ inline O binopt(T in1, T in2) {
     return max(in1, in2);
 }
-'''
-_BINOPT_MIN_ = '''
+"""
+_BINOPT_MIN_ = """
 __device__ inline O binopt(T in1, T in2) {
     return min(in1, in2);
 }
-'''
-_BINOPT_EQ_ = '''
+"""
+_BINOPT_EQ_ = """
 __device__ inline O binopt(T in1, T in2) {
     return (in1 == in2);
 }
-'''
-_BINOPT_NE_ = '''
+"""
+_BINOPT_NE_ = """
 __device__ inline O binopt(T in1, T in2) {
     return (in1 != in2);
 }
-'''
-_BINOPT_LT_ = '''
+"""
+_BINOPT_LT_ = """
 __device__ inline O binopt(T in1, T in2) {
     return (in1 < in2);
 }
-'''
-_BINOPT_GT_ = '''
+"""
+_BINOPT_GT_ = """
 __device__ inline O binopt(T in1, T in2) {
     return (in1 > in2);
 }
-'''
-_BINOPT_LE_ = '''
+"""
+_BINOPT_LE_ = """
 __device__ inline O binopt(T in1, T in2) {
     return (in1 <= in2);
 }
-'''
-_BINOPT_GE_ = '''
+"""
+_BINOPT_GE_ = """
 __device__ inline O binopt(T in1, T in2) {
     return (in1 >= in2);
 }
-'''
+"""
 
 
 def binopt_csr(a, b, op_name):
@@ -902,32 +902,32 @@ def binopt_csr(a, b, op_name):
     a_data = a.data.astype(in_dtype, copy=False)
     b_data = b.data.astype(in_dtype, copy=False)
     funcs = _GET_ROW_ID_
-    if op_name == '_maximum_':
+    if op_name == "_maximum_":
         funcs += _BINOPT_MAX_
         out_dtype = in_dtype
-    elif op_name == '_minimum_':
+    elif op_name == "_minimum_":
         funcs += _BINOPT_MIN_
         out_dtype = in_dtype
-    elif op_name == '_eq_':
+    elif op_name == "_eq_":
         funcs += _BINOPT_EQ_
         out_dtype = numpy.bool_
-    elif op_name == '_ne_':
+    elif op_name == "_ne_":
         funcs += _BINOPT_NE_
         out_dtype = numpy.bool_
-    elif op_name == '_lt_':
+    elif op_name == "_lt_":
         funcs += _BINOPT_LT_
         out_dtype = numpy.bool_
-    elif op_name == '_gt_':
+    elif op_name == "_gt_":
         funcs += _BINOPT_GT_
         out_dtype = numpy.bool_
-    elif op_name == '_le_':
+    elif op_name == "_le_":
         funcs += _BINOPT_LE_
         out_dtype = numpy.bool_
-    elif op_name == '_ge_':
+    elif op_name == "_ge_":
         funcs += _BINOPT_GE_
         out_dtype = numpy.bool_
     else:
-        raise ValueError('invalid op_name: {}'.format(op_name))
+        raise ValueError("invalid op_name: {}".format(op_name))
     a_tmp_data = cupy.empty(a_nnz, dtype=out_dtype)
     b_tmp_data = cupy.empty(b_nnz, dtype=out_dtype)
     a_tmp_indices = cupy.empty(a_nnz, dtype=a.indices.dtype)
@@ -954,22 +954,22 @@ def binopt_csr(a, b, op_name):
 
 
 @cupy._util.memoize(for_each_device=True)
-def cupy_binopt_csr_step1(op_name, preamble=''):
-    name = 'cupyx_scipy_sparse_csr_binopt_' + op_name + 'step1'
+def cupy_binopt_csr_step1(op_name, preamble=""):
+    name = "cupyx_scipy_sparse_csr_binopt_" + op_name + "step1"
     return cupy.ElementwiseKernel(
-        '''
+        """
         int32 M, int32 N,
         raw I A_INDPTR, raw I A_INDICES, raw T A_DATA,
         int32 A_M, int32 A_N, int32 A_NNZ_ACT, int32 A_NNZ,
         raw I B_INDPTR, raw I B_INDICES, raw T B_DATA,
         int32 B_M, int32 B_N, int32 B_NNZ_ACT, int32 B_NNZ
-        ''',
-        '''
+        """,
+        """
         raw I A_INFO, raw B A_VALID, raw I A_TMP_INDICES, raw O A_TMP_DATA,
         raw I B_INFO, raw B B_VALID, raw I B_TMP_INDICES, raw O B_TMP_DATA,
         raw I C_INFO
-        ''',
-        '''
+        """,
+        """
         if (i >= A_NNZ + B_NNZ) return;
 
         const int *MY_INDPTR, *MY_INDICES;  int *MY_INFO;  const T *MY_DATA;
@@ -1100,23 +1100,23 @@ def cupy_binopt_csr_step1(op_name, preamble=''):
                 atomicAdd( &(OP_INFO[op_j]), 1 );
             }
         }
-        ''',
+        """,
         name, preamble=preamble,
     )
 
 
 @cupy._util.memoize(for_each_device=True)
 def cupy_binopt_csr_step2(op_name):
-    name = 'cupyx_scipy_sparse_csr_binopt' + op_name + 'step2'
+    name = "cupyx_scipy_sparse_csr_binopt" + op_name + "step2"
     return cupy.ElementwiseKernel(
-        '''
+        """
         raw I A_INFO, raw B A_VALID, raw I A_TMP_INDICES, raw O A_TMP_DATA,
         int32 A_NNZ,
         raw I B_INFO, raw B B_VALID, raw I B_TMP_INDICES, raw O B_TMP_DATA,
         int32 B_NNZ
-        ''',
-        'raw I C_INDICES, raw O C_DATA',
-        '''
+        """,
+        "raw I C_INDICES, raw O C_DATA",
+        """
         if (i < A_NNZ) {
             int j = i;
             if (A_VALID[j]) {
@@ -1130,7 +1130,7 @@ def cupy_binopt_csr_step2(op_name):
                 C_DATA[B_INFO[j]]    = B_TMP_DATA[j];
             }
         }
-        ''',
+        """,
         name,
     )
 
@@ -1139,26 +1139,26 @@ def csr2dense(a, order):
     out = cupy.zeros(a.shape, dtype=a.dtype, order=order)
     m, n = a.shape
     kern = _cupy_csr2dense(a.dtype)
-    kern(m, n, a.indptr, a.indices, a.data, (order == 'C'), out)
+    kern(m, n, a.indptr, a.indices, a.data, (order == "C"), out)
     return out
 
 
 @cupy._util.memoize(for_each_device=True)
 def _cupy_csr2dense(dtype):
-    if dtype == '?':
+    if dtype == "?":
         op = "if (DATA) OUT[index] = true;"
     else:
         op = "atomicAdd(&OUT[index], DATA);"
 
     return cupy.ElementwiseKernel(
-        'int32 M, int32 N, raw I INDPTR, I INDICES, T DATA, bool C_ORDER',
-        'raw T OUT',
-        '''
+        "int32 M, int32 N, raw I INDPTR, I INDICES, T DATA, bool C_ORDER",
+        "raw T OUT",
+        """
         int row = get_row_id(i, 0, M - 1, &(INDPTR[0]));
         int col = INDICES;
         int index = C_ORDER ? col + N * row : row + M * col;
-        ''' + op,
-        'cupyx_scipy_sparse_csr2dense',
+        """ + op,
+        "cupyx_scipy_sparse_csr2dense",
         preamble=_GET_ROW_ID_
     )
 
@@ -1166,9 +1166,9 @@ def _cupy_csr2dense(dtype):
 def dense2csr(a):
     from cupyx import cusparse
 
-    if a.dtype.char in 'fdFD':
-        if cusparse.check_availability('denseToSparse'):
-            return cusparse.denseToSparse(a, format='csr')
+    if a.dtype.char in "fdFD":
+        if cusparse.check_availability("denseToSparse"):
+            return cusparse.denseToSparse(a, format="csr")
         else:
             return cusparse.dense2csr(a)
     m, n = a.shape
@@ -1188,25 +1188,25 @@ def dense2csr(a):
 @cupy._util.memoize(for_each_device=True)
 def cupy_dense2csr_step1():
     return cupy.ElementwiseKernel(
-        'int32 M, int32 N, T A',
-        'raw I INDPTR, raw I INFO',
-        '''
+        "int32 M, int32 N, T A",
+        "raw I INDPTR, raw I INFO",
+        """
         int row = i / N;
         int col = i % N;
         if (A != static_cast<T>(0)) {
             atomicAdd( &(INDPTR[row + 1]), 1 );
             INFO[i + 1] = 1;
         }
-        ''',
-        'cupyx_scipy_sparse_dense2csr_step1')
+        """,
+        "cupyx_scipy_sparse_dense2csr_step1")
 
 
 @cupy._util.memoize(for_each_device=True)
 def cupy_dense2csr_step2():
     return cupy.ElementwiseKernel(
-        'int32 M, int32 N, T A, raw I INFO',
-        'raw I INDICES, raw T DATA',
-        '''
+        "int32 M, int32 N, T A, raw I INFO",
+        "raw I INDICES, raw T DATA",
+        """
         int row = i / N;
         int col = i % N;
         if (A != static_cast<T>(0)) {
@@ -1214,17 +1214,17 @@ def cupy_dense2csr_step2():
             INDICES[idx] = col;
             DATA[idx] = A;
         }
-        ''',
-        'cupyx_scipy_sparse_dense2csr_step2')
+        """,
+        "cupyx_scipy_sparse_dense2csr_step2")
 
 
 @cupy._util.memoize(for_each_device=True)
 def _cupy_csr_diagonal():
     return cupy.ElementwiseKernel(
-        'int32 k, int32 rows, int32 cols, '
-        'raw T data, raw I indptr, raw I indices',
-        'T y',
-        '''
+        "int32 k, int32 rows, int32 cols, "
+        "raw T data, raw I indptr, raw I indices",
+        "T y",
+        """
         int row = i;
         int col = i;
         if (k < 0) row -= k;
@@ -1237,7 +1237,7 @@ def _cupy_csr_diagonal():
         } else {
             y = static_cast<T>(0);
         }
-        ''',
-        'cupyx_scipy_sparse_csr_diagonal',
+        """,
+        "cupyx_scipy_sparse_csr_diagonal",
         preamble=_FIND_INDEX_HOLDING_COL_IN_ROW_
     )

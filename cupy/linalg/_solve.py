@@ -53,8 +53,8 @@ def solve(a, b):
         and a.shape[:-1] == b.shape[:a.ndim - 1]
     ):
         raise ValueError(
-            'a must have (..., M, M) shape and b must have (..., M) '
-            'or (..., M, K)')
+            "a must have (..., M, M) shape and b must have (..., M) "
+            "or (..., M, K)")
 
     dtype, out_dtype = _util.linalg_common_type(a, b)
     if b.size == 0:
@@ -62,19 +62,19 @@ def solve(a, b):
 
     if a.ndim == 2:
         # prevent 'a' and 'b' to be overwritten
-        a = a.astype(dtype, copy=True, order='F')
-        b = b.astype(dtype, copy=True, order='F')
+        a = a.astype(dtype, copy=True, order="F")
+        b = b.astype(dtype, copy=True, order="F")
         lapack.gesv(a, b)
         return b.astype(out_dtype, copy=False)
 
     # prevent 'a' to be overwritten
-    a = a.astype(dtype, copy=True, order='C')
+    a = a.astype(dtype, copy=True, order="C")
     x = cupy.empty_like(b, dtype=out_dtype)
     shape = a.shape[:-2]
     for i in range(numpy.prod(shape)):
         index = numpy.unravel_index(i, shape)
         # prevent 'b' to be overwritten
-        bi = b[index].astype(dtype, copy=True, order='F')
+        bi = b[index].astype(dtype, copy=True, order="F")
         lapack.gesv(a[index], bi)
         x[index] = bi
     return x
@@ -127,7 +127,7 @@ def _nrm2_last_axis(x):
     return cupy.sum(cupy.square(x.view(real_dtype)), axis=-1)
 
 
-def lstsq(a, b, rcond='warn'):
+def lstsq(a, b, rcond="warn"):
     """Return the least-squares solution to a linear matrix equation.
 
     Solves the equation `a x = b` by computing a vector `x` that
@@ -166,14 +166,14 @@ def lstsq(a, b, rcond='warn'):
 
     .. seealso:: :func:`numpy.linalg.lstsq`
     """
-    if rcond == 'warn':
+    if rcond == "warn":
         warnings.warn(
-            '`rcond` parameter will change to the default of '
-            'machine precision times ``max(M, N)`` where M and N '
-            'are the input matrix dimensions.\n'
-            'To use the future default and silence this warning '
-            'we advise to pass `rcond=None`, to keep using the old, '
-            'explicitly pass `rcond=-1`.',
+            "`rcond` parameter will change to the default of "
+            "machine precision times ``max(M, N)`` where M and N "
+            "are the input matrix dimensions.\n"
+            "To use the future default and silence this warning "
+            "we advise to pass `rcond=None`, to keep using the old, "
+            "explicitly pass `rcond=-1`.",
             FutureWarning)
         rcond = -1
 
@@ -181,12 +181,12 @@ def lstsq(a, b, rcond='warn'):
     _util._assert_2d(a)
     # TODO(kataoka): Fix 0-dim
     if b.ndim > 2:
-        raise linalg.LinAlgError('{}-dimensional array given. Array must be at'
-                                 ' most two-dimensional'.format(b.ndim))
+        raise linalg.LinAlgError("{}-dimensional array given. Array must be at"
+                                 " most two-dimensional".format(b.ndim))
     m, n = a.shape[-2:]
     m2 = b.shape[0]
     if m != m2:
-        raise linalg.LinAlgError('Incompatible dimensions')
+        raise linalg.LinAlgError("Incompatible dimensions")
 
     u, s, vh = cupy.linalg.svd(a, full_matrices=False)
 
@@ -250,11 +250,11 @@ def inv(a):
     if a.size == 0:
         return cupy.empty(a.shape, out_dtype)
 
-    order = 'F' if a._f_contiguous else 'C'
+    order = "F" if a._f_contiguous else "C"
     # prevent 'a' to be overwritten
     a = a.astype(dtype, copy=True, order=order)
     b = cupy.eye(a.shape[0], dtype=dtype, order=order)
-    if order == 'F':
+    if order == "F":
         cupyx.lapack.gesv(a, b)
     else:
         cupyx.lapack.gesv(a.T, b.T)
@@ -280,8 +280,8 @@ def _batched_inv(a):
         getrf = cupy.cuda.cublas.zgetrfBatched
         getri = cupy.cuda.cublas.zgetriBatched
     else:
-        msg = ('dtype must be float32, float64, complex64 or complex128'
-               ' (actual: {})'.format(a.dtype))
+        msg = ("dtype must be float32, float64, complex64 or complex128"
+               " (actual: {})".format(a.dtype))
         raise ValueError(msg)
 
     if 0 in a.shape:
@@ -289,7 +289,7 @@ def _batched_inv(a):
     a_shape = a.shape
 
     # copy is necessary to present `a` to be overwritten.
-    a = a.astype(dtype, order='C').reshape(-1, a_shape[-2], a_shape[-1])
+    a = a.astype(dtype, order="C").reshape(-1, a_shape[-2], a_shape[-1])
 
     handle = device.get_cublas_handle()
     batch_size = a.shape[0]
@@ -399,7 +399,7 @@ def tensorinv(a, ind=2):
     _util._assert_cupy_array(a)
 
     if ind <= 0:
-        raise ValueError('Invalid ind argument')
+        raise ValueError("Invalid ind argument")
     oldshape = a.shape
     invshape = oldshape[ind:] + oldshape[:ind]
     prod = internal.prod(oldshape[ind:])

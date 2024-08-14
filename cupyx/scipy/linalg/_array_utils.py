@@ -3,10 +3,10 @@ from cupy.linalg import _util
 
 # Find the "bandwise position" of a nonzero cell
 _kernel_cupy_band_pos_c = cupy.ElementwiseKernel(
-    'T A, N r, N c',
-    'N out',
-    'out = A != 0 ? r - c : 0',
-    'cupyx_scipy_linalg_band_pos'
+    "T A, N r, N c",
+    "N out",
+    "out = A != 0 ? r - c : 0",
+    "cupyx_scipy_linalg_band_pos"
 )
 
 
@@ -34,7 +34,7 @@ def bandwidth(a):
     _util._assert_2d(a)
 
     # Create new matrix A which is C contiguous
-    if a.flags['F_CONTIGUOUS']:
+    if a.flags["F_CONTIGUOUS"]:
         A = a.T
     else:
         A = a
@@ -45,7 +45,7 @@ def bandwidth(a):
     bandpts = _kernel_cupy_band_pos_c(A, row_num, col_num)
 
     # If F contiguous, transpose
-    if a.flags['F_CONTIGUOUS']:
+    if a.flags["F_CONTIGUOUS"]:
         upper_band = int(cupy.amax(bandpts))
         lower_band = -int(cupy.amin(bandpts))
     else:

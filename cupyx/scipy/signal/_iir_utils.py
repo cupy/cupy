@@ -10,16 +10,16 @@ from cupyx.scipy.signal._arraytools import axis_slice
 
 def _get_typename(dtype):
     typename = get_typename(dtype)
-    if cupy.dtype(dtype).kind == 'c':
-        typename = 'thrust::' + typename
-    elif typename == 'float16':
+    if cupy.dtype(dtype).kind == "c":
+        typename = "thrust::" + typename
+    elif typename == "float16":
         if runtime.is_hip:
             # 'half' in name_expressions weirdly raises
             # HIPRTC_ERROR_NAME_EXPRESSION_NOT_VALID in getLoweredName() on
             # ROCm
-            typename = '__half'
+            typename = "__half"
         else:
-            typename = 'half'
+            typename = "half"
     return typename
 
 
@@ -474,28 +474,28 @@ __global__ void fir_sos(
 """  # NOQA
 
 IIR_MODULE = cupy.RawModule(
-    code=IIR_KERNEL, options=('-std=c++11',),
-    name_expressions=[f'compute_correction_factors<{x}, {y}>'
+    code=IIR_KERNEL, options=("-std=c++11",),
+    name_expressions=[f"compute_correction_factors<{x}, {y}>"
                       for x, y in TYPE_PAIR_NAMES] +
-                     [f'correct_carries<{x}>' for x in TYPE_NAMES] +
-                     [f'first_pass_iir<{x}>' for x in TYPE_NAMES] +
-                     [f'second_pass_iir<{x}>' for x in TYPE_NAMES])
+                     [f"correct_carries<{x}>" for x in TYPE_NAMES] +
+                     [f"first_pass_iir<{x}>" for x in TYPE_NAMES] +
+                     [f"second_pass_iir<{x}>" for x in TYPE_NAMES])
 
 IIR_SOS_MODULE = cupy.RawModule(
-    code=IIR_SOS_KERNEL, options=('-std=c++11',),
-    name_expressions=[f'compute_correction_factors_sos<{x}, {y}>'
+    code=IIR_SOS_KERNEL, options=("-std=c++11",),
+    name_expressions=[f"compute_correction_factors_sos<{x}, {y}>"
                       for x, y in TYPE_PAIR_NAMES] +
-    [f'pick_carries<{x}>' for x in TYPE_NAMES] +
-    [f'correct_carries_sos<{x}>' for x in TYPE_NAMES] +
-    [f'first_pass_iir_sos<{x}>' for x in TYPE_NAMES] +
-    [f'second_pass_iir_sos<{x}>' for x in TYPE_NAMES] +
-    [f'fir_sos<{x}>' for x in TYPE_NAMES])
+    [f"pick_carries<{x}>" for x in TYPE_NAMES] +
+    [f"correct_carries_sos<{x}>" for x in TYPE_NAMES] +
+    [f"first_pass_iir_sos<{x}>" for x in TYPE_NAMES] +
+    [f"second_pass_iir_sos<{x}>" for x in TYPE_NAMES] +
+    [f"fir_sos<{x}>" for x in TYPE_NAMES])
 
 
 def _get_module_func(module, func_name, *template_args):
     args_dtypes = [_get_typename(arg.dtype) for arg in template_args]
-    template = ', '.join(args_dtypes)
-    kernel_name = f'{func_name}<{template}>' if template_args else func_name
+    template = ", ".join(args_dtypes)
+    kernel_name = f"{func_name}<{template}>" if template_args else func_name
     kernel = module.get_function(kernel_name)
     return kernel
 
@@ -524,7 +524,7 @@ def compute_correction_factors(a, block_sz, dtype):
     correction = cupy.c_[
         correction[::-1], cupy.empty((k, block_sz), dtype=dtype)]
     corr_kernel = _get_module_func(
-        IIR_MODULE, 'compute_correction_factors', correction, a)
+        IIR_MODULE, "compute_correction_factors", correction, a)
     corr_kernel((k,), (1,), (block_sz, k, a, correction))
     return correction
 
@@ -565,11 +565,11 @@ def apply_iir(x, a, axis=-1, zi=None, dtype=None, block_sz=1024):
         (num_rows, n_blocks, k), dtype=dtype)
 
     corr_kernel = _get_module_func(
-        IIR_MODULE, 'compute_correction_factors', correction, a)
-    first_pass_kernel = _get_module_func(IIR_MODULE, 'first_pass_iir', out)
-    second_pass_kernel = _get_module_func(IIR_MODULE, 'second_pass_iir', out)
+        IIR_MODULE, "compute_correction_factors", correction, a)
+    first_pass_kernel = _get_module_func(IIR_MODULE, "first_pass_iir", out)
+    second_pass_kernel = _get_module_func(IIR_MODULE, "second_pass_iir", out)
     carry_correction_kernel = _get_module_func(
-        IIR_MODULE, 'correct_carries', out)
+        IIR_MODULE, "correct_carries", out)
 
     corr_kernel((k,), (1,), (block_sz, k, a, correction))
     first_pass_kernel((total_blocks,), (block_sz // 2,),
@@ -616,7 +616,7 @@ def compute_correction_factors_sos(sos, block_sz, dtype):
     n_sections = sos.shape[0]
     correction = cupy.empty((n_sections, 2, block_sz), dtype=dtype)
     corr_kernel = _get_module_func(
-        IIR_SOS_MODULE, 'compute_correction_factors_sos', correction, sos)
+        IIR_SOS_MODULE, "compute_correction_factors_sos", correction, sos)
     corr_kernel((n_sections,), (2,), (block_sz, sos, correction))
     return correction
 
@@ -663,13 +663,13 @@ def apply_iir_sos(x, sos, axis=-1, zi=None, dtype=None, block_sz=1024,
             (num_rows, n_blocks + 1, k), dtype=dtype)
 
     first_pass_kernel = _get_module_func(
-        IIR_SOS_MODULE, 'first_pass_iir_sos', out)
+        IIR_SOS_MODULE, "first_pass_iir_sos", out)
     second_pass_kernel = _get_module_func(
-        IIR_SOS_MODULE, 'second_pass_iir_sos', out)
+        IIR_SOS_MODULE, "second_pass_iir_sos", out)
     carry_correction_kernel = _get_module_func(
-        IIR_SOS_MODULE, 'correct_carries_sos', out)
-    fir_kernel = _get_module_func(IIR_SOS_MODULE, 'fir_sos', out)
-    carries_kernel = _get_module_func(IIR_SOS_MODULE, 'pick_carries', out)
+        IIR_SOS_MODULE, "correct_carries_sos", out)
+    fir_kernel = _get_module_func(IIR_SOS_MODULE, "fir_sos", out)
+    carries_kernel = _get_module_func(IIR_SOS_MODULE, "pick_carries", out)
 
     starting_group = int(zi is None)
     blocks_to_merge = n_blocks - starting_group

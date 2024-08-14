@@ -8,7 +8,7 @@ import cupy._util
 import cupyx
 from cupy import _core
 
-_default_precision = os.getenv('CUPY_DEFAULT_PRECISION')
+_default_precision = os.getenv("CUPY_DEFAULT_PRECISION")
 
 
 # The helper functions raise LinAlgError if the conditions are not met.
@@ -17,23 +17,23 @@ def _assert_cupy_array(*arrays):
     for a in arrays:
         if not isinstance(a, cupy._core.ndarray):
             raise linalg.LinAlgError(
-                'cupy.linalg only supports cupy.ndarray')
+                "cupy.linalg only supports cupy.ndarray")
 
 
 def _assert_2d(*arrays):
     for a in arrays:
         if a.ndim != 2:
             raise linalg.LinAlgError(
-                '{}-dimensional array given. Array must be '
-                'two-dimensional'.format(a.ndim))
+                "{}-dimensional array given. Array must be "
+                "two-dimensional".format(a.ndim))
 
 
 def _assert_stacked_2d(*arrays):
     for a in arrays:
         if a.ndim < 2:
             raise linalg.LinAlgError(
-                '{}-dimensional array given. Array must be '
-                'at least two-dimensional'.format(a.ndim))
+                "{}-dimensional array given. Array must be "
+                "at least two-dimensional".format(a.ndim))
 
 
 def _assert_stacked_square(*arrays):
@@ -53,7 +53,7 @@ def _assert_stacked_square(*arrays):
         m, n = a.shape[-2:]
         if m != n:
             raise linalg.LinAlgError(
-                'Last 2 dimensions of the array must be square')
+                "Last 2 dimensions of the array must be square")
 
 
 def linalg_common_type(*arrays, reject_float16=True):
@@ -75,32 +75,32 @@ def linalg_common_type(*arrays, reject_float16=True):
         result_dtype (dtype): The dtype of (possibly complex) output(s).
     """
     dtypes = [arr.dtype for arr in arrays]
-    if reject_float16 and 'float16' in dtypes:
-        raise TypeError('float16 is unsupported in linalg')
+    if reject_float16 and "float16" in dtypes:
+        raise TypeError("float16 is unsupported in linalg")
 
     if _default_precision is not None:
-        cupy._util.experimental('CUPY_DEFAULT_PRECISION')
-        if _default_precision not in ('32', '64'):
+        cupy._util.experimental("CUPY_DEFAULT_PRECISION")
+        if _default_precision not in ("32", "64"):
             raise ValueError(
-                'invalid CUPY_DEFAULT_PRECISION: {}'.format(
+                "invalid CUPY_DEFAULT_PRECISION: {}".format(
                     _default_precision))
-        default = 'float' + _default_precision
+        default = "float" + _default_precision
     else:
-        default = 'float64'
+        default = "float64"
     compute_dtype = _common_type_internal(default, *dtypes)
     # No fp16 cuSOLVER routines
-    if compute_dtype == 'float16':
-        compute_dtype = numpy.dtype('float32')
+    if compute_dtype == "float16":
+        compute_dtype = numpy.dtype("float32")
 
     # numpy casts integer types to float64
-    result_dtype = _common_type_internal('float64', *dtypes)
+    result_dtype = _common_type_internal("float64", *dtypes)
 
     return compute_dtype, result_dtype
 
 
 def _common_type_internal(default_dtype, *dtypes):
     inexact_dtypes = [
-        dtype if dtype.kind in 'fc' else default_dtype
+        dtype if dtype.kind in "fc" else default_dtype
         for dtype in dtypes]
     return numpy.result_type(*inexact_dtypes)
 
@@ -112,7 +112,7 @@ def _check_cusolver_dev_info_if_synchronization_allowed(routine, dev_info):
     assert isinstance(dev_info, _core.ndarray)
     config_linalg = cupyx._ufunc_config.get_config_linalg()
     # Only 'ignore' and 'raise' are currently supported.
-    if config_linalg == 'ignore':
+    if config_linalg == "ignore":
         return
 
     try:
@@ -120,11 +120,11 @@ def _check_cusolver_dev_info_if_synchronization_allowed(routine, dev_info):
     except AttributeError:
         name = routine  # routine is a str
 
-    assert config_linalg == 'raise'
+    assert config_linalg == "raise"
     if (dev_info != 0).any():
         raise linalg.LinAlgError(
-            'Error reported by {} in cuSOLVER. devInfo = {}. Please refer'
-            ' to the cuSOLVER documentation.'.format(
+            "Error reported by {} in cuSOLVER. devInfo = {}. Please refer"
+            " to the cuSOLVER documentation.".format(
                 name, dev_info))
 
 
@@ -137,21 +137,21 @@ def _check_cublas_info_array_if_synchronization_allowed(routine, info_array):
 
     config_linalg = cupyx._ufunc_config.get_config_linalg()
     # Only 'ignore' and 'raise' are currently supported.
-    if config_linalg == 'ignore':
+    if config_linalg == "ignore":
         return
 
-    assert config_linalg == 'raise'
+    assert config_linalg == "raise"
     if (info_array != 0).any():
         raise linalg.LinAlgError(
-            'Error reported by {} in cuBLAS. infoArray/devInfoArray = {}.'
-            ' Please refer to the cuBLAS documentation.'.format(
+            "Error reported by {} in cuBLAS. infoArray/devInfoArray = {}."
+            " Please refer to the cuBLAS documentation.".format(
                 routine.__name__, info_array))
 
 
 _tril_kernel = _core.ElementwiseKernel(
-    'int64 k', 'S x',
-    'x = (_ind.get()[1] - _ind.get()[0] <= k) ? x : 0',
-    'cupy_tril_kernel',
+    "int64 k", "S x",
+    "x = (_ind.get()[1] - _ind.get()[0] <= k) ? x : 0",
+    "cupy_tril_kernel",
     reduce_dims=False
 )
 
@@ -163,9 +163,9 @@ def _tril(x, k=0):
 
 # support a batch of matrices
 _triu_kernel = _core.ElementwiseKernel(
-    'int64 k', 'S x',
-    'x = (_ind.get()[_ind.ndim - 1] - _ind.get()[_ind.ndim - 2] >= k) ? x : 0',
-    'cupy_triu_kernel',
+    "int64 k", "S x",
+    "x = (_ind.get()[_ind.ndim - 1] - _ind.get()[_ind.ndim - 2] >= k) ? x : 0",
+    "cupy_triu_kernel",
     reduce_dims=False
 )
 

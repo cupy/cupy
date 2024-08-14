@@ -16,22 +16,22 @@ try:
 except ImportError:
     fhtoffset = None
 
-atol = {cupy.float64: 1e-10, 'default': 1e-5}
-rtol = {cupy.float64: 1e-10, 'default': 1e-5}
+atol = {cupy.float64: 1e-10, "default": 1e-5}
+rtol = {cupy.float64: 1e-10, "default": 1e-5}
 
 
 @testing.parameterize(*testing.product({
-    'mu': [0.3, 0.5, -1.2],
-    'shape': [(9,), (10,), (10, 9), (8, 10)],
-    'offset': [0.0, 0.1, 'optimal'],
-    'bias': [0.0, 0.8, -0.5],
-    'function': ['fht', 'ifht'],
+    "mu": [0.3, 0.5, -1.2],
+    "shape": [(9,), (10,), (10, 9), (8, 10)],
+    "offset": [0.0, 0.1, "optimal"],
+    "bias": [0.0, 0.8, -0.5],
+    "function": ["fht", "ifht"],
 }))
 class TestFftlog:
 
     @testing.for_all_dtypes(no_complex=True)
-    @testing.numpy_cupy_allclose(rtol=rtol, atol=atol, scipy_name='scp')
-    @testing.with_requires('scipy>=1.7.0')
+    @testing.numpy_cupy_allclose(rtol=rtol, atol=atol, scipy_name="scp")
+    @testing.with_requires("scipy>=1.7.0")
     def test_fht(self, xp, scp, dtype):
 
         # test function, analytical Hankel transform is of the same form
@@ -47,7 +47,7 @@ class TestFftlog:
 
         mu = self.mu
         bias = self.bias
-        if self.offset == 'optimal':
+        if self.offset == "optimal":
             offset = fhtoffset(dln.item(), mu, bias)
         else:
             offset = self.offset
@@ -58,16 +58,16 @@ class TestFftlog:
 
 
 @testing.parameterize(*testing.product({
-    'function': ['fht', 'ifht'],
+    "function": ["fht", "ifht"],
 }))
 class TestFftlogScipyBackend:
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-5, accept_error=ValueError,
                                  contiguous_check=False)
-    @testing.with_requires('scipy>=1.9.0')
+    @testing.with_requires("scipy>=1.9.0")
     def test_dct_backend(self, xp, dtype):
-        backend = 'scipy' if xp is np else cp_fft
+        backend = "scipy" if xp is np else cp_fft
         with scipy_fft.set_backend(backend):
             fft_func = getattr(scipy_fft, self.function)
             r = xp.logspace(-2, 2, 10)

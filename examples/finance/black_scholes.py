@@ -52,9 +52,9 @@ def black_scholes(xp, s, x, t, r, v):
 # the code depending on the types of the given arrays, and calls the kernel.
 # Other functions used inside the kernel can be defined by 'preamble' option.
 black_scholes_kernel = cupy.ElementwiseKernel(
-    'T s, T x, T t, T r, T v',  # Inputs
-    'T call, T put',  # Outputs
-    '''
+    "T s, T x, T t, T r, T v",  # Inputs
+    "T call, T put",  # Outputs
+    """
     const T sqrt_t = sqrt(t);
     const T d1 = (log(s / x) + (r + v * v / 2) * t) / (v * sqrt_t);
     const T d2 = d1 - v * sqrt_t;
@@ -65,9 +65,9 @@ black_scholes_kernel = cupy.ElementwiseKernel(
     const T exp_rt = exp(- r * t);
     call = s * cnd_d1 - x * exp_rt * cnd_d2;
     put = x * exp_rt * (1 - cnd_d2) - s * (1 - cnd_d1);
-    ''',
-    'black_scholes_kernel',
-    preamble='''
+    """,
+    "black_scholes_kernel",
+    preamble="""
     __device__
     inline T get_cumulative_normal_distribution(T x) {
         const T A1 = 0.31938153;
@@ -86,14 +86,14 @@ black_scholes_kernel = cupy.ElementwiseKernel(
         }
         return cnd;
     }
-    ''',
+    """,
 )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--gpu-id', '-g', default=0, type=int, help='GPU ID')
-    parser.add_argument('--n-options', '-n', default=10000000, type=int)
+    parser.add_argument("--gpu-id", "-g", default=0, type=int, help="GPU ID")
+    parser.add_argument("--n-options", "-n", default=10000000, type=int)
     args = parser.parse_args()
 
     cupy.cuda.Device(args.gpu_id).use()
@@ -102,7 +102,7 @@ if __name__ == '__main__':
         samples = cupy.random.rand(args.n_options)
         return (m + (M - m) * samples).astype(numpy.float64)
 
-    print('initializing...')
+    print("initializing...")
     stock_price_gpu = rand_range(5, 30)
     option_strike_gpu = rand_range(1, 100)
     option_years_gpu = rand_range(0.25, 10)
@@ -118,22 +118,22 @@ if __name__ == '__main__':
         yield
         cupy.cuda.Stream.null.synchronize()
         end = time.time()
-        print('%s:\t%f sec' % (message, end - start))
+        print("%s:\t%f sec" % (message, end - start))
 
-    print('start computation')
+    print("start computation")
     risk_free = 0.02
     volatility = 0.3
-    with timer(' CPU (NumPy, Naive implementation)'):
+    with timer(" CPU (NumPy, Naive implementation)"):
         call_cpu, put_cpu = black_scholes(
             numpy, stock_price_cpu, option_strike_cpu, option_years_cpu,
             risk_free, volatility)
 
-    with timer(' GPU (CuPy, Naive implementation)'):
+    with timer(" GPU (CuPy, Naive implementation)"):
         call_gpu1, put_gpu1 = black_scholes(
             cupy, stock_price_gpu, option_strike_gpu, option_years_gpu,
             risk_free, volatility)
 
-    with timer(' GPU (CuPy, Elementwise kernel)'):
+    with timer(" GPU (CuPy, Elementwise kernel)"):
         call_gpu2, put_gpu2 = black_scholes_kernel(
             stock_price_gpu, option_strike_gpu, option_years_gpu,
             risk_free, volatility)
