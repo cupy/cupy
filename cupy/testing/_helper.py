@@ -6,6 +6,7 @@ import unittest
 import warnings
 from collections.abc import Callable
 from importlib import metadata
+from importlib.metadata import PackageNotFoundError
 from unittest import mock
 
 import numpy
@@ -62,7 +63,7 @@ def installed(*specifiers: str) -> bool:
         req = Requirement(spec)
         try:
             found = metadata.version(req.name)
-        except metadata.PackageNotFoundError:
+        except PackageNotFoundError:
             return False
         expected = req.specifier
         # If no constrait is given, skip
