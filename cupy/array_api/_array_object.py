@@ -31,6 +31,7 @@ from ._dtypes import (
 
 from typing import TYPE_CHECKING, Optional, Tuple, Union, Any, SupportsIndex
 import types
+from types import EllipsisType
 
 if TYPE_CHECKING:
     from ._typing import Any, PyCapsule, Device, Dtype
@@ -516,7 +517,7 @@ class Array:
     def __getitem__(
         self: Array,
         key: Union[
-            int, slice, ellipsis, Tuple[Union[int, slice, ellipsis], ...], Array
+            int, slice, EllipsisType, Tuple[Union[int, slice, EllipsisType], ...], Array
         ],
         /,
     ) -> Array:
@@ -710,7 +711,7 @@ class Array:
     def __setitem__(
         self,
         key: Union[
-            int, slice, ellipsis, Tuple[Union[int, slice, ellipsis], ...], Array
+            int, slice, EllipsisType, Tuple[Union[int, slice, EllipsisType], ...], Array
         ],
         value: Union[int, float, bool, Array],
         /,
