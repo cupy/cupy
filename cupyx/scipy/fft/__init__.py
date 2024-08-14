@@ -1,4 +1,3 @@
-# flake8: NOQA
 from cupyx.scipy.fft._fft import (
     fft, ifft, fft2, ifft2, fftn, ifftn,
     rfft, irfft, rfft2, irfft2, rfftn, irfftn,
