@@ -34,6 +34,8 @@ extras_require = {
     ],
     # TODO(kmaehashi): remove stylecheck and update the contribution guide
     'stylecheck': [
+        'autopep8==1.5.5',
+        'flake8==3.8.4',
         'pbr==5.5.1',
         'ruff==0.5.7',
 
