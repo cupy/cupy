@@ -1110,6 +1110,10 @@ cdef inline bint _check_should_use_weak_scalar(
     cdef int kind, max_array_kind, max_scalar_kind
     cdef bint all_scalars_or_arrays
 
+    if weaks is None:
+        # equivalent to (False,)*len(in_types)
+        return False
+
     max_array_kind = -1
     max_scalar_kind = -1
     for in_t, w_t in zip(in_types, weaks):
@@ -1594,9 +1598,6 @@ cdef class _Ops:
             _Ops out_ops):
         cdef _Ops ops_
 
-        if weaks is None:
-            weaks = (False,) * len(in_args)
-
         if dtype is None:
             assert all([isinstance(a, (_ndarray_base, numpy.generic))
                         for a in in_args])
@@ -1619,6 +1620,9 @@ cdef class _Ops:
         if op is not None:
             # raise TypeError if the type combination is disallowed
             (<_Op>op).check_valid()
+
+            if weaks is None:
+                return op
 
             # check for overflow in operands. Consider `np.uint8(1) + 300`.
             # Per NEP 50 this raises OverflowError because 300 overflows uint8.
