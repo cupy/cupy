@@ -492,6 +492,8 @@ def upfirdn(
     .. [1] P. P. Vaidyanathan, Multirate Systems and Filter Banks,
        Prentice Hall, 1993.
     """
+    if mode is None:
+        mode = "constant"  # For backwards compatibility
     if mode != "constant" or cval != 0:
         raise NotImplementedError(f"{mode = } and {cval =} not implemented.")
 
