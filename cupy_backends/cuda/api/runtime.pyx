@@ -1114,6 +1114,12 @@ cpdef graphUpload(intptr_t graphExec, intptr_t stream):
         status = cudaGraphUpload(<GraphExec>(graphExec), <driver.Stream>stream)
     check_status(status)
 
+cpdef graphDebugDotPrint(intptr_t graph, str output_path, unsigned int flags):
+    output_path_byte = output_path.encode('ascii')
+    cdef const char* c_output_path = output_path_byte
+    with nogil:
+        status = cudaGraphDebugDotPrint(<Graph>(graph), c_output_path, flags)
+    check_status(status)
 
 ##############################################################################
 # Profiler
