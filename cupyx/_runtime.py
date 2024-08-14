@@ -78,6 +78,7 @@ class _RuntimeInfo:
     cusparse_version = None
     nvrtc_version = None
     thrust_version = None
+    cuda_extra_include_dirs = None
 
     # Optional Libraries
     cudnn_build_version = None
@@ -169,6 +170,9 @@ class _RuntimeInfo:
             self.thrust_version = thrust.get_build_version()
         except ImportError:
             pass
+
+        self.cuda_extra_include_dirs = str(
+            cupy._environment._get_include_dir_from_wheel(*self.nvrtc_version))
 
         # cuDNN
         if cupy._environment._can_attempt_preload('cudnn'):
@@ -265,6 +269,7 @@ class _RuntimeInfo:
                 f'{self.cuda_runtime_version} (linked to CuPy) / '
                 f'{self.cuda_local_runtime_version} (locally installed)'
             )),
+            ('CUDA Extra Include Dirs', self.cuda_extra_include_dirs),
         ]
 
         records += [
