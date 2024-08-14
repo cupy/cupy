@@ -350,6 +350,8 @@ class TestDecimate:
         x_out = scp.signal.decimate(x, 30, ftype='fir')
         return x_out
 
+    @pytest.mark.skipif(cupy.cuda.runtime.is_hip,
+                        reason='Currently unsupported on ROCm/HIP')
     @testing.with_requires('scipy>=1.10')
     @testing.numpy_cupy_allclose(scipy_name='scp', atol=5e-5, rtol=5e-5)
     def test_long_float32(self, xp, scp):
@@ -358,6 +360,8 @@ class TestDecimate:
         x = scp.signal.decimate(xp.ones(10_000, dtype=np.float32), 10)
         return x
 
+    @pytest.mark.skipif(cupy.cuda.runtime.is_hip,
+                        reason='Currently unsupported on ROCm/HIP')
     @testing.with_requires('scipy>=1.10')
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_float16_upcast(self, xp, scp):

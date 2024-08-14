@@ -48,6 +48,8 @@ tol = {
 }
 
 
+@pytest.mark.skipif(cupy.cuda.runtime.is_hip,
+                    reason='Currently unsupported on ROCm/HIP')
 @pytest.mark.parametrize('normalize', [True, False])
 @pytest.mark.parametrize('window', [None, 'hamming', numpy.negative])
 @testing.for_dtypes('fdFD')

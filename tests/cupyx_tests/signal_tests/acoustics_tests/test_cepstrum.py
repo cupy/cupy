@@ -183,6 +183,8 @@ def test_inverse_complex_cepstrum(num_samps, n):
     testing.assert_allclose(cpu_out, gpu_out)
 
 
+@pytest.mark.skipif(cupy.cuda.runtime.is_hip,
+                    reason='Currently unsupported on ROCm/HIP')
 @pytest.mark.parametrize("num_samps", [2**8, 2**14])
 @pytest.mark.parametrize("n", [123, 256])
 def test_minimum_phase(num_samps, n):
