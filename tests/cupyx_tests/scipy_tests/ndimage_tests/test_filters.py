@@ -1,3 +1,5 @@
+import platform
+
 import numpy
 import pytest
 
@@ -222,6 +224,9 @@ class TestFilter(FilterTestCaseBase):
 
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name="scp")
     def test_filter(self, xp, scp):
+        if self.dtype == numpy.uint8 and platform.processor() == "aarch64":
+            pytest.skip(
+                "aarch64 scipy does not match cupy/x86 see Scipy #20158")
         self._hip_skip_invalid_condition()
         if self.dtype == getattr(self, "output", None):
             pytest.skip("redundant")
