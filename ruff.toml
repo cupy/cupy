@@ -7,10 +7,11 @@ line-length = 80
 exclude = ["docs/source/*", "third_party/*"]
 
 [lint]
+# TODO: Use `ruff format` in the future rather than Q
 extend-select = [
-  "I", # isort
-  # TODO: Use `ruff format` in the future
-  "Q", # flake8-quotes
+  "I",      # isort
+  "Q",      # flake8-quotes
+  "TID252", # relative-imports
 ]
 ignore = [
   "E721", # type-comparison
