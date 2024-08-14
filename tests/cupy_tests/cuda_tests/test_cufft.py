@@ -10,7 +10,7 @@ from cupy.cuda import cufft
 from cupy.fft import config
 from cupy.fft._fft import _convert_fft_type
 
-from ..fft_tests.test_fft import (multi_gpu_config, _skip_multi_gpu_bug)
+from cupy_tests.fft_tests.test_fft import multi_gpu_config, _skip_multi_gpu_bug
 
 
 class TestExceptionPicklable(unittest.TestCase):

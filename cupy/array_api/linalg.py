@@ -6,7 +6,7 @@ from ._dtypes import _floating_dtypes, _numeric_dtypes
 from ._manipulation_functions import reshape
 from ._array_object import Array
 
-from .._core.internal import _normalize_axis_indices as normalize_axis_tuple
+from cupy._core.internal import _normalize_axis_indices as normalize_axis_tuple
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
