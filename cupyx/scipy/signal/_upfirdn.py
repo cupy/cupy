@@ -494,7 +494,7 @@ def upfirdn(
        Prentice Hall, 1993.
     """
     if mode is not None or cval != 0:
-        raise NotImplementedError(f"{mode = } and {cval =} not implemented.")
+        raise NotImplementedError(f"{mode=} and {cval=} not implemented.")
 
     ufd = _UpFIRDn(h, x.dtype, int(up), int(down))
     # This is equivalent to (but faster than) using cp.apply_along_axis

@@ -118,24 +118,8 @@ Still TODO in this module are:
 # CuPy-specific: still need to support Python 3.7.
 import sys
 
-if sys.version_info < (3, 8):
-    raise RuntimeError("cupy.array_api requires Python 3.8+")
-
-
-import warnings
-
-warnings.warn(
-    "The cupy.array_api submodule is still experimental. See NEP 47.", stacklevel=2
-)
-
-__array_api_version__ = "2021.12"
-
-__all__ = ["__array_api_version__"]
-
+from . import linalg
 from ._constants import e, inf, nan, pi
-
-__all__ += ["e", "inf", "nan", "pi"]
-
 from ._creation_functions import (
     arange,
     asarray,
@@ -154,26 +138,6 @@ from ._creation_functions import (
     zeros,
     zeros_like,
 )
-
-__all__ += [
-    "asarray",
-    "arange",
-    "empty",
-    "empty_like",
-    "eye",
-    "from_dlpack",
-    "full",
-    "full_like",
-    "linspace",
-    "meshgrid",
-    "ones",
-    "ones_like",
-    "tril",
-    "triu",
-    "zeros",
-    "zeros_like",
-]
-
 from ._data_type_functions import (
     astype,
     broadcast_arrays,
@@ -183,17 +147,6 @@ from ._data_type_functions import (
     iinfo,
     result_type,
 )
-
-__all__ += [
-    "astype",
-    "broadcast_arrays",
-    "broadcast_to",
-    "can_cast",
-    "finfo",
-    "iinfo",
-    "result_type",
-]
-
 from ._dtypes import (
     bool,
     float32,
@@ -207,21 +160,6 @@ from ._dtypes import (
     uint32,
     uint64,
 )
-
-__all__ += [
-    "int8",
-    "int16",
-    "int32",
-    "int64",
-    "uint8",
-    "uint16",
-    "uint32",
-    "uint64",
-    "float32",
-    "float64",
-    "bool",
-]
-
 from ._elementwise_functions import (
     abs,
     acos,
@@ -280,6 +218,92 @@ from ._elementwise_functions import (
     tanh,
     trunc,
 )
+from ._indexing_functions import take
+from ._manipulation_functions import (
+    concat,
+    expand_dims,
+    flip,
+    permute_dims,
+    reshape,
+    roll,
+    squeeze,
+    stack,
+)
+from ._searching_functions import argmax, argmin, nonzero, where
+from ._set_functions import (
+    unique_all,
+    unique_counts,
+    unique_inverse,
+    unique_values,
+)
+from ._sorting_functions import argsort, sort
+from ._statistical_functions import max, mean, min, prod, std, sum, var
+from ._utility_functions import all, any
+from .linalg import matmul, matrix_transpose, tensordot, vecdot
+
+if sys.version_info < (3, 8):
+    raise RuntimeError("cupy.array_api requires Python 3.8+")
+
+
+import warnings
+
+warnings.warn(
+    "The cupy.array_api submodule is still experimental. See NEP 47.", stacklevel=2
+)
+
+__array_api_version__ = "2021.12"
+
+__all__ = ["__array_api_version__"]
+
+
+__all__ += ["e", "inf", "nan", "pi"]
+
+
+__all__ += [
+    "asarray",
+    "arange",
+    "empty",
+    "empty_like",
+    "eye",
+    "from_dlpack",
+    "full",
+    "full_like",
+    "linspace",
+    "meshgrid",
+    "ones",
+    "ones_like",
+    "tril",
+    "triu",
+    "zeros",
+    "zeros_like",
+]
+
+
+__all__ += [
+    "astype",
+    "broadcast_arrays",
+    "broadcast_to",
+    "can_cast",
+    "finfo",
+    "iinfo",
+    "result_type",
+]
+
+
+__all__ += [
+    "int8",
+    "int16",
+    "int32",
+    "int64",
+    "uint8",
+    "uint16",
+    "uint32",
+    "uint64",
+    "float32",
+    "float64",
+    "bool",
+]
+
 
 __all__ += [
     "abs",
@@ -340,54 +364,32 @@ __all__ += [
     "trunc",
 ]
 
-from ._indexing_functions import take
 
 __all__ += ["take"]
 
 # linalg is an extension in the array API spec, which is a sub-namespace. Only
 # a subset of functions in it are imported into the top-level namespace.
-from . import linalg
 
 __all__ += ["linalg"]
 
-from .linalg import matmul, matrix_transpose, tensordot, vecdot
 
 __all__ += ["matmul", "tensordot", "matrix_transpose", "vecdot"]
 
-from ._manipulation_functions import (
-    concat,
-    expand_dims,
-    flip,
-    permute_dims,
-    reshape,
-    roll,
-    squeeze,
-    stack,
-)
 
-__all__ += ["concat", "expand_dims", "flip", "permute_dims", "reshape", "roll", "squeeze", "stack"]
+__all__ += ["concat", "expand_dims", "flip",
+            "permute_dims", "reshape", "roll", "squeeze", "stack"]
 
-from ._searching_functions import argmax, argmin, nonzero, where
 
 __all__ += ["argmax", "argmin", "nonzero", "where"]
 
-from ._set_functions import (
-    unique_all,
-    unique_counts,
-    unique_inverse,
-    unique_values,
-)
 
 __all__ += ["unique_all", "unique_counts", "unique_inverse", "unique_values"]
 
-from ._sorting_functions import argsort, sort
 
 __all__ += ["argsort", "sort"]
 
-from ._statistical_functions import max, mean, min, prod, std, sum, var
 
 __all__ += ["max", "mean", "min", "prod", "std", "sum", "var"]
 
-from ._utility_functions import all, any
 
 __all__ += ["all", "any"]
