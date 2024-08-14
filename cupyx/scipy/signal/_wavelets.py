@@ -26,11 +26,10 @@ DEALINGS IN THE SOFTWARE.
 
 import warnings
 
-import cupy
 import numpy as np
 
+import cupy
 from cupyx.scipy.signal._signaltools import convolve
-
 
 _deprecate_msg = (
     "Following the change in SciPy 1.12, all wavelet functions have been "

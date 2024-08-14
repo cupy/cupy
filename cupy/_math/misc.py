@@ -1,13 +1,11 @@
+import numpy
+
 import cupy
 import cupyx.scipy.fft
-
 from cupy import _core
 from cupy._core import _routines_math as _math
 from cupy._core import fusion
 from cupy.lib import stride_tricks
-
-import numpy
-
 
 _dot_kernel = _core.ReductionKernel(
     'T x1, T x2',

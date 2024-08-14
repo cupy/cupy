@@ -4,8 +4,8 @@ import unittest
 import numpy
 import pytest
 
-from cupy._core import internal
 from cupy import testing
+from cupy._core import internal
 
 
 class TestProd(unittest.TestCase):

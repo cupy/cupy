@@ -3,7 +3,6 @@ import sys as _sys
 from cupy._core import ndarray as _ndarray
 from cupyx.scipy.sparse._base import spmatrix as _spmatrix
 
-
 try:
     import scipy as _scipy
     _scipy_available = True

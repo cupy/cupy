@@ -3,8 +3,7 @@ import itertools
 import numpy
 
 from cupy import _core
-from cupy._core import _fusion_interface
-from cupy._core import fusion
+from cupy._core import _fusion_interface, fusion
 from cupy._sorting import search
 from cupy_backends.cuda.api import runtime
 

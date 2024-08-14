@@ -2,7 +2,6 @@ import unittest
 
 from cupy.testing import _condition
 
-
 SKIP_REASON = 'test skip reason'
 
 

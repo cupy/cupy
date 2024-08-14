@@ -4,10 +4,14 @@ import numpy as np
 import pytest
 
 import cupy
-from cupy.fft import config
-from cupy.fft._fft import (_default_fft_func, _fft, _fftn,
-                           _size_last_transform_axis)
 from cupy import testing
+from cupy.fft import config
+from cupy.fft._fft import (
+    _default_fft_func,
+    _fft,
+    _fftn,
+    _size_last_transform_axis,
+)
 from cupy.testing._loops import _wraps_partial
 
 
@@ -599,8 +603,8 @@ class TestPlanCtxManagerFftn:
             pytest.skip('0 in shape')
         # This test ensures the context manager plan is picked up
 
-        from cupyx.scipy.fftpack import get_fft_plan
         from cupy.fft import fftn
+        from cupyx.scipy.fftpack import get_fft_plan
         assert config.enable_nd_planning == enable_nd
 
         # can't get a plan, so skip
@@ -679,8 +683,8 @@ class TestPlanCtxManagerFft:
     def test_fft_error_on_wrong_plan(self, dtype):
         # This test ensures the context manager plan is picked up
 
-        from cupyx.scipy.fftpack import get_fft_plan
         from cupy.fft import fft
+        from cupyx.scipy.fftpack import get_fft_plan
 
         a = testing.shaped_random(self.shape, cupy, dtype)
         bad_shape = tuple(5*i for i in self.shape)
@@ -760,8 +764,8 @@ class TestMultiGpuPlanCtxManagerFft:
     def test_fft_error_on_wrong_plan(self, dtype):
         # This test ensures the context manager plan is picked up
 
-        from cupyx.scipy.fftpack import get_fft_plan
         from cupy.fft import fft
+        from cupyx.scipy.fftpack import get_fft_plan
 
         a = testing.shaped_random(self.shape, cupy, dtype)
         bad_shape = tuple(4*i for i in self.shape)
@@ -925,8 +929,8 @@ class TestPlanCtxManagerRfft:
     def test_rfft_error_on_wrong_plan(self, dtype):
         # This test ensures the context manager plan is picked up
 
-        from cupyx.scipy.fftpack import get_fft_plan
         from cupy.fft import rfft
+        from cupyx.scipy.fftpack import get_fft_plan
 
         a = testing.shaped_random(self.shape, cupy, dtype)
         bad_shape = tuple(5*i for i in self.shape)
@@ -1339,6 +1343,7 @@ class TestThreading:
 
     def test_threading1(self):
         import threading
+
         from cupy.cuda.cufft import get_current_plan
 
         def thread_get_curr_plan():

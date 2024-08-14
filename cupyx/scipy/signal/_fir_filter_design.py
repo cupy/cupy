@@ -1,15 +1,14 @@
 """Functions for FIR filter design."""
 import math
 
-from cupy.fft import fft, ifft
-from cupy.linalg import solve, lstsq, LinAlgError
-from cupyx.scipy.linalg import toeplitz, hankel
-import cupyx
-from cupyx.scipy.signal.windows import get_window
-
-import cupy
 import numpy
 
+import cupy
+import cupyx
+from cupy.fft import fft, ifft
+from cupy.linalg import LinAlgError, lstsq, solve
+from cupyx.scipy.linalg import hankel, toeplitz
+from cupyx.scipy.signal.windows import get_window
 
 __all__ = ["firls", "minimum_phase"]
 

@@ -1,7 +1,7 @@
 import unittest
-import pytest
 
 import numpy
+import pytest
 
 import cupy
 from cupy import testing

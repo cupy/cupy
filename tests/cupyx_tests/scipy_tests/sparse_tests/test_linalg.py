@@ -1,12 +1,13 @@
 import contextlib
 import functools
-import re
 import io
+import re
 import unittest
 import warnings
 
 import numpy
 import pytest
+
 try:
     import scipy.sparse
     import scipy.sparse.linalg
@@ -15,13 +16,12 @@ except ImportError:
     pass
 
 import cupy
-from cupyx import cusparse, cusolver
-from cupy import testing
-from cupy.cuda import driver
-from cupy.cuda import runtime
-from cupy.testing import _condition
-from cupyx.scipy import sparse
 import cupyx.scipy.sparse.linalg  # NOQA
+from cupy import testing
+from cupy.cuda import driver, runtime
+from cupy.testing import _condition
+from cupyx import cusolver, cusparse
+from cupyx.scipy import sparse
 
 
 @testing.parameterize(*testing.product({

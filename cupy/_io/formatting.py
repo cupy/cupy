@@ -1,5 +1,6 @@
-import cupy
 import numpy
+
+import cupy
 
 
 def array_repr(arr, max_line_width=None, precision=None, suppress_small=None):

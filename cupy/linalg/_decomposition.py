@@ -1,10 +1,10 @@
 import numpy
 
 import cupy
-from cupy_backends.cuda.api import runtime
 from cupy._core import internal
 from cupy.cuda import device
 from cupy.linalg import _util
+from cupy_backends.cuda.api import runtime
 
 
 def _lu_factor(a_t, dtype):
@@ -32,8 +32,7 @@ def _lu_factor(a_t, dtype):
     .. seealso:: :func:`scipy.linalg.lu_factor`
 
     """
-    from cupy_backends.cuda.libs import cublas
-    from cupy_backends.cuda.libs import cusolver
+    from cupy_backends.cuda.libs import cublas, cusolver
 
     orig_shape = a_t.shape
     n = orig_shape[-2]
@@ -117,8 +116,7 @@ def _potrf_batched(a):
     Returns:
         cupy.ndarray: The lower-triangular matrix.
     """
-    from cupy_backends.cuda.libs import cublas
-    from cupy_backends.cuda.libs import cusolver
+    from cupy_backends.cuda.libs import cublas, cusolver
     from cupyx.cusolver import check_availability
 
     if not check_availability('potrfBatched'):
@@ -177,8 +175,7 @@ def cholesky(a):
 
     .. seealso:: :func:`numpy.linalg.cholesky`
     """
-    from cupy_backends.cuda.libs import cublas
-    from cupy_backends.cuda.libs import cusolver
+    from cupy_backends.cuda.libs import cublas, cusolver
 
     _util._assert_cupy_array(a)
     _util._assert_stacked_2d(a)
@@ -395,7 +392,7 @@ def qr(a, mode='reduced'):
 
 
 def _svd_batched(a, full_matrices, compute_uv):
-    from cupyx.cusolver import _gesvdj_batched, _gesvd_batched
+    from cupyx.cusolver import _gesvd_batched, _gesvdj_batched
 
     batch_shape = a.shape[:-2]
     batch_size = internal.prod(batch_shape)

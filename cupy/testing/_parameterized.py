@@ -2,8 +2,7 @@ import itertools
 import types
 import unittest
 
-from cupy.testing import _bundle
-from cupy.testing import _pytest_impl
+from cupy.testing import _bundle, _pytest_impl
 
 
 def _param_to_str(obj):

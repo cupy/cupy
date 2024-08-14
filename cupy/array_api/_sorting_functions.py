@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from ._array_object import Array
-
 import cupy as np
+
+from ._array_object import Array
 
 
 # Note: the descending keyword argument is new in this function

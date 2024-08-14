@@ -1,20 +1,21 @@
 from __future__ import annotations
 
 import functools
-
-from ._dtypes import _floating_dtypes, _numeric_dtypes
-from ._manipulation_functions import reshape
-from ._array_object import Array
+from typing import TYPE_CHECKING
 
 from cupy._core.internal import _normalize_axis_indices as normalize_axis_tuple
 
-from typing import TYPE_CHECKING
+from ._array_object import Array
+from ._dtypes import _floating_dtypes, _numeric_dtypes
+from ._manipulation_functions import reshape
+
 if TYPE_CHECKING:
     from typing import Literal, Optional, Sequence, Tuple, Union
 
 from typing import NamedTuple
 
 import cupy as np
+
 
 class EighResult(NamedTuple):
     eigenvalues: Array
@@ -291,7 +292,10 @@ def slogdet(x: Array, /) -> SlogdetResult:
 # Note: The impl below is deviated from numpy.array_api's.
 def _solve(a, b):
     from cupy.linalg._util import (
-        _assert_stacked_2d, _assert_stacked_square, linalg_common_type)
+        _assert_stacked_2d,
+        _assert_stacked_square,
+        linalg_common_type,
+    )
 
     _commonType = functools.partial(linalg_common_type, reject_float16=False)
 

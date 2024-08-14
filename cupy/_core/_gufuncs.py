@@ -4,9 +4,8 @@ import numpy
 
 import cupy
 import cupy._core._routines_manipulation as _manipulation
-from cupy._core._dtype import get_dtype, _raise_if_invalid_cast
 from cupy._core import internal
-
+from cupy._core._dtype import _raise_if_invalid_cast, get_dtype
 
 # Signature parsing code and dimension accessing has been borrowed
 # from dask

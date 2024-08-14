@@ -1,6 +1,5 @@
 from cupy import _core
 
-
 _float_preamble = '''
 #include <cupy/math_constants.h>
 

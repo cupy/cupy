@@ -2,12 +2,9 @@
 import cupy
 from cupy._core._scalar import get_typename
 from cupy._core.internal import _normalize_axis_index
-
+from cupyx.scipy.signal._arraytools import axis_assign, axis_reverse, axis_slice
+from cupyx.scipy.signal._iir_utils import apply_iir_sos, collapse_2d
 from cupyx.scipy.signal._signaltools import lfilter
-from cupyx.scipy.signal._arraytools import (
-    axis_slice, axis_assign, axis_reverse)
-from cupyx.scipy.signal._iir_utils import collapse_2d, apply_iir_sos
-
 
 SYMIIR2_KERNEL = r"""
 #include <cupy/math_constants.h>

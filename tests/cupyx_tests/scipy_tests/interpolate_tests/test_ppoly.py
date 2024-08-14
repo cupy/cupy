@@ -1,20 +1,20 @@
-import pytest
-import numpy
-import numpy as np
 from operator import attrgetter
 
+import numpy
+import numpy as np
+import pytest
+
 import cupy
-from cupy import testing
-from cupy.testing import assert_allclose
-from cupy_backends.cuda.api import driver
-from cupy_backends.cuda.api import runtime
 import cupyx.scipy
 import cupyx.scipy.interpolate  # NOQA
+from cupy import testing
+from cupy.testing import assert_allclose
+from cupy_backends.cuda.api import driver, runtime
 
 try:
     import scipy
     from scipy import interpolate as sc_interpolate  # NOQA
-    from scipy import special as sc_special   # NOQA
+    from scipy import special as sc_special  # NOQA
 except ImportError:
     pass
 

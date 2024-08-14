@@ -5,15 +5,14 @@ A unit test module for czt.py
 '''
 from math import pi
 
-import pytest
-import cupy
 import numpy as np
+import pytest
 
-from cupy import testing
-from cupy.testing import assert_allclose
-
+import cupy
 import cupyx.scipy.fft as fft
 import cupyx.scipy.signal as signal
+from cupy import testing
+from cupy.testing import assert_allclose
 
 
 def check_czt(x, xp, scp):

@@ -1,9 +1,9 @@
-import cupy
 import numpy
 import pytest
 
-from cupy import testing
+import cupy
 import cupyx.scipy.ndimage  # NOQA
+from cupy import testing
 
 try:
     import scipy.ndimage  # NOQA

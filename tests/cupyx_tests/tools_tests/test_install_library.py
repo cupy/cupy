@@ -3,11 +3,10 @@ import platform
 import tempfile
 import urllib
 
-from cupy import testing
-from cupyx.tools import install_library
-
 import pytest
 
+from cupy import testing
+from cupyx.tools import install_library
 
 _libraries = ['cudnn', 'nccl', 'cutensor']
 

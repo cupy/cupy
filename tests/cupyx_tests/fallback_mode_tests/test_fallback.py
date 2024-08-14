@@ -11,7 +11,6 @@ from cupyx import fallback_mode
 from cupyx.fallback_mode import fallback
 from cupyx.fallback_mode.notification import FallbackWarning
 
-
 ignore_fallback_warnings = pytest.mark.filterwarnings(
     "ignore", category=FallbackWarning)
 

@@ -1,6 +1,5 @@
 from cupy import _core
 
-
 logit_definition = """
 template <typename T>
 static __device__ T logit(T x) {

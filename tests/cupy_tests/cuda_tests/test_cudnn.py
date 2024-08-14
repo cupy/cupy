@@ -3,7 +3,6 @@ import unittest
 
 from cupy.cuda import cudnn
 
-
 cudnn_available = cudnn.available
 
 

@@ -1,9 +1,9 @@
 import dataclasses
-from pathlib import Path
+import re
 import shutil
 import tempfile
 import typing
-import re
+from pathlib import Path
 
 import pytest
 

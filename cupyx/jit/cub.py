@@ -1,7 +1,5 @@
-from cupyx.jit import _cuda_types
-from cupyx.jit import _cuda_typerules
-from cupyx.jit import _internal_types
 from cupy_backends.cuda.api import runtime as _runtime
+from cupyx.jit import _cuda_typerules, _cuda_types, _internal_types
 
 
 class _ClassTemplate:

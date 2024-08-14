@@ -7,9 +7,7 @@
 # Direct inquiries to 30 Frost Street, Cambridge, MA 02140
 
 from cupy import _core
-
 from cupyx.scipy.special._gamma import gamma_definition
-
 
 polevl_definition = '''
 

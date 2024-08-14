@@ -1,11 +1,11 @@
 import unittest
 
-import cupy
-from cupy import testing
-import cupyx.scipy.linalg
-
 import numpy
 import pytest
+
+import cupy
+import cupyx.scipy.linalg
+from cupy import testing
 
 try:
     import scipy.linalg

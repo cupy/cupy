@@ -1,11 +1,11 @@
-import pytest
 import inspect
 
-from cupy import testing
-from cupy_backends.cuda.api import driver
-from cupy_backends.cuda.api import runtime
 import numpy as np
+import pytest
+
 import cupyx.scipy.interpolate  # NOQA
+from cupy import testing
+from cupy_backends.cuda.api import driver, runtime
 
 try:
     from scipy import interpolate  # NOQA

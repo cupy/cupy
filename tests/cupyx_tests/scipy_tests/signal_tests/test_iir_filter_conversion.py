@@ -1,16 +1,14 @@
-from math import sqrt, pi
+from math import pi, sqrt
+
+import numpy as np
+import pytest
+from pytest import raises as assert_raises
 
 import cupy
 import cupyx.scipy.signal as signal
-from cupyx.scipy.signal._iir_filter_conversions import _cplxreal
-
 from cupy import testing
 from cupy.testing import assert_array_almost_equal
-
-import numpy as np
-
-import pytest
-from pytest import raises as assert_raises
+from cupyx.scipy.signal._iir_filter_conversions import _cplxreal
 
 
 @testing.with_requires("scipy")

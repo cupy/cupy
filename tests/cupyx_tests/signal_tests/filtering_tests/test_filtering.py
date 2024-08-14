@@ -1,11 +1,10 @@
-import pytest
-
 import numpy
+import pytest
 import scipy
 
 import cupy
-import cupyx.signal
 import cupyx.scipy.signal
+import cupyx.signal
 from cupy import testing
 
 

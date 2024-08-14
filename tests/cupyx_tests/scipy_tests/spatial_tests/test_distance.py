@@ -1,8 +1,10 @@
 import unittest
-import pytest
 
 import numpy
+import pytest
+
 import cupy
+
 try:
     import scipy.spatial  # NOQA
     import scipy.spatial.distance  # NOQA

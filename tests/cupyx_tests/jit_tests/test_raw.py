@@ -1,12 +1,10 @@
 import numpy
-
 import pytest
 
 import cupy
-from cupyx import jit
 from cupy import testing
-from cupy.cuda import device
-from cupy.cuda import runtime
+from cupy.cuda import device, runtime
+from cupyx import jit
 
 
 class TestRaw:

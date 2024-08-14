@@ -5,10 +5,8 @@ import pytest
 
 import cupy
 import cupy._core._accelerator as _acc
-from cupy import _core
-from cupy import testing
-from cupy.exceptions import ComplexWarning, AxisError
-
+from cupy import _core, testing
+from cupy.exceptions import AxisError, ComplexWarning
 
 _noncontiguous_params = [
     # reduce at head axes

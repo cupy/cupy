@@ -1,14 +1,14 @@
 from collections.abc import Sequence
-
 from typing import Any, Literal, SupportsIndex, TypeVar, Union
 
 import numpy
+from numpy.typing import (
+    ArrayLike,  # NOQA
+    DTypeLike,  # NOQA
+    NBitBase,  # NOQA
+)
+
 from cupy._core import core
-
-from numpy.typing import ArrayLike  # NOQA
-from numpy.typing import DTypeLike  # NOQA
-from numpy.typing import NBitBase  # NOQA
-
 
 # Shapes
 _Shape = tuple[int, ...]

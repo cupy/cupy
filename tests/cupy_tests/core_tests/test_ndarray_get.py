@@ -1,10 +1,10 @@
 import unittest
 
-import cupy
-from cupy import cuda
-from cupy import testing
 import numpy
 from numpy import testing as np_testing
+
+import cupy
+from cupy import cuda, testing
 
 
 class TestArrayGet(unittest.TestCase):

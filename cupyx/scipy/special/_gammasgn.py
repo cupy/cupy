@@ -11,7 +11,6 @@ Direct inquiries to 30 Frost Street, Cambridge, MA 02140
 
 from cupy import _core
 
-
 gammasgn_definition = """
 __device__ double gammasgn(double x)
 {

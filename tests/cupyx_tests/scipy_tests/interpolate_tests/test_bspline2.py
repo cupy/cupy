@@ -1,10 +1,10 @@
+import numpy as _np
 import pytest
+
 import cupy
+import cupyx.scipy.interpolate as csi  # NOQA
 from cupy import testing
 from cupy.cuda import runtime
-
-import numpy as _np
-import cupyx.scipy.interpolate as csi  # NOQA
 
 try:
     from scipy import interpolate  # NOQA
@@ -340,7 +340,8 @@ class TestInterp:
 
     def test_full_matrix(self):
         from cupyx.scipy.interpolate._bspline2 import (
-            _make_interp_spline_full_matrix)
+            _make_interp_spline_full_matrix,
+        )
         cupy.random.seed(1234)
         k, n = 3, 7
         x = cupy.sort(cupy.random.random(size=n))
@@ -639,7 +640,8 @@ class TestGivensQR:
 
         # compiled QR reduction, in-place
         from cupyx.scipy.interpolate._bspline2 import (
-            QR_MODULE, _get_module_func
+            QR_MODULE,
+            _get_module_func,
         )
         qr_reduce = _get_module_func(QR_MODULE, 'qr_reduce')
         qr_reduce((1,), (1,),

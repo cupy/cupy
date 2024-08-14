@@ -1,11 +1,11 @@
 import operator
-from math import pi
 import warnings
+from math import pi
 
 import cupy
-from cupy.polynomial.polynomial import (
-    polyval as npp_polyval, polyvalfromroots as npp_polyvalfromroots)
 import cupyx.scipy.fft as sp_fft
+from cupy.polynomial.polynomial import polyval as npp_polyval
+from cupy.polynomial.polynomial import polyvalfromroots as npp_polyvalfromroots
 from cupyx import jit
 from cupyx.scipy._lib._util import float_factorial
 from cupyx.scipy.signal._polyutils import roots

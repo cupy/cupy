@@ -3,8 +3,8 @@ import unittest
 import numpy
 
 import cupy
-from cupy import testing
 import cupyx
+from cupy import testing
 
 
 class TestRsqrt(unittest.TestCase):

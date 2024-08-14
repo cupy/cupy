@@ -1,4 +1,5 @@
 import cupy
+
 try:
     from pylibraft.distance import pairwise_distance
     pylibraft_available = True

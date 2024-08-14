@@ -6,10 +6,7 @@ import numpy
 
 import cupy
 from cupy import _core
-
-from cupyx.scipy.ndimage import _filters_core
-from cupyx.scipy.ndimage import _util
-from cupyx.scipy.ndimage import _filters
+from cupyx.scipy.ndimage import _filters, _filters_core, _util
 
 
 @cupy.memoize(for_each_device=True)

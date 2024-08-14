@@ -1,12 +1,11 @@
 import unittest
 
 import numpy
+import pytest
 
 import cupy
 from cupy import testing
 from cupy.lib import stride_tricks
-
-import pytest
 
 
 class TestAsStrided(unittest.TestCase):

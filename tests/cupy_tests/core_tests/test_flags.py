@@ -4,8 +4,8 @@ import numpy
 import pytest
 
 import cupy
-from cupy._core import flags
 from cupy import testing
+from cupy._core import flags
 
 
 class TestFlags(unittest.TestCase):

@@ -1,6 +1,7 @@
+import warnings
+
 import numpy
 import pytest
-import warnings
 
 import cupy
 from cupy import testing

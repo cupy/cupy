@@ -4,7 +4,6 @@ import cupy
 from cupy import _core
 from cupy._logic import content
 
-
 _is_close = _core.create_ufunc(
     'cupy_is_close',
     ('eeee?->?', 'ffff?->?', 'dddd?->?'),

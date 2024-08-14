@@ -1,7 +1,6 @@
-import urllib.request
 import sys
+import urllib.request
 from typing import Tuple
-
 
 # Take cupy_backends/stub/cupy_cusparse.h and generate
 # cupy_backends/hip/cupy_hipsparse.h, with all return values replaced by an

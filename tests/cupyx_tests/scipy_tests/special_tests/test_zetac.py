@@ -1,8 +1,9 @@
 import unittest
 
-from cupy import testing
-import cupyx.scipy.special  # NOQA
 import pytest
+
+import cupyx.scipy.special  # NOQA
+from cupy import testing
 
 try:
     import scipy.special  # NOQA

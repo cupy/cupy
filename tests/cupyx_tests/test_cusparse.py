@@ -4,6 +4,7 @@ import sys
 
 import numpy
 import pytest
+
 try:
     import scipy.sparse
 except ImportError:
@@ -11,10 +12,9 @@ except ImportError:
 
 import cupy
 from cupy import testing
-from cupyx import cusparse
-from cupy.cuda import driver
-from cupy.cuda import runtime
+from cupy.cuda import driver, runtime
 from cupy_backends.cuda.libs import cusparse as _cusparse
+from cupyx import cusparse
 from cupyx.scipy import sparse
 
 

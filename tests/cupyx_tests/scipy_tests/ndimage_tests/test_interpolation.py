@@ -2,9 +2,9 @@ import numpy
 import pytest
 
 import cupy
-from cupy.cuda import runtime
-from cupy import testing
 import cupyx.scipy.ndimage
+from cupy import testing
+from cupy.cuda import runtime
 from cupyx.scipy.ndimage import _util
 
 try:

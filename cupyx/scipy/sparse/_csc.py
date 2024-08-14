@@ -5,11 +5,9 @@ except ImportError:
     _scipy_available = False
 
 import cupy
-from cupy_backends.cuda.api import driver
-from cupy_backends.cuda.api import runtime
 import cupyx.scipy.sparse
-from cupyx.scipy.sparse import _base
-from cupyx.scipy.sparse import _compressed
+from cupy_backends.cuda.api import driver, runtime
+from cupyx.scipy.sparse import _base, _compressed
 
 
 class csc_matrix(_compressed._compressed_sparse_matrix):

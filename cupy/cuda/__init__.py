@@ -2,24 +2,29 @@ import contextlib
 import warnings
 
 import cupy as _cupy
-from cupy._environment import get_cuda_path  # NOQA
-from cupy._environment import get_nvcc_path  # NOQA
-from cupy._environment import get_rocm_path  # NOQA
-from cupy._environment import get_hipcc_path  # NOQA
-from cupy.cuda import compiler  # NOQA
-from cupy.cuda import device  # NOQA
-from cupy.cuda import function  # NOQA
-from cupy.cuda import memory  # NOQA
-from cupy.cuda import memory_hook  # NOQA
-from cupy.cuda import memory_hooks  # NOQA
-from cupy.cuda import pinned_memory  # NOQA
-from cupy.cuda import profiler  # NOQA
-from cupy.cuda import stream  # NOQA
-from cupy.cuda import texture  # NOQA
-from cupy_backends.cuda.api import driver  # NOQA
-from cupy_backends.cuda.api import runtime  # NOQA
+from cupy._environment import (
+    get_cuda_path,  # NOQA
+    get_hipcc_path,  # NOQA
+    get_nvcc_path,  # NOQA
+    get_rocm_path,  # NOQA
+)
+from cupy.cuda import (
+    compiler,  # NOQA
+    device,  # NOQA
+    function,  # NOQA
+    memory,  # NOQA
+    memory_hook,  # NOQA
+    memory_hooks,  # NOQA
+    pinned_memory,  # NOQA
+    profiler,  # NOQA
+    stream,  # NOQA
+    texture,  # NOQA
+)
+from cupy_backends.cuda.api import (
+    driver,  # NOQA
+    runtime,  # NOQA
+)
 from cupy_backends.cuda.libs import nvrtc  # NOQA
-
 
 _available = None
 

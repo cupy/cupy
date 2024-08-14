@@ -1,12 +1,11 @@
-from numpy.testing import assert_raises, assert_equal
-import cupy as cp
-# due to the module structure we can't import it from cupy.array_api._typing
-from cupy.cuda import Device
+from numpy.testing import assert_equal, assert_raises
 
+import cupy as cp
 from cupy.array_api import all
+from cupy.array_api._array_object import Array
 from cupy.array_api._creation_functions import (
-    asarray,
     arange,
+    asarray,
     empty,
     empty_like,
     eye,
@@ -20,7 +19,9 @@ from cupy.array_api._creation_functions import (
     zeros_like,
 )
 from cupy.array_api._dtypes import float32, float64
-from cupy.array_api._array_object import Array
+
+# due to the module structure we can't import it from cupy.array_api._typing
+from cupy.cuda import Device
 
 
 def test_asarray_errors():

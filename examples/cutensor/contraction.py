@@ -2,10 +2,10 @@
 # C_{m,u,n,v} = alpha * A_{m,h,k,n} * B_{u,k,v,h} + beta * C_{m,u,n,v}
 #
 import numpy
-import cupy
-from cupyx import cutensor
-import cupyx.time
 
+import cupy
+import cupyx.time
+from cupyx import cutensor
 
 dtype = numpy.float32
 

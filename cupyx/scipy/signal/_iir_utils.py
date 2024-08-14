@@ -2,8 +2,8 @@
 from itertools import product
 
 import cupy
-from cupy._core.internal import _normalize_axis_index
 from cupy._core._scalar import get_typename
+from cupy._core.internal import _normalize_axis_index
 from cupy_backends.cuda.api import runtime
 from cupyx.scipy.signal._arraytools import axis_slice
 

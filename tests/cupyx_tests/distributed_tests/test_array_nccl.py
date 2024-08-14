@@ -5,13 +5,10 @@ import numpy
 import pytest
 
 import cupy
-from cupy import testing
 import cupyx.distributed.array as darray
-from cupyx.distributed.array import _chunk
-from cupyx.distributed.array import _index_arith
-from cupyx.distributed.array import _modes
-from cupyx.distributed.array._modes import REPLICA, MAX, SUM, PROD
-
+from cupy import testing
+from cupyx.distributed.array import _chunk, _index_arith, _modes
+from cupyx.distributed.array._modes import MAX, PROD, REPLICA, SUM
 
 size = 256
 

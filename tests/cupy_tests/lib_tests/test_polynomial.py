@@ -2,11 +2,9 @@ import numpy
 import pytest
 
 import cupy
-from cupy.cuda import driver
-from cupy.cuda import runtime
 import cupyx
 from cupy import testing
-
+from cupy.cuda import driver, runtime
 from cupy.exceptions import RankWarning
 
 

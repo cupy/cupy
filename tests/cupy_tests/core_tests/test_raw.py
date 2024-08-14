@@ -12,13 +12,10 @@ from unittest import mock
 import pytest
 
 import cupy
-from cupy import testing
-from cupy import _util
+from cupy import _util, testing
 from cupy._core import _accelerator
-from cupy.cuda import compiler
-from cupy.cuda import memory
+from cupy.cuda import compiler, memory
 from cupy_backends.cuda.libs import nvrtc
-
 
 _test_source1 = r'''
 extern "C" __global__

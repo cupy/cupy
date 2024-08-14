@@ -1,14 +1,13 @@
-from math import sqrt, pi
+from math import pi, sqrt
 
-import pytest
 import numpy as np
+import pytest
 
 import cupy
-from cupy import testing
 import cupyx.scipy.signal  # NOQA
 import cupyx.scipy.signal as signal
-from cupy.testing import assert_array_almost_equal, assert_allclose
-
+from cupy import testing
+from cupy.testing import assert_allclose, assert_array_almost_equal
 
 try:
     import scipy

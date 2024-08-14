@@ -3,8 +3,7 @@ import warnings
 import numpy
 
 import cupy
-from cupy import _core
-from cupy import _util
+from cupy import _core, _util
 
 
 def label(input, structure=None, output=None):

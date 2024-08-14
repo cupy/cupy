@@ -2,7 +2,6 @@ import pytest
 from pytest import raises as assert_raises
 
 import cupy
-
 from cupy import testing
 from cupyx.scipy import signal
 from cupyx.scipy.signal import iirdesign

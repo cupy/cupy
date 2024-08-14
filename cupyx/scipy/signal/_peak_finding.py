@@ -26,11 +26,10 @@ DEALINGS IN THE SOFTWARE.
 """
 
 import math
-import cupy
 
+import cupy
 from cupy._core._scalar import get_typename
 from cupy_backends.cuda.api import runtime
-
 from cupyx import jit
 
 

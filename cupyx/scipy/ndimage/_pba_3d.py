@@ -1,13 +1,20 @@
 import math
 import os
 
-import cupy
 import numpy as np
 
+import cupy
+
+from ._pba_2d import (
+    _check_distances,
+    _check_indices,
+    _distance_tranform_arg_check,
+    _generate_indices_ops,
+    _generate_shape,
+    _get_block_size,
+    lcm,
+)
 from ._util import _get_inttype
-from ._pba_2d import (_check_distances, _check_indices,
-                      _distance_tranform_arg_check, _generate_indices_ops,
-                      _generate_shape, _get_block_size, lcm)
 
 pba3d_defines_template = """
 

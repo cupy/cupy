@@ -5,20 +5,16 @@ import hashlib
 import operator
 import os
 import time
+import warnings
 
 import numpy
-import warnings
 from numpy.linalg import LinAlgError
 
 import cupy
-from cupy import _core
-from cupy import cuda
+import cupyx
+from cupy import _core, _util, cuda
 from cupy.cuda import device
 from cupy.random import _kernels
-from cupy import _util
-
-import cupyx
-
 
 _UINT32_MAX = 0xffffffff
 _UINT64_MAX = 0xffffffffffffffff

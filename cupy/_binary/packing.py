@@ -1,7 +1,6 @@
 import cupy
 from cupy import _core
 
-
 _packbits_kernel = {
     'big': _core.ElementwiseKernel(
         'raw T a, raw int32 a_size', 'uint8 packed',

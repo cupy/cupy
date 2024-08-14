@@ -1,19 +1,12 @@
-from typing import Any, Mapping
 import warnings
+from functools import reduce
+from typing import Any, Mapping
 
 import cupy
-
-from cupy_backends.cuda.api import runtime
 from cupy.cuda import device
-from cupyx.jit import _cuda_types
-from cupyx.jit import _cuda_typerules
-from cupyx.jit._internal_types import BuiltinFunc
-from cupyx.jit._internal_types import Data
-from cupyx.jit._internal_types import Constant
-from cupyx.jit._internal_types import Range
-from cupyx.jit import _compile
-
-from functools import reduce
+from cupy_backends.cuda.api import runtime
+from cupyx.jit import _compile, _cuda_typerules, _cuda_types
+from cupyx.jit._internal_types import BuiltinFunc, Constant, Data, Range
 
 
 class RangeFunc(BuiltinFunc):

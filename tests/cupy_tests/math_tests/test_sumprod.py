@@ -7,8 +7,8 @@ import pytest
 import cupy
 import cupy._core._accelerator as _acc
 import cupy.cuda.cutensor
-from cupy._core import _cub_reduction
 from cupy import testing
+from cupy._core import _cub_reduction
 from cupy.exceptions import AxisError
 
 

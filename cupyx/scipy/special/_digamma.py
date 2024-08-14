@@ -11,7 +11,6 @@ although it is now no longer used in digamma.
 
 from cupy import _core
 
-
 polevl_definition = '''
 template<int N> static __device__ double polevl(double x, double coef[])
 {

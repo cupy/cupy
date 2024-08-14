@@ -1,6 +1,5 @@
 from cupy._math import ufunc
 
-
 sinh = ufunc.create_math_ufunc(
     'sinh', 1, 'cupy_sinh',
     '''Elementwise hyperbolic sine function.

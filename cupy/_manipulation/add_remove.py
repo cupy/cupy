@@ -1,7 +1,8 @@
+import math
+
 import numpy
 
 import cupy
-import math
 from cupy import _core
 
 

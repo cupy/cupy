@@ -1,13 +1,13 @@
 import math
 
 import cupy
-from cupy._core._scalar import get_typename
-from cupy import _util
 import cupyx.scipy.linalg
 import cupyx.scipy.signal._signaltools
+from cupy import _util
+from cupy._core._scalar import get_typename
 from cupyx.scipy.signal._arraytools import (
-    axis_slice,
     axis_reverse,
+    axis_slice,
     const_ext,
     even_ext,
     odd_ext,

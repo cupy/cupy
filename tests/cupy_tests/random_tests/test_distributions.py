@@ -2,9 +2,8 @@ import numpy
 import pytest
 
 import cupy
-from cupy.random import _distributions
 from cupy import testing
-
+from cupy.random import _distributions
 
 _regular_float_dtypes = (numpy.float64, numpy.float32)
 _float_dtypes = _regular_float_dtypes + (numpy.float16,)

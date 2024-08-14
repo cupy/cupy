@@ -1,9 +1,8 @@
 import pytest
 
 import cupy
-from cupy.cuda import driver
-from cupy.cuda import runtime
 from cupy import testing
+from cupy.cuda import driver, runtime
 from cupyx.scipy.signal._iir_utils import apply_iir, apply_iir_sos
 
 

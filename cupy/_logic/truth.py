@@ -1,11 +1,10 @@
 import warnings
 
 import cupy
-from cupy._core import _routines_logic as _logic
-from cupy._core import _fusion_thread_local
-from cupy._sorting import search as _search
 from cupy import _util
-
+from cupy._core import _fusion_thread_local
+from cupy._core import _routines_logic as _logic
+from cupy._sorting import search as _search
 
 _setxorkernel = cupy._core.ElementwiseKernel(
     'raw T X, int64 len',

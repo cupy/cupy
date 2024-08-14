@@ -3,8 +3,7 @@ import math
 import cupy
 from cupy._core import internal
 from cupyx.scipy import fft
-from cupyx.scipy.ndimage import _filters
-from cupyx.scipy.ndimage import _util
+from cupyx.scipy.ndimage import _filters, _util
 
 
 def _check_conv_inputs(in1, in2, mode, convolution=True):

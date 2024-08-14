@@ -1,8 +1,8 @@
 import warnings
 
-import cupy
 import numpy
 
+import cupy
 from cupy.cuda import thrust
 
 

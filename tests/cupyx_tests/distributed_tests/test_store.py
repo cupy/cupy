@@ -6,7 +6,6 @@ from cupy.cuda import nccl
 from cupy.testing import _condition
 from cupyx.distributed import _store
 
-
 nccl_available = nccl.available
 
 

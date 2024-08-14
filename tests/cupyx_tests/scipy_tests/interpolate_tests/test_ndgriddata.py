@@ -1,8 +1,7 @@
 
 import cupy
-from cupy import testing
-
 import cupyx.scipy.interpolate  # NOQA
+from cupy import testing
 
 try:
     import scipy.interpolate  # NOQA

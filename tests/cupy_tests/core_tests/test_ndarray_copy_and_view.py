@@ -2,9 +2,8 @@ import numpy
 import pytest
 
 import cupy
+from cupy import _util, testing
 from cupy.exceptions import ComplexWarning
-from cupy import testing
-from cupy import _util
 
 
 def astype_without_warning(x, dtype, *args, **kwargs):

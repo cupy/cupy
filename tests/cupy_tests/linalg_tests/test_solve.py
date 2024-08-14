@@ -4,10 +4,10 @@ import numpy
 import pytest
 
 import cupy
-from cupy import testing
-from cupy.testing import _condition
 import cupyx
+from cupy import testing
 from cupy.cublas import get_batched_gesv_limit, set_batched_gesv_limit
+from cupy.testing import _condition
 
 
 @testing.parameterize(*testing.product({

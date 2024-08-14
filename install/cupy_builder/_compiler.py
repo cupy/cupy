@@ -3,16 +3,16 @@ import os
 import os.path
 import platform
 import shutil
-import sys
 import subprocess
-from typing import Any, Optional, List
+import sys
+from typing import Any, List, Optional
 
 import setuptools
 import setuptools.msvc
 from setuptools import Extension
 
-from cupy_builder._context import Context
 import cupy_builder.install_build as build
+from cupy_builder._context import Context
 
 
 def _nvcc_gencode_options(cuda_version: int) -> List[str]:

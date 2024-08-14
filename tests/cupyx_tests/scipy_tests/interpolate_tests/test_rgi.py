@@ -1,11 +1,13 @@
 import pytest
-import cupy as cp
-
-from cupy.testing import (assert_allclose, assert_array_equal,
-                          assert_array_almost_equal)
-from cupy_backends.cuda.api import runtime
 from pytest import raises as assert_raises
 
+import cupy as cp
+from cupy.testing import (
+    assert_allclose,
+    assert_array_almost_equal,
+    assert_array_equal,
+)
+from cupy_backends.cuda.api import runtime
 from cupyx.scipy.interpolate import RegularGridInterpolator, interpn
 
 methods = ['linear', 'nearest']

@@ -1,12 +1,12 @@
 import sys
 
-import cupy
-from cupyx.scipy.signal import abcd_normalize
-import cupyx.scipy.signal as signal
-
 import pytest
 from pytest import raises as assert_raises
+
+import cupy
+import cupyx.scipy.signal as signal
 from cupy import testing
+from cupyx.scipy.signal import abcd_normalize
 
 try:
     import scipy.signal   # NOQA

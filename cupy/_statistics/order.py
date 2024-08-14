@@ -2,8 +2,8 @@ import warnings
 
 import cupy
 from cupy import _core
-from cupy._core import _routines_statistics as _statistics
 from cupy._core import _fusion_thread_local
+from cupy._core import _routines_statistics as _statistics
 from cupy._logic import content
 
 

@@ -10,8 +10,8 @@ import json
 import os
 import re
 import sys
-from typing import Any, Dict, Optional, Set
 import urllib.request
+from typing import Any, Dict, Optional, Set
 
 import github
 

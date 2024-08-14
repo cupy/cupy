@@ -1,8 +1,7 @@
 import numpy
 
 import cupy
-from cupy.cuda import cublas
-from cupy.cuda import device
+from cupy.cuda import cublas, device
 from cupy.linalg import _util
 from cupyx.scipy.linalg import _uarray
 

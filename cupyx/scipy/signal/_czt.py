@@ -30,8 +30,10 @@ zoom_fft : array
 
 import cmath
 import numbers
-import cupy
+
 from numpy import pi
+
+import cupy
 from cupyx.scipy.fft import fft, ifft, next_fast_len
 
 __all__ = ['czt', 'zoom_fft', 'CZT', 'ZoomFFT', 'czt_points']

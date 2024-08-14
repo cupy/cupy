@@ -3,7 +3,6 @@ import warnings
 
 import cupyx.scipy.sparse.linalg
 
-
 if (3, 7) <= sys.version_info:
     def __getattr__(name):
         if hasattr(cupyx.scipy.sparse.linalg, name):

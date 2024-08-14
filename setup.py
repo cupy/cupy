@@ -2,8 +2,9 @@
 
 import glob
 import os
-from setuptools import setup, find_packages
 import sys
+
+from setuptools import find_packages, setup
 
 source_root = os.path.abspath(os.path.dirname(__file__))
 sys.path.append(os.path.join(source_root, 'install'))

@@ -5,8 +5,8 @@ import numpy
 import pytest
 
 import cupy
-from cupy import testing
 import cupyx.scipy.stats  # NOQA
+from cupy import testing
 from cupyx.scipy import stats
 from cupyx.scipy.stats import _distributions
 

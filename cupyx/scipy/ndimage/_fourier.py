@@ -3,8 +3,8 @@ import numpy
 import cupy
 from cupy import _core
 from cupy._core import internal
-from cupyx.scipy.ndimage import _util
 from cupyx.scipy import special
+from cupyx.scipy.ndimage import _util
 
 
 def _get_output_fourier(output, input, complex_only=False):

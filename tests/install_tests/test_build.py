@@ -1,13 +1,10 @@
-from distutils import ccompiler
-from distutils import sysconfig
 import os
 import unittest
+from distutils import ccompiler, sysconfig
 
 import pytest
-
-from cupy_builder._context import Context
 from cupy_builder import install_build as build
-
+from cupy_builder._context import Context
 
 test_hip = bool(int(os.environ.get('CUPY_INSTALL_USE_HIP', '0')))
 

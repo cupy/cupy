@@ -1,9 +1,8 @@
 import functools
 import itertools
-from typing import Any, NoReturn, Optional, Union, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, NoReturn, Optional, Union
 
-from cupyx.jit import _cuda_types
-from cupyx.jit import _cuda_typerules
+from cupyx.jit import _cuda_typerules, _cuda_types
 
 if TYPE_CHECKING:
     from cupyx.jit._compile import Environment

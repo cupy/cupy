@@ -4,13 +4,12 @@ import numpy
 import pytest
 
 import cupy
-from cupyx import cusolver
-from cupy.cuda import driver
-from cupy.cuda import runtime
-from cupy.linalg import _util
-from cupy import testing
-from cupy.testing import _condition
 import cupyx
+from cupy import testing
+from cupy.cuda import driver, runtime
+from cupy.linalg import _util
+from cupy.testing import _condition
+from cupyx import cusolver
 
 
 def random_matrix(shape, dtype, scale, sym=False):

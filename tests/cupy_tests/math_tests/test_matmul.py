@@ -5,8 +5,8 @@ import numpy
 import pytest
 
 import cupy
-from cupy._core import _routines_linalg as _linalg
 from cupy import testing
+from cupy._core import _routines_linalg as _linalg
 
 
 @testing.parameterize(

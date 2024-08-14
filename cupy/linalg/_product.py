@@ -7,9 +7,7 @@ import cupy
 from cupy import _core
 from cupy._core import internal
 from cupy._core._gufuncs import _GUFunc
-from cupy.linalg import _solve
-from cupy.linalg import _util
-
+from cupy.linalg import _solve, _util
 
 matmul = _GUFunc(
     _core.matmul,

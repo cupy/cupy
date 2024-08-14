@@ -3,7 +3,6 @@ import warnings
 
 import cupyx.scipy.sparse
 
-
 # Raise a `DeprecationWarning` for `cupy.sparse` submodule when its functions
 # are called. We could raise the warning on importing the submodule, but we
 # use module level `__getattr__` function here as the submodule is also

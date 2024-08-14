@@ -1,8 +1,8 @@
 import math
 
-import cupyx.scipy.signal as signal  # noqa
-
 import pytest
+
+import cupyx.scipy.signal as signal  # noqa
 from cupy import testing
 
 

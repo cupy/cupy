@@ -1,7 +1,6 @@
 import pytest
-from hypothesis import given
+from hypothesis import HealthCheck, given, settings
 from hypothesis.extra.array_api import make_strategies_namespace
-from hypothesis import settings, HealthCheck
 
 from cupy import array_api as xp
 

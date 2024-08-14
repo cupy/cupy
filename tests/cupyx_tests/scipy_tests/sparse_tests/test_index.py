@@ -3,6 +3,7 @@ import itertools
 
 import numpy
 import pytest
+
 try:
     import scipy.sparse
 except ImportError:

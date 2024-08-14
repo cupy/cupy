@@ -1,13 +1,14 @@
-import cupy
 import numpy
 import pytest
 
-from cupy import testing
-from cupy.exceptions import AxisError
+import cupy
+
 # TODO (grlee77): use fft instead of fftpack once min. supported scipy >= 1.4
 import cupyx.scipy.fft  # NOQA
 import cupyx.scipy.fftpack  # NOQA
 import cupyx.scipy.ndimage  # NOQA
+from cupy import testing
+from cupy.exceptions import AxisError
 
 try:
     # scipy.fft only available since SciPy 1.4.0

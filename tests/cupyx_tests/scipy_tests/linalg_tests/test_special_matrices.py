@@ -1,7 +1,7 @@
 import unittest
 
-from cupy import testing
 import cupyx.scipy.linalg  # NOQA
+from cupy import testing
 
 try:
     import scipy.linalg  # NOQA

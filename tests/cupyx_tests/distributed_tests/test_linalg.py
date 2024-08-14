@@ -1,15 +1,13 @@
 import dataclasses
 import math
 
+import numpy
 import pytest
 
-import numpy
 import cupy
 from cupy import testing
-from cupyx.distributed.array import _linalg
-
 from cupyx.distributed import array
-from cupyx.distributed.array import REPLICA, SUM
+from cupyx.distributed.array import REPLICA, SUM, _linalg
 
 
 class ArrayConfig:

@@ -1,11 +1,10 @@
-from math import sqrt, pi
+from math import pi, sqrt
 
 from pytest import raises as assert_raises
 
 import cupy
-from cupy import testing
-
 import cupyx.scipy.signal as signal
+from cupy import testing
 
 
 @testing.with_requires('scipy')

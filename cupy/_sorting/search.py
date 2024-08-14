@@ -1,10 +1,8 @@
 import cupy
-from cupy import _core
-from cupy._core import fusion
-from cupy import _util
-
+from cupy import _core, _util
 from cupy._core import _routines_indexing as _indexing
 from cupy._core import _routines_statistics as _statistics
+from cupy._core import fusion
 
 
 def argmax(a, axis=None, dtype=None, out=None, keepdims=False):

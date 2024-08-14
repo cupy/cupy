@@ -1,10 +1,7 @@
 import numpy
+
 import cupy
-from cupyx.scipy.sparse import _coo
-from cupyx.scipy.sparse import _csc
-from cupyx.scipy.sparse import _csr
-from cupyx.scipy.sparse import _dia
-from cupyx.scipy.sparse import _sputils
+from cupyx.scipy.sparse import _coo, _csc, _csr, _dia, _sputils
 
 
 def eye(m, n=None, k=0, dtype='d', format=None):

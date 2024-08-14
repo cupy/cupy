@@ -7,13 +7,10 @@ import numpy
 import pytest
 
 import cupy
-from cupy import cuda
+from cupy import cuda, testing
 from cupy.cuda import runtime
 from cupy.random import _generator
-from cupy import testing
-from cupy.testing import _condition
-from cupy.testing import _hypothesis
-
+from cupy.testing import _condition, _hypothesis
 from cupy_tests.random_tests import common_distributions
 
 

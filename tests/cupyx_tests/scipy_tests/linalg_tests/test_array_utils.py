@@ -1,8 +1,9 @@
 import numpy as np
 from numpy import linalg
-from cupyx.scipy.linalg import bandwidth
 from pytest import raises
+
 from cupy import testing
+from cupyx.scipy.linalg import bandwidth
 
 
 class TestBadwidth:

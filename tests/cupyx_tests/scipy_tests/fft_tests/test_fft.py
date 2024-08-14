@@ -1,4 +1,5 @@
 import numpy as np
+
 try:
     # scipy.fft is available since scipy v1.4.0+
     import scipy.fft as scipy_fft
@@ -10,10 +11,9 @@ else:
 import pytest
 
 import cupy as cp
+import cupyx.scipy.fft as cp_fft
 from cupy import testing
 from cupy.fft._fft import _default_fft_func, _fftn
-import cupyx.scipy.fft as cp_fft
-
 
 _irfft_skip_condition = (
     int(cp.cuda.device.get_compute_capability()) < 70 and

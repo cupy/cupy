@@ -1,5 +1,6 @@
-import cupy as _cupy
 import numpy as np
+
+import cupy as _cupy
 
 
 def as_strided(x, shape=None, strides=None):

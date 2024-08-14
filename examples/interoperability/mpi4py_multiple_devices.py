@@ -5,9 +5,9 @@
 # This script executes simple communication and computation with 2 MPI
 # processes, each of which uses a different GPU
 
-import cupy
 from mpi4py import MPI
 
+import cupy
 
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()

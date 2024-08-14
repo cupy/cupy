@@ -25,11 +25,11 @@ FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 """
 
+import numpy as np
+
 import cupy
 from cupy._core._scalar import get_typename
 from cupy_backends.cuda.api import runtime
-
-import numpy as np
 
 
 def _get_typename(dtype):

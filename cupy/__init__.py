@@ -3,9 +3,7 @@ import sys as _sys
 
 import numpy as _numpy
 
-from cupy import _environment
-from cupy import _version
-
+from cupy import _environment, _version
 
 _environment._detect_duplicate_installation()  # NOQA
 _environment._setup_win32_dll_directory()  # NOQA

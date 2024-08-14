@@ -1,10 +1,10 @@
 import unittest
+import warnings
 
-from cupy import testing
-import cupyx.scipy.special  # NOQA
 import numpy
 
-import warnings
+import cupyx.scipy.special  # NOQA
+from cupy import testing
 
 
 @testing.with_requires('scipy')

@@ -2,9 +2,8 @@ import os
 import re
 import unittest
 
-from example_tests import example_test
-
 from cupy import testing
+from example_tests import example_test
 
 
 def _normalize_regexp_eol(pattern):

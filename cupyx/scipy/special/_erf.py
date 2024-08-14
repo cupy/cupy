@@ -1,6 +1,5 @@
 from cupy import _core
 
-
 erf = _core.create_ufunc(
     'cupyx_scipy_special_erf', ('f->f', 'd->d'),
     'out0 = erf(in0)',

@@ -2,10 +2,11 @@ import numpy
 
 import cupy
 import cupy._core.internal
-
-from cupyx.scipy.ndimage import _spline_prefilter_core
-from cupyx.scipy.ndimage import _spline_kernel_weights
-from cupyx.scipy.ndimage import _util
+from cupyx.scipy.ndimage import (
+    _spline_kernel_weights,
+    _spline_prefilter_core,
+    _util,
+)
 
 math_constants_preamble = r'''
 // workaround for HIP: line begins with #include

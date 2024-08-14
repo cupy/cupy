@@ -2,10 +2,10 @@
 # D_{x,y,z} = alpha * A_{z,y,x} + beta * B_{y,z,x} + gamma * C_{x,y,z}
 #
 import numpy
-import cupy
-from cupyx import cutensor
-import cupyx.time
 
+import cupy
+import cupyx.time
+from cupyx import cutensor
 
 dtype = numpy.float32
 

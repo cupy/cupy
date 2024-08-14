@@ -10,10 +10,8 @@ Direct inquiries to 30 Frost Street, Cambridge, MA 02140
 """
 
 from cupy import _core
-
-from cupyx.scipy.special._gammasgn import gammasgn_definition
 from cupyx.scipy.special._gammainc import lgam_definition
-
+from cupyx.scipy.special._gammasgn import gammasgn_definition
 
 poch_definition = (
     lgam_definition

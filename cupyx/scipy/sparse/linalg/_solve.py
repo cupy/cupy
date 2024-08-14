@@ -1,15 +1,15 @@
+import warnings
+
 import numpy
 
 import cupy
 from cupy import cublas
-from cupy.cuda import device
-from cupy.cuda import runtime
+from cupy.cuda import device, runtime
 from cupy.linalg import _util
 from cupyx.scipy import sparse
 from cupyx.scipy.sparse.linalg import _interface
 from cupyx.scipy.sparse.linalg._iterative import _make_system
 
-import warnings
 try:
     import scipy.sparse
     import scipy.sparse.linalg

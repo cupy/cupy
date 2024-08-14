@@ -1,12 +1,12 @@
-from numbers import Number
 import warnings
+from numbers import Number
 
 import numpy as np
 
 import cupy
-
-from cupy.fft._fft import (_fft, _default_fft_func, hfft as _hfft,
-                           ihfft as _ihfft, _swap_direction)
+from cupy.fft._fft import _default_fft_func, _fft, _swap_direction
+from cupy.fft._fft import hfft as _hfft
+from cupy.fft._fft import ihfft as _ihfft
 
 _scipy_150 = False
 _scipy_160 = False

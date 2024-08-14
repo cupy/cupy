@@ -1,13 +1,12 @@
 
 import operator
 
+import numpy as np
+
 import cupy
 from cupy._core import internal
 from cupy._core._scalar import get_typename
-
 from cupyx.scipy.sparse import csr_matrix
-
-import numpy as np
 
 TYPES = ['double', 'thrust::complex<double>']
 INT_TYPES = ['int', 'long long']

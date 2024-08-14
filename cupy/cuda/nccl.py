@@ -6,7 +6,6 @@ Use `cupy_backends.cuda.libs.nccl` directly in CuPy codebase.
 
 from cupy import _environment
 
-
 available = True
 
 try:

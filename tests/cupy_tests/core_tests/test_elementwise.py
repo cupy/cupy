@@ -4,9 +4,7 @@ import numpy
 import pytest
 
 import cupy
-from cupy import _core
-from cupy import cuda
-from cupy import testing
+from cupy import _core, cuda, testing
 
 
 class TestElementwise(unittest.TestCase):

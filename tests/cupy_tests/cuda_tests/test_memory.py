@@ -8,11 +8,9 @@ import fastrlock
 import pytest
 
 import cupy.cuda
-from cupy.cuda import device
-from cupy.cuda import memory
-from cupy.cuda import runtime
-from cupy.cuda import stream as stream_module
 from cupy import testing
+from cupy.cuda import device, memory, runtime
+from cupy.cuda import stream as stream_module
 
 
 class MockMemory(memory.Memory):

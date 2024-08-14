@@ -8,7 +8,6 @@ import cupy
 from cupy import testing
 from cupy.exceptions import ComplexWarning
 
-
 float_types = [numpy.float16, numpy.float32, numpy.float64]
 complex_types = [numpy.complex64, numpy.complex128]
 signed_int_types = [numpy.int8, numpy.int16, numpy.int32, numpy.int64]

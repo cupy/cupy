@@ -3,15 +3,12 @@ import time
 import warnings
 
 import cupy
-from cupy import cuda
+from cupy import cuda, testing
 from cupy.cuda import nccl
-from cupy import testing
-
 from cupyx.distributed import init_process_group
 from cupyx.distributed._nccl_comm import NCCLBackend
 from cupyx.distributed._store import ExceptionAwareProcess
 from cupyx.scipy import sparse
-
 
 nccl_available = nccl.available
 

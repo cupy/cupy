@@ -1,9 +1,8 @@
 import io
-import unittest
 import re
+import unittest
 
-from cupy.cuda import memory
-from cupy.cuda import memory_hooks
+from cupy.cuda import memory, memory_hooks
 
 
 class TestLineProfileHook(unittest.TestCase):

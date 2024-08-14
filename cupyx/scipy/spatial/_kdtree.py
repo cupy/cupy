@@ -2,10 +2,14 @@
 import warnings
 
 import cupy
-from cupyx.scipy.spatial._kdtree_utils import (
-    asm_kd_tree, compute_knn, compute_tree_bounds, find_nodes_in_radius)
-from cupyx.scipy.spatial.distance import distance_matrix
 from cupyx.scipy.sparse import coo_matrix
+from cupyx.scipy.spatial._kdtree_utils import (
+    asm_kd_tree,
+    compute_knn,
+    compute_tree_bounds,
+    find_nodes_in_radius,
+)
+from cupyx.scipy.spatial.distance import distance_matrix
 
 
 def broadcast_contiguous(x, shape, dtype):

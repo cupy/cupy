@@ -1,18 +1,25 @@
 import warnings
 
 import cupy
+import cupyx.scipy.fft as sp_fft
 from cupy._core import internal
 from cupy.linalg import lstsq
-
-import cupyx.scipy.fft as sp_fft
-from cupyx.scipy.ndimage import _util
-from cupyx.scipy.ndimage import _filters
+from cupyx.scipy.ndimage import _filters, _util
 from cupyx.scipy.signal import _signaltools_core as _st_core
 from cupyx.scipy.signal._arraytools import (
-    const_ext, even_ext, odd_ext, axis_reverse, axis_slice, axis_assign)
+    axis_assign,
+    axis_reverse,
+    axis_slice,
+    const_ext,
+    even_ext,
+    odd_ext,
+)
 from cupyx.scipy.signal._iir_utils import (
-    apply_iir, apply_iir_sos, compute_correction_factors,
-    compute_correction_factors_sos)
+    apply_iir,
+    apply_iir_sos,
+    compute_correction_factors,
+    compute_correction_factors_sos,
+)
 
 
 def convolve(in1, in2, mode='full', method='auto'):

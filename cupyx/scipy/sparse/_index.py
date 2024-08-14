@@ -1,16 +1,12 @@
 """Indexing mixin for sparse matrix classes.
 """
 
+import numpy
+
 import cupy
 from cupy import _core
-
-from cupyx.scipy.sparse._base import isspmatrix
-from cupyx.scipy.sparse._base import spmatrix
-
-from cupy.cuda import device
-from cupy.cuda import runtime
-
-import numpy
+from cupy.cuda import device, runtime
+from cupyx.scipy.sparse._base import isspmatrix, spmatrix
 
 try:
     import scipy.sparse

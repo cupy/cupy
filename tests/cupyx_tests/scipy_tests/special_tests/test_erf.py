@@ -3,8 +3,8 @@ import unittest
 import numpy
 
 import cupy
-from cupy import testing
 import cupyx.scipy.special  # NOQA
+from cupy import testing
 
 
 def _boundary_inputs(boundary, rtol, atol):

@@ -1,6 +1,5 @@
 from cupy import _core
 
-
 # Note: complex-valued isnan, log and log1p are all defined in
 #       cupy/_core/include/cupy/complex.cuh
 xlogy_definition = """

@@ -5,12 +5,9 @@ import numpy
 import pytest
 
 import cupy
-from cupy import cuda
+from cupy import cuda, random, testing
 from cupy.cuda import runtime
-from cupy import random
-from cupy import testing
-from cupy.testing import _condition
-from cupy.testing import _hypothesis
+from cupy.testing import _condition, _hypothesis
 
 
 class TestRandint(unittest.TestCase):

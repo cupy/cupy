@@ -2,7 +2,6 @@
 
 import cupy
 
-
 # standard status messages of optimizers
 _status_message = {'success': 'Optimization terminated successfully.',
                    'maxfev': 'Maximum number of function evaluations has '

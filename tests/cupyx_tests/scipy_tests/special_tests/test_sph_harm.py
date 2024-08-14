@@ -1,6 +1,6 @@
-import cupy as cp
 import pytest
 
+import cupy as cp
 import cupyx.scipy.special  # NOQA
 from cupy import testing
 from cupy.testing import numpy_cupy_allclose

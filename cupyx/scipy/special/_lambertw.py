@@ -2,7 +2,6 @@
 
 from cupy import _core
 
-
 lambertw_preamble = "#include <cupy/special/lambertw.h>"
 
 _lambertw_scalar = _core.create_ufunc(

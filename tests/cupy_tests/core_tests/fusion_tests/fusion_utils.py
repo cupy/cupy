@@ -3,7 +3,6 @@ import numpy
 import cupy
 from cupy import testing
 
-
 scalar_types = (numpy.generic, int, float, complex)
 
 

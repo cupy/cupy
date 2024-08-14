@@ -1,11 +1,10 @@
+import functools
+
 import numpy
 
 import cupy
 from cupy import _core
-from cupy.linalg import _decomposition
-from cupy.linalg import _util
-
-import functools
+from cupy.linalg import _decomposition, _util
 
 
 def _multi_svd_norm(x, row_axis, col_axis, op):

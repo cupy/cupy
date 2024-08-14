@@ -1,10 +1,8 @@
 import os
 
 from cupy.cuda import nccl
-
 from cupyx.distributed import _store
 from cupyx.distributed._nccl_comm import NCCLBackend
-
 
 _backends = {'nccl': NCCLBackend}
 

@@ -18,12 +18,12 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
-import pytest
 import numpy
+import pytest
 
 import cupy
-from cupy import testing
 import cupyx.signal
+from cupy import testing
 
 
 # https://github.com/python-acoustics/python-acoustics/blob/master/acoustics/cepstrum.py

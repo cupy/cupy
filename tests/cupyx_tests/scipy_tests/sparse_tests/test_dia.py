@@ -1,9 +1,9 @@
 import pickle
 import unittest
 
-
 import numpy
 import pytest
+
 try:
     import scipy.sparse  # NOQA
     scipy_available = True
@@ -12,8 +12,7 @@ except ImportError:
 
 import cupy
 from cupy import testing
-from cupy.cuda import driver
-from cupy.cuda import runtime
+from cupy.cuda import driver, runtime
 from cupyx.scipy import sparse
 
 

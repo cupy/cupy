@@ -11,10 +11,8 @@ Direct inquiries to 30 Frost Street, Cambridge, MA 02140
 
 
 from cupy import _core
-
 from cupyx.scipy.special._digamma import polevl_definition
-from cupyx.scipy.special._gammainc import _lanczos_preamble
-from cupyx.scipy.special._gammainc import p1evl_definition
+from cupyx.scipy.special._gammainc import _lanczos_preamble, p1evl_definition
 from cupyx.scipy.special._zeta import zeta_definition
 
 zetac_h = """

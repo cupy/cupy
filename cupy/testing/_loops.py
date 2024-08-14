@@ -2,22 +2,19 @@ import functools
 import inspect
 import os
 import random
-from typing import Tuple, Type
 import traceback
 import unittest
 import warnings
+from typing import Tuple, Type
 
 import numpy
 
 import cupy
-from cupy.exceptions import AxisError
-from cupy.testing import _array
-from cupy.testing import _parameterized
 import cupyx
 import cupyx.scipy.sparse
-
+from cupy.exceptions import AxisError
+from cupy.testing import _array, _parameterized
 from cupy.testing._pytest_impl import is_available
-
 
 if is_available():
     import _pytest.outcomes

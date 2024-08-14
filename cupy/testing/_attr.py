@@ -1,8 +1,6 @@
 import os
 
-
-from cupy.testing._pytest_impl import is_available, check_available
-
+from cupy.testing._pytest_impl import check_available, is_available
 
 if is_available():
     import pytest

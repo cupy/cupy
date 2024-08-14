@@ -2,9 +2,9 @@ import numpy
 import pytest
 
 import cupy
-from cupy import testing
 import cupyx
 import cupyx.scipy.stats  # NOQA
+from cupy import testing
 
 try:
     import scipy.stats

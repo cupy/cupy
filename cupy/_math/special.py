@@ -1,7 +1,6 @@
 from cupy import _core
 from cupy._math import ufunc
 
-
 i0 = ufunc.create_math_ufunc(
     'cyl_bessel_i0', 1, 'cupy_i0',
     '''Modified Bessel function of the first kind, order 0.

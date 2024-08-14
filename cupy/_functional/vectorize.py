@@ -1,8 +1,7 @@
 import numpy
 
 from cupy import _core
-from cupyx.jit import _interface
-from cupyx.jit import _cuda_types
+from cupyx.jit import _cuda_types, _interface
 
 
 def _get_input_type(arg):

@@ -28,10 +28,14 @@ DEALINGS IN THE SOFTWARE.
 import warnings
 
 import cupy
-
 import cupyx.scipy.signal._signaltools as filtering
 from cupyx.scipy.signal._arraytools import (
-    odd_ext, even_ext, zero_ext, const_ext, _as_strided)
+    _as_strided,
+    const_ext,
+    even_ext,
+    odd_ext,
+    zero_ext,
+)
 from cupyx.scipy.signal.windows._windows import get_window
 
 

@@ -30,14 +30,18 @@ import operator
 from math import gcd
 
 import cupy
-from cupyx.scipy.fft import fft, rfft, fftfreq, ifft, irfft, ifftshift
-from cupyx.scipy.signal._iir_filter_design import cheby1
+from cupyx.scipy.fft import fft, fftfreq, ifft, ifftshift, irfft, rfft
 from cupyx.scipy.signal._fir_filter_design import firwin
 from cupyx.scipy.signal._iir_filter_conversions import zpk2sos
+from cupyx.scipy.signal._iir_filter_design import cheby1
 from cupyx.scipy.signal._ltisys import dlti
-from cupyx.scipy.signal._upfirdn import upfirdn, _output_len
 from cupyx.scipy.signal._signaltools import (
-    sosfiltfilt, filtfilt, sosfilt, lfilter)
+    filtfilt,
+    lfilter,
+    sosfilt,
+    sosfiltfilt,
+)
+from cupyx.scipy.signal._upfirdn import _output_len, upfirdn
 from cupyx.scipy.signal.windows._windows import get_window
 
 

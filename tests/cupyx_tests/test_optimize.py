@@ -9,14 +9,13 @@ import cupy
 from cupy import testing
 from cupy._core import _accelerator
 
-
 try:
     import warnings
     with warnings.catch_warnings():
         warnings.filterwarnings('ignore', category=DeprecationWarning)
+        import cupy._core._optimize_config
         import cupyx.optimizing
         import cupyx.optimizing._optimize
-        import cupy._core._optimize_config
 except ImportError:
     pass
 

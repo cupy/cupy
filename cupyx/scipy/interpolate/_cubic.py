@@ -1,9 +1,9 @@
 
 import cupy
-from cupy.linalg import solve
-from cupyx.scipy.interpolate._interpolate import PPoly
-from cupyx.scipy.interpolate._bspline2 import make_interp_spline
 import cupyx.scipy.special as spec
+from cupy.linalg import solve
+from cupyx.scipy.interpolate._bspline2 import make_interp_spline
+from cupyx.scipy.interpolate._interpolate import PPoly
 
 
 def _isscalar(x):

@@ -1,7 +1,6 @@
 from cupy import _core
 from cupy._core import fusion
 
-
 add = _core.add
 
 

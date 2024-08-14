@@ -2,8 +2,7 @@ import numpy
 import pytest
 
 import cupy
-from cupy import cublas
-from cupy import testing
+from cupy import cublas, testing
 
 
 @testing.parameterize(*testing.product({

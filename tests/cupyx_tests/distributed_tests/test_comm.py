@@ -1,18 +1,16 @@
+import os
 import pathlib
 import subprocess
 import sys
 import unittest
-import os
 
 import numpy
 import pytest
 
-from cupy.cuda import nccl
 from cupy import testing
-
+from cupy.cuda import nccl
 from cupyx.distributed import init_process_group
 from cupyx.distributed._nccl_comm import _mpi_available
-
 
 nccl_available = nccl.available
 

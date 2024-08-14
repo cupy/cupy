@@ -2,10 +2,9 @@ import numpy
 import scipy.stats
 
 import cupy
-from cupy import testing
 import cupyx
 import cupyx.scipy.stats  # NOQA
-
+from cupy import testing
 
 atol = {
     cupy.float16: 5e-3,

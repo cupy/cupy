@@ -1,5 +1,6 @@
-import cupy
 import time
+
+import cupy
 
 device = cupy.cuda.Device()
 memory_pool = cupy.cuda.MemoryPool()

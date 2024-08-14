@@ -4,8 +4,8 @@ import warnings
 import numpy
 
 import cupy
-from cupy.exceptions import RankWarning
 import cupyx.scipy.fft
+from cupy.exceptions import RankWarning
 
 
 def _wraps_polyroutine(func):

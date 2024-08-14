@@ -1,13 +1,13 @@
 
 import math
 
+import numpy as np
+
 import cupy
 from cupy._core import internal  # NOQA
 from cupy._core._scalar import get_typename  # NOQA
 from cupyx.scipy import special as spec
 from cupyx.scipy.interpolate._bspline import BSpline, _get_dtype
-
-import numpy as np
 
 try:
     from math import comb

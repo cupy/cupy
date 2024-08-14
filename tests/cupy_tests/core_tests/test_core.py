@@ -1,12 +1,12 @@
-import unittest
 import sys
+import unittest
 
 import numpy
 import pytest
 
 import cupy
-from cupy._core import core
 from cupy import testing
+from cupy._core import core
 from cupy_tests.core_tests import test_raw
 
 

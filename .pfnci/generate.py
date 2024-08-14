@@ -5,11 +5,9 @@ import json
 import os
 import shlex  # requires Python 3.8
 import sys
-
-import yaml
-
 from typing import Any, Dict, List, Mapping, Tuple
 
+import yaml
 
 SchemaType = Mapping[str, Any]
 

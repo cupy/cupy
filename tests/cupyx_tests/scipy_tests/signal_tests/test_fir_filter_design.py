@@ -1,10 +1,9 @@
-import cupy
-
-import cupyx.scipy.signal as signal
-from cupy import testing
-
 import pytest
 from pytest import raises as assert_raises
+
+import cupy
+import cupyx.scipy.signal as signal
+from cupy import testing
 
 
 @testing.with_requires("scipy")

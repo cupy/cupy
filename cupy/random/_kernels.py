@@ -64,7 +64,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 from cupy import _core
 
-
 rk_use_binominal = '''
 #define CUPY_USE_BINOMIAL
 '''

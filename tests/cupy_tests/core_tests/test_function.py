@@ -1,13 +1,12 @@
 import unittest
-import pytest
 
 import numpy
+import pytest
 
 import cupy
-from cupy._core import core
-from cupy.cuda import compiler
-from cupy.cuda import runtime
 from cupy import testing
+from cupy._core import core
+from cupy.cuda import compiler, runtime
 
 
 def _compile_func(kernel_name, code):

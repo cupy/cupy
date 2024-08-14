@@ -7,8 +7,8 @@ valid for inputs that match the given type annotations.
 """
 
 from __future__ import annotations
-from cupy.cuda import Device
 
+from cupy.cuda import Device
 
 __all__ = [
     "Array",
@@ -21,19 +21,20 @@ __all__ = [
 
 import sys
 from typing import (
+    TYPE_CHECKING,
     Any,
     Literal,
+    Protocol,
     Sequence,
     Type,
-    Union,
-    TYPE_CHECKING,
     TypeVar,
-    Protocol,
+    Union,
 )
 
-from ._array_object import Array
 from numpy import (
     dtype,
+    float32,
+    float64,
     int8,
     int16,
     int32,
@@ -42,9 +43,9 @@ from numpy import (
     uint16,
     uint32,
     uint64,
-    float32,
-    float64,
 )
+
+from ._array_object import Array
 
 _T_co = TypeVar("_T_co", covariant=True)
 

@@ -1,6 +1,6 @@
-import cupy as cp
 import pytest
 
+import cupy as cp
 import cupyx.scipy.special as sc
 from cupy.testing import assert_allclose, assert_array_equal
 

@@ -2,8 +2,9 @@ import argparse
 import contextlib
 import time
 
-import cupy
 import numpy
+
+import cupy
 
 # This sample computes call and put prices for European options with
 # Black-Scholes equation. It was based on a sample of the financial package
