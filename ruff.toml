@@ -6,10 +6,12 @@ target-version = "py39"
 line-length = 80
 exclude = ["docs/source/*", "third_party/*"]
 
-[format]
-docstring-code-format = true
-
 [lint]
+extend-select = [
+  "I", # isort
+  # TODO: Use `ruff format` in the future
+  "Q", # flake8-quotes
+]
 ignore = [
   "E721", # type-comparison
   "E74",  # ambiguous-XXX-name
@@ -42,5 +44,9 @@ ignore = [
   "E501", # line-too-long (numerical constants)
 ]
 
+# Added for future use
 [lint.pydocstyle]
 convention = "numpy"
+
+[format]
+docstring-code-format = true
