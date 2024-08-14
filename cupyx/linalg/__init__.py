@@ -1,2 +1,2 @@
-from cupyx.linalg import sparse  # NOQA
-from cupyx.linalg._solve import invh  # NOQA
+from cupyx.linalg import sparse
+from cupyx.linalg._solve import invh

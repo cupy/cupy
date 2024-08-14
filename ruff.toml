@@ -14,6 +14,7 @@ extend-select = [
   "TID252", # relative-imports
 ]
 ignore = [
+  "E402", # module-import-not-at-top-of-file
   "E721", # type-comparison
   "E74",  # ambiguous-XXX-name
 
@@ -37,9 +38,6 @@ ignore = [
 [lint.per-file-ignores]
 "__init__.py" = [
   "F401", # unused-import
-]
-"cupy/array_api/__init__.py" = [
-  "E402", # module-import-not-at-top-of-file
 ]
 "cupyx/scipy/special/_gammainc.py" = [
   "E501", # line-too-long (numerical constants)

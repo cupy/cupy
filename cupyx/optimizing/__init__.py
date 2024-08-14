@@ -1,1 +1,1 @@
-from cupyx.optimizing._optimize import optimize  # NOQA
+from cupyx.optimizing._optimize import optimize

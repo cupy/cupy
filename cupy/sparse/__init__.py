@@ -19,4 +19,4 @@ if (3, 7) <= sys.version_info:
         raise AttributeError(
             "module 'cupy.sparse' has no attribute {!r}".format(name))
 else:
-    from cupyx.scipy.sparse import *  # NOQA
+    from cupyx.scipy.sparse import * # NOQA: F403
