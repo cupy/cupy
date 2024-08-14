@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 import contextlib
+import importlib.metadata
 import inspect
 import unittest
 import warnings
 from collections.abc import Callable
-from importlib import metadata
 from importlib.metadata import PackageNotFoundError
 from unittest import mock
 
@@ -62,7 +62,7 @@ def installed(*specifiers: str) -> bool:
     for spec in specifiers:
         req = Requirement(spec)
         try:
-            found = metadata.version(req.name)
+            found = importlib.metadata.version(req.name)
         except PackageNotFoundError:
             return False
         expected = req.specifier
