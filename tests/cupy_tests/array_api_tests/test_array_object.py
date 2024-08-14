@@ -264,7 +264,7 @@ def test_python_scalar_construtors():
     i = asarray(0)
     f = asarray(0.0)
 
-    assert bool(b) == False
+    assert not bool(b)
     assert int(i) == 0
     assert float(f) == 0.0
     assert operator.index(i) == 0
