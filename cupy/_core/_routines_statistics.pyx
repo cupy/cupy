@@ -455,7 +455,7 @@ cpdef _ndarray_base _median(
 
     if part.dtype.kind in 'fc':
         isnan = _exists_nan(part, axis=axis, keepdims=keepdims)
-        tnan = cupy.asarray(numpy.nan, dtype=out.dtype)
+        tnan = out.dtype.type(numpy.nan)
         out = cupy.where(isnan, tnan, out)
     if out_shape is not None:
         out = out.reshape(out_shape)

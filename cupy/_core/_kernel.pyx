@@ -624,7 +624,7 @@ cdef list _broadcast(list args, tuple params, bint use_size, shape_t& shape):
 
 
 cdef _numpy_can_cast = numpy.can_cast
-
+cdef _numpy_result_type = numpy.result_type
 
 cdef list _get_out_args_from_optionals(
     subtype, list out_args, tuple out_types, const shape_t& out_shape, casting,
@@ -1664,7 +1664,7 @@ cdef class _Ops:
                     # If `result_type` doesn't return `ot` then the weak
                     # scalar caused promotion and operand cannot be used.
                     try:
-                        if numpy.result_type(weak_t(0), ot) != ot:
+                        if _numpy_result_type(weak_t(0), ot) != ot:
                             break
                     except TypeError:
                         break

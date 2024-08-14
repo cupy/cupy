@@ -2379,7 +2379,7 @@ _round_ufunc = create_ufunc(
 
 
 _round_ufunc_neg_uint = create_ufunc(
-    'cupy_round',
+    'cupy_round_neg_uint',
     ('?q->e',
      'bq->b', 'Bq->B', 'hq->h', 'Hq->H', 'iq->i', 'Iq->I', 'lq->l', 'Lq->L',
      'qq->q', 'Qq->Q'),
