@@ -1,3 +1,5 @@
+import platform
+
 import pytest
 from pytest import raises as assert_raises
 
@@ -27,27 +29,36 @@ class TestKaiser:
 
 @testing.with_requires("scipy")
 class TestFirwin:
-    @pytest.mark.parametrize("args, kwds", [
-        ((51, .5), dict()),   # low-pass from 0 to f
-        ((52, .5), dict(window="nuttall")),  # specific window
-        ((53, .5), dict(pass_zero=False)),  # stop from 0 to f --> high-pass
-        ((54, [.2, .4]), dict(pass_zero=False)),  # band-pass filter
-        ((55, [.2, .4]), dict()),  # band-stop filter
-        ((56, [.2, .4, .6, .8]), dict(pass_zero=False, scale=False)),
-        ((57, [.2, .4, .6, .8]), dict()),   # multiband filter
-        ((58, 0.1), dict(width=.03)),  # low-pass
-        ((59, 0.1), dict(pass_zero=False)),  # high-pass
-    ])
+    @pytest.mark.parametrize(
+        "args, kwds",
+        [
+            ((51, 0.5), dict()),  # low-pass from 0 to f
+            ((52, 0.5), dict(window="nuttall")),  # specific window
+            (
+                (53, 0.5),
+                dict(pass_zero=False),
+            ),  # stop from 0 to f --> high-pass
+            ((54, [0.2, 0.4]), dict(pass_zero=False)),  # band-pass filter
+            ((55, [0.2, 0.4]), dict()),  # band-stop filter
+            ((56, [0.2, 0.4, 0.6, 0.8]), dict(pass_zero=False, scale=False)),
+            ((57, [0.2, 0.4, 0.6, 0.8]), dict()),  # multiband filter
+            ((58, 0.1), dict(width=0.03)),  # low-pass
+            ((59, 0.1), dict(pass_zero=False)),  # high-pass
+        ],
+    )
     @testing.numpy_cupy_allclose(scipy_name="scp", atol=1e-14)
     def test_response(self, xp, scp, args, kwds):
         h = scp.signal.firwin(*args, **kwds)
         return h
 
-    @pytest.mark.parametrize("case", [
-        ([.5], True, (0, 1)),
-        ([0.2, .6], False, (.4, 1)),
-        ([.5], False, (1, 1)),
-    ])
+    @pytest.mark.parametrize(
+        "case",
+        [
+            ([0.5], True, (0, 1)),
+            ([0.2, 0.6], False, (0.4, 1)),
+            ([0.5], False, (1, 1)),
+        ],
+    )
     @testing.numpy_cupy_allclose(scipy_name="scp", atol=1e-14)
     def test_scaling(self, xp, scp, case):
         """
@@ -98,8 +109,9 @@ class TestFirwin:
     def test_bandstop_multi(self, xp, scp):
         width = 0.04
         ntaps, beta = scp.signal.kaiserord(120, width)
-        kwargs = dict(cutoff=[0.2, 0.5, 0.8], window=("kaiser", beta),
-                      scale=False)
+        kwargs = dict(
+            cutoff=[0.2, 0.5, 0.8], window=("kaiser", beta), scale=False
+        )
         taps = scp.signal.firwin(ntaps, **kwargs)
         return taps
 
@@ -126,14 +138,14 @@ class TestFirwin:
         """Test that attempt to create a highpass filter with an even number
         of taps raises a ValueError exception."""
         assert_raises(ValueError, signal.firwin, 40, 0.5, pass_zero=False)
-        assert_raises(ValueError, signal.firwin, 40, [.25, 0.5])
+        assert_raises(ValueError, signal.firwin, 40, [0.25, 0.5])
 
     def test_bad_pass_zero(self):
         """Test degenerate pass_zero cases."""
         with assert_raises(ValueError, match="pass_zero must be"):
             signal.firwin(41, 0.5, pass_zero="foo")
         with assert_raises(TypeError):
-            signal.firwin(41, 0.5, pass_zero=1.)
+            signal.firwin(41, 0.5, pass_zero=1.0)
         for pass_zero in ("lowpass", "highpass"):
             with assert_raises(ValueError, match="cutoff must have one"):
                 signal.firwin(41, [0.5, 0.6], pass_zero=pass_zero)
@@ -144,7 +156,6 @@ class TestFirwin:
 
 @testing.with_requires("scipy")
 class TestFirwin2:
-
     def test_invalid_args(self):
         # `freq` and `gain` have different lengths.
         with assert_raises(ValueError, match="must be of same length"):
@@ -154,11 +165,12 @@ class TestFirwin2:
             signal.firwin2(50, [0, 0.5, 1], [0.0, 1.0, 1.0], nfreqs=33)
         # Decreasing value in `freq`
         with assert_raises(ValueError, match="must be nondecreasing"):
-            signal.firwin2(50, [0, 0.5, 0.4, 1.0], [0, .25, .5, 1.0])
+            signal.firwin2(50, [0, 0.5, 0.4, 1.0], [0, 0.25, 0.5, 1.0])
         # Value in `freq` repeated more than once.
         with assert_raises(ValueError, match="must not occur more than twice"):
-            signal.firwin2(50, [0, .1, .1, .1, 1.0], [
-                           0.0, 0.5, 0.75, 1.0, 1.0])
+            signal.firwin2(
+                50, [0, 0.1, 0.1, 0.1, 1.0], [0.0, 0.5, 0.75, 1.0, 1.0]
+            )
         # `freq` does not start at 0.0.
         with assert_raises(ValueError, match="start with 0"):
             signal.firwin2(50, [0.5, 1.0], [0.0, 1.0])
@@ -172,11 +184,15 @@ class TestFirwin2:
         with assert_raises(ValueError, match="fs/2 must not be repeated"):
             signal.firwin2(50, [0.0, 0.5, 1.0, 1.0], [1.0, 1.0, 0.0, 0.0])
         # Value in `freq` that is too close to a repeated number
-        with assert_raises(ValueError, match="cannot contain numbers "
-                                             "that are too close"):
+        with assert_raises(
+            ValueError, match="cannot contain numbers " "that are too close"
+        ):
             eps = cupy.finfo(float).eps
-            signal.firwin2(50, [0.0, 0.5 - eps * 0.5, 0.5, 0.5, 1.0],
-                           [1.0, 1.0, 1.0, 0.0, 0.0])
+            signal.firwin2(
+                50,
+                [0.0, 0.5 - eps * 0.5, 0.5, 0.5, 1.0],
+                [1.0, 1.0, 1.0, 0.0, 0.0],
+            )
 
         # Type II filter, but the gain at nyquist frequency is not zero.
         with assert_raises(ValueError, match="Type II filter"):
@@ -184,19 +200,23 @@ class TestFirwin2:
 
         # Type III filter, but the gains at nyquist and zero rate are not zero.
         with assert_raises(ValueError, match="Type III filter"):
-            signal.firwin2(17, [0.0, 0.5, 1.0], [
-                           0.0, 1.0, 1.0], antisymmetric=True)
+            signal.firwin2(
+                17, [0.0, 0.5, 1.0], [0.0, 1.0, 1.0], antisymmetric=True
+            )
         with assert_raises(ValueError, match="Type III filter"):
-            signal.firwin2(17, [0.0, 0.5, 1.0], [
-                           1.0, 1.0, 0.0], antisymmetric=True)
+            signal.firwin2(
+                17, [0.0, 0.5, 1.0], [1.0, 1.0, 0.0], antisymmetric=True
+            )
         with assert_raises(ValueError, match="Type III filter"):
-            signal.firwin2(17, [0.0, 0.5, 1.0], [
-                           1.0, 1.0, 1.0], antisymmetric=True)
+            signal.firwin2(
+                17, [0.0, 0.5, 1.0], [1.0, 1.0, 1.0], antisymmetric=True
+            )
 
         # Type IV filter, but the gain at zero rate is not zero.
         with assert_raises(ValueError, match="Type IV filter"):
-            signal.firwin2(16, [0.0, 0.5, 1.0], [
-                           1.0, 1.0, 0.0], antisymmetric=True)
+            signal.firwin2(
+                16, [0.0, 0.5, 1.0], [1.0, 1.0, 0.0], antisymmetric=True
+            )
 
     @testing.numpy_cupy_allclose(scipy_name="scp")
     def test01(self, xp, scp):
@@ -249,7 +269,8 @@ class TestFirwin2:
         freq = xp.asarray([0.0, 1.0])
         gain = xp.asarray([0.0, 1.0])
         taps = scp.signal.firwin2(
-            ntaps, freq, gain, window=None, antisymmetric=True)
+            ntaps, freq, gain, window=None, antisymmetric=True
+        )
         return taps
 
     @testing.numpy_cupy_allclose(scipy_name="scp")
@@ -260,27 +281,35 @@ class TestFirwin2:
         freq = xp.asarray([0.0, 0.5, 0.55, 1.0])
         gain = xp.asarray([0.0, 0.5, 0.0, 0.0])
         taps = scp.signal.firwin2(
-            ntaps, freq, gain, window=None, antisymmetric=True)
+            ntaps, freq, gain, window=None, antisymmetric=True
+        )
         return taps
 
     @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_fs_nyq(self, xp, scp):
-        taps1 = scp.signal.firwin2(80,
-                                   xp.asarray([0.0, 0.5, 1.0]),
-                                   xp.asarray([1.0, 1.0, 0.0]))
-        taps2 = scp.signal.firwin2(80,
-                                   xp.asarray([0.0, 30.0, 60.0]),
-                                   xp.asarray([1.0, 1.0, 0.0]), fs=120.0)
+        taps1 = scp.signal.firwin2(
+            80, xp.asarray([0.0, 0.5, 1.0]), xp.asarray([1.0, 1.0, 0.0])
+        )
+        taps2 = scp.signal.firwin2(
+            80,
+            xp.asarray([0.0, 30.0, 60.0]),
+            xp.asarray([1.0, 1.0, 0.0]),
+            fs=120.0,
+        )
         return taps1, taps2
 
     @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_tuple(self, xp, scp):
-        taps1 = scp.signal.firwin2(150,
-                                   xp.asarray((0.0, 0.5, 0.5, 1.0)),
-                                   xp.asarray((1.0, 1.0, 0.0, 0.0)))
-        taps2 = scp.signal.firwin2(150,
-                                   xp.asarray([0.0, 0.5, 0.5, 1.0]),
-                                   xp.asarray([1.0, 1.0, 0.0, 0.0]))
+        taps1 = scp.signal.firwin2(
+            150,
+            xp.asarray((0.0, 0.5, 0.5, 1.0)),
+            xp.asarray((1.0, 1.0, 0.0, 0.0)),
+        )
+        taps2 = scp.signal.firwin2(
+            150,
+            xp.asarray([0.0, 0.5, 0.5, 1.0]),
+            xp.asarray([1.0, 1.0, 0.0, 0.0]),
+        )
         return taps1, taps2
 
     def test_input_modyfication(self):
@@ -292,7 +321,6 @@ class TestFirwin2:
 
 @testing.with_requires("scipy")
 class TestFirls:
-
     def test_bad_args(self):
         firls = signal.firls
 
@@ -314,12 +342,16 @@ class TestFirls:
         # negative weight
         # assert_raises(ValueError, firls, 11, [0.1, 0.2], [0, 0], [-1])
 
+    @pytest.mark.xfail(
+        platform.processor() == "aarch64",
+        reason="aarch64 scipy does not match cupy/x86 see Scipy #20160",
+    )
     @testing.numpy_cupy_allclose(scipy_name="scp", atol=1e-13)
     def test_firls(self, xp, scp):
         N = 11  # number of taps in the filter
         a = 0.1  # width of the transition band
         # design a halfband symmetric low-pass filter
-        h = scp.signal.firls(N, [0, a, 0.5-a, 0.5], [1, 1, 0, 0], fs=1.0)
+        h = scp.signal.firls(N, [0, a, 0.5 - a, 0.5], [1, 1, 0, 0], fs=1.0)
         return h
 
     @testing.numpy_cupy_allclose(scipy_name="scp")
@@ -329,7 +361,7 @@ class TestFirls:
 
         # design a halfband symmetric low-pass filter and check
         # the freq response
-        h = scp.signal.firls(N, [0, a, 0.5-a, 0.5], [1, 1, 0, 0], fs=1.0)
+        h = scp.signal.firls(N, [0, a, 0.5 - a, 0.5], [1, 1, 0, 0], fs=1.0)
         w, H = scp.signal.freqz(h, 1)
         return w, H
 
@@ -337,21 +369,24 @@ class TestFirls:
     def test_compare(self, xp, scp):
         # compare to OCTAVE output
         taps = scp.signal.firls(
-            9, [0, 0.5, 0.55, 1], [1, 1, 0, 0], weight=[1, 2])
+            9, [0, 0.5, 0.55, 1], [1, 1, 0, 0], weight=[1, 2]
+        )
         return taps
 
     @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_compare_2(self, xp, scp):
         # compare to MATLAB output
         taps = scp.signal.firls(
-            11, [0, 0.5, 0.5, 1], [1, 1, 0, 0], weight=[1, 2])
+            11, [0, 0.5, 0.5, 1], [1, 1, 0, 0], weight=[1, 2]
+        )
         return taps
 
     @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_compare_3(self, xp, scp):
         # With linear changes:
-        taps = scp.signal.firls(7, (0, 1, 2, 3, 4, 5), [
-                                1, 0, 0, 1, 1, 0], fs=20)
+        taps = scp.signal.firls(
+            7, (0, 1, 2, 3, 4, 5), [1, 0, 0, 1, 1, 0], fs=20
+        )
         return taps
 
     @pytest.mark.xfail(reason="https://github.com/scipy/scipy/issues/18533")
@@ -359,7 +394,7 @@ class TestFirls:
     def test_rank_deficient(self, xp, scp):
         # solve() runs but warns (only sometimes, so here we don't use match)
         x = scp.signal.firls(21, [0, 0.1, 0.9, 1], [1, 1, 0, 0])
-        w, h = scp.signal.freqz(x, fs=2.)
+        w, h = scp.signal.freqz(x, fs=2.0)
         return x, w, h
 
     @pytest.mark.xfail(reason="https://github.com/scipy/scipy/issues/18533")
@@ -369,36 +404,35 @@ class TestFirls:
         # filters, but using shorter ones is faster computationally and
         # the idea is the same)
         x = scp.signal.firls(101, [0, 0.01, 0.99, 1], [1, 1, 0, 0])
-        w, h = scp.signal.freqz(x, fs=2.)
+        w, h = scp.signal.freqz(x, fs=2.0)
         return x, w, h
 
     def test_rank_deficient_3(self):
         # the same test as in scipy.signal
         x = signal.firls(101, [0, 0.01, 0.99, 1], [1, 1, 0, 0])
-        w, h = signal.freqz(x, fs=2.)
+        w, h = signal.freqz(x, fs=2.0)
 
         mask = w < 0.01
         assert mask.sum() > 3
-        testing.assert_allclose(cupy.abs(h[mask]), 1., atol=1e-4)
+        testing.assert_allclose(cupy.abs(h[mask]), 1.0, atol=1e-4)
 
         mask = w > 0.99
         assert mask.sum() > 3
-        testing.assert_allclose(cupy.abs(h[mask]), 0., atol=1e-4)
+        testing.assert_allclose(cupy.abs(h[mask]), 0.0, atol=1e-4)
 
 
 @testing.with_requires("scipy")
 class TestMinimumPhase:
-
     def test_bad_args(self):
         # not enough taps
-        assert_raises(ValueError, signal.minimum_phase, cupy.array([1.]))
-        assert_raises(ValueError, signal.minimum_phase, cupy.array([1., 1.]))
+        assert_raises(ValueError, signal.minimum_phase, cupy.array([1.0]))
+        assert_raises(ValueError, signal.minimum_phase, cupy.array([1.0, 1.0]))
         assert_raises(ValueError, signal.minimum_phase, cupy.full(10, 1j))
-        assert_raises((AttributeError, ValueError),
-                      signal.minimum_phase, "foo")
+        assert_raises((AttributeError, ValueError), signal.minimum_phase, "foo")
         assert_raises(ValueError, signal.minimum_phase, cupy.ones(10), n_fft=8)
-        assert_raises(ValueError, signal.minimum_phase,
-                      cupy.ones(10), method="foo")
+        assert_raises(
+            ValueError, signal.minimum_phase, cupy.ones(10), method="foo"
+        )
 
     @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_homomorphic(self, xp, scp):
@@ -425,6 +459,7 @@ class TestMinimumPhase:
     def test_hilbert(self, xp, scp):  # , n):
         # example from the docstring of `scipy.signal.minimum_phase`
         from scipy.signal import remez
+
         h_linear = remez(151, [0, 0.2, 0.3, 1.0], [1, 0], fs=2)
 
         if xp == cupy:

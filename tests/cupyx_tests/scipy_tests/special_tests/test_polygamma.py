@@ -1,15 +1,16 @@
+import platform
 import unittest
 import warnings
 
 import numpy
+import pytest
 
-import cupyx.scipy.special  # NOQA
+import cupyx.scipy.special  # NOQA  # NOQA
 from cupy import testing
 
 
 @testing.with_requires("scipy")
 class TestPolygamma(unittest.TestCase):
-
     @testing.with_requires("scipy>=1.1.0")
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(atol=1e-5, scipy_name="scp")
@@ -39,9 +40,14 @@ class TestPolygamma(unittest.TestCase):
 
         # polygamma in scipy returns numpy.float64 value when inputs scalar.
         # whatever type input is.
-        return scp.special.polygamma(
-            dtype(2.), dtype(1.5)).astype(numpy.float32)
+        return scp.special.polygamma(dtype(2.0), dtype(1.5)).astype(
+            numpy.float32
+        )
 
+    @pytest.mark.xfail(
+        platform.processor() == "aarch64",
+        reason="aarch64 scipy does not match cupy/x86 see Scipy #20159",
+    )
     @testing.with_requires("scipy>=1.1.0")
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(atol=1e-2, rtol=1e-3, scipy_name="scp")
