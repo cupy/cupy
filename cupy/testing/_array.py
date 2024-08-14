@@ -4,7 +4,6 @@ import cupy
 
 # NumPy-like assertion functions that accept both NumPy and CuPy arrays
 
-
 def assert_allclose(actual, desired, rtol=1e-7, atol=0, err_msg="",
                     verbose=True):
     """Raises an AssertionError if objects are not equal up to desired tolerance.

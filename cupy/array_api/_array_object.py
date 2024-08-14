@@ -112,8 +112,7 @@ class Array:
             mid = str(self.shape)
         else:
             prefix = "Array("
-            mid = np.array2string(np.asnumpy(self._array),
-                                  separator=", ", prefix=prefix, suffix=suffix)
+            mid = np.array2string(np.asnumpy(self._array), separator=", ", prefix=prefix, suffix=suffix)
         return prefix + mid + suffix
 
     def __cupy_get_ndarray__(self):
@@ -135,14 +134,12 @@ class Array:
         """
 
         if self.dtype not in _dtype_categories[dtype_category]:
-            raise TypeError(
-                f"Only {dtype_category} dtypes are allowed in {op}")
+            raise TypeError(f"Only {dtype_category} dtypes are allowed in {op}")
         if isinstance(other, (int, float, bool)):
             other = self._promote_scalar(other)
         elif isinstance(other, Array):
             if other.dtype not in _dtype_categories[dtype_category]:
-                raise TypeError(
-                    f"Only {dtype_category} dtypes are allowed in {op}")
+                raise TypeError(f"Only {dtype_category} dtypes are allowed in {op}")
         else:
             return NotImplemented
 
@@ -432,8 +429,7 @@ class Array:
         """
         Performs the operation __and__.
         """
-        other = self._check_allowed_dtypes(
-            other, "integer or boolean", "__and__")
+        other = self._check_allowed_dtypes(other, "integer or boolean", "__and__")
         if other is NotImplemented:
             return other
         self, other = self._normalize_two_args(self, other)
@@ -444,8 +440,7 @@ class Array:
         self: Array, /, *, api_version: Optional[str] = None
     ) -> types.ModuleType:
         if api_version is not None and not api_version.startswith("2021."):
-            raise ValueError(
-                f"Unrecognized array API version: {api_version!r}")
+            raise ValueError(f"Unrecognized array API version: {api_version!r}")
         return array_api
 
     def __bool__(self: Array, /) -> bool:
@@ -472,8 +467,7 @@ class Array:
         """
         return self._array.__dlpack_device__()
 
-    # type: ignore
-    def __eq__(self: Array, other: Union[int, float, bool, Array], /) -> Array:
+    def __eq__(self: Array, other: Union[int, float, bool, Array], /) -> Array:  # type: ignore
         """
         Performs the operation __eq__.
         """
@@ -492,8 +486,7 @@ class Array:
         """
         # Note: This is an error here.
         if self._array.ndim != 0:
-            raise TypeError(
-                "float is only allowed on arrays with 0 dimensions")
+            raise TypeError("float is only allowed on arrays with 0 dimensions")
         if self.dtype not in _floating_dtypes:
             raise ValueError("float is only allowed on floating-point arrays")
         res = self._array.__float__()
@@ -524,8 +517,7 @@ class Array:
     def __getitem__(
         self: Array,
         key: Union[
-            int, slice, EllipsisType, Tuple[Union[int,
-                                                  slice, EllipsisType], ...], Array
+            int, slice, EllipsisType, Tuple[Union[int, slice, EllipsisType], ...], Array
         ],
         /,
     ) -> Array:
@@ -571,8 +563,7 @@ class Array:
         # TODO(leofang): just do this when CuPy is ready:
         # res = self._array.__index__()
         if self.ndim != 0 or self.dtype not in _integer_dtypes:
-            raise TypeError(
-                "only integer scalar arrays can be converted to a scalar index")
+            raise TypeError("only integer scalar arrays can be converted to a scalar index")
         return int(self._array)
 
     def __invert__(self: Array, /) -> Array:
@@ -580,8 +571,7 @@ class Array:
         Performs the operation __invert__.
         """
         if self.dtype not in _integer_or_boolean_dtypes:
-            raise TypeError(
-                "Only integer or boolean dtypes are allowed in __invert__")
+            raise TypeError("Only integer or boolean dtypes are allowed in __invert__")
         res = self._array.__invert__()
         return self.__class__._new(res)
 
@@ -652,8 +642,7 @@ class Array:
         res = self._array.__mul__(other._array)
         return self.__class__._new(res)
 
-    # type: ignore
-    def __ne__(self: Array, other: Union[int, float, bool, Array], /) -> Array:
+    def __ne__(self: Array, other: Union[int, float, bool, Array], /) -> Array:  # type: ignore
         """
         Performs the operation __ne__.
         """
@@ -677,8 +666,7 @@ class Array:
         """
         Performs the operation __or__.
         """
-        other = self._check_allowed_dtypes(
-            other, "integer or boolean", "__or__")
+        other = self._check_allowed_dtypes(other, "integer or boolean", "__or__")
         if other is NotImplemented:
             return other
         self, other = self._normalize_two_args(self, other)
@@ -723,8 +711,7 @@ class Array:
     def __setitem__(
         self,
         key: Union[
-            int, slice, EllipsisType, Tuple[Union[int,
-                                                  slice, EllipsisType], ...], Array
+            int, slice, EllipsisType, Tuple[Union[int, slice, EllipsisType], ...], Array
         ],
         value: Union[int, float, bool, Array],
         /,
@@ -757,8 +744,7 @@ class Array:
         """
         Performs the operation __truediv__.
         """
-        other = self._check_allowed_dtypes(
-            other, "floating-point", "__truediv__")
+        other = self._check_allowed_dtypes(other, "floating-point", "__truediv__")
         if other is NotImplemented:
             return other
         self, other = self._normalize_two_args(self, other)
@@ -769,8 +755,7 @@ class Array:
         """
         Performs the operation __xor__.
         """
-        other = self._check_allowed_dtypes(
-            other, "integer or boolean", "__xor__")
+        other = self._check_allowed_dtypes(other, "integer or boolean", "__xor__")
         if other is NotImplemented:
             return other
         self, other = self._normalize_two_args(self, other)
@@ -802,8 +787,7 @@ class Array:
         """
         Performs the operation __iand__.
         """
-        other = self._check_allowed_dtypes(
-            other, "integer or boolean", "__iand__")
+        other = self._check_allowed_dtypes(other, "integer or boolean", "__iand__")
         if other is NotImplemented:
             return other
         self._array.__iand__(other._array)
@@ -813,8 +797,7 @@ class Array:
         """
         Performs the operation __rand__.
         """
-        other = self._check_allowed_dtypes(
-            other, "integer or boolean", "__rand__")
+        other = self._check_allowed_dtypes(other, "integer or boolean", "__rand__")
         if other is NotImplemented:
             return other
         self, other = self._normalize_two_args(self, other)
@@ -943,8 +926,7 @@ class Array:
         """
         Performs the operation __ior__.
         """
-        other = self._check_allowed_dtypes(
-            other, "integer or boolean", "__ior__")
+        other = self._check_allowed_dtypes(other, "integer or boolean", "__ior__")
         if other is NotImplemented:
             return other
         self._array.__ior__(other._array)
@@ -954,8 +936,7 @@ class Array:
         """
         Performs the operation __ror__.
         """
-        other = self._check_allowed_dtypes(
-            other, "integer or boolean", "__ror__")
+        other = self._check_allowed_dtypes(other, "integer or boolean", "__ror__")
         if other is NotImplemented:
             return other
         self, other = self._normalize_two_args(self, other)
@@ -1031,8 +1012,7 @@ class Array:
         """
         Performs the operation __itruediv__.
         """
-        other = self._check_allowed_dtypes(
-            other, "floating-point", "__itruediv__")
+        other = self._check_allowed_dtypes(other, "floating-point", "__itruediv__")
         if other is NotImplemented:
             return other
         self._array.__itruediv__(other._array)
@@ -1042,8 +1022,7 @@ class Array:
         """
         Performs the operation __rtruediv__.
         """
-        other = self._check_allowed_dtypes(
-            other, "floating-point", "__rtruediv__")
+        other = self._check_allowed_dtypes(other, "floating-point", "__rtruediv__")
         if other is NotImplemented:
             return other
         self, other = self._normalize_two_args(self, other)
@@ -1054,8 +1033,7 @@ class Array:
         """
         Performs the operation __ixor__.
         """
-        other = self._check_allowed_dtypes(
-            other, "integer or boolean", "__ixor__")
+        other = self._check_allowed_dtypes(other, "integer or boolean", "__ixor__")
         if other is NotImplemented:
             return other
         self._array.__ixor__(other._array)
@@ -1065,8 +1043,7 @@ class Array:
         """
         Performs the operation __rxor__.
         """
-        other = self._check_allowed_dtypes(
-            other, "integer or boolean", "__rxor__")
+        other = self._check_allowed_dtypes(other, "integer or boolean", "__rxor__")
         if other is NotImplemented:
             return other
         self, other = self._normalize_two_args(self, other)
@@ -1158,6 +1135,5 @@ class Array:
         # note in the specification:
         # https://data-apis.org/array-api/latest/API_specification/array_object.html#t
         if self.ndim != 2:
-            raise ValueError(
-                "x.T requires x to have 2 dimensions. Use x.mT to transpose stacks of matrices and permute_dims() to permute dimensions.")
+            raise ValueError("x.T requires x to have 2 dimensions. Use x.mT to transpose stacks of matrices and permute_dims() to permute dimensions.")
         return self.__class__._new(self._array.T)

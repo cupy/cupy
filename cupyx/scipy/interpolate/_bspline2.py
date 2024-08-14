@@ -24,7 +24,6 @@ from cupyx.scipy.sparse.linalg import spsolve
 #  Interpolating spline helpers #
 #################################
 
-
 def _not_a_knot(x, k):
     """Given data x, construct the knot vector w/ not-a-knot BC.
     cf de Boor, XIII(12)."""
@@ -862,7 +861,7 @@ def make_lsq_spline(x, y, t, k=3, w=None, axis=0, check_finite=True, *,
         raise ValueError(
             f"Shapes of x {x.shape} and w {w.shape} are incompatible")
     if method != "qr":
-        raise ValueError(f"{method=} is not supported.")
+        raise ValueError(f"{method = } is not supported.")
     if any(x[1:] - x[:-1] < 0):
         raise ValueError("Expect x to be a 1D non-decreasing sequence.")
 
