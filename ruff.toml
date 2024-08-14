@@ -8,8 +8,9 @@ exclude = ["docs/source/*", "third_party/*"]
 
 [lint]
 extend-select = [
-  "I", # isort
-  "Q", # flake8-quotes
+  "I",      # isort
+  "Q",      # flake8-quotes
+  "TID252", # relative-imports
 ]
 ignore = [
   "E402", # module-import-not-at-top-of-file
