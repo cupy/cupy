@@ -428,7 +428,8 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         idx_is_sorted = cupy.all(idx[:-1] <= idx[1:])
         if not self.has_sorted_indices or idx_is_sorted:
             new = self.__class__(
-                _index._csr_col_index(self.data, self.indices, self.indptr, idx,N_org),
+                _index._csr_col_index(
+                    self.data, self.indices, self.indptr, idx, N_org),
                 shape=new_shape, copy=False)
             new.eliminate_zeros()
             return new

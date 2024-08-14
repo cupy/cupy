@@ -133,6 +133,7 @@ def _csr_row_index(Ax, Aj, Ap, rows):
     Bj, Bx = _csr_row_index_ker(out_rows, rows, Ap, Aj, Ax, Bp)
     return Bx, Bj, Bp
 
+
 _csr_col_index_ker = _core.ElementwiseKernel(
     'I Aj, T Ax, raw T mask, raw I new_idx',
     'I Bj, T Bx',
@@ -142,8 +143,9 @@ _csr_col_index_ker = _core.ElementwiseKernel(
 
     Bj = idx;
     Bx = Ax*mul;
-    ''','cupyx_scipy_sparse_csr_col_index_ker'
+    ''', 'cupyx_scipy_sparse_csr_col_index_ker'
 )
+
 
 def _csr_col_index(Ax, Aj, Ap, cols, n_cols):
     """Populate indices and data arrays from the given row index
@@ -161,8 +163,8 @@ def _csr_col_index(Ax, Aj, Ap, cols, n_cols):
     mask = cupy.zeros(n_cols, dtype=Ax.dtype)
     new_idx = cupy.zeros(n_cols, dtype=cupy.int32)
     mask[cols] = 1
-    new_idx[cols] = cupy.arange(cols.size,dtype=cupy.int32)
-    Bj, Bx = _csr_col_index_ker(Aj,Ax, mask, new_idx)
+    new_idx[cols] = cupy.arange(cols.size, dtype=cupy.int32)
+    Bj, Bx = _csr_col_index_ker(Aj, Ax, mask, new_idx)
     return Bx, Bj, Ap
 
 
