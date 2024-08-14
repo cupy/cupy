@@ -22,7 +22,7 @@ repos:
     -   id: autopep8
 
 -   repo: https://github.com/PyCQA/flake8
-    rev: 6.0.0
+    rev: 7.1.1
     hooks:
     # Python checks are ported to ruff
     -   id: flake8
