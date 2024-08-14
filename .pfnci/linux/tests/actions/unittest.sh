@@ -34,7 +34,7 @@ if [[ -f /opt/rocm/bin/rocm-smi ]]; then
     pytest_opts_str="${pytest_opts[@]}"
 
     # ROCm test script currently doesn't support running partial tests
-    timeout --signal INT --kill-after 60 18000 python3 "${ROCM_TEST_SCRIPT_DIR}/run_tests_rocm.py" --pytest-opts "${pytest_opts_str}" --all-tests || test_retval=$?
+    timeout --signal INT --kill-after 60 18000 python3 "${ROCM_TEST_SCRIPT_DIR}/run_tests_rocm.py" --pytest-opts "${pytest_opts_str} " --all-tests || test_retval=$?
 else
     timeout --signal INT --kill-after 60 18000 python3 -m pytest "${pytest_opts[@]}" "${PYTEST_FILES[@]}" || test_retval=$?
 fi
