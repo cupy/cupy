@@ -317,10 +317,9 @@ class TestFirls:
         # negative weight
         # assert_raises(ValueError, firls, 11, [0.1, 0.2], [0, 0], [-1])
 
-    # SciPy from conda-forge works, but from PyPI fails
-    @pytest.mark.skipif(
+    @pytest.mark.xfail(
         platform.processor() == "aarch64",
-        reason="aarch64 scipy is buggy")
+        reason="aarch64 scipy does not match cupy/x86 see Scipy #20160")
     @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-13)
     def test_firls(self, xp, scp):
         N = 11  # number of taps in the filter
