@@ -428,8 +428,7 @@ class TestMinimumPhase:
         assert_raises(ValueError, signal.minimum_phase, cupy.array([1.0]))
         assert_raises(ValueError, signal.minimum_phase, cupy.array([1.0, 1.0]))
         assert_raises(ValueError, signal.minimum_phase, cupy.full(10, 1j))
-        assert_raises((AttributeError, ValueError),
-                      signal.minimum_phase, "foo")
+        assert_raises((AttributeError, ValueError), signal.minimum_phase, "foo")
         assert_raises(ValueError, signal.minimum_phase, cupy.ones(10), n_fft=8)
         assert_raises(
             ValueError, signal.minimum_phase, cupy.ones(10), method="foo"
