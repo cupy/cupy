@@ -39,10 +39,10 @@ with reduce_stream:
 
 device.synchronize()
 elapsed_time = time.time() - start_time
-print('elapsed time', elapsed_time)
-print('total bytes', memory_pool.total_bytes())
+print("elapsed time", elapsed_time)
+print("total bytes", memory_pool.total_bytes())
 
 # Free all blocks in the memory pool of streams
 for stream in map_streams:
     memory_pool.free_all_blocks(stream=stream)
-print('total bytes', memory_pool.total_bytes())
+print("total bytes", memory_pool.total_bytes())

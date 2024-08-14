@@ -11,8 +11,8 @@ from cupy.testing import _condition
 
 
 @testing.parameterize(*testing.product({
-    'batched_gesv_limit': [None, 0],
-    'order': ['C', 'F'],
+    "batched_gesv_limit": [None, 0],
+    "order": ["C", "F"],
 }))
 @testing.fix_random()
 class TestSolve(unittest.TestCase):
@@ -26,7 +26,7 @@ class TestSolve(unittest.TestCase):
         if self.batched_gesv_limit is not None:
             set_batched_gesv_limit(self.old_limit)
 
-    @testing.for_dtypes('ifdFD')
+    @testing.for_dtypes("ifdFD")
     # TODO(kataoka): Fix contiguity
     @testing.numpy_cupy_allclose(atol=1e-3, contiguous_check=False)
     def check_x(self, a_shape, b_shape, xp, dtype):
@@ -78,13 +78,13 @@ class TestSolve(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    'a_shape': [(2, 3, 6), (3, 4, 4, 3)],
-    'axes': [None, (0, 2)],
+    "a_shape": [(2, 3, 6), (3, 4, 4, 3)],
+    "axes": [None, (0, 2)],
 }))
 @testing.fix_random()
 class TestTensorSolve(unittest.TestCase):
 
-    @testing.for_dtypes('ifdFD')
+    @testing.for_dtypes("ifdFD")
     @testing.numpy_cupy_allclose(atol=0.02)
     def test_tensorsolve(self, xp, dtype):
         a_shape = self.a_shape
@@ -95,11 +95,11 @@ class TestTensorSolve(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    'order': ['C', 'F'],
+    "order": ["C", "F"],
 }))
 class TestInv(unittest.TestCase):
 
-    @testing.for_dtypes('ifdFD')
+    @testing.for_dtypes("ifdFD")
     @_condition.retry(10)
     def check_x(self, a_shape, dtype):
         a_cpu = numpy.random.randint(0, 10, size=a_shape)
@@ -139,27 +139,27 @@ class TestInv(unittest.TestCase):
 
 class TestInvInvalid(unittest.TestCase):
 
-    @testing.for_dtypes('ifdFD')
+    @testing.for_dtypes("ifdFD")
     def test_inv(self, dtype):
         for xp in (numpy, cupy):
             a = xp.array([[1, 2], [2, 4]]).astype(dtype)
-            with cupyx.errstate(linalg='raise'):
+            with cupyx.errstate(linalg="raise"):
                 with pytest.raises(numpy.linalg.LinAlgError):
                     xp.linalg.inv(a)
 
-    @testing.for_dtypes('ifdFD')
+    @testing.for_dtypes("ifdFD")
     def test_batched_inv(self, dtype):
         for xp in (numpy, cupy):
             a = xp.array([[[1, 2], [2, 4]]]).astype(dtype)
             assert a.ndim >= 3  # CuPy internally uses a batched function.
-            with cupyx.errstate(linalg='raise'):
+            with cupyx.errstate(linalg="raise"):
                 with pytest.raises(numpy.linalg.LinAlgError):
                     xp.linalg.inv(a)
 
 
 class TestPinv(unittest.TestCase):
 
-    @testing.for_dtypes('ifdFD')
+    @testing.for_dtypes("ifdFD")
     @_condition.retry(10)
     def check_x(self, a_shape, rcond, dtype):
         a_gpu = testing.shaped_random(a_shape, dtype=dtype)
@@ -205,7 +205,7 @@ class TestPinv(unittest.TestCase):
 
 class TestLstsq:
 
-    @testing.for_dtypes('ifdFD')
+    @testing.for_dtypes("ifdFD")
     @testing.numpy_cupy_allclose(atol=1e-3)
     def check_lstsq_solution(self, a_shape, b_shape, seed, rcond, xp, dtype,
                              singular=False):
@@ -263,7 +263,7 @@ class TestLstsq:
     @pytest.mark.parametrize("rcond", [-1, None, 0.5])
     @pytest.mark.parametrize("k", [None, 0, 1, 4])
     @pytest.mark.parametrize(("i", "j"), [(0, 0), (3, 0), (0, 7)])
-    @testing.for_dtypes('ifdFD')
+    @testing.for_dtypes("ifdFD")
     @testing.numpy_cupy_allclose(rtol=1e-6)
     def test_lstsq_empty_matrix(self, xp, dtype, i, j, k, rcond):
         a = xp.empty((i, j), dtype)
@@ -292,7 +292,7 @@ class TestLstsq:
 
 class TestTensorInv(unittest.TestCase):
 
-    @testing.for_dtypes('ifdFD')
+    @testing.for_dtypes("ifdFD")
     @_condition.retry(10)
     def check_x(self, a_shape, ind, dtype):
         a_cpu = numpy.random.randint(0, 10, size=a_shape).astype(dtype)

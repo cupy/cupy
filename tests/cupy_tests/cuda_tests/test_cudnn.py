@@ -6,7 +6,7 @@ from cupy.cuda import cudnn
 cudnn_available = cudnn.available
 
 
-@unittest.skipUnless(cudnn_available, 'cuDNN is unavailable')
+@unittest.skipUnless(cudnn_available, "cuDNN is unavailable")
 class TestExceptionPicklable(unittest.TestCase):
 
     def test(self):

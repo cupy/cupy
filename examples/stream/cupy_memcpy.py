@@ -27,7 +27,7 @@ x_gpu_dst.set(x_cpu_src)
 x_cpu_dst = x_gpu_src.get()
 end = stream.record()
 
-print('Synchronous Device to Host / Host to Device (ms)')
+print("Synchronous Device to Host / Host to Device (ms)")
 print(cupy.cuda.get_elapsed_time(start, end))
 
 
@@ -47,5 +47,5 @@ with cupy.cuda.stream.Stream() as stream_htod:
     stream_htod.synchronize()
     end = stream_htod.record()
 
-print('Asynchronous Device to Host / Host to Device (ms)')
+print("Asynchronous Device to Host / Host to Device (ms)")
 print(cupy.cuda.get_elapsed_time(start, end))

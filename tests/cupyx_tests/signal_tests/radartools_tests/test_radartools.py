@@ -35,7 +35,7 @@ def _numpy_pulse_compression(x, t, normalize, window):
     fft_x = numpy.fft.fft(x, n)
     fft_t = numpy.fft.fft(t, n)
     out = numpy.fft.ifft(fft_x * fft_t.conj(), n)
-    if dtype.kind != 'c':
+    if dtype.kind != "c":
         out = out.real
     return out.astype(dtype)
 
@@ -48,9 +48,9 @@ tol = {
 }
 
 
-@pytest.mark.parametrize('normalize', [True, False])
-@pytest.mark.parametrize('window', [None, 'hamming', numpy.negative])
-@testing.for_dtypes('fdFD')
+@pytest.mark.parametrize("normalize", [True, False])
+@pytest.mark.parametrize("window", [None, "hamming", numpy.negative])
+@testing.for_dtypes("fdFD")
 @testing.numpy_cupy_allclose(rtol=tol, contiguous_check=False)
 def test_pulse_compression(xp, normalize, window, dtype):
     x = testing.shaped_random((8, 700), xp=xp, dtype=dtype)
@@ -63,8 +63,8 @@ def test_pulse_compression(xp, normalize, window, dtype):
         return _numpy_pulse_compression(x, template, normalize, window)
 
 
-@pytest.mark.parametrize('window', [None, 'hamming', numpy.negative])
-@testing.for_dtypes('fdFD')
+@pytest.mark.parametrize("window", [None, "hamming", numpy.negative])
+@testing.for_dtypes("fdFD")
 @testing.numpy_cupy_allclose(rtol=tol, contiguous_check=False)
 def test_pulse_doppler(xp, window, dtype):
     x = testing.shaped_random((8, 700), xp=xp, dtype=dtype)

@@ -7,7 +7,7 @@ from utils import benchmark, read_code
 
 import cupy as cp
 
-sgemm_file = os.path.join(os.path.dirname(__file__), 'sgemm.cu')
+sgemm_file = os.path.join(os.path.dirname(__file__), "sgemm.cu")
 
 
 def sgemm(A, B,
@@ -24,15 +24,15 @@ def sgemm(A, B,
     A = cp.asfortranarray(A)
     B = cp.asfortranarray(B)
 
-    C = cp.empty((m, n), dtype=cp.float32, order='F')
+    C = cp.empty((m, n), dtype=cp.float32, order="F")
 
-    config = {'DIM_X': dim_x, 'DIM_Y': dim_y,
-              'BLK_M': blk_m, 'BLK_N': blk_n, 'BLK_K': blk_k,
-              'DIM_XA': dim_xa, 'DIM_YA': dim_ya,
-              'DIM_XB': dim_xb, 'DIM_YB': dim_yb,
-              'THR_M': blk_m // dim_x, 'THR_N': blk_n // dim_y}
+    config = {"DIM_X": dim_x, "DIM_Y": dim_y,
+              "BLK_M": blk_m, "BLK_N": blk_n, "BLK_K": blk_k,
+              "DIM_XA": dim_xa, "DIM_YA": dim_ya,
+              "DIM_XB": dim_xb, "DIM_YB": dim_yb,
+              "THR_M": blk_m // dim_x, "THR_N": blk_n // dim_y}
     code = read_code(sgemm_file, params=config)
-    kern = cp.RawKernel(code, 'sgemm')
+    kern = cp.RawKernel(code, "sgemm")
 
     grid = (int(math.ceil(m / blk_m)), int(math.ceil(n / blk_n)), 1)
     block = (dim_x, dim_y, 1)
@@ -44,20 +44,20 @@ def sgemm(A, B,
 
 def main():
     parser = argparse.ArgumentParser(
-        description='SGEMM kernel call from CuPy')
-    parser.add_argument('--gpu', '-g', default=0, type=int,
-                        help='ID of GPU.')
+        description="SGEMM kernel call from CuPy")
+    parser.add_argument("--gpu", "-g", default=0, type=int,
+                        help="ID of GPU.")
     parser.add_argument(
-        '--m', type=int, default=np.random.randint(1000, 1500))
+        "--m", type=int, default=np.random.randint(1000, 1500))
     parser.add_argument(
-        '--n', type=int, default=np.random.randint(1000, 1500))
+        "--n", type=int, default=np.random.randint(1000, 1500))
     parser.add_argument(
-        '--k', type=int, default=np.random.randint(500, 3000))
+        "--k", type=int, default=np.random.randint(500, 3000))
     args = parser.parse_args()
 
-    print('m={} n={} k={}'.format(args.m, args.n, args.k))
-    print('start benchmarking')
-    print('')
+    print("m={} n={} k={}".format(args.m, args.n, args.k))
+    print("start benchmarking")
+    print("")
 
     with cp.cuda.Device(args.gpu):
         A = cp.random.uniform(
@@ -78,10 +78,10 @@ def main():
             cp.dot(A, B)
         cublas_times = benchmark(cp.dot, (A, B), n_run=5)
 
-    print('=============================Result===============================')
-    print('hand written kernel time {} ms'.format(np.mean(kernel_times)))
-    print('cuBLAS              time {} ms'.format(np.mean(cublas_times)))
+    print("=============================Result===============================")
+    print("hand written kernel time {} ms".format(np.mean(kernel_times)))
+    print("cuBLAS              time {} ms".format(np.mean(cublas_times)))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

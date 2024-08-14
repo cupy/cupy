@@ -18,16 +18,16 @@ import pytest
 padtype_options = ["mean", "median", "minimum", "maximum", "line"]
 
 _upfirdn_modes = [
-    'constant', 'wrap', 'edge', 'smooth', 'symmetric', 'reflect',
-    'antisymmetric', 'antireflect', 'line',
+    "constant", "wrap", "edge", "smooth", "symmetric", "reflect",
+    "antisymmetric", "antireflect", "line",
 ]
 
 padtype_options += _upfirdn_modes
 
 
-@testing.with_requires('scipy')
+@testing.with_requires("scipy")
 class TestResample:
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_basic(self, xp, scp):
         # Some basic tests
 
@@ -35,14 +35,14 @@ class TestResample:
         # window.shape must equal to sig.shape[0]
         sig = xp.arange(128)
         num = 256
-        win = scp.signal.get_window(('kaiser', 8.0), 160)
+        win = scp.signal.get_window(("kaiser", 8.0), 160)
 
         with pytest.raises(ValueError):
             scp.signal.resample(sig, num, window=win)
 
         # Other degenerate conditions
         with pytest.raises(ValueError):
-            scp.signal.resample_poly(sig, 'yo', 1)
+            scp.signal.resample_poly(sig, "yo", 1)
 
         with pytest.raises(ValueError):
             scp.signal.resample_poly(sig, 1, 0)
@@ -58,10 +58,10 @@ class TestResample:
         sig2 = xp.tile(xp.arange(160), (2, 1))
         return scp.signal.resample(sig2, num, axis=-1, window=win).copy()
 
-    @pytest.mark.parametrize('window', (None, 'hamming'))
-    @pytest.mark.parametrize('N', (20, 19))
-    @pytest.mark.parametrize('num', (100, 101, 10, 11))
-    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-7)
+    @pytest.mark.parametrize("window", (None, "hamming"))
+    @pytest.mark.parametrize("N", (20, 19))
+    @pytest.mark.parametrize("num", (100, 101, 10, 11))
+    @testing.numpy_cupy_allclose(scipy_name="scp", atol=1e-7)
     def test_rfft(self, N, num, window, xp, scp):
         # Make sure the speed up using rfft gives the same result as the normal
         # way using fft
@@ -82,27 +82,27 @@ class TestResample:
                 y_complex, num, axis=1, window=window).real.copy())
         return results
 
-    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-7)
+    @testing.numpy_cupy_allclose(scipy_name="scp", atol=1e-7)
     def test_input_domain(self, xp, scp):
         # Test if both input domain modes produce the same results.
         tsig = xp.arange(256) + 0j
         fsig = xp.fft.fft(tsig)
         num = 256
-        return (scp.signal.resample(fsig, num, domain='freq'),
-                scp.signal.resample(tsig, num, domain='time'))
+        return (scp.signal.resample(fsig, num, domain="freq"),
+                scp.signal.resample(tsig, num, domain="time"))
 
-    @pytest.mark.parametrize('nx', (1, 2, 3, 5, 8))
-    @pytest.mark.parametrize('ny', (1, 2, 3, 5, 8))
-    @pytest.mark.parametrize('dtype', ('float', 'complex'))
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @pytest.mark.parametrize("nx", (1, 2, 3, 5, 8))
+    @pytest.mark.parametrize("ny", (1, 2, 3, 5, 8))
+    @pytest.mark.parametrize("dtype", ("float", "complex"))
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_dc(self, nx, ny, dtype, xp, scp):
         x = xp.array([1] * nx, dtype)
         y = scp.signal.resample(x, ny)
         return y.copy()
 
-    @pytest.mark.parametrize('padtype', padtype_options)
-    @testing.numpy_cupy_allclose(scipy_name='scp')
-    @pytest.mark.skip(reason='cval and mode is not supported on upfirdn')
+    @pytest.mark.parametrize("padtype", padtype_options)
+    @testing.numpy_cupy_allclose(scipy_name="scp")
+    @pytest.mark.skip(reason="cval and mode is not supported on upfirdn")
     def test_mutable_window(self, padtype, xp, scp):
         # Test that a mutable window is not modified
         impulse = xp.zeros(3)
@@ -111,9 +111,9 @@ class TestResample:
         # assert_array_equal(window, window_orig)
         return window
 
-    @pytest.mark.parametrize('padtype', padtype_options)
-    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-5, rtol=1e-5)
-    @pytest.mark.skip(reason='cval and mode is not supported on upfirdn')
+    @pytest.mark.parametrize("padtype", padtype_options)
+    @testing.numpy_cupy_allclose(scipy_name="scp", atol=1e-5, rtol=1e-5)
+    @pytest.mark.skip(reason="cval and mode is not supported on upfirdn")
     def test_output_float32(self, padtype, xp, scp):
         # Test that float32 inputs yield a float32 output
         x = xp.arange(10, dtype=xp.float32)
@@ -121,10 +121,10 @@ class TestResample:
         y = scp.signal.resample_poly(x, 1, 2, window=h, padtype=padtype)
         return y
 
-    @pytest.mark.parametrize('padtype', padtype_options)
-    @pytest.mark.parametrize('dtype', [cupy.float32, cupy.float64])
-    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-5, rtol=1e-5)
-    @pytest.mark.skip(reason='cval and mode is not supported on upfirdn')
+    @pytest.mark.parametrize("padtype", padtype_options)
+    @pytest.mark.parametrize("dtype", [cupy.float32, cupy.float64])
+    @testing.numpy_cupy_allclose(scipy_name="scp", atol=1e-5, rtol=1e-5)
+    @pytest.mark.skip(reason="cval and mode is not supported on upfirdn")
     def test_output_match_dtype(self, padtype, dtype, xp, scp):
         # Test that the dtype of x is preserved per issue #14733
         x = xp.arange(10, dtype=dtype)
@@ -141,7 +141,7 @@ class TestResample:
         #     )
         # ),
     )
-    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-7)
+    @testing.numpy_cupy_allclose(scipy_name="scp", atol=1e-7)
     def test_resample_methods(self, method, ext, padtype, xp, scp):
         # Test resampling of sinusoids and random noise (1-sec)
         rate = 100
@@ -154,7 +154,7 @@ class TestResample:
         results = []
 
         for rate_to in rates_to:
-            if method == 'fft':
+            if method == "fft":
                 y_resamps = scp.signal.resample(x, rate_to, axis=-1)
             else:
                 if ext and rate_to != rate:
@@ -166,10 +166,10 @@ class TestResample:
                     f_c = 1. / max_rate
                     half_len = 10 * max_rate
                     window = scp.signal.firwin(
-                        2 * half_len + 1, f_c, window=('kaiser', 5.0))
-                    polyargs = {'window': window, 'padtype': padtype}
+                        2 * half_len + 1, f_c, window=("kaiser", 5.0))
+                    polyargs = {"window": window, "padtype": padtype}
                 else:
-                    polyargs = {'padtype': padtype}
+                    polyargs = {"padtype": padtype}
 
                 y_resamps = scp.signal.resample_poly(
                     x, rate_to, rate, axis=-1, **polyargs)
@@ -177,7 +177,7 @@ class TestResample:
             results.append(y_resamps.copy())
 
         # More tests of fft method (Master 0.18.1 fails these)
-        if method == 'fft':
+        if method == "fft":
             x1 = xp.array([1.+0.j, 0.+0.j])
             y1_test = scp.signal.resample(x1, 4)
             x2 = xp.array([1., 0.5, 0., 0.5])
@@ -187,7 +187,7 @@ class TestResample:
 
         return results
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_poly_vs_filtfilt(self, xp, scp):
         # Check that up=1.0 gives same answer as filtfilt + slicing
         # random_state = xp.random.RandomState(17)
@@ -209,7 +209,7 @@ class TestResample:
             x[-1] = 0
 
             for down in down_factors:
-                h = scp.signal.firwin(31, 1. / down, window='hamming')
+                h = scp.signal.firwin(31, 1. / down, window="hamming")
 
                 # Need to pass convolved version of filter to resample_poly,
                 # since filtfilt does forward and backward, but resample_poly
@@ -219,7 +219,7 @@ class TestResample:
                 results.append(y)
         return results
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_correlate1d(self, xp, scp):
         results = []
         for down in [2, 4]:
@@ -234,9 +234,9 @@ class TestResample:
         return results
 
 
-@testing.with_requires('scipy')
+@testing.with_requires("scipy")
 class TestDecimate:
-    @pytest.mark.parametrize('mod', [(cupy, cupyx.scipy), (np, scipy)])
+    @pytest.mark.parametrize("mod", [(cupy, cupyx.scipy), (np, scipy)])
     def test_bad_args(self, mod):
         xp, scp = mod
         x = xp.arange(12)
@@ -247,21 +247,21 @@ class TestDecimate:
         with pytest.raises(TypeError):
             scp.signal.decimate(x, q=2, n=0.5)
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_basic_IIR(self, xp, scp):
         x = xp.arange(12)
         y = scp.signal.decimate(
-            x, 2, n=1, ftype='iir', zero_phase=False).round()
+            x, 2, n=1, ftype="iir", zero_phase=False).round()
         return y
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_basic_FIR(self, xp, scp):
         x = xp.arange(12)
         y = scp.signal.decimate(
-            x, 2, n=1, ftype='fir', zero_phase=False).round()
+            x, 2, n=1, ftype="fir", zero_phase=False).round()
         return y
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_shape(self, xp, scp):
         # Regression test for ticket #1480.
         z = xp.zeros((30, 30))
@@ -269,23 +269,23 @@ class TestDecimate:
         d1 = scp.signal.decimate(z, 2, axis=1, zero_phase=False)
         return d0, d1
 
-    @pytest.mark.xfail(reason='Sometimes it fails depending on hardware')
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @pytest.mark.xfail(reason="Sometimes it fails depending on hardware")
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_phaseshift_FIR(self, xp, scp):
-        return self._test_phaseshift(xp, scp, method='fir', zero_phase=False)
+        return self._test_phaseshift(xp, scp, method="fir", zero_phase=False)
 
-    @pytest.mark.xfail(reason='Sometimes it fails depending on hardware')
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @pytest.mark.xfail(reason="Sometimes it fails depending on hardware")
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_zero_phase_FIR(self, xp, scp):
-        return self._test_phaseshift(xp, scp, method='fir', zero_phase=True)
+        return self._test_phaseshift(xp, scp, method="fir", zero_phase=True)
 
-    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-4, rtol=1e-4)
+    @testing.numpy_cupy_allclose(scipy_name="scp", atol=1e-4, rtol=1e-4)
     def test_phaseshift_IIR(self, xp, scp):
-        return self._test_phaseshift(xp, scp, method='iir', zero_phase=False)
+        return self._test_phaseshift(xp, scp, method="iir", zero_phase=False)
 
-    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-4, rtol=1e-4)
+    @testing.numpy_cupy_allclose(scipy_name="scp", atol=1e-4, rtol=1e-4)
     def test_zero_phase_IIR(self, xp, scp):
-        return self._test_phaseshift(xp, scp, method='iir', zero_phase=True)
+        return self._test_phaseshift(xp, scp, method="iir", zero_phase=True)
 
     def _test_phaseshift(self, xp, scp, method, zero_phase):
         rate = 120
@@ -307,11 +307,11 @@ class TestDecimate:
                      * scp.signal.windows.tukey(t_to.size, 0.1))
 
             # Set up downsampling filters, match v0.17 defaults
-            if method == 'fir':
+            if method == "fir":
                 n = 30
                 system = scp.signal.dlti(
-                    scp.signal.firwin(n + 1, 1. / q, window='hamming'), 1.)
-            elif method == 'iir':
+                    scp.signal.firwin(n + 1, 1. / q, window="hamming"), 1.)
+            elif method == "iir":
                 n = 8
                 wc = 0.8*xp.pi/q
                 system = scp.signal.dlti(*scp.signal.cheby1(n, 0.05, wc/xp.pi))
@@ -333,7 +333,7 @@ class TestDecimate:
             h_resamps /= xp.abs(h_resamps)
         return results
 
-    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-7)
+    @testing.numpy_cupy_allclose(scipy_name="scp", atol=1e-7)
     def test_auto_n(self, xp, scp):
         # Test that our value of n is a reasonable choice (depends on
         # the downsampling factor)
@@ -342,27 +342,27 @@ class TestDecimate:
         t = xp.arange(n) / sfreq
         # will alias for decimations (>= 15)
         x = xp.sqrt(2. / n) * xp.sin(2 * xp.pi * (sfreq / 30.) * t)
-        x_out = scp.signal.decimate(x, 30, ftype='fir')
+        x_out = scp.signal.decimate(x, 30, ftype="fir")
         return x_out
 
-    @testing.with_requires('scipy>=1.10')
-    @testing.numpy_cupy_allclose(scipy_name='scp', atol=5e-5, rtol=5e-5)
+    @testing.with_requires("scipy>=1.10")
+    @testing.numpy_cupy_allclose(scipy_name="scp", atol=5e-5, rtol=5e-5)
     def test_long_float32(self, xp, scp):
         # regression: gh-15072.  With 32-bit float and either lfilter
         # or filtfilt, this is numerically unstable
         x = scp.signal.decimate(xp.ones(10_000, dtype=np.float32), 10)
         return x
 
-    @testing.with_requires('scipy>=1.10')
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.with_requires("scipy>=1.10")
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_float16_upcast(self, xp, scp):
         # float16 must be upcast to float64
         x = scp.signal.decimate(xp.ones(100, dtype=xp.float16), 10)
         return x
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     @pytest.mark.skip(
-        reason='zpk2tf is returning real outputs instead of complex ones')
+        reason="zpk2tf is returning real outputs instead of complex ones")
     def test_complex_iir_dlti(self, xp, scp):
         # regression: gh-17845
         # centre frequency for filter [Hz]
@@ -373,7 +373,7 @@ class TestDecimate:
         fs = 1e3
 
         z, p, k = scp.signal.butter(
-            2, 2 * xp.pi * fwidth / 2, output='zpk', fs=fs)
+            2, 2 * xp.pi * fwidth / 2, output="zpk", fs=fs)
         z = z.astype(complex) * xp.exp(2j * xp.pi * fcentre / fs)
         p = p.astype(complex) * xp.exp(2j * xp.pi * fcentre / fs)
         system = scp.signal.dlti(z, p, k)
@@ -388,8 +388,8 @@ class TestDecimate:
         yzp = scp.signal.decimate(u, 2, ftype=system, zero_phase=True)
         return ynzp, yzp
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
-    @pytest.mark.skip(reason='roots does not support non-symmetric inputs')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
+    @pytest.mark.skip(reason="roots does not support non-symmetric inputs")
     def test_complex_fir_dlti(self, xp, scp):
         # centre frequency for filter [Hz]
         fcentre = 50

@@ -36,9 +36,9 @@ __device__ double expi(T x) {
 """
 
 expi = _core.create_ufunc(
-    'cupyx_scipy_special_expi',
-    ('f->f', 'd->d'),
-    'out0 = expi(in0)',
+    "cupyx_scipy_special_expi",
+    ("f->f", "d->d"),
+    "out0 = expi(in0)",
     preamble=math_constants_and_eul + exp1_definition + expi_definition,
     doc="""Exponential integral Ei.
 

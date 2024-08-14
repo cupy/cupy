@@ -1,4 +1,4 @@
-__all__ = ['RegularGridInterpolator', 'interpn']
+__all__ = ["RegularGridInterpolator", "interpn"]
 
 import itertools
 
@@ -199,7 +199,7 @@ class RegularGridInterpolator:
     # this class is based on code originally programmed by Johannes Buchner,
     # see https://github.com/JohannesBuchner/regulargrid
 
-    _SPLINE_DEGREE_MAP = {"slinear": 1, "cubic": 3, "quintic": 5, 'pchip': 3,
+    _SPLINE_DEGREE_MAP = {"slinear": 1, "cubic": 3, "quintic": 5, "pchip": 3,
                           "slinear_legacy": 1, "cubic_legacy": 3,
                           "quintic_legacy": 5, }
     _SPLINE_METHODS_recursive = {"slinear_legacy", "cubic_legacy",
@@ -256,9 +256,9 @@ class RegularGridInterpolator:
     def _check_fill_value(self, values, fill_value):
         if fill_value is not None:
             fill_value_dtype = cp.asarray(fill_value).dtype
-            if (hasattr(values, 'dtype') and
+            if (hasattr(values, "dtype") and
                 not cp.can_cast(fill_value_dtype, values.dtype,
-                                casting='same_kind')):
+                                casting="same_kind")):
                 raise ValueError("fill_value must be either 'None' or "
                                  "of a type compatible with values")
         return fill_value
@@ -438,7 +438,7 @@ class RegularGridInterpolator:
         axx = axes[:n][::-1] + axes[n:]
         values = self.values.transpose(axx)
 
-        if method == 'pchip':
+        if method == "pchip":
             _eval_func = self._do_pchip
         else:
             _eval_func = self._do_spline_fit

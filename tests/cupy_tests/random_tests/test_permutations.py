@@ -9,8 +9,8 @@ from cupy.testing import _condition
 
 
 @testing.parameterize(
-    {'seed': None},
-    {'seed': 0},
+    {"seed": None},
+    {"seed": 0},
 )
 class TestPermutations(unittest.TestCase):
 
@@ -23,7 +23,7 @@ class TestPermutations(unittest.TestCase):
     # Test ranks
 
     # TODO(niboshi): Fix xfail
-    @pytest.mark.xfail(reason='Explicit error types required')
+    @pytest.mark.xfail(reason="Explicit error types required")
     def test_permutation_zero_dim(self):
         for xp in (numpy, cupy):
             xp_random = self._xp_random(xp)
@@ -110,7 +110,7 @@ class TestShuffle(unittest.TestCase):
 
 
 @testing.parameterize(*(testing.product({
-    'num': [0, 1, 100, 1000, 10000, 100000],
+    "num": [0, 1, 100, 1000, 10000, 100000],
 })))
 class TestPermutationSoundness(unittest.TestCase):
 
@@ -126,9 +126,9 @@ class TestPermutationSoundness(unittest.TestCase):
 
 
 @testing.parameterize(*(testing.product({
-    'offset': [0, 17, 34, 51],
-    'gap': [1, 2, 3, 5, 7],
-    'mask': [1, 2, 4, 8, 16, 32, 64, 128],
+    "offset": [0, 17, 34, 51],
+    "gap": [1, 2, 3, 5, 7],
+    "mask": [1, 2, 4, 8, 16, 32, 64, 128],
 })))
 class TestPermutationRandomness(unittest.TestCase):
 

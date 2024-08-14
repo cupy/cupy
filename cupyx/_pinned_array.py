@@ -15,7 +15,7 @@ def _update_shape(a, shape):
     return shape
 
 
-def empty_pinned(shape, dtype=float, order='C'):
+def empty_pinned(shape, dtype=float, order="C"):
     """Returns a new, uninitialized NumPy array with the given shape
     and dtype.
 
@@ -41,7 +41,7 @@ def empty_pinned(shape, dtype=float, order='C'):
     return out
 
 
-def empty_like_pinned(a, dtype=None, order='K', subok=None, shape=None):
+def empty_like_pinned(a, dtype=None, order="K", subok=None, shape=None):
     """Returns a new, uninitialized NumPy array with the same shape and dtype
     as those of the given array.
 
@@ -72,7 +72,7 @@ def empty_like_pinned(a, dtype=None, order='K', subok=None, shape=None):
     # We're kinda duplicating the code here because order='K' needs special
     # treatment: strides need to be computed
     if subok is not None:
-        raise TypeError('subok is not supported yet')
+        raise TypeError("subok is not supported yet")
     if dtype is None:
         dtype = a.dtype
     shape = _update_shape(a, shape)
@@ -85,7 +85,7 @@ def empty_like_pinned(a, dtype=None, order='K', subok=None, shape=None):
     return out
 
 
-def zeros_pinned(shape, dtype=float, order='C'):
+def zeros_pinned(shape, dtype=float, order="C"):
     """Returns a new, zero-initialized NumPy array with the given shape
     and dtype.
 
@@ -105,11 +105,11 @@ def zeros_pinned(shape, dtype=float, order='C'):
 
     """
     out = empty_pinned(shape, dtype, order)
-    numpy.copyto(out, 0, casting='unsafe')
+    numpy.copyto(out, 0, casting="unsafe")
     return out
 
 
-def zeros_like_pinned(a, dtype=None, order='K', subok=None, shape=None):
+def zeros_like_pinned(a, dtype=None, order="K", subok=None, shape=None):
     """Returns a new, zero-initialized NumPy array with the same shape and dtype
     as those of the given array.
 
@@ -137,5 +137,5 @@ def zeros_like_pinned(a, dtype=None, order='K', subok=None, shape=None):
 
     """  # NOQA
     out = empty_like_pinned(a, dtype, order, subok, shape)
-    numpy.copyto(out, 0, casting='unsafe')
+    numpy.copyto(out, 0, casting="unsafe")
     return out

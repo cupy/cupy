@@ -9,7 +9,7 @@
 from cupy import _core
 from cupyx.scipy.special._gamma import gamma_definition
 
-polevl_definition = '''
+polevl_definition = """
 
 __device__ double polevl(double x, double coef[], int N)
 {
@@ -23,10 +23,10 @@ __device__ double polevl(double x, double coef[], int N)
     return ans;
 }
 
-'''
+"""
 
 
-expn_large_n_definition = '''
+expn_large_n_definition = """
 
 __constant__ double EUL = 0.57721566490153286060;
 __constant__ double BIG = 1.44115188075855872E+17;
@@ -201,14 +201,14 @@ __device__ double expn_large_n(int n, double x)
     return expfac*res;
 }
 
-'''
+"""
 
 
 expn_definition = (
     polevl_definition
     + gamma_definition
     + expn_large_n_definition
-    + '''
+    + """
 
 // include for CUDART_NAN, CUDART_INF
 #include <cupy/math_constants.h>
@@ -326,14 +326,14 @@ __device__ double expn(int n, double x)
     return (ans);
 }
 
-'''
+"""
 )
 
 
 expn = _core.create_ufunc(
-    'cupyx_scipy_special_expn',
-    ('ff->f', 'dd->d'),
-    'out0 = expn(in0, in1)',
+    "cupyx_scipy_special_expn",
+    ("ff->f", "dd->d"),
+    "out0 = expn(in0, in1)",
     preamble=expn_definition,
     doc="""Generalized exponential integral En.
 

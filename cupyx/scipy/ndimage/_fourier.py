@@ -19,10 +19,10 @@ def _get_output_fourier(output, input, complex_only=False):
             output = cupy.empty(input.shape, dtype=types[-1])
     elif type(output) is type:
         if output not in types:
-            raise RuntimeError('output type not supported')
+            raise RuntimeError("output type not supported")
         output = cupy.empty(input.shape, dtype=output)
     elif output.shape != input.shape:
-        raise RuntimeError('output shape not correct')
+        raise RuntimeError("output shape not correct")
     return output
 
 
@@ -59,7 +59,7 @@ def fourier_gaussian(input, sigma, n=-1, axis=-1, output=None):
     ndim = input.ndim
     output = _get_output_fourier(output, input)
     axis = internal._normalize_axis_index(axis, ndim)
-    sigmas = _util._fix_sequence_arg(sigma, ndim, 'sigma')
+    sigmas = _util._fix_sequence_arg(sigma, ndim, "sigma")
 
     _core.elementwise_copy(input, output)
     for ax, (sigmak, ax_size) in enumerate(zip(sigmas, output.shape)):
@@ -111,7 +111,7 @@ def fourier_uniform(input, size, n=-1, axis=-1, output=None):
     ndim = input.ndim
     output = _get_output_fourier(output, input)
     axis = internal._normalize_axis_index(axis, ndim)
-    sizes = _util._fix_sequence_arg(size, ndim, 'size')
+    sizes = _util._fix_sequence_arg(size, ndim, "size")
 
     _core.elementwise_copy(input, output)
     for ax, (size, ax_size) in enumerate(zip(sizes, output.shape)):
@@ -162,7 +162,7 @@ def fourier_shift(input, shift, n=-1, axis=-1, output=None):
     ndim = input.ndim
     output = _get_output_fourier(output, input, complex_only=True)
     axis = internal._normalize_axis_index(axis, ndim)
-    shifts = _util._fix_sequence_arg(shift, ndim, 'shift')
+    shifts = _util._fix_sequence_arg(shift, ndim, "shift")
 
     _core.elementwise_copy(input, output)
     for ax, (shiftk, ax_size) in enumerate(zip(shifts, output.shape)):
@@ -215,10 +215,10 @@ def fourier_ellipsoid(input, size, n=-1, axis=-1, output=None):
     if ndim > 3:
         # Note: SciPy currently does not do any filtering on >=4d inputs, but
         #       does not warn about this!
-        raise NotImplementedError('Only 1d, 2d and 3d inputs are supported')
+        raise NotImplementedError("Only 1d, 2d and 3d inputs are supported")
     output = _get_output_fourier(output, input)
     axis = internal._normalize_axis_index(axis, ndim)
-    sizes = _util._fix_sequence_arg(size, ndim, 'size')
+    sizes = _util._fix_sequence_arg(size, ndim, "size")
 
     _core.elementwise_copy(input, output)
 

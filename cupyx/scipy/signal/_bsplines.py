@@ -56,9 +56,9 @@ def sepfir2d(input, hrow, hcol):
     .. seealso:: :func:`scipy.signal.sepfir2d`
     """
     if any(x.ndim != 1 or x.size % 2 == 0 for x in (hrow, hcol)):
-        raise ValueError('hrow and hcol must be 1 dimensional and odd length')
+        raise ValueError("hrow and hcol must be 1 dimensional and odd length")
     dtype = input.dtype
-    if dtype.kind == 'c':
+    if dtype.kind == "c":
         dtype = cupy.complex64 if dtype == cupy.complex64 else cupy.complex128
     elif dtype == cupy.float32 or dtype.itemsize <= 2:
         dtype = cupy.float32
@@ -69,7 +69,7 @@ def sepfir2d(input, hrow, hcol):
     hcol = hcol.astype(dtype, copy=False)
     filters = (hcol[::-1].conj(), hrow[::-1].conj())
     return cupyx.scipy.ndimage._filters._run_1d_correlates(
-        input, (0, 1), lambda i: filters[i], None, 'reflect', 0)
+        input, (0, 1), lambda i: filters[i], None, "reflect", 0)
 
 
 def _quadratic(x):
@@ -496,7 +496,7 @@ def qspline2d(signal, lamb=0.0, precision=-1.0):
     """
 
     if lamb > 0:
-        raise ValueError('lambda must be negative or zero')
+        raise ValueError("lambda must be negative or zero")
 
     # normal quadratic spline
     r = -3 + 2 * np.sqrt(2.0)
@@ -526,15 +526,15 @@ def spline_filter(Iin, lmbda=5.0):
 
     """
     intype = Iin.dtype.char
-    hcol = cupy.asarray([1.0, 4.0, 1.0], 'f') / 6.0
-    if intype in ['F', 'D']:
-        Iin = Iin.astype('F')
+    hcol = cupy.asarray([1.0, 4.0, 1.0], "f") / 6.0
+    if intype in ["F", "D"]:
+        Iin = Iin.astype("F")
         ckr = cspline2d(Iin.real, lmbda)
         cki = cspline2d(Iin.imag, lmbda)
         outr = sepfir2d(ckr, hcol, hcol)
         outi = sepfir2d(cki, hcol, hcol)
         out = (outr + 1j * outi).astype(intype)
-    elif intype in ['f', 'd']:
+    elif intype in ["f", "d"]:
         ckr = cspline2d(Iin, lmbda)
         out = sepfir2d(ckr, hcol, hcol)
         out = out.astype(intype)

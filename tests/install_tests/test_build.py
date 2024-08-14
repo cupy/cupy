@@ -6,18 +6,18 @@ import pytest
 from cupy_builder import install_build as build
 from cupy_builder._context import Context
 
-test_hip = bool(int(os.environ.get('CUPY_INSTALL_USE_HIP', '0')))
+test_hip = bool(int(os.environ.get("CUPY_INSTALL_USE_HIP", "0")))
 
 
 class TestCheckVersion(unittest.TestCase):
 
     def setUp(self):
-        ctx = Context('.', _env={}, _argv=[])
+        ctx = Context(".", _env={}, _argv=[])
         self.compiler = ccompiler.new_compiler()
         sysconfig.customize_compiler(self.compiler)
         self.settings = build.get_compiler_setting(ctx, False)
 
-    @pytest.mark.skipif(not test_hip, reason='For ROCm/HIP environment')
+    @pytest.mark.skipif(not test_hip, reason="For ROCm/HIP environment")
     def test_check_hip_version(self):
         with self.assertRaises(RuntimeError):
             build.get_hip_version()
@@ -27,7 +27,7 @@ class TestCheckVersion(unittest.TestCase):
         assert isinstance(build.get_hip_version(True), str)
 
     @pytest.mark.skipif(test_hip,
-                        reason='ROCm/HIP DNN support is not ready')
+                        reason="ROCm/HIP DNN support is not ready")
     def test_check_cudnn_version(self):
         with self.assertRaises(RuntimeError):
             build.get_cudnn_version()

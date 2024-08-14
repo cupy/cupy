@@ -242,13 +242,13 @@ class TestLp2bs_zpk:
 @testing.with_requires("scipy >= 1.8.0")
 class TestZpk2Sos:
 
-    @pytest.mark.parametrize('dt', 'fdFD')
-    @pytest.mark.parametrize('pairing, analog',
-                             [('nearest', False),
-                              ('keep_odd', False),
-                              ('minimal', False),
-                              ('minimal', True)])
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @pytest.mark.parametrize("dt", "fdFD")
+    @pytest.mark.parametrize("pairing, analog",
+                             [("nearest", False),
+                              ("keep_odd", False),
+                              ("minimal", False),
+                              ("minimal", True)])
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_dtypes(self, dt, pairing, analog, xp, scp):
         z = xp.array([-1, -1]).astype(dt)
         ct = dt.upper()  # the poles have to be complex
@@ -257,7 +257,7 @@ class TestZpk2Sos:
         sos = scp.signal.zpk2sos(z, p, k, pairing=pairing, analog=analog)
         return sos
 
-    @pytest.mark.parametrize('case', [
+    @pytest.mark.parametrize("case", [
         # (z, p, k)
         # cases that match octave
         ([-1, -1], [0.57149 + 0.29360j, 0.57149 - 0.29360j], 1),
@@ -278,8 +278,8 @@ class TestZpk2Sos:
         ([], [0.2, -0.5+0.25j, -0.5-0.25j], 1.),
 
     ])
-    @pytest.mark.parametrize('pairing', ['nearest', 'keep_odd'])
-    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-12)
+    @pytest.mark.parametrize("pairing", ["nearest", "keep_odd"])
+    @testing.numpy_cupy_allclose(scipy_name="scp", atol=1e-12)
     def test_basic(self, case, pairing, xp, scp):
         z, p, k = case
         z = xp.asarray(z)
@@ -287,7 +287,7 @@ class TestZpk2Sos:
         sos = scp.signal.zpk2sos(z, p, k, pairing=pairing)
         return sos
 
-    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-12)
+    @testing.numpy_cupy_allclose(scipy_name="scp", atol=1e-12)
     def test_basic_2(self, xp, scp):
         # The next two examples are adapted from Leland B. Jackson,
         # "Digital Filters and Signal Processing (1995) p.400:
@@ -312,8 +312,8 @@ class TestZpk2Sos:
 
         return sos_1, sos_2
 
-    @pytest.mark.parametrize('pairing', ['nearest', 'keep_odd', 'minimal'])
-    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-12)
+    @pytest.mark.parametrize("pairing", ["nearest", "keep_odd", "minimal"])
+    @testing.numpy_cupy_allclose(scipy_name="scp", atol=1e-12)
     def test_pairing(self, pairing, xp, scp):
         # these examples are taken from the docstring, and show the
         # effect of the 'pairing' argument
@@ -322,42 +322,42 @@ class TestZpk2Sos:
         sos2 = scp.signal.zpk2sos(z1, p1, 1, pairing=pairing)
         return sos2
 
-    @pytest.mark.parametrize('p',
+    @pytest.mark.parametrize("p",
                              [[-1, 1, -0.1, 0.1],
                               [-0.7071+0.7071j, -0.7071-0.7071j, -0.1j, 0.1j],
                               ])
-    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-12)
+    @testing.numpy_cupy_allclose(scipy_name="scp", atol=1e-12)
     def test_analog(self, p, xp, scp):
         # test `analog` argument
         # for discrete time, poles closest to unit circle should appear last
         # for cont. time, poles closest to imaginary axis should appear last
         p = xp.asarray(p)
-        sos2_dt = scp.signal.zpk2sos([], p, 1, pairing='minimal', analog=False)
-        sos2_ct = scp.signal.zpk2sos([], p, 1, pairing='minimal', analog=True)
+        sos2_dt = scp.signal.zpk2sos([], p, 1, pairing="minimal", analog=False)
+        sos2_ct = scp.signal.zpk2sos([], p, 1, pairing="minimal", analog=True)
         return sos2_dt, sos2_ct
 
     def test_bad_args(self):
-        with pytest.raises(ValueError, match=r'pairing must be one of'):
+        with pytest.raises(ValueError, match=r"pairing must be one of"):
             signal.zpk2sos(cupy.array([1]), cupy.array(
-                [2]), 1, pairing='no_such_pairing')
+                [2]), 1, pairing="no_such_pairing")
 
         with pytest.raises(ValueError, match=r'.*pairing must be "minimal"'):
             signal.zpk2sos(cupy.array([1]), cupy.array(
-                [2]), 1, pairing='keep_odd', analog=True)
+                [2]), 1, pairing="keep_odd", analog=True)
 
         with pytest.raises(ValueError,
-                           match=r'.*must have len\(p\)>=len\(z\)'):
+                           match=r".*must have len\(p\)>=len\(z\)"):
             signal.zpk2sos(cupy.array([1, 1]), cupy.array([2]), 1, analog=True)
 
-        with pytest.raises(ValueError, match=r'k must be real'):
+        with pytest.raises(ValueError, match=r"k must be real"):
             signal.zpk2sos(cupy.array([1]), cupy.array([2]), k=1j)
 
 
 @testing.with_requires("scipy")
 class TestTf2zpk:
 
-    @pytest.mark.parametrize('dt', ('float64', 'complex128'))
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @pytest.mark.parametrize("dt", ("float64", "complex128"))
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_simple(self, xp, scp, dt):
         z_r = xp.array([0.5, -0.5])
         p_r = xp.array([1.j / sqrt(2), -1.j / sqrt(2)])
@@ -374,7 +374,7 @@ class TestTf2zpk:
 @testing.with_requires("scipy")
 class TestSS2TF:
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_basic(self, xp, scp):
         # Test a round trip through tf2ss and ss2tf.
         b = xp.array([1.0, 3.0, 5.0])
@@ -383,7 +383,7 @@ class TestSS2TF:
         A, B, C, D = scp.signal.tf2ss(b, a)
         return A, B, C, D
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_basic_2(self, xp, scp):
         b = xp.array([1.0, 3.0, 5.0])
         a = xp.array([1.0, 2.0, 3.0])
@@ -392,14 +392,14 @@ class TestSS2TF:
         bb, aa = scp.signal.ss2tf(A, B, C, D)
         return bb, aa
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_zero_order_round_trip(self, xp, scp):
         # See gh-5760
         tf = (2, 1)
         A, B, C, D = scp.signal.tf2ss(*tf)
         return A, B, C, D
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_zero_order_round_trip_2(self, xp, scp):
         tf = (2, 1)
         A, B, C, D = scp.signal.tf2ss(*tf)
@@ -407,13 +407,13 @@ class TestSS2TF:
         num, den = scp.signal.ss2tf(A, B, C, D)
         return num, den
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_zero_order_round_trip_3(self, xp, scp):
         tf = (xp.asarray([[5], [2]]), 1)
         A, B, C, D = scp.signal.tf2ss(*tf)
         return A, B, C, D
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_zero_order_round_trip_4(self, xp, scp):
         tf = (xp.asarray([[5], [2]]), 1)
         A, B, C, D = scp.signal.tf2ss(*tf)
@@ -421,24 +421,24 @@ class TestSS2TF:
         num, den = scp.signal.ss2tf(A, B, C, D)
         return num, den
 
-    @pytest.mark.parametrize('tf',
+    @pytest.mark.parametrize("tf",
                              [([[1, 2], [1, 1]], [1, 2]),
                               ([[1, 0, 1], [1, 1, 1]], [1, 1, 1]),
                                  ([[1, 2, 3], [1, 2, 3]], [1, 2, 3, 4]),
                               ])
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_simo_round_trip(self, xp, scp, tf):
         # See gh-5753
         tf = tuple(xp.asarray(x) for x in tf)
         A, B, C, D = scp.signal.tf2ss(*tf)
         return A, B, C, D
 
-    @pytest.mark.parametrize('tf',
+    @pytest.mark.parametrize("tf",
                              [([[1, 2], [1, 1]], [1, 2]),
                               ([[1, 0, 1], [1, 1, 1]], [1, 1, 1]),
                                  ([[1, 2, 3], [1, 2, 3]], [1, 2, 3, 4]),
                               ])
-    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-14)
+    @testing.numpy_cupy_allclose(scipy_name="scp", atol=1e-14)
     def test_simo_round_trip_2(self, xp, scp, tf):
         tf = tuple(xp.asarray(x) for x in tf)
         A, B, C, D = scp.signal.tf2ss(*tf)
@@ -446,7 +446,7 @@ class TestSS2TF:
         num, den = scp.signal.ss2tf(A, B, C, D)
         return num, den
 
-    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-14)
+    @testing.numpy_cupy_allclose(scipy_name="scp", atol=1e-14)
     def test_all_int_arrays(self, xp, scp):
         A = xp.asarray([[0, 1, 0], [0, 0, 1], [-3, -4, -2]])
         B = xp.asarray([[0], [0], [1]])
@@ -455,7 +455,7 @@ class TestSS2TF:
         num, den = scp.signal.ss2tf(A, B, C, D)
         return num, den
 
-    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-14)
+    @testing.numpy_cupy_allclose(scipy_name="scp", atol=1e-14)
     def test_multioutput(self, xp, scp):
         # Regression test for gh-2669.
 
@@ -485,17 +485,17 @@ class TestSS2TF:
         return b_all, a
 
 
-@testing.with_requires('scipy')
+@testing.with_requires("scipy")
 class TestSos2Zpk:
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_basic(self, xp, scp):
         sos = xp.asarray([[1, 0, 1, 1, 0, -0.81],
                           [1, 0, 0, 1, 0, +0.49]])
         z, p, k = scp.signal.sos2zpk(sos)
         return z, p, k
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_basic_2(self, xp, scp):
         sos = [[1.00000, +0.61803, 1.0000, 1.00000, +0.60515, 0.95873],
                [1.00000, -1.61803, 1.0000, 1.00000, -1.58430, 0.95873],
@@ -504,24 +504,24 @@ class TestSos2Zpk:
         z, p, k = scp.signal.sos2zpk(sos)
         return z, p, k
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_basic_3(self, xp, scp):
         sos = xp.array([[1, 2, 3, 1, 0.2, 0.3],
                         [4, 5, 6, 1, 0.4, 0.5]])
         z2, p2, k2 = scp.signal.sos2zpk(sos)
         return z2, p2, k2
 
-    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-14)
+    @testing.numpy_cupy_allclose(scipy_name="scp", atol=1e-14)
     def test_fewer_zeros(self, xp, scp):
         """Test not the expected number of p/z (effectively at origin)."""
-        sos = scp.signal.butter(3, 0.1, output='sos')
+        sos = scp.signal.butter(3, 0.1, output="sos")
         z, p, k = scp.signal.sos2zpk(sos)
         return z, p, k
 
     def test_fewer_zeros_2(self):
-        sos = signal.butter(12, [5., 30.], 'bandpass', fs=1200., analog=False,
-                            output='sos')
-        with pytest.warns(signal.BadCoefficients, match='Badly conditioned'):
+        sos = signal.butter(12, [5., 30.], "bandpass", fs=1200., analog=False,
+                            output="sos")
+        with pytest.warns(signal.BadCoefficients, match="Badly conditioned"):
             z, p, k = signal.sos2zpk(sos)
 
         assert len(z) == 24
@@ -531,7 +531,7 @@ class TestSos2Zpk:
 @testing.with_requires("scipy")
 class TestSos2Tf:
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_basic(self, xp, scp):
         sos = xp.array([[1, 1, 1, 1, 0, -1],
                         [-2, 3, 1, 1, 10, 1]])

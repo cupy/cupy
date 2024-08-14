@@ -21,13 +21,13 @@ def _gen_array(dtype):
     elif dtype == cupy.bool_:
         array = cupy.random.randint(0, 2, size=(2, 3)).astype(cupy.bool_)
     else:
-        assert False, f'unrecognized dtype: {dtype}'
+        assert False, f"unrecognized dtype: {dtype}"
     return array
 
 
 class TestDLPackConversion(unittest.TestCase):
 
-    @pytest.mark.filterwarnings('ignore::DeprecationWarning')
+    @pytest.mark.filterwarnings("ignore::DeprecationWarning")
     @testing.for_all_dtypes(no_bool=False)
     def test_conversion(self, dtype):
         orig_array = _gen_array(dtype)
@@ -38,7 +38,7 @@ class TestDLPackConversion(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    'memory': ('device', 'managed')
+    "memory": ("device", "managed")
 }))
 class TestNewDLPackConversion(unittest.TestCase):
 
@@ -46,9 +46,9 @@ class TestNewDLPackConversion(unittest.TestCase):
     new_pool = None
 
     def setUp(self):
-        if self.memory == 'managed':
+        if self.memory == "managed":
             if cuda.runtime.is_hip:
-                pytest.skip('HIP does not support managed memory')
+                pytest.skip("HIP does not support managed memory")
             self.old_pool = cupy.get_default_memory_pool()
             self.new_pool = cuda.MemoryPool(cuda.malloc_managed)
             cuda.set_allocator(self.new_pool.malloc)
@@ -58,9 +58,9 @@ class TestNewDLPackConversion(unittest.TestCase):
             cuda.set_allocator(self.old_pool.malloc)
 
     def _get_stream(self, stream_name):
-        if stream_name == 'null':
+        if stream_name == "null":
             return cuda.Stream.null
-        elif stream_name == 'ptds':
+        elif stream_name == "ptds":
             return cuda.Stream.ptds
         else:
             return cuda.Stream()
@@ -74,9 +74,9 @@ class TestNewDLPackConversion(unittest.TestCase):
             orig_array.data.ptr, out_array.data.ptr)
 
     def test_stream(self):
-        allowed_streams = ['null', True]
+        allowed_streams = ["null", True]
         if not cuda.runtime.is_hip:
-            allowed_streams.append('ptds')
+            allowed_streams.append("ptds")
 
         # stream order is automatically established via DLPack protocol
         for src_s in [self._get_stream(s) for s in allowed_streams]:
@@ -115,21 +115,21 @@ class TestDLTensorMemory(unittest.TestCase):
         array = cupy.empty(10)
         tensor = array.toDlpack()
         # str(tensor): <capsule object "dltensor" at 0x7f7c4c835330>
-        assert "\"dltensor\"" in str(tensor)
+        assert '"dltensor"' in str(tensor)
         assert self.pool.n_free_blocks() == 0
         del array
         assert self.pool.n_free_blocks() == 0
         del tensor
         assert self.pool.n_free_blocks() == 1
 
-    @pytest.mark.filterwarnings('ignore::DeprecationWarning')
+    @pytest.mark.filterwarnings("ignore::DeprecationWarning")
     def test_deleter2(self):
         # memory is freed when array2 is deleted, as tensor is consumed
         array = cupy.empty(10)
         tensor = array.toDlpack()
-        assert "\"dltensor\"" in str(tensor)
+        assert '"dltensor"' in str(tensor)
         array2 = cupy.fromDlpack(tensor)
-        assert "\"used_dltensor\"" in str(tensor)
+        assert '"used_dltensor"' in str(tensor)
         assert self.pool.n_free_blocks() == 0
         del array
         assert self.pool.n_free_blocks() == 0
@@ -138,7 +138,7 @@ class TestDLTensorMemory(unittest.TestCase):
         del tensor
         assert self.pool.n_free_blocks() == 1
 
-    @pytest.mark.filterwarnings('ignore::DeprecationWarning')
+    @pytest.mark.filterwarnings("ignore::DeprecationWarning")
     def test_multiple_consumption_error(self):
         # Prevent segfault, see #3611
         array = cupy.empty(10)
@@ -146,4 +146,4 @@ class TestDLTensorMemory(unittest.TestCase):
         array2 = cupy.fromDlpack(tensor)  # noqa
         with pytest.raises(ValueError) as e:
             array3 = cupy.fromDlpack(tensor)  # noqa
-        assert 'consumed multiple times' in str(e.value)
+        assert "consumed multiple times" in str(e.value)

@@ -40,27 +40,27 @@ def compile_device_code(
     - list of compiled object files for device code ("*.o")
     """
     sources_cu, sources_cpp = filter_files_by_extension(
-        ext.sources, '.cu')
+        ext.sources, ".cu")
     if len(sources_cu) == 0:
         # No device code used in this extension.
         return ext.sources, []
 
-    if sys.platform == 'win32':
+    if sys.platform == "win32":
         compiler = DeviceCompilerWin32(ctx)
     else:
         compiler = DeviceCompilerUnix(ctx)
 
     objects = []
     for src in sources_cu:
-        print(f'{ext.name}: Device code: {src}')
-        obj_ext = 'obj' if sys.platform == 'win32' else 'o'
+        print(f"{ext.name}: Device code: {src}")
+        obj_ext = "obj" if sys.platform == "win32" else "o"
         # TODO(kmaehashi): embed CUDA version in path
-        obj = f'build/temp.device_objects/{src}.{obj_ext}'
+        obj = f"build/temp.device_objects/{src}.{obj_ext}"
         if os.path.exists(obj) and (_get_timestamp(src) < _get_timestamp(obj)):
-            print(f'{ext.name}: Reusing cached object file: {obj}')
+            print(f"{ext.name}: Reusing cached object file: {obj}")
         else:
             os.makedirs(os.path.dirname(obj), exist_ok=True)
-            print(f'{ext.name}: Building: {obj}')
+            print(f"{ext.name}: Building: {obj}")
             compiler.compile(obj, src, ext)
         objects.append(obj)
 
@@ -73,20 +73,20 @@ def _get_timestamp(path: str) -> float:
 
 
 def dumpbin_dependents(dumpbin: str, path: str) -> List[str]:
-    args = [dumpbin, '/nologo', '/dependents', path]
+    args = [dumpbin, "/nologo", "/dependents", path]
     try:
         p = subprocess.run(args, stdout=subprocess.PIPE)
     except FileNotFoundError:
-        print(f'*** DUMPBIN not found: {args}')
+        print(f"*** DUMPBIN not found: {args}")
         return []
     if p.returncode != 0:
-        print(f'*** DUMPBIN failed ({p.returncode}): {args}')
+        print(f"*** DUMPBIN failed ({p.returncode}): {args}")
         return []
-    sections = p.stdout.decode().split('\r\n\r\n')
+    sections = p.stdout.decode().split("\r\n\r\n")
     for num, section in enumerate(sections):
-        if 'Image has the following dependencies:' in section:
+        if "Image has the following dependencies:" in section:
             return [line.strip() for line in sections[num+1].splitlines()]
-    print(f'*** DUMPBIN output could not be parsed: {args}')
+    print(f"*** DUMPBIN output could not be parsed: {args}")
     return []
 
 
@@ -101,10 +101,10 @@ class custom_build_ext(setuptools.command.build_ext.build_ext):
 
         ctx = cupy_builder.get_context()
         compiler_directives = {
-            'linetrace': ctx.linetrace,
-            'profile': ctx.profile,
+            "linetrace": ctx.linetrace,
+            "profile": ctx.profile,
             # Embed signatures for Sphinx documentation.
-            'embedsignature': True,
+            "embedsignature": True,
         }
 
         # Compile-time constants to be used in Cython code
@@ -113,27 +113,27 @@ class custom_build_ext(setuptools.command.build_ext.build_ext):
         # Enable CUDA Python.
         # TODO: add `cuda` to `setup_requires` only when this flag is set
         use_cuda_python = ctx.use_cuda_python
-        compile_time_env['CUPY_USE_CUDA_PYTHON'] = use_cuda_python
+        compile_time_env["CUPY_USE_CUDA_PYTHON"] = use_cuda_python
         if use_cuda_python:
-            print('Using CUDA Python')
+            print("Using CUDA Python")
 
-        compile_time_env['CUPY_CUFFT_STATIC'] = False
-        compile_time_env['CUPY_CYTHON_VERSION'] = Cython.__version__
+        compile_time_env["CUPY_CUFFT_STATIC"] = False
+        compile_time_env["CUPY_CYTHON_VERSION"] = Cython.__version__
         if ctx.use_stub:  # on RTD
-            compile_time_env['CUPY_CUDA_VERSION'] = 0
-            compile_time_env['CUPY_HIP_VERSION'] = 0
+            compile_time_env["CUPY_CUDA_VERSION"] = 0
+            compile_time_env["CUPY_HIP_VERSION"] = 0
         elif ctx.use_hip:  # on ROCm/HIP
-            compile_time_env['CUPY_CUDA_VERSION'] = 0
-            compile_time_env['CUPY_HIP_VERSION'] = build.get_hip_version()
+            compile_time_env["CUPY_CUDA_VERSION"] = 0
+            compile_time_env["CUPY_HIP_VERSION"] = build.get_hip_version()
         else:  # on CUDA
-            compile_time_env['CUPY_CUDA_VERSION'] = (
-                ctx.features['cuda'].get_version())
-            compile_time_env['CUPY_HIP_VERSION'] = 0
+            compile_time_env["CUPY_CUDA_VERSION"] = (
+                ctx.features["cuda"].get_version())
+            compile_time_env["CUPY_HIP_VERSION"] = 0
 
-        print('Compile-time constants: ' +
+        print("Compile-time constants: " +
               json.dumps(compile_time_env, indent=4))
 
-        if sys.platform == 'win32':
+        if sys.platform == "win32":
             # Disable multiprocessing on Windows (spawn)
             nthreads = 0
 
@@ -143,10 +143,10 @@ class custom_build_ext(setuptools.command.build_ext.build_ext):
             compile_time_env=compile_time_env)
 
     def build_extensions(self) -> None:
-        num_jobs = int(os.environ.get('CUPY_NUM_BUILD_JOBS', '4'))
+        num_jobs = int(os.environ.get("CUPY_NUM_BUILD_JOBS", "4"))
         if num_jobs > 1:
             self.parallel = num_jobs
-            if hasattr(self.compiler, 'initialize'):
+            if hasattr(self.compiler, "initialize"):
                 # Workarounds a bug in setuptools/distutils on Windows by
                 # initializing the compiler before starting a thread.
                 # By default, MSVCCompiler performs initialization in the
@@ -157,30 +157,30 @@ class custom_build_ext(setuptools.command.build_ext.build_ext):
                 self.compiler.initialize()
 
         # Compile "*.pyx" files into "*.cpp" files.
-        print('Cythonizing...')
+        print("Cythonizing...")
         self._cythonize(num_jobs)
 
         # Change an extension in each source filenames from "*.pyx" to "*.cpp".
         # c.f. `Cython.Distutils.old_build_ext`
         for ext in self.extensions:
             sources_pyx, sources_others = filter_files_by_extension(
-                ext.sources, '.pyx')
-            sources_cpp = ['{}.cpp'.format(os.path.splitext(src)[0])
+                ext.sources, ".pyx")
+            sources_cpp = ["{}.cpp".format(os.path.splitext(src)[0])
                            for src in sources_pyx]
             ext.sources = sources_cpp + sources_others
             for src in ext.sources:
                 if not os.path.isfile(src):
-                    raise RuntimeError(f'Fatal error: missing file: {src}')
+                    raise RuntimeError(f"Fatal error: missing file: {src}")
 
-        print('Building extensions...')
+        print("Building extensions...")
         super().build_extensions()
 
-        if sys.platform == 'win32':
-            print('Generating DLL dependency list...')
+        if sys.platform == "win32":
+            print("Generating DLL dependency list...")
 
             # Find "dumpbin.exe" next to "lib.exe".
             dumpbin = os.path.join(
-                os.path.dirname(self.compiler.lib), 'dumpbin.exe')
+                os.path.dirname(self.compiler.lib), "dumpbin.exe")
 
             # Save list of dependent DLLs for all extension modules.
             depends = sorted(set(sum([
@@ -188,10 +188,10 @@ class custom_build_ext(setuptools.command.build_ext.build_ext):
             ], [])))
 
             depends_json = os.path.join(
-                self.build_lib, 'cupy', '.data', '_depends.json')
+                self.build_lib, "cupy", ".data", "_depends.json")
             os.makedirs(os.path.dirname(depends_json), exist_ok=True)
-            with open(depends_json, 'w') as f:
-                json.dump({'depends': depends}, f)
+            with open(depends_json, "w") as f:
+                json.dump({"depends": depends}, f)
 
     def build_extension(self, ext: setuptools.Extension) -> None:
         ctx = cupy_builder.get_context()

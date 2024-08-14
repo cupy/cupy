@@ -14,11 +14,11 @@ class _Backend(abc.ABC):
             self._store = _store.TCPStore(n_devices)
 
     @abc.abstractmethod
-    def all_reduce(self, in_array, out_array, op='sum', stream=None):
+    def all_reduce(self, in_array, out_array, op="sum", stream=None):
         pass
 
     @abc.abstractmethod
-    def reduce(self, in_array, out_array, root=0, op='sum', stream=None):
+    def reduce(self, in_array, out_array, root=0, op="sum", stream=None):
         pass
 
     @abc.abstractmethod
@@ -27,7 +27,7 @@ class _Backend(abc.ABC):
 
     @abc.abstractmethod
     def reduce_scatter(
-            self, in_array, out_array, count, op='sum', stream=None):
+            self, in_array, out_array, count, op="sum", stream=None):
         pass
 
     @abc.abstractmethod

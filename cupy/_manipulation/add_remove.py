@@ -89,9 +89,9 @@ def append(arr, values, axis=None):
 
 
 _resize_kernel = _core.ElementwiseKernel(
-    'raw T x, int64 size', 'T y',
-    'y = x[i % size]',
-    'cupy_resize',
+    "raw T x, int64 size", "T y",
+    "y = x[i % size]",
+    "cupy_resize",
 )
 
 
@@ -126,17 +126,17 @@ def resize(a, new_shape):
 
 
 _first_nonzero_krnl = _core.ReductionKernel(
-    'T data, int64 len',
-    'int64 y',
-    'data == T(0) ? len : _j',
-    'min(a, b)',
-    'y = a',
-    'len',
-    'first_nonzero'
+    "T data, int64 len",
+    "int64 y",
+    "data == T(0) ? len : _j",
+    "min(a, b)",
+    "y = a",
+    "len",
+    "first_nonzero"
 )
 
 
-def trim_zeros(filt, trim='fb'):
+def trim_zeros(filt, trim="fb"):
     """Trim the leading and/or trailing zeros from a 1-D array or sequence.
 
     Returns the trimmed array
@@ -155,15 +155,15 @@ def trim_zeros(filt, trim='fb'):
 
     """
     if filt.ndim > 1:
-        raise ValueError('Multi-dimensional trim is not supported')
+        raise ValueError("Multi-dimensional trim is not supported")
     if not filt.ndim:
-        raise TypeError('0-d array cannot be trimmed')
+        raise TypeError("0-d array cannot be trimmed")
     start = 0
     end = filt.size
     trim = trim.upper()
-    if 'F' in trim:
+    if "F" in trim:
         start = _first_nonzero_krnl(filt, filt.size).item()
-    if 'B' in trim:
+    if "B" in trim:
         end = filt.size - _first_nonzero_krnl(filt[::-1], filt.size).item()
     return filt[start:end]
 
@@ -253,7 +253,7 @@ def unique(ar, return_index=False, return_inverse=False,
 
     def compare_axis_elems(idx1, idx2):
         left, right = ar_cmp[idx1], ar_cmp[idx2]
-        comp = cupy.trim_zeros(left - right, 'f')
+        comp = cupy.trim_zeros(left - right, "f")
         if comp.shape[0] > 0:
             diff = comp[0]
             if is_complex and cupy.isnan(diff):

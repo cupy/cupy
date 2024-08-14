@@ -4,7 +4,7 @@ import numpy
 
 import cupy
 
-code = '''
+code = """
 template<typename T>
 struct Matrix {
     T value[4][4];
@@ -51,19 +51,19 @@ __global__ void kernel(const Matrix<T>* A,
   int i = threadIdx.x;
   out[i] = A[i] * B[i] + C;
 }
-'''
+"""
 
 
 def main():
     N = 8
-    module = cupy.RawModule(code=code, options=('-std=c++11',),
-                            name_expressions=('kernel<float>',
-                                              'kernel<double>'))
+    module = cupy.RawModule(code=code, options=("-std=c++11",),
+                            name_expressions=("kernel<float>",
+                                              "kernel<double>"))
 
     # The kernel computes out = A*B+C where A, B and C are 4x4 matrices.
     # A and B are arrays of N such matrices and C is a matrix kernel parameter.
 
-    for (ctype, dtype) in zip(('float', 'double'),
+    for (ctype, dtype) in zip(("float", "double"),
                               (numpy.float32, numpy.float64)):
 
         A = cupy.random.rand(16*N, dtype=dtype).reshape(N, 4, 4)
@@ -73,12 +73,12 @@ def main():
 
         Matrix = numpy.dtype(
             {
-                'names': ['value'],
-                'formats': [(dtype, (4, 4))]
+                "names": ["value"],
+                "formats": [(dtype, (4, 4))]
             }
         )
 
-        kernel = module.get_function('kernel<{}>'.format(ctype))
+        kernel = module.get_function("kernel<{}>".format(ctype))
         args = (A, B, C.ravel().view(Matrix), out)
         kernel((1,), (N,), args)
 
@@ -89,5 +89,5 @@ def main():
               "type '{}'.".format(ctype))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     sys.exit(main())

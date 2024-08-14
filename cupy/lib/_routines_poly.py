@@ -18,8 +18,8 @@ def _wraps_polyroutine(func):
             x = cupy.atleast_1d(x)
             if x.ndim == 1:
                 return x
-            raise ValueError('Multidimensional inputs are not supported')
-        raise TypeError('Unsupported type')
+            raise ValueError("Multidimensional inputs are not supported")
+        raise TypeError("Unsupported type")
 
     def wrapper(*args):
         coeffs = [_get_coeffs(x) for x in args]
@@ -58,13 +58,13 @@ def poly(seq_of_zeros):
         if cupy.array_equal(x, x.conj().T):
             x = cupy.linalg.eigvalsh(x)
         else:
-            raise NotImplementedError('Only complex Hermitian and real '
-                                      'symmetric 2d arrays are supported '
-                                      'currently')
+            raise NotImplementedError("Only complex Hermitian and real "
+                                      "symmetric 2d arrays are supported "
+                                      "currently")
     elif x.ndim == 1:
         x = x.astype(cupy.mintypecode(x.dtype.char), copy=False)
     else:
-        raise ValueError('Input must be 1d or non-empty square 2d array.')
+        raise ValueError("Input must be 1d or non-empty square 2d array.")
 
     if x.size == 0:
         return 1.0
@@ -75,7 +75,7 @@ def poly(seq_of_zeros):
     cupy.negative(x, out=a[:x.size, 1])
     while size > 1:
         size = size // 2
-        a = cupy._math.misc._fft_convolve(a[:size], a[size:], 'full')
+        a = cupy._math.misc._fft_convolve(a[:size], a[size:], "full")
     return a[0, :x.size + 1]
 
 
@@ -140,8 +140,8 @@ def polymul(a1, a2):
     .. seealso:: :func:`numpy.polymul`
 
     """
-    a1 = cupy.trim_zeros(a1, trim='f')
-    a2 = cupy.trim_zeros(a2, trim='f')
+    a1 = cupy.trim_zeros(a1, trim="f")
+    a2 = cupy.trim_zeros(a2, trim="f")
     if a1.size == 0:
         a1 = cupy.array([0.], a1.dtype)
     if a2.size == 0:
@@ -165,12 +165,12 @@ def _polypow(x, n):
     if n == 1:
         return x
 
-    method = cupy._math.misc._choose_conv_method(x, x, 'full')
+    method = cupy._math.misc._choose_conv_method(x, x, "full")
 
-    if method == 'direct':
+    if method == "direct":
         return _polypow_direct(x, n)
-    elif method == 'fft':
-        if x.dtype.kind == 'c':
+    elif method == "fft":
+        if x.dtype.kind == "c":
             fft, ifft = cupy.fft.fft, cupy.fft.ifft
         else:
             fft, ifft = cupy.fft.rfft, cupy.fft.irfft
@@ -185,7 +185,7 @@ def _polypow(x, n):
 
 
 def _polyfit_typecast(x):
-    if x.dtype.kind == 'c':
+    if x.dtype.kind == "c":
         return x.astype(numpy.complex128, copy=False)
     return x.astype(numpy.float64, copy=False)
 
@@ -231,26 +231,26 @@ def polyfit(x, y, deg, rcond=None, full=False, w=None, cov=False):
     .. seealso:: :func:`numpy.polyfit`
 
     """
-    if x.dtype.char == 'e' and y.dtype.kind == 'b':
-        raise NotImplementedError('float16 x and bool y are not'
-                                  ' currently supported')
+    if x.dtype.char == "e" and y.dtype.kind == "b":
+        raise NotImplementedError("float16 x and bool y are not"
+                                  " currently supported")
     if y.dtype == numpy.float16:
-        raise TypeError('float16 y are not supported')
+        raise TypeError("float16 y are not supported")
 
     x = _polyfit_typecast(x)
     y = _polyfit_typecast(y)
     deg = int(deg)
 
     if deg < 0:
-        raise ValueError('expected deg >= 0')
+        raise ValueError("expected deg >= 0")
     if x.ndim != 1:
-        raise TypeError('expected 1D vector for x')
+        raise TypeError("expected 1D vector for x")
     if x.size == 0:
-        raise TypeError('expected non-empty vector for x')
+        raise TypeError("expected non-empty vector for x")
     if y.ndim < 1 or y.ndim > 2:
-        raise TypeError('expected 1D or 2D array for y')
+        raise TypeError("expected 1D or 2D array for y")
     if x.size != y.shape[0]:
-        raise TypeError('expected x and y to have same length')
+        raise TypeError("expected x and y to have same length")
 
     lhs = cupy.polynomial.polynomial.polyvander(x, deg)[:, ::-1]
     rhs = y
@@ -258,9 +258,9 @@ def polyfit(x, y, deg, rcond=None, full=False, w=None, cov=False):
     if w is not None:
         w = _polyfit_typecast(w)
         if w.ndim != 1:
-            raise TypeError('expected a 1-d array for weights')
+            raise TypeError("expected a 1-d array for weights")
         if w.size != x.size:
-            raise TypeError('expected w and y to have the same length')
+            raise TypeError("expected w and y to have the same length")
 
         lhs *= w[:, None]
         if rhs.ndim == 2:
@@ -279,24 +279,24 @@ def polyfit(x, y, deg, rcond=None, full=False, w=None, cov=False):
 
     order = deg + 1
     if rank != order and not full:
-        msg = 'Polyfit may be poorly conditioned'
+        msg = "Polyfit may be poorly conditioned"
         warnings.warn(msg, RankWarning, stacklevel=4)
 
     if full:
-        if resids.dtype.kind == 'c':
+        if resids.dtype.kind == "c":
             resids = cupy.absolute(resids)
         return c, resids, rank, s, rcond
     if cov:
         base = cupy.linalg.inv(cupy.dot(lhs.T, lhs))
         base /= cupy.outer(scale, scale)
 
-        if cov == 'unscaled':
+        if cov == "unscaled":
             factor = 1
         elif x.size > order:
             factor = resids / (x.size - order)
         else:
-            raise ValueError('the number of data points must exceed order'
-                             ' to scale the covariance matrix')
+            raise ValueError("the number of data points must exceed order"
+                             " to scale the covariance matrix")
 
         if y.ndim != 1:
             base = base[..., None]
@@ -326,9 +326,9 @@ def polyval(p, x):
     if isinstance(p, cupy.poly1d):
         p = p.coeffs
     if not isinstance(p, cupy.ndarray) or p.ndim == 0:
-        raise TypeError('p must be 1d ndarray or poly1d object')
+        raise TypeError("p must be 1d ndarray or poly1d object")
     if p.ndim > 1:
-        raise ValueError('p must be 1d array')
+        raise ValueError("p must be 1d array")
     if isinstance(x, cupy.poly1d):
         # TODO(asi1024): Needs performance improvement.
         dtype = numpy.result_type(x.coeffs, 1)
@@ -372,10 +372,10 @@ def roots(p):
     """
     if isinstance(p, cupy.poly1d):
         p = p.coeffs
-    if p.dtype.kind == 'b':
-        raise NotImplementedError('boolean inputs are not supported')
+    if p.dtype.kind == "b":
+        raise NotImplementedError("boolean inputs are not supported")
     if p.ndim == 0:
-        raise TypeError('0-dimensional input is not allowed')
+        raise TypeError("0-dimensional input is not allowed")
     if p.size < 2:
         return cupy.array([])
     [p] = cupy.polynomial.polyutils.as_series([p[::-1]])
@@ -391,7 +391,7 @@ def roots(p):
     if cupy.array_equal(cmatrix, cmatrix.conj().T):
         out = cupy.linalg.eigvalsh(cmatrix)
     else:
-        raise NotImplementedError('Only complex Hermitian and real '
-                                  'symmetric 2d arrays are supported '
-                                  'currently')
+        raise NotImplementedError("Only complex Hermitian and real "
+                                  "symmetric 2d arrays are supported "
+                                  "currently")
     return out.astype(p.dtype)

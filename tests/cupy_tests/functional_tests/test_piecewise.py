@@ -85,7 +85,7 @@ class TestPiecewise(unittest.TestCase):
         return xp.piecewise(x, condlist, funclist)
 
     @testing.for_all_dtypes_combination(
-        names=['dtype1', 'dtype2'], no_complex=True)
+        names=["dtype1", "dtype2"], no_complex=True)
     @testing.numpy_cupy_array_equal()
     def test_piecewise_diff_types_funclist(self, xp, dtype1, dtype2):
         x = xp.linspace(1, 20, 12, dtype=dtype1)

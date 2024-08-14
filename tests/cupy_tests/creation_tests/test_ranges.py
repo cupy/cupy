@@ -10,15 +10,15 @@ import cupy
 from cupy import testing
 
 
-def skip_int_equality_before_numpy_1_20(names=('dtype',)):
+def skip_int_equality_before_numpy_1_20(names=("dtype",)):
     """Require numpy/numpy#16841 or skip the equality check."""
     def decorator(wrapped):
-        if numpy.lib.NumpyVersion(numpy.__version__) >= '1.20.0':
+        if numpy.lib.NumpyVersion(numpy.__version__) >= "1.20.0":
             return wrapped
 
         @functools.wraps(wrapped)
         def wrapper(self, *args, **kwargs):
-            xp = kwargs['xp']
+            xp = kwargs["xp"]
             dtypes = [kwargs[name] for name in names]
             ret = wrapped(self, *args, **kwargs)
             if any(numpy.issubdtype(dtype, numpy.integer) for dtype in dtypes):
@@ -72,7 +72,7 @@ class TestRanges(unittest.TestCase):
     def test_arange8(self, xp, dtype):
         return xp.arange(10, 8, -1).astype(dtype)
 
-    @testing.with_requires('numpy>=1.24')
+    @testing.with_requires("numpy>=1.24")
     def test_arange9(self):
         for xp in (numpy, cupy):
             with pytest.raises(TypeError):
@@ -104,7 +104,7 @@ class TestRanges(unittest.TestCase):
     @testing.numpy_cupy_array_equal()
     @skip_int_equality_before_numpy_1_20()
     def test_linspace3(self, xp, dtype):
-        if xp.dtype(dtype).kind == 'u':
+        if xp.dtype(dtype).kind == "u":
             pytest.skip()
         return xp.linspace(-10, 8, 9, dtype=dtype)
 
@@ -121,7 +121,7 @@ class TestRanges(unittest.TestCase):
         assert math.isnan(step)
         return x
 
-    @testing.with_requires('numpy>=1.18')
+    @testing.with_requires("numpy>=1.18")
     @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_array_equal()
     def test_linspace_one_num_no_endopoint_with_retstep(self, xp, dtype):
@@ -177,8 +177,8 @@ class TestRanges(unittest.TestCase):
             x /= 2
         return xp.linspace(0., x, 10, dtype=float)
 
-    @testing.with_requires('numpy>=1.16')
-    @testing.for_all_dtypes_combination(names=('dtype_range', 'dtype_out'),
+    @testing.with_requires("numpy>=1.16")
+    @testing.for_all_dtypes_combination(names=("dtype_range", "dtype_out"),
                                         no_bool=True, no_complex=True)
     @testing.numpy_cupy_array_equal()
     def test_linspace_array_start_stop(self, xp, dtype_range, dtype_out):
@@ -186,34 +186,34 @@ class TestRanges(unittest.TestCase):
         stop = xp.array([100, 0], dtype=dtype_range)
         return xp.linspace(start, stop, num=50, dtype=dtype_out)
 
-    @testing.with_requires('numpy>=1.16')
-    @testing.for_all_dtypes_combination(names=('dtype_range', 'dtype_out'),
+    @testing.with_requires("numpy>=1.16")
+    @testing.for_all_dtypes_combination(names=("dtype_range", "dtype_out"),
                                         no_bool=True, no_complex=True)
     @testing.numpy_cupy_array_equal()
-    @skip_int_equality_before_numpy_1_20(names=('dtype_range', 'dtype_out'))
+    @skip_int_equality_before_numpy_1_20(names=("dtype_range", "dtype_out"))
     def test_linspace_mixed_start_stop(self, xp, dtype_range, dtype_out):
         start = 0.0
-        if xp.dtype(dtype_range).kind in 'u':
+        if xp.dtype(dtype_range).kind in "u":
             stop = xp.array([100, 16], dtype=dtype_range)
         else:
             stop = xp.array([100, -100], dtype=dtype_range)
         return xp.linspace(start, stop, num=50, dtype=dtype_out)
 
-    @testing.with_requires('numpy>=1.16')
-    @testing.for_all_dtypes_combination(names=('dtype_range', 'dtype_out'),
+    @testing.with_requires("numpy>=1.16")
+    @testing.for_all_dtypes_combination(names=("dtype_range", "dtype_out"),
                                         no_bool=True, no_complex=True)
     @testing.numpy_cupy_array_equal()
-    @skip_int_equality_before_numpy_1_20(names=('dtype_range', 'dtype_out'))
+    @skip_int_equality_before_numpy_1_20(names=("dtype_range", "dtype_out"))
     def test_linspace_mixed_start_stop2(self, xp, dtype_range, dtype_out):
-        if xp.dtype(dtype_range).kind in 'u':
+        if xp.dtype(dtype_range).kind in "u":
             start = xp.array([160, 120], dtype=dtype_range)
         else:
             start = xp.array([-120, 120], dtype=dtype_range)
         stop = 0
         return xp.linspace(start, stop, num=50, dtype=dtype_out)
 
-    @testing.with_requires('numpy>=1.16')
-    @testing.for_all_dtypes_combination(names=('dtype_range', 'dtype_out'),
+    @testing.with_requires("numpy>=1.16")
+    @testing.for_all_dtypes_combination(names=("dtype_range", "dtype_out"),
                                         no_bool=True, no_complex=True)
     @testing.numpy_cupy_array_equal()
     def test_linspace_array_start_stop_axis1(self, xp, dtype_range, dtype_out):
@@ -221,7 +221,7 @@ class TestRanges(unittest.TestCase):
         stop = xp.array([100, 0], dtype=dtype_range)
         return xp.linspace(start, stop, num=50, dtype=dtype_out, axis=1)
 
-    @testing.with_requires('numpy>=1.16')
+    @testing.with_requires("numpy>=1.16")
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_linspace_complex_start_stop(self, xp, dtype):
@@ -229,7 +229,7 @@ class TestRanges(unittest.TestCase):
         stop = xp.array([100, 0], dtype=dtype)
         return xp.linspace(start, stop, num=50, dtype=dtype)
 
-    @testing.with_requires('numpy>=1.16')
+    @testing.with_requires("numpy>=1.16")
     @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_array_equal()
     def test_linspace_start_stop_list(self, xp, dtype):
@@ -285,8 +285,8 @@ class TestRanges(unittest.TestCase):
         return xp.logspace(0, 2, 5, base=2.0, dtype=dtype)
 
     # See #7946 and https://github.com/numpy/numpy/issues/24957
-    @testing.with_requires('numpy>=1.16, !=1.25.*, !=1.26.*')
-    @testing.for_all_dtypes_combination(names=('dtype_range', 'dtype_out'),
+    @testing.with_requires("numpy>=1.16, !=1.25.*, !=1.26.*")
+    @testing.for_all_dtypes_combination(names=("dtype_range", "dtype_out"),
                                         no_bool=True, no_complex=True)
     @testing.numpy_cupy_allclose(rtol=1e-6, contiguous_check=False)
     def test_logspace_array_start_stop_axis1(self, xp, dtype_range, dtype_out):
@@ -297,9 +297,9 @@ class TestRanges(unittest.TestCase):
 
 @testing.parameterize(
     *testing.product({
-        'indexing': ['xy', 'ij'],
-        'sparse': [False, True],
-        'copy': [False, True],
+        "indexing": ["xy", "ij"],
+        "sparse": [False, True],
+        "copy": [False, True],
     })
 )
 class TestMeshgrid(unittest.TestCase):

@@ -35,18 +35,18 @@ def place(arr, mask, vals):
     # TODO(niboshi): Avoid nonzero which may synchronize the device.
     mask = cupy.asarray(mask)
     if arr.size != mask.size:
-        raise ValueError('Mask and data must be the same size.')
+        raise ValueError("Mask and data must be the same size.")
     vals = cupy.asarray(vals)
 
     mask_indices = mask.ravel().nonzero()[0]  # may synchronize
     if mask_indices.size == 0:
         return
     if vals.size == 0:
-        raise ValueError('Cannot insert from an empty array.')
-    arr.put(mask_indices, vals, mode='wrap')
+        raise ValueError("Cannot insert from an empty array.")
+    arr.put(mask_indices, vals, mode="wrap")
 
 
-def put(a, ind, v, mode='wrap'):
+def put(a, ind, v, mode="wrap"):
     """Replaces specified elements of an array with given values.
 
     Args:
@@ -68,11 +68,11 @@ def put(a, ind, v, mode='wrap'):
 
 
 _putmask_kernel = _core.ElementwiseKernel(
-    'Q mask, raw S values, uint64 len_vals', 'T out',
-    '''
+    "Q mask, raw S values, uint64 len_vals", "T out",
+    """
     if (mask) out = (T) values[i % len_vals];
-    ''',
-    'cupy_putmask_kernel'
+    """,
+    "cupy_putmask_kernel"
 )
 
 
@@ -112,14 +112,14 @@ def putmask(a, mask, values):
     """
 
     if not isinstance(a, cupy.ndarray):
-        raise TypeError('`a` should be of type cupy.ndarray')
+        raise TypeError("`a` should be of type cupy.ndarray")
     if not isinstance(mask, cupy.ndarray):
-        raise TypeError('`mask` should be of type cupy.ndarray')
+        raise TypeError("`mask` should be of type cupy.ndarray")
     if not (cupy.isscalar(values) or isinstance(values, cupy.ndarray)):
-        raise TypeError('`values` should be of type cupy.ndarray')
+        raise TypeError("`values` should be of type cupy.ndarray")
 
     if not a.shape == mask.shape:
-        raise ValueError('mask and data must be the same size')
+        raise ValueError("mask and data must be the same size")
 
     mask = mask.astype(numpy.bool_)
 
@@ -127,8 +127,8 @@ def putmask(a, mask, values):
         a[mask] = values
 
     elif not numpy.can_cast(values.dtype, a.dtype):
-        raise TypeError('Cannot cast array data from'
-                        ' {} to {} according to the rule \'safe\''
+        raise TypeError("Cannot cast array data from"
+                        " {} to {} according to the rule 'safe'"
                         .format(values.dtype, a.dtype))
 
     elif a.shape == values.shape:
@@ -166,7 +166,7 @@ def fill_diagonal(a, val, wrap=False):
     """
     # The following are imported from the original numpy
     if a.ndim < 2:
-        raise ValueError('array must be at least 2-d')
+        raise ValueError("array must be at least 2-d")
     end = None
     if a.ndim == 2:
         step = a.shape[1] + 1
@@ -174,7 +174,7 @@ def fill_diagonal(a, val, wrap=False):
             end = a.shape[1] * a.shape[1]
     else:
         if not numpy.all(numpy.diff(a.shape) == 0):
-            raise ValueError('All dimensions of input must be of equal length')
+            raise ValueError("All dimensions of input must be of equal length")
         step = 1 + numpy.cumprod(a.shape[:-1]).sum()
 
     a.flat[:end:step] = val

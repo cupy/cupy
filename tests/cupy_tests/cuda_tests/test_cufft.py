@@ -26,10 +26,10 @@ class TestExceptionPicklable(unittest.TestCase):
 # data is in order.
 
 @testing.parameterize(*testing.product({
-    'shape': [(64,), (4, 16), (128,), (8, 32)],
+    "shape": [(64,), (4, 16), (128,), (8, 32)],
 }))
 @testing.multi_gpu(2)
-@pytest.mark.skipif(cupy.cuda.runtime.is_hip, reason='not supported by hipFFT')
+@pytest.mark.skipif(cupy.cuda.runtime.is_hip, reason="not supported by hipFFT")
 class TestMultiGpuPlan1dNumPy(unittest.TestCase):
 
     @multi_gpu_config(gpu_configs=[[0, 1], [1, 0]])
@@ -47,7 +47,7 @@ class TestMultiGpuPlan1dNumPy(unittest.TestCase):
             nx = self.shape[1]
 
         # compute via cuFFT
-        cufft_type = _convert_fft_type(a.dtype, 'C2C')
+        cufft_type = _convert_fft_type(a.dtype, "C2C")
         plan = cufft.Plan1d(nx, cufft_type, batch, devices=config._devices)
         out_cp = numpy.empty_like(a)
         plan.fft(a, out_cp, cufft.CUFFT_FORWARD)
@@ -79,7 +79,7 @@ class TestMultiGpuPlan1dNumPy(unittest.TestCase):
             nx = self.shape[1]
 
         # compute via cuFFT
-        cufft_type = _convert_fft_type(a.dtype, 'C2C')
+        cufft_type = _convert_fft_type(a.dtype, "C2C")
         plan = cufft.Plan1d(nx, cufft_type, batch, devices=config._devices)
         out_cp = numpy.empty_like(a)
         plan.fft(a, out_cp, cufft.CUFFT_INVERSE)
@@ -109,9 +109,9 @@ class TestMultiGpuPlan1dNumPy(unittest.TestCase):
 # 'e' for float16) for the time being (see #3370).
 
 @testing.parameterize(*testing.product({
-    'shape': [(4, 16), (4, 16, 16)],
+    "shape": [(4, 16), (4, 16, 16)],
 }))
-@pytest.mark.skipif(cupy.cuda.runtime.is_hip, reason='not supported by hipFFT')
+@pytest.mark.skipif(cupy.cuda.runtime.is_hip, reason="not supported by hipFFT")
 class TestXtPlanNd(unittest.TestCase):
 
     @testing.for_complex_dtypes()
@@ -128,7 +128,7 @@ class TestXtPlanNd(unittest.TestCase):
                               shape[1:], 1, length, idtype,
                               shape[1:], 1, length, odtype,
                               shape[0], edtype,
-                              order='C', last_axis=-1, last_size=None)
+                              order="C", last_axis=-1, last_size=None)
         plan.fft(a, out, cufft.CUFFT_FORWARD)
 
         if len(shape) <= 2:
@@ -151,7 +151,7 @@ class TestXtPlanNd(unittest.TestCase):
                               shape[1:], 1, length, idtype,
                               shape[1:], 1, length, odtype,
                               shape[0], edtype,
-                              order='C', last_axis=-1, last_size=None)
+                              order="C", last_axis=-1, last_size=None)
         plan.fft(a, out, cufft.CUFFT_INVERSE)
 
         if len(shape) <= 2:
@@ -161,9 +161,9 @@ class TestXtPlanNd(unittest.TestCase):
         testing.assert_allclose(out/length, out_cp)
 
     @pytest.mark.skipif(int(cupy.cuda.device.get_compute_capability()) < 53,
-                        reason='half-precision complex FFT is not supported')
+                        reason="half-precision complex FFT is not supported")
     def test_forward_fft_complex32(self):
-        t = 'E'
+        t = "E"
         idtype = odtype = edtype = t
         old_shape = self.shape
         shape = list(self.shape)
@@ -179,7 +179,7 @@ class TestXtPlanNd(unittest.TestCase):
                               shape[1:], 1, length, idtype,
                               shape[1:], 1, length, odtype,
                               shape[0], edtype,
-                              order='C', last_axis=-1, last_size=None)
+                              order="C", last_axis=-1, last_size=None)
         plan.fft(a, out, cufft.CUFFT_FORWARD)
 
         a_cp = a.astype(cupy.float32)  # upcast
@@ -196,9 +196,9 @@ class TestXtPlanNd(unittest.TestCase):
         testing.assert_allclose(out, out_cp, rtol=1E-1, atol=1E-1)
 
     @pytest.mark.skipif(int(cupy.cuda.device.get_compute_capability()) < 53,
-                        reason='half-precision complex FFT is not supported')
+                        reason="half-precision complex FFT is not supported")
     def test_backward_fft_complex32(self):
-        t = 'E'
+        t = "E"
         idtype = odtype = edtype = t
         old_shape = self.shape
         shape = list(self.shape)
@@ -214,7 +214,7 @@ class TestXtPlanNd(unittest.TestCase):
                               shape[1:], 1, length, idtype,
                               shape[1:], 1, length, odtype,
                               shape[0], edtype,
-                              order='C', last_axis=-1, last_size=None)
+                              order="C", last_axis=-1, last_size=None)
         plan.fft(a, out, cufft.CUFFT_INVERSE)
 
         a_cp = a.astype(cupy.float32)  # upcast

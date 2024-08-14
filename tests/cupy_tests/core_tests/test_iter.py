@@ -8,7 +8,7 @@ from cupy import testing
 
 
 @testing.parameterize(*testing.product(
-    {'shape': [(3,), (2, 3, 4), (0,), (0, 2), (3, 0)]},
+    {"shape": [(3,), (2, 3, 4), (0,), (0, 2), (3, 0)]},
 ))
 class TestIter(unittest.TestCase):
 

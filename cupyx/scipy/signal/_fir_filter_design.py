@@ -661,7 +661,7 @@ def firls(numtaps, bands, desired, weight=None, fs=2):
     # normalize bands 0->1 and make it 2 columns
     nyq = float(nyq)
     if nyq <= 0:
-        raise ValueError('nyq must be positive, got %s <= 0.' % nyq)
+        raise ValueError("nyq must be positive, got %s <= 0." % nyq)
     bands = cupy.asarray(bands).flatten() / nyq
     if len(bands) % 2 != 0:
         raise ValueError("bands must contain frequency pairs.")
@@ -782,7 +782,7 @@ def _dhtm(mag):
     return recon
 
 
-def minimum_phase(h, method='homomorphic', n_fft=None):
+def minimum_phase(h, method="homomorphic", n_fft=None):
     """Convert a linear-phase FIR filter to minimum phase
 
     Parameters
@@ -865,24 +865,24 @@ def minimum_phase(h, method='homomorphic', n_fft=None):
 
     """  # noqa
     if cupy.iscomplexobj(h):
-        raise ValueError('Complex filters not supported')
+        raise ValueError("Complex filters not supported")
     if h.ndim != 1 or h.size <= 2:
-        raise ValueError('h must be 1-D and at least 2 samples long')
+        raise ValueError("h must be 1-D and at least 2 samples long")
     n_half = len(h) // 2
     if not cupy.allclose(h[-n_half:][::-1], h[:n_half]):
         import warnings
-        warnings.warn('h does not appear to by symmetric, conversion may '
-                      'fail', RuntimeWarning)
+        warnings.warn("h does not appear to by symmetric, conversion may "
+                      "fail", RuntimeWarning)
     if not isinstance(method, str) or method not in \
-            ('homomorphic', 'hilbert',):
+            ("homomorphic", "hilbert",):
         raise ValueError('method must be "homomorphic" or "hilbert", got %r'
                          % (method,))
     if n_fft is None:
         n_fft = 2 ** int(cupy.ceil(cupy.log2(2 * (len(h) - 1) / 0.01)))
     n_fft = int(n_fft)
     if n_fft < len(h):
-        raise ValueError('n_fft must be at least len(h)==%s' % len(h))
-    if method == 'hilbert':
+        raise ValueError("n_fft must be at least len(h)==%s" % len(h))
+    if method == "hilbert":
         w = cupy.arange(n_fft) * (2 * cupy.pi / n_fft * n_half)
         H = cupy.real(fft(h, n_fft) * cupy.exp(1j * w))
         dp = max(H) - 1

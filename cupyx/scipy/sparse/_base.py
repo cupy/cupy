@@ -33,7 +33,7 @@ class spmatrix(object):
     def __init__(self, maxprint=50):
         if self.__class__ == spmatrix:
             raise ValueError(
-                'This class is not intended to be instantiated directly.')
+                "This class is not intended to be instantiated directly.")
         self.maxprint = maxprint
 
     @property
@@ -55,8 +55,8 @@ class spmatrix(object):
         raise NotImplementedError
 
     def __len__(self):
-        raise TypeError('sparse matrix length is ambiguous; '
-                        'use getnnz() or shape[0]')
+        raise TypeError("sparse matrix length is ambiguous; "
+                        "use getnnz() or shape[0]")
 
     def __str__(self):
         # TODO(unno): Do not use get method which is only available when scipy
@@ -71,8 +71,8 @@ class spmatrix(object):
         if self.shape == (1, 1):
             return self.nnz != 0
         else:
-            raise ValueError('The truth value of an array with more than one '
-                             'element is ambiguous. Use a.any() or a.all().')
+            raise ValueError("The truth value of an array with more than one "
+                             "element is ambiguous. Use a.any() or a.all().")
 
     __nonzero__ = __bool__
 
@@ -125,14 +125,14 @@ class spmatrix(object):
     # matmul (@) operator
     def __matmul__(self, other):
         if _util.isscalarlike(other):
-            raise ValueError('Scalar operands are not allowed, '
-                             'use \'*\' instead')
+            raise ValueError("Scalar operands are not allowed, "
+                             "use '*' instead")
         return self.__mul__(other)
 
     def __rmatmul__(self, other):
         if _util.isscalarlike(other):
-            raise ValueError('Scalar operands are not allowed, '
-                             'use \'*\' instead')
+            raise ValueError("Scalar operands are not allowed, "
+                             "use '*' instead")
         return self.__rmul__(other)
 
     def __div__(self, other):
@@ -181,19 +181,19 @@ class spmatrix(object):
         """
         m, n = self.shape
         if m != n:
-            raise TypeError('matrix is not square')
+            raise TypeError("matrix is not square")
         if not isinstance(other, numbers.Integral):
             raise ValueError("exponent must be an integer")
 
         if _util.isintlike(other):
             other = int(other)
             if other < 0:
-                raise ValueError('exponent must be >= 0')
+                raise ValueError("exponent must be >= 0")
 
             if other == 0:
                 import cupyx.scipy.sparse
                 return cupyx.scipy.sparse.identity(
-                    m, dtype=self.dtype, format='csr')
+                    m, dtype=self.dtype, format="csr")
             elif other == 1:
                 return self.copy()
             else:
@@ -203,7 +203,7 @@ class spmatrix(object):
                 else:
                     return tmp * tmp
         elif _util.isscalarlike(other):
-            raise ValueError('exponent must be an integer')
+            raise ValueError("exponent must be an integer")
         else:
             return NotImplemented
 
@@ -254,7 +254,7 @@ class spmatrix(object):
         if format is None or format == self.format:
             return self
         else:
-            return getattr(self, 'to' + format)()
+            return getattr(self, "to" + format)()
 
     def asfptype(self):
         """Upcasts matrix to a floating point format.
@@ -266,10 +266,10 @@ class spmatrix(object):
             cupyx.scipy.sparse.spmatrix: A matrix with float type.
 
         """
-        if self.dtype.kind == 'f':
+        if self.dtype.kind == "f":
             return self
         else:
-            typ = numpy.promote_types(self.dtype, 'f')
+            typ = numpy.promote_types(self.dtype, "f")
             return self.astype(typ)
 
     def astype(self, t):
@@ -299,7 +299,7 @@ class spmatrix(object):
             cupyx.scipy.sparse.spmatrix : The element-wise complex conjugate.
 
         """
-        if self.dtype.kind == 'c':
+        if self.dtype.kind == "c":
             return self.tocsr(copy=copy).conj(copy=False)
         elif copy:
             return self.copy()
@@ -443,7 +443,7 @@ class spmatrix(object):
     def power(self, n, dtype=None):
         return self.tocsr().power(n, dtype=dtype)
 
-    def reshape(self, *shape, order='C'):
+    def reshape(self, *shape, order="C"):
         """Gives a new shape to a sparse matrix without changing its data.
 
         Args:
@@ -523,7 +523,7 @@ class spmatrix(object):
 
         if out is not None:
             if out.shape != ret.shape:
-                raise ValueError('dimensions do not match')
+                raise ValueError("dimensions do not match")
             _core.elementwise_copy(ret, out)
             return out
         elif dtype is not None:

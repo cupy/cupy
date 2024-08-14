@@ -2,28 +2,28 @@ import cupy
 from cupy import _core
 
 _packbits_kernel = {
-    'big': _core.ElementwiseKernel(
-        'raw T a, raw int32 a_size', 'uint8 packed',
-        '''for (int j = 0; j < 8; ++j) {
+    "big": _core.ElementwiseKernel(
+        "raw T a, raw int32 a_size", "uint8 packed",
+        """for (int j = 0; j < 8; ++j) {
                     int k = i * 8 + j;
                     int bit = k < a_size && a[k] != 0;
                     packed |= bit << (7 - j);
-                }''',
-        'cupy_packbits_big'
+                }""",
+        "cupy_packbits_big"
     ),
-    'little': _core.ElementwiseKernel(
-        'raw T a, raw int32 a_size', 'uint8 packed',
-        '''for (int j = 0; j < 8; ++j) {
+    "little": _core.ElementwiseKernel(
+        "raw T a, raw int32 a_size", "uint8 packed",
+        """for (int j = 0; j < 8; ++j) {
                     int k = i * 8 + j;
                     int bit = k < a_size && a[k] != 0;
                     packed |= bit << j;
-                }''',
-        'cupy_packbits_little'
+                }""",
+        "cupy_packbits_little"
     )
 }
 
 
-def packbits(a, axis=None, bitorder='big'):
+def packbits(a, axis=None, bitorder="big"):
     """Packs the elements of a binary-valued array into bits in a uint8 array.
 
     This function currently does not support ``axis`` option.
@@ -45,14 +45,14 @@ def packbits(a, axis=None, bitorder='big'):
 
     .. seealso:: :func:`numpy.packbits`
     """
-    if a.dtype.kind not in 'biu':
+    if a.dtype.kind not in "biu":
         raise TypeError(
-            'Expected an input array of integer or boolean data type')
+            "Expected an input array of integer or boolean data type")
 
     if axis is not None:
-        raise NotImplementedError('axis option is not supported yet')
+        raise NotImplementedError("axis option is not supported yet")
 
-    if bitorder not in ('big', 'little'):
+    if bitorder not in ("big", "little"):
         raise ValueError("bitorder must be either 'big' or 'little'")
 
     a = a.ravel()
@@ -62,20 +62,20 @@ def packbits(a, axis=None, bitorder='big'):
 
 
 _unpackbits_kernel = {
-    'big': _core.ElementwiseKernel(
-        'raw uint8 a', 'T unpacked',
-        'unpacked = (a[i / 8] >> (7 - i % 8)) & 1;',
-        'cupy_unpackbits_big'
+    "big": _core.ElementwiseKernel(
+        "raw uint8 a", "T unpacked",
+        "unpacked = (a[i / 8] >> (7 - i % 8)) & 1;",
+        "cupy_unpackbits_big"
     ),
-    'little': _core.ElementwiseKernel(
-        'raw uint8 a', 'T unpacked',
-        'unpacked = (a[i / 8] >> (i % 8)) & 1;',
-        'cupy_unpackbits_little'
+    "little": _core.ElementwiseKernel(
+        "raw uint8 a", "T unpacked",
+        "unpacked = (a[i / 8] >> (i % 8)) & 1;",
+        "cupy_unpackbits_little"
     )
 }
 
 
-def unpackbits(a, axis=None, bitorder='big'):
+def unpackbits(a, axis=None, bitorder="big"):
     """Unpacks elements of a uint8 array into a binary-valued output array.
 
     This function currently does not support ``axis`` option.
@@ -91,12 +91,12 @@ def unpackbits(a, axis=None, bitorder='big'):
     .. seealso:: :func:`numpy.unpackbits`
     """
     if a.dtype != cupy.uint8:
-        raise TypeError('Expected an input array of unsigned byte data type')
+        raise TypeError("Expected an input array of unsigned byte data type")
 
     if axis is not None:
-        raise NotImplementedError('axis option is not supported yet')
+        raise NotImplementedError("axis option is not supported yet")
 
-    if bitorder not in ('big', 'little'):
+    if bitorder not in ("big", "little"):
         raise ValueError("bitorder must be either 'big' or 'little'")
 
     unpacked = cupy.ndarray((a.size * 8), dtype=cupy.uint8)

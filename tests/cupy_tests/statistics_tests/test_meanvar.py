@@ -64,7 +64,7 @@ class TestMedian:
             with pytest.raises(AxisError):
                 return xp.median(a, (0, a.ndim,), keepdims=False)
 
-    @testing.for_dtypes('efdFD')
+    @testing.for_dtypes("efdFD")
     @testing.numpy_cupy_allclose()
     def test_median_nan(self, xp, dtype):
         a = xp.array(
@@ -78,9 +78,9 @@ class TestMedian:
 
 @testing.parameterize(
     *testing.product({
-        'shape': [(3, 4, 5)],
-        'axis': [(0, 1), (0, -1), (1, 2), (1,)],
-        'keepdims': [True, False]
+        "shape": [(3, 4, 5)],
+        "axis": [(0, 1), (0, -1), (1, 2), (1,)],
+        "keepdims": [True, False]
     })
 )
 class TestMedianAxis:
@@ -94,10 +94,10 @@ class TestMedianAxis:
 
 @testing.parameterize(
     *testing.product({
-        'shape': [(3, 4, 5)],
-        'axis': [None, 0, 1, -1, (0, 1), (0, 2), (-1, -2), [0, 1]],
-        'keepdims': [True, False],
-        'overwrite_input': [True, False]
+        "shape": [(3, 4, 5)],
+        "axis": [None, 0, 1, -1, (0, 1), (0, 2), (-1, -2), [0, 1]],
+        "keepdims": [True, False],
+        "overwrite_input": [True, False]
     })
 )
 class TestNanMedian:
@@ -106,11 +106,11 @@ class TestNanMedian:
 
     def _make_array(self, dtype):
         dtype = numpy.dtype(dtype)
-        if dtype.char in 'efdFD':
+        if dtype.char in "efdFD":
             r_dtype = dtype.char.lower()
             a = testing.shaped_random(self.shape, numpy, dtype=r_dtype,
                                       scale=1)
-            if dtype.char in 'FD':
+            if dtype.char in "FD":
                 ai = a
                 aj = testing.shaped_random(self.shape, numpy, dtype=r_dtype,
                                            scale=1)
@@ -157,9 +157,9 @@ class TestAverage:
         return xp.average(a, weights=w)
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(rtol={numpy.float16: 1e-1, 'default': 1e-7})
+    @testing.numpy_cupy_allclose(rtol={numpy.float16: 1e-1, "default": 1e-7})
     @pytest.mark.parametrize(
-        'axis,weights', [(1, False), (None, True), (1, True)])
+        "axis,weights", [(1, False), (None, True), (1, True)])
     def test_returned(self, xp, dtype, axis, weights):
         a = testing.shaped_arange((2, 3), numpy, dtype)
         if weights:
@@ -169,9 +169,9 @@ class TestAverage:
         return xp.average(a, axis=axis, weights=w, returned=True)
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(rtol={numpy.float16: 1e-2, 'default': 5e-7})
-    @pytest.mark.parametrize('returned', [True, False])
-    @testing.with_requires('numpy>=1.23.1')
+    @testing.numpy_cupy_allclose(rtol={numpy.float16: 1e-2, "default": 5e-7})
+    @pytest.mark.parametrize("returned", [True, False])
+    @testing.with_requires("numpy>=1.23.1")
     def test_average_keepdims_axis1(self, xp, dtype, returned):
         a = testing.shaped_random((2, 3), xp, dtype)
         w = testing.shaped_random((2, 3), xp, dtype)
@@ -179,9 +179,9 @@ class TestAverage:
             a, axis=1, weights=w, returned=returned, keepdims=True)
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(rtol={'default': 1e-7, numpy.float16: 1e-3})
-    @pytest.mark.parametrize('returned', [True, False])
-    @testing.with_requires('numpy>=1.23.1')
+    @testing.numpy_cupy_allclose(rtol={"default": 1e-7, numpy.float16: 1e-3})
+    @pytest.mark.parametrize("returned", [True, False])
+    @testing.with_requires("numpy>=1.23.1")
     def test_average_keepdims_noaxis(self, xp, dtype, returned):
         a = testing.shaped_random((2, 3), xp, dtype)
         w = testing.shaped_random((2, 3), xp, dtype)
@@ -331,9 +331,9 @@ class TestMeanVar:
 
 @testing.parameterize(
     *testing.product({
-        'shape': [(3, 4), (30, 40, 50)],
-        'axis': [None, 0, 1],
-        'keepdims': [True, False]
+        "shape": [(3, 4), (30, 40, 50)],
+        "axis": [None, 0, 1],
+        "keepdims": [True, False]
     })
 )
 class TestNanMean:
@@ -350,7 +350,7 @@ class TestNanMean:
     def test_nanmean_with_nan_float(self, xp, dtype):
         a = testing.shaped_random(self.shape, xp, dtype)
 
-        if a.dtype.kind not in 'biu':
+        if a.dtype.kind not in "biu":
             a[1, :] = xp.nan
             a[:, 3] = xp.nan
 
@@ -366,7 +366,7 @@ class TestNanMeanAdditional:
         a = testing.shaped_random((10, 20, 30), xp, dtype)
         z = xp.zeros((20, 30), dtype=dtype)
 
-        if a.dtype.kind not in 'biu':
+        if a.dtype.kind not in "biu":
             a[1, :] = xp.nan
             a[:, 3] = xp.nan
 
@@ -379,7 +379,7 @@ class TestNanMeanAdditional:
     def test_nanmean_huge(self, xp, dtype):
         a = testing.shaped_random((1024, 512), xp, dtype)
 
-        if a.dtype.kind not in 'biu':
+        if a.dtype.kind not in "biu":
             a[:512, :256] = xp.nan
 
         return xp.nanmean(a, axis=1)
@@ -400,10 +400,10 @@ class TestNanMeanAdditional:
 
 @testing.parameterize(
     *testing.product({
-        'shape': [(3, 4), (4, 3, 5)],
-        'axis': [None, 0, 1],
-        'keepdims': [True, False],
-        'ddof': [0, 1]
+        "shape": [(3, 4), (4, 3, 5)],
+        "axis": [None, 0, 1],
+        "keepdims": [True, False],
+        "ddof": [0, 1]
     }))
 class TestNanVarStd:
 
@@ -412,7 +412,7 @@ class TestNanVarStd:
     @testing.numpy_cupy_allclose(rtol=1e-6)
     def test_nanvar(self, xp, dtype):
         a = testing.shaped_random(self.shape, xp, dtype=dtype)
-        if a.dtype.kind not in 'biu':
+        if a.dtype.kind not in "biu":
             a[0, :] = xp.nan
         return xp.nanvar(
             a, axis=self.axis, ddof=self.ddof, keepdims=self.keepdims)
@@ -422,7 +422,7 @@ class TestNanVarStd:
     @testing.numpy_cupy_allclose(rtol=1e-6)
     def test_nanstd(self, xp, dtype):
         a = testing.shaped_random(self.shape, xp, dtype=dtype)
-        if a.dtype.kind not in 'biu':
+        if a.dtype.kind not in "biu":
             a[0, :] = xp.nan
         return xp.nanstd(
             a, axis=self.axis, ddof=self.ddof, keepdims=self.keepdims)
@@ -437,7 +437,7 @@ class TestNanVarStdAdditional:
         a = testing.shaped_random((10, 20, 30), xp, dtype)
         z = xp.zeros((20, 30))
 
-        if a.dtype.kind not in 'biu':
+        if a.dtype.kind not in "biu":
             a[1, :] = xp.nan
             a[:, 3] = xp.nan
 
@@ -450,7 +450,7 @@ class TestNanVarStdAdditional:
     def test_nanvar_huge(self, xp, dtype):
         a = testing.shaped_random((1024, 512), xp, dtype)
 
-        if a.dtype.kind not in 'biu':
+        if a.dtype.kind not in "biu":
             a[:512, :256] = xp.nan
 
         return xp.nanvar(a, axis=1)
@@ -468,7 +468,7 @@ class TestNanVarStdAdditional:
         a = testing.shaped_random((10, 20, 30), xp, dtype)
         z = xp.zeros((20, 30))
 
-        if a.dtype.kind not in 'biu':
+        if a.dtype.kind not in "biu":
             a[1, :] = xp.nan
             a[:, 3] = xp.nan
 
@@ -481,7 +481,7 @@ class TestNanVarStdAdditional:
     def test_nanstd_huge(self, xp, dtype):
         a = testing.shaped_random((1024, 512), xp, dtype)
 
-        if a.dtype.kind not in 'biu':
+        if a.dtype.kind not in "biu":
             a[:512, :256] = xp.nan
 
         return xp.nanstd(a, axis=1)
@@ -494,7 +494,7 @@ class TestNanVarStdAdditional:
 
 
 @testing.parameterize(*testing.product({
-    'params': [
+    "params": [
         ((), None),
         ((0,), None),
         ((0, 0), None),
@@ -502,7 +502,7 @@ class TestNanVarStdAdditional:
         ((0, 0, 0), None),
         ((0, 0, 0), (0, 2)),
     ],
-    'func': ['mean', 'std', 'var'],
+    "func": ["mean", "std", "var"],
 }))
 class TestProductZeroLength:
 

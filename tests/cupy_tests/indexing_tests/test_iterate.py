@@ -50,17 +50,17 @@ class TestFlatiter(unittest.TestCase):
 
 
 @testing.parameterize(
-    {'shape': (2, 3, 4), 'index': Ellipsis},
-    {'shape': (2, 3, 4), 'index': 0},
-    {'shape': (2, 3, 4), 'index': 10},
-    {'shape': (2, 3, 4), 'index': slice(None)},
-    {'shape': (2, 3, 4), 'index': slice(None, 10)},
-    {'shape': (2, 3, 4), 'index': slice(None, None, 2)},
-    {'shape': (2, 3, 4), 'index': slice(None, None, -1)},
-    {'shape': (2, 3, 4), 'index': slice(10, None, -1)},
-    {'shape': (2, 3, 4), 'index': slice(10, None, -2)},
-    {'shape': (), 'index': slice(None)},
-    {'shape': (10,), 'index': slice(None)},
+    {"shape": (2, 3, 4), "index": Ellipsis},
+    {"shape": (2, 3, 4), "index": 0},
+    {"shape": (2, 3, 4), "index": 10},
+    {"shape": (2, 3, 4), "index": slice(None)},
+    {"shape": (2, 3, 4), "index": slice(None, 10)},
+    {"shape": (2, 3, 4), "index": slice(None, None, 2)},
+    {"shape": (2, 3, 4), "index": slice(None, None, -1)},
+    {"shape": (2, 3, 4), "index": slice(10, None, -1)},
+    {"shape": (2, 3, 4), "index": slice(10, None, -2)},
+    {"shape": (), "index": slice(None)},
+    {"shape": (10,), "index": slice(None)},
 )
 class TestFlatiterSubscript(unittest.TestCase):
 
@@ -102,7 +102,7 @@ class TestFlatiterSubscript(unittest.TestCase):
         return a
 
     @testing.for_CF_orders()
-    @testing.for_all_dtypes_combination(('a_dtype', 'v_dtype'))
+    @testing.for_all_dtypes_combination(("a_dtype", "v_dtype"))
     @testing.numpy_cupy_array_equal()
     def test_setitem_ndarray_different_types(
             self, xp, a_dtype, v_dtype, order):
@@ -111,17 +111,17 @@ class TestFlatiterSubscript(unittest.TestCase):
         a = xp.zeros(self.shape, dtype=a_dtype, order=order)
         v = testing.shaped_arange((3,), xp, v_dtype, order)
         with warnings.catch_warnings():
-            warnings.simplefilter('ignore', ComplexWarning)
+            warnings.simplefilter("ignore", ComplexWarning)
             a.flat[self.index] = v
         return a
 
 
 @testing.parameterize(
-    {'shape': (2, 3, 4), 'index': None},
-    {'shape': (2, 3, 4), 'index': (0,)},
-    {'shape': (2, 3, 4), 'index': True},
-    {'shape': (2, 3, 4), 'index': cupy.array([0])},
-    {'shape': (2, 3, 4), 'index': [0]},
+    {"shape": (2, 3, 4), "index": None},
+    {"shape": (2, 3, 4), "index": (0,)},
+    {"shape": (2, 3, 4), "index": True},
+    {"shape": (2, 3, 4), "index": cupy.array([0])},
+    {"shape": (2, 3, 4), "index": [0]},
 )
 class TestFlatiterSubscriptIndexError(unittest.TestCase):
 

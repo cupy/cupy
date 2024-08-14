@@ -641,7 +641,7 @@ class F:
         QY = self.YY.copy()
 
         # heavy lifting happens here, in-place
-        qr_reduce = _get_module_func(QR_MODULE, 'qr_reduce')
+        qr_reduce = _get_module_func(QR_MODULE, "qr_reduce")
         qr_reduce((1,), (1,),
                   (AB, AB.shape[0], AB.shape[1],
                    offset,
@@ -1167,10 +1167,10 @@ def make_splprep(
 # #################### Public FITPACK interface, OOP ################
 
 # UnivariateSpline, ext parameter can be an int or a string
-_extrap_modes = {0: 0, 'extrapolate': 0,
-                 1: 1, 'zeros': 1,
-                 2: 2, 'raise': 2,
-                 3: 3, 'const': 3}
+_extrap_modes = {0: 0, "extrapolate": 0,
+                 1: 1, "zeros": 1,
+                 2: 2, "raise": 2,
+                 3: 3, "const": 3}
 
 
 class UnivariateSpline:

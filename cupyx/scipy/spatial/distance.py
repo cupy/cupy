@@ -39,7 +39,7 @@ class MetricInfo:
 _METRIC_INFOS = [
     MetricInfo(
         canonical_name="canberra",
-        aka={'canberra'}
+        aka={"canberra"}
     ),
     MetricInfo(
         canonical_name="chebyshev",
@@ -118,7 +118,7 @@ def minkowski(u, v, p):
         minkowski (double): The Minkowski distance between vectors `u` and `v`.
     """
     if not pylibraft_available:
-        raise RuntimeError('pylibraft is not installed')
+        raise RuntimeError("pylibraft is not installed")
     u = cupy.asarray(u)
     v = cupy.asarray(v)
     output_arr = cupy.zeros((1,), dtype=u.dtype)
@@ -143,7 +143,7 @@ def canberra(u, v):
         canberra (double): The Canberra distance between vectors `u` and `v`.
     """
     if not pylibraft_available:
-        raise RuntimeError('pylibraft is not installed')
+        raise RuntimeError("pylibraft is not installed")
     u = cupy.asarray(u)
     v = cupy.asarray(v)
     output_arr = cupy.zeros((1,), dtype=u.dtype)
@@ -168,7 +168,7 @@ def chebyshev(u, v):
         chebyshev (double): The Chebyshev distance between vectors `u` and `v`.
     """
     if not pylibraft_available:
-        raise RuntimeError('pylibraft is not installed')
+        raise RuntimeError("pylibraft is not installed")
     u = cupy.asarray(u)
     v = cupy.asarray(v)
     output_arr = cupy.zeros((1,), dtype=u.dtype)
@@ -194,7 +194,7 @@ def cityblock(u, v):
         vectors `u` and `v`.
     """
     if not pylibraft_available:
-        raise RuntimeError('pylibraft is not installed')
+        raise RuntimeError("pylibraft is not installed")
     u = cupy.asarray(u)
     v = cupy.asarray(v)
     output_arr = cupy.zeros((1,), dtype=u.dtype)
@@ -224,7 +224,7 @@ def correlation(u, v):
         vectors `u` and `v`.
     """
     if not pylibraft_available:
-        raise RuntimeError('pylibraft is not installed')
+        raise RuntimeError("pylibraft is not installed")
     u = cupy.asarray(u)
     v = cupy.asarray(v)
     output_arr = cupy.zeros((1,), dtype=u.dtype)
@@ -251,7 +251,7 @@ def cosine(u, v):
         cosine (double): The Cosine distance between vectors `u` and `v`.
     """
     if not pylibraft_available:
-        raise RuntimeError('pylibraft is not installed')
+        raise RuntimeError("pylibraft is not installed")
     u = cupy.asarray(u)
     v = cupy.asarray(v)
     output_arr = cupy.zeros((1,), dtype=u.dtype)
@@ -280,7 +280,7 @@ def hamming(u, v):
         hamming (double): The Hamming distance between vectors `u` and `v`.
     """
     if not pylibraft_available:
-        raise RuntimeError('pylibraft is not installed')
+        raise RuntimeError("pylibraft is not installed")
     u = cupy.asarray(u)
     v = cupy.asarray(v)
     output_arr = cupy.zeros((1,), dtype=u.dtype)
@@ -305,7 +305,7 @@ def euclidean(u, v):
         euclidean (double): The Euclidean distance between vectors `u` and `v`.
     """
     if not pylibraft_available:
-        raise RuntimeError('pylibraft is not installed')
+        raise RuntimeError("pylibraft is not installed")
     u = cupy.asarray(u)
     v = cupy.asarray(v)
     output_arr = cupy.zeros((1,), dtype=u.dtype)
@@ -334,7 +334,7 @@ def jensenshannon(u, v):
         vectors `u` and `v`.
     """
     if not pylibraft_available:
-        raise RuntimeError('pylibraft is not installed')
+        raise RuntimeError("pylibraft is not installed")
     u = cupy.asarray(u)
     v = cupy.asarray(v)
     output_arr = cupy.zeros((1,), dtype=u.dtype)
@@ -363,7 +363,7 @@ def russellrao(u, v):
         hamming (double): The Hamming distance between vectors `u` and `v`.
     """
     if not pylibraft_available:
-        raise RuntimeError('pylibraft is not installed')
+        raise RuntimeError("pylibraft is not installed")
     u = cupy.asarray(u)
     v = cupy.asarray(v)
     output_arr = cupy.zeros((1,), dtype=u.dtype)
@@ -389,7 +389,7 @@ def sqeuclidean(u, v):
         vectors `u` and `v`.
     """
     if not pylibraft_available:
-        raise RuntimeError('pylibraft is not installed.')
+        raise RuntimeError("pylibraft is not installed.")
     u = cupy.asarray(u)
     v = cupy.asarray(v)
     output_arr = cupy.zeros((1,), dtype=u.dtype)
@@ -416,7 +416,7 @@ def hellinger(u, v):
         vectors `u` and `v`.
     """
     if not pylibraft_available:
-        raise RuntimeError('pylibraft is not installed')
+        raise RuntimeError("pylibraft is not installed")
     u = cupy.asarray(u)
     v = cupy.asarray(v)
     output_arr = cupy.zeros((1,), dtype=u.dtype)
@@ -442,7 +442,7 @@ def kl_divergence(u, v):
         vectors `u` and `v`.
     """
     if not pylibraft_available:
-        raise RuntimeError('pylibraft is not installed')
+        raise RuntimeError("pylibraft is not installed")
     u = cupy.asarray(u)
     v = cupy.asarray(v)
     output_arr = cupy.zeros((1,), dtype=u.dtype)
@@ -451,7 +451,7 @@ def kl_divergence(u, v):
     return output_arr[0]
 
 
-def cdist(XA, XB, metric='euclidean', out=None, **kwargs):
+def cdist(XA, XB, metric="euclidean", out=None, **kwargs):
     """Compute distance between each pair of the two collections of inputs.
 
     Args:
@@ -481,20 +481,20 @@ def cdist(XA, XB, metric='euclidean', out=None, **kwargs):
             :math:`ij` th entry.
     """
     if not pylibraft_available:
-        raise RuntimeError('pylibraft is not installed')
-    XA = cupy.asarray(XA, dtype='float32')
-    XB = cupy.asarray(XB, dtype='float32')
+        raise RuntimeError("pylibraft is not installed")
+    XA = cupy.asarray(XA, dtype="float32")
+    XB = cupy.asarray(XB, dtype="float32")
 
     s = XA.shape
     sB = XB.shape
 
     if len(s) != 2:
-        raise ValueError('XA must be a 2-dimensional array.')
+        raise ValueError("XA must be a 2-dimensional array.")
     if len(sB) != 2:
-        raise ValueError('XB must be a 2-dimensional array.')
+        raise ValueError("XB must be a 2-dimensional array.")
     if s[1] != sB[1]:
-        raise ValueError('XA and XB must have the same number of columns '
-                         '(i.e. feature dimension.)')
+        raise ValueError("XA and XB must have the same number of columns "
+                         "(i.e. feature dimension.)")
 
     mA = s[0]
     mB = sB[0]
@@ -502,8 +502,8 @@ def cdist(XA, XB, metric='euclidean', out=None, **kwargs):
     p = kwargs["p"] if "p" in kwargs else 2.0
 
     if out is not None:
-        if out.dtype != 'float32':
-            out = out.astype('float32', copy=False)
+        if out.dtype != "float32":
+            out = out.astype("float32", copy=False)
         if out.shape != (mA, mB):
             cupy.resize(out, (mA, mB))
         out[:] = 0.0
@@ -517,12 +517,12 @@ def cdist(XA, XB, metric='euclidean', out=None, **kwargs):
             pairwise_distance(XA, XB, output_arr, metric, p=p)
             return output_arr
         else:
-            raise ValueError('Unknown Distance Metric: %s' % mstr)
+            raise ValueError("Unknown Distance Metric: %s" % mstr)
     else:
-        raise TypeError('2nd argument metric must be a string identifier')
+        raise TypeError("2nd argument metric must be a string identifier")
 
 
-def pdist(X, metric='euclidean', *, out=None, **kwargs):
+def pdist(X, metric="euclidean", *, out=None, **kwargs):
     """Compute distance between observations in n-dimensional space.
 
     Args:

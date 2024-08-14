@@ -5,8 +5,8 @@ import cupyx
 
 def _make(xp, sp, dtype):
     data = xp.array([0, 1, 3, 2], dtype)
-    indices = xp.array([0, 0, 2, 1], 'i')
-    indptr = xp.array([0, 1, 2, 3, 4], 'i')
+    indices = xp.array([0, 0, 2, 1], "i")
+    indptr = xp.array([0, 1, 2, 3, 4], "i")
     # 0, 1, 0, 0
     # 0, 0, 0, 2
     # 0, 0, 3, 0

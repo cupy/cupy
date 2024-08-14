@@ -98,7 +98,7 @@ class TestMayShareMemory(unittest.TestCase):
                 ret_np = numpy.may_share_memory(array1_np, array2_np)
                 ret_cp = cupy.may_share_memory(array1_cp, array2_cp)
                 assert ret_np == ret_cp, \
-                    'Failed in case of {} and {}'.format(sl1, sl2)
+                    "Failed in case of {} and {}".format(sl1, sl2)
 
 
 class TestSharesMemory(unittest.TestCase):

@@ -13,7 +13,7 @@ except ImportError:
     pass
 
 
-@testing.with_requires('scipy')
+@testing.with_requires("scipy")
 class TestDistanceTransform:
 
     def _binary_image(self, shape, xp=cupy, pct_true=50):
@@ -33,10 +33,10 @@ class TestDistanceTransform:
         mismatch = numpy.sum(arr1 != arr2) / arr1.size
         assert mismatch < pct_mismatch
 
-    @pytest.mark.parametrize('return_indices', [False, True])
-    @pytest.mark.parametrize('return_distances', [False, True])
+    @pytest.mark.parametrize("return_indices", [False, True])
+    @pytest.mark.parametrize("return_distances", [False, True])
     @pytest.mark.parametrize(
-        'shape, sampling',
+        "shape, sampling",
         [
             ((256, 128), None),
             ((384, 256), (1.5, 1.5)),
@@ -47,8 +47,8 @@ class TestDistanceTransform:
             ((50, 32, 24), (3, 1, 2)),  # integer-valued anisotropic
         ],
     )
-    @pytest.mark.parametrize('density', ['single_point', 5, 50, 95])
-    @pytest.mark.parametrize('block_params', [None, (1, 1, 1)])
+    @pytest.mark.parametrize("density", ["single_point", 5, 50, 95])
+    @pytest.mark.parametrize("block_params", [None, (1, 1, 1)])
     def test_distance_transform_edt_basic(
         self, shape, sampling, return_distances, return_indices, density,
         block_params
@@ -64,8 +64,8 @@ class TestDistanceTransform:
             return_indices=return_indices,
         )
         kwargs_cucim = copy.copy(kwargs_scipy)
-        kwargs_cucim['block_params'] = block_params
-        if density == 'single_point':
+        kwargs_cucim["block_params"] = block_params
+        if density == "single_point":
             img = cupy.ones(shape, dtype=bool)
             img[tuple(s // 2 for s in shape)] = 0
         else:
@@ -92,7 +92,7 @@ class TestDistanceTransform:
 
     @pytest.mark.parametrize(
         # Fine sampling of shapes to make sure kernels are robust to all shapes
-        'shape',
+        "shape",
         (
             [(s,) * 2 for s in range(512, 512 + 32)]
             + [(s,) * 2 for s in range(1024, 1024 + 16)]
@@ -100,16 +100,16 @@ class TestDistanceTransform:
             + [(s,) * 2 for s in range(4100, 4100)]
         ),
     )
-    @pytest.mark.parametrize('density', [2, 98])
-    @pytest.mark.parametrize('float64_distances', [False, True])
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @pytest.mark.parametrize("density", [2, 98])
+    @pytest.mark.parametrize("float64_distances", [False, True])
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_distance_transform_edt_additional_shapes(
         self, xp, scp, shape, density, float64_distances
     ):
         kwargs = dict(return_distances=True, return_indices=False)
         if xp == cupy:
             # test CuPy-specific behavior allowing float32 distances
-            kwargs['float64_distances'] = float64_distances
+            kwargs["float64_distances"] = float64_distances
         img = self._binary_image(shape, xp=xp, pct_true=density)
         distances = scp.ndimage.distance_transform_edt(img, **kwargs)
         if not float64_distances and xp == cupy:
@@ -119,25 +119,25 @@ class TestDistanceTransform:
         return distances
 
     @pytest.mark.parametrize(
-        'shape', [(s,) * 2 for s in range(1024, 1024 + 4)],
+        "shape", [(s,) * 2 for s in range(1024, 1024 + 4)],
     )
     @pytest.mark.parametrize(
-        'block_params',
+        "block_params",
         [(1, 1, 1), (5, 4, 2), (3, 8, 4), (7, 16, 1), (11, 32, 3), (1, 1, 16)]
     )
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_distance_transform_edt_block_params(self, xp, scp, shape,
                                                  block_params):
 
         kwargs = dict(return_distances=True, return_indices=False)
         if xp == cupy:
             # testing different block size parameters for the raw kernels
-            kwargs['block_params'] = block_params
+            kwargs["block_params"] = block_params
         img = self._binary_image(shape, xp=xp, pct_true=4)
         return scp.ndimage.distance_transform_edt(img, **kwargs)
 
     @pytest.mark.parametrize(
-        'block_params', [
+        "block_params", [
             (0, 1, 1), (1, 0, 1), (1, 1, 0),  # no elements can be < 1
             (1, 3, 1), (1, 5, 1), (1, 7, 1),  # 2nd element must be power of 2
             (128, 1, 1),  # m1 too large for the array size
@@ -152,9 +152,9 @@ class TestDistanceTransform:
                 img, block_params=block_params
             )
 
-    @pytest.mark.parametrize('value', [0, 1, 3])
-    @pytest.mark.parametrize('ndim', [2, 3])
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @pytest.mark.parametrize("value", [0, 1, 3])
+    @pytest.mark.parametrize("ndim", [2, 3])
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_distance_transform_edt_uniform_valued(self, xp, scp, value, ndim):
         """ensure default block_params is robust to anisotropic shape."""
         img = xp.full((48, ) * ndim, value, dtype=cupy.uint8)
@@ -162,41 +162,41 @@ class TestDistanceTransform:
         img[(slice(24, 25),) * ndim] = 0
         return scp.ndimage.distance_transform_edt(img)
 
-    @pytest.mark.parametrize('sx', list(range(16)))
-    @pytest.mark.parametrize('sy', list(range(16)))
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @pytest.mark.parametrize("sx", list(range(16)))
+    @pytest.mark.parametrize("sy", list(range(16)))
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_distance_transform_edt_2d_aniso(self, xp, scp, sx, sy):
         """ensure default block_params is robust to anisotropic shape."""
         shape = (128 + sy, 128 + sx)
         img = self._binary_image(shape, xp=xp, pct_true=80)
         return scp.ndimage.distance_transform_edt(img)
 
-    @pytest.mark.parametrize('sx', list(range(4)))
-    @pytest.mark.parametrize('sy', list(range(4)))
-    @pytest.mark.parametrize('sz', list(range(4)))
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @pytest.mark.parametrize("sx", list(range(4)))
+    @pytest.mark.parametrize("sy", list(range(4)))
+    @pytest.mark.parametrize("sz", list(range(4)))
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_distance_transform_edt_3d_aniso(self, xp, scp, sx, sy, sz):
         """ensure default block_params is robust to anisotropic shape."""
         shape = (16 + sz, 32 + sy, 48 + sx)
         img = self._binary_image(shape, xp=xp, pct_true=80)
         return scp.ndimage.distance_transform_edt(img)
 
-    @pytest.mark.parametrize('ndim', [2, 3])
-    @pytest.mark.parametrize('sampling', [None, 'iso', 'aniso'])
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @pytest.mark.parametrize("ndim", [2, 3])
+    @pytest.mark.parametrize("sampling", [None, "iso", "aniso"])
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_distance_transform_inplace_distance(self, xp, scp, ndim,
                                                  sampling):
         img = self._binary_image((32, ) * ndim, xp=xp, pct_true=80)
         distances = xp.empty(img.shape, dtype=xp.float64)
-        if sampling == 'iso':
+        if sampling == "iso":
             sampling = (1.5,) * ndim
-        elif sampling == 'aniso':
+        elif sampling == "aniso":
             sampling = tuple(range(1, ndim + 1))
         scp.ndimage.distance_transform_edt(img, sampling=sampling,
                                            distances=distances)
         return distances
 
-    @pytest.mark.parametrize('ndim', [2, 3])
+    @pytest.mark.parametrize("ndim", [2, 3])
     def test_distance_transform_inplace_distance_errors(self, ndim):
         img = self._binary_image((32, ) * ndim, xp=cupy, pct_true=80)
 
@@ -221,20 +221,20 @@ class TestDistanceTransform:
             dt_func(img, distances=distances, return_distances=False,
                     return_indices=True)
 
-    @pytest.mark.parametrize('ndim', [2, 3])
-    @pytest.mark.parametrize('sampling', [None, 'iso', 'aniso'])
-    @pytest.mark.parametrize('dtype', [cupy.int16, cupy.uint16, cupy.uint32,
+    @pytest.mark.parametrize("ndim", [2, 3])
+    @pytest.mark.parametrize("sampling", [None, "iso", "aniso"])
+    @pytest.mark.parametrize("dtype", [cupy.int16, cupy.uint16, cupy.uint32,
                                        cupy.int32, cupy.uint64, cupy.int64])
-    @pytest.mark.parametrize('return_distances', [False, True])
+    @pytest.mark.parametrize("return_distances", [False, True])
     def test_distance_transform_inplace_indices(
         self, ndim, sampling, dtype, return_distances
     ):
         img = self._binary_image((32, ) * ndim, xp=cupy, pct_true=80)
         if ndim == 3 and dtype in [cupy.int16, cupy.uint16]:
             pytest.skip(reason="3D requires at least 32-bit integer output")
-        if sampling == 'iso':
+        if sampling == "iso":
             sampling = (1.5,) * ndim
-        elif sampling == 'aniso':
+        elif sampling == "aniso":
             sampling = tuple(range(1, ndim + 1))
         common_kwargs = dict(
             sampling=sampling, return_distances=return_distances,
@@ -250,7 +250,7 @@ class TestDistanceTransform:
         else:
             cupy.testing.assert_array_equal(indices, expected)
 
-    @pytest.mark.parametrize('ndim', [2, 3])
+    @pytest.mark.parametrize("ndim", [2, 3])
     def test_distance_transform_inplace_indices_errors(self, ndim):
         img = self._binary_image((32, ) * ndim, pct_true=80)
         common_kwargs = dict(return_distances=False, return_indices=True)
@@ -277,13 +277,13 @@ class TestDistanceTransform:
             indices = cupy.empty((ndim,) + img.shape, dtype=cupy.int32)
             dt_func(img, indices=indices, return_indices=False)
 
-    @pytest.mark.parametrize('ndim', [1, 4, 5])
+    @pytest.mark.parametrize("ndim", [1, 4, 5])
     def test_distance_transform_edt_unsupported_ndim(self, ndim):
         with pytest.raises(NotImplementedError):
             cupyx.scipy.ndimage.distance_transform_edt(cupy.zeros((8,) * ndim))
 
     @pytest.mark.skip(reason="excessive memory requirement (and CPU runtime)")
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_distance_transform_edt_3d_int64(self, xp, scp):
         # Test 3D with shape > 2**10 to test the int64 kernels
         # This takes minutes to run on SciPy, so will need to skip on CI

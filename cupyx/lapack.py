@@ -23,31 +23,31 @@ def gesv(a, b):
     from cupy_backends.cuda.libs import cusolver as _cusolver
 
     if a.ndim != 2:
-        raise ValueError('a.ndim must be 2 (actual: {})'.format(a.ndim))
+        raise ValueError("a.ndim must be 2 (actual: {})".format(a.ndim))
     if b.ndim not in (1, 2):
-        raise ValueError('b.ndim must be 1 or 2 (actual: {})'.format(b.ndim))
+        raise ValueError("b.ndim must be 1 or 2 (actual: {})".format(b.ndim))
     if a.shape[0] != a.shape[1]:
-        raise ValueError('a must be a square matrix.')
+        raise ValueError("a must be a square matrix.")
     if a.shape[0] != b.shape[0]:
-        raise ValueError('shape mismatch (a: {}, b: {}).'.
+        raise ValueError("shape mismatch (a: {}, b: {}).".
                          format(a.shape, b.shape))
     if a.dtype != b.dtype:
-        raise TypeError('dtype mismatch (a: {}, b: {})'.
+        raise TypeError("dtype mismatch (a: {}, b: {})".
                         format(a.dtype, b.dtype))
     dtype = a.dtype
-    if dtype == 'f':
-        t = 's'
-    elif dtype == 'd':
-        t = 'd'
-    elif dtype == 'F':
-        t = 'c'
-    elif dtype == 'D':
-        t = 'z'
+    if dtype == "f":
+        t = "s"
+    elif dtype == "d":
+        t = "d"
+    elif dtype == "F":
+        t = "c"
+    elif dtype == "D":
+        t = "z"
     else:
-        raise TypeError('unsupported dtype (actual:{})'.format(a.dtype))
-    helper = getattr(_cusolver, t + 'getrf_bufferSize')
-    getrf = getattr(_cusolver, t + 'getrf')
-    getrs = getattr(_cusolver, t + 'getrs')
+        raise TypeError("unsupported dtype (actual:{})".format(a.dtype))
+    helper = getattr(_cusolver, t + "getrf_bufferSize")
+    getrf = getattr(_cusolver, t + "getrf")
+    getrs = getattr(_cusolver, t + "getrs")
 
     n = b.shape[0]
     nrhs = b.shape[1] if b.ndim == 2 else 1
@@ -56,9 +56,9 @@ def gesv(a, b):
     elif a._c_contiguous:
         trans = _cublas.CUBLAS_OP_T
     else:
-        raise ValueError('a must be F-contiguous or C-contiguous.')
+        raise ValueError("a must be F-contiguous or C-contiguous.")
     if not b._f_contiguous:
-        raise ValueError('b must be F-contiguous.')
+        raise ValueError("b must be F-contiguous.")
 
     handle = _device.get_cusolver_handle()
     dipiv = _cupy.empty(n, dtype=_numpy.int32)
@@ -94,44 +94,44 @@ def gels(a, b):
     from cupy_backends.cuda.libs import cusolver as _cusolver
 
     if a.ndim != 2:
-        raise ValueError('a.ndim must be 2 (actual: {})'.format(a.ndim))
+        raise ValueError("a.ndim must be 2 (actual: {})".format(a.ndim))
     if b.ndim == 1:
         nrhs = 1
     elif b.ndim == 2:
         nrhs = b.shape[1]
     else:
-        raise ValueError('b.ndim must be 1 or 2 (actual: {})'.format(b.ndim))
+        raise ValueError("b.ndim must be 1 or 2 (actual: {})".format(b.ndim))
     if a.shape[0] != b.shape[0]:
-        raise ValueError('shape mismatch (a: {}, b: {}).'.
+        raise ValueError("shape mismatch (a: {}, b: {}).".
                          format(a.shape, b.shape))
     if a.dtype != b.dtype:
-        raise ValueError('dtype mismatch (a: {}, b: {}).'.
+        raise ValueError("dtype mismatch (a: {}, b: {}).".
                          format(a.dtype, b.dtype))
 
     dtype = a.dtype
-    if dtype == 'f':
-        t = 's'
-    elif dtype == 'd':
-        t = 'd'
-    elif dtype == 'F':
-        t = 'c'
-    elif dtype == 'D':
-        t = 'z'
+    if dtype == "f":
+        t = "s"
+    elif dtype == "d":
+        t = "d"
+    elif dtype == "F":
+        t = "c"
+    elif dtype == "D":
+        t = "z"
     else:
-        raise ValueError('unsupported dtype (actual: {})'.format(dtype))
+        raise ValueError("unsupported dtype (actual: {})".format(dtype))
 
-    geqrf_helper = getattr(_cusolver, t + 'geqrf_bufferSize')
-    geqrf = getattr(_cusolver, t + 'geqrf')
-    trsm = getattr(_cublas, t + 'trsm')
-    if t in 'sd':
-        ormqr_helper = getattr(_cusolver, t + 'ormqr_bufferSize')
-        ormqr = getattr(_cusolver, t + 'ormqr')
+    geqrf_helper = getattr(_cusolver, t + "geqrf_bufferSize")
+    geqrf = getattr(_cusolver, t + "geqrf")
+    trsm = getattr(_cublas, t + "trsm")
+    if t in "sd":
+        ormqr_helper = getattr(_cusolver, t + "ormqr_bufferSize")
+        ormqr = getattr(_cusolver, t + "ormqr")
     else:
-        ormqr_helper = getattr(_cusolver, t + 'unmqr_bufferSize')
-        ormqr = getattr(_cusolver, t + 'unmqr')
+        ormqr_helper = getattr(_cusolver, t + "unmqr_bufferSize")
+        ormqr = getattr(_cusolver, t + "unmqr")
 
     no_trans = _cublas.CUBLAS_OP_N
-    if dtype.char in 'fd':
+    if dtype.char in "fd":
         trans = _cublas.CUBLAS_OP_T
     else:
         trans = _cublas.CUBLAS_OP_C
@@ -145,8 +145,8 @@ def gels(a, b):
     one = _numpy.array(1.0, dtype=dtype)
 
     if m >= n:  # over/well-determined systems
-        a = a.copy(order='F')
-        b = b.copy(order='F')
+        a = a.copy(order="F")
+        b = b.copy(order="F")
 
         # geqrf (QR decomposition, A = Q * R)
         ws_size = geqrf_helper(cusolver_handle, m, n, a.data.ptr, m)
@@ -176,10 +176,10 @@ def gels(a, b):
         return b[:n]
 
     else:  # under-determined systems
-        a = a.conj().T.copy(order='F')
+        a = a.conj().T.copy(order="F")
         bb = b
         out_shape = (n,) if b.ndim == 1 else (n, nrhs)
-        b = _cupy.zeros(out_shape, dtype=dtype, order='F')
+        b = _cupy.zeros(out_shape, dtype=dtype, order="F")
         b[:m] = bb
 
         # geqrf (QR decomposition, A^T = Q * R)
@@ -214,30 +214,30 @@ def _batched_posv(a, b):
     import cupyx.cusolver
     from cupy_backends.cuda.libs import cusolver as _cusolver
 
-    if not cupyx.cusolver.check_availability('potrsBatched'):
-        raise RuntimeError('potrsBatched is not available')
+    if not cupyx.cusolver.check_availability("potrsBatched"):
+        raise RuntimeError("potrsBatched is not available")
 
     dtype = _numpy.promote_types(a.dtype, b.dtype)
-    dtype = _numpy.promote_types(dtype, 'f')
+    dtype = _numpy.promote_types(dtype, "f")
 
-    if dtype == 'f':
+    if dtype == "f":
         potrfBatched = _cusolver.spotrfBatched
         potrsBatched = _cusolver.spotrsBatched
-    elif dtype == 'd':
+    elif dtype == "d":
         potrfBatched = _cusolver.dpotrfBatched
         potrsBatched = _cusolver.dpotrsBatched
-    elif dtype == 'F':
+    elif dtype == "F":
         potrfBatched = _cusolver.cpotrfBatched
         potrsBatched = _cusolver.cpotrsBatched
-    elif dtype == 'D':
+    elif dtype == "D":
         potrfBatched = _cusolver.zpotrfBatched
         potrsBatched = _cusolver.zpotrsBatched
     else:
-        msg = ('dtype must be float32, float64, complex64 or complex128'
-               ' (actual: {})'.format(a.dtype))
+        msg = ("dtype must be float32, float64, complex64 or complex128"
+               " (actual: {})".format(a.dtype))
         raise ValueError(msg)
 
-    a = a.astype(dtype, order='C', copy=True)
+    a = a.astype(dtype, order="C", copy=True)
     ap = _cupy._core._mat_ptrs(a)
     lda, n = a.shape[-2:]
     batch_size = int(_numpy.prod(a.shape[:-2]))
@@ -253,7 +253,7 @@ def _batched_posv(a, b):
         potrfBatched, dev_info)
 
     b_shape = b.shape
-    b = b.conj().reshape(batch_size, n, -1).astype(dtype, order='C', copy=True)
+    b = b.conj().reshape(batch_size, n, -1).astype(dtype, order="C", copy=True)
     bp = _cupy._core._mat_ptrs(b)
     ldb, nrhs = b.shape[-2:]
     dev_info = _cupy.empty(1, dtype=_numpy.int32)
@@ -296,30 +296,30 @@ def posv(a, b):
         return _batched_posv(a, b)
 
     dtype = _numpy.promote_types(a.dtype, b.dtype)
-    dtype = _numpy.promote_types(dtype, 'f')
+    dtype = _numpy.promote_types(dtype, "f")
 
-    if dtype == 'f':
+    if dtype == "f":
         potrf = _cusolver.spotrf
         potrf_bufferSize = _cusolver.spotrf_bufferSize
         potrs = _cusolver.spotrs
-    elif dtype == 'd':
+    elif dtype == "d":
         potrf = _cusolver.dpotrf
         potrf_bufferSize = _cusolver.dpotrf_bufferSize
         potrs = _cusolver.dpotrs
-    elif dtype == 'F':
+    elif dtype == "F":
         potrf = _cusolver.cpotrf
         potrf_bufferSize = _cusolver.cpotrf_bufferSize
         potrs = _cusolver.cpotrs
-    elif dtype == 'D':
+    elif dtype == "D":
         potrf = _cusolver.zpotrf
         potrf_bufferSize = _cusolver.zpotrf_bufferSize
         potrs = _cusolver.zpotrs
     else:
-        msg = ('dtype must be float32, float64, complex64 or complex128'
-               ' (actual: {})'.format(a.dtype))
+        msg = ("dtype must be float32, float64, complex64 or complex128"
+               " (actual: {})".format(a.dtype))
         raise ValueError(msg)
 
-    a = a.astype(dtype, order='F', copy=True)
+    a = a.astype(dtype, order="F", copy=True)
     lda, n = a.shape
 
     handle = _device.get_cusolver_handle()
@@ -336,7 +336,7 @@ def posv(a, b):
         potrf, dev_info)
 
     b_shape = b.shape
-    b = b.reshape(n, -1).astype(dtype, order='F', copy=True)
+    b = b.reshape(n, -1).astype(dtype, order="F", copy=True)
     ldb, nrhs = b.shape
 
     # Solve: A * X = B

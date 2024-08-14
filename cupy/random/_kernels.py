@@ -64,11 +64,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 from cupy import _core
 
-rk_use_binominal = '''
+rk_use_binominal = """
 #define CUPY_USE_BINOMIAL
-'''
+"""
 
-rk_basic_definition = '''
+rk_basic_definition = """
 typedef struct {
     unsigned int xor128[4];
     double gauss;
@@ -113,7 +113,7 @@ __device__ double rk_double(rk_state *state) {
     int a = rk_random(state) >> 5, b = rk_random(state) >> 6;
     return (a * 67108864.0 + b) / 9007199254740992.0;
 }
-'''
+"""
 
 
 # The kernels for distributions are based on
@@ -164,7 +164,7 @@ __device__ double rk_double(rk_state *state) {
  */
 """  # NOQA
 
-loggam_definition = '''
+loggam_definition = """
 /*
  * log-gamma function to support some of these distributions. The
  * algorithm comes from SPECFUN by Shanjie Zhang and Jianming Jin and their
@@ -202,16 +202,16 @@ static __device__ double loggam(double x) {
     }
     return gl;
 }
-'''
+"""
 
-rk_standard_exponential_definition = '''
+rk_standard_exponential_definition = """
 __device__ double rk_standard_exponential(rk_state *state) {
     /* We use -log(1-U) since U is [0, 1) */
     return -log(1.0 - rk_double(state));
 }
-'''
+"""
 
-rk_standard_gamma_definition = '''
+rk_standard_gamma_definition = """
 __device__ double rk_standard_gamma(rk_state *state, double shape) {
     double b, c;
     double U, V, X, Y;
@@ -249,9 +249,9 @@ __device__ double rk_standard_gamma(rk_state *state, double shape) {
         }
     }
 }
-'''
+"""
 
-rk_beta_definition = '''
+rk_beta_definition = """
 __device__ double rk_beta(rk_state *state, double a, double b) {
     double Ga, Gb;
     if ((a <= 1.0) && (b <= 1.0)) {
@@ -281,15 +281,15 @@ __device__ double rk_beta(rk_state *state, double a, double b) {
         return Ga/(Ga + Gb);
     }
 }
-'''
+"""
 
-rk_chisquare_definition = '''
+rk_chisquare_definition = """
 __device__ double rk_chisquare(rk_state *state, double df) {
     return 2.0*rk_standard_gamma(state, df/2.0);
 }
-'''
+"""
 
-rk_noncentral_chisquare_definition = '''
+rk_noncentral_chisquare_definition = """
 __device__ double rk_noncentral_chisquare(
     rk_state *state, double df, double nonc)
 {
@@ -308,25 +308,25 @@ __device__ double rk_noncentral_chisquare(
         return rk_chisquare(state, df + 2 * i);
     }
 }
-'''
+"""
 
-rk_f_definition = '''
+rk_f_definition = """
 __device__ double rk_f(rk_state *state, double dfnum, double dfden) {
     return ((rk_chisquare(state, dfnum) * dfden) /
             (rk_chisquare(state, dfden) * dfnum));
 }
-'''
+"""
 
-rk_noncentral_f_definition = '''
+rk_noncentral_f_definition = """
 __device__ double rk_noncentral_f(
     rk_state *state, double dfnum, double dfden, double nonc)
 {
     double t = rk_noncentral_chisquare(state, dfnum, nonc) * dfden;
     return t / (rk_chisquare(state, dfden) * dfnum);
 }
-'''
+"""
 
-rk_binomial_definition = '''
+rk_binomial_definition = """
 __device__ long rk_binomial_btpe(rk_state *state, long n, double p) {
     double r,q,fm,p1,xm,xl,xr,c,laml,lamr,p2,p3,p4;
     double a,u,v,s,F,rho,t,A,nrq,x1,x2,f1,f2,z,z2,w,w2,x;
@@ -495,9 +495,9 @@ __device__ long rk_binomial(rk_state *state, int n, double p) {
         }
     }
 }
-'''
+"""
 
-rk_poisson_mult_definition = '''
+rk_poisson_mult_definition = """
 __device__ long rk_poisson_mult(rk_state *state, double lam) {
     long X;
     double prod, U, enlam;
@@ -514,9 +514,9 @@ __device__ long rk_poisson_mult(rk_state *state, double lam) {
         }
     }
 }
-'''
+"""
 
-rk_poisson_ptrs_definition = '''
+rk_poisson_ptrs_definition = """
 /*
  * The transformed rejection method for generating Poisson random variables
  * W. Hoermann
@@ -551,9 +551,9 @@ __device__ long rk_poisson_ptrs(rk_state *state, double lam) {
         }
     }
 }
-'''
+"""
 
-rk_poisson_definition = '''
+rk_poisson_definition = """
 __device__ long rk_poisson(rk_state *state, double lam) {
     if (lam >= 10) {
         return rk_poisson_ptrs(state, lam);
@@ -563,15 +563,15 @@ __device__ long rk_poisson(rk_state *state, double lam) {
         return rk_poisson_mult(state, lam);
     }
 }
-'''
+"""
 
-rk_standard_t_definition = '''
+rk_standard_t_definition = """
 __device__ double rk_standard_t(rk_state *state, double df) {
     return sqrt(df/2)*rk_gauss(state)/sqrt(rk_standard_gamma(state, df/2));
 }
-'''
+"""
 
-rk_vonmises_definition = '''
+rk_vonmises_definition = """
 __device__ double rk_vonmises(rk_state *state, double mu, double kappa)
 {
     double s;
@@ -631,9 +631,9 @@ __device__ double rk_vonmises(rk_state *state, double mu, double kappa)
         return mod;
     }
 }
-'''
+"""
 
-rk_zipf_definition = '''
+rk_zipf_definition = """
 __device__ long rk_zipf(rk_state *state, double a)
 {
     double am1, b;
@@ -657,9 +657,9 @@ __device__ long rk_zipf(rk_state *state, double a)
         }
     }
 }
-'''
+"""
 
-rk_geometric_definition = '''
+rk_geometric_definition = """
 __device__ long rk_geometric_search(rk_state *state, double p) {
     double U;
     long X;
@@ -687,10 +687,10 @@ __device__ long rk_geometric(rk_state *state, double p) {
         return rk_geometric_inversion(state, p);
     }
 }
-'''
+"""
 
 # min and max for the long type are not defined in cuda90 but in cuda75.
-long_min_max_definition = '''
+long_min_max_definition = """
 __device__ long long_min(long a, long b)
 {
     return a < b ? a : b;
@@ -700,9 +700,9 @@ __device__ long long_max(long a, long b)
 {
     return a > b ? a : b;
 }
-'''
+"""
 
-rk_hypergeometric_definition = '''
+rk_hypergeometric_definition = """
 __device__ long rk_hypergeometric_hyp(
     rk_state *state, long good, long bad, long sample)
 {
@@ -797,9 +797,9 @@ __device__ long rk_hypergeometric(
         return rk_hypergeometric_hyp(state, good, bad, sample);
     }
 }
-'''
+"""
 
-rk_logseries_definition = '''
+rk_logseries_definition = """
 __device__ long rk_logseries(rk_state *state, double p)
 {
     double q, r, U, V;
@@ -829,9 +829,9 @@ __device__ long rk_logseries(rk_state *state, double p)
         return 2;
     }
 }
-'''
+"""
 
-rk_gauss_definition = '''
+rk_gauss_definition = """
 __device__ double rk_gauss(rk_state *state) {
     if (state->has_gauss) {
         const double tmp = state->gauss;
@@ -854,9 +854,9 @@ __device__ double rk_gauss(rk_state *state) {
         return f*x2;
     }
 }
-'''
+"""
 
-open_uniform_definition = '''
+open_uniform_definition = """
 __device__ void open_uniform(rk_state *state, double *U) {
     do {
         *U = rk_double(state);
@@ -868,34 +868,34 @@ __device__ void open_uniform(rk_state *state, float *U) {
         *U = rk_double(state);
     } while (*U <= 0.0 || *U >= 1.0);
 }
-'''
+"""
 
 definitions = [
     rk_basic_definition, rk_gauss_definition,
     rk_standard_exponential_definition, rk_standard_gamma_definition,
     rk_beta_definition]
 beta_kernel = _core.ElementwiseKernel(
-    'S a, T b, uint64 seed', 'Y y',
-    '''
+    "S a, T b, uint64 seed", "Y y",
+    """
     rk_seed(seed + i, &internal_state);
     y = rk_beta(&internal_state, a, b);
-    ''',
-    'cupy_beta_kernel',
-    preamble=''.join(definitions),
-    loop_prep='rk_state internal_state;'
+    """,
+    "cupy_beta_kernel",
+    preamble="".join(definitions),
+    loop_prep="rk_state internal_state;"
 )
 
 definitions = [
     rk_use_binominal, rk_basic_definition, rk_binomial_definition]
 binomial_kernel = _core.ElementwiseKernel(
-    'S n, T p, uint64 seed', 'Y y',
-    '''
+    "S n, T p, uint64 seed", "Y y",
+    """
     rk_seed(seed + i, &internal_state);
     y = rk_binomial(&internal_state, n, p);
-    ''',
-    'cupy_binomial_kernel',
-    preamble=''.join(definitions),
-    loop_prep='rk_state internal_state;'
+    """,
+    "cupy_binomial_kernel",
+    preamble="".join(definitions),
+    loop_prep="rk_state internal_state;"
 )
 
 definitions = \
@@ -903,14 +903,14 @@ definitions = \
      rk_standard_exponential_definition, rk_standard_gamma_definition,
      rk_standard_t_definition]
 standard_t_kernel = _core.ElementwiseKernel(
-    'S df, uint64 seed', 'Y y',
-    '''
+    "S df, uint64 seed", "Y y",
+    """
     rk_seed(seed + i, &internal_state);
     y = rk_standard_t(&internal_state, df);
-    ''',
-    'cupy_standard_t_kernel',
-    preamble=''.join(definitions),
-    loop_prep='rk_state internal_state;'
+    """,
+    "cupy_standard_t_kernel",
+    preamble="".join(definitions),
+    loop_prep="rk_state internal_state;"
 )
 
 definitions = \
@@ -918,14 +918,14 @@ definitions = \
      rk_standard_exponential_definition, rk_standard_gamma_definition,
      rk_chisquare_definition]
 chisquare_kernel = _core.ElementwiseKernel(
-    'T df, uint64 seed', 'Y y',
-    '''
+    "T df, uint64 seed", "Y y",
+    """
     rk_seed(seed + i, &internal_state);
     y = rk_chisquare(&internal_state, df);
-    ''',
-    'cupy_chisquare_kernel',
-    preamble=''.join(definitions),
-    loop_prep='rk_state internal_state;'
+    """,
+    "cupy_chisquare_kernel",
+    preamble="".join(definitions),
+    loop_prep="rk_state internal_state;"
 )
 
 definitions = \
@@ -933,54 +933,54 @@ definitions = \
      rk_standard_exponential_definition, rk_standard_gamma_definition,
      rk_chisquare_definition, rk_f_definition]
 f_kernel = _core.ElementwiseKernel(
-    'S dfnum, T dfden, uint64 seed', 'Y y',
-    '''
+    "S dfnum, T dfden, uint64 seed", "Y y",
+    """
     rk_seed(seed + i, &internal_state);
     y = rk_f(&internal_state, dfnum, dfden);
-    ''',
-    'cupy_f_kernel',
-    preamble=''.join(definitions),
-    loop_prep='rk_state internal_state;'
+    """,
+    "cupy_f_kernel",
+    preamble="".join(definitions),
+    loop_prep="rk_state internal_state;"
 )
 
 definitions = \
     [rk_basic_definition, rk_geometric_definition]
 geometric_kernel = _core.ElementwiseKernel(
-    'T p, uint64 seed', 'Y y',
-    '''
+    "T p, uint64 seed", "Y y",
+    """
     rk_seed(seed + i, &internal_state);
     y = rk_geometric(&internal_state, p);
-    ''',
-    'cupy_geometric_kernel',
-    preamble=''.join(definitions),
-    loop_prep='rk_state internal_state;'
+    """,
+    "cupy_geometric_kernel",
+    preamble="".join(definitions),
+    loop_prep="rk_state internal_state;"
 )
 
 definitions = \
     [rk_basic_definition, loggam_definition, long_min_max_definition,
      rk_hypergeometric_definition]
 hypergeometric_kernel = _core.ElementwiseKernel(
-    'S good, T bad, U sample, uint64 seed', 'Y y',
-    '''
+    "S good, T bad, U sample, uint64 seed", "Y y",
+    """
     rk_seed(seed + i, &internal_state);
     y = rk_hypergeometric(&internal_state, good, bad, sample);
-    ''',
-    'cupy_hypergeometric_kernel',
-    preamble=''.join(definitions),
-    loop_prep='rk_state internal_state;'
+    """,
+    "cupy_hypergeometric_kernel",
+    preamble="".join(definitions),
+    loop_prep="rk_state internal_state;"
 )
 
 definitions = \
     [rk_basic_definition, rk_logseries_definition]
 logseries_kernel = _core.ElementwiseKernel(
-    'T p, uint64 seed', 'Y y',
-    '''
+    "T p, uint64 seed", "Y y",
+    """
     rk_seed(seed + i, &internal_state);
     y = rk_logseries(&internal_state, p);
-    ''',
-    'cupy_logseries_kernel',
-    preamble=''.join(definitions),
-    loop_prep='rk_state internal_state;'
+    """,
+    "cupy_logseries_kernel",
+    preamble="".join(definitions),
+    loop_prep="rk_state internal_state;"
 )
 
 definitions = [
@@ -990,14 +990,14 @@ definitions = [
     rk_poisson_ptrs_definition, rk_poisson_definition,
     rk_noncentral_chisquare_definition]
 noncentral_chisquare_kernel = _core.ElementwiseKernel(
-    'S df, T nonc, uint64 seed', 'Y y',
-    '''
+    "S df, T nonc, uint64 seed", "Y y",
+    """
     rk_seed(seed + i, &internal_state);
     y = rk_noncentral_chisquare(&internal_state, df, nonc);
-    ''',
-    'cupy_noncentral_chisquare_kernel',
-    preamble=''.join(definitions),
-    loop_prep='rk_state internal_state;'
+    """,
+    "cupy_noncentral_chisquare_kernel",
+    preamble="".join(definitions),
+    loop_prep="rk_state internal_state;"
 )
 
 definitions = [
@@ -1007,14 +1007,14 @@ definitions = [
     rk_poisson_ptrs_definition, rk_poisson_definition,
     rk_noncentral_chisquare_definition, rk_noncentral_f_definition]
 noncentral_f_kernel = _core.ElementwiseKernel(
-    'S dfnum, T dfden, U nonc, uint64 seed', 'Y y',
-    '''
+    "S dfnum, T dfden, U nonc, uint64 seed", "Y y",
+    """
     rk_seed(seed + i, &internal_state);
     y = rk_noncentral_f(&internal_state, dfnum, dfden, nonc);
-    ''',
-    'cupy_noncentral_f_kernel',
-    preamble=''.join(definitions),
-    loop_prep='rk_state internal_state;'
+    """,
+    "cupy_noncentral_f_kernel",
+    preamble="".join(definitions),
+    loop_prep="rk_state internal_state;"
 )
 
 definitions = \
@@ -1022,65 +1022,65 @@ definitions = \
      rk_poisson_mult_definition, rk_poisson_ptrs_definition,
      rk_poisson_definition]
 poisson_kernel = _core.ElementwiseKernel(
-    'T lam, uint64 seed', 'Y y',
-    '''
+    "T lam, uint64 seed", "Y y",
+    """
     rk_seed(seed + i, &internal_state);
     y = rk_poisson(&internal_state, lam);
-    ''',
-    'cupy_poisson_kernel',
-    preamble=''.join(definitions),
-    loop_prep='rk_state internal_state;'
+    """,
+    "cupy_poisson_kernel",
+    preamble="".join(definitions),
+    loop_prep="rk_state internal_state;"
 )
 
 definitions = [
     rk_basic_definition, rk_gauss_definition,
     rk_standard_exponential_definition, rk_standard_gamma_definition]
 standard_gamma_kernel = _core.ElementwiseKernel(
-    'T shape, uint64 seed', 'Y y',
-    '''
+    "T shape, uint64 seed", "Y y",
+    """
     rk_seed(seed + i, &internal_state);
     y = rk_standard_gamma(&internal_state, shape);
-    ''',
-    'cupy_standard_gamma_kernel',
-    preamble=''.join(definitions),
-    loop_prep='rk_state internal_state;'
+    """,
+    "cupy_standard_gamma_kernel",
+    preamble="".join(definitions),
+    loop_prep="rk_state internal_state;"
 )
 
 definitions = [
     rk_basic_definition, rk_vonmises_definition]
 vonmises_kernel = _core.ElementwiseKernel(
-    'S mu, T kappa, uint64 seed', 'Y y',
-    '''
+    "S mu, T kappa, uint64 seed", "Y y",
+    """
     rk_seed(seed + i, &internal_state);
     y = rk_vonmises(&internal_state, mu, kappa);
-    ''',
-    'cupy_vonmises_kernel',
-    preamble=''.join(definitions),
-    loop_prep='rk_state internal_state;'
+    """,
+    "cupy_vonmises_kernel",
+    preamble="".join(definitions),
+    loop_prep="rk_state internal_state;"
 )
 
 definitions = [
     rk_basic_definition, rk_zipf_definition]
 zipf_kernel = _core.ElementwiseKernel(
-    'T a, uint64 seed', 'Y y',
-    '''
+    "T a, uint64 seed", "Y y",
+    """
     rk_seed(seed + i, &internal_state);
     y = rk_zipf(&internal_state, a);
-    ''',
-    'cupy_zipf_kernel',
-    preamble=''.join(definitions),
-    loop_prep='rk_state internal_state;'
+    """,
+    "cupy_zipf_kernel",
+    preamble="".join(definitions),
+    loop_prep="rk_state internal_state;"
 )
 
 definitions = [
     rk_basic_definition, open_uniform_definition]
 open_uniform_kernel = _core.ElementwiseKernel(
-    'uint64 seed', 'Y y',
-    '''
+    "uint64 seed", "Y y",
+    """
     rk_seed(seed + i, &internal_state);
     open_uniform(&internal_state, &y);
-    ''',
-    'cupy_open_uniform_kernel',
-    preamble=''.join(definitions),
-    loop_prep='rk_state internal_state;'
+    """,
+    "cupy_open_uniform_kernel",
+    preamble="".join(definitions),
+    loop_prep="rk_state internal_state;"
 )

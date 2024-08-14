@@ -14,24 +14,24 @@ import cupy
 # in different devices, and call kernels in parallel.
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--gpus', type=int, nargs='*',
-                        default=[0], help='GPU IDs')
-    parser.add_argument('--n-options', default=1000, type=int)
-    parser.add_argument('--n-samples-per-thread', default=1000, type=int)
-    parser.add_argument('--n-threads-per-option', default=10000, type=int)
+    parser.add_argument("--gpus", type=int, nargs="*",
+                        default=[0], help="GPU IDs")
+    parser.add_argument("--n-options", default=1000, type=int)
+    parser.add_argument("--n-samples-per-thread", default=1000, type=int)
+    parser.add_argument("--n-threads-per-option", default=10000, type=int)
     args = parser.parse_args()
 
     if len(args.gpus) == 0:
-        print('At least one GPU is required.')
+        print("At least one GPU is required.")
         sys.exit(1)
 
     def rand_range(m, M):
         samples = numpy.random.rand(args.n_options)
         return (m + (M - m) * samples).astype(numpy.float64)
 
-    print('initializing...')
+    print("initializing...")
     stock_price_cpu = rand_range(5, 30)
     option_strike_cpu = rand_range(1, 100)
     option_years_cpu = rand_range(0.25, 10)
@@ -42,10 +42,10 @@ if __name__ == '__main__':
     option_strike_gpus = []
     option_years_gpus = []
     call_prices_gpus = []
-    print('start computation')
-    print('    # of gpus: {}'.format(len(args.gpus)))
-    print('    # of options: {}'.format(args.n_options))
-    print('    # of samples per option: {}'.format(
+    print("start computation")
+    print("    # of gpus: {}".format(len(args.gpus)))
+    print("    # of options: {}".format(args.n_options))
+    print("    # of samples per option: {}".format(
         len(args.gpus) * args.n_samples_per_thread * args.n_threads_per_option)
     )
     # Allocate arrays in different devices
@@ -65,9 +65,9 @@ if __name__ == '__main__':
         yield
         cupy.cuda.Stream.null.synchronize()
         end = time.time()
-        print('%s:\t%f sec' % (message, end - start))
+        print("%s:\t%f sec" % (message, end - start))
 
-    with timer('GPU (CuPy, Monte Carlo method)'):
+    with timer("GPU (CuPy, Monte Carlo method)"):
         for i, gpu_id in enumerate(args.gpus):
             # Performs Monte-Carlo simulations in parallel
             with cupy.cuda.Device(gpu_id):
@@ -90,4 +90,4 @@ if __name__ == '__main__':
             stock_price_gpus[0], option_strike_gpus[0], option_years_gpus[0],
             risk_free, volatility)[0].get()
     error = cupy.std(call_mc - call_bs)
-    print('Error: %f' % error)
+    print("Error: %f" % error)

@@ -4,40 +4,40 @@ from cupy import _core
 
 def _create_float_test_ufunc(name, doc):
     return _core.create_ufunc(
-        'cupy_' + name,
-        ('e->?', 'f->?', 'd->?', 'F->?', 'D->?',
-         ), 'out0 = %s(in0)' % name,
+        "cupy_" + name,
+        ("e->?", "f->?", "d->?", "F->?", "D->?",
+         ), "out0 = %s(in0)" % name,
         doc=doc)
 
 
 isfinite = _create_float_test_ufunc(
-    'isfinite',
-    '''Tests finiteness elementwise.
+    "isfinite",
+    """Tests finiteness elementwise.
 
     Each element of returned array is ``True`` only if the corresponding
     element of the input is finite (i.e. not an infinity nor NaN).
 
     .. seealso:: :data:`numpy.isfinite`
 
-    ''')
+    """)
 
 
 isinf = _create_float_test_ufunc(
-    'isinf',
-    '''Tests if each element is the positive or negative infinity.
+    "isinf",
+    """Tests if each element is the positive or negative infinity.
 
     .. seealso:: :data:`numpy.isinf`
 
-    ''')
+    """)
 
 
 isnan = _create_float_test_ufunc(
-    'isnan',
-    '''Tests if each element is a NaN.
+    "isnan",
+    """Tests if each element is a NaN.
 
     .. seealso:: :data:`numpy.isnan`
 
-    ''')
+    """)
 
 
 def isneginf(x, out=None):
@@ -78,8 +78,8 @@ def isneginf(x, out=None):
         signbit = cupy.signbit(x)
     except TypeError as e:
         dtype = x.dtype
-        raise TypeError(f'This operation is not supported for {dtype} values '
-                        'because it would be ambiguous.') from e
+        raise TypeError(f"This operation is not supported for {dtype} values "
+                        "because it would be ambiguous.") from e
 
     # TODO(khushi-411): Use `out` instead of `out=out` (see #6393)
     return cupy.logical_and(is_inf, signbit, out=out)
@@ -123,8 +123,8 @@ def isposinf(x, out=None):
         signbit = ~cupy.signbit(x)
     except TypeError as e:
         dtype = x.dtype
-        raise TypeError(f'This operation is not supported for {dtype} values '
-                        'because it would be ambiguous.') from e
+        raise TypeError(f"This operation is not supported for {dtype} values "
+                        "because it would be ambiguous.") from e
 
     # TODO(khushi-411): Use `out` instead of `out=out` (see #6393)
     return cupy.logical_and(is_inf, signbit, out=out)

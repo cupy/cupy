@@ -85,25 +85,25 @@ class TestEntropyBasic(unittest.TestCase):
 
 @testing.parameterize(*(
     testing.product({
-        'shape': [(64, ), (16, 15), (14, 4, 10)],
-        'base': [None, 10],
-        'axis': [None, 0, -1],
-        'use_qk': [False, True],
-        'normalize': [False, True],
+        "shape": [(64, ), (16, 15), (14, 4, 10)],
+        "base": [None, 10],
+        "axis": [None, 0, -1],
+        "use_qk": [False, True],
+        "normalize": [False, True],
     })
 ))
-@testing.with_requires('scipy>=1.4.0')
+@testing.with_requires("scipy>=1.4.0")
 class TestEntropy(unittest.TestCase):
 
     def _entropy(self, xp, scp, dtype, shape, use_qk, base, axis, normalize):
         pk = testing.shaped_random(shape, xp, dtype=dtype)
-        is_float16 = pk.dtype.char == 'e'
+        is_float16 = pk.dtype.char == "e"
         if use_qk:
             qk = testing.shaped_random(shape, xp, dtype=dtype)
         else:
             qk = None
 
-        if normalize and pk.dtype.kind != 'c':
+        if normalize and pk.dtype.kind != "c":
             # if we don't normalize pk and qk, entropy will do it internally
             norm_axis = 0 if axis is None else axis
             pk = _distributions._normalize(pk, norm_axis)
@@ -111,7 +111,7 @@ class TestEntropy(unittest.TestCase):
                 qk = _distributions._normalize(qk, norm_axis)
         res = scp.stats.entropy(pk, qk=qk, base=base, axis=axis)
 
-        float_type = xp.float32 if pk.dtype.char in 'ef' else xp.float64
+        float_type = xp.float32 if pk.dtype.char in "ef" else xp.float64
         if res.ndim > 0:
             # verify expected dtype
             assert res.dtype == float_type
@@ -124,8 +124,8 @@ class TestEntropy(unittest.TestCase):
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(rtol={cupy.float16: 1e-3,
                                        cupy.float32: 1e-6,
-                                       'default': 1e-15},
-                                 scipy_name='scp')
+                                       "default": 1e-15},
+                                 scipy_name="scp")
     def test_entropy(self, xp, scp, dtype):
         return self._entropy(xp, scp, dtype, self.shape, self.use_qk,
                              self.base, self.axis, self.normalize)

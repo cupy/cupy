@@ -3,12 +3,12 @@ from cupy import testing
 
 class TestBinaryRepr(testing.NumpyAliasBasicTestBase):
 
-    func = 'binary_repr'
+    func = "binary_repr"
 
 
 @testing.parameterize(
     *testing.product({
-        'args': [
+        "args": [
             (0,), (3,), (-3,),
             (0, 0),
             (3, 5),
@@ -21,17 +21,17 @@ class TestBinaryRepr(testing.NumpyAliasBasicTestBase):
         ]}))
 class TestBinaryReprValues(testing.NumpyAliasValuesTestBase):
 
-    func = 'binary_repr'
+    func = "binary_repr"
 
 
 class TestBaseRepr(testing.NumpyAliasBasicTestBase):
 
-    func = 'base_repr'
+    func = "base_repr"
 
 
 @testing.parameterize(
     *testing.product({
-        'args': [
+        "args": [
             (0,), (5,), (-5,),
             (0, 2), (0, 10), (0, 36),
             (5, 2), (5, 10), (5, 36),
@@ -45,4 +45,4 @@ class TestBaseRepr(testing.NumpyAliasBasicTestBase):
         ]}))
 class TestBaseReprValues(testing.NumpyAliasValuesTestBase):
 
-    func = 'base_repr'
+    func = "base_repr"

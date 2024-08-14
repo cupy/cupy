@@ -11,11 +11,11 @@ static __device__ T logit(T x) {
 
 
 logit = _core.create_ufunc(
-    'cupy_logit',
-    ('e->f', 'f->f', 'd->d'),
-    'out0 = logit(in0)',
+    "cupy_logit",
+    ("e->f", "f->f", "d->d"),
+    "out0 = logit(in0)",
     preamble=logit_definition,
-    doc='''Logit function.
+    doc="""Logit function.
 
     Args:
         x (cupy.ndarray): input data
@@ -25,7 +25,7 @@ logit = _core.create_ufunc(
 
     .. seealso:: :data:`scipy.special.logit`
 
-    ''')
+    """)
 
 
 expit_definition = """
@@ -38,11 +38,11 @@ static __device__ T expit(T x) {
 
 
 expit = _core.create_ufunc(
-    'cupy_expit',
-    ('e->f', 'f->f', 'd->d'),
-    'out0 = expit(in0)',
+    "cupy_expit",
+    ("e->f", "f->f", "d->d"),
+    "out0 = expit(in0)",
     preamble=expit_definition,
-    doc='''Logistic sigmoid function (expit).
+    doc="""Logistic sigmoid function (expit).
 
     Args:
         x (cupy.ndarray): input data (must be real)
@@ -55,7 +55,7 @@ expit = _core.create_ufunc(
     .. note::
         expit is the inverse of logit.
 
-    ''')
+    """)
 
 
 # log_expit implemented based on log1p as in SciPy's scipy/special/_logit.h
@@ -75,11 +75,11 @@ static __device__ T log_expit(T x)
 
 
 log_expit = _core.create_ufunc(
-    'cupy_log_expit',
-    ('e->f', 'f->f', 'd->d'),
-    'out0 = log_expit(in0)',
+    "cupy_log_expit",
+    ("e->f", "f->f", "d->d"),
+    "out0 = log_expit(in0)",
     preamble=log_expit_definition,
-    doc='''Logarithm of the logistic sigmoid function.
+    doc="""Logarithm of the logistic sigmoid function.
 
     Args:
         x (cupy.ndarray): input data (must be real)
@@ -93,7 +93,7 @@ log_expit = _core.create_ufunc(
         The function is mathematically equivalent to ``log(expit(x))``, but
         is formulated to avoid loss of precision for inputs with large
         (positive or negative) magnitude.
-    ''')
+    """)
 
 
 boxcox_definition = """
@@ -115,11 +115,11 @@ static __device__ double boxcox(double x, double lmbda) {
 
 
 boxcox = _core.create_ufunc(
-    'cupy_boxcox',
-    ('ee->f', 'ff->f', 'dd->d'),
-    'out0 = out0_type(boxcox(in0, in1))',
+    "cupy_boxcox",
+    ("ee->f", "ff->f", "dd->d"),
+    "out0 = out0_type(boxcox(in0, in1))",
     preamble=boxcox_definition,
-    doc='''Compute the Box-Cox transformation.
+    doc="""Compute the Box-Cox transformation.
 
     Args:
         x (cupy.ndarray): input data (must be real)
@@ -129,7 +129,7 @@ boxcox = _core.create_ufunc(
 
     .. seealso:: :data:`scipy.special.boxcox`
 
-    ''')
+    """)
 
 
 boxcox1p_definition = """
@@ -151,11 +151,11 @@ static __device__ double boxcox1p(double x, double lmbda) {
 
 
 boxcox1p = _core.create_ufunc(
-    'cupy_boxcox1p',
-    ('ee->f', 'ff->f', 'dd->d'),
-    'out0 = out0_type(boxcox1p(in0, in1))',
+    "cupy_boxcox1p",
+    ("ee->f", "ff->f", "dd->d"),
+    "out0 = out0_type(boxcox1p(in0, in1))",
     preamble=boxcox1p_definition,
-    doc='''Compute the Box-Cox transformation op 1 + `x`.
+    doc="""Compute the Box-Cox transformation op 1 + `x`.
 
     Args:
         x (cupy.ndarray): input data (must be real)
@@ -165,7 +165,7 @@ boxcox1p = _core.create_ufunc(
 
     .. seealso:: :data:`scipy.special.boxcox1p`
 
-    ''')
+    """)
 
 
 inv_boxcox_definition = """
@@ -181,11 +181,11 @@ static __device__ double inv_boxcox(double x, double lmbda) {
 
 
 inv_boxcox = _core.create_ufunc(
-    'cupy_inv_boxcox',
-    ('ee->f', 'ff->f', 'dd->d'),
-    'out0 = out0_type(inv_boxcox(in0, in1))',
+    "cupy_inv_boxcox",
+    ("ee->f", "ff->f", "dd->d"),
+    "out0 = out0_type(inv_boxcox(in0, in1))",
     preamble=inv_boxcox_definition,
-    doc='''Compute the Box-Cox transformation.
+    doc="""Compute the Box-Cox transformation.
 
     Args:
         x (cupy.ndarray): input data (must be real)
@@ -195,7 +195,7 @@ inv_boxcox = _core.create_ufunc(
 
     .. seealso:: :data:`scipy.special.inv_boxcox`
 
-    ''')
+    """)
 
 
 inv_boxcox1p_definition = """
@@ -213,11 +213,11 @@ static __device__ double inv_boxcox1p(double x, double lmbda) {
 
 
 inv_boxcox1p = _core.create_ufunc(
-    'cupy_inv_boxcox1p',
-    ('ee->f', 'ff->f', 'dd->d'),
-    'out0 = out0_type(inv_boxcox1p(in0, in1))',
+    "cupy_inv_boxcox1p",
+    ("ee->f", "ff->f", "dd->d"),
+    "out0 = out0_type(inv_boxcox1p(in0, in1))",
     preamble=inv_boxcox1p_definition,
-    doc='''Compute the Box-Cox transformation op 1 + `x`.
+    doc="""Compute the Box-Cox transformation op 1 + `x`.
 
     Args:
         x (cupy.ndarray): input data (must be real)
@@ -226,4 +226,4 @@ inv_boxcox1p = _core.create_ufunc(
         cupy.ndarray: values of inv_boxcox1p(x)
 
     .. seealso:: :data:`scipy.special.inv_boxcox1p`
-''')
+""")

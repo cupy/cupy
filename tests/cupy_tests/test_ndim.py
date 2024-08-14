@@ -30,7 +30,7 @@ class TestNdim(unittest.TestCase):
 
     @testing.numpy_cupy_equal()
     def test_ndim_string(self, xp):
-        return xp.ndim('abc')
+        return xp.ndim("abc")
 
     @testing.numpy_cupy_equal()
     def test_ndim_list1(self, xp):
@@ -50,7 +50,7 @@ class TestNdim(unittest.TestCase):
 
     @testing.numpy_cupy_equal()
     def test_ndim_object(self, xp):
-        return xp.ndim(dict(a=5, b='b'))
+        return xp.ndim(dict(a=5, b="b"))
 
     # numpy.dim works on CuPy arrays and cupy.ndim works on NumPy arrays
     def test_ndim_array_function(self):

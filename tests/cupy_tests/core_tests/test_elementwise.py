@@ -26,7 +26,7 @@ class TestElementwise(unittest.TestCase):
     @testing.for_all_dtypes()
     def test_copy_multigpu_nopeer(self, dtype):
         if cuda.runtime.deviceCanAccessPeer(0, 1) == 1:
-            pytest.skip('peer access is available')
+            pytest.skip("peer access is available")
         with self.assertRaises(ValueError):
             self.check_copy(dtype, 0, 1)
 
@@ -34,11 +34,11 @@ class TestElementwise(unittest.TestCase):
     @testing.for_all_dtypes()
     def test_copy_multigpu_peer(self, dtype):
         if cuda.runtime.deviceCanAccessPeer(0, 1) != 1:
-            pytest.skip('peer access is unavailable')
+            pytest.skip("peer access is unavailable")
         with pytest.warns(cupy._util.PerformanceWarning):
             self.check_copy(dtype, 0, 1)
 
-    @testing.for_orders('CFAK')
+    @testing.for_orders("CFAK")
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
     def test_copy_zero_sized_array1(self, xp, dtype, order):
@@ -47,7 +47,7 @@ class TestElementwise(unittest.TestCase):
         assert src is not res
         return res
 
-    @testing.for_orders('CFAK')
+    @testing.for_orders("CFAK")
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
     def test_copy_zero_sized_array2(self, xp, dtype, order):
@@ -56,7 +56,7 @@ class TestElementwise(unittest.TestCase):
         assert src is not res
         return res
 
-    @testing.for_orders('CFAK')
+    @testing.for_orders("CFAK")
     def test_copy_orders(self, order):
         a = cupy.empty((2, 3, 4))
         b = cupy.copy(a, order)
@@ -70,8 +70,8 @@ class TestElementwise(unittest.TestCase):
 class TestElementwiseInvalidShape(unittest.TestCase):
 
     def test_invalid_shape(self):
-        with self.assertRaisesRegex(ValueError, 'Out shape is mismatched'):
-            f = cupy.ElementwiseKernel('T x', 'T y', 'y += x')
+        with self.assertRaisesRegex(ValueError, "Out shape is mismatched"):
+            f = cupy.ElementwiseKernel("T x", "T y", "y += x")
             x = cupy.arange(12).reshape(3, 4)
             y = cupy.arange(4)
             f(x, y)
@@ -80,8 +80,8 @@ class TestElementwiseInvalidShape(unittest.TestCase):
 class TestElementwiseInvalidArgument(unittest.TestCase):
 
     def test_invalid_kernel_name(self):
-        with self.assertRaisesRegex(ValueError, 'Invalid kernel name'):
-            cupy.ElementwiseKernel('T x', '', '', '1')
+        with self.assertRaisesRegex(ValueError, "Invalid kernel name"):
+            cupy.ElementwiseKernel("T x", "", "", "1")
 
 
 class TestElementwiseType(unittest.TestCase):

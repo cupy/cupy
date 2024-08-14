@@ -4,7 +4,7 @@ import numpy
 
 import cupy
 
-struct_definition = '''
+struct_definition = """
 struct complex_struct {
     int4 a;
     char b;
@@ -12,9 +12,9 @@ struct complex_struct {
     short1 d;
     unsigned long long int e[3];
 };
-'''
+"""
 
-struct_layout_code = '''
+struct_layout_code = """
 {struct_definition}
 
 extern "C" __global__ void get_struct_layout(
@@ -37,10 +37,10 @@ extern "C" __global__ void get_struct_layout(
     offsets[3] = (unsigned long long)&ptr->d;
     offsets[4] = (unsigned long long)&ptr->e;
 }}
-'''.format(struct_definition=struct_definition)
+""".format(struct_definition=struct_definition)
 
 
-kernel_code = '''
+kernel_code = """
 {struct_definition}
 
 extern "C" __global__ void test_kernel(const complex_struct s,
@@ -54,14 +54,14 @@ extern "C" __global__ void test_kernel(const complex_struct s,
     sum += s.e[0] + s.e[1] + s.e[2];
     out[i] = i * sum;
 }}
-'''.format(struct_definition=struct_definition)
+""".format(struct_definition=struct_definition)
 
 
 def make_packed(basetype, N, itemsize):
     # A small utility function to make packed structs
     # Can represent simple packed vectors such as float4 or double[3].
     assert 0 < N <= 4, N
-    names = list('xyzw')[:N]
+    names = list("xyzw")[:N]
     formats = [basetype]*N
     return numpy.dtype(dict(names=names,
                             formats=formats,
@@ -85,7 +85,7 @@ def main():
     offsets = cupy.ndarray(shape=(5,), dtype=numpy.uint64)
 
     kernel = cupy.RawKernel(
-        struct_layout_code, 'get_struct_layout', options=('--std=c++11',))
+        struct_layout_code, "get_struct_layout", options=("--std=c++11",))
     kernel((1,), (1,), (itemsize, sizes, offsets))
 
     (itemsize, sizes, offsets) = map(cupy.asnumpy, (itemsize, sizes, offsets))
@@ -102,7 +102,7 @@ def main():
 
     # Third step: create the complex struct representation with
     #  the right offsets
-    names = list('abcde')
+    names = list("abcde")
     formats = [atype, btype, ctype, dtype, etype]
     complex_struct = numpy.dtype(dict(names=names,
                                       formats=formats,
@@ -111,17 +111,17 @@ def main():
 
     # Build a complex_struct kernel argument
     s = numpy.empty(shape=(1,), dtype=complex_struct)
-    s['a'] = numpy.arange(0, 4).astype(numpy.int32).view(atype)
-    s['b'] = numpy.arange(4, 5).astype(numpy.int8).view(btype)
-    s['c'] = numpy.arange(5, 7).astype(numpy.float64).view(ctype)
-    s['d'] = numpy.arange(7, 8).astype(numpy.int16).view(dtype)
-    s['e'] = numpy.arange(8, 11).astype(numpy.uint64).view(etype)
+    s["a"] = numpy.arange(0, 4).astype(numpy.int32).view(atype)
+    s["b"] = numpy.arange(4, 5).astype(numpy.int8).view(btype)
+    s["c"] = numpy.arange(5, 7).astype(numpy.float64).view(ctype)
+    s["d"] = numpy.arange(7, 8).astype(numpy.int16).view(dtype)
+    s["e"] = numpy.arange(8, 11).astype(numpy.uint64).view(etype)
     print("Complex structure value:\n  {}".format(s))
 
     # Setup test kernel
     N = 8
     out = cupy.empty(shape=(N,), dtype=numpy.float64)
-    kernel = cupy.RawKernel(kernel_code, 'test_kernel')
+    kernel = cupy.RawKernel(kernel_code, "test_kernel")
     kernel((1,), (N,), (s, out))
 
     # the sum of all members of our complex struct instance is 55.0
@@ -131,5 +131,5 @@ def main():
     print("Kernel output matches expected value.")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     sys.exit(main())

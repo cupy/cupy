@@ -420,8 +420,8 @@ def negative_binomial(n, p, size=None, dtype=int):
     return rs.negative_binomial(n, p, size=size, dtype=dtype)
 
 
-def multivariate_normal(mean, cov, size=None, check_valid='ignore',
-                        tol=1e-08, method='cholesky', dtype=float):
+def multivariate_normal(mean, cov, size=None, check_valid="ignore",
+                        tol=1e-08, method="cholesky", dtype=float):
     """Multivariate normal distribution.
 
     Returns an array of samples drawn from the multivariate normal
@@ -472,7 +472,7 @@ def multivariate_normal(mean, cov, size=None, check_valid='ignore',
     .. seealso:: :func:`numpy.random.multivariate_normal`
 
     """
-    _util.experimental('cupy.random.multivariate_normal')
+    _util.experimental("cupy.random.multivariate_normal")
     rs = _generator.get_random_state()
     return rs.multivariate_normal(
         mean, cov, size, check_valid, tol, method, dtype)

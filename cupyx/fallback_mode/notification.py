@@ -8,8 +8,8 @@ from cupyx import _ufunc_config
 
 
 def _init_warnings():
-    FallbackWarning = type('FallbackWarning', (Warning,), {})
-    warnings.simplefilter(action='always', category=FallbackWarning)
+    FallbackWarning = type("FallbackWarning", (Warning,), {})
+    warnings.simplefilter(action="always", category=FallbackWarning)
     return FallbackWarning
 
 
@@ -20,8 +20,8 @@ def _dispatch_notification(func, cupy_support=False):
 
     dispatch_type = _ufunc_config.get_config_fallback_mode()
 
-    _module = getattr(func, '__module__', None)
-    _name = getattr(func, '__name__', None)
+    _module = getattr(func, "__module__", None)
+    _name = getattr(func, "__name__", None)
 
     if not cupy_support:
         if _name and _module:
@@ -56,16 +56,16 @@ def _dispatch_notification(func, cupy_support=False):
         else:
             raise_msg = "This method is available in cupy but cannot be used"
 
-    if dispatch_type == 'print':
+    if dispatch_type == "print":
         print("Warning: {}".format(msg))
 
-    elif dispatch_type == 'warn':
+    elif dispatch_type == "warn":
         warnings.warn(msg, FallbackWarning, stacklevel=3)
 
-    elif dispatch_type == 'ignore':
+    elif dispatch_type == "ignore":
         pass
 
-    elif dispatch_type == 'raise':
+    elif dispatch_type == "raise":
         raise AttributeError(raise_msg)
 
     else:

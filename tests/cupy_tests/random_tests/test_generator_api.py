@@ -13,7 +13,7 @@ from cupy_tests.random_tests import common_distributions
 @pytest.mark.skipif(cupy.cuda.runtime.is_hip
                     and (int(
                         str(cupy.cuda.runtime.runtimeGetVersion())[:3]) < 403),
-                    reason='HIP<4.3 not supported ')
+                    reason="HIP<4.3 not supported ")
 class GeneratorTestCase(common_distributions.BaseGeneratorTestCase):
 
     target_method = None
@@ -57,7 +57,7 @@ class InvalidOutsMixin:
 
 
 @testing.parameterize(*common_distributions.uniform_params)
-@testing.with_requires('numpy>=1.17.0')
+@testing.with_requires("numpy>=1.17.0")
 @testing.fix_random()
 class TestUniform(
     common_distributions.Uniform,
@@ -67,7 +67,7 @@ class TestUniform(
 
 
 @testing.parameterize(*common_distributions.exponential_params)
-@testing.with_requires('numpy>=1.17.0')
+@testing.with_requires("numpy>=1.17.0")
 @testing.fix_random()
 class TestExponential(
     common_distributions.Exponential,
@@ -77,7 +77,7 @@ class TestExponential(
 
 
 @testing.parameterize(*common_distributions.poisson_params)
-@testing.with_requires('numpy>=1.17.0')
+@testing.with_requires("numpy>=1.17.0")
 @testing.fix_random()
 class TestPoisson(
     common_distributions.Poisson,
@@ -87,7 +87,7 @@ class TestPoisson(
 
 
 @testing.parameterize(*common_distributions.binomial_params)
-@testing.with_requires('numpy>=1.17.0')
+@testing.with_requires("numpy>=1.17.0")
 @testing.fix_random()
 class TestBinomial(
     common_distributions.Binomial,
@@ -97,7 +97,7 @@ class TestBinomial(
 
 
 @testing.parameterize(*common_distributions.beta_params)
-@testing.with_requires('numpy>=1.17.0')
+@testing.with_requires("numpy>=1.17.0")
 @testing.fix_random()
 class TestBeta(
     common_distributions.Beta,
@@ -106,7 +106,7 @@ class TestBeta(
     pass
 
 
-@testing.with_requires('numpy>=1.17.0')
+@testing.with_requires("numpy>=1.17.0")
 @testing.fix_random()
 class TestStandardExponential(
     InvalidOutsMixin,
@@ -137,7 +137,7 @@ class TestStandardGamma(
 @testing.fix_random()
 class TestStandardGammaInvalid(InvalidOutsMixin, GeneratorTestCase):
 
-    target_method = 'standard_gamma'
+    target_method = "standard_gamma"
 
     def test_invalid_dtype_out(self):
         self.invalid_dtype_out(shape=1.0)
@@ -145,7 +145,7 @@ class TestStandardGammaInvalid(InvalidOutsMixin, GeneratorTestCase):
     def test_invalid_contiguity(self):
         self.invalid_contiguity(shape=1.0)
 
-        out = cupy.zeros((4, 6), order='F', dtype=cupy.float64)
+        out = cupy.zeros((4, 6), order="F", dtype=cupy.float64)
         with pytest.raises(ValueError):
             self.generate(size=(4, 6), out=out, shape=1.0)
 
@@ -153,7 +153,7 @@ class TestStandardGammaInvalid(InvalidOutsMixin, GeneratorTestCase):
         self.invalid_shape(shape=1.0)
 
     def test_invalid_dtypes(self):
-        for dtype in 'bhiqleFD':
+        for dtype in "bhiqleFD":
             with pytest.raises(TypeError):
                 self.generate(size=(3, 2), shape=1.0, dtype=dtype)
 
@@ -161,7 +161,7 @@ class TestStandardGammaInvalid(InvalidOutsMixin, GeneratorTestCase):
 @testing.fix_random()
 class TestStandardGammaEmpty(GeneratorTestCase):
 
-    target_method = 'standard_gamma'
+    target_method = "standard_gamma"
 
     def test_empty_shape(self):
         y = self.generate(shape=cupy.empty((1, 0)))
@@ -178,7 +178,7 @@ class TestStandardGammaEmpty(GeneratorTestCase):
         assert y.shape == (1, 0)
 
 
-@testing.with_requires('numpy>=1.17.0')
+@testing.with_requires("numpy>=1.17.0")
 @testing.parameterize(*common_distributions.standard_normal_params)
 @testing.fix_random()
 class TestStandardNormal(
@@ -188,22 +188,22 @@ class TestStandardNormal(
     pass
 
 
-@testing.with_requires('numpy>=1.17.0')
+@testing.with_requires("numpy>=1.17.0")
 @testing.fix_random()
 class TestStandardNormalInvalid(InvalidOutsMixin, GeneratorTestCase):
 
-    target_method = 'standard_normal'
+    target_method = "standard_normal"
 
     def test_invalid_dtypes(self):
-        for dtype in 'bhiqleFD':
+        for dtype in "bhiqleFD":
             with pytest.raises(TypeError):
                 self.generate(size=(3, 2), dtype=dtype)
 
 
-@testing.with_requires('numpy>=1.17.0')
+@testing.with_requires("numpy>=1.17.0")
 @testing.fix_random()
 class TestIntegers(GeneratorTestCase):
-    target_method = 'integers'
+    target_method = "integers"
 
     def test_integers_1(self):
         self.generate(3)
@@ -250,26 +250,26 @@ class TestIntegers(GeneratorTestCase):
             2**40, size=2000)
 
 
-@testing.with_requires('numpy>=1.17.0')
+@testing.with_requires("numpy>=1.17.0")
 @testing.fix_random()
 class TestRandom(InvalidOutsMixin, GeneratorTestCase):
     # TODO(niboshi):
     #   Test soundness of distribution.
     #   Currently only reprocibility is checked.
 
-    target_method = 'random'
+    target_method = "random"
 
     def test_random(self):
         self.generate(3)
 
-    @testing.for_dtypes('fd')
+    @testing.for_dtypes("fd")
     @_condition.repeat_with_success_at_least(10, 3)
     def test_random_ks(self, dtype):
         self.check_ks(0.05)(size=2000, dtype=dtype)
 
 
 @testing.parameterize(*common_distributions.geometric_params)
-@testing.with_requires('numpy>=1.17.0')
+@testing.with_requires("numpy>=1.17.0")
 @testing.fix_random()
 class TestGeometric(
     common_distributions.Geometric,
@@ -279,7 +279,7 @@ class TestGeometric(
 
 
 @testing.parameterize(*common_distributions.hypergeometric_params)
-@testing.with_requires('numpy>=1.17.0')
+@testing.with_requires("numpy>=1.17.0")
 @testing.fix_random()
 class TestHypergeometric(
     common_distributions.Hypergeometric,
@@ -297,11 +297,11 @@ class TestPower(
     pass
 
 
-@testing.with_requires('numpy>=1.17.0')
+@testing.with_requires("numpy>=1.17.0")
 @pytest.mark.skipif(cupy.cuda.runtime.is_hip
                     and (int(
                         str(cupy.cuda.runtime.runtimeGetVersion())[:3]) < 403),
-                    reason='HIP<4.3 not supported ')
+                    reason="HIP<4.3 not supported ")
 class TestRandomStateThreadSafe(unittest.TestCase):
 
     def test_default_rng_thread_safe(self):

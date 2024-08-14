@@ -7,10 +7,10 @@ from cupy._core import _routines_logic as _logic
 from cupy._sorting import search as _search
 
 _setxorkernel = cupy._core.ElementwiseKernel(
-    'raw T X, int64 len',
-    'bool z',
-    'z = (i == 0 || X[i] != X[i-1]) && (i == len - 1 || X[i] != X[i+1])',
-    'setxorkernel'
+    "raw T X, int64 len",
+    "bool z",
+    "z = (i == 0 || X[i] != X[i-1]) && (i == len - 1 || X[i] != X[i+1])",
+    "setxorkernel"
 )
 
 
@@ -42,11 +42,11 @@ def all(a, axis=None, out=None, keepdims=False):
     if _fusion_thread_local.is_fusing():
         if keepdims:
             raise NotImplementedError(
-                'cupy.all does not support `keepdims` in fusion yet.')
+                "cupy.all does not support `keepdims` in fusion yet.")
         return _fusion_thread_local.call_reduction(
             _logic.all, a, axis=axis, out=out)
 
-    _util.check_array(a, arg_name='a')
+    _util.check_array(a, arg_name="a")
 
     return a.all(axis=axis, out=out, keepdims=keepdims)
 
@@ -79,11 +79,11 @@ def any(a, axis=None, out=None, keepdims=False):
     if _fusion_thread_local.is_fusing():
         if keepdims:
             raise NotImplementedError(
-                'cupy.any does not support `keepdims` in fusion yet.')
+                "cupy.any does not support `keepdims` in fusion yet.")
         return _fusion_thread_local.call_reduction(
             _logic.any, a, axis=axis, out=out)
 
-    _util.check_array(a, arg_name='a')
+    _util.check_array(a, arg_name="a")
 
     return a.any(axis=axis, out=out, keepdims=keepdims)
 
@@ -318,10 +318,10 @@ def union1d(arr1, arr2):
 
 
 def alltrue(a, axis=None, out=None, keepdims=False):
-    warnings.warn('Please use `all` instead.', DeprecationWarning)
+    warnings.warn("Please use `all` instead.", DeprecationWarning)
     return all(a, axis, out, keepdims)
 
 
 def sometrue(a, axis=None, out=None, keepdims=False):
-    warnings.warn('Please use `any` instead.', DeprecationWarning)
+    warnings.warn("Please use `any` instead.", DeprecationWarning)
     return any(a, axis, out, keepdims)

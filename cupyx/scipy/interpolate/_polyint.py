@@ -4,7 +4,7 @@ from cupyx.scipy._lib._util import _asarray_validated, float_factorial
 
 def _isscalar(x):
     """Check whether x is if a scalar type, or 0-dim"""
-    return cupy.isscalar(x) or hasattr(x, 'shape') and x.shape == ()
+    return cupy.isscalar(x) or hasattr(x, "shape") and x.shape == ()
 
 
 class _Interpolator1D:
@@ -540,14 +540,14 @@ def _check_broadcast_up_to(arr_from, shape_to, name):
                 arr_from = cupy.ones(shape_to, arr_from.dtype) * arr_from
             return arr_from.ravel()
     # at least one check failed
-    raise ValueError(f'{name} argument must be able to broadcast up '
-                     f'to shape {shape_to} but had shape {shape_from}')
+    raise ValueError(f"{name} argument must be able to broadcast up "
+                     f"to shape {shape_to} but had shape {shape_from}")
 
 
 def _do_extrapolate(fill_value):
     """Helper to check if fill_value == "extrapolate" without warnings"""
     return (isinstance(fill_value, str) and
-            fill_value == 'extrapolate')
+            fill_value == "extrapolate")
 
 
 class interp1d(_Interpolator1D):
@@ -626,7 +626,7 @@ class interp1d(_Interpolator1D):
     `kind` will change the behavior for duplicates.
     """  # NOQA
 
-    def __init__(self, x, y, kind='linear', axis=-1,
+    def __init__(self, x, y, kind="linear", axis=-1,
                  copy=True, bounds_error=None, fill_value=cupy.nan,
                  assume_sorted=False):
         """ Initialize a 1-D linear interpolation class."""
@@ -641,15 +641,15 @@ class interp1d(_Interpolator1D):
         # if not copy:
         #    self.copy = copy_if_needed
 
-        if kind in ['zero', 'slinear', 'quadratic', 'cubic']:
-            order = {'zero': 0, 'slinear': 1,
-                     'quadratic': 2, 'cubic': 3}[kind]
-            kind = 'spline'
+        if kind in ["zero", "slinear", "quadratic", "cubic"]:
+            order = {"zero": 0, "slinear": 1,
+                     "quadratic": 2, "cubic": 3}[kind]
+            kind = "spline"
         elif isinstance(kind, int):
             order = kind
-            kind = 'spline'
-        elif kind not in ('linear', 'nearest', 'nearest-up', 'previous',
-                          'next'):
+            kind = "spline"
+        elif kind not in ("linear", "nearest", "nearest-up", "previous",
+                          "next"):
             raise NotImplementedError("%s is unsupported: Use fitpack "
                                       "routines for other types." % kind)
         x = cupy.array(x, copy=self.copy)
@@ -683,29 +683,29 @@ class interp1d(_Interpolator1D):
         # interpolation methods, in order to avoid circular references to self
         # stored in the bound instance methods, and therefore delayed garbage
         # collection.  See: https://docs.python.org/reference/datamodel.html
-        if kind in ('linear', 'nearest', 'nearest-up', 'previous', 'next'):
+        if kind in ("linear", "nearest", "nearest-up", "previous", "next"):
             # Make a "view" of the y array that is rotated to the interpolation
             # axis.
             minval = 1
-            if kind == 'nearest':
+            if kind == "nearest":
                 # Do division before addition to prevent possible integer
                 # overflow
-                self._side = 'left'
+                self._side = "left"
                 self.x_bds = self.x / 2.0
                 self.x_bds = self.x_bds[1:] + self.x_bds[:-1]
 
                 self._call = self.__class__._call_nearest
-            elif kind == 'nearest-up':
+            elif kind == "nearest-up":
                 # Do division before addition to prevent possible integer
                 # overflow
-                self._side = 'right'
+                self._side = "right"
                 self.x_bds = self.x / 2.0
                 self.x_bds = self.x_bds[1:] + self.x_bds[:-1]
 
                 self._call = self.__class__._call_nearest
-            elif kind == 'previous':
+            elif kind == "previous":
                 # Side for cupy.searchsorted and index for clipping
-                self._side = 'left'
+                self._side = "left"
                 self._ind = 0
                 # Move x by one floating point value to the left
                 self._x_shift = cupy.nextafter(self.x, -cupy.inf)
@@ -714,8 +714,8 @@ class interp1d(_Interpolator1D):
                     self._check_and_update_bounds_error_for_extrapolation()
                     # assume y is sorted by x ascending order here.
                     fill_value = (cupy.nan, cupy.take(self.y, -1, axis))
-            elif kind == 'next':
-                self._side = 'right'
+            elif kind == "next":
+                self._side = "right"
                 self._ind = 1
                 # Move x by one floating point value to the right
                 self._x_shift = cupy.nextafter(self.x, cupy.inf)
@@ -797,14 +797,14 @@ class interp1d(_Interpolator1D):
             if isinstance(fill_value, tuple) and len(fill_value) == 2:
                 below_above = [cupy.asarray(fill_value[0]),
                                cupy.asarray(fill_value[1])]
-                names = ('fill_value (below)', 'fill_value (above)')
+                names = ("fill_value (below)", "fill_value (above)")
                 for ii in range(2):
                     below_above[ii] = _check_broadcast_up_to(
                         below_above[ii], broadcast_shape, names[ii])
             else:
                 fill_value = cupy.asarray(fill_value)
                 below_above = [_check_broadcast_up_to(
-                    fill_value, broadcast_shape, 'fill_value')] * 2
+                    fill_value, broadcast_shape, "fill_value")] * 2
             self._fill_value_below, self._fill_value_above = below_above
             self._extrapolate = False
             if self.bounds_error is None:

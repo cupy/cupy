@@ -19,7 +19,7 @@ class DeviceSynchronized(RuntimeError):
 
     def __init__(self, message=None):
         if message is None:
-            message = 'Device synchronization was detected while disallowed.'
+            message = "Device synchronization was detected while disallowed."
         super().__init__(message)
 
 
@@ -56,8 +56,8 @@ thread.
     Device synchronization outside CuPy will not be detected.
     """
     warnings.warn(
-        'cupyx.allow_synchronize will be removed in future releases as it '
-        'is not possible to reliably detect synchronizations.')
+        "cupyx.allow_synchronize will be removed in future releases as it "
+        "is not possible to reliably detect synchronizations.")
 
     old = _is_allowed()
     _thread_local.allowed = allow

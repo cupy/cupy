@@ -19,19 +19,19 @@ class TestElementwise(unittest.TestCase):
         return getattr(xp, name)(a, b)
 
     def test_bitwise_and(self):
-        self.check_binary_int('bitwise_and')
+        self.check_binary_int("bitwise_and")
 
     def test_bitwise_or(self):
-        self.check_binary_int('bitwise_or')
+        self.check_binary_int("bitwise_or")
 
     def test_bitwise_xor(self):
-        self.check_binary_int('bitwise_xor')
+        self.check_binary_int("bitwise_xor")
 
     def test_invert(self):
-        self.check_unary_int('invert')
+        self.check_unary_int("invert")
 
     def test_left_shift(self):
-        self.check_binary_int('left_shift')
+        self.check_binary_int("left_shift")
 
     def test_right_shift(self):
-        self.check_binary_int('right_shift')
+        self.check_binary_int("right_shift")

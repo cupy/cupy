@@ -9,7 +9,7 @@ from cupyx.scipy.sparse import _csr
 from cupyx.scipy.sparse.linalg import _interface
 
 
-def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
+def eigsh(a, k=6, *, which="LM", v0=None, ncv=None, maxiter=None,
           tol=0, return_eigenvectors=True):
     """
     Find ``k`` eigenvalues and eigenvectors of the real symmetric square
@@ -56,16 +56,16 @@ def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
     """
     n = a.shape[0]
     if a.ndim != 2 or a.shape[0] != a.shape[1]:
-        raise ValueError('expected square matrix (shape: {})'.format(a.shape))
-    if a.dtype.char not in 'fdFD':
-        raise TypeError('unsupprted dtype (actual: {})'.format(a.dtype))
+        raise ValueError("expected square matrix (shape: {})".format(a.shape))
+    if a.dtype.char not in "fdFD":
+        raise TypeError("unsupprted dtype (actual: {})".format(a.dtype))
     if k <= 0:
-        raise ValueError('k must be greater than 0 (actual: {})'.format(k))
+        raise ValueError("k must be greater than 0 (actual: {})".format(k))
     if k >= n:
-        raise ValueError('k must be smaller than n (actual: {})'.format(k))
-    if which not in ('LM', 'LA', 'SA'):
-        raise ValueError('which must be \'LM\',\'LA\'or\'SA\' (actual: {})'
-                         ''.format(which))
+        raise ValueError("k must be smaller than n (actual: {})".format(k))
+    if which not in ("LM", "LA", "SA"):
+        raise ValueError("which must be 'LM','LA'or'SA' (actual: {})"
+                         "".format(which))
     if ncv is None:
         ncv = min(max(2 * k, k + 32), n - 1)
     else:
@@ -88,8 +88,8 @@ def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
         V[0] = v0 / cublas.nrm2(v0)
 
     # Choose Lanczos implementation, unconditionally use 'fast' for now
-    upadte_impl = 'fast'
-    if upadte_impl == 'fast':
+    upadte_impl = "fast"
+    if upadte_impl == "fast":
         lanczos = _lanczos_fast(a, n, ncv)
     else:
         lanczos = _lanczos_asis
@@ -160,31 +160,31 @@ def _lanczos_fast(A, n, ncv):
 
     cublas_handle = device.get_cublas_handle()
     cublas_pointer_mode = _cublas.getPointerMode(cublas_handle)
-    if A.dtype.char == 'f':
+    if A.dtype.char == "f":
         dotc = _cublas.sdot
         nrm2 = _cublas.snrm2
         gemv = _cublas.sgemv
         axpy = _cublas.saxpy
-    elif A.dtype.char == 'd':
+    elif A.dtype.char == "d":
         dotc = _cublas.ddot
         nrm2 = _cublas.dnrm2
         gemv = _cublas.dgemv
         axpy = _cublas.daxpy
-    elif A.dtype.char == 'F':
+    elif A.dtype.char == "F":
         dotc = _cublas.cdotc
         nrm2 = _cublas.scnrm2
         gemv = _cublas.cgemv
         axpy = _cublas.caxpy
-    elif A.dtype.char == 'D':
+    elif A.dtype.char == "D":
         dotc = _cublas.zdotc
         nrm2 = _cublas.dznrm2
         gemv = _cublas.zgemv
         axpy = _cublas.zaxpy
     else:
-        raise TypeError('invalid dtype ({})'.format(A.dtype))
+        raise TypeError("invalid dtype ({})".format(A.dtype))
 
     cusparse_handle = None
-    if _csr.isspmatrix_csr(A) and cusparse.check_availability('spmv'):
+    if _csr.isspmatrix_csr(A) and cusparse.check_availability("spmv"):
         cusparse_handle = device.get_cusparse_handle()
         spmv_op_a = _cusparse.CUSPARSE_OPERATION_NON_TRANSPOSE
         spmv_alpha = numpy.array(1.0, A.dtype)
@@ -291,8 +291,8 @@ def _lanczos_fast(A, n, ncv):
 
 
 _kernel_normalize = cupy.ElementwiseKernel(
-    'T u, raw S beta, int32 j, int32 n', 'T v, raw T V',
-    'v = u / beta[j]; V[i + (j+1) * n] = v;', 'cupy_eigsh_normalize'
+    "T u, raw S beta, int32 j, int32 n", "T v, raw T V",
+    "v = u / beta[j]; V[i + (j+1) * n] = v;", "cupy_eigsh_normalize"
 )
 
 
@@ -312,16 +312,16 @@ def _eigsh_solve_ritz(alpha, beta, beta_k, k, which):
     w, s = numpy.linalg.eigh(t)
 
     # Pick-up k ritz-values and ritz-vectors
-    if which == 'LA':
+    if which == "LA":
         idx = numpy.argsort(w)
         wk = w[idx[-k:]]
         sk = s[:, idx[-k:]]
-    elif which == 'LM':
+    elif which == "LM":
         idx = numpy.argsort(numpy.absolute(w))
         wk = w[idx[-k:]]
         sk = s[:, idx[-k:]]
 
-    elif which == 'SA':
+    elif which == "SA":
         idx = numpy.argsort(w)
         wk = w[idx[:k]]
         sk = s[:, idx[:k]]
@@ -332,7 +332,7 @@ def _eigsh_solve_ritz(alpha, beta, beta_k, k, which):
     return cupy.array(wk), cupy.array(sk)
 
 
-def svds(a, k=6, *, ncv=None, tol=0, which='LM', maxiter=None,
+def svds(a, k=6, *, ncv=None, tol=0, which="LM", maxiter=None,
          return_singular_vectors=True):
     """Finds the largest ``k`` singular values/vectors for a sparse matrix.
 
@@ -369,15 +369,15 @@ def svds(a, k=6, *, ncv=None, tol=0, which='LM', maxiter=None,
 
     """
     if a.ndim != 2:
-        raise ValueError('expected 2D (shape: {})'.format(a.shape))
-    if a.dtype.char not in 'fdFD':
-        raise TypeError('unsupprted dtype (actual: {})'.format(a.dtype))
+        raise ValueError("expected 2D (shape: {})".format(a.shape))
+    if a.dtype.char not in "fdFD":
+        raise TypeError("unsupprted dtype (actual: {})".format(a.dtype))
     m, n = a.shape
     if k <= 0:
-        raise ValueError('k must be greater than 0 (actual: {})'.format(k))
+        raise ValueError("k must be greater than 0 (actual: {})".format(k))
     if k >= min(m, n):
-        raise ValueError('k must be smaller than min(m, n) (actual: {})'
-                         ''.format(k))
+        raise ValueError("k must be smaller than min(m, n) (actual: {})"
+                         "".format(k))
 
     a = _interface.aslinearoperator(a)
     if m >= n:
@@ -394,7 +394,7 @@ def svds(a, k=6, *, ncv=None, tol=0, which='LM', maxiter=None,
 
     w = cupy.maximum(w, 0)
     t = w.dtype.char.lower()
-    factor = {'f': 1e3, 'd': 1e6}
+    factor = {"f": 1e3, "d": 1e6}
     cond = factor[t] * numpy.finfo(t).eps
     cutoff = cond * cupy.max(w)
     above_cutoff = (w > cutoff)

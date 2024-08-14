@@ -111,10 +111,10 @@ static __device__ float qunitic_f(float r)
 """
 
 linear = cp._core.create_ufunc(
-    'cupyx_scipy_interpolate_linear',
-    (('f->f', 'out0 = linear_f(in0)'),
-     'd->d'),
-    'out0 = linear(in0)',
+    "cupyx_scipy_interpolate_linear",
+    (("f->f", "out0 = linear_f(in0)"),
+     "d->d"),
+    "out0 = linear(in0)",
     preamble=kernel_definitions,
     doc="""Linear kernel function.
 
@@ -123,10 +123,10 @@ linear = cp._core.create_ufunc(
 )
 
 cubic = cp._core.create_ufunc(
-    'cupyx_scipy_interpolate_cubic',
-    (('f->f', 'out0 = cubic_f(in0)'),
-     'd->d'),
-    'out0 = cubic(in0)',
+    "cupyx_scipy_interpolate_cubic",
+    (("f->f", "out0 = cubic_f(in0)"),
+     "d->d"),
+    "out0 = cubic(in0)",
     preamble=kernel_definitions,
     doc="""Cubic kernel function.
 
@@ -135,10 +135,10 @@ cubic = cp._core.create_ufunc(
 )
 
 thin_plate_spline = cp._core.create_ufunc(
-    'cupyx_scipy_interpolate_thin_plate_spline',
-    (('f->f', 'out0 = thin_plate_spline_f(in0)'),
-     'd->d'),
-    'out0 = thin_plate_spline(in0)',
+    "cupyx_scipy_interpolate_thin_plate_spline",
+    (("f->f", "out0 = thin_plate_spline_f(in0)"),
+     "d->d"),
+    "out0 = thin_plate_spline(in0)",
     preamble=kernel_definitions,
     doc="""Thin-plate spline kernel function.
 
@@ -148,10 +148,10 @@ thin_plate_spline = cp._core.create_ufunc(
 
 
 multiquadric = cp._core.create_ufunc(
-    'cupyx_scipy_interpolate_multiquadric',
-    (('f->f', 'out0 = multiquadric_f(in0)'),
-     'd->d'),
-    'out0 = multiquadric(in0)',
+    "cupyx_scipy_interpolate_multiquadric",
+    (("f->f", "out0 = multiquadric_f(in0)"),
+     "d->d"),
+    "out0 = multiquadric(in0)",
     preamble=kernel_definitions,
     doc="""Multiquadric kernel function.
 
@@ -161,10 +161,10 @@ multiquadric = cp._core.create_ufunc(
 
 
 inverse_multiquadric = cp._core.create_ufunc(
-    'cupyx_scipy_interpolate_inverse_multiquadric',
-    (('f->f', 'out0 = inverse_multiquadric_f(in0)'),
-     'd->d'),
-    'out0 = inverse_multiquadric(in0)',
+    "cupyx_scipy_interpolate_inverse_multiquadric",
+    (("f->f", "out0 = inverse_multiquadric_f(in0)"),
+     "d->d"),
+    "out0 = inverse_multiquadric(in0)",
     preamble=kernel_definitions,
     doc="""Inverse multiquadric kernel function.
 
@@ -174,10 +174,10 @@ inverse_multiquadric = cp._core.create_ufunc(
 
 
 inverse_quadratic = cp._core.create_ufunc(
-    'cupyx_scipy_interpolate_inverse_quadratic',
-    (('f->f', 'out0 = inverse_quadratic_f(in0)'),
-     'd->d'),
-    'out0 = inverse_quadratic(in0)',
+    "cupyx_scipy_interpolate_inverse_quadratic",
+    (("f->f", "out0 = inverse_quadratic_f(in0)"),
+     "d->d"),
+    "out0 = inverse_quadratic(in0)",
     preamble=kernel_definitions,
     doc="""Inverse quadratic kernel function.
 
@@ -187,10 +187,10 @@ inverse_quadratic = cp._core.create_ufunc(
 
 
 gaussian = cp._core.create_ufunc(
-    'cupyx_scipy_interpolate_gaussian',
-    (('f->f', 'out0 = gaussian_f(in0)'),
-     'd->d'),
-    'out0 = gaussian(in0)',
+    "cupyx_scipy_interpolate_gaussian",
+    (("f->f", "out0 = gaussian_f(in0)"),
+     "d->d"),
+    "out0 = gaussian(in0)",
     preamble=kernel_definitions,
     doc="""Gaussian kernel function.
 
@@ -200,10 +200,10 @@ gaussian = cp._core.create_ufunc(
 
 
 quintic = cp._core.create_ufunc(
-    'cupyx_scipy_interpolate_quintic',
-    (('f->f', 'out0 = quintic_f(in0)'),
-     'd->d'),
-    'out0 = quintic(in0)',
+    "cupyx_scipy_interpolate_quintic",
+    (("f->f", "out0 = quintic_f(in0)"),
+     "d->d"),
+    "out0 = quintic(in0)",
     preamble=kernel_definitions,
     doc="""Quintic kernel function.
 

@@ -4,7 +4,7 @@ from cupy import _core
 from cupy._core import fusion
 
 
-def array(obj, dtype=None, copy=True, order='K', subok=False, ndmin=0, *,
+def array(obj, dtype=None, copy=True, order="K", subok=False, ndmin=0, *,
           blocking=False):
     """Creates an array on the current device.
 
@@ -121,7 +121,7 @@ def ascontiguousarray(a, dtype=None):
 # TODO(okuta): Implement asmatrix
 
 
-def copy(a, order='K'):
+def copy(a, order="K"):
     """Creates a copy of a given array on the current device.
 
     This function allocates the new array on the current device. If the given
@@ -144,9 +144,9 @@ def copy(a, order='K'):
 
     """
     if fusion._is_fusing():
-        if order != 'K':
+        if order != "K":
             raise NotImplementedError(
-                'cupy.copy does not support `order` in fusion yet.')
+                "cupy.copy does not support `order` in fusion yet.")
         return fusion._call_ufunc(_core.elementwise_copy, a)
 
     # If the current device is different from the device of ``a``, then this

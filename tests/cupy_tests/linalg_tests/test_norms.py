@@ -24,25 +24,25 @@ class TestTrace(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    'shape': [(1,), (2,)],
-    'ord': [-numpy.inf, -2, -1, 0, 1, 2, 3, numpy.inf],
-    'axis': [0, None],
-    'keepdims': [True, False],
+    "shape": [(1,), (2,)],
+    "ord": [-numpy.inf, -2, -1, 0, 1, 2, 3, numpy.inf],
+    "axis": [0, None],
+    "keepdims": [True, False],
 }) + testing.product({
-    'shape': [(1, 2), (2, 2)],
-    'ord': [-numpy.inf, -2, -1, 1, 2, numpy.inf, 'fro', 'nuc'],
-    'axis': [(0, 1), None],
-    'keepdims': [True, False],
+    "shape": [(1, 2), (2, 2)],
+    "ord": [-numpy.inf, -2, -1, 1, 2, numpy.inf, "fro", "nuc"],
+    "axis": [(0, 1), None],
+    "keepdims": [True, False],
 }) + testing.product({
-    'shape': [(2, 2, 2)],
-    'ord': [-numpy.inf, -2, -1, 0, 1, 2, 3, numpy.inf],
-    'axis': [0, 1, 2],
-    'keepdims': [True, False],
+    "shape": [(2, 2, 2)],
+    "ord": [-numpy.inf, -2, -1, 0, 1, 2, 3, numpy.inf],
+    "axis": [0, 1, 2],
+    "keepdims": [True, False],
 }) + testing.product({
-    'shape': [(2, 2, 2)],
-    'ord': [-numpy.inf, -1, 1, numpy.inf, 'fro'],
-    'axis': [(0, 1), (0, 2), (1, 2)],
-    'keepdims': [True, False],
+    "shape": [(2, 2, 2)],
+    "ord": [-numpy.inf, -1, 1, numpy.inf, "fro"],
+    "axis": [(0, 1), (0, 2), (1, 2)],
+    "keepdims": [True, False],
 })
 )
 class TestNorm(unittest.TestCase):
@@ -61,7 +61,7 @@ class TestNorm(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    'array': [
+    "array": [
         [[1, 2], [3, 4]],
         [[1, 2], [1, 2]],
         [[0, 0], [0, 0]],
@@ -69,7 +69,7 @@ class TestNorm(unittest.TestCase):
         [0, 1],
         [0, 0],
     ],
-    'tol': [None, 1]
+    "tol": [None, 1]
 }))
 class TestMatrixRank(unittest.TestCase):
 
@@ -162,45 +162,45 @@ class TestDet(unittest.TestCase):
 
 class TestSlogdet(unittest.TestCase):
 
-    @testing.for_dtypes('fdFD')
+    @testing.for_dtypes("fdFD")
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4)
     def test_slogdet(self, xp, dtype):
         a = testing.shaped_arange((2, 2), xp, dtype) + 1
         sign, logdet = xp.linalg.slogdet(a)
         return sign, logdet
 
-    @testing.for_dtypes('fdFD')
+    @testing.for_dtypes("fdFD")
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4)
     def test_slogdet_3(self, xp, dtype):
         a = testing.shaped_arange((2, 2, 2), xp, dtype) + 1
         sign, logdet = xp.linalg.slogdet(a)
         return sign, logdet
 
-    @testing.for_dtypes('fdFD')
+    @testing.for_dtypes("fdFD")
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4)
     def test_slogdet_4(self, xp, dtype):
         a = testing.shaped_arange((2, 2, 2, 2), xp, dtype) + 1
         sign, logdet = xp.linalg.slogdet(a)
         return sign, logdet
 
-    @testing.for_dtypes('fdFD')
+    @testing.for_dtypes("fdFD")
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4)
     def test_slogdet_singular(self, xp, dtype):
         a = xp.zeros((3, 3), dtype)
         sign, logdet = xp.linalg.slogdet(a)
         return sign, logdet
 
-    @testing.for_dtypes('fdFD')
+    @testing.for_dtypes("fdFD")
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4)
     def test_slogdet_singular_errstate(self, xp, dtype):
         a = xp.zeros((3, 3), dtype)
-        with cupyx.errstate(linalg='raise'):
+        with cupyx.errstate(linalg="raise"):
             # `cupy.linalg.slogdet` internally catches `dev_info < 0` from
             # cuSOLVER, which should not affect `dev_info > 0` cases.
             sign, logdet = xp.linalg.slogdet(a)
         return sign, logdet
 
-    @testing.for_dtypes('fdFD')
+    @testing.for_dtypes("fdFD")
     def test_slogdet_one_dim(self, dtype):
         for xp in (numpy, cupy):
             a = testing.shaped_arange((2,), xp, dtype)

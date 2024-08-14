@@ -7,12 +7,12 @@ import cupyx.scipy.special  # NOQA
 from cupy import testing
 
 
-@testing.with_requires('scipy')
+@testing.with_requires("scipy")
 class TestPolygamma(unittest.TestCase):
 
-    @testing.with_requires('scipy>=1.1.0')
+    @testing.with_requires("scipy>=1.1.0")
     @testing.for_all_dtypes(no_complex=True)
-    @testing.numpy_cupy_allclose(atol=1e-5, scipy_name='scp')
+    @testing.numpy_cupy_allclose(atol=1e-5, scipy_name="scp")
     def test_arange(self, xp, scp, dtype):
         import scipy.special  # NOQA
 
@@ -20,9 +20,9 @@ class TestPolygamma(unittest.TestCase):
         b = testing.shaped_arange((2, 3), xp, dtype)
         return scp.special.polygamma(a, b)
 
-    @testing.with_requires('scipy>=1.1.0')
+    @testing.with_requires("scipy>=1.1.0")
     @testing.for_all_dtypes(no_complex=True)
-    @testing.numpy_cupy_allclose(atol=1e-3, rtol=1e-3, scipy_name='scp')
+    @testing.numpy_cupy_allclose(atol=1e-3, rtol=1e-3, scipy_name="scp")
     def test_linspace(self, xp, scp, dtype):
         import scipy.special  # NOQA
 
@@ -33,7 +33,7 @@ class TestPolygamma(unittest.TestCase):
         return scp.special.polygamma(a, b)
 
     @testing.for_all_dtypes(no_complex=True)
-    @testing.numpy_cupy_allclose(atol=1e-2, rtol=1e-3, scipy_name='scp')
+    @testing.numpy_cupy_allclose(atol=1e-2, rtol=1e-3, scipy_name="scp")
     def test_scalar(self, xp, scp, dtype):
         import scipy.special  # NOQA
 
@@ -42,9 +42,9 @@ class TestPolygamma(unittest.TestCase):
         return scp.special.polygamma(
             dtype(2.), dtype(1.5)).astype(numpy.float32)
 
-    @testing.with_requires('scipy>=1.1.0')
+    @testing.with_requires("scipy>=1.1.0")
     @testing.for_all_dtypes(no_complex=True)
-    @testing.numpy_cupy_allclose(atol=1e-2, rtol=1e-3, scipy_name='scp')
+    @testing.numpy_cupy_allclose(atol=1e-2, rtol=1e-3, scipy_name="scp")
     def test_inf_and_nan(self, xp, scp, dtype):
         import scipy.special  # NOQA
 
@@ -54,5 +54,5 @@ class TestPolygamma(unittest.TestCase):
         a = xp.asarray(a)
         b = xp.asarray(b)
         with warnings.catch_warnings():
-            warnings.simplefilter('ignore')
+            warnings.simplefilter("ignore")
             return scp.special.polygamma(a, b)

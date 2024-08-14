@@ -71,7 +71,7 @@ def test_sg_coeffs_trivial():
     h = savgol_coeffs(5, 4, pos=1)
     assert_allclose(h, [0, 0, 0, 1, 0], atol=1e-10)
 
-    h = savgol_coeffs(5, 4, pos=1, use='dot')
+    h = savgol_coeffs(5, 4, pos=1, use="dot")
     assert_allclose(h, [0, 1, 0, 0, 0], atol=1e-10)
 
 
@@ -80,7 +80,7 @@ def compare_coeffs_to_alt(window_length, order):
     # of savgol_coeffs and alt_sg_coeffs for pos from 0 to window_length - 1.
     # Also include pos=None.
     for pos in [None] + list(range(window_length)):
-        h1 = savgol_coeffs(window_length, order, pos=pos, use='dot')
+        h1 = savgol_coeffs(window_length, order, pos=pos, use="dot")
         h2 = alt_sg_coeffs(window_length, order, pos=pos)
         assert_allclose(h1, h2, atol=1e-10,
                         err_msg=("window_length = %d, order = %d, pos = %s" %
@@ -131,11 +131,11 @@ def test_sg_coeffs_deriv():
     dx = i / 2
     d2x = cupy.full_like(i, 0.5)
     for pos in range(x.size):
-        coeffs0 = savgol_coeffs(5, 3, pos=pos, delta=2.0, use='dot')
+        coeffs0 = savgol_coeffs(5, 3, pos=pos, delta=2.0, use="dot")
         assert_allclose(coeffs0.dot(x), x[pos], atol=1e-10)
-        coeffs1 = savgol_coeffs(5, 3, pos=pos, delta=2.0, use='dot', deriv=1)
+        coeffs1 = savgol_coeffs(5, 3, pos=pos, delta=2.0, use="dot", deriv=1)
         assert_allclose(coeffs1.dot(x), dx[pos], atol=1e-10)
-        coeffs2 = savgol_coeffs(5, 3, pos=pos, delta=2.0, use='dot', deriv=2)
+        coeffs2 = savgol_coeffs(5, 3, pos=pos, delta=2.0, use="dot", deriv=2)
         assert_allclose(coeffs2.dot(x), d2x[pos], atol=1e-10)
 
 
@@ -215,28 +215,28 @@ def test_sg_filter_trivial():
     # the value in y is from the straight-line fit of (-1,0), (0,3) and
     # (1, 0) at 0. This is just the average of the three values, hence 1.0.
     x = cupy.array([3.0])
-    y = savgol_filter(x, 3, 1, mode='constant')
+    y = savgol_filter(x, 3, 1, mode="constant")
     assert_almost_equal(y, [1.0], decimal=15)
 
     x = cupy.array([3.0])
-    y = savgol_filter(x, 3, 1, mode='nearest')
+    y = savgol_filter(x, 3, 1, mode="nearest")
     assert_almost_equal(y, [3.0], decimal=15)
 
     x = cupy.array([1.0] * 3)
-    y = savgol_filter(x, 3, 1, mode='wrap')
+    y = savgol_filter(x, 3, 1, mode="wrap")
     assert_almost_equal(y, [1.0, 1.0, 1.0], decimal=15)
 
 
 def test_sg_filter_basic():
     # Some basic test cases for savgol_filter().
     x = cupy.array([1.0, 2.0, 1.0])
-    y = savgol_filter(x, 3, 1, mode='constant')
+    y = savgol_filter(x, 3, 1, mode="constant")
     assert_allclose(y, [1.0, 4.0 / 3, 1.0])
 
-    y = savgol_filter(x, 3, 1, mode='mirror')
+    y = savgol_filter(x, 3, 1, mode="mirror")
     assert_allclose(y, [5.0 / 3, 4.0 / 3, 5.0 / 3])
 
-    y = savgol_filter(x, 3, 1, mode='wrap')
+    y = savgol_filter(x, 3, 1, mode="wrap")
     assert_allclose(y, [4.0 / 3, 4.0 / 3, 4.0 / 3])
 
 
@@ -245,10 +245,10 @@ def test_sg_filter_2d():
                     [2.0, 4.0, 2.0]])
     expected = cupy.array([[1.0, 4.0 / 3, 1.0],
                            [2.0, 8.0 / 3, 2.0]])
-    y = savgol_filter(x, 3, 1, mode='constant')
+    y = savgol_filter(x, 3, 1, mode="constant")
     assert_allclose(y, expected)
 
-    y = savgol_filter(x.T, 3, 1, mode='constant', axis=0)
+    y = savgol_filter(x.T, 3, 1, mode="constant", axis=0)
     assert_allclose(y, expected.T)
 
 
@@ -272,14 +272,14 @@ def test_sg_filter_interp_edges():
 
     window_length = 7
 
-    y = savgol_filter(x, window_length, 3, axis=-1, mode='interp')
+    y = savgol_filter(x, window_length, 3, axis=-1, mode="interp")
     assert_allclose(y, x, atol=1e-12)
 
-    y1 = savgol_filter(x, window_length, 3, axis=-1, mode='interp',
+    y1 = savgol_filter(x, window_length, 3, axis=-1, mode="interp",
                        deriv=1, delta=delta)
     assert_allclose(y1, dx, atol=1e-12)
 
-    y2 = savgol_filter(x, window_length, 3, axis=-1, mode='interp',
+    y2 = savgol_filter(x, window_length, 3, axis=-1, mode="interp",
                        deriv=2, delta=delta)
     assert_allclose(y2, d2x, atol=1e-12)
 
@@ -289,14 +289,14 @@ def test_sg_filter_interp_edges():
     dx = dx.T
     d2x = d2x.T
 
-    y = savgol_filter(x, window_length, 3, axis=0, mode='interp')
+    y = savgol_filter(x, window_length, 3, axis=0, mode="interp")
     assert_allclose(y, x, atol=1e-12)
 
-    y1 = savgol_filter(x, window_length, 3, axis=0, mode='interp',
+    y1 = savgol_filter(x, window_length, 3, axis=0, mode="interp",
                        deriv=1, delta=delta)
     assert_allclose(y1, dx, atol=1e-12)
 
-    y2 = savgol_filter(x, window_length, 3, axis=0, mode='interp',
+    y2 = savgol_filter(x, window_length, 3, axis=0, mode="interp",
                        deriv=2, delta=delta)
     assert_allclose(y2, d2x, atol=1e-12)
 
@@ -316,30 +316,30 @@ def test_sg_filter_interp_edges_3d():
     z = cupy.array([x1, x2, x3])
     dz = cupy.array([dx1, dx2, dx3])
 
-    y = savgol_filter(z, 7, 3, axis=-1, mode='interp', delta=delta)
+    y = savgol_filter(z, 7, 3, axis=-1, mode="interp", delta=delta)
     assert_allclose(y, z, atol=1e-10)
 
-    dy = savgol_filter(z, 7, 3, axis=-1, mode='interp', deriv=1, delta=delta)
+    dy = savgol_filter(z, 7, 3, axis=-1, mode="interp", deriv=1, delta=delta)
     assert_allclose(dy, dz, atol=1e-10)
 
     # z has shape (3, 21, 2)
     z = cupy.array([x1.T, x2.T, x3.T])
     dz = cupy.array([dx1.T, dx2.T, dx3.T])
 
-    y = savgol_filter(z, 7, 3, axis=1, mode='interp', delta=delta)
+    y = savgol_filter(z, 7, 3, axis=1, mode="interp", delta=delta)
     assert_allclose(y, z, atol=1e-10)
 
-    dy = savgol_filter(z, 7, 3, axis=1, mode='interp', deriv=1, delta=delta)
+    dy = savgol_filter(z, 7, 3, axis=1, mode="interp", deriv=1, delta=delta)
     assert_allclose(dy, dz, atol=1e-10)
 
     # z has shape (21, 3, 2)
     z = z.swapaxes(0, 1).copy()
     dz = dz.swapaxes(0, 1).copy()
 
-    y = savgol_filter(z, 7, 3, axis=0, mode='interp', delta=delta)
+    y = savgol_filter(z, 7, 3, axis=0, mode="interp", delta=delta)
     assert_allclose(y, z, atol=1e-10)
 
-    dy = savgol_filter(z, 7, 3, axis=0, mode='interp', deriv=1, delta=delta)
+    dy = savgol_filter(z, 7, 3, axis=0, mode="interp", deriv=1, delta=delta)
     assert_allclose(dy, dz, atol=1e-10)
 
 
@@ -348,14 +348,14 @@ def test_sg_filter_valid_window_length_3d():
 
     x = cupy.ones((10, 20, 30))
 
-    savgol_filter(x, window_length=29, polyorder=3, mode='interp')
+    savgol_filter(x, window_length=29, polyorder=3, mode="interp")
 
-    with pytest.raises(ValueError, match='window_length must be less than'):
+    with pytest.raises(ValueError, match="window_length must be less than"):
         # window_length is more than x.shape[-1].
-        savgol_filter(x, window_length=31, polyorder=3, mode='interp')
+        savgol_filter(x, window_length=31, polyorder=3, mode="interp")
 
-    savgol_filter(x, window_length=9, polyorder=3, axis=0, mode='interp')
+    savgol_filter(x, window_length=9, polyorder=3, axis=0, mode="interp")
 
-    with pytest.raises(ValueError, match='window_length must be less than'):
+    with pytest.raises(ValueError, match="window_length must be less than"):
         # window_length is more than x.shape[0].
-        savgol_filter(x, window_length=11, polyorder=3, axis=0, mode='interp')
+        savgol_filter(x, window_length=11, polyorder=3, axis=0, mode="interp")

@@ -58,8 +58,8 @@ _nest_count = 0
 
 @atexit.register
 def _check_teardown():
-    assert _nest_count == 0, ('_setup_random() and _teardown_random() '
-                              'must be called in pairs.')
+    assert _nest_count == 0, ("_setup_random() and _teardown_random() "
+                              "must be called in pairs.")
 
 
 def _setup_random():
@@ -69,7 +69,7 @@ def _setup_random():
     global _nest_count
     if _nest_count == 0:
         nondeterministic = bool(int(os.environ.get(
-            'CUPY_TEST_RANDOM_NONDETERMINISTIC', '0')))
+            "CUPY_TEST_RANDOM_NONDETERMINISTIC", "0")))
         do_setup(not nondeterministic)
     _nest_count += 1
 
@@ -79,14 +79,14 @@ def _teardown_random():
 
     """
     global _nest_count
-    assert _nest_count > 0, '_setup_random has not been called'
+    assert _nest_count > 0, "_setup_random has not been called"
     _nest_count -= 1
     if _nest_count == 0:
         do_teardown()
 
 
 def generate_seed():
-    assert _nest_count > 0, 'random is not set up'
+    assert _nest_count > 0, "random is not set up"
     return numpy.random.randint(0x7fffffff)
 
 
@@ -105,7 +105,7 @@ def fix_random():
 
     def decorator(impl):
         if (isinstance(impl, types.FunctionType) and
-                impl.__name__.startswith('test_')):
+                impl.__name__.startswith("test_")):
             # Applied to test method
             @functools.wraps(impl)
             def test_func(self, *args, **kw):
@@ -137,6 +137,6 @@ def fix_random():
             klass.tearDown = wrap_tearDown(klass.tearDown)
             return klass
         else:
-            raise ValueError('Can\'t apply fix_random to {}'.format(impl))
+            raise ValueError("Can't apply fix_random to {}".format(impl))
 
     return decorator

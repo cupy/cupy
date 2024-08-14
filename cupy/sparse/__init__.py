@@ -12,7 +12,7 @@ import cupyx.scipy.sparse
 if (3, 7) <= sys.version_info:
     def __getattr__(name):
         if hasattr(cupyx.scipy.sparse, name):
-            msg = 'cupy.sparse is deprecated. Use cupyx.scipy.sparse instead.'
+            msg = "cupy.sparse is deprecated. Use cupyx.scipy.sparse instead."
             warnings.warn(msg, DeprecationWarning)
             return getattr(cupyx.scipy.sparse, name)
         raise AttributeError(

@@ -35,16 +35,16 @@ from cupyx import jit
 
 def _get_typename(dtype):
     typename = get_typename(dtype)
-    if cupy.dtype(dtype).kind == 'c':
-        typename = 'thrust::' + typename
-    elif typename == 'float16':
+    if cupy.dtype(dtype).kind == "c":
+        typename = "thrust::" + typename
+    elif typename == "float16":
         if runtime.is_hip:
             # 'half' in name_expressions weirdly raises
             # HIPRTC_ERROR_NAME_EXPRESSION_NOT_VALID in getLoweredName() on
             # ROCm
-            typename = '__half'
+            typename = "__half"
         else:
-            typename = 'half'
+            typename = "half"
     return typename
 
 
@@ -305,10 +305,10 @@ __global__ void peak_widths<half>(
 """  # NOQA
 
 PEAKS_MODULE = cupy.RawModule(
-    code=PEAKS_KERNEL, options=('-std=c++11',),
-    name_expressions=[f'local_maxima_1d<{x}>' for x in TYPE_NAMES] +
-    [f'peak_prominences<{x}>' for x in TYPE_NAMES] +
-    [f'peak_widths<{x}>' for x in TYPE_NAMES])
+    code=PEAKS_KERNEL, options=("-std=c++11",),
+    name_expressions=[f"local_maxima_1d<{x}>" for x in TYPE_NAMES] +
+    [f"peak_prominences<{x}>" for x in TYPE_NAMES] +
+    [f"peak_widths<{x}>" for x in TYPE_NAMES])
 
 
 ARGREL_KERNEL = r"""
@@ -473,15 +473,15 @@ __global__ void boolrelextrema_2D( const int  in_x,
 
 
 ARGREL_MODULE = cupy.RawModule(
-    code=ARGREL_KERNEL, options=('-std=c++11',),
-    name_expressions=[f'boolrelextrema_1D<{x}>' for x in FLOAT_INT_NAMES] +
-    [f'boolrelextrema_2D<{x}>' for x in FLOAT_INT_NAMES])
+    code=ARGREL_KERNEL, options=("-std=c++11",),
+    name_expressions=[f"boolrelextrema_1D<{x}>" for x in FLOAT_INT_NAMES] +
+    [f"boolrelextrema_2D<{x}>" for x in FLOAT_INT_NAMES])
 
 
 def _get_module_func(module, func_name, *template_args):
     args_dtypes = [_get_typename(arg.dtype) for arg in template_args]
-    template = ', '.join(args_dtypes)
-    kernel_name = f'{func_name}<{template}>' if template_args else func_name
+    template = ", ".join(args_dtypes)
+    kernel_name = f"{func_name}<{template}>" if template_args else func_name
     kernel = module.get_function(kernel_name)
     return kernel
 
@@ -495,7 +495,7 @@ def _local_maxima_1d(x):
     left_edges = cupy.empty(samples, dtype=cupy.int64)
     right_edges = cupy.empty(samples, dtype=cupy.int64)
 
-    local_max_kernel = _get_module_func(PEAKS_MODULE, 'local_maxima_1d', x)
+    local_max_kernel = _get_module_func(PEAKS_MODULE, "local_maxima_1d", x)
     local_max_kernel((n_blocks,), (block_sz,),
                      (x.shape[0], x, midpoints, left_edges, right_edges))
 
@@ -543,12 +543,12 @@ def _unpack_condition_args(interval, x, peaks):
     if isinstance(imin, cupy.ndarray):
         if imin.size != x.size:
             raise ValueError(
-                'array size of lower interval border must match x')
+                "array size of lower interval border must match x")
         imin = imin[peaks]
     if isinstance(imax, cupy.ndarray):
         if imax.size != x.size:
             raise ValueError(
-                'array size of upper interval border must match x')
+                "array size of upper interval border must match x")
         imax = imax[peaks]
 
     return imin, imax
@@ -703,9 +703,9 @@ def _arg_x_as_expected(value):
     value : ndarray
         A 1-D C-contiguous array.
     """
-    value = cupy.asarray(value, order='C')
+    value = cupy.asarray(value, order="C")
     if value.ndim != 1:
-        raise ValueError('`x` must be a 1-D array')
+        raise ValueError("`x` must be a 1-D array")
     return value
 
 
@@ -730,7 +730,7 @@ def _arg_wlen_as_expected(value):
             value = math.ceil(value)
         value = int(value)
     else:
-        raise ValueError('`wlen` must be larger than 1, was {}'
+        raise ValueError("`wlen` must be larger than 1, was {}"
                          .format(value))
     return value
 
@@ -752,11 +752,11 @@ def _arg_peaks_as_expected(value):
         value = cupy.array([], dtype=cupy.int64)
     try:
         # Safely convert to C-contiguous array of type cupy.int64
-        value = value.astype(cupy.int64, order='C', copy=False)
+        value = value.astype(cupy.int64, order="C", copy=False)
     except TypeError as e:
         raise TypeError("cannot safely cast `peaks` to dtype('intp')") from e
     if value.ndim != 1:
-        raise ValueError('`peaks` must be a 1-D array')
+        raise ValueError("`peaks` must be a 1-D array")
     return value
 
 
@@ -772,7 +772,7 @@ def _check_prominence_invalid(n, peaks, left_bases, right_bases, out):
 
 def _peak_prominences(x, peaks, wlen=None, check=False):
     if check and cupy.any(cupy.logical_or(peaks < 0, peaks > x.shape[0] - 1)):
-        raise ValueError('peaks are not a valid index')
+        raise ValueError("peaks are not a valid index")
 
     prominences = cupy.empty(peaks.shape[0], dtype=x.dtype)
     left_bases = cupy.empty(peaks.shape[0], dtype=cupy.int64)
@@ -782,7 +782,7 @@ def _peak_prominences(x, peaks, wlen=None, check=False):
     block_sz = 128
     n_blocks = (n + block_sz - 1) // block_sz
 
-    peak_prom_kernel = _get_module_func(PEAKS_MODULE, 'peak_prominences', x)
+    peak_prom_kernel = _get_module_func(PEAKS_MODULE, "peak_prominences", x)
     peak_prom_kernel(
         (n_blocks,), (block_sz,),
         (x.shape[0], n, x, peaks, wlen, prominences, left_bases, right_bases))
@@ -793,13 +793,13 @@ def _peak_prominences(x, peaks, wlen=None, check=False):
 def _peak_widths(x, peaks, rel_height, prominences, left_bases, right_bases,
                  check=False):
     if rel_height < 0:
-        raise ValueError('`rel_height` must be greater or equal to 0.0')
+        raise ValueError("`rel_height` must be greater or equal to 0.0")
     if prominences is None:
-        raise TypeError('prominences must not be None')
+        raise TypeError("prominences must not be None")
     if left_bases is None:
-        raise TypeError('left_bases must not be None')
+        raise TypeError("left_bases must not be None")
     if right_bases is None:
-        raise TypeError('right_bases must not be None')
+        raise TypeError("right_bases must not be None")
     if not (peaks.shape[0] == prominences.shape[0] == left_bases.shape[0]
             == right_bases.shape[0]):
         raise ValueError("arrays in `prominence_data` must have the same "
@@ -822,7 +822,7 @@ def _peak_widths(x, peaks, rel_height, prominences, left_bases, right_bases,
     left_ips = cupy.empty(peaks.shape[0], dtype=cupy.float64)
     right_ips = cupy.empty(peaks.shape[0], dtype=cupy.float64)
 
-    peak_widths_kernel = _get_module_func(PEAKS_MODULE, 'peak_widths', x)
+    peak_widths_kernel = _get_module_func(PEAKS_MODULE, "peak_widths", x)
     peak_widths_kernel(
         (n_blocks,), (block_sz,),
         (n, x, peaks, rel_height, prominences, left_bases, right_bases,
@@ -1150,7 +1150,7 @@ def find_peaks(x, height=None, threshold=None, distance=None,
 
     x = _arg_x_as_expected(x)
     if distance is not None and distance < 1:
-        raise ValueError('`distance` must be greater or equal to 1')
+        raise ValueError("`distance` must be greater or equal to 1")
 
     peaks, left_edges, right_edges = _local_maxima_1d(x)
     properties = {}
@@ -1195,7 +1195,7 @@ def find_peaks(x, height=None, threshold=None, distance=None,
         # Calculate prominence (required for both conditions)
         wlen = _arg_wlen_as_expected(wlen)  # NOQA
         properties.update(zip(
-            ['prominences', 'left_bases', 'right_bases'],
+            ["prominences", "left_bases", "right_bases"],
             _peak_prominences(x, peaks, wlen=wlen)  # NOQA
         ))
 
@@ -1209,9 +1209,9 @@ def find_peaks(x, height=None, threshold=None, distance=None,
     if width is not None:
         # Calculate widths
         properties.update(zip(
-            ['widths', 'width_heights', 'left_ips', 'right_ips'],
+            ["widths", "width_heights", "left_ips", "right_ips"],
             _peak_widths(x, peaks, rel_height, properties['prominences'],  # NOQA
-                         properties['left_bases'], properties['right_bases'])
+                         properties["left_bases"], properties["right_bases"])
         ))
         # Evaluate width condition
         wmin, wmax = _unpack_condition_args(width, x, peaks)  # NOQA
@@ -1224,7 +1224,7 @@ def find_peaks(x, height=None, threshold=None, distance=None,
 
 def _peak_finding(data, comparator, axis, order, mode, results):
     comp = _modedict[comparator]
-    clip = mode == 'clip'
+    clip = mode == "clip"
 
     device_id = cupy.cuda.Device()
     num_blocks = (device_id.attributes["MultiProcessorCount"] * 20,)

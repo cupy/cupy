@@ -42,8 +42,8 @@ def take_along_axis(a, indices, axis):
     .. seealso:: :func:`numpy.take_along_axis`
     """
 
-    if indices.dtype.kind not in ('i', 'u'):
-        raise IndexError('`indices` must be an integer array')
+    if indices.dtype.kind not in ("i", "u"):
+        raise IndexError("`indices` must be an integer array")
 
     if axis is None:
         a = a.ravel()
@@ -55,7 +55,7 @@ def take_along_axis(a, indices, axis):
 
     if ndim != indices.ndim:
         raise ValueError(
-            '`indices` and `a` must have the same number of dimensions')
+            "`indices` and `a` must have the same number of dimensions")
 
     fancy_index = []
     for i, n in enumerate(a.shape):
@@ -68,7 +68,7 @@ def take_along_axis(a, indices, axis):
     return a[tuple(fancy_index)]
 
 
-def choose(a, choices, out=None, mode='raise'):
+def choose(a, choices, out=None, mode="raise"):
     return a.choose(choices, out, mode)
 
 
@@ -149,7 +149,7 @@ def extract(condition, a):
     """
 
     if not isinstance(a, cupy.ndarray):
-        raise TypeError('extract requires input array to be cupy.ndarray')
+        raise TypeError("extract requires input array to be cupy.ndarray")
 
     if not isinstance(condition, cupy.ndarray):
         condition = cupy.array(condition)
@@ -184,7 +184,7 @@ def select(condlist, choicelist, default=0):
 
     if len(condlist) != len(choicelist):
         raise ValueError(
-            'list of cases must be same length as list of conditions')
+            "list of cases must be same length as list of conditions")
 
     if len(condlist) == 0:
         raise ValueError("select with an empty condition list is not possible")
@@ -198,7 +198,7 @@ def select(condlist, choicelist, default=0):
         cond = condlist[i]
         if cond.dtype.type is not cupy.bool_:
             raise ValueError(
-                'invalid entry {} in condlist: should be boolean ndarray'
+                "invalid entry {} in condlist: should be boolean ndarray"
                 .format(i))
 
     dtype = cupy.result_type(*choicelist)

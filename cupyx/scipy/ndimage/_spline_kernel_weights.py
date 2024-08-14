@@ -12,30 +12,30 @@ spline_weights_inline = {}
 # Note: This order = 1 case is currently unused (order = 1 has a different code
 # path in _interp_kernels.py). I think that existing code is a bit more
 # efficient.
-spline_weights_inline[1] = '''
+spline_weights_inline[1] = """
 wx = c_{j} - floor({order} & 1 ? c_{j} : c_{j} + 0.5);
 weights_{j}[0] = 1.0 - wx;
 weights_{j}[1] = wx;
-'''
+"""
 
-spline_weights_inline[2] = '''
+spline_weights_inline[2] = """
 wx = c_{j} - floor({order} & 1 ? c_{j} : c_{j} + 0.5);
 weights_{j}[1] = 0.75 - wx * wx;
 wy = 0.5 - wx;
 weights_{j}[0] = 0.5 * wy * wy;
 weights_{j}[2] = 1.0 - weights_{j}[0] - weights_{j}[1];
-'''
+"""
 
-spline_weights_inline[3] = '''
+spline_weights_inline[3] = """
 wx = c_{j} - floor({order} & 1 ? c_{j} : c_{j} + 0.5);
 wy = 1.0 - wx;
 weights_{j}[1] = (wx * wx * (wx - 2.0) * 3.0 + 4.0) / 6.0;
 weights_{j}[2] = (wy * wy * (wy - 2.0) * 3.0 + 4.0) / 6.0;
 weights_{j}[0] = wy * wy * wy / 6.0;
 weights_{j}[3] = 1.0 - weights_{j}[0] - weights_{j}[1] - weights_{j}[2];
-'''
+"""
 
-spline_weights_inline[4] = '''
+spline_weights_inline[4] = """
 wx = c_{j} - floor({order} & 1 ? c_{j} : c_{j} + 0.5);
 wy = wx * wx;
 weights_{j}[2] = wy * (wy * 0.25 - 0.625) + 115.0 / 192.0;
@@ -50,9 +50,9 @@ wy = wy * wy;
 weights_{j}[0] = wy * wy / 24.0;
 weights_{j}[4] = 1.0 - weights_{j}[0] - weights_{j}[1]
                      - weights_{j}[2] - weights_{j}[3];
-'''
+"""
 
-spline_weights_inline[5] = '''
+spline_weights_inline[5] = """
 wx = c_{j} - floor({order} & 1 ? c_{j} : c_{j} + 0.5);
 wy = wx * wx;
 weights_{j}[2] = wy * (wy * (0.25 - wx / 12.0) - 0.5) + 0.55;
@@ -70,4 +70,4 @@ wy = wy * wy;
 weights_{j}[0] = (1.0 - wx) * wy * wy / 120.0;
 weights_{j}[5] = 1.0 - weights_{j}[0] - weights_{j}[1] - weights_{j}[2]
                      - weights_{j}[3] - weights_{j}[4];
-'''
+"""

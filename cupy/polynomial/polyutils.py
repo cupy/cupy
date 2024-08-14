@@ -15,15 +15,15 @@ def _deprecate_as_int(x, desc):
         else:
             if ix == x:
                 warnings.warn(
-                    'In future, this will raise TypeError, as {} will '
-                    'need to be an integer not just an integral float.'
+                    "In future, this will raise TypeError, as {} will "
+                    "need to be an integer not just an integral float."
                     .format(desc),
                     DeprecationWarning,
                     stacklevel=3
                 )
                 return ix
 
-        raise TypeError('{} must be an integer'.format(desc)) from e
+        raise TypeError("{} must be an integer".format(desc)) from e
 
 
 def trimseq(seq):
@@ -41,7 +41,7 @@ def trimseq(seq):
     """
     if seq.size == 0:
         return seq
-    ret = cupy.trim_zeros(seq, trim='b')
+    ret = cupy.trim_zeros(seq, trim="b")
     if ret.size > 0:
         return ret
     return seq[:1]
@@ -63,11 +63,11 @@ def as_series(alist, trim=True):
     arrays = []
     for a in alist:
         if a.size == 0:
-            raise ValueError('Coefficient array is empty')
+            raise ValueError("Coefficient array is empty")
         if a.ndim > 1:
-            raise ValueError('Coefficient array is not 1-d')
-        if a.dtype.kind == 'b':
-            raise ValueError('Coefficient arrays have no common type')
+            raise ValueError("Coefficient array is not 1-d")
+        if a.dtype.kind == "b":
+            raise ValueError("Coefficient arrays have no common type")
         a = a.ravel()
         if trim:
             a = trimseq(a)
@@ -92,13 +92,13 @@ def trimcoef(c, tol=0):
 
     """
     if tol < 0:
-        raise ValueError('tol must be non-negative')
+        raise ValueError("tol must be non-negative")
     if c.size == 0:
-        raise ValueError('Coefficient array is empty')
+        raise ValueError("Coefficient array is empty")
     if c.ndim > 1:
-        raise ValueError('Coefficient array is not 1-d')
-    if c.dtype.kind == 'b':
-        raise ValueError('bool inputs are not allowed')
+        raise ValueError("Coefficient array is not 1-d")
+    if c.dtype.kind == "b":
+        raise ValueError("bool inputs are not allowed")
     if c.ndim == 0:
         c = c.ravel()
     c = c.astype(cupy.common_type(c), copy=False)

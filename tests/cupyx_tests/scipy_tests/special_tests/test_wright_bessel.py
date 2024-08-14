@@ -1,10 +1,10 @@
 from cupy import testing
 
 
-@testing.with_requires('scipy')
+@testing.with_requires("scipy")
 class TestWrightBessel:
-    @testing.for_dtypes('fd')
-    @testing.numpy_cupy_allclose(atol=1e-13, rtol=1e-10, scipy_name='scp')
+    @testing.for_dtypes("fd")
+    @testing.numpy_cupy_allclose(atol=1e-13, rtol=1e-10, scipy_name="scp")
     def test_values(self, xp, scp, dtype):
         a = 2**xp.arange(-3, 4, dtype=dtype)
         b = 2**xp.arange(-3, 4, dtype=dtype)

@@ -54,7 +54,7 @@ def nanargmax(a, axis=None, dtype=None, out=None, keepdims=False):
             whereas ``numpy.nanargmax`` raises ``ValueError``
     .. seealso:: :func:`numpy.nanargmax`
     """
-    if a.dtype.kind in 'biu':
+    if a.dtype.kind in "biu":
         return argmax(a, axis=axis)
 
     return _statistics._nanargmax(a, axis, dtype, out, keepdims)
@@ -109,7 +109,7 @@ def nanargmin(a, axis=None, dtype=None, out=None, keepdims=False):
             whereas ``numpy.nanargmin`` raises ``ValueError``
     .. seealso:: :func:`numpy.nanargmin`
     """
-    if a.dtype.kind in 'biu':
+    if a.dtype.kind in "biu":
         return argmin(a, axis=axis)
 
     return _statistics._nanargmin(a, axis, dtype, out, keepdims)
@@ -134,7 +134,7 @@ def nonzero(a):
     .. seealso:: :func:`numpy.nonzero`
 
     """
-    _util.check_array(a, arg_name='a')
+    _util.check_array(a, arg_name="a")
     return a.nonzero()
 
 
@@ -156,20 +156,20 @@ def flatnonzero(a):
 
     .. seealso:: :func:`numpy.flatnonzero`
     """
-    _util.check_array(a, arg_name='a')
+    _util.check_array(a, arg_name="a")
     return a.ravel().nonzero()[0]
 
 
 _where_ufunc = _core.create_ufunc(
-    'cupy_where',
-    ('???->?', '?bb->b', '?BB->B', '?hh->h', '?HH->H', '?ii->i', '?II->I',
-     '?ll->l', '?LL->L', '?qq->q', '?QQ->Q', '?ee->e', '?ff->f',
+    "cupy_where",
+    ("???->?", "?bb->b", "?BB->B", "?hh->h", "?HH->H", "?ii->i", "?II->I",
+     "?ll->l", "?LL->L", "?qq->q", "?QQ->Q", "?ee->e", "?ff->f",
      # On CUDA 6.5 these combinations don't work correctly (on CUDA >=7.0, it
      # works).
      # See issue #551.
-     '?hd->d', '?Hd->d',
-     '?dd->d', '?FF->F', '?DD->D'),
-    'out0 = in0 ? in1 : in2')
+     "?hd->d", "?Hd->d",
+     "?dd->d", "?FF->F", "?DD->D"),
+    "out0 = in0 ? in1 : in2")
 
 
 def where(condition, x=None, y=None):
@@ -200,13 +200,13 @@ def where(condition, x=None, y=None):
     missing = (x is None, y is None).count(True)
 
     if missing == 1:
-        raise ValueError('Must provide both \'x\' and \'y\' or neither.')
+        raise ValueError("Must provide both 'x' and 'y' or neither.")
     if missing == 2:
         return nonzero(condition)  # may synchronize
 
     if fusion._is_fusing():
         return fusion._call_ufunc(_where_ufunc, condition, x, y)
-    return _where_ufunc(condition.astype('?'), x, y)
+    return _where_ufunc(condition.astype("?"), x, y)
 
 
 def argwhere(a):
@@ -225,21 +225,21 @@ def argwhere(a):
     .. seealso:: :func:`numpy.argwhere`
 
     """
-    _util.check_array(a, arg_name='a')
+    _util.check_array(a, arg_name="a")
     return _indexing._ndarray_argwhere(a)
 
 
 # This is to allow using the same kernels for all dtypes, ints & floats
 # as nan is a special case
-_preamble = '''
+_preamble = """
 template<typename T>
 __device__ bool _isnan(T val) {
     return val != val;
 }
-'''
+"""
 
 
-_hip_preamble = r'''
+_hip_preamble = r"""
 #ifdef __HIP_DEVICE_COMPILE__
   #define no_thread_divergence(do_work, to_return) \
     if (!is_done) {                                \
@@ -251,10 +251,10 @@ _hip_preamble = r'''
     do_work;                                       \
     if (to_return) { return; }
 #endif
-'''
+"""
 
 
-_searchsorted_code = '''
+_searchsorted_code = """
     #ifdef __HIP_DEVICE_COMPILE__
     bool is_done = false;
     #endif
@@ -330,18 +330,18 @@ _searchsorted_code = '''
         }
     }
     no_thread_divergence( y = right , false )
-'''
+"""
 
 
 _searchsorted_kernel = _core.ElementwiseKernel(
-    'S x, raw T bins, int64 n_bins, bool side_is_right, '
-    'bool assume_increasing',
-    'int64 y',
+    "S x, raw T bins, int64 n_bins, bool side_is_right, "
+    "bool assume_increasing",
+    "int64 y",
     _searchsorted_code,
-    name='cupy_searchsorted_kernel', preamble=_preamble+_hip_preamble)
+    name="cupy_searchsorted_kernel", preamble=_preamble+_hip_preamble)
 
 
-_hip_preamble = r'''
+_hip_preamble = r"""
 #ifdef __HIP_DEVICE_COMPILE__
   #define no_thread_divergence(do_work, to_return) \
     if (!is_done) {                                \
@@ -357,38 +357,38 @@ _hip_preamble = r'''
       return;                                      \
     }
 #endif
-'''
+"""
 
 
 _exists_kernel = _core.ElementwiseKernel(
-    'S x, raw T bins, int64 n_bins, bool invert',
-    'bool out',
-    '''
+    "S x, raw T bins, int64 n_bins, bool invert",
+    "bool out",
+    """
     const bool assume_increasing = true;
     const bool side_is_right = false;
     long long y;
-    '''
-    + _searchsorted_code + '''
+    """
+    + _searchsorted_code + """
     out = (y == n_bins ? false : bins[y] == x);
     if (invert) out = !out;
-    ''', name='cupy_exists_kernel', preamble=_preamble+_hip_preamble)
+    """, name="cupy_exists_kernel", preamble=_preamble+_hip_preamble)
 
 
 _exists_and_searchsorted_kernel = _core.ElementwiseKernel(
-    'S x, raw T bins, int64 n_bins, bool invert',
-    'bool out, int64 y',
-    '''
+    "S x, raw T bins, int64 n_bins, bool invert",
+    "bool out, int64 y",
+    """
     const bool assume_increasing = true;
     const bool side_is_right = false;
-    '''
-    + _searchsorted_code + '''
+    """
+    + _searchsorted_code + """
     out = (y == n_bins ? false : bins[y] == x);
     if (invert) out = !out;
-    ''', name='cupy_exists_and_searchsorted_kernel',
+    """, name="cupy_exists_and_searchsorted_kernel",
     preamble=_preamble+_hip_preamble)
 
 
-def searchsorted(a, v, side='left', sorter=None):
+def searchsorted(a, v, side="left", sorter=None):
     """Finds indices where elements should be inserted to maintain order.
 
     Find the indices into a sorted array ``a`` such that,
@@ -426,20 +426,20 @@ def _searchsorted(a, v, side, sorter, assume_increasing):
     inside the cuda kernel.
     """
     if not isinstance(a, cupy.ndarray):
-        raise NotImplementedError('Only int or ndarray are supported for a')
+        raise NotImplementedError("Only int or ndarray are supported for a")
 
     if not isinstance(v, cupy.ndarray):
-        raise NotImplementedError('Only int or ndarray are supported for v')
+        raise NotImplementedError("Only int or ndarray are supported for v")
 
     if a.ndim > 1:
-        raise ValueError('object too deep for desired array')
+        raise ValueError("object too deep for desired array")
     if a.ndim < 1:
-        raise ValueError('object of too small depth for desired array')
+        raise ValueError("object of too small depth for desired array")
     if a.size == 0:
         return cupy.zeros(v.shape, dtype=cupy.int64)
 
-    a_iscomplex = a.dtype.kind == 'c'
-    v_iscomplex = v.dtype.kind == 'c'
+    a_iscomplex = a.dtype.kind == "c"
+    v_iscomplex = v.dtype.kind == "c"
 
     if a_iscomplex and not v_iscomplex:
         v = v.astype(a.dtype)
@@ -449,15 +449,15 @@ def _searchsorted(a, v, side, sorter, assume_increasing):
     # Numpy does not check if the array is monotonic inside searchsorted
     # which leads to undefined behavior in such cases.
     if sorter is not None:
-        if sorter.dtype.kind not in ('i', 'u'):
-            raise TypeError('sorter must be of integer type')
+        if sorter.dtype.kind not in ("i", "u"):
+            raise TypeError("sorter must be of integer type")
         if sorter.size != a.size:
-            raise ValueError('sorter.size must equal a.size')
+            raise ValueError("sorter.size must equal a.size")
         a = a.take(sorter)
 
     y = cupy.zeros(v.shape, dtype=cupy.int64)
 
-    _searchsorted_kernel(v, a, a.size, side == 'right', assume_increasing, y)
+    _searchsorted_kernel(v, a, a.size, side == "right", assume_increasing, y)
     return y
 
 

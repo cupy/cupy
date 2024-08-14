@@ -29,15 +29,15 @@ class _InstallInfo(object):
     def __init__(self):
         cupy_package_root = self._get_cupy_package_root()
         if cupy_package_root is not None:
-            data_root = os.path.join(cupy_package_root, '.data')
+            data_root = os.path.join(cupy_package_root, ".data")
             data_paths = {
-                'lib': _dir_or_none(os.path.join(data_root, 'lib')),
-                'include': _dir_or_none(os.path.join(data_root, 'include')),
+                "lib": _dir_or_none(os.path.join(data_root, "lib")),
+                "include": _dir_or_none(os.path.join(data_root, "include")),
             }
         else:
             data_paths = {
-                'lib': None,
-                'include': None,
+                "lib": None,
+                "include": None,
             }
 
         self.cupy_package_root = cupy_package_root
@@ -45,7 +45,7 @@ class _InstallInfo(object):
 
     def get_data_path(self, data_type):
         if data_type not in self.data_paths:
-            raise ValueError('Invalid data type: {}'.format(data_type))
+            raise ValueError("Invalid data type: {}".format(data_type))
         return self.data_paths[data_type]
 
     def _get_cupy_package_root(self):
@@ -110,7 +110,7 @@ class _RuntimeInfo:
         self.cuda_build_version = str(cupy.cuda.driver.get_build_version())
         if cupy.cuda.driver._is_cuda_python():
             import cuda
-            self.cuda_build_version += f' (CUDA Python: {cuda.__version__})'
+            self.cuda_build_version += f" (CUDA Python: {cuda.__version__})"
         self.cuda_driver_version = _eval_or_error(
             cupy.cuda.runtime.driverGetVersion,
             cupy.cuda.runtime.CUDARuntimeError)
@@ -124,7 +124,7 @@ class _RuntimeInfo:
             Exception)
 
         # cuBLAS
-        self.cublas_version = '(available)'
+        self.cublas_version = "(available)"
         if full:
             self.cublas_version = _eval_or_error(
                 lambda: cupy.cuda.cublas.getVersion(
@@ -150,7 +150,7 @@ class _RuntimeInfo:
             Exception)
 
         # cuSPARSE
-        self.cusparse_version = '(available)'
+        self.cusparse_version = "(available)"
         if full:
             self.cusparse_version = _eval_or_error(
                 lambda: cupy.cuda.cusparse.getVersion(
@@ -170,12 +170,12 @@ class _RuntimeInfo:
             pass
 
         # cuDNN
-        if cupy._environment._can_attempt_preload('cudnn'):
+        if cupy._environment._can_attempt_preload("cudnn"):
             if full:
-                cupy._environment._preload_library('cudnn')
+                cupy._environment._preload_library("cudnn")
             else:
                 self.cudnn_build_version = (
-                    '(not loaded; try `import cupy.cuda.cudnn` first)')
+                    "(not loaded; try `import cupy.cuda.cudnn` first)")
                 self.cudnn_version = self.cudnn_build_version
         try:
             import cupy_backends.cuda.libs.cudnn as cudnn
@@ -186,19 +186,19 @@ class _RuntimeInfo:
             pass
 
         # NCCL
-        if cupy._environment._can_attempt_preload('nccl'):
+        if cupy._environment._can_attempt_preload("nccl"):
             if full:
-                cupy._environment._preload_library('nccl')
+                cupy._environment._preload_library("nccl")
             else:
                 self.nccl_build_version = (
-                    '(not loaded; try `import cupy.cuda.nccl` first)')
+                    "(not loaded; try `import cupy.cuda.nccl` first)")
                 self.nccl_runtime_version = self.nccl_build_version
         try:
             import cupy_backends.cuda.libs.nccl as nccl
             self.nccl_build_version = nccl.get_build_version()
             nccl_runtime_version = nccl.get_version()
             if nccl_runtime_version == 0:
-                nccl_runtime_version = '(unknown)'
+                nccl_runtime_version = "(unknown)"
             self.nccl_runtime_version = nccl_runtime_version
         except ImportError:
             pass
@@ -246,74 +246,74 @@ class _RuntimeInfo:
 
     def __str__(self):
         records = [
-            ('OS',  platform.platform()),
-            ('Python Version', platform.python_version()),
-            ('CuPy Version', self.cupy_version),
-            ('CuPy Platform', 'NVIDIA CUDA' if not is_hip else 'AMD ROCm'),
-            ('NumPy Version', self.numpy_version),
-            ('SciPy Version', self.scipy_version),
-            ('Cython Build Version', self.cython_build_version),
-            ('Cython Runtime Version', self.cython_version),
-            ('CUDA Root', self.cuda_path),
-            ('hipcc PATH' if is_hip else 'nvcc PATH', self.nvcc_path),
+            ("OS",  platform.platform()),
+            ("Python Version", platform.python_version()),
+            ("CuPy Version", self.cupy_version),
+            ("CuPy Platform", "NVIDIA CUDA" if not is_hip else "AMD ROCm"),
+            ("NumPy Version", self.numpy_version),
+            ("SciPy Version", self.scipy_version),
+            ("Cython Build Version", self.cython_build_version),
+            ("Cython Runtime Version", self.cython_version),
+            ("CUDA Root", self.cuda_path),
+            ("hipcc PATH" if is_hip else "nvcc PATH", self.nvcc_path),
 
-            ('CUDA Build Version', self.cuda_build_version),
-            ('CUDA Driver Version', self.cuda_driver_version),
+            ("CUDA Build Version", self.cuda_build_version),
+            ("CUDA Driver Version", self.cuda_driver_version),
 
-            ('CUDA Runtime Version', (
-                f'{self.cuda_runtime_version} (linked to CuPy) / '
-                f'{self.cuda_local_runtime_version} (locally installed)'
+            ("CUDA Runtime Version", (
+                f"{self.cuda_runtime_version} (linked to CuPy) / "
+                f"{self.cuda_local_runtime_version} (locally installed)"
             )),
         ]
 
         records += [
-            ('cuBLAS Version', self.cublas_version),
-            ('cuFFT Version', self.cufft_version),
-            ('cuRAND Version', self.curand_version),
-            ('cuSOLVER Version', self.cusolver_version),
-            ('cuSPARSE Version', self.cusparse_version),
-            ('NVRTC Version', self.nvrtc_version),
-            ('Thrust Version', self.thrust_version),
-            ('CUB Build Version', self.cub_build_version),
-            ('Jitify Build Version', self.jitify_build_version),
+            ("cuBLAS Version", self.cublas_version),
+            ("cuFFT Version", self.cufft_version),
+            ("cuRAND Version", self.curand_version),
+            ("cuSOLVER Version", self.cusolver_version),
+            ("cuSPARSE Version", self.cusparse_version),
+            ("NVRTC Version", self.nvrtc_version),
+            ("Thrust Version", self.thrust_version),
+            ("CUB Build Version", self.cub_build_version),
+            ("Jitify Build Version", self.jitify_build_version),
         ]
 
         records += [
-            ('cuDNN Build Version', self.cudnn_build_version),
-            ('cuDNN Version', self.cudnn_version),
-            ('NCCL Build Version', self.nccl_build_version),
-            ('NCCL Runtime Version', self.nccl_runtime_version),
-            ('cuTENSOR Version', self.cutensor_version),
-            ('cuSPARSELt Build Version', self.cusparselt_version),
+            ("cuDNN Build Version", self.cudnn_build_version),
+            ("cuDNN Version", self.cudnn_version),
+            ("NCCL Build Version", self.nccl_build_version),
+            ("NCCL Runtime Version", self.nccl_runtime_version),
+            ("cuTENSOR Version", self.cutensor_version),
+            ("cuSPARSELt Build Version", self.cusparselt_version),
         ]
 
         device_count = 0
         try:
             device_count = cupy.cuda.runtime.getDeviceCount()
         except cupy.cuda.runtime.CUDARuntimeError as e:
-            if 'ErrorNoDevice' not in e.args[0]:
-                warnings.warn(f'Failed to detect number of GPUs: {e}')
+            if "ErrorNoDevice" not in e.args[0]:
+                warnings.warn(f"Failed to detect number of GPUs: {e}")
             # No GPU devices available.
         for device_id in range(device_count):
             with cupy.cuda.Device(device_id) as device:
                 props = cupy.cuda.runtime.getDeviceProperties(device_id)
-                name = ('Device {} Name'.format(device_id),
-                        props['name'].decode())
-                pci_bus = ('Device {} PCI Bus ID'.format(device_id),
+                name = ("Device {} Name".format(device_id),
+                        props["name"].decode())
+                pci_bus = ("Device {} PCI Bus ID".format(device_id),
                            device.pci_bus_id)
                 if is_hip:
                     try:
-                        arch = props['gcnArchName'].decode()
+                        arch = props["gcnArchName"].decode()
                     except KeyError:  # ROCm < 3.6.0
-                        arch = 'gfx'+str(props['gcnArch'])
-                    arch = ('Device {} Arch'.format(device_id), arch)
+                        arch = "gfx"+str(props["gcnArch"])
+                    arch = ("Device {} Arch".format(device_id), arch)
                 else:
-                    arch = ('Device {} Compute Capability'.format(device_id),
+                    arch = ("Device {} Compute Capability".format(device_id),
                             device.compute_capability)
                 records += [name, arch, pci_bus]
 
         width = max([len(r[0]) for r in records]) + 2
-        fmt = '{:' + str(width) + '}: {}\n'
+        fmt = "{:" + str(width) + "}: {}\n"
         s = io.StringIO()
         for k, v in records:
             s.write(fmt.format(k, v))

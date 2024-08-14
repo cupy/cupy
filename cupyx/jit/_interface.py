@@ -17,14 +17,14 @@ class _CudaFunction:
         self.attributes = []
 
         if device:
-            self.attributes.append('__device__')
+            self.attributes.append("__device__")
         else:
-            self.attributes.append('__global__')
+            self.attributes.append("__global__")
 
         if inline:
-            self.attributes.append('inline')
+            self.attributes.append("inline")
 
-        self.name = getattr(func, 'name', func.__name__)
+        self.name = getattr(func, "name", func.__name__)
         self.func = func
         self.mode = mode
 
@@ -80,7 +80,7 @@ class _JitRawKernel:
             elif numpy.isscalar(x):
                 t = _cuda_typerules.get_ctype_from_scalar(self._mode, x)
             else:
-                raise TypeError(f'{type(x)} is not supported for RawKernel')
+                raise TypeError(f"{type(x)} is not supported for RawKernel")
             in_types.append(t)
         in_types = tuple(in_types)
         device_id = cupy.cuda.get_device_id()
@@ -91,7 +91,7 @@ class _JitRawKernel:
             if result is None:
                 result = _compile.transpile(
                     self._func,
-                    ['extern "C"', '__global__'],
+                    ['extern "C"', "__global__"],
                     self._mode,
                     in_types,
                     _cuda_types.void,
@@ -102,8 +102,8 @@ class _JitRawKernel:
             enable_cg = result.enable_cooperative_groups
             options = result.options
             backend = result.backend
-            if backend == 'nvcc':
-                options += ('-DCUPY_JIT_NVCC',)
+            if backend == "nvcc":
+                options += ("-DCUPY_JIT_NVCC",)
             jitify = result.jitify
             module = core.compile_with_cache(
                 source=result.code,
@@ -116,7 +116,7 @@ class _JitRawKernel:
         new_args = []
         for a, t in zip(args, in_types):
             if isinstance(t, Scalar):
-                if t.dtype.char == 'e':
+                if t.dtype.char == "e":
                     a = numpy.float32(a)
                 else:
                     a = t.dtype.type(a)
@@ -145,8 +145,8 @@ class _JitRawKernel:
         """
         if len(self._cached_codes) == 0:
             warnings.warn(
-                'No codes are cached because compilation is deferred until '
-                'the first function call.')
+                "No codes are cached because compilation is deferred until "
+                "the first function call.")
         return dict([(k, v.code) for k, v in self._cached_codes.items()])
 
     @property
@@ -159,15 +159,15 @@ class _JitRawKernel:
         codes = self.cached_codes
         if len(codes) > 1:
             warnings.warn(
-                'The input types of the kernel could not be inferred. '
-                'Please use `.cached_codes` instead.')
+                "The input types of the kernel could not be inferred. "
+                "Please use `.cached_codes` instead.")
         return next(iter(codes.values()))
 
 
-def rawkernel(*, mode='cuda', device=False):
+def rawkernel(*, mode="cuda", device=False):
     """A decorator compiles a Python function into CUDA kernel.
     """
-    cupy._util.experimental('cupyx.jit.rawkernel')
+    cupy._util.experimental("cupyx.jit.rawkernel")
 
     def wrapper(func):
         return functools.update_wrapper(
@@ -175,12 +175,12 @@ def rawkernel(*, mode='cuda', device=False):
     return wrapper
 
 
-threadIdx = _internal_types.Data('threadIdx', _cuda_types.dim3)
-blockDim = _internal_types.Data('blockDim', _cuda_types.dim3)
-blockIdx = _internal_types.Data('blockIdx', _cuda_types.dim3)
-gridDim = _internal_types.Data('gridDim', _cuda_types.dim3)
+threadIdx = _internal_types.Data("threadIdx", _cuda_types.dim3)
+blockDim = _internal_types.Data("blockDim", _cuda_types.dim3)
+blockIdx = _internal_types.Data("blockIdx", _cuda_types.dim3)
+gridDim = _internal_types.Data("gridDim", _cuda_types.dim3)
 
-warpsize = _internal_types.Data('warpSize', _cuda_types.int32)
+warpsize = _internal_types.Data("warpSize", _cuda_types.int32)
 warpsize.__doc__ = r"""Returns the number of threads in a warp.
 
 .. seealso:: :obj:`numba.cuda.warpsize`

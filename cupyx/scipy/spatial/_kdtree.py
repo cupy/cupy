@@ -124,8 +124,8 @@ class KDTree:
             self.data = self.data.copy()
 
         if not balanced_tree:
-            warnings.warn('balanced_tree=False is not supported by the GPU '
-                          'implementation of KDTree, skipping.')
+            warnings.warn("balanced_tree=False is not supported by the GPU "
+                          "implementation of KDTree, skipping.")
 
         self.copy_query_points = False
         self.n, self.m = self.data.shape
@@ -155,8 +155,8 @@ class KDTree:
         self.bounds = cupy.empty((0,))
         if self.copy_query_points:
             if self.data.dtype != cupy.float64:
-                raise ValueError('periodic KDTree is only available '
-                                 'on float64')
+                raise ValueError("periodic KDTree is only available "
+                                 "on float64")
             self.bounds = compute_tree_bounds(self.tree)
 
         self.mins = cupy.min(self.tree, axis=0)
@@ -266,8 +266,8 @@ class KDTree:
         """
         if self.copy_query_points:
             if x.dtype != cupy.float64:
-                raise ValueError('periodic KDTree is only available '
-                                 'on float64')
+                raise ValueError("periodic KDTree is only available "
+                                 "on float64")
             x = x.copy()
 
         common_dtype = cupy.result_type(self.tree.dtype, x.dtype)
@@ -281,7 +281,7 @@ class KDTree:
             try:
                 k = int(k)
             except TypeError:
-                raise ValueError('k must be an integer or list of integers')
+                raise ValueError("k must be an integer or list of integers")
 
         return compute_knn(
             x, tree, self.index, self.boxsize, self.bounds, k=k,
@@ -342,8 +342,8 @@ class KDTree:
         """
         if self.copy_query_points:
             if x.dtype != cupy.float64:
-                raise ValueError('periodic KDTree is only available '
-                                 'on float64')
+                raise ValueError("periodic KDTree is only available "
+                                 "on float64")
             x = x.copy()
 
         common_dtype = cupy.result_type(self.tree.dtype, x.dtype)
@@ -411,7 +411,7 @@ class KDTree:
         return other.query_ball_point(
             self.data, r, p=p, eps=eps, return_sorted=True)
 
-    def query_pairs(self, r, p=2.0, eps=0, output_type='ndarray'):
+    def query_pairs(self, r, p=2.0, eps=0, output_type="ndarray"):
         """
         Find all pairs of points in `self` whose distance is at most r.
 
@@ -461,7 +461,7 @@ class KDTree:
         >>> plt.show()
 
         """
-        if output_type == 'set':
+        if output_type == "set":
             warnings.warn("output_type='set' is not supported by the GPU "
                           "implementation of KDTree, resorting back to "
                           "'ndarray'.")
@@ -469,8 +469,8 @@ class KDTree:
         x = self.data
         if self.copy_query_points:
             if x.dtype != cupy.float64:
-                raise ValueError('periodic KDTree is only available '
-                                 'on float64')
+                raise ValueError("periodic KDTree is only available "
+                                 "on float64")
             x = x.copy()
 
         common_dtype = cupy.result_type(self.tree.dtype, x.dtype)
@@ -539,10 +539,10 @@ class KDTree:
             ``(-inf if i == 0 else r[i-1]) < R <= r[i]``
 
         """
-        raise NotImplementedError('count_neighbors is not available on CuPy')
+        raise NotImplementedError("count_neighbors is not available on CuPy")
 
     def sparse_distance_matrix(self, other, max_distance, p=2.0,
-                               output_type='coo_matrix'):
+                               output_type="coo_matrix"):
         """
         Compute a sparse distance matrix
 
@@ -595,7 +595,7 @@ class KDTree:
            [0.31994999, 0.72658602, 0.71124834, 0.55396483, 0.90785663],
            [0.24617575, 0.29571802, 0.26836782, 0.57714465, 0.6473269 ]])
         """
-        if output_type not in {'coo_matrix', 'ndarray'}:
+        if output_type not in {"coo_matrix", "ndarray"}:
             raise ValueError(
                 "sparse_distance_matrix only supports 'coo_matrix' and "
                 "'ndarray' outputs")
@@ -603,6 +603,6 @@ class KDTree:
         dist = distance_matrix(self.data, other.data, p)
         dist[dist > max_distance] = 0
 
-        if output_type == 'coo_matrix':
+        if output_type == "coo_matrix":
             return coo_matrix(dist)
         return dist

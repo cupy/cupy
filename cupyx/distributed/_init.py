@@ -4,11 +4,11 @@ from cupy.cuda import nccl
 from cupyx.distributed import _store
 from cupyx.distributed._nccl_comm import NCCLBackend
 
-_backends = {'nccl': NCCLBackend}
+_backends = {"nccl": NCCLBackend}
 
 
 def init_process_group(
-        n_devices, rank, *, backend='nccl', host=None, port=None,
+        n_devices, rank, *, backend="nccl", host=None, port=None,
         use_mpi=False):
     """Start `cupyx.distributed` and obtain a communicator.
 
@@ -71,17 +71,17 @@ def init_process_group(
             :class:`~cupyx.distributed.Backend` specification:
     """
     if n_devices <= 0:
-        raise ValueError(f'Invalid number of devices {n_devices}')
+        raise ValueError(f"Invalid number of devices {n_devices}")
     if not (0 <= rank < n_devices):
-        raise ValueError(f'Invalid number of rank {rank} {n_devices}')
+        raise ValueError(f"Invalid number of rank {rank} {n_devices}")
     if backend not in _backends:
-        raise ValueError(f'{backend} is not supported')
-    if backend == 'nccl' and not nccl.available:
-        raise RuntimeError('NCCL is not available')
+        raise ValueError(f"{backend} is not supported")
+    if backend == "nccl" and not nccl.available:
+        raise RuntimeError("NCCL is not available")
     if host is None:
-        host = os.environ.get('CUPYX_DISTRIBUTED_HOST', _store._DEFAULT_HOST)
+        host = os.environ.get("CUPYX_DISTRIBUTED_HOST", _store._DEFAULT_HOST)
     if port is None:
         port = int(os.environ.get(
-            'CUPYX_DISTRIBUTED_PORT', _store._DEFAULT_PORT))
+            "CUPYX_DISTRIBUTED_PORT", _store._DEFAULT_PORT))
 
     return _backends[backend](n_devices, rank, host, port, use_mpi)

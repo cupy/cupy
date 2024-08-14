@@ -11,7 +11,7 @@ from cupy.linalg import _solve, _util
 
 matmul = _GUFunc(
     _core.matmul,
-    '(n?,k),(k,m?)->(n?,m?)',
+    "(n?,k),(k,m?)->(n?,m?)",
     supports_batched=True,
     supports_out=True,
     doc="""matmul(x1, x2, /, out=None, \\*\\*kwargs)
@@ -78,8 +78,8 @@ def vdot(a, b):
 
     """
     if a.size != b.size:
-        raise ValueError('Axis dimension mismatch')
-    if a.dtype.kind == 'c':
+        raise ValueError("Axis dimension mismatch")
+    if a.dtype.kind == "c":
         a = a.conj()
 
     return _core.tensordot_core(a, b, None, 1, 1, a.size, ())
@@ -135,8 +135,8 @@ def cross(a, b, axisa=-1, axisb=-1, axisc=-1, axis=None):
     a = cupy.moveaxis(a, axisa, -1)
     b = cupy.moveaxis(b, axisb, -1)
     if a.shape[-1] not in (2, 3) or b.shape[-1] not in (2, 3):
-        msg = ('incompatible dimensions for cross product\n'
-               '(dimension must be 2 or 3)')
+        msg = ("incompatible dimensions for cross product\n"
+               "(dimension must be 2 or 3)")
         raise ValueError(msg)
 
     # Create the output array
@@ -231,7 +231,7 @@ def inner(a, b):
     b_axis = b_ndim - 1
 
     if a.shape[-1] != b.shape[-1]:
-        raise ValueError('Axis dimension mismatch')
+        raise ValueError("Axis dimension mismatch")
 
     if a_axis:
         a = cupy.rollaxis(a, a_axis, 0)
@@ -294,12 +294,12 @@ def tensordot(a, b, axes=2):
     b_ndim = b.ndim
     if a_ndim == 0 or b_ndim == 0:
         if axes != 0 and axes != ((), ()):
-            raise ValueError('An input is zero-dim while axes has dimensions')
+            raise ValueError("An input is zero-dim while axes has dimensions")
         return cupy.multiply(a, b)
 
     if isinstance(axes, collections.abc.Sequence):
         if len(axes) != 2:
-            raise ValueError('Axes must consist of two arrays.')
+            raise ValueError("Axes must consist of two arrays.")
         a_axes, b_axes = axes
         if numpy.isscalar(a_axes):
             a_axes = a_axes,
@@ -311,11 +311,11 @@ def tensordot(a, b, axes=2):
 
     sum_ndim = len(a_axes)
     if sum_ndim != len(b_axes):
-        raise ValueError('Axes length mismatch')
+        raise ValueError("Axes length mismatch")
 
     for a_axis, b_axis in zip(a_axes, b_axes):
         if a.shape[a_axis] != b.shape[b_axis]:
-            raise ValueError('Axis dimension mismatch')
+            raise ValueError("Axis dimension mismatch")
 
     # Make the axes non-negative
     a = _move_axes_to_head(a, [axis % a_ndim for axis in a_axes])
@@ -349,7 +349,7 @@ def matrix_power(M, n):
     _util._assert_stacked_2d(M)
     _util._assert_stacked_square(M)
     if not isinstance(n, int):
-        raise TypeError('exponent must be an integer')
+        raise TypeError("exponent must be an integer")
 
     if n == 0:
         return _util.stacked_identity_like(M)
@@ -371,7 +371,7 @@ def matrix_power(M, n):
     result, Z = None, None
     for b in cupy.binary_repr(n)[::-1]:
         Z = M if Z is None else cupy.matmul(Z, Z)
-        if b == '1':
+        if b == "1":
             result = Z if result is None else cupy.matmul(result, Z)
 
     return result

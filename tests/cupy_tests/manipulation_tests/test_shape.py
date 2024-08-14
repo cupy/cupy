@@ -5,7 +5,7 @@ import cupy
 from cupy import testing
 
 
-@pytest.mark.parametrize('shape', [(2, 3), (), (4,)])
+@pytest.mark.parametrize("shape", [(2, 3), (), (4,)])
 class TestShape:
 
     def test_shape(self, shape):
@@ -33,7 +33,7 @@ class TestReshape:
             return a.reshape((1, 1, 1, 4, 1, 2)).strides
         assert func(numpy) == func(cupy)
 
-    @testing.for_orders('CFA')
+    @testing.for_orders("CFA")
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_nocopy_reshape(self, xp, dtype, order):
@@ -42,7 +42,7 @@ class TestReshape:
         b[1] = 1
         return a
 
-    @testing.for_orders('CFA')
+    @testing.for_orders("CFA")
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_nocopy_reshape_with_order(self, xp, dtype, order):
@@ -51,13 +51,13 @@ class TestReshape:
         b[1] = 1
         return a
 
-    @testing.for_orders('CFA')
+    @testing.for_orders("CFA")
     @testing.numpy_cupy_array_equal()
     def test_transposed_reshape2(self, xp, order):
         a = testing.shaped_arange((2, 3, 4), xp).transpose(2, 0, 1)
         return a.reshape(2, 3, 4, order=order)
 
-    @testing.for_orders('CFA')
+    @testing.for_orders("CFA")
     @testing.numpy_cupy_array_equal()
     def test_reshape_with_unknown_dimension(self, xp, order):
         a = testing.shaped_arange((2, 3, 4), xp)
@@ -79,7 +79,7 @@ class TestReshape:
         for xp in (numpy, cupy):
             a = testing.shaped_arange((2, 3, 4), xp)
             with pytest.raises(ValueError):
-                a.reshape(2, 4, 4, order='K')
+                a.reshape(2, 4, 4, order="K")
 
     def test_reshape_zerosize_invalid(self):
         for xp in (numpy, cupy):
@@ -100,7 +100,7 @@ class TestReshape:
         assert b.base is a
         return b
 
-    @testing.for_orders('CFA')
+    @testing.for_orders("CFA")
     @testing.numpy_cupy_array_equal(strides_check=True)
     def test_reshape_zerosize2(self, xp, order):
         a = xp.zeros((2, 0, 3))
@@ -108,7 +108,7 @@ class TestReshape:
         assert b.base is a
         return b
 
-    @testing.for_orders('CFA')
+    @testing.for_orders("CFA")
     @testing.numpy_cupy_array_equal()
     def test_external_reshape(self, xp, order):
         a = xp.zeros((8,), dtype=xp.float32)
@@ -122,7 +122,7 @@ class TestReshape:
         assert a.ndim == ndim
         return a
 
-    @testing.for_orders('CFA')
+    @testing.for_orders("CFA")
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_ndim_limit1(self, xp, dtype, order):
@@ -130,7 +130,7 @@ class TestReshape:
         a = self._test_ndim_limit(xp, 32, dtype, order)
         return a
 
-    @testing.for_orders('CFA')
+    @testing.for_orders("CFA")
     @testing.for_all_dtypes()
     def test_ndim_limit2(self, dtype, order):
         # from cupy/cupy#4193
@@ -141,34 +141,34 @@ class TestReshape:
 
 class TestRavel:
 
-    @testing.for_orders('CFAK')
+    @testing.for_orders("CFAK")
     @testing.numpy_cupy_array_equal()
     def test_ravel(self, xp, order):
         a = testing.shaped_arange((2, 3, 4), xp)
         a = a.transpose(2, 0, 1)
         return a.ravel(order)
 
-    @testing.for_orders('CFAK')
+    @testing.for_orders("CFAK")
     @testing.numpy_cupy_array_equal()
     def test_ravel2(self, xp, order):
         a = testing.shaped_arange((2, 3, 4), xp)
         return a.ravel(order)
 
-    @testing.for_orders('CFAK')
+    @testing.for_orders("CFAK")
     @testing.numpy_cupy_array_equal()
     def test_ravel3(self, xp, order):
         a = testing.shaped_arange((2, 3, 4), xp)
         a = xp.asfortranarray(a)
         return a.ravel(order)
 
-    @testing.for_orders('CFAK')
+    @testing.for_orders("CFAK")
     @testing.numpy_cupy_array_equal()
     def test_ravel4(self, xp, order):
         a = testing.shaped_arange((2, 3, 4), xp)
         a = a.transpose(0, 2, 1)[:, ::-2]
         return a.ravel(order)
 
-    @testing.for_orders('CFAK')
+    @testing.for_orders("CFAK")
     @testing.numpy_cupy_array_equal()
     def test_ravel_non_contiguous(self, xp, order):
         a = xp.arange(10)[::2]
@@ -177,7 +177,7 @@ class TestRavel:
         assert b.flags.c_contiguous
         return b
 
-    @testing.for_orders('CFAK')
+    @testing.for_orders("CFAK")
     @testing.numpy_cupy_array_equal()
     def test_ravel_broadcasted(self, xp, order):
         a = xp.array([1])
@@ -187,7 +187,7 @@ class TestRavel:
         assert b.flags.c_contiguous
         return b
 
-    @testing.for_orders('CFAK')
+    @testing.for_orders("CFAK")
     @testing.numpy_cupy_array_equal()
     def test_ravel_broadcasted2(self, xp, order):
         a = testing.shaped_arange((2, 1), xp)
@@ -197,8 +197,8 @@ class TestRavel:
         assert b.flags.c_contiguous
         return b
 
-    @testing.for_orders('CFAK')
-    @testing.for_orders('CF', name='a_order')
+    @testing.for_orders("CFAK")
+    @testing.for_orders("CF", name="a_order")
     @testing.numpy_cupy_array_equal()
     def test_ravel_broadcasted3(self, xp, order, a_order):
         a = testing.shaped_arange((2, 1, 3), xp, order=a_order)
@@ -214,9 +214,9 @@ class TestRavel:
         return xp.ravel(a)
 
 
-@pytest.mark.parametrize('order_init', ['C', 'F'])
-@pytest.mark.parametrize('order_reshape', ['C', 'F', 'A', 'c', 'f', 'a'])
-@pytest.mark.parametrize('shape_in_out', [
+@pytest.mark.parametrize("order_init", ["C", "F"])
+@pytest.mark.parametrize("order_reshape", ["C", "F", "A", "c", "f", "a"])
+@pytest.mark.parametrize("shape_in_out", [
     ((2, 3), (1, 6, 1)),  # (shape_init, shape_final)
     ((6,), (2, 3)),
     ((3, 3, 3), (9, 3)),

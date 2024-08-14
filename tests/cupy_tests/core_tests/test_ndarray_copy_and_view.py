@@ -8,7 +8,7 @@ from cupy.exceptions import ComplexWarning
 
 def astype_without_warning(x, dtype, *args, **kwargs):
     dtype = numpy.dtype(dtype)
-    if x.dtype.kind == 'c' and dtype.kind not in ['b', 'c']:
+    if x.dtype.kind == "c" and dtype.kind not in ["b", "c"]:
         with testing.assert_warns(ComplexWarning):
             return x.astype(dtype, *args, **kwargs)
     else:
@@ -52,7 +52,7 @@ class TestView:
                 a.view(dtype=dtype)
 
     @testing.for_dtypes([numpy.int16, numpy.int64])
-    @testing.with_requires('numpy>=1.23')
+    @testing.with_requires("numpy>=1.23")
     def test_view_f_contiguous(self, dtype):
         for xp in (numpy, cupy):
             a = testing.shaped_arange((2, 2, 2), xp, dtype=numpy.float32)
@@ -74,12 +74,12 @@ class TestView:
         b = a.view(dtype=numpy.int32)
         return b
 
-    @pytest.mark.parametrize(('order', 'shape'), [
-        ('C', (3,)),
-        ('C', (3, 5)),
-        ('C', (0,)),
-        ('C', (1, 3)),
-        ('C', (3, 1)),
+    @pytest.mark.parametrize(("order", "shape"), [
+        ("C", (3,)),
+        ("C", (3, 5)),
+        ("C", (0,)),
+        ("C", (1, 3)),
+        ("C", (3, 1)),
     ], ids=str)
     @testing.numpy_cupy_equal()
     def test_view_flags_smaller(self, xp, order, shape):
@@ -87,22 +87,22 @@ class TestView:
         b = a.view(numpy.int16)
         return b.flags.c_contiguous, b.flags.f_contiguous, b.flags.owndata
 
-    @pytest.mark.parametrize(('order', 'shape'), [
-        ('F', (3, 5)),
+    @pytest.mark.parametrize(("order", "shape"), [
+        ("F", (3, 5)),
     ], ids=str)
-    @testing.with_requires('numpy>=1.23')
+    @testing.with_requires("numpy>=1.23")
     def test_view_flags_smaller_invalid(self, order, shape):
         for xp in (numpy, cupy):
             a = xp.zeros(shape, numpy.int32, order)
             with pytest.raises(ValueError):
                 a.view(numpy.int16)
 
-    @pytest.mark.parametrize(('order', 'shape'), [
-        ('C', (6,)),
-        ('C', (3, 10)),
-        ('C', (0,)),
-        ('C', (1, 6)),
-        ('C', (3, 2)),
+    @pytest.mark.parametrize(("order", "shape"), [
+        ("C", (6,)),
+        ("C", (3, 10)),
+        ("C", (0,)),
+        ("C", (1, 6)),
+        ("C", (3, 2)),
     ], ids=str)
     @testing.numpy_cupy_equal()
     def test_view_flags_larger(self, xp, order, shape):
@@ -110,18 +110,18 @@ class TestView:
         b = a.view(numpy.int32)
         return b.flags.c_contiguous, b.flags.f_contiguous, b.flags.owndata
 
-    @pytest.mark.parametrize(('order', 'shape'), [
-        ('F', (6, 5)),
-        ('F', (2, 3)),
+    @pytest.mark.parametrize(("order", "shape"), [
+        ("F", (6, 5)),
+        ("F", (2, 3)),
     ], ids=str)
-    @testing.with_requires('numpy>=1.23')
+    @testing.with_requires("numpy>=1.23")
     def test_view_flags_larger_invalid(self, order, shape):
         for xp in (numpy, cupy):
             a = xp.zeros(shape, numpy.int16, order)
             with pytest.raises(ValueError):
                 a.view(numpy.int32)
 
-    @testing.with_requires('numpy>=1.23')
+    @testing.with_requires("numpy>=1.23")
     @testing.numpy_cupy_array_equal()
     def test_view_smaller_dtype_multiple(self, xp):
         # x is non-contiguous
@@ -130,21 +130,21 @@ class TestView:
             x.view(xp.int16)
         return x[:, xp.newaxis].view(xp.int16)
 
-    @testing.with_requires('numpy>=1.23')
+    @testing.with_requires("numpy>=1.23")
     @testing.numpy_cupy_array_equal()
     def test_view_smaller_dtype_multiple2(self, xp):
         # x is non-contiguous, and stride[-1] != 0
         x = xp.ones((3, 4), xp.int32)[:, :1:2]
         return x.view(xp.int16)
 
-    @testing.with_requires('numpy>=1.23')
+    @testing.with_requires("numpy>=1.23")
     @testing.numpy_cupy_array_equal()
     def test_view_larger_dtype_multiple(self, xp):
         # x is non-contiguous in the first dimension, contiguous in the last
         x = xp.arange(20, dtype=xp.int16).reshape(10, 2)[::2, :]
         return x.view(xp.int32)
 
-    @testing.with_requires('numpy>=1.23')
+    @testing.with_requires("numpy>=1.23")
     @testing.numpy_cupy_array_equal()
     def test_view_non_c_contiguous(self, xp):
         # x is contiguous in axis=-1, but not C-contiguous in other axes
@@ -161,8 +161,8 @@ class TestView:
 class TestArrayCopy:
 
     @pytest.mark.skipif(
-        not _util.ENABLE_SLICE_COPY, reason='Special copy disabled')
-    @testing.for_orders('CF')
+        not _util.ENABLE_SLICE_COPY, reason="Special copy disabled")
+    @testing.for_orders("CF")
     @testing.for_dtypes([numpy.int16, numpy.int64,
                          numpy.float16, numpy.float64])
     @testing.numpy_cupy_array_equal()
@@ -173,7 +173,7 @@ class TestArrayCopy:
         return b
 
     @pytest.mark.skipif(
-        not _util.ENABLE_SLICE_COPY, reason='Special copy disabled')
+        not _util.ENABLE_SLICE_COPY, reason="Special copy disabled")
     def test_isinstance_numpy_copy_wrong_dtype(self):
         a = numpy.arange(100, dtype=numpy.float64).reshape(10, 10)
         b = cupy.empty(a.shape, dtype=numpy.int32)
@@ -181,7 +181,7 @@ class TestArrayCopy:
             b[:] = a
 
     @pytest.mark.skipif(
-        not _util.ENABLE_SLICE_COPY, reason='Special copy disabled')
+        not _util.ENABLE_SLICE_COPY, reason="Special copy disabled")
     def test_isinstance_numpy_copy_wrong_shape(self):
         for xp in (numpy, cupy):
             a = numpy.arange(100, dtype=numpy.float64).reshape(10, 10)
@@ -190,7 +190,7 @@ class TestArrayCopy:
                 b[:] = a
 
     @pytest.mark.skipif(
-        not _util.ENABLE_SLICE_COPY, reason='Special copy disabled')
+        not _util.ENABLE_SLICE_COPY, reason="Special copy disabled")
     @testing.numpy_cupy_array_equal()
     def test_isinstance_numpy_copy_not_slice(self, xp):
         a = xp.arange(5, dtype=numpy.float64)
@@ -198,7 +198,7 @@ class TestArrayCopy:
         return a
 
     @pytest.mark.skipif(
-        not _util.ENABLE_SLICE_COPY, reason='Special copy disabled')
+        not _util.ENABLE_SLICE_COPY, reason="Special copy disabled")
     def test_copy_host_to_device_view(self):
         dev = cupy.empty((10, 10), dtype=numpy.float32)[2:5, 1:8]
         host = numpy.arange(3 * 7, dtype=numpy.float32).reshape(3, 7)
@@ -225,13 +225,13 @@ class TestArrayFlatten:
         a = testing.shaped_arange((2, 3, 4), xp).transpose(2, 0, 1)
         return a.flatten()
 
-    @testing.for_orders('CFAK')
+    @testing.for_orders("CFAK")
     @testing.numpy_cupy_array_equal()
     def test_flatten_order(self, xp, order):
         a = testing.shaped_arange((2, 3, 4), xp)
         return a.flatten(order)
 
-    @testing.for_orders('CFAK')
+    @testing.for_orders("CFAK")
     @testing.numpy_cupy_array_equal()
     def test_flatten_order_copied(self, xp, order):
         a = testing.shaped_arange((4,), xp)
@@ -239,7 +239,7 @@ class TestArrayFlatten:
         a[:] = 1
         return b
 
-    @testing.for_orders('CFAK')
+    @testing.for_orders("CFAK")
     @testing.numpy_cupy_array_equal()
     def test_flatten_order_transposed(self, xp, order):
         a = testing.shaped_arange((2, 3, 4), xp).transpose(2, 0, 1)
@@ -255,16 +255,16 @@ class TestArrayFill:
         a.fill(1)
         return a
 
-    @testing.with_requires('numpy>=1.24.0')
-    @testing.for_all_dtypes_combination(('dtype1', 'dtype2'))
+    @testing.with_requires("numpy>=1.24.0")
+    @testing.for_all_dtypes_combination(("dtype1", "dtype2"))
     @testing.numpy_cupy_array_equal(accept_error=ComplexWarning)
     def test_fill_with_numpy_scalar_ndarray(self, xp, dtype1, dtype2):
         a = testing.shaped_arange((2, 3, 4), xp, dtype1)
         a.fill(numpy.ones((), dtype=dtype2))
         return a
 
-    @testing.with_requires('numpy>=1.24.0')
-    @testing.for_all_dtypes_combination(('dtype1', 'dtype2'))
+    @testing.with_requires("numpy>=1.24.0")
+    @testing.for_all_dtypes_combination(("dtype1", "dtype2"))
     @testing.numpy_cupy_array_equal(accept_error=ComplexWarning)
     def test_fill_with_cupy_scalar_ndarray(self, xp, dtype1, dtype2):
         a = testing.shaped_arange((2, 3, 4), xp, dtype1)
@@ -290,22 +290,22 @@ class TestArrayFill:
 
 class TestArrayAsType:
 
-    @testing.for_orders(['C', 'F', 'A', 'K', None])
-    @testing.for_all_dtypes_combination(('src_dtype', 'dst_dtype'))
+    @testing.for_orders(["C", "F", "A", "K", None])
+    @testing.for_all_dtypes_combination(("src_dtype", "dst_dtype"))
     @testing.numpy_cupy_array_equal()
     def test_astype(self, xp, src_dtype, dst_dtype, order):
         a = testing.shaped_arange((2, 3, 4), xp, src_dtype)
         return astype_without_warning(a, dst_dtype, order=order)
 
-    @testing.for_orders(['C', 'F', 'A', 'K', None])
-    @testing.for_all_dtypes_combination(('src_dtype', 'dst_dtype'))
+    @testing.for_orders(["C", "F", "A", "K", None])
+    @testing.for_all_dtypes_combination(("src_dtype", "dst_dtype"))
     @testing.numpy_cupy_array_equal()
     def test_astype_empty(self, xp, src_dtype, dst_dtype, order):
         a = testing.shaped_arange((2, 0, 4), xp, src_dtype)
         return astype_without_warning(a, dst_dtype, order=order)
 
-    @testing.for_orders('CFAK')
-    @testing.for_all_dtypes_combination(('src_dtype', 'dst_dtype'))
+    @testing.for_orders("CFAK")
+    @testing.for_all_dtypes_combination(("src_dtype", "dst_dtype"))
     def test_astype_type(self, src_dtype, dst_dtype, order):
         a = testing.shaped_arange((2, 3, 4), cupy, src_dtype)
         b = astype_without_warning(a, dst_dtype, order=order)
@@ -313,14 +313,14 @@ class TestArrayAsType:
         b_cpu = astype_without_warning(a_cpu, dst_dtype, order=order)
         assert b.dtype.type == b_cpu.dtype.type
 
-    @testing.for_orders('CAK')
+    @testing.for_orders("CAK")
     @testing.for_all_dtypes()
     def test_astype_type_c_contiguous_no_copy(self, dtype, order):
         a = testing.shaped_arange((2, 3, 4), cupy, dtype)
         b = a.astype(dtype, order=order, copy=False)
         assert b is a
 
-    @testing.for_orders('FAK')
+    @testing.for_orders("FAK")
     @testing.for_all_dtypes()
     def test_astype_type_f_contiguous_no_copy(self, dtype, order):
         a = testing.shaped_arange((2, 3, 4), cupy, dtype)
@@ -328,33 +328,33 @@ class TestArrayAsType:
         b = a.astype(dtype, order=order, copy=False)
         assert b is a
 
-    @testing.for_all_dtypes_combination(('src_dtype', 'dst_dtype'))
+    @testing.for_all_dtypes_combination(("src_dtype", "dst_dtype"))
     @testing.numpy_cupy_equal()
     def test_astype_strides(self, xp, src_dtype, dst_dtype):
         src = testing.shaped_arange((1, 2, 3), xp, dtype=src_dtype)
-        return astype_without_warning(src, dst_dtype, order='K').strides
+        return astype_without_warning(src, dst_dtype, order="K").strides
 
-    @testing.for_all_dtypes_combination(('src_dtype', 'dst_dtype'))
+    @testing.for_all_dtypes_combination(("src_dtype", "dst_dtype"))
     @testing.numpy_cupy_equal()
     def test_astype_strides_negative(self, xp, src_dtype, dst_dtype):
         src = testing.shaped_arange((2, 3), xp, dtype=src_dtype)
         src = src[::-1, :]
-        return astype_without_warning(src, dst_dtype, order='K').strides
+        return astype_without_warning(src, dst_dtype, order="K").strides
 
-    @testing.for_all_dtypes_combination(('src_dtype', 'dst_dtype'))
+    @testing.for_all_dtypes_combination(("src_dtype", "dst_dtype"))
     @testing.numpy_cupy_equal()
     def test_astype_strides_swapped(self, xp, src_dtype, dst_dtype):
         src = testing.shaped_arange((2, 3, 4), xp, dtype=src_dtype)
         src = xp.swapaxes(src, 1, 0)
-        return astype_without_warning(src, dst_dtype, order='K').strides
+        return astype_without_warning(src, dst_dtype, order="K").strides
 
-    @testing.for_all_dtypes_combination(('src_dtype', 'dst_dtype'))
+    @testing.for_all_dtypes_combination(("src_dtype", "dst_dtype"))
     @testing.numpy_cupy_equal()
     def test_astype_strides_broadcast(self, xp, src_dtype, dst_dtype):
         src1 = testing.shaped_arange((2, 3, 2), xp, dtype=src_dtype)
         src2 = testing.shaped_arange((2,), xp, dtype=src_dtype)
         src, _ = xp.broadcast_arrays(src1, src2)
-        return astype_without_warning(src, dst_dtype, order='K').strides
+        return astype_without_warning(src, dst_dtype, order="K").strides
 
     @testing.numpy_cupy_array_equal()
     def test_astype_boolean_view(self, xp):
@@ -379,13 +379,13 @@ class TestArrayDiagonal:
 
 
 @testing.parameterize(
-    {'src_order': 'C'},
-    {'src_order': 'F'},
+    {"src_order": "C"},
+    {"src_order": "F"},
 )
 class TestNumPyArrayCopyView:
     @pytest.mark.skipif(
-        not _util.ENABLE_SLICE_COPY, reason='Special copy disabled')
-    @testing.for_orders('CF')
+        not _util.ENABLE_SLICE_COPY, reason="Special copy disabled")
+    @testing.for_orders("CF")
     @testing.for_dtypes([numpy.int16, numpy.int64,
                          numpy.float16, numpy.float64])
     @testing.numpy_cupy_array_equal()
@@ -408,7 +408,7 @@ class C_cp(cupy.ndarray):
     def __array_finalize__(self, obj):
         if obj is None:
             return
-        self.info = getattr(obj, 'info', None)
+        self.info = getattr(obj, "info", None)
 
 
 class C_np(numpy.ndarray):
@@ -421,43 +421,43 @@ class C_np(numpy.ndarray):
     def __array_finalize__(self, obj):
         if obj is None:
             return
-        self.info = getattr(obj, 'info', None)
+        self.info = getattr(obj, "info", None)
 
 
 class TestSubclassArrayView:
 
     def test_view_casting(self):
         for xp, C in [(numpy, C_np), (cupy, C_cp)]:
-            a = xp.arange(5, dtype='i').view('f')
+            a = xp.arange(5, dtype="i").view("f")
             assert type(a) is xp.ndarray
             assert a.dtype == xp.float32
 
-            a = xp.arange(5, dtype='i').view(dtype='f')
+            a = xp.arange(5, dtype="i").view(dtype="f")
             assert type(a) is xp.ndarray
             assert a.dtype == xp.float32
 
             with pytest.raises(TypeError):
-                xp.arange(5, dtype='i').view('f', dtype='f')
+                xp.arange(5, dtype="i").view("f", dtype="f")
 
-            a = xp.arange(5, dtype='i').view(C)
+            a = xp.arange(5, dtype="i").view(C)
             assert type(a) is C
             assert a.dtype == xp.int32
             assert a.info is None
 
-            a = xp.arange(5, dtype='i').view(type=C)
+            a = xp.arange(5, dtype="i").view(type=C)
             assert type(a) is C
             assert a.dtype == xp.int32
             assert a.info is None
 
             # When an instance of ndarray's subclass is supplied to `dtype`,
             # view() interprets it as if it is supplied to `type`
-            a = xp.arange(5, dtype='i').view(dtype=C)
+            a = xp.arange(5, dtype="i").view(dtype=C)
             assert type(a) is C
             assert a.dtype == xp.int32
             assert a.info is None
 
             with pytest.raises(TypeError):
-                xp.arange(5).view('f', C, type=C)
+                xp.arange(5).view("f", C, type=C)
 
         with pytest.raises(ValueError):
             cupy.arange(5).view(type=numpy.ndarray)

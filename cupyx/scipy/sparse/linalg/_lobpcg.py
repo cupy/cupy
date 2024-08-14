@@ -39,11 +39,11 @@ def _bmat(list_obj):
     dtype = cupy.result_type(*[arr.dtype for
                                list_iter in list_obj for arr in list_iter])
     # checking order
-    F_order = all(arr.flags['F_CONTIGUOUS'] for list_iter
+    F_order = all(arr.flags["F_CONTIGUOUS"] for list_iter
                   in list_obj for arr in list_iter)
-    C_order = all(arr.flags['C_CONTIGUOUS'] for list_iter
+    C_order = all(arr.flags["C_CONTIGUOUS"] for list_iter
                   in list_obj for arr in list_iter)
-    order = 'F' if F_order and not C_order else 'C'
+    order = "F" if F_order and not C_order else "C"
     result = cupy.empty(tuple(final_shape), dtype=dtype, order=order)
 
     start_idx_row = 0
@@ -74,8 +74,8 @@ def _report_nonhermitian(M, name):
     tol *= max(1, float(linalg.norm(M, 1)))
     if nmd > tol:
         warnings.warn(
-            f'Matrix {name} of the type {M.dtype} is not Hermitian: '
-            f'condition: {nmd} < {tol} fails.',
+            f"Matrix {name} of the type {M.dtype} is not Hermitian: "
+            f"condition: {nmd} < {tol} fails.",
             UserWarning, stacklevel=4)
 
 
@@ -103,7 +103,7 @@ def _makeOperator(operatorInput, expectedShape):
         operator = splinalg.aslinearoperator(operatorInput)
 
     if operator.shape != expectedShape:
-        raise ValueError('operator has invalid shape')
+        raise ValueError("operator has invalid shape")
 
     return operator
 
@@ -262,7 +262,7 @@ def lobpcg(A, X,
         sizeY = 0
 
     if len(blockVectorX.shape) != 2:
-        raise ValueError('expected rank-2 array for argument X')
+        raise ValueError("expected rank-2 array for argument X")
 
     n, sizeX = blockVectorX.shape
 
@@ -297,8 +297,8 @@ def lobpcg(A, X,
         sizeX = min(sizeX, n)
 
         if blockVectorY is not None:
-            raise NotImplementedError('The dense eigensolver '
-                                      'does not support constraints.')
+            raise NotImplementedError("The dense eigensolver "
+                                      "does not support constraints.")
 
         A_dense = A(cupy.eye(n, dtype=A.dtype))
         B_dense = None if B is None else B(cupy.eye(n, dtype=B.dtype))
@@ -402,10 +402,10 @@ def lobpcg(A, X,
             break
 
         if verbosityLevel > 0:
-            print('iteration %d' % iterationNumber)
-            print(f'current block size: {currentBlockSize}')
-            print(f'eigenvalue(s):\n{_lambda}')
-            print(f'residual norm(s):\n{residualNorms}')
+            print("iteration %d" % iterationNumber)
+            print(f"current block size: {currentBlockSize}")
+            print(f"eigenvalue(s):\n{_lambda}")
+            print(f"residual norm(s):\n{residualNorms}")
         if verbosityLevel > 10:
             print(eigBlockVector)
 
@@ -466,9 +466,9 @@ def lobpcg(A, X,
         # Perform the Rayleigh Ritz Procedure:
         # Compute symmetric Gram matrices:
 
-        if activeBlockVectorAR.dtype == 'float32':
+        if activeBlockVectorAR.dtype == "float32":
             myeps = 1
-        elif activeBlockVectorR.dtype == 'float32':
+        elif activeBlockVectorR.dtype == "float32":
             myeps = 1e-4
         else:
             myeps = 1e-8
@@ -507,12 +507,12 @@ def lobpcg(A, X,
 
         def _handle_gramA_gramB_verbosity(gramA, gramB):
             if verbosityLevel > 0:
-                _report_nonhermitian(gramA, 'gramA')
-                _report_nonhermitian(gramB, 'gramB')
+                _report_nonhermitian(gramA, "gramA")
+                _report_nonhermitian(gramB, "gramB")
             if verbosityLevel > 10:
                 # Note: not documented, but leave it in here for now
-                numpy.savetxt('gramA.txt', cupy.asnumpy(gramA))
-                numpy.savetxt('gramB.txt', cupy.asnumpy(gramB))
+                numpy.savetxt("gramA.txt", cupy.asnumpy(gramA))
+                numpy.savetxt("gramB.txt", cupy.asnumpy(gramB))
 
         if not restart:
             gramXAP = cupy.dot(blockVectorX.T.conj(), activeBlockVectorAP)
@@ -556,7 +556,7 @@ def lobpcg(A, X,
             try:
                 _lambda, eigBlockVector = _eigh(gramA, gramB)
             except numpy.linalg.LinAlgError:
-                raise ValueError('eigh has failed in lobpcg iterations')
+                raise ValueError("eigh has failed in lobpcg iterations")
 
         ii = _get_indx(_lambda, sizeX, largest)
         if verbosityLevel > 10:
@@ -569,7 +569,7 @@ def lobpcg(A, X,
         lambdaHistory.append(_lambda)
 
         if verbosityLevel > 10:
-            print('lambda:', _lambda)
+            print("lambda:", _lambda)
 
         if verbosityLevel > 10:
             print(eigBlockVector)
@@ -649,8 +649,8 @@ def lobpcg(A, X,
     residualNorms = cupy.sqrt(aux)
 
     if verbosityLevel > 0:
-        print(f'Final iterative eigenvalue(s):\n{_lambda}')
-        print(f'Final iterative residual norm(s):\n{residualNorms}')
+        print(f"Final iterative eigenvalue(s):\n{_lambda}")
+        print(f"Final iterative residual norm(s):\n{residualNorms}")
 
     # Future work:
     # Generalized eigen value solver like `scipy.linalg.eigh`
@@ -661,8 +661,8 @@ def lobpcg(A, X,
     # Computing the actual true residuals
 
     if verbosityLevel > 0:
-        print(f'Final postprocessing eigenvalue(s):\n{_lambda}')
-        print(f'Final residual norm(s):\n{residualNorms}')
+        print(f"Final postprocessing eigenvalue(s):\n{_lambda}")
+        print(f"Final residual norm(s):\n{residualNorms}")
 
     if retLambdaHistory:
         if retResidualNormsHistory:

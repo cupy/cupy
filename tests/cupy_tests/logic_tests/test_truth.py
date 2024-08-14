@@ -25,14 +25,14 @@ def _calc_out_shape(shape, axis, keepdims):
 
 @testing.parameterize(
     *testing.product(
-        {'f': ['all', 'any'],
-         'x': [numpy.arange(24).reshape(2, 3, 4) - 10,
+        {"f": ["all", "any"],
+         "x": [numpy.arange(24).reshape(2, 3, 4) - 10,
                numpy.zeros((2, 3, 4)),
                numpy.ones((2, 3, 4)),
                numpy.zeros((0, 3, 4)),
                numpy.ones((0, 3, 4))],
-         'axis': [None, (0, 1, 2), 0, 1, 2, (0, 1)],
-         'keepdims': [False, True]}))
+         "axis": [None, (0, 1, 2), 0, 1, 2, (0, 1)],
+         "keepdims": [False, True]}))
 class TestAllAny:
 
     @testing.for_all_dtypes()
@@ -53,13 +53,13 @@ class TestAllAny:
 
 @testing.parameterize(
     *testing.product(
-        {'f': ['all', 'any'],
-         'x': [numpy.array([[[numpy.nan]]]),
+        {"f": ["all", "any"],
+         "x": [numpy.array([[[numpy.nan]]]),
                numpy.array([[[numpy.nan, 0]]]),
                numpy.array([[[numpy.nan, 1]]]),
                numpy.array([[[numpy.nan, 0, 1]]])],
-         'axis': [None, (0, 1, 2), 0, 1, 2, (0, 1)],
-         'keepdims': [False, True]}))
+         "axis": [None, (0, 1, 2), 0, 1, 2, (0, 1)],
+         "keepdims": [False, True]}))
 class TestAllAnyWithNaN:
 
     @testing.for_dtypes(
@@ -84,20 +84,20 @@ class TestAllAnyAlias:
     @testing.numpy_cupy_array_equal()
     def test_alltrue(self, xp):
         with warnings.catch_warnings():
-            warnings.simplefilter('ignore', DeprecationWarning)
+            warnings.simplefilter("ignore", DeprecationWarning)
             return xp.alltrue(xp.array([1, 2, 3]))
 
     @testing.numpy_cupy_array_equal()
     def test_sometrue(self, xp):
         with warnings.catch_warnings():
-            warnings.simplefilter('ignore', DeprecationWarning)
+            warnings.simplefilter("ignore", DeprecationWarning)
             return xp.sometrue(xp.array([0]))
 
 
 @testing.parameterize(
     *testing.product(
-        {'f': ['in1d', 'isin'],
-         'shape_x': [
+        {"f": ["in1d", "isin"],
+         "shape_x": [
              (0, ),
              (3, ),
              (2, 3),
@@ -105,7 +105,7 @@ class TestAllAnyAlias:
              (2, 0, 1),
              (2, 0, 1, 1)
         ],
-            'shape_y': [
+            "shape_y": [
              (0, ),
              (3, ),
              (2, 3),
@@ -113,8 +113,8 @@ class TestAllAnyAlias:
              (2, 0, 1),
              (2, 0, 1, 1)
         ],
-            'assume_unique': [False, True],
-            'invert': [False, True]}))
+            "assume_unique": [False, True],
+            "invert": [False, True]}))
 class TestIn1DIsIn:
 
     @testing.for_all_dtypes()
@@ -122,7 +122,7 @@ class TestIn1DIsIn:
     def test(self, xp, dtype):
         x = testing.shaped_arange(self.shape_x, xp, dtype)
         y = testing.shaped_arange(self.shape_y, xp, dtype)
-        if xp is numpy and self.f == 'isin':
+        if xp is numpy and self.f == "isin":
             return xp.in1d(x, y, self.assume_unique, self.invert)\
                 .reshape(x.shape)
         return getattr(xp, self.f)(x, y, self.assume_unique, self.invert)

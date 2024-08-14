@@ -12,23 +12,23 @@ def user_func(a: cupy.ndarray):
 
 
 squared_diff = cupy.ElementwiseKernel(
-    'float32 x, float32 y',
-    'float32 z',
-    'z = (x - y) * (x - y)',
-    'squared_diff')
+    "float32 x, float32 y",
+    "float32 z",
+    "z = (x - y) * (x - y)",
+    "squared_diff")
 
 
 l2norm_kernel = cupy.ReductionKernel(
-    'T x',  # input params
-    'T y',  # output params
-    'x * x',  # map
-    'a + b',  # reduce
-    'y = sqrt(a)',  # post-reduction map
-    '0',  # identity value
-    'l2norm'  # kernel name
+    "T x",  # input params
+    "T y",  # output params
+    "x * x",  # map
+    "a + b",  # reduce
+    "y = sqrt(a)",  # post-reduction map
+    "0",  # identity value
+    "l2norm"  # kernel name
 )
 
-complex_kernel = cupy.RawKernel(r'''
+complex_kernel = cupy.RawKernel(r"""
 #include <cupy/complex.cuh>
 extern "C" __global__
 void my_func(const complex<float>* x1, const complex<float>* x2,
@@ -36,7 +36,7 @@ void my_func(const complex<float>* x1, const complex<float>* x2,
     int tid = blockDim.x * blockIdx.x + threadIdx.x;
     y[tid] = x1[tid] + a * x2[tid];
 }
-''', 'my_func')
+""", "my_func")
 
 
 @jit.rawkernel()

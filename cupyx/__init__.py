@@ -14,7 +14,7 @@ from cupyx._ufunc_config import errstate, geterr, seterr
 
 
 def __getattr__(key):
-    if key == 'lapack':
+    if key == "lapack":
         import cupyx.lapack
         return cupyx.lapack
 

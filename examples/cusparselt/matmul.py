@@ -16,7 +16,7 @@ from cupy_backends.cuda.libs.cusparselt import (  # NOQA
                                     MatmulPlan,
 )
 
-dtype = 'float16'
+dtype = "float16"
 m, n, k = 1024, 1024, 1024
 A = cupy.random.random((m, k)).astype(dtype)
 B = cupy.ones((k, n), dtype=dtype)
@@ -63,11 +63,11 @@ cusparselt.matmulPlanInit(handle, plan, matmul, alg_sel)
 #
 # prunes the matrix A in-place and checks the correstness
 #
-print('Before pruning, A[0]:\n{}'.format(A[0]))
+print("Before pruning, A[0]:\n{}".format(A[0]))
 cusparselt.spMMAPrune(handle, matmul, A.data.ptr, A.data.ptr,
                       cusparselt.CUSPARSELT_PRUNE_SPMMA_TILE)
-print('After pruning, A[0]:\n{}'.format(A[0]))
-is_valid = numpy.array(-1, dtype='int32')
+print("After pruning, A[0]:\n{}".format(A[0]))
+is_valid = numpy.array(-1, dtype="int32")
 cusparselt.spMMAPruneCheck(handle, matmul, A.data.ptr, is_valid.ctypes.data)
 
 #
@@ -76,17 +76,17 @@ cusparselt.spMMAPruneCheck(handle, matmul, A.data.ptr, is_valid.ctypes.data)
 compressed_size, compressed_buffer_size = cusparselt.spMMACompressedSize(
     handle, plan)
 
-A_compressed = cupy.zeros(compressed_size, dtype='uint8')
-A_compressedBuffer = cupy.zeros(compressed_buffer_size, dtype='uint8')
+A_compressed = cupy.zeros(compressed_size, dtype="uint8")
+A_compressedBuffer = cupy.zeros(compressed_buffer_size, dtype="uint8")
 cusparselt.spMMACompress(handle, plan, A.data.ptr, A_compressed.data.ptr,
                          A_compressedBuffer.data.ptr)
 
 #
 # matmul: C = A @ B
 #
-alpha = numpy.array(1.0, dtype='float32')
-beta = numpy.array(0.0, dtype='float32')
-null = numpy.array(0, dtype='uint32')
+alpha = numpy.array(1.0, dtype="float32")
+beta = numpy.array(0.0, dtype="float32")
+null = numpy.array(0, dtype="uint32")
 
 cusparselt.matmulSearch(handle, plan, alpha.ctypes.data,
                         A_compressed.data.ptr, B.data.ptr, beta.ctypes.data,
@@ -95,13 +95,13 @@ cusparselt.matmulSearch(handle, plan, alpha.ctypes.data,
 cusparselt.matmulPlanInit(handle, plan, matmul, alg_sel)
 
 workspace_size = cusparselt.matmulGetWorkspace(handle, plan)
-workspace = cupy.zeros(workspace_size, dtype='uint8')
+workspace = cupy.zeros(workspace_size, dtype="uint8")
 cusparselt.matmul(handle, plan, alpha.ctypes.data, A_compressed.data.ptr,
                   B.data.ptr, beta.ctypes.data, C.data.ptr, C.data.ptr,
                   workspace.data.ptr)
 
-print('A.sum(axis=1): {}'.format(A.sum(axis=1)))
-print('C[:, 0]: {}'.format(C[:, 0]))
+print("A.sum(axis=1): {}".format(A.sum(axis=1)))
+print("C[:, 0]: {}".format(C[:, 0]))
 
 #
 # destroys plan and handle

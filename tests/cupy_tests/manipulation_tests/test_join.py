@@ -8,8 +8,8 @@ from cupy.exceptions import AxisError
 
 class TestJoin:
 
-    @testing.for_all_dtypes(name='dtype1')
-    @testing.for_all_dtypes(name='dtype2')
+    @testing.for_all_dtypes(name="dtype1")
+    @testing.for_all_dtypes(name="dtype2")
     @testing.numpy_cupy_array_equal()
     def test_column_stack(self, xp, dtype1, dtype2):
         a = testing.shaped_arange((4, 3), xp, dtype1)
@@ -35,7 +35,7 @@ class TestJoin:
         with pytest.raises(ValueError):
             cupy.column_stack((a, b))
 
-    @testing.for_all_dtypes(name='dtype')
+    @testing.for_all_dtypes(name="dtype")
     @testing.numpy_cupy_array_equal()
     def test_concatenate1(self, xp, dtype):
         a = testing.shaped_arange((2, 3, 4), xp, dtype)
@@ -43,7 +43,7 @@ class TestJoin:
         c = testing.shaped_arange((2, 3, 3), xp, dtype)
         return xp.concatenate((a, b, c), axis=2)
 
-    @testing.for_all_dtypes(name='dtype')
+    @testing.for_all_dtypes(name="dtype")
     @testing.numpy_cupy_array_equal()
     def test_concatenate2(self, xp, dtype):
         a = testing.shaped_arange((2, 3, 4), xp, dtype)
@@ -51,7 +51,7 @@ class TestJoin:
         c = testing.shaped_arange((2, 3, 3), xp, dtype)
         return xp.concatenate((a, b, c), axis=-1)
 
-    @testing.for_all_dtypes(name='dtype')
+    @testing.for_all_dtypes(name="dtype")
     @testing.numpy_cupy_array_equal()
     def test_concatenate_axis_none(self, xp, dtype):
         a = testing.shaped_arange((2, 3), xp, dtype)
@@ -59,7 +59,7 @@ class TestJoin:
         c = testing.shaped_arange((7, ), xp, dtype)
         return xp.concatenate((a, b, c), axis=None)
 
-    @testing.for_all_dtypes(name='dtype')
+    @testing.for_all_dtypes(name="dtype")
     @testing.numpy_cupy_array_equal()
     def test_concatenate_large_2(self, xp, dtype):
         a = testing.shaped_arange((2, 3, 4), xp, dtype)
@@ -69,25 +69,25 @@ class TestJoin:
         e = testing.shaped_arange((2, 3, 2), xp, dtype)
         return xp.concatenate((a, b, c, d, e) * 2, axis=-1)
 
-    @testing.for_all_dtypes(name='dtype')
+    @testing.for_all_dtypes(name="dtype")
     @testing.numpy_cupy_array_equal()
     def test_concatenate_large_3(self, xp, dtype):
         a = testing.shaped_arange((2, 3, 1), xp, dtype)
         b = testing.shaped_reverse_arange((2, 3, 1), xp, dtype)
         return xp.concatenate((a, b) * 10, axis=-1)
 
-    @testing.for_all_dtypes(name='dtype')
+    @testing.for_all_dtypes(name="dtype")
     @testing.numpy_cupy_array_equal()
     def test_concatenate_large_4(self, xp, dtype):
         a = testing.shaped_arange((2, 3, 4), xp, dtype)
         b = testing.shaped_reverse_arange((2, 3, 4), xp, dtype)
         return xp.concatenate((a, b) * 10, axis=-1)
 
-    @testing.for_all_dtypes(name='dtype')
+    @testing.for_all_dtypes(name="dtype")
     @testing.numpy_cupy_array_equal()
     def test_concatenate_large_5(self, xp, dtype):
         a = testing.shaped_arange((2, 3, 4), xp, dtype)
-        b = testing.shaped_reverse_arange((2, 3, 4), xp, 'i')
+        b = testing.shaped_reverse_arange((2, 3, 4), xp, "i")
         return xp.concatenate((a, b) * 10, axis=-1)
 
     @testing.multi_gpu(2)
@@ -103,7 +103,7 @@ class TestJoin:
             with pytest.raises(ValueError):
                 cupy.concatenate(arrs)
 
-    @testing.for_all_dtypes(name='dtype')
+    @testing.for_all_dtypes(name="dtype")
     @testing.numpy_cupy_array_equal()
     def test_concatenate_f_contiguous(self, xp, dtype):
         a = testing.shaped_arange((2, 3, 4), xp, dtype)
@@ -111,7 +111,7 @@ class TestJoin:
         c = testing.shaped_arange((2, 3, 3), xp, dtype)
         return xp.concatenate((a, b, c), axis=-1)
 
-    @testing.for_all_dtypes(name='dtype')
+    @testing.for_all_dtypes(name="dtype")
     @testing.numpy_cupy_array_equal()
     def test_concatenate_large_f_contiguous(self, xp, dtype):
         a = testing.shaped_arange((2, 3, 4), xp, dtype)
@@ -123,8 +123,8 @@ class TestJoin:
 
     @testing.numpy_cupy_array_equal()
     def test_concatenate_many_multi_dtype(self, xp):
-        a = testing.shaped_arange((2, 1), xp, 'i')
-        b = testing.shaped_arange((2, 1), xp, 'f')
+        a = testing.shaped_arange((2, 1), xp, "i")
+        b = testing.shaped_arange((2, 1), xp, "f")
         return xp.concatenate((a, b) * 1024, axis=1)
 
     @testing.slow
@@ -151,7 +151,7 @@ class TestJoin:
         with pytest.raises(ValueError):
             cupy.concatenate((a, b, c))
 
-    @testing.for_all_dtypes(name='dtype')
+    @testing.for_all_dtypes(name="dtype")
     @testing.numpy_cupy_array_equal()
     def test_concatenate_out(self, xp, dtype):
         a = testing.shaped_arange((3, 4), xp, dtype)
@@ -197,14 +197,14 @@ class TestJoin:
             with pytest.raises(TypeError):
                 xp.concatenate((a, b, c), axis=1, out=out)
 
-    @testing.for_all_dtypes_combination(names=['dtype1', 'dtype2'])
+    @testing.for_all_dtypes_combination(names=["dtype1", "dtype2"])
     @testing.numpy_cupy_array_equal()
     def test_concatenate_different_dtype(self, xp, dtype1, dtype2):
         a = testing.shaped_arange((3, 4), xp, dtype1)
         b = testing.shaped_arange((3, 4), xp, dtype2)
         return xp.concatenate((a, b))
 
-    @testing.for_all_dtypes_combination(names=['dtype1', 'dtype2'])
+    @testing.for_all_dtypes_combination(names=["dtype1", "dtype2"])
     @testing.numpy_cupy_array_equal(accept_error=TypeError)
     def test_concatenate_out_different_dtype(self, xp, dtype1, dtype2):
         a = testing.shaped_arange((3, 4), xp, dtype1)
@@ -212,15 +212,15 @@ class TestJoin:
         out = xp.zeros((6, 4), dtype=dtype2)
         return xp.concatenate((a, b), out=out)
 
-    @testing.with_requires('numpy>=1.20.0')
-    @testing.for_all_dtypes_combination(names=['dtype1', 'dtype2'])
+    @testing.with_requires("numpy>=1.20.0")
+    @testing.for_all_dtypes_combination(names=["dtype1", "dtype2"])
     @testing.numpy_cupy_array_equal(accept_error=TypeError)
     def test_concatenate_dtype(self, xp, dtype1, dtype2):
         a = testing.shaped_arange((3, 4), xp, dtype1)
         b = testing.shaped_arange((3, 4), xp, dtype1)
         return xp.concatenate((a, b), dtype=dtype2)
 
-    @testing.with_requires('numpy>=1.20.0')
+    @testing.with_requires("numpy>=1.20.0")
     def test_concatenate_dtype_invalid_out(self):
         for xp in (numpy, cupy):
             a = testing.shaped_arange((3, 4), xp, xp.float64)
@@ -229,16 +229,16 @@ class TestJoin:
             with pytest.raises(TypeError):
                 xp.concatenate((a, b), out=out, dtype=xp.int64)
 
-    @testing.with_requires('numpy>=1.20.0')
-    @pytest.mark.filterwarnings('error::cupy.exceptions.ComplexWarning')
-    @pytest.mark.parametrize('casting', [
-        'no',
-        'equiv',
-        'safe',
-        'same_kind',
-        'unsafe',
+    @testing.with_requires("numpy>=1.20.0")
+    @pytest.mark.filterwarnings("error::cupy.exceptions.ComplexWarning")
+    @pytest.mark.parametrize("casting", [
+        "no",
+        "equiv",
+        "safe",
+        "same_kind",
+        "unsafe",
     ])
-    @testing.for_all_dtypes_combination(names=['dtype1', 'dtype2'])
+    @testing.for_all_dtypes_combination(names=["dtype1", "dtype2"])
     @testing.numpy_cupy_array_equal(
         accept_error=(TypeError, cupy.exceptions.ComplexWarning))
     def test_concatenate_casting(self, xp, dtype1, dtype2, casting):
@@ -289,24 +289,24 @@ class TestJoin:
         c = testing.shaped_arange((2, 3), xp)
         return xp.hstack((a, b, c))
 
-    @testing.with_requires('numpy>=1.24.0')
-    @testing.for_all_dtypes_combination(names=['dtype1', 'dtype2'])
+    @testing.with_requires("numpy>=1.24.0")
+    @testing.for_all_dtypes_combination(names=["dtype1", "dtype2"])
     @testing.numpy_cupy_array_equal(accept_error=TypeError)
     def test_hstack_dtype(self, xp, dtype1, dtype2):
         a = testing.shaped_arange((3, 4), xp, dtype1)
         b = testing.shaped_arange((3, 4), xp, dtype1)
         return xp.hstack((a, b), dtype=dtype2)
 
-    @testing.with_requires('numpy>=1.24.0')
-    @pytest.mark.filterwarnings('error::numpy.ComplexWarning')
-    @pytest.mark.parametrize('casting', [
-        'no',
-        'equiv',
-        'safe',
-        'same_kind',
-        'unsafe',
+    @testing.with_requires("numpy>=1.24.0")
+    @pytest.mark.filterwarnings("error::numpy.ComplexWarning")
+    @pytest.mark.parametrize("casting", [
+        "no",
+        "equiv",
+        "safe",
+        "same_kind",
+        "unsafe",
     ])
-    @testing.for_all_dtypes_combination(names=['dtype1', 'dtype2'])
+    @testing.for_all_dtypes_combination(names=["dtype1", "dtype2"])
     @testing.numpy_cupy_array_equal(
         accept_error=(TypeError, cupy.exceptions.ComplexWarning))
     def test_hstack_casting(self, xp, dtype1, dtype2, casting):
@@ -332,24 +332,24 @@ class TestJoin:
         with pytest.raises(ValueError):
             cupy.vstack((a, b))
 
-    @testing.with_requires('numpy>=1.24.0')
-    @testing.for_all_dtypes_combination(names=['dtype1', 'dtype2'])
+    @testing.with_requires("numpy>=1.24.0")
+    @testing.for_all_dtypes_combination(names=["dtype1", "dtype2"])
     @testing.numpy_cupy_array_equal(accept_error=TypeError)
     def test_vstack_dtype(self, xp, dtype1, dtype2):
         a = testing.shaped_arange((3, 4), xp, dtype1)
         b = testing.shaped_arange((3, 4), xp, dtype1)
         return xp.vstack((a, b), dtype=dtype2)
 
-    @testing.with_requires('numpy>=1.24.0')
-    @pytest.mark.filterwarnings('error::numpy.ComplexWarning')
-    @pytest.mark.parametrize('casting', [
-        'no',
-        'equiv',
-        'safe',
-        'same_kind',
-        'unsafe',
+    @testing.with_requires("numpy>=1.24.0")
+    @pytest.mark.filterwarnings("error::numpy.ComplexWarning")
+    @pytest.mark.parametrize("casting", [
+        "no",
+        "equiv",
+        "safe",
+        "same_kind",
+        "unsafe",
     ])
-    @testing.for_all_dtypes_combination(names=['dtype1', 'dtype2'])
+    @testing.for_all_dtypes_combination(names=["dtype1", "dtype2"])
     @testing.numpy_cupy_array_equal(
         accept_error=(TypeError, cupy.exceptions.ComplexWarning))
     def test_vstack_casting(self, xp, dtype1, dtype2, casting):
@@ -430,7 +430,7 @@ class TestJoin:
         with pytest.raises(AxisError):
             return cupy.stack([a, a], axis=3)
 
-    @testing.for_all_dtypes(name='dtype')
+    @testing.for_all_dtypes(name="dtype")
     @testing.numpy_cupy_array_equal()
     def test_stack_out(self, xp, dtype):
         a = testing.shaped_arange((3, 4), xp, dtype)
@@ -476,24 +476,24 @@ class TestJoin:
             with pytest.raises(TypeError):
                 xp.stack((a, b, c), axis=1, out=out)
 
-    @testing.with_requires('numpy>=1.24.0')
-    @testing.for_all_dtypes_combination(names=['dtype1', 'dtype2'])
+    @testing.with_requires("numpy>=1.24.0")
+    @testing.for_all_dtypes_combination(names=["dtype1", "dtype2"])
     @testing.numpy_cupy_array_equal(accept_error=TypeError)
     def test_stack_dtype(self, xp, dtype1, dtype2):
         a = testing.shaped_arange((3, 4), xp, dtype1)
         b = testing.shaped_arange((3, 4), xp, dtype1)
         return xp.stack((a, b), dtype=dtype2)
 
-    @testing.with_requires('numpy>=1.24.0')
-    @pytest.mark.filterwarnings('error::numpy.ComplexWarning')
-    @pytest.mark.parametrize('casting', [
-        'no',
-        'equiv',
-        'safe',
-        'same_kind',
-        'unsafe',
+    @testing.with_requires("numpy>=1.24.0")
+    @pytest.mark.filterwarnings("error::numpy.ComplexWarning")
+    @pytest.mark.parametrize("casting", [
+        "no",
+        "equiv",
+        "safe",
+        "same_kind",
+        "unsafe",
     ])
-    @testing.for_all_dtypes_combination(names=['dtype1', 'dtype2'])
+    @testing.for_all_dtypes_combination(names=["dtype1", "dtype2"])
     @testing.numpy_cupy_array_equal(
         accept_error=(TypeError, cupy.exceptions.ComplexWarning))
     def test_stack_casting(self, xp, dtype1, dtype2, casting):
@@ -502,8 +502,8 @@ class TestJoin:
         # may raise TypeError or ComplexWarning
         return xp.stack((a, b), dtype=dtype2, casting=casting)
 
-    @testing.for_all_dtypes(name='dtype1')
-    @testing.for_all_dtypes(name='dtype2')
+    @testing.for_all_dtypes(name="dtype1")
+    @testing.for_all_dtypes(name="dtype2")
     @testing.numpy_cupy_array_equal()
     def test_row_stack(self, xp, dtype1, dtype2):
         a = testing.shaped_arange((4, 3), xp, dtype1)

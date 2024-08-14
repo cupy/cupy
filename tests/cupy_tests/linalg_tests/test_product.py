@@ -8,7 +8,7 @@ from cupy import testing
 
 
 @testing.parameterize(*testing.product({
-    'shape': [
+    "shape": [
         ((2, 3, 4), (3, 4, 2)),
         ((1, 1), (1, 1)),
         ((1, 1), (1, 2)),
@@ -28,12 +28,12 @@ from cupy import testing
         ((2,), (2, 4)),
         ((4, 2), (2,)),
     ],
-    'trans_a': [True, False],
-    'trans_b': [True, False],
+    "trans_a": [True, False],
+    "trans_b": [True, False],
 }))
 class TestDot(unittest.TestCase):
 
-    @testing.for_all_dtypes_combination(['dtype_a', 'dtype_b'])
+    @testing.for_all_dtypes_combination(["dtype_a", "dtype_b"])
     @testing.numpy_cupy_allclose()
     def test_dot(self, xp, dtype_a, dtype_b):
         shape_a, shape_b = self.shape
@@ -47,9 +47,9 @@ class TestDot(unittest.TestCase):
             b = testing.shaped_arange(shape_b, xp, dtype_b)
         return xp.dot(a, b)
 
-    @testing.for_float_dtypes(name='dtype_a')
-    @testing.for_float_dtypes(name='dtype_b')
-    @testing.for_float_dtypes(name='dtype_c')
+    @testing.for_float_dtypes(name="dtype_a")
+    @testing.for_float_dtypes(name="dtype_b")
+    @testing.for_float_dtypes(name="dtype_c")
     @testing.numpy_cupy_allclose(accept_error=ValueError)
     def test_dot_with_out(self, xp, dtype_a, dtype_b, dtype_c):
         shape_a, shape_b = self.shape
@@ -72,7 +72,7 @@ class TestDot(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    'params': [
+    "params": [
         #  Test for 0 dimension
         ((3, ), (3, ), -1, -1, -1),
         #  Test for basic cases
@@ -90,7 +90,7 @@ class TestDot(unittest.TestCase):
 }))
 class TestCrossProduct(unittest.TestCase):
 
-    @testing.for_all_dtypes_combination(['dtype_a', 'dtype_b'])
+    @testing.for_all_dtypes_combination(["dtype_a", "dtype_b"])
     @testing.numpy_cupy_allclose()
     def test_cross(self, xp, dtype_a, dtype_b):
         if dtype_a == dtype_b == numpy.bool_:
@@ -103,17 +103,17 @@ class TestCrossProduct(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    'shape': [
+    "shape": [
         ((), ()),
         ((), (2, 4)),
         ((4, 2), ()),
     ],
-    'trans_a': [True, False],
-    'trans_b': [True, False],
+    "trans_a": [True, False],
+    "trans_b": [True, False],
 }))
 class TestDotFor0Dim(unittest.TestCase):
 
-    @testing.for_all_dtypes_combination(['dtype_a', 'dtype_b'])
+    @testing.for_all_dtypes_combination(["dtype_a", "dtype_b"])
     @testing.numpy_cupy_allclose(contiguous_check=False)
     def test_dot(self, xp, dtype_a, dtype_b):
         shape_a, shape_b = self.shape
@@ -172,7 +172,7 @@ class TestProduct:
         for xp in (numpy, cupy):
             a = testing.shaped_arange((2, 3, 4), xp, dtype).transpose(1, 0, 2)
             b = testing.shaped_arange((4, 2, 3), xp, dtype).transpose(2, 0, 1)
-            c = xp.ndarray((3, 2, 3, 2), dtype=dtype, order='F')
+            c = xp.ndarray((3, 2, 3, 2), dtype=dtype, order="F")
             with pytest.raises(ValueError):
                 # Only C-contiguous array is acceptable
                 xp.dot(a, b, out=c)
@@ -391,7 +391,7 @@ class TestProduct:
 
 
 @testing.parameterize(*testing.product({
-    'params': [
+    "params": [
         ((0, 0), 2),
         ((0, 0), (1, 0)),
         ((0, 0, 0), 2),
@@ -475,11 +475,11 @@ class TestMatrixPower(unittest.TestCase):
         return xp.linalg.matrix_power(a, -987654321987654321)
 
 
-@pytest.mark.parametrize('shape', [
+@pytest.mark.parametrize("shape", [
     (2, 3, 3),
     (3, 0, 0),
 ])
-@pytest.mark.parametrize('n', [0, 5, -7])
+@pytest.mark.parametrize("n", [0, 5, -7])
 class TestMatrixPowerBatched:
 
     @testing.for_float_dtypes(no_float16=True)

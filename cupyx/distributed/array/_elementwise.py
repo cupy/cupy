@@ -17,10 +17,10 @@ from cupyx.distributed.array import (
 
 
 def _find_updates(
-    args: Sequence['_array.DistributedArray'],
-    kwargs: dict[str, '_array.DistributedArray'],
+    args: Sequence["_array.DistributedArray"],
+    kwargs: dict[str, "_array.DistributedArray"],
     dev: int, chunk_i: int,
-) -> list['_data_transfer._PartialUpdate']:
+) -> list["_data_transfer._PartialUpdate"]:
     # If there is at most one array with partial updates, we return them
     # and execute the kernel without actually pushing those updates;
     # otherwise we propagate them beforehand.
@@ -48,8 +48,8 @@ def _find_updates(
 
 def _prepare_chunks_array(
     stream: Stream,
-    args: Sequence['_array.DistributedArray'],
-    kwargs: dict[str, '_array.DistributedArray'],
+    args: Sequence["_array.DistributedArray"],
+    kwargs: dict[str, "_array.DistributedArray"],
     dev: int, chunk_i: int,
 ) -> tuple[list[ndarray], dict[str, ndarray]]:
     def access_array(d_array):
@@ -64,8 +64,8 @@ def _prepare_chunks_array(
 
 
 def _change_all_to_replica_mode(
-        args: list['_array.DistributedArray'],
-        kwargs: dict[str, '_array.DistributedArray']) -> None:
+        args: list["_array.DistributedArray"],
+        kwargs: dict[str, "_array.DistributedArray"]) -> None:
     args[:] = [arg._to_op_mode(_modes.REPLICA) for arg in args]
     kwargs.update(
         (k, arg._to_op_mode(_modes.REPLICA)) for k, arg in kwargs.items()
@@ -74,9 +74,9 @@ def _change_all_to_replica_mode(
 
 def _execute_kernel(
     kernel,
-    args: Sequence['_array.DistributedArray'],
-    kwargs: dict[str, '_array.DistributedArray'],
-) -> '_array.DistributedArray':
+    args: Sequence["_array.DistributedArray"],
+    kwargs: dict[str, "_array.DistributedArray"],
+) -> "_array.DistributedArray":
     args = list(args)
 
     # TODO: Skip conversion to the replica mode when mode.func == kernel
@@ -155,7 +155,7 @@ def _execute_kernel(
     for chunk in chain.from_iterable(out_chunks_map.values()):
         if not isinstance(chunk.array, (ndarray, _chunk._ArrayPlaceholder)):
             raise RuntimeError(
-                'Kernels returning other than single array are not supported')
+                "Kernels returning other than single array are not supported")
 
     shape = comms = None
     for arg in (args or kwargs.values()):
@@ -171,19 +171,19 @@ def _execute_kernel(
 
 def _execute_peer_access(
     kernel,
-    args: Sequence['_array.DistributedArray'],
-    kwargs: dict[str, '_array.DistributedArray'],
-) -> '_array.DistributedArray':
+    args: Sequence["_array.DistributedArray"],
+    kwargs: dict[str, "_array.DistributedArray"],
+) -> "_array.DistributedArray":
     """Arguments must be in the replica mode."""
     assert len(args) >= 2   # if len == 1, peer access should be unnecessary
     if len(args) > 2:
         raise RuntimeError(
-            'Element-wise operation over more than two distributed arrays'
-            ' is not supported unless they share the same index_map.')
+            "Element-wise operation over more than two distributed arrays"
+            " is not supported unless they share the same index_map.")
     if kwargs:
         raise RuntimeError(
-            'Keyword argument is not supported'
-            ' unless arguments share the same index_map.')
+            "Keyword argument is not supported"
+            " unless arguments share the same index_map.")
 
     args = list(args)
     for i, arg in enumerate(args):
@@ -198,8 +198,8 @@ def _execute_peer_access(
         op = kernel._ops._guess_routine_from_in_types((a.dtype, b.dtype))
         if op is None:
             raise RuntimeError(
-                f'Could not guess the return type of {kernel.name}'
-                f' with arguments of type {(a.dtype.type, b.dtype.type)}')
+                f"Could not guess the return type of {kernel.name}"
+                f" with arguments of type {(a.dtype.type, b.dtype.type)}")
         out_types = op.out_types
     else:
         assert isinstance(kernel, cupy._core._kernel.ElementwiseKernel)
@@ -209,7 +209,7 @@ def _execute_peer_access(
     if len(out_types) != 1:
         print(out_types)
         raise RuntimeError(
-            'Kernels returning other than single array are not supported')
+            "Kernels returning other than single array are not supported")
     dtype = out_types[0]
 
     shape = a.shape
@@ -258,8 +258,8 @@ def _execute_peer_access(
 
 
 def _is_peer_access_needed(
-    args: Sequence['_array.DistributedArray'],
-    kwargs: dict[str, '_array.DistributedArray'],
+    args: Sequence["_array.DistributedArray"],
+    kwargs: dict[str, "_array.DistributedArray"],
 ) -> bool:
     index_map = None
     for arg in chain(args, kwargs.values()):
@@ -275,8 +275,8 @@ def _execute(kernel, args: tuple, kwargs: dict):
     for arg in chain(args, kwargs.values()):
         if not isinstance(arg, _array.DistributedArray):
             raise RuntimeError(
-                'Mixing a distributed array with a non-distributed one is'
-                ' not supported')
+                "Mixing a distributed array with a non-distributed one is"
+                " not supported")
 
     # TODO: check if all distributed
     needs_peer_access = _is_peer_access_needed(args, kwargs)

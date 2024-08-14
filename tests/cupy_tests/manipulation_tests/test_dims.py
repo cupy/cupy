@@ -126,14 +126,14 @@ class TestDims(unittest.TestCase):
         a = testing.shaped_arange((2, 3), xp)
         return xp.expand_dims(a, -2)
 
-    @testing.with_requires('numpy>=1.18')
+    @testing.with_requires("numpy>=1.18")
     def test_expand_dims_negative2(self):
         for xp in (numpy, cupy):
             a = testing.shaped_arange((2, 3), xp)
             with pytest.raises(AxisError):
                 xp.expand_dims(a, -4)
 
-    @testing.with_requires('numpy>=1.18')
+    @testing.with_requires("numpy>=1.18")
     @testing.numpy_cupy_array_equal()
     def test_expand_dims_tuple_axis(self, xp):
         a = testing.shaped_arange((2, 2, 2), xp)
@@ -146,7 +146,7 @@ class TestDims(unittest.TestCase):
             (1,),
         ]]
 
-    @testing.with_requires('numpy>=1.18')
+    @testing.with_requires("numpy>=1.18")
     def test_expand_dims_out_of_range(self):
         for xp in (numpy, cupy):
             a = testing.shaped_arange((2, 2, 2), xp)
@@ -154,7 +154,7 @@ class TestDims(unittest.TestCase):
                 with pytest.raises(AxisError):
                     xp.expand_dims(a, axis)
 
-    @testing.with_requires('numpy>=1.18')
+    @testing.with_requires("numpy>=1.18")
     def test_expand_dims_repeated_axis(self):
         for xp in (numpy, cupy):
             a = testing.shaped_arange((2, 2, 2), xp)
@@ -278,17 +278,17 @@ class TestDims(unittest.TestCase):
 
 
 @testing.parameterize(
-    {'shapes': [(), ()]},
-    {'shapes': [(0,), (0,)]},
-    {'shapes': [(1,), (1,)]},
-    {'shapes': [(2,), (2,)]},
-    {'shapes': [(0,), (1,)]},
-    {'shapes': [(2, 3), (1, 3)]},
-    {'shapes': [(2, 1, 3, 4), (3, 1, 4)]},
-    {'shapes': [(4, 3, 2, 3), (2, 3)]},
-    {'shapes': [(2, 0, 1, 1, 3), (2, 1, 0, 0, 3)]},
-    {'shapes': [(0, 1, 1, 3), (2, 1, 0, 0, 3)]},
-    {'shapes': [(0, 1, 1, 0, 3), (5, 2, 0, 1, 0, 0, 3), (2, 1, 0, 0, 0, 3)]},
+    {"shapes": [(), ()]},
+    {"shapes": [(0,), (0,)]},
+    {"shapes": [(1,), (1,)]},
+    {"shapes": [(2,), (2,)]},
+    {"shapes": [(0,), (1,)]},
+    {"shapes": [(2, 3), (1, 3)]},
+    {"shapes": [(2, 1, 3, 4), (3, 1, 4)]},
+    {"shapes": [(4, 3, 2, 3), (2, 3)]},
+    {"shapes": [(2, 0, 1, 1, 3), (2, 1, 0, 0, 3)]},
+    {"shapes": [(0, 1, 1, 3), (2, 1, 0, 0, 3)]},
+    {"shapes": [(0, 1, 1, 0, 3), (5, 2, 0, 1, 0, 0, 3), (2, 1, 0, 0, 0, 3)]},
 )
 class TestBroadcast(unittest.TestCase):
 
@@ -311,7 +311,7 @@ class TestBroadcast(unittest.TestCase):
             [(2,), (2,)],
         ]
         if runtime.is_hip and self.shapes in invalid_shapes:
-            pytest.xfail('HIP/ROCm may have a bug')
+            pytest.xfail("HIP/ROCm may have a bug")
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
@@ -323,10 +323,10 @@ class TestBroadcast(unittest.TestCase):
 
 
 @testing.parameterize(
-    {'shapes': [(3,), (2,)]},
-    {'shapes': [(3, 2), (2, 3,)]},
-    {'shapes': [(3, 2), (3, 4,)]},
-    {'shapes': [(0,), (2,)]},
+    {"shapes": [(3,), (2,)]},
+    {"shapes": [(3, 2), (2, 3,)]},
+    {"shapes": [(3, 2), (3, 4,)]},
+    {"shapes": [(0,), (2,)]},
 )
 class TestInvalidBroadcast(unittest.TestCase):
 

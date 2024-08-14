@@ -38,15 +38,15 @@ class TestSize(unittest.TestCase):
     @testing.numpy_cupy_equal()
     @testing.slow
     def test_size_huge(self, xp):
-        a = xp.ndarray(2 ** 32, 'b')  # 4 GiB
+        a = xp.ndarray(2 ** 32, "b")  # 4 GiB
         return xp.size(a)
 
 
 _orders = {
     order_arg: order_expect
     for order_expect, order_args in [
-        ('C', ['C', 'c', 'CONTIGUOUS', '', None]),
-        ('F', ['F', 'f', 'FORTRAN']),
+        ("C", ["C", "c", "CONTIGUOUS", "", None]),
+        ("F", ["F", "f", "FORTRAN"]),
     ]
     for order_arg in order_args
 }
@@ -58,8 +58,8 @@ class TestOrder(unittest.TestCase):
     def test_ndarray(self, order):
         order_expect = _orders[order]
         a = core.ndarray((2, 3), order=order)
-        expect_c = order_expect == 'C'
-        expect_f = order_expect == 'F'
+        expect_c = order_expect == "C"
+        expect_f = order_expect == "F"
         assert a.flags.c_contiguous == expect_c
         assert a.flags.f_contiguous == expect_f
 
@@ -95,26 +95,26 @@ class TestMinScalarType:
 
 
 @testing.parameterize(*testing.product({
-    'cxx': (None, '--std=c++11'),
+    "cxx": (None, "--std=c++11"),
 }))
 class TestCuPyHeaders(unittest.TestCase):
 
     def setUp(self):
         self.temporary_cache_dir_context = test_raw.use_temporary_cache_dir()
         self.cache_dir = self.temporary_cache_dir_context.__enter__()
-        self.header = '\n'.join(['#include <' + h + '>'
+        self.header = "\n".join(["#include <" + h + ">"
                                  for h in core._cupy_header_list])
 
     def tearDown(self):
         self.temporary_cache_dir_context.__exit__(*sys.exc_info())
 
     def test_compiling_core_header(self):
-        code = r'''
+        code = r"""
         extern "C" __global__ void _test_ker_() { }
-        '''
+        """
         code = self.header + code
         options = () if self.cxx is None else (self.cxx,)
-        ker = cupy.RawKernel(code, '_test_ker_',
-                             options=options, backend='nvrtc')
+        ker = cupy.RawKernel(code, "_test_ker_",
+                             options=options, backend="nvrtc")
         ker((1,), (1,), ())
         cupy.cuda.Device().synchronize()

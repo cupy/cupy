@@ -15,7 +15,7 @@ def _permutate_shapes(shapes_list):
 
 
 @testing.parameterize(*testing.product({
-    'shapes': _permutate_shapes([
+    "shapes": _permutate_shapes([
         # Same shapes
         ((1,), (1,)),
         ((3, 4), (3, 4)),
@@ -53,8 +53,8 @@ class TestFusionBroadcast(unittest.TestCase):
 
     def generate_inputs(self, xp):
         shape1, shape2 = self.shapes
-        x = testing.shaped_random(shape1, xp, 'int64', scale=10, seed=0)
-        y = testing.shaped_random(shape2, xp, 'int64', scale=10, seed=1)
+        x = testing.shaped_random(shape1, xp, "int64", scale=10, seed=0)
+        y = testing.shaped_random(shape2, xp, "int64", scale=10, seed=1)
         return (x, y), {}
 
     @fusion_utils.check_fusion()
@@ -71,7 +71,7 @@ class TestFusionBroadcast(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    'shapes': _permutate_shapes([
+    "shapes": _permutate_shapes([
         ((2,), (3,)),
         ((2,), (0,)),
         ((3, 2), (3, 3)),
@@ -83,8 +83,8 @@ class TestFusionBroadcastInvalid(unittest.TestCase):
 
     def generate_inputs(self, xp):
         shape1, shape2 = self.shapes
-        x = testing.shaped_random(shape1, xp, 'int64', scale=10, seed=0)
-        y = testing.shaped_random(shape2, xp, 'int64', scale=10, seed=1)
+        x = testing.shaped_random(shape1, xp, "int64", scale=10, seed=0)
+        y = testing.shaped_random(shape2, xp, "int64", scale=10, seed=1)
         return (x, y), {}
 
     @fusion_utils.check_fusion(accept_error=ValueError)
@@ -101,7 +101,7 @@ class TestFusionBroadcastInvalid(unittest.TestCase):
 class TestFusionParseInput(unittest.TestCase):
 
     def generate_inputs(self, xp):
-        x = testing.shaped_random((3, 4), xp, 'int64', scale=10, seed=0)
+        x = testing.shaped_random((3, 4), xp, "int64", scale=10, seed=0)
         return (x,), {}
 
     @fusion_utils.check_fusion()
@@ -175,9 +175,9 @@ class TestFusionOutDtype(unittest.TestCase):
         return (x, y, z), {}
 
     @testing.for_all_dtypes_combination(
-        names=('dtype1', 'dtype2'), full=True, no_complex=True)
+        names=("dtype1", "dtype2"), full=True, no_complex=True)
     @fusion_utils.check_fusion(accept_error=TypeError)
-    @testing.with_requires('numpy>=1.13')
+    @testing.with_requires("numpy>=1.13")
     def test_outarg(self, xp, dtype1, dtype2):
         def impl(x, y, z):
             xp.add(x, y, out=z)
@@ -191,7 +191,7 @@ class TestFusionScalar(unittest.TestCase):
         array = testing.shaped_random((3, 4), xp, dtype1, scale=10, seed=0)
         return (array,), {}
 
-    @testing.for_all_dtypes_combination(names=('dtype1', 'dtype2'))
+    @testing.for_all_dtypes_combination(names=("dtype1", "dtype2"))
     @fusion_utils.check_fusion()
     def test_python_scalar_r(self, xp, dtype1, dtype2):
         def func(array):
@@ -200,7 +200,7 @@ class TestFusionScalar(unittest.TestCase):
 
         return func
 
-    @testing.for_all_dtypes_combination(names=('dtype1', 'dtype2'))
+    @testing.for_all_dtypes_combination(names=("dtype1", "dtype2"))
     @fusion_utils.check_fusion()
     def test_numpy_scalar_r(self, xp, dtype1, dtype2):
         def func(array):
@@ -209,7 +209,7 @@ class TestFusionScalar(unittest.TestCase):
 
         return func
 
-    @testing.for_all_dtypes_combination(names=('dtype1', 'dtype2'))
+    @testing.for_all_dtypes_combination(names=("dtype1", "dtype2"))
     @fusion_utils.check_fusion()
     def test_python_scalar_l(self, xp, dtype1, dtype2):
         def func(array):
@@ -218,7 +218,7 @@ class TestFusionScalar(unittest.TestCase):
 
         return func
 
-    @testing.for_all_dtypes_combination(names=('dtype1', 'dtype2'))
+    @testing.for_all_dtypes_combination(names=("dtype1", "dtype2"))
     @fusion_utils.check_fusion()
     def test_numpy_scalar_l(self, xp, dtype1, dtype2):
         def func(array):
@@ -232,8 +232,8 @@ class TestFusionScalar(unittest.TestCase):
         py_scalar = dtype2(1).item()
         return (array, py_scalar), {}
 
-    @testing.for_all_dtypes_combination(names=('dtype1', 'dtype2'))
-    @fusion_utils.check_fusion(generate_inputs_name='python_scalar_param_r')
+    @testing.for_all_dtypes_combination(names=("dtype1", "dtype2"))
+    @fusion_utils.check_fusion(generate_inputs_name="python_scalar_param_r")
     def test_python_scalar_param_r(self, xp, dtype1, dtype2):
         def func(array, py_scalar):
             return array + py_scalar
@@ -245,8 +245,8 @@ class TestFusionScalar(unittest.TestCase):
         py_scalar = dtype2(1).item()
         return (py_scalar, array), {}
 
-    @testing.for_all_dtypes_combination(names=('dtype1', 'dtype2'))
-    @fusion_utils.check_fusion(generate_inputs_name='python_scalar_param_l')
+    @testing.for_all_dtypes_combination(names=("dtype1", "dtype2"))
+    @fusion_utils.check_fusion(generate_inputs_name="python_scalar_param_l")
     def test_python_scalar_param_l(self, xp, dtype1, dtype2):
         def func(py_scalar, array):
             return py_scalar + array
@@ -258,8 +258,8 @@ class TestFusionScalar(unittest.TestCase):
         np_scalar = dtype2(1)
         return (array, np_scalar), {}
 
-    @testing.for_all_dtypes_combination(names=('dtype1', 'dtype2'))
-    @fusion_utils.check_fusion(generate_inputs_name='numpy_scalar_param_r')
+    @testing.for_all_dtypes_combination(names=("dtype1", "dtype2"))
+    @fusion_utils.check_fusion(generate_inputs_name="numpy_scalar_param_r")
     def test_numpy_scalar_param_r(self, xp, dtype1, dtype2):
         def func(array, np_scalar):
             return array + np_scalar
@@ -271,8 +271,8 @@ class TestFusionScalar(unittest.TestCase):
         np_scalar = dtype2(1)
         return (np_scalar, array), {}
 
-    @testing.for_all_dtypes_combination(names=('dtype1', 'dtype2'))
-    @fusion_utils.check_fusion(generate_inputs_name='numpy_scalar_param_l')
+    @testing.for_all_dtypes_combination(names=("dtype1", "dtype2"))
+    @fusion_utils.check_fusion(generate_inputs_name="numpy_scalar_param_l")
     def test_numpy_scalar_param_l(self, xp, dtype1, dtype2):
         def func(np_scalar, array):
             return np_scalar + array
@@ -282,12 +282,12 @@ class TestFusionScalar(unittest.TestCase):
     def numpy_scalar_params_binop(self, xp, dtype1, dtype2):
         scalar1 = dtype1(1)
         scalar2 = dtype2(1)
-        array = testing.shaped_random((3, 4), xp, 'int64', scale=10, seed=0)
+        array = testing.shaped_random((3, 4), xp, "int64", scale=10, seed=0)
         return (scalar1, scalar2, array), {}
 
-    @testing.for_all_dtypes_combination(names=('dtype1', 'dtype2'))
+    @testing.for_all_dtypes_combination(names=("dtype1", "dtype2"))
     @fusion_utils.check_fusion(
-        generate_inputs_name='numpy_scalar_params_binop')
+        generate_inputs_name="numpy_scalar_params_binop")
     def test_numpy_scalar_params_binop(self, xp, dtype1, dtype2):
         def func(scalar1, scalar2, array):
             dtype = (scalar1 + scalar2).dtype
@@ -295,9 +295,9 @@ class TestFusionScalar(unittest.TestCase):
 
         return func
 
-    @testing.for_all_dtypes_combination(names=('dtype1', 'dtype2'))
+    @testing.for_all_dtypes_combination(names=("dtype1", "dtype2"))
     @fusion_utils.check_fusion(
-        generate_inputs_name='numpy_scalar_params_binop')
+        generate_inputs_name="numpy_scalar_params_binop")
     def test_scalar_inplace_update(self, xp, dtype1, dtype2):
         def func(scalar1, scalar2, array):
             scalar1_copy = scalar1
@@ -306,8 +306,8 @@ class TestFusionScalar(unittest.TestCase):
 
         return func
 
-    @testing.for_all_dtypes_combination(names=('dtype1', 'dtype2'))
-    @fusion_utils.check_fusion(generate_inputs_name='numpy_scalar_param_r')
+    @testing.for_all_dtypes_combination(names=("dtype1", "dtype2"))
+    @fusion_utils.check_fusion(generate_inputs_name="numpy_scalar_param_r")
     def test_scalar_inplace_update_with_array(self, xp, dtype1, dtype2):
         def func(array, scalar):
             scalar += array

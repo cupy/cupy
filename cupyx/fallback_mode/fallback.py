@@ -82,7 +82,7 @@ class _RecursiveAttr(object):
         if isinstance(self._numpy_object, types.ModuleType):
             return "<numpy = module {}, cupy = module {}>".format(
                 self._numpy_object.__name__,
-                getattr(self._cupy_object, '__name__', None))
+                getattr(self._cupy_object, "__name__", None))
 
         return "<numpy = {}, cupy = {}>".format(
             self._numpy_object, self._cupy_object)
@@ -170,7 +170,7 @@ class ndarray(object):
         Else get cupy.ndarray from provided arguments,
         then initialize cls(ndarray).
         """
-        _initial_array = kwargs.get('_initial_array', None)
+        _initial_array = kwargs.get("_initial_array", None)
         if _initial_array is not None:
             return object.__new__(cls)
 
@@ -200,8 +200,8 @@ class ndarray(object):
                 Else only _numpy_array will have the data.
         """
 
-        _supports_cupy = kwargs.pop('_supports_cupy', None)
-        _initial_array = kwargs.pop('_initial_array', None)
+        _supports_cupy = kwargs.pop("_supports_cupy", None)
+        _initial_array = kwargs.pop("_initial_array", None)
         if _initial_array is None:
             return
 
@@ -232,7 +232,7 @@ class ndarray(object):
     @classmethod
     def _store_array_from_numpy(cls, array):
         if type(array) is np.ndarray and \
-           array.dtype.kind in '?bhilqBHILQefdFD':
+           array.dtype.kind in "?bhilqBHILQefdFD":
             return cls(_initial_array=array, _supports_cupy=True)
 
         return cls(_initial_array=array, _supports_cupy=False)
@@ -365,39 +365,39 @@ def _create_magic_methods():
 
     for method in (
         # Comparison operators:
-        '__eq__', '__ne__', '__lt__', '__gt__', '__le__', '__ge__',
+        "__eq__", "__ne__", "__lt__", "__gt__", "__le__", "__ge__",
 
         # Unary operations:
-        '__neg__', '__pos__', '__abs__', '__invert__',
+        "__neg__", "__pos__", "__abs__", "__invert__",
 
         # Arithmetic:
-        '__add__', '__sub__', '__mul__', '__truediv__', '__floordiv__',
-        '__mod__', '__divmod__', '__pow__', '__lshift__', '__rshift__',
-        '__and__', '__or__', '__xor__',
+        "__add__", "__sub__", "__mul__", "__truediv__", "__floordiv__",
+        "__mod__", "__divmod__", "__pow__", "__lshift__", "__rshift__",
+        "__and__", "__or__", "__xor__",
 
         # Arithmetic, in-place:
-        '__iadd__', '__isub__', '__imul__', '__itruediv__', '__ifloordiv__',
-        '__imod__', '__ipow__', '__ilshift__', '__irshift__',
-        '__iand__', '__ior__', '__ixor__',
-        '__matmul__',
+        "__iadd__", "__isub__", "__imul__", "__itruediv__", "__ifloordiv__",
+        "__imod__", "__ipow__", "__ilshift__", "__irshift__",
+        "__iand__", "__ior__", "__ixor__",
+        "__matmul__",
 
         # reflected-methods:
-        '__radd__', '__rsub__', '__rmul__', '__rtruediv__', '__rfloordiv__',
-        '__rmod__', '__rdivmod__', '__rpow__', '__rlshift__', '__rrshift__',
-        '__rand__', '__ror__', '__rxor__',
-        '__rmatmul__',
+        "__radd__", "__rsub__", "__rmul__", "__rtruediv__", "__rfloordiv__",
+        "__rmod__", "__rdivmod__", "__rpow__", "__rlshift__", "__rrshift__",
+        "__rand__", "__ror__", "__rxor__",
+        "__rmatmul__",
 
         # For standard library functions:
-        '__copy__', '__deepcopy__', '__reduce__',
+        "__copy__", "__deepcopy__", "__reduce__",
 
         # Container customization:
-        '__iter__', '__len__', '__getitem__', '__setitem__',
+        "__iter__", "__len__", "__getitem__", "__setitem__",
 
         # Conversion:
-        '__bool__', '__int__', '__float__', '__complex__',
+        "__bool__", "__int__", "__float__", "__complex__",
 
         # String representations:
-        '__repr__', '__str__'
+        "__repr__", "__str__"
     ):
         setattr(ndarray, method, make_method(method))
 
@@ -411,19 +411,19 @@ class vectorize(object):
 
     def __init__(self, *args, **kwargs):
         # NumPy will raise error if pyfunc is a cupy method
-        self.__dict__['_is_numpy_pyfunc'] = False
-        self.__dict__['_cupy_support'] = False
+        self.__dict__["_is_numpy_pyfunc"] = False
+        self.__dict__["_cupy_support"] = False
         if isinstance(args[0], _RecursiveAttr):
-            self.__dict__['_is_numpy_pyfunc'] = True
+            self.__dict__["_is_numpy_pyfunc"] = True
             if args[0]._cupy_object:
-                self.__dict__['_cupy_support'] = True
+                self.__dict__["_cupy_support"] = True
             args = (args[0]._numpy_object,) + args[1:]
         notification._dispatch_notification(np.vectorize)
-        self.__dict__['vec_obj'] = np.vectorize(*args, **kwargs)
-        self.__dict__['__doc__'] = self.__dict__['vec_obj'].__doc__
+        self.__dict__["vec_obj"] = np.vectorize(*args, **kwargs)
+        self.__dict__["__doc__"] = self.__dict__["vec_obj"].__doc__
 
     def __getattr__(self, attr):
-        return getattr(self.__dict__['vec_obj'], attr)
+        return getattr(self.__dict__["vec_obj"], attr)
 
     def __setattr__(self, name, value):
         return setattr(self.vec_obj, name, value)

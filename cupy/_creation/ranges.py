@@ -27,7 +27,7 @@ def arange(start, stop=None, step=1, dtype=None):
 
     """
     if dtype is None:
-        if any(numpy.dtype(type(val)).kind == 'f'
+        if any(numpy.dtype(type(val)).kind == "f"
                for val in (start, stop, step)):
             dtype = float
         else:
@@ -47,8 +47,8 @@ def arange(start, stop=None, step=1, dtype=None):
     if numpy.dtype(dtype).type == numpy.bool_:
         if size > 2:
             raise TypeError(
-                'arange() is only supported for booleans '
-                'when the result has at most length 2.'
+                "arange() is only supported for booleans "
+                "when the result has at most length 2."
             )
         if size == 2:
             return cupy.array([start, start - step], dtype=numpy.bool_)
@@ -93,7 +93,7 @@ def _linspace_scalar(start, stop, num=50, endpoint=True, retstep=False,
     if div <= 0:
         if num > 0:
             ret.fill(start)
-        step = float('nan')
+        step = float("nan")
     else:
         step = float(stop - start) / div
         stop = float(stop)
@@ -152,7 +152,7 @@ def linspace(start, stop, num=50, endpoint=True, retstep=False, dtype=None,
 
     """
     if num < 0:
-        raise ValueError('linspace with num<0 is not supported')
+        raise ValueError("linspace with num<0 is not supported")
     div = (num - 1) if endpoint else num
 
     scalar_start = cupy.isscalar(start)
@@ -161,11 +161,11 @@ def linspace(start, stop, num=50, endpoint=True, retstep=False, dtype=None,
         return _linspace_scalar(start, stop, num, endpoint, retstep, dtype)
 
     if not scalar_start:
-        if not (isinstance(start, cupy.ndarray) and start.dtype.kind == 'f'):
+        if not (isinstance(start, cupy.ndarray) and start.dtype.kind == "f"):
             start = cupy.asarray(start) * 1.0
 
     if not scalar_stop:
-        if not (isinstance(stop, cupy.ndarray) and stop.dtype.kind == 'f'):
+        if not (isinstance(stop, cupy.ndarray) and stop.dtype.kind == "f"):
             stop = cupy.asarray(stop) * 1.0
 
     dt = cupy.result_type(start, stop, float(num))
@@ -194,7 +194,7 @@ def linspace(start, stop, num=50, endpoint=True, retstep=False, dtype=None,
             ret = ret * step
     else:
         # 0 and 1 item long sequences have an undefined step
-        step = float('nan')
+        step = float("nan")
         # Multiply with delta to allow possible override of output class.
         ret = ret * delta
 
@@ -249,7 +249,7 @@ def logspace(start, stop, num=50, endpoint=True, base=10.0, dtype=None,
     # This is to avoid cupy strange behaviors such as
     # cupy.power(10.0, cupy.array(2.0, dtype=cupy.float32)) == 99.9999
     # numpy.power(10.0, cupy.array(2.0, dtype=numpy.float32)) == 100.0
-    if cupy.dtype(dtype).kind in 'iu':
+    if cupy.dtype(dtype).kind in "iu":
         y = y.astype(cupy.float64)
     return _core.power(base, y).astype(dtype)
 
@@ -283,29 +283,29 @@ def meshgrid(*xi, **kwargs):
     .. seealso:: :func:`numpy.meshgrid`
 
     """
-    indexing = kwargs.pop('indexing', 'xy')
-    copy = bool(kwargs.pop('copy', True))
-    sparse = bool(kwargs.pop('sparse', False))
+    indexing = kwargs.pop("indexing", "xy")
+    copy = bool(kwargs.pop("copy", True))
+    sparse = bool(kwargs.pop("sparse", False))
     if kwargs:
         raise TypeError(
-            'meshgrid() got an unexpected keyword argument \'{}\''.format(
+            "meshgrid() got an unexpected keyword argument '{}'".format(
                 list(kwargs)[0]))
-    if indexing not in ['xy', 'ij']:
-        raise ValueError('Valid values for `indexing` are \'xy\' and \'ij\'.')
+    if indexing not in ["xy", "ij"]:
+        raise ValueError("Valid values for `indexing` are 'xy' and 'ij'.")
 
     for x in xi:
         if x.ndim != 1:
-            raise ValueError('input has to be 1d')
+            raise ValueError("input has to be 1d")
         if not isinstance(x, cupy.ndarray):
-            raise ValueError('input has to be cupy.ndarray')
+            raise ValueError("input has to be cupy.ndarray")
     if len(xi) <= 1:
         return list(xi)
 
     meshes = []
     for i, x in enumerate(xi):
-        if indexing == 'xy' and i == 0:
+        if indexing == "xy" and i == 0:
             left_none = 1
-        elif indexing == 'xy' and i == 1:
+        elif indexing == "xy" and i == 1:
             left_none = 0
         else:
             left_none = i
@@ -424,19 +424,19 @@ ogrid = nd_grid(sparse=True)
 
 
 _arange_ufunc = _core.create_ufunc(
-    'cupy_arange',
-    ('bb->b', 'BB->B', 'hh->h', 'HH->H', 'ii->i', 'II->I', 'll->l', 'LL->L',
-     'qq->q', 'QQ->Q', 'ee->e', 'ff->f', 'dd->d',
-     ('FF->F', 'out0 = in0 + float(i) * in1'),
-     ('DD->D', 'out0 = in0 + double(i) * in1')),
-    'out0 = in0 + i * in1')
+    "cupy_arange",
+    ("bb->b", "BB->B", "hh->h", "HH->H", "ii->i", "II->I", "ll->l", "LL->L",
+     "qq->q", "QQ->Q", "ee->e", "ff->f", "dd->d",
+     ("FF->F", "out0 = in0 + float(i) * in1"),
+     ("DD->D", "out0 = in0 + double(i) * in1")),
+    "out0 = in0 + i * in1")
 
 _linspace_ufunc = _core.create_ufunc(
-    'cupy_linspace',
-    ('dd->d',),
-    'out0 = in0 + i * in1')
+    "cupy_linspace",
+    ("dd->d",),
+    "out0 = in0 + i * in1")
 
 _linspace_ufunc_underflow = _core.create_ufunc(
-    'cupy_linspace',
-    ('ddd->d',),
-    'out0 = in0 + i * in1 / in2')
+    "cupy_linspace",
+    ("ddd->d",),
+    "out0 = in0 + i * in1 / in2")

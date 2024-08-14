@@ -8,7 +8,7 @@ from cupyx.scipy.interpolate._bspline2 import _not_a_knot
 from cupyx.scipy.sparse import csr_matrix
 from cupyx.scipy.sparse.linalg import spsolve
 
-TYPES = ['double', 'thrust::complex<double>']
+TYPES = ["double", "thrust::complex<double>"]
 
 NDBSPL_DEF = r"""
 #include <cupy/complex.cuh>
@@ -237,9 +237,9 @@ __global__ void store_nd_bsplines(
 """
 
 NDBSPL_MOD = cupy.RawModule(
-    code=NDBSPL_DEF, options=('-std=c++11',),
-    name_expressions=['compute_nd_bsplines', 'store_nd_bsplines'] +
-                     [f'eval_nd_bspline<{t}>' for t in TYPES])
+    code=NDBSPL_DEF, options=("-std=c++11",),
+    name_expressions=["compute_nd_bsplines", "store_nd_bsplines"] +
+                     [f"eval_nd_bspline<{t}>" for t in TYPES])
 
 
 def evaluate_ndbspline(
@@ -325,13 +325,13 @@ def evaluate_ndbspline(
                          dtype=cupy.float64)
     invalid = cupy.zeros(xi.shape[0], dtype=cupy.bool_)
 
-    compute_nd_bsplines = NDBSPL_MOD.get_function('compute_nd_bsplines')
+    compute_nd_bsplines = NDBSPL_MOD.get_function("compute_nd_bsplines")
     compute_nd_bsplines((512,), (128,), (
         xi, xi.shape[0], t, len_t, xi.shape[1], t.shape[1], k, max_k,
         nu, extrapolate, True, intervals, splines, invalid
     ))
 
-    eval_nd_bspline = _get_module_func(NDBSPL_MOD, 'eval_nd_bspline', c1r)
+    eval_nd_bspline = _get_module_func(NDBSPL_MOD, "eval_nd_bspline", c1r)
     eval_nd_bspline((512,), (128,), (
         indices_k1d, strides_c1, splines, intervals, k, invalid, c1r, volume,
         xi.shape[1], num_c_tr, xi.shape[0], max_k, out))
@@ -421,16 +421,16 @@ def colloc_nd(xvals, t, len_t, k):
     csr_indptr = cupy.arange(
         0, cpu_volume * size + 1, cpu_volume, dtype=cupy.int64)
 
-    compute_nd_bsplines = NDBSPL_MOD.get_function('compute_nd_bsplines')
+    compute_nd_bsplines = NDBSPL_MOD.get_function("compute_nd_bsplines")
     compute_nd_bsplines((512,), (128,), (
         xvals, xvals.shape[0], t, len_t, xvals.shape[1], t.shape[1], k, max_k,
         nu, True, False, intervals, splines, invalid
     ))
 
     if cupy.any(invalid).item():
-        raise ValueError('Out of bounds')
+        raise ValueError("Out of bounds")
 
-    store_nd_splines = NDBSPL_MOD.get_function('store_nd_bsplines')
+    store_nd_splines = NDBSPL_MOD.get_function("store_nd_bsplines")
     store_nd_splines((512,), (128,), (
         _indices_k1d, cstrides, splines, intervals, k, volume, int(ndim),
         int(size), max_k, csr_indices, csr_data

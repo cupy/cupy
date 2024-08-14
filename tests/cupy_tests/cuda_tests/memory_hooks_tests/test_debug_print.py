@@ -27,22 +27,22 @@ class TestDebugPrintHook(unittest.TestCase):
                 del mem
         actual_lines = self.io.getvalue().splitlines()
 
-        expect = {'hook': 'alloc', 'device_id': device_id,
-                  'mem_size': unit, 'mem_ptr': ptr1}
+        expect = {"hook": "alloc", "device_id": device_id,
+                  "mem_size": unit, "mem_ptr": ptr1}
         assert expect == json.loads(actual_lines[0])
 
-        expect = {'hook': 'malloc', 'device_id': device_id, 'size': size,
-                  'mem_size': unit, 'mem_ptr': ptr1, 'pmem_id': hex(pmem1)}
+        expect = {"hook": "malloc", "device_id": device_id, "size": size,
+                  "mem_size": unit, "mem_ptr": ptr1, "pmem_id": hex(pmem1)}
         assert expect == json.loads(actual_lines[1])
 
-        expect = {'hook': 'free', 'device_id': device_id,
-                  'mem_size': unit, 'mem_ptr': ptr1, 'pmem_id': hex(pmem1)}
+        expect = {"hook": "free", "device_id": device_id,
+                  "mem_size": unit, "mem_ptr": ptr1, "pmem_id": hex(pmem1)}
         assert expect == json.loads(actual_lines[2])
 
-        expect = {'hook': 'malloc', 'device_id': device_id, 'size': size,
-                  'mem_size': unit, 'mem_ptr': ptr2, 'pmem_id': hex(pmem2)}
+        expect = {"hook": "malloc", "device_id": device_id, "size": size,
+                  "mem_size": unit, "mem_ptr": ptr2, "pmem_id": hex(pmem2)}
         assert expect == json.loads(actual_lines[3])
 
-        expect = {'hook': 'free', 'device_id': device_id,
-                  'mem_size': unit, 'mem_ptr': ptr2, 'pmem_id': hex(pmem2)}
+        expect = {"hook": "free", "device_id": device_id,
+                  "mem_size": unit, "mem_ptr": ptr2, "pmem_id": hex(pmem2)}
         assert expect == json.loads(actual_lines[4])

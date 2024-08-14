@@ -22,14 +22,14 @@ from cupyx.scipy.special._gammainc import _igam_preamble, _igami_preamble
 # Normal distribution functions
 
 ndtr = _core.create_ufunc(
-    'cupyx_scipy_special_ndtr',
-    (('f->f', 'out0 = normcdff(in0)'), 'd->d'),
-    'out0 = normcdf(in0)',
-    doc='''Cumulative distribution function of normal distribution.
+    "cupyx_scipy_special_ndtr",
+    (("f->f", "out0 = normcdff(in0)"), "d->d"),
+    "out0 = normcdf(in0)",
+    doc="""Cumulative distribution function of normal distribution.
 
     .. seealso:: :data:`scipy.special.ndtr`
 
-    ''')
+    """)
 
 
 log_ndtr_definition = """
@@ -60,9 +60,9 @@ static __device__ float log_ndtrf(float x)
 
 
 log_ndtr = _core.create_ufunc(
-    'cupyx_scipy_special_log_ndtr',
-    (('f->f', 'out0 = log_ndtrf(in0)'), 'd->d'),
-    'out0 = log_ndtr(in0)',
+    "cupyx_scipy_special_log_ndtr",
+    (("f->f", "out0 = log_ndtrf(in0)"), "d->d"),
+    "out0 = log_ndtr(in0)",
     preamble=log_ndtr_definition,
     doc="""Logarithm of Gaussian cumulative distribution function.
 
@@ -89,14 +89,14 @@ log_ndtr = _core.create_ufunc(
 
 
 ndtri = _core.create_ufunc(
-    'cupyx_scipy_special_ndtri',
-    (('f->f', 'out0 = normcdfinvf(in0)'), 'd->d'),
-    'out0 = normcdfinv(in0)',
-    doc='''Inverse of the cumulative distribution function of the standard
+    "cupyx_scipy_special_ndtri",
+    (("f->f", "out0 = normcdfinvf(in0)"), "d->d"),
+    "out0 = normcdfinv(in0)",
+    doc="""Inverse of the cumulative distribution function of the standard
            normal distribution.
 
     .. seealso:: :data:`scipy.special.ndtri`
-''')
+""")
 
 
 # Binomial distribution functions
@@ -247,9 +247,9 @@ __device__ double bdtri_unsafe(double k, double n, double p)
 bdtr = _core.create_ufunc(
     "cupyx_scipy_bdtr",
     (
-        ('fff->f', 'out0 = out0_type(bdtr_unsafe(in0, in1, in2));'),
-        'dld->d',
-        ('ddd->d', 'out0 = bdtr_unsafe(in0, in1, in2);'),
+        ("fff->f", "out0 = out0_type(bdtr_unsafe(in0, in1, in2));"),
+        "dld->d",
+        ("ddd->d", "out0 = bdtr_unsafe(in0, in1, in2);"),
     ),
     "out0 = bdtr(in0, (int)in1, in2);",
     preamble=incbet_preamble + bdtr_definition,
@@ -282,9 +282,9 @@ bdtr = _core.create_ufunc(
 bdtrc = _core.create_ufunc(
     "cupyx_scipy_bdtrc",
     (
-        ('fff->f', 'out0 = out0_type(bdtrc_unsafe(in0, in1, in2));'),
-        'dld->d',
-        ('ddd->d', 'out0 = bdtrc_unsafe(in0, in1, in2);'),
+        ("fff->f", "out0 = out0_type(bdtrc_unsafe(in0, in1, in2));"),
+        "dld->d",
+        ("ddd->d", "out0 = bdtrc_unsafe(in0, in1, in2);"),
     ),
     "out0 = out0_type(bdtrc(in0, in1, in2));",
     preamble=incbet_preamble + bdtrc_definition,
@@ -320,9 +320,9 @@ bdtrc = _core.create_ufunc(
 bdtri = _core.create_ufunc(
     "cupyx_scipy_bdtri",
     (
-        ('fff->f', 'out0 = out0_type(bdtri_unsafe(in0, in1, in2));'),
-        'dld->d',
-        ('ddd->d', 'out0 = bdtri_unsafe(in0, in1, in2);'),
+        ("fff->f", "out0 = out0_type(bdtri_unsafe(in0, in1, in2));"),
+        "dld->d",
+        ("ddd->d", "out0 = bdtri_unsafe(in0, in1, in2);"),
     ),
     "out0 = out0_type(bdtri(in0, in1, in2));",
     preamble=incbi_preamble + bdtri_definition,
@@ -887,9 +887,9 @@ __device__ double nbdtri_unsafe(double k, double n, double y)
 nbdtr = _core.create_ufunc(
     "cupyx_scipy_nbdtr",
     (
-        'lld->d',
-        ('fff->f', 'out0 = out0_type(nbdtr_unsafe(in0, in1, in2));'),
-        ('ddd->d', 'out0 = nbdtr_unsafe(in0, in1, in2);'),
+        "lld->d",
+        ("fff->f", "out0 = out0_type(nbdtr_unsafe(in0, in1, in2));"),
+        ("ddd->d", "out0 = nbdtr_unsafe(in0, in1, in2);"),
     ),
     "out0 = nbdtr(in0, in1, in2);",
     preamble=incbet_preamble + nbdtr_definition,
@@ -921,9 +921,9 @@ nbdtr = _core.create_ufunc(
 nbdtrc = _core.create_ufunc(
     "cupyx_scipy_nbdtrc",
     (
-        'lld->d',
-        ('fff->f', 'out0 = out0_type(nbdtrc_unsafe(in0, in1, in2));'),
-        ('ddd->d', 'out0 = nbdtrc_unsafe(in0, in1, in2);'),
+        "lld->d",
+        ("fff->f", "out0 = out0_type(nbdtrc_unsafe(in0, in1, in2));"),
+        ("ddd->d", "out0 = nbdtrc_unsafe(in0, in1, in2);"),
     ),
     "out0 = nbdtrc(in0, in1, in2);",
     preamble=incbet_preamble + nbdtrc_definition,
@@ -954,9 +954,9 @@ nbdtrc = _core.create_ufunc(
 nbdtri = _core.create_ufunc(
     "cupyx_scipy_nbdtri",
     (
-        'lld->d',
-        ('fff->f', 'out0 = out0_type(nbdtri_unsafe(in0, in1, in2));'),
-        ('ddd->d', 'out0 = nbdtri_unsafe(in0, in1, in2);'),
+        "lld->d",
+        ("fff->f", "out0 = out0_type(nbdtri_unsafe(in0, in1, in2));"),
+        ("ddd->d", "out0 = nbdtri_unsafe(in0, in1, in2);"),
     ),
     "out0 = nbdtri(in0, in1, in2);",
     preamble=incbi_preamble + nbdtri_definition,
@@ -1052,7 +1052,7 @@ __device__ double pdtri_unsafe(double k, double y)
 
 pdtr = _core.create_ufunc(
     "cupyx_scipy_pdtr",
-    ('ff->f', 'dd->d'),
+    ("ff->f", "dd->d"),
     "out0 = out0_type(pdtr(in0, in1));",
     preamble=_igam_preamble + pdtr_definition,
     doc="""Poisson cumulative distribution function.
@@ -1079,7 +1079,7 @@ pdtr = _core.create_ufunc(
 
 pdtrc = _core.create_ufunc(
     "cupyx_scipy_pdtrc",
-    ('ff->f', 'dd->d'),
+    ("ff->f", "dd->d"),
     "out0 = out0_type(pdtrc(in0, in1));",
     preamble=_igam_preamble + pdtrc_definition,
     doc="""Binomial distribution survival function.
@@ -1111,9 +1111,9 @@ pdtrc = _core.create_ufunc(
 pdtri = _core.create_ufunc(
     "cupyx_scipy_pdtri",
     # Note order of entries here is important to match SciPy behavior
-    ('ld->d',
-     ('ff->f', 'out0 = out0_type(pdtri_unsafe(in0, in1));'),
-     ('dd->d', 'out0 = pdtri_unsafe(in0, in1);')),
+    ("ld->d",
+     ("ff->f", "out0 = out0_type(pdtri_unsafe(in0, in1));"),
+     ("dd->d", "out0 = pdtri_unsafe(in0, in1);")),
     "out0 = pdtri((int)in0, in1);",
     preamble=_igami_preamble + pdtri_definition,
     doc="""Inverse function to `pdtr` with respect to `m`.

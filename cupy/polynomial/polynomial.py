@@ -14,12 +14,12 @@ def polyvander(x, deg):
     .. seealso:: :func:`numpy.polynomial.polynomial.polyvander`
 
     """
-    deg = cupy.polynomial.polyutils._deprecate_as_int(deg, 'deg')
+    deg = cupy.polynomial.polyutils._deprecate_as_int(deg, "deg")
     if deg < 0:
-        raise ValueError('degree must be non-negative')
+        raise ValueError("degree must be non-negative")
     if x.ndim == 0:
         x = x.ravel()
-    dtype = cupy.float64 if x.dtype.kind in 'biu' else x.dtype
+    dtype = cupy.float64 if x.dtype.kind in "biu" else x.dtype
     out = x ** cupy.arange(deg + 1, dtype=dtype).reshape((-1,) + (1,) * x.ndim)
     return cupy.moveaxis(out, 0, -1)
 
@@ -40,7 +40,7 @@ def polycompanion(c):
     [c] = cupy.polynomial.polyutils.as_series([c])
     deg = c.size - 1
     if deg == 0:
-        raise ValueError('Series must have maximum degree of at least 1.')
+        raise ValueError("Series must have maximum degree of at least 1.")
     matrix = cupy.eye(deg, k=-1, dtype=c.dtype)
     matrix[:, -1] -= c[:-1] / c[-1]
     return matrix
@@ -104,7 +104,7 @@ def polyval(x, c, tensor=True):
 
     """
     c = cupy.array(c, ndmin=1, copy=False)
-    if c.dtype.char in '?bBhHiIlLqQpP':
+    if c.dtype.char in "?bBhHiIlLqQpP":
         # astype fails with NA
         c = c + 0.0
     if isinstance(x, (tuple, list)):
@@ -169,7 +169,7 @@ def polyvalfromroots(x, r, tensor=True):
     numpy.polynomial.polynomial.polyvalfroomroots
     """
     r = cupy.array(r, ndmin=1, copy=False)
-    if r.dtype.char in '?bBhHiIlLqQpP':
+    if r.dtype.char in "?bBhHiIlLqQpP":
         r = r.astype(cupy.double)
     if isinstance(x, (tuple, list)):
         x = cupy.asarray(x)

@@ -3,16 +3,16 @@
 import cupy
 
 # standard status messages of optimizers
-_status_message = {'success': 'Optimization terminated successfully.',
-                   'maxfev': 'Maximum number of function evaluations has '
-                              'been exceeded.',
-                   'maxiter': 'Maximum number of iterations has been '
-                              'exceeded.',
-                   'pr_loss': 'Desired error not necessarily achieved due '
-                              'to precision loss.',
-                   'nan': 'NaN result encountered.',
-                   'out_of_bounds': 'The result is outside of the provided '
-                                    'bounds.'}
+_status_message = {"success": "Optimization terminated successfully.",
+                   "maxfev": "Maximum number of function evaluations has "
+                              "been exceeded.",
+                   "maxiter": "Maximum number of iterations has been "
+                              "exceeded.",
+                   "pr_loss": "Desired error not necessarily achieved due "
+                              "to precision loss.",
+                   "nan": "NaN result encountered.",
+                   "out_of_bounds": "The result is outside of the provided "
+                                    "bounds."}
 
 
 class OptimizeResult(dict):
@@ -38,7 +38,7 @@ def _endprint(x, flag, fval, maxfun, xtol, disp):
                   "increase maxfun argument.\n")
     if flag == 2:
         if disp:
-            print("\n{}".format(_status_message['nan']))
+            print("\n{}".format(_status_message["nan"]))
     return
 
 
@@ -108,15 +108,15 @@ def fminbound(func, x1, x2, args=(), xtol=1e-5, maxfun=500,
 
 
     """
-    options = {'xatol': xtol,
-               'maxiter': maxfun,
+    options = {"xatol": xtol,
+               "maxiter": maxfun,
                }
 
     res = _minimize_scalar_bounded(func, (x1, x2), args, **options)
     if full_output:
-        return res['x'], res['fun'], res['status'], res['nfev']
+        return res["x"], res["fun"], res["status"], res["nfev"]
     else:
-        return res['x']
+        return res["x"]
 
 
 def _minimize_scalar_bounded(func, bounds, args=(),
@@ -140,15 +140,15 @@ def _minimize_scalar_bounded(func, bounds, args=(),
     maxfun = maxiter
     # Test bounds are of correct form
     if len(bounds) != 2:
-        raise ValueError('bounds must have two elements.')
+        raise ValueError("bounds must have two elements.")
     x1, x2 = bounds
 
     if x1 > x2:
         raise ValueError("The lower bound exceeds the upper bound.")
 
     flag = 0
-    header = ' Func-count     x          f(x)          Procedure'
-    step = '       initial'
+    header = " Func-count     x          f(x)          Procedure"
+    step = "       initial"
 
     sqrt_eps = cupy.sqrt(2.2e-16)
     golden_mean = 0.5 * (3.0 - cupy.sqrt(5.0))
@@ -192,7 +192,7 @@ def _minimize_scalar_bounded(func, bounds, args=(),
                     (p < q * (b - xf))):
                 rat = (p + 0.0) / q
                 x = xf + rat
-                step = '       parabolic'
+                step = "       parabolic"
 
                 if ((x - a) < tol2) or ((b - x) < tol2):
                     si = cupy.sign(xm - xf) + ((xm - xf) == 0)
@@ -206,7 +206,7 @@ def _minimize_scalar_bounded(func, bounds, args=(),
             else:
                 e = b - xf
             rat = golden_mean*e
-            step = '       golden'
+            step = "       golden"
 
         si = cupy.sign(rat) + (rat == 0)
         x = xf + si * cupy.maximum(cupy.abs(rat), tol1)
@@ -251,10 +251,10 @@ def _minimize_scalar_bounded(func, bounds, args=(),
         _endprint(x, flag, fval, maxfun, xatol, disp)
 
     result = OptimizeResult(fun=fval, status=flag, success=(flag == 0),
-                            message={0: 'Solution found.',
-                                     1: 'Maximum number of function calls '
-                                        'reached.',
-                                     2: _status_message['nan']}.get(flag, ''),
+                            message={0: "Solution found.",
+                                     1: "Maximum number of function calls "
+                                        "reached.",
+                                     2: _status_message["nan"]}.get(flag, ""),
                             x=xf, nfev=num, nit=num)
 
     return result

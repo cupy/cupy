@@ -34,7 +34,7 @@ def _correct_np_dtype(xp, dtype, out):
     # NumPy always transforms in double precision, cast output to correct type
     if xp is np and scipy_fft is None:
         if dtype in [np.float16, np.float32, np.complex64]:
-            if out.dtype.kind == 'f':
+            if out.dtype.kind == "f":
                 return out.astype(np.float32)
             else:
                 return out.astype(np.complex64)
@@ -42,20 +42,20 @@ def _correct_np_dtype(xp, dtype, out):
 
 
 def _skip_forward_backward(norm):
-    if norm in ('backward', 'forward'):
+    if norm in ("backward", "forward"):
         if (scipy_fft is not None
-                and not (np.lib.NumpyVersion(scipy.__version__) >= '1.6.0')):
-            pytest.skip('forward/backward is supported by SciPy 1.6.0+')
+                and not (np.lib.NumpyVersion(scipy.__version__) >= "1.6.0")):
+            pytest.skip("forward/backward is supported by SciPy 1.6.0+")
         elif (scipy_fft is None
-                and not (np.lib.NumpyVersion(np.__version__) >= '1.20.0')):
-            pytest.skip('forward/backward is supported by NumPy 1.20+')
+                and not (np.lib.NumpyVersion(np.__version__) >= "1.20.0")):
+            pytest.skip("forward/backward is supported by NumPy 1.20+")
 
 
 @testing.parameterize(*testing.product({
-    'n': [None, 0, 5, 10, 15],
-    'shape': [(9,), (10,), (10, 9), (10, 10)],
-    'axis': [-1, 0],
-    'norm': [None, 'backward', 'ortho', 'forward', '']
+    "n": [None, 0, 5, 10, 15],
+    "shape": [(9,), (10,), (10, 9), (10, 10)],
+    "axis": [-1, 0],
+    "norm": [None, "backward", "ortho", "forward", ""]
 }))
 class TestFft:
 
@@ -78,7 +78,7 @@ class TestFft:
                                  contiguous_check=False)
     def test_fft_overwrite(self, xp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
-        overwrite_kw = {} if xp is np else {'overwrite_x': True}
+        overwrite_kw = {} if xp is np else {"overwrite_x": True}
         out = _fft_module(xp).fft(x, n=self.n, axis=self.axis, norm=self.norm,
                                   **overwrite_kw)
         return _correct_np_dtype(xp, dtype, out)
@@ -94,7 +94,7 @@ class TestFft:
             return x
         x_orig = x.copy()
         if xp is cp:
-            overwrite_kw = {'plan': _fft_module(xp).get_fft_plan(
+            overwrite_kw = {"plan": _fft_module(xp).get_fft_plan(
                 x, shape=self.n, axes=self.axis)}
         else:
             overwrite_kw = {}
@@ -113,8 +113,8 @@ class TestFft:
         if self.n == 0:
             return x
         if xp is cp:
-            overwrite_kw = {'plan': _fft_module(xp).get_fft_plan(
-                x, shape=self.n, axes=self.axis), 'overwrite_x': True}
+            overwrite_kw = {"plan": _fft_module(xp).get_fft_plan(
+                x, shape=self.n, axes=self.axis), "overwrite_x": True}
         else:
             overwrite_kw = {}
         out = _fft_module(xp).fft(x, n=self.n, axis=self.axis, norm=self.norm,
@@ -144,20 +144,20 @@ class TestFft:
         testing.assert_array_equal(x, x_orig)
         return _correct_np_dtype(xp, dtype, out)
 
-    @testing.with_requires('scipy>=1.4.0')
+    @testing.with_requires("scipy>=1.4.0")
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_fft_backend(self, xp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
         x_orig = x.copy()
-        backend = 'scipy' if xp is np else cp_fft
+        backend = "scipy" if xp is np else cp_fft
         with scipy_fft.set_backend(backend):
             out = scipy_fft.fft(x, n=self.n, axis=self.axis, norm=self.norm)
         testing.assert_array_equal(x, x_orig)
         return _correct_np_dtype(xp, dtype, out)
 
-    @testing.with_requires('scipy>=1.5.0')
+    @testing.with_requires("scipy>=1.5.0")
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -169,13 +169,13 @@ class TestFft:
             return x
         x_orig = x.copy()
         if xp is cp:
-            overwrite_kw = {'plan': _fft_module(xp).get_fft_plan(
+            overwrite_kw = {"plan": _fft_module(xp).get_fft_plan(
                 x, shape=self.n, axes=self.axis)}
             backend = cp_fft
         else:
             # scipy raises NotImplementedError if plan is not None
-            overwrite_kw = {'plan': None}
-            backend = 'scipy'
+            overwrite_kw = {"plan": None}
+            backend = "scipy"
         with scipy_fft.set_backend(backend):
             out = scipy_fft.fft(x, n=self.n, axis=self.axis, norm=self.norm,
                                 **overwrite_kw)
@@ -197,7 +197,7 @@ class TestFft:
                                  contiguous_check=False)
     def test_ifft_overwrite(self, xp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
-        overwrite_kw = {} if xp is np else {'overwrite_x': True}
+        overwrite_kw = {} if xp is np else {"overwrite_x": True}
         out = _fft_module(xp).ifft(x, n=self.n, axis=self.axis, norm=self.norm,
                                    **overwrite_kw)
         return _correct_np_dtype(xp, dtype, out)
@@ -213,7 +213,7 @@ class TestFft:
             return x
         x_orig = x.copy()
         if xp is cp:
-            overwrite_kw = {'plan': _fft_module(xp).get_fft_plan(
+            overwrite_kw = {"plan": _fft_module(xp).get_fft_plan(
                 x, shape=self.n, axes=self.axis)}
         else:
             overwrite_kw = {}
@@ -232,8 +232,8 @@ class TestFft:
         if self.n == 0:
             return x
         if xp is cp:
-            overwrite_kw = {'plan': _fft_module(xp).get_fft_plan(
-                x, shape=self.n, axes=self.axis), 'overwrite_x': True}
+            overwrite_kw = {"plan": _fft_module(xp).get_fft_plan(
+                x, shape=self.n, axes=self.axis), "overwrite_x": True}
         else:
             overwrite_kw = {}
         out = _fft_module(xp).ifft(x, n=self.n, axis=self.axis, norm=self.norm,
@@ -263,20 +263,20 @@ class TestFft:
         testing.assert_array_equal(x, x_orig)
         return _correct_np_dtype(xp, dtype, out)
 
-    @testing.with_requires('scipy>=1.4.0')
+    @testing.with_requires("scipy>=1.4.0")
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_ifft_backend(self, xp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
         x_orig = x.copy()
-        backend = 'scipy' if xp is np else cp_fft
+        backend = "scipy" if xp is np else cp_fft
         with scipy_fft.set_backend(backend):
             out = scipy_fft.ifft(x, n=self.n, axis=self.axis, norm=self.norm)
         testing.assert_array_equal(x, x_orig)
         return _correct_np_dtype(xp, dtype, out)
 
-    @testing.with_requires('scipy>=1.5.0')
+    @testing.with_requires("scipy>=1.5.0")
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -288,13 +288,13 @@ class TestFft:
             return x
         x_orig = x.copy()
         if xp is cp:
-            overwrite_kw = {'plan': _fft_module(xp).get_fft_plan(
+            overwrite_kw = {"plan": _fft_module(xp).get_fft_plan(
                 x, shape=self.n, axes=self.axis)}
             backend = cp_fft
         else:
             # scipy raises NotImplementedError if plan is not None
-            overwrite_kw = {'plan': None}
-            backend = 'scipy'
+            overwrite_kw = {"plan": None}
+            backend = "scipy"
         with scipy_fft.set_backend(backend):
             out = scipy_fft.ifft(x, n=self.n, axis=self.axis, norm=self.norm,
                                  **overwrite_kw)
@@ -305,17 +305,17 @@ class TestFft:
 @testing.parameterize(*(
     testing.product_dict(
         testing.product({
-            'shape': [(3, 4)],
-            's': [None, (1, 5)],
-            'axes': [None, (-2, -1), (-1, -2), (0,)],
+            "shape": [(3, 4)],
+            "s": [None, (1, 5)],
+            "axes": [None, (-2, -1), (-1, -2), (0,)],
         })
         + testing.product({
-            'shape': [(2, 3, 4)],
-            's': [None, (1, 5), (1, 4, 10)],
-            'axes': [None, (-2, -1), (-1, -2, -3)],
+            "shape": [(2, 3, 4)],
+            "s": [None, (1, 5), (1, 4, 10)],
+            "axes": [None, (-2, -1), (-1, -2, -3)],
         }),
         testing.product({
-            'norm': [None, 'backward', 'ortho', 'forward', '']
+            "norm": [None, "backward", "ortho", "forward", ""]
         })
     )
 ))
@@ -340,7 +340,7 @@ class TestFft2:
                                  contiguous_check=False)
     def test_fft2_overwrite(self, xp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
-        overwrite_kw = {} if xp is np else {'overwrite_x': True}
+        overwrite_kw = {} if xp is np else {"overwrite_x": True}
         out = _fft_module(xp).fft2(x, s=self.s, axes=self.axes,
                                    norm=self.norm, **overwrite_kw)
         return _correct_np_dtype(xp, dtype, out)
@@ -355,7 +355,7 @@ class TestFft2:
             return x
         x_orig = x.copy()
         if xp is cp:
-            overwrite_kw = {'plan': _fft_module(xp).get_fft_plan(
+            overwrite_kw = {"plan": _fft_module(xp).get_fft_plan(
                 x, shape=self.s, axes=self.axes)}
         else:
             overwrite_kw = {}
@@ -373,8 +373,8 @@ class TestFft2:
         if _default_fft_func(x, s=self.s, axes=self.axes) is not _fftn:
             return x
         if xp is cp:
-            overwrite_kw = {'plan': _fft_module(xp).get_fft_plan(
-                x, shape=self.s, axes=self.axes), 'overwrite_x': True}
+            overwrite_kw = {"plan": _fft_module(xp).get_fft_plan(
+                x, shape=self.s, axes=self.axes), "overwrite_x": True}
         else:
             overwrite_kw = {}
         out = _fft_module(xp).fft2(x, s=self.s, axes=self.axes, norm=self.norm,
@@ -403,20 +403,20 @@ class TestFft2:
         testing.assert_array_equal(x, x_orig)
         return _correct_np_dtype(xp, dtype, out)
 
-    @testing.with_requires('scipy>=1.4.0')
+    @testing.with_requires("scipy>=1.4.0")
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_fft2_backend(self, xp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
         x_orig = x.copy()
-        backend = 'scipy' if xp is np else cp_fft
+        backend = "scipy" if xp is np else cp_fft
         with scipy_fft.set_backend(backend):
             out = scipy_fft.fft2(x, s=self.s, axes=self.axes, norm=self.norm)
         testing.assert_array_equal(x, x_orig)
         return _correct_np_dtype(xp, dtype, out)
 
-    @testing.with_requires('scipy>=1.5.0')
+    @testing.with_requires("scipy>=1.5.0")
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -427,13 +427,13 @@ class TestFft2:
             return x
         x_orig = x.copy()
         if xp is cp:
-            overwrite_kw = {'plan': _fft_module(xp).get_fft_plan(
+            overwrite_kw = {"plan": _fft_module(xp).get_fft_plan(
                 x, shape=self.s, axes=self.axes)}
             backend = cp_fft
         else:
             # scipy raises NotImplementedError if plan is not None
-            overwrite_kw = {'plan': None}
-            backend = 'scipy'
+            overwrite_kw = {"plan": None}
+            backend = "scipy"
         with scipy_fft.set_backend(backend):
             out = scipy_fft.fft2(x, s=self.s, axes=self.axes, norm=self.norm,
                                  **overwrite_kw)
@@ -456,7 +456,7 @@ class TestFft2:
                                  contiguous_check=False)
     def test_ifft2_overwrite(self, xp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
-        overwrite_kw = {} if xp is np else {'overwrite_x': True}
+        overwrite_kw = {} if xp is np else {"overwrite_x": True}
         out = _fft_module(xp).ifft2(x, s=self.s, axes=self.axes,
                                     norm=self.norm, **overwrite_kw)
         return _correct_np_dtype(xp, dtype, out)
@@ -471,7 +471,7 @@ class TestFft2:
             return x
         x_orig = x.copy()
         if xp is cp:
-            overwrite_kw = {'plan': _fft_module(xp).get_fft_plan(
+            overwrite_kw = {"plan": _fft_module(xp).get_fft_plan(
                 x, shape=self.s, axes=self.axes)}
         else:
             overwrite_kw = {}
@@ -489,8 +489,8 @@ class TestFft2:
         if _default_fft_func(x, s=self.s, axes=self.axes) is not _fftn:
             return x
         if xp is cp:
-            overwrite_kw = {'plan': _fft_module(xp).get_fft_plan(
-                x, shape=self.s, axes=self.axes), 'overwrite_x': True}
+            overwrite_kw = {"plan": _fft_module(xp).get_fft_plan(
+                x, shape=self.s, axes=self.axes), "overwrite_x": True}
         else:
             overwrite_kw = {}
         out = _fft_module(xp).ifft2(x, s=self.s, axes=self.axes,
@@ -519,20 +519,20 @@ class TestFft2:
         testing.assert_array_equal(x, x_orig)
         return _correct_np_dtype(xp, dtype, out)
 
-    @testing.with_requires('scipy>=1.4.0')
+    @testing.with_requires("scipy>=1.4.0")
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_ifft2_backend(self, xp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
         x_orig = x.copy()
-        backend = 'scipy' if xp is np else cp_fft
+        backend = "scipy" if xp is np else cp_fft
         with scipy_fft.set_backend(backend):
             out = scipy_fft.ifft2(x, s=self.s, axes=self.axes, norm=self.norm)
         testing.assert_array_equal(x, x_orig)
         return _correct_np_dtype(xp, dtype, out)
 
-    @testing.with_requires('scipy>=1.5.0')
+    @testing.with_requires("scipy>=1.5.0")
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -543,13 +543,13 @@ class TestFft2:
             return x
         x_orig = x.copy()
         if xp is cp:
-            overwrite_kw = {'plan': _fft_module(xp).get_fft_plan(
+            overwrite_kw = {"plan": _fft_module(xp).get_fft_plan(
                 x, shape=self.s, axes=self.axes)}
             backend = cp_fft
         else:
             # scipy raises NotImplementedError if plan is not None
-            overwrite_kw = {'plan': None}
-            backend = 'scipy'
+            overwrite_kw = {"plan": None}
+            backend = "scipy"
         with scipy_fft.set_backend(backend):
             out = scipy_fft.ifft2(x, s=self.s, axes=self.axes, norm=self.norm,
                                   **overwrite_kw)
@@ -560,22 +560,22 @@ class TestFft2:
 @testing.parameterize(*(
     testing.product_dict(
         testing.product({
-            'shape': [(3, 4)],
-            's': [None, (1, 5)],
-            'axes': [None, (-2, -1), (-1, -2), (0,)],
+            "shape": [(3, 4)],
+            "s": [None, (1, 5)],
+            "axes": [None, (-2, -1), (-1, -2), (0,)],
         })
         + testing.product({
-            'shape': [(2, 3, 4)],
-            's': [None, (1, 5), (1, 4, 10)],
-            'axes': [None, (0, 1), (-2, -1), (-1, -2, -3)],
+            "shape": [(2, 3, 4)],
+            "s": [None, (1, 5), (1, 4, 10)],
+            "axes": [None, (0, 1), (-2, -1), (-1, -2, -3)],
         })
         + testing.product({
-            'shape': [(2, 3, 4, 5)],
-            's': [None],
-            'axes': [None, (0, 1, 2, 3)],
+            "shape": [(2, 3, 4, 5)],
+            "s": [None],
+            "axes": [None, (0, 1, 2, 3)],
         }),
         testing.product({
-            'norm': [None, 'backward', 'ortho', 'forward', '']
+            "norm": [None, "backward", "ortho", "forward", ""]
         })
     )
 ))
@@ -601,7 +601,7 @@ class TestFftn:
                                  contiguous_check=False)
     def test_fftn_overwrite(self, xp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
-        overwrite_kw = {} if xp is np else {'overwrite_x': True}
+        overwrite_kw = {} if xp is np else {"overwrite_x": True}
         out = _fft_module(xp).fftn(x, s=self.s, axes=self.axes,
                                    norm=self.norm, **overwrite_kw)
         return _correct_np_dtype(xp, dtype, out)
@@ -616,7 +616,7 @@ class TestFftn:
             return x
         x_orig = x.copy()
         if xp is cp:
-            overwrite_kw = {'plan': _fft_module(xp).get_fft_plan(
+            overwrite_kw = {"plan": _fft_module(xp).get_fft_plan(
                 x, shape=self.s, axes=self.axes)}
         else:
             overwrite_kw = {}
@@ -634,8 +634,8 @@ class TestFftn:
         if _default_fft_func(x, s=self.s, axes=self.axes) is not _fftn:
             return x
         if xp is cp:
-            overwrite_kw = {'plan': _fft_module(xp).get_fft_plan(
-                x, shape=self.s, axes=self.axes), 'overwrite_x': True}
+            overwrite_kw = {"plan": _fft_module(xp).get_fft_plan(
+                x, shape=self.s, axes=self.axes), "overwrite_x": True}
         else:
             overwrite_kw = {}
         out = _fft_module(xp).fftn(x, s=self.s, axes=self.axes, norm=self.norm,
@@ -664,20 +664,20 @@ class TestFftn:
         testing.assert_array_equal(x, x_orig)
         return _correct_np_dtype(xp, dtype, out)
 
-    @testing.with_requires('scipy>=1.4.0')
+    @testing.with_requires("scipy>=1.4.0")
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_fftn_backend(self, xp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
         x_orig = x.copy()
-        backend = 'scipy' if xp is np else cp_fft
+        backend = "scipy" if xp is np else cp_fft
         with scipy_fft.set_backend(backend):
             out = scipy_fft.fftn(x, s=self.s, axes=self.axes, norm=self.norm)
         testing.assert_array_equal(x, x_orig)
         return _correct_np_dtype(xp, dtype, out)
 
-    @testing.with_requires('scipy>=1.5.0')
+    @testing.with_requires("scipy>=1.5.0")
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -688,13 +688,13 @@ class TestFftn:
             return x
         x_orig = x.copy()
         if xp is cp:
-            overwrite_kw = {'plan': _fft_module(xp).get_fft_plan(
+            overwrite_kw = {"plan": _fft_module(xp).get_fft_plan(
                 x, shape=self.s, axes=self.axes)}
             backend = cp_fft
         else:
             # scipy raises NotImplementedError if plan is not None
-            overwrite_kw = {'plan': None}
-            backend = 'scipy'
+            overwrite_kw = {"plan": None}
+            backend = "scipy"
         with scipy_fft.set_backend(backend):
             out = scipy_fft.fftn(x, s=self.s, axes=self.axes, norm=self.norm,
                                  **overwrite_kw)
@@ -717,7 +717,7 @@ class TestFftn:
                                  contiguous_check=False)
     def test_ifftn_overwrite(self, xp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
-        overwrite_kw = {} if xp is np else {'overwrite_x': True}
+        overwrite_kw = {} if xp is np else {"overwrite_x": True}
         out = _fft_module(xp).ifftn(x, s=self.s, axes=self.axes,
                                     norm=self.norm, **overwrite_kw)
         return _correct_np_dtype(xp, dtype, out)
@@ -732,7 +732,7 @@ class TestFftn:
             return x
         x_orig = x.copy()
         if xp is cp:
-            overwrite_kw = {'plan': _fft_module(xp).get_fft_plan(
+            overwrite_kw = {"plan": _fft_module(xp).get_fft_plan(
                 x, shape=self.s, axes=self.axes)}
         else:
             overwrite_kw = {}
@@ -750,8 +750,8 @@ class TestFftn:
         if _default_fft_func(x, s=self.s, axes=self.axes) is not _fftn:
             return x
         if xp is cp:
-            overwrite_kw = {'plan': _fft_module(xp).get_fft_plan(
-                x, shape=self.s, axes=self.axes), 'overwrite_x': True}
+            overwrite_kw = {"plan": _fft_module(xp).get_fft_plan(
+                x, shape=self.s, axes=self.axes), "overwrite_x": True}
         else:
             overwrite_kw = {}
         out = _fft_module(xp).ifftn(x, s=self.s, axes=self.axes,
@@ -780,20 +780,20 @@ class TestFftn:
         testing.assert_array_equal(x, x_orig)
         return _correct_np_dtype(xp, dtype, out)
 
-    @testing.with_requires('scipy>=1.4.0')
+    @testing.with_requires("scipy>=1.4.0")
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_ifftn_backend(self, xp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
         x_orig = x.copy()
-        backend = 'scipy' if xp is np else cp_fft
+        backend = "scipy" if xp is np else cp_fft
         with scipy_fft.set_backend(backend):
             out = scipy_fft.ifftn(x, s=self.s, axes=self.axes, norm=self.norm)
         testing.assert_array_equal(x, x_orig)
         return _correct_np_dtype(xp, dtype, out)
 
-    @testing.with_requires('scipy>=1.5.0')
+    @testing.with_requires("scipy>=1.5.0")
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -804,13 +804,13 @@ class TestFftn:
             return x
         x_orig = x.copy()
         if xp is cp:
-            overwrite_kw = {'plan': _fft_module(xp).get_fft_plan(
+            overwrite_kw = {"plan": _fft_module(xp).get_fft_plan(
                 x, shape=self.s, axes=self.axes)}
             backend = cp_fft
         else:
             # scipy raises NotImplementedError if plan is not None
-            overwrite_kw = {'plan': None}
-            backend = 'scipy'
+            overwrite_kw = {"plan": None}
+            backend = "scipy"
         with scipy_fft.set_backend(backend):
             out = scipy_fft.ifftn(x, s=self.s, axes=self.axes, norm=self.norm,
                                   **overwrite_kw)
@@ -819,10 +819,10 @@ class TestFftn:
 
 
 @testing.parameterize(*testing.product({
-    'n': [None, 5, 10, 15],
-    'shape': [(9,), (10,), (10, 9), (10, 10)],
-    'axis': [-1, 0],
-    'norm': [None, 'backward', 'ortho', 'forward', '']
+    "n": [None, 5, 10, 15],
+    "shape": [(9,), (10,), (10, 9), (10, 10)],
+    "axis": [-1, 0],
+    "norm": [None, "backward", "ortho", "forward", ""]
 }))
 class TestRfft:
 
@@ -845,7 +845,7 @@ class TestRfft:
                                  contiguous_check=False)
     def test_rfft_overwrite(self, xp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
-        overwrite_kw = {} if xp is np else {'overwrite_x': True}
+        overwrite_kw = {} if xp is np else {"overwrite_x": True}
         out = _fft_module(xp).rfft(x, n=self.n, axis=self.axis,
                                    norm=self.norm, **overwrite_kw)
         return _correct_np_dtype(xp, dtype, out)
@@ -857,8 +857,8 @@ class TestRfft:
         x = testing.shaped_random(self.shape, xp, dtype)
         x_orig = x.copy()
         if xp is cp:
-            kw = {'plan': _fft_module(xp).get_fft_plan(
-                x, shape=self.n, axes=self.axis, value_type='R2C')}
+            kw = {"plan": _fft_module(xp).get_fft_plan(
+                x, shape=self.n, axes=self.axis, value_type="R2C")}
         else:
             kw = {}
         out = _fft_module(xp).rfft(x, n=self.n, axis=self.axis, norm=self.norm,
@@ -866,14 +866,14 @@ class TestRfft:
         testing.assert_array_equal(x, x_orig)
         return _correct_np_dtype(xp, dtype, out)
 
-    @testing.with_requires('scipy>=1.4.0')
+    @testing.with_requires("scipy>=1.4.0")
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-6, accept_error=ValueError,
                                  contiguous_check=False)
     def test_rfft_backend(self, xp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
         x_orig = x.copy()
-        backend = 'scipy' if xp is np else cp_fft
+        backend = "scipy" if xp is np else cp_fft
         with scipy_fft.set_backend(backend):
             out = scipy_fft.rfft(x, n=self.n, axis=self.axis, norm=self.norm)
         testing.assert_array_equal(x, x_orig)
@@ -885,9 +885,9 @@ class TestRfft:
     def test_rfft_overwrite_plan(self, xp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
         if xp is cp:
-            kw = {'plan': _fft_module(xp).get_fft_plan(
-                x, shape=self.n, axes=self.axis, value_type='R2C'),
-                'overwrite_x': True}
+            kw = {"plan": _fft_module(xp).get_fft_plan(
+                x, shape=self.n, axes=self.axis, value_type="R2C"),
+                "overwrite_x": True}
         else:
             kw = {}
         out = _fft_module(xp).rfft(x, n=self.n, axis=self.axis, norm=self.norm,
@@ -903,7 +903,7 @@ class TestRfft:
         if xp is cp:
             from cupy.cuda.cufft import get_current_plan
             plan = _fft_module(xp).get_fft_plan(
-                x, shape=self.n, axes=self.axis, value_type='R2C')
+                x, shape=self.n, axes=self.axis, value_type="R2C")
             with plan:
                 assert id(plan) == id(get_current_plan())
                 out = _fft_module(xp).rfft(x, n=self.n, axis=self.axis)
@@ -931,7 +931,7 @@ class TestRfft:
                                  contiguous_check=False)
     def test_irfft_overwrite(self, xp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
-        overwrite_kw = {} if xp is np else {'overwrite_x': True}
+        overwrite_kw = {} if xp is np else {"overwrite_x": True}
         out = _fft_module(xp).irfft(x, n=self.n, axis=self.axis,
                                     norm=self.norm, **overwrite_kw)
         return _correct_np_dtype(xp, dtype, out)
@@ -943,8 +943,8 @@ class TestRfft:
         x = testing.shaped_random(self.shape, xp, dtype)
         x_orig = x.copy()
         if xp is cp:
-            kw = {'plan': _fft_module(xp).get_fft_plan(
-                x, shape=self.n, axes=self.axis, value_type='C2R')}
+            kw = {"plan": _fft_module(xp).get_fft_plan(
+                x, shape=self.n, axes=self.axis, value_type="C2R")}
         else:
             kw = {}
         out = _fft_module(xp).irfft(
@@ -958,9 +958,9 @@ class TestRfft:
     def test_irfft_overwrite_plan(self, xp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
         if xp is cp:
-            kw = {'plan': _fft_module(xp).get_fft_plan(
-                x, shape=self.n, axes=self.axis, value_type='C2R'),
-                'overwrite_x': True}
+            kw = {"plan": _fft_module(xp).get_fft_plan(
+                x, shape=self.n, axes=self.axis, value_type="C2R"),
+                "overwrite_x": True}
         else:
             kw = {}
         out = _fft_module(xp).irfft(
@@ -976,7 +976,7 @@ class TestRfft:
         if xp is cp:
             from cupy.cuda.cufft import get_current_plan
             plan = _fft_module(xp).get_fft_plan(
-                x, shape=self.n, axes=self.axis, value_type='C2R')
+                x, shape=self.n, axes=self.axis, value_type="C2R")
             with plan:
                 assert id(plan) == id(get_current_plan())
                 out = _fft_module(xp).irfft(x, n=self.n, axis=self.axis)
@@ -986,14 +986,14 @@ class TestRfft:
         testing.assert_array_equal(x, x_orig)
         return _correct_np_dtype(xp, dtype, out)
 
-    @testing.with_requires('scipy>=1.4.0')
+    @testing.with_requires("scipy>=1.4.0")
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-5, accept_error=ValueError,
                                  contiguous_check=False)
     def test_irfft_backend(self, xp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
         x_orig = x.copy()
-        backend = 'scipy' if xp is np else cp_fft
+        backend = "scipy" if xp is np else cp_fft
         with scipy_fft.set_backend(backend):
             out = scipy_fft.irfft(x, n=self.n, axis=self.axis, norm=self.norm)
         testing.assert_array_equal(x, x_orig)
@@ -1011,22 +1011,22 @@ def _skip_hipFFT_PlanNd_bug(axes, shape):
 
 @testing.parameterize(*(
     testing.product_dict([
-        {'shape': (3, 4), 's': None, 'axes': None},
-        {'shape': (3, 4), 's': (1, 5), 'axes': None},
-        {'shape': (3, 4), 's': None, 'axes': (-2, -1)},
-        {'shape': (3, 4), 's': None, 'axes': (-1, -2)},
-        {'shape': (3, 4), 's': None, 'axes': (0,)},
-        {'shape': (3, 4), 's': None, 'axes': None},
-        {'shape': (2, 3, 4), 's': None, 'axes': None},
-        {'shape': (2, 3, 4), 's': (1, 4, 10), 'axes': None},
-        {'shape': (2, 3, 4), 's': None, 'axes': (-3, -2, -1)},
-        {'shape': (2, 3, 4), 's': None, 'axes': (-1, -2, -3)},
-        {'shape': (2, 3, 4), 's': None, 'axes': (0, 1)},
-        {'shape': (2, 3, 4), 's': None, 'axes': None},
-        {'shape': (2, 3, 4), 's': (2, 3), 'axes': (0, 1, 2)},
-        {'shape': (2, 3, 4, 5), 's': None, 'axes': None},
+        {"shape": (3, 4), "s": None, "axes": None},
+        {"shape": (3, 4), "s": (1, 5), "axes": None},
+        {"shape": (3, 4), "s": None, "axes": (-2, -1)},
+        {"shape": (3, 4), "s": None, "axes": (-1, -2)},
+        {"shape": (3, 4), "s": None, "axes": (0,)},
+        {"shape": (3, 4), "s": None, "axes": None},
+        {"shape": (2, 3, 4), "s": None, "axes": None},
+        {"shape": (2, 3, 4), "s": (1, 4, 10), "axes": None},
+        {"shape": (2, 3, 4), "s": None, "axes": (-3, -2, -1)},
+        {"shape": (2, 3, 4), "s": None, "axes": (-1, -2, -3)},
+        {"shape": (2, 3, 4), "s": None, "axes": (0, 1)},
+        {"shape": (2, 3, 4), "s": None, "axes": None},
+        {"shape": (2, 3, 4), "s": (2, 3), "axes": (0, 1, 2)},
+        {"shape": (2, 3, 4, 5), "s": None, "axes": None},
     ],
-        testing.product({'norm': [None, 'backward', 'ortho', 'forward', '']})
+        testing.product({"norm": [None, "backward", "ortho", "forward", ""]})
     )
 ))
 class TestRfft2:
@@ -1051,7 +1051,7 @@ class TestRfft2:
                                  contiguous_check=False)
     def test_rfft2_overwrite(self, xp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
-        overwrite_kw = {} if xp is np else {'overwrite_x': True}
+        overwrite_kw = {} if xp is np else {"overwrite_x": True}
         out = _fft_module(xp).rfft2(x, s=self.s, axes=self.axes,
                                     norm=self.norm, **overwrite_kw)
         return _correct_np_dtype(xp, dtype, out)
@@ -1067,12 +1067,12 @@ class TestRfft2:
         # hack: skip testing if getting a cuFFT plan is impossible
         try:
             plan = _fft_module(cp).get_fft_plan(
-                x, shape=self.s, axes=self.axes, value_type='R2C')
+                x, shape=self.s, axes=self.axes, value_type="R2C")
         except ValueError:
             return x
 
         if xp is cp:
-            kw = {'plan': plan}
+            kw = {"plan": plan}
         else:
             kw = {}
         out = _fft_module(xp).rfft2(
@@ -1090,12 +1090,12 @@ class TestRfft2:
         # hack: skip testing if getting a cuFFT plan is impossible
         try:
             plan = _fft_module(cp).get_fft_plan(
-                x, shape=self.s, axes=self.axes, value_type='R2C')
+                x, shape=self.s, axes=self.axes, value_type="R2C")
         except ValueError:
             return x
 
         if xp is cp:
-            kw = {'plan': plan, 'overwrite_x': True}
+            kw = {"plan": plan, "overwrite_x": True}
         else:
             kw = {}
         out = _fft_module(xp).rfft2(
@@ -1113,7 +1113,7 @@ class TestRfft2:
         # hack: skip testing if getting a cuFFT plan is impossible
         try:
             plan = _fft_module(cp).get_fft_plan(
-                x, shape=self.s, axes=self.axes, value_type='R2C')
+                x, shape=self.s, axes=self.axes, value_type="R2C")
         except ValueError:
             return x
 
@@ -1128,14 +1128,14 @@ class TestRfft2:
         testing.assert_array_equal(x, x_orig)
         return _correct_np_dtype(xp, dtype, out)
 
-    @testing.with_requires('scipy>=1.4.0')
+    @testing.with_requires("scipy>=1.4.0")
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_rfft2_backend(self, xp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
         x_orig = x.copy()
-        backend = 'scipy' if xp is np else cp_fft
+        backend = "scipy" if xp is np else cp_fft
         with scipy_fft.set_backend(backend):
             out = scipy_fft.rfft2(x, s=self.s, axes=self.axes, norm=self.norm)
         testing.assert_array_equal(x, x_orig)
@@ -1162,7 +1162,7 @@ class TestRfft2:
                                  contiguous_check=False)
     def test_irfft2_overwrite(self, xp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
-        overwrite_kw = {} if xp is np else {'overwrite_x': True}
+        overwrite_kw = {} if xp is np else {"overwrite_x": True}
         out = _fft_module(xp).irfft2(x, s=self.s, axes=self.axes,
                                      norm=self.norm, **overwrite_kw)
         return _correct_np_dtype(xp, dtype, out)
@@ -1181,12 +1181,12 @@ class TestRfft2:
         # hack: skip testing if getting a cuFFT plan is impossible
         try:
             plan = _fft_module(cp).get_fft_plan(
-                x, shape=self.s, axes=self.axes, value_type='C2R')
+                x, shape=self.s, axes=self.axes, value_type="C2R")
         except ValueError:
             return x
 
         if xp is cp:
-            kw = {'plan': plan}
+            kw = {"plan": plan}
         else:
             kw = {}
         out = _fft_module(xp).irfft2(
@@ -1208,12 +1208,12 @@ class TestRfft2:
         # hack: skip testing if getting a cuFFT plan is impossible
         try:
             plan = _fft_module(cp).get_fft_plan(
-                x, shape=self.s, axes=self.axes, value_type='C2R')
+                x, shape=self.s, axes=self.axes, value_type="C2R")
         except ValueError:
             return x
 
         if xp is cp:
-            kw = {'plan': plan, 'overwrite_x': True}
+            kw = {"plan": plan, "overwrite_x": True}
         else:
             kw = {}
         out = _fft_module(xp).irfft2(
@@ -1234,7 +1234,7 @@ class TestRfft2:
         # hack: skip testing if getting a cuFFT plan is impossible
         try:
             plan = _fft_module(cp).get_fft_plan(
-                x, shape=self.s, axes=self.axes, value_type='C2R')
+                x, shape=self.s, axes=self.axes, value_type="C2R")
         except ValueError:
             return x
 
@@ -1252,14 +1252,14 @@ class TestRfft2:
 
     @pytest.mark.skipif(_irfft_skip_condition,
                         reason="Known to fail with Pascal or older")
-    @testing.with_requires('scipy>=1.4.0')
+    @testing.with_requires("scipy>=1.4.0")
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_irfft2_backend(self, xp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
         x_orig = x.copy()
-        backend = 'scipy' if xp is np else cp_fft
+        backend = "scipy" if xp is np else cp_fft
         with scipy_fft.set_backend(backend):
             out = scipy_fft.irfft2(x, s=self.s, axes=self.axes, norm=self.norm)
         testing.assert_array_equal(x, x_orig)
@@ -1268,22 +1268,22 @@ class TestRfft2:
 
 @testing.parameterize(*(
     testing.product_dict([
-        {'shape': (3, 4), 's': None, 'axes': None},
-        {'shape': (3, 4), 's': (1, 5), 'axes': None},
-        {'shape': (3, 4), 's': None, 'axes': (-2, -1)},
-        {'shape': (3, 4), 's': None, 'axes': (-1, -2)},
-        {'shape': (3, 4), 's': None, 'axes': (0,)},
-        {'shape': (3, 4), 's': None, 'axes': None},
-        {'shape': (2, 3, 4), 's': None, 'axes': None},
-        {'shape': (2, 3, 4), 's': (1, 4, 10), 'axes': None},
-        {'shape': (2, 3, 4), 's': None, 'axes': (-3, -2, -1)},
-        {'shape': (2, 3, 4), 's': None, 'axes': (-1, -2, -3)},
-        {'shape': (2, 3, 4), 's': None, 'axes': (0, 1)},
-        {'shape': (2, 3, 4), 's': None, 'axes': None},
-        {'shape': (2, 3, 4), 's': (2, 3), 'axes': (0, 1, 2)},
-        {'shape': (2, 3, 4, 5), 's': None, 'axes': None},
+        {"shape": (3, 4), "s": None, "axes": None},
+        {"shape": (3, 4), "s": (1, 5), "axes": None},
+        {"shape": (3, 4), "s": None, "axes": (-2, -1)},
+        {"shape": (3, 4), "s": None, "axes": (-1, -2)},
+        {"shape": (3, 4), "s": None, "axes": (0,)},
+        {"shape": (3, 4), "s": None, "axes": None},
+        {"shape": (2, 3, 4), "s": None, "axes": None},
+        {"shape": (2, 3, 4), "s": (1, 4, 10), "axes": None},
+        {"shape": (2, 3, 4), "s": None, "axes": (-3, -2, -1)},
+        {"shape": (2, 3, 4), "s": None, "axes": (-1, -2, -3)},
+        {"shape": (2, 3, 4), "s": None, "axes": (0, 1)},
+        {"shape": (2, 3, 4), "s": None, "axes": None},
+        {"shape": (2, 3, 4), "s": (2, 3), "axes": (0, 1, 2)},
+        {"shape": (2, 3, 4, 5), "s": None, "axes": None},
     ],
-        testing.product({'norm': [None, 'backward', 'ortho', 'forward', '']})
+        testing.product({"norm": [None, "backward", "ortho", "forward", ""]})
     )
 ))
 class TestRfftn:
@@ -1308,7 +1308,7 @@ class TestRfftn:
                                  contiguous_check=False)
     def test_rfftn_overwrite(self, xp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
-        overwrite_kw = {} if xp is np else {'overwrite_x': True}
+        overwrite_kw = {} if xp is np else {"overwrite_x": True}
         out = _fft_module(xp).rfftn(x, s=self.s, axes=self.axes,
                                     norm=self.norm, **overwrite_kw)
         return _correct_np_dtype(xp, dtype, out)
@@ -1324,12 +1324,12 @@ class TestRfftn:
         # hack: skip testing if getting a cuFFT plan is impossible
         try:
             plan = _fft_module(cp).get_fft_plan(
-                x, shape=self.s, axes=self.axes, value_type='R2C')
+                x, shape=self.s, axes=self.axes, value_type="R2C")
         except ValueError:
             return x
 
         if xp is cp:
-            kw = {'plan': plan}
+            kw = {"plan": plan}
         else:
             kw = {}
         out = _fft_module(xp).rfftn(
@@ -1347,12 +1347,12 @@ class TestRfftn:
         # hack: skip testing if getting a cuFFT plan is impossible
         try:
             plan = _fft_module(cp).get_fft_plan(
-                x, shape=self.s, axes=self.axes, value_type='R2C')
+                x, shape=self.s, axes=self.axes, value_type="R2C")
         except ValueError:
             return x
 
         if xp is cp:
-            kw = {'plan': plan, 'overwrite_x': True}
+            kw = {"plan": plan, "overwrite_x": True}
         else:
             kw = {}
         out = _fft_module(xp).rfftn(
@@ -1370,7 +1370,7 @@ class TestRfftn:
         # hack: skip testing if getting a cuFFT plan is impossible
         try:
             plan = _fft_module(cp).get_fft_plan(
-                x, shape=self.s, axes=self.axes, value_type='R2C')
+                x, shape=self.s, axes=self.axes, value_type="R2C")
         except ValueError:
             return x
 
@@ -1385,14 +1385,14 @@ class TestRfftn:
         testing.assert_array_equal(x, x_orig)
         return _correct_np_dtype(xp, dtype, out)
 
-    @testing.with_requires('scipy>=1.4.0')
+    @testing.with_requires("scipy>=1.4.0")
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_rfftn_backend(self, xp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
         x_orig = x.copy()
-        backend = 'scipy' if xp is np else cp_fft
+        backend = "scipy" if xp is np else cp_fft
         with scipy_fft.set_backend(backend):
             out = scipy_fft.rfftn(x, s=self.s, axes=self.axes, norm=self.norm)
         testing.assert_array_equal(x, x_orig)
@@ -1419,7 +1419,7 @@ class TestRfftn:
                                  contiguous_check=False)
     def test_irfftn_overwrite(self, xp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
-        overwrite_kw = {} if xp is np else {'overwrite_x': True}
+        overwrite_kw = {} if xp is np else {"overwrite_x": True}
         out = _fft_module(xp).irfftn(x, s=self.s, axes=self.axes,
                                      norm=self.norm, **overwrite_kw)
         return _correct_np_dtype(xp, dtype, out)
@@ -1438,12 +1438,12 @@ class TestRfftn:
         # hack: skip testing if getting a cuFFT plan is impossible
         try:
             plan = _fft_module(cp).get_fft_plan(
-                x, shape=self.s, axes=self.axes, value_type='C2R')
+                x, shape=self.s, axes=self.axes, value_type="C2R")
         except ValueError:
             return x
 
         if xp is cp:
-            kw = {'plan': plan}
+            kw = {"plan": plan}
         else:
             kw = {}
         out = _fft_module(xp).irfftn(
@@ -1465,12 +1465,12 @@ class TestRfftn:
         # hack: skip testing if getting a cuFFT plan is impossible
         try:
             plan = _fft_module(cp).get_fft_plan(
-                x, shape=self.s, axes=self.axes, value_type='C2R')
+                x, shape=self.s, axes=self.axes, value_type="C2R")
         except ValueError:
             return x
 
         if xp is cp:
-            kw = {'plan': plan, 'overwrite_x': True}
+            kw = {"plan": plan, "overwrite_x": True}
         else:
             kw = {}
         out = _fft_module(xp).irfftn(
@@ -1491,7 +1491,7 @@ class TestRfftn:
         # hack: skip testing if getting a cuFFT plan is impossible
         try:
             plan = _fft_module(cp).get_fft_plan(
-                x, shape=self.s, axes=self.axes, value_type='C2R')
+                x, shape=self.s, axes=self.axes, value_type="C2R")
         except ValueError:
             return x
 
@@ -1509,14 +1509,14 @@ class TestRfftn:
 
     @pytest.mark.skipif(_irfft_skip_condition,
                         reason="Known to fail with Pascal or older")
-    @testing.with_requires('scipy>=1.4.0')
+    @testing.with_requires("scipy>=1.4.0")
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_irfftn_backend(self, xp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
         x_orig = x.copy()
-        backend = 'scipy' if xp is np else cp_fft
+        backend = "scipy" if xp is np else cp_fft
         with scipy_fft.set_backend(backend):
             out = scipy_fft.irfftn(x, s=self.s, axes=self.axes, norm=self.norm)
         testing.assert_array_equal(x, x_orig)
@@ -1524,10 +1524,10 @@ class TestRfftn:
 
 
 @testing.parameterize(*testing.product({
-    'n': [None, 5, 10, 15],
-    'shape': [(10,), (10, 10)],
-    'axis': [0, -1],
-    'norm': [None, 'backward', 'ortho', 'forward', ''],
+    "n": [None, 5, 10, 15],
+    "shape": [(10,), (10, 10)],
+    "axis": [0, -1],
+    "norm": [None, "backward", "ortho", "forward", ""],
 }))
 class TestHfft:
 
@@ -1550,7 +1550,7 @@ class TestHfft:
                                  contiguous_check=False)
     def test_hfft_overwrite(self, xp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
-        overwrite_kw = {} if xp is np else {'overwrite_x': True}
+        overwrite_kw = {} if xp is np else {"overwrite_x": True}
         out = _fft_module(xp).hfft(x, n=self.n, axis=self.axis, norm=self.norm,
                                    **overwrite_kw)
         return _correct_np_dtype(xp, dtype, out)
@@ -1559,18 +1559,18 @@ class TestHfft:
     @testing.for_all_dtypes()
     def test_hfft_plan(self, dtype):
         x = testing.shaped_random(self.shape, cp, dtype)
-        with pytest.raises(NotImplementedError, match='not yet supported'):
+        with pytest.raises(NotImplementedError, match="not yet supported"):
             _fft_module(cp).hfft(x, n=self.n, axis=self.axis,
-                                 norm=self.norm, plan='abc')
+                                 norm=self.norm, plan="abc")
 
-    @testing.with_requires('scipy>=1.4.0')
+    @testing.with_requires("scipy>=1.4.0")
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=4e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_hfft_backend(self, xp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
         x_orig = x.copy()
-        backend = 'scipy' if xp is np else cp_fft
+        backend = "scipy" if xp is np else cp_fft
         with scipy_fft.set_backend(backend):
             out = scipy_fft.hfft(x, n=self.n, axis=self.axis, norm=self.norm)
         testing.assert_array_equal(x, x_orig)
@@ -1591,7 +1591,7 @@ class TestHfft:
                                  contiguous_check=False)
     def test_ihfft_overwrite(self, xp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
-        overwrite_kw = {} if xp is np else {'overwrite_x': True}
+        overwrite_kw = {} if xp is np else {"overwrite_x": True}
         out = _fft_module(xp).ihfft(x, n=self.n, norm=self.norm,
                                     **overwrite_kw)
         return _correct_np_dtype(xp, dtype, out)
@@ -1600,18 +1600,18 @@ class TestHfft:
     @testing.for_all_dtypes(no_complex=True)
     def test_ihfft_plan(self, dtype):
         x = testing.shaped_random(self.shape, cp, dtype)
-        with pytest.raises(NotImplementedError, match='not yet supported'):
+        with pytest.raises(NotImplementedError, match="not yet supported"):
             _fft_module(cp).ihfft(x, n=self.n, axis=self.axis,
-                                  norm=self.norm, plan='abc')
+                                  norm=self.norm, plan="abc")
 
-    @testing.with_requires('scipy>=1.4.0')
+    @testing.with_requires("scipy>=1.4.0")
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_ihfft_backend(self, xp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
         x_orig = x.copy()
-        backend = 'scipy' if xp is np else cp_fft
+        backend = "scipy" if xp is np else cp_fft
         with scipy_fft.set_backend(backend):
             out = scipy_fft.ihfft(x, n=self.n, axis=self.axis, norm=self.norm)
         testing.assert_array_equal(x, x_orig)
@@ -1620,22 +1620,22 @@ class TestHfft:
 
 @testing.parameterize(*(
     testing.product_dict([
-        {'shape': (2, 5), 's': None, 'axes': None},
-        {'shape': (2, 10), 's': (1, 5), 'axes': None},
-        {'shape': (2, 30), 's': None, 'axes': (-2, -1)},
-        {'shape': (2, 50), 's': None, 'axes': (-1, -2)},
-        {'shape': (2, 100), 's': (2, 50), 'axes': (0,)},
-        {'shape': (2, 3, 10), 's': None, 'axes': None},
-        {'shape': (2, 5, 20), 's': None, 'axes': (0, 1, 2)},
-        {'shape': (2, 10, 100), 's': (2, 10), 'axes': (0, -1, -2)},
-        {'shape': (2, 5, 10), 's': None, 'axes': (-2, -1, 0)},
-        {'shape': (2, 10, 50, 100), 's': (2, 10, 50), 'axes': (0,)},
+        {"shape": (2, 5), "s": None, "axes": None},
+        {"shape": (2, 10), "s": (1, 5), "axes": None},
+        {"shape": (2, 30), "s": None, "axes": (-2, -1)},
+        {"shape": (2, 50), "s": None, "axes": (-1, -2)},
+        {"shape": (2, 100), "s": (2, 50), "axes": (0,)},
+        {"shape": (2, 3, 10), "s": None, "axes": None},
+        {"shape": (2, 5, 20), "s": None, "axes": (0, 1, 2)},
+        {"shape": (2, 10, 100), "s": (2, 10), "axes": (0, -1, -2)},
+        {"shape": (2, 5, 10), "s": None, "axes": (-2, -1, 0)},
+        {"shape": (2, 10, 50, 100), "s": (2, 10, 50), "axes": (0,)},
 
     ],
-        testing.product({'norm': [None, 'backward', 'ortho', 'forward']})
+        testing.product({"norm": [None, "backward", "ortho", "forward"]})
     )
 ))
-@testing.with_requires('scipy>=1.4.0')
+@testing.with_requires("scipy>=1.4.0")
 class TestHfft2:
 
     @pytest.fixture(autouse=True)
@@ -1663,7 +1663,7 @@ class TestHfft2:
     def test_hfft2_backend(self, xp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
         x_orig = x.copy()
-        backend = 'scipy' if xp is np else cp_fft
+        backend = "scipy" if xp is np else cp_fft
         with scipy_fft.set_backend(backend):
             out = scipy_fft.hfft2(x, s=self.s, axes=self.axes, norm=self.norm)
         testing.assert_array_equal(x, x_orig)
@@ -1690,7 +1690,7 @@ class TestHfft2:
     def test_ihfft2_backend(self, xp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
         x_orig = x.copy()
-        backend = 'scipy' if xp is np else cp_fft
+        backend = "scipy" if xp is np else cp_fft
         with scipy_fft.set_backend(backend):
             out = scipy_fft.ihfft2(x, s=self.s, axes=self.axes, norm=self.norm)
         testing.assert_array_equal(x, x_orig)
@@ -1699,22 +1699,22 @@ class TestHfft2:
 
 @testing.parameterize(*(
     testing.product_dict([
-        {'shape': (2, 5), 's': None, 'axes': None},
-        {'shape': (2, 10), 's': (1, 5), 'axes': None},
-        {'shape': (2, 30), 's': None, 'axes': (-2, -1)},
-        {'shape': (2, 50), 's': None, 'axes': (-1, -2)},
-        {'shape': (3, 100), 's': (2, 50), 'axes': (0,)},
-        {'shape': (3, 3, 10), 's': None, 'axes': None},
-        {'shape': (3, 5, 20), 's': None, 'axes': (0, 1, 2)},
-        {'shape': (5, 10, 100), 's': (2, 10), 'axes': (0, -1, -2)},
-        {'shape': (6, 5, 10), 's': None, 'axes': (-2, -1, 0)},
-        {'shape': (7, 10, 50, 100), 's': (2, 10, 50), 'axes': (0,)},
+        {"shape": (2, 5), "s": None, "axes": None},
+        {"shape": (2, 10), "s": (1, 5), "axes": None},
+        {"shape": (2, 30), "s": None, "axes": (-2, -1)},
+        {"shape": (2, 50), "s": None, "axes": (-1, -2)},
+        {"shape": (3, 100), "s": (2, 50), "axes": (0,)},
+        {"shape": (3, 3, 10), "s": None, "axes": None},
+        {"shape": (3, 5, 20), "s": None, "axes": (0, 1, 2)},
+        {"shape": (5, 10, 100), "s": (2, 10), "axes": (0, -1, -2)},
+        {"shape": (6, 5, 10), "s": None, "axes": (-2, -1, 0)},
+        {"shape": (7, 10, 50, 100), "s": (2, 10, 50), "axes": (0,)},
 
     ],
-        testing.product({'norm': [None, 'backward', 'ortho', 'forward']})
+        testing.product({"norm": [None, "backward", "ortho", "forward"]})
     )
 ))
-@testing.with_requires('scipy>=1.4.0')
+@testing.with_requires("scipy>=1.4.0")
 class TestHfftn:
 
     @pytest.fixture(autouse=True)
@@ -1742,7 +1742,7 @@ class TestHfftn:
     def test_hfftn_backend(self, xp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
         x_orig = x.copy()
-        backend = 'scipy' if xp is np else cp_fft
+        backend = "scipy" if xp is np else cp_fft
         with scipy_fft.set_backend(backend):
             out = scipy_fft.hfftn(x, s=self.s, axes=self.axes, norm=self.norm)
         testing.assert_array_equal(x, x_orig)
@@ -1769,14 +1769,14 @@ class TestHfftn:
     def test_ihfftn_backend(self, xp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
         x_orig = x.copy()
-        backend = 'scipy' if xp is np else cp_fft
+        backend = "scipy" if xp is np else cp_fft
         with scipy_fft.set_backend(backend):
             out = scipy_fft.ihfftn(x, s=self.s, axes=self.axes, norm=self.norm)
         testing.assert_array_equal(x, x_orig)
         return _correct_np_dtype(xp, dtype, out)
 
 
-@pytest.mark.parametrize('func', [
+@pytest.mark.parametrize("func", [
     cp_fft.fft2, cp_fft.ifft2, cp_fft.rfft2, cp_fft.irfft2,
     cp_fft.fftn, cp_fft.ifftn, cp_fft.rfftn, cp_fft.irfftn])
 def test_scalar_shape_axes(func):

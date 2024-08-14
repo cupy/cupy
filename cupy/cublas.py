@@ -46,25 +46,25 @@ def batched_gesv(a, b):
         and a.shape[:-1] == b.shape[:a.ndim - 1]
     ):
         raise ValueError(
-            'a must have (..., M, M) shape and b must have (..., M) '
-            'or (..., M, K)')
+            "a must have (..., M, M) shape and b must have (..., M) "
+            "or (..., M, K)")
 
     dtype, out_dtype = _util.linalg_common_type(a, b)
     if b.size == 0:
         return cupy.empty(b.shape, out_dtype)
 
-    if dtype == 'f':
-        t = 's'
-    elif dtype == 'd':
-        t = 'd'
-    elif dtype == 'F':
-        t = 'c'
-    elif dtype == 'D':
-        t = 'z'
+    if dtype == "f":
+        t = "s"
+    elif dtype == "d":
+        t = "d"
+    elif dtype == "F":
+        t = "c"
+    elif dtype == "D":
+        t = "z"
     else:
-        raise TypeError('invalid dtype')
-    getrf = getattr(cublas, t + 'getrfBatched')
-    getrs = getattr(cublas, t + 'getrsBatched')
+        raise TypeError("invalid dtype")
+    getrf = getattr(cublas, t + "getrfBatched")
+    getrs = getattr(cublas, t + "getrsBatched")
 
     bs = numpy.prod(a.shape[:-2]) if a.ndim > 2 else 1
     n = a.shape[-1]
@@ -82,7 +82,7 @@ def batched_gesv(a, b):
         b = b.copy()
 
     if n > get_batched_gesv_limit():
-        warnings.warn('The matrix size ({}) exceeds the set limit ({})'.
+        warnings.warn("The matrix size ({}) exceeds the set limit ({})".
                       format(n, get_batched_gesv_limit()))
 
     handle = device.get_cublas_handle()
@@ -104,9 +104,9 @@ def batched_gesv(a, b):
     getrs(handle, cublas.CUBLAS_OP_N, n, nrhs, a_array.data.ptr, lda,
           pivot.data.ptr, b_array.data.ptr, ldb, info.ctypes.data, bs)
     if info[0] != 0:
-        msg = 'Error reported by {} in cuBLAS. '.format(getrs.__name__)
+        msg = "Error reported by {} in cuBLAS. ".format(getrs.__name__)
         if info[0] < 0:
-            msg += 'The {}-th parameter had an illegal value.'.format(-info[0])
+            msg += "The {}-th parameter had an illegal value.".format(-info[0])
         raise linalg.LinAlgError(msg)
 
     return b.transpose(0, 2, 1).reshape(b_shape).astype(out_dtype, copy=False)
@@ -117,7 +117,7 @@ def iamax(x, out=None):
 
     Note: The result index is 1-based index (not 0-based index).
     """
-    return _iamaxmin(x, out, 'amax')
+    return _iamaxmin(x, out, "amax")
 
 
 def iamin(x, out=None):
@@ -125,28 +125,28 @@ def iamin(x, out=None):
 
     Note: The result index is 1-based index (not 0-based index).
     """
-    return _iamaxmin(x, out, 'amin')
+    return _iamaxmin(x, out, "amin")
 
 
 def _iamaxmin(x, out, name):
     if x.ndim != 1:
-        raise ValueError('x must be a 1D array (actual: {})'.format(x.ndim))
+        raise ValueError("x must be a 1D array (actual: {})".format(x.ndim))
 
     dtype = x.dtype.char
-    if dtype == 'f':
-        t = 's'
-    elif dtype == 'd':
-        t = 'd'
-    elif dtype == 'F':
-        t = 'c'
-    elif dtype == 'D':
-        t = 'z'
+    if dtype == "f":
+        t = "s"
+    elif dtype == "d":
+        t = "d"
+    elif dtype == "F":
+        t = "c"
+    elif dtype == "D":
+        t = "z"
     else:
-        raise TypeError('invalid dtype')
-    func = getattr(cublas, 'i' + t + name)
+        raise TypeError("invalid dtype")
+    func = getattr(cublas, "i" + t + name)
 
     handle = device.get_cublas_handle()
-    result_dtype = 'i'
+    result_dtype = "i"
     result_ptr, result, orig_mode = _setup_result_ptr(
         handle, out, result_dtype)
     try:
@@ -164,19 +164,19 @@ def _iamaxmin(x, out, name):
 def asum(x, out=None):
     """Computes the sum of the absolute of x."""
     if x.ndim != 1:
-        raise ValueError('x must be a 1D array (actual: {})'.format(x.ndim))
+        raise ValueError("x must be a 1D array (actual: {})".format(x.ndim))
 
     dtype = x.dtype.char
-    if dtype == 'f':
+    if dtype == "f":
         func = cublas.sasum
-    elif dtype == 'd':
+    elif dtype == "d":
         func = cublas.dasum
-    elif dtype == 'F':
+    elif dtype == "F":
         func = cublas.scasum
-    elif dtype == 'D':
+    elif dtype == "D":
         func = cublas.dzasum
     else:
-        raise TypeError('invalid dtype')
+        raise TypeError("invalid dtype")
 
     handle = device.get_cublas_handle()
     result_dtype = dtype.lower()
@@ -202,16 +202,16 @@ def axpy(a, x, y):
     _check_two_vectors(x, y)
 
     dtype = x.dtype.char
-    if dtype == 'f':
+    if dtype == "f":
         func = cublas.saxpy
-    elif dtype == 'd':
+    elif dtype == "d":
         func = cublas.daxpy
-    elif dtype == 'F':
+    elif dtype == "F":
         func = cublas.caxpy
-    elif dtype == 'D':
+    elif dtype == "D":
         func = cublas.zaxpy
     else:
-        raise TypeError('invalid dtype')
+        raise TypeError("invalid dtype")
 
     handle = device.get_cublas_handle()
     a, a_ptr, orig_mode = _setup_scalar_ptr(handle, a, dtype)
@@ -224,14 +224,14 @@ def axpy(a, x, y):
 def dot(x, y, out=None):
     """Computes the dot product of x and y."""
     dtype = x.dtype.char
-    if dtype == 'f':
+    if dtype == "f":
         func = cublas.sdot
-    elif dtype == 'd':
+    elif dtype == "d":
         func = cublas.ddot
-    elif dtype in 'FD':
-        raise TypeError('Use dotu() or dotc() for complex dtype')
+    elif dtype in "FD":
+        raise TypeError("Use dotu() or dotc() for complex dtype")
     else:
-        raise TypeError('invalid dtype')
+        raise TypeError("invalid dtype")
     _check_two_vectors(x, y)
 
     handle = device.get_cublas_handle()
@@ -253,14 +253,14 @@ def dot(x, y, out=None):
 def dotu(x, y, out=None):
     """Computes the dot product of x and y."""
     dtype = x.dtype.char
-    if dtype in 'fd':
+    if dtype in "fd":
         return dot(x, y, out=out)
-    elif dtype == 'F':
+    elif dtype == "F":
         func = cublas.cdotu
-    elif dtype == 'D':
+    elif dtype == "D":
         func = cublas.zdotu
     else:
-        raise TypeError('invalid dtype')
+        raise TypeError("invalid dtype")
     _check_two_vectors(x, y)
 
     handle = device.get_cublas_handle()
@@ -282,14 +282,14 @@ def dotu(x, y, out=None):
 def dotc(x, y, out=None):
     """Computes the dot product of x.conj() and y."""
     dtype = x.dtype.char
-    if dtype in 'fd':
+    if dtype in "fd":
         return dot(x, y, out=out)
-    elif dtype == 'F':
+    elif dtype == "F":
         func = cublas.cdotc
-    elif dtype == 'D':
+    elif dtype == "D":
         func = cublas.zdotc
     else:
-        raise TypeError('invalid dtype')
+        raise TypeError("invalid dtype")
     _check_two_vectors(x, y)
 
     handle = device.get_cublas_handle()
@@ -311,19 +311,19 @@ def dotc(x, y, out=None):
 def nrm2(x, out=None):
     """Computes the Euclidean norm of vector x."""
     if x.ndim != 1:
-        raise ValueError('x must be a 1D array (actual: {})'.format(x.ndim))
+        raise ValueError("x must be a 1D array (actual: {})".format(x.ndim))
 
     dtype = x.dtype.char
-    if dtype == 'f':
+    if dtype == "f":
         func = cublas.snrm2
-    elif dtype == 'd':
+    elif dtype == "d":
         func = cublas.dnrm2
-    elif dtype == 'F':
+    elif dtype == "F":
         func = cublas.scnrm2
-    elif dtype == 'D':
+    elif dtype == "D":
         func = cublas.dznrm2
     else:
-        raise TypeError('invalid dtype')
+        raise TypeError("invalid dtype")
 
     handle = device.get_cublas_handle()
     result_dtype = dtype.lower()
@@ -347,19 +347,19 @@ def scal(a, x):
     (*) x will be updated.
     """
     if x.ndim != 1:
-        raise ValueError('x must be a 1D array (actual: {})'.format(x.ndim))
+        raise ValueError("x must be a 1D array (actual: {})".format(x.ndim))
 
     dtype = x.dtype.char
-    if dtype == 'f':
+    if dtype == "f":
         func = cublas.sscal
-    elif dtype == 'd':
+    elif dtype == "d":
         func = cublas.dscal
-    elif dtype == 'F':
+    elif dtype == "F":
         func = cublas.cscal
-    elif dtype == 'D':
+    elif dtype == "D":
         func = cublas.zscal
     else:
-        raise TypeError('invalid dtype')
+        raise TypeError("invalid dtype")
 
     handle = device.get_cublas_handle()
     a, a_ptr, orig_mode = _setup_scalar_ptr(handle, a, dtype)
@@ -371,15 +371,15 @@ def scal(a, x):
 
 def _check_two_vectors(x, y):
     if x.ndim != 1:
-        raise ValueError('x must be a 1D array (actual: {})'.format(x.ndim))
+        raise ValueError("x must be a 1D array (actual: {})".format(x.ndim))
     if y.ndim != 1:
-        raise ValueError('y must be a 1D array (actual: {})'.format(y.ndim))
+        raise ValueError("y must be a 1D array (actual: {})".format(y.ndim))
     if x.size != y.size:
-        raise ValueError('x and y must be the same size (actual: {} and {})'
-                         ''.format(x.size, y.size))
+        raise ValueError("x and y must be the same size (actual: {} and {})"
+                         "".format(x.size, y.size))
     if x.dtype != y.dtype:
-        raise TypeError('x and y must be the same dtype (actual: {} and {})'
-                        ''.format(x.dtype, y.dtype))
+        raise TypeError("x and y must be the same dtype (actual: {} and {})"
+                        "".format(x.dtype, y.dtype))
 
 
 def _setup_result_ptr(handle, out, dtype):
@@ -399,7 +399,7 @@ def _setup_result_ptr(handle, out, dtype):
         result_ptr = result.ctypes.data
         cublas.setPointerMode(handle, cublas.CUBLAS_POINTER_MODE_HOST)
     else:
-        raise TypeError('out must be either cupy or numpy ndarray')
+        raise TypeError("out must be either cupy or numpy ndarray")
     return result_ptr, result, mode
 
 
@@ -434,16 +434,16 @@ def gemv(transa, alpha, a, x, beta, y):
     Note: ''y'' will be updated.
     """
     dtype = a.dtype.char
-    if dtype == 'f':
+    if dtype == "f":
         func = cublas.sgemv
-    elif dtype == 'd':
+    elif dtype == "d":
         func = cublas.dgemv
-    elif dtype == 'F':
+    elif dtype == "F":
         func = cublas.cgemv
-    elif dtype == 'D':
+    elif dtype == "D":
         func = cublas.zgemv
     else:
-        raise TypeError('invalid dtype')
+        raise TypeError("invalid dtype")
     assert a.ndim == 2
     assert x.ndim == y.ndim == 1
     assert a.dtype == x.dtype == y.dtype
@@ -483,7 +483,7 @@ def gemv(transa, alpha, a, x, beta, y):
             func(handle, transa, n, m, alpha_ptr, a.data.ptr, n, x.data.ptr, 1,
                  beta_ptr, y.data.ptr, 1)
         else:
-            a = a.copy(order='F')
+            a = a.copy(order="F")
             func(handle, transa, m, n, alpha_ptr, a.data.ptr, m, x.data.ptr, 1,
                  beta_ptr, y.data.ptr, 1)
     finally:
@@ -496,14 +496,14 @@ def ger(alpha, x, y, a):
     Note: ''a'' will be updated.
     """
     dtype = a.dtype.char
-    if dtype == 'f':
+    if dtype == "f":
         func = cublas.sger
-    elif dtype == 'd':
+    elif dtype == "d":
         func = cublas.dger
-    elif dtype in 'FD':
-        raise TypeError('Use geru or gerc for complex dtypes')
+    elif dtype in "FD":
+        raise TypeError("Use geru or gerc for complex dtypes")
     else:
-        raise TypeError('invalid dtype')
+        raise TypeError("invalid dtype")
 
     assert a.ndim == 2
     assert x.ndim == y.ndim == 1
@@ -521,7 +521,7 @@ def ger(alpha, x, y, a):
         elif a._c_contiguous:
             func(handle, n, m, alpha_ptr, y_ptr, 1, x_ptr, 1, a.data.ptr, n)
         else:
-            aa = a.copy(order='F')
+            aa = a.copy(order="F")
             func(handle, m, n, alpha_ptr, x_ptr, 1, y_ptr, 1, aa.data.ptr, m)
             _core.elementwise_copy(aa, a)
     finally:
@@ -534,14 +534,14 @@ def geru(alpha, x, y, a):
     Note: ''a'' will be updated.
     """
     dtype = a.dtype.char
-    if dtype in 'fd':
+    if dtype in "fd":
         return ger(alpha, x, y, a)
-    elif dtype == 'F':
+    elif dtype == "F":
         func = cublas.cgeru
-    elif dtype == 'D':
+    elif dtype == "D":
         func = cublas.zgeru
     else:
-        raise TypeError('invalid dtype')
+        raise TypeError("invalid dtype")
     assert a.ndim == 2
     assert x.ndim == y.ndim == 1
     assert a.dtype == x.dtype == y.dtype
@@ -558,7 +558,7 @@ def geru(alpha, x, y, a):
         elif a._c_contiguous:
             func(handle, n, m, alpha_ptr, y_ptr, 1, x_ptr, 1, a.data.ptr, n)
         else:
-            aa = a.copy(order='F')
+            aa = a.copy(order="F")
             func(handle, m, n, alpha_ptr, x_ptr, 1, y_ptr, 1, aa.data.ptr, m)
             _core.elementwise_copy(aa, a)
     finally:
@@ -571,14 +571,14 @@ def gerc(alpha, x, y, a):
     Note: ''a'' will be updated.
     """
     dtype = a.dtype.char
-    if dtype in 'fd':
+    if dtype in "fd":
         return ger(alpha, x, y, a)
-    elif dtype == 'F':
+    elif dtype == "F":
         func = cublas.cgerc
-    elif dtype == 'D':
+    elif dtype == "D":
         func = cublas.zgerc
     else:
-        raise TypeError('invalid dtype')
+        raise TypeError("invalid dtype")
     assert a.ndim == 2
     assert x.ndim == y.ndim == 1
     assert a.dtype == x.dtype == y.dtype
@@ -593,7 +593,7 @@ def gerc(alpha, x, y, a):
         if a._f_contiguous:
             func(handle, m, n, alpha_ptr, x_ptr, 1, y_ptr, 1, a.data.ptr, m)
         else:
-            aa = a.copy(order='F')
+            aa = a.copy(order="F")
             func(handle, m, n, alpha_ptr, x_ptr, 1, y_ptr, 1, aa.data.ptr, m)
             _core.elementwise_copy(aa, a)
     finally:
@@ -605,12 +605,12 @@ def sbmv(k, alpha, a, x, beta, y, lower=False):
 
     """
     dtype = a.dtype.char
-    if dtype == 'f':
+    if dtype == "f":
         func = cublas.ssbmv
-    elif dtype == 'd':
+    elif dtype == "d":
         func = cublas.dsbmv
     else:
-        raise TypeError('Complex dtypes not supported')
+        raise TypeError("Complex dtypes not supported")
 
     assert a.ndim == 2
     assert x.ndim == y.ndim == 1
@@ -620,7 +620,7 @@ def sbmv(k, alpha, a, x, beta, y, lower=False):
     assert y.shape[0] == n
 
     if not a._f_contiguous:
-        a = a.copy(order='F')
+        a = a.copy(order="F")
 
     alpha, alpha_ptr = _get_scalar_ptr(alpha, a.dtype)
     beta, beta_ptr = _get_scalar_ptr(beta, a.dtype)
@@ -654,14 +654,14 @@ def sbmv(k, alpha, a, x, beta, y, lower=False):
 
 
 def _trans_to_cublas_op(trans):
-    if trans == 'N' or trans == cublas.CUBLAS_OP_N:
+    if trans == "N" or trans == cublas.CUBLAS_OP_N:
         trans = cublas.CUBLAS_OP_N
-    elif trans == 'T' or trans == cublas.CUBLAS_OP_T:
+    elif trans == "T" or trans == cublas.CUBLAS_OP_T:
         trans = cublas.CUBLAS_OP_T
-    elif trans == 'H' or trans == cublas.CUBLAS_OP_C:
+    elif trans == "H" or trans == cublas.CUBLAS_OP_C:
         trans = cublas.CUBLAS_OP_C
     else:
-        raise TypeError('invalid trans (actual: {})'.format(trans))
+        raise TypeError("invalid trans (actual: {})".format(trans))
     return trans
 
 
@@ -680,7 +680,7 @@ def _change_order_if_necessary(a, lda):
     if lda is None:
         lda = a.shape[0]
         if not a._f_contiguous:
-            a = a.copy(order='F')
+            a = a.copy(order="F")
     return a, lda
 
 
@@ -695,16 +695,16 @@ def gemm(transa, transb, a, b, out=None, alpha=1.0, beta=0.0):
     assert a.ndim == b.ndim == 2
     assert a.dtype == b.dtype
     dtype = a.dtype.char
-    if dtype == 'f':
+    if dtype == "f":
         func = cublas.sgemm
-    elif dtype == 'd':
+    elif dtype == "d":
         func = cublas.dgemm
-    elif dtype == 'F':
+    elif dtype == "F":
         func = cublas.cgemm
-    elif dtype == 'D':
+    elif dtype == "D":
         func = cublas.zgemm
     else:
-        raise TypeError('invalid dtype')
+        raise TypeError("invalid dtype")
 
     transa = _trans_to_cublas_op(transa)
     transb = _trans_to_cublas_op(transb)
@@ -719,7 +719,7 @@ def gemm(transa, transb, a, b, out=None, alpha=1.0, beta=0.0):
         n = b.shape[0]
         assert b.shape[1] == k
     if out is None:
-        out = cupy.empty((m, n), dtype=dtype, order='F')
+        out = cupy.empty((m, n), dtype=dtype, order="F")
         beta = 0.0
     else:
         assert out.ndim == 2
@@ -766,7 +766,7 @@ def gemm(transa, transb, a, b, out=None, alpha=1.0, beta=0.0):
     b, ldb = _change_order_if_necessary(b, ldb)
     c = out
     if not out._f_contiguous:
-        c = out.copy(order='F')
+        c = out.copy(order="F")
     try:
         func(handle, transa, transb, m, n, k, alpha_ptr, a.data.ptr, lda,
              b.data.ptr, ldb, beta_ptr, c.data.ptr, m)
@@ -788,16 +788,16 @@ def geam(transa, transb, alpha, a, beta, b, out=None):
     assert a.ndim == b.ndim == 2
     assert a.dtype == b.dtype
     dtype = a.dtype.char
-    if dtype == 'f':
+    if dtype == "f":
         func = cublas.sgeam
-    elif dtype == 'd':
+    elif dtype == "d":
         func = cublas.dgeam
-    elif dtype == 'F':
+    elif dtype == "F":
         func = cublas.cgeam
-    elif dtype == 'D':
+    elif dtype == "D":
         func = cublas.zgeam
     else:
-        raise TypeError('invalid dtype')
+        raise TypeError("invalid dtype")
 
     transa = _trans_to_cublas_op(transa)
     transb = _trans_to_cublas_op(transb)
@@ -810,7 +810,7 @@ def geam(transa, transb, alpha, a, beta, b, out=None):
     else:
         assert b.shape == (n, m)
     if out is None:
-        out = cupy.empty((m, n), dtype=dtype, order='F')
+        out = cupy.empty((m, n), dtype=dtype, order="F")
     else:
         assert out.ndim == 2
         assert out.shape == (m, n)
@@ -854,7 +854,7 @@ def geam(transa, transb, alpha, a, beta, b, out=None):
     b, ldb = _change_order_if_necessary(b, ldb)
     c = out
     if not out._f_contiguous:
-        c = out.copy(order='F')
+        c = out.copy(order="F")
     try:
         func(handle, transa, transb, m, n, alpha_ptr, a.data.ptr, lda,
              beta_ptr, b.data.ptr, ldb, c.data.ptr, m)
@@ -874,22 +874,22 @@ def dgmm(side, a, x, out=None, incx=1):
     assert 0 <= x.ndim <= 2
     assert a.dtype == x.dtype
     dtype = a.dtype.char
-    if dtype == 'f':
+    if dtype == "f":
         func = cublas.sdgmm
-    elif dtype == 'd':
+    elif dtype == "d":
         func = cublas.ddgmm
-    elif dtype == 'F':
+    elif dtype == "F":
         func = cublas.cdgmm
-    elif dtype == 'D':
+    elif dtype == "D":
         func = cublas.zdgmm
     else:
-        raise TypeError('invalid dtype')
-    if side == 'L' or side == cublas.CUBLAS_SIDE_LEFT:
+        raise TypeError("invalid dtype")
+    if side == "L" or side == cublas.CUBLAS_SIDE_LEFT:
         side = cublas.CUBLAS_SIDE_LEFT
-    elif side == 'R' or side == cublas.CUBLAS_SIDE_RIGHT:
+    elif side == "R" or side == cublas.CUBLAS_SIDE_RIGHT:
         side = cublas.CUBLAS_SIDE_RIGHT
     else:
-        raise ValueError('invalid side (actual: {})'.format(side))
+        raise ValueError("invalid side (actual: {})".format(side))
     m, n = a.shape
     if side == cublas.CUBLAS_SIDE_LEFT:
         assert x.size >= (m - 1) * abs(incx) + 1
@@ -897,9 +897,9 @@ def dgmm(side, a, x, out=None, incx=1):
         assert x.size >= (n - 1) * abs(incx) + 1
     if out is None:
         if a._c_contiguous:
-            order = 'C'
+            order = "C"
         else:
-            order = 'F'
+            order = "F"
         out = cupy.empty((m, n), dtype=dtype, order=order)
     else:
         assert out.ndim == 2
@@ -909,15 +909,15 @@ def dgmm(side, a, x, out=None, incx=1):
     handle = device.get_cublas_handle()
     if out._c_contiguous:
         if not a._c_contiguous:
-            a = a.copy(order='C')
+            a = a.copy(order="C")
         func(handle, 1 - side, n, m, a.data.ptr, n, x.data.ptr, incx,
              out.data.ptr, n)
     else:
         if not a._f_contiguous:
-            a = a.copy(order='F')
+            a = a.copy(order="F")
         c = out
         if not out._f_contiguous:
-            c = out.copy(order='F')
+            c = out.copy(order="F")
         func(handle, side, m, n, a.data.ptr, m, x.data.ptr, incx,
              c.data.ptr, m)
         if not out._f_contiguous:
@@ -935,16 +935,16 @@ def syrk(trans, a, out=None, alpha=1.0, beta=0.0, lower=False):
     """
     assert a.ndim == 2
     dtype = a.dtype.char
-    if dtype == 'f':
+    if dtype == "f":
         func = cublas.ssyrk
-    elif dtype == 'd':
+    elif dtype == "d":
         func = cublas.dsyrk
-    elif dtype == 'F':
+    elif dtype == "F":
         func = cublas.csyrk
-    elif dtype == 'D':
+    elif dtype == "D":
         func = cublas.zsyrk
     else:
-        raise TypeError('invalid dtype')
+        raise TypeError("invalid dtype")
 
     trans = _trans_to_cublas_op(trans)
     if trans == cublas.CUBLAS_OP_N:
@@ -952,7 +952,7 @@ def syrk(trans, a, out=None, alpha=1.0, beta=0.0, lower=False):
     else:
         k, n = a.shape
     if out is None:
-        out = cupy.zeros((n, n), dtype=dtype, order='F')
+        out = cupy.zeros((n, n), dtype=dtype, order="F")
         beta = 0.0
     else:
         assert out.ndim == 2
@@ -983,7 +983,7 @@ def syrk(trans, a, out=None, alpha=1.0, beta=0.0, lower=False):
     ldo, _ = _decide_ld_and_trans(out, trans)
     if out._c_contiguous:
         if not a._c_contiguous:
-            a = a.copy(order='C')
+            a = a.copy(order="C")
             trans = 1 - trans
             lda = a.shape[1]
         try:
@@ -995,12 +995,12 @@ def syrk(trans, a, out=None, alpha=1.0, beta=0.0, lower=False):
 
     else:
         if not a._f_contiguous:
-            a = a.copy(order='F')
+            a = a.copy(order="F")
             lda = a.shape[0]
             trans = 1 - trans
         c = out
         if not out._f_contiguous:
-            c = out.copy(order='F')
+            c = out.copy(order="F")
         try:
             func(handle, uplo, trans, n, k,
                  alpha_ptr, a.data.ptr, lda,

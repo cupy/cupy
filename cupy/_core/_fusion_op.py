@@ -56,29 +56,29 @@ class _UfuncRoutine:
         dtypes = self.compute_dtypes
         assert len(self.in_params) == len(self.compute_dtypes[:nin])
         in_params = [
-            (get_typename(p.dtype), get_typename(t), 'in{}'.format(i))
+            (get_typename(p.dtype), get_typename(t), "in{}".format(i))
             for i, (p, t) in enumerate(zip(self.in_params, dtypes[:nin]))
         ]
         out_params = [
-            (get_typename(p.dtype), get_typename(t), 'out{}'.format(i))
+            (get_typename(p.dtype), get_typename(t), "out{}".format(i))
             for i, (p, t) in enumerate(zip(self.out_params, dtypes[nin:]))
         ]
         params = in_params + out_params
 
-        params_code = ', '.join(['{} &{}_'.format(t, s) for t, _, s in params])
-        typedef = ['typedef {} {}_type;'.format(t, s) for _, t, s in params]
-        read = ['{} {} = ({}) {}_;'.format(t, s, t, s) for _, t, s in params]
-        write = ['{}_ = {};'.format(s, s) for _, _, s in out_params]
+        params_code = ", ".join(["{} &{}_".format(t, s) for t, _, s in params])
+        typedef = ["typedef {} {}_type;".format(t, s) for _, t, s in params]
+        read = ["{} {} = ({}) {}_;".format(t, s, t, s) for _, t, s in params]
+        write = ["{}_ = {};".format(s, s) for _, _, s in out_params]
 
         return _codeblock.CodeBlock(
-            '__device__ void {}({})'.format(self.name, params_code),
-            typedef + read + [self.routine_code + ';'] + write)
+            "__device__ void {}({})".format(self.name, params_code),
+            typedef + read + [self.routine_code + ";"] + write)
 
     def emit_call_code(self):
         params = self.in_params + self.out_params
-        return '{op_name}({params});'.format(
+        return "{op_name}({params});".format(
             op_name=self.name,
-            params=', '.join([var.lvar_name for var in params]))
+            params=", ".join([var.lvar_name for var in params]))
 
 
 class _ElementwiseTraceOp:
@@ -125,11 +125,11 @@ class _ElementwiseTraceOp:
             if var in in_params:
                 if isinstance(var, _TraceArray):
                     indexed_arrays.add(var)
-                    f = '${type} ${lvar} = ${var}[${indexer}.get()];'
+                    f = "${type} ${lvar} = ${var}[${indexer}.get()];"
                 else:
-                    f = '${type} ${lvar} = ${var};'
+                    f = "${type} ${lvar} = ${var};"
             else:
-                f = '${type} ${lvar};'
+                f = "${type} ${lvar};"
             code.append(var.format(f))
 
         return code, indexed_arrays
@@ -148,9 +148,9 @@ class _ElementwiseTraceOp:
         for var in out_params:
             if isinstance(var, _TraceArray):
                 indexed_arrays.add(var)
-                f = '${var}[${indexer}.get()] = ${lvar};'
+                f = "${var}[${indexer}.get()] = ${lvar};"
             else:
-                f = '${var} = ${lvar};'
+                f = "${var} = ${lvar};"
             codes.append(var.format(f))
 
         return codes, indexed_arrays
@@ -163,7 +163,7 @@ class _ElementwiseTraceOp:
         assert isinstance(indexed_params, _VariableSet)
 
         return [
-            p.format('${indexer}.set(${tid});', tid=tid)
+            p.format("${indexer}.set(${tid});", tid=tid)
             for p in indexed_params
         ]
 
@@ -173,17 +173,17 @@ class _ElementwiseTraceOp:
         declaration, s1 = self._emit_declaration(self.params, self.in_params)
         operation = [op.emit_call_code() for op in self.ops]
         after_operation, s2 = self._emit_after_operation(self.out_params)
-        index_name = 'i'
+        index_name = "i"
         indexed_array = s1 + s2
         indexer_name = next(iter(indexed_array)).indexer_name
         indexer_setup = self._emit_set_index(indexed_array, index_name)
 
         return _codeblock.CodeBlock(
-            'CUPY_FOR({}, {}.size())'.format(index_name, indexer_name),
+            "CUPY_FOR({}, {}.size())".format(index_name, indexer_name),
             indexer_setup + declaration + operation + after_operation)
 
     def emit_preamble_codes(self):
-        return [subm.preamble for subm in self.ops if subm.preamble != '']
+        return [subm.preamble for subm in self.ops if subm.preamble != ""]
 
     def emit_submodule_codes(self):
         return [str(subm.emit_code()) for subm in self.ops]
@@ -205,11 +205,11 @@ class _ReductionTraceOp:
         self.preamble = reduce_func.preamble
         self.in_params = _VariableSet(in_param)
         self.out_params = _VariableSet(out_param)
-        self.block_stride_name = 'block_stride_' + name
+        self.block_stride_name = "block_stride_" + name
         self.axis = axis
 
         if reduce_func.identity is None:
-            self.identity = ''
+            self.identity = ""
         else:
             self.identity = str(reduce_func.identity)
 
@@ -231,18 +231,18 @@ class _ReductionTraceOp:
         assert len(self.out_params) == 1
         in_param = list(self.in_params)[0]
         out_param = list(self.out_params)[0]
-        params = ', '.join([
+        params = ", ".join([
             in_param.var_name,
             out_param.var_name,
             in_param.indexer_name,
             out_param.indexer_name,
         ])
-        return '{}({}, {});'.format(
+        return "{}({}, {});".format(
             self.name, params, self.block_stride_name)
 
     def emit_preamble_codes(self):
         preamble = self.preamble
-        return [preamble] if preamble != '' else []
+        return [preamble] if preamble != "" else []
 
     def emit_submodule_codes(self):
         """Returns a CUDA device function code.
@@ -253,8 +253,8 @@ class _ReductionTraceOp:
 
         in_param, = self.in_params
         out_param, = self.out_params
-        op_name = '{}_op'.format(self.name)
-        postmap_name = '{}_postmap'.format(self.name)
+        op_name = "{}_op".format(self.name)
+        postmap_name = "{}_postmap".format(self.name)
 
         template = string.Template('''
 #define ${op_name}(a, b) (${reduce_expr})

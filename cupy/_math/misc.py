@@ -8,27 +8,27 @@ from cupy._core import fusion
 from cupy.lib import stride_tricks
 
 _dot_kernel = _core.ReductionKernel(
-    'T x1, T x2',
-    'T y',
-    'x1 * x2',
-    'a + b',
-    'y = a',
-    '0',
-    'dot_product'
+    "T x1, T x2",
+    "T y",
+    "x1 * x2",
+    "a + b",
+    "y = a",
+    "0",
+    "dot_product"
 )
 
 
 def _choose_conv_method(in1, in2, mode):
     if in1.ndim != 1 or in2.ndim != 1:
-        raise NotImplementedError('Only 1d inputs are supported currently')
+        raise NotImplementedError("Only 1d inputs are supported currently")
 
-    if in1.dtype.kind in 'bui' or in2.dtype.kind in 'bui':
-        return 'direct'
+    if in1.dtype.kind in "bui" or in2.dtype.kind in "bui":
+        return "direct"
 
     if _fftconv_faster(in1, in2, mode):
-        return 'fft'
+        return "fft"
 
-    return 'direct'
+    return "direct"
 
 
 def _fftconv_faster(x, h, mode):
@@ -40,7 +40,7 @@ def _fftconv_faster(x, h, mode):
     return True
 
 
-def convolve(a, v, mode='full'):
+def convolve(a, v, mode="full"):
     """Returns the discrete, linear convolution of two one-dimensional sequences.
 
     Args:
@@ -55,23 +55,23 @@ def convolve(a, v, mode='full'):
 
     """  # NOQA
     if a.size == 0:
-        raise ValueError('a cannot be empty')
+        raise ValueError("a cannot be empty")
     if v.size == 0:
-        raise ValueError('v cannot be empty')
+        raise ValueError("v cannot be empty")
     if v.ndim > 1:
-        raise ValueError('v cannot be multidimensional array')
+        raise ValueError("v cannot be multidimensional array")
     if v.size > a.size:
         a, v = v, a
     a = a.ravel()
     v = v.ravel()
 
     method = _choose_conv_method(a, v, mode)
-    if method == 'direct':
+    if method == "direct":
         out = _dot_convolve(a, v, mode)
-    elif method == 'fft':
+    elif method == "fft":
         out = _fft_convolve(a, v, mode)
     else:
-        raise ValueError('Unsupported method')
+        raise ValueError("Unsupported method")
     return out
 
 
@@ -83,7 +83,7 @@ def _fft_convolve(a1, a2, mode):
         offset = 1 - a2.shape[-1] % 2
 
     # if either of them is complex, the dtype after multiplication will also be
-    if a1.dtype.kind == 'c' or a2.dtype.kind == 'c':
+    if a1.dtype.kind == "c" or a2.dtype.kind == "c":
         fft, ifft = cupy.fft.fft, cupy.fft.ifft
     else:
         fft, ifft = cupy.fft.rfft, cupy.fft.irfft
@@ -95,20 +95,20 @@ def _fft_convolve(a1, a2, mode):
     fa2 = fft(a2, out_size)
     out = ifft(fa1 * fa2, out_size)
 
-    if mode == 'full':
+    if mode == "full":
         start, end = 0, n1 + n2 - 1
-    elif mode == 'same':
+    elif mode == "same":
         start = (n2 - 1) // 2 + offset
         end = start + n1
-    elif mode == 'valid':
+    elif mode == "valid":
         start, end = n2 - 1, n1
     else:
         raise ValueError(
-            'acceptable mode flags are `valid`, `same`, or `full`.')
+            "acceptable mode flags are `valid`, `same`, or `full`.")
 
     out = out[..., start:end]
 
-    if dtype.kind in 'iu':
+    if dtype.kind in "iu":
         out = cupy.around(out)
 
     return out.astype(dtype, copy=False)
@@ -126,14 +126,14 @@ def _dot_convolve(a1, a2, mode):
     a1 = a1.astype(dtype, copy=False)
     a2 = a2.astype(dtype, copy=False)
 
-    if mode == 'full':
+    if mode == "full":
         out_size = n1 + n2 - 1
         a1 = cupy.pad(a1, n2 - 1)
-    elif mode == 'same':
+    elif mode == "same":
         out_size = n1
         pad_size = (n2 - 1) // 2 + offset
         a1 = cupy.pad(a1, (n2 - 1 - pad_size, pad_size))
-    elif mode == 'valid':
+    elif mode == "valid":
         out_size = n1 - n2 + 1
 
     stride = a1.strides[0]
@@ -180,71 +180,71 @@ sqrt = sqrt_fixed = _core.sqrt
 
 
 cbrt = _core.create_ufunc(
-    'cupy_cbrt',
-    ('e->e', 'f->f', 'd->d'),
-    'out0 = cbrt(in0)',
-    doc='''Elementwise cube root function.
+    "cupy_cbrt",
+    ("e->e", "f->f", "d->d"),
+    "out0 = cbrt(in0)",
+    doc="""Elementwise cube root function.
 
     .. seealso:: :data:`numpy.cbrt`
 
-    ''')
+    """)
 
 
 square = _core.create_ufunc(
-    'cupy_square',
-    ('b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L', 'q->q',
-     'Q->Q', 'e->e', 'f->f', 'd->d', 'F->F', 'D->D'),
-    'out0 = in0 * in0',
-    doc='''Elementwise square function.
+    "cupy_square",
+    ("b->b", "B->B", "h->h", "H->H", "i->i", "I->I", "l->l", "L->L", "q->q",
+     "Q->Q", "e->e", "f->f", "d->d", "F->F", "D->D"),
+    "out0 = in0 * in0",
+    doc="""Elementwise square function.
 
     .. seealso:: :data:`numpy.square`
 
-    ''')
+    """)
 
 
 absolute = _core.absolute
 
 
 fabs = _core.create_ufunc(
-    'cupy_fabs',
-    ('e->e', 'f->f', 'd->d'),
-    'out0 = abs(in0)',
-    doc='''Calculates absolute values element-wise.
+    "cupy_fabs",
+    ("e->e", "f->f", "d->d"),
+    "out0 = abs(in0)",
+    doc="""Calculates absolute values element-wise.
     Only real values are handled.
 
     .. seealso:: :data:`numpy.fabs`
 
-    ''')
+    """)
 
 
-_unsigned_sign = 'out0 = in0 > 0'
-_complex_sign = '''
+_unsigned_sign = "out0 = in0 > 0"
+_complex_sign = """
 if (in0.real() == 0) {
   out0 = (in0.imag() > 0) - (in0.imag() < 0);
 } else {
   out0 = (in0.real() > 0) - (in0.real() < 0);
 }
-'''
+"""
 sign = _core.create_ufunc(
-    'cupy_sign',
-    ('b->b', ('B->B', _unsigned_sign), 'h->h', ('H->H', _unsigned_sign),
-     'i->i', ('I->I', _unsigned_sign), 'l->l', ('L->L', _unsigned_sign),
-     'q->q', ('Q->Q', _unsigned_sign), 'e->e', 'f->f', 'd->d',
-     ('F->F', _complex_sign), ('D->D', _complex_sign)),
-    'out0 = (in0 > 0) - (in0 < 0)',
-    doc='''Elementwise sign function.
+    "cupy_sign",
+    ("b->b", ("B->B", _unsigned_sign), "h->h", ("H->H", _unsigned_sign),
+     "i->i", ("I->I", _unsigned_sign), "l->l", ("L->L", _unsigned_sign),
+     "q->q", ("Q->Q", _unsigned_sign), "e->e", "f->f", "d->d",
+     ("F->F", _complex_sign), ("D->D", _complex_sign)),
+    "out0 = (in0 > 0) - (in0 < 0)",
+    doc="""Elementwise sign function.
 
     It returns -1, 0, or 1 depending on the sign of the input.
 
     .. seealso:: :data:`numpy.sign`
 
-    ''')
+    """)
 
 
 heaviside = _core.create_ufunc(
-    'cupy_heaviside',
-    ('ee->e', 'ff->f', 'dd->d'),
-    '''
+    "cupy_heaviside",
+    ("ee->e", "ff->f", "dd->d"),
+    """
     if (isnan(in0)) {
         out0 = in0;
     } else if (in0 == 0) {
@@ -252,103 +252,103 @@ heaviside = _core.create_ufunc(
     } else {
         out0 = (in0 > 0);
     }
-    ''',
-    doc='''Compute the Heaviside step function.
+    """,
+    doc="""Compute the Heaviside step function.
 
     .. seealso:: :data:`numpy.heaviside`
 
-    '''
+    """
 )
 
 
-_float_preamble = '''
+_float_preamble = """
 #ifndef NAN
 #define NAN __int_as_float(0x7fffffff)
 #endif
-'''
-_float_maximum = ('out0 = (isnan(in0) | isnan(in1)) ? out0_type(NAN) : '
-                  'out0_type(max(in0, in1))')
+"""
+_float_maximum = ("out0 = (isnan(in0) | isnan(in1)) ? out0_type(NAN) : "
+                  "out0_type(max(in0, in1))")
 maximum = _core.create_ufunc(
-    'cupy_maximum',
-    ('??->?', 'bb->b', 'BB->B', 'hh->h', 'HH->H', 'ii->i', 'II->I', 'll->l',
-     'LL->L', 'qq->q', 'QQ->Q',
-     ('ee->e', _float_maximum),
-     ('ff->f', _float_maximum),
-     ('dd->d', _float_maximum),
-     ('FF->F', _float_maximum),
-     ('DD->D', _float_maximum)),
-    'out0 = max(in0, in1)',
+    "cupy_maximum",
+    ("??->?", "bb->b", "BB->B", "hh->h", "HH->H", "ii->i", "II->I", "ll->l",
+     "LL->L", "qq->q", "QQ->Q",
+     ("ee->e", _float_maximum),
+     ("ff->f", _float_maximum),
+     ("dd->d", _float_maximum),
+     ("FF->F", _float_maximum),
+     ("DD->D", _float_maximum)),
+    "out0 = max(in0, in1)",
     preamble=_float_preamble,
-    doc='''Takes the maximum of two arrays elementwise.
+    doc="""Takes the maximum of two arrays elementwise.
 
     If NaN appears, it returns the NaN.
 
     .. seealso:: :data:`numpy.maximum`
 
-    ''',
-    cutensor_op=('OP_MAX', 1, 1), scatter_op='max')
+    """,
+    cutensor_op=("OP_MAX", 1, 1), scatter_op="max")
 
 
-_float_minimum = ('out0 = (isnan(in0) | isnan(in1)) ? out0_type(NAN) : '
-                  'out0_type(min(in0, in1))')
+_float_minimum = ("out0 = (isnan(in0) | isnan(in1)) ? out0_type(NAN) : "
+                  "out0_type(min(in0, in1))")
 minimum = _core.create_ufunc(
-    'cupy_minimum',
-    ('??->?', 'bb->b', 'BB->B', 'hh->h', 'HH->H', 'ii->i', 'II->I', 'll->l',
-     'LL->L', 'qq->q', 'QQ->Q',
-     ('ee->e', _float_minimum),
-     ('ff->f', _float_minimum),
-     ('dd->d', _float_minimum),
-     ('FF->F', _float_minimum),
-     ('DD->D', _float_minimum)),
-    'out0 = min(in0, in1)',
+    "cupy_minimum",
+    ("??->?", "bb->b", "BB->B", "hh->h", "HH->H", "ii->i", "II->I", "ll->l",
+     "LL->L", "qq->q", "QQ->Q",
+     ("ee->e", _float_minimum),
+     ("ff->f", _float_minimum),
+     ("dd->d", _float_minimum),
+     ("FF->F", _float_minimum),
+     ("DD->D", _float_minimum)),
+    "out0 = min(in0, in1)",
     preamble=_float_preamble,
-    doc='''Takes the minimum of two arrays elementwise.
+    doc="""Takes the minimum of two arrays elementwise.
 
     If NaN appears, it returns the NaN.
 
     .. seealso:: :data:`numpy.minimum`
 
-    ''',
-    cutensor_op=('OP_MIN', 1, 1), scatter_op='min')
+    """,
+    cutensor_op=("OP_MIN", 1, 1), scatter_op="min")
 
 
 fmax = _core.create_ufunc(
-    'cupy_fmax',
-    ('??->?', 'bb->b', 'BB->B', 'hh->h', 'HH->H', 'ii->i', 'II->I', 'll->l',
-     'LL->L', 'qq->q', 'QQ->Q',
-     ('ee->e', 'out0 = fmax(in0, in1)'),
-     ('ff->f', 'out0 = fmax(in0, in1)'),
-     ('dd->d', 'out0 = fmax(in0, in1)'),
-     'FF->F', 'DD->D'),
-    'out0 = max(in0, in1)',
-    doc='''Takes the maximum of two arrays elementwise.
+    "cupy_fmax",
+    ("??->?", "bb->b", "BB->B", "hh->h", "HH->H", "ii->i", "II->I", "ll->l",
+     "LL->L", "qq->q", "QQ->Q",
+     ("ee->e", "out0 = fmax(in0, in1)"),
+     ("ff->f", "out0 = fmax(in0, in1)"),
+     ("dd->d", "out0 = fmax(in0, in1)"),
+     "FF->F", "DD->D"),
+    "out0 = max(in0, in1)",
+    doc="""Takes the maximum of two arrays elementwise.
 
     If NaN appears, it returns the other operand.
 
     .. seealso:: :data:`numpy.fmax`
 
-    ''')
+    """)
 
 
 fmin = _core.create_ufunc(
-    'cupy_fmin',
-    ('??->?', 'bb->b', 'BB->B', 'hh->h', 'HH->H', 'ii->i', 'II->I', 'll->l',
-     'LL->L', 'qq->q', 'QQ->Q',
-     ('ee->e', 'out0 = fmin(in0, in1)'),
-     ('ff->f', 'out0 = fmin(in0, in1)'),
-     ('dd->d', 'out0 = fmin(in0, in1)'),
-     'FF->F', 'DD->D'),
-    'out0 = min(in0, in1)',
-    doc='''Takes the minimum of two arrays elementwise.
+    "cupy_fmin",
+    ("??->?", "bb->b", "BB->B", "hh->h", "HH->H", "ii->i", "II->I", "ll->l",
+     "LL->L", "qq->q", "QQ->Q",
+     ("ee->e", "out0 = fmin(in0, in1)"),
+     ("ff->f", "out0 = fmin(in0, in1)"),
+     ("dd->d", "out0 = fmin(in0, in1)"),
+     "FF->F", "DD->D"),
+    "out0 = min(in0, in1)",
+    doc="""Takes the minimum of two arrays elementwise.
 
     If NaN appears, it returns the other operand.
 
     .. seealso:: :data:`numpy.fmin`
 
-    ''')
+    """)
 
 
-_nan_to_num_preamble = '''
+_nan_to_num_preamble = """
 template <class T>
 __device__ T nan_to_num(T x, T nan, T posinf, T neginf) {
     if (isnan(x))
@@ -364,36 +364,36 @@ __device__ complex<T> nan_to_num(complex<T> x, T nan, T posinf, T neginf) {
     T im = nan_to_num(x.imag(), nan, posinf, neginf);
     return complex<T>(re, im);
 }
-'''
+"""
 
 
 _nan_to_num = _core.create_ufunc(
-    'cupy_nan_to_num_',
-    ('????->?', 'bbbb->b', 'BBBB->B', 'hhhh->h', 'HHHH->H',
-     'iiii->i', 'IIII->I', 'llll->l', 'LLLL->L', 'qqqq->q', 'QQQQ->Q',
-     ('eeee->e',
-      'out0 = nan_to_num(in0, in1, in2, in3)'),
-     ('ffff->f',
-      'out0 = nan_to_num(in0, in1, in2, in3)'),
-     ('dddd->d',
-      'out0 = nan_to_num(in0, in1, in2, in3)'),
-     ('Ffff->F',
-      'out0 = nan_to_num(in0, in1, in2, in3)'),
-     ('Dddd->D',
-      'out0 = nan_to_num(in0, in1, in2, in3)')),
-    'out0 = in0',
+    "cupy_nan_to_num_",
+    ("????->?", "bbbb->b", "BBBB->B", "hhhh->h", "HHHH->H",
+     "iiii->i", "IIII->I", "llll->l", "LLLL->L", "qqqq->q", "QQQQ->Q",
+     ("eeee->e",
+      "out0 = nan_to_num(in0, in1, in2, in3)"),
+     ("ffff->f",
+      "out0 = nan_to_num(in0, in1, in2, in3)"),
+     ("dddd->d",
+      "out0 = nan_to_num(in0, in1, in2, in3)"),
+     ("Ffff->F",
+      "out0 = nan_to_num(in0, in1, in2, in3)"),
+     ("Dddd->D",
+      "out0 = nan_to_num(in0, in1, in2, in3)")),
+    "out0 = in0",
     preamble=_nan_to_num_preamble,
-    doc='''Elementwise nan_to_num function.
+    doc="""Elementwise nan_to_num function.
 
     .. seealso:: :func:`numpy.nan_to_num`
 
-    ''')
+    """)
 
 
 def _check_nan_inf(x, dtype, neg=None):
-    if dtype.char in 'FD':
+    if dtype.char in "FD":
         dtype = cupy.dtype(dtype.char.lower())
-    if dtype.char not in 'efd':
+    if dtype.char not in "efd":
         x = 0
     elif x is None and neg is not None:
         x = cupy.finfo(dtype).min if neg else cupy.finfo(dtype).max
@@ -447,18 +447,18 @@ def real_if_close(a, tol=100):
 
 @cupy._util.memoize(for_each_device=True)
 def _get_interp_kernel(is_complex):
-    in_params = 'raw V x, raw U idx, '
-    in_params += 'raw W fx, raw Y fy, U len, raw Y left, raw Y right'
-    out_params = 'Z y'  # output dtype follows NumPy's
+    in_params = "raw V x, raw U idx, "
+    in_params += "raw W fx, raw Y fy, U len, raw Y left, raw Y right"
+    out_params = "Z y"  # output dtype follows NumPy's
 
     if is_complex:
-        preamble = 'typedef double real_t;\n'
+        preamble = "typedef double real_t;\n"
     else:
-        preamble = 'typedef Z real_t;\n'
-    preamble += 'typedef Z value_t;\n'
+        preamble = "typedef Z real_t;\n"
+    preamble += "typedef Z value_t;\n"
     preamble += cupy._sorting.search._preamble  # for _isnan
 
-    code = r'''
+    code = r"""
         U x_idx = idx[i] - 1;
 
         if ( _isnan<V>(x[i]) ) { y = x[i]; }
@@ -483,9 +483,9 @@ def _get_interp_kernel(is_complex):
             }
             y = out;
         }
-    '''
+    """
     return cupy.ElementwiseKernel(
-        in_params, out_params, code, 'cupy_interp', preamble=preamble)
+        in_params, out_params, code, "cupy_interp", preamble=preamble)
 
 
 def interp(x, xp, fp, left=None, right=None, period=None):
@@ -518,18 +518,18 @@ def interp(x, xp, fp, left=None, right=None, period=None):
     """
 
     if xp.ndim != 1 or fp.ndim != 1:
-        raise ValueError('xp and fp must be 1D arrays')
+        raise ValueError("xp and fp must be 1D arrays")
     if xp.size != fp.size:
-        raise ValueError('fp and xp are not of the same length')
+        raise ValueError("fp and xp are not of the same length")
     if xp.size == 0:
-        raise ValueError('array of sample points is empty')
+        raise ValueError("array of sample points is empty")
     if not x.flags.c_contiguous:
-        raise NotImplementedError('Non-C-contiguous x is currently not '
-                                  'supported')
+        raise NotImplementedError("Non-C-contiguous x is currently not "
+                                  "supported")
     x_dtype = cupy.common_type(x, xp)
     if not cupy.can_cast(x_dtype, cupy.float64):
-        raise TypeError('Cannot cast array data from'
-                        ' {} to {} according to the rule \'safe\''
+        raise TypeError("Cannot cast array data from"
+                        " {} to {} according to the rule 'safe'"
                         .format(x_dtype, cupy.float64))
 
     if period is not None:
@@ -557,11 +557,11 @@ def interp(x, xp, fp, left=None, right=None, period=None):
 
     # NumPy always returns float64 or complex128, so we upcast all values
     # on the fly in the kernel
-    out_dtype = 'D' if fp.dtype.kind == 'c' else 'd'
+    out_dtype = "D" if fp.dtype.kind == "c" else "d"
     output = cupy.empty(x.shape, dtype=out_dtype)
-    idx = cupy.searchsorted(xp, x, side='right')
+    idx = cupy.searchsorted(xp, x, side="right")
     left = fp[0] if left is None else cupy.array(left, fp.dtype)
     right = fp[-1] if right is None else cupy.array(right, fp.dtype)
-    kern = _get_interp_kernel(out_dtype == 'D')
+    kern = _get_interp_kernel(out_dtype == "D")
     kern(x, idx, xp, fp, xp.size, left, right, output)
     return output

@@ -17,7 +17,7 @@ _tls = threading.local()
 
 @_util.memoize()
 def _is_cuqnt_22_11_or_higher():
-    ver = [int(i) for i in cuquantum.__version__.split('.')]
+    ver = [int(i) for i in cuquantum.__version__.split(".")]
     if (ver[0] > 22) or (ver[0] == 22 and ver[1] >= 11):
         return True
     return False
@@ -34,9 +34,9 @@ def _get_einsum_operands(args):
 
     if len(args) == 0:
         raise ValueError(
-            'must specify the einstein sum subscripts string and at least one '
-            'operand, or at least one operand and its corresponding '
-            'subscripts list')
+            "must specify the einstein sum subscripts string and at least one "
+            "operand, or at least one operand and its corresponding "
+            "subscripts list")
 
     if isinstance(args[0], str):
         expr = args[0]
@@ -74,10 +74,10 @@ def _try_use_cutensornet(*args, **kwargs):
         return None
 
     # cannot pop as we might still need kwargs later
-    dtype = kwargs.get('dtype', None)
-    path = kwargs.get('optimize', False)
+    dtype = kwargs.get("dtype", None)
+    path = kwargs.get("optimize", False)
     if path is True:
-        path = 'greedy'
+        path = "greedy"
 
     # we do very lightweight pre-processing here just to inspect the
     # operands; the actual input verification is deferred to cuTensorNet
@@ -115,9 +115,9 @@ def _try_use_cutensornet(*args, **kwargs):
         cutn_handle_cache[device] = Handle(handle, cutensornet.destroy)
     else:
         handle = handle.handle
-    cutn_options = {'device_id': device, 'handle': handle}
+    cutn_options = {"device_id": device, "handle": handle}
     if _is_nonblocking_supported():
-        cutn_options['blocking'] = "auto"
+        cutn_options["blocking"] = "auto"
 
     # TODO(leofang): support all valid combinations:
     # - path from user, contract with cutn (done)
@@ -130,17 +130,17 @@ def _try_use_cutensornet(*args, **kwargs):
         # be produced by _iter_path_pairs(), but converting to a list of pairs
         # due to cuTensorNet's requirement
         path = [(i-1, i-2) for i in range(len(operands), 1, -1)]
-    elif len(path) and path[0] == 'einsum_path':
+    elif len(path) and path[0] == "einsum_path":
         # let cuTensorNet check if the format is correct
         path = path[1:]
     elif len(path) == 2:
         if isinstance(path[1], (int, float)):
             raise_warning = True
-        if path[0] != 'cutensornet':
+        if path[0] != "cutensornet":
             raise_warning = True
         path = None
     else:  # path is a string
-        if path != 'cutensornet':
+        if path != "cutensornet":
             raise_warning = True
         path = None
     if raise_warning:
@@ -150,7 +150,7 @@ def _try_use_cutensornet(*args, **kwargs):
             'or when optimize=False (disable optimization); also, '
             'the maximum intermediate size, if set, is ignored',
             stacklevel=2)
-    cutn_optimizer = {'path': path} if path else None
+    cutn_optimizer = {"path": path} if path else None
 
     if len(args) == 2:
         out = cutensornet.contract(

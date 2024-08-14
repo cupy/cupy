@@ -20,9 +20,9 @@ from cupy.testing import _condition
 
 
 @testing.parameterize(*testing.product({
-    'dtype': [numpy.float32, numpy.float64],
+    "dtype": [numpy.float32, numpy.float64],
 }))
-@unittest.skipUnless(scipy_available, 'requires scipy')
+@unittest.skipUnless(scipy_available, "requires scipy")
 class TestLschol(unittest.TestCase):
 
     def setUp(self):

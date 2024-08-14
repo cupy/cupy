@@ -35,7 +35,7 @@ class TestCorrcoef(unittest.TestCase):
         y = testing.shaped_arange((2, 3), xp, dtype)
         return xp.corrcoef(a, y=y, rowvar=False)
 
-    @testing.with_requires('numpy>=1.20')
+    @testing.with_requires("numpy>=1.20")
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(accept_error=True)
     def test_corrcoef_dtype(self, xp, dtype):
@@ -115,9 +115,9 @@ class TestCov(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    'mode': ['valid', 'same', 'full'],
-    'shape1': [(5,), (6,), (20,), (21,)],
-    'shape2': [(5,), (6,), (20,), (21,)],
+    "mode": ["valid", "same", "full"],
+    "shape1": [(5,), (6,), (20,), (21,)],
+    "shape2": [(5,), (6,), (20,), (21,)],
 }))
 class TestCorrelateShapeCombination(unittest.TestCase):
 
@@ -129,7 +129,7 @@ class TestCorrelateShapeCombination(unittest.TestCase):
         return xp.correlate(a, b, mode=self.mode)
 
 
-@pytest.mark.parametrize('mode', ['valid', 'full', 'same'])
+@pytest.mark.parametrize("mode", ["valid", "full", "same"])
 class TestCorrelate:
 
     @testing.for_all_dtypes()
@@ -146,7 +146,7 @@ class TestCorrelate:
         b = testing.shaped_arange((1000,), xp, dtype)
         return xp.correlate(a[200::], b[10::700], mode=mode)
 
-    @testing.for_all_dtypes_combination(names=['dtype1', 'dtype2'])
+    @testing.for_all_dtypes_combination(names=["dtype1", "dtype2"])
     @testing.numpy_cupy_allclose(rtol=1e-2)
     def test_correlate_diff_types(self, xp, dtype1, dtype2, mode):
         a = testing.shaped_random((200,), xp, dtype1)
@@ -155,11 +155,11 @@ class TestCorrelate:
 
 
 @testing.parameterize(*testing.product({
-    'mode': ['valid', 'same', 'full']
+    "mode": ["valid", "same", "full"]
 }))
 class TestCorrelateInvalid(unittest.TestCase):
 
-    @testing.with_requires('numpy>=1.18')
+    @testing.with_requires("numpy>=1.18")
     @testing.for_all_dtypes()
     def test_correlate_empty(self, dtype):
         for xp in (numpy, cupy):

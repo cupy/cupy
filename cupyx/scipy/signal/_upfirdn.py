@@ -31,8 +31,8 @@ from math import ceil
 import cupy
 
 _upfirdn_modes = [
-    'constant', 'wrap', 'edge', 'smooth', 'symmetric', 'reflect',
-    'antisymmetric', 'antireflect', 'line',
+    "constant", "wrap", "edge", "smooth", "symmetric", "reflect",
+    "antisymmetric", "antireflect", "line",
 ]
 
 
@@ -285,16 +285,16 @@ extern "C" __global__ void __launch_bounds__( 64 )
 
 
 UPFIRDN_MODULE = cupy.RawModule(
-    code=UPFIRDN_KERNEL, options=('-std=c++11',),
+    code=UPFIRDN_KERNEL, options=("-std=c++11",),
     name_expressions=[
-        '_cupy_upfirdn1D_float32',
-        '_cupy_upfirdn1D_float64',
-        '_cupy_upfirdn1D_complex64',
-        '_cupy_upfirdn1D_complex128',
-        '_cupy_upfirdn2D_float32',
-        '_cupy_upfirdn2D_float64',
-        '_cupy_upfirdn2D_complex64',
-        '_cupy_upfirdn2D_complex128',
+        "_cupy_upfirdn1D_float32",
+        "_cupy_upfirdn1D_float64",
+        "_cupy_upfirdn1D_complex64",
+        "_cupy_upfirdn1D_complex128",
+        "_cupy_upfirdn2D_float32",
+        "_cupy_upfirdn2D_float64",
+        "_cupy_upfirdn2D_complex64",
+        "_cupy_upfirdn2D_complex128",
     ])
 
 
@@ -384,7 +384,7 @@ class _UpFIRDn(object):
             threadsperblock, blockspergrid = _get_tpb_bpg()
 
             kernel = UPFIRDN_MODULE.get_function(
-                f'_cupy_upfirdn1D_{out.dtype.name}')
+                f"_cupy_upfirdn1D_{out.dtype.name}")
             kernel(((x.shape[0] + 128 - 1) // 128,), (128,),
                    (x,
                     self._h_trans_flip,
@@ -414,7 +414,7 @@ class _UpFIRDn(object):
 
             # do computations
             kernel = UPFIRDN_MODULE.get_function(
-                f'_cupy_upfirdn2D_{out.dtype.name}')
+                f"_cupy_upfirdn2D_{out.dtype.name}")
             kernel(threadsperblock, blockspergrid,
                    (x,
                     x.shape[1],

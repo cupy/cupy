@@ -44,30 +44,30 @@ class BitGeneratorTestCase:
         self.check_seed(numpy.random.randint(0, 2**31, size=10))
 
 
-@testing.with_requires('numpy>=1.17.0')
+@testing.with_requires("numpy>=1.17.0")
 @testing.fix_random()
 @pytest.mark.skipif(cupy.cuda.runtime.is_hip,
-                    reason='HIP does not support this')
+                    reason="HIP does not support this")
 class TestBitGeneratorXORWOW(BitGeneratorTestCase, unittest.TestCase):
     def setUp(self):
         super().setUp()
         self.bg = random._bit_generator.XORWOW
 
 
-@testing.with_requires('numpy>=1.17.0')
+@testing.with_requires("numpy>=1.17.0")
 @testing.fix_random()
 @pytest.mark.skipif(cupy.cuda.runtime.is_hip,
-                    reason='HIP does not support this')
+                    reason="HIP does not support this")
 class TestBitGeneratorMRG32k3a(BitGeneratorTestCase, unittest.TestCase):
     def setUp(self):
         super().setUp()
         self.bg = random._bit_generator.MRG32k3a
 
 
-@testing.with_requires('numpy>=1.17.0')
+@testing.with_requires("numpy>=1.17.0")
 @testing.fix_random()
 @pytest.mark.skipif(cupy.cuda.runtime.is_hip,
-                    reason='HIP does not support this')
+                    reason="HIP does not support this")
 class TestBitGeneratorPhilox4x3210(BitGeneratorTestCase, unittest.TestCase):
     def setUp(self):
         super().setUp()

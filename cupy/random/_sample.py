@@ -36,10 +36,10 @@ def rand(*size, **kwarg):
                  [0.22382522, 0.36055237]], dtype=float32)  # random
 
     """
-    dtype = kwarg.pop('dtype', float)
+    dtype = kwarg.pop("dtype", float)
     if kwarg:
-        raise TypeError('rand() got unexpected keyword arguments %s'
-                        % ', '.join(kwarg.keys()))
+        raise TypeError("rand() got unexpected keyword arguments %s"
+                        % ", ".join(kwarg.keys()))
     return random_sample(size=size, dtype=dtype)
 
 
@@ -76,14 +76,14 @@ def randn(*size, **kwarg):
                  [-1.2268474 , -0.48219103]], dtype=float32)  # random
 
     """
-    dtype = kwarg.pop('dtype', float)
+    dtype = kwarg.pop("dtype", float)
     if kwarg:
-        raise TypeError('randn() got unexpected keyword arguments %s'
-                        % ', '.join(kwarg.keys()))
+        raise TypeError("randn() got unexpected keyword arguments %s"
+                        % ", ".join(kwarg.keys()))
     return _distributions.normal(size=size, dtype=dtype)
 
 
-def randint(low, high=None, size=None, dtype='l'):
+def randint(low, high=None, size=None, dtype="l"):
     """Returns a scalar or an array of integer values over ``[low, high)``.
 
     Each element of returned values are independently sampled from
@@ -190,9 +190,9 @@ def choice(a, size=None, replace=True, p=None):
 
 
 _multinominal_kernel = _core.ElementwiseKernel(
-    'int64 x, int32 p, int32 n', 'raw U ys',
-    'atomicAdd(&ys[i / n * p + x], U(1))',
-    'cupy_random_multinomial')
+    "int64 x, int32 p, int32 n", "raw U ys",
+    "atomicAdd(&ys[i / n * p + x], U(1))",
+    "cupy_random_multinomial")
 
 
 def multinomial(n, pvals, size=None):
@@ -231,7 +231,7 @@ def multinomial(n, pvals, size=None):
 
     p = len(pvals)
     shape = size + (p,)
-    ys = basic.zeros(shape, 'l')
+    ys = basic.zeros(shape, "l")
     if ys.size > 0:
         xs = choice(p, p=pvals, size=n * m)
         _multinominal_kernel(xs, p, n, ys)

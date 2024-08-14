@@ -56,13 +56,13 @@ def compute_random_points(tri_points, xp):
 
 
 class TestDelaunay:
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_2d_triangulation(self, xp, scp):
         points = testing.shaped_random((100, 2), xp, xp.float64)
         tri = scp.spatial.Delaunay(points)
         return xp.sort(xp.sort(tri.simplices, axis=-1), axis=0)
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_2d_square(self, xp, scp):
         # simple smoke test: 2d square
         points = xp.array([(0, 0), (0, 1), (1, 1), (1, 0)], dtype=xp.float64)
@@ -70,14 +70,14 @@ class TestDelaunay:
         return xp.sort(xp.sort(tri.simplices, axis=-1), axis=0)
 
     @pytest.mark.parametrize(
-        'dataset', [pathological_data_1, pathological_data_2])
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+        "dataset", [pathological_data_1, pathological_data_2])
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_pathological(self, dataset, xp, scp):
         points = xp.asarray(dataset, dtype=xp.float64)
         tri = scp.spatial.Delaunay(points)
         return points[tri.simplices].max(), points[tri.simplices].min()
 
-    @pytest.mark.parametrize('mod', [(cupy, cupyx.scipy), (np, scipy)])
+    @pytest.mark.parametrize("mod", [(cupy, cupyx.scipy), (np, scipy)])
     def test_duplicate_points(self, mod):
         xp, scp = mod
         x = xp.array([0, 1, 0, 1], dtype=xp.float64)
@@ -90,8 +90,8 @@ class TestDelaunay:
         scp.spatial.Delaunay(xp.c_[x_p, y_p])
 
     @pytest.mark.parametrize(
-        'point', [(0.25, 0.5), (0.5, 0.25), (0.75, 0.5), (0.5, 0.75)])
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+        "point", [(0.25, 0.5), (0.5, 0.25), (0.75, 0.5), (0.5, 0.75)])
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_find_simplex(self, point, xp, scp):
         points = xp.array([(0, 0), (0, 1), (1, 1), (1, 0), (0.5, 0.5)],
                           dtype=xp.float64)
@@ -102,8 +102,8 @@ class TestDelaunay:
         triangle = tri.simplices[tri_index]
         return xp.sort(triangle)
 
-    @pytest.mark.parametrize('n_points', [10, 20, 50, 100])
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @pytest.mark.parametrize("n_points", [10, 20, 50, 100])
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_find_simplex_multiple_points(self, n_points, xp, scp):
         points = testing.shaped_random((n_points, 2), xp, dtype=xp.float64)
         tri = scp.spatial.Delaunay(points)

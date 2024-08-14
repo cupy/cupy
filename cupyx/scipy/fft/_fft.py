@@ -21,14 +21,14 @@ except ImportError:
     _scipy_fft = _DummyModule()
 else:
     from numpy.lib import NumpyVersion as Version
-    _scipy_150 = Version(scipy.__version__) >= Version('1.5.0')
-    _scipy_160 = Version(scipy.__version__) >= Version('1.6.0')
+    _scipy_150 = Version(scipy.__version__) >= Version("1.5.0")
+    _scipy_160 = Version(scipy.__version__) >= Version("1.6.0")
     del Version
     del scipy
 
 # Backend support for scipy.fft
 
-__ua_domain__ = 'numpy.scipy.fft'
+__ua_domain__ = "numpy.scipy.fft"
 _implemented: dict = {}
 
 
@@ -54,8 +54,8 @@ def __ua_function__(method, args, kwargs):
     fn = _implemented.get(method, None)
     if fn is None:
         return NotImplemented
-    if 'plan' in kwargs and not _scipy_150:
-        warnings.warn('The \'plan\' argument is supported in SciPy v1.5.0+')
+    if "plan" in kwargs and not _scipy_150:
+        warnings.warn("The 'plan' argument is supported in SciPy v1.5.0+")
     return fn(*args, **kwargs)
 
 
@@ -319,7 +319,7 @@ def rfft(x, n=None, axis=-1, norm=None, overwrite_x=False, *, plan=None):
     """
     from cupy.cuda import cufft
 
-    return _fft(x, (n,), (axis,), norm, cufft.CUFFT_FORWARD, 'R2C',
+    return _fft(x, (n,), (axis,), norm, cufft.CUFFT_FORWARD, "R2C",
                 overwrite_x=overwrite_x, plan=plan)
 
 
@@ -353,7 +353,7 @@ def irfft(x, n=None, axis=-1, norm=None, overwrite_x=False, *, plan=None):
     .. seealso:: :func:`scipy.fft.irfft`
     """
     from cupy.cuda import cufft
-    return _fft(x, (n,), (axis,), norm, cufft.CUFFT_INVERSE, 'C2R',
+    return _fft(x, (n,), (axis,), norm, cufft.CUFFT_INVERSE, "C2R",
                 overwrite_x=overwrite_x, plan=plan)
 
 
@@ -464,8 +464,8 @@ def rfftn(x, s=None, axes=None, norm=None, overwrite_x=False, *, plan=None):
 
     s = _assequence(s)
     axes = _assequence(axes)
-    func = _default_fft_func(x, s, axes, value_type='R2C')
-    return func(x, s, axes, norm, cufft.CUFFT_FORWARD, 'R2C',
+    func = _default_fft_func(x, s, axes, value_type="R2C")
+    return func(x, s, axes, norm, cufft.CUFFT_FORWARD, "R2C",
                 overwrite_x=overwrite_x, plan=plan)
 
 
@@ -506,8 +506,8 @@ def irfftn(x, s=None, axes=None, norm=None, overwrite_x=False, *, plan=None):
 
     s = _assequence(s)
     axes = _assequence(axes)
-    func = _default_fft_func(x, s, axes, value_type='C2R')
-    return func(x, s, axes, norm, cufft.CUFFT_INVERSE, 'C2R',
+    func = _default_fft_func(x, s, axes, value_type="C2R")
+    return func(x, s, axes, norm, cufft.CUFFT_INVERSE, "C2R",
                 overwrite_x=overwrite_x, plan=plan)
 
 
@@ -539,7 +539,7 @@ def hfft(x, n=None, axis=-1, norm=None, overwrite_x=False, *, plan=None):
     """
     # TODO(leofang): support R2C & C2R plans
     if plan is not None:
-        raise NotImplementedError('hfft plan is currently not yet supported')
+        raise NotImplementedError("hfft plan is currently not yet supported")
     return _hfft(x, n, axis, norm)
 
 
@@ -569,7 +569,7 @@ def ihfft(x, n=None, axis=-1, norm=None, overwrite_x=False, *, plan=None):
     """
     # TODO(leofang): support R2C & C2R plans
     if plan is not None:
-        raise NotImplementedError('ihfft plan is currently not yet supported')
+        raise NotImplementedError("ihfft plan is currently not yet supported")
     return _ihfft(x, n, axis, norm)
 
 
@@ -596,7 +596,7 @@ def hfft2(x, s=None, axes=(-2, -1), norm=None, overwrite_x=False, *,
     .. seealso:: :func:`scipy.fft.hfft2`
     """
     if plan is not None:
-        raise NotImplementedError('hfft2 plan is currently not yet supported')
+        raise NotImplementedError("hfft2 plan is currently not yet supported")
     return irfft2(x.conj(), s, axes, _swap_direction(norm))
 
 
@@ -624,7 +624,7 @@ def ihfft2(x, s=None, axes=(-2, -1), norm=None, overwrite_x=False, *,
     .. seealso:: :func:`scipy.fft.ihfft2`
     """
     if plan is not None:
-        raise NotImplementedError('ihfft2 plan is currently not yet supported')
+        raise NotImplementedError("ihfft2 plan is currently not yet supported")
     return rfft2(x, s, axes, _swap_direction(norm)).conj()
 
 
@@ -651,7 +651,7 @@ def hfftn(x, s=None, axes=None, norm=None, overwrite_x=False, *,
     .. seealso:: :func:`scipy.fft.hfftn`
     """
     if plan is not None:
-        raise NotImplementedError('hfftn plan is currently not yet supported')
+        raise NotImplementedError("hfftn plan is currently not yet supported")
     return irfftn(x.conj(), s, axes, _swap_direction(norm))
 
 
@@ -679,5 +679,5 @@ def ihfftn(x, s=None, axes=None, norm=None, overwrite_x=False, *,
     .. seealso:: :func:`scipy.fft.ihfftn`
     """
     if plan is not None:
-        raise NotImplementedError('ihfftn plan is currently not yet supported')
+        raise NotImplementedError("ihfftn plan is currently not yet supported")
     return rfftn(x, s, axes, _swap_direction(norm)).conj()

@@ -36,10 +36,10 @@ else:
 
 
 @testing.parameterize(*testing.product({
-    'dtype': [numpy.float32, numpy.float64],
-    'mode': modes,
+    "dtype": [numpy.float32, numpy.float64],
+    "mode": modes,
 }))
-@pytest.mark.skipif(not cudnn_enabled, reason='cuDNN is not available')
+@pytest.mark.skipif(not cudnn_enabled, reason="cuDNN is not available")
 class TestCudnnActivation:
 
     @pytest.fixture(autouse=True)
@@ -56,10 +56,10 @@ class TestCudnnActivation:
 
 
 @testing.parameterize(*testing.product({
-    'dtype': [numpy.float32, numpy.float64],
-    'mode': coef_modes,
+    "dtype": [numpy.float32, numpy.float64],
+    "mode": coef_modes,
 }))
-@pytest.mark.skipif(not cudnn_enabled, reason='cuDNN is not available')
+@pytest.mark.skipif(not cudnn_enabled, reason="cuDNN is not available")
 class TestCudnnActivationCoef:
 
     @pytest.fixture(autouse=True)
@@ -78,11 +78,11 @@ class TestCudnnActivationCoef:
 
 
 @testing.parameterize(*testing.product({
-    'dtype': [numpy.float32, numpy.float64],
-    'ratio': [0.0, 0.1, 0.2, 0.5],
-    'seed': [0, 100]
+    "dtype": [numpy.float32, numpy.float64],
+    "ratio": [0.0, 0.1, 0.2, 0.5],
+    "seed": [0, 100]
 }))
-@pytest.mark.skipif(not cudnn_enabled, reason='cuDNN is not available')
+@pytest.mark.skipif(not cudnn_enabled, reason="cuDNN is not available")
 class TestCudnnDropout:
 
     @pytest.fixture(autouse=True)
@@ -125,17 +125,17 @@ class TestCudnnDropout:
 
 
 @testing.parameterize(*(testing.product({
-    'tensor_core': ['always', 'auto', 'never'],
-    'dtype': [numpy.float16, numpy.float32, numpy.float64],
-    'dilate': [1, 2],
-    'groups': [1, 2],
-    'ndim': [2],
-    'max_workspace_size': [0, 2 ** 22],
-    'auto_tune': [True, False],
-    'bias': [True, False],
-    'layout': layouts,
+    "tensor_core": ["always", "auto", "never"],
+    "dtype": [numpy.float16, numpy.float32, numpy.float64],
+    "dilate": [1, 2],
+    "groups": [1, 2],
+    "ndim": [2],
+    "max_workspace_size": [0, 2 ** 22],
+    "auto_tune": [True, False],
+    "bias": [True, False],
+    "layout": layouts,
 })))
-@pytest.mark.skipif(not cudnn_enabled, reason='cuDNN is not available')
+@pytest.mark.skipif(not cudnn_enabled, reason="cuDNN is not available")
 class TestConvolutionForward:
 
     @pytest.fixture(autouse=True)
@@ -214,16 +214,16 @@ class TestConvolutionForward:
 
 
 @testing.parameterize(*(testing.product({
-    'tensor_core': ['always', 'auto', 'never'],
-    'dtype': [numpy.float16, numpy.float32, numpy.float64],
-    'dilate': [1, 2],
-    'groups': [1, 2],
-    'ndim': [2, 3],
-    'max_workspace_size': [0, 2 ** 22],
-    'auto_tune': [True, False],
-    'deterministic': [True, False],
+    "tensor_core": ["always", "auto", "never"],
+    "dtype": [numpy.float16, numpy.float32, numpy.float64],
+    "dilate": [1, 2],
+    "groups": [1, 2],
+    "ndim": [2, 3],
+    "max_workspace_size": [0, 2 ** 22],
+    "auto_tune": [True, False],
+    "deterministic": [True, False],
 })))
-@pytest.mark.skipif(not cudnn_enabled, reason='cuDNN is not available')
+@pytest.mark.skipif(not cudnn_enabled, reason="cuDNN is not available")
 class TestConvolutionBackwardFilter:
 
     @pytest.fixture(autouse=True)
@@ -292,17 +292,17 @@ class TestConvolutionBackwardFilter:
 
 
 @testing.parameterize(*(testing.product({
-    'tensor_core': ['always', 'auto', 'never'],
-    'dtype': [numpy.float16, numpy.float32, numpy.float64],
-    'dilate': [1, 2],
-    'groups': [1, 2],
-    'ndim': [2, 3],
-    'max_workspace_size': [0, 2 ** 22],
-    'auto_tune': [True, False],
-    'deterministic': [True, False],
-    'bias': [True, False],
+    "tensor_core": ["always", "auto", "never"],
+    "dtype": [numpy.float16, numpy.float32, numpy.float64],
+    "dilate": [1, 2],
+    "groups": [1, 2],
+    "ndim": [2, 3],
+    "max_workspace_size": [0, 2 ** 22],
+    "auto_tune": [True, False],
+    "deterministic": [True, False],
+    "bias": [True, False],
 })))
-@pytest.mark.skipif(not cudnn_enabled, reason='cuDNN is not available')
+@pytest.mark.skipif(not cudnn_enabled, reason="cuDNN is not available")
 class TestConvolutionBackwardData:
 
     @pytest.fixture(autouse=True)
@@ -337,7 +337,7 @@ class TestConvolutionBackwardData:
         if ((self.dilate > 1 and version < 6000) or
                 (self.groups > 1 and version < 7000)):
             self.err = ValueError
-        elif (sys.platform.startswith('win32') and version == 7605
+        elif (sys.platform.startswith("win32") and version == 7605
                 and deterministic and self.dtype == numpy.float16
                 and self.ndim == 3 and self.dilate == 2 and self.groups == 2):
             # see https://github.com/cupy/cupy/pull/4893
@@ -379,16 +379,16 @@ class TestConvolutionBackwardData:
 
 
 @testing.parameterize(*testing.product({
-    'dtype': [numpy.float32, numpy.float64],
-    'ksize': [1, 3, 5],
-    'stride': [2, 4],
-    'auto_tune': [True, False],
+    "dtype": [numpy.float32, numpy.float64],
+    "ksize": [1, 3, 5],
+    "stride": [2, 4],
+    "auto_tune": [True, False],
 }))
 @pytest.mark.skipif(
     not cudnn_enabled or cudnn_version < 7500 or cudnn_version >= 8000,
-    reason='cuDNN 7.x (x >= 5) is required')
+    reason="cuDNN 7.x (x >= 5) is required")
 class TestConvolutionNoAvailableAlgorithm:
-    '''Checks if an expected error is raised.
+    """Checks if an expected error is raised.
 
     This checks if an expected error is raised when no available algorithm
     is found by cuDNN for a configuration. This (no available algorithm found)
@@ -397,7 +397,7 @@ class TestConvolutionNoAvailableAlgorithm:
 
     Please notice that conditions that cause the error may change depending on
     cuDNN version. The conditions below are set based on cuDNN 7.5.0 and 7.6.0.
-    '''
+    """
 
     @pytest.fixture(autouse=True)
     def setUp(self):
@@ -435,7 +435,7 @@ class TestConvolutionNoAvailableAlgorithm:
                 self.x, self.gy, self.gW,
                 pad=(self.pad, self.pad), stride=(self.stride, self.stride),
                 dilation=(1, 1), groups=1, deterministic=False,
-                auto_tune=self.auto_tune, tensor_core='always',
+                auto_tune=self.auto_tune, tensor_core="always",
                 d_layout=self.layout, w_layout=self.layout)
 
     def test_backward_data(self):
@@ -446,7 +446,7 @@ class TestConvolutionNoAvailableAlgorithm:
                 self.W, self.gy, None, self.gx,
                 pad=(self.pad, self.pad), stride=(self.stride, self.stride),
                 dilation=(1, 1), groups=1, deterministic=0,
-                auto_tune=self.auto_tune, tensor_core='always',
+                auto_tune=self.auto_tune, tensor_core="always",
                 d_layout=self.layout, w_layout=self.layout)
 
     def _get_error_type(self):

@@ -6,7 +6,7 @@ from cupy import _core
 from cupyx.scipy.linalg import _uarray
 
 
-@_uarray.implements('tri')
+@_uarray.implements("tri")
 def tri(N, M=None, k=0, dtype=None):
     """ Construct (``N``, ``M``) matrix filled with ones at and below the
     ``k``-th diagonal. The matrix has ``A[i,j] == 1`` for ``i <= j + k``.
@@ -38,7 +38,7 @@ def tri(N, M=None, k=0, dtype=None):
     return cupy.tri(N, M, k, bool if dtype is None else dtype)
 
 
-@_uarray.implements('tril')
+@_uarray.implements("tril")
 def tril(m, k=0):
     """Make a copy of a matrix with elements above the ``k``-th diagonal
     zeroed.
@@ -62,7 +62,7 @@ def tril(m, k=0):
     return t
 
 
-@_uarray.implements('triu')
+@_uarray.implements("triu")
 def triu(m, k=0):
     """Make a copy of a matrix with elements below the ``k``-th diagonal
     zeroed.
@@ -88,7 +88,7 @@ def triu(m, k=0):
     return t
 
 
-@_uarray.implements('toeplitz')
+@_uarray.implements("toeplitz")
 def toeplitz(c, r=None):
     """Construct a Toeplitz matrix.
 
@@ -120,7 +120,7 @@ def toeplitz(c, r=None):
     return _create_toeplitz_matrix(c[::-1], r[1:])
 
 
-@_uarray.implements('circulant')
+@_uarray.implements("circulant")
 def circulant(c):
     """Construct a circulant matrix.
 
@@ -140,7 +140,7 @@ def circulant(c):
     return _create_toeplitz_matrix(c[::-1], c[:0:-1])
 
 
-@_uarray.implements('hankel')
+@_uarray.implements("hankel")
 def hankel(c, r=None):
     """Construct a Hankel matrix.
 
@@ -178,7 +178,7 @@ def _create_toeplitz_matrix(c, r, hankel=False):
         strides=(n if hankel else -n, n)).copy()
 
 
-@_uarray.implements('hadamard')
+@_uarray.implements("hadamard")
 def hadamard(n, dtype=int):
     """Construct an Hadamard matrix.
 
@@ -196,18 +196,18 @@ def hadamard(n, dtype=int):
     """
     lg2 = 0 if n < 1 else (int(n).bit_length() - 1)
     if 2 ** lg2 != n:
-        raise ValueError('n must be an positive a power of 2 integer')
+        raise ValueError("n must be an positive a power of 2 integer")
     H = cupy.empty((n, n), dtype)
     return _hadamard_kernel(H, H)
 
 
 _hadamard_kernel = _core.ElementwiseKernel(
-    'T in', 'T out',
-    'out = (__popc(_ind.get()[0] & _ind.get()[1]) & 1) ? -1 : 1;',
-    'cupyx_scipy_linalg_hadamard', reduce_dims=False)
+    "T in", "T out",
+    "out = (__popc(_ind.get()[0] & _ind.get()[1]) & 1) ? -1 : 1;",
+    "cupyx_scipy_linalg_hadamard", reduce_dims=False)
 
 
-@_uarray.implements('leslie')
+@_uarray.implements("leslie")
 def leslie(f, s):
     """Create a Leslie matrix.
 
@@ -228,21 +228,21 @@ def leslie(f, s):
     .. seealso:: :func:`scipy.linalg.leslie`
     """
     if f.ndim != 1:
-        raise ValueError('Incorrect shape for f. f must be 1D')
+        raise ValueError("Incorrect shape for f. f must be 1D")
     if s.ndim != 1:
-        raise ValueError('Incorrect shape for s. s must be 1D')
+        raise ValueError("Incorrect shape for s. s must be 1D")
     n = f.size
     if n != s.size + 1:
-        raise ValueError('Length of s must be one less than length of f')
+        raise ValueError("Length of s must be one less than length of f")
     if s.size == 0:
-        raise ValueError('The length of s must be at least 1.')
+        raise ValueError("The length of s must be at least 1.")
     a = cupy.zeros((n, n), dtype=cupy.result_type(f, s))
     a[0] = f
     cupy.fill_diagonal(a[1:], s)
     return a
 
 
-@_uarray.implements('kron')
+@_uarray.implements("kron")
 def kron(a, b):
     """Kronecker product.
 
@@ -266,7 +266,7 @@ def kron(a, b):
     return cupy.concatenate(cupy.concatenate(o, axis=1), axis=1)
 
 
-@_uarray.implements('block_diag')
+@_uarray.implements("block_diag")
 def block_diag(*arrs):
     """Create a block diagonal matrix from provided arrays.
 
@@ -297,8 +297,8 @@ def block_diag(*arrs):
         arrs = cupy.atleast_2d(*arrs)
     if any(a.ndim != 2 for a in arrs):
         bad = [k for k in range(len(arrs)) if arrs[k].ndim != 2]
-        raise ValueError('arguments in the following positions have dimension '
-                         'greater than 2: {}'.format(bad))
+        raise ValueError("arguments in the following positions have dimension "
+                         "greater than 2: {}".format(bad))
 
     shapes = tuple(a.shape for a in arrs)
     shape = tuple(sum(x) for x in zip(*shapes))
@@ -312,7 +312,7 @@ def block_diag(*arrs):
     return out
 
 
-@_uarray.implements('companion')
+@_uarray.implements("companion")
 def companion(a):
     """Create a companion matrix.
 
@@ -333,9 +333,9 @@ def companion(a):
     """
     n = a.size
     if a.ndim != 1:
-        raise ValueError('`a` must be one-dimensional.')
+        raise ValueError("`a` must be one-dimensional.")
     if n < 2:
-        raise ValueError('The length of `a` must be at least 2.')
+        raise ValueError("The length of `a` must be at least 2.")
     # Following check requires device-to-host synchronization so will we not
     # raise an error this situation
     # if a[0] == 0:
@@ -347,7 +347,7 @@ def companion(a):
     return c
 
 
-@_uarray.implements('helmert')
+@_uarray.implements("helmert")
 def helmert(n, full=False):
     """Create an Helmert matrix of order ``n``.
 
@@ -376,7 +376,7 @@ def helmert(n, full=False):
     return H if full else H[1:]
 
 
-@_uarray.implements('hilbert')
+@_uarray.implements("hilbert")
 def hilbert(n):
     """Create a Hilbert matrix of order ``n``.
 
@@ -400,7 +400,7 @@ def hilbert(n):
 # TODO: invpascal(n, kind='symmetric', exact=True)
 
 
-@_uarray.implements('dft')
+@_uarray.implements("dft")
 def dft(n, scale=None):
     """Discrete Fourier transform matrix.
 
@@ -427,19 +427,19 @@ def dft(n, scale=None):
 
     .. seealso:: :func:`scipy.linalg.dft`
     """
-    if scale not in (None, 'sqrtn', 'n'):
-        raise ValueError('scale must be None, \'sqrtn\', or \'n\'; '
-                         '%r is not valid.' % (scale,))
-    r = cupy.arange(n, dtype='complex128')
+    if scale not in (None, "sqrtn", "n"):
+        raise ValueError("scale must be None, 'sqrtn', or 'n'; "
+                         "%r is not valid." % (scale,))
+    r = cupy.arange(n, dtype="complex128")
     r *= -2j*cupy.pi/n
     omegas = cupy.exp(r, out=r)[:, None]
     m = omegas ** cupy.arange(n)
     if scale is not None:
-        m *= (1/math.sqrt(n)) if scale == 'sqrtn' else (1/n)
+        m *= (1/math.sqrt(n)) if scale == "sqrtn" else (1/n)
     return m
 
 
-@_uarray.implements('fiedler')
+@_uarray.implements("fiedler")
 def fiedler(a):
     """Returns a symmetric Fiedler matrix
 
@@ -460,7 +460,7 @@ def fiedler(a):
     .. seealso:: :func:`scipy.linalg.fiedler`
     """
     if a.ndim != 1:
-        raise ValueError('Input `a` must be a 1D array.')
+        raise ValueError("Input `a` must be a 1D array.")
     if a.size == 0:
         return cupy.zeros(0)
     if a.size == 1:
@@ -469,7 +469,7 @@ def fiedler(a):
     return cupy.abs(a, out=a)
 
 
-@_uarray.implements('fiedler_companion')
+@_uarray.implements("fiedler_companion")
 def fiedler_companion(a):
     """Returns a Fiedler companion matrix
 
@@ -495,7 +495,7 @@ def fiedler_companion(a):
     .. seealso:: :func:`scipy.linalg.fiedler_companion`
     """
     if a.ndim != 1:
-        raise ValueError('Input `a` must be a 1-D array.')
+        raise ValueError("Input `a` must be a 1-D array.")
     if a.size < 2:
         return cupy.zeros((0,), a.dtype)
     if a.size == 2:
@@ -518,8 +518,8 @@ def fiedler_companion(a):
     return c
 
 
-@_uarray.implements('convolution_matrix')
-def convolution_matrix(a, n, mode='full'):
+@_uarray.implements("convolution_matrix")
+def convolution_matrix(a, n, mode="full"):
     """Construct a convolution matrix.
 
     Constructs the Toeplitz matrix representing one-dimensional convolution.
@@ -548,26 +548,26 @@ def convolution_matrix(a, n, mode='full'):
     .. seealso:: :func:`scipy.linalg.convolution_matrix`
     """
     if n <= 0:
-        raise ValueError('n must be a positive integer.')
+        raise ValueError("n must be a positive integer.")
     if a.ndim != 1:
-        raise ValueError('convolution_matrix expects a one-dimensional '
-                         'array as input')
+        raise ValueError("convolution_matrix expects a one-dimensional "
+                         "array as input")
     if a.size == 0:
-        raise ValueError('len(a) must be at least 1.')
-    if mode not in ('full', 'valid', 'same'):
+        raise ValueError("len(a) must be at least 1.")
+    if mode not in ("full", "valid", "same"):
         raise ValueError(
-            '`mode` argument must be one of (\'full\', \'valid\', \'same\')')
+            "`mode` argument must be one of ('full', 'valid', 'same')")
 
     # create zero padded versions of the array
-    az = cupy.pad(a, (0, n-1), 'constant')
-    raz = cupy.pad(a[::-1], (0, n-1), 'constant')
-    if mode == 'same':
+    az = cupy.pad(a, (0, n-1), "constant")
+    raz = cupy.pad(a[::-1], (0, n-1), "constant")
+    if mode == "same":
         trim = min(n, a.size) - 1
         tb = trim//2
         te = trim - tb
         col0 = az[tb:az.size-te]
         row0 = raz[-n-tb:raz.size-tb]
-    elif mode == 'valid':
+    elif mode == "valid":
         tb = min(n, a.size) - 1
         te = tb
         col0 = az[tb:az.size-te]

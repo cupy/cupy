@@ -114,8 +114,8 @@ class GDel2D:
         is_coplanar = cupy.where(ori == 0.0, True, False)
         if is_coplanar:
             raise ValueError(
-                'The input is degenerate, the extreme points are close to '
-                'coplanar')
+                "The input is degenerate, the extreme points are close to "
+                "coplanar")
 
         tri_ort = _compute_triangle_orientation(ori)
         tri = cupy.r_[v0, v1].astype(cupy.int32)
@@ -200,11 +200,11 @@ class GDel2D:
         shift_vec = shift_vec[:-1]
 
         self.triangles = self._shift_replace(
-            shift_vec, self.triangles, (tri_num, 3), 'Tri')
+            shift_vec, self.triangles, (tri_num, 3), "Tri")
         self.triangle_info = self._shift_replace(
-            shift_vec, self.triangle_info, tri_num, 'char', zeros=True)
+            shift_vec, self.triangle_info, tri_num, "char", zeros=True)
         tri_to_vert = self._shift_replace(
-            shift_vec, tri_to_vert, tri_num, 'int')
+            shift_vec, tri_to_vert, tri_num, "int")
 
         self.triangle_opp = self._shift_opp_tri(shift_vec, tri_num)
 
@@ -470,7 +470,7 @@ class GDel2D:
             self._flip_vec_sz = size
         else:
             if size < self._flip_vec_sz:
-                raise ValueError('New size must be larger than current one')
+                raise ValueError("New size must be larger than current one")
             self._flip_vec_sz = size
 
     def _resize_tri_msg(self, size):

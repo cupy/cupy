@@ -7,20 +7,20 @@ from cupy import _environment, _version
 
 _environment._detect_duplicate_installation()
 _environment._setup_win32_dll_directory()
-_environment._preload_library('cutensor')
+_environment._preload_library("cutensor")
 
 
 try:
     from cupy import _core
 except ImportError as exc:
-    raise ImportError(f'''
+    raise ImportError(f"""
 ================================================================
 {_environment._diagnose_import_error()}
 
 Original error:
   {type(exc).__name__}: {exc}
 ================================================================
-''') from exc
+""") from exc
 
 
 # Do not make `cupy.cupyx` available because it is confusing.
@@ -250,7 +250,7 @@ from cupy._manipulation.transpose import moveaxis, rollaxis, swapaxes, transpose
 from cupy.lib._shape_base import apply_along_axis, put_along_axis
 
 # Borrowed from NumPy
-if hasattr(_numpy, 'broadcast_shapes'):  # NumPy 1.20
+if hasattr(_numpy, "broadcast_shapes"):  # NumPy 1.20
     from numpy import broadcast_shapes
 
 # -----------------------------------------------------------------------------
@@ -279,7 +279,7 @@ def binary_repr(num, width=None):
 # -----------------------------------------------------------------------------
 # Data type routines (mostly borrowed from NumPy)
 # -----------------------------------------------------------------------------
-def can_cast(from_, to, casting='safe'):
+def can_cast(from_, to, casting="safe"):
     """Returns True if cast between data types can occur according to the
     casting rule. If from is a scalar or array scalar, also returns True if the
     scalar value can be cast without overflow or truncation to an integer.
@@ -298,12 +298,12 @@ def common_type(*arrays):
     if len(arrays) == 0:
         return _numpy.float16
 
-    default_float_dtype = _numpy.dtype('float64')
+    default_float_dtype = _numpy.dtype("float64")
     dtypes = []
     for a in arrays:
-        if a.dtype.kind == 'b':
-            raise TypeError('can\'t get common type for non-numeric array')
-        elif a.dtype.kind in 'iu':
+        if a.dtype.kind == "b":
+            raise TypeError("can't get common type for non-numeric array")
+        elif a.dtype.kind in "iu":
             dtypes.append(default_float_dtype)
         else:
             dtypes.append(a.dtype)
@@ -707,7 +707,7 @@ from cupy._core._reduction import ReductionKernel
 from cupy._util import clear_memo, memoize
 
 
-def asnumpy(a, stream=None, order='C', out=None, *, blocking=True):
+def asnumpy(a, stream=None, order="C", out=None, *, blocking=True):
     """Returns an array on the host memory from an arbitrary source array.
 
     Args:
@@ -829,9 +829,9 @@ def show_config(*, _full=False):
 
 
 _deprecated_apis = [
-    'int0',
-    'uint0',
-    'bool8',
+    "int0",
+    "uint0",
+    "bool8",
 ]
 
 
@@ -975,7 +975,7 @@ if _numpy.__version__ < "2":
     )
 else:
 
-    _template = '''\
+    _template = """\
 ''This function has been removed in NumPy v2.
 Use {recommendation} instead.
 
@@ -984,16 +984,16 @@ implementation, so it cannot be used in environments with NumPy
 v2 installed. If you rely on this function and you cannot modify
 the code to use {recommendation}, please downgrade NumPy to v1.26
 or earlier.
-'''
+"""
 
     def find_common_type(*args, **kwds):
         mesg = _template.format(
-            recommendation='`promote_types` or `result_type`'
+            recommendation="`promote_types` or `result_type`"
         )
         raise RuntimeError(mesg)
 
     def set_string_function(*args, **kwds):   # type: ignore [misc]
-        mesg = _template.format(recommendation='`np.set_printoptions`')
+        mesg = _template.format(recommendation="`np.set_printoptions`")
         raise RuntimeError(mesg)
 
     def get_array_wrap(*args, **kwds):       # type: ignore [no-redef]
@@ -1022,7 +1022,7 @@ def _embed_signatures(dirs):
             from cupy._core._kernel import _ufunc_doc_signature_formatter
             value.__doc__ = (
                 _ufunc_doc_signature_formatter(value, name) +
-                '\n\n' + value._doc
+                "\n\n" + value._doc
             )
 
 

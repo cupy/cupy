@@ -8,7 +8,7 @@ from cupy import testing
 
 class TestArrayFunction(unittest.TestCase):
 
-    @testing.with_requires('numpy>=1.17.0')
+    @testing.with_requires("numpy>=1.17.0")
     def test_array_function(self):
         a = numpy.random.randn(100, 100)
         a_cpu = numpy.asarray(a)
@@ -27,7 +27,7 @@ class TestArrayFunction(unittest.TestCase):
             assert qr_cpu.dtype == qr_gpu.dtype
             cupy.testing.assert_allclose(qr_cpu, qr_gpu, atol=1e-4)
 
-    @testing.with_requires('numpy>=1.17.0')
+    @testing.with_requires("numpy>=1.17.0")
     def test_array_function2(self):
         a = numpy.random.randn(100, 100)
         a_cpu = numpy.asarray(a)
@@ -41,18 +41,18 @@ class TestArrayFunction(unittest.TestCase):
         assert out_cpu.dtype == out_gpu.dtype
         cupy.testing.assert_allclose(out_cpu, out_gpu, atol=1e-4)
 
-    @testing.with_requires('numpy>=1.17.0')
+    @testing.with_requires("numpy>=1.17.0")
     @testing.numpy_cupy_equal()
     def test_array_function_can_cast(self, xp):
-        return numpy.can_cast(xp.arange(2), 'f4')
+        return numpy.can_cast(xp.arange(2), "f4")
 
-    @testing.with_requires('numpy>=1.17.0')
+    @testing.with_requires("numpy>=1.17.0")
     @testing.numpy_cupy_equal()
     def test_array_function_common_type(self, xp):
-        return numpy.common_type(xp.arange(2, dtype='f8'),
-                                 xp.arange(2, dtype='f4'))
+        return numpy.common_type(xp.arange(2, dtype="f8"),
+                                 xp.arange(2, dtype="f4"))
 
-    @testing.with_requires('numpy>=1.17.0')
+    @testing.with_requires("numpy>=1.17.0")
     @testing.numpy_cupy_equal()
     def test_array_function_result_type(self, xp):
-        return numpy.result_type(3, xp.arange(2, dtype='f8'))
+        return numpy.result_type(3, xp.arange(2, dtype="f8"))

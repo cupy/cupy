@@ -54,7 +54,7 @@ class MockArray(numpy.lib.mixins.NDArrayOperatorsMixin):
     __array_priority__ = 20  # less than cupy.ndarray.__array_priority__
 
     def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
-        assert method == '__call__'
+        assert method == "__call__"
         name = ufunc.__name__
         return name, inputs, kwargs
 
@@ -64,54 +64,54 @@ class TestArrayUfunc:
     def test_add(self):
         x = cupy.array([3, 7])
         y = MockArray()
-        assert x + y == ('add', (x, y), {})
-        assert y + x == ('add', (y, x), {})
+        assert x + y == ("add", (x, y), {})
+        assert y + x == ("add", (y, x), {})
         y2 = y
         y2 += x
-        assert y2 == ('add', (y, x), {'out': y})
+        assert y2 == ("add", (y, x), {"out": y})
         with pytest.raises(TypeError):
             x += y
 
     @pytest.mark.xfail(
-        reason='cupy.ndarray.__array_ufunc__ does not support gufuncs yet')
+        reason="cupy.ndarray.__array_ufunc__ does not support gufuncs yet")
     def test_matmul(self):
         x = cupy.array([3, 7])
         y = MockArray()
-        assert x @ y == ('matmul', (x, y), {})
-        assert y @ x == ('matmul', (y, x), {})
+        assert x @ y == ("matmul", (x, y), {})
+        assert y @ x == ("matmul", (y, x), {})
         y2 = y
         y2 @= x
-        assert y2 == ('matmul', (y, x), {'out': y})
+        assert y2 == ("matmul", (y, x), {"out": y})
         with pytest.raises(TypeError):
             x @= y
 
     def test_lt(self):
         x = cupy.array([3, 7])
         y = MockArray()
-        assert (x < y) == ('less', (x, y), {})
-        assert (y < x) == ('less', (y, x), {})
+        assert (x < y) == ("less", (x, y), {})
+        assert (y < x) == ("less", (y, x), {})
 
 
 class MockArray2:
     __array_ufunc__ = None
 
     def __add__(self, other):
-        return 'add'
+        return "add"
 
     def __radd__(self, other):
-        return 'radd'
+        return "radd"
 
     def __matmul__(self, other):
-        return 'matmul'
+        return "matmul"
 
     def __rmatmul__(self, other):
-        return 'rmatmul'
+        return "rmatmul"
 
     def __lt__(self, other):
-        return 'lt'
+        return "lt"
 
     def __gt__(self, other):
-        return 'gt'
+        return "gt"
 
 
 class TestArrayUfuncOptout:
@@ -119,20 +119,20 @@ class TestArrayUfuncOptout:
     def test_add(self):
         x = cupy.array([3, 7])
         y = MockArray2()
-        assert x + y == 'radd'
-        assert y + x == 'add'
+        assert x + y == "radd"
+        assert y + x == "add"
 
     def test_matmul(self):
         x = cupy.array([3, 7])
         y = MockArray2()
-        assert x @ y == 'rmatmul'
-        assert y @ x == 'matmul'
+        assert x @ y == "rmatmul"
+        assert y @ x == "matmul"
 
     def test_lt(self):
         x = cupy.array([3, 7])
         y = MockArray2()
-        assert (x < y) == 'gt'
-        assert (y < x) == 'lt'
+        assert (x < y) == "gt"
+        assert (y < x) == "lt"
 
 
 class TestAsnumpy:
@@ -150,7 +150,7 @@ class TestAsnumpy:
         assert isinstance(y.base, cupy.cuda.PinnedMemoryPointer)
         assert y.base.ptr == y.ctypes.data
 
-    @pytest.mark.parametrize('blocking', (True, False))
+    @pytest.mark.parametrize("blocking", (True, False))
     def test_asnumpy_blocking(self, blocking):
         prefactor = 4
         a = cupy.random.random(prefactor*128*1024*1024, dtype=cupy.float64)

@@ -15,7 +15,7 @@ ignore_fallback_warnings = pytest.mark.filterwarnings(
     "ignore", category=FallbackWarning)
 
 
-def numpy_fallback_equal(name='xp'):
+def numpy_fallback_equal(name="xp"):
     """
     Decorator that checks fallback_mode results are equal to NumPy ones.
     Checks results that are non-ndarray.
@@ -40,7 +40,7 @@ def numpy_fallback_equal(name='xp'):
     return decorator
 
 
-def numpy_fallback_array_equal(name='xp'):
+def numpy_fallback_array_equal(name="xp"):
     """
     Decorator that checks fallback_mode results are equal to NumPy ones.
     Checks ndarrays.
@@ -81,7 +81,7 @@ def numpy_fallback_array_equal(name='xp'):
     return decorator
 
 
-def numpy_fallback_array_allclose(name='xp', rtol=1e-07):
+def numpy_fallback_array_allclose(name="xp", rtol=1e-07):
     """
     Decorator that checks fallback_mode results are almost equal to NumPy ones.
     Checks ndarrays.
@@ -173,21 +173,21 @@ class TestFallbackMode(unittest.TestCase):
         abs = fallback_mode.numpy.vectorize(fallback_mode.numpy.abs)
         assert isinstance(abs, fallback_mode.numpy.vectorize)
 
-        date = fallback_mode.numpy.datetime64('2019-07-18')
+        date = fallback_mode.numpy.datetime64("2019-07-18")
         assert isinstance(date, fallback_mode.numpy.datetime64)
 
 
 @testing.parameterize(
-    {'func': 'min', 'shape': (3, 4), 'args': (), 'kwargs': {'axis': 0}},
-    {'func': 'argmin', 'shape': (3, 4), 'args': (), 'kwargs': {}},
-    {'func': 'roots', 'shape': (3,), 'args': (), 'kwargs': {}},
-    {'func': 'resize', 'shape': (2, 6), 'args': ((6, 2),), 'kwargs': {}},
-    {'func': 'resize', 'shape': (3, 4), 'args': ((4, 9),), 'kwargs': {}},
-    {'func': 'delete', 'shape': (5, 4), 'args': (1, 0), 'kwargs': {}},
-    {'func': 'append', 'shape': (2, 3), 'args': ([[7, 8, 9]],),
-     'kwargs': {'axis': 0}},
-    {'func': 'asarray_chkfinite', 'shape': (2, 4), 'args': (),
-     'kwargs': {'dtype': numpy.float64}}
+    {"func": "min", "shape": (3, 4), "args": (), "kwargs": {"axis": 0}},
+    {"func": "argmin", "shape": (3, 4), "args": (), "kwargs": {}},
+    {"func": "roots", "shape": (3,), "args": (), "kwargs": {}},
+    {"func": "resize", "shape": (2, 6), "args": ((6, 2),), "kwargs": {}},
+    {"func": "resize", "shape": (3, 4), "args": ((4, 9),), "kwargs": {}},
+    {"func": "delete", "shape": (5, 4), "args": (1, 0), "kwargs": {}},
+    {"func": "append", "shape": (2, 3), "args": ([[7, 8, 9]],),
+     "kwargs": {"axis": 0}},
+    {"func": "asarray_chkfinite", "shape": (2, 4), "args": (),
+     "kwargs": {"dtype": numpy.float64}}
 )
 @ignore_fallback_warnings
 class TestFallbackMethodsArrayExternal(unittest.TestCase):
@@ -200,18 +200,18 @@ class TestFallbackMethodsArrayExternal(unittest.TestCase):
 
 
 @testing.parameterize(
-    {'func': 'min', 'shape': (3, 4), 'args': (), 'kwargs': {'axis': 0},
-     'numpy_version': None},
-    {'func': 'argmin', 'shape': (3, 4), 'args': (), 'kwargs': {},
-     'numpy_version': (1, 10, 0)},
-    {'func': 'arccos', 'shape': (2, 3), 'args': (), 'kwargs': {},
-     'numpy_version': None},
-    {'func': 'fabs', 'shape': (2, 3), 'args': (), 'kwargs': {},
-     'numpy_version': None},
-    {'func': 'nancumsum', 'shape': (5, 3), 'args': (), 'kwargs': {'axis': 1},
-     'numpy_version': (1, 12, 0)},
-    {'func': 'nanpercentile', 'shape': (3, 4), 'args': (50,),
-     'kwargs': {'axis': 0}, 'numpy_version': None}
+    {"func": "min", "shape": (3, 4), "args": (), "kwargs": {"axis": 0},
+     "numpy_version": None},
+    {"func": "argmin", "shape": (3, 4), "args": (), "kwargs": {},
+     "numpy_version": (1, 10, 0)},
+    {"func": "arccos", "shape": (2, 3), "args": (), "kwargs": {},
+     "numpy_version": None},
+    {"func": "fabs", "shape": (2, 3), "args": (), "kwargs": {},
+     "numpy_version": None},
+    {"func": "nancumsum", "shape": (5, 3), "args": (), "kwargs": {"axis": 1},
+     "numpy_version": (1, 12, 0)},
+    {"func": "nanpercentile", "shape": (3, 4), "args": (50,),
+     "kwargs": {"axis": 0}, "numpy_version": None}
 )
 @ignore_fallback_warnings
 class TestFallbackMethodsArrayExternalOut(unittest.TestCase):
@@ -219,7 +219,7 @@ class TestFallbackMethodsArrayExternalOut(unittest.TestCase):
     @numpy_fallback_array_equal()
     def test_fallback_methods_array_external_out(self, xp):
         if self.numpy_version and get_numpy_version() < self.numpy_version:
-            self.skipTest('Test not supported for this version of numpy')
+            self.skipTest("Test not supported for this version of numpy")
 
         a = testing.shaped_random(self.shape, xp=xp)
         kwargs = self.kwargs.copy()
@@ -227,16 +227,16 @@ class TestFallbackMethodsArrayExternalOut(unittest.TestCase):
 
         # to get the shape of out
         out = xp.zeros(res.shape, dtype=res.dtype)
-        kwargs['out'] = out
+        kwargs["out"] = out
         getattr(xp, self.func)(a, *self.args, **kwargs)
         return out
 
 
 @testing.parameterize(
-    {'object': 'ndarray'},
-    {'object': 'ndarray.__add__'},
-    {'object': 'vectorize'},
-    {'object': 'linalg.eig'},
+    {"object": "ndarray"},
+    {"object": "ndarray.__add__"},
+    {"object": "vectorize"},
+    {"object": "linalg.eig"},
 )
 class TestDocs(unittest.TestCase):
 
@@ -263,14 +263,14 @@ class TestFallbackArray(unittest.TestCase):
         assert isinstance(a, fallback.ndarray)
         assert not a._supports_cupy
 
-        b = fallback_mode.numpy.array(['a', 'b', 'c', 'd'], dtype='|S1')
+        b = fallback_mode.numpy.array(["a", "b", "c", "d"], dtype="|S1")
         assert isinstance(b, fallback.ndarray)
         assert not b._supports_cupy
 
         # Structured array will automatically be _numpy_array
         c = fallback_mode.numpy.array(
-            [('Rex', 9, 81.0), ('Fido', 3, 27.0)],
-            dtype=[('name', 'U10'), ('age', 'i4'), ('weight', 'f4')])
+            [("Rex", 9, 81.0), ("Fido", 3, 27.0)],
+            dtype=[("name", "U10"), ("age", "i4"), ("weight", "f4")])
 
         assert isinstance(c, fallback.ndarray)
         assert not c._supports_cupy
@@ -350,11 +350,11 @@ class TestFallbackArray(unittest.TestCase):
 
 
 @testing.parameterize(
-    {'func': 'min', 'shape': (5,), 'args': (), 'kwargs': {}},
-    {'func': 'argmax', 'shape': (5, 3), 'args': (), 'kwargs': {'axis': 0}},
-    {'func': 'ptp', 'shape': (3, 3), 'args': (), 'kwargs': {'axis': 1}},
-    {'func': 'compress', 'shape': (3, 2), 'args': ([False, True],),
-     'kwargs': {'axis': 0}}
+    {"func": "min", "shape": (5,), "args": (), "kwargs": {}},
+    {"func": "argmax", "shape": (5, 3), "args": (), "kwargs": {"axis": 0}},
+    {"func": "ptp", "shape": (3, 3), "args": (), "kwargs": {"axis": 1}},
+    {"func": "compress", "shape": (3, 2), "args": ([False, True],),
+     "kwargs": {"axis": 0}}
 )
 class TestFallbackArrayMethodsInternal(unittest.TestCase):
 
@@ -373,18 +373,18 @@ class TestFallbackArrayMethodsInternal(unittest.TestCase):
 
         # to get the shape of out
         out = xp.zeros(res.shape, dtype=res.dtype)
-        kwargs['out'] = out
+        kwargs["out"] = out
         getattr(a, self.func)(*self.args, **kwargs)
         return out
 
 
 @testing.parameterize(
-    {'func': '__eq__', 'shape': (3, 4)},
-    {'func': '__ne__', 'shape': (3, 1)},
-    {'func': '__gt__', 'shape': (4,)},
-    {'func': '__lt__', 'shape': (1, 1)},
-    {'func': '__ge__', 'shape': (1, 2)},
-    {'func': '__le__', 'shape': (1,)}
+    {"func": "__eq__", "shape": (3, 4)},
+    {"func": "__ne__", "shape": (3, 1)},
+    {"func": "__gt__", "shape": (4,)},
+    {"func": "__lt__", "shape": (1, 1)},
+    {"func": "__ge__", "shape": (1, 2)},
+    {"func": "__le__", "shape": (1,)}
 )
 class TestArrayComparison(unittest.TestCase):
 
@@ -398,12 +398,12 @@ class TestArrayComparison(unittest.TestCase):
 
 
 @testing.parameterize(
-    {'func': '__str__', 'shape': (5, 6)},
-    {'func': '__repr__', 'shape': (3, 4)},
-    {'func': '__int__', 'shape': ()},
-    {'func': '__float__', 'shape': ()},
-    {'func': '__len__', 'shape': (3, 3)},
-    {'func': '__bool__', 'shape': ()},
+    {"func": "__str__", "shape": (5, 6)},
+    {"func": "__repr__", "shape": (3, 4)},
+    {"func": "__int__", "shape": ()},
+    {"func": "__float__", "shape": ()},
+    {"func": "__len__", "shape": (3, 3)},
+    {"func": "__bool__", "shape": ()},
 )
 class TestArrayUnaryMethods(unittest.TestCase):
 
@@ -414,10 +414,10 @@ class TestArrayUnaryMethods(unittest.TestCase):
 
 
 @testing.parameterize(
-    {'func': '__abs__', 'shape': (5, 6), 'dtype': numpy.float32},
-    {'func': '__copy__', 'shape': (3, 4), 'dtype': numpy.float32},
-    {'func': '__neg__', 'shape': (3, 3), 'dtype': numpy.float32},
-    {'func': '__invert__', 'shape': (2, 4), 'dtype': numpy.int32}
+    {"func": "__abs__", "shape": (5, 6), "dtype": numpy.float32},
+    {"func": "__copy__", "shape": (3, 4), "dtype": numpy.float32},
+    {"func": "__neg__", "shape": (3, 3), "dtype": numpy.float32},
+    {"func": "__invert__", "shape": (2, 4), "dtype": numpy.int32}
 )
 class TestArrayUnaryMethodsArray(unittest.TestCase):
 
@@ -430,17 +430,17 @@ class TestArrayUnaryMethodsArray(unittest.TestCase):
 
 
 @testing.parameterize(
-    {'func': '__add__', 'shape': (3, 4), 'dtype': numpy.float32},
-    {'func': '__sub__', 'shape': (2, 2), 'dtype': numpy.float32},
-    {'func': '__mul__', 'shape': (5, 6), 'dtype': numpy.float32},
-    {'func': '__mod__', 'shape': (3, 4), 'dtype': numpy.float32},
-    {'func': '__iadd__', 'shape': (1,), 'dtype': numpy.float32},
-    {'func': '__imul__', 'shape': (1, 1), 'dtype': numpy.float32},
-    {'func': '__and__', 'shape': (3, 3), 'dtype': numpy.int32},
-    {'func': '__ipow__', 'shape': (4, 5), 'dtype': numpy.int32},
-    {'func': '__xor__', 'shape': (4, 4), 'dtype': numpy.int32},
-    {'func': '__lshift__', 'shape': (2,), 'dtype': numpy.int32},
-    {'func': '__irshift__', 'shape': (3, 2), 'dtype': numpy.int32},
+    {"func": "__add__", "shape": (3, 4), "dtype": numpy.float32},
+    {"func": "__sub__", "shape": (2, 2), "dtype": numpy.float32},
+    {"func": "__mul__", "shape": (5, 6), "dtype": numpy.float32},
+    {"func": "__mod__", "shape": (3, 4), "dtype": numpy.float32},
+    {"func": "__iadd__", "shape": (1,), "dtype": numpy.float32},
+    {"func": "__imul__", "shape": (1, 1), "dtype": numpy.float32},
+    {"func": "__and__", "shape": (3, 3), "dtype": numpy.int32},
+    {"func": "__ipow__", "shape": (4, 5), "dtype": numpy.int32},
+    {"func": "__xor__", "shape": (4, 4), "dtype": numpy.int32},
+    {"func": "__lshift__", "shape": (2,), "dtype": numpy.int32},
+    {"func": "__irshift__", "shape": (3, 2), "dtype": numpy.int32},
 )
 class TestArrayArithmeticMethods(unittest.TestCase):
 
@@ -453,7 +453,7 @@ class TestArrayArithmeticMethods(unittest.TestCase):
 
 class TestArrayMatmul(unittest.TestCase):
 
-    @testing.with_requires('numpy>=1.16')
+    @testing.with_requires("numpy>=1.16")
     @numpy_fallback_array_allclose(rtol=1e-05)
     def test_mm_matmul(self, xp):
         a = testing.shaped_random((4, 5), xp)
@@ -495,7 +495,7 @@ class TestVectorizeWrapper(unittest.TestCase):
     def test_setattr(self, xp):
         a = xp.array([-1, 2, -3])
         vabs = xp.vectorize(abs)
-        vabs.otypes = ['float']
+        vabs.otypes = ["float"]
         return vabs(a)
 
     @numpy_fallback_equal()
@@ -519,7 +519,7 @@ class TestInplaceSpecialMethods(unittest.TestCase):
         return a.byteswap()
 
     @unittest.skipIf(get_numpy_version() < (1, 13, 0),
-                     'inplace kwarg for byteswap was added in numpy v1.13.0')
+                     "inplace kwarg for byteswap was added in numpy v1.13.0")
     @numpy_fallback_array_equal()
     def test_ndarray_byteswap_inplace(self, xp):
         a = testing.shaped_random((4,), xp, dtype=xp.int16)
@@ -533,7 +533,7 @@ class TestInplaceSpecialMethods(unittest.TestCase):
         return a
 
     @unittest.skipIf(get_numpy_version() < (1, 15, 0),
-                     'put_along_axis introduced in numpy v1.15.0')
+                     "put_along_axis introduced in numpy v1.15.0")
     @numpy_fallback_array_equal()
     def test_put_along_axis(self, xp):
         a = xp.array([[10, 30, 20], [60, 40, 50]])
@@ -542,7 +542,7 @@ class TestInplaceSpecialMethods(unittest.TestCase):
         return a
 
     @unittest.skipIf(get_numpy_version() < (1, 15, 0),
-                     'quantile introduced in numpy v1.15.0')
+                     "quantile introduced in numpy v1.15.0")
     @numpy_fallback_array_equal()
     def test_out_is_returned_when_fallbacked(self, xp):
         a = testing.shaped_random((3, 4), xp)
@@ -591,19 +591,19 @@ class TestArrayVariants(unittest.TestCase):
 
     @numpy_fallback_array_equal()
     def test_creation_char(self, xp):
-        cx = xp.char.array(['a', 'b', 'c'], itemsize=3)
+        cx = xp.char.array(["a", "b", "c"], itemsize=3)
         return cx
 
     @numpy_fallback_array_equal()
     def test_method_external_char(self, xp):
-        cx = xp.char.array(['a', 'b', 'c'], itemsize=3)
-        cy = xp.char.array(['a', 'b', 'c'], itemsize=3)
+        cx = xp.char.array(["a", "b", "c"], itemsize=3)
+        cy = xp.char.array(["a", "b", "c"], itemsize=3)
         return xp.char.add(cx, cy)
 
     @numpy_fallback_array_equal()
     def test_magic_method_char(self, xp):
-        cx = xp.char.array(['a', 'b', 'c'], itemsize=3)
-        cy = xp.char.array(['a', 'b', 'c'], itemsize=3)
+        cx = xp.char.array(["a", "b", "c"], itemsize=3)
+        cy = xp.char.array(["a", "b", "c"], itemsize=3)
         return cx == cy
 
     @numpy_fallback_array_equal()

@@ -13,7 +13,7 @@ else:
     nccl_version = -1
 
 
-@unittest.skipUnless(nccl_available, 'nccl is not installed')
+@unittest.skipUnless(nccl_available, "nccl is not installed")
 class TestNCCL(unittest.TestCase):
 
     def test_single_proc_ring(self):
@@ -22,13 +22,13 @@ class TestNCCL(unittest.TestCase):
         assert 0 == comm.rank_id()
         comm.destroy()
 
-    @unittest.skipUnless(nccl_version >= 2400, 'Using old NCCL')
+    @unittest.skipUnless(nccl_version >= 2400, "Using old NCCL")
     def test_abort(self):
         id = nccl.get_unique_id()
         comm = nccl.NcclCommunicator(1, id, 0)
         comm.abort()
 
-    @unittest.skipUnless(nccl_version >= 2400, 'Using old NCCL')
+    @unittest.skipUnless(nccl_version >= 2400, "Using old NCCL")
     def test_check_async_error(self):
         id = nccl.get_unique_id()
         comm = nccl.NcclCommunicator(1, id, 0)
@@ -61,7 +61,7 @@ class TestNCCL(unittest.TestCase):
         assert 1 == comm.size()
 
     @testing.multi_gpu(2)
-    @unittest.skipUnless(nccl_version >= 2700, 'Using old NCCL')
+    @unittest.skipUnless(nccl_version >= 2700, "Using old NCCL")
     def test_send_recv(self):
         devs = [0, 1]
         comms = nccl.NcclCommunicator.initAll(devs)
@@ -89,7 +89,7 @@ class TestNCCL(unittest.TestCase):
             assert (recvbuf == expected).all()
 
 
-@unittest.skipUnless(nccl_available, 'nccl is not installed')
+@unittest.skipUnless(nccl_available, "nccl is not installed")
 class TestExceptionPicklable(unittest.TestCase):
 
     def test(self):

@@ -1,6 +1,6 @@
 import numpy
 
-if numpy.__version__ < '2':
+if numpy.__version__ < "2":
     from numpy.lib import index_tricks
 else:
     import numpy.lib._index_tricks_impl as index_tricks  # type: ignore[no-redef]  # NOQA
@@ -44,7 +44,7 @@ def apply_along_axis(func1d, axis, arr, *args, **kwargs):
         ind0 = next(inds)
     except StopIteration:
         raise ValueError(
-            'Cannot apply_along_axis when any iteration dimensions are 0'
+            "Cannot apply_along_axis when any iteration dimensions are 0"
         )
     res = func1d(inarr_view[ind0], *args, **kwargs)
     res = cupy.asarray(res)
@@ -72,7 +72,7 @@ def _make_along_axis_idx(arr_shape, indices, axis):
     # compute dimensions to iterate over
 
     if not cupy.issubdtype(indices.dtype, cupy.integer):
-        raise IndexError('`indices` must be an integer array')
+        raise IndexError("`indices` must be an integer array")
     if len(arr_shape) != indices.ndim:
         raise ValueError(
             "`indices` and `arr` must have the same number of dimensions")

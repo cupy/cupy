@@ -133,7 +133,7 @@ def savgol_coeffs(window_length, polyorder, deriv=0, delta=1.0, pos=None,
         raise ValueError("pos must be nonnegative and less than "
                          "window_length.")
 
-    if use not in ['conv', 'dot']:
+    if use not in ["conv", "dot"]:
         raise ValueError("`use` must be 'conv' or 'dot'")
 
     if deriv > polyorder:
@@ -249,7 +249,7 @@ def _fit_edges_polyfit(x, window_length, polyorder, deriv, delta, axis, y):
 
 
 def savgol_filter(x, window_length, polyorder, deriv=0, delta=1.0,
-                  axis=-1, mode='interp', cval=0.0):
+                  axis=-1, mode="interp", cval=0.0):
     """ Apply a Savitzky-Golay filter to an array.
 
     This is a 1-D filter. If `x`  has dimension greater than 1, `axis`

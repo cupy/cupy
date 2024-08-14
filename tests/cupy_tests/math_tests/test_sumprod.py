@@ -66,7 +66,7 @@ class TestSumprod:
     @testing.slow
     @testing.numpy_cupy_allclose()
     def test_sum_axis_huge(self, xp):
-        a = testing.shaped_random((2048, 1, 1024), xp, 'b')
+        a = testing.shaped_random((2048, 1, 1024), xp, "b")
         a = xp.broadcast_to(a, (2048, 1024, 1024))
         return a.sum(axis=2)
 
@@ -87,11 +87,11 @@ class TestSumprod:
     def test_sum_axis2_float16(self):
         # Note that the above test example overflows in float16. We use a
         # smaller array instead.
-        a = testing.shaped_arange((2, 30, 4), dtype='e')
+        a = testing.shaped_arange((2, 30, 4), dtype="e")
         sa = a.sum(axis=1)
-        b = testing.shaped_arange((2, 30, 4), numpy, dtype='f')
+        b = testing.shaped_arange((2, 30, 4), numpy, dtype="f")
         sb = b.sum(axis=1)
-        testing.assert_allclose(sa, sb.astype('e'))
+        testing.assert_allclose(sa, sb.astype("e"))
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(contiguous_check=False)
@@ -135,7 +135,7 @@ class TestSumprod:
         a = testing.shaped_arange((2, 3, 4, 5), xp, dtype)
         return a.sum(axis=())
 
-    @testing.for_all_dtypes_combination(names=['src_dtype', 'dst_dtype'])
+    @testing.for_all_dtypes_combination(names=["src_dtype", "dst_dtype"])
     @testing.numpy_cupy_allclose()
     def test_sum_dtype(self, xp, src_dtype, dst_dtype):
         if not xp.can_cast(src_dtype, dst_dtype):
@@ -143,8 +143,8 @@ class TestSumprod:
         a = testing.shaped_arange((2, 3, 4), xp, src_dtype)
         return a.sum(dtype=dst_dtype)
 
-    @testing.for_all_dtypes_combination(names=['src_dtype', 'dst_dtype'])
-    @testing.numpy_cupy_allclose(rtol={numpy.float16: 1e-2, 'default': 1e-7})
+    @testing.for_all_dtypes_combination(names=["src_dtype", "dst_dtype"])
+    @testing.numpy_cupy_allclose(rtol={numpy.float16: 1e-2, "default": 1e-7})
     def test_sum_keepdims_and_dtype(self, xp, src_dtype, dst_dtype):
         if not xp.can_cast(src_dtype, dst_dtype):
             pytest.skip()
@@ -195,7 +195,7 @@ class TestSumprod:
         a = testing.shaped_arange((2, 3, 4), xp, dtype)
         return xp.prod(a, axis=1)
 
-    @testing.for_all_dtypes_combination(names=['src_dtype', 'dst_dtype'])
+    @testing.for_all_dtypes_combination(names=["src_dtype", "dst_dtype"])
     @testing.numpy_cupy_allclose()
     def test_prod_dtype(self, xp, src_dtype, dst_dtype):
         if not xp.can_cast(src_dtype, dst_dtype):
@@ -207,43 +207,43 @@ class TestSumprod:
     def test_product_alias(self, xp):
         a = testing.shaped_arange((2, 3), xp, xp.float32)
         with warnings.catch_warnings():
-            warnings.simplefilter('ignore', DeprecationWarning)
+            warnings.simplefilter("ignore", DeprecationWarning)
             return xp.product(a)
 
 
 # This class compares CUB results against NumPy's
 @testing.parameterize(*testing.product({
-    'shape': [(10,), (10, 20), (10, 20, 30), (10, 20, 30, 40)],
-    'order': ('C', 'F'),
-    'backend': ('device', 'block'),
+    "shape": [(10,), (10, 20), (10, 20, 30), (10, 20, 30, 40)],
+    "order": ("C", "F"),
+    "backend": ("device", "block"),
 }))
 @pytest.mark.skipif(
-    not cupy.cuda.cub.available, reason='The CUB routine is not enabled')
+    not cupy.cuda.cub.available, reason="The CUB routine is not enabled")
 class TestCubReduction:
 
     @pytest.fixture(autouse=True)
     def setUp(self):
         old_routine_accelerators = _acc.get_routine_accelerators()
         old_reduction_accelerators = _acc.get_reduction_accelerators()
-        if self.backend == 'device':
-            _acc.set_routine_accelerators(['cub'])
+        if self.backend == "device":
+            _acc.set_routine_accelerators(["cub"])
             _acc.set_reduction_accelerators([])
-        elif self.backend == 'block':
+        elif self.backend == "block":
             _acc.set_routine_accelerators([])
-            _acc.set_reduction_accelerators(['cub'])
+            _acc.set_reduction_accelerators(["cub"])
         yield
         _acc.set_routine_accelerators(old_routine_accelerators)
         _acc.set_reduction_accelerators(old_reduction_accelerators)
 
     @testing.for_contiguous_axes()
     # sum supports less dtypes; don't test float16 as it's not as accurate?
-    @testing.for_dtypes('qQfdFD')
+    @testing.for_dtypes("qQfdFD")
     @testing.numpy_cupy_allclose(rtol=1E-5)
     def test_cub_sum(self, xp, dtype, axis):
         a = testing.shaped_random(self.shape, xp, dtype)
-        if self.order in ('c', 'C'):
+        if self.order in ("c", "C"):
             a = xp.ascontiguousarray(a)
-        elif self.order in ('f', 'F'):
+        elif self.order in ("f", "F"):
             a = xp.asfortranarray(a)
 
         if xp is numpy:
@@ -251,18 +251,18 @@ class TestCubReduction:
 
         # xp is cupy, first ensure we really use CUB
         ret = cupy.empty(())  # Cython checks return type, need to fool it
-        if self.backend == 'device':
-            func_name = 'cupy._core._routines_math.cub.'
+        if self.backend == "device":
+            func_name = "cupy._core._routines_math.cub."
             if len(axis) == len(self.shape):
-                func_name += 'device_reduce'
+                func_name += "device_reduce"
             else:
-                func_name += 'device_segmented_reduce'
+                func_name += "device_segmented_reduce"
             with testing.AssertFunctionIsCalled(func_name, return_value=ret):
                 a.sum(axis=axis)
-        elif self.backend == 'block':
+        elif self.backend == "block":
             # this is the only function we can mock; the rest is cdef'd
-            func_name = 'cupy._core._cub_reduction.'
-            func_name += '_SimpleCubReductionKernel_get_cached_function'
+            func_name = "cupy._core._cub_reduction."
+            func_name += "_SimpleCubReductionKernel_get_cached_function"
             func = _cub_reduction._SimpleCubReductionKernel_get_cached_function
             if len(axis) == len(self.shape):
                 times_called = 2  # two passes
@@ -275,25 +275,25 @@ class TestCubReduction:
         return a.sum(axis=axis)
 
     # sum supports less dtypes; don't test float16 as it's not as accurate?
-    @testing.for_dtypes('qQfdFD')
+    @testing.for_dtypes("qQfdFD")
     @testing.numpy_cupy_allclose(rtol=1E-5, contiguous_check=False)
     def test_cub_sum_empty_axis(self, xp, dtype):
         a = testing.shaped_random(self.shape, xp, dtype)
-        if self.order in ('c', 'C'):
+        if self.order in ("c", "C"):
             a = xp.ascontiguousarray(a)
-        elif self.order in ('f', 'F'):
+        elif self.order in ("f", "F"):
             a = xp.asfortranarray(a)
         return a.sum(axis=())
 
     @testing.for_contiguous_axes()
     # prod supports less dtypes; don't test float16 as it's not as accurate?
-    @testing.for_dtypes('qQfdFD')
+    @testing.for_dtypes("qQfdFD")
     @testing.numpy_cupy_allclose(rtol=1E-5)
     def test_cub_prod(self, xp, dtype, axis):
         a = testing.shaped_random(self.shape, xp, dtype)
-        if self.order in ('c', 'C'):
+        if self.order in ("c", "C"):
             a = xp.ascontiguousarray(a)
-        elif self.order in ('f', 'F'):
+        elif self.order in ("f", "F"):
             a = xp.asfortranarray(a)
 
         if xp is numpy:
@@ -301,18 +301,18 @@ class TestCubReduction:
 
         # xp is cupy, first ensure we really use CUB
         ret = cupy.empty(())  # Cython checks return type, need to fool it
-        if self.backend == 'device':
-            func_name = 'cupy._core._routines_math.cub.'
+        if self.backend == "device":
+            func_name = "cupy._core._routines_math.cub."
             if len(axis) == len(self.shape):
-                func_name += 'device_reduce'
+                func_name += "device_reduce"
             else:
-                func_name += 'device_segmented_reduce'
+                func_name += "device_segmented_reduce"
             with testing.AssertFunctionIsCalled(func_name, return_value=ret):
                 a.prod(axis=axis)
-        elif self.backend == 'block':
+        elif self.backend == "block":
             # this is the only function we can mock; the rest is cdef'd
-            func_name = 'cupy._core._cub_reduction.'
-            func_name += '_SimpleCubReductionKernel_get_cached_function'
+            func_name = "cupy._core._cub_reduction."
+            func_name += "_SimpleCubReductionKernel_get_cached_function"
             func = _cub_reduction._SimpleCubReductionKernel_get_cached_function
             if len(axis) == len(self.shape):
                 times_called = 2  # two passes
@@ -326,16 +326,16 @@ class TestCubReduction:
 
     # TODO(leofang): test axis after support is added
     # don't test float16 as it's not as accurate?
-    @testing.for_dtypes('bhilBHILfdF')
+    @testing.for_dtypes("bhilBHILfdF")
     @testing.numpy_cupy_allclose(rtol=1E-4)
     def test_cub_cumsum(self, xp, dtype):
-        if self.backend == 'block':
-            pytest.skip('does not support')
+        if self.backend == "block":
+            pytest.skip("does not support")
 
         a = testing.shaped_random(self.shape, xp, dtype)
-        if self.order in ('c', 'C'):
+        if self.order in ("c", "C"):
             a = xp.ascontiguousarray(a)
-        elif self.order in ('f', 'F'):
+        elif self.order in ("f", "F"):
             a = xp.asfortranarray(a)
 
         if xp is numpy:
@@ -343,7 +343,7 @@ class TestCubReduction:
 
         # xp is cupy, first ensure we really use CUB
         ret = cupy.empty(())  # Cython checks return type, need to fool it
-        func = 'cupy._core._routines_math.cub.device_scan'
+        func = "cupy._core._routines_math.cub.device_scan"
         with testing.AssertFunctionIsCalled(func, return_value=ret):
             a.cumsum()
         # ...then perform the actual computation
@@ -351,16 +351,16 @@ class TestCubReduction:
 
     # TODO(leofang): test axis after support is added
     # don't test float16 as it's not as accurate?
-    @testing.for_dtypes('bhilBHILfdF')
+    @testing.for_dtypes("bhilBHILfdF")
     @testing.numpy_cupy_allclose(rtol=1E-4)
     def test_cub_cumprod(self, xp, dtype):
-        if self.backend == 'block':
-            pytest.skip('does not support')
+        if self.backend == "block":
+            pytest.skip("does not support")
 
         a = testing.shaped_random(self.shape, xp, dtype)
-        if self.order in ('c', 'C'):
+        if self.order in ("c", "C"):
             a = xp.ascontiguousarray(a)
-        elif self.order in ('f', 'F'):
+        elif self.order in ("f", "F"):
             a = xp.asfortranarray(a)
 
         if xp is numpy:
@@ -369,7 +369,7 @@ class TestCubReduction:
 
         # xp is cupy, first ensure we really use CUB
         ret = cupy.empty(())  # Cython checks return type, need to fool it
-        func = 'cupy._core._routines_math.cub.device_scan'
+        func = "cupy._core._routines_math.cub.device_scan"
         with testing.AssertFunctionIsCalled(func, return_value=ret):
             a.cumprod()
         # ...then perform the actual computation
@@ -391,30 +391,30 @@ class TestCubReduction:
 
 # This class compares cuTENSOR results against NumPy's
 @testing.parameterize(*testing.product({
-    'shape': [(10,), (10, 20), (10, 20, 30), (10, 20, 30, 40)],
-    'order': ('C', 'F'),
+    "shape": [(10,), (10, 20), (10, 20, 30), (10, 20, 30, 40)],
+    "order": ("C", "F"),
 }))
 @pytest.mark.skipif(
     not cupy.cuda.cutensor.available,
-    reason='The cuTENSOR routine is not enabled')
+    reason="The cuTENSOR routine is not enabled")
 class TestCuTensorReduction:
 
     @pytest.fixture(autouse=True)
     def setUp(self):
         old_accelerators = cupy._core.get_routine_accelerators()
-        cupy._core.set_routine_accelerators(['cutensor'])
+        cupy._core.set_routine_accelerators(["cutensor"])
         yield
         cupy._core.set_routine_accelerators(old_accelerators)
 
     @testing.for_contiguous_axes()
     # sum supports less dtypes; don't test float16 as it's not as accurate?
-    @testing.for_dtypes('qQfdFD')
+    @testing.for_dtypes("qQfdFD")
     @testing.numpy_cupy_allclose(rtol=1E-5, contiguous_check=False)
     def test_cutensor_sum(self, xp, dtype, axis):
         a = testing.shaped_random(self.shape, xp, dtype)
-        if self.order in ('c', 'C'):
+        if self.order in ("c", "C"):
             a = xp.ascontiguousarray(a)
-        elif self.order in ('f', 'F'):
+        elif self.order in ("f", "F"):
             a = xp.asfortranarray(a)
 
         if xp is numpy:
@@ -422,31 +422,31 @@ class TestCuTensorReduction:
 
         # xp is cupy, first ensure we really use cuTENSOR
         ret = cupy.empty(())  # Cython checks return type, need to fool it
-        func = 'cupyx.cutensor._try_reduction_routine'
+        func = "cupyx.cutensor._try_reduction_routine"
         with testing.AssertFunctionIsCalled(func, return_value=ret):
             a.sum(axis=axis)
         # ...then perform the actual computation
         return a.sum(axis=axis)
 
     # sum supports less dtypes; don't test float16 as it's not as accurate?
-    @testing.for_dtypes('qQfdFD')
+    @testing.for_dtypes("qQfdFD")
     @testing.numpy_cupy_allclose(rtol=1E-5, contiguous_check=False)
     def test_cutensor_sum_empty_axis(self, xp, dtype):
         a = testing.shaped_random(self.shape, xp, dtype)
-        if self.order in ('c', 'C'):
+        if self.order in ("c", "C"):
             a = xp.ascontiguousarray(a)
-        elif self.order in ('f', 'F'):
+        elif self.order in ("f", "F"):
             a = xp.asfortranarray(a)
         return a.sum(axis=())
 
 
 @testing.parameterize(
     *testing.product({
-        'shape': [(2, 3, 4), (20, 30, 40)],
-        'axis': [0, 1],
-        'transpose_axes': [True, False],
-        'keepdims': [True, False],
-        'func': ['nansum', 'nanprod']
+        "shape": [(2, 3, 4), (20, 30, 40)],
+        "axis": [0, 1],
+        "transpose_axes": [True, False],
+        "keepdims": [True, False],
+        "func": ["nansum", "nanprod"]
     })
 )
 class TestNansumNanprodLong:
@@ -455,8 +455,8 @@ class TestNansumNanprodLong:
         return not self.transpose_axes and self.axis != 1
 
     def _numpy_nanprod_implemented(self):
-        return (self.func == 'nanprod' and
-                numpy.__version__ >= numpy.lib.NumpyVersion('1.10.0'))
+        return (self.func == "nanprod" and
+                numpy.__version__ >= numpy.lib.NumpyVersion("1.10.0"))
 
     def _test(self, xp, dtype):
         a = testing.shaped_arange(self.shape, xp, dtype)
@@ -486,7 +486,7 @@ class TestNansumNanprodLong:
 
 @testing.parameterize(
     *testing.product({
-        'shape': [(2, 3, 4), (20, 30, 40)],
+        "shape": [(2, 3, 4), (20, 30, 40)],
     })
 )
 class TestNansumNanprodExtra:
@@ -496,13 +496,13 @@ class TestNansumNanprodExtra:
         # smaller array instead, just return if array is too large.
         if (numpy.prod(self.shape) > 24):
             return
-        a = testing.shaped_arange(self.shape, dtype='e')
+        a = testing.shaped_arange(self.shape, dtype="e")
         a[:, 1] = cupy.nan
         sa = cupy.nansum(a, axis=1)
-        b = testing.shaped_arange(self.shape, numpy, dtype='f')
+        b = testing.shaped_arange(self.shape, numpy, dtype="f")
         b[:, 1] = numpy.nan
         sb = numpy.nansum(b, axis=1)
-        testing.assert_allclose(sa, sb.astype('e'))
+        testing.assert_allclose(sa, sb.astype("e"))
 
     @testing.for_all_dtypes(no_bool=True, no_float16=True)
     @testing.numpy_cupy_allclose()
@@ -524,8 +524,8 @@ class TestNansumNanprodExtra:
 
 @testing.parameterize(
     *testing.product({
-        'shape': [(2, 3, 4, 5), (20, 30, 40, 50)],
-        'axis': [(1, 3), (0, 2, 3)],
+        "shape": [(2, 3, 4, 5), (20, 30, 40, 50)],
+        "axis": [(1, 3), (0, 2, 3)],
     })
 )
 class TestNansumNanprodAxes:
@@ -540,7 +540,7 @@ class TestNansumNanprodAxes:
 
 class TestNansumNanprodHuge:
     def _test(self, xp, nan_slice):
-        a = testing.shaped_random((2048, 1, 1024), xp, 'f')
+        a = testing.shaped_random((2048, 1, 1024), xp, "f")
         a[nan_slice] = xp.nan
         a = xp.broadcast_to(a, (2048, 1024, 1024))
         return xp.nansum(a, axis=2)
@@ -561,7 +561,7 @@ class TestNansumNanprodHuge:
 axes = [0, 1, 2]
 
 
-@testing.parameterize(*testing.product({'axis': axes}))
+@testing.parameterize(*testing.product({"axis": axes}))
 class TestCumsum:
 
     def _cumsum(self, xp, a, *args, **kwargs):
@@ -729,8 +729,8 @@ class TestCumprod:
         size = 2 ** 32
         # Free huge memory for slow test
         cupy.get_default_memory_pool().free_all_blocks()
-        a = cupy.ones(size, 'b')
-        result = cupy.cumprod(a, dtype='b')
+        a = cupy.ones(size, "b")
+        result = cupy.cumprod(a, dtype="b")
         del a
         assert (result == 1).all()
         # Free huge memory for slow test
@@ -778,14 +778,14 @@ class TestCumprod:
     def test_cumproduct_alias(self, xp):
         a = testing.shaped_arange((2, 3), xp, xp.float32)
         with warnings.catch_warnings():
-            warnings.simplefilter('ignore', DeprecationWarning)
+            warnings.simplefilter("ignore", DeprecationWarning)
             return xp.cumproduct(a)
 
 
 @testing.parameterize(*testing.product({
-    'shape': [(20,), (7, 6), (3, 4, 5)],
-    'axis': [None, 0, 1, 2],
-    'func': ('nancumsum', 'nancumprod'),
+    "shape": [(20,), (7, 6), (3, 4, 5)],
+    "axis": [None, 0, 1, 2],
+    "func": ("nancumsum", "nancumprod"),
 }))
 class TestNanCumSumProd:
 
@@ -793,11 +793,11 @@ class TestNanCumSumProd:
 
     def _make_array(self, dtype):
         dtype = numpy.dtype(dtype)
-        if dtype.char in 'efdFD':
+        if dtype.char in "efdFD":
             r_dtype = dtype.char.lower()
             a = testing.shaped_random(self.shape, numpy, dtype=r_dtype,
                                       scale=1)
-            if dtype.char in 'FD':
+            if dtype.char in "FD":
                 ai = a
                 aj = testing.shaped_random(self.shape, numpy, dtype=r_dtype,
                                            scale=1)
@@ -867,7 +867,7 @@ class TestDiff:
         a = testing.shaped_arange((4, 5), xp, dtype)
         return xp.diff(a, 2, 1)
 
-    @testing.with_requires('numpy>=1.16')
+    @testing.with_requires("numpy>=1.16")
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
     def test_diff_2dim_with_prepend(self, xp, dtype):
@@ -875,7 +875,7 @@ class TestDiff:
         b = testing.shaped_arange((4, 1), xp, dtype)
         return xp.diff(a, axis=-1, prepend=b)
 
-    @testing.with_requires('numpy>=1.16')
+    @testing.with_requires("numpy>=1.16")
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
     def test_diff_2dim_with_append(self, xp, dtype):
@@ -883,14 +883,14 @@ class TestDiff:
         b = testing.shaped_arange((1, 5), xp, dtype)
         return xp.diff(a, axis=0, append=b, n=2)
 
-    @testing.with_requires('numpy>=1.16')
+    @testing.with_requires("numpy>=1.16")
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
     def test_diff_2dim_with_scalar_append(self, xp, dtype):
         a = testing.shaped_arange((4, 5), xp, dtype)
         return xp.diff(a, prepend=1, append=0)
 
-    @testing.with_requires('numpy>=1.16')
+    @testing.with_requires("numpy>=1.16")
     def test_diff_invalid_axis(self):
         for xp in (numpy, cupy):
             a = testing.shaped_arange((2, 3, 4), xp)
@@ -903,22 +903,22 @@ class TestDiff:
 # This class compares CUB results against NumPy's
 @testing.parameterize(*testing.product_dict(
     testing.product({
-        'shape': [()],
-        'axis': [None, ()],
-        'spacing': [(), (1.2,)],
+        "shape": [()],
+        "axis": [None, ()],
+        "spacing": [(), (1.2,)],
     })
     + testing.product({
-        'shape': [(33,)],
-        'axis': [None, 0, -1, (0,)],
-        'spacing': [(), (1.2,), 'sequence of int', 'arrays'],
+        "shape": [(33,)],
+        "axis": [None, 0, -1, (0,)],
+        "spacing": [(), (1.2,), "sequence of int", "arrays"],
     })
     + testing.product({
-        'shape': [(10, 20), (10, 20, 30)],
-        'axis': [None, 0, -1, (0, -1), (1, 0)],
-        'spacing': [(), (1.2,), 'sequence of int', 'arrays', 'mixed'],
+        "shape": [(10, 20), (10, 20, 30)],
+        "axis": [None, 0, -1, (0, -1), (1, 0)],
+        "spacing": [(), (1.2,), "sequence of int", "arrays", "mixed"],
     }),
     testing.product({
-        'edge_order': [1, 2],
+        "edge_order": [1, 2],
     }),
 ))
 class TestGradient:
@@ -932,23 +932,23 @@ class TestGradient:
             if not isinstance(normalized_axes, tuple):
                 normalized_axes = normalized_axes,
             normalized_axes = tuple(ax % x.ndim for ax in normalized_axes)
-        if spacing == 'sequence of int':
+        if spacing == "sequence of int":
             # one scalar per axis
             spacing = tuple((ax + 1) / x.ndim for ax in normalized_axes)
-        elif spacing == 'arrays':
+        elif spacing == "arrays":
             # one array per axis
             spacing = tuple(
                 xp.arange(x.shape[ax]) * (ax + 0.5) for ax in normalized_axes
             )
             # make at one of the arrays have non-constant spacing
             spacing[-1][5:] *= 2.0
-        elif spacing == 'mixed':
+        elif spacing == "mixed":
             # mixture of arrays and scalars
             spacing = [xp.arange(x.shape[normalized_axes[0]])]
             spacing = spacing + [0.5] * (len(normalized_axes) - 1)
         return xp.gradient(x, *spacing, axis=axis, edge_order=edge_order)
 
-    @testing.for_dtypes('fFdD')
+    @testing.for_dtypes("fFdD")
     @testing.numpy_cupy_allclose(atol=1e-6, rtol=1e-5)
     def test_gradient_floating(self, xp, dtype):
         return self._gradient(xp, dtype, self.shape, self.spacing, self.axis,
@@ -956,7 +956,7 @@ class TestGradient:
 
     # unsigned int behavior fixed in 1.18.1
     # https://github.com/numpy/numpy/issues/15207
-    @testing.with_requires('numpy>=1.18.1')
+    @testing.with_requires("numpy>=1.18.1")
     @testing.for_int_dtypes(no_bool=True)
     @testing.numpy_cupy_allclose(atol=1e-6, rtol=1e-5)
     def test_gradient_int(self, xp, dtype):
@@ -1013,7 +1013,7 @@ class TestGradientErrors:
             with pytest.raises(ValueError):
                 xp.gradient(x, axis=0, edge_order=2)
 
-    @testing.with_requires('numpy>=1.16')
+    @testing.with_requires("numpy>=1.16")
     def test_gradient_invalid_axis(self):
         # axis out of range
         shape = (4, 16)
@@ -1082,7 +1082,7 @@ class TestEdiff1d:
         a = testing.shaped_arange((4, 1), xp, dtype)
         return xp.ediff1d(a, to_end=xp.array([1, 2], dtype=dtype))
 
-    @testing.for_dtypes('bhilqefdFD')
+    @testing.for_dtypes("bhilqefdFD")
     @testing.numpy_cupy_allclose()
     def test_ediff1d_ed1(self, xp, dtype):
         a = testing.shaped_arange((2, 3, 4, 5), xp, dtype)
@@ -1100,51 +1100,51 @@ class TestEdiff1d:
 class TestTrapz:
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(rtol={numpy.float16: 1e-1, 'default': 1e-7})
+    @testing.numpy_cupy_allclose(rtol={numpy.float16: 1e-1, "default": 1e-7})
     def test_trapz_1dim(self, xp, dtype):
         a = testing.shaped_arange((5,), xp, dtype)
         return xp.trapz(a)
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(rtol={numpy.float16: 1e-1, 'default': 1e-7})
+    @testing.numpy_cupy_allclose(rtol={numpy.float16: 1e-1, "default": 1e-7})
     def test_trapz_1dim_with_x(self, xp, dtype):
         a = testing.shaped_arange((5,), xp, dtype)
         x = testing.shaped_arange((5,), xp, dtype)
         return xp.trapz(a, x=x)
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(rtol={numpy.float16: 1e-1, 'default': 1e-7})
+    @testing.numpy_cupy_allclose(rtol={numpy.float16: 1e-1, "default": 1e-7})
     def test_trapz_1dim_with_dx(self, xp, dtype):
         a = testing.shaped_arange((5,), xp, dtype)
         return xp.trapz(a, dx=0.1)
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(rtol={numpy.float16: 1e-1, 'default': 1e-7})
+    @testing.numpy_cupy_allclose(rtol={numpy.float16: 1e-1, "default": 1e-7})
     def test_trapz_2dim_without_axis(self, xp, dtype):
         a = testing.shaped_arange((4, 5), xp, dtype)
         return xp.trapz(a)
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(rtol={numpy.float16: 1e-1, 'default': 1e-7})
+    @testing.numpy_cupy_allclose(rtol={numpy.float16: 1e-1, "default": 1e-7})
     def test_trapz_2dim_with_axis(self, xp, dtype):
         a = testing.shaped_arange((4, 5), xp, dtype)
         return xp.trapz(a, axis=-2)
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(rtol={numpy.float16: 1e-1, 'default': 1e-7})
+    @testing.numpy_cupy_allclose(rtol={numpy.float16: 1e-1, "default": 1e-7})
     def test_trapz_2dim_with_x_and_axis(self, xp, dtype):
         a = testing.shaped_arange((4, 5), xp, dtype)
         x = testing.shaped_arange((5,), xp, dtype)
         return xp.trapz(a, x=x, axis=1)
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(rtol={numpy.float16: 1e-1, 'default': 1e-7})
+    @testing.numpy_cupy_allclose(rtol={numpy.float16: 1e-1, "default": 1e-7})
     def test_trapz_2dim_with_dx_and_axis(self, xp, dtype):
         a = testing.shaped_arange((4, 5), xp, dtype)
         return xp.trapz(a, dx=0.1, axis=1)
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(rtol={numpy.float16: 1e-1, 'default': 1e-7})
+    @testing.numpy_cupy_allclose(rtol={numpy.float16: 1e-1, "default": 1e-7})
     def test_trapz_1dim_with_x_and_dx(self, xp, dtype):
         a = testing.shaped_arange((5,), xp, dtype)
         x = testing.shaped_arange((5,), xp, dtype)

@@ -109,7 +109,7 @@ class Array:
             mid = str(self.shape)
         else:
             prefix = "Array("
-            mid = np.array2string(np.asnumpy(self._array), separator=', ', prefix=prefix, suffix=suffix)
+            mid = np.array2string(np.asnumpy(self._array), separator=", ", prefix=prefix, suffix=suffix)
         return prefix + mid + suffix
 
     def __cupy_get_ndarray__(self):
@@ -1064,7 +1064,7 @@ class Array:
                 elif isinstance(stream, np.cuda.Stream):
                     pass
                 else:
-                    raise ValueError('the input stream is not recognized')
+                    raise ValueError("the input stream is not recognized")
                 stream.use()
             try:
                 runtime.setDevice(device.id)

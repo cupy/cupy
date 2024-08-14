@@ -33,7 +33,7 @@ def _generate_case(base, module, cls_name, mb, method_generator):
     members = mb.copy()
     base_methods = inspect.getmembers(base, predicate=inspect.isfunction)
     for name, value in base_methods:
-        if not name.startswith('test_'):
+        if not name.startswith("test_"):
             continue
         value = method_generator(value)
         # If the return value of method_generator is None, None is assigned

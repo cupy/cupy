@@ -14,8 +14,8 @@ except ImportError:
 
 
 @testing.parameterize(*testing.product({
-    'extrapolate': [True, False, 'periodic'],
-    'c': [[-1, 2, 0, -1], [[-1, 2, 0, -1]] * 5]}))
+    "extrapolate": [True, False, "periodic"],
+    "c": [[-1, 2, 0, -1], [[-1, 2, 0, -1]] * 5]}))
 @testing.with_requires("scipy")
 class TestBSpline:
 
@@ -24,7 +24,7 @@ class TestBSpline:
         c = testing.shaped_random((n,), xp, dtype=np.float64)
         return scp.interpolate.BSpline.construct_fast(t, c, k)
 
-    @testing.numpy_cupy_allclose(scipy_name='scp', accept_error=True)
+    @testing.numpy_cupy_allclose(scipy_name="scp", accept_error=True)
     def test_ctor(self, xp, scp):
         # knots should be an ordered 1-D array of finite real numbers
         t = [1, 1.j]
@@ -66,9 +66,9 @@ class TestBSpline:
         scp.interpolate.BSpline(t, c, k)
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_bspline(self, xp, scp, dtype):
-        if xp.dtype(dtype).kind == 'u':
+        if xp.dtype(dtype).kind == "u":
             pytest.skip()
         k = 2
         t = xp.arange(7, dtype=dtype)
@@ -77,7 +77,7 @@ class TestBSpline:
         B = scp.interpolate.BSpline(t, c, k, extrapolate=self.extrapolate)
         return B(test_xs)
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_bspline_degree_1(self, xp, scp):
         t = xp.asarray([0, 1, 2, 3, 4])
         c = xp.asarray([1, 2, 3])
@@ -88,9 +88,9 @@ class TestBSpline:
         return b(x)
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_bspline_rndm_unity(self, xp, scp, dtype):
-        if xp.dtype(dtype).kind == 'u':
+        if xp.dtype(dtype).kind == "u":
             pytest.skip()
 
         b = self._make_random_spline(xp, scp)
@@ -99,9 +99,9 @@ class TestBSpline:
         return b(xx)
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_vectorization(self, xp, scp, dtype):
-        if xp.dtype(dtype).kind == 'u':
+        if xp.dtype(dtype).kind == "u":
             pytest.skip()
 
         n, k = 22, 3
@@ -113,9 +113,9 @@ class TestBSpline:
         return b(xx).shape
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
-    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-3)
+    @testing.numpy_cupy_allclose(scipy_name="scp", rtol=1e-3)
     def test_bspline_len_c(self, xp, scp, dtype):
-        if xp.dtype(dtype).kind == 'u':
+        if xp.dtype(dtype).kind == "u":
             pytest.skip()
 
         # for n+k+1 knots, only first n coefs are used.
@@ -137,7 +137,7 @@ class TestBSpline:
         xx = xp.linspace(t[0] - dt, t[-1] + dt, 50, dtype=dtype)
         return b(xx), b_pad(xx)
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_bspline_endpoints(self, xp, scp):
         # base interval is closed
         b = self._make_random_spline(xp, scp)
@@ -148,14 +148,14 @@ class TestBSpline:
             b(xp.asarray([tm + 1e-10, tp - 1e-10]),
               extrapolate=self.extrapolate))
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_bspline_continuity(self, xp, scp):
         # assert continuity at internal knots
         b = self._make_random_spline(xp, scp)
         t, _, k = b.tck
         return b(t[k+1:-k-1] - 1e-10), b(t[k+1:-k-1] + 1e-10)
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_bspline_extrap(self, xp, scp):
         b = self._make_random_spline(xp, scp)
         t, c, k = b.tck
@@ -166,7 +166,7 @@ class TestBSpline:
         return (b(xx[mask], extrapolate=self.extrapolate),
                 b(xx, extrapolate=self.extrapolate))
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_bspline_default_extrap(self, xp, scp):
         # BSpline defaults to extrapolate=True
         b = self._make_random_spline(xp, scp)
@@ -175,7 +175,7 @@ class TestBSpline:
         yy = b(xx)
         return not xp.all(xp.isnan(yy))
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_bspline_periodic_extrap(self, xp, scp):
         b = self._make_random_spline(xp, scp, n=4, k=3)
         t, c, k = b.tck
@@ -184,9 +184,9 @@ class TestBSpline:
         # Direct check
         xx = xp.asarray([-1, 0, 0.5, 1])
         xy = t[k] + (xx - t[k]) % (t[n] - t[k])
-        return b(xx, extrapolate='periodic'), b(xy, extrapolate=True)
+        return b(xx, extrapolate="periodic"), b(xy, extrapolate=True)
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_bspline_derivative_rndm(self, xp, scp):
         b = self._make_random_spline(xp, scp)
         t, _, k = b.tck
@@ -199,7 +199,7 @@ class TestBSpline:
 
         return derivatives
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_bspline_derivative_jumps(self, xp, scp):
         # example from de Boor, Chap IX, example (24)
         # NB: knots augmented & corresp coefs are zeroed out
@@ -233,16 +233,16 @@ class TestBSpline:
         return comp
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_basis_element(self, xp, scp, dtype):
-        if xp.dtype(dtype).kind == 'u':
+        if xp.dtype(dtype).kind == "u":
             pytest.skip()
         t = xp.arange(7, dtype=dtype)
         b = scp.interpolate.BSpline.basis_element(
             t, extrapolate=self.extrapolate)
         return b.tck
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_basis_element_quadratic(self, xp, scp):
         xx = xp.linspace(-1, 4, 20)
         b = scp.interpolate.BSpline.basis_element(
@@ -255,7 +255,7 @@ class TestBSpline:
         r2 = b(xx)
         return r1, r2
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_basis_element_rndm(self, xp, scp):
         b = self._make_random_spline(xp, scp)
         t, c, k = b.tck
@@ -271,8 +271,8 @@ class TestBSpline:
 
     @pytest.mark.xfail(
         runtime.is_hip and driver.get_build_version() < 5_00_00000,
-        reason='name_expression with ROCm 4.3 may not work')
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+        reason="name_expression with ROCm 4.3 may not work")
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_cmplx(self, xp, scp):
         b = self._make_random_spline(xp, scp)
         t, c, k = b.tck
@@ -285,7 +285,7 @@ class TestBSpline:
         xx = xp.linspace(t[k], t[-k-1], 20)
         return b(xx), b_re(xx) + 1j * b_im(xx)
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_nan(self, xp, scp):
         # nan in, nan out.
         b = scp.interpolate.BSpline.basis_element(
@@ -293,10 +293,10 @@ class TestBSpline:
         return b(xp.asarray([xp.nan]))
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
-    @testing.numpy_cupy_allclose(scipy_name='scp')
-    @testing.with_requires('scipy>=1.8.0')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
+    @testing.with_requires("scipy>=1.8.0")
     def test_design_matrix(self, xp, scp, dtype):
-        if xp.dtype(dtype).kind == 'u':
+        if xp.dtype(dtype).kind == "u":
             pytest.skip()
 
         t = xp.arange(-1, 7, dtype=dtype)
@@ -307,9 +307,9 @@ class TestBSpline:
         return mat.todense()
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_single_derivative(self, xp, scp, dtype):
-        if xp.dtype(dtype).kind == 'u':
+        if xp.dtype(dtype).kind == "u":
             pytest.skip()
 
         k = 2
@@ -319,7 +319,7 @@ class TestBSpline:
         b = scp.interpolate.BSpline(t, c, k, extrapolate=self.extrapolate)
         return b.derivative().tck
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_multiple_derivative(self, xp, scp):
         b = self._make_random_spline(xp, scp, k=5)
         t, c, k = b.tck
@@ -331,9 +331,9 @@ class TestBSpline:
         return comp
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_antiderivative_tck(self, xp, scp, dtype):
-        if xp.dtype(dtype).kind == 'u':
+        if xp.dtype(dtype).kind == "u":
             pytest.skip()
 
         k = 2
@@ -343,7 +343,7 @@ class TestBSpline:
         b = scp.interpolate.BSpline(t, c, k, extrapolate=self.extrapolate)
         return b.antiderivative().tck
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_antiderivative(self, xp, scp):
         b = self._make_random_spline(xp, scp)
         t, c, k = b.tck
@@ -357,7 +357,7 @@ class TestBSpline:
         r2 = b.antiderivative().derivative()(xx)
         return r1, r2
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_integral(self, xp, scp):
         # x for x < 1 else 2 - x
         b = scp.interpolate.BSpline.basis_element(xp.asarray([0, 1, 2]))
@@ -377,7 +377,7 @@ class TestBSpline:
         ret.append(b.integrate(1, -1, extrapolate=False))
 
         # Test ``extrapolate='periodic'``.
-        b.extrapolate = 'periodic'
+        b.extrapolate = "periodic"
 
         ret.append(b.integrate(0, 2))
         ret.append(b.integrate(2, 0))
@@ -393,9 +393,9 @@ class TestBSpline:
         return [xp.asarray(x) for x in ret]
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_integrate(self, xp, scp, dtype):
-        if xp.dtype(dtype).kind == 'u':
+        if xp.dtype(dtype).kind == "u":
             pytest.skip()
 
         k = 2
@@ -405,7 +405,7 @@ class TestBSpline:
         b = scp.interpolate.BSpline(t, c, k, extrapolate=self.extrapolate)
         return xp.asarray(b.integrate(0, 5))
 
-    @testing.numpy_cupy_allclose(scipy_name='scp', accept_error=True)
+    @testing.numpy_cupy_allclose(scipy_name="scp", accept_error=True)
     def test_axis(self, xp, scp):
         n, k = 22, 3
         t = xp.linspace(0, 1, n + k + 1)
@@ -435,7 +435,7 @@ class TestBSpline:
             ret.append(b1.axis)
         return b1
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_neg_axis(self, xp, scp):
         k = 2
         t = xp.asarray([0, 1, 2, 3, 4, 5, 6])
@@ -445,8 +445,8 @@ class TestBSpline:
         return spl(xp.asarray([2.5]))
 
     @testing.numpy_cupy_allclose(
-        scipy_name='scp', rtol=3e-5, atol=3e-5)
-    @testing.with_requires('scipy>=1.8.0')
+        scipy_name="scp", rtol=3e-5, atol=3e-5)
+    @testing.with_requires("scipy>=1.8.0")
     def test_design_matrix_same_as_BSpline_call(self, xp, scp):
         """Test that design_matrix(x) is equivalent to BSpline(..)(x)."""
         ret = []
@@ -455,11 +455,11 @@ class TestBSpline:
         for mod in [cupyx.scipy.interpolate, interpolate]:
             sig = inspect.signature(mod.BSpline.design_matrix)
             has_extrapolate = has_extrapolate and (
-                'extrapolate' in sig.parameters)
+                "extrapolate" in sig.parameters)
 
         kwargs = {}
         if has_extrapolate:
-            kwargs = {'extrapolate': self.extrapolate}
+            kwargs = {"extrapolate": self.extrapolate}
 
         for k in range(0, 5):
             x = testing.shaped_random((10 * (k + 1),), xp, scale=1, seed=1234)

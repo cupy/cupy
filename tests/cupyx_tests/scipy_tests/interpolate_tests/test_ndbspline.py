@@ -15,9 +15,9 @@ import itertools
 import pytest
 
 
-@testing.with_requires('scipy>=1.12')
+@testing.with_requires("scipy>=1.12")
 class TestNdBSpline:
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_1D(self, xp, scp):
         # test ndim=1 agrees with BSpline
         n, k = 11, 3
@@ -59,7 +59,7 @@ class TestNdBSpline:
 
         return t2, c2, spl.k, spl_1.k
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_2D_separable(self, xp, scp):
         xi = xp.asarray([(1.5, 2.5), (2.5, 1), (0.5, 1.5)],
                         dtype=xp.float64)
@@ -74,7 +74,7 @@ class TestNdBSpline:
         result = bspl2(xi)
         return r1, result
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_2D_separable_2(self, xp, scp):
         result = []
 
@@ -104,7 +104,7 @@ class TestNdBSpline:
 
         return result
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_2D_random(self, xp, scp):
         k = 3
 
@@ -125,7 +125,7 @@ class TestNdBSpline:
                    [1.1, 1.6, 2.1]]
         return r1, spl(xi)
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_2D_mixed(self, xp, scp):
         t2, c2, kx, ky = self.make_2d_mixed(xp, scp)
         xi = xp.asarray([(1.4, 4.5), (2.5, 2.4), (4.5, 3.5)], dtype=xp.float64)
@@ -133,7 +133,7 @@ class TestNdBSpline:
         bspl2 = scp.interpolate.NdBSpline(t2, c2, k=(kx, ky))
         return bspl2(xi)
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_2D_derivative(self, xp, scp):
         t2, c2, kx, ky = self.make_2d_mixed(xp, scp)
         xi = [(1.4, 4.5), (2.5, 2.4), (4.5, 3.5)]
@@ -152,7 +152,7 @@ class TestNdBSpline:
 
         return result
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_2D_mixed_random(self, xp, scp):
         kx, ky = 2, 3
 
@@ -170,7 +170,7 @@ class TestNdBSpline:
         bspl2 = scp.interpolate.NdBSpline((tx, ty), c, k=(kx, ky))
         return bspl2(xi)
 
-    @testing.numpy_cupy_allclose(scipy_name='scp', atol=2e-12)
+    @testing.numpy_cupy_allclose(scipy_name="scp", atol=2e-12)
     def test_tx_neq_ty(self, xp, scp):
         # 2D separable spline w/ len(tx) != len(ty)
         x = xp.arange(6)
@@ -206,7 +206,7 @@ class TestNdBSpline:
 
         return t2, c2, 3
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_3D_separable(self, xp, scp):
         x, y, z = testing.shaped_random((3, 11), xp, xp.float64, 5.0, 12345)
         # target = x**3 * (y**3 + 2*y) * (z**3 + 3*z + 1)
@@ -218,9 +218,9 @@ class TestNdBSpline:
         result = bspl3(xi)
         return result
 
-    @pytest.mark.parametrize('nu', [
+    @pytest.mark.parametrize("nu", [
         (1, 0, 0), (2, 0, 0), (2, 1, 0), (2, 1, 3), (2, 1, 4)])
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_3D_derivative(self, nu, xp, scp):
         t3, c3, _ = self.make_3d_case(xp, scp)
         bspl3 = scp.interpolate.NdBSpline(t3, c3, k=3)
@@ -230,7 +230,7 @@ class TestNdBSpline:
 
         return bspl3(xi, nu=nu)
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_3D_random(self, xp, scp):
         k = 3
 
@@ -256,7 +256,7 @@ class TestNdBSpline:
                    [0.9, 1.4, 1.9]]
         return r1, spl(xi)
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_3D_random_complex(self, xp, scp):
         k = 3
 
@@ -283,9 +283,9 @@ class TestNdBSpline:
                    [0.9, 1.4, 1.9]]
         return spl(xi)
 
-    @pytest.mark.parametrize('cls_extrap', [None, True])
-    @pytest.mark.parametrize('call_extrap', [None, True])
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @pytest.mark.parametrize("cls_extrap", [None, True])
+    @pytest.mark.parametrize("call_extrap", [None, True])
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_extrapolate_3D_separable(self, cls_extrap, call_extrap, xp, scp):
         # test that extrapolate=True does extrapolate
         t3, c3, k = self.make_3d_case(xp, scp)
@@ -299,8 +299,8 @@ class TestNdBSpline:
         result = bspl3(xi, extrapolate=call_extrap)
         return result
 
-    @pytest.mark.parametrize('extrap', [(False, True), (True, None)])
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @pytest.mark.parametrize("extrap", [(False, True), (True, None)])
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_extrapolate_3D_separable_2(self, extrap, xp, scp):
         # test that call(..., extrapolate=None) defers to self.extrapolate,
         # otherwise supersedes self.extrapolate
@@ -317,7 +317,7 @@ class TestNdBSpline:
         result = bspl3(xi, extrapolate=call_extrap)
         return result
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_extrapolate_false_3D_separable(self, xp, scp):
         # test that extrapolate=False produces nans for out-of-bounds values
         t3, c3, _ = self.make_3d_case(xp, scp)
@@ -332,7 +332,7 @@ class TestNdBSpline:
         result = bspl3(xi, extrapolate=False)
         return result
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_x_nan_3D(self, xp, scp):
         # test that spline(nan) is nan
         t3, c3, _ = self.make_3d_case(xp, scp)
@@ -348,7 +348,7 @@ class TestNdBSpline:
         result = bspl3(xi)
         return result
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_non_c_contiguous(self, xp, scp):
         # check that non C-contiguous inputs are OK
         kx, ky = 3, 3
@@ -371,7 +371,7 @@ class TestNdBSpline:
         bspl2 = scp.interpolate.NdBSpline((tx[::2], ty[::2]), c, k=(kx, ky))
         return bspl2(xi)
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_readonly(self, xp, scp):
         t3, c3, _ = self.make_3d_case(xp, scp)
         for i in range(3):
@@ -381,8 +381,8 @@ class TestNdBSpline:
         bspl3 = scp.interpolate.NdBSpline(t3, c3, k=3)
         return bspl3((1, 2, 3))
 
-    @testing.with_requires('scipy>=1.13')
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.with_requires("scipy>=1.13")
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_design_matrix(self, xp, scp):
         t3, c3, k = self.make_3d_case(xp, scp)
 
@@ -395,9 +395,9 @@ class TestNdBSpline:
 
         return dm.todense(), dm1.todense()
 
-    @testing.with_requires('scipy>=1.13')
-    @pytest.mark.parametrize('k', [(3, 1), (1, 3), (1, 1), (3, 3)])
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.with_requires("scipy>=1.13")
+    @pytest.mark.parametrize("k", [(3, 1), (1, 3), (1, 1), (3, 3)])
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_design_matrix_2(self, xp, scp, k):
         xvals = [(a, b)
                  for a, b in
@@ -413,8 +413,8 @@ class TestNdBSpline:
         return dm.todense()
 
 
-@pytest.mark.skipif(runtime.is_hip, reason='csrlsvqr not available')
-@testing.with_requires('scipy>=1.13')
+@pytest.mark.skipif(runtime.is_hip, reason="csrlsvqr not available")
+@testing.with_requires("scipy>=1.13")
 class TestMakeND:
 
     def _make(self, xp):
@@ -427,7 +427,7 @@ class TestMakeND:
             return functools.partial(scipy.interpolate._ndbspline.make_ndbspl,
                                      solver=ssl.spsolve)
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_2D_separable_simple(self, xp, scp):
         x = xp.arange(6)
         y = xp.arange(6) + 0.5
@@ -438,7 +438,7 @@ class TestMakeND:
         bspl = make_ndbspl((x, y), values, k=1)
         return bspl(xi), bspl.c
 
-    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-11)
+    @testing.numpy_cupy_allclose(scipy_name="scp", atol=1e-11)
     def test_2D_separable_trailing_dims(self, xp, scp):
         # test `c` with trailing dimensions, i.e. c.ndim > ndim
         x = xp.arange(6)
@@ -453,7 +453,7 @@ class TestMakeND:
         bspl = make_ndbspl((x, y), values4, k=3)
         return bspl(xi), bspl.c
 
-    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-13)
+    @testing.numpy_cupy_allclose(scipy_name="scp", atol=1e-13)
     def test_2D_separable_trailing_dims_2(self, xp, scp):
         x = xp.arange(6)
         y = xp.arange(6)
@@ -470,8 +470,8 @@ class TestMakeND:
         bspl = make_ndbspl((x, y), values22, k=3)
         return bspl(xi)
 
-    @pytest.mark.parametrize('k', [(3, 3), (1, 1), (3, 1), (1, 3), (3, 5)])
-    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-12)
+    @pytest.mark.parametrize("k", [(3, 3), (1, 1), (3, 1), (1, 3), (3, 5)])
+    @testing.numpy_cupy_allclose(scipy_name="scp", atol=1e-12)
     def test_2D_mixed(self, k, xp, scp):
         # make a 2D separable spline w/ len(tx) != len(ty)
         x = xp.arange(6)
@@ -498,8 +498,8 @@ class TestMakeND:
         )
         return x, y, z
 
-    @pytest.mark.parametrize('k', [1, 3, 5])
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @pytest.mark.parametrize("k", [1, 3, 5])
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_2D_vs_RGI_k(self, xp, scp, k):
         x, y, z = self._get_sample_2d_data(xp)
         make_ndbspl = self._make(xp)
@@ -509,9 +509,9 @@ class TestMakeND:
         return bspl(xi)
 
     @pytest.mark.parametrize(
-        'k, meth', [(1, 'linear'), (3, 'cubic_legacy'), (5, 'quintic_legacy')]
+        "k, meth", [(1, "linear"), (3, "cubic_legacy"), (5, "quintic_legacy")]
     )
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_3D_random_vs_RGI(self, k, meth, xp, scp):
         rndm = numpy.random.default_rng(123456)
         x = xp.cumsum(xp.asarray(rndm.uniform(size=6)))

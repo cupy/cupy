@@ -95,7 +95,7 @@ class TestRandint2(unittest.TestCase):
         assert _hypothesis.chi_square_test(counts, expected)
 
     @_condition.repeat(3, 10)
-    @pytest.mark.xfail(runtime.is_hip, reason='ROCm/HIP may have a bug')
+    @pytest.mark.xfail(runtime.is_hip, reason="ROCm/HIP may have a bug")
     def test_goodness_of_fit_2(self):
         mx = 5
         vals = random.randint(mx, size=(5, 20)).get()
@@ -144,17 +144,17 @@ class TestRandintDtype(unittest.TestCase):
 class TestRandomIntegers(unittest.TestCase):
 
     def test_normal(self):
-        with mock.patch('cupy.random._sample.randint') as m:
+        with mock.patch("cupy.random._sample.randint") as m:
             random.random_integers(3, 5)
         m.assert_called_with(3, 6, None)
 
     def test_high_is_none(self):
-        with mock.patch('cupy.random._sample.randint') as m:
+        with mock.patch("cupy.random._sample.randint") as m:
             random.random_integers(3, None)
         m.assert_called_with(1, 4, None)
 
     def test_size_is_not_none(self):
-        with mock.patch('cupy.random._sample.randint') as m:
+        with mock.patch("cupy.random._sample.randint") as m:
             random.random_integers(3, 5, (1, 2, 3))
         m.assert_called_with(3, 6, (1, 2, 3))
 
@@ -188,7 +188,7 @@ class TestRandomIntegers2(unittest.TestCase):
         assert _hypothesis.chi_square_test(counts, expected)
 
     @_condition.repeat(3, 10)
-    @pytest.mark.xfail(runtime.is_hip, reason='ROCm/HIP may have a bug')
+    @pytest.mark.xfail(runtime.is_hip, reason="ROCm/HIP may have a bug")
     def test_goodness_of_fit_2(self):
         mx = 5
         vals = random.randint(0, mx, (5, 20)).get()
@@ -245,44 +245,44 @@ class TestChoice(unittest.TestCase):
 class TestRandomSample(unittest.TestCase):
 
     def test_rand(self):
-        with mock.patch('cupy.random._sample.random_sample') as m:
+        with mock.patch("cupy.random._sample.random_sample") as m:
             random.rand(1, 2, 3, dtype=numpy.float32)
         m.assert_called_once_with(
             size=(1, 2, 3), dtype=numpy.float32)
 
     def test_rand_default_dtype(self):
-        with mock.patch('cupy.random._sample.random_sample') as m:
+        with mock.patch("cupy.random._sample.random_sample") as m:
             random.rand(1, 2, 3)
         m.assert_called_once_with(
             size=(1, 2, 3), dtype=float)
 
     def test_rand_invalid_argument(self):
         with self.assertRaises(TypeError):
-            random.rand(1, 2, 3, unnecessary='unnecessary_argument')
+            random.rand(1, 2, 3, unnecessary="unnecessary_argument")
 
     def test_randn(self):
-        with mock.patch('cupy.random._distributions.normal') as m:
+        with mock.patch("cupy.random._distributions.normal") as m:
             random.randn(1, 2, 3, dtype=numpy.float32)
         m.assert_called_once_with(
             size=(1, 2, 3), dtype=numpy.float32)
 
     def test_randn_default_dtype(self):
-        with mock.patch('cupy.random._distributions.normal') as m:
+        with mock.patch("cupy.random._distributions.normal") as m:
             random.randn(1, 2, 3)
         m.assert_called_once_with(
             size=(1, 2, 3), dtype=float)
 
     def test_randn_invalid_argument(self):
         with self.assertRaises(TypeError):
-            random.randn(1, 2, 3, unnecessary='unnecessary_argument')
+            random.randn(1, 2, 3, unnecessary="unnecessary_argument")
 
 
 @testing.parameterize(
-    {'size': None},
-    {'size': ()},
-    {'size': 4},
-    {'size': (0,)},
-    {'size': (1, 0)},
+    {"size": None},
+    {"size": ()},
+    {"size": 4},
+    {"size": (0,)},
+    {"size": (1, 0)},
 )
 @testing.fix_random()
 class TestMultinomial(unittest.TestCase):
@@ -293,5 +293,5 @@ class TestMultinomial(unittest.TestCase):
     def test_multinomial(self, xp, dtype):
         pvals = xp.array([0.2, 0.3, 0.5], dtype)
         x = xp.random.multinomial(100000, pvals, self.size)
-        assert x.dtype == 'l'
+        assert x.dtype == "l"
         return x / 100000

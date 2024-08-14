@@ -16,11 +16,11 @@ class ActionError:
 
     def klv(self):
         e = self._exception
-        return _klv_utils.get_result_action_t(1, str(e).encode('ascii'))
+        return _klv_utils.get_result_action_t(1, str(e).encode("ascii"))
 
     @staticmethod
     def from_klv(klv):
-        raise RuntimeError(klv._exception.decode('utf-8'))
+        raise RuntimeError(klv._exception.decode("utf-8"))
 
     def decode_result(self, data):
         ActionError.from_klv(data)
@@ -36,7 +36,7 @@ def execute_action(action, value, store):
         elif action == Actions.Barrier:
             action_obj = Barrier.from_klv(value)
         else:
-            raise ValueError(f'unknown action {action}')
+            raise ValueError(f"unknown action {action}")
         return action_obj(store)
     except Exception as e:
         return ActionError(e)
@@ -57,10 +57,10 @@ class Set:
         self.key = key
         self.value = value
         if not isinstance(key, str):
-            raise ValueError('Invalid type for key, only str allowed')
+            raise ValueError("Invalid type for key, only str allowed")
         if type(value) not in (bytes, bytearray, int):
             raise ValueError(
-                'Invalid type for value, only int or bytes allowed')
+                "Invalid type for value, only int or bytes allowed")
         # Check, value can only be integer or bytes
 
     @staticmethod
@@ -68,16 +68,16 @@ class Set:
         value = bytes(value)
         for i, b in enumerate(value):
             if b == 0:
-                k = value[:i].decode('utf-8')
+                k = value[:i].decode("utf-8")
                 value = value[i + 1:]
                 break
         else:
-            raise ValueError('No separation character for key found')
+            raise ValueError("No separation character for key found")
         v = _klv_utils.get_value_from_bytes(value)
         return Set(k, v)
 
     def klv(self):
-        v = bytearray(self.key.encode('ascii'))
+        v = bytearray(self.key.encode("ascii"))
         v.append(0)  # marker to show where the value begins
         v += _klv_utils.create_value_bytes(self.value)
         action = _klv_utils.get_action_t(Actions.Set, v)
@@ -109,15 +109,15 @@ class Get:
     def __init__(self, key):
         self.key = key
         if not isinstance(key, str):
-            raise ValueError('Invalid type for key, only str allowed')
+            raise ValueError("Invalid type for key, only str allowed")
 
     @staticmethod
     def from_klv(value):
-        k = value.decode('utf-8')
+        k = value.decode("utf-8")
         return Get(k)
 
     def klv(self):
-        v = bytearray(self.key.encode('ascii'))
+        v = bytearray(self.key.encode("ascii"))
         action = _klv_utils.get_action_t(Actions.Get, v)
         return bytes(action)
 

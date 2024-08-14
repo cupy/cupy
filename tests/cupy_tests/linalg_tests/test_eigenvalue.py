@@ -7,18 +7,18 @@ from cupy.cuda import driver, runtime
 
 
 def _get_hermitian(xp, a, UPLO):
-    if UPLO == 'U':
+    if UPLO == "U":
         return xp.triu(a) + xp.triu(a, 1).swapaxes(-2, -1).conj()
     else:
         return xp.tril(a) + xp.tril(a, -1).swapaxes(-2, -1).conj()
 
 
 @testing.parameterize(*testing.product({
-    'UPLO': ['U', 'L'],
+    "UPLO": ["U", "L"],
 }))
 @pytest.mark.skipif(
     runtime.is_hip and driver.get_build_version() < 402,
-    reason='eigensolver not added until ROCm 4.2.0')
+    reason="eigensolver not added until ROCm 4.2.0")
 class TestEigenvalue:
 
     @testing.for_all_dtypes()
@@ -26,10 +26,10 @@ class TestEigenvalue:
     def test_eigh(self, xp, dtype):
         if xp == numpy and dtype == numpy.float16:
             # NumPy's eigh does not support float16
-            _dtype = 'f'
+            _dtype = "f"
         else:
             _dtype = dtype
-        if numpy.dtype(_dtype).kind == 'c':
+        if numpy.dtype(_dtype).kind == "c":
             a = xp.array([[1, 2j, 3], [4j, 5, 6j], [7, 8j, 9]], _dtype)
         else:
             a = xp.array([[1, 0, 3], [0, 5, 0], [7, 0, 9]], _dtype)
@@ -49,7 +49,7 @@ class TestEigenvalue:
                                 xp.identity(A.shape[-1], _dtype), atol=tol,
                                 rtol=tol)
         if xp == numpy and dtype == numpy.float16:
-            w = w.astype('e')
+            w = w.astype("e")
         return w
 
     @testing.for_all_dtypes(no_bool=True, no_float16=True, no_complex=True)
@@ -70,7 +70,7 @@ class TestEigenvalue:
                 A[i].dot(v[i]), w[i]*v[i], rtol=1e-5, atol=1e-5)
         return w
 
-    @testing.for_dtypes('FD')
+    @testing.for_dtypes("FD")
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4, contiguous_check=False)
     def test_eigh_complex_batched(self, xp, dtype):
         a = xp.array([[[1, 2j, 3], [4j, 5, 6j], [7, 8j, 9]],
@@ -127,25 +127,25 @@ class TestEigenvalue:
         return w
 
 
-@pytest.mark.parametrize('UPLO', ['U', 'L'])
-@pytest.mark.parametrize('shape', [
+@pytest.mark.parametrize("UPLO", ["U", "L"])
+@pytest.mark.parametrize("shape", [
     (0, 0),
     (2, 0, 0),
     (0, 3, 3),
 ])
 @pytest.mark.skipif(
     runtime.is_hip and driver.get_build_version() < 402,
-    reason='eigensolver not added until ROCm 4.2.0')
+    reason="eigensolver not added until ROCm 4.2.0")
 class TestEigenvalueEmpty:
 
-    @testing.for_dtypes('ifdFD')
+    @testing.for_dtypes("ifdFD")
     @testing.numpy_cupy_allclose()
     def test_eigh(self, xp, dtype, shape, UPLO):
         a = xp.empty(shape, dtype)
         assert a.size == 0
         return xp.linalg.eigh(a, UPLO=UPLO)
 
-    @testing.for_dtypes('ifdFD')
+    @testing.for_dtypes("ifdFD")
     @testing.numpy_cupy_allclose()
     def test_eigvalsh(self, xp, dtype, shape, UPLO):
         a = xp.empty(shape, dtype)
@@ -153,8 +153,8 @@ class TestEigenvalueEmpty:
         return xp.linalg.eigvalsh(a, UPLO=UPLO)
 
 
-@pytest.mark.parametrize('UPLO', ['U', 'L'])
-@pytest.mark.parametrize('shape', [
+@pytest.mark.parametrize("UPLO", ["U", "L"])
+@pytest.mark.parametrize("shape", [
     (),
     (3,),
     (2, 3),
@@ -164,7 +164,7 @@ class TestEigenvalueEmpty:
 ])
 @pytest.mark.skipif(
     runtime.is_hip and driver.get_build_version() < 402,
-    reason='eigensolver not added until ROCm 4.2.0')
+    reason="eigensolver not added until ROCm 4.2.0")
 class TestEigenvalueInvalid:
 
     def test_eigh_shape_error(self, UPLO, shape):

@@ -8,7 +8,7 @@ from cupyx.scipy.interpolate._interpolate import PPoly
 
 def _isscalar(x):
     """Check whether x is if a scalar type, or 0-dim"""
-    return cupy.isscalar(x) or hasattr(x, 'shape') and x.shape == ()
+    return cupy.isscalar(x) or hasattr(x, "shape") and x.shape == ()
 
 
 def prepare_input(x, y, axis, dydx=None):
@@ -429,7 +429,7 @@ def _validate_bc(bc_type, y, expected_deriv_shape, axis):
         complex dtype.
     """
     if isinstance(bc_type, str):
-        if bc_type == 'periodic':
+        if bc_type == "periodic":
             if not cupy.allclose(y[0], y[-1], rtol=1e-15, atol=1e-15):
                 raise ValueError(
                     f"The first and last `y` point along axis {axis} must "
@@ -443,7 +443,7 @@ def _validate_bc(bc_type, y, expected_deriv_shape, axis):
             raise ValueError("`bc_type` must contain 2 elements to "
                              "specify start and end conditions.")
 
-        if 'periodic' in bc_type:
+        if "periodic" in bc_type:
             raise ValueError("'periodic' `bc_type` is defined for both "
                              "curve ends and cannot be used with other "
                              "boundary conditions.")
@@ -451,11 +451,11 @@ def _validate_bc(bc_type, y, expected_deriv_shape, axis):
     validated_bc = []
     for bc in bc_type:
         if isinstance(bc, str):
-            if bc == 'clamped':
+            if bc == "clamped":
                 validated_bc.append((1, cupy.zeros(expected_deriv_shape)))
-            elif bc == 'natural':
+            elif bc == "natural":
                 validated_bc.append((2, cupy.zeros(expected_deriv_shape)))
-            elif bc in ['not-a-knot', 'periodic']:
+            elif bc in ["not-a-knot", "periodic"]:
                 validated_bc.append(bc)
             else:
                 raise ValueError(f"bc_type={bc} is not allowed.")
@@ -597,7 +597,7 @@ class CubicSpline(CubicHermiteSpline):
 
     """
 
-    def __init__(self, x, y, axis=0, bc_type='not-a-knot', extrapolate=None):
+    def __init__(self, x, y, axis=0, bc_type="not-a-knot", extrapolate=None):
         x = cupy.asarray(x)
         y = cupy.asarray(y)
 
@@ -615,8 +615,8 @@ class CubicSpline(CubicHermiteSpline):
             bc, y = _validate_bc(bc_type, y, y.shape[1:], axis)
 
             if extrapolate is None:
-                if bc[0] == 'periodic':
-                    extrapolate = 'periodic'
+                if bc[0] == "periodic":
+                    extrapolate = "periodic"
                 else:
                     extrapolate = True
 
@@ -628,9 +628,9 @@ class CubicSpline(CubicHermiteSpline):
             # and the spline is just a constant, we handle this case in the
             # same way by setting the first derivatives to slope, which is 0.
             if n == 2:
-                if bc[0] in ['not-a-knot', 'periodic']:
+                if bc[0] in ["not-a-knot", "periodic"]:
                     bc[0] = (1, slope[0])
-                if bc[1] in ['not-a-knot', 'periodic']:
+                if bc[1] in ["not-a-knot", "periodic"]:
                     bc[1] = (1, slope[0])
                 s = cupy.r_[slope, slope]
 
@@ -638,7 +638,7 @@ class CubicSpline(CubicHermiteSpline):
             # and n == 3. In this case 'not-a-knot' can't be handled regularly
             # as the both conditions are identical. We handle this case by
             # constructing a parabola passing through given points.
-            if n == 3 and bc[0] == 'not-a-knot' and bc[1] == 'not-a-knot':
+            if n == 3 and bc[0] == "not-a-knot" and bc[1] == "not-a-knot":
                 A = cupy.zeros((3, 3))  # This is a standard matrix.
                 b = cupy.empty((3,) + y.shape[1:], dtype=y.dtype)
 
@@ -655,7 +655,7 @@ class CubicSpline(CubicHermiteSpline):
                 b[2] = 2 * slope[1]
 
                 s = solve(A, b)
-            elif n == 3 and bc[0] == 'periodic':
+            elif n == 3 and bc[0] == "periodic":
                 # In case when number of points is 3 we compute the derivatives
                 # manually
                 t = (slope / dxr).sum(0) / (1. / dxr).sum(0)

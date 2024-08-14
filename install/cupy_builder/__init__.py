@@ -17,5 +17,5 @@ def initialize(context: Context) -> None:
 
 
 def get_context() -> Context:
-    assert _context is not None, 'cupy_builder is not initialized'
+    assert _context is not None, "cupy_builder is not initialized"
     return _context

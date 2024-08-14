@@ -46,7 +46,7 @@ def fliplr(a):
 
     """
     if a.ndim < 2:
-        raise ValueError('Input must be >= 2-d')
+        raise ValueError("Input must be >= 2-d")
     return a[::, ::-1]
 
 
@@ -66,7 +66,7 @@ def flipud(a):
 
     """
     if a.ndim < 1:
-        raise ValueError('Input must be >= 1-d')
+        raise ValueError("Input must be >= 1-d")
     return a[::-1]
 
 
@@ -124,7 +124,7 @@ def roll(a, shift, axis=None):
         broadcasted = numpy.broadcast(shift, axes)
         if broadcasted.nd > 1:
             raise ValueError(
-                '\'shift\' and \'axis\' should be scalars or 1D sequences')
+                "'shift' and 'axis' should be scalars or 1D sequences")
         shifts = {ax: 0 for ax in range(a.ndim)}
         for sh, ax in broadcasted:
             shifts[ax] += sh
@@ -165,15 +165,15 @@ def rot90(a, k=1, axes=(0, 1)):
     """
     a_ndim = a.ndim
     if a_ndim < 2:
-        raise ValueError('Input must be >= 2-d')
+        raise ValueError("Input must be >= 2-d")
 
     axes = tuple(axes)
     if len(axes) != 2:
-        raise ValueError('len(axes) must be 2')
+        raise ValueError("len(axes) must be 2")
     if axes[0] == axes[1] or abs(axes[0] - axes[1]) == a_ndim:
-        raise ValueError('axes must be different')
+        raise ValueError("axes must be different")
     if not (-a_ndim <= axes[0] < a_ndim and -a_ndim <= axes[1] < a_ndim):
-        raise ValueError('axes must be >= %d and < %d' % (-a_ndim, a_ndim))
+        raise ValueError("axes must be >= %d and < %d" % (-a_ndim, a_ndim))
 
     k = k % 4
 

@@ -4,10 +4,10 @@ import cupyx.scipy.special  # NOQA
 from cupy import testing
 
 
-@testing.with_requires('scipy')
+@testing.with_requires("scipy")
 class TestBinom:
     @testing.for_all_dtypes(no_complex=True)
-    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name="scp")
     def test_arange(self, xp, scp, dtype):
         import scipy.special  # NOQA
         n = testing.shaped_arange((40, 100), xp, dtype) + 20
@@ -15,7 +15,7 @@ class TestBinom:
         return scp.special.binom(n, k)
 
     @testing.for_all_dtypes(no_complex=True)
-    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name="scp")
     def test_linspace(self, xp, scp, dtype):
         import scipy.special  # NOQA
         n = xp.linspace(30, 60, 1000, dtype=dtype)
@@ -23,7 +23,7 @@ class TestBinom:
         return scp.special.binom(n, k)
 
     @testing.for_float_dtypes(no_float16=True)
-    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name="scp")
     def test_linspace_largen(self, xp, scp, dtype):
         import scipy.special  # NOQA
         n = xp.linspace(1e10, 9e10, 1000, dtype=dtype)
@@ -31,7 +31,7 @@ class TestBinom:
         return scp.special.binom(n, k)
 
     @testing.for_float_dtypes(no_float16=True)
-    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name="scp")
     def test_linspace_largeposk(self, xp, scp, dtype):
         import scipy.special  # NOQA
         n = xp.linspace(.01, .9, 1000, dtype=dtype)
@@ -39,7 +39,7 @@ class TestBinom:
         return scp.special.binom(n, k)
 
     @testing.for_float_dtypes(no_float16=True)
-    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name="scp")
     def test_linspace_largenegk(self, xp, scp, dtype):
         import scipy.special  # NOQA
         n = xp.linspace(.01, .9, 1000, dtype=dtype)
@@ -47,7 +47,7 @@ class TestBinom:
         return scp.special.binom(n, k)
 
     @testing.for_float_dtypes()
-    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name="scp")
     def test_nan_inf(self, xp, scp, dtype):
         import scipy.special  # NOQA
         a = xp.array([-numpy.inf, numpy.nan, numpy.inf, 0, -1,

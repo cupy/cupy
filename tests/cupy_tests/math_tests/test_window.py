@@ -5,8 +5,8 @@ from cupy import testing
 
 @testing.parameterize(
     *testing.product({
-        'm': [0, 1, -1, 1024],
-        'name': ['bartlett', 'blackman', 'hamming', 'hanning'],
+        "m": [0, 1, -1, 1024],
+        "name": ["bartlett", "blackman", "hamming", "hanning"],
     })
 )
 class TestWindow(unittest.TestCase):
@@ -18,9 +18,9 @@ class TestWindow(unittest.TestCase):
 
 @testing.parameterize(
     *testing.product({
-        'm': [10, 30, 1024],
-        'beta': [-3.4, 0, 5, 6, 8.6],
-        'name': ['kaiser'],
+        "m": [10, 30, 1024],
+        "beta": [-3.4, 0, 5, 6, 8.6],
+        "name": ["kaiser"],
     })
 )
 class TestKaiser(unittest.TestCase):
@@ -30,7 +30,7 @@ class TestKaiser(unittest.TestCase):
         return getattr(xp, self.name)(self.m, self.beta)
 
 
-@testing.parameterize(*testing.product({'m': [-1, 0, 1]}))
+@testing.parameterize(*testing.product({"m": [-1, 0, 1]}))
 class TestKaiserBoundary(unittest.TestCase):
 
     @testing.numpy_cupy_allclose(atol=1e-5)

@@ -11,7 +11,7 @@ except ImportError:
 
 # Backend support for scipy.linalg
 
-__ua_domain__ = 'numpy.scipy.linalg'
+__ua_domain__ = "numpy.scipy.linalg"
 _implemented = {}  # type: ignore
 _notfound = []  # for test
 
@@ -59,13 +59,13 @@ def implements(scipy_func_name):
 
 _cp_linalg_functions = [
     # cupy.linalg._eigenvalue
-    'eigh', 'eigvalsh',
+    "eigh", "eigvalsh",
     # cupy.linalg._decomposition
-    'cholesky', 'qr', 'svd',
+    "cholesky", "qr", "svd",
     # cupy.linalg._norms
-    'norm', 'det',
+    "norm", "det",
     # cupy.linalg._solve
-    'solve', 'lstsq', 'inv', 'pinv'
+    "solve", "lstsq", "inv", "pinv"
 ]
 
 if _scipy_linalg:

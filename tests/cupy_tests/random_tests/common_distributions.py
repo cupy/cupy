@@ -50,7 +50,7 @@ class BaseGeneratorTestCase(unittest.TestCase):
 
     def _get_generator_func(self, *args, **kwargs):
         assert isinstance(self.target_method, str), (
-            'generate_method must be overridden')
+            "generate_method must be overridden")
         f = getattr(self.rng, self.target_method)
         return lambda: f(*args, **kwargs)
 
@@ -62,7 +62,7 @@ class BaseGeneratorTestCase(unittest.TestCase):
         y = func()
         testing.assert_array_equal(
             x, y,
-            'Randomly generated arrays with the same seed did not match')
+            "Randomly generated arrays with the same seed did not match")
         return x
 
     def generate(self, *args, **kwargs):
@@ -75,8 +75,8 @@ class BaseGeneratorTestCase(unittest.TestCase):
         # Pick many samples from generator.
         # Reproducibility is checked only for the first sample,
         # because it's very slow to set seed every time.
-        _count = kwargs.pop('_count', None)
-        assert _count is not None, '_count is required'
+        _count = kwargs.pop("_count", None)
+        assert _count is not None, "_count is required"
         func = self._get_generator_func(*args, **kwargs)
 
         if _count == 0:
@@ -94,7 +94,7 @@ class BaseGeneratorTestCase(unittest.TestCase):
     def _check_ks(
             self, significance_level, cupy_len, numpy_len,
             *args, **kwargs):
-        assert 'size' in kwargs
+        assert "size" in kwargs
 
         # cupy
         func = self._get_generator_func(*args, **kwargs)
@@ -107,8 +107,8 @@ class BaseGeneratorTestCase(unittest.TestCase):
         vals_cupy = cupy.stack(vals_cupy).ravel()
 
         # numpy
-        kwargs['size'] = numpy_len
-        dtype = kwargs.pop('dtype', None)
+        kwargs["size"] = numpy_len
+        dtype = kwargs.pop("dtype", None)
         numpy_rng = self.get_rng(numpy, self.__seed)
         vals_numpy = getattr(numpy_rng, self.target_method)(*args, **kwargs)
         if dtype is not None:
@@ -119,22 +119,22 @@ class BaseGeneratorTestCase(unittest.TestCase):
             two_sample_Kolmogorov_Smirnov_test(
                 cupy.asnumpy(vals_cupy), vals_numpy)
         if p_value < significance_level:
-            message = '''Rejected null hypothesis:
+            message = """Rejected null hypothesis:
 p: %f
 D+ (cupy < numpy): %f
-D- (cupy > numpy): %f''' % (p_value, d_plus, d_minus)
+D- (cupy > numpy): %f""" % (p_value, d_plus, d_minus)
             raise AssertionError(message)
 
 
 uniform_params = [
-    {'low': 1, 'high': 10.0, 'size': (3, 5)},
-    {'low': [1, 2], 'high': 3, 'size': None},
-    {'low': 20, 'high': 20.1, 'size': 1000}
+    {"low": 1, "high": 10.0, "size": (3, 5)},
+    {"low": [1, 2], "high": 3, "size": None},
+    {"low": 20, "high": 20.1, "size": 1000}
 ]
 
 
 class Uniform:
-    target_method = 'uniform'
+    target_method = "uniform"
 
     def test_uniform(self):
         low = self.low
@@ -151,22 +151,22 @@ class Uniform:
     @_condition.repeat_with_success_at_least(10, 3)
     def test_uniform_ks(self):
         if (isinstance(self.low, list) or isinstance(self.high, list)):
-            self.skipTest('Stastical checks only for scalar args')
+            self.skipTest("Stastical checks only for scalar args")
         self.check_ks(0.05)(low=self.low, high=self.low, size=2000)
 
 
 beta_params = [
-    {'a': 1.0, 'b': 3.0},
-    {'a': 3.0, 'b': 3.0},
-    {'a': 3.0, 'b': 1.0},
-    {'a': [1.0, 3.0, 5.0, 6.0, 9.0], 'b': 7.0},
-    {'a': 5.0, 'b': [1.0, 5.0, 8.0, 1.0, 3.0]},
-    {'a': [8.0, 6.0, 2.0, 4.0, 7.0], 'b': [3.0, 1.0, 2.0, 8.0, 1.0]}]
+    {"a": 1.0, "b": 3.0},
+    {"a": 3.0, "b": 3.0},
+    {"a": 3.0, "b": 1.0},
+    {"a": [1.0, 3.0, 5.0, 6.0, 9.0], "b": 7.0},
+    {"a": 5.0, "b": [1.0, 5.0, 8.0, 1.0, 3.0]},
+    {"a": [8.0, 6.0, 2.0, 4.0, 7.0], "b": [3.0, 1.0, 2.0, 8.0, 1.0]}]
 
 
 class Beta:
 
-    target_method = 'beta'
+    target_method = "beta"
 
     def test_beta(self):
         a = self.a
@@ -179,13 +179,13 @@ class Beta:
     @_condition.repeat_with_success_at_least(10, 3)
     def test_beta_ks(self):
         if (isinstance(self.a, list) or isinstance(self.b, list)):
-            self.skipTest('Stastical checks only for scalar args')
+            self.skipTest("Stastical checks only for scalar args")
         self.check_ks(0.05)(a=self.a, b=self.b, size=2000)
 
 
 class StandardExponential:
 
-    target_method = 'standard_exponential'
+    target_method = "standard_exponential"
 
     def test_standard_exponential(self):
         self.generate(size=(3, 2))
@@ -196,26 +196,26 @@ class StandardExponential:
         x = self.generate(size=10**7)
         assert cupy.isfinite(x).all()
 
-    @testing.for_dtypes('fd')
+    @testing.for_dtypes("fd")
     @_condition.repeat_with_success_at_least(10, 3)
     def test_standard_exponential_ks(self, dtype):
         self.check_ks(0.05)(size=2000, dtype=dtype)
 
 
 standard_gamma_params = [
-    {'shape': 0.5},
-    {'shape': 1.0},
-    {'shape': 3.0}]
+    {"shape": 0.5},
+    {"shape": 1.0},
+    {"shape": 3.0}]
 
 
 class StandardGamma:
 
-    target_method = 'standard_gamma'
+    target_method = "standard_gamma"
 
     def test_standard_gamma(self):
         self.generate(shape=self.shape, size=(3, 2))
 
-    @testing.for_dtypes('fd')
+    @testing.for_dtypes("fd")
     @_condition.repeat_with_success_at_least(10, 3)
     def test_standard_gamma_ks(self, dtype):
         self.check_ks(0.05)(
@@ -223,33 +223,33 @@ class StandardGamma:
 
 
 standard_normal_params = [
-    {'size': None},
-    {'size': (1, 2, 3)},
-    {'size': 3},
-    {'size': (1000, 1000)},
-    {'size': (3, 3)},
-    {'size': ()}]
+    {"size": None},
+    {"size": (1, 2, 3)},
+    {"size": 3},
+    {"size": (1000, 1000)},
+    {"size": (3, 3)},
+    {"size": ()}]
 
 
 class StandardNormal:
 
-    target_method = 'standard_normal'
+    target_method = "standard_normal"
 
-    @testing.for_dtypes('fd')
+    @testing.for_dtypes("fd")
     @_condition.repeat_with_success_at_least(10, 3)
     def test_normal_ks(self, dtype):
         self.check_ks(0.05)(size=self.size, dtype=dtype)
 
 
 exponential_params = [
-    {'scale': 0.5},
-    {'scale': 1},
-    {'scale': 10}]
+    {"scale": 0.5},
+    {"scale": 1},
+    {"scale": 10}]
 
 
 class Exponential:
 
-    target_method = 'exponential'
+    target_method = "exponential"
 
     def test_exponential(self):
         self.generate(scale=self.scale, size=(3, 2))
@@ -261,14 +261,14 @@ class Exponential:
 
 
 poisson_params = [
-    {'lam': 1.0},
-    {'lam': 3.0},
-    {'lam': 10.0}]
+    {"lam": 1.0},
+    {"lam": 3.0},
+    {"lam": 10.0}]
 
 
 class Poisson:
 
-    target_method = 'poisson'
+    target_method = "poisson"
 
     def test_poisson(self):
         self.generate(lam=self.lam, size=(3, 2))
@@ -283,20 +283,20 @@ class Poisson:
 
 
 gamma_params = [
-    {'shape': 0.5, 'scale': 0.5},
-    {'shape': 1.0, 'scale': 0.5},
-    {'shape': 3.0, 'scale': 0.5},
-    {'shape': 0.5, 'scale': 1.0},
-    {'shape': 1.0, 'scale': 1.0},
-    {'shape': 3.0, 'scale': 1.0},
-    {'shape': 0.5, 'scale': 3.0},
-    {'shape': 1.0, 'scale': 3.0},
-    {'shape': 3.0, 'scale': 3.0}]
+    {"shape": 0.5, "scale": 0.5},
+    {"shape": 1.0, "scale": 0.5},
+    {"shape": 3.0, "scale": 0.5},
+    {"shape": 0.5, "scale": 1.0},
+    {"shape": 1.0, "scale": 1.0},
+    {"shape": 3.0, "scale": 1.0},
+    {"shape": 0.5, "scale": 3.0},
+    {"shape": 1.0, "scale": 3.0},
+    {"shape": 3.0, "scale": 3.0}]
 
 
 class Gamma:
 
-    target_method = 'gamma'
+    target_method = "gamma"
 
     def test_gamma_1(self):
         self.generate(shape=self.shape, scale=self.scale, size=(3, 2))
@@ -311,20 +311,20 @@ class Gamma:
 
 
 binomial_params = [
-    {'n': 2, 'p': 0.5},
-    {'n': 5, 'p': 0.5},
-    {'n': 10, 'p': 0.5},
-    {'n': 2, 'p': 0.1},
-    {'n': 5, 'p': 0.1},
-    {'n': 10, 'p': 0.1},
-    {'n': 2, 'p': 1.0},
-    {'n': 2, 'p': 1.0},
-    {'n': 2, 'p': 1.0}]
+    {"n": 2, "p": 0.5},
+    {"n": 5, "p": 0.5},
+    {"n": 10, "p": 0.5},
+    {"n": 2, "p": 0.1},
+    {"n": 5, "p": 0.1},
+    {"n": 10, "p": 0.1},
+    {"n": 2, "p": 1.0},
+    {"n": 2, "p": 1.0},
+    {"n": 2, "p": 1.0}]
 
 
 class Binomial:
 
-    target_method = 'binomial'
+    target_method = "binomial"
 
     def test_binomial(self):
         self.generate(n=self.n, p=self.p, size=(3, 2))
@@ -335,16 +335,16 @@ class Binomial:
 
 
 geometric_params = [
-    {'p': 0.5},
-    {'p': 0.1},
-    {'p': 1.0},
-    {'p': [0.1, 0.5]},
+    {"p": 0.5},
+    {"p": 0.1},
+    {"p": 1.0},
+    {"p": [0.1, 0.5]},
 ]
 
 
 class Geometric:
 
-    target_method = 'geometric'
+    target_method = "geometric"
 
     def test_geometric(self):
         p = self.p
@@ -355,23 +355,23 @@ class Geometric:
     @_condition.repeat_with_success_at_least(10, 3)
     def test_geometric_ks(self):
         if not isinstance(self.p, float):
-            self.skipTest('Statistical checks only for scalar `p`')
+            self.skipTest("Statistical checks only for scalar `p`")
         self.check_ks(0.05)(
             p=self.p, size=2000)
 
 
 hypergeometric_params = [
-    {'ngood': 5, 'nbad': 5, 'nsample': 5},
-    {'ngood': 10, 'nbad': 10, 'nsample': 10},
-    {'ngood': 100, 'nbad': 2, 'nsample': 10},
-    {'ngood': [0, 5, 8], 'nbad': [5, 0, 3], 'nsample': [2, 1, 8]},
-    {'ngood': [1, 4, 2, 7, 6], 'nbad': 5.0, 'nsample': [2, 7, 4, 6, 5]},
+    {"ngood": 5, "nbad": 5, "nsample": 5},
+    {"ngood": 10, "nbad": 10, "nsample": 10},
+    {"ngood": 100, "nbad": 2, "nsample": 10},
+    {"ngood": [0, 5, 8], "nbad": [5, 0, 3], "nsample": [2, 1, 8]},
+    {"ngood": [1, 4, 2, 7, 6], "nbad": 5.0, "nsample": [2, 7, 4, 6, 5]},
 ]
 
 
 class Hypergeometric:
 
-    target_method = 'hypergeometric'
+    target_method = "hypergeometric"
 
     def test_hypergeometric(self):
         ngood = self.ngood
@@ -388,21 +388,21 @@ class Hypergeometric:
     def test_hypergeometric_ks(self):
         if (isinstance(self.ngood, list) or isinstance(self.nbad, list)
                 or isinstance(self.nsample, list)):
-            self.skipTest('Stastical checks only for scalar args')
+            self.skipTest("Stastical checks only for scalar args")
         self.check_ks(0.05)(self.ngood, self.nbad, self.nsample, size=2000)
 
 
 power_params = [
-    {'a': 0.5},
-    {'a': 1},
-    {'a': 5},
-    {'a': [0.8, 0.7, 1, 2, 5]},
+    {"a": 0.5},
+    {"a": 1},
+    {"a": 5},
+    {"a": [0.8, 0.7, 1, 2, 5]},
 ]
 
 
 class Power:
 
-    target_method = 'power'
+    target_method = "power"
 
     def test_power(self):
         a = self.a
@@ -413,22 +413,22 @@ class Power:
     @_condition.repeat_with_success_at_least(10, 3)
     def test_power_ks(self):
         if not isinstance(self.a, float):
-            self.skipTest('Statistical checks only for scalar `a`')
+            self.skipTest("Statistical checks only for scalar `a`")
         self.check_ks(0.05)(
             a=self.a, size=2000)
 
 
 logseries_params = [
-    {'p': 0.5},
-    {'p': 0.1},
-    {'p': 0.9},
-    {'p': [0.8, 0.7]},
+    {"p": 0.5},
+    {"p": 0.1},
+    {"p": 0.9},
+    {"p": [0.8, 0.7]},
 ]
 
 
 class Logseries:
 
-    target_method = 'logseries'
+    target_method = "logseries"
 
     def test_logseries(self):
         p = self.p
@@ -439,21 +439,21 @@ class Logseries:
     @_condition.repeat_with_success_at_least(10, 3)
     def test_geometric_ks(self):
         if not isinstance(self.p, float):
-            self.skipTest('Statistical checks only for scalar `p`')
+            self.skipTest("Statistical checks only for scalar `p`")
         self.check_ks(0.05)(p=self.p, size=2000)
 
 
 chisquare_params = [
-    {'df': 1.0},
-    {'df': 3.0},
-    {'df': 10.0},
-    {'df': [2, 5, 8]},
+    {"df": 1.0},
+    {"df": 3.0},
+    {"df": 10.0},
+    {"df": [2, 5, 8]},
 ]
 
 
 class Chisquare:
 
-    target_method = 'chisquare'
+    target_method = "chisquare"
 
     def test_chisquare(self):
         df = self.df
@@ -464,22 +464,22 @@ class Chisquare:
     @_condition.repeat_with_success_at_least(10, 3)
     def test_chisquare_ks(self):
         if not isinstance(self.df, float):
-            self.skipTest('Statistical checks only for scalar `df`')
+            self.skipTest("Statistical checks only for scalar `df`")
         self.check_ks(0.05)(
             df=self.df, size=2000)
 
 
 f_params = [
-    {'dfnum': 1.0, 'dfden': 3.0},
-    {'dfnum': 3.0, 'dfden': 3.0},
-    {'dfnum': 3.0, 'dfden': 1.0},
-    {'dfnum': [1.0, 3.0, 3.0], 'dfden': [3.0, 3.0, 1.0]},
+    {"dfnum": 1.0, "dfden": 3.0},
+    {"dfnum": 3.0, "dfden": 3.0},
+    {"dfnum": 3.0, "dfden": 1.0},
+    {"dfnum": [1.0, 3.0, 3.0], "dfden": [3.0, 3.0, 1.0]},
 ]
 
 
 class F:
 
-    target_method = 'f'
+    target_method = "f"
 
     def test_f(self):
         dfnum = self.dfnum
@@ -492,19 +492,19 @@ class F:
     @_condition.repeat_with_success_at_least(10, 3)
     def test_f_ks(self):
         if isinstance(self.dfnum, list) or isinstance(self.dfden, list):
-            self.skipTest('Stastical checks only for scalar args')
+            self.skipTest("Stastical checks only for scalar args")
         self.check_ks(0.05)(self.dfnum, self.dfden, size=2000)
 
 
 dirichlet_params = [
-    {'alpha': 5},
-    {'alpha': 1},
-    {'alpha': [2, 5, 8]}
+    {"alpha": 5},
+    {"alpha": 1},
+    {"alpha": [2, 5, 8]}
 ]
 
 
 class Dirichlet:
-    target_method = 'dirichlet'
+    target_method = "dirichlet"
 
     def test_dirichlet(self):
         alpha = self.alpha

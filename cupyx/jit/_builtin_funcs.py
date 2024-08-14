@@ -42,7 +42,7 @@ class RangeFunc(BuiltinFunc):
 
     def call(self, env, *args, unroll=None):
         if len(args) == 0:
-            raise TypeError('range expected at least 1 argument, got 0')
+            raise TypeError("range expected at least 1 argument, got 0")
         elif len(args) == 1:
             start, stop, step = Constant(0), args[0], Constant(1)
         elif len(args) == 2:
@@ -51,29 +51,29 @@ class RangeFunc(BuiltinFunc):
             start, stop, step = args
         else:
             raise TypeError(
-                f'range expected at most 3 argument, got {len(args)}')
+                f"range expected at most 3 argument, got {len(args)}")
 
         if unroll is not None:
             if not all(isinstance(x, Constant)
                        for x in (start, stop, step, unroll)):
                 raise TypeError(
-                    'loop unrolling requires constant start, stop, step and '
-                    'unroll value')
+                    "loop unrolling requires constant start, stop, step and "
+                    "unroll value")
             unroll = unroll.obj
             if not (isinstance(unroll, int) or isinstance(unroll, bool)):
                 raise TypeError(
-                    'unroll value expected to be of type int, '
-                    f'got {type(unroll).__name__}')
+                    "unroll value expected to be of type int, "
+                    f"got {type(unroll).__name__}")
             if unroll is False:
                 unroll = 1
             if not (unroll is True or 0 < unroll < 1 << 31):
                 warnings.warn(
-                    'loop unrolling is ignored as the unroll value is '
-                    'non-positive or greater than INT_MAX')
+                    "loop unrolling is ignored as the unroll value is "
+                    "non-positive or greater than INT_MAX")
 
         if isinstance(step, Constant):
             step_is_positive = step.obj >= 0
-        elif step.ctype.dtype.kind == 'u':
+        elif step.ctype.dtype.kind == "u":
             step_is_positive = True
         else:
             step_is_positive = None
@@ -82,16 +82,16 @@ class RangeFunc(BuiltinFunc):
         start = Data.init(start, env)
         step = Data.init(step, env)
 
-        if start.ctype.dtype.kind not in 'iu':
-            raise TypeError('range supports only for integer type.')
-        if stop.ctype.dtype.kind not in 'iu':
-            raise TypeError('range supports only for integer type.')
-        if step.ctype.dtype.kind not in 'iu':
-            raise TypeError('range supports only for integer type.')
+        if start.ctype.dtype.kind not in "iu":
+            raise TypeError("range supports only for integer type.")
+        if stop.ctype.dtype.kind not in "iu":
+            raise TypeError("range supports only for integer type.")
+        if step.ctype.dtype.kind not in "iu":
+            raise TypeError("range supports only for integer type.")
 
-        if env.mode == 'numpy':
+        if env.mode == "numpy":
             ctype = _cuda_types.Scalar(int)
-        elif env.mode == 'cuda':
+        elif env.mode == "cuda":
             ctype = stop.ctype
         else:
             assert False
@@ -103,16 +103,16 @@ class LenFunc(BuiltinFunc):
 
     def call(self, env, *args, **kwds):
         if len(args) != 1:
-            raise TypeError(f'len() expects only 1 argument, got {len(args)}')
+            raise TypeError(f"len() expects only 1 argument, got {len(args)}")
         if kwds:
-            raise TypeError('keyword arguments are not supported')
+            raise TypeError("keyword arguments are not supported")
         arg = args[0]
         if not isinstance(arg.ctype, _cuda_types.CArray):
-            raise TypeError('len() supports only array type')
+            raise TypeError("len() supports only array type")
         if not arg.ctype.ndim:
-            raise TypeError('len() of unsized array')
-        return Data(f'static_cast<long long>({arg.code}.shape()[0])',
-                    _cuda_types.Scalar('q'))
+            raise TypeError("len() of unsized array")
+        return Data(f"static_cast<long long>({arg.code}.shape()[0])",
+                    _cuda_types.Scalar("q"))
 
 
 class MinFunc(BuiltinFunc):
@@ -120,9 +120,9 @@ class MinFunc(BuiltinFunc):
     def call(self, env, *args, **kwds):
         if len(args) < 2:
             raise TypeError(
-                f'min() expects at least 2 arguments, got {len(args)}')
+                f"min() expects at least 2 arguments, got {len(args)}")
         if kwds:
-            raise TypeError('keyword arguments are not supported')
+            raise TypeError("keyword arguments are not supported")
         return reduce(lambda a, b: _compile._call_ufunc(
             cupy.minimum, (a, b), None, env), args)
 
@@ -132,9 +132,9 @@ class MaxFunc(BuiltinFunc):
     def call(self, env, *args, **kwds):
         if len(args) < 2:
             raise TypeError(
-                f'max() expects at least 2 arguments, got {len(args)}')
+                f"max() expects at least 2 arguments, got {len(args)}")
         if kwds:
-            raise TypeError('keyword arguments are not supported')
+            raise TypeError("keyword arguments are not supported")
         return reduce(lambda a, b: _compile._call_ufunc(
             cupy.maximum, (a, b), None, env), args)
 
@@ -152,7 +152,7 @@ class SyncThreads(BuiltinFunc):
         super().__call__()
 
     def call_const(self, env):
-        return Data('__syncthreads()', _cuda_types.void)
+        return Data("__syncthreads()", _cuda_types.void)
 
 
 class SyncWarp(BuiltinFunc):
@@ -173,19 +173,19 @@ class SyncWarp(BuiltinFunc):
     def call(self, env, *, mask=None):
         if runtime.is_hip:
             if mask is not None:
-                warnings.warn(f'mask {mask} is ignored on HIP', RuntimeWarning)
+                warnings.warn(f"mask {mask} is ignored on HIP", RuntimeWarning)
                 mask = None
 
         if mask:
             if isinstance(mask, Constant):
                 if not (0x0 <= mask.obj <= 0xffffffff):
-                    raise ValueError('mask is out of range')
+                    raise ValueError("mask is out of range")
             mask = _compile._astype_scalar(
-                mask, _cuda_types.int32, 'same_kind', env)
+                mask, _cuda_types.int32, "same_kind", env)
             mask = Data.init(mask, env)
-            code = f'__syncwarp({mask.code})'
+            code = f"__syncwarp({mask.code})"
         else:
-            code = '__syncwarp()'
+            code = "__syncwarp()"
         return Data(code, _cuda_types.void)
 
 
@@ -205,7 +205,7 @@ class SharedMemory(BuiltinFunc):
         super().__call__()
 
     def call_const(self, env, dtype, size, alignment=None):
-        name = env.get_fresh_variable_name(prefix='_smem')
+        name = env.get_fresh_variable_name(prefix="_smem")
         ctype = _cuda_typerules.to_ctype(dtype)
         var = Data(name, _cuda_types.SharedMem(ctype, size, alignment))
         env.decls[name] = var
@@ -217,7 +217,7 @@ class AtomicOp(BuiltinFunc):
 
     def __init__(self, op, dtypes):
         self._op = op
-        self._name = 'atomic' + op
+        self._name = "atomic" + op
         self._dtypes = dtypes
         doc = f"""Calls the ``{self._name}`` function to operate atomically on
         ``array[index]``. Please refer to `Atomic Functions`_ for detailed
@@ -251,46 +251,46 @@ class AtomicOp(BuiltinFunc):
         op = self._op
         array = Data.init(array, env)
         if not isinstance(array.ctype, (_cuda_types.CArray, _cuda_types.Ptr)):
-            raise TypeError('The first argument must be of array type.')
+            raise TypeError("The first argument must be of array type.")
         target = _compile._indexing(array, index, env)
         ctype = target.ctype
         if ctype.dtype.name not in self._dtypes:
-            raise TypeError(f'`{name}` does not support {ctype.dtype} input.')
+            raise TypeError(f"`{name}` does not support {ctype.dtype} input.")
         # On HIP, 'e' is not supported and we will never reach here
-        value = _compile._astype_scalar(value, ctype, 'same_kind', env)
+        value = _compile._astype_scalar(value, ctype, "same_kind", env)
         value = Data.init(value, env)
-        if op == 'CAS':
+        if op == "CAS":
             assert value2 is not None
             # On HIP, 'H' is not supported and we will never reach here
-            if ctype.dtype.char == 'H':
+            if ctype.dtype.char == "H":
                 if int(device.get_compute_capability()) < 70:
                     raise RuntimeError(
-                        'uint16 atomic operation is not supported before '
-                        'sm_70')
-            value2 = _compile._astype_scalar(value2, ctype, 'same_kind', env)
+                        "uint16 atomic operation is not supported before "
+                        "sm_70")
+            value2 = _compile._astype_scalar(value2, ctype, "same_kind", env)
             value2 = Data.init(value2, env)
-            code = f'{name}(&{target.code}, {value.code}, {value2.code})'
+            code = f"{name}(&{target.code}, {value.code}, {value2.code})"
         else:
             assert value2 is None
-            code = f'{name}(&{target.code}, {value.code})'
+            code = f"{name}(&{target.code}, {value.code})"
         return Data(code, ctype)
 
 
 class GridFunc(BuiltinFunc):
 
     def __init__(self, mode):
-        if mode == 'grid':
-            self._desc = 'Compute the thread index in the grid.'
-            self._eq = 'jit.threadIdx.x + jit.blockIdx.x * jit.blockDim.x'
-            self._link = 'numba.cuda.grid'
-            self._code = 'threadIdx.{n} + blockIdx.{n} * blockDim.{n}'
-        elif mode == 'gridsize':
-            self._desc = 'Compute the grid size.'
-            self._eq = 'jit.blockDim.x * jit.gridDim.x'
-            self._link = 'numba.cuda.gridsize'
-            self._code = 'blockDim.{n} * gridDim.{n}'
+        if mode == "grid":
+            self._desc = "Compute the thread index in the grid."
+            self._eq = "jit.threadIdx.x + jit.blockIdx.x * jit.blockDim.x"
+            self._link = "numba.cuda.grid"
+            self._code = "threadIdx.{n} + blockIdx.{n} * blockDim.{n}"
+        elif mode == "gridsize":
+            self._desc = "Compute the grid size."
+            self._eq = "jit.blockDim.x * jit.gridDim.x"
+            self._link = "numba.cuda.gridsize"
+            self._code = "blockDim.{n} * gridDim.{n}"
         else:
-            raise ValueError('unsupported function')
+            raise ValueError("unsupported function")
 
         doc = f"""        {self._desc}
 
@@ -318,33 +318,33 @@ class GridFunc(BuiltinFunc):
 
     def call_const(self, env, ndim):
         if not isinstance(ndim, int):
-            raise TypeError('ndim must be an integer')
+            raise TypeError("ndim must be an integer")
 
         # Numba convention: for 1D we return a single variable,
         # otherwise a tuple
         if ndim == 1:
-            return Data(self._code.format(n='x'), _cuda_types.uint32)
+            return Data(self._code.format(n="x"), _cuda_types.uint32)
         elif ndim == 2:
-            dims = ('x', 'y')
+            dims = ("x", "y")
         elif ndim == 3:
-            dims = ('x', 'y', 'z')
+            dims = ("x", "y", "z")
         else:
-            raise ValueError('Only ndim=1,2,3 are supported')
+            raise ValueError("Only ndim=1,2,3 are supported")
 
-        elts_code = ', '.join(self._code.format(n=n) for n in dims)
+        elts_code = ", ".join(self._code.format(n=n) for n in dims)
         ctype = _cuda_types.Tuple([_cuda_types.uint32]*ndim)
         # STD is defined in carray.cuh
         if ndim == 2:
-            return Data(f'STD::make_pair({elts_code})', ctype)
+            return Data(f"STD::make_pair({elts_code})", ctype)
         else:
-            return Data(f'STD::make_tuple({elts_code})', ctype)
+            return Data(f"STD::make_tuple({elts_code})", ctype)
 
 
 class WarpShuffleOp(BuiltinFunc):
 
     def __init__(self, op, dtypes):
         self._op = op
-        self._name = '__shfl_' + (op + '_' if op else '') + 'sync'
+        self._name = "__shfl_" + (op + "_" if op else "") + "sync"
         self._dtypes = dtypes
         doc = f"""Calls the ``{self._name}`` function. Please refer to
         `Warp Shuffle Functions`_ for detailed explanation.
@@ -363,38 +363,38 @@ class WarpShuffleOp(BuiltinFunc):
         var = Data.init(var, env)
         ctype = var.ctype
         if ctype.dtype.name not in self._dtypes:
-            raise TypeError(f'`{name}` does not support {ctype.dtype} input.')
+            raise TypeError(f"`{name}` does not support {ctype.dtype} input.")
 
         try:
             mask = mask.obj
         except Exception:
-            raise TypeError('mask must be an integer')
+            raise TypeError("mask must be an integer")
         if runtime.is_hip:
-            warnings.warn(f'mask {mask} is ignored on HIP', RuntimeWarning)
+            warnings.warn(f"mask {mask} is ignored on HIP", RuntimeWarning)
         elif not (0x0 <= mask <= 0xffffffff):
-            raise ValueError('mask is out of range')
+            raise ValueError("mask is out of range")
 
         # val_id refers to "delta" for shfl_{up, down}, "srcLane" for shfl, and
         # "laneMask" for shfl_xor
-        if self._op in ('up', 'down'):
+        if self._op in ("up", "down"):
             val_id_t = _cuda_types.uint32
         else:
             val_id_t = _cuda_types.int32
-        val_id = _compile._astype_scalar(val_id, val_id_t, 'same_kind', env)
+        val_id = _compile._astype_scalar(val_id, val_id_t, "same_kind", env)
         val_id = Data.init(val_id, env)
 
         if width:
             if isinstance(width, Constant):
                 if width.obj not in (2, 4, 8, 16, 32):
-                    raise ValueError('width needs to be power of 2')
+                    raise ValueError("width needs to be power of 2")
         else:
             width = Constant(64) if runtime.is_hip else Constant(32)
         width = _compile._astype_scalar(
-            width, _cuda_types.int32, 'same_kind', env)
+            width, _cuda_types.int32, "same_kind", env)
         width = Data.init(width, env)
 
-        code = f'{name}({hex(mask)}, {var.code}, {val_id.code}'
-        code += f', {width.code})'
+        code = f"{name}({hex(mask)}, {var.code}, {val_id.code}"
+        code += f", {width.code})"
         return Data(code, ctype)
 
 
@@ -410,7 +410,7 @@ class LaneID(BuiltinFunc):
         super().__call__()
 
     def _get_preamble(self):
-        preamble = '__device__ __forceinline__ unsigned int LaneId() {'
+        preamble = "__device__ __forceinline__ unsigned int LaneId() {"
         if not runtime.is_hip:
             # see https://github.com/NVIDIA/cub/blob/main/cub/util_ptx.cuh#L419
             preamble += """
@@ -427,7 +427,7 @@ class LaneID(BuiltinFunc):
 
     def call_const(self, env):
         env.generated.add_code(self._get_preamble())
-        return Data('LaneId()', _cuda_types.uint32)
+        return Data("LaneId()", _cuda_types.uint32)
 
 
 builtin_functions_dict: Mapping[Any, BuiltinFunc] = {
@@ -441,43 +441,43 @@ range_ = RangeFunc()
 syncthreads = SyncThreads()
 syncwarp = SyncWarp()
 shared_memory = SharedMemory()
-grid = GridFunc('grid')
-gridsize = GridFunc('gridsize')
+grid = GridFunc("grid")
+gridsize = GridFunc("gridsize")
 laneid = LaneID()
 
 # atomic functions
 atomic_add = AtomicOp(
-    'Add',
-    ('int32', 'uint32', 'uint64', 'float32', 'float64')
-    + (() if runtime.is_hip else ('float16',)))
+    "Add",
+    ("int32", "uint32", "uint64", "float32", "float64")
+    + (() if runtime.is_hip else ("float16",)))
 atomic_sub = AtomicOp(
-    'Sub', ('int32', 'uint32'))
+    "Sub", ("int32", "uint32"))
 atomic_exch = AtomicOp(
-    'Exch', ('int32', 'uint32', 'uint64', 'float32'))
+    "Exch", ("int32", "uint32", "uint64", "float32"))
 atomic_min = AtomicOp(
-    'Min', ('int32', 'uint32', 'uint64'))
+    "Min", ("int32", "uint32", "uint64"))
 atomic_max = AtomicOp(
-    'Max', ('int32', 'uint32', 'uint64'))
+    "Max", ("int32", "uint32", "uint64"))
 atomic_inc = AtomicOp(
-    'Inc', ('uint32',))
+    "Inc", ("uint32",))
 atomic_dec = AtomicOp(
-    'Dec', ('uint32',))
+    "Dec", ("uint32",))
 atomic_cas = AtomicOp(
-    'CAS',
-    ('int32', 'uint32', 'uint64')
-    + (() if runtime.is_hip else ('uint16',)))
+    "CAS",
+    ("int32", "uint32", "uint64")
+    + (() if runtime.is_hip else ("uint16",)))
 atomic_and = AtomicOp(
-    'And', ('int32', 'uint32', 'uint64'))
+    "And", ("int32", "uint32", "uint64"))
 atomic_or = AtomicOp(
-    'Or', ('int32', 'uint32', 'uint64'))
+    "Or", ("int32", "uint32", "uint64"))
 atomic_xor = AtomicOp(
-    'Xor', ('int32', 'uint32', 'uint64'))
+    "Xor", ("int32", "uint32", "uint64"))
 
 # warp-shuffle functions
 _shfl_dtypes = (
-    ('int32', 'uint32', 'int64', 'float32', 'float64')
-    + (() if runtime.is_hip else ('uint64', 'float16')))
-shfl_sync = WarpShuffleOp('', _shfl_dtypes)
-shfl_up_sync = WarpShuffleOp('up', _shfl_dtypes)
-shfl_down_sync = WarpShuffleOp('down', _shfl_dtypes)
-shfl_xor_sync = WarpShuffleOp('xor', _shfl_dtypes)
+    ("int32", "uint32", "int64", "float32", "float64")
+    + (() if runtime.is_hip else ("uint64", "float16")))
+shfl_sync = WarpShuffleOp("", _shfl_dtypes)
+shfl_up_sync = WarpShuffleOp("up", _shfl_dtypes)
+shfl_down_sync = WarpShuffleOp("down", _shfl_dtypes)
+shfl_xor_sync = WarpShuffleOp("xor", _shfl_dtypes)

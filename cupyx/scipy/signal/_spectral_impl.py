@@ -45,8 +45,8 @@ def _get_raw_typename(dtype):
 
 def _get_module_func_raw(module, func_name, *template_args):
     args_dtypes = [_get_raw_typename(arg.dtype) for arg in template_args]
-    template = '_'.join(args_dtypes)
-    kernel_name = f'{func_name}_{template}' if template_args else func_name
+    template = "_".join(args_dtypes)
+    kernel_name = f"{func_name}_{template}" if template_args else func_name
     kernel = module.get_function(kernel_name)
     return kernel
 
@@ -194,9 +194,9 @@ extern "C" __global__ void __launch_bounds__( 512 ) _cupy_lombscargle_float64(
 
 
 LOMBSCARGLE_MODULE = cupy.RawModule(
-    code=LOMBSCARGLE_KERNEL, options=('-std=c++11',),
-    name_expressions=['_cupy_lombscargle_float32',
-                      '_cupy_lombscargle_float64'])
+    code=LOMBSCARGLE_KERNEL, options=("-std=c++11",),
+    name_expressions=["_cupy_lombscargle_float32",
+                      "_cupy_lombscargle_float64"])
 
 
 def _lombscargle(x, y, freqs, pgram, y_dot):
@@ -205,7 +205,7 @@ def _lombscargle(x, y, freqs, pgram, y_dot):
     num_blocks = device_id.attributes["MultiProcessorCount"] * 20
     block_sz = 512
     lombscargle_kernel = _get_module_func_raw(
-        LOMBSCARGLE_MODULE, '_cupy_lombscargle', x)
+        LOMBSCARGLE_MODULE, "_cupy_lombscargle", x)
 
     args = (x.shape[0], freqs.shape[0], x, y, freqs, pgram, y_dot)
     lombscargle_kernel((num_blocks,), (block_sz,), args)

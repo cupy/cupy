@@ -8,12 +8,12 @@ from cupy import testing
 from cupy.exceptions import AxisError
 
 
-@testing.parameterize(*(testing.product({'axis': [0, 1, -1]})))
+@testing.parameterize(*(testing.product({"axis": [0, 1, -1]})))
 class TestApplyAlongAxis(unittest.TestCase):
 
     @testing.numpy_cupy_array_equal()
     def test_simple(self, xp):
-        a = xp.ones((20, 10), 'd')
+        a = xp.ones((20, 10), "d")
         return xp.apply_along_axis(len, self.axis, a)
 
     @testing.for_all_dtypes(no_bool=True)
@@ -100,7 +100,7 @@ class TestApplyAlongAxis(unittest.TestCase):
         return xp.apply_along_axis(func, 1, a)
 
 
-@testing.with_requires('numpy>=1.16')
+@testing.with_requires("numpy>=1.16")
 def test_apply_along_axis_invalid_axis():
     for xp in [numpy, cupy]:
         a = xp.ones((8, 4))
@@ -140,7 +140,7 @@ class TestPutAlongAxis(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    'axis': [0, 1],
+    "axis": [0, 1],
 }))
 class TestPutAlongAxes(unittest.TestCase):
 

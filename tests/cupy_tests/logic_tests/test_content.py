@@ -7,14 +7,14 @@ from cupy import testing
 
 class TestContent(unittest.TestCase):
 
-    @testing.for_dtypes('efFdD')
+    @testing.for_dtypes("efFdD")
     @testing.numpy_cupy_array_equal()
     def check_unary_inf(self, name, xp, dtype):
         a = xp.array([-3, numpy.inf, -1, -numpy.inf, 0, 1, 2],
                      dtype=dtype)
         return getattr(xp, name)(a)
 
-    @testing.for_dtypes('efFdD')
+    @testing.for_dtypes("efFdD")
     @testing.numpy_cupy_array_equal()
     def check_unary_nan(self, name, xp, dtype):
         a = xp.array(
@@ -23,13 +23,13 @@ class TestContent(unittest.TestCase):
         return getattr(xp, name)(a)
 
     def test_isfinite(self):
-        self.check_unary_inf('isfinite')
+        self.check_unary_inf("isfinite")
 
     def test_isinf(self):
-        self.check_unary_inf('isinf')
+        self.check_unary_inf("isinf")
 
     def test_isnan(self):
-        self.check_unary_nan('isnan')
+        self.check_unary_nan("isnan")
 
 
 class TestUfuncLike(unittest.TestCase):
@@ -40,7 +40,7 @@ class TestUfuncLike(unittest.TestCase):
         return getattr(xp, name)(a)
 
     def test_isneginf(self):
-        self.check_unary('isneginf')
+        self.check_unary("isneginf")
 
     def test_isposinf(self):
-        self.check_unary('isposinf')
+        self.check_unary("isposinf")

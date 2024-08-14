@@ -15,16 +15,16 @@ except ImportError:
 
 
 @testing.parameterize(*testing.product({
-    'trans': [0, 1, 2, 'N', 'T', 'C'],
-    'lower': [True, False],
-    'unit_diagonal': [True, False],
-    'overwrite_b': [True, False],
-    'check_finite': [True, False],
+    "trans": [0, 1, 2, "N", "T", "C"],
+    "lower": [True, False],
+    "unit_diagonal": [True, False],
+    "overwrite_b": [True, False],
+    "check_finite": [True, False],
 }))
-@testing.with_requires('scipy')
+@testing.with_requires("scipy")
 class TestSolveTriangular(unittest.TestCase):
 
-    @testing.for_dtypes('fdFD')
+    @testing.for_dtypes("fdFD")
     def check_x(self, a_shape, b_shape, dtype):
         a_cpu = numpy.random.randint(1, 10, size=a_shape).astype(dtype)
         b_cpu = numpy.random.randint(1, 10, size=b_shape).astype(dtype)
@@ -97,7 +97,7 @@ class TestSolveTriangular(unittest.TestCase):
             self.check_infinite((5, 5), (5, 2))
             self.check_infinite((5, 5), (5, 5))
 
-    @testing.for_dtypes('fdFD')
+    @testing.for_dtypes("fdFD")
     def check_batched(self, a_shape, b_shape, dtype):
         a_cpu = numpy.random.randint(1, 10, size=a_shape).astype(dtype)
         b_cpu = numpy.random.randint(1, 10, size=b_shape).astype(dtype)

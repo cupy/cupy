@@ -14,7 +14,7 @@ from cupy.fft._cache import (
     show_plan_cache_info,  # NOQA
 )
 
-if _sys.platform.startswith('linux'):
+if _sys.platform.startswith("linux"):
     from cupy.fft._callback import get_current_callback_manager  # NOQA
     from cupy.fft._callback import set_cufft_callbacks  # NOQA
 else:
@@ -23,7 +23,7 @@ else:
 
     class set_cufft_callbacks:  # type: ignore
         def __init__(self, *args, **kwargs):
-            raise RuntimeError('cuFFT callback is only available on Linux')
+            raise RuntimeError("cuFFT callback is only available on Linux")
 
 
 enable_nd_planning = True
@@ -32,7 +32,7 @@ _devices = None
 
 
 def set_cufft_gpus(gpus):
-    '''Set the GPUs to be used in multi-GPU FFT.
+    """Set the GPUs to be used in multi-GPU FFT.
 
     Args:
         gpus (int or list of int): The number of GPUs or a list of GPUs
@@ -47,8 +47,8 @@ def set_cufft_gpus(gpus):
 
     .. _Multiple GPU cuFFT Transforms:
         https://docs.nvidia.com/cuda/cufft/index.html#multiple-GPU-cufft-transforms
-    '''
-    _util.experimental('cupy.fft.config.set_cufft_gpus')
+    """
+    _util.experimental("cupy.fft.config.set_cufft_gpus")
     global _devices
 
     if isinstance(gpus, int):

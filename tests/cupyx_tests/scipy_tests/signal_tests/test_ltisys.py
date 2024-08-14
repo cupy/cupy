@@ -158,7 +158,7 @@ class Test_abcd_normalize:
 @testing.with_requires("scipy")
 class Test_bode:
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_01(self, xp, scp):
         # Test bode() magnitude calculation (manual sanity check).
         # 1st order low-pass filter: H(s) = 1 / (s + 1),
@@ -172,7 +172,7 @@ class Test_bode:
         w, mag, phase = scp.signal.bode(system, w=w)
         return w, mag, phase
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_02(self, xp, scp):
         # Test bode() phase calculation (manual sanity check).
         # 1st order low-pass filter: H(s) = 1 / (s + 1),
@@ -184,7 +184,7 @@ class Test_bode:
         w, mag, phase = scp.signal.bode(system, w=w)
         return w, mag, phase
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_03(self, xp, scp):
         # Test bode() magnitude calculation.
         # 1st order low-pass filter: H(s) = 1 / (s + 1)
@@ -193,7 +193,7 @@ class Test_bode:
         w, mag, phase = scp.signal.bode(system, w=w)
         return w, mag, phase
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_04(self, xp, scp):
         # Test bode() phase calculation.
         # 1st order low-pass filter: H(s) = 1 / (s + 1)
@@ -202,7 +202,7 @@ class Test_bode:
         w, mag, phase = scp.signal.bode(system, w=w)
         return w, mag, phase
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_05(self, xp, scp):
         # Test that bode() finds a reasonable frequency range.
         # 1st order low-pass filter: H(s) = 1 / (s + 1)
@@ -211,7 +211,7 @@ class Test_bode:
         w, mag, phase = scp.signal.bode(system, n=n)
         return w, mag, phase
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_06(self, xp, scp):
         # Test that bode() doesn't fail on a system with a pole at 0.
         # integrator, pole at zero: H(s) = 1 / s
@@ -219,7 +219,7 @@ class Test_bode:
         w, mag, phase = scp.signal.bode(system, n=2)
         return w, mag, phase
 
-    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-10)
+    @testing.numpy_cupy_allclose(scipy_name="scp", atol=1e-10)
     def test_07(self, xp, scp):
         # bode() should not fail on a system with pure imaginary poles.
         # The test passes if bode doesn't raise an exception.
@@ -227,14 +227,14 @@ class Test_bode:
         w, mag, phase = scp.signal.bode(system, n=2)
         return w, mag, phase
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_08(self, xp, scp):
         # Test that bode() return continuous phase, issues/2331.
         system = scp.signal.lti([], [-10, -30, -40, -60, -70], 1)
         w, mag, phase = system.bode(w=xp.logspace(-3, 40, 100))
         return w, mag, phase
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_from_state_space(self, xp, scp):
         # Ensure that bode works with a system that was created from the
         # state space representation matrices A, B, C, D.  In this case,
@@ -255,7 +255,7 @@ class Test_bode:
 @testing.with_requires("scipy")
 class Test_freqresp:
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_output_manual(self, xp, scp):
         # Test freqresp() output calculation (manual sanity check).
         # 1st order low-pass filter: H(s) = 1 / (s + 1),
@@ -267,7 +267,7 @@ class Test_freqresp:
         w, H = scp.signal.freqresp(system, w=w)
         return w, H
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_output(self, xp, scp):
         # Test freqresp() output calculation.
         # 1st order low-pass filter: H(s) = 1 / (s + 1)
@@ -276,7 +276,7 @@ class Test_freqresp:
         w, H = scp.signal.freqresp(system, w=w)
         return w, H
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_freq_range(self, xp, scp):
         # Test that freqresp() finds a reasonable frequency range.
         # 1st order low-pass filter: H(s) = 1 / (s + 1)
@@ -286,7 +286,7 @@ class Test_freqresp:
         w, H = scp.signal.freqresp(system, n=n)
         return w, H
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_pole_zero(self, xp, scp):
         # Test that freqresp() doesn't fail on a system with a pole at 0.
         # integrator, pole at zero: H(s) = 1 / s
@@ -294,7 +294,7 @@ class Test_freqresp:
         w, H = scp.signal.freqresp(system, n=2)
         return w, H
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_from_state_space(self, xp, scp):
         # Ensure that freqresp works with a system that was created from the
         # state space representation matrices A, B, C, D.  In this case,
@@ -311,7 +311,7 @@ class Test_freqresp:
         w, H = scp.signal.freqresp(system, n=10)
         return w, H
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_from_zpk(self, xp, scp):
         # 4th order low-pass filter: H(s) = 1 / (s + 1)
         system = scp.signal.lti([], [-1]*4, [1])
@@ -322,7 +322,7 @@ class Test_freqresp:
 
 @testing.with_requires("scipy")
 class TestLsim:
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_first_order(self, xp, scp):
         # y' = -y
         # exact solution is y(t) = exp(-t)
@@ -333,7 +333,7 @@ class TestLsim:
         tout, y, x = scp.signal.lsim(system, u, t, X0=xp.asarray([1.0]))
         return tout, y, x
 
-    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-12)
+    @testing.numpy_cupy_allclose(scipy_name="scp", atol=1e-12)
     def test_second_order(self, xp, scp):
         t = xp.linspace(0, 10, 1001)
         u = xp.zeros_like(t)
@@ -344,7 +344,7 @@ class TestLsim:
         tout, y, x = scp.signal.lsim(system, u, t, X0=xp.asarray([1.0, 0.0]))
         return tout, y, x
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_integrator(self, xp, scp):
         # integrator: y' = u
         system = scp.signal.lti(0., 1., 1., 0.)
@@ -353,7 +353,7 @@ class TestLsim:
         tout, y, x = scp.signal.lsim(system, u, t)
         return tout, y, x
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_two_states(self, xp, scp):
         # A system with two state variables, two inputs, and one output.
         A = xp.array([[-1.0, 0.0], [0.0, -2.0]])
@@ -369,7 +369,7 @@ class TestLsim:
             system, U=u, T=t, X0=xp.asarray([1.0, 1.0]))
         return tout, y, x
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_double_integrator(self, xp, scp):
         # double integrator: y'' = 2u
         A = xp.array([[0., 1.], [0., 0.]])
@@ -381,7 +381,7 @@ class TestLsim:
         tout, y, x = scp.signal.lsim(system, u, t)
         return tout, y, x
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_jordan_block(self, xp, scp):
         # Non-diagonalizable A matrix
         #   x1' + x1 = x2
@@ -397,7 +397,7 @@ class TestLsim:
         tout, y, x = scp.signal.lsim(system, u, t, X0=xp.asarray([0.0, 1.0]))
         return tout, y, x
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_miso(self, xp, scp):
         # A system with two state variables, two inputs, and one output.
         A = xp.array([[-1.0, 0.0], [0.0, -2.0]])
@@ -411,7 +411,7 @@ class TestLsim:
         tout, y, x = scp.signal.lsim(system, u, t, X0=xp.asarray([1.0, 1.0]))
         return tout, y, x
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_nonzero_initial_time(self, xp, scp):
         system = scp.signal.lti(-1., 1., 1., 0.)
         t = xp.linspace(1, 2)
@@ -432,7 +432,7 @@ class TestLsim:
 @testing.with_requires("scipy")
 class TestImpulse:
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_first_order(self, xp, scp):
         # First order system: x'(t) + x(t) = u(t)
         # Exact impulse response is x(t) = exp(-t).
@@ -440,7 +440,7 @@ class TestImpulse:
         tout, y = scp.signal.impulse(system)
         return tout, y
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_first_order_fixed_time(self, xp, scp):
         # Specify the desired time values for the output.
 
@@ -452,7 +452,7 @@ class TestImpulse:
         tout, y = scp.signal.impulse(system, T=t)
         return tout, y
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_first_order_initial(self, xp, scp):
         # Specify an initial condition as a scalar.
 
@@ -462,7 +462,7 @@ class TestImpulse:
         tout, y = scp.signal.impulse(system, X0=3.0)
         return tout, y
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_first_order_initial_list(self, xp, scp):
         # Specify an initial condition as a list.
 
@@ -472,14 +472,14 @@ class TestImpulse:
         tout, y = scp.signal.impulse(system, X0=xp.asarray([3.0]))
         return tout, y
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_integrator(self, xp, scp):
         # Simple integrator: x'(t) = u(t)
         system = ([1.0], [1.0, 0.0])
         tout, y = scp.signal.impulse(system)
         return tout, y
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_second_order(self, xp, scp):
         # Second order system with a repeated root:
         #     x''(t) + 2*x(t) + x(t) = u(t)
@@ -492,7 +492,7 @@ class TestImpulse:
 @testing.with_requires("scipy")
 class TestStep:
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_first_order(self, xp, scp):
         # First order system: x'(t) + x(t) = u(t)
         # Exact step response is x(t) = 1 - exp(-t).
@@ -500,7 +500,7 @@ class TestStep:
         tout, y = scp.signal.step(system)
         return tout, y
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_first_order_fixed_time(self, xp, scp):
         # Specify the desired time values for the output.
 
@@ -512,7 +512,7 @@ class TestStep:
         tout, y = scp.signal.step(system, T=t)
         return tout, y
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_first_order_initial(self, xp, scp):
         # Specify an initial condition as a scalar.
 
@@ -522,7 +522,7 @@ class TestStep:
         tout, y = scp.signal.step(system, X0=3.0)
         return tout, y
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_first_order_initial_list(self, xp, scp):
         # Specify an initial condition as a list.
 
@@ -532,7 +532,7 @@ class TestStep:
         tout, y = scp.signal.step(system, X0=xp.array([3.0]))
         return tout, y
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_integrator(self, xp, scp):
         # Simple integrator: x'(t) = u(t)
         # Exact step response is x(t) = t.
@@ -540,7 +540,7 @@ class TestStep:
         tout, y = scp.signal.step(system)
         return tout, y
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_second_order(self, xp, scp):
         # Second order system with a repeated root:
         #     x''(t) + 2*x(t) + x(t) = u(t)
@@ -550,11 +550,11 @@ class TestStep:
         return tout, y
 
 
-@testing.with_requires('scipy')
+@testing.with_requires("scipy")
 class TestPlacePoles:
 
-    @pytest.mark.parametrize('method', ['KNV0', 'YT'])
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @pytest.mark.parametrize("method", ["KNV0", "YT"])
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_real(self, xp, scp, method):
         # Test real pole placement using KNV and YT0 algorithm and example 1 in
         # section 4 of the reference publication (see place_poles docstring)
@@ -568,13 +568,13 @@ class TestPlacePoles:
         return fsf.computed_poles
 
         # Check that both KNV and YT compute correct K matrix
-        self._check(A, B, P, method='KNV0')
-        self._check(A, B, P, method='YT')
+        self._check(A, B, P, method="KNV0")
+        self._check(A, B, P, method="YT")
 
     @pytest.mark.xfail(
-        sys.platform.startswith('win32'),
-        reason='passes locally, fails on windows CI')
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+        sys.platform.startswith("win32"),
+        reason="passes locally, fails on windows CI")
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_real_2(self, xp, scp):
         # Try to reach the specific case in _YT_real where two singular
         # values are almost equal. This is to improve code coverage but I
@@ -591,7 +591,7 @@ class TestPlacePoles:
         p.sort()
         return p
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_complex(self, xp, scp):
         # Test complex pole placement on a linearized car model, taken from L.
         # Jaulin, Automatique pour la robotique, Cours et Exercices, iSTE
@@ -611,7 +611,7 @@ class TestPlacePoles:
         return fsf.computed_poles
 
     @testing.with_requires("scipy >= 1.9")
-    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-8)
+    @testing.numpy_cupy_allclose(scipy_name="scp", atol=1e-8)
     def test_complex_2(self, xp, scp):
         # Try to reach the specific case in _YT_complex where two singular
         # values are almost equal. This is to improve code coverage but I
@@ -629,7 +629,7 @@ class TestPlacePoles:
         fsf = scp.signal.place_poles(A, B, P, maxiter=1000)
         return fsf.computed_poles
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_complex_3(self, xp, scp):
         # Try to reach the specific case in _YT_complex where the rank two
         # update yields two null vectors. This test was found via Monte Carlo.
@@ -654,7 +654,7 @@ class TestPlacePoles:
         return fsf.computed_poles
 
     @pytest.mark.skip(reason="numerical stability: scipy QR vs numpy QR")
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_complex_4(self, xp, scp):
         # Use a lot of poles to go through all cases for update_order
         # in _YT_loop
@@ -683,7 +683,7 @@ class TestPlacePoles:
         fsf = scp.signal.place_poles(big_A, big_B, P)
         return fsf.computed_poles
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_complex_5(self, xp, scp):
         big_A = xp.ones((11, 11)) - xp.eye(11)
         big_B = xp.ones((11, 10)) - xp.diag([1]*10, 1)[:, 1:]
@@ -711,7 +711,7 @@ class TestPlacePoles:
         fsf = scp.signal.place_poles(big_A[:-1, :-1], big_B[:-1, :-1], P)
         return fsf.computed_poles
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_complex_6(self, xp, scp):
         big_A = xp.ones((11, 11)) - xp.eye(11)
         big_B = xp.ones((11, 10)) - xp.diag([1]*10, 1)[:, 1:]
@@ -738,7 +738,7 @@ class TestPlacePoles:
         fsf = scp.signal.place_poles(big_A[:-1, :-1], big_B[:-1, :-1], P)
         return fsf.computed_poles
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_complex_7(self, xp, scp):
         big_A = xp.ones((11, 11)) - xp.eye(11)
         big_B = xp.ones((11, 10)) - xp.diag([1]*10, 1)[:, 1:]
@@ -766,7 +766,7 @@ class TestPlacePoles:
         fsf = scp.signal.place_poles(big_A[:-1, :-1], big_B[:-1, :-1], P)
         return fsf.computed_poles
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_complex_8(self, xp, scp):
         # need a 5x5 array to ensure YT handles properly when there
         # is only one real pole and several complex
@@ -778,7 +778,7 @@ class TestPlacePoles:
         fsf = scp.signal.place_poles(A, B, P)
         return fsf.computed_poles
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_complex_9(self, xp, scp):
         # need a 5x5 array to ensure YT handles properly when there
         # is only one real pole and several complex
@@ -793,7 +793,7 @@ class TestPlacePoles:
         fsf = scp.signal.place_poles(A, B, P)
         return fsf.computed_poles
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_tricky_B(self, xp, scp):
         # check we handle as we should the 1 column B matrices and
         # n column B matrices (with n such as shape(A)=(n, n))
@@ -810,7 +810,7 @@ class TestPlacePoles:
         fsf = scp.signal.place_poles(A, B, P)
         return fsf.computed_poles
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_tricky_B_2(self, xp, scp):
         # check we handle as we should the 1 column B matrices and
         # n column B matrices (with n such as shape(A)=(n, n))
@@ -827,7 +827,7 @@ class TestPlacePoles:
         fsf = scp.signal.place_poles(A, B, P)
         return fsf.computed_poles
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_tricky_B_3(self, xp, scp):
         # check we handle as we should the 1 column B matrices and
         # n column B matrices (with n such as shape(A)=(n, n))
