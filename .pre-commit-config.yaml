@@ -32,6 +32,12 @@ repos:
         args: [--config, ".flake8.cython", "--force-check"]
         additional_dependencies: [flake8-force]
 
+- repo: https://github.com/astral-sh/ruff-pre-commit
+  rev: v0.5.7
+  hooks:
+    # Run the linter.
+    - id: ruff
+
 -   repo: https://github.com/MarcoGorelli/cython-lint
     rev: v0.15.0
     hooks:
