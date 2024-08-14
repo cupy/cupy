@@ -173,7 +173,7 @@ Coding Guidelines
 
 We use `PEP8 <https://www.python.org/dev/peps/pep-0008/>`_ and a part of `OpenStack Style Guidelines <https://docs.openstack.org/developer/hacking/>`_ related to general coding style as our basic style guidelines.
 
-You can use ``autopep8`` and ``flake8`` commands to check your code.
+You can use ``ruff``, ``autopep8`` and ``flake8`` commands to check your code.
 
 In order to avoid confusion from using different tool versions, we pin the versions of those tools.
 Install them with the following command (from within the top directory of CuPy repository)::
@@ -182,8 +182,8 @@ Install them with the following command (from within the top directory of CuPy r
 
 And check your code with::
 
+  $ ruff check path/to/your/code.py
   $ autopep8 path/to/your/code.py
-  $ flake8 path/to/your/code.py
 
 To check Cython code, use ``.flake8.cython`` configuration file::
 
@@ -193,16 +193,8 @@ The ``autopep8`` supports automatically correct Python code to conform to the PE
 
   $ autopep8 --in-place path/to/your/code.py
 
-The ``flake8`` command lets you know the part of your code not obeying our style guidelines.
-Before sending a pull request, be sure to check that your code passes the ``flake8`` checking.
-
-Note that ``flake8`` command is not perfect.
-It does not check some of the style guidelines.
-Here is a (not-complete) list of the rules that ``flake8`` cannot check.
-
-* Relative imports are prohibited. [H304]
-* Importing non-module symbols is prohibited.
-* Import statements must be organized into three parts: standard libraries, third-party libraries, and internal imports. [H306]
+The ``ruff`` / ``flake8`` command lets you know the part of your code not obeying our style guidelines.
+Before sending a pull request, be sure to check that your code passes the ``ruff`` / ``flake8`` checking.
 
 In addition, we restrict the usage of *shortcut symbols* in our code base.
 They are symbols imported by packages and sub-packages of ``cupy``.
