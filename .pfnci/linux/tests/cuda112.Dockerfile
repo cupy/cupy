@@ -21,6 +21,11 @@ RUN yum -y install \
 
 ENV PATH "/usr/lib64/ccache:${PATH}"
 
+RUN yum -y install openssl11-devel
+ENV CFLAGS "-I/usr/include/openssl11"
+ENV CPPFLAGS "-I/usr/include/openssl11"
+ENV LDFLAGS "-L/usr/lib64/openssl11"
+
 RUN git clone https://github.com/pyenv/pyenv.git /opt/pyenv
 ENV PYENV_ROOT "/opt/pyenv"
 ENV PATH "${PYENV_ROOT}/shims:${PYENV_ROOT}/bin:${PATH}"

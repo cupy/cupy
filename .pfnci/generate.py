@@ -145,6 +145,16 @@ class LinuxGenerator:
                 'ENV PATH "/usr/lib64/ccache:${PATH}"',
                 '',
             ]
+
+            if os_version == '7':
+                lines += [
+                    'RUN yum -y install openssl11-devel',
+                    'ENV CFLAGS "-I/usr/include/openssl11"',
+                    'ENV CPPFLAGS "-I/usr/include/openssl11"',
+                    'ENV LDFLAGS "-L/usr/lib64/openssl11"',
+                    '',
+                ]
+
             assert matrix.mpi4py is None, 'mpi4py test unsupported on CentOS'
         else:
             raise AssertionError
