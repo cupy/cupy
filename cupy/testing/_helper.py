@@ -60,7 +60,10 @@ def installed(*specifiers: str) -> bool:
 
     for spec in specifiers:
         req = Requirement(spec)
-        found = metadata.version(req.name)
+        try:
+            found = metadata.version(req.name)
+        except metadata.PackageNotFoundError:
+            return False
         expected = req.specifier
         # If no constrait is given, skip
         if expected and (not expected.contains(found, prereleases=True)):
