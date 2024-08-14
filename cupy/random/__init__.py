@@ -32,7 +32,7 @@ def default_rng(seed=None):  # NOQA  avoid redefinition of seed
 
     Returns:
         Generator: The initialized generator object.
-    """  # NOQA, list of types need to be in one line for sphinx
+    """  # NOQA (list of types need to be in one line for sphinx)
     from cupy.random._generator_api import Generator
 
     if _runtime.is_hip and int(str(_runtime.runtimeGetVersion())[:3]) < 403:
