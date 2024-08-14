@@ -36,6 +36,7 @@ extras_require = {
     # TODO(kmaehashi): remove stylecheck and update the contribution guide
     "stylecheck": [
         "autopep8==2.3.1",
+        "pycodestyle==2.12.1",
         "flake8==7.1.1",
         "pbr==5.5.1",
         "ruff==0.5.7",
