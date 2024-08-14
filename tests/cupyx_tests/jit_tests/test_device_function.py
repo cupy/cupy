@@ -1,11 +1,11 @@
 import unittest
-import numpy
 
+import numpy
 import pytest
 
 import cupy
-from cupyx import jit
 from cupy import testing
+from cupyx import jit
 
 
 class TestDeviceFunction(unittest.TestCase):

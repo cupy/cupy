@@ -27,6 +27,7 @@ DEALINGS IN THE SOFTWARE.
 """
 
 from math import ceil
+
 import cupy
 
 _upfirdn_modes = [

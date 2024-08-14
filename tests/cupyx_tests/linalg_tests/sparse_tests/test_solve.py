@@ -2,6 +2,7 @@ import unittest
 
 import numpy
 import pytest
+
 try:
     import scipy.linalg
     import scipy.sparse
@@ -12,10 +13,10 @@ except ImportError:
     scipy_available = False
 
 import cupy as cp
-from cupy import testing
-from cupy.testing import _condition
 import cupyx
 import cupyx.scipy.sparse as sp
+from cupy import testing
+from cupy.testing import _condition
 
 
 @testing.parameterize(*testing.product({

@@ -1,17 +1,18 @@
 import numpy
-import cupy
-from cupy.cuda import runtime
-from cupy import testing
 
+import cupy
 import cupyx.scipy.interpolate  # NOQA
+from cupy import testing
+from cupy.cuda import runtime
 
 try:
     import scipy.interpolate  # NOQA
 except ImportError:
     pass
 
-import pytest
 import itertools
+
+import pytest
 
 
 @testing.with_requires('scipy>=1.12')
@@ -421,6 +422,7 @@ class TestMakeND:
             return cupyx.scipy.interpolate._ndbspline.make_ndbspl
         else:
             import functools
+
             import scipy.sparse.linalg as ssl
             return functools.partial(scipy.interpolate._ndbspline.make_ndbspl,
                                      solver=ssl.spsolve)

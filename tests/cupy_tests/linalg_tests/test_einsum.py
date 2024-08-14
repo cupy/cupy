@@ -6,7 +6,6 @@ import pytest
 import cupy
 from cupy import testing
 
-
 rng = numpy.random.default_rng(seed=0)
 
 

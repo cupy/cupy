@@ -5,9 +5,7 @@ import pytest
 
 import cupy
 import cupy._core._accelerator as _acc
-from cupy import cuda
-from cupy import testing
-
+from cupy import cuda, testing
 
 _all_methods = (
     # 'inverted_cdf',               # TODO(takagi) Not implemented

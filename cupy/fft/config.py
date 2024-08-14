@@ -1,16 +1,19 @@
+# on Linux, expose callback handles to this module
+import sys as _sys
+
 from cupy import _util
 
 # expose cache handles to this module
-from cupy.fft._cache import get_plan_cache  # NOQA
-from cupy.fft._cache import clear_plan_cache  # NOQA
-from cupy.fft._cache import get_plan_cache_size  # NOQA
-from cupy.fft._cache import set_plan_cache_size  # NOQA
-from cupy.fft._cache import get_plan_cache_max_memsize  # NOQA
-from cupy.fft._cache import set_plan_cache_max_memsize  # NOQA
-from cupy.fft._cache import show_plan_cache_info  # NOQA
+from cupy.fft._cache import (
+    clear_plan_cache,  # NOQA
+    get_plan_cache,  # NOQA
+    get_plan_cache_max_memsize,  # NOQA
+    get_plan_cache_size,  # NOQA
+    set_plan_cache_max_memsize,  # NOQA
+    set_plan_cache_size,  # NOQA
+    show_plan_cache_info,  # NOQA
+)
 
-# on Linux, expose callback handles to this module
-import sys as _sys
 if _sys.platform.startswith('linux'):
     from cupy.fft._callback import get_current_callback_manager  # NOQA
     from cupy.fft._callback import set_cufft_callbacks  # NOQA

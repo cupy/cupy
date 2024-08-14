@@ -1,17 +1,17 @@
 import functools as _functools
-
-import numpy as _numpy
 import platform as _platform
 
+import numpy as _numpy
+
 import cupy as _cupy
-from cupy_backends.cuda.api import driver as _driver
-from cupy_backends.cuda.api import runtime as _runtime
-from cupy_backends.cuda.libs import cusparse as _cusparse
+import cupyx.scipy.sparse
+from cupy import _util
 from cupy._core import _dtype
 from cupy.cuda import device as _device
 from cupy.cuda import stream as _stream
-from cupy import _util
-import cupyx.scipy.sparse
+from cupy_backends.cuda.api import driver as _driver
+from cupy_backends.cuda.api import runtime as _runtime
+from cupy_backends.cuda.libs import cusparse as _cusparse
 
 
 class MatDescriptor(object):

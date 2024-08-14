@@ -1,7 +1,7 @@
-import cupy
-
 import operator
 import warnings
+
+import cupy
 
 
 def _deprecate_as_int(x, desc):

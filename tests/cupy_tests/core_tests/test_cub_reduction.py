@@ -1,12 +1,10 @@
-from itertools import combinations
-import unittest
 import sys
+import unittest
+from itertools import combinations
 
 import cupy
-from cupy import _environment
-from cupy import testing
-from cupy._core import _accelerator
-from cupy._core import _cub_reduction
+from cupy import _environment, testing
+from cupy._core import _accelerator, _cub_reduction
 from cupy.cuda import memory
 
 

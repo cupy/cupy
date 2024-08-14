@@ -4,6 +4,7 @@ from unittest import mock
 
 import numpy
 import pytest
+
 try:
     import scipy.sparse
     scipy_available = True

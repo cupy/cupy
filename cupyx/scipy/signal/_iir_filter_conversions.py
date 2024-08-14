@@ -2,17 +2,16 @@
 
 Split off _filter_design.py
 """
-import warnings
 import math
+import warnings
 from math import pi, prod
 
 import cupy
-from cupyx.scipy.special import binom as comb
 import cupyx.scipy.special as special
 from cupyx.scipy.signal import _optimize
-
-from cupyx.scipy.signal._polyutils import roots, poly
 from cupyx.scipy.signal._lti_conversion import abcd_normalize
+from cupyx.scipy.signal._polyutils import poly, roots
+from cupyx.scipy.special import binom as comb
 
 
 class BadCoefficients(UserWarning):

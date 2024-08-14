@@ -10,9 +10,8 @@ import os.path
 import re
 import shutil
 import sys
-from typing import Any, Dict, List, Optional, Tuple
 import warnings
-
+from typing import Any, Dict, List, Optional, Tuple
 
 # '' for uninitialized, None for non-existing
 _cuda_path = ''

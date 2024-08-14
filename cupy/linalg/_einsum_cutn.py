@@ -12,7 +12,6 @@ from cupy import _util
 from cupy._core import _accelerator
 from cupy.cuda.device import Handle
 
-
 _tls = threading.local()
 
 

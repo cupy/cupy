@@ -1,19 +1,17 @@
 # mypy: ignore-errors
 
 import copy
-from distutils import ccompiler
-from distutils import sysconfig
 import logging
 import os
 import shutil
 import sys
+from distutils import ccompiler, sysconfig
 
 import setuptools
 
 import cupy_builder.install_build as build
 from cupy_builder._context import Context
-from cupy_builder.install_build import PLATFORM_LINUX
-from cupy_builder.install_build import PLATFORM_WIN32
+from cupy_builder.install_build import PLATFORM_LINUX, PLATFORM_WIN32
 
 
 def ensure_module_file(file):

@@ -3,9 +3,7 @@ import sys as _sys
 
 import numpy as _numpy
 
-from cupy import _environment
-from cupy import _version
-
+from cupy import _environment, _version
 
 _environment._detect_duplicate_installation()
 _environment._setup_win32_dll_directory()
@@ -25,9 +23,9 @@ Original error:
 ''') from exc
 
 
-from cupy import cuda
 # Do not make `cupy.cupyx` available because it is confusing.
 import cupyx as _cupyx
+from cupy import cuda
 
 
 def is_available():
@@ -37,29 +35,23 @@ def is_available():
 __version__ = _version.__version__
 
 
-from cupy import fft
-from cupy import linalg
-from cupy import polynomial
-from cupy import random
-# `cupy.sparse` is deprecated in v8
-from cupy import sparse
-from cupy import testing
-
-
-# import class and function
-from cupy._core import ndarray
-from cupy._core import ufunc
-
-
 # =============================================================================
 # Constants (borrowed from NumPy)
 # =============================================================================
-from numpy import e
-from numpy import euler_gamma
-from numpy import inf
-from numpy import nan
-from numpy import newaxis  # == None
-from numpy import pi
+from numpy import (
+    e,
+    euler_gamma,
+    inf,
+    nan,
+    newaxis,  # == None
+    pi,
+)
+
+# `cupy.sparse` is deprecated in v8
+from cupy import fft, linalg, polynomial, random, sparse, testing
+
+# import class and function
+from cupy._core import ndarray, ufunc
 
 # APIs to be removed in NumPy 2.0.
 # Remove these when bumping the baseline API to NumPy 2.0.
@@ -80,210 +72,182 @@ NZERO = -0.0
 # -----------------------------------------------------------------------------
 # Generic types
 # -----------------------------------------------------------------------------
-from numpy import complexfloating
-from numpy import floating
-from numpy import generic
-from numpy import inexact
-from numpy import integer
-from numpy import number
-from numpy import signedinteger
-from numpy import unsignedinteger
-
 # Not supported by CuPy:
 # from numpy import flexible
 # from numpy import character
-
 # -----------------------------------------------------------------------------
 # Booleans
 # -----------------------------------------------------------------------------
-from numpy import bool_
-
 # -----------------------------------------------------------------------------
 # Integers
 # -----------------------------------------------------------------------------
-from numpy import byte
-from numpy import short
-from numpy import intc
-from numpy import int_
-from numpy import longlong
-from numpy import intp
-from numpy import int8
-from numpy import int16
-from numpy import int32
-from numpy import int64
-
 # -----------------------------------------------------------------------------
 # Unsigned integers
 # -----------------------------------------------------------------------------
-from numpy import ubyte
-from numpy import ushort
-from numpy import uintc
-from numpy import uint
-from numpy import ulonglong
-from numpy import uintp
-from numpy import uint8
-from numpy import uint16
-from numpy import uint32
-from numpy import uint64
-
 # -----------------------------------------------------------------------------
 # Floating-point numbers
 # -----------------------------------------------------------------------------
-from numpy import half
-from numpy import single
-from numpy import double
-from numpy import float64 as float_
 # from numpy import longfloat  # XXX
-from numpy import float16
-from numpy import float32
-from numpy import float64
-
 # Not supported by CuPy:
 # from numpy import float96
 # from numpy import float128
-
 # -----------------------------------------------------------------------------
 # Complex floating-point numbers
 # -----------------------------------------------------------------------------
-from numpy import csingle
+from numpy import (
+    bool_,
+    byte,
+    cdouble,
+    complex64,
+    complex128,
+    complexfloating,
+    csingle,
+    double,
+    float16,
+    float32,
+    float64,
+    floating,
+    generic,
+    half,
+    inexact,
+    int8,
+    int16,
+    int32,
+    int64,
+    int_,
+    intc,
+    integer,
+    intp,
+    longlong,
+    number,
+    short,
+    signedinteger,
+    single,
+    ubyte,
+    uint,
+    uint8,
+    uint16,
+    uint32,
+    uint64,
+    uintc,
+    uintp,
+    ulonglong,
+    unsignedinteger,
+    ushort,
+)
 from numpy import complex64 as singlecomplex
-from numpy import cdouble
 from numpy import complex128 as cfloat
 from numpy import complex128 as complex_
-from numpy import complex64
-from numpy import complex128
+from numpy import float64 as float_
 
 # Not supported by CuPy:
 # from numpy import complex192
 # from numpy import complex256
 # from numpy import clongfloat
-
 # -----------------------------------------------------------------------------
 # Any Python object
 # -----------------------------------------------------------------------------
-
 # Not supported by CuPy:
 # from numpy import object_
 # from numpy import bytes_
 # from numpy import unicode_
 # from numpy import void
-
 # -----------------------------------------------------------------------------
 # Built-in Python types
 # -----------------------------------------------------------------------------
-
 # =============================================================================
 # Routines
 #
 # The order of these declarations are borrowed from the NumPy document:
 # https://numpy.org/doc/stable/reference/routines.html
 # =============================================================================
-
 # -----------------------------------------------------------------------------
 # Array creation routines
 # -----------------------------------------------------------------------------
-from cupy._creation.basic import empty
-from cupy._creation.basic import empty_like
-from cupy._creation.basic import eye
-from cupy._creation.basic import full
-from cupy._creation.basic import full_like
-from cupy._creation.basic import identity
-from cupy._creation.basic import ones
-from cupy._creation.basic import ones_like
-from cupy._creation.basic import zeros
-from cupy._creation.basic import zeros_like
-
-from cupy._creation.from_data import copy
-from cupy._creation.from_data import array
-from cupy._creation.from_data import asanyarray
-from cupy._creation.from_data import asarray
-from cupy._creation.from_data import ascontiguousarray
-from cupy._creation.from_data import fromfile
-from cupy._creation.from_data import fromfunction
-from cupy._creation.from_data import fromiter
-from cupy._creation.from_data import frombuffer
-from cupy._creation.from_data import fromstring
-from cupy._creation.from_data import loadtxt
-from cupy._creation.from_data import genfromtxt
-
-from cupy._creation.ranges import arange
-from cupy._creation.ranges import linspace
-from cupy._creation.ranges import logspace
-from cupy._creation.ranges import meshgrid
-from cupy._creation.ranges import mgrid
-from cupy._creation.ranges import ogrid
-
-from cupy._creation.matrix import diag
-from cupy._creation.matrix import diagflat
-from cupy._creation.matrix import tri
-from cupy._creation.matrix import tril
-from cupy._creation.matrix import triu
-from cupy._creation.matrix import vander
+from cupy._creation.basic import (
+    empty,
+    empty_like,
+    eye,
+    full,
+    full_like,
+    identity,
+    ones,
+    ones_like,
+    zeros,
+    zeros_like,
+)
+from cupy._creation.from_data import (
+    array,
+    asanyarray,
+    asarray,
+    ascontiguousarray,
+    copy,
+    frombuffer,
+    fromfile,
+    fromfunction,
+    fromiter,
+    fromstring,
+    genfromtxt,
+    loadtxt,
+)
+from cupy._creation.matrix import diag, diagflat, tri, tril, triu, vander
+from cupy._creation.ranges import (
+    arange,
+    linspace,
+    logspace,
+    meshgrid,
+    mgrid,
+    ogrid,
+)
 
 # -----------------------------------------------------------------------------
 # Functional routines
 # -----------------------------------------------------------------------------
 from cupy._functional.piecewise import piecewise
 from cupy._functional.vectorize import vectorize
-from cupy.lib._shape_base import apply_along_axis
-from cupy.lib._shape_base import put_along_axis
+from cupy._manipulation.add_remove import (
+    append,
+    delete,
+    resize,
+    trim_zeros,
+    unique,
+)
 
 # -----------------------------------------------------------------------------
 # Array manipulation routines
 # -----------------------------------------------------------------------------
 from cupy._manipulation.basic import copyto
-
-from cupy._manipulation.shape import shape
-from cupy._manipulation.shape import ravel
-from cupy._manipulation.shape import reshape
-
-from cupy._manipulation.transpose import moveaxis
-from cupy._manipulation.transpose import rollaxis
-from cupy._manipulation.transpose import swapaxes
-from cupy._manipulation.transpose import transpose
-
-from cupy._manipulation.dims import atleast_1d
-from cupy._manipulation.dims import atleast_2d
-from cupy._manipulation.dims import atleast_3d
-from cupy._manipulation.dims import broadcast
-from cupy._manipulation.dims import broadcast_arrays
-from cupy._manipulation.dims import broadcast_to
-from cupy._manipulation.dims import expand_dims
-from cupy._manipulation.dims import squeeze
-
-from cupy._manipulation.join import column_stack
-from cupy._manipulation.join import concatenate
-from cupy._manipulation.join import dstack
-from cupy._manipulation.join import hstack
-from cupy._manipulation.join import stack
-from cupy._manipulation.join import vstack
+from cupy._manipulation.dims import (
+    atleast_1d,
+    atleast_2d,
+    atleast_3d,
+    broadcast,
+    broadcast_arrays,
+    broadcast_to,
+    expand_dims,
+    squeeze,
+)
+from cupy._manipulation.join import (
+    column_stack,
+    concatenate,
+    dstack,
+    hstack,
+    stack,
+    vstack,
+)
 from cupy._manipulation.join import vstack as row_stack
-
-from cupy._manipulation.kind import asarray_chkfinite
-from cupy._manipulation.kind import asfarray
-from cupy._manipulation.kind import asfortranarray
-from cupy._manipulation.kind import require
-
-from cupy._manipulation.split import array_split
-from cupy._manipulation.split import dsplit
-from cupy._manipulation.split import hsplit
-from cupy._manipulation.split import split
-from cupy._manipulation.split import vsplit
-
-from cupy._manipulation.tiling import repeat
-from cupy._manipulation.tiling import tile
-
-from cupy._manipulation.add_remove import delete
-from cupy._manipulation.add_remove import append
-from cupy._manipulation.add_remove import resize
-from cupy._manipulation.add_remove import unique
-from cupy._manipulation.add_remove import trim_zeros
-
-from cupy._manipulation.rearrange import flip
-from cupy._manipulation.rearrange import fliplr
-from cupy._manipulation.rearrange import flipud
-from cupy._manipulation.rearrange import roll
-from cupy._manipulation.rearrange import rot90
+from cupy._manipulation.kind import (
+    asarray_chkfinite,
+    asfarray,
+    asfortranarray,
+    require,
+)
+from cupy._manipulation.rearrange import flip, fliplr, flipud, roll, rot90
+from cupy._manipulation.shape import ravel, reshape, shape
+from cupy._manipulation.split import array_split, dsplit, hsplit, split, vsplit
+from cupy._manipulation.tiling import repeat, tile
+from cupy._manipulation.transpose import moveaxis, rollaxis, swapaxes, transpose
+from cupy.lib._shape_base import apply_along_axis, put_along_axis
 
 # Borrowed from NumPy
 if hasattr(_numpy, 'broadcast_shapes'):  # NumPy 1.20
@@ -292,16 +256,16 @@ if hasattr(_numpy, 'broadcast_shapes'):  # NumPy 1.20
 # -----------------------------------------------------------------------------
 # Binary operations
 # -----------------------------------------------------------------------------
-from cupy._binary.elementwise import bitwise_and
-from cupy._binary.elementwise import bitwise_or
-from cupy._binary.elementwise import bitwise_xor
-from cupy._binary.elementwise import bitwise_not
-from cupy._binary.elementwise import invert
-from cupy._binary.elementwise import left_shift
-from cupy._binary.elementwise import right_shift
-
-from cupy._binary.packing import packbits
-from cupy._binary.packing import unpackbits
+from cupy._binary.elementwise import (
+    bitwise_and,
+    bitwise_not,
+    bitwise_or,
+    bitwise_xor,
+    invert,
+    left_shift,
+    right_shift,
+)
+from cupy._binary.packing import packbits, unpackbits
 
 
 def binary_repr(num, width=None):
@@ -358,81 +322,76 @@ def result_type(*arrays_and_dtypes):
     return _numpy.result_type(*dtypes)
 
 
+# Borrowed from NumPy
+from numpy import (
+    dtype,
+    finfo,
+    iinfo,
+    index_exp,
+    issubdtype,
+    mintypecode,
+    ndindex,
+    promote_types,
+    s_,
+    typename,
+)
+
 from cupy._core.core import min_scalar_type
-
-from numpy import promote_types
-
-from numpy import dtype
-
-from numpy import finfo
-from numpy import iinfo
-
-from numpy import issubdtype
-
-from numpy import mintypecode
-from numpy import typename
 
 # -----------------------------------------------------------------------------
 # Optionally Scipy-accelerated routines
 # -----------------------------------------------------------------------------
 # TODO(beam2d): Implement it
-
 # -----------------------------------------------------------------------------
 # Discrete Fourier Transform
 # -----------------------------------------------------------------------------
 # TODO(beam2d): Implement it
-
 # -----------------------------------------------------------------------------
 # Indexing routines
 # -----------------------------------------------------------------------------
-from cupy._indexing.generate import c_
-from cupy._indexing.generate import indices
-from cupy._indexing.generate import ix_
-from cupy._indexing.generate import mask_indices
-from cupy._indexing.generate import tril_indices
-from cupy._indexing.generate import tril_indices_from
-from cupy._indexing.generate import triu_indices
-from cupy._indexing.generate import triu_indices_from
-from cupy._indexing.generate import r_
-from cupy._indexing.generate import ravel_multi_index
-from cupy._indexing.generate import unravel_index
-
-from cupy._indexing.indexing import choose
-from cupy._indexing.indexing import compress
-from cupy._indexing.indexing import diagonal
-from cupy._indexing.indexing import extract
-from cupy._indexing.indexing import select
-from cupy._indexing.indexing import take
-from cupy._indexing.indexing import take_along_axis
-
-from cupy._indexing.insert import place
-from cupy._indexing.insert import put
-from cupy._indexing.insert import putmask
-from cupy._indexing.insert import fill_diagonal
-from cupy._indexing.insert import diag_indices
-from cupy._indexing.insert import diag_indices_from
-
+from cupy._indexing.generate import (
+    c_,
+    indices,
+    ix_,
+    mask_indices,
+    r_,
+    ravel_multi_index,
+    tril_indices,
+    tril_indices_from,
+    triu_indices,
+    triu_indices_from,
+    unravel_index,
+)
+from cupy._indexing.indexing import (
+    choose,
+    compress,
+    diagonal,
+    extract,
+    select,
+    take,
+    take_along_axis,
+)
+from cupy._indexing.insert import (
+    diag_indices,
+    diag_indices_from,
+    fill_diagonal,
+    place,
+    put,
+    putmask,
+)
 from cupy._indexing.iterate import flatiter
-
-# Borrowed from NumPy
-from numpy import index_exp
-from numpy import ndindex
-from numpy import s_
+from cupy._io.formatting import (
+    array2string,
+    array_repr,
+    array_str,
+    format_float_positional,
+    format_float_scientific,
+)
 
 # -----------------------------------------------------------------------------
 # Input and output
 # -----------------------------------------------------------------------------
-from cupy._io.npz import load
-from cupy._io.npz import save
-from cupy._io.npz import savez
-from cupy._io.npz import savez_compressed
-
-from cupy._io.formatting import array_repr
-from cupy._io.formatting import array_str
-from cupy._io.formatting import array2string
-from cupy._io.formatting import format_float_positional
-from cupy._io.formatting import format_float_scientific
-
+from cupy._io.npz import load, save, savez, savez_compressed
 from cupy._io.text import savetxt
 
 
@@ -445,53 +404,44 @@ def base_repr(number, base=2, padding=0):  # NOQA: F811 (needed to avoid redefin
 
 
 # Borrowed from NumPy
-from numpy import get_printoptions
-from numpy import set_printoptions
-from numpy import printoptions
+from numpy import get_printoptions, printoptions, set_printoptions
 
+# -----------------------------------------------------------------------------
+# Logic functions
+# -----------------------------------------------------------------------------
+from cupy._logic.comparison import allclose, array_equal, array_equiv, isclose
+from cupy._logic.content import isfinite, isinf, isnan, isneginf, isposinf
+from cupy._logic.truth import (
+    in1d,
+    intersect1d,
+    isin,
+    setdiff1d,
+    setxor1d,
+    union1d,
+)
+from cupy._logic.type_testing import (
+    iscomplex,
+    iscomplexobj,
+    isfortran,
+    isreal,
+    isrealobj,
+)
 
 # -----------------------------------------------------------------------------
 # Linear algebra
 # -----------------------------------------------------------------------------
 from cupy.linalg._einsum import einsum
-
-from cupy.linalg._product import cross
-from cupy.linalg._product import dot
-from cupy.linalg._product import inner
-from cupy.linalg._product import kron
-from cupy.linalg._product import matmul
-from cupy.linalg._product import outer
-from cupy.linalg._product import tensordot
-from cupy.linalg._product import vdot
-
 from cupy.linalg._norms import trace
-
-# -----------------------------------------------------------------------------
-# Logic functions
-# -----------------------------------------------------------------------------
-from cupy._logic.comparison import allclose
-from cupy._logic.comparison import array_equal
-from cupy._logic.comparison import array_equiv
-from cupy._logic.comparison import isclose
-
-from cupy._logic.content import isfinite
-from cupy._logic.content import isinf
-from cupy._logic.content import isnan
-from cupy._logic.content import isneginf
-from cupy._logic.content import isposinf
-
-from cupy._logic.type_testing import iscomplex
-from cupy._logic.type_testing import iscomplexobj
-from cupy._logic.type_testing import isfortran
-from cupy._logic.type_testing import isreal
-from cupy._logic.type_testing import isrealobj
-
-from cupy._logic.truth import in1d
-from cupy._logic.truth import intersect1d
-from cupy._logic.truth import isin
-from cupy._logic.truth import setdiff1d
-from cupy._logic.truth import setxor1d
-from cupy._logic.truth import union1d
+from cupy.linalg._product import (
+    cross,
+    dot,
+    inner,
+    kron,
+    matmul,
+    outer,
+    tensordot,
+    vdot,
+)
 
 
 def isscalar(element):
@@ -502,242 +452,224 @@ def isscalar(element):
     return _numpy.isscalar(element)
 
 
-from cupy._logic.ops import logical_and
-from cupy._logic.ops import logical_not
-from cupy._logic.ops import logical_or
-from cupy._logic.ops import logical_xor
-
-from cupy._logic.comparison import equal
-from cupy._logic.comparison import greater
-from cupy._logic.comparison import greater_equal
-from cupy._logic.comparison import less
-from cupy._logic.comparison import less_equal
-from cupy._logic.comparison import not_equal
-
-from cupy._logic.truth import all
-from cupy._logic.truth import alltrue
-from cupy._logic.truth import any
-from cupy._logic.truth import sometrue
-
-# ------------------------------------------------------------------------------
-# Polynomial functions
-# ------------------------------------------------------------------------------
-from cupy.lib._polynomial import poly1d
-from cupy.lib._routines_poly import poly
-from cupy.lib._routines_poly import polyadd
-from cupy.lib._routines_poly import polysub
-from cupy.lib._routines_poly import polymul
-from cupy.lib._routines_poly import polyfit
-from cupy.lib._routines_poly import polyval
-from cupy.lib._routines_poly import roots
-
 # Borrowed from NumPy
-from cupy.exceptions import RankWarning
+from numpy import iterable
+
+# -----------------------------------------------------------------------------
+# Undocumented functions
+# -----------------------------------------------------------------------------
+from cupy._core import size
+from cupy._logic.comparison import (
+    equal,
+    greater,
+    greater_equal,
+    less,
+    less_equal,
+    not_equal,
+)
+from cupy._logic.ops import logical_and, logical_not, logical_or, logical_xor
+from cupy._logic.truth import all, alltrue, any, sometrue
+from cupy._math.arithmetic import (
+    add,
+    angle,
+    conjugate,
+    divide,
+    divmod,
+    float_power,
+    floor_divide,
+    fmod,
+    imag,
+    modf,
+    multiply,
+    negative,
+    positive,
+    power,
+    real,
+    reciprocal,
+    remainder,
+    subtract,
+    true_divide,
+)
+from cupy._math.arithmetic import conjugate as conj
+from cupy._math.arithmetic import remainder as mod
+from cupy._math.explog import (
+    exp,
+    exp2,
+    expm1,
+    log,
+    log1p,
+    log2,
+    log10,
+    logaddexp,
+    logaddexp2,
+)
+from cupy._math.floating import copysign, frexp, ldexp, nextafter, signbit
+from cupy._math.hyperbolic import arccosh, arcsinh, arctanh, cosh, sinh, tanh
+from cupy._math.misc import (
+    absolute,
+    cbrt,
+    clip,
+    convolve,
+    fabs,
+    fmax,
+    fmin,
+    heaviside,
+    interp,
+    maximum,
+    minimum,
+    nan_to_num,
+    real_if_close,
+    sign,
+    sqrt,
+    square,
+)
+from cupy._math.misc import absolute as abs
+from cupy._math.rational import gcd, lcm
+from cupy._math.rounding import (
+    around,
+    ceil,
+    fix,
+    floor,
+    rint,
+    round,
+    round_,
+    trunc,
+)
+from cupy._math.special import i0, sinc
+from cupy._math.sumprod import (
+    cumprod,
+    cumproduct,
+    cumsum,
+    diff,
+    ediff1d,
+    gradient,
+    nancumprod,
+    nancumsum,
+    nanprod,
+    nansum,
+    prod,
+    product,
+    sum,
+    trapz,
+)
 
 # -----------------------------------------------------------------------------
 # Mathematical functions
 # -----------------------------------------------------------------------------
-from cupy._math.trigonometric import arccos
-from cupy._math.trigonometric import arcsin
-from cupy._math.trigonometric import arctan
-from cupy._math.trigonometric import arctan2
-from cupy._math.trigonometric import cos
-from cupy._math.trigonometric import deg2rad
-from cupy._math.trigonometric import degrees
-from cupy._math.trigonometric import hypot
-from cupy._math.trigonometric import rad2deg
-from cupy._math.trigonometric import radians
-from cupy._math.trigonometric import sin
-from cupy._math.trigonometric import tan
-from cupy._math.trigonometric import unwrap
-
-from cupy._math.hyperbolic import arccosh
-from cupy._math.hyperbolic import arcsinh
-from cupy._math.hyperbolic import arctanh
-from cupy._math.hyperbolic import cosh
-from cupy._math.hyperbolic import sinh
-from cupy._math.hyperbolic import tanh
-
-from cupy._math.rounding import around
-from cupy._math.rounding import ceil
-from cupy._math.rounding import fix
-from cupy._math.rounding import floor
-from cupy._math.rounding import rint
-from cupy._math.rounding import round
-from cupy._math.rounding import round_
-from cupy._math.rounding import trunc
-
-from cupy._math.sumprod import prod
-from cupy._math.sumprod import product
-from cupy._math.sumprod import sum
-from cupy._math.sumprod import cumprod
-from cupy._math.sumprod import cumproduct
-from cupy._math.sumprod import cumsum
-from cupy._math.sumprod import ediff1d
-from cupy._math.sumprod import nancumprod
-from cupy._math.sumprod import nancumsum
-from cupy._math.sumprod import nansum
-from cupy._math.sumprod import nanprod
-from cupy._math.sumprod import diff
-from cupy._math.sumprod import gradient
-from cupy._math.sumprod import trapz
-from cupy._math.window import bartlett
-from cupy._math.window import blackman
-from cupy._math.window import hamming
-from cupy._math.window import hanning
-from cupy._math.window import kaiser
-
-from cupy._math.explog import exp
-from cupy._math.explog import exp2
-from cupy._math.explog import expm1
-from cupy._math.explog import log
-from cupy._math.explog import log10
-from cupy._math.explog import log1p
-from cupy._math.explog import log2
-from cupy._math.explog import logaddexp
-from cupy._math.explog import logaddexp2
-
-from cupy._math.special import i0
-from cupy._math.special import sinc
-
-from cupy._math.floating import copysign
-from cupy._math.floating import frexp
-from cupy._math.floating import ldexp
-from cupy._math.floating import nextafter
-from cupy._math.floating import signbit
-
-from cupy._math.rational import gcd
-from cupy._math.rational import lcm
-
-from cupy._math.arithmetic import add
-from cupy._math.arithmetic import divide
-from cupy._math.arithmetic import divmod
-from cupy._math.arithmetic import floor_divide
-from cupy._math.arithmetic import float_power
-from cupy._math.arithmetic import fmod
-from cupy._math.arithmetic import modf
-from cupy._math.arithmetic import multiply
-from cupy._math.arithmetic import negative
-from cupy._math.arithmetic import positive
-from cupy._math.arithmetic import power
-from cupy._math.arithmetic import reciprocal
-from cupy._math.arithmetic import remainder
-from cupy._math.arithmetic import remainder as mod
-from cupy._math.arithmetic import subtract
-from cupy._math.arithmetic import true_divide
-
-from cupy._math.arithmetic import angle
-from cupy._math.arithmetic import conjugate as conj
-from cupy._math.arithmetic import conjugate
-from cupy._math.arithmetic import imag
-from cupy._math.arithmetic import real
-
-from cupy._math.misc import absolute as abs
-from cupy._math.misc import absolute
-from cupy._math.misc import cbrt
-from cupy._math.misc import clip
-from cupy._math.misc import fabs
-from cupy._math.misc import fmax
-from cupy._math.misc import fmin
-from cupy._math.misc import interp
-from cupy._math.misc import maximum
-from cupy._math.misc import minimum
-from cupy._math.misc import nan_to_num
-from cupy._math.misc import real_if_close
-from cupy._math.misc import sign
-from cupy._math.misc import heaviside
-from cupy._math.misc import sqrt
-from cupy._math.misc import square
-from cupy._math.misc import convolve
+from cupy._math.trigonometric import (
+    arccos,
+    arcsin,
+    arctan,
+    arctan2,
+    cos,
+    deg2rad,
+    degrees,
+    hypot,
+    rad2deg,
+    radians,
+    sin,
+    tan,
+    unwrap,
+)
+from cupy._math.window import bartlett, blackman, hamming, hanning, kaiser
 
 # -----------------------------------------------------------------------------
 # Miscellaneous routines
 # -----------------------------------------------------------------------------
 from cupy._misc.byte_bounds import byte_bounds
-from cupy._misc.memory_ranges import may_share_memory
-from cupy._misc.memory_ranges import shares_memory
+from cupy._misc.memory_ranges import may_share_memory, shares_memory
 from cupy._misc.who import who
-
-# Borrowed from NumPy
-from numpy import iterable
-from cupy.exceptions import AxisError
-
 
 # -----------------------------------------------------------------------------
 # Padding
 # -----------------------------------------------------------------------------
 from cupy._padding.pad import pad
 
-
 # -----------------------------------------------------------------------------
 # Sorting, searching, and counting
 # -----------------------------------------------------------------------------
 from cupy._sorting.count import count_nonzero
-
-from cupy._sorting.search import argmax
-from cupy._sorting.search import argmin
-from cupy._sorting.search import argwhere
-from cupy._sorting.search import flatnonzero
-from cupy._sorting.search import nanargmax
-from cupy._sorting.search import nanargmin
-from cupy._sorting.search import nonzero
-from cupy._sorting.search import searchsorted
-from cupy._sorting.search import where
-
-from cupy._sorting.sort import argpartition
-from cupy._sorting.sort import argsort
-from cupy._sorting.sort import lexsort
-from cupy._sorting.sort import msort
-from cupy._sorting.sort import sort_complex
-from cupy._sorting.sort import partition
-from cupy._sorting.sort import sort
+from cupy._sorting.search import (
+    argmax,
+    argmin,
+    argwhere,
+    flatnonzero,
+    nanargmax,
+    nanargmin,
+    nonzero,
+    searchsorted,
+    where,
+)
+from cupy._sorting.sort import (
+    argpartition,
+    argsort,
+    lexsort,
+    msort,
+    partition,
+    sort,
+    sort_complex,
+)
 
 # -----------------------------------------------------------------------------
 # Statistics
 # -----------------------------------------------------------------------------
-from cupy._statistics.correlation import corrcoef
-from cupy._statistics.correlation import cov
-from cupy._statistics.correlation import correlate
-
-from cupy._statistics.order import amax
+from cupy._statistics.correlation import corrcoef, correlate, cov
+from cupy._statistics.histogram import (
+    bincount,
+    digitize,
+    histogram,
+    histogram2d,
+    histogramdd,
+)
+from cupy._statistics.meanvar import (
+    average,
+    mean,
+    median,
+    nanmean,
+    nanmedian,
+    nanstd,
+    nanvar,
+    std,
+    var,
+)
+from cupy._statistics.order import (
+    amax,
+    amin,
+    nanmax,
+    nanmin,
+    percentile,
+    ptp,
+    quantile,
+)
 from cupy._statistics.order import amax as max
-from cupy._statistics.order import amin
 from cupy._statistics.order import amin as min
-from cupy._statistics.order import nanmax
-from cupy._statistics.order import nanmin
-from cupy._statistics.order import percentile
-from cupy._statistics.order import ptp
-from cupy._statistics.order import quantile
 
-from cupy._statistics.meanvar import median
-from cupy._statistics.meanvar import average
-from cupy._statistics.meanvar import mean
-from cupy._statistics.meanvar import std
-from cupy._statistics.meanvar import var
-from cupy._statistics.meanvar import nanmedian
-from cupy._statistics.meanvar import nanmean
-from cupy._statistics.meanvar import nanstd
-from cupy._statistics.meanvar import nanvar
-
-from cupy._statistics.histogram import bincount
-from cupy._statistics.histogram import digitize
-from cupy._statistics.histogram import histogram
-from cupy._statistics.histogram import histogram2d
-from cupy._statistics.histogram import histogramdd
-
+# Borrowed from NumPy
 # -----------------------------------------------------------------------------
 # Classes without their own docs
 # -----------------------------------------------------------------------------
-from cupy.exceptions import ComplexWarning
-from cupy.exceptions import ModuleDeprecationWarning
-from cupy.exceptions import TooHardError
-from cupy.exceptions import VisibleDeprecationWarning
+from cupy.exceptions import (
+    AxisError,
+    ComplexWarning,
+    ModuleDeprecationWarning,
+    RankWarning,
+    TooHardError,
+    VisibleDeprecationWarning,
+)
 
-
-# -----------------------------------------------------------------------------
-# Undocumented functions
-# -----------------------------------------------------------------------------
-from cupy._core import size
+# ------------------------------------------------------------------------------
+# Polynomial functions
+# ------------------------------------------------------------------------------
+from cupy.lib._polynomial import poly1d
+from cupy.lib._routines_poly import (
+    poly,
+    polyadd,
+    polyfit,
+    polymul,
+    polysub,
+    polyval,
+    roots,
+)
 
 
 def ndim(a):
@@ -761,20 +693,18 @@ def ndim(a):
 # CuPy specific functions
 # -----------------------------------------------------------------------------
 
-from cupy._util import clear_memo
-from cupy._util import memoize
-
-from cupy._core import ElementwiseKernel
-from cupy._core import RawKernel
-from cupy._core import RawModule
-from cupy._core._reduction import ReductionKernel
-
 # -----------------------------------------------------------------------------
 # DLPack
 # -----------------------------------------------------------------------------
-
-from cupy._core import fromDlpack
-from cupy._core import from_dlpack
+from cupy._core import (
+    ElementwiseKernel,
+    RawKernel,
+    RawModule,
+    from_dlpack,
+    fromDlpack,
+)
+from cupy._core._reduction import ReductionKernel
+from cupy._util import clear_memo, memoize
 
 
 def asnumpy(a, stream=None, order='C', out=None, *, blocking=True):
@@ -1028,20 +958,21 @@ def issctype(rep):
 
 # np 2.0: XXX shims for things moved in np 2.0
 if _numpy.__version__ < "2":
-    from numpy import format_parser
-    from numpy import DataSource
+    from numpy import DataSource, format_parser
 else:
-    from numpy.rec import format_parser   # type: ignore [no-redef]
     from numpy.lib.npyio import DataSource
+    from numpy.rec import format_parser  # type: ignore [no-redef]
 
 
 # np 2.0: XXX shims for things removed without replacement
 if _numpy.__version__ < "2":
-    from numpy import find_common_type
-    from numpy import set_string_function
-    from numpy import get_array_wrap
-    from numpy import disp
-    from numpy import safe_eval
+    from numpy import (
+        disp,
+        find_common_type,
+        get_array_wrap,
+        safe_eval,
+        set_string_function,
+    )
 else:
 
     _template = '''\

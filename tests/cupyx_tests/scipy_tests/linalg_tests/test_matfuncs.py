@@ -1,11 +1,11 @@
 import numpy as np
+import pytest
 from numpy import linalg
 
 import cupy
-from cupyx.scipy.linalg import khatri_rao
-from cupyx.scipy import linalg as cx_linalg
-import pytest
 from cupy import testing
+from cupyx.scipy import linalg as cx_linalg
+from cupyx.scipy.linalg import khatri_rao
 
 try:
     import scipy.linalg    # noqa

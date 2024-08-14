@@ -2,10 +2,15 @@ from numpy import prod
 
 import cupy
 from cupy.fft import config
-from cupy.fft._fft import (_convert_fft_type, _default_fft_func, _fft,
-                           _get_cufft_plan_nd, _get_fftn_out_size,
-                           _output_dtype)
 from cupy.fft._cache import get_plan_cache
+from cupy.fft._fft import (
+    _convert_fft_type,
+    _default_fft_func,
+    _fft,
+    _get_cufft_plan_nd,
+    _get_fftn_out_size,
+    _output_dtype,
+)
 
 
 def get_fft_plan(a, shape=None, axes=None, value_type='C2C'):

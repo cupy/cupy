@@ -2,8 +2,8 @@ import numpy as np
 import pytest
 
 import cupy
-from cupy import testing
 import cupyx.scipy.signal
+from cupy import testing
 
 try:
     import scipy.signal  # NOQA

@@ -4,7 +4,6 @@ import numpy
 
 import cupy
 
-
 ###############################################################################
 # Private utility functions.
 

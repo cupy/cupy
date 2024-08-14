@@ -1,13 +1,13 @@
 import atexit
 import functools
-import numpy
 import os
 import random
 import types
 import unittest
 
-import cupy
+import numpy
 
+import cupy
 
 _old_python_random_state = None
 _old_numpy_random_state = None

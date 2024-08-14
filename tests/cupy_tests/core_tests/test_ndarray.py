@@ -4,16 +4,11 @@ import unittest
 import numpy
 import pytest
 
-from cupy_backends.cuda.api import driver
-from cupy_backends.cuda.api import runtime
-from cupy_backends.cuda import stream as stream_module
 import cupy
-from cupy import _util
-from cupy import _core
-from cupy import cuda
-from cupy import get_array_module
-from cupy import testing
+from cupy import _core, _util, cuda, get_array_module, testing
 from cupy.exceptions import AxisError
+from cupy_backends.cuda import stream as stream_module
+from cupy_backends.cuda.api import driver, runtime
 
 
 def wrap_take(array, *args, **kwargs):

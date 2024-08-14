@@ -1,10 +1,9 @@
 import os
 from unittest import mock
 
-import cupy
-
 import pytest
 
+import cupy
 
 _code_base = '''
 #include <cuda_fp16.h>

@@ -2,9 +2,10 @@ import argparse
 import contextlib
 import time
 
-import cupy
 import matplotlib.pyplot as plt
 import numpy
+
+import cupy
 
 
 @contextlib.contextmanager

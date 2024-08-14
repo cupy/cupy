@@ -3,12 +3,18 @@
 #
 # (*) https://docs.nvidia.com/cuda/cusparselt/getting_started.html#code-example
 #
-import cupy
 import numpy
 
+import cupy
 from cupy.cuda import runtime
-from cupy_backends.cuda.libs.cusparselt import Handle, MatDescriptor, MatmulDescriptor, MatmulAlgSelection, MatmulPlan  # NOQA
-from cupy_backends.cuda.libs import cusparselt, cusparse
+from cupy_backends.cuda.libs import cusparse, cusparselt
+from cupy_backends.cuda.libs.cusparselt import (  # NOQA
+                                    Handle,
+                                    MatDescriptor,
+                                    MatmulAlgSelection,
+                                    MatmulDescriptor,
+                                    MatmulPlan,
+)
 
 dtype = 'float16'
 m, n, k = 1024, 1024, 1024

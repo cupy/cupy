@@ -1,12 +1,11 @@
 
 import warnings
 
-from cupy import testing
-import cupyx.scipy.signal.windows as cu_windows
-
 import pytest
 from pytest import raises as assert_raises
 
+import cupyx.scipy.signal.windows as cu_windows
+from cupy import testing
 
 try:
     import scipy.signal.windows as cpu_windows  # NOQA

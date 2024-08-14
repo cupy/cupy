@@ -25,7 +25,6 @@ Direct inquiries to 30 Frost Street, Cambridge, MA 02140
 
 from cupy import _core
 
-
 # Note: cast complex<single> to complex<double> or tests fail tolerance
 log1p = _core.create_ufunc(
     'cupyx_scipy_log1p',

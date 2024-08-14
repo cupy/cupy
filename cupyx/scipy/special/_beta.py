@@ -18,7 +18,6 @@ from cupyx.scipy.special._digamma import polevl_definition
 from cupyx.scipy.special._gamma import gamma_definition
 from cupyx.scipy.special._gammainc import p1evl_definition
 
-
 beta_preamble = """
 // include for CUDART_INF, CUDART_NAN
 #include <cupy/math_constants.h>

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-
 from typing import TYPE_CHECKING, List, Optional, Tuple, Union
 
 if TYPE_CHECKING:
@@ -11,11 +10,11 @@ if TYPE_CHECKING:
         NestedSequence,
         SupportsBufferProtocol,
     )
-from ._dtypes import _all_dtypes
-
 import cupy as np
 from cupy.cuda import Device as _Device
 from cupy_backends.cuda.api import runtime
+
+from ._dtypes import _all_dtypes
 
 
 def _check_valid_dtype(dtype):

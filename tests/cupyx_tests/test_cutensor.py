@@ -5,11 +5,10 @@ import pytest
 
 import cupy
 import cupyx
-from cupy._core import _routines_linalg as _linalg
 from cupy import testing
-from cupy.cuda import device
-
+from cupy._core import _routines_linalg as _linalg
 from cupy.cuda import cutensor as ct
+from cupy.cuda import device
 
 if ct.available:
     from cupyx import cutensor

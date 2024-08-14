@@ -1,16 +1,14 @@
 import math
 import warnings
 
-import cupy
 import numpy
 
+import cupy
 from cupy import _core
 from cupy._core import internal
 from cupy.cuda import runtime
 from cupyx import _texture
-from cupyx.scipy.ndimage import _util
-from cupyx.scipy.ndimage import _interp_kernels
-from cupyx.scipy.ndimage import _spline_prefilter_core
+from cupyx.scipy.ndimage import _interp_kernels, _spline_prefilter_core, _util
 
 _prod = cupy._core.internal.prod
 

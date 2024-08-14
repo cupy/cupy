@@ -1,11 +1,11 @@
 import itertools
 import unittest
 
-import cupy
 import numpy
 
-from cupy import testing
+import cupy
 import cupyx.scipy.special
+from cupy import testing
 
 
 @testing.with_requires('scipy')

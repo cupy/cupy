@@ -1,6 +1,6 @@
 import cupy
-from cupy_backends.cuda.api import runtime
 from cupy import _util
+from cupy_backends.cuda.api import runtime
 from cupyx.scipy.ndimage import _filters_core
 
 

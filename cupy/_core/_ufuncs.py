@@ -1,6 +1,5 @@
 from cupy._core._kernel import create_ufunc
 
-
 elementwise_copy = create_ufunc(
     'cupy_copy',
     ('?->?', 'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',

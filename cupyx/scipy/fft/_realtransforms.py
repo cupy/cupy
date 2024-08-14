@@ -37,9 +37,9 @@ import operator
 
 import cupy
 from cupy import _core
+from cupy.exceptions import AxisError
 from cupy.fft._fft import _cook_shape
 from cupyx.scipy.fft import _fft
-from cupy.exceptions import AxisError
 
 __all__ = ['dct', 'dctn', 'dst', 'dstn', 'idct', 'idctn', 'idst', 'idstn']
 

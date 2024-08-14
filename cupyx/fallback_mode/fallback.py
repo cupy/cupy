@@ -7,8 +7,6 @@ import types
 import numpy as np
 
 import cupy as cp
-
-
 from cupyx.fallback_mode import notification
 
 

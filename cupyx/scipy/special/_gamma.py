@@ -1,7 +1,6 @@
 from cupy import _core
 from cupyx.scipy.special._loggamma import loggamma_definition
 
-
 _gamma_body = """
 
     if (isinf(in0) && in0 < 0) {

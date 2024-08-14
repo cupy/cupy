@@ -3,8 +3,6 @@ from unittest import mock
 
 import cupy
 import cupyx
-
-
 from cupy.cuda import cudnn
 
 

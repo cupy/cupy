@@ -10,13 +10,10 @@ import sys
 import tempfile
 import warnings
 
-from cupy.cuda import device
-from cupy.cuda import function
-from cupy.cuda import get_rocm_path
-from cupy_backends.cuda.api import driver
-from cupy_backends.cuda.api import runtime
-from cupy_backends.cuda.libs import nvrtc
 from cupy import _util
+from cupy.cuda import device, function, get_rocm_path
+from cupy_backends.cuda.api import driver, runtime
+from cupy_backends.cuda.libs import nvrtc
 
 _cuda_hip_version = driver.get_build_version()
 

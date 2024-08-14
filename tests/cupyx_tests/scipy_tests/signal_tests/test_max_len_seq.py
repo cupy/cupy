@@ -1,11 +1,10 @@
 
-import cupy
-from cupy import testing
-
-import cupyx.scipy.signal  # NOQA
-
-import pytest
 import numpy as np
+import pytest
+
+import cupy
+import cupyx.scipy.signal  # NOQA
+from cupy import testing
 
 try:
     import scipy.signal  # NOQA

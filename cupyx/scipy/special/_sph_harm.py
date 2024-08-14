@@ -6,9 +6,8 @@ https://github.com/scipy/scipy/blob/master/scipy/special/sph_harm.pxd
 """
 
 from cupy import _core
-
-from cupyx.scipy.special._poch import poch_definition
 from cupyx.scipy.special._lpmv import lpmv_definition
+from cupyx.scipy.special._poch import poch_definition
 
 sph_harmonic_definition = (
     poch_definition

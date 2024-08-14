@@ -1,6 +1,6 @@
-from os import path
 import sys
 import traceback
+from os import path
 
 from cupy.cuda import memory_hook
 

@@ -2,24 +2,26 @@ import contextlib
 import warnings
 
 import cupy as _cupy
-from cupy._environment import get_cuda_path
-from cupy._environment import get_nvcc_path
-from cupy._environment import get_rocm_path
-from cupy._environment import get_hipcc_path
-from cupy.cuda import compiler
-from cupy.cuda import device
-from cupy.cuda import function
-from cupy.cuda import memory
-from cupy.cuda import memory_hook
-from cupy.cuda import memory_hooks
-from cupy.cuda import pinned_memory
-from cupy.cuda import profiler
-from cupy.cuda import stream
-from cupy.cuda import texture
-from cupy_backends.cuda.api import driver
-from cupy_backends.cuda.api import runtime
+from cupy._environment import (
+    get_cuda_path,
+    get_hipcc_path,
+    get_nvcc_path,
+    get_rocm_path,
+)
+from cupy.cuda import (
+    compiler,
+    device,
+    function,
+    memory,
+    memory_hook,
+    memory_hooks,
+    pinned_memory,
+    profiler,
+    stream,
+    texture,
+)
+from cupy_backends.cuda.api import driver, runtime
 from cupy_backends.cuda.libs import nvrtc
-
 
 _available = None
 
@@ -32,7 +34,6 @@ class _UnavailableModule():
 
 
 from cupy.cuda import cub
-
 
 try:
     from cupy_backends.cuda.libs import nvtx
@@ -114,38 +115,41 @@ def get_local_runtime_version() -> int:
 
 
 # import class and function
-from cupy.cuda.device import Device
-from cupy.cuda.device import get_cublas_handle
-from cupy.cuda.device import get_device_id
-from cupy.cuda.function import Function
-from cupy.cuda.function import Module
-from cupy.cuda.memory import alloc
-from cupy.cuda.memory import BaseMemory
-from cupy.cuda.memory import malloc_managed
-from cupy.cuda.memory import malloc_async
-from cupy.cuda.memory import ManagedMemory
-from cupy.cuda.memory import Memory
-from cupy.cuda.memory import MemoryAsync
-from cupy.cuda.memory import MemoryPointer
-from cupy.cuda.memory import MemoryPool
-from cupy.cuda.memory import MemoryAsyncPool
-from cupy.cuda.memory import PythonFunctionAllocator
-from cupy.cuda.memory import CFunctionAllocator
-from cupy.cuda.memory import set_allocator
-from cupy.cuda.memory import get_allocator
-from cupy.cuda.memory import UnownedMemory
-from cupy.cuda.memory_hook import MemoryHook
-from cupy.cuda.pinned_memory import alloc_pinned_memory
-from cupy.cuda.pinned_memory import PinnedMemory
-from cupy.cuda.pinned_memory import PinnedMemoryPointer
-from cupy.cuda.pinned_memory import PinnedMemoryPool
-from cupy.cuda.pinned_memory import set_pinned_memory_allocator
-from cupy.cuda.stream import Event
-from cupy.cuda.stream import get_current_stream
-from cupy.cuda.stream import get_elapsed_time
-from cupy.cuda.stream import Stream
-from cupy.cuda.stream import ExternalStream
+from cupy.cuda.device import Device, get_cublas_handle, get_device_id
+from cupy.cuda.function import Function, Module
 from cupy.cuda.graph import Graph
+from cupy.cuda.memory import (
+    BaseMemory,
+    CFunctionAllocator,
+    ManagedMemory,
+    Memory,
+    MemoryAsync,
+    MemoryAsyncPool,
+    MemoryPointer,
+    MemoryPool,
+    PythonFunctionAllocator,
+    UnownedMemory,
+    alloc,
+    get_allocator,
+    malloc_async,
+    malloc_managed,
+    set_allocator,
+)
+from cupy.cuda.memory_hook import MemoryHook
+from cupy.cuda.pinned_memory import (
+    PinnedMemory,
+    PinnedMemoryPointer,
+    PinnedMemoryPool,
+    alloc_pinned_memory,
+    set_pinned_memory_allocator,
+)
+from cupy.cuda.stream import (
+    Event,
+    ExternalStream,
+    Stream,
+    get_current_stream,
+    get_elapsed_time,
+)
 
 
 @contextlib.contextmanager

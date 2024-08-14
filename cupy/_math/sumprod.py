@@ -3,9 +3,8 @@ import warnings
 import numpy
 
 import cupy
+from cupy._core import _fusion_thread_local, internal
 from cupy._core import _routines_math as _math
-from cupy._core import _fusion_thread_local
-from cupy._core import internal
 
 
 def sum(a, axis=None, dtype=None, out=None, keepdims=False):

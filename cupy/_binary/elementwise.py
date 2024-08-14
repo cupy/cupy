@@ -1,6 +1,5 @@
 from cupy import _core
 
-
 bitwise_and = _core.bitwise_and
 
 

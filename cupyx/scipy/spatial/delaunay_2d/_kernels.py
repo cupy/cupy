@@ -2,7 +2,6 @@
 import cupy
 from cupyx.scipy.spatial.delaunay_2d._schewchuk import SCHEWCHUK_DEF
 
-
 KERNEL_DIVISION = SCHEWCHUK_DEF + r"""
 
 #define INLINE_H_D __forceinline__ __device__

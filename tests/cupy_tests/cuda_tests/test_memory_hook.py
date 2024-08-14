@@ -1,8 +1,7 @@
 import unittest
 
 import cupy.cuda
-from cupy.cuda import memory
-from cupy.cuda import memory_hook
+from cupy.cuda import memory, memory_hook
 
 
 class SimpleMemoryHook(memory_hook.MemoryHook):

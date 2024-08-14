@@ -1,12 +1,9 @@
 import numpy
 
 import cupy
-
 from cupy import _core
 from cupy._core import internal
-from cupyx.scipy.ndimage import _util
-from cupyx.scipy.ndimage import _filters_core
-from cupyx.scipy.ndimage import _filters_generic
+from cupyx.scipy.ndimage import _filters_core, _filters_generic, _util
 
 
 def correlate(input, weights, output=None, mode='reflect', cval=0.0, origin=0):

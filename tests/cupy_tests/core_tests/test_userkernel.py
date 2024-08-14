@@ -6,9 +6,13 @@ import pytest
 import cupy
 from cupy import testing
 from cupy.cuda import runtime
-from cupy.cuda.texture import (ChannelFormatDescriptor, CUDAarray,
-                               ResourceDescriptor, TextureDescriptor,
-                               TextureObject,)
+from cupy.cuda.texture import (
+    ChannelFormatDescriptor,
+    CUDAarray,
+    ResourceDescriptor,
+    TextureDescriptor,
+    TextureObject,
+)
 
 
 class TestUserkernel(unittest.TestCase):

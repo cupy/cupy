@@ -3,6 +3,7 @@ import sys
 
 import numpy
 import pytest
+
 try:
     import scipy.sparse
     scipy_available = True
@@ -10,10 +11,9 @@ except ImportError:
     scipy_available = False
 
 import cupy
-from cupy import testing
-from cupy.cuda import driver
-from cupy.cuda import runtime
 import cupyx.cusparse
+from cupy import testing
+from cupy.cuda import driver, runtime
 from cupyx.scipy import sparse
 
 

@@ -1,9 +1,6 @@
 import cupy
-
 from cupy import _core
-from cupy.cuda import texture
-from cupy.cuda import runtime
-
+from cupy.cuda import runtime, texture
 
 _affine_transform_2d_array_kernel = _core.ElementwiseKernel(
     'U texObj, raw float32 m, uint64 width', 'T transformed_image',

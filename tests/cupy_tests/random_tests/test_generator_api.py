@@ -1,14 +1,12 @@
 import threading
 import unittest
-import pytest
 
 import numpy
+import pytest
 
 import cupy
-from cupy import random
-from cupy import testing
+from cupy import random, testing
 from cupy.testing import _condition
-
 from cupy_tests.random_tests import common_distributions
 
 

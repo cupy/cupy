@@ -1,11 +1,11 @@
 import warnings
 
 import numpy
-import cupy
 
-from cupy_backends.cuda.api import runtime
+import cupy
 from cupy import _core
 from cupy._core import internal
+from cupy_backends.cuda.api import runtime
 from cupyx.scipy.ndimage import _util
 
 

@@ -1,8 +1,8 @@
 import pytest
-import cupy
-from cupy import testing
 
+import cupy
 import cupyx.scipy.interpolate as csi  # NOQA
+from cupy import testing
 
 try:
     from scipy import interpolate  # NOQA

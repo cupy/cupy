@@ -1,8 +1,8 @@
 import unittest
 
 import cupy
-from cupy.exceptions import AxisError
 from cupy import testing
+from cupy.exceptions import AxisError
 from cupy_tests.core_tests.fusion_tests import fusion_utils
 
 

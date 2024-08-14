@@ -1,13 +1,14 @@
 import pytest
 
 import cupy
-from cupy.testing import (assert_allclose, assert_array_equal as assert_equal,
-                          assert_array_almost_equal as assert_almost_equal,
-                          assert_array_equal,
-                          assert_array_almost_equal)
-
+from cupy.testing import (
+    assert_allclose,
+    assert_array_almost_equal,
+    assert_array_equal,
+)
+from cupy.testing import assert_array_almost_equal as assert_almost_equal
+from cupy.testing import assert_array_equal as assert_equal
 from cupyx.scipy.ndimage import convolve1d
-
 from cupyx.scipy.signal import savgol_coeffs, savgol_filter
 from cupyx.scipy.signal._savitzky_golay import _polyder
 

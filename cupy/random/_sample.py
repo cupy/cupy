@@ -1,7 +1,6 @@
 from cupy import _core
 from cupy._creation import basic
-from cupy.random import _distributions
-from cupy.random import _generator
+from cupy.random import _distributions, _generator
 
 
 def rand(*size, **kwarg):

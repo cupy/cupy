@@ -1,5 +1,6 @@
 import cupy
 import cupyx.scipy.sparse
+
 try:
     import pylibcugraph
     pylibcugraph_available = True

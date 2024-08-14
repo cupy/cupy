@@ -2,9 +2,7 @@ import numpy
 
 import cupy
 from cupy import _core
-from cupy._math import sumprod
-from cupy._math import ufunc
-
+from cupy._math import sumprod, ufunc
 
 sin = ufunc.create_math_ufunc(
     'sin', 1, 'cupy_sin',

@@ -3,7 +3,6 @@ import warnings
 
 import cupyx.scipy.sparse
 
-
 # Raise a `DeprecationWarning` for `cupy.sparse` submodule when its functions
 # are called. We could raise the warning on importing the submodule, but we
 # use module level `__getattr__` function here as the submodule is also
@@ -19,4 +18,4 @@ if (3, 7) <= sys.version_info:
         raise AttributeError(
             "module 'cupy.sparse' has no attribute {!r}".format(name))
 else:
-    from cupyx.scipy.sparse import * # NOQA: F403
+    from cupyx.scipy.sparse import *  # NOQA: F403

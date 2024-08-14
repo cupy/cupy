@@ -1,25 +1,27 @@
-from cupyx.scipy.signal.windows._windows import general_cosine
-from cupyx.scipy.signal.windows._windows import boxcar
-from cupyx.scipy.signal.windows._windows import triang
-from cupyx.scipy.signal.windows._windows import parzen
-from cupyx.scipy.signal.windows._windows import bohman
-from cupyx.scipy.signal.windows._windows import blackman
-from cupyx.scipy.signal.windows._windows import nuttall
-from cupyx.scipy.signal.windows._windows import blackmanharris
-from cupyx.scipy.signal.windows._windows import flattop
-from cupyx.scipy.signal.windows._windows import bartlett
-from cupyx.scipy.signal.windows._windows import hann
-from cupyx.scipy.signal.windows._windows import tukey
-from cupyx.scipy.signal.windows._windows import barthann
-from cupyx.scipy.signal.windows._windows import general_hamming
-from cupyx.scipy.signal.windows._windows import hamming
-from cupyx.scipy.signal.windows._windows import kaiser
-from cupyx.scipy.signal.windows._windows import kaiser_bessel_derived
-from cupyx.scipy.signal.windows._windows import gaussian
-from cupyx.scipy.signal.windows._windows import general_gaussian
-from cupyx.scipy.signal.windows._windows import chebwin
-from cupyx.scipy.signal.windows._windows import cosine
-from cupyx.scipy.signal.windows._windows import exponential
-from cupyx.scipy.signal.windows._windows import taylor
-from cupyx.scipy.signal.windows._windows import lanczos
-from cupyx.scipy.signal.windows._windows import get_window
+from cupyx.scipy.signal.windows._windows import (
+    barthann,
+    bartlett,
+    blackman,
+    blackmanharris,
+    bohman,
+    boxcar,
+    chebwin,
+    cosine,
+    exponential,
+    flattop,
+    gaussian,
+    general_cosine,
+    general_gaussian,
+    general_hamming,
+    get_window,
+    hamming,
+    hann,
+    kaiser,
+    kaiser_bessel_derived,
+    lanczos,
+    nuttall,
+    parzen,
+    taylor,
+    triang,
+    tukey,
+)

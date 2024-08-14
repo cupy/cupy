@@ -5,8 +5,7 @@ import numpy
 import pytest
 
 import cupy
-from cupy import cuda
-from cupy import testing
+from cupy import cuda, testing
 from cupy.exceptions import ComplexWarning
 
 

@@ -26,14 +26,13 @@ FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 """
 
+import numpy as np
+
 import cupy
 import cupyx.scipy.ndimage
-
+from cupyx.scipy.interpolate._bspline import BSpline
 from cupyx.scipy.signal._iir_utils import apply_iir_sos
 from cupyx.scipy.signal._splines import _symiirorder1_nd, _symiirorder2_nd
-from cupyx.scipy.interpolate._bspline import BSpline
-
-import numpy as np
 
 
 def sepfir2d(input, hrow, hcol):

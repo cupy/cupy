@@ -5,11 +5,10 @@ import numpy
 import pytest
 
 import cupy
-from cupy.cuda import runtime
-from cupy import testing
-from cupy import _util
-from cupy._core import _accelerator
 import cupyx.scipy.ndimage  # NOQA
+from cupy import _util, testing
+from cupy._core import _accelerator
+from cupy.cuda import runtime
 
 try:
     import scipy

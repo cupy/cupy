@@ -11,13 +11,14 @@ except ImportError:
 
 import cupy
 from cupy._core import _accelerator
-from cupy.cuda import cub
-from cupy.cuda import runtime
-from cupyx.scipy.sparse import _base
-from cupyx.scipy.sparse import _compressed
-from cupyx.scipy.sparse import _csc
-from cupyx.scipy.sparse import SparseEfficiencyWarning
-from cupyx.scipy.sparse import _util
+from cupy.cuda import cub, runtime
+from cupyx.scipy.sparse import (
+    SparseEfficiencyWarning,
+    _base,
+    _compressed,
+    _csc,
+    _util,
+)
 
 
 class csr_matrix(_compressed._compressed_sparse_matrix):

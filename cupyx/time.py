@@ -4,7 +4,7 @@ import warnings as _warnings
 import numpy as _numpy
 
 import cupy as _cupy
-from cupyx.profiler._time import _repeat, _PerfCaseResult  # for tests  # NOQA
+from cupyx.profiler._time import _PerfCaseResult, _repeat  # for tests  # NOQA
 
 
 # TODO(leofang): remove this function in CuPy v11

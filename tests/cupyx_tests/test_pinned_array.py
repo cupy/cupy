@@ -4,9 +4,9 @@ import numpy
 import pytest
 
 import cupy
+import cupyx
 from cupy import testing
 from cupy.testing._loops import _wraps_partial
-import cupyx
 
 
 def numpy_cupyx_array_equal(target_func, name='func'):

@@ -7,7 +7,6 @@ import pytest
 import cupy
 from cupy import testing
 
-
 # Note that numpy.bincount does not support uint64 on 64-bit environment
 # as it casts an input array to intp.
 # And it does not support uint32, int64 and uint64 on 32-bit environment.

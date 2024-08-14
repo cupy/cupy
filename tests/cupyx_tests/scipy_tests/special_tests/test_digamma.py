@@ -1,8 +1,9 @@
 import unittest
 
-from cupy import testing
-import cupyx.scipy.special  # NOQA
 import numpy
+
+import cupyx.scipy.special  # NOQA
+from cupy import testing
 
 
 @testing.with_requires('scipy')

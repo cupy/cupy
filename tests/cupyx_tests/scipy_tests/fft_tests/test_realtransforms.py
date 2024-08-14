@@ -1,8 +1,8 @@
 import numpy as np
 import pytest
 
-from cupyx.scipy import fft as cp_fft
 from cupy import testing
+from cupyx.scipy import fft as cp_fft
 
 try:
     # scipy.fft is available since scipy v1.4.0+

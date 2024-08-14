@@ -4,9 +4,10 @@ Convenience interface to N-D interpolation
 
 import cupy
 from cupyx.scipy.interpolate._interpnd import (
-    NDInterpolatorBase, _ndim_coords_from_arrays)
+    NDInterpolatorBase,
+    _ndim_coords_from_arrays,
+)
 from cupyx.scipy.spatial import KDTree
-
 
 # ------------------------------------------------------------------------------
 # Nearest-neighbor interpolation

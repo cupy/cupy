@@ -37,9 +37,8 @@
 
 from itertools import product
 
-import pytest
-
 import numpy as np
+import pytest
 
 from cupy import testing
 from cupyx.scipy.signal._upfirdn import _output_len

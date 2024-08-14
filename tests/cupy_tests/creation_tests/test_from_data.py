@@ -1,12 +1,11 @@
 import tempfile
 import unittest
 
+import numpy
 import pytest
 
 import cupy
-from cupy import cuda
-from cupy import testing
-import numpy
+from cupy import cuda, testing
 
 
 class TestFromData(unittest.TestCase):

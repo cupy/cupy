@@ -1,15 +1,12 @@
 import typing as _typing
 
-# Legacy modules
-from cupy_builder import cupy_setup_build
-from cupy_builder import install_build
-from cupy_builder import install_utils
-
 import cupy_builder._command
-from cupy_builder._context import Context
-from cupy_builder._preflight import preflight_check
-from cupy_builder._features import get_features
 
+# Legacy modules
+from cupy_builder import cupy_setup_build, install_build, install_utils
+from cupy_builder._context import Context
+from cupy_builder._features import get_features
+from cupy_builder._preflight import preflight_check
 
 _context: _typing.Optional[Context] = None
 

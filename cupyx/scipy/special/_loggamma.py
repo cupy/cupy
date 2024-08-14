@@ -12,7 +12,6 @@ from cupy import _core
 from cupyx.scipy.special._complexstuff import zlog1_definition
 from cupyx.scipy.special._trig import csinpi_definition
 
-
 ceval_poly_definition = """
 
 /* Evaluate polynomials.

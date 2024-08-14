@@ -5,12 +5,10 @@ import string
 import warnings
 
 import cupy
-from cupy._core import _accelerator
 from cupy import _util
-from cupy.linalg._einsum_opt import _greedy_path
-from cupy.linalg._einsum_opt import _optimal_path
+from cupy._core import _accelerator
 from cupy.linalg._einsum_cutn import _try_use_cutensornet
-
+from cupy.linalg._einsum_opt import _greedy_path, _optimal_path
 
 try:
     import cupy_backends.cuda.libs.cutensor  # NOQA

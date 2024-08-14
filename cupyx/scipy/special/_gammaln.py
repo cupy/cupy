@@ -3,7 +3,6 @@ import math
 import cupy
 from cupy import _core
 
-
 gammaln = _core.create_ufunc(
     'cupyx_scipy_special_gammaln', ('f->f', 'd->d'),
     '''

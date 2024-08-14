@@ -1,6 +1,5 @@
-from cupy import _core
-
 import cupy
+from cupy import _core
 
 
 def _create_float_test_ufunc(name, doc):

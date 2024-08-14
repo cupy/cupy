@@ -1,7 +1,11 @@
 import os
 
 from cupy_builder._context import (
-    _get_env_bool, _get_env_path, Context, parse_args)
+    Context,
+    _get_env_bool,
+    _get_env_path,
+    parse_args,
+)
 
 
 class TestGetEnvBool:

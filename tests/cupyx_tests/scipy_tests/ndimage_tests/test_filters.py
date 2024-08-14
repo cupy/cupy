@@ -2,10 +2,10 @@ import numpy
 import pytest
 
 import cupy
-from cupy.cuda import runtime
-from cupy import testing
-from cupy.exceptions import AxisError
 import cupyx.scipy.ndimage  # NOQA
+from cupy import testing
+from cupy.cuda import runtime
+from cupy.exceptions import AxisError
 
 try:
     import scipy.ndimage  # NOQA

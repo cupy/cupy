@@ -16,31 +16,30 @@ of ndarray.
 from __future__ import annotations
 
 import operator
+import types
 from enum import IntEnum
+from typing import TYPE_CHECKING, Optional, SupportsIndex, Tuple, Union
+
 from ._creation_functions import asarray
 from ._dtypes import (
     _all_dtypes,
     _boolean_dtypes,
+    _dtype_categories,
+    _floating_dtypes,
     _integer_dtypes,
     _integer_or_boolean_dtypes,
-    _floating_dtypes,
     _numeric_dtypes,
     _result_type,
-    _dtype_categories,
 )
 
-from typing import TYPE_CHECKING, Optional, Tuple, Union, SupportsIndex
-import types
-
 if TYPE_CHECKING:
-    from ._typing import PyCapsule, Device, Dtype
+    from ._typing import Device, Dtype, PyCapsule
 
 import cupy as np
+from cupy import array_api
 from cupy.cuda import Device as _Device
 from cupy.cuda import stream as stream_module
 from cupy_backends.cuda.api import runtime
-
-from cupy import array_api
 
 
 class Array:

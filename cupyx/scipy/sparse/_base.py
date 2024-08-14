@@ -4,9 +4,7 @@ import numpy
 
 import cupy
 from cupy import _core
-from cupyx.scipy.sparse import _util
-from cupyx.scipy.sparse import _sputils
-
+from cupyx.scipy.sparse import _sputils, _util
 
 try:
     import scipy.sparse as _sparse

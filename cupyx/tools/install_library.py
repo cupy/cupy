@@ -19,7 +19,6 @@ import sys
 import tempfile
 import urllib.request
 
-
 _cudnn_records = []
 _cutensor_records = []
 _nccl_records = []

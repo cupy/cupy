@@ -1,9 +1,8 @@
 
 import cupy
-from cupy import testing
-
 import cupyx.scipy.signal  # NOQA
 import cupyx.scipy.signal.windows  # NOQA
+from cupy import testing
 
 try:
     import scipy.signal  # NOQA
@@ -11,10 +10,10 @@ try:
 except ImportError:
     pass
 
-import numpy as np
-
-import pytest
 from math import gcd
+
+import numpy as np
+import pytest
 
 padtype_options = ["mean", "median", "minimum", "maximum", "line"]
 

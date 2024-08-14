@@ -1,11 +1,10 @@
 
-from cupy import testing
+import numpy as np
+import pytest
 
 import cupy  # NOQA
 import cupyx.scipy.spatial  # NOQA
-
-import pytest
-import numpy as np
+from cupy import testing
 
 try:
     import scipy.spatial  # NOQA

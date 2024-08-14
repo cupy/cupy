@@ -6,9 +6,7 @@ except ImportError:
 
 import cupy
 from cupy import _core
-from cupyx.scipy.sparse import _csc
-from cupyx.scipy.sparse import _data
-from cupyx.scipy.sparse import _util
+from cupyx.scipy.sparse import _csc, _data, _util
 
 
 # TODO(leofang): The current implementation is CSC-based, which is troublesome

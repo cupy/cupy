@@ -2,7 +2,6 @@ import contextlib
 import threading
 import warnings
 
-
 _thread_local = threading.local()
 
 

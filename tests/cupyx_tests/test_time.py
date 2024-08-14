@@ -4,8 +4,8 @@ from unittest import mock
 import numpy
 
 import cupy
-from cupy import testing
 import cupyx
+from cupy import testing
 
 
 class TestRepeat(unittest.TestCase):

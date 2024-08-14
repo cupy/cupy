@@ -61,58 +61,65 @@ def __getattr__(key):
 
 
 # import class and function
-from cupy.random._distributions import beta
-from cupy.random._distributions import binomial
-from cupy.random._distributions import chisquare
-from cupy.random._distributions import dirichlet
-from cupy.random._distributions import exponential
-from cupy.random._distributions import f
-from cupy.random._distributions import gamma
-from cupy.random._distributions import geometric
-from cupy.random._distributions import gumbel
-from cupy.random._distributions import hypergeometric
-from cupy.random._distributions import laplace
-from cupy.random._distributions import logistic
-from cupy.random._distributions import lognormal
-from cupy.random._distributions import logseries
-from cupy.random._distributions import multivariate_normal
-from cupy.random._distributions import negative_binomial
-from cupy.random._distributions import noncentral_chisquare
-from cupy.random._distributions import noncentral_f
-from cupy.random._distributions import normal
-from cupy.random._distributions import pareto
-from cupy.random._distributions import poisson
-from cupy.random._distributions import power
-from cupy.random._distributions import rayleigh
-from cupy.random._distributions import standard_cauchy
-from cupy.random._distributions import standard_exponential
-from cupy.random._distributions import standard_gamma
-from cupy.random._distributions import standard_normal
-from cupy.random._distributions import standard_t
-from cupy.random._distributions import triangular
-from cupy.random._distributions import uniform
-from cupy.random._distributions import vonmises
-from cupy.random._distributions import wald
-from cupy.random._distributions import weibull
-from cupy.random._distributions import zipf
-from cupy.random._generator import get_random_state
-from cupy.random._generator import RandomState
-from cupy.random._generator import reset_states
-from cupy.random._generator import seed
-from cupy.random._generator import set_random_state
-from cupy.random._permutations import permutation
-from cupy.random._permutations import shuffle
-from cupy.random._sample import choice
-from cupy.random._sample import multinomial
-from cupy.random._sample import rand
-from cupy.random._sample import randint
-from cupy.random._sample import randn
-from cupy.random._sample import random_integers
-from cupy.random._sample import random_sample
+from cupy.random._bit_generator import (
+    XORWOW,
+    BitGenerator,
+    MRG32k3a,
+    Philox4x3210,
+)
+from cupy.random._distributions import (
+    beta,
+    binomial,
+    chisquare,
+    dirichlet,
+    exponential,
+    f,
+    gamma,
+    geometric,
+    gumbel,
+    hypergeometric,
+    laplace,
+    logistic,
+    lognormal,
+    logseries,
+    multivariate_normal,
+    negative_binomial,
+    noncentral_chisquare,
+    noncentral_f,
+    normal,
+    pareto,
+    poisson,
+    power,
+    rayleigh,
+    standard_cauchy,
+    standard_exponential,
+    standard_gamma,
+    standard_normal,
+    standard_t,
+    triangular,
+    uniform,
+    vonmises,
+    wald,
+    weibull,
+    zipf,
+)
+from cupy.random._generator import (
+    RandomState,
+    get_random_state,
+    reset_states,
+    seed,
+    set_random_state,
+)
+from cupy.random._permutations import permutation, shuffle
+from cupy.random._sample import (
+    choice,
+    multinomial,
+    rand,
+    randint,
+    randn,
+    random_integers,
+    random_sample,
+)
 from cupy.random._sample import random_sample as random
 from cupy.random._sample import random_sample as ranf
 from cupy.random._sample import random_sample as sample
-from cupy.random._bit_generator import BitGenerator
-from cupy.random._bit_generator import XORWOW
-from cupy.random._bit_generator import MRG32k3a
-from cupy.random._bit_generator import Philox4x3210

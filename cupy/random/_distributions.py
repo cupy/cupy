@@ -1,6 +1,5 @@
-from cupy.random import _generator
 from cupy import _util
-
+from cupy.random import _generator
 
 # TODO(beam2d): Implement many distributions
 

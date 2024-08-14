@@ -1,7 +1,5 @@
-from typing import Dict, List, Tuple
-
 import math
-
+from typing import Dict, List, Tuple
 
 _next_fast_len_cache: Dict[Tuple[int, List[int]], int] = {}
 

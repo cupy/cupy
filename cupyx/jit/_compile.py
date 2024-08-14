@@ -5,26 +5,26 @@ import linecache
 import numbers
 import re
 import sys
-from typing import Any, Dict, List, Optional, Sequence, Tuple, TypeVar, Union
-import warnings
 import types
+import warnings
+from typing import Any, Dict, List, Optional, Sequence, Tuple, TypeVar, Union
 
 import numpy
 
+from cupy._core import _kernel
+from cupy._core._codeblock import CodeBlock, _CodeType
+from cupy._core._dtype import _raise_if_invalid_cast
 from cupy.exceptions import ComplexWarning
 from cupy_backends.cuda.api import runtime
-from cupy._core._codeblock import CodeBlock, _CodeType
-from cupy._core import _kernel
-from cupy._core._dtype import _raise_if_invalid_cast
 from cupyx import jit
-from cupyx.jit import _cuda_types
-from cupyx.jit import _cuda_typerules
-from cupyx.jit import _internal_types
-from cupyx.jit._internal_types import Data
-from cupyx.jit._internal_types import Constant
-from cupyx.jit import _builtin_funcs
-from cupyx.jit import _interface
-
+from cupyx.jit import (
+    _builtin_funcs,
+    _cuda_typerules,
+    _cuda_types,
+    _interface,
+    _internal_types,
+)
+from cupyx.jit._internal_types import Constant, Data
 
 _is_debug_mode = False
 

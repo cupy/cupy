@@ -2,9 +2,11 @@ import unittest
 import warnings
 
 import numpy
+
 import cupy
-from cupy import testing
 import cupyx.scipy.linalg
+from cupy import testing
+
 if cupyx.scipy._scipy_available:
     import scipy.linalg
 

@@ -1,5 +1,4 @@
-from cupy._core import _fusion_variable
-from cupy._core import _fusion_op
+from cupy._core import _fusion_op, _fusion_variable
 
 
 def _reduce_memory_access(ops):

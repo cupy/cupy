@@ -7,7 +7,6 @@ import cupy
 from cupy.fft import config
 from cupy.fft._cache import get_plan_cache
 
-
 _reduce = functools.reduce
 _prod = cupy._core.internal.prod
 

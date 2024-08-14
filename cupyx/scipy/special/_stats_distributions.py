@@ -19,7 +19,6 @@ from cupy import _core
 from cupyx.scipy.special._beta import incbet_preamble, incbi_preamble
 from cupyx.scipy.special._gammainc import _igam_preamble, _igami_preamble
 
-
 # Normal distribution functions
 
 ndtr = _core.create_ufunc(

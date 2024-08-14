@@ -27,9 +27,13 @@ DEALINGS IN THE SOFTWARE.
 import warnings
 
 import cupy
-from cupyx.scipy.signal.windows._windows import get_window
 from cupyx.scipy.signal._spectral_impl import (
-    _lombscargle, _spectral_helper, _median_bias, _triage_segments)
+    _lombscargle,
+    _median_bias,
+    _spectral_helper,
+    _triage_segments,
+)
+from cupyx.scipy.signal.windows._windows import get_window
 
 
 def lombscargle(x, y, freqs, precenter=False, normalize=False):

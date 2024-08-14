@@ -1,4 +1,5 @@
 import numpy
+
 try:
     import scipy.sparse
     _scipy_available = True
@@ -7,12 +8,8 @@ except ImportError:
 
 import cupy
 from cupy import _core
-from cupyx.scipy.sparse import _base
-from cupyx.scipy.sparse import _csc
-from cupyx.scipy.sparse import _csr
+from cupyx.scipy.sparse import _base, _csc, _csr, _sputils, _util
 from cupyx.scipy.sparse import _data as sparse_data
-from cupyx.scipy.sparse import _util
-from cupyx.scipy.sparse import _sputils
 
 
 class coo_matrix(sparse_data._data_matrix):

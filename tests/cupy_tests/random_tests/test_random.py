@@ -1,7 +1,6 @@
 import unittest
 
-from cupy import random
-from cupy import testing
+from cupy import random, testing
 
 
 class TestResetSeed(unittest.TestCase):

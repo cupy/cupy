@@ -1,7 +1,6 @@
 from cupy import _core
 from cupy._math import ufunc
 
-
 exp = ufunc.create_math_ufunc(
     'exp', 1, 'cupy_exp',
     '''Elementwise exponential function.

@@ -1,6 +1,6 @@
 import numpy
-import cupy
 
+import cupy
 from cupy import cublas
 from cupy._core import _dtype
 from cupy.cuda import device

@@ -1,10 +1,10 @@
 
+import numpy as np
+
 import cupy
-from cupy import testing
 import cupyx.scipy.interpolate  # NOQA
 import cupyx.scipy.spatial  # NOQA
-
-import numpy as np
+from cupy import testing
 
 try:
     import scipy.interpolate  # NOQA

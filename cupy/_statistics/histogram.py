@@ -6,7 +6,6 @@ import numpy
 import cupy
 from cupy import _core
 
-
 # rename builtin range for use in functions that take a range argument
 _range = range
 

@@ -4,10 +4,9 @@ import numpy
 import pytest
 
 import cupy
-from cupy.cuda import driver
-from cupy.cuda import runtime
-from cupy._indexing import generate
 from cupy import testing
+from cupy._indexing import generate
+from cupy.cuda import driver, runtime
 
 
 class TestIndices(unittest.TestCase):

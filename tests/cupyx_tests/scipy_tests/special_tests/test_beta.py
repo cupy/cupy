@@ -2,8 +2,8 @@ import numpy
 import pytest
 
 import cupy
-from cupy import testing
 import cupyx.scipy.special  # NOQA
+from cupy import testing
 
 
 def _get_logspace_max(dtype):

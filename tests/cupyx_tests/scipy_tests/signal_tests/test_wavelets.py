@@ -2,8 +2,8 @@ import warnings
 
 import pytest
 
-from cupy import testing
 import cupyx.scipy.signal  # NOQA
+from cupy import testing
 
 try:
     import scipy.signal  # NOQA

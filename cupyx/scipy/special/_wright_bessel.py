@@ -1,6 +1,5 @@
 from cupy import _core
 
-
 wright_bessel_preamble = "#include <cupy/special/wright_bessel.h>"
 
 wright_bessel = _core.create_ufunc(

@@ -1,5 +1,5 @@
-import random
 import math
+import random
 
 from cupyx.distributed.array import _index_arith
 

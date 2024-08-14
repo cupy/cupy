@@ -2,10 +2,10 @@ import numpy
 import pytest
 
 import cupy
-from cupyx import cusolver
+import cupyx
 from cupy import testing
 from cupy._core import _routines_linalg as _linalg
-import cupyx
+from cupyx import cusolver
 
 
 @testing.parameterize(*testing.product({

@@ -3,10 +3,7 @@ import typing
 from typing import Callable, Optional
 
 import cupy
-from cupyx.distributed.array import _array
-from cupyx.distributed.array import _chunk
-from cupyx.distributed.array import _modes
-
+from cupyx.distributed.array import _array, _chunk, _modes
 
 _SliceIndices = tuple[int, int, int]
 

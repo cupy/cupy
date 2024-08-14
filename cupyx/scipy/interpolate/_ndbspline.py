@@ -3,12 +3,10 @@ import operator
 from math import prod
 
 import cupy
-
 from cupyx.scipy.interpolate._bspline import _get_dtype, _get_module_func
 from cupyx.scipy.interpolate._bspline2 import _not_a_knot
 from cupyx.scipy.sparse import csr_matrix
 from cupyx.scipy.sparse.linalg import spsolve
-
 
 TYPES = ['double', 'thrust::complex<double>']
 

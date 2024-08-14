@@ -3,10 +3,10 @@ import contextlib
 import sys
 import time
 
-import cupy
 import numpy
-
 from black_scholes import black_scholes_kernel
+
+import cupy
 
 # This sample computes call prices for European options with
 # Monte-Carlo simulation. It was based on a sample of the financial package

@@ -4,8 +4,8 @@ import numpy
 import pytest
 
 import cupy
-from cupy import testing
 import cupyx
+from cupy import testing
 from cupyx import cusolver, lapack
 
 

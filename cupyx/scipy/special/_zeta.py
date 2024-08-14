@@ -10,7 +10,6 @@
 
 from cupy import _core
 
-
 zeta_definition = '''
 /* Expansion coefficients
  * for Euler-Maclaurin summation formula

@@ -1,11 +1,10 @@
 import unittest
-import pytest
 
 import numpy
+import pytest
 
 import cupy
-from cupy import random
-from cupy import testing
+from cupy import random, testing
 
 
 class BitGeneratorTestCase:

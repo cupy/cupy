@@ -28,8 +28,9 @@ from CuSignal under terms of the MIT license.
 import warnings
 from typing import Set
 
-import cupy
 import numpy as np
+
+import cupy
 
 
 def _len_guards(M):

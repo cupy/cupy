@@ -4,9 +4,14 @@ import pytest
 import cupy
 from cupy import testing
 from cupy.cuda import runtime
-from cupy.cuda.texture import (ChannelFormatDescriptor, CUDAarray,
-                               ResourceDescriptor, TextureDescriptor,
-                               TextureObject, SurfaceObject)
+from cupy.cuda.texture import (
+    ChannelFormatDescriptor,
+    CUDAarray,
+    ResourceDescriptor,
+    SurfaceObject,
+    TextureDescriptor,
+    TextureObject,
+)
 
 if cupy.cuda.runtime.is_hip:
     pytest.skip('HIP texture support is not yet ready',

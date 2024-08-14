@@ -1,7 +1,6 @@
 import contextlib
 import threading
 
-
 _config = threading.local()
 
 

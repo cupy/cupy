@@ -1,13 +1,11 @@
 import atexit
-from ctypes import sizeof
 import multiprocessing
-import threading
 import socket
+import threading
 import time
+from ctypes import sizeof
 
-from cupyx.distributed import _klv_utils
-from cupyx.distributed import _store_actions
-
+from cupyx.distributed import _klv_utils, _store_actions
 
 _DEFAULT_HOST = '127.0.0.1'
 _DEFAULT_PORT = 13333

@@ -1,16 +1,16 @@
 import math
 
-import cupy
 import numpy
 import pytest
 
+import cupy
 import cupyx.scipy.special
 from cupy import testing
 from cupy.testing import (
-    assert_array_equal,
     assert_array_almost_equal,
+    assert_array_equal,
+    numpy_cupy_allclose,
 )
-from cupy.testing import numpy_cupy_allclose
 
 rtol = {'default': 1e-5, cupy.float64: 1e-12, cupy.complex128: 1e-12}
 

@@ -1,9 +1,9 @@
 import numpy
+import pytest
+
 import cupy
 import cupyx.scipy.special
-
 from cupy import testing
-import pytest
 
 try:
     import scipy.special

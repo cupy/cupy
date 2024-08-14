@@ -1,10 +1,9 @@
 import pytest
 
 import cupy
-from cupy import testing
 import cupyx
 import cupyx.scipy.special  # NOQA
-
+from cupy import testing
 
 atol = {
     'default': 1e-6,

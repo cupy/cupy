@@ -1,15 +1,13 @@
 import numpy
 
 import cupy
-from cupy.cuda import device
-from cupy.cuda import runtime
-from cupy.linalg import _util
 from cupy._core import _dtype
+from cupy.cuda import device, runtime
+from cupy.linalg import _util
 
 
 def _syevd(a, UPLO, with_eigen_vector, overwrite_a=False):
-    from cupy_backends.cuda.libs import cublas
-    from cupy_backends.cuda.libs import cusolver
+    from cupy_backends.cuda.libs import cublas, cusolver
 
     if UPLO not in ('L', 'U'):
         raise ValueError('UPLO argument must be \'L\' or \'U\'')

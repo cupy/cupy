@@ -1,12 +1,10 @@
+import numpy as np
 import pytest
 
 import cupy
-from cupy.cuda import driver
-from cupy.cuda import runtime
-from cupy import testing
 import cupyx.scipy.signal  # NOQA
-
-import numpy as np
+from cupy import testing
+from cupy.cuda import driver, runtime
 
 try:
     import scipy  # NOQA

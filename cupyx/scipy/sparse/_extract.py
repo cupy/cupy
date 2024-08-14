@@ -1,6 +1,5 @@
 import cupy
 import cupyx
-
 from cupyx.scipy import sparse
 
 

@@ -2,12 +2,10 @@ import argparse
 import math
 import os
 
-import cupy as cp
 import numpy as np
+from utils import benchmark, read_code
 
-from utils import benchmark
-from utils import read_code
-
+import cupy as cp
 
 sgemm_file = os.path.join(os.path.dirname(__file__), 'sgemm.cu')
 

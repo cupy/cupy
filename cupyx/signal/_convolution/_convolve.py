@@ -25,7 +25,6 @@ DEALINGS IN THE SOFTWARE.
 
 import cupy
 
-
 _convolve1d2o_kernel = cupy.ElementwiseKernel(
     'raw T in1, raw T in2, int32 W, int32 H', 'T out',
     """

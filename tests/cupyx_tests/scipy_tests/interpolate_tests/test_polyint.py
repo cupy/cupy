@@ -7,10 +7,10 @@ import pytest
 from pytest import raises as assert_raises
 
 import cupy
-from cupy.cuda import runtime
-from cupy import testing
-from cupy.testing import assert_array_almost_equal
 import cupyx.scipy.interpolate  # NOQA
+from cupy import testing
+from cupy.cuda import runtime
+from cupy.testing import assert_array_almost_equal
 from cupyx.scipy.interpolate import CubicHermiteSpline
 
 try:

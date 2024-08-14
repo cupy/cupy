@@ -1,19 +1,16 @@
 import ast
+import operator
 from typing import Any, Callable, Mapping, Optional, Tuple, Type
 
 import numpy
 import numpy.typing as npt
-import operator
 
 import cupy
-from cupy._logic import ops
-from cupy._math import arithmetic
-from cupy._logic import comparison
-from cupy._binary import elementwise
 from cupy import _core
-
+from cupy._binary import elementwise
+from cupy._logic import comparison, ops
+from cupy._math import arithmetic
 from cupyx.jit import _cuda_types
-
 
 _numpy_scalar_invert = _core.create_ufunc(
     'numpy_scalar_invert',

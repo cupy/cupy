@@ -1,10 +1,9 @@
 
+import warnings
+
 import cupy
 from cupy._core._scalar import get_typename
 from cupyx.scipy.spatial._delaunay import Delaunay
-
-import warnings
-
 
 TYPES = ['double', 'thrust::complex<double>']
 

@@ -6,7 +6,6 @@ from itertools import combinations_with_replacement
 import cupy as cp
 from cupyx.scipy.spatial import KDTree
 
-
 # Define the kernel functions.
 
 kernel_definitions = """

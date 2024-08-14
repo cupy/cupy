@@ -1,5 +1,4 @@
 import cupy
-
 from cupy import _core
 
 _piecewise_krnl = _core.ElementwiseKernel(

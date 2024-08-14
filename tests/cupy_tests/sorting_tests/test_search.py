@@ -3,8 +3,8 @@ import pytest
 
 import cupy
 import cupy._core._accelerator as _acc
-from cupy._core import _cub_reduction
 from cupy import testing
+from cupy._core import _cub_reduction
 
 
 class TestSearch:

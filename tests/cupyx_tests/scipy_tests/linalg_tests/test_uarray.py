@@ -1,5 +1,5 @@
-from cupy import testing
 import cupyx.scipy.linalg._uarray
+from cupy import testing
 
 
 @testing.with_requires('scipy>=1.5')

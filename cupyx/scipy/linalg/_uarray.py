@@ -1,7 +1,7 @@
 import numpy as np
+
 import cupy
 import cupy.linalg as _cp_linalg
-
 
 try:
     import scipy.linalg as _scipy_linalg

@@ -3,7 +3,6 @@ import math
 import os
 import warnings
 
-
 try:
     import optuna
     _optuna_available = True

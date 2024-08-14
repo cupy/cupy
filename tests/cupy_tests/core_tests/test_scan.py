@@ -3,9 +3,8 @@
 import unittest
 
 import cupy
-from cupy import cuda
+from cupy import cuda, testing
 from cupy._core._routines_math import _scan_for_test as scan
-from cupy import testing
 
 
 class TestScan(unittest.TestCase):

@@ -2,7 +2,6 @@ import unittest
 
 from . import _from_install_import
 
-
 utils = _from_install_import('cupy_builder.install_utils')
 
 

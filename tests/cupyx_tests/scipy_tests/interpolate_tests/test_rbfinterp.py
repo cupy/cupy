@@ -1,14 +1,14 @@
 import pickle
-import pytest
 import warnings
 
 import numpy as _np
+import pytest
 from numpy.linalg import LinAlgError
+
 import cupy as cp
 import cupyx
-from cupy import testing
 import cupyx.scipy.interpolate  # NOQA
-
+from cupy import testing
 
 try:
     from scipy import interpolate  # NOQA
@@ -23,8 +23,14 @@ except ImportError:
 
 
 from cupyx.scipy.interpolate._rbfinterp import (
-    _AVAILABLE, _SCALE_INVARIANT, _NAME_TO_MIN_DEGREE, NAME_TO_FUNC,
-    _monomial_powers, polynomial_matrix, kernel_matrix)
+    _AVAILABLE,
+    _NAME_TO_MIN_DEGREE,
+    _SCALE_INVARIANT,
+    NAME_TO_FUNC,
+    _monomial_powers,
+    kernel_matrix,
+    polynomial_matrix,
+)
 
 
 def _kernel_matrix(x, kernel):

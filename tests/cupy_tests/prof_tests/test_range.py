@@ -1,8 +1,7 @@
 import unittest
 from unittest import mock
 
-from cupy import cuda
-from cupy import prof
+from cupy import cuda, prof
 
 
 @unittest.skipUnless(cuda.nvtx.available, 'nvtx is required for time_range')

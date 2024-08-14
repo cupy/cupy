@@ -4,7 +4,6 @@ import numpy
 
 import cupy
 
-
 _support_allow_pickle = (numpy.lib.NumpyVersion(numpy.__version__) >= '1.10.0')
 
 

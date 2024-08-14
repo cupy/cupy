@@ -5,9 +5,7 @@ import tempfile
 import unittest
 
 from cupy import testing
-
 from example_tests import example_test
-
 
 os.environ['MPLBACKEND'] = 'Agg'
 

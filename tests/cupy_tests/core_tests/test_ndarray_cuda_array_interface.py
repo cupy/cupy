@@ -1,11 +1,10 @@
 import unittest
+
 import pytest
 
-from cupy_backends.cuda import stream as stream_module
 import cupy
-from cupy import _core
-from cupy import testing
-
+from cupy import _core, testing
+from cupy_backends.cuda import stream as stream_module
 
 # TODO(leofang): test PTDS in this file
 

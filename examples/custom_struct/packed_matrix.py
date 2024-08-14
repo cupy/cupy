@@ -1,5 +1,7 @@
 import sys
+
 import numpy
+
 import cupy
 
 code = '''

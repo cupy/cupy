@@ -2,8 +2,8 @@
 
 # Note: keep this script runnable Python 3.6 until FlexCI Python update
 
-import sys
 import os
+import sys
 
 
 def main(argv):

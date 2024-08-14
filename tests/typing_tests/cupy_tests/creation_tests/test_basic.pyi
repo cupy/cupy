@@ -1,7 +1,7 @@
 import numpy
+
 import cupy
 import cupy as xp
-
 
 x = cupy.array([1, 2, 3])
 

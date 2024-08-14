@@ -1,6 +1,7 @@
 # nvprof --print-gpu-trace python examples/stream/cupy_memcpy.py
-import cupy
 import numpy
+
+import cupy
 
 pinned_memory_pool = cupy.cuda.PinnedMemoryPool()
 cupy.cuda.set_pinned_memory_allocator(pinned_memory_pool.malloc)

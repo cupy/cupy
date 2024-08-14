@@ -2,22 +2,28 @@
 ltisys -- a collection of classes and functions for modeling linear
 time invariant systems.
 """
-import warnings
 import copy
+import warnings
 from math import sqrt
 
 import cupy
-
 from cupyx.scipy import linalg
 from cupyx.scipy.interpolate import make_interp_spline
-from cupyx.scipy.linalg import expm, block_diag
-
-from cupyx.scipy.signal._lti_conversion import (
-    _atleast_2d_or_none, abcd_normalize)
+from cupyx.scipy.linalg import block_diag, expm
+from cupyx.scipy.signal._filter_design import freqs, freqs_zpk, freqz, freqz_zpk
 from cupyx.scipy.signal._iir_filter_conversions import (
-    normalize, tf2zpk, tf2ss, zpk2ss, ss2tf, ss2zpk, zpk2tf)
-from cupyx.scipy.signal._filter_design import (
-    freqz, freqz_zpk, freqs, freqs_zpk)
+    normalize,
+    ss2tf,
+    ss2zpk,
+    tf2ss,
+    tf2zpk,
+    zpk2ss,
+    zpk2tf,
+)
+from cupyx.scipy.signal._lti_conversion import (
+    _atleast_2d_or_none,
+    abcd_normalize,
+)
 
 
 class LinearTimeInvariant:

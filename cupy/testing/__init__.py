@@ -1,50 +1,52 @@
-from cupy.testing._array import assert_allclose
-from cupy.testing._array import assert_array_almost_equal
-from cupy.testing._array import assert_array_almost_equal_nulp
-from cupy.testing._array import assert_array_equal
-from cupy.testing._array import assert_array_less
-from cupy.testing._array import assert_array_list_equal
-from cupy.testing._array import assert_array_max_ulp
-from cupy.testing._attr import multi_gpu
-from cupy.testing._attr import slow
-from cupy.testing._helper import assert_warns
-from cupy.testing._helper import numpy_satisfies
-from cupy.testing._helper import NumpyAliasBasicTestBase
-from cupy.testing._helper import NumpyAliasValuesTestBase
-from cupy.testing._helper import AssertFunctionIsCalled
-from cupy.testing._helper import shaped_arange
-from cupy.testing._helper import shaped_sparse_random
-from cupy.testing._helper import shaped_random
-from cupy.testing._helper import generate_matrix
-from cupy.testing._helper import shaped_reverse_arange
-from cupy.testing._helper import with_requires
-from cupy.testing._helper import installed
-from cupy.testing._loops import for_all_dtypes
-from cupy.testing._loops import for_all_dtypes_combination
-from cupy.testing._loops import for_CF_orders
-from cupy.testing._loops import for_complex_dtypes
-from cupy.testing._loops import for_contiguous_axes
-from cupy.testing._loops import for_dtypes
-from cupy.testing._loops import for_dtypes_combination
-from cupy.testing._loops import for_float_dtypes
-from cupy.testing._loops import for_int_dtypes
-from cupy.testing._loops import for_int_dtypes_combination
-from cupy.testing._loops import for_orders
-from cupy.testing._loops import for_signed_dtypes
-from cupy.testing._loops import for_signed_dtypes_combination
-from cupy.testing._loops import for_unsigned_dtypes
-from cupy.testing._loops import for_unsigned_dtypes_combination
-from cupy.testing._loops import numpy_cupy_allclose
-from cupy.testing._loops import numpy_cupy_array_almost_equal
-from cupy.testing._loops import numpy_cupy_array_almost_equal_nulp
-from cupy.testing._loops import numpy_cupy_array_equal
-from cupy.testing._loops import numpy_cupy_array_less
-from cupy.testing._loops import numpy_cupy_array_list_equal
-from cupy.testing._loops import numpy_cupy_array_max_ulp
-from cupy.testing._loops import numpy_cupy_equal
-from cupy.testing._loops import numpy_cupy_raises
-from cupy.testing._parameterized import parameterize
-from cupy.testing._parameterized import product
-from cupy.testing._parameterized import product_dict
-from cupy.testing._random import fix_random
-from cupy.testing._random import generate_seed
+from cupy.testing._array import (
+    assert_allclose,
+    assert_array_almost_equal,
+    assert_array_almost_equal_nulp,
+    assert_array_equal,
+    assert_array_less,
+    assert_array_list_equal,
+    assert_array_max_ulp,
+)
+from cupy.testing._attr import multi_gpu, slow
+from cupy.testing._helper import (
+    AssertFunctionIsCalled,
+    NumpyAliasBasicTestBase,
+    NumpyAliasValuesTestBase,
+    assert_warns,
+    generate_matrix,
+    installed,
+    numpy_satisfies,
+    shaped_arange,
+    shaped_random,
+    shaped_reverse_arange,
+    shaped_sparse_random,
+    with_requires,
+)
+from cupy.testing._loops import (
+    for_all_dtypes,
+    for_all_dtypes_combination,
+    for_CF_orders,
+    for_complex_dtypes,
+    for_contiguous_axes,
+    for_dtypes,
+    for_dtypes_combination,
+    for_float_dtypes,
+    for_int_dtypes,
+    for_int_dtypes_combination,
+    for_orders,
+    for_signed_dtypes,
+    for_signed_dtypes_combination,
+    for_unsigned_dtypes,
+    for_unsigned_dtypes_combination,
+    numpy_cupy_allclose,
+    numpy_cupy_array_almost_equal,
+    numpy_cupy_array_almost_equal_nulp,
+    numpy_cupy_array_equal,
+    numpy_cupy_array_less,
+    numpy_cupy_array_list_equal,
+    numpy_cupy_array_max_ulp,
+    numpy_cupy_equal,
+    numpy_cupy_raises,
+)
+from cupy.testing._parameterized import parameterize, product, product_dict
+from cupy.testing._random import fix_random, generate_seed

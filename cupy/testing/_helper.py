@@ -1,19 +1,17 @@
 import contextlib
 import inspect
-from typing import Callable
 import unittest
-from unittest import mock
 import warnings
+from typing import Callable
+from unittest import mock
 
 import numpy
 
 import cupy
-from cupy._core import internal
 import cupyx
 import cupyx.scipy.sparse
-
+from cupy._core import internal
 from cupy.testing._pytest_impl import is_available
-
 
 if is_available():
     import pytest

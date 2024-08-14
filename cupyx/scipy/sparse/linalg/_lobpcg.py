@@ -1,8 +1,10 @@
 import warnings
 
 import numpy
+
 import cupy
 import cupy.linalg as linalg
+
 # waiting implementation of the following modules in PR #4172
 # from cupyx.scipy.linalg import (cho_factor, cho_solve)
 from cupyx.scipy.sparse import linalg as splinalg

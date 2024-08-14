@@ -2,6 +2,7 @@ import operator
 from math import prod
 
 import numpy
+
 if numpy.__version__ < '2':
     from numpy.core.multiarray import normalize_axis_index
 else:
@@ -9,11 +10,15 @@ else:
 
 import cupy
 from cupyx.scipy import sparse
-from cupyx.scipy.sparse.linalg import spsolve
 from cupyx.scipy.interpolate._bspline import (
-    _get_dtype, _as_float_array, _get_module_func, INTERVAL_MODULE,
-    D_BOOR_MODULE, BSpline)
-
+    D_BOOR_MODULE,
+    INTERVAL_MODULE,
+    BSpline,
+    _as_float_array,
+    _get_dtype,
+    _get_module_func,
+)
+from cupyx.scipy.sparse.linalg import spsolve
 
 #################################
 #  Interpolating spline helpers #

@@ -2,6 +2,7 @@ import string
 import warnings
 
 import numpy
+
 try:
     import scipy.sparse
     scipy_available = True
@@ -10,17 +11,11 @@ except ImportError:
 
 import cupy
 import cupyx
-
 from cupy import _core
 from cupy._core import _scalar
 from cupy._creation import basic
-from cupyx.scipy.sparse import _base
-from cupyx.scipy.sparse import _coo
+from cupyx.scipy.sparse import _base, _coo, _index, _sputils, _util
 from cupyx.scipy.sparse import _data as sparse_data
-from cupyx.scipy.sparse import _sputils
-from cupyx.scipy.sparse import _util
-
-from cupyx.scipy.sparse import _index
 
 
 class _compressed_sparse_matrix(sparse_data._data_matrix,

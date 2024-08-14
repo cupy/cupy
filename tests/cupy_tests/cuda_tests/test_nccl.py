@@ -2,10 +2,8 @@ import pickle
 import unittest
 
 import cupy
-from cupy import cuda
+from cupy import cuda, testing
 from cupy.cuda import nccl
-from cupy import testing
-
 
 nccl_available = nccl.available
 

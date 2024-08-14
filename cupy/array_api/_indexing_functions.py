@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+import cupy as np
+
 from ._array_object import Array
 from ._dtypes import _integer_dtypes
 
-import cupy as np
 
 def take(x: Array, indices: Array, /, *, axis: int) -> Array:
     """

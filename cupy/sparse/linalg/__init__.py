@@ -3,7 +3,6 @@ import warnings
 
 import cupyx.scipy.sparse.linalg
 
-
 if (3, 7) <= sys.version_info:
     def __getattr__(name):
         if hasattr(cupyx.scipy.sparse.linalg, name):
@@ -14,4 +13,4 @@ if (3, 7) <= sys.version_info:
         raise AttributeError(
             "module 'cupy.sparse.linalg' has no attribute {!r}".format(name))
 else:
-    from cupyx.scipy.sparse.linalg import * # NOQA: F403
+    from cupyx.scipy.sparse.linalg import *  # NOQA: F403

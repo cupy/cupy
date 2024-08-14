@@ -7,7 +7,6 @@ import cupy
 import cupy.cuda.cudnn as libcudnn
 from cupy import testing
 
-
 cudnn_enabled = libcudnn.available
 
 

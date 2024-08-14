@@ -10,8 +10,8 @@ import setuptools.command.build_ext
 
 import cupy_builder
 import cupy_builder.install_build as build
-from cupy_builder._context import Context
 from cupy_builder._compiler import DeviceCompilerUnix, DeviceCompilerWin32
+from cupy_builder._context import Context
 
 
 def filter_files_by_extension(

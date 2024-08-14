@@ -1,9 +1,11 @@
-from cupyx.scipy.fftpack._fft import fft
-from cupyx.scipy.fftpack._fft import fft2
-from cupyx.scipy.fftpack._fft import fftn
-from cupyx.scipy.fftpack._fft import ifft
-from cupyx.scipy.fftpack._fft import ifft2
-from cupyx.scipy.fftpack._fft import ifftn
-from cupyx.scipy.fftpack._fft import irfft
-from cupyx.scipy.fftpack._fft import rfft
-from cupyx.scipy.fftpack._fft import get_fft_plan
+from cupyx.scipy.fftpack._fft import (
+    fft,
+    fft2,
+    fftn,
+    get_fft_plan,
+    ifft,
+    ifft2,
+    ifftn,
+    irfft,
+    rfft,
+)

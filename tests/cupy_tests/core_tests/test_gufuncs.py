@@ -2,7 +2,6 @@ import numpy
 import pytest
 
 import cupy
-
 from cupy import testing
 from cupy._core._gufuncs import _GUFunc
 

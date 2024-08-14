@@ -1,2 +1,1 @@
-from cupy.prof._time_range import time_range
-from cupy.prof._time_range import TimeRangeDecorator
+from cupy.prof._time_range import TimeRangeDecorator, time_range

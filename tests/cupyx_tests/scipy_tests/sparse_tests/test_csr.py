@@ -5,18 +5,18 @@ import warnings
 
 import numpy
 import pytest
+
 try:
     import scipy.sparse
     scipy_available = True
 except ImportError:
     scipy_available = False
 
-from cupy_backends.cuda.api import driver
-from cupy_backends.cuda.api import runtime
 import cupy
-from cupy._core import _accelerator
-from cupy import testing
 import cupyx.cusparse
+from cupy import testing
+from cupy._core import _accelerator
+from cupy_backends.cuda.api import driver, runtime
 from cupyx.scipy import sparse
 
 

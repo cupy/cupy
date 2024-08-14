@@ -1,6 +1,5 @@
 import cupy as cp
 
-
 _log_softmax_kernel = cp._core.ReductionKernel(
     'T x1',
     'T y',

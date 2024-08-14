@@ -1,10 +1,11 @@
 import operator
 
-from numpy.testing import assert_raises
-import cupy as cp
 import pytest
+from numpy.testing import assert_raises
 
-from cupy.array_api import ones, asarray, result_type
+import cupy as cp
+from cupy.array_api import asarray, ones, result_type
+from cupy.array_api._array_object import Array
 from cupy.array_api._dtypes import (
     _all_dtypes,
     _boolean_dtypes,
@@ -17,9 +18,10 @@ from cupy.array_api._dtypes import (
     int32,
     int64,
     uint64,
+)
+from cupy.array_api._dtypes import (
     bool as bool_,
 )
-from cupy.array_api._array_object import Array
 
 
 def test_validate_index():

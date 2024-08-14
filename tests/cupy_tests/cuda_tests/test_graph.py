@@ -1,9 +1,8 @@
 import pytest
 
 import cupy
-from cupy import cuda
-from cupy import testing
 import cupyx
+from cupy import cuda, testing
 
 
 @pytest.mark.skipif(cuda.runtime.is_hip,

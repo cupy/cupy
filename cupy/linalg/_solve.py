@@ -4,11 +4,10 @@ import numpy
 from numpy import linalg
 
 import cupy
+import cupyx
 from cupy._core import internal
 from cupy.cuda import device
-from cupy.linalg import _decomposition
-from cupy.linalg import _util
-import cupyx
+from cupy.linalg import _decomposition, _util
 
 
 def solve(a, b):
@@ -35,8 +34,8 @@ def solve(a, b):
 
     .. seealso:: :func:`numpy.linalg.solve`
     """
-    from cupyx import lapack
     from cupy.cublas import batched_gesv, get_batched_gesv_limit
+    from cupyx import lapack
 
     if a.ndim > 2 and a.shape[-1] <= get_batched_gesv_limit():
         # Note: There is a low performance issue in batched_gesv when matrix is

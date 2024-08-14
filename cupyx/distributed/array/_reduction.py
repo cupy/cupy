@@ -4,10 +4,7 @@ from typing import Any
 from numpy.typing import DTypeLike
 
 import cupy._manipulation.dims as _manipulation_dims
-from cupyx.distributed.array import _array
-from cupyx.distributed.array import _chunk
-from cupyx.distributed.array import _data_transfer
-from cupyx.distributed.array import _modes
+from cupyx.distributed.array import _array, _chunk, _data_transfer, _modes
 
 
 def _execute(

@@ -1,11 +1,9 @@
-import cupy
 import numpy as np
-from cupy._core import internal
-from cupy import _util
-from cupyx.scipy.sparse import _base
-from cupyx.scipy.sparse import _coo
-from cupyx.scipy.sparse import _sputils
 
+import cupy
+from cupy import _util
+from cupy._core import internal
+from cupyx.scipy.sparse import _base, _coo, _sputils
 
 _ufuncs = [
     'arcsin', 'arcsinh', 'arctan', 'arctanh', 'ceil', 'deg2rad', 'expm1',

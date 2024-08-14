@@ -1,5 +1,4 @@
-from ctypes import Structure, c_int, c_byte
-
+from ctypes import Structure, c_byte, c_int
 
 _VALUE_BUFFER_SIZE = 256
 

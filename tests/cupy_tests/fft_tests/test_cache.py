@@ -8,12 +8,10 @@ import pytest
 
 import cupy
 from cupy import testing
-from cupy.cuda import cufft
-from cupy.cuda import device
-from cupy.cuda import runtime
+from cupy.cuda import cufft, device, runtime
 from cupy.fft import config
 
-from .test_fft import (multi_gpu_config, _skip_multi_gpu_bug)
+from .test_fft import _skip_multi_gpu_bug, multi_gpu_config
 
 
 def intercept_stdout(func):

@@ -4,8 +4,8 @@ import numpy
 import pytest
 
 import cupy
-from cupy import testing
 import cupyx.scipy.ndimage  # NOQA
+from cupy import testing
 
 try:
     import scipy.ndimage  # NOQA

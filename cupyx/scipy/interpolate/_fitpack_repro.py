@@ -19,14 +19,17 @@
          p. 165 (1975).
          https://doi.org/10.1016/0771-050X(75)90034-0
 """
-import warnings
 import operator
+import warnings
+
 import cupy
-
 from cupyx.scipy.interpolate import BSpline, make_interp_spline
-
 from cupyx.scipy.interpolate._bspline2 import (
-    fpback, _not_a_knot, _lsq_solve_qr, QR_MODULE, _get_module_func
+    QR_MODULE,
+    _get_module_func,
+    _lsq_solve_qr,
+    _not_a_knot,
+    fpback,
 )
 
 

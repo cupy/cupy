@@ -1,7 +1,7 @@
 import unittest
 
-from cupy import testing
 import cupyx.scipy.special
+from cupy import testing
 
 
 @testing.with_requires('scipy')

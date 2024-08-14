@@ -5,9 +5,8 @@ import unittest
 import pytest
 
 import cupy
+from cupy import cuda, testing
 from cupy._creation import from_data
-from cupy import cuda
-from cupy import testing
 
 
 @testing.parameterize(

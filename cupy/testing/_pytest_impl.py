@@ -3,8 +3,8 @@ import unittest
 import cupy.testing._parameterized
 
 try:
-    import pytest
     import _pytest
+    import pytest
     _error = None
 except ImportError as e:
     pytest = None  # type: ignore

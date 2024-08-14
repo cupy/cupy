@@ -1,7 +1,8 @@
-import cupy
 import operator
+
 import numpy
 
+import cupy
 from cupy._core._dtype import get_dtype
 
 supported_dtypes = [get_dtype(x) for x in
