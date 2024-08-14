@@ -24,8 +24,7 @@ repos:
 -   repo: https://github.com/PyCQA/flake8
     rev: 6.0.0
     hooks:
-    -   id: flake8
-        # use config from setup.cfg
+    # Python checks are ported to ruff
     -   id: flake8
         name: flake8 (cython)
         types: ["cython"]
