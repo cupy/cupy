@@ -173,9 +173,16 @@ class _RuntimeInfo:
 
         # CUDA Extra Include Dirs
         if not is_hip:
-            self.cuda_extra_include_dirs = str(
-                cupy._environment._get_include_dir_from_wheel(
-                    *self.nvrtc_version))
+            try:
+                nvrtc_version = cupy.cuda.nvrtc.getVersion()
+            except Exception:
+                nvrtc_version = None
+            if nvrtc_version is None:
+                self.cuda_extra_include_dirs = '(NVRTC unavailable)'
+            else:
+                self.cuda_extra_include_dirs = str(
+                    cupy._environment._get_include_dir_from_wheel(
+                        *nvrtc_version))
 
         # cuDNN
         if cupy._environment._can_attempt_preload('cudnn'):
