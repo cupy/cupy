@@ -15,6 +15,8 @@ class TestPackageRequirements:
         assert testing.installed('numpy>=1.10,<=2.0')
         assert not testing.installed('numpy>=2.0')
         assert not testing.installed('numpy>1.10,<1.9')
+        # This is a dummy package name that is unlikely to be installed
+        assert not testing.installed('supercalifragilisticexpialidocious')
 
     def test_numpy_satisfies(self):
         assert testing.numpy_satisfies('>1.10')
