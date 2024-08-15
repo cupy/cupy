@@ -337,7 +337,7 @@ cpdef graphExecDestroy(intptr_t graphExec)
 cpdef intptr_t graphInstantiate(intptr_t graph) except? 0
 cpdef graphLaunch(intptr_t graphExec, intptr_t stream)
 cpdef graphUpload(intptr_t graphExec, intptr_t stream)
-cpdef graphDebugDotPrint(intptr_t graph, str output_path, unsigned int flags)
+cpdef graphDebugDotPrint(intptr_t graph, str path, unsigned int flags)
 
 
 ##############################################################################
