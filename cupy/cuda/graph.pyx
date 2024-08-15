@@ -1,5 +1,6 @@
 from cupy_backends.cuda.api cimport runtime
 from cupy_backends.cuda cimport stream as stream_module
+import tempfile
 
 
 cdef class Graph:
@@ -75,11 +76,10 @@ cdef class Graph:
             stream_ptr = stream.ptr
         runtime.graphUpload(self.graphExec, stream_ptr)
 
-    cpdef debug_dot_print(self, str path, unsigned int flags):
-        """Print DOT formatted CUDA graph definition for debugging.
+    cpdef str debug_dot_str(self, unsigned int flags):
+        """Make DOT formatted string of CUDA graph definition for debugging.
 
         Args:
-            path (:class:`str`): Output path for DOT formatted graph file.
             flags (:class:`unsigned int`): Flags to specify information to be included.
 
         .. seealso:: `cudaGraphDebugDotPrint()`_
@@ -88,4 +88,8 @@ cdef class Graph:
             https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__GRAPH.html#group__CUDART__GRAPH_1gbec177c250000405c570dc8c4bde20db
 
         """
-        runtime.graphDebugDotPrint(self.graph, path, flags)
+        with tempfile.NamedTemporaryFile(delete=True) as f:
+            runtime.graphDebugDotPrint(self.graph, f.name, flags)
+            f.seek(0)
+            output = f.read().decode('ascii')
+        return output

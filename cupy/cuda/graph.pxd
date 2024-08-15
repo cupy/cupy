@@ -13,4 +13,4 @@ cdef class Graph:
 
     cpdef launch(self, stream=*)
     cpdef upload(self, stream=*)
-    cpdef debug_dot_print(self, str, unsigned int)
+    cpdef str debug_dot_str(self, unsigned int)
