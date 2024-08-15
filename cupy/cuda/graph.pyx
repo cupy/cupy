@@ -11,11 +11,7 @@ cdef class Graph:
     """
 
     cdef void _init(self, intptr_t graph, intptr_t graphExec) except*:
-        if graph > 0:
-            # at this point cudaGraphExec_t has been instantiated, so we no
-            # longer need to hold the cudaGraph_t
-            runtime.graphDestroy(graph)
-        self.graph = 0
+        self.graph = graph
         self.graphExec = graphExec
 
     def __dealloc__(self):
@@ -78,3 +74,18 @@ cdef class Graph:
         else:
             stream_ptr = stream.ptr
         runtime.graphUpload(self.graphExec, stream_ptr)
+
+    cpdef debug_dot_print(self, str path, unsigned int flags):
+        """Print DOT formatted CUDA graph definition for debugging.
+
+        Args:
+            path (:class:`str`): Output path for DOT formatted graph file.
+            flags (:class:`unsigned int`): Flags to specify information to be included.
+
+        .. seealso:: `cudaGraphDebugDotPrint()`_
+
+        .. _cudaGraphDebugDotPrint():
+            https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__GRAPH.html#group__CUDART__GRAPH_1gbec177c250000405c570dc8c4bde20db
+
+        """
+        runtime.graphDebugDotPrint(self.graph, path, flags)
