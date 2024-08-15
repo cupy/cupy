@@ -138,17 +138,17 @@ cpdef enum:
     memoryTypeManaged = 3
 
     # cudaGraphDebugDotFlags
-    graphDebugDotFlagsVerbose = 1<<0
-    graphDebugDotFlagsKernelNodeParams = 1<<2
-    graphDebugDotFlagsMemcpyNodeParams = 1<<3
-    graphDebugDotFlagsMemsetNodeParams = 1<<4
-    graphDebugDotFlagsHostNodeParams = 1<<5
-    graphDebugDotFlagsEventNodeParams = 1<<6
-    graphDebugDotFlagsExtSemasSignalNodeParams = 1<<7
-    graphDebugDotFlagsExtSemasWaitNodeParams = 1<<8
-    graphDebugDotFlagsKernelNodeAttributes = 1<<9
-    graphDebugDotFlagsHandles = 1<<10
-    graphDebugDotFlagsConditionalNodeParams = 1<<15
+    cudaGraphDebugDotFlagsVerbose = 1<<0
+    cudaGraphDebugDotFlagsKernelNodeParams = 1<<2
+    cudaGraphDebugDotFlagsMemcpyNodeParams = 1<<3
+    cudaGraphDebugDotFlagsMemsetNodeParams = 1<<4
+    cudaGraphDebugDotFlagsHostNodeParams = 1<<5
+    cudaGraphDebugDotFlagsEventNodeParams = 1<<6
+    cudaGraphDebugDotFlagsExtSemasSignalNodeParams = 1<<7
+    cudaGraphDebugDotFlagsExtSemasWaitNodeParams = 1<<8
+    cudaGraphDebugDotFlagsKernelNodeAttributes = 1<<9
+    cudaGraphDebugDotFlagsHandles = 1<<10
+    cudaGraphDebugDotFlagsConditionalNodeParams = 1<<15
 
 ###############################################################################
 # Constants
