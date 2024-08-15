@@ -45,6 +45,7 @@ extras_require = {
     'test': [
         # 4.2 <= pytest < 6.2 is slow collecting tests and times out on CI.
         # pytest < 7.2 has some different behavior that makes our CI fail
+        'packaging',
         'pytest>=7.2',
         'hypothesis>=6.37.2,<6.55.0',
         'mpmath'
