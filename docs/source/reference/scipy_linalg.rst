@@ -12,8 +12,6 @@ Basics
    :toctree: generated/
 
    solve_triangular
-   tril
-   triu
 
 
 Matrix Functions
@@ -56,4 +54,3 @@ Special Matrices
    kron
    leslie
    toeplitz
-   tri
