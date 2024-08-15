@@ -90,6 +90,5 @@ cdef class Graph:
         """
         with tempfile.NamedTemporaryFile(delete=True) as f:
             runtime.graphDebugDotPrint(self.graph, f.name, flags)
-            f.seek(0)
             output = f.read().decode('ascii')
         return output
