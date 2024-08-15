@@ -137,6 +137,18 @@ cpdef enum:
     memoryTypeDevice = 2
     memoryTypeManaged = 3
 
+    # cudaGraphDebugDotFlags
+    graphDebugDotFlagsVerbose = 1<<0
+    graphDebugDotFlagsKernelNodeParams = 1<<2
+    graphDebugDotFlagsMemcpyNodeParams = 1<<3
+    graphDebugDotFlagsMemsetNodeParams = 1<<4
+    graphDebugDotFlagsHostNodeParams = 1<<5
+    graphDebugDotFlagsEventNodeParams = 1<<6
+    graphDebugDotFlagsExtSemasSignalNodeParams = 1<<7
+    graphDebugDotFlagsExtSemasWaitNodeParams = 1<<8
+    graphDebugDotFlagsKernelNodeAttributes = 1<<9
+    graphDebugDotFlagsHandles = 1<<10
+    graphDebugDotFlagsConditionalNodeParams = 1<<15
 
 ###############################################################################
 # Constants
