@@ -94,6 +94,18 @@ cpdef enum:
     # cudaMemLocationType
     cudaMemLocationTypeDevice = 1
 
+    # cudaGraphDebugDotFlags
+    cudaGraphDebugDotFlagsVerbose = 1<<0
+    cudaGraphDebugDotFlagsKernelNodeParams = 1<<2
+    cudaGraphDebugDotFlagsMemcpyNodeParams = 1<<3
+    cudaGraphDebugDotFlagsMemsetNodeParams = 1<<4
+    cudaGraphDebugDotFlagsHostNodeParams = 1<<5
+    cudaGraphDebugDotFlagsEventNodeParams = 1<<6
+    cudaGraphDebugDotFlagsExtSemasSignalNodeParams = 1<<7
+    cudaGraphDebugDotFlagsExtSemasWaitNodeParams = 1<<8
+    cudaGraphDebugDotFlagsKernelNodeAttributes = 1<<9
+    cudaGraphDebugDotFlagsHandles = 1<<10
+    cudaGraphDebugDotFlagsConditionalNodeParams = 1<<15
 
 # This was a legacy mistake: the prefix "cuda" should have been removed
 # so that we can directly assign their C counterparts here. Now because
