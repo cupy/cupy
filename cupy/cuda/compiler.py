@@ -10,13 +10,14 @@ import sys
 import tempfile
 import warnings
 
-from cupy import _util
 from cupy.cuda import device, function, get_rocm_path
 from cupy_backends.cuda.api import driver, runtime
 from cupy_backends.cuda.libs import nvrtc
 
 _cuda_hip_version = driver.get_build_version()
 
+# Deferred import
+from cupy import _util
 
 _nvrtc_version = None
 _win32 = sys.platform.startswith("win32")
