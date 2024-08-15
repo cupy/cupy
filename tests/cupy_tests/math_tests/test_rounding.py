@@ -38,7 +38,8 @@ class TestRounding(unittest.TestCase):
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(atol=1e-5)
     def check_unary_negative_complex(self, name, xp, dtype):
-        a = xp.array([-3-3j, -2-2j, -1-1j, 1+1j, 2+2j, 3+3j], dtype=dtype)
+        a = xp.array([-3 - 3j, -2 - 2j, -1 - 1j, 1 +
+                     1j, 2 + 2j, 3 + 3j], dtype=dtype)
         return getattr(xp, name)(a)
 
     def test_rint(self):

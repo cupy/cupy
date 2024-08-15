@@ -570,7 +570,7 @@ def svd(a, full_matrices=True, compute_uv=True):
         # https://docs.nvidia.com/cuda/cusolver/index.html#cuSolverDN-lt-t-gt-gesvd  # noqa
         rwork_ptr = 0
     else:
-        rwork = cupy.empty(min(m, n)-1, dtype=s_dtype)
+        rwork = cupy.empty(min(m, n) - 1, dtype=s_dtype)
         rwork_ptr = rwork.data.ptr
     gesvd(
         handle, job_u, job_vt, m, n, x.data.ptr, m, s.data.ptr, u_ptr, m,

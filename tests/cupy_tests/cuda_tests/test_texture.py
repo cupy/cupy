@@ -35,9 +35,9 @@ class TestCUDAarray:
         n_channel = self.n_channels
 
         dim = 3 if depth != 0 else 2 if height != 0 else 1
-        shape = (depth, height, n_channel*width) if dim == 3 else \
-                (height, n_channel*width) if dim == 2 else \
-                (n_channel*width,)
+        shape = (depth, height, n_channel * width) if dim == 3 else \
+                (height, n_channel * width) if dim == 2 else \
+                (n_channel * width,)
 
         # generate input data and allocate output buffer
         if self.dtype in (numpy.float16, numpy.float32):
@@ -60,12 +60,12 @@ class TestCUDAarray:
             width = arr.shape[-1] // n_channel
             assert not arr.flags.c_contiguous
             assert arr2.flags.c_contiguous
-            assert arr.shape[-1] == n_channel*width
+            assert arr.shape[-1] == n_channel * width
 
         # create a CUDA array
         ch_bits = [0, 0, 0, 0]
         for i in range(n_channel):
-            ch_bits[i] = arr.dtype.itemsize*8
+            ch_bits[i] = arr.dtype.itemsize * 8
         ch = ChannelFormatDescriptor(*ch_bits, kind)
         cu_arr = CUDAarray(ch, width, height, depth)
 
@@ -213,7 +213,7 @@ class TestTexture:
             res = ResourceDescriptor(runtime.cudaResourceTypeLinear,
                                      arr=arr,
                                      chDesc=ch,
-                                     sizeInBytes=arr.size*arr.dtype.itemsize)
+                                     sizeInBytes=arr.size * arr.dtype.itemsize)
         else:  # pitch2D
             # In this case, we rely on the fact that the hand-picked array
             # shape meets the alignment requirement. This is CUDA's limitation,
@@ -224,7 +224,7 @@ class TestTexture:
                                      chDesc=ch,
                                      width=width,
                                      height=height,
-                                     pitchInBytes=width*arr.dtype.itemsize)
+                                     pitchInBytes=width * arr.dtype.itemsize)
         address_mode = (runtime.cudaAddressModeClamp,
                         runtime.cudaAddressModeClamp)
         tex = TextureDescriptor(address_mode, runtime.cudaFilterModePoint,
@@ -248,15 +248,15 @@ class TestTexture:
         if self.target == "object":
             args = args + (texobj,)
         if dim >= 1:
-            grid_x = (width + block[0] - 1)//block[0]
+            grid_x = (width + block[0] - 1) // block[0]
             grid = grid + (grid_x,)
             args = args + (width,)
         if dim >= 2:
-            grid_y = (height + block[1] - 1)//block[1]
+            grid_y = (height + block[1] - 1) // block[1]
             grid = grid + (grid_y,)
             args = args + (height,)
         if dim == 3:
-            grid_z = (depth + block[2] - 1)//block[2]
+            grid_z = (depth + block[2] - 1) // block[2]
             grid = grid + (grid_z,)
             args = args + (depth,)
         ker(grid, block, args)
@@ -276,7 +276,7 @@ class TestTextureVectorType:
         n_channel = 4
 
         # generate input data and allocate output buffer
-        in_shape = (depth, height, n_channel*width)
+        in_shape = (depth, height, n_channel * width)
         out_shape = (depth, height, width)
 
         # prepare input, output, and texture memory
@@ -308,9 +308,9 @@ class TestTextureVectorType:
         ker_name = "copyKernel3D_4ch"
         ker = mod.get_function(ker_name)
         block = (4, 4, 2)
-        grid = ((width + block[0] - 1)//block[0],
-                (height + block[1] - 1)//block[1],
-                (depth + block[2] - 1)//block[2])
+        grid = ((width + block[0] - 1) // block[0],
+                (height + block[1] - 1) // block[1],
+                (depth + block[2] - 1) // block[2])
         args = (real_output_x, real_output_y, real_output_z, real_output_w)
         if self.target == "object":
             args = args + (texobj,)
@@ -412,15 +412,15 @@ class TestSurface:
         grid = ()
         args = (surfobj,)
         if dim >= 1:
-            grid_x = (width + block[0] - 1)//block[0]
+            grid_x = (width + block[0] - 1) // block[0]
             grid = grid + (grid_x,)
             args = args + (width,)
         if dim >= 2:
-            grid_y = (height + block[1] - 1)//block[1]
+            grid_y = (height + block[1] - 1) // block[1]
             grid = grid + (grid_y,)
             args = args + (height,)
         if dim == 3:
-            grid_z = (depth + block[2] - 1)//block[2]
+            grid_z = (depth + block[2] - 1) // block[2]
             grid = grid + (grid_z,)
             args = args + (depth,)
         ker(grid, block, args)

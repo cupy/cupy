@@ -330,8 +330,8 @@ class TestCooMatrixInit:
                 assert s.data[i] == d[s.row[i], s.col[i]]
                 if i == 0:
                     continue
-                assert ((s.row[i-1] < s.row[i]) or
-                        (s.row[i-1] == s.row[i] and s.col[i-1] < s.col[i]))
+                assert ((s.row[i - 1] < s.row[i]) or
+                        (s.row[i - 1] == s.row[i] and s.col[i - 1] < s.col[i]))
             assert s.has_canonical_format
 
     def test_invalid_format(self):
@@ -1146,13 +1146,13 @@ class TestCooMatrixDiagonal:
     def test_diagonal(self, dtype):
         scipy_a, cupyx_a = self._make_matrix(dtype)
         m, n = self.shape
-        for k in range(-m, n+1):
+        for k in range(-m, n + 1):
             scipy_diag = scipy_a.diagonal(k=k)
             cupyx_diag = cupyx_a.diagonal(k=k)
             testing.assert_allclose(scipy_diag, cupyx_diag)
         scipy_a.has_canonical_format = False
         cupyx_a.has_canonical_format = False
-        for k in range(-m, n+1):
+        for k in range(-m, n + 1):
             scipy_diag = scipy_a.diagonal(k=k)
             cupyx_diag = cupyx_a.diagonal(k=k)
             testing.assert_allclose(scipy_diag, cupyx_diag)
@@ -1170,7 +1170,7 @@ class TestCooMatrixDiagonal:
     def test_setdiag(self, dtype):
         scipy_a, cupyx_a = self._make_matrix(dtype)
         m, n = self.shape
-        for k in range(-m+1, n):
+        for k in range(-m + 1, n):
             m_st, n_st = max(0, -k), max(0, k)
             for d in (-1, 0, 1):
                 x_len = min(m - m_st, n - n_st) + d
@@ -1184,7 +1184,7 @@ class TestCooMatrixDiagonal:
         scipy_a, cupyx_a = self._make_matrix(dtype)
         x = numpy.array(1.0, dtype=dtype)
         m, n = self.shape
-        for k in range(-m+1, n):
+        for k in range(-m + 1, n):
             self._test_setdiag(scipy_a, cupyx_a, x, k)
 
     def test_setdiag_invalid(self):

@@ -65,5 +65,5 @@ class TestDigamma(unittest.TestCase):
         x = xp.linspace(-20, 20, 12, dtype=dtype)
         y = xp.linspace(-20, 20, 12, dtype=dtype)
         x, y = xp.meshgrid(x, y)
-        z = (x + y*1j).ravel()
+        z = (x + y * 1j).ravel()
         return scp.special.digamma(z)

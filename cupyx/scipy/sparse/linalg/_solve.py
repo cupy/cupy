@@ -353,8 +353,8 @@ def lsmr(A, b, x0=None, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8,
         else:
             test2 = numpy.inf
         test3 = 1 / condA
-        t1 = test1 / (1 + normA*normx/normb)
-        rtol = btol + atol*normA*normx/normb
+        t1 = test1 / (1 + normA * normx / normb)
+        rtol = btol + atol * normA * normx / normb
 
         # The following tests guard against extremely small values of
         # atol, btol or ctol.  (The user may have set any or all of
@@ -785,12 +785,12 @@ def _symOrtho(a, b):
         return 0, numpy.sign(b), abs(b)
     elif abs(b) > abs(a):
         tau = a / b
-        s = numpy.sign(b) / numpy.sqrt(1+tau*tau)
+        s = numpy.sign(b) / numpy.sqrt(1 + tau * tau)
         c = s * tau
         r = b / s
     else:
         tau = b / a
-        c = numpy.sign(a) / numpy.sqrt(1+tau*tau)
+        c = numpy.sign(a) / numpy.sqrt(1 + tau * tau)
         s = c * tau
         r = a / c
     return c, s, r

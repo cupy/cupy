@@ -173,8 +173,8 @@ def _create_toeplitz_matrix(c, r, hankel=False):
     vals = cupy.concatenate((c, r))
     n = vals.strides[0]
     return cupy.lib.stride_tricks.as_strided(
-        vals if hankel else vals[c.size-1:],
-        shape=(c.size, r.size+1),
+        vals if hankel else vals[c.size - 1:],
+        shape=(c.size, r.size + 1),
         strides=(n if hankel else -n, n)).copy()
 
 
@@ -369,7 +369,7 @@ def helmert(n, full=False):
     d = cupy.arange(n)
     H = cupy.tri(n, n, -1)
     H.diagonal()[:] -= d
-    d *= cupy.arange(1, n+1)
+    d *= cupy.arange(1, n + 1)
     H[0] = 1
     d[0] = n
     H /= cupy.sqrt(d)[:, None]
@@ -390,9 +390,9 @@ def hilbert(n):
 
     .. seealso:: :func:`scipy.linalg.hilbert`
     """
-    values = cupy.arange(1, 2*n, dtype=cupy.float64)
+    values = cupy.arange(1, 2 * n, dtype=cupy.float64)
     cupy.reciprocal(values, values)
-    return hankel(values[:n], r=values[n-1:])
+    return hankel(values[:n], r=values[n - 1:])
 
 
 # TODO: invhilbert(n, exact=False)
@@ -431,11 +431,11 @@ def dft(n, scale=None):
         raise ValueError("scale must be None, 'sqrtn', or 'n'; "
                          "%r is not valid." % (scale,))
     r = cupy.arange(n, dtype="complex128")
-    r *= -2j*cupy.pi/n
+    r *= -2j * cupy.pi / n
     omegas = cupy.exp(r, out=r)[:, None]
     m = omegas ** cupy.arange(n)
     if scale is not None:
-        m *= (1/math.sqrt(n)) if scale == "sqrtn" else (1/n)
+        m *= (1 / math.sqrt(n)) if scale == "sqrtn" else (1 / n)
     return m
 
 
@@ -499,12 +499,12 @@ def fiedler_companion(a):
     if a.size < 2:
         return cupy.zeros((0,), a.dtype)
     if a.size == 2:
-        return (-a[1]/a[0])[None, None]
+        return (-a[1] / a[0])[None, None]
     # Following check requires device-to-host synchronization so will we not
     # raise an error this situation
     # if a[0] == 0.:
     #     raise ValueError('Leading coefficient is zero.')
-    a = a/a[0]
+    a = a / a[0]
     n = a.size - 1
     c = cupy.zeros((n, n), dtype=a.dtype)
     # subdiagonals
@@ -559,19 +559,19 @@ def convolution_matrix(a, n, mode="full"):
             "`mode` argument must be one of ('full', 'valid', 'same')")
 
     # create zero padded versions of the array
-    az = cupy.pad(a, (0, n-1), "constant")
-    raz = cupy.pad(a[::-1], (0, n-1), "constant")
+    az = cupy.pad(a, (0, n - 1), "constant")
+    raz = cupy.pad(a[::-1], (0, n - 1), "constant")
     if mode == "same":
         trim = min(n, a.size) - 1
-        tb = trim//2
+        tb = trim // 2
         te = trim - tb
-        col0 = az[tb:az.size-te]
-        row0 = raz[-n-tb:raz.size-tb]
+        col0 = az[tb:az.size - te]
+        row0 = raz[-n - tb:raz.size - tb]
     elif mode == "valid":
         tb = min(n, a.size) - 1
         te = tb
-        col0 = az[tb:az.size-te]
-        row0 = raz[-n-tb:raz.size-tb]
+        col0 = az[tb:az.size - te]
+        row0 = raz[-n - tb:raz.size - tb]
     else:  # 'full'
         col0 = az
         row0 = raz[-n:]

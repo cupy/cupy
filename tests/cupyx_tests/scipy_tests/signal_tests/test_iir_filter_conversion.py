@@ -17,7 +17,7 @@ class TestBilinear_zpk:
     @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_basic(self, xp, scp):
         z = [-2j, +2j]
-        p = [-0.75, -0.5-0.5j, -0.5+0.5j]
+        p = [-0.75, -0.5 - 0.5j, -0.5 + 0.5j]
         k = 3
 
         z_d, p_d, k_d = scp.signal.bilinear_zpk(z, p, k, 10)
@@ -140,7 +140,7 @@ class TestLp2hp:
     def test_basic(self, xp, scp):
         b = [0.25059432325190018]
         a = [1, 0.59724041654134863, 0.92834805757524175, 0.25059432325190018]
-        b_hp, a_hp = scp.signal.lp2hp(b, a, 2*pi*5000)
+        b_hp, a_hp = scp.signal.lp2hp(b, a, 2 * pi * 5000)
         return b_hp, a_hp
 
 
@@ -151,7 +151,7 @@ class TestLp2bp:
     def test_basic(self, xp, scp):
         b = [1]
         a = [1, 2, 2, 1]
-        b_bp, a_bp = scp.signal.lp2bp(b, a, 2*pi*4000, 2*pi*2000)
+        b_bp, a_bp = scp.signal.lp2bp(b, a, 2 * pi * 4000, 2 * pi * 2000)
         return b_bp, a_bp
 
 
@@ -173,7 +173,7 @@ class TestLp2lp_zpk:
     @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_basic(self, xp, scp):
         z = []
-        p = [(-1+1j) / sqrt(2), (-1-1j) / sqrt(2)]
+        p = [(-1 + 1j) / sqrt(2), (-1 - 1j) / sqrt(2)]
         k = 1
         z_lp, p_lp, k_lp = scp.signal.lp2lp_zpk(z, p, k, 5)
         return z_lp, p_lp, k_lp
@@ -183,7 +183,7 @@ class TestLp2lp_zpk:
 
         # Pseudo-Chebyshev with both poles and zeros
         z = [-2j, +2j]
-        p = [-0.75, -0.5-0.5j, -0.5+0.5j]
+        p = [-0.75, -0.5 - 0.5j, -0.5 + 0.5j]
         k = 3
         z_lp, p_lp, k_lp = scp.signal.lp2lp_zpk(z, p, k, 20)
         return z_lp, p_lp, k_lp
@@ -195,7 +195,7 @@ class TestLp2hp_zpk:
     @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_basic(self, xp, scp):
         z = []
-        p = [(-1+1j)/np.sqrt(2), (-1-1j)/np.sqrt(2)]
+        p = [(-1 + 1j) / np.sqrt(2), (-1 - 1j) / np.sqrt(2)]
         k = 1
 
         z_hp, p_hp, k_hp = scp.signal.lp2hp_zpk(z, p, k, 5)
@@ -204,7 +204,7 @@ class TestLp2hp_zpk:
     @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_basic_2(self, xp, scp):
         z = [-2j, +2j]
-        p = [-0.75, -0.5-0.5j, -0.5+0.5j]
+        p = [-0.75, -0.5 - 0.5j, -0.5 + 0.5j]
         k = 3
         z_hp, p_hp, k_hp = scp.signal.lp2hp_zpk(z, p, k, 6)
         return z_hp, p_hp, k_hp
@@ -216,7 +216,7 @@ class TestLp2bp_zpk:
     @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_basic(self, xp, scp):
         z = [-2j, +2j]
-        p = [-0.75, -0.5-0.5j, -0.5+0.5j]
+        p = [-0.75, -0.5 - 0.5j, -0.5 + 0.5j]
         k = 3
         z_bp, p_bp, k_bp = scp.signal.lp2bp_zpk(z, p, k, 15, 8)
         return z_bp, p_bp, k_bp
@@ -228,7 +228,7 @@ class TestLp2bs_zpk:
     @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_basic(self, xp, scp):
         z = [-2j, +2j]
-        p = [-0.75, -0.5-0.5j, -0.5+0.5j]
+        p = [-0.75, -0.5 - 0.5j, -0.5 + 0.5j]
         k = 3
 
         z_bs, p_bs, k_bs = scp.signal.lp2bs_zpk(z, p, k, 35, 12)
@@ -262,10 +262,10 @@ class TestZpk2Sos:
         # cases that match octave
         ([-1, -1], [0.57149 + 0.29360j, 0.57149 - 0.29360j], 1),
         ([1j, -1j], [0.9, -0.9, 0.7j, -0.7j], 1),
-        ([], [0.8, -0.5+0.25j, -0.5-0.25j], 1),
+        ([], [0.8, -0.5 + 0.25j, -0.5 - 0.25j], 1),
         ([1., 1., 0.9j, -0.9j],
-         [0.99+0.01j, 0.99-0.01j, 0.1+0.9j, 0.1-0.9j], 1),
-        ([0.9+0.1j, 0.9-0.1j, -0.9], [0.75+0.25j, 0.75-0.25j, 0.9], 1),
+         [0.99 + 0.01j, 0.99 - 0.01j, 0.1 + 0.9j, 0.1 - 0.9j], 1),
+        ([0.9 + 0.1j, 0.9 - 0.1j, -0.9], [0.75 + 0.25j, 0.75 - 0.25j, 0.9], 1),
         # Cases that differ from octave:
         ([-0.3090 + 0.9511j, -0.3090 - 0.9511j, 0.8090 + 0.5878j,
           +0.8090 - 0.5878j, -1.0000 + 0.0000j],
@@ -275,7 +275,7 @@ class TestZpk2Sos:
         ([-1 - 1.4142j, -1 + 1.4142j, -0.625 - 1.0533j, -0.625 + 1.0533j],
          [-0.2 - 0.6782j, -0.2 + 0.6782j, -0.1 - 0.5385j, -0.1 + 0.5385j],
          4),
-        ([], [0.2, -0.5+0.25j, -0.5-0.25j], 1.),
+        ([], [0.2, -0.5 + 0.25j, -0.5 - 0.25j], 1.),
 
     ])
     @pytest.mark.parametrize("pairing", ["nearest", "keep_odd"])
@@ -317,14 +317,14 @@ class TestZpk2Sos:
     def test_pairing(self, pairing, xp, scp):
         # these examples are taken from the docstring, and show the
         # effect of the 'pairing' argument
-        z1 = xp.array([-1, -0.5-0.5j, -0.5+0.5j])
-        p1 = xp.array([0.75, 0.8+0.1j, 0.8-0.1j])
+        z1 = xp.array([-1, -0.5 - 0.5j, -0.5 + 0.5j])
+        p1 = xp.array([0.75, 0.8 + 0.1j, 0.8 - 0.1j])
         sos2 = scp.signal.zpk2sos(z1, p1, 1, pairing=pairing)
         return sos2
 
     @pytest.mark.parametrize("p",
                              [[-1, 1, -0.1, 0.1],
-                              [-0.7071+0.7071j, -0.7071-0.7071j, -0.1j, 0.1j],
+                              [-0.7071 + 0.7071j, -0.7071 - 0.7071j, -0.1j, 0.1j],
                               ])
     @testing.numpy_cupy_allclose(scipy_name="scp", atol=1e-12)
     def test_analog(self, p, xp, scp):
@@ -556,40 +556,40 @@ class TestCplxReal:
 
         eps = cupy.finfo(float).eps  # spacing(1)
 
-        a = [0+1j, 0-1j, eps + 1j, eps - 1j, -eps + 1j, -eps - 1j,
+        a = [0 + 1j, 0 - 1j, eps + 1j, eps - 1j, -eps + 1j, -eps - 1j,
              1, 4, 2, 3, 0, 0,
-             2+3j, 2-3j,
-             1-eps + 1j, 1+2j, 1-2j, 1+eps - 1j,  # sorts out of order
-             3+1j, 3+1j, 3+1j, 3-1j, 3-1j, 3-1j,
-             2-3j, 2+3j]
+             2 + 3j, 2 - 3j,
+             1 - eps + 1j, 1 + 2j, 1 - 2j, 1 + eps - 1j,  # sorts out of order
+             3 + 1j, 3 + 1j, 3 + 1j, 3 - 1j, 3 - 1j, 3 - 1j,
+             2 - 3j, 2 + 3j]
         a = cupy.array(a)
         zc, zr = _cplxreal(a)
-        testing.assert_allclose(zc, [1j, 1j, 1j, 1+1j, 1+2j, 2+3j, 2+3j, 3+1j,
-                                     3+1j, 3+1j])
+        testing.assert_allclose(zc, [1j, 1j, 1j, 1 + 1j, 1 + 2j, 2 + 3j, 2 + 3j, 3 + 1j,
+                                     3 + 1j, 3 + 1j])
         testing.assert_allclose(zr, [0, 0, 1, 2, 3, 4])
 
-        z = cupy.array([1-eps + 1j, 1+2j, 1-2j, 1+eps - 1j, 1+eps+3j,
-                        1-2*eps-3j, 0+1j, 0-1j, 2+4j, 2-4j, 2+3j, 2-3j, 3+7j,
-                        3-7j, 4-eps+1j, 4+eps-2j, 4-1j, 4-eps+2j])
+        z = cupy.array([1 - eps + 1j, 1 + 2j, 1 - 2j, 1 + eps - 1j, 1 + eps + 3j,
+                        1 - 2 * eps - 3j, 0 + 1j, 0 - 1j, 2 + 4j, 2 - 4j, 2 + 3j, 2 - 3j, 3 + 7j,
+                        3 - 7j, 4 - eps + 1j, 4 + eps - 2j, 4 - 1j, 4 - eps + 2j])
 
         zc, zr = _cplxreal(z)
-        testing.assert_allclose(zc, [1j, 1+1j, 1+2j, 1+3j, 2+3j, 2+4j, 3+7j,
-                                     4+1j, 4+2j])
+        testing.assert_allclose(zc, [1j, 1 + 1j, 1 + 2j, 1 + 3j, 2 + 3j, 2 + 4j, 3 + 7j,
+                                     4 + 1j, 4 + 2j])
         assert zr.size == 0
 
     def test_unmatched_conjugates(self):
         # 1+2j is unmatched
-        assert_raises(ValueError, _cplxreal, [1+3j, 1-3j, 1+2j])
+        assert_raises(ValueError, _cplxreal, [1 + 3j, 1 - 3j, 1 + 2j])
 
         # 1+2j and 1-3j are unmatched
-        assert_raises(ValueError, _cplxreal, [1+3j, 1-3j, 1+2j, 1-3j])
+        assert_raises(ValueError, _cplxreal, [1 + 3j, 1 - 3j, 1 + 2j, 1 - 3j])
 
         # 1+3j is unmatched
-        assert_raises(ValueError, _cplxreal, [1+3j, 1-3j, 1+3j])
+        assert_raises(ValueError, _cplxreal, [1 + 3j, 1 - 3j, 1 + 3j])
 
         # No pairs
-        assert_raises(ValueError, _cplxreal, [1+3j])
-        assert_raises(ValueError, _cplxreal, [1-3j])
+        assert_raises(ValueError, _cplxreal, [1 + 3j])
+        assert_raises(ValueError, _cplxreal, [1 - 3j])
 
     def test_real_integer_input(self):
         zc, zr = _cplxreal([2, 0, 1, 4])

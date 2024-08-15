@@ -592,7 +592,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         _index._insert_many_populate_arrays(
             indices_inserts, data_inserts, new_indptr_lookup,
             self.indptr, self.indices, self.data, new_indptr, new_indices,
-            new_data, size=self.indptr.size-1)
+            new_data, size=self.indptr.size - 1)
 
         self.indptr = new_indptr
         self.indices = new_indices
@@ -627,13 +627,13 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
         rows, ui_indptr = cupy.unique(indptr_inserts, return_index=True)
 
-        to_add = cupy.empty(ui_indptr.size+1, ui_indptr.dtype)
+        to_add = cupy.empty(ui_indptr.size + 1, ui_indptr.dtype)
         to_add[-1] = j.size
         to_add[:-1] = ui_indptr
         ui_indptr = to_add
 
         # Compute the counts for each row in the insertion array
-        row_counts = cupy.zeros(ui_indptr.size-1, dtype=idx_dtype)
+        row_counts = cupy.zeros(ui_indptr.size - 1, dtype=idx_dtype)
         cupy.add.at(row_counts, cupy.searchsorted(rows, indptr_inserts), 1)
 
         self._perform_insert(indices_inserts, data_inserts,
@@ -667,7 +667,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             self._has_canonical_format = False
         elif not hasattr(self, "_has_canonical_format"):
             is_canonical = self._has_canonical_format_kern(
-                self.indptr, self.indices, size=self.indptr.size-1)
+                self.indptr, self.indices, size=self.indptr.size - 1)
             self._has_canonical_format = bool(is_canonical.all())
         return self._has_canonical_format
 
@@ -702,7 +702,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         # check to see if result was cached
         elif not hasattr(self, "_has_sorted_indices"):
             is_sorted = self._has_sorted_indices_kern(
-                self.indptr, self.indices, size=self.indptr.size-1)
+                self.indptr, self.indices, size=self.indptr.size - 1)
             self._has_sorted_indices = bool(is_sorted.all())
         return self._has_sorted_indices
 

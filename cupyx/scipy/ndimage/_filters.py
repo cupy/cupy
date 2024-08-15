@@ -378,7 +378,7 @@ def _gaussian_kernel1d(sigma, order, radius, dtype=cupy.float64):
     if order < 0:
         raise ValueError("order must be non-negative")
     sigma2 = sigma * sigma
-    x = numpy.arange(-radius, radius+1)
+    x = numpy.arange(-radius, radius + 1)
     phi_x = numpy.exp(-0.5 / sigma2 * x ** 2)
     phi_x /= phi_x.sum()
 
@@ -394,7 +394,7 @@ def _gaussian_kernel1d(sigma, order, radius, dtype=cupy.float64):
     q = numpy.zeros(order + 1)
     q[0] = 1
     D = numpy.diag(exponent_range[1:], 1)  # D @ q(x) = q'(x)
-    P = numpy.diag(numpy.ones(order)/-sigma2, -1)  # P @ q(x) = q(x) * p'(x)
+    P = numpy.diag(numpy.ones(order) / -sigma2, -1)  # P @ q(x) = q(x) * p'(x)
     Q_deriv = D + P
     for _ in range(order):
         q = Q_deriv.dot(q)
@@ -932,7 +932,7 @@ def rank_filter(input, rank, size=None, footprint=None, output=None,
     .. seealso:: :func:`scipy.ndimage.rank_filter`
     """
     rank = int(rank)
-    return _rank_filter(input, lambda fs: rank+fs if rank < 0 else rank,
+    return _rank_filter(input, lambda fs: rank + fs if rank < 0 else rank,
                         size, footprint, output, mode, cval, origin)
 
 
@@ -965,7 +965,7 @@ def median_filter(input, size=None, footprint=None, output=None,
 
     .. seealso:: :func:`scipy.ndimage.median_filter`
     """
-    return _rank_filter(input, lambda fs: fs//2,
+    return _rank_filter(input, lambda fs: fs // 2,
                         size, footprint, output, mode, cval, origin)
 
 
@@ -1064,7 +1064,7 @@ __device__ void sort(X *array, int size) {{
 def _get_shell_gap(filter_size):
     gap = 1
     while gap < filter_size:
-        gap = 3*gap+1
+        gap = 3 * gap + 1
     return gap
 
 
@@ -1253,5 +1253,5 @@ def generic_filter1d(input, function, filter_size, axis=-1, output=None,
     data = cupy.array(
         (axis, input.ndim) + input.shape + input.strides + output.strides,
         dtype=cupy.int32 if int_type == "int" else cupy.int64)
-    kernel(((n_lines+128-1) // 128,), (128,), (input, output, data))
+    kernel(((n_lines + 128 - 1) // 128,), (128,), (input, output, data))
     return output

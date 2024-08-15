@@ -129,7 +129,7 @@ def _try_use_cutensornet(*args, **kwargs):
         # following the same convention (contracting from the right) as would
         # be produced by _iter_path_pairs(), but converting to a list of pairs
         # due to cuTensorNet's requirement
-        path = [(i-1, i-2) for i in range(len(operands), 1, -1)]
+        path = [(i - 1, i - 2) for i in range(len(operands), 1, -1)]
     elif len(path) and path[0] == "einsum_path":
         # let cuTensorNet check if the format is correct
         path = path[1:]

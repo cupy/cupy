@@ -115,7 +115,7 @@ class TestReshape:
         return xp.reshape(a, (1, 1, 1, 4, 1, 2), order=order)
 
     def _test_ndim_limit(self, xp, ndim, dtype, order):
-        idx = [1]*ndim
+        idx = [1] * ndim
         idx[-1] = ndim
         a = xp.ones(ndim, dtype=dtype)
         a = a.reshape(idx, order=order)

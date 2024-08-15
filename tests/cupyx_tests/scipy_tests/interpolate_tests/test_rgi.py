@@ -66,7 +66,7 @@ class TestRegularGridInterpolator:
     @parametrize_rgi_interp_methods
     def test_complex(self, method):
         points, values = self._get_sample_4d_3()
-        values = values - 2j*values
+        values = values - 2j * values
         sample = cp.asarray([[0.1, 0.1, 1., .9], [0.2, 0.1, .45, .8],
                              [0.5, 0.5, .5, .5]])
 
@@ -75,7 +75,7 @@ class TestRegularGridInterpolator:
         iinterp = RegularGridInterpolator(points, values.imag, method=method)
 
         v1 = interp(sample)
-        v2 = rinterp(sample) + 1j*iinterp(sample)
+        v2 = rinterp(sample) + 1j * iinterp(sample)
         assert_allclose(v1, v2)
 
     def test_linear_xi1d(self):
@@ -190,7 +190,7 @@ class TestRegularGridInterpolator:
 
         # complex values cannot
         assert_raises(ValueError, RegularGridInterpolator,
-                      (x, y), values, fill_value=1+2j)
+                      (x, y), values, fill_value=1 + 2j)
 
     def test_fillvalue_type(self):
         # from #3703; test that interpolator object construction succeeds
@@ -249,13 +249,13 @@ class TestRegularGridInterpolator:
         options = {"fill_value": fill_value, "bounds_error": False,
                    "method": method}
 
-        x = cp.linspace(0, 2*cp.pi, 20)
+        x = cp.linspace(0, 2 * cp.pi, 20)
         z = cp.sin(x)
 
         fa = RegularGridInterpolator((x,), z[:], **options)
         fb = RegularGridInterpolator((x, [0]), z[:, None], **options)
 
-        x1a = cp.linspace(-1, 2*cp.pi+1, 100)
+        x1a = cp.linspace(-1, 2 * cp.pi + 1, 100)
         za = fa(x1a)
 
         # evaluated at provided y-value, fb should behave exactly as fa
@@ -281,7 +281,7 @@ class TestRegularGridInterpolator:
 
         # test arbitrary nan pattern
         rng = cp.random.default_rng(8143215468)
-        x = rng.random(size=100)*4
+        x = rng.random(size=100) * 4
         i = rng.random(size=100) > 0.5
         x[i] = cp.nan
 
@@ -320,8 +320,8 @@ class TestRegularGridInterpolator:
 
         # test arbitrary nan pattern
         rng = cp.random.default_rng(8143215468)
-        x = rng.random(size=100)*4-1
-        y = rng.random(size=100)*8
+        x = rng.random(size=100) * 4 - 1
+        y = rng.random(size=100) * 8
         i1 = rng.random(size=100) > 0.5
         i2 = rng.random(size=100) > 0.5
         i = i1 | i2
@@ -692,7 +692,7 @@ class TestInterpN:
     def test_complex(self, method):
         x, y, values = self._sample_2d_data()
         points = (x, y)
-        values = values - 2j*values
+        values = values - 2j * values
 
         sample = cp.array([[1, 2.3, 5.3, 0.5, 3.3, 1.2, 3],
                            [1, 3.3, 1.2, 4.0, 5.0, 1.0, 3]]).T
@@ -700,7 +700,7 @@ class TestInterpN:
         v1 = interpn(points, values, sample, method=method)
         v2r = interpn(points, values.real, sample, method=method)
         v2i = interpn(points, values.imag, sample, method=method)
-        v2 = v2r + 1j*v2i
+        v2 = v2r + 1j * v2i
         assert_allclose(v1, v2)
 
     def test_length_one_axis(self):
@@ -712,9 +712,9 @@ class TestInterpN:
         xi = cp.array([[1, 2.2], [1, 3.2], [1, 3.8]])
 
         res = interpn(([1], [2, 3, 4]), values, xi)
-        wanted = [0.9*0.2 + 0.1,   # on [2, 3) it's 0.9*(x-2) + 0.1
-                  9*0.2 + 1,       # on [3, 4] it's 9*(x-3) + 1
-                  9*0.8 + 1]
+        wanted = [0.9 * 0.2 + 0.1,   # on [2, 3) it's 0.9*(x-2) + 0.1
+                  9 * 0.2 + 1,       # on [3, 4] it's 9*(x-3) + 1
+                  9 * 0.8 + 1]
 
         assert_allclose(res, wanted, atol=1e-15)
 

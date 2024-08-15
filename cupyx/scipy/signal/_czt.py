@@ -55,7 +55,7 @@ def _validate_sizes(n, m):
     return m
 
 
-def czt_points(m, w=None, a=1+0j):
+def czt_points(m, w=None, a=1 + 0j):
     """
     Return the points at which the chirp z-transform is computed.
 
@@ -170,18 +170,18 @@ class CZT:
 
     """
 
-    def __init__(self, n, m=None, w=None, a=1+0j):
+    def __init__(self, n, m=None, w=None, a=1 + 0j):
         m = _validate_sizes(n, m)
 
         k = cupy.arange(max(m, n), dtype=cupy.min_scalar_type(-max(m, n)**2))
 
         if w is None:
             # Nothing specified, default to FFT-like
-            w = cmath.exp(-2j*pi/m)
-            wk2 = cupy.exp(-(1j * pi * ((k**2) % (2*m))) / m)
+            w = cmath.exp(-2j * pi / m)
+            wk2 = cupy.exp(-(1j * pi * ((k**2) % (2 * m))) / m)
         else:
             # w specified
-            wk2 = w**(k**2/2.)
+            wk2 = w**(k**2 / 2.)
 
         a = 1.0 * a  # at least float
 
@@ -191,9 +191,9 @@ class CZT:
         nfft = next_fast_len(n + m - 1)
         self._Awk2 = a**-k[:n] * wk2[:n]
         self._nfft = nfft
-        self._Fwk2 = fft(1/cupy.hstack((wk2[n-1:0:-1], wk2[:m])), nfft)
+        self._Fwk2 = fft(1 / cupy.hstack((wk2[n - 1:0:-1], wk2[:m])), nfft)
         self._wk2 = wk2[:m]
-        self._yidx = slice(n-1, n+m-1)
+        self._yidx = slice(n - 1, n + m - 1)
 
     def __call__(self, x, *, axis=-1):
         """
@@ -221,7 +221,7 @@ class CZT:
         trnsp = list(range(x.ndim))
         trnsp[axis], trnsp[-1] = trnsp[-1], trnsp[axis]
         x = x.transpose(*trnsp)
-        y = ifft(self._Fwk2 * fft(x*self._Awk2, self._nfft))
+        y = ifft(self._Fwk2 * fft(x * self._Awk2, self._nfft))
         y = y[..., self._yidx] * self._wk2
         return y.transpose(*trnsp)
 
@@ -320,24 +320,24 @@ class ZoomFFT(CZT):
             scale = ((f2 - f1) * m) / (fs * (m - 1))
         else:
             scale = (f2 - f1) / fs
-        a = cmath.exp(2j * pi * f1/fs)
+        a = cmath.exp(2j * pi * f1 / fs)
         wk2 = cupy.exp(-(1j * pi * scale * k**2) / m)
 
-        self.w = cmath.exp(-2j*pi/m * scale)
+        self.w = cmath.exp(-2j * pi / m * scale)
         self.a = a
         self.m, self.n = m, n
 
-        ak = cupy.exp(-2j * pi * f1/fs * k[:n])
+        ak = cupy.exp(-2j * pi * f1 / fs * k[:n])
         self._Awk2 = ak * wk2[:n]
 
         nfft = next_fast_len(n + m - 1)
         self._nfft = nfft
-        self._Fwk2 = fft(1/cupy.hstack((wk2[n-1:0:-1], wk2[:m])), nfft)
+        self._Fwk2 = fft(1 / cupy.hstack((wk2[n - 1:0:-1], wk2[:m])), nfft)
         self._wk2 = wk2[:m]
-        self._yidx = slice(n-1, n+m-1)
+        self._yidx = slice(n - 1, n + m - 1)
 
 
-def czt(x, m=None, w=None, a=1+0j, *, axis=-1):
+def czt(x, m=None, w=None, a=1 + 0j, *, axis=-1):
     """
     Compute the frequency response around a spiral in the Z plane.
 

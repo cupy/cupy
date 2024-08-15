@@ -656,7 +656,7 @@ def firls(numtaps, bands, desired, weight=None, fs=2):
     numtaps = int(numtaps)
     if numtaps % 2 == 0 or numtaps < 1:
         raise ValueError("numtaps must be odd and >= 1")
-    M = (numtaps-1) // 2
+    M = (numtaps - 1) // 2
 
     # normalize bands 0->1 and make it 2 columns
     nyq = float(nyq)
@@ -714,8 +714,8 @@ def firls(numtaps, bands, desired, weight=None, fs=2):
                            bands, axis=2)[:, :, 0], weight)
 
     # Now we assemble our sum of Toeplitz and Hankel
-    Q1 = toeplitz(q[:M+1])
-    Q2 = hankel(q[:M+1], q[M:])
+    Q1 = toeplitz(q[:M + 1])
+    Q2 = hankel(q[:M + 1], q[M:])
     Q = Q1 + Q2
 
     # Now for b(n) we have that:
@@ -729,7 +729,7 @@ def firls(numtaps, bands, desired, weight=None, fs=2):
     # Choose m and c such that we are at the start and end weights
     m = (cupy.diff(desired, axis=1) / cupy.diff(bands, axis=1))
     c = desired[:, [0]] - bands[:, [0]] * m
-    b = bands * (m*bands + c) * cupy.sinc(bands * n)
+    b = bands * (m * bands + c) * cupy.sinc(bands * n)
     # Use L'Hospital's rule here for cos(nπf)/(πnf)**2 @ n=0
     b[0] -= m * bands * bands / 2.
     b[1:] += m * cupy.cos(n[1:] * cupy.pi * bands) / (cupy.pi * n[1:]) ** 2

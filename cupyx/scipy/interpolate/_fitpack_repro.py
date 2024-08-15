@@ -61,7 +61,7 @@ def fpcheck(x, t, k):
 
     if x.ndim != 1 or t.ndim != 1:
         raise ValueError(
-            f"Expect `x` and `t` be 1D sequences. Got {x = } and {t = }"
+            f"Expect `x` and `t` be 1D sequences. Got {x=} and {t=}"
         )
 
     m = x.shape[0]
@@ -72,50 +72,50 @@ def fpcheck(x, t, k):
     # c      1) k+1 <= n-k-1 <= m
     if not (k + 1 <= nk1 <= m):
         raise ValueError(
-            f"Need k+1 <= n-k-1 <= m. Got {m = }, {n = } and {k = }."
+            f"Need k+1 <= n-k-1 <= m. Got {m=}, {n=} and {k=}."
         )
 
     # check condition no 2
     # c      2) t(1) <= t(2) <= ... <= t(k+1)
     # c         t(n-k) <= t(n-k+1) <= ... <= t(n)
-    if (t[:k+1] > t[1:k+2]).any():
-        raise ValueError(f"First k knots must be ordered; got {t = }.")
+    if (t[:k + 1] > t[1:k + 2]).any():
+        raise ValueError(f"First k knots must be ordered; got {t=}.")
 
-    if (t[nk1:] < t[nk1-1:-1]).any():
-        raise ValueError(f"Last k knots must be ordered; got {t = }.")
+    if (t[nk1:] < t[nk1 - 1:-1]).any():
+        raise ValueError(f"Last k knots must be ordered; got {t=}.")
 
     # c  check condition no 3
     # c      3) t(k+1) < t(k+2) < ... < t(n-k)
-    if (t[k+1:n-k] <= t[k:n-k-1]).any():
-        raise ValueError(f"Internal knots must be distinct. Got {t = }.")
+    if (t[k + 1:n - k] <= t[k:n - k - 1]).any():
+        raise ValueError(f"Internal knots must be distinct. Got {t=}.")
 
     # c  check condition no 4
     # c      4) t(k+1) <= x(i) <= t(n-k)
     # NB: FITPACK's fpchec only checks x[0] & x[-1], so we follow.
-    if (x[0] < t[k]) or (x[-1] > t[n-k-1]):
-        raise ValueError(f"Out of bounds: {x = } and {t = }.")
+    if (x[0] < t[k]) or (x[-1] > t[n - k - 1]):
+        raise ValueError(f"Out of bounds: {x=} and {t=}.")
 
     # c  check condition no 5
     # c      5) the conditions specified by schoenberg and whitney must hold
     # c         for at least one subset of data points, i.e. there must be a
     # c         subset of data points y(j) such that
     # c             t(j) < y(j) < t(j+k+1), j=1,2,...,n-k-1
-    mesg = f"Schoenberg-Whitney condition is violated with {t = } and {x =}."
+    mesg = f"Schoenberg-Whitney condition is violated with {t =} and {x =}."
 
-    if (x[0] >= t[k+1]) or (x[-1] <= t[n-k-2]):
+    if (x[0] >= t[k + 1]) or (x[-1] <= t[n - k - 2]):
         raise ValueError(mesg)
 
     m = x.shape[0]
-    ll = k+1
+    ll = k + 1
     nk3 = n - k - 3
     if nk3 < 2:
         return
-    for j in range(1, nk3+1):
+    for j in range(1, nk3 + 1):
         tj = t[j]
         ll += 1
         tl = t[ll]
         i = cupy.argmax(x > tj)
-        if i >= m-1:
+        if i >= m - 1:
             raise ValueError(mesg)
         if x[i] >= tl:
             raise ValueError(mesg)
@@ -166,13 +166,13 @@ def _split(x, t, k, residuals):
     """
     ix = cupy.searchsorted(x, t[k:-k])
     # sum half-open intervals
-    fparts = [residuals[ix[i]:ix[i+1]].sum() for i in range(len(ix)-1)]
+    fparts = [residuals[ix[i]:ix[i + 1]].sum() for i in range(len(ix) - 1)]
     carries = residuals[ix[1:-1]]
 
     for i in range(len(carries)):     # split residuals at internal knots
         carry = carries[i] / 2
         fparts[i] += carry
-        fparts[i+1] -= carry
+        fparts[i + 1] -= carry
     fparts[-1] += residuals[-1]       # add the contribution of the last knot
 
     return fparts, ix
@@ -201,7 +201,7 @@ def add_knot(x, t, k, residuals):
     idx_max = -101
     fpart_max = -1e100
     for i in range(len(fparts)):
-        if ix[i+1] - ix[i] > 1 and fparts[i] > fpart_max:
+        if ix[i + 1] - ix[i] > 1 and fparts[i] > fpart_max:
             idx_max = i
             fpart_max = fparts[i]
 
@@ -211,7 +211,7 @@ def add_knot(x, t, k, residuals):
         )
 
     # round up, like Dierckx does? This is really arbitrary though.
-    idx_newknot = (ix[idx_max] + ix[idx_max+1] + 1) // 2
+    idx_newknot = (ix[idx_max] + ix[idx_max + 1] + 1) // 2
     new_knot = x[idx_newknot]
     idx_t = cupy.searchsorted(t, new_knot)
     t_new = cupy.r_[t[:idx_t], new_knot, t[idx_t:]]
@@ -229,33 +229,33 @@ def _validate_inputs(x, y, w, k, s, xb, xe, parametric):
     else:
         w = cupy.asarray(w, dtype=float)
         if w.ndim != 1:
-            raise ValueError(f"{w.ndim = } not implemented yet.")
+            raise ValueError(f"{w.ndim=} not implemented yet.")
         if (w < 0).any():
             raise ValueError("Weights must be non-negative")
 
     if y.ndim == 0 or y.ndim > 2:
-        raise ValueError(f"{y.ndim = } not supported (must be 1 or 2.)")
+        raise ValueError(f"{y.ndim=} not supported (must be 1 or 2.)")
 
     parametric = bool(parametric)
     if parametric:
         if y.ndim != 2:
             raise ValueError(
-                f"{y.ndim = } != 2 not supported with {parametric =}."
+                f"{y.ndim=} != 2 not supported with {parametric=}."
             )
     else:
         if y.ndim != 1:
             raise ValueError(
-                f"{y.ndim = } != 1 not supported with {parametric =}."
+                f"{y.ndim=} != 1 not supported with {parametric=}."
             )
         # all _impl functions expect y.ndim = 2
         y = y[:, None]
 
     if w.shape[0] != x.shape[0]:
-        raise ValueError(f"Weights is incompatible: {w.shape =} != {x.shape}.")
+        raise ValueError(f"Weights is incompatible: {w.shape=} != {x.shape}.")
 
     if x.shape[0] != y.shape[0]:
         raise ValueError(
-            f"Data is incompatible: {x.shape = } and {y.shape = }."
+            f"Data is incompatible: {x.shape=} and {y.shape=}."
         )
     if x.ndim != 1 or (x[1:] < x[:-1]).any():
         raise ValueError("Expect `x` to be an ordered 1D sequence.")
@@ -263,7 +263,7 @@ def _validate_inputs(x, y, w, k, s, xb, xe, parametric):
     k = operator.index(k)
 
     if s < 0:
-        raise ValueError(f"`s` must be non-negative. Got {s = }")
+        raise ValueError(f"`s` must be non-negative. Got {s=}")
 
     if xb is None:
         xb = min(x)
@@ -374,18 +374,18 @@ def _generate_knots_impl(x, y, *, w=None, xb=None, xe=None, k=3, s=0,
     if nest is None:
         # the max number of knots. This is set in _fitpack_impl.py line 274
         # and fitpack.pyf line 198
-        nest = max(m + k + 1, 2*k + 3)
+        nest = max(m + k + 1, 2 * k + 3)
     else:
-        if nest < 2*(k + 1):
+        if nest < 2 * (k + 1):
             raise ValueError(
-                f"`nest` too small: {nest = } < 2*(k+1) = {2*(k+1)}."
+                f"`nest` too small: {nest=} < 2*(k+1) = {2 * (k + 1)}."
             )
 
-    nmin = 2*(k + 1)    # the number of knots for an LSQ polynomial approx
+    nmin = 2 * (k + 1)    # the number of knots for an LSQ polynomial approx
     nmax = m + k + 1  # the number of knots for the spline interpolation
 
     # start from no internal knots
-    t = cupy.asarray([xb]*(k+1) + [xe]*(k+1), dtype=float)
+    t = cupy.asarray([xb] * (k + 1) + [xe] * (k + 1), dtype=float)
     n = t.shape[0]
     fp = 0.0
     fpold = 0.0
@@ -414,8 +414,8 @@ def _generate_knots_impl(x, y, *, w=None, xb=None, xe=None, k=3, s=0,
             nplus = 1
         else:
             delta = fpold - fp
-            npl1 = int(nplus * fpms / delta) if delta > acc else nplus*2
-            nplus = min(nplus*2, max(npl1, nplus//2, 1))
+            npl1 = int(nplus * fpms / delta) if delta > acc else nplus * 2
+            nplus = min(nplus * 2, max(npl1, nplus // 2, 1))
 
         # actually add knots
         for j in range(nplus):
@@ -470,9 +470,9 @@ def _generate_knots_impl(x, y, *, w=None, xb=None, xe=None, k=3, s=0,
 
 def prodd(t, i, j, k):
     res = 1.0
-    for s in range(k+2):
+    for s in range(k + 2):
         if i + s != j:
-            res *= (t[j] - t[i+s])
+            res *= (t[j] - t[i + s])
     return res
 
 
@@ -528,7 +528,7 @@ def disc(t, k):
     # the length of the base interval spanned by internal knots & the number
     # of subintervas between these internal knots
     delta = t[n - k - 1] - t[k]
-    nrint = n - 2*k - 1
+    nrint = n - 2 * k - 1
 
     matr = cupy.empty((nrint - 1, k + 2), dtype=float)
     for jj in range(nrint - 1):
@@ -545,7 +545,7 @@ def disc(t, k):
     matr *= (delta / nrint)**k
 
     # make it packed
-    offset = cupy.array([i for i in range(nrint-1)])
+    offset = cupy.array([i for i in range(nrint - 1)])
     nc = n - k - 1
     return matr, offset, nc
 
@@ -584,13 +584,13 @@ class F:
         self.k = k
         w = cupy.ones_like(x, dtype=float) if w is None else w
         if w.ndim != 1:
-            raise ValueError(f"{w.ndim = } != 1.")
+            raise ValueError(f"{w.ndim=} != 1.")
         self.w = w
         self.s = s
 
         if y.ndim != 2:
             raise ValueError(
-                f"F: expected y.ndim == 2, got {y.ndim = } instead.")
+                f"F: expected y.ndim == 2, got {y.ndim=} instead.")
 
         # ### precompute what we can ###
 
@@ -611,14 +611,14 @@ class F:
         nc = t.shape[0] - k - 1
         nz = k + 1
         if R.shape[1] != nz:
-            raise ValueError(f"Internal error: {R.shape[1] =} != {k+1 =}.")
+            raise ValueError(f"Internal error: {R.shape[1]=} != {k + 1=}.")
 
         # r.h.s. of the augmented system
         z = cupy.zeros((b.shape[0], Y.shape[1]), dtype=float)
         self.YY = cupy.r_[Y[:nc], z]
 
         # l.h.s. of the augmented system
-        AA = cupy.zeros((nc + b.shape[0], self.k+2), dtype=float)
+        AA = cupy.zeros((nc + b.shape[0], self.k + 2), dtype=float)
         AA[:nc, :nz] = R[:nc, :]
         # AA[nc:, :] = b.a / p  # done in __call__(self, p)
         self.AA = AA
@@ -676,8 +676,8 @@ def fprati(p1, f1, p2, f2, p3, f3):
     h2 = f2 * (f3 - f1)
     h3 = f3 * (f1 - f2)
     if p3 == cupy.inf:
-        return -(p2*h1 + p1*h2) / h3
-    return -(p1*p2*h3 + p2*p3*h1 + p1*p3*h2) / (p1*h1 + p2*h2 + p3*h3)
+        return -(p2 * h1 + p1 * h2) / h3
+    return -(p1 * p2 * h3 + p2 * p3 * h1 + p1 * p3 * h2) / (p1 * h1 + p2 * h2 + p3 * h3)
 
 
 class Bunch:
@@ -752,9 +752,9 @@ def root_rati(f, p0, bracket, acc):
                 # c  our initial choice of p is too large.
                 p3 = p2
                 f3 = f2
-                p = p*con4
+                p = p * con4
                 if p <= p1:
-                    p = p1*con9 + p2*con1
+                    p = p1 * con9 + p2 * con1
                 continue
             else:
                 if f2 < 0:
@@ -765,9 +765,9 @@ def root_rati(f, p0, bracket, acc):
                 # c  our initial choice of p is too small
                 p1 = p2
                 f1 = f2
-                p = p/con4
+                p = p / con4
                 if p3 != cupy.inf and p <= p3:
-                    p = p2*con1 + p3*con9
+                    p = p2 * con1 + p3 * con9
                 continue
             else:
                 if f2 > 0:
@@ -809,11 +809,11 @@ def _make_splrep_impl(x, y, *, w=None, xb=None, xe=None, k=3, s=0, t=None,
     if nest is None:
         # the max number of knots. This is set in _fitpack_impl.py line 274
         # and fitpack.pyf line 198
-        nest = max(m + k + 1, 2*k + 3)
+        nest = max(m + k + 1, 2 * k + 3)
     else:
-        if nest < 2*(k + 1):
+        if nest < 2 * (k + 1):
             raise ValueError(
-                f"`nest` too small: {nest = } < 2*(k+1) = {2*(k+1)}."
+                f"`nest` too small: {nest=} < 2*(k+1) = {2 * (k + 1)}."
             )
         if t is not None:
             raise ValueError("Either supply `t` or `nest`.")
@@ -848,7 +848,8 @@ def _make_splrep_impl(x, y, *, w=None, xb=None, xe=None, k=3, s=0, t=None,
     fpinf = fp - s
 
     # f(p=0): LSQ spline without internal knots
-    residuals = _get_residuals(x, y, cupy.array([xb]*(k+1) + [xe]*(k+1)), k, w)
+    residuals = _get_residuals(x, y, cupy.array(
+        [xb] * (k + 1) + [xe] * (k + 1)), k, w)
     fp0 = residuals.sum()
     fp0 = fp0 - s
 
@@ -1236,7 +1237,7 @@ class UnivariateSpline:
     scipy.interpolate.UnivariateSpline
     """
 
-    def __init__(self, x, y, w=None, bbox=[None]*2, k=3, s=None, ext=0):
+    def __init__(self, x, y, w=None, bbox=[None] * 2, k=3, s=None, ext=0):
         # NB removed the checkfinite arg: it requires .any()
 
         if w is not None:
@@ -1425,7 +1426,7 @@ class UnivariateSpline:
             Derivatives of the orders 0 to k.
         """
         # return _fitpack_impl.spalde(x, self._eval_args)
-        lst = [self._spl(x, nu) for nu in range(self._spl.k+1)]
+        lst = [self._spl(x, nu) for nu in range(self._spl.k + 1)]
         return cupy.r_[lst]
 
     def derivative(self, n=1):
@@ -1513,7 +1514,7 @@ class InterpolatedUnivariateSpline(UnivariateSpline):
     scipy.interpolate.InterpolatedUnivariateSpline
     """
 
-    def __init__(self, x, y, w=None, bbox=[None]*2, k=3, ext=0):
+    def __init__(self, x, y, w=None, bbox=[None] * 2, k=3, ext=0):
         super().__init__(x, y, s=0, w=w, bbox=bbox, k=k, ext=ext)
 
 
@@ -1565,7 +1566,7 @@ class LSQUnivariateSpline(UnivariateSpline):
     scipy.interpolate.LSQUnivariateSpline
     """
 
-    def __init__(self, x, y, t, w=None, bbox=[None]*2, k=3, ext=0):
+    def __init__(self, x, y, t, w=None, bbox=[None] * 2, k=3, ext=0):
         # NB cannot call UnivariateSpline.__init__ : has no `t` arg
         if w is not None:
             raise NotImplementedError(

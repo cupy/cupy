@@ -844,7 +844,7 @@ def geam(transa, transb, alpha, a, beta, b, out=None):
         elif out._c_contiguous:
             # Computes alpha * a.T + beta * b.T
             try:
-                func(handle, 1-transa, 1-transb, n, m, alpha_ptr, a.data.ptr,
+                func(handle, 1 - transa, 1 - transb, n, m, alpha_ptr, a.data.ptr,
                      lda, beta_ptr, b.data.ptr, ldb, out.data.ptr, n)
             finally:
                 cublas.setPointerMode(handle, orig_mode)

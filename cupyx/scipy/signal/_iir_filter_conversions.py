@@ -129,8 +129,8 @@ def _single_zpksos(z, p, k):
     """Create one second-order section from up to two zeros and poles"""
     sos = cupy.zeros(6)
     b, a = zpk2tf(cupy.asarray(z), cupy.asarray(p), k)
-    sos[3-len(b):3] = b
-    sos[6-len(a):6] = a
+    sos[3 - len(b):3] = b
+    sos[6 - len(a):6] = a
     return sos
 
 
@@ -221,7 +221,7 @@ def zpk2sos(z, p, k, pairing=None, *, analog=False):
     sos = cupy.zeros((n_sections, 6))
 
     # Construct the system, reversing order so the "worst" are last
-    for si in range(n_sections-1, -1, -1):
+    for si in range(n_sections - 1, -1, -1):
         # Select the next "worst" pole
         p1_idx = idx_worst(p)
         p1 = p[p1_idx]
@@ -720,8 +720,8 @@ def lp2bp_zpk(z, p, k, wo=1.0, bw=1.0):
     degree = _relative_degree(z, p)
 
     # Scale poles and zeros to desired bandwidth
-    z_lp = z * bw/2
-    p_lp = p * bw/2
+    z_lp = z * bw / 2
+    p_lp = p * bw / 2
 
     # Square root needs to produce complex result, not NaN
     z_lp = z_lp.astype(complex)
@@ -798,8 +798,8 @@ def lp2bs_zpk(z, p, k, wo=1.0, bw=1.0):
     degree = _relative_degree(z, p)
 
     # Invert to a highpass filter with desired bandwidth
-    z_hp = (bw/2) / z
-    p_hp = (bw/2) / p
+    z_hp = (bw / 2) / z
+    p_hp = (bw / 2) / p
 
     # Square root needs to produce complex result, not NaN
     z_hp = z_hp.astype(complex)
@@ -812,8 +812,8 @@ def lp2bs_zpk(z, p, k, wo=1.0, bw=1.0):
                              p_hp - cupy.sqrt(p_hp**2 - wo**2)))
 
     # Move any zeros that were at infinity to the center of the stopband
-    z_bs = cupy.append(z_bs, cupy.full(degree, +1j*wo))
-    z_bs = cupy.append(z_bs, cupy.full(degree, -1j*wo))
+    z_bs = cupy.append(z_bs, cupy.full(degree, +1j * wo))
+    z_bs = cupy.append(z_bs, cupy.full(degree, -1j * wo))
 
     # Cancel out gain change caused by inversion
     k_bs = k * cupy.real(cupy.prod(-z) / cupy.prod(-p))
@@ -1377,14 +1377,14 @@ def sos2zpk(sos):
 
     """
     n_sections = sos.shape[0]
-    z = cupy.zeros(n_sections*2, cupy.complex128)
-    p = cupy.zeros(n_sections*2, cupy.complex128)
+    z = cupy.zeros(n_sections * 2, cupy.complex128)
+    p = cupy.zeros(n_sections * 2, cupy.complex128)
     k = 1.
     for section in range(n_sections):
         # XXX: may just solve a quadratic equation instead of tf2zpk
         zpk = tf2zpk(sos[section, :3], sos[section, 3:])
-        z[2*section:2*section + len(zpk[0])] = zpk[0]
-        p[2*section:2*section + len(zpk[1])] = zpk[1]
+        z[2 * section:2 * section + len(zpk[0])] = zpk[0]
+        p[2 * section:2 * section + len(zpk[1])] = zpk[1]
         k *= zpk[2]
     return z, p, k
 
@@ -1607,7 +1607,7 @@ def buttap(N):
     if abs(int(N)) != N:
         raise ValueError("Filter order must be a nonnegative integer")
     z = cupy.array([])
-    m = cupy.arange(-N+1, N, 2)
+    m = cupy.arange(-N + 1, N, 2)
     # Middle value is 0 to ensure an exactly real pole
     p = -cupy.exp(1j * pi * m / (2 * N))
     k = 1
@@ -1633,7 +1633,7 @@ def cheb1ap(N, rp):
     elif N == 0:
         # Avoid divide-by-zero error
         # Even order filters have DC gain of -rp dB
-        return cupy.array([]), cupy.array([]), 10**(-rp/20)
+        return cupy.array([]), cupy.array([]), 10**(-rp / 20)
     z = cupy.array([])
 
     # Ripple factor (epsilon)
@@ -1641,9 +1641,9 @@ def cheb1ap(N, rp):
     mu = 1.0 / N * cupy.arcsinh(1 / eps)
 
     # Arrange poles in an ellipse on the left half of the S-plane
-    m = cupy.arange(-N+1, N, 2)
-    theta = pi * m / (2*N)
-    p = -cupy.sinh(mu + 1j*theta)
+    m = cupy.arange(-N + 1, N, 2)
+    theta = pi * m / (2 * N)
+    p = -cupy.sinh(mu + 1j * theta)
 
     k = cupy.prod(-p, axis=0).real
     if N % 2 == 0:
@@ -1677,15 +1677,15 @@ def cheb2ap(N, rs):
     mu = cupy.arcsinh(1.0 / de) / N
 
     if N % 2:
-        m = cupy.concatenate((cupy.arange(-N+1, 0, 2),
+        m = cupy.concatenate((cupy.arange(-N + 1, 0, 2),
                               cupy.arange(2, N, 2)))
     else:
-        m = cupy.arange(-N+1, N, 2)
+        m = cupy.arange(-N + 1, N, 2)
 
     z = -cupy.conjugate(1j / cupy.sin(m * pi / (2.0 * N)))
 
     # Poles around the unit circle like Butterworth
-    p = -cupy.exp(1j * pi * cupy.arange(-N+1, N, 2) / (2 * N))
+    p = -cupy.exp(1j * pi * cupy.arange(-N + 1, N, 2) / (2 * N))
     # Warp into Chebyshev II
     p = cupy.sinh(mu) * p.real + 1j * cupy.cosh(mu) * p.imag
     p = 1.0 / p
@@ -1725,12 +1725,12 @@ def _ellipdeg(n, m1):
     K1p = special.ellipkm1(m1)
 
     q1 = cupy.exp(-pi * K1p / K1)
-    q = q1 ** (1/n)
+    q = q1 ** (1 / n)
 
     mnum = cupy.arange(_ELLIPDEG_MMAX + 1)
     mden = cupy.arange(1, _ELLIPDEG_MMAX + 2)
 
-    num = (q ** (mnum * (mnum+1))).sum()
+    num = (q ** (mnum * (mnum + 1))).sum()
     den = 1 + 2 * (q ** (mden**2)).sum()
 
     return 16 * q * (num / den) ** 4
@@ -1785,7 +1785,7 @@ def _arc_jac_sn(w, m):
         if niter > _ARC_JAC_SN_MAXITER:
             raise ValueError("Landen transformation not converging")
 
-    K = cupy.prod(1 + cupy.array(ks[1:])) * pi/2
+    K = cupy.prod(1 + cupy.array(ks[1:])) * pi / 2
 
     wns = [w]
 
@@ -1843,7 +1843,7 @@ def ellipap(N, rp, rs):
     elif N == 0:
         # Avoid divide-by-zero warning
         # Even order filters have DC gain of -rp dB
-        return cupy.array([]), cupy.array([]), 10**(-rp/20)
+        return cupy.array([]), cupy.array([]), 10**(-rp / 20)
     elif N == 1:
         p = -cupy.sqrt(1.0 / _pow10m1(0.1 * rp))
         k = -p
@@ -1950,7 +1950,7 @@ def _find_nat_freq(stopb, passb, gpass, gstop, filter_type, filter_kind):
         nat = ((stopb ** 2 - passb[0] * passb[1]) /
                (stopb * (passb[0] - passb[1])))
     else:
-        raise ValueError(f"should not happen: {filter_type =}.")
+        raise ValueError(f"should not happen: {filter_type=}.")
 
     nat = min(cupy.abs(nat))
     return nat, passb

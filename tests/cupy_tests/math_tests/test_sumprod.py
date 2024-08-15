@@ -621,7 +621,8 @@ class TestCumsum:
         n = len(axes)
         shape = tuple(range(4, 4 + n))
         a = testing.shaped_arange(shape, xp, dtype)
-        out = xp.zeros((8,)+shape[1:], dtype=dtype)[::2]  # Non contiguous view
+        # Non contiguous view
+        out = xp.zeros((8,) + shape[1:], dtype=dtype)[::2]
         self._cumsum(xp, a, axis=self.axis, out=out)
         return out
 

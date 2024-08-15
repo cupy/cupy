@@ -195,7 +195,7 @@ def cov(a, y=None, rowvar=True, bias=False, ddof=None,
     elif aweights is None:
         fact = w_sum - ddof
     else:
-        fact = w_sum - ddof * sum(w*aweights) / w_sum
+        fact = w_sum - ddof * sum(w * aweights) / w_sum
 
     if fact <= 0:
         warnings.warn("Degrees of freedom <= 0 for slice",

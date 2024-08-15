@@ -36,7 +36,7 @@ class TestNdBSpline:
         y = x**3
         spl = scp.interpolate.make_interp_spline(x, y, k=3)
 
-        y_1 = x**3 + 2*x
+        y_1 = x**3 + 2 * x
         spl_1 = scp.interpolate.make_interp_spline(x, y_1, k=3)
 
         t2 = (spl.t, spl_1.t)
@@ -51,7 +51,7 @@ class TestNdBSpline:
         spl = scp.interpolate.make_interp_spline(x, y, k=3)
 
         x = xp.arange(5) + 1.5
-        y_1 = x**2 + 2*x
+        y_1 = x**2 + 2 * x
         spl_1 = scp.interpolate.make_interp_spline(x, y_1, k=2)
 
         t2 = (spl.t, spl_1.t)
@@ -177,7 +177,7 @@ class TestNdBSpline:
         y = xp.arange(7) + 1.5
 
         spl_x = scp.interpolate.make_interp_spline(x, x**3, k=3)
-        spl_y = scp.interpolate.make_interp_spline(y, y**2 + 2*y, k=3)
+        spl_y = scp.interpolate.make_interp_spline(y, y**2 + 2 * y, k=3)
         cc = spl_x.c[:, None] * spl_y.c[None, :]
         bspl = scp.interpolate.NdBSpline(
             (spl_x.t, spl_y.t), cc, (spl_x.k, spl_y.k))
@@ -193,10 +193,10 @@ class TestNdBSpline:
         y = x**3
         spl = scp.interpolate.make_interp_spline(x, y, k=3)
 
-        y_1 = x**3 + 2*x
+        y_1 = x**3 + 2 * x
         spl_1 = scp.interpolate.make_interp_spline(x, y_1, k=3)
 
-        y_2 = x**3 + 3*x + 1
+        y_2 = x**3 + 3 * x + 1
         spl_2 = scp.interpolate.make_interp_spline(x, y_2, k=3)
 
         t2 = (spl.t, spl_1.t, spl_2.t)
@@ -361,7 +361,7 @@ class TestNdBSpline:
         assert not ty[::2].flags.c_contiguous
 
         c = testing.shaped_random(
-            (tx.size//2 - kx - 1, ty.size//2 - ky - 1), xp, xp.float64, 1.0)
+            (tx.size // 2 - kx - 1, ty.size // 2 - ky - 1), xp, xp.float64, 1.0)
         c = c.T
         assert not c.flags.c_contiguous
 
@@ -391,7 +391,7 @@ class TestNdBSpline:
         dm1 = scp.interpolate.NdBSpline.design_matrix(xi, t3, [k, k, k])
 
         with pytest.raises(ValueError):
-            scp.interpolate.NdBSpline.design_matrix([[1, 2]], t3, [k]*3)
+            scp.interpolate.NdBSpline.design_matrix([[1, 2]], t3, [k] * 3)
 
         return dm.todense(), dm1.todense()
 
@@ -431,7 +431,7 @@ class TestMakeND:
     def test_2D_separable_simple(self, xp, scp):
         x = xp.arange(6)
         y = xp.arange(6) + 0.5
-        values = x[:, None]**3 * (y**3 + 2*y)[None, :]
+        values = x[:, None]**3 * (y**3 + 2 * y)[None, :]
         xi = [(a, b) for a, b in itertools.product(x, y)]
 
         make_ndbspl = self._make(xp)
@@ -446,7 +446,7 @@ class TestMakeND:
         xi = [(a, b) for a, b in itertools.product(x, y)]
 
         # make values4.shape = (6, 6, 4)
-        values = x[:, None]**3 * (y**3 + 2*y)[None, :]
+        values = x[:, None]**3 * (y**3 + 2 * y)[None, :]
         values4 = xp.dstack((values, values, values, values))
 
         make_ndbspl = self._make(xp)
@@ -460,7 +460,7 @@ class TestMakeND:
         xi = [(a, b) for a, b in itertools.product(x, y)]
 
         # make values4.shape = (6, 6, 4)
-        values = x[:, None]**3 * (y**3 + 2*y)[None, :]
+        values = x[:, None]**3 * (y**3 + 2 * y)[None, :]
         values4 = xp.dstack((values, values, values, values))
 
         # now two trailing dimensions
@@ -477,7 +477,7 @@ class TestMakeND:
         x = xp.arange(6)
         y = xp.arange(7) + 1.5
         xi = [(a, b) for a, b in itertools.product(x, y)]
-        values = (x**3)[:, None] * (y**2 + 2*y)[None, :]
+        values = (x**3)[:, None] * (y**2 + 2 * y)[None, :]
         make_ndbspl = self._make(xp)
         bspl = make_ndbspl((x, y), values, k=k)
         return bspl(xi)

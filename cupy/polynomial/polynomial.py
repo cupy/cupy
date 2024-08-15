@@ -110,11 +110,11 @@ def polyval(x, c, tensor=True):
     if isinstance(x, (tuple, list)):
         x = cupy.asarray(x)
     if isinstance(x, cupy.ndarray) and tensor:
-        c = c.reshape(c.shape + (1,)*x.ndim)
+        c = c.reshape(c.shape + (1,) * x.ndim)
 
-    c0 = c[-1] + x*0
+    c0 = c[-1] + x * 0
     for i in range(2, len(c) + 1):
-        c0 = c[-i] + c0*x
+        c0 = c[-i] + c0 * x
     return c0
 
 
@@ -175,7 +175,7 @@ def polyvalfromroots(x, r, tensor=True):
         x = cupy.asarray(x)
     if isinstance(x, cupy.ndarray):
         if tensor:
-            r = r.reshape(r.shape + (1,)*x.ndim)
+            r = r.reshape(r.shape + (1,) * x.ndim)
         elif x.ndim >= r.ndim:
             raise ValueError("x.ndim must be < r.ndim when tensor == False")
     return cupy.prod(x - r, axis=0)

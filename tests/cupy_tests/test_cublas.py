@@ -242,7 +242,7 @@ class TestSbmv:
         B = numpy.zeros((lda, ldm), dtype=A.dtype, order=order)
         for j in range(n):
             k = ku - j
-            for i in range(max(0, j-ku), min(m, j + kl + 1)):
+            for i in range(max(0, j - ku), min(m, j + kl + 1)):
                 B[(k + i), j] = A[i, j]
         return B
 
@@ -253,8 +253,8 @@ class TestSbmv:
         n, k = self.rank, self.band
         a = numpy.eye(n, n, 0, dtype, self.order)
         a *= numpy.random.randint(20)
-        for i in range(1, k+1):
-            band = numpy.random.randint(20, size=n-i)
+        for i in range(1, k + 1):
+            band = numpy.random.randint(20, size=n - i)
             a += numpy.diag(band, k=+i)
             a += numpy.diag(band, k=-i)
         x = numpy.random.randint(20, size=n).astype(a.dtype)
@@ -364,7 +364,7 @@ class TestSyrk:
                         lower=self.lower)
         rr, cc = cupy.asnumpy(ref), cupy.asnumpy(c)
         if self.lower:
-            rr[numpy.triu_indices_from(rr,  1)] = 0
+            rr[numpy.triu_indices_from(rr, 1)] = 0
         else:
             rr[numpy.tril_indices_from(rr, -1)] = 0
         rru = rr[numpy.triu_indices_from(rr)]
@@ -393,7 +393,7 @@ class TestSyrk:
                     lower=self.lower)
         rr, c0, cc = cupy.asnumpy(ref), cupy.asnumpy(c0), cupy.asnumpy(c)
         if self.lower:
-            trii = numpy.triu_indices_from(rr,  1)
+            trii = numpy.triu_indices_from(rr, 1)
         else:
             trii = numpy.tril_indices_from(rr, -1)
         rr[trii] = c0[trii]

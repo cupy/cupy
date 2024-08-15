@@ -136,7 +136,7 @@ def triu(m, k=0):
 
     """
     m = cupy.asarray(m)
-    mask = tri(*m.shape[-2:], k=k-1, dtype=bool)
+    mask = tri(*m.shape[-2:], k=k - 1, dtype=bool)
 
     return cupy.where(mask, m.dtype.type(0), m)
 

@@ -123,7 +123,7 @@ def eigsh(a, k=6, *, which="LM", v0=None, ncv=None, maxiter=None,
         u -= alpha[k] * V[k]
         u -= V[:k].T @ beta_k
         cublas.nrm2(u, out=beta[k])
-        V[k+1] = u / beta[k]
+        V[k + 1] = u / beta[k]
 
         # Lanczos iteration
         lanczos(a, V, u, alpha, beta, k + 1, ncv)
@@ -147,11 +147,11 @@ def _lanczos_asis(a, V, u, alpha, beta, i_start, i_end):
     for i in range(i_start, i_end):
         u[...] = a @ V[i]
         cublas.dotc(V[i], u, out=alpha[i])
-        u -= u.T @ V[:i+1].conj().T @ V[:i+1]
+        u -= u.T @ V[:i + 1].conj().T @ V[:i + 1]
         cublas.nrm2(u, out=beta[i])
         if i >= i_end - 1:
             break
-        V[i+1] = u / beta[i]
+        V[i + 1] = u / beta[i]
 
 
 def _lanczos_fast(A, n, ncv):

@@ -466,7 +466,7 @@ def sparse_scatter(dtype, use_mpi=False):
         dev = cuda.Device(rank)
         dev.use()
         comm = NCCLBackend(N_WORKERS, rank, use_mpi=use_mpi)
-        in_arrays = [_make_sparse(dtype), 2*_make_sparse(dtype)]
+        in_arrays = [_make_sparse(dtype), 2 * _make_sparse(dtype)]
         out_array = _make_sparse_empty(dtype)
         warnings.filterwarnings(
             "ignore", ".*transferring sparse.*", UserWarning)

@@ -279,7 +279,7 @@ def symiirorder1(input, c0, z1, precision=-1.0):
 def _compute_symiirorder2_fwd_hc(k, cs, r, omega):
     base = None
     if omega == 0.0:
-        base = cs * cupy.power(r, k) * (k+1)
+        base = cs * cupy.power(r, k) * (k + 1)
     elif omega == cupy.pi:
         base = cs * cupy.power(r, k) * (k + 1) * (1 - 2 * (k % 2))
     else:

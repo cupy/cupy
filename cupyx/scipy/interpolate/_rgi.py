@@ -242,7 +242,7 @@ class RegularGridInterpolator:
             if ndim <= k:
                 raise ValueError(f"There are {ndim} points in dimension {i},"
                                  f" but method {method} requires at least "
-                                 f" {k+1} points per dimension.")
+                                 f" {k + 1} points per dimension.")
 
     def _check_points(self, points):
         return _check_points(points)
@@ -328,7 +328,7 @@ class RegularGridInterpolator:
         if nu is not None and method not in self._SPLINE_METHODS_ndbspl:
             raise ValueError(
                 f"Can only compute derivatives for methods "
-                f"{self._SPLINE_METHODS_ndbspl}, got {method =}."
+                f"{self._SPLINE_METHODS_ndbspl}, got {method=}."
             )
 
         xi, xi_shape, ndim, nans, out_of_bounds = self._prepare_xi(xi)
@@ -387,7 +387,7 @@ class RegularGridInterpolator:
 
     def _evaluate_linear(self, indices, norm_distances):
         # slice for broadcasting over trailing dimensions in self.values
-        vslice = (slice(None),) + (None,)*(self.values.ndim - len(indices))
+        vslice = (slice(None),) + (None,) * (self.values.ndim - len(indices))
 
         # Compute shifting up front before zipping everything together
         shift_norm_distances = [1 - yi for yi in norm_distances]
@@ -464,7 +464,7 @@ class RegularGridInterpolator:
             # sequentially, starting with the last dimension.
             # These are then "folded" into the next dimension in-place.
             folded_values = first_values[j, ...]
-            for i in range(last_dim-1, -1, -1):
+            for i in range(last_dim - 1, -1, -1):
                 # Interpolate for each 1D from the last dimensions.
                 # This collapses each 1D sequence into a scalar.
                 folded_values = _eval_func(self.grid[i],

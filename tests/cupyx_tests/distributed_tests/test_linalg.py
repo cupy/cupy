@@ -37,7 +37,7 @@ def make_1d_config(
 ) -> ArrayConfig:
     index_map: dict[int, list[tuple[slice, ...]]] = {}
     for i in range(len(partitions) - 1):
-        idx = (slice(partitions[i], partitions[i+1]),)
+        idx = (slice(partitions[i], partitions[i + 1]),)
         for dev in devices[i]:
             index_map.setdefault(dev, []).append(idx)
 

@@ -153,7 +153,8 @@ class TestAsnumpy:
     @pytest.mark.parametrize("blocking", (True, False))
     def test_asnumpy_blocking(self, blocking):
         prefactor = 4
-        a = cupy.random.random(prefactor*128*1024*1024, dtype=cupy.float64)
+        a = cupy.random.random(prefactor * 128 * 1024 *
+                               1024, dtype=cupy.float64)
         cupy.cuda.Device().synchronize()
 
         # Idea: perform D2H copy on a nonblocking stream, during which we try
@@ -168,10 +169,10 @@ class TestAsnumpy:
         with s:
             c = cupyx.empty_pinned(a.shape, dtype=a.dtype)
             cupy.asnumpy(a, out=c, blocking=blocking)
-            c[c.size//2:] = -1.  # potential data race
+            c[c.size // 2:] = -1.  # potential data race
         s.synchronize()
 
-        a[c.size//2:] = -1.
+        a[c.size // 2:] = -1.
         if not blocking:
             ctx = pytest.raises(AssertionError)
         else:

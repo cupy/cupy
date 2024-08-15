@@ -218,7 +218,7 @@ class TestPeakWidths:
                         x, peak, prominence_data=prominence_data)
 
     @pytest.mark.filterwarnings("ignore:some peaks have a width of 0")
-    @pytest.mark.parametrize("rel_height", [0, 2/3])
+    @pytest.mark.parametrize("rel_height", [0, 2 / 3])
     @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_intersection_rules(self, rel_height, xp, scp):
         """Test if x == eval_height counts as an intersection."""
@@ -279,7 +279,7 @@ class TestFindPeaks:
         """
         Test height condition for peaks.
         """
-        x = xp.asarray([0., 1/3, 0., 2.5, 0, 4., 0])
+        x = xp.asarray([0., 1 / 3, 0., 2.5, 0, 4., 0])
         peaks, props = scp.signal.find_peaks(x, height=height)
         return (peaks,) + tuple(
             [props[k] for k in self.property_keys if k in props])
@@ -430,8 +430,8 @@ class TestArgrel:
         order = 2
         sigmas = [1.0, 2.0, 10.0, 5.0, 15.0]
         test_data, act_locs = _gen_gaussians_even(xp, sigmas, 500)
-        test_data[act_locs + order] = test_data[act_locs]*0.99999
-        test_data[act_locs - order] = test_data[act_locs]*0.99999
+        test_data[act_locs + order] = test_data[act_locs] * 0.99999
+        test_data[act_locs - order] = test_data[act_locs] * 0.99999
         rel_max_locs = scp.signal.argrelmax(
             test_data, order=order, mode="clip")[0]
         return rel_max_locs

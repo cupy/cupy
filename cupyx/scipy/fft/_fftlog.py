@@ -74,9 +74,9 @@ def fht(a, dln, mu, offset=0.0, bias=0.0):
     # bias input array
     if bias != 0:
         # a_q(r) = a(r) (r/r_c)^{-q}
-        j_c = (n-1)/2
+        j_c = (n - 1) / 2
         j = cupy.arange(n)
-        a = a * cupy.exp(-bias*(j - j_c)*dln)
+        a = a * cupy.exp(-bias * (j - j_c) * dln)
 
     # compute FHT coefficients
     u = fhtcoeff(n, dln, mu, offset=offset, bias=bias)
@@ -87,7 +87,7 @@ def fht(a, dln, mu, offset=0.0, bias=0.0):
     # bias output array
     if bias != 0:
         # A(k) = A_q(k) (k/k_c)^{-q} (k_c r_c)^{-q}
-        A *= cupy.exp(-bias*((j - j_c)*dln + offset))
+        A *= cupy.exp(-bias * ((j - j_c) * dln + offset))
 
     return A
 
@@ -159,8 +159,8 @@ def fhtcoeff(n, dln, mu, offset=0.0, bias=0.0):
     # Hankel transform coefficients
     # u_m = (kr)^{-i 2m pi/(n dlnr)} U_mu(q + i 2m pi/(n dlnr))
     # with U_mu(x) = 2^x Gamma((mu+1+x)/2)/Gamma((mu+1-x)/2)
-    xp = (mu + 1 + q)/2
-    xm = (mu + 1 - q)/2
+    xp = (mu + 1 + q) / 2
+    xm = (mu + 1 - q) / 2
     y = cupy.linspace(0, math.pi * (n // 2) / (n * dln), n // 2 + 1)
     u = cupy.empty(n // 2 + 1, dtype=complex)
     v = cupy.empty(n // 2 + 1, dtype=complex)

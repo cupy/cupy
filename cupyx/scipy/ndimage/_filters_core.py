@@ -10,7 +10,7 @@ from cupyx.scipy.ndimage import _util
 
 
 def _origins_to_offsets(origins, w_shape):
-    return tuple(x//2+o for x, o in zip(w_shape, origins))
+    return tuple(x // 2 + o for x, o in zip(w_shape, origins))
 
 
 def _check_size_footprint_structure(ndim, size, footprint, structure,
@@ -25,7 +25,7 @@ def _check_size_footprint_structure(ndim, size, footprint, structure,
     if size is not None:
         warnings.warn("ignoring size because {} is set".format(
             "structure" if footprint is None else "footprint"),
-            UserWarning, stacklevel=stacklevel+1)
+            UserWarning, stacklevel=stacklevel + 1)
 
     if footprint is not None:
         footprint = cupy.array(footprint, bool, True, "C")
@@ -49,10 +49,10 @@ def _convert_1d_args(ndim, weights, origin, axis):
     if weights.ndim != 1 or weights.size < 1:
         raise RuntimeError("incorrect filter size")
     axis = internal._normalize_axis_index(axis, ndim)
-    w_shape = [1]*ndim
+    w_shape = [1] * ndim
     w_shape[axis] = weights.size
     weights = weights.reshape(w_shape)
-    origins = [0]*ndim
+    origins = [0] * ndim
     origins[axis] = _util._check_origin(origin, weights.size)
     return weights, tuple(origins)
 
@@ -293,7 +293,7 @@ def _generate_nd_kernel(name, pre, found, post, mode, w_shape, int_type,
     {post}
     """.format(sizes="\n".join(sizes), inds=inds, pre=pre, post=post,
                ws_init=ws_init, ws_pre=ws_pre, ws_post=ws_post,
-               loops="\n".join(loops), found=found, end_loops="}"*ndim)
+               loops="\n".join(loops), found=found, end_loops="}" * ndim)
 
     mode_str = mode.replace("-", "_")  # avoid potential hyphen in kernel name
     name = "cupyx_scipy_ndimage_{}_{}d_{}_w{}".format(

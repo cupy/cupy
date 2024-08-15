@@ -907,7 +907,7 @@ class TestSpSolve:
         sa = sp.csr_matrix(a.astype(dtyp))
 
         # prepare b to be non-contiguous
-        b = xp.arange((2*n*nb), dtype=dtyp).reshape((2*n, nb))
+        b = xp.arange((2 * n * nb), dtype=dtyp).reshape((2 * n, nb))
         b = b[::2, :]
         result = sp.linalg.spsolve(sa, b)
         return result

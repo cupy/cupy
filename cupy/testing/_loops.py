@@ -1227,10 +1227,10 @@ def for_contiguous_axes(name="axis"):
             for i in range(ndim):
                 a = ()
                 if order in ("c", "C"):
-                    for j in range(ndim-1, i-1, -1):
+                    for j in range(ndim - 1, i - 1, -1):
                         a = (j,) + a
                 elif order in ("f", "F"):
-                    for j in range(0, i+1):
+                    for j in range(0, i + 1):
                         a = a + (j,)
                 else:
                     raise ValueError("Please specify the array order.")

@@ -729,7 +729,7 @@ class TestDistributedArray4Devices(_TestDistributedArray):
                         d_arr_new = getattr(cupy, kernel)(d_arr, axis)
                         arrs[i] = np_arr_new, d_arr_new
                     for i in range(len(maps)):
-                        maps[i] = {dev: idx[:axis] + idx[axis+1:]
+                        maps[i] = {dev: idx[:axis] + idx[axis + 1:]
                                    for dev, idx in maps[i].items()}
 
             for i, arrs in enumerate(arrs_history):

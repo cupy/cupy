@@ -46,7 +46,7 @@ class TestSpecialConvex(unittest.TestCase):
         arr = []
         for sgna, va, sgnb, vb in itertools.product(signs, values, signs,
                                                     values):
-            arr.append((sgna*va, sgnb*vb))
+            arr.append((sgna * va, sgnb * vb))
         z = xp.asarray(numpy.array(arr, dtype=dtype))
         return scp.special.kl_div(z[:, 0], z[:, 1])
 

@@ -101,7 +101,7 @@ rad2deg = _core.create_ufunc(
     """)
 
 
-def unwrap(p, discont=None, axis=-1, *, period=2*numpy.pi):
+def unwrap(p, discont=None, axis=-1, *, period=2 * numpy.pi):
     r"""Unwrap by taking the complement of large deltas w.r.t. the period.
 
     This unwraps a signal `p` by changing elements which have an absolute
@@ -134,8 +134,8 @@ def unwrap(p, discont=None, axis=-1, *, period=2*numpy.pi):
     nd = p.ndim
     dd = sumprod.diff(p, axis=axis)
     if discont is None:
-        discont = period/2
-    slice1 = [slice(None, None)]*nd     # full slices
+        discont = period / 2
+    slice1 = [slice(None, None)] * nd     # full slices
     slice1[axis] = slice(1, None)
     slice1 = tuple(slice1)
     dtype = numpy.result_type(dd.dtype, period)

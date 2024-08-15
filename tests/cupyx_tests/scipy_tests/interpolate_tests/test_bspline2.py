@@ -19,7 +19,7 @@ class TestInterp:
     # Test basic ways of constructing interpolating splines.
     #
     def get_xy(self, xp):
-        xx = xp.linspace(0., 2.*cupy.pi, 11)
+        xx = xp.linspace(0., 2. * cupy.pi, 11)
         yy = xp.sin(xx)
         return xx, yy
 
@@ -157,9 +157,9 @@ class TestInterp:
         # two additional constraints are zero 2nd derivatives at edges
         k = 2
         x, y = self.get_xy(xp)
-        t = xp.r_[(x[0],)*(k+1),
+        t = xp.r_[(x[0],) * (k + 1),
                   (x[1:] + x[:-1]) / 2.,
-                  (x[-1],)*(k+1)]
+                  (x[-1],) * (k + 1)]
         b = scp.interpolate.make_interp_spline(x, y, k, t,
                                                bc_type=([(2, 0)], [(2, 0)]))
         return b(x), b(x[0], 2), b(x[-1], 2)
@@ -179,10 +179,10 @@ class TestInterp:
     @testing.numpy_cupy_allclose(scipy_name="scp", atol=1e-14)
     def test_complex(self, xp, scp):
         x, y = self.get_xy(xp)
-        y = y + 1j*y
+        y = y + 1j * y
 
         # first derivatives at left & right edges:
-        der_l, der_r = [(1, 3.j)], [(1, 4.+2.j)]
+        der_l, der_r = [(1, 3.j)], [(1, 4. + 2.j)]
         b = scp.interpolate.make_interp_spline(x, y, k=3,
                                                bc_type=(der_l, der_r))
         return b(x), b(x[0], 1), b(x[-1], 1)
@@ -191,7 +191,7 @@ class TestInterp:
     def test_complex_01(self, xp, scp):
         # also test zero and first order
         x, y = self.get_xy(xp)
-        y = y + 1j*y
+        y = y + 1j * y
         return (scp.interpolate.make_interp_spline(x, y, k=0)(x),
                 scp.interpolate.make_interp_spline(x, y, k=1)(x))
 
@@ -367,7 +367,7 @@ class TestInterpPeriodic:
     # Test basic ways of constructing interpolating splines w/periodic BCs.
     #
     def get_xy(self, xp):
-        xx = xp.linspace(0., 2.*cupy.pi, 11)
+        xx = xp.linspace(0., 2. * cupy.pi, 11)
         yy = xp.sin(xx)
         return xx, yy
 
@@ -461,7 +461,7 @@ class TestInterpPeriodic:
 
 def _augknt(x, k):
     """Construct a knot vector appropriate for the order-k interpolation."""
-    return _np.r_[(x[0],)*k, x, (x[-1],)*k]
+    return _np.r_[(x[0],) * k, x, (x[-1],) * k]
 
 
 @testing.with_requires("scipy")
@@ -481,9 +481,9 @@ class TestLSQ:
         _np.random.seed(1234)
         x = _np.sort(_np.random.random(n))
         y = _np.random.random(n)
-        t = _np.r_[(x[0],)*k,
+        t = _np.r_[(x[0],) * k,
                    _np.linspace(x[0], x[-1], 7),
-                   (x[-1],)*k]
+                   (x[-1],) * k]
         return xp.asarray(x), xp.asarray(y), xp.asarray(t), k
 
     @testing.numpy_cupy_allclose(scipy_name="scp")
@@ -561,8 +561,8 @@ def fprota(c, s, a, b):
     [bb]   [-s c]   [b]
 
     """
-    aa = c*a + s*b
-    bb = -s*a + c*b
+    aa = c * a + s * b
+    bb = -s * a + c * b
     return aa, bb
 
 
@@ -597,7 +597,7 @@ def _qr_reduce_py(a_p, y, startrow=1):
             # rotate l.h.s.
             R[j, 0] = r
             for ll in range(1, nz):
-                R[j, ll], R[i, ll-1] = fprota(c, s, R[j, ll], R[i, ll])
+                R[j, ll], R[i, ll - 1] = fprota(c, s, R[j, ll], R[i, ll])
             R[i, -1] = 0.0
 
             # rotate r.h.s.
@@ -614,7 +614,7 @@ class TestGivensQR:
         from cupyx.scipy.interpolate._bspline2 import _not_a_knot
         k = 3
         x = cupy.arange(n, dtype=float)
-        y = x**3 + 1/(1+x)
+        y = x**3 + 1 / (1 + x)
         t = _not_a_knot(x, k)
         return x, y, t, k
 
@@ -630,9 +630,9 @@ class TestGivensQR:
         m, nc = a_csr.shape
         assert nc == t.shape[0] - k - 1
 
-        offset = a_csr.indices[::(k+1)]
+        offset = a_csr.indices[::(k + 1)]
         offset = cupy.ascontiguousarray(offset, dtype=cupy.intp)
-        A = a_csr.data.reshape(m, k+1)
+        A = a_csr.data.reshape(m, k + 1)
         y_ = y[:, None]
 
         # python QR reduction
@@ -645,7 +645,7 @@ class TestGivensQR:
         )
         qr_reduce = _get_module_func(QR_MODULE, "qr_reduce")
         qr_reduce((1,), (1,),
-                  (A, m, k+1,
+                  (A, m, k + 1,
                    offset,
                    nc,
                    y_, y_.shape[1], 1)

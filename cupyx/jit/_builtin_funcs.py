@@ -332,7 +332,7 @@ class GridFunc(BuiltinFunc):
             raise ValueError("Only ndim=1,2,3 are supported")
 
         elts_code = ", ".join(self._code.format(n=n) for n in dims)
-        ctype = _cuda_types.Tuple([_cuda_types.uint32]*ndim)
+        ctype = _cuda_types.Tuple([_cuda_types.uint32] * ndim)
         # STD is defined in carray.cuh
         if ndim == 2:
             return Data(f"STD::make_pair({elts_code})", ctype)

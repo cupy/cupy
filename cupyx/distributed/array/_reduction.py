@@ -40,7 +40,7 @@ def _execute(
                 chunks[i] = chunks[i].copy()
                 chunks[i].set_identity_on_overwritten_entries(identity)
 
-    shape = arr.shape[:axis] + arr.shape[axis+1:]
+    shape = arr.shape[:axis] + arr.shape[axis + 1:]
     out_dtype = None
     out_chunks_map: dict[int, list[_chunk._Chunk]] = {}
 
@@ -48,11 +48,11 @@ def _execute(
         out_chunks_map[dev] = []
         for chunk in chunks:
             with chunk.on_ready() as stream:
-                out_index = chunk.index[:axis] + chunk.index[axis+1:]
+                out_index = chunk.index[:axis] + chunk.index[axis + 1:]
 
                 if isinstance(chunk.array, _chunk._ArrayPlaceholder):
                     old_shape = chunk.array.shape
-                    out_shape = old_shape[:axis] + old_shape[axis+1:]
+                    out_shape = old_shape[:axis] + old_shape[axis + 1:]
                     out_chunk = _chunk._Chunk.create_placeholder(
                         out_shape, chunk.array.device, out_index)
                 else:
@@ -80,7 +80,7 @@ def _execute(
                     out_update = _data_transfer._AsyncData(
                         out_update_array, stream.record(),
                         prevent_gc=update.prevent_gc)
-                    out_index = update_index[:axis] + update_index[axis+1:]
+                    out_index = update_index[:axis] + update_index[axis + 1:]
                     out_chunk.add_update(out_update, out_index)
 
     return _array.DistributedArray(

@@ -338,7 +338,7 @@ _searchsorted_kernel = _core.ElementwiseKernel(
     "bool assume_increasing",
     "int64 y",
     _searchsorted_code,
-    name="cupy_searchsorted_kernel", preamble=_preamble+_hip_preamble)
+    name="cupy_searchsorted_kernel", preamble=_preamble + _hip_preamble)
 
 
 _hip_preamble = r"""
@@ -371,7 +371,7 @@ _exists_kernel = _core.ElementwiseKernel(
     + _searchsorted_code + """
     out = (y == n_bins ? false : bins[y] == x);
     if (invert) out = !out;
-    """, name="cupy_exists_kernel", preamble=_preamble+_hip_preamble)
+    """, name="cupy_exists_kernel", preamble=_preamble + _hip_preamble)
 
 
 _exists_and_searchsorted_kernel = _core.ElementwiseKernel(
@@ -385,7 +385,7 @@ _exists_and_searchsorted_kernel = _core.ElementwiseKernel(
     out = (y == n_bins ? false : bins[y] == x);
     if (invert) out = !out;
     """, name="cupy_exists_and_searchsorted_kernel",
-    preamble=_preamble+_hip_preamble)
+    preamble=_preamble + _hip_preamble)
 
 
 def searchsorted(a, v, side="left", sorter=None):

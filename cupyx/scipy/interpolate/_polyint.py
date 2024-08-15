@@ -121,7 +121,8 @@ class _Interpolator1D:
                              "interpolation axis.")
 
         self._y_axis = (axis % yi.ndim)
-        self._y_extra_shape = yi.shape[:self._y_axis]+yi.shape[self._y_axis+1:]
+        self._y_extra_shape = yi.shape[:self._y_axis] + \
+            yi.shape[self._y_axis + 1:]
         self.dtype = None
         self._set_dtype(yi.dtype)
 
@@ -167,9 +168,9 @@ class _Interpolator1DWithDerivatives(_Interpolator1D):
         if self._y_axis != 0 and x_shape != ():
             nx = len(x_shape)
             ny = len(self._y_extra_shape)
-            s = ([0] + list(range(nx+1, nx + self._y_axis+1))
-                 + list(range(1, nx+1)) +
-                 list(range(nx+1+self._y_axis, nx+ny+1)))
+            s = ([0] + list(range(nx + 1, nx + self._y_axis + 1))
+                 + list(range(1, nx + 1)) +
+                 list(range(nx + 1 + self._y_axis, nx + ny + 1)))
             y = y.transpose(s)
         return y
 
@@ -198,7 +199,7 @@ class _Interpolator1DWithDerivatives(_Interpolator1D):
 
         """
         x, x_shape = self._prepare_x(x)
-        y = self._evaluate_derivatives(x, der+1)
+        y = self._evaluate_derivatives(x, der + 1)
         return self._finish_y(y[der], x_shape)
 
 
@@ -427,23 +428,23 @@ class KroghInterpolator(_Interpolator1DWithDerivatives):
         self.yi = self._reshape_yi(yi)
         self.n, self.r = self.yi.shape
 
-        c = cupy.zeros((self.n+1, self.r), dtype=self.dtype)
+        c = cupy.zeros((self.n + 1, self.r), dtype=self.dtype)
         c[0] = self.yi[0]
         Vk = cupy.zeros((self.n, self.r), dtype=self.dtype)
         for k in range(1, self.n):
             s = 0
-            while s <= k and xi[k-s] == xi[k]:
+            while s <= k and xi[k - s] == xi[k]:
                 s += 1
             s -= 1
-            Vk[0] = self.yi[k]/float_factorial(s)
-            for i in range(k-s):
+            Vk[0] = self.yi[k] / float_factorial(s)
+            for i in range(k - s):
                 if xi[i] == xi[k]:
                     raise ValueError("Elements if `xi` can't be equal.")
                 if s == 0:
-                    Vk[i+1] = (c[i]-Vk[i])/(xi[i]-xi[k])
+                    Vk[i + 1] = (c[i] - Vk[i]) / (xi[i] - xi[k])
                 else:
-                    Vk[i+1] = (Vk[i+1]-Vk[i])/(xi[i]-xi[k])
-            c[k] = Vk[k-s]
+                    Vk[i + 1] = (Vk[i + 1] - Vk[i]) / (xi[i] - xi[k])
+            c[k] = Vk[k - s]
         self.c = c
 
     def _evaluate(self, x):
@@ -451,8 +452,8 @@ class KroghInterpolator(_Interpolator1DWithDerivatives):
         p = cupy.zeros((len(x), self.r), dtype=self.dtype)
         p += self.c[0, cupy.newaxis, :]
         for k in range(1, self.n):
-            w = x - self.xi[k-1]
-            pi = w*pi
+            w = x - self.xi[k - 1]
+            pi = w * pi
             p += pi[:, cupy.newaxis] * self.c[k]
         return p
 
@@ -469,17 +470,17 @@ class KroghInterpolator(_Interpolator1DWithDerivatives):
         p += self.c[0, cupy.newaxis, :]
 
         for k in range(1, n):
-            w[k-1] = x - self.xi[k-1]
-            pi[k] = w[k-1] * pi[k-1]
+            w[k - 1] = x - self.xi[k - 1]
+            pi[k] = w[k - 1] * pi[k - 1]
             p += pi[k, :, cupy.newaxis] * self.c[k]
 
-        cn = cupy.zeros((max(der, n+1), len(x), r), dtype=self.dtype)
-        cn[:n+1, :, :] += self.c[:n+1, cupy.newaxis, :]
+        cn = cupy.zeros((max(der, n + 1), len(x), r), dtype=self.dtype)
+        cn[:n + 1, :, :] += self.c[:n + 1, cupy.newaxis, :]
         cn[0] = p
         for k in range(1, n):
-            for i in range(1, n-k+1):
-                pi[i] = w[k+i-1]*pi[i-1] + pi[i]
-                cn[k] = cn[k] + pi[i, :, cupy.newaxis]*cn[k+i]
+            for i in range(1, n - k + 1):
+                pi[i] = w[k + i - 1] * pi[i - 1] + pi[i]
+                cn[k] = cn[k] + pi[i, :, cupy.newaxis] * cn[k + i]
             cn[k] *= float_factorial(k)
 
         cn[n, :, :] = 0
@@ -525,7 +526,7 @@ def krogh_interpolate(xi, yi, x, der=0, axis=0):
     elif _isscalar(der):
         return P.derivative(x, der=der)
     else:
-        return P.derivatives(x, der=cupy.amax(der)+1)[der]
+        return P.derivatives(x, der=cupy.amax(der) + 1)[der]
 
 
 def _check_broadcast_up_to(arr_from, shape_to, name):
@@ -831,7 +832,7 @@ class interp1d(_Interpolator1D):
         # 3. Clip x_new_indices so that they are within the range of
         #    self.x indices and at least 1. Removes mis-interpolation
         #    of x_new[n] = x[0]
-        x_new_indices = x_new_indices.clip(1, len(self.x)-1).astype(int)
+        x_new_indices = x_new_indices.clip(1, len(self.x) - 1).astype(int)
 
         # 4. Calculate the slope of regions that each x_new value falls in.
         lo = x_new_indices - 1
@@ -847,7 +848,7 @@ class interp1d(_Interpolator1D):
         slope = (y_hi - y_lo) / (x_hi - x_lo)[:, None]
 
         # 5. Calculate the actual value for each entry in x_new.
-        y_new = slope*(x_new - x_lo)[:, None] + y_lo
+        y_new = slope * (x_new - x_lo)[:, None] + y_lo
 
         return y_new
 
@@ -861,7 +862,8 @@ class interp1d(_Interpolator1D):
         x_new_indices = cupy.searchsorted(self.x_bds, x_new, side=self._side)
 
         # 3. Clip x_new_indices so that they are within the range of x indices.
-        x_new_indices = x_new_indices.clip(0, len(self.x)-1).astype(cupy.intp)
+        x_new_indices = x_new_indices.clip(
+            0, len(self.x) - 1).astype(cupy.intp)
 
         # 4. Calculate the actual value for each entry in x_new.
         y_new = self._y[x_new_indices]
@@ -881,7 +883,7 @@ class interp1d(_Interpolator1D):
                                            xn).astype(cupy.intp)
 
         # 3. Calculate the actual value for each entry in x_new.
-        y_new = self._y[x_new_indices+self._ind-1]
+        y_new = self._y[x_new_indices + self._ind - 1]
 
         return y_new
 

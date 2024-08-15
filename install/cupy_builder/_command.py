@@ -85,7 +85,7 @@ def dumpbin_dependents(dumpbin: str, path: str) -> List[str]:
     sections = p.stdout.decode().split("\r\n\r\n")
     for num, section in enumerate(sections):
         if "Image has the following dependencies:" in section:
-            return [line.strip() for line in sections[num+1].splitlines()]
+            return [line.strip() for line in sections[num + 1].splitlines()]
     print(f"*** DUMPBIN output could not be parsed: {args}")
     return []
 

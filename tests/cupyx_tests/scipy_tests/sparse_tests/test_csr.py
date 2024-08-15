@@ -2124,7 +2124,7 @@ class TestCsrMatrixDiagonal:
     def test_diagonal(self, dtype):
         scipy_a, cupyx_a = self._make_matrix(dtype)
         m, n = self.shape
-        for k in range(-m, n+1):
+        for k in range(-m, n + 1):
             scipy_diag = scipy_a.diagonal(k=k)
             cupyx_diag = cupyx_a.diagonal(k=k)
             testing.assert_allclose(scipy_diag, cupyx_diag)
@@ -2142,7 +2142,7 @@ class TestCsrMatrixDiagonal:
     def test_setdiag(self, dtype):
         scipy_a, cupyx_a = self._make_matrix(dtype)
         m, n = self.shape
-        for k in range(-m+1, n):
+        for k in range(-m + 1, n):
             m_st, n_st = max(0, -k), max(0, k)
             for d in (-1, 0, 1):
                 x_len = min(m - m_st, n - n_st) + d
@@ -2156,7 +2156,7 @@ class TestCsrMatrixDiagonal:
         scipy_a, cupyx_a = self._make_matrix(dtype)
         x = numpy.array(1.0, dtype=dtype)
         m, n = self.shape
-        for k in range(-m+1, n):
+        for k in range(-m + 1, n):
             self._test_setdiag(scipy_a, cupyx_a, x, k)
 
     def test_setdiag_invalid(self):

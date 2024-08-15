@@ -75,7 +75,7 @@ class TestWavelets:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", DeprecationWarning)
             w = scp.signal.morlet2(points, 2.0)
-            y = scp.signal.morlet2(3, s=1/(2*xp.pi), w=2)
+            y = scp.signal.morlet2(3, s=1 / (2 * xp.pi), w=2)
         return w, y
 
     @testing.numpy_cupy_allclose(scipy_name="scp")

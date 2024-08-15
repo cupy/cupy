@@ -88,7 +88,7 @@ def _make_along_axis_idx(arr_shape, indices, axis):
         if dim is None:
             fancy_index.append(indices)
         else:
-            ind_shape = shape_ones[:dim] + (-1,) + shape_ones[dim+1:]
+            ind_shape = shape_ones[:dim] + (-1,) + shape_ones[dim + 1:]
             fancy_index.append(cupy.arange(n).reshape(ind_shape))
 
     return tuple(fancy_index)

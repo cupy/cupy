@@ -45,7 +45,7 @@ class TestCuTensor:
     def test_elementwise_trinary(self):
         d = cutensor.elementwise_trinary(
             self.alpha, self.a, self.mode_a,
-            self.beta,  self.b, self.mode_b,
+            self.beta, self.b, self.mode_b,
             self.gamma, self.c, self.mode_c
         )
 
@@ -65,7 +65,7 @@ class TestCuTensor:
 
         d = cutensor.elementwise_trinary(
             self.alpha, self.a, self.mode_a,
-            self.beta,  self.b, self.mode_b,
+            self.beta, self.b, self.mode_b,
             self.gamma, self.c, self.mode_c, out=out
         )
 
@@ -206,7 +206,7 @@ class TestCuTensorDescriptor:
     def test_elementwise_trinary(self):
         d = cutensor.elementwise_trinary(
             self.alpha, self.a, self.mode_a,
-            self.beta,  self.b, self.mode_b,
+            self.beta, self.b, self.mode_b,
             self.gamma, self.c, self.mode_c,
             op_A=ct.OP_SQRT, op_B=ct.OP_TANH, op_C=ct.OP_COS,
             op_AB=ct.OP_ADD, op_ABC=ct.OP_MUL
@@ -379,12 +379,13 @@ class TestCuTensorIncontiguous:
         for a0 in range(0, a, delta):
             for d0 in range(0, d, delta):
                 cutensor.contraction(self.alpha,
-                                     self.a[a0:a0+delta], mode_a,
-                                     self.b[:, d0:d0+delta], mode_b,
+                                     self.a[a0:a0 + delta], mode_a,
+                                     self.b[:, d0:d0 + delta], mode_b,
                                      self.beta,
-                                     self.c[d0:d0+delta, a0:a0+delta], mode_c)
-                cupy.testing.assert_allclose(self.c[d0:d0+delta, a0:a0+delta],
-                                             c_ref[d0:d0+delta, a0:a0+delta],
+                                     self.c[d0:d0 + delta, a0:a0 + delta], mode_c)
+                cupy.testing.assert_allclose(self.c[d0:d0 + delta, a0:a0 + delta],
+                                             c_ref[d0:d0 + delta,
+                                                   a0:a0 + delta],
                                              rtol=self.tol, atol=self.tol)
 
     def test_reduction(self):
@@ -404,11 +405,11 @@ class TestCuTensorIncontiguous:
         delta = 7
         for b0 in range(0, b, delta):
             cutensor.reduction(self.alpha,
-                               self.a[:, b0:b0+delta, :], mode_a,
+                               self.a[:, b0:b0 + delta, :], mode_a,
                                self.beta,
-                               self.c[b0:b0+delta], mode_c)
-            cupy.testing.assert_allclose(self.c[b0:b0+delta],
-                                         c_ref[b0:b0+delta],
+                               self.c[b0:b0 + delta], mode_c)
+            cupy.testing.assert_allclose(self.c[b0:b0 + delta],
+                                         c_ref[b0:b0 + delta],
                                          rtol=self.tol, atol=self.tol)
 
     def test_elementwise_binary(self):
@@ -428,12 +429,12 @@ class TestCuTensorIncontiguous:
         delta = 7
         for b0 in range(0, b, delta):
             cutensor.elementwise_binary(self.alpha,
-                                        self.a[:, b0:b0+delta], mode_a,
+                                        self.a[:, b0:b0 + delta], mode_a,
                                         self.beta,
-                                        self.c[:, :, b0:b0+delta], mode_c,
-                                        out=self.c[:, :, b0:b0+delta])
-            cupy.testing.assert_allclose(self.c[:, :, b0:b0+delta],
-                                         c_ref[:, :, b0:b0+delta],
+                                        self.c[:, :, b0:b0 + delta], mode_c,
+                                        out=self.c[:, :, b0:b0 + delta])
+            cupy.testing.assert_allclose(self.c[:, :, b0:b0 + delta],
+                                         c_ref[:, :, b0:b0 + delta],
                                          rtol=self.tol, atol=self.tol)
 
     def test_elementwise_trinary(self):
@@ -457,14 +458,14 @@ class TestCuTensorIncontiguous:
             delta = 7
             for a0 in range(0, a, delta):
                 cutensor.elementwise_trinary(self.alpha,
-                                             self.a[a0:a0+delta],
+                                             self.a[a0:a0 + delta],
                                              mode_a, self.beta,
-                                             self.b[:, :, a0:a0+delta],
+                                             self.b[:, :, a0:a0 + delta],
                                              mode_b, gamma,
-                                             self.c[:, a0:a0+delta], mode_c,
-                                             out=self.c[:, a0:a0+delta])
-                cupy.testing.assert_allclose(self.c[:, a0:a0+delta],
-                                             c_ref[:, a0:a0+delta],
+                                             self.c[:, a0:a0 + delta], mode_c,
+                                             out=self.c[:, a0:a0 + delta])
+                cupy.testing.assert_allclose(self.c[:, a0:a0 + delta],
+                                             c_ref[:, a0:a0 + delta],
                                              rtol=self.tol, atol=self.tol)
 
 

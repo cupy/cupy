@@ -43,7 +43,7 @@ class TestGraph:
         s = cupy.cuda.Stream(non_blocking=True)
 
         for n in range(3):
-            func = getattr(self, "_helper{}".format(n+1))
+            func = getattr(self, "_helper{}".format(n + 1))
             a = cupy.random.random((100,))
 
             with s:
@@ -64,7 +64,7 @@ class TestGraph:
         s2 = cupy.cuda.Stream(non_blocking=True)
 
         for n in range(3):
-            func = getattr(self, "_helper{}".format(n+1))
+            func = getattr(self, "_helper{}".format(n + 1))
             a = cupy.random.random((100,))
 
             with s1:

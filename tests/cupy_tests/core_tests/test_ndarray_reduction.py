@@ -101,7 +101,7 @@ class TestArrayReduction:
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(contiguous_check=False)
     def test_max_nan_imag(self, xp, dtype):
-        a = xp.array([float("nan")*1.j, 1.j, -1.j], dtype, order=self.order)
+        a = xp.array([float("nan") * 1.j, 1.j, -1.j], dtype, order=self.order)
         return a.max()
 
     @testing.for_float_dtypes()
@@ -174,7 +174,7 @@ class TestArrayReduction:
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(contiguous_check=False)
     def test_min_nan_imag(self, xp, dtype):
-        a = xp.array([float("nan")*1.j, 1.j, -1.j], dtype, order=self.order)
+        a = xp.array([float("nan") * 1.j, 1.j, -1.j], dtype, order=self.order)
         return a.min()
 
     @testing.for_float_dtypes()
@@ -251,7 +251,7 @@ class TestArrayReduction:
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(contiguous_check=False)
     def test_ptp_nan_imag(self, xp, dtype):
-        a = xp.array([float("nan")*1.j, 1.j, -1.j], dtype, order=self.order)
+        a = xp.array([float("nan") * 1.j, 1.j, -1.j], dtype, order=self.order)
         return a.ptp()
 
     @testing.for_all_dtypes()
@@ -299,7 +299,7 @@ class TestArrayReduction:
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(contiguous_check=False)
     def test_argmax_nan_imag(self, xp, dtype):
-        a = xp.array([float("nan")*1.j, 1.j, -1.j], dtype, order=self.order)
+        a = xp.array([float("nan") * 1.j, 1.j, -1.j], dtype, order=self.order)
         return a.argmax()
 
     @testing.for_all_dtypes()
@@ -347,7 +347,7 @@ class TestArrayReduction:
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(contiguous_check=False)
     def test_argmin_nan_imag(self, xp, dtype):
-        a = xp.array([float("nan")*1.j, 1.j, -1.j], dtype, order=self.order)
+        a = xp.array([float("nan") * 1.j, 1.j, -1.j], dtype, order=self.order)
         return a.argmin()
 
 

@@ -419,7 +419,7 @@ class TestZeroSizeArrays:
         yt = xp.moveaxis(y, 0, axis)  # (10, 0, 5) --> (0, 10, 5) if axis=1 etc
 
         obj = cls(x, yt, bc_type=bc_type, axis=axis)
-        sh = yt.shape[:axis] + (xval.size, ) + yt.shape[axis+1:]
+        sh = yt.shape[:axis] + (xval.size, ) + yt.shape[axis + 1:]
         r2 = obj(xval)
         assert r2.size == 0
         assert r2.shape == sh
@@ -445,7 +445,7 @@ class TestZeroSizeArrays:
         yt = xp.moveaxis(y, 0, axis)  # (10, 0, 5) --> (0, 10, 5) if axis=1 etc
 
         obj = cls(x, yt, axis=axis)
-        sh = yt.shape[:axis] + (xval.size, ) + yt.shape[axis+1:]
+        sh = yt.shape[:axis] + (xval.size, ) + yt.shape[axis + 1:]
         r2 = obj(xval)
         assert r2.size == 0
         assert r2.shape == sh
@@ -489,7 +489,7 @@ class TestPCHIP:
         p, xi, _ = self._make_random(xp, scp)
         results = []
         for i in range(len(xi) - 1):
-            x1, x2 = xi[i], xi[i+1]
+            x1, x2 = xi[i], xi[i + 1]
             x = xp.linspace(x1, x2, 10)
             yp = p(x)
             results.append(yp)
@@ -501,7 +501,7 @@ class TestPCHIP:
         p, xi, _ = self._make_random(xp, scp)
         results = []
         for i in range(len(xi) - 1):
-            x1, x2 = xi[i], xi[i+1]
+            x1, x2 = xi[i], xi[i + 1]
             x = xp.linspace(x1, x2, 10)
             yp = p(x)
             results.append(yp)
@@ -638,7 +638,7 @@ class TestCubicSpline:
         x = xp.linspace(0, 2 * xp.pi, n)
         y = xp.cos(x)
         S = scp.interpolate.CubicSpline(x, y, bc_type="periodic")
-        q = xp.linspace(0, 2*xp.pi, 3*n)
+        q = xp.linspace(0, 2 * xp.pi, 3 * n)
         return S(q)
 
     @pytest.mark.parametrize("n", [3, 5])
@@ -652,7 +652,7 @@ class TestCubicSpline:
         Y[1, :, 0] = y - 1
         Y[1, :, 1] = y + 5
         S = scp.interpolate.CubicSpline(x, Y, axis=1, bc_type="periodic")
-        q = xp.linspace(0, 2*xp.pi, 3*n)
+        q = xp.linspace(0, 2 * xp.pi, 3 * n)
         return S(q)
 
     @testing.numpy_cupy_allclose(scipy_name="scp")
@@ -710,7 +710,7 @@ class TestCubicSpline:
     @testing.numpy_cupy_allclose(scipy_name="scp", atol=1e-15)
     def test_dtypes_2(self, xp, scp):
         x = xp.array([0, 1, 2, 3], dtype=int)
-        y = xp.array([-1+1j, 0.0, 1-1j, 0.5-1.5j])
+        y = xp.array([-1 + 1j, 0.0, 1 - 1j, 0.5 - 1.5j])
         S = scp.interpolate.CubicSpline(x, y)
         q = xp.linspace(0, 3, 7)
         return S(q)
@@ -1238,9 +1238,9 @@ class TestInterp1D:
             z = cupyx.scipy.interpolate.interp1d(x, y, axis=n, kind=kind)
             assert_array_almost_equal(z(x), y, err_msg=kind)
 
-            x2 = cupy.arange(2*3*1).reshape((2, 3, 1)) / 12.
+            x2 = cupy.arange(2 * 3 * 1).reshape((2, 3, 1)) / 12.
             b = list(a)
-            b[n:n+1] = [2, 3, 1]
+            b[n:n + 1] = [2, 3, 1]
             assert_array_almost_equal(z(x2).shape, b, err_msg=kind)
 
     @pytest.mark.parametrize("kind", ["linear", "cubic", "slinear",

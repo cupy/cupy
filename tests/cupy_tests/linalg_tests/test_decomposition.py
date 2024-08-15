@@ -220,7 +220,7 @@ class TestSVD(unittest.TestCase):
                 a_gpu_usv = cupy.matmul(u_gpu[..., :k] * s_gpu[..., None, :],
                                         vh_gpu[..., :k, :])
             else:
-                a_gpu_usv = cupy.matmul(u_gpu*s_gpu[..., None, :], vh_gpu)
+                a_gpu_usv = cupy.matmul(u_gpu * s_gpu[..., None, :], vh_gpu)
         cupy.testing.assert_allclose(a_gpu, a_gpu_usv, rtol=1e-4, atol=1e-4)
 
         # assert unitary

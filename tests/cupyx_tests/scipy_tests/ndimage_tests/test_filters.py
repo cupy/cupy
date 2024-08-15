@@ -38,7 +38,8 @@ class FilterTestCaseBase:
     DIMS_PARAMS = ("origin", "sigma")
 
     # Params that need no processing and just go into kwargs
-    KWARGS_PARAMS = ("output", "axis", "mode", "cval", "truncate")+DIMS_PARAMS
+    KWARGS_PARAMS = ("output", "axis", "mode",
+                     "cval", "truncate") + DIMS_PARAMS
 
     # Params that need no processing go before weights in the arguments
     ARGS_PARAMS = ("rank", "percentile",
@@ -393,7 +394,7 @@ rms_red = cupy.ReductionKernel("X x", "Y y", "x*x",
 
 
 def rms_pyfunc(x):
-    return (x * x).sum()/len(x)
+    return (x * x).sum() / len(x)
 
 
 lt_raw = cupy.RawKernel("""extern "C" __global__
@@ -408,7 +409,7 @@ lt_red = cupy.ReductionKernel("X x", "Y y", "_raw_x[_in_ind.size()/2]>x",
 
 
 def lt_pyfunc(x):
-    return (x[len(x)//2] > x).sum()
+    return (x[len(x) // 2] > x).sum()
 
 
 # This tests generic_filter.

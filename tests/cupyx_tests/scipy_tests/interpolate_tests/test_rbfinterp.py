@@ -59,7 +59,7 @@ def _1d_test_function(x, xp):
     # Test function used in Wahba's "Spline Models for Observational Data".
     # domain ~= (0, 3), range ~= (-1.0, 0.2)
     x = x[:, 0]
-    y = 4.26*(xp.exp(-x) - 4*xp.exp(-2*x) + 3*xp.exp(-3*x))
+    y = 4.26 * (xp.exp(-x) - 4 * xp.exp(-2 * x) + 3 * xp.exp(-3 * x))
     return y
 
 
@@ -67,10 +67,10 @@ def _2d_test_function(x, xp):
     # Franke's test function.
     # domain ~= (0, 1) X (0, 1), range ~= (0.0, 1.2)
     x1, x2 = x[:, 0], x[:, 1]
-    term1 = 0.75 * xp.exp(-(9*x1-2)**2/4 - (9*x2-2)**2/4)
-    term2 = 0.75 * xp.exp(-(9*x1+1)**2/49 - (9*x2+1)/10)
-    term3 = 0.5 * xp.exp(-(9*x1-7)**2/4 - (9*x2-3)**2/4)
-    term4 = -0.2 * xp.exp(-(9*x1-4)**2 - (9*x2-7)**2)
+    term1 = 0.75 * xp.exp(-(9 * x1 - 2)**2 / 4 - (9 * x2 - 2)**2 / 4)
+    term2 = 0.75 * xp.exp(-(9 * x1 + 1)**2 / 49 - (9 * x2 + 1) / 10)
+    term3 = 0.5 * xp.exp(-(9 * x1 - 7)**2 / 4 - (9 * x2 - 3)**2 / 4)
+    term4 = -0.2 * xp.exp(-(9 * x1 - 4)**2 - (9 * x2 - 7)**2)
     y = term1 + term2 + term3 + term4
     return y
 
@@ -86,7 +86,7 @@ def _is_conditionally_positive_definite(kernel, m, xp, scp):
         # are too close to each other, which can make the matrix singular.
         seq = Halton(ndim, scramble=False, seed=_np.random.RandomState())
         for _ in range(ntests):
-            x = xp.asarray(2*seq.random(nx)) - 1
+            x = xp.asarray(2 * seq.random(nx)) - 1
             A = _kernel_matrix(x, kernel)
             P = _vandermonde(x, m - 1)
             Q, R = cp.linalg.qr(P, mode="complete")
@@ -129,9 +129,9 @@ class _TestRBFInterpolator:
         # Verify that the functions in _SCALE_INVARIANT are insensitive to the
         # shape parameter (when smoothing == 0) in 1d.
         seq = Halton(1, scramble=False, seed=_np.random.RandomState())
-        x = xp.asarray(3*seq.random(50))
+        x = xp.asarray(3 * seq.random(50))
         y = _1d_test_function(x, xp)
-        xitp = xp.asarray(3*seq.random(50))
+        xitp = xp.asarray(3 * seq.random(50))
         yitp1 = self.build(scp, x, y, epsilon=1.0, kernel=kernel)(xitp)
         yitp2 = self.build(scp, x, y, epsilon=2.0, kernel=kernel)(xitp)
         return yitp1, yitp2
@@ -165,16 +165,16 @@ class _TestRBFInterpolator:
         if kernel in _SCALE_INVARIANT:
             yitp1 = self.build(scp, x, y, kernel=kernel)(xitp)
             yitp2 = self.build(scp,
-                               x*scale + shift, y,
+                               x * scale + shift, y,
                                kernel=kernel
-                               )(xitp*scale + shift)
+                               )(xitp * scale + shift)
         else:
             yitp1 = self.build(scp, x, y, epsilon=5.0, kernel=kernel)(xitp)
             yitp2 = self.build(scp,
-                               x*scale + shift, y,
-                               epsilon=5.0/scale,
+                               x * scale + shift, y,
+                               epsilon=5.0 / scale,
                                kernel=kernel
-                               )(xitp*scale + shift)
+                               )(xitp * scale + shift)
 
         return yitp1, yitp2
 
@@ -233,7 +233,7 @@ class _TestRBFInterpolator:
         x = xp.asarray(seq.random(100))
         xitp = xp.asarray(seq.random(100))
 
-        y = _2d_test_function(x, xp) + 1j*_2d_test_function(x[:, ::-1], xp)
+        y = _2d_test_function(x, xp) + 1j * _2d_test_function(x[:, ::-1], xp)
 
         yitp1 = self.build(scp, x, y)(xitp)
         yitp2 = self.build(scp, x, y.real)(xitp)
@@ -248,8 +248,8 @@ class _TestRBFInterpolator:
         # appropriate `epsilon`, does a good job at interpolation in 1d.
         seq = Halton(1, scramble=False, seed=_np.random.RandomState())
 
-        x = xp.asarray(3*seq.random(50))
-        xitp = xp.asarray(3*seq.random(50))
+        x = xp.asarray(3 * seq.random(50))
+        xitp = xp.asarray(3 * seq.random(50))
 
         y = _1d_test_function(x, xp)
         ytrue = _1d_test_function(xitp, xp)
@@ -289,7 +289,7 @@ class _TestRBFInterpolator:
         rmse_tol = 0.1
         smoothing_range = 10**xp.linspace(-4, 1, 20)
 
-        x = xp.asarray(3*seq.random(100))
+        x = xp.asarray(3 * seq.random(100))
         y = _1d_test_function(
             x, xp) + xp.asarray(rng.normal(0.0, noise, (100,)))
         ytrue = _1d_test_function(x, xp)
@@ -400,7 +400,7 @@ class _TestRBFInterpolator:
         deg = _NAME_TO_MIN_DEGREE[kernel]
         with warnings.catch_warnings():
             warnings.simplefilter("error")
-            self.build(scp, y, d, epsilon=1.0, kernel=kernel, degree=deg-1)
+            self.build(scp, y, d, epsilon=1.0, kernel=kernel, degree=deg - 1)
 
     @pytest.mark.parametrize("kernel", [kl for kl in _NAME_TO_MIN_DEGREE])
     @testing.numpy_cupy_allclose(scipy_name="scp")
@@ -436,8 +436,8 @@ class _TestRBFInterpolator:
         seq = Halton(1, scramble=False,
                      seed=_np.random.RandomState(2305982309))
 
-        x = cp.asarray(3*seq.random(50))
-        xitp = cp.asarray(3*seq.random(50))
+        x = cp.asarray(3 * seq.random(50))
+        xitp = cp.asarray(3 * seq.random(50))
         y = _1d_test_function(x, cp)
 
         interp = cupyx.scipy.interpolate.RBFInterpolator(x, y)
@@ -462,8 +462,8 @@ class TestRBFInterpolatorNeighborsNone(_TestRBFInterpolator):
         degree = 3
         smoothing = 1e8
 
-        x = xp.asarray(3*seq.random(50))
-        xitp = xp.asarray(3*seq.random(50))
+        x = xp.asarray(3 * seq.random(50))
+        xitp = xp.asarray(3 * seq.random(50))
 
         y = _1d_test_function(x, xp)
 
@@ -576,8 +576,8 @@ class TestRBFInterpolatorNeighborsInf(TestRBFInterpolatorNeighborsNone):
     def test_equivalent_to_rbf_interpolator(self, xp, scp):
         seq = Halton(1, scramble=False, seed=_np.random.RandomState())
 
-        x = xp.asarray(3*seq.random(50))
-        xitp = xp.asarray(3*seq.random(50))
+        x = xp.asarray(3 * seq.random(50))
+        xitp = xp.asarray(3 * seq.random(50))
 
         y = _1d_test_function(x, xp)
         yitp1 = self.build(scp, x, y)(xitp)

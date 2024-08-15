@@ -367,8 +367,8 @@ class csr_matrix(_compressed._compressed_sparse_matrix):
             x_data = values[:x_len]
         x_indices = cupy.arange(col_st, col_st + x_len, dtype="i")
         x_indptr = cupy.zeros((rows + 1,), dtype="i")
-        x_indptr[row_st:row_st+x_len+1] = cupy.arange(x_len+1, dtype="i")
-        x_indptr[row_st+x_len+1:] = x_len
+        x_indptr[row_st:row_st + x_len + 1] = cupy.arange(x_len + 1, dtype="i")
+        x_indptr[row_st + x_len + 1:] = x_len
         x_data -= self.diagonal(k=k)[:x_len]
         y = self + csr_matrix((x_data, x_indices, x_indptr), shape=self.shape)
         self.data = y.data
@@ -633,9 +633,9 @@ def multiply_by_dense(sp, dn):
     indices = cupy.empty(nnz, dtype=sp.indices.dtype)
     if m > sp_m:
         if n > sp_n:
-            indptr = cupy.arange(0, nnz+1, n, dtype=sp.indptr.dtype)
+            indptr = cupy.arange(0, nnz + 1, n, dtype=sp.indptr.dtype)
         else:
-            indptr = cupy.arange(0, nnz+1, sp.nnz, dtype=sp.indptr.dtype)
+            indptr = cupy.arange(0, nnz + 1, sp.nnz, dtype=sp.indptr.dtype)
     else:
         indptr = sp.indptr.copy()
         if n > sp_n:
@@ -753,15 +753,15 @@ def multiply_by_csr(a, b):
     c_indices = cupy.empty(c_nnz, dtype=a.indices.dtype)
     if m > a_m:
         if n > a_n:
-            c_indptr = cupy.arange(0, c_nnz+1, n, dtype=a.indptr.dtype)
+            c_indptr = cupy.arange(0, c_nnz + 1, n, dtype=a.indptr.dtype)
         else:
-            c_indptr = cupy.arange(0, c_nnz+1, a.nnz, dtype=a.indptr.dtype)
+            c_indptr = cupy.arange(0, c_nnz + 1, a.nnz, dtype=a.indptr.dtype)
     else:
         c_indptr = a.indptr.copy()
         if n > a_n:
             c_indptr *= n
-    flags = cupy.zeros(c_nnz+1, dtype=a.indices.dtype)
-    nnz_each_row = cupy.zeros(m+1, dtype=a.indptr.dtype)
+    flags = cupy.zeros(c_nnz + 1, dtype=a.indices.dtype)
+    nnz_each_row = cupy.zeros(m + 1, dtype=a.indptr.dtype)
 
     # compute c = a * b where necessary and get sparsity pattern of matrix d
     cupy_multiply_by_csr_step1()(

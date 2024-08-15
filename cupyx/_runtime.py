@@ -246,7 +246,7 @@ class _RuntimeInfo:
 
     def __str__(self):
         records = [
-            ("OS",  platform.platform()),
+            ("OS", platform.platform()),
             ("Python Version", platform.python_version()),
             ("CuPy Version", self.cupy_version),
             ("CuPy Platform", "NVIDIA CUDA" if not is_hip else "AMD ROCm"),
@@ -305,7 +305,7 @@ class _RuntimeInfo:
                     try:
                         arch = props["gcnArchName"].decode()
                     except KeyError:  # ROCm < 3.6.0
-                        arch = "gfx"+str(props["gcnArch"])
+                        arch = "gfx" + str(props["gcnArch"])
                     arch = ("Device {} Arch".format(device_id), arch)
                 else:
                     arch = ("Device {} Compute Capability".format(device_id),

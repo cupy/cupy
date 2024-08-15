@@ -157,8 +157,8 @@ def gmres(A, b, x0=None, tol=1e-5, restart=None, maxiter=None, M=None,
         callback_type = None
 
     V = cupy.empty((n, restart), dtype=A.dtype, order="F")
-    H = cupy.zeros((restart+1, restart), dtype=A.dtype, order="F")
-    e = numpy.zeros((restart+1,), dtype=A.dtype)
+    H = cupy.zeros((restart + 1, restart), dtype=A.dtype, order="F")
+    e = numpy.zeros((restart + 1,), dtype=A.dtype)
 
     compute_hu = _make_compute_hu(V)
 
@@ -181,11 +181,11 @@ def gmres(A, b, x0=None, tol=1e-5, restart=None, maxiter=None, M=None,
         for j in range(restart):
             z = psolve(v)
             u = matvec(z)
-            H[:j+1, j], u = compute_hu(u, j)
-            cublas.nrm2(u, out=H[j+1, j])
-            if j+1 < restart:
-                v = u / H[j+1, j]
-                V[:, j+1] = v
+            H[:j + 1, j], u = compute_hu(u, j)
+            cublas.nrm2(u, out=H[j + 1, j])
+            if j + 1 < restart:
+                v = u / H[j + 1, j]
+                V[:, j + 1] = v
 
         # Note: The least-square solution to equation Hy = e is computed on CPU
         # because it is faster if the matrix size is small.
@@ -400,10 +400,10 @@ def _make_compute_hu(V):
     def compute_hu(u, j):
         # h = V[:, :j+1].conj().T @ u
         # u -= V[:, :j+1] @ h
-        h = cupy.empty((j+1,), dtype=V.dtype)
-        gemv(handle, _cublas.CUBLAS_OP_C, n, j+1, one.ctypes.data, V.data.ptr,
+        h = cupy.empty((j + 1,), dtype=V.dtype)
+        gemv(handle, _cublas.CUBLAS_OP_C, n, j + 1, one.ctypes.data, V.data.ptr,
              n, u.data.ptr, 1, zero.ctypes.data, h.data.ptr, 1)
-        gemv(handle, _cublas.CUBLAS_OP_N, n, j+1, mone.ctypes.data, V.data.ptr,
+        gemv(handle, _cublas.CUBLAS_OP_N, n, j + 1, mone.ctypes.data, V.data.ptr,
              n, h.data.ptr, 1, one.ctypes.data, u.data.ptr, 1)
         return h, u
     return compute_hu

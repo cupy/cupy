@@ -216,7 +216,7 @@ def freqs_zpk(z, p, k, worN=200):
     s = 1j * w
     num = npp_polyvalfromroots(s, z)
     den = npp_polyvalfromroots(s, p)
-    h = k * num/den
+    h = k * num / den
     return w, h
 
 
@@ -323,7 +323,7 @@ def group_delay(system, w=512, whole=False, fs=2 * cupy.pi):
     return w, gd
 
 
-def freqz(b, a=1, worN=512, whole=False, plot=None, fs=2*pi,
+def freqz(b, a=1, worN=512, whole=False, plot=None, fs=2 * pi,
           include_nyquist=False):
     """
     Compute the frequency response of a digital filter.
@@ -477,7 +477,7 @@ def freqz(b, a=1, worN=512, whole=False, plot=None, fs=2*pi,
     return w, h
 
 
-def freqz_zpk(z, p, k, worN=512, whole=False, fs=2*pi):
+def freqz_zpk(z, p, k, worN=512, whole=False, fs=2 * pi):
     r"""
     Compute the frequency response of a digital filter in ZPK form.
 
@@ -566,7 +566,7 @@ def _validate_sos(sos):
     return sos, n_sections
 
 
-def sosfreqz(sos, worN=512, whole=False, fs=2*pi):
+def sosfreqz(sos, worN=512, whole=False, fs=2 * pi):
     r"""
     Compute the frequency response of a digital filter in SOS format.
 
@@ -647,7 +647,7 @@ def _gammatone_iir_kernel(fs, freq, b, a):
     minBW = 24.7
     erb = freq / EarQ + minBW
 
-    T = 1./fs
+    T = 1. / fs
     bw = 2 * cupy.pi * 1.019 * erb
     fr = 2 * freq * cupy.pi * T
     bwT = bw * T

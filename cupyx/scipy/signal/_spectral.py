@@ -560,7 +560,7 @@ def check_COLA(window, nperseg, noverlap, tol=1e-10):
 
     step = nperseg - noverlap
     binsums = sum(win[ii * step:(ii + 1) * step]
-                  for ii in range(nperseg//step))
+                  for ii in range(nperseg // step))
 
     if nperseg % step != 0:
         binsums[:nperseg % step] += win[-(nperseg % step):]
@@ -651,7 +651,7 @@ def check_NOLA(window, nperseg, noverlap, tol=1e-10):
 
     step = nperseg - noverlap
     binsums = sum(win[ii * step:(ii + 1) * step] ** 2
-                  for ii in range(nperseg//step))
+                  for ii in range(nperseg // step))
 
     if nperseg % step != 0:
         binsums[:nperseg % step] += win[-(nperseg % step):]**2

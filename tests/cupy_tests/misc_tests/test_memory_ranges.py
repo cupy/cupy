@@ -81,8 +81,8 @@ class TestMayShareMemory(unittest.TestCase):
 
         arrays = []
 
-        array_1d_np = memory_np[5:5+size]
-        array_1d_cp = memory_cp[5:5+size]
+        array_1d_np = memory_np[5:5 + size]
+        array_1d_cp = memory_cp[5:5 + size]
         for s in slices:
             arrays.append((array_1d_np[s], array_1d_cp[s], s))
 

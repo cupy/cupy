@@ -233,7 +233,7 @@ class _OpsRegister:
                     f" {self._name}")
             signature = "".join(
                 numpy.dtype(t).char for t in signature[:nin]) + "->" + "".join(
-                    numpy.dtype(t).char for t in signature[nin:nin+nout])
+                    numpy.dtype(t).char for t in signature[nin:nin + nout])
 
         if isinstance(signature, str):
             is_out = len(signature) == 1
@@ -446,7 +446,7 @@ class _GUFunc:
                 else:
                     shape = shape + (1,) * optionals
                     missing_dims.update(
-                        set(input_coredims[min(0, len(shape)-1):]))
+                        set(input_coredims[min(0, len(shape) - 1):]))
                 arg = arg.reshape(shape)
             transposed_args.append(self._transpose_element(arg, iax, shape))
         args = transposed_args

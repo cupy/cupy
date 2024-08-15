@@ -616,11 +616,11 @@ class TestPlanCtxManagerFftn:
                 return
 
         a = testing.shaped_random(self.shape, cupy, dtype)
-        bad_in_shape = tuple(2*i for i in self.shape)
+        bad_in_shape = tuple(2 * i for i in self.shape)
         if self.s is None:
             bad_out_shape = bad_in_shape
         else:
-            bad_out_shape = tuple(2*i for i in self.s)
+            bad_out_shape = tuple(2 * i for i in self.s)
         b = testing.shaped_random(bad_in_shape, cupy, dtype)
         plan_wrong = get_fft_plan(b, bad_out_shape, self.axes)
 
@@ -687,7 +687,7 @@ class TestPlanCtxManagerFft:
         from cupyx.scipy.fftpack import get_fft_plan
 
         a = testing.shaped_random(self.shape, cupy, dtype)
-        bad_shape = tuple(5*i for i in self.shape)
+        bad_shape = tuple(5 * i for i in self.shape)
         b = testing.shaped_random(bad_shape, cupy, dtype)
         plan_wrong = get_fft_plan(b)
         assert isinstance(plan_wrong, cupy.cuda.cufft.Plan1d)
@@ -768,7 +768,7 @@ class TestMultiGpuPlanCtxManagerFft:
         from cupyx.scipy.fftpack import get_fft_plan
 
         a = testing.shaped_random(self.shape, cupy, dtype)
-        bad_shape = tuple(4*i for i in self.shape)
+        bad_shape = tuple(4 * i for i in self.shape)
         b = testing.shaped_random(bad_shape, cupy, dtype)
         plan_wrong = get_fft_plan(b)
         assert isinstance(plan_wrong, cupy.cuda.cufft.Plan1d)
@@ -933,7 +933,7 @@ class TestPlanCtxManagerRfft:
         from cupyx.scipy.fftpack import get_fft_plan
 
         a = testing.shaped_random(self.shape, cupy, dtype)
-        bad_shape = tuple(5*i for i in self.shape)
+        bad_shape = tuple(5 * i for i in self.shape)
         b = testing.shaped_random(bad_shape, cupy, dtype)
         plan_wrong = get_fft_plan(b, value_type="R2C")
         assert isinstance(plan_wrong, cupy.cuda.cufft.Plan1d)

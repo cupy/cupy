@@ -42,7 +42,7 @@ class TestExtract(unittest.TestCase):
     def test_tril(self, dtype):
         np_a, cp_a = self._make_matrix(dtype)
         m, n = self.shape
-        for k in range(-m+1, n):
+        for k in range(-m + 1, n):
             np_out = scipy.sparse.tril(np_a, k=k, format=self.out_format)
             cp_out = sparse.tril(cp_a, k=k, format=self.out_format)
             assert np_out.format == cp_out.format
@@ -53,7 +53,7 @@ class TestExtract(unittest.TestCase):
     def test_triu(self, dtype):
         np_a, cp_a = self._make_matrix(dtype)
         m, n = self.shape
-        for k in range(-m+1, n):
+        for k in range(-m + 1, n):
             np_out = scipy.sparse.triu(np_a, k=k, format=self.out_format)
             cp_out = sparse.triu(cp_a, k=k, format=self.out_format)
             assert np_out.format == cp_out.format

@@ -62,7 +62,7 @@ def make_packed(basetype, N, itemsize):
     # Can represent simple packed vectors such as float4 or double[3].
     assert 0 < N <= 4, N
     names = list("xyzw")[:N]
-    formats = [basetype]*N
+    formats = [basetype] * N
     return numpy.dtype(dict(names=names,
                             formats=formats,
                             itemsize=itemsize))
@@ -94,11 +94,11 @@ def main():
     print("Structure members offsets: {}".format(offsets))
 
     # Second step: build a numpy dtype for each struct member
-    atype = make_packed(numpy.int32,   4, sizes[0])
-    btype = make_packed(numpy.int8,    1, sizes[1])
+    atype = make_packed(numpy.int32, 4, sizes[0])
+    btype = make_packed(numpy.int8, 1, sizes[1])
     ctype = make_packed(numpy.float64, 2, sizes[2])
-    dtype = make_packed(numpy.int16,   1, sizes[3])
-    etype = make_packed(numpy.uint64,  3, sizes[4])
+    dtype = make_packed(numpy.int16, 1, sizes[3])
+    etype = make_packed(numpy.uint64, 3, sizes[4])
 
     # Third step: create the complex struct representation with
     #  the right offsets

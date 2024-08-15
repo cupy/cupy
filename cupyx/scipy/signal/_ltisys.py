@@ -1228,7 +1228,7 @@ class StateSpace(LinearTimeInvariant):
             raise ValueError(
                 "Cannot divide StateSpace by non-scalar numpy arrays")
 
-        return self.__mul__(1/other)
+        return self.__mul__(1 / other)
 
     @property
     def A(self):
@@ -1523,7 +1523,7 @@ def lsim(system, U, T, X0=None, interp=True):
         # take transpose because state is a row vector
         expAT_dt = expm(A.T * dt)
         for i in range(1, n_steps):
-            xout[i] = xout[i-1] @ expAT_dt
+            xout[i] = xout[i - 1] @ expAT_dt
         yout = cupy.squeeze(xout @ C.T)
         return T, cupy.squeeze(yout), cupy.squeeze(xout)
 
@@ -1555,7 +1555,7 @@ def lsim(system, U, T, X0=None, interp=True):
         Ad = expMT[:n_states, :n_states]
         Bd = expMT[n_states:, :n_states]
         for i in range(1, n_steps):
-            xout[i] = xout[i-1] @ Ad + U[i-1] @ Bd
+            xout[i] = xout[i - 1] @ Ad + U[i - 1] @ Bd
     else:
         # Linear interpolation between steps
         # Algorithm: to integrate from time 0 to time dt, with linear
@@ -1576,10 +1576,10 @@ def lsim(system, U, T, X0=None, interp=True):
         M = cupy.vstack(Mlst)
         expMT = expm(M.T)
         Ad = expMT[:n_states, :n_states]
-        Bd1 = expMT[n_states+n_inputs:, :n_states]
+        Bd1 = expMT[n_states + n_inputs:, :n_states]
         Bd0 = expMT[n_states:n_states + n_inputs, :n_states] - Bd1
         for i in range(1, n_steps):
-            xout[i] = ((xout[i-1] @ Ad) + (U[i-1] @ Bd0) + (U[i] @ Bd1))
+            xout[i] = ((xout[i - 1] @ Ad) + (U[i - 1] @ Bd0) + (U[i] @ Bd1))
 
     yout = cupy.squeeze(xout @ C.T) + cupy.squeeze(U @ D.T)
     return T, cupy.squeeze(yout), cupy.squeeze(xout)
@@ -2076,7 +2076,7 @@ def _YT_complex(ker_pole, Q, transfer_matrix, i, j):
     # step 1 page 20
     ur = sqrt(2) * Q[:, -2, None]
     ui = sqrt(2) * Q[:, -1, None]
-    u = ur + 1j*ui
+    u = ur + 1j * ui
 
     # step 2 page 20
     ker_pole_ij = ker_pole[i]
@@ -2106,7 +2106,7 @@ def _YT_complex(ker_pole, Q, transfer_matrix, i, j):
     # transfer_matrix[j]=imag(transfer_matrix_i)
     transfer_matrix_j_mo_transfer_matrix_j = (
         transfer_matrix[:, i, None] +
-        1j*transfer_matrix[:, j, None]
+        1j * transfer_matrix[:, j, None]
     )
 
     if not cupy.allclose(cupy.abs(e_val[e_val_idx[-1]]),
@@ -2154,43 +2154,43 @@ def _YT_loop(ker_pole, transfer_matrix, poles, B, maxiter, rtol):
     else:
         update_order = [[], []]
 
-    r_comp = cupy.arange(nb_real+1, len(poles)+1, 2)
+    r_comp = cupy.arange(nb_real + 1, len(poles) + 1, 2)
     # step 1.a
-    r_p = cupy.arange(1, hnb+nb_real % 2)
-    update_order[0].extend(2*r_p)
-    update_order[1].extend(2*r_p+1)
+    r_p = cupy.arange(1, hnb + nb_real % 2)
+    update_order[0].extend(2 * r_p)
+    update_order[1].extend(2 * r_p + 1)
     # step 1.b
     update_order[0].extend(r_comp)
-    update_order[1].extend(r_comp+1)
+    update_order[1].extend(r_comp + 1)
     # step 1.c
-    r_p = cupy.arange(1, hnb+1)
-    update_order[0].extend(2*r_p-1)
-    update_order[1].extend(2*r_p)
+    r_p = cupy.arange(1, hnb + 1)
+    update_order[0].extend(2 * r_p - 1)
+    update_order[1].extend(2 * r_p)
     # step 1.d
     if hnb == 0 and cupy.isreal(poles[0]):
         update_order[0].append(cupy.array(1))
         update_order[1].append(cupy.array(1))
     update_order[0].extend(r_comp)
-    update_order[1].extend(r_comp+1)
+    update_order[1].extend(r_comp + 1)
     # step 2.a
-    r_j = cupy.arange(2, hnb+nb_real % 2)
+    r_j = cupy.arange(2, hnb + nb_real % 2)
     for j in r_j:
-        for i in range(1, hnb+1):
+        for i in range(1, hnb + 1):
             update_order[0].append(cupy.array(i))
-            update_order[1].append(cupy.array(i+j))
+            update_order[1].append(cupy.array(i + j))
     # step 2.b
     if hnb == 0 and cupy.isreal(poles[0]):
         update_order[0].append(cupy.array(1))
         update_order[1].append(cupy.array(1))
     update_order[0].extend(r_comp)
-    update_order[1].extend(r_comp+1)
+    update_order[1].extend(r_comp + 1)
     # step 2.c
-    r_j = cupy.arange(2, hnb+nb_real % 2)
+    r_j = cupy.arange(2, hnb + nb_real % 2)
     for j in r_j:
-        for i in range(hnb+1, nb_real+1):
-            idx_1 = i+j
+        for i in range(hnb + 1, nb_real + 1):
+            idx_1 = i + j
             if idx_1 > nb_real:
-                idx_1 = i+j-nb_real
+                idx_1 = i + j - nb_real
             update_order[0].append(cupy.array(i))
             update_order[1].append(cupy.array(idx_1))
     # step 2.d
@@ -2198,19 +2198,19 @@ def _YT_loop(ker_pole, transfer_matrix, poles, B, maxiter, rtol):
         update_order[0].append(cupy.array(1))
         update_order[1].append(cupy.array(1))
     update_order[0].extend(r_comp)
-    update_order[1].extend(r_comp+1)
+    update_order[1].extend(r_comp + 1)
     # step 3.a
-    for i in range(1, hnb+1):
+    for i in range(1, hnb + 1):
         update_order[0].append(cupy.array(i))
-        update_order[1].append(cupy.array(i+hnb))
+        update_order[1].append(cupy.array(i + hnb))
     # step 3.b
     if hnb == 0 and cupy.isreal(poles[0]):
         update_order[0].append(cupy.array(1))
         update_order[1].append(cupy.array(1))
     update_order[0].extend(r_comp)
-    update_order[1].extend(r_comp+1)
+    update_order[1].extend(r_comp + 1)
 
-    update_order = cupy.array(update_order).T-1
+    update_order = cupy.array(update_order).T - 1
     stop = False
     nb_try = 0
     while nb_try < maxiter and not stop:
@@ -2227,7 +2227,7 @@ def _YT_loop(ker_pole, transfer_matrix, poles, B, maxiter, rtol):
                 # np.delete(transfer_matrix.get(), (i, j), axis=1)
                 idx = list(range(transfer_matrix.shape[1]))
                 idx.pop(i)
-                idx.pop(j-1)
+                idx.pop(j - 1)
                 transfer_matrix_not_i_j = transfer_matrix[:, idx]
 
                 # after merge of gh-4249 great speed improvements could be
@@ -2443,12 +2443,12 @@ def place_poles(A, B, poles, method="YT", rtol=1e-3, maxiter=30):
             p = poles[idx]
             diag_poles[idx, idx] = cupy.real(p)
             if ~cupy.isreal(p):
-                diag_poles[idx, idx+1] = -cupy.imag(p)
-                diag_poles[idx+1, idx+1] = cupy.real(p)
-                diag_poles[idx+1, idx] = cupy.imag(p)
+                diag_poles[idx, idx + 1] = -cupy.imag(p)
+                diag_poles[idx + 1, idx + 1] = cupy.real(p)
+                diag_poles[idx + 1, idx] = cupy.imag(p)
                 idx += 1  # skip next one
             idx += 1
-        gain_matrix = cupy.linalg.lstsq(B, diag_poles-A, rcond=-1)[0]
+        gain_matrix = cupy.linalg.lstsq(B, diag_poles - A, rcond=-1)[0]
         transfer_matrix = cupy.eye(A.shape[0])
         cur_rtol = cupy.nan
         nb_iter = cupy.nan
@@ -2466,7 +2466,8 @@ def place_poles(A, B, poles, method="YT", rtol=1e-3, maxiter=30):
             if skip_conjugate:
                 skip_conjugate = False
                 continue
-            pole_space_j = cupy.dot(u1.T, A-poles[j]*cupy.eye(B.shape[0])).T
+            pole_space_j = cupy.dot(
+                u1.T, A - poles[j] * cupy.eye(B.shape[0])).T
 
             # after QR Q=Q0|Q1
             # only Q0 is used to reconstruct  the qr'ed (dot Q, R) matrix.
@@ -2533,22 +2534,22 @@ def place_poles(A, B, poles, method="YT", rtol=1e-3, maxiter=30):
         # Re(Complex_pole), Im(Complex_pole) now and will be Re-Im/Re+Im after
         transfer_matrix = transfer_matrix.astype(complex)
         idx = 0
-        while idx < poles.shape[0]-1:
+        while idx < poles.shape[0] - 1:
             if ~cupy.isreal(poles[idx]):
                 rel = transfer_matrix[:, idx].copy()
-                img = transfer_matrix[:, idx+1]
+                img = transfer_matrix[:, idx + 1]
                 # rel will be an array referencing a column of transfer_matrix
                 # if we don't copy() it will changer after the next line and
                 # and the line after will not yield the correct value
-                transfer_matrix[:, idx] = rel-1j*img
-                transfer_matrix[:, idx+1] = rel+1j*img
+                transfer_matrix[:, idx] = rel - 1j * img
+                transfer_matrix[:, idx + 1] = rel + 1j * img
                 idx += 1  # skip next one
             idx += 1
 
         try:
             m = cupy.linalg.solve(transfer_matrix.T, cupy.diag(
                 poles) @ transfer_matrix.T).T
-            gain_matrix = cupy.linalg.solve(z, u0.T @ (m-A))
+            gain_matrix = cupy.linalg.solve(z, u0.T @ (m - A))
         except cupy.linalg.LinAlgError as e:
             raise ValueError("The poles you've chosen can't be placed. "
                              "Check the controllability matrix and try "
@@ -2666,12 +2667,12 @@ def dlsim(system, u, t=None, x0=None):
 
     # Simulate the system
     for i in range(0, out_samples - 1):
-        xout[i+1, :] = system.A @ xout[i, :] + system.B @ u_dt[i, :]
+        xout[i + 1, :] = system.A @ xout[i, :] + system.B @ u_dt[i, :]
         yout[i, :] = system.C @ xout[i, :] + system.D @ u_dt[i, :]
 
     # Last point
-    yout[out_samples-1, :] = (system.C @ xout[out_samples-1, :] +
-                              system.D @ u_dt[out_samples-1, :])
+    yout[out_samples - 1, :] = (system.C @ xout[out_samples - 1, :] +
+                                system.D @ u_dt[out_samples - 1, :])
 
     if is_ss_input:
         return tout, yout, xout
@@ -3047,15 +3048,15 @@ def cont2discrete(system, dt, method="zoh", alpha=None):
 
     if method == "gbt":
         # This parameter is used repeatedly - compute once here
-        ima = cupy.eye(a.shape[0]) - alpha*dt*a
-        rhs = cupy.eye(a.shape[0]) + (1.0 - alpha)*dt*a
+        ima = cupy.eye(a.shape[0]) - alpha * dt * a
+        rhs = cupy.eye(a.shape[0]) + (1.0 - alpha) * dt * a
         ad = cupy.linalg.solve(ima, rhs)
-        bd = cupy.linalg.solve(ima, dt*b)
+        bd = cupy.linalg.solve(ima, dt * b)
 
         # Similarly solve for the output equation matrices
         cd = cupy.linalg.solve(ima.T, c.T)
         cd = cd.T
-        dd = d + alpha*(c @ bd)
+        dd = d + alpha * (c @ bd)
 
     elif method == "bilinear" or method == "tustin":
         return cont2discrete(system, dt, method="gbt", alpha=0.5)

@@ -42,10 +42,10 @@ def _direct_correlate(in1, in2, mode="full", output=float, convolution=False,
     # (except some cases when boundary != 'constant' or fillvalue != 0)
     # Figure out the output shape and the origin of the kernel
     if mode == "full":
-        out_shape = tuple(x1+x2-1 for x1, x2 in zip(in1.shape, in2.shape))
-        offsets = tuple(x-1 for x in in2.shape)
+        out_shape = tuple(x1 + x2 - 1 for x1, x2 in zip(in1.shape, in2.shape))
+        offsets = tuple(x - 1 for x in in2.shape)
     elif mode == "valid":
-        out_shape = tuple(x1-x2+1 for x1, x2 in zip(in1.shape, in2.shape))
+        out_shape = tuple(x1 - x2 + 1 for x1, x2 in zip(in1.shape, in2.shape))
         offsets = (0,) * in1.ndim
     else:  # mode == 'same':
         # In correlate2d: When using "same" mode with even-length inputs, the
@@ -54,9 +54,9 @@ def _direct_correlate(in1, in2, mode="full", output=float, convolution=False,
         # This is dealt with by using "shift" parameter.
         out_shape = orig_in1_shape
         if orig_in1_shape == in1.shape:
-            offsets = tuple((x-shift)//2 for x in in2.shape)
+            offsets = tuple((x - shift) // 2 for x in in2.shape)
         else:
-            offsets = tuple((2*x2-x1-(not convolution)+shift)//2
+            offsets = tuple((2 * x2 - x1 - (not convolution) + shift) // 2
                             for x1, x2 in zip(in1.shape, in2.shape))
 
     # Check the output
@@ -175,8 +175,8 @@ def _apply_conv_mode(full, s1, s2, mode, axes):
     if mode == "valid":
         s1 = [full.shape[a] if a not in axes else s1[a] - s2[a] + 1
               for a in range(full.ndim)]
-    starts = [(cur-new)//2 for cur, new in zip(full.shape, s1)]
-    slices = tuple(slice(start, start+length)
+    starts = [(cur - new) // 2 for cur, new in zip(full.shape, s1)]
+    slices = tuple(slice(start, start + length)
                    for start, length in zip(starts, s1))
     return cupy.ascontiguousarray(full[slices])
 
@@ -207,21 +207,21 @@ def _optimal_oa_block_size(overlap):
     #      cdef int i
 
     # Compute W(-1/(2*e*overlap))
-    z = -__EXP_N1/(2*overlap)  # value to compute for
-    w = -1 - math.log(2*overlap)  # initial guess
+    z = -__EXP_N1 / (2 * overlap)  # value to compute for
+    w = -1 - math.log(2 * overlap)  # initial guess
     for i in range(4):
         ew = math.exp(w)
-        wew = w*ew
+        wew = w * ew
         wewz = wew - z
-        w -= wewz/(wew + ew - (w + 2)*wewz/(2*w + 2))
-    return math.ceil(-overlap*w)
+        w -= wewz / (wew + ew - (w + 2) * wewz / (2 * w + 2))
+    return math.ceil(-overlap * w)
 
 
 def _calc_oa_lens(s1, s2):
     # See scipy's documentation in scipy.signal._signaltools
 
     # Set up the arguments for the conventional FFT approach.
-    fallback = (s1+s2-1, None, s1, s2)
+    fallback = (s1 + s2 - 1, None, s1, s2)
 
     # Use conventional FFT convolve if sizes are same.
     if s1 == s2 or s1 == 1 or s2 == 1:
@@ -233,11 +233,11 @@ def _calc_oa_lens(s1, s2):
         s1, s2 = s2, s1
 
     # There cannot be a useful block size if s2 is more than half of s1.
-    if s2 >= s1//2:
+    if s2 >= s1 // 2:
         return fallback
 
     # Compute the optimal block size from the overlap
-    overlap = s2-1
+    overlap = s2 - 1
     block_size = fft.next_fast_len(_optimal_oa_block_size(overlap))
 
     # Use conventional FFT convolve if there is only going to be one block.
@@ -245,7 +245,7 @@ def _calc_oa_lens(s1, s2):
         return fallback
 
     # Get step size for each of the blocks
-    in1_step, in2_step = block_size-s2+1, s2
+    in1_step, in2_step = block_size - s2 + 1, s2
     if swapped:
         in1_step, in2_step = in2_step, in1_step
 
@@ -269,15 +269,15 @@ def _oa_reshape_inputs(in1, in2, axes, shape_final,
         curnstep1, curpad1, curnstep2, curpad2 = 1, 0, 1, 0
 
         if in1.shape[i] > in1_step[i]:
-            curnstep1 = math.ceil((in1.shape[i]+1)/in1_step[i])
-            if (block_size[i] - overlaps[i])*curnstep1 < shape_final[i]:
+            curnstep1 = math.ceil((in1.shape[i] + 1) / in1_step[i])
+            if (block_size[i] - overlaps[i]) * curnstep1 < shape_final[i]:
                 curnstep1 += 1
-            curpad1 = curnstep1*in1_step[i] - in1.shape[i]
+            curpad1 = curnstep1 * in1_step[i] - in1.shape[i]
         if in2.shape[i] > in2_step[i]:
-            curnstep2 = math.ceil((in2.shape[i]+1)/in2_step[i])
-            if (block_size[i] - overlaps[i])*curnstep2 < shape_final[i]:
+            curnstep2 = math.ceil((in2.shape[i] + 1) / in2_step[i])
+            if (block_size[i] - overlaps[i]) * curnstep2 < shape_final[i]:
                 curnstep2 += 1
-            curpad2 = curnstep2*in2_step[i] - in2.shape[i]
+            curpad2 = curnstep2 * in2_step[i] - in2.shape[i]
 
         nsteps1 += [curnstep1]
         nsteps2 += [curnstep2]
@@ -295,7 +295,7 @@ def _oa_reshape_inputs(in1, in2, axes, shape_final,
     reshape_size1 = list(in1_step)
     reshape_size2 = list(in2_step)
     for i, iax in enumerate(axes):
-        reshape_size1.insert(iax+i, nsteps1[i])
-        reshape_size2.insert(iax+i, nsteps2[i])
+        reshape_size1.insert(iax + i, nsteps1[i])
+        reshape_size2.insert(iax + i, nsteps2[i])
 
     return in1.reshape(*reshape_size1), in2.reshape(*reshape_size2)

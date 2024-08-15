@@ -104,7 +104,7 @@ def _compressed_sparse_stack(blocks, axis):
         if b.shape[other_axis] != constant_dim:
             raise ValueError(
                 "incompatible dimensions for axis %d" % other_axis)
-        indices[sum_indices:sum_indices+b.indices.size] = b.indices
+        indices[sum_indices:sum_indices + b.indices.size] = b.indices
         sum_indices += b.indices.size
         idxs = slice(sum_dim, sum_dim + b.shape[axis])
         indptr[idxs] = b.indptr[:-1]
@@ -254,8 +254,8 @@ def bmat(blocks, format=None, dtype=None):
         return A
 
     block_mask = numpy.zeros((M, N), dtype=bool)
-    brow_lengths = numpy.zeros(M+1, dtype=numpy.int64)
-    bcol_lengths = numpy.zeros(N+1, dtype=numpy.int64)
+    brow_lengths = numpy.zeros(M + 1, dtype=numpy.int64)
+    bcol_lengths = numpy.zeros(N + 1, dtype=numpy.int64)
 
     # convert everything to COO format
     for i in range(M):
@@ -265,23 +265,23 @@ def bmat(blocks, format=None, dtype=None):
                 blocks[i][j] = A
                 block_mask[i][j] = True
 
-                if brow_lengths[i+1] == 0:
-                    brow_lengths[i+1] = A.shape[0]
-                elif brow_lengths[i+1] != A.shape[0]:
+                if brow_lengths[i + 1] == 0:
+                    brow_lengths[i + 1] = A.shape[0]
+                elif brow_lengths[i + 1] != A.shape[0]:
                     msg = ("blocks[{i},:] has incompatible row dimensions. "
                            "Got blocks[{i},{j}].shape[0] == {got}, "
                            "expected {exp}.".format(i=i, j=j,
-                                                    exp=brow_lengths[i+1],
+                                                    exp=brow_lengths[i + 1],
                                                     got=A.shape[0]))
                     raise ValueError(msg)
 
-                if bcol_lengths[j+1] == 0:
-                    bcol_lengths[j+1] = A.shape[1]
-                elif bcol_lengths[j+1] != A.shape[1]:
+                if bcol_lengths[j + 1] == 0:
+                    bcol_lengths[j + 1] = A.shape[1]
+                elif bcol_lengths[j + 1] != A.shape[1]:
                     msg = ("blocks[:,{j}] has incompatible row dimensions. "
                            "Got blocks[{i},{j}].shape[1] == {got}, "
                            "expected {exp}.".format(i=i, j=j,
-                                                    exp=bcol_lengths[j+1],
+                                                    exp=bcol_lengths[j + 1],
                                                     got=A.shape[1]))
                     raise ValueError(msg)
 
@@ -478,7 +478,7 @@ def diags(diagonals, offsets=0, shape=None, format=None, dtype=None):
             raise ValueError(
                 "Offset %d (index %d) out of bounds" % (offset, j))
         try:
-            data_arr[j, k:k+length] = diagonal[..., :length]
+            data_arr[j, k:k + length] = diagonal[..., :length]
         except ValueError:
             if len(diagonal) != length and len(diagonal) != 1:
                 raise ValueError(

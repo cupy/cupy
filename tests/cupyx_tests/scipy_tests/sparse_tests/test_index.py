@@ -244,7 +244,7 @@ class TestSetitemIndexing:
 
         self._run(slice(1, None, 2))
         self._run(slice(2, None, 5))
-        self._run(slice(0, None,  10))
+        self._run(slice(0, None, 10))
 
         # negative step
         self._run(slice(10, 1, -2))

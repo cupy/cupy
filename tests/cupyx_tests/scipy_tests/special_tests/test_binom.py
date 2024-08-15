@@ -35,7 +35,7 @@ class TestBinom:
     def test_linspace_largeposk(self, xp, scp, dtype):
         import scipy.special  # NOQA
         n = xp.linspace(.01, .9, 1000, dtype=dtype)
-        k = xp.linspace(1e10+.5, 9e10+.5, 1000, dtype=dtype)
+        k = xp.linspace(1e10 + .5, 9e10 + .5, 1000, dtype=dtype)
         return scp.special.binom(n, k)
 
     @testing.for_float_dtypes(no_float16=True)
@@ -43,7 +43,7 @@ class TestBinom:
     def test_linspace_largenegk(self, xp, scp, dtype):
         import scipy.special  # NOQA
         n = xp.linspace(.01, .9, 1000, dtype=dtype)
-        k = xp.linspace(.5-1e10, .5-9e10, 1000, dtype=dtype)
+        k = xp.linspace(.5 - 1e10, .5 - 9e10, 1000, dtype=dtype)
         return scp.special.binom(n, k)
 
     @testing.for_float_dtypes()

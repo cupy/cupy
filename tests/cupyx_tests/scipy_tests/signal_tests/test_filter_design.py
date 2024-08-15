@@ -192,7 +192,7 @@ class TestFreqz:
         bs.append(cupy.sin(2 * pi * t))
         as_.append(3.)
         hs_whole.append([0, -0.5j, 0.5j])
-        hs_half.append([0, sqrt(1./12.), -0.5j])
+        hs_half.append([0, sqrt(1. / 12.), -0.5j])
         # 4 taps
         t = cupy.linspace(0, 1, 4, endpoint=False)
         bs.append(cupy.sin(2 * pi * t))
@@ -356,7 +356,7 @@ class TestFreqz:
         w2, h2 = signal.freqz(b, a)
         testing.assert_allclose(h1, h2)
         testing.assert_allclose(
-            w1, cupy.linspace(0, fs/2, 512, endpoint=False))
+            w1, cupy.linspace(0, fs / 2, 512, endpoint=False))
 
         # N = None, whole=True
         w1, h1 = signal.freqz(b, a, whole=True, fs=fs)
@@ -368,7 +368,8 @@ class TestFreqz:
         w1, h1 = signal.freqz(b, a, 5, fs=fs)
         w2, h2 = signal.freqz(b, a, 5)
         testing.assert_allclose(h1, h2)
-        testing.assert_allclose(w1, cupy.linspace(0, fs/2, 5, endpoint=False))
+        testing.assert_allclose(
+            w1, cupy.linspace(0, fs / 2, 5, endpoint=False))
 
         # N = 5, whole=True
         w1, h1 = signal.freqz(b, a, 5, whole=True, fs=fs)
@@ -488,15 +489,15 @@ class TestFreqz_zpk:
     def test_fs_param(self):
         fs = 900
         z = [-1, -1, -1]
-        p = [0.4747869998473389+0.4752230717749344j, 0.37256600288916636,
-             0.4747869998473389-0.4752230717749344j]
+        p = [0.4747869998473389 + 0.4752230717749344j, 0.37256600288916636,
+             0.4747869998473389 - 0.4752230717749344j]
         k = 0.03934683014103762
 
         # N = None, whole=False
         w1, h1 = signal.freqz_zpk(z, p, k, whole=False, fs=fs)
         w2, h2 = signal.freqz_zpk(z, p, k, whole=False)
         assert_allclose(h1, h2)
-        assert_allclose(w1, cupy.linspace(0, fs/2, 512, endpoint=False))
+        assert_allclose(w1, cupy.linspace(0, fs / 2, 512, endpoint=False))
 
         # N = None, whole=True
         w1, h1 = signal.freqz_zpk(z, p, k, whole=True, fs=fs)
@@ -508,7 +509,7 @@ class TestFreqz_zpk:
         w1, h1 = signal.freqz_zpk(z, p, k, 5, fs=fs)
         w2, h2 = signal.freqz_zpk(z, p, k, 5)
         assert_allclose(h1, h2)
-        assert_allclose(w1, cupy.linspace(0, fs/2, 5, endpoint=False))
+        assert_allclose(w1, cupy.linspace(0, fs / 2, 5, endpoint=False))
 
         # N = 5, whole=True
         w1, h1 = signal.freqz_zpk(z, p, k, 5, whole=True, fs=fs)
@@ -520,7 +521,7 @@ class TestFreqz_zpk:
         for w in ([123], (123,), cupy.array([123]), (50, 123, 230),
                   cupy.array([50, 123, 230])):
             w1, h1 = signal.freqz_zpk(z, p, k, w, fs=fs)
-            w2, h2 = signal.freqz_zpk(z, p, k, 2*pi*cupy.array(w)/fs)
+            w2, h2 = signal.freqz_zpk(z, p, k, 2 * pi * cupy.array(w) / fs)
             assert_allclose(h1, h2)
             assert_allclose(w, w1)
 
@@ -539,7 +540,7 @@ class TestFreqz_zpk:
             assert_array_almost_equal(h, cupy.ones(8))
 
         # Measure at frequency 8 Hz
-        for w in (8.0, 8.0+0j):
+        for w in (8.0, 8.0 + 0j):
             # Only makes sense when fs is specified
             w_out, h = signal.freqz_zpk([], [], 1, worN=w, fs=100)
             assert_array_almost_equal(w_out, [8])
@@ -706,7 +707,7 @@ class TestSOSFreqz:
 
         # w is an array_like
         w1, h1 = scp.signal.sosfreqz(sos, w, fs=fs)
-        w2, h2 = scp.signal.sosfreqz(sos, 2*pi*xp.array(w)/fs)
+        w2, h2 = scp.signal.sosfreqz(sos, 2 * pi * xp.array(w) / fs)
         return w1, h1, w2, h2
 
     def test_w_or_N_types(self):
@@ -727,7 +728,7 @@ class TestSOSFreqz:
             assert_array_almost_equal(h, cupy.ones(N))
 
         # Measure at frequency 8 Hz
-        for w in (8.0, 8.0+0j):
+        for w in (8.0, 8.0 + 0j):
             # Only makes sense when fs is specified
             w_out, h = signal.sosfreqz([1, 0, 0, 1, 0, 0], worN=w, fs=100)
             assert_array_almost_equal(w_out, [8])
@@ -790,7 +791,7 @@ class TestGroupDelay:
         w, gd = scp.signal.group_delay((1, 1), N)
         return w, gd
 
-    @pytest.mark.parametrize("w", [8.0, 8.0+0j])
+    @pytest.mark.parametrize("w", [8.0, 8.0 + 0j])
     @testing.numpy_cupy_allclose(scipy_name="scp", rtol=1e-5, atol=1e-5)
     @testing.with_requires("scipy>=1.8")
     def test_w_types(self, w, xp, scp):

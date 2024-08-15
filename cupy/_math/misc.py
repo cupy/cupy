@@ -550,7 +550,7 @@ def interp(x, xp, fp, left=None, right=None, period=None):
         asort_xp = cupy.argsort(xp)
         xp = xp[asort_xp]
         fp = fp[asort_xp]
-        xp = cupy.concatenate((xp[-1:]-period, xp, xp[0:1]+period))
+        xp = cupy.concatenate((xp[-1:] - period, xp, xp[0:1] + period))
         fp = cupy.concatenate((fp[-1:], fp, fp[0:1]))
         assert xp.flags.c_contiguous
         assert fp.flags.c_contiguous

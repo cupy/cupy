@@ -23,7 +23,7 @@ except ImportError:
 class TestConvolveCorrelate:
     def _filter(self, func, dtype, xp, scp):
         in1 = testing.shaped_random(self.size1, xp, dtype)
-        in2 = testing.shaped_random((self.size2,)*in1.ndim, xp, dtype)
+        in2 = testing.shaped_random((self.size2,) * in1.ndim, xp, dtype)
         return getattr(scp.signal, func)(in1, in2, self.mode, method="direct")
 
     tols = {np.float32: 1e-5, np.complex64: 1e-5,
@@ -51,7 +51,7 @@ class TestConvolveCorrelate:
 class TestFFTConvolve:
     def _filter(self, func, dtype, xp, scp, **kwargs):
         in1 = testing.shaped_random(self.size1, xp, dtype)
-        in2 = testing.shaped_random((self.size2,)*in1.ndim, xp, dtype)
+        in2 = testing.shaped_random((self.size2,) * in1.ndim, xp, dtype)
         return getattr(scp.signal, func)(in1, in2, self.mode, **kwargs)
 
     tols = {np.float32: 1e-3, np.complex64: 1e-3,
@@ -160,7 +160,7 @@ class TestOAConvolve:
         if runtime.is_hip and self.size2 in [5, None]:
             pytest.xfail("ROCm/HIP may have a bug")
         in1 = testing.shaped_random(self.size1, xp, dtype)
-        shape2 = self.size1 if self.size2 is None else (self.size2,)*in1.ndim
+        shape2 = self.size1 if self.size2 is None else (self.size2,) * in1.ndim
         in2 = testing.shaped_random(shape2, xp, dtype)
         return scp.signal.oaconvolve(in1, in2, self.mode)
 
@@ -218,7 +218,7 @@ def test_correlation_lags(mode, xp, scp, behind, input_size):
     in1 = rng.standard_normal(input_size)
     in1 = xp.asarray(in1)
 
-    offset = int(input_size/10)
+    offset = int(input_size / 10)
     # generate offset version of array to correlate with
     if behind:
         # y is behind x
@@ -241,9 +241,9 @@ class TestConvolve2DEdgeCase:
         data = testing.shaped_random(
             (512, 512), xp=xp, dtype=xp.uint8, scale=256)
         scharr = xp.array(
-            [[-3-3j, 0-10j, +3-3j],
-             [-10+0j, 0+0j, +10+0j],
-             [-3+3j, 0+10j, +3+3j]])  # Gx + j*Gy
+            [[-3 - 3j, 0 - 10j, +3 - 3j],
+             [-10 + 0j, 0 + 0j, +10 + 0j],
+             [-3 + 3j, 0 + 10j, +3 + 3j]])  # Gx + j*Gy
         return scp.signal.convolve2d(
             data, scharr, boundary="symm", mode="same")
 
@@ -344,7 +344,7 @@ class TestOrderFilter:
     def test_order_filter(self, xp, scp, dtype):
         a = testing.shaped_random(self.a, xp, dtype)
         d = self.domain
-        d = d[:a.ndim] if isinstance(d, tuple) else (d,)*a.ndim
+        d = d[:a.ndim] if isinstance(d, tuple) else (d,) * a.ndim
         domain = testing.shaped_random(d, xp) > 0.25
         rank = min(self.rank, domain.sum())
         return scp.signal.order_filter(a, domain, rank)
@@ -836,7 +836,7 @@ class TestDetrend:
     @testing.numpy_cupy_allclose(scipy_name="scp", atol=4e-13)
     def test_axis(self, axis, kind, xp, scp):
         detrend = scp.signal.detrend
-        data = xp.arange(5*6*7).reshape(5, 6, 7)
+        data = xp.arange(5 * 6 * 7).reshape(5, 6, 7)
         detrended = detrend(data, type=kind, axis=axis)
         assert detrended.shape == data.shape
         return detrended

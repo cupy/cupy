@@ -61,7 +61,7 @@ class TestUnivariateSpline:
     @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_derivatives_2(self, xp, scp):
         x = xp.arange(8)
-        y = x**3 + 2.*x**2
+        y = x**3 + 2. * x**2
 
         spl = scp.interpolate.UnivariateSpline(x, y, s=0, k=3)
         return spl.derivatives(3)

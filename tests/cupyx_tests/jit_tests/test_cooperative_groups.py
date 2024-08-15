@@ -83,7 +83,7 @@ class TestCooperativeGroups:
         assert x[0] == 1
         assert x[1] == 64
         assert (x[2], x[3], x[4]) == (2, 1, 1)
-        assert (x[5:] == 2**64-1).all()
+        assert (x[5:] == 2**64 - 1).all()
 
     @pytest.mark.skipif(
         runtime._getLocalRuntimeVersion() < 11060,
@@ -117,7 +117,7 @@ class TestCooperativeGroups:
         assert x[5] == 1
         assert x[6] == 2
         assert (x[7], x[8], x[9]) == (1, 0, 0)
-        assert (x[10:] == 2**64-1).all()
+        assert (x[10:] == 2**64 - 1).all()
 
     @pytest.mark.skipif(runtime.deviceGetAttribute(
         runtime.cudaDevAttrCooperativeLaunch, 0) == 0,
@@ -140,23 +140,23 @@ class TestCooperativeGroups:
         def test_copy(x, y):
             # do two batches of copies to test relevant APIs
             if test_aligned:
-                smem = jit.shared_memory(cupy.int32, 32*2, alignment=16)
+                smem = jit.shared_memory(cupy.int32, 32 * 2, alignment=16)
             else:
-                smem = jit.shared_memory(cupy.int32, 32*2)
+                smem = jit.shared_memory(cupy.int32, 32 * 2)
             g = jit.cg.this_thread_block()
             tid = g.thread_rank()
             # int32 is 4 bytes
             if test_aligned:
                 # CuPy ensures x is 256B-aligned
                 jit.cg.memcpy_async(
-                    g, smem, 0, x, 0, 4*32, aligned_size=16)
+                    g, smem, 0, x, 0, 4 * 32, aligned_size=16)
                 jit.cg.memcpy_async(
-                    g, smem, 32, x, 32, 4*32, aligned_size=16)
+                    g, smem, 32, x, 32, 4 * 32, aligned_size=16)
             else:
                 jit.cg.memcpy_async(
-                    g, smem, 0, x, 0, 4*32)
+                    g, smem, 0, x, 0, 4 * 32)
                 jit.cg.memcpy_async(
-                    g, smem, 32, x, 32, 4*32)
+                    g, smem, 32, x, 32, 4 * 32)
             jit.cg.wait_prior(g, 1)
             if tid < 32:
                 y[tid] = smem[tid]

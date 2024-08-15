@@ -156,7 +156,7 @@ def decimate(x, q, n=None, ftype="iir", axis=-1, zero_phase=True):
         if n is None:
             half_len = 10 * q  # reasonable cutoff for our sinc-like function
             n = 2 * half_len
-        b, a = firwin(n+1, 1. / q, window="hamming"), 1.
+        b, a = firwin(n + 1, 1. / q, window="hamming"), 1.
         b = cupy.asarray(b, dtype=result_type)
         a = cupy.asarray(a, dtype=result_type)
     elif ftype == "iir":
@@ -376,21 +376,21 @@ def resample(x, num, t=None, axis=0, window=None, domain="time"):
     if N % 2 == 0:
         if num < Nx:  # downsampling
             if real_input:
-                sl[axis] = slice(N//2, N//2 + 1)
+                sl[axis] = slice(N // 2, N // 2 + 1)
                 Y[tuple(sl)] *= 2.
             else:
                 # select the component of Y at frequency +N/2,
                 # add the component of X at -N/2
-                sl[axis] = slice(-N//2, -N//2 + 1)
+                sl[axis] = slice(-N // 2, -N // 2 + 1)
                 Y[tuple(sl)] += X[tuple(sl)]
         elif Nx < num:  # upsampling
             # select the component at frequency +N/2 and halve it
-            sl[axis] = slice(N//2, N//2 + 1)
+            sl[axis] = slice(N // 2, N // 2 + 1)
             Y[tuple(sl)] *= 0.5
             if not real_input:
                 temp = Y[tuple(sl)]
                 # set the component at -N/2 equal to the component at +N/2
-                sl[axis] = slice(num-N//2, num-N//2 + 1)
+                sl[axis] = slice(num - N // 2, num - N // 2 + 1)
                 Y[tuple(sl)] = temp
 
     # Inverse transform

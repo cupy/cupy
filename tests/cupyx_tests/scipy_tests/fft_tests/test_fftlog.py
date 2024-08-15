@@ -40,7 +40,7 @@ class TestFftlog:
 
         shape = self.shape
         r = xp.logspace(-4, 4, shape[-1])
-        dln = xp.log(r[1]/r[0])
+        dln = xp.log(r[1] / r[0])
 
         if len(shape) == 2:
             r = xp.stack([r] * shape[0], axis=0)
@@ -71,5 +71,5 @@ class TestFftlogScipyBackend:
         with scipy_fft.set_backend(backend):
             fft_func = getattr(scipy_fft, self.function)
             r = xp.logspace(-2, 2, 10)
-            dln = xp.log(r[1]/r[0])
+            dln = xp.log(r[1] / r[0])
             return fft_func(r, dln, mu=0.5)

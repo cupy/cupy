@@ -158,7 +158,7 @@ class TestXtPlanNd(unittest.TestCase):
             out_cp = cupy.fft.ifft(a)
         else:
             out_cp = cupy.fft.ifftn(a, axes=(-1, -2))
-        testing.assert_allclose(out/length, out_cp)
+        testing.assert_allclose(out / length, out_cp)
 
     @pytest.mark.skipif(int(cupy.cuda.device.get_compute_capability()) < 53,
                         reason="half-precision complex FFT is not supported")
@@ -167,7 +167,7 @@ class TestXtPlanNd(unittest.TestCase):
         idtype = odtype = edtype = t
         old_shape = self.shape
         shape = list(self.shape)
-        shape[-1] = 2*shape[-1]
+        shape[-1] = 2 * shape[-1]
         shape = tuple(shape)
 
         a = testing.shaped_random(shape, cupy, cupy.float16)
@@ -202,7 +202,7 @@ class TestXtPlanNd(unittest.TestCase):
         idtype = odtype = edtype = t
         old_shape = self.shape
         shape = list(self.shape)
-        shape[-1] = 2*shape[-1]
+        shape[-1] = 2 * shape[-1]
         shape = tuple(shape)
 
         a = testing.shaped_random(shape, cupy, cupy.float16)
@@ -228,4 +228,4 @@ class TestXtPlanNd(unittest.TestCase):
 
         # We shouldn't expect getting high accuracy, as both computations have
         # precision losses...
-        testing.assert_allclose(out/length, out_cp, rtol=1E-1, atol=1E-1)
+        testing.assert_allclose(out / length, out_cp, rtol=1E-1, atol=1E-1)

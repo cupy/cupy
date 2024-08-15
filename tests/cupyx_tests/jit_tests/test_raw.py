@@ -45,7 +45,7 @@ class TestRaw:
         l, m, n = (2, 3, 4)
         x = cupy.arange(24).reshape(l, m, n)
         y = cupy.empty_like(x)
-        f(((l+1)//2, (m+1)//2, (n+1)//2), (2, 2, 2), (x, y, l, m, n))
+        f(((l + 1) // 2, (m + 1) // 2, (n + 1) // 2), (2, 2, 2), (x, y, l, m, n))
         assert (x == y).all()
 
     def test_raw_grid_invalid1(self):
@@ -310,7 +310,7 @@ class TestRaw:
             for i in range(11):
                 # adds 0-10, but skips if the sum is greater than 3*i,
                 # skips 8 and 9, but not 10 (28 < 3*10), sum is 38
-                if z[tid] > 3*i:
+                if z[tid] > 3 * i:
                     continue
                 z[tid] += i
 
@@ -345,7 +345,7 @@ class TestRaw:
             for i in range(11):
                 # adds 0-10, but stops once the sum is greater than 3*i,
                 # breaks at 8 (28 > 3*8), sum is 28
-                if z[tid] > 3*i:
+                if z[tid] > 3 * i:
                     break
                 z[tid] += i
 
@@ -641,7 +641,7 @@ class TestRaw:
 
         a = cupy.arange(32, dtype=dtype)
         f[1, 32](a)
-        expected = [i for i in range(N)] + [i for i in range(32-N)]
+        expected = [i for i in range(N)] + [i for i in range(32 - N)]
         assert (a == cupy.asarray(expected, dtype=dtype)).all()
 
     # TODO(leofang): test float16 ('e') once cupy/cupy#5346 is resolved
@@ -659,7 +659,7 @@ class TestRaw:
         a = cupy.arange(block, dtype=dtype)
         f[1, block](a)
         expected = [i for i in range(N, block)]
-        expected += [(block-N+i) for i in range(N)]
+        expected += [(block - N + i) for i in range(N)]
         assert (a == cupy.asarray(expected, dtype=dtype)).all()
 
     # TODO(leofang): test float16 ('e') once cupy/cupy#5346 is resolved
@@ -697,9 +697,9 @@ class TestRaw:
                 arr[x] = jit.laneid()
 
         N = cupy._core._get_warpsize()
-        x = cupy.zeros((N*2,), dtype=cupy.uint32)
-        f((1,), (N*2,), (x,))
-        y = cupy.arange(N*2, dtype=cupy.uint32) % N
+        x = cupy.zeros((N * 2,), dtype=cupy.uint32)
+        f((1,), (N * 2,), (x,))
+        y = cupy.arange(N * 2, dtype=cupy.uint32) % N
         assert (x == y).all()
 
     def test_warpsize(self):

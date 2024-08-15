@@ -122,10 +122,10 @@ class TestLinearNDInterpolator:
 
 class TestEstimateGradients2DGlobal:
     @pytest.mark.parametrize("func", [
-        (lambda x, y: 0*x + 1),
+        (lambda x, y: 0 * x + 1),
         (lambda x, y: 0 + x),
         (lambda x, y: -2 + y),
-        (lambda x, y: 3 + 3*x + 14.15*y)
+        (lambda x, y: 3 + 3 * x + 14.15 * y)
     ])
     @testing.numpy_cupy_allclose(scipy_name="scp", rtol=1.0, atol=1e-6)
     def test_smoketest(self, func, xp, scp):
@@ -150,7 +150,7 @@ def compute_random_points(tri_points, xp):
     s = testing.shaped_random((tri_points.shape[0],), np, np.float64,
                               scale=1.0)
     t = testing.shaped_random((tri_points.shape[0],), np, np.float64,
-                              scale=1-s)
+                              scale=1 - s)
     bary[:, 0] = xp.asarray(s)
     bary[:, 1] = xp.asarray(t)
     bary[:, 2] = xp.asarray(1 - s - t)
@@ -185,10 +185,10 @@ class TestCloughTocher2DInterpolator:
         return a
 
     @pytest.mark.parametrize("func", [
-        lambda x, y: 0*x + 1,
+        lambda x, y: 0 * x + 1,
         lambda x, y: 0 + x,
         lambda x, y: -2 + y,
-        lambda x, y: 3 + 3*x + 14.15*y,
+        lambda x, y: 3 + 3 * x + 14.15 * y,
     ])
     @pytest.mark.parametrize("alternate", [False, True])
     @pytest.mark.parametrize("rescale", [False, True])
@@ -203,7 +203,7 @@ class TestCloughTocher2DInterpolator:
         lambda x, y: x**2,
         lambda x, y: y**2,
         lambda x, y: x**2 - y**2,
-        lambda x, y: x*y,
+        lambda x, y: x * y,
     ])
     @pytest.mark.parametrize("rescale", [False, True])
     @testing.numpy_cupy_allclose(scipy_name="scp", rtol=1.0, atol=1e-6)
@@ -218,7 +218,7 @@ class TestCloughTocher2DInterpolator:
                       (0.5, 0.5), (0.25, 0.3)],
                      dtype=xp.float64)
         y = xp.arange(x.shape[0], dtype=xp.float64)
-        y = y - 3j*y
+        y = y - 3j * y
 
         tri = scp.spatial.Delaunay(x)
         yi = scp.interpolate.CloughTocher2DInterpolator(tri, y)(x)
@@ -230,7 +230,7 @@ class TestCloughTocher2DInterpolator:
         x = xp.array([(0, 0), (-5, -5), (-5, 5), (5, 5), (2.5, 3)],
                      dtype=np.float64)
         y = xp.arange(x.shape[0], dtype=xp.float64)
-        y = y - 3j*y
+        y = y - 3j * y
 
         tri = scp.spatial.Delaunay(x)
         match = ("Rescaling is not supported when passing a "
@@ -242,8 +242,8 @@ class TestCloughTocher2DInterpolator:
         lambda x, y: x**2,
         lambda x, y: y**2,
         lambda x, y: x**2 - y**2,
-        lambda x, y: x*y,
-        lambda x, y: np.cos(2*np.pi*x)*np.sin(2*np.pi*y)
+        lambda x, y: x * y,
+        lambda x, y: np.cos(2 * np.pi * x) * np.sin(2 * np.pi * y)
     ])
     @pytest.mark.parametrize("rescale", [False, True])
     @testing.numpy_cupy_allclose(scipy_name="scp", rtol=1.0, atol=1e-6)

@@ -363,7 +363,7 @@ def splder(tck, n=1):
                           "order of spline (k = %r)") % (n, tck[2]))
 
     # Extra axes for the trailing dims of the `c` array:
-    sh = (slice(None),) + ((None,)*len(c.shape[1:]))
+    sh = (slice(None),) + ((None,) * len(c.shape[1:]))
 
     try:
         for j in range(n):
@@ -371,10 +371,10 @@ def splder(tck, n=1):
 
             # Compute the denominator in the differentiation formula.
             # (and append trailing dims, if necessary)
-            dt = t[k+1:-1] - t[1:-k-1]
+            dt = t[k + 1:-1] - t[1:-k - 1]
             dt = dt[sh]
             # Compute the new coefficients
-            c = (c[1:-1-k] - c[:-2-k]) * k / dt
+            c = (c[1:-1 - k] - c[:-2 - k]) * k / dt
             # Pad coefficient array to same size as knots (FITPACK
             # convention)
             c = cupy.r_[c, np.zeros((k,) + c.shape[1:])]
@@ -423,18 +423,18 @@ def splantider(tck, n=1):
     t, c, k = tck
 
     # Extra axes for the trailing dims of the `c` array:
-    sh = (slice(None),) + (None,)*len(c.shape[1:])
+    sh = (slice(None),) + (None,) * len(c.shape[1:])
 
     for j in range(n):
         # This is the inverse set of operations to splder.
 
         # Compute the multiplier in the antiderivative formula.
-        dt = t[k+1:] - t[:-k-1]
+        dt = t[k + 1:] - t[:-k - 1]
         dt = dt[sh]
         # Compute the new coefficients
-        c = cupy.cumsum(c[:-k-1] * dt, axis=0) / (k + 1)
+        c = cupy.cumsum(c[:-k - 1] * dt, axis=0) / (k + 1)
         c = cupy.r_[cupy.zeros((1,) + c.shape[1:]),
-                    c, [c[-1]] * (k+2)]
+                    c, [c[-1]] * (k + 2)]
         # New knots
         t = cupy.r_[t[0], t, t[-1]]
         k += 1
@@ -545,10 +545,10 @@ class BSpline:
             raise ValueError("Knot vector must be one-dimensional.")
         if n < self.k + 1:
             raise ValueError("Need at least %d knots for degree %d" %
-                             (2*k + 2, k))
+                             (2 * k + 2, k))
         if (cupy.diff(self.t) < 0).any():
             raise ValueError("Knots must be in a non-decreasing order.")
-        if len(cupy.unique(self.t[k:n+1])) < 2:
+        if len(cupy.unique(self.t[k:n + 1])) < 2:
             raise ValueError("Need at least two internal knots.")
         if not cupy.isfinite(self.t).all():
             raise ValueError("Knots should not have nans or infs.")
@@ -609,7 +609,7 @@ class BSpline:
         """
         k = len(t) - 2
         t = _as_float_array(t)
-        t = cupy.r_[(t[0]-1,) * k, t, (t[-1]+1,) * k]
+        t = cupy.r_[(t[0] - 1,) * k, t, (t[-1] + 1,) * k]
         c = cupy.zeros_like(t)
         c[k] = 1.
         return cls.construct_fast(t, c, k, extrapolate)
@@ -751,9 +751,9 @@ class BSpline:
             # transpose to move the calculated values to the interpolation axis
             dim_order = list(range(out.ndim))
             dim_order = (
-                dim_order[x_ndim:x_ndim+self.axis] +
+                dim_order[x_ndim:x_ndim + self.axis] +
                 dim_order[:x_ndim] +
-                dim_order[x_ndim+self.axis:])
+                dim_order[x_ndim + self.axis:])
             out = out.transpose(dim_order)
 
         return out

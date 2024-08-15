@@ -291,7 +291,8 @@ class TestCsrlsvqr:
     def _setup(self, dtype):
         dtype = numpy.dtype(dtype)
         a_shape = (self.n, self.n)
-        a = testing.shaped_random(a_shape, numpy, dtype=dtype, scale=2/self.n)
+        a = testing.shaped_random(
+            a_shape, numpy, dtype=dtype, scale=2 / self.n)
         a_mask = testing.shaped_random(a_shape, numpy, dtype="f", scale=1)
         a[a_mask > self.density] = 0
         a_diag = numpy.diag(numpy.ones((self.n,), dtype=dtype))

@@ -98,7 +98,7 @@ def test_ca_cfar1d(xp, dtype, size, gc, rc):
         weight = numpy.ones(((rc + gc) * 2 + 1,), dtype=dtype)
         weight[rc:-rc] = 0
         alpha = numpy.zeros((size,), dtype=dtype)
-        alpha[gc+rc:-gc-rc] = signal.cfar_alpha(1e-3, 2 * rc)
+        alpha[gc + rc:-gc - rc] = signal.cfar_alpha(1e-3, 2 * rc)
         out = scipy.ndimage.convolve1d(array, weight) * alpha / (2 * rc)
         return out, array - out > 0
 
@@ -127,7 +127,8 @@ def test_ca_cfar2d(xp, dtype, shape, gc, rc):
         weight[rcx:-rcx, rcy:-rcy] = 0
         alpha = numpy.zeros(shape, dtype=dtype)
         N = weight.size - (2 * gcx + 1) * (2 * gcy + 1)
-        alpha[gcx+rcx:-gcx-rcx, gcy+rcy:-gcy-rcy] = signal.cfar_alpha(1e-3, N)
+        alpha[gcx + rcx:-gcx - rcx, gcy + rcy:-
+              gcy - rcy] = signal.cfar_alpha(1e-3, N)
         out = scipy.ndimage.convolve(array, weight) * alpha / N
         return out, array - out > 0
 

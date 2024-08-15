@@ -66,8 +66,8 @@ def main():
     for (ctype, dtype) in zip(("float", "double"),
                               (numpy.float32, numpy.float64)):
 
-        A = cupy.random.rand(16*N, dtype=dtype).reshape(N, 4, 4)
-        B = cupy.random.rand(16*N, dtype=dtype).reshape(N, 4, 4)
+        A = cupy.random.rand(16 * N, dtype=dtype).reshape(N, 4, 4)
+        B = cupy.random.rand(16 * N, dtype=dtype).reshape(N, 4, 4)
         C = numpy.random.rand(16).astype(dtype).reshape(4, 4)
         out = cupy.empty_like(A)
 

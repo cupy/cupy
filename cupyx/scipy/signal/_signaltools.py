@@ -263,7 +263,7 @@ def oaconvolve(in1, in2, mode="full", axes=None):
                                                    sorted_axes=True)
     s1, s2 = in1.shape, in2.shape
     if not axes:
-        return _st_core._apply_conv_mode(in1*in2, s1, s2, mode, axes)
+        return _st_core._apply_conv_mode(in1 * in2, s1, s2, mode, axes)
 
     # Calculate the block sizes for the output, steps, first and second inputs.
     # It is simpler to calculate them all together than doing them in separate
@@ -277,15 +277,15 @@ def oaconvolve(in1, in2, mode="full", axes=None):
         return fftconvolve(in1, in2, mode=mode, axes=axes)
 
     # Pad and reshape the inputs for overlapping and adding
-    shape_final = [s1[i]+s2[i]-1 if i in axes else None
+    shape_final = [s1[i] + s2[i] - 1 if i in axes else None
                    for i in range(in1.ndim)]
     in1, in2 = _st_core._oa_reshape_inputs(in1, in2, axes, shape_final,
                                            block_size, overlaps,
                                            in1_step, in2_step)
 
     # Reshape the overlap-add parts to input block sizes
-    split_axes = [iax+i for i, iax in enumerate(axes)]
-    fft_axes = [iax+1 for iax in split_axes]
+    split_axes = [iax + i for i, iax in enumerate(axes)]
+    fft_axes = [iax + 1 for iax in split_axes]
 
     # Do the convolution
     fft_shape = [block_size[i] for i in axes]
@@ -307,7 +307,7 @@ def oaconvolve(in1, in2, mode="full", axes=None):
 
     # Reshape back to the correct dimensionality
     shape_ret = [ret.shape[i] if i not in fft_axes else
-                 ret.shape[i]*ret.shape[i-1]
+                 ret.shape[i] * ret.shape[i - 1]
                  for i in range(ret.ndim) if i not in split_axes]
     ret = ret.reshape(*shape_ret)
 
@@ -516,8 +516,8 @@ def wiener(im, mysize=None, noise=None):
     local_mean = _filters.uniform_filter(im, mysize, mode="constant")
 
     # Estimate the local variance
-    local_var = _filters.uniform_filter(im*im, mysize, mode="constant")
-    local_var -= local_mean*local_mean
+    local_var = _filters.uniform_filter(im * im, mysize, mode="constant")
+    local_var -= local_mean * local_mean
 
     # Estimate the noise power if needed.
     if noise is None:
@@ -1129,7 +1129,7 @@ def _filtfilt_gust(b, a, x, axis=-1, irlen=None):
         M = cupy.hstack((Sr - Obs, Obsr - S))
     else:
         # Matrix described in section IV of [1].
-        M = cupy.zeros((2*m, 2*order))
+        M = cupy.zeros((2 * m, 2 * order))
         M[:m, :order] = Sr - Obs
         M[m:, order:] = Obsr - S
 
@@ -1167,7 +1167,7 @@ def _filtfilt_gust(b, a, x, axis=-1, irlen=None):
     if m == n:
         W = cupy.hstack((Sr, Obsr))
     else:
-        W = cupy.zeros((2*m, 2*order))
+        W = cupy.zeros((2 * m, 2 * order))
         W[:m, :order] = Sr
         W[m:, order:] = Obsr
 

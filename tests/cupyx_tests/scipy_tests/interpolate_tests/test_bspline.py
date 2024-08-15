@@ -95,7 +95,7 @@ class TestBSpline:
 
         b = self._make_random_spline(xp, scp)
         b.c = xp.ones_like(b.c)
-        xx = xp.linspace(b.t[b.k], b.t[-b.k-1], 100)
+        xx = xp.linspace(b.t[b.k], b.t[-b.k - 1], 100)
         return b(xx)
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
@@ -108,7 +108,7 @@ class TestBSpline:
         t = xp.sort(xp.random.random(n))
         c = xp.random.random(size=(n, 6, 7))
         b = scp.interpolate.BSpline(t, c, k)
-        tm, tp = t[k], t[-k-1]
+        tm, tp = t[k], t[-k - 1]
         xx = tm + (tp - tm) * xp.random.random((3, 4, 5))
         return b(xx).shape
 
@@ -142,7 +142,7 @@ class TestBSpline:
         # base interval is closed
         b = self._make_random_spline(xp, scp)
         t, _, k = b.tck
-        tm, tp = t[k], t[-k-1]
+        tm, tp = t[k], t[-k - 1]
         return (
             b(xp.asarray([tm, tp]), extrapolate=self.extrapolate),
             b(xp.asarray([tm + 1e-10, tp - 1e-10]),
@@ -153,15 +153,15 @@ class TestBSpline:
         # assert continuity at internal knots
         b = self._make_random_spline(xp, scp)
         t, _, k = b.tck
-        return b(t[k+1:-k-1] - 1e-10), b(t[k+1:-k-1] + 1e-10)
+        return b(t[k + 1:-k - 1] - 1e-10), b(t[k + 1:-k - 1] + 1e-10)
 
     @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_bspline_extrap(self, xp, scp):
         b = self._make_random_spline(xp, scp)
         t, c, k = b.tck
         dt = t[-1] - t[0]
-        xx = xp.linspace(t[k] - dt, t[-k-1] + dt, 50)
-        mask = (t[k] < xx) & (xx < t[-k-1])
+        xx = xp.linspace(t[k] - dt, t[-k - 1] + dt, 50)
+        mask = (t[k] < xx) & (xx < t[-k - 1])
 
         return (b(xx[mask], extrapolate=self.extrapolate),
                 b(xx, extrapolate=self.extrapolate))
@@ -194,7 +194,7 @@ class TestBSpline:
         xx = xp.r_[xx, t]
 
         derivatives = []
-        for der in range(1, k+2):
+        for der in range(1, k + 2):
             derivatives.append(b(xx, nu=der))
 
         return derivatives
@@ -259,12 +259,12 @@ class TestBSpline:
     def test_basis_element_rndm(self, xp, scp):
         b = self._make_random_spline(xp, scp)
         t, c, k = b.tck
-        xx = xp.linspace(t[k], t[-k-1], 20)
-        n = len(t) - (k+1)
+        xx = xp.linspace(t[k], t[-k - 1], 20)
+        n = len(t) - (k + 1)
         s = 0.
         for i in range(n):
             b = scp.interpolate.BSpline.basis_element(
-                t[i:i+k+2], extrapolate=False)(xx)
+                t[i:i + k + 2], extrapolate=False)(xx)
             # zero out out-of-bounds elements
             s += c[i] * xp.nan_to_num(b)
         return s
@@ -282,7 +282,7 @@ class TestBSpline:
         b_re = scp.interpolate.BSpline(t, b.c.real, k)
         b_im = scp.interpolate.BSpline(t, b.c.imag, k)
 
-        xx = xp.linspace(t[k], t[-k-1], 20)
+        xx = xp.linspace(t[k], t[-k - 1], 20)
         return b(xx), b_re(xx) + 1j * b_im(xx)
 
     @testing.numpy_cupy_allclose(scipy_name="scp")
@@ -323,7 +323,7 @@ class TestBSpline:
     def test_multiple_derivative(self, xp, scp):
         b = self._make_random_spline(xp, scp, k=5)
         t, c, k = b.tck
-        xx = xp.linspace(t[k], t[-k-1], 20)
+        xx = xp.linspace(t[k], t[-k - 1], 20)
         comp = []
         for j in range(1, k):
             b = b.derivative()
@@ -347,7 +347,7 @@ class TestBSpline:
     def test_antiderivative(self, xp, scp):
         b = self._make_random_spline(xp, scp)
         t, c, k = b.tck
-        xx = xp.linspace(t[k], t[-k-1], 20)
+        xx = xp.linspace(t[k], t[-k - 1], 20)
         r1 = b.antiderivative().derivative()(xx)
 
         # repeat with N-D array for c

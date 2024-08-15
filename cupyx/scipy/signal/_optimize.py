@@ -188,7 +188,7 @@ def _minimize_scalar_bounded(func, bounds, args=(),
             e = rat
 
             # Check for acceptability of parabola
-            if ((cupy.abs(p) < cupy.abs(0.5*q*r)) and (p > q*(a - xf)) and
+            if ((cupy.abs(p) < cupy.abs(0.5 * q * r)) and (p > q * (a - xf)) and
                     (p < q * (b - xf))):
                 rat = (p + 0.0) / q
                 x = xf + rat
@@ -205,7 +205,7 @@ def _minimize_scalar_bounded(func, bounds, args=(),
                 e = a - xf
             else:
                 e = b - xf
-            rat = golden_mean*e
+            rat = golden_mean * e
             step = "       golden"
 
         si = cupy.sign(rat) + (rat == 0)

@@ -96,7 +96,7 @@ def _get_inttype(input):
     # The indices actually use byte positions and we can't just use
     # input.nbytes since that won't tell us the number of bytes between the
     # first and last elements when the array is non-contiguous
-    nbytes = sum((x-1)*abs(stride) for x, stride in
+    nbytes = sum((x - 1) * abs(stride) for x, stride in
                  zip(input.shape, input.strides)) + input.dtype.itemsize
     return "int" if nbytes < (1 << 31) else "ptrdiff_t"
 
@@ -155,6 +155,6 @@ def _generate_boundary_condition_ops(mode, ix, xsize, int_t="int",
 def _generate_indices_ops(ndim, int_type, offsets):
     code = "{type} ind_{j} = _i % ysize_{j} - {offset}; _i /= ysize_{j};"
     body = [code.format(type=int_type, j=j, offset=offsets[j])
-            for j in range(ndim-1, 0, -1)]
+            for j in range(ndim - 1, 0, -1)]
     return "{type} _i = i;\n{body}\n{type} ind_0 = _i - {offset};".format(
         type=int_type, body="\n".join(body), offset=offsets[0])

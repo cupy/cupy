@@ -67,10 +67,10 @@ class TestGesv(unittest.TestCase):
         ng_b = self.b.reshape(1, self.n, self.nrhs)
         with pytest.raises(ValueError):
             lapack.gesv(self.a, ng_b)
-        ng_a = cupy.ones((self.n, self.n+1), dtype=self.dtype)
+        ng_a = cupy.ones((self.n, self.n + 1), dtype=self.dtype)
         with pytest.raises(ValueError):
             lapack.gesv(ng_a, self.b)
-        ng_a = cupy.ones((self.n+1, self.n+1), dtype=self.dtype)
+        ng_a = cupy.ones((self.n + 1, self.n + 1), dtype=self.dtype)
         with pytest.raises(ValueError):
             lapack.gesv(ng_a, self.b)
         ng_a = cupy.ones(self.a.shape, dtype="i")

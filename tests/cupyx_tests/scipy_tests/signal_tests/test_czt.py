@@ -20,14 +20,14 @@ def check_czt(x, xp, scp):
     y1 = scp.signal.czt(x)
 
     # Check that interpolated czt is the equivalent of normal fft
-    y1_ = scp.signal.czt(x, 100*len(x))
+    y1_ = scp.signal.czt(x, 100 * len(x))
     return y1, y1_
 
 
 def check_zoom_fft(x, xp, scp):
     # Check that zoom_fft is the equivalent of normal fft
     y = scp.fft.fft(x)
-    y1 = scp.signal.zoom_fft(x, [0, 2-2./len(y)], endpoint=True)
+    y1 = scp.signal.zoom_fft(x, [0, 2 - 2. / len(y)], endpoint=True)
     y2 = scp.signal.zoom_fft(x, [0, 2])
     return y1, y2
 
@@ -35,7 +35,7 @@ def check_zoom_fft(x, xp, scp):
 def check_zoom_fft_2(x, xp, scp):
     # Test fn scalar
     y = scp.fft.fft(x)
-    y1 = scp.signal.zoom_fft(x, 2-2./len(y), endpoint=True)
+    y1 = scp.signal.zoom_fft(x, 2 - 2. / len(y), endpoint=True)
     y2 = scp.signal.zoom_fft(x, 2)
     return y1, y2
 
@@ -43,21 +43,21 @@ def check_zoom_fft_2(x, xp, scp):
 def check_zoom_fft_3(x, xp, scp):
     # Check that zoom_fft with oversampling is equivalent to zero padding
     over = 10
-    yover = scp.fft.fft(x, over*len(x))
+    yover = scp.fft.fft(x, over * len(x))
     y1 = scp.signal.zoom_fft(
-        x, [0, 2-2./len(yover)], m=len(yover), endpoint=True)
+        x, [0, 2 - 2. / len(yover)], m=len(yover), endpoint=True)
     y2 = scp.signal.zoom_fft(x, [0, 2], m=len(yover))
 
     # Check that zoom_fft works on a subrange
-    w = xp.linspace(0, 2-2./len(x), len(x))
+    w = xp.linspace(0, 2 - 2. / len(x), len(x))
     f1, f2 = w[3], w[6]
-    y3 = scp.signal.zoom_fft(x, [f1, f2], m=3*over+1, endpoint=True)
+    y3 = scp.signal.zoom_fft(x, [f1, f2], m=3 * over + 1, endpoint=True)
 
     return y1, y2, y3
 
 
-pw2_ranges = [range(126-31), range(127-31), range(128-31), range(129-31),
-              range(130-31), ]
+pw2_ranges = [range(126 - 31), range(127 - 31), range(128 - 31), range(129 - 31),
+              range(130 - 31), ]
 zf_checks = [check_zoom_fft, check_zoom_fft_2, check_zoom_fft_3, check_czt]
 
 
@@ -81,7 +81,7 @@ class Test1D:
     @testing.numpy_cupy_allclose(scipy_name="scp", atol=1e-14)
     def test_gauss(self, xp, scp, func):
         t = xp.linspace(-2, 2, 128)
-        x = xp.exp(-t**2/0.01)
+        x = xp.exp(-t**2 / 0.01)
         return func(x, xp, scp)
 
     @pytest.mark.parametrize("func", zf_checks)
@@ -94,7 +94,7 @@ class Test1D:
     @testing.numpy_cupy_allclose(scipy_name="scp", atol=1e-13)
     def test_spikes(self, xp, scp, func):
         t = xp.linspace(0, 1, 128)
-        x = xp.sin(2*pi*t*5) + xp.sin(2*pi*t*13)
+        x = xp.sin(2 * pi * t * 5) + xp.sin(2 * pi * t * 13)
         return func(x, xp, scp)
 
     @pytest.mark.parametrize("func", zf_checks)
@@ -109,7 +109,7 @@ class Test1D:
     def test_sines_plus(self, xp, scp, func):
         x = xp.zeros(100, dtype=complex)
         x[[1, 5, 21]] = 1
-        x += 1j*xp.linspace(0, 0.5, x.shape[0])
+        x += 1j * xp.linspace(0, 0.5, x.shape[0])
         return func(x, xp, scp)
 
     @pytest.mark.parametrize("func", zf_checks)
@@ -122,15 +122,15 @@ class Test1D:
     @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_nd(self, xp, scp):
         # Check transform on n-D array input
-        x = xp.arange(3*2*28).reshape(3, 2, 28)
-        y1 = scp.signal.zoom_fft(x, [0, 2-2./28])
-        y2 = scp.signal.zoom_fft(x[2, 0, :], [0, 2-2./28])
+        x = xp.arange(3 * 2 * 28).reshape(3, 2, 28)
+        y1 = scp.signal.zoom_fft(x, [0, 2 - 2. / 28])
+        y2 = scp.signal.zoom_fft(x[2, 0, :], [0, 2 - 2. / 28])
         return y1, y2
 
     @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_nd_2(self, xp, scp):
         # Check transform on n-D array input
-        x = xp.arange(3*2*28).reshape(3, 2, 28)
+        x = xp.arange(3 * 2 * 28).reshape(3, 2, 28)
         y1 = scp.signal.zoom_fft(x, [0, 2], endpoint=False)
         y2 = scp.signal.zoom_fft(x[2, 0, :], [0, 2], endpoint=False)
         return y1, y2

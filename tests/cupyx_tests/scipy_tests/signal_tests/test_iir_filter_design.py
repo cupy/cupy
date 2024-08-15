@@ -185,7 +185,7 @@ class TestButter:
                 for fc in (100, 100.1, 432.12345):
                     for btype in ("lp", "hp"):
                         ba1 = signal.butter(N, fc, btype, fs=fs)
-                        ba2 = signal.butter(N, fc/(fs/2), btype)
+                        ba2 = signal.butter(N, fc / (fs / 2), btype)
                         testing.assert_allclose(ba1[0], ba2[0])
                         testing.assert_allclose(ba1[1], ba2[1])
 
@@ -193,7 +193,7 @@ class TestButter:
                     for btype in ("bp", "bs"):
                         ba1 = signal.butter(N, fc, btype, fs=fs)
                         # for seq in (list, tuple, array):
-                        fcnorm = cupy.array([f/(fs/2) for f in fc])
+                        fcnorm = cupy.array([f / (fs / 2) for f in fc])
                         ba2 = signal.butter(N, fcnorm, btype)
                         testing.assert_allclose(ba1[0], ba2[0])
                         testing.assert_allclose(ba1[0], ba2[0])
@@ -206,13 +206,13 @@ class TestCheby1:
     def test_degenerate(self, xp, scp):
         # 0-order filter is just a passthrough
         # Even-order filters have DC gain of -rp dB
-        b, a = scp.signal.cheby1(0, 10*xp.log10(2), 1, analog=True)
+        b, a = scp.signal.cheby1(0, 10 * xp.log10(2), 1, analog=True)
         return b, a
 
     @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_degenerate_1(self, xp, scp):
         # 1-order filter is same for all types
-        b, a = scp.signal.cheby1(1, 10*xp.log10(2), 1, analog=True)
+        b, a = scp.signal.cheby1(1, 10 * xp.log10(2), 1, analog=True)
         return b, a
 
     @testing.numpy_cupy_allclose(scipy_name="scp")
@@ -312,7 +312,7 @@ class TestCheby2:
     @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_degenerate_1(self, xp, scp):
         # 1-order filter is same for all types
-        b, a = scp.signal.cheby2(1, 10*xp.log10(2), 1, analog=True)
+        b, a = scp.signal.cheby2(1, 10 * xp.log10(2), 1, analog=True)
         return b, a
 
     @testing.numpy_cupy_allclose(scipy_name="scp")
@@ -398,13 +398,13 @@ class TestEllip:
         # 0-order filter is just a passthrough
         # Even-order filters have DC gain of -rp dB
         # Stopband ripple factor doesn't matter
-        b, a = scp.signal.ellip(0, 10*xp.log10(2), 123.456, 1, analog=True)
+        b, a = scp.signal.ellip(0, 10 * xp.log10(2), 123.456, 1, analog=True)
         return b, a
 
     @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_degenerate_1(self, xp, scp):
         # 1-order filter is same for all types
-        b, a = scp.signal.ellip(1, 10*xp.log10(2), 1, 1, analog=True)
+        b, a = scp.signal.ellip(1, 10 * xp.log10(2), 1, 1, analog=True)
         return b, a
 
     @testing.numpy_cupy_allclose(scipy_name="scp")
@@ -1048,7 +1048,7 @@ class TestIIRComb:
                 signal.iircomb(*args, fs=fs)
 
         with pytest.raises(ValueError, match="fs must be divisible "):
-            signal.iircomb(w0=49.999/int(44100/2), Q=30)
+            signal.iircomb(w0=49.999 / int(44100 / 2), Q=30)
 
         with pytest.raises(ValueError, match="fs must be divisible "):
             signal.iircomb(w0=49.999, Q=30, fs=44100)
@@ -1105,7 +1105,7 @@ class TestIIRComb:
     @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_nearest_divisor(self, xp, scp):
         # Create a notching comb filter
-        b, a = scp.signal.iircomb(50/int(44100/2), 50.0, ftype="notch")
+        b, a = scp.signal.iircomb(50 / int(44100 / 2), 50.0, ftype="notch")
         return b, a
 
 

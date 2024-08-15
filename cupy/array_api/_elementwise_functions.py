@@ -135,7 +135,8 @@ def bitwise_and(x1: Array, x2: Array, /) -> Array:
         x1.dtype not in _integer_or_boolean_dtypes
         or x2.dtype not in _integer_or_boolean_dtypes
     ):
-        raise TypeError("Only integer or boolean dtypes are allowed in bitwise_and")
+        raise TypeError(
+            "Only integer or boolean dtypes are allowed in bitwise_and")
     # Call result type here just to raise on disallowed type combinations
     _result_type(x1.dtype, x2.dtype)
     x1, x2 = Array._normalize_two_args(x1, x2)
@@ -150,13 +151,15 @@ def bitwise_left_shift(x1: Array, x2: Array, /) -> Array:
     See its docstring for more information.
     """
     if x1.dtype not in _integer_dtypes or x2.dtype not in _integer_dtypes:
-        raise TypeError("Only integer dtypes are allowed in bitwise_left_shift")
+        raise TypeError(
+            "Only integer dtypes are allowed in bitwise_left_shift")
     # Call result type here just to raise on disallowed type combinations
     _result_type(x1.dtype, x2.dtype)
     x1, x2 = Array._normalize_two_args(x1, x2)
     # Note: bitwise_left_shift is only defined for x2 nonnegative.
     if np.any(x2._array < 0):
-        raise ValueError("bitwise_left_shift(x1, x2) is only defined for x2 >= 0")
+        raise ValueError(
+            "bitwise_left_shift(x1, x2) is only defined for x2 >= 0")
     return Array._new(np.left_shift(x1._array, x2._array))
 
 
@@ -168,7 +171,8 @@ def bitwise_invert(x: Array, /) -> Array:
     See its docstring for more information.
     """
     if x.dtype not in _integer_or_boolean_dtypes:
-        raise TypeError("Only integer or boolean dtypes are allowed in bitwise_invert")
+        raise TypeError(
+            "Only integer or boolean dtypes are allowed in bitwise_invert")
     return Array._new(np.invert(x._array))
 
 
@@ -182,7 +186,8 @@ def bitwise_or(x1: Array, x2: Array, /) -> Array:
         x1.dtype not in _integer_or_boolean_dtypes
         or x2.dtype not in _integer_or_boolean_dtypes
     ):
-        raise TypeError("Only integer or boolean dtypes are allowed in bitwise_or")
+        raise TypeError(
+            "Only integer or boolean dtypes are allowed in bitwise_or")
     # Call result type here just to raise on disallowed type combinations
     _result_type(x1.dtype, x2.dtype)
     x1, x2 = Array._normalize_two_args(x1, x2)
@@ -197,13 +202,15 @@ def bitwise_right_shift(x1: Array, x2: Array, /) -> Array:
     See its docstring for more information.
     """
     if x1.dtype not in _integer_dtypes or x2.dtype not in _integer_dtypes:
-        raise TypeError("Only integer dtypes are allowed in bitwise_right_shift")
+        raise TypeError(
+            "Only integer dtypes are allowed in bitwise_right_shift")
     # Call result type here just to raise on disallowed type combinations
     _result_type(x1.dtype, x2.dtype)
     x1, x2 = Array._normalize_two_args(x1, x2)
     # Note: bitwise_right_shift is only defined for x2 nonnegative.
     if np.any(x2._array < 0):
-        raise ValueError("bitwise_right_shift(x1, x2) is only defined for x2 >= 0")
+        raise ValueError(
+            "bitwise_right_shift(x1, x2) is only defined for x2 >= 0")
     return Array._new(np.right_shift(x1._array, x2._array))
 
 
@@ -217,7 +224,8 @@ def bitwise_xor(x1: Array, x2: Array, /) -> Array:
         x1.dtype not in _integer_or_boolean_dtypes
         or x2.dtype not in _integer_or_boolean_dtypes
     ):
-        raise TypeError("Only integer or boolean dtypes are allowed in bitwise_xor")
+        raise TypeError(
+            "Only integer or boolean dtypes are allowed in bitwise_xor")
     # Call result type here just to raise on disallowed type combinations
     _result_type(x1.dtype, x2.dtype)
     x1, x2 = Array._normalize_two_args(x1, x2)

@@ -100,8 +100,8 @@ def get_idx_to_func(cu_h, cu_func):
     while True:
         if cu_sig == -1:
             break
-        elif cu_h[cu_sig+len(cu_func)] != "(":
-            cu_sig = cu_h.find(cu_func, cu_sig+1)
+        elif cu_h[cu_sig + len(cu_func)] != "(":
+            cu_sig = cu_h.find(cu_func, cu_sig + 1)
         else:
             break  # match
     return cu_sig
@@ -127,11 +127,11 @@ def merge_bad_broken_lines(cu_sig):
                 if break_idx == -1:
                     break_idx = s.find(")")
                 if break_idx == -1:
-                    cu_sig_processed.append(s + cu_sig[line+1])
-                    skip_line = line+1
+                    cu_sig_processed.append(s + cu_sig[line + 1])
+                    skip_line = line + 1
                 else:
                     # argument could be followed by an inline comment
-                    cu_sig_processed.append(s[:break_idx+1])
+                    cu_sig_processed.append(s[:break_idx + 1])
     return cu_sig_processed
 
 
@@ -304,7 +304,7 @@ def main(hip_h, cu_h, stubs, hip_version, init):
             else:
                 end_idx = cu_h[cu_sig:].find(")")
                 assert end_idx != -1
-                cu_sig = cu_h[cu_sig:cu_sig+end_idx+1]
+                cu_sig = cu_h[cu_sig:cu_sig + end_idx + 1]
 
                 # pretty print
                 cu_sig = cu_sig.split("\n")
@@ -319,9 +319,9 @@ def main(hip_h, cu_h, stubs, hip_version, init):
 
             # now we have the full signature, map the return to HIP's function;
             # note that the "return" line is in the next two lines
-            line = stubs[i+1]
+            line = stubs[i + 1]
             if "return" not in line:
-                line = stubs[i+2]
+                line = stubs[i + 2]
                 assert "return" in line
             if can_map:
                 cu_sig = cu_sig.split("\n")
@@ -335,7 +335,7 @@ def main(hip_h, cu_h, stubs, hip_version, init):
                     hip_sig, decl = process_func_args(
                         s, hip_sig, decl, hip_func)
                 hip_sig = hip_sig[:-1] + ";"
-                hip_stub_h.append(decl+hip_sig)
+                hip_stub_h.append(decl + hip_sig)
                 if hip_version != 305:
                     hip_stub_h.append("#else")
                     hip_stub_h.append(
@@ -343,7 +343,7 @@ def main(hip_h, cu_h, stubs, hip_version, init):
                     hip_stub_h.append("#endif")
             else:
                 hip_stub_h.append(
-                    (line[:line.find("return")+6]
+                    (line[:line.find("return") + 6]
                      + " HIPSPARSE_STATUS_NOT_SUPPORTED;"))
 
         elif "return" in line:
@@ -352,7 +352,7 @@ def main(hip_h, cu_h, stubs, hip_version, init):
                 # parsing "(...)"
                 pass
             elif "HIPSPARSE_STATUS_NOT_SUPPORTED" in line:
-                if "#else" in stubs[i-1]:
+                if "#else" in stubs[i - 1]:
                     # just copy from the stub
                     hip_stub_h.append(line)
             else:

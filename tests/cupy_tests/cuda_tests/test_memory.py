@@ -1305,7 +1305,7 @@ class TestMemoryAsyncPool(unittest.TestCase):
 
     def test_get_limit(self):
         # limit is disabled by default
-        assert 2**64-1 == self.pool.get_limit()
+        assert 2**64 - 1 == self.pool.get_limit()
 
     def test_set_limit_size(self):
         self.pool.set_limit(size=1024)
@@ -1315,7 +1315,7 @@ class TestMemoryAsyncPool(unittest.TestCase):
         assert 2**33 == self.pool.get_limit()
 
         self.pool.set_limit(size=0)
-        assert 2**64-1 == self.pool.get_limit()
+        assert 2**64 - 1 == self.pool.get_limit()
 
         with self.assertRaises(ValueError):
             self.pool.set_limit(size=-1)
@@ -1324,7 +1324,7 @@ class TestMemoryAsyncPool(unittest.TestCase):
         _, total = cupy.cuda.runtime.memGetInfo()
 
         self.pool.set_limit(fraction=0)
-        assert 2**64-1 == self.pool.get_limit()
+        assert 2**64 - 1 == self.pool.get_limit()
 
         self.pool.set_limit(fraction=0.5)
         assert total * 0.5 == self.pool.get_limit()

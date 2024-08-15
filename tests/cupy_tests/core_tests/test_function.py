@@ -68,7 +68,7 @@ extern "C" __global__ void test_kernel(const double* a, double3 b, double* x) {
 """
 
         double3 = numpy.dtype({"names": ["x", "y", "z"],
-                               "formats": [numpy.float64]*3})
+                               "formats": [numpy.float64] * 3})
         a_cpu = numpy.arange(24, dtype=numpy.float64)
         a = cupy.array(a_cpu)
         b = numpy.random.rand(3).view(double3)
@@ -165,7 +165,7 @@ extern "C" __global__ void get_struct_layout(
         def make_packed(basetype, N, itemsize):
             assert 0 < N <= 4, N
             names = list("xyzw")[:N]
-            formats = [basetype]*N
+            formats = [basetype] * N
             return numpy.dtype(dict(names=names,
                                     formats=formats,
                                     itemsize=itemsize))

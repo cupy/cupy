@@ -24,6 +24,7 @@ from cupyx.scipy.signal._iir_filter_conversions import (
 
 # FIXME
 
+
 def besselap():
     raise NotImplementedError
 
@@ -131,7 +132,7 @@ def iirfilter(N, Wn, rp=None, rs=None, btype="band", analog=False,
     if fs is not None:
         if analog:
             raise ValueError("fs cannot be specified for an analog filter")
-        Wn = 2*Wn/fs
+        Wn = 2 * Wn / fs
 
     try:
         btype = band_dict[btype]
@@ -182,7 +183,7 @@ def iirfilter(N, Wn, rp=None, rs=None, btype="band", analog=False,
         if cupy.any(Wn <= 0) or cupy.any(Wn >= 1):
             if fs is not None:
                 raise ValueError("Digital filter critical frequencies must "
-                                 f"be 0 < Wn < fs/2 (fs={fs} -> fs/2={fs/2})")
+                                 f"be 0 < Wn < fs/2 (fs={fs} -> fs/2={fs / 2})")
             raise ValueError("Digital filter critical frequencies "
                              "must be 0 < Wn < 1")
         fs = 2.0
@@ -639,9 +640,9 @@ def iirdesign(wp, ws, gpass, gstop, analog=False, ftype="ellip", output="ba",
         if fs is None:
             if any(wp >= 1) or any(ws >= 1):
                 raise ValueError("Values for wp, ws must be less than 1")
-        elif any(wp >= fs/2) or any(ws >= fs/2):
+        elif any(wp >= fs / 2) or any(ws >= fs / 2):
             raise ValueError("Values for wp, ws must be less than fs/2"
-                             " (fs={} -> fs/2={})".format(fs, fs/2))
+                             " (fs={} -> fs/2={})".format(fs, fs / 2))
 
     if wp.shape[0] == 2:
         if not ((ws[0] < wp[0] and wp[1] < ws[1]) or
@@ -746,7 +747,7 @@ def iircomb(w0, Q, ftype="notch", fs=2.0, *, pass_zero=False):
     N = round(fs / w0)
 
     # Check for cutoff frequency divisibility
-    if abs(w0 - fs/N)/fs > 1e-14:
+    if abs(w0 - fs / N) / fs > 1e-14:
         raise ValueError("fs must be divisible by w0.")
 
     # Compute frequency in radians and filter bandwidth

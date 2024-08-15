@@ -39,7 +39,7 @@ class TestLombscargle:
         t = xp.linspace(0.01 * xp.pi, 10. * xp.pi, nin, dtype=dtype)[r >= p]
 
         # Plot a sine wave for the selected times
-        x = ampl * np.sin(w*t + phi)
+        x = ampl * np.sin(w * t + phi)
 
         # Define the array of frequencies for which to compute the periodogram
         f = np.linspace(0.01, 10., nout, dtype=dtype)
@@ -1165,7 +1165,7 @@ class TestSTFT:
         x_flat = testing.shaped_random((1024,), xp, xp.float64, seed=1234)
         _, _, z_flat = scp.signal.stft(x_flat)
 
-        newshape = [1,]*3
+        newshape = [1,] * 3
         newshape[a] = -1
         x = x_flat.reshape(newshape)
 

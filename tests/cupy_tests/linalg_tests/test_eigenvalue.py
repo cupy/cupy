@@ -67,7 +67,7 @@ class TestEigenvalue:
         A = _get_hermitian(xp, a, self.UPLO)
         for i in range(a.shape[0]):
             testing.assert_allclose(
-                A[i].dot(v[i]), w[i]*v[i], rtol=1e-5, atol=1e-5)
+                A[i].dot(v[i]), w[i] * v[i], rtol=1e-5, atol=1e-5)
         return w
 
     @testing.for_dtypes("FD")
@@ -85,7 +85,7 @@ class TestEigenvalue:
         A = _get_hermitian(xp, a, self.UPLO)
         for i in range(a.shape[0]):
             testing.assert_allclose(
-                A[i].dot(v[i]), w[i]*v[i], rtol=1e-5, atol=1e-5)
+                A[i].dot(v[i]), w[i] * v[i], rtol=1e-5, atol=1e-5)
         return w
 
     @testing.for_all_dtypes(no_float16=True, no_complex=True)

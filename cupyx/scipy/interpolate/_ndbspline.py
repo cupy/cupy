@@ -495,7 +495,7 @@ class NdBSpline:
             k = (k,) * ndim
 
         if len(k) != ndim:
-            raise ValueError(f"{len(t) = } != {len(k) = }.")
+            raise ValueError(f"{len(t)=} != {len(k)=}.")
 
         self.k = tuple(operator.index(ki) for ki in k)
         self.t = tuple(cupy.ascontiguousarray(ti, dtype=float) for ti in t)
@@ -518,7 +518,7 @@ class NdBSpline:
                 raise ValueError(f"Knot vector in dimension {d} must be"
                                  f" one-dimensional.")
             if n < kd + 1:
-                raise ValueError(f"Need at least {2*kd + 2} knots for degree"
+                raise ValueError(f"Need at least {2 * kd + 2} knots for degree"
                                  f" {kd} in dimension {d}.")
             if (cupy.diff(td) < 0).any():
                 raise ValueError(f"Knots in dimension {d} must be in a"
@@ -575,10 +575,10 @@ class NdBSpline:
             nu = cupy.asarray(nu, dtype=cupy.int32)
             if nu.ndim != 1 or nu.shape[0] != ndim:
                 raise ValueError(
-                    f"invalid number of derivative orders {nu = } for "
+                    f"invalid number of derivative orders {nu=} for "
                     f"ndim = {len(self.t)}.")
             if cupy.any(nu < 0).item():
-                raise ValueError(f"derivatives must be positive, got {nu = }")
+                raise ValueError(f"derivatives must be positive, got {nu=}")
 
         # prepare xi : shape (..., m1, ..., md) -> (1, m1, ..., md)
         xi = cupy.asarray(xi, dtype=float)
@@ -659,13 +659,13 @@ class NdBSpline:
         if len(t) != ndim:
             raise ValueError(
                 f"Data and knots are inconsistent: len(t) = {len(t)} for "
-                f" {ndim = }."
+                f" {ndim=}."
             )
         try:
             len(k)
         except TypeError:
             # make k a tuple
-            k = (k,)*ndim
+            k = (k,) * ndim
 
         len_t = [len(ti) for ti in t]
         _t = cupy.empty((ndim, max(len_t)), dtype=float)
@@ -717,14 +717,14 @@ def make_ndbspl(points, values, k=3):
         len(k)
     except TypeError:
         # make k a tuple
-        k = (k,)*ndim
+        k = (k,) * ndim
 
     for d, point in enumerate(points):
         numpts = len(cupy.atleast_1d(point))
         if numpts <= k[d]:
             raise ValueError(f"There are {numpts} points in dimension {d},"
                              f" but order {k[d]} requires at least "
-                             f" {k[d]+1} points per dimension.")
+                             f" {k[d] + 1} points per dimension.")
 
     t = tuple(_not_a_knot(cupy.asarray(
         points[d], dtype=float), k[d]) for d in range(ndim))

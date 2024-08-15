@@ -94,19 +94,19 @@ class TestPartialFractionExpansion:
                                          include_powers=True)
         assert len(factors) == 6
         testing.assert_allclose(
-            factors[0], [1,  -9,  31, -51,  40, -12], atol=1e-15)
+            factors[0], [1, -9, 31, -51, 40, -12], atol=1e-15)
         testing.assert_allclose(
-            factors[1], [1,  -8,  23, -28,  12], atol=1e-15)
-        testing.assert_allclose(factors[2], [1,  -7,  16, -12], atol=1e-15)
+            factors[1], [1, -8, 23, -28, 12], atol=1e-15)
+        testing.assert_allclose(factors[2], [1, -7, 16, -12], atol=1e-15)
         testing.assert_allclose(
-            factors[3], [1,  -8,  24, -34,  23,  -6], atol=1e-15)
+            factors[3], [1, -8, 24, -34, 23, -6], atol=1e-15)
         testing.assert_allclose(
-            factors[4], [1,  -6,  12, -10,   3], atol=1e-15)
+            factors[4], [1, -6, 12, -10, 3], atol=1e-15)
         testing.assert_allclose(
-            factors[5], [1,  -7,  19, -25,  16,  -4], atol=1e-15)
+            factors[5], [1, -7, 19, -25, 16, -4], atol=1e-15)
 
         testing.assert_allclose(
-            poly, [1, -10,  40, -82,  91, -52,  12], atol=1e-15)
+            poly, [1, -10, 40, -82, 91, -52, 12], atol=1e-15)
 
     def test_group_poles(self):
         _group_poles = cupyx.scipy.signal.unique_roots
@@ -171,7 +171,7 @@ class TestPartialFractionExpansion:
                                  ([2, 3, 4], [1, 3, 3, 1]),
                                  ([1, -10, -4, 4], [2, -2, -4]),
                                  ([18], [18, 3, -4, -1]),
-                                 ([2, 3], np.polymul([1, -1/2], [1, 1/4])),
+                                 ([2, 3], np.polymul([1, -1 / 2], [1, 1 / 4])),
                                  ([1, -2, 1], [1, -1]),
                                  (1, [1, -1j]),
                                  (1, [1, -1, 0.25]),

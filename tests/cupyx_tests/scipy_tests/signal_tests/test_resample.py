@@ -178,7 +178,7 @@ class TestResample:
 
         # More tests of fft method (Master 0.18.1 fails these)
         if method == "fft":
-            x1 = xp.array([1.+0.j, 0.+0.j])
+            x1 = xp.array([1. + 0.j, 0. + 0.j])
             y1_test = scp.signal.resample(x1, 4)
             x2 = xp.array([1., 0.5, 0., 0.5])
             y2_test = scp.signal.resample(x2, 2)  # downsampling a real array
@@ -302,7 +302,7 @@ class TestDecimate:
         results = []
         for rate_to in rates_to:
             q = rate // rate_to
-            t_to = xp.arange(rate_to*t_tot+1) / float(rate_to)
+            t_to = xp.arange(rate_to * t_tot + 1) / float(rate_to)
             d_tos = (xp.exp(1j * 2 * xp.pi * freqs[:, xp.newaxis] * t_to)
                      * scp.signal.windows.tukey(t_to.size, 0.1))
 
@@ -313,8 +313,9 @@ class TestDecimate:
                     scp.signal.firwin(n + 1, 1. / q, window="hamming"), 1.)
             elif method == "iir":
                 n = 8
-                wc = 0.8*xp.pi/q
-                system = scp.signal.dlti(*scp.signal.cheby1(n, 0.05, wc/xp.pi))
+                wc = 0.8 * xp.pi / q
+                system = scp.signal.dlti(
+                    *scp.signal.cheby1(n, 0.05, wc / xp.pi))
 
             # Calculate expected phase response, as unit complex vector
             if zero_phase is False:
@@ -400,11 +401,11 @@ class TestDecimate:
         numtaps = 20
 
         # FIR filter about 0Hz
-        bbase = scp.signal.firwin(numtaps, fwidth/2, fs=fs)
+        bbase = scp.signal.firwin(numtaps, fwidth / 2, fs=fs)
 
         # rotate these to desired frequency
         zbase = xp.roots(bbase)
-        zrot = zbase * xp.exp(2j * xp.pi * fcentre/fs)
+        zrot = zbase * xp.exp(2j * xp.pi * fcentre / fs)
         # FIR filter about 50Hz, maintaining passband gain of 0dB
         bz = bbase[0] * xp.poly(zrot)
 

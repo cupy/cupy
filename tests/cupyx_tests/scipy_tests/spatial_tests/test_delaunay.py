@@ -47,7 +47,7 @@ def compute_random_points(tri_points, xp):
     s = testing.shaped_random((tri_points.shape[0],), np, np.float64,
                               scale=1.0)
     t = testing.shaped_random((tri_points.shape[0],), np, np.float64,
-                              scale=1-s)
+                              scale=1 - s)
     bary[:, 0] = xp.asarray(s)
     bary[:, 1] = xp.asarray(t)
     bary[:, 2] = xp.asarray(1 - s - t)

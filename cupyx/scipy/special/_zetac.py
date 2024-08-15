@@ -295,8 +295,8 @@ double __device__ zetac(double x)
 }
     """
 )
-zetac_preamble = (polevl_definition+p1evl_definition +
-                  _lanczos_preamble+zetac_definition)
+zetac_preamble = (polevl_definition + p1evl_definition +
+                  _lanczos_preamble + zetac_definition)
 
 zetac = _core.create_ufunc(
     "cupyx_scipy_special_zetac", ("f->f", "d->d"),

@@ -59,7 +59,7 @@ Mode = Optional[_OpMode]
 
 
 REPLICA: Final[None] = None
-MIN = _OpMode("minimum",  True,  _max_value_of)
-MAX = _OpMode("maximum",  True,  _min_value_of)
+MIN = _OpMode("minimum", True, _max_value_of)
+MAX = _OpMode("maximum", True, _min_value_of)
 SUM = _OpMode("add", False, _zero_of)
 PROD = _OpMode("multiply", False, _one_of)

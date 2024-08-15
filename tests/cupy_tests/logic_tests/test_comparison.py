@@ -110,7 +110,7 @@ class TestArrayEqual(unittest.TestCase):
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_equal()
     def test_array_equal_complex_equal_nan(self, xp, dtype):
-        a = xp.array([1+2j], dtype=dtype)
+        a = xp.array([1 + 2j], dtype=dtype)
         b = a.copy()
         b.imag = xp.nan
         a.real = xp.nan

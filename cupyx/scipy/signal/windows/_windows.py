@@ -2147,10 +2147,10 @@ def lanczos(M, sym=True):
         return cupy.sinc(2. * cupy.arange(n, m) / (m - 1) - 1.0)
 
     if M % 2 == 0:
-        wh = _calc_right_side_lanczos(M/2, M)
+        wh = _calc_right_side_lanczos(M / 2, M)
         w = cupy.r_[cupy.flip(wh), wh]
     else:
-        wh = _calc_right_side_lanczos((M+1)/2, M)
+        wh = _calc_right_side_lanczos((M + 1) / 2, M)
         w = cupy.r_[cupy.flip(wh), 1.0, wh]
 
     return _truncate(w, needs_trunc)

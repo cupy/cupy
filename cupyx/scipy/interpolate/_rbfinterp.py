@@ -282,15 +282,15 @@ def _build_system(y, d, smoothing, kernel, epsilon, powers):
     # Shift and scale the polynomial domain to be between -1 and 1
     mins = cp.min(y, axis=0)
     maxs = cp.max(y, axis=0)
-    shift = (maxs + mins)/2
-    scale = (maxs - mins)/2
+    shift = (maxs + mins) / 2
+    scale = (maxs - mins) / 2
     # The scale may be zero if there is a single point or all the points have
     # the same value for some dimension. Avoid division by zero by replacing
     # zeros with ones.
     scale[scale == 0.0] = 1.0
 
     yeps = y * epsilon
-    yhat = (y - shift)/scale
+    yhat = (y - shift) / scale
 
     # Transpose to make the array fortran contiguous. This is required for
     # dgesv to not make a copy of lhs.
@@ -342,9 +342,9 @@ def _build_evaluation_coefficients(x, y, kernel, epsilon, powers,
     r = powers.shape[0]
     kernel_func = NAME_TO_FUNC[kernel]
 
-    yeps = y*epsilon
-    xeps = x*epsilon
-    xhat = (x - shift)/scale
+    yeps = y * epsilon
+    xeps = x * epsilon
+    xhat = (x - shift) / scale
 
     vec = cp.empty((q, p + r), dtype=float)
 

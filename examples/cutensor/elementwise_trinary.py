@@ -29,7 +29,7 @@ gamma = 1.3
 perf = cupyx.time.repeat(
     cutensor.elementwise_trinary,
     (alpha, a, mode_a,
-     beta,  b, mode_b,
+     beta, b, mode_b,
      gamma, c, mode_c),
     n_warmup=1, n_repeat=5)
 

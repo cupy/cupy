@@ -487,7 +487,7 @@ def _generate_interp_custom(coord_func, ndim, large_int, yshape, mode, cval,
     )
 
     if yshape is not None:
-        name += "_y"+"_".join([f"{j}" for j in yshape])
+        name += "_y" + "_".join([f"{j}" for j in yshape])
     if uint_t == "size_t":
         name += "_i64"
     return operation, name

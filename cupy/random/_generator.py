@@ -436,7 +436,7 @@ class RandomState(object):
             raise ValueError("p < 0")
         if cupy.any(p > 1):  # synchronize!
             raise ValueError("p > 1")
-        y = self.gamma(n, (1-p)/p, size)
+        y = self.gamma(n, (1 - p) / p, size)
         return self.poisson(y, dtype=dtype)
 
     def normal(self, loc=0.0, scale=1.0, size=None, dtype=float):
@@ -479,7 +479,7 @@ class RandomState(object):
             size = a.shape
         x = self._random_sample_raw(size, dtype)
         cupy.log(x, out=x)
-        cupy.exp(-x/a, out=x)
+        cupy.exp(-x / a, out=x)
         return x - 1
 
     def noncentral_chisquare(self, df, nonc, size=None, dtype=float):
@@ -566,7 +566,7 @@ class RandomState(object):
         x = self.standard_exponential(size=size, dtype=dtype)
         cupy.exp(-x, out=x)
         cupy.add(1, -x, out=x)
-        cupy.power(x, 1./a, out=x)
+        cupy.power(x, 1. / a, out=x)
         return x
 
     def rand(self, *size, **kwarg):
@@ -1049,7 +1049,7 @@ class RandomState(object):
             size = a.shape
 
         x = self.standard_exponential(size, dtype)
-        cupy.power(x, 1./a, out=x)
+        cupy.power(x, 1. / a, out=x)
         return x
 
     def zipf(self, a, size=None, dtype=int):

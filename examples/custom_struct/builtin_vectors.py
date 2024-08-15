@@ -22,7 +22,7 @@ extern "C" __global__ void sum_kernel(const double3* lhs,
 double3 = numpy.dtype(
     {
         "names": ["x", "y", "z"],
-        "formats": [numpy.float64]*3
+        "formats": [numpy.float64] * 3
     }
 )
 
@@ -33,7 +33,7 @@ def main():
     # The kernel computes out = lhs+rhs where lhs and rhs are double3 vectors.
     # lhs is an array of N such vectors and rhs is double3 kernel parameter.
 
-    lhs = cupy.random.rand(3*N, dtype=numpy.float64).reshape(N, 3)
+    lhs = cupy.random.rand(3 * N, dtype=numpy.float64).reshape(N, 3)
     rhs = numpy.random.rand(3).astype(numpy.float64)
     out = cupy.empty_like(lhs)
 

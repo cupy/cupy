@@ -84,7 +84,7 @@ ellipkm1 = _core.create_ufunc(
     "cupyx_scipy_special_ellipk",
     ("f->f", "d->d"),
     "out0 = ellpk(in0)",
-    preamble=polevl_definition+ellpk_definition,
+    preamble=polevl_definition + ellpk_definition,
     doc="""ellpkm1.
 
     Args:
@@ -102,7 +102,7 @@ ellipk = _core.create_ufunc(
     "cupyx_scipy_special_ellipkm1",
     ("f->f", "d->d"),
     "out0 = ellpkm1(in0)",
-    preamble=polevl_definition+ellpk_definition,
+    preamble=polevl_definition + ellpk_definition,
     doc="""ellpk.
 
     Args:

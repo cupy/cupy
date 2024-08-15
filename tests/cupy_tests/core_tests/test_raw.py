@@ -676,7 +676,7 @@ class TestRaw(unittest.TestCase):
         N = 169
         inner_chunk = 13
         x = cupy.zeros((N,), dtype=cupy.float32)
-        ker((1,), (N//inner_chunk,), (x, N, inner_chunk))
+        ker((1,), (N // inner_chunk,), (x, N, inner_chunk))
         assert (x == 1.0).all()
 
     def test_dynamical_parallelism_compile_failure(self):
@@ -702,7 +702,7 @@ class TestRaw(unittest.TestCase):
         else:  # nvcc, hipcc, hiprtc
             error = cupy.cuda.compiler.CompileException
         with pytest.raises(error):
-            ker((1,), (N//inner_chunk,), (x, N, inner_chunk))
+            ker((1,), (N // inner_chunk,), (x, N, inner_chunk))
 
     @unittest.skipIf(cupy.cuda.runtime.is_hip,
                      "HIP code should not use cuFloatComplex")
@@ -716,11 +716,11 @@ class TestRaw(unittest.TestCase):
             code=_test_cuComplex,
             translate_cucomplex=True,
             jitify=self.jitify)
-        a = cupy.random.random((N,)) + 1j*cupy.random.random((N,))
+        a = cupy.random.random((N,)) + 1j * cupy.random.random((N,))
         a = a.astype(dtype)
-        b = cupy.random.random((N,)) + 1j*cupy.random.random((N,))
+        b = cupy.random.random((N,)) + 1j * cupy.random.random((N,))
         b = b.astype(dtype)
-        c = cupy.random.random((N,)) + 1j*cupy.random.random((N,))
+        c = cupy.random.random((N,)) + 1j * cupy.random.random((N,))
         c = c.astype(dtype)
         out = cupy.zeros((N,), dtype=dtype)
         out_float = cupy.zeros((N,), dtype=cupy.float32)
@@ -781,11 +781,11 @@ class TestRaw(unittest.TestCase):
             code=_test_cuComplex,
             translate_cucomplex=True,
             jitify=self.jitify)
-        a = cupy.random.random((N,)) + 1j*cupy.random.random((N,))
+        a = cupy.random.random((N,)) + 1j * cupy.random.random((N,))
         a = a.astype(dtype)
-        b = cupy.random.random((N,)) + 1j*cupy.random.random((N,))
+        b = cupy.random.random((N,)) + 1j * cupy.random.random((N,))
         b = b.astype(dtype)
-        c = cupy.random.random((N,)) + 1j*cupy.random.random((N,))
+        c = cupy.random.random((N,)) + 1j * cupy.random.random((N,))
         c = c.astype(dtype)
         out = cupy.zeros((N,), dtype=dtype)
         out_float = cupy.zeros((N,), dtype=cupy.float64)
@@ -1329,7 +1329,7 @@ class TestRawJitify(unittest.TestCase):
         a = cupy.random.random_integers(0, 7, N).astype(cupy.int32)
         b = a.copy()
         ker((1,), (N,), (a, N))
-        assert cupy.allclose(a, b+100)
+        assert cupy.allclose(a, b + 100)
 
     def test_jitify1(self):
         # simply prepend an unused header
@@ -1397,8 +1397,8 @@ class TestRawJitify(unittest.TestCase):
         if self.jitify:
             # Jitify would print a warning "[jitify] File not found" to stdout,
             # but as mentioned above and elsewhere, we can't capture it.
-            self._helper(hdr, options=("-I"+self.temp_dir,))
+            self._helper(hdr, options=("-I" + self.temp_dir,))
         else:
             with pytest.raises(cupy.cuda.compiler.CompileException) as ex:
-                self._helper(hdr, options=("-I"+self.temp_dir,))
+                self._helper(hdr, options=("-I" + self.temp_dir,))
             assert "cannot open source file" in str(ex.value)

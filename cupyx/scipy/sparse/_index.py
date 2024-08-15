@@ -143,7 +143,7 @@ def _csr_indptr_to_coo_rows(nnz, Bp):
         raise ValueError("hipSPARSE currently cannot handle "
                          "sparse matrices with null ptrs")
     cusparse.xcsr2coo(
-        handle, Bp.data.ptr, nnz, Bp.size-1, out_rows.data.ptr,
+        handle, Bp.data.ptr, nnz, Bp.size - 1, out_rows.data.ptr,
         cusparse.CUSPARSE_INDEX_BASE_ZERO)
 
     return out_rows
@@ -163,7 +163,7 @@ def _select_last_indices(i, j, x, idx_dtype):
 
     mask = cupy.ones(indptr_inserts.size, dtype="bool")
     _unique_mask_kern(indptr_inserts, indices_inserts, order, mask,
-                      size=indptr_inserts.size-1)
+                      size=indptr_inserts.size - 1)
 
     return indptr_inserts[mask], indices_inserts[mask], data_inserts[mask]
 
@@ -647,7 +647,7 @@ def _eliminate_ellipsis(index):
 
     # Expand it using a general-purpose algorithm
     tail = []
-    for v in index[first_ellipsis+1:]:
+    for v in index[first_ellipsis + 1:]:
         if v is not Ellipsis:
             tail.append(v)
     nd = first_ellipsis + len(tail)
@@ -675,7 +675,7 @@ def _first_element_bool(idx, max_dim=2):
         return None
     if isinstance(first, _bool_scalar_types):
         return True
-    return _first_element_bool(first, max_dim-1)
+    return _first_element_bool(first, max_dim - 1)
 
 
 def _compatible_boolean_index(idx):

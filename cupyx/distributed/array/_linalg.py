@@ -166,8 +166,8 @@ def _group_by_batch(
 
 def _reshape_array_with(
     arr: "_array.DistributedArray",
-    f_shape: Callable[[tuple[int,   ...]], tuple[int,   ...]],
-    f_idx:   Callable[[tuple[slice, ...]], tuple[slice, ...]],
+    f_shape: Callable[[tuple[int, ...]], tuple[int, ...]],
+    f_idx: Callable[[tuple[slice, ...]], tuple[slice, ...]],
 ) -> "_array.DistributedArray":
     def reshape_chunk(chunk: _chunk._Chunk) -> _chunk._Chunk:
         data = chunk.array.reshape(f_shape(chunk.array.shape))
@@ -378,9 +378,9 @@ def make_2d_index_map(
         assert len(devices[i]) == len(j_partitions) - 1
         for j in range(len(devices[i])):
             i_start = i_partitions[i]
-            i_stop = i_partitions[i+1]
+            i_stop = i_partitions[i + 1]
             j_start = j_partitions[j]
-            j_stop = j_partitions[j+1]
+            j_stop = j_partitions[j + 1]
 
             idx = (slice(i_start, i_stop), slice(j_start, j_stop))
 

@@ -166,7 +166,7 @@ rmatmat=None)
             return self.H.matmat(X)
 
     def __call__(self, x):
-        return self*x
+        return self * x
 
     def __mul__(self, x):
         return self.dot(x)

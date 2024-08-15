@@ -218,7 +218,7 @@ class TestSlicingMemoryPointer(unittest.TestCase):
 
         assert cai_ptr == cupy_data_ptr
         assert slice_cai_ptr == sliced_cupy_data_ptr
-        assert slice_cai_ptr == cai_ptr+offset
+        assert slice_cai_ptr == cai_ptr + offset
 
 
 test_cases = [

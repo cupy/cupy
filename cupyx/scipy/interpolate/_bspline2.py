@@ -24,6 +24,7 @@ from cupyx.scipy.sparse.linalg import spsolve
 #  Interpolating spline helpers #
 #################################
 
+
 def _not_a_knot(x, k):
     """Given data x, construct the knot vector w/ not-a-knot BC.
     cf de Boor, XIII(12)."""
@@ -32,14 +33,14 @@ def _not_a_knot(x, k):
         raise ValueError("Odd degree for now only. Got %s." % k)
 
     m = (k - 1) // 2
-    t = x[m+1:-m-1]
-    t = cupy.r_[(x[0],)*(k+1), t, (x[-1],)*(k+1)]
+    t = x[m + 1:-m - 1]
+    t = cupy.r_[(x[0],) * (k + 1), t, (x[-1],) * (k + 1)]
     return t
 
 
 def _augknt(x, k):
     """Construct a knot vector appropriate for the order-k interpolation."""
-    return cupy.r_[(x[0],)*k, x, (x[-1],)*k]
+    return cupy.r_[(x[0],) * k, x, (x[-1],) * k]
 
 
 def _periodic_knots(x, k):
@@ -202,9 +203,9 @@ def make_interp_spline(x, y, k=3, t=None, bc_type=None, axis=0,
                 # OK, it's a bit ad hoc: Greville sites + omit
                 # 2nd and 2nd-to-last points, a la not-a-knot
                 t = (x[1:] + x[:-1]) / 2.
-                t = cupy.r_[(x[0],)*(k+1),
+                t = cupy.r_[(x[0],) * (k + 1),
                             t[1:-1],
-                            (x[-1],)*(k+1)]
+                            (x[-1],) * (k + 1)]
             else:
                 t = _not_a_knot(x, k)
         else:
@@ -241,7 +242,7 @@ def make_interp_spline(x, y, k=3, t=None, bc_type=None, axis=0,
     if nt - n != nleft + nright:
         raise ValueError("The number of derivatives at boundaries does not "
                          "match: expected %s, got %s + %s" %
-                         (nt-n, nleft, nright))
+                         (nt - n, nleft, nright))
 
     # bail out if the `y` array is zero-sized
     if y.size == 0:
@@ -303,7 +304,7 @@ def make_interp_spline(x, y, k=3, t=None, bc_type=None, axis=0,
                            0,       # mode != 1 => do not touch dummy_c array
                            1))      # the length of the `x0` array
             left = intervals_bc[0]
-            rows[j, left-k:left+1] = temp[:k+1]
+            rows[j, left - k:left + 1] = temp[:k + 1]
 
         matr = sparse.vstack([sparse.csr_matrix(rows),   # A[:nleft, :]
                               matr])
@@ -324,7 +325,7 @@ def make_interp_spline(x, y, k=3, t=None, bc_type=None, axis=0,
                            0,       # mode != 1 => do not touch dummy_c array
                            1))      # the length of the `x0` array
             left = intervals_bc[0]
-            rows[j, left-k:left+1] = temp[:k+1]
+            rows[j, left - k:left + 1] = temp[:k + 1]
 
         matr = sparse.vstack([matr,
                               sparse.csr_matrix(rows)])  # A[nleft+len(x):, :]
@@ -432,7 +433,8 @@ def _make_interp_spline_full_matrix(x, y, k, t, bc_type):
     offset = nleft
     for j in range(len(x)):
         left = intervals[j]
-        A[j + offset, left-k:left+1] = temp[j*(2*k+1):j*(2*k+1)+k+1]
+        A[j + offset, left - k:left + 1] = temp[j *
+                                                (2 * k + 1):j * (2 * k + 1) + k + 1]
 
     # 4. Handle boundary conditions: The colocation matrix is augmented with
     # additional rows, one row per derivative at the left and right edges.
@@ -450,7 +452,7 @@ def _make_interp_spline_full_matrix(x, y, k, t, bc_type):
                           (t, dummy_c, k, int(m), x0, intervals_bc, out, temp,
                            num_c, 0, 1))
             left = intervals_bc[0]
-            A[j, left-k:left+1] = temp[:k+1]
+            A[j, left - k:left + 1] = temp[:k + 1]
 
     # repeat for the b.c. at the right edge.
     if nright > 0:
@@ -463,7 +465,7 @@ def _make_interp_spline_full_matrix(x, y, k, t, bc_type):
                            num_c, 0, 1))
             left = intervals_bc[0]
             row = nleft + len(x) + j
-            A[row, left-k:left+1] = temp[:k+1]
+            A[row, left - k:left + 1] = temp[:k + 1]
 
     # 5. Prepare the RHS: `y` values to interpolate (+ derivatives, if any)
     extradim = prod(y.shape[1:])
@@ -496,7 +498,7 @@ def _make_periodic_spline(x, y, t, k, axis):
     # Prepare the I/O arrays for the kernels. We only need the non-zero
     # b-splines at x[0] and x[-1], but the kernel wants more arrays which
     # we allocate and ignore (mode != 1)
-    temp = cupy.zeros(2*(2*k+1), dtype=float)
+    temp = cupy.zeros(2 * (2 * k + 1), dtype=float)
     num_c = 1
     dummy_c = cupy.empty((t.size - k - 1, num_c), dtype=float)
     out = cupy.empty((2, 1), dtype=dummy_c.dtype)
@@ -508,19 +510,19 @@ def _make_periodic_spline(x, y, t, k, axis):
     intervals_bc = cupy.array([k, n + k - 1], dtype=cupy.int64)   # match scipy
 
     # 3. B.C.s
-    rows = cupy.zeros((k-1, n + k - 1), dtype=float)
+    rows = cupy.zeros((k - 1, n + k - 1), dtype=float)
 
-    for m in range(k-1):
+    for m in range(k - 1):
         # place the derivatives of the order m at x[0] into `temp`
         d_boor_kernel((1,), (2,),
-                      (t, dummy_c, k, m+1, x0, intervals_bc,
+                      (t, dummy_c, k, m + 1, x0, intervals_bc,
                        out,     # ignore (mode !=1),
                        temp,    # non-zero b-splines
                        num_c,   # the 2nd dimension of `dummy_c`. Ignore.
                        0,       # mode != 1 => do not touch dummy_c array
                        2))      # the length of the `x0` array
-        rows[m, :k+1] = temp[:k+1]
-        rows[m, -k:] -= temp[2*k + 1:(2*k + 1) + k+1][:-1]
+        rows[m, :k + 1] = temp[:k + 1]
+        rows[m, -k:] -= temp[2 * k + 1:(2 * k + 1) + k + 1][:-1]
 
     matr_csr = sparse.vstack([sparse.csr_matrix(rows),   # A[:nleft, :]
                               matr])
@@ -730,11 +732,11 @@ def _lsq_solve_qr(x, y, t, k, w):
     # prepare the l.h.s.
     from ._bspline import _make_design_matrix
     m = x.shape[0]
-    indices = cupy.empty(m*(k+1), dtype=cupy.int64)
+    indices = cupy.empty(m * (k + 1), dtype=cupy.int64)
     A, indices = _make_design_matrix(x, t, k, True, indices)
-    R = A.reshape(m, k+1)
+    R = A.reshape(m, k + 1)
 
-    offset = indices[::(k+1)].copy()
+    offset = indices[::(k + 1)].copy()
     nc = t.shape[0] - k - 1
 
     # prepare the r.h.s.
@@ -744,7 +746,7 @@ def _lsq_solve_qr(x, y, t, k, w):
     # solve the LSQ problem: triangularize the l.h.s.
     qr_reduce = _get_module_func(QR_MODULE, "qr_reduce")
     qr_reduce((1,), (1,),
-              (R, m, k+1,
+              (R, m, k + 1,
                offset,
                nc,
                y_w, y_w.shape[1], 1)
@@ -764,11 +766,11 @@ def fpback(R, nc, y):
     assert y.shape[0] == R.shape[0]
 
     c = cupy.zeros_like(y[:nc])
-    c[nc-1, ...] = y[nc-1, ...] / R[nc-1, 0]
-    for i in range(nc-2, -1, -1):
-        nel = min(nz, nc-i)
+    c[nc - 1, ...] = y[nc - 1, ...] / R[nc - 1, 0]
+    for i in range(nc - 2, -1, -1):
+        nel = min(nz, nc - i)
         # NB: broadcast R across trailing dimensions of `c`.
-        summ = (R[i, 1:nel, None] * c[i+1:i+nel, ...]).sum(axis=0)
+        summ = (R[i, 1:nel, None] * c[i + 1:i + nel, ...]).sum(axis=0)
         c[i, ...] = (y[i] - summ) / R[i, 0]
     return c
 
@@ -845,7 +847,7 @@ def make_lsq_spline(x, y, t, k=3, w=None, axis=0, check_finite=True, *,
         raise ValueError("Expect x to be a 1-D sorted array_like.")
     if x.ndim != 1:
         raise ValueError("Expect x to be a 1-D sequence.")
-    if x.shape[0] < k+1:
+    if x.shape[0] < k + 1:
         raise ValueError("Need more x points.")
     if k < 0:
         raise ValueError("Expect non-negative k.")
@@ -861,7 +863,7 @@ def make_lsq_spline(x, y, t, k=3, w=None, axis=0, check_finite=True, *,
         raise ValueError(
             f"Shapes of x {x.shape} and w {w.shape} are incompatible")
     if method != "qr":
-        raise ValueError(f"{method = } is not supported.")
+        raise ValueError(f"{method=} is not supported.")
     if any(x[1:] - x[:-1] < 0):
         raise ValueError("Expect x to be a 1D non-decreasing sequence.")
 

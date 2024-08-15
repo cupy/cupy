@@ -77,12 +77,12 @@ def lu(a, permute_l=False, overwrite_a=False, check_finite=True):
     L, U = _cupy_split_lu(lu)
 
     if permute_l:
-        _cupy_laswp(L, 0, k-1, piv, -1)
+        _cupy_laswp(L, 0, k - 1, piv, -1)
         return (L, U)
     else:
         r_dtype = numpy.float32 if lu.dtype.char in "fF" else numpy.float64
         P = cupy.diag(cupy.ones((m,), dtype=r_dtype))
-        _cupy_laswp(P, 0, k-1, piv, -1)
+        _cupy_laswp(P, 0, k - 1, piv, -1)
         return (P, L, U)
 
 

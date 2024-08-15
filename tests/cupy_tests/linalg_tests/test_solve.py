@@ -216,11 +216,11 @@ class TestLstsq:
                 testing.shaped_random(
                     (m, rank), xp, dtype=dtype, scale=3, seed=seed),
                 testing.shaped_random(
-                    (rank, n), xp, dtype=dtype, scale=3, seed=seed+42),
+                    (rank, n), xp, dtype=dtype, scale=3, seed=seed + 42),
             )
         else:
             a = testing.shaped_random(a_shape, xp, dtype=dtype, seed=seed)
-        b = testing.shaped_random(b_shape, xp, dtype=dtype, seed=seed+37)
+        b = testing.shaped_random(b_shape, xp, dtype=dtype, seed=seed + 37)
         a_copy = a.copy()
         b_copy = b.copy()
         results = xp.linalg.lstsq(a, b, rcond)
@@ -254,10 +254,10 @@ class TestLstsq:
                     self.check_lstsq_solution((i, j), (i, k), seed,
                                               rcond=1e-6, singular=True)
                 # check when b has shape (i, )
-                self.check_lstsq_solution((i, j), (i, ), seed+1, rcond=-1)
-                self.check_lstsq_solution((i, j), (i, ), seed+1, rcond=None)
-                self.check_lstsq_solution((i, j), (i, ), seed+1, rcond=0.5)
-                self.check_lstsq_solution((i, j), (i, ), seed+1, rcond=1e-6,
+                self.check_lstsq_solution((i, j), (i, ), seed + 1, rcond=-1)
+                self.check_lstsq_solution((i, j), (i, ), seed + 1, rcond=None)
+                self.check_lstsq_solution((i, j), (i, ), seed + 1, rcond=0.5)
+                self.check_lstsq_solution((i, j), (i, ), seed + 1, rcond=1e-6,
                                           singular=True)
 
     @pytest.mark.parametrize("rcond", [-1, None, 0.5])

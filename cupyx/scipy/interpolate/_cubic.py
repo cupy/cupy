@@ -212,7 +212,7 @@ class PchipInterpolator(CubicHermiteSpline):
 
     def __init__(self, x, y, axis=0, extrapolate=None):
         x, _, y, axis, _ = prepare_input(x, y, axis)
-        xp = x.reshape((x.shape[0],) + (1,)*(y.ndim-1))
+        xp = x.reshape((x.shape[0],) + (1,) * (y.ndim - 1))
         dk = self._find_derivatives(xp, y)
         super().__init__(x, y, dk, axis=0, extrapolate=extrapolate)
         self.axis = axis
@@ -225,11 +225,11 @@ class PchipInterpolator(CubicHermiteSpline):
         # try to preserve shape
         mask = cupy.sign(d) != cupy.sign(m0)
         mask2 = (cupy.sign(m0) != cupy.sign(m1)) & (
-            cupy.abs(d) > 3.*cupy.abs(m0))
+            cupy.abs(d) > 3. * cupy.abs(m0))
         mmm = (~mask) & mask2
 
         d[mask] = 0.
-        d[mmm] = 3.*m0[mmm]
+        d[mmm] = 3. * m0[mmm]
 
         return d
 
@@ -263,8 +263,8 @@ class PchipInterpolator(CubicHermiteSpline):
         smk = cupy.sign(mk)
         condition = (smk[1:] != smk[:-1]) | (mk[1:] == 0) | (mk[:-1] == 0)
 
-        w1 = 2*hk[1:] + hk[:-1]
-        w2 = hk[1:] + 2*hk[:-1]
+        w1 = 2 * hk[1:] + hk[:-1]
+        w2 = hk[1:] + 2 * hk[:-1]
 
         # values where division by zero occurs will be excluded
         # by 'condition' afterwards
@@ -492,18 +492,18 @@ def _from_spline(spl):
     """PPoly.from_spline replacement which handles y.ndim > 1."""
     t, c, k = spl.tck
     axis = spl.axis
-    cvals = cupy.empty((k+1, len(t)-1) + c.shape[1:], dtype=c.dtype)
+    cvals = cupy.empty((k + 1, len(t) - 1) + c.shape[1:], dtype=c.dtype)
 
     # convert: here axis=0 because spl(x) rolls the interpolation axis back
     for m in range(k, -1, -1):
         ym = spl(t[:-1], nu=m)
         ym = cupy.moveaxis(ym, axis, 0)
-        cvals[k - m, ...] = ym / spec.gamma(m+1)
+        cvals[k - m, ...] = ym / spec.gamma(m + 1)
 
     # redo the axis reshuffle in _PPolyBase.__init__:
     # https://github.com/scipy/scipy/blob/v1.12.0/scipy/interpolate/_interpolate.py#L826
-    cvals_ = cupy.moveaxis(cvals, 0, axis+1)
-    cvals_ = cupy.moveaxis(cvals_, 0, axis+1)
+    cvals_ = cupy.moveaxis(cvals, 0, axis + 1)
+    cvals_ = cupy.moveaxis(cvals_, 0, axis + 1)
 
     pp = PPoly(cvals_, t, axis=axis)
     return pp

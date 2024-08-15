@@ -56,7 +56,7 @@ def _polydiv(u, v):
     scale = 1. / v[0]
     q = cupy.zeros((max(m - n + 1, 1),), w.dtype)
     r = u.astype(w.dtype)
-    for k in range(0, m-n+1):
+    for k in range(0, m - n + 1):
         d = scale * r[k]
         q[k] = d
         r[k:k + n + 1] -= d * v

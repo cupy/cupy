@@ -523,7 +523,7 @@ class TestFromData(unittest.TestCase):
 
     @testing.numpy_cupy_array_equal()
     def test_fromiter(self, xp):
-        iterable = (x*x for x in range(5))
+        iterable = (x * x for x in range(5))
         return xp.fromiter(iterable, float)
 
     @testing.numpy_cupy_array_equal()
@@ -566,7 +566,7 @@ max_cuda_array_interface_version = 3
 
 
 @testing.parameterize(*testing.product({
-    "ver": tuple(range(max_cuda_array_interface_version+1)),
+    "ver": tuple(range(max_cuda_array_interface_version + 1)),
     "strides": (False, None, True),
 }))
 @pytest.mark.skipif(
@@ -636,7 +636,7 @@ class TestCudaArrayInterface(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    "ver": tuple(range(1, max_cuda_array_interface_version+1)),
+    "ver": tuple(range(1, max_cuda_array_interface_version + 1)),
     "strides": (False, None, True),
 }))
 @pytest.mark.skipif(
@@ -670,7 +670,7 @@ class TestCudaArrayInterfaceBigArray(unittest.TestCase):
     cupy.cuda.runtime.is_hip, reason="HIP does not support this")
 class DummyObjectWithCudaArrayInterface(object):
     def __init__(self, a, ver, include_strides=False, mask=None, stream=None):
-        assert ver in tuple(range(max_cuda_array_interface_version+1))
+        assert ver in tuple(range(max_cuda_array_interface_version + 1))
         self.a = None
         if isinstance(a, cupy.ndarray):
             self.a = a
