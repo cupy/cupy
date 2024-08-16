@@ -469,7 +469,7 @@ class TestMatrixPower(unittest.TestCase):
         a = xp.eye(23, k=17, dtype=dtype) + xp.eye(23, k=-6, dtype=dtype)
         return xp.linalg.matrix_power(a, 123456789123456789)
 
-    @pytest.mark.skipif(sys.platform == "nt",
+    @pytest.mark.skipif(sys.platform == "win32",
                         reason="python int overlows C long")
     @testing.for_float_dtypes(no_float16=True)
     @testing.numpy_cupy_allclose()
