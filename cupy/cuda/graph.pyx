@@ -80,7 +80,8 @@ cdef class Graph:
         """Make DOT formatted string of CUDA graph definition for debugging.
 
         Args:
-            flags (:class:`unsigned int`): Flags to specify information to be included.
+            flags (:class:`unsigned int`): Flags to specify information to be 
+                included.
 
         .. seealso:: `cudaGraphDebugDotPrint()`_
 
