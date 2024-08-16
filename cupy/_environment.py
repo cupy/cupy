@@ -459,6 +459,37 @@ You can install the library by:
 ''')
 
 
+def _get_include_dir_from_wheel(major: int, minor: int) -> List[str]:
+    # FP16 headers from CUDA 12.2+ depends on headers from CUDA Runtime.
+    # See https://github.com/cupy/cupy/issues/8466.
+    if major < 12 or (major == 12 and minor < 3):
+        return []
+
+    config = get_preload_config()
+    if config is not None and config['packaging'] == 'conda':
+        # Not applicable for conda installation.
+        return []
+
+    pkg_name = f'nvidia-cuda-runtime-cu{major}'
+    ver_str = f'{major}.{minor}'
+    _log(f'Looking for {pkg_name}=={ver_str}.*')
+    try:
+        dist = importlib.metadata.distribution(pkg_name)
+    except importlib.metadata.PackageNotFoundError:
+        _log('The package could not be found')
+        return []
+
+    if dist.version == ver_str or dist.version.startswith(f'{ver_str}.'):
+        include_dir = dist.locate_file('nvidia/cuda_runtime/include')
+        if not include_dir.exists():
+            _log('The include directory could not be found')
+            return []
+        return [str(include_dir)]
+    else:
+        _log(f'Found incompatible version ({dist.version})')
+        return []
+
+
 def _detect_duplicate_installation():
     # List of all CuPy packages, including out-dated ones.
     known = {
