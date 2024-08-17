@@ -454,7 +454,7 @@ You can install the library by:
 def _get_include_dir_from_wheel(major: int, minor: int) -> List[str]:
     # FP16 headers from CUDA 12.2+ depends on headers from CUDA Runtime.
     # See https://github.com/cupy/cupy/issues/8466.
-    if major < 12 or (major == 12 and minor < 3):
+    if major < 12 or (major == 12 and minor < 2):
         return []
 
     config = get_preload_config()
