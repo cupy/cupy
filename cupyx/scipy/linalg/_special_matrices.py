@@ -6,7 +6,6 @@ from cupy import _core
 from cupyx.scipy.linalg import _uarray
 
 
-@_uarray.implements('tri')
 def tri(N, M=None, k=0, dtype=None):
     """ Construct (``N``, ``M``) matrix filled with ones at and below the
     ``k``-th diagonal. The matrix has ``A[i,j] == 1`` for ``i <= j + k``.
@@ -38,7 +37,6 @@ def tri(N, M=None, k=0, dtype=None):
     return cupy.tri(N, M, k, bool if dtype is None else dtype)
 
 
-@_uarray.implements('tril')
 def tril(m, k=0):
     """Make a copy of a matrix with elements above the ``k``-th diagonal
     zeroed.
@@ -62,7 +60,6 @@ def tril(m, k=0):
     return t
 
 
-@_uarray.implements('triu')
 def triu(m, k=0):
     """Make a copy of a matrix with elements below the ``k``-th diagonal
     zeroed.
