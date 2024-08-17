@@ -19,7 +19,9 @@
 
 #include <cupy/complex/complex.h>
 
-namespace thrust {
+#include <cupy/complex/namespace.h>
+
+THRUST_NAMESPACE_BEGIN
 
 /* --- Constructors --- */
 template <typename T>
@@ -142,7 +144,8 @@ template <typename T>
 __host__ __device__ inline bool operator!=(const complex<T>& lhs, const T& rhs) {
   return !(lhs == rhs);
 }
-}
+
+THRUST_NAMESPACE_END
 
 
 #include <cupy/complex/arithmetic.h>
