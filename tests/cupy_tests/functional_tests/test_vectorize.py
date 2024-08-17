@@ -261,6 +261,7 @@ class TestVectorizeExprs(unittest.TestCase):
         y = testing.shaped_random((20, 30), xp, dtype, seed=2)
         return f(x, y)
 
+    @testing.with_requires("numpy>=1.25")
     @testing.for_all_dtypes_combination(names=('dtype1', 'dtype2'))
     @testing.numpy_cupy_allclose(
         rtol={numpy.float16: 1e3, 'default': 1e-7}, accept_error=TypeError)
