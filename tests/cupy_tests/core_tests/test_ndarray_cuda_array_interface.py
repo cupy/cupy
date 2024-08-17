@@ -36,6 +36,7 @@ class DummyObjectWithCudaArrayInterface(object):
     'stream': ('null', 'new'),
     'ver': (2, 3),
 }))
+@testing.with_requires('numpy>=1.25')
 @pytest.mark.skipif(cupy.cuda.runtime.is_hip,
                     reason='HIP does not support this')
 class TestArrayUfunc(unittest.TestCase):

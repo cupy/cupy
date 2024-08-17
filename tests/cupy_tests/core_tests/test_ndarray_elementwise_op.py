@@ -25,37 +25,45 @@ class TestArrayElementwiseOp:
         else:
             return op(a, y_type(3))
 
+    @testing.with_requires('numpy>=1.25')
     def test_add_scalar(self):
         self.check_array_scalar_op(operator.add)
 
+    @testing.with_requires('numpy>=1.25')
     def test_radd_scalar(self):
         self.check_array_scalar_op(operator.add, swap=True)
 
     def test_iadd_scalar(self):
         self.check_array_scalar_op(operator.iadd)
 
+    @testing.with_requires('numpy>=1.25')
     def test_sub_scalar(self):
         self.check_array_scalar_op(operator.sub, no_bool=True)
 
+    @testing.with_requires('numpy>=1.25')
     def test_rsub_scalar(self):
         self.check_array_scalar_op(operator.sub, swap=True, no_bool=True)
 
     def test_isub_scalar(self):
         self.check_array_scalar_op(operator.isub, no_bool=True)
 
+    @testing.with_requires('numpy>=1.25')
     def test_mul_scalar(self):
         self.check_array_scalar_op(operator.mul)
 
+    @testing.with_requires('numpy>=1.25')
     def test_rmul_scalar(self):
         self.check_array_scalar_op(operator.mul, swap=True)
 
     def test_imul_scalar(self):
         self.check_array_scalar_op(operator.imul)
 
+    @testing.with_requires('numpy>=1.25')
     def test_truediv_scalar(self):
         with numpy.errstate(divide='ignore'):
             self.check_array_scalar_op(operator.truediv)
 
+    @testing.with_requires('numpy>=1.25')
     def test_rtruediv_scalar(self):
         with numpy.errstate(divide='ignore'):
             self.check_array_scalar_op(operator.truediv, swap=True)
@@ -77,9 +85,11 @@ class TestArrayElementwiseOp:
         with numpy.errstate(divide='ignore'):
             self.check_array_scalar_op(operator.ifloordiv, no_complex=True)
 
+    @testing.with_requires('numpy>=1.25')
     def test_pow_scalar(self):
         self.check_array_scalar_op(operator.pow)
 
+    @testing.with_requires('numpy>=1.25')
     def test_rpow_scalar(self):
         self.check_array_scalar_op(operator.pow, swap=True)
 
