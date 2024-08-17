@@ -1,6 +1,6 @@
 # flake8: NOQA
 from cupyx.scipy.linalg._special_matrices import (
-    tri, tril, triu, toeplitz, circulant, hankel,
+    toeplitz, circulant, hankel,
     hadamard, leslie, kron, block_diag, companion,
     helmert, hilbert, dft,
     fiedler, fiedler_companion, convolution_matrix
