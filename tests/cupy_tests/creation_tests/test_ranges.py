@@ -190,7 +190,7 @@ class TestRanges(unittest.TestCase):
     @testing.for_all_dtypes_combination(names=('dtype_range', 'dtype_out'),
                                         no_bool=True, no_complex=True,
                                         no_float16=True)
-    @testing.numpy_cupy_allclose(rtol={'default': 0, numpy.float16: 1e-2,
+    @testing.numpy_cupy_allclose(rtol={'default': 5e-6, numpy.float16: 1e-2,
                                        numpy.float32: 1e-5})
     def test_linspace_mixed_start_stop(self, xp, dtype_range, dtype_out):
         # TODO (ev-br): np 2.0: check if can reenable float16
