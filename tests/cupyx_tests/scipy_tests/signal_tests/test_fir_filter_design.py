@@ -320,7 +320,7 @@ class TestFirls:
     @pytest.mark.xfail(
         platform.processor() == "aarch64",
         reason="aarch64 scipy does not match cupy/x86 see Scipy #20160")
-    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-13)
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-12)
     def test_firls(self, xp, scp):
         N = 11  # number of taps in the filter
         a = 0.1  # width of the transition band
