@@ -1078,7 +1078,10 @@ cdef class _ndarray_base:
            :meth:`numpy.ndarray.round`
 
         """  # NOQA
-        return _round_ufunc(self, decimals, out=out)
+        if decimals < 0 and issubclass(self.dtype.type, numpy.integer):
+            return _round_ufunc_neg_uint(self, -decimals, out=out)
+        else:
+            return _round_ufunc(self, decimals, out=out)
 
     cpdef _ndarray_base trace(
             self, offset=0, axis1=0, axis2=1, dtype=None, out=None):
@@ -2371,11 +2374,18 @@ _round_ufunc = create_ufunc(
      ('Fq->F', _round_complex),
      ('Dq->D', _round_complex)),
     '''
-    if (in1 >= 0) {
-        out0 = in0;
-    } else {
+    out0 = in0;
+    ''', preamble=_round_preamble)
+
+
+_round_ufunc_neg_uint = create_ufunc(
+    'cupy_round_neg_uint',
+    ('?q->e',
+     'bq->b', 'Bq->B', 'hq->h', 'Hq->H', 'iq->i', 'Iq->I', 'lq->l', 'Lq->L',
+     'qq->q', 'Qq->Q'),
+    '''
         // TODO(okuta): Move before loop
-        long long x = pow10<long long>(-in1 - 1);
+        long long x = pow10<long long>(in1 - 1);
 
         // TODO(okuta): Check Numpy
         // `cupy.around(-123456789, -4)` works as follows:
@@ -2386,7 +2396,7 @@ _round_ufunc = create_ufunc(
         long long q = in0 / x / 100;
         int r = in0 - q*x*100;
         out0 = (q*100 + round_float(r/(x*10.0f))*10) * x;
-    }''', preamble=_round_preamble)
+    ''', preamble=_round_preamble)
 
 
 # -----------------------------------------------------------------------------
