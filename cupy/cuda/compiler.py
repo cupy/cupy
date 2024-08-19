@@ -149,7 +149,10 @@ def _get_extra_include_dir_opts():
     major, minor = _get_nvrtc_version()
     return tuple(
         f'-I{d}'
-        for d in _environment._get_include_dir_from_wheel(major, minor))
+        for d in _environment._get_include_dir_from_conda_or_wheel(
+            major, minor
+        )
+    )
 
 
 @_util.memoize(for_each_device=True)
