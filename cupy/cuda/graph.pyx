@@ -76,7 +76,7 @@ cdef class Graph:
             stream_ptr = stream.ptr
         runtime.graphUpload(self.graphExec, stream_ptr)
 
-    cpdef str debug_dot_str(self, unsigned int flags):
+    cpdef debug_dot_str(self, flags=0):
         """Make DOT formatted string of CUDA graph definition for debugging.
 
         Args:
