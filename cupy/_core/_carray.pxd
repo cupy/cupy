@@ -9,7 +9,7 @@ ctypedef vector.vector[Py_ssize_t] strides_t
 
 # this matches NPY_MAXDIMS
 # Note: we make it an enum to work around cython/cython#4369
-cdef enum: MAX_NDIM = 32
+cdef enum: MAX_NDIM = 64
 
 
 cdef struct _CArray:
