@@ -7,6 +7,7 @@ import importlib.metadata
 import json
 import os
 import os.path
+import platform
 import re
 import shutil
 import sys
@@ -451,7 +452,7 @@ You can install the library by:
 ''')
 
 
-def _get_include_dir_from_wheel(major: int, minor: int) -> List[str]:
+def _get_include_dir_from_conda_or_wheel(major: int, minor: int) -> List[str]:
     # FP16 headers from CUDA 12.2+ depends on headers from CUDA Runtime.
     # See https://github.com/cupy/cupy/issues/8466.
     if major < 12 or (major == 12 and minor < 2):
@@ -459,9 +460,24 @@ def _get_include_dir_from_wheel(major: int, minor: int) -> List[str]:
 
     config = get_preload_config()
     if config is not None and config['packaging'] == 'conda':
-        # Not applicable for conda installation.
-        return []
+        if sys.platform.startswith('linux'):
+            arch = platform.processor()
+            if arch == "aarch64":
+                arch = "sbsa"
+            target_dir = f"{arch}-linux"
+            return [
+                os.path.join(sys.prefix, "targets", target_dir, "include"),
+                os.path.join(sys.prefix, "include"),
+            ]
+        elif sys.platform.startswith('win'):
+            return [
+                os.path.join(sys.prefix, "Library", "include"),
+            ]
+        else:
+            # No idea what this platform is. Do nothing?
+            return []
 
+    # Look for headers in wheels
     pkg_name = f'nvidia-cuda-runtime-cu{major}'
     ver_str = f'{major}.{minor}'
     _log(f'Looking for {pkg_name}=={ver_str}.*')
