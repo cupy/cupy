@@ -388,7 +388,7 @@
 # CUDA 12.5 (Multi-GPU) | Linux
 - project: "cupy.linux.cuda125.multi"
   _inherits: "cupy.linux.cuda125"
-  tags: ["@push", "full", "mini", "multi", "cuda125"]
+  tags: ["@push", "full", "multi", "cuda125"]
   target: "cuda125.multi"
   mpi4py: "3"
   test: "unit-multi"
@@ -695,7 +695,7 @@
 - project: "cupy.win.cuda125"
   _extern: true
   target: "cuda125"
-  tags: ["@push", "full", "mini", "windows", "cuda125"]
+  tags: ["@push", "full", "windows", "cuda125"]
   system: "windows"
 
 - project: "cupy.win.cuda126"
