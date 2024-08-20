@@ -2221,7 +2221,7 @@ cpdef tuple assemble_cupy_compiler_options(tuple options):
                 _, minor = nvrtc.getVersion()
                 # TODO(leofang): update the upper bound when a new release
                 # is out
-                if minor < 2 or minor > 5:
+                if minor < 2 or minor > 6:
                     _bundled_include = 'cuda-12'
                 else:
                     _bundled_include = f'cuda-12.{minor}'
