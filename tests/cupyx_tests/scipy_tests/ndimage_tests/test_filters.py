@@ -116,10 +116,8 @@ class FilterTestCaseBase:
 
         if self.filter in ('minimum_filter', 'maximum_filter', 'median_filter',
                            'rank_filter', 'percentile_filter'):
-            if not hasattr(self, "axes"):
-                self.axes = None
 
-            if self.axes is None:
+            if getattr(self, "axes", None) is None:
                 num_axes = len(self.shape)
             else:
                 if numpy.isscalar(self.axes):
@@ -130,7 +128,7 @@ class FilterTestCaseBase:
                     self.ksize = self.ksize[:num_axes]
                 return self.ksize
             # generate footprint with same number of dimensions as axes
-            if self.axes is None:
+            if getattr(self, "axes", None) is None:
                 kshape = self._kshape[:self._ndim]
             else:
                 kshape = [self._kshape[ax] for ax in self.axes]
@@ -157,13 +155,11 @@ class FilterTestCaseBase:
             return self.ksize
 
         if self.filter == 'uniform_filter':
-            if not hasattr(self, "axes"):
-                self.axes = None
-            elif numpy.isscalar(self.axes):
-                self.axes = (self.axes,)
-            if self.axes is None:
+            if getattr(self, "axes", None) is None:
                 kshape = self._kshape[:self._ndim]
             else:
+                if numpy.isscalar(self.axes):
+                    self.axes = (self.axes,)
                 kshape = [self._kshape[ax] for ax in self.axes]
             return kshape
 
