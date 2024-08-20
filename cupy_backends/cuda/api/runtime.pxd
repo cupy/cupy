@@ -278,8 +278,21 @@ cpdef launchHostFunc(intptr_t stream, callback, intptr_t arg)
 cpdef streamQuery(intptr_t stream)
 cpdef streamWaitEvent(intptr_t stream, intptr_t event, unsigned int flags=*)
 cpdef streamBeginCapture(intptr_t stream, int mode=*)
+cpdef streamBeginCaptureToGraph(intptr_t stream, intptr_t graph,
+                                intptr_t dependencies,
+                                intptr_t dependencyData,
+                                size_t numDependencies,
+                                int mode=*)
 cpdef intptr_t streamEndCapture(intptr_t stream) except? 0
 cpdef bint streamIsCapturing(intptr_t stream) except*
+cpdef streamGetCaptureInfo(intptr_t stream, intptr_t captureStatus_out,
+                           intptr_t id_out=*,
+                           intptr_t graph_out=*,
+                           intptr_t dependencies_out=*,
+                           intptr_t numDependencies_out=*)
+cpdef streamUpdateCaptureDependencies(intptr_t stream, intptr_t dependencies,
+                                      size_t numDependencies,
+                                      unsigned int flags=*)
 cpdef intptr_t eventCreate() except? 0
 cpdef intptr_t eventCreateWithFlags(unsigned int flags) except? 0
 cpdef eventDestroy(intptr_t event)
@@ -325,7 +338,11 @@ cpdef graphExecDestroy(intptr_t graphExec)
 cpdef intptr_t graphInstantiate(intptr_t graph) except? 0
 cpdef graphLaunch(intptr_t graphExec, intptr_t stream)
 cpdef graphUpload(intptr_t graphExec, intptr_t stream)
-
+cpdef graphConditionalHandleCreate(intptr_t pHandle_out, intptr_t graph,
+                                   unsigned int defaultLaunchValue=*,
+                                   unsigned int flags=*)
+cpdef graphAddNode(intptr_t pGraphNode, intptr_t pDependencies,
+                   size_t numDependencies, intptr_t nodeParams)
 
 ##############################################################################
 # Profiler

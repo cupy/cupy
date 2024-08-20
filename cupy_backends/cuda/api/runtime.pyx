@@ -934,6 +934,19 @@ cpdef streamBeginCapture(intptr_t stream, int mode=streamCaptureModeRelaxed):
                                         <StreamCaptureMode>mode)
     check_status(status)
 
+cpdef streamBeginCaptureToGraph(intptr_t stream, intptr_t graph,
+                                intptr_t dependencies,
+                                intptr_t dependencyData,
+                                size_t numDependencies,
+                                int mode=streamCaptureModeRelaxed):
+    with nogil:
+        status = cudaStreamBeginCaptureToGraph(
+                    <driver.Stream>(stream), <Graph>(graph),
+                    <const GraphNode*>(dependencies),
+                    <const GraphEdgeData*>(dependencyData),
+                    numDependencies,
+                    <StreamCaptureMode>mode)
+    check_status(status)
 
 cpdef intptr_t streamEndCapture(intptr_t stream) except? 0:
     # TODO(leofang): check and raise if stream == 0?
@@ -958,6 +971,31 @@ cpdef bint streamIsCapturing(intptr_t stream) except*:
                            'invalidated the capture sequence')
     return <bint>s
 
+cpdef streamGetCaptureInfo(intptr_t stream, intptr_t captureStatus_out,
+                           intptr_t id_out=0,
+                           intptr_t graph_out=0,
+                           intptr_t dependencies_out=0,
+                           intptr_t numDependencies_out=0):
+    with nogil:
+        status = cudaStreamGetCaptureInfo(
+            <driver.Stream>(stream),
+            <StreamCaptureStatus*>(captureStatus_out),
+            <unsigned long long*>(id_out),
+            <Graph*>(graph_out), <const GraphNode**>(dependencies_out),
+            <size_t*>(numDependencies_out)
+        )
+    check_status(status)
+
+
+cpdef streamUpdateCaptureDependencies(intptr_t stream, intptr_t dependencies,
+                                      size_t numDependencies,
+                                      unsigned int flags=0):
+    with nogil:
+        status = cudaStreamUpdateCaptureDependencies(
+            <driver.Stream>(stream), <GraphNode*>(dependencies),
+            numDependencies, flags
+        )
+    check_status(status)
 
 cpdef intptr_t eventCreate() except? 0:
     cdef driver.Event event
@@ -1114,6 +1152,18 @@ cpdef graphUpload(intptr_t graphExec, intptr_t stream):
         status = cudaGraphUpload(<GraphExec>(graphExec), <driver.Stream>stream)
     check_status(status)
 
+cpdef graphConditionalHandleCreate(intptr_t pHandle_out, intptr_t graph,
+                                   unsigned int defaultLaunchValue=0,
+                                   unsigned int flags=0):
+    with nogil:
+        status = cudaGraphConditionalHandleCreate(
+                    <GraphConditionalHandle*>(pHandle_out), <Graph>(graph),
+                    defaultLaunchValue, flags)
+    check_status(status)
+
+cpdef graphAddNode(intptr_t pGraphNode, intptr_t pDependencies,
+                   size_t numDependencies, intptr_t nodeParams):
+    ...
 
 ##############################################################################
 # Profiler
