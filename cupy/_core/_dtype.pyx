@@ -3,6 +3,7 @@ import numpy
 import warnings
 
 from cupy_backends.cuda.api cimport runtime
+from cupy.exceptions import ComplexWarning
 
 
 all_type_chars = '?bhilqBHILQefdFD'
@@ -114,7 +115,7 @@ cpdef void _raise_if_invalid_cast(
             # Complex warning, we are dropping the imagine part:
             warnings.warn(
                 'Casting complex values to real discards the imaginary part',
-                numpy.ComplexWarning)
+                ComplexWarning)
 
         return
 

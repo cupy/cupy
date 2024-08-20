@@ -50,6 +50,7 @@ from cupy_backends.cuda cimport stream as _stream_module
 from cupy_backends.cuda.api cimport runtime
 from cupy_backends.cuda.libs cimport nvrtc
 
+from cupy.exceptions import ComplexWarning
 
 NUMPY_1x = numpy.__version__ < '2'
 
@@ -592,7 +593,7 @@ cdef class _ndarray_base:
                 warnings.warn(
                     'Casting complex values to real discards the imaginary '
                     'part',
-                    numpy.ComplexWarning)
+                    ComplexWarning)
         else:
             elementwise_copy(self, newarray)
         return newarray
