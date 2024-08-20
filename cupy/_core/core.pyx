@@ -2238,7 +2238,7 @@ cpdef tuple assemble_cupy_compiler_options(tuple options):
 
             # Check if headers from cudart wheels are available.
             wheel_dir_count = len(
-                _environment._get_include_dir_from_wheel(major, minor))
+                _environment._get_include_dir_from_conda_or_wheel(major, minor))
             assert 0 <= wheel_dir_count <= 1
             _headers_from_wheel_available = (wheel_dir_count == 1)
 
