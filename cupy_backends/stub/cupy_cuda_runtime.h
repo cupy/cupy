@@ -360,11 +360,23 @@ cudaError_t cudaStreamBeginCapture(...) {
     return cudaSuccess;
 }
 
+cudaError_t cudaStreamBeginCaptureToGraph(...) {
+    return cudaSuccess;
+}
+
 cudaError_t cudaStreamEndCapture(...) {
     return cudaSuccess;
 }
 
 cudaError_t cudaStreamIsCapturing(...) {
+    return cudaSuccess;
+}
+
+cudaError_t cudaStreamGetCaptureInfo(...) {
+    return cudaSuccess;
+}
+
+cudaError_t cudaStreamUpdateCaptureDependencies(...) {
     return cudaSuccess;
 }
 
@@ -431,6 +443,14 @@ cudaError_t cudaGraphLaunch(...) {
 }
 
 cudaError_t cudaGraphUpload(...) {
+    return cudaSuccess;
+}
+
+cudaError_t cudaGraphConditionalHandleCreate(...) {
+    return cudaSuccess;
+}
+
+cudaError_t cudaGraphAddNode(...) {
     return cudaSuccess;
 }
 
