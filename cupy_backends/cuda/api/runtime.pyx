@@ -1165,23 +1165,28 @@ cpdef graphUpload(intptr_t graphExec, intptr_t stream):
         status = cudaGraphUpload(<GraphExec>(graphExec), <driver.Stream>stream)
     check_status(status)
 
-cpdef graphConditionalHandleCreate(intptr_t pHandle_out, intptr_t graph,
-                                   unsigned int defaultLaunchValue=0,
-                                   unsigned int flags=0):
+cpdef GraphConditionalHandle graphConditionalHandleCreate(
+        intptr_t graph,
+        unsigned int defaultLaunchValue=0,
+        unsigned int flags=0):
+    cdef GraphConditionalHandle handle
     with nogil:
         status = cudaGraphConditionalHandleCreate(
-                    <GraphConditionalHandle*>(pHandle_out), <Graph>(graph),
+                    &handle, <Graph>(graph),
                     defaultLaunchValue, flags)
     check_status(status)
+    return handle
 
-cpdef graphAddNode(intptr_t pGraphNode, intptr_t graph, intptr_t pDependencies,
+cpdef intptr_t graphAddNode(intptr_t graph, intptr_t pDependencies,
                    size_t numDependencies, intptr_t nodeParams):
+    cdef GraphNode node
     with nogil:
         status = cudaGraphAddNode(
-            <GraphNode*>(pGraphNode), <Graph>(graph), <const GraphNode*>(pDependencies),
+            &node, <Graph>(graph), <const GraphNode*>(pDependencies),
             numDependencies, <GraphNodeParams*>(nodeParams)
         )
     check_status(status)
+    return <intptr_t>(node)
 
 cpdef graphDebugDotPrint(intptr_t graph, str path, unsigned int flags):
     if runtimeGetVersion() < 11030:
