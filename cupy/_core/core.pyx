@@ -10,6 +10,7 @@ import warnings
 import numpy
 
 import cupy
+from cupy import _environment
 from cupy._core._kernel import create_ufunc
 from cupy._core._kernel import ElementwiseKernel
 from cupy._core._ufuncs import elementwise_copy
@@ -2088,6 +2089,7 @@ _HANDLED_TYPES = (ndarray, numpy.ndarray)
 cdef bint _is_hip = runtime._is_hip_environment
 cdef str _cuda_path = ''  # '' for uninitialized, None for non-existing
 cdef str _bundled_include = ''  # '' for uninitialized, None for non-existing
+_headers_from_wheel_available = False
 
 cdef list cupy_header_list = [
     'cupy/complex.cuh',
@@ -2215,24 +2217,35 @@ cpdef tuple assemble_cupy_compiler_options(tuple options):
 
     if not _is_hip:
         # CUDA Enhanced Compatibility
-        global _bundled_include
+        global _bundled_include, _headers_from_wheel_available
         if _bundled_include == '':
-            _cuda_major = runtime._getCUDAMajorVersion()
-            if _cuda_major == 11:
+            major, minor = nvrtc.getVersion()
+            if major == 11:
                 _bundled_include = 'cuda-11'
-            elif _cuda_major == 12:
-                _, minor = nvrtc.getVersion()
+            elif major == 12:
                 # TODO(leofang): update the upper bound when a new release
                 # is out
-                if minor < 2 or minor > 6:
+                if minor < 2:
                     _bundled_include = 'cuda-12'
-                else:
+                elif minor < 7:
                     _bundled_include = f'cuda-12.{minor}'
+                else:
+                    # Unsupported CUDA 12.x variant
+                    _bundled_include = None
             else:
                 # CUDA versions not yet supported.
                 _bundled_include = None
 
-        if _bundled_include is None and _cuda_path is None:
+            # Check if headers from cudart wheels are available.
+            wheel_dir_count = len(
+                _environment._get_include_dir_from_conda_or_wheel(
+                    major, minor))
+            assert 0 <= wheel_dir_count <= 1
+            _headers_from_wheel_available = (wheel_dir_count == 1)
+
+        if (_bundled_include is None and
+                _cuda_path is None and
+                not _headers_from_wheel_available):
             raise RuntimeError(
                 'Failed to auto-detect CUDA root directory. '
                 'Please specify `CUDA_PATH` environment variable if you '
