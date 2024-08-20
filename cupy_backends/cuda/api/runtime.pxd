@@ -285,11 +285,13 @@ cpdef streamBeginCaptureToGraph(intptr_t stream, intptr_t graph,
                                 int mode=*)
 cpdef intptr_t streamEndCapture(intptr_t stream) except? 0
 cpdef bint streamIsCapturing(intptr_t stream) except*
-cpdef streamGetCaptureInfo(intptr_t stream, intptr_t captureStatus_out,
-                           intptr_t id_out=*,
-                           intptr_t graph_out=*,
-                           intptr_t dependencies_out=*,
-                           intptr_t numDependencies_out=*)
+cpdef (
+        intptr_t,           # capture status
+        unsigned long long, # id
+        intptr_t,           # graph
+        intptr_t,           # dependencies
+        size_t              # numDependencies
+    ) streamGetCaptureInfo(intptr_t stream)
 cpdef streamUpdateCaptureDependencies(intptr_t stream, intptr_t dependencies,
                                       size_t numDependencies,
                                       unsigned int flags=*)

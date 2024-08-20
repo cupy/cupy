@@ -971,20 +971,33 @@ cpdef bint streamIsCapturing(intptr_t stream) except*:
                            'invalidated the capture sequence')
     return <bint>s
 
-cpdef streamGetCaptureInfo(intptr_t stream, intptr_t captureStatus_out,
-                           intptr_t id_out=0,
-                           intptr_t graph_out=0,
-                           intptr_t dependencies_out=0,
-                           intptr_t numDependencies_out=0):
+cpdef (
+        intptr_t,           # capture status
+        unsigned long long, # id
+        intptr_t,           # graph
+        intptr_t,           # dependencies
+        size_t              # numDependencies
+    ) streamGetCaptureInfo(
+        intptr_t stream,
+    ):
+    cdef StreamCaptureStatus captureStatus
+    cdef unsigned long long id_
+    cdef Graph graph
+    cdef const GraphNode* dependencies
+    cdef size_t numDependencies
     with nogil:
         status = cudaStreamGetCaptureInfo(
-            <driver.Stream>(stream),
-            <StreamCaptureStatus*>(captureStatus_out),
-            <unsigned long long*>(id_out),
-            <Graph*>(graph_out), <const GraphNode**>(dependencies_out),
-            <size_t*>(numDependencies_out)
+            <driver.Stream>(stream), &captureStatus, &id_,
+            &graph, &dependencies, &numDependencies
         )
     check_status(status)
+    return (
+        <intptr_t>(captureStatus),
+        id_,
+        <intptr_t>(graph),
+        <intptr_t>(dependencies),
+        numDependencies
+    )
 
 
 cpdef streamUpdateCaptureDependencies(intptr_t stream, intptr_t dependencies,
