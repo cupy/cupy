@@ -1136,11 +1136,12 @@ class RandomState(object):
             raise NotImplementedError
 
         if p is not None:
-            # https://github.com/numpy/numpy/blob/v2.0.1/numpy/random/mtrand.pyx#L1013  # NOQA
-            cdf = p.cumsum()
-            cdf /= cdf[-1]
-            uniform_samples = self.random_sample(shape)
-            index = cdf.searchsorted(uniform_samples, side='right')
+            p = cupy.broadcast_to(p, (size, a_size))
+            index = cupy.argmax(cupy.log(p) +
+                                self.gumbel(size=(size, a_size)),
+                                axis=1)
+            if not isinstance(shape, int):
+                index = cupy.reshape(index, shape)
         else:
             if a_size == 0:  # TODO: (#4511) Fix `randint` instead
                 a_size = 1
