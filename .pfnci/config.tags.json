@@ -144,7 +144,6 @@
     "cupy.linux.cuda125.multi": [
         "@push",
         "full",
-        "mini",
         "multi",
         "cuda125"
     ],
@@ -247,7 +246,6 @@
     "cupy.win.cuda125": [
         "@push",
         "full",
-        "mini",
         "windows",
         "cuda125"
     ],
