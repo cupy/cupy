@@ -1,5 +1,4 @@
 import math
-import warnings
 
 import numpy
 import pytest
@@ -766,6 +765,7 @@ class TestCumprod:
         a_numpy = numpy.arange(1, 6, dtype=dtype)
         with pytest.raises(TypeError):
             return cupy.cumprod(a_numpy)
+
 
 @testing.parameterize(*testing.product({
     'shape': [(20,), (7, 6), (3, 4, 5)],

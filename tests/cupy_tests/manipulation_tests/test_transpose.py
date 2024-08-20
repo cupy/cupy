@@ -190,11 +190,9 @@ class TestMatrixTranspose:
         arr = xp.arange(48).reshape((6, 8))
         return arr
 
-
     @pytest.mark.parametrize("shape", ARRAY_SHAPES_TO_TEST)
     @testing.numpy_cupy_array_equal()
     def test_matrix_transpose_equals_swapaxes(self, xp, shape):
-        num_of_axes = len(shape)
         vec = xp.arange(shape[-1])
         arr = xp.broadcast_to(vec, shape)
         return arr.mT

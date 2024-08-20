@@ -1,3 +1,5 @@
+from cupy._creation.basic import astype   # NOQA
+from cupy import exceptions   # NOQA
 import functools as _functools
 import sys as _sys
 
@@ -44,7 +46,6 @@ from cupy import random  # NOQA
 # `cupy.sparse` is deprecated in v8
 from cupy import sparse  # NOQA
 from cupy import testing  # NOQA  # NOQA
-from cupy import exceptions
 
 
 # import class and function
@@ -193,7 +194,6 @@ from cupy._creation.basic import ones  # NOQA
 from cupy._creation.basic import ones_like  # NOQA
 from cupy._creation.basic import zeros  # NOQA
 from cupy._creation.basic import zeros_like  # NOQA
-from cupy._creation.basic import astype
 
 from cupy._creation.from_data import copy  # NOQA
 from cupy._creation.from_data import array  # NOQA
@@ -944,6 +944,8 @@ sometrue = any
 trapz = trapezoid
 
 # https://github.com/numpy/numpy/blob/v1.26.4/numpy/core/numerictypes.py#L283-L322   # NOQA
+
+
 def issubclass_(arg1, arg2):
     try:
         return issubclass(arg1, arg2)

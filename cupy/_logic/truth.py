@@ -1,5 +1,3 @@
-import warnings
-
 import cupy
 from cupy._core import _routines_logic as _logic
 from cupy._core import _fusion_thread_local
