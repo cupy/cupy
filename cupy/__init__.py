@@ -536,9 +536,7 @@ from cupy._logic.comparison import less_equal  # NOQA
 from cupy._logic.comparison import not_equal  # NOQA
 
 from cupy._logic.truth import all  # NOQA
-from cupy._logic.truth import alltrue  # NOQA
 from cupy._logic.truth import any  # NOQA
-from cupy._logic.truth import sometrue  # NOQA
 
 # ------------------------------------------------------------------------------
 # Polynomial functions
@@ -941,6 +939,8 @@ _deprecated_apis = [
 
 
 # np 2.0: XXX shims for things removed in np 2.0
+alltrue = all
+sometrue = any
 
 # https://github.com/numpy/numpy/blob/v1.26.4/numpy/core/numerictypes.py#L283-L322   # NOQA
 def issubclass_(arg1, arg2):
