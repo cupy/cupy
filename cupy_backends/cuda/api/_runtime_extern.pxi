@@ -170,6 +170,7 @@ cdef extern from '../../cupy_backend_runtime.h' nogil:
     int cudaGraphUpload(GraphExec, driver.Stream)
     int cudaGraphConditionalHandleCreate(GraphConditionalHandle*, Graph, unsigned int, unsigned int)
     int cudaGraphAddNode(GraphNode*, Graph, const GraphNode*, size_t, GraphNodeParams*)
+    int cudaGraphDebugDotPrint(Graph, const char*, unsigned int)
 
     # Constants
     int cudaDevAttrComputeCapabilityMajor

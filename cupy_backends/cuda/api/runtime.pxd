@@ -345,6 +345,8 @@ cpdef graphConditionalHandleCreate(intptr_t pHandle_out, intptr_t graph,
                                    unsigned int flags=*)
 cpdef graphAddNode(intptr_t pGraphNode, intptr_t graph, intptr_t pDependencies,
                    size_t numDependencies, intptr_t nodeParams)
+cpdef graphDebugDotPrint(intptr_t graph, str path, unsigned int flags)
+
 
 ##############################################################################
 # Profiler

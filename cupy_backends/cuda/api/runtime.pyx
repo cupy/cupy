@@ -1183,6 +1183,16 @@ cpdef graphAddNode(intptr_t pGraphNode, intptr_t graph, intptr_t pDependencies,
         )
     check_status(status)
 
+cpdef graphDebugDotPrint(intptr_t graph, str path, unsigned int flags):
+    if runtimeGetVersion() < 11030:
+        raise RuntimeError('graphDebugDotPrint requires CUDA 11.3+')
+    path_byte = path.encode()
+    cdef const char* c_path = path_byte
+    with nogil:
+        status = cudaGraphDebugDotPrint(<Graph>(graph), c_path, flags)
+    check_status(status)
+
+
 ##############################################################################
 # Profiler
 ##############################################################################
