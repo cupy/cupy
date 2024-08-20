@@ -1,6 +1,8 @@
+import os
+import tempfile
+
 from cupy_backends.cuda.api cimport runtime
 from cupy_backends.cuda cimport stream as stream_module
-import tempfile
 
 
 cdef class Graph:
@@ -89,7 +91,11 @@ cdef class Graph:
             https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__GRAPH.html#group__CUDART__GRAPH_1gbec177c250000405c570dc8c4bde20db
 
         """
-        with tempfile.NamedTemporaryFile(delete=True) as f:
+        f = tempfile.NamedTemporaryFile(delete=False)
+        try:
+            f.close()
             runtime.graphDebugDotPrint(self.graph, f.name, flags)
-            output = f.read().decode()
-        return output
+            with open(f.name) as f2:
+                return f2.read()
+        finally:
+            os.remove(f.name)
