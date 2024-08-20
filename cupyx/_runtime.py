@@ -181,7 +181,7 @@ class _RuntimeInfo:
                 self.cuda_extra_include_dirs = '(NVRTC unavailable)'
             else:
                 self.cuda_extra_include_dirs = str(
-                    cupy._environment._get_include_dir_from_wheel(
+                    cupy._environment._get_include_dir_from_conda_or_wheel(
                         *nvrtc_version))
 
         # cuDNN
