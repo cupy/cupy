@@ -56,6 +56,25 @@ cdef extern from *:
         unsigned char type
         unsigned char[5] reserved
 
+    ctypedef int GraphNodeType 'cudaGraphNodeType'
+    ctypedef int GraphConditionalNodeType 'cudaGraphConditionalNodeType'
+    ctypedef struct ConditionalNodeParams 'cudaConditionalNodeParams':
+        GraphConditionalHandle handle
+        GraphConditionalNodeType type
+        unsigned int size_t
+        Graph* phGraph_cout
+    ctypedef union _GraphNodeTypeUnion:
+        # NOTE:
+        # This is incomplete definition of the unnamed union inside of
+        # `cudaGraphNodeParams` only supports `cudaConditionalNodeParams`
+        long long[29]         reserved1
+        ConditionalNodeParams conditional
+    ctypedef struct GraphNodeParams 'cudaGraphNodeParams':
+        GraphNodeType       type
+        int[3]              reserved0
+        _GraphNodeTypeUnion params
+        long long           reserved2
+
     # This is for the annoying nested struct cudaResourceDesc, which is not
     # perfectly supported in Cython
     ctypedef struct _array:

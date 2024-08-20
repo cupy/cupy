@@ -1161,9 +1161,14 @@ cpdef graphConditionalHandleCreate(intptr_t pHandle_out, intptr_t graph,
                     defaultLaunchValue, flags)
     check_status(status)
 
-cpdef graphAddNode(intptr_t pGraphNode, intptr_t pDependencies,
+cpdef graphAddNode(intptr_t pGraphNode, intptr_t graph, intptr_t pDependencies,
                    size_t numDependencies, intptr_t nodeParams):
-    ...
+    with nogil:
+        status = cudaGraphAddNode(
+            <GraphNode*>(pGraphNode), <Graph>(graph), <const GraphNode*>(pDependencies),
+            numDependencies, <GraphNodeParams*>(nodeParams)
+        )
+    check_status(status)
 
 ##############################################################################
 # Profiler
