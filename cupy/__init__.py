@@ -611,7 +611,7 @@ from cupy._math.sumprod import nansum  # NOQA
 from cupy._math.sumprod import nanprod  # NOQA
 from cupy._math.sumprod import diff  # NOQA
 from cupy._math.sumprod import gradient  # NOQA
-from cupy._math.sumprod import trapz  # NOQA
+from cupy._math.sumprod import trapezoid  # NOQA
 from cupy._math.window import bartlett  # NOQA
 from cupy._math.window import blackman  # NOQA
 from cupy._math.window import hamming  # NOQA
@@ -941,6 +941,7 @@ _deprecated_apis = [
 # np 2.0: XXX shims for things removed in np 2.0
 alltrue = all
 sometrue = any
+trapz = trapezoid
 
 # https://github.com/numpy/numpy/blob/v1.26.4/numpy/core/numerictypes.py#L283-L322   # NOQA
 def issubclass_(arg1, arg2):
