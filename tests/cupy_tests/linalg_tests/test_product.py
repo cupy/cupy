@@ -1,4 +1,5 @@
 import unittest
+import sys
 
 import numpy
 import pytest
@@ -468,9 +469,12 @@ class TestMatrixPower(unittest.TestCase):
         a = xp.eye(23, k=17, dtype=dtype) + xp.eye(23, k=-6, dtype=dtype)
         return xp.linalg.matrix_power(a, 123456789123456789)
 
+    @pytest.mark.skipif(sys.platform == "win32",
+                        reason="python int overlows C long")
     @testing.for_float_dtypes(no_float16=True)
     @testing.numpy_cupy_allclose()
     def test_matrix_power_invlarge(self, xp, dtype):
+        # TODO (ev-br): np 2.0: check if it's fixed in numpy 2 (broken on 1.26)
         a = xp.eye(23, k=17, dtype=dtype) + xp.eye(23, k=-6, dtype=dtype)
         return xp.linalg.matrix_power(a, -987654321987654321)
 
