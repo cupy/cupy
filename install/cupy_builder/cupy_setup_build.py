@@ -357,7 +357,8 @@ def make_extensions(ctx: Context, compiler, use_cython):
             compiler.compiler_so_cxx = [cxx,]
             compiler.linker_so = [cc, f'-B{os.environ["BUILD_PREFIX"]}/bin',
                                   '-shared']
-            compiler.linker_so_cxx = [cxx, f'-B{os.environ["BUILD_PREFIX"]}/bin',
+            compiler.linker_so_cxx = [cxx,
+                                      f'-B{os.environ["BUILD_PREFIX"]}/bin',
                                       '-shared']
             compiler.linker_exe = [cc, f'-B{os.environ["BUILD_PREFIX"]}/bin']
             compiler.linker_exe_cxx = [cxx,
