@@ -1929,7 +1929,7 @@ CuPy CI Test Coverage
      - 
    * - numpy
      - 1.24
-     - 9
+     - 11
      - ✅
      - ✅
      - ✅
@@ -1944,14 +1944,14 @@ CuPy CI Test Coverage
      - 
      - 
      - 
+     - ✅
+     - ✅
      - 
      - 
      - 
      - 
      - ✅
      - ✅
-     - 
-     - 
      - 
      - 
      - 
@@ -1969,7 +1969,7 @@ CuPy CI Test Coverage
      - 
    * - 
      - 1.25
-     - 9
+     - 7
      - 
      - 
      - 
@@ -1984,14 +1984,14 @@ CuPy CI Test Coverage
      - ✅
      - 
      - 
+     - 
+     - 
      - ✅
      - ✅
      - 
      - 
      - 
      - 
-     - ✅
-     - ✅
      - 
      - 
      - 
@@ -2026,10 +2026,10 @@ CuPy CI Test Coverage
      - ✅
      - 
      - 
-     - ✅
-     - ✅
      - 
      - 
+     - ✅
+     - ✅
      - 
      - 
      - ✅
@@ -2209,7 +2209,7 @@ CuPy CI Test Coverage
      - 
    * - 
      - 1.12
-     - 13
+     - 9
      - 
      - 
      - 
@@ -2226,8 +2226,6 @@ CuPy CI Test Coverage
      - ✅
      - 
      - 
-     - ✅
-     - ✅
      - 
      - 
      - 
@@ -2236,8 +2234,10 @@ CuPy CI Test Coverage
      - 
      - 
      - 
-     - ✅
-     - ✅
+     - 
+     - 
+     - 
+     - 
      - 
      - ✅
      - 
@@ -2266,14 +2266,14 @@ CuPy CI Test Coverage
      - 
      - ✅
      - ✅
-     - 
-     - 
+     - ✅
+     - ✅
      - ✅
      - ✅
      - 
      - 
-     - ✅
-     - ✅
+     - 
+     - 
      - 
      - 
      - 
@@ -2289,7 +2289,7 @@ CuPy CI Test Coverage
      - 
    * - 
      - 1.14
-     - 8
+     - 12
      - 
      - 
      - 
@@ -2312,12 +2312,12 @@ CuPy CI Test Coverage
      - 
      - ✅
      - ✅
-     - 
-     - 
      - ✅
      - ✅
-     - 
-     - 
+     - ✅
+     - ✅
+     - ✅
+     - ✅
      - 
      - 
      - ✅
