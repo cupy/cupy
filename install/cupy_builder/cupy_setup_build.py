@@ -343,6 +343,7 @@ def make_extensions(ctx: Context, compiler, use_cython):
             # that are executable in the build environment, not the target
             # environment.
             compiler = ccompiler.new_compiler()
+            sysconfig.customize_compiler(compiler)
             cc = os.environ['CC_FOR_BUILD' if PLATFORM_LINUX else 'CC']
             cxx = os.environ['CXX_FOR_BUILD' if PLATFORM_LINUX else 'CXX']
             compiler.compiler = [cc,]
