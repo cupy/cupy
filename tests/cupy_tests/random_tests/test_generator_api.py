@@ -374,4 +374,4 @@ class TestDrichlet(
 class TestLarge:
     def test_large(self):
         gen = random.Generator(random.XORWOW(1234))
-        gen.random(2**31 + 1, dtype=cupy.int8)
+        gen.random(2**31 + 1, dtype=cupy.float32)

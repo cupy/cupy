@@ -152,6 +152,10 @@ class Generator:
         if out is not None:
             self._check_output_array(dtype, size, out)
 
+        dtype_ = numpy.dtype(dtype)
+        if dtype_.char not in 'fd':
+            raise TypeError(f'Unsupported dtype {dtype_} for random')
+
         y = _core.ndarray(size if size is not None else (), dtype)
         if y.dtype.char == 'd':
             _launch_dist(self.bit_generator, random_uniform, y, ())
