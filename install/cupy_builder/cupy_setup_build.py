@@ -363,7 +363,7 @@ def make_extensions(ctx: Context, compiler, use_cython):
             compiler.linker_exe_cxx = [cxx, f'-B{os.environ["BUILD_PREFIX"]}/bin']
             compiler.archiver = [ar, 'rcs']
             compiler.ranlib = None
-        
+
         available_modules = []
         if no_cuda:
             available_modules = [m['name'] for m in MODULES]
