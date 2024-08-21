@@ -269,7 +269,7 @@ cpdef list _prepare_slice_list(slices):
             raise IndexError(
                 'arrays used as indices must be of integer (or boolean) type')
         try:
-            s = core.array(s, dtype=None, copy=False)
+            s = core.array(s, dtype=None, copy=None)
         except ValueError:
             # "Unsupported dtype"
             raise IndexError(
