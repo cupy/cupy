@@ -349,6 +349,7 @@ def make_extensions(ctx: Context, compiler, use_cython):
             # https://github.com/pypa/distutils/blob/30b7331b07fbc404959cb37ac311afdfb90813be/distutils/unixccompiler.py#L117-L129
             cc = os.environ['CC_FOR_BUILD']
             cxx = os.environ['CXX_FOR_BUILD']
+            ar = os.environ['BUILD'] + "-ar"
             compiler.preprocessor = None
             compiler.compiler = [cc,]
             compiler.compiler_so = [cc,]
@@ -360,7 +361,7 @@ def make_extensions(ctx: Context, compiler, use_cython):
                                       '-shared']
             compiler.linker_exe = [cc, f'-B{os.environ["BUILD_PREFIX"]}/bin']
             compiler.linker_exe_cxx = [cxx, f'-B{os.environ["BUILD_PREFIX"]}/bin']
-            # TODO: Do we need to patch archiver too?
+            compiler.archiver = [ar, 'rcs']
             compiler.ranlib = None
         
         available_modules = []
