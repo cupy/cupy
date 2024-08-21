@@ -336,8 +336,9 @@ def make_extensions(ctx: Context, compiler, use_cython):
             os.symlink(f'{os.environ["BUILD_PREFIX"]}/x86_64-conda-linux-gnu/'
                        'bin/x86_64-conda-linux-gnu-ld',
                        f'{os.environ["BUILD_PREFIX"]}/bin/ld')
-        if (int(os.environ.get('CONDA_BUILD_CROSS_COMPILATION', 0)) == 1 or
-                os.environ.get('CONDA_OVERRIDE_CUDA', '0').startswith('12')):
+        if (PLATFORM_LINUX and (
+                int(os.environ.get('CONDA_BUILD_CROSS_COMPILATION', 0)) == 1 or
+                os.environ.get('CONDA_OVERRIDE_CUDA', '0').startswith('12'))):
             # If cross-compiling, we need build_and_run() & build_shlib() to
             # use the compiler on the build platform to generate stub files
             # that are executable in the build environment, not the target
@@ -346,8 +347,8 @@ def make_extensions(ctx: Context, compiler, use_cython):
             sysconfig.customize_compiler(compiler)
             # Need to match and replace these
             # https://github.com/pypa/distutils/blob/30b7331b07fbc404959cb37ac311afdfb90813be/distutils/unixccompiler.py#L117-L129
-            cc = os.environ['CC_FOR_BUILD' if PLATFORM_LINUX else 'CC']
-            cxx = os.environ['CXX_FOR_BUILD' if PLATFORM_LINUX else 'CXX']
+            cc = os.environ['CC_FOR_BUILD']
+            cxx = os.environ['CXX_FOR_BUILD']
             compiler.preprocessor = None
             compiler.compiler = [cc,]
             compiler.compiler_so = [cc,]
