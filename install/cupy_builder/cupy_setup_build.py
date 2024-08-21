@@ -360,7 +360,8 @@ def make_extensions(ctx: Context, compiler, use_cython):
             compiler.linker_so_cxx = [cxx, f'-B{os.environ["BUILD_PREFIX"]}/bin',
                                       '-shared']
             compiler.linker_exe = [cc, f'-B{os.environ["BUILD_PREFIX"]}/bin']
-            compiler.linker_exe_cxx = [cxx, f'-B{os.environ["BUILD_PREFIX"]}/bin']
+            compiler.linker_exe_cxx = [cxx,
+                                       f'-B{os.environ["BUILD_PREFIX"]}/bin']
             compiler.archiver = [ar, 'rcs']
             compiler.ranlib = None
 
