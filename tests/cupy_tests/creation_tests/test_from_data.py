@@ -1,12 +1,11 @@
 import tempfile
 import unittest
 
+import numpy
 import pytest
 
 import cupy
-from cupy import cuda
-from cupy import testing
-import numpy
+from cupy import cuda, testing
 
 
 class TestFromData(unittest.TestCase):
@@ -281,12 +280,13 @@ class TestFromData(unittest.TestCase):
             for i in range(2)]
         return xp.array(a, dtype=numpy.dtype(dtype2).char, order=dst_order)
 
+    @testing.with_requires("numpy>=2")
     @testing.for_orders('CFAK')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_array_no_copy(self, xp, dtype, order):
         a = testing.shaped_arange((2, 3, 4), xp, dtype)
-        b = xp.array(a, copy=False, order=order)
+        b = xp.array(a, copy=None, order=order)
         a.fill(0)
         return b
 
@@ -295,14 +295,14 @@ class TestFromData(unittest.TestCase):
     @testing.numpy_cupy_array_equal()
     def test_array_f_contiguous_input(self, xp, dtype, order):
         a = testing.shaped_arange((2, 3, 4), xp, dtype, order='F')
-        b = xp.array(a, copy=False, order=order)
+        b = xp.array(a, order=order)
         return b
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_array_f_contiguous_output(self, xp, dtype):
         a = testing.shaped_arange((2, 3, 4), xp, dtype)
-        b = xp.array(a, copy=False, order='F')
+        b = xp.array(a, order='F')
         assert b.flags.f_contiguous
         return b
 
@@ -330,11 +330,12 @@ class TestFromData(unittest.TestCase):
         assert y.device.id == 1
         testing.assert_array_equal(x, y)
 
+    @testing.with_requires("numpy>=2")
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_array_no_copy_ndmin(self, xp, dtype):
         a = testing.shaped_arange((2, 3, 4), xp, dtype)
-        b = xp.array(a, copy=False, ndmin=5)
+        b = xp.array(a, copy=None, ndmin=5)
         assert a.shape == (2, 3, 4)
         a.fill(0)
         return b
@@ -733,7 +734,7 @@ class DummyObjectWithCudaArrayInterface(object):
 @testing.parameterize(
     *testing.product({
         'ndmin': [0, 1, 2, 3],
-        'copy': [True, False],
+        'copy': [True, False, None],
         'xp': [numpy, cupy]
     })
 )
@@ -743,7 +744,13 @@ class TestArrayPreservationOfShape(unittest.TestCase):
     def test_cupy_array(self, dtype):
         shape = 2, 3
         a = testing.shaped_arange(shape, self.xp, dtype)
-        cupy.array(a, copy=self.copy, ndmin=self.ndmin)
+
+        try:
+            cupy.array(a, copy=self.copy, ndmin=self.ndmin)
+        except ValueError as e:
+            if self.xp is numpy and self.copy is False:
+                return
+            raise RuntimeError("Zero-copy check failed") from e
 
         # Check if cupy.ndarray does not alter
         # the shape of the original array.
@@ -753,7 +760,7 @@ class TestArrayPreservationOfShape(unittest.TestCase):
 @testing.parameterize(
     *testing.product({
         'ndmin': [0, 1, 2, 3],
-        'copy': [True, False],
+        'copy': [True, False, None],
         'xp': [numpy, cupy]
     })
 )
@@ -762,9 +769,15 @@ class TestArrayCopy(unittest.TestCase):
     @testing.for_all_dtypes()
     def test_cupy_array(self, dtype):
         a = testing.shaped_arange((2, 3), self.xp, dtype)
-        actual = cupy.array(a, copy=self.copy, ndmin=self.ndmin)
 
-        should_copy = (self.xp is numpy) or self.copy
+        try:
+            actual = cupy.array(a, copy=self.copy, ndmin=self.ndmin)
+        except ValueError as e:
+            if self.xp is numpy and self.copy is False:
+                return
+            raise RuntimeError("Zero-copy check failed") from e
+
+        should_copy = (self.xp is numpy) or (self.copy is True)
         # TODO(Kenta Oono): Better determination of copy.
         is_copied = not ((actual is a) or (actual.base is a) or
                          (actual.base is a.base and a.base is not None))
