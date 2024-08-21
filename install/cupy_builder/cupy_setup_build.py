@@ -348,6 +348,7 @@ def make_extensions(ctx: Context, compiler, use_cython):
             # https://github.com/pypa/distutils/blob/30b7331b07fbc404959cb37ac311afdfb90813be/distutils/unixccompiler.py#L117-L129
             cc = os.environ['CC_FOR_BUILD' if PLATFORM_LINUX else 'CC']
             cxx = os.environ['CXX_FOR_BUILD' if PLATFORM_LINUX else 'CXX']
+            compiler.preprocessor = None
             compiler.compiler = [cc,]
             compiler.compiler_so = [cc,]
             compiler.compiler_cxx = [cxx,]
@@ -359,6 +360,7 @@ def make_extensions(ctx: Context, compiler, use_cython):
             compiler.linker_exe = [cc, f'-B{os.environ["BUILD_PREFIX"]}/bin']
             compiler.linker_exe_cxx = [cxx, f'-B{os.environ["BUILD_PREFIX"]}/bin']
             # TODO: Do we need to patch archiver too?
+            compiler.ranlib = None
         
         available_modules = []
         if no_cuda:
