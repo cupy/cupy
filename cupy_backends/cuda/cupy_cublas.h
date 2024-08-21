@@ -174,7 +174,7 @@ typedef int64_t intBit;
 #define cublasGemmExBit cublasGemmEx_64
 #define cublasGemmStridedBatchedExBit cublasGemmStridedBatchedEx_64
 
-#endif //#if CUBLAS_VER_MAJOR >= 12
+#endif // #if CUBLAS_VER_MAJOR < 12
 
 #if CUDA_VERSION >= 11000
 

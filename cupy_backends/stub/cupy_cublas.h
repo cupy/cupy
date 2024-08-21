@@ -332,7 +332,7 @@ cublasStatus_t cublasZsyrk(...) {
 }
 
 typedef enum{} cublasComputeType_t;
-cublasStatus_t cublasGemmEx_v11(...) {
+cublasStatus_t cublasGemmExBit_v11(...) {
     return CUBLAS_STATUS_SUCCESS;
 }
 
@@ -340,7 +340,7 @@ cublasStatus_t cublasGemmStridedBatchedEx(...) {
     return CUBLAS_STATUS_SUCCESS;
 }
 
-cublasStatus_t cublasGemmStridedBatchedEx_v11(...) {
+cublasStatus_t cublasGemmStridedBatchedExBit_v11(...) {
     return CUBLAS_STATUS_SUCCESS;
 }
 
@@ -440,6 +440,87 @@ cublasStatus_t cublasStpttr(...) {
 cublasStatus_t cublasDtpttr(...) {
     return CUBLAS_STATUS_SUCCESS;
 }
+
+typedef int intBit;
+#define cublasIsamaxBit cublasIsamax
+#define cublasIdamaxBit cublasIdamax
+#define cublasIcamaxBit cublasIcamax
+#define cublasIzamaxBit cublasIzamax
+#define cublasIsaminBit cublasIsamin
+#define cublasIdaminBit cublasIdamin
+#define cublasIcaminBit cublasIcamin
+#define cublasIzaminBit cublasIzamin
+#define cublasSasumBit cublasSasum
+#define cublasDasumBit cublasDasum
+#define cublasScasumBit cublasScasum
+#define cublasDzasumBit cublasDzasum
+#define cublasSaxpyBit cublasSaxpy
+#define cublasDaxpyBit cublasDaxpy
+#define cublasCaxpyBit cublasCaxpy
+#define cublasZaxpyBit cublasZaxpy
+#define cublasSdotBit cublasSdot
+#define cublasDdotBit cublasDdot
+#define cublasCdotuBit cublasCdotu
+#define cublasCdotcBit cublasCdotc
+#define cublasZdotuBit cublasZdotu
+#define cublasZdotcBit cublasZdotc
+#define cublasSnrm2Bit cublasSnrm2
+#define cublasDnrm2Bit cublasDnrm2
+#define cublasScnrm2Bit cublasScnrm2
+#define cublasDznrm2Bit cublasDznrm2
+#define cublasSscalBit cublasSscal
+#define cublasDscalBit cublasDscal
+#define cublasCscalBit cublasCscal
+#define cublasCsscalBit cublasCsscal
+#define cublasZscalBit cublasZscal
+#define cublasZdscalBit cublasZdscal
+#define cublasSgemvBit cublasSgemv
+#define cublasDgemvBit cublasDgemv
+#define cublasCgemvBit cublasCgemv
+#define cublasZgemvBit cublasZgemv
+#define cublasSgerBit cublasSger
+#define cublasDgerBit cublasDger
+#define cublasCgeruBit cublasCgeru
+#define cublasCgercBit cublasCgerc
+#define cublasZgeruBit cublasZgeru
+#define cublasZgercBit cublasZgerc
+#define cublasSsbmvBit cublasSsbmv
+#define cublasDsbmvBit cublasDsbmv
+#define cublasSgemmBit cublasSgemm
+#define cublasDgemmBit cublasDgemm
+#define cublasCgemmBit cublasCgemm
+#define cublasZgemmBit cublasZgemm
+#define cublasSgemmBatchedBit cublasSgemmBatched
+#define cublasDgemmBatchedBit cublasDgemmBatched
+#define cublasCgemmBatchedBit cublasCgemmBatched
+#define cublasZgemmBatchedBit cublasZgemmBatched
+#define cublasSgemmStridedBatchedBit cublasSgemmStridedBatched
+#define cublasDgemmStridedBatchedBit cublasDgemmStridedBatched
+#define cublasCgemmStridedBatchedBit cublasCgemmStridedBatched
+#define cublasZgemmStridedBatchedBit cublasZgemmStridedBatched
+#define cublasStrsmBit cublasStrsm
+#define cublasDtrsmBit cublasDtrsm
+#define cublasCtrsmBit cublasCtrsm
+#define cublasZtrsmBit cublasZtrsm
+#define cublasStrsmBatchedBit cublasStrsmBatched
+#define cublasDtrsmBatchedBit cublasDtrsmBatched
+#define cublasCtrsmBatchedBit cublasCtrsmBatched
+#define cublasZtrsmBatchedBit cublasZtrsmBatched
+#define cublasSsyrkBit cublasSsyrk
+#define cublasDsyrkBit cublasDsyrk
+#define cublasCsyrkBit cublasCsyrk
+#define cublasZsyrkBit cublasZsyrk
+#define cublasSgeamBit cublasSgeam
+#define cublasDgeamBit cublasDgeam
+#define cublasCgeamBit cublasCgeam
+#define cublasZgeamBit cublasZgeam
+#define cublasSdgmmBit cublasSdgmm
+#define cublasDdgmmBit cublasDdgmm
+#define cublasCdgmmBit cublasCdgmm
+#define cublasZdgmmBit cublasZdgmm
+#define cublasSgemmExBit cublasSgemmEx
+#define cublasGemmExBit cublasGemmEx
+#define cublasGemmStridedBatchedExBit cublasGemmStridedBatchedEx
 
 } // extern "C"
 

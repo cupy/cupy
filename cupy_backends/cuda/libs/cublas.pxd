@@ -9,7 +9,7 @@ from libc.stdint cimport intptr_t
 cdef extern from *:
     ctypedef void* cuComplexPtr 'cuComplex*'
     ctypedef void* cuDoubleComplexPtr 'cuDoubleComplex*'
-    ctypedef int intBit 'intBit' # Real type of intBit (int or int64_t) is determined in cupy_cublas.h # NOQA
+    ctypedef int intBit 'intBit'  # Real type of intBit (int or int64_t) is determined in cupy_cublas.h # NOQA
 
 cdef extern from *:
     ctypedef void* Handle 'cublasHandle_t'
