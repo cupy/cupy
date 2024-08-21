@@ -2456,7 +2456,7 @@ cpdef _ndarray_base array(obj, dtype=None, copy=True, order='K',
         if _is_zerocopy(obj, dtype, order):
             return obj
         else:
-            raise ValueError
+            raise ValueError("Copy required.")
 
     # True -> True
     # None -> False
@@ -2468,7 +2468,7 @@ cpdef _ndarray_base array(obj, dtype=None, copy=True, order='K',
 
     if hasattr(obj, '__cuda_array_interface__'):
         return _array_from_cuda_array_interface(
-            obj, dtype, copy_, order, subok, ndmin)
+            obj, dtype, copy, order, subok, ndmin)
 
     if hasattr(obj, '__cupy_get_ndarray__'):
         return _array_from_cupy_ndarray(
@@ -2510,7 +2510,7 @@ cdef _ndarray_base _array_from_cupy_ndarray(
 
 
 cdef _ndarray_base _array_from_cuda_array_interface(
-        obj, dtype, bint copy, order, bint subok, Py_ssize_t ndmin):
+        obj, dtype, copy, order, bint subok, Py_ssize_t ndmin):
     return array(
         _convert_object_with_cuda_array_interface(obj),
         dtype, copy, order, subok, ndmin)
