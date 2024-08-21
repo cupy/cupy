@@ -452,9 +452,11 @@ cpdef _ndarray_base _median(
 
     out = _mean(
         part[indexer], axis=axis, dtype=None, out=out, keepdims=keepdims)
+
     if part.dtype.kind in 'fc':
         isnan = _exists_nan(part, axis=axis, keepdims=keepdims)
-        out = cupy.where(isnan, numpy.nan, out)
+        tnan = out.dtype.type(numpy.nan)
+        out = cupy.where(isnan, tnan, out)
     if out_shape is not None:
         out = out.reshape(out_shape)
     return out

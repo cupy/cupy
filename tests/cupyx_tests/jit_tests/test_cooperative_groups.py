@@ -78,12 +78,15 @@ class TestCooperativeGroups:
             g.sync()  # this should just work!
 
         x = cupy.empty((16,), dtype=cupy.uint64)
-        x[:] = -1  # = 2**64-1
+        x[:] = -1
         test_grid[2, 32](x)
         assert x[0] == 1
         assert x[1] == 64
         assert (x[2], x[3], x[4]) == (2, 1, 1)
-        assert (x[5:] == 2**64-1).all()
+        # XXX: np2.0: revert back to x[5:] == -1 after the edge case of
+        # uint64_array == UINT64_MAX is fixed. Here and in
+        # test_grid_group_cu116_new_APIs below.
+        assert (x[5:] == cupy.uint64(2**64-1)).all()
 
     @pytest.mark.skipif(
         runtime._getLocalRuntimeVersion() < 11060,
@@ -110,14 +113,14 @@ class TestCooperativeGroups:
             g.sync()  # this should just work!
 
         x = cupy.empty((16,), dtype=cupy.uint64)
-        x[:] = -1  # = 2**64-1
+        x[:] = -1
         test_grid[2, 32](x)
         assert x[1] == 64
         assert (x[2], x[3], x[4]) == (2, 1, 1)
         assert x[5] == 1
         assert x[6] == 2
         assert (x[7], x[8], x[9]) == (1, 0, 0)
-        assert (x[10:] == 2**64-1).all()
+        assert (x[10:] == cupy.uint64(2**64-1)).all()
 
     @pytest.mark.skipif(runtime.deviceGetAttribute(
         runtime.cudaDevAttrCooperativeLaunch, 0) == 0,
