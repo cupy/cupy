@@ -105,8 +105,10 @@ cpdef Module compile_with_cache(str source, tuple options=*, arch=*,
 
 
 # TODO(niboshi): Move to _routines_creation.pyx
+cdef _is_zerocopy(obj, dtype, order)
+
 cpdef _ndarray_base array(
-    obj, dtype=*, bint copy=*, order=*, bint subok=*, Py_ssize_t ndmin=*,
+    obj, dtype=*, copy=*, order=*, bint subok=*, Py_ssize_t ndmin=*,
     bint blocking=*)
 cpdef _ndarray_base _convert_object_with_cuda_array_interface(a)
 

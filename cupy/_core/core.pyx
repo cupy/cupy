@@ -2415,7 +2415,34 @@ _round_ufunc_neg_uint = create_ufunc(
 # Array creation routines
 # -----------------------------------------------------------------------------
 
-cpdef _ndarray_base array(obj, dtype=None, bint copy=True, order='K',
+cdef _is_zerocopy(obj, dtype, order):
+    cdef _ndarray_base src
+    cdef int order_char = internal._normalize_order(order)
+
+    if not isinstance(obj, ndarray):
+        return False
+
+    src = obj
+
+    if dtype is None:
+        dtype = src.dtype
+    dtype = get_dtype(dtype)
+
+    ret = True
+    ret &= device.get_device_id() == src.data.device_id
+    ret &= dtype == src.dtype
+    ret &= (
+        order_char == b"K"
+        or order_char == b"A"
+        and (src._c_contiguous or src._f_contiguous)
+        or order_char == b"C"
+        and src._c_contiguous
+        or order_char == b"F"
+        and src._f_contiguous
+    )
+    return ret
+
+cpdef _ndarray_base array(obj, dtype=None, copy=True, order='K',
                           bint subok=False, Py_ssize_t ndmin=0,
                           bint blocking=False):
     # TODO(beam2d): Support subok options
@@ -2424,16 +2451,28 @@ cpdef _ndarray_base array(obj, dtype=None, bint copy=True, order='K',
     if order is None:
         order = 'K'
 
+    if copy is False:
+        # Copy prohibited
+        if _is_zerocopy(obj, dtype, order):
+            return obj
+        else:
+            raise ValueError
+
+    # True -> True
+    # None -> False
+    copy_ = <bint> copy
+
     if isinstance(obj, ndarray):
-        return _array_from_cupy_ndarray(obj, dtype, copy, order, ndmin)
+        ret = _array_from_cupy_ndarray(obj, dtype, copy_, order, ndmin)
+        return ret
 
     if hasattr(obj, '__cuda_array_interface__'):
         return _array_from_cuda_array_interface(
-            obj, dtype, copy, order, subok, ndmin)
+            obj, dtype, copy_, order, subok, ndmin)
 
     if hasattr(obj, '__cupy_get_ndarray__'):
         return _array_from_cupy_ndarray(
-            obj.__cupy_get_ndarray__(), dtype, copy, order, ndmin)
+            obj.__cupy_get_ndarray__(), dtype, copy_, order, ndmin)
 
     concat_shape, concat_type, concat_dtype = (
         _array_info_from_nested_sequence(obj))
