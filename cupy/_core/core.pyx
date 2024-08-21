@@ -10,6 +10,7 @@ import warnings
 import numpy
 
 import cupy
+from cupy import _environment
 from cupy._core._kernel import create_ufunc
 from cupy._core._kernel import ElementwiseKernel
 from cupy._core._ufuncs import elementwise_copy
@@ -1078,7 +1079,10 @@ cdef class _ndarray_base:
            :meth:`numpy.ndarray.round`
 
         """  # NOQA
-        return _round_ufunc(self, decimals, out=out)
+        if decimals < 0 and issubclass(self.dtype.type, numpy.integer):
+            return _round_ufunc_neg_uint(self, -decimals, out=out)
+        else:
+            return _round_ufunc(self, decimals, out=out)
 
     cpdef _ndarray_base trace(
             self, offset=0, axis1=0, axis2=1, dtype=None, out=None):
@@ -2085,6 +2089,7 @@ _HANDLED_TYPES = (ndarray, numpy.ndarray)
 cdef bint _is_hip = runtime._is_hip_environment
 cdef str _cuda_path = ''  # '' for uninitialized, None for non-existing
 cdef str _bundled_include = ''  # '' for uninitialized, None for non-existing
+_headers_from_wheel_available = False
 
 cdef list cupy_header_list = [
     'cupy/complex.cuh',
@@ -2212,24 +2217,34 @@ cpdef tuple assemble_cupy_compiler_options(tuple options):
 
     if not _is_hip:
         # CUDA Enhanced Compatibility
-        global _bundled_include
+        global _bundled_include, _headers_from_wheel_available
         if _bundled_include == '':
-            _cuda_major = runtime._getCUDAMajorVersion()
-            if _cuda_major == 11:
+            major, minor = nvrtc.getVersion()
+            if major == 11:
                 _bundled_include = 'cuda-11'
-            elif _cuda_major == 12:
-                _, minor = nvrtc.getVersion()
+            elif major == 12:
                 # TODO(leofang): update the upper bound when a new release
                 # is out
-                if minor < 2 or minor > 5:
+                if minor < 2:
                     _bundled_include = 'cuda-12'
-                else:
+                elif minor < 7:
                     _bundled_include = f'cuda-12.{minor}'
+                else:
+                    # Unsupported CUDA 12.x variant
+                    _bundled_include = None
             else:
                 # CUDA versions not yet supported.
                 _bundled_include = None
 
-        if _bundled_include is None and _cuda_path is None:
+            # Check if headers from cudart wheels are available.
+            wheel_dir_count = len(
+                _environment._get_include_dir_from_conda_or_wheel(
+                    major, minor))
+            _headers_from_wheel_available = (0 < wheel_dir_count)
+
+        if (_bundled_include is None and
+                _cuda_path is None and
+                not _headers_from_wheel_available):
             raise RuntimeError(
                 'Failed to auto-detect CUDA root directory. '
                 'Please specify `CUDA_PATH` environment variable if you '
@@ -2371,11 +2386,18 @@ _round_ufunc = create_ufunc(
      ('Fq->F', _round_complex),
      ('Dq->D', _round_complex)),
     '''
-    if (in1 >= 0) {
-        out0 = in0;
-    } else {
+    out0 = in0;
+    ''', preamble=_round_preamble)
+
+
+_round_ufunc_neg_uint = create_ufunc(
+    'cupy_round_neg_uint',
+    ('?q->e',
+     'bq->b', 'Bq->B', 'hq->h', 'Hq->H', 'iq->i', 'Iq->I', 'lq->l', 'Lq->L',
+     'qq->q', 'Qq->Q'),
+    '''
         // TODO(okuta): Move before loop
-        long long x = pow10<long long>(-in1 - 1);
+        long long x = pow10<long long>(in1 - 1);
 
         // TODO(okuta): Check Numpy
         // `cupy.around(-123456789, -4)` works as follows:
@@ -2386,7 +2408,7 @@ _round_ufunc = create_ufunc(
         long long q = in0 / x / 100;
         int r = in0 - q*x*100;
         out0 = (q*100 + round_float(r/(x*10.0f))*10) * x;
-    }''', preamble=_round_preamble)
+    ''', preamble=_round_preamble)
 
 
 # -----------------------------------------------------------------------------

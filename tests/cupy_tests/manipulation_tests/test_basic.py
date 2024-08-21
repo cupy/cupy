@@ -7,6 +7,7 @@ import pytest
 import cupy
 from cupy import cuda
 from cupy import testing
+from cupy.exceptions import ComplexWarning
 
 
 class TestBasic:
@@ -183,6 +184,8 @@ class TestBasic:
         testing.assert_array_equal(expected, dst.get())
 
 
+@pytest.mark.skipif(numpy.__version__ < "2",
+                    reason="XXX: NP2.0: copyto is in flux in numpy 2.0.0rc2")
 @testing.parameterize(
     *testing.product(
         {'src': [float(3.2), int(0), int(4), int(-4), True, False, 1 + 1j],
@@ -206,6 +209,8 @@ class TestCopytoFromScalar:
         return dst
 
 
+@pytest.mark.skipif(numpy.__version__ < "2",
+                    reason="XXX: NP2.0: copyto is in flux in numpy 2.0.0rc2")
 @pytest.mark.parametrize(
     'casting', ['no', 'equiv', 'safe', 'same_kind', 'unsafe'])
 class TestCopytoFromNumpyScalar:
@@ -216,7 +221,7 @@ class TestCopytoFromNumpyScalar:
         dst = xp.zeros((2, 3, 4), dtype=dtype1)
         src = numpy.array(1, dtype=dtype2)
         with warnings.catch_warnings():
-            warnings.simplefilter('ignore', numpy.ComplexWarning)
+            warnings.simplefilter('ignore', ComplexWarning)
             xp.copyto(dst, src, casting)
         return dst
 
@@ -229,7 +234,7 @@ class TestCopytoFromNumpyScalar:
         dst = xp.zeros((2, 3, 4), dtype=dtype)
         src = make_src(dtype)
         with warnings.catch_warnings():
-            warnings.simplefilter('ignore', numpy.ComplexWarning)
+            warnings.simplefilter('ignore', ComplexWarning)
             xp.copyto(dst, src, casting)
         return dst
 
@@ -241,7 +246,7 @@ class TestCopytoFromNumpyScalar:
         src = numpy.array(1, dtype=dtype2)
         mask = (testing.shaped_arange(shape, xp, dtype1) % 2).astype(xp.bool_)
         with warnings.catch_warnings():
-            warnings.simplefilter('ignore', numpy.ComplexWarning)
+            warnings.simplefilter('ignore', ComplexWarning)
             xp.copyto(dst, src, casting=casting, where=mask)
         return dst
 

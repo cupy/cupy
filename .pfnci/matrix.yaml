@@ -15,9 +15,9 @@
   cutensor: null
   cusparselt: null
   cudnn: "8.8"
-  python: "3.9"
-  numpy: "1.22"
-  scipy: "1.7"
+  python: "3.10"
+  numpy: "1.24"
+  scipy: "1.10"
   optuna: "3"
   mpi4py: null
   cython: "0.29"
@@ -46,8 +46,8 @@
   cusparselt: null
   cudnn: "8.8"
   python: "3.10"
-  numpy: "1.23"
-  scipy: "1.8"
+  numpy: "1.24"
+  scipy: "1.11"
   optuna: "3"
   mpi4py: null
   cython: "0.29"
@@ -76,8 +76,8 @@
   cusparselt: null
   cudnn: "8.8"
   python: "3.11"
-  numpy: "1.24"
-  scipy: "1.10"
+  numpy: "1.25"
+  scipy: "1.11"
   optuna: "3"
   mpi4py: null
   cython: "0.29"
@@ -105,9 +105,9 @@
   cutensor: "2.0"
   cusparselt: null
   cudnn: "8.8"
-  python: "3.9"
-  numpy: "1.22"
-  scipy: "1.10"
+  python: "3.11"
+  numpy: "1.26"
+  scipy: "1.11"
   optuna: "3"
   mpi4py: null
   cython: "0.29"
@@ -135,9 +135,9 @@
   cutensor: "2.0"
   cusparselt: null
   cudnn: "8.8"
-  python: "3.10"
-  numpy: "1.23"
-  scipy: "1.8"
+  python: "3.11"
+  numpy: "1.24"
+  scipy: "1.12"
   optuna: "3"
   mpi4py: null
   cython: "0.29"
@@ -166,8 +166,8 @@
   cusparselt: null
   cudnn: "8.8"
   python: "3.11"
-  numpy: "1.23"
-  scipy: "1.9"
+  numpy: "1.25"
+  scipy: "1.12"
   optuna: "3"
   mpi4py: null
   cython: "0.29"
@@ -195,9 +195,9 @@
   cutensor: "2.0"
   cusparselt: null
   cudnn: "8.8"
-  python: "3.11"
-  numpy: "1.24"
-  scipy: "1.10"
+  python: "3.10"
+  numpy: "1.26"
+  scipy: "1.12"
   optuna: "3"
   mpi4py: null
   cython: "0.29"
@@ -225,9 +225,9 @@
   cutensor: "2.0"
   cusparselt: "0.6.1"
   cudnn: "8.8"
-  python: "3.9"
-  numpy: "1.23"
-  scipy: "1.9"
+  python: "3.10"
+  numpy: "1.25"
+  scipy: "1.12"
   optuna: "3"
   mpi4py: null
   cython: "0.29"
@@ -256,8 +256,8 @@
   cusparselt: "0.6.1"
   cudnn: "8.8"
   python: "3.11"
-  numpy: "1.25"
-  scipy: "1.11"
+  numpy: "1.26"
+  scipy: "1.12"
   optuna: "3"
   mpi4py: null
   cython: "0.29"
@@ -285,8 +285,8 @@
   cutensor: "2.0"
   cusparselt: "0.6.1"
   cudnn: "8.8"
-  python: "3.12"
-  numpy: "1.26"
+  python: "3.11"
+  numpy: "1.24"
   scipy: "1.12"
   optuna: "3"
   mpi4py: null
@@ -315,8 +315,8 @@
   cutensor: "2.0"
   cusparselt: "0.6.1"
   cudnn: "8.8"
-  python: "3.12"
-  numpy: "1.26"
+  python: "3.11"
+  numpy: "1.25"
   scipy: "1.12"
   optuna: "3"
   mpi4py: null
@@ -364,10 +364,9 @@
   test: "unit-multi"
 
 # CUDA 12.5 | Linux
-# The latest CUDA version matrix is intended to cover the highest supported combination.
 - project: "cupy.linux.cuda125"
   target: "cuda125"
-  tags: ["@push", "full", "mini", "cuda125"]
+  tags: ["@push", "full", "cuda125"]
   system: "linux"
   os: "ubuntu:20.04"
   cuda: "12.5"
@@ -389,10 +388,42 @@
 # CUDA 12.5 (Multi-GPU) | Linux
 - project: "cupy.linux.cuda125.multi"
   _inherits: "cupy.linux.cuda125"
-  tags: ["@push", "full", "mini", "multi", "cuda125"]
+  tags: ["@push", "full", "multi", "cuda125"]
   target: "cuda125.multi"
   mpi4py: "3"
   test: "unit-multi"
+
+# CUDA 12.6 | Linux
+# The latest CUDA version matrix is intended to cover the highest supported combination.
+- project: "cupy.linux.cuda126"
+  target: "cuda126"
+  tags: ["@push", "full", "mini", "cuda126"]
+  system: "linux"
+  os: "ubuntu:20.04"
+  cuda: "12.6"
+  rocm: null
+  nccl: "2.22"
+  cutensor: "2.0"
+  cusparselt: "0.6.1"
+  cudnn: "8.8"
+  python: "3.12"
+  numpy: "1.26"
+  scipy: "1.12"
+  optuna: "3"
+  mpi4py: null
+  cython: "0.29"
+  cuda-python: null
+  env:CUPY_ACCELERATORS: "cutensor,cub"
+  test: "unit"
+
+# CUDA 12.6 (Multi-GPU) | Linux
+- project: "cupy.linux.cuda126.multi"
+  _inherits: "cupy.linux.cuda126"
+  tags: ["@push", "full", "mini", "multi", "cuda126"]
+  target: "cuda126.multi"
+  mpi4py: "3"
+  test: "unit-multi"
+
 
 ###############################################################################
 # CUDA (Windows)
@@ -418,9 +449,9 @@
   cutensor: null
   cusparselt: null
   cudnn: null
-  python: "3.9"
-  numpy: "1.22"
-  scipy: "1.7"
+  python: "3.10"
+  numpy: "1.24"
+  scipy: "1.10"
   optuna: "3"
   mpi4py: null
   cython: "0.29"
@@ -441,9 +472,9 @@
   cutensor: null
   cusparselt: null
   cudnn: null
-  python: "3.10"
-  numpy: "1.23"
-  scipy: "1.10"
+  python: "3.11"
+  numpy: "1.25"
+  scipy: "1.11"
   optuna: "3"
   mpi4py: null
   cython: "0.29"
@@ -465,8 +496,8 @@
   cutensor: null
   cusparselt: null
   cudnn: null
-  python: "3.11"
-  numpy: "1.24"
+  python: "3.12"
+  numpy: "1.26"
   scipy: "1.12"
   optuna: "3"
   mpi4py: null
@@ -491,9 +522,9 @@
   cutensor: "2.0"
   cusparselt: null  # TODO use cuSPARSELt 0.6+ after bumping CUDA to 12.x
   cudnn: "8.8"
-  python: "3.11"
-  numpy: "1.23"
-  scipy: "1.10"
+  python: "3.12"
+  numpy: "1.26"
+  scipy: "1.12"
   optuna: "3"
   mpi4py: null
   cython: "0.29"
@@ -521,9 +552,9 @@
   cutensor: "2.0"
   cusparselt: null  # TODO use cuSPARSELt 0.6+ after bumping CUDA to 12.x
   cudnn: "8.8"
-  python: "3.9"
-  numpy: "1.23"
-  scipy: "1.8"
+  python: "3.12"
+  numpy: "1.26"
+  scipy: "1.12"
   optuna: "3"
   mpi4py: null
   cython: "0.29"
@@ -548,7 +579,7 @@
   cutensor: "2.0"
   cusparselt: null  # TODO use cuSPARSELt 0.6+ after bumping CUDA to 12.x
   cudnn: "8.8"
-  python: "3.11"
+  python: "3.12"
   numpy: "pre"
   scipy: "pre"
   optuna: "pre"
@@ -574,9 +605,9 @@
   cutensor: "2.0"
   cusparselt: null
   cudnn: "8.8"
-  python: "3.10"
-  numpy: "1.22"
-  scipy: "1.7"
+  python: "3.12"
+  numpy: "1.26"
+  scipy: "1.12"
   optuna: "3"
   mpi4py: null
   cython: "0.29"
@@ -664,7 +695,13 @@
 - project: "cupy.win.cuda125"
   _extern: true
   target: "cuda125"
-  tags: ["@push", "full", "mini", "windows", "cuda125"]
+  tags: ["@push", "full", "windows", "cuda125"]
+  system: "windows"
+
+- project: "cupy.win.cuda126"
+  _extern: true
+  target: "cuda126"
+  tags: ["@push", "full", "mini", "windows", "cuda126"]
   system: "windows"
 
 - project: "cupy.linux.cuda-rapids"
