@@ -344,15 +344,22 @@ def make_extensions(ctx: Context, compiler, use_cython):
             # environment.
             compiler = ccompiler.new_compiler()
             sysconfig.customize_compiler(compiler)
+            # Need to match and replace these
+            # https://github.com/pypa/distutils/blob/30b7331b07fbc404959cb37ac311afdfb90813be/distutils/unixccompiler.py#L117-L129
             cc = os.environ['CC_FOR_BUILD' if PLATFORM_LINUX else 'CC']
             cxx = os.environ['CXX_FOR_BUILD' if PLATFORM_LINUX else 'CXX']
             compiler.compiler = [cc,]
-            compiler.compiler_cxx = [cxx,]
             compiler.compiler_so = [cc,]
-            compiler.linker_exe = [cc, f'-B{os.environ["BUILD_PREFIX"]}/bin']
+            compiler.compiler_cxx = [cxx,]
+            compiler.compiler_so_cxx = [cxx,]
             compiler.linker_so = [cc, f'-B{os.environ["BUILD_PREFIX"]}/bin',
                                   '-shared']
-
+            compiler.linker_so_cxx = [cxx, f'-B{os.environ["BUILD_PREFIX"]}/bin',
+                                      '-shared']
+            compiler.linker_exe = [cc, f'-B{os.environ["BUILD_PREFIX"]}/bin']
+            compiler.linker_exe_cxx = [cxx, f'-B{os.environ["BUILD_PREFIX"]}/bin']
+            # TODO: Do we need to patch archiver too?
+        
         available_modules = []
         if no_cuda:
             available_modules = [m['name'] for m in MODULES]
