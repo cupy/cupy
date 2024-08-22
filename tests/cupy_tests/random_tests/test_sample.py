@@ -98,7 +98,7 @@ class TestRandint2(unittest.TestCase):
         assert _hypothesis.chi_square_test(counts, expected)
 
     @_condition.repeat(3, 10)
-    @pytest.mark.xfail(runtime.is_hip, reason='ROCm/HIP may have a bug')
+    @pytest.mark.skipif(runtime.is_hip, reason='ROCm/HIP may have a bug')
     def test_goodness_of_fit_2(self):
         mx = 5
         vals = random.randint(mx, size=(5, 20)).get()
@@ -191,7 +191,7 @@ class TestRandomIntegers2(unittest.TestCase):
         assert _hypothesis.chi_square_test(counts, expected)
 
     @_condition.repeat(3, 10)
-    @pytest.mark.xfail(runtime.is_hip, reason='ROCm/HIP may have a bug')
+    @pytest.mark.skipif(runtime.is_hip, reason='ROCm/HIP may have a bug')
     def test_goodness_of_fit_2(self):
         mx = 5
         vals = random.randint(0, mx, (5, 20)).get()

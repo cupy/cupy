@@ -121,6 +121,7 @@ class TestLinearNDInterpolator:
 
 
 class TestEstimateGradients2DGlobal:
+    @pytest.mark.skipif(runtime.is_hip, reason='Currently unsupported on ROCm/HIP')
     @pytest.mark.parametrize('func', [
         (lambda x, y: 0*x + 1),
         (lambda x, y: 0 + x),
@@ -184,6 +185,7 @@ class TestCloughTocher2DInterpolator:
             a = ip(p[:, 0], p[:, 1])
         return a
 
+    @pytest.mark.skipif(runtime.is_hip, reason='Currently unsupported on ROCm/HIP')
     @pytest.mark.parametrize('func', [
         lambda x, y: 0*x + 1,
         lambda x, y: 0 + x,
@@ -199,6 +201,7 @@ class TestCloughTocher2DInterpolator:
             xp, scp, func, tol=1e-13, atol=1e-7, rtol=1e-7,
             alternate=alternate, rescale=rescale)
 
+    @pytest.mark.skipif(runtime.is_hip, reason='Currently unsupported on ROCm/HIP')
     @pytest.mark.parametrize('func', [
         lambda x, y: x**2,
         lambda x, y: y**2,
@@ -211,6 +214,7 @@ class TestCloughTocher2DInterpolator:
         # Should be reasonably accurate for quadratic functions
         return self._check_accuracy(xp, scp, func, tol=1e-9, rescale=rescale)
 
+    @pytest.mark.skipif(runtime.is_hip, reason='Currently unsupported on ROCm/HIP')
     @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1.0, atol=1e-6)
     def test_tri_input(self, xp, scp):
         # Test at single points
@@ -224,6 +228,7 @@ class TestCloughTocher2DInterpolator:
         yi = scp.interpolate.CloughTocher2DInterpolator(tri, y)(x)
         return yi
 
+    @pytest.mark.skipif(runtime.is_hip, reason='Currently unsupported on ROCm/HIP')
     @pytest.mark.parametrize('xp,scp', [(cupy, cupyx.scipy), (np, scipy)])
     def test_tri_input_rescale(self, xp, scp):
         # Test at single points
@@ -238,6 +243,7 @@ class TestCloughTocher2DInterpolator:
         with pytest.raises(ValueError, match=match):
             scp.interpolate.CloughTocher2DInterpolator(tri, y, rescale=True)(x)
 
+    @pytest.mark.skipif(runtime.is_hip, reason='Currently unsupported on ROCm/HIP')
     @pytest.mark.parametrize('func', [
         lambda x, y: x**2,
         lambda x, y: y**2,
