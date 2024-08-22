@@ -152,14 +152,15 @@ class Generator:
         if out is not None:
             self._check_output_array(dtype, size, out)
 
-        dtype_ = numpy.dtype(dtype)
-        if dtype_.char not in 'fd':
-            raise TypeError(f'Unsupported dtype {dtype_} for random')
+        if size is None:
+            size = ()
 
-        y = _core.ndarray(size if size is not None else (), dtype)
-        if y.dtype.char == 'd':
+        dtype_ = numpy.dtype(dtype)
+        if dtype_.char == 'd':
+            y = _core.ndarray(size, dtype_)
             _launch_dist(self.bit_generator, random_uniform, y, ())
         else:
+            y = _core.ndarray(size, numpy.float32)
             _launch_dist(self.bit_generator, random_uniform_float, y, ())
         if out is not None:
             _core.elementwise_copy(y, out)
@@ -214,7 +215,11 @@ class Generator:
         if size is None:
             size = cupy.broadcast(low, high).shape
 
-        y = _core.ndarray(size, dtype)
+        dtype_ = numpy.dtype(dtype)
+        if dtype_.char == 'd':
+            y = _core.ndarray(size, dtype)
+        else:
+            y = _core.ndarray(size, numpy.float32)
         low = cupy.broadcast_to(low, y.shape)
         high = cupy.broadcast_to(high, y.shape)
 
