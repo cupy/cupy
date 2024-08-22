@@ -13,11 +13,12 @@ cdef class CArray(function.CPointer):
         cdef size_t ndim = shape.size()
         assert ndim == strides.size()
         assert ndim <= MAX_NDIM
-        cdef size_t i
 
         cdef size_t total_size = \
             sizeof(_CArray) + ndim * 2 * sizeof(Py_ssize_t)
         cdef void* data = PyMem_Malloc(total_size)
+        if data == NULL:
+            raise MemoryError
         self.ptr = data
 
         cdef size_t offset = 0
@@ -25,12 +26,15 @@ cdef class CArray(function.CPointer):
         offset += sizeof(data_ptr)
         memcpy(<char*>(data) + offset, &data_size, sizeof(data_size))
         offset += sizeof(data_size)
-        for i in range(ndim):
-            memcpy(<char*>(data) + offset, &(shape[i]), sizeof(shape[i]))
-            offset += sizeof(shape[i])
-        for i in range(ndim):
-            memcpy(<char*>(data) + offset, &(strides[i]), sizeof(strides[i]))
-            offset += sizeof(strides[i])
+        if ndim != 0:
+            memcpy(<char*>(data) + offset,
+                   shape.data(),
+                   sizeof(Py_ssize_t) * ndim)
+            offset += sizeof(Py_ssize_t) * ndim
+            memcpy(<char*>(data) + offset,
+                   strides.data(),
+                   sizeof(Py_ssize_t) * ndim)
+            offset += sizeof(Py_ssize_t) * ndim
         assert offset == total_size
 
     def __cinit__(self):
@@ -47,20 +51,23 @@ cdef class CIndexer(function.CPointer):
     cdef void init(self, Py_ssize_t size, const shape_t &shape) except*:
         cdef size_t ndim = shape.size()
         assert ndim <= MAX_NDIM
-        cdef size_t i
 
         cdef size_t total_size = \
             sizeof(_CIndexer) + ndim * 2 * sizeof(Py_ssize_t)
         cdef void* data = PyMem_Malloc(total_size)
+        if data == NULL:
+            raise MemoryError
         self.ptr = data
 
         cdef size_t offset = 0
         memcpy(<char*>(data) + offset, &size, sizeof(size))
         offset += sizeof(size)
-        for i in range(ndim):
-            memcpy(<char*>(data) + offset, &(shape[i]), sizeof(shape[i]))
-            offset += sizeof(shape[i])
-        assert offset + ndim * sizeof(Py_ssize_t) == total_size
+        if ndim != 0:
+            memcpy(<char*>(data) + offset,
+                   shape.data(),
+                   sizeof(Py_ssize_t) * ndim)
+            offset += sizeof(Py_ssize_t) * ndim
+        assert offset + sizeof(Py_ssize_t) * ndim == total_size
 
     def __cinit__(self):
         self.ptr = NULL
