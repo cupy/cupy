@@ -113,6 +113,9 @@ cpdef enum:
     cudaGraphCondTypeIf = 0
     cudaGraphCondTypeWhile = 1
 
+    # cudaGraphConditionalHandleFlags
+    cudaGraphCondAssignDefault = 1
+
     # cudaGraphDebugDotFlags
     cudaGraphDebugDotFlagsVerbose = 1<<0
     cudaGraphDebugDotFlagsKernelNodeParams = 1<<2

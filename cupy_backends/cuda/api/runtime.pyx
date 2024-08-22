@@ -1165,7 +1165,7 @@ cpdef graphUpload(intptr_t graphExec, intptr_t stream):
         status = cudaGraphUpload(<GraphExec>(graphExec), <driver.Stream>stream)
     check_status(status)
 
-cpdef GraphConditionalHandle graphConditionalHandleCreate(
+cpdef unsigned long long graphConditionalHandleCreate(
         intptr_t graph,
         unsigned int defaultLaunchValue=0,
         unsigned int flags=0):
@@ -1175,7 +1175,7 @@ cpdef GraphConditionalHandle graphConditionalHandleCreate(
                     &handle, <Graph>(graph),
                     defaultLaunchValue, flags)
     check_status(status)
-    return handle
+    return <unsigned long long>(handle)
 
 cpdef intptr_t graphAddNode(intptr_t graph, intptr_t pDependencies,
                    size_t numDependencies, intptr_t nodeParams):

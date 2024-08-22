@@ -3,7 +3,12 @@ import tempfile
 
 from cupy_backends.cuda.api cimport runtime
 from cupy_backends.cuda cimport stream as stream_module
+from cpython.mem cimport PyMem_Malloc, PyMem_Free
+from libc.string cimport memset as c_memset
 
+
+cdef extern from '../../cupy_backends/cupy_backend_runtime.h':
+    pass
 
 cdef class Graph:
     """The CUDA graph object.
@@ -78,6 +83,51 @@ cdef class Graph:
             stream_ptr = stream.ptr
         runtime.graphUpload(self.graphExec, stream_ptr)
 
+    cpdef add_conditional_node(self, str node_type, GraphNodeDependencies deps):
+        """
+        Return:
+            handle: cudaGrapnConditionalHandle
+            body_graph: Graph
+            dependency: GraphNodeDependencies
+        """
+        # Create handle
+        cdef unsigned long long handle
+        handle = runtime.graphConditionalHandleCreate(
+            self.graph,
+            1, # defaultLaunchValue
+            runtime.cudaGraphCondAssignDefault
+        )
+
+        # Allocate node params memory via malloc to avoid `deleted function` error
+        cdef runtime.GraphNodeParams* cparams = \
+            <runtime.GraphNodeParams*>(PyMem_Malloc(sizeof(runtime.GraphNodeParams)))
+        if not cparams:
+            raise MemoryError()
+        c_memset(cparams, 0, sizeof(runtime.GraphNodeParams))
+        try:
+            cparams.conditional.size = 1
+            if node_type == "while":
+                cparams.conditional.type = <runtime.GraphConditionalNodeType>(runtime.cudaGraphCondTypeWhile)
+            elif node_type == "if":
+                cparams.conditional.type = <runtime.GraphConditionalNodeType>(runtime.cudaGraphCondTypeIf)
+            else:
+                raise ValueError("`node_type` must be 'if' or 'while'")
+            cparams.conditional.handle = handle
+
+            # Add node to graph
+            conditional_node = runtime.graphAddNode(
+                self.graph, deps.dependency_nodes, deps.num_dependencies, <intptr_t>(cparams))
+            body_graph = \
+                Graph.from_stream(<intptr_t>(cparams.conditional.phGraph_out[0]))
+            return (
+                handle,
+                body_graph,
+                GraphNodeDependencies._new(conditional_node, 1)
+            )
+        finally:
+            PyMem_Free(cparams)
+
+
     cpdef debug_dot_str(self, flags=0):
         """Make DOT formatted string of CUDA graph definition for debugging.
 
@@ -99,3 +149,15 @@ cdef class Graph:
                 return f2.read()
         finally:
             os.remove(f.name)
+
+cdef class GraphNodeDependencies:
+    cdef void _init(self, intptr_t dependency_nodes, size_t num_dependencies):
+        self.dependency_nodes = dependency_nodes
+        self.num_dependencies = num_dependencies
+
+    @staticmethod
+    cdef GraphNodeDependencies _new(intptr_t dependency_nodes, size_t num_dependencies):
+        cdef GraphNodeDependencies deps = GraphNodeDependencies.__new__(GraphNodeDependencies)
+        deps._init(dependency_nodes, num_dependencies)
+
+        return deps
