@@ -1,5 +1,42 @@
+from libc.stdint cimport intptr_t
+
 from cupy.cuda cimport function
 from cupy._core cimport internal
+
+import numpy as _numpy
+
+
+cdef dict _carray_dtype_cache = {}
+cdef dict _cindexer_dtype_cache = {}
+
+
+# make it cpdef for easier testing
+cpdef carray_cindexer_dtype_factory(size_t ndim, str kind):
+    cache = _carray_dtype_cache if kind == "CArray" else _cindexer_dtype_cache
+    if ndim in cache:
+        return cache[ndim]
+
+    if kind == "CArray":
+        dtype = _numpy.dtype([
+            ('data', _numpy.intp,),
+            ('size', _numpy.uintp,),
+            ('shape', _numpy.uintp, (ndim,)),
+            ('strides', _numpy.uintp, (ndim,)),
+            ], align=True
+        )
+        assert dtype.itemsize == \
+            (sizeof(_CArray) + ndim * 2 * sizeof(Py_ssize_t))
+    else:
+        dtype = _numpy.dtype([
+            ('size', _numpy.uintp,),
+            ('shape', _numpy.uintp, (ndim,)),
+            ('index', _numpy.uintp, (ndim,)),
+            ], align=True
+        )
+        assert dtype.itemsize == \
+            (sizeof(_CIndexer) + ndim * 2 * sizeof(Py_ssize_t))
+    cache[ndim] = dtype
+    return dtype
 
 
 cdef class CArray(function.CPointer):
@@ -10,16 +47,19 @@ cdef class CArray(function.CPointer):
         cdef size_t ndim = shape.size()
         assert ndim == strides.size()
         assert ndim <= MAX_NDIM
-        cdef Py_ssize_t* shape_and_strides = (
-            self.val.shape_and_strides)
         cdef size_t i
 
-        self.val.data = data_ptr
-        self.val.size = data_size
+        dtype = carray_cindexer_dtype_factory(ndim, "CArray")
+        val = _numpy.empty(1, dtype=dtype)
+        val["data"] = <intptr_t>(data_ptr)
+        val["size"] = data_size
+        shape_obj = val["shape"][0]
+        strides_obj = val["strides"][0]
         for i in range(ndim):
-            shape_and_strides[i] = shape[i]
-            shape_and_strides[i + ndim] = strides[i]
-        self.ptr = <void*>&self.val
+            shape_obj[i] = shape[i]
+            strides_obj[i] = strides[i]
+        self.val = val
+        self.ptr = <void*><intptr_t>(val.ctypes.data)
 
 
 cdef class CIndexer(function.CPointer):
@@ -27,11 +67,16 @@ cdef class CIndexer(function.CPointer):
     cdef void init(self, Py_ssize_t size, const shape_t &shape) except*:
         cdef size_t ndim = shape.size()
         assert ndim <= MAX_NDIM
-        self.val.size = size
-        cdef Py_ssize_t i
-        for i in range(<Py_ssize_t>shape.size()):
-            self.val.shape_and_index[i] = shape[i]
-        self.ptr = <void*>&self.val
+        cdef size_t i
+
+        dtype = carray_cindexer_dtype_factory(ndim, "CIndexer")
+        val = _numpy.empty(1, dtype=dtype)
+        val["size"] = size
+        shape_obj = val["shape"][0]
+        for i in range(ndim):
+            shape_obj[i] = shape[i]
+        self.val = val
+        self.ptr = <void*><intptr_t>(val.ctypes.data)
 
 
 cdef class Indexer:
