@@ -1,4 +1,5 @@
 cimport cython  # NOQA
+from libc.stdint cimport intptr_t
 from libcpp cimport vector
 
 from cupy.cuda cimport function
@@ -21,9 +22,6 @@ cdef struct _CArray:
 @cython.final
 cdef class CArray(function.CPointer):
 
-    cdef:
-        object val
-
     cdef void init(
         self, void* data_ptr, Py_ssize_t data_size,
         const shape_t& shape, const strides_t& strides) except*
@@ -35,8 +33,6 @@ cdef struct _CIndexer:
 
 
 cdef class CIndexer(function.CPointer):
-    cdef:
-        object val
 
     cdef void init(self, Py_ssize_t size, const shape_t &shape) except*
 

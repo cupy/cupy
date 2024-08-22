@@ -1,42 +1,8 @@
-from libc.stdint cimport intptr_t
+from libc.string cimport memcpy
+from cpython.mem cimport PyMem_Malloc, PyMem_Free
 
 from cupy.cuda cimport function
 from cupy._core cimport internal
-
-import numpy as _numpy
-
-
-cdef dict _carray_dtype_cache = {}
-cdef dict _cindexer_dtype_cache = {}
-
-
-# make it cpdef for easier testing
-cpdef carray_cindexer_dtype_factory(size_t ndim, str kind):
-    cache = _carray_dtype_cache if kind == "CArray" else _cindexer_dtype_cache
-    if ndim in cache:
-        return cache[ndim]
-
-    if kind == "CArray":
-        dtype = _numpy.dtype([
-            ('data', _numpy.intp,),
-            ('size', _numpy.uintp,),
-            ('shape', _numpy.uintp, (ndim,)),
-            ('strides', _numpy.uintp, (ndim,)),
-            ], align=True
-        )
-        assert dtype.itemsize == \
-            (sizeof(_CArray) + ndim * 2 * sizeof(Py_ssize_t))
-    else:
-        dtype = _numpy.dtype([
-            ('size', _numpy.uintp,),
-            ('shape', _numpy.uintp, (ndim,)),
-            ('index', _numpy.uintp, (ndim,)),
-            ], align=True
-        )
-        assert dtype.itemsize == \
-            (sizeof(_CIndexer) + ndim * 2 * sizeof(Py_ssize_t))
-    cache[ndim] = dtype
-    return dtype
 
 
 cdef class CArray(function.CPointer):
@@ -49,17 +15,31 @@ cdef class CArray(function.CPointer):
         assert ndim <= MAX_NDIM
         cdef size_t i
 
-        dtype = carray_cindexer_dtype_factory(ndim, "CArray")
-        val = _numpy.empty(1, dtype=dtype)
-        val["data"] = <intptr_t>(data_ptr)
-        val["size"] = data_size
-        shape_obj = val["shape"][0]
-        strides_obj = val["strides"][0]
+        cdef size_t total_size = \
+            sizeof(_CArray) + ndim * 2 * sizeof(Py_ssize_t)
+        cdef void* data = PyMem_Malloc(total_size)
+        self.ptr = data
+
+        cdef size_t offset = 0
+        memcpy(<char*>(data) + offset, &data_ptr, sizeof(data_ptr))
+        offset += sizeof(data_ptr)
+        memcpy(<char*>(data) + offset, &data_size, sizeof(data_size))
+        offset += sizeof(data_size)
         for i in range(ndim):
-            shape_obj[i] = shape[i]
-            strides_obj[i] = strides[i]
-        self.val = val
-        self.ptr = <void*><intptr_t>(val.ctypes.data)
+            memcpy(<char*>(data) + offset, &(shape[i]), sizeof(shape[i]))
+            offset += sizeof(shape[i])
+        for i in range(ndim):
+            memcpy(<char*>(data) + offset, &(strides[i]), sizeof(strides[i]))
+            offset += sizeof(strides[i])
+        assert offset == total_size
+
+    def __cinit__(self):
+        self.ptr = NULL
+
+    def __dealloc__(self):
+        if self.ptr != NULL:
+            PyMem_Free(self.ptr)
+            self.ptr = NULL
 
 
 cdef class CIndexer(function.CPointer):
@@ -69,14 +49,26 @@ cdef class CIndexer(function.CPointer):
         assert ndim <= MAX_NDIM
         cdef size_t i
 
-        dtype = carray_cindexer_dtype_factory(ndim, "CIndexer")
-        val = _numpy.empty(1, dtype=dtype)
-        val["size"] = size
-        shape_obj = val["shape"][0]
+        cdef size_t total_size = \
+            sizeof(_CIndexer) + ndim * 2 * sizeof(Py_ssize_t)
+        cdef void* data = PyMem_Malloc(total_size)
+        self.ptr = data
+
+        cdef size_t offset = 0
+        memcpy(<char*>(data) + offset, &size, sizeof(size))
+        offset += sizeof(size)
         for i in range(ndim):
-            shape_obj[i] = shape[i]
-        self.val = val
-        self.ptr = <void*><intptr_t>(val.ctypes.data)
+            memcpy(<char*>(data) + offset, &(shape[i]), sizeof(shape[i]))
+            offset += sizeof(shape[i])
+        assert offset + ndim * sizeof(Py_ssize_t) == total_size
+
+    def __cinit__(self):
+        self.ptr = NULL
+
+    def __dealloc__(self):
+        if self.ptr != NULL:
+            PyMem_Free(self.ptr)
+            self.ptr = NULL
 
 
 cdef class Indexer:
