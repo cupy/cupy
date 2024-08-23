@@ -107,6 +107,39 @@ cdef _ndarray_base _ndarray_argsort(_ndarray_base self, axis):
         return _manipulation.rollaxis(idx_array, -1, _axis)
 
 
+cpdef _ndarray_base _ndarray_argsort2d(_ndarray_base self, axis):
+    cdef int _axis, ndim
+    cdef _ndarray_base data
+
+    if not cupy.cuda.thrust.available:
+        raise RuntimeError('Thrust is needed to use argsort2d. Please '
+                           'install CUDA Toolkit with Thrust then '
+                           'reinstall CuPy after uninstalling it.')
+
+    self = cupy.atleast_2d(self)
+    ndim = self._shape.size()
+    data = self
+
+    if axis is None:
+        axis = 0
+
+    _axis = internal._normalize_axis_index(axis, ndim)
+    _shape = data.shape
+
+    if _axis != 0:
+        data = _manipulation.moveaxis(data, _axis, 0)
+        if ndim > 2:
+            _shape = data.shape
+            data = _manipulation._reshape(data, [data.shape[0], -1])
+
+    shape = data.shape
+    idx_array = cupy.arange(shape[0], dtype=cupy.uint64)
+
+    thrust.argsort2d(self.dtype, idx_array.data.ptr, data.data.ptr,
+                     0, shape)
+    return idx_array
+
+
 cdef _ndarray_partition(_ndarray_base self, kth, int axis):
     """Partitions an array.
 
