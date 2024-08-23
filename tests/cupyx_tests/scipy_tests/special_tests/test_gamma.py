@@ -6,7 +6,7 @@ from cupy import testing
 import cupyx.scipy.special  # NOQA
 
 
-@testing.with_requires('scipy')
+@testing.with_requires("scipy>=1.14")
 class TestGamma:
 
     @pytest.mark.parametrize('function', ['gamma', 'loggamma', 'rgamma'])

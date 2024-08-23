@@ -13,7 +13,11 @@ static __device__ T logit(T x) {
 
 logit = _core.create_ufunc(
     'cupy_logit',
-    ('e->f', 'f->f', 'd->d'),
+    (
+        ('e->d', "out0 = logit(double(in0))"),
+        'f->f',
+        'd->d',
+    ),
     'out0 = logit(in0)',
     preamble=logit_definition,
     doc='''Logit function.
@@ -40,7 +44,11 @@ static __device__ T expit(T x) {
 
 expit = _core.create_ufunc(
     'cupy_expit',
-    ('e->f', 'f->f', 'd->d'),
+    (
+        ('e->d', "out0 = expit(double(in0))"),
+        'f->f',
+        'd->d',
+    ),
     'out0 = expit(in0)',
     preamble=expit_definition,
     doc='''Logistic sigmoid function (expit).
@@ -77,7 +85,11 @@ static __device__ T log_expit(T x)
 
 log_expit = _core.create_ufunc(
     'cupy_log_expit',
-    ('e->f', 'f->f', 'd->d'),
+    (
+        ('e->d', "out0 = log_expit(double(in0))"),
+        'f->f',
+        'd->d',
+    ),
     'out0 = log_expit(in0)',
     preamble=log_expit_definition,
     doc='''Logarithm of the logistic sigmoid function.
