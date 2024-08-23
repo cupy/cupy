@@ -9,7 +9,7 @@ except ImportError:
     pass
 
 
-@testing.with_requires('scipy')
+@testing.with_requires("scipy<1.14")
 class TestSphericalBessel:
 
     @testing.for_dtypes('i', name='order_dtype')

@@ -5,7 +5,7 @@ import cupyx.scipy.special  # NOQA
 import numpy
 
 
-@testing.with_requires('scipy')
+@testing.with_requires("scipy<1.14")
 class TestDigamma(unittest.TestCase):
 
     @testing.with_requires('scipy>=1.1.0')
