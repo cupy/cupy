@@ -61,7 +61,7 @@ class TestLsqr(unittest.TestCase):
     @_condition.retry(10)
     @testing.numpy_cupy_allclose(atol=1e-1, sp_name='sp')
     def test_ndarray(self, xp, sp):
-        A = xp.array(self.A.A, dtype=self.dtype)
+        A = xp.array(self.A.toarray(), dtype=self.dtype)
         b = xp.array(self.b, dtype=self.dtype)
         x = sp.linalg.lsqr(A, b)
         return x[0]
