@@ -25,7 +25,7 @@ timeout --signal INT --kill-after 10 60 python3 -c 'import cupy; cupy.show_confi
 test_retval=0
 
 ###
-compute-sanitizer --tool memcheck --padding 16 python3 -m pytest "${pytest_opts[@]}" cupyx_tests/scipy_tests/interpolate_tests/test_ndgriddata.py || test_retval=$?
+compute-sanitizer --tool memcheck --padding 16 $(pyenv which python3) -m pytest "${pytest_opts[@]}" cupyx_tests/scipy_tests/interpolate_tests/test_ndgriddata.py || test_retval=$?
 ###
 
 popd
