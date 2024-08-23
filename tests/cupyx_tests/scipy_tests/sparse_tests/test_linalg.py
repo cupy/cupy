@@ -333,7 +333,7 @@ class TestSvds:
     'b_ndim': [1, 2],
     'use_linear_operator': [False, True],
 }))
-@testing.with_requires('scipy')
+@testing.with_requires('scipy<1.14')
 class TestCg:
     n = 30
     density = 0.33
@@ -479,7 +479,7 @@ class TestCg:
     'restart': [None, 10],
     'use_linear_operator': [False, True],
 }))
-@testing.with_requires('scipy>=1.4')
+@testing.with_requires('scipy<1.14')
 class TestGmres:
     n = 30
     density = 0.2
@@ -1468,7 +1468,7 @@ class TestLsmr:
     'b_ndim': [1, 2],
     'use_linear_operator': [False, True],
 }))
-@testing.with_requires('scipy')
+@testing.with_requires('scipy<1.14')
 class TestCgs:
     n = 30
     density = 0.33
