@@ -1,3 +1,6 @@
+from libc.string cimport memcpy
+from cpython.mem cimport PyMem_Malloc, PyMem_Free
+
 from cupy.cuda cimport function
 from cupy._core cimport internal
 
@@ -10,16 +13,37 @@ cdef class CArray(function.CPointer):
         cdef size_t ndim = shape.size()
         assert ndim == strides.size()
         assert ndim <= MAX_NDIM
-        cdef Py_ssize_t* shape_and_strides = (
-            self.val.shape_and_strides)
-        cdef size_t i
 
-        self.val.data = data_ptr
-        self.val.size = data_size
-        for i in range(ndim):
-            shape_and_strides[i] = shape[i]
-            shape_and_strides[i + ndim] = strides[i]
-        self.ptr = <void*>&self.val
+        cdef size_t total_size = \
+            sizeof(_CArray) + ndim * 2 * sizeof(Py_ssize_t)
+        cdef void* data = PyMem_Malloc(total_size)
+        if data == NULL:
+            raise MemoryError
+        self.ptr = data
+
+        cdef size_t offset = 0
+        memcpy(<char*>(data) + offset, &data_ptr, sizeof(data_ptr))
+        offset += sizeof(data_ptr)
+        memcpy(<char*>(data) + offset, &data_size, sizeof(data_size))
+        offset += sizeof(data_size)
+        if ndim != 0:
+            memcpy(<char*>(data) + offset,
+                   shape.data(),
+                   sizeof(Py_ssize_t) * ndim)
+            offset += sizeof(Py_ssize_t) * ndim
+            memcpy(<char*>(data) + offset,
+                   strides.data(),
+                   sizeof(Py_ssize_t) * ndim)
+            offset += sizeof(Py_ssize_t) * ndim
+        assert offset == total_size
+
+    def __cinit__(self):
+        self.ptr = NULL
+
+    def __dealloc__(self):
+        if self.ptr != NULL:
+            PyMem_Free(self.ptr)
+            self.ptr = NULL
 
 
 cdef class CIndexer(function.CPointer):
@@ -27,11 +51,31 @@ cdef class CIndexer(function.CPointer):
     cdef void init(self, Py_ssize_t size, const shape_t &shape) except*:
         cdef size_t ndim = shape.size()
         assert ndim <= MAX_NDIM
-        self.val.size = size
-        cdef Py_ssize_t i
-        for i in range(<Py_ssize_t>shape.size()):
-            self.val.shape_and_index[i] = shape[i]
-        self.ptr = <void*>&self.val
+
+        cdef size_t total_size = \
+            sizeof(_CIndexer) + ndim * 2 * sizeof(Py_ssize_t)
+        cdef void* data = PyMem_Malloc(total_size)
+        if data == NULL:
+            raise MemoryError
+        self.ptr = data
+
+        cdef size_t offset = 0
+        memcpy(<char*>(data) + offset, &size, sizeof(size))
+        offset += sizeof(size)
+        if ndim != 0:
+            memcpy(<char*>(data) + offset,
+                   shape.data(),
+                   sizeof(Py_ssize_t) * ndim)
+            offset += sizeof(Py_ssize_t) * ndim
+        assert offset + sizeof(Py_ssize_t) * ndim == total_size
+
+    def __cinit__(self):
+        self.ptr = NULL
+
+    def __dealloc__(self):
+        if self.ptr != NULL:
+            PyMem_Free(self.ptr)
+            self.ptr = NULL
 
 
 cdef class Indexer:
