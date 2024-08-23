@@ -684,7 +684,14 @@ def unique(ar, return_index=False, return_inverse=False,
         ret = (unique_values,)
         if orig_ret_index:
             ret += (index[unique_idx],)
-        ret += tuple(rest)
+
+        if return_inverse:
+            inv_idx, *rest = rest
+            ret += (unique_idx[inv_idx],)
+
+        if return_counts:
+            counts, *_ = rest
+            ret += (counts[unique_idx],)
 
     return ret
 
