@@ -7,6 +7,7 @@ import importlib.metadata
 import json
 import os
 import os.path
+import platform
 import re
 import shutil
 import sys
@@ -459,6 +460,52 @@ You can install the library by:
 ''')
 
 
+def _get_include_dir_from_conda_or_wheel(major: int, minor: int) -> List[str]:
+    # FP16 headers from CUDA 12.2+ depends on headers from CUDA Runtime.
+    # See https://github.com/cupy/cupy/issues/8466.
+    if major < 12 or (major == 12 and minor < 2):
+        return []
+
+    config = get_preload_config()
+    if config is not None and config['packaging'] == 'conda':
+        if sys.platform.startswith('linux'):
+            arch = platform.processor()
+            if arch == "aarch64":
+                arch = "sbsa"
+            target_dir = f"{arch}-linux"
+            return [
+                os.path.join(sys.prefix, "targets", target_dir, "include"),
+                os.path.join(sys.prefix, "include"),
+            ]
+        elif sys.platform.startswith('win'):
+            return [
+                os.path.join(sys.prefix, "Library", "include"),
+            ]
+        else:
+            # No idea what this platform is. Do nothing?
+            return []
+
+    # Look for headers in wheels
+    pkg_name = f'nvidia-cuda-runtime-cu{major}'
+    ver_str = f'{major}.{minor}'
+    _log(f'Looking for {pkg_name}=={ver_str}.*')
+    try:
+        dist = importlib.metadata.distribution(pkg_name)
+    except importlib.metadata.PackageNotFoundError:
+        _log('The package could not be found')
+        return []
+
+    if dist.version == ver_str or dist.version.startswith(f'{ver_str}.'):
+        include_dir = dist.locate_file('nvidia/cuda_runtime/include')
+        if not include_dir.exists():
+            _log('The include directory could not be found')
+            return []
+        return [str(include_dir)]
+    else:
+        _log(f'Found incompatible version ({dist.version})')
+        return []
+
+
 def _detect_duplicate_installation():
     # List of all CuPy packages, including out-dated ones.
     known = {
@@ -487,7 +534,13 @@ def _detect_duplicate_installation():
         'cupy-rocm-4-3',
         'cupy-rocm-5-0',
     }
-    installed_names = {d.metadata["Name"]
+    # use metadata.get to be resilient to namespace packages
+    # that may be leftover in the user's path???
+    # something else might be triggering "Name" not existing
+    # But without a safe ".get" a KeyError might be raised
+    # not allowing us to get through the setup
+    # https://github.com/cupy/cupy/issues/8440
+    installed_names = {d.metadata.get("Name", None)
                        for d in importlib.metadata.distributions()}
     cupy_installed = known & installed_names
     if 1 < len(cupy_installed):

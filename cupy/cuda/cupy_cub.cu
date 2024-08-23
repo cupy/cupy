@@ -2,6 +2,7 @@
 #include <cupy/type_dispatcher.cuh>
 
 #ifndef CUPY_USE_HIP
+#include <cfloat> // For FLT_MAX definitions
 #include <cub/device/device_reduce.cuh>
 #include <cub/device/device_segmented_reduce.cuh>
 #include <cub/device/device_spmv.cuh>
@@ -85,8 +86,15 @@ class numeric_limits<__half> {
   public:
     static __host__ __device__ constexpr __half infinity() noexcept {
         unsigned short inf_half = 0x7C00U;
-        __half inf_value = *reinterpret_cast<__half*>(&inf_half);
-        return inf_value;
+        #if (defined(_MSC_VER) && _MSC_VER >= 1920)
+        // WAR:
+        // - we want a constexpr here, but reinterpret_cast cannot be used
+        // - we want to use std::bit_cast, but it requires C++20 which is too new
+        // - we use the compiler builtin, fortunately both gcc and msvc have it
+        return __builtin_bit_cast(__half, inf_half);
+        #else
+        return *reinterpret_cast<__half*>(&inf_half);
+        #endif
     }
 
     static constexpr bool has_infinity = true;

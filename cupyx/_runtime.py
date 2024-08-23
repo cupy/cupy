@@ -15,7 +15,7 @@ is_hip = cupy_backends.cuda.api.runtime.is_hip
 
 def _eval_or_error(func, errors):
     # Evaluates `func` and return the result.
-    # If an error specified by `errors` occured, it returns a string
+    # If an error specified by `errors` occurred, it returns a string
     # representing the error.
     try:
         return func()
@@ -78,6 +78,7 @@ class _RuntimeInfo:
     cusparse_version = None
     nvrtc_version = None
     thrust_version = None
+    cuda_extra_include_dirs = None
 
     # Optional Libraries
     cudnn_build_version = None
@@ -170,6 +171,19 @@ class _RuntimeInfo:
         except ImportError:
             pass
 
+        # CUDA Extra Include Dirs
+        if not is_hip:
+            try:
+                nvrtc_version = cupy.cuda.nvrtc.getVersion()
+            except Exception:
+                nvrtc_version = None
+            if nvrtc_version is None:
+                self.cuda_extra_include_dirs = '(NVRTC unavailable)'
+            else:
+                self.cuda_extra_include_dirs = str(
+                    cupy._environment._get_include_dir_from_conda_or_wheel(
+                        *nvrtc_version))
+
         # cuDNN
         if cupy._environment._can_attempt_preload('cudnn'):
             if full:
@@ -187,6 +201,13 @@ class _RuntimeInfo:
             pass
 
         # NCCL
+        if cupy._environment._can_attempt_preload('nccl'):
+            if full:
+                cupy._environment._preload_library('nccl')
+            else:
+                self.nccl_build_version = (
+                    '(not loaded; try `import cupy.cuda.nccl` first)')
+                self.nccl_runtime_version = self.nccl_build_version
         try:
             import cupy_backends.cuda.libs.nccl as nccl
             self.nccl_build_version = nccl.get_build_version()
@@ -258,6 +279,7 @@ class _RuntimeInfo:
                 f'{self.cuda_runtime_version} (linked to CuPy) / '
                 f'{self.cuda_local_runtime_version} (locally installed)'
             )),
+            ('CUDA Extra Include Dirs', self.cuda_extra_include_dirs),
         ]
 
         records += [

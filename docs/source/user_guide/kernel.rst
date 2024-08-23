@@ -272,7 +272,7 @@ If your kernel relies on the C++ std library headers such as ``<type_traits>``, 
 .. note::
     In all of the examples above, we declare the kernels in an ``extern "C"`` block,
     indicating that the C linkage is used. This is to ensure the kernel names are not
-    mangled so that they can be retrived by name.
+    mangled so that they can be retrieved by name.
 
 Kernel arguments
 ----------------
@@ -568,7 +568,7 @@ See :doc:`../reference/kernel` for a full list of API.
 Basic Design
 ^^^^^^^^^^^^
 
-CuPy's JIT compiler generates CUDA code via Python AST. We decided not to use Python bytecode to analyze the target function to avoid perforamance degradation. The CUDA source code generated from the Python bytecode will not effectively optimized by CUDA compiler, because for-loops and other control statements of the target function are fully transformed to jump instruction when converting the target function to bytecode.
+CuPy's JIT compiler generates CUDA code via Python AST. We decided not to use Python bytecode to analyze the target function to avoid performance degradation. The CUDA source code generated from the Python bytecode will not effectively optimized by CUDA compiler, because for-loops and other control statements of the target function are fully transformed to jump instruction when converting the target function to bytecode.
 
 Typing rule
 ^^^^^^^^^^^

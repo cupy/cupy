@@ -50,12 +50,16 @@ function ActivateCUDA($version) {
         $Env:CUDA_PATH = $Env:CUDA_PATH_V12_1
     } elseif ($version -eq "12.2") {
         $Env:CUDA_PATH = $Env:CUDA_PATH_V12_2
-    } elseif ($version -eq "12.4") {
-        $Env:CUDA_PATH = $Env:CUDA_PATH_V12_3
     } elseif ($version -eq "12.3") {
+        $Env:CUDA_PATH = $Env:CUDA_PATH_V12_3
+    } elseif ($version -eq "12.4") {
         $Env:CUDA_PATH = $Env:CUDA_PATH_V12_4
+    } elseif ($version -eq "12.5") {
+        $Env:CUDA_PATH = $Env:CUDA_PATH_V12_5
+    } elseif ($version -eq "12.6") {
+        $Env:CUDA_PATH = $Env:CUDA_PATH_V12_6
     } elseif ($version -eq "12.x") {
-        $Env:CUDA_PATH = $Env:CUDA_PATH_V12_4
+        $Env:CUDA_PATH = $Env:CUDA_PATH_V12_6
     } else {
         throw "Unsupported CUDA version: $version"
     }

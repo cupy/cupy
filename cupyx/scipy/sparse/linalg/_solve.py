@@ -410,7 +410,7 @@ def spsolve_triangular(A, b, lower=True, overwrite_A=False, overwrite_b=False,
         b (cupy.ndarray):
             Dense vector or matrix with dimension ``(M)`` or ``(M, K)``.
         lower (bool):
-            Whether ``A`` is a lower or upper trinagular matrix.
+            Whether ``A`` is a lower or upper triangular matrix.
             If True, it is lower triangular, otherwise, upper triangular.
         overwrite_A (bool):
             (not supported)
@@ -892,7 +892,7 @@ def minres(A, b, x0=None, shift=0.0, tol=1e-5, maxiter=None,
 
         itn += 1
         s = 1.0 / beta
-        v = s * y
+        v = (s * y).astype(y.dtype)   # XXX: np2.0: keep v f32 is y is f32
 
         y = matvec(v)
         y -= shift * v
@@ -1021,6 +1021,10 @@ def minres(A, b, x0=None, shift=0.0, tol=1e-5, maxiter=None,
         info = maxiter
     else:
         info = 0
+
+    # XXX: np2.0: keep backwards compat under weak promotion
+    if x.dtype == 'float32':
+        x = x.astype(cupy.float64)
 
     return x, info
 

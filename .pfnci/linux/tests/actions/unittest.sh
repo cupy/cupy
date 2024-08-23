@@ -25,6 +25,7 @@ ROCM_TEST_SCRIPT_DIR=$(dirname "$(realpath "$0")")
 pushd tests
 timeout --signal INT --kill-after 10 60 python3 -c 'import cupy; cupy.show_config(_full=True)'
 test_retval=0
+
 if [[ -f /opt/rocm/bin/rocm-smi ]]; then
     # setup pytest_opts as string to pass to rocm test script
     # Add another set of quotes around MARKER
@@ -38,6 +39,7 @@ if [[ -f /opt/rocm/bin/rocm-smi ]]; then
 else
     timeout --signal INT --kill-after 60 18000 python3 -m pytest "${pytest_opts[@]}" "${PYTEST_FILES[@]}" || test_retval=$?
 fi
+
 popd
 
 case ${test_retval} in

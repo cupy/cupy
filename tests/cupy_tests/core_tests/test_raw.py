@@ -380,6 +380,21 @@ def compile_in_memory(in_memory):
         yield m
 
 
+def find_nvcc_ver():
+    nvcc_ver_pattern = r'release (\d+\.\d+)'
+    cmd = cupy.cuda.get_nvcc_path().split()
+    cmd += ['--version']
+    cache_ctx = use_temporary_cache_dir()
+    with cache_ctx as cache_path:
+        output = compiler._run_cc(cmd, cache_path, 'nvcc')
+    match = re.search(nvcc_ver_pattern, output)
+    assert match
+
+    # convert to driver ver format
+    major, minor = match.group(1).split('.')
+    return int(major) * 1000 + int(minor) * 10
+
+
 @testing.parameterize(
     # First test NVRTC
     {'backend': 'nvrtc', 'in_memory': False},
@@ -527,16 +542,7 @@ class TestRaw(unittest.TestCase):
         if self._nvcc_ver:
             return self._nvcc_ver
 
-        nvcc_ver_pattern = r'release (\d+\.\d+)'
-        cmd = cupy.cuda.get_nvcc_path().split()
-        cmd += ['--version']
-        output = compiler._run_cc(cmd, self.cache_dir, 'nvcc')
-        match = re.search(nvcc_ver_pattern, output)
-        assert match
-
-        # convert to driver ver format
-        major, minor = match.group(1).split('.')
-        self._nvcc_ver = int(major) * 1000 + int(minor) * 10
+        self._nvcc_ver = find_nvcc_ver()
         return self._nvcc_ver
 
     def _find_nvrtc_ver(self):
@@ -1136,6 +1142,9 @@ void test_grid_sync(const float* x1, const float* x2, float* y, int n) {
     'n': [10, 100, 1000],
     'block': [64, 256],
 }))
+@unittest.skipIf(
+    find_nvcc_ver() >= 12020,
+    "fp16 header compatibility issue, see cupy#8412")
 @unittest.skipUnless(
     9000 <= cupy.cuda.runtime.runtimeGetVersion(),
     'Requires CUDA 9.x or later')
@@ -1266,7 +1275,7 @@ class TestRawPicklable(unittest.TestCase):
         # run another process to check the pickle
         s = subprocess.run([sys.executable, 'TestRawPicklable.py'] + test_args,
                            cwd=self.temp_dir)
-        s.check_returncode()  # raise if unsuccess
+        s.check_returncode()  # raise if unsuccessful
 
 
 # a slightly more realistic kernel involving std utilities
@@ -1334,14 +1343,8 @@ class TestRawJitify(unittest.TestCase):
         # nvbugs 3641496).
         options = ('-DCUB_DISABLE_BF16_SUPPORT',)
 
-        if self.jitify:
-            # Jitify will make it work
-            self._helper(hdr, options)
-        else:
-            # NVRTC cannot find C++ std headers without Jitify
-            with pytest.raises(cupy.cuda.compiler.CompileException) as ex:
-                self._helper(hdr, options)
-            assert 'cannot open source file' in str(ex.value)
+        # Compiling CUB headers now works with or without Jitify.
+        self._helper(hdr, options)
 
     def test_jitify2(self):
         # NVRTC cannot compile any code involving std

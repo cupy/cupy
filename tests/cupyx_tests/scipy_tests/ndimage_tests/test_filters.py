@@ -1,9 +1,12 @@
+import platform
+
 import numpy
 import pytest
 
 import cupy
 from cupy.cuda import runtime
 from cupy import testing
+from cupy.exceptions import AxisError
 import cupyx.scipy.ndimage  # NOQA
 
 try:
@@ -79,7 +82,7 @@ class FilterTestCaseBase:
             # w is actually a tuple of (None, footprint)
             wghts, kwargs['footprint'] = wghts
 
-        # Bulid the arguments
+        # Build the arguments
         args = [getattr(self, param)
                 for param in FilterTestCaseBase.ARGS_PARAMS
                 if hasattr(self, param)]
@@ -221,6 +224,9 @@ class TestFilter(FilterTestCaseBase):
 
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
     def test_filter(self, xp, scp):
+        if self.dtype == numpy.uint8 and platform.processor() == "aarch64":
+            pytest.skip(
+                "aarch64 scipy does not match cupy/x86 see Scipy #20158")
         self._hip_skip_invalid_condition()
         if self.dtype == getattr(self, 'output', None):
             pytest.skip("redundant")
@@ -766,7 +772,7 @@ class TestInvalidAxis(FilterTestCaseBase):
         self.axis = len(self.shape)
         try:
             return self._filter(xp, scp)
-        except numpy.AxisError:
+        except AxisError:
             # numpy.AxisError is a subclass of ValueError
             # currently cupyx is raising numpy.AxisError but scipy is still
             # raising ValueError
@@ -778,7 +784,7 @@ class TestInvalidAxis(FilterTestCaseBase):
         self.axis = -len(self.shape) - 1
         try:
             return self._filter(xp, scp)
-        except numpy.AxisError:
+        except AxisError:
             raise ValueError('invalid axis')
 
 

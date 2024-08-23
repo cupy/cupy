@@ -10,6 +10,7 @@ import warnings
 import numpy
 
 import cupy
+from cupy.exceptions import AxisError
 from cupy.testing import _array
 from cupy.testing import _parameterized
 import cupyx
@@ -106,7 +107,7 @@ def _call_func_numpy_cupy(impl, args, kw, name, sp_name, scipy_name):
 _numpy_errors = [
     AttributeError, Exception, IndexError, TypeError, ValueError,
     NotImplementedError, DeprecationWarning,
-    numpy.AxisError, numpy.linalg.LinAlgError,
+    AxisError, numpy.linalg.LinAlgError,
 ]
 
 
@@ -387,7 +388,7 @@ def _convert_output_to_ndarray(c_out, n_out, sp_name, check_sparse_format):
         assert scipy.sparse.issparse(n_out)
         if check_sparse_format:
             assert c_out.format == n_out.format
-        return c_out.A, n_out.A
+        return c_out.toarray(), n_out.toarray()
     if (isinstance(c_out, cupy.ndarray)
             and isinstance(n_out, (numpy.ndarray, numpy.generic))):
         # ndarray output case.
@@ -973,7 +974,7 @@ def for_signed_dtypes(name='dtype'):
 
 
 def for_unsigned_dtypes(name='dtype'):
-    """Decorator that checks the fixture with unsinged dtypes.
+    """Decorator that checks the fixture with unsigned dtypes.
 
     Args:
          name(str): Argument name to which specified dtypes are passed.

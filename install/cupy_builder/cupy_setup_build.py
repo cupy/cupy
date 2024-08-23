@@ -3,6 +3,7 @@
 import copy
 from distutils import ccompiler
 from distutils import sysconfig
+import logging
 import os
 import shutil
 import sys
@@ -260,20 +261,32 @@ def _rpath_base():
 def _find_static_library(name: str) -> str:
     if PLATFORM_LINUX:
         filename = f'lib{name}.a'
-        libdir = 'lib64'
+        if (int(os.environ.get('CONDA_BUILD_CROSS_COMPILATION', 0)) == 1 and
+                os.environ.get('CONDA_OVERRIDE_CUDA', '0').startswith('11')):
+            # CUDA 11 on conda-forge has an ad hoc layout to support cross
+            # compiling
+            libdirs = ['lib']
+            cuda_path = (f'{build.get_cuda_path()}/targets/'
+                         f'{build.conda_get_target_name()}/')
+        else:
+            libdirs = ['lib64', 'lib']
+            cuda_path = build.get_cuda_path()
     elif PLATFORM_WIN32:
         filename = f'{name}.lib'
-        libdir = 'lib\\x64'
+        libdirs = ['lib\\x64', 'lib']
+        cuda_path = build.get_cuda_path()
     else:
         raise Exception('not supported on this platform')
 
-    cuda_path = build.get_cuda_path()
+    logging.debug(f"{cuda_path=}")
     if cuda_path is None:
         raise Exception(f'Could not find {filename}: CUDA path unavailable')
-    path = os.path.join(cuda_path, libdir, filename)
-    if not os.path.exists(path):
+    for libdir in libdirs:
+        path = os.path.join(cuda_path, libdir, filename)
+        if os.path.exists(path):
+            return path
+    else:
         raise Exception(f'Could not find {filename}: {path} does not exist')
-    return path
 
 
 def make_extensions(ctx: Context, compiler, use_cython):
@@ -317,16 +330,42 @@ def make_extensions(ctx: Context, compiler, use_cython):
         settings['define_macros'].append(('__HIP_PLATFORM_HCC__', '1'))
     settings['define_macros'].append(('CUPY_CACHE_KEY', ctx.cupy_cache_key))
 
-    available_modules = []
-    if no_cuda:
-        available_modules = [m['name'] for m in MODULES]
-    else:
-        available_modules, settings = preconfigure_modules(
-            ctx, MODULES, compiler, settings)
-        required_modules = get_required_modules(MODULES)
-        if not (set(required_modules) <= set(available_modules)):
-            raise Exception('Your CUDA environment is invalid. '
-                            'Please check above error log.')
+    try:
+        host_compiler = compiler
+        if int(os.environ.get('CONDA_BUILD_CROSS_COMPILATION', 0)) == 1:
+            os.symlink(f'{os.environ["BUILD_PREFIX"]}/x86_64-conda-linux-gnu/'
+                       'bin/x86_64-conda-linux-gnu-ld',
+                       f'{os.environ["BUILD_PREFIX"]}/bin/ld')
+        if (int(os.environ.get('CONDA_BUILD_CROSS_COMPILATION', 0)) == 1 or
+                os.environ.get('CONDA_OVERRIDE_CUDA', '0').startswith('12')):
+            # If cross-compiling, we need build_and_run() & build_shlib() to
+            # use the compiler on the build platform to generate stub files
+            # that are executable in the build environment, not the target
+            # environment.
+            compiler = ccompiler.new_compiler()
+            cc = os.environ['CC_FOR_BUILD' if PLATFORM_LINUX else 'CC']
+            cxx = os.environ['CXX_FOR_BUILD' if PLATFORM_LINUX else 'CXX']
+            compiler.compiler = [cc,]
+            compiler.compiler_cxx = [cxx,]
+            compiler.compiler_so = [cc,]
+            compiler.linker_exe = [cc, f'-B{os.environ["BUILD_PREFIX"]}/bin']
+            compiler.linker_so = [cc, f'-B{os.environ["BUILD_PREFIX"]}/bin',
+                                  '-shared']
+
+        available_modules = []
+        if no_cuda:
+            available_modules = [m['name'] for m in MODULES]
+        else:
+            available_modules, settings = preconfigure_modules(
+                ctx, MODULES, compiler, settings)
+            required_modules = get_required_modules(MODULES)
+            if not (set(required_modules) <= set(available_modules)):
+                raise Exception('Your CUDA environment is invalid. '
+                                'Please check above error log.')
+    finally:
+        compiler = host_compiler
+        if int(os.environ.get('CONDA_BUILD_CROSS_COMPILATION', 0)) == 1:
+            os.remove(f'{os.environ["BUILD_PREFIX"]}/bin/ld')
 
     ret = []
     for module in MODULES:

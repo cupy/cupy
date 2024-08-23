@@ -31,7 +31,7 @@ jobs:
           echo "The pull-request will be marked as Needs Attention from maintainers."
           echo "${{ (github.event.pull_request || github.event.issue).number }}" > PULL_REQUEST_NUMBER
       - name: Upload artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: PULL_REQUEST_NUMBER
           path: PULL_REQUEST_NUMBER
