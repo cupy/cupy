@@ -317,7 +317,6 @@ class TestFirls:
         # negative weight
         # assert_raises(ValueError, firls, 11, [0.1, 0.2], [0, 0], [-1])
 
-
     @pytest.mark.skipif(cupy.cuda.runtime.is_hip,
                         reason='Currently unsupported on ROCm/HIP')
     @pytest.mark.xfail(

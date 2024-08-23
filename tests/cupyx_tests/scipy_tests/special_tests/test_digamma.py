@@ -6,7 +6,6 @@ import cupyx.scipy.special  # NOQA
 import numpy
 
 
-
 @pytest.mark.skipif(runtime.is_hip, reason='Currently unsupported on ROCm/HIP')
 @testing.with_requires("scipy>=1.14")
 class TestDigamma(unittest.TestCase):

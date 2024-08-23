@@ -5,10 +5,7 @@ from cupy.cuda import runtime
 from cupy import testing
 import cupyx.scipy.special  # NOQA
 import numpy
-import pytest
-
 import warnings
-
 
 
 @pytest.mark.skipif(runtime.is_hip, reason='Currently unsupported on ROCm/HIP')
