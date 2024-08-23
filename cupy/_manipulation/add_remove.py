@@ -8,7 +8,7 @@ import itertools
 
 from cupy import _core
 from cupy._core._scalar import get_typename
-# from cupy._core._dtype import
+from cupy._core._routines_sorting import _ndarray_argsort2d
 from cupy_backends.cuda.api import runtime
 
 
@@ -202,12 +202,12 @@ _32bitd = itertools.product(
 _16bitd = itertools.product(
     [cupy.float16, cupy.int16, cupy.uint16], [cupy.uint16])
 _8bitd = itertools.product([cupy.bool_, cupy.int8, cupy.uint8], [cupy.uint8])
-_all_types_i = itertools.chain(_64bitd, _32bitd, _16bitd, _8bitd)
+_all_types_i = list(itertools.chain(_64bitd, _32bitd, _16bitd, _8bitd))
 _all_types = [(_get_typename(x), _get_typename(y)) for x, y in _all_types_i]
+_dtype_map = {numpy.dtype(x): numpy.dtype(y) for x, y in _all_types_i}
 _type_map = dict(_all_types)
 
 map_crc_def = [f'map_crc<{x}, {y}>' for x, y in _all_types]
-bitonic_def = [f'bitonic_sort_step<{x}>' for x in _type_map]
 
 _unique_nd_module = _core.RawModule(code='''
 #include <cupy/carray.cuh>
@@ -526,6 +526,7 @@ __global__ void map_crc(
 ) {
     extern __shared__ __align__(sizeof(T)) unsigned long long block_crc_a[512];
     T* block_crc = reinterpret_cast<T*>(block_crc_a);
+    block_crc[threadIdx.x] = 0;
 
     int idx = blockDim.x * blockIdx.x + threadIdx.x;
     int n_threads = gridDim.x * blockDim.x;
@@ -544,11 +545,12 @@ __global__ void map_crc(
 
             __syncthreads();
 
-            for(int stride = blockDim.x / 2; stride > 0; stride /= 2) {
+            int pow_two_stride = 1 << (32 - __clz(blockDim.x - 1));
+            for(int stride = pow_two_stride / 2; stride > 0; stride /= 2) {
                 if (threadIdx.x < stride) {
                     T this_crc = block_crc[threadIdx.x];
                     T other_crc = block_crc[threadIdx.x + stride];
-                    block_crc[threadIdx.x] = ccrc(other_crc, this_crc);
+                    block_crc[threadIdx.x] = ccrc(this_crc, other_crc);
                 }
                 __syncthreads();
             }
@@ -561,135 +563,7 @@ __global__ void map_crc(
 
     }
 }
-
-template<typename T>
-__global__ void bitonic_sort_step(
-    unsigned long long* idx,
-    unsigned long long* o_idx,
-    T* values,
-    int n_idx,
-    int row_sz,
-    int n_pow,
-    int j,
-    int k
-) {
-    __shared__ bool lt_mask[512];
-    __shared__ bool eq_mask[512];
-    __shared__ bool gt_mask[512];
-    __shared__ unsigned long long lt_idx[512];
-    __shared__ unsigned long long gt_idx[512];
-    __shared__ bool break_flag;
-
-    bool swap_gt_flag;
-    bool swap_lt_flag;
-    bool overflow = false;
-
-    unsigned int i, other_idx;
-
-    i = blockIdx.x;
-    lt_mask[threadIdx.x] = false;
-    eq_mask[threadIdx.x] = false;
-    lt_idx[threadIdx.x] = 0xffffffffffffffff;
-    gt_idx[threadIdx.x] = 0xffffffffffffffff;
-
-    if(threadIdx.x >= row_sz || i >= n_pow) {
-        return;
-    }
-
-    if(threadIdx.x == 0) {
-        break_flag = false;
-        swap_gt_flag = false;
-        swap_lt_flag = false;
-    }
-
-    other_idx = i ^ j;
-    if (other_idx <= i) {
-        return;
-    }
-
-    for(int off = threadIdx.x; off < row_sz && !break_flag; off += blockDim.x) {
-        if(idx[other_idx] < n_idx) {
-            if(idx[i] < n_idx) {
-                T this_value = values[row_sz * o_idx[idx[i]] + off];
-                T other_value = values[row_sz * o_idx[idx[other_idx]] + off];
-                lt_mask[threadIdx.x] = this_value < other_value;
-                gt_mask[threadIdx.x] = this_value > other_value;
-                eq_mask[threadIdx.x] = this_value == other_value;
-            } else {
-                overflow = true;
-                swap_lt_flag = false;
-                swap_gt_flag = (i & k) == 0;
-            }
-        } else {
-            overflow = true;
-            if(idx[i] < n_idx) {
-                swap_lt_flag = (i & k) != 0;
-                swap_gt_flag = false;
-            } else {
-                swap_gt_flag = false;
-                swap_lt_flag = false;
-            }
-        }
-
-        __syncthreads();
-
-        if(!overflow) {
-            if(threadIdx.x > 0) {
-                if(eq_mask[threadIdx.x - 1] && lt_mask[threadIdx.x]) {
-                    lt_idx[threadIdx.x] = threadIdx.x;
-                } else if(eq_mask[threadIdx.x - 1] && gt_mask[threadIdx.x]) {
-                    gt_idx[threadIdx.x] = threadIdx.x;
-                }
-            } else {
-                if(lt_mask[threadIdx.x]) {
-                    lt_idx[threadIdx.x] = threadIdx.x;
-                } else if(gt_mask[threadIdx.x]) {
-                    gt_idx[threadIdx.x] = threadIdx.x;
-                }
-            }
-
-            __syncthreads();
-
-            for(int stride = blockDim.x / 2; stride > 0; stride /= 2) {
-                if (threadIdx.x < stride) {
-                    lt_idx[threadIdx.x] = min(
-                        lt_idx[threadIdx.x], lt_idx[threadIdx.x + stride]);
-                    gt_idx[threadIdx.x] = min(
-                        gt_idx[threadIdx.x], gt_idx[threadIdx.x + stride]);
-                }
-                __syncthreads();
-            }
-
-        }
-
-        if(threadIdx.x == 0) {
-            if(!overflow) {
-                swap_lt_flag = lt_idx[threadIdx.x] < gt_idx[threadIdx.x];
-                swap_gt_flag = gt_idx[threadIdx.x] < lt_idx[threadIdx.x];
-            }
-
-            if(((i & k) == 0 && swap_gt_flag) || ((i & k) != 0 && swap_lt_flag)) {
-                unsigned long long temp = idx[i];
-                idx[i] = idx[other_idx];
-                idx[other_idx] = temp;
-                break_flag = true;
-            }
-
-        }
-
-        lt_mask[threadIdx.x] = false;
-        gt_mask[threadIdx.x] = false;
-        eq_mask[threadIdx.x] = false;
-        lt_idx[threadIdx.x] = 0xffffffffffffffff;
-        gt_idx[threadIdx.x] = 0xffffffffffffffff;
-        overflow = false;
-
-        __syncthreads();
-    }
-}
-
-
-''', options=('-std=c++11',), name_expressions=map_crc_def + bitonic_def)  # NOQA
+''', options=('-std=c++11',), name_expressions=map_crc_def)  # NOQA
 
 
 def unique(ar, return_index=False, return_inverse=False,
@@ -767,7 +641,8 @@ def unique(ar, return_index=False, return_inverse=False,
 
         blocks_per_row = (row_sz + block_sz - 1) // block_sz
 
-        crc = cupy.empty((n_rows, blocks_per_row), dtype=cupy.uint64)
+        crc = cupy.empty((n_rows, blocks_per_row),
+                         dtype=_dtype_map[ar.dtype])
         in_type = _get_typename(ar.dtype)
         crc_type = _type_map[in_type]
 
@@ -796,35 +671,20 @@ def unique(ar, return_index=False, return_inverse=False,
                      equal_nan=equal_nan)
 
     if axis is not None:
-        bitonic_sort_step = _unique_nd_module.get_function(
-            f'bitonic_sort_step<{in_type}>')
-
         _, index, *rest = ret
 
-        block_sz = 512
-        n_pow = 2 ** int(numpy.ceil(numpy.log2(index.shape[0])))
-        s_idx = cupy.arange(n_pow, dtype=cupy.int64)
+        unique_values = ar2[index]
+        unique_idx = _ndarray_argsort2d(unique_values, 0)
+        unique_values = unique_values[unique_idx]
 
-        k = 2
-        while k <= s_idx.shape[0]:
-            j = k >> 1
-            while j > 0:
-                bitonic_sort_step((n_pow,), (block_sz,), (
-                    s_idx, index, ar2, index.shape[0], ar2.shape[1],
-                    n_pow, j, k))
-                j >>= 1
-            k <<= 1
-
-        sorted_index = index[s_idx[:index.shape[0]]]
-        unique_values = ar2[sorted_index]
         unique_values = unique_values.reshape(
             unique_values.shape[0], *orig_shape[1:])
         unique_values = cupy.moveaxis(unique_values, 0, axis)
 
         ret = (unique_values,)
         if orig_ret_index:
-            ret += (sorted_index,)
-        ret += rest
+            ret += (index[unique_idx],)
+        ret += tuple(rest)
 
     return ret
 
