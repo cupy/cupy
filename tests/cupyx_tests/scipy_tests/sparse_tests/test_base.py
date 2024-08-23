@@ -11,7 +11,7 @@ from cupy import testing
 from cupyx.scipy import sparse
 
 
-@testing.with_requires('scipy>=1.11')
+@testing.with_requires('scipy>=1.11', 'scipy<1.14')
 class TestSpmatrix(unittest.TestCase):
 
     def dummy_class(self, sp):
