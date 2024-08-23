@@ -286,7 +286,7 @@ cpdef streamBeginCaptureToGraph(intptr_t stream, intptr_t graph,
 cpdef intptr_t streamEndCapture(intptr_t stream) except? 0
 cpdef bint streamIsCapturing(intptr_t stream) except*
 cpdef (
-        intptr_t,           # capture status
+        int,                # capture status
         unsigned long long, # id
         intptr_t,           # graph
         intptr_t,           # dependencies

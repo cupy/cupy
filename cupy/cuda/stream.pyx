@@ -1,11 +1,16 @@
 import threading
 
+from cpython.mem cimport PyMem_Malloc, PyMem_Free
+from libc.string cimport memset as c_memset
+
 from cupy_backends.cuda.api cimport runtime
 from cupy_backends.cuda cimport stream as backends_stream
 from cupy.cuda cimport graph
 
 from cupy import _util
 
+cdef extern from '../../cupy_backends/cupy_backend_runtime.h':
+    pass
 
 cdef object _thread_local = threading.local()
 
@@ -384,7 +389,31 @@ class _BaseStream:
             mode = runtime.streamCaptureModeRelaxed
         runtime.streamBeginCapture(self.ptr, mode)
 
-    def end_capture(self):
+    def begin_capture_to_graph(
+            self,
+            graph,
+            dependencies_ptr=0,
+            dependency_data_ptr=0,
+            num_deps=0,
+            mode=None
+        ):
+        # NOTE: This API only supports to start capture **empty** graph
+        if graph.graphExec > 0:
+            raise RuntimeError(
+                "Cannnot begin capture to already instantiated graph"
+            )
+        if mode is None:
+            mode = runtime.streamCaptureModeRelaxed
+        runtime.streamBeginCaptureToGraph(
+            self.ptr,
+            graph.graph,
+            dependencies_ptr,
+            dependency_data_ptr,
+            num_deps,
+            mode
+        )
+
+    def end_capture(self, return_graph=True):
         """End stream capture and retrieve the constructed CUDA graph.
 
         Returns:
@@ -402,7 +431,10 @@ class _BaseStream:
         if runtime._is_hip_environment:
             raise RuntimeError('This function is not supported on HIP')
         cdef intptr_t g = runtime.streamEndCapture(self.ptr)
-        return graph.Graph.from_stream(g)
+        if return_graph:
+            return graph.Graph.from_stream(g)
+        else:
+            return None
 
     def is_capturing(self):
         """Check if the stream is capturing.
@@ -422,6 +454,76 @@ class _BaseStream:
             return runtime.streamIsCapturing(self.ptr)
         except RuntimeError:  # can be RuntimeError or CUDARuntimeError
             raise
+
+    def create_conditional_handle(
+            self,
+            default_value=False,
+            flags=runtime.cudaGraphCondAssignDefault
+        ):
+        status, _, graph_ptr, _, _ = runtime.streamGetCaptureInfo(self.ptr)
+        if status != runtime.streamCaptureStatusActive:
+            raise RuntimeError(
+                "Conditional node can be added only to capturing stream")
+
+        handle = runtime.graphConditionalHandleCreate(
+            graph_ptr,
+            defaultLaunchValue=default_value,
+            flags=flags
+        )
+        return handle
+
+
+    def append_conditional_node(self, node_type, handle):
+        status, id_, main_graph_ptr, deps_ptr, n_deps = \
+            runtime.streamGetCaptureInfo(self.ptr)
+        if status != runtime.streamCaptureStatusActive:
+            raise RuntimeError(
+                "Conditional node can be added only to capturing stream")
+
+        cdef runtime.GraphConditionalNodeType node_type_enum
+        if node_type == "if":
+            node_type_enum = <runtime.GraphConditionalNodeType>(runtime.cudaGraphCondTypeIf)
+        elif node_type == "while":
+            node_type_enum = <runtime.GraphConditionalNodeType>(runtime.cudaGraphCondTypeWhile)
+        else:
+            raise ValueError("`node_type` must be 'if' or 'while'")
+
+        # Allocate node params struct's memory via `malloc` to avoid
+        # the use of deleted constructor
+        cdef runtime.GraphNodeParams* params = \
+            <runtime.GraphNodeParams*>(
+                PyMem_Malloc(sizeof(runtime.GraphNodeParams)))
+        if not params:
+            raise MemoryError()
+        cdef runtime.Graph[1] body_graphs
+        cdef runtime.GraphNode[1] nodes
+        try:
+            c_memset(params, 0, sizeof(runtime.GraphNodeParams))
+            params.type = <runtime.GraphNodeType>(
+                runtime.cudaGraphNodeTypeConditional)
+            params.conditional.handle = <unsigned long long>(handle)
+            params.conditional.type = node_type_enum
+            params.conditional.size = <size_t>(1)
+
+            nodes[0] = <runtime.GraphNode>(runtime.graphAddNode(
+                main_graph_ptr,
+                deps_ptr,
+                n_deps,
+                <intptr_t>(params)
+            ))
+
+            body_graphs[0] = params.conditional.phGraph_out[0]
+        finally:
+            PyMem_Free(params)
+
+        runtime.streamUpdateCaptureDependencies(
+            self.ptr,
+            <intptr_t>nodes,
+            1, # number of dependency nodes
+            runtime.cudaStreamSetCaptureDependencies
+        )
+
+        return graph.Graph.from_stream(<intptr_t>(body_graphs[0]), is_child=True)
 
     @property
     def is_non_blocking(self):

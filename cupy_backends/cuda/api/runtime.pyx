@@ -972,7 +972,7 @@ cpdef bint streamIsCapturing(intptr_t stream) except*:
     return <bint>s
 
 cpdef (
-        intptr_t,           # capture status
+        int,                # capture status
         unsigned long long, # id
         intptr_t,           # graph
         intptr_t,           # dependencies
@@ -992,7 +992,7 @@ cpdef (
         )
     check_status(status)
     return (
-        <intptr_t>(captureStatus),
+        <int>(captureStatus),
         id_,
         <intptr_t>(graph),
         <intptr_t>(dependencies),

@@ -116,6 +116,10 @@ cpdef enum:
     # cudaGraphConditionalHandleFlags
     cudaGraphCondAssignDefault = 1
 
+    # cudaStreamUpdateCaptureDependenciesFlags
+    cudaStreamAddCaptureDependencies = 0x0
+    cudaStreamSetCaptureDependencies = 0x1
+
     # cudaGraphDebugDotFlags
     cudaGraphDebugDotFlagsVerbose = 1<<0
     cudaGraphDebugDotFlagsKernelNodeParams = 1<<2
