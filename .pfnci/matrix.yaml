@@ -607,7 +607,7 @@
   cudnn: "8.8"
   python: "3.12"
   numpy: "1.26"
-  scipy: "1.14"
+  scipy: "1.13"
   optuna: "3"
   mpi4py: null
   cython: "0.29"
