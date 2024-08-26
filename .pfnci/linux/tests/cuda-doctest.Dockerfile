@@ -19,8 +19,8 @@ ENV PATH "/usr/lib/ccache:${PATH}"
 RUN git clone https://github.com/pyenv/pyenv.git /opt/pyenv
 ENV PYENV_ROOT "/opt/pyenv"
 ENV PATH "${PYENV_ROOT}/shims:${PYENV_ROOT}/bin:${PATH}"
-RUN pyenv install 3.9.6 && \
-    pyenv global 3.9.6 && \
+RUN pyenv install 3.12.5 && \
+    pyenv global 3.12.5 && \
     pip install -U setuptools pip
 
 RUN pip install -U numpy==1.21.* scipy==1.7.* optuna==3.* cython==0.29.*
