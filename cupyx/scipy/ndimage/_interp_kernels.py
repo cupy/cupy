@@ -222,7 +222,7 @@ def _unravel_loop_index(ndim, uint_t='unsigned int'):
     return '\n'.join(code)
 
 
-def _generate_interp_custom(coord_func, ndim, large_int, yshape, mode, cval,
+def _generate_interp_custom(coord_func, ndim, large_int, mode, cval,
                             order, name='', integer_output=False, nprepad=0):
     """
     Args:
@@ -260,10 +260,6 @@ def _generate_interp_custom(coord_func, ndim, large_int, yshape, mode, cval,
     ops.append(f'const {uint_t} sx_{ndim - 1} = 1;')
     for j in range(ndim - 1, 0, -1):
         ops.append(f'const {uint_t} sx_{j - 1} = sx_{j} * xsize_{j};')
-
-    if yshape is not None:
-        # create in_coords array to store the unraveled indices
-        ops.append(_unravel_loop_index(ndim, uint_t))
 
     # compute the transformed (target) coordinates, c_j
     ops = ops + coord_func(ndim, nprepad)
@@ -482,8 +478,6 @@ def _generate_interp_custom(coord_func, ndim, large_int, yshape, mode, cval,
         name, order, mode_str, ndim,
     )
 
-    if yshape is not None:
-        name += '_y'+'_'.join([f'{j}' for j in yshape])
     if uint_t == 'size_t':
         name += '_i64'
     return operation, name
