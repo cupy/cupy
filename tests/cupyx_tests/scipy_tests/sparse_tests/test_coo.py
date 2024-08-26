@@ -205,7 +205,7 @@ class TestCooMatrix:
         ], dtype=self.dtype)
         numpy.testing.assert_allclose(m.toarray(), expect)
 
-    @testing.with_requires('scipy')
+    @testing.with_requires('scipy<1.14')
     def test_str(self):
         if numpy.dtype(self.dtype).kind == 'b':
             expect = '''  (0, 0)\tFalse
