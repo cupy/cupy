@@ -209,6 +209,7 @@ class _BaseStream:
     def __init__(self, ptr, device_id):
         self.ptr = ptr
         self.device_id = device_id
+        self.capturing_graph = None
 
     def __eq__(self, other):
         # This operator needed as the ptr may be shared between multiple Stream
@@ -331,7 +332,7 @@ class _BaseStream:
         """
         runtime.streamWaitEvent(self.ptr, event.ptr)
 
-    def begin_capture(self, mode=None):
+    def begin_capture(self, mode=None, dest_graph=None):
         """Begin stream capture to construct a CUDA graph.
 
         A call to this function must be paired with a call to
@@ -387,33 +388,21 @@ class _BaseStream:
             # (Though, ideally stream capture should be used together with
             # the async APIs, such as cudaMallocAsync.)
             mode = runtime.streamCaptureModeRelaxed
-        runtime.streamBeginCapture(self.ptr, mode)
-
-    def begin_capture_to_graph(
-            self,
-            graph,
-            dependencies_ptr=0,
-            dependency_data_ptr=0,
-            num_deps=0,
-            mode=None
-        ):
-        # NOTE: This API only supports to start capture **empty** graph
-        if graph.graphExec > 0:
-            raise RuntimeError(
-                "Cannnot begin capture to already instantiated graph"
+        if dest_graph is None:
+            runtime.streamBeginCapture(self.ptr, mode)
+        else:
+            # Supports to start capture only to an empty graph
+            runtime.streamBeginCaptureToGraph(
+                self.ptr,
+                dest_graph.graph,
+                0, # dependencies_ptr
+                0, # dependency_data_ptr
+                0, # num_deps
+                mode
             )
-        if mode is None:
-            mode = runtime.streamCaptureModeRelaxed
-        runtime.streamBeginCaptureToGraph(
-            self.ptr,
-            graph.graph,
-            dependencies_ptr,
-            dependency_data_ptr,
-            num_deps,
-            mode
-        )
+            self.capturing_graph = dest_graph
 
-    def end_capture(self, return_graph=True):
+    def end_capture(self):
         """End stream capture and retrieve the constructed CUDA graph.
 
         Returns:
@@ -431,10 +420,12 @@ class _BaseStream:
         if runtime._is_hip_environment:
             raise RuntimeError('This function is not supported on HIP')
         cdef intptr_t g = runtime.streamEndCapture(self.ptr)
-        if return_graph:
+        if self.capturing_graph is None:
             return graph.Graph.from_stream(g)
         else:
-            return None
+            captured_graph = self.capturing_graph
+            self.capturing_graph = None
+            return captured_graph
 
     def is_capturing(self):
         """Check if the stream is capturing.
