@@ -59,7 +59,8 @@ class RandomState(object):
         if method is None:
             method = curand.CURAND_RNG_PSEUDO_DEFAULT
         self._generator = curand.createGenerator(method)
-        self._finalizer = weakref.finalize(self, curand.destroyGenerator, self._generator)
+        self._finalizer = weakref.finalize(
+            self, curand.destroyGenerator, self._generator)
         self.method = method
         self.seed(seed)
 
