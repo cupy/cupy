@@ -25,7 +25,7 @@ class _TestBase:
     def test_expit(self):
         self.check_unary_lower_precision('expit')
 
-    @testing.with_requires("scipy<1.14")
+    @testing.with_requires("scipy>=1.8.0rc0", "scipy<1.14")
     def test_log_expit(self):
         self.check_unary_lower_precision('log_expit')
 
