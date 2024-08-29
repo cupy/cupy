@@ -487,4 +487,5 @@ class TestRemez:
     def test_fs_validation(self, mod):
         xp, scp = mod
         with pytest.raises(ValueError, match="Sampling.*single scalar"):
-            scp.signal.remez(11, .1, 1, fs=xp.array([10, 20]))
+            scp.signal.remez(11, xp.asarray([.1]), xp.asarray([1]),
+                             fs=xp.array([10, 20]))
