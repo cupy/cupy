@@ -28,6 +28,7 @@ test_retval=0
 export CUPY_CACHE_DIR=/tmp/this_pr_only
 export CUPY_CUDA_COMPILE_WITH_DEBUG=1
 mkdir -p "${CUPY_CACHE_DIR}"
+compute-sanitizer --tool memcheck --padding 16 $(pyenv which python3) -m pytest "${pytest_opts[@]}" -v cupyx_tests/scipy_tests/interpolate_tests/test_ndgriddata.py || test_retval=$?
 compute-sanitizer --tool memcheck --padding 16 $(pyenv which python3) -m pytest "${pytest_opts[@]}" -v -k 'test_alternative_call[True-nearest]' cupyx_tests/scipy_tests/interpolate_tests/test_ndgriddata.py || test_retval=$?
 compute-sanitizer --tool memcheck --padding 16 $(pyenv which python3) -m pytest "${pytest_opts[@]}" -v -k 'test_alternative_call[True-linear]' cupyx_tests/scipy_tests/interpolate_tests/test_ndgriddata.py || test_retval=$?
 compute-sanitizer --tool memcheck --padding 16 $(pyenv which python3) -m pytest "${pytest_opts[@]}" -v -k 'test_alternative_call[True-cubic]' cupyx_tests/scipy_tests/interpolate_tests/test_ndgriddata.py || test_retval=$?
