@@ -11,7 +11,7 @@ from cupy import testing
 from cupyx.scipy import sparse
 
 
-@testing.with_requires('scipy>=1.11')
+@testing.with_requires('scipy>=1.14')
 class TestSpmatrix(unittest.TestCase):
 
     def dummy_class(self, sp):
@@ -34,7 +34,8 @@ class TestSpmatrix(unittest.TestCase):
             class DummySparseCPU(scipy.sparse._base._spbase):
 
                 def __init__(self, maxprint=50, shape=None, nnz=0):
-                    super(DummySparseCPU, self).__init__(maxprint)
+                    super(DummySparseCPU, self).__init__(
+                        None, maxprint=maxprint)
                     self._shape = shape
                     self._nnz = nnz
 
@@ -47,7 +48,7 @@ class TestSpmatrix(unittest.TestCase):
         for sp in (scipy.sparse, sparse):
             with pytest.raises(ValueError):
                 if sp is scipy.sparse:
-                    sp._base._spbase()
+                    sp._base._spbase(None)
                 else:
                     # TODO(asi1024): Replace with sp._base._spbase
                     sp.spmatrix()

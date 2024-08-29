@@ -420,7 +420,7 @@ cdef class NcclCommunicator:
                                  <runtime.Stream>stream)
         check_status(status)
 
-    def broadcast(self, intptr_t sendbuff, intptr_t recvbuff, int count,
+    def broadcast(self, intptr_t sendbuff, intptr_t recvbuff, size_t count,
                   int datatype, int root, intptr_t stream):
         if NCCL_VERSION_CODE < 2200:
             # ncclBroadcast is not available in NCCL 2.1 or older.
@@ -436,7 +436,7 @@ cdef class NcclCommunicator:
                                     self._comm, <runtime.Stream>stream)
         check_status(status)
 
-    def bcast(self, intptr_t buff, int count, int datatype,
+    def bcast(self, intptr_t buff, size_t count, int datatype,
               int root, intptr_t stream):
         with nogil:
             status = _ncclBcast(<void*>buff, count,
