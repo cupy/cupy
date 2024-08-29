@@ -34,7 +34,15 @@ digamma_preamble = "#include <cupy/special/digamma.h>"
 
 
 digamma = _core.create_ufunc(
-    'cupyx_scipy_special_digamma', ('f->f', 'd->d', 'F->F', 'D->D'),
+    'cupyx_scipy_special_digamma',
+    (
+        ('l->d', 'out0 = special::digamma(double(in0))'),
+        ('e->d', 'out0 = special::digamma(double(in0))',),
+        'f->f',
+        'd->d',
+        'F->F',
+        'D->D',
+    ),
     'out0 = special::digamma(in0)',
     preamble=digamma_preamble,
     doc="""The digamma function.

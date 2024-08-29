@@ -7,12 +7,12 @@ submodules:
 build:
     os: ubuntu-22.04
     tools:
-        python: "3.9"
+        python: "3.12"
 formats: all
 sphinx:
     configuration: docs/source/conf.py
 python:
     install:
+    - requirements: docs/requirements.txt
     - method: pip
       path: .
-    - requirements: docs/requirements.txt
