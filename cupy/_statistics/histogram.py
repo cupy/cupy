@@ -171,7 +171,7 @@ def _get_bin_edges(a, bins, range):
     return bin_edges
 
 
-def histogram(x, bins=10, range=None, weights=None, density=False):
+def histogram(x, bins=10, range=None, density=False, weights=None):
     """Computes the histogram of a set of data.
 
     Args:

@@ -144,11 +144,17 @@ class TestNdarrayInitRaise(unittest.TestCase):
         with pytest.raises(ValueError):
             _core.array(arr)
 
+    @testing.with_requires('numpy>=2.0')
+    @testing.numpy_cupy_array_equal()
+    def test_upper_limit_ndim(self, xp):
+        shape = [1 for i in range(64)]
+        return xp.zeros(shape, dtype=xp.int8)
+
     def test_excessive_ndim(self):
         for xp in (numpy, cupy):
             with pytest.raises(ValueError):
                 xp.ndarray(
-                    shape=[1 for i in range(33)], dtype=xp.int8)
+                    shape=[1 for i in range(65)], dtype=xp.int8)
 
 
 @testing.parameterize(
