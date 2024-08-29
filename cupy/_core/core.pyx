@@ -515,7 +515,7 @@ cdef class _ndarray_base:
         """Dumps a pickle of the array to a string."""
         return pickle.dumps(self, -1)
 
-    cdef _ndarray_base _astype(self, dtype, order='K', casting=None, subok=None, copy=True, allow_copy=True):
+    cpdef _ndarray_base _astype(self, dtype, order='K', casting=None, subok=None, copy=True, allow_copy=True):
         cdef strides_t strides
 
         # TODO(beam2d): Support casting and subok option

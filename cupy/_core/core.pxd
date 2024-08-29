@@ -30,7 +30,7 @@ cdef class _ndarray_base:
     cpdef tofile(self, fid, sep=*, format=*)
     cpdef dump(self, file)
     cpdef bytes dumps(self)
-    cdef _ndarray_base _astype(
+    cpdef _ndarray_base _astype(
         self, dtype, order=*, casting=*, subok=*, copy=*, allow_copy=*)
     cpdef _ndarray_base astype(
         self, dtype, order=*, casting=*, subok=*, copy=*)
