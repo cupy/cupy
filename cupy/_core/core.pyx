@@ -515,6 +515,54 @@ cdef class _ndarray_base:
         """Dumps a pickle of the array to a string."""
         return pickle.dumps(self, -1)
 
+    cdef _ndarray_base _astype(self, dtype, order='K', casting=None, subok=None, copy=True, allow_copy=True):
+        cdef strides_t strides
+
+        # TODO(beam2d): Support casting and subok option
+        if casting is not None:
+            raise TypeError('casting is not supported yet')
+        if subok is not None:
+            raise TypeError('subok is not supported yet')
+
+        if order is None:
+            order = 'K'
+        cdef int order_char = internal._normalize_order(order)
+
+        dtype = get_dtype(dtype)
+        if dtype == self.dtype:
+            if not copy and (
+                    order_char == b'K' or
+                    order_char == b'A' and (self._c_contiguous or
+                                            self._f_contiguous) or
+                    order_char == b'C' and self._c_contiguous or
+                    order_char == b'F' and self._f_contiguous):
+                return self
+
+        if not allow_copy:
+            _zerocopy_fail()
+
+        order_char = internal._update_order_char(
+            self._c_contiguous, self._f_contiguous, order_char)
+
+        if order_char == b'K':
+            strides = internal._get_strides_for_order_K(self, dtype)
+            newarray = _ndarray_init(ndarray, self._shape, dtype, None)
+            # TODO(niboshi): Confirm update_x_contiguity flags
+            newarray._set_shape_and_strides(self._shape, strides, True, True)
+        else:
+            newarray = ndarray(self.shape, dtype=dtype, order=chr(order_char))
+
+        if self.size == 0:
+            # skip copy
+            if self.dtype.kind == 'c' and newarray.dtype.kind not in 'bc':
+                warnings.warn(
+                    'Casting complex values to real discards the imaginary '
+                    'part',
+                    numpy.ComplexWarning)
+        else:
+            elementwise_copy(self, newarray)
+        return newarray
+
     cpdef _ndarray_base astype(
             self, dtype, order='K', casting=None, subok=None, copy=True):
         """Casts the array to given data type.
@@ -542,49 +590,7 @@ cdef class _ndarray_base:
         .. seealso:: :meth:`numpy.ndarray.astype`
 
         """
-        cdef strides_t strides
-
-        # TODO(beam2d): Support casting and subok option
-        if casting is not None:
-            raise TypeError('casting is not supported yet')
-        if subok is not None:
-            raise TypeError('subok is not supported yet')
-
-        if order is None:
-            order = 'K'
-        cdef int order_char = internal._normalize_order(order)
-
-        dtype = get_dtype(dtype)
-        if dtype == self.dtype:
-            if not copy and (
-                    order_char == b'K' or
-                    order_char == b'A' and (self._c_contiguous or
-                                            self._f_contiguous) or
-                    order_char == b'C' and self._c_contiguous or
-                    order_char == b'F' and self._f_contiguous):
-                return self
-
-        order_char = internal._update_order_char(
-            self._c_contiguous, self._f_contiguous, order_char)
-
-        if order_char == b'K':
-            strides = internal._get_strides_for_order_K(self, dtype)
-            newarray = _ndarray_init(ndarray, self._shape, dtype, None)
-            # TODO(niboshi): Confirm update_x_contiguity flags
-            newarray._set_shape_and_strides(self._shape, strides, True, True)
-        else:
-            newarray = ndarray(self.shape, dtype=dtype, order=chr(order_char))
-
-        if self.size == 0:
-            # skip copy
-            if self.dtype.kind == 'c' and newarray.dtype.kind not in 'bc':
-                warnings.warn(
-                    'Casting complex values to real discards the imaginary '
-                    'part',
-                    numpy.ComplexWarning)
-        else:
-            elementwise_copy(self, newarray)
-        return newarray
+        return self._astype(dtype, order, casting, subok, copy, True)
 
     # TODO(okuta): Implement byteswap
 
@@ -2415,32 +2421,8 @@ _round_ufunc_neg_uint = create_ufunc(
 # Array creation routines
 # -----------------------------------------------------------------------------
 
-cdef _is_zerocopy(obj, dtype, order):
-    cdef _ndarray_base src
-    cdef int order_char = internal._normalize_order(order)
-
-    if not isinstance(obj, ndarray):
-        return False
-
-    src = obj
-
-    if dtype is None:
-        dtype = src.dtype
-    dtype = get_dtype(dtype)
-
-    ret = True
-    ret &= device.get_device_id() == src.data.device_id
-    ret &= dtype == src.dtype
-    ret &= (
-        order_char == b"K"
-        or order_char == b"A"
-        and (src._c_contiguous or src._f_contiguous)
-        or order_char == b"C"
-        and src._c_contiguous
-        or order_char == b"F"
-        and src._f_contiguous
-    )
-    return ret
+cdef _zerocopy_fail():
+    raise ValueError("Copy required.")
 
 cpdef _ndarray_base array(obj, dtype=None, copy=True, order='K',
                           bint subok=False, Py_ssize_t ndmin=0,
@@ -2451,20 +2433,18 @@ cpdef _ndarray_base array(obj, dtype=None, copy=True, order='K',
     if order is None:
         order = 'K'
 
-    if copy is False:
-        # Copy prohibited
-        if _is_zerocopy(obj, dtype, order):
-            return obj
-        else:
-            raise ValueError("Copy required.")
-
     # True -> True
+    # False -> False
     # None -> False
     copy_ = <bint> copy
+    allow_copy = False if copy is False else True
 
     if isinstance(obj, ndarray):
-        ret = _array_from_cupy_ndarray(obj, dtype, copy_, order, ndmin)
+        ret = _array_from_cupy_ndarray(obj, dtype, copy_, order, ndmin, allow_copy)
         return ret
+
+    if not allow_copy:
+        _zerocopy_fail()
 
     if hasattr(obj, '__cuda_array_interface__'):
         return _array_from_cuda_array_interface(
@@ -2485,7 +2465,7 @@ cpdef _ndarray_base array(obj, dtype=None, copy=True, order='K',
 
 
 cdef _ndarray_base _array_from_cupy_ndarray(
-        obj, dtype, bint copy, order, Py_ssize_t ndmin):
+        obj, dtype, bint copy, order, Py_ssize_t ndmin, allow_copy=True):
     cdef Py_ssize_t ndim
     cdef _ndarray_base a, src
 
@@ -2495,9 +2475,11 @@ cdef _ndarray_base _array_from_cupy_ndarray(
         dtype = src.dtype
 
     if src.data.device_id == device.get_device_id():
-        a = src.astype(dtype, order=order, copy=copy)
-    else:
+        a = src._astype(dtype, order=order, copy=copy, allow_copy=allow_copy)
+    elif allow_copy:
         a = src.copy(order=order).astype(dtype, copy=False)
+    else:
+        _zerocopy_fail()
 
     ndim = a._shape.size()
     if ndmin > ndim:

@@ -30,6 +30,8 @@ cdef class _ndarray_base:
     cpdef tofile(self, fid, sep=*, format=*)
     cpdef dump(self, file)
     cpdef bytes dumps(self)
+    cdef _ndarray_base _astype(
+        self, dtype, order=*, casting=*, subok=*, copy=*, allow_copy=*)
     cpdef _ndarray_base astype(
         self, dtype, order=*, casting=*, subok=*, copy=*)
     cpdef _ndarray_base copy(self, order=*)
@@ -105,7 +107,8 @@ cpdef Module compile_with_cache(str source, tuple options=*, arch=*,
 
 
 # TODO(niboshi): Move to _routines_creation.pyx
-cdef _is_zerocopy(obj, dtype, order)
+
+cdef _zerocopy_fail()
 
 cpdef _ndarray_base array(
     obj, dtype=*, copy=*, order=*, bint subok=*, Py_ssize_t ndmin=*,
