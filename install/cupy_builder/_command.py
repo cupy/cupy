@@ -143,18 +143,26 @@ class custom_build_ext(setuptools.command.build_ext.build_ext):
             compile_time_env=compile_time_env)
 
     def build_extensions(self) -> None:
+        ctx = cupy_builder.get_context()
         num_jobs = int(os.environ.get('CUPY_NUM_BUILD_JOBS', '4'))
         if num_jobs > 1:
             self.parallel = num_jobs
-            if hasattr(self.compiler, 'initialize'):
-                # Workarounds a bug in setuptools/distutils on Windows by
-                # initializing the compiler before starting a thread.
-                # By default, MSVCCompiler performs initialization in the
-                # first compilation. However, in parallel compilation mode,
-                # the init code runs in each thread and messes up the internal
-                # state as the init code is not locked and is not idempotent.
-                # https://github.com/pypa/setuptools/blob/v60.0.0/setuptools/_distutils/_msvccompiler.py#L322-L327
-                self.compiler.initialize()
+
+        if (sys.platform == 'win32' and
+                hasattr(self.compiler, 'initialize')):  # i.e., MSVCCompiler
+            # Initialize to get path to the host compiler (cl.exe).
+            # This also workarounds a bug in setuptools/distutils on Windows by
+            # initializing the compiler before starting a thread.
+            # By default, MSVCCompiler performs initialization in the
+            # first compilation. However, in parallel compilation mode,
+            # the init code runs in each thread and messes up the internal
+            # state as the init code is not locked and is not idempotent.
+            # https://github.com/pypa/setuptools/blob/v60.0.0/setuptools/_distutils/_msvccompiler.py#L322-L327
+            self.compiler.initialize()
+            if hasattr(self.compiler, 'cc'):
+                cc = self.compiler.cc
+                print(f'Detected host compiler: {cc}')
+                ctx.win32_cl_exe_path = cc
 
         # Compile "*.pyx" files into "*.cpp" files.
         print('Cythonizing...')
