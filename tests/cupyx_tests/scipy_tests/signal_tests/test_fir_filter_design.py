@@ -406,6 +406,7 @@ class TestMinimumPhase:
         assert_raises(ValueError, signal.minimum_phase,
                       cupy.ones(10), method='foo')
 
+    @testing.with_requires("scipy<1.14")
     @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_homomorphic(self, xp, scp):
         # check that it can recover frequency responses of arbitrary
