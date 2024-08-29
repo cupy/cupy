@@ -104,7 +104,7 @@ function Main {
 
     $Env:CUPY_TEST_GPU_LIMIT = $Env:GPU
     $Env:CUPY_DUMP_CUDA_SOURCE_ON_ERROR = "1"
-    
+
     # Unit test
     if ($test -eq "build") {
         return
@@ -134,8 +134,7 @@ function Main {
     echo "CuPy Configuration:"
     RunOrDie python -c "import cupy; print(cupy); cupy.show_config()"
     echo "Running test..."
-    $Env:CUDA_LAUNCH_BLOCKING = "1"
-    $test_retval = RunWithTimeout -timeout 18000 -output ../cupy_test_log.txt -- python -m pytest -rfEX @pytest_opts cupyx_tests\scipy_tests\signal_tests\test_peak_finding.py
+    $test_retval = RunWithTimeout -timeout 18000 -output ../cupy_test_log.txt -- python -m pytest -rfEX @pytest_opts .
     popd
 
     if (-Not $is_pull_request) {
