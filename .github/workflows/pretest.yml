@@ -78,7 +78,7 @@ jobs:
 
     - name: Build
       run: |
-        pip install -U pip wheel setuptools==73.0.1
+        pip install -U pip wheel setuptools
         READTHEDOCS=True pip install -v -e .
         ccache --max-size 0.5Gi --cleanup --show-stats
 
