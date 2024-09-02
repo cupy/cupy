@@ -2467,7 +2467,7 @@ cdef _ndarray_base _array_from_cupy_ndarray(
     if src.data.device_id == device.get_device_id():
         a = src._astype(dtype, order=order, copy=copy)
     else:
-        a = src.copy(order=order)._astype(dtype, copy=copy)
+        a = src.copy(order=order)._astype(dtype, copy=None)
 
     ndim = a._shape.size()
     if ndmin > ndim:
