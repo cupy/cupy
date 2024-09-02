@@ -127,8 +127,9 @@ def solve_triangular(a, b, trans=0, lower=False, unit_diagonal=False,
         stop = start + step * batch_count
         b_array = cupy.arange(start, stop, step, dtype=cupy.uintp)
     else:
-        a = cupy.array(a, dtype=dtype, order='F', copy=False)
-        b = cupy.array(b, dtype=dtype, order='F', copy=(not overwrite_b))
+        a = cupy.array(a, dtype=dtype, order='F', copy=None)
+        b = cupy.array(b, dtype=dtype, order='F',
+                       copy=(None if overwrite_b else True))
 
         m, n = (b.size, 1) if b.ndim == 1 else b.shape
 
