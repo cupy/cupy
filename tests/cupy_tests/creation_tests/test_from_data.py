@@ -754,15 +754,12 @@ class TestArrayPreservationOfShape(unittest.TestCase):
 
     @testing.for_all_dtypes()
     def test_cupy_array(self, dtype):
+        if self.xp is numpy and self.copy is False:
+            pytest.skip()
+
         shape = 2, 3
         a = testing.shaped_arange(shape, self.xp, dtype)
-
-        try:
-            cupy.array(a, copy=self.copy, ndmin=self.ndmin)
-        except ValueError as e:
-            if self.xp is numpy and self.copy is False:
-                return
-            raise RuntimeError("Zero-copy check failed") from e
+        cupy.array(a, copy=self.copy, ndmin=self.ndmin)
 
         # Check if cupy.ndarray does not alter
         # the shape of the original array.
@@ -780,14 +777,11 @@ class TestArrayCopy(unittest.TestCase):
 
     @testing.for_all_dtypes()
     def test_cupy_array(self, dtype):
-        a = testing.shaped_arange((2, 3), self.xp, dtype)
+        if self.xp is numpy and self.copy is False:
+            pytest.skip()
 
-        try:
-            actual = cupy.array(a, copy=self.copy, ndmin=self.ndmin)
-        except ValueError as e:
-            if self.xp is numpy and self.copy is False:
-                return
-            raise RuntimeError("Zero-copy check failed") from e
+        a = testing.shaped_arange((2, 3), self.xp, dtype)
+        actual = cupy.array(a, copy=self.copy, ndmin=self.ndmin)
 
         should_copy = (self.xp is numpy) or (self.copy is True)
         # TODO(Kenta Oono): Better determination of copy.
