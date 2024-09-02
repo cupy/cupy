@@ -516,14 +516,7 @@ cdef class _ndarray_base:
         return pickle.dumps(self, -1)
 
     cpdef _ndarray_base _astype(
-        self,
-        dtype,
-        order="K",
-        casting=None,
-        subok=None,
-        copy=True,
-        allow_copy=True,
-    ):
+            self, dtype, order='K', casting=None, subok=None, copy=True):
         cdef strides_t strides
 
         # TODO(beam2d): Support casting and subok option
@@ -546,8 +539,9 @@ cdef class _ndarray_base:
                     order_char == b'F' and self._f_contiguous):
                 return self
 
-        if not allow_copy:
-            _zerocopy_fail()
+        if not copy and copy is not None:
+            raise ValueError(
+                "Unable to avoid copy while creating an array as requested.")
 
         order_char = internal._update_order_char(
             self._c_contiguous, self._f_contiguous, order_char)
@@ -598,7 +592,8 @@ cdef class _ndarray_base:
         .. seealso:: :meth:`numpy.ndarray.astype`
 
         """
-        return self._astype(dtype, order, casting, subok, copy, True)
+        copy_ = True if copy else None
+        return self._astype(dtype, order, casting, subok, copy_)
 
     # TODO(okuta): Implement byteswap
 
@@ -2429,9 +2424,6 @@ _round_ufunc_neg_uint = create_ufunc(
 # Array creation routines
 # -----------------------------------------------------------------------------
 
-cdef _zerocopy_fail():
-    raise ValueError("Copy required.")
-
 cpdef _ndarray_base array(obj, dtype=None, copy=True, order='K',
                           bint subok=False, Py_ssize_t ndmin=0,
                           bint blocking=False):
@@ -2441,20 +2433,8 @@ cpdef _ndarray_base array(obj, dtype=None, copy=True, order='K',
     if order is None:
         order = 'K'
 
-    # True -> True
-    # False -> False
-    # None -> False
-    copy_ = <bint> copy
-    allow_copy = False if copy is False else True
-
     if isinstance(obj, ndarray):
-        ret = _array_from_cupy_ndarray(
-            obj, dtype, copy_, order, ndmin, allow_copy
-        )
-        return ret
-
-    if not allow_copy:
-        _zerocopy_fail()
+        return _array_from_cupy_ndarray(obj, dtype, copy, order, ndmin)
 
     if hasattr(obj, '__cuda_array_interface__'):
         return _array_from_cuda_array_interface(
@@ -2462,7 +2442,7 @@ cpdef _ndarray_base array(obj, dtype=None, copy=True, order='K',
 
     if hasattr(obj, '__cupy_get_ndarray__'):
         return _array_from_cupy_ndarray(
-            obj.__cupy_get_ndarray__(), dtype, copy_, order, ndmin)
+            obj.__cupy_get_ndarray__(), dtype, copy, order, ndmin)
 
     concat_shape, concat_type, concat_dtype = (
         _array_info_from_nested_sequence(obj))
@@ -2475,7 +2455,7 @@ cpdef _ndarray_base array(obj, dtype=None, copy=True, order='K',
 
 
 cdef _ndarray_base _array_from_cupy_ndarray(
-        obj, dtype, bint copy, order, Py_ssize_t ndmin, allow_copy=True):
+        obj, dtype, copy, order, Py_ssize_t ndmin):
     cdef Py_ssize_t ndim
     cdef _ndarray_base a, src
 
@@ -2485,11 +2465,9 @@ cdef _ndarray_base _array_from_cupy_ndarray(
         dtype = src.dtype
 
     if src.data.device_id == device.get_device_id():
-        a = src._astype(dtype, order=order, copy=copy, allow_copy=allow_copy)
-    elif allow_copy:
-        a = src.copy(order=order).astype(dtype, copy=False)
+        a = src._astype(dtype, order=order, copy=copy)
     else:
-        _zerocopy_fail()
+        a = src.copy(order=order)._astype(dtype, copy=copy)
 
     ndim = a._shape.size()
     if ndmin > ndim:
