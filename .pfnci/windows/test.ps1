@@ -80,7 +80,7 @@ function Main {
     # Build
     echo "Setting up test environment"
     RunOrDie python -V
-    RunOrDie python -m pip install -U pip setuptools wheel
+    RunOrDie python -m pip install -U pip setuptools==73.0.1 wheel
     RunOrDie python -m pip freeze
 
     echo "Building..."
@@ -134,7 +134,7 @@ function Main {
     echo "CuPy Configuration:"
     RunOrDie python -c "import cupy; print(cupy); cupy.show_config()"
     echo "Running test..."
-    $test_retval = RunWithTimeout -timeout 32767 -output ../cupy_test_log.txt -- python -m pytest -rfEX @pytest_opts .
+    $test_retval = RunWithTimeout -timeout 18000 -output ../cupy_test_log.txt -- python -m pytest -rfEX @pytest_opts .
     popd
 
     if (-Not $is_pull_request) {

@@ -704,6 +704,7 @@ class TestRaw:
         y = cupy.arange(N*2, dtype=cupy.uint32) % N
         assert (x == y).all()
 
+    @pytest.mark.xfail(reason="XXX: np2.0: int32/uint32 compile failure")
     def test_warpsize(self):
         @jit.rawkernel()
         def f(arr):

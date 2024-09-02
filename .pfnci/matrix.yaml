@@ -226,8 +226,8 @@
   cusparselt: "0.6.1"
   cudnn: "8.8"
   python: "3.10"
-  numpy: "1.25"
-  scipy: "1.12"
+  numpy: "1.24"
+  scipy: "1.13"
   optuna: "3"
   mpi4py: null
   cython: "0.29"
@@ -256,8 +256,8 @@
   cusparselt: "0.6.1"
   cudnn: "8.8"
   python: "3.11"
-  numpy: "1.26"
-  scipy: "1.12"
+  numpy: "1.25"
+  scipy: "1.13"
   optuna: "3"
   mpi4py: null
   cython: "0.29"
@@ -286,8 +286,8 @@
   cusparselt: "0.6.1"
   cudnn: "8.8"
   python: "3.11"
-  numpy: "1.24"
-  scipy: "1.12"
+  numpy: "1.26"
+  scipy: "1.13"
   optuna: "3"
   mpi4py: null
   cython: "0.29"
@@ -316,8 +316,8 @@
   cusparselt: "0.6.1"
   cudnn: "8.8"
   python: "3.11"
-  numpy: "1.25"
-  scipy: "1.12"
+  numpy: "1.24"
+  scipy: "1.14"
   optuna: "3"
   mpi4py: null
   cython: "0.29"
@@ -347,7 +347,7 @@
   cudnn: "8.8"
   python: "3.12"
   numpy: "1.26"
-  scipy: "1.12"
+  scipy: "1.14"
   optuna: "3"
   mpi4py: null
   cython: "0.29"
@@ -364,10 +364,9 @@
   test: "unit-multi"
 
 # CUDA 12.5 | Linux
-# The latest CUDA version matrix is intended to cover the highest supported combination.
 - project: "cupy.linux.cuda125"
   target: "cuda125"
-  tags: ["@push", "full", "mini", "cuda125"]
+  tags: ["@push", "full", "cuda125"]
   system: "linux"
   os: "ubuntu:20.04"
   cuda: "12.5"
@@ -377,8 +376,8 @@
   cusparselt: "0.6.1"
   cudnn: "8.8"
   python: "3.12"
-  numpy: "1.26"
-  scipy: "1.12"
+  numpy: "1.26"  # "2.0"
+  scipy: "1.14"
   optuna: "3"
   mpi4py: null
   cython: "0.29"
@@ -389,10 +388,42 @@
 # CUDA 12.5 (Multi-GPU) | Linux
 - project: "cupy.linux.cuda125.multi"
   _inherits: "cupy.linux.cuda125"
-  tags: ["@push", "full", "mini", "multi", "cuda125"]
+  tags: ["@push", "full", "multi", "cuda125"]
   target: "cuda125.multi"
   mpi4py: "3"
   test: "unit-multi"
+
+# CUDA 12.6 | Linux
+# The latest CUDA version matrix is intended to cover the highest supported combination.
+- project: "cupy.linux.cuda126"
+  target: "cuda126"
+  tags: ["@push", "full", "mini", "cuda126"]
+  system: "linux"
+  os: "ubuntu:20.04"
+  cuda: "12.6"
+  rocm: null
+  nccl: "2.22"
+  cutensor: "2.0"
+  cusparselt: "0.6.1"
+  cudnn: "8.8"
+  python: "3.12"
+  numpy: "1.26"  # "2.1"
+  scipy: "1.14"
+  optuna: "3"
+  mpi4py: null
+  cython: "0.29"
+  cuda-python: null
+  env:CUPY_ACCELERATORS: "cutensor,cub"
+  test: "unit"
+
+# CUDA 12.6 (Multi-GPU) | Linux
+- project: "cupy.linux.cuda126.multi"
+  _inherits: "cupy.linux.cuda126"
+  tags: ["@push", "full", "mini", "multi", "cuda126"]
+  target: "cuda126.multi"
+  mpi4py: "3"
+  test: "unit-multi"
+
 
 ###############################################################################
 # CUDA (Windows)
@@ -443,7 +474,7 @@
   cudnn: null
   python: "3.11"
   numpy: "1.25"
-  scipy: "1.11"
+  scipy: "1.12"
   optuna: "3"
   mpi4py: null
   cython: "0.29"
@@ -467,7 +498,7 @@
   cudnn: null
   python: "3.12"
   numpy: "1.26"
-  scipy: "1.12"
+  scipy: "1.14"
   optuna: "3"
   mpi4py: null
   cython: "0.29"
@@ -493,7 +524,7 @@
   cudnn: "8.8"
   python: "3.12"
   numpy: "1.26"
-  scipy: "1.12"
+  scipy: "1.14"
   optuna: "3"
   mpi4py: null
   cython: "0.29"
@@ -523,7 +554,7 @@
   cudnn: "8.8"
   python: "3.12"
   numpy: "1.26"
-  scipy: "1.12"
+  scipy: "1.14"
   optuna: "3"
   mpi4py: null
   cython: "0.29"
@@ -576,7 +607,7 @@
   cudnn: "8.8"
   python: "3.12"
   numpy: "1.26"
-  scipy: "1.12"
+  scipy: "1.13"
   optuna: "3"
   mpi4py: null
   cython: "0.29"
@@ -664,7 +695,13 @@
 - project: "cupy.win.cuda125"
   _extern: true
   target: "cuda125"
-  tags: ["@push", "full", "mini", "windows", "cuda125"]
+  tags: ["@push", "full", "windows", "cuda125"]
+  system: "windows"
+
+- project: "cupy.win.cuda126"
+  _extern: true
+  target: "cuda126"
+  tags: ["@push", "full", "mini", "windows", "cuda126"]
   system: "windows"
 
 - project: "cupy.linux.cuda-rapids"

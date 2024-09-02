@@ -16,6 +16,7 @@ from cupy.cuda import get_rocm_path
 from cupy_backends.cuda.api import driver
 from cupy_backends.cuda.api import runtime
 from cupy_backends.cuda.libs import nvrtc
+from cupy import _environment
 from cupy import _util
 
 _cuda_hip_version = driver.get_build_version()
@@ -141,6 +142,17 @@ def _get_max_compute_capability():
         nvrtc_max_compute_capability = '90'
 
     return nvrtc_max_compute_capability
+
+
+@_util.memoize()
+def _get_extra_include_dir_opts():
+    major, minor = _get_nvrtc_version()
+    return tuple(
+        f'-I{d}'
+        for d in _environment._get_include_dir_from_conda_or_wheel(
+            major, minor
+        )
+    )
 
 
 @_util.memoize(for_each_device=True)
@@ -521,6 +533,7 @@ def _compile_with_cache_cuda(
     if jitify and backend != 'nvrtc':
         raise ValueError('jitify only works with NVRTC')
 
+    options += _get_extra_include_dir_opts()
     env = ((arch, options, _get_nvrtc_version(), backend)
            + _get_arch_for_options_for_nvrtc(arch))
     base = _empty_file_preprocess_cache.get(env, None)

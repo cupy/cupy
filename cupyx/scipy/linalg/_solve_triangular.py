@@ -1,3 +1,4 @@
+import math
 import numpy
 
 import cupy
@@ -58,7 +59,7 @@ def solve_triangular(a, b, trans=0, lower=False, unit_diagonal=False,
             raise ValueError('incompatible batch count')
         if b.ndim < a.ndim - 1 or a.shape[-2] != b.shape[a.ndim - 2]:
             raise ValueError('incompatible dimensions')
-        batch_count = numpy.prod(a.shape[:-2])
+        batch_count = math.prod(a.shape[:-2])
     else:
         raise ValueError(
             'expected one square matrix or a batch of square matrices')

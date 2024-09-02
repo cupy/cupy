@@ -246,18 +246,25 @@ class TestCscMatrix:
         ]
         numpy.testing.assert_allclose(m.toarray(), expect)
 
-    @testing.with_requires('scipy')
+    @testing.with_requires('scipy>=1.14')
     def test_str(self):
+        dtype_name = numpy.dtype(self.dtype).name
         if numpy.dtype(self.dtype).kind == 'f':
-            expect = '''  (0, 0)\t0.0
+            expect = f'''<Compressed Sparse Column sparse matrix of dtype '{dtype_name}'
+\twith 4 stored elements and shape (3, 4)>
+  Coords\tValues
+  (0, 0)\t0.0
   (0, 1)\t1.0
   (2, 2)\t3.0
-  (1, 3)\t2.0'''
+  (1, 3)\t2.0'''  # NOQA
         elif numpy.dtype(self.dtype).kind == 'c':
-            expect = '''  (0, 0)\t0j
+            expect = f'''<Compressed Sparse Column sparse matrix of dtype '{dtype_name}'
+\twith 4 stored elements and shape (3, 4)>
+  Coords\tValues
+  (0, 0)\t0j
   (0, 1)\t(1+0j)
   (2, 2)\t(3+0j)
-  (1, 3)\t(2+0j)'''
+  (1, 3)\t(2+0j)'''  # NOQA
 
         assert str(self.m) == expect
 
@@ -506,6 +513,7 @@ class TestCscMatrixScipyComparison:
             with pytest.raises(ValueError):
                 m.toarray(order='#')
 
+    @testing.with_requires('scipy<1.14')
     @testing.numpy_cupy_allclose(sp_name='sp', contiguous_check=False)
     def test_A(self, xp, sp):
         m = self.make(xp, sp, self.dtype)

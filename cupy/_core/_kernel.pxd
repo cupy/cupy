@@ -137,10 +137,11 @@ cdef class _Ops:
 
     # Queries a single op from input arguments.
     cpdef _Op guess_routine(
-        self, str name, dict cache, list in_args, dtype, _Ops out_ops)
+        self, str name, dict cache, list in_args, tuple weaks, dtype,
+        _Ops out_ops)
 
     cpdef _Op _guess_routine_from_in_types(
-        self, tuple in_types, object can_cast=*)
+        self, tuple in_types, tuple weaks=*, object can_cast=*)
 
     cpdef _Op _guess_routine_from_dtype(self, object dtype)
 
@@ -165,6 +166,6 @@ cdef list _get_out_args_with_params(
 
 cpdef _check_peer_access(_ndarray_base arr, int device_id)
 
-cdef list _preprocess_args(int dev_id, args, bint use_c_scalar)
+cdef tuple _preprocess_args(int dev_id, args, bint use_c_scalar)
 
 cdef shape_t _reduce_dims(list args, tuple params, const shape_t& shape)

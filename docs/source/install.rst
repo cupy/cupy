@@ -6,7 +6,7 @@ Requirements
 
 * `NVIDIA CUDA GPU <https://developer.nvidia.com/cuda-gpus>`_ with the Compute Capability 3.0 or larger.
 
-* `CUDA Toolkit <https://developer.nvidia.com/cuda-toolkit>`_: v11.2 / v11.3 / v11.4 / v11.5 / v11.6 / v11.7 / v11.8 / v12.0 / v12.1 / v12.2 / v12.3 / v12.4 / v12.5
+* `CUDA Toolkit <https://developer.nvidia.com/cuda-toolkit>`_: v11.2 / v11.3 / v11.4 / v11.5 / v11.6 / v11.7 / v11.8 / v12.0 / v12.1 / v12.2 / v12.3 / v12.4 / v12.5 / v12.6
 
     * If you have multiple versions of CUDA Toolkit installed, CuPy will automatically choose one of the CUDA installations.
       See :ref:`install_cuda` for details.
@@ -27,7 +27,7 @@ NumPy/SciPy-compatible API in CuPy v14 is based on NumPy 2.0 and SciPy 1.13, and
 
 * `NumPy <https://numpy.org/>`_: v1.24 / v1.25 / v1.26 / v2.0
 
-* `SciPy <https://scipy.org/>`_ (*optional*): v1.10 / v1.11 / v1.12
+* `SciPy <https://scipy.org/>`_ (*optional*): v1.10 / v1.11 / v1.12 / v1.13 / v1.14
 
     * Required only when copying sparse matrices from GPU to CPU (see :doc:`../reference/scipy_sparse`.)
 
