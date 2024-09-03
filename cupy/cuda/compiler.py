@@ -543,6 +543,9 @@ def _compile_with_cache_cuda(
         _empty_file_preprocess_cache[env] = base
 
     key_src = '%s %s %s %s' % (env, base, source, extra_source)
+    print('----- CACHE KEY START -----')
+    print(key_src)
+    print('----- CACHE KEY END -----')
     key_src = key_src.encode('utf-8')
     name = _hash_hexdigest(key_src) + '.cubin'
 
@@ -566,11 +569,13 @@ def _compile_with_cache_cuda(
                 cubin_hash = _hash_hexdigest(cubin).encode('ascii')
                 if hash == cubin_hash:
                     mod.load(cubin)
+                    print('----- CACHE HIT -----')
                     return mod
     else:
         # Enforce compiling -- the resulting kernel will be cached elsewhere,
         # so we do nothing
         pass
+    print('----- CACHE MISS -----')
 
     if backend == 'nvrtc':
         cu_name = '' if cache_in_memory else name + '.cu'
