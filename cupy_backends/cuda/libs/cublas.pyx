@@ -2,6 +2,7 @@
 
 """Thin wrapper of CUBLAS."""
 
+import os
 cimport cython  # NOQA
 
 from cupy_backends.cuda.api cimport runtime
@@ -508,10 +509,12 @@ cpdef setStream(intptr_t handle, size_t stream):
     # https://docs.nvidia.com/cuda/cublas/index.html#CUDA-graphs
     # Before we come up with a robust strategy to test the support conditions,
     # we disable this functionality.
-    if not runtime._is_hip_environment and runtime.streamIsCapturing(stream):
+    if (os.getenv("CUPY_EXPERIMENTAL_CUDA_LIB_GRAPH_CAPTURE", "0") == "0" and
+        not runtime._is_hip_environment and runtime.streamIsCapturing(stream)):
         raise NotImplementedError(
-            'calling cuBLAS API during stream capture is currently '
-            'unsupported')
+            'Set the environment variable '
+            '`CUPY_EXPERIMENTAL_CUDA_LIB_GRAPH_CAPTURE=1` to allow '
+            'calling cuBLAS API during stream capture')
 
     with nogil:
         status = cublasSetStream(<Handle>handle, <Stream>stream)

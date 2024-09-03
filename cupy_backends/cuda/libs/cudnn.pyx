@@ -2,6 +2,7 @@
 
 """Thin wrapper of cuDNN."""
 # NOTE: This wrapper does not cover all APIs of cuDNN v4.
+import os
 cimport cython  # NOQA
 from libcpp cimport vector
 
@@ -835,10 +836,12 @@ cpdef destroy(intptr_t handle):
 cpdef setStream(intptr_t handle, size_t stream):
     # TODO(leofang): The support of stream capture is not mentioned at all in
     # the cuDNN docs (as of CUDA 11.5), so we disable this functionality.
-    if not runtime._is_hip_environment and runtime.streamIsCapturing(stream):
+    if (os.getenv("CUPY_EXPERIMENTAL_CUDA_LIB_GRAPH_CAPTURE", "0") == "0" and
+        not runtime._is_hip_environment and runtime.streamIsCapturing(stream)):
         raise NotImplementedError(
-            'calling cuDNN API during stream capture is currently '
-            'unsupported')
+            'Set the environment variable '
+            '`CUPY_EXPERIMENTAL_CUDA_LIB_GRAPH_CAPTURE=1` to allow '
+            'calling cuDNN API during stream capture')
 
     status = cudnnSetStream(<Handle>handle, <runtime.Stream>stream)
     check_status(status)
