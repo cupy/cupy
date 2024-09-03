@@ -8,6 +8,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+from typing import Optional
 import warnings
 
 from cupy.cuda import device
@@ -97,18 +98,48 @@ def _get_extra_path_for_msvc():
         # The compiler is already on PATH, no extra path needed.
         return None
 
+    cl_exe_dir = _get_cl_exe_dir_legacy()
+    if cl_exe_dir:
+        return cl_exe_dir
+
+    cl_exe_dir = _get_cl_exe_dir()
+    if cl_exe_dir:
+        return cl_exe_dir
+
+    return None
+
+
+def _get_cl_exe_dir_legacy() -> Optional[str]:
+    # TODO(kmaehashi): Only for setuptools<74. Remove this at some point.
     try:
         import setuptools
+        if not hasattr(setuptools, 'msvc'):
+            return None
         vctools = setuptools.msvc.EnvironmentInfo(platform.machine()).VCTools
+        for path in vctools:
+            cl_exe = os.path.join(path, 'cl.exe')
+            if os.path.exists(cl_exe):
+                return path
+        warnings.warn(f'cl.exe could not be found in {vctools}')
     except Exception as e:
-        warnings.warn(f'Failed to auto-detect cl.exe path: {type(e)}: {e}')
-        return None
+        warnings.warn(
+            f'Failed to find cl.exe with setuptools.msvc: {type(e)}: {e}')
+    return None
 
-    for path in vctools:
-        cl_exe = os.path.join(path, 'cl.exe')
-        if os.path.exists(cl_exe):
-            return path
-    warnings.warn(f'cl.exe could not be found in {vctools}')
+
+def _get_cl_exe_dir() -> Optional[str]:
+    # TODO(kmaehashi): This is for setuptools 74+. This takes few seconds as
+    # this incurs cmd.exe (vcvarsall.bat) invocation.
+    try:
+        from setuptools import Distribution
+        from setuptools.command.build_ext import build_ext
+        ext = build_ext(Distribution({'name': 'cupy_cl_exe_discover'}))
+        ext.setup_shlib_compiler()
+        ext.shlib_compiler.initialize()  # MSVCCompiler only
+        return os.path.dirname(ext.shlib_compiler.cc)
+    except Exception as e:
+        warnings.warn(
+            f'Failed to find cl.exe with setuptools: {type(e)}: {e}')
     return None
 
 
