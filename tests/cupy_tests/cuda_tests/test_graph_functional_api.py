@@ -6,36 +6,33 @@ import pytest
 import cupy
 from cupy import cuda
 from cupy.cuda.graph_functional_api import (
+    GraphConverterInterface,
     GraphConverter,
     MockGraphConverter
 )
 
-class EnvVarManager:
-    '''
-    Helper class to manage environment variables
-    '''
-    def __init__(self):
-        self.original = {}
-        self.modified = {}
-
-    def setenv(self, key, value):
-        if key not in self.original:
-            self.original[key] = os.getenv(key, None)
-        os.environ[key] = value
-        self.modified[key] = value
-
-    def __del__(self):
-        for key, value in self.modified.items():
-            if self.original[key] is None:
-                del os.environ[key]
-            else:
-                os.environ[key] = self.original[key]
-
 @pytest.mark.skipif(cuda.runtime.is_hip,
                     reason='HIP does not support this')
+@pytest.mark.skipif(cuda.get_local_runtime_version() < 12040,
+                    reason='Conditional API requires CUDA >=12.4')
 class TestGraphFunctionalAPI(unittest.TestCase):
+    def setUp(self):
+        # Setup environment variable to allow graph capture
+        self.prev_cublas_allow_capture = \
+            cuda.cublas._allow_stream_graph_capture
+        self.prev_cusparse_allow_capture = \
+            cuda.cusparse._allow_stream_graph_capture
+        cuda.cublas._allow_stream_graph_capture = True
+        cuda.cusparse._allow_stream_graph_capture = True
+
+    def tearDown(self):
+        cuda.cublas._allow_stream_graph_capture = \
+            self.prev_cublas_allow_capture
+        cuda.cusparse._allow_stream_graph_capture = \
+            self.prev_cusparse_allow_capture
+
     def test_simple_while(self):
-        def tester(gc_impl):
+        def tester(gc_impl: GraphConverterInterface):
             @gc_impl.graphify
             def test_func(a: cupy.ndarray, N: int):
                 def while_fn(a):
@@ -59,7 +56,7 @@ class TestGraphFunctionalAPI(unittest.TestCase):
         assert cupy.all(result_graph == result_nograph)
 
     def test_simple_if_true(self):
-        def tester(gc_impl, a_in, b_in):
+        def tester(gc_impl: GraphConverterInterface, a_in, b_in):
             a = cupy.copy(a_in)
             b = cupy.copy(b_in)
             # if one.dtype is cupy.float32, this test fails
@@ -86,7 +83,9 @@ class TestGraphFunctionalAPI(unittest.TestCase):
         assert cupy.all(result_graph == result_mock)
 
     def test_simple_if_false(self):
-        def tester(gc_impl, a_in, b_in):
+        def tester(
+            gc_impl: GraphConverterInterface, a_in, b_in
+        ):
             a = cupy.copy(a_in)
             b = cupy.copy(b_in)
             zero = cupy.zeros((), dtype=cupy.bool_)
@@ -112,11 +111,11 @@ class TestGraphFunctionalAPI(unittest.TestCase):
         assert cupy.all(result_graph == result_mock)
 
     def test_nested_while(self):
-        env_manager = EnvVarManager()
-        env_manager.setenv("CUPY_EXPERIMENTAL_CUDA_LIB_GRAPH_CAPTURE", "1")
         size = 500
         loop = 10
-        def tester(gc_impl, A_in, x_in):
+        def tester(
+            gc_impl: GraphConverterInterface, A_in, x_in
+        ):
             A = cupy.copy(A_in)
             x = cupy.copy(x_in)
 
@@ -173,7 +172,9 @@ class TestGraphFunctionalAPI(unittest.TestCase):
         n_clusters = 2
         max_iter = 1000
 
-        def kmeans_tester(gc_impl, X_in, initials_in):
+        def kmeans_tester(
+            gc_impl: GraphConverterInterface, X_in, initials_in
+        ):
             # Array setup
             X = cupy.copy(X_in)
 
