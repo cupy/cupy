@@ -1,4 +1,5 @@
 import cupy
+from cupy import cuda
 from typing import Optional, List, Callable, Tuple
 from abc import ABC, abstractmethod
 
@@ -43,29 +44,32 @@ class GraphConverterInterface(ABC):
 
 class GraphConverter(GraphConverterInterface):
     def __init__(self):
-        self.streams: List[cupy.cuda.Stream] = []
-        self.main_graph: Optional[cupy.cuda.Graph] = None
+        self.streams: List[cuda.Stream] = []
+        self.main_graph: Optional[cuda.Graph] = None
         self.root_stream = None
 
         # Temporal references to prevent evaluated arrays from being freed
         self.cond_outputs: List[cupy.ndarray] = []
 
+        self.memory_pool = cuda.MemoryPool()
+
     def graphify(self, func: Callable):
         def wrapped(*args, **kwargs):
-            if not self.main_graph is None:
-                self.main_graph.launch()
+            with cuda.using_allocator(self.memory_pool.malloc):
+                if not self.main_graph is None:
+                    self.main_graph.launch()
 
-            # On initial call
-            if self.root_stream is None:
-                self.root_stream = cupy.cuda.Stream()
-            self.streams.append(self.root_stream)
-            with self.root_stream:
-                try:
-                    self.root_stream.begin_capture()
-                    ret = func(*args, **kwargs)
-                finally:
-                    self.main_graph = self.root_stream.end_capture()
-            self.streams.pop()
+                # On initial call
+                if self.root_stream is None:
+                    self.root_stream = cuda.Stream()
+                self.streams.append(self.root_stream)
+                with self.root_stream:
+                    try:
+                        self.root_stream.begin_capture()
+                        ret = func(*args, **kwargs)
+                    finally:
+                        self.main_graph = self.root_stream.end_capture()
+                self.streams.pop()
             self.main_graph.launch(
                 stream=self.root_stream
             )
@@ -86,7 +90,7 @@ class GraphConverter(GraphConverterInterface):
                 val = body_fn(*val)
             return val
         """
-        st = cupy.cuda.Stream()
+        st = cuda.Stream()
         parent_st = self.streams[-1]
         self.streams.append(st)
         handle = parent_st.create_conditional_handle(default_value=True)
@@ -124,7 +128,7 @@ class GraphConverter(GraphConverterInterface):
                 "Currently conditional node feature does not support `else` body."
                 " `else` support may be added in the future release."
             )
-        st = cupy.cuda.Stream()
+        st = cuda.Stream()
         parent_st = self.streams[-1]
         self.streams.append(st)
         handle = parent_st.create_conditional_handle(default_value=False)
@@ -179,3 +183,22 @@ class MockGraphConverter(GraphConverterInterface):
         if cond_fn(*fn_args):
             true_fn(*fn_args)
         return None
+
+class TempVariableStorage:
+    special_attrs = {"_attributes", "_old_attributes"}
+    def __init__(self):
+        self._attributes = dict()
+        self._old_attributes = []
+    def __setattr__(self, name, value):
+        if name in TempVariableStorage.special_attrs:
+            super().__setattr__(name, value)
+        else:
+            if name in self._attributes.keys():
+                self._old_attributes.append((name, self._attributes[name]))
+            self._attributes[name] = value
+    def __getattr__(self, name):
+        if name in self._attributes:
+            return self._attributes[name]
+        raise AttributeError(f"'{self.__class__.__name__}' object has no attribute '{name}'")
+    def __delattr__(self, name):
+        raise AttributeError(f"Deleting attribute is not allowed")
