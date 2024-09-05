@@ -39,7 +39,6 @@ if [[ -f /opt/rocm/bin/rocm-smi ]]; then
 else
     timeout --signal INT --kill-after 60 18000 python3 -m pytest "${pytest_opts[@]}" "${PYTEST_FILES[@]}" || test_retval=$?
 fi
-
 popd
 
 case ${test_retval} in
