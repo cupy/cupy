@@ -28,8 +28,8 @@ def _set_value_to_handle(handle, val: cupy.ndarray):
             "_set_value_to_handle has not been implemented "
             "for dtypes other than bool."
         )
-    if val.shape != ():
-        raise ValueError("val must be 1d size 1 array")
+    if val.shape not in {(), (1,)}:
+        raise ValueError(f"Condition shape is invalid: {val.shape}")
     _set_value_bool((1,), (1,), (handle, val))
 
 class GraphConverterInterface(ABC):
@@ -73,28 +73,41 @@ class GraphConverter(GraphConverterInterface):
 
         self.memory_pool = cuda.MemoryPool()
 
-    def graphify(self, func: Callable):
-        def wrapped(*args, **kwargs):
-            with cuda.using_allocator(self.memory_pool.malloc):
-                if not self.main_graph is None:
-                    self.main_graph.launch()
+        self.target_func: Optional[Callable] = None
+        self.return_ref = None
 
-                # On initial call
-                if self.root_stream is None:
-                    self.root_stream = cuda.Stream()
-                self.streams.append(self.root_stream)
-                with self.root_stream:
-                    try:
-                        self.root_stream.begin_capture()
-                        ret = func(*args, **kwargs)
-                    finally:
-                        self.main_graph = self.root_stream.end_capture()
-                self.streams.pop()
+    def graphify(self, func: Callable):
+        self.target_func = func
+        def wrapped(*args):
+            if self.main_graph is None:
+                self.capture(fn_args=args)
             self.main_graph.launch(
                 stream=self.root_stream
             )
-            return ret
+            return self.return_ref
         return wrapped
+
+    def capture(self, fn_args=()):
+        if self.target_func is None:
+            raise RuntimeError(
+                "Set graph target function before calling capture() "
+                "by using graphify() method."
+            )
+        with cuda.using_allocator(self.memory_pool.malloc):
+            if not self.main_graph is None:
+                self.main_graph.launch()
+
+            # On initial call
+            if self.root_stream is None:
+                self.root_stream = cuda.Stream()
+            self.streams.append(self.root_stream)
+            with self.root_stream:
+                try:
+                    self.root_stream.begin_capture()
+                    self.return_ref = self.target_func(*fn_args)
+                finally:
+                    self.main_graph = self.root_stream.end_capture()
+            self.streams.pop()
 
     def while_loop(
         self,

@@ -423,9 +423,10 @@ class _BaseStream:
         if self.capturing_graph is None:
             return graph.Graph.from_stream(g)
         else:
-            captured_graph = self.capturing_graph
-            self.capturing_graph = None
-            return captured_graph
+            try:
+                return self.capturing_graph
+            finally:
+                self.capturing_graph = None
 
     def is_capturing(self):
         """Check if the stream is capturing.

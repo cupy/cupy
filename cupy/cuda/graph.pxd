@@ -12,6 +12,8 @@ cdef class Graph:
     @staticmethod
     cdef Graph from_stream(intptr_t g, bint is_child=*)
 
+    cpdef _ensure_instantiate(self)
+
     cpdef launch(self, stream=*)
     cpdef upload(self, stream=*)
     cpdef debug_dot_str(self, flags=*)

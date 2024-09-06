@@ -36,14 +36,14 @@ cdef class Graph:
     @staticmethod
     cdef Graph from_stream(intptr_t g, bint is_child=False):
         # TODO(leofang): optionally print out the error log?
-        cdef intptr_t ge
-        if not is_child:
-            ge = runtime.graphInstantiate(g)
-        else:
-            ge = 0
+        cdef intptr_t ge = 0
         cdef Graph graph = Graph.__new__(Graph)
         graph._init(g, ge, is_child)
         return graph
+
+    cpdef _ensure_instantiate(self):
+        if self.graphExec == 0:
+            self.graphExec = runtime.graphInstantiate(self.graph)
 
     cpdef launch(self, stream=None):
         """Launch the CUDA graph on the given stream.
@@ -59,6 +59,7 @@ cdef class Graph:
             https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__GRAPH.html#group__CUDART__GRAPH_1g1accfe1da0c605a577c22d9751a09597
 
         """
+        self._ensure_instantiate()
         if self.is_child:
             raise RuntimeError("Cannnot launch child graph")
         cdef intptr_t stream_ptr
@@ -82,6 +83,7 @@ cdef class Graph:
             https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__GRAPH.html#group__CUDART__GRAPH_1ge546432e411b4495b93bdcbf2fc0b2bd
 
         """
+        self._ensure_instantiate()
         if self.is_child:
             raise RuntimeError("Cannnot upload child graph")
         cdef intptr_t stream_ptr
