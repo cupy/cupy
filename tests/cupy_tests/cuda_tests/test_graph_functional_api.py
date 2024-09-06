@@ -256,3 +256,49 @@ class TestGraphFunctionalAPI(unittest.TestCase):
         # graph == mock
         assert cupy.allclose(centers_graph, centers_mock)
         assert cupy.all(pred_graph == pred_mock)
+
+    def test_multicond(self):
+        x = cupy.array([1, 1, 1])
+        y = cupy.array([2, 2, 2])
+        z = cupy.array([3, 3, 3])
+        w = cupy.array([4, 4, 4])
+        def impl(gc: GraphConverterInterface, array):
+            array = array.copy()
+
+            @gc.graphify
+            def target(array):
+                output = x.copy()
+                def fn0():
+                    cupy.copyto(output, x)
+                def fn1():
+                    cupy.copyto(output, y)
+                def fn2():
+                    cupy.copyto(output, z)
+                def fn3():
+                    cupy.copyto(output, w)
+                gc.multicond([
+                    (lambda: array[0], fn0),
+                    (lambda: array[1], fn1),
+                    (lambda: array[2], fn2),
+                    (None, fn3),
+                ])
+                return output
+
+            return target(array)
+
+        def tester(arr, ans):
+            out_graph = impl(GraphConverter(), arr)
+            out_mock = impl(MockGraphConverter(), arr)
+            assert cupy.all(out_graph == ans)
+            assert cupy.all(out_mock == ans)
+
+        tester(cupy.array([True, False, False]), x)
+        tester(cupy.array([True, True, False]), x)
+        tester(cupy.array([True, True, True]), x)
+        tester(cupy.array([True, False, True]), x)
+
+        tester(cupy.array([False, True, True]), y)
+        tester(cupy.array([False, True, False]), y)
+
+        tester(cupy.array([False, False, True]), z)
+        tester(cupy.array([False, False, False]), w)
