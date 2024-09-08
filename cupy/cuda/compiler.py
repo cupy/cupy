@@ -98,19 +98,18 @@ def _get_extra_path_for_msvc():
         # The compiler is already on PATH, no extra path needed.
         return None
 
-    cl_exe_dir = _get_cl_exe_dir_legacy()
+    cl_exe_dir = _get_cl_exe_dir()
     if cl_exe_dir:
         return cl_exe_dir
 
-    cl_exe_dir = _get_cl_exe_dir()
+    cl_exe_dir = _get_cl_exe_dir_fallback()
     if cl_exe_dir:
         return cl_exe_dir
 
     return None
 
 
-def _get_cl_exe_dir_legacy() -> Optional[str]:
-    # TODO(kmaehashi): Only for setuptools<74. Remove this at some point.
+def _get_cl_exe_dir() -> Optional[str]:
     try:
         import setuptools
         if not hasattr(setuptools, 'msvc'):
@@ -127,9 +126,11 @@ def _get_cl_exe_dir_legacy() -> Optional[str]:
     return None
 
 
-def _get_cl_exe_dir() -> Optional[str]:
-    # TODO(kmaehashi): This is for setuptools 74+. This takes few seconds as
-    # this incurs cmd.exe (vcvarsall.bat) invocation.
+def _get_cl_exe_dir_fallback() -> Optional[str]:
+    # Discover cl.exe without relying on undocumented setuptools.msvc API.
+    # As of now this code path exists only for setuptools 74.0.0 (see #8583).
+    # N.B. This takes few seconds as this incurs cmd.exe (vcvarsall.bat)
+    # invocation.
     try:
         from setuptools import Distribution
         from setuptools.command.build_ext import build_ext
