@@ -264,8 +264,8 @@ class DeviceCompilerWin32(DeviceCompilerBase):
         if self._context.win32_cl_exe_path is not None:
             return self._context.win32_cl_exe_path
 
-        if hasattr(setuptools, 'msvc'):  # setuptools<74
-            # TODO(kmaehashi): Remove this code at some point
+        if hasattr(setuptools, 'msvc'):
+            # For setuptools 74.0.0. See #8568, #8574, #8583.
             vctools: List[str] = setuptools.msvc.EnvironmentInfo(
                 platform.machine()).VCTools
         else:
