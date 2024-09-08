@@ -111,8 +111,11 @@ def _get_extra_path_for_msvc():
 
 def _get_cl_exe_dir() -> Optional[str]:
     try:
-        import setuptools
-        if not hasattr(setuptools, 'msvc'):
+        try:
+            # setuptools.msvc is missing in setuptools v74.0.0.
+            # setuptools.msvc requires explicit import in setuptools v74.1.0+.
+            import setuptools.msvc
+        except Exception:
             return None
         vctools = setuptools.msvc.EnvironmentInfo(platform.machine()).VCTools
         for path in vctools:
