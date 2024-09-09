@@ -5,6 +5,7 @@ os.environ["CUPY_EXPERIMENTAL_CUDA_LIB_GRAPH_CAPTURE"] = "1"
 
 import numpy
 import cupy
+import cupyx
 from cupy.cuda.graph_functional_api import (
     GraphConverter,
     MockGraphConverter,
@@ -12,19 +13,13 @@ from cupy.cuda.graph_functional_api import (
 )
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--cpu", action="store_true", default=False)
 parser.add_argument("--maxiter", type=int, default=None)
 parser.add_argument("-N", type=int, default=1000)
 parser.add_argument("--impl", type=str, default="normal")
 args = parser.parse_args()
-if args.cpu:
-    import scipy
-    from scipy.sparse.linalg import lsmr
-    import numpy as xp
-else:
-    import cupy as xp
-    from cupyx import scipy
-    from cupyx.scipy.sparse.linalg import lsmr
+import scipy
+from scipy.sparse.linalg import lsmr as lsmr_cpu
+from cupyx.scipy.sparse.linalg import lsmr as lsmr_gpu
 
 from cupy import cublas
 from cupy.cuda import device
@@ -508,30 +503,38 @@ N = args.N
 dens = 0.1
 cupy.random.seed(42)
 numpy.random.seed(42)
-A = scipy.sparse.random(N, N, density=dens, format="csr", dtype=xp.float32)
-b = xp.random.randn(N)
-x0 = xp.zeros(N, dtype=cupy.float64)
+A = cupyx.scipy.sparse.random(N, N, density=dens, format="csr", dtype=numpy.float64)
+b = cupy.random.randn(N)
+x0 = cupy.zeros(N, dtype=cupy.float64)
 
 print("Start")
 
 start = time.time()
 impl_name = args.impl.lower()
-if impl_name == "normal":
-    x, istop, itn, *_ = lsmr(A, b, x0, maxiter=args.maxiter)
-elif impl_name == "graph":
-    x, istop, itn, *_ = lsmr_graph(A, b, x0, maxiter=args.maxiter)
-elif impl_name == "mock":
-    x, istop, itn, *_ = lsmr_graph(A, b, x0, maxiter=args.maxiter, impl_name="mock")
+if impl_name == "cpu":
+    A_cpu = A.get()
+    b_cpu = b.get()
+    x0_cpu = x0.get()
+    x, istop, itn, *_ = lsmr_cpu(A_cpu, b_cpu, x0=x0_cpu, maxiter=args.maxiter)
 else:
-    raise ValueError("impl_name is invalide")
+    if impl_name == "normal":
+        x, istop, itn, *_ = lsmr_gpu(A, b, x0=x0, maxiter=args.maxiter)
+    elif impl_name == "graph":
+        x, istop, itn, *_ = lsmr_graph(A, b, x0=x0, maxiter=args.maxiter, impl_name="graph")
+    elif impl_name == "mock":
+        x, istop, itn, *_ = lsmr_graph(A, b, x0=x0, maxiter=args.maxiter, impl_name="mock")
+    else:
+        raise ValueError("impl_name is invalide")
 end = time.time()
 
-print(x[:10])
-print(itn)
+print(f"{itn=}")
 print(f"{istop=}")
 print(f"{end - start} sec")
 
+x = cupy.asarray(x)
 A_ = _interface.aslinearoperator(A)
-print(f"Ax = {A_.matvec(x)[:20]}")
-print(f"b = {b[:20]}")
-print(f"||Ax - b|| = {cublas.nrm2(A_.matvec(x) - b)}")
+Ax = A_.matvec(x)
+print(f"{x[:10]=}")
+print(f"{Ax[:10]=}")
+print(f"{b[:10]=}")
+print(f"||Ax - b|| = {cublas.nrm2(Ax - b)}")
