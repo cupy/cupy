@@ -205,7 +205,7 @@ class GraphConverter(GraphConverterInterface):
 
         """
         if len(branches) == 1:
-            cond_fn, true_fn, fn_args = branches[0]
+            cond_fn, true_fn, fn_args = (*branches[0], ())
             return self.cond(cond_fn, true_fn, fn_args)
 
         # We implement
