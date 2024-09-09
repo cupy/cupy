@@ -65,8 +65,7 @@ class TestGraphFunctionalAPI(unittest.TestCase):
             @gc_impl.graphify
             def test_func(a, b, condition):
                 def if_true():
-                    nonlocal a, b
-                    a += b
+                    a[...] += b
                 gc_impl.cond(
                     lambda: condition,
                     if_true
@@ -93,8 +92,7 @@ class TestGraphFunctionalAPI(unittest.TestCase):
             @gc_impl.graphify
             def test_func(a, b, condition):
                 def if_true():
-                    nonlocal a, b
-                    a += b
+                    a[...] += b
                 gc_impl.cond(
                     lambda: condition,
                     if_true
