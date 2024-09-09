@@ -81,9 +81,9 @@ class GraphConverter(GraphConverterInterface):
         def wrapped(*args):
             if self.main_graph is None:
                 self.capture(fn_args=args)
-            self.main_graph.launch(
-                stream=self.root_stream
-            )
+            with self.root_stream:
+                self.main_graph.launch()
+            self.root_stream.synchronize()
             return self.return_ref
         return wrapped
 

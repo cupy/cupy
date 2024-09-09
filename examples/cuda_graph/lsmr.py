@@ -515,6 +515,7 @@ if impl_name == "cpu":
     A_cpu = A.get()
     b_cpu = b.get()
     x0_cpu = x0.get()
+    start = time.time()
     x, istop, itn, *_ = lsmr_cpu(A_cpu, b_cpu, x0=x0_cpu, maxiter=args.maxiter)
 else:
     if impl_name == "normal":
@@ -525,6 +526,7 @@ else:
         x, istop, itn, *_ = lsmr_graph(A, b, x0=x0, maxiter=args.maxiter, impl_name="mock")
     else:
         raise ValueError("impl_name is invalide")
+    cupy.cuda.runtime.deviceSynchronize()
 end = time.time()
 
 print(f"{itn=}")
