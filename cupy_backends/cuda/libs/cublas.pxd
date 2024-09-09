@@ -81,6 +81,8 @@ cpdef destroy(intptr_t handle)
 cpdef int getVersion(intptr_t handle) except? -1
 cpdef int getPointerMode(intptr_t handle) except? -1
 cpdef setPointerMode(intptr_t handle, int mode)
+cpdef setWorkspace(intptr_t handle, intptr_t workspace,
+                   size_t workspaceSizeInBytes)
 
 
 ###############################################################################
@@ -127,6 +129,10 @@ cpdef sdot(intptr_t handle, int n, size_t x, int incx, size_t y, int incy,
            size_t result)
 cpdef ddot(intptr_t handle, int n, size_t x, int incx, size_t y, int incy,
            size_t result)
+cpdef sdot_w(intptr_t handle, int n, size_t x, int incx, size_t y, int incy,
+           size_t result, intptr_t workspace, size_t workspace_size_bytes)
+cpdef ddot_w(intptr_t handle, int n, size_t x, int incx, size_t y, int incy,
+           size_t result, intptr_t workspace, size_t workspace_size_bytes)
 cpdef cdotu(intptr_t handle, int n, size_t x, int incx, size_t y, int incy,
             size_t result)
 cpdef cdotc(intptr_t handle, int n, size_t x, int incx, size_t y, int incy,

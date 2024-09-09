@@ -29,6 +29,8 @@ cdef extern from '../../cupy_blas.h' nogil:
     int cublasGetVersion(Handle handle, int* version)
     int cublasGetPointerMode(Handle handle, PointerMode* mode)
     int cublasSetPointerMode(Handle handle, PointerMode mode)
+    int cublasSetWorkspace(Handle handle, void* workspace,
+                           size_t workspaceSizeInBytes)
 
     # Stream
     int cublasSetStream(Handle handle, Stream streamId)
@@ -498,6 +500,12 @@ cpdef setPointerMode(intptr_t handle, int mode):
         status = cublasSetPointerMode(<Handle>handle, <PointerMode>mode)
     check_status(status)
 
+cpdef setWorkspace(intptr_t handle, intptr_t workspace,
+                   size_t workspaceSizeInBytes):
+    with nogil:
+        status = cublasSetWorkspace(<Handle>handle, <void*>workspace,
+                                    workspaceSizeInBytes)
+    check_status(status)
 
 ###############################################################################
 # Stream
@@ -698,6 +706,27 @@ cpdef ddot(intptr_t handle, int n, size_t x, int incx, size_t y, int incy,
             <Handle>handle, n, <double*>x, incx, <double*>y, incy,
             <double*>result)
     check_status(status)
+
+cpdef sdot_w(intptr_t handle, int n, size_t x, int incx, size_t y, int incy,
+             size_t result, intptr_t workspace, size_t workspace_size_bytes):
+    _setStream(handle)
+    setWorkspace(handle, workspace, workspace_size_bytes)
+    with nogil:
+        status = cublasSdot(
+            <Handle>handle, n, <float*>x, incx, <float*>y, incy,
+            <float*>result)
+    check_status(status)
+
+cpdef ddot_w(intptr_t handle, int n, size_t x, int incx, size_t y, int incy,
+             size_t result, intptr_t workspace, size_t workspace_size_bytes):
+    _setStream(handle)
+    setWorkspace(handle, workspace, workspace_size_bytes)
+    with nogil:
+        status = cublasDdot(
+            <Handle>handle, n, <double*>x, incx, <double*>y, incy,
+            <double*>result)
+    check_status(status)
+
 
 cpdef cdotu(intptr_t handle, int n, size_t x, int incx, size_t y, int incy,
             size_t result):
