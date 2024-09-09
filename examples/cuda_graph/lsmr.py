@@ -191,9 +191,9 @@ def lsmr_graph(A, b, x0=None, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8,
         """, name_expressions=("symortho<double>",))
 
         _symOrtho_kernel = _symOrtho_module.get_function("symortho<double>")
-        c = cupy.ndarray((), dtype=cupy.float64)
-        s = cupy.ndarray((), dtype=cupy.float64)
-        r = cupy.ndarray((), dtype=cupy.float64)
+        c = cupy.empty((), dtype=cupy.float64)
+        s = cupy.empty((), dtype=cupy.float64)
+        r = cupy.empty((), dtype=cupy.float64)
         _symOrtho_kernel((1,), (1,), (a, b, c, s, r))
         return c, s, r
 
@@ -362,7 +362,7 @@ def lsmr_graph(A, b, x0=None, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8,
             # some of which will be small near a solution.
 
             test1 = normr / normb
-            test2 = cupy.ndarray((), dtype=cupy.float64)
+            test2 = cupy.empty((), dtype=cupy.float64)
             def true_fn():
                 test2[...] = normar / normA * normr
             def false_fn():
@@ -389,12 +389,7 @@ def lsmr_graph(A, b, x0=None, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8,
                 (lambda: itn >= maxiter, set_istop_fn(7)),
             ])
 
-            def set_stop():
-                stop_flag[...] = True
-            gc.cond(
-                lambda: istop > 0,
-                set_stop,
-            )
+            stop_flag[...] = istop > 0
 
             return (
                 itn,
