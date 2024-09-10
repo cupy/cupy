@@ -129,10 +129,6 @@ cpdef sdot(intptr_t handle, int n, size_t x, int incx, size_t y, int incy,
            size_t result)
 cpdef ddot(intptr_t handle, int n, size_t x, int incx, size_t y, int incy,
            size_t result)
-cpdef sdot_w(intptr_t handle, int n, size_t x, int incx, size_t y, int incy,
-           size_t result, intptr_t workspace, size_t workspace_size_bytes)
-cpdef ddot_w(intptr_t handle, int n, size_t x, int incx, size_t y, int incy,
-           size_t result, intptr_t workspace, size_t workspace_size_bytes)
 cpdef cdotu(intptr_t handle, int n, size_t x, int incx, size_t y, int incy,
             size_t result)
 cpdef cdotc(intptr_t handle, int n, size_t x, int incx, size_t y, int incy,
