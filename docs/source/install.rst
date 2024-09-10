@@ -326,6 +326,35 @@ For example, you can build CuPy using non-default CUDA directory by ``CUDA_PATH`
    CUDA installation discovery is also performed at runtime using the rule above.
    Depending on your system configuration, you may also need to set ``LD_LIBRARY_PATH`` environment variable to ``$CUDA_PATH/lib64`` at runtime.
 
+CuPy always raises ``NVRTC_ERROR_COMPILATION (6)``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+On CUDA 12.2 or later, CUDA Runtime header files are required to compile kernels in CuPy.
+If CuPy raises a ``NVRTC_ERROR_COMPILATION`` with the error message saying ``catastrophic error: cannot open source file "vector_types.h"`` for almost everything, it is possible that CuPy cannot find the header files on your system correctly.
+
+If you have installed CuPy from PyPI (i.e., ``pip install cupy-cuda12x``), you can install CUDA headers by running ``pip install "nvidia-cuda-runtime-cu12==12.X.*"`` where ``12.X`` is the version of your CUDA installation.
+Once headers from the package is recognized, ``cupy.show_config()`` will display the path as ``CUDA Extra Include Dirs``::
+
+  $ python -c 'import cupy; cupy.show_config()'
+  ...
+  CUDA Extra Include Dirs      : []
+  ...
+  NVRTC Version                : (12, 6)
+  ...
+  $ pip install "nvidia-cuda-runtime-cu12==12.6.*"
+  ...
+  $ python -c 'import cupy; cupy.show_config()'
+  ...
+  CUDA Extra Include Dirs      : ['.../site-packages/nvidia/cuda_runtime/include']
+  ...
+
+Alternatively, you can install CUDA headers system-wide (``/usr/local/cuda-12``) using NVIDIA's Apt (or DNF) repository.
+Run ``sudo apt install "cuda-cudart-dev-12-X"`` where ``12-X`` is the version of your ``cuda-cudart`` package, e.g.::
+
+  $ apt list "cuda-cudart-*"
+  cuda-cudart-12-6/now 12.6.68-1 amd64 [installed,local]
+  $ sudo apt install "cuda-cudart-dev-12-6"
+
 CuPy always raises ``cupy.cuda.compiler.CompileException``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -336,11 +365,12 @@ The following are error messages commonly observed in such cases.
 * ``catastrophic error: cannot open source file "cuda_fp16.h"``
 * ``error: cannot overload functions distinguished by return type alone``
 * ``error: identifier "__half_raw" is undefined``
+* ``error: no instance of overloaded function "__half::__half" matches the specified type``
 
 Please try setting ``LD_LIBRARY_PATH`` and ``CUDA_PATH`` environment variable.
-For example, if you have CUDA installed at ``/usr/local/cuda-9.2``::
+For example, if you have CUDA installed at ``/usr/local/cuda-12.6``::
 
-  $ export CUDA_PATH=/usr/local/cuda-9.2
+  $ export CUDA_PATH=/usr/local/cuda-12.6
   $ export LD_LIBRARY_PATH=$CUDA_PATH/lib64:$LD_LIBRARY_PATH
 
 Also see :ref:`install_cuda`.
