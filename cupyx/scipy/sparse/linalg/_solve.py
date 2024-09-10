@@ -81,50 +81,6 @@ def lsqr(A, b):
     ret = (x, None, None, None, None, None, None, None, None, None)
     return ret
 
-def _symOrtho_raw(a, b):
-    _symOrtho_module = cupy.RawModule(code=r"""
-    __device__ int _sign(double x) {
-        if (x == 0) return 0;
-        else return (x > 0) ? 1 : -1;
-    }
-
-    template<typename T>
-    __global__ void symortho(T* a, T* b, T* c_out, T* s_out, T* r_out) {
-        T a_val = *a, b_val = *b;
-        T a_abs = fabs(a_val);
-        T b_abs = fabs(b_val);
-        if (b_val == 0) {
-            *c_out = _sign(a_val);
-            *s_out = 0;
-            *r_out = a_abs;
-        } else if (a_val == 0) {
-            *c_out = 0;
-            *s_out = _sign(b_val);
-            *r_out = b_abs;
-        } else if (b_abs > a_abs) {
-            T tau = a_val / b_val;
-            *s_out = _sign(b_val) / sqrt(1 + tau*tau);
-            *c_out = (*s_out) * tau;
-            *r_out = b_val / *s_out;
-        } else {
-            T tau = b_val / a_val;
-            *c_out = _sign(a_val) / sqrt(1 + tau*tau);
-            *s_out = (*c_out) * tau;
-            *r_out = a_val / *c_out;
-        }
-    }
-    """, name_expressions=("symortho<double>",))
-
-    _symOrtho_kernel = _symOrtho_module.get_function("symortho<double>")
-    a = cupy.array([a], dtype=cupy.float64)
-    b = cupy.array([b], dtype=cupy.float64)
-    c = cupy.zeros((), dtype=cupy.float64)
-    s = cupy.zeros((), dtype=cupy.float64)
-    r = cupy.zeros((), dtype=cupy.float64)
-    _symOrtho_kernel((1,), (1,), (a, b, c, s, r))
-    return c.item(), s.item(), r.item()
-
-
 
 def lsmr(A, b, x0=None, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8,
          maxiter=None):
@@ -287,7 +243,6 @@ def lsmr(A, b, x0=None, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8,
     if normar == 0:
         return x, istop, itn, normr, normar, normA, condA, normx
 
-    # _symOrtho = _symOrtho_raw
     # Main iteration loop.
     while itn < maxiter:
         itn = itn + 1
