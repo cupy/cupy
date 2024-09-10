@@ -13,10 +13,41 @@ cdef bint _ptds = bool(int(
 
 cdef class _ThreadLocal:
     cdef list current_stream  # list of intptr_t
+    cdef list cublas_workspaces # list of (intptr_t, size_t)
 
     def __init__(self):
         cdef int i, num_devices = runtime.getDeviceCount()
         self.current_stream = [0 for i in range(num_devices)]
+
+        # cuBLAS workspace allocation
+        # https://docs.nvidia.com/cuda/cublas/#cublassetworkspace
+        self.cublas_workspaces = []
+        for i in range(num_devices):
+            prev_device = runtime.getDevice()
+            try:
+                runtime.setDevice(i)
+                major = int(runtime.deviceGetAttribute(
+                    runtime.deviceAttributeComputeCapabilityMajor, i
+                ))
+                if major >= 9: # Hopper or newer
+                    workspace_size = 32 * 1024 * 1024
+                else:
+                    workspace_size = 4 * 1024 * 1024
+                ptr = runtime.malloc(workspace_size)
+                self.cublas_workspaces.append((ptr, workspace_size))
+            finally:
+                runtime.setDevice(prev_device)
+
+    def __del__(self):
+        cdef int i, num_devices = runtime.getDeviceCount()
+        for i in range(num_devices):
+            prev_device = runtime.getDevice()
+            try:
+                runtime.setDevice(i)
+                ptr, _ = self.cublas_workspaces[i]
+                runtime.free(ptr)
+            finally:
+                runtime.setDevice(prev_device)
 
     @staticmethod
     cdef _ThreadLocal get():
@@ -41,6 +72,18 @@ cdef class _ThreadLocal:
         if curr_stream == 0 and is_ptds_enabled():
             return runtime.streamPerThread
         return curr_stream
+
+    cdef intptr_t get_cublas_workspace_ptr(self, int device_id=-1):
+        if device_id == -1:
+            device_id = runtime.getDevice()
+        ptr, _ = self.cublas_workspaces[device_id]
+        return ptr
+
+    cdef size_t get_cublas_workspace_size(self, int device_id=-1):
+        if device_id == -1:
+            device_id = runtime.getDevice()
+        _, size = self.cublas_workspaces[device_id]
+        return size
 
 
 cdef intptr_t get_current_stream_ptr():
@@ -101,3 +144,11 @@ cdef bint is_ptds_enabled():
         # HIP does not support PTDS, just ignore the env var
         return False
     return _ptds
+
+cdef intptr_t get_cublas_workspace_ptr():
+    tls = _ThreadLocal.get()
+    return <intptr_t>(tls.get_cublas_workspace_ptr())
+
+cdef size_t get_cublas_workspace_size():
+    tls = _ThreadLocal.get()
+    return <size_t>(tls.get_cublas_workspace_size())

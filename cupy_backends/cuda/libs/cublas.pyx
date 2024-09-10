@@ -531,6 +531,13 @@ cpdef setStream(intptr_t handle, size_t stream):
         status = cublasSetStream(<Handle>handle, <Stream>stream)
     check_status(status)
 
+    cdef intptr_t workspace = stream_module.get_cublas_workspace_ptr()
+    cdef size_t workspace_size = stream_module.get_cublas_workspace_size()
+    if workspace != 0:
+        with nogil:
+            status = cublasSetWorkspace(
+                <Handle>handle, <void*>workspace, workspace_size)
+        check_status(status)
 
 cpdef size_t getStream(intptr_t handle) except? 0:
     cdef Stream stream
@@ -706,27 +713,6 @@ cpdef ddot(intptr_t handle, int n, size_t x, int incx, size_t y, int incy,
             <Handle>handle, n, <double*>x, incx, <double*>y, incy,
             <double*>result)
     check_status(status)
-
-cpdef sdot_w(intptr_t handle, int n, size_t x, int incx, size_t y, int incy,
-             size_t result, intptr_t workspace, size_t workspace_size_bytes):
-    _setStream(handle)
-    setWorkspace(handle, workspace, workspace_size_bytes)
-    with nogil:
-        status = cublasSdot(
-            <Handle>handle, n, <float*>x, incx, <float*>y, incy,
-            <float*>result)
-    check_status(status)
-
-cpdef ddot_w(intptr_t handle, int n, size_t x, int incx, size_t y, int incy,
-             size_t result, intptr_t workspace, size_t workspace_size_bytes):
-    _setStream(handle)
-    setWorkspace(handle, workspace, workspace_size_bytes)
-    with nogil:
-        status = cublasDdot(
-            <Handle>handle, n, <double*>x, incx, <double*>y, incy,
-            <double*>result)
-    check_status(status)
-
 
 cpdef cdotu(intptr_t handle, int n, size_t x, int incx, size_t y, int incy,
             size_t result):

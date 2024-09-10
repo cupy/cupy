@@ -39,9 +39,9 @@ def nrm2_graph_compatible(x: cupy.ndarray, out=None):
 
     dtype = x.dtype.char
     if dtype == 'f':
-        func = _cublas.sdot_w
+        func = _cublas.sdot
     elif dtype == 'd':
-        func = _cublas.ddot_w
+        func = _cublas.ddot
     else:
         raise TypeError('invalid dtype')
 
@@ -51,8 +51,7 @@ def nrm2_graph_compatible(x: cupy.ndarray, out=None):
         handle, out, result_dtype)
     try:
         func(handle, x.size, x.data.ptr, 1,
-             x.data.ptr, 1, result_ptr,
-             _cublas_workspace.data.ptr, len(_cublas_workspace))
+             x.data.ptr, 1, result_ptr)
     finally:
         _cublas.setPointerMode(handle, orig_mode)
 
