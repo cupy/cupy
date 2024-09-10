@@ -6,9 +6,9 @@ import pytest
 import cupy
 from cupy import cuda
 from cupy.cuda.graph_functional_api import (
-    GraphConverterInterface,
-    GraphConverter,
-    MockGraphConverter
+    GraphBuilderInterface,
+    GraphBuilder,
+    MockGraphBuilder
 )
 
 @pytest.mark.skipif(cuda.runtime.is_hip,
@@ -32,13 +32,13 @@ class TestGraphFunctionalAPI(unittest.TestCase):
             self.prev_cusparse_allow_capture
 
     def test_simple_while(self):
-        def tester(gc_impl: GraphConverterInterface):
-            @gc_impl.graphify
+        def tester(gb: GraphBuilderInterface):
+            @gb.graphify
             def test_func(a: cupy.ndarray, N: int):
                 def while_fn(a):
                     a += 1
                     return (a,)
-                a, = gc_impl.while_loop(
+                a, = gb.while_loop(
                     cond_fn=lambda a: cupy.all(a != N),
                     body_fn=while_fn,
                     fn_args=(a,)
@@ -50,23 +50,23 @@ class TestGraphFunctionalAPI(unittest.TestCase):
             a = cupy.zeros(size, dtype=cupy.int32)
             return test_func(a, N)
 
-        result_graph = tester(GraphConverter())
-        result_nograph = tester(MockGraphConverter())
+        result_graph = tester(GraphBuilder())
+        result_nograph = tester(MockGraphBuilder())
 
         assert cupy.all(result_graph == result_nograph)
 
     def test_simple_if_true(self):
-        def tester(gc_impl: GraphConverterInterface, a_in, b_in):
+        def tester(gb: GraphBuilderInterface, a_in, b_in):
             a = cupy.copy(a_in)
             b = cupy.copy(b_in)
             # if one.dtype is cupy.float32, this test fails
             one = cupy.ones((), dtype=cupy.bool_)
 
-            @gc_impl.graphify
+            @gb.graphify
             def test_func(a, b, condition):
                 def if_true():
                     a[...] += b
-                gc_impl.cond(
+                gb.cond(
                     lambda: condition,
                     if_true
                 )
@@ -76,24 +76,24 @@ class TestGraphFunctionalAPI(unittest.TestCase):
 
         a = cupy.zeros(100)
         b = cupy.arange(100)
-        result_mock = tester(MockGraphConverter(), a, b)
-        result_graph = tester(GraphConverter(), a, b)
+        result_mock = tester(MockGraphBuilder(), a, b)
+        result_graph = tester(GraphBuilder(), a, b)
 
         assert cupy.all(result_graph == result_mock)
 
     def test_simple_if_false(self):
         def tester(
-            gc_impl: GraphConverterInterface, a_in, b_in
+            gb: GraphBuilderInterface, a_in, b_in
         ):
             a = cupy.copy(a_in)
             b = cupy.copy(b_in)
             zero = cupy.zeros((), dtype=cupy.bool_)
 
-            @gc_impl.graphify
+            @gb.graphify
             def test_func(a, b, condition):
                 def if_true():
                     a[...] += b
-                gc_impl.cond(
+                gb.cond(
                     lambda: condition,
                     if_true
                 )
@@ -103,8 +103,8 @@ class TestGraphFunctionalAPI(unittest.TestCase):
 
         a = cupy.zeros(100)
         b = cupy.arange(100)
-        result_mock = tester(MockGraphConverter(), a, b)
-        result_graph = tester(GraphConverter(), a, b)
+        result_mock = tester(MockGraphBuilder(), a, b)
+        result_graph = tester(GraphBuilder(), a, b)
 
         assert cupy.all(result_graph == result_mock)
 
@@ -112,27 +112,27 @@ class TestGraphFunctionalAPI(unittest.TestCase):
         size = 500
         loop = 10
         def tester(
-            gc_impl: GraphConverterInterface, A_in, x_in
+            gb: GraphBuilderInterface, A_in, x_in
         ):
             A = cupy.copy(A_in)
             x = cupy.copy(x_in)
 
             counter = cupy.zeros((), dtype=cupy.int32)
-            @gc_impl.graphify
+            @gb.graphify
             def test_func(A, x, counter):
                 def while_out(A, x, counter):
                     counter += 1
                     def while_in(A, x):
                         cupy.matmul(A, x, out=x)
                         return (A, x)
-                    gc_impl.while_loop(
+                    gb.while_loop(
                         cond_fn=lambda *_: (cupy.linalg.norm(x) / size) < size,
                         body_fn=while_in,
                         fn_args=(A, x)
                     )
                     x /= size
                     return (A, x, counter)
-                gc_impl.while_loop(
+                gb.while_loop(
                     lambda *_: counter < loop,
                     body_fn=while_out,
                     fn_args=(A, x, counter)
@@ -158,8 +158,8 @@ class TestGraphFunctionalAPI(unittest.TestCase):
         A = cupy.random.randn(size, size)
         x = cupy.random.randn(size, 1)
 
-        result_mock = tester(MockGraphConverter(), A, x)
-        result_graph = tester(GraphConverter(), A, x)
+        result_mock = tester(MockGraphBuilder(), A, x)
+        result_graph = tester(GraphBuilder(), A, x)
         result = normal_cupy_impl(A, x)
         assert cupy.all(result_graph == result_mock)
         assert cupy.all(result_graph == result)
@@ -171,7 +171,7 @@ class TestGraphFunctionalAPI(unittest.TestCase):
         max_iter = 1000
 
         def kmeans_tester(
-            gc_impl: GraphConverterInterface, X_in, initials_in
+            gb: GraphBuilderInterface, X_in, initials_in
         ):
             # Array setup
             X = cupy.copy(X_in)
@@ -187,7 +187,7 @@ class TestGraphFunctionalAPI(unittest.TestCase):
             distances = cupy.linalg.norm(X[:, None, :] - centers[None, :, :], axis=2)
             new_pred = cupy.argmin(distances, axis=1)
 
-            @gc_impl.graphify
+            @gb.graphify
             def kmeans(pred, new_pred, centers, distances):
                 def while_fn(pred, new_pred, centers, distances):
                     cupy.copyto(pred, new_pred)
@@ -200,7 +200,7 @@ class TestGraphFunctionalAPI(unittest.TestCase):
                     distances = cupy.linalg.norm(X[:, None, :] - centers[None, :, :], axis=2)
                     cupy.argmin(distances, axis=1, out=new_pred)
                     return (pred, new_pred, centers, distances)
-                pred, _, centers, _ = gc_impl.while_loop(
+                pred, _, centers, _ = gb.while_loop(
                     cond_fn=lambda *_: cupy.any(new_pred != pred),
                     body_fn=while_fn,
                     fn_args=(pred, new_pred, centers, distances)
@@ -244,8 +244,8 @@ class TestGraphFunctionalAPI(unittest.TestCase):
 
         # k-means in normal CuPy
         centers_normal, pred_normal = fit_normal_cupy(X_in, initial_indexes)
-        centers_mock, pred_mock = kmeans_tester(MockGraphConverter(), X_in, initial_indexes)
-        centers_graph, pred_graph = kmeans_tester(GraphConverter(), X_in, initial_indexes)
+        centers_mock, pred_mock = kmeans_tester(MockGraphBuilder(), X_in, initial_indexes)
+        centers_graph, pred_graph = kmeans_tester(GraphBuilder(), X_in, initial_indexes)
 
         # graph == normal
         assert cupy.allclose(centers_graph, centers_normal)
@@ -260,10 +260,10 @@ class TestGraphFunctionalAPI(unittest.TestCase):
         y = cupy.array([2, 2, 2])
         z = cupy.array([3, 3, 3])
         w = cupy.array([4, 4, 4])
-        def impl(gc: GraphConverterInterface, array):
+        def impl(gb: GraphBuilderInterface, array):
             array = array.copy()
 
-            @gc.graphify
+            @gb.graphify
             def target(array):
                 output = x.copy()
                 def fn0():
@@ -274,7 +274,7 @@ class TestGraphFunctionalAPI(unittest.TestCase):
                     cupy.copyto(output, z)
                 def fn3():
                     cupy.copyto(output, w)
-                gc.multicond([
+                gb.multicond([
                     (lambda: array[0], fn0),
                     (lambda: array[1], fn1),
                     (lambda: array[2], fn2),
@@ -285,8 +285,8 @@ class TestGraphFunctionalAPI(unittest.TestCase):
             return target(array)
 
         def tester(arr, ans):
-            out_graph = impl(GraphConverter(), arr)
-            out_mock = impl(MockGraphConverter(), arr)
+            out_graph = impl(GraphBuilder(), arr)
+            out_mock = impl(MockGraphBuilder(), arr)
             assert cupy.all(out_graph == ans)
             assert cupy.all(out_mock == ans)
 

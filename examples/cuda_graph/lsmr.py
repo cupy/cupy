@@ -7,9 +7,9 @@ import numpy
 import cupy
 import cupyx
 from cupy.cuda.graph_functional_api import (
-    GraphConverter,
-    MockGraphConverter,
-    GraphConverterInterface
+    GraphBuilder,
+    MockGraphBuilder,
+    GraphBuilderInterface
 )
 
 parser = argparse.ArgumentParser()
@@ -199,13 +199,13 @@ def lsmr_graph(A, b, x0=None, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8,
     _symOrtho = _symOrtho_raw
 
     if impl_name == "graph":
-        gc = GraphConverter()
+        gb = GraphBuilder()
     elif impl_name == "mock":
-        gc = MockGraphConverter()
+        gb = MockGraphBuilder()
     else:
         raise ValueError("impl_name is invalide")
 
-    @gc.graphify
+    @gb.graphify
     def main_loop(
         itn,
         u,
@@ -266,11 +266,11 @@ def lsmr_graph(A, b, x0=None, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8,
                 nrm2_fn(v, out=alpha)
                 def alpha_if():
                     v[...] /= alpha
-                gc.cond(
+                gb.cond(
                     lambda: alpha>0,
                     alpha_if,
                 )
-            gc.cond(
+            gb.cond(
                 lambda: beta > 0,
                 beta_if,
             )
@@ -344,7 +344,7 @@ def lsmr_graph(A, b, x0=None, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8,
             cupy.maximum(maxrbar, rhobarold, out=maxrbar)
             def itn_cond():
                 minrbar[...] = cupy.minimum(minrbar, rhobarold)
-            gc.cond(
+            gb.cond(
                 lambda: itn > 1,
                 itn_cond
             )
@@ -366,7 +366,7 @@ def lsmr_graph(A, b, x0=None, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8,
                 test2[...] = normar / normA * normr
             def false_fn():
                 test2[...] = numpy.inf
-            gc.multicond([
+            gb.multicond([
                 (lambda: (normA * normr) != 0, true_fn),
                 (None, false_fn)
             ])
@@ -378,7 +378,7 @@ def lsmr_graph(A, b, x0=None, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8,
                 def fn():
                     istop[...] = i
                 return fn
-            gc.multicond([
+            gb.multicond([
                 (lambda: test1 <= rtol, set_istop_fn(1)),
                 (lambda: test2 <= atol, set_istop_fn(2)),
                 (lambda: test3 <= ctol, set_istop_fn(3)),
@@ -411,7 +411,7 @@ def lsmr_graph(A, b, x0=None, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8,
                 normA2,
                 stop_flag,
             )
-        return gc.while_loop(
+        return gb.while_loop(
             lambda itn, *_: (itn < maxiter) & (~stop_flag),
             while_fn,
             (
@@ -439,7 +439,7 @@ def lsmr_graph(A, b, x0=None, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8,
 
 
     try:
-        gc.capture(fn_args=(
+        gb.capture(fn_args=(
             itn,
             u,
             x,
@@ -461,9 +461,9 @@ def lsmr_graph(A, b, x0=None, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8,
             stop_flag,
         ))
         # with open("temp.dot", "w") as f:
-        #     print(gc.main_graph.debug_dot_str(), file=f)
-        gc.main_graph.launch()
-        itn, u, x, v, *_, = gc.return_ref
+        #     print(gb.main_graph.debug_dot_str(), file=f)
+        gb.main_graph.launch()
+        itn, u, x, v, *_, = gb.return_ref
     except AttributeError:
         itn, u, x, v, *_ = main_loop(
             itn,

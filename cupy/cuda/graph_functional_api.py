@@ -32,7 +32,7 @@ def _set_value_to_handle(handle, val: cupy.ndarray):
         raise ValueError(f"Condition shape is invalid: {val.shape}")
     _set_value_bool((1,), (1,), (handle, val))
 
-class GraphConverterInterface(ABC):
+class GraphBuilderInterface(ABC):
     @abstractmethod
     def graphify(self, func: Callable):
         pass
@@ -62,7 +62,7 @@ class GraphConverterInterface(ABC):
     ):
         pass
 
-class GraphConverter(GraphConverterInterface):
+class GraphBuilder(GraphBuilderInterface):
     def __init__(self):
         self.streams: List[cuda.Stream] = []
         self.main_graph: Optional[cuda.Graph] = None
@@ -281,7 +281,7 @@ class GraphConverter(GraphConverterInterface):
             self.streams.pop()
 
 
-class MockGraphConverter(GraphConverterInterface):
+class MockGraphBuilder(GraphBuilderInterface):
     def __init__(self):
         pass
 
@@ -335,22 +335,3 @@ class MockGraphConverter(GraphConverterInterface):
             if cond_fn is None or cond_fn():
                 body_fn(*args)
                 break
-
-class TempVariableStorage:
-    special_attrs = {"_attributes", "_old_attributes"}
-    def __init__(self):
-        self._attributes = dict()
-        self._old_attributes = []
-    def __setattr__(self, name, value):
-        if name in TempVariableStorage.special_attrs:
-            super().__setattr__(name, value)
-        else:
-            if name in self._attributes.keys():
-                self._old_attributes.append((name, self._attributes[name]))
-            self._attributes[name] = value
-    def __getattr__(self, name):
-        if name in self._attributes:
-            return self._attributes[name]
-        raise AttributeError(f"'{self.__class__.__name__}' object has no attribute '{name}'")
-    def __delattr__(self, name):
-        raise AttributeError(f"Deleting attribute is not allowed")
