@@ -101,6 +101,14 @@ cpdef get_current_stream(int device_id=-1):
     tls = _ThreadLocal.get()
     return tls.get_current_stream(device_id)
 
+cpdef set_current_cublas_workspace(
+        intptr_t workspace, size_t size, int device_id=-1
+    ):
+    if device_id == -1:
+        device_id = runtime.getDevice()
+    backends_stream.set_current_cublas_workspace(
+        workspace, size, device_id
+    )
 
 class Event(object):
 

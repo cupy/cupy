@@ -520,8 +520,9 @@ cpdef setStream(intptr_t handle, size_t stream):
     # https://docs.nvidia.com/cuda/cublas/index.html#CUDA-graphs
     # Before we come up with a robust strategy to test the support conditions,
     # we disable this functionality.
+    is_capturing = runtime.streamIsCapturing(stream)
     if (not _allow_stream_graph_capture and
-        not runtime._is_hip_environment and runtime.streamIsCapturing(stream)):
+        not runtime._is_hip_environment and is_capturing):
         raise NotImplementedError(
             'Set the environment variable '
             '`CUPY_EXPERIMENTAL_CUDA_LIB_GRAPH_CAPTURE=1` to allow '
@@ -531,13 +532,20 @@ cpdef setStream(intptr_t handle, size_t stream):
         status = cublasSetStream(<Handle>handle, <Stream>stream)
     check_status(status)
 
-    cdef intptr_t workspace = stream_module.get_cublas_workspace_ptr()
-    cdef size_t workspace_size = stream_module.get_cublas_workspace_size()
-    if workspace != 0:
-        with nogil:
-            status = cublasSetWorkspace(
-                <Handle>handle, <void*>workspace, workspace_size)
-        check_status(status)
+    # Set cublas workspace if available.
+    # We need to set workspace after setting stream because
+    # cublasSetStream resets workspace setting.
+    # See: https://docs.nvidia.com/cuda/cublas/#cublassetworkspace
+    cdef intptr_t workspace
+    cdef size_t workspace_size
+    if is_capturing:
+        workspace = stream_module.get_current_cublas_workspace_ptr()
+        workspace_size = stream_module.get_current_cublas_workspace_size()
+        if workspace != 0:
+            with nogil:
+                status = cublasSetWorkspace(
+                    <Handle>handle, <void*>workspace, workspace_size)
+            check_status(status)
 
 cpdef size_t getStream(intptr_t handle) except? 0:
     cdef Stream stream
