@@ -332,7 +332,7 @@ class _BaseStream:
         """
         runtime.streamWaitEvent(self.ptr, event.ptr)
 
-    def begin_capture(self, mode=None, dest_graph=None):
+    def begin_capture(self, mode=None, to_graph=None):
         """Begin stream capture to construct a CUDA graph.
 
         A call to this function must be paired with a call to
@@ -388,19 +388,19 @@ class _BaseStream:
             # (Though, ideally stream capture should be used together with
             # the async APIs, such as cudaMallocAsync.)
             mode = runtime.streamCaptureModeRelaxed
-        if dest_graph is None:
+        if to_graph is None:
             runtime.streamBeginCapture(self.ptr, mode)
         else:
             # Supports to start capture only to an empty graph
             runtime.streamBeginCaptureToGraph(
                 self.ptr,
-                dest_graph.graph,
+                to_graph.graph,
                 0, # dependencies_ptr
                 0, # dependency_data_ptr
                 0, # num_deps
                 mode
             )
-            self._capturing_graph = dest_graph
+            self._capturing_graph = to_graph
 
     def end_capture(self):
         """End stream capture and retrieve the constructed CUDA graph.
