@@ -437,55 +437,27 @@ def lsmr_graph(A, b, x0=None, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8,
             )
         )
 
-
-    try:
-        gb.capture(fn_args=(
-            itn,
-            u,
-            x,
-            v,
-            rho,
-            rhobar,
-            cbar,
-            sbar,
-            h,
-            hbar,
-            betadd,
-            betad,
-            rhodold,
-            tautildeold,
-            thetatilde,
-            zeta,
-            d,
-            normA2,
-            stop_flag,
-        ))
-        # with open("temp.dot", "w") as f:
-        #     print(gb.main_graph.debug_dot_str(), file=f)
-        gb.main_graph.launch()
-        itn, u, x, v, *_, = gb._return_ref
-    except AttributeError:
-        itn, u, x, v, *_ = main_loop(
-            itn,
-            u,
-            x,
-            v,
-            rho,
-            rhobar,
-            cbar,
-            sbar,
-            h,
-            hbar,
-            betadd,
-            betad,
-            rhodold,
-            tautildeold,
-            thetatilde,
-            zeta,
-            d,
-            normA2,
-            stop_flag,
-        )
+    itn, u, x, v, *_ = main_loop(
+        itn,
+        u,
+        x,
+        v,
+        rho,
+        rhobar,
+        cbar,
+        sbar,
+        h,
+        hbar,
+        betadd,
+        betad,
+        rhodold,
+        tautildeold,
+        thetatilde,
+        zeta,
+        d,
+        normA2,
+        stop_flag,
+    )
 
     # The return type of SciPy is always float64. Therefore, x must be casted.
     x = x.astype(numpy.float64)

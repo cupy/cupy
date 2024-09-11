@@ -68,7 +68,7 @@ class GraphBuilderInterface(ABC):
 class GraphBuilder(GraphBuilderInterface):
     def __init__(self):
         self._streams: List[cuda.Stream] = []
-        self.main_graph: Optional[cuda.Graph] = None
+        self.root_graph: Optional[cuda.Graph] = None
 
         # Temporal references to prevent evaluated arrays from being freed
         self._cond_outputs: List[cupy.ndarray] = []
@@ -81,12 +81,12 @@ class GraphBuilder(GraphBuilderInterface):
     def graphify(self, func: Callable):
         self._target_func = func
         def wrapped(*args):
-            if not self.main_graph is None:
-                self.main_graph.launch()
+            if not self.root_graph is None:
+                self.root_graph.launch()
                 return self._return_ref
 
             self.capture(fn_args=args)
-            self.main_graph.launch()
+            self.root_graph.launch()
             return self._return_ref
         return wrapped
 
@@ -105,7 +105,7 @@ class GraphBuilder(GraphBuilderInterface):
                     root_stream.begin_capture()
                     self._return_ref = self._target_func(*fn_args)
                 finally:
-                    self.main_graph = root_stream.end_capture()
+                    self.root_graph = root_stream.end_capture()
             self._streams.pop()
 
     def while_loop(
