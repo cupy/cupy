@@ -13,13 +13,14 @@ from abc import ABC, abstractmethod
 _set_value_module = cupy.RawModule(code=r"""
 #include <cuda_device_runtime_api.h>
 extern "C" {
-__global__ void set_value_bool(cudaGraphConditionalHandle handle, bool* ptr) {
+__global__ void cupy_cudaGraphSetConditional_bool(
+    cudaGraphConditionalHandle handle, bool* ptr
+) {
     cudaGraphSetConditional(handle, *ptr);
 }
-
 }
 """)
-_set_value_bool = _set_value_module.get_function("set_value_bool")
+_set_value_bool = _set_value_module.get_function("cupy_cudaGraphSetConditional_bool")
 
 def _set_value_to_handle(handle, val: cupy.ndarray):
     if not val.dtype == cupy.bool_:
