@@ -123,7 +123,7 @@ cdef bint is_ptds_enabled():
         return False
     return _ptds
 
-cdef void set_current_cublas_workspace(
+cpdef void set_current_cublas_workspace(
         intptr_t ptr, size_t size, int device_id=-1
     ):
     tls = _ThreadLocal.get()

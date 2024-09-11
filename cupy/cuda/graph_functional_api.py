@@ -1,5 +1,6 @@
 import cupy
 from cupy import cuda
+from cupy_backends.cuda import stream as backend_stream
 from typing import (
     Optional,
     List,
@@ -121,7 +122,7 @@ class GraphBuilder(GraphBuilderInterface):
         else:
             workspace_size = 4 * 1024 * 1024
         workspace = self._memory_pool.malloc(workspace_size)
-        cuda.stream.set_current_cublas_workspace(
+        backend_stream.set_current_cublas_workspace(
             workspace.ptr, workspace_size, dev.id
         )
 
