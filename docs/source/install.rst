@@ -332,7 +332,8 @@ CuPy always raises ``NVRTC_ERROR_COMPILATION (6)``
 On CUDA 12.2 or later, CUDA Runtime header files are required to compile kernels in CuPy.
 If CuPy raises a ``NVRTC_ERROR_COMPILATION`` with the error message saying ``catastrophic error: cannot open source file "vector_types.h"`` for almost everything, it is possible that CuPy cannot find the header files on your system correctly.
 
-This problem does not happen if you have installed CuPy from conda-forge (i.e., ``conda install -c conda-forge cupy``), as the package ``cuda-cudart-dev_<platform>`` that contains the needed headers is correctly installed as a dependency. Please report to the CuPy repository if you encounter issues with Conda-installed CuPy.
+This problem does not happen if you have installed CuPy from conda-forge (i.e., ``conda install -c conda-forge cupy``), as the package ``cuda-cudart-dev_<platform>`` that contains the needed headers is correctly installed as a dependency.
+Please report to the CuPy repository if you encounter issues with Conda-installed CuPy.
 
 If you have installed CuPy from PyPI (i.e., ``pip install cupy-cuda12x``), you can install CUDA headers by running ``pip install "nvidia-cuda-runtime-cu12==12.X.*"`` where ``12.X`` is the version of your CUDA installation.
 Once headers from the package is recognized, ``cupy.show_config()`` will display the path as ``CUDA Extra Include Dirs``::
