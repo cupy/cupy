@@ -69,7 +69,6 @@ class GraphBuilder(GraphBuilderInterface):
     def __init__(self):
         self._streams: List[cuda.Stream] = []
         self.main_graph: Optional[cuda.Graph] = None
-        self._root_stream = None
 
         # Temporal references to prevent evaluated arrays from being freed
         self._cond_outputs: List[cupy.ndarray] = []
@@ -87,9 +86,7 @@ class GraphBuilder(GraphBuilderInterface):
                 return self._return_ref
 
             self.capture(fn_args=args)
-            with self._root_stream:
-                self.main_graph.launch()
-            self._root_stream.synchronize()
+            self.main_graph.launch()
             return self._return_ref
         return wrapped
 
@@ -101,15 +98,14 @@ class GraphBuilder(GraphBuilderInterface):
             )
         with cuda.using_allocator(self._memory_pool.malloc):
             # On initial call
-            if self._root_stream is None:
-                self._root_stream = cuda.Stream()
-            self._streams.append(self._root_stream)
-            with self._root_stream:
+            root_stream = cuda.Stream()
+            self._streams.append(root_stream)
+            with root_stream:
                 try:
-                    self._root_stream.begin_capture()
+                    root_stream.begin_capture()
                     self._return_ref = self._target_func(*fn_args)
                 finally:
-                    self.main_graph = self._root_stream.end_capture()
+                    self.main_graph = root_stream.end_capture()
             self._streams.pop()
 
     def while_loop(
