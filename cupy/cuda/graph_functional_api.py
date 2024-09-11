@@ -67,50 +67,50 @@ class GraphBuilderInterface(ABC):
 
 class GraphBuilder(GraphBuilderInterface):
     def __init__(self):
-        self.streams: List[cuda.Stream] = []
+        self._streams: List[cuda.Stream] = []
         self.main_graph: Optional[cuda.Graph] = None
-        self.root_stream = None
+        self._root_stream = None
 
         # Temporal references to prevent evaluated arrays from being freed
-        self.cond_outputs: List[cupy.ndarray] = []
+        self._cond_outputs: List[cupy.ndarray] = []
 
-        self.memory_pool = cuda.MemoryPool()
+        self._memory_pool = cuda.MemoryPool()
 
-        self.target_func: Optional[Callable] = None
-        self.return_ref = None
+        self._target_func: Optional[Callable] = None
+        self._return_ref = None
 
     def graphify(self, func: Callable):
-        self.target_func = func
+        self._target_func = func
         def wrapped(*args):
             if not self.main_graph is None:
                 self.main_graph.launch()
-                return self.return_ref
+                return self._return_ref
 
             self.capture(fn_args=args)
-            with self.root_stream:
+            with self._root_stream:
                 self.main_graph.launch()
-            self.root_stream.synchronize()
-            return self.return_ref
+            self._root_stream.synchronize()
+            return self._return_ref
         return wrapped
 
     def capture(self, fn_args=()):
-        if self.target_func is None:
+        if self._target_func is None:
             raise RuntimeError(
                 "Set graph target function before calling capture() "
                 "by using graphify() method."
             )
-        with cuda.using_allocator(self.memory_pool.malloc):
+        with cuda.using_allocator(self._memory_pool.malloc):
             # On initial call
-            if self.root_stream is None:
-                self.root_stream = cuda.Stream()
-            self.streams.append(self.root_stream)
-            with self.root_stream:
+            if self._root_stream is None:
+                self._root_stream = cuda.Stream()
+            self._streams.append(self._root_stream)
+            with self._root_stream:
                 try:
-                    self.root_stream.begin_capture()
-                    self.return_ref = self.target_func(*fn_args)
+                    self._root_stream.begin_capture()
+                    self._return_ref = self._target_func(*fn_args)
                 finally:
-                    self.main_graph = self.root_stream.end_capture()
-            self.streams.pop()
+                    self.main_graph = self._root_stream.end_capture()
+            self._streams.pop()
 
     def while_loop(
         self,
@@ -127,11 +127,11 @@ class GraphBuilder(GraphBuilderInterface):
             return val
         """
         st = cuda.Stream()
-        parent_st = self.streams[-1]
-        self.streams.append(st)
+        parent_st = self._streams[-1]
+        self._streams.append(st)
         handle = parent_st.create_conditional_handle(default_value=True)
         cond_before_loop = cond_fn(*fn_args)
-        self.cond_outputs.append(cond_before_loop)
+        self._cond_outputs.append(cond_before_loop)
         _set_value_to_handle(handle, cond_before_loop) # set value before the loop
         body_graph = parent_st.append_conditional_node(
             "while", handle
@@ -147,11 +147,11 @@ class GraphBuilder(GraphBuilderInterface):
                     # and add type validation
                     cupy.copyto(before, after) # Copy after -> before
                 cond_in_loop = cond_fn(*carry)
-                self.cond_outputs.append(cond_in_loop)
+                self._cond_outputs.append(cond_in_loop)
                 _set_value_to_handle(handle, cond_in_loop) # set value in the loop
             finally:
                 st.end_capture()
-        self.streams.pop()
+        self._streams.pop()
         return carry
 
     def cond(
@@ -161,12 +161,12 @@ class GraphBuilder(GraphBuilderInterface):
         fn_args: Tuple=()
     ):
         st = cupy.cuda.Stream()
-        parent_st = self.streams[-1]
-        self.streams.append(st)
+        parent_st = self._streams[-1]
+        self._streams.append(st)
         handle = parent_st.create_conditional_handle(default_value=False)
 
         cond = cond_fn(*fn_args)
-        self.cond_outputs.append(cond)
+        self._cond_outputs.append(cond)
         _set_value_to_handle(handle, cond) # set value before the loop
         body_graph = parent_st.append_conditional_node(
             "if", handle
@@ -177,7 +177,7 @@ class GraphBuilder(GraphBuilderInterface):
                 true_fn(*fn_args)
             finally:
                 st.end_capture()
-        self.streams.pop()
+        self._streams.pop()
         return None
 
     def multicond(
@@ -247,31 +247,31 @@ class GraphBuilder(GraphBuilderInterface):
             body_fn(*args)
             return
 
-        parent_st = self.streams[-1]
+        parent_st = self._streams[-1]
         handle = parent_st.create_conditional_handle()
 
         # True branch
         cond_val = cond_fn()
-        self.cond_outputs.append(cond_val)
+        self._cond_outputs.append(cond_val)
         _set_value_to_handle(handle, cond_val)
         body_graph_true = parent_st.append_conditional_node(
             "if", handle
         )
 
         stream = cuda.Stream()
-        self.streams.append(stream)
+        self._streams.append(stream)
         with stream:
             stream.begin_capture(dest_graph=body_graph_true)
             try:
                 body_fn(*args)
             finally:
                 stream.end_capture()
-        self.streams.pop()
+        self._streams.pop()
 
         # False branch
         if len(branches) > 0:
             stream = cuda.Stream()
-            self.streams.append(stream)
+            self._streams.append(stream)
             handle2 = parent_st.create_conditional_handle()
             _set_value_to_handle(handle2, ~cond_val)
             body_graph_false = parent_st.append_conditional_node(
@@ -283,7 +283,7 @@ class GraphBuilder(GraphBuilderInterface):
                     self._multicond_inner(branches)
                 finally:
                     stream.end_capture()
-            self.streams.pop()
+            self._streams.pop()
 
 
 class MockGraphBuilder(GraphBuilderInterface):

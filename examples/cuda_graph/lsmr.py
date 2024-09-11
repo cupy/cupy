@@ -463,7 +463,7 @@ def lsmr_graph(A, b, x0=None, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8,
         # with open("temp.dot", "w") as f:
         #     print(gb.main_graph.debug_dot_str(), file=f)
         gb.main_graph.launch()
-        itn, u, x, v, *_, = gb.return_ref
+        itn, u, x, v, *_, = gb._return_ref
     except AttributeError:
         itn, u, x, v, *_ = main_loop(
             itn,
