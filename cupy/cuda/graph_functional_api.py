@@ -96,8 +96,8 @@ class GraphBuilder(GraphBuilderInterface):
                 "Set graph target function before calling capture() "
                 "by using graphify() method."
             )
-        self._allocate_cublas_workspace()
         with cuda.using_allocator(self._memory_pool.malloc):
+            self._allocate_cublas_workspace()
             # On initial call
             root_stream = cuda.Stream()
             self._streams.append(root_stream)
@@ -113,6 +113,7 @@ class GraphBuilder(GraphBuilderInterface):
         # Prepare cuBLAS workspace memory to avoid stream memory allocation
         # which is incompatible with child graphs.
         # See: https://docs.nvidia.com/cuda/cublas/#cuda-graphs-support
+        # TODO: respect CUBLAS_WORKSPACE_CONFIG env var
         dev = cuda.Device()
         cc = int(dev.compute_capability)
         if cc >= 90: # Hopper or newer
