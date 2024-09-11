@@ -29,8 +29,10 @@ def _set_value_to_handle(handle, val: cupy.ndarray):
             "_set_value_to_handle has not been implemented "
             "for dtypes other than bool."
         )
-    if val.shape not in {(), (1,)}:
-        raise ValueError(f"Condition shape is invalid: {val.shape}")
+    if val.size != 1:
+        raise ValueError(
+            "Conditional function must return array of size 1, "
+            f"but got {val.size}.")
     _set_value_bool((1,), (1,), (handle, val))
 
 class GraphBuilderInterface(ABC):
