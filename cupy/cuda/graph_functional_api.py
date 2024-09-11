@@ -82,8 +82,11 @@ class GraphBuilder(GraphBuilderInterface):
     def graphify(self, func: Callable):
         self.target_func = func
         def wrapped(*args):
-            if self.main_graph is None:
-                self.capture(fn_args=args)
+            if not self.main_graph is None:
+                self.main_graph.launch()
+                return self.return_ref
+
+            self.capture(fn_args=args)
             with self.root_stream:
                 self.main_graph.launch()
             self.root_stream.synchronize()
@@ -97,9 +100,6 @@ class GraphBuilder(GraphBuilderInterface):
                 "by using graphify() method."
             )
         with cuda.using_allocator(self.memory_pool.malloc):
-            if not self.main_graph is None:
-                self.main_graph.launch()
-
             # On initial call
             if self.root_stream is None:
                 self.root_stream = cuda.Stream()
@@ -143,6 +143,8 @@ class GraphBuilder(GraphBuilderInterface):
                 if len(carry) != len(fn_args):
                     raise ValueError("Argument and return value of body_fn must have same shape")
                 for before, after in zip(fn_args, carry):
+                    # TODO: Skip copy when before pointer and after pointer are same
+                    # and add type validation
                     cupy.copyto(before, after) # Copy after -> before
                 cond_in_loop = cond_fn(*carry)
                 self.cond_outputs.append(cond_in_loop)
