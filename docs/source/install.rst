@@ -336,7 +336,9 @@ This problem does not happen if you have installed CuPy from conda-forge (i.e., 
 Please report to the CuPy repository if you encounter issues with Conda-installed CuPy.
 
 If you have installed CuPy from PyPI (i.e., ``pip install cupy-cuda12x``), you can install CUDA headers by running ``pip install "nvidia-cuda-runtime-cu12==12.X.*"`` where ``12.X`` is the version of your CUDA installation.
-Once headers from the package is recognized, ``cupy.show_config()`` will display the path as ``CUDA Extra Include Dirs``::
+Once headers from the package is recognized, ``cupy.show_config()`` will display the path as ``CUDA Extra Include Dirs``:
+
+.. code:: console
 
   $ python -c 'import cupy; cupy.show_config()'
   ...
@@ -351,8 +353,10 @@ Once headers from the package is recognized, ``cupy.show_config()`` will display
   CUDA Extra Include Dirs      : ['.../site-packages/nvidia/cuda_runtime/include']
   ...
 
-Alternatively, you can install CUDA headers system-wide (``/usr/local/cuda-12``) using NVIDIA's Apt (or DNF) repository.
-Run ``sudo apt install "cuda-cudart-dev-12-X"`` where ``12-X`` is the version of your ``cuda-cudart`` package, e.g.::
+Alternatively, you can install CUDA headers system-wide (``/usr/local/cuda``) using NVIDIA's Apt (or DNF) repository.
+Install the ``cuda-cudart-dev-12-X`` package where ``12-X`` is the version of your ``cuda-cudart`` package, e.g.:
+
+.. code:: console
 
   $ apt list "cuda-cudart-*"
   cuda-cudart-12-6/now 12.6.68-1 amd64 [installed,local]
