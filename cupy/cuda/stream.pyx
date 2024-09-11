@@ -209,7 +209,7 @@ class _BaseStream:
     def __init__(self, ptr, device_id):
         self.ptr = ptr
         self.device_id = device_id
-        self.capturing_graph = None
+        self._capturing_graph = None
 
     def __eq__(self, other):
         # This operator needed as the ptr may be shared between multiple Stream
@@ -400,7 +400,7 @@ class _BaseStream:
                 0, # num_deps
                 mode
             )
-            self.capturing_graph = dest_graph
+            self._capturing_graph = dest_graph
 
     def end_capture(self):
         """End stream capture and retrieve the constructed CUDA graph.
@@ -420,13 +420,12 @@ class _BaseStream:
         if runtime._is_hip_environment:
             raise RuntimeError('This function is not supported on HIP')
         cdef intptr_t g = runtime.streamEndCapture(self.ptr)
-        if self.capturing_graph is None:
+        if self._capturing_graph is None:
             return graph.Graph.from_stream(g)
         else:
-            try:
-                return self.capturing_graph
-            finally:
-                self.capturing_graph = None
+            graph_ = self._capturing_graph
+            self._capturing_graph = None
+            return graph_
 
     def is_capturing(self):
         """Check if the stream is capturing.
