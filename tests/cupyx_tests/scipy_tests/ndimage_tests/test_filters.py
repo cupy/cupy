@@ -109,7 +109,13 @@ class FilterTestCaseBase:
         # Many specialized filters have no weights and this returns None.
 
         if self.filter in ('convolve', 'correlate'):
-            return testing.shaped_random(self._kshape, xp, self._dtype)
+            if getattr(self, "axes", None) is None:
+                kshape = self._kshape[:self._ndim]
+            else:
+                if numpy.isscalar(self.axes):
+                    self.axes = (self.axes,)
+                kshape = [self._kshape[ax] for ax in self.axes]
+            return testing.shaped_random(kshape, xp, self._dtype)
 
         if self.filter in ('convolve1d', 'correlate1d'):
             return testing.shaped_random((self.ksize,), xp, self._dtype)
@@ -154,7 +160,7 @@ class FilterTestCaseBase:
                            'minimum_filter1d', 'maximum_filter1d'):
             return self.ksize
 
-        if self.filter == 'uniform_filter':
+        if self.filter in ('uniform_filter'):
             if getattr(self, "axes", None) is None:
                 kshape = self._kshape[:self._ndim]
             else:
@@ -398,7 +404,7 @@ class TestFilterFast(FilterTestCaseBase):
             'filter': ['maximum_filter', 'minimum_filter'],
             'origin': [0, (0, 1, 1, 0)],
             'ksize': [(3, 3, 4, 5)],
-            'mode': [('reflect', 'nearest', 'mirror', 'wrap')],
+            'mode': [('reflect', 'nearest', 'constant', 'wrap')],
             'cval': [0, 2],
             'footprint': [False],
         }) +
@@ -407,7 +413,7 @@ class TestFilterFast(FilterTestCaseBase):
             'filter': ['maximum_filter', 'minimum_filter'],
             'origin': [0, (0, 1, 1, 0)],
             'kshape': [(3, 5, 3, 5)],
-            'mode': ['reflect'],
+            'mode': ['constant'],
             'cval': [0, 2],
             'footprint': [True],
         }) +
@@ -415,7 +421,7 @@ class TestFilterFast(FilterTestCaseBase):
             'filter': ['uniform_filter'],
             'origin': [0, (0, 1, 1, 0)],
             'kshape': [(3, 5, 3, 5)],
-            'mode': [('reflect', 'nearest', 'mirror', 'wrap')],
+            'mode': [('reflect', 'constant', 'mirror', 'nearest')],
             'cval': [0, 2],
         }),
         # common arguments for all filters to test axes
@@ -455,6 +461,56 @@ class TestFilterFastAxes(FilterTestCaseBase):
                 "origin and nonseparable footprint "
                 "(https://github.com/scipy/scipy/issues/20652)."
             )
+        self._hip_skip_invalid_condition()
+        return self._filter(xp, scp)
+
+
+# Check cases with various axes and axis-specific args
+# Same approach as TestFilterFastAxes, but includes filters updated in
+# SciPy>=1.15 instead of SciPy>=1.11.
+@testing.parameterize(*(
+    testing.product_dict(
+        testing.product({
+            'filter': ['correlate', 'convolve'],
+            'origin': [0, (0, 1, 1, 0)],
+            'kshape': [(3, 5, 3, 5)],
+            'mode': ['reflect', 'constant'],
+            'cval': [0, 2],
+        }) +
+        testing.product({
+            'filter': ['laplace'],
+            'mode': [('reflect', 'nearest', 'mirror', 'constant')],
+            'cval': [0, 2],
+        }) +
+        testing.product({
+            'filter': ['gaussian_gradient_magnitude', 'gaussian_laplace'],
+            'mode': [('reflect', 'constant', 'mirror', 'nearest')],
+            'sigma': [0.5, 3.2],
+            'cval': [0, 2],
+        }),
+        # common arguments for all filters to test axes
+        testing.product({
+            'shape': [(4, 5), (6, 4, 5), (3, 4, 5, 6)],
+            'dtype': [numpy.uint8, numpy.float64],
+            'output': [numpy.float64],
+            'axes': [None, (0, -1), (1,), 0],
+        })
+    )
+))
+@testing.with_requires('scipy>=1.15')
+class TestFilterFastAxesSciPy15(FilterTestCaseBase):
+
+    def _hip_skip_invalid_condition(self):
+        if not runtime.is_hip:
+            return
+        # TODO: run on HIP to see if any specific cases need to be skipped
+        # (as done for TestFilterFast)
+        # invalids = [(15, (3, 4, 5, 6))]
+        # if (self.percentile, self.shape) in invalids:
+        #     pytest.xfail('ROCm/HIP may have a bug')
+
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
+    def test_filter(self, xp, scp):
         self._hip_skip_invalid_condition()
         return self._filter(xp, scp)
 

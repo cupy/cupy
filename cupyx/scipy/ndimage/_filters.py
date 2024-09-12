@@ -9,7 +9,8 @@ from cupyx.scipy.ndimage import _filters_core
 from cupyx.scipy.ndimage import _filters_generic
 
 
-def correlate(input, weights, output=None, mode='reflect', cval=0.0, origin=0):
+def correlate(input, weights, output=None, mode='reflect', cval=0.0, origin=0,
+              *, axes=None):
     """Multi-dimensional correlate.
 
     The array is correlated with the given kernel.
@@ -29,6 +30,11 @@ def correlate(input, weights, output=None, mode='reflect', cval=0.0, origin=0):
             placement of the filter, relative to the center of the current
             element of the input. Default of 0 is equivalent to
             ``(0,)*input.ndim``.
+        axes (tuple of int or None, optional):  If None, `input` is filtered
+            along all axes. Otherwise, `input` is filtered along the specified
+            axes. When `axes` is specified, any tuples used for `mode` or
+            `origin` must match the length of `axes`. The ith entry in any of
+            these tuples corresponds to the ith entry in `axes`.
 
     Returns:
         cupy.ndarray: The result of correlate.
@@ -40,10 +46,13 @@ def correlate(input, weights, output=None, mode='reflect', cval=0.0, origin=0):
         and input is integral) the results may not perfectly match the results
         from SciPy due to floating-point rounding of intermediate results.
     """
-    return _correlate_or_convolve(input, weights, output, mode, cval, origin)
+    return _correlate_or_convolve(
+        input, weights, output, mode, cval, origin, False, axes
+    )
 
 
-def convolve(input, weights, output=None, mode='reflect', cval=0.0, origin=0):
+def convolve(input, weights, output=None, mode='reflect', cval=0.0, origin=0,
+             *, axes=None):
     """Multi-dimensional convolution.
 
     The array is convolved with the given kernel.
@@ -63,6 +72,11 @@ def convolve(input, weights, output=None, mode='reflect', cval=0.0, origin=0):
             placement of the filter, relative to the center of the current
             element of the input. Default of 0 is equivalent to
             ``(0,)*input.ndim``.
+        axes (tuple of int or None, optional):  If None, `input` is filtered
+            along all axes. Otherwise, `input` is filtered along the specified
+            axes. When `axes` is specified, any tuples used for `mode` or
+            `origin` must match the length of `axes`. The ith entry in any of
+            these tuples corresponds to the ith entry in `axes`.
 
     Returns:
         cupy.ndarray: The result of convolution.
@@ -74,8 +88,9 @@ def convolve(input, weights, output=None, mode='reflect', cval=0.0, origin=0):
         and input is integral) the results may not perfectly match the results
         from SciPy due to floating-point rounding of intermediate results.
     """
-    return _correlate_or_convolve(input, weights, output, mode, cval, origin,
-                                  True)
+    return _correlate_or_convolve(
+        input, weights, output, mode, cval, origin, True, axes
+    )
 
 
 def correlate1d(input, weights, axis=-1, output=None, mode="reflect", cval=0.0,
@@ -151,9 +166,9 @@ def convolve1d(input, weights, axis=-1, output=None, mode="reflect", cval=0.0,
 
 
 def _correlate_or_convolve(input, weights, output, mode, cval, origin,
-                           convolution=False):
+                           convolution=False, axes=None):
     axes, weights, origins, modes, int_type = _filters_core._check_nd_args(
-        input, weights, mode, origin)
+        input, weights, mode, origin, axes=axes)
     if weights.size == 0:
         return cupy.zeros_like(input)
 
@@ -535,7 +550,8 @@ def _prewitt_or_sobel(input, axis, output, mode, cval, weights):
 
 
 def generic_laplace(input, derivative2, output=None, mode="reflect",
-                    cval=0.0, extra_arguments=(), extra_keywords=None):
+                    cval=0.0, extra_arguments=(), extra_keywords=None, *,
+                    axes=None):
     """Multi-dimensional Laplace filter using a provided second derivative
     function.
 
@@ -562,6 +578,9 @@ def generic_laplace(input, derivative2, output=None, mode="reflect",
             Sequence of extra positional arguments to pass to ``derivative2``.
         extra_keywords (dict, optional):
             dict of extra keyword arguments to pass ``derivative2``.
+        axes (tuple of int or None): The axes over which to apply the filter.
+            If a `mode` tuple is provided, its length must match the number of
+            axes.
 
     Returns:
         cupy.ndarray: The result of the filtering.
@@ -575,25 +594,26 @@ def generic_laplace(input, derivative2, output=None, mode="reflect",
     """
     if extra_keywords is None:
         extra_keywords = {}
-    ndim = input.ndim
-    modes = _util._fix_sequence_arg(mode, ndim, 'mode',
-                                    _util._check_mode)
+    axes = _util._check_axes(axes, input.ndim)
+    num_axes = len(axes)
     output = _util._get_output(output, input)
-    if ndim == 0:
+    if num_axes > 0:
+        modes = _util._fix_sequence_arg(mode, num_axes, 'mode',
+                                        _util._check_mode)
+        derivative2(input, axes[0], output, modes[0], cval,
+                    *extra_arguments, **extra_keywords)
+        if num_axes > 1:
+            tmp = _util._get_output(output.dtype, input)
+            for i in range(1, num_axes):
+                derivative2(input, axes[i], tmp, modes[i], cval,
+                            *extra_arguments, **extra_keywords)
+                output += tmp
+    else:
         _core.elementwise_copy(input, output)
-        return output
-    derivative2(input, 0, output, modes[0], cval,
-                *extra_arguments, **extra_keywords)
-    if ndim > 1:
-        tmp = _util._get_output(output.dtype, input)
-        for i in range(1, ndim):
-            derivative2(input, i, tmp, modes[i], cval,
-                        *extra_arguments, **extra_keywords)
-            output += tmp
     return output
 
 
-def laplace(input, output=None, mode="reflect", cval=0.0):
+def laplace(input, output=None, mode="reflect", cval=0.0, *, axes=None):
     """Multi-dimensional Laplace filter based on approximate second
     derivatives.
 
@@ -606,6 +626,10 @@ def laplace(input, output=None, mode="reflect", cval=0.0):
             ``'wrap'``). Default is ``'reflect'``.
         cval (scalar): Value to fill past edges of input if mode is
             ``'constant'``. Default is ``0.0``.
+        axes (tuple of int or None): The axes over which to apply the filter.
+            If a `mode` tuple is provided, its length must match the number of
+            axes.
+
     Returns:
         cupy.ndarray: The result of the filtering.
 
@@ -622,11 +646,11 @@ def laplace(input, output=None, mode="reflect", cval=0.0):
     def derivative2(input, axis, output, mode, cval):
         return correlate1d(input, weights, axis, output, mode, cval)
 
-    return generic_laplace(input, derivative2, output, mode, cval)
+    return generic_laplace(input, derivative2, output, mode, cval, axes=axes)
 
 
 def gaussian_laplace(input, sigma, output=None, mode="reflect",
-                     cval=0.0, **kwargs):
+                     cval=0.0, *, axes=None, **kwargs):
     """Multi-dimensional Laplace filter using Gaussian second derivatives.
 
     Args:
@@ -640,6 +664,9 @@ def gaussian_laplace(input, sigma, output=None, mode="reflect",
             ``'wrap'``). Default is ``'reflect'``.
         cval (scalar): Value to fill past edges of input if mode is
             ``'constant'``. Default is ``0.0``.
+        axes (tuple of int or None): The axes over which to apply the filter.
+            If a `sigma` or `mode` tuples are provided, their length must match
+            the number of axes.
         kwargs (dict, optional):
             dict of extra keyword arguments to pass ``gaussian_filter()``.
 
@@ -653,17 +680,31 @@ def gaussian_laplace(input, sigma, output=None, mode="reflect",
         and input is integral) the results may not perfectly match the results
         from SciPy due to floating-point rounding of intermediate results.
     """
-    def derivative2(input, axis, output, mode, cval):
+    def derivative2(input, axis, output, mode, cval, sigma, **kwargs):
         order = [0] * input.ndim
         order[axis] = 2
         return gaussian_filter(input, sigma, order, output, mode, cval,
                                **kwargs)
-    return generic_laplace(input, derivative2, output, mode, cval)
+
+    axes = _util._check_axes(axes, input.ndim)
+    num_axes = len(axes)
+    sigma = _util._fix_sequence_arg(sigma, num_axes, "sigma", float)
+    if num_axes < input.ndim:
+        # set sigma = 0 for any axes not being filtered
+        sigma_temp = [0,] * input.ndim
+        for s, ax in zip(sigma, axes):
+            sigma_temp[ax] = s
+        sigma = sigma_temp
+
+    return generic_laplace(input, derivative2, output, mode, cval,
+                           extra_arguments=(sigma,), extra_keywords=kwargs,
+                           axes=axes)
 
 
 def generic_gradient_magnitude(input, derivative, output=None,
                                mode="reflect", cval=0.0,
-                               extra_arguments=(), extra_keywords=None):
+                               extra_arguments=(), extra_keywords=None, *,
+                               axes=None):
     """Multi-dimensional gradient magnitude filter using a provided derivative
     function.
 
@@ -690,6 +731,9 @@ def generic_gradient_magnitude(input, derivative, output=None,
             Sequence of extra positional arguments to pass to ``derivative2``.
         extra_keywords (dict, optional):
             dict of extra keyword arguments to pass ``derivative2``.
+        axes (tuple of int or None): The axes over which to apply the filter.
+            If a `mode` tuple is provided, its length must match the number of
+            axes.
 
     Returns:
         cupy.ndarray: The result of the filtering.
@@ -704,19 +748,21 @@ def generic_gradient_magnitude(input, derivative, output=None,
     if extra_keywords is None:
         extra_keywords = {}
     ndim = input.ndim
-    modes = _util._fix_sequence_arg(mode, ndim, 'mode',
+    axes = _util._check_axes(axes, ndim)
+    num_axes = len(axes)
+    modes = _util._fix_sequence_arg(mode, num_axes, 'mode',
                                     _util._check_mode)
     output = _util._get_output(output, input)
     if ndim == 0:
         _core.elementwise_copy(input, output)
         return output
-    derivative(input, 0, output, modes[0], cval,
+    derivative(input, axes[0], output, modes[0], cval,
                *extra_arguments, **extra_keywords)
     output *= output
     if ndim > 1:
         tmp = _util._get_output(output.dtype, input)
-        for i in range(1, ndim):
-            derivative(input, i, tmp, modes[i], cval,
+        for i in range(1, num_axes):
+            derivative(input, axes[i], tmp, modes[i], cval,
                        *extra_arguments, **extra_keywords)
             tmp *= tmp
             output += tmp
@@ -724,7 +770,7 @@ def generic_gradient_magnitude(input, derivative, output=None,
 
 
 def gaussian_gradient_magnitude(input, sigma, output=None, mode="reflect",
-                                cval=0.0, **kwargs):
+                                cval=0.0, *, axes=None, **kwargs):
     """Multi-dimensional gradient magnitude using Gaussian derivatives.
 
     Args:
@@ -740,6 +786,9 @@ def gaussian_gradient_magnitude(input, sigma, output=None, mode="reflect",
             ``'constant'``. Default is ``0.0``.
         kwargs (dict, optional):
             dict of extra keyword arguments to pass ``gaussian_filter()``.
+        axes (tuple of int or None): The axes over which to apply the filter.
+            If a `mode` tuple is provided, its length must match the number of
+            axes.
 
     Returns:
         cupy.ndarray: The result of the filtering.
@@ -756,7 +805,8 @@ def gaussian_gradient_magnitude(input, sigma, output=None, mode="reflect",
         order[axis] = 1
         return gaussian_filter(input, sigma, order, output, mode, cval,
                                **kwargs)
-    return generic_gradient_magnitude(input, derivative, output, mode, cval)
+    return generic_gradient_magnitude(input, derivative, output, mode, cval,
+                                      axes=axes)
 
 
 def minimum_filter(input, size=None, footprint=None, output=None,
@@ -870,11 +920,19 @@ def _min_or_max_filter(input, size, ftprnt, structure, output, mode, cval,
             [fltr if size > 1 else None for size in sizes],
             input, axes, sizes, output, modes, cval, origins)
 
-    if structure is not None and structure.ndim != input.ndim:
-        raise RuntimeError('structure array has incorrect shape')
-
     if ftprnt.size == 0:
         return cupy.zeros_like(input)
+
+    if num_axes < input.ndim:
+        # expand origins ,footprint and structure if num_axes < input.ndim
+        ftprnt = _util._expand_footprint(input.ndim, axes, ftprnt)
+        origins = _util._expand_origin(input.ndim, axes, origin)
+
+    if structure is not None:
+        structure = _util._expand_footprint(
+            input.ndim, axes, structure, footprint_name="structure"
+        )
+
     offsets = _filters_core._origins_to_offsets(origins, ftprnt.shape)
     kernel = _get_min_or_max_kernel(modes, ftprnt.shape, func,
                                     offsets, float(cval), int_type,
@@ -1196,40 +1254,39 @@ def _get_rank_kernel(filter_size, rank, modes, w_shape, offsets, cval,
         else:
             comp_op = '>'
         array_size = s_rank + 2
-        found_post = '''
-            if (iv > {rank} + 1) {{{{
+        found_post = f'''
+            if (iv > {s_rank} + 1) {{{{
                 int target_iv = 0;
                 X target_val = values[0];
-                for (int jv = 1; jv <= {rank} + 1; jv++) {{{{
+                for (int jv = 1; jv <= {s_rank} + 1; jv++) {{{{
                     if (target_val {comp_op} values[jv]) {{{{
                         target_val = values[jv];
                         target_iv = jv;
                     }}}}
                 }}}}
-                if (target_iv <= {rank}) {{{{
-                    values[target_iv] = values[{rank} + 1];
+                if (target_iv <= {s_rank}) {{{{
+                    values[target_iv] = values[{s_rank} + 1];
                 }}}}
-                iv = {rank} + 1;
-            }}}}'''.format(rank=s_rank, comp_op=comp_op)
-        post = '''
+                iv = {s_rank} + 1;
+            }}}}'''
+        post = f'''
             X target_val = values[0];
-            for (int jv = 1; jv <= {rank}; jv++) {{
+            for (int jv = 1; jv <= {s_rank}; jv++) {{
                 if (target_val {comp_op} values[jv]) {{
                     target_val = values[jv];
                 }}
             }}
-            y=cast<Y>(target_val);'''.format(rank=s_rank, comp_op=comp_op)
+            y=cast<Y>(target_val);'''
         sorter = ''
     else:
         array_size = filter_size
         found_post = ''
-        post = 'sort(values,{});\ny=cast<Y>(values[{}]);'.format(
-            filter_size, rank)
+        post = f'sort(values,{filter_size});\ny=cast<Y>(values[{rank}]);'
         sorter = __SHELL_SORT.format(gap=_get_shell_gap(filter_size))
 
     return _filters_core._generate_nd_kernel(
-        'rank_{}_{}'.format(filter_size, rank),
-        'int iv = 0;\nX values[{}];'.format(array_size),
+        f'rank_{filter_size}_{rank}',
+        f'int iv = 0;\nX values[{array_size}];',
         'values[iv++] = {value};' + found_post, post,
         modes, w_shape, int_type, offsets, cval, preamble=sorter)
 
