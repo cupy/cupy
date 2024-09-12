@@ -145,10 +145,10 @@ class GraphBuilder(GraphBuilderInterface):
         st = cuda.Stream()
         parent_st = self._streams[-1]
         self._streams.append(st)
-        handle = parent_st.create_conditional_handle(default_value=True)
+        handle = parent_st._create_conditional_handle(default_value=True)
         cond_before_loop = cond_fn(*fn_args)
         _set_value_to_handle(handle, cond_before_loop) # set value before the loop
-        body_graph = parent_st.append_conditional_node(
+        body_graph = parent_st._append_conditional_node(
             "while", handle
         )
         with st:
@@ -177,11 +177,11 @@ class GraphBuilder(GraphBuilderInterface):
         st = cupy.cuda.Stream()
         parent_st = self._streams[-1]
         self._streams.append(st)
-        handle = parent_st.create_conditional_handle(default_value=False)
+        handle = parent_st._create_conditional_handle(default_value=False)
 
         cond = cond_fn(*fn_args)
         _set_value_to_handle(handle, cond) # set value before the loop
-        body_graph = parent_st.append_conditional_node(
+        body_graph = parent_st._append_conditional_node(
             "if", handle
         )
         with st:
@@ -261,12 +261,12 @@ class GraphBuilder(GraphBuilderInterface):
             return
 
         parent_st = self._streams[-1]
-        handle = parent_st.create_conditional_handle()
+        handle = parent_st._create_conditional_handle()
 
         # True branch
         cond_val = cond_fn()
         _set_value_to_handle(handle, cond_val)
-        body_graph_true = parent_st.append_conditional_node(
+        body_graph_true = parent_st._append_conditional_node(
             "if", handle
         )
 
@@ -284,9 +284,9 @@ class GraphBuilder(GraphBuilderInterface):
         if len(branches) > 0:
             stream = cuda.Stream()
             self._streams.append(stream)
-            handle2 = parent_st.create_conditional_handle()
+            handle2 = parent_st._create_conditional_handle()
             _set_value_to_handle(handle2, ~cond_val)
-            body_graph_false = parent_st.append_conditional_node(
+            body_graph_false = parent_st._append_conditional_node(
                 "if", handle2
             )
             with stream:

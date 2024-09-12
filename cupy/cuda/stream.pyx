@@ -445,7 +445,7 @@ class _BaseStream:
         except RuntimeError:  # can be RuntimeError or CUDARuntimeError
             raise
 
-    def create_conditional_handle(
+    def _create_conditional_handle(
             self,
             default_value=False,
             flags=runtime.cudaGraphCondAssignDefault
@@ -463,7 +463,7 @@ class _BaseStream:
         return handle
 
 
-    def append_conditional_node(self, node_type, handle):
+    def _append_conditional_node(self, node_type, handle):
         status, id_, main_graph_ptr, deps_ptr, n_deps = \
             runtime.streamGetCaptureInfo(self.ptr)
         if status != runtime.streamCaptureStatusActive:
