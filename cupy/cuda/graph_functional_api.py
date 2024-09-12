@@ -70,12 +70,7 @@ class GraphBuilder(GraphBuilderInterface):
     def __init__(self):
         self._streams: List[cuda.Stream] = []
         self.root_graph: Optional[cuda.Graph] = None
-
-        # Temporal references to prevent evaluated arrays from being freed
-        self._cond_outputs: List[cupy.ndarray] = []
-
         self._memory_pool = cuda.MemoryPool()
-
         self._target_func: Optional[Callable] = None
         self._return_ref = None
 
@@ -145,7 +140,6 @@ class GraphBuilder(GraphBuilderInterface):
         self._streams.append(st)
         handle = parent_st.create_conditional_handle(default_value=True)
         cond_before_loop = cond_fn(*fn_args)
-        self._cond_outputs.append(cond_before_loop)
         _set_value_to_handle(handle, cond_before_loop) # set value before the loop
         body_graph = parent_st.append_conditional_node(
             "while", handle
@@ -161,7 +155,6 @@ class GraphBuilder(GraphBuilderInterface):
                     # and add type validation
                     cupy.copyto(before, after) # Copy after -> before
                 cond_in_loop = cond_fn(*carry)
-                self._cond_outputs.append(cond_in_loop)
                 _set_value_to_handle(handle, cond_in_loop) # set value in the loop
             finally:
                 st.end_capture()
@@ -180,7 +173,6 @@ class GraphBuilder(GraphBuilderInterface):
         handle = parent_st.create_conditional_handle(default_value=False)
 
         cond = cond_fn(*fn_args)
-        self._cond_outputs.append(cond)
         _set_value_to_handle(handle, cond) # set value before the loop
         body_graph = parent_st.append_conditional_node(
             "if", handle
@@ -266,7 +258,6 @@ class GraphBuilder(GraphBuilderInterface):
 
         # True branch
         cond_val = cond_fn()
-        self._cond_outputs.append(cond_val)
         _set_value_to_handle(handle, cond_val)
         body_graph_true = parent_st.append_conditional_node(
             "if", handle
