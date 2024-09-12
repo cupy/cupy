@@ -73,6 +73,7 @@ class GraphBuilder(GraphBuilderInterface):
         self._memory_pool = cuda.MemoryPool()
         self._target_func: Optional[Callable] = None
         self._return_ref = None
+        self._cublas_workspace = None
 
     def graphify(self, func: Callable):
         self._target_func = func
@@ -105,6 +106,11 @@ class GraphBuilder(GraphBuilderInterface):
                     self.root_graph = root_stream.end_capture()
             self._streams.pop()
 
+        # Setting ref to captured graph to avoid freeing memory
+        self.root_graph.add_ref(self._memory_pool)
+        if not self._cublas_workspace is None:
+            self.root_graph.add_ref(self._cublas_workspace)
+
     def _allocate_cublas_workspace(self):
         # Prepare cuBLAS workspace memory to avoid stream memory allocation
         # which is incompatible with child graphs.
@@ -120,6 +126,7 @@ class GraphBuilder(GraphBuilderInterface):
         backend_stream.set_current_cublas_workspace(
             workspace.ptr, workspace_size, dev.id
         )
+        self._cublas_workspace = (workspace, workspace_size)
 
     def while_loop(
         self,

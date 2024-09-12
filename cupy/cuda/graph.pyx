@@ -17,6 +17,7 @@ cdef class Graph:
         self.graph = graph
         self.graphExec = graphExec
         self.is_child = is_child
+        self._refs = list()
 
     def __dealloc__(self):
         if self.is_child:
@@ -114,3 +115,6 @@ cdef class Graph:
                 return f2.read()
         finally:
             os.remove(f.name)
+
+    cpdef add_ref(self, ref):
+        self._refs.append(ref)
