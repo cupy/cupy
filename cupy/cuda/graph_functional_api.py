@@ -33,19 +33,18 @@ _set_value_kernel_module = cupy.RawModule(code=rf"""
 
 template <typename T>
 __global__ void {_set_value_kernel_name}(
-    cudaGraphConditionalHandle handle, const T* ptr
+    cudaGraphConditionalHandle handle, const T* ptr, bool invert
 ) {{
     unsigned int value = (unsigned int)*ptr;
-    cudaGraphSetConditional(handle, value);
+    cudaGraphSetConditional(handle, (invert)? !value : value);
 }}
 """, name_expressions=[
     f"{_set_value_kernel_name}<{t}>" for t in _set_value_cuda_types.values()
 ])
 
-def _set_value_to_handle(handle, val: cupy.ndarray):
+def _set_value_to_handle(handle, val: cupy.ndarray, invert=False):
     dtype_name = val.dtype.name
     if not dtype_name in _set_value_cuda_types.keys():
-        # TODO: Implementation for other dtypes
         raise ValueError(
             "Conditional function must return any array of dtype " +
             str(tuple(_set_value_cuda_types.keys())) +
@@ -59,7 +58,7 @@ def _set_value_to_handle(handle, val: cupy.ndarray):
     _set_value_fn = _set_value_kernel_module.get_function(
         f"{_set_value_kernel_name}<{cuda_type_name}>"
     )
-    _set_value_fn((1,), (1,), (handle, val))
+    _set_value_fn((1,), (1,), (handle, val, invert))
 
 class GraphBuilderInterface(ABC):
     @abstractmethod
@@ -326,7 +325,7 @@ class GraphBuilder(GraphBuilderInterface):
             stream = cuda.Stream()
             self._streams.append(stream)
             handle2 = parent_st._create_conditional_handle()
-            _set_value_to_handle(handle2, ~cond_val)
+            _set_value_to_handle(handle2, cond_val, invert=True)
             body_graph_false = parent_st._append_conditional_node(
                 "if", handle2
             )
