@@ -100,8 +100,8 @@ class GraphBuilder(GraphBuilderInterface):
                 root_stream = cuda.Stream()
                 self._streams.append(root_stream)
                 with root_stream:
+                    root_stream.begin_capture()
                     try:
-                        root_stream.begin_capture()
                         self._return_ref = self._target_func(*fn_args)
                     finally:
                         self.root_graph = root_stream.end_capture()
@@ -166,8 +166,8 @@ class GraphBuilder(GraphBuilderInterface):
             "while", handle
         )
         with st:
+            st.begin_capture(to_graph=body_graph)
             try:
-                st.begin_capture(to_graph=body_graph)
                 carry = body_fn(*fn_args)
                 if len(carry) != len(fn_args):
                     raise ValueError("Argument and return value of body_fn must have same shape")
@@ -199,8 +199,8 @@ class GraphBuilder(GraphBuilderInterface):
             "if", handle
         )
         with st:
+            st.begin_capture(to_graph=body_graph)
             try:
-                st.begin_capture(to_graph=body_graph)
                 true_fn(*fn_args)
             finally:
                 st.end_capture()
