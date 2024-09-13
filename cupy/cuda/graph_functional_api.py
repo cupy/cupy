@@ -93,7 +93,7 @@ class GraphBuilderInterface(ABC):
 class GraphBuilder(GraphBuilderInterface):
     def __init__(self):
         self._streams: List[cuda.Stream] = []
-        self.root_graph: Optional[cuda.Graph] = None
+        self._root_graph: Optional[cuda.Graph] = None
         self._memory_pool = cuda.MemoryPool()
         self._target_func: Optional[Callable] = None
         self._return_ref = None
@@ -103,21 +103,24 @@ class GraphBuilder(GraphBuilderInterface):
     def graphify(self, func: Callable):
         self._target_func = func
         def wrapped(*args):
-            if not self.root_graph is None:
-                self.root_graph.launch()
+            if not self._root_graph is None:
+                self._root_graph.launch()
                 return self._return_ref
 
             self.capture(fn_args=args)
-            self.root_graph.launch()
+            self._root_graph.launch()
             return self._return_ref
         return wrapped
 
-    def capture(self, fn_args=()):
+    def capture(self, fn_args=()) -> cuda.Graph:
         if self._target_func is None:
             raise RuntimeError(
                 "Set graph target function before calling capture() "
                 "by using graphify() method."
             )
+        if self._root_graph is not None:
+            return self._root_graph
+
         with cuda.using_allocator(self._memory_pool.malloc):
             root_stream = cuda.Stream()
             self._streams.append(root_stream)
@@ -127,14 +130,16 @@ class GraphBuilder(GraphBuilderInterface):
                 try:
                     self._return_ref = self._target_func(*fn_args)
                 finally:
-                    self.root_graph = root_stream.end_capture()
+                    self._root_graph = root_stream.end_capture()
                     self._reset_cublas_workspace()
             self._streams.pop()
 
         # Setting ref to captured graph to avoid freeing memory
-        self.root_graph._add_ref(self._memory_pool)
+        self._root_graph._add_ref(self._memory_pool)
         if not self._cublas_workspace is None:
-            self.root_graph._add_ref(self._cublas_workspace)
+            self._root_graph._add_ref(self._cublas_workspace)
+
+        return self._root_graph
 
     def _allocate_cublas_workspace(self):
         # Prepare cuBLAS workspace memory to avoid stream memory allocation
