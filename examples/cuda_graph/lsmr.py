@@ -29,39 +29,6 @@ from cupyx.scipy import sparse
 from cupy_backends.cuda.libs import cublas as _cublas
 from cupyx.scipy.sparse.linalg import _interface
 
-_cublas_workspace = cupy.empty((4*1024*1024,), dtype=cupy.uint8)
-
-def nrm2_graph_compatible(x: cupy.ndarray, out=None):
-    """Computes the Euclidean norm of vector x."""
-    from cupy import _core
-    if x.ndim != 1:
-        raise ValueError('x must be a 1D array (actual: {})'.format(x.ndim))
-
-    dtype = x.dtype.char
-    if dtype == 'f':
-        func = _cublas.sdot
-    elif dtype == 'd':
-        func = _cublas.ddot
-    else:
-        raise TypeError('invalid dtype')
-
-    handle = device.get_cublas_handle()
-    result_dtype = dtype.lower()
-    result_ptr, result, orig_mode = cublas._setup_result_ptr(
-        handle, out, result_dtype)
-    try:
-        func(handle, x.size, x.data.ptr, 1,
-             x.data.ptr, 1, result_ptr)
-    finally:
-        _cublas.setPointerMode(handle, orig_mode)
-
-    cupy.sqrt(result, out=result)
-
-    if out is None:
-        out = result
-    elif out.dtype != result_dtype:
-        _core.elementwise_copy(result, out)
-    return out
 
 def lsmr_graph(A, b, x0=None, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8,
          maxiter=None, impl_name="graph"):
@@ -76,6 +43,11 @@ def lsmr_graph(A, b, x0=None, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8,
 
     if maxiter is None:
         maxiter = minDim * 5
+
+    def nrm2_graph_compatible(x, out=None):
+        ret = cublas.dot(x, x, out)
+        cupy.sqrt(ret, out=ret)
+        return ret
 
     nrm2_fn = nrm2_graph_compatible
 
