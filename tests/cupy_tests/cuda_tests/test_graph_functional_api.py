@@ -322,3 +322,60 @@ class TestGraphFunctionalAPI(unittest.TestCase):
             )
 
         use_cublas()
+
+    def test_many_dtypes_conditions(self):
+        out = cupy.zeros(())
+        expect = cupy.zeros(())
+        def tester(gb: GraphBuilderInterface, x):
+            @gb.graphify
+            def func():
+                out[...] = 0
+                def if_true():
+                    out[...] = 1
+                gb.cond(
+                    lambda: x,
+                    if_true
+                )
+
+            func()
+            expect[...] = 1 if x else 0
+            assert out == expect
+
+        # zeros
+        val = 0
+        tester(GraphBuilder(), cupy.array(val, dtype=cupy.int8))
+        tester(GraphBuilder(), cupy.array(val, dtype=cupy.int16))
+        tester(GraphBuilder(), cupy.array(val, dtype=cupy.int32))
+        tester(GraphBuilder(), cupy.array(val, dtype=cupy.int64))
+        tester(GraphBuilder(), cupy.array(val, dtype=cupy.uint8))
+        tester(GraphBuilder(), cupy.array(val, dtype=cupy.uint16))
+        tester(GraphBuilder(), cupy.array(val, dtype=cupy.uint32))
+        tester(GraphBuilder(), cupy.array(val, dtype=cupy.uint64))
+        tester(GraphBuilder(), cupy.array(val, dtype=cupy.float16))
+        tester(GraphBuilder(), cupy.array(val, dtype=cupy.float32))
+        tester(GraphBuilder(), cupy.array(val, dtype=cupy.float64))
+
+        # ones
+        val = 1
+        tester(GraphBuilder(), cupy.array(val, dtype=cupy.int8))
+        tester(GraphBuilder(), cupy.array(val, dtype=cupy.int16))
+        tester(GraphBuilder(), cupy.array(val, dtype=cupy.int32))
+        tester(GraphBuilder(), cupy.array(val, dtype=cupy.int64))
+        tester(GraphBuilder(), cupy.array(val, dtype=cupy.uint8))
+        tester(GraphBuilder(), cupy.array(val, dtype=cupy.uint16))
+        tester(GraphBuilder(), cupy.array(val, dtype=cupy.uint32))
+        tester(GraphBuilder(), cupy.array(val, dtype=cupy.uint64))
+        tester(GraphBuilder(), cupy.array(val, dtype=cupy.float16))
+        tester(GraphBuilder(), cupy.array(val, dtype=cupy.float32))
+        tester(GraphBuilder(), cupy.array(val, dtype=cupy.float64))
+
+        # Complex does not support
+        with pytest.raises(ValueError) as e:
+            tester(GraphBuilder(), cupy.array(val, dtype=cupy.complex64))
+        assert str(e.value).startswith(
+            "Conditional function must return any array of dtype")
+
+        with pytest.raises(ValueError) as e:
+            tester(GraphBuilder(), cupy.array(val, dtype=cupy.complex128))
+        assert str(e.value).startswith(
+            "Conditional function must return any array of dtype")

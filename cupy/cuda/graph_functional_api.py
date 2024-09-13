@@ -11,30 +11,55 @@ from typing import (
 from collections import deque
 from abc import ABC, abstractmethod
 
-_set_value_module = cupy.RawModule(code=r"""
+# Conditional value kernel definition
+_set_value_kernel_name = "cupy_cudaGraphSetConditional"
+_set_value_cuda_types = {
+    "bool": "bool",
+    "int8": "char",
+    "int16": "short",
+    "int32": "int",
+    "int64": "long long",
+    "uint8": "unsigned char",
+    "uint16": "unsigned short",
+    "uint32": "unsigned int",
+    "uint64": "unsigned long long",
+    "float16": "half",
+    "float32": "float",
+    "float64": "double"
+}
+_set_value_kernel_module = cupy.RawModule(code=rf"""
 #include <cuda_device_runtime_api.h>
-extern "C" {
-__global__ void cupy_cudaGraphSetConditional_bool(
-    cudaGraphConditionalHandle handle, bool* ptr
-) {
-    cudaGraphSetConditional(handle, *ptr);
-}
-}
-""")
-_set_value_bool = _set_value_module.get_function("cupy_cudaGraphSetConditional_bool")
+#include <cuda_fp16.h>
+
+template <typename T>
+__global__ void {_set_value_kernel_name}(
+    cudaGraphConditionalHandle handle, const T* ptr
+) {{
+    unsigned int value = (unsigned int)*ptr;
+    cudaGraphSetConditional(handle, value);
+}}
+""", name_expressions=[
+    f"{_set_value_kernel_name}<{t}>" for t in _set_value_cuda_types.values()
+])
 
 def _set_value_to_handle(handle, val: cupy.ndarray):
-    if not val.dtype == cupy.bool_:
+    dtype_name = val.dtype.name
+    if not dtype_name in _set_value_cuda_types.keys():
         # TODO: Implementation for other dtypes
-        raise NotImplementedError(
-            "_set_value_to_handle has not been implemented "
-            "for dtypes other than bool."
+        raise ValueError(
+            "Conditional function must return any array of dtype " +
+            str(tuple(_set_value_cuda_types.keys())) +
+            f", but got `{dtype_name}`."
         )
     if val.size != 1:
         raise ValueError(
             "Conditional function must return array of size 1, "
-            f"but got {val.size}.")
-    _set_value_bool((1,), (1,), (handle, val))
+            f"but got `{val.size}`.")
+    cuda_type_name = _set_value_cuda_types[dtype_name]
+    _set_value_fn = _set_value_kernel_module.get_function(
+        f"{_set_value_kernel_name}<{cuda_type_name}>"
+    )
+    _set_value_fn((1,), (1,), (handle, val))
 
 class GraphBuilderInterface(ABC):
     @abstractmethod
