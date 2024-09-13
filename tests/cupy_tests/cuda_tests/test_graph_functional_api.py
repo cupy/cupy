@@ -300,3 +300,25 @@ class TestGraphFunctionalAPI(unittest.TestCase):
 
         tester(cupy.array([False, False, True]), z)
         tester(cupy.array([False, False, False]), w)
+
+    def test_cublas_capture(self):
+        # If cuBLAS's workspace is not set properly, this test will fail
+        # See: https://docs.nvidia.com/cuda/cublas/#cuda-graphs-support
+        from cupy import cublas
+        out = cupy.empty((), dtype=cupy.float64)
+        x = cupy.ones(100, dtype=cupy.float64)
+
+        gb = GraphBuilder()
+        @gb.graphify
+        def use_cublas():
+            def inner():
+                # This function uses stream-ordered allocation unless
+                # cuBLAS workspace is not set, which is incompatible with
+                # child graph
+                cublas.dot(x, x, out)
+            gb.cond(
+                lambda: cupy.ones((), dtype=cupy.bool_),
+                inner,
+            )
+
+        use_cublas()
