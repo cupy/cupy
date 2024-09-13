@@ -194,13 +194,15 @@ class GraphBuilder(GraphBuilderInterface):
             st.begin_capture(to_graph=body_graph)
             try:
                 carry = body_fn(*fn_args)
-                if len(carry) != len(fn_args):
-                    raise ValueError("Argument and return value of body_fn must have same shape")
-                for before, after in zip(fn_args, carry):
-                    # TODO: Skip copy when before pointer and after pointer are same
-                    # and add type validation
-                    cupy.copyto(before, after) # Copy after -> before
-                cond_in_loop = cond_fn(*carry)
+                if not carry is None:
+                    if len(carry) != len(fn_args):
+                        # TODO: Add more strict return type validation
+                        raise ValueError("Argument and return value of body_fn must have same shape")
+                    for before, after in zip(fn_args, carry):
+                        # TODO: Skip copy when before pointer and after pointer are same
+                        # and add type validation
+                        cupy.copyto(before, after) # Copy after -> before
+                cond_in_loop = cond_fn(*fn_args)
                 _set_value_to_handle(handle, cond_in_loop) # set value in the loop
             finally:
                 st.end_capture()
