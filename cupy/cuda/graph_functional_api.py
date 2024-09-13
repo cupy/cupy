@@ -119,19 +119,17 @@ class GraphBuilder(GraphBuilderInterface):
                 "by using graphify() method."
             )
         with cuda.using_allocator(self._memory_pool.malloc):
-            self._allocate_cublas_workspace()
-            try:
-                root_stream = cuda.Stream()
-                self._streams.append(root_stream)
-                with root_stream:
-                    root_stream.begin_capture()
-                    try:
-                        self._return_ref = self._target_func(*fn_args)
-                    finally:
-                        self.root_graph = root_stream.end_capture()
-                self._streams.pop()
-            finally:
-                self._reset_cublas_workspace()
+            root_stream = cuda.Stream()
+            self._streams.append(root_stream)
+            with root_stream:
+                self._allocate_cublas_workspace()
+                root_stream.begin_capture()
+                try:
+                    self._return_ref = self._target_func(*fn_args)
+                finally:
+                    self.root_graph = root_stream.end_capture()
+                    self._reset_cublas_workspace()
+            self._streams.pop()
 
         # Setting ref to captured graph to avoid freeing memory
         self.root_graph.add_ref(self._memory_pool)
