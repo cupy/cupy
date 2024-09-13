@@ -237,11 +237,11 @@ class GraphBuilder(GraphBuilderInterface):
         with st:
             st.begin_capture(to_graph=body_graph)
             try:
-                true_fn(*fn_args)
+                ret = true_fn(*fn_args)
             finally:
                 st.end_capture()
         self._streams.pop()
-        return None
+        return ret
 
     def multicond(
         self,
@@ -274,7 +274,8 @@ class GraphBuilder(GraphBuilderInterface):
         """
         if len(branches) == 1:
             cond_fn, true_fn, fn_args = (*branches[0], ())
-            return self.cond(cond_fn, true_fn, fn_args)
+            self.cond(cond_fn, true_fn, fn_args)
+            return
 
         # We implement
         # ```
