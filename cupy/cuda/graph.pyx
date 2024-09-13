@@ -16,11 +16,11 @@ cdef class Graph:
     cdef void _init(self, intptr_t graph, intptr_t graphExec, bint is_child=False) except*:
         self.graph = graph
         self.graphExec = graphExec
-        self.is_child = is_child
+        self._is_child = is_child
         self._refs = list()
 
     def __dealloc__(self):
-        if self.is_child:
+        if self._is_child:
             # Do not call graphDestroy for child graph because
             # graphDestroy function destroys graph recursively
             return
@@ -43,6 +43,8 @@ cdef class Graph:
         return graph
 
     cpdef _ensure_instantiate(self):
+        if self._is_child:
+            raise RuntimeError("Child graph instantiation is not allowed")
         if self.graphExec == 0:
             self.graphExec = runtime.graphInstantiate(self.graph)
 
@@ -61,8 +63,6 @@ cdef class Graph:
 
         """
         self._ensure_instantiate()
-        if self.is_child:
-            raise RuntimeError("Cannnot launch child graph")
         cdef intptr_t stream_ptr
         if stream is None:
             stream_ptr = stream_module.get_current_stream_ptr()
@@ -85,8 +85,6 @@ cdef class Graph:
 
         """
         self._ensure_instantiate()
-        if self.is_child:
-            raise RuntimeError("Cannnot upload child graph")
         cdef intptr_t stream_ptr
         if stream is None:
             stream_ptr = stream_module.get_current_stream_ptr()
@@ -116,5 +114,5 @@ cdef class Graph:
         finally:
             os.remove(f.name)
 
-    cpdef add_ref(self, ref):
+    cpdef _add_ref(self, ref):
         self._refs.append(ref)

@@ -132,9 +132,9 @@ class GraphBuilder(GraphBuilderInterface):
             self._streams.pop()
 
         # Setting ref to captured graph to avoid freeing memory
-        self.root_graph.add_ref(self._memory_pool)
+        self.root_graph._add_ref(self._memory_pool)
         if not self._cublas_workspace is None:
-            self.root_graph.add_ref(self._cublas_workspace)
+            self.root_graph._add_ref(self._cublas_workspace)
 
     def _allocate_cublas_workspace(self):
         # Prepare cuBLAS workspace memory to avoid stream memory allocation
