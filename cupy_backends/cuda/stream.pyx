@@ -51,17 +51,15 @@ cdef class _ThreadLocal:
             device_id = runtime.getDevice()
         self.current_cublas_workspaces[device_id] = (ptr, size)
 
-    cdef intptr_t get_current_cublas_workspace_ptr(self, int device_id=-1):
+    cdef (intptr_t, size_t) get_current_cublas_workspace(
+        self, int device_id=-1
+    ):
         if device_id == -1:
             device_id = runtime.getDevice()
-        ptr, _ = self.current_cublas_workspaces[device_id]
-        return ptr
-
-    cdef size_t get_current_cublas_workspace_size(self, int device_id=-1):
-        if device_id == -1:
-            device_id = runtime.getDevice()
-        _, size = self.current_cublas_workspaces[device_id]
-        return size
+        cdef intptr_t ptr
+        cdef size_t size
+        ptr, size = self.current_cublas_workspaces[device_id]
+        return ptr, size
 
 
 cdef intptr_t get_current_stream_ptr():
@@ -129,10 +127,6 @@ cpdef void set_current_cublas_workspace(
     tls = _ThreadLocal.get()
     tls.set_current_cublas_workspace(ptr, size, device_id)
 
-cdef intptr_t get_current_cublas_workspace_ptr(int device_id=-1):
+cpdef (intptr_t, size_t) get_current_cublas_workspace(int device_id=-1):
     tls = _ThreadLocal.get()
-    return <intptr_t>(tls.get_current_cublas_workspace_ptr(device_id))
-
-cdef size_t get_current_cublas_workspace_size(int device_id=-1):
-    tls = _ThreadLocal.get()
-    return <size_t>(tls.get_current_cublas_workspace_size(device_id))
+    return tls.get_current_cublas_workspace(device_id)

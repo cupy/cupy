@@ -74,6 +74,7 @@ class GraphBuilder(GraphBuilderInterface):
         self._target_func: Optional[Callable] = None
         self._return_ref = None
         self._cublas_workspace = None
+        self._prev_cublas_workspace_config = None
 
     def graphify(self, func: Callable):
         self._target_func = func
@@ -95,16 +96,18 @@ class GraphBuilder(GraphBuilderInterface):
             )
         with cuda.using_allocator(self._memory_pool.malloc):
             self._allocate_cublas_workspace()
-            # On initial call
-            root_stream = cuda.Stream()
-            self._streams.append(root_stream)
-            with root_stream:
-                try:
-                    root_stream.begin_capture()
-                    self._return_ref = self._target_func(*fn_args)
-                finally:
-                    self.root_graph = root_stream.end_capture()
-            self._streams.pop()
+            try:
+                root_stream = cuda.Stream()
+                self._streams.append(root_stream)
+                with root_stream:
+                    try:
+                        root_stream.begin_capture()
+                        self._return_ref = self._target_func(*fn_args)
+                    finally:
+                        self.root_graph = root_stream.end_capture()
+                self._streams.pop()
+            finally:
+                self._reset_cublas_workspace()
 
         # Setting ref to captured graph to avoid freeing memory
         self.root_graph.add_ref(self._memory_pool)
@@ -117,6 +120,9 @@ class GraphBuilder(GraphBuilderInterface):
         # See: https://docs.nvidia.com/cuda/cublas/#cuda-graphs-support
         # TODO: respect CUBLAS_WORKSPACE_CONFIG env var
         dev = cuda.Device()
+        self._prev_cublas_workspace_config = \
+            backend_stream.get_current_cublas_workspace(dev.id)
+
         cc = int(dev.compute_capability)
         if cc >= 90: # Hopper or newer
             workspace_size = 32 * 1024 * 1024
@@ -127,6 +133,14 @@ class GraphBuilder(GraphBuilderInterface):
             workspace.ptr, workspace_size, dev.id
         )
         self._cublas_workspace = (workspace, workspace_size)
+
+    def _reset_cublas_workspace(self):
+        dev = cuda.Device()
+        ptr, size = self._prev_cublas_workspace_config
+        backend_stream.set_current_cublas_workspace(
+            ptr, size, dev.id
+        )
+        self._cublas_workspace = None
 
     def while_loop(
         self,

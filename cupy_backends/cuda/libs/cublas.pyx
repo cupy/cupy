@@ -539,8 +539,8 @@ cpdef setStream(intptr_t handle, size_t stream):
     cdef intptr_t workspace
     cdef size_t workspace_size
     if is_capturing:
-        workspace = stream_module.get_current_cublas_workspace_ptr()
-        workspace_size = stream_module.get_current_cublas_workspace_size()
+        workspace, workspace_size = \
+            stream_module.get_current_cublas_workspace()
         if workspace != 0:
             with nogil:
                 status = cublasSetWorkspace(
