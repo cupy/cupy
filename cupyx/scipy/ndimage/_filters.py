@@ -1292,7 +1292,8 @@ def _get_rank_kernel(filter_size, rank, modes, w_shape, offsets, cval,
 
 
 def generic_filter(input, function, size=None, footprint=None,
-                   output=None, mode="reflect", cval=0.0, origin=0):
+                   output=None, mode="reflect", cval=0.0, origin=0, *,
+                   axes=None):
     """Compute a multi-dimensional filter using the provided raw kernel or
     reduction kernel.
 
@@ -1321,6 +1322,12 @@ def generic_filter(input, function, size=None, footprint=None,
             placement of the filter, relative to the center of the current
             element of the input. Default of 0 is equivalent to
             ``(0,)*input.ndim``.
+        axes (tuple of int or None): If None, ``input`` is filtered along all
+            axes. Otherwise, ``input`` is filtered along the specified axes.
+            When ``axes`` is specified, any tuples used for ``size`` and/or
+            ``origin`` must match the length of ``axes``. The ith entry in any
+            of these tuples corresponds to the ith entry in ``axes``. Default
+            is ``None``.
 
     Returns:
         cupy.ndarray: The result of the filtering.
@@ -1338,18 +1345,20 @@ def generic_filter(input, function, size=None, footprint=None,
 
     .. seealso:: :func:`scipy.ndimage.generic_filter`
     """
+    axes = _util._check_axes(axes, input.ndim)
+    num_axes = len(axes)
     _, footprint, _ = _filters_core._check_size_footprint_structure(
-        input.ndim, size, footprint, None, 2, True)
+        num_axes, size, footprint, None, 2, True)
     filter_size = int(footprint.sum())
-    axes, footprint, origins, modes, int_type = _filters_core._check_nd_args(
-        input, footprint, mode, origin, 'footprint')
+    axes, footprint, origins, _, int_type = _filters_core._check_nd_args(
+        input, footprint, mode, origin, 'footprint', axes=axes)
     in_dtype = input.dtype
     sub = _filters_generic._get_sub_kernel(function)
     if footprint.size == 0:
         return cupy.zeros_like(input)
     output = _util._get_output(output, input)
     offsets = _filters_core._origins_to_offsets(origins, footprint.shape)
-    args = (filter_size, modes, footprint.shape,
+    args = (filter_size, mode, footprint.shape,
             offsets, float(cval), int_type)
     if isinstance(sub, cupy.RawKernel):
         kernel = _filters_generic._get_generic_filter_raw(sub, *args)

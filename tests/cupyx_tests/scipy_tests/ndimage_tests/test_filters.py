@@ -150,7 +150,10 @@ class FilterTestCaseBase:
             if not self.footprint:
                 return self.ksize
             # generate footprint with same number of dimensions as axes
-            kshape = self._kshape
+            if getattr(self, "axes", None) is None:
+                kshape = self._kshape[:self._ndim]
+            else:
+                kshape = [self._kshape[ax] for ax in self.axes]
             footprint = testing.shaped_random(kshape, xp, scale=1) > 0.5
             if not footprint.any():
                 footprint = xp.ones(kshape)
@@ -639,6 +642,48 @@ def lt_pyfunc(x):
 ))
 @testing.with_requires('scipy')
 class TestGenericFilter(FilterTestCaseBase):
+
+    _func_or_kernels = {
+        'rms_raw': rms_raw,
+        'rms_red': rms_red,
+        'rms_pyfunc': rms_pyfunc,
+        'lt_raw': lt_raw,
+        'lt_red': lt_red,
+        'lt_pyfunc': lt_pyfunc,
+    }
+
+    def get_func_or_kernel(self, xp):
+        return self._func_or_kernels[
+            self.func_or_kernel[1 if xp == numpy else 0]]
+
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
+    def test_filter(self, xp, scp):
+        # Need to deal with the different versions of the functions given to
+        # numpy vs cupy
+        self.function = self.get_func_or_kernel(xp)
+        return self._filter(xp, scp)
+
+
+# This tests generic_filter with axes arguments (SciPy>=1.15 only)
+@testing.parameterize(*(
+    testing.product({
+        'filter': ['generic_filter'],
+        'func_or_kernel': [
+            ('rms_raw', 'rms_pyfunc'),
+            ('lt_red', 'lt_pyfunc'),
+        ],
+        'footprint': [False, True],
+        'shape': [(6, 7), (6, 7, 8)],
+        'kshape': [(3, 4, 3)],
+        'origin': [0, (-1, 1, 0)],
+        'dtype': [numpy.uint16, numpy.float64],
+        'axes': [(0, 1), (-2, -1), (0, -1)],
+        'mode': ['constant', 'reflect'],
+        })
+    )
+)
+@testing.with_requires('scipy>=1.15')
+class TestGenericFilterAxes(FilterTestCaseBase):
 
     _func_or_kernels = {
         'rms_raw': rms_raw,
