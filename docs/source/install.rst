@@ -384,7 +384,7 @@ The following ROCm libraries are required:
 
 ::
 
-  $ sudo apt install hipblas hipsparse rocsparse rocrand hiprand rocthrust rocsolver rocfft hipfft hipcub rocprim rccl
+  $ sudo apt install hipblas hipsparse rocsparse rocrand hiprand rocthrust rocsolver rocfft hipfft hipcub rocprim rccl roctracer-dev
 
 Environment Variables
 ---------------------
