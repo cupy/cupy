@@ -350,7 +350,7 @@ cpdef getDeviceProperties(int device):
         arch['has3dGrid'] = props.arch.has3dGrid
         arch['hasDynamicParallelism'] = props.arch.hasDynamicParallelism
         properties['arch'] = arch
-    IF CUPY_HIP_VERSION < 600:  # removed in HIP 6.0.0
+    IF 0 < CUPY_HIP_VERSION < 600:  # removed in HIP 6.0.0
         properties['gcnArch'] = props.gcnArch
     IF CUPY_HIP_VERSION >= 310:
         properties['gcnArchName'] = props.gcnArchName
