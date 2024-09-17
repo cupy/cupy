@@ -140,6 +140,7 @@ class TestCrossProductDeprecated(unittest.TestCase):
 }))
 class TestLinalgCrossProduct(unittest.TestCase):
 
+    @testing.with_requires('numpy>=2.0')
     @testing.for_all_dtypes_combination(['dtype_a', 'dtype_b'])
     @testing.numpy_cupy_allclose()
     def test_cross(self, xp, dtype_a, dtype_b):

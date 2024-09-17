@@ -1082,6 +1082,7 @@ class TestEdiff1d:
                           to_end=xp.array([1, 1], dtype=dtype))
 
 
+@testing.with_requires('numpy>=2.0')
 class TestTrapezoid:
 
     @testing.for_all_dtypes()

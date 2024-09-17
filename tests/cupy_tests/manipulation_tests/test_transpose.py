@@ -179,6 +179,8 @@ ARRAY_SHAPES_TO_TEST = (
 
 
 class TestMatrixTranspose:
+
+    @testing.with_requires('numpy>=2.0')
     def test_matrix_transpose_raises_error_for_1d(self):
         msg = "matrix transpose with ndim < 2 is undefined"
         arr = cupy.arange(48)
@@ -190,6 +192,7 @@ class TestMatrixTranspose:
         arr = xp.arange(48).reshape((6, 8))
         return arr
 
+    @testing.with_requires('numpy>=2.0')
     @pytest.mark.parametrize("shape", ARRAY_SHAPES_TO_TEST)
     @testing.numpy_cupy_array_equal()
     def test_matrix_transpose_equals_swapaxes(self, xp, shape):
