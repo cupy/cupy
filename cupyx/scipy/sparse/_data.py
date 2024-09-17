@@ -28,7 +28,7 @@ class _data_matrix(_base.spmatrix):
         raise NotImplementedError
 
     def __abs__(self):
-        """Elementwise abosulte."""
+        """Elementwise absolute."""
         return self._with_data(abs(self.data))
 
     def __neg__(self):

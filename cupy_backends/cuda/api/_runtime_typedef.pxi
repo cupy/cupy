@@ -50,7 +50,7 @@ cdef extern from *:
     ctypedef void* GraphExec 'cudaGraphExec_t'
 
     # This is for the annoying nested struct cudaResourceDesc, which is not
-    # perfectly supprted in Cython
+    # perfectly supported in Cython
     ctypedef struct _array:
         Array array
 
@@ -119,7 +119,7 @@ cdef extern from *:
     ctypedef int MemLocationType 'cudaMemLocationType'
     IF CUPY_CUDA_VERSION > 0:
         # This is for the annoying nested struct, which is not
-        # perfectly supprted in Cython
+        # perfectly supported in Cython
         ctypedef struct _MemLocation 'cudaMemLocation':
             MemLocationType type
             int id

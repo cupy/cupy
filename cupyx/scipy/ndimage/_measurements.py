@@ -395,7 +395,7 @@ def sum_labels(input, labels=None, index=None):
                            cupy.float64, cupy.uint32, cupy.uint64,
                            cupy.ulonglong]:
         warnings.warn(
-            'Using the slower implmentation as '
+            'Using the slower implementation as '
             'cupyx.scipy.ndimage.sum supports int32, float16, '
             'float32, float64, uint32, uint64 as data types'
             'for the fast implmentation', _util.PerformanceWarning)
@@ -485,7 +485,7 @@ def mean(input, labels=None, index=None):
                            cupy.float64, cupy.uint32, cupy.uint64,
                            cupy.ulonglong]:
         warnings.warn(
-            'Using the slower implmentation as '
+            'Using the slower implementation as '
             'cupyx.scipy.ndimage.mean supports int32, float16, '
             'float32, float64, uint32, uint64 as data types '
             'for the fast implmentation', _util.PerformanceWarning)

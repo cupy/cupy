@@ -224,15 +224,15 @@ def _unravel_loop_index(shape, uint_t='unsigned int'):
 
 
 def _generate_interp_custom(coord_func, ndim, large_int, yshape, mode, cval,
-                            order, name='', integer_output=False, nprepad=0,
-                            omit_in_coord=False):
+                            order, name='', integer_output=False, nprepad=0):
     """
     Args:
         coord_func (function): generates code to do the coordinate
             transformation. See for example, `_get_coord_shift`.
         ndim (int): The number of dimensions.
         large_int (bool): If true use Py_ssize_t instead of int for indexing.
-        yshape (tuple): Shape of the output array.
+        yshape (tuple): Shape of the output array. Can be None if not needed
+            in the kernel.
         mode (str): Signal extension mode to use at the array boundaries
         cval (float): constant value used when `mode == 'constant'`.
         name (str): base name for the interpolation kernel
@@ -264,7 +264,7 @@ def _generate_interp_custom(coord_func, ndim, large_int, yshape, mode, cval,
     for j in range(ndim - 1, 0, -1):
         ops.append(f'const {uint_t} sx_{j - 1} = sx_{j} * xsize_{j};')
 
-    if not omit_in_coord:
+    if yshape is not None:
         # create in_coords array to store the unraveled indices
         ops.append(_unravel_loop_index(yshape, uint_t))
 
@@ -480,16 +480,20 @@ def _generate_interp_custom(coord_func, ndim, large_int, yshape, mode, cval,
     operation = '\n'.join(ops)
 
     mode_str = mode.replace('-', '_')  # avoid hyphen in kernel name
-    name = 'cupyx_scipy_ndimage_interpolate_{}_order{}_{}_{}d_y{}'.format(
-        name, order, mode_str, ndim, '_'.join([f'{j}' for j in yshape]),
+
+    name = 'cupyx_scipy_ndimage_interpolate_{}_order{}_{}_{}d'.format(
+        name, order, mode_str, ndim,
     )
+
+    if yshape is not None:
+        name += '_y'+'_'.join([f'{j}' for j in yshape])
     if uint_t == 'size_t':
         name += '_i64'
     return operation, name
 
 
 @cupy._util.memoize(for_each_device=True)
-def _get_map_kernel(ndim, large_int, yshape, mode, cval=0.0, order=1,
+def _get_map_kernel(ndim, large_int, mode, cval=0.0, order=1,
                     integer_output=False, nprepad=0):
     in_params = 'raw X x, raw W coords'
     out_params = 'Y y'
@@ -497,14 +501,13 @@ def _get_map_kernel(ndim, large_int, yshape, mode, cval=0.0, order=1,
         coord_func=_get_coord_map,
         ndim=ndim,
         large_int=large_int,
-        yshape=yshape,
+        yshape=None,  # input image coordinates are not needed
         mode=mode,
         cval=cval,
         order=order,
         name='map',
         integer_output=integer_output,
         nprepad=nprepad,
-        omit_in_coord=True,  # input image coordinates are not needed
     )
     return cupy.ElementwiseKernel(in_params, out_params, operation, name,
                                   preamble=math_constants_preamble)

@@ -6,10 +6,10 @@ echo "Installed cuda-drivers:"
 dpkg -l | grep cuda-drivers
 
 # If CUDA driver of this version is installed, upgrade to the latest one.
-CUDA_DRIVER_VERSION=515
+CUDA_DRIVER_VERSION=525
 
 if dpkg -s "cuda-drivers-${CUDA_DRIVER_VERSION}" && ls /dev/nvidiactl ; then
-    killall Xorg
+    killall Xorg || true
     nvidia-smi -pm 0
 
     apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/3bf863cc.pub

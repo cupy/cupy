@@ -310,7 +310,7 @@ def map_coordinates(input, coordinates, output=None, order=3,
     filtered, nprepad = _filter_input(input, prefilter, mode, cval, order)
     large_int = max(_prod(input.shape), coordinates.shape[0]) > 1 << 31
     kern = _interp_kernels._get_map_kernel(
-        input.ndim, large_int, yshape=coordinates.shape, mode=mode, cval=cval,
+        input.ndim, large_int, mode=mode, cval=cval,
         order=order, integer_output=integer_output, nprepad=nprepad)
     kern(filtered, coordinates, ret)
     return ret

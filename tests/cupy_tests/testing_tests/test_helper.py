@@ -5,6 +5,7 @@ import pytest
 
 import cupy
 from cupy import testing
+from cupy.exceptions import AxisError
 
 
 class TestPackageRequirements:
@@ -14,6 +15,8 @@ class TestPackageRequirements:
         assert testing.installed('numpy>=1.10,<=2.0')
         assert not testing.installed('numpy>=2.0')
         assert not testing.installed('numpy>1.10,<1.9')
+        # This is a dummy package name that is unlikely to be installed
+        assert not testing.installed('supercalifragilisticexpialidocious')
 
     def test_numpy_satisfies(self):
         assert testing.numpy_satisfies('>1.10')
@@ -178,8 +181,8 @@ class TestAssertFunctionIsCalled(unittest.TestCase):
 
     def test_inner_error(self):
         orig = cupy.ndarray
-        with pytest.raises(numpy.AxisError):
+        with pytest.raises(AxisError):
             with testing.AssertFunctionIsCalled('cupy.ndarray'):
                 cupy.ndarray((2, 3), numpy.float32)
-                raise numpy.AxisError('foo')
+                raise AxisError('foo')
         assert cupy.ndarray is orig

@@ -172,7 +172,14 @@ def device_reduce(_ndarray_base x, op, tuple reduce_axis, tuple out_axis,
         y = _core.ndarray((), x.dtype)
     else:  # argmin and argmax
         # cub::KeyValuePair has 1 int + 1 arbitrary type
-        kv_bytes = (4 + x.dtype.itemsize)
+        # Note that:
+        # - The key may be padded to make the value aligned.
+        # - Unlike a regular structure, thrust::complex<T> is aligned to the
+        #   twice of the size of T.
+        if x.dtype.char in 'FD':
+            kv_bytes = x.dtype.alignment * 2 + x.dtype.itemsize
+        else:
+            kv_bytes = max(4, x.dtype.alignment) + x.dtype.itemsize
         y = _core.ndarray((kv_bytes,), numpy.int8)
     x_ptr = <void *>x.data.ptr
     y_ptr = <void *>y.data.ptr

@@ -142,7 +142,7 @@ class TestInterp:
     @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-14)
     def test_quintic_derivs(self, xp, scp):
         k, n = 5, 7
-        x = xp.arange(n).astype(xp.float_)
+        x = xp.arange(n).astype(xp.float64)
         y = xp.sin(x)
         der_l = [(1, -12.), (2, 1)]
         der_r = [(1, 8.), (2, 3.)]

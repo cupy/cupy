@@ -1,7 +1,11 @@
 import operator
 from math import prod
 
-from numpy.core.multiarray import normalize_axis_index
+import numpy
+if numpy.__version__ < '2':
+    from numpy.core.multiarray import normalize_axis_index
+else:
+    from numpy.lib.array_utils import normalize_axis_index
 
 import cupy
 from cupyx.scipy import sparse
@@ -239,7 +243,7 @@ def make_interp_spline(x, y, k=3, t=None, bc_type=None, axis=0,
         c = cupy.zeros((nt,) + y.shape[1:], dtype=float)
         return BSpline.construct_fast(t, c, k, axis=axis)
 
-    # Consruct the colocation matrix of b-splines + boundary conditions.
+    # Construct the colocation matrix of b-splines + boundary conditions.
     # The coefficients of the interpolating B-spline function are the solution
     # of the linear system `A @ c = rhs` where `A` is the colocation matrix
     # (i.e., each row of A corresponds to a data point in the `x` array and
@@ -265,7 +269,7 @@ def make_interp_spline(x, y, k=3, t=None, bc_type=None, axis=0,
         # Prepare the I/O arrays for the kernels. We only need the non-zero
         # b-splines at x[0] and x[-1], but the kernel wants more arrays which
         # we allocate and ignore (mode != 1)
-        temp = cupy.zeros((nt, ), dtype=float)
+        temp = cupy.zeros((2 * k + 1, ), dtype=float)
         num_c = 1
         dummy_c = cupy.empty((nt, num_c), dtype=float)
         out = cupy.empty((1, 1), dtype=dummy_c.dtype)
@@ -383,7 +387,7 @@ def _make_interp_spline_full_matrix(x, y, k, t, bc_type):
     nt = t.size - k - 1
     assert nt - n == nleft + nright
 
-    # Consruct the colocation matrix of b-splines + boundary conditions.
+    # Construct the colocation matrix of b-splines + boundary conditions.
     # The coefficients of the interpolating B-spline function are the solution
     # of the linear system `A @ c = rhs` where `A` is the colocation matrix
     # (i.e., each row of A corresponds to a data point in the `x` array and
@@ -605,7 +609,7 @@ fprota(T c, T s, T f, T g, T *f_out, T *g_out) {
  *    0  x x x       0  x  x x      0 [x] x x      0 0 [x] x      0 0 0 x
  *
  *  The matrix A has a special structure: each row has at most (k+1)
- *  consequitive non-zeros, so we only store them.
+ *  consecutive non-zeros, so we only store them.
  *
  *  On exit, the return matrix, also of shape (m, k+1), contains
  *  elements of the upper triangular matrix `R[i, i: i + k + 1]`.
@@ -638,7 +642,7 @@ fprota(T c, T s, T f, T g, T *f_out, T *g_out) {
  *  sequential.
  *
  *  The `startrow` optional argument accounts for the scenatio with a two-step
- *  factorization. Namely, the preceding rows are assumend to be already
+ *  factorization. Namely, the preceding rows are assumed to be already
  *  processed and are skipped.
  *  This is to account for the scenario where we append new rows to an already
  *  triangularized matrix.

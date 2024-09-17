@@ -20,7 +20,7 @@ except ImportError:
 
 
 if cupy.cuda.runtime.runtimeGetVersion() < 11000:
-    # Workarounds precison issues in CUDA 10.2 + float16
+    # Workarounds precision issues in CUDA 10.2 + float16
     default_atol = 5e-2
     default_rtol = 1e-1
 else:
@@ -163,7 +163,9 @@ class TestBarycentric:
         return scp.interpolate.barycentric_interpolate(xs, ys, test_xs)
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(
+        scipy_name='scp', accept_error=OverflowError
+    )
     def test_array_input(self, xp, scp, dtype):
         x = 1000 * xp.arange(1, 11, dtype=dtype)
         y = xp.arange(1, 11, dtype=dtype)

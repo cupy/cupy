@@ -23,12 +23,12 @@ setup_requires = [
     'fastrlock>=0.5',
 ]
 install_requires = [
-    'numpy>=1.22,<1.29',  # see #4773
+    'numpy>=1.24,<2.3',
     'fastrlock>=0.5',
 ]
 extras_require = {
     'all': [
-        'scipy>=1.7,<1.14',  # see #4773
+        'scipy>=1.10,<1.17',  # see #4773
         'Cython>=0.29.22,<3',
         'optuna>=2.0',
     ],
@@ -45,6 +45,7 @@ extras_require = {
     'test': [
         # 4.2 <= pytest < 6.2 is slow collecting tests and times out on CI.
         # pytest < 7.2 has some different behavior that makes our CI fail
+        'packaging',
         'pytest>=7.2',
         'hypothesis>=6.37.2,<6.55.0',
         'mpmath'

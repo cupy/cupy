@@ -1,3 +1,6 @@
+import os
+import tempfile
+
 from cupy_backends.cuda.api cimport runtime
 from cupy_backends.cuda cimport stream as stream_module
 
@@ -11,11 +14,7 @@ cdef class Graph:
     """
 
     cdef void _init(self, intptr_t graph, intptr_t graphExec) except*:
-        if graph > 0:
-            # at this point cudaGraphExec_t has been instantiated, so we no
-            # longer need to hold the cudaGraph_t
-            runtime.graphDestroy(graph)
-        self.graph = 0
+        self.graph = graph
         self.graphExec = graphExec
 
     def __dealloc__(self):
@@ -78,3 +77,25 @@ cdef class Graph:
         else:
             stream_ptr = stream.ptr
         runtime.graphUpload(self.graphExec, stream_ptr)
+
+    cpdef debug_dot_str(self, flags=0):
+        """Make DOT formatted string of CUDA graph definition for debugging.
+
+        Args:
+            flags (:class:`unsigned int`): Flags to specify information to be
+                included.
+
+        .. seealso:: `cudaGraphDebugDotPrint()`_
+
+        .. _cudaGraphDebugDotPrint():
+            https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__GRAPH.html#group__CUDART__GRAPH_1gbec177c250000405c570dc8c4bde20db
+
+        """
+        f = tempfile.NamedTemporaryFile(delete=False)
+        try:
+            f.close()
+            runtime.graphDebugDotPrint(self.graph, f.name, flags)
+            with open(f.name) as f2:
+                return f2.read()
+        finally:
+            os.remove(f.name)

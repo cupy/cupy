@@ -533,6 +533,14 @@ cudaError_t cudaGraphUpload(...) {
     return hipErrorUnknown;
 }
 
+cudaError_t cudaGraphDebugDotPrint(cudaGraph_t graph, const char* path, unsigned int flags) {
+#if HIP_VERSION >= 50500000
+    return hipGraphDebugDotPrint(graph, path, flags);
+#else
+    return hipErrorUnknown;
+#endif
+}
+
 } // extern "C"
 
 #endif // #ifndef INCLUDE_GUARD_HIP_CUPY_RUNTIME_H

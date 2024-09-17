@@ -1098,7 +1098,7 @@ class TestSpsm:
         if not cusparse.check_availability('spsm'):
             pytest.skip('spsm is not available')
         if not runtime.is_hip and _cusparse.get_build_version() < 11701:
-            # eariler than CUDA 11.6
+            # earlier than CUDA 11.6
             if b_order == 'c':
                 pytest.skip("Older CUDA has a bug")
         if runtime.is_hip:

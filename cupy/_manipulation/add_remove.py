@@ -208,7 +208,7 @@ def unique(ar, return_index=False, return_inverse=False,
             If there are no optional outputs, it returns the
             :class:`cupy.ndarray` of the sorted unique values. Otherwise, it
             returns the tuple which contains the sorted unique values and
-            followings.
+            following.
 
             * The indices of the first occurrences of the unique values in the
               original array. Only provided if `return_index` is True.
