@@ -3,7 +3,9 @@
 set -uex
 
 apt-get -y update
-DEBIAN_FRONTEND=noninteractive apt-get -y install python3-dev python3-pip
+DEBIAN_FRONTEND=noninteractive apt-get -y install \
+    python3-dev python3-pip \
+    hipblas hipsparse rocsparse rocrand hiprand rocthrust rocsolver rocfft hipfft hipcub rocprim rccl
 
 hipconfig
 
