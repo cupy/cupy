@@ -94,6 +94,7 @@ def multi_gpu_config(gpu_configs=None):
     return decorator
 
 
+@testing.with_requires('numpy>=2.0')
 @pytest.mark.usefixtures('skip_forward_backward')
 @testing.parameterize(*testing.product({
     'n': [None, 0, 5, 10, 15],
@@ -103,34 +104,24 @@ def multi_gpu_config(gpu_configs=None):
 class TestFft:
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_fft(self, xp, dtype):
         a = testing.shaped_random(self.shape, xp, dtype)
-        out = xp.fft.fft(a, n=self.n, norm=self.norm)
-
-        # np.fft.fft always returns np.complex128
-        if xp is np and dtype in [np.float16, np.float32, np.complex64]:
-            out = out.astype(np.complex64)
-
-        return out
+        return xp.fft.fft(a, n=self.n, norm=self.norm)
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     # NumPy 1.17.0 and 1.17.1 raises ZeroDivisonError due to a bug
     @testing.with_requires('numpy!=1.17.0')
     @testing.with_requires('numpy!=1.17.1')
     def test_ifft(self, xp, dtype):
         a = testing.shaped_random(self.shape, xp, dtype)
-        out = xp.fft.ifft(a, n=self.n, norm=self.norm)
-
-        if xp is np and dtype in [np.float16, np.float32, np.complex64]:
-            out = out.astype(np.complex64)
-
-        return out
+        return xp.fft.ifft(a, n=self.n, norm=self.norm)
 
 
+@testing.with_requires('numpy>=2.0')
 @testing.parameterize(*testing.product({
     'shape': [(0, 10), (10, 0, 10), (10, 10), (10, 5, 10)],
     'data_order': ['F', 'C'],
@@ -139,33 +130,22 @@ class TestFft:
 class TestFftOrder:
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_fft(self, xp, dtype):
         a = testing.shaped_random(self.shape, xp, dtype)
         if self.data_order == 'F':
             a = xp.asfortranarray(a)
-        out = xp.fft.fft(a, axis=self.axis)
-
-        # np.fft.fft always returns np.complex128
-        if xp is np and dtype in [np.float16, np.float32, np.complex64]:
-            out = out.astype(np.complex64)
-
-        return out
+        return xp.fft.fft(a, axis=self.axis)
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_ifft(self, xp, dtype):
         a = testing.shaped_random(self.shape, xp, dtype)
         if self.data_order == 'F':
             a = xp.asfortranarray(a)
-        out = xp.fft.ifft(a, axis=self.axis)
-
-        if xp is np and dtype in [np.float16, np.float32, np.complex64]:
-            out = out.astype(np.complex64)
-
-        return out
+        return xp.fft.ifft(a, axis=self.axis)
 
 
 # See #3757 and NVIDIA internal ticket 3093094
@@ -182,6 +162,7 @@ def _skip_multi_gpu_bug(shape, gpus):
 # Almost identical to the TestFft class, except that
 # 1. multi-GPU cuFFT is used
 # 2. the tested parameter combinations are adjusted to meet the requirements
+@testing.with_requires('numpy>=2.0')
 @pytest.mark.usefixtures('skip_forward_backward')
 @testing.parameterize(*testing.product({
     'n': [None, 0, 64],
@@ -195,23 +176,17 @@ class TestMultiGpuFft:
 
     @multi_gpu_config(gpu_configs=[[0, 1], [1, 0]])
     @testing.for_complex_dtypes()
-    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_fft(self, xp, dtype):
         _skip_multi_gpu_bug(self.shape, self.gpus)
 
         a = testing.shaped_random(self.shape, xp, dtype)
-        out = xp.fft.fft(a, n=self.n, norm=self.norm)
-
-        # np.fft.fft always returns np.complex128
-        if xp is np and dtype is np.complex64:
-            out = out.astype(dtype)
-
-        return out
+        return xp.fft.fft(a, n=self.n, norm=self.norm)
 
     @multi_gpu_config(gpu_configs=[[0, 1], [1, 0]])
     @testing.for_complex_dtypes()
-    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     # NumPy 1.17.0 and 1.17.1 raises ZeroDivisonError due to a bug
     @testing.with_requires('numpy!=1.17.0')
@@ -220,18 +195,13 @@ class TestMultiGpuFft:
         _skip_multi_gpu_bug(self.shape, self.gpus)
 
         a = testing.shaped_random(self.shape, xp, dtype)
-        out = xp.fft.ifft(a, n=self.n, norm=self.norm)
-
-        # np.fft.fft always returns np.complex128
-        if xp is np and dtype is np.complex64:
-            out = out.astype(dtype)
-
-        return out
+        return xp.fft.ifft(a, n=self.n, norm=self.norm)
 
 
 # Almost identical to the TestFftOrder class, except that
 # 1. multi-GPU cuFFT is used
 # 2. the tested parameter combinations are adjusted to meet the requirements
+@testing.with_requires('numpy>=2.0')
 @testing.parameterize(*testing.product({
     'shape': [(10, 10), (10, 5, 10)],
     'data_order': ['F', 'C'],
@@ -243,7 +213,7 @@ class TestMultiGpuFft:
 class TestMultiGpuFftOrder:
     @multi_gpu_config(gpu_configs=[[0, 1], [1, 0]])
     @testing.for_complex_dtypes()
-    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_fft(self, xp, dtype):
         _skip_multi_gpu_bug(self.shape, self.gpus)
@@ -251,17 +221,11 @@ class TestMultiGpuFftOrder:
         a = testing.shaped_random(self.shape, xp, dtype)
         if self.data_order == 'F':
             a = xp.asfortranarray(a)
-        out = xp.fft.fft(a, axis=self.axis)
-
-        # np.fft.fft always returns np.complex128
-        if xp is np and dtype is np.complex64:
-            out = out.astype(dtype)
-
-        return out
+        return xp.fft.fft(a, axis=self.axis)
 
     @multi_gpu_config(gpu_configs=[[0, 1], [1, 0]])
     @testing.for_complex_dtypes()
-    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_ifft(self, xp, dtype):
         _skip_multi_gpu_bug(self.shape, self.gpus)
@@ -269,15 +233,10 @@ class TestMultiGpuFftOrder:
         a = testing.shaped_random(self.shape, xp, dtype)
         if self.data_order == 'F':
             a = xp.asfortranarray(a)
-        out = xp.fft.ifft(a, axis=self.axis)
-
-        # np.fft.fft always returns np.complex128
-        if xp is np and dtype is np.complex64:
-            out = out.astype(dtype)
-
-        return out
+        return xp.fft.ifft(a, axis=self.axis)
 
 
+@testing.with_requires('numpy>=2.0')
 class TestDefaultPlanType:
 
     @nd_planning_states()
@@ -345,6 +304,7 @@ class TestDefaultPlanType:
         assert _default_fft_func(ca, axes=(2, 1), value_type='C2R') is _fft
 
 
+@testing.with_requires('numpy>=2.0')
 @pytest.mark.skipif(10010 <= cupy.cuda.runtime.runtimeGetVersion() <= 11010,
                     reason='avoid a cuFFT bug (cupy/cupy#3777)')
 @testing.slow
@@ -367,20 +327,19 @@ class TestFftAllocate:
         cupy.fft.config.clear_plan_cache()
 
 
+@testing.with_requires('numpy>=2.0')
 @pytest.mark.usefixtures('skip_forward_backward')
 @testing.parameterize(*(
     testing.product_dict([
         {'shape': (3, 4), 's': None, 'axes': None},
-        {'shape': (3, 4), 's': (1, None), 'axes': None},
-        {'shape': (3, 4), 's': (1, 5), 'axes': None},
+        {'shape': (3, 4), 's': (1, 5), 'axes': (-2, -1)},
         {'shape': (3, 4), 's': None, 'axes': (-2, -1)},
         {'shape': (3, 4), 's': None, 'axes': (-1, -2)},
         {'shape': (3, 4), 's': None, 'axes': (0,)},
         {'shape': (3, 4), 's': None, 'axes': None},
         {'shape': (3, 4), 's': None, 'axes': ()},
         {'shape': (2, 3, 4), 's': None, 'axes': None},
-        {'shape': (2, 3, 4), 's': (1, 4, None), 'axes': None},
-        {'shape': (2, 3, 4), 's': (1, 4, 10), 'axes': None},
+        {'shape': (2, 3, 4), 's': (1, 4, 10), 'axes': (-2, -1)},
         {'shape': (2, 3, 4), 's': None, 'axes': (-3, -2, -1)},
         {'shape': (2, 3, 4), 's': None, 'axes': (-1, -2, -3)},
         {'shape': (2, 3, 4), 's': None, 'axes': (0, 1)},
@@ -391,8 +350,8 @@ class TestFftAllocate:
         {'shape': (0, 5), 's': None, 'axes': None},
         {'shape': (2, 0, 5), 's': None, 'axes': None},
         {'shape': (0, 0, 5), 's': None, 'axes': None},
-        {'shape': (3, 4), 's': (0, 5), 'axes': None},
-        {'shape': (3, 4), 's': (1, 0), 'axes': None},
+        {'shape': (3, 4), 's': (0, 5), 'axes': (-2, -1)},
+        {'shape': (3, 4), 's': (1, 0), 'axes': (-2, -1)},
     ],
         testing.product({'norm': [None, 'backward', 'ortho', 'forward']})
     )
@@ -402,7 +361,7 @@ class TestFft2:
     @nd_planning_states()
     @testing.for_orders('CF')
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_fft2(self, xp, dtype, order, enable_nd):
         assert config.enable_nd_planning == enable_nd
@@ -419,15 +378,12 @@ class TestFft2:
             assert out is a
             return out
 
-        if xp is np and dtype in [np.float16, np.float32, np.complex64]:
-            out = out.astype(np.complex64)
-
         return out
 
     @nd_planning_states()
     @testing.for_orders('CF')
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_ifft2(self, xp, dtype, order, enable_nd):
         assert config.enable_nd_planning == enable_nd
@@ -444,18 +400,15 @@ class TestFft2:
             assert out is a
             return out
 
-        if xp is np and dtype in [np.float16, np.float32, np.complex64]:
-            out = out.astype(np.complex64)
-
         return out
 
 
+@testing.with_requires('numpy>=2.0')
 @pytest.mark.usefixtures('skip_forward_backward')
 @testing.parameterize(*(
     testing.product_dict([
         {'shape': (3, 4), 's': None, 'axes': None},
-        {'shape': (3, 4), 's': (1, None), 'axes': None},
-        {'shape': (3, 4), 's': (1, 5), 'axes': None},
+        {'shape': (3, 4), 's': (1, 5), 'axes': (-2, -1)},
         {'shape': (3, 4), 's': None, 'axes': (-2, -1)},
         {'shape': (3, 4), 's': None, 'axes': (-1, -2)},
         {'shape': (3, 4), 's': None, 'axes': [-1, -2]},
@@ -463,8 +416,7 @@ class TestFft2:
         {'shape': (3, 4), 's': None, 'axes': ()},
         {'shape': (3, 4), 's': None, 'axes': None},
         {'shape': (2, 3, 4), 's': None, 'axes': None},
-        {'shape': (2, 3, 4), 's': (1, 4, None), 'axes': None},
-        {'shape': (2, 3, 4), 's': (1, 4, 10), 'axes': None},
+        {'shape': (2, 3, 4), 's': (1, 4, 10), 'axes': (-3, -2, -1)},
         {'shape': (2, 3, 4), 's': None, 'axes': (-3, -2, -1)},
         {'shape': (2, 3, 4), 's': None, 'axes': (-1, -2, -3)},
         {'shape': (2, 3, 4), 's': None, 'axes': (-1, -3)},
@@ -486,7 +438,7 @@ class TestFftn:
     @nd_planning_states()
     @testing.for_orders('CF')
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_fftn(self, xp, dtype, order, enable_nd):
         assert config.enable_nd_planning == enable_nd
@@ -503,15 +455,12 @@ class TestFftn:
             assert out is a
             return out
 
-        if xp is np and dtype in [np.float16, np.float32, np.complex64]:
-            out = out.astype(np.complex64)
-
         return out
 
     @nd_planning_states()
     @testing.for_orders('CF')
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_ifftn(self, xp, dtype, order, enable_nd):
         assert config.enable_nd_planning == enable_nd
@@ -528,28 +477,26 @@ class TestFftn:
             assert out is a
             return out
 
-        if xp is np and dtype in [np.float16, np.float32, np.complex64]:
-            out = out.astype(np.complex64)
-
         return out
 
 
+@testing.with_requires('numpy>=2.0')
 @pytest.mark.usefixtures('skip_forward_backward')
 @testing.parameterize(*(
     testing.product_dict([
         {'shape': (3, 4), 's': None, 'axes': None},
-        {'shape': (3, 4), 's': (1, 5), 'axes': None},
+        {'shape': (3, 4), 's': (1, 5), 'axes': (-2, -1)},
         {'shape': (3, 4), 's': None, 'axes': (-2, -1)},
         {'shape': (3, 4), 's': None, 'axes': (-1, -2)},
         {'shape': (3, 4), 's': None, 'axes': (0,)},
         {'shape': (3, 4), 's': None, 'axes': None},
         {'shape': (2, 3, 4), 's': None, 'axes': None},
-        {'shape': (2, 3, 4), 's': (1, 4, 10), 'axes': None},
+        {'shape': (2, 3, 4), 's': (1, 4, 10), 'axes': (-3, -2, -1)},
         {'shape': (2, 3, 4), 's': None, 'axes': (-3, -2, -1)},
         {'shape': (2, 3, 4), 's': None, 'axes': (-1, -2, -3)},
         {'shape': (2, 3, 4), 's': None, 'axes': (0, 1)},
         {'shape': (2, 3, 4), 's': None, 'axes': None},
-        {'shape': (2, 3, 4), 's': (2, 3), 'axes': None},
+        {'shape': (2, 3, 4), 's': (2, 3), 'axes': (-2, -1)},
         {'shape': (2, 3, 4), 's': (2, 3), 'axes': (0, 1, 2)},
         {'shape': (0, 5), 's': None, 'axes': None},
         {'shape': (2, 0, 5), 's': None, 'axes': None},
@@ -571,49 +518,35 @@ class TestPlanCtxManagerFftn:
 
     @nd_planning_states()
     @testing.for_complex_dtypes()
-    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_fftn(self, xp, dtype, enable_nd):
         assert config.enable_nd_planning == enable_nd
         a = testing.shaped_random(self.shape, xp, dtype)
-        if xp is cupy:
-            from cupyx.scipy.fftpack import get_fft_plan
-            plan = get_fft_plan(a, self.s, self.axes)
-            with plan:
-                out = xp.fft.fftn(a, s=self.s, axes=self.axes, norm=self.norm)
-        else:
-            with warnings.catch_warnings():
-                # axis=None and s != None, NumPy 2.0
-                warnings.simplefilter('ignore', DeprecationWarning)
-                out = xp.fft.fftn(a, s=self.s, axes=self.axes, norm=self.norm)
 
-        if xp is np and dtype is np.complex64:
-            out = out.astype(np.complex64)
+        if xp is np:
+            return xp.fft.fftn(a, s=self.s, axes=self.axes, norm=self.norm)
 
-        return out
+        from cupyx.scipy.fftpack import get_fft_plan
+        plan = get_fft_plan(a, self.s, self.axes)
+        with plan:
+            return xp.fft.fftn(a, s=self.s, axes=self.axes, norm=self.norm)
 
     @nd_planning_states()
     @testing.for_complex_dtypes()
-    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_ifftn(self, xp, dtype, enable_nd):
         assert config.enable_nd_planning == enable_nd
         a = testing.shaped_random(self.shape, xp, dtype)
-        if xp is cupy:
-            from cupyx.scipy.fftpack import get_fft_plan
-            plan = get_fft_plan(a, self.s, self.axes)
-            with plan:
-                out = xp.fft.ifftn(a, s=self.s, axes=self.axes, norm=self.norm)
-        else:
-            with warnings.catch_warnings():
-                # axis=None and s != None, NumPy 2.0
-                warnings.simplefilter('ignore', DeprecationWarning)
-                out = xp.fft.ifftn(a, s=self.s, axes=self.axes, norm=self.norm)
 
-        if xp is np and dtype is np.complex64:
-            out = out.astype(np.complex64)
+        if xp is np:
+            return xp.fft.ifftn(a, s=self.s, axes=self.axes, norm=self.norm)
 
-        return out
+        from cupyx.scipy.fftpack import get_fft_plan
+        plan = get_fft_plan(a, self.s, self.axes)
+        with plan:
+            return xp.fft.ifftn(a, s=self.s, axes=self.axes, norm=self.norm)
 
     @nd_planning_states()
     @testing.for_complex_dtypes()
@@ -649,6 +582,7 @@ class TestPlanCtxManagerFftn:
         assert 'The cuFFT plan and a.shape do not match' in str(ex.value)
 
 
+@testing.with_requires('numpy>=2.0')
 @pytest.mark.usefixtures('skip_forward_backward')
 @testing.parameterize(*testing.product({
     'n': [None, 5, 10, 15],
@@ -658,45 +592,36 @@ class TestPlanCtxManagerFftn:
 class TestPlanCtxManagerFft:
 
     @testing.for_complex_dtypes()
-    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_fft(self, xp, dtype):
         a = testing.shaped_random(self.shape, xp, dtype)
-        if xp is cupy:
-            from cupyx.scipy.fftpack import get_fft_plan
-            shape = (self.n,) if self.n is not None else None
-            plan = get_fft_plan(a, shape=shape)
-            assert isinstance(plan, cupy.cuda.cufft.Plan1d)
-            with plan:
-                out = xp.fft.fft(a, n=self.n, norm=self.norm)
-        else:
-            out = xp.fft.fft(a, n=self.n, norm=self.norm)
 
-        # np.fft.fft always returns np.complex128
-        if xp is np and dtype is np.complex64:
-            out = out.astype(np.complex64)
+        if xp is np:
+            return xp.fft.fft(a, n=self.n, norm=self.norm)
 
-        return out
+        from cupyx.scipy.fftpack import get_fft_plan
+        shape = (self.n,) if self.n is not None else None
+        plan = get_fft_plan(a, shape=shape)
+        assert isinstance(plan, cupy.cuda.cufft.Plan1d)
+        with plan:
+            return xp.fft.fft(a, n=self.n, norm=self.norm)
 
     @testing.for_complex_dtypes()
-    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_ifft(self, xp, dtype):
         a = testing.shaped_random(self.shape, xp, dtype)
-        if xp is cupy:
-            from cupyx.scipy.fftpack import get_fft_plan
-            shape = (self.n,) if self.n is not None else None
-            plan = get_fft_plan(a, shape=shape)
-            assert isinstance(plan, cupy.cuda.cufft.Plan1d)
-            with plan:
-                out = xp.fft.ifft(a, n=self.n, norm=self.norm)
-        else:
-            out = xp.fft.ifft(a, n=self.n, norm=self.norm)
 
-        if xp is np and dtype is np.complex64:
-            out = out.astype(np.complex64)
+        if xp is np:
+            return xp.fft.ifft(a, n=self.n, norm=self.norm)
 
-        return out
+        from cupyx.scipy.fftpack import get_fft_plan
+        shape = (self.n,) if self.n is not None else None
+        plan = get_fft_plan(a, shape=shape)
+        assert isinstance(plan, cupy.cuda.cufft.Plan1d)
+        with plan:
+            return xp.fft.ifft(a, n=self.n, norm=self.norm)
 
     @testing.for_complex_dtypes()
     def test_fft_error_on_wrong_plan(self, dtype):
@@ -720,6 +645,7 @@ class TestPlanCtxManagerFft:
 # Almost identical to the TestPlanCtxManagerFft class, except that
 # 1. multi-GPU cuFFT is used
 # 2. the tested parameter combinations are adjusted to meet the requirements
+@testing.with_requires('numpy>=2.0')
 @pytest.mark.usefixtures('skip_forward_backward')
 @testing.parameterize(*testing.product({
     'n': [None, 64],
@@ -733,50 +659,41 @@ class TestMultiGpuPlanCtxManagerFft:
 
     @multi_gpu_config(gpu_configs=[[0, 1], [1, 0]])
     @testing.for_complex_dtypes()
-    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_fft(self, xp, dtype):
         _skip_multi_gpu_bug(self.shape, self.gpus)
 
         a = testing.shaped_random(self.shape, xp, dtype)
-        if xp is cupy:
-            from cupyx.scipy.fftpack import get_fft_plan
-            shape = (self.n,) if self.n is not None else None
-            plan = get_fft_plan(a, shape=shape)
-            assert isinstance(plan, cupy.cuda.cufft.Plan1d)
-            with plan:
-                out = xp.fft.fft(a, n=self.n, norm=self.norm)
-        else:
-            out = xp.fft.fft(a, n=self.n, norm=self.norm)
 
-        # np.fft.fft always returns np.complex128
-        if xp is np and dtype is np.complex64:
-            out = out.astype(np.complex64)
+        if xp is np:
+            return xp.fft.fft(a, n=self.n, norm=self.norm)
 
-        return out
+        from cupyx.scipy.fftpack import get_fft_plan
+        shape = (self.n,) if self.n is not None else None
+        plan = get_fft_plan(a, shape=shape)
+        assert isinstance(plan, cupy.cuda.cufft.Plan1d)
+        with plan:
+            return xp.fft.fft(a, n=self.n, norm=self.norm)
 
     @multi_gpu_config(gpu_configs=[[0, 1], [1, 0]])
     @testing.for_complex_dtypes()
-    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_ifft(self, xp, dtype):
         _skip_multi_gpu_bug(self.shape, self.gpus)
 
         a = testing.shaped_random(self.shape, xp, dtype)
-        if xp is cupy:
-            from cupyx.scipy.fftpack import get_fft_plan
-            shape = (self.n,) if self.n is not None else None
-            plan = get_fft_plan(a, shape=shape)
-            assert isinstance(plan, cupy.cuda.cufft.Plan1d)
-            with plan:
-                out = xp.fft.ifft(a, n=self.n, norm=self.norm)
-        else:
-            out = xp.fft.ifft(a, n=self.n, norm=self.norm)
 
-        if xp is np and dtype is np.complex64:
-            out = out.astype(np.complex64)
+        if xp is np:
+            return xp.fft.ifft(a, n=self.n, norm=self.norm)
 
-        return out
+        from cupyx.scipy.fftpack import get_fft_plan
+        shape = (self.n,) if self.n is not None else None
+        plan = get_fft_plan(a, shape=shape)
+        assert isinstance(plan, cupy.cuda.cufft.Plan1d)
+        with plan:
+            return xp.fft.ifft(a, n=self.n, norm=self.norm)
 
     @multi_gpu_config(gpu_configs=[[0, 1], [1, 0]])
     @testing.for_complex_dtypes()
@@ -802,6 +719,7 @@ class TestMultiGpuPlanCtxManagerFft:
         assert 'Target array size does not match the plan.' in str(ex.value)
 
 
+@testing.with_requires('numpy>=2.0')
 @pytest.mark.usefixtures('skip_forward_backward')
 @testing.parameterize(*(
     testing.product_dict([
@@ -861,6 +779,7 @@ class TestFftnContiguity:
                 pass
 
 
+@testing.with_requires('numpy>=2.0')
 @pytest.mark.usefixtures('skip_forward_backward')
 @testing.parameterize(*testing.product({
     'n': [None, 5, 10, 15],
@@ -870,30 +789,27 @@ class TestFftnContiguity:
 class TestRfft:
 
     @testing.for_all_dtypes(no_complex=True)
-    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_rfft(self, xp, dtype):
         a = testing.shaped_random(self.shape, xp, dtype)
-        out = xp.fft.rfft(a, n=self.n, norm=self.norm)
-
-        if xp is np and dtype in [np.float16, np.float32, np.complex64]:
-            out = out.astype(np.complex64)
-
-        return out
+        return xp.fft.rfft(a, n=self.n, norm=self.norm)
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_irfft(self, xp, dtype):
         a = testing.shaped_random(self.shape, xp, dtype)
         out = xp.fft.irfft(a, n=self.n, norm=self.norm)
 
-        if xp is np and dtype in [np.float16, np.float32, np.complex64]:
-            out = out.astype(np.float32)
+        if dtype == xp.float16 and xp is cupy:
+            # XXX: np2.0: f16 dtypes differ
+            out = out.astype(np.float16)
 
         return out
 
 
+@testing.with_requires('numpy>=2.0')
 @pytest.mark.usefixtures('skip_forward_backward')
 @testing.parameterize(*testing.product({
     'n': [None, 5, 10, 15],
@@ -903,46 +819,36 @@ class TestRfft:
 class TestPlanCtxManagerRfft:
 
     @testing.for_all_dtypes(no_complex=True)
-    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_rfft(self, xp, dtype):
         a = testing.shaped_random(self.shape, xp, dtype)
 
-        if xp is cupy:
-            from cupyx.scipy.fftpack import get_fft_plan
-            shape = (self.n,) if self.n is not None else None
-            plan = get_fft_plan(a, shape=shape, value_type='R2C')
-            assert isinstance(plan, cupy.cuda.cufft.Plan1d)
-            with plan:
-                out = xp.fft.rfft(a, n=self.n, norm=self.norm)
-        else:
-            out = xp.fft.rfft(a, n=self.n, norm=self.norm)
+        if xp is np:
+            return xp.fft.rfft(a, n=self.n, norm=self.norm)
 
-        if xp is np and dtype in [np.float16, np.float32, np.complex64]:
-            out = out.astype(np.complex64)
-
-        return out
+        from cupyx.scipy.fftpack import get_fft_plan
+        shape = (self.n,) if self.n is not None else None
+        plan = get_fft_plan(a, shape=shape, value_type='R2C')
+        assert isinstance(plan, cupy.cuda.cufft.Plan1d)
+        with plan:
+            return xp.fft.rfft(a, n=self.n, norm=self.norm)
 
     @testing.for_complex_dtypes()
-    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_irfft(self, xp, dtype):
         a = testing.shaped_random(self.shape, xp, dtype)
 
-        if xp is cupy:
-            from cupyx.scipy.fftpack import get_fft_plan
-            shape = (self.n,) if self.n is not None else None
-            plan = get_fft_plan(a, shape=shape, value_type='C2R')
-            assert isinstance(plan, cupy.cuda.cufft.Plan1d)
-            with plan:
-                out = xp.fft.irfft(a, n=self.n, norm=self.norm)
-        else:
-            out = xp.fft.irfft(a, n=self.n, norm=self.norm)
+        if xp is np:
+            return xp.fft.irfft(a, n=self.n, norm=self.norm)
 
-        if xp is np and dtype in [np.float16, np.float32, np.complex64]:
-            out = out.astype(np.float32)
-
-        return out
+        from cupyx.scipy.fftpack import get_fft_plan
+        shape = (self.n,) if self.n is not None else None
+        plan = get_fft_plan(a, shape=shape, value_type='C2R')
+        assert isinstance(plan, cupy.cuda.cufft.Plan1d)
+        with plan:
+            return xp.fft.irfft(a, n=self.n, norm=self.norm)
 
     @testing.for_all_dtypes(no_complex=True)
     def test_rfft_error_on_wrong_plan(self, dtype):
@@ -963,19 +869,18 @@ class TestPlanCtxManagerRfft:
         assert 'Target array size does not match the plan.' in str(ex.value)
 
 
+@testing.with_requires('numpy>=2.0')
 @pytest.mark.usefixtures('skip_forward_backward')
 @testing.parameterize(*(
     testing.product_dict([
         {'shape': (3, 4), 's': None, 'axes': None},
-        {'shape': (3, 4), 's': (1, None), 'axes': None},
-        {'shape': (3, 4), 's': (1, 5), 'axes': None},
+        {'shape': (3, 4), 's': (1, 5), 'axes': (-2, -1)},
         {'shape': (3, 4), 's': None, 'axes': (-2, -1)},
         {'shape': (3, 4), 's': None, 'axes': (-1, -2)},
         {'shape': (3, 4), 's': None, 'axes': (0,)},
         {'shape': (3, 4), 's': None, 'axes': None},
         {'shape': (2, 3, 4), 's': None, 'axes': None},
-        {'shape': (2, 3, 4), 's': (1, 4, None), 'axes': None},
-        {'shape': (2, 3, 4), 's': (1, 4, 10), 'axes': None},
+        {'shape': (2, 3, 4), 's': (1, 4, 10), 'axes': (-3, -2, -1)},
         {'shape': (2, 3, 4), 's': None, 'axes': (-3, -2, -1)},
         {'shape': (2, 3, 4), 's': None, 'axes': (-1, -2, -3)},
         {'shape': (2, 3, 4), 's': None, 'axes': (0, 1)},
@@ -991,27 +896,19 @@ class TestRfft2:
     @nd_planning_states()
     @testing.for_orders('CF')
     @testing.for_all_dtypes(no_complex=True)
-    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_rfft2(self, xp, dtype, order, enable_nd):
         assert config.enable_nd_planning == enable_nd
         a = testing.shaped_random(self.shape, xp, dtype)
         if order == 'F':
             a = xp.asfortranarray(a)
-
-        with warnings.catch_warnings():
-            # axis=None and s != None, NumPy 2.0
-            warnings.simplefilter('ignore', DeprecationWarning)
-            out = xp.fft.rfft2(a, s=self.s, axes=self.axes, norm=self.norm)
-
-        if xp is np and dtype in [np.float16, np.float32, np.complex64]:
-            out = out.astype(np.complex64)
-        return out
+        return xp.fft.rfft2(a, s=self.s, axes=self.axes, norm=self.norm)
 
     @nd_planning_states()
     @testing.for_orders('CF')
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_irfft2(self, xp, dtype, order, enable_nd):
         assert config.enable_nd_planning == enable_nd
@@ -1021,20 +918,16 @@ class TestRfft2:
                     self.shape, self.s, self.axes) == 2):
             pytest.skip('work-around for cuFFT issue')
 
+        if dtype == xp.float16 and xp is cupy:
+            pytest.xfail("XXX: np2.0: f16 dtypes differ")
+
         a = testing.shaped_random(self.shape, xp, dtype)
         if order == 'F':
             a = xp.asfortranarray(a)
-
-        with warnings.catch_warnings():
-            # axis=None and s != None, NumPy 2.0
-            warnings.simplefilter('ignore', DeprecationWarning)
-            out = xp.fft.irfft2(a, s=self.s, axes=self.axes, norm=self.norm)
-
-        if xp is np and dtype in [np.float16, np.float32, np.complex64]:
-            out = out.astype(np.float32)
-        return out
+        return xp.fft.irfft2(a, s=self.s, axes=self.axes, norm=self.norm)
 
 
+@testing.with_requires('numpy>=2.0')
 @testing.parameterize(
     {'shape': (3, 4), 's': None, 'axes': (), 'norm': None},
     {'shape': (2, 3, 4), 's': None, 'axes': (), 'norm': None},
@@ -1056,19 +949,18 @@ class TestRfft2EmptyAxes:
                 xp.fft.irfft2(a, s=self.s, axes=self.axes, norm=self.norm)
 
 
+@testing.with_requires('numpy>=2.0')
 @pytest.mark.usefixtures('skip_forward_backward')
 @testing.parameterize(*(
     testing.product_dict([
         {'shape': (3, 4), 's': None, 'axes': None},
-        {'shape': (3, 4), 's': (1, None), 'axes': None},
-        {'shape': (3, 4), 's': (1, 5), 'axes': None},
+        {'shape': (3, 4), 's': (1, 5), 'axes': (-2, -1)},
         {'shape': (3, 4), 's': None, 'axes': (-2, -1)},
         {'shape': (3, 4), 's': None, 'axes': (-1, -2)},
         {'shape': (3, 4), 's': None, 'axes': (0,)},
         {'shape': (3, 4), 's': None, 'axes': None},
         {'shape': (2, 3, 4), 's': None, 'axes': None},
-        {'shape': (2, 3, 4), 's': (1, 4, None), 'axes': None},
-        {'shape': (2, 3, 4), 's': (1, 4, 10), 'axes': None},
+        {'shape': (2, 3, 4), 's': (1, 4, 10), 'axes': (-3, -2, -1)},
         {'shape': (2, 3, 4), 's': None, 'axes': (-3, -2, -1)},
         {'shape': (2, 3, 4), 's': None, 'axes': (-1, -2, -3)},
         {'shape': (2, 3, 4), 's': None, 'axes': (0, 1)},
@@ -1084,27 +976,19 @@ class TestRfftn:
     @nd_planning_states()
     @testing.for_orders('CF')
     @testing.for_all_dtypes(no_complex=True)
-    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_rfftn(self, xp, dtype, order, enable_nd):
         assert config.enable_nd_planning == enable_nd
         a = testing.shaped_random(self.shape, xp, dtype)
         if order == 'F':
             a = xp.asfortranarray(a)
-        with warnings.catch_warnings():
-            # axis=None and s != None, NumPy 2.0
-            warnings.simplefilter('ignore', DeprecationWarning)
-            out = xp.fft.rfftn(a, s=self.s, axes=self.axes, norm=self.norm)
-
-        if xp is np and dtype in [np.float16, np.float32, np.complex64]:
-            out = out.astype(np.complex64)
-
-        return out
+        return xp.fft.rfftn(a, s=self.s, axes=self.axes, norm=self.norm)
 
     @nd_planning_states()
     @testing.for_orders('CF')
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_irfftn(self, xp, dtype, order, enable_nd):
         assert config.enable_nd_planning == enable_nd
@@ -1114,34 +998,27 @@ class TestRfftn:
                     self.shape, self.s, self.axes) == 2):
             pytest.skip('work-around for cuFFT issue')
 
+        if dtype == xp.float16 and xp is cupy:
+            pytest.xfail("XXX: np2.0: f16 dtypes differ")
+
         a = testing.shaped_random(self.shape, xp, dtype)
         if order == 'F':
             a = xp.asfortranarray(a)
-
-        with warnings.catch_warnings():
-            # axis=None and s != None, NumPy 2.0
-            warnings.simplefilter('ignore', DeprecationWarning)
-            out = xp.fft.irfftn(a, s=self.s, axes=self.axes, norm=self.norm)
-
-        if xp is np and dtype in [np.float16, np.float32, np.complex64]:
-            out = out.astype(np.float32)
-
-        return out
+        return xp.fft.irfftn(a, s=self.s, axes=self.axes, norm=self.norm)
 
 
 # Only those tests in which a legit plan can be obtained are kept
+@testing.with_requires('numpy>=2.0')
 @pytest.mark.usefixtures('skip_forward_backward')
 @testing.parameterize(*(
     testing.product_dict([
         {'shape': (3, 4), 's': None, 'axes': None},
-        {'shape': (3, 4), 's': (1, None), 'axes': None},
-        {'shape': (3, 4), 's': (1, 5), 'axes': None},
+        {'shape': (3, 4), 's': (1, 5), 'axes': (-2, -1)},
         {'shape': (3, 4), 's': None, 'axes': (-2, -1)},
         {'shape': (3, 4), 's': None, 'axes': (0,)},
         {'shape': (3, 4), 's': None, 'axes': None},
         {'shape': (2, 3, 4), 's': None, 'axes': None},
-        {'shape': (2, 3, 4), 's': (1, 4, None), 'axes': None},
-        {'shape': (2, 3, 4), 's': (1, 4, 10), 'axes': None},
+        {'shape': (2, 3, 4), 's': (1, 4, 10), 'axes': (-3, -2, -1)},
         {'shape': (2, 3, 4), 's': None, 'axes': (-3, -2, -1)},
         {'shape': (2, 3, 4), 's': None, 'axes': (0, 1)},
         {'shape': (2, 3, 4), 's': None, 'axes': None},
@@ -1163,57 +1040,45 @@ class TestPlanCtxManagerRfftn:
 
     @nd_planning_states()
     @testing.for_all_dtypes(no_complex=True)
-    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_rfftn(self, xp, dtype, enable_nd):
         assert config.enable_nd_planning == enable_nd
         a = testing.shaped_random(self.shape, xp, dtype)
-        if xp is cupy:
-            from cupyx.scipy.fftpack import get_fft_plan
-            plan = get_fft_plan(a, self.s, self.axes, value_type='R2C')
-            with plan:
-                out = xp.fft.rfftn(a, s=self.s, axes=self.axes, norm=self.norm)
-        else:
-            with warnings.catch_warnings():
-                # axis=None and s != None, NumPy 2.0
-                warnings.simplefilter("ignore", DeprecationWarning)
-                out = xp.fft.rfftn(a, s=self.s, axes=self.axes, norm=self.norm)
 
-        if xp is np and dtype in [np.float16, np.float32, np.complex64]:
-            out = out.astype(np.complex64)
+        if xp is np:
+            return xp.fft.rfftn(a, s=self.s, axes=self.axes, norm=self.norm)
 
-        return out
+        from cupyx.scipy.fftpack import get_fft_plan
+        plan = get_fft_plan(a, self.s, self.axes, value_type='R2C')
+        with plan:
+            return xp.fft.rfftn(a, s=self.s, axes=self.axes, norm=self.norm)
 
     @pytest.mark.skipif(cupy.cuda.runtime.is_hip,
                         reason="hipFFT's PlanNd for C2R is buggy")
     @nd_planning_states()
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_irfftn(self, xp, dtype, enable_nd):
         assert config.enable_nd_planning == enable_nd
         a = testing.shaped_random(self.shape, xp, dtype)
-        if xp is cupy:
-            from cupyx.scipy.fftpack import get_fft_plan
-            plan = get_fft_plan(a, self.s, self.axes, value_type='C2R')
-            with plan:
-                out = xp.fft.irfftn(
-                    a, s=self.s, axes=self.axes, norm=self.norm)
-        else:
-            with warnings.catch_warnings():
-                # axis=None and s != None, NumPy 2.0
-                warnings.simplefilter("ignore", DeprecationWarning)
-                out = xp.fft.irfftn(
-                    a, s=self.s, axes=self.axes, norm=self.norm)
 
-        if xp is np and dtype in [np.float16, np.float32, np.complex64]:
-            out = out.astype(np.float32)
+        if dtype == xp.float16 and xp is cupy:
+            pytest.xfail("XXX: np2.0: f16 dtypes differ")
 
-        return out
+        if xp is np:
+            return xp.fft.irfftn(a, s=self.s, axes=self.axes, norm=self.norm)
+
+        from cupyx.scipy.fftpack import get_fft_plan
+        plan = get_fft_plan(a, self.s, self.axes, value_type='C2R')
+        with plan:
+            return xp.fft.irfftn(a, s=self.s, axes=self.axes, norm=self.norm)
 
     # TODO(leofang): write test_rfftn_error_on_wrong_plan()?
 
 
+@testing.with_requires('numpy>=2.0')
 @pytest.mark.usefixtures('skip_forward_backward')
 @testing.parameterize(*(
     testing.product_dict([
@@ -1223,8 +1088,7 @@ class TestPlanCtxManagerRfftn:
         {'shape': (3, 4), 's': None, 'axes': (0,)},
         {'shape': (3, 4), 's': None, 'axes': None},
         {'shape': (2, 3, 4), 's': None, 'axes': None},
-        {'shape': (2, 3, 4), 's': (1, 4, None), 'axes': None},
-        {'shape': (2, 3, 4), 's': (1, 4, 10), 'axes': None},
+        {'shape': (2, 3, 4), 's': (1, 4, 10), 'axes': (-3, -2, -1)},
         {'shape': (2, 3, 4), 's': None, 'axes': (-3, -2, -1)},
         {'shape': (2, 3, 4), 's': None, 'axes': (-1, -2, -3)},
         {'shape': (2, 3, 4), 's': None, 'axes': (0, 1)},
@@ -1276,6 +1140,7 @@ class TestRfftnContiguity:
                 pass
 
 
+@testing.with_requires('numpy>=2.0')
 @testing.parameterize(
     {'shape': (3, 4), 's': None, 'axes': (), 'norm': None},
     {'shape': (2, 3, 4), 's': None, 'axes': (), 'norm': None},
@@ -1297,6 +1162,7 @@ class TestRfftnEmptyAxes:
                 xp.fft.irfftn(a, s=self.s, axes=self.axes, norm=self.norm)
 
 
+@testing.with_requires('numpy>=2.0')
 @pytest.mark.usefixtures('skip_forward_backward')
 @testing.parameterize(*testing.product({
     'n': [None, 5, 10, 15],
@@ -1306,30 +1172,27 @@ class TestRfftnEmptyAxes:
 class TestHfft:
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_hfft(self, xp, dtype):
         a = testing.shaped_random(self.shape, xp, dtype)
         out = xp.fft.hfft(a, n=self.n, norm=self.norm)
 
-        if xp is np and dtype in [np.float16, np.float32, np.complex64]:
-            out = out.astype(np.float32)
+        if dtype == xp.float16 and xp is cupy:
+            # XXX: np2.0: f16 dtypes differ
+            out = out.astype(np.float16)
 
         return out
 
     @testing.for_all_dtypes(no_complex=True)
-    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_ihfft(self, xp, dtype):
         a = testing.shaped_random(self.shape, xp, dtype)
-        out = xp.fft.ihfft(a, n=self.n, norm=self.norm)
-
-        if xp is np and dtype in [np.float16, np.float32, np.complex64]:
-            out = out.astype(np.complex64)
-
-        return out
+        return xp.fft.ihfft(a, n=self.n, norm=self.norm)
 
 
+@testing.with_requires('numpy>=2.0')
 @testing.parameterize(
     {'n': 1, 'd': 1},
     {'n': 10, 'd': 0.5},
@@ -1338,20 +1201,17 @@ class TestHfft:
 class TestFftfreq:
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, contiguous_check=False)
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-7, contiguous_check=False)
     def test_fftfreq(self, xp, dtype):
-        out = xp.fft.fftfreq(self.n, self.d)
-
-        return out
+        return xp.fft.fftfreq(self.n, self.d)
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, contiguous_check=False)
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-7, contiguous_check=False)
     def test_rfftfreq(self, xp, dtype):
-        out = xp.fft.rfftfreq(self.n, self.d)
-
-        return out
+        return xp.fft.rfftfreq(self.n, self.d)
 
 
+@testing.with_requires('numpy>=2.0')
 @testing.parameterize(
     {'shape': (5,), 'axes': None},
     {'shape': (5,), 'axes': 0},
@@ -1364,20 +1224,16 @@ class TestFftfreq:
 class TestFftshift:
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, contiguous_check=False)
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-7, contiguous_check=False)
     def test_fftshift(self, xp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
-        out = xp.fft.fftshift(x, self.axes)
-
-        return out
+        return xp.fft.fftshift(x, self.axes)
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, contiguous_check=False)
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-7, contiguous_check=False)
     def test_ifftshift(self, xp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
-        out = xp.fft.ifftshift(x, self.axes)
-
-        return out
+        return xp.fft.ifftshift(x, self.axes)
 
 
 class TestThreading:

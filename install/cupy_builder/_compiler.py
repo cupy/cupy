@@ -8,7 +8,6 @@ import subprocess
 from typing import Any, Optional, List
 
 import setuptools
-import setuptools.msvc
 from setuptools import Extension
 
 from cupy_builder._context import Context
@@ -262,8 +261,17 @@ class DeviceCompilerWin32(DeviceCompilerBase):
             # The compiler is already on PATH, no extra path needed.
             return None
 
-        vctools: List[str] = setuptools.msvc.EnvironmentInfo(
-            platform.machine()).VCTools
+        if self._context.win32_cl_exe_path is not None:
+            return self._context.win32_cl_exe_path
+
+        if hasattr(setuptools, 'msvc'):  # setuptools<74
+            # TODO(kmaehashi): Remove this code at some point
+            vctools: List[str] = setuptools.msvc.EnvironmentInfo(
+                platform.machine()).VCTools
+        else:
+            print('Warning: cl.exe could not be auto-detected')
+            return None
+
         for path in vctools:
             cl_exe = os.path.join(path, 'cl.exe')
             if os.path.exists(cl_exe):

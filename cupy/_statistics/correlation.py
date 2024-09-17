@@ -143,7 +143,7 @@ def cov(a, y=None, rowvar=True, bias=False, ddof=None,
     if X.shape[0] == 0:
         return cupy.array([]).reshape(0, 0)
     if y is not None:
-        y = cupy.array(y, copy=False, ndmin=2, dtype=dtype)
+        y = cupy.array(y, copy=None, ndmin=2, dtype=dtype)
         if not rowvar and y.shape[0] != 1:
             y = y.T
         X = _core.concatenate_method((X, y), axis=0)
