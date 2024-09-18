@@ -291,9 +291,12 @@ cudaError_t cudaPointerGetAttributes(cudaPointerAttributes *attributes,
                 /* we don't care the rest of possibilities */
                 return status;
         }
+#if HIP_VERSION < 600
+    // #8335
     } else if (status == cudaErrorInvalidValue) {
         attributes->memoryType = (hipMemoryType)0; /* cudaMemoryTypeUnregistered */
         return cudaSuccess;
+#endif
     } else {
         return status;
     }
