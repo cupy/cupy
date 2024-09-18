@@ -73,6 +73,26 @@ cupy_package_data = [
     'cupyx/scipy/ndimage/cuda/LICENSE',
     'cupyx/scipy/ndimage/cuda/pba_kernels_2d.h',
     'cupyx/scipy/ndimage/cuda/pba_kernels_3d.h',
+    # for providing cupy native resources to 3rd party cython
+    'cupy/cuda/__init__.pxd',
+    'cupy/cuda/common.pxd',
+    'cupy/cuda/device.pxd',
+    'cupy/cuda/memory.pxd',
+    'cupy/cuda/pinned_memory.pxd',
+    'cupy/cuda/stream.pxd',
+    'cupy_backends/cuda/__init__.pxd',
+    'cupy_backends/cuda/libs/__init__.pxd',
+    'cupy_backends/cuda/libs/cublas.pxd',
+    'cupy_backends/cuda/api/__init__.pxd',
+    'cupy_backends/cuda/api/_driver_enum.pxd',
+    'cupy_backends/cuda/api/_driver_extern.pxi',
+    'cupy_backends/cuda/api/_driver_typedef.pxi',
+    'cupy_backends/cuda/api/_runtime_enum.pxd',
+    'cupy_backends/cuda/api/_runtime_extern.pxi',
+    'cupy_backends/cuda/api/_runtime_softlink.pxi',
+    'cupy_backends/cuda/api/_runtime_typedef.pxi',
+    'cupy_backends/cuda/api/driver.pxd',
+    'cupy_backends/cuda/api/runtime.pxd',
 ] + [
     x for x in glob.glob('cupy/_core/include/cupy/**', recursive=True)
     if os.path.isfile(x)
