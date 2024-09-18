@@ -3,10 +3,11 @@
 # CuPy : NumPy & SciPy for GPU
 
 [![pypi](https://img.shields.io/pypi/v/cupy)](https://pypi.python.org/pypi/cupy)
-[![Conda](https://img.shields.io/conda/vn/conda-forge/cupy)](https://anaconda.org/conda-forge/cupy)
+[![Conda](https://img.shields.io/badge/conda--forge-cupy-blue)](https://anaconda.org/conda-forge/cupy)
 [![GitHub license](https://img.shields.io/github/license/cupy/cupy)](https://github.com/cupy/cupy)
-[![Gitter](https://badges.gitter.im/cupy/community.svg)](https://gitter.im/cupy/community)
+[![Matrix](https://img.shields.io/matrix/cupy_community:gitter.im?server_fqdn=matrix.org)](https://gitter.im/cupy/community)
 [![Twitter](https://img.shields.io/twitter/follow/CuPy_Team?label=%40CuPy_Team)](https://twitter.com/CuPy_Team)
+[![Medium](https://img.shields.io/badge/Medium-CuPy-teal)](https://medium.com/cupy-team)
 
 [**Website**](https://cupy.dev/)
 | [**Install**](https://docs.cupy.dev/en/stable/install.html)
