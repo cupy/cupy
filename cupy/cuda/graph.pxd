@@ -19,3 +19,13 @@ cdef class Graph:
     cpdef upload(self, stream=*)
     cpdef debug_dot_str(self, flags=*)
     cpdef _add_ref(self, ref)
+
+cpdef int _create_conditional_handle_from_stream(
+        stream,
+        default_value=*,
+        flags=*
+    )
+
+cpdef Graph _append_conditional_node_to_stream(
+        stream, node_type, handle
+    )

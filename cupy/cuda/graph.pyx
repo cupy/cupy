@@ -1,9 +1,14 @@
 import os
 import tempfile
 
+from cpython.mem cimport PyMem_Malloc, PyMem_Free
+from libc.string cimport memset as c_memset
+
 from cupy_backends.cuda.api cimport runtime
 from cupy_backends.cuda cimport stream as stream_module
 
+cdef extern from '../../cupy_backends/cupy_backend_runtime.h':
+    pass
 
 cdef class Graph:
     """The CUDA graph object.
@@ -116,3 +121,80 @@ cdef class Graph:
 
     cpdef _add_ref(self, ref):
         self._refs.append(ref)
+
+cpdef int _create_conditional_handle_from_stream(
+        stream,
+        default_value=False,
+        flags=runtime.cudaGraphCondAssignDefault
+    ):
+    '''
+    Returns conditional handle body value (int)
+    '''
+    status, _, graph_ptr, _, _ = runtime.streamGetCaptureInfo(stream.ptr)
+    if status != runtime.streamCaptureStatusActive:
+        raise RuntimeError(
+            "Conditional node can be added only to capturing stream")
+
+    handle = runtime.graphConditionalHandleCreate(
+        graph_ptr,
+        defaultLaunchValue=default_value,
+        flags=flags
+    )
+    return handle
+
+cpdef Graph _append_conditional_node_to_stream(
+        stream, node_type, handle
+    ):
+    '''
+    Returns conditional node's body graph
+    '''
+    status, id_, main_graph_ptr, deps_ptr, n_deps = \
+        runtime.streamGetCaptureInfo(stream.ptr)
+    if status != runtime.streamCaptureStatusActive:
+        raise RuntimeError(
+            "Conditional node can be added only to capturing stream")
+
+    cdef runtime.GraphConditionalNodeType node_type_enum
+    if node_type == "if":
+        node_type_enum = <runtime.GraphConditionalNodeType>(runtime.cudaGraphCondTypeIf)
+    elif node_type == "while":
+        node_type_enum = <runtime.GraphConditionalNodeType>(runtime.cudaGraphCondTypeWhile)
+    else:
+        raise ValueError("`node_type` must be 'if' or 'while'")
+
+    # Allocate node params struct's memory via `malloc` to avoid
+    # the use of deleted constructor
+    cdef runtime.GraphNodeParams* params = \
+        <runtime.GraphNodeParams*>(
+            PyMem_Malloc(sizeof(runtime.GraphNodeParams)))
+    if not params:
+        raise MemoryError()
+    cdef runtime.Graph[1] body_graphs
+    cdef runtime.GraphNode[1] nodes
+    try:
+        c_memset(params, 0, sizeof(runtime.GraphNodeParams))
+        params.type = <runtime.GraphNodeType>(
+            runtime.cudaGraphNodeTypeConditional)
+        params.conditional.handle = <unsigned long long>(handle)
+        params.conditional.type = node_type_enum
+        params.conditional.size = <size_t>(1)
+
+        nodes[0] = <runtime.GraphNode>(runtime.graphAddNode(
+            main_graph_ptr,
+            deps_ptr,
+            n_deps,
+            <intptr_t>(params)
+        ))
+
+        body_graphs[0] = params.conditional.phGraph_out[0]
+    finally:
+        PyMem_Free(params)
+
+    runtime.streamUpdateCaptureDependencies(
+        stream.ptr,
+        <intptr_t>nodes,
+        1, # number of dependency nodes
+        runtime.cudaStreamSetCaptureDependencies
+    )
+
+    return Graph.from_stream(<intptr_t>(body_graphs[0]), is_child=True)

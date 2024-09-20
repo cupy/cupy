@@ -1,5 +1,9 @@
 import cupy
 from cupy import cuda
+from cupy.cuda.graph import (
+    _append_conditional_node_to_stream,
+    _create_conditional_handle_from_stream
+)
 from cupy_backends.cuda import stream as backend_stream
 from typing import (
     Optional,
@@ -186,11 +190,11 @@ class GraphBuilder(GraphBuilderInterface):
         st = cuda.Stream()
         parent_st = self._streams[-1]
         self._streams.append(st)
-        handle = parent_st._create_conditional_handle(default_value=True)
+        handle = _create_conditional_handle_from_stream(parent_st, default_value=True)
         cond_before_loop = cond_fn(*fn_args)
         _set_value_to_handle(handle, cond_before_loop) # set value before the loop
-        body_graph = parent_st._append_conditional_node(
-            "while", handle
+        body_graph = _append_conditional_node_to_stream(
+            parent_st, "while", handle
         )
         with st:
             st.begin_capture(to_graph=body_graph)
@@ -227,12 +231,12 @@ class GraphBuilder(GraphBuilderInterface):
         st = cupy.cuda.Stream()
         parent_st = self._streams[-1]
         self._streams.append(st)
-        handle = parent_st._create_conditional_handle(default_value=False)
+        handle = _create_conditional_handle_from_stream(parent_st, default_value=False)
 
         cond = cond_fn(*fn_args)
         _set_value_to_handle(handle, cond) # set value before the loop
-        body_graph = parent_st._append_conditional_node(
-            "if", handle
+        body_graph = _append_conditional_node_to_stream(
+            parent_st, "if", handle
         )
         with st:
             st.begin_capture(to_graph=body_graph)
@@ -312,13 +316,13 @@ class GraphBuilder(GraphBuilderInterface):
             return
 
         parent_st = self._streams[-1]
-        handle = parent_st._create_conditional_handle()
+        handle = _create_conditional_handle_from_stream(parent_st)
 
         # True branch
         cond_val = cond_fn()
         _set_value_to_handle(handle, cond_val)
-        body_graph_true = parent_st._append_conditional_node(
-            "if", handle
+        body_graph_true = _append_conditional_node_to_stream(
+            parent_st, "if", handle
         )
 
         stream = cuda.Stream()
@@ -335,10 +339,10 @@ class GraphBuilder(GraphBuilderInterface):
         if len(branches) > 0:
             stream = cuda.Stream()
             self._streams.append(stream)
-            handle2 = parent_st._create_conditional_handle()
+            handle2 = _create_conditional_handle_from_stream(parent_st)
             _set_value_to_handle(handle2, cond_val, invert=True)
-            body_graph_false = parent_st._append_conditional_node(
-                "if", handle2
+            body_graph_false = _append_conditional_node_to_stream(
+                parent_st, "if", handle2
             )
             with stream:
                 stream.begin_capture(to_graph=body_graph_false)
