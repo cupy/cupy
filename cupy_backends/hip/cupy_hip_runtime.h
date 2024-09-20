@@ -424,6 +424,24 @@ cudaError_t cudaStreamBeginCapture(cudaStream_t stream,
 #endif
 }
 
+cudaError_t cudaStreamBeginCaptureToGraph(
+    cudaStream_t stream,
+    cudaGraph_t graph,
+    const cudaGraphNode_t* dependencies,
+    const cudaGraphEdgeData* dependencyData,
+    size_t numDependencies,
+    cudaStreamCaptureMode mode
+) {
+#if HIP_VERSION >= 60200000
+    return hipStreamBeginCaptureToGraph(
+        stream, graph, dependencies,
+        dependencyData, numDependencies, mode
+    );
+#else
+    return hipErrorUnknown;
+#endif
+}
+
 cudaError_t cudaStreamEndCapture(cudaStream_t stream, cudaGraph_t* pGraph) {
 #if HIP_VERSION >= 40300000
     return hipStreamEndCapture(stream, pGraph);
@@ -441,6 +459,37 @@ cudaError_t cudaStreamIsCapturing(cudaStream_t stream,
 #endif
 }
 
+cudaError_t cudaStreamGetCaptureInfo(
+    cudaStream_t stream,
+    cudaStreamCaptureStatus* captureStatus_out,
+    unsigned long long* id_out = 0,
+    cudaGraph_t* graph_out = 0,
+    const cudaGraphNode_t** dependencies_out = 0,
+    size_t* numDependencies_out = 0) {
+#if HIP_VERSION >= 50000000
+    return hipStreamGetCaptureInfo(
+        stream, captureStatus_out, id_out, graph_out,
+        dependencies_out, numDependencies_out
+    );
+#else
+    return hipErrorUnknown;
+#endif
+}
+
+cudaError_t cudaStreamUpdateCaptureDependencies(
+    cudaStream_t stream,
+    cudaGraphNode_t* dependencies,
+    size_t numDependencies,
+    unsigned int flags = 0
+) {
+#if HIP_VERSION >= 50000000
+    return hipStreamUpdateCaptureDependencies(
+        stream, dependencies, numDependencies, flags
+    );
+#else
+    return hipErrorUnknown;
+#endif
+}
 
 // Texture
 cudaError_t cudaCreateTextureObject(...) {
@@ -536,6 +585,24 @@ cudaError_t cudaGraphDebugDotPrint(cudaGraph_t graph, const char* path, unsigned
 #else
     return hipErrorUnknown;
 #endif
+}
+
+cudaError_t cudaGraphAddNode(cudaGraphNode_t* pGraphNode,
+                             cudaGraph_t graph,
+                             const cudaGraphNode_t* pDependencies,
+                             size_t numDependencies,
+                             cudaGraphNodeParams* nodeParams) {
+#if HIP_VERSION >= 60200000
+    return hipGraphAddNode(
+        pGraphNode, graph, pDependencies, numDependencies, nodeParams
+    );
+#else
+    return hipErrorUnknown;
+#endif
+}
+
+cudaError_t cudaGraphConditionalHandleCreate(...) {
+    return hipErrorUnknown;
 }
 
 } // extern "C"
