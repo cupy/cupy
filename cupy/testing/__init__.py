@@ -48,3 +48,4 @@ from cupy.testing._parameterized import product  # NOQA
 from cupy.testing._parameterized import product_dict  # NOQA
 from cupy.testing._random import fix_random  # NOQA
 from cupy.testing._random import generate_seed  # NOQA
+from cupy.testing._thread import TestThread  # NOQA
