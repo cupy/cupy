@@ -118,3 +118,5 @@ from cupy._math.special import sinc  # NOQA
 from cupyx.scipy.special._ellip import ellipk  # NOQA
 from cupyx.scipy.special._ellip import ellipkm1  # NOQA
 from cupyx.scipy.special._ellip import ellipj  # NOQA
+from cupyx.scipy.special._ellip import ellipkinc  # NOQA
+from cupyx.scipy.special._ellip import ellipeinc  # NOQA

@@ -892,7 +892,7 @@ def minres(A, b, x0=None, shift=0.0, tol=1e-5, maxiter=None,
 
         itn += 1
         s = 1.0 / beta
-        v = s * y
+        v = (s * y).astype(y.dtype)   # XXX: np2.0: keep v f32 is y is f32
 
         y = matvec(v)
         y -= shift * v
@@ -1021,6 +1021,10 @@ def minres(A, b, x0=None, shift=0.0, tol=1e-5, maxiter=None,
         info = maxiter
     else:
         info = 0
+
+    # XXX: np2.0: keep backwards compat under weak promotion
+    if x.dtype == 'float32':
+        x = x.astype(cupy.float64)
 
     return x, info
 

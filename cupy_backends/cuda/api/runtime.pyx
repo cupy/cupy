@@ -318,7 +318,6 @@ cpdef getDeviceProperties(int device):
         properties['clockInstructionRate'] = props.clockInstructionRate
         properties['maxSharedMemoryPerMultiProcessor'] = (
             props.maxSharedMemoryPerMultiProcessor)
-        properties['gcnArch'] = props.gcnArch
         properties['hdpMemFlushCntl'] = <intptr_t>(props.hdpMemFlushCntl)
         properties['hdpRegFlushCntl'] = <intptr_t>(props.hdpRegFlushCntl)
         properties['memPitch'] = props.memPitch
@@ -351,6 +350,8 @@ cpdef getDeviceProperties(int device):
         arch['has3dGrid'] = props.arch.has3dGrid
         arch['hasDynamicParallelism'] = props.arch.hasDynamicParallelism
         properties['arch'] = arch
+    IF 0 < CUPY_HIP_VERSION < 600:  # removed in HIP 6.0.0
+        properties['gcnArch'] = props.gcnArch
     IF CUPY_HIP_VERSION >= 310:
         properties['gcnArchName'] = props.gcnArchName
         properties['asicRevision'] = props.asicRevision
@@ -720,12 +721,18 @@ cpdef PointerAttributes pointerGetAttributes(intptr_t ptr):
             <intptr_t>attrs.devicePointer,
             <intptr_t>attrs.hostPointer,
             attrs.type)
-    ELIF CUPY_HIP_VERSION > 0:
+    ELIF 0 < CUPY_HIP_VERSION < 600:
         return PointerAttributes(
             attrs.device,
             <intptr_t>attrs.devicePointer,
             <intptr_t>attrs.hostPointer,
             attrs.memoryType)
+    ELIF CUPY_HIP_VERSION >= 600:
+        return PointerAttributes(
+            attrs.device,
+            <intptr_t>attrs.devicePointer,
+            <intptr_t>attrs.hostPointer,
+            attrs.type)
     ELSE:  # for RTD
         return None
 
@@ -1112,6 +1119,15 @@ cpdef graphLaunch(intptr_t graphExec, intptr_t stream):
 cpdef graphUpload(intptr_t graphExec, intptr_t stream):
     with nogil:
         status = cudaGraphUpload(<GraphExec>(graphExec), <driver.Stream>stream)
+    check_status(status)
+
+cpdef graphDebugDotPrint(intptr_t graph, str path, unsigned int flags):
+    if runtimeGetVersion() < 11030:
+        raise RuntimeError('graphDebugDotPrint requires CUDA 11.3+')
+    path_byte = path.encode()
+    cdef const char* c_path = path_byte
+    with nogil:
+        status = cudaGraphDebugDotPrint(<Graph>(graph), c_path, flags)
     check_status(status)
 
 

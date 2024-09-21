@@ -72,6 +72,12 @@ cuda:
   "12.4":
     full_version: "12.4.0"
     repository: "nvidia/cuda"
+  "12.5":
+    full_version: "12.5.0"
+    repository: "nvidia/cuda"
+  "12.6":
+    full_version: "12.6.0"
+    repository: "nvidia/cuda"
 rocm:
   null:
     full_version: null
@@ -150,6 +156,19 @@ nccl:
       "12.2":  # Note: DEB package unavailable on Ubuntu 22.04
       "12.3":
       "12.4":
+  "2.21":
+    spec: "2.21.*"
+    cuda:
+      "12.2":  # Note: DEB package unavailable on Ubuntu 22.04
+      "12.4":
+      "12.5":
+  "2.22":
+    spec: "2.22.*"
+    cuda:
+      "12.2":  # Note: DEB package unavailable on Ubuntu 20.04
+      "12.4":
+      "12.5":
+      "12.6":
 cutensor:
   # https://docs.nvidia.com/cuda/cutensor/
   # https://developer.nvidia.com/cutensor/downloads
@@ -168,10 +187,12 @@ cutensor:
       "11.7":
       "11.8":
       "12.0":
-      "12.1":  # assumed
-      "12.2":  # assumed
-      "12.3":  # assumed
-      "12.4":  # assumed
+      "12.1":
+      "12.2":
+      "12.3":
+      "12.4":
+      "12.5":
+      "12.6":
 cusparselt:
   # https://docs.nvidia.com/cuda/cusparselt/
   # https://developer.nvidia.com/cusparselt/downloads
@@ -185,6 +206,8 @@ cusparselt:
       "12.2":
       "12.3":
       "12.4":
+      "12.5":
+      "12.6":
 cudnn:
   # https://docs.nvidia.com/deeplearning/cudnn/support-matrix/index.html
   # https://docs.nvidia.com/deeplearning/cudnn/archives/
@@ -222,6 +245,10 @@ cudnn:
         alias: "12.0"
       "12.4":  # assumed
         alias: "12.0"
+      "12.5": # assumed
+        alias: "12.0"
+      "12.6": # assumed
+        alias: "12.0"
 
 ###############################################################################
 # Python
@@ -231,8 +258,6 @@ cudnn:
 # When adding a new Python version, you may also need to add the version to the
 # list of supported Python versions in the Python libraries.
 python:
-  "3.9":
-    spec: "3.9.6"
   "3.10":
     spec: "3.10.0"
   "3.11":
@@ -250,39 +275,35 @@ python:
 # When adding a new NumPy version, you may also need to add the version to the
 # list of supported Python versions in SciPy.
 numpy:
-  "1.22":
-    spec: "==1.22.*"
-    python:
-      # - "3.8"
-      - "3.9"
-      - "3.10"
-  "1.23":
-    spec: "==1.23.*"
-    python:
-      # - "3.8"
-      - "3.9"
-      - "3.10"
-      - "3.11"
   "1.24":
     spec: "==1.24.*"
     python:
-      # - "3.8"
-      - "3.9"
       - "3.10"
       - "3.11"
   "1.25":
     spec: "==1.25.*"
     python:
-      - "3.9"
       - "3.10"
       - "3.11"
   "1.26":
     spec: "==1.26.*"
     python:
-      - "3.9"
       - "3.10"
       - "3.11"
       - "3.12"
+  # "2.0":
+  #   spec: "==2.0.*"
+  #   python:
+  #     - "3.10"
+  #     - "3.11"
+  #     - "3.12"
+  # "2.1":
+  #   spec: "==2.1.*"
+  #   python:
+  #     - "3.10"
+  #     - "3.11"
+  #     - "3.12"
+  #     # - "3.13"
   "pre":
     spec: ">=0a0"  # latest, including pre-releases
 scipy:
@@ -291,91 +312,55 @@ scipy:
     # Note: Optuna depends on SciPy, so Optuna must also be set to null when
     # setting SciPy to null to run tests without SciPy.
     spec: null
-  "1.7":
-    spec: "==1.7.*"
-    python:
-      # - "3.7"
-      # - "3.8"
-      - "3.9"
-      - "3.10"
-    numpy:
-      # - "1.16"
-      # - "1.17"
-      # - "1.18"
-      # - "1.19"
-      # - "1.20"
-      # - "1.21"
-      - "1.22"
-  "1.8":
-    spec: "==1.8.*"
-    python:
-      # - "3.8"
-      - "3.9"
-      - "3.10"
-    numpy:
-      # - "1.17"
-      # - "1.18"
-      # - "1.19"
-      # - "1.20"
-      # - "1.21"
-      - "1.22"
-      - "1.23"
-      - "1.24"
-  "1.9":
-    spec: "==1.9.*"
-    python:
-      # - "3.8"
-      - "3.9"
-      - "3.10"
-      - "3.11"
-    numpy:
-      # - "1.17"
-      # - "1.18"
-      # - "1.19"
-      # - "1.20"
-      # - "1.21"
-      - "1.22"
-      - "1.23"
   "1.10":
     spec: "==1.10.*"
     python:
-      # - "3.8"
-      - "3.9"
       - "3.10"
       - "3.11"
     numpy:
-      # - "1.20"
-      # - "1.21"
-      - "1.22"
-      - "1.23"
       - "1.24"
   "1.11":
     spec: "==1.11.*"
     python:
-      - "3.9"
       - "3.10"
       - "3.11"
       - "3.12"
     numpy:
-      # - "1.21"
-      - "1.22"
-      - "1.23"
       - "1.24"
       - "1.25"
       - "1.26"
   "1.12":
     spec: "==1.12.*"
     python:
-      - "3.9"
       - "3.10"
       - "3.11"
       - "3.12"
     numpy:
-      - "1.22"
-      - "1.23"
       - "1.24"
       - "1.25"
       - "1.26"
+  "1.13":
+    spec: "==1.13.*"
+    python:
+      - "3.10"
+      - "3.11"
+      - "3.12"
+    numpy:
+      - "1.24"
+      - "1.25"
+      - "1.26"
+  "1.14":
+    spec: "==1.14.*"
+    python:
+      - "3.10"
+      - "3.11"
+      - "3.12"
+    numpy:
+      - "1.24"
+      - "1.25"
+      - "1.26"
+      # - "2.0"
+      # - "2.1"
   "pre":
     spec: ">=0a0"  # latest, including pre-releases
 optuna:

@@ -69,8 +69,9 @@ def sepfir2d(input, hrow, hcol):
     hrow = hrow.astype(dtype, copy=False)
     hcol = hcol.astype(dtype, copy=False)
     filters = (hcol[::-1].conj(), hrow[::-1].conj())
+    axes = (0, 1)
     return cupyx.scipy.ndimage._filters._run_1d_correlates(
-        input, (0, 1), lambda i: filters[i], None, 'reflect', 0)
+        input, axes, (0, 1), lambda i: filters[i], None, 'reflect', 0)
 
 
 def _quadratic(x):

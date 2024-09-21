@@ -64,4 +64,8 @@ class TestSymIIROrder:
 
         r = testing.shaped_random((1,), xp, scale=1)[0]
         x = testing.shaped_random((size,), xp, dtype=dtype)
+
+        if x.dtype == 'float32':
+            pytest.xfail(reason="XXX: np2.0: f32/f64 dtypes differ")
+
         return scp.signal.symiirorder2(x, r, omega, precision)

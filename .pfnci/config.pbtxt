@@ -434,6 +434,76 @@ configs {
   }
 }
 
+# CUDA 12.5 | Linux
+configs {
+  key: "cupy.linux.cuda125"
+  value {
+    requirement {
+      cpu: 8
+      memory: 50
+      disk: 10
+      gpu: 1
+    }
+    time_limit: {
+      seconds: 21600
+    }
+    environment_variables { key: "GPU" value: "1" }
+    command: ".pfnci/linux/main-flexci.sh cuda125"
+  }
+}
+# CUDA 12.5 (Multi-GPU) | Linux
+configs {
+  key: "cupy.linux.cuda125.multi"
+  value {
+    requirement {
+      cpu: 8
+      memory: 50
+      disk: 10
+      gpu: 2
+    }
+    time_limit: {
+      seconds: 21600
+    }
+    environment_variables { key: "GPU" value: "2" }
+    command: ".pfnci/linux/main-flexci.sh cuda125.multi"
+  }
+}
+
+# CUDA 12.6 | Linux
+configs {
+  key: "cupy.linux.cuda126"
+  value {
+    requirement {
+      cpu: 8
+      memory: 50
+      disk: 10
+      gpu: 1
+    }
+    time_limit: {
+      seconds: 21600
+    }
+    environment_variables { key: "GPU" value: "1" }
+    command: ".pfnci/linux/main-flexci.sh cuda126"
+  }
+}
+# CUDA 12.6 (Multi-GPU) | Linux
+configs {
+  key: "cupy.linux.cuda126.multi"
+  value {
+    requirement {
+      cpu: 8
+      memory: 50
+      disk: 10
+      gpu: 2
+    }
+    time_limit: {
+      seconds: 21600
+    }
+    environment_variables { key: "GPU" value: "2" }
+    command: ".pfnci/linux/main-flexci.sh cuda126.multi"
+  }
+}
+
 # CUDA 11.x + CUDA Python
 configs {
   key: "cupy.linux.cuda11x-cuda-python"
@@ -883,5 +953,47 @@ configs {
     }
     environment_variables { key: "GPU" value: "2" }
     command: ".pfnci\\windows\\run.bat 12.4 3.12 test"
+  }
+}
+
+configs {
+  key: "cupy.win.cuda125"
+  value {
+    requirement {
+      cpu: 8
+      memory: 24
+      disk: 10
+      gpu: 2
+      image: "windows"
+    }
+    time_limit {
+      seconds: 36000
+    }
+    checkout_strategy {
+      include_dot_git: true
+    }
+    environment_variables { key: "GPU" value: "2" }
+    command: ".pfnci\\windows\\run.bat 12.5 3.12 test"
+  }
+}
+
+configs {
+  key: "cupy.win.cuda126"
+  value {
+    requirement {
+      cpu: 8
+      memory: 24
+      disk: 10
+      gpu: 2
+      image: "windows"
+    }
+    time_limit {
+      seconds: 72000
+    }
+    checkout_strategy {
+      include_dot_git: true
+    }
+    environment_variables { key: "GPU" value: "2" }
+    command: ".pfnci\\windows\\run.bat 12.6 3.12 test"
   }
 }

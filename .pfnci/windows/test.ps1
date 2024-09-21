@@ -80,7 +80,7 @@ function Main {
     # Build
     echo "Setting up test environment"
     RunOrDie python -V
-    RunOrDie python -m pip install -U pip setuptools wheel
+    RunOrDie python -m pip install -U pip setuptools==73.0.1 wheel
     RunOrDie python -m pip freeze
 
     echo "Building..."

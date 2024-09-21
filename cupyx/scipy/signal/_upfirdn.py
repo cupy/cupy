@@ -441,7 +441,7 @@ def upfirdn(
     up=1,
     down=1,
     axis=-1,
-    mode=None,
+    mode="constant",
     cval=0
 ):
     """
@@ -462,9 +462,9 @@ def upfirdn(
         linear filter. The filter is applied to each subarray along
         this axis. Default is -1.
     mode : str, optional
-        This parameter is not implemented.
+        This parameter is not implemented for values other than ``"constant"``.
     cval : float, optional
-        This parameter is not implemented.
+        This parameter is not implemented for values other than 0.
 
     Returns
     -------
@@ -492,7 +492,9 @@ def upfirdn(
     .. [1] P. P. Vaidyanathan, Multirate Systems and Filter Banks,
        Prentice Hall, 1993.
     """
-    if mode is not None or cval != 0:
+    if mode is None:
+        mode = "constant"  # For backwards compatibility
+    if mode != "constant" or cval != 0:
         raise NotImplementedError(f"{mode = } and {cval =} not implemented.")
 
     ufd = _UpFIRDn(h, x.dtype, int(up), int(down))

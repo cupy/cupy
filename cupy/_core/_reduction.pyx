@@ -624,8 +624,10 @@ cdef class _SimpleReductionKernel(_AbstractReductionKernel):
             self, list in_args, list out_args, dtype):
         cdef _kernel._Op op
 
+        # XXX: weaks
+        weaks = None
         op = self._ops.guess_routine(
-            self.name, self._routine_cache, in_args, dtype, self._ops)
+            self.name, self._routine_cache, in_args, weaks, dtype, self._ops)
         map_expr, reduce_expr, post_map_expr, reduce_type = op.routine
 
         if reduce_type is None:
@@ -820,9 +822,10 @@ cdef class ReductionKernel(_AbstractReductionKernel):
                                  "a positional and keyword argument")
             out_args = [out]
 
+        # XXX: needs to handle weak scalars from _preprocess_args?
         dev_id = device.get_device_id()
-        in_args = _preprocess_args(dev_id, args[:self.nin], False)
-        out_args = _preprocess_args(dev_id, out_args, False)
+        in_args, _ = _preprocess_args(dev_id, args[:self.nin], False)
+        out_args, _ = _preprocess_args(dev_id, out_args, False)
         in_args = _broadcast(in_args, self.in_params, False, broad_shape)
 
         return self._call(

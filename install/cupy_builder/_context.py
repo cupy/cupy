@@ -74,6 +74,9 @@ class Context:
               f'matching {include_pattern}): {cache_key}')
         self.cupy_cache_key = cache_key
 
+        # Host compiler path for Windows, see `_command.py`.
+        self.win32_cl_exe_path: Optional[str] = None
+
 
 def parse_args(argv: List[str]) -> Tuple[Any, List[str]]:
     parser = argparse.ArgumentParser(add_help=False)

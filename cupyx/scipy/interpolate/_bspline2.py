@@ -269,7 +269,7 @@ def make_interp_spline(x, y, k=3, t=None, bc_type=None, axis=0,
         # Prepare the I/O arrays for the kernels. We only need the non-zero
         # b-splines at x[0] and x[-1], but the kernel wants more arrays which
         # we allocate and ignore (mode != 1)
-        temp = cupy.zeros((nt, ), dtype=float)
+        temp = cupy.zeros((2 * k + 1, ), dtype=float)
         num_c = 1
         dummy_c = cupy.empty((nt, num_c), dtype=float)
         out = cupy.empty((1, 1), dtype=dummy_c.dtype)

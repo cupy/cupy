@@ -2,7 +2,11 @@
 ARG BASE_IMAGE="nvidia/cuda:11.2.2-devel-centos7"
 FROM ${BASE_IMAGE}
 
-RUN yum -y install centos-release-scl && \
+COPY setup/setup-yum-centos7-pre.sh setup/setup-yum-centos7-post.sh /
+
+RUN /setup-yum-centos7-pre.sh && \
+    yum -y install centos-release-scl && \
+    /setup-yum-centos7-post.sh && \
     yum -y install devtoolset-7-gcc-c++
 ENV PATH "/opt/rh/devtoolset-7/root/usr/bin:${PATH}"
 ENV LD_LIBRARY_PATH "/opt/rh/devtoolset-7/root/usr/lib64:/opt/rh/devtoolset-7/root/usr/lib:${LD_LIBRARY_PATH}"
@@ -17,13 +21,18 @@ RUN yum -y install \
 
 ENV PATH "/usr/lib64/ccache:${PATH}"
 
+RUN yum -y install openssl11-devel
+ENV CFLAGS "-I/usr/include/openssl11"
+ENV CPPFLAGS "-I/usr/include/openssl11"
+ENV LDFLAGS "-L/usr/lib64/openssl11"
+
 RUN git clone https://github.com/pyenv/pyenv.git /opt/pyenv
 ENV PYENV_ROOT "/opt/pyenv"
 ENV PATH "${PYENV_ROOT}/shims:${PYENV_ROOT}/bin:${PATH}"
-RUN pyenv install 3.9.6 && \
-    pyenv global 3.9.6 && \
-    pip install -U setuptools pip wheel
+RUN pyenv install 3.10.0 && \
+    pyenv global 3.10.0 && \
+    pip install -U setuptools==73.0.1 pip wheel
 
-RUN pip install -U 'numpy==1.22.*' 'scipy==1.7.*' 'optuna==3.*' 'cython==0.29.*'
+RUN pip install -U 'numpy==1.24.*' 'scipy==1.10.*' 'optuna==3.*' 'cython==0.29.*'
 RUN pip uninstall -y mpi4py cuda-python && \
     pip check

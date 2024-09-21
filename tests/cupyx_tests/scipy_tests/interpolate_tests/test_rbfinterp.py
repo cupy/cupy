@@ -384,9 +384,11 @@ class _TestRBFInterpolator:
         d = xp.zeros(1)
         self.build(scp, y, d, kernel='thin_plate_spline')
 
+    @pytest.mark.skip("XXX: NP2.0: scipy does not emit the warning")
     @testing.numpy_cupy_allclose(scipy_name='scp', accept_error=UserWarning)
     @pytest.mark.parametrize('kernel',
-                             [kl for kl in _NAME_TO_MIN_DEGREE])
+                             [kl for kl in _NAME_TO_MIN_DEGREE
+                              if _NAME_TO_MIN_DEGREE[kl] >= 1])
     def test_degree_warning(self, xp, scp, kernel):
         y = xp.linspace(0, 1, 5)[:, None]
         d = xp.zeros(5)
@@ -394,6 +396,15 @@ class _TestRBFInterpolator:
         with warnings.catch_warnings():
             warnings.simplefilter("error")
             self.build(scp, y, d, epsilon=1.0, kernel=kernel, degree=deg-1)
+
+    @pytest.mark.parametrize('kernel', [kl for kl in _NAME_TO_MIN_DEGREE])
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_minus_one_degree(self, xp, scp, kernel):
+        # Make sure a degree of -1 is accepted without any warning.
+        y = xp.linspace(0, 1, 5)[:, None]
+        d = xp.zeros(5)
+        f = self.build(scp, y, d, epsilon=1.0, kernel=kernel, degree=-1)
+        return f(y)
 
     @testing.numpy_cupy_allclose(scipy_name='scp', accept_error=LinAlgError)
     def test_rank_error(self, xp, scp):

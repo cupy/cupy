@@ -119,7 +119,11 @@ class LinuxGenerator:
             assert os_version in ('7', '8')
             if os_version == '7':
                 lines += [
-                    'RUN yum -y install centos-release-scl && \\',
+                    'COPY setup/setup-yum-centos7-pre.sh setup/setup-yum-centos7-post.sh /',  # NOQA
+                    '',
+                    'RUN /setup-yum-centos7-pre.sh && \\',
+                    '    yum -y install centos-release-scl && \\',
+                    '    /setup-yum-centos7-post.sh && \\',
                     '    yum -y install devtoolset-7-gcc-c++',
                     'ENV PATH "/opt/rh/devtoolset-7/root/usr/bin:${PATH}"',
                     'ENV LD_LIBRARY_PATH "/opt/rh/devtoolset-7/root/usr/lib64:/opt/rh/devtoolset-7/root/usr/lib:${LD_LIBRARY_PATH}"',  # NOQA
@@ -141,6 +145,16 @@ class LinuxGenerator:
                 'ENV PATH "/usr/lib64/ccache:${PATH}"',
                 '',
             ]
+
+            if os_version == '7':
+                lines += [
+                    'RUN yum -y install openssl11-devel',
+                    'ENV CFLAGS "-I/usr/include/openssl11"',
+                    'ENV CPPFLAGS "-I/usr/include/openssl11"',
+                    'ENV LDFLAGS "-L/usr/lib64/openssl11"',
+                    '',
+                ]
+
             assert matrix.mpi4py is None, 'mpi4py test unsupported on CentOS'
         else:
             raise AssertionError
@@ -174,7 +188,7 @@ class LinuxGenerator:
             'ENV PATH "${PYENV_ROOT}/shims:${PYENV_ROOT}/bin:${PATH}"',
             f'RUN pyenv install {py_spec} && \\',
             f'    pyenv global {py_spec} && \\',
-            '    pip install -U setuptools pip wheel',
+            '    pip install -U setuptools==73.0.1 pip wheel',
             '',
         ]
 
