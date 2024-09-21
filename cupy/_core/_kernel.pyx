@@ -645,6 +645,8 @@ cdef list _get_out_args_from_optionals(
             raise TypeError(
                 'Output arguments type must be cupy.ndarray')
         arr = a
+        if not arr._writeable:
+            raise ValueError('assignment destination is read-only')
         if not internal.vector_equal(arr._shape, out_shape):
             raise ValueError('Out shape is mismatched')
         out_type = get_dtype(out_types[i])
@@ -684,6 +686,8 @@ cdef list _get_out_args_with_params(
             raise TypeError(
                 'Output arguments type must be cupy.ndarray')
         arr = a
+        if not arr._writeable:
+            raise ValueError('assignment destination is read-only')
         if not p.raw and not internal.vector_equal(arr._shape, out_shape):
             raise ValueError('Out shape is mismatched')
     return out_args

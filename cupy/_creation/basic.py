@@ -137,7 +137,9 @@ def eye(
     ret = zeros((N, M), dtype=dtype, order=order)
     if k <= -N or k >= M:
         return ret
-    ret.diagonal(k).fill(1)
+    diag = ret.diagonal(k).view()
+    diag.flags.writeable = True
+    diag.fill(1)
     return ret
 
 

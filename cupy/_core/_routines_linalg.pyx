@@ -601,6 +601,8 @@ cpdef _ndarray_base tensordot_core(
         or _memory_range.may_share_bounds(out, b)
     ):
         copy_to_out = c = _ndarray_init(cupy.ndarray, ret_shape, dtype, None)
+    elif not out._writeable:
+        raise ValueError('assignment destination is read-only')
     else:
         c = out
 
