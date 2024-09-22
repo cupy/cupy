@@ -350,7 +350,7 @@ cpdef getDeviceProperties(int device):
         arch['has3dGrid'] = props.arch.has3dGrid
         arch['hasDynamicParallelism'] = props.arch.hasDynamicParallelism
         properties['arch'] = arch
-    IF 0 < CUPY_HIP_VERSION < 600:  # removed in HIP 6.0.0
+    IF 0 < CUPY_HIP_VERSION < 60000000:  # removed in HIP 6.0.0
         properties['gcnArch'] = props.gcnArch
     IF CUPY_HIP_VERSION >= 310:
         properties['gcnArchName'] = props.gcnArchName
@@ -721,13 +721,13 @@ cpdef PointerAttributes pointerGetAttributes(intptr_t ptr):
             <intptr_t>attrs.devicePointer,
             <intptr_t>attrs.hostPointer,
             attrs.type)
-    ELIF 0 < CUPY_HIP_VERSION < 600:
+    ELIF 0 < CUPY_HIP_VERSION < 60000000:
         return PointerAttributes(
             attrs.device,
             <intptr_t>attrs.devicePointer,
             <intptr_t>attrs.hostPointer,
             attrs.memoryType)
-    ELIF CUPY_HIP_VERSION >= 600:
+    ELIF 60000000 <= CUPY_HIP_VERSION:
         return PointerAttributes(
             attrs.device,
             <intptr_t>attrs.devicePointer,
