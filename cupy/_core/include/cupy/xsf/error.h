@@ -1,6 +1,5 @@
 #pragma once
 
-
 typedef enum {
     SF_ERROR_OK = 0,    /* no error */
     SF_ERROR_SINGULAR,  /* singularity encountered */
@@ -19,10 +18,10 @@ typedef enum {
 
 #include "config.h"
 
-namespace special {
+namespace xsf {
 
 #ifndef SP_SPECFUN_ERROR
-SPECFUN_HOST_DEVICE inline void set_error(const char *func_name, sf_error_t code, const char *fmt, ...) {
+XSF_HOST_DEVICE inline void set_error(const char *func_name, sf_error_t code, const char *fmt, ...) {
     // nothing
 }
 #else
@@ -30,7 +29,7 @@ void set_error(const char *func_name, sf_error_t code, const char *fmt, ...);
 #endif
 
 template <typename T>
-SPECFUN_HOST_DEVICE void set_error_and_nan(const char *name, sf_error_t code, T &value) {
+XSF_HOST_DEVICE void set_error_and_nan(const char *name, sf_error_t code, T &value) {
     if (code != SF_ERROR_OK) {
         set_error(name, code, nullptr);
 
@@ -41,7 +40,7 @@ SPECFUN_HOST_DEVICE void set_error_and_nan(const char *name, sf_error_t code, T 
 }
 
 template <typename T>
-SPECFUN_HOST_DEVICE void set_error_and_nan(const char *name, sf_error_t code, std::complex<T> &value) {
+XSF_HOST_DEVICE void set_error_and_nan(const char *name, sf_error_t code, std::complex<T> &value) {
     if (code != SF_ERROR_OK) {
         set_error(name, code, nullptr);
 
@@ -52,6 +51,6 @@ SPECFUN_HOST_DEVICE void set_error_and_nan(const char *name, sf_error_t code, st
     }
 }
 
-} // namespace special
+} // namespace xsf
 
 #endif

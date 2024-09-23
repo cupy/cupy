@@ -74,7 +74,7 @@
 #include "const.h"
 #include "polevl.h"
 
-namespace special {
+namespace xsf {
 namespace cephes {
     namespace detail {
         constexpr double psi_A[] = {8.33333333333333333333E-2,  -2.10927960927960927961E-2, 7.57575757575757575758E-3,
@@ -97,7 +97,7 @@ namespace cephes {
                                     2.0767117023730469,
                                     1.0};
 
-        SPECFUN_HOST_DEVICE double digamma_imp_1_2(double x) {
+        XSF_HOST_DEVICE double digamma_imp_1_2(double x) {
             /*
              * Rational approximation on [1, 2] taken from Boost.
              *
@@ -117,17 +117,17 @@ namespace cephes {
             g = x - psi_root1;
             g -= psi_root2;
             g -= psi_root3;
-            r = special::cephes::polevl(x - 1.0, psi_P, 5) / special::cephes::polevl(x - 1.0, psi_Q, 6);
+            r = xsf::cephes::polevl(x - 1.0, psi_P, 5) / xsf::cephes::polevl(x - 1.0, psi_Q, 6);
 
             return g * psi_Y + g * r;
         }
 
-        SPECFUN_HOST_DEVICE double psi_asy(double x) {
+        XSF_HOST_DEVICE double psi_asy(double x) {
             double y, z;
 
             if (x < 1.0e17) {
                 z = 1.0 / (x * x);
-                y = z * special::cephes::polevl(z, psi_A, 6);
+                y = z * xsf::cephes::polevl(z, psi_A, 6);
             } else {
                 y = 0.0;
             }
@@ -136,7 +136,7 @@ namespace cephes {
         }
     } // namespace detail
 
-    SPECFUN_HOST_DEVICE double psi(double x) {
+    XSF_HOST_DEVICE double psi(double x) {
         double y = 0.0;
         double q, r;
         int i, n;
@@ -191,4 +191,4 @@ namespace cephes {
         return y;
     }
 } // namespace cephes
-} // namespace special
+} // namespace xsf

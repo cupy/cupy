@@ -52,7 +52,7 @@
 #include "gamma.h"
 #include "trig.h"
 
-namespace special {
+namespace xsf {
 namespace cephes {
 
     namespace detail {
@@ -71,7 +71,7 @@ namespace cephes {
 
     } // namespace detail
 
-    SPECFUN_HOST_DEVICE double rgamma(double x) {
+    XSF_HOST_DEVICE double rgamma(double x) {
         double w, y, z;
         int sign;
 
@@ -122,4 +122,4 @@ namespace cephes {
         return (y);
     }
 } // namespace cephes
-} // namespace special
+} // namespace xsf

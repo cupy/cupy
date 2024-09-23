@@ -69,7 +69,7 @@
 #include "const.h"
 #include "polevl.h"
 
-namespace special {
+namespace xsf {
 namespace cephes {
 
     namespace detail {
@@ -88,7 +88,7 @@ namespace cephes {
 
     } // namespace detail
 
-    SPECFUN_HOST_DEVICE inline double ellpk(double x) {
+    XSF_HOST_DEVICE inline double ellpk(double x) {
 
         if (x < 0.0) {
             set_error("ellpk", SF_ERROR_DOMAIN, NULL);
@@ -114,4 +114,4 @@ namespace cephes {
         }
     }
 } // namespace cephes
-} // namespace special
+} // namespace xsf

@@ -60,17 +60,21 @@
  * - 09-10-2016: improved asymptotic expansion for large n
  */
 
+#pragma once
+
 #include "../config.h"
-#include "error.h"
+#include "../error.h"
+#include "const.h"
 #include "gamma.h"
 #include "polevl.h"
 
-namespace special {
+namespace xsf {
 namespace cephes {
 
     namespace detail {
 
-        constexpr int expn_nA = 13 constexpr double expn_A0[] = {1.00000000000000000};
+        constexpr int expn_nA = 13;
+        constexpr double expn_A0[] = {1.00000000000000000};
         constexpr double expn_A1[] = {1.00000000000000000};
         constexpr double expn_A2[] = {-2.00000000000000000, 1.00000000000000000};
         constexpr double expn_A3[] = {6.00000000000000000, -8.00000000000000000, 1.00000000000000000};
@@ -101,12 +105,12 @@ namespace cephes {
                                        92199790224.0000000,  -101180433024.000000, 56041398784.0000000,
                                        -15548960784.0000000, 2051482776.00000000,  -114876376.000000000,
                                        2170626.00000000000,  -8166.00000000000000, 1.00000000000000000};
-        constexpr double *expn_expn_A[] = {expn_A0, expn_A1, expn_A2, expn_A3,  expn_A4,  expn_A5, expn_A6,
-                                           expn_A7, expn_A8, expn_A9, expn_A10, expn_A11, expn_A12};
+        constexpr const double *expn_A[] = {expn_A0, expn_A1, expn_A2, expn_A3,  expn_A4,  expn_A5, expn_A6,
+                                            expn_A7, expn_A8, expn_A9, expn_A10, expn_A11, expn_A12};
         constexpr int expn_Adegs[] = {0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11};
 
         /* Asymptotic expansion for large n, DLMF 8.20(ii) */
-        SPECFUN_HOST_DEVICE double expn_large_n(int n, double x) {
+        XSF_HOST_DEVICE double expn_large_n(int n, double x) {
             int k;
             double p = n;
             double lambda = x / p;
@@ -125,121 +129,58 @@ namespace cephes {
             fac *= multiplier;
             res += fac;
 
-            for (k = 2; k < nA; k++) {
+            for (k = 2; k < expn_nA; k++) {
                 fac *= multiplier;
                 term = fac * polevl(lambda, expn_A[k], expn_Adegs[k]);
                 res += term;
-                if (std::abs(term) < MACHEP * fabs(res)) {
+                if (std::abs(term) < MACHEP * std::abs(res)) {
                     break;
                 }
             }
 
             return expfac * res;
         }
+    } // namespace detail
 
-        SPECFUN_HOST_DEVICE double expn(int n, double x) {
-            double ans, r, t, yk, xk;
-            double pk, pkm1, pkm2, qk, qkm1, qkm2;
-            double psi, z;
-            int i, k;
-            constexpr double big = 1.44115188075855872E+17;
+    XSF_HOST_DEVICE double expn(int n, double x) {
+        double ans, r, t, yk, xk;
+        double pk, pkm1, pkm2, qk, qkm1, qkm2;
+        double psi, z;
+        int i, k;
+        constexpr double big = 1.44115188075855872E+17;
 
-            if (std::isnan(x)) {
-                return std::numeric_limits<double>::quiet_NaN();
-            } else if (n < 0 || x < 0) {
-                set_error("expn", SF_ERROR_DOMAIN, NULL);
-                return std::numeric_limits<double>::quiet_NaN();
-            }
+        if (std::isnan(x)) {
+            return std::numeric_limits<double>::quiet_NaN();
+        } else if (n < 0 || x < 0) {
+            set_error("expn", SF_ERROR_DOMAIN, NULL);
+            return std::numeric_limits<double>::quiet_NaN();
+        }
 
-            if (x > detail::MAXLOG) {
-                return (0.0);
-            }
+        if (x > detail::MAXLOG) {
+            return (0.0);
+        }
 
-            if (x == 0.0) {
-                if (n < 2) {
-                    set_error("expn", SF_ERROR_SINGULAR, NULL);
-                    return std::numeric_limits<double>::infinity();
-                } else {
-                    return (1.0 / (n - 1.0));
-                }
-            }
-
-            if (n == 0) {
-                return (std::exp(-x) / x);
-            }
-
-            /* Asymptotic expansion for large n, DLMF 8.20(ii) */
-            if (n > 50) {
-                ans = detail::expn_large_n(n, x);
-                goto done;
-            }
-
-            if (x > 1.0) {
-                goto cfrac;
-            }
-
-            /* Power series expansion, DLMF 8.19.8 */
-            psi = -detail::SCIPY_EULER - std::log(x);
-            for (i = 1; i < n; i++) {
-                psi = psi + 1.0 / i;
-            }
-
-            class SeriesGenerator {
-              public:
-                SeriesGenerator(double z, int n) : z(z), pk(1.0 - n), xk(0.0), yk(1.0) {
-                    if (n == 1) {
-                        current_term = 0.0;
-                    } else {
-                        current_term = 1.0 / pk;
-                    }
-                }
-
-                double operator()() {
-                    xk += 1.0;
-                    yk *= z / xk;
-                    pk += 1.0;
-                    if (pk != 0.0) {
-                        current_term = yk / pk;
-                    } else {
-                        current_term = 0.0;
-                    }
-                    return current_term;
-                }
-
-              private:
-                double z, pk, xk, yk;
-                double current_term;
-            };
-
-            z = -x;
-            xk = 0.0;
-            yk = 1.0;
-            pk = 1.0 - n;
-            if (n == 1) {
-                ans = 0.0;
+        if (x == 0.0) {
+            if (n < 2) {
+                set_error("expn", SF_ERROR_SINGULAR, NULL);
+                return std::numeric_limits<double>::infinity();
             } else {
-                ans = 1.0 / pk;
+                return (1.0 / (n - 1.0));
             }
-            do {
-                xk += 1.0;
-                yk *= z / xk;
-                pk += 1.0;
-                if (pk != 0.0) {
-                    ans += yk / pk;
-                }
-                if (ans != 0.0)
-                    t = std::abs(yk / ans);
-                else
-                    t = 1.0;
-            } while (t > detail::MACHEP);
-            k = xk;
-            t = n;
-            r = n - 1;
-            ans = (std::pow(z, r) * psi / Gamma(t)) - ans;
-            goto done;
+        }
 
-            /* Continued fraction, DLMF 8.19.17 */
-        cfrac:
+        if (n == 0) {
+            return (std::exp(-x) / x);
+        }
+
+        /* Asymptotic expansion for large n, DLMF 8.20(ii) */
+        if (n > 50) {
+            ans = detail::expn_large_n(n, x);
+            return ans;
+        }
+
+        /* Continued fraction, DLMF 8.19.17 */
+        if (x > 1.0) {
             k = 1;
             pkm2 = 1.0;
             qkm2 = x;
@@ -269,20 +210,51 @@ namespace cephes {
                 pkm1 = pk;
                 qkm2 = qkm1;
                 qkm1 = qk;
-                if (fabs(pk) > big) {
+                if (std::abs(pk) > big) {
                     pkm2 /= big;
                     pkm1 /= big;
                     qkm2 /= big;
                     qkm1 /= big;
                 }
-            } while (t > MACHEP);
+            } while (t > detail::MACHEP);
 
             ans *= std::exp(-x);
-
-        done:
-            return (ans);
+            return ans;
         }
 
-    } // namespace detail
+        /* Power series expansion, DLMF 8.19.8 */
+        psi = -detail::SCIPY_EULER - std::log(x);
+        for (i = 1; i < n; i++) {
+            psi = psi + 1.0 / i;
+        }
+
+        z = -x;
+        xk = 0.0;
+        yk = 1.0;
+        pk = 1.0 - n;
+        if (n == 1) {
+            ans = 0.0;
+        } else {
+            ans = 1.0 / pk;
+        }
+        do {
+            xk += 1.0;
+            yk *= z / xk;
+            pk += 1.0;
+            if (pk != 0.0) {
+                ans += yk / pk;
+            }
+            if (ans != 0.0)
+                t = std::abs(yk / ans);
+            else
+                t = 1.0;
+        } while (t > detail::MACHEP);
+        k = xk;
+        t = n;
+        r = n - 1;
+        ans = (std::pow(z, r) * psi / Gamma(t)) - ans;
+        return ans;
+    }
+
 } // namespace cephes
-} // namespace special
+} // namespace xsf

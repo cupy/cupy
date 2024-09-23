@@ -60,10 +60,10 @@
 
 #include "../config.h"
 
-namespace special {
+namespace xsf {
 namespace cephes {
 
-    SPECFUN_HOST_DEVICE double chbevl(double x, const double array[], int n) {
+    XSF_HOST_DEVICE double chbevl(double x, const double array[], int n) {
         double b0, b1, b2;
         const double *p;
         int i;
@@ -82,4 +82,4 @@ namespace cephes {
         return (0.5 * (b0 - b2));
     }
 } // namespace cephes
-} // namespace special
+} // namespace xsf

@@ -3,12 +3,12 @@
 from cupy import _core
 
 
-lambertw_preamble = "#include <cupy/special/lambertw.h>"
+lambertw_preamble = "#include <cupy/xsf/lambertw.h>"
 
 _lambertw_scalar = _core.create_ufunc(
     "cupyx_scipy_lambertw_scalar",
     ("Dld->D", "Fif->f"),
-    "out0 = special::lambertw(in0, in1, in2)",
+    "out0 = xsf::lambertw(in0, in1, in2)",
     preamble=lambertw_preamble,
     doc='''Internal function. Do not use.''')
 

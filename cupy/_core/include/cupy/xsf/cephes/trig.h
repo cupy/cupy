@@ -13,12 +13,12 @@
 
 #include "../config.h"
 
-namespace special {
+namespace xsf {
 namespace cephes {
 
     /* Compute sin(pi * x). */
     template <typename T>
-    SPECFUN_HOST_DEVICE T sinpi(T x) {
+    XSF_HOST_DEVICE T sinpi(T x) {
         T s = 1.0;
 
         if (x < 0.0) {
@@ -38,7 +38,7 @@ namespace cephes {
 
     /* Compute cos(pi * x) */
     template <typename T>
-    SPECFUN_HOST_DEVICE T cospi(T x) {
+    XSF_HOST_DEVICE T cospi(T x) {
         if (x < 0.0) {
             x = -x;
         }
@@ -55,4 +55,4 @@ namespace cephes {
         }
     }
 } // namespace cephes
-} // namespace special
+} // namespace xsf

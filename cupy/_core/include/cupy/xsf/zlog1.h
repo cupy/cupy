@@ -7,10 +7,10 @@
 
 #include "config.h"
 
-namespace special {
+namespace xsf {
 namespace detail {
 
-    SPECFUN_HOST_DEVICE inline std::complex<double> zlog1(std::complex<double> z) {
+    XSF_HOST_DEVICE inline std::complex<double> zlog1(std::complex<double> z) {
         /* Compute log, paying special attention to accuracy around 1. We
          * implement this ourselves because some systems (most notably the
          * Travis CI machines) are weak in this regime. */
@@ -32,4 +32,4 @@ namespace detail {
         return res;
     }
 } // namespace detail
-} // namespace special
+} // namespace xsf

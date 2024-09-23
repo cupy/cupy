@@ -54,11 +54,11 @@
 #include "const.h"
 #include "gamma.h"
 
-namespace special {
+namespace xsf {
 namespace cephes {
 
-    SPECFUN_HOST_DEVICE double beta(double, double);
-    SPECFUN_HOST_DEVICE double lbeta(double, double);
+    XSF_HOST_DEVICE double beta(double, double);
+    XSF_HOST_DEVICE double lbeta(double, double);
 
     namespace detail {
         constexpr double beta_ASYMP_FACTOR = 1e6;
@@ -66,7 +66,7 @@ namespace cephes {
         /*
          * Asymptotic expansion for  ln(|B(a, b)|) for a > ASYMP_FACTOR*max(|b|, 1).
          */
-        SPECFUN_HOST_DEVICE inline double lbeta_asymp(double a, double b, int *sgn) {
+        XSF_HOST_DEVICE inline double lbeta_asymp(double a, double b, int *sgn) {
             double r = lgam_sgn(b, sgn);
             r -= b * std::log(a);
 
@@ -81,21 +81,21 @@ namespace cephes {
          * Special case for a negative integer argument
          */
 
-        SPECFUN_HOST_DEVICE inline double beta_negint(int a, double b) {
+        XSF_HOST_DEVICE inline double beta_negint(int a, double b) {
             int sgn;
             if (b == static_cast<int>(b) && 1 - a - b > 0) {
                 sgn = (static_cast<int>(b) % 2 == 0) ? 1 : -1;
-                return sgn * special::cephes::beta(1 - a - b, b);
+                return sgn * xsf::cephes::beta(1 - a - b, b);
             } else {
                 set_error("lbeta", SF_ERROR_OVERFLOW, NULL);
                 return std::numeric_limits<double>::infinity();
             }
         }
 
-        SPECFUN_HOST_DEVICE inline double lbeta_negint(int a, double b) {
+        XSF_HOST_DEVICE inline double lbeta_negint(int a, double b) {
             double r;
             if (b == static_cast<int>(b) && 1 - a - b > 0) {
-                r = special::cephes::lbeta(1 - a - b, b);
+                r = xsf::cephes::lbeta(1 - a - b, b);
                 return r;
             } else {
                 set_error("lbeta", SF_ERROR_OVERFLOW, NULL);
@@ -104,7 +104,7 @@ namespace cephes {
         }
     } // namespace detail
 
-    SPECFUN_HOST_DEVICE inline double beta(double a, double b) {
+    XSF_HOST_DEVICE inline double beta(double a, double b) {
         double y;
         int sign = 1;
 
@@ -178,7 +178,7 @@ namespace cephes {
 
     /* Natural log of |beta|. */
 
-    SPECFUN_HOST_DEVICE inline double lbeta(double a, double b) {
+    XSF_HOST_DEVICE inline double lbeta(double a, double b) {
         double y;
         int sign;
 
@@ -252,4 +252,4 @@ namespace cephes {
         return (std::log(y));
     }
 } // namespace cephes
-} // namespace special
+} // namespace xsf

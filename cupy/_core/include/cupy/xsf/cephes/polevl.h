@@ -31,7 +31,7 @@
  * coef[0] = C  , ..., coef[N] = C  .
  *            N                   0
  *
- * The function p1evl() assumes that c_N = 1.0 so that coefficient
+ * The function p1evl() assumes that c_N = 1.0 so that coefficent
  * is omitted from the array.  Its calling arguments are
  * otherwise the same as polevl().
  *
@@ -60,13 +60,14 @@
 /* Scipy changes:
  * - 06-23-2016: add code for evaluating rational functions
  */
+
 #pragma once
 
 #include "../config.h"
 
-namespace special {
+namespace xsf {
 namespace cephes {
-    SPECFUN_HOST_DEVICE inline double polevl(double x, const double coef[], int N) {
+    XSF_HOST_DEVICE inline double polevl(double x, const double coef[], int N) {
         double ans;
         int i;
         const double *p;
@@ -97,7 +98,7 @@ namespace cephes {
      * Otherwise same as polevl.
      */
 
-    SPECFUN_HOST_DEVICE inline double p1evl(double x, const double coef[], int N) {
+    XSF_HOST_DEVICE inline double p1evl(double x, const double coef[], int N) {
         double ans;
         const double *p;
         int i;
@@ -115,7 +116,8 @@ namespace cephes {
 
     /* Evaluate a rational function. See [1]. */
 
-    SPECFUN_HOST_DEVICE inline double ratevl(double x, const double num[], int M, const double denom[], int N) {
+    /* The function ratevl is only used once in cephes/lanczos.h. */
+    XSF_HOST_DEVICE inline double ratevl(double x, const double num[], int M, const double denom[], int N) {
         int i, dir;
         double y, num_ans, denom_ans;
         double absx = std::abs(x);
@@ -155,11 +157,11 @@ namespace cephes {
         }
 
         if (absx > 1) {
-            i = N - M;
+            i = M - N;
             return std::pow(x, i) * num_ans / denom_ans;
         } else {
             return num_ans / denom_ans;
         }
     }
 } // namespace cephes
-} // namespace special
+} // namespace xsf
