@@ -17,7 +17,25 @@ sici = _core.create_ufunc(
     Sine and Cosine integrals
 
     .. seealso:: :meth:`scipy.special.sici`
-  
+
     """
 )
-        
+
+shichi = _core.create_ufunc(
+    'cupyx_scipy_special_shichi',
+    (
+        ('f->ff', 'float shi, chi; xsf::shichi(in0, &shi, &chi); out0 = shi; out1 = chi;'),
+        ('d->dd', 'double shi, chi; xsf::shichi(in0, &shi, &chi); out0 = shi; out1 = chi;'),
+        ('F->FF', 'complex<float> shi, chi; xsf::shichi(in0, &shi, &chi); out0 = shi; out1 = chi;'),
+        ('D->DD', 'complex<double> shi, chi; xsf::shichi(in0, &shi, &chi); out0 = shi; out1 = chi;'),
+    ),
+    routine=None,
+    preamble="#include <cupy/xsf/sici.h>",
+    doc="""shichi
+
+    Hyperbolic sine and cosine integrals.
+
+    .. seealso:: :meth:`scipy.special.shichi`
+
+    """
+)
