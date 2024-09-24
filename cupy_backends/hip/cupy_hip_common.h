@@ -44,6 +44,11 @@ typedef void* cudaGraph_t;
 typedef void* cudaGraphNode_t;
 typedef void* cudaGraphExec_t;
 #endif
+#if HIP_VERSION >= 50000000
+typedef hipGraphNodeType cudaGraphNodeType;
+#else
+typedef int cudaGraphNodeType;
+#endif
 typedef unsigned long long cudaGraphConditionalHandle;  // not yet supported
 typedef struct CUlinkState_st* CUlinkState;
 typedef struct CUarray_st* CUarray;

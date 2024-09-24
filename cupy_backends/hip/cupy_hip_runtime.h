@@ -600,6 +600,15 @@ cudaError_t cudaGraphDebugDotPrint(cudaGraph_t graph, const char* path, unsigned
 #endif
 }
 
+struct cudaGraphNodeParams {
+    cudaGraphNodeType type;
+    int reserved0[3];
+    union {
+        long long reserved1[29];
+    };
+    long long reserved2;
+};
+
 cudaError_t cudaGraphAddNode(...) {
     return hipErrorUnknown;
 }
