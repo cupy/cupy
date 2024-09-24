@@ -777,7 +777,12 @@ from cupy._core._reduction import ReductionKernel  # NOQA
 # -----------------------------------------------------------------------------
 
 from cupy._core import fromDlpack  # NOQA
-from cupy._core import from_dlpack  # NOQA
+from cupy._core import from_dlpack as _from_dlpack # NOQA
+
+def from_dlpack(array, /, *, device=None, copy=None):
+    return _from_dlpack(array, device=device, copy=copy)
+
+from_dlpack.__doc__ == _from_dlpack.__doc__
 
 
 def asnumpy(a, stream=None, order='C', out=None, *, blocking=True):

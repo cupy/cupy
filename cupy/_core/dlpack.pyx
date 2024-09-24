@@ -341,7 +341,7 @@ cdef inline _ndarray_base _dlpack_to_cupy_array(dltensor) except +:
     return core.ndarray(shape_vec, cp_dtype, mem_ptr, strides=strides_vec)
 
 
-cpdef from_dlpack(array):
+cpdef from_dlpack(array, device=None, copy=None):
     """Zero-copy conversion between array objects compliant with the DLPack
     data exchange protocol.
 
@@ -401,9 +401,14 @@ cpdef from_dlpack(array):
         finally:
             cupy.cuda.runtime.setDevice(prev_device)
     elif dev_type == <int>kDLCPU:
-        raise TypeError(
-            'CPU arrays cannot be directly imported to CuPy. '
-            'Use `cupy.array(numpy.from_dlpack(input))` instead.')
+        if copy is not None and copy == False:
+            raise TypeError(
+                'CPU arrays cannot be directly imported if `copy` is `False`. '
+                'Use `cupy.array(numpy.from_dlpack(input))` instead.')
+        else:
+            import numpy as np
+            import cupy as cp
+            return cp.array(np.from_dlpack(array))
     else:
         # TODO(leofang): support kDLCUDAPinned etc
         dltensor = None
