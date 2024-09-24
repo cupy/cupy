@@ -97,7 +97,6 @@ struct cudaGraphNodeParams {
     int reserved0[3];
     union {
         long long reserved1[29];
-        struct cudaConditionalNodeParams conditional;
     };
     long long reserved2;
 };
