@@ -44,6 +44,7 @@ typedef void* cudaGraph_t;
 typedef void* cudaGraphNode_t;
 typedef void* cudaGraphExec_t;
 #endif
+typedef unsigned long long cudaGraphConditionalHandle;  // not yet supported
 typedef struct CUlinkState_st* CUlinkState;
 typedef struct CUarray_st* CUarray;
 struct CUDA_ARRAY_DESCRIPTOR {
