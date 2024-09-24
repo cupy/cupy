@@ -143,12 +143,16 @@ cpdef int _create_conditional_handle_from_stream(
     )
     return handle
 
+
 cpdef Graph _append_conditional_node_to_stream(
     stream, node_type, handle
 ):
     '''
     Returns conditional node's body graph
     '''
+    IF 0 < CUPY_CUDA_VERSION < 12300:
+        raise RuntimeError('Conditional node requires CUDA 12.3 or later')
+
     status, _id, main_graph_ptr, deps_ptr, n_deps = \
         runtime.streamGetCaptureInfo(stream.ptr)
     if status != runtime.streamCaptureStatusActive:

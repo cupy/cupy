@@ -137,21 +137,6 @@ struct cudaConditionalNodeParams {
     unsigned int size;
     cudaGraph_t* phGraph_out;
 };
-struct cudaGraphNodeParams {
-    /**
-     * struct cudaGraphNodeParams is introduced at CUDA 12.2,
-     * but at CUDA 12.2, this struct does not have attribute `conditional`,
-     * which is required to build CuPy.
-     * So we re-define cudaGraphNodeParams here for CUDA 12.2.
-     */
-    cudaGraphNodeType type;
-    int reserved0[3];
-    union {
-        long long reserved1[29];
-        struct cudaConditionalNodeParams conditional;
-    };
-    long long reserved2;
-};
 typedef struct cudaGraphEdgeData_st {
     unsigned char from_port;
     unsigned char to_port;
