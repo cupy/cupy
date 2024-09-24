@@ -838,8 +838,10 @@ _allow_stream_graph_capture = \
 cpdef setStream(intptr_t handle, size_t stream):
     # TODO(leofang): The support of stream capture is not mentioned at all in
     # the cuDNN docs (as of CUDA 11.5), so we disable this functionality.
-    if (not _allow_stream_graph_capture and
-        not runtime._is_hip_environment and runtime.streamIsCapturing(stream)):
+    if (
+        not _allow_stream_graph_capture and
+        not runtime._is_hip_environment and runtime.streamIsCapturing(stream)
+    ):
         raise NotImplementedError(
             'Set the environment variable '
             '`CUPY_EXPERIMENTAL_CUDA_LIB_GRAPH_CAPTURE=1` to allow '

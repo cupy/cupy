@@ -95,6 +95,7 @@ cpdef get_current_stream(int device_id=-1):
     tls = _ThreadLocal.get()
     return tls.get_current_stream(device_id)
 
+
 class Event(object):
 
     """CUDA event, a synchronization point of CUDA streams.
@@ -397,9 +398,9 @@ class _BaseStream:
         runtime.streamBeginCaptureToGraph(
             self.ptr,
             to_graph.graph,
-            0, # dependencies_ptr
-            0, # dependency_data_ptr
-            0, # num_deps
+            0,  # dependencies_ptr
+            0,  # dependency_data_ptr
+            0,  # num_deps
             mode
         )
         self._capturing_graph_info = (to_graph, is_borrowed_graph)

@@ -11,6 +11,7 @@ from typing import (
     Callable,
     Tuple,
     Union,
+    cast
 )
 from collections import deque
 from abc import ABC, abstractmethod
@@ -46,9 +47,10 @@ __global__ void {_set_value_kernel_name}(
     f"{_set_value_kernel_name}<{t}>" for t in _set_value_cuda_types.values()
 ])
 
+
 def _set_value_to_handle(handle, val: cupy.ndarray, invert=False):
     dtype_name = val.dtype.name
-    if not dtype_name in _set_value_cuda_types.keys():
+    if dtype_name not in _set_value_cuda_types.keys():
         raise ValueError(
             "Conditional function must return any array of dtype " +
             str(tuple(_set_value_cuda_types.keys())) +
@@ -64,35 +66,40 @@ def _set_value_to_handle(handle, val: cupy.ndarray, invert=False):
     )
     _set_value_fn((1,), (1,), (handle, val, invert))
 
+
 class GraphBuilderInterface(ABC):
     @abstractmethod
     def graphify(self, func: Callable):
         pass
+
     @abstractmethod
     def while_loop(
         self,
         cond_fn: Callable,
         body_fn: Callable,
-        fn_args: Tuple=()
+        fn_args: Tuple = ()
     ):
         pass
+
     @abstractmethod
     def cond(
         self,
         cond_fn: Callable,
         true_fn: Callable,
-        fn_args: Tuple=()
+        fn_args: Tuple = ()
     ):
         pass
+
     @abstractmethod
     def multicond(
         self,
-        branches: List[
-            Tuple[Optional[Callable], Callable] or
+        branches: List[Union[
+            Tuple[Optional[Callable], Callable],
             Tuple[Optional[Callable], Callable, Tuple]
-        ],
+        ]],
     ):
         pass
+
 
 class GraphBuilder(GraphBuilderInterface):
     def __init__(self):
@@ -106,8 +113,9 @@ class GraphBuilder(GraphBuilderInterface):
 
     def graphify(self, func: Callable):
         self._target_func = func
+
         def wrapped(*args):
-            if not self._root_graph is None:
+            if self._root_graph is not None:
                 self._root_graph.launch()
                 return self._return_ref
 
@@ -140,7 +148,7 @@ class GraphBuilder(GraphBuilderInterface):
 
         # Setting ref to captured graph to avoid freeing memory
         self._root_graph._add_ref(self._memory_pool)
-        if not self._cublas_workspace is None:
+        if self._cublas_workspace is not None:
             self._root_graph._add_ref(self._cublas_workspace)
 
         return self._root_graph
@@ -155,7 +163,7 @@ class GraphBuilder(GraphBuilderInterface):
             backend_stream.get_current_cublas_workspace(dev.id)
 
         cc = int(dev.compute_capability)
-        if cc >= 90: # Hopper or newer
+        if cc >= 90:  # Hopper or newer
             workspace_size = 32 * 1024 * 1024
         else:
             workspace_size = 4 * 1024 * 1024
@@ -177,7 +185,7 @@ class GraphBuilder(GraphBuilderInterface):
         self,
         cond_fn: Callable,
         body_fn: Callable,
-        fn_args: Tuple=()
+        fn_args: Tuple = ()
     ):
         """
         equivalent to:
@@ -190,9 +198,11 @@ class GraphBuilder(GraphBuilderInterface):
         st = cuda.Stream()
         parent_st = self._streams[-1]
         self._streams.append(st)
-        handle = _create_conditional_handle_from_stream(parent_st, default_value=True)
+        handle = _create_conditional_handle_from_stream(
+            parent_st, default_value=True)
         cond_before_loop = cond_fn(*fn_args)
-        _set_value_to_handle(handle, cond_before_loop) # set value before the loop
+        # set value before the loop
+        _set_value_to_handle(handle, cond_before_loop)
         body_graph = _append_conditional_node_to_stream(
             parent_st, "while", handle
         )
@@ -200,7 +210,7 @@ class GraphBuilder(GraphBuilderInterface):
             st.begin_capture(to_graph=body_graph)
             try:
                 carry = body_fn(*fn_args)
-                if not carry is None:
+                if carry is not None:
                     if len(carry) != len(fn_args):
                         raise ValueError(
                             "Argument and return value of body_fn"
@@ -216,7 +226,8 @@ class GraphBuilder(GraphBuilderInterface):
                             # Copy after -> before
                             cupy.copyto(before, after)
                 cond_in_loop = cond_fn(*fn_args)
-                _set_value_to_handle(handle, cond_in_loop) # set value in the loop
+                # set value in the loop
+                _set_value_to_handle(handle, cond_in_loop)
             finally:
                 st.end_capture()
         self._streams.pop()
@@ -226,15 +237,16 @@ class GraphBuilder(GraphBuilderInterface):
         self,
         cond_fn: Callable,
         true_fn: Callable,
-        fn_args: Tuple=()
+        fn_args: Tuple = ()
     ):
         st = cupy.cuda.Stream()
         parent_st = self._streams[-1]
         self._streams.append(st)
-        handle = _create_conditional_handle_from_stream(parent_st, default_value=False)
+        handle = _create_conditional_handle_from_stream(
+            parent_st, default_value=False)
 
         cond = cond_fn(*fn_args)
-        _set_value_to_handle(handle, cond) # set value before the loop
+        _set_value_to_handle(handle, cond)  # set value before the loop
         body_graph = _append_conditional_node_to_stream(
             parent_st, "if", handle
         )
@@ -249,10 +261,10 @@ class GraphBuilder(GraphBuilderInterface):
 
     def multicond(
         self,
-        branches: List[
-            Tuple[Optional[Callable], Callable] or
+        branches: List[Union[
+            Tuple[Optional[Callable], Callable],
             Tuple[Optional[Callable], Callable, Tuple]
-        ],
+        ]],
     ):
         """Multiconditional switch
 
@@ -277,8 +289,30 @@ class GraphBuilder(GraphBuilderInterface):
 
         """
         if len(branches) == 1:
-            cond_fn, true_fn, fn_args = (*branches[0], ())
-            self.cond(cond_fn, true_fn, fn_args)
+            first = branches[0]
+            if len(first) == 2:
+                cond_fn, true_fn = cast(
+                    Tuple[Optional[Callable], Callable], first)
+                fn_args: Tuple = ()
+            elif len(first) == 3:
+                cond_fn, true_fn, fn_args = cast(
+                    Tuple[Optional[Callable], Callable, Tuple], first)
+            else:
+                raise ValueError("\n".join([
+                    "branches must be an instance of",
+                    "List[",
+                    "    Tuple[Optional[Callable], Callable] or",
+                    "    Tuple[Optional[Callable], Callable, Tuple]",
+                    "]"
+                ]))
+
+            if cond_fn is not None:
+                self.cond(cond_fn, true_fn, fn_args)
+            else:
+                raise ValueError(
+                    "`cond_fn` of the first element of"
+                    " `branches` must not be `None`"
+                )
             return
 
         # We implement
@@ -298,8 +332,8 @@ class GraphBuilder(GraphBuilderInterface):
         # ```
         # because of conditional node constraint.
 
-        branches = deque(branches)
-        self._multicond_inner(branches)
+        branches_deque = deque(branches)
+        self._multicond_inner(branches_deque)
 
         return None
 
@@ -308,8 +342,21 @@ class GraphBuilder(GraphBuilderInterface):
         branches: deque,
     ):
         first = branches.popleft()
-        cond_fn, body_fn, *_ = first
-        args = () if len(first) == 2 else first[2]
+        if len(first) == 2:
+            cond_fn, body_fn = cast(
+                Tuple[Optional[Callable], Callable], first)
+            args: Tuple = ()
+        elif len(first) == 3:
+            cond_fn, body_fn, args = cast(
+                Tuple[Optional[Callable], Callable, Tuple], first)
+        else:
+            raise ValueError("\n".join([
+                "branches must be an instance of",
+                "List[",
+                "    Tuple[Optional[Callable], Callable] or",
+                "    Tuple[Optional[Callable], Callable, Tuple]",
+                "]"
+            ]))
 
         if cond_fn is None:
             body_fn(*args)
@@ -366,7 +413,7 @@ class MockGraphBuilder(GraphBuilderInterface):
         self,
         cond_fn: Callable,
         body_fn: Callable,
-        fn_args: Tuple=()
+        fn_args: Tuple = ()
     ):
         carry = fn_args
         while cond_fn(*carry):
@@ -377,7 +424,7 @@ class MockGraphBuilder(GraphBuilderInterface):
         self,
         cond_fn: Callable,
         true_fn: Callable,
-        fn_args: Tuple=()
+        fn_args: Tuple = ()
     ):
         if cond_fn(*fn_args):
             true_fn(*fn_args)
@@ -385,17 +432,19 @@ class MockGraphBuilder(GraphBuilderInterface):
 
     def multicond(
         self,
-        branches: List[
-            Tuple[Optional[Callable], Callable] or
+        branches: List[Union[
+            Tuple[Optional[Callable], Callable],
             Tuple[Optional[Callable], Callable, Tuple]
-        ],
+        ]],
     ):
         for branch in branches:
             if len(branch) == 2:
-                cond_fn, body_fn = branch
-                args = ()
+                cond_fn, body_fn = cast(
+                    Tuple[Optional[Callable], Callable], branch)
+                args: Tuple = ()
             elif len(branch) == 3:
-                cond_fn, body_fn, args = branch
+                cond_fn, body_fn, args = cast(
+                    Tuple[Optional[Callable], Callable, Tuple], branch)
             else:
                 raise ValueError("\n".join([
                     "branches must be an instance of",

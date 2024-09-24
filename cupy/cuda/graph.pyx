@@ -18,7 +18,9 @@ cdef class Graph:
 
     """
 
-    cdef void _init(self, intptr_t graph, intptr_t graphExec, bint owned=True) except*:
+    cdef void _init(
+        self, intptr_t graph, intptr_t graphExec, bint owned=True
+    ) except*:
         self.graph = graph
         self.graphExec = graphExec
         self._owned = owned
@@ -37,7 +39,7 @@ cdef class Graph:
         raw_graph = runtime.graphCreate()
         self._init(
             raw_graph,
-            0, # graphExec
+            0,  # graphExec
             owned,
         )
 
@@ -125,10 +127,10 @@ cdef class Graph:
         self._refs.append(ref)
 
 cpdef int _create_conditional_handle_from_stream(
-        stream,
-        default_value=False,
-        flags=runtime.cudaGraphCondAssignDefault
-    ):
+    stream,
+    default_value=False,
+    flags=runtime.cudaGraphCondAssignDefault
+):
     '''
     Returns conditional handle body value (int)
     '''
@@ -142,12 +144,12 @@ cpdef int _create_conditional_handle_from_stream(
     return handle
 
 cpdef Graph _append_conditional_node_to_stream(
-        stream, node_type, handle
-    ):
+    stream, node_type, handle
+):
     '''
     Returns conditional node's body graph
     '''
-    status, id_, main_graph_ptr, deps_ptr, n_deps = \
+    status, _id, main_graph_ptr, deps_ptr, n_deps = \
         runtime.streamGetCaptureInfo(stream.ptr)
     if status != runtime.streamCaptureStatusActive:
         raise RuntimeError(
@@ -155,9 +157,13 @@ cpdef Graph _append_conditional_node_to_stream(
 
     cdef runtime.GraphConditionalNodeType node_type_enum
     if node_type == "if":
-        node_type_enum = <runtime.GraphConditionalNodeType>(runtime.cudaGraphCondTypeIf)
+        node_type_enum = <runtime.GraphConditionalNodeType>(
+            runtime.cudaGraphCondTypeIf
+        )
     elif node_type == "while":
-        node_type_enum = <runtime.GraphConditionalNodeType>(runtime.cudaGraphCondTypeWhile)
+        node_type_enum = <runtime.GraphConditionalNodeType>(
+            runtime.cudaGraphCondTypeWhile
+        )
     else:
         raise ValueError("`node_type` must be 'if' or 'while'")
 
@@ -192,7 +198,7 @@ cpdef Graph _append_conditional_node_to_stream(
     runtime.streamUpdateCaptureDependencies(
         stream.ptr,
         <intptr_t>nodes,
-        1, # number of dependency nodes
+        1,  # number of dependency nodes
         runtime.cudaStreamSetCaptureDependencies
     )
 

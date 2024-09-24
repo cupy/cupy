@@ -28,11 +28,11 @@ cdef class Graph:
     cpdef _add_ref(self, ref)
 
 cpdef int _create_conditional_handle_from_stream(
-        graph,
-        default_value=*,
-        flags=*
-    )
+    graph,
+    default_value=*,
+    flags=*
+)
 
 cpdef Graph _append_conditional_node_to_stream(
-        stream, node_type, handle
-    )
+    stream, node_type, handle
+)

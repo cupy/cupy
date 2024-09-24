@@ -12,8 +12,8 @@ cdef bint _ptds = bool(int(
 
 
 cdef class _ThreadLocal:
-    cdef list current_stream  # list of intptr_t
-    cdef list current_cublas_workspaces # list of (intptr_t, size_t)
+    cdef list current_stream             # list of intptr_t
+    cdef list current_cublas_workspaces  # list of (intptr_t, size_t)
 
     def __init__(self):
         cdef int i, num_devices = runtime.getDeviceCount()
@@ -122,8 +122,8 @@ cdef bint is_ptds_enabled():
     return _ptds
 
 cpdef void set_current_cublas_workspace(
-        intptr_t ptr, size_t size, int device_id=-1
-    ):
+    intptr_t ptr, size_t size, int device_id=-1
+):
     tls = _ThreadLocal.get()
     tls.set_current_cublas_workspace(ptr, size, device_id)
 

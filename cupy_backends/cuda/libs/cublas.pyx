@@ -521,8 +521,10 @@ cpdef setStream(intptr_t handle, size_t stream):
     # Before we come up with a robust strategy to test the support conditions,
     # we disable this functionality.
     is_capturing = runtime.streamIsCapturing(stream)
-    if (not _allow_stream_graph_capture and
-        not runtime._is_hip_environment and is_capturing):
+    if (
+        not _allow_stream_graph_capture and
+        not runtime._is_hip_environment and is_capturing
+    ):
         raise NotImplementedError(
             'Set the environment variable '
             '`CUPY_EXPERIMENTAL_CUDA_LIB_GRAPH_CAPTURE=1` to allow '

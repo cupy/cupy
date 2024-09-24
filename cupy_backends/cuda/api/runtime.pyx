@@ -941,11 +941,12 @@ cpdef streamBeginCaptureToGraph(intptr_t stream, intptr_t graph,
                                 int mode=streamCaptureModeRelaxed):
     with nogil:
         status = cudaStreamBeginCaptureToGraph(
-                    <driver.Stream>(stream), <Graph>(graph),
-                    <const GraphNode*>(dependencies),
-                    <const GraphEdgeData*>(dependencyData),
-                    numDependencies,
-                    <StreamCaptureMode>mode)
+            <driver.Stream>(stream), <Graph>(graph),
+            <const GraphNode*>(dependencies),
+            <const GraphEdgeData*>(dependencyData),
+            numDependencies,
+            <StreamCaptureMode>mode
+        )
     check_status(status)
 
 cpdef intptr_t streamEndCapture(intptr_t stream) except? 0:
@@ -972,14 +973,14 @@ cpdef bint streamIsCapturing(intptr_t stream) except*:
     return <bint>s
 
 cpdef (
-        int,                # capture status
-        unsigned long long, # id
-        intptr_t,           # graph
-        intptr_t,           # dependencies
-        size_t              # numDependencies
-    ) streamGetCaptureInfo(
-        intptr_t stream,
-    ):
+    int,                 # capture status
+    unsigned long long,  # id
+    intptr_t,            # graph
+    intptr_t,            # dependencies
+    size_t               # numDependencies
+) streamGetCaptureInfo(
+    intptr_t stream,
+):
     cdef StreamCaptureStatus captureStatus
     cdef unsigned long long id_
     cdef Graph graph
@@ -1179,13 +1180,15 @@ cpdef unsigned long long graphConditionalHandleCreate(
     cdef GraphConditionalHandle handle
     with nogil:
         status = cudaGraphConditionalHandleCreate(
-                    &handle, <Graph>(graph),
-                    defaultLaunchValue, flags)
+            &handle, <Graph>(graph),
+            defaultLaunchValue, flags)
     check_status(status)
     return <unsigned long long>(handle)
 
-cpdef intptr_t graphAddNode(intptr_t graph, intptr_t pDependencies,
-                   size_t numDependencies, intptr_t nodeParams):
+cpdef intptr_t graphAddNode(
+    intptr_t graph, intptr_t pDependencies,
+    size_t numDependencies, intptr_t nodeParams
+):
     cdef GraphNode node
     with nogil:
         status = cudaGraphAddNode(

@@ -1,5 +1,3 @@
-import sys
-import os
 import unittest
 
 import pytest
@@ -10,6 +8,7 @@ from cupy.cuda.graph_functional_api import (
     GraphBuilder,
     MockGraphBuilder
 )
+
 
 @pytest.mark.skipif(cuda.runtime.is_hip,
                     reason='HIP does not support this')
@@ -111,6 +110,7 @@ class TestGraphFunctionalAPI(unittest.TestCase):
     def test_nested_while(self):
         size = 500
         loop = 10
+
         def tester(
             gb: GraphBuilderInterface, A_in, x_in
         ):
@@ -118,10 +118,12 @@ class TestGraphFunctionalAPI(unittest.TestCase):
             x = cupy.copy(x_in)
 
             counter = cupy.zeros((), dtype=cupy.int32)
+
             @gb.graphify
             def test_func(A, x, counter):
                 def while_out(A, x, counter):
                     counter += 1
+
                     def while_in(A, x):
                         cupy.matmul(A, x, out=x)
                         return (A, x)
@@ -168,7 +170,6 @@ class TestGraphFunctionalAPI(unittest.TestCase):
         RANDOM_SEED = 42
         num = 50000
         n_clusters = 2
-        max_iter = 1000
 
         def kmeans_tester(
             gb: GraphBuilderInterface, X_in, initials_in
@@ -181,10 +182,10 @@ class TestGraphFunctionalAPI(unittest.TestCase):
             i = cupy.arange(n_clusters)
             initial_indexes = cupy.copy(initials_in)
             centers = X[initial_indexes]
-            cond = cupy.ones((), dtype=cupy.bool_)
 
             # Initial prediction
-            distances = cupy.linalg.norm(X[:, None, :] - centers[None, :, :], axis=2)
+            distances = cupy.linalg.norm(
+                X[:, None, :] - centers[None, :, :], axis=2)
             new_pred = cupy.argmin(distances, axis=1)
 
             @gb.graphify
@@ -194,10 +195,12 @@ class TestGraphFunctionalAPI(unittest.TestCase):
 
                     mask = pred == i[:, None]
                     sums = cupy.where(mask[:, :, None], X, 0).sum(axis=1)
-                    counts = cupy.count_nonzero(mask, axis=1).reshape((n_clusters, 1))
+                    counts = cupy.count_nonzero(
+                        mask, axis=1).reshape((n_clusters, 1))
                     centers = sums / counts
 
-                    distances = cupy.linalg.norm(X[:, None, :] - centers[None, :, :], axis=2)
+                    distances = cupy.linalg.norm(
+                        X[:, None, :] - centers[None, :, :], axis=2)
                     cupy.argmin(distances, axis=1, out=new_pred)
                     return (pred, new_pred, centers, distances)
                 pred, _, centers, _ = gb.while_loop(
@@ -220,7 +223,8 @@ class TestGraphFunctionalAPI(unittest.TestCase):
 
             i = cupy.arange(n_clusters)
 
-            distances = cupy.linalg.norm(X[:, None, :] - centers[None, :, :], axis=2)
+            distances = cupy.linalg.norm(
+                X[:, None, :] - centers[None, :, :], axis=2)
             new_pred = cupy.argmin(distances, axis=1)
 
             while cupy.any(new_pred != pred):
@@ -228,10 +232,12 @@ class TestGraphFunctionalAPI(unittest.TestCase):
 
                 mask = pred == i[:, None]
                 sums = cupy.where(mask[:, :, None], X, 0).sum(axis=1)
-                counts = cupy.count_nonzero(mask, axis=1).reshape((n_clusters, 1))
+                counts = cupy.count_nonzero(
+                    mask, axis=1).reshape((n_clusters, 1))
                 centers = sums / counts
 
-                distances = cupy.linalg.norm(X[:, None, :] - centers[None, :, :], axis=2)
+                distances = cupy.linalg.norm(
+                    X[:, None, :] - centers[None, :, :], axis=2)
                 new_pred = cupy.argmin(distances, axis=1)
 
             return centers, pred
@@ -240,12 +246,15 @@ class TestGraphFunctionalAPI(unittest.TestCase):
         samples = cupy.random.randn(num, 2)
         X_in = cupy.concatenate((samples + 1, samples - 1))
         n_samples = len(X_in)
-        initial_indexes = cupy.random.choice(n_samples, n_clusters, replace=False)
+        initial_indexes = cupy.random.choice(
+            n_samples, n_clusters, replace=False)
 
         # k-means in normal CuPy
         centers_normal, pred_normal = fit_normal_cupy(X_in, initial_indexes)
-        centers_mock, pred_mock = kmeans_tester(MockGraphBuilder(), X_in, initial_indexes)
-        centers_graph, pred_graph = kmeans_tester(GraphBuilder(), X_in, initial_indexes)
+        centers_mock, pred_mock = kmeans_tester(
+            MockGraphBuilder(), X_in, initial_indexes)
+        centers_graph, pred_graph = kmeans_tester(
+            GraphBuilder(), X_in, initial_indexes)
 
         # graph == normal
         assert cupy.allclose(centers_graph, centers_normal)
@@ -260,18 +269,23 @@ class TestGraphFunctionalAPI(unittest.TestCase):
         y = cupy.array([2, 2, 2])
         z = cupy.array([3, 3, 3])
         w = cupy.array([4, 4, 4])
+
         def impl(gb: GraphBuilderInterface, array):
             array = array.copy()
 
             @gb.graphify
             def target(array):
                 output = x.copy()
+
                 def fn0():
                     cupy.copyto(output, x)
+
                 def fn1():
                     cupy.copyto(output, y)
+
                 def fn2():
                     cupy.copyto(output, z)
+
                 def fn3():
                     cupy.copyto(output, w)
                 gb.multicond([
@@ -309,6 +323,7 @@ class TestGraphFunctionalAPI(unittest.TestCase):
         x = cupy.ones(100, dtype=cupy.float64)
 
         gb = GraphBuilder()
+
         @gb.graphify
         def use_cublas():
             def inner():
@@ -326,10 +341,12 @@ class TestGraphFunctionalAPI(unittest.TestCase):
     def test_many_dtypes_conditions(self):
         out = cupy.zeros(())
         expect = cupy.zeros(())
+
         def tester(gb: GraphBuilderInterface, x):
             @gb.graphify
             def func():
                 out[...] = 0
+
                 def if_true():
                     out[...] = 1
                 gb.cond(

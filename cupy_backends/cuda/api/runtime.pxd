@@ -286,12 +286,12 @@ cpdef streamBeginCaptureToGraph(intptr_t stream, intptr_t graph,
 cpdef intptr_t streamEndCapture(intptr_t stream) except? 0
 cpdef bint streamIsCapturing(intptr_t stream) except*
 cpdef (
-        int,                # capture status
-        unsigned long long, # id
-        intptr_t,           # graph
-        intptr_t,           # dependencies
-        size_t              # numDependencies
-    ) streamGetCaptureInfo(intptr_t stream)
+    int,                 # capture status
+    unsigned long long,  # id
+    intptr_t,            # graph
+    intptr_t,            # dependencies
+    size_t               # numDependencies
+) streamGetCaptureInfo(intptr_t stream)
 cpdef streamUpdateCaptureDependencies(intptr_t stream, intptr_t dependencies,
                                       size_t numDependencies,
                                       unsigned int flags=*)
@@ -342,11 +342,11 @@ cpdef intptr_t graphInstantiate(intptr_t graph) except? 0
 cpdef graphLaunch(intptr_t graphExec, intptr_t stream)
 cpdef graphUpload(intptr_t graphExec, intptr_t stream)
 cpdef unsigned long long graphConditionalHandleCreate(
-        intptr_t graph,
-        unsigned int defaultLaunchValue=*,
-        unsigned int flags=*)
+    intptr_t graph,
+    unsigned int defaultLaunchValue=*,
+    unsigned int flags=*)
 cpdef intptr_t graphAddNode(intptr_t graph, intptr_t pDependencies,
-                   size_t numDependencies, intptr_t nodeParams)
+                            size_t numDependencies, intptr_t nodeParams)
 cpdef graphDebugDotPrint(intptr_t graph, str path, unsigned int flags)
 
 

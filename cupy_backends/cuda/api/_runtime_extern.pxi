@@ -136,8 +136,9 @@ cdef extern from '../../cupy_backend_runtime.h' nogil:
                                  Graph* graph_out,
                                  const GraphNode** dependencies_out,
                                  size_t* numDependencies_out)
-    int cudaStreamUpdateCaptureDependencies(driver.Stream stream, GraphNode* dependencies,
-                                            size_t numDependencies, unsigned int flags)
+    int cudaStreamUpdateCaptureDependencies(
+        driver.Stream stream, GraphNode* dependencies,
+        size_t numDependencies, unsigned int flags)
     int cudaEventCreate(driver.Event* event)
     int cudaEventCreateWithFlags(driver.Event* event, unsigned int flags)
     int cudaEventDestroy(driver.Event event)
@@ -169,8 +170,10 @@ cdef extern from '../../cupy_backend_runtime.h' nogil:
     int cudaGraphInstantiate(GraphExec*, Graph, GraphNode*, char*, size_t)
     int cudaGraphLaunch(GraphExec, driver.Stream)
     int cudaGraphUpload(GraphExec, driver.Stream)
-    int cudaGraphConditionalHandleCreate(GraphConditionalHandle*, Graph, unsigned int, unsigned int)
-    int cudaGraphAddNode(GraphNode*, Graph, const GraphNode*, size_t, GraphNodeParams*)
+    int cudaGraphConditionalHandleCreate(
+        GraphConditionalHandle*, Graph, unsigned int, unsigned int)
+    int cudaGraphAddNode(
+        GraphNode*, Graph, const GraphNode*, size_t, GraphNodeParams*)
     int cudaGraphDebugDotPrint(Graph, const char*, unsigned int)
 
     # Constants

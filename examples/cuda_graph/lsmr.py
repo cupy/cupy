@@ -1,7 +1,8 @@
-import time
-import argparse
+# flake8: noqa: E402
+
 import os
-os.environ["CUPY_EXPERIMENTAL_CUDA_LIB_GRAPH_CAPTURE"] = "1"
+# Allow using cublas API while stream capture
+os.environ["CUPY_EXPERIMENTAL_CUDA_LIB_GRAPH_CAPTURE"] = "1"  # noqa
 
 import numpy
 import cupy
@@ -9,31 +10,24 @@ import cupyx
 from cupy.cuda.graph_functional_api import (
     GraphBuilder,
     MockGraphBuilder,
-    GraphBuilderInterface
 )
+from scipy.sparse.linalg import lsmr as lsmr_cpu
+from cupyx.scipy.sparse.linalg import lsmr as lsmr_gpu
+from cupy import cublas
+from cupyx.scipy.sparse.linalg import _interface
+import time
+import argparse
+
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--maxiter", type=int, default=None)
 parser.add_argument("-N", type=int, default=1000)
 parser.add_argument("--impl", type=str, default="normal")
 args = parser.parse_args()
-import scipy
-from scipy.sparse.linalg import lsmr as lsmr_cpu
-from cupyx.scipy.sparse.linalg import lsmr as lsmr_gpu
-
-from cupy import cublas
-from cupy.cuda import device
-from cupy.cuda import runtime
-from cupy.linalg import _util
-from cupyx.scipy import sparse
-from cupy_backends.cuda.libs import cublas as _cublas
-from cupyx.scipy.sparse.linalg import _interface
 
 
 def lsmr_graph(A, b, x0=None, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8,
-         maxiter=None, impl_name="graph"):
-    # from cupyx.scipy.sparse.linalg._iterative import _make_system
-
+               maxiter=None, impl_name="graph"):
     A = _interface.aslinearoperator(A)
     b = b.squeeze()
     matvec = A.matvec
@@ -63,7 +57,6 @@ def lsmr_graph(A, b, x0=None, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8,
         x = x0.astype(A.dtype).ravel()
         u -= matvec(x)
         beta = nrm2_fn(u)
-
 
     v = cupy.zeros(n, dtype=dtype_)
     alpha = cupy.zeros((), dtype=beta.dtype)
@@ -236,10 +229,11 @@ def lsmr_graph(A, b, x0=None, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8,
                 v[...] *= -beta
                 v[...] += rmatvec(u)
                 nrm2_fn(v, out=alpha)
+
                 def alpha_if():
                     v[...] /= alpha
                 gb.cond(
-                    lambda: alpha>0,
+                    lambda: alpha > 0,
                     alpha_if,
                 )
             gb.cond(
@@ -314,13 +308,15 @@ def lsmr_graph(A, b, x0=None, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8,
 
             # Estimate cond(A).
             cupy.maximum(maxrbar, rhobarold, out=maxrbar)
+
             def itn_cond():
                 minrbar[...] = cupy.minimum(minrbar, rhobarold)
             gb.cond(
                 lambda: itn > 1,
                 itn_cond
             )
-            condA = cupy.maximum(maxrbar, rhotemp) / cupy.minimum(minrbar, rhotemp)
+            condA = cupy.maximum(maxrbar, rhotemp) / \
+                cupy.minimum(minrbar, rhotemp)
 
             # Test for convergence.
 
@@ -328,14 +324,15 @@ def lsmr_graph(A, b, x0=None, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8,
             normar = cupy.absolute(zetabar)
             nrm2_fn(x, out=normx)
 
-
             # Now use these norms to estimate certain other quantities,
             # some of which will be small near a solution.
 
             test1 = normr / normb
             test2 = cupy.empty((), dtype=cupy.float64)
+
             def true_fn():
                 test2[...] = normar / normA * normr
+
             def false_fn():
                 test2[...] = numpy.inf
             gb.multicond([
@@ -343,8 +340,8 @@ def lsmr_graph(A, b, x0=None, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8,
                 (None, false_fn)
             ])
             test3 = 1 / condA
-            t1 = test1 / (1 + normA*normx/normb)
-            rtol = btol + atol*normA*normx/normb
+            t1 = test1 / (1 + normA * normx / normb)
+            rtol = btol + atol * normA * normx / normb
 
             def set_istop_fn(i):
                 def fn():
@@ -441,7 +438,12 @@ N = args.N
 dens = 0.1
 cupy.random.seed(42)
 numpy.random.seed(42)
-A = cupyx.scipy.sparse.random(N, N, density=dens, format="csr", dtype=numpy.float64)
+A = cupyx.scipy.sparse.random(
+    N,
+    N,
+    density=dens,
+    format="csr",
+    dtype=numpy.float64)
 b = cupy.random.randn(N)
 x0 = cupy.zeros(N, dtype=cupy.float64)
 
@@ -459,9 +461,16 @@ else:
     if impl_name == "normal":
         x, istop, itn, *_ = lsmr_gpu(A, b, x0=x0, maxiter=args.maxiter)
     elif impl_name == "graph":
-        x, istop, itn, *_ = lsmr_graph(A, b, x0=x0, maxiter=args.maxiter, impl_name="graph")
+        x, istop, itn, * \
+            _ = lsmr_graph(
+                A,
+                b,
+                x0=x0,
+                maxiter=args.maxiter,
+                impl_name="graph")
     elif impl_name == "mock":
-        x, istop, itn, *_ = lsmr_graph(A, b, x0=x0, maxiter=args.maxiter, impl_name="mock")
+        x, istop, itn, * \
+            _ = lsmr_graph(A, b, x0=x0, maxiter=args.maxiter, impl_name="mock")
     else:
         raise ValueError("impl_name is invalide")
     cupy.cuda.runtime.deviceSynchronize()

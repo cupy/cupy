@@ -48,9 +48,11 @@ cdef extern from *:
     ctypedef int StreamCaptureMode 'cudaStreamCaptureMode'
     ctypedef void* Graph 'cudaGraph_t'
     ctypedef void* GraphExec 'cudaGraphExec_t'
-    ctypedef int StreamUpdateCaptureDependenciesFlags 'cudaStreamUpdateCaptureDependenciesFlags'
+    ctypedef int StreamUpdateCaptureDependenciesFlags \
+        'cudaStreamUpdateCaptureDependenciesFlags'
 
-    ctypedef unsigned long long GraphConditionalHandle 'cudaGraphConditionalHandle'
+    ctypedef unsigned long long GraphConditionalHandle \
+        'cudaGraphConditionalHandle'
     ctypedef struct GraphEdgeData 'cudaGraphEdgeData':
         unsigned char from_port
         unsigned char to_port
