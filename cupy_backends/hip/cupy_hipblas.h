@@ -96,6 +96,12 @@ cublasStatus_t cublasGetStream(cublasHandle_t handle, cudaStream_t *streamId) {
     return hipblasGetStream(handle, streamId);
 }
 
+cublasStatus_t cublasSetWorkspace(cublasHandle_t handle,
+                                  void* workspace,
+                                  size_t workspaceSizeInBytes) {
+    return HIPBLAS_STATUS_NOT_SUPPORTED;
+}
+
 // Math Mode
 cublasStatus_t cublasSetMathMode(...) {
     return HIPBLAS_STATUS_NOT_SUPPORTED;
