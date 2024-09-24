@@ -91,6 +91,17 @@ cudaError_t cudaStreamUpdateCaptureDependencies(...) {
 #if CUDA_VERSION < 12020
 // APIs added in CUDA 12.2
 
+// Silently added (undocumented) in CUDA 12.2
+struct cudaGraphNodeParams {
+    cudaGraphNodeType type;
+    int reserved0[3];
+    union {
+        long long reserved1[29];
+        struct cudaConditionalNodeParams conditional;
+    };
+    long long reserved2;
+};
+
 cudaError_t cudaGraphAddNode(...) {
     return cudaErrorUnknown;
 }
