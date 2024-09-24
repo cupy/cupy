@@ -150,7 +150,7 @@ cpdef Graph _append_conditional_node_to_stream(
     '''
     Returns conditional node's body graph
     '''
-    IF 0 < CUPY_CUDA_VERSION < 12300:
+    IF (0 < CUPY_CUDA_VERSION < 12300) or (0 < CUPY_HIP_VERSION):
         raise RuntimeError('Conditional node requires CUDA 12.3 or later')
 
     status, _id, main_graph_ptr, deps_ptr, n_deps = \
