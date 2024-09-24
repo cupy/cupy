@@ -132,13 +132,10 @@ cpdef int _create_conditional_handle_from_stream(
     '''
     Returns conditional handle body value (int)
     '''
-    status, _, graph_ptr, _, _ = runtime.streamGetCaptureInfo(stream.ptr)
-    if status != runtime.streamCaptureStatusActive:
-        raise RuntimeError(
-            "Conditional node can be added only to capturing stream")
+    graph, _ = stream._capturing_graph_info
 
     handle = runtime.graphConditionalHandleCreate(
-        graph_ptr,
+        graph.graph,
         defaultLaunchValue=default_value,
         flags=flags
     )

@@ -28,7 +28,7 @@ cdef class Graph:
     cpdef _add_ref(self, ref)
 
 cpdef int _create_conditional_handle_from_stream(
-        stream,
+        graph,
         default_value=*,
         flags=*
     )
