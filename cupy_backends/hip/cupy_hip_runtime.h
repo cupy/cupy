@@ -551,6 +551,14 @@ cudaError_t cudaGraphInstantiate(
 #endif
 }
 
+cudaError_t cudaGraphCreate(cudaGraph_t* graph, unsigned int flags) {
+#if HIP_VERSION >= 40300000
+    return hipGraphCreate(graph, flags);
+#else
+    return hipErrorUnknown;
+#endif
+}
+
 cudaError_t cudaGraphDestroy(cudaGraph_t graph) {
 #if HIP_VERSION >= 40300000
     return hipGraphDestroy(graph);

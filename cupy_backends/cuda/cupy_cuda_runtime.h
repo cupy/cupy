@@ -8,15 +8,33 @@ extern "C" {
 
 bool hip_environment = false;
 
+#if CUDA_VERSION < 10000
+// APIs added in CUDA 10.0
+
+cudaError_t cudaGraphCreate(...) {
+    return cudaErrorUnknown;
+}
+
+#endif
+
 #if CUDA_VERSION < 10010
+// APIs added in CUDA 10.1
+
 const int cudaErrorContextIsDestroyed = 709;
+
+cudaError_t cudaStreamGetCaptureInfo(...) {
+    return cudaErrorUnknown;
+}
+
 #endif
 
 #if CUDA_VERSION < 11010
 // APIs added in CUDA 11.1
+
 cudaError_t cudaGraphUpload(...) {
     return cudaErrorUnknown;
 }
+
 #endif
 
 #if CUDA_VERSION < 11020
@@ -87,7 +105,65 @@ cudaError_t cudaMemPoolGetAttribute(...) {
 #if CUDA_VERSION < 11030
 // APIs added in CUDA 11.3
 
+enum cudaStreamUpdateCaptureDependenciesFlags {};
+
 cudaError_t cudaGraphDebugDotPrint(...) {
+    return cudaErrorUnknown;
+}
+
+cudaError_t cudaStreamUpdateCaptureDependencies(...) {
+    return cudaErrorUnknown;
+}
+
+#endif
+
+#if CUDA_VERSION < 12020
+// APIs added in CUDA 12.2
+
+cudaError_t cudaGraphAddNode(...) {
+    return cudaErrorUnknown;
+}
+
+#endif
+
+#if CUDA_VERSION < 12030
+// APIs added in CUDA 12.3
+
+enum cudaGraphConditionalNodeType {};
+typedef unsigned long long cudaGraphConditionalHandle;
+struct cudaConditionalNodeParams {
+    cudaGraphConditionalHandle handle;
+    cudaGraphConditionalNodeType type;
+    unsigned int size;
+    cudaGraph_t* phGraph_out;
+};
+struct cudaGraphNodeParams {
+    /**
+     * struct cudaGraphNodeParams is introduced at CUDA 12.2,
+     * but at CUDA 12.2, this struct does not have attribute `conditional`,
+     * which is required to build CuPy.
+     * So we re-define cudaGraphNodeParams here for CUDA 12.2.
+     */
+    cudaGraphNodeType type;
+    int reserved0[3];
+    union {
+        long long reserved1[29];
+        struct cudaConditionalNodeParams conditional;
+    };
+    long long reserved2;
+};
+typedef struct cudaGraphEdgeData_st {
+    unsigned char from_port;
+    unsigned char to_port;
+    unsigned char type;
+    unsigned char reserved[5];
+} cudaGraphEdgeData;
+
+cudaError_t cudaStreamBeginCaptureToGraph(...) {
+    return cudaErrorUnknown;
+}
+
+cudaError_t cudaGraphConditionalHandleCreate(...) {
     return cudaErrorUnknown;
 }
 

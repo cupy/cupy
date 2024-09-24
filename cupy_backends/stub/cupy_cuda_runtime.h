@@ -430,6 +430,10 @@ cudaError_t cudaGraphInstantiate(...) {
     return cudaSuccess;
 }
 
+cudaError_t cudaGraphCreate(...) {
+    return cudaSuccess;
+}
+
 cudaError_t cudaGraphDestroy(...) {
     return cudaSuccess;
 }
