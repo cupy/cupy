@@ -424,6 +424,11 @@ cudaError_t cudaStreamBeginCapture(cudaStream_t stream,
 #endif
 }
 
+#if HIP_VERSION >= 60200000
+typedef hipGraphEdgeData cudaGraphEdgeData;
+#else
+typedef void* cudaGraphEdgeData;
+#endif
 cudaError_t cudaStreamBeginCaptureToGraph(
     cudaStream_t stream,
     cudaGraph_t graph,
