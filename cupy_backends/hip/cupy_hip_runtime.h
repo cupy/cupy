@@ -600,6 +600,11 @@ cudaError_t cudaGraphDebugDotPrint(cudaGraph_t graph, const char* path, unsigned
 #endif
 }
 
+#if HIP_VERSION >= 60100000
+typedef hipGraphNodeParams cudaGraphNodeParams;
+#else
+typedef void* cudaGraphNodeParams;
+#endif
 cudaError_t cudaGraphAddNode(cudaGraphNode_t* pGraphNode,
                              cudaGraph_t graph,
                              const cudaGraphNode_t* pDependencies,
