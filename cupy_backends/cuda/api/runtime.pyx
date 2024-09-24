@@ -987,7 +987,7 @@ cpdef (
     cdef const GraphNode* dependencies
     cdef size_t numDependencies
     with nogil:
-        status = cudaStreamGetCaptureInfo(
+        status = cudaStreamGetCaptureInfo_v2(
             <driver.Stream>(stream), &captureStatus, &id_,
             &graph, &dependencies, &numDependencies
         )

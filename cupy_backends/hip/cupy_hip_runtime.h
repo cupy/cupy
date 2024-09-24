@@ -464,7 +464,7 @@ cudaError_t cudaStreamIsCapturing(cudaStream_t stream,
 #endif
 }
 
-cudaError_t cudaStreamGetCaptureInfo(
+cudaError_t cudaStreamGetCaptureInfo_v2(
     cudaStream_t stream,
     cudaStreamCaptureStatus* captureStatus_out,
     unsigned long long* id_out = 0,
@@ -472,7 +472,7 @@ cudaError_t cudaStreamGetCaptureInfo(
     const cudaGraphNode_t** dependencies_out = 0,
     size_t* numDependencies_out = 0) {
 #if HIP_VERSION >= 50000000
-    return hipStreamGetCaptureInfo(
+    return hipStreamGetCaptureInfo_v2(
         stream, captureStatus_out, id_out, graph_out,
         dependencies_out, numDependencies_out
     );

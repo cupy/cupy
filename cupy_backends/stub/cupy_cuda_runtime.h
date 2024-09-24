@@ -372,7 +372,7 @@ cudaError_t cudaStreamIsCapturing(...) {
     return cudaSuccess;
 }
 
-cudaError_t cudaStreamGetCaptureInfo(...) {
+cudaError_t cudaStreamGetCaptureInfo_v2(...) {
     return cudaSuccess;
 }
 

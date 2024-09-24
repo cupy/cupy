@@ -130,12 +130,12 @@ cdef extern from '../../cupy_backend_runtime.h' nogil:
                                       StreamCaptureMode mode)
     int cudaStreamEndCapture(driver.Stream stream, Graph*)
     int cudaStreamIsCapturing(driver.Stream stream, StreamCaptureStatus*)
-    int cudaStreamGetCaptureInfo(driver.Stream stream,
-                                 StreamCaptureStatus* captureStatus_out,
-                                 unsigned long long* id_out,
-                                 Graph* graph_out,
-                                 const GraphNode** dependencies_out,
-                                 size_t* numDependencies_out)
+    int cudaStreamGetCaptureInfo_v2(driver.Stream stream,
+                                    StreamCaptureStatus* captureStatus_out,
+                                    unsigned long long* id_out,
+                                    Graph* graph_out,
+                                    const GraphNode** dependencies_out,
+                                    size_t* numDependencies_out)
     int cudaStreamUpdateCaptureDependencies(
         driver.Stream stream, GraphNode* dependencies,
         size_t numDependencies, unsigned int flags)
