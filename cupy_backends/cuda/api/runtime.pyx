@@ -1136,6 +1136,13 @@ cdef PitchedPtr make_PitchedPtr(
 # Graph
 ##############################################################################
 
+cpdef intptr_t graphCreate(unsigned int flags=0):
+    # flags must be 0 at least up to CUDA 12.6
+    cdef Graph graph
+    with nogil:
+        status = cudaGraphCreate(&graph, flags)
+    return <intptr_t>(graph)
+
 cpdef graphDestroy(intptr_t graph):
     with nogil:
         status = cudaGraphDestroy(<Graph>graph)

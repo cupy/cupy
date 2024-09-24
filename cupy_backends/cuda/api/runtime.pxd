@@ -335,6 +335,7 @@ cpdef destroySurfaceObject(uintmax_t surfObject)
 # Graph
 ##############################################################################
 
+cpdef intptr_t graphCreate(unsigned int flags=*)
 cpdef graphDestroy(intptr_t graph)
 cpdef graphExecDestroy(intptr_t graphExec)
 cpdef intptr_t graphInstantiate(intptr_t graph) except? 0

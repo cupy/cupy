@@ -202,7 +202,9 @@ class _BaseStream:
     def __init__(self, ptr, device_id):
         self.ptr = ptr
         self.device_id = device_id
-        self._capturing_graph = None
+
+        # Tuple[Graph, bool]: (graph_instance, is_borrowed_graph)
+        self._capturing_graph_info = None
 
     def __eq__(self, other):
         # This operator needed as the ptr may be shared between multiple Stream
@@ -382,18 +384,25 @@ class _BaseStream:
             # the async APIs, such as cudaMallocAsync.)
             mode = runtime.streamCaptureModeRelaxed
         if to_graph is None:
-            runtime.streamBeginCapture(self.ptr, mode)
+            # Create new empty graph
+            is_borrowed_graph = False
+            to_graph = graph.Graph(owned=False)
         else:
-            # Supports to start capture only to an empty graph
-            runtime.streamBeginCaptureToGraph(
-                self.ptr,
-                to_graph.graph,
-                0, # dependencies_ptr
-                0, # dependency_data_ptr
-                0, # num_deps
-                mode
-            )
-            self._capturing_graph = to_graph
+            is_borrowed_graph = True
+
+        if to_graph._owned:
+            raise RuntimeError("Cannot start capture to owned graph")
+
+        # Supports to start capture only to an empty graph
+        runtime.streamBeginCaptureToGraph(
+            self.ptr,
+            to_graph.graph,
+            0, # dependencies_ptr
+            0, # dependency_data_ptr
+            0, # num_deps
+            mode
+        )
+        self._capturing_graph_info = (to_graph, is_borrowed_graph)
 
     def end_capture(self):
         """End stream capture and retrieve the constructed CUDA graph.
@@ -412,13 +421,18 @@ class _BaseStream:
         """
         if runtime._is_hip_environment:
             raise RuntimeError('This function is not supported on HIP')
-        cdef intptr_t g = runtime.streamEndCapture(self.ptr)
-        if self._capturing_graph is None:
-            return graph.Graph.from_stream(g)
+
+        cdef intptr_t g
+        try:
+            g = runtime.streamEndCapture(self.ptr)
+        finally:
+            captured_graph_info = self._capturing_graph_info
+            self._capturing_graph_info = None
+        captured_graph, is_borrowed_graph = captured_graph_info
+        if is_borrowed_graph:
+            return captured_graph
         else:
-            graph_ = self._capturing_graph
-            self._capturing_graph = None
-            return graph_
+            return graph.Graph.from_stream(g)
 
     def is_capturing(self):
         """Check if the stream is capturing.

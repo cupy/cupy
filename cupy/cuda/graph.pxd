@@ -5,13 +5,20 @@ cdef class Graph:
     cdef:
         readonly intptr_t graph  # cudaGraph_t
         readonly intptr_t graphExec  # cudaGraphExec_t
-        readonly bint _is_child
+
+        # If a graph is owned, the responsibility for its memory management
+        # lies with the CuPy runtime;
+        # otherwise, it falls under the responsibility of the CUDA runtime.
+        #
+        # A graph is not owned when the graph is a child graph or created by
+        # cudaGraphCreate and is passed to cudaStreamBeginCaptureToGraph
+        readonly bint _owned
         readonly list _refs
 
-    cdef void _init(self, intptr_t g, intptr_t ge, bint is_child=*) except*
+    cdef void _init(self, intptr_t g, intptr_t ge, bint owned=*) except*
 
     @staticmethod
-    cdef Graph from_stream(intptr_t g, bint is_child=*)
+    cdef Graph from_stream(intptr_t g, bint owned=*)
 
     cpdef _ensure_instantiate(self)
 

@@ -18,38 +18,40 @@ cdef class Graph:
 
     """
 
-    cdef void _init(self, intptr_t graph, intptr_t graphExec, bint is_child=False) except*:
+    cdef void _init(self, intptr_t graph, intptr_t graphExec, bint owned=True) except*:
         self.graph = graph
         self.graphExec = graphExec
-        self._is_child = is_child
+        self._owned = owned
         self._refs = list()
 
     def __dealloc__(self):
-        if self._is_child:
-            # Do not call graphDestroy for child graph because
-            # graphDestroy function destroys graph recursively
+        if not self._owned:
+            # Freeing unowned graph is not CuPy's responsibility
             return
         if self.graph > 0:
             runtime.graphDestroy(self.graph)
         if self.graphExec > 0:
             runtime.graphExecDestroy(self.graphExec)
 
-    def __init__(self, *args, **kwargs):
-        raise NotImplementedError(
-            'currently this class cannot be initiated by the user and must '
-            'be created via stream capture')
+    def __init__(self, bint owned=False):
+        raw_graph = runtime.graphCreate()
+        self._init(
+            raw_graph,
+            0, # graphExec
+            owned,
+        )
 
     @staticmethod
-    cdef Graph from_stream(intptr_t g, bint is_child=False):
+    cdef Graph from_stream(intptr_t g, bint owned=True):
         # TODO(leofang): optionally print out the error log?
         cdef intptr_t ge = 0
         cdef Graph graph = Graph.__new__(Graph)
-        graph._init(g, ge, is_child)
+        graph._init(g, ge, owned)
         return graph
 
     cpdef _ensure_instantiate(self):
-        if self._is_child:
-            raise RuntimeError("Child graph instantiation is not allowed")
+        if not self._owned:
+            raise RuntimeError("Unowned graph instantiation is not allowed")
         if self.graphExec == 0:
             self.graphExec = runtime.graphInstantiate(self.graph)
 
@@ -197,4 +199,4 @@ cpdef Graph _append_conditional_node_to_stream(
         runtime.cudaStreamSetCaptureDependencies
     )
 
-    return Graph.from_stream(<intptr_t>(body_graphs[0]), is_child=True)
+    return Graph.from_stream(<intptr_t>(body_graphs[0]), owned=False)
