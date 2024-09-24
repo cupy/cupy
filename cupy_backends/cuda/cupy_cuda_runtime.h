@@ -8,35 +8,6 @@ extern "C" {
 
 bool hip_environment = false;
 
-#if CUDA_VERSION < 10000
-// APIs added in CUDA 10.0
-
-cudaError_t cudaGraphCreate(...) {
-    return cudaErrorUnknown;
-}
-
-#endif
-
-#if CUDA_VERSION < 10010
-// APIs added in CUDA 10.1
-
-const int cudaErrorContextIsDestroyed = 709;
-
-cudaError_t cudaStreamGetCaptureInfo(...) {
-    return cudaErrorUnknown;
-}
-
-#endif
-
-#if CUDA_VERSION < 11010
-// APIs added in CUDA 11.1
-
-cudaError_t cudaGraphUpload(...) {
-    return cudaErrorUnknown;
-}
-
-#endif
-
 #if CUDA_VERSION < 11020
 // APIs added in CUDA 11.2
 typedef void* cudaMemPool_t;
