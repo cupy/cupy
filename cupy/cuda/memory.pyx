@@ -18,7 +18,6 @@ from libc.stdlib cimport malloc as c_malloc
 from libc.stdlib cimport free as c_free
 from libcpp cimport algorithm
 
-from cupy._core.core cimport _is_sam_enabled
 from cupy.cuda cimport device
 from cupy.cuda cimport memory_hook
 from cupy.cuda cimport stream as stream_module
@@ -205,13 +204,6 @@ cdef class UnownedMemory(BaseMemory):
         self.device_id = device_id
         self.ptr = ptr
         self._owner = owner
-
-    def __dealloc__(self):
-        # Note: Cannot raise in the destructor! (cython/cython#1613)
-        if _is_sam_enabled:
-            # we don't own the memory, we must sync before free to avoid any
-            # race condition
-            runtime.streamSynchronize(stream_module.get_current_stream_ptr())
 
 
 @cython.no_gc
