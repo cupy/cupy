@@ -28,21 +28,6 @@ ELSE:
 DEF ALIGNMENT = 512
 
 
-cdef extern from *:
-    """
-    extern "C" {
-        void* _calloc(size_t nmemb, size_t size);
-        void* _malloc(size_t size);
-        void* _realloc(void *ptr, size_t size);
-        void _free(void* ptr);
-    }
-    """
-    void* _calloc(size_t nmemb, size_t size) nogil
-    void* _malloc(size_t size) nogil
-    void* _realloc(void *ptr, size_t size) nogil
-    void _free(void* ptr) nogil
-
-
 cdef public void* _calloc(size_t nmemb, size_t size) nogil:
     errno.errno = 0
     cdef void* buf = aligned_alloc(ALIGNMENT, nmemb * size)
