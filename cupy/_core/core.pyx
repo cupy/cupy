@@ -14,7 +14,7 @@ from cupy import _environment
 from cupy._core._kernel import create_ufunc
 from cupy._core._kernel import ElementwiseKernel
 from cupy._core._ufuncs import elementwise_copy
-from cupy._core import flags
+from cupy._core import flags as _flags
 from cupy._core import syncdetect
 from cupy import cuda
 from cupy.cuda import memory as memory_module
@@ -410,8 +410,8 @@ cdef class _ndarray_base:
         .. seealso:: :attr:`numpy.ndarray.flags`
 
         """
-        return flags.Flags(self._c_contiguous, self._f_contiguous,
-                           self.base is None)
+        return _flags.Flags(self._c_contiguous, self._f_contiguous,
+                            self.base is None)
 
     property shape:
         """Lengths of axes.

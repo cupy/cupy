@@ -25,7 +25,6 @@ from cupy.cuda cimport stream as stream_module
 from cupy_backends.cuda.api cimport driver
 from cupy_backends.cuda.api cimport runtime
 
-import cupy
 from cupy_backends.cuda.api.runtime import CUDARuntimeError
 from cupy import _util
 

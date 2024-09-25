@@ -321,8 +321,10 @@ class ndarray(object):
                     if self._numpy_array is None:
                         self._numpy_array = base._numpy_array.view(type=_type)
                         self._numpy_array.shape = self._cupy_array.shape
-                        if  self._numpy_array.strides != self._cupy_array.strides:
-                            self._numpy_array.strides = self._cupy_array.strides
+                        if (self._numpy_array.strides
+                                != self._cupy_array.strides):
+                            self._numpy_array.strides = \
+                                self._cupy_array.strides
         else:
             # not cupy-compatible
             if base is not None:

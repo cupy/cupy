@@ -11,7 +11,6 @@ from libc.stdint cimport uint64_t
 import numpy
 
 from cupy._core cimport _dtype
-from cupy._core import _dtype as _dtype_module
 from cupy._core cimport internal
 
 
