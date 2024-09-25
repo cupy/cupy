@@ -67,12 +67,13 @@ def _get_binary_erosion_kernel(
         name += '_invert'
     has_weights = not all_weights_nonzero
 
+    modes = ('constant',) * len(w_shape)
     return _filters_core._generate_nd_kernel(
         name,
         pre,
         found,
         '',
-        'constant', w_shape, int_type, offsets, 0, ctype='Y',
+        modes, w_shape, int_type, offsets, 0, ctype='Y',
         has_weights=has_weights, has_structure=False, has_mask=masked,
         binary_morphology=True)
 
@@ -681,7 +682,7 @@ def grey_erosion(input, size=None, footprint=None, structure=None, output=None,
         raise ValueError('size, footprint or structure must be specified')
 
     return _filters._min_or_max_filter(input, size, footprint, structure,
-                                       output, mode, cval, origin, 'min')
+                                       output, mode, cval, origin, 'min', None)
 
 
 def grey_dilation(input, size=None, footprint=None, structure=None,
@@ -741,7 +742,7 @@ def grey_dilation(input, size=None, footprint=None, structure=None,
             origin[i] -= 1
 
     return _filters._min_or_max_filter(input, size, footprint, structure,
-                                       output, mode, cval, origin, 'max')
+                                       output, mode, cval, origin, 'max', None)
 
 
 def grey_closing(input, size=None, footprint=None, structure=None,
