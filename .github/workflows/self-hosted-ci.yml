@@ -11,7 +11,19 @@ env:
 
 jobs:
   pre-dispatch:
-    if: github.repository_owner == 'cupy'
+    if: |
+      github.repository_owner == 'cupy' &&
+      (
+        (
+          ( github.event_name == 'issue_comment' && github.event.issue.pull_request ) ||
+          github.event_name == 'pull_request_review_comment'
+        ) && (
+          github.event.comment.author_association == 'MEMBER' ||
+          github.event.comment.author_association == 'OWNER'
+        ) && (
+          contains(github.event.comment.body, '/test ')
+        )
+      )
     runs-on: ubuntu-latest
     outputs:
       head_sha: ${{ steps.pull-request.outputs.head_sha }}
@@ -21,14 +33,8 @@ jobs:
     - name: 'Handle Pull Request Comments'
       id: pull-request
       if: |
-        (
-            ( github.event_name == 'issue_comment' && github.event.issue.pull_request ) ||
-            github.event_name == 'pull_request_review_comment'
-        ) &&
-        (
-            github.event.comment.author_association == 'MEMBER' ||
-            github.event.comment.author_association == 'OWNER'
-        )
+        github.event_name == 'issue_comment' ||
+        github.event_name == 'pull_request_review_comment'
       uses: actions/github-script@v7
       with:
         script: |
