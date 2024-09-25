@@ -2675,10 +2675,6 @@ cdef inline _ndarray_base _try_skip_h2d_copy(
         return None
 
     cdef intptr_t ptr = obj.ctypes.data
-#    # NumPy ndarrays do not guarantee alignment unless a custom
-#    # allocator is in use
-#    if not _is_alignment_expected(ptr, obj_dtype.itemsize):
-#        return None
 
     # NumPy 0-size arrays still have non-null pointers...
     cdef size_t nbytes = obj.nbytes

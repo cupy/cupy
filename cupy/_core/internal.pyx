@@ -3,7 +3,7 @@
 cimport cpython  # NOQA
 cimport cython  # NOQA
 from libcpp cimport bool as cpp_bool
-from libc.stdint cimport intptr_t, uint32_t
+from libc.stdint cimport uint32_t
 
 import warnings
 
@@ -552,13 +552,3 @@ cdef bint _is_layout_expected(
         return True
     else:
         return False
-
-
-cdef bint _is_alignment_expected(intptr_t ptr, int min_size) noexcept:
-    cdef int alignment = 1
-    # TODO(leofang): use the chunk size from memory.pyx and don't hard-code?
-    while ptr % alignment == 0 and alignment < 256:
-        alignment *= 2
-    if alignment < min_size:
-        return False
-    return True

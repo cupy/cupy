@@ -1,6 +1,6 @@
 from libcpp cimport bool as cpp_bool
 from libcpp cimport vector
-from libc.stdint cimport intptr_t, uint16_t
+from libc.stdint cimport uint16_t
 
 from cupy._core._carray cimport shape_t
 from cupy._core._carray cimport strides_t
@@ -68,5 +68,3 @@ cpdef tuple _broadcast_shapes(shapes)
 cdef bint _is_layout_expected(
         const bint c_contiguous, const bint f_contiguous,
         expected_order) except*
-
-cdef bint _is_alignment_expected(intptr_t ptr, int min_size) noexcept

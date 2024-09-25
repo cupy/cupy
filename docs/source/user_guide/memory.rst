@@ -206,7 +206,7 @@ System allocated memory (SAM) support (**experimental!**)
 It is possible to make both NumPy and CuPy use and share system allocated memory on Heterogeneous Memory Management
 (HMM) enabled systems or the NVIDIA Grace Hopper Superchip. To activate this capability, currently you need to:
 
-1. Build CuPy from source and install `numpy_allocator <https://github.com/inaccel/numpy-allocator/>`_
+1. Install `numpy_allocator <https://github.com/inaccel/numpy-allocator/>`_
 2. Set the environment variable ``CUPY_ENABLE_SAM=1``
 3. Make a memory pool for CuPy to draw system memory
 
