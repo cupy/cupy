@@ -74,7 +74,7 @@ jobs:
       uses: peter-evans/repository-dispatch@v3
       with:
         repository: ${{ env.CI_REPO_OWNER }}/${{ env.CI_REPO_NAME }}
-        event-type: rocm-5-3
+        event-type: rocm-6-2
         token: ${{ steps.generate-token.outputs.token }}
         client-payload: |
           {
