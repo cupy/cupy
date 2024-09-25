@@ -37,6 +37,8 @@ _allocation_unit_size = ALLOCATION_UNIT_SIZE
 
 cdef bint _exit_mode = False
 
+cdef bint _is_ump_enabled = (int(os.environ.get('CUPY_ENABLE_UMP', '0')) != 0)
+
 
 @atexit.register
 def _exit():
@@ -200,6 +202,10 @@ cdef class UnownedMemory(BaseMemory):
             if device_id == runtime.cudaCpuDeviceId:
                 # this happens with SystemMemory...
                 device_id = device.get_device_id()
+            # CUDA doesn't track memory allocated through the system malloc
+            if device_id == runtime.cudaInvalidDeviceId and _is_ump_enabled:
+                device_id = device.get_device_id()
+
         self.size = size
         self.device_id = device_id
         self.ptr = ptr
