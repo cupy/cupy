@@ -47,7 +47,7 @@ class TestFromData(unittest.TestCase):
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal(
         # when zero-copy, we may not be able to guarantee strides
-        strides_check=not bool(int(os.environ.get('CUPY_ENABLE_SAM', 0))))
+        strides_check=not bool(int(os.environ.get('CUPY_ENABLE_UMP', 0))))
     def test_array_from_numpy_c_and_f(self, xp, dtype, order):
         a = numpy.ones((1, 3, 1), dtype=dtype)
         return xp.array(a, order=order)

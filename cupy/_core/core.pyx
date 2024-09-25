@@ -92,10 +92,10 @@ cdef tuple _HANDLED_TYPES
 
 cdef object _null_context = contextlib.nullcontext()
 
-cdef bint _is_sam_enabled = (int(os.environ.get('CUPY_ENABLE_SAM', '0')) != 0)
+cdef bint _is_ump_enabled = (int(os.environ.get('CUPY_ENABLE_UMP', '0')) != 0)
 
-cdef inline bint is_sam_supported(int device_id) except*:
-    if (_is_sam_enabled
+cdef inline bint is_ump_supported(int device_id) except*:
+    if (_is_ump_enabled
             # 1 for both HMM/ATS addressing modes
             # this assumes device_id is a GPU device ordinal (not -1)
             and runtime.deviceGetAttribute(
@@ -356,12 +356,12 @@ cdef class _ndarray_base:
 
     def __getbuffer__(self, Py_buffer* buf, int flags):
         # TODO(leofang): use flags
-        if (not is_sam_supported(self.data.device_id)
+        if (not is_ump_supported(self.data.device_id)
                 or not self.is_host_accessible()):
             raise RuntimeError(
                 'Accessing a CuPy ndarry on CPU is not allowed except when '
                 'using system memory (on HMM or ATS enabled systems, need to '
-                'set CUPY_ENABLE_SAM=1) or managed memory')
+                'set CUPY_ENABLE_UMP=1) or managed memory')
 
         populate_format(buf, self.dtype.char)
         buf.buf = <void*><intptr_t>self.data.ptr
@@ -1891,9 +1891,9 @@ cdef class _ndarray_base:
             a_cpu = out
 
         if a_cpu is None:
-            # we don't check is_sam_supported() etc here because it'd be
+            # we don't check is_ump_supported() etc here because it'd be
             # done later
-            if _is_sam_enabled:
+            if _is_ump_enabled:
                 try:
                     # return self to use the same memory and avoid copy
                     a_cpu = numpy.asarray(self, order=order)
@@ -2649,7 +2649,7 @@ cdef inline _ndarray_base _try_skip_h2d_copy(
     if copy:
         return None
 
-    if not is_sam_supported(device.get_device_id()):
+    if not is_ump_supported(device.get_device_id()):
         return None
 
     if not isinstance(obj, numpy.ndarray):
@@ -2718,7 +2718,7 @@ cdef _ndarray_base _array_default(
     a_dtype = a_cpu.dtype
 
     # We already made a copy, we should be able to use it
-    if _is_sam_enabled:
+    if _is_ump_enabled:
         a = _try_skip_h2d_copy(a_cpu, a_dtype, False, order, ndmin)
         assert a is not None
         return a

@@ -200,15 +200,16 @@ Be sure to do this before any other CuPy operations.
    cupy.cuda.set_pinned_memory_allocator(None)
 
 
-System allocated memory (SAM) support (**experimental!**)
-.........................................................
+Unified memory programming (UMP) support (**experimental!**)
+............................................................
 
-It is possible to make both NumPy and CuPy use and share system allocated memory on Heterogeneous Memory Management
-(HMM) enabled systems or the NVIDIA Grace Hopper Superchip. To activate this capability, currently you need to:
+It is possible to make both NumPy and CuPy use/share system allocated memory on Heterogeneous Memory Management
+(HMM) or Address Translation Services (ATS) enabled systems, such as the NVIDIA Grace Hopper Superchip.
+To activate this capability, currently you need to:
 
 1. Install `numpy_allocator <https://github.com/inaccel/numpy-allocator/>`_
-2. Set the environment variable ``CUPY_ENABLE_SAM=1``
-3. Make a memory pool for CuPy to draw system memory
+2. Set the environment variable ``CUPY_ENABLE_UMP=1``
+3. Make a memory pool for CuPy to draw system memory (``malloc_system``), for example:
 
 .. code-block:: py
 
@@ -230,28 +231,18 @@ It is possible to make both NumPy and CuPy use and share system allocated memory
         _free_ = ctypes.addressof(lib._free)
     my_allocator.__enter__()  # change the allocator globally
 
-For CuPy, alternatively you can use the CuPy allocator from RAPIDS Memory Manager (RMM):
+With this setup change, all the data movement APIs such as :meth:`~cupy.ndarray.get()`, :func:`~cupy.asnumpy`  and
+:func:`~cupy.asarray` become no-op (no copy is done), and the following code is accelerated:
 
 .. code-block:: py
 
-    import cupy as cp
-    import rmm
-    mr = rmm.mr.SystemMemoryResource()
-    rmm.mr.set_current_device_resource(mr)
-    cp.cuda.set_allocator(rmm.allocators.cupy.rmm_cupy_allocator)
+    # a, b, c are np.ndarray, d is cp.ndarray
+    a = np.random.random(100)
+    b = np.random.random(100)
+    c = np.add(a, b)
+    d = cp.matmul(cp.asarray(a), cp.asarray(c))
 
-Currently on Grace Hopper, SAM can be migrated to the GPU, but is never migrated back to the host. If GPU memory is
-over-subscribed, this can cause other CUDA calls to fail with out-of-memory errors. To work around this problem, when
-using a system memory resource, you can reserve some GPU memory as headroom for other CUDA calls, and only conditionally
-set its preferred location to the GPU if the allocation would not eat into the headroom:
+Essentially, the distinction of CPU/GPU *memory* spaces is gone, and ``np``/``cp`` are used to represent
+the *execution* space (whether the code should run on CPU or GPU).
 
-.. code-block:: py
-
-    import cupy as cp
-    import rmm
-    headroom = 1 << 30  # 1 GiB
-    mr = rmm.mr.SamHeadroomMemoryResource(headroom=headroom)
-    rmm.mr.set_current_device_resource(mr)
-    cp.cuda.set_allocator(rmm.allocators.cupy.rmm_cupy_allocator)
-
-The size of the headroom may need to be adjusted depending on the application.
+Apart from the setup configuration for NumPy/CuPy, no user code chage is required.

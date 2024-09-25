@@ -152,7 +152,7 @@ class TestAsnumpy:
         assert y.base.ptr == y.ctypes.data
 
     @pytest.mark.skipif(
-        int(os.environ.get('CUPY_ENABLE_SAM', 0)) == 1,
+        int(os.environ.get('CUPY_ENABLE_UMP', 0)) == 1,
         reason='blocking or not is irrelevant when zero-copy is on'
     )
     @pytest.mark.parametrize('blocking', (True, False))
