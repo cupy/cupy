@@ -1,5 +1,5 @@
 import cupy
-from cupy import cuda
+from cupy import cuda, _util
 from cupy.cuda.graph import (
     _append_conditional_node_to_stream,
     _create_conditional_handle_from_stream
@@ -15,6 +15,8 @@ from typing import (
 )
 from collections import deque
 from abc import ABC, abstractmethod
+
+_util.experimental("cupyx.graph_functional_api")
 
 # Conditional value kernel definition
 _set_value_kernel_name = "cupy_cudaGraphSetConditional"
