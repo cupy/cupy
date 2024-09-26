@@ -366,7 +366,8 @@ def _make_fast_matvec(A):
                 beta.ctypes.data, desc_y.desc, cuda_dtype, alg, buff.data.ptr)
             return y
 
-    return matvec
+        return matvec
+    return None
 
 
 def _make_compute_hu(V):
