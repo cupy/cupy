@@ -44,14 +44,12 @@ repos:
       - id: mypy
         # Keep in sync with the list in setup.cfg
         files: "^(cupy|cupyx|cupy_backends|.github|.pfnci)/"
-        additional_dependencies:
-          [numpy, types-setuptools==57.4.14, types-PyYAML]
+        additional_dependencies: [numpy, types-setuptools, types-PyYAML]
       - id: mypy
         name: "mypy (install)"
         files: "^install/"
         args: [--config-file, "install/mypy.ini"]
-        additional_dependencies:
-          [numpy, types-setuptools==57.4.14, types-PyYAML]
+        additional_dependencies: [numpy, types-setuptools, types-PyYAML]
 
   - repo: local
     hooks:
