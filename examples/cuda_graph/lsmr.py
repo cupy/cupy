@@ -7,7 +7,7 @@ os.environ["CUPY_EXPERIMENTAL_CUDA_LIB_GRAPH_CAPTURE"] = "1"  # noqa
 import numpy
 import cupy
 import cupyx
-from cupy.cuda.graph_functional_api import (
+from cupyx.graph_functional_api import (
     GraphBuilder,
     MockGraphBuilder,
 )

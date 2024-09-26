@@ -3,7 +3,7 @@ import unittest
 import pytest
 import cupy
 from cupy import cuda
-from cupy.cuda.graph_functional_api import (
+from cupyx.graph_functional_api import (
     GraphBuilderInterface,
     GraphBuilder,
     MockGraphBuilder
