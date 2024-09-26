@@ -168,7 +168,7 @@ def lsmr_graph(A, b, x0=None, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8,
     elif impl_name == "mock":
         gb = MockGraphBuilder()
     else:
-        raise ValueError("impl_name is invalide")
+        raise ValueError("impl_name is invalid")
 
     @gb.graphify
     def main_loop(
@@ -472,7 +472,7 @@ else:
         x, istop, itn, * \
             _ = lsmr_graph(A, b, x0=x0, maxiter=args.maxiter, impl_name="mock")
     else:
-        raise ValueError("impl_name is invalide")
+        raise ValueError("impl_name is invalid")
     cupy.cuda.runtime.deviceSynchronize()
 end = time.time()
 
