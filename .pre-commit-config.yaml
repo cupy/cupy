@@ -3,7 +3,7 @@
 
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.4.0
+    rev: v4.6.0
     hooks:
       # Git
       - id: check-added-large-files
@@ -22,7 +22,7 @@ repos:
       - id: autopep8
 
   - repo: https://github.com/PyCQA/flake8
-    rev: 6.0.0
+    rev: 7.1.1
     hooks:
       - id: flake8
         # use config from setup.cfg
@@ -33,13 +33,13 @@ repos:
         additional_dependencies: [flake8-force]
 
   - repo: https://github.com/MarcoGorelli/cython-lint
-    rev: v0.15.0
+    rev: v0.16.2
     hooks:
       - id: cython-lint
         args: ["--max-line-length", "79"]
 
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.4.1
+    rev: v1.11.2
     hooks:
       - id: mypy
         # Keep in sync with the list in setup.cfg
