@@ -16,8 +16,8 @@ repos:
       - id: fix-byte-order-marker
       - id: check-yaml
 
-  - repo: https://github.com/pre-commit/mirrors-autopep8
-    rev: v2.0.2
+  - repo: https://github.com/hhatto/autopep8
+    rev: v2.3.1
     hooks:
       - id: autopep8
 
