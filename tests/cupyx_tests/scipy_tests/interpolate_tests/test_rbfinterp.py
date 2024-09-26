@@ -381,6 +381,7 @@ class _TestRBFInterpolator:
         d = xp.zeros(1)
         self.build(scp, y, d, kernel='thin_plate_spline')
 
+    @testing.with_requires("scipy<1.13")
     @testing.numpy_cupy_allclose(scipy_name='scp', accept_error=UserWarning)
     @pytest.mark.parametrize('kernel',
                              [kl for kl in _NAME_TO_MIN_DEGREE])

@@ -2139,6 +2139,7 @@ class TestCsrMatrixDiagonal:
         testing.assert_array_equal(scipy_a.indices, cupyx_a.indices)
         testing.assert_array_equal(scipy_a.indptr, cupyx_a.indptr)
 
+    @testing.with_requires("scipy<1.13")
     @testing.for_dtypes('fdFD')
     def test_setdiag(self, dtype):
         scipy_a, cupyx_a = self._make_matrix(dtype)
@@ -2152,6 +2153,7 @@ class TestCsrMatrixDiagonal:
                 x = numpy.ones((x_len,), dtype=dtype)
                 self._test_setdiag(scipy_a, cupyx_a, x, k)
 
+    @testing.with_requires("scipy<1.13")
     @testing.for_dtypes('fdFD')
     def test_setdiag_scalar(self, dtype):
         scipy_a, cupyx_a = self._make_matrix(dtype)
