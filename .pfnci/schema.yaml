@@ -259,13 +259,13 @@ cudnn:
 # list of supported Python versions in the Python libraries.
 python:
   "3.10":
-    spec: "3.10.0"
+    spec: "3.10.15"
   "3.11":
-    spec: "3.11.0"
+    spec: "3.11.10"
   "3.12":
-    spec: "3.12.0"
+    spec: "3.12.6"
   "pre":
-    spec: "3.13.0a1"  # note that dependency python libraies may not work
+    spec: "3.13.0rc2"  # note that dependency python libraies may not work
 
 ###############################################################################
 # Python Libraries
