@@ -49,11 +49,13 @@ def solve(a, b):
     if b.ndim == 1:
         if a.shape[-1] != b.size:
             raise ValueError(
-                "a must have (..., M, M) shape and b must have (M,) for one-dimensional b")
+                "a must have (..., M, M) shape and b must have (M,) "
+                "for one-dimensional b")
         b = cupy.broadcast_to(b, a.shape[:-1])
     elif a.shape[:-1] != b.shape[:-1]:
         raise ValueError(
-            "a must have (..., M, M) shape and b must have (..., M, K) for multidimensional b")
+            "a must have (..., M, M) shape and b must have (..., M, K) "
+            "for multidimensional b")
 
     if a.ndim > 2 and a.shape[-1] <= get_batched_gesv_limit():
         # Note: There is a low performance issue in batched_gesv when matrix is
