@@ -1,53 +1,278 @@
 {
-  "cupy.linux.cuda112": ["@push", "full", "mini", "cuda112"],
-  "cupy.linux.cuda112.multi": ["@push", "full", "multi", "cuda112"],
-  "cupy.linux.cuda113": ["@push", "full", "cuda113"],
-  "cupy.linux.cuda113.multi": ["@push", "full", "multi", "cuda113"],
-  "cupy.linux.cuda114": ["@push", "full", "cuda114"],
-  "cupy.linux.cuda114.multi": ["@push", "full", "multi", "cuda114"],
-  "cupy.linux.cuda115": ["@push", "full", "cuda115"],
-  "cupy.linux.cuda115.multi": ["@push", "full", "multi", "cuda115"],
-  "cupy.linux.cuda116": ["@push", "full", "cuda116"],
-  "cupy.linux.cuda116.multi": ["@push", "full", "multi", "cuda116"],
-  "cupy.linux.cuda117": ["@push", "full", "cuda117"],
-  "cupy.linux.cuda117.multi": ["@push", "full", "multi", "cuda117"],
-  "cupy.linux.cuda118": ["@push", "full", "mini", "cuda118"],
-  "cupy.linux.cuda118.multi": ["@push", "full", "mini", "multi", "cuda118"],
-  "cupy.linux.cuda120": ["@push", "full", "mini", "cuda120"],
-  "cupy.linux.cuda120.multi": ["@push", "full", "mini", "multi", "cuda120"],
-  "cupy.linux.cuda121": ["@push", "full", "cuda121"],
-  "cupy.linux.cuda121.multi": ["@push", "full", "multi", "cuda121"],
-  "cupy.linux.cuda122": ["@push", "full", "cuda122"],
-  "cupy.linux.cuda122.multi": ["@push", "full", "multi", "cuda122"],
-  "cupy.linux.cuda123": ["@push", "full", "cuda123"],
-  "cupy.linux.cuda123.multi": ["@push", "full", "multi", "cuda123"],
-  "cupy.linux.cuda124": ["@push", "full", "cuda124"],
-  "cupy.linux.cuda124.multi": ["@push", "full", "multi", "cuda124"],
-  "cupy.linux.cuda125": ["@push", "full", "cuda125"],
-  "cupy.linux.cuda125.multi": ["@push", "full", "multi", "cuda125"],
-  "cupy.linux.cuda126": ["@push", "full", "mini", "cuda126"],
-  "cupy.linux.cuda126.multi": ["@push", "full", "mini", "multi", "cuda126"],
-  "cupy.linux.cuda-slow": ["slow"],
-  "cupy.linux.cuda-example": ["@push", "full", "mini", "example"],
-  "cupy.linux.cuda-head": ["head"],
-  "cupy.linux.cuda11x-cuda-python": ["@push", "full", "mini", "cuda-python"],
-  "cupy.win.cuda112": ["@push", "full", "mini", "windows", "cuda112"],
-  "cupy.win.cuda113": ["windows", "cuda113"],
-  "cupy.win.cuda114": ["windows", "cuda114"],
-  "cupy.win.cuda115": ["windows", "cuda115"],
-  "cupy.win.cuda116": ["windows", "cuda116"],
-  "cupy.win.cuda117": ["windows", "cuda117"],
-  "cupy.win.cuda118": ["@push", "full", "mini", "windows", "cuda118"],
-  "cupy.win.cuda120": ["@push", "full", "mini", "windows", "cuda120"],
-  "cupy.win.cuda121": ["@push", "full", "windows", "cuda121"],
-  "cupy.win.cuda122": ["@push", "full", "windows", "cuda122"],
-  "cupy.win.cuda123": ["@push", "full", "windows", "cuda123"],
-  "cupy.win.cuda124": ["@push", "full", "windows", "cuda124"],
-  "cupy.win.cuda125": ["@push", "full", "windows", "cuda125"],
-  "cupy.win.cuda126": ["@push", "full", "mini", "windows", "cuda126"],
-  "cupy.linux.cuda-rapids": ["@push", "full", "rapids"],
-  "cupy.linux.cuda-build": ["@push", "full", "mini"],
-  "cupy.linux.array-api": ["array-api"],
-  "cupy.linux.benchmark.head": ["benchmark"],
-  "cupy.linux.benchmark.pr": ["benchmark"]
+    "cupy.linux.cuda112": [
+        "@push",
+        "full",
+        "mini",
+        "cuda112"
+    ],
+    "cupy.linux.cuda112.multi": [
+        "@push",
+        "full",
+        "multi",
+        "cuda112"
+    ],
+    "cupy.linux.cuda113": [
+        "@push",
+        "full",
+        "cuda113"
+    ],
+    "cupy.linux.cuda113.multi": [
+        "@push",
+        "full",
+        "multi",
+        "cuda113"
+    ],
+    "cupy.linux.cuda114": [
+        "@push",
+        "full",
+        "cuda114"
+    ],
+    "cupy.linux.cuda114.multi": [
+        "@push",
+        "full",
+        "multi",
+        "cuda114"
+    ],
+    "cupy.linux.cuda115": [
+        "@push",
+        "full",
+        "cuda115"
+    ],
+    "cupy.linux.cuda115.multi": [
+        "@push",
+        "full",
+        "multi",
+        "cuda115"
+    ],
+    "cupy.linux.cuda116": [
+        "@push",
+        "full",
+        "cuda116"
+    ],
+    "cupy.linux.cuda116.multi": [
+        "@push",
+        "full",
+        "multi",
+        "cuda116"
+    ],
+    "cupy.linux.cuda117": [
+        "@push",
+        "full",
+        "cuda117"
+    ],
+    "cupy.linux.cuda117.multi": [
+        "@push",
+        "full",
+        "multi",
+        "cuda117"
+    ],
+    "cupy.linux.cuda118": [
+        "@push",
+        "full",
+        "mini",
+        "cuda118"
+    ],
+    "cupy.linux.cuda118.multi": [
+        "@push",
+        "full",
+        "mini",
+        "multi",
+        "cuda118"
+    ],
+    "cupy.linux.cuda120": [
+        "@push",
+        "full",
+        "mini",
+        "cuda120"
+    ],
+    "cupy.linux.cuda120.multi": [
+        "@push",
+        "full",
+        "mini",
+        "multi",
+        "cuda120"
+    ],
+    "cupy.linux.cuda121": [
+        "@push",
+        "full",
+        "cuda121"
+    ],
+    "cupy.linux.cuda121.multi": [
+        "@push",
+        "full",
+        "multi",
+        "cuda121"
+    ],
+    "cupy.linux.cuda122": [
+        "@push",
+        "full",
+        "cuda122"
+    ],
+    "cupy.linux.cuda122.multi": [
+        "@push",
+        "full",
+        "multi",
+        "cuda122"
+    ],
+    "cupy.linux.cuda123": [
+        "@push",
+        "full",
+        "cuda123"
+    ],
+    "cupy.linux.cuda123.multi": [
+        "@push",
+        "full",
+        "multi",
+        "cuda123"
+    ],
+    "cupy.linux.cuda124": [
+        "@push",
+        "full",
+        "cuda124"
+    ],
+    "cupy.linux.cuda124.multi": [
+        "@push",
+        "full",
+        "multi",
+        "cuda124"
+    ],
+    "cupy.linux.cuda125": [
+        "@push",
+        "full",
+        "cuda125"
+    ],
+    "cupy.linux.cuda125.multi": [
+        "@push",
+        "full",
+        "multi",
+        "cuda125"
+    ],
+    "cupy.linux.cuda126": [
+        "@push",
+        "full",
+        "mini",
+        "cuda126"
+    ],
+    "cupy.linux.cuda126.multi": [
+        "@push",
+        "full",
+        "mini",
+        "multi",
+        "cuda126"
+    ],
+    "cupy.linux.cuda-slow": [
+        "slow"
+    ],
+    "cupy.linux.cuda-example": [
+        "@push",
+        "full",
+        "mini",
+        "example"
+    ],
+    "cupy.linux.cuda-head": [
+        "head"
+    ],
+    "cupy.linux.cuda11x-cuda-python": [
+        "@push",
+        "full",
+        "mini",
+        "cuda-python"
+    ],
+    "cupy.win.cuda112": [
+        "@push",
+        "full",
+        "mini",
+        "windows",
+        "cuda112"
+    ],
+    "cupy.win.cuda113": [
+        "windows",
+        "cuda113"
+    ],
+    "cupy.win.cuda114": [
+        "windows",
+        "cuda114"
+    ],
+    "cupy.win.cuda115": [
+        "windows",
+        "cuda115"
+    ],
+    "cupy.win.cuda116": [
+        "windows",
+        "cuda116"
+    ],
+    "cupy.win.cuda117": [
+        "windows",
+        "cuda117"
+    ],
+    "cupy.win.cuda118": [
+        "@push",
+        "full",
+        "mini",
+        "windows",
+        "cuda118"
+    ],
+    "cupy.win.cuda120": [
+        "@push",
+        "full",
+        "mini",
+        "windows",
+        "cuda120"
+    ],
+    "cupy.win.cuda121": [
+        "@push",
+        "full",
+        "windows",
+        "cuda121"
+    ],
+    "cupy.win.cuda122": [
+        "@push",
+        "full",
+        "windows",
+        "cuda122"
+    ],
+    "cupy.win.cuda123": [
+        "@push",
+        "full",
+        "windows",
+        "cuda123"
+    ],
+    "cupy.win.cuda124": [
+        "@push",
+        "full",
+        "windows",
+        "cuda124"
+    ],
+    "cupy.win.cuda125": [
+        "@push",
+        "full",
+        "windows",
+        "cuda125"
+    ],
+    "cupy.win.cuda126": [
+        "@push",
+        "full",
+        "mini",
+        "windows",
+        "cuda126"
+    ],
+    "cupy.linux.cuda-rapids": [
+        "@push",
+        "full",
+        "rapids"
+    ],
+    "cupy.linux.cuda-build": [
+        "@push",
+        "full",
+        "mini"
+    ],
+    "cupy.linux.array-api": [
+        "array-api"
+    ],
+    "cupy.linux.benchmark.head": [
+        "benchmark"
+    ],
+    "cupy.linux.benchmark.pr": [
+        "benchmark"
+    ]
 }
