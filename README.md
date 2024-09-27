@@ -70,7 +70,7 @@ If you need to use a particular CUDA version (say 12.0), you can use the `cuda-v
 Use [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/overview.html) to run [CuPy container images](https://hub.docker.com/r/cupy/cupy).
 
 ```sh
-$ docker run --gpus all -it cupy/cupy
+docker run --gpus all -it cupy/cupy
 ```
 
 ## Resources
