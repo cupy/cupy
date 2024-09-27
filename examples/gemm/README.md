@@ -8,7 +8,7 @@ The implementation is based on the one in [MAGMA](http://icl.cs.utk.edu/magma/).
 The demo contains a script that calculates matrix multiplication of A (m x k) and B (k x n).
 The demo can be run by the following command.
 
-```
+```sh
 python sgemm.py [--gpu GPU_ID] [--m m] [--n n] [--k k]
 ```
 

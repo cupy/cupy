@@ -19,7 +19,7 @@ This directory contains the test matrix definition, and a tool to generate test 
 
 To generate `linux/tests/*.Dockerfile`, `linux/tests/*.sh`, `config.tags.json`, and `coverage.rst`:
 
-```
+```sh
 pip install PyYAML
 ./generate.py
 ```
