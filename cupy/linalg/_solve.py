@@ -38,7 +38,6 @@ def solve(a, b):
     from cupyx import lapack
     from cupy.cublas import batched_gesv, get_batched_gesv_limit
 
-    # TODO(kataoka): Move the checks to the beginning
     _util._assert_cupy_array(a, b)
     _util._assert_stacked_2d(a)
     _util._assert_stacked_square(a)
