@@ -1142,6 +1142,7 @@ cpdef intptr_t graphCreate(unsigned int flags=0):
     cdef Graph graph
     with nogil:
         status = cudaGraphCreate(&graph, flags)
+    check_status(status)
     return <intptr_t>(graph)
 
 cpdef graphDestroy(intptr_t graph):
