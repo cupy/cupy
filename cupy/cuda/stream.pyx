@@ -204,8 +204,9 @@ class _BaseStream:
         self.ptr = ptr
         self.device_id = device_id
 
-        # Tuple[Graph, bool]: (graph_instance, is_borrowed_graph)
-        self._capturing_graph_info = None
+        # Takes the reference to capturing graph when starting capture to an
+        # existing graph.
+        self._capturing_graph = None
 
     def __eq__(self, other):
         # This operator needed as the ptr may be shared between multiple Stream
@@ -384,26 +385,26 @@ class _BaseStream:
             # (Though, ideally stream capture should be used together with
             # the async APIs, such as cudaMallocAsync.)
             mode = runtime.streamCaptureModeRelaxed
+
         if to_graph is None:
-            # Create new empty graph
-            is_borrowed_graph = False
-            to_graph = graph.Graph(_owned=False)
+            runtime.streamBeginCapture(self.ptr, mode)
         else:
-            is_borrowed_graph = True
+            IF (0 < CUPY_CUDA_VERSION < 12030) or (0 < CUPY_HIP_VERSION):
+                raise RuntimeError(
+                    'Starting capture to an existing graph requires '
+                    'CUDA 12.3 or later'
+                )
 
-        if to_graph._owned:
-            raise RuntimeError("Cannot start capture to owned graph")
-
-        # Supports to start capture only to an empty graph
-        runtime.streamBeginCaptureToGraph(
-            self.ptr,
-            to_graph.graph,
-            0,  # dependencies_ptr
-            0,  # dependency_data_ptr
-            0,  # num_deps
-            mode
-        )
-        self._capturing_graph_info = (to_graph, is_borrowed_graph)
+            # Assuming to_graph is an empty graph
+            runtime.streamBeginCaptureToGraph(
+                self.ptr,
+                to_graph.graph,
+                0,  # dependencies_ptr
+                0,  # dependency_data_ptr
+                0,  # num_deps
+                mode
+            )
+            self._capturing_graph = to_graph
 
     def end_capture(self):
         """End stream capture and retrieve the constructed CUDA graph.
@@ -427,13 +428,12 @@ class _BaseStream:
         try:
             g = runtime.streamEndCapture(self.ptr)
         finally:
-            captured_graph_info = self._capturing_graph_info
-            self._capturing_graph_info = None
-        captured_graph, is_borrowed_graph = captured_graph_info
-        if is_borrowed_graph:
-            return captured_graph
+            capturing_graph = self._capturing_graph
+            self._capturing_graph = None
+        if capturing_graph is not None:
+            return capturing_graph
         else:
-            return graph.Graph.from_stream(g)
+            return graph.Graph.from_stream(g, owned=True)
 
     def is_capturing(self):
         """Check if the stream is capturing.

@@ -136,10 +136,11 @@ cpdef int _create_conditional_handle_from_stream(
     '''
     IF (0 < CUPY_CUDA_VERSION < 12030) or (0 < CUPY_HIP_VERSION):
         raise RuntimeError('Conditional node requires CUDA 12.3 or later')
-    graph, _ = stream._capturing_graph_info
+    _status, _id, graph_ptr, _deps_ptr, _n_deps = \
+        runtime.streamGetCaptureInfo(stream.ptr)
 
     handle = runtime.graphConditionalHandleCreate(
-        graph.graph,
+        graph_ptr,
         defaultLaunchValue=default_value,
         flags=flags
     )
