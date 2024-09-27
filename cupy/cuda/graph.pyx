@@ -35,12 +35,12 @@ cdef class Graph:
         if self.graphExec > 0:
             runtime.graphExecDestroy(self.graphExec)
 
-    def __init__(self, bint owned=False):
+    def __init__(self, *, bint _owned=True):
         raw_graph = runtime.graphCreate()
         self._init(
             raw_graph,
             0,  # graphExec
-            owned,
+            _owned,
         )
 
     @staticmethod
@@ -134,6 +134,8 @@ cpdef int _create_conditional_handle_from_stream(
     '''
     Returns conditional handle body value (int)
     '''
+    IF (0 < CUPY_CUDA_VERSION < 12030) or (0 < CUPY_HIP_VERSION):
+        raise RuntimeError('Conditional node requires CUDA 12.3 or later')
     graph, _ = stream._capturing_graph_info
 
     handle = runtime.graphConditionalHandleCreate(
@@ -150,7 +152,7 @@ cpdef Graph _append_conditional_node_to_stream(
     '''
     Returns conditional node's body graph
     '''
-    IF (0 < CUPY_CUDA_VERSION < 12300) or (0 < CUPY_HIP_VERSION):
+    IF (0 < CUPY_CUDA_VERSION < 12030) or (0 < CUPY_HIP_VERSION):
         raise RuntimeError('Conditional node requires CUDA 12.3 or later')
 
     status, _id, main_graph_ptr, deps_ptr, n_deps = \

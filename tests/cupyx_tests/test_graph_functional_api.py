@@ -12,8 +12,8 @@ from cupyx.graph_functional_api import (
 
 @pytest.mark.skipif(cuda.runtime.is_hip,
                     reason='HIP does not support this')
-@pytest.mark.skipif(cuda.get_local_runtime_version() < 12040,
-                    reason='Conditional API requires CUDA >=12.4')
+@pytest.mark.skipif(cuda.get_local_runtime_version() < 12030,
+                    reason='Conditional API requires CUDA >=12.3')
 class TestGraphFunctionalAPI(unittest.TestCase):
     def setUp(self):
         # Setup environment variable to allow graph capture
