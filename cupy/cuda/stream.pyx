@@ -387,7 +387,7 @@ class _BaseStream:
         if to_graph is None:
             # Create new empty graph
             is_borrowed_graph = False
-            to_graph = graph.Graph(owned=False)
+            to_graph = graph.Graph(_owned=False)
         else:
             is_borrowed_graph = True
 
