@@ -43,7 +43,7 @@ class TestCommonType(unittest.TestCase):
     @testing.numpy_cupy_equal()
     def test_common_type_empty(self, xp):
         ret = xp.common_type()
-        assert type(ret) == type
+        assert type(ret) is type
         return ret
 
     @testing.for_all_dtypes(no_bool=True)
@@ -51,7 +51,7 @@ class TestCommonType(unittest.TestCase):
     def test_common_type_single_argument(self, xp, dtype):
         array = _generate_type_routines_input(xp, dtype, 'array')
         ret = xp.common_type(array)
-        assert type(ret) == type
+        assert type(ret) is type
         return ret
 
     @testing.for_all_dtypes_combination(
@@ -61,7 +61,7 @@ class TestCommonType(unittest.TestCase):
         array1 = _generate_type_routines_input(xp, dtype1, 'array')
         array2 = _generate_type_routines_input(xp, dtype2, 'array')
         ret = xp.common_type(array1, array2)
-        assert type(ret) == type
+        assert type(ret) is type
         return ret
 
     @testing.for_all_dtypes()
