@@ -4,40 +4,39 @@ on:
   pull_request_target:
     types: [closed, labeled]
     branches:
-       - main
+      - main
 
 jobs:
   backport:
     if: |
-        github.repository_owner == 'cupy' &&
-        github.event.pull_request.merged == true &&
-        (
-            (github.event.action == 'closed'  && contains(github.event.pull_request.labels.*.name, 'to-be-backported')) ||
-            (github.event.action == 'labeled' && github.event.label.name == 'to-be-backported')
-        )
+      github.repository_owner == 'cupy' &&
+      github.event.pull_request.merged == true &&
+      (
+          (github.event.action == 'closed'  && contains(github.event.pull_request.labels.*.name, 'to-be-backported')) ||
+          (github.event.action == 'labeled' && github.event.label.name == 'to-be-backported')
+      )
     runs-on: ubuntu-22.04
-
     steps:
-    - name: Checkout
-      uses: actions/checkout@v4
-      with:
-        repository: 'cupy/backport'
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          repository: "cupy/backport"
 
-    - name: Setup Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.10'
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
 
-    - name: Install Dependencies
-      run: |
-        pip install pygithub
+      - name: Install Dependencies
+        run: |
+          pip install pygithub
 
-    - name: Run Backport
-      env:
-        GH_TOKEN: ${{secrets.BACKPORT_TOKEN}}
-        BACKPORT_GITHUB_TOKEN: ${{secrets.BACKPORT_TOKEN}}
-      run: |
-        git config --global user.name "CuPy Automatic Backport"
-        git config --global user.email "33715081+chainer-ci@users.noreply.github.com"
-        gh auth setup-git
-        python backport.py --repo cupy --pr ${{github.event.number}} --https --bot
+      - name: Run Backport
+        env:
+          GH_TOKEN: ${{ secrets.BACKPORT_TOKEN }}
+          BACKPORT_GITHUB_TOKEN: ${{ secrets.BACKPORT_TOKEN }}
+        run: |
+          git config --global user.name "CuPy Automatic Backport"
+          git config --global user.email "33715081+chainer-ci@users.noreply.github.com"
+          gh auth setup-git
+          python backport.py --repo cupy --pr ${{ github.event.number }} --https --bot

@@ -3,7 +3,15 @@ name: "Pull-Request Update"
 on:
   issue_comment:
   pull_request:
-    types: [edited, synchronize, converted_to_draft, ready_for_review, review_requested, auto_merge_disabled]
+    types:
+      [
+        edited,
+        synchronize,
+        converted_to_draft,
+        ready_for_review,
+        review_requested,
+        auto_merge_disabled,
+      ]
   pull_request_review:
   pull_request_review_comment:
 

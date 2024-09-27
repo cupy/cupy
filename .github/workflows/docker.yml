@@ -20,8 +20,8 @@ on:
 jobs:
   docker-build-push:
     if: |
-        github.repository_owner == 'cupy' ||
-        github.event_name != 'release'
+      github.repository_owner == 'cupy' ||
+      github.event_name != 'release'
     runs-on: ubuntu-22.04
     strategy:
       matrix:
@@ -38,29 +38,29 @@ jobs:
           'pull-request-test'
         }}
     steps:
-    - name: Checkout
-      uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-    - name: Login to DockerHub
-      if: github.event_name != 'pull_request'
-      uses: docker/login-action@v2
-      with:
-        username: ${{ secrets.DOCKERHUB_USERNAME }}
-        password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Login to DockerHub
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-    - name: Docker Build & Push (version tag)
-      uses: docker/build-push-action@v4
-      with:
-        context: ${{ matrix.context }}
-        tags: ${{ matrix.base }}:${{ env.DOCKER_TAG_NAME }}
-        push: ${{ github.event_name != 'pull_request' }}
+      - name: Docker Build & Push (version tag)
+        uses: docker/build-push-action@v4
+        with:
+          context: ${{ matrix.context }}
+          tags: ${{ matrix.base }}:${{ env.DOCKER_TAG_NAME }}
+          push: ${{ github.event_name != 'pull_request' }}
 
-    - name: Docker Build & Push (latest tag)
-      if: |
+      - name: Docker Build & Push (latest tag)
+        if: |
           (github.event_name == 'release' && ! github.event.release.prerelease) ||
           (github.event_name == 'workflow_dispatch' && ! github.event.inputs.prerelease)
-      uses: docker/build-push-action@v4
-      with:
-        context: ${{ matrix.context }}
-        tags: ${{ matrix.base }}:latest
-        push: ${{ github.event_name != 'pull_request' }}
+        uses: docker/build-push-action@v4
+        with:
+          context: ${{ matrix.context }}
+          tags: ${{ matrix.base }}:latest
+          push: ${{ github.event_name != 'pull_request' }}

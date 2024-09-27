@@ -2,8 +2,8 @@
 
 This example contains implementation of Gaussian Mixture Model (GMM).
 
-
 ### How to demo
+
 The demo contains a script that partitions data into groups using Gaussian Mixture Model.
 The demo can be run by the following command.
 

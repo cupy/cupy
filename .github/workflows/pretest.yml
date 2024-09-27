@@ -7,42 +7,40 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
-    - name: Checkout
-      uses: actions/checkout@v4
-      with:
-        # Checkout using commit hash to make "no-commit-to-branch" test pass.
-        ref: ${{ github.sha }}
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # Checkout using commit hash to make "no-commit-to-branch" test pass.
+          ref: ${{ github.sha }}
 
-    - name: Setup Python
-      uses: actions/setup-python@v5
-      id: setup-python
-      with:
-        python-version: '3.9'
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        id: setup-python
+        with:
+          python-version: "3.9"
 
-    - name: Setup cache
-      uses: actions/cache@v4
-      with:
-        path: ~/.cache
-        key:
-          static-checks-${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('.pre-commit-config.yaml') }}
-        restore-keys:
-          static-checks-
+      - name: Setup cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache
+          key: static-checks-${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('.pre-commit-config.yaml') }}
+          restore-keys: static-checks-
 
-    - name: Setup pre-commit
-      run: |
-        pip install pre-commit
+      - name: Setup pre-commit
+        run: |
+          pip install pre-commit
 
-    - name: Check
-      run: |
-        pre-commit run -a --show-diff-on-failure
+      - name: Check
+        run: |
+          pre-commit run -a --show-diff-on-failure
 
-    - name: Type Check
-      run: |
-        # TODO: Test against various NumPy/SciPy versions.
-        pip install 'numpy==1.25.*' 'scipy==1.10.*'
-        pip install 'mypy==1.5.*' 'types-setuptools==57.4.14' 'pytest>=7.2'
-        sed -i s/error::cupy.exceptions./error::numpy./ setup.cfg  # Because no cupy here. See cupy#8346
-        pytest -v tests/typing_tests/test_typing.py
+      - name: Type Check
+        run: |
+          # TODO: Test against various NumPy/SciPy versions.
+          pip install 'numpy==1.25.*' 'scipy==1.10.*'
+          pip install 'mypy==1.5.*' 'types-setuptools==57.4.14' 'pytest>=7.2'
+          sed -i s/error::cupy.exceptions./error::numpy./ setup.cfg  # Because no cupy here. See cupy#8346
+          pytest -v tests/typing_tests/test_typing.py
 
   build-cuda:
     runs-on: ubuntu-22.04
@@ -50,60 +48,60 @@ jobs:
       CUPY_CI: GitHub
 
     steps:
-    - name: Checkout
-      uses: actions/checkout@v4
-      with:
-        submodules: recursive
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
-    - name: Setup Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.12'
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
 
-    - name: Setup cache
-      uses: actions/cache@v4
-      with:
-        path: ~/.cache
-        key: build-cuda-${{ github.sha }}
-        restore-keys: |
-          build-cuda-${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
-          build-cuda-
+      - name: Setup cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache
+          key: build-cuda-${{ github.sha }}
+          restore-keys: |
+            build-cuda-${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+            build-cuda-
 
-    - name: Setup ccache
-      run: |
-        sudo apt-get update -y
-        sudo apt-get install -y ccache
-        echo "PATH=/usr/lib/ccache:${PATH}" >> "${GITHUB_ENV}"
-        ccache --show-stats -v
+      - name: Setup ccache
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y ccache
+          echo "PATH=/usr/lib/ccache:${PATH}" >> "${GITHUB_ENV}"
+          ccache --show-stats -v
 
-    - name: Build
-      run: |
-        pip install -U pip wheel setuptools
-        READTHEDOCS=True pip install -v -e .
-        ccache --max-size 0.5Gi --cleanup --show-stats
+      - name: Build
+        run: |
+          pip install -U pip wheel setuptools
+          READTHEDOCS=True pip install -v -e .
+          ccache --max-size 0.5Gi --cleanup --show-stats
 
-    - name: Docs Build
-      run: |
-        # Test to detect invalid escape sequences in docstrings (#1619)
-        python -Werror::DeprecationWarning -m compileall -f -q cupy cupyx examples tests docs
-        pushd docs
-        pip install -r requirements.txt
-        SPHINXOPTS="-W --keep-going -j 4" make html
-        popd
+      - name: Docs Build
+        run: |
+          # Test to detect invalid escape sequences in docstrings (#1619)
+          python -Werror::DeprecationWarning -m compileall -f -q cupy cupyx examples tests docs
+          pushd docs
+          pip install -r requirements.txt
+          SPHINXOPTS="-W --keep-going -j 4" make html
+          popd
 
-    - name: Import Test
-      run: |
-        python -c 'import cupy, cupyx'
+      - name: Import Test
+        run: |
+          python -c 'import cupy, cupyx'
 
   build-rocm:
     runs-on: ubuntu-22.04
 
     steps:
-    - name: Checkout
-      uses: actions/checkout@v4
-      with:
-        submodules: recursive
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
-    - name: Build & Test
-      run: |
-        docker run --rm -v "${PWD}:/src" -w /src "rocm/dev-ubuntu-22.04:6.0" bash .github/workflows/pretest-rocm-test.sh
+      - name: Build & Test
+        run: |
+          docker run --rm -v "${PWD}:/src" -w /src "rocm/dev-ubuntu-22.04:6.0" bash .github/workflows/pretest-rocm-test.sh

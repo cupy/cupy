@@ -2,8 +2,8 @@
 
 This example contains implementation of K-means clustering.
 
-
 ### How to demo
+
 The demo contains a script that partitions data into groups using K-means clustering.
 The demo can be run by the following command.
 
