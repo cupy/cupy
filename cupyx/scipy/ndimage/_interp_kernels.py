@@ -261,6 +261,8 @@ def _generate_interp_custom(coord_func, ndim, large_int, mode, cval,
     for j in range(ndim - 1, 0, -1):
         ops.append(f'const {uint_t} sx_{j - 1} = sx_{j} * xsize_{j};')
 
+    ops.append(_unravel_loop_index(ndim, uint_t))
+
     # compute the transformed (target) coordinates, c_j
     ops = ops + coord_func(ndim, nprepad)
 
