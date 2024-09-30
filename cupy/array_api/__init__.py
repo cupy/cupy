@@ -116,13 +116,13 @@ Still TODO in this module are:
 """
 
 # CuPy-specific: still need to support Python 3.7.
-import sys
+import sys  # NOQA: E402
 
 if sys.version_info < (3, 8):
     raise RuntimeError('cupy.array_api requires Python 3.8+')
 
 
-import warnings
+import warnings  # NOQA: E402
 
 warnings.warn(
     "The cupy.array_api submodule is still experimental. See NEP 47.", stacklevel=2
@@ -132,28 +132,28 @@ __array_api_version__ = "2021.12"
 
 __all__ = ["__array_api_version__"]
 
-from ._constants import e, inf, nan, pi
+from ._constants import e, inf, nan, pi  # NOQA: E402
 
 __all__ += ["e", "inf", "nan", "pi"]
 
-from ._creation_functions import (
-    asarray,
-    arange,
-    empty,
-    empty_like,
-    eye,
-    from_dlpack,
-    full,
-    full_like,
-    linspace,
-    meshgrid,
-    ones,
-    ones_like,
-    tril,
-    triu,
-    zeros,
-    zeros_like,
-)
+from ._creation_functions import (  # NOQA: E402
+    asarray,  # NOQA: E402
+    arange,  # NOQA: E402
+    empty,  # NOQA: E402
+    empty_like,  # NOQA: E402
+    eye,  # NOQA: E402
+    from_dlpack,  # NOQA: E402
+    full,  # NOQA: E402
+    full_like,  # NOQA: E402
+    linspace,  # NOQA: E402
+    meshgrid,  # NOQA: E402
+    ones,  # NOQA: E402
+    ones_like,  # NOQA: E402
+    tril,  # NOQA: E402
+    triu,  # NOQA: E402
+    zeros,  # NOQA: E402
+    zeros_like,  # NOQA: E402
+)  # NOQA: E402
 
 __all__ += [
     "asarray",
@@ -174,15 +174,15 @@ __all__ += [
     "zeros_like",
 ]
 
-from ._data_type_functions import (
-    astype,
-    broadcast_arrays,
-    broadcast_to,
-    can_cast,
-    finfo,
-    iinfo,
-    result_type,
-)
+from ._data_type_functions import (  # NOQA: E402
+    astype,  # NOQA: E402
+    broadcast_arrays,  # NOQA: E402
+    broadcast_to,  # NOQA: E402
+    can_cast,  # NOQA: E402
+    finfo,  # NOQA: E402
+    iinfo,  # NOQA: E402
+    result_type,  # NOQA: E402
+)  # NOQA: E402
 
 __all__ += [
     "astype",
@@ -194,19 +194,19 @@ __all__ += [
     "result_type",
 ]
 
-from ._dtypes import (
-    int8,
-    int16,
-    int32,
-    int64,
-    uint8,
-    uint16,
-    uint32,
-    uint64,
-    float32,
-    float64,
-    bool,
-)
+from ._dtypes import (  # NOQA: E402
+    int8,  # NOQA: E402
+    int16,  # NOQA: E402
+    int32,  # NOQA: E402
+    int64,  # NOQA: E402
+    uint8,  # NOQA: E402
+    uint16,  # NOQA: E402
+    uint32,  # NOQA: E402
+    uint64,  # NOQA: E402
+    float32,  # NOQA: E402
+    float64,  # NOQA: E402
+    bool,  # NOQA: E402
+)  # NOQA: E402
 
 __all__ += [
     "int8",
@@ -222,64 +222,64 @@ __all__ += [
     "bool",
 ]
 
-from ._elementwise_functions import (
-    abs,
-    acos,
-    acosh,
-    add,
-    asin,
-    asinh,
-    atan,
-    atan2,
-    atanh,
-    bitwise_and,
-    bitwise_left_shift,
-    bitwise_invert,
-    bitwise_or,
-    bitwise_right_shift,
-    bitwise_xor,
-    ceil,
-    cos,
-    cosh,
-    divide,
-    equal,
-    exp,
-    expm1,
-    floor,
-    floor_divide,
-    greater,
-    greater_equal,
-    isfinite,
-    isinf,
-    isnan,
-    less,
-    less_equal,
-    log,
-    log1p,
-    log2,
-    log10,
-    logaddexp,
-    logical_and,
-    logical_not,
-    logical_or,
-    logical_xor,
-    multiply,
-    negative,
-    not_equal,
-    positive,
-    pow,
-    remainder,
-    round,
-    sign,
-    sin,
-    sinh,
-    square,
-    sqrt,
-    subtract,
-    tan,
-    tanh,
-    trunc,
-)
+from ._elementwise_functions import (  # NOQA: E402
+    abs,  # NOQA: E402
+    acos,  # NOQA: E402
+    acosh,  # NOQA: E402
+    add,  # NOQA: E402
+    asin,  # NOQA: E402
+    asinh,  # NOQA: E402
+    atan,  # NOQA: E402
+    atan2,  # NOQA: E402
+    atanh,  # NOQA: E402
+    bitwise_and,  # NOQA: E402
+    bitwise_left_shift,  # NOQA: E402
+    bitwise_invert,  # NOQA: E402
+    bitwise_or,  # NOQA: E402
+    bitwise_right_shift,  # NOQA: E402
+    bitwise_xor,  # NOQA: E402
+    ceil,  # NOQA: E402
+    cos,  # NOQA: E402
+    cosh,  # NOQA: E402
+    divide,  # NOQA: E402
+    equal,  # NOQA: E402
+    exp,  # NOQA: E402
+    expm1,  # NOQA: E402
+    floor,  # NOQA: E402
+    floor_divide,  # NOQA: E402
+    greater,  # NOQA: E402
+    greater_equal,  # NOQA: E402
+    isfinite,  # NOQA: E402
+    isinf,  # NOQA: E402
+    isnan,  # NOQA: E402
+    less,  # NOQA: E402
+    less_equal,  # NOQA: E402
+    log,  # NOQA: E402
+    log1p,  # NOQA: E402
+    log2,  # NOQA: E402
+    log10,  # NOQA: E402
+    logaddexp,  # NOQA: E402
+    logical_and,  # NOQA: E402
+    logical_not,  # NOQA: E402
+    logical_or,  # NOQA: E402
+    logical_xor,  # NOQA: E402
+    multiply,  # NOQA: E402
+    negative,  # NOQA: E402
+    not_equal,  # NOQA: E402
+    positive,  # NOQA: E402
+    pow,  # NOQA: E402
+    remainder,  # NOQA: E402
+    round,  # NOQA: E402
+    sign,  # NOQA: E402
+    sin,  # NOQA: E402
+    sinh,  # NOQA: E402
+    square,  # NOQA: E402
+    sqrt,  # NOQA: E402
+    subtract,  # NOQA: E402
+    tan,  # NOQA: E402
+    tanh,  # NOQA: E402
+    trunc,  # NOQA: E402
+)  # NOQA: E402
 
 __all__ += [
     "abs",
@@ -340,49 +340,50 @@ __all__ += [
     "trunc",
 ]
 
-from ._indexing_functions import take
+from ._indexing_functions import take  # NOQA: E402
 
 __all__ += ["take"]
 
 # linalg is an extension in the array API spec, which is a sub-namespace. Only
 # a subset of functions in it are imported into the top-level namespace.
-from . import linalg
+from . import linalg  # NOQA: E402
 
 __all__ += ["linalg"]
 
-from .linalg import matmul, tensordot, matrix_transpose, vecdot
+from .linalg import matmul, tensordot, matrix_transpose, vecdot  # NOQA: E402
 
 __all__ += ["matmul", "tensordot", "matrix_transpose", "vecdot"]
 
-from ._manipulation_functions import (
-    concat,
-    expand_dims,
-    flip,
-    permute_dims,
-    reshape,
-    roll,
-    squeeze,
-    stack,
-)
+from ._manipulation_functions import (  # NOQA: E402
+    concat,  # NOQA: E402
+    expand_dims,  # NOQA: E402
+    flip,  # NOQA: E402
+    permute_dims,  # NOQA: E402
+    reshape,  # NOQA: E402
+    roll,  # NOQA: E402
+    squeeze,  # NOQA: E402
+    stack,  # NOQA: E402
+)  # NOQA: E402
 
-__all__ += ["concat", "expand_dims", "flip", "permute_dims", "reshape", "roll", "squeeze", "stack"]
+__all__ += ["concat", "expand_dims", "flip",
+            "permute_dims", "reshape", "roll", "squeeze", "stack"]
 
-from ._searching_functions import argmax, argmin, nonzero, where
+from ._searching_functions import argmax, argmin, nonzero, where  # NOQA: E402
 
 __all__ += ["argmax", "argmin", "nonzero", "where"]
 
-from ._set_functions import unique_all, unique_counts, unique_inverse, unique_values
+from ._set_functions import unique_all, unique_counts, unique_inverse, unique_values  # NOQA: E402
 
 __all__ += ["unique_all", "unique_counts", "unique_inverse", "unique_values"]
 
-from ._sorting_functions import argsort, sort
+from ._sorting_functions import argsort, sort  # NOQA: E402
 
 __all__ += ["argsort", "sort"]
 
-from ._statistical_functions import max, mean, min, prod, std, sum, var
+from ._statistical_functions import max, mean, min, prod, std, sum, var  # NOQA: E402
 
 __all__ += ["max", "mean", "min", "prod", "std", "sum", "var"]
 
-from ._utility_functions import all, any
+from ._utility_functions import all, any  # NOQA: E402
 
 __all__ += ["all", "any"]
