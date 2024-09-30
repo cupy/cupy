@@ -32,7 +32,8 @@ def test_asarray_errors():
     # Preferably this would be OverflowError
     # assert_raises(OverflowError, lambda: asarray([2**100]))
 #    assert_raises(TypeError, lambda: asarray([2**100]))  # TODO(leofang): fix this?
-    assert_raises(ValueError, lambda: asarray([1], device="cpu"))  # numpy's pick
+    assert_raises(ValueError, lambda: asarray(
+        [1], device="cpu"))  # numpy's pick
     assert_raises(ValueError, lambda: asarray([1], device="gpu"))
 
     assert_raises(ValueError, lambda: asarray([1], dtype=int))
@@ -68,7 +69,8 @@ def test_arange_errors():
 
 
 def test_empty_errors():
-    assert_raises(ValueError, lambda: empty((1,), device="cpu"))  # numpy's pick
+    assert_raises(ValueError, lambda: empty(
+        (1,), device="cpu"))  # numpy's pick
     assert_raises(ValueError, lambda: empty((1,), device="gpu"))
     assert_raises(ValueError, lambda: empty((1,), dtype=int))
     assert_raises(ValueError, lambda: empty((1,), dtype="i"))
@@ -76,7 +78,8 @@ def test_empty_errors():
 
 
 def test_empty_like_errors():
-    assert_raises(ValueError, lambda: empty_like(asarray(1), device="cpu"))  # numpy's pick
+    assert_raises(ValueError, lambda: empty_like(
+        asarray(1), device="cpu"))  # numpy's pick
     assert_raises(ValueError, lambda: empty_like(asarray(1), device="gpu"))
     assert_raises(ValueError, lambda: empty_like(asarray(1), dtype=int))
     assert_raises(ValueError, lambda: empty_like(asarray(1), dtype="i"))
@@ -92,7 +95,8 @@ def test_eye_errors():
 
 
 def test_full_errors():
-    assert_raises(ValueError, lambda: full((1,), 0, device="cpu"))  # numpy's pick
+    assert_raises(ValueError, lambda: full(
+        (1,), 0, device="cpu"))  # numpy's pick
     assert_raises(ValueError, lambda: full((1,), 0, device="gpu"))
     assert_raises(ValueError, lambda: full((1,), 0, dtype=int))
     assert_raises(ValueError, lambda: full((1,), 0, dtype="i"))
@@ -100,7 +104,8 @@ def test_full_errors():
 
 
 def test_full_like_errors():
-    assert_raises(ValueError, lambda: full_like(asarray(1), 0, device="cpu"))  # numpy's pick
+    assert_raises(ValueError, lambda: full_like(
+        asarray(1), 0, device="cpu"))  # numpy's pick
     assert_raises(ValueError, lambda: full_like(asarray(1), 0, device="gpu"))
     assert_raises(ValueError, lambda: full_like(asarray(1), 0, dtype=int))
     assert_raises(ValueError, lambda: full_like(asarray(1), 0, dtype="i"))
@@ -108,7 +113,8 @@ def test_full_like_errors():
 
 
 def test_linspace_errors():
-    assert_raises(ValueError, lambda: linspace(0, 1, 10, device="cpu"))  # numpy's pick
+    assert_raises(ValueError, lambda: linspace(
+        0, 1, 10, device="cpu"))  # numpy's pick
     assert_raises(ValueError, lambda: linspace(0, 1, 10, device="gpu"))
     assert_raises(ValueError, lambda: linspace(0, 1, 10, dtype=float))
     assert_raises(ValueError, lambda: linspace(0, 1, 10, dtype="f"))
@@ -124,7 +130,8 @@ def test_ones_errors():
 
 
 def test_ones_like_errors():
-    assert_raises(ValueError, lambda: ones_like((1,), device="cpu"))  # numpy's pick
+    assert_raises(ValueError, lambda: ones_like(
+        (1,), device="cpu"))  # numpy's pick
     assert_raises(ValueError, lambda: ones_like(asarray(1), device="gpu"))
     assert_raises(ValueError, lambda: ones_like(asarray(1), dtype=int))
     assert_raises(ValueError, lambda: ones_like(asarray(1), dtype="i"))
@@ -132,7 +139,8 @@ def test_ones_like_errors():
 
 
 def test_zeros_errors():
-    assert_raises(ValueError, lambda: zeros((1,), device="cpu"))  # numpy's pick
+    assert_raises(ValueError, lambda: zeros(
+        (1,), device="cpu"))  # numpy's pick
     assert_raises(ValueError, lambda: zeros((1,), device="gpu"))
     assert_raises(ValueError, lambda: zeros((1,), dtype=int))
     assert_raises(ValueError, lambda: zeros((1,), dtype="i"))
@@ -140,11 +148,13 @@ def test_zeros_errors():
 
 
 def test_zeros_like_errors():
-    assert_raises(ValueError, lambda: zeros_like((1,), device="cpu"))  # numpy's pick
+    assert_raises(ValueError, lambda: zeros_like(
+        (1,), device="cpu"))  # numpy's pick
     assert_raises(ValueError, lambda: zeros_like(asarray(1), device="gpu"))
     assert_raises(ValueError, lambda: zeros_like(asarray(1), dtype=int))
     assert_raises(ValueError, lambda: zeros_like(asarray(1), dtype="i"))
     zeros_like(asarray(1), device=Device())  # on current device
+
 
 def test_meshgrid_dtype_errors():
     # Doesn't raise
@@ -152,4 +162,5 @@ def test_meshgrid_dtype_errors():
     meshgrid(asarray([1.], dtype=float32))
     meshgrid(asarray([1.], dtype=float32), asarray([1.], dtype=float32))
 
-    assert_raises(ValueError, lambda: meshgrid(asarray([1.], dtype=float32), asarray([1.], dtype=float64)))
+    assert_raises(ValueError, lambda: meshgrid(
+        asarray([1.], dtype=float32), asarray([1.], dtype=float64)))

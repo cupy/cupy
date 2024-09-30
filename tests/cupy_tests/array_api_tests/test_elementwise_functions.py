@@ -104,8 +104,10 @@ def test_function_types():
 def test_bitwise_shift_error():
     # bitwise shift functions should raise when the second argument is negative
     assert_raises(
-        ValueError, lambda: bitwise_left_shift(asarray([1, 1]), asarray([1, -1]))
+        ValueError, lambda: bitwise_left_shift(
+            asarray([1, 1]), asarray([1, -1]))
     )
     assert_raises(
-        ValueError, lambda: bitwise_right_shift(asarray([1, 1]), asarray([1, -1]))
+        ValueError, lambda: bitwise_right_shift(
+            asarray([1, 1]), asarray([1, -1]))
     )

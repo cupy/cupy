@@ -47,19 +47,19 @@ def test_validate_index():
     assert_raises(IndexError, lambda: a[4::-1])
     assert_raises(IndexError, lambda: a[-4::-1])
 
-    assert_raises(IndexError, lambda: a[...,:5])
-    assert_raises(IndexError, lambda: a[...,:-5])
-    assert_raises(IndexError, lambda: a[...,:5:-1])
-    assert_raises(IndexError, lambda: a[...,:-6:-1])
-    assert_raises(IndexError, lambda: a[...,5:])
-    assert_raises(IndexError, lambda: a[...,-5:])
-    assert_raises(IndexError, lambda: a[...,5::-1])
-    assert_raises(IndexError, lambda: a[...,-5::-1])
+    assert_raises(IndexError, lambda: a[..., :5])
+    assert_raises(IndexError, lambda: a[..., :-5])
+    assert_raises(IndexError, lambda: a[..., :5:-1])
+    assert_raises(IndexError, lambda: a[..., :-6:-1])
+    assert_raises(IndexError, lambda: a[..., 5:])
+    assert_raises(IndexError, lambda: a[..., -5:])
+    assert_raises(IndexError, lambda: a[..., 5::-1])
+    assert_raises(IndexError, lambda: a[..., -5::-1])
 
     # Boolean indices cannot be part of a larger tuple index
-    assert_raises(IndexError, lambda: a[a[:,0]==1,0])
-    assert_raises(IndexError, lambda: a[a[:,0]==1,...])
-    assert_raises(IndexError, lambda: a[..., a[0]==1])
+    assert_raises(IndexError, lambda: a[a[:, 0] == 1, 0])
+    assert_raises(IndexError, lambda: a[a[:, 0] == 1, ...])
+    assert_raises(IndexError, lambda: a[..., a[0] == 1])
     assert_raises(IndexError, lambda: a[[True, True, True]])
     assert_raises(IndexError, lambda: a[(True, True, True),])
 
@@ -77,6 +77,7 @@ def test_validate_index():
     assert_raises(IndexError, lambda: a[0,])
     assert_raises(IndexError, lambda: a[0])
     assert_raises(IndexError, lambda: a[:])
+
 
 def test_operators():
     # For every operator, we test that it works for the required type
@@ -136,13 +137,13 @@ def test_operators():
                          or dtypes == "integer_or_boolean" and a.dtype in _integer_or_boolean_dtypes
                          or dtypes == "boolean" and a.dtype in _boolean_dtypes
                          or dtypes == "floating" and a.dtype in _floating_dtypes
-                        )
+                         )
                         # bool is a subtype of int, which is why we avoid
                         # isinstance here.
                         and (a.dtype in _boolean_dtypes and type(s) == bool
                              or a.dtype in _integer_dtypes and type(s) == int
                              or a.dtype in _floating_dtypes and type(s) in [float, int]
-                        )):
+                             )):
                         # Only test for no error
                         getattr(a, _op)(s)
                     else:
@@ -156,34 +157,37 @@ def test_operators():
                             # API spec page on type promotion. Mixed kind
                             # promotion is not defined.
                             if (x.dtype == uint64 and y.dtype in [int8, int16, int32, int64]
-                                or y.dtype == uint64 and x.dtype in [int8, int16, int32, int64]
-                                or x.dtype in _integer_dtypes and y.dtype not in _integer_dtypes
-                                or y.dtype in _integer_dtypes and x.dtype not in _integer_dtypes
-                                or x.dtype in _boolean_dtypes and y.dtype not in _boolean_dtypes
-                                or y.dtype in _boolean_dtypes and x.dtype not in _boolean_dtypes
-                                or x.dtype in _floating_dtypes and y.dtype not in _floating_dtypes
-                                or y.dtype in _floating_dtypes and x.dtype not in _floating_dtypes
-                                ):
-                                assert_raises(TypeError, lambda: getattr(x, _op)(y))
+                                        or y.dtype == uint64 and x.dtype in [int8, int16, int32, int64]
+                                        or x.dtype in _integer_dtypes and y.dtype not in _integer_dtypes
+                                        or y.dtype in _integer_dtypes and x.dtype not in _integer_dtypes
+                                        or x.dtype in _boolean_dtypes and y.dtype not in _boolean_dtypes
+                                        or y.dtype in _boolean_dtypes and x.dtype not in _boolean_dtypes
+                                        or x.dtype in _floating_dtypes and y.dtype not in _floating_dtypes
+                                        or y.dtype in _floating_dtypes and x.dtype not in _floating_dtypes
+                                    ):
+                                assert_raises(
+                                    TypeError, lambda: getattr(x, _op)(y))
                             # Ensure in-place operators only promote to the same dtype as the left operand.
                             elif (
                                 _op.startswith("__i")
                                 and result_type(x.dtype, y.dtype) != x.dtype
                             ):
-                                assert_raises(TypeError, lambda: getattr(x, _op)(y))
+                                assert_raises(
+                                    TypeError, lambda: getattr(x, _op)(y))
                             # Ensure only those dtypes that are required for every operator are allowed.
                             elif (dtypes == "all" and (x.dtype in _boolean_dtypes and y.dtype in _boolean_dtypes
-                                                      or x.dtype in _numeric_dtypes and y.dtype in _numeric_dtypes)
-                                or (dtypes == "numeric" and x.dtype in _numeric_dtypes and y.dtype in _numeric_dtypes)
-                                or dtypes == "integer" and x.dtype in _integer_dtypes and y.dtype in _numeric_dtypes
-                                or dtypes == "integer_or_boolean" and (x.dtype in _integer_dtypes and y.dtype in _integer_dtypes
-                                                                       or x.dtype in _boolean_dtypes and y.dtype in _boolean_dtypes)
-                                or dtypes == "boolean" and x.dtype in _boolean_dtypes and y.dtype in _boolean_dtypes
-                                or dtypes == "floating" and x.dtype in _floating_dtypes and y.dtype in _floating_dtypes
-                            ):
+                                                       or x.dtype in _numeric_dtypes and y.dtype in _numeric_dtypes)
+                                  or (dtypes == "numeric" and x.dtype in _numeric_dtypes and y.dtype in _numeric_dtypes)
+                                  or dtypes == "integer" and x.dtype in _integer_dtypes and y.dtype in _numeric_dtypes
+                                  or dtypes == "integer_or_boolean" and (x.dtype in _integer_dtypes and y.dtype in _integer_dtypes
+                                                                         or x.dtype in _boolean_dtypes and y.dtype in _boolean_dtypes)
+                                  or dtypes == "boolean" and x.dtype in _boolean_dtypes and y.dtype in _boolean_dtypes
+                                  or dtypes == "floating" and x.dtype in _floating_dtypes and y.dtype in _floating_dtypes
+                                  ):
                                 getattr(x, _op)(y)
                             else:
-                                assert_raises(TypeError, lambda: getattr(x, _op)(y))
+                                assert_raises(
+                                    TypeError, lambda: getattr(x, _op)(y))
 
     unary_op_dtypes = {
         "__abs__": "numeric",
@@ -219,7 +223,7 @@ def test_operators():
         for s in [1, 1.0, False]:
             for a in _matmul_array_vals():
                 if (type(s) in [float, int] and a.dtype in _floating_dtypes
-                    or type(s) == int and a.dtype in _integer_dtypes):
+                        or type(s) == int and a.dtype in _integer_dtypes):
                     # Type promotion is valid, but @ is not allowed on 0-D
                     # inputs, so the error is a ValueError
                     assert_raises(ValueError, lambda: getattr(a, _op)(s))
@@ -229,14 +233,14 @@ def test_operators():
     for x in _matmul_array_vals():
         for y in _matmul_array_vals():
             if (x.dtype == uint64 and y.dtype in [int8, int16, int32, int64]
-                or y.dtype == uint64 and x.dtype in [int8, int16, int32, int64]
-                or x.dtype in _integer_dtypes and y.dtype not in _integer_dtypes
-                or y.dtype in _integer_dtypes and x.dtype not in _integer_dtypes
-                or x.dtype in _floating_dtypes and y.dtype not in _floating_dtypes
-                or y.dtype in _floating_dtypes and x.dtype not in _floating_dtypes
-                or x.dtype in _boolean_dtypes
-                or y.dtype in _boolean_dtypes
-                ):
+                        or y.dtype == uint64 and x.dtype in [int8, int16, int32, int64]
+                        or x.dtype in _integer_dtypes and y.dtype not in _integer_dtypes
+                        or y.dtype in _integer_dtypes and x.dtype not in _integer_dtypes
+                        or x.dtype in _floating_dtypes and y.dtype not in _floating_dtypes
+                        or y.dtype in _floating_dtypes and x.dtype not in _floating_dtypes
+                        or x.dtype in _boolean_dtypes
+                        or y.dtype in _boolean_dtypes
+                    ):
                 assert_raises(TypeError, lambda: x.__matmul__(y))
                 assert_raises(TypeError, lambda: y.__rmatmul__(x))
                 assert_raises(TypeError, lambda: x.__imatmul__(y))
@@ -311,20 +315,24 @@ def test___array__():
     assert cp.all(cp.equal(b, cp.ones((2, 3), dtype=cp.float64)))
     assert b.dtype == cp.float64
 
+
 def test_allow_newaxis():
     a = ones(5)
     indexed_a = a[None, :]
     assert indexed_a.shape == (1, 5)
+
 
 def test_disallow_flat_indexing_with_newaxis():
     a = ones((3, 3, 3))
     with pytest.raises(IndexError):
         a[None, 0, 0]
 
+
 def test_disallow_mask_with_newaxis():
     a = ones((3, 3, 3))
     with pytest.raises(IndexError):
         a[None, asarray(True)]
+
 
 @pytest.mark.parametrize("shape", [(), (5,), (3, 3, 3)])
 @pytest.mark.parametrize("index", ["string", False, True])
@@ -333,9 +341,11 @@ def test_error_on_invalid_index(shape, index):
     with pytest.raises(IndexError):
         a[index]
 
+
 def test_mask_0d_array_without_errors():
     a = ones(())
     a[asarray(True)]
+
 
 @pytest.mark.parametrize(
     "i", [slice(5), slice(5, 0), asarray(True), asarray([0, 1])]
@@ -346,6 +356,7 @@ def test_error_on_invalid_index_with_ellipsis(i):
         a[..., i]
     with pytest.raises(IndexError):
         a[i, ...]
+
 
 def test_array_keys_use_private_array():
     """
