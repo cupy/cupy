@@ -4,7 +4,7 @@ from numpy.testing import assert_raises
 import cupy as cp
 import pytest
 
-from cupy.array_api import ones, asarray, reshape, result_type, all, equal
+from cupy.array_api import ones, asarray, result_type
 from cupy.array_api._dtypes import (
     _all_dtypes,
     _boolean_dtypes,
@@ -140,8 +140,8 @@ def test_operators():
                          )
                         # bool is a subtype of int, which is why we avoid
                         # isinstance here.
-                        and (a.dtype in _boolean_dtypes and type(s) == bool
-                             or a.dtype in _integer_dtypes and type(s) == int
+                        and (a.dtype in _boolean_dtypes and type(s) is bool
+                             or a.dtype in _integer_dtypes and type(s) is int
                              or a.dtype in _floating_dtypes and type(s) in [float, int]
                              )):
                         # Only test for no error
@@ -223,7 +223,7 @@ def test_operators():
         for s in [1, 1.0, False]:
             for a in _matmul_array_vals():
                 if (type(s) in [float, int] and a.dtype in _floating_dtypes
-                        or type(s) == int and a.dtype in _integer_dtypes):
+                        or type(s) is int and a.dtype in _integer_dtypes):
                     # Type promotion is valid, but @ is not allowed on 0-D
                     # inputs, so the error is a ValueError
                     assert_raises(ValueError, lambda: getattr(a, _op)(s))
@@ -268,7 +268,7 @@ def test_python_scalar_construtors():
     i = asarray(0)
     f = asarray(0.0)
 
-    assert bool(b) == False
+    assert not bool(b)
     assert int(i) == 0
     assert float(f) == 0.0
     assert operator.index(i) == 0

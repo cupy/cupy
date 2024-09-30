@@ -5,7 +5,6 @@ from ._dtypes import (
     _numeric_dtypes,
 )
 from ._array_object import Array
-from ._creation_functions import asarray
 from ._dtypes import float32, float64
 
 from typing import TYPE_CHECKING, Optional, Tuple, Union
