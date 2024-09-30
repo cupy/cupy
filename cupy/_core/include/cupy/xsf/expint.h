@@ -156,7 +156,7 @@ XSF_HOST_DEVICE inline double expi(double x) {
 
 XSF_HOST_DEVICE inline float expi(float x) { return expi(static_cast<double>(x)); }
 
-std::complex<double> expi(std::complex<double> z) {
+XSF_HOST_DEVICE inline std::complex<double> expi(std::complex<double> z) {
     // ============================================
     // Purpose: Compute exponential integral Ei(x)
     // Input :  x  --- Complex argument of Ei(x)
