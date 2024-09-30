@@ -1221,7 +1221,7 @@ cdef class _ndarray_base:
             if op == 2:
                 # cupy.ndarray does not support dtype=object, but
                 # allow comparison with None, Ellipsis, and etc.
-                if type(other).__eq__ is object.__eq__:
+                if type(other).__eq__ is object.__eq__ or other is None:
                     # Implies `other` is neither (Python/NumPy) scalar nor
                     # ndarray. With object's default __eq__, it never
                     # equals to an element of cupy.ndarray.
@@ -1231,7 +1231,7 @@ cdef class _ndarray_base:
                 if (
                     type(other).__eq__ is object.__eq__
                     and type(other).__ne__ is object.__ne__
-                ):
+                ) or other is None:
                     # Similar to eq, but ne falls back to `not __eq__`.
                     return cupy.ones(self._shape, dtype=cupy.bool_)
                 return numpy.not_equal(self, other)

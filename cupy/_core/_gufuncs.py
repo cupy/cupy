@@ -259,7 +259,7 @@ class _OpsRegister:
             # find the typecasting rules
             op = self._determine_from_signature(signature)
         elif dtype is not None:
-            if type(dtype) == tuple:
+            if isinstance(dtype, tuple):
                 # TODO(ecastill) support dtype tuples
                 raise RuntimeError('dtype with tuple is not yet supported')
             op = self._determine_from_dtype(dtype)
@@ -630,10 +630,10 @@ class _GUFunc:
         args, ret_dtype, func = self._ops_register.determine_dtype(
             args, dtype, casting, signature)
 
-        if not type(self._signature) == str:
+        if not isinstance(self._signature, str):
             raise TypeError('`signature` has to be of type string')
 
-        if outs is not None and type(outs) != tuple:
+        if outs is not None and not isinstance(outs, tuple):
             if isinstance(outs, cupy.ndarray):
                 outs = (outs,)
             else:
@@ -643,7 +643,7 @@ class _GUFunc:
 
         input_coredimss = self._input_coredimss
         output_coredimss = self._output_coredimss
-        if outs is not None and type(outs) != tuple:
+        if outs is not None and not isinstance(outs, tuple):
             raise TypeError('`outs` must be a tuple')
         # Axes
         input_axes, output_axes = _validate_normalize_axes(

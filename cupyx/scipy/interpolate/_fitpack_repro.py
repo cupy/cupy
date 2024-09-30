@@ -58,7 +58,7 @@ def fpcheck(x, t, k):
 
     if x.ndim != 1 or t.ndim != 1:
         raise ValueError(
-            f"Expect `x` and `t` be 1D sequences. Got {x = } and {t = }"
+            f"Expect `x` and `t` be 1D sequences. Got {x=} and {t=}"
         )
 
     m = x.shape[0]
@@ -69,35 +69,35 @@ def fpcheck(x, t, k):
     # c      1) k+1 <= n-k-1 <= m
     if not (k + 1 <= nk1 <= m):
         raise ValueError(
-            f"Need k+1 <= n-k-1 <= m. Got {m = }, {n = } and {k = }."
+            f"Need k+1 <= n-k-1 <= m. Got {m=}, {n=} and {k=}."
         )
 
     # check condition no 2
     # c      2) t(1) <= t(2) <= ... <= t(k+1)
     # c         t(n-k) <= t(n-k+1) <= ... <= t(n)
     if (t[:k+1] > t[1:k+2]).any():
-        raise ValueError(f"First k knots must be ordered; got {t = }.")
+        raise ValueError(f"First k knots must be ordered; got {t=}.")
 
     if (t[nk1:] < t[nk1-1:-1]).any():
-        raise ValueError(f"Last k knots must be ordered; got {t = }.")
+        raise ValueError(f"Last k knots must be ordered; got {t=}.")
 
     # c  check condition no 3
     # c      3) t(k+1) < t(k+2) < ... < t(n-k)
     if (t[k+1:n-k] <= t[k:n-k-1]).any():
-        raise ValueError(f"Internal knots must be distinct. Got {t = }.")
+        raise ValueError(f"Internal knots must be distinct. Got {t=}.")
 
     # c  check condition no 4
     # c      4) t(k+1) <= x(i) <= t(n-k)
     # NB: FITPACK's fpchec only checks x[0] & x[-1], so we follow.
     if (x[0] < t[k]) or (x[-1] > t[n-k-1]):
-        raise ValueError(f"Out of bounds: {x = } and {t = }.")
+        raise ValueError(f"Out of bounds: {x=} and {t=}.")
 
     # c  check condition no 5
     # c      5) the conditions specified by schoenberg and whitney must hold
     # c         for at least one subset of data points, i.e. there must be a
     # c         subset of data points y(j) such that
     # c             t(j) < y(j) < t(j+k+1), j=1,2,...,n-k-1
-    mesg = f"Schoenberg-Whitney condition is violated with {t = } and {x =}."
+    mesg = f"Schoenberg-Whitney condition is violated with {t =} and {x =}."
 
     if (x[0] >= t[k+1]) or (x[-1] <= t[n-k-2]):
         raise ValueError(mesg)
@@ -226,33 +226,33 @@ def _validate_inputs(x, y, w, k, s, xb, xe, parametric):
     else:
         w = cupy.asarray(w, dtype=float)
         if w.ndim != 1:
-            raise ValueError(f"{w.ndim = } not implemented yet.")
+            raise ValueError(f"{w.ndim=} not implemented yet.")
         if (w < 0).any():
             raise ValueError("Weights must be non-negative")
 
     if y.ndim == 0 or y.ndim > 2:
-        raise ValueError(f"{y.ndim = } not supported (must be 1 or 2.)")
+        raise ValueError(f"{y.ndim=} not supported (must be 1 or 2.)")
 
     parametric = bool(parametric)
     if parametric:
         if y.ndim != 2:
             raise ValueError(
-                f"{y.ndim = } != 2 not supported with {parametric =}."
+                f"{y.ndim=} != 2 not supported with {parametric=}."
             )
     else:
         if y.ndim != 1:
             raise ValueError(
-                f"{y.ndim = } != 1 not supported with {parametric =}."
+                f"{y.ndim=} != 1 not supported with {parametric=}."
             )
         # all _impl functions expect y.ndim = 2
         y = y[:, None]
 
     if w.shape[0] != x.shape[0]:
-        raise ValueError(f"Weights is incompatible: {w.shape =} != {x.shape}.")
+        raise ValueError(f"Weights is incompatible: {w.shape=} != {x.shape}.")
 
     if x.shape[0] != y.shape[0]:
         raise ValueError(
-            f"Data is incompatible: {x.shape = } and {y.shape = }."
+            f"Data is incompatible: {x.shape=} and {y.shape=}."
         )
     if x.ndim != 1 or (x[1:] < x[:-1]).any():
         raise ValueError("Expect `x` to be an ordered 1D sequence.")
@@ -260,7 +260,7 @@ def _validate_inputs(x, y, w, k, s, xb, xe, parametric):
     k = operator.index(k)
 
     if s < 0:
-        raise ValueError(f"`s` must be non-negative. Got {s = }")
+        raise ValueError(f"`s` must be non-negative. Got {s=}")
 
     if xb is None:
         xb = min(x)
@@ -375,7 +375,7 @@ def _generate_knots_impl(x, y, *, w=None, xb=None, xe=None, k=3, s=0,
     else:
         if nest < 2*(k + 1):
             raise ValueError(
-                f"`nest` too small: {nest = } < 2*(k+1) = {2*(k+1)}."
+                f"`nest` too small: {nest=} < 2*(k+1) = {2*(k+1)}."
             )
 
     nmin = 2*(k + 1)    # the number of knots for an LSQ polynomial approx
@@ -581,13 +581,13 @@ class F:
         self.k = k
         w = cupy.ones_like(x, dtype=float) if w is None else w
         if w.ndim != 1:
-            raise ValueError(f"{w.ndim = } != 1.")
+            raise ValueError(f"{w.ndim=} != 1.")
         self.w = w
         self.s = s
 
         if y.ndim != 2:
             raise ValueError(
-                f"F: expected y.ndim == 2, got {y.ndim = } instead.")
+                f"F: expected y.ndim == 2, got {y.ndim=} instead.")
 
         # ### precompute what we can ###
 
@@ -608,7 +608,7 @@ class F:
         nc = t.shape[0] - k - 1
         nz = k + 1
         if R.shape[1] != nz:
-            raise ValueError(f"Internal error: {R.shape[1] =} != {k+1 =}.")
+            raise ValueError(f"Internal error: {R.shape[1]=} != {k+1=}.")
 
         # r.h.s. of the augmented system
         z = cupy.zeros((b.shape[0], Y.shape[1]), dtype=float)
@@ -810,7 +810,7 @@ def _make_splrep_impl(x, y, *, w=None, xb=None, xe=None, k=3, s=0, t=None,
     else:
         if nest < 2*(k + 1):
             raise ValueError(
-                f"`nest` too small: {nest = } < 2*(k+1) = {2*(k+1)}."
+                f"`nest` too small: {nest=} < 2*(k+1) = {2*(k+1)}."
             )
         if t is not None:
             raise ValueError("Either supply `t` or `nest`.")
