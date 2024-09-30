@@ -472,8 +472,9 @@ class Array:
         """
         return self._array.__dlpack_device__()
 
-    # type: ignore
-    def __eq__(self: Array, other: Union[int, float, bool, Array], /) -> Array:
+    # autopep8: off
+    def __eq__(self: Array, other: Union[int, float, bool, Array], /) -> Array:  # type: ignore
+        # autopep8: on
         """
         Performs the operation __eq__.
         """
@@ -652,8 +653,9 @@ class Array:
         res = self._array.__mul__(other._array)
         return self.__class__._new(res)
 
-    # type: ignore
-    def __ne__(self: Array, other: Union[int, float, bool, Array], /) -> Array:
+    # autopep8: off
+    def __ne__(self: Array, other: Union[int, float, bool, Array], /) -> Array:  # type: ignore
+        # autopep8: on
         """
         Performs the operation __ne__.
         """
