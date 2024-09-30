@@ -7,9 +7,8 @@ from typing import List, Optional, Tuple, Union
 
 import cupy as np
 
+
 # Note: the function name is different here
-
-
 def concat(
     arrays: Union[Tuple[Array, ...], List[Array]], /, *, axis: Optional[int] = 0
 ) -> Array:

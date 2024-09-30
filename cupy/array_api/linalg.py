@@ -37,10 +37,9 @@ class SVDResult(NamedTuple):
     S: Array
     Vh: Array
 
+
 # Note: the inclusion of the upper keyword is different from
 # np.linalg.cholesky, which does not have it.
-
-
 def cholesky(x: Array, /, *, upper: bool = False) -> Array:
     """
     Array API compatible wrapper for :py:func:`np.linalg.cholesky <numpy.linalg.cholesky>`.
@@ -56,9 +55,8 @@ def cholesky(x: Array, /, *, upper: bool = False) -> Array:
         return Array._new(L).mT
     return Array._new(L)
 
+
 # Note: cross is the numpy top-level namespace, not np.linalg
-
-
 def cross(x1: Array, x2: Array, /, *, axis: int = -1) -> Array:
     """
     Array API compatible wrapper for :py:func:`np.cross <numpy.cross>`.
@@ -90,9 +88,8 @@ def det(x: Array, /) -> Array:
         raise TypeError('Only floating-point dtypes are allowed in det')
     return Array._new(np.linalg.det(x._array))
 
+
 # Note: diagonal is the numpy top-level namespace, not np.linalg
-
-
 def diagonal(x: Array, /, *, offset: int = 0) -> Array:
     """
     Array API compatible wrapper for :py:func:`np.diagonal <numpy.diagonal>`.
@@ -199,9 +196,8 @@ def matrix_power(x: Array, n: int, /) -> Array:
     # np.matrix_power already checks if n is an integer
     return Array._new(np.linalg.matrix_power(x._array, n))
 
+
 # Note: the keyword argument name rtol is different from np.linalg.matrix_rank
-
-
 def matrix_rank(x: Array, /, *, rtol: Optional[Union[float, Array]] = None) -> Array:
     """
     Array API compatible wrapper for :py:func:`np.matrix_rank <numpy.matrix_rank>`.
@@ -234,9 +230,8 @@ def matrix_transpose(x: Array, /) -> Array:
             "x must be at least 2-dimensional for matrix_transpose")
     return Array._new(np.swapaxes(x._array, -1, -2))
 
+
 # Note: outer is the numpy top-level namespace, not np.linalg
-
-
 def outer(x1: Array, x2: Array, /) -> Array:
     """
     Array API compatible wrapper for :py:func:`np.outer <numpy.outer>`.
@@ -254,9 +249,8 @@ def outer(x1: Array, x2: Array, /) -> Array:
 
     return Array._new(np.outer(x1._array, x2._array))
 
+
 # Note: the keyword argument name rtol is different from np.linalg.pinv
-
-
 def pinv(x: Array, /, *, rtol: Optional[Union[float, Array]] = None) -> Array:
     """
     Array API compatible wrapper for :py:func:`np.linalg.pinv <numpy.linalg.pinv>`.
@@ -313,9 +307,8 @@ def slogdet(x: Array, /) -> SlogdetResult:
 # https://github.com/numpy/numpy/issues/15349 and
 # https://github.com/data-apis/array-api/issues/285.
 
+
 # Note: The impl below is deviated from numpy.array_api's.
-
-
 def _solve(a, b):
     from cupy.linalg._util import (
         _assert_stacked_2d, _assert_stacked_square, linalg_common_type)
@@ -372,20 +365,19 @@ def svd(x: Array, /, *, full_matrices: bool = True) -> SVDResult:
     # np.svd, which only returns a tuple.
     return SVDResult(*map(Array._new, np.linalg.svd(x._array, full_matrices=full_matrices)))
 
+
 # Note: svdvals is not in NumPy (but it is in SciPy). It is equivalent to
 # np.linalg.svd(compute_uv=False).
-
-
 def svdvals(x: Array, /) -> Union[Array, Tuple[Array, ...]]:
     if x.dtype not in _floating_dtypes:
         raise TypeError('Only floating-point dtypes are allowed in svdvals')
     return Array._new(np.linalg.svd(x._array, compute_uv=False))
 
+
 # Note: tensordot is the numpy top-level namespace but not in np.linalg
 
+
 # Note: axes must be a tuple, unlike np.tensordot where it can be an array or array-like.
-
-
 def tensordot(x1: Array, x2: Array, /, *, axes: Union[int, Tuple[Sequence[int], Sequence[int]]] = 2) -> Array:
     # Note: the restriction to numeric dtypes only is different from
     # np.tensordot.
@@ -394,9 +386,8 @@ def tensordot(x1: Array, x2: Array, /, *, axes: Union[int, Tuple[Sequence[int], 
 
     return Array._new(np.tensordot(x1._array, x2._array, axes=axes))
 
+
 # Note: trace is the numpy top-level namespace, not np.linalg
-
-
 def trace(x: Array, /, *, offset: int = 0) -> Array:
     """
     Array API compatible wrapper for :py:func:`np.trace <numpy.trace>`.
@@ -409,9 +400,8 @@ def trace(x: Array, /, *, offset: int = 0) -> Array:
     # operates on the first two axes by default
     return Array._new(np.asarray(np.trace(x._array, offset=offset, axis1=-2, axis2=-1)))
 
+
 # Note: vecdot is not in NumPy
-
-
 def vecdot(x1: Array, x2: Array, /, *, axis: int = -1) -> Array:
     if x1.dtype not in _numeric_dtypes or x2.dtype not in _numeric_dtypes:
         raise TypeError('Only numeric dtypes are allowed in vecdot')
