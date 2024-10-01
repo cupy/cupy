@@ -341,7 +341,7 @@ class TestFallbackArray(unittest.TestCase):
     @numpy_fallback_equal()
     def test_type_assert(self, xp):
         a = xp.array([1, 2, 3])
-        return type(a) == xp.ndarray
+        return isinstance(a, xp.ndarray)
 
     @numpy_fallback_equal()
     def test_base(self, xp):

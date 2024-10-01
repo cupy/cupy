@@ -269,8 +269,8 @@ cudaError_t cudaMemPrefetchAsync(const void *devPtr, size_t count,
 cudaError_t cudaPointerGetAttributes(cudaPointerAttributes *attributes,
                                      const void* ptr) {
     cudaError_t status = hipPointerGetAttributes(attributes, ptr);
-#if HIP_VERSION >= 60000000
     if (status == cudaSuccess) {
+#if HIP_VERSION >= 60000000
         switch (attributes->type) {
             case 0 /* hipMemoryTypeHost */:
                 attributes->type = (hipMemoryType)1; /* cudaMemoryTypeHost */
@@ -278,27 +278,26 @@ cudaError_t cudaPointerGetAttributes(cudaPointerAttributes *attributes,
             case 1 /* hipMemoryTypeDevice */:
                 attributes->type = (hipMemoryType)2; /* cudaMemoryTypeDevice */
                 return status;
-            default:
-                /* we don't care the rest of possibilities */
-                return status;
-        }
-    }
 #else
-    if (status == cudaSuccess) {
-        switch (attributes->memoryType) {
+       switch (attributes->memoryType) {
             case 0 /* hipMemoryTypeHost */:
                 attributes->memoryType = (hipMemoryType)1; /* cudaMemoryTypeHost */
                 return status;
             case 1 /* hipMemoryTypeDevice */:
                 attributes->memoryType = (hipMemoryType)2; /* cudaMemoryTypeDevice */
                 return status;
+#endif
             default:
                 /* we don't care the rest of possibilities */
                 return status;
         }
-    } 
+#if HIP_VERSION < 60000000
+    // #8335
+    } else if (status == cudaErrorInvalidValue) {
+        attributes->memoryType = (hipMemoryType)0; /* cudaMemoryTypeUnregistered */
+        return cudaSuccess;
 #endif
-    else {
+    } else {
         return status;
     }
 }

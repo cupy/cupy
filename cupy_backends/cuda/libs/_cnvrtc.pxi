@@ -135,4 +135,5 @@ cdef SoftLink _get_softlink():
         prefix = 'hiprtc'
         libname = 'libamdhip64.so'
 
+
     return SoftLink(libname, prefix, mandatory=True)
