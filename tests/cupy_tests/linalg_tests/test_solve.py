@@ -41,7 +41,7 @@ class TestSolve(unittest.TestCase):
         cupy.testing.assert_array_equal(b_copy, b)
         return result
 
-    @testing.with_requires("numpy>=2")
+    @testing.with_requires("numpy>=2.0")
     def test_solve(self):
         self.check_x((4, 4), (4,))
         self.check_x((5, 5), (5, 2))
@@ -68,7 +68,7 @@ class TestSolve(unittest.TestCase):
         # LinAlgError("Singular matrix") is not raised
         return xp.linalg.solve(a, b)
 
-    @testing.with_requires("numpy>=2")
+    @testing.with_requires("numpy>=2.0")
     def test_invalid_shape(self):
         self.check_shape((2, 3), (4,), numpy.linalg.LinAlgError)
         self.check_shape((3, 3), (2,), ValueError)
