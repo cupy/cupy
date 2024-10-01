@@ -509,12 +509,12 @@
 # The latest ROCm version matrix is intended to cover the highest supported combination.
 - project: "cupy.linux.rocm-6-2"
   _url: "https://github.com/cupy/self-hosted-ci/actions/workflows/ci.yml"
-  tags: null  # self-hosted
+  tags: null # self-hosted
   target: "rocm-6-2"
   system: "linux"
   os: "ubuntu:22.04"
   cuda: null
-  rocm: '6.2'
+  rocm: "6.2"
   nccl: null
   cutensor: null
   cusparselt: null
