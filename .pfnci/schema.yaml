@@ -133,6 +133,25 @@ rocm:
         "rocprim",
         "rccl",
       ]
+  "6.2":
+    full_version: "6.2"
+    packages:
+      [
+        "rocm-dev",
+        "hipblas",
+        "hipfft",
+        "hipsparse",
+        "hipcub",
+        "rocsparse",
+        "rocrand",
+        "hiprand",
+        "rocthrust",
+        "rocsolver",
+        "rocfft",
+        "rocprim",
+        "rccl",
+        "roctracer-dev",
+      ]
 
 ###############################################################################
 # CUDA Optional Libraries
