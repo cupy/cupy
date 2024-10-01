@@ -3,9 +3,8 @@ import pytest
 import numpy
 try:
     import scipy
-    scipy_available = True
 except ImportError:
-    scipy_available = False
+    pass
 
 import cupy
 import cupyx.signal

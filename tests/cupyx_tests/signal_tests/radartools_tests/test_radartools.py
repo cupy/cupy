@@ -2,9 +2,8 @@ import numpy
 import pytest
 try:
     import scipy
-    scipy_available = True
 except ImportError:
-    scipy_available = False
+    pass
 
 import cupy
 from cupy import testing
