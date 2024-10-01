@@ -221,7 +221,9 @@ fabs = _core.create_ufunc(
 
 _unsigned_sign = 'out0 = in0 > 0'
 _complex_sign = '''
-if (in0.real() == 0) {
+if (isnan(in0)) {
+  out0 = nan("");
+} else if (in0.real() == 0) {
   out0 = (in0.imag() > 0) - (in0.imag() < 0);
 } else {
   out0 = (in0.real() > 0) - (in0.real() < 0);
@@ -233,10 +235,17 @@ sign = _core.create_ufunc(
      'i->i', ('I->I', _unsigned_sign), 'l->l', ('L->L', _unsigned_sign),
      'q->q', ('Q->Q', _unsigned_sign), 'e->e', 'f->f', 'd->d',
      ('F->F', _complex_sign), ('D->D', _complex_sign)),
-    'out0 = (in0 > 0) - (in0 < 0)',
+    '''
+    out0 = (in0 > 0) ? static_cast<out0_type>(1)
+         : (in0 < 0) ? static_cast<out0_type>(-1)
+         : (in0 == 0) ? static_cast<out0_type>(0)
+         : in0
+    ''',
     doc='''Elementwise sign function.
 
     It returns -1, 0, or 1 depending on the sign of the input.
+
+    nan is returned for nan inputs.
 
     .. seealso:: :data:`numpy.sign`
 
