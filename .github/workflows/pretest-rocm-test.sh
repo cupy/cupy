@@ -5,7 +5,7 @@ export DEBIAN_FRONTEND=noninteractive
 
 apt-get -y update
 DEBIAN_FRONTEND=noninteractive apt-get -y install \
-    python3-dev python3-pip \
+    python3-dev python3-pip git \
     hipblas hipsparse rocsparse rocrand hiprand rocthrust rocsolver hipsolver rocfft hipfft hipcub rocprim rccl
 
 python3 -m pip install -U pip wheel
