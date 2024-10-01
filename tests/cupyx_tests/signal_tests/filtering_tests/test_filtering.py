@@ -1,7 +1,11 @@
 import pytest
 
 import numpy
-import scipy
+try:
+    import scipy
+    scipy_available = True
+except ImportError:
+    scipy_available = False
 
 import cupy
 import cupyx.signal
