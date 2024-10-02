@@ -11,6 +11,7 @@ except ImportError:
     pass
 
 
+@testing.with_requires("scipy")
 class TestWavelets:
     @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_qmf(self, xp, scp):
