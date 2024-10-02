@@ -10,7 +10,7 @@ import numpy as np
 try:
     import scipy.signal  # NOQA
 except ImportError:
-    pass
+    scipy = None
 
 
 @testing.with_requires('scipy')

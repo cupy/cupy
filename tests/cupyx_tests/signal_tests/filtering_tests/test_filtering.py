@@ -1,7 +1,10 @@
 import pytest
 
 import numpy
-import scipy
+try:
+    import scipy
+except ImportError:
+    pass
 
 import cupy
 import cupyx.signal
@@ -19,6 +22,7 @@ def linspace_data_gen(start, stop, n, endpoint=False, dtype=numpy.float64):
 @pytest.mark.parametrize('dtype', [cupy.float32, cupy.float64])
 @pytest.mark.parametrize("num_samps", [2**14, 2**18])
 @pytest.mark.parametrize("filter_len", [8, 32, 128])
+@testing.with_requires("scipy")
 def test_firfilter(dtype, num_samps, filter_len):
     cpu_sig, gpu_sig = linspace_data_gen(0, 10, num_samps, endpoint=False)
     cpu_filter, _ = scipy.signal.butter(filter_len, 0.5)
@@ -30,6 +34,7 @@ def test_firfilter(dtype, num_samps, filter_len):
 
 @pytest.mark.parametrize('dtype', [cupy.float32, cupy.float64])
 @pytest.mark.parametrize("filter_len", [8, 32, 128])
+@testing.with_requires("scipy")
 def test_firfilter_zi(dtype, filter_len):
     cpu_filter, _ = scipy.signal.butter(filter_len, 0.5)
     gpu_filter = cupy.asarray(cpu_filter, dtype=dtype)
@@ -44,6 +49,7 @@ def test_firfilter_zi(dtype, filter_len):
 @pytest.mark.parametrize("num_samps", [2**14, 2**18])
 @pytest.mark.parametrize("filter_len", [8, 32, 128])
 @pytest.mark.parametrize("padtype", ["odd", "even", "constant"])
+@testing.with_requires("scipy")
 def test_firfilter2(dtype, num_samps, filter_len, padtype):
     cpu_sig, gpu_sig = linspace_data_gen(0, 10, num_samps, endpoint=False)
     cpu_filter, _ = scipy.signal.butter(filter_len, 0.5)
@@ -143,11 +149,13 @@ def channelize_poly_cpu(x, h, n_chans):
 @pytest.mark.parametrize("num_samps", [2**12])
 @pytest.mark.parametrize("filt_samps", [2048])
 @pytest.mark.parametrize("n_chan", [64, 128, 256])
+@testing.with_requires("scipy")
 def test_channelize_poly(dtype, num_samps, filt_samps, n_chan):
     cpu_sig = testing.shaped_random((num_samps,), xp=numpy, dtype=dtype)
     gpu_sig = testing.shaped_random((num_samps,), xp=cupy, dtype=dtype)
     cpu_filt = testing.shaped_random((filt_samps,), xp=numpy, dtype=dtype)
     gpu_filt = testing.shaped_random((filt_samps,), xp=cupy, dtype=dtype)
+    # Use scipy inside channelize_poly_cpu
     cpu_output = channelize_poly_cpu(cpu_sig, cpu_filt, n_chan)
     gpu_output = cupyx.signal.channelize_poly(gpu_sig, gpu_filt, n_chan)
     testing.assert_allclose(gpu_output, cpu_output, atol=5e-3, rtol=5e-3)
