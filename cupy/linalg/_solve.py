@@ -19,7 +19,7 @@ def solve(a, b):
 
     Args:
         a (cupy.ndarray): The matrix with dimension ``(..., M, M)``.
-        b (cupy.ndarray): The matrix with dimension ``(..., M)`` or
+        b (cupy.ndarray): The matrix with dimension ``(M,)`` or
             ``(..., M, K)``.
 
     Returns:
@@ -38,24 +38,28 @@ def solve(a, b):
     from cupyx import lapack
     from cupy.cublas import batched_gesv, get_batched_gesv_limit
 
-    if a.ndim > 2 and a.shape[-1] <= get_batched_gesv_limit():
-        # Note: There is a low performance issue in batched_gesv when matrix is
-        # large, so it is not used in such cases.
-        return batched_gesv(a, b)
-
-    # TODO(kataoka): Move the checks to the beginning
     _util._assert_cupy_array(a, b)
     _util._assert_stacked_2d(a)
     _util._assert_stacked_square(a)
 
-    # TODO(kataoka): Support broadcast
-    if not (
-        (a.ndim == b.ndim or a.ndim == b.ndim + 1)
-        and a.shape[:-1] == b.shape[:a.ndim - 1]
-    ):
+    # Newly added to make it compatible with numpy 2
+    if b.ndim == 0:
+        raise ValueError("b must have at least one dimension")
+    if b.ndim == 1:
+        if a.shape[-1] != b.size:
+            raise ValueError(
+                "a must have (..., M, M) shape and b must have (M,) "
+                "for one-dimensional b")
+        b = cupy.broadcast_to(b, a.shape[:-1])
+    elif a.shape[:-1] != b.shape[:-1]:
         raise ValueError(
-            'a must have (..., M, M) shape and b must have (..., M) '
-            'or (..., M, K)')
+            "a must have (..., M, M) shape and b must have (..., M, K) "
+            "for multidimensional b")
+
+    if a.ndim > 2 and a.shape[-1] <= get_batched_gesv_limit():
+        # Note: There is a low performance issue in batched_gesv when matrix is
+        # large, so it is not used in such cases.
+        return batched_gesv(a, b)
 
     dtype, out_dtype = _util.linalg_common_type(a, b)
     if b.size == 0:

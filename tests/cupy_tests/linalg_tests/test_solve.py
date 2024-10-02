@@ -41,17 +41,18 @@ class TestSolve(unittest.TestCase):
         cupy.testing.assert_array_equal(b_copy, b)
         return result
 
+    @testing.with_requires("numpy>=2.0")
     def test_solve(self):
         self.check_x((4, 4), (4,))
         self.check_x((5, 5), (5, 2))
-        self.check_x((2, 4, 4), (2, 4,))
         self.check_x((2, 5, 5), (2, 5, 2))
-        self.check_x((2, 3, 2, 2), (2, 3, 2,))
         self.check_x((2, 3, 3, 3), (2, 3, 3, 2))
         self.check_x((0, 0), (0,))
         self.check_x((0, 0), (0, 2))
-        self.check_x((0, 2, 2), (0, 2,))
         self.check_x((0, 2, 2), (0, 2, 3))
+        # Allowed since numpy 2
+        self.check_x((2, 3, 3), (3,))
+        self.check_x((2, 5, 3, 3), (3,))
 
     def check_shape(self, a_shape, b_shape, error_type):
         for xp in (numpy, cupy):
@@ -67,14 +68,19 @@ class TestSolve(unittest.TestCase):
         # LinAlgError("Singular matrix") is not raised
         return xp.linalg.solve(a, b)
 
+    @testing.with_requires("numpy>=2.0")
     def test_invalid_shape(self):
         self.check_shape((2, 3), (4,), numpy.linalg.LinAlgError)
         self.check_shape((3, 3), (2,), ValueError)
         self.check_shape((3, 3), (2, 2), ValueError)
         self.check_shape((3, 3, 4), (3,), numpy.linalg.LinAlgError)
-        self.check_shape((2, 3, 3), (3,), ValueError)
         self.check_shape((3, 3), (0,), ValueError)
         self.check_shape((0, 3, 4), (3,), numpy.linalg.LinAlgError)
+        self.check_shape((3, 3), (), ValueError)
+        # Not allowed since numpy 2
+        self.check_shape((0, 2, 2), (0, 2,), ValueError)
+        self.check_shape((2, 4, 4), (2, 4,), ValueError)
+        self.check_shape((2, 3, 2, 2), (2, 3, 2,), ValueError)
 
 
 @testing.parameterize(*testing.product({
