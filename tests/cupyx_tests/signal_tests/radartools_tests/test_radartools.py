@@ -1,6 +1,9 @@
 import numpy
 import pytest
-import scipy
+try:
+    import scipy
+except ImportError:
+    pass
 
 import cupy
 from cupy import testing
@@ -52,6 +55,7 @@ tol = {
 @pytest.mark.parametrize('window', [None, 'hamming', numpy.negative])
 @testing.for_dtypes('fdFD')
 @testing.numpy_cupy_allclose(rtol=tol, contiguous_check=False)
+@testing.with_requires("scipy")
 def test_pulse_compression(xp, normalize, window, dtype):
     x = testing.shaped_random((8, 700), xp=xp, dtype=dtype)
     template = testing.shaped_random((100,), xp=xp, dtype=dtype)
@@ -60,12 +64,14 @@ def test_pulse_compression(xp, normalize, window, dtype):
         return signal.pulse_compression(x, template, normalize, window)
     else:
         assert xp is numpy
+        # May use scipy inside _numpy_pulse_compression
         return _numpy_pulse_compression(x, template, normalize, window)
 
 
 @pytest.mark.parametrize('window', [None, 'hamming', numpy.negative])
 @testing.for_dtypes('fdFD')
 @testing.numpy_cupy_allclose(rtol=tol, contiguous_check=False)
+@testing.with_requires("scipy")
 def test_pulse_doppler(xp, window, dtype):
     x = testing.shaped_random((8, 700), xp=xp, dtype=dtype)
 
@@ -73,6 +79,7 @@ def test_pulse_doppler(xp, window, dtype):
         return signal.pulse_doppler(x, window)
     else:
         assert xp is numpy
+        # May use scipy inside _numpy_pulse_doppler
         return _numpy_pulse_doppler(x, window)
 
 
@@ -89,6 +96,7 @@ def test_cfar_alpha(dtype):
     "size,gc,rc", [(100, 1, 5), (11, 2, 3), (100, 10, 20)])
 @testing.for_float_dtypes(no_float16=True)
 @testing.numpy_cupy_allclose(rtol=2e-6, type_check=False)
+@testing.with_requires("scipy")
 def test_ca_cfar1d(xp, dtype, size, gc, rc):
     array = testing.shaped_random((size,), xp=xp, dtype=dtype)
     if xp is cupy:
@@ -114,6 +122,7 @@ def test_ca_cfar1d_failures(size, gc, rc):
     "shape,gc,rc", [((10, 10), (1, 1), (2, 2)), ((10, 100), (1, 10), (2, 20))])
 @testing.for_float_dtypes(no_float16=True)
 @testing.numpy_cupy_allclose(rtol=2e-6, type_check=False)
+@testing.with_requires("scipy")
 def test_ca_cfar2d(xp, dtype, shape, gc, rc):
     array = testing.shaped_random(shape, xp=xp, dtype=dtype)
     if xp is cupy:
