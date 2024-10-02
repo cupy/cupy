@@ -1,5 +1,3 @@
-import warnings
-
 import numpy
 from numpy import linalg
 
@@ -132,7 +130,7 @@ def _nrm2_last_axis(x):
     return cupy.sum(cupy.square(x.view(real_dtype)), axis=-1)
 
 
-def lstsq(a, b, rcond='warn'):
+def lstsq(a, b, rcond=None):
     """Return the least-squares solution to a linear matrix equation.
 
     Solves the equation `a x = b` by computing a vector `x` that
@@ -147,7 +145,7 @@ def lstsq(a, b, rcond='warn'):
         a (cupy.ndarray): "Coefficient" matrix with dimension ``(M, N)``
         b (cupy.ndarray): "Dependent variable" values with dimension ``(M,)``
             or ``(M, K)``
-        rcond (float): Cutoff parameter for small singular values.
+        rcond (float, optional): Cutoff parameter for small singular values.
             For stability it computes the largest singular value denoted by
             ``s``, and sets all singular values smaller than ``s`` to zero.
 
@@ -171,17 +169,6 @@ def lstsq(a, b, rcond='warn'):
 
     .. seealso:: :func:`numpy.linalg.lstsq`
     """
-    if rcond == 'warn':
-        warnings.warn(
-            '`rcond` parameter will change to the default of '
-            'machine precision times ``max(M, N)`` where M and N '
-            'are the input matrix dimensions.\n'
-            'To use the future default and silence this warning '
-            'we advise to pass `rcond=None`, to keep using the old, '
-            'explicitly pass `rcond=-1`.',
-            FutureWarning)
-        rcond = -1
-
     _util._assert_cupy_array(a, b)
     _util._assert_2d(a)
     # TODO(kataoka): Fix 0-dim
