@@ -287,13 +287,14 @@ class TestLstsq:
         self.check_invalid_shapes((3, 3), (2, 2))
         self.check_invalid_shapes((4, 3), (10, 3, 3))
 
+    @testing.with_requires("numpy>=2.0")
     @testing.for_float_dtypes(no_float16=True)
     @testing.numpy_cupy_allclose(atol=1e-3)
-    def test_warn_rcond(self, xp, dtype):
+    def test_nowarn_rcond(self, xp, dtype):
         a = testing.shaped_random((3, 3), xp, dtype)
         b = testing.shaped_random((3,), xp, dtype)
-        with testing.assert_warns(FutureWarning):
-            return xp.linalg.lstsq(a, b)
+        # FutureWarning is no longer emitted
+        return xp.linalg.lstsq(a, b)
 
 
 class TestTensorInv(unittest.TestCase):
