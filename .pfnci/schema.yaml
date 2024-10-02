@@ -97,6 +97,11 @@ rocm:
     packages: ['rocm-dev', 'hipblas', 'hipfft', 'hipsparse', 'hipcub',
                'rocsparse', 'rocrand', 'rocthrust', 'rocsolver', 'rocfft',
                'rocprim', 'rccl']
+  "6.2":
+    full_version: "6.2"
+    packages: ['rocm-dev', 'hipblas', 'hipfft', 'hipsparse', 'hipcub',
+               'rocsparse', 'rocrand', 'hiprand', 'rocthrust', 'rocsolver', 'rocfft',
+               'rocprim', 'rccl', 'roctracer-dev']
 
 ###############################################################################
 # CUDA Optional Libraries
@@ -259,13 +264,13 @@ cudnn:
 # list of supported Python versions in the Python libraries.
 python:
   "3.10":
-    spec: "3.10.0"
+    spec: "3.10.15"
   "3.11":
-    spec: "3.11.0"
+    spec: "3.11.10"
   "3.12":
-    spec: "3.12.0"
+    spec: "3.12.6"
   "pre":
-    spec: "3.13.0a1"  # note that dependency python libraies may not work
+    spec: "3.13.0rc2"  # note that dependency python libraies may not work
 
 ###############################################################################
 # Python Libraries
@@ -291,6 +296,19 @@ numpy:
       - "3.10"
       - "3.11"
       - "3.12"
+  # "2.0":
+  #   spec: "==2.0.*"
+  #   python:
+  #     - "3.10"
+  #     - "3.11"
+  #     - "3.12"
+  # "2.1":
+  #   spec: "==2.1.*"
+  #   python:
+  #     - "3.10"
+  #     - "3.11"
+  #     - "3.12"
+  #     # - "3.13"
   "pre":
     spec: ">=0a0"  # latest, including pre-releases
 scipy:
@@ -326,6 +344,28 @@ scipy:
       - "1.24"
       - "1.25"
       - "1.26"
+  "1.13":
+    spec: "==1.13.*"
+    python:
+      - "3.10"
+      - "3.11"
+      - "3.12"
+    numpy:
+      - "1.24"
+      - "1.25"
+      - "1.26"
+  "1.14":
+    spec: "==1.14.*"
+    python:
+      - "3.10"
+      - "3.11"
+      - "3.12"
+    numpy:
+      - "1.24"
+      - "1.25"
+      - "1.26"
+      # - "2.0"
+      # - "2.1"
   "pre":
     spec: ">=0a0"  # latest, including pre-releases
 optuna:

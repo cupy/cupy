@@ -327,7 +327,7 @@ class RegularGridInterpolator:
         if nu is not None and method not in self._SPLINE_METHODS_ndbspl:
             raise ValueError(
                 f"Can only compute derivatives for methods "
-                f"{self._SPLINE_METHODS_ndbspl}, got {method =}."
+                f"{self._SPLINE_METHODS_ndbspl}, got {method=}."
             )
 
         xi, xi_shape, ndim, nans, out_of_bounds = self._prepare_xi(xi)

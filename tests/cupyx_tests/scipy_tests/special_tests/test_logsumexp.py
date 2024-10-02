@@ -110,6 +110,8 @@ class TestLogsumexp:
         a = xp.array([cupy.inf, -cupy.inf, cupy.nan, -cupy.nan])
         return scp.special.logsumexp(a)
 
+    # TODO(asi1024): Fix after initial_value is supported in cupy.max
+    @testing.with_requires('scipy<1.14')
     @testing.for_all_dtypes(no_bool=True)
     def test_empty_array_inputs(self, dtype):
         a = numpy.array([], dtype=dtype)
