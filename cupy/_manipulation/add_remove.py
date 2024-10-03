@@ -631,6 +631,9 @@ def unique(ar, return_index=False, return_inverse=False,
         ar2 = ar.reshape(orig_shape[0], math.prod(orig_shape[1:]))
         ar2 = cupy.ascontiguousarray(ar2)
         is_complex = cupy.iscomplexobj(ar2)
+        if not equal_nan and cupy.issubdtype(ar2.dtype, cupy.inexact):
+            nan_mask = cupy.isnan(ar2)
+            ar2[nan_mask] = cupy.random.random(nan_mask.shape, ar2.dtype)
 
         n_rows, row_sz = ar2.shape
         if is_complex:
