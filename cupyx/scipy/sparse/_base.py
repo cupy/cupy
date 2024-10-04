@@ -334,9 +334,6 @@ class spmatrix(object):
     def get_shape(self):
         raise NotImplementedError
 
-    def getformat(self):
-        return self.format
-
     def getnnz(self, axis=None):
         """Number of stored values, including explicit zeros."""
         raise NotImplementedError
