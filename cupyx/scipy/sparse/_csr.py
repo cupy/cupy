@@ -539,18 +539,6 @@ class csr_matrix(_compressed._compressed_sparse_matrix):
         trans.has_canonical_format = self.has_canonical_format
         return trans
 
-    def getrow(self, i):
-        """Returns a copy of row i of the matrix, as a (1 x n)
-        CSR matrix (row vector).
-
-        Args:
-            i (integer): Row
-
-        Returns:
-            cupyx.scipy.sparse.csr_matrix: Sparse matrix with single row
-        """
-        return self._major_slice(slice(i, i + 1), copy=True)
-
     def getcol(self, i):
         """Returns a copy of column i of the matrix, as a (m x 1)
         CSR matrix (column vector).

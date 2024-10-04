@@ -346,8 +346,6 @@ class spmatrix(object):
         """Number of stored values, including explicit zeros."""
         raise NotImplementedError
 
-    # TODO(unno): Implement getrow
-
     def maximum(self, other):
         return self.tocsr().maximum(other)
 

@@ -1512,21 +1512,6 @@ class TestCsrMatrixGetitem:
         # This test is adapted from Scipy's CSC tests
         return _make(xp, sp, self.dtype)[slice(1, -2, 2)]
 
-    def test_getrow(self):
-
-        # This test is adapted from Scipy's CSC tests
-        N = 10
-        X = testing.shaped_random((N, N), cupy, seed=0)
-        X[X > 0.7] = 0
-        Xcsc = sparse.csc_matrix(X)
-
-        for i in range(N):
-            arr_row = X[i:i + 1, :]
-            csc_row = Xcsc.getrow(i)
-
-            assert sparse.isspmatrix_csr(csc_row)
-            assert (arr_row == csc_row.toarray()).all()
-
     def test_getcol(self):
         # This test is adapted from Scipy's CSC tests
         N = 10
