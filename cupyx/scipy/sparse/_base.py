@@ -334,8 +334,6 @@ class spmatrix(object):
     def get_shape(self):
         raise NotImplementedError
 
-    # TODO(unno): Implement getcol
-
     def getformat(self):
         return self.format
 

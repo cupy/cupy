@@ -1742,20 +1742,6 @@ class TestCsrMatrixGetitem:
         # This test is adapted from Scipy
         return _make(xp, sp, self.dtype)[slice(1, -2, 2)]
 
-    def test_getcol(self):
-        # This test is adapted from Scipy's CSR tests
-        N = 10
-        X = testing.shaped_random((N, N), cupy, seed=0)
-        X[X > 0.7] = 0
-        Xcsr = sparse.csr_matrix(X)
-
-        for i in range(N):
-            arr_col = X[:, i:i + 1]
-            csr_col = Xcsr.getcol(i)
-
-            assert sparse.isspmatrix_csr(csr_col)
-            assert (arr_col == csr_col.toarray()).all()
-
 
 @testing.parameterize(*testing.product({
     'dtype': [numpy.float32, numpy.float64, cupy.complex64, cupy.complex128],
