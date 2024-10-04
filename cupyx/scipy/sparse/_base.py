@@ -337,9 +337,6 @@ class spmatrix(object):
     def getformat(self):
         return self.format
 
-    def getmaxprint(self):
-        return self.maxprint
-
     def getnnz(self, axis=None):
         """Number of stored values, including explicit zeros."""
         raise NotImplementedError
