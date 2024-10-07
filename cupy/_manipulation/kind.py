@@ -114,7 +114,7 @@ def require(a, dtype=None, requirements=None):
         order = 'C_CONTIGUOUS'
         requirements.remove('C')
 
-    copy = 'OWNDATA' in requirements
+    copy = True if 'OWNDATA' in requirements else None
     try:
         arr = cupy.array(a, dtype=dtype, order=order, copy=copy, subok=False)
     except TypeError:
