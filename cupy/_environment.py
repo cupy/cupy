@@ -470,7 +470,7 @@ def _get_include_dir_from_conda_or_wheel(major: int, minor: int) -> List[str]:
     if config is not None and config['packaging'] == 'conda':
         if sys.platform.startswith('linux'):
             arch = platform.processor()
-            if arch == '': # Not all systems report this
+            if arch == '':  # Not all systems report this
                 arch = platform.machine()
             if arch == "aarch64":
                 arch = "sbsa"
