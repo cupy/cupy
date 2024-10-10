@@ -469,9 +469,10 @@ def _get_include_dir_from_conda_or_wheel(major: int, minor: int) -> List[str]:
     config = get_preload_config()
     if config is not None and config['packaging'] == 'conda':
         if sys.platform.startswith('linux'):
-            arch = platform.processor()
+            arch = platform.machine()
             if arch == "aarch64":
                 arch = "sbsa"
+            assert arch, "platform.machine() returned an empty string"
             target_dir = f"{arch}-linux"
             return [
                 os.path.join(sys.prefix, "targets", target_dir, "include"),
