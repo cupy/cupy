@@ -6,4 +6,4 @@ setuptools==73.0.1
 
 # These requirements must match with the Baseline API version documented in the Installation Guide.
 numpy==1.26.*
-scipy==1.14.*
+scipy==1.11.*
