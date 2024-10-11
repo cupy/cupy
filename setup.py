@@ -28,7 +28,7 @@ install_requires = [
 ]
 extras_require = {
     'all': [
-        'scipy>=1.7,<1.14',  # see #4773
+        'scipy>=1.7,<1.17',  # see #4773
         'Cython>=0.29.22,<3',
         'optuna>=2.0',
     ],

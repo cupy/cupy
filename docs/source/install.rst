@@ -27,7 +27,7 @@ NumPy/SciPy-compatible API in CuPy v13 is based on NumPy 1.26 and SciPy 1.11, an
 
 * `NumPy <https://numpy.org/>`_: v1.22 / v1.23 / v1.24 / v1.25 / v1.26 / v2.0
 
-* `SciPy <https://scipy.org/>`_ (*optional*): v1.7 / v1.8 / v1.9 / v1.10 / v1.11
+* `SciPy <https://scipy.org/>`_ (*optional*): v1.7 / v1.8 / v1.9 / v1.10 / v1.11 / v1.12 / v1.13 / v1.14
 
     * Required only when copying sparse matrices from GPU to CPU (see :doc:`../reference/scipy_sparse`.)
 
