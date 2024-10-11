@@ -308,6 +308,7 @@ cdef class SystemMemory(BaseMemory):
         # to cudaCpuDeviceId (-1) would require a lot of changes
         self.device_id = device.get_device_id()
         self.ptr = ptr
+        assert owner is not None, 'must provide an owner'
         self._owner = owner
 
         return self
