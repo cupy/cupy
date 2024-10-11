@@ -12,6 +12,7 @@ NumPy binary files (NPY, NPZ)
 .. autosummary::
    :toctree: generated/
 
+   _io.npz.NpzFile
    load
    save
    savez

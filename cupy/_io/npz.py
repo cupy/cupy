@@ -1,17 +1,47 @@
+import collections.abc
 import warnings
 
 import numpy
 
 import cupy
 
-
 _support_allow_pickle = (numpy.lib.NumpyVersion(numpy.__version__) >= '1.10.0')
 
 
-class NpzFile(object):
+if numpy.lib.NumpyVersion(numpy.__version__) >= '2.0.0':
+    from numpy.lib._npyio_impl import BagObj
+else:
+    from numpy.lib.npyio import BagObj
+
+
+class NpzFile(collections.abc.Mapping):
+    """
+    NpzFile(npz_file)
+
+    A dictionary-like object with lazy-loading of files in the zipped
+    archive provided on construction.
+
+    `NpzFile` is used to load files in the Cupy ``.npz`` data archive
+    format. It assumes that files in the archive have a ``.npy`` extension,
+    other files are ignored.
+
+    The arrays and file strings are lazily loaded on either
+    getitem access using ``obj['key']`` or attribute lookup using
+    ``obj.f.key``.
+
+    Attributes
+    ----------
+        npz_file : numpy.lib.npyio.NpzFile instance
+        f : BagObj instance
+            An object on which attribute can be performed as an alternative
+            to getitem access on the `NpzFile` instance itself.
+
+    .. seealso:: :class:`numpy.lib.npyio.NpzFile`
+    """
 
     def __init__(self, npz_file):
         self.npz_file = npz_file
+        self.f = BagObj(self)
 
     def __enter__(self):
         self.npz_file.__enter__()
@@ -24,8 +54,51 @@ class NpzFile(object):
         arr = self.npz_file[key]
         return cupy.array(arr)
 
+    def __iter__(self):
+        return iter(self.npz_file.files)
+
+    def __len__(self):
+        return len(self.npz_file.files)
+
+    def __contains__(self, key):
+        return self.npz_file.__contains__(key)
+
+    def __del__(self):
+        self.npz_file.__del__()
+
+    def __repr__(self):
+        return self.npz_file.__repr__()
+
     def close(self):
+        """
+        Close the file.
+        """
         self.npz_file.close()
+
+    # https://github.com/numpy/numpy/pull/25964
+    def get(self, key, default=None):
+        """
+        D.get(k,[,d]) returns D[k] if k in D, else d.  d defaults to None.
+        """
+        return collections.abc.Mapping.get(self, key, default)
+
+    def keys(self):
+        """
+        D.keys() returns a set-like object providing a view on the keys
+        """
+        return collections.abc.Mapping.keys(self)
+
+    def values(self):
+        """
+        D.values() returns a set-like object providing a view on the values
+        """
+        return collections.abc.Mapping.values(self)
+
+    def items(self):
+        """
+        D.items() returns a set-like object providing a view on the items
+        """
+        return collections.abc.Mapping.items(self)
 
 
 def load(file, mmap_mode=None, allow_pickle=None):
