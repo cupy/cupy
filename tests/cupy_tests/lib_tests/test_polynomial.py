@@ -5,7 +5,6 @@ import cupy
 from cupy.cuda import driver
 from cupy.cuda import runtime
 import cupyx
-import cupyx.lapack
 from cupy import testing
 
 from cupy.exceptions import RankWarning
