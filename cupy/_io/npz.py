@@ -9,7 +9,7 @@ import cupy
 _support_allow_pickle = (numpy.lib.NumpyVersion(numpy.__version__) >= '1.10.0')
 
 
-class BagObj(object):
+class BagObj:
     """
         BagObj(obj)
 
@@ -22,7 +22,7 @@ class BagObj(object):
     """
 
     def __init__(self, obj):
-        # https://github.com/numpy/numpy/pull/203
+        # Use weakref to make NpzFile objects collectable by refcount
         self._obj = weakref.proxy(obj)
 
     def __getattribute__(self, key):
@@ -47,13 +47,15 @@ class NpzFile(collections.abc.Mapping):
     A dictionary-like object with lazy-loading of files in the zipped
     archive provided on construction.
 
-    `NpzFile` is used to load files in the Cupy ``.npz`` data archive
+    `NpzFile` is used to load files in the NumPy ``.npz`` data archive
     format. It assumes that files in the archive have a ``.npy`` extension,
     other files are ignored.
 
     The arrays and file strings are lazily loaded on either
     getitem access using ``obj['key']`` or attribute lookup using
-    ``obj.f.key``.
+    ``obj.f.key``. A list of all files (without ``.npy`` extensions) can
+    be obtained with ``obj.files`` and the ZipFile object itself using
+    ``obj.zip``.
 
     Attributes
     ----------
@@ -101,7 +103,10 @@ class NpzFile(collections.abc.Mapping):
         """
         self.npz_file.close()
 
-    # https://github.com/numpy/numpy/pull/25964
+    # Work around problems with the docstrings in the Mapping methods
+    # They contain a `->`, which confuses the type annotation interpretations
+    # of sphinx-docs. See https://github.com/numpy/numpy/pull/25964.
+
     def get(self, key, default=None):
         """
         D.get(k,[,d]) returns D[k] if k in D, else d.  d defaults to None.
