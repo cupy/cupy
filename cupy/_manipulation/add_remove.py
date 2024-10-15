@@ -240,9 +240,6 @@ def unique(ar, return_index=False, return_inverse=False,
 
     ar = cupy.moveaxis(ar, axis, 0)
 
-    inverse_shape = [1]*ar.ndim
-    inverse_shape[axis] = ar.shape[0]
-
     # The array is reshaped into a contiguous 2D array
     orig_shape = ar.shape
     idx = cupy.arange(0, orig_shape[0], dtype=cupy.intp)
@@ -316,7 +313,7 @@ def unique(ar, return_index=False, return_inverse=False,
         imask = cupy.cumsum(mask) - 1
         inv_idx = cupy.empty(mask.shape, dtype=cupy.intp)
         inv_idx[sorted_indices] = imask
-        ret += inv_idx.reshape(inverse_shape),
+        ret += inv_idx,
     if return_counts:
         nonzero = cupy.nonzero(mask)[0]  # may synchronize
         idx = cupy.empty((nonzero.size + 1,), nonzero.dtype)
