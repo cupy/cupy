@@ -11,14 +11,7 @@ _support_allow_pickle = (numpy.lib.NumpyVersion(numpy.__version__) >= '1.10.0')
 
 class BagObj:
     """
-        BagObj(obj)
-
-        Convert attribute look-ups to getitems on the object passed in.
-
-        Parameters
-        ----------
-        obj : class instance
-            Object on which attribute look-up is performed.
+    Convert attribute look-ups to getitems on the object passed in.
     """
 
     def __init__(self, obj):
