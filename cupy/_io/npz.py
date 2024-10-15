@@ -81,7 +81,6 @@ class NpzFile(collections.abc.Mapping):
     def __contains__(self, key):
         return self.npz_file.__contains__(key)
 
-
     def __repr__(self):
         return self.npz_file.__repr__()
 
