@@ -57,15 +57,6 @@ extras_require = {
         'Cython>=0.29.22,<3',
         'optuna>=2.0',
     ],
-    # TODO(kmaehashi): remove stylecheck and update the contribution guide
-    'stylecheck': [
-        'autopep8==2.3.1',
-        'flake8==7.1.1',
-        'pbr==5.5.1',
-
-        'mypy==1.11.2',
-        'types-setuptools',
-    ],
     'test': [
         # 4.2 <= pytest < 6.2 is slow collecting tests and times out on CI.
         # pytest < 7.2 has some different behavior that makes our CI fail

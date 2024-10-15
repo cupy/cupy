@@ -173,32 +173,26 @@ Coding Guidelines
 
 We use `PEP8 <https://www.python.org/dev/peps/pep-0008/>`_ and a part of `OpenStack Style Guidelines <https://docs.openstack.org/developer/hacking/>`_ related to general coding style as our basic style guidelines.
 
-You can use ``autopep8`` and ``flake8`` commands to check your code.
+You can use ``pre-commit`` to check your code.
+First install it with the following command::
 
-In order to avoid confusion from using different tool versions, we pin the versions of those tools.
-Install them with the following command (from within the top directory of CuPy repository)::
-
-  $ pip install -e '.[stylecheck]'
+  $ pip install pre-commit
 
 And check your code with::
 
-  $ autopep8 path/to/your/code.py
-  $ flake8 path/to/your/code.py
+  $ pre-commit run -a
 
-To check Cython code, use ``.flake8.cython`` configuration file::
+The above command runs various checks listed in the ``.pre-commit-config.yaml`` file, including linting (detect potential errors), formatting (enforce PEP8), and so on.
+If you want to automate the checking process, you can install the pre-commit hook::
 
-  $ flake8 --config=.flake8.cython path/to/your/cython/code.pyx
+  $ pre-commit install
 
-The ``autopep8`` supports automatically correct Python code to conform to the PEP 8 style guide::
+Once installed, your code should be checked each time you commit.
+Before sending a pull request, be sure to check that your code passes the ``pre-commit`` checking.
 
-  $ autopep8 --in-place path/to/your/code.py
-
-The ``flake8`` command lets you know the part of your code not obeying our style guidelines.
-Before sending a pull request, be sure to check that your code passes the ``flake8`` checking.
-
-Note that ``flake8`` command is not perfect.
+Note that ``pre-commit`` check is not perfect.
 It does not check some of the style guidelines.
-Here is a (not-complete) list of the rules that ``flake8`` cannot check.
+Here is a (not-complete) list of the rules that ``pre-commit`` cannot check.
 
 * Relative imports are prohibited. [H304]
 * Importing non-module symbols is prohibited.
