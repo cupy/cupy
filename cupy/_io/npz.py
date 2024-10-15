@@ -1,5 +1,6 @@
 import collections.abc
 import warnings
+import weakref
 
 import numpy
 
@@ -8,10 +9,35 @@ import cupy
 _support_allow_pickle = (numpy.lib.NumpyVersion(numpy.__version__) >= '1.10.0')
 
 
-if numpy.lib.NumpyVersion(numpy.__version__) >= '2.0.0':
-    from numpy.lib._npyio_impl import BagObj
-else:
-    from numpy.lib.npyio import BagObj
+class BagObj(object):
+    """
+        BagObj(obj)
+
+        Convert attribute look-ups to getitems on the object passed in.
+
+        Parameters
+        ----------
+        obj : class instance
+            Object on which attribute look-up is performed.
+    """
+
+    def __init__(self, obj):
+        # https://github.com/numpy/numpy/pull/203
+        self._obj = weakref.proxy(obj)
+
+    def __getattribute__(self, key):
+        try:
+            return object.__getattribute__(self, '_obj')[key]
+        except KeyError:
+            raise AttributeError(key) from None
+
+    def __dir__(self):
+        """
+        Enables dir(bagobj) to list the files in an NpzFile.
+
+        This also enables tab-completion in an interpreter or IPython.
+        """
+        return list(object.__getattribute__(self, '_obj').keys())
 
 
 class NpzFile(collections.abc.Mapping):

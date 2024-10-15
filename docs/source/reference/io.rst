@@ -13,6 +13,7 @@ NumPy binary files (NPY, NPZ)
    :toctree: generated/
 
    _io.npz.NpzFile
+   _io.npz.BagObj
    load
    save
    savez
