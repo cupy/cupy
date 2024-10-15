@@ -50,12 +50,9 @@ class NpzFile(collections.abc.Mapping):
     be obtained with ``obj.files`` and the ZipFile object itself using
     ``obj.zip``.
 
-    Attributes
-    ----------
-        npz_file : numpy.lib.npyio.NpzFile instance
-        f : BagObj instance
-            An object on which attribute can be performed as an alternative
-            to getitem access on the `NpzFile` instance itself.
+    Attributes:
+       f (BagObj): An object on which attribute can be performed as an
+         alternative to getitem access on the `NpzFile` instance itself.
 
     .. seealso:: :class:`numpy.lib.npyio.NpzFile`
     """
