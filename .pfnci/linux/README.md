@@ -11,7 +11,7 @@ Run `./run.sh` without arguments for the detailed usage and list of all STAGEs.
 
 Here are some examples:
 
-```
+```sh
 # Target: cuda114
 # Stages: Build the docker image for testing, then run the unit test.
 ./run.sh cuda114 build test

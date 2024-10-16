@@ -1,4 +1,4 @@
-<div align="center"><img src="https://raw.githubusercontent.com/cupy/cupy/main/docs/image/cupy_logo_1000px.png" width="400"/></div>
+<div align="center"><img src="https://raw.githubusercontent.com/cupy/cupy/main/docs/image/cupy_logo_1000px.png" width="400" alt="cupy logo"/></div>
 
 # CuPy : NumPy & SciPy for GPU
 
@@ -69,8 +69,8 @@ If you need to use a particular CUDA version (say 12.0), you can use the `cuda-v
 
 Use [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/overview.html) to run [CuPy container images](https://hub.docker.com/r/cupy/cupy).
 
-```
-$ docker run --gpus all -it cupy/cupy
+```sh
+docker run --gpus all -it cupy/cupy
 ```
 
 ## Resources
