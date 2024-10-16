@@ -277,6 +277,11 @@ from cupy._manipulation.add_remove import delete  # NOQA
 from cupy._manipulation.add_remove import append  # NOQA
 from cupy._manipulation.add_remove import resize  # NOQA
 from cupy._manipulation.add_remove import unique  # NOQA
+from cupy._manipulation.add_remove import unique_all  # NOQA
+from cupy._manipulation.add_remove import unique_counts  # NOQA
+from cupy._manipulation.add_remove import unique_values  # NOQA
+from cupy._manipulation.add_remove import unique_inverse  # NOQA
+
 from cupy._manipulation.add_remove import trim_zeros  # NOQA
 
 from cupy._manipulation.rearrange import flip  # NOQA
