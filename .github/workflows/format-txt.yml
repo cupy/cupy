@@ -2,12 +2,6 @@ name: Format text files
 
 on: pull_request
 
-permissions:
-  contents: read
-  checks: write
-  issues: write
-  pull-requests: write
-
 jobs:
   format-prettier:
     runs-on: ubuntu-latest
@@ -38,3 +32,4 @@ jobs:
       - uses: reviewdog/action-suggester@v1
         with:
           tool_name: prettier
+          fail_on_error: true
