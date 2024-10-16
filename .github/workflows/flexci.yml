@@ -13,45 +13,43 @@ permissions:
 jobs:
   dispatch:
     if: |
-        github.repository_owner == 'cupy' &&
-        (
-            (github.event_name == 'issue_comment' &&
-             github.event.issue.pull_request &&
-             contains(github.event.comment.body, '/test ')) ||
-            (github.event_name == 'push')
-        )
+      github.repository_owner == 'cupy' &&
+      (
+          (github.event_name == 'issue_comment' &&
+           github.event.issue.pull_request &&
+           contains(github.event.comment.body, '/test ')) ||
+          (github.event_name == 'push')
+      )
     runs-on: ubuntu-22.04
-
     steps:
-    - name: Get Base Branch of Pull Request
-      id: base
-      if: github.event_name == 'issue_comment'
-      env:
-        GH_TOKEN: ${{ github.token }}
-      run:
-        echo "pr_base_ref=$(gh api '${{ github.event.issue.pull_request.url }}' | jq -r .base.ref)" >> "${GITHUB_OUTPUT}"
+      - name: Get Base Branch of Pull Request
+        id: base
+        if: github.event_name == 'issue_comment'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: echo "pr_base_ref=$(gh api '${{ github.event.issue.pull_request.url }}' | jq -r .base.ref)" >> "${GITHUB_OUTPUT}"
 
-    - name: Checkout
-      uses: actions/checkout@v4
-      with:
-        ref: ${{ github.event_name == 'push' && github.ref || steps.base.outputs.pr_base_ref }}
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'push' && github.ref || steps.base.outputs.pr_base_ref }}
 
-    - name: Setup Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.10'
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
 
-    - name: Setup Environment
-      run: |
-        pip install pygithub
+      - name: Setup Environment
+        run: |
+          pip install pygithub
 
-    - name: Dispatch
-      env:
-        GITHUB_TOKEN: ${{ github.token }}
-        FLEXCI_WEBHOOK_SECRET: ${{ secrets.FLEXCI_WEBHOOK_SECRET }}
-      run: |
-        ./.github/workflows/flexci_dispatcher.py \
-            --event "${GITHUB_EVENT_NAME}" \
-            --webhook "${GITHUB_EVENT_PATH}" \
-            --projects ./.pfnci/config.tags.json \
-            --external-tag jenkins
+      - name: Dispatch
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          FLEXCI_WEBHOOK_SECRET: ${{ secrets.FLEXCI_WEBHOOK_SECRET }}
+        run: |
+          ./.github/workflows/flexci_dispatcher.py \
+              --event "${GITHUB_EVENT_NAME}" \
+              --webhook "${GITHUB_EVENT_PATH}" \
+              --projects ./.pfnci/config.tags.json \
+              --external-tag jenkins

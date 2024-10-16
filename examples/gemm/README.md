@@ -1,6 +1,6 @@
 # SGEMM example
 
-This example contains implementation of single-precision general matrix-multiplication  (SGEMM).
+This example contains implementation of single-precision general matrix-multiplication (SGEMM).
 The implementation is based on the one in [MAGMA](http://icl.cs.utk.edu/magma/).
 
 ### How to demo

@@ -40,12 +40,12 @@ You can pass `ndarray` to existing CUDA C/C++ programs via [RawKernels](https://
 Binary packages (wheels) are available for Linux and Windows on [PyPI](https://pypi.org/org/cupy/).
 Choose the right package for your platform.
 
-| Platform              | Architecture      | Command                                                       |
-| --------------------- | ----------------- | ------------------------------------------------------------- |
-| CUDA 11.x (11.2+)     | x86_64 / aarch64  | `pip install cupy-cuda11x`                                    |
-| CUDA 12.x             | x86_64 / aarch64  | `pip install cupy-cuda12x`                                    |
-| ROCm 4.3 (*[experimental](https://docs.cupy.dev/en/latest/install.html#using-cupy-on-amd-gpu-experimental)*)          | x86_64            | `pip install cupy-rocm-4-3`                                   |
-| ROCm 5.0 (*[experimental](https://docs.cupy.dev/en/latest/install.html#using-cupy-on-amd-gpu-experimental)*)          | x86_64            | `pip install cupy-rocm-5-0`                                   |
+| Platform                                                                                                     | Architecture     | Command                     |
+| ------------------------------------------------------------------------------------------------------------ | ---------------- | --------------------------- |
+| CUDA 11.x (11.2+)                                                                                            | x86_64 / aarch64 | `pip install cupy-cuda11x`  |
+| CUDA 12.x                                                                                                    | x86_64 / aarch64 | `pip install cupy-cuda12x`  |
+| ROCm 4.3 (_[experimental](https://docs.cupy.dev/en/latest/install.html#using-cupy-on-amd-gpu-experimental)_) | x86_64           | `pip install cupy-rocm-4-3` |
+| ROCm 5.0 (_[experimental](https://docs.cupy.dev/en/latest/install.html#using-cupy-on-amd-gpu-experimental)_) | x86_64           | `pip install cupy-rocm-5-0` |
 
 > [!NOTE]\
 > To install pre-releases, append `--pre -U -f https://pip.cupy.dev/pre` (e.g., `pip install cupy-cuda11x --pre -U -f https://pip.cupy.dev/pre`).
@@ -54,9 +54,9 @@ Choose the right package for your platform.
 
 Binary packages are also available for Linux and Windows on [Conda-Forge](https://anaconda.org/conda-forge/cupy).
 
-| Platform              | Architecture                | Command                                                       |
-| --------------------- | --------------------------- | ------------------------------------------------------------- |
-| CUDA                  | x86_64 / aarch64 / ppc64le  | `conda install -c conda-forge cupy`                           |
+| Platform | Architecture               | Command                             |
+| -------- | -------------------------- | ----------------------------------- |
+| CUDA     | x86_64 / aarch64 / ppc64le | `conda install -c conda-forge cupy` |
 
 If you need a slim installation (without also getting CUDA dependencies installed), you can do `conda install -c conda-forge cupy-core`.
 
@@ -96,7 +96,7 @@ CuPy is being developed and maintained by [Preferred Networks](https://www.prefe
 
 Ryosuke Okuta, Yuya Unno, Daisuke Nishino, Shohei Hido and Crissman Loomis.
 **CuPy: A NumPy-Compatible Library for NVIDIA GPU Calculations.**
-*Proceedings of Workshop on Machine Learning Systems (LearningSys) in The Thirty-first Annual Conference on Neural Information Processing Systems (NIPS)*, (2017).
+_Proceedings of Workshop on Machine Learning Systems (LearningSys) in The Thirty-first Annual Conference on Neural Information Processing Systems (NIPS)_, (2017).
 [[PDF](http://learningsys.org/nips17/assets/papers/paper_16.pdf)]
 
 ```bibtex

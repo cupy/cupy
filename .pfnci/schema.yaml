@@ -13,7 +13,7 @@ system:
 os:
   "ubuntu:20.04":
     system: "linux"
-  "ubuntu:22.04":    # CUDA 11.7+
+  "ubuntu:22.04": # CUDA 11.7+
     system: "linux"
   "centos:7":
     system: "linux"
@@ -84,24 +84,74 @@ rocm:
     packages: []
   "4.3":
     full_version: "4.3.1"
-    packages: ['rocm-dev', 'hipblas', 'hipfft', 'hipsparse', 'hipcub',
-               'rocsparse', 'rocrand', 'rocthrust', 'rocsolver', 'rocfft',
-               'rocprim', 'rccl']
+    packages:
+      [
+        "rocm-dev",
+        "hipblas",
+        "hipfft",
+        "hipsparse",
+        "hipcub",
+        "rocsparse",
+        "rocrand",
+        "rocthrust",
+        "rocsolver",
+        "rocfft",
+        "rocprim",
+        "rccl",
+      ]
   "5.0":
     full_version: "5.0"
-    packages: ['rocm-dev', 'hipblas', 'hipfft', 'hipsparse', 'hipcub',
-               'rocsparse', 'rocrand', 'rocthrust', 'rocsolver', 'rocfft',
-               'rocprim', 'rccl']
+    packages:
+      [
+        "rocm-dev",
+        "hipblas",
+        "hipfft",
+        "hipsparse",
+        "hipcub",
+        "rocsparse",
+        "rocrand",
+        "rocthrust",
+        "rocsolver",
+        "rocfft",
+        "rocprim",
+        "rccl",
+      ]
   "5.3":
     full_version: "5.3"
-    packages: ['rocm-dev', 'hipblas', 'hipfft', 'hipsparse', 'hipcub',
-               'rocsparse', 'rocrand', 'rocthrust', 'rocsolver', 'rocfft',
-               'rocprim', 'rccl']
+    packages:
+      [
+        "rocm-dev",
+        "hipblas",
+        "hipfft",
+        "hipsparse",
+        "hipcub",
+        "rocsparse",
+        "rocrand",
+        "rocthrust",
+        "rocsolver",
+        "rocfft",
+        "rocprim",
+        "rccl",
+      ]
   "6.2":
     full_version: "6.2"
-    packages: ['rocm-dev', 'hipblas', 'hipfft', 'hipsparse', 'hipcub',
-               'rocsparse', 'rocrand', 'hiprand', 'rocthrust', 'rocsolver', 'rocfft',
-               'rocprim', 'rccl', 'roctracer-dev']
+    packages:
+      [
+        "rocm-dev",
+        "hipblas",
+        "hipfft",
+        "hipsparse",
+        "hipcub",
+        "rocsparse",
+        "rocrand",
+        "hiprand",
+        "rocthrust",
+        "rocsolver",
+        "rocfft",
+        "rocprim",
+        "rccl",
+        "roctracer-dev",
+      ]
 
 ###############################################################################
 # CUDA Optional Libraries
@@ -120,17 +170,17 @@ nccl:
     cuda:
       # Note: DEB package for CUDA 11.x unavailable on Ubuntu 22.04
       # "11.0":
-      "11.2":  # assumed
+      "11.2": # assumed
         alias: "11.8"
-      "11.3":  # assumed
+      "11.3": # assumed
         alias: "11.8"
-      "11.4":  # assumed
+      "11.4": # assumed
         alias: "11.8"
-      "11.5":  # assumed
+      "11.5": # assumed
         alias: "11.8"
-      "11.6":  # assumed
+      "11.6": # assumed
         alias: "11.8"
-      "11.7":  # assumed
+      "11.7": # assumed
         alias: "11.8"
       "11.8":
       "12.0":
@@ -138,39 +188,39 @@ nccl:
     spec: "2.17.*"
     cuda:
       # "11.0":  -- DEB/RPM packages are unavailable
-      "12.0":  # Note: DEB package unavailable on Ubuntu 22.04
+      "12.0": # Note: DEB package unavailable on Ubuntu 22.04
       "12.1":
   "2.18":
     spec: "2.18.*"
     cuda:
       # "11.0":  -- DEB/RPM packages are unavailable
-      "12.0":  # Note: DEB package unavailable on Ubuntu 22.04
+      "12.0": # Note: DEB package unavailable on Ubuntu 22.04
       "12.2":
   "2.19":
     spec: "2.19.*"
     cuda:
       # "11.0":  -- DEB/RPM packages are unavailable
-      "12.0":  # Note: DEB package unavailable on Ubuntu 22.04
+      "12.0": # Note: DEB package unavailable on Ubuntu 22.04
       "12.2":
       "12.3":
   "2.20":
     spec: "2.20.*"
     cuda:
       # "11.0":  -- DEB/RPM packages are unavailable
-      "12.0":  # Note: DEB package unavailable on Ubuntu 22.04
-      "12.2":  # Note: DEB package unavailable on Ubuntu 22.04
+      "12.0": # Note: DEB package unavailable on Ubuntu 22.04
+      "12.2": # Note: DEB package unavailable on Ubuntu 22.04
       "12.3":
       "12.4":
   "2.21":
     spec: "2.21.*"
     cuda:
-      "12.2":  # Note: DEB package unavailable on Ubuntu 22.04
+      "12.2": # Note: DEB package unavailable on Ubuntu 22.04
       "12.4":
       "12.5":
   "2.22":
     spec: "2.22.*"
     cuda:
-      "12.2":  # Note: DEB package unavailable on Ubuntu 20.04
+      "12.2": # Note: DEB package unavailable on Ubuntu 20.04
       "12.4":
       "12.5":
       "12.6":
@@ -242,13 +292,13 @@ cudnn:
         alias: "11.8"
       "12.0":
         alias: "12.0"
-      "12.1":  # TODO(kmaehashi): cuDNN 8.9 should be used
+      "12.1": # TODO(kmaehashi): cuDNN 8.9 should be used
         alias: "12.0"
-      "12.2":  # assumed
+      "12.2": # assumed
         alias: "12.0"
-      "12.3":  # assumed
+      "12.3": # assumed
         alias: "12.0"
-      "12.4":  # assumed
+      "12.4": # assumed
         alias: "12.0"
       "12.5": # assumed
         alias: "12.0"
@@ -270,7 +320,7 @@ python:
   "3.12":
     spec: "3.12.6"
   "pre":
-    spec: "3.13.0rc2"  # note that dependency python libraies may not work
+    spec: "3.13.0rc2" # note that dependency python libraies may not work
 
 ###############################################################################
 # Python Libraries
@@ -310,7 +360,7 @@ numpy:
   #     - "3.12"
   #     # - "3.13"
   "pre":
-    spec: ">=0a0"  # latest, including pre-releases
+    spec: ">=0a0" # latest, including pre-releases
 scipy:
   # https://docs.scipy.org/doc/scipy/dev/toolchain.html#numpy
   null:
@@ -367,14 +417,14 @@ scipy:
       # - "2.0"
       # - "2.1"
   "pre":
-    spec: ">=0a0"  # latest, including pre-releases
+    spec: ">=0a0" # latest, including pre-releases
 optuna:
   null:
     spec: null
   "3":
     spec: "==3.*"
   "pre":
-    spec: ">=0a0"  # latest, including pre-releases
+    spec: ">=0a0" # latest, including pre-releases
 mpi4py:
   null:
     spec: null
@@ -384,7 +434,7 @@ cython:
   "0.29":
     spec: "==0.29.*"
   "pre":
-    spec: ">=0a0"  # latest, including pre-releases
+    spec: ">=0a0" # latest, including pre-releases
 cuda-python:
   null:
     spec: null
@@ -395,8 +445,8 @@ cuda-python:
 # Environment Variables
 ###############################################################################
 env:CUPY_ACCELERATORS:
-  null:                   # Default ("cub")
-  "":                     # Disable all accelerators
+  null: # Default ("cub")
+  "": # Disable all accelerators
   # "cub":                # Equivalent to null
   "cutensor":
   "cub,cutensor":
