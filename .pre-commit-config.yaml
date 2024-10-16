@@ -21,11 +21,14 @@ repos:
     hooks:
       - id: autopep8
 
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.6.9
+    hooks:
+      - id: ruff
+
   - repo: https://github.com/PyCQA/flake8
     rev: 7.1.1
     hooks:
-      - id: flake8
-        # use config from setup.cfg
       - id: flake8
         name: flake8 (cython)
         types: ["cython"]
