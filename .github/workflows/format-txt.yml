@@ -28,7 +28,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: latest
-          cache: "pnpm"
 
       - name: Format everything
         run: pnpm dlx prettier --write . '!third_party'
