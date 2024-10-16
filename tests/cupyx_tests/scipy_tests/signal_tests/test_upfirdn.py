@@ -245,7 +245,7 @@ class TestUpfirdn:
             len_h = random_state.randint(longest_h) + 1
             h = np.atleast_1d(random_state.randint(len_h))
             h = h.astype(h_dtype)
-            if h_dtype == complex:
+            if h_dtype == complex:  # noqa: E721
                 h += 1j * random_state.randint(len_h)
             x, h = make_case(p, q, h, x_dtype, case)
             x = xp.asarray(x)
