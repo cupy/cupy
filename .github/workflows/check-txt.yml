@@ -9,25 +9,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
-        with:
-          python-version: 3.12
-
-      - run: |
-          python3 -m pip install -U pip
-          pip install pyyaml
-
       - run: corepack enable pnpm
 
       - uses: actions/setup-node@v4
         with:
           node-version: latest
 
-      - name: Format everything
-        run: pnpm dlx prettier --write . '!third_party'
-
-      - name: Rebuild auto-generated files
-        run: python3 .pfnci/generate.py
+      - run: pnpm dlx prettier --write . '!third_party' '!.pfnci/config.tags.json'
 
       - uses: reviewdog/action-suggester@v1
         with:
