@@ -1,4 +1,4 @@
-<div style="text-align: center"><img src="https://raw.githubusercontent.com/cupy/cupy/main/docs/image/cupy_logo_1000px.png" width="400" alt="cupy logo"/></div>
+<div align="center"><img src="https://raw.githubusercontent.com/cupy/cupy/main/docs/image/cupy_logo_1000px.png" width="400" alt="cupy logo"/></div>
 
 # CuPy : NumPy & SciPy for GPU
 
