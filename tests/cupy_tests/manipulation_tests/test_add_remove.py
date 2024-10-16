@@ -161,39 +161,39 @@ class TestUnique:
 
     @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
     @testing.numpy_cupy_array_equal()
-    def test_unique_index_no_axis(self, xp, dtype):
+    def test_unique_return_index_no_axis(self, xp, dtype):
         a = testing.shaped_random((100, 100), xp, dtype)
         return xp.unique(a, return_index=True)[1]
 
     @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
     @testing.numpy_cupy_array_equal()
-    def test_unique_index(self, xp, dtype):
+    def test_unique_return_index(self, xp, dtype):
         a = testing.shaped_random((100, 100), xp, dtype)
         return xp.unique(a, return_index=True, axis=0)[1]
 
     @testing.with_requires("numpy>=2.0")
     @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
     @testing.numpy_cupy_array_equal()
-    def test_unique_inverse_no_axis(self, xp, dtype):
+    def test_unique_return_inverse_no_axis(self, xp, dtype):
         a = testing.shaped_random((100, 100), xp, dtype)
         return xp.unique(a, return_inverse=True)[1]
 
     @testing.with_requires("numpy>=2.1")
     @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
     @testing.numpy_cupy_array_equal()
-    def test_unique_inverse(self, xp, dtype):
+    def test_unique_return_inverse(self, xp, dtype):
         a = testing.shaped_random((100, 100), xp, dtype)
         return xp.unique(a, return_inverse=True, axis=1)[1]
 
     @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
     @testing.numpy_cupy_array_equal()
-    def test_unique_counts_no_axis(self, xp, dtype):
+    def test_unique_return_counts_no_axis(self, xp, dtype):
         a = testing.shaped_random((100, 100), xp, dtype)
         return xp.unique(a, return_counts=True)[1]
 
     @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
     @testing.numpy_cupy_array_equal()
-    def test_unique_counts(self, xp, dtype):
+    def test_unique_return_counts(self, xp, dtype):
         a = testing.shaped_random((100, 100), xp, dtype)
         return xp.unique(a, return_counts=True, axis=0)[1]
 
@@ -284,7 +284,7 @@ class TestUnique:
     )
     @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
     @testing.numpy_cupy_array_equal()
-    def test_v2api_unique_all(self, xp, dtype, attr):
+    def test_unique_all(self, xp, dtype, attr):
         a = testing.shaped_random((100, 100), xp, dtype)
         return getattr(xp.unique_all(a), attr)
 
@@ -292,7 +292,7 @@ class TestUnique:
     @pytest.mark.parametrize("attr", ["values", "counts"])
     @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
     @testing.numpy_cupy_array_equal()
-    def test_v2api_unique_counts(self, xp, dtype, attr):
+    def test_unique_counts(self, xp, dtype, attr):
         a = testing.shaped_random((100, 100), xp, dtype)
         return getattr(xp.unique_counts(a), attr)
 
@@ -300,14 +300,14 @@ class TestUnique:
     @pytest.mark.parametrize("attr", ["values", "inverse_indices"])
     @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
     @testing.numpy_cupy_array_equal()
-    def test_v2api_unique_inverse(self, xp, dtype, attr):
+    def test_unique_inverse(self, xp, dtype, attr):
         a = testing.shaped_random((100, 100), xp, dtype)
         return getattr(xp.unique_inverse(a), attr)
 
     @testing.with_requires("numpy>=2.0")
     @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
     @testing.numpy_cupy_array_equal()
-    def test_v2api_unique_values(self, xp, dtype):
+    def test_unique_values(self, xp, dtype):
         a = testing.shaped_random((100, 100), xp, dtype)
         return xp.unique_values(a)
 
