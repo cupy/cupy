@@ -8,6 +8,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+from typing import Optional
 import warnings
 
 from cupy.cuda import device
@@ -97,18 +98,52 @@ def _get_extra_path_for_msvc():
         # The compiler is already on PATH, no extra path needed.
         return None
 
-    try:
-        import setuptools
-        vctools = setuptools.msvc.EnvironmentInfo(platform.machine()).VCTools
-    except Exception as e:
-        warnings.warn(f'Failed to auto-detect cl.exe path: {type(e)}: {e}')
-        return None
+    cl_exe_dir = _get_cl_exe_dir()
+    if cl_exe_dir:
+        return cl_exe_dir
 
-    for path in vctools:
-        cl_exe = os.path.join(path, 'cl.exe')
-        if os.path.exists(cl_exe):
-            return path
-    warnings.warn(f'cl.exe could not be found in {vctools}')
+    cl_exe_dir = _get_cl_exe_dir_fallback()
+    if cl_exe_dir:
+        return cl_exe_dir
+
+    return None
+
+
+def _get_cl_exe_dir() -> Optional[str]:
+    try:
+        try:
+            # setuptools.msvc is missing in setuptools v74.0.0.
+            # setuptools.msvc requires explicit import in setuptools v74.1.0+.
+            import setuptools.msvc
+        except Exception:
+            return None
+        vctools = setuptools.msvc.EnvironmentInfo(platform.machine()).VCTools
+        for path in vctools:
+            cl_exe = os.path.join(path, 'cl.exe')
+            if os.path.exists(cl_exe):
+                return path
+        warnings.warn(f'cl.exe could not be found in {vctools}')
+    except Exception as e:
+        warnings.warn(
+            f'Failed to find cl.exe with setuptools.msvc: {type(e)}: {e}')
+    return None
+
+
+def _get_cl_exe_dir_fallback() -> Optional[str]:
+    # Discover cl.exe without relying on undocumented setuptools.msvc API.
+    # As of now this code path exists only for setuptools 74.0.0 (see #8583).
+    # N.B. This takes few seconds as this incurs cmd.exe (vcvarsall.bat)
+    # invocation.
+    try:
+        from setuptools import Distribution
+        from setuptools.command.build_ext import build_ext
+        ext = build_ext(Distribution({'name': 'cupy_cl_exe_discover'}))
+        ext.setup_shlib_compiler()
+        ext.shlib_compiler.initialize()  # MSVCCompiler only
+        return os.path.dirname(ext.shlib_compiler.cc)
+    except Exception as e:
+        warnings.warn(
+            f'Failed to find cl.exe with setuptools: {type(e)}: {e}')
     return None
 
 

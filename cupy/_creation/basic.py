@@ -1,3 +1,4 @@
+import math
 from typing import Any, Optional
 
 import numpy
@@ -56,7 +57,8 @@ def _new_like_order_and_strides(
     if order == 'K':
         strides = _get_strides_for_order_K(a, numpy.dtype(dtype), shape)
         order = 'C'
-        memptr = cupy.empty(a.size, dtype=dtype).data if get_memptr else None
+        size = math.prod(shape) if shape is not None else a.size
+        memptr = cupy.empty(size, dtype=dtype).data if get_memptr else None
         return order, strides, memptr
     else:
         return order, None, None

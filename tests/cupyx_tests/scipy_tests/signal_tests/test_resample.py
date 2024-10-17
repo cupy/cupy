@@ -9,7 +9,7 @@ try:
     import scipy.signal  # NOQA
     import scipy.signal.windows  # NOQA
 except ImportError:
-    pass
+    scipy = None
 
 import numpy as np
 
