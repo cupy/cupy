@@ -1,5 +1,6 @@
 import unittest
 import sys
+import warnings
 
 import numpy
 import pytest
@@ -77,16 +78,9 @@ class TestDot(unittest.TestCase):
         #  Test for 0 dimension
         ((3, ), (3, ), -1, -1, -1),
         #  Test for basic cases
-        ((1, 2), (1, 2), -1, -1, 1),
         ((1, 3), (1, 3), 1, -1, -1),
-        ((1, 2), (1, 3), -1, -1, 1),
-        ((2, 2), (1, 3), -1, -1, 0),
-        ((3, 3), (1, 2), 0, -1, -1),
-        ((0, 3), (0, 3), -1, -1, -1),
         #  Test for higher dimensions
-        ((2, 0, 3), (2, 0, 3), 0, 0, 0),
         ((2, 4, 5, 3), (2, 4, 5, 3), -1, -1, 0),
-        ((2, 4, 5, 2), (2, 4, 5, 2), 0, 0, -1),
     ],
 }))
 class TestCrossProduct(unittest.TestCase):
@@ -101,6 +95,62 @@ class TestCrossProduct(unittest.TestCase):
         a = testing.shaped_arange(shape_a, xp, dtype_a)
         b = testing.shaped_arange(shape_b, xp, dtype_b)
         return xp.cross(a, b, axisa, axisb, axisc)
+
+
+# XXX: cross with 2D vectors is deprecated in NumPy 2.0, also CuPy 1.14
+@testing.parameterize(*testing.product({
+    'params': [
+        #  Test for basic cases
+        ((1, 2), (1, 2), -1, -1, 1),
+        ((1, 2), (1, 3), -1, -1, 1),
+        ((2, 2), (1, 3), -1, -1, 0),
+        ((3, 3), (1, 2), 0, -1, -1),
+        ((0, 3), (0, 3), -1, -1, -1),
+        #  Test for higher dimensions
+        ((2, 0, 3), (2, 0, 3), 0, 0, 0),
+        ((2, 4, 5, 2), (2, 4, 5, 2), 0, 0, -1),
+    ],
+}))
+class TestCrossProductDeprecated(unittest.TestCase):
+    @testing.for_all_dtypes_combination(['dtype_a', 'dtype_b'])
+    @testing.numpy_cupy_allclose()
+    def test_cross(self, xp, dtype_a, dtype_b):
+        if dtype_a == dtype_b == numpy.bool_:
+            # cross does not support bool-bool inputs.
+            return xp.array(True)
+        shape_a, shape_b, axisa, axisb, axisc = self.params
+        a = testing.shaped_arange(shape_a, xp, dtype_a)
+        b = testing.shaped_arange(shape_b, xp, dtype_b)
+
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', DeprecationWarning)
+            res = xp.cross(a, b, axisa, axisb, axisc)
+        return res
+
+
+@testing.parameterize(*testing.product({
+    'params': [
+        #  Test for 0 dimension
+        ((3, ), (3, ), -1,),
+        #  Test for basic cases
+        ((1, 3), (1, 3), 1,),
+        #  Test for higher dimensions
+        ((2, 4, 5, 3), (2, 4, 5, 3), -1),
+    ],
+}))
+class TestLinalgCrossProduct(unittest.TestCase):
+
+    @testing.with_requires('numpy>=2.0')
+    @testing.for_all_dtypes_combination(['dtype_a', 'dtype_b'])
+    @testing.numpy_cupy_allclose()
+    def test_cross(self, xp, dtype_a, dtype_b):
+        if dtype_a == dtype_b == numpy.bool_:
+            # cross does not support bool-bool inputs.
+            return xp.array(True)
+        shape_a, shape_b, axis = self.params
+        a = testing.shaped_arange(shape_a, xp, dtype_a)
+        b = testing.shaped_arange(shape_b, xp, dtype_b)
+        return xp.linalg.cross(a, b, axis=axis)
 
 
 @testing.parameterize(*testing.product({
@@ -387,7 +437,8 @@ class TestProduct:
     )
     @testing.numpy_cupy_allclose()
     def test_kron_accepts_numbers_as_arguments(self, a, b, xp):
-        args = [xp.array(arg) if type(arg) == list else arg for arg in [a, b]]
+        args = [xp.array(arg) if isinstance(arg, list)
+                else arg for arg in [a, b]]
         return xp.kron(*args)
 
 
