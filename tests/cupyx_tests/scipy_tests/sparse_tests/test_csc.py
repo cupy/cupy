@@ -1402,6 +1402,8 @@ class TestUfunc:
 
     @testing.numpy_cupy_allclose(sp_name='sp', atol=1e-5)
     def test_ufun(self, xp, sp):
+        if self.ufunc == "sign" and numpy.dtype(self.dtype).kind == 'c':
+            pytest.xfail(reason="XXX: np2.0: should behave as legacy sign")
         x = _make(xp, sp, self.dtype)
         x.data *= 0.1
         func = getattr(x, self.ufunc)
