@@ -574,7 +574,7 @@ class TestPlacePoles:
 
     @pytest.mark.xfail(
         sys.platform.startswith('win32')
-        or platform.processor() == "aarch64",
+        or platform.machine() == "aarch64",
         reason='passes locally, fails on windows CI, aarch64')
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_real_2(self, xp, scp):
