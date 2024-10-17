@@ -200,8 +200,8 @@ _64bitd = itertools.product(
 _32bitd = itertools.product(
     [cupy.complex64, cupy.float32, cupy.int32, cupy.uint32], [cupy.uint32])
 _16bitd = itertools.product(
-    [cupy.float16, cupy.int16, cupy.uint16], [cupy.uint16])
-_8bitd = itertools.product([cupy.bool_, cupy.int8, cupy.uint8], [cupy.uint8])
+    [cupy.float16, cupy.int16, cupy.uint16], [cupy.uint64])
+_8bitd = itertools.product([cupy.bool_, cupy.int8, cupy.uint8], [cupy.uint64])
 _all_types_i = list(itertools.chain(_64bitd, _32bitd, _16bitd, _8bitd))
 _all_types = [(_get_typename(x), _get_typename(y)) for x, y in _all_types_i]
 _dtype_map = {numpy.dtype(x): numpy.dtype(y) for x, y in _all_types_i}
@@ -504,16 +504,78 @@ __device__ T ccrc(
     T crc
 ) {
     T j;
-    T mask = 0xff;
     const T* tab = get_crc_table<T>();
+    T value = s;
 
     for (j = 0; j < sizeof(T); j++) {
-        unsigned char byte = (s & mask) >> (8 * j);
+        unsigned char byte = value & 0xff;
         crc = tab[(unsigned char)crc ^ byte] ^ (crc >> 8);
-        mask <<= 8;
+        value >>= 8;
     }
     return crc;
 }
+
+template<typename T>
+__device__ T ccrc_both(
+    const T s1,
+    const T s2
+) {
+    return ccrc<T>(s2, ccrc<T>(s1, 0));
+}
+
+template<typename U>
+struct From {
+    template<typename T>
+    static __device__ T cast_value(U* x, const int row_sz, const int row, const int pos) {
+        // U x_u = x[row_sz * row + pos];
+        // return (T)(x_u);
+        T* x_u = reinterpret_cast<T*>(x);
+        return x_u[row_sz * row + pos];
+    }
+};
+
+template<>
+struct From<half> {
+    template<typename T>
+    static __device__ T cast_value(
+        half* x,
+        const int row_sz,
+        const int row,
+        const int pos
+    ) {
+        unsigned short x_u = reinterpret_cast<unsigned short*>(x)[row_sz * row + pos];
+        return (T)(x_u);
+    }
+};
+
+template<>
+struct From<short> {
+    template<typename T>
+    static __device__ T cast_value(
+        short* x,
+        const int row_sz,
+        const int row,
+        const int pos
+    ) {
+        unsigned short x_u = reinterpret_cast<unsigned short*>(x)[row_sz * row + pos];
+        return (T)(x_u);
+    }
+};
+
+template<>
+struct From<unsigned short> {
+    template<typename T>
+    static __device__ T cast_value(
+        unsigned short* x,
+        const int row_sz,
+        const int row,
+        const int pos
+    ) {
+        unsigned short x_u = x[row_sz * row + pos];
+        return (T)(x_u);
+    }
+};
+
 
 template<typename U, typename T>
 __global__ void map_crc(
@@ -535,8 +597,8 @@ __global__ void map_crc(
         for(int pos = idx % blockDim.x; pos < row_sz; pos += blockDim.x) {
             T x_crc;
             if(map_x) {
-                T* x_u = reinterpret_cast<T*>(x);
-                x_crc = ccrc<T>(x_u[row_sz * row + pos], 0);
+                T from_u = From<U>::template cast_value<T>(x, row_sz, row, pos);
+                x_crc = ccrc<T>(from_u, 0);
 
             } else {
                 x_crc = crc[row_sz * row + pos];
@@ -550,7 +612,7 @@ __global__ void map_crc(
                 if (threadIdx.x < stride) {
                     T this_crc = block_crc[threadIdx.x];
                     T other_crc = block_crc[threadIdx.x + stride];
-                    block_crc[threadIdx.x] = ccrc(this_crc, other_crc);
+                    block_crc[threadIdx.x] = ccrc_both(this_crc, other_crc);
                 }
                 __syncthreads();
             }
@@ -631,9 +693,10 @@ def unique(ar, return_index=False, return_inverse=False,
         ar2 = ar.reshape(orig_shape[0], math.prod(orig_shape[1:]))
         ar2 = cupy.ascontiguousarray(ar2)
         is_complex = cupy.iscomplexobj(ar2)
-        if not equal_nan and cupy.issubdtype(ar2.dtype, cupy.inexact):
+        if not equal_nan:
             nan_mask = cupy.isnan(ar2)
-            ar2[nan_mask] = cupy.random.random(nan_mask.shape, ar2.dtype)
+            if cupy.issubdtype(ar2.dtype, cupy.inexact):
+                ar2[nan_mask] = cupy.random.random(nan_mask.shape, ar2.dtype)
 
         n_rows, row_sz = ar2.shape
         if is_complex:
