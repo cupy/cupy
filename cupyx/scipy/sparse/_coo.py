@@ -557,6 +557,29 @@ class coo_matrix(sparse_data._data_matrix):
         return coo_matrix(
             (self.data, (self.col, self.row)), shape=shape, copy=copy)
 
+    def __binsparse__(self):
+        import cupy as cp
+
+        data_dt = str(self.data.dtype)
+        if cp.issubdtype(data_dt, cp.complexfloating):
+            data_dt = f"complex[float{self.data.dtype.itemsize * 4}]"
+        descriptor = {
+            "binsparse": {
+                "version": "0.1",
+                "format": "COOR",
+                "shape": list(self.shape),
+                "number_of_stored_values": self.nnz,
+                "data_types": {
+                    "pointers_to_1": "uint8",
+                    "indices_1": str(cp.result_type(self.row.dtype, self.col.dtype)),
+                    "values": data_dt,
+                },
+            },
+            "original_source": f"CuPy, version {cp.__version__}",
+        }
+
+        return descriptor, [cp.array([0, self.nnz], dtype=cp.uint8), cp.stack([self.row, self.col]), self.data]
+
 
 def isspmatrix_coo(x):
     """Checks if a given matrix is of COO format.

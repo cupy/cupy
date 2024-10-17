@@ -36,6 +36,11 @@ from cupyx.scipy.sparse._extract import find  # NOQA
 from cupyx.scipy.sparse._extract import tril  # NOQA
 from cupyx.scipy.sparse._extract import triu  # NOQA
 
+def from_binsparse(array, /, *, device=None, copy=None):
+    descriptor, arrs = array.__dlpack__()
+    
+    
+
 # TODO(unno): implement save_npz
 # TODO(unno): implement load_npz
 

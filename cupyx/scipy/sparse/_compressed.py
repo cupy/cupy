@@ -858,3 +858,25 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
              out))
 
         return out
+
+    def __binsparse__(self):
+        import cupy as cp
+        data_dt = str(self.data.dtype)
+        if cp.issubdtype(data_dt, cp.complexfloating):
+            data_dt = f"complex[float{self.data.dtype.itemsize * 4}]"
+        descriptor = {
+            "binsparse": {
+                "version": "0.1",
+                "format": self.format.upper(),
+                "shape": list(self.shape),
+                "number_of_stored_values": self.nnz,
+                "data_types": {
+                    "pointers_to_1": str(self.indices.dtype),
+                    "indices_1": str(self.indptr.dtype),
+                    "values": data_dt,
+                },
+            },
+            "original_source": f"CuPy, version {cp.__version__}",
+        }
+
+        return descriptor, [self.indices, self.indptr, self.data]
