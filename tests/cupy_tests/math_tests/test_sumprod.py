@@ -1,5 +1,4 @@
 import math
-import warnings
 
 import numpy
 import pytest
@@ -202,13 +201,6 @@ class TestSumprod:
             pytest.skip()
         a = testing.shaped_arange((2, 3), xp, src_dtype)
         return a.prod(dtype=dst_dtype)
-
-    @testing.numpy_cupy_allclose()
-    def test_product_alias(self, xp):
-        a = testing.shaped_arange((2, 3), xp, xp.float32)
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore', DeprecationWarning)
-            return xp.product(a)
 
 
 # This class compares CUB results against NumPy's
@@ -774,13 +766,6 @@ class TestCumprod:
         with pytest.raises(TypeError):
             return cupy.cumprod(a_numpy)
 
-    @testing.numpy_cupy_allclose()
-    def test_cumproduct_alias(self, xp):
-        a = testing.shaped_arange((2, 3), xp, xp.float32)
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore', DeprecationWarning)
-            return xp.cumproduct(a)
-
 
 @testing.parameterize(*testing.product({
     'shape': [(20,), (7, 6), (3, 4, 5)],
@@ -1097,55 +1082,56 @@ class TestEdiff1d:
                           to_end=xp.array([1, 1], dtype=dtype))
 
 
-class TestTrapz:
+@testing.with_requires('numpy>=2.0')
+class TestTrapezoid:
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol={numpy.float16: 1e-1, 'default': 1e-7})
     def test_trapz_1dim(self, xp, dtype):
         a = testing.shaped_arange((5,), xp, dtype)
-        return xp.trapz(a)
+        return xp.trapezoid(a)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol={numpy.float16: 1e-1, 'default': 1e-7})
     def test_trapz_1dim_with_x(self, xp, dtype):
         a = testing.shaped_arange((5,), xp, dtype)
         x = testing.shaped_arange((5,), xp, dtype)
-        return xp.trapz(a, x=x)
+        return xp.trapezoid(a, x=x)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol={numpy.float16: 1e-1, 'default': 1e-7})
     def test_trapz_1dim_with_dx(self, xp, dtype):
         a = testing.shaped_arange((5,), xp, dtype)
-        return xp.trapz(a, dx=0.1)
+        return xp.trapezoid(a, dx=0.1)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol={numpy.float16: 1e-1, 'default': 1e-7})
     def test_trapz_2dim_without_axis(self, xp, dtype):
         a = testing.shaped_arange((4, 5), xp, dtype)
-        return xp.trapz(a)
+        return xp.trapezoid(a)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol={numpy.float16: 1e-1, 'default': 1e-7})
     def test_trapz_2dim_with_axis(self, xp, dtype):
         a = testing.shaped_arange((4, 5), xp, dtype)
-        return xp.trapz(a, axis=-2)
+        return xp.trapezoid(a, axis=-2)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol={numpy.float16: 1e-1, 'default': 1e-7})
     def test_trapz_2dim_with_x_and_axis(self, xp, dtype):
         a = testing.shaped_arange((4, 5), xp, dtype)
         x = testing.shaped_arange((5,), xp, dtype)
-        return xp.trapz(a, x=x, axis=1)
+        return xp.trapezoid(a, x=x, axis=1)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol={numpy.float16: 1e-1, 'default': 1e-7})
     def test_trapz_2dim_with_dx_and_axis(self, xp, dtype):
         a = testing.shaped_arange((4, 5), xp, dtype)
-        return xp.trapz(a, dx=0.1, axis=1)
+        return xp.trapezoid(a, dx=0.1, axis=1)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol={numpy.float16: 1e-1, 'default': 1e-7})
     def test_trapz_1dim_with_x_and_dx(self, xp, dtype):
         a = testing.shaped_arange((5,), xp, dtype)
         x = testing.shaped_arange((5,), xp, dtype)
-        return xp.trapz(a, x=x, dx=0.1)
+        return xp.trapezoid(a, x=x, dx=0.1)
