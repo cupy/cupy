@@ -427,6 +427,10 @@ def make_extensions(ctx: Context, compiler, use_cython):
             # if any change is made to the DLPack header, we force recompiling
             s['depends'] = ['./cupy/_core/include/cupy/_dlpack/dlpack.h']
 
+        if module['name'] == 'numpy_allocator':
+            # ensure the cdef public APIs have C linkage
+            s['define_macros'].append(('CYTHON_EXTERN_C', 'extern "C"'))
+
         for f in module['file']:
             s_file = copy.deepcopy(s)
             name = module_extension_name(f)
