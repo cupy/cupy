@@ -9,7 +9,7 @@ cdef extern from './include/cupy/_dlpack/dlpack.h' nogil:
     int DLPACK_FLAG_BITMASK_READ_ONLY
     int DLPACK_FLAG_BITMASK_IS_COPIED
 
-    cdef enum DLDeviceType:
+    ctypedef enum DLDeviceType:
         kDLCPU
         kDLCUDA
         kDLCUDAHost
@@ -29,7 +29,7 @@ cdef extern from './include/cupy/_dlpack/dlpack.h' nogil:
         DLDeviceType device_type
         int32_t device_id
 
-    cdef enum DLDataTypeCode:
+    ctypedef enum DLDataTypeCode:
         kDLInt
         kDLUInt
         kDLFloat
@@ -60,7 +60,7 @@ cdef extern from './include/cupy/_dlpack/dlpack.h' nogil:
         uint32_t major
         uint32_t minor
 
-    ctypedef struct DLManagedTensorVersioned:
+    cdef struct DLManagedTensorVersioned:
         DLPackVersion version
         void* manager_ctx
         void (*deleter)(DLManagedTensorVersioned*)  # noqa: E211
