@@ -214,10 +214,6 @@ class spmatrix(object):
         return self.transpose()
 
     @property
-    def H(self):
-        return self.getH()
-
-    @property
     def ndim(self):
         return 2
 
