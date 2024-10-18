@@ -286,16 +286,12 @@ cdef class _ndarray_base:
         return desc
 
     def __dlpack__(self, *, stream=None, max_version=None, dl_device=None, copy=None):
-        cdef bint use_versioned, to_cpu
+        cdef bint use_versioned = False
+        cdef bint to_cpu = False
 
-        if max_version is None:
-            # No version was requested, so assume consumer requires unversioned.
-            # (This path should be deprecated.)
-            use_versioned = False
-        else:
-            # For now, no need to check for more than the major version >=1.
-            if max_version[0] >= 1:
-                use_versioned = True
+        # Check if we can export version 1
+        if max_version is not None and max_version[0] >= 1:
+            use_versioned = True
 
         # If the user passed dl_device we must honor it, so check if it either
         # matches or the user explicitly requested the "CPU" device.
@@ -366,7 +362,8 @@ cdef class _ndarray_base:
 
     def __dlpack_device__(self):
         cdef dlpack.DLDevice device = dlpack.get_dlpack_device(self)
-        return (device.device_type, device.device.id)
+
+        return (device.device_type, device.device_id)
 
     # The definition order of attributes and methods are borrowed from the
     # order of documentation at the following NumPy document.

@@ -118,13 +118,13 @@ cpdef object toDlpack(_ndarray_base array, bint use_versioned=True, bint to_cpu=
         # Managed memory is CPU accessible but consumer may expect kDLCPU.
         owner = array
         device.device_type = kDLCPU
-        device.dev_id = 0
+        device.device_id = 0
     else:
         # We need to create a CPU copy.  Assumes owner.dtype == array.dtype.
         # TODO: As noted at calling site, this does not honor the "stream".
         owner = array.get(stream=None, order='A')
         device.device_type = kDLCPU
-        device.dev_id = 0
+        device.device_id = 0
 
     cdef void *dlm_tensor_ptr = stdlib.malloc(
         sizeof(DLManagedTensorVersioned) if use_versioned else sizeof(DLManagedTensor))
@@ -156,7 +156,7 @@ cpdef object toDlpack(_ndarray_base array, bint use_versioned=True, bint to_cpu=
 
         # CuPy arrays are writeable but may be copied if copying to the CPU.
         dlm_tensor_ver.flags = 0
-        if owner != array:
+        if owner is not array:
             dlm_tensor_ver.flags |= DLPACK_FLAG_BITMASK_IS_COPIED
     else:
         dlm_tensor = <DLManagedTensor*>dlm_tensor_ptr
