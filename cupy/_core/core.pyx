@@ -366,7 +366,6 @@ cdef class _ndarray_base:
 
     def __dlpack_device__(self):
         cdef dlpack.DLDevice device = dlpack.get_dlpack_device(self)
-
         return (device.device_type, device.device.id)
 
     # The definition order of attributes and methods are borrowed from the
