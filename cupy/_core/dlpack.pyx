@@ -490,7 +490,7 @@ cdef inline _ndarray_base _dlpack_to_cupy_array(dltensor) except +:
     return core.ndarray(shape_vec, cp_dtype, mem_ptr, strides=strides_vec)
 
 
-cpdef from_dlpack(array, *, device=None, copy=None):
+def from_dlpack(array, *, device=None, copy=None):
     """Zero-copy conversion between array objects compliant with the DLPack
     data exchange protocol.
 

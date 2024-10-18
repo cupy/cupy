@@ -314,7 +314,7 @@ cdef class _ndarray_base:
             # * We implement it by copying to NumPy, but we must indicate
             #   the copy, so will construct the dlpack ourselves.
             if copy is False and get_dlpack_device(self).device_type != kDLCUDAManaged:
-                raise BufferError("GPU memory cannot be exported to CPU without copy.")
+                raise ValueError("GPU memory cannot be exported to CPU without copy.")
             to_cpu = True
         else:
             # TODO: We could probably support copy to a different CUDA device
@@ -366,7 +366,7 @@ cdef class _ndarray_base:
         return dlpack.toDlpack(self, max_version=max_version, to_cpu=to_cpu)
 
     def __dlpack_device__(self):
-        DLDevice device = get_dlpack_device(self)
+        cdef DLDevice device = get_dlpack_device(self)
 
         return (device.device_type, device.device.id)
 
