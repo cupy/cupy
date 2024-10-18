@@ -411,15 +411,12 @@ cdef inline _ndarray_base _dlpack_to_cupy_array(dltensor) except +:
     shape_vec.assign(shape, shape + ndim)
 
     if mem.dl_tensor.strides is NULL:
-        # Make sure this capsule will never be used again.
-        cpython.PyCapsule_SetName(mem.dltensor, USED_CAPSULE_NAME)
         return core.ndarray(shape_vec, cp_dtype, mem_ptr, strides=None)
     cdef int64_t* strides = mem.dl_tensor.strides
     cdef vector[Py_ssize_t] strides_vec
     for i in range(ndim):
         strides_vec.push_back(strides[i] * (bits // 8))
 
-    # Make sure this capsule will never be used again.
     return core.ndarray(shape_vec, cp_dtype, mem_ptr, strides=strides_vec)
 
 
