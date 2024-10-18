@@ -448,3 +448,76 @@ class TestArgrel:
         rel_max_rows, rel_max_cols = scp.signal.argrelmax(
             test_data_2, axis=1, order=1)
         return rel_max_rows, rel_max_cols
+
+
+@testing.with_requires('scipy>=1.9')
+class TestFindPeaksCwt:
+
+    @testing.numpy_cupy_allclose(scipy_name="scp")
+    def test_find_peaks_exact(self, xp, scp):
+        """
+        Generate a series of gaussians and attempt to find the peak locations.
+        """
+        sigmas = [5.0, 3.0, 10.0, 20.0, 10.0, 50.0]
+        num_points = 500
+        test_data, _ = _gen_gaussians_even(xp, sigmas, num_points)
+        widths = xp.arange(0.1, max(sigmas))
+        found_locs = scp.signal.find_peaks_cwt(
+            test_data, widths, gap_thresh=2, min_snr=0, min_length=None)
+        return found_locs
+
+    @testing.numpy_cupy_allclose(scipy_name="scp")
+    def test_find_peaks_withnoise(self, xp, scp):
+        """
+        Verify that peak locations are (approximately) found
+        for a series of gaussians with added noise.
+        """
+        sigmas = [5.0, 3.0, 10.0, 20.0, 10.0, 50.0]
+        num_points = 500
+        test_data, _ = _gen_gaussians_even(xp, sigmas, num_points)
+        widths = xp.arange(0.1, max(sigmas))
+        noise_amp = 0.07
+        random_sample = testing.shaped_random(
+            (num_points,), xp, scale=1, seed=18181911)
+        test_data += (random_sample - 0.5) * (2 * noise_amp)
+        found_locs = scp.signal.find_peaks_cwt(
+            test_data, widths, min_length=15,
+            gap_thresh=1, min_snr=noise_amp / 5)
+
+        return found_locs
+
+    @testing.numpy_cupy_allclose(scipy_name="scp", type_check=False)
+    def test_find_peaks_nopeak(self, xp, scp):
+        """
+        Verify that no peak is found in
+        data that's just noise.
+        """
+        noise_amp = 1.0
+        num_points = 100
+        random_sample = testing.shaped_random(
+            (num_points,), xp, scale=1, seed=181819141)
+        test_data = (random_sample - 0.5) * (2 * noise_amp)
+        widths = xp.arange(10, 50)
+        found_locs = scp.signal.find_peaks_cwt(
+            test_data, widths, min_snr=5, noise_perc=30)
+        return found_locs
+
+    @testing.numpy_cupy_allclose(scipy_name="scp")
+    def test_find_peaks_with_non_default_wavelets(self, xp, scp):
+        x = scp.signal.windows.gaussian(200, 2)
+        widths = xp.array([1, 2, 3, 4])
+        a = scp.signal.find_peaks_cwt(
+            x, widths, wavelet=scp.signal.windows.gaussian, min_length=4)
+        return a
+
+    @testing.numpy_cupy_allclose(scipy_name="scp")
+    def test_find_peaks_with_one_width(self, xp, scp):
+        """
+        Verify that the `width` argument
+        in `find_peaks_cwt` can be a float
+        """
+        xs = xp.arange(0, np.pi, 0.05)
+        test_data = xp.sin(xs)
+        widths = 1
+        found_locs = scp.signal.find_peaks_cwt(test_data, widths)
+        return found_locs
