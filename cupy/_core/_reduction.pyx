@@ -641,7 +641,7 @@ cdef class _SimpleReductionKernel(_AbstractReductionKernel):
                 and numpy.dtype(op.in_types[0]).kind == 'f'):
             warnings.warn(
                 'Casting complex values to real discards the imaginary part',
-                numpy.ComplexWarning)
+                cupy.exceptions.ComplexWarning)
             in_args[0] = in_args[0].real
 
         type_map = _kernel._TypeMap((
