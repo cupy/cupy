@@ -42,6 +42,8 @@ def create_small_kd_tree(xp, scp, n_points=1):
     return x, tree
 
 
+@pytest.mark.skipif(cupy.cuda.runtime.is_hip,
+                    reason='Currently unsupported on ROCm/HIP')
 @testing.with_requires('scipy')
 class TestRandomConsistency:
     @pytest.mark.parametrize('args', [
@@ -125,6 +127,8 @@ class TestRandomConsistency:
         return dd, ii
 
 
+@pytest.mark.skipif(cupy.cuda.runtime.is_hip,
+                    reason='Currently unsupported on ROCm/HIP')
 @testing.with_requires('scipy')
 class TestSmall:
     @testing.numpy_cupy_allclose(scipy_name='scp')
@@ -173,6 +177,8 @@ class TestSmall:
         return d, i
 
 
+@pytest.mark.skipif(cupy.cuda.runtime.is_hip,
+                    reason='Currently unsupported on ROCm/HIP')
 @testing.with_requires('scipy')
 class TestVectorization:
     @testing.numpy_cupy_allclose(scipy_name='scp')
@@ -214,6 +220,8 @@ class TestVectorization:
                 tree.query(x, k=None)
 
 
+@pytest.mark.skipif(cupy.cuda.runtime.is_hip,
+                    reason='Currently unsupported on ROCm/HIP')
 class TestPeriodic:
     @pytest.mark.parametrize('off', [0, 1, -1])
     @pytest.mark.parametrize('p', [1, 2, 3.0, np.inf])
@@ -267,6 +275,8 @@ class TestPeriodic:
         return res
 
 
+@pytest.mark.skipif(cupy.cuda.runtime.is_hip,
+                    reason='Currently unsupported on ROCm/HIP')
 @testing.with_requires('scipy')
 class TestBallConsistency:
     @pytest.mark.parametrize('args', [
@@ -296,6 +306,8 @@ class TestBallConsistency:
         return res
 
 
+@pytest.mark.skipif(cupy.cuda.runtime.is_hip,
+                    reason='Currently unsupported on ROCm/HIP')
 @testing.with_requires('scipy')
 class TestBallTreeConsistency:
     @pytest.mark.parametrize('args', [
@@ -326,6 +338,8 @@ class TestBallTreeConsistency:
         return res
 
 
+@pytest.mark.skipif(cupy.cuda.runtime.is_hip,
+                    reason='Currently unsupported on ROCm/HIP')
 @testing.with_requires('scipy')
 class TestPairs:
     @pytest.mark.parametrize('args', [

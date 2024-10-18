@@ -58,6 +58,8 @@ class TestNdBSpline:
 
         return t2, c2, spl.k, spl_1.k
 
+    @pytest.mark.skipif(runtime.is_hip,
+                        reason='Currently unsupported on ROCm/HIP')
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_2D_separable(self, xp, scp):
         xi = xp.asarray([(1.5, 2.5), (2.5, 1), (0.5, 1.5)],
@@ -73,6 +75,8 @@ class TestNdBSpline:
         result = bspl2(xi)
         return r1, result
 
+    @pytest.mark.skipif(runtime.is_hip,
+                        reason='Currently unsupported on ROCm/HIP')
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_2D_separable_2(self, xp, scp):
         result = []
@@ -124,6 +128,8 @@ class TestNdBSpline:
                    [1.1, 1.6, 2.1]]
         return r1, spl(xi)
 
+    @pytest.mark.skipif(runtime.is_hip,
+                        reason='Currently unsupported on ROCm/HIP')
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_2D_mixed(self, xp, scp):
         t2, c2, kx, ky = self.make_2d_mixed(xp, scp)
@@ -132,6 +138,8 @@ class TestNdBSpline:
         bspl2 = scp.interpolate.NdBSpline(t2, c2, k=(kx, ky))
         return bspl2(xi)
 
+    @pytest.mark.skipif(runtime.is_hip,
+                        reason='Currently unsupported on ROCm/HIP')
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_2D_derivative(self, xp, scp):
         t2, c2, kx, ky = self.make_2d_mixed(xp, scp)
@@ -169,6 +177,8 @@ class TestNdBSpline:
         bspl2 = scp.interpolate.NdBSpline((tx, ty), c, k=(kx, ky))
         return bspl2(xi)
 
+    @pytest.mark.skipif(runtime.is_hip,
+                        reason='Currently unsupported on ROCm/HIP')
     @testing.numpy_cupy_allclose(scipy_name='scp', atol=2e-12)
     def test_tx_neq_ty(self, xp, scp):
         # 2D separable spline w/ len(tx) != len(ty)
@@ -205,6 +215,8 @@ class TestNdBSpline:
 
         return t2, c2, 3
 
+    @pytest.mark.skipif(runtime.is_hip,
+                        reason='Currently unsupported on ROCm/HIP')
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_3D_separable(self, xp, scp):
         x, y, z = testing.shaped_random((3, 11), xp, xp.float64, 5.0, 12345)
@@ -217,6 +229,8 @@ class TestNdBSpline:
         result = bspl3(xi)
         return result
 
+    @pytest.mark.skipif(runtime.is_hip,
+                        reason='Currently unsupported on ROCm/HIP')
     @pytest.mark.parametrize('nu', [
         (1, 0, 0), (2, 0, 0), (2, 1, 0), (2, 1, 3), (2, 1, 4)])
     @testing.numpy_cupy_allclose(scipy_name='scp')
@@ -282,6 +296,8 @@ class TestNdBSpline:
                    [0.9, 1.4, 1.9]]
         return spl(xi)
 
+    @pytest.mark.skipif(runtime.is_hip,
+                        reason='Currently unsupported on ROCm/HIP')
     @pytest.mark.parametrize('cls_extrap', [None, True])
     @pytest.mark.parametrize('call_extrap', [None, True])
     @testing.numpy_cupy_allclose(scipy_name='scp')
@@ -298,6 +314,8 @@ class TestNdBSpline:
         result = bspl3(xi, extrapolate=call_extrap)
         return result
 
+    @pytest.mark.skipif(runtime.is_hip,
+                        reason='Currently unsupported on ROCm/HIP')
     @pytest.mark.parametrize('extrap', [(False, True), (True, None)])
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_extrapolate_3D_separable_2(self, extrap, xp, scp):
@@ -316,6 +334,8 @@ class TestNdBSpline:
         result = bspl3(xi, extrapolate=call_extrap)
         return result
 
+    @pytest.mark.skipif(runtime.is_hip,
+                        reason='Currently unsupported on ROCm/HIP')
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_extrapolate_false_3D_separable(self, xp, scp):
         # test that extrapolate=False produces nans for out-of-bounds values
@@ -331,6 +351,8 @@ class TestNdBSpline:
         result = bspl3(xi, extrapolate=False)
         return result
 
+    @pytest.mark.skipif(runtime.is_hip,
+                        reason='Currently unsupported on ROCm/HIP')
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_x_nan_3D(self, xp, scp):
         # test that spline(nan) is nan
@@ -370,6 +392,8 @@ class TestNdBSpline:
         bspl2 = scp.interpolate.NdBSpline((tx[::2], ty[::2]), c, k=(kx, ky))
         return bspl2(xi)
 
+    @pytest.mark.skipif(runtime.is_hip,
+                        reason='Currently unsupported on ROCm/HIP')
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_readonly(self, xp, scp):
         t3, c3, _ = self.make_3d_case(xp, scp)
@@ -380,6 +404,8 @@ class TestNdBSpline:
         bspl3 = scp.interpolate.NdBSpline(t3, c3, k=3)
         return bspl3((1, 2, 3))
 
+    @pytest.mark.skipif(runtime.is_hip,
+                        reason='Currently unsupported on ROCm/HIP')
     @testing.with_requires('scipy>=1.13')
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_design_matrix(self, xp, scp):

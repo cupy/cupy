@@ -1,0 +1,5 @@
+{
+    "custom_map": {
+        "CUPY_USE_GEN_HIP_CODE" : "CUPY_DONT_USE_GEN_HIP_CODE"
+    }
+}

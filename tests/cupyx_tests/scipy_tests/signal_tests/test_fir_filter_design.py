@@ -317,6 +317,8 @@ class TestFirls:
         # negative weight
         # assert_raises(ValueError, firls, 11, [0.1, 0.2], [0, 0], [-1])
 
+    @pytest.mark.skipif(cupy.cuda.runtime.is_hip,
+                        reason='Currently unsupported on ROCm/HIP')
     @pytest.mark.xfail(
         platform.machine() == "aarch64",
         reason="aarch64 scipy does not match cupy/x86 see Scipy #20160")

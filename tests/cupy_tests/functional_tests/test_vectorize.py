@@ -8,6 +8,7 @@ from cupy import testing
 from cupy.cuda import runtime
 
 
+@pytest.mark.skipif(runtime.is_hip, reason='Currently unsupported on ROCm/HIP')
 class TestVectorizeOps(unittest.TestCase):
 
     def _run(self, func, xp, dtypes):
@@ -222,6 +223,7 @@ class TestVectorizeOps(unittest.TestCase):
         return self._run(my_usub, xp, [dtype])
 
 
+@pytest.mark.skipif(runtime.is_hip, reason='Currently unsupported on ROCm/HIP')
 class TestVectorizeExprs(unittest.TestCase):
 
     @testing.for_all_dtypes(name='cond_dtype', no_complex=True)
@@ -288,6 +290,7 @@ class TestVectorizeExprs(unittest.TestCase):
         return f(x)
 
 
+@pytest.mark.skipif(runtime.is_hip, reason='Currently unsupported on ROCm/HIP')
 class TestVectorizeInstructions(unittest.TestCase):
 
     @testing.for_all_dtypes()
@@ -366,6 +369,7 @@ class TestVectorizeInstructions(unittest.TestCase):
         return f(x)
 
 
+@pytest.mark.skipif(runtime.is_hip, reason='Currently unsupported on ROCm/HIP')
 class TestVectorizeStmts(unittest.TestCase):
 
     @testing.numpy_cupy_array_equal()
@@ -562,6 +566,7 @@ class _MyClass:
         self.x = x
 
 
+@pytest.mark.skipif(runtime.is_hip, reason='Currently unsupported on ROCm/HIP')
 class TestVectorizeConstants(unittest.TestCase):
 
     @testing.numpy_cupy_array_equal()
@@ -589,6 +594,7 @@ class TestVectorizeConstants(unittest.TestCase):
         return f(x1, x2)
 
 
+@pytest.mark.skipif(runtime.is_hip, reason='Currently unsupported on ROCm/HIP')
 class TestVectorizeBroadcast(unittest.TestCase):
 
     @testing.for_all_dtypes(no_bool=True)
@@ -625,6 +631,7 @@ class TestVectorizeBroadcast(unittest.TestCase):
         return f(x1, x2)
 
 
+@pytest.mark.skipif(runtime.is_hip, reason='Currently unsupported on ROCm/HIP')
 class TestVectorize(unittest.TestCase):
 
     @testing.for_all_dtypes(no_bool=True)

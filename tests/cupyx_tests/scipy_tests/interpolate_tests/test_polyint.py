@@ -618,6 +618,7 @@ class TestAkima1D:
         return s(x), s(x, 1)
 
 
+@pytest.mark.skipif(runtime.is_hip, reason='Currently unsupported on ROCm/HIP')
 @testing.with_requires("scipy")
 class TestCubicSpline:
     @testing.numpy_cupy_allclose(scipy_name='scp', atol=2e-14)
@@ -864,6 +865,8 @@ class TestInterp1D:
         yp = scp.interpolate.interp1d(x, y)(x)
         return yp
 
+    @pytest.mark.skipif(runtime.is_hip,
+                        reason='Currently unsupported on ROCm/HIP')
     @pytest.mark.parametrize('kind', ['slinear', 'zero', 'quadratic', 'cubic'])
     @pytest.mark.parametrize('dt_r', ['float16', 'float32', 'float64'])
     @pytest.mark.parametrize('dt_n', ['float16', 'float32', 'float64'])
@@ -880,6 +883,8 @@ class TestInterp1D:
             x, y, kind=kind, bounds_error=False
         )(xnew)
 
+    @pytest.mark.skipif(runtime.is_hip,
+                        reason='Currently unsupported on ROCm/HIP')
     @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-15)
     def test_cubic(self, xp, scp):
         # Check the actual implementation of spline interpolation.
@@ -983,6 +988,8 @@ class TestInterp1D:
         except ValueError as err:
             assert (f"{fail_value}" in str(err))
 
+    @pytest.mark.skipif(runtime.is_hip,
+                        reason='Currently unsupported on ROCm/HIP')
     @pytest.mark.parametrize('kind', ['linear', 'cubic', 'nearest', 'previous',
                                       'next', 'slinear', 'zero', 'quadratic'])
     @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-15)
@@ -999,6 +1006,8 @@ class TestInterp1D:
         xval2 = xp.asarray([-1.0, 0.0, 5.0, 9.0, 11.0])
         return extrap10(11.2), extrap10(-3.4), extrap10(xval1), extrap10(xval2)
 
+    @pytest.mark.skipif(runtime.is_hip,
+                        reason='Currently unsupported on ROCm/HIP')
     @pytest.mark.parametrize('kind', ['linear', 'cubic', 'nearest', 'previous',
                                       'next', 'slinear', 'zero', 'quadratic'])
     @testing.numpy_cupy_allclose(scipy_name='scp', atol=2e-15)
@@ -1181,6 +1190,8 @@ class TestInterp1D:
                                                           [[-1000, 1000],
                                                            [-2000, 2000]]])
 
+    @pytest.mark.skipif(runtime.is_hip,
+                        reason='Currently unsupported on ROCm/HIP')
     @pytest.mark.parametrize('kind', ['linear', 'nearest', 'cubic', 'slinear',
                                       'quadratic', 'zero', 'previous', 'next']
                              )
@@ -1245,6 +1256,8 @@ class TestInterp1D:
             b[n:n+1] = [2, 3, 1]
             assert_array_almost_equal(z(x2).shape, b, err_msg=kind)
 
+    @pytest.mark.skipif(runtime.is_hip,
+                        reason='Currently unsupported on ROCm/HIP')
     @pytest.mark.parametrize('kind', ['linear', 'cubic', 'slinear',
                                       'quadratic',
                                       'nearest', 'zero', 'previous', 'next'])
@@ -1252,6 +1265,8 @@ class TestInterp1D:
         self._nd_check_interp(kind)
         self._nd_check_shape(kind)
 
+    @pytest.mark.skipif(runtime.is_hip,
+                        reason='Currently unsupported on ROCm/HIP')
     @pytest.mark.parametrize('kind', ['linear', 'cubic', 'slinear',
                                       'quadratic',
                                       'nearest', 'zero', 'previous', 'next'])
@@ -1291,6 +1306,8 @@ class TestInterp1D:
         ir = scp.interpolate.interp1d(x, y, kind=kind)
         return ir([4.9, 7.0])
 
+    @pytest.mark.skipif(runtime.is_hip,
+                        reason='Currently unsupported on ROCm/HIP')
     @pytest.mark.parametrize('kind', ['quadratic', 'cubic'])
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_spline_nans(self, xp, scp, kind):

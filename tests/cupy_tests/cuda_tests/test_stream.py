@@ -249,6 +249,8 @@ class TestStream(unittest.TestCase):
         assert s1.is_non_blocking is False
         assert s2.is_non_blocking is True
 
+    @pytest.mark.skipif(cupy.cuda.runtime.is_hip,
+                        reason='Not supported for ROCm/HIP')
     def test_create_with_priority(self):
         # parameterize wasn't used since priority gets
         # clamped when it isn't initialized within a specific

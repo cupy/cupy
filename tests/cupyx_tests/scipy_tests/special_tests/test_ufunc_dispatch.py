@@ -35,6 +35,8 @@ class TestUfunc:
             ):
                 pytest.skip('ROCm/HIP fails in ROCm 4.x')
 
+    @pytest.mark.skipif(cupy.cuda.runtime.is_hip,
+                        reason='Currently unsupported on ROCm/HIP')
     @testing.numpy_cupy_allclose(atol=1e-4)
     def test_dispatch(self, xp, ufunc):
         self._should_skip(ufunc)

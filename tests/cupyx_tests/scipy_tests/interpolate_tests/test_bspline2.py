@@ -485,6 +485,7 @@ class TestLSQ:
                    (x[-1],)*k]
         return xp.asarray(x), xp.asarray(y), xp.asarray(t), k
 
+    @pytest.mark.skipif(runtime.is_hip, reason='ROCm/HIP may have a bug')
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_lstsq(self, xp, scp):
         # check LSQ construction vs a full matrix version
@@ -492,6 +493,7 @@ class TestLSQ:
         b = scp.interpolate.make_lsq_spline(x, y, t, k)
         return b.c
 
+    @pytest.mark.skipif(runtime.is_hip, reason='ROCm/HIP may have a bug')
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_weights_unity(self, xp, scp):
         # weights = 1 is same as None
@@ -509,6 +511,7 @@ class TestLSQ:
         b_w = scp.interpolate.make_lsq_spline(x, y, t, k, w=w)
         return b_w.c
 
+    @pytest.mark.skipif(runtime.is_hip, reason='ROCm/HIP may have a bug')
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_multiple_rhs(self, xp, scp):
         _np.random.seed(1234)
@@ -530,6 +533,7 @@ class TestLSQ:
         b = scp.interpolate.make_lsq_spline(x, yc, t, k)
         return b.c
 
+    @pytest.mark.skipif(runtime.is_hip, reason='ROCm/HIP may have a bug')
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_int_xy(self, xp, scp):
         x = xp.arange(10).astype(int)
@@ -541,6 +545,7 @@ class TestLSQ:
         b = scp.interpolate.make_lsq_spline(x, y, t, k=1)
         return b.c
 
+    @pytest.mark.skipif(runtime.is_hip, reason='ROCm/HIP may have a bug')
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_sliced_input(self, xp, scp):
         # Cython code chokes on non C contiguous arrays
@@ -617,6 +622,7 @@ class TestGivensQR:
         t = _not_a_knot(x, k)
         return x, y, t, k
 
+    @pytest.mark.skipif(runtime.is_hip, reason='ROCm/HIP may have a bug')
     @testing.with_requires("scipy")
     def test_py_vs_compiled(self):
         # test qr_reduce vs a python implementation

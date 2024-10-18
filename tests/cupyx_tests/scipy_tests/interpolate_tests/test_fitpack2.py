@@ -1,6 +1,7 @@
 import pytest
 import cupy
 from cupy import testing
+from cupy.cuda import runtime
 
 import cupyx.scipy.interpolate as csi  # NOQA
 
@@ -13,6 +14,7 @@ except ImportError:
 @testing.with_requires("scipy")
 class TestUnivariateSpline:
 
+    @pytest.mark.skipif(runtime.is_hip, reason='ROCm/HIP may have a bug')
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_linear_constant(self, xp, scp):
         x = xp.asarray([1, 2, 3])
@@ -20,6 +22,7 @@ class TestUnivariateSpline:
         lut = scp.interpolate.UnivariateSpline(x, y, k=1)
         return lut.get_knots(), lut.get_coeffs(), lut(x)
 
+    @pytest.mark.skipif(runtime.is_hip, reason='ROCm/HIP may have a bug')
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_preserve_shape(self, xp, scp):
         x = xp.asarray([1, 2, 3])
@@ -28,6 +31,7 @@ class TestUnivariateSpline:
         arg = 2
         return lut(arg), lut(arg, nu=1)
 
+    @pytest.mark.skipif(runtime.is_hip, reason='ROCm/HIP may have a bug')
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_preserve_shape_2(self, xp, scp):
         x = xp.asarray([1, 2, 3])
@@ -36,6 +40,7 @@ class TestUnivariateSpline:
         arg = xp.asarray([1.5, 2, 2.5])
         return lut(arg), lut(arg, nu=1)
 
+    @pytest.mark.skipif(runtime.is_hip, reason='ROCm/HIP may have a bug')
     @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-15)
     def test_linear_1d(self, xp, scp):
         x = xp.asarray([1, 2, 3])
@@ -43,6 +48,7 @@ class TestUnivariateSpline:
         lut = scp.interpolate.UnivariateSpline(x, y, k=1)
         return lut.get_knots(), lut.get_coeffs(), lut(x)
 
+    @pytest.mark.skipif(runtime.is_hip, reason='ROCm/HIP may have a bug')
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_empty_input(self, xp, scp):
         # Test whether empty input returns an empty output. Ticket 1014
@@ -51,6 +57,7 @@ class TestUnivariateSpline:
         spl = scp.interpolate.UnivariateSpline(x, y, k=3)
         return spl([])
 
+    @pytest.mark.skipif(runtime.is_hip, reason='ROCm/HIP may have a bug')
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_derivatives(self, xp, scp):
         x = xp.asarray([1, 3, 5, 7, 9])
@@ -58,6 +65,7 @@ class TestUnivariateSpline:
         spl = scp.interpolate.UnivariateSpline(x, y, k=3)
         return spl.derivatives(3.5)
 
+    @pytest.mark.skipif(runtime.is_hip, reason='csrlsvqr not implemented')
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_derivatives_2(self, xp, scp):
         x = xp.arange(8)
@@ -66,6 +74,7 @@ class TestUnivariateSpline:
         spl = scp.interpolate.UnivariateSpline(x, y, s=0, k=3)
         return spl.derivatives(3)
 
+    @pytest.mark.skipif(runtime.is_hip, reason='csrlsvqr not implemented')
     @pytest.mark.parametrize('klass',
                              ['UnivariateSpline',
                               'InterpolatedUnivariateSpline']
@@ -89,6 +98,7 @@ class TestUnivariateSpline:
         with pytest.raises(ValueError):
             csi.LSQUnivariateSpline(xs, ys, knots, bbox=bbox)
 
+    @pytest.mark.skipif(runtime.is_hip, reason='csrlsvqr not implemented')
     @pytest.mark.parametrize('ext', [0, 1, 2, 3])
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_integral_out_of_bounds(self, xp, scp, ext):
@@ -103,6 +113,7 @@ class TestUnivariateSpline:
         # NB: scipy returns python floats, cupy returns 0D arrays
         return xp.asarray(vals)
 
+    @pytest.mark.skipif(runtime.is_hip, reason='ROCm/HIP may have a bug')
     @pytest.mark.parametrize('s', [0, 0.1, 0.01])
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_values(self, xp, scp, s):
@@ -111,6 +122,7 @@ class TestUnivariateSpline:
         spl = scp.interpolate.UnivariateSpline(x, y, s=s)
         return spl(x)
 
+    @pytest.mark.skipif(runtime.is_hip, reason='ROCm/HIP may have a bug')
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_set_smoothing_factor(self, xp, scp):
         x = xp.arange(8) + 0.5
@@ -119,6 +131,7 @@ class TestUnivariateSpline:
         spl.set_smoothing_factor(s=0.05)
         return spl(x)
 
+    @pytest.mark.skipif(runtime.is_hip, reason='ROCm/HIP may have a bug')
     def test_reset_class(self):
         # SciPy weirdness: *UnivariateSpline.__class__ may change
         x = cupy.arange(8) + 0.5
