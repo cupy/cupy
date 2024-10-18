@@ -285,8 +285,44 @@ cdef class _ndarray_base:
 
         return desc
 
-    def __dlpack__(self, *, stream=None):
+    def __dlpack__(self, *, stream=None, max_version=None, dl_device=None, copy=None):
+        cdef bint use_versioned, to_cpu
+
+        if max_version is None:
+            # No version was requested, so assume consumer requires unversioned.
+            # (This path should be deprecated.)
+            use_versioned = False
+        else:
+            # For now, no need to check for more than the major version >=1.
+            max_major_version = max_version[0]
+            if max_major_version >=1:
+                use_versioned = True
+
+        # If the user passed dl_device we must honor it, so check if it either
+        # matches or the user explicitly requested the "CPU" device.
+        # Additionally, check also if the requested copy mode is acceptable.
+        if dl_device is None or dl_device == self.__dlpack_device__():
+            # We chose the device or the device matches, so export normally.
+            if copy is True:
+                # Could be implemented, but there may be some subtleties to
+                # consider here.
+                raise BufferError("copy=True only supported for copy to CPU.")
+        elif dl_device == (dlpack.kDLCPU, 0):
+            # The user explicitly requested CPU device export.
+            # NOTE:
+            # * We effectively ignore the stream here for now!
+            # * We implement it by copying to NumPy, but we must indicate
+            #   the copy, so will construct the dlpack ourselves.
+            if copy is False and get_dlpack_device(self).device_type != kDLCUDAManaged:
+                raise BufferError("GPU memory cannot be exported to CPU without copy.")
+            to_cpu = True
+        else:
+            # TODO: We could probably support copy to a different CUDA device
+            #       but the moint point is to support host copies.
+            raise BufferError("unsupported device requested.")
+
         # Note: the stream argument is supplied by the consumer, not by CuPy
+        #       We can (and must) assume that it is compatible with our device.
         curr_stream = stream_module.get_current_stream()
         curr_stream_ptr = curr_stream.ptr
 
@@ -327,21 +363,12 @@ cdef class _ndarray_base:
             event = curr_stream.record()
             next_stream.wait_event(event)
 
-        return dlpack.toDlpack(self)
+        return dlpack.toDlpack(self, max_version=max_version, to_cpu=to_cpu)
 
     def __dlpack_device__(self):
-        if not runtime._is_hip_environment:
-            attrs = runtime.pointerGetAttributes(self.data.ptr)
-            is_managed = (
-                attrs.type == runtime.memoryTypeManaged
-                and _util.DLPACK_EXPORT_VERSION >= (0, 6))
-            if is_managed:
-                device_type = dlpack.managed_CUDA
-            else:
-                device_type = dlpack.device_CUDA
-        else:
-            device_type = dlpack.device_ROCM
-        return (device_type, self.device.id)
+        DLDevice device = get_dlpack_device(self)
+
+        return (device.device_type, device.device.id)
 
     # The definition order of attributes and methods are borrowed from the
     # order of documentation at the following NumPy document.
