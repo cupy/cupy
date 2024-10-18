@@ -171,7 +171,7 @@ cpdef object toDlpack(_ndarray_base array, bint use_versioned=True, bint to_cpu=
     # Create capsule now.  After this, the capsule will clean up on error.
     # (Note that it is good to handle expected BufferErrors early.)
     try:
-        capsule = cpython.PyCapsule_New(dlm_tensor, capsule_name, pycapsule_deleter)
+        capsule = cpython.PyCapsule_New(dlm_tensor_ptr, capsule_name, pycapsule_deleter)
     except:
         stdlib.free(dlm_tensor)
         stdlib.free(shape_strides)
@@ -479,7 +479,7 @@ def from_dlpack(array, *, device=None, copy=None):
             except TypeError:
                 if copy is not None:
                     raise
-                dltensor = array.__dlpacke__(stream=stream)
+                dltensor = array.__dlpack__(stream=stream)
         finally:
             cupy.cuda.runtime.setDevice(prev_device)
     elif dev_type == <int>kDLROCM:
@@ -495,7 +495,7 @@ def from_dlpack(array, *, device=None, copy=None):
             except TypeError:
                 if copy is not None:
                     raise
-                dltensor = array.__dlpacke__(stream=stream)
+                dltensor = array.__dlpack__(stream=stream)
         finally:
             cupy.cuda.runtime.setDevice(prev_device)
     elif dev_type == <int>kDLCPU:
