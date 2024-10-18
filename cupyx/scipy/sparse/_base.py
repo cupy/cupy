@@ -245,7 +245,7 @@ class spmatrix(object):
 
     @shape.setter
     def shape(self, value):
-        self.set_shape(value)
+        self.reshape(value)
 
     def asformat(self, format):
         """Return this matrix in a given sparse format.
@@ -441,9 +441,6 @@ class spmatrix(object):
             return self
 
         return self.tocoo().reshape(shape, order=order)
-
-    def set_shape(self, shape):
-        self.reshape(shape)
 
     def setdiag(self, values, k=0):
         """Set diagonal or off-diagonal elements of the array.
