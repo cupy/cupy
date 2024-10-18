@@ -210,16 +210,6 @@ class spmatrix(object):
             return NotImplemented
 
     @property
-    def A(self):
-        """Dense ndarray representation of this matrix.
-
-        This property is equivalent to
-        :meth:`~cupyx.scipy.sparse.spmatrix.toarray` method.
-
-        """
-        return self.toarray()
-
-    @property
     def T(self):
         return self.transpose()
 

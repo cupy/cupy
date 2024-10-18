@@ -508,12 +508,6 @@ class TestCscMatrixScipyComparison:
             with pytest.raises(ValueError):
                 m.toarray(order='#')
 
-    @testing.with_requires('scipy<1.14')
-    @testing.numpy_cupy_allclose(sp_name='sp', contiguous_check=False)
-    def test_A(self, xp, sp):
-        m = self.make(xp, sp, self.dtype)
-        return m.A
-
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_tocoo(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
