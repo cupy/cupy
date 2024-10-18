@@ -1,11 +1,6 @@
 cimport cpython  # NOQA
 
 from libc cimport stdlib
-from libc.stdint cimport uint8_t
-from libc.stdint cimport uint16_t
-from libc.stdint cimport int32_t
-from libc.stdint cimport int64_t
-from libc.stdint cimport uint64_t
 from libc.stdint cimport intptr_t
 from libcpp.vector cimport vector
 
@@ -19,70 +14,7 @@ import warnings
 import cupy
 import cupy._core.core as core
 
-
-cdef extern from './include/cupy/_dlpack/dlpack.h' nogil:
-    int DLPACK_MAJOR_VERSION
-    int DLPACK_MINOR_VERSION
-    int DLPACK_FLAG_BITMASK_READ_ONLY
-    int DLPACK_FLAG_BITMASK_IS_COPIED
-
-    cdef enum DLDeviceType:
-        kDLCPU
-        kDLCUDA
-        kDLCUDAHost
-        kDLOpenCL
-        kDLVulkan
-        kDLMetal
-        kDLVPI
-        kDLROCM
-        kDLROCMHost
-        kDLExtDev
-        kDLCUDAManaged
-        kDLOneAPI
-        kDLWebGPU
-        kDLHexagon
-
-    ctypedef struct DLDevice:
-        DLDeviceType device_type
-        int32_t device_id
-
-    cdef enum DLDataTypeCode:
-        kDLInt
-        kDLUInt
-        kDLFloat
-        kDLBfloat
-        kDLComplex
-        kDLBool
-
-    ctypedef struct DLDataType:
-        uint8_t code
-        uint8_t bits
-        uint16_t lanes
-
-    ctypedef struct DLTensor:
-        void* data
-        DLDevice device
-        int32_t ndim
-        DLDataType dtype
-        int64_t* shape
-        int64_t* strides
-        uint64_t byte_offset
-
-    ctypedef struct DLManagedTensor:
-        DLTensor dl_tensor
-        void* manager_ctx
-        void (*deleter)(DLManagedTensor*)  # noqa: E211
-
-    ctypedef struct DLPackVersion:
-        uint32_t major
-        uint32_t minor
-
-    ctypedef struct DLManagedTensorVersioned:
-        DLPackVersion version
-        void* manager_ctx
-        void (*deleter)(DLManagedTensorVersioned*)
-        uint64_t flags
-        DLTensor dl_tensor
+from .dlpack cimport *
 
 
 cdef const char* CAPSULE_NAME = "dltensor"
@@ -93,18 +25,21 @@ cdef const char* USED_CAPSULE_NAME_VER = "used_dltensor_versioned"
 
 cdef void pycapsule_deleter(object dltensor):
     cdef DLManagedTensor* dlm_tensor
+    cdef DLManagedTensorVersioned *dlm_tensor_ver
+
     # Do not invoke the deleter on a used capsule
     if cpython.PyCapsule_IsValid(dltensor, CAPSULE_NAME):
         dlm_tensor = <DLManagedTensor*>cpython.PyCapsule_GetPointer(
             dltensor, CAPSULE_NAME)
         dlm_tensor.deleter(dlm_tensor)
     elif cpython.PyCapsule_IsValid(dltensor, CAPSULE_NAME_VER):
-        dlm_tensor = <DLManagedTensorVersioned*>cpython.PyCapsule_GetPointer(
+        dlm_tensor_ver = <DLManagedTensorVersioned*>cpython.PyCapsule_GetPointer(
             dltensor, CAPSULE_NAME_VER)
         dlm_tensor_ver.deleter(dlm_tensor_ver)
     else:
         # No cleanup necessary, capsule was "consumed" (renamed).
         pass
+
 
 cdef void deleter(DLManagedTensor* tensor) with gil:
     # Delete fully initialized DLManagedTensor
@@ -135,7 +70,7 @@ cdef uint8_t get_dlpack_dtype_code(dtype):
         return <uint8_t>kDLFloat
     elif kind == 'c':
         return <uint8_t>kDLComplex
-    elif array.dtype.kind == 'b':
+    elif kind == 'b':
         return <uint8_t>kDLBool
     else:
         raise BufferError('dtype is not supported for dlpack export')
@@ -148,7 +83,7 @@ cdef DLDevice get_dlpack_device(_ndarray_base array):
     device.device_id = array.data.device_id
 
     if not runtime._is_hip_environment:
-        attrs = runtime.pointerGetAttributes(data_ptr)
+        attrs = runtime.pointerGetAttributes(array.data.ptr)
         is_managed = (attrs.type == runtime.memoryTypeManaged)
         if is_managed:
             device.device_type = kDLCUDAManaged
@@ -162,13 +97,11 @@ cdef DLDevice get_dlpack_device(_ndarray_base array):
 
 # The name of this function is following the framework integration guide of
 # TensorComprehensions.
-cpdef object toDlpack(_ndarray_base array, bing use_versioned=True, bint to_cpu=False) except +:
-    cdef bint use_versioned
-    cdef int max_major_version
+cpdef object toDlpack(_ndarray_base array, bint use_versioned=True, bint to_cpu=False) except +:
     cdef DLManagedTensor* dlm_tensor
-    cdef DLManagedTensor* dlm_tensor_ver
+    cdef DLManagedTensorVersioned* dlm_tensor_ver
     cdef DLTensor* dl_tensor
-    cdef char *capsule_name
+    cdef const char *capsule_name
 
     # Fetch dtype early (as this can raise a BufferError in theory)
     cdef uint8_t dtype_code = get_dlpack_dtype_code(array.dtype)
@@ -189,7 +122,7 @@ cpdef object toDlpack(_ndarray_base array, bing use_versioned=True, bint to_cpu=
     else:
         # We need to create a CPU copy.  Assumes owner.dtype == array.dtype.
         # TODO: As noted at calling site, this does not honor the "stream".
-        owner = array.get(order='A')
+        owner = array.get(stream=None, order='A')
         device.device_type = kDLCPU
         device.dev_id = 0
 
@@ -215,7 +148,7 @@ cpdef object toDlpack(_ndarray_base array, bing use_versioned=True, bint to_cpu=
 
         dlm_tensor_ver.manager_ctx = <void*>owner
         cpython.Py_INCREF(owner)
-        dlm_tensor.deleter = deleter_ver
+        dlm_tensor_ver.deleter = deleter_ver
 
         # "Versioned" specific initialization:
         dlm_tensor_ver.version.major = 1
@@ -260,7 +193,7 @@ cpdef object toDlpack(_ndarray_base array, bing use_versioned=True, bint to_cpu=
     # Fill in the shape and strides information (depends on GPU vs CPU array).
     # (assumes strides are a multiple of itemsize, that should be OK for cupy.)
     if owner is array:
-        dl_tensor.data = array.data.ptr
+        dl_tensor.data = <void *>array.data.ptr
 
         for n in range(ndim):
             shape_strides[n] = array._shape[n]
@@ -270,7 +203,7 @@ cpdef object toDlpack(_ndarray_base array, bing use_versioned=True, bint to_cpu=
     else:
         # Same as above, but we got a NumPy array, so go through Python
         # in the off-chance that the copy has changed the strides.
-        dl_tensor.data = owner.ctypes.data
+        dl_tensor.data = <void *><intptr_t>owner.ctypes.data
         shape = owner.shape
         strides = owner.strides
 
@@ -293,7 +226,7 @@ cdef class DLPackMemory(memory.BaseMemory):
     """
 
     cdef DLManagedTensor* dlm_tensor_unversioned
-    cdef DLManagedTensor* dlm_tensor_ver
+    cdef DLManagedTensorVersioned* dlm_tensor_ver
     cdef DLTensor* dl_tensor  # non owning reference
 
     def __init__(self, object dltensor):
@@ -303,14 +236,14 @@ cdef class DLPackMemory(memory.BaseMemory):
             # Take ownership of the memory:
             self.dlm_tensor_unversioned = <DLManagedTensor*>(
                     cpython.PyCapsule_GetPointer(dltensor, CAPSULE_NAME))
-            cpython.PyCapsule_SetName(mem.dltensor, USED_CAPSULE_NAME)
+            cpython.PyCapsule_SetName(dltensor, USED_CAPSULE_NAME)
 
-            self.dl_tensor = self.dlm_tensor_unversioned.dl_tensor
+            self.dl_tensor = &self.dlm_tensor_unversioned.dl_tensor
         else:
             # Take ownership of the memory:
             self.dlm_tensor_ver = <DLManagedTensorVersioned*>(
                     cpython.PyCapsule_GetPointer(dltensor, CAPSULE_NAME_VER))
-            cpython.PyCapsule_SetName(mem.dltensor, USED_CAPSULE_NAME_VER)
+            cpython.PyCapsule_SetName(dltensor, USED_CAPSULE_NAME_VER)
 
             # When we have a versioned tensor, we need to verify the version
             # before further use.
@@ -322,7 +255,7 @@ cdef class DLPackMemory(memory.BaseMemory):
             # if self.dlm_tensor_ver.flags & DLPACK_FLAG_BITMASK_READ_ONLY:
             #  raise BufferError("Buffer is readonly, but CuPy does not support this.")
 
-            self.dl_tensor = self.dlm_tensor_ver.dl_tensor
+            self.dl_tensor = &self.dlm_tensor_ver.dl_tensor
 
         # Check if the device is compatible with the cupy runtime.
         if runtime._is_hip_environment:

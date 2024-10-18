@@ -294,8 +294,7 @@ cdef class _ndarray_base:
             use_versioned = False
         else:
             # For now, no need to check for more than the major version >=1.
-            max_major_version = max_version[0]
-            if max_major_version >=1:
+            if max_version[0] >= 1:
                 use_versioned = True
 
         # If the user passed dl_device we must honor it, so check if it either
@@ -313,7 +312,7 @@ cdef class _ndarray_base:
             # * We effectively ignore the stream here for now!
             # * We implement it by copying to NumPy, but we must indicate
             #   the copy, so will construct the dlpack ourselves.
-            if copy is False and get_dlpack_device(self).device_type != kDLCUDAManaged:
+            if copy is False and dlpack.get_dlpack_device(self).device_type != dlpack.kDLCUDAManaged:
                 raise ValueError("GPU memory cannot be exported to CPU without copy.")
             to_cpu = True
         else:
@@ -363,10 +362,10 @@ cdef class _ndarray_base:
             event = curr_stream.record()
             next_stream.wait_event(event)
 
-        return dlpack.toDlpack(self, max_version=max_version, to_cpu=to_cpu)
+        return dlpack.toDlpack(self, use_versioned=use_versioned, to_cpu=to_cpu)
 
     def __dlpack_device__(self):
-        cdef DLDevice device = get_dlpack_device(self)
+        cdef dlpack.DLDevice device = dlpack.get_dlpack_device(self)
 
         return (device.device_type, device.device.id)
 
