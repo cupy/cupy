@@ -494,32 +494,6 @@ class IndexMixin(object):
 
         return x % length
 
-    def getrow(self, i):
-        """Return a copy of row i of the matrix, as a (1 x n) row vector.
-
-        Args:
-            i (integer): Row
-
-        Returns:
-            cupyx.scipy.sparse.spmatrix: Sparse matrix with single row
-        """
-        M, N = self.shape
-        i = _normalize_index(i, M, 'index')
-        return self._get_intXslice(i, slice(None))
-
-    def getcol(self, i):
-        """Return a copy of column i of the matrix, as a (m x 1) column vector.
-
-        Args:
-            i (integer): Column
-
-        Returns:
-            cupyx.scipy.sparse.spmatrix: Sparse matrix with single column
-        """
-        M, N = self.shape
-        i = _normalize_index(i, N, 'index')
-        return self._get_sliceXint(slice(None), i)
-
     def _get_intXint(self, row, col):
         raise NotImplementedError()
 
