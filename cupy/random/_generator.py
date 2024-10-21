@@ -5,6 +5,7 @@ import hashlib
 import operator
 import os
 import time
+import weakref
 
 import numpy
 import warnings
@@ -58,17 +59,10 @@ class RandomState(object):
         if method is None:
             method = curand.CURAND_RNG_PSEUDO_DEFAULT
         self._generator = curand.createGenerator(method)
+        self._finalizer = weakref.finalize(
+            self, curand.destroyGenerator, self._generator)
         self.method = method
         self.seed(seed)
-
-    def __del__(self, is_shutting_down=_util.is_shutting_down):
-        from cupy_backends.cuda.libs import curand
-
-        # When createGenerator raises an error, _generator is not initialized
-        if is_shutting_down():
-            return
-        if hasattr(self, '_generator'):
-            curand.destroyGenerator(self._generator)
 
     def _update_seed(self, size):
         self._rk_seed = (self._rk_seed + size) % _UINT64_MAX

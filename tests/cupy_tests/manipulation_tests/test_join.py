@@ -299,7 +299,7 @@ class TestJoin:
         return xp.hstack((a, b), dtype=dtype2)
 
     @testing.with_requires('numpy>=1.24.0')
-    @pytest.mark.filterwarnings('error::numpy.ComplexWarning')
+    @pytest.mark.filterwarnings('error::cupy.exceptions.ComplexWarning')
     @pytest.mark.parametrize('casting', [
         'no',
         'equiv',
@@ -342,7 +342,7 @@ class TestJoin:
         return xp.vstack((a, b), dtype=dtype2)
 
     @testing.with_requires('numpy>=1.24.0')
-    @pytest.mark.filterwarnings('error::numpy.ComplexWarning')
+    @pytest.mark.filterwarnings('error::cupy.exceptions.ComplexWarning')
     @pytest.mark.parametrize('casting', [
         'no',
         'equiv',
@@ -486,7 +486,7 @@ class TestJoin:
         return xp.stack((a, b), dtype=dtype2)
 
     @testing.with_requires('numpy>=1.24.0')
-    @pytest.mark.filterwarnings('error::numpy.ComplexWarning')
+    @pytest.mark.filterwarnings('error::cupy.exceptions.ComplexWarning')
     @pytest.mark.parametrize('casting', [
         'no',
         'equiv',

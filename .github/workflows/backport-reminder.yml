@@ -1,0 +1,23 @@
+name: "Backport Reminder"
+
+on:
+  schedule:
+  - cron: '0 4 * * *'
+
+jobs:
+  remind:
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: 3.11
+    - run: |
+        python -m pip install "PyGithub==2.*"
+    - run: |
+        python ./.github/workflows/scripts/backport_reminder.py
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
