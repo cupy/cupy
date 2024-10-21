@@ -30,7 +30,7 @@
   _inherits: "cupy.linux.cuda112"
   tags: ["@push", "full", "multi", "cuda112"]
   target: "cuda112.multi"
-  mpi4py: null  # CentOS
+  mpi4py: null # CentOS
   test: "unit-multi"
 
 # CUDA 11.3 | Linux
@@ -376,7 +376,7 @@
   cusparselt: "0.6.1"
   cudnn: "8.8"
   python: "3.12"
-  numpy: "1.26"  # "2.0"
+  numpy: "1.26" # "2.0"
   scipy: "1.14"
   optuna: "3"
   mpi4py: null
@@ -407,7 +407,7 @@
   cusparselt: "0.6.1"
   cudnn: "8.8"
   python: "3.12"
-  numpy: "1.26"  # "2.1"
+  numpy: "1.26" # "2.1"
   scipy: "1.14"
   optuna: "3"
   mpi4py: null
@@ -424,7 +424,6 @@
   mpi4py: "3"
   test: "unit-multi"
 
-
 ###############################################################################
 # CUDA (Windows)
 ###############################################################################
@@ -439,12 +438,12 @@
 # The lowest ROCm version matrix is intended to cover the lowest supported combination.
 - project: "cupy.linux.rocm-4-3"
   _url: "https://jenkins.preferred.jp/job/chainer/job/cupy_main/TEST=rocm-4-3,label=mnj-mi50/"
-  tags: null  # Jenkins
+  tags: null # Jenkins
   target: "rocm-4-3"
   system: "linux"
   os: "ubuntu:20.04"
   cuda: null
-  rocm: '4.3'
+  rocm: "4.3"
   nccl: null
   cutensor: null
   cusparselt: null
@@ -462,12 +461,12 @@
 # ROCm 5.0 | Linux
 - project: "cupy.linux.rocm-5-0"
   _url: "https://jenkins.preferred.jp/job/chainer/job/cupy_main/TEST=rocm-5-0,label=mnj-mi50/"
-  tags: null  # Jenkins
+  tags: null # Jenkins
   target: "rocm-5-0"
   system: "linux"
   os: "ubuntu:20.04"
   cuda: null
-  rocm: '5.0'
+  rocm: "5.0"
   nccl: null
   cutensor: null
   cusparselt: null
@@ -486,12 +485,12 @@
 # The latest ROCm version matrix is intended to cover the highest supported combination.
 - project: "cupy.linux.rocm-5-3"
   _url: "https://jenkins.preferred.jp/job/chainer/job/cupy_main/TEST=rocm-5-3,label=mnj-mi50/"
-  tags: null  # Jenkins
+  tags: null # Jenkins
   target: "rocm-5-3"
   system: "linux"
   os: "ubuntu:20.04"
   cuda: null
-  rocm: '5.3'
+  rocm: "5.3"
   nccl: null
   cutensor: null
   cusparselt: null
@@ -510,12 +509,12 @@
 # The latest ROCm version matrix is intended to cover the highest supported combination.
 - project: "cupy.linux.rocm-6-2"
   _url: "https://github.com/cupy/self-hosted-ci/actions/workflows/ci.yml"
-  tags: null  # self-hosted
+  tags: null # self-hosted
   target: "rocm-6-2"
   system: "linux"
   os: "ubuntu:22.04"
   cuda: null
-  rocm: '6.2'
+  rocm: "6.2"
   nccl: null
   cutensor: null
   cusparselt: null
@@ -544,7 +543,7 @@
   rocm: null
   nccl: "2.16"
   cutensor: "2.0"
-  cusparselt: null  # TODO use cuSPARSELt 0.6+ after bumping CUDA to 12.x
+  cusparselt: null # TODO use cuSPARSELt 0.6+ after bumping CUDA to 12.x
   cudnn: "8.8"
   python: "3.12"
   numpy: "1.26"
@@ -574,7 +573,7 @@
   rocm: null
   nccl: "2.16"
   cutensor: "2.0"
-  cusparselt: null  # TODO use cuSPARSELt 0.6+ after bumping CUDA to 12.x
+  cusparselt: null # TODO use cuSPARSELt 0.6+ after bumping CUDA to 12.x
   cudnn: "8.8"
   python: "3.12"
   numpy: "1.26"
@@ -601,14 +600,14 @@
   rocm: null
   nccl: "2.16"
   cutensor: "2.0"
-  cusparselt: null  # TODO use cuSPARSELt 0.6+ after bumping CUDA to 12.x
+  cusparselt: null # TODO use cuSPARSELt 0.6+ after bumping CUDA to 12.x
   cudnn: "8.8"
   python: "3.12"
   numpy: "pre"
   scipy: "pre"
   optuna: "pre"
   mpi4py: null
-  cython: "0.29"  # TODO: support Cython 3
+  cython: "0.29" # TODO: support Cython 3
   cuda-python: null
   env:CUPY_ACCELERATORS: "cub,cutensor"
   test: "unit"
