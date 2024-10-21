@@ -29,12 +29,12 @@ cdef void pycapsule_deleter(object dltensor):
 
     # Do not invoke the deleter on a used capsule
     if cpython.PyCapsule_IsValid(dltensor, CAPSULE_NAME):
-        dlm_tensor = <DLManagedTensor*>cpython.PyCapsule_GetPointer(
-            dltensor, CAPSULE_NAME)
+        dlm_tensor = <DLManagedTensor*>(
+            cpython.PyCapsule_GetPointer(dltensor, CAPSULE_NAME))
         dlm_tensor.deleter(dlm_tensor)
     elif cpython.PyCapsule_IsValid(dltensor, CAPSULE_NAME_VER):
-        dlm_tensor_ver = <DLManagedTensorVersioned*>cpython.PyCapsule_GetPointer(
-            dltensor, CAPSULE_NAME_VER)
+        dlm_tensor_ver = <DLManagedTensorVersioned*>(
+            cpython.PyCapsule_GetPointer(dltensor, CAPSULE_NAME_VER))
         dlm_tensor_ver.deleter(dlm_tensor_ver)
     else:
         # No cleanup necessary, capsule was "consumed" (renamed).
@@ -97,7 +97,10 @@ cdef DLDevice get_dlpack_device(_ndarray_base array):
 
 # The name of this function is following the framework integration guide of
 # TensorComprehensions.
-cpdef object toDlpack(_ndarray_base array, bint use_versioned=True, bint to_cpu=False) except +:
+cpdef object toDlpack(
+    _ndarray_base array, bint use_versioned=True, bint to_cpu=False,
+    bint ensure_copy=False
+) except +:
     cdef DLManagedTensor* dlm_tensor
     cdef DLManagedTensorVersioned* dlm_tensor_ver
     cdef DLTensor* dl_tensor
@@ -114,7 +117,7 @@ cpdef object toDlpack(_ndarray_base array, bint use_versioned=True, bint to_cpu=
 
     if not to_cpu:
         owner = array
-    elif device.device_type == kDLCUDAManaged:
+    elif not ensure_copy and device.device_type == kDLCUDAManaged:
         # Managed memory is CPU accessible but consumer may expect kDLCPU.
         owner = array
         device.device_type = kDLCPU
@@ -127,22 +130,25 @@ cpdef object toDlpack(_ndarray_base array, bint use_versioned=True, bint to_cpu=
         device.device_id = 0
 
     cdef void *dlm_tensor_ptr = stdlib.malloc(
-        sizeof(DLManagedTensorVersioned) if use_versioned else sizeof(DLManagedTensor))
+        sizeof(DLManagedTensorVersioned) if use_versioned
+        else sizeof(DLManagedTensor)
+    )
     if dlm_tensor_ptr == NULL:
         raise MemoryError()
 
     # Note: could coalesc this with the previous allocation in principle
-    cdef int64_t* shape_strides = <int64_t*>stdlib.malloc(ndim * sizeof(int64_t) * 2)
+    cdef int64_t* shape_strides = <int64_t*>stdlib.malloc(
+        ndim * sizeof(int64_t) * 2)
     if shape_strides == NULL:
         stdlib.free(dlm_tensor_ptr)
         raise MemoryError()
 
     # We need a different setup for versioned/unversioned when it comes to
-    # the context/deleter and additional information in the newer versioned one.
+    # the context/deleter and additional info in the newer versioned one.
     if use_versioned:
         dlm_tensor_ver = <DLManagedTensorVersioned*>dlm_tensor_ptr
 
-        # The dl_tensor needs to be identically filled in versioned and unversioned:
+        # dl_tensor is identically filled for versioned and unversioned:
         dl_tensor = &dlm_tensor_ver.dl_tensor
         capsule_name = CAPSULE_NAME_VER
 
@@ -160,7 +166,7 @@ cpdef object toDlpack(_ndarray_base array, bint use_versioned=True, bint to_cpu=
             dlm_tensor_ver.flags |= DLPACK_FLAG_BITMASK_IS_COPIED
     else:
         dlm_tensor = <DLManagedTensor*>dlm_tensor_ptr
-        # The dl_tensor needs to be identically filled in versioned and unversioned:
+        # dl_tensor is identically filled for versioned and unversioned:
         dl_tensor = &dlm_tensor.dl_tensor
         capsule_name = CAPSULE_NAME
 
@@ -171,8 +177,9 @@ cpdef object toDlpack(_ndarray_base array, bint use_versioned=True, bint to_cpu=
     # Create capsule now.  After this, the capsule will clean up on error.
     # (Note that it is good to handle expected BufferErrors early.)
     try:
-        capsule = cpython.PyCapsule_New(dlm_tensor_ptr, capsule_name, pycapsule_deleter)
-    except:
+        capsule = cpython.PyCapsule_New(
+            dlm_tensor_ptr, capsule_name, pycapsule_deleter)
+    except BaseException:
         stdlib.free(dlm_tensor)
         stdlib.free(shape_strides)
         cpython.Py_DECREF(array)
@@ -235,14 +242,14 @@ cdef class DLPackMemory(memory.BaseMemory):
         if cpython.PyCapsule_IsValid(dltensor, CAPSULE_NAME):
             # Take ownership of the memory:
             self.dlm_tensor_unversioned = <DLManagedTensor*>(
-                    cpython.PyCapsule_GetPointer(dltensor, CAPSULE_NAME))
+                cpython.PyCapsule_GetPointer(dltensor, CAPSULE_NAME))
             cpython.PyCapsule_SetName(dltensor, USED_CAPSULE_NAME)
 
             self.dl_tensor = &self.dlm_tensor_unversioned.dl_tensor
-        else:
+        elif cpython.PyCapsule_IsValid(dltensor, CAPSULE_NAME_VER):
             # Take ownership of the memory:
             self.dlm_tensor_ver = <DLManagedTensorVersioned*>(
-                    cpython.PyCapsule_GetPointer(dltensor, CAPSULE_NAME_VER))
+                cpython.PyCapsule_GetPointer(dltensor, CAPSULE_NAME_VER))
             cpython.PyCapsule_SetName(dltensor, USED_CAPSULE_NAME_VER)
 
             # When we have a versioned tensor, we need to verify the version
@@ -253,9 +260,14 @@ cdef class DLPackMemory(memory.BaseMemory):
             # TODO(seberg): In principle we should raise an error if we got a
             #     readonly buffer.  But that might be disruptive :(.
             # if self.dlm_tensor_ver.flags & DLPACK_FLAG_BITMASK_READ_ONLY:
-            #  raise BufferError("Buffer is readonly, but CuPy does not support this.")
+            #  raise BufferError("Buffer is readonly, but...")
 
             self.dl_tensor = &self.dlm_tensor_ver.dl_tensor
+        else:
+            # Be helpful in case a capsule is used twice somehow:
+            raise ValueError(
+                'A DLPack tensor object cannot be consumed multiple times '
+                f'(or object was not a DLPack capsule). Got: {dltensor!r}')
 
         # Check if the device is compatible with the cupy runtime.
         if runtime._is_hip_environment:
@@ -420,7 +432,7 @@ cdef inline _ndarray_base _dlpack_to_cupy_array(dltensor) except +:
     return core.ndarray(shape_vec, cp_dtype, mem_ptr, strides=strides_vec)
 
 
-def from_dlpack(array, *, device=None, copy=None):
+def from_dlpack(array, *, dl_device=None, copy=None):
     """Zero-copy conversion between array objects compliant with the DLPack
     data exchange protocol.
 
@@ -458,7 +470,7 @@ def from_dlpack(array, *, device=None, copy=None):
     else:
         dev_type, dev_id = array.__dlpack_device__()
 
-    if device is not None:
+    if dl_device is not None:
         # We can probably support the user picking a specific GPU in case that
         # is relevant to them for some reason.
         raise NotImplementedError("from_dlpack() does not support device yet.")
@@ -475,7 +487,8 @@ def from_dlpack(array, *, device=None, copy=None):
 
             # For backwards compatibility we catch TypeErrors for now.
             try:
-                dltensor = array.__dlpack__(stream=stream, max_version=(1, 0), copy=copy)
+                dltensor = array.__dlpack__(
+                    stream=stream, max_version=(1, 0), copy=copy)
             except TypeError:
                 if copy is not None:
                     raise
@@ -491,7 +504,8 @@ def from_dlpack(array, *, device=None, copy=None):
 
             # For backwards compatibility we catch TypeErrors for now.
             try:
-                dltensor = array.__dlpack__(stream=stream, max_version=(1, 0), copy=copy)
+                dltensor = array.__dlpack__(
+                    stream=stream, max_version=(1, 0), copy=copy)
             except TypeError:
                 if copy is not None:
                     raise

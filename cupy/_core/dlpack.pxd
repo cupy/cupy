@@ -1,6 +1,8 @@
 from cupy._core.core cimport _ndarray_base
 
-from libc.stdint cimport uint8_t, uint16_t, int32_t, uint32_t, int64_t, uint64_t
+from libc.stdint cimport (
+    uint8_t, uint16_t, int32_t, uint32_t, int64_t, uint64_t
+)
 
 
 cdef extern from './include/cupy/_dlpack/dlpack.h' nogil:
@@ -69,5 +71,7 @@ cdef extern from './include/cupy/_dlpack/dlpack.h' nogil:
 
 
 cdef DLDevice get_dlpack_device(_ndarray_base array)
-cpdef object toDlpack(_ndarray_base array, bint use_versioned=*, bint to_cpu=*) except +
+cpdef object toDlpack(
+    _ndarray_base array, bint use_versioned=*, bint to_cpu=*,
+    bint ensure_copy=*) except +
 cpdef _ndarray_base fromDlpack(object dltensor) except +

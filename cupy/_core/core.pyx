@@ -285,7 +285,8 @@ cdef class _ndarray_base:
 
         return desc
 
-    def __dlpack__(self, *, stream=None, max_version=None, dl_device=None, copy=None):
+    def __dlpack__(
+            self, *, stream=None, max_version=None, dl_device=None, copy=None):
         cdef bint use_versioned = False
         cdef bint to_cpu = False
 
@@ -308,8 +309,10 @@ cdef class _ndarray_base:
             # * We effectively ignore the stream here for now!
             # * We implement it by copying to NumPy, but we must indicate
             #   the copy, so will construct the dlpack ourselves.
-            if copy is False and dlpack.get_dlpack_device(self).device_type != dlpack.kDLCUDAManaged:
-                raise ValueError("GPU memory cannot be exported to CPU without copy.")
+            if copy is False and (dlpack.get_dlpack_device(self).device_type
+                                  != dlpack.kDLCUDAManaged):
+                raise ValueError(
+                    "GPU memory cannot be exported to CPU without copy.")
             to_cpu = True
         else:
             # TODO: We could probably support copy to a different CUDA device
@@ -358,12 +361,14 @@ cdef class _ndarray_base:
             event = curr_stream.record()
             next_stream.wait_event(event)
 
-        return dlpack.toDlpack(self, use_versioned=use_versioned, to_cpu=to_cpu)
+        return dlpack.toDlpack(
+            self, use_versioned=use_versioned, to_cpu=to_cpu,
+            ensure_copy=copy is True)
 
     def __dlpack_device__(self):
-        cdef dlpack.DLDevice device = dlpack.get_dlpack_device(self)
+        cdef dlpack.DLDevice dldevice = dlpack.get_dlpack_device(self)
 
-        return (device.device_type, device.device_id)
+        return (dldevice.device_type, dldevice.device_id)
 
     # The definition order of attributes and methods are borrowed from the
     # order of documentation at the following NumPy document.
