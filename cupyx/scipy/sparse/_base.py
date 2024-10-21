@@ -227,7 +227,7 @@ class spmatrix(object):
 
     @property
     def shape(self):
-        return self.get_shape()
+        raise NotImplementedError
 
     @shape.setter
     def shape(self, value):

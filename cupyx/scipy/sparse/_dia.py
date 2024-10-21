@@ -104,13 +104,13 @@ class dia_matrix(_data._data_matrix):
         offsets = self.offsets.get(stream)
         return scipy.sparse.dia_matrix((data, offsets), shape=self._shape)
 
-    def get_shape(self):
-        """Returns the shape of the matrix.
-
-        Returns:
-            tuple: Shape of the matrix.
-        """
+    @property
+    def shape(self):
         return self._shape
+
+    @shape.setter
+    def shape(self, value):
+        super().shape = value
 
     @property
     def nnz(self):

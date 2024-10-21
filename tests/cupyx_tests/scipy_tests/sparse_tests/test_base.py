@@ -23,8 +23,13 @@ class TestSpmatrix(unittest.TestCase):
                     self._shape = shape
                     self._nnz = nnz
 
-                def get_shape(self):
+                @property
+                def shape(self):
                     return self._shape
+
+                @shape.setter
+                def shape(self, value):
+                    raise NotImplementedError
 
                 @property
                 def nnz(self):

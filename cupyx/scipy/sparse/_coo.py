@@ -272,13 +272,13 @@ class coo_matrix(sparse_data._data_matrix):
         self.row = self.row[ind]
         self.col = self.col[ind]
 
-    def get_shape(self):
-        """Returns the shape of the matrix.
-
-        Returns:
-            tuple: Shape of the matrix.
-        """
+    @property
+    def shape(self):
         return self._shape
+
+    @shape.setter
+    def shape(self, value):
+        super().shape = value
 
     @property
     def nnz(self, axis=None):
