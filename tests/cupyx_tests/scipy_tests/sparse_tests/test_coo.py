@@ -509,7 +509,7 @@ class TestCooMatrixScipyComparison:
     @testing.numpy_cupy_equal(sp_name='sp')
     def test_nnz(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
-        return m.getnnz()
+        return m.nnz
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_toarray(self, xp, sp):

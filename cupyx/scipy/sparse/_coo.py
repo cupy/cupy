@@ -280,12 +280,9 @@ class coo_matrix(sparse_data._data_matrix):
         """
         return self._shape
 
-    def getnnz(self, axis=None):
-        """Returns the number of stored values, including explicit zeros."""
-        if axis is None:
-            return self.data.size
-        else:
-            raise ValueError
+    @property
+    def nnz(self, axis=None):
+        return self.data.size
 
     def get(self, stream=None):
         """Returns a copy of the array on host memory.

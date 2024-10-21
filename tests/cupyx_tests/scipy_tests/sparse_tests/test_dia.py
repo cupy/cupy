@@ -235,12 +235,6 @@ class TestDiaMatrixScipyComparison(unittest.TestCase):
         m = self.make(xp, sp, self.dtype)
         return m.nnz
 
-    def test_nnz_axis_not_none(self):
-        for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
-            m = self.make(xp, sp, self.dtype)
-            with pytest.raises(NotImplementedError):
-                m.getnnz(axis=0)
-
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_toarray(self, xp, sp):
         m = self.make(xp, sp, self.dtype)

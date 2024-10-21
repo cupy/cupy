@@ -1172,8 +1172,8 @@ class TestCscMatrixScipyCompressed:
         return _make(xp, sp, self.dtype).get_shape()
 
     @testing.numpy_cupy_equal(sp_name='sp')
-    def test_getnnz(self, xp, sp):
-        return _make(xp, sp, self.dtype).getnnz()
+    def test_nnz(self, xp, sp):
+        return _make(xp, sp, self.dtype).nnz
 
 
 @testing.parameterize(*testing.product({

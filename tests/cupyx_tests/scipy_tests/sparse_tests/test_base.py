@@ -26,7 +26,8 @@ class TestSpmatrix(unittest.TestCase):
                 def get_shape(self):
                     return self._shape
 
-                def getnnz(self):
+                @property
+                def nnz(self):
                     return self._nnz
 
             return DummySparseGPU

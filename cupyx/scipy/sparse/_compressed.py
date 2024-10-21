@@ -725,20 +725,9 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         """
         return self._shape
 
-    def getnnz(self, axis=None):
-        """Returns the number of stored values, including explicit zeros.
-
-        Args:
-            axis: Not supported yet.
-
-        Returns:
-            int: The number of stored values.
-
-        """
-        if axis is None:
-            return self.data.size
-        else:
-            raise ValueError
+    @property
+    def nnz(self):
+        return self.data.size
 
     def sorted_indices(self):
         """Return a copy of this matrix with sorted indices
