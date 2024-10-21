@@ -4,6 +4,7 @@ from cupy.linalg import solve
 from cupyx.scipy.interpolate._interpolate import PPoly
 from cupyx.scipy.interpolate._bspline2 import make_interp_spline
 import cupyx.scipy.special as spec
+from cupy._math.misc import _legacy_sign
 
 
 def _isscalar(x):
@@ -223,8 +224,8 @@ class PchipInterpolator(CubicHermiteSpline):
         d = ((2 * h0 + h1) * m0 - h0 * m1) / (h0 + h1)
 
         # try to preserve shape
-        mask = cupy.sign(d) != cupy.sign(m0)
-        mask2 = (cupy.sign(m0) != cupy.sign(m1)) & (
+        mask = _legacy_sign(d) != _legacy_sign(m0)
+        mask2 = (_legacy_sign(m0) != _legacy_sign(m1)) & (
             cupy.abs(d) > 3.*cupy.abs(m0))
         mmm = (~mask) & mask2
 
@@ -260,7 +261,7 @@ class PchipInterpolator(CubicHermiteSpline):
             dk[1] = mk
             return dk.reshape(y_shape)
 
-        smk = cupy.sign(mk)
+        smk = _legacy_sign(mk)
         condition = (smk[1:] != smk[:-1]) | (mk[1:] == 0) | (mk[:-1] == 0)
 
         w1 = 2*hk[1:] + hk[:-1]

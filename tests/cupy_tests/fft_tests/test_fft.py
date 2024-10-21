@@ -1,4 +1,5 @@
 import functools
+import warnings
 
 import numpy as np
 import pytest
@@ -98,7 +99,7 @@ def multi_gpu_config(gpu_configs=None):
 @testing.parameterize(*testing.product({
     'n': [None, 0, 5, 10, 15],
     'shape': [(0,), (10, 0), (10,), (10, 10)],
-    'norm': [None, 'backward', 'ortho', 'forward', ''],
+    'norm': [None, 'backward', 'ortho', 'forward'],
 }))
 class TestFft:
 
@@ -166,7 +167,7 @@ def _skip_multi_gpu_bug(shape, gpus):
 @testing.parameterize(*testing.product({
     'n': [None, 0, 64],
     'shape': [(0,), (0, 10), (64,), (4, 64)],
-    'norm': [None, 'backward', 'ortho', 'forward', ''],
+    'norm': [None, 'backward', 'ortho', 'forward'],
 }))
 @testing.multi_gpu(2)
 @pytest.mark.skipif(cupy.cuda.runtime.is_hip,
@@ -352,7 +353,7 @@ class TestFftAllocate:
         {'shape': (3, 4), 's': (0, 5), 'axes': (-2, -1)},
         {'shape': (3, 4), 's': (1, 0), 'axes': (-2, -1)},
     ],
-        testing.product({'norm': [None, 'backward', 'ortho', 'forward', '']})
+        testing.product({'norm': [None, 'backward', 'ortho', 'forward']})
     )
 ))
 class TestFft2:
@@ -367,7 +368,11 @@ class TestFft2:
         a = testing.shaped_random(self.shape, xp, dtype)
         if order == 'F':
             a = xp.asfortranarray(a)
-        out = xp.fft.fft2(a, s=self.s, axes=self.axes, norm=self.norm)
+
+        with warnings.catch_warnings():
+            # axis=None and s != None, NumPy 2.0
+            warnings.simplefilter('ignore', DeprecationWarning)
+            out = xp.fft.fft2(a, s=self.s, axes=self.axes, norm=self.norm)
 
         if self.axes is not None and not self.axes:
             assert out is a
@@ -385,7 +390,11 @@ class TestFft2:
         a = testing.shaped_random(self.shape, xp, dtype)
         if order == 'F':
             a = xp.asfortranarray(a)
-        out = xp.fft.ifft2(a, s=self.s, axes=self.axes, norm=self.norm)
+
+        with warnings.catch_warnings():
+            # axis=None and s != None, NumPy 2.0
+            warnings.simplefilter('ignore', DeprecationWarning)
+            out = xp.fft.ifft2(a, s=self.s, axes=self.axes, norm=self.norm)
 
         if self.axes is not None and not self.axes:
             assert out is a
@@ -421,7 +430,7 @@ class TestFft2:
         {'shape': (2, 0, 5), 's': None, 'axes': None},
         {'shape': (0, 0, 5), 's': None, 'axes': None},
     ],
-        testing.product({'norm': [None, 'backward', 'ortho', 'forward', '']})
+        testing.product({'norm': [None, 'backward', 'ortho', 'forward']})
     )
 ))
 class TestFftn:
@@ -436,7 +445,11 @@ class TestFftn:
         a = testing.shaped_random(self.shape, xp, dtype)
         if order == 'F':
             a = xp.asfortranarray(a)
-        out = xp.fft.fftn(a, s=self.s, axes=self.axes, norm=self.norm)
+
+        with warnings.catch_warnings():
+            # axis=None and s != None, NumPy 2.0
+            warnings.simplefilter('ignore', DeprecationWarning)
+            out = xp.fft.fftn(a, s=self.s, axes=self.axes, norm=self.norm)
 
         if self.axes is not None and not self.axes:
             assert out is a
@@ -454,7 +467,11 @@ class TestFftn:
         a = testing.shaped_random(self.shape, xp, dtype)
         if order == 'F':
             a = xp.asfortranarray(a)
-        out = xp.fft.ifftn(a, s=self.s, axes=self.axes, norm=self.norm)
+
+        with warnings.catch_warnings():
+            # axis=None and s != None, NumPy 2.0
+            warnings.simplefilter('ignore', DeprecationWarning)
+            out = xp.fft.ifftn(a, s=self.s, axes=self.axes, norm=self.norm)
 
         if self.axes is not None and not self.axes:
             assert out is a
@@ -1007,7 +1024,7 @@ class TestRfftn:
         {'shape': (2, 3, 4), 's': None, 'axes': None},
         {'shape': (2, 3, 4), 's': (2, 3), 'axes': (0, 1, 2)},
     ],
-        testing.product({'norm': [None, 'backward', 'ortho', 'forward', '']})
+        testing.product({'norm': [None, 'backward', 'ortho', 'forward']})
     )
 ))
 class TestPlanCtxManagerRfftn:
@@ -1078,7 +1095,7 @@ class TestPlanCtxManagerRfftn:
         {'shape': (2, 3, 4), 's': None, 'axes': None},
         {'shape': (2, 3, 4, 5), 's': None, 'axes': None},
     ],
-        testing.product({'norm': [None, 'backward', 'ortho', 'forward', '']})
+        testing.product({'norm': [None, 'backward', 'ortho', 'forward']})
     )
 ))
 class TestRfftnContiguity:
@@ -1150,7 +1167,7 @@ class TestRfftnEmptyAxes:
 @testing.parameterize(*testing.product({
     'n': [None, 5, 10, 15],
     'shape': [(10,), (10, 10)],
-    'norm': [None, 'backward', 'ortho', 'forward', ''],
+    'norm': [None, 'backward', 'ortho', 'forward'],
 }))
 class TestHfft:
 

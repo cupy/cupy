@@ -579,7 +579,7 @@ def ediff1d(arr, to_end=None, to_begin=None):
 # TODO(okuta): Implement cross
 
 
-def trapz(y, x=None, dx=1.0, axis=-1):
+def trapezoid(y, x=None, dx=1.0, axis=-1):
     """
     Integrate along the given axis using the composite trapezoidal rule.
     Integrate `y` (`x`) along the given axis.
@@ -597,7 +597,7 @@ def trapz(y, x=None, dx=1.0, axis=-1):
         cupy.ndarray: Definite integral as approximated by the trapezoidal
         rule.
 
-    .. seealso:: :func:`numpy.trapz`
+    .. seealso:: :func:`numpy.trapezoid`
     """
     if not isinstance(y, cupy.ndarray):
         raise TypeError('`y` should be of type cupy.ndarray')

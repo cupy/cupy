@@ -705,7 +705,7 @@ def get_cusparselt_version(formatted=False):
 def conda_get_target_name():
     out = None
     if PLATFORM_LINUX:
-        plat = platform.processor()
+        plat = platform.machine()
         if plat == "aarch64":
             out = "sbsa-linux"
         else:
