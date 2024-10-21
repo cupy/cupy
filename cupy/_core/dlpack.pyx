@@ -75,7 +75,7 @@ def get_build_version():
     return str(DLPACK_VERSION)
 
 
-cdef void pycapsule_deleter(object dltensor):
+cdef void pycapsule_deleter(object dltensor) noexcept:
     cdef DLManagedTensor* dlm_tensor
     # Do not invoke the deleter on a used capsule
     if cpython.PyCapsule_IsValid(dltensor, 'dltensor'):
@@ -84,7 +84,7 @@ cdef void pycapsule_deleter(object dltensor):
         dlm_tensor.deleter(dlm_tensor)
 
 
-cdef void deleter(DLManagedTensor* tensor) with gil:
+cdef void deleter(DLManagedTensor* tensor) noexcept:
     if tensor.manager_ctx is NULL:
         return
     stdlib.free(tensor.dl_tensor.shape)
