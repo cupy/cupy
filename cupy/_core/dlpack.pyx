@@ -14,7 +14,6 @@ import warnings
 import cupy
 import cupy._core.core as core
 
-from .dlpack cimport *
 
 
 cdef const char* CAPSULE_NAME = "dltensor"
@@ -31,11 +30,13 @@ cdef void pycapsule_deleter(object dltensor):
     if cpython.PyCapsule_IsValid(dltensor, CAPSULE_NAME):
         dlm_tensor = <DLManagedTensor*>(
             cpython.PyCapsule_GetPointer(dltensor, CAPSULE_NAME))
-        dlm_tensor.deleter(dlm_tensor)
+        if dlm_tensor.deleter:
+            dlm_tensor.deleter(dlm_tensor)
     elif cpython.PyCapsule_IsValid(dltensor, CAPSULE_NAME_VER):
         dlm_tensor_ver = <DLManagedTensorVersioned*>(
             cpython.PyCapsule_GetPointer(dltensor, CAPSULE_NAME_VER))
-        dlm_tensor_ver.deleter(dlm_tensor_ver)
+        if dlm_tensor_ver.deleter:
+            dlm_tensor_ver.deleter(dlm_tensor_ver)
     else:
         # No cleanup necessary, capsule was "consumed" (renamed).
         pass

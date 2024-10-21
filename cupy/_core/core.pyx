@@ -306,7 +306,6 @@ cdef class _ndarray_base:
         elif dl_device == (dlpack.kDLCPU, 0):
             # The user explicitly requested CPU device export.
             # NOTE:
-            # * We effectively ignore the stream here for now!
             # * We implement it by copying to NumPy, but we must indicate
             #   the copy, so will construct the dlpack ourselves.
             if copy is False and (dlpack.get_dlpack_device(self).device_type
@@ -316,7 +315,7 @@ cdef class _ndarray_base:
             to_cpu = True
         else:
             # TODO: We could probably support copy to a different CUDA device
-            #       but the moint point is to support host copies.
+            #       but the main point is to support host copies.
             raise BufferError("unsupported device requested.")
 
         # Note: the stream argument is supplied by the consumer, not by CuPy
