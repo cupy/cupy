@@ -58,7 +58,7 @@ class spmatrix(object):
 
     def __len__(self):
         raise TypeError('sparse matrix length is ambiguous; '
-                        'use getnnz() or shape[0]')
+                        'use shape[0]')
 
     def __str__(self):
         # TODO(unno): Do not use get method which is only available when scipy
@@ -219,11 +219,11 @@ class spmatrix(object):
 
     @property
     def size(self):
-        return self.getnnz()
+        return self.nnz
 
     @property
     def nnz(self):
-        return self.getnnz()
+        raise NotImplementedError
 
     @property
     def shape(self):
