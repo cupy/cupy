@@ -48,7 +48,7 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
           FLEXCI_WEBHOOK_SECRET: ${{ secrets.FLEXCI_WEBHOOK_SECRET }}
         run: |
-          ./.github/workflows/flexci_dispatcher.py \
+          ./.github/workflows/scripts/flexci_dispatcher.py \
               --event "${GITHUB_EVENT_NAME}" \
               --webhook "${GITHUB_EVENT_PATH}" \
               --projects ./.pfnci/config.tags.json \

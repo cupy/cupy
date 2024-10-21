@@ -371,3 +371,44 @@ def full_like(
     a = cupy.ndarray(shape, dtype, memptr, strides, order)
     cupy.copyto(a, fill_value, casting='unsafe')
     return a
+
+
+# Array API compatible array.astype wrapper
+
+def astype(x, dtype, /, *, copy=True):
+    """
+    Copies an array to a specified data type.
+
+    This function is an Array API compatible alternative to
+    `cupy.ndarray.astype`.
+
+    Parameters
+    ----------
+    x : ndarray
+        Input CuPy array to cast.
+    dtype : dtype
+        Data type of the result.
+    copy : bool, optional
+        Specifies whether to copy an array when the specified dtype matches
+        the data type of the input array ``x``. If ``True``, a newly allocated
+        array must always be returned. If ``False`` and the specified dtype
+        matches the data type of the input array, the input array must be
+        returned; otherwise, a newly allocated array must be returned.
+        Defaults to ``True``.
+
+    Returns
+    -------
+    out : ndarray
+        An array having the specified data type.
+
+    See Also
+    --------
+    ndarray.astype
+    numpy.astype
+
+    """
+    if not isinstance(x, cupy.ndarray):
+        raise TypeError(
+            f"Input should be a CuPy array. It is a {type(x)} instead."
+        )
+    return x.astype(dtype, copy=copy)

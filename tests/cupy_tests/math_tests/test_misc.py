@@ -177,9 +177,11 @@ class TestMisc:
         a = xp.array([-2.0, -4.0, 0.0, 4.0], dtype=dtype)
         return xp.fabs(a)
 
+    @testing.with_requires('numpy>=2.0')
     def test_sign(self):
         self.check_unary('sign', no_bool=True)
 
+    @testing.with_requires('numpy>=2.0')
     def test_sign_negative(self):
         self.check_unary_negative('sign', no_bool=True)
 
