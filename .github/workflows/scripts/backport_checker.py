@@ -28,7 +28,6 @@ def check_tbp_issue(
             return
 
         found_backport = False
-        needs_attention = False
         for bp_issue in bp_issues:
             if bp_issue.created_at < issue.created_at:
                 # As the creation date of backport PR should always be newer

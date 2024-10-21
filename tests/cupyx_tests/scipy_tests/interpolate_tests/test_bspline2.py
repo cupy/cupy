@@ -334,9 +334,9 @@ class TestInterp:
 
         # CubicSpline expects`bc_type=(left_pair, right_pair)`, while
         # here we expect `bc_type=(iterable, iterable)`.
-        l, r = (1, 0.0), (1, 0.0)
+        left, right = (1, 0.0), (1, 0.0)
         with pytest.raises(ValueError):
-            csi.make_interp_spline(x, y, bc_type=(l, r))
+            csi.make_interp_spline(x, y, bc_type=(left, right))
 
     def test_full_matrix(self):
         from cupyx.scipy.interpolate._bspline2 import (

@@ -1,0 +1,15 @@
+# TODO: Move to pyproject.toml once ready
+target-version = "py39"
+line-length = 80
+extend-exclude = [
+  "cupy/array_api",
+  "docs/source",
+  "tests/cupy_tests/array_api_tests",
+  "third_party",
+]
+
+[lint]
+select = ["E", "F", "W"]
+ignore = [
+  "E501", # line-too-long (let formatters handle this)
+]
