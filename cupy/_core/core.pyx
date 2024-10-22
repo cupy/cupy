@@ -316,7 +316,7 @@ cdef class _ndarray_base:
             to_cpu = True
         else:
             # TODO: We could probably support copy to a different CUDA device
-            #       but the moint point is to support host copies.
+            #       but the main point is to support host copies.
             raise BufferError("unsupported device requested.")
 
         # Note: the stream argument is supplied by the consumer, not by CuPy

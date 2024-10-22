@@ -15,8 +15,6 @@ import cupy
 import cupy._core.core as core
 from cupy.cuda cimport stream as py_stream_module
 
-from .dlpack cimport *
-
 
 cdef const char* CAPSULE_NAME = "dltensor"
 cdef const char* CAPSULE_NAME_VER = "dltensor_versioned"
@@ -336,9 +334,12 @@ cdef class DLPackMemory(memory.BaseMemory):
     def __dealloc__(self):
         # dlm_tensor could be uninitialized if an error is raised in __init__
         if self.dlm_tensor_unversioned != NULL:
-            self.dlm_tensor_unversioned.deleter(self.dlm_tensor_unversioned)
+            if self.dlm_tensor_unversioned.deleter != NULL:
+                self.dlm_tensor_unversioned.deleter(
+                    self.dlm_tensor_unversioned)
         elif self.dlm_tensor_ver != NULL:
-            self.dlm_tensor_ver.deleter(self.dlm_tensor_ver)
+            if self.dlm_tensor_ver.deleter != NULL:
+                self.dlm_tensor_ver.deleter(self.dlm_tensor_ver)
 
 
 # The name of this function is following the framework integration guide of
