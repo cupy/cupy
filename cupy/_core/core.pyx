@@ -325,7 +325,10 @@ cdef class _ndarray_base:
         curr_stream_ptr = curr_stream.ptr
 
         # stream must be an int for CUDA/ROCm
-        if not runtime._is_hip_environment:  # CUDA
+        if to_cpu and stream is None:
+            # We will use the current stream to copy/sync later.
+            stream = None
+        elif not runtime._is_hip_environment:  # CUDA
             if stream is None:
                 stream = runtime.streamLegacy
             elif not isinstance(stream, int) or stream < -1:
@@ -356,14 +359,17 @@ cdef class _ndarray_base:
 
         # if -1, no stream order should be established; otherwise, the consumer
         # stream should wait for the work on CuPy's current stream to finish
-        if stream >= 0 and stream != curr_stream_ptr:
-            next_stream = stream_mod.ExternalStream(stream)
+        if stream is None or stream < 0:
+            # Establish no stream order for now (for `stream=None` do it later)
+            stream = None
+        elif stream != curr_stream_ptr:
+            stream = stream_mod.ExternalStream(stream)
             event = curr_stream.record()
-            next_stream.wait_event(event)
+            stream.wait_event(event)
 
         return dlpack.toDlpack(
             self, use_versioned=use_versioned, to_cpu=to_cpu,
-            ensure_copy=copy is True)
+            ensure_copy=copy is True, stream=stream)
 
     def __dlpack_device__(self):
         cdef dlpack.DLDevice dldevice = dlpack.get_dlpack_device(self)

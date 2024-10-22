@@ -13,6 +13,7 @@ import warnings
 
 import cupy
 import cupy._core.core as core
+from cupy.cuda cimport stream as py_stream_module
 
 from .dlpack cimport *
 
@@ -104,8 +105,28 @@ cdef DLDevice get_dlpack_device(_ndarray_base array):
 # TensorComprehensions.
 cpdef object toDlpack(
     _ndarray_base array, bint use_versioned=True, bint to_cpu=False,
-    bint ensure_copy=False
+    bint ensure_copy=False, stream=None
 ) except +:
+    """Create a dlpack capsule for an array.
+
+    Parameters
+    ----------
+    array : ndarray
+        The array to export
+    use_versioned : bool
+        Whether to use the versioned struct.  In the future this may be
+        which version to use.
+    to_cpu : bool
+        Whether we should make the data CPU available.
+    ensure_copy : bool
+        If `to_cpu` is True, whether a copy is requested/required.
+    stream : None or stream
+        Only used with `to_cpu`. The stream to use for making the data
+        available to the CPU.
+        If `None`, we make sure to synchronize to have the data available
+        as soon as we return.  Otherwise, we use this stream to copy the
+        data (as requested by the user).
+    """
     cdef DLManagedTensor* dlm_tensor
     cdef DLManagedTensorVersioned* dlm_tensor_ver
     cdef DLTensor* dl_tensor
@@ -129,10 +150,15 @@ cpdef object toDlpack(
         owner = array
         device.device_type = device.device_type
         device.device_id = device.device_id
+        if stream is None:
+            # The user did not request a stream to synchronize on.  We have to
+            # assume they don't even know this is GPU data, so must fully
+            # synchronize on the current stream.
+            py_stream_module.get_current_stream().synchronize()
     else:
         # We need to create a CPU copy.  Assumes owner.dtype == array.dtype.
-        # TODO: As noted at calling site, this does not honor the "stream".
-        owner = array.get(stream=None, order='A')
+        owner = array.get(
+            stream=stream, order='A', out=None, blocking=stream is None)
         device.device_type = kDLCPU
         device.device_id = 0
 
