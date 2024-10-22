@@ -89,14 +89,31 @@ class TestNewDLPackConversion:
         testing.assert_array_equal(
             orig_array.data.ptr, out_array.data.ptr)
 
-    @pytest.mark.parametrize("kwargs", [
-        {}, {"max_version": None}, {"max_version": (1, 0)},
-        {"max_version": (10, 10)}]
-    )
-    def test_conversion_max_version(self, kwargs):
+    def test_from_dlpack_and_conv_errors(self):
+        orig_array = _gen_array("int8")
+
+        with pytest.raises(NotImplementedError):
+            cupy.from_dlpack(orig_array, device=orig_array.device)
+
+        with pytest.raises(BufferError):
+            # `__dlpack__` only allows `copy=True` for host copies.
+            cupy.from_dlpack(orig_array, copy=True)
+
+    @pytest.mark.parametrize("kwargs, versioned", [
+        ({}, False), ({"max_version": None}, False),
+        ({"max_version": (1, 0)}, True), ({"max_version": (10, 10)}, True),
+        ({"max_version": (0, 8)}, False)
+    ])
+    def test_conversion_max_version(self, kwargs, versioned):
         orig_array = _gen_array("int8")
 
         capsule = orig_array.__dlpack__(**kwargs)
+        # We can identify if the version is correct via the name:
+        if versioned:
+            assert '"dltensor_versioned"' in str(capsule)
+        else:
+            assert '"dltensor"' in str(capsule)
+
         out_array = cupy.from_dlpack(
             DLDummy(capsule, orig_array.__dlpack_device__()))
 
@@ -190,7 +207,7 @@ class TestNewDLPackConversion:
 
 class TestDLTensorMemory:
 
-    @pytest.fixture(scope="class")
+    @pytest.fixture
     def pool(self):
         old_pool = cupy.get_default_memory_pool()
         pool = cupy.cuda.MemoryPool()

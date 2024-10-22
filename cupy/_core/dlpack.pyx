@@ -22,6 +22,11 @@ cdef const char* CAPSULE_NAME_VER = "dltensor_versioned"
 cdef const char* USED_CAPSULE_NAME = "used_dltensor"
 cdef const char* USED_CAPSULE_NAME_VER = "used_dltensor_versioned"
 
+# The higest major and minor DLPack version currently implemented and that
+# will be usually exported.
+cdef uint32_t IMPL_VER_MAJOR = 1
+cdef uint32_t IMPL_VER_MINOR = 0
+
 
 cdef void pycapsule_deleter(object dltensor):
     cdef DLManagedTensor* dlm_tensor
@@ -118,10 +123,12 @@ cpdef object toDlpack(
     if not to_cpu:
         owner = array
     elif not ensure_copy and device.device_type == kDLCUDAManaged:
-        # Managed memory is CPU accessible but consumer may expect kDLCPU.
+        # Managed memory is CPU accessible.  Note that the consumer may expect
+        # `kDLCPU` here.  We only honor this request in spirit, but not
+        # strictly (because e.g. NumPy will remember the managed part).
         owner = array
-        device.device_type = kDLCPU
-        device.device_id = 0
+        device.device_type = device.device_type
+        device.device_id = device.device_id
     else:
         # We need to create a CPU copy.  Assumes owner.dtype == array.dtype.
         # TODO: As noted at calling site, this does not honor the "stream".
@@ -153,12 +160,11 @@ cpdef object toDlpack(
         capsule_name = CAPSULE_NAME_VER
 
         dlm_tensor_ver.manager_ctx = <void*>owner
-        cpython.Py_INCREF(owner)
         dlm_tensor_ver.deleter = deleter_ver
 
         # "Versioned" specific initialization:
-        dlm_tensor_ver.version.major = 1
-        dlm_tensor_ver.version.minor = 0
+        dlm_tensor_ver.version.major = IMPL_VER_MAJOR
+        dlm_tensor_ver.version.minor = IMPL_VER_MINOR
 
         # CuPy arrays are writeable but may be copied if copying to the CPU.
         dlm_tensor_ver.flags = 0
@@ -171,10 +177,9 @@ cpdef object toDlpack(
         capsule_name = CAPSULE_NAME
 
         dlm_tensor.manager_ctx = <void*>owner
-        cpython.Py_INCREF(owner)
         dlm_tensor.deleter = deleter
 
-    # Create capsule now.  After this, the capsule will clean up on error.
+    # Create capsule now. After the else, the capsule will clean up on error.
     # (Note that it is good to handle expected BufferErrors early.)
     try:
         capsule = cpython.PyCapsule_New(
@@ -182,12 +187,15 @@ cpdef object toDlpack(
     except BaseException:
         stdlib.free(dlm_tensor)
         stdlib.free(shape_strides)
-        cpython.Py_DECREF(array)
         raise
+    else:
+        # Finalize dlm_tensor for `pycapsule_deleter`.  This else block must
+        # never fail/raise and initialize everything used by the deleter.
+        cpython.Py_INCREF(owner)
+        dl_tensor.shape = shape_strides
 
-    # Fill in and finalize the dl_tensor struct (need shape set for cleanup)
+    # And fill in all other fields (that are not part of the cleanup)
     dl_tensor.ndim = ndim
-    dl_tensor.shape = shape_strides
     dl_tensor.strides = shape_strides + ndim
     dl_tensor.byte_offset = 0
 
@@ -210,13 +218,13 @@ cpdef object toDlpack(
     else:
         # Same as above, but we got a NumPy array, so go through Python
         # in the off-chance that the copy has changed the strides.
-        dl_tensor.data = <void *><intptr_t>owner.ctypes.data
+        dl_tensor.data = <void *><intptr_t>(owner.ctypes.data)
         shape = owner.shape
         strides = owner.strides
 
         for n in range(ndim):
             shape_strides[n] = shape[n]
-        dl_tensor.shape = shape_strides
+
         for n in range(ndim):
             shape_strides[n + ndim] = strides[n] // dtype_itemsize
 
@@ -254,7 +262,7 @@ cdef class DLPackMemory(memory.BaseMemory):
 
             # When we have a versioned tensor, we need to verify the version
             # before further use.
-            if self.dlm_tensor_ver.version.major > 1:
+            if self.dlm_tensor_ver.version.major > IMPL_VER_MAJOR:
                 raise BufferError("DLPack exported too new major version.")
 
             # TODO(seberg): In principle we should raise an error if we got a
@@ -432,13 +440,17 @@ cdef inline _ndarray_base _dlpack_to_cupy_array(dltensor) except +:
     return core.ndarray(shape_vec, cp_dtype, mem_ptr, strides=strides_vec)
 
 
-def from_dlpack(array, *, dl_device=None, copy=None):
+def from_dlpack(array, *, device=None, copy=None):
     """Zero-copy conversion between array objects compliant with the DLPack
     data exchange protocol.
 
     Args:
         array (object): an array object that implements two methods:
             ``__dlpack__()`` and ``__dlpack_device__()``.
+        device (tuple): The dlpack device as a ``(device_type, device_id)``
+            tuple.
+        copy (boolean|None): Request export to never or always make a copy.
+            By default (``None``) the exporter may or may not make a copy.
 
     Returns:
         cupy.ndarray: a CuPy array that can be safely accessed on CuPy's
@@ -470,7 +482,7 @@ def from_dlpack(array, *, dl_device=None, copy=None):
     else:
         dev_type, dev_id = array.__dlpack_device__()
 
-    if dl_device is not None:
+    if device is not None:
         # We can probably support the user picking a specific GPU in case that
         # is relevant to them for some reason.
         raise NotImplementedError("from_dlpack() does not support device yet.")
@@ -488,7 +500,10 @@ def from_dlpack(array, *, dl_device=None, copy=None):
             # For backwards compatibility we catch TypeErrors for now.
             try:
                 dltensor = array.__dlpack__(
-                    stream=stream, max_version=(1, 0), copy=copy)
+                    stream=stream,
+                    max_version=(IMPL_VER_MAJOR, IMPL_VER_MINOR),
+                    copy=copy
+                )
             except TypeError:
                 if copy is not None:
                     raise
@@ -505,7 +520,10 @@ def from_dlpack(array, *, dl_device=None, copy=None):
             # For backwards compatibility we catch TypeErrors for now.
             try:
                 dltensor = array.__dlpack__(
-                    stream=stream, max_version=(1, 0), copy=copy)
+                    stream=stream,
+                    max_version=(IMPL_VER_MAJOR, IMPL_VER_MINOR),
+                    copy=copy
+                )
             except TypeError:
                 if copy is not None:
                     raise
