@@ -1,4 +1,5 @@
 import copy
+import functools
 import hashlib
 import math
 import os
@@ -91,7 +92,7 @@ def _run_cc(cmd, cwd, backend, log_stream=None):
         raise OSError(msg.format(backend))
 
 
-@_util.memoize()
+@functools.cache
 def _get_extra_path_for_msvc():
     cl_exe = shutil.which('cl.exe')
     if cl_exe:
@@ -159,7 +160,7 @@ def _get_nvrtc_version():
 _tegra_archs = ('32', '53', '62', '72', '87')
 
 
-@_util.memoize()
+@functools.cache
 def _get_max_compute_capability():
     major, minor = _get_nvrtc_version()
     if major < 11:
@@ -179,7 +180,7 @@ def _get_max_compute_capability():
     return nvrtc_max_compute_capability
 
 
-@_util.memoize()
+@functools.cache
 def _get_extra_include_dir_opts():
     major, minor = _get_nvrtc_version()
     return tuple(

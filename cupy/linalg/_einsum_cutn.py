@@ -1,3 +1,4 @@
+import functools
 import threading
 import warnings
 
@@ -8,7 +9,6 @@ except ImportError:
     cuquantum = cutensornet = None
 
 import cupy
-from cupy import _util
 from cupy._core import _accelerator
 from cupy.cuda.device import Handle
 
@@ -16,7 +16,7 @@ from cupy.cuda.device import Handle
 _tls = threading.local()
 
 
-@_util.memoize()
+@functools.cache
 def _is_cuqnt_22_11_or_higher():
     ver = [int(i) for i in cuquantum.__version__.split('.')]
     if (ver[0] > 22) or (ver[0] == 22 and ver[1] >= 11):

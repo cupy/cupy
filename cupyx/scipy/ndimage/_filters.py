@@ -1,3 +1,5 @@
+import functools
+
 import numpy
 
 import cupy
@@ -1171,7 +1173,7 @@ __device__ void sort(X *array, int size) {{
 }}'''
 
 
-@cupy._util.memoize()
+@functools.cache
 def _get_shell_gap(filter_size):
     gap = 1
     while gap < filter_size:

@@ -1,3 +1,4 @@
+import functools
 import string
 import warnings
 
@@ -501,14 +502,14 @@ cdef class ParameterInfo:
             ]))
 
 
-@_util.memoize()
+@functools.cache
 def _get_param_info(str s, is_const):
     if len(s) == 0:
         return ()
     return tuple([ParameterInfo(i, is_const) for i in s.strip().split(',')])
 
 
-@_util.memoize()
+@functools.cache
 def _decide_params_type(in_params, out_params, in_args_dtype, out_args_dtype):
     return _decide_params_type_core(in_params, out_params, in_args_dtype,
                                     out_args_dtype)
@@ -689,7 +690,7 @@ cdef list _get_out_args_with_params(
     return out_args
 
 
-@_util.memoize()
+@functools.cache
 def _get_elementwise_kernel_code(
         tuple arginfos, _TypeMap type_map,
         tuple params, str operation, str name,

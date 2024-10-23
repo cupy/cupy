@@ -1,11 +1,11 @@
 # distutils: language = c++
 
+import functools
 import threading
 
 from cupy._core import syncdetect
 from cupy_backends.cuda.api cimport runtime
 from cupy_backends.cuda.api import runtime as runtime_module
-from cupy import _util
 
 
 cdef object _thread_local = threading.local()
@@ -102,7 +102,7 @@ cdef bint _enable_peer_access(int device, int peer) except -1:
     return True
 
 
-@_util.memoize()
+@functools.cache
 def _get_attributes(device_id):
     """Return a dict containing all device attributes."""
     d = {}

@@ -1,3 +1,5 @@
+import functools
+
 from cpython cimport sequence
 
 from cupy._core cimport _carray
@@ -687,7 +689,7 @@ cdef class _SimpleReductionKernel(_AbstractReductionKernel):
             self._input_expr, self._output_expr, self.preamble, ())
 
 
-@_util.memoize()
+@functools.cache
 def _SimpleReductionKernel_get_cached_function_code(
         map_expr, reduce_expr, post_map_expr, reduce_type,
         params, arginfos, _kernel._TypeMap type_map,
@@ -880,7 +882,7 @@ cdef class ReductionKernel(_AbstractReductionKernel):
             self.preamble, self.options)
 
 
-@_util.memoize()
+@functools.cache
 def _ReductionKernel_get_cached_function_code(
         nin, nout, params, arginfos, _kernel._TypeMap type_map,
         name, block_size, reduce_type, identity, map_expr, reduce_expr,
