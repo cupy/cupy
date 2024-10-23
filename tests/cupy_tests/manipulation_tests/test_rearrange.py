@@ -45,12 +45,14 @@ class TestRoll(unittest.TestCase):
 
 class TestRollTypeError(unittest.TestCase):
 
+    @testing.with_requires("numpy>=2.1")
     def test_roll_invalid_shift_castable(self):
         for xp in (numpy, cupy):
             x = testing.shaped_arange((5, 2), xp)
             # Weird but works due to `int` call
             xp.roll(x, '0', axis=0)
 
+    @testing.with_requires("numpy>=2.1")
     def test_roll_invalid_shift(self):
         for xp in (numpy, cupy):
             x = testing.shaped_arange((5, 2), xp)
