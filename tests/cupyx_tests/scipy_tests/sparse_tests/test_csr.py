@@ -2027,7 +2027,7 @@ class TestCsrMatrixComparison:
     @contextlib.contextmanager
     def _assert_warns_efficiency(self, sp, scalar_rhs=None):
         if scalar_rhs is None and self._compare(0, 0):
-            with testing.assert_warns(sp.SparseEfficiencyWarning):
+            with pytest.warns(sp.SparseEfficiencyWarning):
                 yield
         elif scalar_rhs is not None and self._compare(0, scalar_rhs):
             if sp is sparse:  # cupy
@@ -2036,7 +2036,7 @@ class TestCsrMatrixComparison:
                 with self._ignore_efficiency_warning():
                     yield
             else:  # scipy
-                with testing.assert_warns(sp.SparseEfficiencyWarning):
+                with pytest.warns(sp.SparseEfficiencyWarning):
                     yield
         else:
             yield

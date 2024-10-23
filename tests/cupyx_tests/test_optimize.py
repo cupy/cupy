@@ -135,7 +135,7 @@ class TestOptimize(unittest.TestCase):
             filepath = directory + '/optimize_params'
 
             # non-existing file, readonly=True
-            with testing.assert_warns(UserWarning):
+            with pytest.warns(UserWarning):
                 with cupyx.optimizing.optimize(path=filepath, readonly=True):
                     cupy.sum(cupy.arange(2))
 

@@ -35,7 +35,7 @@ class TestProdSequence(unittest.TestCase):
 class TestGetSize:
 
     def test_none(self):
-        with testing.assert_warns(DeprecationWarning):
+        with pytest.warns(DeprecationWarning):
             assert internal.get_size(None) == ()
 
     def check_collection(self, a):

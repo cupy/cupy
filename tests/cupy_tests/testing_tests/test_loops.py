@@ -51,7 +51,7 @@ class TestCheckCupyNumpyError(unittest.TestCase):
     }
 
     def test_both_success(self):
-        with testing.assert_warns(DeprecationWarning):
+        with pytest.warns(DeprecationWarning):
             @testing.numpy_cupy_raises()
             def dummy_both_success(self, xp):
                 pass
@@ -60,7 +60,7 @@ class TestCheckCupyNumpyError(unittest.TestCase):
             dummy_both_success(self)
 
     def test_cupy_error(self):
-        with testing.assert_warns(DeprecationWarning):
+        with pytest.warns(DeprecationWarning):
             @testing.numpy_cupy_raises()
             def dummy_cupy_error(self, xp):
                 if xp is cupy:
@@ -70,7 +70,7 @@ class TestCheckCupyNumpyError(unittest.TestCase):
             dummy_cupy_error(self)
 
     def test_numpy_error(self):
-        with testing.assert_warns(DeprecationWarning):
+        with pytest.warns(DeprecationWarning):
             @testing.numpy_cupy_raises()
             def dummy_numpy_error(self, xp):
                 if xp is numpy:
@@ -80,7 +80,7 @@ class TestCheckCupyNumpyError(unittest.TestCase):
             dummy_numpy_error(self)
 
     def test_cupy_numpy_different_error(self):
-        with testing.assert_warns(DeprecationWarning):
+        with pytest.warns(DeprecationWarning):
             @testing.numpy_cupy_raises()
             def dummy_cupy_numpy_different_error(self, xp):
                 if xp is cupy:
@@ -95,7 +95,7 @@ class TestCheckCupyNumpyError(unittest.TestCase):
             dummy_cupy_numpy_different_error(self)
 
     def test_cupy_derived_error(self):
-        with testing.assert_warns(DeprecationWarning):
+        with pytest.warns(DeprecationWarning):
             @testing.numpy_cupy_raises()
             def dummy_cupy_derived_error(self, xp):
                 if xp is cupy:
@@ -106,7 +106,7 @@ class TestCheckCupyNumpyError(unittest.TestCase):
         dummy_cupy_derived_error(self)  # Assert no exceptions
 
     def test_numpy_derived_error(self):
-        with testing.assert_warns(DeprecationWarning):
+        with pytest.warns(DeprecationWarning):
             @testing.numpy_cupy_raises()
             def dummy_numpy_derived_error(self, xp):
                 if xp is cupy:
@@ -122,7 +122,7 @@ class TestCheckCupyNumpyError(unittest.TestCase):
             dummy_numpy_derived_error(self)
 
     def test_same_error(self):
-        with testing.assert_warns(DeprecationWarning):
+        with pytest.warns(DeprecationWarning):
             @testing.numpy_cupy_raises(accept_error=Exception)
             def dummy_same_error(self, xp):
                 raise Exception(self.tbs.get(xp))
@@ -130,7 +130,7 @@ class TestCheckCupyNumpyError(unittest.TestCase):
         dummy_same_error(self)
 
     def test_cupy_derived_unaccept_error(self):
-        with testing.assert_warns(DeprecationWarning):
+        with pytest.warns(DeprecationWarning):
             @testing.numpy_cupy_raises(accept_error=ValueError)
             def dummy_cupy_derived_unaccept_error(self, xp):
                 if xp is cupy:
@@ -146,7 +146,7 @@ class TestCheckCupyNumpyError(unittest.TestCase):
             dummy_cupy_derived_unaccept_error(self)
 
     def test_numpy_derived_unaccept_error(self):
-        with testing.assert_warns(DeprecationWarning):
+        with pytest.warns(DeprecationWarning):
             @testing.numpy_cupy_raises(accept_error=ValueError)
             def dummy_numpy_derived_unaccept_error(self, xp):
                 if xp is cupy:
@@ -162,7 +162,7 @@ class TestCheckCupyNumpyError(unittest.TestCase):
             dummy_numpy_derived_unaccept_error(self)
 
     def test_forbidden_error(self):
-        with testing.assert_warns(DeprecationWarning):
+        with pytest.warns(DeprecationWarning):
             @testing.numpy_cupy_raises(accept_error=False)
             def dummy_forbidden_error(self, xp):
                 raise Exception(self.tbs.get(xp))
@@ -173,7 +173,7 @@ class TestCheckCupyNumpyError(unittest.TestCase):
             dummy_forbidden_error(self)
 
     def test_axis_error_different_type(self):
-        with testing.assert_warns(DeprecationWarning):
+        with pytest.warns(DeprecationWarning):
             @testing.numpy_cupy_raises()
             def dummy_axis_error(self, xp):
                 if xp is cupy:
@@ -187,7 +187,7 @@ class TestCheckCupyNumpyError(unittest.TestCase):
             dummy_axis_error(self)
 
     def test_axis_error_value_different_type(self):
-        with testing.assert_warns(DeprecationWarning):
+        with pytest.warns(DeprecationWarning):
             @testing.numpy_cupy_raises()
             def dummy_axis_error(self, xp):
                 if xp is cupy:
@@ -201,7 +201,7 @@ class TestCheckCupyNumpyError(unittest.TestCase):
             dummy_axis_error(self)
 
     def test_axis_error_index_different_type(self):
-        with testing.assert_warns(DeprecationWarning):
+        with pytest.warns(DeprecationWarning):
             @testing.numpy_cupy_raises()
             def dummy_axis_error(self, xp):
                 if xp is cupy:

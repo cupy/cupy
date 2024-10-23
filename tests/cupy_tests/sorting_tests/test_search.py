@@ -373,7 +373,7 @@ class TestNonzeroZeroDimension:
     @testing.numpy_cupy_array_equal()
     def test_nonzero(self, xp, dtype):
         array = xp.array(self.array, dtype=dtype)
-        with testing.assert_warns(DeprecationWarning):
+        with pytest.warns(DeprecationWarning):
             return xp.nonzero(array)
 
 

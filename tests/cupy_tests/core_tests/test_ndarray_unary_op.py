@@ -12,7 +12,7 @@ class TestArrayBoolOp(unittest.TestCase):
 
     @testing.for_all_dtypes()
     def test_bool_empty(self, dtype):
-        with testing.assert_warns(DeprecationWarning):
+        with pytest.warns(DeprecationWarning):
             assert not bool(cupy.array((), dtype=dtype))
 
     def test_bool_scalar_bool(self):

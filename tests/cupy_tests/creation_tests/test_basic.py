@@ -47,7 +47,7 @@ class TestBasic:
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_empty_scalar_none(self, xp, dtype, order):
-        with testing.assert_warns(DeprecationWarning):
+        with pytest.warns(DeprecationWarning):
             a = xp.empty(None, dtype=dtype, order=order)
         a.fill(0)
         return a
@@ -201,7 +201,7 @@ class TestBasic:
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_zeros_scalar_none(self, xp, dtype, order):
-        with testing.assert_warns(DeprecationWarning):
+        with pytest.warns(DeprecationWarning):
             return xp.zeros(None, dtype=dtype, order=order)
 
     @testing.for_CF_orders()

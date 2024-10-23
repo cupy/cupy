@@ -535,7 +535,7 @@ class TestSingleDeviceMemoryPool(unittest.TestCase):
         p1 = self.pool.malloc(self.unit * 4)
         ptr1 = p1.ptr
         del p1
-        with testing.assert_warns(DeprecationWarning):
+        with pytest.warns(DeprecationWarning):
             self.pool.free_all_free()
         p2 = self.pool.malloc(self.unit * 4)
         assert ptr1 != p2.ptr
@@ -731,14 +731,14 @@ class TestMemoryPool(unittest.TestCase):
             assert self.pool.n_free_blocks() == 0
             mem.free()
             assert self.pool.n_free_blocks() == 1
-            with testing.assert_warns(DeprecationWarning):
+            with pytest.warns(DeprecationWarning):
                 self.pool.free_all_free()
             assert self.pool.n_free_blocks() == 0
 
     def test_free_all_free_without_malloc(self):
         with cupy.cuda.Device():
             # call directly without malloc.
-            with testing.assert_warns(DeprecationWarning):
+            with pytest.warns(DeprecationWarning):
                 self.pool.free_all_free()
             assert self.pool.n_free_blocks() == 0
 

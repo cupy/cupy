@@ -72,7 +72,7 @@ class TestCov(unittest.TestCase):
     def check_warns(self, a_shape, y_shape=None, rowvar=True, bias=False,
                     ddof=None, xp=None, dtype=None,
                     fweights=None, aweights=None):
-        with testing.assert_warns(RuntimeWarning):
+        with pytest.warns(RuntimeWarning):
             a, y = self.generate_input(a_shape, y_shape, xp, dtype)
             return xp.cov(a, y, rowvar, bias, ddof,
                           fweights, aweights, dtype=dtype)
