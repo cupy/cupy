@@ -107,6 +107,7 @@ class TestMisc:
         a = testing.shaped_arange((2, 3, 4), xp, dtype)
         return a.clip(3, None)
 
+    @testing.with_requires("numpy<2.0")
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
     def test_clip_min_max_none(self, dtype):
         for xp in (numpy, cupy):
@@ -171,6 +172,7 @@ class TestMisc:
         a = xp.array([2, 3, 4], dtype=dtype)
         return xp.fabs(a)
 
+    @testing.with_requires("numpy<2.0")
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(atol=1e-5)
     def test_fabs_negative(self, xp, dtype):

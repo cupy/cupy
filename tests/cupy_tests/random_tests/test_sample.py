@@ -109,6 +109,7 @@ class TestRandint2(unittest.TestCase):
 
 class TestRandintDtype(unittest.TestCase):
 
+    @testing.with_requires("numpy<2.0")
     @testing.for_dtypes([
         numpy.int8, numpy.uint8, numpy.int16, numpy.uint16, numpy.int32])
     def test_dtype(self, dtype):
