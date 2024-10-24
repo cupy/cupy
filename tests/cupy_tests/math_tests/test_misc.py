@@ -107,12 +107,12 @@ class TestMisc:
         a = testing.shaped_arange((2, 3, 4), xp, dtype)
         return a.clip(3, None)
 
+    @testing.with_requires("numpy>=2.0")
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
-    def test_clip_min_max_none(self, dtype):
-        for xp in (numpy, cupy):
-            a = testing.shaped_arange((2, 3, 4), xp, dtype)
-            with pytest.raises(ValueError):
-                a.clip(None, None)
+    @testing.numpy_cupy_array_equal()
+    def test_clip_min_max_none(self, xp, dtype):
+        a = testing.shaped_arange((2, 3, 4), xp, dtype)
+        return a.clip(None, None)
 
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_array_equal()
@@ -171,9 +171,12 @@ class TestMisc:
         a = xp.array([2, 3, 4], dtype=dtype)
         return xp.fabs(a)
 
+    @testing.with_requires("numpy>=2.0")
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(atol=1e-5)
     def test_fabs_negative(self, xp, dtype):
+        if numpy.issubdtype(dtype, numpy.unsignedinteger):
+            pytest.skip("trying to set negative value to unsigned integer")
         a = xp.array([-2.0, -4.0, 0.0, 4.0], dtype=dtype)
         return xp.fabs(a)
 
