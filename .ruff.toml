@@ -13,3 +13,8 @@ select = ["E", "F", "W"]
 ignore = [
   "E501", # line-too-long (let formatters handle this)
 ]
+
+[lint.per-file-ignores]
+"__init__.py" = [
+  "F401", # unused-import
+]
