@@ -75,7 +75,7 @@ cublasStatus_t cublasGetVersion(cublasHandle_t handle, int *version) {
     // We use the rocBLAS version here because 1. it is the underlying workhorse,
     // and 2. we might get rid of the hipBLAS layer at some point (see TODO above).
     // ex: the rocBLAS version string is 2.22.0.2367-b2cceba in ROCm 3.5.0
-    *version = 10000 * ROCBLAS_VERSION_MAJOR + 100 * ROCBLAS_VERSION_MINOR + ROCBLAS_VERSION_PATCH;
+    *version = 12345;  // 10000 * ROCBLAS_VERSION_MAJOR + 100 * ROCBLAS_VERSION_MINOR + ROCBLAS_VERSION_PATCH;
     return HIPBLAS_STATUS_SUCCESS;
 }
 
