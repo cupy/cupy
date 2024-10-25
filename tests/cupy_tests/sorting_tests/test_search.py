@@ -366,7 +366,7 @@ class TestNonzero:
     {'array': numpy.array(0)},
     {'array': numpy.array(1)},
 )
-@testing.with_requires('numpy>=1.17.0')
+@testing.with_requires('numpy>=1.17.0,<2.0')
 class TestNonzeroZeroDimension:
 
     @testing.for_all_dtypes()
