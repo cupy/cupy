@@ -146,8 +146,6 @@ cpdef object toDlpack(
         # `kDLCPU` here.  We only honor this request in spirit, but not
         # strictly (because e.g. NumPy will remember the managed part).
         owner = array
-        device.device_type = device.device_type
-        device.device_id = device.device_id
         if stream is None:
             # The user did not request a stream to synchronize on.  We have to
             # assume they don't even know this is GPU data, so must fully
@@ -167,7 +165,7 @@ cpdef object toDlpack(
     if dlm_tensor_ptr == NULL:
         raise MemoryError()
 
-    # Note: could coalesc this with the previous allocation in principle
+    # Note: could coalesce this with the previous allocation in principle
     cdef int64_t* shape_strides = <int64_t*>stdlib.malloc(
         ndim * sizeof(int64_t) * 2)
     if shape_strides == NULL:
@@ -209,7 +207,7 @@ cpdef object toDlpack(
         capsule = cpython.PyCapsule_New(
             dlm_tensor_ptr, capsule_name, pycapsule_deleter)
     except BaseException:
-        stdlib.free(dlm_tensor)
+        stdlib.free(dlm_tensor_ptr)
         stdlib.free(shape_strides)
         raise
     else:
