@@ -134,8 +134,6 @@ cdef _ndarray_base _ndarray_cumprod(_ndarray_base self, axis, dtype, out):
 
 
 cdef _ndarray_base _ndarray_clip(_ndarray_base self, a_min, a_max, out):
-    if a_min is None and a_max is None:
-        raise ValueError('array_clip: must set either max or min')
     kind = self.dtype.kind
     if a_min is None:
         if kind == 'f':

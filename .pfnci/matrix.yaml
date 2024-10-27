@@ -506,6 +506,30 @@
   env:CUPY_ACCELERATORS: null
   test: "unit"
 
+# ROCm 6.2 | Linux
+# The latest ROCm version matrix is intended to cover the highest supported combination.
+- project: "cupy.linux.rocm-6-2"
+  _url: "https://github.com/cupy/self-hosted-ci/actions/workflows/ci.yml"
+  tags: null  # self-hosted
+  target: "rocm-6-2"
+  system: "linux"
+  os: "ubuntu:22.04"
+  cuda: null
+  rocm: '6.2'
+  nccl: null
+  cutensor: null
+  cusparselt: null
+  cudnn: null
+  python: "3.12"
+  numpy: "1.26"
+  scipy: "1.14"
+  optuna: "3"
+  mpi4py: null
+  cython: "0.29"
+  cuda-python: null
+  env:CUPY_ACCELERATORS: null
+  test: "unit"
+
 ###############################################################################
 # Slow Tests
 ###############################################################################

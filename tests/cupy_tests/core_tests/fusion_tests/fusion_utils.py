@@ -48,7 +48,7 @@ def check_fusion(
             check_array(actual, expected, **check_array_kwargs)
 
         elif isinstance(expected, (list, tuple)):
-            assert type(actual) == type(expected)
+            assert type(actual) is type(expected)
             for item_actual, item_expected in zip(actual, expected):
                 check(xp, item_actual, item_expected)
 
