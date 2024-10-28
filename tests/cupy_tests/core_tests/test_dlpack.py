@@ -96,7 +96,8 @@ class TestNewDLPackConversion:
             cupy.from_dlpack(orig_array, device=orig_array.device)
 
         with pytest.raises(BufferError):
-            # `__dlpack__` only allows `copy=True` for host copies.
+            # Currently CuPy's `__dlpack__` only allows `copy=True`
+            # for host copies.
             cupy.from_dlpack(orig_array, copy=True)
 
     @pytest.mark.parametrize("kwargs, versioned", [

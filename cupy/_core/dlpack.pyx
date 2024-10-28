@@ -61,20 +61,20 @@ cdef void deleter_ver(DLManagedTensorVersioned* tensor) with gil:
     stdlib.free(tensor)
 
 
-cdef uint8_t get_dlpack_dtype_code(dtype):
+cdef uint8_t get_dlpack_dtype_code(dtype) except? 255:
     """Convert NumPy/CuPy to dlpack dtype (kind, without bitsize).
     """
-    kind = dtype.kind
+    cdef char kind = ord(dtype.kind)
 
-    if kind == 'u':
+    if kind == b'u':
         return <uint8_t>kDLUInt
-    elif kind == 'i':
+    elif kind == b'i':
         return <uint8_t>kDLInt
-    elif kind == 'f':
+    elif kind == b'f':
         return <uint8_t>kDLFloat
-    elif kind == 'c':
+    elif kind == b'c':
         return <uint8_t>kDLComplex
-    elif kind == 'b':
+    elif kind == b'b':
         return <uint8_t>kDLBool
     else:
         raise BufferError('dtype is not supported for dlpack export')
@@ -230,7 +230,7 @@ cpdef object toDlpack(
     # Fill in the shape and strides information (depends on GPU vs CPU array).
     # (assumes strides are a multiple of itemsize, that should be OK for cupy.)
     if owner is array:
-        dl_tensor.data = <void *>array.data.ptr
+        dl_tensor.data = <void *><intptr_t>(array.data.ptr)
 
         for n in range(ndim):
             shape_strides[n] = array._shape[n]
