@@ -44,6 +44,7 @@ def get_array_module(*args):
 _submodules = ['fft', 'fftpack', 'interpolate', 'linalg', 'ndimage', 'signal',
                'sparse', 'spatial', 'special', 'stats']
 
+
 def __getattr__(name):
     if name in _submodules:
         return _importlib.import_module(f'cupyx.scipy.{name}')

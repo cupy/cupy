@@ -14,7 +14,6 @@ import cupy
 from cupy.exceptions import AxisError
 from cupy.testing import _array
 from cupy.testing import _parameterized
-import cupyx
 
 from cupy.testing._pytest_impl import is_available
 

@@ -13,7 +13,6 @@ from unittest import mock
 import numpy
 
 import cupy
-import cupyx
 from cupy._core import internal
 from cupy.testing._pytest_impl import is_available
 
