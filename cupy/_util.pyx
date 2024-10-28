@@ -6,7 +6,7 @@ import os
 import warnings
 
 import cupy
-from cupy.cuda cimport device
+from cupy_backends.cuda.api import runtime
 
 
 DEF CYTHON_BUILD_VER = CUPY_CYTHON_VERSION
@@ -54,7 +54,7 @@ def memoize(bint for_each_device=False):
             cdef int id = -1
             cdef dict m = memo
             if for_each_device:
-                id = device.get_device_id()
+                id = runtime.getDevice()
             if len(kwargs):
                 arg_key = (id, args, frozenset(kwargs.items()))
             else:
