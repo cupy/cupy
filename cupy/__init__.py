@@ -260,9 +260,9 @@ from cupy._manipulation.join import column_stack  # NOQA
 from cupy._manipulation.join import concatenate  # NOQA
 from cupy._manipulation.join import dstack  # NOQA
 from cupy._manipulation.join import hstack  # NOQA
+from cupy._manipulation.join import row_stack  # NOQA
 from cupy._manipulation.join import stack  # NOQA
 from cupy._manipulation.join import vstack  # NOQA
-from cupy._manipulation.join import vstack as row_stack  # NOQA
 
 # NumPy 2.0 alias
 concat = concatenate
