@@ -21,21 +21,19 @@ def sort(a, axis=-1, kind=None):
         cupy.ndarray: Array of the same type and shape as ``a``.
 
     .. note::
-       For its implementation reason, ``cupy.sort`` currently does not support
+       For its implementation reason, ``cupy.sort`` currently does not fully support
        ``kind`` and ``order`` parameters that ``numpy.sort`` does
        support.
 
     .. seealso:: :func:`numpy.sort`
 
     """
-    if kind is not None and kind != 'stable':
-        raise ValueError("kind can only be None or 'stable'")
     if axis is None:
         ret = a.flatten()
         axis = -1
     else:
         ret = a.copy()
-    ret.sort(axis=axis)
+    ret.sort(axis=axis, kind=kind)
     return ret
 
 
@@ -105,15 +103,13 @@ def argsort(a, axis=-1, kind=None):
         cupy.ndarray: Array of indices that sort ``a``.
 
     .. note::
-        For its implementation reason, ``cupy.argsort`` does not support
-        ``kind`` and ``order`` parameters.
+        For its implementation reason, ``cupy.argsort`` does not fully support
+        ``kind`` and ``order`` parameters as ``numpy.argsort`` does.
 
     .. seealso:: :func:`numpy.argsort`
 
     """
-    if kind is not None and kind != 'stable':
-        raise ValueError("kind can only be None or 'stable'")
-    return a.argsort(axis=axis)
+    return a.argsort(axis=axis, kind=kind)
 
 
 def msort(a):
