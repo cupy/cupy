@@ -412,3 +412,14 @@ For example, if you only run your CuPy build with NVIDIA P100 and V100, you can 
   $ export CUPY_NVCC_GENERATE_CODE=arch=compute_60,code=sm_60;arch=compute_70,code=sm_70
 
 See :doc:`reference/environment` for the description.
+
+Development on Microsoft Windows
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+CuPy uses symbolic links in the source tree.
+If you are developing on Windows (outside of WSL), you will need additional setup before cloning the CuPy repository.
+
+* Run ``git config --global core.symlinks true`` to enable symbolic link support in Git.
+* `Activate Developer Mode <https://learn.microsoft.com/en-us/windows/apps/get-started/enable-your-device-for-development#activate-developer-mode>`_ to allow Git using symbolic link without Administrator privilege.
+
+Once configured, you can clone the repository by ``git clone --recursive https://github.com/cupy/cupy.git``.
