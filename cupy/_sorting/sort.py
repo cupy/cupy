@@ -21,8 +21,8 @@ def sort(a, axis=-1, kind=None):
         cupy.ndarray: Array of the same type and shape as ``a``.
 
     .. note::
-       For its implementation reason, ``cupy.sort`` currently does not fully support
-       ``kind`` and ``order`` parameters that ``numpy.sort`` does
+       For its implementation reason, ``cupy.sort`` currently does not fully
+       support ``kind`` and ``order`` parameters that ``numpy.sort`` does
        support.
 
     .. seealso:: :func:`numpy.sort`

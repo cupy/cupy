@@ -895,8 +895,8 @@ cdef class _ndarray_base:
 
         .. note::
            For its implementation reason, ``ndarray.sort`` currently supports
-           only arrays with their own data, and does not fully support ``kind`` and
-           ``order`` parameters that ``numpy.ndarray.sort`` does support.
+           only arrays with their own data, and does not fully support ``kind``
+           and ``order`` parameters that ``numpy.ndarray.sort`` does support.
 
         .. seealso::
             :func:`cupy.sort` for full documentation,

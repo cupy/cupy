@@ -285,7 +285,8 @@ class TestArgsort(unittest.TestCase):
 
     def argsort(self, a, axis=-1):
         if self.external:
-            # MEMO: Need to explicitly specify kind="stable", or numpy uses quicksort (unstable)
+            # Need to explicitly specify kind="stable"
+            # numpy uses "quicksort" as default
             xp = cupy.get_array_module(a)
             return xp.argsort(a, axis=axis, kind="stable")
         else:
