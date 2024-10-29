@@ -14,7 +14,7 @@ from cupy import _environment
 from cupy._core._kernel import create_ufunc
 from cupy._core._kernel import ElementwiseKernel
 from cupy._core._ufuncs import elementwise_copy
-from cupy._core import flags
+from cupy._core import flags as _flags
 from cupy._core import syncdetect
 from cupy import cuda
 from cupy.cuda import memory as memory_module
@@ -25,11 +25,15 @@ from cupy_backends.cuda.api.runtime import CUDARuntimeError
 from cupy import _util
 
 cimport cython  # NOQA
+cimport cpython
 from libc.stdint cimport int64_t, intptr_t
+from libc cimport stdlib
+from cpython cimport Py_buffer
 
 from cupy._core cimport _carray
 from cupy._core cimport _dtype
 from cupy._core._dtype cimport get_dtype
+from cupy._core._dtype cimport populate_format
 from cupy._core._kernel cimport create_ufunc
 from cupy._core cimport _routines_binary as _binary
 from cupy._core cimport _routines_indexing as _indexing
@@ -91,6 +95,18 @@ cdef inline _should_use_rop(x, y):
 cdef tuple _HANDLED_TYPES
 
 cdef object _null_context = contextlib.nullcontext()
+
+cdef bint _is_ump_enabled = (int(os.environ.get('CUPY_ENABLE_UMP', '0')) != 0)
+
+cdef inline bint is_ump_supported(int device_id) except*:
+    if (_is_ump_enabled
+            # 1 for both HMM/ATS addressing modes
+            # this assumes device_id is a GPU device ordinal (not -1)
+            and runtime.deviceGetAttribute(
+                runtime.cudaDevAttrPageableMemoryAccess, device_id)):
+        return True
+    else:
+        return False
 
 
 class ndarray(_ndarray_base):
@@ -186,13 +202,9 @@ cdef class _ndarray_base:
         cdef tuple s = internal.get_size(shape)
         del shape
 
+        # this would raise if order is not recognized
         cdef int order_char = (
             b'C' if order is None else internal._normalize_order(order))
-
-        # `strides` is prioritized over `order`, but invalid `order` should be
-        # checked even if `strides` is given.
-        if order_char != b'C' and order_char != b'F':
-            raise ValueError('order not understood. order=%s' % order)
 
         # Check for erroneous shape
         if len(s) > _carray.MAX_NDIM:
@@ -209,10 +221,13 @@ cdef class _ndarray_base:
         # dtype
         self.dtype, itemsize = _dtype.get_dtype_with_itemsize(dtype)
 
-        # Store shape and strides
+        # Store strides
         if strides is not None:
+            # TODO(leofang): this should be removed (cupy/cupy#7818)
             if memptr is None:
                 raise ValueError('memptr is required if strides is given.')
+            # NumPy (undocumented) behavior: when strides is set, order is
+            # ignored...
             self._set_shape_and_strides(self._shape, strides, True, True)
         elif order_char == b'C':
             self._set_contiguous_strides(itemsize, True)
@@ -343,6 +358,44 @@ cdef class _ndarray_base:
             device_type = dlpack.device_ROCM
         return (device_type, self.device.id)
 
+    def __getbuffer__(self, Py_buffer* buf, int flags):
+        # TODO(leofang): use flags
+        if (not is_ump_supported(self.data.device_id)
+                or not self.is_host_accessible()):
+            raise RuntimeError(
+                'Accessing a CuPy ndarry on CPU is not allowed except when '
+                'using system memory (on HMM or ATS enabled systems, need to '
+                'set CUPY_ENABLE_UMP=1) or managed memory')
+
+        populate_format(buf, self.dtype.char)
+        buf.buf = <void*><intptr_t>self.data.ptr
+        buf.itemsize = self.dtype.itemsize
+        buf.len = self.size
+        buf.internal = NULL
+        buf.readonly = 0  # TODO(leofang): use flags
+        cdef int n, ndim
+        ndim = self._shape.size()
+        cdef Py_ssize_t* shape_strides = <Py_ssize_t*>stdlib.malloc(
+            sizeof(Py_ssize_t) * ndim * 2)
+        for n in range(ndim):
+            shape_strides[n] = self._shape[n]
+            shape_strides[n + ndim] = self._strides[n]  # in bytes
+        buf.ndim = ndim
+        buf.shape = shape_strides
+        buf.strides = shape_strides + ndim
+        buf.suboffsets = NULL
+        buf.obj = self
+        cpython.Py_INCREF(self)
+
+        stream_module.get_current_stream().synchronize()
+
+    def __releasebuffer__(self, Py_buffer* buf):
+        stdlib.free(buf.shape)  # frees both shape & strides
+        cpython.Py_DECREF(self)
+
+    cdef inline bint is_host_accessible(self) except*:
+        return self.data.mem.identity in ('SystemMemory', 'ManagedMemory')
+
     # The definition order of attributes and methods are borrowed from the
     # order of documentation at the following NumPy document.
     # https://numpy.org/doc/stable/reference/arrays.ndarray.html
@@ -361,8 +414,8 @@ cdef class _ndarray_base:
         .. seealso:: :attr:`numpy.ndarray.flags`
 
         """
-        return flags.Flags(self._c_contiguous, self._f_contiguous,
-                           self.base is None)
+        return _flags.Flags(self._c_contiguous, self._f_contiguous,
+                            self.base is None)
 
     property shape:
         """Lengths of axes.
@@ -1819,6 +1872,7 @@ cdef class _ndarray_base:
         """
         if stream is None:
             stream = stream_module.get_current_stream()
+        a_cpu = None
 
         if out is not None:
             if not isinstance(out, numpy.ndarray):
@@ -1851,7 +1905,21 @@ cdef class _ndarray_base:
             else:
                 a_gpu = self
             a_cpu = out
-        else:
+
+        if a_cpu is None:
+            # we don't check is_ump_supported() etc here because it'd be
+            # done later
+            if _is_ump_enabled:
+                try:
+                    # return self to use the same memory and avoid copy
+                    a_cpu = numpy.asarray(self, order=order)
+                except TypeError:
+                    pass
+                else:
+                    return a_cpu
+
+        # out is None, and no HMM/ATS support, so we allocate explicitly
+        if a_cpu is None:
             if self.size == 0:
                 return numpy.ndarray(self._shape, dtype=self.dtype)
 
@@ -1976,12 +2044,12 @@ cdef class _ndarray_base:
             self._shape, self._strides, self.dtype.itemsize)
 
     cpdef _update_f_contiguity(self):
-        cdef Py_ssize_t i, count
-        cdef shape_t rev_shape
-        cdef strides_t rev_strides
         if self.size == 0:
             self._f_contiguous = True
             return
+        cdef Py_ssize_t i, count
+        cdef shape_t rev_shape
+        cdef strides_t rev_strides
         if self._c_contiguous:
             count = 0
             for i in self._shape:
@@ -2464,7 +2532,7 @@ cpdef _ndarray_base array(obj, dtype=None, copy=True, order='K',
             obj, dtype, order, ndmin, concat_shape, concat_type, concat_dtype,
             blocking)
 
-    return _array_default(obj, dtype, order, ndmin, blocking)
+    return _array_default(obj, dtype, copy, order, ndmin, blocking)
 
 
 cdef _ndarray_base _array_from_cupy_ndarray(
@@ -2533,7 +2601,7 @@ cdef _ndarray_base _array_from_nested_numpy_sequence(
         arrays, src_dtype, dst_dtype, const shape_t& shape, order,
         Py_ssize_t ndmin, bint blocking):
     a_dtype = get_dtype(dst_dtype)  # convert to numpy.dtype
-    if a_dtype.char not in '?bhilqBHILQefdFD':
+    if a_dtype.char not in _dtype.all_type_chars:
         raise ValueError('Unsupported dtype %s' % a_dtype)
     cdef _ndarray_base a  # allocate it after pinned memory is secured
     cdef size_t itemcount = internal.prod(shape)
@@ -2592,22 +2660,90 @@ cdef _ndarray_base _array_from_nested_cupy_sequence(
     return a
 
 
+cdef inline _ndarray_base _try_skip_h2d_copy(
+        obj, dtype, bint copy, order, Py_ssize_t ndmin):
+    if copy:
+        return None
+
+    if not is_ump_supported(device.get_device_id()):
+        return None
+
+    if not isinstance(obj, numpy.ndarray):
+        return None
+
+    # dtype should not change
+    obj_dtype = obj.dtype
+    if not (obj_dtype == get_dtype(dtype) if dtype is not None else True):
+        return None
+
+    # CuPy onlt supports numerical dtypes
+    if obj_dtype.char not in _dtype.all_type_chars:
+        return None
+
+    # CUDA onlt supports little endianness
+    if obj_dtype.byteorder not in ('|', '=', '<'):
+        return None
+
+    # strides and the requested order could mismatch
+    obj_flags = obj.flags
+    if not internal._is_layout_expected(
+            obj_flags.c_contiguous, obj_flags.f_contiguous, order):
+        return None
+
+    cdef intptr_t ptr = obj.ctypes.data
+
+    # NumPy 0-size arrays still have non-null pointers...
+    cdef size_t nbytes = obj.nbytes
+    if nbytes == 0:
+        ptr = 0
+
+    cdef Py_ssize_t ndim = obj.ndim
+    cdef tuple shape = obj.shape
+    cdef tuple strides = obj.strides
+    if ndmin > ndim:
+        # pad shape & strides
+        shape = (1,) * (ndmin - ndim) + shape
+        strides = (shape[0] * strides[0],) * (ndmin - ndim) + strides
+
+    cdef memory.SystemMemory ext_mem = memory.SystemMemory.from_external(
+        ptr, nbytes, obj)
+    cdef memory.MemoryPointer memptr = memory.MemoryPointer(ext_mem, 0)
+    return ndarray(shape, obj_dtype, memptr, strides)
+
+
 cdef _ndarray_base _array_default(
-        obj, dtype, order, Py_ssize_t ndmin, bint blocking):
+        obj, dtype, copy, order, Py_ssize_t ndmin, bint blocking):
+    cdef _ndarray_base a
+
+    # Fast path: zero-copy a NumPy array if possible
+    if not blocking:
+        a = _try_skip_h2d_copy(obj, dtype, copy, order, ndmin)
+    if a is not None:
+        return a
+
     if order is not None and len(order) >= 1 and order[0] in 'KAka':
         if isinstance(obj, numpy.ndarray) and obj.flags.fnc:
             order = 'F'
         else:
             order = 'C'
+
     copy = False if NUMPY_1x else None
+
     a_cpu = numpy.array(obj, dtype=dtype, copy=copy, order=order,
                         ndmin=ndmin)
-    if a_cpu.dtype.char not in '?bhilqBHILQefdFD':
+    if a_cpu.dtype.char not in _dtype.all_type_chars:
         raise ValueError('Unsupported dtype %s' % a_cpu.dtype)
     a_cpu = a_cpu.astype(a_cpu.dtype.newbyteorder('<'), copy=False)
     a_dtype = a_cpu.dtype
+
+    # We already made a copy, we should be able to use it
+    if _is_ump_enabled:
+        a = _try_skip_h2d_copy(a_cpu, a_dtype, False, order, ndmin)
+        assert a is not None
+        return a
+
     cdef shape_t a_shape = a_cpu.shape
-    cdef _ndarray_base a = ndarray(a_shape, dtype=a_dtype, order=order)
+    a = ndarray(a_shape, dtype=a_dtype, order=order)
     if a_cpu.ndim == 0:
         a.fill(a_cpu)
         return a

@@ -24,6 +24,7 @@ cdef class _ndarray_base:
         readonly _ndarray_base base
 
     cdef _init_fast(self, const shape_t& shape, dtype, bint c_order)
+    cdef inline bint is_host_accessible(self) except*
     cpdef item(self)
     cpdef tolist(self)
     cpdef bytes tobytes(self, order=*)
