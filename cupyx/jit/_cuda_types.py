@@ -323,13 +323,23 @@ def get_cuda_code_from_constant(
         ctype: Scalar,
 ) -> str:
     dtype = ctype.dtype
+    ctype_str = str(ctype)
+    if dtype.kind == 'c':
+        child_ctype = Scalar(dtype.char.lower())
+        real = get_cuda_code_from_constant(x.real, child_ctype)
+        imag = get_cuda_code_from_constant(x.imag, child_ctype)
+        return f'{ctype_str}({real}, {imag})'
+
     suffix_literal = _suffix_literals_dict.get(dtype.name)
+    if not numpy.isfinite(x):
+        s = str(x)
+        if dtype == numpy.float64:
+            return s.replace('nan', 'nan("")').replace('inf', 'CUDART_INF')
+        else:
+            return s.replace('nan', 'nanf("")').replace('inf', 'CUDART_INF_F')
     if suffix_literal is not None:
         s = str(x).lower()
         return f'{s}{suffix_literal}'
-    ctype_str = str(ctype)
-    if dtype.kind == 'c':
-        return f'{ctype_str}({x.real}, {x.imag})'
     if ' ' in ctype_str:
         return f'({ctype_str}){x}'
     return f'{ctype_str}({x})'
