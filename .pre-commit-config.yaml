@@ -26,15 +26,6 @@ repos:
     hooks:
       - id: ruff
 
-  - repo: https://github.com/PyCQA/flake8
-    rev: 7.1.1
-    hooks:
-      - id: flake8
-        name: flake8 (cython)
-        types: ["cython"]
-        args: [--config, ".flake8.cython", "--force-check"]
-        additional_dependencies: [flake8-force]
-
   - repo: https://github.com/MarcoGorelli/cython-lint
     rev: v0.16.2
     hooks:
