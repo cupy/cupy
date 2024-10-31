@@ -46,80 +46,59 @@ rint = ufunc.create_math_ufunc(
     ''')
 
 
-floor = _core.create_ufunc(
+def create_rounding_ufunc(name, opf, op, doc):
+    return _core.create_ufunc(
+        name,
+        (
+            "?->?",
+            "b->b",
+            "B->B",
+            "h->h",
+            "H->H",
+            "i->i",
+            "I->I",
+            "l->l",
+            "L->L",
+            "q->q",
+            "Q->Q",
+            ("e->e", opf),
+            ("f->f", opf),
+            ("d->d", op),
+        ),
+        "out0 = in0",
+        doc=doc,
+    )
+
+
+floor = create_rounding_ufunc(
     "cupy_floor",
-    (
-        "?->?",
-        "b->b",
-        "B->B",
-        "h->h",
-        "H->H",
-        "i->i",
-        "I->I",
-        "l->l",
-        "L->L",
-        "q->q",
-        "Q->Q",
-        ("e->e", "out0 = floorf(in0)"),
-        ("f->f", "out0 = floorf(in0)"),
-        ("d->d", "out0 = floor(in0)"),
-    ),
-    "out0 = in0",
-    doc="""Rounds each element of an array to its floor integer.
+    "out0 = floorf(in0)",
+    "out0 = floor(in0)",
+    """Rounds each element of an array to its floor integer.
 
-        .. seealso:: :data:`numpy.floor`
+    .. seealso:: :data:`numpy.floor`
 
-        """,
+    """,
 )
 
 
-ceil = _core.create_ufunc(
+ceil = create_rounding_ufunc(
     "cupy_ceil",
-    (
-        "?->?",
-        "b->b",
-        "B->B",
-        "h->h",
-        "H->H",
-        "i->i",
-        "I->I",
-        "l->l",
-        "L->L",
-        "q->q",
-        "Q->Q",
-        ("e->e", "out0 = ceilf(in0)"),
-        ("f->f", "out0 = ceilf(in0)"),
-        ("d->d", "out0 = ceil(in0)"),
-    ),
-    "out0 = in0",
-    doc="""Rounds each element of an array to its ceiling integer.
+    "out0 = ceilf(in0)",
+    "out0 = ceil(in0)",
+    """Rounds each element of an array to its ceiling integer.
 
-        .. seealso:: :data:`numpy.ceil`
+    .. seealso:: :data:`numpy.ceil`
 
-        """,
+    """,
 )
 
 
-trunc = _core.create_ufunc(
+trunc = create_rounding_ufunc(
     "cupy_trunc",
-    (
-        "?->?",
-        "b->b",
-        "B->B",
-        "h->h",
-        "H->H",
-        "i->i",
-        "I->I",
-        "l->l",
-        "L->L",
-        "q->q",
-        "Q->Q",
-        ("e->e", "out0 = truncf(in0)"),
-        ("f->f", "out0 = truncf(in0)"),
-        ("d->d", "out0 = trunc(in0)"),
-    ),
-    "out0 = in0",
-    doc="""Rounds each element of an array towards zero.
+    "out0 = truncf(in0)",
+    "out0 = trunc(in0)",
+    """Rounds each element of an array towards zero.
 
     .. seealso:: :data:`numpy.trunc`
 
@@ -127,29 +106,14 @@ trunc = _core.create_ufunc(
 )
 
 
-fix = _core.create_ufunc(
+fix = create_rounding_ufunc(
     "cupy_fix",
-    (
-        "?->?",
-        "b->b",
-        "B->B",
-        "h->h",
-        "H->H",
-        "i->i",
-        "I->I",
-        "l->l",
-        "L->L",
-        "q->q",
-        "Q->Q",
-        ("e->e", "out0 = (in0 >= 0.0) ? floorf(in0): ceilf(in0)"),
-        ("f->f", "out0 = (in0 >= 0.0) ? floorf(in0): ceilf(in0)"),
-        ("d->d", "out0 = (in0 >= 0.0) ? floor(in0): ceil(in0)"),
-    ),
-    "out0 = in0",
-    doc="""If given value x is positive, it return floor(x).
+    "out0 = (in0 >= 0.0) ? floorf(in0): ceilf(in0)",
+    "out0 = (in0 >= 0.0) ? floor(in0): ceil(in0)",
+    """If given value x is positive, it return floor(x).
     Else, it return ceil(x).
 
     .. seealso:: :func:`numpy.fix`
 
-    """
+    """,
 )
