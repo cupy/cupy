@@ -970,7 +970,6 @@ class TestRandint(RandomGeneratorTestCase):
         self.generate(6.7, size=(2, 3))
 
     def test_randint_int64_1(self):
-        # FIXME: May have subtle bug in function signature determination
         self.generate(2**34, 2**40, 3, dtype='q')
 
     def test_randint_array(self):
