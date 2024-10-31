@@ -107,7 +107,10 @@ def main():
     count = 0
     p = Pool(processes=args.processes)
     for issue in tbp_issues:
-        p.apply_async(check_tbp_issue, (issue, repo, bp_issues, grace_dt, args.interactive, args.verbose))
+        p.apply_async(
+            check_tbp_issue,
+            (issue, repo, bp_issues, grace_dt, args.interactive, args.verbose),
+        )
         count += 1
     p.close()
     print('Found {} issues to check...'.format(count))
