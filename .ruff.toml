@@ -10,6 +10,11 @@ extend-exclude = [
 
 [lint]
 select = ["E", "F", "W"]
-ignore = [
-  "E501", # line-too-long (let formatters handle this)
+
+[lint.per-file-ignores]
+"cupyx/scipy/special/_gammainc.py" = [
+  "E501", # line-too-long (table of constants)
+]
+"tests/typing_tests/cupy_tests/creation_tests/test_basic.pyi" = [
+  "E501", # line-too-long (long comments)
 ]
