@@ -30,7 +30,7 @@ class Data(Expr):
 
     @property
     def obj(self):
-        raise ValueError(f'Constant value is requried: {self.code}')
+        raise ValueError(f'Constant value is required: {self.code}')
 
     def __repr__(self) -> str:
         return f'<Data code = "{self.code}", type = {self.ctype}>'

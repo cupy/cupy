@@ -11,7 +11,7 @@ import cupyx.scipy.signal  # NOQA
 try:
     import scipy.signal  # NOQA
 except ImportError:
-    pass
+    scipy = None
 
 
 @pytest.mark.xfail(
@@ -1295,23 +1295,19 @@ class TestVectorstrength:
         strength, phase = scp.signal.vectorstrength(events, period)
         return strength, phase
 
-    @testing.with_requires('scipy>=1.12.0rc1')
     @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-7, atol=1e-7)
     def test_opposite_1dperiod(self, xp, scp):
         events = xp.array([0, .25, .5, .75])
         period = 1.
+        strength, _ = scp.signal.vectorstrength(events, period)
+        return strength
 
-        strength, phase = scp.signal.vectorstrength(events, period)
-        return strength, phase
-
-    @testing.with_requires('scipy>=1.12.0rc1')
     @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-7, atol=1e-7)
     def test_opposite_2dperiod(self, xp, scp):
         events = xp.array([0, .25, .5, .75])
         period = [1.] * 10
-
-        strength, phase = scp.signal.vectorstrength(events, period)
-        return strength, phase
+        strength, _ = scp.signal.vectorstrength(events, period)
+        return strength
 
     @pytest.mark.parametrize('mod', [(cupy, cupyx.scipy), (np, scipy)])
     def test_2d_events_ValueError(self, mod):

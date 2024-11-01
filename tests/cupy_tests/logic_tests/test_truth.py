@@ -1,5 +1,3 @@
-import warnings
-
 import numpy
 
 from cupy import testing
@@ -80,38 +78,23 @@ class TestAllAnyWithNaN:
         return out
 
 
-class TestAllAnyAlias:
-    @testing.numpy_cupy_array_equal()
-    def test_alltrue(self, xp):
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore', DeprecationWarning)
-            return xp.alltrue(xp.array([1, 2, 3]))
-
-    @testing.numpy_cupy_array_equal()
-    def test_sometrue(self, xp):
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore', DeprecationWarning)
-            return xp.sometrue(xp.array([0]))
-
-
 @testing.parameterize(
     *testing.product(
-        {'f': ['in1d', 'isin'],
-         'shape_x': [
-             (0, ),
-             (3, ),
-             (2, 3),
-             (2, 1, 3),
-             (2, 0, 1),
-             (2, 0, 1, 1)
+        {'shape_x': [
+            (0, ),
+            (3, ),
+            (2, 3),
+            (2, 1, 3),
+            (2, 0, 1),
+            (2, 0, 1, 1)
         ],
             'shape_y': [
-             (0, ),
-             (3, ),
-             (2, 3),
-             (2, 1, 3),
-             (2, 0, 1),
-             (2, 0, 1, 1)
+            (0, ),
+            (3, ),
+            (2, 3),
+            (2, 1, 3),
+            (2, 0, 1),
+            (2, 0, 1, 1)
         ],
             'assume_unique': [False, True],
             'invert': [False, True]}))
@@ -122,10 +105,7 @@ class TestIn1DIsIn:
     def test(self, xp, dtype):
         x = testing.shaped_arange(self.shape_x, xp, dtype)
         y = testing.shaped_arange(self.shape_y, xp, dtype)
-        if xp is numpy and self.f == 'isin':
-            return xp.in1d(x, y, self.assume_unique, self.invert)\
-                .reshape(x.shape)
-        return getattr(xp, self.f)(x, y, self.assume_unique, self.invert)
+        return xp.isin(x, y, self.assume_unique, self.invert)
 
 
 class TestSetdiff1d:
@@ -300,6 +280,6 @@ class TestUnion1d:
 
     @testing.numpy_cupy_array_equal()
     def test_union1d_3(self, xp):
-        x = xp.zeros((2, 2), dtype=xp.complex_)
+        x = xp.zeros((2, 2), dtype=xp.complex128)
         y = xp.array([[1+1j, 2+3j], [4+1j, 0+7j]])
         return xp.union1d(x, y)

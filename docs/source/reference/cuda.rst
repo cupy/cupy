@@ -193,6 +193,7 @@ to use these functions.
    cupy.cuda.runtime.pointerGetAttributes
    cupy.cuda.runtime.streamCreate
    cupy.cuda.runtime.streamCreateWithFlags
+   cupy.cuda.runtime.streamCreateWithPriority
    cupy.cuda.runtime.streamDestroy
    cupy.cuda.runtime.streamSynchronize
    cupy.cuda.runtime.streamAddCallback
@@ -211,5 +212,11 @@ to use these functions.
    cupy.cuda.runtime.ipcCloseMemHandle
    cupy.cuda.runtime.ipcGetEventHandle
    cupy.cuda.runtime.ipcOpenEventHandle
+   cupy.cuda.runtime.graphDestroy
+   cupy.cuda.runtime.graphExecDestroy
+   cupy.cuda.runtime.graphInstantiate
+   cupy.cuda.runtime.graphLaunch
+   cupy.cuda.runtime.graphUpload
+   cupy.cuda.runtime.graphDebugDotPrint
    cupy.cuda.runtime.profilerStart
    cupy.cuda.runtime.profilerStop

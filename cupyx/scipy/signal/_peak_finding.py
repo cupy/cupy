@@ -66,17 +66,7 @@ _modedict = {
     cupy.not_equal: 5,
 }
 
-if runtime.is_hip:
-    PEAKS_KERNEL_BASE = r"""
-    #include <hip/hip_runtime.h>
-"""
-else:
-    PEAKS_KERNEL_BASE = r"""
-#include <cuda_runtime.h>
-#include <device_launch_parameters.h>
-"""
-
-PEAKS_KERNEL = PEAKS_KERNEL_BASE + r"""
+PEAKS_KERNEL = r"""
 #include <cupy/math_constants.h>
 #include <cupy/carray.cuh>
 #include <cupy/complex.cuh>
@@ -625,7 +615,7 @@ def _select_by_peak_threshold(x, peaks, tmin, tmax):
 
     """
     # Stack thresholds on both sides to make min / max operations easier:
-    # tmin is compared with the smaller, and tmax with the greater thresold to
+    # tmin is compared with the smaller, and tmax with the greater threshold to
     # each peak's side
     stacked_thresholds = cupy.vstack([x[peaks] - x[peaks - 1],
                                       x[peaks] - x[peaks + 1]])

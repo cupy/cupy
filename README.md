@@ -3,10 +3,11 @@
 # CuPy : NumPy & SciPy for GPU
 
 [![pypi](https://img.shields.io/pypi/v/cupy)](https://pypi.python.org/pypi/cupy)
-[![Conda](https://img.shields.io/conda/vn/conda-forge/cupy)](https://anaconda.org/conda-forge/cupy)
+[![Conda](https://img.shields.io/badge/conda--forge-cupy-blue)](https://anaconda.org/conda-forge/cupy)
 [![GitHub license](https://img.shields.io/github/license/cupy/cupy)](https://github.com/cupy/cupy)
-[![Gitter](https://badges.gitter.im/cupy/community.svg)](https://gitter.im/cupy/community)
+[![Matrix](https://img.shields.io/matrix/cupy_community:gitter.im?server_fqdn=matrix.org)](https://gitter.im/cupy/community)
 [![Twitter](https://img.shields.io/twitter/follow/CuPy_Team?label=%40CuPy_Team)](https://twitter.com/CuPy_Team)
+[![Medium](https://img.shields.io/badge/Medium-CuPy-teal)](https://medium.com/cupy-team)
 
 [**Website**](https://cupy.dev/)
 | [**Install**](https://docs.cupy.dev/en/stable/install.html)
@@ -78,6 +79,10 @@ $ docker run --gpus all -it cupy/cupy
 - [Release Notes](https://github.com/cupy/cupy/releases)
 - [Projects using CuPy](https://github.com/cupy/cupy/wiki/Projects-using-CuPy)
 - [Contribution Guide](https://docs.cupy.dev/en/stable/contribution.html)
+- [GPU Acceleration in Python using CuPy and Numba (GTC November 2021 Technical Session)](https://www.nvidia.com/en-us/on-demand/session/gtcfall21-a31149/)
+- [GPU-Acceleration of Signal Processing Workflows using CuPy and cuSignal[^1] (ICASSP'21 Tutorial)](https://github.com/awthomp/cusignal-icassp-tutorial)
+
+[^1]: cuSignal is now part of CuPy starting v13.0.0.
 
 ## License
 

@@ -4,6 +4,7 @@ import warnings
 import numpy
 
 import cupy
+from cupy.exceptions import RankWarning
 import cupyx.scipy.fft
 
 
@@ -224,7 +225,7 @@ def polyfit(x, y, deg, rcond=None, full=False, w=None, cov=False):
 
     .. warning::
 
-        numpy.RankWarning: The rank of the coefficient matrix in the
+        cupy.exceptions.RankWarning: The rank of the coefficient matrix in the
         least-squares fit is deficient. It is raised if ``full=False``.
 
     .. seealso:: :func:`numpy.polyfit`
@@ -279,7 +280,7 @@ def polyfit(x, y, deg, rcond=None, full=False, w=None, cov=False):
     order = deg + 1
     if rank != order and not full:
         msg = 'Polyfit may be poorly conditioned'
-        warnings.warn(msg, numpy.RankWarning, stacklevel=4)
+        warnings.warn(msg, RankWarning, stacklevel=4)
 
     if full:
         if resids.dtype.kind == 'c':

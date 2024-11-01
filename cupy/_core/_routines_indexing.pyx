@@ -1,11 +1,11 @@
 # distutils: language = c++
-import warnings
 import string
 
 import numpy
 
 import cupy
 import cupy._core.core as core
+from cupy.exceptions import AxisError
 from cupy._core._kernel import ElementwiseKernel, _get_warpsize
 from cupy._core._ufuncs import elementwise_copy
 
@@ -57,10 +57,8 @@ cdef tuple _ndarray_nonzero(_ndarray_base self):
     if ndim >= 1:
         return tuple([dst[:, i] for i in range(ndim)])
     else:
-        warnings.warn(
-            'calling nonzero on 0d arrays is deprecated',
-            DeprecationWarning)
-        return cupy.zeros(dst.shape[0], numpy.int64),
+        raise ValueError("Calling nonzero on 0d arrays is not allowed. "
+                         "Use cp.atleast_1d(scalar).nonzero() instead.")
 
 
 # TODO(kataoka): Rename the function because `_ndarray_base` does not have
@@ -268,7 +266,7 @@ cpdef list _prepare_slice_list(slices):
             raise IndexError(
                 'arrays used as indices must be of integer (or boolean) type')
         try:
-            s = core.array(s, dtype=None, copy=False)
+            s = core.array(s, dtype=None, copy=None)
         except ValueError:
             # "Unsupported dtype"
             raise IndexError(
@@ -1054,7 +1052,7 @@ cdef _ndarray_base _diagonal(
         Py_ssize_t axis2=1):
     cdef Py_ssize_t ndim = a.ndim
     if not (-ndim <= axis1 < ndim and -ndim <= axis2 < ndim):
-        raise numpy.AxisError(
+        raise AxisError(
             'axis1(={0}) and axis2(={1}) must be within range '
             '(ndim={2})'.format(axis1, axis2, ndim))
 

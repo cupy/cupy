@@ -14,6 +14,12 @@ from cupy import testing
 from cupy.cuda import runtime
 from cupyx.scipy import sparse
 
+try:
+    import scipy
+    scipy_113_or_later = scipy.__version__ >= "1.13"
+except ImportError:
+    scipy_113_or_later = False
+
 
 def _get_index_combos(idx):
     return [dict['arr_fn'](idx, dtype=dict['dtype'])
@@ -110,6 +116,7 @@ class TestSetitemIndexing:
                             _get_index_combos(1)):
             self._run(maj, min, data=x)
 
+    @pytest.mark.xfail(scipy_113_or_later, reason="XXX: scipy1.13")
     @testing.with_requires('scipy>=1.5.0')
     def test_set_zero_dim_bool_mask(self):
 
@@ -278,6 +285,8 @@ class TestSetitemIndexing:
         self._run(slice(10, 2, 5), slice(None))
         self._run(slice(10, 0, 10), slice(None))
 
+    @pytest.mark.xfail(scipy_113_or_later,
+                       reason="XXX: scipy 1.13")
     @testing.with_requires('scipy>=1.5.0')
     def test_fancy_setting_bool(self):
         # Unfortunately, boolean setting is implemented slightly
@@ -513,6 +522,10 @@ class TestBoolMaskIndexing(IndexingTestBase):
     @testing.for_dtypes('fdFD')
     @testing.numpy_cupy_array_equal(sp_name='sp', type_check=False)
     def test_bool_mask(self, xp, sp, dtype):
+
+        if self.indices == ([True, False, True], [True, False, True]):
+            pytest.xfail(reason="XXX: np2.0: scipy 1.13 sparse raises")
+
         a = self._make_matrix(sp, dtype)
         res = a[self.indices]
         _check_shares_memory(xp, sp, a, res)
@@ -521,6 +534,10 @@ class TestBoolMaskIndexing(IndexingTestBase):
     @testing.for_dtypes('fdFD')
     @testing.numpy_cupy_array_equal(sp_name='sp', type_check=False)
     def test_numpy_bool_mask(self, xp, sp, dtype):
+
+        if self.indices == ([True, False, True], [True, False, True]):
+            pytest.xfail(reason="XXX: np2.0: scipy 1.13 sparse raises")
+
         a = self._make_matrix(sp, dtype)
         indices = self._make_indices(numpy)
         res = a[indices]
@@ -530,6 +547,10 @@ class TestBoolMaskIndexing(IndexingTestBase):
     @testing.for_dtypes('fdFD')
     @testing.numpy_cupy_array_equal(sp_name='sp', type_check=False)
     def test_cupy_bool_mask(self, xp, sp, dtype):
+
+        if self.indices == ([True, False, True], [True, False, True]):
+            pytest.xfail(reason="XXX: np2.0: scipy 1.13 sparse raises")
+
         a = self._make_matrix(sp, dtype)
         indices = self._make_indices(xp)
         res = a[indices]

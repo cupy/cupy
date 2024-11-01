@@ -243,6 +243,23 @@ class TestStream(unittest.TestCase):
         for err in errors:
             assert err is False
 
+    def test_create_with_flags(self):
+        s1 = cuda.Stream()
+        s2 = cuda.Stream(non_blocking=True)
+        assert s1.is_non_blocking is False
+        assert s2.is_non_blocking is True
+
+    def test_create_with_priority(self):
+        # parameterize wasn't used since priority gets
+        # clamped when it isn't initialized within a specific
+        # returned by `cudaDeviceGetStreamPriorityRange`.
+        s1 = cuda.Stream(priority=0)
+        s2 = cuda.Stream(priority=-1)
+        s3 = cuda.Stream(priority=-3)
+        assert s1.priority == 0
+        assert s2.priority == -1
+        assert s3.priority == -3
+
 
 class TestExternalStream(unittest.TestCase):
 

@@ -52,7 +52,9 @@
 #include <cupy/complex/complex.h>
 #include <cupy/complex/math_private.h>
 
-namespace thrust {
+#include <cupy/complex/namespace.h>
+
+THRUST_NAMESPACE_BEGIN
 namespace detail {
 namespace complex {
 
@@ -170,4 +172,4 @@ __host__ __device__ inline complex<double> exp(const complex<double>& z) {
   return detail::complex::cexp(z);
 }
 
-}  // namespace thrust
+THRUST_NAMESPACE_END

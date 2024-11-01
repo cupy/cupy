@@ -1,6 +1,5 @@
-
 import cupy
-from cupy_backends.cuda.api import runtime
+
 
 _mls_taps = {2: [1], 3: [2], 4: [3], 5: [3], 6: [5], 7: [6], 8: [7, 6, 1],
              9: [5], 10: [7], 11: [9], 12: [11, 10, 4], 13: [12, 11, 8],
@@ -10,17 +9,8 @@ _mls_taps = {2: [1], 3: [2], 4: [3], 5: [3], 6: [5], 7: [6], 8: [7, 6, 1],
              27: [26, 25, 22], 28: [25], 29: [27], 30: [29, 28, 7],
              31: [28], 32: [31, 30, 10]}
 
-if runtime.is_hip:
-    MAX_LEN_SEQ_BASE = r"""
-    #include <hip/hip_runtime.h>
-"""
-else:
-    MAX_LEN_SEQ_BASE = r"""
-#include <cuda_runtime.h>
-#include <device_launch_parameters.h>
-"""
 
-MAX_LEN_SEQ_KERNEL = MAX_LEN_SEQ_BASE + r"""
+MAX_LEN_SEQ_KERNEL = r"""
 #include <cupy/math_constants.h>
 #include <cupy/carray.cuh>
 #include <cupy/complex.cuh>

@@ -7,8 +7,6 @@ import sys
 import subprocess
 from typing import Any, Optional, List
 
-import setuptools
-import setuptools.msvc
 from setuptools import Extension
 
 from cupy_builder._context import Context
@@ -133,7 +131,7 @@ def _nvcc_gencode_options(cuda_version: int) -> List[str]:
                     ('compute_72', 'sm_72'),  # Jetson (Xavier)
                     ('compute_87', 'sm_87'),  # Jetson (Orin)
                 ]
-        elif cuda_version >= 11010:
+        elif cuda_version >= 11020:
             arch_list = ['compute_35',
                          'compute_50',
                          ('compute_60', 'sm_60'),
@@ -143,23 +141,6 @@ def _nvcc_gencode_options(cuda_version: int) -> List[str]:
                          ('compute_80', 'sm_80'),
                          ('compute_86', 'sm_86'),
                          'compute_86']
-        elif cuda_version >= 11000:
-            arch_list = ['compute_35',
-                         'compute_50',
-                         ('compute_60', 'sm_60'),
-                         ('compute_61', 'sm_61'),
-                         ('compute_70', 'sm_70'),
-                         ('compute_75', 'sm_75'),
-                         ('compute_80', 'sm_80'),
-                         'compute_80']
-        elif cuda_version >= 10000:
-            arch_list = ['compute_30',
-                         'compute_50',
-                         ('compute_60', 'sm_60'),
-                         ('compute_61', 'sm_61'),
-                         ('compute_70', 'sm_70'),
-                         ('compute_75', 'sm_75'),
-                         'compute_70']
         else:
             # This should not happen.
             assert False
@@ -215,14 +196,14 @@ class DeviceCompilerUnix(DeviceCompilerBase):
 
         cuda_version = self._context.features['cuda'].get_version()
         postargs = _nvcc_gencode_options(cuda_version) + [
-            '-Xfatbin=-compress-all', '-O2', '--compiler-options="-fPIC"']
-        if cuda_version >= 11020:
-            postargs += ['--std=c++14']
-            num_threads = int(os.environ.get('CUPY_NUM_NVCC_THREADS', '2'))
-            postargs += [f'-t{num_threads}']
-        else:
-            postargs += ['--std=c++11']
-        postargs += ['-Xcompiler=-fno-gnu-unique']
+            '-Xfatbin=-compress-all', '-O2', '--compiler-options="-fPIC"',
+            '--expt-relaxed-constexpr']
+        num_threads = int(os.environ.get('CUPY_NUM_NVCC_THREADS', '2'))
+        # Note: we only support CUDA 11.2+ since CuPy v13.0.0.
+        # Bumping C++ standard from C++14 to C++17 for "if constexpr"
+        postargs += ['--std=c++17',
+                     f'-t{num_threads}',
+                     '-Xcompiler=-fno-gnu-unique']
         print('NVCC options:', postargs)
         self.spawn(compiler_so + base_opts + cc_args + [src, '-o', obj] +
                    postargs)
@@ -235,12 +216,10 @@ class DeviceCompilerUnix(DeviceCompilerBase):
         base_opts = build.get_compiler_base_options(rocm_path)
         compiler_so = rocm_path
 
-        hip_version = build.get_hip_version()
         postargs = ['-O2', '-fPIC', '--include', 'hip_runtime.h']
-        if hip_version >= 402:
-            postargs += ['--std=c++14']
-        else:
-            postargs += ['--std=c++11']
+        # Note: we only support ROCm 4.3+ since CuPy v11.0.0.
+        # Bumping C++ standard from C++14 to C++17 for "if constexpr"
+        postargs += ['--std=c++17']
         print('HIPCC options:', postargs)
         self.spawn(compiler_so + base_opts + cc_args + [src, '-o', obj] +
                    postargs)
@@ -257,17 +236,16 @@ class DeviceCompilerWin32(DeviceCompilerBase):
         cuda_version = self._context.features['cuda'].get_version()
         postargs = _nvcc_gencode_options(cuda_version) + [
             '-Xfatbin=-compress-all', '-O2']
-        if cuda_version >= 11020:
-            # MSVC 14.0 (2015) is deprecated for CUDA 11.2 but we need it
-            # to build CuPy because some Python versions were built using it.
-            # REF: https://wiki.python.org/moin/WindowsCompilers
-            postargs += ['-allow-unsupported-compiler']
+        # Note: we only support CUDA 11.2+ since CuPy v13.0.0.
+        # MSVC 14.0 (2015) is deprecated for CUDA 11.2 but we need it
+        # to build CuPy because some Python versions were built using it.
+        # REF: https://wiki.python.org/moin/WindowsCompilers
+        postargs += ['-allow-unsupported-compiler']
         postargs += ['-Xcompiler', '/MD', '-D_USE_MATH_DEFINES']
-        # This is to compile thrust with MSVC2015
-        if cuda_version >= 11020:
-            postargs += ['--std=c++14']
-            num_threads = int(os.environ.get('CUPY_NUM_NVCC_THREADS', '2'))
-            postargs += [f'-t{num_threads}']
+        # Bumping C++ standard from C++14 to C++17 for "if constexpr"
+        num_threads = int(os.environ.get('CUPY_NUM_NVCC_THREADS', '2'))
+        postargs += ['--std=c++17',
+                     f'-t{num_threads}']
         cl_exe_path = self._find_host_compiler_path()
         if cl_exe_path is not None:
             print(f'Using host compiler at {cl_exe_path}')
@@ -280,6 +258,17 @@ class DeviceCompilerWin32(DeviceCompilerBase):
         cl_exe = shutil.which('cl.exe')
         if cl_exe:
             # The compiler is already on PATH, no extra path needed.
+            return None
+
+        if self._context.win32_cl_exe_path is not None:
+            return self._context.win32_cl_exe_path
+
+        try:
+            # See #8568, #8574, #8583.
+            import setuptools.msvc
+        except Exception:
+            print('Warning: cl.exe could not be auto-detected; '
+                  'setuptools.msvc could not be imported')
             return None
 
         vctools: List[str] = setuptools.msvc.EnvironmentInfo(

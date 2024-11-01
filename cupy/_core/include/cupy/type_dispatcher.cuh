@@ -38,7 +38,7 @@ template <class functor_t, typename... Ts>
 void dtype_dispatcher(int dtype_id, functor_t f, Ts&&... args)
 {
     switch (dtype_id) {
-    case CUPY_TYPE_INT8:       return f.template operator()<char>(std::forward<Ts>(args)...);
+    case CUPY_TYPE_INT8:       return f.template operator()<int8_t>(std::forward<Ts>(args)...);
     case CUPY_TYPE_INT16:      return f.template operator()<short>(std::forward<Ts>(args)...);
     case CUPY_TYPE_INT32:      return f.template operator()<int>(std::forward<Ts>(args)...);
     case CUPY_TYPE_INT64:      return f.template operator()<int64_t>(std::forward<Ts>(args)...);

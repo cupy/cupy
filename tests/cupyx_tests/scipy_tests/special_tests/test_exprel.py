@@ -21,7 +21,7 @@ rtol = {
 }
 
 
-@testing.with_requires("scipy")
+@testing.with_requires("scipy>=1.14")
 class Testexprel:
 
     @testing.for_dtypes("efdFD")

@@ -13,6 +13,25 @@ Spatial algorithms and data structures  (:mod:`cupyx.scipy.spatial`)
 .. note::
    Currently, the ``spatial`` module is not supported on AMD ROCm platforms.
 
+
+Nearest-neighbor queries
+------------------------
+
+.. autosummary::
+   :toctree: generated/
+
+   KDTree
+
+
+Delaunay triangulation
+----------------------
+
+.. autosummary::
+   :toctree: generated/
+
+   Delaunay
+
+
 Functions
 ---------
 

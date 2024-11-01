@@ -369,12 +369,18 @@ class TestNonzero:
 @testing.with_requires('numpy>=1.17.0')
 class TestNonzeroZeroDimension:
 
+    @testing.with_requires("numpy>=2.1")
+    @testing.for_all_dtypes()
+    def test_nonzero(self, dtype):
+        array = cupy.array(self.array, dtype=dtype)
+        with pytest.raises(ValueError):
+            cupy.nonzero(array)
+
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
-    def test_nonzero(self, xp, dtype):
+    def test_nonzero_explicit(self, xp, dtype):
         array = xp.array(self.array, dtype=dtype)
-        with testing.assert_warns(DeprecationWarning):
-            return xp.nonzero(array)
+        return xp.nonzero(xp.atleast_1d(array))
 
 
 @testing.parameterize(
@@ -709,7 +715,7 @@ class TestSearchSortedNanInf:
 
 class TestSearchSortedInvalid:
 
-    # Cant test unordered bins due to numpy undefined
+    # Can't test unordered bins due to numpy undefined
     # behavior for searchsorted
 
     def test_searchsorted_ndbins(self):

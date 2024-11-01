@@ -18,12 +18,12 @@ jobs:
       contents: write  # to read draft releases
     steps:
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         repository: cupy/cupy-release-tools
         ref: ${{ inputs.branch }}
     - name: Setup Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: '3.10'
     - name: Check
@@ -82,16 +82,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         repository: cupy/cupy-release-tools
         ref: ${{ inputs.branch }}
     - name: Setup Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: '3.10'
     - name: Check
       run: |
+        sleep 60s  # wait for PyPI to be updated
         pip install distlib
         CHECK_WHEEL="${{ inputs.branch != 'main' && '--pypi-wheel' || '' }}"
         ./check_release_assets.py --version "${{ inputs.release }}" --pypi-sdist ${CHECK_WHEEL}

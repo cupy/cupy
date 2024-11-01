@@ -95,28 +95,70 @@
     "cupy.linux.cuda121": [
         "@push",
         "full",
-        "mini",
         "cuda121"
     ],
     "cupy.linux.cuda121.multi": [
         "@push",
         "full",
-        "mini",
         "multi",
         "cuda121"
     ],
     "cupy.linux.cuda122": [
         "@push",
         "full",
-        "mini",
         "cuda122"
     ],
     "cupy.linux.cuda122.multi": [
         "@push",
         "full",
-        "mini",
         "multi",
         "cuda122"
+    ],
+    "cupy.linux.cuda123": [
+        "@push",
+        "full",
+        "cuda123"
+    ],
+    "cupy.linux.cuda123.multi": [
+        "@push",
+        "full",
+        "multi",
+        "cuda123"
+    ],
+    "cupy.linux.cuda124": [
+        "@push",
+        "full",
+        "cuda124"
+    ],
+    "cupy.linux.cuda124.multi": [
+        "@push",
+        "full",
+        "multi",
+        "cuda124"
+    ],
+    "cupy.linux.cuda125": [
+        "@push",
+        "full",
+        "cuda125"
+    ],
+    "cupy.linux.cuda125.multi": [
+        "@push",
+        "full",
+        "multi",
+        "cuda125"
+    ],
+    "cupy.linux.cuda126": [
+        "@push",
+        "full",
+        "mini",
+        "cuda126"
+    ],
+    "cupy.linux.cuda126.multi": [
+        "@push",
+        "full",
+        "mini",
+        "multi",
+        "cuda126"
     ],
     "cupy.linux.cuda-slow": [
         "slow"
@@ -180,21 +222,49 @@
     "cupy.win.cuda121": [
         "@push",
         "full",
-        "mini",
         "windows",
         "cuda121"
     ],
     "cupy.win.cuda122": [
         "@push",
         "full",
-        "mini",
         "windows",
         "cuda122"
+    ],
+    "cupy.win.cuda123": [
+        "@push",
+        "full",
+        "windows",
+        "cuda123"
+    ],
+    "cupy.win.cuda124": [
+        "@push",
+        "full",
+        "windows",
+        "cuda124"
+    ],
+    "cupy.win.cuda125": [
+        "@push",
+        "full",
+        "windows",
+        "cuda125"
+    ],
+    "cupy.win.cuda126": [
+        "@push",
+        "full",
+        "mini",
+        "windows",
+        "cuda126"
     ],
     "cupy.linux.cuda-rapids": [
         "@push",
         "full",
         "rapids"
+    ],
+    "cupy.linux.cuda-build": [
+        "@push",
+        "full",
+        "mini"
     ],
     "cupy.linux.array-api": [
         "array-api"

@@ -54,7 +54,7 @@ class TestMultiGpuPlan1dNumPy(unittest.TestCase):
         plan.fft(a, out_cp, cufft.CUFFT_FORWARD)
 
         out_np = numpy.fft.fft(a)
-        # np.fft.fft alway returns np.complex128
+        # np.fft.fft always returns np.complex128
         if dtype is numpy.complex64:
             out_np = out_np.astype(dtype)
 
@@ -88,7 +88,7 @@ class TestMultiGpuPlan1dNumPy(unittest.TestCase):
         out_cp /= nx
 
         out_np = numpy.fft.ifft(a)
-        # np.fft.fft alway returns np.complex128
+        # np.fft.fft always returns np.complex128
         if dtype is numpy.complex64:
             out_np = out_np.astype(dtype)
 

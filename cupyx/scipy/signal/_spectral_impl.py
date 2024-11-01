@@ -29,7 +29,6 @@ import warnings
 
 import cupy
 
-from cupy_backends.cuda.api import runtime
 import cupyx.scipy.signal._signaltools as filtering
 from cupyx.scipy.signal._arraytools import (
     odd_ext, even_ext, zero_ext, const_ext, _as_strided)
@@ -48,17 +47,7 @@ def _get_module_func_raw(module, func_name, *template_args):
     return kernel
 
 
-if runtime.is_hip:
-    KERNEL_BASE = r"""
-    #include <hip/hip_runtime.h>
-"""
-else:
-    KERNEL_BASE = r"""
-#include <cuda_runtime.h>
-#include <device_launch_parameters.h>
-"""
-
-LOMBSCARGLE_KERNEL = KERNEL_BASE + r"""
+LOMBSCARGLE_KERNEL = r"""
 
 ///////////////////////////////////////////////////////////////////////////////
 //                            LOMBSCARGLE                                    //

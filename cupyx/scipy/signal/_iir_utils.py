@@ -35,17 +35,7 @@ TYPE_NAMES = [_get_typename(t) for t in TYPES]
 TYPE_PAIR_NAMES = [(_get_typename(x), _get_typename(y)) for x, y in TYPE_PAIRS]
 
 
-if runtime.is_hip:
-    IIR_KERNEL_BASE = r"""
-    #include <hip/hip_runtime.h>
-"""
-else:
-    IIR_KERNEL_BASE = r"""
-#include <cuda_runtime.h>
-#include <device_launch_parameters.h>
-"""
-
-IIR_KERNEL = IIR_KERNEL_BASE + r"""
+IIR_KERNEL = r"""
 #include <cupy/math_constants.h>
 #include <cupy/carray.cuh>
 #include <cupy/complex.cuh>
@@ -200,7 +190,7 @@ __global__ void second_pass_iir(
 }
 """
 
-IIR_SOS_KERNEL = IIR_KERNEL_BASE + r"""
+IIR_SOS_KERNEL = r"""
 #include <cupy/math_constants.h>
 #include <cupy/carray.cuh>
 #include <cupy/complex.cuh>
@@ -737,7 +727,8 @@ def apply_iir_sos(x, sos, axis=-1, zi=None, dtype=None, block_sz=1024,
 
     if zi is not None:
         zi_out = zi_out.reshape(zi_shape)
-        zi_out = cupy.moveaxis(zi_out, -1, axis)
+        if len(zi_shape) > 2:
+            zi_out = cupy.moveaxis(zi_out, -1, axis)
         if not zi_out.flags.c_contiguous:
             zi_out = zi_out.copy()
 

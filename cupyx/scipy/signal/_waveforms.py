@@ -532,7 +532,7 @@ def chirp(t, f0, t1, f1, method="linear", phi=0, vertex_zero=True):
     """
     t = cupy.asarray(t)
 
-    if cupy.issubdtype(t.dtype, cupy.int_):
+    if cupy.issubdtype(t.dtype, cupy.integer):
         t = t.astype(cupy.float64)
 
     phi *= np.pi / 180
@@ -542,9 +542,11 @@ def chirp(t, f0, t1, f1, method="linear", phi=0, vertex_zero=True):
         if type == "real":
             return _chirp_phase_lin_kernel_real(t, f0, t1, f1, phi)
         elif type == "complex":
-            phase = cupy.empty(t.shape, dtype=cupy.complex64)
-            if np.issubclass_(t.dtype, (np.float64)):
+            # type hard-coded to 'real' above, so this code path is never used
+            if t.real.dtype.kind == 'f' and t.dtype.itemsize == 8:
                 phase = cupy.empty(t.shape, dtype=cupy.complex128)
+            else:
+                phase = cupy.empty(t.shape, dtype=cupy.complex64)
             _chirp_phase_lin_kernel_cplx(t, f0, t1, f1, phi, phase)
             return phase
         else:
@@ -661,17 +663,7 @@ def _sweep_poly_phase(t, poly):
     return phase
 
 
-if runtime.is_hip:
-    KERNEL_BASE = r"""
-    #include <hip/hip_runtime.h>
-"""
-else:
-    KERNEL_BASE = r"""
-#include <cuda_runtime.h>
-#include <device_launch_parameters.h>
-"""
-
-UNIT_KERNEL = KERNEL_BASE + r'''
+UNIT_KERNEL = r'''
 #include <cupy/math_constants.h>
 #include <cupy/carray.cuh>
 #include <cupy/complex.cuh>

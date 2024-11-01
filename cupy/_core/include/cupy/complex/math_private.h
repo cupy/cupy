@@ -36,7 +36,9 @@
 #include <cfloat>
 #endif  // defined(_MSC_VER)
 
-namespace thrust {
+#include <cupy/complex/namespace.h>
+
+THRUST_NAMESPACE_BEGIN
 
 #if !defined(_MSC_VER)  // see #6823
 const float FLT_MIN = 1.17549435e-38F;
@@ -189,4 +191,4 @@ using ::isnan;
 using ::signbit;
 using ::isfinite;
 
-}  // namespace thrust
+THRUST_NAMESPACE_END

@@ -61,7 +61,7 @@ class TestLsqr(unittest.TestCase):
     @_condition.retry(10)
     @testing.numpy_cupy_allclose(atol=1e-1, sp_name='sp')
     def test_ndarray(self, xp, sp):
-        A = xp.array(self.A.A, dtype=self.dtype)
+        A = xp.array(self.A.toarray(), dtype=self.dtype)
         b = xp.array(self.b, dtype=self.dtype)
         x = sp.linalg.lsqr(A, b)
         return x[0]
@@ -367,16 +367,10 @@ class TestCg:
         x0 = None
         if self.x0 == 'ones':
             x0 = xp.ones((self.n,), dtype=dtype)
-        atol = None
+        atol = 0.0
         if self.atol == 'select-by-dtype':
             atol = self._atol[dtype.char.lower()]
-        if atol is None and xp == numpy:
-            # Note: If atol is None or not specified, Scipy (at least 1.5.3)
-            # raises DeprecationWarning
-            with pytest.deprecated_call():
-                return sp.linalg.cg(a, b, x0=x0, M=M, atol=atol)
-        else:
-            return sp.linalg.cg(a, b, x0=x0, M=M, atol=atol)
+        return sp.linalg.cg(a, b, x0=x0, M=M, atol=atol)
 
     @testing.for_dtypes('fdFD')
     @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
@@ -521,18 +515,11 @@ class TestGmres:
         x0 = None
         if self.x0 == 'ones':
             x0 = xp.ones((self.n,), dtype=dtype)
-        atol = None
+        atol = 0.0
         if self.atol == 'select-by-dtype':
             atol = self._atol[dtype.char.lower()]
-        if atol is None and xp == numpy:
-            # Note: If atol is None or not specified, Scipy (at least 1.5.3)
-            # raises DeprecationWarning
-            with pytest.deprecated_call():
-                return sp.linalg.gmres(
-                    a, b, x0=x0, restart=self.restart, M=M, atol=atol)
-        else:
-            return sp.linalg.gmres(
-                a, b, x0=x0, restart=self.restart, M=M, atol=atol)
+        return sp.linalg.gmres(
+            a, b, x0=x0, restart=self.restart, M=M, atol=atol)
 
     @testing.for_dtypes('fdFD')
     @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
@@ -1216,12 +1203,7 @@ class TestLOBPCG:
         runtime.is_hip and driver.get_build_version() >= 5_00_00000,
         reason='ROCm 5.0+ may have a bug')
     @pytest.mark.xfail(
-        cupy.cuda.cusolver._getVersion() in (
-            (11, 4, 5),  # CUDA 12.1.1
-            (11, 5, 0),  # CUDA 12.2.0
-            (11, 5, 1),  # CUDA 12.2.1
-            (11, 5, 2),  # CUDA 12.2.2
-        ),
+        cupy.cuda.cusolver._getVersion() >= (11, 4, 5),  # CUDA 12.1.1+
         reason='cuSOLVER in CUDA 12.1+ may have a bug',
         strict=False,  # Seems only failing with Volta (V100 / T4)
     )
@@ -1313,7 +1295,7 @@ class TestLOBPCGForDiagInput:
         X = testing.shaped_random((n, m), xp=xp, dtype=xp.dtype(self.X_dtype),
                                   seed=1234)
 
-        # Require tht returned eigenvectors be in the orthogonal
+        # Require that returned eigenvectors be in the orthogonal
         # complement of the first few standard basis vectors
         # (Cannot be sparse array)
         m_excluded = 3
@@ -1507,16 +1489,10 @@ class TestCgs:
         x0 = None
         if self.x0 == 'ones':
             x0 = xp.ones((self.n,), dtype=dtype)
-        atol = None
+        atol = 0.0
         if self.atol == 'select-by-dtype':
             atol = self._atol[dtype.char.lower()]
-        if atol is None and xp == numpy:
-            # Note: If atol is None or not specified, Scipy (at least 1.5.3)
-            # raises DeprecationWarning
-            with pytest.deprecated_call():
-                return sp.linalg.cgs(a, b, x0=x0, M=M, atol=atol)
-        else:
-            return sp.linalg.cgs(a, b, x0=x0, M=M, atol=atol)
+        return sp.linalg.cgs(a, b, x0=x0, M=M, atol=atol)
 
     @testing.for_dtypes('fdFD')
     @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
