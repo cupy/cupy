@@ -768,3 +768,25 @@ class TestRaw:
         y = numpy.dtype(dtype).type(1)
         f((5,), (6,), (x, y))
         testing.assert_array_equal(x, numpy.full_like(x, 1))
+
+    @testing.for_dtypes("efdFD")
+    def test_inf(self, dtype):
+        @jit.rawkernel()
+        def f(x):
+            tid = jit.threadIdx.x + jit.blockDim.x * jit.blockIdx.x
+            x[tid] = cupy.dtype(dtype).type(cupy.inf)
+
+        x = cupy.zeros((30), dtype=dtype)
+        f((5,), (6,), (x,))
+        testing.assert_array_equal(x, numpy.full_like(x, cupy.inf))
+
+    @testing.for_dtypes("efdFD")
+    def test_nan(self, dtype):
+        @jit.rawkernel()
+        def f(x):
+            tid = jit.threadIdx.x + jit.blockDim.x * jit.blockIdx.x
+            x[tid] = cupy.dtype(dtype).type(cupy.nan)
+
+        x = cupy.zeros((30), dtype=dtype)
+        f((5,), (6,), (x,))
+        testing.assert_array_equal(x, numpy.full_like(x, cupy.nan))
