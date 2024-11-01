@@ -285,10 +285,12 @@ class TestArgsort(unittest.TestCase):
 
     def argsort(self, a, axis=-1):
         if self.external:
+            # Need to explicitly specify kind="stable"
+            # numpy uses "quicksort" as default
             xp = cupy.get_array_module(a)
-            return xp.argsort(a, axis=axis)
+            return xp.argsort(a, axis=axis, kind="stable")
         else:
-            return a.argsort(axis=axis)
+            return a.argsort(axis=axis, kind="stable")
 
     # Test base cases
 

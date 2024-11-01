@@ -932,33 +932,42 @@ cdef class _ndarray_base:
         # TODO(niboshi): Write docstring
         return _indexing._ndarray_choose(self, choices, out, mode)
 
-    cpdef sort(self, int axis=-1):
+    @staticmethod
+    def _check_kind_sort(kind):
+        if kind is not None and kind != "stable":
+            raise ValueError("kind can only be None or 'stable'")
+
+    cpdef sort(self, int axis=-1, kind=None):
         """Sort an array, in-place with a stable sorting algorithm.
 
         Args:
             axis (int): Axis along which to sort. Default is -1, which means
                 sort along the last axis.
+            kind: Default is `None`, which is equivalent to 'stable'. Unlike in
+                NumPy any other options are not accepted here.
 
         .. note::
            For its implementation reason, ``ndarray.sort`` currently supports
-           only arrays with their own data, and does not support ``kind`` and
-           ``order`` parameters that ``numpy.ndarray.sort`` does support.
+           only arrays with their own data, and does not fully support ``kind``
+           and ``order`` parameters that ``numpy.ndarray.sort`` does support.
 
         .. seealso::
             :func:`cupy.sort` for full documentation,
             :meth:`numpy.ndarray.sort`
 
         """
-        # TODO(takagi): Support kind argument.
+        self._check_kind_sort(kind)
         _sorting._ndarray_sort(self, axis)
 
-    cpdef _ndarray_base argsort(self, axis=-1):
+    cpdef _ndarray_base argsort(self, axis=-1, kind=None):
         """Returns the indices that would sort an array with stable sorting
 
         Args:
             axis (int or None): Axis along which to sort. Default is -1, which
                 means sort along the last axis. If None is supplied, the array
                 is flattened before sorting.
+            kind: Default is `None`, which is equivalent to 'stable'. Unlike in
+                NumPy any other options are not accepted here.
 
         Returns:
             cupy.ndarray: Array of indices that sort the array.
@@ -968,7 +977,7 @@ cdef class _ndarray_base:
             :meth:`numpy.ndarray.argsort`
 
         """
-        # TODO(takagi): Support kind argument.
+        self._check_kind_sort(kind)
         return _sorting._ndarray_argsort(self, axis)
 
     cpdef partition(self, kth, int axis=-1):
