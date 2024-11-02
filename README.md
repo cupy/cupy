@@ -8,6 +8,7 @@
 [![Matrix](https://img.shields.io/matrix/cupy_community:gitter.im?server_fqdn=matrix.org)](https://gitter.im/cupy/community)
 [![Twitter](https://img.shields.io/twitter/follow/CuPy_Team?label=%40CuPy_Team)](https://twitter.com/CuPy_Team)
 [![Medium](https://img.shields.io/badge/Medium-CuPy-teal)](https://medium.com/cupy-team)
+[![Gurubase](https://img.shields.io/badge/Gurubase-Ask%20CuPy%20Guru-006BFF)](https://gurubase.io/g/cupy)
 
 [**Website**](https://cupy.dev/)
 | [**Install**](https://docs.cupy.dev/en/stable/install.html)
