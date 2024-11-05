@@ -95,7 +95,7 @@ __global__ void d_boor(
     double* hh = h + k + 1;
 
     int ind, j, n;
-    double xa, xb, w;
+    double xa, xb, dba, w;
 
     if(mode == COMPUTE_LINEAR && interval < 0) {
         for(j = 0; j < num_c; j++) {
@@ -119,11 +119,12 @@ __global__ void d_boor(
             ind = interval + n;
             xb = t[ind];
             xa = t[ind - j];
-            if (xb == xa) {
+            dba = xb - xa;
+            if (dba == 0.0) {
                 h[n] = 0.0;
                 continue;
             }
-            w = hh[n - 1]/(xb - xa);
+            w = hh[n - 1]/dba;
             h[n - 1] += w*(xb - xp);
             h[n] = w*(xp - xa);
         }
@@ -142,11 +143,12 @@ __global__ void d_boor(
             ind = interval + n;
             xb = t[ind];
             xa = t[ind - j];
-            if (xb == xa) {
+            dba = xb - xa;
+            if (dba == 0.0) {
                 h[mu] = 0.0;
                 continue;
             }
-            w = ((double) j) * hh[n - 1]/(xb - xa);
+            w = ((double) j) * hh[n - 1]/dba;
             h[n - 1] -= w;
             h[n] = w;
         }
