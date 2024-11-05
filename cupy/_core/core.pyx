@@ -300,13 +300,50 @@ cdef class _ndarray_base:
 
         return desc
 
-    def __dlpack__(self, *, stream=None):
+    def __dlpack__(
+            self, *, stream=None, max_version=None, dl_device=None, copy=None):
+        cdef bint use_versioned = False
+        cdef bint to_cpu = False
+
+        # Check if we can export version 1
+        if max_version is not None and max_version[0] >= 1:
+            use_versioned = True
+
+        # If the user passed dl_device we must honor it, so check if it either
+        # matches or the user explicitly requested the "CPU" device.
+        # Additionally, check also if the requested copy mode is acceptable.
+        if dl_device is None or dl_device == self.__dlpack_device__():
+            # We chose the device or the device matches, so export normally.
+            if copy is True:
+                # Could be implemented, but there may be some subtleties to
+                # consider here.
+                raise BufferError("copy=True only supported for copy to CPU.")
+        elif dl_device == (dlpack.kDLCPU, 0):
+            # The user explicitly requested CPU device export.
+            # NOTE:
+            # * We effectively ignore the stream here for now!
+            # * We implement it by copying to NumPy, but we must indicate
+            #   the copy, so will construct the dlpack ourselves.
+            if copy is False and (dlpack.get_dlpack_device(self).device_type
+                                  != dlpack.kDLCUDAManaged):
+                raise ValueError(
+                    "GPU memory cannot be exported to CPU without copy.")
+            to_cpu = True
+        else:
+            # TODO: We could probably support copy to a different CUDA device
+            #       but the main point is to support host copies.
+            raise BufferError("unsupported device requested.")
+
         # Note: the stream argument is supplied by the consumer, not by CuPy
+        #       We can (and must) assume that it is compatible with our device.
         curr_stream = stream_module.get_current_stream()
         curr_stream_ptr = curr_stream.ptr
 
         # stream must be an int for CUDA/ROCm
-        if not runtime._is_hip_environment:  # CUDA
+        if to_cpu and stream is None:
+            # We will use the current stream to copy/sync later.
+            stream = None
+        elif not runtime._is_hip_environment:  # CUDA
             if stream is None:
                 stream = runtime.streamLegacy
             elif not isinstance(stream, int) or stream < -1:
@@ -337,26 +374,22 @@ cdef class _ndarray_base:
 
         # if -1, no stream order should be established; otherwise, the consumer
         # stream should wait for the work on CuPy's current stream to finish
-        if stream >= 0 and stream != curr_stream_ptr:
-            next_stream = stream_mod.ExternalStream(stream)
+        if stream is None or stream < 0:
+            # Establish no stream order for now (for `stream=None` do it later)
+            stream = None
+        elif stream != curr_stream_ptr:
+            stream = stream_mod.ExternalStream(stream)
             event = curr_stream.record()
-            next_stream.wait_event(event)
+            stream.wait_event(event)
 
-        return dlpack.toDlpack(self)
+        return dlpack.toDlpack(
+            self, use_versioned=use_versioned, to_cpu=to_cpu,
+            ensure_copy=copy is True, stream=stream)
 
     def __dlpack_device__(self):
-        if not runtime._is_hip_environment:
-            attrs = runtime.pointerGetAttributes(self.data.ptr)
-            is_managed = (
-                attrs.type == runtime.memoryTypeManaged
-                and _util.DLPACK_EXPORT_VERSION >= (0, 6))
-            if is_managed:
-                device_type = dlpack.managed_CUDA
-            else:
-                device_type = dlpack.device_CUDA
-        else:
-            device_type = dlpack.device_ROCM
-        return (device_type, self.device.id)
+        cdef dlpack.DLDevice dldevice = dlpack.get_dlpack_device(self)
+
+        return (dldevice.device_type, dldevice.device_id)
 
     def __getbuffer__(self, Py_buffer* buf, int flags):
         # TODO(leofang): use flags
