@@ -687,10 +687,10 @@ class RandomState(object):
                     'mx must be non-negative (actual: {})'.format(mx))
             elif mx <= _UINT32_MAX:
                 dtype = numpy.uint32
-                upper_limit = _UINT32_MAX - (1 << 32) % (mx + 1)
+                upper_limit = dtype(_UINT32_MAX - (1 << 32) % (mx + 1))
             elif mx <= _UINT64_MAX:
                 dtype = numpy.uint64
-                upper_limit = _UINT64_MAX - (1 << 64) % (mx + 1)
+                upper_limit = dtype(_UINT64_MAX - (1 << 64) % (mx + 1))
             else:
                 raise ValueError(
                     'mx must be within uint64 range (actual: {})'.format(mx))
