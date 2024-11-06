@@ -46,7 +46,7 @@ rint = ufunc.create_math_ufunc(
     ''')
 
 
-def create_rounding_ufunc(name, opf, op, doc):
+def create_rounding_ufunc(name, op, doc):
     return _core.create_ufunc(
         name,
         (
@@ -61,8 +61,8 @@ def create_rounding_ufunc(name, opf, op, doc):
             "L->L",
             "q->q",
             "Q->Q",
-            ("e->e", opf),
-            ("f->f", opf),
+            ("e->e", op),
+            ("f->f", op),
             ("d->d", op),
         ),
         "out0 = in0",
@@ -72,7 +72,6 @@ def create_rounding_ufunc(name, opf, op, doc):
 
 floor = create_rounding_ufunc(
     "cupy_floor",
-    "out0 = floorf(in0)",
     "out0 = floor(in0)",
     """Rounds each element of an array to its floor integer.
 
@@ -84,7 +83,6 @@ floor = create_rounding_ufunc(
 
 ceil = create_rounding_ufunc(
     "cupy_ceil",
-    "out0 = ceilf(in0)",
     "out0 = ceil(in0)",
     """Rounds each element of an array to its ceiling integer.
 
@@ -96,7 +94,6 @@ ceil = create_rounding_ufunc(
 
 trunc = create_rounding_ufunc(
     "cupy_trunc",
-    "out0 = truncf(in0)",
     "out0 = trunc(in0)",
     """Rounds each element of an array towards zero.
 
@@ -108,7 +105,6 @@ trunc = create_rounding_ufunc(
 
 fix = create_rounding_ufunc(
     "cupy_fix",
-    "out0 = (in0 >= 0.0) ? floorf(in0): ceilf(in0)",
     "out0 = (in0 >= 0.0) ? floor(in0): ceil(in0)",
     """If given value x is positive, it return floor(x).
     Else, it return ceil(x).
