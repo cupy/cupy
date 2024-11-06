@@ -146,6 +146,7 @@ class TestNewDLPackConversion:
         with pytest.raises(BufferError):
             arr.__dlpack__(dl_device=(9, 0))
 
+    @testing.with_requires('numpy>=1.23.0')
     def test_conversion_device_to_cpu(self):
         # NOTE: This defaults to the old unversioned, which is needed for
         #       NumPy 1.x support.
