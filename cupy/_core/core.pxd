@@ -24,12 +24,15 @@ cdef class _ndarray_base:
         readonly _ndarray_base base
 
     cdef _init_fast(self, const shape_t& shape, dtype, bint c_order)
+    cdef inline bint is_host_accessible(self) except*
     cpdef item(self)
     cpdef tolist(self)
     cpdef bytes tobytes(self, order=*)
     cpdef tofile(self, fid, sep=*, format=*)
     cpdef dump(self, file)
     cpdef bytes dumps(self)
+    cpdef _ndarray_base _astype(
+        self, dtype, order=*, casting=*, subok=*, copy=*)
     cpdef _ndarray_base astype(
         self, dtype, order=*, casting=*, subok=*, copy=*)
     cpdef _ndarray_base copy(self, order=*)
@@ -43,8 +46,8 @@ cdef class _ndarray_base:
     cpdef put(self, indices, values, mode=*)
     cpdef repeat(self, repeats, axis=*)
     cpdef choose(self, choices, out=*, mode=*)
-    cpdef sort(self, int axis=*)
-    cpdef _ndarray_base argsort(self, axis=*)
+    cpdef sort(self, int axis=*, kind=*)
+    cpdef _ndarray_base argsort(self, axis=*, kind=*)
     cpdef partition(self, kth, int axis=*)
     cpdef _ndarray_base argpartition(self, kth, axis=*)
     cpdef tuple nonzero(self)
@@ -71,7 +74,7 @@ cdef class _ndarray_base:
     cpdef _ndarray_base any(self, axis=*, out=*, keepdims=*)
     cpdef _ndarray_base conj(self)
     cpdef _ndarray_base conjugate(self)
-    cpdef get(self, stream=*, order=*, out=*)
+    cpdef get(self, stream=*, order=*, out=*, blocking=*)
     cpdef set(self, arr, stream=*)
     cpdef _ndarray_base reduced_view(self, dtype=*)
     cpdef _update_c_contiguity(self)
@@ -105,8 +108,10 @@ cpdef Module compile_with_cache(str source, tuple options=*, arch=*,
 
 
 # TODO(niboshi): Move to _routines_creation.pyx
+
 cpdef _ndarray_base array(
-    obj, dtype=*, bint copy=*, order=*, bint subok=*, Py_ssize_t ndmin=*)
+    obj, dtype=*, copy=*, order=*, bint subok=*, Py_ssize_t ndmin=*,
+    bint blocking=*)
 cpdef _ndarray_base _convert_object_with_cuda_array_interface(a)
 
 cdef _ndarray_base _ndarray_init(subtype, const shape_t& shape, dtype, obj)

@@ -1,9 +1,18 @@
+import platform
+import sys
+
 import cupy
 from cupyx.scipy.signal import abcd_normalize
 import cupyx.scipy.signal as signal
 
-from cupy import testing
+import pytest
 from pytest import raises as assert_raises
+from cupy import testing
+
+try:
+    import scipy.signal   # NOQA
+except ImportError:
+    pass
 
 
 def assert_equal(actual, desired):
@@ -540,3 +549,326 @@ class TestStep:
         system = ([1.0], [1.0, 2.0, 1.0])
         tout, y = scp.signal.step(system)
         return tout, y
+
+
+@testing.with_requires('scipy')
+class TestPlacePoles:
+
+    @pytest.mark.parametrize('method', ['KNV0', 'YT'])
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_real(self, xp, scp, method):
+        # Test real pole placement using KNV and YT0 algorithm and example 1 in
+        # section 4 of the reference publication (see place_poles docstring)
+        A = xp.array([1.380, -0.2077, 6.715, -5.676, -0.5814, -4.290, 0,
+                      0.6750, 1.067, 4.273, -6.654, 5.893, 0.0480, 4.273,
+                      1.343, -2.104]).reshape(4, 4)
+        B = xp.array([0, 5.679, 1.136, 1.136, 0, 0, -3.146, 0]).reshape(4, 2)
+        P = xp.array([-0.2, -0.5, -5.0566, -8.6659])
+
+        fsf = scp.signal.place_poles(A, B, P, method=method)
+        return fsf.computed_poles
+
+        # Check that both KNV and YT compute correct K matrix
+        self._check(A, B, P, method='KNV0')
+        self._check(A, B, P, method='YT')
+
+    @pytest.mark.xfail(
+        sys.platform.startswith('win32')
+        or platform.machine() == "aarch64",
+        reason='passes locally, fails on windows CI, aarch64')
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_real_2(self, xp, scp):
+        # Try to reach the specific case in _YT_real where two singular
+        # values are almost equal. This is to improve code coverage but I
+        # have no way to be sure this code is really reached
+
+        A = xp.array([1.380, -0.2077, 6.715, -5.676, -0.5814, -4.290, 0,
+                      0.6750, 1.067, 4.273, -6.654, 5.893, 0.0480, 4.273,
+                      1.343, -2.104]).reshape(4, 4)
+        B = xp.array([0, 5.679, 1.136, 1.136, 0, 0, -3.146, 0]).reshape(4, 2)
+
+        fsf = scp.signal.place_poles(A, B, xp.asarray([2, 2, 3, 3]))
+        poles = xp.real_if_close(fsf.computed_poles)
+        p = poles.copy()    # make contiguous
+        p.sort()
+        return p
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_complex(self, xp, scp):
+        # Test complex pole placement on a linearized car model, taken from L.
+        # Jaulin, Automatique pour la robotique, Cours et Exercices, iSTE
+        # editions p 184/185
+        A = xp.array([[0, 7, 0, 0],
+                      [0, 0, 0, 7/3.],
+                      [0, 0, 0, 0],
+                      [0, 0, 0, 0]])
+        B = xp.array([[0, 0],
+                      [0, 0],
+                      [1, 0],
+                      [0, 1]])
+        # Test complex poles on YT
+        P = xp.array([-3, -1, -2-1j, -2+1j])
+
+        fsf = scp.signal.place_poles(A, B, P)
+        return fsf.computed_poles
+
+    @testing.with_requires("scipy >= 1.9")
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-8)
+    def test_complex_2(self, xp, scp):
+        # Try to reach the specific case in _YT_complex where two singular
+        # values are almost equal. This is to improve code coverage but I
+        # have no way to be sure this code is really reached
+        A = xp.array([[0, 7, 0, 0],
+                      [0, 0, 0, 7/3.],
+                      [0, 0, 0, 0],
+                      [0, 0, 0, 0]])
+        B = xp.array([[0, 0],
+                      [0, 0],
+                      [1, 0],
+                      [0, 1]])
+        P = xp.array([0-1e-6j, 0+1e-6j, -10, 10])
+
+        fsf = scp.signal.place_poles(A, B, P, maxiter=1000)
+        return fsf.computed_poles
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_complex_3(self, xp, scp):
+        # Try to reach the specific case in _YT_complex where the rank two
+        # update yields two null vectors. This test was found via Monte Carlo.
+
+        A = xp.array(
+            [-2148, -2902, -2267, -598, -1722, -1829, -165, -283, -2546,
+             -167, -754, -2285, -543, -1700, -584, -2978, -925, -1300,
+             -1583, -984, -386, -2650, -764, -897, -517, -1598, 2, -1709,
+             -291, -338, -153, -1804, -1106, -1168, -867, -2297]
+        ).reshape(6, 6)
+
+        B = xp.array(
+            [-108, -374, -524, -1285, -1232, -161, -1204, -672, -637,
+             -15, -483, -23, -931, -780, -1245, -1129, -1290, -1502,
+             -952, -1374, -62, -964, -930, -939, -792, -756, -1437,
+             -491, -1543, -686]
+        ).reshape(6, 5)
+        P = xp.array([-25.-29.j, -25.+29.j, 31.-42.j,
+                     31.+42.j, 33.-41.j, 33.+41.j])
+
+        fsf = scp.signal.place_poles(A, B, P)
+        return fsf.computed_poles
+
+    @pytest.mark.skip(reason="numerical stability: scipy QR vs numpy QR")
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_complex_4(self, xp, scp):
+        # Use a lot of poles to go through all cases for update_order
+        # in _YT_loop
+
+        A = xp.array(
+            [-2148, -2902, -2267, -598, -1722, -1829, -165, -283, -2546,
+             -167, -754, -2285, -543, -1700, -584, -2978, -925, -1300,
+             -1583, -984, -386, -2650, -764, -897, -517, -1598, 2, -1709,
+             -291, -338, -153, -1804, -1106, -1168, -867, -2297]
+        ).reshape(6, 6)
+
+        B = xp.array(
+            [-108, -374, -524, -1285, -1232, -161, -1204, -672, -637,
+             -15, -483, -23, -931, -780, -1245, -1129, -1290, -1502,
+             -952, -1374, -62, -964, -930, -939, -792, -756, -1437,
+             -491, -1543, -686]
+        ).reshape(6, 5)
+
+        big_A = xp.ones((11, 11)) - xp.eye(11)
+        big_B = xp.ones((11, 10)) - xp.diag([1]*10, 1)[:, 1:]
+        big_A[:6, :6] = A
+        big_B[:6, :5] = B
+
+        P = xp.array([-10, -20, -30, 40, 50, 60, 70, -20 - 5j, -20 + 5j,
+                      5 + 3j, 5 - 3j])
+        fsf = scp.signal.place_poles(big_A, big_B, P)
+        return fsf.computed_poles
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_complex_5(self, xp, scp):
+        big_A = xp.ones((11, 11)) - xp.eye(11)
+        big_B = xp.ones((11, 10)) - xp.diag([1]*10, 1)[:, 1:]
+
+        A = xp.array(
+            [-2148, -2902, -2267, -598, -1722, -1829, -165, -283, -2546,
+             -167, -754, -2285, -543, -1700, -584, -2978, -925, -1300,
+             -1583, -984, -386, -2650, -764, -897, -517, -1598, 2, -1709,
+             -291, -338, -153, -1804, -1106, -1168, -867, -2297]
+        ).reshape(6, 6)
+
+        B = xp.array(
+            [-108, -374, -524, -1285, -1232, -161, -1204, -672, -637,
+             -15, -483, -23, -931, -780, -1245, -1129, -1290, -1502,
+             -952, -1374, -62, -964, -930, -939, -792, -756, -1437,
+             -491, -1543, -686]
+        ).reshape(6, 5)
+
+        big_A[:6, :6] = A
+        big_B[:6, :5] = B
+
+        # check with only complex poles and only real poles
+        P = xp.asarray([-10, -20, -30, -40, -50, -60, -70, -80, -90, -100])
+
+        fsf = scp.signal.place_poles(big_A[:-1, :-1], big_B[:-1, :-1], P)
+        return fsf.computed_poles
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_complex_6(self, xp, scp):
+        big_A = xp.ones((11, 11)) - xp.eye(11)
+        big_B = xp.ones((11, 10)) - xp.diag([1]*10, 1)[:, 1:]
+
+        A = xp.array(
+            [-2148, -2902, -2267, -598, -1722, -1829, -165, -283, -2546,
+             -167, -754, -2285, -543, -1700, -584, -2978, -925, -1300,
+             -1583, -984, -386, -2650, -764, -897, -517, -1598, 2, -1709,
+             -291, -338, -153, -1804, -1106, -1168, -867, -2297]
+        ).reshape(6, 6)
+
+        B = xp.array(
+            [-108, -374, -524, -1285, -1232, -161, -1204, -672, -637,
+             -15, -483, -23, -931, -780, -1245, -1129, -1290, -1502,
+             -952, -1374, -62, -964, -930, -939, -792, -756, -1437,
+             -491, -1543, -686]
+        ).reshape(6, 5)
+
+        big_A[:6, :6] = A
+        big_B[:6, :5] = B
+
+        P = xp.asarray([-10, -20, -30, -40, -50, -60, -70, -80, -90, -100])
+
+        fsf = scp.signal.place_poles(big_A[:-1, :-1], big_B[:-1, :-1], P)
+        return fsf.computed_poles
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_complex_7(self, xp, scp):
+        big_A = xp.ones((11, 11)) - xp.eye(11)
+        big_B = xp.ones((11, 10)) - xp.diag([1]*10, 1)[:, 1:]
+
+        A = xp.array(
+            [-2148, -2902, -2267, -598, -1722, -1829, -165, -283, -2546,
+             -167, -754, -2285, -543, -1700, -584, -2978, -925, -1300,
+             -1583, -984, -386, -2650, -764, -897, -517, -1598, 2, -1709,
+             -291, -338, -153, -1804, -1106, -1168, -867, -2297]
+        ).reshape(6, 6)
+
+        B = xp.array(
+            [-108, -374, -524, -1285, -1232, -161, -1204, -672, -637,
+             -15, -483, -23, -931, -780, -1245, -1129, -1290, -1502,
+             -952, -1374, -62, -964, -930, -939, -792, -756, -1437,
+             -491, -1543, -686]
+        ).reshape(6, 5)
+
+        big_A[:6, :6] = A
+        big_B[:6, :5] = B
+
+        P = xp.asarray([-10+10j, -20+20j, -30+30j, -40+40j, -50+50j,
+                        -10-10j, -20-20j, -30-30j, -40-40j, -50-50j])
+
+        fsf = scp.signal.place_poles(big_A[:-1, :-1], big_B[:-1, :-1], P)
+        return fsf.computed_poles
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_complex_8(self, xp, scp):
+        # need a 5x5 array to ensure YT handles properly when there
+        # is only one real pole and several complex
+        A = xp.array([0, 7, 0, 0, 0, 0, 0, 7/3., 0, 0, 0, 0, 0, 0, 0, 0,
+                      0, 0, 0, 5, 0, 0, 0, 0, 9]).reshape(5, 5)
+        B = xp.array([0, 0, 0, 0, 1, 0, 0, 1, 2, 3]).reshape(5, 2)
+        P = xp.array([-2, -3+1j, -3-1j, -1+1j, -1-1j])
+
+        fsf = scp.signal.place_poles(A, B, P)
+        return fsf.computed_poles
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_complex_9(self, xp, scp):
+        # need a 5x5 array to ensure YT handles properly when there
+        # is only one real pole and several complex
+        A = xp.array([0, 7, 0, 0, 0, 0, 0, 7/3., 0, 0, 0, 0, 0, 0, 0, 0,
+                      0, 0, 0, 5, 0, 0, 0, 0, 9]).reshape(5, 5)
+        B = xp.array([0, 0, 0, 0, 1, 0, 0, 1, 2, 3]).reshape(5, 2)
+
+        # same test with an odd number of real poles > 1
+        # this is another specific case of YT
+        P = xp.array([-2, -3, -4, -1+1j, -1-1j])
+
+        fsf = scp.signal.place_poles(A, B, P)
+        return fsf.computed_poles
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_tricky_B(self, xp, scp):
+        # check we handle as we should the 1 column B matrices and
+        # n column B matrices (with n such as shape(A)=(n, n))
+        A = xp.array([1.380, -0.2077, 6.715, -5.676, -0.5814, -4.290, 0,
+                      0.6750, 1.067, 4.273, -6.654, 5.893, 0.0480, 4.273,
+                      1.343, -2.104]).reshape(4, 4)
+        B = xp.array([0, 5.679, 1.136, 1.136, 0, 0, -3.146, 0, 1, 2, 3, 4,
+                      5, 6, 7, 8]).reshape(4, 4)
+
+        # KNV or YT are not called here, it's a specific case with only
+        # one unique solution
+        P = xp.array([-0.2, -0.5, -5.0566, -8.6659])
+
+        fsf = scp.signal.place_poles(A, B, P)
+        return fsf.computed_poles
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_tricky_B_2(self, xp, scp):
+        # check we handle as we should the 1 column B matrices and
+        # n column B matrices (with n such as shape(A)=(n, n))
+        A = xp.array([1.380, -0.2077, 6.715, -5.676, -0.5814, -4.290, 0,
+                      0.6750, 1.067, 4.273, -6.654, 5.893, 0.0480, 4.273,
+                      1.343, -2.104]).reshape(4, 4)
+        B = xp.array([0, 5.679, 1.136, 1.136, 0, 0, -3.146, 0, 1, 2, 3, 4,
+                      5, 6, 7, 8]).reshape(4, 4)
+
+        # check with complex poles too as they trigger a specific case in
+        # the specific case :-)
+        P = xp.array((-2+1j, -2-1j, -3, -2))
+
+        fsf = scp.signal.place_poles(A, B, P)
+        return fsf.computed_poles
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_tricky_B_3(self, xp, scp):
+        # check we handle as we should the 1 column B matrices and
+        # n column B matrices (with n such as shape(A)=(n, n))
+        A = xp.array([1.380, -0.2077, 6.715, -5.676, -0.5814, -4.290, 0,
+                      0.6750, 1.067, 4.273, -6.654, 5.893, 0.0480, 4.273,
+                      1.343, -2.104]).reshape(4, 4)
+        B = xp.array([0, 5.679, 1.136, 1.136, 0, 0, -3.146, 0, 1, 2, 3, 4,
+                      5, 6, 7, 8]).reshape(4, 4)
+
+        # now test with a B matrix with only one column (no optimisation)
+        B = B[:, 0].reshape(4, 1)
+        P = xp.array((-2+1j, -2-1j, -3, -2))
+
+        fsf = scp.signal.place_poles(A, B, P)
+        return fsf.computed_poles
+
+    def test_errors(self):
+        # Test input mistakes from user
+        A = cupy.array([0, 7, 0, 0, 0, 0, 0, 7/3., 0, 0,
+                       0, 0, 0, 0, 0, 0]).reshape(4, 4)
+        B = cupy.array([0, 0, 0, 0, 1, 0, 0, 1]).reshape(4, 2)
+
+        # should fail as the method keyword is invalid
+        with assert_raises(ValueError):
+            signal.place_poles(A, B, cupy.array([-2.1, -2.2, -2.3, -2.4]),
+                               method="foo")
+
+        # should fail as poles are not 1D array
+        assert_raises(ValueError, signal.place_poles, A, B,
+                      cupy.array((-2.1, -2.2, -2.3, -2.4)).reshape(4, 1))
+
+        # should fail as A is not a 2D array
+        assert_raises(ValueError, signal.place_poles, A[:, :, None], B,
+                      cupy.array([-2.1, -2.2, -2.3, -2.4]))
+
+        # should fail as B is not a 2D array
+        assert_raises(ValueError, signal.place_poles, A, B[:, :, None],
+                      cupy.array([-2.1, -2.2, -2.3, -2.4]))
+
+        # should fail as there are too many poles
+        assert_raises(ValueError, signal.place_poles, A, B,
+                      cupy.array([-2.1, -2.2, -2.3, -2.4, -3]))

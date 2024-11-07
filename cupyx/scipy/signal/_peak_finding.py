@@ -1,3 +1,29 @@
+"""
+Peak finding functions.
+
+Some of the functions defined here were ported directly from CuSignal under
+terms of the MIT license, under the following notice:
+
+Copyright (c) 2019-2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software and associated documentation files (the "Software"),
+to deal in the Software without restriction, including without limitation
+the rights to use, copy, modify, merge, publish, distribute, sublicense,
+and/or sell copies of the Software, and to permit persons to whom the
+Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+DEALINGS IN THE SOFTWARE.
+"""
 
 import math
 import cupy
@@ -26,21 +52,21 @@ def _get_typename(dtype):
 FLOAT_TYPES = [cupy.float16, cupy.float32, cupy.float64]
 INT_TYPES = [cupy.int8, cupy.int16, cupy.int32, cupy.int64]
 UNSIGNED_TYPES = [cupy.uint8, cupy.uint16, cupy.uint32, cupy.uint64]
-TYPES = FLOAT_TYPES + INT_TYPES + UNSIGNED_TYPES  # type: ignore
+FLOAT_INT_TYPES = FLOAT_TYPES + INT_TYPES  # type: ignore
+TYPES = FLOAT_INT_TYPES + UNSIGNED_TYPES  # type: ignore
 TYPE_NAMES = [_get_typename(t) for t in TYPES]
+FLOAT_INT_NAMES = [_get_typename(t) for t in FLOAT_INT_TYPES]
 
+_modedict = {
+    cupy.less: 0,
+    cupy.greater: 1,
+    cupy.less_equal: 2,
+    cupy.greater_equal: 3,
+    cupy.equal: 4,
+    cupy.not_equal: 5,
+}
 
-if runtime.is_hip:
-    PEAKS_KERNEL_BASE = r"""
-    #include <hip/hip_runtime.h>
-"""
-else:
-    PEAKS_KERNEL_BASE = r"""
-#include <cuda_runtime.h>
-#include <device_launch_parameters.h>
-"""
-
-PEAKS_KERNEL = PEAKS_KERNEL_BASE + r"""
+PEAKS_KERNEL = r"""
 #include <cupy/math_constants.h>
 #include <cupy/carray.cuh>
 #include <cupy/complex.cuh>
@@ -286,6 +312,173 @@ PEAKS_MODULE = cupy.RawModule(
     [f'peak_widths<{x}>' for x in TYPE_NAMES])
 
 
+ARGREL_KERNEL = r"""
+#include <cupy/math_constants.h>
+#include <cupy/carray.cuh>
+#include <cupy/complex.cuh>
+
+template<typename T>
+__device__ __forceinline__ bool less( const T &a, const T &b ) {
+    return ( a < b );
+}
+
+template<typename T>
+__device__ __forceinline__ bool greater( const T &a, const T &b ) {
+    return ( a > b );
+}
+
+template<typename T>
+__device__ __forceinline__ bool less_equal( const T &a, const T &b ) {
+    return ( a <= b );
+}
+
+template<typename T>
+__device__ __forceinline__ bool greater_equal( const T &a, const T &b ) {
+    return ( a >= b );
+}
+
+template<typename T>
+__device__ __forceinline__ bool equal( const T &a, const T &b ) {
+    return ( a == b );
+}
+
+template<typename T>
+__device__ __forceinline__ bool not_equal( const T &a, const T &b ) {
+    return ( a != b );
+}
+
+__device__ __forceinline__ void clip_plus(
+        const bool &clip, const int &n, int &plus ) {
+    if ( clip ) {
+        if ( plus >= n ) {
+            plus = n - 1;
+        }
+    } else {
+        if ( plus >= n ) {
+            plus -= n;
+        }
+    }
+}
+
+__device__ __forceinline__ void clip_minus(
+        const bool &clip, const int &n, int &minus ) {
+    if ( clip ) {
+        if ( minus < 0 ) {
+            minus = 0;
+        }
+    } else {
+        if ( minus < 0 ) {
+            minus += n;
+        }
+    }
+}
+
+template<typename T>
+__device__ bool compare(const int comp, const T &a, const T &b) {
+    if(comp == 0) {
+        return less(a, b);
+    } else if(comp == 1) {
+        return greater(a, b);
+    } else if(comp == 2) {
+        return less_equal(a, b);
+    } else if(comp == 3) {
+        return greater_equal(a, b);
+    } else if(comp == 4) {
+        return equal(a, b);
+    } else {
+        return not_equal(a, b);
+    }
+}
+
+template<typename T>
+__global__ void boolrelextrema_1D( const int  n,
+                                   const int  order,
+                                   const bool clip,
+                                   const int  comp,
+                                   const T *__restrict__ inp,
+                                   bool *__restrict__ results) {
+
+    const int tx { static_cast<int>( blockIdx.x * blockDim.x + threadIdx.x ) };
+    const int stride { static_cast<int>( blockDim.x * gridDim.x ) };
+
+    for ( int tid = tx; tid < n; tid += stride ) {
+
+        const T data { inp[tid] };
+        bool    temp { true };
+
+        for ( int o = 1; o < ( order + 1 ); o++ ) {
+            int plus { tid + o };
+            int minus { tid - o };
+
+            clip_plus( clip, n, plus );
+            clip_minus( clip, n, minus );
+
+            temp &= compare<T>( comp,  data, inp[plus] );
+            temp &= compare<T>( comp, data, inp[minus] );
+        }
+        results[tid] = temp;
+    }
+}
+
+template<typename T>
+__global__ void boolrelextrema_2D( const int  in_x,
+                                   const int  in_y,
+                                   const int  order,
+                                   const bool clip,
+                                   const int  comp,
+                                   const int  axis,
+                                   const T *__restrict__ inp,
+                                   bool *__restrict__ results) {
+
+    const int ty { static_cast<int>( blockIdx.x * blockDim.x + threadIdx.x ) };
+    const int tx { static_cast<int>( blockIdx.y * blockDim.y + threadIdx.y ) };
+
+    if ( ( tx < in_y ) && ( ty < in_x ) ) {
+        int tid { tx * in_x + ty };
+
+        const T data { inp[tid] };
+        bool    temp { true };
+
+        for ( int o = 1; o < ( order + 1 ); o++ ) {
+
+            int plus {};
+            int minus {};
+
+            if ( axis == 0 ) {
+                plus  = tx + o;
+                minus = tx - o;
+
+                clip_plus( clip, in_y, plus );
+                clip_minus( clip, in_y, minus );
+
+                plus  = plus * in_x + ty;
+                minus = minus * in_x + ty;
+            } else {
+                plus  = ty + o;
+                minus = ty - o;
+
+                clip_plus( clip, in_x, plus );
+                clip_minus( clip, in_x, minus );
+
+                plus  = tx * in_x + plus;
+                minus = tx * in_x + minus;
+            }
+
+            temp &= compare<T>( comp, data, inp[plus] );
+            temp &= compare<T>( comp, data, inp[minus] );
+        }
+        results[tid] = temp;
+    }
+}
+"""
+
+
+ARGREL_MODULE = cupy.RawModule(
+    code=ARGREL_KERNEL, options=('-std=c++11',),
+    name_expressions=[f'boolrelextrema_1D<{x}>' for x in FLOAT_INT_NAMES] +
+    [f'boolrelextrema_2D<{x}>' for x in FLOAT_INT_NAMES])
+
+
 def _get_module_func(module, func_name, *template_args):
     args_dtypes = [_get_typename(arg.dtype) for arg in template_args]
     template = ', '.join(args_dtypes)
@@ -422,7 +615,7 @@ def _select_by_peak_threshold(x, peaks, tmin, tmax):
 
     """
     # Stack thresholds on both sides to make min / max operations easier:
-    # tmin is compared with the smaller, and tmax with the greater thresold to
+    # tmin is compared with the smaller, and tmax with the greater threshold to
     # each peak's side
     stacked_thresholds = cupy.vstack([x[peaks] - x[peaks - 1],
                                       x[peaks] - x[peaks + 1]])
@@ -1028,3 +1221,264 @@ def find_peaks(x, height=None, threshold=None, distance=None,
         properties = {key: array[keep] for key, array in properties.items()}
 
     return peaks, properties
+
+
+def _peak_finding(data, comparator, axis, order, mode, results):
+    comp = _modedict[comparator]
+    clip = mode == 'clip'
+
+    device_id = cupy.cuda.Device()
+    num_blocks = (device_id.attributes["MultiProcessorCount"] * 20,)
+    block_sz = (512,)
+    call_args = data.shape[axis], order, clip, comp, data, results
+
+    kernel_name = "boolrelextrema_1D"
+    if data.ndim > 1:
+        kernel_name = "boolrelextrema_2D"
+        block_sz_x, block_sz_y = 16, 16
+        n_blocks_x = (data.shape[1] + block_sz_x - 1) // block_sz_x
+        n_blocks_y = (data.shape[0] + block_sz_y - 1) // block_sz_y
+        block_sz = (block_sz_x, block_sz_y)
+        num_blocks = (n_blocks_x, n_blocks_y)
+        call_args = (data.shape[1], data.shape[0], order, clip, comp, axis,
+                     data, results)
+
+    boolrelextrema = _get_module_func(ARGREL_MODULE, kernel_name, data)
+    boolrelextrema(num_blocks, block_sz, call_args)
+
+
+def _boolrelextrema(data, comparator, axis=0, order=1, mode="clip"):
+    """
+    Calculate the relative extrema of `data`.
+
+    Relative extrema are calculated by finding locations where
+    ``comparator(data[n], data[n+1:n+order+1])`` is True.
+
+    Parameters
+    ----------
+    data : ndarray
+        Array in which to find the relative extrema.
+    comparator : callable
+        Function to use to compare two data points.
+        Should take two arrays as arguments.
+    axis : int, optional
+        Axis over which to select from `data`.  Default is 0.
+    order : int, optional
+        How many points on each side to use for the comparison
+        to consider ``comparator(n,n+x)`` to be True.
+    mode : str, optional
+        How the edges of the vector are treated. 'wrap' (wrap around) or
+        'clip' (treat overflow as the same as the last (or first) element).
+        Default 'clip'. See cupy.take.
+
+    Returns
+    -------
+    extrema : ndarray
+        Boolean array of the same shape as `data` that is True at an extrema,
+        False otherwise.
+
+    See also
+    --------
+    argrelmax, argrelmin
+    """
+    if (int(order) != order) or (order < 1):
+        raise ValueError("Order must be an int >= 1")
+
+    if data.ndim < 3:
+        results = cupy.empty(data.shape, dtype=bool)
+        _peak_finding(data, comparator, axis, order, mode, results)
+    else:
+        datalen = data.shape[axis]
+        locs = cupy.arange(0, datalen)
+        results = cupy.ones(data.shape, dtype=bool)
+        main = cupy.take(data, locs, axis=axis)
+        for shift in cupy.arange(1, order + 1):
+            if mode == "clip":
+                p_locs = cupy.clip(locs + shift, a_min=None,
+                                   a_max=(datalen - 1))
+                m_locs = cupy.clip(locs - shift, a_min=0, a_max=None)
+            else:
+                p_locs = locs + shift
+                m_locs = locs - shift
+            plus = cupy.take(data, p_locs, axis=axis)
+            minus = cupy.take(data, m_locs, axis=axis)
+            results &= comparator(main, plus)
+            results &= comparator(main, minus)
+
+            if ~results.any():
+                return results
+
+    return results
+
+
+def argrelmin(data, axis=0, order=1, mode="clip"):
+    """
+    Calculate the relative minima of `data`.
+
+    Parameters
+    ----------
+    data : ndarray
+        Array in which to find the relative minima.
+    axis : int, optional
+        Axis over which to select from `data`.  Default is 0.
+    order : int, optional
+        How many points on each side to use for the comparison
+        to consider ``comparator(n, n+x)`` to be True.
+    mode : str, optional
+        How the edges of the vector are treated.
+        Available options are 'wrap' (wrap around) or 'clip' (treat overflow
+        as the same as the last (or first) element).
+        Default 'clip'. See cupy.take.
+
+
+    Returns
+    -------
+    extrema : tuple of ndarrays
+        Indices of the minima in arrays of integers.  ``extrema[k]`` is
+        the array of indices of axis `k` of `data`.  Note that the
+        return value is a tuple even when `data` is one-dimensional.
+
+    See Also
+    --------
+    argrelextrema, argrelmax, find_peaks
+
+    Notes
+    -----
+    This function uses `argrelextrema` with cupy.less as comparator. Therefore
+    it requires a strict inequality on both sides of a value to consider it a
+    minimum. This means flat minima (more than one sample wide) are not
+    detected. In case of one-dimensional `data` `find_peaks` can be used to
+    detect all local minima, including flat ones, by calling it with negated
+    `data`.
+
+    Examples
+    --------
+    >>> from cupyx.scipy.signal import argrelmin
+    >>> import cupy
+    >>> x = cupy.array([2, 1, 2, 3, 2, 0, 1, 0])
+    >>> argrelmin(x)
+    (array([1, 5]),)
+    >>> y = cupy.array([[1, 2, 1, 2],
+    ...               [2, 2, 0, 0],
+    ...               [5, 3, 4, 4]])
+    ...
+    >>> argrelmin(y, axis=1)
+    (array([0, 2]), array([2, 1]))
+
+    """
+    data = cupy.asarray(data)
+    return argrelextrema(data, cupy.less, axis, order, mode)
+
+
+def argrelmax(data, axis=0, order=1, mode="clip"):
+    """
+    Calculate the relative maxima of `data`.
+
+    Parameters
+    ----------
+    data : ndarray
+        Array in which to find the relative maxima.
+    axis : int, optional
+        Axis over which to select from `data`.  Default is 0.
+    order : int, optional
+        How many points on each side to use for the comparison
+        to consider ``comparator(n, n+x)`` to be True.
+    mode : str, optional
+        How the edges of the vector are treated.
+        Available options are 'wrap' (wrap around) or 'clip' (treat overflow
+        as the same as the last (or first) element).
+        Default 'clip'. See cupy.take.
+
+    Returns
+    -------
+    extrema : tuple of ndarrays
+        Indices of the maxima in arrays of integers.  ``extrema[k]`` is
+        the array of indices of axis `k` of `data`.  Note that the
+        return value is a tuple even when `data` is one-dimensional.
+
+    See Also
+    --------
+    argrelextrema, argrelmin, find_peaks
+
+    Notes
+    -----
+    This function uses `argrelextrema` with cupy.greater as comparator.
+    Therefore it requires a strict inequality on both sides of a value to
+    consider it a maximum. This means flat maxima (more than one sample wide)
+    are not detected. In case of one-dimensional `data` `find_peaks` can be
+    used to detect all local maxima, including flat ones.
+
+    Examples
+    --------
+    >>> from cupyx.scipy.signal import argrelmax
+    >>> import cupy
+    >>> x = cupy.array([2, 1, 2, 3, 2, 0, 1, 0])
+    >>> argrelmax(x)
+    (array([3, 6]),)
+    >>> y = cupy.array([[1, 2, 1, 2],
+    ...               [2, 2, 0, 0],
+    ...               [5, 3, 4, 4]])
+    ...
+    >>> argrelmax(y, axis=1)
+    (array([0]), array([1]))
+    """
+    data = cupy.asarray(data)
+    return argrelextrema(data, cupy.greater, axis, order, mode)
+
+
+def argrelextrema(data, comparator, axis=0, order=1, mode="clip"):
+    """
+    Calculate the relative extrema of `data`.
+
+    Parameters
+    ----------
+    data : ndarray
+        Array in which to find the relative extrema.
+    comparator : callable
+        Function to use to compare two data points.
+        Should take two arrays as arguments.
+    axis : int, optional
+        Axis over which to select from `data`.  Default is 0.
+    order : int, optional
+        How many points on each side to use for the comparison
+        to consider ``comparator(n, n+x)`` to be True.
+    mode : str, optional
+        How the edges of the vector are treated.
+        Available options are 'wrap' (wrap around) or 'clip' (treat overflow
+        as the same as the last (or first) element).
+        Default 'clip'. See cupy.take.
+
+    Returns
+    -------
+    extrema : tuple of ndarrays
+        Indices of the maxima in arrays of integers.  ``extrema[k]`` is
+        the array of indices of axis `k` of `data`.  Note that the
+        return value is a tuple even when `data` is one-dimensional.
+
+    See Also
+    --------
+    argrelmin, argrelmax
+
+    Examples
+    --------
+    >>> from cupyx.scipy.signal import argrelextrema
+    >>> import cupy
+    >>> x = cupy.array([2, 1, 2, 3, 2, 0, 1, 0])
+    >>> argrelextrema(x, cupy.greater)
+    (array([3, 6]),)
+    >>> y = cupy.array([[1, 2, 1, 2],
+    ...               [2, 2, 0, 0],
+    ...               [5, 3, 4, 4]])
+    ...
+    >>> argrelextrema(y, cupy.less, axis=1)
+    (array([0, 2]), array([2, 1]))
+
+    """
+    data = cupy.asarray(data)
+    results = _boolrelextrema(data, comparator, axis, order, mode)
+
+    if mode == "raise":
+        raise NotImplementedError(
+            "CuPy `take` doesn't support `mode='raise'`.")
+
+    return cupy.nonzero(results)

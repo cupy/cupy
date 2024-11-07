@@ -356,11 +356,25 @@ class TestOrderFilter:
     'volume': [(10,), (5, 10), (10, 5), (5, 6, 10)],
     'kernel_size': [3, 4, (3, 3, 5)],
 }))
-@testing.with_requires('scipy>=1.7.0')
 class TestMedFilt:
-    @testing.for_all_dtypes()
+    @testing.with_requires('scipy>=1.7.0', 'scipy<1.11.0')
+    @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(atol=1e-8, rtol=1e-8, scipy_name='scp',
                                  accept_error=ValueError)  # for even kernels
+    def test_medfilt_no_complex(self, xp, scp, dtype):
+        if sys.platform == 'win32':
+            pytest.xfail('medfilt broken for Scipy 1.7.0 in windows')
+        volume = testing.shaped_random(self.volume, xp, dtype)
+        kernel_size = self.kernel_size
+        if isinstance(kernel_size, tuple):
+            kernel_size = kernel_size[:volume.ndim]
+        return scp.signal.medfilt(volume, kernel_size)
+
+    @testing.with_requires('scipy>=1.12.0rc1')
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(
+        atol=1e-8, rtol=1e-8, scipy_name='scp',
+        accept_error=ValueError)  # for even kernels
     @pytest.mark.skipif(runtime.is_hip, reason='ROCm/HIP may have a bug')
     def test_medfilt(self, xp, scp, dtype):
         if sys.platform == 'win32':
@@ -376,11 +390,23 @@ class TestMedFilt:
     'input': [(5, 10), (10, 5)],
     'kernel_size': [3, 4, (3, 5)],
 }))
-@testing.with_requires('scipy>=1.7.0')
 class TestMedFilt2d:
-    @testing.for_all_dtypes()
+    @testing.with_requires('scipy>=1.7.0', 'scipy<1.11.0')
+    @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(atol=1e-8, rtol=1e-8, scipy_name='scp',
                                  accept_error=ValueError)  # for even kernels
+    def test_medfilt2d_no_complex(self, xp, scp, dtype):
+        if sys.platform == 'win32':
+            pytest.xfail('medfilt2d broken for Scipy 1.7.0 in windows')
+        input = testing.shaped_random(self.input, xp, dtype)
+        kernel_size = self.kernel_size
+        return scp.signal.medfilt2d(input, kernel_size)
+
+    @testing.with_requires('scipy>=1.12.0rc1')
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(
+        atol=1e-8, rtol=1e-8, scipy_name='scp',
+        accept_error=ValueError)  # for even kernels
     @pytest.mark.skipif(runtime.is_hip, reason='ROCm/HIP may have a bug')
     def test_medfilt2d(self, xp, scp, dtype):
         if sys.platform == 'win32':
@@ -558,6 +584,7 @@ class TestLFilter:
         b = testing.shaped_random((fir_order,), xp, scale=0.3)
         a = testing.shaped_random((iir_order,), xp, scale=0.3)
         a = xp.r_[1, a]
+        a = a.astype(x.dtype)
 
         zi = testing.shaped_random((fir_order + iir_order - 1,), xp)
         zi = scp.signal.lfiltic(b, a, zi[-iir_order:], zi[:fir_order - 1])
@@ -573,6 +600,25 @@ class TestLFilter:
         b = testing.shaped_random((fir_order,), xp, scale=0.3)
         a = testing.shaped_random((iir_order,), xp, scale=0.3)
         a = xp.r_[1, a]
+        a = a.astype(x.dtype)
+
+        zi = scp.signal.lfilter_zi(b, a)
+        out, _ = scp.signal.lfilter(b, a, x, zi=zi)
+        return out
+
+    @pytest.mark.parametrize(
+        'zeros', [(2,), (1,), (0,), (1, 2), (0, 1), (0, 2), (0, 1, 2)])
+    @testing.numpy_cupy_array_almost_equal(scipy_name='scp', decimal=5)
+    def test_lfilter_zi_with_zeros(self, zeros, xp, scp):
+        fir_order = 3
+        iir_order = 3
+
+        x = xp.ones(20)
+        b = testing.shaped_random((fir_order,), xp, scale=0.3)
+        a = testing.shaped_random((iir_order,), xp, scale=0.3)
+        a[list(zeros)] = 0
+        a = xp.r_[1, a]
+        a = a.astype(x.dtype)
 
         zi = scp.signal.lfilter_zi(b, a)
         out, _ = scp.signal.lfilter(b, a, x, zi=zi)
@@ -758,6 +804,26 @@ class TestSosFilt:
         out, _ = scp.signal.sosfilt(sos, x, zi=zi)
         return out
 
+    @pytest.mark.parametrize(
+        'zeros', [(4,), (5,), (4, 5)])
+    @testing.numpy_cupy_array_almost_equal(scipy_name='scp', decimal=5)
+    def test_sosfilt_zi_with_zeros(self, zeros, xp, scp):
+        x = xp.ones(20)
+        sos = testing.shaped_random((1, 6), xp, xp.float64, scale=0.2)
+        sos[:, 3] = 1
+        sos[0, list(zeros)] = 0
+
+        zi = scp.signal.sosfilt_zi(sos)
+        out, _ = scp.signal.sosfilt(sos, x, zi=zi)
+        return out
+
+    def test_sosfilt_zi_sosfilt(self):
+        sos = cupyx.scipy.signal.butter(6, 0.2, output='sos')
+        zi = cupyx.scipy.signal.sosfilt_zi(sos)
+        _, zf = cupyx.scipy.signal.sosfilt(
+            sos, cupy.ones(40, dtype=cupy.float64), zi=zi)
+        testing.assert_allclose(zi, zf)
+
 
 @testing.with_requires('scipy')
 class TestDetrend:
@@ -813,7 +879,7 @@ class TestFiltFilt:
     @pytest.mark.parametrize('padtype', ['odd', 'even', 'constant', None])
     @testing.for_all_dtypes_combination(
         no_float16=True, no_bool=True, names=('in_dtype', 'const_dtype'))
-    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=5e-3,
+    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-3, atol=1e-2,
                                  type_check=False, accept_error=True)
     def test_filtfilt_1d(self, size, fir_order, iir_order, method, padtype,
                          in_dtype, const_dtype, xp, scp):

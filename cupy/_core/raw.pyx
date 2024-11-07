@@ -40,6 +40,10 @@ cdef class RawKernel:
         jitify (bool): Whether or not to use `Jitify`_ to assist NVRTC to
             compile C++ kernels. Defaults to ``False``.
 
+    .. note::
+        Starting CuPy v13.0.0, `RawKernel` by default compiles with the C++11
+        standard (``-std=c++11``) if it's not specified in ``options``.
+
     .. _Jitify:
         https://github.com/NVIDIA/jitify
 
@@ -334,6 +338,10 @@ cdef class RawModule:
             compile C++ kernels. Defaults to ``False``.
 
     .. note::
+        Starting CuPy v13.0.0, `RawModule` by default compiles with the C++11
+        standard (``-std=c++11``) if it's not specified in ``options``.
+
+    .. note::
         Each kernel in ``RawModule`` possesses independent function attributes.
 
     .. note::
@@ -360,12 +368,6 @@ cdef class RawModule:
             if backend != 'nvrtc':
                 raise ValueError('only nvrtc supports retrieving the mangled '
                                  'names for the given name expressions')
-            for option in options:
-                if '-std=c++' in option:  # both -std and --std are valid
-                    break
-            else:
-                raise ValueError('need to specify C++ standard for compiling '
-                                 'template code')
             self.name_expressions = tuple(name_expressions)  # make it hashable
         else:
             self.name_expressions = None

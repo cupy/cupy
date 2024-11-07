@@ -350,3 +350,8 @@ cdef class PinnedMemoryPool:
         finally:
             rlock.unlock_fastrlock(self._lock)
         return n
+
+
+cpdef bint is_memory_pinned(intptr_t data) except*:
+    cdef runtime.PointerAttributes attrs = runtime.pointerGetAttributes(data)
+    return (attrs.type == runtime.memoryTypeHost)

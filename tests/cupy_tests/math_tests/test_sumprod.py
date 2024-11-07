@@ -1,5 +1,4 @@
 import math
-import warnings
 
 import numpy
 import pytest
@@ -10,6 +9,7 @@ import cupy.cuda.cutensor
 from cupy._core import _cub_reduction
 from cupy import testing
 from cupy.cuda import runtime
+from cupy.exceptions import AxisError
 
 
 class TestSumprod:
@@ -202,13 +202,6 @@ class TestSumprod:
             pytest.skip()
         a = testing.shaped_arange((2, 3), xp, src_dtype)
         return a.prod(dtype=dst_dtype)
-
-    @testing.numpy_cupy_allclose()
-    def test_product_alias(self, xp):
-        a = testing.shaped_arange((2, 3), xp, xp.float32)
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore', DeprecationWarning)
-            return xp.product(a)
 
 
 # This class compares CUB results against NumPy's
@@ -645,26 +638,26 @@ class TestCumsum:
     def test_invalid_axis_lower1(self, dtype):
         for xp in (numpy, cupy):
             a = testing.shaped_arange((4, 5), xp, dtype)
-            with pytest.raises(numpy.AxisError):
+            with pytest.raises(AxisError):
                 xp.cumsum(a, axis=-a.ndim - 1)
 
     @testing.for_all_dtypes()
     def test_invalid_axis_lower2(self, dtype):
         a = testing.shaped_arange((4, 5), cupy, dtype)
-        with pytest.raises(numpy.AxisError):
+        with pytest.raises(AxisError):
             return cupy.cumsum(a, axis=-a.ndim - 1)
 
     @testing.for_all_dtypes()
     def test_invalid_axis_upper1(self, dtype):
         for xp in (numpy, cupy):
             a = testing.shaped_arange((4, 5), xp, dtype)
-            with pytest.raises(numpy.AxisError):
+            with pytest.raises(AxisError):
                 xp.cumsum(a, axis=a.ndim + 1)
 
     @testing.for_all_dtypes()
     def test_invalid_axis_upper2(self, dtype):
         a = testing.shaped_arange((4, 5), cupy, dtype)
-        with pytest.raises(numpy.AxisError):
+        with pytest.raises(AxisError):
             return cupy.cumsum(a, axis=a.ndim + 1)
 
     def test_cumsum_arraylike(self):
@@ -746,27 +739,27 @@ class TestCumprod:
     def test_invalid_axis_lower1(self, dtype):
         for xp in (numpy, cupy):
             a = testing.shaped_arange((4, 5), xp, dtype)
-            with pytest.raises(numpy.AxisError):
+            with pytest.raises(AxisError):
                 xp.cumprod(a, axis=-a.ndim - 1)
 
     @testing.for_all_dtypes()
     def test_invalid_axis_lower2(self, dtype):
         for xp in (numpy, cupy):
             a = testing.shaped_arange((4, 5), xp, dtype)
-            with pytest.raises(numpy.AxisError):
+            with pytest.raises(AxisError):
                 xp.cumprod(a, axis=-a.ndim - 1)
 
     @testing.for_all_dtypes()
     def test_invalid_axis_upper1(self, dtype):
         for xp in (numpy, cupy):
             a = testing.shaped_arange((4, 5), xp, dtype)
-            with pytest.raises(numpy.AxisError):
+            with pytest.raises(AxisError):
                 return xp.cumprod(a, axis=a.ndim)
 
     @testing.for_all_dtypes()
     def test_invalid_axis_upper2(self, dtype):
         a = testing.shaped_arange((4, 5), cupy, dtype)
-        with pytest.raises(numpy.AxisError):
+        with pytest.raises(AxisError):
             return cupy.cumprod(a, axis=a.ndim)
 
     def test_cumprod_arraylike(self):
@@ -778,13 +771,6 @@ class TestCumprod:
         a_numpy = numpy.arange(1, 6, dtype=dtype)
         with pytest.raises(TypeError):
             return cupy.cumprod(a_numpy)
-
-    @testing.numpy_cupy_allclose()
-    def test_cumproduct_alias(self, xp):
-        a = testing.shaped_arange((2, 3), xp, xp.float32)
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore', DeprecationWarning)
-            return xp.cumproduct(a)
 
 
 @testing.parameterize(*testing.product({
@@ -899,9 +885,9 @@ class TestDiff:
     def test_diff_invalid_axis(self):
         for xp in (numpy, cupy):
             a = testing.shaped_arange((2, 3, 4), xp)
-            with pytest.raises(numpy.AxisError):
+            with pytest.raises(AxisError):
                 xp.diff(a, axis=3)
-            with pytest.raises(numpy.AxisError):
+            with pytest.raises(AxisError):
                 xp.diff(a, axis=-4)
 
 
@@ -1025,7 +1011,7 @@ class TestGradientErrors:
         for xp in [numpy, cupy]:
             x = testing.shaped_random(shape, xp)
             for axis in [-3, 2]:
-                with pytest.raises(numpy.AxisError):
+                with pytest.raises(AxisError):
                     xp.gradient(x, axis=axis)
 
     def test_gradient_bool_input(self):
@@ -1102,55 +1088,56 @@ class TestEdiff1d:
                           to_end=xp.array([1, 1], dtype=dtype))
 
 
-class TestTrapz:
+@testing.with_requires('numpy>=2.0')
+class TestTrapezoid:
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol={numpy.float16: 1e-1, 'default': 1e-7})
     def test_trapz_1dim(self, xp, dtype):
         a = testing.shaped_arange((5,), xp, dtype)
-        return xp.trapz(a)
+        return xp.trapezoid(a)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol={numpy.float16: 1e-1, 'default': 1e-7})
     def test_trapz_1dim_with_x(self, xp, dtype):
         a = testing.shaped_arange((5,), xp, dtype)
         x = testing.shaped_arange((5,), xp, dtype)
-        return xp.trapz(a, x=x)
+        return xp.trapezoid(a, x=x)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol={numpy.float16: 1e-1, 'default': 1e-7})
     def test_trapz_1dim_with_dx(self, xp, dtype):
         a = testing.shaped_arange((5,), xp, dtype)
-        return xp.trapz(a, dx=0.1)
+        return xp.trapezoid(a, dx=0.1)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol={numpy.float16: 1e-1, 'default': 1e-7})
     def test_trapz_2dim_without_axis(self, xp, dtype):
         a = testing.shaped_arange((4, 5), xp, dtype)
-        return xp.trapz(a)
+        return xp.trapezoid(a)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol={numpy.float16: 1e-1, 'default': 1e-7})
     def test_trapz_2dim_with_axis(self, xp, dtype):
         a = testing.shaped_arange((4, 5), xp, dtype)
-        return xp.trapz(a, axis=-2)
+        return xp.trapezoid(a, axis=-2)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol={numpy.float16: 1e-1, 'default': 1e-7})
     def test_trapz_2dim_with_x_and_axis(self, xp, dtype):
         a = testing.shaped_arange((4, 5), xp, dtype)
         x = testing.shaped_arange((5,), xp, dtype)
-        return xp.trapz(a, x=x, axis=1)
+        return xp.trapezoid(a, x=x, axis=1)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol={numpy.float16: 1e-1, 'default': 1e-7})
     def test_trapz_2dim_with_dx_and_axis(self, xp, dtype):
         a = testing.shaped_arange((4, 5), xp, dtype)
-        return xp.trapz(a, dx=0.1, axis=1)
+        return xp.trapezoid(a, dx=0.1, axis=1)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol={numpy.float16: 1e-1, 'default': 1e-7})
     def test_trapz_1dim_with_x_and_dx(self, xp, dtype):
         a = testing.shaped_arange((5,), xp, dtype)
         x = testing.shaped_arange((5,), xp, dtype)
-        return xp.trapz(a, x=x, dx=0.1)
+        return xp.trapezoid(a, x=x, dx=0.1)

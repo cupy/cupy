@@ -232,3 +232,32 @@ ellipj = _core.create_ufunc(
      .. seealso:: :data:`scipy.special.ellipj`
     """
 )
+
+ellipkinc_preamble = "#include <cupy/xsf/cephes/ellik.h>"
+ellipeinc_preamble = "#include <cupy/xsf/cephes/ellie.h>"
+
+ellipkinc = _core.create_ufunc(
+    'cupyx_scipy_special_ellipkinc', ('ff->f', 'dd->d'),
+    'out0 = xsf::cephes::ellik(in0, in1)',
+    preamble=ellipkinc_preamble,
+    doc="""ellipkinc
+
+    Incomplete elliptic integral of the first kind
+
+    .. seealso:: :meth:`scipy.special.ellipkinc`
+
+    """
+)
+
+ellipeinc = _core.create_ufunc(
+    'cupyx_scipy_special_ellipeinc', ('ff->f', 'dd->d'),
+    'out0 = xsf::cephes::ellie(in0, in1)',
+    preamble=ellipeinc_preamble,
+    doc="""ellipeinc
+
+    Incomplete elliptic integral of the second kind
+
+    .. seealso:: :meth:`scipy.special.ellipeinc`
+
+    """
+)

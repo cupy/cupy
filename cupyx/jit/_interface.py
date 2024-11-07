@@ -43,7 +43,7 @@ class _JitRawKernel:
     """JIT CUDA kernel object.
 
     The decorator :func:``cupyx.jit.rawkernel`` converts the target function
-    to an object of this class. This class is not inteded to be instantiated
+    to an object of this class. This class is not intended to be instantiated
     by users.
     """
 
@@ -103,14 +103,16 @@ class _JitRawKernel:
 
             fname = result.func_name
             enable_cg = result.enable_cooperative_groups
-            options = ('-DCUPY_JIT_MODE', '--std=c++14')
+            options = result.options
             backend = result.backend
             if backend == 'nvcc':
                 options += ('-DCUPY_JIT_NVCC',)
+            jitify = result.jitify
             module = core.compile_with_cache(
                 source=result.code,
                 options=options,
-                backend=backend)
+                backend=backend,
+                jitify=jitify)
             kern = module.get_function(fname)
             self._cache[(in_types, device_id)] = (kern, enable_cg)
 
@@ -141,7 +143,7 @@ class _JitRawKernel:
     def cached_codes(self):
         """Returns a dict that has input types as keys and codes values.
 
-        This proprety method is for debugging purpose.
+        This property method is for debugging purpose.
         The return value is not guaranteed to keep backward compatibility.
         """
         if len(self._cached_codes) == 0:
@@ -154,7 +156,7 @@ class _JitRawKernel:
     def cached_code(self):
         """Returns `next(iter(self.cached_codes.values()))`.
 
-        This proprety method is for debugging purpose.
+        This property method is for debugging purpose.
         The return value is not guaranteed to keep backward compatibility.
         """
         codes = self.cached_codes

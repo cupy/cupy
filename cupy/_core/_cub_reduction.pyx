@@ -14,7 +14,6 @@ from cupy_backends.cuda.api cimport runtime
 
 import math
 import string
-import sys
 from cupy import _environment
 from cupy._core._kernel import _get_param_info
 from cupy.cuda import driver
@@ -32,8 +31,12 @@ cdef function.Function _create_cub_reduction_function(
     if runtime._is_hip_environment:
         options += ('--std=c++14',)
     else:
-        # static_assert needs at least C++11 in NVRTC
-        options += ('--std=c++11',)
+        # 1. static_assert needs at least C++11 in NVRTC
+        # 2. starting CUDA 12.2, fp16/bf16 headers are intertwined, but due to
+        #    license issue we can't yet bundle bf16 headers. CUB offers us a
+        #    band-aid solution to avoid including the latter (NVIDIA/cub#478,
+        #    nvbugs 3641496).
+        options += ('--std=c++11', '-DCUB_DISABLE_BF16_SUPPORT')
 
     cdef str backend
     if runtime._is_hip_environment:
@@ -41,22 +44,12 @@ cdef function.Function _create_cub_reduction_function(
         # hiprtc as of ROCm 3.5.0, so we must use hipcc.
         options += ('-I' + _rocm_path + '/include', '-O2')
         backend = 'nvcc'  # this is confusing...
-    elif sys.platform.startswith('win32'):
-        # See #4771. NVRTC on Windows seems to have problems in handling empty
-        # macros, so any usage like this:
-        #     #ifndef CUB_NS_PREFIX
-        #     #define CUB_NS_PREFIX
-        #     #endif
-        # will drive NVRTC nuts (error: this declaration has no storage class
-        # or type specifier). However, we cannot find a minimum reproducer to
-        # confirm this is the root cause, so we work around by using nvcc.
-        backend = 'nvcc'
+        jitify = False
     else:
-        # use jitify + nvrtc
-        # TODO(leofang): how about simply specifying jitify=True when calling
-        # compile_with_cache()?
-        options += ('-DCUPY_USE_JITIFY',)
+        # use nvrtc
         backend = 'nvrtc'
+        # We rely on the type traits in cccl to avoid using jitify
+        jitify = False
 
     # TODO(leofang): try splitting the for-loop into full tiles and partial
     # tiles to utilize LoadDirectBlockedVectorized? See, for example,
@@ -183,9 +176,9 @@ __global__ void ${name}(${params}) {
 
           // some pre_map_expr uses _J internally...
           #if defined FIRST_PASS
-          int _J = (segment_idx + i + e_idx);
+          IndexT _J = (segment_idx + i + e_idx);
           #else  // only one pass
-          int _J = (segment_idx + i + e_idx) % _seg_size;
+          IndexT _J = (segment_idx + i + e_idx) % _seg_size;
           #endif
 
           if (e_idx < tile_size) {
@@ -226,11 +219,13 @@ __global__ void ${name}(${params}) {
         preamble=preamble)
 
     # To specify the backend, we have to explicitly spell out the default
-    # values for arch, cachd, and prepend_cupy_headers to bypass cdef/cpdef
+    # values for arch, cachd, prepend_cupy_headers, ... to bypass cdef/cpdef
     # limitation...
     module = compile_with_cache(
         module_code, options, arch=None, cachd_dir=None,
-        prepend_cupy_headers=True, backend=backend)
+        prepend_cupy_headers=True, backend=backend, translate_cucomplex=False,
+        enable_cooperative_groups=False, name_expressions=None,
+        log_stream=None, jitify=jitify)
     return module.get_function(name)
 
 
@@ -264,12 +259,6 @@ cdef str _get_cub_header_include():
 
     assert _cub_path is not None
     if _cub_path == '<bundle>':
-        _cub_header = '''
-#include <cupy/cuda_workaround.h>
-#include <cupy/cub/cub/block/block_reduce.cuh>
-#include <cupy/cub/cub/block/block_load.cuh>
-'''
-    elif _cub_path == '<CUDA>':
         _cub_header = '''
 #include <cub/block/block_reduce.cuh>
 #include <cub/block/block_load.cuh>

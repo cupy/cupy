@@ -1,5 +1,4 @@
 import unittest
-import warnings
 
 import numpy
 import pytest
@@ -68,14 +67,6 @@ class TestRounding(unittest.TestCase):
     def test_around(self):
         self.check_unary('around')
         self.check_unary_complex('around')
-
-    @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(atol=1e-5)
-    def test_round_(self, xp, dtype):
-        a = testing.shaped_arange((2, 3), xp, dtype)
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            return xp.round_(a)
 
     def test_round(self):
         self.check_unary('round')

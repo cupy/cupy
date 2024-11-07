@@ -68,6 +68,6 @@ def _asarray_validated(a, check_finite=True,
 
     if as_inexact:
         if not cupy.issubdtype(a, cupy.inexact):
-            a = a.astype(dtype=cupy.float_)
+            a = a.astype(dtype=cupy.float64)
 
     return a

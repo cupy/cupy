@@ -117,7 +117,7 @@ class TestRandomState(unittest.TestCase):
     def test_seed_not_none(self, dtype):
         self.check_seed(dtype(0))
 
-    @testing.for_dtypes([numpy.complex_])
+    @testing.for_dtypes([numpy.complex128])
     def test_seed_invalid_type_complex(self, dtype):
         with self.assertRaises(TypeError):
             self.rs.seed(dtype(0))
@@ -971,6 +971,10 @@ class TestRandint(RandomGeneratorTestCase):
     def test_randint_float2(self):
         self.generate(6.7, size=(2, 3))
 
+    @pytest.mark.xfail(numpy.__version__ < "2",
+                       reason='XXX: np 2.0: comparisons with OOB '
+                              'ints are broken in numpy < 2'
+                       )
     def test_randint_int64_1(self):
         self.generate(2**34, 2**40, 3, dtype='q')
 

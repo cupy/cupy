@@ -5,6 +5,7 @@
 # Matrix and vector products
 # -----------------------------------------------------------------------------
 from cupy.linalg._product import matrix_power  # NOQA
+from cupy.linalg._product import linalg_cross as cross  # NOQA
 
 # -----------------------------------------------------------------------------
 # Decompositions
@@ -41,3 +42,8 @@ from cupy.linalg._solve import tensorinv  # NOQA
 # Exceptions
 # -----------------------------------------------------------------------------
 from numpy.linalg import LinAlgError  # NOQA
+
+
+__all__ = ["matrix_power", "cholesky", "qr", "svd", "eigh", "eigvalsh", "norm",
+           "det", "matrix_rank", "slogdet", "solve", "tensorsolve", "inv",
+           "pinv", "tensorinv", "LinAlgError"]

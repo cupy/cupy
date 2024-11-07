@@ -188,6 +188,18 @@ class _VariableProxy:
     def shape(self):
         raise NotImplementedError('`shape` is not supported, currently.')
 
+    def __bool__(self):
+        raise TypeError('Cannot convert to Python scalar in cupy.fuse')
+
+    def __int__(self):
+        raise TypeError('Cannot convert to Python scalar in cupy.fuse')
+
+    def __float__(self):
+        raise TypeError('Cannot convert to Python scalar in cupy.fuse')
+
+    def __complex__(self):
+        raise TypeError('Cannot convert to Python scalar in cupy.fuse')
+
 
 class _ScalarProxy(_VariableProxy):
     """An abstracted scalar object passed to the target function.

@@ -9,13 +9,7 @@ IF CUPY_USE_CUDA_PYTHON:
     from cuda.cnvrtc cimport *
     # Aliases for compatibillity with existing CuPy codebase.
     # TODO(kmaehashi): Remove these aliases.
-    ctypedef nvrtcResult Result
     ctypedef nvrtcProgram Program
-ELSE:
-    cdef extern from *:
-        ctypedef int Result 'nvrtcResult'
-        ctypedef void* Program 'nvrtcProgram'
-
 
 cpdef check_status(int status)
 

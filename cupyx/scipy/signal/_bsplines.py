@@ -1,8 +1,39 @@
+
+"""
+Signal processing B-Splines
+
+Some of the functions defined here were ported directly from CuSignal under
+terms of the MIT license, under the following notice:
+
+Copyright (c) 2019-2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software and associated documentation files (the "Software"),
+to deal in the Software without restriction, including without limitation
+the rights to use, copy, modify, merge, publish, distribute, sublicense,
+and/or sell copies of the Software, and to permit persons to whom the
+Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+DEALINGS IN THE SOFTWARE.
+"""
+
 import cupy
 import cupyx.scipy.ndimage
 
 from cupyx.scipy.signal._iir_utils import apply_iir_sos
+from cupyx.scipy.signal._splines import _symiirorder1_nd, _symiirorder2_nd
 from cupyx.scipy.interpolate._bspline import BSpline
+
+import numpy as np
 
 
 def sepfir2d(input, hrow, hcol):
@@ -38,8 +69,9 @@ def sepfir2d(input, hrow, hcol):
     hrow = hrow.astype(dtype, copy=False)
     hcol = hcol.astype(dtype, copy=False)
     filters = (hcol[::-1].conj(), hrow[::-1].conj())
+    axes = (0, 1)
     return cupyx.scipy.ndimage._filters._run_1d_correlates(
-        input, (0, 1), lambda i: filters[i], None, 'reflect', 0)
+        input, axes, (0, 1), lambda i: filters[i], None, 'reflect', 0)
 
 
 def _quadratic(x):
@@ -214,6 +246,16 @@ def _quadratic_coeff(signal):
         yplus[-2::-1], coef, zi=state, dtype=signal.dtype)
     output = cupy.r_[output[::-1], out_last]
     return output * 8.0
+
+
+def compute_root_from_lambda(lamb):
+    tmp = np.sqrt(3 + 144 * lamb)
+    xi = 1 - 96 * lamb + 24 * lamb * tmp
+    omega = np.arctan(np.sqrt((144 * lamb - 1.0) / xi))
+    tmp2 = np.sqrt(xi)
+    r = ((24 * lamb - 1 - tmp2) / (24 * lamb) *
+         np.sqrt((48*lamb + 24 * lamb * tmp)) / tmp2)
+    return r, omega
 
 
 def cspline1d(signal, lamb=0.0):
@@ -393,3 +435,163 @@ def qspline1d_eval(cj, newx, dx=1.0, x0=0):
         result += cj[indj] * _quadratic(newx - thisj)
     res[cond3] = result
     return res
+
+
+def cspline2d(signal, lamb=0.0, precision=-1.0):
+    """
+    Coefficients for 2-D cubic (3rd order) B-spline.
+
+    Return the third-order B-spline coefficients over a regularly spaced
+    input grid for the two-dimensional input image.
+
+    Parameters
+    ----------
+    input : ndarray
+        The input signal.
+    lamb : float
+        Specifies the amount of smoothing in the transfer function.
+    precision : float
+        Specifies the precision for computing the infinite sum needed to apply
+        mirror-symmetric boundary conditions.
+
+    Returns
+    -------
+    output : ndarray
+        The filtered signal.
+    """
+    if lamb <= 1 / 144.0:
+        # Normal cubic spline
+        r = -2 + np.sqrt(3.0)
+        out = _symiirorder1_nd(signal, -r * 6.0, r, precision=precision,
+                               axis=-1)
+        out = _symiirorder1_nd(out, -r * 6.0, r, precision=precision,
+                               axis=0)
+        return out
+
+    r, omega = compute_root_from_lambda(lamb)
+    out = _symiirorder2_nd(signal, r, omega, precision=precision, axis=-1)
+    out = _symiirorder2_nd(out, r, omega, precision=precision, axis=0)
+    return out
+
+
+def qspline2d(signal, lamb=0.0, precision=-1.0):
+    """
+    Coefficients for 2-D quadratic (2nd order) B-spline.
+
+    Return the second-order B-spline coefficients over a regularly spaced
+    input grid for the two-dimensional input image.
+
+    Parameters
+    ----------
+    input : ndarray
+        The input signal.
+    lamb : float
+        Specifies the amount of smoothing in the transfer function.
+    precision : float
+        Specifies the precision for computing the infinite sum needed to apply
+        mirror-symmetric boundary conditions.
+
+    Returns
+    -------
+    output : ndarray
+        The filtered signal.
+    """
+
+    if lamb > 0:
+        raise ValueError('lambda must be negative or zero')
+
+    # normal quadratic spline
+    r = -3 + 2 * np.sqrt(2.0)
+
+    out = _symiirorder1_nd(signal, -r * 8.0, r, precision=precision, axis=-1)
+    out = _symiirorder1_nd(out, -r * 8.0, r, precision=precision, axis=0)
+    return out
+
+
+def spline_filter(Iin, lmbda=5.0):
+    """Smoothing spline (cubic) filtering of a rank-2 array.
+
+    Filter an input data set, `Iin`, using a (cubic) smoothing spline of
+    fall-off `lmbda`.
+
+    Parameters
+    ----------
+    Iin : array_like
+        input data set
+    lmbda : float, optional
+        spline smooghing fall-off value, default is `5.0`.
+
+    Returns
+    -------
+    res : ndarray
+        filtered input data
+
+    """
+    intype = Iin.dtype.char
+    hcol = cupy.asarray([1.0, 4.0, 1.0], 'f') / 6.0
+    if intype in ['F', 'D']:
+        Iin = Iin.astype('F')
+        ckr = cspline2d(Iin.real, lmbda)
+        cki = cspline2d(Iin.imag, lmbda)
+        outr = sepfir2d(ckr, hcol, hcol)
+        outi = sepfir2d(cki, hcol, hcol)
+        out = (outr + 1j * outi).astype(intype)
+    elif intype in ['f', 'd']:
+        ckr = cspline2d(Iin, lmbda)
+        out = sepfir2d(ckr, hcol, hcol)
+        out = out.astype(intype)
+    else:
+        raise TypeError("Invalid data type for Iin")
+    return out
+
+
+_gauss_spline_kernel = cupy.ElementwiseKernel(
+    "T x, int32 n",
+    "T output",
+    """
+    output = 1 / sqrt( 2.0 * M_PI * signsq ) * exp( -( x * x ) * r_signsq );
+    """,
+    "_gauss_spline_kernel",
+    options=("-std=c++11",),
+    loop_prep="const double signsq { ( n + 1 ) / 12.0 }; \
+               const double r_signsq { 0.5 / signsq };",
+)
+
+
+def gauss_spline(x, n):
+    r"""Gaussian approximation to B-spline basis function of order n.
+
+    Parameters
+    ----------
+    x : array_like
+        a knot vector
+    n : int
+        The order of the spline. Must be nonnegative, i.e. n >= 0
+
+    Returns
+    -------
+    res : ndarray
+        B-spline basis function values approximated by a zero-mean Gaussian
+        function.
+
+    Notes
+    -----
+    The B-spline basis function can be approximated well by a zero-mean
+    Gaussian function with standard-deviation equal to :math:`\sigma=(n+1)/12`
+    for large `n` :
+
+    .. math::  \frac{1}{\sqrt {2\pi\sigma^2}}exp(-\frac{x^2}{2\sigma})
+
+    See [1]_, [2]_ for more information.
+
+    References
+    ----------
+    .. [1] Bouma H., Vilanova A., Bescos J.O., ter Haar Romeny B.M., Gerritsen
+       F.A. (2007) Fast and Accurate Gaussian Derivatives Based on B-Splines.
+       In: Sgallari F., Murli A., Paragios N. (eds) Scale Space and Variational
+       Methods in Computer Vision. SSVM 2007. Lecture Notes in Computer
+       Science, vol 4485. Springer, Berlin, Heidelberg
+    .. [2] http://folk.uio.no/inf3330/scripting/doc/python/SciPy/tutorial/old/node24.html
+    """  # NOQA
+    x = cupy.asarray(x)
+    return _gauss_spline_kernel(x, n)

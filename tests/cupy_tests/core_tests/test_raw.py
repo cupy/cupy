@@ -2,6 +2,7 @@ import contextlib
 import io
 import os
 import pickle
+import re
 import subprocess
 import sys
 import tempfile
@@ -16,6 +17,7 @@ from cupy import _util
 from cupy._core import _accelerator
 from cupy.cuda import compiler
 from cupy.cuda import memory
+from cupy_backends.cuda.libs import nvrtc
 
 
 _test_source1 = r'''
@@ -378,6 +380,21 @@ def compile_in_memory(in_memory):
         yield m
 
 
+def find_nvcc_ver():
+    nvcc_ver_pattern = r'release (\d+\.\d+)'
+    cmd = cupy.cuda.get_nvcc_path().split()
+    cmd += ['--version']
+    cache_ctx = use_temporary_cache_dir()
+    with cache_ctx as cache_path:
+        output = compiler._run_cc(cmd, cache_path, 'nvcc')
+    match = re.search(nvcc_ver_pattern, output)
+    assert match
+
+    # convert to driver ver format
+    major, minor = match.group(1).split('.')
+    return int(major) * 1000 + int(minor) * 10
+
+
 @testing.parameterize(
     # First test NVRTC
     {'backend': 'nvrtc', 'in_memory': False},
@@ -396,6 +413,9 @@ def compile_in_memory(in_memory):
     {'backend': 'nvcc', 'in_memory': False},
 )
 class TestRaw(unittest.TestCase):
+
+    _nvcc_ver = None
+    _nvrtc_ver = None
 
     def setUp(self):
         if hasattr(self, 'clean_up'):
@@ -518,6 +538,35 @@ class TestRaw(unittest.TestCase):
         if not self.jitify:
             assert 'precision not supported' in str(ex.value)
 
+    def _find_nvcc_ver(self):
+        if self._nvcc_ver:
+            return self._nvcc_ver
+
+        self._nvcc_ver = find_nvcc_ver()
+        return self._nvcc_ver
+
+    def _find_nvrtc_ver(self):
+        if self._nvrtc_ver:
+            return self._nvrtc_ver
+
+        # convert to driver ver format
+        major, minor = nvrtc.getVersion()
+        self._nvrtc_ver = int(major) * 1000 + int(minor) * 10
+        return self._nvrtc_ver
+
+    def _check_ptx_loadable(self, compiler: str):
+        # if the PTX version is higher than the driver version, it won't
+        # be either JIT'able (CUDA_ERROR_UNSUPPORTED_PTX_VERSION) or loadable
+        # (CUDA_ERROR_NO_BINARY_FOR_GPU), see the table at
+        # https://docs.nvidia.com/cuda/parallel-thread-execution/index.html#release-notes-ptx-release-history
+        if compiler == "nvrtc":
+            compiler_ver = self._find_nvrtc_ver()
+        elif compiler == "nvcc":
+            compiler_ver = self._find_nvcc_ver()
+        driver_ver = cupy.cuda.runtime.driverGetVersion()
+        if driver_ver < compiler_ver:
+            raise pytest.skip()
+
     def _generate_file(self, ext: str):
         # generate cubin/ptx by calling nvcc/hipcc
 
@@ -568,7 +617,8 @@ class TestRaw(unittest.TestCase):
 
     @unittest.skipIf(cupy.cuda.runtime.is_hip, 'HIP uses hsaco, not ptx')
     def test_load_ptx(self):
-        # generate ptx in the temp dir
+        # use nvcc to generate ptx in the temp dir
+        self._check_ptx_loadable('nvcc')
         file_path = self._generate_file('ptx')
 
         # load ptx and test the kernel
@@ -623,6 +673,7 @@ class TestRaw(unittest.TestCase):
     @unittest.skipIf(cupy.cuda.runtime.is_hip,
                      'ROCm/HIP does not support dynamic parallelism')
     def test_dynamical_parallelism(self):
+        self._check_ptx_loadable('nvrtc')
         ker = cupy.RawKernel(_test_source4, 'test_kernel', options=('-dc',),
                              backend=self.backend, jitify=self.jitify)
         N = 169
@@ -640,7 +691,9 @@ class TestRaw(unittest.TestCase):
         x = cupy.zeros((N,), dtype=cupy.float32)
         use_ptx = os.environ.get(
             'CUPY_COMPILE_WITH_PTX', False)
-        if self.backend == 'nvrtc' and (
+        if self.jitify:
+            error = cupy.cuda.compiler.JitifyException
+        elif self.backend == 'nvrtc' and (
                 use_ptx or
                 (cupy.cuda.driver._is_cuda_python()
                  and cupy.cuda.runtime.runtimeGetVersion() < 11010) or
@@ -823,7 +876,6 @@ class TestRaw(unittest.TestCase):
             name_expressions = ['my_sqrt<int>', 'my_sqrt<float>',
                                 'my_sqrt<complex<double>>', 'my_func']
         mod = cupy.RawModule(code=test_cxx_template,
-                             options=('--std=c++11',),
                              name_expressions=name_expressions,
                              jitify=self.jitify)
 
@@ -855,14 +907,12 @@ class TestRaw(unittest.TestCase):
         if self.backend == 'nvcc':
             with pytest.raises(ValueError) as e:
                 cupy.RawModule(code=test_cxx_template, backend=self.backend,
-                               options=('--std=c++11',),
                                name_expressions=name_expressions)
             assert 'nvrtc' in str(e.value)
             return  # the rest of tests do not apply to nvcc
 
         # 2. compile code without specializations
         mod = cupy.RawModule(code=test_cxx_template,
-                             options=('--std=c++11',),
                              jitify=self.jitify)
         # ...try to get a specialized kernel
         match = ('named symbol not found' if not cupy.cuda.runtime.is_hip else
@@ -870,15 +920,8 @@ class TestRaw(unittest.TestCase):
         with pytest.raises(cupy.cuda.driver.CUDADriverError, match=match):
             mod.get_function('my_sqrt<int>')
 
-        # 3. compile code without specifying C++ standard
-        with pytest.raises(ValueError):
-            cupy.RawModule(code=test_cxx_template,
-                           name_expressions=name_expressions,
-                           jitify=self.jitify)
-
-        # 4. try to fetch something we didn't specialize for
+        # 3. try to fetch something we didn't specialize for
         mod = cupy.RawModule(code=test_cxx_template,
-                             options=('--std=c++11',),
                              name_expressions=name_expressions,
                              jitify=self.jitify)
         if cupy.cuda.runtime.is_hip:
@@ -992,7 +1035,6 @@ class TestRaw(unittest.TestCase):
         name = name_expressions[0]
         with cupy.cuda.Device(0):
             mod = cupy.RawModule(code=test_cxx_template,
-                                 options=('--std=c++11',),
                                  name_expressions=name_expressions,
                                  jitify=self.jitify)
 
@@ -1026,7 +1068,6 @@ class TestRaw(unittest.TestCase):
         name = name_expressions[0]
         with cupy.cuda.Device(0):
             mod = cupy.RawModule(code=test_cxx_template,
-                                 options=('--std=c++11',),
                                  name_expressions=name_expressions,
                                  jitify=self.jitify)
 
@@ -1101,6 +1142,9 @@ void test_grid_sync(const float* x1, const float* x2, float* y, int n) {
     'n': [10, 100, 1000],
     'block': [64, 256],
 }))
+@unittest.skipIf(
+    find_nvcc_ver() >= 12020,
+    "fp16 header compatibility issue, see cupy#8412")
 @unittest.skipUnless(
     9000 <= cupy.cuda.runtime.runtimeGetVersion(),
     'Requires CUDA 9.x or later')
@@ -1231,7 +1275,7 @@ class TestRawPicklable(unittest.TestCase):
         # run another process to check the pickle
         s = subprocess.run([sys.executable, 'TestRawPicklable.py'] + test_args,
                            cwd=self.temp_dir)
-        s.check_returncode()  # raise if unsuccess
+        s.check_returncode()  # raise if unsuccessful
 
 
 # a slightly more realistic kernel involving std utilities
@@ -1282,8 +1326,7 @@ class TestRawJitify(unittest.TestCase):
     def _helper2(self, type_str):
         mod2 = cupy.RawModule(code=std_code,
                               jitify=self.jitify,
-                              name_expressions=['shift<%s>' % type_str, ],
-                              options=('--std=c++11',))
+                              name_expressions=('shift<%s>' % type_str,))
         ker = mod2.get_function('shift<%s>' % type_str)
         N = 256
         a = cupy.random.random_integers(0, 7, N).astype(cupy.int32)
@@ -1293,18 +1336,15 @@ class TestRawJitify(unittest.TestCase):
 
     def test_jitify1(self):
         # simply prepend an unused header
-        hdr = '#include <cupy/cub/cub/block/block_reduce.cuh>\n'
+        hdr = '#include <cub/block/block_reduce.cuh>\n'
+        # Starting CUDA 12.2, fp16/bf16 headers are intertwined, but due to
+        # license issue we can't yet bundle bf16 headers. CUB offers us a
+        # band-aid solution to avoid including the latter (NVIDIA/cub#478,
+        # nvbugs 3641496).
+        options = ('-DCUB_DISABLE_BF16_SUPPORT',)
 
-        if self.jitify:
-            if sys.platform.startswith('win32'):
-                pytest.xfail('macro preprocessing in NVRTC is likely buggy')
-            # Jitify will make it work
-            self._helper(hdr)
-        else:
-            # NVRTC cannot find C++ std headers without Jitify
-            with pytest.raises(cupy.cuda.compiler.CompileException) as ex:
-                self._helper(hdr)
-            assert 'cannot open source file' in str(ex.value)
+        # Compiling CUB headers now works with or without Jitify.
+        self._helper(hdr, options)
 
     def test_jitify2(self):
         # NVRTC cannot compile any code involving std

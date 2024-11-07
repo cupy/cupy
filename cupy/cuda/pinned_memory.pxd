@@ -36,3 +36,6 @@ cdef class PinnedMemoryPool:
     cpdef free(self, intptr_t ptr, size_t size)
     cpdef free_all_blocks(self)
     cpdef n_free_blocks(self)
+
+
+cpdef bint is_memory_pinned(intptr_t data) except*

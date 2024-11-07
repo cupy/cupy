@@ -46,12 +46,19 @@ function PublishTestResults {
     echo "Uploading test results..."
     $artifact_id = $Env:CI_JOB_ID
     RunOrDie gsutil -m -q cp cupy_build_log.txt cupy_test_log.txt "gs://chainer-artifacts-pfn-public-ci/cupy-ci/$artifact_id/"
-    echo "Build Log: https://storage.googleapis.com/chainer-artifacts-pfn-public-ci/cupy-ci/$artifact_id/cupy_build_log.txt"
-    echo "Test Log: https://storage.googleapis.com/chainer-artifacts-pfn-public-ci/cupy-ci/$artifact_id/cupy_test_log.txt"
+    echo "Build Log:"
+    echo "https://storage.googleapis.com/chainer-artifacts-pfn-public-ci/cupy-ci/$artifact_id/cupy_build_log.txt"
+    echo "Test Log:"
+    echo "https://storage.googleapis.com/chainer-artifacts-pfn-public-ci/cupy-ci/$artifact_id/cupy_test_log.txt"
 }
 
 function Main {
     PrioritizeFlexCIDaemon
+    EnableLongPaths
+
+    # Enable symbolic links and re-checkout
+    git config core.symlinks true
+    git reset --hard
 
     # Setup environment
     echo "Using CUDA $cuda and Python $python"
@@ -78,13 +85,16 @@ function Main {
 
     echo "Building..."
     $build_retval = 0
-    RunOrDie python -m pip install -U "numpy<1.24" "scipy<1.10.0"
-    python -m pip install ".[all,test]" -vvv > cupy_build_log.txt
+    RunOrDie python -m pip install -U "numpy" "scipy==1.12.*"
+    python -m pip install ".[all,test]" -v > cupy_build_log.txt
     if (-not $?) {
         $build_retval = $LastExitCode
     }
+
+    echo "------------------------------------------------------------------------------------------"
     echo "Last 10 lines from the build output:"
     Get-Content cupy_build_log.txt -Tail 10
+    echo "------------------------------------------------------------------------------------------"
 
     if ($build_retval -ne 0) {
         echo "n/a" > cupy_test_log.txt
@@ -99,7 +109,7 @@ function Main {
     if ($test -eq "build") {
         return
     } elseif ($test -eq "test") {
-        $pytest_opts = "-m", "not slow"
+        $pytest_opts = "-m", '"not slow"'
     } elseif ($test -eq "slow") {
         $pytest_opts = "-m", "slow"
     } else {
@@ -118,28 +128,23 @@ function Main {
 
     # Install dependency for cuDNN 8.3+
     echo ">> Installing zlib"
-    RunOrDie curl.exe -LO http://www.winimage.com/zLibDll/zlib123dllx64.zip
-    RunOrDie 7z x "zlib123dllx64.zip"
-    Copy-Item -Path "dll_x64\zlibwapi.dll" -Destination "C:\Windows\System32"
+    InstallZLIB
 
     pushd tests
     echo "CuPy Configuration:"
     RunOrDie python -c "import cupy; print(cupy); cupy.show_config()"
     echo "Running test..."
-    $test_retval = 0
-    python -c "import cupy; cupy.show_config()" > ../cupy_test_log.txt
-    python -m pytest -rfEX @pytest_opts . >> ../cupy_test_log.txt
-    if (-not $?) {
-        $test_retval = $LastExitCode
-    }
+    $test_retval = RunWithTimeout -timeout 18000 -output ../cupy_test_log.txt -- python -m pytest -rfEX @pytest_opts .
     popd
 
     if (-Not $is_pull_request) {
         UploadCache "${cache_archive}"
     }
 
+    echo "------------------------------------------------------------------------------------------"
     echo "Last 10 lines from the test output:"
     Get-Content cupy_test_log.txt -Tail 10
+    echo "------------------------------------------------------------------------------------------"
 
     PublishTestResults
     if ($test_retval -ne 0) {

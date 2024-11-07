@@ -61,7 +61,7 @@ class TestFusionBroadcast(unittest.TestCase):
     def test_broadcast(self, xp):
         return lambda x, y: x + y
 
-    # TODO(asi1024): Uncomment after replace fusion implementaiton.
+    # TODO(asi1024): Uncomment after replace fusion implementation.
 
     # @fusion_utils.check_fusion(accept_error=ValueError)
     # def test_broadcast_inplace(self, xp):
@@ -218,6 +218,7 @@ class TestFusionScalar(unittest.TestCase):
 
         return func
 
+    @testing.with_requires('numpy>=1.25')
     @testing.for_all_dtypes_combination(names=('dtype1', 'dtype2'))
     @fusion_utils.check_fusion()
     def test_numpy_scalar_l(self, xp, dtype1, dtype2):

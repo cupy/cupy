@@ -3,6 +3,7 @@
 import copy
 from distutils import ccompiler
 from distutils import sysconfig
+import logging
 import os
 import shutil
 import sys
@@ -132,6 +133,9 @@ def preconfigure_modules(ctx: Context, MODULES, compiler, settings):
             inc_path = os.path.join(cutensor_path, 'include')
             if os.path.exists(inc_path):
                 settings['include_dirs'].append(inc_path)
+            lib_path = os.path.join(cutensor_path, 'lib')
+            if os.path.exists(lib_path):
+                settings['library_dirs'].append(lib_path)
             cuda_version = ctx.features['cuda'].get_version()
             cuda_major = str(cuda_version // 1000)
             cuda_major_minor = cuda_major + '.' + \
@@ -254,6 +258,37 @@ def _rpath_base():
         raise Exception('not supported on this platform')
 
 
+def _find_static_library(name: str) -> str:
+    if PLATFORM_LINUX:
+        filename = f'lib{name}.a'
+        if (int(os.environ.get('CONDA_BUILD_CROSS_COMPILATION', 0)) == 1 and
+                os.environ.get('CONDA_OVERRIDE_CUDA', '0').startswith('11')):
+            # CUDA 11 on conda-forge has an ad hoc layout to support cross
+            # compiling
+            libdirs = ['lib']
+            cuda_path = (f'{build.get_cuda_path()}/targets/'
+                         f'{build.conda_get_target_name()}/')
+        else:
+            libdirs = ['lib64', 'lib']
+            cuda_path = build.get_cuda_path()
+    elif PLATFORM_WIN32:
+        filename = f'{name}.lib'
+        libdirs = ['lib\\x64', 'lib']
+        cuda_path = build.get_cuda_path()
+    else:
+        raise Exception('not supported on this platform')
+
+    logging.debug(f"{cuda_path=}")
+    if cuda_path is None:
+        raise Exception(f'Could not find {filename}: CUDA path unavailable')
+    for libdir in libdirs:
+        path = os.path.join(cuda_path, libdir, filename)
+        if os.path.exists(path):
+            return path
+    else:
+        raise Exception(f'Could not find {filename}: {path} does not exist')
+
+
 def make_extensions(ctx: Context, compiler, use_cython):
     """Produce a list of Extension instances which passed to cythonize()."""
 
@@ -293,17 +328,58 @@ def make_extensions(ctx: Context, compiler, use_cython):
         settings['define_macros'].append(('__HIP_PLATFORM_AMD__', '1'))
         # deprecated since ROCm 4.2.0
         settings['define_macros'].append(('__HIP_PLATFORM_HCC__', '1'))
+    settings['define_macros'].append(('CUPY_CACHE_KEY', ctx.cupy_cache_key))
 
-    available_modules = []
-    if no_cuda:
-        available_modules = [m['name'] for m in MODULES]
-    else:
-        available_modules, settings = preconfigure_modules(
-            ctx, MODULES, compiler, settings)
-        required_modules = get_required_modules(MODULES)
-        if not (set(required_modules) <= set(available_modules)):
-            raise Exception('Your CUDA environment is invalid. '
-                            'Please check above error log.')
+    try:
+        host_compiler = compiler
+        if int(os.environ.get('CONDA_BUILD_CROSS_COMPILATION', 0)) == 1:
+            os.symlink(f'{os.environ["BUILD_PREFIX"]}/x86_64-conda-linux-gnu/'
+                       'bin/x86_64-conda-linux-gnu-ld',
+                       f'{os.environ["BUILD_PREFIX"]}/bin/ld')
+        if (PLATFORM_LINUX and (
+                int(os.environ.get('CONDA_BUILD_CROSS_COMPILATION', 0)) == 1 or
+                os.environ.get('CONDA_OVERRIDE_CUDA', '0').startswith('12'))):
+            # If cross-compiling, we need build_and_run() & build_shlib() to
+            # use the compiler on the build platform to generate stub files
+            # that are executable in the build environment, not the target
+            # environment.
+            compiler = ccompiler.new_compiler()
+            sysconfig.customize_compiler(compiler)
+            # Need to match and replace these
+            # https://github.com/pypa/distutils/blob/30b7331b07fbc404959cb37ac311afdfb90813be/distutils/unixccompiler.py#L117-L129
+            cc = os.environ['CC_FOR_BUILD']
+            cxx = os.environ['CXX_FOR_BUILD']
+            ar = os.environ['BUILD'] + "-ar"
+            compiler.preprocessor = None
+            compiler.compiler = [cc,]
+            compiler.compiler_so = [cc,]
+            compiler.compiler_cxx = [cxx,]
+            compiler.compiler_so_cxx = [cxx,]
+            compiler.linker_so = [cc, f'-B{os.environ["BUILD_PREFIX"]}/bin',
+                                  '-shared']
+            compiler.linker_so_cxx = [cxx,
+                                      f'-B{os.environ["BUILD_PREFIX"]}/bin',
+                                      '-shared']
+            compiler.linker_exe = [cc, f'-B{os.environ["BUILD_PREFIX"]}/bin']
+            compiler.linker_exe_cxx = [cxx,
+                                       f'-B{os.environ["BUILD_PREFIX"]}/bin']
+            compiler.archiver = [ar, 'rcs']
+            compiler.ranlib = None
+
+        available_modules = []
+        if no_cuda:
+            available_modules = [m['name'] for m in MODULES]
+        else:
+            available_modules, settings = preconfigure_modules(
+                ctx, MODULES, compiler, settings)
+            required_modules = get_required_modules(MODULES)
+            if not (set(required_modules) <= set(available_modules)):
+                raise Exception('Your CUDA environment is invalid. '
+                                'Please check above error log.')
+    finally:
+        compiler = host_compiler
+        if int(os.environ.get('CONDA_BUILD_CROSS_COMPILATION', 0)) == 1:
+            os.remove(f'{os.environ["BUILD_PREFIX"]}/bin/ld')
 
     ret = []
     for module in MODULES:
@@ -312,7 +388,10 @@ def make_extensions(ctx: Context, compiler, use_cython):
 
         s = copy.deepcopy(settings)
         if not no_cuda:
-            s['libraries'] = module['libraries']
+            s['libraries'] = module.libraries
+            s['extra_objects'] = [
+                _find_static_library(name) for name in module.static_libraries
+            ]
 
         compile_args = s.setdefault('extra_compile_args', [])
         link_args = s.setdefault('extra_link_args', [])
@@ -336,15 +415,21 @@ def make_extensions(ctx: Context, compiler, use_cython):
         if module['name'] == 'jitify':
             # this fixes RTD (no_cuda) builds...
             compile_args.append('--std=c++11')
+            # suppress printing Jitify logging to stdout
+            compile_args.append('-DJITIFY_PRINT_LOG=0')
             # Uncomment to diagnose Jitify issues.
             # compile_args.append('-DJITIFY_PRINT_ALL')
 
             # if any change is made to the Jitify header, we force recompiling
-            s['depends'] = ['./cupy/_core/include/cupy/jitify/jitify.hpp']
+            s['depends'] = ['./cupy/_core/include/cupy/_jitify/jitify.hpp']
 
         if module['name'] == 'dlpack':
             # if any change is made to the DLPack header, we force recompiling
-            s['depends'] = ['./cupy/_core/include/cupy/dlpack/dlpack.h']
+            s['depends'] = ['./cupy/_core/include/cupy/_dlpack/dlpack.h']
+
+        if module['name'] == 'numpy_allocator':
+            # ensure the cdef public APIs have C linkage
+            s['define_macros'].append(('CYTHON_EXTERN_C', 'extern "C"'))
 
         for f in module['file']:
             s_file = copy.deepcopy(s)
@@ -370,8 +455,6 @@ def make_extensions(ctx: Context, compiler, use_cython):
                 rpath.append(
                     '{}{}/cupy/.data/lib'.format(_rpath_base(), '/..' * depth))
 
-            if not PLATFORM_WIN32 and not PLATFORM_LINUX:
-                assert False, "macOS is no longer supported"
             if (PLATFORM_LINUX and len(rpath) != 0):
                 ldflag = '-Wl,'
                 if PLATFORM_LINUX:

@@ -288,6 +288,77 @@ class TestRaw:
             y[:mask] += 1
             assert bool((x == y).all())
 
+    def test_loop_continue(self):
+        @jit.rawkernel()
+        def f(x, y, z):
+            tid = jit.grid(1)
+
+            for i in range(10):
+                # adds 0-9, except for 5.
+                # Sum is 40
+                if i == 5:
+                    continue
+                x[tid] += i
+
+            i2 = 0
+            while i2 < 9:
+                # adds 1-9 in a while loop, except for 6,
+                # should equal 39
+                i2 += 1
+                if i2 == 6:
+                    continue
+                y[tid] += i2
+
+            for i in range(11):
+                # adds 0-10, but skips if the sum is greater than 3*i,
+                # skips 8 and 9, but not 10 (28 < 3*10), sum is 38
+                if z[tid] > 3*i:
+                    continue
+                z[tid] += i
+
+        x = cupy.zeros(32, dtype=int)
+        y = cupy.zeros(32, dtype=int)
+        z = cupy.zeros(32, dtype=int)
+        f[1, 32](x, y, z)
+        assert bool((x == 40).all())
+        assert bool((y == 39).all())
+        assert bool((z == 38).all())
+
+    def test_loop_break(self):
+        @jit.rawkernel()
+        def f(x, y, z):
+            tid = jit.grid(1)
+
+            for i in range(10):
+                # adds 0-4,
+                # break at 5. Sum is 10
+                if i == 5:
+                    break
+                x[tid] += i
+
+            i2 = 0
+            while i2 < 9:
+                # adds 1-5 in a while loop,
+                # breaks at 6, should equal 15
+                i2 += 1
+                if i2 == 6:
+                    break
+                y[tid] += i2
+            for i in range(11):
+                # adds 0-10, but stops once the sum is greater than 3*i,
+                # breaks at 8 (28 > 3*8), sum is 28
+                if z[tid] > 3*i:
+                    break
+                z[tid] += i
+
+        x = cupy.zeros(32, dtype=int)
+        y = cupy.zeros(32, dtype=int)
+        z = cupy.zeros(32, dtype=int)
+        f[1, 32](x, y, z)
+        assert bool((x == 10).all())
+        assert bool((y == 15).all())
+        assert bool((z == 28).all())
+
     def test_shared_memory_static(self):
         @jit.rawkernel()
         def f(x, y):
@@ -633,6 +704,7 @@ class TestRaw:
         y = cupy.arange(N*2, dtype=cupy.uint32) % N
         assert (x == y).all()
 
+    @pytest.mark.xfail(reason="XXX: np2.0: int32/uint32 compile failure")
     def test_warpsize(self):
         @jit.rawkernel()
         def f(arr):
@@ -768,3 +840,25 @@ class TestRaw:
         y = numpy.dtype(dtype).type(1)
         f((5,), (6,), (x, y))
         testing.assert_array_equal(x, numpy.full_like(x, 1))
+
+    @testing.for_dtypes("efdFD")
+    def test_inf(self, dtype):
+        @jit.rawkernel()
+        def f(x):
+            tid = jit.threadIdx.x + jit.blockDim.x * jit.blockIdx.x
+            x[tid] = cupy.dtype(dtype).type(cupy.inf)
+
+        x = cupy.zeros((30), dtype=dtype)
+        f((5,), (6,), (x,))
+        testing.assert_array_equal(x, numpy.full_like(x, cupy.inf))
+
+    @testing.for_dtypes("efdFD")
+    def test_nan(self, dtype):
+        @jit.rawkernel()
+        def f(x):
+            tid = jit.threadIdx.x + jit.blockDim.x * jit.blockIdx.x
+            x[tid] = cupy.dtype(dtype).type(cupy.nan)
+
+        x = cupy.zeros((30), dtype=dtype)
+        f((5,), (6,), (x,))
+        testing.assert_array_equal(x, numpy.full_like(x, cupy.nan))

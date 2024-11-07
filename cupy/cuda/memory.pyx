@@ -14,6 +14,8 @@ from fastrlock cimport rlock
 from libc.stdint cimport int8_t
 from libc.stdint cimport intptr_t
 from libc.stdint cimport UINT64_MAX
+from libc.stdlib cimport malloc as c_malloc
+from libc.stdlib cimport free as c_free
 from libcpp cimport algorithm
 
 from cupy.cuda cimport device
@@ -26,7 +28,16 @@ from cupy_backends.cuda.api.runtime import CUDARuntimeError
 from cupy import _util
 
 
+# cudaMalloc() is aligned to at least 512 bytes
+# cf. https://gist.github.com/sonots/41daaa6432b1c8b27ef782cd14064269
+DEF ALLOCATION_UNIT_SIZE = 512
+# for test
+_allocation_unit_size = ALLOCATION_UNIT_SIZE
+
+
 cdef bint _exit_mode = False
+
+cdef bint _is_ump_enabled = (int(os.environ.get('CUPY_ENABLE_UMP', '0')) != 0)
 
 
 @atexit.register
@@ -107,8 +118,8 @@ cdef class Memory(BaseMemory):
 
 
 cdef inline void check_async_alloc_supported(int device_id) except*:
-    if runtime.runtimeGetVersion() < 11020:
-        raise RuntimeError("memory_async is supported since CUDA 11.2")
+    if runtime._is_hip_environment:
+        raise RuntimeError('HIP does not support memory_async')
     cdef int dev_id
     cdef list support
     try:
@@ -188,6 +199,13 @@ cdef class UnownedMemory(BaseMemory):
             runtime._ensure_context()
             ptr_attrs = runtime.pointerGetAttributes(ptr)
             device_id = ptr_attrs.device
+            if device_id == runtime.cudaCpuDeviceId:
+                # this happens with SystemMemory...
+                device_id = device.get_device_id()
+            # CUDA doesn't track memory allocated through the system malloc
+            if device_id == runtime.cudaInvalidDeviceId and _is_ump_enabled:
+                device_id = device.get_device_id()
+
         self.size = size
         self.device_id = device_id
         self.ptr = ptr
@@ -218,14 +236,16 @@ cdef class ManagedMemory(BaseMemory):
         if size > 0:
             self.ptr = runtime.mallocManaged(size)
 
-    def prefetch(self, stream):
+    def prefetch(self, stream, *, int device_id=runtime.cudaInvalidDeviceId):
         """(experimental) Prefetch memory.
 
         Args:
             stream (cupy.cuda.Stream): CUDA stream.
+            device_id (int): CUDA device ID (-1 for CPU).
         """
-        runtime.memPrefetchAsync(self.ptr, self.size, self.device_id,
-                                 stream.ptr)
+        if device_id == runtime.cudaInvalidDeviceId:
+            device_id = self.device_id
+        runtime.memPrefetchAsync(self.ptr, self.size, device_id, stream.ptr)
 
     def advise(self, int advise, device.Device dev):
         """(experimental) Advise about the usage of this memory.
@@ -241,6 +261,90 @@ cdef class ManagedMemory(BaseMemory):
         # Note: Cannot raise in the destructor! (cython/cython#1613)
         if self.ptr:
             runtime.free(self.ptr)
+
+
+@cython.no_gc
+cdef class SystemMemory(BaseMemory):
+    """Memory allocation on an HMM/ATS enabled system.
+
+    HMM stands for heterogeneous memory management. It is a kernel-level
+    feature allowing memory allocated via the system ``malloc`` to be
+    accessible by both CPU and GPU.
+
+    ATS stands for Address Translation Services. It is a hardware/software
+    feature on Grace Hopper that enables the CPU and GPU to share a single
+    per-process page table, allowing memory allocated by the system to be
+    accessible by both CPU and GPU.
+
+    This class provides an RAII interface of the memory allocation.
+
+    Args:
+        size (int): Size of the memory allocation in bytes.
+    """
+
+    def __init__(self, size_t size):
+        self.size = size
+        # TODO(leofang): using the GPU id may not be ideal, but setting it
+        # to cudaCpuDeviceId (-1) would require a lot of changes
+        self.device_id = device.get_device_id()
+        self.ptr = 0
+        if size > 0:
+            self.ptr = <intptr_t>c_malloc(size)
+        self._owner = None
+
+    @staticmethod
+    cdef from_external(intptr_t ptr, size_t size, object owner):
+        """Warp externally allocated (not owned by CuPy) system memory.
+
+        Args:
+            ptr (int): Pointer to the buffer.
+            size (int): Size of the buffer.
+            owner (object): Reference to the owner object to keep the memory
+                alive.
+        """
+        cdef SystemMemory self = SystemMemory.__new__(SystemMemory)
+        self.size = size
+        # TODO(leofang): using the GPU id may not be ideal, but setting it
+        # to cudaCpuDeviceId (-1) would require a lot of changes
+        self.device_id = device.get_device_id()
+        self.ptr = ptr
+        assert owner is not None, 'must provide an owner'
+        self._owner = owner
+
+        return self
+
+    def prefetch(self, stream, *, int device_id=runtime.cudaInvalidDeviceId):
+        """Prefetch memory.
+
+        Args:
+            stream (cupy.cuda.Stream): CUDA stream.
+            device_id (int): CUDA device ID (-1 for CPU).
+        """
+        if device_id == runtime.cudaInvalidDeviceId:
+            device_id = self.device_id
+        runtime.memPrefetchAsync(self.ptr, self.size, device_id, stream.ptr)
+
+    def advise(self, int advise, device.Device dev):
+        """Advise about the usage of this memory.
+
+        Args:
+            advics (int): Advise to be applied for this memory.
+            dev (cupy.cuda.Device): Device to apply the advice for.
+
+        """
+        # TODO(leofang): switch to cudaMemAdvice_v2 from CUDA 12.2
+        runtime.memAdvise(self.ptr, self.size, advise, dev.id)
+
+    def __dealloc__(self):
+        # Note: Cannot raise in the destructor! (cython/cython#1613)
+        if self._owner is not None:
+            # if we don't own the memory, we must sync before free to avoid
+            # any race condition
+            runtime.streamSynchronize(stream_module.get_current_stream_ptr())
+        elif self.ptr:
+            # we don't need to sync because we assume SystemMemory is allocated
+            # and protected by the (stream-ordered) memory pool
+            c_free(<void*>self.ptr)
 
 
 @cython.final
@@ -674,6 +778,39 @@ cpdef MemoryPointer malloc_managed(size_t size):
     return MemoryPointer(mem, 0)
 
 
+cpdef MemoryPointer malloc_system(size_t size):
+    """Allocate memory on an HMM/ATS enabled system.
+
+    This method can be used as a CuPy memory allocator. The simplest way to
+    use system memory as the default allocator is the following code::
+
+        set_allocator(malloc_system)
+
+    Or, to enable the memory pool support (recommended)::
+
+        set_allocator(MemoryPool(malloc_system).malloc)
+
+    HMM stands for heterogeneous memory management. It is a kernel-level
+    feature allowing memory allocated via the system ``malloc`` to be
+    accessible by both CPU and GPU. Read more at:
+    https://developer.nvidia.com/blog/simplifying-gpu-application-development-with-heterogeneous-memory-management  # NOQA
+
+    ATS stands for Address Translation Services. It is a hardware/software
+    feature on Grace Hopper that enables the CPU and GPU to share a single
+    per-process page table, allowing memory allocated by the system to be
+    accessible by both CPU and GPU. Read more at:
+    https://developer.nvidia.com/blog/nvidia-grace-hopper-superchip-architecture-in-depth/  # NOQA
+
+    Args:
+        size (int): Size of the memory allocation in bytes.
+
+    Returns:
+        ~cupy.cuda.MemoryPointer: Pointer to the allocated buffer.
+    """
+    mem = SystemMemory(size)
+    return MemoryPointer(mem, 0)
+
+
 cdef object _current_allocator = _malloc
 cdef object _thread_local = threading.local()
 
@@ -771,6 +908,8 @@ cdef class PooledMemory(BaseMemory):
 
     cdef:
         readonly object pool
+        readonly str identity
+        dict __dict__
 
     def __init__(self, _Chunk chunk, pool):
         self._init(chunk, pool)
@@ -780,6 +919,29 @@ cdef class PooledMemory(BaseMemory):
         self.size = chunk.size
         self.device_id = chunk.mem.device_id
         self.pool = pool
+
+        # we need a way to know what the underlying memory is
+        # TODO(leofang): would it be better to do this in MemoryPointer?
+        if isinstance(chunk.mem, Memory):
+            self.identity = "Memory"
+        elif isinstance(chunk.mem, MemoryAsync):
+            self.identity = "MemoryAsync"
+        elif isinstance(chunk.mem, UnownedMemory):
+            self.identity = "UnownedMemory"
+        elif isinstance(chunk.mem, SystemMemory):
+            self.identity = "SystemMemory"
+            self.prefetch = <SystemMemory>(chunk.mem).prefetch
+            self.advise = <SystemMemory>(chunk.mem).advise
+        elif isinstance(chunk.mem, ManagedMemory):
+            self.identity = "ManagedMemory"
+            self.prefetch = <ManagedMemory>(chunk.mem).prefetch
+            self.advise = <ManagedMemory>(chunk.mem).advise
+        elif isinstance(chunk.mem, CFunctionAllocatorMemory):
+            self.identity = "CFunctionAllocatorMemory"
+        elif isinstance(chunk.mem, PythonFunctionAllocatorMemory):
+            self.identity = "PythonFunctionAllocatorMemory"
+        else:
+            self.identity = "<unknown>"
 
     cpdef free(self):
         """Frees the memory buffer and returns it to the memory pool.
@@ -827,13 +989,6 @@ cdef class PooledMemory(BaseMemory):
 
 
 cdef size_t _index_compaction_threshold = 512
-
-
-# cudaMalloc() is aligned to at least 512 bytes
-# cf. https://gist.github.com/sonots/41daaa6432b1c8b27ef782cd14064269
-DEF ALLOCATION_UNIT_SIZE = 512
-# for test
-_allocation_unit_size = ALLOCATION_UNIT_SIZE
 
 
 cpdef inline size_t _round_size(size_t size):

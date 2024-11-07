@@ -11,6 +11,7 @@ import types
 
 import numpy
 
+from cupy.exceptions import ComplexWarning
 from cupy_backends.cuda.api import runtime
 from cupy._core._codeblock import CodeBlock, _CodeType
 from cupy._core import _kernel
@@ -43,7 +44,9 @@ Result = collections.namedtuple(
         'code',
         'return_type',
         'enable_cooperative_groups',
-        'backend'
+        'backend',
+        'options',
+        'jitify',
     ])
 
 
@@ -152,7 +155,7 @@ def _parse_function_object(func):
 
 class Generated:
 
-    def __init__(self):
+    def __init__(self) -> None:
         # list of str
         self.codes: List[str] = []
         # (function, in_types) => Optional(function_name, return_type)
@@ -167,10 +170,17 @@ class Generated:
         self.include_cg_memcpy_async = False
         # whether to include cuda/barrier
         self.include_cuda_barrier = False
-
+        # compiler options
+        self.options = ('-DCUPY_JIT_MODE', '--std=c++14',
+                        # WAR: for compiling any CCCL header
+                        '-DCUB_DISABLE_BF16_SUPPORT',)
         # workaround for hipRTC: as of ROCm 4.1.0 hipRTC still does not
         # recognize "-D", so we have to compile using hipcc...
         self.backend = 'nvcc' if runtime.is_hip else 'nvrtc'
+        # workaround for CUB/libcudacxx headers: they can be compiled by NVRTC
+        # but they need Jitify; Thrust headers can only be compiled by NVCC
+        # for now. We keep Jitify off by default to reduce overhead.
+        self.jitify = False
 
     def add_code(self, code: str) -> None:
         if code not in self.codes:
@@ -196,14 +206,16 @@ def transpile(func, attributes, mode, in_types, ret_type):
     func_name, _ = generated.device_function[(func, in_types)]
     code = '\n'.join(generated.codes)
     backend = generated.backend
+    options = generated.options
+    jitify = generated.jitify
     enable_cg = generated.enable_cg
 
     if _is_debug_mode:
         print(code)
 
     return Result(
-        func_name=func_name, code=code, return_type=return_type,
-        enable_cooperative_groups=enable_cg, backend=backend)
+        func_name=func_name, code=code, return_type=return_type, jitify=jitify,
+        enable_cooperative_groups=enable_cg, backend=backend, options=options)
 
 
 def _transpile_func_obj(func, attributes, mode, in_types, ret_type, generated):
@@ -653,9 +665,9 @@ def _transpile_stmt(
     if isinstance(stmt, ast.Pass):
         return [';']
     if isinstance(stmt, ast.Break):
-        raise NotImplementedError('Not implemented.')
+        return ['break;']
     if isinstance(stmt, ast.Continue):
-        raise NotImplementedError('Not implemented.')
+        return ['continue;']
     assert False
 
 
@@ -743,7 +755,7 @@ def _transpile_expr_internal(
             if not func._device:
                 raise TypeError(
                     f'Calling __global__ function {func._func.__name__} '
-                    'from __global__ funcion is not allowed.')
+                    'from __global__ function is not allowed.')
             args = [Data.init(x, env) for x in args]
             in_types = tuple([x.ctype for x in args])
             fname, return_type = _transpile_func_obj(
@@ -779,15 +791,6 @@ def _transpile_expr_internal(
 
     if isinstance(expr, ast.Constant):
         return Constant(expr.value)
-    if isinstance(expr, ast.Num):
-        # Deprecated since py3.8
-        return Constant(expr.n)
-    if isinstance(expr, ast.Str):
-        # Deprecated since py3.8
-        return Constant(expr.s)
-    if isinstance(expr, ast.NameConstant):
-        # Deprecated since py3.8
-        return Constant(expr.value)
     if isinstance(expr, ast.Subscript):
         array = _transpile_expr(expr.value, env)
         index = _transpile_expr(expr.slice, env)
@@ -817,13 +820,14 @@ def _transpile_expr_internal(
 
         elts = [Data.init(x, env) for x in elts]
         elts_code = ', '.join([x.code for x in elts])
+        # STD is defined in carray.cuh
         if len(elts) == 2:
             return Data(
-                f'thrust::make_pair({elts_code})',
+                f'STD::make_pair({elts_code})',
                 _cuda_types.Tuple([x.ctype for x in elts]))
         else:
             return Data(
-                f'thrust::make_tuple({elts_code})',
+                f'STD::make_tuple({elts_code})',
                 _cuda_types.Tuple([x.ctype for x in elts]))
 
     if isinstance(expr, ast.Index):
@@ -884,7 +888,8 @@ def _transpile_assign_stmt(
             raise ValueError(f'not enough values to unpack (expected {size})')
         codes = [value.ctype.declvar(f'_temp{depth}', value) + ';']
         for i in range(size):
-            code = f'thrust::get<{i}>(_temp{depth})'
+            # STD is defined in carray.cuh
+            code = f'STD::get<{i}>(_temp{depth})'
             ctype = value.ctype.types[i]
             stmt = _transpile_assign_stmt(
                 target.elts[i], env, Data(code, ctype), is_toplevel, depth + 1)
@@ -911,7 +916,8 @@ def _indexing(
         if isinstance(index, Constant):
             i = index.obj
             t = array.ctype.types[i]
-            return Data(f'thrust::get<{i}>({array.code})', t)
+            # STD is defined in carray.cuh
+            return Data(f'STD::get<{i}>({array.code})', t)
         raise TypeError('Tuple is not subscriptable with non-constants.')
 
     if isinstance(array.ctype, _cuda_types.ArrayBase):
@@ -955,8 +961,9 @@ def _indexing(
                 return Data(
                     f'{array.code}[0]', array.ctype.child_type)
             if ndim == 1:
+                # STD is defined in carray.cuh
                 return Data(
-                    f'{array.code}[thrust::get<0>({index.code})]',
+                    f'{array.code}[STD::get<0>({index.code})]',
                     array.ctype.child_type)
             return Data(
                 f'{array.code}._indexing({index.code})',
@@ -1000,7 +1007,7 @@ def _astype_scalar(
         if to_t.kind != 'b':
             warnings.warn(
                 'Casting complex values to real discards the imaginary part',
-                numpy.ComplexWarning)
+                ComplexWarning)
         return Data(f'({ctype})({x.code}.real())', ctype)
     return Data(f'({ctype})({x.code})', ctype)
 

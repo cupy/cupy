@@ -1,6 +1,7 @@
 import contextlib
 import warnings
 
+import cupy as _cupy
 from cupy._environment import get_cuda_path  # NOQA
 from cupy._environment import get_nvcc_path  # NOQA
 from cupy._environment import get_rocm_path  # NOQA
@@ -12,16 +13,12 @@ from cupy.cuda import memory  # NOQA
 from cupy.cuda import memory_hook  # NOQA
 from cupy.cuda import memory_hooks  # NOQA
 from cupy.cuda import pinned_memory  # NOQA
+from cupy.cuda import profiler  # NOQA
 from cupy.cuda import stream  # NOQA
 from cupy.cuda import texture  # NOQA
 from cupy_backends.cuda.api import driver  # NOQA
 from cupy_backends.cuda.api import runtime  # NOQA
-from cupy_backends.cuda.libs import cublas  # NOQA
-from cupy_backends.cuda.libs import curand  # NOQA
-from cupy_backends.cuda.libs import cusolver  # NOQA
-from cupy_backends.cuda.libs import cusparse  # NOQA
 from cupy_backends.cuda.libs import nvrtc  # NOQA
-from cupy_backends.cuda.libs import profiler  # NOQA
 
 
 _available = None
@@ -36,10 +33,6 @@ class _UnavailableModule():
 
 from cupy.cuda import cub  # NOQA
 
-if not runtime.is_hip and driver.get_build_version() > 0:
-    from cupy.cuda import jitify  # NOQA
-else:
-    jitify = None
 
 try:
     from cupy_backends.cuda.libs import nvtx  # NOQA
@@ -53,17 +46,33 @@ except ImportError:
 
 
 def __getattr__(key):
-    # `*_enabled` flags are kept for backward compatibility.
-    # Note: module-level getattr only runs on Python 3.7+.
-    if key == 'cusolver_enabled':
-        # cuSOLVER is always available in CUDA 8.0+.
-        warnings.warn('''
-cupy.cuda.cusolver_enabled has been deprecated in CuPy v8 and will be removed in the future release.
-This flag always returns True as cuSOLVER is always available in CUDA 8.0 or later.
-            ''', DeprecationWarning)  # NOQA
-        return True
+    if key == 'cusolver':
+        from cupy_backends.cuda.libs import cusolver
+        _cupy.cuda.cusolver = cusolver
+        return cusolver
+    elif key == 'cusparse':
+        from cupy_backends.cuda.libs import cusparse
+        _cupy.cuda.cusparse = cusparse
+        return cusparse
+    elif key == 'curand':
+        from cupy_backends.cuda.libs import curand
+        _cupy.cuda.curand = curand
+        return curand
+    elif key == 'cublas':
+        from cupy_backends.cuda.libs import cublas
+        _cupy.cuda.cublas = cublas
+        return cublas
+    elif key == 'jitify':
+        if not runtime.is_hip and driver.get_build_version() > 0:
+            import cupy.cuda.jitify as jitify
+        else:
+            jitify = _UnavailableModule('cupy.cuda.jitify')
+        _cupy.cuda.jitify = jitify
+        return jitify
 
-    for mod in [nvtx, thrust, cub]:
+    # `nvtx_enabled` flags are kept for backward compatibility with Chainer.
+    # Note: module-level getattr only runs on Python 3.7+.
+    for mod in [nvtx]:
         flag = '{}_enabled'.format(mod.__name__.split('.')[-1])
         if key == flag:
             warnings.warn('''
@@ -89,6 +98,19 @@ def is_available():
             elif runtime.is_hip and 'hipErrorNoDevice' not in e.args[0]:
                 raise
     return _available
+
+
+def get_local_runtime_version() -> int:
+    """
+    Returns the version of the CUDA Runtime installed in the environment.
+
+    Unlike :func:`cupy.cuda.runtime.runtimeGetVersion`, which returns the
+    CUDA Runtime version statically linked to CuPy, this function returns the
+    version retrieved from the shared library installed on the host.
+    Use this method to probe the CUDA Runtime version installed in the
+    environment.
+    """
+    return runtime._getLocalRuntimeVersion()
 
 
 # import class and function

@@ -336,15 +336,23 @@ cdef class FusedKernel:
         self._cuda_params_memo[key] = ret
         return ret
 
+    def _get_typedefs(self, tuple args):
+        index_type = 'int'
+        for array in args:
+            if isinstance(array, _cupy.ndarray) and array.size > 0x7fffffff:
+                index_type = 'long long'
+        return f'typedef {index_type} IndexT;\n'
+
     def execute(self, tuple args, list shapes):
         ndarray_list = self._get_ndarray_list(args, shapes)
         ret = self._get_return_value(ndarray_list)
         reduce_key = self._reduce_dims(ndarray_list)
         inout_args = self._get_inout_args(args, ndarray_list)
         cuda_params = self._get_cuda_params(reduce_key, ndarray_list)
+        typedef = self._get_typedefs(args)
         kern = _cuda_compile(
-            self._submodule_code, self._name, cuda_params, self._cuda_body,
-            self._use_grid_sync)
+            typedef + self._submodule_code,
+            self._name, cuda_params, self._cuda_body, self._use_grid_sync)
 
         block_strides, block_size, shared_mem = (
             self._get_kernel_size(ndarray_list))

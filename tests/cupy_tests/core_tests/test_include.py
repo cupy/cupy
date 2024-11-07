@@ -15,8 +15,6 @@ _code_base = '''
 #include <cupy/math_constants.h>
 #include <cupy/atomics.cuh>
 #include <cupy/hip_workaround.cuh>
-#include <cupy/swap.cuh>
-#include <cupy/tuple.cuh>
 '''
 
 _code_nvcc = _code_base + '''
@@ -59,6 +57,8 @@ class TestIncludesCompileCUDA:
 
     def _get_options(self):
         return (
+            '-std=c++14',
+            *cupy._core.core._get_cccl_include_options(),
             '-I{}'.format(cupy._core.core._get_header_dir_path()),
             '-I{}'.format(os.path.join(cupy.cuda.get_cuda_path(), 'include')),
         )

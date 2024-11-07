@@ -22,7 +22,7 @@ class GeneratorTestCase(common_distributions.BaseGeneratorTestCase):
 
     def get_rng(self, xp, seed):
         if xp is cupy:
-            return cupy.random._generator_api.Generator(
+            return cupy.random.Generator(
                 random._bit_generator.Philox4x3210(seed=seed))
         else:
             return numpy.random.Generator(numpy.random.MT19937(seed))
@@ -368,3 +368,10 @@ class TestDrichlet(
     GeneratorTestCase
 ):
     pass
+
+
+@testing.slow
+class TestLarge:
+    def test_large(self):
+        gen = random.Generator(random.XORWOW(1234))
+        gen.random(2**31 + 1, dtype=cupy.int8)

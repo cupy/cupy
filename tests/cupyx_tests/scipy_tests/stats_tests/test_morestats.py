@@ -1,4 +1,5 @@
 import numpy
+import scipy.stats
 
 import cupy
 from cupy import testing
@@ -42,25 +43,22 @@ def _make_data(shape, xp, dtype):
 
 def _compute(xp, scp, lmb, data):
     result = scp.stats.boxcox_llf(lmb, data)
-    if data.ndim == 1:
-        if data.dtype.kind == 'c':
-            assert result.dtype == xp.complex128
-        else:
-            assert result.dtype == xp.float64
+    expected_dtype = scipy.stats.boxcox_llf(lmb, cupy.asnumpy(data)).dtype
+    assert result.dtype == expected_dtype
+
+    if xp is cupy:
+        return result, _dtype(data.dtype, xp)
     else:
-        if data.dtype.kind in 'cf':
-            assert result.dtype == data.dtype
-        elif lmb == 0:
-            for dtype1 in [xp.float16, xp.float32, xp.float64]:
-                if xp.can_cast(data.dtype, dtype1):
-                    break
-            assert result.dtype == dtype1
+        assert xp is numpy
+        # Compute with higher precision
+        if data.dtype.kind == 'c':
+            result = scp.stats.boxcox_llf(lmb, data.astype(xp.complex128))
         else:
-            assert result.dtype == xp.float64
-    return result, _dtype(data.dtype, xp)
+            result = scp.stats.boxcox_llf(lmb, data.astype(xp.float64))
+        return result, _dtype(data.dtype, xp)
 
 
-@testing.with_requires('scipy')
+@testing.with_requires('scipy>=1.12.0rc1')
 class TestBoxcox_llf:
 
     @testing.for_all_dtypes(no_bool=True)

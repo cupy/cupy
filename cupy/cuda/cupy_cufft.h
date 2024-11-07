@@ -288,7 +288,7 @@ cufftResult_t cufftXtExecDescriptorZ2Z(...) {
 // common stubs for both no-cuda and hip environments
 
 extern "C" {
-// cufftXt relavant data structs
+// cufftXt relevant data structs
 typedef struct cudaXtDesc_t {
    int version;
    int nGPUs;

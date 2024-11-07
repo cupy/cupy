@@ -67,7 +67,7 @@ class AxisConcatenator(object):
 
             objs.append(newobj)
 
-        final_dtype = numpy.result_type(*arrays, *scalars)
+        final_dtype = numpy.result_type(*arrays, *[key[k] for k in scalars])
         if final_dtype is not None:
             for k in scalars:
                 objs[k] = objs[k].astype(final_dtype)

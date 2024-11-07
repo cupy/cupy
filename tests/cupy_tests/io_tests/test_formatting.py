@@ -29,13 +29,13 @@ class TestFormatting(unittest.TestCase):
             x) == numpy.format_float_positional(x)
 
     def test_format_float_positional(self):
-        a = testing.shaped_arange((1,), cupy)
-        b = testing.shaped_arange((1,), numpy)
+        a = testing.shaped_arange((), cupy)
+        b = testing.shaped_arange((), numpy)
         assert cupy.format_float_positional(
             a) == numpy.format_float_positional(b)
 
     def test_format_float_scientific(self):
-        a = testing.shaped_arange((1,), cupy)
-        b = testing.shaped_arange((1,), numpy)
+        a = testing.shaped_arange((), cupy)
+        b = testing.shaped_arange((), numpy)
         assert cupy.format_float_scientific(
             a) == numpy.format_float_scientific(b)

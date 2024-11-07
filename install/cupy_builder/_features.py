@@ -1,3 +1,4 @@
+import sys
 from typing import Any, Dict, List
 
 import cupy_builder.install_build as build
@@ -23,8 +24,11 @@ class Feature:
         # This is used only for testing availability of the feature.
         self.includes: List[str] = []
 
-        # Shared libraries to be linked.
+        # Libraries (shared/static) on the search path to be linked.
         self.libraries: List[str] = []
+
+        # Static libraries (manually searched) to be linked.
+        self.static_libraries: List[str] = []
 
         # Version of the feature.
         self._version: Any = self._UNDETERMINED
@@ -64,8 +68,9 @@ def _from_dict(d: Dict[str, Any], ctx: Context) -> Feature:
     f.name = d['name']
     f.required = d.get('required', False)
     f.libraries = d['libraries']
+    f.static_libraries = d.get('static_libraries', [])
 
-    # Note: the followings are renamed
+    # Note: the following are renamed
     f.modules = d['file']
     f.includes = d['include']
     if 'check_method' in d:
@@ -77,7 +82,7 @@ def _from_dict(d: Dict[str, Any], ctx: Context) -> Feature:
 
 
 # The value of the key 'file' is a list that contains extension names
-# or tuples of an extension name and a list of other souces files
+# or tuples of an extension name and a list of other sources files
 # required to build the extension such as .cpp files and .cu files.
 #
 #   <extension name> | (<extension name>, a list of <other source>)
@@ -95,7 +100,6 @@ _cuda_files = [
     'cupy_backends.cuda.libs.curand',
     'cupy_backends.cuda.libs.cusparse',
     'cupy_backends.cuda.libs.nvrtc',
-    'cupy_backends.cuda.libs.profiler',
     'cupy_backends.cuda.stream',
     'cupy_backends.cuda._softlink',
     'cupy._core._accelerator',
@@ -124,6 +128,7 @@ _cuda_files = [
     'cupy._core.internal',
     'cupy._core.fusion',
     'cupy._core.new_fusion',
+    'cupy._core.numpy_allocator',
     'cupy._core.raw',
     'cupy.cuda.common',
     'cupy.cuda.cufft',
@@ -140,6 +145,11 @@ _cuda_files = [
     'cupy.lib._polynomial',
     'cupy._util',
 ]
+
+# Libraries required for cudart_static
+_cudart_static_libs = (
+    (['pthread', 'rt', 'dl'] if sys.platform == 'linux' else [])
+)
 
 
 def get_features(ctx: Context) -> Dict[str, Feature]:
@@ -248,6 +258,7 @@ def get_features(ctx: Context) -> Dict[str, Feature]:
         ],
         'libraries': [
             'cutensor',
+            'cutensorMg',
             'cublas',
         ],
         'check_method': build.check_cutensor_version,
@@ -262,10 +273,8 @@ def get_features(ctx: Context) -> Dict[str, Feature]:
         'include': [
             'cub/util_namespace.cuh',  # dummy
         ],
-        'libraries': [
-            # Dependency from CUB header files
-            'cudart',
-        ],
+        'libraries': list(_cudart_static_libs),
+        'static_libraries': ['cudart_static'],
         'check_method': build.check_cub_version,
         'version_method': build.get_cub_version,
     }
@@ -283,9 +292,9 @@ def get_features(ctx: Context) -> Dict[str, Feature]:
         'libraries': [
             # Dependency from Jitify header files
             'cuda',
-            'cudart',
             'nvrtc',
-        ],
+        ] + _cudart_static_libs,
+        'static_libraries': ['cudart_static'],
         'check_method': build.check_jitify_version,
         'version_method': build.get_jitify_version,
     }
@@ -300,10 +309,9 @@ def get_features(ctx: Context) -> Dict[str, Feature]:
         'include': [
         ],
         'libraries': [
-            # Dependency from cuRAND header files
-            'cudart',
             'curand',
-        ],
+        ] + _cudart_static_libs,
+        'static_libraries': ['cudart_static'],
     }
     HIP_random = {
         'name': 'random',
@@ -387,14 +395,10 @@ def get_features(ctx: Context) -> Dict[str, Feature]:
             ('cupy.cuda.thrust', ['cupy/cuda/cupy_thrust.cu']),
         ],
         'include': [
-            'thrust/device_ptr.h',
-            'thrust/sequence.h',
-            'thrust/sort.h',
+            'thrust/version.h',
         ],
-        'libraries': [
-            # Dependency from Thrust header files
-            'cudart',
-        ],
+        'libraries': list(_cudart_static_libs),
+        'static_libraries': ['cudart_static'],
         'check_method': build.check_thrust_version,
         'version_method': build.get_thrust_version,
     }
@@ -405,7 +409,7 @@ def get_features(ctx: Context) -> Dict[str, Feature]:
             'cupy._core.dlpack',
         ],
         'include': [
-            'cupy/dlpack/dlpack.h',
+            'cupy/_dlpack/dlpack.h',
         ],
         'libraries': [],
     }
@@ -441,6 +445,7 @@ class CUDA_cuda(Feature):
     minimum_cuda_version = 10020
 
     def __init__(self, ctx: Context):
+        super().__init__(ctx)
         self.name = 'cuda'
         self.required = True
         self.modules = _cuda_files
@@ -452,19 +457,15 @@ class CUDA_cuda(Feature):
             'cufft.h',
             'curand.h',
             'cusparse.h',
-            'nvrtc.h',
         ]
-        # TODO(kmaehashi): Split profiler module so that dependency to
-        # `cudart` can be removed when using CUDA Python.
         self.libraries = (
-            (['cudart'] if ctx.use_cuda_python else ['cuda', 'cudart']) + [
-                'cublas',
-                'cufft',
-                'curand',
-                'cusparse',
-                'nvrtc',
-            ]
+            # CUDA Runtime
+            _cudart_static_libs +
+
+            # CUDA Toolkit
+            ['cublas', 'cufft', 'curand', 'cusparse']
         )
+        self.static_libraries = ['cudart_static']
         self._version = self._UNDETERMINED
 
     def configure(self, compiler: Any, settings: Any) -> bool:

@@ -22,7 +22,7 @@ _all_methods = (
     'lower',
     'higher',
     'midpoint',
-    # 'nearest',                    # TODO(hvy): Not implemented
+    'nearest',
 )
 
 

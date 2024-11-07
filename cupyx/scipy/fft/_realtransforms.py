@@ -35,13 +35,11 @@ import math
 import numbers
 import operator
 
-import numpy
-
 import cupy
 from cupy import _core
 from cupy.fft._fft import _cook_shape
 from cupyx.scipy.fft import _fft
-
+from cupy.exceptions import AxisError
 
 __all__ = ['dct', 'dctn', 'dst', 'dstn', 'idct', 'idctn', 'idst', 'idstn']
 
@@ -163,7 +161,7 @@ def _dct_or_dst_type2(
         The transformed array.
     """
     if axis < -x.ndim or axis >= x.ndim:
-        raise numpy.AxisError('axis out of range')
+        raise AxisError('axis out of range')
     if axis < 0:
         axis += x.ndim
     if n is not None and n < 1:
@@ -190,15 +188,15 @@ def _dct_or_dst_type2(
     x *= tmp  # broadcasting
     x = cupy.real(x)
 
-    if dst:
-        slrev = [slice(None)] * x.ndim
-        slrev[axis] = slice(None, None, -1)
-        x = x[tuple(slrev)]
-
     if norm == 'ortho':
         sl0 = [slice(None)] * x.ndim
         sl0[axis] = slice(1)
         x[tuple(sl0)] *= math.sqrt(2) * 0.5
+
+    if dst:
+        slrev = [slice(None)] * x.ndim
+        slrev[axis] = slice(None, None, -1)
+        x = x[tuple(slrev)]
     return x
 
 
@@ -284,7 +282,7 @@ def _dct_or_dst_type3(
 
     """
     if axis < -x.ndim or axis >= x.ndim:
-        raise numpy.AxisError('axis out of range')
+        raise AxisError('axis out of range')
     if axis < 0:
         axis += x.ndim
     if n is not None and n < 1:
@@ -315,6 +313,9 @@ def _dct_or_dst_type3(
     sl0[axis] = slice(1)
 
     if dst:
+        slrev = [slice(None)] * x.ndim
+        slrev[axis] = slice(None, None, -1)
+        x = x[tuple(slrev)]
         if norm == 'ortho':
             float_dtype = cupy.promote_types(x.dtype, cupy.float32)
             if x.dtype != float_dtype:
@@ -323,9 +324,6 @@ def _dct_or_dst_type3(
                 x = x.copy()
             x[tuple(sl0)] *= math.sqrt(2)
             sl0_scale = 0.5
-        slrev = [slice(None)] * x.ndim
-        slrev[axis] = slice(None, None, -1)
-        x = x[tuple(slrev)]
 
     # scale by exponentials and normalization factor
     tmp = _exp_factor_dct3(x, n, axis, dtype, norm_factor)

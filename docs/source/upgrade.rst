@@ -5,6 +5,91 @@ Upgrade Guide
 This page covers changes introduced in each major version that users should know when migrating from older releases.
 Please see also the :ref:`compatibility_matrix` for supported environments of each major version.
 
+
+CuPy v13
+========
+
+Modernized CCCL support and requirement
+---------------------------------------
+
+NVIDIA's CUDA C++ Core Libraries (CCCL) is the new home for the inter-dependent C++ libraries Thrust, CUB, and libcu++ that are shipped
+with CUDA Toolkit 11.0+. To better serve our users with the latest CCCL features, improvements, and bug fixes, starting CuPy v13
+we bundle CCCL in the source and binary (pip/conda) releases of CuPy. The same version of CCCL is used at both build-time (for building
+CuPy) and run-time (for JIT-compiling kernels). This ensures uniform behavior, avoids surprises, and allows dual CUDA support as promised
+by CCCL (currently CUDA 11 & 12), but this change leads to the following consequences distinct from the past releases:
+
+* after the upgrade, the very first time of executing certain CuPy features may take longer than usual;
+* the CCCL from any local CUDA installation is now ignored on purpose, either at build- or run- time;
+* adventurous users who want to experiment with local CCCL changes need to update the CCCL submodule and build CuPy from source;
+
+As a result of this movement, CuPy now follows the same compiler requirement as CCCL (and, in turn, CUDA Toolkit) and requires C++11 as
+the lowest C++ standard. CCCL expects to move to C++17 in the near future.
+
+Requirement Changes
+-------------------
+
+The following versions are no longer supported in CuPy v13.
+
+* CUDA 11.1 or earlier
+* cuDNN 8.7 or earlier
+* cuTENSOR 1.x
+    * Support for cuTENSOR 2.0 is added starting with CuPy v13, and support for cuTENSOR 1.x will be dropped.
+      This is because there are significant API changes from cuTENSOR 1.x to 2.0, and from the maintenance perspective, it is not practical to support both cuTENSOR 1.x and 2.0 APIs simultaneously.
+* Python 3.8 or earlier
+* NumPy 1.21 or earlier
+* Ubuntu 18.04
+
+NumPy/SciPy Baseline API Update
+-------------------------------
+
+Baseline API has been bumped from NumPy 1.24 and SciPy 1.9 to NumPy 1.26 and SciPy 1.11.
+CuPy v13 will follow the upstream products' specifications of these baseline versions.
+
+Change in :func:`cupy.asnumpy`/:meth:`cupy.ndarray.get` Behavior
+----------------------------------------------------------------
+
+When transferring a CuPy array from GPU to CPU (as a NumPy array), previously the transfer could be nonblocking and not properly ordered when a non-default stream is in use,
+leading to potential data race if the resulting array is modified on host immediately after the copy starts. In CuPy v13, the default
+behavior is changed to be always blocking, with a new optional argument ``blocking`` added to allow the previous nonblocking behavior
+if set to ``False``, in which case users are responsible for ensuring proper stream order.
+
+Change in :meth:`cupy.array`/:meth:`cupy.asarray`/:meth:`cupy.asanyarray` Behavior
+----------------------------------------------------------------------------------
+
+When transferring a NumPy array from CPU to GPU, previously the transfer was always blocking even if the source array is backed by pinned memory.
+In CuPy v13, the default behavior is changed to be asynchronous if the source array is allocated as pinned to improve the performance.
+
+A new optional argument ``blocking`` has been added to allow the previous blocking behavior if set to ``True``.
+You might want to set this option in case there is a possibility of overwriting the source array on CPU before the transfer completes.
+
+Removal of ``cupy-wheel`` package
+---------------------------------
+
+The ``cupy-wheel`` package, which aimed to serve as a "meta" package that chooses and installs the right CuPy binary packages for the users' environment, has been removed in CuPy v13.
+This is because the recent Pip no longer allows changing requirements dynamically.
+See `#7628 <https://github.com/cupy/cupy/issues/7628>`_ for the details.
+
+API Changes
+-----------
+
+* An *internal and undocumented* API :func:`cupy.cuda.compile_with_cache`, which was marked deprecated in CuPy v10, has been removed.
+  We encourage downstream libraries and users to migrate to use public APIs, such as :class:`~cupy.RawModule` (added in CuPy v7) or :class:`~cupy.RawKernel` (added in CuPy v5).
+  See :doc:`./user_guide/kernel` for their tutorials.
+
+
+CUDA Runtime API is now statically linked
+-----------------------------------------
+
+CuPy is now shipped with CUDA Runtime statically linked.
+Due to this, :func:`cupy.cuda.runtime.runtimeGetVersion` always returns the version of CUDA Runtime that CuPy is built with, regardless of the version of CUDA Runtime installed locally.
+If you need to retrieve the version of CUDA Runtime shared library installed locally, use :func:`cupy.cuda.get_local_runtime_version` instead.
+
+Update of Docker Images
+-----------------------
+
+CuPy official Docker images (see :doc:`install` for details) are now updated to use CUDA 12.2.
+
+
 CuPy v12
 ========
 
@@ -265,7 +350,7 @@ Python 3.5 is no longer supported in CuPy v9.
 NCCL and cuDNN No Longer Included in Wheels
 -------------------------------------------
 
-NCCL and cuDNN shared libraires are no longer included in wheels (see `#4850 <https://github.com/cupy/cupy/issues/4850>`_ for discussions). 
+NCCL and cuDNN shared libraries are no longer included in wheels (see `#4850 <https://github.com/cupy/cupy/issues/4850>`_ for discussions). 
 You can manually install them after installing wheel if you don't have a previous installation; see :doc:`install` for details.
 
 cuTENSOR Enabled in Wheels
@@ -499,30 +584,42 @@ Compatibility Matrix
      - SciPy
      - Baseline API Spec.
      - Docs
-   * - v13
-     -
-     -
-     -
-     -
-     -
-     -
-     -
-     -
-     -
-     -
-     - `latest <https://docs.cupy.dev/en/latest/install.html>`__
-   * - v12
-     - 3.0~
-     - 10.2~
+   * - v14
+     - 3.5~
+     - 11.2~
      - 4.3~
-     - 1.4~
-     - 2.8~
-     - 7.6~
-     - 3.8~
-     - 1.21~
+     - 2.0~
+     - 2.16~
+     - 8.8~
+     - 3.9~
+     - 1.22~
      - 1.7~
-     - NumPy 1.24 & SciPy 1.9
+     - NumPy 1.26 & SciPy 1.11
+     - `latest <https://docs.cupy.dev/en/latest/install.html>`__
+   * - v13
+     - 3.5~
+     - 11.2~
+     - 4.3~
+     - 2.0~
+     - 2.16~
+     - 8.8~
+     - 3.9~
+     - 1.22~
+     - 1.7~
+     - NumPy 1.26 & SciPy 1.11
      - `stable <https://docs.cupy.dev/en/stable/install.html>`__
+   * - v12
+     - 3.0~9.0
+     - 10.2~12.x
+     - 4.3 & 5.0
+     - 1.4~1.7
+     - 2.8~2.17
+     - 7.6~8.8
+     - 3.8~3.12
+     - 1.21~1.26
+     - 1.7~1.11
+     - NumPy 1.24 & SciPy 1.9
+     - `v12.3.0 <https://docs.cupy.dev/en/v12.3.0/install.html>`__
    * - v11
      - 3.0~9.0
      - 10.2~12.0

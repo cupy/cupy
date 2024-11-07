@@ -5,12 +5,24 @@ from cupy_builder import Context
 
 
 def preflight_check(ctx: Context) -> bool:
+    if sys.platform not in ('linux', 'win32'):
+        print('Error: macOS is no longer supported', file=sys.stderr)
+        return False
+
     source_root = ctx.source_root
     is_git = os.path.isdir(os.path.join(source_root, '.git'))
-    for submodule in ('cupy/_core/include/cupy/cub',
-                      'cupy/_core/include/cupy/jitify'):
-        if 0 < len(os.listdir(os.path.join(source_root, submodule))):
-            continue
+    for submodule in ('third_party/cccl',
+                      'third_party/jitify',
+                      'third_party/dlpack'):
+        dirpath = os.path.join(source_root, submodule)
+        if os.path.isdir(dirpath):
+            if 0 < len(os.listdir(dirpath)):
+                continue
+        else:
+            if not is_git:
+                # sdist does not contain third_party directory
+                continue
+
         if is_git:
             msg = f'''
 ===========================================================================

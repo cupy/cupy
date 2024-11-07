@@ -15,7 +15,7 @@ is_hip = cupy_backends.cuda.api.runtime.is_hip
 
 def _eval_or_error(func, errors):
     # Evaluates `func` and return the result.
-    # If an error specified by `errors` occured, it returns a string
+    # If an error specified by `errors` occurred, it returns a string
     # representing the error.
     try:
         return func()
@@ -68,6 +68,7 @@ class _RuntimeInfo:
 
     # CUDA Runtime
     cuda_runtime_version = None
+    cuda_local_runtime_version = None
 
     # CUDA Toolkit
     cublas_version = None
@@ -77,6 +78,7 @@ class _RuntimeInfo:
     cusparse_version = None
     nvrtc_version = None
     thrust_version = None
+    cuda_extra_include_dirs = None
 
     # Optional Libraries
     cudnn_build_version = None
@@ -119,6 +121,9 @@ class _RuntimeInfo:
         self.cuda_runtime_version = _eval_or_error(
             cupy.cuda.runtime.runtimeGetVersion,
             cupy.cuda.runtime.CUDARuntimeError)
+        self.cuda_local_runtime_version = _eval_or_error(
+            cupy.cuda.get_local_runtime_version,
+            Exception)
 
         # cuBLAS
         self.cublas_version = '(available)'
@@ -126,22 +131,25 @@ class _RuntimeInfo:
             self.cublas_version = _eval_or_error(
                 lambda: cupy.cuda.cublas.getVersion(
                     cupy.cuda.device.get_cublas_handle()),
-                cupy.cuda.cublas.CUBLASError)
+                Exception)
 
         # cuFFT
-        self.cufft_version = _eval_or_error(
-            cupy.cuda.cufft.getVersion,
-            cupy.cuda.cufft.CuFFTError)
+        try:
+            from cupy.cuda import cufft
+            self.cufft_version = _eval_or_error(
+                lambda: cufft.getVersion(), Exception)
+        except ImportError:
+            pass
 
         # cuRAND
         self.curand_version = _eval_or_error(
-            cupy.cuda.curand.getVersion,
-            cupy.cuda.curand.CURANDError)
+            lambda: cupy.cuda.curand.getVersion(),
+            Exception)
 
         # cuSOLVER
         self.cusolver_version = _eval_or_error(
-            cupy.cuda.cusolver._getVersion,
-            cupy.cuda.cusolver.CUSOLVERError)
+            lambda: cupy.cuda.cusolver._getVersion(),
+            Exception)
 
         # cuSPARSE
         self.cusparse_version = '(available)'
@@ -149,12 +157,12 @@ class _RuntimeInfo:
             self.cusparse_version = _eval_or_error(
                 lambda: cupy.cuda.cusparse.getVersion(
                     cupy.cuda.device.get_cusparse_handle()),
-                cupy.cuda.cusparse.CuSparseError)
+                Exception)
 
         # NVRTC
         self.nvrtc_version = _eval_or_error(
-            cupy.cuda.nvrtc.getVersion,
-            cupy.cuda.nvrtc.NVRTCError)
+            lambda: cupy.cuda.nvrtc.getVersion(),
+            Exception)
 
         # Thrust
         try:
@@ -162,6 +170,19 @@ class _RuntimeInfo:
             self.thrust_version = thrust.get_build_version()
         except ImportError:
             pass
+
+        # CUDA Extra Include Dirs
+        if not is_hip:
+            try:
+                nvrtc_version = cupy.cuda.nvrtc.getVersion()
+            except Exception:
+                nvrtc_version = None
+            if nvrtc_version is None:
+                self.cuda_extra_include_dirs = '(NVRTC unavailable)'
+            else:
+                self.cuda_extra_include_dirs = str(
+                    cupy._environment._get_include_dir_from_conda_or_wheel(
+                        *nvrtc_version))
 
         # cuDNN
         if cupy._environment._can_attempt_preload('cudnn'):
@@ -180,6 +201,13 @@ class _RuntimeInfo:
             pass
 
         # NCCL
+        if cupy._environment._can_attempt_preload('nccl'):
+            if full:
+                cupy._environment._preload_library('nccl')
+            else:
+                self.nccl_build_version = (
+                    '(not loaded; try `import cupy.cuda.nccl` first)')
+                self.nccl_runtime_version = self.nccl_build_version
         try:
             import cupy_backends.cuda.libs.nccl as nccl
             self.nccl_build_version = nccl.get_build_version()
@@ -247,7 +275,11 @@ class _RuntimeInfo:
             ('CUDA Build Version', self.cuda_build_version),
             ('CUDA Driver Version', self.cuda_driver_version),
 
-            ('CUDA Runtime Version', self.cuda_runtime_version),
+            ('CUDA Runtime Version', (
+                f'{self.cuda_runtime_version} (linked to CuPy) / '
+                f'{self.cuda_local_runtime_version} (locally installed)'
+            )),
+            ('CUDA Extra Include Dirs', self.cuda_extra_include_dirs),
         ]
 
         records += [

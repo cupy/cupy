@@ -1,3 +1,5 @@
+from cupy._creation.basic import astype   # NOQA
+from cupy import exceptions   # NOQA
 import functools as _functools
 import sys as _sys
 
@@ -10,7 +12,6 @@ from cupy import _version
 _environment._detect_duplicate_installation()  # NOQA
 _environment._setup_win32_dll_directory()  # NOQA
 _environment._preload_library('cutensor')  # NOQA
-_environment._preload_library('nccl')  # NOQA
 
 
 try:
@@ -133,8 +134,8 @@ from numpy import uint64  # NOQA
 from numpy import half  # NOQA
 from numpy import single  # NOQA
 from numpy import double  # NOQA
-from numpy import float_  # NOQA
-from numpy import longfloat  # NOQA
+from numpy import float64 as float_  # NOQA
+# from numpy import longfloat  # NOQA   # XXX
 from numpy import float16  # NOQA
 from numpy import float32  # NOQA
 from numpy import float64  # NOQA
@@ -147,10 +148,10 @@ from numpy import float64  # NOQA
 # Complex floating-point numbers
 # -----------------------------------------------------------------------------
 from numpy import csingle  # NOQA
-from numpy import singlecomplex  # NOQA
+from numpy import complex64 as singlecomplex  # NOQA
 from numpy import cdouble  # NOQA
-from numpy import cfloat  # NOQA
-from numpy import complex_  # NOQA
+from numpy import complex128 as cfloat  # NOQA
+from numpy import complex128 as complex_  # NOQA
 from numpy import complex64  # NOQA
 from numpy import complex128  # NOQA
 
@@ -227,6 +228,7 @@ from cupy._creation.matrix import vander  # NOQA
 from cupy._functional.piecewise import piecewise  # NOQA
 from cupy._functional.vectorize import vectorize  # NOQA
 from cupy.lib._shape_base import apply_along_axis  # NOQA
+from cupy.lib._shape_base import put_along_axis    # NOQA
 
 # -----------------------------------------------------------------------------
 # Array manipulation routines
@@ -242,6 +244,9 @@ from cupy._manipulation.transpose import rollaxis  # NOQA
 from cupy._manipulation.transpose import swapaxes  # NOQA
 from cupy._manipulation.transpose import transpose  # NOQA
 
+# NumPy 2.0 aliases
+permute_dims = transpose
+
 from cupy._manipulation.dims import atleast_1d  # NOQA
 from cupy._manipulation.dims import atleast_2d  # NOQA
 from cupy._manipulation.dims import atleast_3d  # NOQA
@@ -255,9 +260,12 @@ from cupy._manipulation.join import column_stack  # NOQA
 from cupy._manipulation.join import concatenate  # NOQA
 from cupy._manipulation.join import dstack  # NOQA
 from cupy._manipulation.join import hstack  # NOQA
+from cupy._manipulation.join import row_stack  # NOQA
 from cupy._manipulation.join import stack  # NOQA
 from cupy._manipulation.join import vstack  # NOQA
-from cupy._manipulation.join import vstack as row_stack  # NOQA
+
+# NumPy 2.0 alias
+concat = concatenate
 
 from cupy._manipulation.kind import asarray_chkfinite  # NOQA
 from cupy._manipulation.kind import asfarray  # NOQA
@@ -277,6 +285,11 @@ from cupy._manipulation.add_remove import delete  # NOQA
 from cupy._manipulation.add_remove import append  # NOQA
 from cupy._manipulation.add_remove import resize  # NOQA
 from cupy._manipulation.add_remove import unique  # NOQA
+from cupy._manipulation.add_remove import unique_all  # NOQA
+from cupy._manipulation.add_remove import unique_counts  # NOQA
+from cupy._manipulation.add_remove import unique_values  # NOQA
+from cupy._manipulation.add_remove import unique_inverse  # NOQA
+
 from cupy._manipulation.add_remove import trim_zeros  # NOQA
 
 from cupy._manipulation.rearrange import flip  # NOQA
@@ -299,6 +312,11 @@ from cupy._binary.elementwise import bitwise_not  # NOQA
 from cupy._binary.elementwise import invert  # NOQA
 from cupy._binary.elementwise import left_shift  # NOQA
 from cupy._binary.elementwise import right_shift  # NOQA
+
+# NumPy 2.0 aliases
+bitwise_left_shift = left_shift
+bitwise_right_shift = right_shift
+bitwise_invert = invert
 
 from cupy._binary.packing import packbits  # NOQA
 from cupy._binary.packing import unpackbits  # NOQA
@@ -360,23 +378,16 @@ def result_type(*arrays_and_dtypes):
 
 from cupy._core.core import min_scalar_type  # NOQA
 
-from numpy import obj2sctype  # NOQA
 from numpy import promote_types  # NOQA
 
 from numpy import dtype  # NOQA
-from numpy import format_parser  # NOQA
 
 from numpy import finfo  # NOQA
 from numpy import iinfo  # NOQA
 
-from numpy import find_common_type  # NOQA
-from numpy import issctype  # NOQA
-from numpy import issubclass_  # NOQA
 from numpy import issubdtype  # NOQA
-from numpy import issubsctype  # NOQA
 
 from numpy import mintypecode  # NOQA
-from numpy import sctype2char  # NOQA
 from numpy import typename  # NOQA
 
 # -----------------------------------------------------------------------------
@@ -422,7 +433,6 @@ from cupy._indexing.insert import diag_indices_from  # NOQA
 from cupy._indexing.iterate import flatiter  # NOQA
 
 # Borrowed from NumPy
-from numpy import get_array_wrap  # NOQA
 from numpy import index_exp  # NOQA
 from numpy import ndindex  # NOQA
 from numpy import s_  # NOQA
@@ -453,11 +463,9 @@ def base_repr(number, base=2, padding=0):  # NOQA (needed to avoid redefinition 
 
 
 # Borrowed from NumPy
-from numpy import DataSource  # NOQA
 from numpy import get_printoptions  # NOQA
 from numpy import set_printoptions  # NOQA
 from numpy import printoptions  # NOQA
-from numpy import set_string_function  # NOQA
 
 
 # -----------------------------------------------------------------------------
@@ -528,9 +536,7 @@ from cupy._logic.comparison import less_equal  # NOQA
 from cupy._logic.comparison import not_equal  # NOQA
 
 from cupy._logic.truth import all  # NOQA
-from cupy._logic.truth import alltrue  # NOQA
 from cupy._logic.truth import any  # NOQA
-from cupy._logic.truth import sometrue  # NOQA
 
 # ------------------------------------------------------------------------------
 # Polynomial functions
@@ -545,7 +551,7 @@ from cupy.lib._routines_poly import polyval  # NOQA
 from cupy.lib._routines_poly import roots  # NOQA
 
 # Borrowed from NumPy
-from numpy import RankWarning  # NOQA
+from cupy.exceptions import RankWarning  # NOQA
 
 # -----------------------------------------------------------------------------
 # Mathematical functions
@@ -554,6 +560,13 @@ from cupy._math.trigonometric import arccos  # NOQA
 from cupy._math.trigonometric import arcsin  # NOQA
 from cupy._math.trigonometric import arctan  # NOQA
 from cupy._math.trigonometric import arctan2  # NOQA
+
+# a(rc)trig aliases, following NumPy 2.0
+atan = arctan
+atan2 = arctan2
+asin = arcsin
+acos = arccos
+
 from cupy._math.trigonometric import cos  # NOQA
 from cupy._math.trigonometric import deg2rad  # NOQA
 from cupy._math.trigonometric import degrees  # NOQA
@@ -570,6 +583,11 @@ from cupy._math.hyperbolic import arctanh  # NOQA
 from cupy._math.hyperbolic import cosh  # NOQA
 from cupy._math.hyperbolic import sinh  # NOQA
 from cupy._math.hyperbolic import tanh  # NOQA
+
+# a(rc)hyp aliases, following NumPy 2.0
+acosh = arccosh
+asinh = arcsinh
+atanh = arctanh
 
 from cupy._math.rounding import around  # NOQA
 from cupy._math.rounding import ceil  # NOQA
@@ -593,7 +611,7 @@ from cupy._math.sumprod import nansum  # NOQA
 from cupy._math.sumprod import nanprod  # NOQA
 from cupy._math.sumprod import diff  # NOQA
 from cupy._math.sumprod import gradient  # NOQA
-from cupy._math.sumprod import trapz  # NOQA
+from cupy._math.sumprod import trapezoid  # NOQA
 from cupy._math.window import bartlett  # NOQA
 from cupy._math.window import blackman  # NOQA
 from cupy._math.window import hamming  # NOQA
@@ -639,6 +657,8 @@ from cupy._math.arithmetic import remainder as mod  # NOQA
 from cupy._math.arithmetic import subtract  # NOQA
 from cupy._math.arithmetic import true_divide  # NOQA
 
+pow = power
+
 from cupy._math.arithmetic import angle  # NOQA
 from cupy._math.arithmetic import conjugate as conj  # NOQA
 from cupy._math.arithmetic import conjugate  # NOQA
@@ -672,10 +692,8 @@ from cupy._misc.memory_ranges import shares_memory  # NOQA
 from cupy._misc.who import who  # NOQA
 
 # Borrowed from NumPy
-from numpy import disp  # NOQA
 from numpy import iterable  # NOQA
-from numpy import safe_eval  # NOQA
-from numpy import AxisError  # NOQA
+from cupy.exceptions import AxisError  # NOQA
 
 
 # -----------------------------------------------------------------------------
@@ -743,10 +761,10 @@ from cupy._statistics.histogram import histogramdd  # NOQA
 # -----------------------------------------------------------------------------
 # Classes without their own docs
 # -----------------------------------------------------------------------------
-from numpy import ComplexWarning  # NOQA
-from numpy import ModuleDeprecationWarning  # NOQA
-from numpy import TooHardError  # NOQA
-from numpy import VisibleDeprecationWarning  # NOQA
+from cupy.exceptions import ComplexWarning  # NOQA
+from cupy.exceptions import ModuleDeprecationWarning  # NOQA
+from cupy.exceptions import TooHardError  # NOQA
+from cupy.exceptions import VisibleDeprecationWarning  # NOQA
 
 
 # -----------------------------------------------------------------------------
@@ -792,29 +810,35 @@ from cupy._core import fromDlpack  # NOQA
 from cupy._core import from_dlpack  # NOQA
 
 
-def asnumpy(a, stream=None, order='C', out=None):
+def asnumpy(a, stream=None, order='C', out=None, *, blocking=True):
     """Returns an array on the host memory from an arbitrary source array.
 
     Args:
         a: Arbitrary object that can be converted to :class:`numpy.ndarray`.
-        stream (cupy.cuda.Stream): CUDA stream object. If it is specified, then
-            the device-to-host copy runs asynchronously. Otherwise, the copy is
-            synchronous. Note that if ``a`` is not a :class:`cupy.ndarray`
+        stream (cupy.cuda.Stream): CUDA stream object. If given, the
+            stream is used to perform the copy. Otherwise, the current
+            stream is used. Note that if ``a`` is not a :class:`cupy.ndarray`
             object, then this argument has no effect.
         order ({'C', 'F', 'A'}): The desired memory layout of the host
-            array. When ``order`` is 'A', it uses 'F' if ``a`` is
-            fortran-contiguous and 'C' otherwise.
+            array. When ``order`` is 'A', it uses 'F' if the array is
+            fortran-contiguous and 'C' otherwise. The ``order`` will be
+            ignored if ``out`` is specified.
         out (numpy.ndarray): The output array to be written to. It must have
             compatible shape and dtype with those of ``a``'s.
+        blocking (bool): If set to ``False``, the copy runs asynchronously
+            on the given (if given) or current stream, and users are
+            responsible for ensuring the stream order. Default is ``True``,
+            so the copy is synchronous (with respect to the host).
 
     Returns:
         numpy.ndarray: Converted array on the host memory.
 
     """
     if isinstance(a, ndarray):
-        return a.get(stream=stream, order=order, out=out)
+        return a.get(stream=stream, order=order, out=out, blocking=blocking)
     elif hasattr(a, "__cuda_array_interface__"):
-        return array(a).get(stream=stream, order=order, out=out)
+        return array(a).get(
+            stream=stream, order=order, out=out, blocking=blocking)
     else:
         temp = _numpy.asarray(a, order=order)
         if out is not None:
@@ -914,8 +938,204 @@ _deprecated_apis = [
 ]
 
 
+# np 2.0: XXX shims for things removed in np 2.0
+alltrue = all
+sometrue = any
+trapz = trapezoid
+
+# https://github.com/numpy/numpy/blob/v1.26.4/numpy/core/numerictypes.py#L283-L322   # NOQA
+
+
+def issubclass_(arg1, arg2):
+    try:
+        return issubclass(arg1, arg2)
+    except TypeError:
+        return False
+
+# https://github.com/numpy/numpy/blob/v1.26.0/numpy/core/numerictypes.py#L229-L280   # NOQA
+
+
+def obj2sctype(rep, default=None):
+    """
+    Return the scalar dtype or NumPy equivalent of Python type of an object.
+
+    Parameters
+    ----------
+    rep : any
+        The object of which the type is returned.
+    default : any, optional
+        If given, this is returned for objects whose types can not be
+        determined. If not given, None is returned for those objects.
+
+    Returns
+    -------
+    dtype : dtype or Python type
+        The data type of `rep`.
+
+    """
+    # prevent abstract classes being upcast
+    if isinstance(rep, type) and issubclass(rep, _numpy.generic):
+        return rep
+    # extract dtype from arrays
+    if isinstance(rep, _numpy.ndarray):
+        return rep.dtype.type
+    # fall back on dtype to convert
+    try:
+        res = _numpy.dtype(rep)
+    except Exception:
+        return default
+    else:
+        return res.type
+
+
+# https://github.com/numpy/numpy/blob/v1.26.0/numpy/core/numerictypes.py#L326C1-L355C1  # NOQA
+def issubsctype(arg1, arg2):
+    """
+    Determine if the first argument is a subclass of the second argument.
+
+    Parameters
+    ----------
+    arg1, arg2 : dtype or dtype specifier
+        Data-types.
+
+    Returns
+    -------
+    out : bool
+        The result.
+
+    """
+    return issubclass(obj2sctype(arg1), obj2sctype(arg2))
+
+
+# https://github.com/numpy/numpy/blob/v1.26.0/numpy/core/numerictypes.py#L457  # NOQA
+def sctype2char(sctype):
+    """
+    Return the string representation of a scalar dtype.
+
+    Parameters
+    ----------
+    sctype : scalar dtype or object
+        If a scalar dtype, the corresponding string character is
+        returned. If an object, `sctype2char` tries to infer its scalar type
+        and then return the corresponding string character.
+
+    Returns
+    -------
+    typechar : str
+        The string character corresponding to the scalar type.
+
+    Raises
+    ------
+    ValueError
+        If `sctype` is an object for which the type can not be inferred.
+
+    """
+    sctype = obj2sctype(sctype)
+    if sctype is None:
+        raise ValueError("unrecognized type")
+    return _numpy.dtype(sctype).char
+
+
+# https://github.com/numpy/numpy/blob/v1.26.0/numpy/core/numerictypes.py#L184  # NOQA
+def issctype(rep):
+    """
+    Determines whether the given object represents a scalar data-type.
+
+    Parameters
+    ----------
+    rep : any
+        If `rep` is an instance of a scalar dtype, True is returned. If not,
+        False is returned.
+
+    Returns
+    -------
+    out : bool
+        Boolean result of check whether `rep` is a scalar dtype.
+
+    """
+    if not isinstance(rep, (type, _numpy.dtype)):
+        return False
+    try:
+        res = obj2sctype(rep)
+        if res and res != _numpy.object_:
+            return True
+        return False
+    except Exception:
+        return False
+
+
+# np 2.0: XXX shims for things moved in np 2.0
+if _numpy.__version__ < "2":
+    from numpy import format_parser  # NOQA
+    from numpy import DataSource     # NOQA
+else:
+    from numpy.rec import format_parser   # type: ignore [no-redef]  # NOQA
+    from numpy.lib.npyio import DataSource  # NOQA
+
+
+# np 2.0: XXX shims for things removed without replacement
+if _numpy.__version__ < "2":
+    from numpy import find_common_type   # NOQA
+    from numpy import set_string_function  # NOQA
+    from numpy import get_array_wrap  # NOQA
+    from numpy import disp  # NOQA
+    from numpy import safe_eval  # NOQA
+else:
+
+    _template = '''\
+''This function has been removed in NumPy v2.
+Use {recommendation} instead.
+
+CuPy has been providing this function as an alias to the NumPy
+implementation, so it cannot be used in environments with NumPy
+v2 installed. If you rely on this function and you cannot modify
+the code to use {recommendation}, please downgrade NumPy to v1.26
+or earlier.
+'''
+
+    def find_common_type(*args, **kwds):
+        mesg = _template.format(
+            recommendation='`promote_types` or `result_type`'
+        )
+        raise RuntimeError(mesg)
+
+    def set_string_function(*args, **kwds):   # type: ignore [misc]
+        mesg = _template.format(recommendation='`np.set_printoptions`')
+        raise RuntimeError(mesg)
+
+    def get_array_wrap(*args, **kwds):       # type: ignore [no-redef]
+        mesg = _template.format(recommendation="<no replacement>")
+        raise RuntimeError(mesg)
+
+    def disp(*args, **kwds):   # type: ignore [misc]
+        mesg = _template.format(recommendation="your own print function")
+        raise RuntimeError(mesg)
+
+    def safe_eval(*args, **kwds):  # type: ignore [misc]
+        mesg = _template.format(recommendation="`ast.literal_eval`")
+        raise RuntimeError(mesg)
+
+
 def __getattr__(name):
     if name in _deprecated_apis:
         return getattr(_numpy, name)
 
     raise AttributeError(f"module 'cupy' has no attribute {name!r}")
+
+
+def _embed_signatures(dirs):
+    for name, value in dirs.items():
+        if isinstance(value, ufunc):
+            from cupy._core._kernel import _ufunc_doc_signature_formatter
+            value.__doc__ = (
+                _ufunc_doc_signature_formatter(value, name) +
+                '\n\n' + value._doc
+            )
+
+
+_embed_signatures(globals())
+_embed_signatures(fft.__dict__)
+_embed_signatures(linalg.__dict__)
+_embed_signatures(random.__dict__)
+_embed_signatures(sparse.__dict__)
+_embed_signatures(testing.__dict__)

@@ -92,7 +92,15 @@ expm1 = _core.create_ufunc(
 
 exprel = _core.create_ufunc(
     'cupyx_scipy_special_exprel',
-    (('f->f'), 'd->d', 'F->F', 'D->D'),
+    (
+        ('l->d', 'out0 = abs(in0) >= 1e-16 ? expm1(double(in0)) / in0 : 1'),
+        ('e->d', 'out0 = abs(in0) >= 1e-16 ? expm1(double(in0)) / in0 : 1'),
+        'f->f',
+        'd->d',
+        'F->F',
+        'D->D',
+    ),
+
     'out0 = abs(in0) >= 1e-16 ? expm1(in0) / in0 : 1',
     doc='''Computes ``(exp(x) - 1) / x``.
 

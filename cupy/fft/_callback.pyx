@@ -19,14 +19,6 @@ import warnings
 from cupy import __version__ as _cupy_ver
 from cupy._environment import (get_nvcc_path, get_cuda_path)
 from cupy.cuda.compiler import (_get_bool_env_variable, CompileException)
-# for some reason we can't cimport stuff from cupy.cuda.cufft...
-from cupy.cuda.cufft import (CUFFT_C2C, CUFFT_C2R, CUFFT_R2C,
-                             CUFFT_Z2Z, CUFFT_Z2D, CUFFT_D2Z,
-                             CUFFT_CB_LD_COMPLEX, CUFFT_CB_LD_COMPLEX_DOUBLE,
-                             CUFFT_CB_LD_REAL, CUFFT_CB_LD_REAL_DOUBLE,
-                             CUFFT_CB_ST_COMPLEX, CUFFT_CB_ST_COMPLEX_DOUBLE,
-                             CUFFT_CB_ST_REAL, CUFFT_CB_ST_REAL_DOUBLE,)
-from cupy.cuda.cufft import getVersion as get_cufft_version
 
 
 # information needed for building an external module
@@ -69,6 +61,8 @@ cdef class _ThreadLocal:
 
 
 cdef inline void _set_vars() except*:
+    from cupy.cuda.cufft import getVersion as get_cufft_version
+
     global _cc, _python_include, _cuda_path, _cuda_include, _nvprune
     global _build_ver, _cufft_ver, _ext_suffix, _is_init
 
@@ -435,6 +429,14 @@ cdef class _CallbackManager:
             follow.
 
         '''
+        from cupy.cuda.cufft import (
+            CUFFT_C2C, CUFFT_C2R, CUFFT_R2C,
+            CUFFT_Z2Z, CUFFT_Z2D, CUFFT_D2Z,
+            CUFFT_CB_LD_COMPLEX, CUFFT_CB_LD_COMPLEX_DOUBLE,
+            CUFFT_CB_LD_REAL, CUFFT_CB_LD_REAL_DOUBLE,
+            CUFFT_CB_ST_COMPLEX, CUFFT_CB_ST_COMPLEX_DOUBLE,
+            CUFFT_CB_ST_REAL, CUFFT_CB_ST_REAL_DOUBLE,)
+
         cdef _ndarray_base cb_load_aux_arr = self.cb_load_aux_arr
         cdef _ndarray_base cb_store_aux_arr = self.cb_store_aux_arr
         cdef intptr_t cb_load_ptr=0, cb_store_ptr=0

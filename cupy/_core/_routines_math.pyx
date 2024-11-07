@@ -134,8 +134,6 @@ cdef _ndarray_base _ndarray_cumprod(_ndarray_base self, axis, dtype, out):
 
 
 cdef _ndarray_base _ndarray_clip(_ndarray_base self, a_min, a_max, out):
-    if a_min is None and a_max is None:
-        raise ValueError('array_clip: must set either max or min')
     kind = self.dtype.kind
     if a_min is None:
         if kind == 'f':
@@ -1037,11 +1035,18 @@ _subtract = create_arithmetic(
     cutensor_op=('OP_ADD', 1, -1), scatter_op='sub')
 
 
+# NB: Cannot define loops with short ints in the NEP 50 world. Consider
+# `cupy.arange(3, dtype=cp.uint8) / (-2)`. It would select the 'BB->d' loop,
+# and the kernel would have a declaration `uint8_t in1;`, this converts
+# -2 to uint8_t at initialization (modulo UINT8_MAX, likely).
+# The family of qq loops is a work-around to achieve almost correct promotion.
+# TODO(seberg): Per-ufunc promotion or per-loop type resolution is probably
+#               needed for a full fix.
 _true_divide = create_ufunc(
     'cupy_true_divide',
-    ('bb->d', 'BB->d', 'hh->d', 'HH->d', 'ii->d', 'II->d', 'll->d', 'LL->d',
-     'qq->d', 'QQ->d', 'ee->e', 'ff->f', 'dd->d', 'FF->F', 'DD->D'),
-    'out0 = (out0_type)in0 / (out0_type)in1',
+    ('qq->d', 'qQ->d', 'Qq->d', 'QQ->d',
+     'ee->e', 'ff->f', 'dd->d', 'FF->F', 'DD->D'),
+    'out0 = static_cast<out0_type>(in0) / static_cast<out0_type>(in1)',
     doc='''Elementwise true division (i.e. division as floating values).
 
     .. seealso:: :data:`numpy.true_divide`

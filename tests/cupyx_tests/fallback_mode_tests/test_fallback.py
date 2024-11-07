@@ -341,7 +341,7 @@ class TestFallbackArray(unittest.TestCase):
     @numpy_fallback_equal()
     def test_type_assert(self, xp):
         a = xp.array([1, 2, 3])
-        return type(a) == xp.ndarray
+        return isinstance(a, xp.ndarray)
 
     @numpy_fallback_equal()
     def test_base(self, xp):
@@ -401,10 +401,10 @@ class TestArrayComparison(unittest.TestCase):
 @testing.parameterize(
     {'func': '__str__', 'shape': (5, 6)},
     {'func': '__repr__', 'shape': (3, 4)},
-    {'func': '__int__', 'shape': (1,)},
-    {'func': '__float__', 'shape': (1, 1)},
+    {'func': '__int__', 'shape': ()},
+    {'func': '__float__', 'shape': ()},
     {'func': '__len__', 'shape': (3, 3)},
-    {'func': '__bool__', 'shape': (1,)},
+    {'func': '__bool__', 'shape': ()},
 )
 class TestArrayUnaryMethods(unittest.TestCase):
 

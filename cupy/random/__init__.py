@@ -1,6 +1,7 @@
 import numpy as _numpy
 
-from cupy_backends.cuda.api import runtime
+import cupy as _cupy
+from cupy_backends.cuda.api import runtime as _runtime
 
 
 def bytes(length):
@@ -32,7 +33,9 @@ def default_rng(seed=None):  # NOQA  avoid redefinition of seed
     Returns:
         Generator: The initialized generator object.
     """  # NOQA, list of types need to be in one line for sphinx
-    if runtime.is_hip and int(str(runtime.runtimeGetVersion())[:3]) < 403:
+    from cupy.random._generator_api import Generator
+
+    if _runtime.is_hip and int(str(_runtime.runtimeGetVersion())[:3]) < 403:
         raise RuntimeError('Generator API not supported in ROCm<4.3,'
                            ' please use the legacy one or update ROCm.')
     if isinstance(seed, BitGenerator):
@@ -40,6 +43,18 @@ def default_rng(seed=None):  # NOQA  avoid redefinition of seed
     elif isinstance(seed, Generator):
         return seed
     return Generator(XORWOW(seed))
+
+
+def __getattr__(key):
+    # TODO(kmaehashi): Split cuRAND dependency from Generator class to allow
+    # users use the class for type annotation.
+    if key == 'Generator':
+        # Lazy import libraries depending on cuRAND
+        import cupy.random._generator_api
+        Generator = cupy.random._generator_api.Generator
+        _cupy.random.Generator = Generator
+        return Generator
+    raise AttributeError(f"module '{__name__}' has no attribute '{key}'")
 
 
 # import class and function
@@ -98,4 +113,3 @@ from cupy.random._bit_generator import BitGenerator  # NOQA
 from cupy.random._bit_generator import XORWOW  # NOQA
 from cupy.random._bit_generator import MRG32k3a  # NOQA
 from cupy.random._bit_generator import Philox4x3210  # NOQA
-from cupy.random._generator_api import Generator  # NOQA

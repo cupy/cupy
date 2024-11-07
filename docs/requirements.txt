@@ -4,5 +4,5 @@ pydata_sphinx_theme==0.11.0
 sphinx-copybutton==0.5.1
 
 # These requirements must match with the Baseline API version documented in the Installation Guide.
-numpy==1.24.*
-scipy==1.10.*
+numpy==1.26.*
+scipy==1.14.*

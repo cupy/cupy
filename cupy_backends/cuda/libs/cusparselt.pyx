@@ -6,9 +6,16 @@ from cpython.mem cimport PyMem_Malloc, PyMem_Free
 from libc.stdint cimport int32_t, uint32_t, int64_t, intptr_t
 
 from cupy_backends.cuda cimport stream as stream_module
-from cupy_backends.cuda.api cimport driver
+from cupy_backends.cuda.api cimport runtime
 
 from cupy_backends.cuda.libs import cusparse as _cusparse
+
+
+###############################################################################
+# Types
+###############################################################################
+cdef extern from *:
+    ctypedef void* LibraryPropertyType 'libraryPropertyType_t'
 
 
 cdef extern from '../../cupy_cusparselt.h' nogil:
@@ -36,11 +43,16 @@ cdef extern from '../../cupy_cusparselt.h' nogil:
     ctypedef int cusparseOperation_t 'cusparseOperation_t'
     ctypedef int cusparseLtMatmulAlg_t 'cusparseLtMatmulAlg_t'
     ctypedef int cusparseLtMatmulAlgAttribute_t 'cusparseLtMatmulAlgAttribute_t'  # NOQA
+    ctypedef int cusparseLtSplitKMode_t 'cusparseLtSplitKMode_t'
     ctypedef int cusparseLtPruneAlg_t 'cusparseLtPruneAlg_t'
 
     # Management Functions
     cusparseStatus_t cusparseLtInit(cusparseLtHandle_t* handle)
     cusparseStatus_t cusparseLtDestroy(const cusparseLtHandle_t* handle)
+    cusparseStatus_t cusparseLtGetVersion(
+        const cusparseLtHandle_t* handle, int* version)
+    cusparseStatus_t cusparseLtGetProperty(
+        LibraryPropertyType propertyType, int* value)
 
     # Matmul Functions
     cusparseStatus_t cusparseLtDenseDescriptorInit(
@@ -62,6 +74,11 @@ cdef extern from '../../cupy_cusparselt.h' nogil:
         cusparseLtMatDescAttribute_t matAttribute,
         const void* data, size_t dataSize)
     cusparseStatus_t cusparseLtMatDescGetAttribute(
+        const cusparseLtHandle_t* handle,
+        const cusparseLtMatDescriptor_t* matDescr,
+        cusparseLtMatDescAttribute_t matAttribute,
+        void* data, size_t dataSize)
+    cusparseStatus_t cusparseLtMatDescSetAttribute(
         const cusparseLtHandle_t* handle,
         const cusparseLtMatDescriptor_t* matDescr,
         cusparseLtMatDescAttribute_t matAttribute,
@@ -95,60 +112,72 @@ cdef extern from '../../cupy_cusparselt.h' nogil:
         const cusparseLtHandle_t* handle,
         cusparseLtMatmulAlgSelection_t* algSelection,
         cusparseLtMatmulAlgAttribute_t attribute,
-        const void* data, size_t ataSize)
-    cusparseStatus_t cusparseLtMatmulGetWorkspace(
+        const void* data, size_t dataSize)
+    cusparseStatus_t cusparseLtMatmulAlgGetAttribute(
         const cusparseLtHandle_t* handle,
         const cusparseLtMatmulAlgSelection_t* algSelection,
+        cusparseLtMatmulAlgAttribute_t attribute,
+        void* data, size_t dataSize)
+    cusparseStatus_t cusparseLtMatmulGetWorkspace(
+        const cusparseLtHandle_t* handle,
+        const cusparseLtMatmulPlan_t* plan,
         size_t* workspaceSize)
     cusparseStatus_t cusparseLtMatmulPlanInit(
         const cusparseLtHandle_t* handle,
         cusparseLtMatmulPlan_t* plan,
         const cusparseLtMatmulDescriptor_t* matmulDescr,
-        const cusparseLtMatmulAlgSelection_t* algSelection,
-        size_t workspaceSize)
+        const cusparseLtMatmulAlgSelection_t* algSelection)
     cusparseStatus_t cusparseLtMatmulPlanDestroy(
         const cusparseLtMatmulPlan_t* plan)
     cusparseStatus_t cusparseLtMatmul(
         const cusparseLtHandle_t* handle, const cusparseLtMatmulPlan_t* plan,
         const void* alpha, const void* d_A, const void* d_B,
         const void* beta, const void* d_C, void* d_D,
-        void* workspace, driver.Stream* streams, int32_t numStreams)
+        void* workspace, runtime.Stream* streams, int32_t numStreams)
+    cusparseStatus_t cusparseLtMatmulSearch(
+        const cusparseLtHandle_t* handle, cusparseLtMatmulPlan_t* plan,
+        const void* alpha, const void* d_A, const void* d_B,
+        const void* beta, const void* d_C, void* d_D,
+        void* workspace, runtime.Stream* streams, int32_t numStreams)
 
     # Helper Functions
     cusparseStatus_t cusparseLtSpMMAPrune(
         const cusparseLtHandle_t* handle,
         const cusparseLtMatmulDescriptor_t* matmulDescr,
         const void* d_in, void* d_out,
-        cusparseLtPruneAlg_t pruneAlg, driver.Stream stream)
+        cusparseLtPruneAlg_t pruneAlg, runtime.Stream stream)
     cusparseStatus_t cusparseLtSpMMAPruneCheck(
         const cusparseLtHandle_t* handle,
         const cusparseLtMatmulDescriptor_t* matmulDescr,
-        const void* d_in, int* valid, driver.Stream stream)
+        const void* d_in, int* d_valid, runtime.Stream stream)
     cusparseStatus_t cusparseLtSpMMAPrune2(
         const cusparseLtHandle_t* handle,
         const cusparseLtMatDescriptor_t* sparseMatDescr,
         int isSparseA, cusparseOperation_t op, const void* d_in,
-        void* d_out, cusparseLtPruneAlg_t pruneAlg, driver.Stream stream)
+        void* d_out, cusparseLtPruneAlg_t pruneAlg, runtime.Stream stream)
     cusparseStatus_t cusparseLtSpMMAPruneCheck2(
         const cusparseLtHandle_t* handle,
         const cusparseLtMatDescriptor_t* sparseMatDescr,
         int isSparseA, cusparseOperation_t op, const void* d_in, int* d_valid,
-        driver.Stream stream)
+        runtime.Stream stream)
     cusparseStatus_t cusparseLtSpMMACompressedSize(
         const cusparseLtHandle_t* handle, const cusparseLtMatmulPlan_t* plan,
-        size_t* compressedSize)
+        size_t* compressedSize,
+        size_t* compressBufferSize)
     cusparseStatus_t cusparseLtSpMMACompress(
         const cusparseLtHandle_t* handle, const cusparseLtMatmulPlan_t* plan,
-        const void* d_dense, void* d_compressed, driver.Stream stream)
+        const void* d_dense, void* d_compressed, void* d_compressed_buffer,
+        runtime.Stream stream)
     cusparseStatus_t cusparseLtSpMMACompressedSize2(
         const cusparseLtHandle_t* handle,
         const cusparseLtMatDescriptor_t* sparseMatDescr,
-        size_t* compressedSize)
+        size_t* compressedSize,
+        size_t* compressBufferSize)
     cusparseStatus_t cusparseLtSpMMACompress2(
         const cusparseLtHandle_t* handle,
         const cusparseLtMatDescriptor_t* sparseMatDescr,
         int isSparseA, cusparseOperation_t op, const void* d_dense,
-        void* d_compressed, driver.Stream stream)
+        void* d_compressed, void* d_compressed_buffer, runtime.Stream stream)
 
     # Build-time version
     int CUSPARSELT_VERSION
@@ -232,10 +261,10 @@ cdef class MatmulPlan:
     def ptr(self):
         return <intptr_t>self._ptr
 
-
 ###############################################################################
 # Error handling
 ###############################################################################
+
 
 @cython.profile(False)
 cpdef inline check_status(int status):
@@ -296,7 +325,7 @@ cpdef matDescSetAttribute(Handle handle, MatDescriptor matDescr,
         <const cusparseLtHandle_t*> handle._ptr,
         <cusparseLtMatDescriptor_t*> matDescr._ptr,
         <cusparseLtMatDescAttribute_t> matAttribute,
-        <const void*> data, dataSize)
+        <const void*> data, <size_t> dataSize)
     check_status(status)
 
 cpdef matDescGetAttribute(Handle handle, MatDescriptor matDescr,
@@ -306,7 +335,7 @@ cpdef matDescGetAttribute(Handle handle, MatDescriptor matDescr,
         <const cusparseLtHandle_t*> handle._ptr,
         <const cusparseLtMatDescriptor_t*> matDescr._ptr,
         <cusparseLtMatDescAttribute_t> matAttribute,
-        <void*> data, dataSize)
+        <void*> data, <size_t> dataSize)
     check_status(status)
 
 cpdef matmulDescriptorInit(Handle handle,
@@ -337,7 +366,7 @@ cpdef matmulDescSetAttribute(Handle handle, MatmulDescriptor matmulDescr,
         <const cusparseLtHandle_t*> handle._ptr,
         <cusparseLtMatmulDescriptor_t*> matmulDescr._ptr,
         <cusparseLtMatmulDescAttribute_t> matmulAttribute,
-        <const void*> data, dataSize)
+        <const void*> data, <size_t> dataSize)
     check_status(status)
 
 cpdef matmulDescGetAttribute(Handle handle, MatmulDescriptor matmulDescr,
@@ -347,7 +376,7 @@ cpdef matmulDescGetAttribute(Handle handle, MatmulDescriptor matmulDescr,
         <const cusparseLtHandle_t*> handle._ptr,
         <const cusparseLtMatmulDescriptor_t*> matmulDescr._ptr,
         <cusparseLtMatmulDescAttribute_t> matmulAttribute,
-        <void*> data, dataSize)
+        <void*> data, <size_t> dataSize)
     check_status(status)
 
 cpdef matmulAlgSelectionInit(Handle handle, MatmulAlgSelection algSelection,
@@ -361,7 +390,8 @@ cpdef matmulAlgSelectionInit(Handle handle, MatmulAlgSelection algSelection,
     check_status(status)
 
 cpdef matmulAlgSetAttribute(Handle handle, MatmulAlgSelection algSelection,
-                            attribute, size_t data, size_t dataSize):
+                            attribute,
+                            size_t data, size_t dataSize):
     """Sets the attribute related to algorithm selection descriptor."""
     status = cusparseLtMatmulAlgSetAttribute(
         <const cusparseLtHandle_t*> handle._ptr,
@@ -370,28 +400,37 @@ cpdef matmulAlgSetAttribute(Handle handle, MatmulAlgSelection algSelection,
         <const void*> data, <size_t> dataSize)
     check_status(status)
 
+cpdef matmulAlgGetAttribute(Handle handle, MatmulAlgSelection algSelection,
+                            attribute,
+                            size_t data, size_t dataSize):
+    """Gets the attribute related to algorithm selection descriptor."""
+    status = cusparseLtMatmulAlgGetAttribute(
+        <const cusparseLtHandle_t*> handle._ptr,
+        <const cusparseLtMatmulAlgSelection_t*> algSelection._ptr,
+        <cusparseLtMatmulAlgAttribute_t> attribute,
+        <void*> data, <size_t> dataSize)
+    check_status(status)
+
 cpdef size_t matmulGetWorkspace(Handle handle,
-                                MatmulAlgSelection algSelection):
+                                MatmulPlan plan):
     """Determines the required workspace size"""
     cdef size_t workspaceSize
     status = cusparseLtMatmulGetWorkspace(
         <const cusparseLtHandle_t*> handle._ptr,
-        <const cusparseLtMatmulAlgSelection_t*> algSelection._ptr,
-        &workspaceSize)
+        <const cusparseLtMatmulPlan_t*> plan._ptr,
+        <size_t*> &workspaceSize)
     check_status(status)
     return workspaceSize
 
 cpdef matmulPlanInit(Handle handle, MatmulPlan plan,
                      MatmulDescriptor matmulDescr,
-                     MatmulAlgSelection algSelection,
-                     size_t workspaceSize):
+                     MatmulAlgSelection algSelection):
     """Initializes the plan."""
     status = cusparseLtMatmulPlanInit(
         <const cusparseLtHandle_t*> handle._ptr,
         <cusparseLtMatmulPlan_t*> plan._ptr,
         <const cusparseLtMatmulDescriptor_t*> matmulDescr._ptr,
-        <const cusparseLtMatmulAlgSelection_t*> algSelection._ptr,
-        <size_t> workspaceSize)
+        <const cusparseLtMatmulAlgSelection_t*> algSelection._ptr)
     check_status(status)
 
 cpdef matmulPlanDestroy(MatmulPlan plan):
@@ -409,7 +448,19 @@ cpdef matmul(Handle handle, MatmulPlan plan,
         <const cusparseLtMatmulPlan_t*> plan._ptr,
         <const void*> alpha, <const void*> d_A, <const void*> d_B,
         <const void*> beta, <const void*> d_C, <void*> d_D,
-        <void*> workspace, <driver.Stream*> NULL, <int32_t> 0)
+        <void*> workspace, <runtime.Stream*> NULL, <int32_t> 0)
+    check_status(status)
+
+cpdef matmulSearch(Handle handle, MatmulPlan plan,
+                   size_t alpha, size_t d_A, size_t d_B,
+                   size_t beta, size_t d_C, size_t d_D, size_t workspace):
+    """Evaluates all available algorithms for the matrix multiplication"""
+    status = cusparseLtMatmulSearch(
+        <const cusparseLtHandle_t*> handle._ptr,
+        <cusparseLtMatmulPlan_t*> plan._ptr,
+        <const void*> alpha, <const void*> d_A, <const void*> d_B,
+        <const void*> beta, <const void*> d_C, <void*> d_D,
+        <void*> workspace, <runtime.Stream*> NULL, <int32_t> 0)
     check_status(status)
 
 ###############################################################################
@@ -424,20 +475,20 @@ cpdef spMMAPrune(Handle handle, MatmulDescriptor matmulDescr,
         <const cusparseLtHandle_t*> handle._ptr,
         <const cusparseLtMatmulDescriptor_t*> matmulDescr._ptr,
         <const void*> d_in, <void*> d_out,
-        <cusparseLtPruneAlg_t> pruneAlg, <driver.Stream> stream)
+        <cusparseLtPruneAlg_t> pruneAlg, <runtime.Stream> stream)
     check_status(status)
 
 cpdef spMMAPruneCheck(Handle handle, MatmulDescriptor matmulDescr,
-                      size_t d_in, size_t valid):
+                      size_t d_in, size_t d_valid):
     """Checks the correctness of the pruning structure"""
     cdef intptr_t stream = stream_module.get_current_stream_ptr()
     status = cusparseLtSpMMAPruneCheck(
         <const cusparseLtHandle_t*> handle._ptr,
         <const cusparseLtMatmulDescriptor_t*> matmulDescr._ptr,
-        <const void*> d_in, <int*> valid, <driver.Stream> stream)
+        <const void*> d_in, <int*> d_valid, <runtime.Stream> stream)
     check_status(status)
 
-cpdef spMMAPrune2(Handle handle, MatDescriptor sparseMatDescr, isSparseA,
+cpdef spMMAPrune2(Handle handle, MatDescriptor sparseMatDescr, int isSparseA,
                   op, size_t d_in, size_t d_out, pruneAlg):
     """Prunes a dense matrix d_in"""
     cdef intptr_t stream = stream_module.get_current_stream_ptr()
@@ -445,7 +496,8 @@ cpdef spMMAPrune2(Handle handle, MatDescriptor sparseMatDescr, isSparseA,
         <const cusparseLtHandle_t*> handle._ptr,
         <const cusparseLtMatDescriptor_t*> sparseMatDescr._ptr,
         <int> isSparseA, <cusparseOperation_t> op, <const void*> d_in,
-        <void*> d_out, <cusparseLtPruneAlg_t> pruneAlg, <driver.Stream> stream)
+        <void*> d_out, <cusparseLtPruneAlg_t> pruneAlg,
+        <runtime.Stream> stream)
     check_status(status)
 
 cpdef spMMAPruneCheck2(Handle handle, MatDescriptor sparseMatDescr, isSparseA,
@@ -456,48 +508,51 @@ cpdef spMMAPruneCheck2(Handle handle, MatDescriptor sparseMatDescr, isSparseA,
         <const cusparseLtHandle_t*> handle._ptr,
         <const cusparseLtMatDescriptor_t*> sparseMatDescr._ptr,
         <int> isSparseA, <cusparseOperation_t> op, <const void*> d_in,
-        <int*> d_valid, <driver.Stream> stream)
+        <int*> d_valid, <runtime.Stream> stream)
     check_status(status)
 
-cpdef size_t spMMACompressedSize(Handle handle, MatmulPlan plan):
+cpdef spMMACompressedSize(Handle handle, MatmulPlan plan):
     """Provides the size of the compressed matrix"""
-    cdef size_t compressedSize
+    cdef size_t compressedSize, compressBufferSize
     status = cusparseLtSpMMACompressedSize(
         <const cusparseLtHandle_t*> handle._ptr,
         <const cusparseLtMatmulPlan_t*> plan._ptr,
-        &compressedSize)
+        <size_t*> &compressedSize, <size_t*> &compressBufferSize)
     check_status(status)
-    return compressedSize
+    return compressedSize, compressBufferSize
 
-cpdef spMMACompress(Handle handle, MatmulPlan plan,
-                    size_t d_dense, size_t d_compressed):
+cpdef spMMACompress(Handle handle, MatmulPlan plan, size_t d_dense,
+                    size_t d_compressed, size_t d_compressed_buffer):
     """Compresses a dense matrix d_dense."""
     cdef intptr_t stream = stream_module.get_current_stream_ptr()
     status = cusparseLtSpMMACompress(
         <const cusparseLtHandle_t*> handle._ptr,
-        <const cusparseLtMatmulPlan_t*> plan._ptr,
-        <const void*> d_dense, <void*> d_compressed, <driver.Stream> stream)
+        <const cusparseLtMatmulPlan_t*> plan._ptr, <const void*> d_dense,
+        <void*> d_compressed, <void*> d_compressed_buffer,
+        <runtime.Stream> stream)
     check_status(status)
 
-cpdef size_t spMMACompressedSize2(Handle handle, MatDescriptor sparseMatDescr):
+cpdef spMMACompressedSize2(Handle handle, MatDescriptor sparseMatDescr):
     """Provides the size of the compressed matrix"""
-    cdef size_t compressedSize
+    cdef size_t compressedSize, compressBufferSize
     status = cusparseLtSpMMACompressedSize2(
         <const cusparseLtHandle_t*> handle._ptr,
         <const cusparseLtMatDescriptor_t*> sparseMatDescr._ptr,
-        &compressedSize)
+        <size_t*> &compressedSize, <size_t*> &compressBufferSize)
     check_status(status)
-    return compressedSize
+    return compressedSize, compressBufferSize
 
 cpdef spMMACompress2(Handle handle, MatDescriptor sparseMatDescr,
-                     isSparseA, op, size_t d_dense, size_t d_compressed):
+                     isSparseA, op, size_t d_dense,
+                     size_t d_compressed, size_t d_compressed_buffer):
     """Compresses a dense matrix d_dense."""
     cdef intptr_t stream = stream_module.get_current_stream_ptr()
     status = cusparseLtSpMMACompress2(
         <const cusparseLtHandle_t*> handle._ptr,
         <const cusparseLtMatDescriptor_t*> sparseMatDescr._ptr,
         <int> isSparseA, <cusparseOperation_t> op, <const void*> d_dense,
-        <void*> d_compressed, <driver.Stream> stream)
+        <void*> d_compressed, <void*> d_compressed_buffer,
+        <runtime.Stream> stream)
     check_status(status)
 
 

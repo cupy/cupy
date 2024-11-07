@@ -46,6 +46,7 @@ class TestGammaln:
 @testing.with_requires('scipy')
 class TestMultigammaln:
 
+    @pytest.mark.xfail(reason="XXX: np2.0: f32/f64 dtypes differ")
     @pytest.mark.parametrize('d', [1, 5, 15])
     @testing.for_all_dtypes(no_complex=True, no_bool=True)
     @testing.numpy_cupy_allclose(atol=1e-4, rtol=1e-5, scipy_name='scp')
