@@ -1,0 +1,25 @@
+name: Self-Hosted CI
+on:
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+
+env:
+  CI_REPO_OWNER: 'cupy'
+  CI_REPO_NAME: 'self-hosted-ci'
+
+jobs:
+  pre-dispatch:
+    runs-on: cupy-ci
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Test
+      id: test
+      run: |
+        ./.pfnci/linux/run.sh "${{ github.event.action }}" build test
