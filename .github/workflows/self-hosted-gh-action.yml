@@ -1,4 +1,4 @@
-name: Self-Hosted CI
+name: NV Self-Hosted CI
 on:
   issue_comment:
     types: [created]
@@ -10,7 +10,7 @@ env:
   CI_REPO_NAME: 'self-hosted-ci'
 
 jobs:
-  pre-dispatch:
+  nv-build:
     runs-on: cupy-ci
 
     steps:
