@@ -199,7 +199,7 @@ class TestBasic:
         )
         return scp.special.round(vals)
 
-    @pytest.mark.xfail(reason="XXX: np2.0: f32/f64 dtypes differ")
+    @testing.with_requires("numpy>=2.0")
     # Exclude 'e' here because of deficiency in the NumPy/SciPy
     # implementation for float16 dtype. This was also noted in
     # cupy_tests/math_tests/test_special.py
@@ -209,7 +209,7 @@ class TestBasic:
         vals = xp.linspace(-100, 100, 200, dtype=dtype)
         return scp.special.sinc(vals)
 
-    @pytest.mark.xfail(reason="XXX: np2.0: f32/f64 dtypes differ")
+    @testing.with_requires("numpy>=2.0")
     # TODO: Should we make all int dtypes convert to float64 and test for that?
     #       currently int8->float16, int16->float32, etc... but for
     #       numpy.sinc/scipy.special.sinc any int type becomes float64.
