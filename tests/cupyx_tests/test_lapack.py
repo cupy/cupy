@@ -117,6 +117,10 @@ class TestPosv(unittest.TestCase):
     @testing.for_dtypes('fdFD')
     @testing.numpy_cupy_allclose(atol=1e-5)
     def test_posv(self, xp, dtype):
+        if (self.nrhs is None
+                and numpy.lib.NumpyVersion(numpy.__version__) >= "2.0.0"):
+            pytest.skip("numpy.linalg.solve changes behavior")
+
         # TODO: cusolver does not support nrhs > 1 for potrsBatched
         if len(self.shape) > 2 and self.nrhs and self.nrhs > 1:
             pytest.skip('cusolver does not support nrhs > 1 for potrsBatched')
