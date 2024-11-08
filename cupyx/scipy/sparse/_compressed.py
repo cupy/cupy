@@ -257,12 +257,13 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
             if len(data) != len(indices):
                 raise ValueError('indices and data should have the same size')
-            
+
             # Select index dtype large enough to hold array data
             maxval = None
             if shape is not None and 0 not in shape:
                 maxval = max(shape)
-            idx_dtype = _sputils.get_index_dtype((indptr, indices), maxval=maxval, check_contents=True)
+            idx_dtype = _sputils.get_index_dtype(
+                (indptr, indices), maxval=maxval, check_contents=True)
 
         elif _base.isdense(arg1):
             if arg1.ndim > 2:
