@@ -1,0 +1,25 @@
+name: test
+
+on:
+  pull_request:
+
+jobs:
+  test:
+    runs-on:
+      group: cupy-ci
+      labels: linux-gpu
+
+    strategy:
+      matrix:
+        target: ["cuda120"]
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Test
+      id: test
+      run: |
+        ./.pfnci/linux/run.sh ${{ matrix.target }} build test
