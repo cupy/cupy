@@ -199,6 +199,8 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
                 raise ValueError('invalid shape (must be a 2-tuple of int)')
             shape = int(shape[0]), int(shape[1])
 
+        idx_dtype = None
+
         if _base.issparse(arg1):
             x = arg1.asformat(self.format)
             data = x.data
@@ -216,8 +218,10 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             m, n = arg1
             m, n = int(m), int(n)
             data = basic.zeros(0, dtype if dtype else 'd')
-            indices = basic.zeros(0, 'i')
-            indptr = basic.zeros(self._swap(m, n)[0] + 1, dtype='i')
+            # Select index dtype large enough to hold array data
+            idx_dtype = _sputils.get_index_dtype(maxval=max(m, n))
+            indices = basic.zeros(0, idx_dtype)
+            indptr = basic.zeros(self._swap(m, n)[0] + 1, dtype=idx_dtype)
             # shape and copy argument is ignored
             shape = (m, n)
             copy = False
@@ -226,8 +230,8 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             # Convert scipy.sparse to cupyx.scipy.sparse
             x = arg1.asformat(self.format)
             data = cupy.array(x.data)
-            indices = cupy.array(x.indices, dtype='i')
-            indptr = cupy.array(x.indptr, dtype='i')
+            indices = cupy.array(x.indices)
+            indptr = cupy.array(x.indptr)
             copy = False
 
             if shape is None:
@@ -253,6 +257,12 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
             if len(data) != len(indices):
                 raise ValueError('indices and data should have the same size')
+            
+            # Select index dtype large enough to hold array data
+            maxval = None
+            if shape is not None and 0 not in shape:
+                maxval = max(shape)
+            idx_dtype = _sputils.get_index_dtype((indptr, indices), maxval=maxval, check_contents=True)
 
         elif _base.isdense(arg1):
             if arg1.ndim > 2:
@@ -283,8 +293,12 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         data = data.astype(dtype, copy=copy)
         sparse_data._data_matrix.__init__(self, data)
 
-        self.indices = indices.astype('i', copy=copy)
-        self.indptr = indptr.astype('i', copy=copy)
+        # Check if we need to convert the index dtype
+        if not idx_dtype:
+            idx_dtype = indices.dtype
+
+        self.indices = indices.astype(idx_dtype, copy=copy)
+        self.indptr = indptr.astype(idx_dtype, copy=copy)
 
         if shape is None:
             shape = self._swap(len(indptr) - 1, int(indices.max()) + 1)
