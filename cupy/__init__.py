@@ -1,5 +1,3 @@
-from cupy._creation.basic import astype   # NOQA
-from cupy import exceptions   # NOQA
 import functools as _functools
 import sys as _sys
 
@@ -184,6 +182,7 @@ from numpy import complex128  # NOQA
 # -----------------------------------------------------------------------------
 # Array creation routines
 # -----------------------------------------------------------------------------
+from cupy._creation.basic import astype   # NOQA
 from cupy._creation.basic import empty  # NOQA
 from cupy._creation.basic import empty_like  # NOQA
 from cupy._creation.basic import eye  # NOQA
@@ -550,9 +549,6 @@ from cupy.lib._routines_poly import polyfit  # NOQA
 from cupy.lib._routines_poly import polyval  # NOQA
 from cupy.lib._routines_poly import roots  # NOQA
 
-# Borrowed from NumPy
-from cupy.exceptions import RankWarning  # NOQA
-
 # -----------------------------------------------------------------------------
 # Mathematical functions
 # -----------------------------------------------------------------------------
@@ -693,7 +689,6 @@ from cupy._misc.who import who  # NOQA
 
 # Borrowed from NumPy
 from numpy import iterable  # NOQA
-from cupy.exceptions import AxisError  # NOQA
 
 
 # -----------------------------------------------------------------------------
@@ -759,10 +754,13 @@ from cupy._statistics.histogram import histogram2d  # NOQA
 from cupy._statistics.histogram import histogramdd  # NOQA
 
 # -----------------------------------------------------------------------------
-# Classes without their own docs
+# Exceptions and Warnings
 # -----------------------------------------------------------------------------
+from cupy import exceptions   # NOQA
+from cupy.exceptions import AxisError  # NOQA
 from cupy.exceptions import ComplexWarning  # NOQA
-from cupy.exceptions import ModuleDeprecationWarning  # NOQA
+from cupy.exceptions import ModuleDeprecationWarning  # undocumented # NOQA
+from cupy.exceptions import RankWarning  # NOQA
 from cupy.exceptions import TooHardError  # NOQA
 from cupy.exceptions import VisibleDeprecationWarning  # NOQA
 
