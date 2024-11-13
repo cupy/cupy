@@ -727,8 +727,7 @@ def _arg_wlen_as_expected(value):
         value = -1
     elif 1 < value:
         # Round up to a positive integer
-        if isinstance(value, float):
-            value = math.ceil(value)
+        value = math.ceil(value)
         value = cupy.intp(value)
     else:
         raise ValueError('`wlen` must be larger than 1, was {}'
