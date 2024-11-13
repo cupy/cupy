@@ -28,7 +28,7 @@ ELSE:
 DEF ALIGNMENT = 512
 
 
-cdef public void* _calloc(size_t nmemb, size_t size) nogil:
+cdef extern void* _calloc(size_t nmemb, size_t size) nogil:
     errno.errno = 0
     cdef void* buf = aligned_alloc(ALIGNMENT, nmemb * size)
     if buf and errno.errno == 0:
@@ -37,12 +37,12 @@ cdef public void* _calloc(size_t nmemb, size_t size) nogil:
     return buf
 
 
-cdef public void* _malloc(size_t size) nogil:
+cdef extern void* _malloc(size_t size) nogil:
     errno.errno = 0
     return aligned_alloc(ALIGNMENT, size)
 
 
-cdef public void* _realloc(void *ptr, size_t size) nogil:
+cdef extern void* _realloc(void *ptr, size_t size) nogil:
     errno.errno = 0
     cdef void* buf = stdlib.realloc(ptr, size)
     cdef void* tmp
@@ -58,5 +58,5 @@ cdef public void* _realloc(void *ptr, size_t size) nogil:
     return buf
 
 
-cdef public void _free(void* ptr) nogil:
+cdef extern void _free(void* ptr) nogil:
     aligned_free(ptr)
