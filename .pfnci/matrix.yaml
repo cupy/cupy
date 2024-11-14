@@ -623,7 +623,7 @@
   tags: ["@push", "full", "mini", "cuda-python"]
   system: "linux"
   os: "ubuntu:20.04"
-  cuda: "11.6"
+  cuda: "11.8"
   rocm: null
   nccl: "2.16"
   cutensor: "2.0"
