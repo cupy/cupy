@@ -353,7 +353,6 @@ class TestFallbackArray(unittest.TestCase):
 @testing.parameterize(
     {'func': 'min', 'shape': (5,), 'args': (), 'kwargs': {}},
     {'func': 'argmax', 'shape': (5, 3), 'args': (), 'kwargs': {'axis': 0}},
-    {'func': 'ptp', 'shape': (3, 3), 'args': (), 'kwargs': {'axis': 1}},
     {'func': 'compress', 'shape': (3, 2), 'args': ([False, True],),
      'kwargs': {'axis': 0}}
 )
