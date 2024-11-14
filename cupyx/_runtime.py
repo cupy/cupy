@@ -111,8 +111,9 @@ class _RuntimeInfo:
         # CUDA Driver
         self.cuda_build_version = str(cupy.cuda.driver.get_build_version())
         if cupy.cuda.driver._is_cuda_python():
-            import cuda
-            self.cuda_build_version += f' (CUDA Python: {cuda.__version__})'
+            import cuda.bindings
+            cuda_version = cuda.bindings.__version__
+            self.cuda_build_version += f' (CUDA Python: {cuda_version})'
         self.cuda_driver_version = _eval_or_error(
             cupy.cuda.runtime.driverGetVersion,
             cupy.cuda.runtime.CUDARuntimeError)
