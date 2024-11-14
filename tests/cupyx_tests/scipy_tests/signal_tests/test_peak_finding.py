@@ -84,6 +84,7 @@ class TestPeakProminences:
         out = scp.signal.peak_prominences(x[::2], peaks[::2])
         return out
 
+    @testing.with_requires("numpy<2.0")
     @pytest.mark.parametrize('wlen', [8, 7, 6, 5, 3.2, 3, 1.1])
     @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_wlen(self, wlen, xp, scp):
@@ -372,6 +373,7 @@ class TestFindPeaks:
             with pytest.raises(ValueError, match="distance"):
                 scp.signal.find_peaks(xp.arange(10), distance=-1)
 
+    @testing.with_requires("numpy<2.0")
     @pytest.mark.filterwarnings("ignore:some peaks have a prominence of 0",
                                 "ignore:some peaks have a width of 0")
     @testing.numpy_cupy_allclose(scipy_name="scp", type_check=False)
