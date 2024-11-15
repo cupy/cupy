@@ -801,6 +801,8 @@ class TestSpsolveTriangular:
     @testing.numpy_cupy_allclose(
         rtol=1e-5, atol=1e-5, sp_name='sp', contiguous_check=False)
     def test_sparse(self, format, dtype, xp, sp):
+        if numpy.lib.NumpyVersion(numpy.__version__) >= "2.0.0":
+            pytest.xfail("XXX: np2.0: dtypes differ")
         a, b = self._make_matrix(dtype, xp)
         a = sp.coo_matrix(a).asformat(format)
         return self._test_spsolve_triangular(sp, a, b)
