@@ -49,18 +49,22 @@ class TestRounding(unittest.TestCase):
         self.check_unary_negative('rint')
         self.check_unary_negative_complex('rint')
 
+    @testing.with_requires("numpy<2.0")
     def test_floor(self):
         self.check_unary('floor')
         self.check_unary_complex_unsupported('floor')
 
+    @testing.with_requires("numpy<2.0")
     def test_ceil(self):
         self.check_unary('ceil')
         self.check_unary_complex_unsupported('ceil')
 
+    @testing.with_requires("numpy<2.0")
     def test_trunc(self):
         self.check_unary('trunc')
         self.check_unary_complex_unsupported('trunc')
 
+    @testing.with_requires("numpy<2.0")
     def test_fix(self):
         self.check_unary('fix')
         self.check_unary_complex_unsupported('fix')
