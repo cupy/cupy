@@ -209,8 +209,7 @@ class TestCopytoFromScalar:
         return dst
 
 
-@pytest.mark.skipif(numpy.__version__ < "2",
-                    reason="XXX: NP2.0: copyto is in flux in numpy 2.0.0rc2")
+@testing.with_requires("numpy>=2.1")
 @pytest.mark.parametrize(
     'casting', ['no', 'equiv', 'safe', 'same_kind', 'unsafe'])
 class TestCopytoFromNumpyScalar:
