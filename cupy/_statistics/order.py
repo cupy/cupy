@@ -328,9 +328,11 @@ def percentile(a, q, axis=None, out=None,
         method = _check_interpolation_as_method(
             method, interpolation, 'percentile')
     if isinstance(q, (tuple, list)):
+        # float is intentionally excluded here to compute the correct output
+        # dtype in _quantile_unchecked
         q = numpy.asarray(q)
     q = q / 100
-    if not _quantile_is_valid(q):  # synchronize
+    if not _quantile_is_valid(q):  # synchronize if `q` is of cupy.ndarray
         raise ValueError('Percentiles must be in the range [0, 100]')
     return _quantile_unchecked(
         a, q, axis=axis, out=out,
@@ -375,8 +377,10 @@ def quantile(a, q, axis=None, out=None,
         method = _check_interpolation_as_method(
             method, interpolation, 'quantile')
     if isinstance(q, (tuple, list)):
+        # float is intentionally excluded here to compute the correct output
+        # dtype in _quantile_unchecked
         q = numpy.asarray(q)
-    if not _quantile_is_valid(q):  # synchronize
+    if not _quantile_is_valid(q):  # synchronize if `q` is of cupy.ndarray
         raise ValueError('Quantiles must be in the range [0, 1]')
     return _quantile_unchecked(
         a, q, axis=axis, out=out,
