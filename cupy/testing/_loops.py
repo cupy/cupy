@@ -19,9 +19,6 @@ import cupyx.scipy.sparse
 from cupy.testing._pytest_impl import is_available
 
 
-_numpy_version = numpy.lib.NumpyVersion(numpy.__version__)
-
-
 if is_available():
     import _pytest.outcomes
     _is_pytest_available = True
@@ -302,7 +299,7 @@ def _make_decorator(check_func, name, type_check, contiguous_check,
                 for cupy_r, numpy_r in zip(cupy_result, numpy_result)]
 
             # Check dtypes
-            if type_check and _numpy_version >= "2.0.0":
+            if type_check:
                 for cupy_r, numpy_r in cupy_numpy_result_ndarrays:
                     if cupy_r.dtype != numpy_r.dtype:
                         raise AssertionError(
