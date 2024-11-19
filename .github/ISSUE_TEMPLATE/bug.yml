@@ -30,19 +30,23 @@ body:
         How did you install CuPy?
       options:
         - Wheel (`pip install cupy-***`)
-        - Source (`pip install cupy`)
         - Conda-Forge (`conda install ...`)
+        - Built from PyPI source (`pip install cupy`)
         - Built from GitHub source
+    validations:
+      required: true
   - type: textarea
     id: env
     attributes:
       label: Environment
       description: |
-        Please copy and paste the output of `python -c "import cupy; cupy.show_config()"`:
+        Please copy and paste the output of `python -c "import cupy; cupy.show_config(_full=True)"`:
       value: |
         ```
         # Paste the output here
         ```
+    validations:
+      required: true
   - type: textarea
     id: additional-info
     attributes:
