@@ -99,22 +99,6 @@ If you want to use scalar values, cast the returned arrays explicitly.
   True
 
 
-Type promotion
-~~~~~~~~~~~~~~
-
-CuPy automatically promotes dtypes of :class:`cupy.ndarray` s in a function with two or more operands, the result dtype is determined by the dtypes of the inputs.
-This is different from NumPy's rule on type promotion, when operands contain zero-dimensional arrays.
-Zero-dimensional :class:`numpy.ndarray` s are treated as if they were scalar values if they appear in operands of NumPy's function,
-This may affect the dtype of its output, depending on the values of the "scalar" inputs.
-
-  >>> (np.array(3, dtype=np.int32) * np.array([1., 2.], dtype=np.float32)).dtype
-  dtype('float32')
-  >>> (np.array(300000, dtype=np.int32) * np.array([1., 2.], dtype=np.float32)).dtype
-  dtype('float64')
-  >>> (cupy.array(3, dtype=np.int32) * cupy.array([1., 2.], dtype=np.float32)).dtype
-  dtype('float64')
-
-
 Matrix type (:class:`numpy.matrix`)
 -----------------------------------
 
