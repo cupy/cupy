@@ -1,4 +1,5 @@
 import string
+import sys
 
 import numpy
 
@@ -693,11 +694,11 @@ cpdef scan_core(
         if dtype is None:
             kind = a.dtype.kind
             if kind == 'b':
-                dtype = numpy.dtype('l')
+                dtype = numpy.dtype('int64')
             elif kind == 'i' and a.dtype.itemsize < numpy.dtype('l').itemsize:
-                dtype = numpy.dtype('l')
+                dtype = numpy.dtype('int64')
             elif kind == 'u' and a.dtype.itemsize < numpy.dtype('L').itemsize:
-                dtype = numpy.dtype('L')
+                dtype = numpy.dtype('uint64')
             else:
                 dtype = a.dtype
         result = None
@@ -762,12 +763,24 @@ cpdef _ndarray_base _nanprod(_ndarray_base a, axis, dtype, out, keepdims):
         return _nanprod_keep_dtype(a, axis, dtype, out, keepdims)
 
 
+if sys.platform == "win32":
+    _sumprod_types = (
+        '?->q', 'b->q', 'B->Q', 'h->q', 'H->Q', 'i->q', 'I->Q', 'l->q', 'L->Q',
+        'q->q', 'Q->Q',
+        ('e->e', (None, None, None, 'float')),
+        'f->f', 'd->d', 'F->F', 'D->D',
+    )
+else:
+    _sumprod_types = (
+        '?->l', 'b->l', 'B->L', 'h->l', 'H->L', 'i->l', 'I->L', 'l->l', 'L->L',
+        'q->q', 'Q->Q',
+        ('e->e', (None, None, None, 'float')),
+        'f->f', 'd->d', 'F->F', 'D->D',
+    )
+
+
 _sum_auto_dtype = create_reduction_func(
-    'cupy_sum',
-    ('?->l', 'b->l', 'B->L', 'h->l', 'H->L', 'i->l', 'I->L', 'l->l', 'L->L',
-     'q->q', 'Q->Q',
-     ('e->e', (None, None, None, 'float')),
-     'f->f', 'd->d', 'F->F', 'D->D'),
+    'cupy_sum', _sumprod_types,
     ('in0', 'a + b', 'out0 = type_out0_raw(a)', None), 0)
 
 
@@ -781,11 +794,7 @@ _sum_keep_dtype = create_reduction_func(
 
 
 _nansum_auto_dtype = create_reduction_func(
-    'cupy_nansum',
-    ('?->l', 'b->l', 'B->L', 'h->l', 'H->L', 'i->l', 'I->L', 'l->l', 'L->L',
-     'q->q', 'Q->Q',
-     ('e->e', (None, None, None, 'float')),
-     'f->f', 'd->d', 'F->F', 'D->D'),
+    'cupy_nansum', _sumprod_types,
     ('(in0 == in0) ? in0 : type_in0_raw(0)',
      'a + b', 'out0 = type_out0_raw(a)', None), 0)
 
@@ -811,11 +820,7 @@ _nansum_complex_dtype = create_reduction_func(
 
 
 _prod_auto_dtype = create_reduction_func(
-    'cupy_prod',
-    ('?->l', 'b->l', 'B->L', 'h->l', 'H->L', 'i->l', 'I->L', 'l->l', 'L->L',
-     'q->q', 'Q->Q',
-     ('e->e', (None, None, None, 'float')),
-     'f->f', 'd->d', 'F->F', 'D->D'),
+    'cupy_prod', _sumprod_types,
     ('in0', 'a * b', 'out0 = type_out0_raw(a)', None), 1)
 
 
@@ -829,11 +834,7 @@ _prod_keep_dtype = create_reduction_func(
 
 
 _nanprod_auto_dtype = create_reduction_func(
-    'cupy_nanprod',
-    ('?->l', 'b->l', 'B->L', 'h->l', 'H->L', 'i->l', 'I->L', 'l->l', 'L->L',
-     'q->q', 'Q->Q',
-     ('e->e', (None, None, None, 'float')),
-     'f->f', 'd->d', 'F->F', 'D->D'),
+    'cupy_nanprod', _sumprod_types,
     ('(in0 == in0) ? in0 : type_in0_raw(1)',
      'a * b', 'out0 = type_out0_raw(a)', None), 1)
 
