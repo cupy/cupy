@@ -2,6 +2,7 @@ import functools
 import inspect
 import os
 import random
+import sys
 from typing import Tuple, Type
 import traceback
 import unittest
@@ -306,6 +307,14 @@ def _make_decorator(check_func, name, type_check, contiguous_check,
                             '''ndarrays of different dtypes are returned.
 cupy: {}
 numpy: {}'''.format(cupy_r.dtype, numpy_r.dtype))
+
+                    if sys.platform != 'win32':
+                        # TODO(asi1024): Support compatibility also on Windows
+                        if cupy_r.dtype.char != numpy_r.dtype.char:
+                            raise AssertionError(
+                                '''ndarrays of different dtypes are returned.
+cupy: {}
+numpy: {}'''.format(cupy_r.dtype.char, numpy_r.dtype.char))
 
             # Check contiguities
             if contiguous_check:
