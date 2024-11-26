@@ -695,9 +695,9 @@ cpdef scan_core(
             kind = a.dtype.kind
             if kind == 'b':
                 dtype = numpy.dtype('int64')
-            elif kind == 'i' and a.dtype.itemsize < numpy.dtype('l').itemsize:
+            elif kind == 'i':
                 dtype = numpy.dtype('int64')
-            elif kind == 'u' and a.dtype.itemsize < numpy.dtype('L').itemsize:
+            elif kind == 'u':
                 dtype = numpy.dtype('uint64')
             else:
                 dtype = a.dtype
