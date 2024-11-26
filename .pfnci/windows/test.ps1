@@ -1,6 +1,8 @@
 Param(
     [String]$cuda,
     [String]$python,
+    [String]$numpy,
+    [String]$scipy,
     [String]$test
 )
 
@@ -85,7 +87,7 @@ function Main {
 
     echo "Building..."
     $build_retval = 0
-    RunOrDie python -m pip install -U "numpy" "scipy==1.12.*"
+    RunOrDie python -m pip install "numpy==$numpy.*" "scipy==$scipy.*"
     python -m pip install ".[all,test]" -v > cupy_build_log.txt
     if (-not $?) {
         $build_retval = $LastExitCode
