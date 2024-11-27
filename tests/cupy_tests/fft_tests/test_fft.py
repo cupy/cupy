@@ -93,6 +93,7 @@ def multi_gpu_config(gpu_configs=None):
     return decorator
 
 
+@testing.with_requires('numpy<2.0')
 @pytest.mark.usefixtures('skip_forward_backward')
 @testing.parameterize(*testing.product({
     'n': [None, 0, 5, 10, 15],
@@ -130,6 +131,7 @@ class TestFft:
         return out
 
 
+@testing.with_requires('numpy<2.0')
 @testing.parameterize(*testing.product({
     'shape': [(0, 10), (10, 0, 10), (10, 10), (10, 5, 10)],
     'data_order': ['F', 'C'],
@@ -181,6 +183,7 @@ def _skip_multi_gpu_bug(shape, gpus):
 # Almost identical to the TestFft class, except that
 # 1. multi-GPU cuFFT is used
 # 2. the tested parameter combinations are adjusted to meet the requirements
+@testing.with_requires('numpy<2.0')
 @pytest.mark.usefixtures('skip_forward_backward')
 @testing.parameterize(*testing.product({
     'n': [None, 0, 64],
@@ -231,6 +234,7 @@ class TestMultiGpuFft:
 # Almost identical to the TestFftOrder class, except that
 # 1. multi-GPU cuFFT is used
 # 2. the tested parameter combinations are adjusted to meet the requirements
+@testing.with_requires('numpy<2.0')
 @testing.parameterize(*testing.product({
     'shape': [(10, 10), (10, 5, 10)],
     'data_order': ['F', 'C'],
@@ -277,6 +281,7 @@ class TestMultiGpuFftOrder:
         return out
 
 
+@testing.with_requires('numpy<2.0')
 class TestDefaultPlanType:
 
     @nd_planning_states()
@@ -344,6 +349,7 @@ class TestDefaultPlanType:
         assert _default_fft_func(ca, axes=(2, 1), value_type='C2R') is _fft
 
 
+@testing.with_requires('numpy<2.0')
 @pytest.mark.skipif(10010 <= cupy.cuda.runtime.runtimeGetVersion() <= 11010,
                     reason='avoid a cuFFT bug (cupy/cupy#3777)')
 @testing.slow
@@ -366,6 +372,7 @@ class TestFftAllocate:
         cupy.fft.config.clear_plan_cache()
 
 
+@testing.with_requires('numpy<2.0')
 @pytest.mark.usefixtures('skip_forward_backward')
 @testing.parameterize(*(
     testing.product_dict([
@@ -441,6 +448,7 @@ class TestFft2:
         return out
 
 
+@testing.with_requires('numpy<2.0')
 @pytest.mark.usefixtures('skip_forward_backward')
 @testing.parameterize(*(
     testing.product_dict([
@@ -517,6 +525,7 @@ class TestFftn:
         return out
 
 
+@testing.with_requires('numpy<2.0')
 @pytest.mark.usefixtures('skip_forward_backward')
 @testing.parameterize(*(
     testing.product_dict([
@@ -626,6 +635,7 @@ class TestPlanCtxManagerFftn:
         assert 'The cuFFT plan and a.shape do not match' in str(ex.value)
 
 
+@testing.with_requires('numpy<2.0')
 @pytest.mark.usefixtures('skip_forward_backward')
 @testing.parameterize(*testing.product({
     'n': [None, 5, 10, 15],
@@ -697,6 +707,7 @@ class TestPlanCtxManagerFft:
 # Almost identical to the TestPlanCtxManagerFft class, except that
 # 1. multi-GPU cuFFT is used
 # 2. the tested parameter combinations are adjusted to meet the requirements
+@testing.with_requires('numpy<2.0')
 @pytest.mark.usefixtures('skip_forward_backward')
 @testing.parameterize(*testing.product({
     'n': [None, 64],
@@ -779,6 +790,7 @@ class TestMultiGpuPlanCtxManagerFft:
         assert 'Target array size does not match the plan.' in str(ex.value)
 
 
+@testing.with_requires('numpy<2.0')
 @pytest.mark.usefixtures('skip_forward_backward')
 @testing.parameterize(*(
     testing.product_dict([
@@ -838,6 +850,7 @@ class TestFftnContiguity:
                 pass
 
 
+@testing.with_requires('numpy<2.0')
 @pytest.mark.usefixtures('skip_forward_backward')
 @testing.parameterize(*testing.product({
     'n': [None, 5, 10, 15],
@@ -871,6 +884,7 @@ class TestRfft:
         return out
 
 
+@testing.with_requires('numpy<2.0')
 @pytest.mark.usefixtures('skip_forward_backward')
 @testing.parameterize(*testing.product({
     'n': [None, 5, 10, 15],
@@ -940,6 +954,7 @@ class TestPlanCtxManagerRfft:
         assert 'Target array size does not match the plan.' in str(ex.value)
 
 
+@testing.with_requires('numpy<2.0')
 @pytest.mark.usefixtures('skip_forward_backward')
 @testing.parameterize(*(
     testing.product_dict([
@@ -1004,6 +1019,7 @@ class TestRfft2:
         return out
 
 
+@testing.with_requires('numpy<2.0')
 @testing.parameterize(
     {'shape': (3, 4), 's': None, 'axes': (), 'norm': None},
     {'shape': (2, 3, 4), 's': None, 'axes': (), 'norm': None},
@@ -1025,6 +1041,7 @@ class TestRfft2EmptyAxes:
                 xp.fft.irfft2(a, s=self.s, axes=self.axes, norm=self.norm)
 
 
+@testing.with_requires('numpy<2.0')
 @pytest.mark.usefixtures('skip_forward_backward')
 @testing.parameterize(*(
     testing.product_dict([
@@ -1092,6 +1109,7 @@ class TestRfftn:
 
 
 # Only those tests in which a legit plan can be obtained are kept
+@testing.with_requires('numpy<2.0')
 @pytest.mark.usefixtures('skip_forward_backward')
 @testing.parameterize(*(
     testing.product_dict([
@@ -1169,6 +1187,7 @@ class TestPlanCtxManagerRfftn:
     # TODO(leofang): write test_rfftn_error_on_wrong_plan()?
 
 
+@testing.with_requires('numpy<2.0')
 @pytest.mark.usefixtures('skip_forward_backward')
 @testing.parameterize(*(
     testing.product_dict([
@@ -1231,6 +1250,7 @@ class TestRfftnContiguity:
                 pass
 
 
+@testing.with_requires('numpy<2.0')
 @testing.parameterize(
     {'shape': (3, 4), 's': None, 'axes': (), 'norm': None},
     {'shape': (2, 3, 4), 's': None, 'axes': (), 'norm': None},
@@ -1252,6 +1272,7 @@ class TestRfftnEmptyAxes:
                 xp.fft.irfftn(a, s=self.s, axes=self.axes, norm=self.norm)
 
 
+@testing.with_requires('numpy<2.0')
 @pytest.mark.usefixtures('skip_forward_backward')
 @testing.parameterize(*testing.product({
     'n': [None, 5, 10, 15],
@@ -1285,6 +1306,7 @@ class TestHfft:
         return out
 
 
+@testing.with_requires('numpy<2.0')
 @testing.parameterize(
     {'n': 1, 'd': 1},
     {'n': 10, 'd': 0.5},
@@ -1307,6 +1329,7 @@ class TestFftfreq:
         return out
 
 
+@testing.with_requires('numpy<2.0')
 @testing.parameterize(
     {'shape': (5,), 'axes': None},
     {'shape': (5,), 'axes': 0},

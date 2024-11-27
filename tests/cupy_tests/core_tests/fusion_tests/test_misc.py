@@ -152,6 +152,7 @@ class TestFusionNoneParams(unittest.TestCase):
         return f(x, None, z) + f(x, y, z)
 
 
+@testing.with_requires('numpy<2.0')
 class TestSpecialValues(FusionTestBase):
 
     @testing.for_float_dtypes()

@@ -86,6 +86,7 @@ class TestElementwiseInvalidArgument(unittest.TestCase):
             cupy.ElementwiseKernel('T x', '', '', '1')
 
 
+@testing.with_requires('numpy<2.0')
 class TestElementwiseType(unittest.TestCase):
 
     @testing.for_int_dtypes(no_bool=True)

@@ -174,6 +174,7 @@ class TestArrayIndex(unittest.TestCase):
         a[:] = b
         return a
 
+    @testing.with_requires('numpy<2.0')
     @testing.for_all_dtypes_combination(('src_type', 'dst_type'))
     @testing.numpy_cupy_array_equal()
     def test_setitem_different_type(self, xp, src_type, dst_type):

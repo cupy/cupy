@@ -80,6 +80,7 @@ class TestAllAnyWithNaN:
         return out
 
 
+@testing.with_requires('numpy<2.0')
 class TestAllAnyAlias:
     @testing.numpy_cupy_array_equal()
     def test_alltrue(self, xp):
@@ -115,6 +116,7 @@ class TestAllAnyAlias:
         ],
             'assume_unique': [False, True],
             'invert': [False, True]}))
+@testing.with_requires('numpy<2.0')
 class TestIn1DIsIn:
 
     @testing.for_all_dtypes()

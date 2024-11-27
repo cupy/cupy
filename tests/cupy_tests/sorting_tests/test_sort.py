@@ -298,6 +298,7 @@ class TestArgsort(unittest.TestCase):
         a = testing.shaped_random((), xp, dtype)
         return self.argsort(a)
 
+    @testing.with_requires('numpy<2.0')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_argsort_one_dim(self, xp, dtype):
@@ -397,6 +398,7 @@ class TestArgsort(unittest.TestCase):
 
 
 @pytest.mark.filterwarnings('ignore:.*msort.*:DeprecationWarning')
+@testing.with_requires('numpy<2.0')
 class TestMsort(unittest.TestCase):
 
     # Test base cases

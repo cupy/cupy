@@ -101,6 +101,7 @@ class TestFlatiterSubscript(unittest.TestCase):
         a.flat[self.index] = v
         return a
 
+    @testing.with_requires('numpy<2.0')
     @testing.for_CF_orders()
     @testing.for_all_dtypes_combination(('a_dtype', 'v_dtype'))
     @testing.numpy_cupy_array_equal()
