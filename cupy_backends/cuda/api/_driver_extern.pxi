@@ -79,11 +79,10 @@ cdef inline void initialize() except *:
     global _L
     if _L is not None:
         return
-    _initialize()
+    _L = _initialize()
 
 
-cdef void _initialize() except *:
-    global _L
+cdef SoftLink _initialize():
     _L = _get_softlink()
 
     cdef str version = '_v2' if CUPY_CUDA_VERSION != 0 else ''
@@ -138,6 +137,8 @@ cdef void _initialize() except *:
     cuOccupancyMaxPotentialBlockSize = <F_cuOccupancyMaxPotentialBlockSize>_L.get('OccupancyMaxPotentialBlockSize')  # NOQA
     global cuStreamGetCtx
     cuStreamGetCtx = <F_cuStreamGetCtx>_L.get('StreamGetCtx')
+
+    return _L
 
 
 cdef SoftLink _get_softlink():
