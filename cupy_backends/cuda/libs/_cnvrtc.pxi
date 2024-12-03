@@ -69,10 +69,9 @@ cdef inline void initialize() except *:
     global _L
     if _L is not None:
         return
-    _initialize()
+    _L = _initialize()
 
-cdef void _initialize() except *:
-    global _L
+cdef SoftLink _initialize():
     _L = _get_softlink()
 
     global nvrtcGetErrorString
@@ -109,6 +108,8 @@ cdef void _initialize() except *:
     nvrtcGetNVVMSize = <F_nvrtcGetNVVMSize>_L.get('GetNVVMSize')
     global nvrtcGetNVVM
     nvrtcGetNVVM = <F_nvrtcGetNVVM>_L.get('GetNVVM')
+
+    return _L
 
 
 cdef SoftLink _get_softlink():
