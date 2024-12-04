@@ -24,6 +24,7 @@ cdef class _ndarray_base:
         readonly _ndarray_base base
 
     cdef _init_fast(self, const shape_t& shape, dtype, bint c_order)
+    cdef inline bint is_host_accessible(self) except*
     cpdef item(self)
     cpdef tolist(self)
     cpdef bytes tobytes(self, order=*)
@@ -45,8 +46,8 @@ cdef class _ndarray_base:
     cpdef put(self, indices, values, mode=*)
     cpdef repeat(self, repeats, axis=*)
     cpdef choose(self, choices, out=*, mode=*)
-    cpdef sort(self, int axis=*)
-    cpdef _ndarray_base argsort(self, axis=*)
+    cpdef sort(self, int axis=*, kind=*)
+    cpdef _ndarray_base argsort(self, axis=*, kind=*)
     cpdef partition(self, kth, int axis=*)
     cpdef _ndarray_base argpartition(self, kth, axis=*)
     cpdef tuple nonzero(self)

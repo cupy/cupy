@@ -1,5 +1,7 @@
 import warnings
 
+import numpy
+
 import cupy
 from cupy import _core
 from cupy._core import _routines_statistics as _statistics
@@ -178,6 +180,9 @@ def _quantile_unchecked(a, q, axis=None, out=None,
                         overwrite_input=False,
                         method='linear',
                         keepdims=False):
+    dtype = cupy.result_type(a, q)
+    q = cupy.asarray(q)
+
     if q.ndim == 0:
         q = q[None]
         zerod = True
@@ -246,7 +251,7 @@ def _quantile_unchecked(a, q, axis=None, out=None,
         ret = ret.take(indices, axis=0, out=out)
     else:
         if out is None:
-            ret = cupy.empty(ap.shape[:-1] + q.shape, dtype=cupy.float64)
+            ret = cupy.empty(ap.shape[:-1] + q.shape, dtype=dtype)
         else:
             ret = cupy.rollaxis(out, 0, out.ndim)
 
@@ -283,9 +288,8 @@ def _quantile_unchecked(a, q, axis=None, out=None,
 
 
 def _quantile_is_valid(q):
-    if cupy.count_nonzero(q < 0.0) or cupy.count_nonzero(q > 1.0):
-        return False
-    return True
+    xp = cupy if isinstance(q, cupy.ndarray) else numpy
+    return xp.count_nonzero(0.0 <= q) and xp.count_nonzero(q <= 1.0)
 
 
 def percentile(a, q, axis=None, out=None,
@@ -323,10 +327,12 @@ def percentile(a, q, axis=None, out=None,
     if interpolation is not None:
         method = _check_interpolation_as_method(
             method, interpolation, 'percentile')
-    if not isinstance(q, cupy.ndarray):
-        q = cupy.asarray(q, dtype='d')
-    q = cupy.true_divide(q, 100)
-    if not _quantile_is_valid(q):  # synchronize
+    if isinstance(q, (tuple, list)):
+        # float is intentionally excluded here to compute the correct output
+        # dtype in _quantile_unchecked
+        q = numpy.asarray(q)
+    q = q / 100
+    if not _quantile_is_valid(q):  # synchronize if `q` is of cupy.ndarray
         raise ValueError('Percentiles must be in the range [0, 100]')
     return _quantile_unchecked(
         a, q, axis=axis, out=out,
@@ -370,9 +376,11 @@ def quantile(a, q, axis=None, out=None,
     if interpolation is not None:
         method = _check_interpolation_as_method(
             method, interpolation, 'quantile')
-    if not isinstance(q, cupy.ndarray):
-        q = cupy.asarray(q, dtype='d')
-    if not _quantile_is_valid(q):  # synchronize
+    if isinstance(q, (tuple, list)):
+        # float is intentionally excluded here to compute the correct output
+        # dtype in _quantile_unchecked
+        q = numpy.asarray(q)
+    if not _quantile_is_valid(q):  # synchronize if `q` is of cupy.ndarray
         raise ValueError('Quantiles must be in the range [0, 1]')
     return _quantile_unchecked(
         a, q, axis=axis, out=out,
