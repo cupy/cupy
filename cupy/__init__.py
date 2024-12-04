@@ -537,9 +537,9 @@ from cupy._logic.comparison import not_equal  # NOQA
 from cupy._logic.truth import all  # NOQA
 from cupy._logic.truth import any  # NOQA
 
-# ------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 # Polynomial functions
-# ------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 from cupy.lib._polynomial import poly1d  # NOQA
 from cupy.lib._routines_poly import poly  # NOQA
 from cupy.lib._routines_poly import polyadd  # NOQA
