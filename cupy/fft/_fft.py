@@ -239,6 +239,8 @@ def _fft(a, s, axes, norm, direction, value_type='C2C', overwrite_x=False,
     if norm not in ('backward', 'ortho', 'forward'):
         raise ValueError('Invalid norm value %s, should be "backward", '
                          '"ortho", or "forward".' % norm)
+    # Compute the output dtype in advance for C2R branch
+    real_dtype = cupy.result_type(a.real.dtype, 1.0)
     a = _convert_dtype(a, value_type)
     a = _cook_shape(a, s, axes, value_type)
 
@@ -253,6 +255,11 @@ def _fft(a, s, axes, norm, direction, value_type='C2C', overwrite_x=False,
         out_size = _get_fftn_out_size(a.shape, s, axes[-1], value_type)
         a = _exec_fft(a, direction, value_type, norm, axes[-1], overwrite_x,
                       out_size)
+        # Numpy compatibility
+        # 1D FFT: Regain the original type (before _convert_dtype)
+        # Others: Not necessary as numpy applies C2C iFFTs before R2C iRFFT
+        if len(axes) == 1:
+            a = a.astype(real_dtype)
 
     return a
 
