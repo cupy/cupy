@@ -3,7 +3,7 @@ from cpython cimport sequence
 from cupy._core cimport _carray
 from cupy._core cimport _accelerator
 from cupy._core._carray cimport shape_t
-from cupy._core cimport _cub_reduction
+#from cupy._core cimport _cub_reduction
 from cupy._core._dtype cimport get_dtype
 from cupy._core cimport _kernel
 from cupy._core._kernel cimport _broadcast
@@ -365,6 +365,7 @@ cdef class _AbstractReductionKernel:
                    in_types, out_types, reduce_type, device_id)
 
         # Try to use CUB
+        """
         for accelerator in _accelerator._reduction_accelerators:
             if try_use_cub and accelerator == _accelerator.ACCELERATOR_CUB:
                 cub_success = _cub_reduction._try_to_call_cub_reduction(
@@ -373,6 +374,7 @@ cdef class _AbstractReductionKernel:
                     type_map, reduce_axis, out_axis, out_shape, ret)
                 if cub_success:
                     return ret
+        """
 
         axis_permutes = reduce_axis + out_axis
         in_shape = _set_permuted_args(
