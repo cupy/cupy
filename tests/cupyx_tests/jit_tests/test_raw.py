@@ -23,6 +23,7 @@ class TestRaw:
         f((1,), (10,), (x, y))
         assert (x == y).all()
 
+    @testing.with_requires('numpy<2.0')
     def test_raw_grid_2D(self):
         @jit.rawkernel()
         def f(arr1, arr2, n, m):
@@ -37,6 +38,7 @@ class TestRaw:
         f((1,), (4, 5), (x, y, x.shape[0], x.shape[1]))
         assert (x == y).all()
 
+    @testing.with_requires('numpy<2.0')
     def test_raw_grid_3D(self):
         @jit.rawkernel()
         def f(arr1, arr2, k, m, n):
@@ -273,6 +275,7 @@ class TestRaw:
         y[16:] += 1
         assert bool((x == y).all())
 
+    @testing.with_requires('numpy<2.0')
     def test_syncwarp_mask(self):
         @jit.rawkernel()
         def f(x, m):
@@ -633,6 +636,7 @@ class TestRaw:
         y = cupy.arange(N*2, dtype=cupy.uint32) % N
         assert (x == y).all()
 
+    @testing.with_requires('numpy<2.0')
     def test_warpsize(self):
         @jit.rawkernel()
         def f(arr):

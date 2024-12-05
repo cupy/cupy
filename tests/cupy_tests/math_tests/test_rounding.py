@@ -73,6 +73,7 @@ class TestRounding(unittest.TestCase):
         self.check_unary('around')
         self.check_unary_complex('around')
 
+    @testing.with_requires('numpy<2.0')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(atol=1e-5)
     def test_round_(self, xp, dtype):

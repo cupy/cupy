@@ -31,15 +31,19 @@ class TestArrayElementwiseOp:
     def test_radd_scalar(self):
         self.check_array_scalar_op(operator.add, swap=True)
 
+    @testing.with_requires('numpy<2.0')
     def test_iadd_scalar(self):
         self.check_array_scalar_op(operator.iadd)
 
+    @testing.with_requires('numpy<2.0')
     def test_sub_scalar(self):
         self.check_array_scalar_op(operator.sub, no_bool=True)
 
+    @testing.with_requires('numpy<2.0')
     def test_rsub_scalar(self):
         self.check_array_scalar_op(operator.sub, swap=True, no_bool=True)
 
+    @testing.with_requires('numpy<2.0')
     def test_isub_scalar(self):
         self.check_array_scalar_op(operator.isub, no_bool=True)
 
@@ -49,13 +53,16 @@ class TestArrayElementwiseOp:
     def test_rmul_scalar(self):
         self.check_array_scalar_op(operator.mul, swap=True)
 
+    @testing.with_requires('numpy<2.0')
     def test_imul_scalar(self):
         self.check_array_scalar_op(operator.imul)
 
+    @testing.with_requires('numpy<2.0')
     def test_truediv_scalar(self):
         with numpy.errstate(divide='ignore'):
             self.check_array_scalar_op(operator.truediv)
 
+    @testing.with_requires('numpy<2.0')
     def test_rtruediv_scalar(self):
         with numpy.errstate(divide='ignore'):
             self.check_array_scalar_op(operator.truediv, swap=True)
@@ -73,13 +80,16 @@ class TestArrayElementwiseOp:
             self.check_array_scalar_op(operator.floordiv, swap=True,
                                        no_complex=True)
 
+    @testing.with_requires('numpy<2.0')
     def test_ifloordiv_scalar(self):
         with numpy.errstate(divide='ignore'):
             self.check_array_scalar_op(operator.ifloordiv, no_complex=True)
 
+    @testing.with_requires('numpy<2.0')
     def test_pow_scalar(self):
         self.check_array_scalar_op(operator.pow)
 
+    @testing.with_requires('numpy<2.0')
     def test_rpow_scalar(self):
         self.check_array_scalar_op(operator.pow, swap=True)
 
@@ -89,6 +99,7 @@ class TestArrayElementwiseOp:
         a = xp.array([[1, 2, 3], [4, 5, 6]], x_type)
         return operator.ipow(a, y_type(3))
 
+    @testing.with_requires('numpy<2.0')
     def test_ipow_scalar(self):
         self.check_ipow_scalar()
 
@@ -440,27 +451,34 @@ class TestArrayElementwiseOp:
     def test_typecast_int1(self):
         self.check_typecast(0)
 
+    @testing.with_requires('numpy<2.0')
     def test_typecast_int2(self):
         self.check_typecast(-127)
 
+    @testing.with_requires('numpy<2.0')
     def test_typecast_int3(self):
         self.check_typecast(255)
 
+    @testing.with_requires('numpy<2.0')
     def test_typecast_int4(self):
         self.check_typecast(-32768)
 
+    @testing.with_requires('numpy<2.0')
     def test_typecast_int5(self):
         self.check_typecast(65535)
 
+    @testing.with_requires('numpy<2.0')
     def test_typecast_int6(self):
         self.check_typecast(-2147483648)
 
+    @testing.with_requires('numpy<2.0')
     def test_typecast_int7(self):
         self.check_typecast(4294967295)
 
     def test_typecast_float1(self):
         self.check_typecast(0.0)
 
+    @testing.with_requires('numpy<2.0')
     def test_typecast_float2(self):
         self.check_typecast(100000.0)
 
@@ -491,33 +509,43 @@ class TestArrayIntElementwiseOp:
         else:
             return op(a, y_type(2))
 
+    @testing.with_requires('numpy<2.0')
     def test_lshift_scalar(self):
         self.check_array_scalar_op(operator.lshift)
 
+    @testing.with_requires('numpy<2.0')
     def test_rlshift_scalar(self):
         self.check_array_scalar_op(operator.lshift, swap=True)
 
+    @testing.with_requires('numpy<2.0')
     def test_rshift_scalar(self):
         self.check_array_scalar_op(operator.rshift)
 
+    @testing.with_requires('numpy<2.0')
     def test_rrshift_scalar(self):
         self.check_array_scalar_op(operator.rshift, swap=True)
 
+    @testing.with_requires('numpy<2.0')
     def test_and_scalar(self):
         self.check_array_scalar_op(operator.and_)
 
+    @testing.with_requires('numpy<2.0')
     def test_rand_scalar(self):
         self.check_array_scalar_op(operator.and_, swap=True)
 
+    @testing.with_requires('numpy<2.0')
     def test_or_scalar(self):
         self.check_array_scalar_op(operator.or_)
 
+    @testing.with_requires('numpy<2.0')
     def test_ror_scalar(self):
         self.check_array_scalar_op(operator.or_, swap=True)
 
+    @testing.with_requires('numpy<2.0')
     def test_xor_scalar(self):
         self.check_array_scalar_op(operator.xor)
 
+    @testing.with_requires('numpy<2.0')
     def test_rxor_scalar(self):
         self.check_array_scalar_op(operator.xor, swap=True)
 
@@ -525,6 +553,7 @@ class TestArrayIntElementwiseOp:
         with numpy.errstate(divide='ignore', invalid='ignore'):
             self.check_array_scalar_op(operator.mod)
 
+    @testing.with_requires('numpy<2.0')
     def test_rmod_scalar(self):
         with numpy.errstate(divide='ignore', invalid='ignore'):
             self.check_array_scalar_op(operator.mod, swap=True)
@@ -538,40 +567,52 @@ class TestArrayIntElementwiseOp:
         else:
             return op(a, y_type(0))
 
+    @testing.with_requires('numpy<2.0')
     def test_lshift_scalarzero(self):
         self.check_array_scalarzero_op(operator.lshift)
 
+    @testing.with_requires('numpy<2.0')
     def test_rlshift_scalarzero(self):
         self.check_array_scalarzero_op(operator.lshift, swap=True)
 
+    @testing.with_requires('numpy<2.0')
     def test_rshift_scalarzero(self):
         self.check_array_scalarzero_op(operator.rshift)
 
+    @testing.with_requires('numpy<2.0')
     def test_rrshift_scalarzero(self):
         self.check_array_scalarzero_op(operator.rshift, swap=True)
 
+    @testing.with_requires('numpy<2.0')
     def test_and_scalarzero(self):
         self.check_array_scalarzero_op(operator.and_)
 
+    @testing.with_requires('numpy<2.0')
     def test_rand_scalarzero(self):
         self.check_array_scalarzero_op(operator.and_, swap=True)
 
+    @testing.with_requires('numpy<2.0')
     def test_or_scalarzero(self):
         self.check_array_scalarzero_op(operator.or_)
 
+    @testing.with_requires('numpy<2.0')
     def test_ror_scalarzero(self):
         self.check_array_scalarzero_op(operator.or_, swap=True)
 
+    @testing.with_requires('numpy<2.0')
     def test_xor_scalarzero(self):
         self.check_array_scalarzero_op(operator.xor)
 
+    @testing.with_requires('numpy<2.0')
     def test_rxor_scalarzero(self):
         self.check_array_scalarzero_op(operator.xor, swap=True)
 
+    @testing.with_requires('numpy<2.0')
     def test_mod_scalarzero(self):
         with numpy.errstate(divide='ignore', invalid='ignore'):
             self.check_array_scalarzero_op(operator.mod)
 
+    @testing.with_requires('numpy<2.0')
     def test_rmod_scalarzero(self):
         with numpy.errstate(divide='ignore', invalid='ignore'):
             self.check_array_scalarzero_op(operator.mod, swap=True)

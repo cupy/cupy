@@ -230,7 +230,7 @@ class TestJoin:
             with pytest.raises(TypeError):
                 xp.concatenate((a, b), out=out, dtype=xp.int64)
 
-    @testing.with_requires('numpy>=1.20.0')
+    @testing.with_requires('numpy<2.0')
     @pytest.mark.filterwarnings('error::cupy.exceptions.ComplexWarning')
     @pytest.mark.parametrize('casting', [
         'no',
@@ -298,7 +298,7 @@ class TestJoin:
         b = testing.shaped_arange((3, 4), xp, dtype1)
         return xp.hstack((a, b), dtype=dtype2)
 
-    @testing.with_requires('numpy>=1.24.0')
+    @testing.with_requires('numpy>=1.24.0', 'numpy<2.0')
     @pytest.mark.filterwarnings('error::cupy.exceptions.ComplexWarning')
     @pytest.mark.parametrize('casting', [
         'no',
@@ -341,7 +341,7 @@ class TestJoin:
         b = testing.shaped_arange((3, 4), xp, dtype1)
         return xp.vstack((a, b), dtype=dtype2)
 
-    @testing.with_requires('numpy>=1.24.0')
+    @testing.with_requires('numpy>=1.24.0', 'numpy<2.0')
     @pytest.mark.filterwarnings('error::cupy.exceptions.ComplexWarning')
     @pytest.mark.parametrize('casting', [
         'no',
@@ -485,7 +485,7 @@ class TestJoin:
         b = testing.shaped_arange((3, 4), xp, dtype1)
         return xp.stack((a, b), dtype=dtype2)
 
-    @testing.with_requires('numpy>=1.24.0')
+    @testing.with_requires('numpy>=1.24.0', 'numpy<2.0')
     @pytest.mark.filterwarnings('error::cupy.exceptions.ComplexWarning')
     @pytest.mark.parametrize('casting', [
         'no',

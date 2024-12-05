@@ -336,6 +336,7 @@ class TestArithmeticBinary(ArithmeticBinaryBase):
         'use_dtype': [True, False],
     })
 ))
+@testing.with_requires('numpy<2.0')
 class TestArithmeticBinary2(ArithmeticBinaryBase):
 
     def test_binary(self):
@@ -388,6 +389,7 @@ class UfuncTestBase:
 
 class TestUfunc(UfuncTestBase):
 
+    @testing.with_requires('numpy<2.0')
     @pytest.mark.parametrize('casting', [
         'no',
         'equiv',
@@ -400,6 +402,7 @@ class TestUfunc(UfuncTestBase):
     def test_casting_out_only(self, in_type, out_type, casting):
         self.check_casting_out(in_type, in_type, out_type, casting)
 
+    @testing.with_requires('numpy<2.0')
     @pytest.mark.parametrize('casting', [
         pytest.param('no', marks=pytest.mark.skip('flaky xfail')),
         pytest.param('equiv', marks=pytest.mark.skip('flaky xfail')),

@@ -203,6 +203,7 @@ class TestSumprod:
         a = testing.shaped_arange((2, 3), xp, src_dtype)
         return a.prod(dtype=dst_dtype)
 
+    @testing.with_requires('numpy<2.0')
     @testing.numpy_cupy_allclose()
     def test_product_alias(self, xp):
         a = testing.shaped_arange((2, 3), xp, xp.float32)
@@ -774,6 +775,7 @@ class TestCumprod:
         with pytest.raises(TypeError):
             return cupy.cumprod(a_numpy)
 
+    @testing.with_requires('numpy<2.0')
     @testing.numpy_cupy_allclose()
     def test_cumproduct_alias(self, xp):
         a = testing.shaped_arange((2, 3), xp, xp.float32)
@@ -1097,6 +1099,7 @@ class TestEdiff1d:
                           to_end=xp.array([1, 1], dtype=dtype))
 
 
+@testing.with_requires('numpy<2.0')
 class TestTrapz:
 
     @testing.for_all_dtypes()

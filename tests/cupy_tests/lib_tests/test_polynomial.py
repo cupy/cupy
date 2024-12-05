@@ -386,6 +386,7 @@ class TestPoly1dPolynomialArithmetic(Poly1dTestBase):
     'type_l': ['poly1d', 'ndarray', 'python_scalar', 'numpy_scalar'],
     'type_r': ['poly1d', 'ndarray', 'python_scalar', 'numpy_scalar'],
 }))
+@testing.with_requires('numpy<2.0')
 class TestPoly1dMathArithmetic(Poly1dTestBase):
 
     @testing.for_all_dtypes(no_bool=True)
@@ -693,6 +694,7 @@ class TestPolyfitDiffTypes:
     'type_l': ['poly1d', 'ndarray'],
     'type_r': ['poly1d', 'ndarray', 'numpy_scalar', 'python_scalar'],
 }))
+@testing.with_requires('numpy<2.0')
 class TestPolyval(Poly1dTestBase):
 
     @testing.for_all_dtypes()

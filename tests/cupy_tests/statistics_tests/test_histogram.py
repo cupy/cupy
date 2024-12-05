@@ -37,6 +37,7 @@ def for_all_dtypes_combination_bincount(names):
     return testing.for_dtypes_combination(_all_types, names=names)
 
 
+@testing.with_requires('numpy<2.0')
 class TestHistogram(unittest.TestCase):
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
@@ -459,6 +460,7 @@ class TestDigitizeInvalid(unittest.TestCase):
          'range': [None, ((20, 50), (10, 100), (0, 40))]}
     )
 )
+@testing.with_requires('numpy<2.0')
 class TestHistogramdd:
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
@@ -533,6 +535,7 @@ class TestHistogramddErrors(unittest.TestCase):
          'range': [None, ((20, 50), (10, 100))]}
     )
 )
+@testing.with_requires('numpy<2.0')
 class TestHistogram2d:
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)

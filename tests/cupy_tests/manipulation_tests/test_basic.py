@@ -211,6 +211,7 @@ class TestCopytoFromScalar:
     'casting', ['no', 'equiv', 'safe', 'same_kind', 'unsafe'])
 class TestCopytoFromNumpyScalar:
 
+    @testing.with_requires('numpy<2.0')
     @testing.for_all_dtypes_combination(('dtype1', 'dtype2'))
     @testing.numpy_cupy_allclose(accept_error=TypeError)
     def test_copyto(self, xp, dtype1, dtype2, casting):
@@ -234,6 +235,7 @@ class TestCopytoFromNumpyScalar:
             xp.copyto(dst, src, casting)
         return dst
 
+    @testing.with_requires('numpy<2.0')
     @testing.for_all_dtypes_combination(('dtype1', 'dtype2'))
     @testing.numpy_cupy_allclose(accept_error=TypeError)
     def test_copyto_where(self, xp, dtype1, dtype2, casting):

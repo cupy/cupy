@@ -88,6 +88,7 @@ class TestDot(unittest.TestCase):
         ((2, 4, 5, 2), (2, 4, 5, 2), 0, 0, -1),
     ],
 }))
+@testing.with_requires('numpy<2.0')
 class TestCrossProduct(unittest.TestCase):
 
     @testing.for_all_dtypes_combination(['dtype_a', 'dtype_b'])
