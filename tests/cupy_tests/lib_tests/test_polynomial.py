@@ -700,10 +700,6 @@ class TestPolyval(Poly1dTestBase):
     def test_polyval(self, xp, dtype):
         a1 = self._get_input(xp, self.type_l, dtype, size=5)
         a2 = self._get_input(xp, self.type_r, dtype, size=5)
-
-        if (self.type_r == 'python_scalar'):
-            pytest.skip("XXX: np2.0: numpy always returns f64")
-
         return xp.polyval(a1, a2)
 
 
