@@ -15,6 +15,7 @@ repos:
       - id: mixed-line-ending
       - id: fix-byte-order-marker
       - id: check-yaml
+      - id: trailing-whitespace
 
   - repo: https://github.com/hhatto/autopep8
     rev: v2.3.1
