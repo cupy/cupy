@@ -414,6 +414,8 @@ class CoverageGenerator:
             ]
         lines += ['']
 
+        lines = [line.rstrip() for line in lines]
+
         return '\n'.join(lines), coverage_warns
 
 
