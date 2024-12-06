@@ -259,7 +259,7 @@ def _fft(a, s, axes, norm, direction, value_type='C2C', overwrite_x=False,
         # 1D FFT: Regain the original type (before _convert_dtype)
         # Others: Not necessary as numpy applies C2C iFFTs before R2C iRFFT
         if len(axes) == 1:
-            a = a.astype(real_dtype)
+            a = a.astype(real_dtype, copy=False)
 
     return a
 
