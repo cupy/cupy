@@ -196,8 +196,8 @@ that computes the forward and backward pass of the logarithm using :class:`cupy.
 
     import cupy
     import torch
-    
-    
+
+
     cupy_custom_kernel_fwd = cupy.RawKernel(
         r"""
     extern "C" __global__
@@ -209,8 +209,8 @@ that computes the forward and backward pass of the logarithm using :class:`cupy.
     """,
         "cupy_custom_kernel_fwd",
     )
-    
-    
+
+
     cupy_custom_kernel_bwd = cupy.RawKernel(
         r"""
     extern "C" __global__
@@ -222,8 +222,8 @@ that computes the forward and backward pass of the logarithm using :class:`cupy.
     """,
         "cupy_custom_kernel_bwd",
     )
-    
-    
+
+
     class CuPyLog(torch.autograd.Function):
         @staticmethod
         def forward(ctx, x):
@@ -241,7 +241,7 @@ that computes the forward and backward pass of the logarithm using :class:`cupy.
             # going out of scope of this function.
             torch_y = torch.from_dlpack(cupy_y)
             return torch_y
-    
+
         @staticmethod
         def backward(ctx, grad_y):
             # Enforce contiguous arrays to simplify RawKernel indexing.

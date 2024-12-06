@@ -60,7 +60,7 @@
 #   define __CPP_VERSION_AT_LEAST_11_FP16
 #endif
 
-/* C++11 header for std::move. 
+/* C++11 header for std::move.
  * In RTC mode, std::move is provided implicitly; don't include the header
  */
 #if defined(__CPP_VERSION_AT_LEAST_11_FP16) && !defined(__CUDACC_RTC__)
@@ -145,7 +145,7 @@
 * Types which allow static initialization of "half" and "half2" until
 * these become an actual builtin. Note this initialization is as a
 * bitfield representation of "half", and not a conversion from short->half.
-* Such a representation will be deprecated in a future version of CUDA. 
+* Such a representation will be deprecated in a future version of CUDA.
 * (Note these are visible to non-nvcc compilers, including C-only compilation)
 */
 typedef struct __CUDA_ALIGN__(2) {

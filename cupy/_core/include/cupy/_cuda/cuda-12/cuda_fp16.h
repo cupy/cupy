@@ -128,33 +128,33 @@
 /* Forward-declaration of structures defined in "cuda_fp16.hpp" */
 
 /**
- * \brief half datatype 
- * 
- * \details This structure implements the datatype for storing 
- * half-precision floating-point numbers. The structure implements 
- * assignment operators and type conversions. 
- * 16 bits are being used in total: 1 sign bit, 5 bits for the exponent, 
- * and the significand is being stored in 10 bits. 
- * The total precision is 11 bits. There are 15361 representable 
- * numbers within the interval [0.0, 1.0], endpoints included. 
- * On average we have log10(2**11) ~ 3.311 decimal digits. 
- * 
+ * \brief half datatype
+ *
+ * \details This structure implements the datatype for storing
+ * half-precision floating-point numbers. The structure implements
+ * assignment operators and type conversions.
+ * 16 bits are being used in total: 1 sign bit, 5 bits for the exponent,
+ * and the significand is being stored in 10 bits.
+ * The total precision is 11 bits. There are 15361 representable
+ * numbers within the interval [0.0, 1.0], endpoints included.
+ * On average we have log10(2**11) ~ 3.311 decimal digits.
+ *
  * \internal
- * \req IEEE 754-2008 compliant implementation of half-precision 
- * floating-point numbers. 
+ * \req IEEE 754-2008 compliant implementation of half-precision
+ * floating-point numbers.
  * \endinternal
  */
 struct __half;
 
 /**
  * \brief half2 datatype
- * 
- * \details This structure implements the datatype for storing two 
- * half-precision floating-point numbers. 
- * The structure implements assignment operators and type conversions. 
- * 
+ *
+ * \details This structure implements the datatype for storing two
+ * half-precision floating-point numbers.
+ * The structure implements assignment operators and type conversions.
+ *
  * \internal
- * \req Vectorified version of half. 
+ * \req Vectorified version of half.
  * \endinternal
  */
 struct __half2;
@@ -177,12 +177,12 @@ __CUDA_HOSTDEVICE_FP16_DECL__ __half __double2half(const double a);
 /**
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Converts float number to half precision in round-to-nearest-even mode
-* and returns \p half with converted value. 
-* 
-* \details Converts float number \p a to half precision in round-to-nearest-even mode. 
-* \param[in] a - float. Is only being read. 
+* and returns \p half with converted value.
+*
+* \details Converts float number \p a to half precision in round-to-nearest-even mode.
+* \param[in] a - float. Is only being read.
 * \returns half
-* - \p a converted to half. 
+* - \p a converted to half.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -195,9 +195,9 @@ __CUDA_HOSTDEVICE_FP16_DECL__ __half __float2half(const float a);
 * and returns \p half with converted value.
 *
 * \details Converts float number \p a to half precision in round-to-nearest-even mode.
-* \param[in] a - float. Is only being read. 
+* \param[in] a - float. Is only being read.
 * \returns half
-* - \p a converted to half. 
+* - \p a converted to half.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -208,11 +208,11 @@ __CUDA_HOSTDEVICE_FP16_DECL__ __half __float2half_rn(const float a);
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Converts float number to half precision in round-towards-zero mode
 * and returns \p half with converted value.
-* 
+*
 * \details Converts float number \p a to half precision in round-towards-zero mode.
-* \param[in] a - float. Is only being read. 
+* \param[in] a - float. Is only being read.
 * \returns half
-* - \p a converted to half. 
+* - \p a converted to half.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -223,12 +223,12 @@ __CUDA_HOSTDEVICE_FP16_DECL__ __half __float2half_rz(const float a);
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Converts float number to half precision in round-down mode
 * and returns \p half with converted value.
-* 
+*
 * \details Converts float number \p a to half precision in round-down mode.
-* \param[in] a - float. Is only being read. 
-* 
+* \param[in] a - float. Is only being read.
+*
 * \returns half
-* - \p a converted to half. 
+* - \p a converted to half.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -239,12 +239,12 @@ __CUDA_HOSTDEVICE_FP16_DECL__ __half __float2half_rd(const float a);
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Converts float number to half precision in round-up mode
 * and returns \p half with converted value.
-* 
+*
 * \details Converts float number \p a to half precision in round-up mode.
-* \param[in] a - float. Is only being read. 
-* 
+* \param[in] a - float. Is only being read.
+*
 * \returns half
-* - \p a converted to half. 
+* - \p a converted to half.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -254,12 +254,12 @@ __CUDA_HOSTDEVICE_FP16_DECL__ __half __float2half_ru(const float a);
 /**
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Converts \p half number to float.
-* 
+*
 * \details Converts half number \p a to float.
-* \param[in] a - float. Is only being read. 
-* 
+* \param[in] a - float. Is only being read.
+*
 * \returns float
-* - \p a converted to float. 
+* - \p a converted to float.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -273,7 +273,7 @@ __CUDA_HOSTDEVICE_FP16_DECL__ float __half2float(const __half a);
 *
 * \details Converts input \p a to half precision in round-to-nearest-even mode and
 * populates both halves of \p half2 with converted value.
-* \param[in] a - float. Is only being read. 
+* \param[in] a - float. Is only being read.
 *
 * \returns half2
 * - The \p half2 value with both halves equal to the converted half
@@ -293,9 +293,9 @@ __CUDA_HOSTDEVICE_FP16_DECL__ __half2 __float2half2_rn(const float a);
 * and combines the results into one \p half2 number. Low 16 bits of the return
 * value correspond to the input \p a, high 16 bits correspond to the input \p
 * b.
-* \param[in] a - float. Is only being read. 
-* \param[in] b - float. Is only being read. 
-* 
+* \param[in] a - float. Is only being read.
+* \param[in] b - float. Is only being read.
+*
 * \returns half2
 * - The \p half2 value with corresponding halves equal to the
 * converted input floats.
@@ -308,11 +308,11 @@ __CUDA_HOSTDEVICE_FP16_DECL__ __half2 __floats2half2_rn(const float a, const flo
 /**
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Converts low 16 bits of \p half2 to float and returns the result
-* 
+*
 * \details Converts low 16 bits of \p half2 input \p a to 32-bit floating-point number
 * and returns the result.
-* \param[in] a - half2. Is only being read. 
-* 
+* \param[in] a - half2. Is only being read.
+*
 * \returns float
 * - The low 16 bits of \p a converted to float.
 * \internal
@@ -324,11 +324,11 @@ __CUDA_HOSTDEVICE_FP16_DECL__ float __low2float(const __half2 a);
 /**
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Converts high 16 bits of \p half2 to float and returns the result
-* 
+*
 * \details Converts high 16 bits of \p half2 input \p a to 32-bit floating-point number
 * and returns the result.
-* \param[in] a - half2. Is only being read. 
-* 
+* \param[in] a - half2. Is only being read.
+*
 * \returns float
 * - The high 16 bits of \p a converted to float.
 * \internal
@@ -441,13 +441,13 @@ __CUDA_HOSTDEVICE_FP16_DECL__ unsigned long long int __half2ull_rz(const __half 
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Converts both components of float2 number to half precision in
 * round-to-nearest-even mode and returns \p half2 with converted values.
-* 
+*
 * \details Converts both components of float2 to half precision in round-to-nearest
 * mode and combines the results into one \p half2 number. Low 16 bits of the
 * return value correspond to \p a.x and high 16 bits of the return value
 * correspond to \p a.y.
-* \param[in] a - float2. Is only being read. 
-*  
+* \param[in] a - float2. Is only being read.
+*
 * \returns half2
 * - The \p half2 which has corresponding halves equal to the
 * converted float2 components.
@@ -460,11 +460,11 @@ __CUDA_HOSTDEVICE_FP16_DECL__ __half2 __float22half2_rn(const float2 a);
 /**
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Converts both halves of \p half2 to float2 and returns the result.
-* 
+*
 * \details Converts both halves of \p half2 input \p a to float2 and returns the
 * result.
-* \param[in] a - half2. Is only being read. 
-* 
+* \param[in] a - half2. Is only being read.
+*
 * \returns float2
 * - \p a converted to float2.
 * \internal
@@ -476,13 +476,13 @@ __CUDA_HOSTDEVICE_FP16_DECL__ float2 __half22float2(const __half2 a);
 /**
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Convert a half to a signed integer in round-to-nearest-even mode.
-* 
+*
 * \details Convert the half-precision floating-point value \p h to a signed integer in
 * round-to-nearest-even mode. NaN inputs are converted to 0.
-* \param[in] h - half. Is only being read. 
-* 
+* \param[in] h - half. Is only being read.
+*
 * \returns int
-* - \p h converted to a signed integer. 
+* - \p h converted to a signed integer.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -492,13 +492,13 @@ __CUDA_FP16_DECL__ int __half2int_rn(const __half h);
 /**
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Convert a half to a signed integer in round-down mode.
-* 
+*
 * \details Convert the half-precision floating-point value \p h to a signed integer in
 * round-down mode. NaN inputs are converted to 0.
-* \param[in] h - half. Is only being read. 
-* 
+* \param[in] h - half. Is only being read.
+*
 * \returns int
-* - \p h converted to a signed integer. 
+* - \p h converted to a signed integer.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -508,13 +508,13 @@ __CUDA_FP16_DECL__ int __half2int_rd(const __half h);
 /**
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Convert a half to a signed integer in round-up mode.
-* 
+*
 * \details Convert the half-precision floating-point value \p h to a signed integer in
 * round-up mode. NaN inputs are converted to 0.
-* \param[in] h - half. Is only being read. 
-* 
+* \param[in] h - half. Is only being read.
+*
 * \returns int
-* - \p h converted to a signed integer. 
+* - \p h converted to a signed integer.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -525,13 +525,13 @@ __CUDA_FP16_DECL__ int __half2int_ru(const __half h);
 /**
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Convert a signed integer to a half in round-to-nearest-even mode.
-* 
+*
 * \details Convert the signed integer value \p i to a half-precision floating-point
 * value in round-to-nearest-even mode.
-* \param[in] i - int. Is only being read. 
-* 
+* \param[in] i - int. Is only being read.
+*
 * \returns half
-* - \p i converted to half. 
+* - \p i converted to half.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -541,13 +541,13 @@ __CUDA_HOSTDEVICE_FP16_DECL__ __half __int2half_rn(const int i);
 /**
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Convert a signed integer to a half in round-towards-zero mode.
-* 
+*
 * \details Convert the signed integer value \p i to a half-precision floating-point
 * value in round-towards-zero mode.
-* \param[in] i - int. Is only being read. 
-* 
+* \param[in] i - int. Is only being read.
+*
 * \returns half
-* - \p i converted to half. 
+* - \p i converted to half.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -557,13 +557,13 @@ __CUDA_FP16_DECL__ __half __int2half_rz(const int i);
 /**
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Convert a signed integer to a half in round-down mode.
-* 
+*
 * \details Convert the signed integer value \p i to a half-precision floating-point
 * value in round-down mode.
-* \param[in] i - int. Is only being read. 
-* 
+* \param[in] i - int. Is only being read.
+*
 * \returns half
-* - \p i converted to half. 
+* - \p i converted to half.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -573,13 +573,13 @@ __CUDA_FP16_DECL__ __half __int2half_rd(const int i);
 /**
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Convert a signed integer to a half in round-up mode.
-* 
+*
 * \details Convert the signed integer value \p i to a half-precision floating-point
 * value in round-up mode.
-* \param[in] i - int. Is only being read. 
-* 
+* \param[in] i - int. Is only being read.
+*
 * \returns half
-* - \p i converted to half. 
+* - \p i converted to half.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -591,13 +591,13 @@ __CUDA_FP16_DECL__ __half __int2half_ru(const int i);
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Convert a half to a signed short integer in round-to-nearest-even
 * mode.
-* 
+*
 * \details Convert the half-precision floating-point value \p h to a signed short
 * integer in round-to-nearest-even mode. NaN inputs are converted to 0.
-* \param[in] h - half. Is only being read. 
-* 
+* \param[in] h - half. Is only being read.
+*
 * \returns short int
-* - \p h converted to a signed short integer. 
+* - \p h converted to a signed short integer.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -607,13 +607,13 @@ __CUDA_FP16_DECL__ short int __half2short_rn(const __half h);
 /**
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Convert a half to a signed short integer in round-down mode.
-* 
+*
 * \details Convert the half-precision floating-point value \p h to a signed short
 * integer in round-down mode. NaN inputs are converted to 0.
-* \param[in] h - half. Is only being read. 
-* 
+* \param[in] h - half. Is only being read.
+*
 * \returns short int
-* - \p h converted to a signed short integer. 
+* - \p h converted to a signed short integer.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -623,13 +623,13 @@ __CUDA_FP16_DECL__ short int __half2short_rd(const __half h);
 /**
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Convert a half to a signed short integer in round-up mode.
-* 
+*
 * \details Convert the half-precision floating-point value \p h to a signed short
 * integer in round-up mode. NaN inputs are converted to 0.
-* \param[in] h - half. Is only being read. 
-* 
+* \param[in] h - half. Is only being read.
+*
 * \returns short int
-* - \p h converted to a signed short integer. 
+* - \p h converted to a signed short integer.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -641,13 +641,13 @@ __CUDA_FP16_DECL__ short int __half2short_ru(const __half h);
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Convert a signed short integer to a half in round-to-nearest-even
 * mode.
-* 
+*
 * \details Convert the signed short integer value \p i to a half-precision floating-point
 * value in round-to-nearest-even mode.
-* \param[in] i - short int. Is only being read. 
-* 
+* \param[in] i - short int. Is only being read.
+*
 * \returns half
-* - \p i converted to half. 
+* - \p i converted to half.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -657,13 +657,13 @@ __CUDA_HOSTDEVICE_FP16_DECL__ __half __short2half_rn(const short int i);
 /**
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Convert a signed short integer to a half in round-towards-zero mode.
-* 
+*
 * \details Convert the signed short integer value \p i to a half-precision floating-point
 * value in round-towards-zero mode.
-* \param[in] i - short int. Is only being read. 
-* 
+* \param[in] i - short int. Is only being read.
+*
 * \returns half
-* - \p i converted to half. 
+* - \p i converted to half.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -673,13 +673,13 @@ __CUDA_FP16_DECL__ __half __short2half_rz(const short int i);
 /**
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Convert a signed short integer to a half in round-down mode.
-* 
+*
 * \details Convert the signed short integer value \p i to a half-precision floating-point
 * value in round-down mode.
-* \param[in] i - short int. Is only being read. 
-* 
+* \param[in] i - short int. Is only being read.
+*
 * \returns half
-* - \p i converted to half. 
+* - \p i converted to half.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -689,13 +689,13 @@ __CUDA_FP16_DECL__ __half __short2half_rd(const short int i);
 /**
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Convert a signed short integer to a half in round-up mode.
-* 
+*
 * \details Convert the signed short integer value \p i to a half-precision floating-point
 * value in round-up mode.
-* \param[in] i - short int. Is only being read. 
-* 
+* \param[in] i - short int. Is only being read.
+*
 * \returns half
-* - \p i converted to half. 
+* - \p i converted to half.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -706,13 +706,13 @@ __CUDA_FP16_DECL__ __half __short2half_ru(const short int i);
 /**
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Convert a half to an unsigned integer in round-to-nearest-even mode.
-* 
+*
 * \details Convert the half-precision floating-point value \p h to an unsigned integer
 * in round-to-nearest-even mode. NaN inputs are converted to 0.
-* \param[in] h - half. Is only being read. 
-* 
+* \param[in] h - half. Is only being read.
+*
 * \returns unsigned int
-* - \p h converted to an unsigned integer. 
+* - \p h converted to an unsigned integer.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -725,10 +725,10 @@ __CUDA_FP16_DECL__ unsigned int __half2uint_rn(const __half h);
 *
 * \details Convert the half-precision floating-point value \p h to an unsigned integer
 * in round-down mode. NaN inputs are converted to 0.
-* \param[in] h - half. Is only being read. 
+* \param[in] h - half. Is only being read.
 *
 * \returns unsigned int
-* - \p h converted to an unsigned integer. 
+* - \p h converted to an unsigned integer.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -741,10 +741,10 @@ __CUDA_FP16_DECL__ unsigned int __half2uint_rd(const __half h);
 *
 * \details Convert the half-precision floating-point value \p h to an unsigned integer
 * in round-up mode. NaN inputs are converted to 0.
-* \param[in] h - half. Is only being read. 
+* \param[in] h - half. Is only being read.
 *
 * \returns unsigned int
-* - \p h converted to an unsigned integer. 
+* - \p h converted to an unsigned integer.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -755,13 +755,13 @@ __CUDA_FP16_DECL__ unsigned int __half2uint_ru(const __half h);
 /**
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Convert an unsigned integer to a half in round-to-nearest-even mode.
-* 
+*
 * \details Convert the unsigned integer value \p i to a half-precision floating-point
 * value in round-to-nearest-even mode.
-* \param[in] i - unsigned int. Is only being read. 
-* 
+* \param[in] i - unsigned int. Is only being read.
+*
 * \returns half
-* - \p i converted to half. 
+* - \p i converted to half.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -771,13 +771,13 @@ __CUDA_HOSTDEVICE_FP16_DECL__ __half __uint2half_rn(const unsigned int i);
 /**
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Convert an unsigned integer to a half in round-towards-zero mode.
-* 
+*
 * \details Convert the unsigned integer value \p i to a half-precision floating-point
 * value in round-towards-zero mode.
-* \param[in] i - unsigned int. Is only being read. 
-* 
+* \param[in] i - unsigned int. Is only being read.
+*
 * \returns half
-* - \p i converted to half.  
+* - \p i converted to half.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -787,13 +787,13 @@ __CUDA_FP16_DECL__ __half __uint2half_rz(const unsigned int i);
 /**
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Convert an unsigned integer to a half in round-down mode.
-* 
+*
 * \details Convert the unsigned integer value \p i to a half-precision floating-point
 * value in round-down mode.
-* \param[in] i - unsigned int. Is only being read. 
-* 
+* \param[in] i - unsigned int. Is only being read.
+*
 * \returns half
-* - \p i converted to half. 
+* - \p i converted to half.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -803,13 +803,13 @@ __CUDA_FP16_DECL__ __half __uint2half_rd(const unsigned int i);
 /**
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Convert an unsigned integer to a half in round-up mode.
-* 
+*
 * \details Convert the unsigned integer value \p i to a half-precision floating-point
 * value in round-up mode.
-* \param[in] i - unsigned int. Is only being read. 
-* 
+* \param[in] i - unsigned int. Is only being read.
+*
 * \returns half
-* - \p i converted to half. 
+* - \p i converted to half.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -821,13 +821,13 @@ __CUDA_FP16_DECL__ __half __uint2half_ru(const unsigned int i);
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Convert a half to an unsigned short integer in round-to-nearest-even
 * mode.
-* 
+*
 * \details Convert the half-precision floating-point value \p h to an unsigned short
 * integer in round-to-nearest-even mode. NaN inputs are converted to 0.
-* \param[in] h - half. Is only being read. 
-* 
+* \param[in] h - half. Is only being read.
+*
 * \returns unsigned short int
-* - \p h converted to an unsigned short integer. 
+* - \p h converted to an unsigned short integer.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -837,25 +837,25 @@ __CUDA_FP16_DECL__ unsigned short int __half2ushort_rn(const __half h);
 /**
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Convert a half to an unsigned short integer in round-down mode.
-* 
+*
 * \details Convert the half-precision floating-point value \p h to an unsigned short
 * integer in round-down mode. NaN inputs are converted to 0.
-* \param[in] h - half. Is only being read. 
-* 
+* \param[in] h - half. Is only being read.
+*
 * \returns unsigned short int
-* - \p h converted to an unsigned short integer. 
+* - \p h converted to an unsigned short integer.
 */
 __CUDA_FP16_DECL__ unsigned short int __half2ushort_rd(const __half h);
 /**
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Convert a half to an unsigned short integer in round-up mode.
-* 
+*
 * \details Convert the half-precision floating-point value \p h to an unsigned short
 * integer in round-up mode. NaN inputs are converted to 0.
-* \param[in] h - half. Is only being read. 
-* 
+* \param[in] h - half. Is only being read.
+*
 * \returns unsigned short int
-* - \p h converted to an unsigned short integer. 
+* - \p h converted to an unsigned short integer.
 */
 __CUDA_FP16_DECL__ unsigned short int __half2ushort_ru(const __half h);
 
@@ -863,13 +863,13 @@ __CUDA_FP16_DECL__ unsigned short int __half2ushort_ru(const __half h);
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Convert an unsigned short integer to a half in round-to-nearest-even
 * mode.
-* 
+*
 * \details Convert the unsigned short integer value \p i to a half-precision floating-point
 * value in round-to-nearest-even mode.
-* \param[in] i - unsigned short int. Is only being read. 
-* 
+* \param[in] i - unsigned short int. Is only being read.
+*
 * \returns half
-* - \p i converted to half. 
+* - \p i converted to half.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -880,13 +880,13 @@ __CUDA_HOSTDEVICE_FP16_DECL__ __half __ushort2half_rn(const unsigned short int i
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Convert an unsigned short integer to a half in round-towards-zero
 * mode.
-* 
+*
 * \details Convert the unsigned short integer value \p i to a half-precision floating-point
 * value in round-towards-zero mode.
-* \param[in] i - unsigned short int. Is only being read. 
-* 
+* \param[in] i - unsigned short int. Is only being read.
+*
 * \returns half
-* - \p i converted to half. 
+* - \p i converted to half.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -896,13 +896,13 @@ __CUDA_FP16_DECL__ __half __ushort2half_rz(const unsigned short int i);
 /**
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Convert an unsigned short integer to a half in round-down mode.
-* 
+*
 * \details Convert the unsigned short integer value \p i to a half-precision floating-point
 * value in round-down mode.
-* \param[in] i - unsigned short int. Is only being read. 
-* 
+* \param[in] i - unsigned short int. Is only being read.
+*
 * \returns half
-* - \p i converted to half. 
+* - \p i converted to half.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -912,13 +912,13 @@ __CUDA_FP16_DECL__ __half __ushort2half_rd(const unsigned short int i);
 /**
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Convert an unsigned short integer to a half in round-up mode.
-* 
+*
 * \details Convert the unsigned short integer value \p i to a half-precision floating-point
 * value in round-up mode.
-* \param[in] i - unsigned short int. Is only being read. 
-* 
+* \param[in] i - unsigned short int. Is only being read.
+*
 * \returns half
-* - \p i converted to half. 
+* - \p i converted to half.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -930,13 +930,13 @@ __CUDA_FP16_DECL__ __half __ushort2half_ru(const unsigned short int i);
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Convert a half to an unsigned 64-bit integer in round-to-nearest-even
 * mode.
-* 
+*
 * \details Convert the half-precision floating-point value \p h to an unsigned 64-bit
 * integer in round-to-nearest-even mode. NaN inputs return 0x8000000000000000.
-* \param[in] h - half. Is only being read. 
-* 
+* \param[in] h - half. Is only being read.
+*
 * \returns unsigned long long int
-* - \p h converted to an unsigned 64-bit integer. 
+* - \p h converted to an unsigned 64-bit integer.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -946,13 +946,13 @@ __CUDA_FP16_DECL__ unsigned long long int __half2ull_rn(const __half h);
 /**
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Convert a half to an unsigned 64-bit integer in round-down mode.
-* 
+*
 * \details Convert the half-precision floating-point value \p h to an unsigned 64-bit
 * integer in round-down mode. NaN inputs return 0x8000000000000000.
-* \param[in] h - half. Is only being read. 
-* 
+* \param[in] h - half. Is only being read.
+*
 * \returns unsigned long long int
-* - \p h converted to an unsigned 64-bit integer. 
+* - \p h converted to an unsigned 64-bit integer.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -962,13 +962,13 @@ __CUDA_FP16_DECL__ unsigned long long int __half2ull_rd(const __half h);
 /**
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Convert a half to an unsigned 64-bit integer in round-up mode.
-* 
+*
 * \details Convert the half-precision floating-point value \p h to an unsigned 64-bit
 * integer in round-up mode. NaN inputs return 0x8000000000000000.
-* \param[in] h - half. Is only being read. 
-* 
+* \param[in] h - half. Is only being read.
+*
 * \returns unsigned long long int
-* - \p h converted to an unsigned 64-bit integer. 
+* - \p h converted to an unsigned 64-bit integer.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -980,13 +980,13 @@ __CUDA_FP16_DECL__ unsigned long long int __half2ull_ru(const __half h);
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Convert an unsigned 64-bit integer to a half in round-to-nearest-even
 * mode.
-* 
+*
 * \details Convert the unsigned 64-bit integer value \p i to a half-precision floating-point
 * value in round-to-nearest-even mode.
-* \param[in] i - unsigned long long int. Is only being read. 
-* 
+* \param[in] i - unsigned long long int. Is only being read.
+*
 * \returns half
-* - \p i converted to half. 
+* - \p i converted to half.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -997,13 +997,13 @@ __CUDA_HOSTDEVICE_FP16_DECL__ __half __ull2half_rn(const unsigned long long int 
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Convert an unsigned 64-bit integer to a half in round-towards-zero
 * mode.
-* 
+*
 * \details Convert the unsigned 64-bit integer value \p i to a half-precision floating-point
 * value in round-towards-zero mode.
-* \param[in] i - unsigned long long int. Is only being read. 
-* 
+* \param[in] i - unsigned long long int. Is only being read.
+*
 * \returns half
-* - \p i converted to half. 
+* - \p i converted to half.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -1013,13 +1013,13 @@ __CUDA_FP16_DECL__ __half __ull2half_rz(const unsigned long long int i);
 /**
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Convert an unsigned 64-bit integer to a half in round-down mode.
-* 
+*
 * \details Convert the unsigned 64-bit integer value \p i to a half-precision floating-point
 * value in round-down mode.
-* \param[in] i - unsigned long long int. Is only being read. 
-* 
+* \param[in] i - unsigned long long int. Is only being read.
+*
 * \returns half
-* - \p i converted to half.  
+* - \p i converted to half.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -1029,13 +1029,13 @@ __CUDA_FP16_DECL__ __half __ull2half_rd(const unsigned long long int i);
 /**
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Convert an unsigned 64-bit integer to a half in round-up mode.
-* 
+*
 * \details Convert the unsigned 64-bit integer value \p i to a half-precision floating-point
 * value in round-up mode.
-* \param[in] i - unsigned long long int. Is only being read. 
-* 
+* \param[in] i - unsigned long long int. Is only being read.
+*
 * \returns half
-* - \p i converted to half. 
+* - \p i converted to half.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -1047,13 +1047,13 @@ __CUDA_FP16_DECL__ __half __ull2half_ru(const unsigned long long int i);
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Convert a half to a signed 64-bit integer in round-to-nearest-even
 * mode.
-* 
+*
 * \details Convert the half-precision floating-point value \p h to a signed 64-bit
 * integer in round-to-nearest-even mode. NaN inputs return a long long int with hex value of 0x8000000000000000.
-* \param[in] h - half. Is only being read. 
-* 
+* \param[in] h - half. Is only being read.
+*
 * \returns long long int
-* - \p h converted to a signed 64-bit integer. 
+* - \p h converted to a signed 64-bit integer.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -1063,13 +1063,13 @@ __CUDA_FP16_DECL__ long long int __half2ll_rn(const __half h);
 /**
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Convert a half to a signed 64-bit integer in round-down mode.
-* 
+*
 * \details Convert the half-precision floating-point value \p h to a signed 64-bit
 * integer in round-down mode. NaN inputs return a long long int with hex value of 0x8000000000000000.
-* \param[in] h - half. Is only being read. 
-* 
+* \param[in] h - half. Is only being read.
+*
 * \returns long long int
-* - \p h converted to a signed 64-bit integer. 
+* - \p h converted to a signed 64-bit integer.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -1079,13 +1079,13 @@ __CUDA_FP16_DECL__ long long int __half2ll_rd(const __half h);
 /**
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Convert a half to a signed 64-bit integer in round-up mode.
-* 
+*
 * \details Convert the half-precision floating-point value \p h to a signed 64-bit
 * integer in round-up mode. NaN inputs return a long long int with hex value of 0x8000000000000000.
-* \param[in] h - half. Is only being read. 
-* 
+* \param[in] h - half. Is only being read.
+*
 * \returns long long int
-* - \p h converted to a signed 64-bit integer. 
+* - \p h converted to a signed 64-bit integer.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -1097,13 +1097,13 @@ __CUDA_FP16_DECL__ long long int __half2ll_ru(const __half h);
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Convert a signed 64-bit integer to a half in round-to-nearest-even
 * mode.
-* 
+*
 * \details Convert the signed 64-bit integer value \p i to a half-precision floating-point
 * value in round-to-nearest-even mode.
-* \param[in] i - long long int. Is only being read. 
-* 
+* \param[in] i - long long int. Is only being read.
+*
 * \returns half
-* - \p i converted to half. 
+* - \p i converted to half.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -1113,25 +1113,25 @@ __CUDA_HOSTDEVICE_FP16_DECL__ __half __ll2half_rn(const long long int i);
 /**
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Convert a signed 64-bit integer to a half in round-towards-zero mode.
-* 
+*
 * \details Convert the signed 64-bit integer value \p i to a half-precision floating-point
 * value in round-towards-zero mode.
-* \param[in] i - long long int. Is only being read. 
-* 
+* \param[in] i - long long int. Is only being read.
+*
 * \returns half
-* - \p i converted to half. 
+* - \p i converted to half.
 */
 __CUDA_FP16_DECL__ __half __ll2half_rz(const long long int i);
 /**
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Convert a signed 64-bit integer to a half in round-down mode.
-* 
+*
 * \details Convert the signed 64-bit integer value \p i to a half-precision floating-point
 * value in round-down mode.
-* \param[in] i - long long int. Is only being read. 
-* 
+* \param[in] i - long long int. Is only being read.
+*
 * \returns half
-* - \p i converted to half. 
+* - \p i converted to half.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -1141,13 +1141,13 @@ __CUDA_FP16_DECL__ __half __ll2half_rd(const long long int i);
 /**
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Convert a signed 64-bit integer to a half in round-up mode.
-* 
+*
 * \details Convert the signed 64-bit integer value \p i to a half-precision floating-point
 * value in round-up mode.
-* \param[in] i - long long int. Is only being read. 
-* 
+* \param[in] i - long long int. Is only being read.
+*
 * \returns half
-* - \p i converted to half. 
+* - \p i converted to half.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -1158,13 +1158,13 @@ __CUDA_FP16_DECL__ __half __ll2half_ru(const long long int i);
 /**
 * \ingroup CUDA_MATH__HALF_FUNCTIONS
 * \brief Truncate input argument to the integral part.
-* 
+*
 * \details Round \p h to the nearest integer value that does not exceed \p h in
 * magnitude.
-* \param[in] h - half. Is only being read. 
-* 
+* \param[in] h - half. Is only being read.
+*
 * \returns half
-* - The truncated integer value. 
+* - The truncated integer value.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -1174,12 +1174,12 @@ __CUDA_FP16_DECL__ __half htrunc(const __half h);
 /**
 * \ingroup CUDA_MATH__HALF_FUNCTIONS
 * \brief Calculate ceiling of the input argument.
-* 
+*
 * \details Compute the smallest integer value not less than \p h.
-* \param[in] h - half. Is only being read. 
-* 
+* \param[in] h - half. Is only being read.
+*
 * \returns half
-* - The smallest integer value not less than \p h. 
+* - The smallest integer value not less than \p h.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -1189,12 +1189,12 @@ __CUDA_FP16_DECL__ __half hceil(const __half h);
 /**
 * \ingroup CUDA_MATH__HALF_FUNCTIONS
 * \brief Calculate the largest integer less than or equal to \p h.
-* 
+*
 * \details Calculate the largest integer value which is less than or equal to \p h.
-* \param[in] h - half. Is only being read. 
-* 
+* \param[in] h - half. Is only being read.
+*
 * \returns half
-* - The largest integer value which is less than or equal to \p h. 
+* - The largest integer value which is less than or equal to \p h.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -1205,13 +1205,13 @@ __CUDA_FP16_DECL__ __half hfloor(const __half h);
 * \ingroup CUDA_MATH__HALF_FUNCTIONS
 * \brief Round input to nearest integer value in half-precision floating-point
 * number.
-* 
+*
 * \details Round \p h to the nearest integer value in half-precision floating-point
 * format, with halfway cases rounded to the nearest even integer value.
-* \param[in] h - half. Is only being read. 
-* 
+* \param[in] h - half. Is only being read.
+*
 * \returns half
-* - The nearest integer to \p h. 
+* - The nearest integer to \p h.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -1222,13 +1222,13 @@ __CUDA_FP16_DECL__ __half hrint(const __half h);
 /**
 * \ingroup CUDA_MATH__HALF2_FUNCTIONS
 * \brief Truncate \p half2 vector input argument to the integral part.
-* 
+*
 * \details Round each component of vector \p h to the nearest integer value that does
 * not exceed \p h in magnitude.
-* \param[in] h - half2. Is only being read. 
-* 
+* \param[in] h - half2. Is only being read.
+*
 * \returns half2
-* - The truncated \p h. 
+* - The truncated \p h.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -1238,13 +1238,13 @@ __CUDA_FP16_DECL__ __half2 h2trunc(const __half2 h);
 /**
 * \ingroup CUDA_MATH__HALF2_FUNCTIONS
 * \brief Calculate \p half2 vector ceiling of the input argument.
-* 
+*
 * \details For each component of vector \p h compute the smallest integer value not less
 * than \p h.
-* \param[in] h - half2. Is only being read. 
-* 
+* \param[in] h - half2. Is only being read.
+*
 * \returns half2
-* - The vector of smallest integers not less than \p h. 
+* - The vector of smallest integers not less than \p h.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -1254,13 +1254,13 @@ __CUDA_FP16_DECL__ __half2 h2ceil(const __half2 h);
 /**
 * \ingroup CUDA_MATH__HALF2_FUNCTIONS
 * \brief Calculate the largest integer less than or equal to \p h.
-* 
+*
 * \details For each component of vector \p h calculate the largest integer value which
 * is less than or equal to \p h.
-* \param[in] h - half2. Is only being read. 
-* 
+* \param[in] h - half2. Is only being read.
+*
 * \returns half2
-* - The vector of largest integers which is less than or equal to \p h. 
+* - The vector of largest integers which is less than or equal to \p h.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -1271,14 +1271,14 @@ __CUDA_FP16_DECL__ __half2 h2floor(const __half2 h);
 * \ingroup CUDA_MATH__HALF2_FUNCTIONS
 * \brief Round input to nearest integer value in half-precision floating-point
 * number.
-* 
+*
 * \details Round each component of \p half2 vector \p h to the nearest integer value in
 * half-precision floating-point format, with halfway cases rounded to the
 * nearest even integer value.
-* \param[in] h - half2. Is only being read. 
-* 
+* \param[in] h - half2. Is only being read.
+*
 * \returns half2
-* - The vector of rounded integer values. 
+* - The vector of rounded integer values.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -1289,13 +1289,13 @@ __CUDA_FP16_DECL__ __half2 h2rint(const __half2 h);
 /**
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Returns \p half2 with both halves equal to the input value.
-* 
+*
 * \details Returns \p half2 number with both halves equal to the input \p a \p half
 * number.
-* \param[in] a - half. Is only being read. 
-* 
+* \param[in] a - half. Is only being read.
+*
 * \returns half2
-* - The vector which has both its halves equal to the input \p a. 
+* - The vector which has both its halves equal to the input \p a.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -1305,13 +1305,13 @@ __CUDA_FP16_DECL__ __half2 __half2half2(const __half a);
 /**
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Swaps both halves of the \p half2 input.
-* 
+*
 * \details Swaps both halves of the \p half2 input and returns a new \p half2 number
 * with swapped halves.
-* \param[in] a - half2. Is only being read. 
-* 
+* \param[in] a - half2. Is only being read.
+*
 * \returns half2
-* - \p a with its halves being swapped. 
+* - \p a with its halves being swapped.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -1321,17 +1321,17 @@ __CUDA_FP16_DECL__ __half2 __lowhigh2highlow(const __half2 a);
 /**
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Extracts low 16 bits from each of the two \p half2 inputs and combines
-* into one \p half2 number. 
-* 
+* into one \p half2 number.
+*
 * \details Extracts low 16 bits from each of the two \p half2 inputs and combines into
 * one \p half2 number. Low 16 bits from input \p a is stored in low 16 bits of
 * the return value, low 16 bits from input \p b is stored in high 16 bits of
-* the return value. 
-* \param[in] a - half2. Is only being read. 
-* \param[in] b - half2. Is only being read. 
-* 
+* the return value.
+* \param[in] a - half2. Is only being read.
+* \param[in] b - half2. Is only being read.
+*
 * \returns half2
-* - The low 16 bits of \p a and of \p b. 
+* - The low 16 bits of \p a and of \p b.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -1342,16 +1342,16 @@ __CUDA_FP16_DECL__ __half2 __lows2half2(const __half2 a, const __half2 b);
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Extracts high 16 bits from each of the two \p half2 inputs and
 * combines into one \p half2 number.
-* 
+*
 * \details Extracts high 16 bits from each of the two \p half2 inputs and combines into
 * one \p half2 number. High 16 bits from input \p a is stored in low 16 bits of
 * the return value, high 16 bits from input \p b is stored in high 16 bits of
 * the return value.
-* \param[in] a - half2. Is only being read. 
-* \param[in] b - half2. Is only being read. 
-* 
+* \param[in] a - half2. Is only being read.
+* \param[in] b - half2. Is only being read.
+*
 * \returns half2
-* - The high 16 bits of \p a and of \p b. 
+* - The high 16 bits of \p a and of \p b.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -1363,10 +1363,10 @@ __CUDA_FP16_DECL__ __half2 __highs2half2(const __half2 a, const __half2 b);
 * \brief Returns high 16 bits of \p half2 input.
 *
 * \details Returns high 16 bits of \p half2 input \p a.
-* \param[in] a - half2. Is only being read. 
+* \param[in] a - half2. Is only being read.
 *
 * \returns half
-* - The high 16 bits of the input. 
+* - The high 16 bits of the input.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -1378,10 +1378,10 @@ __CUDA_FP16_DECL__ __half __high2half(const __half2 a);
 * \brief Returns low 16 bits of \p half2 input.
 *
 * \details Returns low 16 bits of \p half2 input \p a.
-* \param[in] a - half2. Is only being read. 
+* \param[in] a - half2. Is only being read.
 *
 * \returns half
-* - Returns \p half which contains low 16 bits of the input \p a. 
+* - Returns \p half which contains low 16 bits of the input \p a.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -1391,14 +1391,14 @@ __CUDA_FP16_DECL__ __half __low2half(const __half2 a);
 /**
 * \ingroup CUDA_MATH__HALF_COMPARISON
 * \brief Checks if the input \p half number is infinite.
-* 
-* \details Checks if the input \p half number \p a is infinite. 
-* \param[in] a - half. Is only being read. 
-* 
-* \returns int 
-* - -1 iff \p a is equal to negative infinity, 
-* - 1 iff \p a is equal to positive infinity, 
-* - 0 otherwise. 
+*
+* \details Checks if the input \p half number \p a is infinite.
+* \param[in] a - half. Is only being read.
+*
+* \returns int
+* - -1 iff \p a is equal to negative infinity,
+* - 1 iff \p a is equal to positive infinity,
+* - 0 otherwise.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -1408,15 +1408,15 @@ __CUDA_FP16_DECL__ int __hisinf(const __half a);
 /**
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Combines two \p half numbers into one \p half2 number.
-* 
+*
 * \details Combines two input \p half number \p a and \p b into one \p half2 number.
 * Input \p a is stored in low 16 bits of the return value, input \p b is stored
 * in high 16 bits of the return value.
-* \param[in] a - half. Is only being read. 
-* \param[in] b - half. Is only being read. 
-* 
+* \param[in] a - half. Is only being read.
+* \param[in] b - half. Is only being read.
+*
 * \returns half2
-* - The half2 with one half equal to \p a and the other to \p b. 
+* - The half2 with one half equal to \p a and the other to \p b.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -1426,13 +1426,13 @@ __CUDA_FP16_DECL__ __half2 __halves2half2(const __half a, const __half b);
 /**
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Extracts low 16 bits from \p half2 input.
-* 
+*
 * \details Extracts low 16 bits from \p half2 input \p a and returns a new \p half2
 * number which has both halves equal to the extracted bits.
-* \param[in] a - half2. Is only being read. 
-* 
+* \param[in] a - half2. Is only being read.
+*
 * \returns half2
-* - The half2 with both halves equal to the low 16 bits of the input. 
+* - The half2 with both halves equal to the low 16 bits of the input.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -1442,13 +1442,13 @@ __CUDA_FP16_DECL__ __half2 __low2half2(const __half2 a);
 /**
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Extracts high 16 bits from \p half2 input.
-* 
+*
 * \details Extracts high 16 bits from \p half2 input \p a and returns a new \p half2
 * number which has both halves equal to the extracted bits.
-* \param[in] a - half2. Is only being read. 
-* 
+* \param[in] a - half2. Is only being read.
+*
 * \returns half2
-* - The half2 with both halves equal to the high 16 bits of the input. 
+* - The half2 with both halves equal to the high 16 bits of the input.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -1459,13 +1459,13 @@ __CUDA_FP16_DECL__ __half2 __high2half2(const __half2 a);
 /**
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Reinterprets bits in a \p half as a signed short integer.
-* 
+*
 * \details Reinterprets the bits in the half-precision floating-point number \p h
-* as a signed short integer. 
-* \param[in] h - half. Is only being read. 
-* 
+* as a signed short integer.
+* \param[in] h - half. Is only being read.
+*
 * \returns short int
-* - The reinterpreted value. 
+* - The reinterpreted value.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -1475,11 +1475,11 @@ __CUDA_FP16_DECL__ short int __half_as_short(const __half h);
 /**
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Reinterprets bits in a \p half as an unsigned short integer.
-* 
+*
 * \details Reinterprets the bits in the half-precision floating-point \p h
 * as an unsigned short number.
-* \param[in] h - half. Is only being read. 
-* 
+* \param[in] h - half. Is only being read.
+*
 * \returns unsigned short int
 * - The reinterpreted value.
 * \internal
@@ -1491,11 +1491,11 @@ __CUDA_FP16_DECL__ unsigned short int __half_as_ushort(const __half h);
 /**
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Reinterprets bits in a signed short integer as a \p half.
-* 
+*
 * \details Reinterprets the bits in the signed short integer \p i as a
 * half-precision floating-point number.
-* \param[in] i - short int. Is only being read. 
-* 
+* \param[in] i - short int. Is only being read.
+*
 * \returns half
 * - The reinterpreted value.
 * \internal
@@ -1507,11 +1507,11 @@ __CUDA_FP16_DECL__ __half __short_as_half(const short int i);
 /**
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Reinterprets bits in an unsigned short integer as a \p half.
-* 
+*
 * \details Reinterprets the bits in the unsigned short integer \p i as a
 * half-precision floating-point number.
-* \param[in] i - unsigned short int. Is only being read. 
-* 
+* \param[in] i - unsigned short int. Is only being read.
+*
 * \returns half
 * - The reinterpreted value.
 * \internal
@@ -1630,22 +1630,22 @@ __CUDA_FP16_DECL__ __DEPRECATED__(__WSB_DEPRECATION_MESSAGE(__shfl_xor)) __half 
 
 /**
 * \ingroup CUDA_MATH__HALF_MISC
-* \brief Exchange a variable between threads within a warp. Direct copy from indexed thread. 
-* 
-* \details Returns the value of var held by the thread whose ID is given by delta. 
-* If width is less than warpSize then each subsection of the warp behaves as a separate 
-* entity with a starting logical thread ID of 0. If delta is outside the range [0:width-1], 
-* the value returned corresponds to the value of var held by the delta modulo width (i.e. 
-* within the same subsection). width must have a value which is a power of 2; 
-* results are undefined if width is not a power of 2, or is a number greater than 
-* warpSize. 
-* \param[in] mask - unsigned int. Is only being read. 
-* \param[in] var - half2. Is only being read. 
-* \param[in] delta - int. Is only being read. 
-* \param[in] width - int. Is only being read. 
-* 
-* \returns Returns the 4-byte word referenced by var from the source thread ID as half2. 
-* If the source thread ID is out of range or the source thread has exited, the calling thread's own var is returned. 
+* \brief Exchange a variable between threads within a warp. Direct copy from indexed thread.
+*
+* \details Returns the value of var held by the thread whose ID is given by delta.
+* If width is less than warpSize then each subsection of the warp behaves as a separate
+* entity with a starting logical thread ID of 0. If delta is outside the range [0:width-1],
+* the value returned corresponds to the value of var held by the delta modulo width (i.e.
+* within the same subsection). width must have a value which is a power of 2;
+* results are undefined if width is not a power of 2, or is a number greater than
+* warpSize.
+* \param[in] mask - unsigned int. Is only being read.
+* \param[in] var - half2. Is only being read.
+* \param[in] delta - int. Is only being read.
+* \param[in] width - int. Is only being read.
+*
+* \returns Returns the 4-byte word referenced by var from the source thread ID as half2.
+* If the source thread ID is out of range or the source thread has exited, the calling thread's own var is returned.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior not reentrant, not thread safe
@@ -1654,22 +1654,22 @@ __CUDA_FP16_DECL__ __DEPRECATED__(__WSB_DEPRECATION_MESSAGE(__shfl_xor)) __half 
 __CUDA_FP16_DECL__ __half2 __shfl_sync(const unsigned mask, const __half2 var, const int delta, const int width = warpSize);
 /**
 * \ingroup CUDA_MATH__HALF_MISC
-* \brief Exchange a variable between threads within a warp. Copy from a thread with lower ID relative to the caller. 
-* 
-* \details Calculates a source thread ID by subtracting delta from the caller's lane ID. 
-* The value of var held by the resulting lane ID is returned: in effect, var is shifted up 
-* the warp by delta threads. If width is less than warpSize then each subsection of the warp 
-* behaves as a separate entity with a starting logical thread ID of 0. The source thread index 
-* will not wrap around the value of width, so effectively the lower delta threads will be unchanged. 
-* width must have a value which is a power of 2; results are undefined if width is not a power of 2, 
-* or is a number greater than warpSize. 
-* \param[in] mask - unsigned int. Is only being read. 
-* \param[in] var - half2. Is only being read. 
-* \param[in] delta - int. Is only being read. 
-* \param[in] width - int. Is only being read. 
-* 
-* \returns Returns the 4-byte word referenced by var from the source thread ID as half2. 
-* If the source thread ID is out of range or the source thread has exited, the calling thread's own var is returned. 
+* \brief Exchange a variable between threads within a warp. Copy from a thread with lower ID relative to the caller.
+*
+* \details Calculates a source thread ID by subtracting delta from the caller's lane ID.
+* The value of var held by the resulting lane ID is returned: in effect, var is shifted up
+* the warp by delta threads. If width is less than warpSize then each subsection of the warp
+* behaves as a separate entity with a starting logical thread ID of 0. The source thread index
+* will not wrap around the value of width, so effectively the lower delta threads will be unchanged.
+* width must have a value which is a power of 2; results are undefined if width is not a power of 2,
+* or is a number greater than warpSize.
+* \param[in] mask - unsigned int. Is only being read.
+* \param[in] var - half2. Is only being read.
+* \param[in] delta - int. Is only being read.
+* \param[in] width - int. Is only being read.
+*
+* \returns Returns the 4-byte word referenced by var from the source thread ID as half2.
+* If the source thread ID is out of range or the source thread has exited, the calling thread's own var is returned.
 * \note_ref_guide_warp_shuffle
 * \internal
 * \exception-guarantee no-throw guarantee
@@ -1679,22 +1679,22 @@ __CUDA_FP16_DECL__ __half2 __shfl_sync(const unsigned mask, const __half2 var, c
 __CUDA_FP16_DECL__ __half2 __shfl_up_sync(const unsigned mask, const __half2 var, const unsigned int delta, const int width = warpSize);
 /**
 * \ingroup CUDA_MATH__HALF_MISC
-* \brief Exchange a variable between threads within a warp. Copy from a thread with higher ID relative to the caller. 
-* 
-* \details Calculates a source thread ID by adding delta to the caller's thread ID. 
-* The value of var held by the resulting thread ID is returned: this has the effect 
-* of shifting var down the warp by delta threads. If width is less than warpSize then 
-* each subsection of the warp behaves as a separate entity with a starting logical 
-* thread ID of 0. As for __shfl_up_sync(), the ID number of the source thread 
-* will not wrap around the value of width and so the upper delta threads 
-* will remain unchanged. 
-* \param[in] mask - unsigned int. Is only being read. 
-* \param[in] var - half2. Is only being read. 
-* \param[in] delta - int. Is only being read. 
-* \param[in] width - int. Is only being read. 
-* 
-* \returns Returns the 4-byte word referenced by var from the source thread ID as half2. 
-* If the source thread ID is out of range or the source thread has exited, the calling thread's own var is returned. 
+* \brief Exchange a variable between threads within a warp. Copy from a thread with higher ID relative to the caller.
+*
+* \details Calculates a source thread ID by adding delta to the caller's thread ID.
+* The value of var held by the resulting thread ID is returned: this has the effect
+* of shifting var down the warp by delta threads. If width is less than warpSize then
+* each subsection of the warp behaves as a separate entity with a starting logical
+* thread ID of 0. As for __shfl_up_sync(), the ID number of the source thread
+* will not wrap around the value of width and so the upper delta threads
+* will remain unchanged.
+* \param[in] mask - unsigned int. Is only being read.
+* \param[in] var - half2. Is only being read.
+* \param[in] delta - int. Is only being read.
+* \param[in] width - int. Is only being read.
+*
+* \returns Returns the 4-byte word referenced by var from the source thread ID as half2.
+* If the source thread ID is out of range or the source thread has exited, the calling thread's own var is returned.
 * \note_ref_guide_warp_shuffle
 * \internal
 * \exception-guarantee no-throw guarantee
@@ -1704,21 +1704,21 @@ __CUDA_FP16_DECL__ __half2 __shfl_up_sync(const unsigned mask, const __half2 var
 __CUDA_FP16_DECL__ __half2 __shfl_down_sync(const unsigned mask, const __half2 var, const unsigned int delta, const int width = warpSize);
 /**
 * \ingroup CUDA_MATH__HALF_MISC
-* \brief Exchange a variable between threads within a warp. Copy from a thread based on bitwise XOR of own thread ID. 
-* 
-* \details Calculates a source thread ID by performing a bitwise XOR of the caller's thread ID with mask: 
-* the value of var held by the resulting thread ID is returned. If width is less than warpSize then each 
-* group of width consecutive threads are able to access elements from earlier groups of threads, 
-* however if they attempt to access elements from later groups of threads their own value of var 
-* will be returned. This mode implements a butterfly addressing pattern such as is used in tree 
-* reduction and broadcast. 
-* \param[in] mask - unsigned int. Is only being read. 
-* \param[in] var - half2. Is only being read. 
-* \param[in] delta - int. Is only being read. 
-* \param[in] width - int. Is only being read. 
-* 
-* \returns Returns the 4-byte word referenced by var from the source thread ID as half2. 
-* If the source thread ID is out of range or the source thread has exited, the calling thread's own var is returned. 
+* \brief Exchange a variable between threads within a warp. Copy from a thread based on bitwise XOR of own thread ID.
+*
+* \details Calculates a source thread ID by performing a bitwise XOR of the caller's thread ID with mask:
+* the value of var held by the resulting thread ID is returned. If width is less than warpSize then each
+* group of width consecutive threads are able to access elements from earlier groups of threads,
+* however if they attempt to access elements from later groups of threads their own value of var
+* will be returned. This mode implements a butterfly addressing pattern such as is used in tree
+* reduction and broadcast.
+* \param[in] mask - unsigned int. Is only being read.
+* \param[in] var - half2. Is only being read.
+* \param[in] delta - int. Is only being read.
+* \param[in] width - int. Is only being read.
+*
+* \returns Returns the 4-byte word referenced by var from the source thread ID as half2.
+* If the source thread ID is out of range or the source thread has exited, the calling thread's own var is returned.
 * \note_ref_guide_warp_shuffle
 * \internal
 * \exception-guarantee no-throw guarantee
@@ -1728,22 +1728,22 @@ __CUDA_FP16_DECL__ __half2 __shfl_down_sync(const unsigned mask, const __half2 v
 __CUDA_FP16_DECL__ __half2 __shfl_xor_sync(const unsigned mask, const __half2 var, const int delta, const int width = warpSize);
 /**
 * \ingroup CUDA_MATH__HALF_MISC
-* \brief Exchange a variable between threads within a warp. Direct copy from indexed thread. 
-* 
-* \details Returns the value of var held by the thread whose ID is given by delta. 
-* If width is less than warpSize then each subsection of the warp behaves as a separate 
-* entity with a starting logical thread ID of 0. If delta is outside the range [0:width-1], 
-* the value returned corresponds to the value of var held by the delta modulo width (i.e. 
-* within the same subsection). width must have a value which is a power of 2; 
-* results are undefined if width is not a power of 2, or is a number greater than 
-* warpSize. 
-* \param[in] mask - unsigned int. Is only being read. 
-* \param[in] var - half. Is only being read. 
-* \param[in] delta - int. Is only being read. 
-* \param[in] width - int. Is only being read. 
-* 
-* \returns Returns the 2-byte word referenced by var from the source thread ID as half. 
-* If the source thread ID is out of range or the source thread has exited, the calling thread's own var is returned. 
+* \brief Exchange a variable between threads within a warp. Direct copy from indexed thread.
+*
+* \details Returns the value of var held by the thread whose ID is given by delta.
+* If width is less than warpSize then each subsection of the warp behaves as a separate
+* entity with a starting logical thread ID of 0. If delta is outside the range [0:width-1],
+* the value returned corresponds to the value of var held by the delta modulo width (i.e.
+* within the same subsection). width must have a value which is a power of 2;
+* results are undefined if width is not a power of 2, or is a number greater than
+* warpSize.
+* \param[in] mask - unsigned int. Is only being read.
+* \param[in] var - half. Is only being read.
+* \param[in] delta - int. Is only being read.
+* \param[in] width - int. Is only being read.
+*
+* \returns Returns the 2-byte word referenced by var from the source thread ID as half.
+* If the source thread ID is out of range or the source thread has exited, the calling thread's own var is returned.
 * \note_ref_guide_warp_shuffle
 * \internal
 * \exception-guarantee no-throw guarantee
@@ -1753,21 +1753,21 @@ __CUDA_FP16_DECL__ __half2 __shfl_xor_sync(const unsigned mask, const __half2 va
 __CUDA_FP16_DECL__ __half __shfl_sync(const unsigned mask, const __half var, const int delta, const int width = warpSize);
 /**
 * \ingroup CUDA_MATH__HALF_MISC
-* \brief Exchange a variable between threads within a warp. Copy from a thread with lower ID relative to the caller. 
-* \details Calculates a source thread ID by subtracting delta from the caller's lane ID. 
-* The value of var held by the resulting lane ID is returned: in effect, var is shifted up 
-* the warp by delta threads. If width is less than warpSize then each subsection of the warp 
-* behaves as a separate entity with a starting logical thread ID of 0. The source thread index 
-* will not wrap around the value of width, so effectively the lower delta threads will be unchanged. 
-* width must have a value which is a power of 2; results are undefined if width is not a power of 2, 
-* or is a number greater than warpSize. 
-* \param[in] mask - unsigned int. Is only being read. 
-* \param[in] var - half. Is only being read. 
-* \param[in] delta - int. Is only being read. 
-* \param[in] width - int. Is only being read. 
-* 
-* \returns Returns the 2-byte word referenced by var from the source thread ID as half. 
-* If the source thread ID is out of range or the source thread has exited, the calling thread's own var is returned. 
+* \brief Exchange a variable between threads within a warp. Copy from a thread with lower ID relative to the caller.
+* \details Calculates a source thread ID by subtracting delta from the caller's lane ID.
+* The value of var held by the resulting lane ID is returned: in effect, var is shifted up
+* the warp by delta threads. If width is less than warpSize then each subsection of the warp
+* behaves as a separate entity with a starting logical thread ID of 0. The source thread index
+* will not wrap around the value of width, so effectively the lower delta threads will be unchanged.
+* width must have a value which is a power of 2; results are undefined if width is not a power of 2,
+* or is a number greater than warpSize.
+* \param[in] mask - unsigned int. Is only being read.
+* \param[in] var - half. Is only being read.
+* \param[in] delta - int. Is only being read.
+* \param[in] width - int. Is only being read.
+*
+* \returns Returns the 2-byte word referenced by var from the source thread ID as half.
+* If the source thread ID is out of range or the source thread has exited, the calling thread's own var is returned.
 * \note_ref_guide_warp_shuffle
 * \internal
 * \exception-guarantee no-throw guarantee
@@ -1777,22 +1777,22 @@ __CUDA_FP16_DECL__ __half __shfl_sync(const unsigned mask, const __half var, con
 __CUDA_FP16_DECL__ __half __shfl_up_sync(const unsigned mask, const __half var, const unsigned int delta, const int width = warpSize);
 /**
 * \ingroup CUDA_MATH__HALF_MISC
-* \brief Exchange a variable between threads within a warp. Copy from a thread with higher ID relative to the caller. 
-* 
-* \details Calculates a source thread ID by adding delta to the caller's thread ID. 
-* The value of var held by the resulting thread ID is returned: this has the effect 
-* of shifting var down the warp by delta threads. If width is less than warpSize then 
-* each subsection of the warp behaves as a separate entity with a starting logical 
-* thread ID of 0. As for __shfl_up_sync(), the ID number of the source thread 
-* will not wrap around the value of width and so the upper delta threads 
-* will remain unchanged. 
-* \param[in] mask - unsigned int. Is only being read. 
-* \param[in] var - half. Is only being read. 
-* \param[in] delta - int. Is only being read. 
-* \param[in] width - int. Is only being read. 
-* 
-* \returns Returns the 2-byte word referenced by var from the source thread ID as half. 
-* If the source thread ID is out of range or the source thread has exited, the calling thread's own var is returned. 
+* \brief Exchange a variable between threads within a warp. Copy from a thread with higher ID relative to the caller.
+*
+* \details Calculates a source thread ID by adding delta to the caller's thread ID.
+* The value of var held by the resulting thread ID is returned: this has the effect
+* of shifting var down the warp by delta threads. If width is less than warpSize then
+* each subsection of the warp behaves as a separate entity with a starting logical
+* thread ID of 0. As for __shfl_up_sync(), the ID number of the source thread
+* will not wrap around the value of width and so the upper delta threads
+* will remain unchanged.
+* \param[in] mask - unsigned int. Is only being read.
+* \param[in] var - half. Is only being read.
+* \param[in] delta - int. Is only being read.
+* \param[in] width - int. Is only being read.
+*
+* \returns Returns the 2-byte word referenced by var from the source thread ID as half.
+* If the source thread ID is out of range or the source thread has exited, the calling thread's own var is returned.
 * \note_ref_guide_warp_shuffle
 * \internal
 * \exception-guarantee no-throw guarantee
@@ -1802,21 +1802,21 @@ __CUDA_FP16_DECL__ __half __shfl_up_sync(const unsigned mask, const __half var, 
 __CUDA_FP16_DECL__ __half __shfl_down_sync(const unsigned mask, const __half var, const unsigned int delta, const int width = warpSize);
 /**
 * \ingroup CUDA_MATH__HALF_MISC
-* \brief Exchange a variable between threads within a warp. Copy from a thread based on bitwise XOR of own thread ID. 
-* 
-* \details Calculates a source thread ID by performing a bitwise XOR of the caller's thread ID with mask: 
-* the value of var held by the resulting thread ID is returned. If width is less than warpSize then each 
-* group of width consecutive threads are able to access elements from earlier groups of threads, 
-* however if they attempt to access elements from later groups of threads their own value of var 
-* will be returned. This mode implements a butterfly addressing pattern such as is used in tree 
-* reduction and broadcast. 
-* \param[in] mask - unsigned int. Is only being read. 
-* \param[in] var - half. Is only being read. 
-* \param[in] delta - int. Is only being read. 
-* \param[in] width - int. Is only being read. 
-* 
-* \returns Returns the 2-byte word referenced by var from the source thread ID as half. 
-* If the source thread ID is out of range or the source thread has exited, the calling thread's own var is returned. 
+* \brief Exchange a variable between threads within a warp. Copy from a thread based on bitwise XOR of own thread ID.
+*
+* \details Calculates a source thread ID by performing a bitwise XOR of the caller's thread ID with mask:
+* the value of var held by the resulting thread ID is returned. If width is less than warpSize then each
+* group of width consecutive threads are able to access elements from earlier groups of threads,
+* however if they attempt to access elements from later groups of threads their own value of var
+* will be returned. This mode implements a butterfly addressing pattern such as is used in tree
+* reduction and broadcast.
+* \param[in] mask - unsigned int. Is only being read.
+* \param[in] var - half. Is only being read.
+* \param[in] delta - int. Is only being read.
+* \param[in] width - int. Is only being read.
+*
+* \returns Returns the 2-byte word referenced by var from the source thread ID as half.
+* If the source thread ID is out of range or the source thread has exited, the calling thread's own var is returned.
 * \note_ref_guide_warp_shuffle
 * \internal
 * \exception-guarantee no-throw guarantee
@@ -1978,13 +1978,13 @@ __CUDA_FP16_DECL__ void __stwt(__half *const ptr, const __half value);
 /**
 * \ingroup CUDA_MATH__HALF2_COMPARISON
 * \brief Performs half2 vector if-equal comparison.
-* 
+*
 * \details Performs \p half2 vector if-equal comparison of inputs \p a and \p b.
 * The corresponding \p half results are set to 1.0 for true, or 0.0 for false.
 * NaN inputs generate false results.
-* \param[in] a - half2. Is only being read. 
-* \param[in] b - half2. Is only being read. 
-* 
+* \param[in] a - half2. Is only being read.
+* \param[in] b - half2. Is only being read.
+*
 * \returns half2
 * - The vector result of if-equal comparison of vectors \p a and \p b.
 * \internal
@@ -1996,13 +1996,13 @@ __CUDA_FP16_DECL__ __half2 __heq2(const __half2 a, const __half2 b);
 /**
 * \ingroup CUDA_MATH__HALF2_COMPARISON
 * \brief Performs \p half2 vector not-equal comparison.
-* 
+*
 * \details Performs \p half2 vector not-equal comparison of inputs \p a and \p b.
 * The corresponding \p half results are set to 1.0 for true, or 0.0 for false.
 * NaN inputs generate false results.
-* \param[in] a - half2. Is only being read. 
-* \param[in] b - half2. Is only being read. 
-* 
+* \param[in] a - half2. Is only being read.
+* \param[in] b - half2. Is only being read.
+*
 * \returns half2
 * - The vector result of not-equal comparison of vectors \p a and \p b.
 * \internal
@@ -2018,8 +2018,8 @@ __CUDA_FP16_DECL__ __half2 __hne2(const __half2 a, const __half2 b);
 * \details Performs \p half2 vector less-equal comparison of inputs \p a and \p b.
 * The corresponding \p half results are set to 1.0 for true, or 0.0 for false.
 * NaN inputs generate false results.
-* \param[in] a - half2. Is only being read. 
-* \param[in] b - half2. Is only being read. 
+* \param[in] a - half2. Is only being read.
+* \param[in] b - half2. Is only being read.
 *
 * \returns half2
 * - The \p half2 result of less-equal comparison of vectors \p a and \p b.
@@ -2036,8 +2036,8 @@ __CUDA_FP16_DECL__ __half2 __hle2(const __half2 a, const __half2 b);
 * \details Performs \p half2 vector greater-equal comparison of inputs \p a and \p b.
 * The corresponding \p half results are set to 1.0 for true, or 0.0 for false.
 * NaN inputs generate false results.
-* \param[in] a - half2. Is only being read. 
-* \param[in] b - half2. Is only being read. 
+* \param[in] a - half2. Is only being read.
+* \param[in] b - half2. Is only being read.
 *
 * \returns half2
 * - The vector result of greater-equal comparison of vectors \p a and \p b.
@@ -2054,8 +2054,8 @@ __CUDA_FP16_DECL__ __half2 __hge2(const __half2 a, const __half2 b);
 * \details Performs \p half2 vector less-than comparison of inputs \p a and \p b.
 * The corresponding \p half results are set to 1.0 for true, or 0.0 for false.
 * NaN inputs generate false results.
-* \param[in] a - half2. Is only being read. 
-* \param[in] b - half2. Is only being read. 
+* \param[in] a - half2. Is only being read.
+* \param[in] b - half2. Is only being read.
 *
 * \returns half2
 * - The half2 vector result of less-than comparison of vectors \p a and \p b.
@@ -2068,13 +2068,13 @@ __CUDA_FP16_DECL__ __half2 __hlt2(const __half2 a, const __half2 b);
 /**
 * \ingroup CUDA_MATH__HALF2_COMPARISON
 * \brief Performs \p half2 vector greater-than comparison.
-* 
+*
 * \details Performs \p half2 vector greater-than comparison of inputs \p a and \p b.
 * The corresponding \p half results are set to 1.0 for true, or 0.0 for false.
 * NaN inputs generate false results.
-* \param[in] a - half2. Is only being read. 
-* \param[in] b - half2. Is only being read. 
-* 
+* \param[in] a - half2. Is only being read.
+* \param[in] b - half2. Is only being read.
+*
 * \returns half2
 * - The vector result of greater-than comparison of vectors \p a and \p b.
 * \internal
@@ -2086,13 +2086,13 @@ __CUDA_FP16_DECL__ __half2 __hgt2(const __half2 a, const __half2 b);
 /**
 * \ingroup CUDA_MATH__HALF2_COMPARISON
 * \brief Performs \p half2 vector unordered if-equal comparison.
-* 
+*
 * \details Performs \p half2 vector if-equal comparison of inputs \p a and \p b.
 * The corresponding \p half results are set to 1.0 for true, or 0.0 for false.
 * NaN inputs generate true results.
-* \param[in] a - half2. Is only being read. 
-* \param[in] b - half2. Is only being read. 
-* 
+* \param[in] a - half2. Is only being read.
+* \param[in] b - half2. Is only being read.
+*
 * \returns half2
 * - The vector result of unordered if-equal comparison of vectors \p a and \p b.
 * \internal
@@ -2108,8 +2108,8 @@ __CUDA_FP16_DECL__ __half2 __hequ2(const __half2 a, const __half2 b);
 * \details Performs \p half2 vector not-equal comparison of inputs \p a and \p b.
 * The corresponding \p half results are set to 1.0 for true, or 0.0 for false.
 * NaN inputs generate true results.
-* \param[in] a - half2. Is only being read. 
-* \param[in] b - half2. Is only being read. 
+* \param[in] a - half2. Is only being read.
+* \param[in] b - half2. Is only being read.
 *
 * \returns half2
 * - The vector result of unordered not-equal comparison of vectors \p a and \p b.
@@ -2126,8 +2126,8 @@ __CUDA_FP16_DECL__ __half2 __hneu2(const __half2 a, const __half2 b);
 * Performs \p half2 vector less-equal comparison of inputs \p a and \p b.
 * The corresponding \p half results are set to 1.0 for true, or 0.0 for false.
 * NaN inputs generate true results.
-* \param[in] a - half2. Is only being read. 
-* \param[in] b - half2. Is only being read. 
+* \param[in] a - half2. Is only being read.
+* \param[in] b - half2. Is only being read.
 *
 * \returns half2
 * - The vector result of unordered less-equal comparison of vectors \p a and \p b.
@@ -2144,8 +2144,8 @@ __CUDA_FP16_DECL__ __half2 __hleu2(const __half2 a, const __half2 b);
 * \details Performs \p half2 vector greater-equal comparison of inputs \p a and \p b.
 * The corresponding \p half results are set to 1.0 for true, or 0.0 for false.
 * NaN inputs generate true results.
-* \param[in] a - half2. Is only being read. 
-* \param[in] b - half2. Is only being read. 
+* \param[in] a - half2. Is only being read.
+* \param[in] b - half2. Is only being read.
 *
 * \returns half2
 * - The \p half2 vector result of unordered greater-equal comparison of vectors \p a and \p b.
@@ -2162,8 +2162,8 @@ __CUDA_FP16_DECL__ __half2 __hgeu2(const __half2 a, const __half2 b);
 * \details Performs \p half2 vector less-than comparison of inputs \p a and \p b.
 * The corresponding \p half results are set to 1.0 for true, or 0.0 for false.
 * NaN inputs generate true results.
-* \param[in] a - half2. Is only being read. 
-* \param[in] b - half2. Is only being read. 
+* \param[in] a - half2. Is only being read.
+* \param[in] b - half2. Is only being read.
 *
 * \returns half2
 * - The vector result of unordered less-than comparison of vectors \p a and \p b.
@@ -2180,8 +2180,8 @@ __CUDA_FP16_DECL__ __half2 __hltu2(const __half2 a, const __half2 b);
 * \details Performs \p half2 vector greater-than comparison of inputs \p a and \p b.
 * The corresponding \p half results are set to 1.0 for true, or 0.0 for false.
 * NaN inputs generate true results.
-* \param[in] a - half2. Is only being read. 
-* \param[in] b - half2. Is only being read. 
+* \param[in] a - half2. Is only being read.
+* \param[in] b - half2. Is only being read.
 *
 * \returns half2
 * - The \p half2 vector result of unordered greater-than comparison of vectors \p a and \p b.
@@ -2194,13 +2194,13 @@ __CUDA_FP16_DECL__ __half2 __hgtu2(const __half2 a, const __half2 b);
 /**
 * \ingroup CUDA_MATH__HALF2_COMPARISON
 * \brief Performs half2 vector if-equal comparison.
-* 
+*
 * \details Performs \p half2 vector if-equal comparison of inputs \p a and \p b.
 * The corresponding \p unsigned bits are set to 0xFFFF for true, or 0x0 for false.
 * NaN inputs generate false results.
-* \param[in] a - half2. Is only being read. 
-* \param[in] b - half2. Is only being read. 
-* 
+* \param[in] a - half2. Is only being read.
+* \param[in] b - half2. Is only being read.
+*
 * \returns unsigned int
 * - The vector mask result of if-equal comparison of vectors \p a and \p b.
 * \internal
@@ -2212,13 +2212,13 @@ __CUDA_FP16_DECL__ unsigned __heq2_mask(const __half2 a, const __half2 b);
 /**
 * \ingroup CUDA_MATH__HALF2_COMPARISON
 * \brief Performs \p half2 vector not-equal comparison.
-* 
+*
 * \details Performs \p half2 vector not-equal comparison of inputs \p a and \p b.
 * The corresponding \p unsigned bits are set to 0xFFFF for true, or 0x0 for false.
 * NaN inputs generate false results.
-* \param[in] a - half2. Is only being read. 
-* \param[in] b - half2. Is only being read. 
-* 
+* \param[in] a - half2. Is only being read.
+* \param[in] b - half2. Is only being read.
+*
 * \returns unsigned int
 * - The vector mask result of not-equal comparison of vectors \p a and \p b.
 * \internal
@@ -2234,8 +2234,8 @@ __CUDA_FP16_DECL__ unsigned __hne2_mask(const __half2 a, const __half2 b);
 * \details Performs \p half2 vector less-equal comparison of inputs \p a and \p b.
 * The corresponding \p unsigned bits are set to 0xFFFF for true, or 0x0 for false.
 * NaN inputs generate false results.
-* \param[in] a - half2. Is only being read. 
-* \param[in] b - half2. Is only being read. 
+* \param[in] a - half2. Is only being read.
+* \param[in] b - half2. Is only being read.
 *
 * \returns unsigned int
 * - The vector mask result of less-equal comparison of vectors \p a and \p b.
@@ -2252,8 +2252,8 @@ __CUDA_FP16_DECL__ unsigned __hle2_mask(const __half2 a, const __half2 b);
 * \details Performs \p half2 vector greater-equal comparison of inputs \p a and \p b.
 * The corresponding \p unsigned bits are set to 0xFFFF for true, or 0x0 for false.
 * NaN inputs generate false results.
-* \param[in] a - half2. Is only being read. 
-* \param[in] b - half2. Is only being read. 
+* \param[in] a - half2. Is only being read.
+* \param[in] b - half2. Is only being read.
 *
 * \returns unsigned int
 * - The vector mask result of greater-equal comparison of vectors \p a and \p b.
@@ -2270,8 +2270,8 @@ __CUDA_FP16_DECL__ unsigned __hge2_mask(const __half2 a, const __half2 b);
 * \details Performs \p half2 vector less-than comparison of inputs \p a and \p b.
 * The corresponding \p unsigned bits are set to 0xFFFF for true, or 0x0 for false.
 * NaN inputs generate false results.
-* \param[in] a - half2. Is only being read. 
-* \param[in] b - half2. Is only being read. 
+* \param[in] a - half2. Is only being read.
+* \param[in] b - half2. Is only being read.
 *
 * \returns unsigned int
 * - The vector mask result of less-than comparison of vectors \p a and \p b.
@@ -2284,13 +2284,13 @@ __CUDA_FP16_DECL__ unsigned __hlt2_mask(const __half2 a, const __half2 b);
 /**
 * \ingroup CUDA_MATH__HALF2_COMPARISON
 * \brief Performs \p half2 vector greater-than comparison.
-* 
+*
 * \details Performs \p half2 vector greater-than comparison of inputs \p a and \p b.
 * The corresponding \p unsigned bits are set to 0xFFFF for true, or 0x0 for false.
 * NaN inputs generate false results.
-* \param[in] a - half2. Is only being read. 
-* \param[in] b - half2. Is only being read. 
-* 
+* \param[in] a - half2. Is only being read.
+* \param[in] b - half2. Is only being read.
+*
 * \returns unsigned int
 * - The vector mask result of greater-than comparison of vectors \p a and \p b.
 * \internal
@@ -2302,13 +2302,13 @@ __CUDA_FP16_DECL__ unsigned __hgt2_mask(const __half2 a, const __half2 b);
 /**
 * \ingroup CUDA_MATH__HALF2_COMPARISON
 * \brief Performs \p half2 vector unordered if-equal comparison.
-* 
+*
 * \details Performs \p half2 vector if-equal comparison of inputs \p a and \p b.
 * The corresponding \p unsigned bits are set to 0xFFFF for true, or 0x0 for false.
 * NaN inputs generate true results.
-* \param[in] a - half2. Is only being read. 
-* \param[in] b - half2. Is only being read. 
-* 
+* \param[in] a - half2. Is only being read.
+* \param[in] b - half2. Is only being read.
+*
 * \returns unsigned int
 * - The vector mask result of unordered if-equal comparison of vectors \p a and \p b.
 * \internal
@@ -2324,8 +2324,8 @@ __CUDA_FP16_DECL__ unsigned __hequ2_mask(const __half2 a, const __half2 b);
 * \details Performs \p half2 vector not-equal comparison of inputs \p a and \p b.
 * The corresponding \p unsigned bits are set to 0xFFFF for true, or 0x0 for false.
 * NaN inputs generate true results.
-* \param[in] a - half2. Is only being read. 
-* \param[in] b - half2. Is only being read. 
+* \param[in] a - half2. Is only being read.
+* \param[in] b - half2. Is only being read.
 *
 * \returns unsigned int
 * - The vector mask result of unordered not-equal comparison of vectors \p a and \p b.
@@ -2342,8 +2342,8 @@ __CUDA_FP16_DECL__ unsigned __hneu2_mask(const __half2 a, const __half2 b);
 * Performs \p half2 vector less-equal comparison of inputs \p a and \p b.
 * The corresponding \p unsigned bits are set to 0xFFFF for true, or 0x0 for false.
 * NaN inputs generate true results.
-* \param[in] a - half2. Is only being read. 
-* \param[in] b - half2. Is only being read. 
+* \param[in] a - half2. Is only being read.
+* \param[in] b - half2. Is only being read.
 *
 * \returns unsigned int
 * - The vector mask result of unordered less-equal comparison of vectors \p a and \p b.
@@ -2360,8 +2360,8 @@ __CUDA_FP16_DECL__ unsigned __hleu2_mask(const __half2 a, const __half2 b);
 * \details Performs \p half2 vector greater-equal comparison of inputs \p a and \p b.
 * The corresponding \p unsigned bits are set to 0xFFFF for true, or 0x0 for false.
 * NaN inputs generate true results.
-* \param[in] a - half2. Is only being read. 
-* \param[in] b - half2. Is only being read. 
+* \param[in] a - half2. Is only being read.
+* \param[in] b - half2. Is only being read.
 *
 * \returns unsigned int
 * - The vector mask result of unordered greater-equal comparison of vectors \p a and \p b.
@@ -2378,8 +2378,8 @@ __CUDA_FP16_DECL__ unsigned __hgeu2_mask(const __half2 a, const __half2 b);
 * \details Performs \p half2 vector less-than comparison of inputs \p a and \p b.
 * The corresponding \p unsigned bits are set to 0xFFFF for true, or 0x0 for false.
 * NaN inputs generate true results.
-* \param[in] a - half2. Is only being read. 
-* \param[in] b - half2. Is only being read. 
+* \param[in] a - half2. Is only being read.
+* \param[in] b - half2. Is only being read.
 *
 * \returns unsigned int
 * - The vector mask result of unordered less-than comparison of vectors \p a and \p b.
@@ -2396,8 +2396,8 @@ __CUDA_FP16_DECL__ unsigned __hltu2_mask(const __half2 a, const __half2 b);
 * \details Performs \p half2 vector greater-than comparison of inputs \p a and \p b.
 * The corresponding \p unsigned bits are set to 0xFFFF for true, or 0x0 for false.
 * NaN inputs generate true results.
-* \param[in] a - half2. Is only being read. 
-* \param[in] b - half2. Is only being read. 
+* \param[in] a - half2. Is only being read.
+* \param[in] b - half2. Is only being read.
 *
 * \returns unsigned int
 * - The vector mask result of unordered greater-than comparison of vectors \p a and \p b.
@@ -2412,11 +2412,11 @@ __CUDA_FP16_DECL__ unsigned __hgtu2_mask(const __half2 a, const __half2 b);
 * \brief Determine whether \p half2 argument is a NaN.
 *
 * \details Determine whether each half of input \p half2 number \p a is a NaN.
-* \param[in] a - half2. Is only being read. 
+* \param[in] a - half2. Is only being read.
 *
 * \returns half2
 * - The half2 with the corresponding \p half results set to
-* 1.0 for NaN, 0.0 otherwise. 
+* 1.0 for NaN, 0.0 otherwise.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -2432,11 +2432,11 @@ __CUDA_FP16_DECL__ __half2 __hisnan2(const __half2 a);
 * \internal
 * \req DEEPLEARN-SRM_REQ-95
 * \endinternal
-* \param[in] a - half2. Is only being read. 
-* \param[in] b - half2. Is only being read. 
+* \param[in] a - half2. Is only being read.
+* \param[in] b - half2. Is only being read.
 *
 * \returns half2
-* - The sum of vectors \p a and \p b. 
+* - The sum of vectors \p a and \p b.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -2452,11 +2452,11 @@ __CUDA_FP16_DECL__ __half2 __hadd2(const __half2 a, const __half2 b);
 * \internal
 * \req DEEPLEARN-SRM_REQ-104
 * \endinternal
-* \param[in] a - half2. Is only being read. 
-* \param[in] b - half2. Is only being read. 
+* \param[in] a - half2. Is only being read.
+* \param[in] b - half2. Is only being read.
 *
 * \returns half2
-* - The subtraction of vector \p b from \p a. 
+* - The subtraction of vector \p b from \p a.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -2472,11 +2472,11 @@ __CUDA_FP16_DECL__ __half2 __hsub2(const __half2 a, const __half2 b);
 * \internal
 * \req DEEPLEARN-SRM_REQ-102
 * \endinternal
-* \param[in] a - half2. Is only being read. 
-* \param[in] b - half2. Is only being read. 
+* \param[in] a - half2. Is only being read.
+* \param[in] b - half2. Is only being read.
 *
 * \returns half2
-* - The result of elementwise multiplying the vectors \p a and \p b. 
+* - The result of elementwise multiplying the vectors \p a and \p b.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -2554,11 +2554,11 @@ __CUDA_FP16_DECL__ __half2 __hmul2_rn(const __half2 a, const __half2 b);
 * \internal
 * \req DEEPLEARN-SRM_REQ-103
 * \endinternal
-* \param[in] a - half2. Is only being read. 
-* \param[in] b - half2. Is only being read. 
+* \param[in] a - half2. Is only being read.
+* \param[in] b - half2. Is only being read.
 *
 * \returns half2
-* - The elementwise division of \p a with \p b. 
+* - The elementwise division of \p a with \p b.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -2572,10 +2572,10 @@ __CUDA_FP16_DECL__ __half2 __h2div(const __half2 a, const __half2 b);
 *
 * \details Calculates the absolute value of both halves of the input \p half2 number and
 * returns the result.
-* \param[in] a - half2. Is only being read. 
+* \param[in] a - half2. Is only being read.
 *
 * \returns half2
-* - Returns \p a with the absolute value of both halves. 
+* - Returns \p a with the absolute value of both halves.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -2590,11 +2590,11 @@ __CUDA_FP16_DECL__ __half2 __habs2(const __half2 a);
 * \details Performs \p half2 vector add of inputs \p a and \p b, in round-to-nearest
 * mode, and clamps the results to range [0.0, 1.0]. NaN results are flushed to
 * +0.0.
-* \param[in] a - half2. Is only being read. 
-* \param[in] b - half2. Is only being read. 
+* \param[in] a - half2. Is only being read.
+* \param[in] b - half2. Is only being read.
 *
 * \returns half2
-* - The sum of \p a and \p b, with respect to saturation. 
+* - The sum of \p a and \p b, with respect to saturation.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -2609,8 +2609,8 @@ __CUDA_FP16_DECL__ __half2 __hadd2_sat(const __half2 a, const __half2 b);
 * \details Subtracts \p half2 input vector \p b from input vector \p a in
 * round-to-nearest-even mode, and clamps the results to range [0.0, 1.0]. NaN
 * results are flushed to +0.0.
-* \param[in] a - half2. Is only being read. 
-* \param[in] b - half2. Is only being read. 
+* \param[in] a - half2. Is only being read.
+* \param[in] b - half2. Is only being read.
 *
 * \returns half2
 * - The subtraction of vector \p b from \p a, with respect to saturation.
@@ -2628,12 +2628,12 @@ __CUDA_FP16_DECL__ __half2 __hsub2_sat(const __half2 a, const __half2 b);
 * \details Performs \p half2 vector multiplication of inputs \p a and \p b, in
 * round-to-nearest-even mode, and clamps the results to range [0.0, 1.0]. NaN
 * results are flushed to +0.0.
-* \param[in] a - half2. Is only being read. 
-* \param[in] b - half2. Is only being read. 
+* \param[in] a - half2. Is only being read.
+* \param[in] b - half2. Is only being read.
 *
 * \returns half2
-* - The result of elementwise multiplication of vectors \p a and \p b, 
-* with respect to saturation. 
+* - The result of elementwise multiplication of vectors \p a and \p b,
+* with respect to saturation.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -2651,12 +2651,12 @@ __CUDA_FP16_DECL__ __half2 __hmul2_sat(const __half2 a, const __half2 b);
 * \internal
 * \req DEEPLEARN-SRM_REQ-105
 * \endinternal
-* \param[in] a - half2. Is only being read. 
-* \param[in] b - half2. Is only being read. 
-* \param[in] c - half2. Is only being read. 
+* \param[in] a - half2. Is only being read.
+* \param[in] b - half2. Is only being read.
+* \param[in] c - half2. Is only being read.
 *
 * \returns half2
-* - The result of elementwise fused multiply-add operation on vectors \p a, \p b, and \p c. 
+* - The result of elementwise fused multiply-add operation on vectors \p a, \p b, and \p c.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -2672,13 +2672,13 @@ __CUDA_FP16_DECL__ __half2 __hfma2(const __half2 a, const __half2 b, const __hal
 * then performs a \p half2 vector add of the result with \p c,
 * rounding the result once in round-to-nearest-even mode, and clamps the
 * results to range [0.0, 1.0]. NaN results are flushed to +0.0.
-* \param[in] a - half2. Is only being read. 
-* \param[in] b - half2. Is only being read. 
-* \param[in] c - half2. Is only being read. 
+* \param[in] a - half2. Is only being read.
+* \param[in] b - half2. Is only being read.
+* \param[in] c - half2. Is only being read.
 *
 * \returns half2
-* - The result of elementwise fused multiply-add operation on vectors \p a, \p b, and \p c, 
-* with respect to saturation. 
+* - The result of elementwise fused multiply-add operation on vectors \p a, \p b, and \p c,
+* with respect to saturation.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -2694,10 +2694,10 @@ __CUDA_FP16_DECL__ __half2 __hfma2_sat(const __half2 a, const __half2 b, const _
 * \internal
 * \req DEEPLEARN-SRM_REQ-101
 * \endinternal
-* \param[in] a - half2. Is only being read. 
+* \param[in] a - half2. Is only being read.
 *
 * \returns half2
-* - Returns \p a with both halves negated. 
+* - Returns \p a with both halves negated.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -2709,7 +2709,7 @@ __CUDA_FP16_DECL__ __half2 __hneg2(const __half2 a);
 * \brief Calculates the absolute value of input \p half number and returns the result.
 *
 * \details Calculates the absolute value of input \p half number and returns the result.
-* \param[in] a - half. Is only being read. 
+* \param[in] a - half. Is only being read.
 *
 * \returns half
 * - The absolute value of \p a.
@@ -2728,11 +2728,11 @@ __CUDA_FP16_DECL__ __half __habs(const __half a);
 * \internal
 * \req DEEPLEARN-SRM_REQ-94
 * \endinternal
-* \param[in] a - half. Is only being read. 
-* \param[in] b - half. Is only being read. 
+* \param[in] a - half. Is only being read.
+* \param[in] b - half. Is only being read.
 *
 * \returns half
-* - The sum of \p a and \p b. 
+* - The sum of \p a and \p b.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -2748,11 +2748,11 @@ __CUDA_FP16_DECL__ __half __hadd(const __half a, const __half b);
 * \internal
 * \req DEEPLEARN-SRM_REQ-97
 * \endinternal
-* \param[in] a - half. Is only being read. 
-* \param[in] b - half. Is only being read. 
+* \param[in] a - half. Is only being read.
+* \param[in] b - half. Is only being read.
 *
 * \returns half
-* - The result of subtracting \p b from \p a. 
+* - The result of subtracting \p b from \p a.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -2768,11 +2768,11 @@ __CUDA_FP16_DECL__ __half __hsub(const __half a, const __half b);
 * \internal
 * \req DEEPLEARN-SRM_REQ-99
 * \endinternal
-* \param[in] a - half. Is only being read. 
-* \param[in] b - half. Is only being read. 
+* \param[in] a - half. Is only being read.
+* \param[in] b - half. Is only being read.
 *
 * \returns half
-* - The result of multiplying \p a and \p b. 
+* - The result of multiplying \p a and \p b.
 */
 __CUDA_FP16_DECL__ __half __hmul(const __half a, const __half b);
 /**
@@ -2834,17 +2834,17 @@ __CUDA_FP16_DECL__ __half __hmul_rn(const __half a, const __half b);
 /**
 * \ingroup CUDA_MATH__HALF_ARITHMETIC
 * \brief Performs \p half division in round-to-nearest-even mode.
-* 
+*
 * \details Divides \p half input \p a by input \p b in round-to-nearest
 * mode.
 * \internal
 * \req DEEPLEARN-SRM_REQ-98
 * \endinternal
-* \param[in] a - half. Is only being read. 
-* \param[in] b - half. Is only being read. 
-* 
+* \param[in] a - half. Is only being read.
+* \param[in] b - half. Is only being read.
+*
 * \returns half
-* - The result of dividing \p a by \p b. 
+* - The result of dividing \p a by \p b.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -2858,8 +2858,8 @@ __CUDA_FP16_DECL__  __half __hdiv(const __half a, const __half b);
 *
 * \details Performs \p half add of inputs \p a and \p b, in round-to-nearest-even mode,
 * and clamps the result to range [0.0, 1.0]. NaN results are flushed to +0.0.
-* \param[in] a - half. Is only being read. 
-* \param[in] b - half. Is only being read. 
+* \param[in] a - half. Is only being read.
+* \param[in] b - half. Is only being read.
 *
 * \returns half
 * - The sum of \p a and \p b, with respect to saturation.
@@ -2877,8 +2877,8 @@ __CUDA_FP16_DECL__ __half __hadd_sat(const __half a, const __half b);
 * \details Subtracts \p half input \p b from input \p a in round-to-nearest
 * mode,
 * and clamps the result to range [0.0, 1.0]. NaN results are flushed to +0.0.
-* \param[in] a - half. Is only being read. 
-* \param[in] b - half. Is only being read. 
+* \param[in] a - half. Is only being read.
+* \param[in] b - half. Is only being read.
 *
 * \returns half
 * - The result of subtraction of \p b from \p a, with respect to saturation.
@@ -2896,8 +2896,8 @@ __CUDA_FP16_DECL__ __half __hsub_sat(const __half a, const __half b);
 * \details Performs \p half multiplication of inputs \p a and \p b, in round-to-nearest
 * mode, and clamps the result to range [0.0, 1.0]. NaN results are flushed to
 * +0.0.
-* \param[in] a - half. Is only being read. 
-* \param[in] b - half. Is only being read. 
+* \param[in] a - half. Is only being read.
+* \param[in] b - half. Is only being read.
 *
 * \returns half
 * - The result of multiplying \p a and \p b, with respect to saturation.
@@ -2917,13 +2917,13 @@ __CUDA_FP16_DECL__ __half __hmul_sat(const __half a, const __half b);
 * \internal
 * \req DEEPLEARN-SRM_REQ-96
 * \endinternal
-* \param[in] a - half. Is only being read. 
-* \param[in] b - half. Is only being read. 
-* \param[in] c - half. Is only being read. 
+* \param[in] a - half. Is only being read.
+* \param[in] b - half. Is only being read.
+* \param[in] c - half. Is only being read.
 *
 * \returns half
 * - The result of fused multiply-add operation on \p
-* a, \p b, and \p c. 
+* a, \p b, and \p c.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -2939,13 +2939,13 @@ __CUDA_FP16_DECL__ __half __hfma(const __half a, const __half b, const __half c)
 * then performs a \p half add of the result with \p c,
 * rounding the result once in round-to-nearest-even mode, and clamps the result
 * to range [0.0, 1.0]. NaN results are flushed to +0.0.
-* \param[in] a - half. Is only being read. 
-* \param[in] b - half. Is only being read. 
-* \param[in] c - half. Is only being read. 
+* \param[in] a - half. Is only being read.
+* \param[in] b - half. Is only being read.
+* \param[in] c - half. Is only being read.
 *
 * \returns half
 * - The result of fused multiply-add operation on \p
-* a, \p b, and \p c, with respect to saturation. 
+* a, \p b, and \p c, with respect to saturation.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -2960,7 +2960,7 @@ __CUDA_FP16_DECL__ __half __hfma_sat(const __half a, const __half b, const __hal
 * \internal
 * \req DEEPLEARN-SRM_REQ-100
 * \endinternal
-* \param[in] a - half. Is only being read. 
+* \param[in] a - half. Is only being read.
 *
 * \returns half
 * - minus a
@@ -2979,8 +2979,8 @@ __CUDA_FP16_DECL__ __half __hneg(const __half a);
 * The bool result is set to true only if both \p half if-equal comparisons
 * evaluate to true, or false otherwise.
 * NaN inputs generate false results.
-* \param[in] a - half2. Is only being read. 
-* \param[in] b - half2. Is only being read. 
+* \param[in] a - half2. Is only being read.
+* \param[in] b - half2. Is only being read.
 *
 * \returns bool
 * - true if both \p half results of if-equal comparison
@@ -3001,13 +3001,13 @@ __CUDA_FP16_DECL__ bool __hbeq2(const __half2 a, const __half2 b);
 * The bool result is set to true only if both \p half not-equal comparisons
 * evaluate to true, or false otherwise.
 * NaN inputs generate false results.
-* \param[in] a - half2. Is only being read. 
-* \param[in] b - half2. Is only being read. 
+* \param[in] a - half2. Is only being read.
+* \param[in] b - half2. Is only being read.
 *
 * \returns bool
 * - true if both \p half results of not-equal comparison
-* of vectors \p a and \p b are true, 
-* - false otherwise. 
+* of vectors \p a and \p b are true,
+* - false otherwise.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -3023,13 +3023,13 @@ __CUDA_FP16_DECL__ bool __hbne2(const __half2 a, const __half2 b);
 * The bool result is set to true only if both \p half less-equal comparisons
 * evaluate to true, or false otherwise.
 * NaN inputs generate false results.
-* \param[in] a - half2. Is only being read. 
-* \param[in] b - half2. Is only being read. 
+* \param[in] a - half2. Is only being read.
+* \param[in] b - half2. Is only being read.
 *
 * \returns bool
 * - true if both \p half results of less-equal comparison
-* of vectors \p a and \p b are true; 
-* - false otherwise. 
+* of vectors \p a and \p b are true;
+* - false otherwise.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -3045,13 +3045,13 @@ __CUDA_FP16_DECL__ bool __hble2(const __half2 a, const __half2 b);
 * The bool result is set to true only if both \p half greater-equal comparisons
 * evaluate to true, or false otherwise.
 * NaN inputs generate false results.
-* \param[in] a - half2. Is only being read. 
-* \param[in] b - half2. Is only being read. 
+* \param[in] a - half2. Is only being read.
+* \param[in] b - half2. Is only being read.
 *
 * \returns bool
 * - true if both \p half results of greater-equal
-* comparison of vectors \p a and \p b are true; 
-* - false otherwise. 
+* comparison of vectors \p a and \p b are true;
+* - false otherwise.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -3067,13 +3067,13 @@ __CUDA_FP16_DECL__ bool __hbge2(const __half2 a, const __half2 b);
 * The bool result is set to true only if both \p half less-than comparisons
 * evaluate to true, or false otherwise.
 * NaN inputs generate false results.
-* \param[in] a - half2. Is only being read. 
-* \param[in] b - half2. Is only being read. 
+* \param[in] a - half2. Is only being read.
+* \param[in] b - half2. Is only being read.
 *
 * \returns bool
 * - true if both \p half results of less-than comparison
-* of vectors \p a and \p b are true; 
-* - false otherwise. 
+* of vectors \p a and \p b are true;
+* - false otherwise.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -3089,13 +3089,13 @@ __CUDA_FP16_DECL__ bool __hblt2(const __half2 a, const __half2 b);
 * The bool result is set to true only if both \p half greater-than comparisons
 * evaluate to true, or false otherwise.
 * NaN inputs generate false results.
-* \param[in] a - half2. Is only being read. 
-* \param[in] b - half2. Is only being read. 
-* 
-* \returns bool 
+* \param[in] a - half2. Is only being read.
+* \param[in] b - half2. Is only being read.
+*
+* \returns bool
 * - true if both \p half results of greater-than
-* comparison of vectors \p a and \p b are true; 
-* - false otherwise. 
+* comparison of vectors \p a and \p b are true;
+* - false otherwise.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -3111,13 +3111,13 @@ __CUDA_FP16_DECL__ bool __hbgt2(const __half2 a, const __half2 b);
 * The bool result is set to true only if both \p half if-equal comparisons
 * evaluate to true, or false otherwise.
 * NaN inputs generate true results.
-* \param[in] a - half2. Is only being read. 
-* \param[in] b - half2. Is only being read. 
+* \param[in] a - half2. Is only being read.
+* \param[in] b - half2. Is only being read.
 *
 * \returns bool
 * - true if both \p half results of unordered if-equal
-* comparison of vectors \p a and \p b are true; 
-* - false otherwise. 
+* comparison of vectors \p a and \p b are true;
+* - false otherwise.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -3133,13 +3133,13 @@ __CUDA_FP16_DECL__ bool __hbequ2(const __half2 a, const __half2 b);
 * The bool result is set to true only if both \p half not-equal comparisons
 * evaluate to true, or false otherwise.
 * NaN inputs generate true results.
-* \param[in] a - half2. Is only being read. 
-* \param[in] b - half2. Is only being read. 
+* \param[in] a - half2. Is only being read.
+* \param[in] b - half2. Is only being read.
 *
 * \returns bool
 * - true if both \p half results of unordered not-equal
 * comparison of vectors \p a and \p b are true;
-* - false otherwise. 
+* - false otherwise.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -3155,13 +3155,13 @@ __CUDA_FP16_DECL__ bool __hbneu2(const __half2 a, const __half2 b);
 * The bool result is set to true only if both \p half less-equal comparisons
 * evaluate to true, or false otherwise.
 * NaN inputs generate true results.
-* \param[in] a - half2. Is only being read. 
-* \param[in] b - half2. Is only being read. 
+* \param[in] a - half2. Is only being read.
+* \param[in] b - half2. Is only being read.
 *
 * \returns bool
 * - true if both \p half results of unordered less-equal
-* comparison of vectors \p a and \p b are true; 
-* - false otherwise. 
+* comparison of vectors \p a and \p b are true;
+* - false otherwise.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -3178,13 +3178,13 @@ __CUDA_FP16_DECL__ bool __hbleu2(const __half2 a, const __half2 b);
 * The bool result is set to true only if both \p half greater-equal comparisons
 * evaluate to true, or false otherwise.
 * NaN inputs generate true results.
-* \param[in] a - half2. Is only being read. 
-* \param[in] b - half2. Is only being read. 
+* \param[in] a - half2. Is only being read.
+* \param[in] b - half2. Is only being read.
 *
 * \returns bool
 * - true if both \p half results of unordered
-* greater-equal comparison of vectors \p a and \p b are true; 
-* - false otherwise. 
+* greater-equal comparison of vectors \p a and \p b are true;
+* - false otherwise.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -3200,13 +3200,13 @@ __CUDA_FP16_DECL__ bool __hbgeu2(const __half2 a, const __half2 b);
 * The bool result is set to true only if both \p half less-than comparisons
 * evaluate to true, or false otherwise.
 * NaN inputs generate true results.
-* \param[in] a - half2. Is only being read. 
-* \param[in] b - half2. Is only being read. 
+* \param[in] a - half2. Is only being read.
+* \param[in] b - half2. Is only being read.
 *
 * \returns bool
-* - true if both \p half results of unordered less-than comparison of 
-* vectors \p a and \p b are true; 
-* - false otherwise. 
+* - true if both \p half results of unordered less-than comparison of
+* vectors \p a and \p b are true;
+* - false otherwise.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -3223,13 +3223,13 @@ __CUDA_FP16_DECL__ bool __hbltu2(const __half2 a, const __half2 b);
 * The bool result is set to true only if both \p half greater-than comparisons
 * evaluate to true, or false otherwise.
 * NaN inputs generate true results.
-* \param[in] a - half2. Is only being read. 
-* \param[in] b - half2. Is only being read. 
+* \param[in] a - half2. Is only being read.
+* \param[in] b - half2. Is only being read.
 *
 * \returns bool
 * - true if both \p half results of unordered
 * greater-than comparison of vectors \p a and \p b are true;
-* - false otherwise. 
+* - false otherwise.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -3242,11 +3242,11 @@ __CUDA_FP16_DECL__ bool __hbgtu2(const __half2 a, const __half2 b);
 *
 * \details Performs \p half if-equal comparison of inputs \p a and \p b.
 * NaN inputs generate false results.
-* \param[in] a - half. Is only being read. 
-* \param[in] b - half. Is only being read. 
+* \param[in] a - half. Is only being read.
+* \param[in] b - half. Is only being read.
 *
 * \returns bool
-* - The boolean result of if-equal comparison of \p a and \p b. 
+* - The boolean result of if-equal comparison of \p a and \p b.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -3259,8 +3259,8 @@ __CUDA_FP16_DECL__ bool __heq(const __half a, const __half b);
 *
 * \details Performs \p half not-equal comparison of inputs \p a and \p b.
 * NaN inputs generate false results.
-* \param[in] a - half. Is only being read. 
-* \param[in] b - half. Is only being read. 
+* \param[in] a - half. Is only being read.
+* \param[in] b - half. Is only being read.
 *
 * \returns bool
 * - The boolean result of not-equal comparison of \p a and \p b.
@@ -3276,8 +3276,8 @@ __CUDA_FP16_DECL__ bool __hne(const __half a, const __half b);
 *
 * \details Performs \p half less-equal comparison of inputs \p a and \p b.
 * NaN inputs generate false results.
-* \param[in] a - half. Is only being read. 
-* \param[in] b - half. Is only being read. 
+* \param[in] a - half. Is only being read.
+* \param[in] b - half. Is only being read.
 *
 * \returns bool
 * - The boolean result of less-equal comparison of \p a and \p b.
@@ -3293,8 +3293,8 @@ __CUDA_FP16_DECL__ bool __hle(const __half a, const __half b);
 *
 * \details Performs \p half greater-equal comparison of inputs \p a and \p b.
 * NaN inputs generate false results.
-* \param[in] a - half. Is only being read. 
-* \param[in] b - half. Is only being read. 
+* \param[in] a - half. Is only being read.
+* \param[in] b - half. Is only being read.
 *
 * \returns bool
 * - The boolean result of greater-equal comparison of \p a and \p b.
@@ -3310,8 +3310,8 @@ __CUDA_FP16_DECL__ bool __hge(const __half a, const __half b);
 *
 * \details Performs \p half less-than comparison of inputs \p a and \p b.
 * NaN inputs generate false results.
-* \param[in] a - half. Is only being read. 
-* \param[in] b - half. Is only being read. 
+* \param[in] a - half. Is only being read.
+* \param[in] b - half. Is only being read.
 *
 * \returns bool
 * - The boolean result of less-than comparison of \p a and \p b.
@@ -3327,8 +3327,8 @@ __CUDA_FP16_DECL__ bool __hlt(const __half a, const __half b);
 *
 * \details Performs \p half greater-than comparison of inputs \p a and \p b.
 * NaN inputs generate false results.
-* \param[in] a - half. Is only being read. 
-* \param[in] b - half. Is only being read. 
+* \param[in] a - half. Is only being read.
+* \param[in] b - half. Is only being read.
 *
 * \returns bool
 * - The boolean result of greater-than comparison of \p a and \p b.
@@ -3344,8 +3344,8 @@ __CUDA_FP16_DECL__ bool __hgt(const __half a, const __half b);
 *
 * \details Performs \p half if-equal comparison of inputs \p a and \p b.
 * NaN inputs generate true results.
-* \param[in] a - half. Is only being read. 
-* \param[in] b - half. Is only being read. 
+* \param[in] a - half. Is only being read.
+* \param[in] b - half. Is only being read.
 *
 * \returns bool
 * - The boolean result of unordered if-equal comparison of \p a and
@@ -3362,8 +3362,8 @@ __CUDA_FP16_DECL__ bool __hequ(const __half a, const __half b);
 *
 * \details Performs \p half not-equal comparison of inputs \p a and \p b.
 * NaN inputs generate true results.
-* \param[in] a - half. Is only being read. 
-* \param[in] b - half. Is only being read. 
+* \param[in] a - half. Is only being read.
+* \param[in] b - half. Is only being read.
 *
 * \returns bool
 * - The boolean result of unordered not-equal comparison of \p a and
@@ -3380,8 +3380,8 @@ __CUDA_FP16_DECL__ bool __hneu(const __half a, const __half b);
 *
 * \details Performs \p half less-equal comparison of inputs \p a and \p b.
 * NaN inputs generate true results.
-* \param[in] a - half. Is only being read. 
-* \param[in] b - half. Is only being read. 
+* \param[in] a - half. Is only being read.
+* \param[in] b - half. Is only being read.
 *
 * \returns bool
 * - The boolean result of unordered less-equal comparison of \p a and
@@ -3398,8 +3398,8 @@ __CUDA_FP16_DECL__ bool __hleu(const __half a, const __half b);
 *
 * \details Performs \p half greater-equal comparison of inputs \p a and \p b.
 * NaN inputs generate true results.
-* \param[in] a - half. Is only being read. 
-* \param[in] b - half. Is only being read. 
+* \param[in] a - half. Is only being read.
+* \param[in] b - half. Is only being read.
 *
 * \returns bool
 * - The boolean result of unordered greater-equal comparison of \p a
@@ -3416,8 +3416,8 @@ __CUDA_FP16_DECL__ bool __hgeu(const __half a, const __half b);
 *
 * \details Performs \p half less-than comparison of inputs \p a and \p b.
 * NaN inputs generate true results.
-* \param[in] a - half. Is only being read. 
-* \param[in] b - half. Is only being read. 
+* \param[in] a - half. Is only being read.
+* \param[in] b - half. Is only being read.
 *
 * \returns bool
 * - The boolean result of unordered less-than comparison of \p a and
@@ -3434,8 +3434,8 @@ __CUDA_FP16_DECL__ bool __hltu(const __half a, const __half b);
 *
 * \details Performs \p half greater-than comparison of inputs \p a and \p b.
 * NaN inputs generate true results.
-* \param[in] a - half. Is only being read. 
-* \param[in] b - half. Is only being read. 
+* \param[in] a - half. Is only being read.
+* \param[in] b - half. Is only being read.
 *
 * \returns bool
 * - The boolean result of unordered greater-than comparison of \p a
@@ -3451,10 +3451,10 @@ __CUDA_FP16_DECL__ bool __hgtu(const __half a, const __half b);
 * \brief Determine whether \p half argument is a NaN.
 *
 * \details Determine whether \p half value \p a is a NaN.
-* \param[in] a - half. Is only being read. 
+* \param[in] a - half. Is only being read.
 *
 * \returns bool
-* - true iff argument is NaN. 
+* - true iff argument is NaN.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -3607,7 +3607,7 @@ __CUDA_FP16_DECL__ __half2 __hcmadd(const __half2 a, const __half2 b, const __ha
 * \brief Calculates \p half square root in round-to-nearest-even mode.
 *
 * \details Calculates \p half square root of input \p a in round-to-nearest-even mode.
-* \param[in] a - half. Is only being read. 
+* \param[in] a - half. Is only being read.
 *
 * \returns half
 * - The square root of \p a.
@@ -3624,7 +3624,7 @@ __CUDA_FP16_DECL__ __half hsqrt(const __half a);
 *
 * \details Calculates \p half reciprocal square root of input \p a in round-to-nearest
 * mode.
-* \param[in] a - half. Is only being read. 
+* \param[in] a - half. Is only being read.
 *
 * \returns half
 * - The reciprocal square root of \p a.
@@ -3639,7 +3639,7 @@ __CUDA_FP16_DECL__ __half hrsqrt(const __half a);
 * \brief Calculates \p half reciprocal in round-to-nearest-even mode.
 *
 * \details Calculates \p half reciprocal of input \p a in round-to-nearest-even mode.
-* \param[in] a - half. Is only being read. 
+* \param[in] a - half. Is only being read.
 *
 * \returns half
 * - The reciprocal of \p a.
@@ -3655,7 +3655,7 @@ __CUDA_FP16_DECL__ __half hrcp(const __half a);
 *
 * \details Calculates \p half natural logarithm of input \p a in round-to-nearest-even
 * mode.
-* \param[in] a - half. Is only being read. 
+* \param[in] a - half. Is only being read.
 *
 * \returns half
 * - The natural logarithm of \p a.
@@ -3671,7 +3671,7 @@ __CUDA_FP16_DECL__ __half hlog(const __half a);
 *
 * \details Calculates \p half binary logarithm of input \p a in round-to-nearest-even
 * mode.
-* \param[in] a - half. Is only being read. 
+* \param[in] a - half. Is only being read.
 *
 * \returns half
 * - The binary logarithm of \p a.
@@ -3687,7 +3687,7 @@ __CUDA_FP16_DECL__ __half hlog2(const __half a);
 *
 * \details Calculates \p half decimal logarithm of input \p a in round-to-nearest-even
 * mode.
-* \param[in] a - half. Is only being read. 
+* \param[in] a - half. Is only being read.
 *
 * \returns half
 * - The decimal logarithm of \p a.
@@ -3704,7 +3704,7 @@ __CUDA_FP16_DECL__ __half hlog10(const __half a);
 *
 * \details Calculates \p half natural exponential function of input \p a in
 * round-to-nearest-even mode.
-* \param[in] a - half. Is only being read. 
+* \param[in] a - half. Is only being read.
 *
 * \returns half
 * - The natural exponential function on \p a.
@@ -3721,7 +3721,7 @@ __CUDA_FP16_DECL__ __half hexp(const __half a);
 *
 * \details Calculates \p half binary exponential function of input \p a in
 * round-to-nearest-even mode.
-* \param[in] a - half. Is only being read. 
+* \param[in] a - half. Is only being read.
 *
 * \returns half
 * - The binary exponential function on \p a.
@@ -3738,7 +3738,7 @@ __CUDA_FP16_DECL__ __half hexp2(const __half a);
 *
 * \details Calculates \p half decimal exponential function of input \p a in
 * round-to-nearest-even mode.
-* \param[in] a - half. Is only being read. 
+* \param[in] a - half. Is only being read.
 *
 * \returns half
 * - The decimal exponential function on \p a.
@@ -3753,7 +3753,7 @@ __CUDA_FP16_DECL__ __half hexp10(const __half a);
 * \brief Calculates \p half cosine in round-to-nearest-even mode.
 *
 * \details Calculates \p half cosine of input \p a in round-to-nearest-even mode.
-* \param[in] a - half. Is only being read. 
+* \param[in] a - half. Is only being read.
 *
 * \returns half
 * - The cosine of \p a.
@@ -3768,7 +3768,7 @@ __CUDA_FP16_DECL__ __half hcos(const __half a);
 * \brief Calculates \p half sine in round-to-nearest-even mode.
 *
 * \details Calculates \p half sine of input \p a in round-to-nearest-even mode.
-* \param[in] a - half. Is only being read. 
+* \param[in] a - half. Is only being read.
 *
 * \returns half
 * - The sine of \p a.
@@ -3784,7 +3784,7 @@ __CUDA_FP16_DECL__ __half hsin(const __half a);
 *
 * \details Calculates \p half2 square root of input vector \p a in round-to-nearest
 * mode.
-* \param[in] a - half2. Is only being read. 
+* \param[in] a - half2. Is only being read.
 *
 * \returns half2
 * - The elementwise square root on vector \p a.
@@ -3801,7 +3801,7 @@ __CUDA_FP16_DECL__ __half2 h2sqrt(const __half2 a);
 *
 * \details Calculates \p half2 reciprocal square root of input vector \p a in
 * round-to-nearest-even mode.
-* \param[in] a - half2. Is only being read. 
+* \param[in] a - half2. Is only being read.
 *
 * \returns half2
 * - The elementwise reciprocal square root on vector \p a.
@@ -3817,7 +3817,7 @@ __CUDA_FP16_DECL__ __half2 h2rsqrt(const __half2 a);
 *
 * \details Calculates \p half2 reciprocal of input vector \p a in round-to-nearest-even
 * mode.
-* \param[in] a - half2. Is only being read. 
+* \param[in] a - half2. Is only being read.
 *
 * \returns half2
 * - The elementwise reciprocal on vector \p a.
@@ -3834,7 +3834,7 @@ __CUDA_FP16_DECL__ __half2 h2rcp(const __half2 a);
 *
 * \details Calculates \p half2 natural logarithm of input vector \p a in
 * round-to-nearest-even mode.
-* \param[in] a - half2. Is only being read. 
+* \param[in] a - half2. Is only being read.
 *
 * \returns half2
 * - The elementwise natural logarithm on vector \p a.
@@ -3851,7 +3851,7 @@ __CUDA_FP16_DECL__ __half2 h2log(const __half2 a);
 *
 * \details Calculates \p half2 binary logarithm of input vector \p a in round-to-nearest
 * mode.
-* \param[in] a - half2. Is only being read. 
+* \param[in] a - half2. Is only being read.
 *
 * \returns half2
 * - The elementwise binary logarithm on vector \p a.
@@ -3868,7 +3868,7 @@ __CUDA_FP16_DECL__ __half2 h2log2(const __half2 a);
 *
 * \details Calculates \p half2 decimal logarithm of input vector \p a in
 * round-to-nearest-even mode.
-* \param[in] a - half2. Is only being read. 
+* \param[in] a - half2. Is only being read.
 *
 * \returns half2
 * - The elementwise decimal logarithm on vector \p a.
@@ -3885,7 +3885,7 @@ __CUDA_FP16_DECL__ __half2 h2log10(const __half2 a);
 *
 * \details Calculates \p half2 exponential function of input vector \p a in
 * round-to-nearest-even mode.
-* \param[in] a - half2. Is only being read. 
+* \param[in] a - half2. Is only being read.
 *
 * \returns half2
 * - The elementwise exponential function on vector \p a.
@@ -3902,7 +3902,7 @@ __CUDA_FP16_DECL__ __half2 h2exp(const __half2 a);
 *
 * \details Calculates \p half2 binary exponential function of input vector \p a in
 * round-to-nearest-even mode.
-* \param[in] a - half2. Is only being read. 
+* \param[in] a - half2. Is only being read.
 *
 * \returns half2
 * - The elementwise binary exponential function on vector \p a.
@@ -3916,11 +3916,11 @@ __CUDA_FP16_DECL__ __half2 h2exp2(const __half2 a);
 * \ingroup CUDA_MATH__HALF2_FUNCTIONS
 * \brief Calculates \p half2 vector decimal exponential function in
 * round-to-nearest-even mode.
-* 
+*
 * \details Calculates \p half2 decimal exponential function of input vector \p a in
 * round-to-nearest-even mode.
-* \param[in] a - half2. Is only being read. 
-* 
+* \param[in] a - half2. Is only being read.
+*
 * \returns half2
 * - The elementwise decimal exponential function on vector \p a.
 * \internal
@@ -3932,11 +3932,11 @@ __CUDA_FP16_DECL__ __half2 h2exp10(const __half2 a);
 /**
 * \ingroup CUDA_MATH__HALF2_FUNCTIONS
 * \brief Calculates \p half2 vector cosine in round-to-nearest-even mode.
-* 
+*
 * \details Calculates \p half2 cosine of input vector \p a in round-to-nearest-even
 * mode.
-* \param[in] a - half2. Is only being read. 
-* 
+* \param[in] a - half2. Is only being read.
+*
 * \returns half2
 * - The elementwise cosine on vector \p a.
 * \internal
@@ -3948,10 +3948,10 @@ __CUDA_FP16_DECL__ __half2 h2cos(const __half2 a);
 /**
 * \ingroup CUDA_MATH__HALF2_FUNCTIONS
 * \brief Calculates \p half2 vector sine in round-to-nearest-even mode.
-* 
+*
 * \details Calculates \p half2 sine of input vector \p a in round-to-nearest-even mode.
-* \param[in] a - half2. Is only being read. 
-* 
+* \param[in] a - half2. Is only being read.
+*
 * \returns half2
 * - The elementwise sine on vector \p a.
 * \internal
@@ -3970,13 +3970,13 @@ __CUDA_FP16_DECL__ __half2 h2sin(const __half2 a);
 * \brief Vector add \p val to the value stored at \p address in global or shared memory, and writes this
 * value back to \p address. The atomicity of the add operation is guaranteed separately for each of the
 * two __half elements; the entire __half2 is not guaranteed to be atomic as a single 32-bit access.
-* 
+*
 * \details The location of \p address must be in global or shared memory. This operation has undefined
 * behavior otherwise. This operation is only supported by devices of compute capability 6.x and higher.
-* 
+*
 * \param[in] address - half2*. An address in global or shared memory.
 * \param[in] val - half2. The value to be added.
-* 
+*
 * \returns half2
 * - The old value read from \p address.
 *
@@ -3992,16 +3992,16 @@ __CUDA_FP16_DECL__ __half2 atomicAdd(__half2 *const address, const __half2 val);
 * \ingroup CUDA_MATH__HALF_ARITHMETIC
 * \brief Adds \p val to the value stored at \p address in global or shared memory, and writes this value
 * back to \p address. This operation is performed in one atomic operation.
-* 
+*
 * \details The location of \p address must be in global or shared memory. This operation has undefined
 * behavior otherwise. This operation is only supported by devices of compute capability 7.x and higher.
-* 
+*
 * \param[in] address - half*. An address in global or shared memory.
 * \param[in] val - half. The value to be added.
-* 
+*
 * \returns half
 * - The old value read from \p address.
-* 
+*
 * \note_ref_guide_atomic
 */
 __CUDA_FP16_DECL__ __half atomicAdd(__half *const address, const __half val);

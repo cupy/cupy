@@ -13,10 +13,10 @@ for timing the elapsed time of a Python function on both CPU and GPU:
 .. doctest::
 
     >>> from cupyx.profiler import benchmark
-    >>> 
+    >>>
     >>> def my_func(a):
     ...     return cp.sqrt(cp.sum(a**2, axis=-1))
-    ... 
+    ...
     >>> a = cp.random.random((256, 1024))
     >>> print(benchmark(my_func, (a,), n_repeat=20))  # doctest: +SKIP
     my_func             :    CPU:   44.407 us   +/- 2.428 (min:   42.516 / max:   53.098) us     GPU-0:  181.565 us   +/- 1.853 (min:  180.288 / max:  188.608) us

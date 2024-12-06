@@ -61,7 +61,7 @@ void sgemm(
     int boundB = (K * (N - 1) + K) - (bly * BLK_N * K + idyB * K + idxB) - 1;
 
     int m, n, k, kk;
-    
+
     #pragma unroll
     for (n = 0; n < THR_N; n++) {
         #pragma unroll
@@ -94,7 +94,7 @@ void sgemm(
         boundA -= BLK_K * M;
         offs_dB += BLK_K;
         boundB -= BLK_K;
-        
+
         #pragma unroll
         for (n = 0; n < BLK_K / DIM_YA; n++) {
             #pragma unroll
@@ -119,7 +119,7 @@ void sgemm(
             for (m = 0; m < THR_M; m++) {
                 rA[m] = sA[k][m * DIM_X + idx];
             }
-            
+
             #pragma unroll
             for (n = 0; n < THR_N; n++) {
                 rB[n] = sB[n * DIM_Y + idy][k];
@@ -176,7 +176,7 @@ void sgemm(
         for (n = 0; n < THR_N; n++) {
             rB[n] = sB[n * DIM_Y + idy][k];
         }
-        
+
         #pragma unroll
         for (n = 0; n < THR_N; n++) {
             #pragma unroll

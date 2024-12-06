@@ -11,7 +11,7 @@ typedef SSIZE_T ssize_t;
 // This enum holds the generators, we can't fully templatize the generators
 // because the dynamic design of BitGenerators in the python side does not allow us
 // to determine the correct type at compile time
-// We could use Jitify to avoid this code, but cuRAND EULA does not allow us to 
+// We could use Jitify to avoid this code, but cuRAND EULA does not allow us to
 // redistribute cuRAND header
 enum RandGenerators{
    CURAND_XOR_WOW,

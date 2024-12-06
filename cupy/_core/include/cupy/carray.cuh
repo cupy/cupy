@@ -414,7 +414,7 @@ public:
       this->shape_[i] = shape[i];
       this->strides_[i] = strides[i];
     }
-  } 
+  }
 
 #if __cplusplus >= 201103 || (defined(_MSC_VER) && _MSC_VER >= 1900)
   template <typename Int, typename U=T>
@@ -618,7 +618,7 @@ public:
   static const int ndim = 0;
 
   __device__ CArray() : data_(NULL), size_(1) { }
-  
+
   __device__ explicit CArray(T* data) : data_(data), size_(1) { }
 
   template <typename Int>
@@ -720,7 +720,7 @@ public:
   }
 #endif
 
-  __device__ CIndexer() : size_(1) 
+  __device__ CIndexer() : size_(1)
   {
     memset(this->shape_, 0, sizeof(this->shape_));
     memset(this->index_, 0, sizeof(this->index_));

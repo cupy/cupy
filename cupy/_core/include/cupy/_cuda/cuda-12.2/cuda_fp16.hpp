@@ -73,7 +73,7 @@
     #define IF_DEVICE_OR_CUDACC(d, c, f) NV_IF_ELSE_TARGET(NV_IS_DEVICE, d, f)
 #endif
 #endif
-/* C++11 header for std::move. 
+/* C++11 header for std::move.
  * In RTC mode, std::move is provided implicitly; don't include the header
  */
 #if defined(__CPP_VERSION_AT_LEAST_11_FP16) && !defined(__CUDACC_RTC__)
@@ -167,11 +167,11 @@
  * \brief __half_raw data type
  * \details Type allows static initialization of \p half until it becomes
  * a builtin type.
- * 
+ *
  * - Note: this initialization is as a bit-field representation of \p half,
  * and not a conversion from \p short to \p half.
  * Such representation will be deprecated in a future version of CUDA.
- * 
+ *
  * - Note: this is visible to non-nvcc compilers, including C-only compilations
  */
 typedef struct __CUDA_ALIGN__(2) {
@@ -183,11 +183,11 @@ typedef struct __CUDA_ALIGN__(2) {
  * \brief __half2_raw data type
  * \details Type allows static initialization of \p half2 until it becomes
  * a builtin type.
- * 
+ *
  * - Note: this initialization is as a bit-field representation of \p half2,
  * and not a conversion from \p short2 to \p half2.
  * Such representation will be deprecated in a future version of CUDA.
- * 
+ *
  * - Note: this is visible to non-nvcc compilers, including C-only compilations
  */
 typedef struct __CUDA_ALIGN__(4) {
@@ -256,15 +256,15 @@ struct __nv_bfloat16;
 /**
  * \ingroup CUDA_MATH_INTRINSIC_HALF
  * \brief __half data type
- * \details This structure implements the datatype for storing 
- * half-precision floating-point numbers. The structure implements 
- * assignment, arithmetic and comparison operators, and type conversions. 
- * 16 bits are being used in total: 1 sign bit, 5 bits for the exponent, 
- * and the significand is being stored in 10 bits. 
- * The total precision is 11 bits. There are 15361 representable 
- * numbers within the interval [0.0, 1.0], endpoints included. 
- * On average we have log10(2**11) ~ 3.311 decimal digits. 
- * 
+ * \details This structure implements the datatype for storing
+ * half-precision floating-point numbers. The structure implements
+ * assignment, arithmetic and comparison operators, and type conversions.
+ * 16 bits are being used in total: 1 sign bit, 5 bits for the exponent,
+ * and the significand is being stored in 10 bits.
+ * The total precision is 11 bits. There are 15361 representable
+ * numbers within the interval [0.0, 1.0], endpoints included.
+ * On average we have log10(2**11) ~ 3.311 decimal digits.
+ *
  * The objective here is to provide IEEE754-compliant implementation
  * of \p binary16 type and arithmetic with limitations due to
  * device HW not supporting floating-point exceptions.
@@ -430,21 +430,21 @@ public:
     /**
      * Conversion operator to \p signed \p char data type.
      * Using round-toward-zero rounding mode.
-     * 
+     *
      * See __half2char_rz(__half) for further details
      */
     __CUDA_HOSTDEVICE__ operator signed char() const { return __half2char_rz(*this); }
     /**
      * Conversion operator to \p unsigned \p char data type.
      * Using round-toward-zero rounding mode.
-     * 
+     *
      * See __half2uchar_rz(__half) for further details
      */
     __CUDA_HOSTDEVICE__ operator unsigned char() const { return __half2uchar_rz(*this); }
     /**
      * Conversion operator to an implementation defined \p char data type.
      * Using round-toward-zero rounding mode.
-     * 
+     *
      * Detects signedness of the \p char type and proceeds accordingly, see
      * further details in signed and unsigned char operators.
      */
@@ -470,28 +470,28 @@ public:
     /**
      * Conversion operator to \p short data type.
      * Using round-toward-zero rounding mode.
-     * 
+     *
      * See __half2short_rz(__half) for further details
      */
     __CUDA_HOSTDEVICE__ operator short() const { return __half2short_rz(*this); }
     /**
      * Conversion operator to \p unsigned \p short data type.
      * Using round-toward-zero rounding mode.
-     * 
+     *
      * See __half2ushort_rz(__half) for further details
      */
     __CUDA_HOSTDEVICE__ operator unsigned short() const { return __half2ushort_rz(*this); }
     /**
      * Conversion operator to \p int data type.
      * Using round-toward-zero rounding mode.
-     * 
+     *
      * See __half2int_rz(__half) for further details
      */
     __CUDA_HOSTDEVICE__ operator int() const { return __half2int_rz(*this); }
     /**
      * Conversion operator to \p unsigned \p int data type.
      * Using round-toward-zero rounding mode.
-     * 
+     *
      * See __half2uint_rz(__half) for further details
      */
     __CUDA_HOSTDEVICE__ operator unsigned int() const { return __half2uint_rz(*this); }
@@ -548,14 +548,14 @@ public:
     /**
      * Conversion operator to \p long \p long data type.
      * Using round-toward-zero rounding mode.
-     * 
+     *
      * See __half2ll_rz(__half) for further details
      */
     __CUDA_HOSTDEVICE__ operator long long() const { return __half2ll_rz(*this); }
     /**
      * Conversion operator to \p unsigned \p long \p long data type.
      * Using round-toward-zero rounding mode.
-     * 
+     *
      * See __half2ull_rz(__half) for further details
      */
     __CUDA_HOSTDEVICE__ operator unsigned long long() const { return __half2ull_rz(*this); }
@@ -741,11 +741,11 @@ __CUDA_HOSTDEVICE__ __forceinline__ bool operator<=(const __half &lh, const __ha
 /**
  * \ingroup CUDA_MATH_INTRINSIC_HALF
  * \brief __half2 data type
- * \details This structure implements the datatype for storing two 
- * half-precision floating-point numbers. 
+ * \details This structure implements the datatype for storing two
+ * half-precision floating-point numbers.
  * The structure implements assignment, arithmetic and comparison
- * operators, and type conversions. 
- * 
+ * operators, and type conversions.
+ *
  * - NOTE: __half2 is visible to non-nvcc host compilers
  */
 struct __CUDA_ALIGN__(4) __half2 {
@@ -4037,7 +4037,7 @@ __CUDA_FP16_DECL__  __half atomicAdd(__half *const address, const __half val) {
  * \ingroup CUDA_MATH_INTRINSIC_HALF
  * \brief This datatype is meant to be the first-class or fundamental
  * implementation of the half-precision numbers format.
- * 
+ *
  * \details Should be implemented in the compiler in the future.
  * Current implementation is a simple typedef to a respective
  * user-level type with underscores.
@@ -4048,7 +4048,7 @@ typedef __half half;
  * \ingroup CUDA_MATH_INTRINSIC_HALF
  * \brief This datatype is meant to be the first-class or fundamental
  * implementation of type for pairs of half-precision numbers.
- * 
+ *
  * \details Should be implemented in the compiler in the future.
  * Current implementation is a simple typedef to a respective
  * user-level type with underscores.

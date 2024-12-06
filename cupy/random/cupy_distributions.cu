@@ -40,7 +40,7 @@ struct curand_pseudo_state {
 #else
         double r = curand_uniform_double(&_state);
 #endif
-        if (r >= 1.0) { 
+        if (r >= 1.0) {
            r = 0.0;
         }
         return r;
@@ -50,7 +50,7 @@ struct curand_pseudo_state {
         // Curand returns (0, 1] while the functions
         // below rely on [0, 1)
         float r = curand_uniform(&_state);
-        if (r >= 1.0) { 
+        if (r >= 1.0) {
            r = 0.0;
         }
         return r;
@@ -85,7 +85,7 @@ __global__ void init_curand(intptr_t state, uint64_t seed, ssize_t size) {
        number, no offset */
     T curand_state(id, state);
     if (id < size) {
-        curand_init(seed, id, 0, &curand_state._state);    
+        curand_init(seed, id, 0, &curand_state._state);
     }
 }
 
@@ -93,7 +93,7 @@ struct initialize_launcher {
     initialize_launcher(ssize_t size, cudaStream_t stream) : _size(size), _stream(stream) {
     }
     template<typename T, typename... Args>
-    void operator()(Args&&... args) { 
+    void operator()(Args&&... args) {
         int tpb = 256;
         int bpg =  (_size + tpb - 1) / tpb;
         init_curand<T><<<bpg, tpb, 0, _stream>>>(std::forward<Args>(args)...);
@@ -786,7 +786,7 @@ __global__ void execute_dist( intptr_t state, ssize_t state_size, intptr_t out, 
     F func;
     T random(blockIdx.x * blockDim.x + threadIdx.x, state);
     for (ssize_t id = blockIdx.x * blockDim.x + threadIdx.x;
-             id < size; 
+             id < size;
              id += state_size) {
         out_ptr[id] = func(random, (get_index(args, id, state_size))...);
     }
@@ -798,10 +798,10 @@ struct kernel_launcher {
     kernel_launcher(ssize_t size, cudaStream_t stream) : _size(size), _stream(stream) {
     }
     template<typename T, typename... Args>
-    void operator()(Args&&... args) { 
+    void operator()(Args&&... args) {
         int tpb = 256;
         // Launch one thread per state size
-        int bpg = (_size + tpb - 1) / tpb; 
+        int bpg = (_size + tpb - 1) / tpb;
         execute_dist<F, T, R><<<bpg, tpb, 0, _stream>>>(std::forward<Args>(args)...);
     }
     ssize_t _size;

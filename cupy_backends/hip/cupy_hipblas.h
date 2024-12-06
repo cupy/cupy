@@ -643,10 +643,10 @@ cublasStatus_t cublasSsyrk(cublasHandle_t handle, cublasFillMode_t uplo, cublasO
                         alpha, A, lda, beta, C, ldc);
 }
 
-cublasStatus_t cublasDsyrk(cublasHandle_t handle, cublasFillMode_t uplo, cublasOperation_t trans, int n, int k, 
+cublasStatus_t cublasDsyrk(cublasHandle_t handle, cublasFillMode_t uplo, cublasOperation_t trans, int n, int k,
                            const double* alpha, const double* A, int lda,
                            const double* beta, double* C, int ldc) {
-    return hipblasDsyrk(handle, convert_hipblasFillMode_t(uplo), convert_hipblasOperation_t(trans),  n, k, 
+    return hipblasDsyrk(handle, convert_hipblasFillMode_t(uplo), convert_hipblasOperation_t(trans),  n, k,
                         alpha, A, lda, beta, C, ldc);
 }
 

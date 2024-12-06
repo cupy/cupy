@@ -307,7 +307,7 @@ __CUDA_HOSTDEVICE__ __CUDA_FP16_FORCEINLINE__ bool operator<=(const __half &lh, 
 #endif /* !defined(__CUDA_NO_HALF_OPERATORS__) */
 #if defined(__CPP_VERSION_AT_LEAST_11_FP16)
 __CUDA_HOSTDEVICE__ __CUDA_FP16_INLINE__ __half2::__half2(const __half2 &&src) { __HALF2_TO_UI(*this) = std::move(__HALF2_TO_CUI(src)); }
-__CUDA_HOSTDEVICE__ __CUDA_FP16_INLINE__ __half2 &__half2::operator=(const __half2 &&src) { __HALF2_TO_UI(*this) = std::move(__HALF2_TO_CUI(src)); return *this; }    
+__CUDA_HOSTDEVICE__ __CUDA_FP16_INLINE__ __half2 &__half2::operator=(const __half2 &&src) { __HALF2_TO_UI(*this) = std::move(__HALF2_TO_CUI(src)); return *this; }
 #else
 __CUDA_HOSTDEVICE__ __CUDA_FP16_INLINE__ __half2::__half2() {}
 #endif /* defined(__CPP_VERSION_AT_LEAST_11_FP16) */

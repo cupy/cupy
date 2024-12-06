@@ -19,7 +19,7 @@ CuPy-specific functions are placed under ``cupyx`` namespace.
 non-SciPy compat Signal API
 ---------------------------
 
-The functions under `cupyx.signal` are non-SciPy compat signal API ported from cuSignal 
+The functions under `cupyx.signal` are non-SciPy compat signal API ported from cuSignal
 through the courtesy of Nvidia cuSignal team.
 
 .. autosummary::
@@ -32,7 +32,7 @@ through the courtesy of Nvidia cuSignal team.
    cupyx.signal.cfar_alpha
    cupyx.signal.ca_cfar
    cupyx.signal.freq_shift
-   
+
 Profiling utilities
 -------------------
 

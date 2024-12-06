@@ -107,9 +107,9 @@ However, there are occasions when users may *not* want to manage the FFT plans b
     current / max size   : 0 / 16 (counts)
     current / max memsize: 0 / (unlimited) (bytes)
     hits / misses: 0 / 0 (counts)
-    
+
     cached plans (most recently used first):
-    
+
     >>> # perform a transform, which would generate a plan and cache it
     >>> a = cp.random.random((4, 64, 64))
     >>> out = cp.fft.fftn(a, axes=(1, 2))
@@ -119,10 +119,10 @@ However, there are occasions when users may *not* want to manage the FFT plans b
     current / max size   : 1 / 16 (counts)
     current / max memsize: 262144 / (unlimited) (bytes)
     hits / misses: 0 / 1 (counts)
-    
+
     cached plans (most recently used first):
     key: ((64, 64), (64, 64), 1, 4096, (64, 64), 1, 4096, 105, 4, 'C', 2, None), plan type: PlanNd, memory usage: 262144
-    
+
     >>> # perform the same transform again, the plan is looked up from cache and reused
     >>> out = cp.fft.fftn(a, axes=(1, 2))
     >>> cache.show_info()  # hit = 1
@@ -131,10 +131,10 @@ However, there are occasions when users may *not* want to manage the FFT plans b
     current / max size   : 1 / 16 (counts)
     current / max memsize: 262144 / (unlimited) (bytes)
     hits / misses: 1 / 1 (counts)
-    
+
     cached plans (most recently used first):
     key: ((64, 64), (64, 64), 1, 4096, (64, 64), 1, 4096, 105, 4, 'C', 2, None), plan type: PlanNd, memory usage: 262144
-    
+
     >>> # clear the cache
     >>> cache.clear()
     >>> cp.fft.config.show_plan_cache_info()  # = cache.show_info(), for all devices
@@ -144,9 +144,9 @@ However, there are occasions when users may *not* want to manage the FFT plans b
     current / max size   : 0 / 16 (counts)
     current / max memsize: 0 / (unlimited) (bytes)
     hits / misses: 0 / 0 (counts)
-    
+
     cached plans (most recently used first):
-    
+
 
 The returned :class:`~cupy.fft._cache.PlanCache` object has other methods for finer control, such as setting the cache size (either by counts or by memory usage). If the size is set to 0, the cache is disabled. Please refer to its documentation for more detail.
 
