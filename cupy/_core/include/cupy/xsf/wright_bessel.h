@@ -457,10 +457,10 @@ namespace detail {
         /* Compute integrand Kmod(eps, a, b, x, r) for Gauss-Laguerre quadrature.
          *
          * K(a, b, x, r+eps) = exp(-r-eps) * Kmod(eps, a, b, x, r)
-         * 
+         *
          * Kmod(eps, a, b, x, r) = exp(x * (r+eps)^(-a) * cos(pi*a)) * (r+eps)^(-b)
          *                       * sin(x * (r+eps)^(-a) * sin(pi*a) + pi * b)
-         * 
+         *
          * Note that we additionally factor out exp(exp_term) which helps with large
          * terms in the exponent of exp(...)
          */
@@ -475,7 +475,7 @@ namespace detail {
          * P(eps, a, b, x, phi) = exp(eps * cos(phi) + x * eps^(-a) * cos(a*phi))
          *                      * cos(eps * sin(phi) - x * eps^(-a) * sin(a*phi)
          *                            + (1-b)*phi)
-         * 
+         *
          * Note that we additionally factor out exp(exp_term) which helps with large
          * terms in the exponent of exp(...)
          */

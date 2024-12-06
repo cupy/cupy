@@ -71,7 +71,7 @@ Here are the environment variables that CuPy uses at runtime.
 .. envvar:: CUPY_EXPERIMENTAL_SLICE_COPY
 
   Default: ``0``
-  
+
   If set to ``1``, the following syntax is enabled::
 
     cupy_ndarray[:] = numpy_ndarray

@@ -1,7 +1,7 @@
-/* 
+/*
    This header is to support the "translate_cucomplex" option
    that turns cuComplex function calls to their Thrust counterparts.
-*/ 
+*/
 
 /* ------------------- single complex ------------------- */
 #define cuFloatComplex                complex<float>

@@ -317,7 +317,7 @@ __global__ void _cupy_channelizer_8x8( const int n_chans,
                                        const T *__restrict__ h,
                                        U *__restrict__ y ) {
     __shared__ T s_mem[M][M];
-    
+
     const auto block { cg::this_thread_block( ) };
     const auto tile_32 { cg::tiled_partition<WARPSIZE>( block ) };
     const auto tile { cg::tiled_partition<M>( tile_32 ) };
@@ -432,7 +432,7 @@ __global__ void _cupy_channelizer_16x16( const int n_chans,
                                          const T *__restrict__ h,
                                          U *__restrict__ y ) {
     __shared__ T s_mem[M][M];
-    
+
     const auto block { cg::this_thread_block( ) };
     const auto tile_32 { cg::tiled_partition<WARPSIZE>( block ) };
     const auto tile { cg::tiled_partition<M>( tile_32 ) };
@@ -547,7 +547,7 @@ __global__ void _cupy_channelizer_32x32( const int n_chans,
                                          const T *__restrict__ h,
                                          U *__restrict__ y ) {
     __shared__ T s_mem[M][M];
-                                             
+
     const auto block { cg::this_thread_block( ) };
     const auto tile { cg::tiled_partition<WARPSIZE>( block ) };
 

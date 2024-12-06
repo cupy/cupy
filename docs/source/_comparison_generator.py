@@ -260,19 +260,19 @@ def generate():
         'scipy.sparse', 'cupyx.scipy.sparse', 'SciPy', exclude=['test'])
     buf += _section(
         'Sparse Matrices: COOrdinate Format',
-        'scipy.sparse', 'cupyx.scipy.sparse', 'SciPy', klass='coo_matrix', 
+        'scipy.sparse', 'cupyx.scipy.sparse', 'SciPy', klass='coo_matrix',
         exclude=['test'])
     buf += _section(
         'Sparse Matrices: Compressed Sparse Column',
-        'scipy.sparse', 'cupyx.scipy.sparse', 'SciPy', klass='csc_matrix', 
+        'scipy.sparse', 'cupyx.scipy.sparse', 'SciPy', klass='csc_matrix',
         exclude=['test'])
     buf += _section(
         'Sparse Matrices: Compressed Sparse Row',
-        'scipy.sparse', 'cupyx.scipy.sparse', 'SciPy', klass='csr_matrix', 
+        'scipy.sparse', 'cupyx.scipy.sparse', 'SciPy', klass='csr_matrix',
         exclude=['test'])
     buf += _section(
         'Sparse Matrices: DIAgonal Storage',
-        'scipy.sparse', 'cupyx.scipy.sparse', 'SciPy', klass='dia_matrix', 
+        'scipy.sparse', 'cupyx.scipy.sparse', 'SciPy', klass='dia_matrix',
         exclude=['test'])
     buf += _section(
         'Sparse Linear Algebra',

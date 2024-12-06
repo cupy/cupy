@@ -219,7 +219,7 @@ To activate this capability, currently you need to:
 4. Switch to the aligned allocator for NumPy to draw system memory
 
 .. code-block:: py
-   
+
     import cupy._core.numpy_allocator as ac
     import numpy_allocator
     import ctypes

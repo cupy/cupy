@@ -29,7 +29,7 @@ extern "C" {
     typedef void* cutensorTensorDescriptor_t;
     typedef void* cutensorOperationDescriptor_t;
     typedef void* cutensorComputeDescriptor_t;
-   
+
     const cutensorComputeDescriptor_t CUTENSOR_COMPUTE_DESC_16F = NULL;
     const cutensorComputeDescriptor_t CUTENSOR_COMPUTE_DESC_16BF = NULL;
     const cutensorComputeDescriptor_t CUTENSOR_COMPUTE_DESC_TF32 = NULL;
