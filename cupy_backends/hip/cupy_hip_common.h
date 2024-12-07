@@ -15,7 +15,10 @@ extern "C" {
 
 typedef int CUdevice;
 typedef hipError_t CUresult;
+// Conditionally define CUDA_SUCCESS only if it's not defined
+#ifndef CUDA_SUCCESS
 const CUresult CUDA_SUCCESS = static_cast<CUresult>(0);
+#endif
 enum CUjit_option {};
 enum CUjitInputType {};
 enum CUarray_format {};

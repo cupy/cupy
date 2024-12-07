@@ -24,3 +24,6 @@ htmlcov/
 .pytest_cache/
 cupy/.data/
 cupy/cuda/thrust.h
+
+# Ignore generated files
+cupy/_core/numpy_allocator.h
