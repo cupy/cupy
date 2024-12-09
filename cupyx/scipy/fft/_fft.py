@@ -5,8 +5,7 @@ import numpy as np
 
 import cupy
 
-from cupy.fft._fft import (_fft, _default_fft_func, hfft as _hfft,
-                           ihfft as _ihfft, _swap_direction)
+from cupy.fft._fft import _fft, _default_fft_func, _swap_direction
 
 _scipy_150 = False
 _scipy_160 = False
@@ -540,7 +539,7 @@ def hfft(x, n=None, axis=-1, norm=None, overwrite_x=False, *, plan=None):
     # TODO(leofang): support R2C & C2R plans
     if plan is not None:
         raise NotImplementedError('hfft plan is currently not yet supported')
-    return _hfft(x, n, axis, norm)
+    return irfft(x.conj(), n, axis, _swap_direction(norm))
 
 
 @_implements(_scipy_fft.ihfft)
@@ -570,7 +569,7 @@ def ihfft(x, n=None, axis=-1, norm=None, overwrite_x=False, *, plan=None):
     # TODO(leofang): support R2C & C2R plans
     if plan is not None:
         raise NotImplementedError('ihfft plan is currently not yet supported')
-    return _ihfft(x, n, axis, norm)
+    return rfft(x, n, axis, _swap_direction(norm)).conj()
 
 
 @_implements(_scipy_fft.hfft2)

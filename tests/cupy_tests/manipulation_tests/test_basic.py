@@ -184,8 +184,6 @@ class TestBasic:
         testing.assert_array_equal(expected, dst.get())
 
 
-@pytest.mark.skipif(numpy.__version__ < "2",
-                    reason="XXX: NP2.0: copyto is in flux in numpy 2.0.0rc2")
 @testing.parameterize(
     *testing.product(
         {'src': [float(3.2), int(0), int(4), int(-4), True, False, 1 + 1j],
