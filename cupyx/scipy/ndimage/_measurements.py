@@ -1180,7 +1180,7 @@ def labeled_comprehension(
                 continue
             output[i] = func(*[inp[low:high] for inp in inputs])
 
-    if out_dtype == object:
+    if out_dtype == object:  # noqa: E721
         temp = {i: default for i in range(index.size)}
     else:
         temp = cupy.empty(index.shape, out_dtype)
@@ -1193,7 +1193,7 @@ def labeled_comprehension(
     else:
         do_map([input, positions], temp)
 
-    if out_dtype == object:
+    if out_dtype == object:  # noqa: E721
         # use a list of arrays since object arrays are not supported
         index_order = cupy.asnumpy(index_order)
         output = [temp[i] for i in index_order.argsort()]

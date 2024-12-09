@@ -46,7 +46,7 @@ from cupy._core._routines_manipulation import broadcast_to  # NOQA
 from cupy._core._routines_manipulation import concatenate_method  # NOQA
 from cupy._core._routines_manipulation import moveaxis  # NOQA
 from cupy._core._routines_manipulation import rollaxis  # NOQA
-from cupy._core._routines_manipulation import size  # NOQA'
+from cupy._core._routines_manipulation import size  # NOQA
 from cupy._core._routines_math import absolute  # NOQA
 from cupy._core._routines_math import add  # NOQA
 from cupy._core._routines_math import angle, angle_deg  # NOQA
