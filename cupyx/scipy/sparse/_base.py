@@ -58,7 +58,7 @@ class spmatrix(object):
 
     def __len__(self):
         raise TypeError('sparse matrix length is ambiguous; '
-                        'use getnnz() or shape[0]')
+                        'use shape[0]')
 
     def __str__(self):
         # TODO(unno): Do not use get method which is only available when scipy
@@ -210,22 +210,8 @@ class spmatrix(object):
             return NotImplemented
 
     @property
-    def A(self):
-        """Dense ndarray representation of this matrix.
-
-        This property is equivalent to
-        :meth:`~cupyx.scipy.sparse.spmatrix.toarray` method.
-
-        """
-        return self.toarray()
-
-    @property
     def T(self):
         return self.transpose()
-
-    @property
-    def H(self):
-        return self.getH()
 
     @property
     def ndim(self):
@@ -233,19 +219,19 @@ class spmatrix(object):
 
     @property
     def size(self):
-        return self.getnnz()
+        return self.nnz
 
     @property
     def nnz(self):
-        return self.getnnz()
+        raise NotImplementedError
 
     @property
     def shape(self):
-        return self.get_shape()
+        raise NotImplementedError
 
     @shape.setter
     def shape(self, value):
-        self.set_shape(value)
+        self.reshape(value)
 
     def asformat(self, format):
         """Return this matrix in a given sparse format.

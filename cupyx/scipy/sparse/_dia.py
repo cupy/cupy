@@ -104,28 +104,16 @@ class dia_matrix(_data._data_matrix):
         offsets = self.offsets.get(stream)
         return scipy.sparse.dia_matrix((data, offsets), shape=self._shape)
 
-    def get_shape(self):
-        """Returns the shape of the matrix.
-
-        Returns:
-            tuple: Shape of the matrix.
-        """
+    @property
+    def shape(self):
         return self._shape
 
-    def getnnz(self, axis=None):
-        """Returns the number of stored values, including explicit zeros.
+    @shape.setter
+    def shape(self, value):
+        super().shape = value
 
-        Args:
-            axis: Not supported yet.
-
-        Returns:
-            int: The number of stored values.
-
-        """
-        if axis is not None:
-            raise NotImplementedError(
-                'getnnz over an axis is not implemented for DIA format')
-
+    @property
+    def nnz(self):
         m, n = self.shape
         nnz = _core.ReductionKernel(
             'int32 offsets, int32 m, int32 n', 'int32 nnz',
