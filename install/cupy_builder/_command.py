@@ -39,11 +39,11 @@ def compile_device_code(
     - list of remaining (non-device) source files ("*.cpp")
     - list of compiled object files for device code ("*.o")
     """
-    sources_cu, sources_cpp = filter_files_by_extension(
-        ext.sources, '.cu')
+    sources = [os.fspath(src) for src in ext.sources]
+    sources_cu, sources_cpp = filter_files_by_extension(sources, ".cu")
     if len(sources_cu) == 0:
         # No device code used in this extension.
-        return ext.sources, []
+        return sources, []
 
     if sys.platform == 'win32':
         compiler = DeviceCompilerWin32(ctx)
