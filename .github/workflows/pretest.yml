@@ -19,14 +19,14 @@ jobs:
       with:
         python-version: '3.9'
 
-    # - name: Setup cache
-    #   uses: actions/cache@v4
-    #   with:
-    #     path: ~/.cache
-    #     key:
-    #       static-checks-${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('.pre-commit-config.yaml') }}
-    #     restore-keys:
-    #       static-checks-
+    - name: Setup cache
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache
+        key:
+          static-checks-${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('.pre-commit-config.yaml') }}
+        restore-keys:
+          static-checks-
 
     - name: Setup pre-commit
       run: |
