@@ -144,6 +144,7 @@ class TestNdarrayInitRaise(unittest.TestCase):
         with pytest.raises(ValueError):
             _core.array(arr)
 
+    @testing.with_requires('numpy<2.0')
     def test_excessive_ndim(self):
         for xp in (numpy, cupy):
             with pytest.raises(ValueError):

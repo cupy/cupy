@@ -260,6 +260,7 @@ class TestBasic:
 
     @testing.for_all_dtypes_combination(('dtype1', 'dtype2'))
     @testing.numpy_cupy_array_equal()
+    @testing.with_requires('numpy<2.0')
     def test_full_dtypes_cpu_input(self, xp, dtype1, dtype2):
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', ComplexWarning)

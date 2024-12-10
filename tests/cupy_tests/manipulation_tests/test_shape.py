@@ -130,6 +130,7 @@ class TestReshape:
         a = self._test_ndim_limit(xp, 32, dtype, order)
         return a
 
+    @testing.with_requires('numpy<2.0')
     @testing.for_orders('CFA')
     @testing.for_all_dtypes()
     def test_ndim_limit2(self, dtype, order):

@@ -160,6 +160,7 @@ class TestBarycentric:
         ys = true_poly(xs)
         return scp.interpolate.barycentric_interpolate(xs, ys, test_xs)
 
+    @testing.with_requires('numpy<2.0')
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_array_input(self, xp, scp, dtype):

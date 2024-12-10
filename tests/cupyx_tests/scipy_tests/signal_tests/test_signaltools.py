@@ -867,6 +867,7 @@ class TestDetrend:
             detrend(data, type="linear", bp=3)
 
 
+@testing.with_requires('numpy<2.0')
 @testing.with_requires('scipy')
 class TestFiltFilt:
     @pytest.mark.parametrize('size', [11, 20, 32, 51, 64, 120, 128, 250])

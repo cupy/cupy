@@ -185,43 +185,49 @@ class TestArrayReduction:
         return a.min()
 
     # skip bool: numpy's ptp raises a TypeError on bool inputs
+    @testing.with_requires('numpy<2.0')
     @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_allclose(contiguous_check=False)
     def test_ptp_all(self, xp, dtype):
         a = testing.shaped_random((2, 3), xp, dtype, order=self.order)
         return a.ptp()
 
-    @testing.with_requires('numpy>=1.15')
+    @testing.with_requires('numpy<2.0')
     @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_allclose(contiguous_check=False)
     def test_ptp_all_keepdims(self, xp, dtype):
         a = testing.shaped_random((2, 3), xp, dtype, order=self.order)
         return a.ptp(keepdims=True)
 
+    @testing.with_requires('numpy<2.0')
     @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_allclose(contiguous_check=False)
     def test_ptp_axis_large(self, xp, dtype):
         a = testing.shaped_random((3, 1000), xp, dtype, order=self.order)
         return a.ptp(axis=0)
 
+    @testing.with_requires('numpy<2.0')
     @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_allclose(contiguous_check=False)
     def test_ptp_axis0(self, xp, dtype):
         a = testing.shaped_random((2, 3, 4), xp, dtype, order=self.order)
         return a.ptp(axis=0)
 
+    @testing.with_requires('numpy<2.0')
     @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_allclose(contiguous_check=False)
     def test_ptp_axis1(self, xp, dtype):
         a = testing.shaped_random((2, 3, 4), xp, dtype, order=self.order)
         return a.ptp(axis=1)
 
+    @testing.with_requires('numpy<2.0')
     @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_allclose(contiguous_check=False)
     def test_ptp_axis2(self, xp, dtype):
         a = testing.shaped_random((2, 3, 4), xp, dtype, order=self.order)
         return a.ptp(axis=2)
 
+    @testing.with_requires('numpy<2.0')
     @testing.with_requires('numpy>=1.15')
     @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_allclose(contiguous_check=False)
@@ -229,6 +235,7 @@ class TestArrayReduction:
         a = testing.shaped_random((2, 3, 4), xp, dtype, order=self.order)
         return a.ptp(axis=(1, 2))
 
+    @testing.with_requires('numpy<2.0')
     @testing.with_requires('numpy>=1.15')
     @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_allclose(contiguous_check=False)
@@ -236,18 +243,21 @@ class TestArrayReduction:
         a = testing.shaped_random((2, 3, 4), xp, dtype, order=self.order)
         return a.ptp(axis=(1, 2), keepdims=True)
 
+    @testing.with_requires('numpy<2.0')
     @testing.for_float_dtypes()
     @testing.numpy_cupy_allclose(contiguous_check=False)
     def test_ptp_nan(self, xp, dtype, exclude_cutensor):
         a = xp.array([float('nan'), 1, -1], dtype, order=self.order)
         return a.ptp()
 
+    @testing.with_requires('numpy<2.0')
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(contiguous_check=False)
     def test_ptp_nan_real(self, xp, dtype):
         a = xp.array([float('nan'), 1, -1], dtype, order=self.order)
         return a.ptp()
 
+    @testing.with_requires('numpy<2.0')
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(contiguous_check=False)
     def test_ptp_nan_imag(self, xp, dtype):

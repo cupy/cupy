@@ -12,6 +12,7 @@ import pytest
 
 import cupy
 import cupyx
+from cupy import testing
 
 
 def _run_script(code):
@@ -141,6 +142,7 @@ class TestAliases(unittest.TestCase):
     'VisibleDeprecationWarning',
     'linalg.LinAlgError'
 ])
+@testing.with_requires('numpy<2.0')
 def test_error_classes(name):
     get = operator.attrgetter(name)
     assert issubclass(get(cupy), get(numpy))
