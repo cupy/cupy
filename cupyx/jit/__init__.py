@@ -10,6 +10,7 @@ from cupyx.jit._builtin_funcs import range_ as range  # NOQA
 from cupyx.jit._builtin_funcs import syncthreads  # NOQA
 from cupyx.jit._builtin_funcs import syncwarp  # NOQA
 from cupyx.jit._builtin_funcs import shared_memory  # NOQA
+from cupyx.jit._builtin_funcs import local_memory  # NOQA
 from cupyx.jit._builtin_funcs import atomic_add  # NOQA
 from cupyx.jit._builtin_funcs import atomic_sub  # NOQA
 from cupyx.jit._builtin_funcs import atomic_exch  # NOQA
