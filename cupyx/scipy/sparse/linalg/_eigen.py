@@ -365,7 +365,7 @@ def svds(a, k=6, *, ncv=None, tol=0, which='LM', maxiter=None,
 
     .. note::
         This is a naive implementation using cupyx.scipy.sparse.linalg.eigsh as
-        an eigensolver on ``a.H @ a`` or ``a @ a.H``.
+        an eigensolver on ``a.conj().T @ a`` or ``a @ a.conj().T``.
 
     """
     if a.ndim != 2:

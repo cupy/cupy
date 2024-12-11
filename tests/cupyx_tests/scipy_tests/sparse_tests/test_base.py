@@ -23,10 +23,16 @@ class TestSpmatrix(unittest.TestCase):
                     self._shape = shape
                     self._nnz = nnz
 
-                def get_shape(self):
+                @property
+                def shape(self):
                     return self._shape
 
-                def getnnz(self):
+                @shape.setter
+                def shape(self, value):
+                    raise NotImplementedError
+
+                @property
+                def nnz(self):
                     return self._nnz
 
             return DummySparseGPU
