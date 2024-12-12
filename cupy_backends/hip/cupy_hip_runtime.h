@@ -497,11 +497,13 @@ cudaPos make_cudaPos(...) {
 // Surface
 cudaError_t cudaCreateSurfaceObject(cudaSurfaceObject_t* pSurfObject,
                                     const cudaResourceDesc* pResDesc) {
-    return hipCreateSurfaceObject(pSurfObject, pResDesc);
+    return hipErrorUnknown;
+    //return hipCreateSurfaceObject(pSurfObject, pResDesc);
 }
 
 cudaError_t cudaDestroySurfaceObject(cudaSurfaceObject_t surfObject) {
-    return hipDestroySurfaceObject(surfObject);
+    return hipErrorUnknown;
+    //return hipDestroySurfaceObject(surfObject);
 }
 
 // CUDA Graph

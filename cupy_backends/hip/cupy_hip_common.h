@@ -3,7 +3,7 @@
 
 #include <hip/hip_runtime_api.h>
 #include <hipblas.h>
-#include <rocsolver.h>
+//#include <rocsolver.h>
 
 #define CUDA_VERSION 0
 
@@ -141,8 +141,10 @@ typedef hipblasStatus_t cublasStatus_t;
 // TODO(leofang): as of ROCm 3.5.0 this does not exist yet
 typedef enum {} cublasComputeType_t;
 
-typedef rocblas_status cusolverStatus_t;
-typedef rocblas_handle cusolverDnHandle_t;
+//typedef rocblas_status cusolverStatus_t;
+//typedef rocblas_handle cusolverDnHandle_t;
+typedef enum {} cusolverStatus_t;
+typedef enum {} cusolverDnHandle_t;
 
 
 ///////////////////////////////////////////////////////////////////////////////
