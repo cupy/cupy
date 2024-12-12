@@ -202,7 +202,7 @@ class RandomState(object):
         self._update_seed(y.size)
         return y
 
-    def geometric(self, p, size=None, dtype=None):
+    def geometric(self, p, size=None, dtype='l'):
         """Returns an array of samples drawn from the geometric distribution.
 
         .. seealso::
@@ -212,14 +212,12 @@ class RandomState(object):
         p = cupy.asarray(p)
         if size is None:
             size = p.shape
-        if dtype is None:
-            dtype = numpy.dtype('l')
         y = cupy.empty(shape=size, dtype=dtype)
         _kernels.geometric_kernel(p, self._rk_seed, y)
         self._update_seed(y.size)
         return y
 
-    def hypergeometric(self, ngood, nbad, nsample, size=None, dtype=None):
+    def hypergeometric(self, ngood, nbad, nsample, size=None, dtype='l'):
         """Returns an array of samples drawn from the hypergeometric distribution.
 
         .. seealso::
@@ -230,8 +228,6 @@ class RandomState(object):
             cupy.asarray(ngood), cupy.asarray(nbad), cupy.asarray(nsample)
         if size is None:
             size = cupy.broadcast(ngood, nbad, nsample).shape
-        if dtype is None:
-            dtype = numpy.dtype('l')
         y = cupy.empty(shape=size, dtype=dtype)
         _kernels.hypergeometric_kernel(ngood, nbad, nsample, self._rk_seed, y)
         self._update_seed(y.size)
@@ -299,7 +295,7 @@ class RandomState(object):
             func = curand.generateLogNormalDouble
         return self._generate_normal(func, size, dtype, mean, sigma)
 
-    def logseries(self, p, size=None, dtype=None):
+    def logseries(self, p, size=None, dtype='l'):
         """Returns an array of samples drawn from a log series distribution.
 
         .. warning::
@@ -318,8 +314,6 @@ class RandomState(object):
             raise ValueError('p >= 1.0')
         if size is None:
             size = p.shape
-        if dtype is None:
-            dtype = numpy.dtype('l')
         y = cupy.empty(shape=size, dtype=dtype)
         _kernels.logseries_kernel(p, self._rk_seed, y)
         self._update_seed(y.size)
@@ -536,7 +530,7 @@ class RandomState(object):
         self._update_seed(y.size)
         return y
 
-    def poisson(self, lam=1.0, size=None, dtype=None):
+    def poisson(self, lam=1.0, size=None, dtype='l'):
         """Returns an array of samples drawn from the poisson distribution.
 
         .. seealso::
@@ -546,8 +540,6 @@ class RandomState(object):
         lam = cupy.asarray(lam)
         if size is None:
             size = lam.shape
-        if dtype is None:
-            dtype = numpy.dtype('l')
         y = cupy.empty(shape=size, dtype=dtype)
         _kernels.poisson_kernel(lam, self._rk_seed, y)
         self._update_seed(y.size)
