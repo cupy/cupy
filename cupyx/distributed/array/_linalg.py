@@ -140,7 +140,7 @@ def _convert_to_tuples(
     slices: tuple[slice, ...], shape: tuple[int, ...],
 ) -> tuple[_SliceIndices, ...]:
     assert len(slices) == len(shape)
-    return tuple(s.indices(l) for s, l in zip(slices, shape))
+    return tuple(s.indices(length) for s, length in zip(slices, shape))
 
 
 def _convert_to_slices(

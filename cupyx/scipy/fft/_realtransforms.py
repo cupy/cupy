@@ -24,7 +24,7 @@ described in [5]_.
 
 .. [3] http://fourier.eng.hmc.edu/e161/lectures/dct/node2.html
 
-.. [4] https://dsp.stackexchange.com/questions/2807/fast-cosine-transform-via-fft  # noqa
+.. [4] https://dsp.stackexchange.com/questions/2807/fast-cosine-transform-via-fft
 
 .. [5] X. Shao, S. G. Johnson. Type-II/III DCT/DST algorithms with reduced
     number of arithmetic operations, Signal Processing, Volume 88, Issue 6,
