@@ -213,7 +213,7 @@ class RandomState(object):
         if size is None:
             size = p.shape
         if dtype is None:
-            dtype = numpy.dtype('l')
+            dtype = numpy.long
         y = cupy.empty(shape=size, dtype=dtype)
         _kernels.geometric_kernel(p, self._rk_seed, y)
         self._update_seed(y.size)
@@ -231,7 +231,7 @@ class RandomState(object):
         if size is None:
             size = cupy.broadcast(ngood, nbad, nsample).shape
         if dtype is None:
-            dtype = numpy.dtype('l')
+            dtype = numpy.long
         y = cupy.empty(shape=size, dtype=dtype)
         _kernels.hypergeometric_kernel(ngood, nbad, nsample, self._rk_seed, y)
         self._update_seed(y.size)
@@ -319,7 +319,7 @@ class RandomState(object):
         if size is None:
             size = p.shape
         if dtype is None:
-            dtype = numpy.dtype('l')
+            dtype = numpy.long
         y = cupy.empty(shape=size, dtype=dtype)
         _kernels.logseries_kernel(p, self._rk_seed, y)
         self._update_seed(y.size)
@@ -547,7 +547,7 @@ class RandomState(object):
         if size is None:
             size = lam.shape
         if dtype is None:
-            dtype = numpy.dtype('l')
+            dtype = numpy.long
         y = cupy.empty(shape=size, dtype=dtype)
         _kernels.poisson_kernel(lam, self._rk_seed, y)
         self._update_seed(y.size)
