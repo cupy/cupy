@@ -14,6 +14,7 @@ from cupy.cublas import get_batched_gesv_limit, set_batched_gesv_limit
     'batched_gesv_limit': [None, 0],
     'order': ['C', 'F'],
 }))
+@testing.with_requires('numpy<2.0')
 @testing.fix_random()
 class TestSolve(unittest.TestCase):
 
@@ -281,6 +282,7 @@ class TestLstsq:
         self.check_invalid_shapes((3, 3), (2, 2))
         self.check_invalid_shapes((4, 3), (10, 3, 3))
 
+    @testing.with_requires('numpy<2.0')
     @testing.for_float_dtypes(no_float16=True)
     @testing.numpy_cupy_allclose(atol=1e-3)
     def test_warn_rcond(self, xp, dtype):

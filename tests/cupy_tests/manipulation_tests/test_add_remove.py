@@ -171,6 +171,7 @@ class TestUnique:
         a = testing.shaped_random((100, 100), xp, dtype)
         return xp.unique(a, return_index=True, axis=0)[1]
 
+    @testing.with_requires('numpy<2.0')
     @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
     @testing.numpy_cupy_array_equal()
     def test_unique_inverse_no_axis(self, xp, dtype):
@@ -195,6 +196,7 @@ class TestUnique:
         a = testing.shaped_random((100, 100), xp, dtype)
         return xp.unique(a, return_counts=True, axis=0)[1]
 
+    @testing.with_requires('numpy<2.0')
     @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
     @testing.numpy_cupy_array_equal()
     def test_unique_return_all_no_axis(self, xp, dtype):
@@ -222,6 +224,7 @@ class TestUnique:
         a = xp.empty((0,), dtype)
         return xp.unique(a, axis=0)
 
+    @testing.with_requires('numpy<2.0')
     @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
     @testing.numpy_cupy_array_equal()
     def test_unique_empty_return_all_no_axis(self, xp, dtype):

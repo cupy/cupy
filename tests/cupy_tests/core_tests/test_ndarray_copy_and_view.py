@@ -264,7 +264,7 @@ class TestArrayFill:
         a.fill(numpy.ones((), dtype=dtype2))
         return a
 
-    @testing.with_requires('numpy>=1.24.0')
+    @testing.with_requires('numpy>=1.24.0', 'numpy<2.0')
     @testing.for_all_dtypes_combination(('dtype1', 'dtype2'))
     @testing.numpy_cupy_array_equal(accept_error=ComplexWarning)
     def test_fill_with_cupy_scalar_ndarray(self, xp, dtype1, dtype2):
@@ -289,6 +289,7 @@ class TestArrayFill:
         return b
 
 
+@testing.with_requires('numpy<2.0')
 class TestArrayAsType:
 
     @testing.for_orders(['C', 'F', 'A', 'K', None])

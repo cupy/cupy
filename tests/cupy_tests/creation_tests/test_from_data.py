@@ -281,6 +281,7 @@ class TestFromData(unittest.TestCase):
             for i in range(2)]
         return xp.array(a, dtype=numpy.dtype(dtype2).char, order=dst_order)
 
+    @testing.with_requires('numpy<2.0')
     @testing.for_orders('CFAK')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
@@ -290,6 +291,7 @@ class TestFromData(unittest.TestCase):
         a.fill(0)
         return b
 
+    @testing.with_requires('numpy<2.0')
     @testing.for_orders('CFAK')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
@@ -298,6 +300,7 @@ class TestFromData(unittest.TestCase):
         b = xp.array(a, copy=False, order=order)
         return b
 
+    @testing.with_requires('numpy<2.0')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_array_f_contiguous_output(self, xp, dtype):

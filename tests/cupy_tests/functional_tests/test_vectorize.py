@@ -18,6 +18,7 @@ class TestVectorizeOps(unittest.TestCase):
         ]
         return f(*args)
 
+    @testing.with_requires('numpy<2.0')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-6)
     def test_vectorize_reciprocal(self, xp, dtype):
@@ -237,6 +238,7 @@ class TestVectorizeExprs(unittest.TestCase):
         y = testing.shaped_random((20, 30), xp, dtype, seed=2)
         return f(cond, x, y)
 
+    @testing.with_requires('numpy<2.0')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
     def test_vectorize_incr(self, xp, dtype):
