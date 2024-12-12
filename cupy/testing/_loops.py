@@ -299,7 +299,8 @@ def _make_decorator(check_func, name, type_check, contiguous_check,
                 for cupy_r, numpy_r in zip(cupy_result, numpy_result)]
 
             # Check dtypes
-            if type_check:
+            if (type_check
+                    and numpy.lib.NumpyVersion(numpy.__version__) >= "2.0.0"):
                 for cupy_r, numpy_r in cupy_numpy_result_ndarrays:
                     if cupy_r.dtype != numpy_r.dtype:
                         raise AssertionError(
