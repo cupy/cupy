@@ -89,9 +89,9 @@ def norm(x, ord=None, axis=None):
             raise ValueError('Invalid axis %r for an array with shape %r' %
                              (axis, x.shape))
         if ord == numpy.inf:
-            return abs(x).max(axis=a).A.ravel()
+            return abs(x).max(axis=a).todense().ravel()
         elif ord == -numpy.inf:
-            return abs(x).min(axis=a).A.ravel()
+            return abs(x).min(axis=a).todense().ravel()
         elif ord == 0:
             # Zero norm
             return (x != 0).astype(numpy.float32).sum(axis=a).ravel().astype(
