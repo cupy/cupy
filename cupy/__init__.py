@@ -521,9 +521,9 @@ from cupy._logic.truth import alltrue  # NOQA
 from cupy._logic.truth import any  # NOQA
 from cupy._logic.truth import sometrue  # NOQA
 
-# ------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 # Polynomial functions
-# ------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 from cupy.lib._polynomial import poly1d  # NOQA
 from cupy.lib._routines_poly import poly  # NOQA
 from cupy.lib._routines_poly import polyadd  # NOQA
