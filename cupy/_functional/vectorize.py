@@ -6,13 +6,10 @@ from cupyx.jit import _cuda_types
 
 
 def _get_input_type(arg):
-    if isinstance(arg, int):
-        return 'l'
-    if isinstance(arg, float):
-        return 'd'
-    if isinstance(arg, complex):
-        return 'D'
-    return arg.dtype.char
+    if hasattr(arg, 'dtype'):
+        return arg.dtype.char
+    else:
+        return numpy.dtype(type(arg)).char
 
 
 class vectorize(object):

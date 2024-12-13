@@ -200,7 +200,7 @@ def gamma(shape, scale=1.0, size=None, dtype=float):
     return rs.gamma(shape, scale, size, dtype)
 
 
-def geometric(p, size=None, dtype=int):
+def geometric(p, size=None, dtype='l'):
     """Geometric distribution.
 
     Returns an array of samples drawn from the geometric distribution. Its
@@ -259,7 +259,7 @@ def gumbel(loc=0.0, scale=1.0, size=None, dtype=float):
     return rs.gumbel(loc, scale, size, dtype)
 
 
-def hypergeometric(ngood, nbad, nsample, size=None, dtype=int):
+def hypergeometric(ngood, nbad, nsample, size=None, dtype='l'):
     """hypergeometric distribution.
 
     Returns an array of samples drawn from the hypergeometric distribution. Its
@@ -368,7 +368,7 @@ def lognormal(mean=0.0, sigma=1.0, size=None, dtype=float):
     return rs.lognormal(mean, sigma, size=size, dtype=dtype)
 
 
-def logseries(p, size=None, dtype=int):
+def logseries(p, size=None, dtype='l'):
     """Log series distribution.
 
     Returns an array of samples drawn from the log series distribution. Its
@@ -587,7 +587,7 @@ def noncentral_f(dfnum, dfden, nonc, size=None, dtype=float):
     return rs.noncentral_f(dfnum, dfden, nonc, size=size, dtype=dtype)
 
 
-def poisson(lam=1.0, size=None, dtype=int):
+def poisson(lam=1.0, size=None, dtype='l'):
     """Poisson distribution.
 
     Returns an array of samples drawn from the poisson distribution. Its
