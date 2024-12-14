@@ -113,8 +113,7 @@ def get_ctype_from_scalar(mode: str, x: Any) -> _cuda_types.Scalar:
         if isinstance(x, bool):
             return _cuda_types.Scalar(numpy.bool_)
         if isinstance(x, int):
-            # use plain int here for cross-platform portability
-            return _cuda_types.Scalar(int)
+            return _cuda_types.Scalar(numpy.int64)
         if isinstance(x, float):
             return _cuda_types.Scalar(numpy.float64)
         if isinstance(x, complex):

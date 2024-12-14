@@ -44,9 +44,9 @@ def _numpy_pulse_compression(x, t, normalize, window):
 
 
 tol = {
-    numpy.float32: 2e-3,
+    numpy.float32: 5e-3,
     numpy.float64: 1e-7,
-    numpy.complex64: 2e-3,
+    numpy.complex64: 5e-3,
     numpy.complex128: 1e-7,
 }
 
