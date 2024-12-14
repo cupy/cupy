@@ -272,20 +272,17 @@ class coo_matrix(sparse_data._data_matrix):
         self.row = self.row[ind]
         self.col = self.col[ind]
 
-    def get_shape(self):
-        """Returns the shape of the matrix.
-
-        Returns:
-            tuple: Shape of the matrix.
-        """
+    @property
+    def shape(self):
         return self._shape
 
-    def getnnz(self, axis=None):
-        """Returns the number of stored values, including explicit zeros."""
-        if axis is None:
-            return self.data.size
-        else:
-            raise ValueError
+    @shape.setter
+    def shape(self, value):
+        super().shape = value
+
+    @property
+    def nnz(self, axis=None):
+        return self.data.size
 
     def get(self, stream=None):
         """Returns a copy of the array on host memory.

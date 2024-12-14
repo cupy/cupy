@@ -716,29 +716,17 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
     has_sorted_indices = property(fget=__get_sorted, fset=__set_sorted)
 
-    def get_shape(self):
-        """Returns the shape of the matrix.
-
-        Returns:
-            tuple: Shape of the matrix.
-
-        """
+    @property
+    def shape(self):
         return self._shape
 
-    def getnnz(self, axis=None):
-        """Returns the number of stored values, including explicit zeros.
+    @shape.setter
+    def shape(self, value):
+        super().shape = value
 
-        Args:
-            axis: Not supported yet.
-
-        Returns:
-            int: The number of stored values.
-
-        """
-        if axis is None:
-            return self.data.size
-        else:
-            raise ValueError
+    @property
+    def nnz(self):
+        return self.data.size
 
     def sorted_indices(self):
         """Return a copy of this matrix with sorted indices

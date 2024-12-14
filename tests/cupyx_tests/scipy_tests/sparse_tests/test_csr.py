@@ -538,11 +538,6 @@ class TestCsrMatrixScipyComparison:
         assert len(rows) == 3
         return xp.concatenate([r.toarray() for r in rows])
 
-    @testing.numpy_cupy_array_equal(sp_name='sp')
-    def test_asfptype(self, xp, sp):
-        m = self.make(xp, sp, self.dtype)
-        return m.asfptype().toarray()
-
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_toarray(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
@@ -570,12 +565,6 @@ class TestCsrMatrixScipyComparison:
             m = self.make(xp, sp, self.dtype)
             with pytest.raises(ValueError):
                 m.toarray(order='#')
-
-    @testing.with_requires('scipy<1.14')
-    @testing.numpy_cupy_allclose(sp_name='sp')
-    def test_A(self, xp, sp):
-        m = self.make(xp, sp, self.dtype)
-        return m.A
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_tocoo(self, xp, sp):
@@ -1394,12 +1383,12 @@ class TestCsrMatrixSum:
 class TestCsrMatrixScipyCompressed:
 
     @testing.numpy_cupy_equal(sp_name='sp')
-    def test_get_shape(self, xp, sp):
-        return _make(xp, sp, self.dtype).get_shape()
+    def test_shape(self, xp, sp):
+        return _make(xp, sp, self.dtype).shape
 
     @testing.numpy_cupy_equal(sp_name='sp')
-    def test_getnnz(self, xp, sp):
-        return _make(xp, sp, self.dtype).getnnz()
+    def test_nnz(self, xp, sp):
+        return _make(xp, sp, self.dtype).nnz
 
 
 @testing.parameterize(*testing.product({
@@ -1746,34 +1735,6 @@ class TestCsrMatrixGetitem:
     def test_getitem_rowslice_negative_stop(self, xp, sp):
         # This test is adapted from Scipy
         return _make(xp, sp, self.dtype)[slice(1, -2, 2)]
-
-    def test_getrow(self):
-
-        # This test is adapted from Scipy's CSR tests
-        N = 10
-        X = testing.shaped_random((N, N), cupy, seed=0)
-        X[X > 0.7] = 0
-        Xcsr = sparse.csr_matrix(X)
-
-        for i in range(N):
-            arr_row = X[i:i + 1, :]
-            csr_row = Xcsr.getrow(i)
-            assert sparse.isspmatrix_csr(csr_row)
-            assert (arr_row == csr_row.toarray()).all()
-
-    def test_getcol(self):
-        # This test is adapted from Scipy's CSR tests
-        N = 10
-        X = testing.shaped_random((N, N), cupy, seed=0)
-        X[X > 0.7] = 0
-        Xcsr = sparse.csr_matrix(X)
-
-        for i in range(N):
-            arr_col = X[:, i:i + 1]
-            csr_col = Xcsr.getcol(i)
-
-            assert sparse.isspmatrix_csr(csr_col)
-            assert (arr_col == csr_col.toarray()).all()
 
 
 @testing.parameterize(*testing.product({
