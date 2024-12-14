@@ -259,6 +259,13 @@ class TestQuantileMethods:
                 with pytest.raises(ValueError):
                     xp.quantile(a, q, axis=-1, method=method)
 
+    @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
+    @testing.numpy_cupy_allclose(rtol=1e-6)
+    def test_quantile_axis_and_keepdims(self, xp, dtype, method):
+        a = testing.shaped_random((1, 6, 3, 2), xp, dtype)
+        q = testing.shaped_random((5,), xp, scale=1)
+        return xp.quantile(a, q, axis=0, keepdims=True, method=method)
+
 
 class TestOrder:
 
