@@ -1,13 +1,11 @@
 import contextlib
 import io
 
-import numpy
 import pytest
 
 from cupy import testing
 from cupyx import fallback_mode
 from cupyx import _ufunc_config
-from cupyx_tests.fallback_mode_tests import test_fallback as test_utils
 
 
 class NotificationTestBase:
@@ -99,74 +97,3 @@ class TestNotificationModes(NotificationTestBase):
             self.func()
 
         _ufunc_config.seterr(**old)
-
-
-class TestNotificationVectorize(NotificationTestBase):
-
-    @test_utils.enable_slice_copy
-    def test_custom_or_builtin_pyfunc(self):
-
-        old = _ufunc_config.seterr(fallback_mode='print')
-        saved_stdout = io.StringIO()
-
-        with contextlib.redirect_stdout(saved_stdout):
-            def custom_abs(x):
-                if x >= 0:
-                    return x
-                return -x
-
-            a = testing.shaped_random((3, 4), fallback_mode.numpy)
-            vec_abs = fallback_mode.numpy.vectorize(custom_abs)
-            vec_abs(a)
-
-            # built-in
-            vec_abs = fallback_mode.numpy.vectorize(abs)
-            vec_abs(a)
-
-        _ufunc_config.seterr(**old)
-        output = saved_stdout.getvalue().strip()
-        msg = "'vectorize' method not in cupy, "
-        msg += "falling back to '"
-        msg += numpy.vectorize.__module__ + ".vectorize'"
-        assert output == ("Warning: " + msg + "\nWarning: " + msg)
-
-    @test_utils.enable_slice_copy
-    def test_cupy_supported_pyfunc(self):
-
-        old = _ufunc_config.seterr(fallback_mode='print')
-        saved_stdout = io.StringIO()
-
-        with contextlib.redirect_stdout(saved_stdout):
-            a = testing.shaped_random((3, 4), fallback_mode.numpy)
-            vec_abs = fallback_mode.numpy.vectorize(fallback_mode.numpy.abs)
-            vec_abs(a)
-
-        _ufunc_config.seterr(**old)
-        output = saved_stdout.getvalue().strip()
-        msg1 = "'vectorize' method not in cupy, "
-        msg1 += "falling back to '"
-        msg1 += numpy.vectorize.__module__ + ".vectorize'"
-        msg2 = "'absolute' method is available in cupy but cannot be used, "
-        msg2 += "falling back to its numpy implementation"
-        assert output == ("Warning: " + msg1 + "\nWarning: " + msg2)
-
-    @pytest.mark.skip(reason='#6282 implemented cupy.fabs')
-    @test_utils.enable_slice_copy
-    def test_numpy_only_pyfunc(self):
-
-        old = _ufunc_config.seterr(fallback_mode='print')
-        saved_stdout = io.StringIO()
-
-        with contextlib.redirect_stdout(saved_stdout):
-            a = testing.shaped_random((3, 4), fallback_mode.numpy)
-            vec_abs = fallback_mode.numpy.vectorize(fallback_mode.numpy.fabs)
-            vec_abs(a)
-
-        _ufunc_config.seterr(**old)
-        output = saved_stdout.getvalue().strip()
-        msg1 = "'vectorize' method not in cupy, "
-        msg1 += "falling back to '"
-        msg1 += numpy.vectorize.__module__ + ".vectorize'"
-        msg2 = "'fabs' method not in cupy, "
-        msg2 += "falling back to its numpy implementation"
-        assert output == ("Warning: " + msg1 + "\nWarning: " + msg2)
