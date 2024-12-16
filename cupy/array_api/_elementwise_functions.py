@@ -607,6 +607,7 @@ def remainder(x1: Array, x2: Array, /) -> Array:
     """
     if x1.dtype not in _numeric_dtypes or x2.dtype not in _numeric_dtypes:
         raise TypeError("Only numeric dtypes are allowed in remainder")
+    # Call result type here just to raise on disallowed type combinations
     _result_type(x1.dtype, x2.dtype)
     x1, x2 = Array._normalize_two_args(x1, x2)
     
