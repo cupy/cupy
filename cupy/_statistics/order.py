@@ -191,6 +191,8 @@ def _quantile_unchecked(a, q, axis=None, out=None,
     if q.ndim > 1:
         raise ValueError('Expected q to have a dimension of 1.\n'
                          'Actual: {0} != 1'.format(q.ndim))
+    if isinstance(axis, int):
+        axis = axis,
     if keepdims:
         if axis is None:
             keepdim = (1,) * a.ndim
@@ -199,9 +201,6 @@ def _quantile_unchecked(a, q, axis=None, out=None,
             for ax in axis:
                 keepdim[ax % a.ndim] = 1
             keepdim = tuple(keepdim)
-
-    if isinstance(axis, int):
-        axis = axis,
     if axis is None:
         if overwrite_input:
             ap = a.ravel()
