@@ -2176,28 +2176,17 @@ cdef class _ndarray_base:
             dltensor (:class:`PyCapsule`): Output DLPack tensor which is
             encapsulated in a :class:`PyCapsule` object.
 
-        .. seealso::
-
-            :meth:`~cupy.fromDlpack` is a method for zero-copy conversion from
-            a DLPack tensor (which is encapsulated in a :class:`PyCapsule`
-            object) to a :class:`ndarray`
-
         .. warning::
 
-            As of the DLPack v0.3 specification, it is (implicitly) assumed
-            that the user is responsible to ensure the Producer and the
-            Consumer are operating on the same stream. This requirement might
-            be relaxed/changed in a future DLPack version.
-
-        .. admonition:: Example
-
-            >>> import cupy
-            >>> array1 = cupy.array([0, 1, 2], dtype=cupy.float32)
-            >>> dltensor = array1.toDlpack()
-            >>> array2 = cupy.fromDlpack(dltensor)
-            >>> cupy.testing.assert_array_equal(array1, array2)
-
+            This method is deprecated and will be removed in a future release.
+            In particular, we discourage explicit user management of any
+            :class:`PyCapsule` objects. Use the :func:`~cupy.from_dlpack`
+            array constructor instead.
         """
+        warnings.warn(
+            "This method is deprecated and will be removed in a future "
+            "release. Use the cupy.from_dlpack() array constructor instead.",
+            UserWarning)
         return dlpack.toDlpack(self)
 
 

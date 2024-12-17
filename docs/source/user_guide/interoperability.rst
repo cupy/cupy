@@ -261,10 +261,6 @@ that computes the forward and backward pass of the logarithm using :class:`cupy.
             torch_grad_x = torch.from_dlpack(cupy_grad_x)
             return torch_grad_x
 
-.. note::
-
-   Directly feeding a ``torch.Tensor`` to :func:`cupy.from_dlpack` is only supported in the (new) DLPack data exchange protocol added in CuPy v10+ and PyTorch 1.10+.
-   For earlier versions, you will need to wrap the ``Tensor`` with ``torch.utils.dlpack.to_dlpack()`` as shown in the above examples.
 
 RMM
 ---
@@ -294,77 +290,30 @@ For more information on CuPy's memory management, see :doc:`./memory`.
 
 .. _dlpack:
 
-DLPack
-------
+DLPack data exchange protocol
+-----------------------------
 
 `DLPack <https://github.com/dmlc/dlpack>`__ is a specification of tensor structure to share tensors among frameworks.
 
-CuPy supports importing from and exporting to DLPack data structure (:func:`cupy.from_dlpack` and :func:`cupy.ndarray.toDlpack`).
+As part of the Python array API standard, CuPy supports importing any array- or tensor- like objects that support the DLPack protocol through :func:`cupy.from_dlpack`. Conversely, any array-API-compliant library, including PyTorch and Jax, can also import a CuPy array through the respective ``from_dlpack()`` API call.
 
-Here is a simple example:
-
-.. code:: python
-
-	import cupy
-
-	# Create a CuPy array.
-	cx1 = cupy.random.randn(1, 2, 3, 4).astype(cupy.float32)
-
-	# Convert it into a DLPack tensor.
-	dx = cx1.toDlpack()
-
-	# Convert it back to a CuPy array.
-	cx2 = cupy.from_dlpack(dx)
-
-`TensorFlow <https://www.tensorflow.org>`_ also supports DLpack, so zero-copy data exchange between CuPy and TensorFlow through
-DLPack is possible:
+Here is a simple example with Jax:
 
 .. code:: python
 
-    >>> import tensorflow as tf
     >>> import cupy as cp
-    >>>
-    >>> # convert a TF tensor to a cupy array
-    >>> with tf.device('/GPU:0'):
-    ...     a = tf.random.uniform((10,))
-    ...
-    >>> a
-    <tf.Tensor: shape=(10,), dtype=float32, numpy=
-    array([0.9672388 , 0.57568085, 0.53163004, 0.6536236 , 0.20479882,
-           0.84908986, 0.5852566 , 0.30355775, 0.1733712 , 0.9177849 ],
-          dtype=float32)>
-    >>> a.device
-    '/job:localhost/replica:0/task:0/device:GPU:0'
-    >>> cap = tf.experimental.dlpack.to_dlpack(a)
-    >>> b = cp.from_dlpack(cap)
-    >>> b *= 3
-    >>> b
-    array([1.4949363 , 0.60699713, 1.3276931 , 1.5781245 , 1.1914308 ,
-           2.3180873 , 1.9560868 , 1.3932796 , 1.9299742 , 2.5352407 ],
-          dtype=float32)
-    >>> a
-    <tf.Tensor: shape=(10,), dtype=float32, numpy=
-    array([1.4949363 , 0.60699713, 1.3276931 , 1.5781245 , 1.1914308 ,
-           2.3180873 , 1.9560868 , 1.3932796 , 1.9299742 , 2.5352407 ],
-          dtype=float32)>
-    >>>
-    >>> # convert a cupy array to a TF tensor
-    >>> a = cp.arange(10)
-    >>> cap = a.toDlpack()
-    >>> b = tf.experimental.dlpack.from_dlpack(cap)
-    >>> b.device
-    '/job:localhost/replica:0/task:0/device:GPU:0'
-    >>> b
-    <tf.Tensor: shape=(10,), dtype=int64, numpy=array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])>
-    >>> a
-    array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
+    >>> import jax.numpy as jnp
+    >>> x = jnp.arange(5.0)
+    >>> y = cp.from_dlpack(x)
+    >>> y
+    array([0., 1., 2., 3., 4.], dtype=float32)
+    >>> z = jnp.from_dlpack(y)
+    >>> z
+    Array([0., 1., 2., 3., 4.], dtype=float32)
 
-Be aware that in TensorFlow all tensors are immutable, so in the latter case any changes in ``b`` cannot be reflected in the CuPy array ``a``.
 
-Note that as of DLPack v0.5 for correctness the above approach (implicitly) requires users to ensure that such conversion (both importing and exporting a CuPy array) must happen on the same CUDA/HIP stream. If in doubt, the current CuPy stream in use can be fetched by, for example, calling :func:`cupy.cuda.get_current_stream`. Please consult the other framework's documentation for how to access and control the streams.
-
-DLPack data exchange protocol
-*****************************
+How does it work?
+*****************
 
 To obviate user-managed streams and DLPack tensor objects, the `DLPack data exchange protocol <https://data-apis.org/array-api/latest/design_topics/data_interchange.html>`_ provides a mechanism to shift the responsibility from users to libraries. Any compliant objects (such as :class:`cupy.ndarray`) must implement a pair of methods ``__dlpack__`` and ``__dlpack_device__``. The function :func:`cupy.from_dlpack` accepts such object and returns a :class:`cupy.ndarray` that is safely accessible on CuPy's current stream. Likewise, :class:`cupy.ndarray` can be exported via any compliant library's ``from_dlpack()`` function.
 

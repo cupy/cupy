@@ -388,7 +388,7 @@ cpdef _ndarray_base fromDlpack(object dltensor) except +:
 
     """
     warnings.warn('This function is deprecated in favor of cupy.from_dlpack',
-                  DeprecationWarning)
+                  UserWarning)
     return _dlpack_to_cupy_array(dltensor)
 
 
