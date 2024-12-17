@@ -153,10 +153,10 @@ def trim_zeros(filt, trim='fb'):
     .. seealso:: :func:`numpy.trim_zeros`
 
     """
-    if filt.ndim == 0:
-        return filt
     if filt.ndim > 1:
-        raise NotImplementedError('Multi-dimensional trim is not supported')
+        raise ValueError('Multi-dimensional trim is not supported')
+    if not filt.ndim:
+        raise TypeError('0-d array cannot be trimmed')
     start = 0
     end = filt.size
     trim = trim.upper()
