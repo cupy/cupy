@@ -90,7 +90,11 @@ class TestCov(unittest.TestCase):
     def test_cov(self):
         self.check((2, 3))
         self.check((2,), (2,))
-        self.check((1, 3), (1, 3), rowvar=False)
+
+        if numpy.lib.NumpyVersion(numpy.__version__) < '2.2.0':
+            # XXX: NumPy 2.2.0 raises a ValueError.
+            self.check((1, 3), (1, 3), rowvar=False)
+
         self.check((2, 3), (2, 3), rowvar=False)
         self.check((2, 3), bias=True)
         self.check((2, 3), ddof=2)

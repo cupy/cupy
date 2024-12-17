@@ -39,6 +39,10 @@ def trimseq(seq):
     .. seealso:: :func:`numpy.polynomial.polyutils.trimseq`
 
     """
+    if seq.ndim == 0:
+        raise TypeError('Input must be 1-d array')
+    if seq.ndim > 1:
+        raise ValueError('Input must be 1-d array')
     if seq.size == 0:
         return seq
     ret = cupy.trim_zeros(seq, trim='b')
