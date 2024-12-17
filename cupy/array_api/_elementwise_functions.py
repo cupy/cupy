@@ -610,17 +610,7 @@ def remainder(x1: Array, x2: Array, /) -> Array:
     # Call result type here just to raise on disallowed type combinations
     _result_type(x1.dtype, x2.dtype)
     x1, x2 = Array._normalize_two_args(x1, x2)
-    
-    # Explicit handling for x2 being infinite
-    is_x2_inf = np.isinf(x2._array)
-    if np.any(is_x2_inf):
-        # When x2 is inf, remainder(x1, x2) should return x1 (like np.mod behavior)
-        result_array = np.where(is_x2_inf, x1._array, np.remainder(x1._array, x2._array))
-    else:
-        # Default case: perform the normal remainder operation
-        result_array = np.remainder(x1._array, x2._array)
-    
-    return Array._new(result_array)
+    return Array._new(np.remainder(x1._array, x2._array))
 
 
 def round(x: Array, /) -> Array:
