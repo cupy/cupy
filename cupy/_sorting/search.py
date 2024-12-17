@@ -166,10 +166,6 @@ _where_ufunc = _core.create_ufunc(
     'cupy_where',
     ('???->?', '?bb->b', '?BB->B', '?hh->h', '?HH->H', '?ii->i', '?II->I',
      '?ll->l', '?LL->L', '?qq->q', '?QQ->Q', '?ee->e', '?ff->f',
-     # On CUDA 6.5 these combinations don't work correctly (on CUDA >=7.0, it
-     # works).
-     # See issue #551.
-     '?hd->d', '?Hd->d',
      '?dd->d', '?FF->F', '?DD->D'),
     'out0 = in0 ? in1 : in2')
 
@@ -209,7 +205,7 @@ def where(condition, x=None, y=None):
     if fusion._is_fusing():
         return fusion._call_ufunc(_where_ufunc, condition, x, y)
 
-    return _where_ufunc(condition.astype('?'), x, y)
+    return _where_ufunc(condition.astype('?', copy=False), x, y)
 
 
 def argwhere(a):
