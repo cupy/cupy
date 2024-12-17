@@ -209,9 +209,6 @@ def where(condition, x=None, y=None):
     if fusion._is_fusing():
         return fusion._call_ufunc(_where_ufunc, condition, x, y)
 
-    x = cupy.asarray(x)
-    y = cupy.asarray(y)
-
     return _where_ufunc(condition.astype('?'), x, y)
 
 
