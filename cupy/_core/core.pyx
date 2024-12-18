@@ -2186,7 +2186,7 @@ cdef class _ndarray_base:
         warnings.warn(
             "This method is deprecated and will be removed in a future "
             "release. Use the cupy.from_dlpack() array constructor instead.",
-            UserWarning)
+            cupy.VisibleDeprecationWarning)
         return dlpack.toDlpack(self)
 
 
