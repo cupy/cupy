@@ -202,7 +202,7 @@ class RandomState(object):
         self._update_seed(y.size)
         return y
 
-    def geometric(self, p, size=None, dtype=int):
+    def geometric(self, p, size=None, dtype='l'):
         """Returns an array of samples drawn from the geometric distribution.
 
         .. seealso::
@@ -217,7 +217,7 @@ class RandomState(object):
         self._update_seed(y.size)
         return y
 
-    def hypergeometric(self, ngood, nbad, nsample, size=None, dtype=int):
+    def hypergeometric(self, ngood, nbad, nsample, size=None, dtype='l'):
         """Returns an array of samples drawn from the hypergeometric distribution.
 
         .. seealso::
@@ -295,7 +295,7 @@ class RandomState(object):
             func = curand.generateLogNormalDouble
         return self._generate_normal(func, size, dtype, mean, sigma)
 
-    def logseries(self, p, size=None, dtype=int):
+    def logseries(self, p, size=None, dtype='l'):
         """Returns an array of samples drawn from a log series distribution.
 
         .. warning::
@@ -530,7 +530,7 @@ class RandomState(object):
         self._update_seed(y.size)
         return y
 
-    def poisson(self, lam=1.0, size=None, dtype=int):
+    def poisson(self, lam=1.0, size=None, dtype='l'):
         """Returns an array of samples drawn from the poisson distribution.
 
         .. seealso::
