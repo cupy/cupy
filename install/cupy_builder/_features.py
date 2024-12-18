@@ -426,7 +426,7 @@ def get_features(ctx: Context) -> Dict[str, Feature]:
         features = [
             CUDA_cuda(ctx),
             _from_dict(CUDA_cusolver, ctx),
-            _from_dict(CUDA_cudnn, ctx),
+            #_from_dict(CUDA_cudnn, ctx),
             _from_dict(CUDA_nccl, ctx),
             _from_dict(CUDA_nvtx, ctx),
             _from_dict(CUDA_cutensor, ctx),
