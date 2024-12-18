@@ -2,17 +2,17 @@
 
 version: 2
 submodules:
-    include: all
-    recursive: true
+  include: all
+  recursive: true
 build:
-    os: ubuntu-22.04
-    tools:
-        python: "3.12"
+  os: ubuntu-22.04
+  tools:
+    python: "3.12"
 formats: all
 sphinx:
-    configuration: docs/source/conf.py
+  configuration: docs/source/conf.py
 python:
-    install:
+  install:
     - requirements: docs/requirements.txt
     - method: pip
       path: .
