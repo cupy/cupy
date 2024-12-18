@@ -330,6 +330,7 @@ cdef class PinnedMemoryPool:
 
     cpdef free_all_blocks(self):
         """Release free all blocks."""
+        _watcher.check_and_release()
         rlock.lock_fastrlock(self._lock, -1, True)
         try:
             self._free.clear()
