@@ -454,7 +454,7 @@ class IndexMixin(object):
 
     def _parse_indices(self, key):
         M, N = self.shape
-        row, col = _unpack_index(key)
+        row, col = _unpack_index(key, self.shape)
 
         if self._is_scalar(row):
             row = row.item()
@@ -569,7 +569,18 @@ def _try_is_scipy_spmatrix(index):
     return False
 
 
-def _unpack_index(index):
+def _check_mask_shape(mask, shape):
+    if mask is None:
+        return
+    assert mask.dtype == numpy.bool_
+    if mask.shape != shape:
+        raise IndexError(
+            f"boolean column index has incorrect length: "
+            f"{mask.shape} instead of {shape}"
+        )
+
+
+def _unpack_index(index, shape):
     """ Parse index. Always return a tuple of the form (row, col).
     Valid type for row/col is integer, slice, or array of integers.
 
@@ -585,6 +596,7 @@ def _unpack_index(index):
                             numpy.ndarray))
          or _try_is_scipy_spmatrix(index))
             and index.ndim == 2 and index.dtype.kind == 'b'):
+        _check_mask_shape(index, shape)
         return index.nonzero()
 
     # Parse any ellipses.
@@ -603,7 +615,9 @@ def _unpack_index(index):
         if idx is None:
             row, col = index, slice(None)
         elif idx.ndim < 2:
-            return _boolean_index_to_array(idx), slice(None)
+            _check_mask_shape(idx, (shape[0],))
+            idx = _boolean_index_to_array(idx)
+            return idx, slice(None)
         elif idx.ndim == 2:
             return idx.nonzero()
     # Next, check for validity and transform the index as needed.
@@ -615,7 +629,9 @@ def _unpack_index(index):
             'except boolean indexing where matrix and index '
             'are equal shapes.')
     bool_row = _compatible_boolean_index(row)
+    _check_mask_shape(bool_row, (shape[0],))
     bool_col = _compatible_boolean_index(col)
+    _check_mask_shape(bool_col, (shape[1],))
     if bool_row is not None:
         row = _boolean_index_to_array(bool_row)
     if bool_col is not None:
