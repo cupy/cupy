@@ -445,9 +445,8 @@ cuda-python:
 # Environment Variables
 ###############################################################################
 env:CUPY_ACCELERATORS:
-  null: # Default ("cub")
+  null: # Default (equivalent to "cub")
   "": # Disable all accelerators
-  # "cub":                # Equivalent to null
   "cutensor":
   "cub,cutensor":
   "cutensor,cub":
