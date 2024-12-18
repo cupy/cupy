@@ -108,7 +108,9 @@ def extract_requested_tags(comment: str) -> Optional[Set[str]]:
 def parse_args(argv: Any) -> Any:
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        '--event', type=str, required=True, choices=['issue_comment', 'push'],
+        '--event', type=str, required=True,
+        choices=[
+            'issue_comment', 'push', 'pull_request', 'pull_request_target'],
         help='The name of the event')
     parser.add_argument(
         '--webhook', type=str, required=True,
@@ -139,6 +141,31 @@ def main(argv: Any) -> int:
         payload = json.load(f)
     with open(options.projects) as f2:
         project_tags = json.load(f2)
+
+    # Transform events to ones that FlexCI Legacy supports.
+    if event_name in ('pull_request', 'pull_request_target'):
+        payload_pr = payload['pull_request']
+        if payload['action'] == 'closed' and payload_pr['merged']:
+            merge_commit_sha = payload_pr['merge_commit_sha']
+            event_name = 'push'
+            payload = {
+                'ref': f'refs/heads/{payload_pr["base"]["ref"]}',
+                'after': merge_commit_sha,
+                'head_commit': {
+                    'id': merge_commit_sha,
+                    'message': f'Merge pull request #{payload["number"]}',
+                    'url': f'https://github.com/{payload_pr["base"]["repo"]["full_name"]}/commit/{merge_commit_sha}',
+                    'timestamp': payload_pr['merged_at'],
+                },
+                'repository': payload['repository'],
+                'sender': payload['sender'],
+            }
+            _log(
+                'Transformed the pull_request event as push event: ' +
+                json.dumps(payload, indent=2))
+        else:
+            _log('Only merged pull-request events can be handled')
+            return 1
 
     requested_tags = None
     if event_name == 'push':
