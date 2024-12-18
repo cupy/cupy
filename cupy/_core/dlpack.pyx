@@ -27,7 +27,7 @@ cdef uint32_t IMPL_VER_MAJOR = 1
 cdef uint32_t IMPL_VER_MINOR = 0
 
 
-cdef void pycapsule_deleter(object dltensor):
+cdef void pycapsule_deleter(object dltensor) noexcept:
     cdef DLManagedTensor* dlm_tensor
     cdef DLManagedTensorVersioned *dlm_tensor_ver
 
@@ -45,7 +45,7 @@ cdef void pycapsule_deleter(object dltensor):
         pass
 
 
-cdef void deleter(DLManagedTensor* tensor) with gil:
+cdef void deleter(DLManagedTensor* tensor) noexcept with gil:
     # Delete fully initialized DLManagedTensor
     stdlib.free(tensor.dl_tensor.shape)
     cpython.Py_DECREF(<_ndarray_base>tensor.manager_ctx)
@@ -53,7 +53,7 @@ cdef void deleter(DLManagedTensor* tensor) with gil:
     stdlib.free(tensor)
 
 
-cdef void deleter_ver(DLManagedTensorVersioned* tensor) with gil:
+cdef void deleter_ver(DLManagedTensorVersioned* tensor) noexcept with gil:
     # Delete fully initialized DLManagedTensorVersioned
     stdlib.free(tensor.dl_tensor.shape)
     cpython.Py_DECREF(<_ndarray_base>tensor.manager_ctx)
