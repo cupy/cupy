@@ -295,9 +295,9 @@ DLPack data exchange protocol
 
 `DLPack <https://github.com/dmlc/dlpack>`__ is a specification of tensor structure to share tensors among frameworks.
 
-As part of the Python array API standard, CuPy supports importing any array- or tensor- like objects that support the DLPack protocol through :func:`cupy.from_dlpack`. Conversely, any array-API-compliant library, including PyTorch and Jax, can also import a CuPy array through the respective ``from_dlpack()`` API call.
+As part of the Python array API standard, CuPy supports importing any array- or tensor- like objects that support the DLPack protocol through :func:`cupy.from_dlpack`. Conversely, any array-API-compliant library, including PyTorch and JAX, can also import a CuPy array through the respective ``from_dlpack()`` API call.
 
-Here is a simple example with Jax:
+Here is a simple example with JAX:
 
 .. code:: python
 
