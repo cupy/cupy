@@ -10,6 +10,8 @@
 #include <cub/device/device_histogram.cuh>
 #include <cub/iterator/counting_input_iterator.cuh>
 #include <cub/iterator/transform_input_iterator.cuh>
+#include <cuda/functional>
+#include <cuda/std/functional>
 #else
 #include <hipcub/device/device_reduce.hpp>
 #include <hipcub/device/device_segmented_reduce.hpp>
@@ -195,6 +197,7 @@ __host__ __device__ __half half_negate_inf() {
 //
 // product functor
 //
+#ifdef CUPY_USE_HIP
 struct _multiply
 {
     template <typename T>
@@ -203,6 +206,9 @@ struct _multiply
         return a * b;
     }
 };
+#else
+using _multiply = cuda::std::multiplies<>;
+#endif
 
 //
 // arange functor: arange(0, n+1) -> arange(0, n+1, step_size)
@@ -268,6 +274,11 @@ __host__ __device__ __forceinline__ bool half_equal(const __half& l, const __hal
 // Max()
 //
 
+template <typename T>
+struct select_max {
+    using type = Max;
+};
+
 // specialization for float for handling NaNs
 template <>
 __host__ __device__ __forceinline__ float Max::operator()(const float &a, const float &b) const
@@ -328,6 +339,11 @@ __host__ __device__ __forceinline__ __half Max::operator()(const __half &a, cons
 //
 // Min()
 //
+
+template <typename T>
+struct select_min {
+    using type = Min;
+};
 
 // specialization for float for handling NaNs
 template <>
@@ -570,111 +586,118 @@ __host__ __device__ __forceinline__ KeyValuePair<int, __half> ArgMin::operator()
 //
 // Max()
 //
-template<>
-__host__ __device__ __forceinline__ float Max::operator()(float &a, float &b) const
-{
-    // NumPy behavior: NaN is always chosen!
-    if (isnan(a)) {return a;}
-    else if (isnan(b)) {return b;}
-    else {return a < b ? b : a;}
-}
 
-template<>
-__host__ __device__ __forceinline__ double Max::operator()(double &a, double &b) const
-{
-    // NumPy behavior: NaN is always chosen!
-    if (isnan(a)) {return a;}
-    else if (isnan(b)) {return b;}
-    else {return a < b ? b : a;}
-}
+template <typename T>
+struct select_max {
+#if CCCL_VERSION >= 2008000
+    using type = cuda::maximum<>;
+#else
+    using type = cub::Max;
+#endif
+};
 
-template<>
-__host__ __device__ __forceinline__ complex<float> Max::operator()(complex<float> &a, complex<float> &b) const
-{
-    // - TODO(leofang): just call max() here when the bug in cupy/complex.cuh is fixed
-    // - NumPy behavior: If both a and b contain NaN, the first argument is chosen
-    // - isnan() and max() are defined in cupy/complex.cuh
-    if (isnan(a)) {return a;}
-    else if (isnan(b)) {return b;}
-    else {return a < b ? b : a;}
-}
+template <typename T>
+struct nan_handling_max {
+    __host__ __device__ __forceinline__ T operator()(const T &a, const T &b) const {
+        // NumPy behavior: NaN is always chosen!
+        if (isnan(a)) {return a;}
+        else if (isnan(b)) {return b;}
+        else {return a < b ? b : a;}
+    }
+};
 
-template<>
-__host__ __device__ __forceinline__ complex<double> Max::operator()(complex<double> &a, complex<double> &b) const
-{
-    // - TODO(leofang): just call max() here when the bug in cupy/complex.cuh is fixed
-    // - NumPy behavior: If both a and b contain NaN, the first argument is chosen
-    // - isnan() and max() are defined in cupy/complex.cuh
-    if (isnan(a)) {return a;}
-    else if (isnan(b)) {return b;}
-    else {return a < b ? b : a;}
-}
+template <>
+struct select_max<float> {
+    using type = nan_handling_max<float>;
+};
+
+template <>
+struct select_max<double> {
+    using type = nan_handling_max<double>;
+};
+
+// - NumPy behavior: If both a and b contain NaN, the first argument is chosen
+// - isnan() and max() are defined in cupy/complex.cuh
+template <>
+struct select_max<complex<float>> {
+    using type = nan_handling_max<complex<float>>;
+};
+template <>
+struct select_max<complex<double>> {
+    using type = nan_handling_max<complex<double>>;
+};
 
 #if ((__CUDACC_VER_MAJOR__ > 9 || (__CUDACC_VER_MAJOR__ == 9 && __CUDACC_VER_MINOR__ == 2)) \
-    && (__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))) || (defined(__HIPCC__) || defined(CUPY_USE_HIP))
-template<>
-__host__ __device__ __forceinline__ __half Max::operator()(__half &a, __half &b) const
-{
-    // NumPy behavior: NaN is always chosen!
-    if (half_isnan((const __half)a)) {return a;}
-    else if (half_isnan((const __half)b)) {return b;}
-    else { return half_less((const __half)a, (const __half)b) ? b : a; }
-}
+&& (__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))) || (defined(__HIPCC__) || defined(CUPY_USE_HIP))
+template <>
+struct select_max<__half> {
+    struct type {
+        __host__ __device__ __forceinline__ __half operator()(const __half &a, const __half &b) const {
+            // NumPy behavior: NaN is always chosen!
+            if (half_isnan(a)) {return a;}
+            else if (half_isnan(b)) {return b;}
+            else { return half_less(a, b) ? b : a; }
+        }
+    };
+};
 #endif
 
 //
 // Min()
 //
-template<>
-__host__ __device__ __forceinline__ float Min::operator()(float &a, float &b) const
-{
-    // NumPy behavior: NaN is always chosen!
-    if (isnan(a)) {return a;}
-    else if (isnan(b)) {return b;}
-    else {return a < b ? a : b;}
-}
+template <typename T>
+struct select_min {
+#if CCCL_VERSION >= 2008000
+    using type = cuda::minimum<>;
+#else
+    using type = cub::Min;
+#endif
+};
 
-template<>
-__host__ __device__ __forceinline__ double Min::operator()(double &a, double &b) const
-{
-    // NumPy behavior: NaN is always chosen!
-    if (isnan(a)) {return a;}
-    else if (isnan(b)) {return b;}
-    else {return a < b ? a : b;}
-}
+template <typename T>
+struct nan_handling_min {
+    __host__ __device__ __forceinline__ T operator()(const T &a, const T &b) const {
+        // NumPy behavior: NaN is always chosen!
+        if (isnan(a)) {return a;}
+        else if (isnan(b)) {return b;}
+        else {return a < b ? a : b;}
+    }
+};
 
-template<>
-__host__ __device__ __forceinline__ complex<float> Min::operator()(complex<float> &a, complex<float> &b) const
-{
-    // - TODO(leofang): just call min() here when the bug in cupy/complex.cuh is fixed
-    // - NumPy behavior: If both a and b contain NaN, the first argument is chosen
-    // - isnan() and min() are defined in cupy/complex.cuh
-    if (isnan(a)) {return a;}
-    else if (isnan(b)) {return b;}
-    else {return a < b ? a : b;}
-}
+template <>
+struct select_min<float> {
+    using type = nan_handling_min<float>;
+};
 
-template<>
-__host__ __device__ __forceinline__ complex<double> Min::operator()(complex<double> &a, complex<double> &b) const
-{
-    // - TODO(leofang): just call min() here when the bug in cupy/complex.cuh is fixed
-    // - NumPy behavior: If both a and b contain NaN, the first argument is chosen
-    // - isnan() and min() are defined in cupy/complex.cuh
-    if (isnan(a)) {return a;}
-    else if (isnan(b)) {return b;}
-    else {return a < b ? a : b;}
-}
+template <>
+struct select_min<double> {
+    using type = nan_handling_min<double>;
+};
+
+// - NumPy behavior: If both a and b contain NaN, the first argument is chosen
+// - isnan() and min() are defined in cupy/complex.cuh
+template <>
+struct select_min<complex<float>> {
+    using type = nan_handling_min<complex<float>>;
+};
+template <>
+struct select_min<complex<double>> {
+    using type = nan_handling_min<complex<double>>;
+};
 
 #if ((__CUDACC_VER_MAJOR__ > 9 || (__CUDACC_VER_MAJOR__ == 9 && __CUDACC_VER_MINOR__ == 2)) \
-    && (__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))) || (defined(__HIPCC__) || defined(CUPY_USE_HIP))
-template<>
-__host__ __device__ __forceinline__ __half Min::operator()(__half &a, __half &b) const
-{
-    // NumPy behavior: NaN is always chosen!
-    if (half_isnan((const __half)a)) {return a;}
-    else if (half_isnan((const __half)b)) {return b;}
-    else { return half_less((const __half)a, (const __half)b) ? a: b; }
-}
+&& (__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))) || (defined(__HIPCC__) || defined(CUPY_USE_HIP))
+template <>
+struct select_min<__half> {
+    struct type {
+        __host__ __device__ __forceinline__ __half operator()(const __half &a, const __half &b) const {
+            // NumPy behavior: NaN is always chosen!
+            if (half_isnan(a)) {return a;}
+            else if (half_isnan(b)) {return b;}
+            else { return half_less(a, b) ? a: b; }
+        }
+    };
+};
 #endif
 
 #endif  // #ifndef CUPY_USE_HIP
@@ -748,7 +771,7 @@ struct _cub_reduce_min {
         {
             DeviceReduce::Reduce(workspace, workspace_size, static_cast<T*>(x),
                 static_cast<T*>(y), num_items,
-                CUPY_CUB_NAMESPACE::Min(), std::numeric_limits<T>::infinity(), s);
+                typename select_min<T>::type{}, std::numeric_limits<T>::infinity(), s);
         }
         else
         {
@@ -768,7 +791,7 @@ struct _cub_segmented_reduce_min {
             DeviceSegmentedReduce::Reduce(workspace, workspace_size,
                 static_cast<T*>(x), static_cast<T*>(y), num_segments,
                 offset_start, offset_start+1,
-                CUPY_CUB_NAMESPACE::Min(), std::numeric_limits<T>::infinity(), s);
+                typename select_min<T>::type{}, std::numeric_limits<T>::infinity(), s);
         }
         else
         {
@@ -794,13 +817,13 @@ struct _cub_reduce_max {
             {
                 DeviceReduce::Reduce(workspace, workspace_size, static_cast<T*>(x),
                     static_cast<T*>(y), num_items,
-                    CUPY_CUB_NAMESPACE::Max(), half_negate_inf(), s);
+                    typename select_max<T>::type{}, half_negate_inf(), s);
             }
             else
             {
                 DeviceReduce::Reduce(workspace, workspace_size, static_cast<T*>(x),
                     static_cast<T*>(y), num_items,
-                    CUPY_CUB_NAMESPACE::Max(), -std::numeric_limits<T>::infinity(), s);
+                    typename select_max<T>::type{}, -std::numeric_limits<T>::infinity(), s);
 
             }
         }
@@ -825,14 +848,14 @@ struct _cub_segmented_reduce_max {
                 DeviceSegmentedReduce::Reduce(workspace, workspace_size,
                     static_cast<T*>(x), static_cast<T*>(y), num_segments,
                     offset_start, offset_start+1,
-                    CUPY_CUB_NAMESPACE::Max(), half_negate_inf(), s);
+                    typename select_max<T>::type{}, half_negate_inf(), s);
             }
             else
             {
                 DeviceSegmentedReduce::Reduce(workspace, workspace_size,
                     static_cast<T*>(x), static_cast<T*>(y), num_segments,
                     offset_start, offset_start+1,
-                    CUPY_CUB_NAMESPACE::Max(), -std::numeric_limits<T>::infinity(), s);
+                    typename select_max<T>::type{}, -std::numeric_limits<T>::infinity(), s);
             }
         }
         else
