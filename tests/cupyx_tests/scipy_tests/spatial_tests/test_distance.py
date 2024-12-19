@@ -11,10 +11,10 @@ except ModuleNotFoundError:
     scipy_available = False
 import cupyx.scipy.spatial.distance  # NOQA
 try:
-    import pylibraft  # NOQA
-    pylibraft_available = True
+    import cuvs  # NOQA
+    cuvs_available = True
 except ModuleNotFoundError:
-    pylibraft_available = False
+    cuvs_available = False
 from cupy import testing
 
 
@@ -30,7 +30,7 @@ from cupy import testing
     'order': ["C", "F"]
 }))
 @pytest.mark.skipif(cupy.cuda.runtime.is_hip, reason="tests for CUDA only")
-@pytest.mark.skipif(not scipy_available or not pylibraft_available,
+@pytest.mark.skipif(not scipy_available or not cuvs_available,
                     reason='requires scipy and pylibraft')
 class TestCdist(unittest.TestCase):
 
@@ -92,7 +92,7 @@ class TestCdist(unittest.TestCase):
     'order': ["C", "F"]
 }))
 @pytest.mark.skipif(cupy.cuda.runtime.is_hip, reason="tests for CUDA only")
-@pytest.mark.skipif(not scipy_available or not pylibraft_available,
+@pytest.mark.skipif(not scipy_available or not cuvs_available,
                     reason='requires scipy and pylibraft')
 class TestPdist:
 
@@ -118,7 +118,7 @@ class TestPdist:
     'order': ["C", "F"]
 }))
 @pytest.mark.skipif(cupy.cuda.runtime.is_hip, reason="tests for CUDA only")
-@pytest.mark.skipif(not scipy_available or not pylibraft_available,
+@pytest.mark.skipif(not scipy_available or not cuvs_available,
                     reason='requires scipy and pylibraft')
 class TestDistanceMatrix(unittest.TestCase):
 
@@ -143,7 +143,7 @@ class TestDistanceMatrix(unittest.TestCase):
     'order': ["C", "F"]
 }))
 @pytest.mark.skipif(cupy.cuda.runtime.is_hip, reason="tests for CUDA only")
-@pytest.mark.skipif(not scipy_available or not pylibraft_available,
+@pytest.mark.skipif(not scipy_available or not cuvs_available,
                     reason='requires scipy and pylibraft')
 class TestDistanceFunction(unittest.TestCase):
 
