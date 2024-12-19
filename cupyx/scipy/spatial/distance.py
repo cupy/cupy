@@ -1,6 +1,7 @@
 import cupy
 
 cuvs_available = False
+pylibraft_available = False
 try:
     from cuvs.distance import pairwise_distance
     cuvs_available = True
@@ -8,9 +9,10 @@ except ImportError:
     try:
         #cuVS distance primitives were previously in pylibraft
         from pylibraft.distance import pairwise_distance
-        cuvs_available = True
+        pylibraft_available = True
     except ImportError:
         cuvs_available = False
+        pylibraft_available = False
 
 
 def _convert_to_type(X, out_type):
@@ -108,6 +110,10 @@ _METRIC_ALIAS = dict((alias, info)
 
 _METRICS_NAMES = list(_METRICS.keys())
 
+def check_soft_dependencies():
+    if not cuvs_available:
+        if not pylibraft_available:
+            raise RuntimeError('cuVS >= 24.12 or pylibraft < 24.12 should be installed to use this feature')
 
 def minkowski(u, v, p):
     """Compute the Minkowski distance between two 1-D arrays.
@@ -123,8 +129,9 @@ def minkowski(u, v, p):
     Returns:
         minkowski (double): The Minkowski distance between vectors `u` and `v`.
     """
-    if not cuvs_available:
-        raise RuntimeError('cuVS is not installed')
+
+    check_soft_dependencies()
+
     u = cupy.asarray(u)
     v = cupy.asarray(v)
     output_arr = cupy.zeros((1,), dtype=u.dtype)
@@ -148,8 +155,8 @@ def canberra(u, v):
     Returns:
         canberra (double): The Canberra distance between vectors `u` and `v`.
     """
-    if not cuvs_available:
-        raise RuntimeError('cuVS is not installed')
+    check_soft_dependencies()
+
     u = cupy.asarray(u)
     v = cupy.asarray(v)
     output_arr = cupy.zeros((1,), dtype=u.dtype)
@@ -173,8 +180,8 @@ def chebyshev(u, v):
     Returns:
         chebyshev (double): The Chebyshev distance between vectors `u` and `v`.
     """
-    if not cuvs_available:
-        raise RuntimeError('cuVS is not installed')
+    check_soft_dependencies()
+
     u = cupy.asarray(u)
     v = cupy.asarray(v)
     output_arr = cupy.zeros((1,), dtype=u.dtype)
@@ -199,8 +206,8 @@ def cityblock(u, v):
         cityblock (double): The City Block distance between
         vectors `u` and `v`.
     """
-    if not cuvs_available:
-        raise RuntimeError('cuVS is not installed')
+    check_soft_dependencies()
+
     u = cupy.asarray(u)
     v = cupy.asarray(v)
     output_arr = cupy.zeros((1,), dtype=u.dtype)
@@ -229,8 +236,8 @@ def correlation(u, v):
         correlation (double): The correlation distance between
         vectors `u` and `v`.
     """
-    if not cuvs_available:
-        raise RuntimeError('cuVS is not installed')
+    check_soft_dependencies()
+
     u = cupy.asarray(u)
     v = cupy.asarray(v)
     output_arr = cupy.zeros((1,), dtype=u.dtype)
@@ -256,8 +263,8 @@ def cosine(u, v):
     Returns:
         cosine (double): The Cosine distance between vectors `u` and `v`.
     """
-    if not cuvs_available:
-        raise RuntimeError('cuVS is not installed')
+    check_soft_dependencies()
+
     u = cupy.asarray(u)
     v = cupy.asarray(v)
     output_arr = cupy.zeros((1,), dtype=u.dtype)
@@ -285,8 +292,8 @@ def hamming(u, v):
     Returns:
         hamming (double): The Hamming distance between vectors `u` and `v`.
     """
-    if not cuvs_available:
-        raise RuntimeError('cuVS is not installed')
+    check_soft_dependencies()
+
     u = cupy.asarray(u)
     v = cupy.asarray(v)
     output_arr = cupy.zeros((1,), dtype=u.dtype)
@@ -310,8 +317,8 @@ def euclidean(u, v):
     Returns:
         euclidean (double): The Euclidean distance between vectors `u` and `v`.
     """
-    if not cuvs_available:
-        raise RuntimeError('cuVS is not installed')
+    check_soft_dependencies()
+
     u = cupy.asarray(u)
     v = cupy.asarray(v)
     output_arr = cupy.zeros((1,), dtype=u.dtype)
@@ -339,8 +346,8 @@ def jensenshannon(u, v):
         jensenshannon (double): The Jensen-Shannon distance between
         vectors `u` and `v`.
     """
-    if not cuvs_available:
-        raise RuntimeError('cuVS is not installed')
+    check_soft_dependencies()
+
     u = cupy.asarray(u)
     v = cupy.asarray(v)
     output_arr = cupy.zeros((1,), dtype=u.dtype)
@@ -368,8 +375,8 @@ def russellrao(u, v):
     Returns:
         hamming (double): The Hamming distance between vectors `u` and `v`.
     """
-    if not cuvs_available:
-        raise RuntimeError('cuVS is not installed')
+    check_soft_dependencies()
+
     u = cupy.asarray(u)
     v = cupy.asarray(v)
     output_arr = cupy.zeros((1,), dtype=u.dtype)
@@ -394,8 +401,8 @@ def sqeuclidean(u, v):
         sqeuclidean (double): The squared Euclidean distance between
         vectors `u` and `v`.
     """
-    if not cuvs_available:
-        raise RuntimeError('cuVS is not installed.')
+    check_soft_dependencies()
+
     u = cupy.asarray(u)
     v = cupy.asarray(v)
     output_arr = cupy.zeros((1,), dtype=u.dtype)
@@ -421,8 +428,8 @@ def hellinger(u, v):
         hellinger (double): The Hellinger distance between
         vectors `u` and `v`.
     """
-    if not cuvs_available:
-        raise RuntimeError('cuVS is not installed')
+    check_soft_dependencies()
+
     u = cupy.asarray(u)
     v = cupy.asarray(v)
     output_arr = cupy.zeros((1,), dtype=u.dtype)
@@ -447,8 +454,8 @@ def kl_divergence(u, v):
         kl_divergence (double): The Kullback-Leibler divergence between
         vectors `u` and `v`.
     """
-    if not cuvs_available:
-        raise RuntimeError('cuVS is not installed')
+    check_soft_dependencies()
+
     u = cupy.asarray(u)
     v = cupy.asarray(v)
     output_arr = cupy.zeros((1,), dtype=u.dtype)
@@ -486,14 +493,16 @@ def cdist(XA, XB, metric='euclidean', out=None, **kwargs):
             ``dist(u=XA[i], v=XB[j])`` is computed and stored in the
             :math:`ij` th entry.
     """
-    if not cuvs_available:
-        raise RuntimeError('cuVS is not installed')
+    check_soft_dependencies()
 
-    if XA.dtype not in ['float16', 'float32', 'float64']:
-        raise ValueError('XA must be float16, float32, or float64')
 
-    if XB.dtype not in ['float16', 'float32', 'float64']:
-        raise ValueError('XB must be float16, float32, or float64')
+    if pylibraft_available or \
+            (cuvs_available and XA.dtype not in ['float32', 'float64']):
+        XA = cupy.asarray(XA, dtype='float32')
+
+    if pylibraft_available or \
+            (cuvs_available and XB.dtype not in ['float32', 'float64']):
+        XB = cupy.asarray(XB, dtype='float32')
 
     s = XA.shape
     sB = XB.shape
@@ -512,9 +521,9 @@ def cdist(XA, XB, metric='euclidean', out=None, **kwargs):
     p = kwargs["p"] if "p" in kwargs else 2.0
 
     if out is not None:
-        if out.dtype not in ['float16', 'float32', 'float64']:
-            raise ValueError('out must be float16, float32, or float64')
-
+        if (pylibraft_available and out.dtype != 'float32') or \
+                (cuvs_available and out.dtype not in ['float32', 'float64']):
+            out = out.astype('float32', copy=False)
         if out.shape != (mA, mB):
             cupy.resize(out, (mA, mB))
         out[:] = 0.0
