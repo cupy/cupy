@@ -2359,7 +2359,7 @@ cpdef tuple assemble_cupy_compiler_options(tuple options):
                 # is out
                 if minor < 2:
                     _bundled_include = 'cuda-12'
-                elif minor < 7:
+                elif minor < 9:
                     _bundled_include = f'cuda-12.{minor}'
                 else:
                     # Unsupported CUDA 12.x variant
