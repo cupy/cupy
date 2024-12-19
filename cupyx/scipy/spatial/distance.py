@@ -7,7 +7,7 @@ try:
     cuvs_available = True
 except ImportError:
     try:
-        #cuVS distance primitives were previously in pylibraft
+        # cuVS distance primitives were previously in pylibraft
         from pylibraft.distance import pairwise_distance
         pylibraft_available = True
     except ImportError:
@@ -110,11 +110,13 @@ _METRIC_ALIAS = dict((alias, info)
 
 _METRICS_NAMES = list(_METRICS.keys())
 
+
 def check_soft_dependencies():
     if not cuvs_available:
         if not pylibraft_available:
             raise RuntimeError('cuVS >= 24.12 or pylibraft < '
                                '24.12 should be installed to use this feature')
+
 
 def minkowski(u, v, p):
     """Compute the Minkowski distance between two 1-D arrays.
@@ -495,7 +497,6 @@ def cdist(XA, XB, metric='euclidean', out=None, **kwargs):
             :math:`ij` th entry.
     """
     check_soft_dependencies()
-
 
     if pylibraft_available or \
             (cuvs_available and XA.dtype not in ['float32', 'float64']):
