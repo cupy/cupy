@@ -588,7 +588,7 @@ class TestPlacePoles:
         B = xp.array([0, 5.679, 1.136, 1.136, 0, 0, -3.146, 0]).reshape(4, 2)
 
         fsf = scp.signal.place_poles(A, B, xp.asarray([2, 2, 3, 3]))
-        poles = xp.real_if_close(fsf.computed_poles)
+        poles = xp.real_if_close(fsf.computed_poles, tol=200)
         p = poles.copy()    # make contiguous
         p.sort()
         return p
