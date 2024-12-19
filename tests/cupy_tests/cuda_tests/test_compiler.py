@@ -37,6 +37,11 @@ class TestNvrtcArch(unittest.TestCase):
     def test_get_arch_cuda11(self):
         self._check_get_arch('80', '80')
 
+    @unittest.skipUnless(12080 <= cuda_version(),
+                         'Requires CUDA 12.8 or later')
+    def test_get_arch_cuda128(self):
+        self._check_get_arch('100', '100')
+
     def _compile(self, arch):
         compiler.compile_using_nvrtc('', arch=arch)
 
