@@ -1163,7 +1163,6 @@ cdef class ufunc:
         readonly object _doc
         public object __doc__
         readonly object __name__
-        readonly object __module__
 
     def __init__(
             self, name, nin, nout, _Ops ops, preamble='', loop_prep='', doc='',
