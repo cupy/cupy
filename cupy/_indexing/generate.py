@@ -11,7 +11,7 @@ from cupy._creation import from_data
 from cupy._manipulation import join
 
 
-class AxisConcatenator(object):
+class AxisConcatenator:
     """Translates slice objects to concatenation along an axis.
 
     For detailed documentation on usage, see :func:`cupy.r_`.

@@ -6,7 +6,7 @@ from cupyx.scipy import sparse
 from cupyx.scipy.sparse import _util
 
 
-class LinearOperator(object):
+class LinearOperator:
     """LinearOperator(shape, matvec, rmatvec=None, matmat=None, dtype=None, \
 rmatmat=None)
 

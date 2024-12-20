@@ -143,7 +143,7 @@ def _non_zero_cmp(mat, am, zero, m):
             zero_ind)
 
 
-class _minmax_mixin(object):
+class _minmax_mixin:
     """Mixin for min and max methods.
     These are not implemented for dia_matrix, hence the separate class.
 

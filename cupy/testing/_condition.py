@@ -3,7 +3,7 @@ import os
 import unittest
 
 
-class QuietTestRunner(object):
+class QuietTestRunner:
 
     def run(self, suite):
         result = unittest.TestResult()

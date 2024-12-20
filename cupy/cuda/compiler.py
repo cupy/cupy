@@ -696,7 +696,7 @@ class CompileException(Exception):
         f.flush()
 
 
-class _NVRTCProgram(object):
+class _NVRTCProgram:
 
     def __init__(self, src, name='default_program', headers=(),
                  include_names=(), name_expressions=None, method='ptx'):
