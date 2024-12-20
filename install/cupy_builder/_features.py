@@ -148,7 +148,7 @@ _cuda_files = [
 
 # Libraries required for cudart_static
 _cudart_static_libs = (
-    (['pthread', 'rt', 'dl'] if sys.platform == 'linux' else [])
+    ['pthread', 'rt', 'dl'] if sys.platform == 'linux' else []
 )
 
 

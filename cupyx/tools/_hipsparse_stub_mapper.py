@@ -343,8 +343,8 @@ def main(hip_h, cu_h, stubs, hip_version, init):
                     hip_stub_h.append("#endif")
             else:
                 hip_stub_h.append(
-                    (line[:line.find('return')+6]
-                     + ' HIPSPARSE_STATUS_NOT_SUPPORTED;'))
+                    line[:line.find('return')+6]
+                     + ' HIPSPARSE_STATUS_NOT_SUPPORTED;')
 
         elif 'return' in line:
             if 'CUSPARSE_STATUS' in line:

@@ -177,8 +177,8 @@ class _minmax_mixin:
 
     def _min_or_max(self, axis, out, min_or_max, explicit):
         if out is not None:
-            raise ValueError(("Sparse matrices do not support "
-                              "an 'out' parameter."))
+            raise ValueError("Sparse matrices do not support "
+                              "an 'out' parameter.")
 
         _sputils.validateaxis(axis)
 
