@@ -350,15 +350,13 @@ def _transpile_function_internal(
         # TODO(asi1024): Support for `ast.ClassDef`.
         raise NotImplementedError('Not supported: {}'.format(type(func)))
     if len(func.decorator_list) > 0:
-        if sys.version_info >= (3, 9):
-            # Code path for Python versions that support `ast.unparse`.
-            for deco in func.decorator_list:
-                deco_code = ast.unparse(deco)
-                if not any(word in deco_code
-                           for word in ['rawkernel', 'vectorize']):
-                    warnings.warn(
-                        f'Decorator {deco_code} may not supported in JIT.',
-                        RuntimeWarning)
+        for deco in func.decorator_list:
+            deco_code = ast.unparse(deco)
+            if not any(word in deco_code
+                       for word in ['rawkernel', 'vectorize']):
+                warnings.warn(
+                    f'Decorator {deco_code} may not supported in JIT.',
+                    RuntimeWarning)
     arguments = func.args
     if arguments.vararg is not None:
         raise NotImplementedError('`*args` is not supported currently.')

@@ -367,12 +367,12 @@ def main(hip_h, cu_h, stubs, hip_version, init):
 
 
 if __name__ == '__main__':
-    with open('cupy_backends/stub/cupy_cusparse.h', 'r') as f:
+    with open('cupy_backends/stub/cupy_cusparse.h') as f:
         stubs = f.read()
 
     init = False
     for cu_ver in cu_versions:
-        with open(cusparse_h.format(cu_ver), 'r') as f:
+        with open(cusparse_h.format(cu_ver)) as f:
             cu_h = f.read()
 
         x = 0

@@ -540,9 +540,12 @@ def check_cub_version(compiler, settings):
             cupy_cub_include = os.path.join(
                 cupy_builder.get_context().source_root,
                 "third_party/cccl")
-            a = subprocess.run(' '.join(['git', 'describe', '--tags']),
-                               stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                               shell=True, cwd=cupy_cub_include)
+            a = subprocess.run(
+                " ".join(["git", "describe", "--tags"]),
+                capture_output=True,
+                shell=True,
+                cwd=cupy_cub_include,
+            )
             if a.returncode == 0:
                 tag = a.stdout.decode()[:-1]
 
@@ -594,9 +597,12 @@ def check_jitify_version(compiler, settings):
             "third_party/jitify")
         # Unfortunately Jitify does not have any identifiable name (branch,
         # tag, etc), so we must use the commit here
-        a = subprocess.run(' '.join(['git', 'rev-parse', '--short', 'HEAD']),
-                           stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                           shell=True, cwd=cupy_jitify_include)
+        a = subprocess.run(
+            " ".join(["git", "rev-parse", "--short", "HEAD"]),
+            capture_output=True,
+            shell=True,
+            cwd=cupy_jitify_include,
+        )
         if a.returncode == 0:
             out = a.stdout.decode()[:-1]  # unlike elsewhere, out is a str here
         else:
