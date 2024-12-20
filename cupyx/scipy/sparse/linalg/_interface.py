@@ -34,9 +34,9 @@ rmatmat=None)
     def __new__(cls, *args, **kwargs):
         if cls is LinearOperator:
             # Operate as _CustomLinearOperator factory.
-            return super(LinearOperator, cls).__new__(_CustomLinearOperator)
+            return super().__new__(_CustomLinearOperator)
         else:
-            obj = super(LinearOperator, cls).__new__(cls)
+            obj = super().__new__(cls)
 
             if (type(obj)._matvec == LinearOperator._matvec
                     and type(obj)._matmat == LinearOperator._matmat):
@@ -261,7 +261,7 @@ class _CustomLinearOperator(LinearOperator):
 
     def __init__(self, shape, matvec, rmatvec=None, matmat=None,
                  dtype=None, rmatmat=None):
-        super(_CustomLinearOperator, self).__init__(dtype, shape)
+        super().__init__(dtype, shape)
 
         self.args = ()
 
@@ -276,7 +276,7 @@ class _CustomLinearOperator(LinearOperator):
         if self.__matmat_impl is not None:
             return self.__matmat_impl(X)
         else:
-            return super(_CustomLinearOperator, self)._matmat(X)
+            return super()._matmat(X)
 
     def _matvec(self, x):
         return self.__matvec_impl(x)
@@ -291,7 +291,7 @@ class _CustomLinearOperator(LinearOperator):
         if self.__rmatmat_impl is not None:
             return self.__rmatmat_impl(X)
         else:
-            return super(_CustomLinearOperator, self)._rmatmat(X)
+            return super()._rmatmat(X)
 
     def _adjoint(self):
         return _CustomLinearOperator(shape=(self.shape[1], self.shape[0]),
@@ -307,7 +307,7 @@ class _AdjointLinearOperator(LinearOperator):
 
     def __init__(self, A):
         shape = (A.shape[1], A.shape[0])
-        super(_AdjointLinearOperator, self).__init__(
+        super().__init__(
             dtype=A.dtype, shape=shape)
         self.A = A
         self.args = (A,)
@@ -330,7 +330,7 @@ class _TransposedLinearOperator(LinearOperator):
 
     def __init__(self, A):
         shape = (A.shape[1], A.shape[0])
-        super(_TransposedLinearOperator, self).__init__(
+        super().__init__(
             dtype=A.dtype, shape=shape)
         self.A = A
         self.args = (A,)
@@ -368,7 +368,7 @@ class _SumLinearOperator(LinearOperator):
             raise ValueError('cannot add %r and %r: shape mismatch'
                              % (A, B))
         self.args = (A, B)
-        super(_SumLinearOperator, self).__init__(_get_dtype([A, B]), A.shape)
+        super().__init__(_get_dtype([A, B]), A.shape)
 
     def _matvec(self, x):
         return self.args[0].matvec(x) + self.args[1].matvec(x)
@@ -395,7 +395,7 @@ class _ProductLinearOperator(LinearOperator):
         if A.shape[1] != B.shape[0]:
             raise ValueError('cannot multiply %r and %r: shape mismatch'
                              % (A, B))
-        super(_ProductLinearOperator, self).__init__(_get_dtype([A, B]),
+        super().__init__(_get_dtype([A, B]),
                                                      (A.shape[0], B.shape[1]))
         self.args = (A, B)
 
@@ -423,7 +423,7 @@ class _ScaledLinearOperator(LinearOperator):
         if not cupy.isscalar(alpha):
             raise ValueError('scalar expected as alpha')
         dtype = _get_dtype([A], [type(alpha)])
-        super(_ScaledLinearOperator, self).__init__(dtype, A.shape)
+        super().__init__(dtype, A.shape)
         self.args = (A, alpha)
 
     def _matvec(self, x):
@@ -452,7 +452,7 @@ class _PowerLinearOperator(LinearOperator):
         if not _util.isintlike(p) or p < 0:
             raise ValueError('non-negative integer expected as p')
 
-        super(_PowerLinearOperator, self).__init__(_get_dtype([A]), A.shape)
+        super().__init__(_get_dtype([A]), A.shape)
         self.args = (A, p)
 
     def _power(self, fun, x):
@@ -480,7 +480,7 @@ class _PowerLinearOperator(LinearOperator):
 
 class MatrixLinearOperator(LinearOperator):
     def __init__(self, A):
-        super(MatrixLinearOperator, self).__init__(A.dtype, A.shape)
+        super().__init__(A.dtype, A.shape)
         self.A = A
         self.__adj = None
         self.args = (A,)
@@ -511,7 +511,7 @@ class _AdjointMatrixOperator(MatrixLinearOperator):
 
 class IdentityOperator(LinearOperator):
     def __init__(self, shape, dtype=None):
-        super(IdentityOperator, self).__init__(dtype, shape)
+        super().__init__(dtype, shape)
 
     def _matvec(self, x):
         return x

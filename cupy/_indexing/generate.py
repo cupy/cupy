@@ -81,7 +81,7 @@ class AxisConcatenator:
 class CClass(AxisConcatenator):
 
     def __init__(self):
-        super(CClass, self).__init__(-1, ndmin=2, trans1d=0)
+        super().__init__(-1, ndmin=2, trans1d=0)
 
 
 c_ = CClass()
@@ -114,7 +114,7 @@ array([[1, 2, 3, 0, 0, 4, 5, 6]], dtype=int32)
 class RClass(AxisConcatenator):
 
     def __init__(self):
-        super(RClass, self).__init__()
+        super().__init__()
 
 
 r_ = RClass()

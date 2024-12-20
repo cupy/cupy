@@ -665,7 +665,7 @@ class CompileException(Exception):
         self.name = name
         self.options = options
         self.backend = backend
-        super(CompileException, self).__init__()
+        super().__init__()
 
     def __reduce__(self):
         return (type(self), (self._msg, self.source, self.name,
