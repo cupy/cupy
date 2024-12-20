@@ -70,11 +70,11 @@ def _run_cc(cmd, cwd, backend, log_stream=None):
             log_stream.write(log)
         return log
     except subprocess.CalledProcessError as e:
-        msg = ('`{0}` command returns non-zero exit status. \n'
-               'command: {1}\n'
-               'return-code: {2}\n'
+        msg = ('`{}` command returns non-zero exit status. \n'
+               'command: {}\n'
+               'return-code: {}\n'
                'stdout/stderr: \n'
-               '{3}'.format(backend,
+               '{}'.format(backend,
                             e.cmd,
                             e.returncode,
                             e.output))
@@ -782,9 +782,9 @@ def compile_using_hipcc(source, options, arch, log_stream=None):
         if not os.path.isfile(out_path):
             raise HIPCCException(
                 '`hipcc` command does not generate output file. \n'
-                'command: {0}\n'
+                'command: {}\n'
                 'stdout/stderr: \n'
-                '{1}'.format(cmd, output))
+                '{}'.format(cmd, output))
         with open(out_path, 'rb') as f:
             return f.read()
 

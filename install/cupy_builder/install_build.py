@@ -364,7 +364,7 @@ def check_compute_capabilities(compiler, settings):
             library_dirs=settings['library_dirs'])
         _compute_capabilities = set([int(o) for o in out.split()])
     except Exception as e:
-        utils.print_warning('Cannot check compute capability\n{0}'.format(e))
+        utils.print_warning('Cannot check compute capability\n{}'.format(e))
         return False
 
     return True
@@ -388,7 +388,7 @@ def check_thrust_version(compiler, settings):
         }
         ''', include_dirs=settings['include_dirs'])
     except Exception as e:
-        utils.print_warning('Cannot check Thrust version\n{0}'.format(e))
+        utils.print_warning('Cannot check Thrust version\n{}'.format(e))
         return False
 
     _thrust_version = int(out)
@@ -420,7 +420,7 @@ def check_cudnn_version(compiler, settings):
         ''', include_dirs=settings['include_dirs'])
 
     except Exception as e:
-        utils.print_warning('Cannot check cuDNN version\n{0}'.format(e))
+        utils.print_warning('Cannot check cuDNN version\n{}'.format(e))
         return False
 
     _cudnn_version = int(out)
@@ -476,7 +476,7 @@ def check_nccl_version(compiler, settings):
                             define_macros=settings['define_macros'])
 
     except Exception as e:
-        utils.print_warning('Cannot include NCCL\n{0}'.format(e))
+        utils.print_warning('Cannot include NCCL\n{}'.format(e))
         return False
 
     _nccl_version = int(out)
@@ -564,9 +564,9 @@ def check_cub_version(compiler, settings):
                     out += int(local_patch[0]) + int(local_patch[1])
             else:
                 raise RuntimeError('Cannot determine CUB version from git tag'
-                                   '\n{0}'.format(e))
+                                   '\n{}'.format(e))
         except Exception as e:
-            utils.print_warning('Cannot determine CUB version\n{0}'.format(e))
+            utils.print_warning('Cannot determine CUB version\n{}'.format(e))
             # 0: CUB is not built (makes no sense), -1: built with unknown ver
             out = -1
 
@@ -652,7 +652,7 @@ def check_cutensor_version(compiler, settings):
         ''', include_dirs=settings['include_dirs'])
 
     except Exception as e:
-        utils.print_warning('Cannot check cuTENSOR version\n{0}'.format(e))
+        utils.print_warning('Cannot check cuTENSOR version\n{}'.format(e))
         return False
 
     _cutensor_version = int(out)
@@ -691,7 +691,7 @@ def check_cusparselt_version(compiler, settings):
         ''', include_dirs=settings['include_dirs'])
 
     except Exception as e:
-        utils.print_warning('Cannot check cuSPARSELt version\n{0}'.format(e))
+        utils.print_warning('Cannot check cuSPARSELt version\n{}'.format(e))
         return False
 
     _cusparselt_version = int(out)
@@ -794,7 +794,7 @@ def build_shlib(compiler, source, libraries=(),
                                      extra_postargs=postargs,
                                      target_lang='c++')
         except Exception as e:
-            msg = 'Cannot build a stub file.\nOriginal error: {0}'.format(e)
+            msg = 'Cannot build a stub file.\nOriginal error: {}'.format(e)
             raise Exception(msg)
 
 
@@ -823,7 +823,7 @@ def build_and_run(compiler, source, libraries=(),
                                      extra_postargs=postargs,
                                      target_lang='c++')
         except Exception as e:
-            msg = 'Cannot build a stub file.\nOriginal error: {0}'.format(e)
+            msg = 'Cannot build a stub file.\nOriginal error: {}'.format(e)
             raise Exception(msg)
 
         try:
@@ -831,5 +831,5 @@ def build_and_run(compiler, source, libraries=(),
             return out
 
         except Exception as e:
-            msg = 'Cannot execute a stub file.\nOriginal error: {0}'.format(e)
+            msg = 'Cannot execute a stub file.\nOriginal error: {}'.format(e)
             raise Exception(msg)
