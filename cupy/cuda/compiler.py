@@ -75,9 +75,9 @@ def _run_cc(cmd, cwd, backend, log_stream=None):
                'return-code: {}\n'
                'stdout/stderr: \n'
                '{}'.format(backend,
-                            e.cmd,
-                            e.returncode,
-                            e.output))
+                           e.cmd,
+                           e.returncode,
+                           e.output))
         if backend == 'nvcc':
             raise NVCCException(msg)
         elif backend == 'hipcc':

@@ -396,7 +396,7 @@ class _ProductLinearOperator(LinearOperator):
             raise ValueError('cannot multiply %r and %r: shape mismatch'
                              % (A, B))
         super().__init__(_get_dtype([A, B]),
-                                                     (A.shape[0], B.shape[1]))
+                         (A.shape[0], B.shape[1]))
         self.args = (A, B)
 
     def _matvec(self, x):
