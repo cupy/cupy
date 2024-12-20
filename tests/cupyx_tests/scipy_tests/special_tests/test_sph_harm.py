@@ -16,7 +16,7 @@ def _get_harmonic_list(degree_max):
 
 
 @testing.with_requires("scipy")
-class TestBasic():
+class TestBasic:
 
     @pytest.mark.parametrize("m, n", _get_harmonic_list(degree_max=5))
     @testing.for_dtypes(["e", "f", "d"])

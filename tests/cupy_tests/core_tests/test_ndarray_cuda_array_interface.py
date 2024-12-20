@@ -10,7 +10,7 @@ from cupy import testing
 # TODO(leofang): test PTDS in this file
 
 
-class DummyObjectWithCudaArrayInterface(object):
+class DummyObjectWithCudaArrayInterface:
 
     def __init__(self, a, ver=3):
         self.a = a
