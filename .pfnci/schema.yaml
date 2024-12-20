@@ -273,8 +273,10 @@ python:
     spec: "3.11.10"
   "3.12":
     spec: "3.12.6"
+  "3.13":
+    spec: "3.13.1"
   "pre":
-    spec: "3.13.0rc2"  # note that dependency python libraies may not work
+    spec: "3.14-dev"  # note that dependency python libraies may not work
 
 ###############################################################################
 # Python Libraries
@@ -329,7 +331,13 @@ numpy:
       - "3.10"
       - "3.11"
       - "3.12"
-      # - "3.13"
+  "2.2":
+    spec: "==2.2.*"
+    python:
+      - "3.10"
+      - "3.11"
+      - "3.12"
+      - "3.13"
   "pre":
     spec: ">=0a0,<2"  # latest NumPy v1.x, including pre-releases
 scipy:
@@ -439,12 +447,14 @@ scipy:
       - "3.10"
       - "3.11"
       - "3.12"
+      - "3.13"
     numpy:
       - "1.24"
       - "1.25"
       - "1.26"
       - "2.0"
       - "2.1"
+      - "2.2"
   "pre":
     spec: ">=0a0"  # latest, including pre-releases
 optuna:

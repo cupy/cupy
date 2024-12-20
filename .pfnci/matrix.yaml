@@ -376,7 +376,7 @@
   cusparselt: "0.2.0"
   cudnn: "8.8"
   python: "3.12"
-  numpy: "2.0"
+  numpy: "2.1"
   scipy: "1.14"
   optuna: "3"
   mpi4py: null
@@ -407,7 +407,7 @@
   cusparselt: "0.2.0"
   cudnn: "8.8"
   python: "3.12"
-  numpy: "2.1"
+  numpy: "2.2"
   scipy: "1.14"
   optuna: "3"
   mpi4py: null
