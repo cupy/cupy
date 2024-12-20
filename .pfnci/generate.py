@@ -8,7 +8,8 @@ import sys
 
 import yaml
 
-from typing import Any, Mapping
+from typing import Any
+from collections.abc import Mapping
 
 
 SchemaType = Mapping[str, Any]

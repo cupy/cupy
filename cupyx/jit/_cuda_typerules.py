@@ -1,5 +1,6 @@
 import ast
-from typing import Any, Callable, Mapping, Optional
+from typing import Any, Callable, Optional
+from collections.abc import Mapping
 
 import numpy
 import numpy.typing as npt

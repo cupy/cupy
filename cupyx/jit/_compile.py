@@ -5,7 +5,8 @@ import linecache
 import numbers
 import re
 import sys
-from typing import Any, Optional, Sequence, TypeVar, Union
+from typing import Any, Optional, TypeVar, Union
+from collections.abc import Sequence
 import warnings
 import types
 
