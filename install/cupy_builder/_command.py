@@ -3,7 +3,7 @@ import os
 import os.path
 import subprocess
 import sys
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
 import setuptools
 import setuptools.command.build_ext
@@ -15,9 +15,9 @@ from cupy_builder._compiler import DeviceCompilerUnix, DeviceCompilerWin32
 
 
 def filter_files_by_extension(
-        sources: List[str],
+        sources: list[str],
         extension: str,
-) -> Tuple[List[str], List[str]]:
+) -> tuple[list[str], list[str]]:
     sources_selected = []
     sources_others = []
     for src in sources:
@@ -31,7 +31,7 @@ def filter_files_by_extension(
 def compile_device_code(
         ctx: Context,
         ext: setuptools.Extension
-) -> Tuple[List[str], List[str]]:
+) -> tuple[list[str], list[str]]:
     """Compiles device code ("*.cu").
 
     This method invokes the device compiler (nvcc/hipcc) to build object
@@ -72,7 +72,7 @@ def _get_timestamp(path: str) -> float:
     return max(stat.st_atime, stat.st_mtime, stat.st_ctime)
 
 
-def dumpbin_dependents(dumpbin: str, path: str) -> List[str]:
+def dumpbin_dependents(dumpbin: str, path: str) -> list[str]:
     args = [dumpbin, '/nologo', '/dependents', path]
     try:
         p = subprocess.run(args, stdout=subprocess.PIPE)
@@ -108,7 +108,7 @@ class custom_build_ext(setuptools.command.build_ext.build_ext):
         }
 
         # Compile-time constants to be used in Cython code
-        compile_time_env: Dict[str, Any] = {}
+        compile_time_env: dict[str, Any] = {}
 
         # Enable CUDA Python.
         # TODO: add `cuda` to `setup_requires` only when this flag is set

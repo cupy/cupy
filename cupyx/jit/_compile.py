@@ -5,7 +5,7 @@ import linecache
 import numbers
 import re
 import sys
-from typing import Any, Dict, List, Optional, Sequence, Tuple, TypeVar, Union
+from typing import Any, Optional, Sequence, TypeVar, Union
 import warnings
 import types
 
@@ -157,11 +157,11 @@ class Generated:
 
     def __init__(self) -> None:
         # list of str
-        self.codes: List[str] = []
+        self.codes: list[str] = []
         # (function, in_types) => Optional(function_name, return_type)
         self.device_function: \
-            Dict[Tuple[Any, Tuple[_cuda_types.TypeBase, ...]],
-                 Tuple[str, _cuda_types.TypeBase]] = {}
+            dict[tuple[Any, tuple[_cuda_types.TypeBase, ...]],
+                 tuple[str, _cuda_types.TypeBase]] = {}
         # whether to use cooperative launch
         self.enable_cg = False
         # whether to include cooperative_groups.h
@@ -245,7 +245,7 @@ def _transpile_func_obj(func, attributes, mode, in_types, ret_type, generated):
     return name, env.ret_type
 
 
-def _indent(lines: List[str], spaces: str = '  ') -> List[str]:
+def _indent(lines: list[str], spaces: str = '  ') -> list[str]:
     return [spaces + line for line in lines]
 
 
@@ -275,16 +275,16 @@ class Environment:
     def __init__(
             self,
             mode: str,
-            consts: Dict[str, Constant],
-            params: Dict[str, Data],
+            consts: dict[str, Constant],
+            params: dict[str, Data],
             ret_type: _cuda_types.TypeBase,
             generated: Generated,
     ):
         self.mode = mode
         self.consts = consts
         self.params = params
-        self.locals: Dict[str, Data] = {}
-        self.decls: Dict[str, Data] = {}
+        self.locals: dict[str, Data] = {}
+        self.decls: dict[str, Data] = {}
         self.ret_type = ret_type
         self.generated = generated
         self.count = 0
@@ -500,7 +500,7 @@ __device__ {out_type} {ufunc_name}({params}) {{
 
 
 def _transpile_stmts(
-        stmts: List[ast.stmt],
+        stmts: list[ast.stmt],
         is_toplevel: bool,
         env: Environment,
 ) -> _CodeType:
@@ -731,7 +731,7 @@ def _transpile_expr_internal(
     if isinstance(expr, ast.Call):
         func = _transpile_expr(expr.func, env)
         args = [_transpile_expr(x, env) for x in expr.args]
-        kwargs: Dict[str, Union[Constant, Data]] = {}
+        kwargs: dict[str, Union[Constant, Data]] = {}
         for kw in expr.keywords:
             assert kw.arg is not None
             kwargs[kw.arg] = _transpile_expr(kw.value, env)

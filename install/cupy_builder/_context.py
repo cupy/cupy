@@ -3,7 +3,7 @@ import glob
 import hashlib
 import os
 import sys
-from typing import Any, List, Mapping, Optional, Tuple
+from typing import Any, Mapping, Optional
 
 import cupy_builder
 
@@ -12,7 +12,7 @@ def _get_env_bool(name: str, default: bool, env: Mapping[str, str]) -> bool:
     return env[name] != '0' if name in env else default
 
 
-def _get_env_path(name: str, env: Mapping[str, str]) -> List[str]:
+def _get_env_path(name: str, env: Mapping[str, str]) -> list[str]:
     paths = env.get(name, None)
     if paths is None:
         return []
@@ -23,7 +23,7 @@ class Context:
     def __init__(
             self, source_root: str, *,
             _env: Mapping[str, str] = os.environ,
-            _argv: List[str] = sys.argv):
+            _argv: list[str] = sys.argv):
         self.source_root = source_root
 
         self.use_cuda_python = _get_env_bool(
@@ -37,8 +37,8 @@ class Context:
         self.package_name: str = cmdopts.cupy_package_name
         self.long_description_path: Optional[str] = (
             cmdopts.cupy_long_description)
-        self.wheel_libs: List[str] = cmdopts.cupy_wheel_lib
-        self.wheel_includes: List[str] = cmdopts.cupy_wheel_include
+        self.wheel_libs: list[str] = cmdopts.cupy_wheel_lib
+        self.wheel_includes: list[str] = cmdopts.cupy_wheel_include
         self.wheel_metadata_path: Optional[str] = (
             cmdopts.cupy_wheel_metadata)
         self.no_rpath: bool = cmdopts.cupy_no_rpath
@@ -78,7 +78,7 @@ class Context:
         self.win32_cl_exe_path: Optional[str] = None
 
 
-def parse_args(argv: List[str]) -> Tuple[Any, List[str]]:
+def parse_args(argv: list[str]) -> tuple[Any, list[str]]:
     parser = argparse.ArgumentParser(add_help=False)
 
     parser.add_argument(

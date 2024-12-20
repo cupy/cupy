@@ -10,7 +10,6 @@ import shutil
 import subprocess
 import sys
 import tempfile
-from typing import List, Set
 
 import cupy_builder
 import cupy_builder.install_utils as utils
@@ -89,7 +88,7 @@ def get_cuda_path():
     return _cuda_path
 
 
-def get_nvcc_path() -> List[str]:
+def get_nvcc_path() -> list[str]:
     nvcc = os.environ.get('NVCC', None)
     if nvcc:
         return shlex.split(nvcc)
@@ -110,7 +109,7 @@ def get_nvcc_path() -> List[str]:
         return None
 
 
-def get_hipcc_path() -> List[str]:
+def get_hipcc_path() -> list[str]:
     hipcc = os.environ.get('HIPCC', None)
     if hipcc:
         return shlex.split(hipcc)
@@ -238,7 +237,7 @@ def _match_output_lines(output_lines, regexs):
     return None
 
 
-def get_compiler_base_options(compiler_path: List[str]) -> List[str]:
+def get_compiler_base_options(compiler_path: list[str]) -> list[str]:
     """Returns base options for nvcc compiler.
 
     """
@@ -371,7 +370,7 @@ def check_compute_capabilities(compiler, settings):
     return True
 
 
-def get_compute_capabilities(formatted: bool = False) -> Set[int]:
+def get_compute_capabilities(formatted: bool = False) -> set[int]:
     return _compute_capabilities
 
 
