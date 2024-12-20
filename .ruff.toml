@@ -9,7 +9,7 @@ extend-exclude = [
 ]
 
 [lint]
-select = ["E", "F", "W"]
+select = ["E", "F", "W", "UP"]
 
 [lint.per-file-ignores]
 "cupyx/scipy/special/_gammainc.py" = [
