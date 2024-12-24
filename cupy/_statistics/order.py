@@ -7,7 +7,8 @@ from cupy import _core
 from cupy._core import _routines_statistics as _statistics
 from cupy._core import _fusion_thread_local
 from cupy._logic import content
-
+# import cupy 
+import warnings
 
 def amin(a, axis=None, out=None, keepdims=False):
     """Returns the minimum of an array or the minimum along an axis.
@@ -83,35 +84,56 @@ def amax(a, axis=None, out=None, keepdims=False):
     return a.max(axis=axis, out=out, keepdims=keepdims)
 
 
-def nanmin(a, axis=None, out=None, keepdims=False):
-    """Returns the minimum of an array along an axis ignoring NaN.
 
-    When there is a slice whose elements are all NaN, a :class:`RuntimeWarning`
-    is raised and NaN is returned.
+
+def nanmin(a, axis=None, out=None, keepdims=False, initial=None, where=True):
+    """
+    Returns the minimum of an array along an axis ignoring NaN, with support for
+    `initial` and `where` parameters.
 
     Args:
         a (cupy.ndarray): Array to take the minimum.
-        axis (int): Along which axis to take the minimum. The flattened array
-            is used by default.
-        out (cupy.ndarray): Output array.
-        keepdims (bool): If ``True``, the axis is remained as an axis of
-            size one.
+        axis (int or tuple of int, optional): Along which axis to take the minimum.
+            The flattened array is used by default.
+        out (cupy.ndarray, optional): Output array.
+        keepdims (bool, optional): If ``True``, the axis is kept as an axis of size one.
+        initial (scalar, optional): The minimum value to start with. If provided, this
+            value will be considered as the starting point for the reduction.
+        where (array_like of bool, optional): A boolean array that specifies elements
+            to include in the reduction.
 
     Returns:
-        cupy.ndarray: The minimum of ``a``, along the axis if specified.
-
-    .. warning::
-
-        This function may synchronize the device.
+        cupy.ndarray: The minimum of `a`, along the specified axis if provided.
 
     .. seealso:: :func:`numpy.nanmin`
-
     """
-    # TODO(niboshi): Avoid synchronization.
+    a = cupy.asarray(a)
+
+    # Apply the `where` mask if specified
+    if where is not True:
+        a = cupy.where(where, a, cupy.inf)
+
+    # Handle `initial` parameter by combining it into the array
+    if initial is not None:
+        if axis is None:
+            # Flatten array and prepend initial
+            a = cupy.concatenate([cupy.asarray([initial]), a.ravel()])
+        else:
+            # Expand initial value along the specified axis
+            shape = list(a.shape)
+            shape[axis] = 1
+            initial_array = cupy.full(shape, initial, dtype=a.dtype)
+            a = cupy.concatenate([initial_array, a], axis=axis)
+
+    # Compute the minimum, ignoring NaN values
     res = _core.nanmin(a, axis=axis, out=out, keepdims=keepdims)
-    if content.isnan(res).any():  # synchronize!
+
+    # Check for all-NaN slices
+    if cupy.isnan(res).any():  # synchronize!
         warnings.warn('All-NaN slice encountered', RuntimeWarning)
+
     return res
+
 
 
 def nanmax(a, axis=None, out=None, keepdims=False):
