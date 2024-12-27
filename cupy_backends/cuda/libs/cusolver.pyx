@@ -944,6 +944,21 @@ cdef extern from '../../cupy_lapack.h' nogil:
         void *bufferOnDevice, size_t workspaceInBytesOnDevice,
         void *bufferOnHost, size_t workspaceInBytesOnHost, int *info)
 
+    int cusolverDnXgeev_bufferSize(
+        Handle handle, Params params, EigMode jobvl, EigMode jobvr, int64_t n,
+        DataType dataTypeA, void *A, int64_t lda, DataType dataTypeW,
+        void *W, DataType dataTypeVL, void *VL, int64_t ldvl,
+        DataType dataTypeVR, void *VR, int64_t ldvr, DataType computeType,
+        size_t *workspaceInBytesOnDevice, size_t *workspaceInBytesOnHost)
+    int cusolverDnXgeev(
+        Handle handle, Params params, EigMode jobvl, EigMode jobvr,
+        int64_t n, DataType dataTypeA, void *A, int64_t lda,
+        DataType dataTypeW, void *W, DataType dataTypeVL, void *VL,
+        int64_t ldvl, DataType dataTypeVR, void *VR, int64_t ldvr,
+        DataType computeType, void *bufferOnDevice,
+        size_t workspaceInBytesOnDevice, void *bufferOnHost,
+        size_t workspaceInBytesOnHost, int *info)
+
     ###########################################################################
     # Sparse LAPACK Functions
     ###########################################################################
@@ -3488,6 +3503,40 @@ cpdef xsyevd(
             <void*>bufferOnHost, workspaceInBytesOnHost, <int*>info)
     check_status(status)
 
+cpdef (size_t, size_t) xgeev_bufferSize(
+        intptr_t handle, intptr_t params, int jobvl, int jobvr, int64_t n,
+        int dataTypeA, intptr_t A, int64_t lda, int dataTypeW,
+        intptr_t W, int dataTypeVL, intptr_t VL, int64_t ldvl,
+        int dataTypeVR, intptr_t VR, int64_t ldvr, int computeType) except *:
+    cdef size_t workspaceInBytesOnDevice, workspaceInBytesOnHost
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cusolverDnXgeev_bufferSize(
+            <Handle>handle, <Params>params, <EigMode>jobvl, <EigMode>jobvr, n,
+            <DataType>dataTypeA, <void*>A, lda, <DataType>dataTypeW, <void*>W,
+            <DataType>dataTypeVL, <void*>VL, ldvl, <DataType>dataTypeVR, <void*>VR,
+            ldvr, <DataType>computeType, &workspaceInBytesOnDevice,
+            &workspaceInBytesOnHost)
+    check_status(status)
+    return workspaceInBytesOnDevice, workspaceInBytesOnHost
+
+cpdef xgeev(
+        intptr_t handle, intptr_t params, int jobvl, int jobvr,
+        int64_t n, intptr_t dataTypeA, intptr_t A, int64_t lda, int dataTypeW,
+        intptr_t W, int dataTypeVL, intptr_t VL, int64_t ldvl, int dataTypeVR,
+        intptr_t VR, int64_t ldvr, int computeType, intptr_t bufferOnDevice,
+        size_t workspaceInBytesOnDevice, intptr_t bufferOnHost,
+        size_t workspaceInBytesOnHost, intptr_t info):
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cusolverDnXgeev(
+            <Handle>handle, <Params>params, <EigMode>jobvl, <EigMode>jobvr,
+            n, <DataType>dataTypeA, <void*>A, lda, <DataType>dataTypeW,
+            <void*>W, <DataType>dataTypeVL, <void*>VL, ldvl, <DataType>dataTypeVR,
+            <void*>VR, ldvr, <DataType>computeType, <void*>bufferOnDevice,
+            workspaceInBytesOnDevice, <void*>bufferOnHost,
+            workspaceInBytesOnHost, <int*>info)
+    check_status(status)
 
 ###############################################################################
 # Sparse LAPACK Functions
