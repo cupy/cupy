@@ -3514,8 +3514,8 @@ cpdef (size_t, size_t) xgeev_bufferSize(
         status = cusolverDnXgeev_bufferSize(
             <Handle>handle, <Params>params, <EigMode>jobvl, <EigMode>jobvr, n,
             <DataType>dataTypeA, <void*>A, lda, <DataType>dataTypeW, <void*>W,
-            <DataType>dataTypeVL, <void*>VL, ldvl, <DataType>dataTypeVR, <void*>VR,
-            ldvr, <DataType>computeType, &workspaceInBytesOnDevice,
+            <DataType>dataTypeVL, <void*>VL, ldvl, <DataType>dataTypeVR,
+            <void*>VR, ldvr, <DataType>computeType, &workspaceInBytesOnDevice,
             &workspaceInBytesOnHost)
     check_status(status)
     return workspaceInBytesOnDevice, workspaceInBytesOnHost
@@ -3532,10 +3532,10 @@ cpdef xgeev(
         status = cusolverDnXgeev(
             <Handle>handle, <Params>params, <EigMode>jobvl, <EigMode>jobvr,
             n, <DataType>dataTypeA, <void*>A, lda, <DataType>dataTypeW,
-            <void*>W, <DataType>dataTypeVL, <void*>VL, ldvl, <DataType>dataTypeVR,
-            <void*>VR, ldvr, <DataType>computeType, <void*>bufferOnDevice,
-            workspaceInBytesOnDevice, <void*>bufferOnHost,
-            workspaceInBytesOnHost, <int*>info)
+            <void*>W, <DataType>dataTypeVL, <void*>VL, ldvl,
+            <DataType>dataTypeVR, <void*>VR, ldvr, <DataType>computeType,
+            <void*>bufferOnDevice, workspaceInBytesOnDevice,
+            <void*>bufferOnHost, workspaceInBytesOnHost, <int*>info)
     check_status(status)
 
 ###############################################################################
