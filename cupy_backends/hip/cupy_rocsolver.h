@@ -973,15 +973,15 @@ cusolverStatus_t cusolverDnDestroyGesvdjInfo(...) {
 cusolverStatus_t cusolverDnSgesvdjBatched_bufferSize(
         cusolverDnHandle_t handle,
         cusolverEigMode_t jobz,
-        int m,                
-        int n,                
-        const float *A,    
-        int lda,           
-        const float *S, 
-        const float *U,   
-        int ldu, 
+        int m,
+        int n,
+        const float *A,
+        int lda,
+        const float *S,
+        const float *U,
+        int ldu,
         const float *V,
-        int ldv,  
+        int ldv,
         int *lwork,
         gesvdjInfo_t params,
         int batchSize) {
@@ -997,7 +997,7 @@ cusolverStatus_t cusolverDnDgesvdjBatched_bufferSize(
         cusolverEigMode_t jobz,
         int m,
         int n,
-        const double *A, 
+        const double *A,
         int lda,
         const double *S,
         const double *U,
@@ -1038,14 +1038,14 @@ cusolverStatus_t cusolverDnCgesvdjBatched_bufferSize(
 
 cusolverStatus_t cusolverDnZgesvdjBatched_bufferSize(
         cusolverDnHandle_t handle,
-        cusolverEigMode_t jobz, 
-        int m, 
-        int n, 
+        cusolverEigMode_t jobz,
+        int m,
+        int n,
         const cuDoubleComplex *A,
         int lda,
         const double *S,
         const cuDoubleComplex *U,
-        int ldu, 
+        int ldu,
         const cuDoubleComplex *V,
         int ldv,
         int *lwork,
@@ -1060,16 +1060,16 @@ cusolverStatus_t cusolverDnZgesvdjBatched_bufferSize(
 
 cusolverStatus_t cusolverDnSgesvdjBatched(
         cusolverDnHandle_t handle,
-        cusolverEigMode_t jobz, 
-        int m, 
-        int n, 
-        float *A, 
-        int lda, 
-        float *S, 
+        cusolverEigMode_t jobz,
+        int m,
+        int n,
+        float *A,
+        int lda,
+        float *S,
         float *U,
         int ldu,
         float *V,
-        int ldv, 
+        int ldv,
         float *work,
         int lwork,
         int *info,
@@ -1120,7 +1120,7 @@ cusolverStatus_t cusolverDnDgesvdjBatched(
         int lwork,
         int *info,
         gesvdjInfo_t params,
-        int batchSize) { 
+        int batchSize) {
     #if HIP_VERSION < 309
     return rocblas_status_not_implemented;
     #else
@@ -2106,6 +2106,13 @@ cusolverStatus_t cusolverDnXsyevd(...) {
     return rocblas_status_not_implemented;
 }
 
+cusolverStatus_t cusolverDnXgeev_bufferSize(...) {
+    return rocblas_status_not_implemented;
+}
+cusolverStatus_t cusolverDnXgeev(...) {
+    return rocblas_status_not_implemented;
+}
+
 cusolverStatus_t cusolverSpCreate(...) {
     return rocblas_status_not_implemented;
 }
@@ -2162,6 +2169,6 @@ cusolverStatus_t cusolverSpZcsreigvsi(...) {
     return rocblas_status_not_implemented;
 }
 
-} // extern "C" 
+} // extern "C"
 
 #endif // #ifdef INCLUDE_GUARD_HIP_CUPY_ROCSOLVER_H
