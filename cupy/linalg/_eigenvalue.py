@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import numpy
 
 import cupy
@@ -5,6 +7,15 @@ from cupy.cuda import device
 from cupy.cuda import runtime
 from cupy.linalg import _util
 from cupy._core import _dtype
+
+
+def _check_dtype(dtype: numpy.dtype | str) -> None:
+    if isinstance(dtype, numpy.dtype):
+        dtype = dtype.char
+    if dtype not in "fdFD":
+        raise RuntimeError(
+            "Only float32, float64, complex64, and complex128 are supported"
+        )
 
 
 def _syevd(a, UPLO, with_eigen_vector, overwrite_a=False):
@@ -38,9 +49,7 @@ def _syevd(a, UPLO, with_eigen_vector, overwrite_a=False):
         uplo = cublas.CUBLAS_FILL_MODE_UPPER
 
     if not runtime.is_hip:
-        if dtype.char not in 'fdFD':
-            raise RuntimeError('Only float32, float64, complex64, and '
-                               'complex128 are supported')
+        _check_dtype(dtype)
         type_v = _dtype.to_cuda_dtype(dtype)
         type_w = _dtype.to_cuda_dtype(real_dtype)
         params = cusolver.createParams()
@@ -88,7 +97,55 @@ def _syevd(a, UPLO, with_eigen_vector, overwrite_a=False):
     return w.astype(w_dtype, copy=False), v.astype(v_dtype, copy=False)
 
 
-# TODO(okuta): Implement eig
+def _geev(a, with_eigen_vector, overwrite_a=False):
+    from cupy_backends.cuda.libs import cusolver
+
+    if runtime.is_hip:
+        raise NotImplementedError("geev is not implemented for HIP")
+
+    _check_dtype(a.dtype)
+    complex_dtype = numpy.dtype(a.dtype.char.upper())
+
+    # Force complex-number computation for human-readable output format
+    # Used for both right and (uncomputed) left eigenvectors
+    a_ = a.astype(complex_dtype, order='F', copy=not overwrite_a)
+
+    m, lda = a.shape
+    w = cupy.empty(m, complex_dtype)
+    v = cupy.empty_like(a, dtype=complex_dtype, order='F')
+    dev_info = cupy.empty((), numpy.int32)
+    handle = device.Device().cusolver_handle
+
+    if with_eigen_vector:
+        jobvr = cusolver.CUSOLVER_EIG_MODE_VECTOR
+    else:
+        jobvr = cusolver.CUSOLVER_EIG_MODE_NOVECTOR
+    # Skip computing left eigenvectors
+    jobvl = cusolver.CUSOLVER_EIG_MODE_NOVECTOR
+
+    type_complex = _dtype.to_cuda_dtype(complex_dtype)
+    params = cusolver.createParams()
+    try:
+        work_device_size, work_host_size = cusolver.xgeev_bufferSize(
+            handle, params, jobvl, jobvr, m, type_complex, a_.data.ptr, lda,
+            type_complex, w.data.ptr, type_complex, v.data.ptr, lda,
+            type_complex, v.data.ptr, lda, type_complex)
+        work_device = cupy.empty(work_device_size, 'b')
+        work_host = numpy.empty(work_host_size, 'b')
+        cusolver.xgeev(
+            handle, params, jobvl, jobvr, m, type_complex, a_.data.ptr, lda,
+            type_complex, w.data.ptr, type_complex, v.data.ptr, lda,
+            type_complex, v.data.ptr, lda, type_complex, work_device.data.ptr,
+            work_device_size, work_host.ctypes.data, work_host_size,
+            dev_info.data.ptr)
+    finally:
+        cusolver.destroyParams(params)
+    cupy.linalg._util._check_cusolver_dev_info_if_synchronization_allowed(
+        cusolver.xgeev, dev_info)
+
+    if all(w.imag == 0.0):
+        return w.real, v.real
+    return w, v
 
 
 def eigh(a, UPLO='L'):
