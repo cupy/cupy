@@ -107,11 +107,11 @@ def _geev(a, with_eigen_vector, overwrite_a=False):
     complex_dtype = numpy.dtype(a.dtype.char.upper())
 
     # Force complex-number computation for human-readable output format
-    # Used for both right and (uncomputed) left eigenvectors
     a_ = a.astype(complex_dtype, order='F', copy=not overwrite_a)
 
     m, lda = a.shape
     w = cupy.empty(m, complex_dtype)
+    # Used for both right and (uncomputed) left eigenvectors
     v = cupy.empty_like(a, dtype=complex_dtype, order='F')
     dev_info = cupy.empty((), numpy.int32)
     handle = device.Device().cusolver_handle
