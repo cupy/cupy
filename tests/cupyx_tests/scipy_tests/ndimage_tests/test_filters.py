@@ -500,7 +500,7 @@ class TestFilterFastAxes(FilterTestCaseBase):
         })
     )
 ))
-@testing.with_requires('scipy>=1.15')
+@testing.with_requires('scipy>=1.15.0rc1')
 class TestFilterFastAxesSciPy15(FilterTestCaseBase):
 
     def _hip_skip_invalid_condition(self):
@@ -679,10 +679,10 @@ class TestGenericFilter(FilterTestCaseBase):
         'dtype': [numpy.uint16, numpy.float64],
         'axes': [(0, 1), (-2, -1), (0, -1)],
         'mode': ['constant', 'reflect'],
-        })
-    )
+    })
 )
-@testing.with_requires('scipy>=1.15')
+)
+@testing.with_requires('scipy>=1.15.0rc1')
 class TestGenericFilterAxes(FilterTestCaseBase):
 
     _func_or_kernels = {

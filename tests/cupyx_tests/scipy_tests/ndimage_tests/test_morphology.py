@@ -512,7 +512,7 @@ class TestBinaryErosionAndDilation:
         'output': [None]}
     )
 ))
-@testing.with_requires('scipy>=1.15')
+@testing.with_requires('scipy>=1.15.0rc1')
 class TestBinaryMorphologyAxes:
     def _filter(self, xp, scp, x):
         filter = getattr(scp.ndimage, self.filter)
@@ -821,7 +821,7 @@ class TestWhiteTophatAndBlackTopHat:
                    'morphological_gradient', 'white_tophat', 'black_tophat']
     })
 ))
-@testing.with_requires('scipy>=1.15')
+@testing.with_requires('scipy>=1.15.0rc1')
 class TestGreyMorphologyAxes:
 
     def _filter(self, xp, scp, x):
