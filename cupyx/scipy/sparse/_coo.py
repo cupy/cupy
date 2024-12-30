@@ -171,7 +171,10 @@ class coo_matrix(sparse_data._data_matrix):
         self._shape = int(shape[0]), int(shape[1])
 
     def __repr__(self):
-        return f"<{self.shape[0]}x{self.shape[1]} sparse matrix of type '<class '{self.data.dtype}'>'\n        with {self.nnz} stored elements in COOrdinate format>"
+    return (
+        f"<{self.shape[0]}x{self.shape[1]} sparse matrix of type '<class {self.data.dtype}'>''"
+        f"        with {self.nnz} stored elements in COOrdinate format>"
+    )
 
     def _with_data(self, data, copy=True):
         """Returns a matrix with the same sparsity structure as self,
