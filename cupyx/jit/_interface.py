@@ -171,9 +171,9 @@ def rawkernel(*, mode='cuda', device=False):
     """A decorator compiles a Python function into CUDA kernel.
     Args:
         mode ('numpy' or 'cuda'): The rule for typecast.
-        device (int or cupy.cuda.Device): Index of the device to be used. 
-        Be careful that the device ID (a.k.a. GPU ID) is zero origin. The 
-        current device is selected by default.
+        device (int or cupy.cuda.Device): Index of the device to be used.
+        Be careful that the device ID (a.k.a. GPU ID) is zero origin.
+        The current device is selected by default.
     """
     cupy._util.experimental('cupyx.jit.rawkernel')
 
