@@ -1,4 +1,5 @@
-from typing import Any, Mapping
+from typing import Any
+from collections.abc import Mapping
 import warnings
 
 import cupy
