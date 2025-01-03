@@ -66,26 +66,12 @@ def _check_nd_args(input, weights, mode, origin, wghts_name='filter weights',
         _util._check_mode(mode)
     origins = _util._fix_sequence_arg(origin, num_axes, 'origin', int)
     if isinstance(weights, cupy.ndarray) and num_axes < input.ndim:
-        # In case of explicit footprint, we insert a singletone dimension
-        # on all non-filtered axes and insert values for origins, modes on any
-        # non-filtered axes.
-
-        # set origin = 0 on any axis not being filtered
-        origins_temp = [0,] * input.ndim
-        for o, ax in zip(origins, axes):
-            origins_temp[ax] = o
-        origins = origins_temp
-
-        modes_temp = ['constant'] * input.ndim
-        for m, ax in zip(modes, axes):
-            modes_temp[ax] = m
-        modes = modes_temp
-
-        # insert singleton dimension on footprint for non-filtered axes
-        weights = cupy.expand_dims(
-            weights,
-            tuple(ax for ax in range(input.ndim) if ax not in axes)
+        # expand origins ,footprint and structure if num_axes < input.ndim
+        weights = _util._expand_footprint(
+            input.ndim, axes, weights, footprint_name='weights'
         )
+        origins = _util._expand_origin(input.ndim, axes, origins)
+        modes = _util._expand_mode(input.ndim, axes, modes)
 
         # now filter all axes
         axes = tuple(range(input.ndim))
@@ -100,12 +86,12 @@ def _check_nd_args(input, weights, mode, origin, wghts_name='filter weights',
         if len(weight_dims) != input.ndim:
             raise RuntimeError(f'{wghts_name} array has incorrect shape')
     elif sizes is None:
-        raise ValueError("must specify either weights array or sizes")
+        raise ValueError('must specify either weights array or sizes')
     else:
         if numpy.isscalar(sizes):
             sizes = (sizes,) * num_axes
         if len(sizes) != num_axes:
-            raise ValueError("sizes must match len(axes)")
+            raise ValueError('sizes must match len(axes)')
         weight_dims = sizes
     for origin, width in zip(origins, weight_dims):
         _util._check_origin(origin, width)
@@ -189,7 +175,8 @@ def _call_kernel(kernel, input, weights, output, structure=None,
     output = _util._get_output(output, input, None, complex_output)
     needs_temp = cupy.shares_memory(output, input, 'MAY_SHARE_BOUNDS')
     if needs_temp:
-        output, temp = _util._get_output(output.dtype, input), output
+        output, temp = _util._get_output(output.dtype, input, None,
+                                         complex_output), output
     args.append(output)
     kernel(*args)
     if needs_temp:
