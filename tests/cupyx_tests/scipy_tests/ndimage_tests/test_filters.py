@@ -382,7 +382,7 @@ class TestFilterFast(FilterTestCaseBase):
             'filter': ['gaussian_filter'],
             'sigma': [1.5, 2.25, (1.5, 2.25, 1.0, 3.0)],
             'radius': [None, 2, (1, 2, 3, 4)],
-            'mode': [('reflect', 'nearest', 'mirror', 'wrap')],
+            'mode': [('reflect', 'nearest', 'mirror', 'constant', 'wrap')],
             'truncate': [2.75],
         }) +
         testing.product({
@@ -407,7 +407,7 @@ class TestFilterFast(FilterTestCaseBase):
             'filter': ['maximum_filter', 'minimum_filter'],
             'origin': [0, (0, 1, 1, 0)],
             'ksize': [(3, 3, 4, 5)],
-            'mode': [('reflect', 'nearest', 'constant', 'wrap')],
+            'mode': [('reflect', 'nearest', 'mirror', 'constant', 'wrap')],
             'cval': [0, 2],
             'footprint': [False],
         }) +
@@ -424,7 +424,7 @@ class TestFilterFast(FilterTestCaseBase):
             'filter': ['uniform_filter'],
             'origin': [0, (0, 1, 1, 0)],
             'kshape': [(3, 5, 3, 5)],
-            'mode': [('reflect', 'constant', 'mirror', 'nearest')],
+            'mode': [('reflect', 'constant', 'mirror', 'nearest', 'wrap')],
             'cval': [0, 2],
         }),
         # common arguments for all filters to test axes
