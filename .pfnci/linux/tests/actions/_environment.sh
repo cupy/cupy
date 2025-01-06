@@ -1,3 +1,5 @@
+echo "::group::Test - Setup Environment"
+
 export CACHE_DIR="${CACHE_DIR:-/tmp}"
 export CCACHE_DIR="${CACHE_DIR}/.ccache"
 export CCACHE_NOHASHDIR="true"
@@ -40,3 +42,5 @@ if ! touch .; then
     pushd "${_src_dir}"
     export CCACHE_BASEDIR="${_src_dir}"
 fi
+
+echo "::endgroup::"
