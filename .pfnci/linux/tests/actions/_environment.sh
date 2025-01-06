@@ -27,6 +27,7 @@ export PATH="${HOME}/.local/bin:${PATH}"
 # Show GPU statistics
 ( which nvidia-smi &> /dev/null ) && nvidia-smi
 ( which hipconfig &> /dev/null ) && hipconfig
+( which rocminfo &> /dev/null ) && timeout --kill-after 10 3 rocminfo > /dev/null
 
 # Show environment variables
 env
