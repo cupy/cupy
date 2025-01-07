@@ -30,8 +30,9 @@ import cupy
 
 from cupy._core._scalar import get_typename
 from cupy_backends.cuda.api import runtime
+from cupyx.scipy.signal._wavelets import _cwt, _ricker
 
-from cupyx import jit
+import numpy as np
 
 
 def _get_typename(dtype):
@@ -641,7 +642,7 @@ def _select_by_peak_distance(peaks, priority, distance):
     priority : ndarray
         An array matching `peaks` used to determine priority of each peak. A
         peak with a higher priority value is kept over one with a lower one.
-    distance : np.float64
+    distance : cupy.float64
         Minimal distance that peaks must be spaced.
 
     Returns
@@ -711,13 +712,13 @@ def _arg_x_as_expected(value):
 
 
 def _arg_wlen_as_expected(value):
-    """Ensure argument `wlen` is of type `np.intp` and larger than 1.
+    """Ensure argument `wlen` is of type `cupy.intp` and larger than 1.
 
     Used in `peak_prominences` and `peak_widths`.
 
     Returns
     -------
-    value : np.intp
+    value : cupy.intp
         The original `value` rounded up to an integer or -1 if `value` was
         None.
     """
@@ -760,14 +761,28 @@ def _arg_peaks_as_expected(value):
     return value
 
 
-@jit.rawkernel()
-def _check_prominence_invalid(n, peaks, left_bases, right_bases, out):
-    tid = jit.blockIdx.x * jit.blockDim.x + jit.threadIdx.x
-    i_min = left_bases[tid]
-    i_max = right_bases[tid]
-    peak = peaks[tid]
-    valid = 0 <= i_min and i_min <= peak and peak <= i_max and i_max < n
-    out[tid] = not valid
+_check_prominence_invalid = cupy.RawKernel(r"""
+extern "C" __global__ void check_prominence_invalid
+(
+int n,
+int x_n,
+long long* peaks,
+long long* left_bases,
+long long* right_bases,
+bool* out
+) {
+    int idx = blockDim.x * blockIdx.x + threadIdx.x;
+    if(idx >= n) {
+        return;
+    }
+
+    long long i_min = left_bases[idx];
+    long long i_max = right_bases[idx];
+    long long peak = peaks[idx];
+    bool valid = 0 <= i_min && i_min <= peak && peak <= i_max && i_max < x_n;
+    out[idx] = !valid;
+}
+""", 'check_prominence_invalid')
 
 
 def _peak_prominences(x, peaks, wlen=None, check=False):
@@ -813,7 +828,7 @@ def _peak_widths(x, peaks, rel_height, prominences, left_bases, right_bases,
         invalid = cupy.zeros(n, dtype=cupy.bool_)
         _check_prominence_invalid(
             (n_blocks,), (block_sz,),
-            (x.shape[0], peaks, left_bases, right_bases, invalid))
+            (n, x.shape[0], peaks, left_bases, right_bases, invalid))
         if cupy.any(invalid):
             raise ValueError("prominence data is invalid")
 
@@ -1481,3 +1496,456 @@ def argrelextrema(data, comparator, axis=0, order=1, mode="clip"):
             "CuPy `take` doesn't support `mode='raise'`.")
 
     return cupy.nonzero(results)
+
+
+def _identify_ridge_lines(matr, max_distances, gap_thresh):
+    """
+    Identify ridges in the 2-D matrix.
+
+    Expect that the width of the wavelet feature increases with increasing row
+    number.
+
+    Parameters
+    ----------
+    matr : 2-D ndarray
+        Matrix in which to identify ridge lines.
+    max_distances : 1-D sequence
+        At each row, a ridge line is only connected
+        if the relative max at row[n] is within
+        `max_distances`[n] from the relative max at row[n+1].
+    gap_thresh : int
+        If a relative maximum is not found within `max_distances`,
+        there will be a gap. A ridge line is discontinued if
+        there are more than `gap_thresh` points without connecting
+        a new relative maximum.
+
+    Returns
+    -------
+    ridge_lines : tuple
+        Tuple of 2 1-D sequences. `ridge_lines`[ii][0] are the rows of the
+        ii-th ridge-line, `ridge_lines`[ii][1] are the columns. Empty if none
+        found.  Each ridge-line will be sorted by row (increasing), but the
+        order of the ridge lines is not specified.
+
+    References
+    ----------
+    .. [1] Bioinformatics (2006) 22 (17): 2059-2065.
+       :doi:`10.1093/bioinformatics/btl355`
+
+    Examples
+    --------
+    >>> import cupy
+    >>> from cupyx.scipy.signal._peak_finding import _identify_ridge_lines
+    >>> rng = cupy.random.default_rng()
+    >>> data = rng.random((5,5))
+    >>> max_dist = 3
+    >>> max_distances = cupy.full(20, max_dist)
+    >>> ridge_lines = _identify_ridge_lines(data, max_distances, 1)
+
+    Notes
+    -----
+    This function is intended to be used in conjunction with `cwt`
+    as part of `find_peaks_cwt`.
+    """
+    if len(max_distances) < matr.shape[0]:
+        raise ValueError('Max_distances must have at least as many rows '
+                         'as matr')
+
+    all_max_cols = _boolrelextrema(matr, cupy.greater, axis=1, order=1)
+
+    # Highest row for which there are any relative maxima
+    has_relmax = cupy.nonzero(all_max_cols.any(axis=1))[0]
+    if len(has_relmax) == 0:
+        return []
+
+    # Move points into CPU since building the lines there is faster than trying
+    # to define a GPU kernel without overhead costs (both in space and time)
+    all_max_cols = all_max_cols.get()
+    max_distances = max_distances.get()
+    start_row = has_relmax[-1].get()
+
+    # Each ridge line is a 3-tuple:
+    # rows, cols, Gap number
+    ridge_lines = [[[start_row],
+                   [col],
+                   0] for col in np.nonzero(all_max_cols[start_row])[0]]
+    final_lines = []
+    rows = np.arange(start_row - 1, -1, -1)
+    cols = np.arange(0, matr.shape[1])
+    for row in rows:
+        this_max_cols = cols[all_max_cols[row]]
+
+        # Increment gap number of each line,
+        # set it to zero later if appropriate
+        for line in ridge_lines:
+            line[2] += 1
+
+        # XXX These should always be all_max_cols[row]
+        # But the order might be different. Might be an efficiency gain
+        # to make sure the order is the same and avoid this iteration
+        prev_ridge_cols = np.array([line[1][-1] for line in ridge_lines])
+        # Look through every relative maximum found at current row
+        # Attempt to connect them with existing ridge lines.
+        for ind, col in enumerate(this_max_cols):
+            # If there is a previous ridge line within
+            # the max_distance to connect to, do so.
+            # Otherwise start a new one.
+            line = None
+            if len(prev_ridge_cols) > 0:
+                diffs = np.abs(col - prev_ridge_cols)
+                closest = np.argmin(diffs)
+                if diffs[closest] <= max_distances[row]:
+                    line = ridge_lines[closest]
+            if line is not None:
+                # Found a point close enough, extend current ridge line
+                line[1].append(col)
+                line[0].append(row)
+                line[2] = 0
+            else:
+                new_line = [[row],
+                            [col],
+                            0]
+                ridge_lines.append(new_line)
+
+        # Remove the ridge lines with gap_number too high
+        # XXX Modifying a list while iterating over it.
+        # Should be safe, since we iterate backwards, but
+        # still tacky.
+        for ind in range(len(ridge_lines) - 1, -1, -1):
+            line = ridge_lines[ind]
+            if line[2] > gap_thresh:
+                final_lines.append(line)
+                del ridge_lines[ind]
+
+    out_rows = []
+    out_cols = []
+    out_lengths = []
+    for line in (final_lines + ridge_lines):
+        min_pos = np.argmin(line[0])
+        out_rows.append(line[0][min_pos])
+        out_cols.append(line[1][min_pos])
+        out_lengths.append(len(line[0]))
+
+    rows = cupy.asarray(out_rows)
+    cols = cupy.asarray(out_cols)
+    lengths = cupy.asarray(out_lengths)
+    return rows, cols, lengths
+
+
+_NOISE_MODULE_SRC = r"""
+
+template<typename T>
+__device__ void insort(T value, T* win, const int k) {
+    if(value > win[k - 1]) {
+        return;
+    }
+
+    long long left = 0;
+    long long right = k - 1;
+
+    while(left != right) {
+        long long pos = (left + right) / 2;
+        if(win[pos] < value) {
+            left = pos + 1;
+        } else {
+            right = pos;
+        }
+    }
+
+    T to_insert = value;
+    for(long long i = left; i < k; i++) {
+        T tmp = win[i];
+        win[i] = to_insert;
+        to_insert = tmp;
+    }
+}
+
+template<typename T>
+__device__ void search_in_window
+(
+const long long start,
+const long long end,
+const int k,
+const T* cwt_row,
+T* win
+) {
+    for(long long i = start; i < end; i++) {
+        T value = cwt_row[i];
+        insort(value, win, k);
+    }
+}
+
+template<typename T>
+__global__ void cwt_noise(
+        const int n_points,
+        const long long* win_start,
+        const long long* win_end,
+        const long long* search_start,
+        const int* k,
+        const double* gamma,
+        const T* cwt_row,
+        T* search_results,
+        T* out) {
+
+    int idx = blockDim.x * blockIdx.x + threadIdx.x;
+
+    if(idx >= n_points) {
+        return;
+    }
+
+    const long long cur_win_start = win_start[idx];
+    const long long cur_win_end = win_end[idx];
+    T* search_win = search_results + search_start[idx];
+
+    search_in_window(cur_win_start, cur_win_end,
+                     k[idx] + 1, cwt_row, search_win);
+
+    out[idx] = ((1.0 - gamma[idx]) * search_win[k[idx] - 1] +
+                gamma[idx] * search_win[k[idx]]);
+}
+"""
+
+_noise_module = cupy.RawModule(
+    code=_NOISE_MODULE_SRC, options=('-std=c++11',),
+    name_expressions=['cwt_noise<double>', 'cwt_noise<float>'])
+
+
+_filter_mask_kern = cupy.RawKernel(r'''
+extern "C" __global__ void compute_cwt_mask
+(
+int              n_ridges,
+int              cwt_stride,
+int              min_length,
+double           min_snr,
+const long long* rows,
+const long long* cols,
+const long long* lengths,
+const double*    cwt,
+const double*    noises,
+bool*            out
+) {
+    int idx = blockDim.x * blockIdx.x + threadIdx.x;
+    if(idx >= n_ridges) {
+        return;
+    }
+
+    const long long row = rows[idx];
+    const long long col = cols[idx];
+    const long long length = lengths[idx];
+
+    out[idx] = false;
+    if(length < min_length) {
+        return;
+    }
+
+    double snr = abs(cwt[cwt_stride * row + col] / noises[col]);
+    out[idx] = snr >= min_snr;
+}
+''', 'compute_cwt_mask')
+
+
+def _filter_ridge_lines(cwt, ridge_lines, window_size=None, min_length=None,
+                        min_snr=1, noise_perc=10):
+    """
+    Filter ridge lines according to prescribed criteria. Intended
+    to be used for finding relative maxima.
+
+    Parameters
+    ----------
+    cwt : 2-D ndarray
+        Continuous wavelet transform from which the `ridge_lines` were defined.
+    ridge_lines : 1-D sequence
+        Each element should contain 2 sequences, the rows and columns
+        of the ridge line (respectively).
+    window_size : int, optional
+        Size of window to use to calculate noise floor.
+        Default is ``cwt.shape[1] / 20``.
+    min_length : int, optional
+        Minimum length a ridge line needs to be acceptable.
+        Default is ``cwt.shape[0] / 4``, ie 1/4-th the number of widths.
+    min_snr : float, optional
+        Minimum SNR ratio. Default 1. The signal is the value of
+        the cwt matrix at the shortest length scale (``cwt[0, loc]``), the
+        noise is the `noise_perc`\\ th percentile of datapoints contained
+        within a window of `window_size` around ``cwt[0, loc]``.
+    noise_perc : float, optional
+        When calculating the noise floor, percentile of data points
+        examined below which to consider noise. Calculated using
+        scipy.stats.scoreatpercentile.
+
+    References
+    ----------
+    .. [1] Bioinformatics (2006) 22 (17): 2059-2065.
+       `10.1093/bioinformatics/btl355 <https://doi.org/10.1093/bioinformatics/btl355>`_.
+
+    Notes
+    -----
+    See [1]_ for more information.
+    """  # NOQA
+    num_points = cwt.shape[1]
+    if min_length is None:
+        min_length = np.ceil(cwt.shape[0] / 4)
+    if window_size is None:
+        window_size = np.ceil(num_points / 20)
+
+    window_size = int(window_size)
+    hf_window, odd = divmod(window_size, 2)
+
+    row_one = cwt[0, :]
+    noises = cupy.empty_like(row_one)
+    alphap = 0.4
+    betap = 0.4
+    p = noise_perc / 100.0
+    m = alphap + p * (1.0 - alphap - betap)
+    n_points = row_one.shape[0]
+
+    idx = cupy.arange(num_points)
+    left_pos = cupy.maximum(idx - hf_window, 0)
+    right_pos = cupy.minimum(idx + hf_window + odd, n_points)
+    n = right_pos - left_pos
+
+    aleph = n * p + m
+    k = cupy.floor(cupy.clip(aleph, 1, n - 1)).astype(np.int32)
+    gamma = cupy.clip(aleph - k, 0, 1)
+
+    win_sz = k + 1
+    cum_win_sz = cupy.cumsum(win_sz)
+    total_win = cum_win_sz[-1].item()
+    win_start = cum_win_sz - win_sz
+    all_win = cupy.full(total_win, np.inf, dtype=cwt.dtype)
+
+    _cwt_noise = _get_module_func(_noise_module, 'cwt_noise', noises)
+
+    block_sz = 128
+    n_blocks = (n_points + block_sz - 1) // block_sz
+
+    _cwt_noise((block_sz,), (n_blocks,),
+               (int(n_points), left_pos, right_pos, win_start,
+                k, gamma, row_one, all_win, noises))
+
+    # Filter based on SNR
+    rows, cols, lengths = ridge_lines
+
+    block_sz = 128
+    n_blocks = (rows.shape[0] + block_sz - 1) // block_sz
+
+    mask = cupy.zeros_like(rows, dtype=cupy.bool_)
+    _filter_mask_kern((n_blocks,), (block_sz,), (
+        rows.shape[0], cwt.shape[1], int(min_length), float(min_snr), rows,
+        cols, lengths, cwt, noises, mask
+    ))
+    return cols[mask]
+
+
+def find_peaks_cwt(vector, widths, wavelet=None, max_distances=None,
+                   gap_thresh=None, min_length=None,
+                   min_snr=1, noise_perc=10, window_size=None):
+    """
+    Find peaks in a 1-D array with wavelet transformation.
+
+    The general approach is to smooth `vector` by convolving it with
+    `wavelet(width)` for each width in `widths`. Relative maxima which
+    appear at enough length scales, and with sufficiently high SNR, are
+    accepted.
+
+    Parameters
+    ----------
+    vector : ndarray
+        1-D array in which to find the peaks.
+    widths : float or sequence
+        Single width or 1-D array-like of widths to use for calculating
+        the CWT matrix. In general,
+        this range should cover the expected width of peaks of interest.
+    wavelet : callable, optional
+        Should take two parameters and return a 1-D array to convolve
+        with `vector`. The first parameter determines the number of points
+        of the returned wavelet array, the second parameter is the scale
+        (`width`) of the wavelet. Should be normalized and symmetric.
+        Default is the ricker wavelet.
+    max_distances : ndarray, optional
+        At each row, a ridge line is only connected if the relative max at
+        row[n] is within ``max_distances[n]`` from the relative max at
+        ``row[n+1]``.  Default value is ``widths/4``.
+    gap_thresh : float, optional
+        If a relative maximum is not found within `max_distances`,
+        there will be a gap. A ridge line is discontinued if there are more
+        than `gap_thresh` points without connecting a new relative maximum.
+        Default is the first value of the widths array i.e. widths[0].
+    min_length : int, optional
+        Minimum length a ridge line needs to be acceptable.
+        Default is ``cwt.shape[0] / 4``, ie 1/4-th the number of widths.
+    min_snr : float, optional
+        Minimum SNR ratio. Default 1. The signal is the maximum CWT coefficient
+        on the largest ridge line. The noise is `noise_perc` th percentile of
+        datapoints contained within the same ridge line.
+    noise_perc : float, optional
+        When calculating the noise floor, percentile of data points
+        examined below which to consider noise. Calculated using
+        `stats.scoreatpercentile`.  Default is 10.
+    window_size : int, optional
+        Size of window to use to calculate noise floor.
+        Default is ``cwt.shape[1] / 20``.
+
+    Returns
+    -------
+    peaks_indices : ndarray
+        Indices of the locations in the `vector` where peaks were found.
+        The list is sorted.
+
+    See Also
+    --------
+    cwt
+        Continuous wavelet transform.
+    find_peaks
+        Find peaks inside a signal based on peak properties.
+
+    Notes
+    -----
+    This approach was designed for finding sharp peaks among noisy data,
+    however with proper parameter selection it should function well for
+    different peak shapes.
+
+    The algorithm is as follows:
+     1. Perform a continuous wavelet transform on `vector`, for the supplied
+        `widths`. This is a convolution of `vector` with `wavelet(width)` for
+        each width in `widths`. See `cwt`.
+     2. Identify "ridge lines" in the cwt matrix. These are relative maxima
+        at each row, connected across adjacent rows. See identify_ridge_lines
+     3. Filter the ridge_lines using filter_ridge_lines.
+
+    See [1]_ for more information.
+
+    References
+    ----------
+    .. [1] Bioinformatics (2006) 22 (17): 2059-2065.
+       `10.1093/bioinformatics/btl355 <https://doi.org/10.1093/bioinformatics/btl355>`_.
+
+    Examples
+    --------
+    >>> import cupy
+    >>> from cupyx.scipy import signal
+    >>> xs = cupy.arange(0, cupy.pi, 0.05)
+    >>> data = cupy.sin(xs)
+    >>> peakind = signal.find_peaks_cwt(data, cupy.arange(1,10))
+    >>> peakind, xs[peakind], data[peakind]
+    ([32], array([ 1.6]), array([ 0.9995736]))
+
+    """  # NOQA
+    widths = cupy.array(widths, copy=False, ndmin=1)
+
+    if gap_thresh is None:
+        gap_thresh = cupy.ceil(widths[0])
+    if max_distances is None:
+        max_distances = widths / 4.0
+    if wavelet is None:
+        wavelet = _ricker
+
+    cwt_dat = _cwt(vector, wavelet, widths)
+    cwt_dat = cupy.where(abs(cwt_dat) < 1e-8, 0.0, cwt_dat)
+    ridge_lines = _identify_ridge_lines(cwt_dat, max_distances, gap_thresh)
+    filtered = _filter_ridge_lines(cwt_dat, ridge_lines, min_length=min_length,
+                                   window_size=window_size, min_snr=min_snr,
+                                   noise_perc=noise_perc)
+    filtered.sort()
+
+    return filtered
