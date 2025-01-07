@@ -452,6 +452,8 @@ optuna:
     spec: null
   "3":
     spec: "==3.*"
+  "4":
+    spec: "==4.*"
   "pre":
     spec: ">=0a0"  # latest, including pre-releases
 mpi4py:
