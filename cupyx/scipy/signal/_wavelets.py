@@ -62,7 +62,7 @@ def qmf(hk):
         Coefficients of high-pass filter.
 
     """
-    warnings.warn(_deprecate_msg, np.exceptions.VisibleDeprecationWarning)
+    warnings.warn(_deprecate_msg, cupy.exceptions.VisibleDeprecationWarning)
 
     hk = cupy.asarray(hk)
     return _qmf_kernel(hk, size=len(hk))
@@ -142,7 +142,7 @@ def morlet(M, w=5.0, s=1.0, complete=True):
     with it.
 
     """
-    warnings.warn(_deprecate_msg, np.exceptions.VisibleDeprecationWarning)
+    warnings.warn(_deprecate_msg, cupy.exceptions.VisibleDeprecationWarning)
 
     return _morlet_kernel(w, s, complete, size=M)
 
@@ -203,7 +203,7 @@ def ricker(points, a):
     >>> plt.show()
 
     """
-    warnings.warn(_deprecate_msg, np.exceptions.VisibleDeprecationWarning)
+    warnings.warn(_deprecate_msg, cupy.exceptions.VisibleDeprecationWarning)
 
     return _ricker_kernel(a, size=int(points))
 
@@ -294,7 +294,7 @@ def morlet2(M, s, w=5):
         cmap='viridis', shading='gouraud')
     >>> plt.show()
     """
-    warnings.warn(_deprecate_msg, np.exceptions.VisibleDeprecationWarning)
+    warnings.warn(_deprecate_msg, cupy.exceptions.VisibleDeprecationWarning)
 
     return _morlet2_kernel(w, s, size=int(M))
 
@@ -350,7 +350,7 @@ def cwt(data, wavelet, widths):
     >>> plt.show()
 
     """  # NOQA
-    warnings.warn(_deprecate_msg, np.exceptions.VisibleDeprecationWarning)
+    warnings.warn(_deprecate_msg, cupy.exceptions.VisibleDeprecationWarning)
 
     if cupy.asarray(wavelet(1, 1)).dtype.char in "FDG":
         dtype = cupy.complex128
