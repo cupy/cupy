@@ -107,7 +107,7 @@ class TestMisc:
         a = testing.shaped_arange((2, 3, 4), xp, dtype)
         return a.clip(3, None)
 
-    @testing.with_requires("numpy>=2.0")
+    @testing.with_requires("numpy>=2.1")
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
     @testing.numpy_cupy_array_equal()
     def test_clip_min_max_none(self, xp, dtype):

@@ -44,10 +44,10 @@ class TestRaw:
             if x < k and y < m and z < n:
                 arr2[x, y, z] = arr1[x, y, z]
 
-        l, m, n = (2, 3, 4)
-        x = cupy.arange(24).reshape(l, m, n)
+        p, q, r = (2, 3, 4)
+        x = cupy.arange(24).reshape(p, q, r)
         y = cupy.empty_like(x)
-        f(((l+1)//2, (m+1)//2, (n+1)//2), (2, 2, 2), (x, y, l, m, n))
+        f(((p+1)//2, (q+1)//2, (r+1)//2), (2, 2, 2), (x, y, p, q, r))
         assert (x == y).all()
 
     def test_raw_grid_invalid1(self):

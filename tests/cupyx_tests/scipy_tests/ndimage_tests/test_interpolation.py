@@ -74,7 +74,7 @@ class TestMapCoordinates:
         # promote output to a complex dtype
         if self.output == numpy.float64:
             self.output = numpy.complex128
-        elif self.output == float:
+        elif self.output == float:  # noqa: E721
             self.output = complex
         elif self.output == 'f':
             self.output = 'F'

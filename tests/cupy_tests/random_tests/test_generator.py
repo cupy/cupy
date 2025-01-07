@@ -903,7 +903,7 @@ class TestChoiceReplaceFalse(RandomGeneratorTestCase):
         if isinstance(self.a, numpy.ndarray):
             expected_dtype = 'float'
         else:
-            expected_dtype = 'int'
+            expected_dtype = 'long'
         assert v.dtype == expected_dtype
         assert v.shape == expected_shape
 
@@ -971,10 +971,6 @@ class TestRandint(RandomGeneratorTestCase):
     def test_randint_float2(self):
         self.generate(6.7, size=(2, 3))
 
-    @pytest.mark.xfail(numpy.__version__ < "2",
-                       reason='XXX: np 2.0: comparisons with OOB '
-                              'ints are broken in numpy < 2'
-                       )
     def test_randint_int64_1(self):
         self.generate(2**34, 2**40, 3, dtype='q')
 

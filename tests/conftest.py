@@ -8,7 +8,8 @@ import pytest
 
 # enable NEP 50 weak promotion rules
 import numpy
-numpy._set_promotion_state("weak")
+if numpy.lib.NumpyVersion(numpy.__version__) < "2.0.0":
+    numpy._set_promotion_state("weak")
 
 # Enable `testdir` fixture to test `cupy.testing`.
 # `pytest_plugins` cannot be locally configured. See also
