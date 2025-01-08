@@ -36,7 +36,7 @@ _deprecate_msg = (
     "Following the change in SciPy 1.12, all wavelet functions have been "
     "deprecated in CuPy v14 and are planned to be removed in the future. "
     "To request continued support of the features, "
-    "please leave a comment at https://github.com/cupy/cupy/pull/8061."
+    "please leave a comment at https://github.com/cupy/cupy/issues/8864."
 )
 
 
@@ -62,7 +62,7 @@ def qmf(hk):
         Coefficients of high-pass filter.
 
     """
-    warnings.warn(_deprecate_msg, DeprecationWarning)
+    warnings.warn(_deprecate_msg, cupy.exceptions.VisibleDeprecationWarning)
 
     hk = cupy.asarray(hk)
     return _qmf_kernel(hk, size=len(hk))
@@ -142,7 +142,7 @@ def morlet(M, w=5.0, s=1.0, complete=True):
     with it.
 
     """
-    warnings.warn(_deprecate_msg, DeprecationWarning)
+    warnings.warn(_deprecate_msg, cupy.exceptions.VisibleDeprecationWarning)
 
     return _morlet_kernel(w, s, complete, size=M)
 
@@ -203,7 +203,7 @@ def ricker(points, a):
     >>> plt.show()
 
     """
-    warnings.warn(_deprecate_msg, DeprecationWarning)
+    warnings.warn(_deprecate_msg, cupy.exceptions.VisibleDeprecationWarning)
 
     return _ricker_kernel(a, size=int(points))
 
@@ -294,7 +294,7 @@ def morlet2(M, s, w=5):
         cmap='viridis', shading='gouraud')
     >>> plt.show()
     """
-    warnings.warn(_deprecate_msg, DeprecationWarning)
+    warnings.warn(_deprecate_msg, cupy.exceptions.VisibleDeprecationWarning)
 
     return _morlet2_kernel(w, s, size=int(M))
 
@@ -350,7 +350,7 @@ def cwt(data, wavelet, widths):
     >>> plt.show()
 
     """  # NOQA
-    warnings.warn(_deprecate_msg, DeprecationWarning)
+    warnings.warn(_deprecate_msg, cupy.exceptions.VisibleDeprecationWarning)
 
     if cupy.asarray(wavelet(1, 1)).dtype.char in "FDG":
         dtype = cupy.complex128
