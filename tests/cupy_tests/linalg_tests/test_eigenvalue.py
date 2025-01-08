@@ -144,6 +144,20 @@ class TestEigenvalue:
         # Canonicalize the order
         return xp.sort(w)
 
+    @testing.for_all_dtypes(no_float16=True)
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4, contiguous_check=False)
+    def test_eig_hermitian(self, xp, dtype):
+        if numpy.dtype(dtype).kind == 'c':
+            a = xp.array([[1, 2j, 3], [4j, 5, 6j], [7, 8j, 9]], dtype)
+        else:
+            a = xp.array([[1, 0, 3], [0, 5, 0], [7, 0, 9]], dtype)
+        a = _get_hermitian(xp, a, 'U')
+        w, v = xp.linalg.eig(a)
+        tol = 1e-5
+        testing.assert_allclose(a @ v, v @ xp.diag(w), atol=tol, rtol=tol)
+        # Canonicalize the order
+        return xp.sort(w)
+
     @testing.for_all_dtypes(no_float16=True, no_complex=True)
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4)
     def test_eigvals(self, xp, dtype):
@@ -152,10 +166,28 @@ class TestEigenvalue:
         # Canonicalize the order
         return xp.sort(w)
 
+    @testing.for_all_dtypes(no_float16=True, no_complex=True)
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4)
+    def test_eigvals_sym(self, xp, dtype):
+        a = xp.array([[1, 0, 3], [0, 5, 0], [7, 0, 9]], dtype)
+        a = _get_hermitian(xp, a, 'U')
+        w = xp.linalg.eigvals(a)
+        # Canonicalize the order
+        return xp.sort(w)
+
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4)
     def test_eigvals_complex(self, xp, dtype):
         a = xp.array([[1, 2j, 3], [4j, 5, 6j], [7, 8j, 9]], dtype)
+        w = xp.linalg.eigvals(a)
+        # Canonicalize the order
+        return xp.sort(w)
+
+    @testing.for_complex_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4)
+    def test_eigvals_hermitian(self, xp, dtype):
+        a = xp.array([[1, 2j, 3], [4j, 5, 6j], [7, 8j, 9]], dtype)
+        a = _get_hermitian(xp, a, 'U')
         w = xp.linalg.eigvals(a)
         # Canonicalize the order
         return xp.sort(w)
