@@ -1,4 +1,3 @@
-
 import pytest
 
 from cupy import testing
@@ -10,7 +9,8 @@ except ImportError:
     pass
 
 
-@testing.with_requires('scipy')
+@pytest.mark.filterwarnings('ignore::DeprecationWarning')
+@testing.with_requires("scipy<1.15")
 class TestWavelets:
     @testing.with_requires('scipy<1.12.0')
     @testing.numpy_cupy_allclose(scipy_name="scp")
