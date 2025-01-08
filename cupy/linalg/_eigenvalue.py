@@ -198,7 +198,24 @@ def eigh(a, UPLO='L'):
         return _syevd(a, UPLO, True)
 
 
-# TODO(okuta): Implement eigvals
+def eig(a):
+    _util._assert_stacked_2d(a)
+    _util._assert_stacked_square(a)
+
+    if a.size == 0:
+        # Check only
+        _ = _util.linalg_common_type(a)
+        w = cupy.empty(a.shape[:-1], a.dtype)
+        v = cupy.empty(a.shape, a.dtype)
+        return w, v
+
+    if a.ndim == 2:
+        return _geev(a, True)
+
+    work = [_geev(a[ind, :, :], True) for ind in numpy.ndindex(a.shape[:-2])]
+    w = cupy.stack([x[0] for x in work])
+    v = cupy.stack([x[1] for x in work])
+    return w.reshape(a.shape[:-1]), v.reshape(a.shape)
 
 
 def eigvalsh(a, UPLO='L'):
@@ -240,3 +257,20 @@ def eigvalsh(a, UPLO='L'):
         return cupyx.cusolver.syevj(a, UPLO, False)
     else:
         return _syevd(a, UPLO, False)[0]
+
+
+def eigvals(a):
+    _util._assert_stacked_2d(a)
+    _util._assert_stacked_square(a)
+
+    if a.size == 0:
+        # Check only
+        return cupy.empty(a.shape[:-1], a.dtype)
+
+    if a.ndim == 2:
+        return _geev(a, False)[0]
+
+    work = [
+        _geev(a[ind, :, :], False)[0] for ind in numpy.ndindex(a.shape[:-2])
+    ]
+    return cupy.stack(work).reshape(a.shape[:-1])
