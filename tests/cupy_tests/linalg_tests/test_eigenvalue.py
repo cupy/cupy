@@ -20,7 +20,7 @@ def _get_hermitian(xp, a, UPLO):
 @pytest.mark.skipif(
     runtime.is_hip and driver.get_build_version() < 402,
     reason='eigensolver not added until ROCm 4.2.0')
-class TestEigenvalue:
+class TestSymEigenvalue:
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4, contiguous_check=False)
@@ -137,7 +137,7 @@ class TestEigenvalue:
 @pytest.mark.skipif(
     runtime.is_hip and driver.get_build_version() < 402,
     reason='eigensolver not added until ROCm 4.2.0')
-class TestEigenvalueEmpty:
+class TestSymEigenvalueEmpty:
 
     @testing.for_dtypes('ifdFD')
     @testing.numpy_cupy_allclose()
@@ -166,7 +166,7 @@ class TestEigenvalueEmpty:
 @pytest.mark.skipif(
     runtime.is_hip and driver.get_build_version() < 402,
     reason='eigensolver not added until ROCm 4.2.0')
-class TestEigenvalueInvalid:
+class TestSymEigenvalueInvalid:
 
     def test_eigh_shape_error(self, UPLO, shape):
         for xp in (numpy, cupy):
