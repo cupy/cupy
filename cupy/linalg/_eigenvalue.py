@@ -103,8 +103,9 @@ def _geev(a, with_eigen_vector, overwrite_a=False):
     if runtime.is_hip:
         raise NotImplementedError("geev is not implemented for HIP")
 
-    _check_dtype(a.dtype)
-    complex_dtype = numpy.dtype(a.dtype.char.upper())
+    dtype, _ = _util.linalg_common_type(a)
+    _check_dtype(dtype)
+    complex_dtype = numpy.dtype(dtype.char.upper())
 
     # Force complex-number computation for human-readable output format
     a_ = a.astype(complex_dtype, order='F', copy=not overwrite_a)
@@ -203,10 +204,9 @@ def eig(a):
     _util._assert_stacked_square(a)
 
     if a.size == 0:
-        # Check only
-        _ = _util.linalg_common_type(a)
-        w = cupy.empty(a.shape[:-1], a.dtype)
-        v = cupy.empty(a.shape, a.dtype)
+        _, v_dtype = _util.linalg_common_type(a)
+        w = cupy.empty(a.shape[:-1], v_dtype)
+        v = cupy.empty(a.shape, v_dtype)
         return w, v
 
     if a.ndim == 2:
@@ -264,7 +264,10 @@ def eigvals(a):
     _util._assert_stacked_square(a)
 
     if a.size == 0:
-        # Check only
+        _, v_dtype = _util.linalg_common_type(a)
+        w = cupy.empty(a.shape[:-1], v_dtype)
+        return w
+
         return cupy.empty(a.shape[:-1], a.dtype)
 
     if a.ndim == 2:
