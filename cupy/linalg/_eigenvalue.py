@@ -200,6 +200,33 @@ def eigh(a, UPLO='L'):
 
 
 def eig(a):
+    """
+    Return the eigenvalues and eigenvectors of a matrix.
+
+    Returns two objects, a 1-D array containing the eigenvalues of `a`, and
+    a 2-D square array or matrix (depending on the input type) of the
+    corresponding eigenvectors (in columns).
+
+    Args:
+        a (cupy.ndarray): A symmetric 2-D square matrix ``(M, M)`` or a batch
+            of symmetric 2-D square matrices ``(..., M, M)``.
+    Returns:
+        tuple of :class:`~cupy.ndarray`:
+            Returns a tuple ``(w, v)``. ``w`` contains eigenvalues and
+            ``v`` contains eigenvectors. ``v[:, i]`` is an eigenvector
+            corresponding to an eigenvalue ``w[i]``. For batch input,
+            ``v[k, :, i]`` is an eigenvector corresponding to an eigenvalue
+            ``w[k, i]`` of ``a[k]``.
+
+    .. warning::
+        This function calls one or more cuSOLVER routine(s) which may yield
+        invalid results if input conditions are not met.
+        To detect these invalid results, you can set the `linalg`
+        configuration to a value that is not `ignore` in
+        :func:`cupyx.errstate` or :func:`cupyx.seterr`.
+
+    .. seealso:: :func:`numpy.linalg.eig`
+    """
     _util._assert_stacked_2d(a)
     _util._assert_stacked_square(a)
 
@@ -260,6 +287,28 @@ def eigvalsh(a, UPLO='L'):
 
 
 def eigvals(a):
+    """
+    Compute the eigenvalues of a matrix.
+
+    Main difference from eig: the eigenvectors are not computed.
+
+    Args:
+        a (cupy.ndarray): A symmetric 2-D square matrix ``(M, M)`` or a batch
+            of symmetric 2-D square matrices ``(..., M, M)``.
+    Returns:
+        cupy.ndarray:
+            Returns eigenvalues as a vector ``w``. For batch input,
+            ``w[k]`` is a vector of eigenvalues of matrix ``a[k]``.
+
+    .. warning::
+        This function calls one or more cuSOLVER routine(s) which may yield
+        invalid results if input conditions are not met.
+        To detect these invalid results, you can set the `linalg`
+        configuration to a value that is not `ignore` in
+        :func:`cupyx.errstate` or :func:`cupyx.seterr`.
+
+    .. seealso:: :func:`numpy.linalg.eigvals`
+    """
     _util._assert_stacked_2d(a)
     _util._assert_stacked_square(a)
 
