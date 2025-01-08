@@ -217,6 +217,9 @@ def eig(a):
             corresponding to an eigenvalue ``w[i]``. For batch input,
             ``v[k, :, i]`` is an eigenvector corresponding to an eigenvalue
             ``w[k, i]`` of ``a[k]``.
+    Notes:
+        There is no guarantee of the order of the eigenvalues:
+        it can even be different from ``numpy.linalg.eig``.
 
     .. warning::
         This function calls one or more cuSOLVER routine(s) which may yield
@@ -299,6 +302,9 @@ def eigvals(a):
         cupy.ndarray:
             Returns eigenvalues as a vector ``w``. For batch input,
             ``w[k]`` is a vector of eigenvalues of matrix ``a[k]``.
+    Notes:
+        There is no guarantee of the order of the eigenvalues:
+        it can even be different from ``numpy.linalg.eigvals``.
 
     .. warning::
         This function calls one or more cuSOLVER routine(s) which may yield
