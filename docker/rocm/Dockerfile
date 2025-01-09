@@ -2,6 +2,8 @@ FROM rocm/dev-ubuntu-20.04:5.0.1
 LABEL maintainer="CuPy Team"
 
 RUN curl -qL https://repo.radeon.com/rocm/rocm.gpg.key | apt-key add -
+# Workaround for missing amdgpu drivers
+RUN echo "deb [arch=amd64] https://repo.radeon.com/amdgpu/23.20/amdgpu/ubuntu focal main" | tee /etc/apt/sources.list.d/amdgpu.list
 RUN apt-get update -y && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
     hipblas hipsparse rocsparse rocrand rocthrust rocsolver rocfft hipfft hipcub rocprim rccl && \
