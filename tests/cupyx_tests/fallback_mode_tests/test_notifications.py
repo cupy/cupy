@@ -130,6 +130,7 @@ class TestNotificationVectorize(NotificationTestBase):
         msg += numpy.vectorize.__module__ + ".vectorize'"
         assert output == ("Warning: " + msg + "\nWarning: " + msg)
 
+    @testing.with_requires('numpy<2.2')
     @test_utils.enable_slice_copy
     def test_cupy_supported_pyfunc(self):
 
