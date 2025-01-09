@@ -2786,6 +2786,7 @@ cdef _ndarray_base _array_default(
     cdef intptr_t ptr_h = <intptr_t>(a_cpu.ctypes.data)
     if pinned_memory.is_memory_pinned(ptr_h):
         a.data.copy_from_host_async(ptr_h, nbytes, stream)
+        pinned_memory._add_to_watch_list(stream.record(), a_cpu)
     else:
         # The input numpy array does not live on pinned memory, so we allocate
         # an extra buffer and copy from it to avoid potential data race, see
