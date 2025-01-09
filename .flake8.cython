@@ -1,4 +1,0 @@
-[flake8]
-filename = *.pyx, *.pxd, *.pxi
-exclude = .git, .eggs, *.py
-ignore = W503,W504,E211,E225,E226,E227,E275,E402,E999
