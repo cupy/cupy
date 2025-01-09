@@ -110,7 +110,16 @@ class FilterTestCaseBase:
 
         if self.filter in ('convolve', 'correlate'):
             if getattr(self, "axes", None) is None:
-                kshape = self._kshape[:self._ndim]
+                # keep 0 values as-is, retain only first _ndim non-zero values
+                # (necessary for intended test from )
+                kshape = []
+                num_non_zero = 0
+                for v in self._kshape:
+                    if num_non_zero < self._ndim or v == 0:
+                        kshape.append(v)
+                    if v != 0:
+                        num_non_zero += 1
+                kshape = tuple(kshape)
             else:
                 if numpy.isscalar(self.axes):
                     self.axes = (self.axes,)
@@ -162,15 +171,6 @@ class FilterTestCaseBase:
         if self.filter in ('uniform_filter1d', 'generic_filter1d',
                            'minimum_filter1d', 'maximum_filter1d'):
             return self.ksize
-
-        if self.filter in ('uniform_filter'):
-            if getattr(self, "axes", None) is None:
-                kshape = self._kshape[:self._ndim]
-            else:
-                if numpy.isscalar(self.axes):
-                    self.axes = (self.axes,)
-                kshape = [self._kshape[ax] for ax in self.axes]
-            return kshape
 
         # gaussian_filter*, prewitt, sobel, *laplace, and *_gradient_magnitude
         # all have no 'weights' or similar argument so return None
