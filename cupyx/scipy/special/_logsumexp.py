@@ -1,6 +1,10 @@
+import scipy.special
+
 import cupy as cp
+from cupyx.scipy import _utils
 
 
+@_utils.enable_scipy_array_api(scipy.special.logsumexp, '1.15.0')
 def logsumexp(a, axis=None, b=None, keepdims=False, return_sign=False):
     """Compute the log of the sum of exponentials of input elements.
 
