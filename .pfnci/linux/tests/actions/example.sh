@@ -1,10 +1,11 @@
 #!/bin/bash
 
-set -uex
-
 ###
 ### Examples
 ###
+
+echo "::group::Test - Example Test"
+set -uex
 
 # TODO: support coverage reporting
 python3 -m pip install --user matplotlib
@@ -45,12 +46,20 @@ python3 stream/thrust.py
 
 popd
 
+set +uex
+echo "::endgroup::"
 
 ###
 ### Doctest
 ###
 
+echo "::group::Test - Doctest"
+set -uex
+
 pushd docs
 python3 -m pip install --user -r requirements.txt
 SPHINXOPTS=-W make doctest
 popd
+
+set +uex
+echo "::endgroup::"
