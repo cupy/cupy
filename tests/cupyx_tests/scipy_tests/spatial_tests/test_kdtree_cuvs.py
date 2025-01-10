@@ -3,10 +3,10 @@ import pytest
 from cupy import testing
 
 try:
-    import pylibraft  # NOQA
-    pylibraft_available = True
+    import cuvs  # NOQA
+    cuvs_available = True
 except ModuleNotFoundError:
-    pylibraft_available = False
+    cuvs_available = False
 
 
 def create_random_kd_tree(xp, scp, n, m, n_points=1, x_offset=0, scale=10,
@@ -19,7 +19,7 @@ def create_random_kd_tree(xp, scp, n, m, n_points=1, x_offset=0, scale=10,
 
 
 @testing.with_requires('scipy')
-@pytest.mark.skipif(not pylibraft_available, reason='pylibraft is required')
+@pytest.mark.skipif(not cuvs_available, reason='cuVS is required')
 class TestDistance:
     @pytest.mark.parametrize('args', [
         (100, 4, 1, 0),
