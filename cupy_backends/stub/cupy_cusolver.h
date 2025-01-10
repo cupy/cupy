@@ -995,6 +995,15 @@ cusolverStatus_t cusolverDnXsyevd(...) {
     return CUSOLVER_STATUS_SUCCESS;
 }
 
+// Functions added in CUDA 12.6
+cusolverStatus_t cusolverDnXgeev_bufferSize(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+cusolverStatus_t cusolverDnXgeev(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
 } // extern "C"
 
 #endif // #ifndef INCLUDE_GUARD_STUB_CUPY_CUSOLVER_H
