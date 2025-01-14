@@ -98,8 +98,8 @@ class TestPdist:
 
     def _make_matrix(self, xp, dtype, order):
         shape = (self.rows, self.cols)
-        out =  testing.shaped_random(shape, xp, dtype=dtype,
-                                     scale=1, order=order)
+        out = testing.shaped_random(shape, xp, dtype=dtype,
+                                    scale=1, order=order)
         return out
 
     @testing.numpy_cupy_array_almost_equal(decimal=4, scipy_name='scp')
