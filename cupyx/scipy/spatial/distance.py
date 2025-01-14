@@ -500,10 +500,12 @@ def cdist(XA, XB, metric='euclidean', out=None, **kwargs):
 
     if pylibraft_available or \
             (cuvs_available and XA.dtype not in ['float32', 'float64']):
+        print("Setting XA to float32")
         XA = cupy.asarray(XA, dtype='float32')
 
     if pylibraft_available or \
             (cuvs_available and XB.dtype not in ['float32', 'float64']):
+        print("Setting XB to float32")
         XB = cupy.asarray(XB, dtype='float32')
 
     s = XA.shape
@@ -538,7 +540,7 @@ def cdist(XA, XB, metric='euclidean', out=None, **kwargs):
                                                                 dtype=XA.dtype)
 
             print("Shapes: %s - %s" % (XA.shape, XB.shape))
-            pairwise_distance(XA, XB, output_arr, metric, p=p)
+            pairwise_distance(XA, XB, output_arr, metric, metric_arg=p)
             return output_arr
         else:
             raise ValueError('Unknown Distance Metric: %s' % mstr)
