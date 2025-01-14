@@ -536,6 +536,8 @@ def cdist(XA, XB, metric='euclidean', out=None, **kwargs):
         if metric_info is not None:
             output_arr = out if out is not None else cupy.zeros((mA, mB),
                                                                 dtype=XA.dtype)
+
+            print("Shapes: %s - %s" % (XA.shape, XB.shape))
             pairwise_distance(XA, XB, output_arr, metric, p=p)
             return output_arr
         else:
