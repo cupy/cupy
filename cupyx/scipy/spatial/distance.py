@@ -530,7 +530,7 @@ def cdist(XA, XB, metric='euclidean', out=None, **kwargs):
             out = out.astype('float32', copy=False)
         if out.shape != (mA, mB):
             cupy.resize(out, (mA, mB))
-        out[:,:] = 0.0
+        out[:, :] = 0.0
 
     if isinstance(metric, str):
         mstr = metric.lower()
