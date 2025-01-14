@@ -137,7 +137,7 @@ def minkowski(u, v, p):
 
     u = cupy.asarray(u)
     v = cupy.asarray(v)
-    output_arr = cupy.zeros((1,), dtype=u.dtype)
+    output_arr = cupy.zeros(((1, 1)), dtype=u.dtype)
     pairwise_distance(u, v, output_arr, "minkowski", p)
 
     return output_arr[0]
@@ -162,7 +162,7 @@ def canberra(u, v):
 
     u = cupy.asarray(u)
     v = cupy.asarray(v)
-    output_arr = cupy.zeros((1,), dtype=u.dtype)
+    output_arr = cupy.zeros(((1, 1)), dtype=u.dtype)
     pairwise_distance(u, v, output_arr, "canberra")
 
     return output_arr[0]
@@ -187,7 +187,7 @@ def chebyshev(u, v):
 
     u = cupy.asarray(u)
     v = cupy.asarray(v)
-    output_arr = cupy.zeros((1,), dtype=u.dtype)
+    output_arr = cupy.zeros(((1, 1)), dtype=u.dtype)
     pairwise_distance(u, v, output_arr, "chebyshev")
 
     return output_arr[0]
@@ -213,7 +213,7 @@ def cityblock(u, v):
 
     u = cupy.asarray(u)
     v = cupy.asarray(v)
-    output_arr = cupy.zeros((1,), dtype=u.dtype)
+    output_arr = cupy.zeros(((1, 1)), dtype=u.dtype)
     pairwise_distance(u, v, output_arr, "cityblock")
 
     return output_arr[0]
@@ -243,7 +243,7 @@ def correlation(u, v):
 
     u = cupy.asarray(u)
     v = cupy.asarray(v)
-    output_arr = cupy.zeros((1,), dtype=u.dtype)
+    output_arr = cupy.zeros(((1, 1)), dtype=u.dtype)
     pairwise_distance(u, v, output_arr, "correlation")
 
     return output_arr[0]
@@ -270,7 +270,7 @@ def cosine(u, v):
 
     u = cupy.asarray(u)
     v = cupy.asarray(v)
-    output_arr = cupy.zeros((1,), dtype=u.dtype)
+    output_arr = cupy.zeros(((1, 1)), dtype=u.dtype)
     pairwise_distance(u, v, output_arr, "cosine")
 
     return output_arr[0]
@@ -299,7 +299,7 @@ def hamming(u, v):
 
     u = cupy.asarray(u)
     v = cupy.asarray(v)
-    output_arr = cupy.zeros((1,), dtype=u.dtype)
+    output_arr = cupy.zeros(((1, 1)), dtype=u.dtype)
     pairwise_distance(u, v, output_arr, "hamming")
 
     return output_arr[0]
@@ -324,7 +324,7 @@ def euclidean(u, v):
 
     u = cupy.asarray(u)
     v = cupy.asarray(v)
-    output_arr = cupy.zeros((1,), dtype=u.dtype)
+    output_arr = cupy.zeros(((1, 1)), dtype=u.dtype)
     pairwise_distance(u, v, output_arr, "euclidean")
 
     return output_arr[0]
@@ -353,7 +353,7 @@ def jensenshannon(u, v):
 
     u = cupy.asarray(u)
     v = cupy.asarray(v)
-    output_arr = cupy.zeros((1,), dtype=u.dtype)
+    output_arr = cupy.zeros(((1, 1)), dtype=u.dtype)
     pairwise_distance(u, v, output_arr, "jensenshannon")
 
     return output_arr[0]
@@ -382,7 +382,7 @@ def russellrao(u, v):
 
     u = cupy.asarray(u)
     v = cupy.asarray(v)
-    output_arr = cupy.zeros((1,), dtype=u.dtype)
+    output_arr = cupy.zeros(((1, 1)), dtype=u.dtype)
     pairwise_distance(u, v, output_arr, "russellrao")
 
     return output_arr[0]
@@ -408,7 +408,8 @@ def sqeuclidean(u, v):
 
     u = cupy.asarray(u)
     v = cupy.asarray(v)
-    output_arr = cupy.zeros((1,), dtype=u.dtype)
+
+    output_arr = cupy.zeros(((1, 1)), dtype=u.dtype)
     pairwise_distance(u, v, output_arr, "sqeuclidean")
 
     return output_arr[0]
@@ -435,7 +436,7 @@ def hellinger(u, v):
 
     u = cupy.asarray(u)
     v = cupy.asarray(v)
-    output_arr = cupy.zeros((1,), dtype=u.dtype)
+    output_arr = cupy.zeros(((1, 1)), dtype=u.dtype)
     pairwise_distance(u, v, output_arr, "hellinger")
 
     return output_arr[0]
@@ -461,7 +462,7 @@ def kl_divergence(u, v):
 
     u = cupy.asarray(u)
     v = cupy.asarray(v)
-    output_arr = cupy.zeros((1,), dtype=u.dtype)
+    output_arr = cupy.zeros(((1, 1)), dtype=u.dtype)
     pairwise_distance(u, v, output_arr, "kl_divergence")
 
     return output_arr[0]
@@ -500,12 +501,10 @@ def cdist(XA, XB, metric='euclidean', out=None, **kwargs):
 
     if pylibraft_available or \
             (cuvs_available and XA.dtype not in ['float32', 'float64']):
-        print("Setting XA to float32")
         XA = cupy.asarray(XA, dtype='float32')
 
     if pylibraft_available or \
             (cuvs_available and XB.dtype not in ['float32', 'float64']):
-        print("Setting XB to float32")
         XB = cupy.asarray(XB, dtype='float32')
 
     s = XA.shape
@@ -538,8 +537,6 @@ def cdist(XA, XB, metric='euclidean', out=None, **kwargs):
         if metric_info is not None:
             output_arr = out if out is not None else cupy.zeros((mA, mB),
                                                                 dtype=XA.dtype)
-
-            print("Shapes: %s - %s" % (XA.shape, XB.shape))
             pairwise_distance(XA, XB, output_arr, metric, metric_arg=p)
             return output_arr
         else:
