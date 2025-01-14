@@ -191,6 +191,8 @@ class TestDistanceFunction(unittest.TestCase):
     def test_cosine_(self, xp, scp):
 
         a = self._make_matrix(xp, self.dtype, self.order)
+
+        print("a shape = %s" % a.shape)
         out = scp.spatial.distance.cosine(a, a)
         return xp.asarray(out)
 
