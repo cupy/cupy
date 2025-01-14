@@ -148,3 +148,12 @@ def test_ca_cfar2d(xp, dtype, shape, gc, rc):
 def test_ca_cfar2d_failures(shape, gc, rc):
     with pytest.raises(ValueError):
         _, _ = signal.ca_cfar(cupy.zeros(shape), gc, rc)
+
+
+@testing.for_float_dtypes(no_float16=True)
+def test_mvdr(dtype):
+    x = cupy.array([[1, 2, 3], [4, 5, 7]], dtype=dtype)
+    sv = cupy.array([1, 2], dtype=dtype)
+    out = signal.mvdr(x, sv)
+    assert out.dtype == dtype
+    testing.assert_allclose(out, [-2, 1.5])
