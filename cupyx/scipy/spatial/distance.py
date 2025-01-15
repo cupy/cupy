@@ -507,6 +507,13 @@ def cdist(XA, XB, metric='euclidean', out=None, **kwargs):
             (cuvs_available and XB.dtype not in ['float32', 'float64']):
         XB = cupy.asarray(XB, dtype='float32')
 
+    XA_order = "F" if XA.data.f_contiguous else "C"
+    XB_order = "F" if XB.data.f_contiguous else "C"
+
+    if XA_order != XB_order:
+        raise ValueError('XA and XB must have the same layout '
+                         '(XA.order=%s, XB.order=%s' % (XA_order, XB_order))
+
     s = XA.shape
     sB = XB.shape
 
@@ -526,6 +533,10 @@ def cdist(XA, XB, metric='euclidean', out=None, **kwargs):
     if out is not None:
         if (pylibraft_available and out.dtype != 'float32') or \
                 (cuvs_available and out.dtype not in ['float32', 'float64']):
+            out_order = "F" if out.data.f_contiguous else "C"
+            if out_order != XA_order:
+                raise ValueError('out must have same layout as input '
+                                 '(out.order=%s)' % out_order)
             out = out.astype('float32', copy=False)
         if out.shape != (mA, mB):
             cupy.resize(out, (mA, mB))
@@ -536,7 +547,8 @@ def cdist(XA, XB, metric='euclidean', out=None, **kwargs):
         metric_info = _METRIC_ALIAS.get(mstr, None)
         if metric_info is not None:
             output_arr = out if out is not None else cupy.zeros((mA, mB),
-                                                                dtype=XA.dtype)
+                                                                dtype=XA.dtype,
+                                                                order=XA_order)
             pairwise_distance(XA, XB, output_arr, metric, metric_arg=p)
             return output_arr
         else:
