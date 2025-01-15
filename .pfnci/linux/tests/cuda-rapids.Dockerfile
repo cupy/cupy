@@ -5,7 +5,7 @@ USER root
 
 RUN export DEBIAN_FRONTEND=noninteractive && \
     apt-get -qqy update && \
-    apt-get -qqy install build-essential cuda-toolkit-12-2 ccache git curl
+    apt-get -qqy install build-essential cuda-toolkit-12-5 ccache git curl
 
 ENV CUDA_PATH "/usr/local/cuda"
 ENV PATH "/usr/lib/ccache:${PATH}"
