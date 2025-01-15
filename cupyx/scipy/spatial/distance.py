@@ -135,12 +135,18 @@ def minkowski(u, v, p):
 
     check_soft_dependencies()
 
-    u = cupy.asarray(u)
-    v = cupy.asarray(v)
-    output_arr = cupy.zeros(((1, 1)), dtype=u.dtype)
+    u_order = "F" if cupy.isfortran(u) else "C"
+    v_order = "F" if cupy.isfortran(v) else "C"
+
+    if u_order != v_order:
+        raise ValueError('u and v must have the same layout '
+                         '(u.order=%s, v.order=%s' % (u_order, v_order))
+
+    output_arr = cupy.zeros((1, 1), dtype=u.dtype, order=u_order)
+
     pairwise_distance(u, v, output_arr, "minkowski", p)
 
-    return output_arr[0]
+    return output_arr[0,0]
 
 
 def canberra(u, v):
@@ -160,12 +166,18 @@ def canberra(u, v):
     """
     check_soft_dependencies()
 
-    u = cupy.asarray(u)
-    v = cupy.asarray(v)
-    output_arr = cupy.zeros(((1, 1)), dtype=u.dtype)
+    u_order = "F" if cupy.isfortran(u) else "C"
+    v_order = "F" if cupy.isfortran(v) else "C"
+
+    if u_order != v_order:
+        raise ValueError('u and v must have the same layout '
+                         '(u.order=%s, v.order=%s' % (u_order, v_order))
+
+    output_arr = cupy.zeros((1, 1), dtype=u.dtype, order=u_order)
+
     pairwise_distance(u, v, output_arr, "canberra")
 
-    return output_arr[0]
+    return output_arr[0,0]
 
 
 def chebyshev(u, v):
@@ -185,12 +197,18 @@ def chebyshev(u, v):
     """
     check_soft_dependencies()
 
-    u = cupy.asarray(u)
-    v = cupy.asarray(v)
-    output_arr = cupy.zeros(((1, 1)), dtype=u.dtype)
+    u_order = "F" if cupy.isfortran(u) else "C"
+    v_order = "F" if cupy.isfortran(v) else "C"
+
+    if u_order != v_order:
+        raise ValueError('u and v must have the same layout '
+                         '(u.order=%s, v.order=%s' % (u_order, v_order))
+
+    output_arr = cupy.zeros((1, 1), dtype=u.dtype, order=u_order)
+
     pairwise_distance(u, v, output_arr, "chebyshev")
 
-    return output_arr[0]
+    return output_arr[0,0]
 
 
 def cityblock(u, v):
@@ -211,12 +229,18 @@ def cityblock(u, v):
     """
     check_soft_dependencies()
 
-    u = cupy.asarray(u)
-    v = cupy.asarray(v)
-    output_arr = cupy.zeros(((1, 1)), dtype=u.dtype)
+    u_order = "F" if cupy.isfortran(u) else "C"
+    v_order = "F" if cupy.isfortran(v) else "C"
+
+    if u_order != v_order:
+        raise ValueError('u and v must have the same layout '
+                         '(u.order=%s, v.order=%s' % (u_order, v_order))
+
+    output_arr = cupy.zeros((1, 1), dtype=u.dtype, order=u_order)
+
     pairwise_distance(u, v, output_arr, "cityblock")
 
-    return output_arr[0]
+    return output_arr[0,0]
 
 
 def correlation(u, v):
@@ -241,12 +265,18 @@ def correlation(u, v):
     """
     check_soft_dependencies()
 
-    u = cupy.asarray(u)
-    v = cupy.asarray(v)
-    output_arr = cupy.zeros(((1, 1)), dtype=u.dtype)
+    u_order = "F" if cupy.isfortran(u) else "C"
+    v_order = "F" if cupy.isfortran(v) else "C"
+
+    if u_order != v_order:
+        raise ValueError('u and v must have the same layout '
+                         '(u.order=%s, v.order=%s' % (u_order, v_order))
+
+    output_arr = cupy.zeros((1, 1), dtype=u.dtype, order=u_order)
+
     pairwise_distance(u, v, output_arr, "correlation")
 
-    return output_arr[0]
+    return output_arr[0,0]
 
 
 def cosine(u, v):
@@ -268,12 +298,18 @@ def cosine(u, v):
     """
     check_soft_dependencies()
 
-    u = cupy.asarray(u)
-    v = cupy.asarray(v)
-    output_arr = cupy.zeros(((1, 1)), dtype=u.dtype)
+    u_order = "F" if cupy.isfortran(u) else "C"
+    v_order = "F" if cupy.isfortran(v) else "C"
+
+    if u_order != v_order:
+        raise ValueError('u and v must have the same layout '
+                         '(u.order=%s, v.order=%s' % (u_order, v_order))
+
+    output_arr = cupy.zeros((1, 1), dtype=u.dtype, order=u_order)
+
     pairwise_distance(u, v, output_arr, "cosine")
 
-    return output_arr[0]
+    return output_arr[0,0]
 
 
 def hamming(u, v):
@@ -297,12 +333,18 @@ def hamming(u, v):
     """
     check_soft_dependencies()
 
-    u = cupy.asarray(u)
-    v = cupy.asarray(v)
-    output_arr = cupy.zeros(((1, 1)), dtype=u.dtype)
+    u_order = "F" if cupy.isfortran(u) else "C"
+    v_order = "F" if cupy.isfortran(v) else "C"
+
+    if u_order != v_order:
+        raise ValueError('u and v must have the same layout '
+                         '(u.order=%s, v.order=%s' % (u_order, v_order))
+
+    output_arr = cupy.zeros((1, 1), dtype=u.dtype, order=u_order)
+
     pairwise_distance(u, v, output_arr, "hamming")
 
-    return output_arr[0]
+    return output_arr[0,0]
 
 
 def euclidean(u, v):
@@ -322,12 +364,18 @@ def euclidean(u, v):
     """
     check_soft_dependencies()
 
-    u = cupy.asarray(u)
-    v = cupy.asarray(v)
-    output_arr = cupy.zeros(((1, 1)), dtype=u.dtype)
+    u_order = "F" if cupy.isfortran(u) else "C"
+    v_order = "F" if cupy.isfortran(v) else "C"
+
+    if u_order != v_order:
+        raise ValueError('u and v must have the same layout '
+                         '(u.order=%s, v.order=%s' % (u_order, v_order))
+
+    output_arr = cupy.zeros((1, 1), dtype=u.dtype, order=u_order)
+
     pairwise_distance(u, v, output_arr, "euclidean")
 
-    return output_arr[0]
+    return output_arr[0,0]
 
 
 def jensenshannon(u, v):
@@ -351,12 +399,18 @@ def jensenshannon(u, v):
     """
     check_soft_dependencies()
 
-    u = cupy.asarray(u)
-    v = cupy.asarray(v)
-    output_arr = cupy.zeros(((1, 1)), dtype=u.dtype)
+    u_order = "F" if cupy.isfortran(u) else "C"
+    v_order = "F" if cupy.isfortran(v) else "C"
+
+    if u_order != v_order:
+        raise ValueError('u and v must have the same layout '
+                         '(u.order=%s, v.order=%s' % (u_order, v_order))
+
+    output_arr = cupy.zeros((1, 1), dtype=u.dtype, order=u_order)
+
     pairwise_distance(u, v, output_arr, "jensenshannon")
 
-    return output_arr[0]
+    return output_arr[0,0]
 
 
 def russellrao(u, v):
@@ -380,12 +434,18 @@ def russellrao(u, v):
     """
     check_soft_dependencies()
 
-    u = cupy.asarray(u)
-    v = cupy.asarray(v)
-    output_arr = cupy.zeros(((1, 1)), dtype=u.dtype)
+    u_order = "F" if cupy.isfortran(u) else "C"
+    v_order = "F" if cupy.isfortran(v) else "C"
+
+    if u_order != v_order:
+        raise ValueError('u and v must have the same layout '
+                         '(u.order=%s, v.order=%s' % (u_order, v_order))
+
+    output_arr = cupy.zeros((1, 1), dtype=u.dtype, order=u_order)
+
     pairwise_distance(u, v, output_arr, "russellrao")
 
-    return output_arr[0]
+    return output_arr[0,0]
 
 
 def sqeuclidean(u, v):
@@ -406,13 +466,18 @@ def sqeuclidean(u, v):
     """
     check_soft_dependencies()
 
-    u = cupy.asarray(u)
-    v = cupy.asarray(v)
+    u_order = "F" if cupy.isfortran(u) else "C"
+    v_order = "F" if cupy.isfortran(v) else "C"
 
-    output_arr = cupy.zeros(((1, 1)), dtype=u.dtype)
+    if u_order != v_order:
+        raise ValueError('u and v must have the same layout '
+                         '(u.order=%s, v.order=%s' % (u_order, v_order))
+
+    output_arr = cupy.zeros((1, 1), dtype=u.dtype, order=u_order)
+
     pairwise_distance(u, v, output_arr, "sqeuclidean")
 
-    return output_arr[0]
+    return output_arr[0,0]
 
 
 def hellinger(u, v):
@@ -434,12 +499,18 @@ def hellinger(u, v):
     """
     check_soft_dependencies()
 
-    u = cupy.asarray(u)
-    v = cupy.asarray(v)
-    output_arr = cupy.zeros(((1, 1)), dtype=u.dtype)
+    u_order = "F" if cupy.isfortran(u) else "C"
+    v_order = "F" if cupy.isfortran(v) else "C"
+
+    if u_order != v_order:
+        raise ValueError('u and v must have the same layout '
+                         '(u.order=%s, v.order=%s' % (u_order, v_order))
+
+    output_arr = cupy.zeros((1, 1), dtype=u.dtype, order=u_order)
+
     pairwise_distance(u, v, output_arr, "hellinger")
 
-    return output_arr[0]
+    return output_arr[0,0]
 
 
 def kl_divergence(u, v):
@@ -462,10 +533,18 @@ def kl_divergence(u, v):
 
     u = cupy.asarray(u)
     v = cupy.asarray(v)
-    output_arr = cupy.zeros(((1, 1)), dtype=u.dtype)
+
+    u_order = "F" if cupy.isfortran(u) else "C"
+    v_order = "F" if cupy.isfortran(v) else "C"
+
+    if u_order != v_order:
+        raise ValueError('u and v must have the same layout '
+                         '(u.order=%s, v.order=%s' % (u_order, v_order))
+
+    output_arr = cupy.zeros((1, 1), dtype=u.dtype, order=u_order)
     pairwise_distance(u, v, output_arr, "kl_divergence")
 
-    return output_arr[0]
+    return output_arr[0,0]
 
 
 def cdist(XA, XB, metric='euclidean', out=None, **kwargs):
@@ -507,8 +586,8 @@ def cdist(XA, XB, metric='euclidean', out=None, **kwargs):
             (cuvs_available and XB.dtype not in ['float32', 'float64']):
         XB = cupy.asarray(XB, dtype='float32')
 
-    XA_order = "F" if XA.data.f_contiguous else "C"
-    XB_order = "F" if XB.data.f_contiguous else "C"
+    XA_order = "F" if cupy.isfortran(XA) else "C"
+    XB_order = "F" if cupy.isfortran(XB) else "C"
 
     if XA_order != XB_order:
         raise ValueError('XA and XB must have the same layout '
@@ -533,7 +612,7 @@ def cdist(XA, XB, metric='euclidean', out=None, **kwargs):
     if out is not None:
         if (pylibraft_available and out.dtype != 'float32') or \
                 (cuvs_available and out.dtype not in ['float32', 'float64']):
-            out_order = "F" if out.data.f_contiguous else "C"
+            out_order = "F" if cupy.isfortran(out) else "C"
             if out_order != XA_order:
                 raise ValueError('out must have same layout as input '
                                  '(out.order=%s)' % out_order)
