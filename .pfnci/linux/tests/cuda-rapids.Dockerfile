@@ -1,4 +1,4 @@
-ARG BASE_IMAGE="rapidsai/base:25.02a-cuda12.5-py3.11
+ARG BASE_IMAGE="rapidsai/base:25.02a-cuda12.5-py3.11"
 FROM ${BASE_IMAGE}
 
 USER root
