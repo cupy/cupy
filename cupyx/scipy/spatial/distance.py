@@ -146,7 +146,7 @@ def minkowski(u, v, p):
 
     pairwise_distance(u, v, output_arr, "minkowski", p)
 
-    return output_arr[0,0]
+    return output_arr[0, 0]
 
 
 def canberra(u, v):
@@ -177,7 +177,7 @@ def canberra(u, v):
 
     pairwise_distance(u, v, output_arr, "canberra")
 
-    return output_arr[0,0]
+    return output_arr[0, 0]
 
 
 def chebyshev(u, v):
@@ -208,7 +208,7 @@ def chebyshev(u, v):
 
     pairwise_distance(u, v, output_arr, "chebyshev")
 
-    return output_arr[0,0]
+    return output_arr[0, 0]
 
 
 def cityblock(u, v):
@@ -240,7 +240,7 @@ def cityblock(u, v):
 
     pairwise_distance(u, v, output_arr, "cityblock")
 
-    return output_arr[0,0]
+    return output_arr[0, 0]
 
 
 def correlation(u, v):
@@ -276,7 +276,7 @@ def correlation(u, v):
 
     pairwise_distance(u, v, output_arr, "correlation")
 
-    return output_arr[0,0]
+    return output_arr[0, 0]
 
 
 def cosine(u, v):
@@ -309,7 +309,7 @@ def cosine(u, v):
 
     pairwise_distance(u, v, output_arr, "cosine")
 
-    return output_arr[0,0]
+    return output_arr[0, 0]
 
 
 def hamming(u, v):
@@ -344,7 +344,7 @@ def hamming(u, v):
 
     pairwise_distance(u, v, output_arr, "hamming")
 
-    return output_arr[0,0]
+    return output_arr[0, 0]
 
 
 def euclidean(u, v):
@@ -375,7 +375,7 @@ def euclidean(u, v):
 
     pairwise_distance(u, v, output_arr, "euclidean")
 
-    return output_arr[0,0]
+    return output_arr[0, 0]
 
 
 def jensenshannon(u, v):
@@ -410,7 +410,7 @@ def jensenshannon(u, v):
 
     pairwise_distance(u, v, output_arr, "jensenshannon")
 
-    return output_arr[0,0]
+    return output_arr[0, 0]
 
 
 def russellrao(u, v):
@@ -445,7 +445,7 @@ def russellrao(u, v):
 
     pairwise_distance(u, v, output_arr, "russellrao")
 
-    return output_arr[0,0]
+    return output_arr[0, 0]
 
 
 def sqeuclidean(u, v):
@@ -477,7 +477,7 @@ def sqeuclidean(u, v):
 
     pairwise_distance(u, v, output_arr, "sqeuclidean")
 
-    return output_arr[0,0]
+    return output_arr[0, 0]
 
 
 def hellinger(u, v):
@@ -510,7 +510,7 @@ def hellinger(u, v):
 
     pairwise_distance(u, v, output_arr, "hellinger")
 
-    return output_arr[0,0]
+    return output_arr[0, 0]
 
 
 def kl_divergence(u, v):
@@ -544,7 +544,7 @@ def kl_divergence(u, v):
     output_arr = cupy.zeros((1, 1), dtype=u.dtype, order=u_order)
     pairwise_distance(u, v, output_arr, "kl_divergence")
 
-    return output_arr[0,0]
+    return output_arr[0, 0]
 
 
 def cdist(XA, XB, metric='euclidean', out=None, **kwargs):
