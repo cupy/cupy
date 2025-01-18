@@ -203,7 +203,7 @@ def _get_arch():
     if arch in _tegra_archs:
         return arch
     else:
-        return str(min(int(arch), int(nvrtc_max_compute_capability)))
+        return min(arch, nvrtc_max_compute_capability, key=int)
 
 
 @_util.memoize(for_each_device=True)
