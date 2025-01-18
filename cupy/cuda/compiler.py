@@ -177,7 +177,7 @@ def _get_max_compute_capability():
         nvrtc_max_compute_capability = '90'
     else:
         # CUDA 12.8+
-        nvrtc_max_compute_capability = '100'
+        nvrtc_max_compute_capability = '120'
 
     return nvrtc_max_compute_capability
 

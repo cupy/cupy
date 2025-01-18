@@ -72,10 +72,13 @@ def _nvcc_gencode_options(cuda_version: int) -> List[str]:
                          ('compute_80', 'sm_80'),
                          ('compute_86', 'sm_86'),
                          ('compute_89', 'sm_89'),
-                         ('compute_90', 'sm_90'),
-                         'compute_90']
+                         ('compute_90', 'sm_90'),]
             if cuda_version >= 12080:
-                arch_list += [('compute_100', 'sm_100')]
+                arch_list += [('compute_100', 'sm_100'),
+                              ('compute_120', 'sm_120'),
+                              'compute_120']
+            else:
+                arch_list.append('compute_90')
 
             if aarch64:
                 # Jetson TX1/TX2 are excluded as they don't support JetPack 5
