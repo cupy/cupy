@@ -872,12 +872,13 @@ class TestCsrMatrixScipyComparison:
             with pytest.raises(ValueError):
                 m * x
 
-    def test_mul_dense_ndim3(self):
-        for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
-            m = self.make(xp, sp, self.dtype)
-            x = xp.arange(24).reshape(4, 2, 3).astype(self.dtype)
-            with pytest.raises(ValueError):
-                m * x
+    # TODO: Support matmul for sparse matrix and 3 or more dim dense array
+    @pytest.mark.xfail(reason="Not implemented")
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_mul_dense_ndim3(self, xp, sp):
+        m = self.make(xp, sp, self.dtype)
+        x = xp.arange(24).reshape(4, 2, 3).astype(self.dtype)
+        return m * x
 
     def test_mul_unsupported(self):
         for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
@@ -936,12 +937,13 @@ class TestCsrMatrixScipyComparison:
         x = xp.arange(12).reshape(4, 3).astype(self.dtype)
         return x * m
 
-    def test_rmul_dense_ndim3(self):
-        for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
-            m = self.make(xp, sp, self.dtype)
-            x = xp.arange(24).reshape(4, 2, 3).astype(self.dtype)
-            with pytest.raises(ValueError):
-                x * m
+    # TODO: Support matmul for sparse matrix and 3 or more dim dense array
+    @pytest.mark.xfail(reason="Not implemented")
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_rmul_dense_ndim3(self, xp, sp):
+        m = self.make(xp, sp, self.dtype)
+        x = xp.arange(24).reshape(4, 2, 3).astype(self.dtype)
+        return x * m
 
     def test_rmul_unsupported(self):
         if (
