@@ -31,7 +31,7 @@ class TestFftlog:
 
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(rtol=rtol, atol=atol, scipy_name='scp')
-    @testing.with_requires('scipy>=1.7.0')
+    @testing.with_requires('scipy>=1.15.0')
     def test_fht(self, xp, scp, dtype):
 
         # test function, analytical Hankel transform is of the same form
