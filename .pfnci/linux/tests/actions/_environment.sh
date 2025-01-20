@@ -1,3 +1,5 @@
+echo "::group::Test - Setup Environment"
+
 export CACHE_DIR="${CACHE_DIR:-/tmp}"
 export CCACHE_DIR="${CACHE_DIR}/.ccache"
 export CCACHE_NOHASHDIR="true"
@@ -27,6 +29,7 @@ export PATH="${HOME}/.local/bin:${PATH}"
 # Show GPU statistics
 ( which nvidia-smi &> /dev/null ) && nvidia-smi
 ( which hipconfig &> /dev/null ) && hipconfig
+( which rocminfo &> /dev/null ) && timeout --kill-after 10 3 rocminfo > /dev/null
 
 # Show environment variables
 env
@@ -39,3 +42,5 @@ if ! touch .; then
     pushd "${_src_dir}"
     export CCACHE_BASEDIR="${_src_dir}"
 fi
+
+echo "::endgroup::"
