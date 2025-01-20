@@ -136,11 +136,7 @@ class TestEstimateGradients2DGlobal:
 
         tri = scp.spatial.Delaunay(x)
         z = func(x[:, 0], x[:, 1])
-        if xp is cupy:
-            grad_fn = scp.interpolate._interpnd.estimate_gradients_2d_global
-        else:
-            grad_fn = scp.interpolate.interpnd.estimate_gradients_2d_global
-
+        grad_fn = scp.interpolate._interpnd.estimate_gradients_2d_global
         dz = grad_fn(tri, z, tol=1e-6)
         return dz
 
