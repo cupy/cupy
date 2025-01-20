@@ -35,7 +35,7 @@ def norm(x, ord=None, axis=None):
     """
 
     if not cupyx.scipy.sparse.issparse(x):
-        raise TypeError(("input is not sparse. use cupy.linalg.norm"))
+        raise TypeError("input is not sparse. use cupy.linalg.norm")
 
     # Check the default case first and handle it immediately.
     if axis is None and ord in (None, 'fro', 'f'):
