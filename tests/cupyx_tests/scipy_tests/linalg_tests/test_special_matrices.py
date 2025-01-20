@@ -1,4 +1,5 @@
 import unittest
+import warnings
 
 from cupy import testing
 import cupyx.scipy.linalg  # NOQA
@@ -62,6 +63,8 @@ class TestSpecialMatrices(TestSpecialMatricesBase):
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp',
                                  accept_error=ValueError)
     def test_special_matrix(self, xp, scp):
+        if self.function == "kron":
+            warnings.filterwarnings('ignore', category=DeprecationWarning)
         function = getattr(scp.linalg, self.function)
         return function(*[self._get_arg(xp, arg) for arg in self.args])
 
