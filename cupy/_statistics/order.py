@@ -7,7 +7,8 @@ from cupy import _core
 from cupy._core import _routines_statistics as _statistics
 from cupy._core import _fusion_thread_local
 from cupy._logic import content
-
+# import cupy 
+import warnings
 
 def amin(a, axis=None, out=None, keepdims=False):
     """Returns the minimum of an array or the minimum along an axis.
@@ -83,35 +84,85 @@ def amax(a, axis=None, out=None, keepdims=False):
     return a.max(axis=axis, out=out, keepdims=keepdims)
 
 
-def nanmin(a, axis=None, out=None, keepdims=False):
-    """Returns the minimum of an array along an axis ignoring NaN.
 
-    When there is a slice whose elements are all NaN, a :class:`RuntimeWarning`
-    is raised and NaN is returned.
 
-    Args:
-        a (cupy.ndarray): Array to take the minimum.
-        axis (int): Along which axis to take the minimum. The flattened array
-            is used by default.
-        out (cupy.ndarray): Output array.
-        keepdims (bool): If ``True``, the axis is remained as an axis of
-            size one.
+def _nanmin_dispatcher(a, axis=None, out=None, keepdims=None, initial=None, where=None):
+    return (a, out)
 
-    Returns:
-        cupy.ndarray: The minimum of ``a``, along the axis if specified.
+def nanmin(a, axis=None, out=None, keepdims=False, initial=None, where=True):
+    """
+    Return minimum of an array or minimum along an axis, ignoring any NaNs.
+    When all-NaN slices are encountered, a RuntimeWarning is raised, and NaN
+    is returned for that slice.
 
-    .. warning::
+    Parameters
+    ----------
+    a : cupy.ndarray
+        Array containing numbers whose minimum is desired.
+    axis : {int, tuple of int, None}, optional
+        Axis or axes along which the minimum is computed.
+    out : cupy.ndarray, optional
+        Alternate output array to store the result.
+    keepdims : bool, optional
+        If True, retains reduced axes as dimensions of size one.
+    initial : scalar, optional
+        The maximum value of an output element. Must be present to allow
+        computation on empty slices.
+    where : array_like of bool, optional
+        Boolean array that specifies which elements to include in the reduction.
 
-        This function may synchronize the device.
+    Returns
+    -------
+    cupy.ndarray
+        The minimum values along the specified axis, ignoring NaNs.
 
     .. seealso:: :func:`numpy.nanmin`
-
     """
-    # TODO(niboshi): Avoid synchronization.
-    res = _core.nanmin(a, axis=axis, out=out, keepdims=keepdims)
-    if content.isnan(res).any():  # synchronize!
-        warnings.warn('All-NaN slice encountered', RuntimeWarning)
+    kwargs = {}
+    if keepdims:
+        kwargs['keepdims'] = keepdims
+    if initial is not None:
+        kwargs['initial'] = initial
+    if where is not True:
+        kwargs['where'] = where
+
+    # Ensure `a` is a CuPy array
+    a = cupy.asarray(a)
+
+    if a.dtype.kind not in 'fc' and cupy.issubdtype(a.dtype, cupy.number):
+        # Fast path for numeric arrays
+        res = cupy.fmin.reduce(a, axis=axis, out=out, **kwargs)
+        if cupy.isnan(res).any():
+            warnings.warn("All-NaN slice encountered", RuntimeWarning, stacklevel=2)
+    else:
+        # Handle non-numeric types or custom subclass objects
+        a, mask = _replace_nan(a, cupy.inf)
+        res = cupy.amin(a, axis=axis, out=out, **kwargs)
+        if mask is not None:
+            # Check for all-NaN slices
+            kwargs.pop("initial", None)
+            mask = cupy.all(mask, axis=axis, **kwargs)
+            if cupy.any(mask):
+                res = _copyto(res, cupy.nan, mask)
+                warnings.warn("All-NaN slice encountered", RuntimeWarning, stacklevel=2)
     return res
+
+
+def _replace_nan(a, val):
+    """Replace NaNs with a specified value."""
+    mask = cupy.isnan(a)
+    if not cupy.any(mask):
+        return a, None
+    a = cupy.where(mask, val, a)
+    return a, mask
+
+
+def _copyto(a, val, mask):
+    """Copy values to `a` based on a mask."""
+    if mask is not None:
+        a = cupy.where(mask, val, a)
+    return a
+
 
 
 def nanmax(a, axis=None, out=None, keepdims=False):
