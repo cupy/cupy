@@ -6,7 +6,6 @@ import numpy
 from libc.stdint cimport uint64_t
 
 import cupy
-from cupy.random._generator_api import init_curand, random_raw
 from cupy_backends.cuda.api import runtime
 
 # We need access to the sizes here, so this is why we have this header
@@ -71,11 +70,15 @@ class BitGenerator:
 class _cuRANDGenerator(BitGenerator):
     # Size is the number of threads that will be initialized
     def __init__(self, seed=None, *, size=-1):
+        from cupy.random._generator_api import init_curand
+
         super().__init__(seed)
         # Raw kernel has problems with integers with the 64th bit set
         self._seed = self._seed_seq.generate_state(1, numpy.uint32)[0]
         if size < 0:
-            size = 8 * 256 * cupy.cuda.runtime.cudaDevAttrMultiProcessorCount
+            size = 8 * 256 * runtime.deviceGetAttribute(
+                runtime.cudaDevAttrMultiProcessorCount,
+                self._current_device_id)
         self._size = size
         cdef uint64_t b_size = self._type_size() * size
         self._state = cupy.zeros(b_size, dtype=numpy.int8)
@@ -105,6 +108,8 @@ class _cuRANDGenerator(BitGenerator):
             See the class docstring for the number of bits returned.
 
         """
+        from cupy.random._generator_api import random_raw
+
         shape = size if size is not None else ()
         y = cupy.zeros(shape, dtype=numpy.int32)
         random_raw(self, y)

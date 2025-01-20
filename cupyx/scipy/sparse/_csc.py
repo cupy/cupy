@@ -5,7 +5,6 @@ except ImportError:
     _scipy_available = False
 
 import cupy
-from cupyx import cusparse
 from cupy_backends.cuda.api import driver
 from cupy_backends.cuda.api import runtime
 import cupyx.scipy.sparse
@@ -69,6 +68,8 @@ class csc_matrix(_compressed._compressed_sparse_matrix):
             (data, indices, indptr), shape=self._shape)
 
     def _convert_dense(self, x):
+        from cupyx import cusparse
+
         if cusparse.check_availability('denseToSparse'):
             m = cusparse.denseToSparse(x, format='csc')
         else:
@@ -79,6 +80,8 @@ class csc_matrix(_compressed._compressed_sparse_matrix):
         return (y, x)
 
     def __mul__(self, other):
+        from cupyx import cusparse
+
         if cupy.isscalar(other):
             self.sum_duplicates()
             return self._with_data(self.data * other)
@@ -98,7 +101,7 @@ class csc_matrix(_compressed._compressed_sparse_matrix):
                 a.sum_duplicates()
                 return cusparse.csrgemm2(a, other)
             else:
-                raise NotImplementedError
+                raise AssertionError
         elif isspmatrix_csc(other):
             self.sum_duplicates()
             other.sum_duplicates()
@@ -120,7 +123,7 @@ class csc_matrix(_compressed._compressed_sparse_matrix):
                 b.sum_duplicates()
                 return cusparse.spgemm(a, b)
             else:
-                raise NotImplementedError
+                raise AssertionError
         elif cupyx.scipy.sparse.isspmatrix(other):
             return self * other.tocsr()
         elif _base.isdense(other):
@@ -144,7 +147,7 @@ class csc_matrix(_compressed._compressed_sparse_matrix):
                     # (I got HIPSPARSE_STATUS_INTERNAL_ERROR...)
                     csrmv = cusparse.spmv
                 else:
-                    raise NotImplementedError
+                    raise AssertionError
                 return csrmv(self.T, cupy.asfortranarray(other), transa=True)
             elif other.ndim == 2:
                 self.sum_duplicates()
@@ -160,7 +163,7 @@ class csc_matrix(_compressed._compressed_sparse_matrix):
                 elif cusparse.check_availability('spmm'):
                     csrmm = cusparse.spmm
                 else:
-                    raise NotImplementedError
+                    raise AssertionError
                 return csrmm(self.T, cupy.asfortranarray(other), transa=True)
             else:
                 raise ValueError('could not interpret dimensions')
@@ -191,6 +194,8 @@ class csc_matrix(_compressed._compressed_sparse_matrix):
             Calling this function might synchronize the device.
 
         """
+        from cupyx import cusparse
+
         if not self.has_sorted_indices:
             cusparse.cscsort(self)
             self.has_sorted_indices = True
@@ -209,6 +214,8 @@ class csc_matrix(_compressed._compressed_sparse_matrix):
         .. seealso:: :meth:`scipy.sparse.csc_matrix.toarray`
 
         """
+        from cupyx import cusparse
+
         if order is None:
             order = 'C'
         order = order.upper()
@@ -239,6 +246,8 @@ class csc_matrix(_compressed._compressed_sparse_matrix):
                 raise ValueError('order not understood')
 
     def _add_sparse(self, other, alpha, beta):
+        from cupyx import cusparse
+
         self.sum_duplicates()
         other = other.tocsc().T
         other.sum_duplicates()
@@ -253,7 +262,7 @@ class csc_matrix(_compressed._compressed_sparse_matrix):
     # TODO(unno): Implement tobsr
 
     def tocoo(self, copy=False):
-        """Converts the matrix to COOdinate format.
+        """Converts the matrix to COOrdinate format.
 
         Args:
             copy (bool): If ``False``, it shares data arrays as much as
@@ -263,6 +272,8 @@ class csc_matrix(_compressed._compressed_sparse_matrix):
             cupyx.scipy.sparse.coo_matrix: Converted matrix.
 
         """
+        from cupyx import cusparse
+
         if copy:
             data = self.data.copy()
             indices = self.indices.copy()
@@ -300,6 +311,8 @@ class csc_matrix(_compressed._compressed_sparse_matrix):
             cupyx.scipy.sparse.csr_matrix: Converted matrix.
 
         """
+        from cupyx import cusparse
+
         # copy is ignored
         if cusparse.check_availability('csc2csr'):
             csc2csr = cusparse.csc2csr
@@ -328,7 +341,7 @@ class csc_matrix(_compressed._compressed_sparse_matrix):
                 Otherwise, it shared data arrays as much as possible.
 
         Returns:
-            cupyx.scipy.sparse.spmatrix: Transpose matrix.
+            cupyx.scipy.sparse.csr_matrix: `self` with the dimensions reversed.
 
         """
         if axes is not None:

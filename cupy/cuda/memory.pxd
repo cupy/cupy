@@ -16,6 +16,16 @@ cdef class BaseMemory:
         public int device_id
 
 
+@cython.no_gc
+cdef class SystemMemory(BaseMemory):
+
+    cdef:
+        readonly object _owner
+
+    @staticmethod
+    cdef from_external(intptr_t ptr, size_t size, object owner)
+
+
 cdef class MemoryPointer:
 
     cdef:

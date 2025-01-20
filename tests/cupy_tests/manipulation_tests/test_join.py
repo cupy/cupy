@@ -5,6 +5,7 @@ import cupy
 from cupy import testing
 from cupy import cuda
 from cupy.cuda import runtime
+from cupy.exceptions import AxisError
 
 
 class TestJoin:
@@ -254,7 +255,7 @@ class TestJoin:
                 xp.concatenate((a, b), out=out, dtype=xp.int64)
 
     @testing.with_requires('numpy>=1.20.0')
-    @pytest.mark.filterwarnings('error::numpy.ComplexWarning')
+    @pytest.mark.filterwarnings('error::cupy.exceptions.ComplexWarning')
     @pytest.mark.parametrize('casting', [
         'no',
         'equiv',
@@ -264,7 +265,7 @@ class TestJoin:
     ])
     @testing.for_all_dtypes_combination(names=['dtype1', 'dtype2'])
     @testing.numpy_cupy_array_equal(
-        accept_error=(TypeError, numpy.ComplexWarning))
+        accept_error=(TypeError, cupy.exceptions.ComplexWarning))
     @pytest.mark.skipif(runtime.is_hip, reason='ROCm/HIP may have a bug ')
     def test_concatenate_casting(self, xp, dtype1, dtype2, casting):
         a = testing.shaped_arange((3, 4), xp, dtype1)
@@ -323,7 +324,7 @@ class TestJoin:
         return xp.hstack((a, b), dtype=dtype2)
 
     @testing.with_requires('numpy>=1.24.0')
-    @pytest.mark.filterwarnings('error::numpy.ComplexWarning')
+    @pytest.mark.filterwarnings('error::cupy.exceptions.ComplexWarning')
     @pytest.mark.parametrize('casting', [
         'no',
         'equiv',
@@ -333,7 +334,7 @@ class TestJoin:
     ])
     @testing.for_all_dtypes_combination(names=['dtype1', 'dtype2'])
     @testing.numpy_cupy_array_equal(
-        accept_error=(TypeError, numpy.ComplexWarning))
+        accept_error=(TypeError, cupy.exceptions.ComplexWarning))
     def test_hstack_casting(self, xp, dtype1, dtype2, casting):
         a = testing.shaped_arange((3, 4), xp, dtype1)
         b = testing.shaped_arange((3, 4), xp, dtype1)
@@ -366,7 +367,7 @@ class TestJoin:
         return xp.vstack((a, b), dtype=dtype2)
 
     @testing.with_requires('numpy>=1.24.0')
-    @pytest.mark.filterwarnings('error::numpy.ComplexWarning')
+    @pytest.mark.filterwarnings('error::cupy.exceptions.ComplexWarning')
     @pytest.mark.parametrize('casting', [
         'no',
         'equiv',
@@ -376,7 +377,7 @@ class TestJoin:
     ])
     @testing.for_all_dtypes_combination(names=['dtype1', 'dtype2'])
     @testing.numpy_cupy_array_equal(
-        accept_error=(TypeError, numpy.ComplexWarning))
+        accept_error=(TypeError, cupy.exceptions.ComplexWarning))
     def test_vstack_casting(self, xp, dtype1, dtype2, casting):
         a = testing.shaped_arange((3, 4), xp, dtype1)
         b = testing.shaped_arange((3, 4), xp, dtype1)
@@ -452,7 +453,7 @@ class TestJoin:
 
     def test_stack_out_of_bounds2(self):
         a = testing.shaped_arange((2, 3), cupy)
-        with pytest.raises(numpy.AxisError):
+        with pytest.raises(AxisError):
             return cupy.stack([a, a], axis=3)
 
     @testing.for_all_dtypes(name='dtype')
@@ -510,7 +511,7 @@ class TestJoin:
         return xp.stack((a, b), dtype=dtype2)
 
     @testing.with_requires('numpy>=1.24.0')
-    @pytest.mark.filterwarnings('error::numpy.ComplexWarning')
+    @pytest.mark.filterwarnings('error::cupy.exceptions.ComplexWarning')
     @pytest.mark.parametrize('casting', [
         'no',
         'equiv',
@@ -520,13 +521,14 @@ class TestJoin:
     ])
     @testing.for_all_dtypes_combination(names=['dtype1', 'dtype2'])
     @testing.numpy_cupy_array_equal(
-        accept_error=(TypeError, numpy.ComplexWarning))
+        accept_error=(TypeError, cupy.exceptions.ComplexWarning))
     def test_stack_casting(self, xp, dtype1, dtype2, casting):
         a = testing.shaped_arange((3, 4), xp, dtype1)
         b = testing.shaped_arange((3, 4), xp, dtype1)
         # may raise TypeError or ComplexWarning
         return xp.stack((a, b), dtype=dtype2, casting=casting)
 
+    @testing.with_requires("numpy>=2.0")
     @testing.for_all_dtypes(name='dtype1')
     @testing.for_all_dtypes(name='dtype2')
     @testing.numpy_cupy_array_equal()
@@ -534,22 +536,23 @@ class TestJoin:
         a = testing.shaped_arange((4, 3), xp, dtype1)
         b = testing.shaped_arange((3,), xp, dtype2)
         c = testing.shaped_arange((2, 3), xp, dtype1)
-        return xp.row_stack((a, b, c))
+        with pytest.warns(DeprecationWarning):
+            return xp.row_stack((a, b, c))
 
     def test_row_stack_wrong_ndim1(self):
         a = cupy.zeros(())
         b = cupy.zeros((3,))
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError), pytest.warns(DeprecationWarning):
             cupy.row_stack((a, b))
 
     def test_row_stack_wrong_ndim2(self):
         a = cupy.zeros((3, 2, 3))
         b = cupy.zeros((3, 2))
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError), pytest.warns(DeprecationWarning):
             cupy.row_stack((a, b))
 
     def test_row_stack_wrong_shape(self):
         a = cupy.zeros((3, 2))
         b = cupy.zeros((4, 3))
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError), pytest.warns(DeprecationWarning):
             cupy.row_stack((a, b))

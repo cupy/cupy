@@ -112,7 +112,7 @@ def _make_sum_dup(xp, sp, dtype):
 
 
 @testing.parameterize(*testing.product({
-    'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
+    'dtype': "?fdFD",
 }))
 class TestCooMatrix:
 
@@ -131,12 +131,12 @@ class TestCooMatrix:
     def test_row(self):
         assert self.m.row.dtype == numpy.int32
         testing.assert_array_equal(
-            self.m.row, cupy.array([0, 0, 1, 2], self.dtype))
+            self.m.row, cupy.array([0, 0, 1, 2], numpy.int32))
 
     def test_col(self):
         assert self.m.col.dtype == numpy.int32
         testing.assert_array_equal(
-            self.m.col, cupy.array([0, 1, 3, 2], self.dtype))
+            self.m.col, cupy.array([0, 1, 3, 2], numpy.int32))
 
     def test_init_copy(self):
         n = sparse.coo_matrix(self.m)
@@ -198,22 +198,37 @@ class TestCooMatrix:
     def test_get(self):
         m = self.m.get()
         assert isinstance(m, scipy.sparse.coo_matrix)
-        expect = [
+        expect = numpy.array([
             [0, 1, 0, 0],
             [0, 0, 0, 2],
             [0, 0, 3, 0]
-        ]
+        ], dtype=self.dtype)
         numpy.testing.assert_allclose(m.toarray(), expect)
 
-    @testing.with_requires('scipy')
+    @testing.with_requires('scipy>=1.14')
     def test_str(self):
-        if numpy.dtype(self.dtype).kind == 'f':
-            expect = '''  (0, 0)\t0.0
+        dtype_name = numpy.dtype(self.dtype).name
+        if numpy.dtype(self.dtype).kind == 'b':
+            expect = f'''<COOrdinate sparse matrix of dtype '{dtype_name}'
+\twith 4 stored elements and shape (3, 4)>
+  Coords\tValues
+  (0, 0)\tFalse
+  (0, 1)\tTrue
+  (1, 3)\tTrue
+  (2, 2)\tTrue'''
+        elif numpy.dtype(self.dtype).kind == 'f':
+            expect = f'''<COOrdinate sparse matrix of dtype '{dtype_name}'
+\twith 4 stored elements and shape (3, 4)>
+  Coords\tValues
+  (0, 0)\t0.0
   (0, 1)\t1.0
   (1, 3)\t2.0
   (2, 2)\t3.0'''
         elif numpy.dtype(self.dtype).kind == 'c':
-            expect = '''  (0, 0)\t0j
+            expect = f'''<COOrdinate sparse matrix of dtype '{dtype_name}'
+\twith 4 stored elements and shape (3, 4)>
+  Coords\tValues
+  (0, 0)\t0j
   (0, 1)\t(1+0j)
   (1, 3)\t(2+0j)
   (2, 2)\t(3+0j)'''
@@ -221,11 +236,11 @@ class TestCooMatrix:
 
     def test_toarray(self):
         m = self.m.toarray()
-        expect = [
+        expect = numpy.array([
             [0, 1, 0, 0],
             [0, 0, 0, 2],
             [0, 0, 3, 0]
-        ]
+        ], dtype=self.dtype)
         cupy.testing.assert_allclose(m, expect)
 
     # reshape
@@ -234,17 +249,19 @@ class TestCooMatrix:
 
     def test_reshape_1(self):
         m = self.m.reshape((1, 12)).toarray()
-        expect = [[0, 1, 0, 0, 0, 0, 0, 2, 0, 0, 3, 0]]
+        expect = numpy.array(
+            [[0, 1, 0, 0, 0, 0, 0, 2, 0, 0, 3, 0]], dtype=self.dtype)
         cupy.testing.assert_allclose(m, expect)
 
     def test_reshape_2(self):
         m = self.m.reshape((1, 12), order='F').toarray()
-        expect = [[1, 0, 0, 0, 0, 2, 0, 0, 0, 0, 3, 0]]
+        expect = numpy.array(
+            [[1, 0, 0, 0, 0, 2, 0, 0, 0, 0, 3, 0]], dtype=self.dtype)
         cupy.testing.assert_allclose(m, expect)
 
 
 @testing.parameterize(*testing.product({
-    'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
+    'dtype': "?fdFD",
 }))
 @testing.with_requires('scipy')
 class TestCooMatrixInit:
@@ -293,7 +310,8 @@ class TestCooMatrixInit:
         n = sparse.coo_matrix(m)
         assert n.nnz == 3
         assert n.shape == (3, 4)
-        cupy.testing.assert_array_equal(n.data, [1, 2, 3])
+        cupy.testing.assert_array_equal(
+            n.data, numpy.array([1, 2, 3], dtype=self.dtype))
         cupy.testing.assert_array_equal(n.row, [0, 0, 2])
         cupy.testing.assert_array_equal(n.col, [1, 3, 2])
 
@@ -328,7 +346,7 @@ class TestCooMatrixInit:
 
     def test_invalid_format(self):
         for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
-            with pytest.raises(TypeError):
+            with pytest.raises((TypeError, ValueError)):
                 sp.coo_matrix(
                     (self.data(xp), self.row(xp)), shape=self.shape)
 
@@ -389,7 +407,7 @@ class TestCooMatrixInit:
 
     def test_data_different_length(self):
         for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
-            data = xp.arange(5, dtype=self.dtype)
+            data = testing.shaped_arange((5,), xp=xp, dtype=self.dtype)
             with pytest.raises(TypeError):
                 sp.coo_matrix(
                     (data(xp), (self.row(xp), self.col(xp))),
@@ -397,7 +415,7 @@ class TestCooMatrixInit:
 
     def test_row_different_length(self):
         for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
-            row = xp.arange(5, dtype=self.dtype)
+            row = testing.shaped_arange((5,), xp=xp, dtype=numpy.int32)
             with pytest.raises(TypeError):
                 sp.coo_matrix(
                     (self.data(xp), (row(xp), self.col(xp))),
@@ -405,7 +423,7 @@ class TestCooMatrixInit:
 
     def test_col_different_length(self):
         for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
-            col = xp.arange(5, dtype=self.dtype)
+            col = testing.shaped_arange((5,), xp=xp, dtype=numpy.int32)
             with pytest.raises(TypeError):
                 sp.coo_matrix(
                     (self.data(xp), (self.row(xp), col(xp))),
@@ -467,7 +485,7 @@ class TestCooMatrixInit:
     'make_method': [
         '_make', '_make_unordered', '_make_empty', '_make_duplicate',
         '_make_shape'],
-    'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
+    'dtype': "fdFD",  # TODO(asi1024): Support bool
 }))
 @testing.with_requires('scipy')
 class TestCooMatrixScipyComparison:
@@ -476,7 +494,7 @@ class TestCooMatrixScipyComparison:
     def setUp(self):
         if (sys.platform == 'win32' and
                 cupyx.cusparse.getVersion() == 11301 and
-                self.dtype == cupy.complex128):
+                self.dtype == 'D'):
             pytest.xfail('Known to fail on CUDA 11.2 for Windows')
 
     @property
@@ -503,10 +521,11 @@ class TestCooMatrixScipyComparison:
         m = self.make(xp, sp, self.dtype)
         return m.toarray()
 
+    @testing.with_requires('scipy<1.14')
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_A(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
-        return m.A
+        return m.toarray()
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_tocoo(self, xp, sp):
@@ -1002,7 +1021,7 @@ class TestCooMatrixSum:
 
 
 @testing.parameterize(*testing.product({
-    'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
+    'dtype': "?fdFD",
 }))
 @testing.with_requires('scipy')
 class TestCooMatrixSumDuplicates:
@@ -1134,7 +1153,7 @@ class TestCooMatrixDiagonal:
         cupyx_a = sparse.coo_matrix(cupy.array(a))
         return scipy_a, cupyx_a
 
-    @testing.for_dtypes('fdFD')
+    @testing.for_dtypes('?fdFD')
     def test_diagonal(self, dtype):
         scipy_a, cupyx_a = self._make_matrix(dtype)
         m, n = self.shape
@@ -1158,7 +1177,7 @@ class TestCooMatrixDiagonal:
         testing.assert_array_equal(scipy_a.row, cupyx_a.row)
         testing.assert_array_equal(scipy_a.col, cupyx_a.col)
 
-    @testing.for_dtypes('fdFD')
+    @testing.for_dtypes('?fdFD')
     def test_setdiag(self, dtype):
         scipy_a, cupyx_a = self._make_matrix(dtype)
         m, n = self.shape
@@ -1171,7 +1190,7 @@ class TestCooMatrixDiagonal:
                 x = numpy.ones((x_len,), dtype=dtype)
                 self._test_setdiag(scipy_a, cupyx_a, x, k)
 
-    @testing.for_dtypes('fdFD')
+    @testing.for_dtypes('?fdFD')
     def test_setdiag_scalar(self, dtype):
         scipy_a, cupyx_a = self._make_matrix(dtype)
         x = numpy.array(1.0, dtype=dtype)

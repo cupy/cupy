@@ -20,11 +20,16 @@ class _ClassTemplate:
 def _include_cub(env):
     if _runtime.is_hip:
         env.generated.add_code('#include <hipcub/hipcub.hpp>')
-    elif _runtime.runtimeGetVersion() < 11000:
-        env.generated.add_code('#include <cupy/cub/cub/cub.cuh>')
+        env.generated.backend = 'nvcc'
     else:
-        env.generated.add_code('#include <cub/cub.cuh>')
-    env.generated.backend = 'nvcc'
+        # Including the master header (cub/cub.cuh) would break NVRTC, because
+        # it implicitly includes many Thrust headers that would give Jitify a
+        # hard time. We only include what we need (for block-/warp- level
+        # algorithms).
+        # WAR: warp_reduce.cuh is implicitly included.
+        env.generated.add_code('#include <cub/block/block_reduce.cuh>')
+        env.generated.backend = 'nvrtc'
+        env.generated.jitify = False
 
 
 def _get_cub_namespace():

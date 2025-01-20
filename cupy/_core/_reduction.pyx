@@ -67,9 +67,9 @@ extern "C" __global__ void ${name}(${params}) {
   _type_reduce *_sdata = reinterpret_cast<_type_reduce*>(_sdata_raw);
   unsigned int _tid = threadIdx.x;
 
-  int _J_offset = _tid >> __popc(_block_stride - 1);  // _tid / _block_stride
+  IndexT _J_offset = _tid >> __popc(_block_stride - 1); // _tid / _block_stride
   ptrdiff_t _j_offset = (ptrdiff_t)_J_offset * _out_ind.size();
-  int _J_stride = ${block_size} >> __popc(_block_stride - 1);
+  IndexT _J_stride = ${block_size} >> __popc(_block_stride - 1);
   ptrdiff_t _j_stride = (ptrdiff_t)_J_stride * _out_ind.size();
 
   for (ptrdiff_t _i_base = (ptrdiff_t)blockIdx.x * _block_stride;
@@ -78,7 +78,7 @@ extern "C" __global__ void ${name}(${params}) {
     _type_reduce _s = _type_reduce(${identity});
     ptrdiff_t _i =
         _i_base + (_tid & (_block_stride - 1));  // _tid % _block_stride
-    int _J = _J_offset;
+    IndexT _J = _J_offset;
     for (ptrdiff_t _j = _i + _j_offset; _j < _in_ind.size();
          _j += _j_stride, _J += _J_stride) {
       _in_ind.set(_j);
@@ -346,6 +346,12 @@ cdef class _AbstractReductionKernel:
             raise ValueError(('zero-size array to reduction operation'
                               ' %s which has no identity') % self.name)
 
+        if internal.prod(a_shape) / internal.prod(out_shape) > 0x7fffffff:
+            index_type = ('IndexT', 'int64')
+        else:
+            index_type = ('IndexT', 'int32')
+        type_map = _kernel._TypeMap(type_map._pairs + (index_type,))
+
         in_args = [x if isinstance(x, _ndarray_base) else
                    _scalar.CScalar.from_numpy_scalar_with_dtype(x, t)
                    for x, t in zip(in_args, in_types)]
@@ -581,6 +587,10 @@ cdef class _SimpleReductionKernel(_AbstractReductionKernel):
     def __call__(self, object a, axis=None, dtype=None, _ndarray_base out=None,
                  bint keepdims=False):
 
+        if hasattr(a, '__cupy_override_reduction_kernel__'):
+            return a.__cupy_override_reduction_kernel__(
+                self, axis, dtype, out, keepdims)
+
         cdef _ndarray_base arr
 
         if isinstance(a, _ndarray_base):
@@ -614,8 +624,10 @@ cdef class _SimpleReductionKernel(_AbstractReductionKernel):
             self, list in_args, list out_args, dtype):
         cdef _kernel._Op op
 
+        # XXX: weaks
+        weaks = None
         op = self._ops.guess_routine(
-            self.name, self._routine_cache, in_args, dtype, self._ops)
+            self.name, self._routine_cache, in_args, weaks, dtype, self._ops)
         map_expr, reduce_expr, post_map_expr, reduce_type = op.routine
 
         if reduce_type is None:
@@ -631,7 +643,7 @@ cdef class _SimpleReductionKernel(_AbstractReductionKernel):
                 and numpy.dtype(op.in_types[0]).kind == 'f'):
             warnings.warn(
                 'Casting complex values to real discards the imaginary part',
-                numpy.ComplexWarning)
+                cupy.exceptions.ComplexWarning)
             in_args[0] = in_args[0].real
 
         type_map = _kernel._TypeMap((
@@ -810,9 +822,10 @@ cdef class ReductionKernel(_AbstractReductionKernel):
                                  "a positional and keyword argument")
             out_args = [out]
 
+        # XXX: needs to handle weak scalars from _preprocess_args?
         dev_id = device.get_device_id()
-        in_args = _preprocess_args(dev_id, args[:self.nin], False)
-        out_args = _preprocess_args(dev_id, out_args, False)
+        in_args, _ = _preprocess_args(dev_id, args[:self.nin], False)
+        out_args, _ = _preprocess_args(dev_id, out_args, False)
         in_args = _broadcast(in_args, self.in_params, False, broad_shape)
 
         return self._call(

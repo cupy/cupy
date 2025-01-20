@@ -11,13 +11,10 @@ There are four differences compared to the original C API.
 4. The resulting values are returned directly instead of references.
 
 """
-import sys as _sys  # no-cython-lint
-
 cimport cython  # NOQA
 from libcpp cimport vector
 
 from cupy_backends.cuda.api cimport runtime
-from cupy_backends.cuda._softlink cimport SoftLink
 
 
 ###############################################################################
@@ -26,45 +23,11 @@ from cupy_backends.cuda._softlink cimport SoftLink
 
 IF CUPY_USE_CUDA_PYTHON:
     from cuda.cnvrtc cimport *
+    cdef inline void initialize():
+        pass
 ELSE:
-    cdef extern from '../../cupy_rtc.h' nogil:
-        const char *nvrtcGetErrorString(Result result)
-        int nvrtcVersion(int *major, int *minor)
-        int nvrtcCreateProgram(
-            Program* prog, const char* src, const char* name, int numHeaders,
-            const char** headers, const char** includeNames)
-        int nvrtcDestroyProgram(Program *prog)
-        int nvrtcCompileProgram(Program prog, int numOptions,
-                                const char** options)
-        int nvrtcGetPTXSize(Program prog, size_t *ptxSizeRet)
-        int nvrtcGetPTX(Program prog, char *ptx)
-        int nvrtcGetCUBINSize(Program prog, size_t *cubinSizeRet)
-        int nvrtcGetCUBIN(Program prog, char *cubin)
-        int nvrtcGetProgramLogSize(Program prog, size_t* logSizeRet)
-        int nvrtcGetProgramLog(Program prog, char* log)
-        int nvrtcAddNameExpression(Program, const char*)
-        int nvrtcGetLoweredName(Program, const char*, const char**)
-
-    ctypedef int (*f_type)(...) nogil  # NOQA
-    IF 11020 <= CUPY_CUDA_VERSION < 12000:
-        if _sys.platform == 'linux':
-            _libname = 'libnvrtc.so.11.2'
-        else:
-            _libname = 'nvrtc64_112_0.dll'
-    ELIF 12000 <= CUPY_CUDA_VERSION < 13000:
-        if _sys.platform == 'linux':
-            _libname = 'libnvrtc.so.12'
-        else:
-            _libname = 'nvrtc64_120_0.dll'
-    ELSE:
-        _libname = None
-
-    cdef SoftLink _lib = SoftLink(_libname, 'nvrtc')
-    # APIs added after CUDA 11.2+.
-    cdef f_type nvrtcGetNumSupportedArchs = <f_type>_lib.get('GetNumSupportedArchs')  # NOQA
-    cdef f_type nvrtcGetSupportedArchs = <f_type>_lib.get('GetSupportedArchs')  # NOQA
-    cdef f_type nvrtcGetNVVMSize = <f_type>_lib.get('GetNVVMSize')
-    cdef f_type nvrtcGetNVVM = <f_type>_lib.get('GetNVVM')
+    include "_cnvrtc.pxi"
+    pass
 
 
 ###############################################################################
@@ -74,8 +37,9 @@ ELSE:
 class NVRTCError(RuntimeError):
 
     def __init__(self, status):
+        initialize()
         self.status = status
-        cdef bytes msg = nvrtcGetErrorString(<Result>status)
+        cdef bytes msg = nvrtcGetErrorString(<nvrtcResult>status)
         super(NVRTCError, self).__init__(
             '{} ({})'.format(msg.decode(), status))
 
@@ -90,6 +54,7 @@ cpdef inline check_status(int status):
 
 
 cpdef tuple getVersion():
+    initialize()
     cdef int major, minor
     with nogil:
         status = nvrtcVersion(&major, &minor)
@@ -98,12 +63,11 @@ cpdef tuple getVersion():
 
 
 cpdef tuple getSupportedArchs():
+    initialize()
     cdef int status, num_archs
     cdef vector.vector[int] archs
     if runtime._is_hip_environment:
         raise RuntimeError("HIP does not support getSupportedArchs")
-    if runtime.runtimeGetVersion() < 11020:
-        raise RuntimeError("getSupportedArchs is supported since CUDA 11.2")
     with nogil:
         status = nvrtcGetNumSupportedArchs(&num_archs)
         if status == 0:
@@ -119,6 +83,7 @@ cpdef tuple getSupportedArchs():
 
 cpdef intptr_t createProgram(unicode src, unicode name, headers,
                              include_names) except? 0:
+    initialize()
     cdef Program prog
     cdef bytes b_src = src.encode()
     cdef const char* src_ptr = b_src
@@ -150,6 +115,7 @@ cpdef intptr_t createProgram(unicode src, unicode name, headers,
 
 
 cpdef destroyProgram(intptr_t prog):
+    initialize()
     cdef Program p = <Program>prog
     with nogil:
         status = nvrtcDestroyProgram(&p)
@@ -157,6 +123,7 @@ cpdef destroyProgram(intptr_t prog):
 
 
 cpdef compileProgram(intptr_t prog, options):
+    initialize()
     cdef int option_num = len(options)
     cdef vector.vector[const char*] option_vec
     cdef option_list = [opt.encode() for opt in options]
@@ -172,6 +139,7 @@ cpdef compileProgram(intptr_t prog, options):
 
 
 cpdef bytes getPTX(intptr_t prog):
+    initialize()
     cdef size_t ptxSizeRet
     cdef vector.vector[char] ptx
     cdef char* ptx_ptr = NULL
@@ -191,13 +159,12 @@ cpdef bytes getPTX(intptr_t prog):
 
 
 cpdef bytes getCUBIN(intptr_t prog):
+    initialize()
     cdef size_t cubinSizeRet = 0
     cdef vector.vector[char] cubin
     cdef char* cubin_ptr = NULL
     if runtime._is_hip_environment:
         raise RuntimeError("HIP does not support getCUBIN")
-    if runtime.runtimeGetVersion() < 11010:
-        raise RuntimeError("getCUBIN is supported since CUDA 11.1")
     with nogil:
         status = nvrtcGetCUBINSize(<Program>prog, &cubinSizeRet)
     check_status(status)
@@ -217,6 +184,7 @@ cpdef bytes getCUBIN(intptr_t prog):
 
 
 cpdef bytes getNVVM(intptr_t prog):
+    initialize()
     if runtime._is_hip_environment:
         raise RuntimeError("HIP does not support getNVVM")
     if runtime.runtimeGetVersion() < 11040:
@@ -241,6 +209,7 @@ cpdef bytes getNVVM(intptr_t prog):
 
 
 cpdef unicode getProgramLog(intptr_t prog):
+    initialize()
     cdef size_t logSizeRet
     cdef vector.vector[char] log
     cdef char* log_ptr = NULL
@@ -260,6 +229,7 @@ cpdef unicode getProgramLog(intptr_t prog):
 
 
 cpdef addNameExpression(intptr_t prog, str name):
+    initialize()
     cdef bytes b_name = name.encode()
     cdef const char* c_name = b_name
     with nogil:
@@ -268,6 +238,7 @@ cpdef addNameExpression(intptr_t prog, str name):
 
 
 cpdef str getLoweredName(intptr_t prog, str name):
+    initialize()
     cdef bytes b_name = name.encode()
     cdef const char* c_name = b_name
     cdef const char* mangled_name

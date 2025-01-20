@@ -1,5 +1,5 @@
 import contextlib as _contextlib
-from cupy.cuda import profiler as _profiler
+from cupy.cuda import runtime as _runtime
 from cupyx.profiler._time import benchmark  # NOQA
 from cupyx.profiler._time_range import time_range  # NOQA
 
@@ -21,11 +21,11 @@ def profile():
         Likewise, when using ``nsys profile`` setting ``-c cudaProfilerApi``
         may be required.
 
-    .. seealso:: :func:`cupy.cuda.profiler.start`,
-        :func:`cupy.cuda.profiler.stop`
+    .. seealso:: :func:`cupy.cuda.runtime.profilerStart`,
+        :func:`cupy.cuda.runtime.profilerStop`
     """
-    _profiler.start()
+    _runtime.profilerStart()
     try:
         yield
     finally:
-        _profiler.stop()
+        _runtime.profilerStop()

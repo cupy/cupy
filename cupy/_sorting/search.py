@@ -57,9 +57,9 @@ def nanargmax(a, axis=None, dtype=None, out=None, keepdims=False):
     .. seealso:: :func:`numpy.nanargmax`
     """
     if a.dtype.kind in 'biu':
-        return argmax(a, axis=axis)
+        return argmax(a, axis=axis, dtype=dtype, out=out, keepdims=keepdims)
 
-    return _statistics._nanargmax(a, axis, dtype, out, keepdims)
+    return _statistics._nanargmax(a, axis, out, dtype, keepdims)
 
 
 def argmin(a, axis=None, dtype=None, out=None, keepdims=False):
@@ -112,9 +112,9 @@ def nanargmin(a, axis=None, dtype=None, out=None, keepdims=False):
     .. seealso:: :func:`numpy.nanargmin`
     """
     if a.dtype.kind in 'biu':
-        return argmin(a, axis=axis)
+        return argmin(a, axis=axis, dtype=dtype, out=out, keepdims=keepdims)
 
-    return _statistics._nanargmin(a, axis, dtype, out, keepdims)
+    return _statistics._nanargmin(a, axis, out, dtype, keepdims)
 
 
 def nonzero(a):
@@ -208,6 +208,10 @@ def where(condition, x=None, y=None):
 
     if fusion._is_fusing():
         return fusion._call_ufunc(_where_ufunc, condition, x, y)
+
+    x = cupy.asarray(x)
+    y = cupy.asarray(y)
+
     return _where_ufunc(condition.astype('?'), x, y)
 
 

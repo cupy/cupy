@@ -590,6 +590,56 @@ cublasStatus_t cublasZtrsm(cublasHandle_t handle, cublasSideMode_t size, cublasF
                         reinterpret_cast<hipblasDoubleComplex*>(B), ldb);
 }
 
+cublasStatus_t cublasStrsmBatched(cublasHandle_t handle, cublasSideMode_t size, cublasFillMode_t uplo, cublasOperation_t trans,
+                                  cublasDiagType_t diag, int m, int n, const float* alpha,
+                                  const float* const A[], int lda, float* const B[], int ldb, int batchCount) {
+    return hipblasStrsmBatched(handle,
+                               convert_hipblasSideMode_t(size),
+                               convert_hipblasFillMode_t(uplo),
+                               convert_hipblasOperation_t(trans),
+                               convert_hipblasDiagType_t(diag),
+                               m, n, alpha, const_cast<float* const*>(A), lda, const_cast<float**>(B), ldb, batchCount);
+}
+
+cublasStatus_t cublasDtrsmBatched(cublasHandle_t handle, cublasSideMode_t size, cublasFillMode_t uplo, cublasOperation_t trans,
+                                  cublasDiagType_t diag, int m, int n, const double* alpha,
+                                  const double* const A[], int lda, double* const B[], int ldb, int batchCount) {
+    return hipblasDtrsmBatched(handle,
+                               convert_hipblasSideMode_t(size),
+                               convert_hipblasFillMode_t(uplo),
+                               convert_hipblasOperation_t(trans),
+                               convert_hipblasDiagType_t(diag),
+                               m, n, alpha, const_cast<double* const*>(A), lda, const_cast<double**>(B), ldb, batchCount);
+}
+
+cublasStatus_t cublasCtrsmBatched(cublasHandle_t handle, cublasSideMode_t size, cublasFillMode_t uplo, cublasOperation_t trans,
+                                  cublasDiagType_t diag, int m, int n, const cuComplex* alpha,
+                                  const cuComplex* const A[], int lda, cuComplex* const B[], int ldb, int batchCount) {
+    return hipblasCtrsmBatched(handle,
+                               convert_hipblasSideMode_t(size),
+                               convert_hipblasFillMode_t(uplo),
+                               convert_hipblasOperation_t(trans),
+                               convert_hipblasDiagType_t(diag),
+                               m, n,
+                               reinterpret_cast<const hipblasComplex*>(alpha),
+                               reinterpret_cast<hipblasComplex* const*>(const_cast<cuComplex* const*>(A)), lda,
+                               reinterpret_cast<hipblasComplex**>(const_cast<cuComplex**>(B)), ldb, batchCount);
+}
+
+cublasStatus_t cublasZtrsmBatched(cublasHandle_t handle, cublasSideMode_t size, cublasFillMode_t uplo, cublasOperation_t trans,
+                                  cublasDiagType_t diag, int m, int n, const cuDoubleComplex* alpha,
+                                  const cuDoubleComplex* const A[], int lda, cuDoubleComplex* const B[], int ldb, int batchCount) {
+    return hipblasZtrsmBatched(handle,
+                               convert_hipblasSideMode_t(size),
+                               convert_hipblasFillMode_t(uplo),
+                               convert_hipblasOperation_t(trans),
+                               convert_hipblasDiagType_t(diag),
+                               m, n,
+                               reinterpret_cast<const hipblasDoubleComplex*>(alpha),
+                               reinterpret_cast<hipblasDoubleComplex* const*>(const_cast<cuDoubleComplex* const*>(A)), lda,
+                               reinterpret_cast<hipblasDoubleComplex**>(const_cast<cuDoubleComplex**>(B)), ldb, batchCount);
+}
+
 cublasStatus_t cublasSsyrk(cublasHandle_t handle, cublasFillMode_t uplo, cublasOperation_t trans, int n, int k,
                            const float* alpha, const float* A, int lda,
                            const float* beta, float* C, int ldc) {

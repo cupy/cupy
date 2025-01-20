@@ -7,7 +7,6 @@ except ImportError:
 
 import cupy
 from cupy import _core
-from cupyx import cusparse
 from cupyx.scipy.sparse import _base
 from cupyx.scipy.sparse import _csc
 from cupyx.scipy.sparse import _csr
@@ -72,7 +71,7 @@ class coo_matrix(sparse_data._data_matrix):
             col = x.col
 
             if arg1.format != self.format:
-                # When formats are differnent, all arrays are already copied
+                # When formats are different, all arrays are already copied
                 copy = False
 
             if shape is None:
@@ -138,9 +137,10 @@ class coo_matrix(sparse_data._data_matrix):
         else:
             dtype = numpy.dtype(dtype)
 
-        if dtype != 'f' and dtype != 'd' and dtype != 'F' and dtype != 'D':
+        if dtype not in (numpy.bool_, numpy.float32, numpy.float64,
+                         numpy.complex64, numpy.complex128):
             raise ValueError(
-                'Only float32, float64, complex64 and complex128'
+                'Only bool, float32, float64, complex64 and complex128'
                 ' are supported')
 
         data = data.astype(dtype, copy=copy)
@@ -414,7 +414,18 @@ class coo_matrix(sparse_data._data_matrix):
             data = cupy.zeros(size, dtype=self.data.dtype)
             row = cupy.empty(size, dtype='i')
             col = cupy.empty(size, dtype='i')
-            if self.data.dtype.kind == 'f':
+            if self.data.dtype.kind == 'b':
+                cupy.ElementwiseKernel(
+                    'T src_data, int32 src_row, int32 src_col, int32 index',
+                    'raw T data, raw int32 row, raw int32 col',
+                    '''
+                    if (src_data) data[index] = true;
+                    row[index] = src_row;
+                    col[index] = src_col;
+                    ''',
+                    'cupyx_scipy_sparse_coo_sum_duplicates_assign'
+                )(src_data, src_row, src_col, index, data, row, col)
+            elif self.data.dtype.kind == 'f':
                 cupy.ElementwiseKernel(
                     'T src_data, int32 src_row, int32 src_col, int32 index',
                     'raw T data, raw int32 row, raw int32 col',
@@ -461,7 +472,7 @@ class coo_matrix(sparse_data._data_matrix):
         return self.tocsr().toarray(order=order, out=out)
 
     def tocoo(self, copy=False):
-        """Converts the matrix to COOdinate format.
+        """Converts the matrix to COOrdinate format.
 
         Args:
             copy (bool): If ``False``, it shares data arrays as much as
@@ -488,6 +499,8 @@ class coo_matrix(sparse_data._data_matrix):
             cupyx.scipy.sparse.csc_matrix: Converted matrix.
 
         """
+        from cupyx import cusparse
+
         if self.nnz == 0:
             return _csc.csc_matrix(self.shape, dtype=self.dtype)
         # copy is silently ignored (in line with SciPy) because both
@@ -511,6 +524,8 @@ class coo_matrix(sparse_data._data_matrix):
             cupyx.scipy.sparse.csr_matrix: Converted matrix.
 
         """
+        from cupyx import cusparse
+
         if self.nnz == 0:
             return _csr.csr_matrix(self.shape, dtype=self.dtype)
         # copy is silently ignored (in line with SciPy) because both

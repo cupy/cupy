@@ -14,5 +14,4 @@ recursive-include tests *.py
 
 # Licenses
 include LICENSE
-include docs/LICENSE_THIRD_PARTY
 include docs/source/license.rst

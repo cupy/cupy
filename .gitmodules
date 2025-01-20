@@ -1,7 +1,9 @@
-[submodule "cupy/_core/include/cupy/cub"]
-	path = cupy/_core/include/cupy/cub
-	url = https://github.com/NVIDIA/cub.git
-	branch = 1.8.0
-[submodule "cupy/_core/include/cupy/jitify"]
-	path = cupy/_core/include/cupy/jitify
+[submodule "third_party/cccl"]
+	path = third_party/cccl
+	url = https://github.com/cupy/cccl.git
+[submodule "third_party/jitify"]
+	path = third_party/jitify
 	url = https://github.com/NVIDIA/jitify.git
+[submodule "third_party/dlpack"]
+	path = third_party/dlpack
+	url = https://github.com/dmlc/dlpack.git

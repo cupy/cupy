@@ -543,10 +543,11 @@ def pdist(X, metric='euclidean', *, out=None, **kwargs):
 
     Returns:
         Y (cupy.ndarray):
-            A :math:`m` by :math:`m` distance matrix is
-            returned. For each :math:`i` and :math:`j`, the metric
-            ``dist(u=X[i], v=X[j])`` is computed and stored in the
-            :math:`ij` th entry.
+            Returns a condensed distance matrix Y. For each :math:`i` and
+            :math:`j` and (where :math:`i < j < m`), where m is the number of
+            original observations. The metric ``dist(u=X[i], v=X[j])`` is
+            computed and stored in entry
+            ``m * i + j - ((i + 2) * (i + 1)) // 2``.
     """
     all_dist = cdist(X, X, metric=metric, out=out, **kwargs)
     up_idx = cupy.triu_indices_from(all_dist, 1)

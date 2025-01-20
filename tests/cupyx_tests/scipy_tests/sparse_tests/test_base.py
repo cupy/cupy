@@ -11,45 +11,47 @@ from cupy import testing
 from cupyx.scipy import sparse
 
 
-if scipy_available:
-    class DummySparseCPU(scipy.sparse.spmatrix):
-
-        def __init__(self, maxprint=50, shape=None, nnz=0):
-            super(DummySparseCPU, self).__init__(maxprint)
-            self._shape = shape
-            self._nnz = nnz
-
-        def getnnz(self):
-            return self._nnz
-
-
-class DummySparseGPU(sparse.spmatrix):
-
-    def __init__(self, maxprint=50, shape=None, nnz=0):
-        super(DummySparseGPU, self).__init__(maxprint)
-        self._shape = shape
-        self._nnz = nnz
-
-    def get_shape(self):
-        return self._shape
-
-    def getnnz(self):
-        return self._nnz
-
-
-@testing.with_requires('scipy')
+@testing.with_requires('scipy>=1.14')
 class TestSpmatrix(unittest.TestCase):
 
     def dummy_class(self, sp):
         if sp is sparse:
+            class DummySparseGPU(sparse.spmatrix):
+
+                def __init__(self, maxprint=50, shape=None, nnz=0):
+                    super(DummySparseGPU, self).__init__(maxprint)
+                    self._shape = shape
+                    self._nnz = nnz
+
+                def get_shape(self):
+                    return self._shape
+
+                def getnnz(self):
+                    return self._nnz
+
             return DummySparseGPU
         else:
+            class DummySparseCPU(scipy.sparse._base._spbase):
+
+                def __init__(self, maxprint=50, shape=None, nnz=0):
+                    super(DummySparseCPU, self).__init__(
+                        None, maxprint=maxprint)
+                    self._shape = shape
+                    self._nnz = nnz
+
+                def _getnnz(self):
+                    return self._nnz
+
             return DummySparseCPU
 
     def test_instantiation(self):
         for sp in (scipy.sparse, sparse):
             with pytest.raises(ValueError):
-                sp.spmatrix()
+                if sp is scipy.sparse:
+                    sp._base._spbase(None)
+                else:
+                    # TODO(asi1024): Replace with sp._base._spbase
+                    sp.spmatrix()
 
     def test_len(self):
         for sp in (scipy.sparse, sparse):
@@ -81,4 +83,4 @@ class TestSpmatrix(unittest.TestCase):
     @testing.numpy_cupy_equal(sp_name='sp')
     def test_maxprint(self, xp, sp):
         s = self.dummy_class(sp)(maxprint=30)
-        return s.getmaxprint()
+        return s.maxprint

@@ -37,7 +37,7 @@ def norm(x, ord=None, axis=None, keepdims=False):
         x (cupy.ndarray): Array to take norm. If ``axis`` is None,
             ``x`` must be 1-D or 2-D.
         ord (non-zero int, inf, -inf, 'fro'): Norm type.
-        axis (int, 2-tuple of ints, None): 1-D or 2-D norm is cumputed over
+        axis (int, 2-tuple of ints, None): 1-D or 2-D norm is computed over
             ``axis``.
         keepdims (bool): If this is set ``True``, the axes which are normed
             over are left.

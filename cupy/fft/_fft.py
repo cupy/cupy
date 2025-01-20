@@ -1,11 +1,9 @@
 import functools
 import math
-import warnings
 
 import numpy as np
 
 import cupy
-from cupy.cuda import cufft
 from cupy.fft import config
 from cupy.fft._cache import get_plan_cache
 
@@ -62,6 +60,8 @@ def _cook_shape(a, s, axes, value_type, order='C'):
 
 
 def _convert_fft_type(dtype, value_type):
+    from cupy.cuda import cufft
+
     if value_type == 'C2C' and dtype == np.complex64:
         return cufft.CUFFT_C2C
     elif value_type == 'R2C' and dtype == np.float32:
@@ -80,6 +80,8 @@ def _convert_fft_type(dtype, value_type):
 
 def _exec_fft(a, direction, value_type, norm, axis, overwrite_x,
               out_size=None, out=None, plan=None):
+    from cupy.cuda import cufft
+
     fft_type = _convert_fft_type(a.dtype, value_type)
 
     if axis % a.ndim != a.ndim - 1:
@@ -89,8 +91,7 @@ def _exec_fft(a, direction, value_type, norm, axis, overwrite_x,
         a = a.copy()
     elif (
         not cupy.cuda.runtime.is_hip and
-        value_type == 'C2R' and not overwrite_x and
-        10010 <= cupy.cuda.runtime.runtimeGetVersion()
+        value_type == 'C2R' and not overwrite_x
     ):
         # The input array may be modified in CUDA 10.1 and above.
         # See #3763 for the discussion.
@@ -324,6 +325,8 @@ def _get_cufft_plan_nd(
     Returns:
         plan (cufft.PlanNd): A cuFFT Plan for the chosen `fft_type`.
     """
+    from cupy.cuda import cufft
+
     ndim = len(shape)
 
     if fft_type in (cufft.CUFFT_C2C, cufft.CUFFT_Z2Z):
@@ -483,6 +486,7 @@ def _get_fftn_out_size(in_shape, s, last_axis, value_type):
 
 def _exec_fftn(a, direction, value_type, norm, axes, overwrite_x,
                plan=None, out=None, out_size=None):
+    from cupy.cuda import cufft
 
     fft_type = _convert_fft_type(a.dtype, value_type)
 
@@ -493,8 +497,7 @@ def _exec_fftn(a, direction, value_type, norm, axes, overwrite_x,
     else:
         raise ValueError('a must be contiguous')
 
-    if (value_type == 'C2R' and not overwrite_x and
-            10010 <= cupy.cuda.runtime.runtimeGetVersion()):
+    if value_type == 'C2R' and not overwrite_x:
         # The input array may be modified in CUDA 10.1 and above.
         # See #3763 for the discussion.
         a = a.copy()
@@ -621,6 +624,8 @@ def _fftn(a, s, axes, norm, direction, value_type='C2C', order='A', plan=None,
 
 
 def _default_fft_func(a, s=None, axes=None, plan=None, value_type='C2C'):
+    from cupy.cuda import cufft
+
     curr_plan = cufft.get_current_plan()
     if curr_plan is not None:
         if plan is None:
@@ -657,6 +662,13 @@ def _default_fft_func(a, s=None, axes=None, plan=None, value_type='C2C'):
     return _fft
 
 
+def _compat_caster(a, axes):
+    real_dtype = np.result_type(a.real.dtype, 1.0)
+    if axes is not None and len(axes) == 1:
+        return lambda x: x.astype(real_dtype, copy=False)
+    return lambda x: x
+
+
 def fft(a, n=None, axis=-1, norm=None):
     """Compute the one-dimensional FFT.
 
@@ -677,7 +689,8 @@ def fft(a, n=None, axis=-1, norm=None):
 
     .. seealso:: :func:`numpy.fft.fft`
     """
-    return _fft(a, (n,), (axis,), norm, cupy.cuda.cufft.CUFFT_FORWARD)
+    from cupy.cuda import cufft
+    return _fft(a, (n,), (axis,), norm, cufft.CUFFT_FORWARD)
 
 
 def ifft(a, n=None, axis=-1, norm=None):
@@ -700,6 +713,7 @@ def ifft(a, n=None, axis=-1, norm=None):
 
     .. seealso:: :func:`numpy.fft.ifft`
     """
+    from cupy.cuda import cufft
     return _fft(a, (n,), (axis,), norm, cufft.CUFFT_INVERSE)
 
 
@@ -723,6 +737,8 @@ def fft2(a, s=None, axes=(-2, -1), norm=None):
 
     .. seealso:: :func:`numpy.fft.fft2`
     """
+    from cupy.cuda import cufft
+
     func = _default_fft_func(a, s, axes)
     return func(a, s, axes, norm, cufft.CUFFT_FORWARD)
 
@@ -747,6 +763,8 @@ def ifft2(a, s=None, axes=(-2, -1), norm=None):
 
     .. seealso:: :func:`numpy.fft.ifft2`
     """
+    from cupy.cuda import cufft
+
     func = _default_fft_func(a, s, axes)
     return func(a, s, axes, norm, cufft.CUFFT_INVERSE)
 
@@ -771,6 +789,8 @@ def fftn(a, s=None, axes=None, norm=None):
 
     .. seealso:: :func:`numpy.fft.fftn`
     """
+    from cupy.cuda import cufft
+
     func = _default_fft_func(a, s, axes)
     return func(a, s, axes, norm, cufft.CUFFT_FORWARD)
 
@@ -795,6 +815,8 @@ def ifftn(a, s=None, axes=None, norm=None):
 
     .. seealso:: :func:`numpy.fft.ifftn`
     """
+    from cupy.cuda import cufft
+
     func = _default_fft_func(a, s, axes)
     return func(a, s, axes, norm, cufft.CUFFT_INVERSE)
 
@@ -820,6 +842,8 @@ def rfft(a, n=None, axis=-1, norm=None):
 
     .. seealso:: :func:`numpy.fft.rfft`
     """
+    from cupy.cuda import cufft
+
     return _fft(a, (n,), (axis,), norm, cufft.CUFFT_FORWARD, 'R2C')
 
 
@@ -846,7 +870,10 @@ def irfft(a, n=None, axis=-1, norm=None):
 
     .. seealso:: :func:`numpy.fft.irfft`
     """
-    return _fft(a, (n,), (axis,), norm, cufft.CUFFT_INVERSE, 'C2R')
+    from cupy.cuda import cufft
+
+    caster = _compat_caster(a, (axis,))
+    return caster(_fft(a, (n,), (axis,), norm, cufft.CUFFT_INVERSE, 'C2R'))
 
 
 def rfft2(a, s=None, axes=(-2, -1), norm=None):
@@ -870,6 +897,8 @@ def rfft2(a, s=None, axes=(-2, -1), norm=None):
 
     .. seealso:: :func:`numpy.fft.rfft2`
     """
+    from cupy.cuda import cufft
+
     func = _default_fft_func(a, s, axes, value_type='R2C')
     return func(a, s, axes, norm, cufft.CUFFT_FORWARD, 'R2C')
 
@@ -897,8 +926,11 @@ def irfft2(a, s=None, axes=(-2, -1), norm=None):
 
     .. seealso:: :func:`numpy.fft.irfft2`
     """
+    from cupy.cuda import cufft
+
+    caster = _compat_caster(a, axes)
     func = _default_fft_func(a, s, axes, value_type='C2R')
-    return func(a, s, axes, norm, cufft.CUFFT_INVERSE, 'C2R')
+    return caster(func(a, s, axes, norm, cufft.CUFFT_INVERSE, 'C2R'))
 
 
 def rfftn(a, s=None, axes=None, norm=None):
@@ -922,6 +954,8 @@ def rfftn(a, s=None, axes=None, norm=None):
 
     .. seealso:: :func:`numpy.fft.rfftn`
     """
+    from cupy.cuda import cufft
+
     func = _default_fft_func(a, s, axes, value_type='R2C')
     return func(a, s, axes, norm, cufft.CUFFT_FORWARD, 'R2C')
 
@@ -958,14 +992,11 @@ def irfftn(a, s=None, axes=None, norm=None):
 
     .. seealso:: :func:`numpy.fft.irfftn`
     """
-    if (10020 >= cupy.cuda.runtime.runtimeGetVersion() >= 10010
-            and int(cupy.cuda.device.get_compute_capability()) < 70
-            and _size_last_transform_axis(a.shape, s, axes) == 2):
-        warnings.warn('Output of irfftn might not be correct due to issue '
-                      'of cuFFT in CUDA 10.1/10.2 on Pascal or older GPUs.')
+    from cupy.cuda import cufft
 
+    caster = _compat_caster(a, axes)
     func = _default_fft_func(a, s, axes, value_type='C2R')
-    return func(a, s, axes, norm, cufft.CUFFT_INVERSE, 'C2R')
+    return caster(func(a, s, axes, norm, cufft.CUFFT_INVERSE, 'C2R'))
 
 
 def _swap_direction(norm):
@@ -1077,7 +1108,7 @@ def fftshift(x, axes=None):
     x = cupy.asarray(x)
     if axes is None:
         axes = list(range(x.ndim))
-    elif isinstance(axes, np.compat.integer_types):
+    elif isinstance(axes, int):
         axes = (axes,)
     return cupy.roll(x, [x.shape[axis] // 2 for axis in axes], axes)
 
@@ -1098,6 +1129,6 @@ def ifftshift(x, axes=None):
     x = cupy.asarray(x)
     if axes is None:
         axes = list(range(x.ndim))
-    elif isinstance(axes, np.compat.integer_types):
+    elif isinstance(axes, int):
         axes = (axes,)
     return cupy.roll(x, [-(x.shape[axis] // 2) for axis in axes], axes)

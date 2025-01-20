@@ -1,5 +1,4 @@
 import unittest
-import warnings
 
 import numpy
 import pytest
@@ -49,18 +48,22 @@ class TestRounding(unittest.TestCase):
         self.check_unary_negative('rint')
         self.check_unary_negative_complex('rint')
 
+    @testing.with_requires("numpy>=2.1")
     def test_floor(self):
         self.check_unary('floor')
         self.check_unary_complex_unsupported('floor')
 
+    @testing.with_requires("numpy>=2.1")
     def test_ceil(self):
         self.check_unary('ceil')
         self.check_unary_complex_unsupported('ceil')
 
+    @testing.with_requires("numpy>=2.1")
     def test_trunc(self):
         self.check_unary('trunc')
         self.check_unary_complex_unsupported('trunc')
 
+    @testing.with_requires("numpy>=2.1")
     def test_fix(self):
         self.check_unary('fix')
         self.check_unary_complex_unsupported('fix')
@@ -68,14 +71,6 @@ class TestRounding(unittest.TestCase):
     def test_around(self):
         self.check_unary('around')
         self.check_unary_complex('around')
-
-    @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(atol=1e-5)
-    def test_round_(self, xp, dtype):
-        a = testing.shaped_arange((2, 3), xp, dtype)
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            return xp.round_(a)
 
     def test_round(self):
         self.check_unary('round')

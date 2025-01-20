@@ -42,13 +42,13 @@ class TestPolynomial(unittest.TestCase):
             with pytest.raises(TypeError):
                 xp.polynomial.polynomial.polyvander(a, 2.6)
 
-    @testing.with_requires('numpy>=1.17')
+    @testing.with_requires('numpy>=2.0')
     @testing.for_all_dtypes(no_float16=True)
-    @testing.numpy_cupy_allclose(rtol=1e-5)
-    def test_polyvander_integral_float_degree(self, xp, dtype):
-        a = testing.shaped_random((10,), xp, dtype)
-        with testing.assert_warns(DeprecationWarning):
-            return xp.polynomial.polynomial.polyvander(a, 5.0)
+    def test_polyvander_integral_float_degree(self, dtype):
+        for xp in (numpy, cupy):
+            a = testing.shaped_random((10,), xp, dtype)
+            with pytest.raises(TypeError):
+                xp.polynomial.polynomial.polyvander(a, 5.0)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()

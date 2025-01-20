@@ -8,7 +8,6 @@ cimport cython  # NOQA
 from libc.stdint cimport intptr_t
 from libcpp cimport vector
 
-from cupy_backends.cuda.api cimport driver
 from cupy_backends.cuda.api cimport runtime
 
 cdef extern from '../../cupy_nccl.h':
@@ -45,31 +44,31 @@ cdef extern from '../../cupy_nccl.h':
     ncclResult_t _ncclAllReduce(const void* sendbuff, void* recvbuff,
                                 size_t count,
                                 ncclDataType_t datatype, ncclRedOp_t op,
-                                ncclComm_t comm, driver.Stream stream) nogil
+                                ncclComm_t comm, runtime.Stream stream) nogil
     ncclResult_t _ncclReduce(const void* sendbuff, void* recvbuf, size_t count,
                              ncclDataType_t datatype, ncclRedOp_t op, int root,
-                             ncclComm_t comm, driver.Stream stream) nogil
+                             ncclComm_t comm, runtime.Stream stream) nogil
     ncclResult_t _ncclBroadcast(const void* sendbuff, void* recvbuff,
                                 size_t count, ncclDataType_t datatype,
                                 int root, ncclComm_t comm,
-                                driver.Stream stream) nogil
+                                runtime.Stream stream) nogil
     ncclResult_t _ncclBcast(void* buff, size_t count, ncclDataType_t datatype,
                             int root, ncclComm_t comm,
-                            driver.Stream stream) nogil
+                            runtime.Stream stream) nogil
     ncclResult_t _ncclReduceScatter(const void* sendbuff,
                                     void* recvbuff, size_t recvcount,
                                     ncclDataType_t datatype, ncclRedOp_t op,
                                     ncclComm_t comm,
-                                    driver.Stream stream) nogil
+                                    runtime.Stream stream) nogil
     ncclResult_t _ncclAllGather(const void* sendbuff, void* recvbuff,
                                 size_t count, ncclDataType_t datatype,
-                                ncclComm_t comm, driver.Stream stream) nogil
+                                ncclComm_t comm, runtime.Stream stream) nogil
     ncclResult_t ncclSend(const void* sendbuff, size_t count,
                           ncclDataType_t datatype, int peer, ncclComm_t comm,
-                          driver.Stream stream) nogil
+                          runtime.Stream stream) nogil
     ncclResult_t ncclRecv(void* recvbuff, size_t count,
                           ncclDataType_t datatype, int peer, ncclComm_t comm,
-                          driver.Stream stream) nogil
+                          runtime.Stream stream) nogil
     # Build-time version
     int NCCL_VERSION_CODE
 
@@ -99,6 +98,7 @@ cdef dict ERROR2 = {
     3: 'NCCL_ERROR_INTERNAL_ERROR',
     4: 'NCCL_ERROR_INVALID_ARGUMENT',
     5: 'NCCL_ERROR_INVALID_USAGE',
+    6: 'NCCL_ERROR_REMOTE_ERROR',
 }
 
 
@@ -285,6 +285,10 @@ cdef class NcclCommunicator:
     def __dealloc__(self):
         self.destroy()
 
+    @property
+    def comm(self):
+        return <intptr_t>self._comm
+
     @staticmethod
     def initAll(devices):
         """ Initialize NCCL communicators for multiple devices in a single
@@ -405,7 +409,7 @@ cdef class NcclCommunicator:
             status = _ncclAllReduce(<void*>sendbuf, <void*>recvbuf,
                                     count, <ncclDataType_t>datatype,
                                     <ncclRedOp_t>op, self._comm,
-                                    <driver.Stream>stream)
+                                    <runtime.Stream>stream)
         check_status(status)
 
     def reduce(self, intptr_t sendbuf, intptr_t recvbuf,
@@ -414,10 +418,10 @@ cdef class NcclCommunicator:
             status = _ncclReduce(<void*>sendbuf, <void*>recvbuf,
                                  count, <ncclDataType_t>datatype,
                                  <ncclRedOp_t>op, root, self._comm,
-                                 <driver.Stream>stream)
+                                 <runtime.Stream>stream)
         check_status(status)
 
-    def broadcast(self, intptr_t sendbuff, intptr_t recvbuff, int count,
+    def broadcast(self, intptr_t sendbuff, intptr_t recvbuff, size_t count,
                   int datatype, int root, intptr_t stream):
         if NCCL_VERSION_CODE < 2200:
             # ncclBroadcast is not available in NCCL 2.1 or older.
@@ -430,15 +434,15 @@ cdef class NcclCommunicator:
         with nogil:
             status = _ncclBroadcast(<const void*>sendbuff, <void*>recvbuff,
                                     count, <ncclDataType_t>datatype, root,
-                                    self._comm, <driver.Stream>stream)
+                                    self._comm, <runtime.Stream>stream)
         check_status(status)
 
-    def bcast(self, intptr_t buff, int count, int datatype,
+    def bcast(self, intptr_t buff, size_t count, int datatype,
               int root, intptr_t stream):
         with nogil:
             status = _ncclBcast(<void*>buff, count,
                                 <ncclDataType_t>datatype, root,
-                                self._comm, <driver.Stream>stream)
+                                self._comm, <runtime.Stream>stream)
         check_status(status)
 
     def reduceScatter(self, intptr_t sendbuf, intptr_t recvbuf,
@@ -447,7 +451,7 @@ cdef class NcclCommunicator:
             status = _ncclReduceScatter(<void*>sendbuf, <void*>recvbuf,
                                         recvcount, <ncclDataType_t>datatype,
                                         <ncclRedOp_t>op, self._comm,
-                                        <driver.Stream>stream)
+                                        <runtime.Stream>stream)
         check_status(status)
 
     def allGather(self, intptr_t sendbuf, intptr_t recvbuf, size_t count,
@@ -455,7 +459,7 @@ cdef class NcclCommunicator:
         with nogil:
             status = _ncclAllGather(<void*>sendbuf, <void*>recvbuf,
                                     count, <ncclDataType_t>datatype,
-                                    self._comm, <driver.Stream>stream)
+                                    self._comm, <runtime.Stream>stream)
         check_status(status)
 
     def send(self, intptr_t sendbuf, size_t count, int datatype, int peer,
@@ -464,7 +468,7 @@ cdef class NcclCommunicator:
             raise RuntimeError('ncclSend is not available in this version')
         with nogil:
             status = ncclSend(<void*>sendbuf, count, <ncclDataType_t>datatype,
-                              peer, self._comm, <driver.Stream>stream)
+                              peer, self._comm, <runtime.Stream>stream)
         check_status(status)
 
     def recv(self, intptr_t recvbuf, size_t count, int datatype, int peer,
@@ -473,7 +477,7 @@ cdef class NcclCommunicator:
             raise RuntimeError('ncclRecv is not available in this version')
         with nogil:
             status = ncclRecv(<void*>recvbuf, count, <ncclDataType_t>datatype,
-                              peer, self._comm, <driver.Stream>stream)
+                              peer, self._comm, <runtime.Stream>stream)
         check_status(status)
 
     def check_async_error(self):

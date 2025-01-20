@@ -117,7 +117,7 @@ class TestRandomState(unittest.TestCase):
     def test_seed_not_none(self, dtype):
         self.check_seed(dtype(0))
 
-    @testing.for_dtypes([numpy.complex_])
+    @testing.for_dtypes([numpy.complex128])
     def test_seed_invalid_type_complex(self, dtype):
         with self.assertRaises(TypeError):
             self.rs.seed(dtype(0))
@@ -903,7 +903,7 @@ class TestChoiceReplaceFalse(RandomGeneratorTestCase):
         if isinstance(self.a, numpy.ndarray):
             expected_dtype = 'float'
         else:
-            expected_dtype = 'int'
+            expected_dtype = 'long'
         assert v.dtype == expected_dtype
         assert v.shape == expected_shape
 

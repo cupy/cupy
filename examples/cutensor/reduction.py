@@ -19,17 +19,12 @@ c = cupy.random.random([extent[i] for i in mode_c])
 a = a.astype(dtype)
 c = c.astype(dtype)
 
-desc_a = cutensor.create_tensor_descriptor(a)
-desc_c = cutensor.create_tensor_descriptor(c)
-
-mode_a = cutensor.create_mode(*mode_a)
-mode_c = cutensor.create_mode(*mode_c)
 alpha = 1.0
 beta = 0.1
 
 perf = cupyx.time.repeat(
     cutensor.reduction,
-    (alpha, a, desc_a, mode_a, beta, c, desc_c, mode_c),
+    (alpha, a, mode_a, beta, c, mode_c),
     n_warmup=1, n_repeat=5)
 
 transfer_byte = a.size * a.itemsize + c.size * c.itemsize

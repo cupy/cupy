@@ -6,6 +6,7 @@ import pytest
 
 import cupy
 from cupy import testing
+from cupy.exceptions import ComplexWarning
 
 
 @testing.parameterize(
@@ -179,7 +180,7 @@ class TestArrayIndex(unittest.TestCase):
         a = xp.zeros((2, 3, 4), dtype=dst_type)
         b = testing.shaped_arange((2, 3, 4), xp, src_type)
         with warnings.catch_warnings():
-            warnings.simplefilter('ignore', numpy.ComplexWarning)
+            warnings.simplefilter('ignore', ComplexWarning)
             a[:] = b
         return a
 
@@ -228,5 +229,5 @@ class TestSetItemCompatBroadcast:
     def test_remain0d(self, xp):
         dtype = int
         a = xp.zeros((2, 3, 4), dtype)
-        a[0, 1, 2] = testing.shaped_arange((1, 1, 1), xp, dtype)
+        a[0, 1, 2] = testing.shaped_arange((), xp, dtype)
         return a

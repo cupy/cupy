@@ -14,7 +14,6 @@ import cupyx
 from cupy import _core
 from cupy._core import _scalar
 from cupy._creation import basic
-from cupyx import cusparse
 from cupyx.scipy.sparse import _base
 from cupyx.scipy.sparse import _coo
 from cupyx.scipy.sparse import _data as sparse_data
@@ -193,6 +192,8 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         ''', 'cupyx_scipy_sparse_has_canonical_format')
 
     def __init__(self, arg1, shape=None, dtype=None, copy=False):
+        from cupyx import cusparse
+
         if shape is not None:
             if not _util.isshape(shape):
                 raise ValueError('invalid shape (must be a 2-tuple of int)')
@@ -205,7 +206,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             indptr = x.indptr
 
             if arg1.format != self.format:
-                # When formats are differnent, all arrays are already copied
+                # When formats are different, all arrays are already copied
                 copy = False
 
             if shape is None:
@@ -536,25 +537,23 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         offsets = new_sp._get_arrayXarray(
             i, j, not_found_val=-1).astype(cupy.int32).ravel()
 
-        if -1 not in offsets:
+        mask = offsets > -1
+        self.data[offsets[mask]] = x[mask]
+
+        if mask.all():
             # only affects existing non-zero cells
-            self.data[offsets] = x
             return
 
-        else:
-            warnings.warn('Changing the sparsity structure of a '
-                          '{}_matrix is expensive.'.format(self.format),
-                          _base.SparseEfficiencyWarning)
-            # replace where possible
-            mask = offsets > -1
-            self.data[offsets[mask]] = x[mask]
-            # only insertions remain
-            mask = ~mask
-            i = i[mask]
-            i[i < 0] += M
-            j = j[mask]
-            j[j < 0] += N
-            self._insert_many(i, j, x[mask])
+        # only insertions remain
+        warnings.warn('Changing the sparsity structure of a '
+                      '{}_matrix is expensive.'.format(self.format),
+                      _base.SparseEfficiencyWarning)
+        mask = ~mask
+        i = i[mask]
+        i[i < 0] += M
+        j = j[mask]
+        j[j < 0] += N
+        self._insert_many(i, j, x[mask])
 
     def _zero_many(self, i, j):
         """Sets value at each (i, j) to zero, preserving sparsity structure.

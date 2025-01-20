@@ -6,6 +6,7 @@ import pytest
 
 import cupy
 from cupy import testing
+from cupy.exceptions import ComplexWarning
 
 
 class TestFlatiter(unittest.TestCase):
@@ -110,7 +111,7 @@ class TestFlatiterSubscript(unittest.TestCase):
         a = xp.zeros(self.shape, dtype=a_dtype, order=order)
         v = testing.shaped_arange((3,), xp, v_dtype, order)
         with warnings.catch_warnings():
-            warnings.simplefilter('ignore', numpy.ComplexWarning)
+            warnings.simplefilter('ignore', ComplexWarning)
             a.flat[self.index] = v
         return a
 

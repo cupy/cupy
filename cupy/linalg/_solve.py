@@ -1,5 +1,3 @@
-import warnings
-
 import numpy
 from numpy import linalg
 
@@ -8,7 +6,6 @@ from cupy._core import internal
 from cupy.cuda import device
 from cupy.linalg import _decomposition
 from cupy.linalg import _util
-from cupy.cublas import batched_gesv, get_batched_gesv_limit
 import cupyx
 
 
@@ -20,7 +17,7 @@ def solve(a, b):
 
     Args:
         a (cupy.ndarray): The matrix with dimension ``(..., M, M)``.
-        b (cupy.ndarray): The matrix with dimension ``(..., M)`` or
+        b (cupy.ndarray): The matrix with dimension ``(M,)`` or
             ``(..., M, K)``.
 
     Returns:
@@ -36,24 +33,31 @@ def solve(a, b):
 
     .. seealso:: :func:`numpy.linalg.solve`
     """
-    if a.ndim > 2 and a.shape[-1] <= get_batched_gesv_limit():
-        # Note: There is a low performance issue in batched_gesv when matrix is
-        # large, so it is not used in such cases.
-        return batched_gesv(a, b)
+    from cupyx import lapack
+    from cupy.cublas import batched_gesv, get_batched_gesv_limit
 
-    # TODO(kataoka): Move the checks to the beginning
     _util._assert_cupy_array(a, b)
     _util._assert_stacked_2d(a)
     _util._assert_stacked_square(a)
 
-    # TODO(kataoka): Support broadcast
-    if not (
-        (a.ndim == b.ndim or a.ndim == b.ndim + 1)
-        and a.shape[:-1] == b.shape[:a.ndim - 1]
-    ):
+    # Newly added to make it compatible with numpy 2
+    if b.ndim == 0:
+        raise ValueError("b must have at least one dimension")
+    if b.ndim == 1:
+        if a.shape[-1] != b.size:
+            raise ValueError(
+                "a must have (..., M, M) shape and b must have (M,) "
+                "for one-dimensional b")
+        b = cupy.broadcast_to(b, a.shape[:-1])
+    elif a.shape[:-1] != b.shape[:-1]:
         raise ValueError(
-            'a must have (..., M, M) shape and b must have (..., M) '
-            'or (..., M, K)')
+            "a must have (..., M, M) shape and b must have (..., M, K) "
+            "for multidimensional b")
+
+    if a.ndim > 2 and a.shape[-1] <= get_batched_gesv_limit():
+        # Note: There is a low performance issue in batched_gesv when matrix is
+        # large, so it is not used in such cases.
+        return batched_gesv(a, b)
 
     dtype, out_dtype = _util.linalg_common_type(a, b)
     if b.size == 0:
@@ -63,7 +67,7 @@ def solve(a, b):
         # prevent 'a' and 'b' to be overwritten
         a = a.astype(dtype, copy=True, order='F')
         b = b.astype(dtype, copy=True, order='F')
-        cupyx.lapack.gesv(a, b)
+        lapack.gesv(a, b)
         return b.astype(out_dtype, copy=False)
 
     # prevent 'a' to be overwritten
@@ -74,7 +78,7 @@ def solve(a, b):
         index = numpy.unravel_index(i, shape)
         # prevent 'b' to be overwritten
         bi = b[index].astype(dtype, copy=True, order='F')
-        cupyx.lapack.gesv(a[index], bi)
+        lapack.gesv(a[index], bi)
         x[index] = bi
     return x
 
@@ -126,7 +130,7 @@ def _nrm2_last_axis(x):
     return cupy.sum(cupy.square(x.view(real_dtype)), axis=-1)
 
 
-def lstsq(a, b, rcond='warn'):
+def lstsq(a, b, rcond=None):
     """Return the least-squares solution to a linear matrix equation.
 
     Solves the equation `a x = b` by computing a vector `x` that
@@ -141,7 +145,7 @@ def lstsq(a, b, rcond='warn'):
         a (cupy.ndarray): "Coefficient" matrix with dimension ``(M, N)``
         b (cupy.ndarray): "Dependent variable" values with dimension ``(M,)``
             or ``(M, K)``
-        rcond (float): Cutoff parameter for small singular values.
+        rcond (float, optional): Cutoff parameter for small singular values.
             For stability it computes the largest singular value denoted by
             ``s``, and sets all singular values smaller than ``s`` to zero.
 
@@ -165,17 +169,6 @@ def lstsq(a, b, rcond='warn'):
 
     .. seealso:: :func:`numpy.linalg.lstsq`
     """
-    if rcond == 'warn':
-        warnings.warn(
-            '`rcond` parameter will change to the default of '
-            'machine precision times ``max(M, N)`` where M and N '
-            'are the input matrix dimensions.\n'
-            'To use the future default and silence this warning '
-            'we advise to pass `rcond=None`, to keep using the old, '
-            'explicitly pass `rcond=-1`.',
-            FutureWarning)
-        rcond = -1
-
     _util._assert_cupy_array(a, b)
     _util._assert_2d(a)
     # TODO(kataoka): Fix 0-dim

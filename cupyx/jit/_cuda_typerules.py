@@ -113,8 +113,7 @@ def get_ctype_from_scalar(mode: str, x: Any) -> _cuda_types.Scalar:
         if isinstance(x, bool):
             return _cuda_types.Scalar(numpy.bool_)
         if isinstance(x, int):
-            # use plain int here for cross-platform portability
-            return _cuda_types.Scalar(int)
+            return _cuda_types.Scalar(numpy.int64)
         if isinstance(x, float):
             return _cuda_types.Scalar(numpy.float64)
         if isinstance(x, complex):
@@ -153,7 +152,10 @@ def guess_routine(
     if dtype is not None:
         return ufunc._ops._guess_routine_from_dtype(dtype)
     can_cast = numpy.can_cast if mode == 'numpy' else _cuda_can_cast
-    return ufunc._ops._guess_routine_from_in_types(tuple(in_types), can_cast)
+
+    return ufunc._ops._guess_routine_from_in_types(
+        tuple(in_types), None, can_cast
+    )
 
 
 def to_ctype(t) -> _cuda_types.TypeBase:

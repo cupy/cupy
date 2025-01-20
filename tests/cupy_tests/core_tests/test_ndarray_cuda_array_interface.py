@@ -40,6 +40,7 @@ class DummyObjectWithCudaArrayInterface(object):
     'stream': ('null', 'new'),
     'ver': (2, 3),
 }))
+@testing.with_requires('numpy>=1.25')
 class TestArrayUfunc(unittest.TestCase):
 
     def setUp(self):

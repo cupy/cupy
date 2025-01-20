@@ -2,6 +2,7 @@ import numpy
 import pytest
 
 import cupy
+from cupy.exceptions import ComplexWarning
 from cupy import testing
 from cupy import _util
 
@@ -9,7 +10,7 @@ from cupy import _util
 def astype_without_warning(x, dtype, *args, **kwargs):
     dtype = numpy.dtype(dtype)
     if x.dtype.kind == 'c' and dtype.kind not in ['b', 'c']:
-        with testing.assert_warns(numpy.ComplexWarning):
+        with testing.assert_warns(ComplexWarning):
             return x.astype(dtype, *args, **kwargs)
     else:
         return x.astype(dtype, *args, **kwargs)
@@ -257,7 +258,7 @@ class TestArrayFill:
 
     @testing.with_requires('numpy>=1.24.0')
     @testing.for_all_dtypes_combination(('dtype1', 'dtype2'))
-    @testing.numpy_cupy_array_equal(accept_error=numpy.ComplexWarning)
+    @testing.numpy_cupy_array_equal(accept_error=ComplexWarning)
     def test_fill_with_numpy_scalar_ndarray(self, xp, dtype1, dtype2):
         a = testing.shaped_arange((2, 3, 4), xp, dtype1)
         a.fill(numpy.ones((), dtype=dtype2))
@@ -265,7 +266,7 @@ class TestArrayFill:
 
     @testing.with_requires('numpy>=1.24.0')
     @testing.for_all_dtypes_combination(('dtype1', 'dtype2'))
-    @testing.numpy_cupy_array_equal(accept_error=numpy.ComplexWarning)
+    @testing.numpy_cupy_array_equal(accept_error=ComplexWarning)
     def test_fill_with_cupy_scalar_ndarray(self, xp, dtype1, dtype2):
         a = testing.shaped_arange((2, 3, 4), xp, dtype1)
         b = xp.ones((), dtype=dtype2)

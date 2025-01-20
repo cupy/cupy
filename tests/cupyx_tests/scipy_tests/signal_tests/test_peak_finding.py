@@ -15,6 +15,24 @@ except ImportError:
     pass
 
 
+def _gen_gaussians(xp, center_locs, sigmas, total_length):
+    xdata = xp.arange(0, total_length).astype(float)
+    out_data = xp.zeros(total_length, dtype=float)
+    for ind, sigma in enumerate(sigmas):
+        tmp = (xdata - center_locs[ind]) / sigma
+        out_data += xp.exp(-(tmp**2))
+    return out_data
+
+
+def _gen_gaussians_even(xp, sigmas, total_length):
+    num_peaks = len(sigmas)
+    delta = total_length / (num_peaks + 1)
+    center_locs = xp.linspace(
+        delta, total_length - delta, num=num_peaks).astype(int)
+    out_data = _gen_gaussians(xp, center_locs, sigmas, total_length)
+    return out_data, center_locs
+
+
 @pytest.mark.xfail(
     runtime.is_hip and driver.get_build_version() < 5_00_00000,
     reason='name_expressions with ROCm 4.3 may not work')
@@ -127,7 +145,7 @@ class TestPeakWidths:
         Test a simple use case with easy to verify results at different
         relative heights.
         """
-        x = np.array([1, 0, 1, 2, 1, 0, -1])
+        x = xp.array([1, 0, 1, 2, 1, 0, -1])
         out = scp.signal.peak_widths(x, [3], rel_height)
         return out
 
@@ -190,7 +208,7 @@ class TestPeakWidths:
                 # Make sure input is matches output of signal.peak_prominences
                 prominence_data = (xp.array(prominences, dtype=xp.float64),
                                    xp.array(left_bases, dtype=xp.intp),
-                                   xp.array(right_bases, dtype=np.intp))
+                                   xp.array(right_bases, dtype=xp.intp))
                 # Test for correct exception
                 if i < 3:
                     match = "prominence data is invalid"
@@ -369,3 +387,64 @@ class TestFindPeaks:
             width=(None, None), wlen=2)
         return (peaks,) + tuple(
             [props[k] for k in self.property_keys if k in props])
+
+
+@pytest.mark.xfail(
+    runtime.is_hip and driver.get_build_version() < 5_00_00000,
+    reason='name_expressions with ROCm 4.3 may not work')
+@testing.with_requires('scipy')
+class TestArgrel:
+
+    @testing.numpy_cupy_allclose(scipy_name="scp")
+    def test_empty(self, xp, scp):
+        # When there are no relative extrema, make sure that
+        # the number of empty arrays returned matches the
+        # dimension of the input.
+        z1 = xp.zeros(5)
+        i = scp.signal.argrelmin(z1)
+
+        z2 = xp.zeros((3, 5))
+        row1, col1 = scp.signal.argrelmin(z2, axis=0)
+        row2, col2 = scp.signal.argrelmin(z2, axis=1)
+        return i[0], row1, col1, row2, col2
+
+    @pytest.mark.parametrize('func_name', ['argrelmax', 'argrelmin'])
+    @pytest.mark.parametrize('axis', [0, 1])
+    @testing.numpy_cupy_allclose(scipy_name="scp")
+    def test_basic(self, func_name, axis, xp, scp):
+        # Note: the docstrings for the argrel{min,max,extrema} functions
+        # do not give a guarantee of the order of the indices, so we'll
+        # sort them before testing.
+
+        x = xp.array([[1, 2, 2, 3, 2],
+                      [2, 1, 2, 2, 3],
+                      [3, 2, 1, 2, 2],
+                      [2, 3, 2, 1, 2],
+                      [1, 2, 3, 2, 1]])
+
+        func = getattr(scp.signal, func_name)
+        row, col = func(x, axis=axis)
+        order = xp.argsort(row)
+        return row[order], col[order]
+
+    @testing.numpy_cupy_allclose(scipy_name="scp")
+    def test_highorder(self, xp, scp):
+        order = 2
+        sigmas = [1.0, 2.0, 10.0, 5.0, 15.0]
+        test_data, act_locs = _gen_gaussians_even(xp, sigmas, 500)
+        test_data[act_locs + order] = test_data[act_locs]*0.99999
+        test_data[act_locs - order] = test_data[act_locs]*0.99999
+        rel_max_locs = scp.signal.argrelmax(
+            test_data, order=order, mode='clip')[0]
+        return rel_max_locs
+
+    @testing.numpy_cupy_allclose(scipy_name="scp")
+    def test_2d_gaussians(self, xp, scp):
+        sigmas = [1.0, 2.0, 10.0]
+        test_data, _ = _gen_gaussians_even(xp, sigmas, 100)
+        rot_factor = 20
+        rot_range = xp.arange(0, len(test_data)) - rot_factor
+        test_data_2 = xp.vstack([test_data, test_data[rot_range]])
+        rel_max_rows, rel_max_cols = scp.signal.argrelmax(
+            test_data_2, axis=1, order=1)
+        return rel_max_rows, rel_max_cols

@@ -66,6 +66,7 @@ class TestArrayUnaryOp(unittest.TestCase):
         assert a is not +a
         return +a
 
+    @testing.with_requires('numpy<1.25')
     def test_pos_boolarray(self):
         for xp in (numpy, cupy):
             a = xp.array(True, dtype=xp.bool_)

@@ -2,6 +2,7 @@
 #include <cupy/type_dispatcher.cuh>
 
 #ifndef CUPY_USE_HIP
+#include <cfloat> // For FLT_MAX definitions
 #include <cub/device/device_reduce.cuh>
 #include <cub/device/device_segmented_reduce.cuh>
 #include <cub/device/device_spmv.cuh>
@@ -28,6 +29,7 @@
 //   numbers as in general the comparison is ill defined.
 // - DO NOT USE THIS STUB for supporting CUB sorting!!!!!!
 using namespace cub;
+#define CUPY_CUB_NAMESPACE cub
 
 template <>
 struct FpLimits<complex<float>>
@@ -56,11 +58,57 @@ struct FpLimits<complex<double>>
 template <> struct NumericTraits<complex<float>>  : BaseTraits<FLOATING_POINT, true, false, unsigned int, complex<float>> {};
 template <> struct NumericTraits<complex<double>> : BaseTraits<FLOATING_POINT, true, false, unsigned long long, complex<double>> {};
 
+// need specializations for initial values
+namespace std {
+
+template <>
+class numeric_limits<thrust::complex<float>> {
+  public:
+    static __host__ __device__ thrust::complex<float> infinity() noexcept {
+        return thrust::complex<float>(std::numeric_limits<float>::infinity(), std::numeric_limits<float>::infinity());
+    }
+
+    static constexpr bool has_infinity = true;
+};
+
+template <>
+class numeric_limits<thrust::complex<double>> {
+  public:
+    static __host__ __device__ thrust::complex<double> infinity() noexcept {
+        return thrust::complex<double>(std::numeric_limits<double>::infinity(), std::numeric_limits<double>::infinity());
+    }
+
+    static constexpr bool has_infinity = true;
+};
+
+template <>
+class numeric_limits<__half> {
+  public:
+    static __host__ __device__ constexpr __half infinity() noexcept {
+        unsigned short inf_half = 0x7C00U;
+        #if (defined(_MSC_VER) && _MSC_VER >= 1920)
+        // WAR:
+        // - we want a constexpr here, but reinterpret_cast cannot be used
+        // - we want to use std::bit_cast, but it requires C++20 which is too new
+        // - we use the compiler builtin, fortunately both gcc and msvc have it
+        return __builtin_bit_cast(__half, inf_half);
+        #else
+        return *reinterpret_cast<__half*>(&inf_half);
+        #endif
+    }
+
+    static constexpr bool has_infinity = true;
+};
+
+}  // namespace std
+
+
 #else
 
 // hipCUB internally uses std::numeric_limits, so we should provide specializations for the complex numbers.
 // Note that there's std::complex, so to avoid name collision we must use the full decoration (thrust::complex)!
 // TODO(leofang): wrap CuPy's thrust namespace with another one (say, cupy::thrust) for safer scope resolution?
+#define CUPY_CUB_NAMESPACE hipcub
 
 namespace std {
 template <>
@@ -73,6 +121,12 @@ class numeric_limits<thrust::complex<float>> {
     static __host__ __device__ thrust::complex<float> lowest() noexcept {
         return thrust::complex<float>(-std::numeric_limits<float>::max(), -std::numeric_limits<float>::max());
     }
+
+    static __host__ __device__ thrust::complex<float> infinity() noexcept {
+        return thrust::complex<float>(std::numeric_limits<float>::infinity(), std::numeric_limits<float>::infinity());
+    }
+
+    static constexpr bool has_infinity = true;
 };
 
 template <>
@@ -85,6 +139,12 @@ class numeric_limits<thrust::complex<double>> {
     static __host__ __device__ thrust::complex<double> lowest() noexcept {
         return thrust::complex<double>(-std::numeric_limits<double>::max(), -std::numeric_limits<double>::max());
     }
+
+    static __host__ __device__ thrust::complex<double> infinity() noexcept {
+        return thrust::complex<double>(std::numeric_limits<double>::infinity(), std::numeric_limits<double>::infinity());
+    }
+
+    static constexpr bool has_infinity = true;
 };
 
 // Copied from https://github.com/ROCmSoftwarePlatform/hipCUB/blob/master-rocm-3.5/hipcub/include/hipcub/backend/rocprim/device/device_reduce.hpp
@@ -104,12 +164,27 @@ class numeric_limits<__half> {
         __half lowest_value = *reinterpret_cast<__half*>(&lowest_half);
         return lowest_value;
     }
+
+    static __host__ __device__ __half infinity() noexcept {
+        unsigned short inf_half = 0x7C00U;
+        __half inf_value = *reinterpret_cast<__half*>(&inf_half);
+        return inf_value;
+    }
+
+    static constexpr bool has_infinity = true;
 };
 }  // namespace std
 
 using namespace hipcub;
 
 #endif  // ifndef CUPY_USE_HIP
+
+__host__ __device__ __half half_negate_inf() {
+    unsigned short minf_half = 0xFC00U;
+    __half* minf_value = reinterpret_cast<__half*>(&minf_half);
+    return *minf_value;
+}
+
 /* ------------------------------------ end of boilerplate ------------------------------------ */
 
 
@@ -153,6 +228,8 @@ typedef TransformInputIterator<int, _arange, rocprim::counting_iterator<int>> se
 /*
    These stubs are needed because CUB does not handle NaNs properly, while NumPy has certain
    behaviors with which we must comply.
+
+   CUDA/HIP have different signatures for Max/Min because of the recent changes in CCCL (for the former).
 */
 
 #if ((__CUDACC_VER_MAJOR__ > 9 || (__CUDACC_VER_MAJOR__ == 9 && __CUDACC_VER_MINOR__ == 2)) \
@@ -184,6 +261,8 @@ __host__ __device__ __forceinline__ bool half_equal(const __half& l, const __hal
 #endif
 }
 #endif
+
+#ifdef CUPY_USE_HIP
 
 //
 // Max()
@@ -306,6 +385,8 @@ __host__ __device__ __forceinline__ __half Min::operator()(const __half &a, cons
     else { return half_less(a, b) ? a : b; }
 }
 #endif
+
+#endif  // ifdef CUPY_USE_HIP
 
 //
 // ArgMax()
@@ -484,11 +565,7 @@ __host__ __device__ __forceinline__ KeyValuePair<int, __half> ArgMin::operator()
 }
 #endif
 
-#if __CUDACC_VER_MAJOR__ >= 12
-//
-// Specialization for cub operators Max() and Min() in CUDA 12.x. Why is this
-// necessary? Because the signatures have changed in CUDA 12.0.
-//
+#ifndef CUPY_USE_HIP
 
 //
 // Max()
@@ -600,7 +677,7 @@ __host__ __device__ __forceinline__ __half Min::operator()(__half &a, __half &b)
 }
 #endif
 
-#endif // #if __CUDACC_VER_MAJOR__ == 12
+#endif  // #ifndef CUPY_USE_HIP
 
 /* ------------------------------------ End of "patches" ------------------------------------ */
 
@@ -667,8 +744,17 @@ struct _cub_reduce_min {
     void operator()(void* workspace, size_t& workspace_size, void* x, void* y,
         int num_items, cudaStream_t s)
     {
-        DeviceReduce::Min(workspace, workspace_size, static_cast<T*>(x),
-            static_cast<T*>(y), num_items, s);
+        if constexpr (std::numeric_limits<T>::has_infinity)
+        {
+            DeviceReduce::Reduce(workspace, workspace_size, static_cast<T*>(x),
+                static_cast<T*>(y), num_items,
+                CUPY_CUB_NAMESPACE::Min(), std::numeric_limits<T>::infinity(), s);
+        }
+        else
+        {
+            DeviceReduce::Min(workspace, workspace_size, static_cast<T*>(x),
+                static_cast<T*>(y), num_items, s);
+        }
     }
 };
 
@@ -677,9 +763,19 @@ struct _cub_segmented_reduce_min {
     void operator()(void* workspace, size_t& workspace_size, void* x, void* y,
         int num_segments, seg_offset_itr offset_start, cudaStream_t s)
     {
-        DeviceSegmentedReduce::Min(workspace, workspace_size,
-            static_cast<T*>(x), static_cast<T*>(y), num_segments,
-            offset_start, offset_start+1, s);
+        if constexpr (std::numeric_limits<T>::has_infinity)
+        {
+            DeviceSegmentedReduce::Reduce(workspace, workspace_size,
+                static_cast<T*>(x), static_cast<T*>(y), num_segments,
+                offset_start, offset_start+1,
+                CUPY_CUB_NAMESPACE::Min(), std::numeric_limits<T>::infinity(), s);
+        }
+        else
+        {
+            DeviceSegmentedReduce::Min(workspace, workspace_size,
+                static_cast<T*>(x), static_cast<T*>(y), num_segments,
+                offset_start, offset_start+1, s);
+        }
     }
 };
 
@@ -691,8 +787,28 @@ struct _cub_reduce_max {
     void operator()(void* workspace, size_t& workspace_size, void* x, void* y,
         int num_items, cudaStream_t s)
     {
-        DeviceReduce::Max(workspace, workspace_size, static_cast<T*>(x),
-            static_cast<T*>(y), num_items, s);
+        if constexpr (std::numeric_limits<T>::has_infinity)
+        {
+            // to avoid compiler error: invalid argument type '__half' to unary expression on HIP...
+            if constexpr (std::is_same_v<T, __half>)
+            {
+                DeviceReduce::Reduce(workspace, workspace_size, static_cast<T*>(x),
+                    static_cast<T*>(y), num_items,
+                    CUPY_CUB_NAMESPACE::Max(), half_negate_inf(), s);
+            }
+            else
+            {
+                DeviceReduce::Reduce(workspace, workspace_size, static_cast<T*>(x),
+                    static_cast<T*>(y), num_items,
+                    CUPY_CUB_NAMESPACE::Max(), -std::numeric_limits<T>::infinity(), s);
+
+            }
+        }
+        else
+        {
+            DeviceReduce::Max(workspace, workspace_size, static_cast<T*>(x),
+                static_cast<T*>(y), num_items, s);
+        }
     }
 };
 
@@ -701,9 +817,30 @@ struct _cub_segmented_reduce_max {
     void operator()(void* workspace, size_t& workspace_size, void* x, void* y,
         int num_segments, seg_offset_itr offset_start, cudaStream_t s)
     {
-        DeviceSegmentedReduce::Max(workspace, workspace_size,
-            static_cast<T*>(x), static_cast<T*>(y), num_segments,
-            offset_start, offset_start+1, s);
+        if constexpr (std::numeric_limits<T>::has_infinity)
+        {
+            // to avoid compiler error: invalid argument type '__half' to unary expression on HIP...
+            if constexpr (std::is_same_v<T, __half>)
+            {
+                DeviceSegmentedReduce::Reduce(workspace, workspace_size,
+                    static_cast<T*>(x), static_cast<T*>(y), num_segments,
+                    offset_start, offset_start+1,
+                    CUPY_CUB_NAMESPACE::Max(), half_negate_inf(), s);
+            }
+            else
+            {
+                DeviceSegmentedReduce::Reduce(workspace, workspace_size,
+                    static_cast<T*>(x), static_cast<T*>(y), num_segments,
+                    offset_start, offset_start+1,
+                    CUPY_CUB_NAMESPACE::Max(), -std::numeric_limits<T>::infinity(), s);
+            }
+        }
+        else
+        {
+            DeviceSegmentedReduce::Max(workspace, workspace_size,
+                static_cast<T*>(x), static_cast<T*>(y), num_segments,
+                offset_start, offset_start+1, s);
+        }
     }
 };
 
@@ -787,28 +924,18 @@ struct _cub_inclusive_product {
 //
 struct _cub_histogram_range {
     template <typename sampleT,
-              typename binT = typename If<std::is_integral<sampleT>::value, double, sampleT>::Type>
+              typename binT = typename std::conditional<std::is_integral<sampleT>::value, double, sampleT>::type>
     void operator()(void* workspace, size_t& workspace_size, void* input, void* output,
         int n_bins, void* bins, size_t n_samples, cudaStream_t s) const
     {
         // Ugly hack to avoid specializing complex types, which cub::DeviceHistogram does not support.
-        // The If and Equals templates are from cub/util_type.cuh.
         // TODO(leofang): revisit this part when complex support is added to cupy.histogram()
-        #ifndef CUPY_USE_HIP
-        typedef typename If<(Equals<sampleT, complex<float>>::VALUE || Equals<sampleT, complex<double>>::VALUE),
-                            double,
-                            sampleT>::Type h_sampleT;
-        typedef typename If<(Equals<binT, complex<float>>::VALUE || Equals<binT, complex<double>>::VALUE),
-                            double,
-                            binT>::Type h_binT;
-        #else
         typedef typename std::conditional<(std::is_same<sampleT, complex<float>>::value || std::is_same<sampleT, complex<double>>::value),
                                           double,
                                           sampleT>::type h_sampleT;
         typedef typename std::conditional<(std::is_same<binT, complex<float>>::value || std::is_same<binT, complex<double>>::value),
                                           double,
                                           binT>::type h_binT;
-        #endif
 
         // TODO(leofang): CUB has a bug that when specializing n_samples with type size_t,
         // it would error out. Before the fix (thrust/cub#38) is merged we disable the code
@@ -843,7 +970,7 @@ struct _cub_histogram_even {
     {
         #ifndef CUPY_USE_HIP
         // Ugly hack to avoid specializing numerical types
-        typedef typename If<std::is_integral<sampleT>::value, sampleT, int>::Type h_sampleT;
+        typedef typename std::conditional<std::is_integral<sampleT>::value, sampleT, int>::type h_sampleT;
         int num_samples = n_samples;
         static_assert(sizeof(long long) == sizeof(intptr_t), "not supported");
         DeviceHistogram::HistogramEven(workspace, workspace_size, static_cast<h_sampleT*>(input),

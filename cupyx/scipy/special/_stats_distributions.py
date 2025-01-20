@@ -13,6 +13,7 @@ https://github.com/scipy/scipy/blob/main/scipy/special/cephes/pdtr.c
 Cephes Math Library, Release 2.3:  March, 1995
 Copyright 1984, 1995 by Stephen L. Moshier
 """
+import warnings
 
 from cupy import _core
 from cupyx.scipy.special._beta import incbet_preamble, incbi_preamble
@@ -66,7 +67,7 @@ log_ndtr = _core.create_ufunc(
     preamble=log_ndtr_definition,
     doc="""Logarithm of Gaussian cumulative distribution function.
 
-    Returns the log of the area under the standard Gaussian propability
+    Returns the log of the area under the standard Gaussian probability
     density function.
 
     Parameters
@@ -353,7 +354,7 @@ bdtri = _core.create_ufunc(
 
 # Beta distribution functions
 
-btdtr = _core.create_ufunc(
+_btdtr = _core.create_ufunc(
     "cupyx_scipy_btdtr",
     ("fff->f", "ddd->d"),
     "out0 = out0_type(incbet(in0, in1, in2));",
@@ -383,7 +384,13 @@ btdtr = _core.create_ufunc(
 )
 
 
-btdtri = _core.create_ufunc(
+def btdtr(a, b, x, out=None):
+    warnings.warn(
+        "Use cupyx.scipy.special.betainc instead.", DeprecationWarning)
+    return _btdtr(a, b, x, out)
+
+
+_btdtri = _core.create_ufunc(
     "cupyx_scipy_btdtri",
     ("fff->f", "ddd->d"),
     "out0 = out0_type(incbi(in0, in1, in2));",
@@ -413,6 +420,12 @@ btdtri = _core.create_ufunc(
 
     """,
 )
+
+
+def btdtri(a, b, p, out=None):
+    warnings.warn(
+        "Use cupyx.scipy.special.betaincinv instead.", DeprecationWarning)
+    return _btdtri(a, b, p, out)
 
 
 # Chi square distribution functions
@@ -854,6 +867,8 @@ __device__ double nbdtri(int k, int n, double y)
     }
     dk = k + 1;
     dn = n;
+    if (y <= 0.0) return 0.0;
+    if (y >= 1.0) return 1.0;
     w = incbi(dn, dk, y);
     return (w);
 }

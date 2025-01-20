@@ -8,19 +8,19 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         # Checkout using commit hash to make "no-commit-to-branch" test pass.
         ref: ${{ github.sha }}
 
     - name: Setup Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       id: setup-python
       with:
         python-version: '3.9'
 
     - name: Setup cache
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: ~/.cache
         key:
@@ -37,6 +37,14 @@ jobs:
       run: |
         pre-commit run -a --show-diff-on-failure
 
+    - name: Type Check
+      run: |
+        # TODO: Test against various NumPy/SciPy versions.
+        pip install 'numpy==1.25.*' 'scipy==1.10.*'
+        pip install 'mypy==1.5.*' 'types-setuptools==57.4.14' 'pytest>=7.2'
+        sed -i s/error::cupy.exceptions./error::numpy./ setup.cfg  # Because no cupy here. See cupy#8346
+        pytest -v tests/typing_tests/test_typing.py
+
   build-cuda:
     runs-on: ubuntu-22.04
     env:
@@ -44,17 +52,17 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         submodules: recursive
 
     - name: Setup Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
-        python-version: '3.9'
+        python-version: '3.12'
 
     - name: Setup cache
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: ~/.cache
         key: build-cuda-${{ github.sha }}
@@ -71,7 +79,7 @@ jobs:
 
     - name: Build
       run: |
-        pip install -U pip wheel
+        pip install -U pip wheel setuptools
         READTHEDOCS=True pip install -v -e .
         ccache --max-size 0.5Gi --cleanup --show-stats
 
@@ -84,15 +92,19 @@ jobs:
         SPHINXOPTS="-W --keep-going -j 4" make html
         popd
 
+    - name: Import Test
+      run: |
+        python -c 'import cupy, cupyx'
+
   build-rocm:
     runs-on: ubuntu-22.04
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         submodules: recursive
 
     - name: Build & Test
       run: |
-        docker run --rm -v "${PWD}:/src" -w /src "rocm/dev-ubuntu-20.04:5.0-complete" bash .github/workflows/pretest-rocm-test.sh
+        docker run --rm -v "${PWD}:/src" -w /src "rocm/dev-ubuntu-22.04:6.0" bash .github/workflows/scripts/pretest-rocm-test.sh

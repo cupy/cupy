@@ -2,6 +2,8 @@ import threading
 import unittest
 from unittest import mock
 
+import pytest
+
 import cupy
 from cupy import testing
 from cupy_tests.core_tests.fusion_tests import fusion_utils
@@ -212,7 +214,7 @@ class TestFusionKernelName(unittest.TestCase):
 
             with mock.patch(target_full_name) as kernel:  # NOQA
                 func(a, b, c)
-                # TODO(asi1024): Uncomment after replace fusion implementaiton.
+                # TODO(asi1024): Uncomment after replace fusion implementation.
                 # kernel.assert_called_once()
                 # self.assertEqual(kernel.call_args.args[0], expected_name)
 
@@ -420,3 +422,17 @@ class TestFusionMultiDevice(unittest.TestCase):
             out2 = f(x2, y2)
 
         return out1, out2
+
+
+class TestFusionInvalid():
+
+    def test_branch(self):
+        @cupy.fuse()
+        def f(x):
+            if x > 0:
+                return x
+            return -x
+
+        x = testing.shaped_random((3, 3), cupy, cupy.int64, seed=0)
+        with pytest.raises(TypeError, match="Python scalar"):
+            f(x)

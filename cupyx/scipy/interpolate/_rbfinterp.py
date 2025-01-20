@@ -4,6 +4,7 @@ import warnings
 from itertools import combinations_with_replacement
 
 import cupy as cp
+from cupyx.scipy.spatial import KDTree
 
 
 # Define the kernel functions.
@@ -640,7 +641,7 @@ class RBFInterpolator:
             degree = int(degree)
             if degree < -1:
                 raise ValueError("`degree` must be at least -1.")
-            elif degree < min_degree:
+            elif -1 < degree < min_degree:
                 warnings.warn(
                     f"`degree` should not be below {min_degree} when `kernel` "
                     f"is '{kernel}'. The interpolant may not be uniquely "
@@ -652,7 +653,6 @@ class RBFInterpolator:
         if neighbors is None:
             nobs = ny
         else:
-            raise NotImplementedError("neighbors is not implemented yet")
             # Make sure the number of nearest neighbors used for interpolation
             # does not exceed the number of observations.
             neighbors = int(min(neighbors, ny))
@@ -679,8 +679,7 @@ class RBFInterpolator:
             self._coeffs = coeffs
 
         else:
-            raise NotImplementedError
-            # self._tree = KDTree(y)
+            self._tree = KDTree(y)
 
         self.y = y
         self.d = d
@@ -783,7 +782,51 @@ class RBFInterpolator:
                 self._scale,
                 self._coeffs, memory_budget=memory_budget)
         else:
-            raise NotImplementedError    # XXX: needs KDTree
+            # Get the indices of the k nearest observation points to each
+            # evaluation point.
+            _, yindices = self._tree.query(x, self.neighbors)
+
+            if self.neighbors == 1:
+                # `KDTree` squeezes the output when neighbors=1.
+                yindices = yindices[:, None]
+
+            # Multiple evaluation points may have the same neighborhood of
+            # observation points. Make the neighborhoods unique so that we only
+            # compute the interpolation coefficients once for each
+            # neighborhood.
+            yindices = cp.sort(yindices, axis=1)
+            yindices, inv = cp.unique(yindices, return_inverse=True, axis=0)
+            # `inv` tells us which neighborhood will be used by each evaluation
+            # point. Now we find which evaluation points will be using each
+            # neighborhood.
+            xindices = [[] for _ in range(len(yindices))]
+            for i, j in enumerate(inv.tolist()):
+                xindices[j].append(i)
+
+            out = cp.empty((nx, self.d.shape[1]), dtype=float)
+            for xidx, yidx in zip(xindices, yindices):
+                # `yidx` are the indices of the observations in this
+                # neighborhood. `xidx` are the indices of the evaluation points
+                # that are using this neighborhood.
+                xnbr = x[xidx]
+                ynbr = self.y[yidx]
+                dnbr = self.d[yidx]
+                snbr = self.smoothing[yidx]
+                shift, scale, coeffs = _build_and_solve_system(
+                    ynbr,
+                    dnbr,
+                    snbr,
+                    self.kernel,
+                    self.epsilon,
+                    self.powers,
+                )
+                out[xidx] = self._chunk_evaluator(
+                    xnbr,
+                    ynbr,
+                    shift,
+                    scale,
+                    coeffs,
+                    memory_budget=memory_budget)
 
         out = out.view(self.d_dtype)
         out = out.reshape((nx, ) + self.d_shape)

@@ -43,13 +43,15 @@ __device__ complex<double> cgamma(complex<double> z)
 gamma = _core.create_ufunc(
     'cupyx_scipy_gamma',
     (
+        ('l->d', 'out0 = Gamma(in0)'),
+        ('e->d', 'out0 = Gamma(in0)'),
         'f->f',
         'd->d',
         ('F->F', 'out0 = out0_type(cgamma(in0))'),
         ('D->D', 'out0 = cgamma(in0)')
     ),
     _gamma_body,
-    preamble=cgamma_definition,
+    preamble=gamma_definition + cgamma_definition,
     doc="""Gamma function.
 
     Args:
@@ -200,6 +202,8 @@ __device__ complex<double> crgamma(complex<double> z)
 rgamma = _core.create_ufunc(
     'cupyx_scipy_rgamma',
     (
+        'l->d',
+        'e->d',
         'f->f',
         'd->d',
         ('F->F', 'out0 = out0_type(crgamma(in0))'),

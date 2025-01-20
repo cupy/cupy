@@ -17,6 +17,7 @@ import inspect
 import os
 import sys
 
+import sphinx
 import cupy
 
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
@@ -487,6 +488,7 @@ def linkcode_resolve(domain, info):
 # doc content so as to make the function signatures shorter and
 # look nicer.
 autodoc_typehints = 'description'
+autodoc_typehints_description_target = 'documented_params'
 
 
 def remove_array_api_module_docstring(app, what, name, obj, options, lines):
@@ -496,6 +498,19 @@ def remove_array_api_module_docstring(app, what, name, obj, options, lines):
     # Here we remove the docstring and will add our own description in array_api.rst
     if what == "module" and 'array_api' in name:
         del lines[:]
+
+
+def _patch_function_documenter():
+    # Monkeypatch FunctionDocumenter to let autosummary document ufuncs with
+    # `autofunction` instead of `autodata` so that signatures are documented.
+    documenter = sphinx.ext.autodoc.FunctionDocumenter
+    orig = documenter.can_document_member
+    def _can_document_member(member, *args, **kwargs):
+        if isinstance(member, cupy.ufunc):
+            return True
+        return orig(member, *args, **kwargs)
+    documenter.can_document_member = _can_document_member
+
 
 def fix_jit_callable_signature(
         app, what, name, obj, options, signature, return_annotation):
@@ -513,6 +528,8 @@ def fix_ndarray_signature(
     return (signature, return_annotation)
 
 def setup(app):
+    _patch_function_documenter()
+
     app.connect("autodoc-process-docstring", remove_array_api_module_docstring)
     app.connect("autodoc-process-signature", fix_jit_callable_signature)
     app.connect("autodoc-process-signature", fix_ndarray_signature)

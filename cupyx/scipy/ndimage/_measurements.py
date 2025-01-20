@@ -395,7 +395,7 @@ def sum_labels(input, labels=None, index=None):
                            cupy.float64, cupy.uint32, cupy.uint64,
                            cupy.ulonglong]:
         warnings.warn(
-            'Using the slower implmentation as '
+            'Using the slower implementation as '
             'cupyx.scipy.ndimage.sum supports int32, float16, '
             'float32, float64, uint32, uint64 as data types'
             'for the fast implmentation', _util.PerformanceWarning)
@@ -485,7 +485,7 @@ def mean(input, labels=None, index=None):
                            cupy.float64, cupy.uint32, cupy.uint64,
                            cupy.ulonglong]:
         warnings.warn(
-            'Using the slower implmentation as '
+            'Using the slower implementation as '
             'cupyx.scipy.ndimage.mean supports int32, float16, '
             'float32, float64, uint32, uint64 as data types '
             'for the fast implmentation', _util.PerformanceWarning)
@@ -1180,7 +1180,7 @@ def labeled_comprehension(
                 continue
             output[i] = func(*[inp[low:high] for inp in inputs])
 
-    if out_dtype == object:
+    if out_dtype == object:  # noqa: E721
         temp = {i: default for i in range(index.size)}
     else:
         temp = cupy.empty(index.shape, out_dtype)
@@ -1193,7 +1193,7 @@ def labeled_comprehension(
     else:
         do_map([input, positions], temp)
 
-    if out_dtype == object:
+    if out_dtype == object:  # noqa: E721
         # use a list of arrays since object arrays are not supported
         index_order = cupy.asnumpy(index_order)
         output = [temp[i] for i in index_order.argsort()]

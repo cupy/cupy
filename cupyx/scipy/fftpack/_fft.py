@@ -1,7 +1,6 @@
 from numpy import prod
 
 import cupy
-from cupy.cuda import cufft
 from cupy.fft import config
 from cupy.fft._fft import (_convert_fft_type, _default_fft_func, _fft,
                            _get_cufft_plan_nd, _get_fftn_out_size,
@@ -63,6 +62,8 @@ def get_fft_plan(a, shape=None, axes=None, value_type='C2C'):
         This API is a deviation from SciPy's, is currently experimental, and
         may be changed in the future version.
     """
+    from cupy.cuda import cufft
+
     # check input array
     if a.flags.c_contiguous:
         order = 'C'
@@ -96,7 +97,7 @@ def get_fft_plan(a, shape=None, axes=None, value_type='C2C'):
         elif n > 3:
             raise ValueError('Only up to three axes is supported')
 
-    # Note that "shape" here refers to the shape along trasformed axes, not
+    # Note that "shape" here refers to the shape along transformed axes, not
     # the shape of the output array, and we need to convert it to the latter.
     # The result is as if "a=_cook_shape(a); return a.shape" is called.
     # Because of this, we need to use (possibly unsorted) axes.
@@ -195,6 +196,7 @@ def fft(x, n=None, axis=-1, overwrite_x=False, plan=None):
 
     .. seealso:: :func:`scipy.fftpack.fft`
     """
+    from cupy.cuda import cufft
     return _fft(x, (n,), (axis,), None, cufft.CUFFT_FORWARD,
                 overwrite_x=overwrite_x, plan=plan)
 
@@ -228,6 +230,7 @@ def ifft(x, n=None, axis=-1, overwrite_x=False, plan=None):
 
     .. seealso:: :func:`scipy.fftpack.ifft`
     """
+    from cupy.cuda import cufft
     return _fft(x, (n,), (axis,), None, cufft.CUFFT_INVERSE,
                 overwrite_x=overwrite_x, plan=plan)
 
@@ -263,6 +266,8 @@ def fft2(x, shape=None, axes=(-2, -1), overwrite_x=False, plan=None):
        The argument `plan` is currently experimental and the interface may be
        changed in the future version.
     """
+    from cupy.cuda import cufft
+
     func = _default_fft_func(x, shape, axes, plan)
     return func(x, shape, axes, None, cufft.CUFFT_FORWARD,
                 overwrite_x=overwrite_x, plan=plan)
@@ -299,6 +304,8 @@ def ifft2(x, shape=None, axes=(-2, -1), overwrite_x=False, plan=None):
        The argument `plan` is currently experimental and the interface may be
        changed in the future version.
     """
+    from cupy.cuda import cufft
+
     func = _default_fft_func(x, shape, axes, plan)
     return func(x, shape, axes, None, cufft.CUFFT_INVERSE,
                 overwrite_x=overwrite_x, plan=plan)
@@ -335,6 +342,8 @@ def fftn(x, shape=None, axes=None, overwrite_x=False, plan=None):
        The argument `plan` is currently experimental and the interface may be
        changed in the future version.
     """
+    from cupy.cuda import cufft
+
     func = _default_fft_func(x, shape, axes, plan)
     return func(x, shape, axes, None, cufft.CUFFT_FORWARD,
                 overwrite_x=overwrite_x, plan=plan)
@@ -371,6 +380,8 @@ def ifftn(x, shape=None, axes=None, overwrite_x=False, plan=None):
        The argument `plan` is currently experimental and the interface may be
        changed in the future version.
     """
+    from cupy.cuda import cufft
+
     func = _default_fft_func(x, shape, axes, plan)
     return func(x, shape, axes, None, cufft.CUFFT_INVERSE,
                 overwrite_x=overwrite_x, plan=plan)
@@ -414,6 +425,8 @@ def rfft(x, n=None, axis=-1, overwrite_x=False, plan=None):
        The argument `plan` is currently experimental and the interface may be
        changed in the future version.
     """
+    from cupy.cuda import cufft
+
     if n is None:
         n = x.shape[axis]
 
@@ -463,6 +476,8 @@ def irfft(x, n=None, axis=-1, overwrite_x=False):
        capability, please consider using :func:`cupy.fft.irfft` or :func:`
        cupyx.scipy.fft.irfft`.
     """
+    from cupy.cuda import cufft
+
     if n is None:
         n = x.shape[axis]
     m = min(n, x.shape[axis])

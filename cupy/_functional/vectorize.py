@@ -6,13 +6,10 @@ from cupyx.jit import _cuda_types
 
 
 def _get_input_type(arg):
-    if isinstance(arg, int):
-        return 'l'
-    if isinstance(arg, float):
-        return 'd'
-    if isinstance(arg, complex):
-        return 'D'
-    return arg.dtype.char
+    if hasattr(arg, 'dtype'):
+        return arg.dtype.char
+    else:
+        return numpy.dtype(type(arg)).char
 
 
 class vectorize(object):
@@ -66,7 +63,8 @@ class vectorize(object):
                 if not isinstance(t, _cuda_types.Scalar):
                     raise TypeError(f'Invalid return type: {return_type}')
                 dtypes.append(t.dtype)
-                code += f'out{i} = thrust::get<{i}>(out);\n'
+                # STD is defined in carray.cuh
+                code += f'out{i} = STD::get<{i}>(out);\n'
         else:
             raise TypeError(f'Invalid return type: {return_type}')
 

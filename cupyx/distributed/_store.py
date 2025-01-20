@@ -44,7 +44,7 @@ class ExceptionAwareProcess(multiprocessing.Process):
 
 class TCPStore:
     # This is only used for initialization of nccl so we don't care
-    # too much about peformance
+    # too much about performance
     def __init__(self, world_size):
         self.storage = {}
         self._process = None
@@ -106,7 +106,8 @@ class TCPStore:
         if self._process is not None:
             with self._run.get_lock():
                 self._run.value = 0
-            self._process.join()
+            if self._process.is_alive():
+                self._process.join()
 
 
 class TCPStoreProxy:

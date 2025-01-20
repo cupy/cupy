@@ -4,7 +4,6 @@ import numpy
 
 import cupy
 from cupy.cuda import cublas
-from cupy.cuda import cusolver
 from cupy.cuda import device
 from cupy.cuda import runtime
 from cupy.linalg import _util
@@ -90,6 +89,8 @@ def lu(a, permute_l=False, overwrite_a=False, check_finite=True):
 
 
 def _lu_factor(a, overwrite_a=False, check_finite=True):
+    from cupy_backends.cuda.libs import cusolver
+
     a = cupy.asarray(a)
     _util._assert_2d(a)
 
@@ -286,6 +287,7 @@ def lu_solve(lu_and_piv, b, trans=0, overwrite_b=False, check_finite=True):
 
     .. seealso:: :func:`scipy.linalg.lu_solve`
     """  # NOQA
+    from cupy_backends.cuda.libs import cusolver
 
     (lu, ipiv) = lu_and_piv
 

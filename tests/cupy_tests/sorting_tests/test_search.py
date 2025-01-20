@@ -84,6 +84,11 @@ class TestSearch:
         a = testing.shaped_random((0, 1), xp, dtype)
         return a.argmax(axis=1)
 
+    @testing.slow
+    def test_argmax_int32_overflow(self):
+        a = testing.shaped_arange((2 ** 32 + 1,), cupy, numpy.float64)
+        assert a.argmax().item() == 2 ** 32
+
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose()
     def test_argmin_all(self, xp, dtype):
@@ -157,6 +162,12 @@ class TestSearch:
     def test_argmin_zero_size_axis1(self, xp, dtype):
         a = testing.shaped_random((0, 1), xp, dtype)
         return a.argmin(axis=1)
+
+    @testing.slow
+    def test_argmin_int32_overflow(self):
+        a = testing.shaped_arange((2 ** 32 + 1,), cupy, numpy.float64)
+        cupy.negative(a, out=a)
+        assert a.argmin().item() == 2 ** 32
 
 
 # TODO(leofang): remove this once CUDA 9.0 is dropped
@@ -361,12 +372,18 @@ class TestNonzero:
 @testing.with_requires('numpy>=1.17.0')
 class TestNonzeroZeroDimension:
 
+    @testing.with_requires("numpy>=2.1")
+    @testing.for_all_dtypes()
+    def test_nonzero(self, dtype):
+        array = cupy.array(self.array, dtype=dtype)
+        with pytest.raises(ValueError):
+            cupy.nonzero(array)
+
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
-    def test_nonzero(self, xp, dtype):
+    def test_nonzero_explicit(self, xp, dtype):
         array = xp.array(self.array, dtype=dtype)
-        with testing.assert_warns(DeprecationWarning):
-            return xp.nonzero(array)
+        return xp.nonzero(xp.atleast_1d(array))
 
 
 @testing.parameterize(
@@ -509,6 +526,22 @@ class TestNanArgMin:
         a = testing.shaped_random((0, 1), xp, dtype)
         return xp.nanargmin(a, axis=1)
 
+    @testing.for_all_dtypes(no_complex=True)
+    @testing.numpy_cupy_allclose()
+    def test_nanargmin_out_float_dtype(self, xp, dtype):
+        a = xp.array([[0.]])
+        b = xp.empty((1), dtype="int64")
+        xp.nanargmin(a, axis=1, out=b)
+        return b
+
+    @testing.for_all_dtypes(no_complex=True)
+    @testing.numpy_cupy_array_equal()
+    def test_nanargmin_out_int_dtype(self, xp, dtype):
+        a = xp.array([1, 0])
+        b = xp.empty((), dtype="int64")
+        xp.nanargmin(a, out=b)
+        return b
+
 
 class TestNanArgMax:
 
@@ -599,6 +632,22 @@ class TestNanArgMax:
     def test_nanargmax_zero_size_axis1(self, xp, dtype):
         a = testing.shaped_random((0, 1), xp, dtype)
         return xp.nanargmax(a, axis=1)
+
+    @testing.for_all_dtypes(no_complex=True)
+    @testing.numpy_cupy_allclose()
+    def test_nanargmax_out_float_dtype(self, xp, dtype):
+        a = xp.array([[0.]])
+        b = xp.empty((1), dtype="int64")
+        xp.nanargmax(a, axis=1, out=b)
+        return b
+
+    @testing.for_all_dtypes(no_complex=True)
+    @testing.numpy_cupy_array_equal()
+    def test_nanargmax_out_int_dtype(self, xp, dtype):
+        a = xp.array([0, 1])
+        b = xp.empty((), dtype="int64")
+        xp.nanargmax(a, out=b)
+        return b
 
 
 @testing.parameterize(*testing.product(
@@ -701,7 +750,7 @@ class TestSearchSortedNanInf:
 
 class TestSearchSortedInvalid:
 
-    # Cant test unordered bins due to numpy undefined
+    # Can't test unordered bins due to numpy undefined
     # behavior for searchsorted
 
     def test_searchsorted_ndbins(self):

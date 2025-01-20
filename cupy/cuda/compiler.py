@@ -8,6 +8,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+from typing import Optional
 import warnings
 
 from cupy.cuda import device
@@ -16,11 +17,10 @@ from cupy.cuda import get_rocm_path
 from cupy_backends.cuda.api import driver
 from cupy_backends.cuda.api import runtime
 from cupy_backends.cuda.libs import nvrtc
+from cupy import _environment
 from cupy import _util
 
 _cuda_hip_version = driver.get_build_version()
-if not runtime.is_hip and _cuda_hip_version > 0:
-    from cupy.cuda import jitify
 
 
 _nvrtc_version = None
@@ -61,9 +61,11 @@ def _run_cc(cmd, cwd, backend, log_stream=None):
                 path = extra_path + os.pathsep + os.environ.get('PATH', '')
                 env = copy.deepcopy(env)
                 env['PATH'] = path
-        log = subprocess.check_output(cmd, cwd=cwd, env=env,
-                                      stderr=subprocess.STDOUT,
-                                      universal_newlines=True)
+        log = subprocess.check_output(
+            cmd, cwd=cwd, env=env,
+            stderr=subprocess.STDOUT,
+            universal_newlines=True,
+            creationflags=(subprocess.CREATE_NO_WINDOW if _win32 else 0))
         if log_stream is not None:
             log_stream.write(log)
         return log
@@ -96,18 +98,52 @@ def _get_extra_path_for_msvc():
         # The compiler is already on PATH, no extra path needed.
         return None
 
-    try:
-        import setuptools
-        vctools = setuptools.msvc.EnvironmentInfo(platform.machine()).VCTools
-    except Exception as e:
-        warnings.warn(f'Failed to auto-detect cl.exe path: {type(e)}: {e}')
-        return None
+    cl_exe_dir = _get_cl_exe_dir()
+    if cl_exe_dir:
+        return cl_exe_dir
 
-    for path in vctools:
-        cl_exe = os.path.join(path, 'cl.exe')
-        if os.path.exists(cl_exe):
-            return path
-    warnings.warn(f'cl.exe could not be found in {vctools}')
+    cl_exe_dir = _get_cl_exe_dir_fallback()
+    if cl_exe_dir:
+        return cl_exe_dir
+
+    return None
+
+
+def _get_cl_exe_dir() -> Optional[str]:
+    try:
+        try:
+            # setuptools.msvc is missing in setuptools v74.0.0.
+            # setuptools.msvc requires explicit import in setuptools v74.1.0+.
+            import setuptools.msvc
+        except Exception:
+            return None
+        vctools = setuptools.msvc.EnvironmentInfo(platform.machine()).VCTools
+        for path in vctools:
+            cl_exe = os.path.join(path, 'cl.exe')
+            if os.path.exists(cl_exe):
+                return path
+        warnings.warn(f'cl.exe could not be found in {vctools}')
+    except Exception as e:
+        warnings.warn(
+            f'Failed to find cl.exe with setuptools.msvc: {type(e)}: {e}')
+    return None
+
+
+def _get_cl_exe_dir_fallback() -> Optional[str]:
+    # Discover cl.exe without relying on undocumented setuptools.msvc API.
+    # As of now this code path exists only for setuptools 74.0.0 (see #8583).
+    # N.B. This takes few seconds as this incurs cmd.exe (vcvarsall.bat)
+    # invocation.
+    try:
+        from setuptools import Distribution
+        from setuptools.command.build_ext import build_ext
+        ext = build_ext(Distribution({'name': 'cupy_cl_exe_discover'}))
+        ext.setup_shlib_compiler()
+        ext.shlib_compiler.initialize()  # MSVCCompiler only
+        return os.path.dirname(ext.shlib_compiler.cc)
+    except Exception as e:
+        warnings.warn(
+            f'Failed to find cl.exe with setuptools: {type(e)}: {e}')
     return None
 
 
@@ -143,6 +179,17 @@ def _get_max_compute_capability():
     return nvrtc_max_compute_capability
 
 
+@_util.memoize()
+def _get_extra_include_dir_opts():
+    major, minor = _get_nvrtc_version()
+    return tuple(
+        f'-I{d}'
+        for d in _environment._get_include_dir_from_conda_or_wheel(
+            major, minor
+        )
+    )
+
+
 @_util.memoize(for_each_device=True)
 def _get_arch():
     # See Supported Compile Options section of NVRTC User Guide for
@@ -166,12 +213,8 @@ def _get_arch_for_options_for_nvrtc(arch=None):
     # generate cubin (SASS) instead of PTX. See #5097 for details.
     if arch is None:
         arch = _get_arch()
-    if driver._is_cuda_python():
-        version = runtime.runtimeGetVersion()
-    else:
-        version = _cuda_hip_version
     if (
-        not _use_ptx and version >= 11010
+        not _use_ptx
         and arch <= _get_max_compute_capability()
     ):
         return f'-arch=sm_{arch}', 'cubin'
@@ -230,10 +273,13 @@ _jitify_header_source_map_populated = False
 
 
 def _jitify_prep(source, options, cu_path):
+    from cupy.cuda import jitify
+
     # TODO(leofang): refactor this?
     global _jitify_header_source_map_populated
     if not _jitify_header_source_map_populated:
         from cupy._core import core
+        jitify._init_module()
         jitify._add_sources(core._get_header_source_map())
         _jitify_header_source_map_populated = True
 
@@ -257,7 +303,7 @@ def _jitify_prep(source, options, cu_path):
             'CUPY_DUMP_CUDA_SOURCE_ON_ERROR', False)
         if dump:
             cex.dump(sys.stderr)
-        raise JitifyException(str(cex))
+        raise JitifyException(str(cex)) from e
     assert name == cu_path
 
     return options, headers, include_names
@@ -283,6 +329,12 @@ def compile_using_nvrtc(source, options=(), arch=None, filename='kern.cu',
     def _compile(
             source, options, cu_path, name_expressions, log_stream, jitify):
 
+        if not runtime.is_hip:
+            arch_opt, method = _get_arch_for_options_for_nvrtc(arch)
+            options += (arch_opt,)
+        else:
+            method = 'ptx'
+
         if jitify:
             options, headers, include_names = _jitify_prep(
                 source, options, cu_path)
@@ -293,12 +345,6 @@ def compile_using_nvrtc(source, options=(), arch=None, filename='kern.cu',
                 # Starting with CUDA 12.0, even without using jitify, some
                 # tests cause an error if the following option is not included.
                 options += ('--device-as-default-execution-space',)
-
-        if not runtime.is_hip:
-            arch_opt, method = _get_arch_for_options_for_nvrtc(arch)
-            options += (arch_opt,)
-        else:
-            method = 'ptx'
 
         prog = _NVRTCProgram(source, cu_path, headers, include_names,
                              name_expressions=name_expressions, method=method)
@@ -522,6 +568,7 @@ def _compile_with_cache_cuda(
     if jitify and backend != 'nvrtc':
         raise ValueError('jitify only works with NVRTC')
 
+    options += _get_extra_include_dir_opts()
     env = ((arch, options, _get_nvrtc_version(), backend)
            + _get_arch_for_options_for_nvrtc(arch))
     base = _empty_file_preprocess_cache.get(env, None)

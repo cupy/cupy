@@ -1,3 +1,5 @@
+import contextlib
+import os
 import unittest
 
 import numpy
@@ -148,3 +150,36 @@ class TestAsnumpy:
         testing.assert_array_equal(x, y)
         assert isinstance(y.base, cupy.cuda.PinnedMemoryPointer)
         assert y.base.ptr == y.ctypes.data
+
+    @pytest.mark.skipif(
+        int(os.environ.get('CUPY_ENABLE_UMP', 0)) == 1,
+        reason='blocking or not is irrelevant when zero-copy is on'
+    )
+    @pytest.mark.parametrize('blocking', (True, False))
+    def test_asnumpy_blocking(self, blocking):
+        prefactor = 4
+        a = cupy.random.random(prefactor*128*1024*1024, dtype=cupy.float64)
+        cupy.cuda.Device().synchronize()
+
+        # Idea: perform D2H copy on a nonblocking stream, during which we try
+        # to "corrupt" the host data via NumPy operation. If the copy is
+        # properly ordered, corruption would not be possible. Here we craft a
+        # problem size and use pinned memory to ensure the failure can be
+        # always triggered. (The CUDART API reference ("API synchronization
+        # behavior") states that copying between device and pageable memory
+        # "might be" synchronous, whereas between device and page-locked
+        # memory "should be" fully asynchronous.)
+        s = cupy.cuda.Stream(non_blocking=True)
+        with s:
+            c = cupyx.empty_pinned(a.shape, dtype=a.dtype)
+            cupy.asnumpy(a, out=c, blocking=blocking)
+            c[c.size//2:] = -1.  # potential data race
+        s.synchronize()
+
+        a[c.size//2:] = -1.
+        if not blocking:
+            ctx = pytest.raises(AssertionError)
+        else:
+            ctx = contextlib.nullcontext()
+        with ctx:
+            assert cupy.allclose(a, c)

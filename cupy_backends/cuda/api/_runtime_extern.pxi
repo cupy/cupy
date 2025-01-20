@@ -110,6 +110,10 @@ cdef extern from '../../cupy_backend_runtime.h' nogil:
     int cudaStreamCreate(driver.Stream* pStream)
     int cudaStreamCreateWithFlags(driver.Stream* pStream,
                                   unsigned int flags)
+    int cudaStreamCreateWithPriority(driver.Stream* pStream,
+                                     unsigned int flags, int priority)
+    int cudaStreamGetFlags(driver.Stream pStream, unsigned int* flags)
+    int cudaStreamGetPriority(driver.Stream pStream, int* priority)
     int cudaStreamDestroy(driver.Stream stream)
     int cudaStreamSynchronize(driver.Stream stream)
     int cudaStreamAddCallback(driver.Stream stream, StreamCallback callback,
@@ -151,7 +155,9 @@ cdef extern from '../../cupy_backend_runtime.h' nogil:
     int cudaGraphInstantiate(GraphExec*, Graph, GraphNode*, char*, size_t)
     int cudaGraphLaunch(GraphExec, driver.Stream)
     int cudaGraphUpload(GraphExec, driver.Stream)
+    int cudaGraphDebugDotPrint(Graph, const char*, unsigned int)
 
+    # Constants
     int cudaDevAttrComputeCapabilityMajor
     int cudaDevAttrComputeCapabilityMinor
 
@@ -161,3 +167,9 @@ cdef extern from '../../cupy_backend_runtime.h' nogil:
     int cudaErrorPeerAccessAlreadyEnabled
     int cudaErrorContextIsDestroyed
     int cudaErrorInvalidResourceHandle
+
+
+cdef extern from '../../cupy_profiler.h' nogil:
+    # Profiler
+    int cudaProfilerStart()
+    int cudaProfilerStop()

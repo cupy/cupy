@@ -39,9 +39,7 @@ class TestCooperativeGroups:
         assert (x[11:] == -1).all()
 
     @pytest.mark.skipif(
-        runtime.runtimeGetVersion() < 11060
-        or (cupy.cuda.driver._is_cuda_python()
-            and cupy.cuda.nvrtc.getVersion() < (11, 6)),
+        runtime._getLocalRuntimeVersion() < 11060,
         reason='not supported until CUDA 11.6')
     def test_thread_block_group_cu116_new_APIs(self):
         @jit.rawkernel()
@@ -61,9 +59,6 @@ class TestCooperativeGroups:
         assert (x[1], x[2], x[3]) == (32, 1, 1)
         assert (x[4:] == -1).all()
 
-    @pytest.mark.skipif(
-        runtime.runtimeGetVersion() < 11000,
-        reason='we do not support it')
     @pytest.mark.skipif(runtime.deviceGetAttribute(
         runtime.cudaDevAttrCooperativeLaunch, 0) == 0,
         reason='cooperative launch is not supported on device 0')
@@ -83,17 +78,18 @@ class TestCooperativeGroups:
             g.sync()  # this should just work!
 
         x = cupy.empty((16,), dtype=cupy.uint64)
-        x[:] = -1  # = 2**64-1
+        x[:] = -1
         test_grid[2, 32](x)
         assert x[0] == 1
         assert x[1] == 64
         assert (x[2], x[3], x[4]) == (2, 1, 1)
-        assert (x[5:] == 2**64-1).all()
+        # XXX: np2.0: revert back to x[5:] == -1 after the edge case of
+        # uint64_array == UINT64_MAX is fixed. Here and in
+        # test_grid_group_cu116_new_APIs below.
+        assert (x[5:] == cupy.uint64(2**64-1)).all()
 
     @pytest.mark.skipif(
-        runtime.runtimeGetVersion() < 11060
-        or (cupy.cuda.driver._is_cuda_python()
-            and cupy.cuda.nvrtc.getVersion() < (11, 6)),
+        runtime._getLocalRuntimeVersion() < 11060,
         reason='not supported until CUDA 11.6')
     @pytest.mark.skipif(runtime.deviceGetAttribute(
         runtime.cudaDevAttrCooperativeLaunch, 0) == 0,
@@ -117,18 +113,15 @@ class TestCooperativeGroups:
             g.sync()  # this should just work!
 
         x = cupy.empty((16,), dtype=cupy.uint64)
-        x[:] = -1  # = 2**64-1
+        x[:] = -1
         test_grid[2, 32](x)
         assert x[1] == 64
         assert (x[2], x[3], x[4]) == (2, 1, 1)
         assert x[5] == 1
         assert x[6] == 2
         assert (x[7], x[8], x[9]) == (1, 0, 0)
-        assert (x[10:] == 2**64-1).all()
+        assert (x[10:] == cupy.uint64(2**64-1)).all()
 
-    @pytest.mark.skipif(
-        runtime.runtimeGetVersion() < 11000,
-        reason='we do not support it')
     @pytest.mark.skipif(runtime.deviceGetAttribute(
         runtime.cudaDevAttrCooperativeLaunch, 0) == 0,
         reason='cooperative launch is not supported on device 0')
@@ -142,11 +135,6 @@ class TestCooperativeGroups:
 
         test_sync[2, 64]()
 
-    # We also skip CUDA 11.0 due to missing support of memcpy_async
-    # and aligned_size_t...
-    @pytest.mark.skipif(
-        runtime.runtimeGetVersion() < 11010,
-        reason='not supported until CUDA 11.0')
     @pytest.mark.parametrize(
         'test_aligned', (True, False),
     )

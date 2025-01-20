@@ -39,11 +39,11 @@ def compile_device_code(
     - list of remaining (non-device) source files ("*.cpp")
     - list of compiled object files for device code ("*.o")
     """
-    sources_cu, sources_cpp = filter_files_by_extension(
-        ext.sources, '.cu')
+    sources = [os.fspath(src) for src in ext.sources]
+    sources_cu, sources_cpp = filter_files_by_extension(sources, ".cu")
     if len(sources_cu) == 0:
         # No device code used in this extension.
-        return ext.sources, []
+        return sources, []
 
     if sys.platform == 'win32':
         compiler = DeviceCompilerWin32(ctx)
@@ -143,18 +143,26 @@ class custom_build_ext(setuptools.command.build_ext.build_ext):
             compile_time_env=compile_time_env)
 
     def build_extensions(self) -> None:
+        ctx = cupy_builder.get_context()
         num_jobs = int(os.environ.get('CUPY_NUM_BUILD_JOBS', '4'))
         if num_jobs > 1:
             self.parallel = num_jobs
-            if hasattr(self.compiler, 'initialize'):
-                # Workarounds a bug in setuptools/distutils on Windows by
-                # initializing the compiler before starting a thread.
-                # By default, MSVCCompiler performs initialization in the
-                # first compilation. However, in parallel compilation mode,
-                # the init code runs in each thread and messes up the internal
-                # state as the init code is not locked and is not idempotent.
-                # https://github.com/pypa/setuptools/blob/v60.0.0/setuptools/_distutils/_msvccompiler.py#L322-L327
-                self.compiler.initialize()
+
+        if (sys.platform == 'win32' and
+                hasattr(self.compiler, 'initialize')):  # i.e., MSVCCompiler
+            # Initialize to get path to the host compiler (cl.exe).
+            # This also workarounds a bug in setuptools/distutils on Windows by
+            # initializing the compiler before starting a thread.
+            # By default, MSVCCompiler performs initialization in the
+            # first compilation. However, in parallel compilation mode,
+            # the init code runs in each thread and messes up the internal
+            # state as the init code is not locked and is not idempotent.
+            # https://github.com/pypa/setuptools/blob/v60.0.0/setuptools/_distutils/_msvccompiler.py#L322-L327
+            self.compiler.initialize()
+            if hasattr(self.compiler, 'cc'):
+                cc = self.compiler.cc
+                print(f'Detected host compiler: {cc}')
+                ctx.win32_cl_exe_path = cc
 
         # Compile "*.pyx" files into "*.cpp" files.
         print('Cythonizing...')
@@ -202,7 +210,7 @@ class custom_build_ext(setuptools.command.build_ext.build_ext):
         # Remove device code from list of sources, and instead add compiled
         # object files to link.
         ext.sources = sources_cpp
-        ext.extra_objects += extra_objects
+        ext.extra_objects = extra_objects + ext.extra_objects
 
         # Let setuptools do the rest of the build process, i.e., compile
         # "*.cpp" files and link object files generated from "*.cu".

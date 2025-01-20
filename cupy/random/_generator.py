@@ -5,6 +5,7 @@ import hashlib
 import operator
 import os
 import time
+import weakref
 
 import numpy
 import warnings
@@ -13,7 +14,6 @@ from numpy.linalg import LinAlgError
 import cupy
 from cupy import _core
 from cupy import cuda
-from cupy.cuda import curand
 from cupy.cuda import device
 from cupy.random import _kernels
 from cupy import _util
@@ -53,17 +53,16 @@ class RandomState(object):
 
     """
 
-    def __init__(self, seed=None, method=curand.CURAND_RNG_PSEUDO_DEFAULT):
+    def __init__(self, seed=None, method=None):
+        from cupy_backends.cuda.libs import curand
+
+        if method is None:
+            method = curand.CURAND_RNG_PSEUDO_DEFAULT
         self._generator = curand.createGenerator(method)
+        self._finalizer = weakref.finalize(
+            self, curand.destroyGenerator, self._generator)
         self.method = method
         self.seed(seed)
-
-    def __del__(self, is_shutting_down=_util.is_shutting_down):
-        # When createGenerator raises an error, _generator is not initialized
-        if is_shutting_down():
-            return
-        if hasattr(self, '_generator'):
-            curand.destroyGenerator(self._generator)
 
     def _update_seed(self, size):
         self._rk_seed = (self._rk_seed + size) % _UINT64_MAX
@@ -203,7 +202,7 @@ class RandomState(object):
         self._update_seed(y.size)
         return y
 
-    def geometric(self, p, size=None, dtype=int):
+    def geometric(self, p, size=None, dtype='l'):
         """Returns an array of samples drawn from the geometric distribution.
 
         .. seealso::
@@ -218,7 +217,7 @@ class RandomState(object):
         self._update_seed(y.size)
         return y
 
-    def hypergeometric(self, ngood, nbad, nsample, size=None, dtype=int):
+    def hypergeometric(self, ngood, nbad, nsample, size=None, dtype='l'):
         """Returns an array of samples drawn from the hypergeometric distribution.
 
         .. seealso::
@@ -281,6 +280,8 @@ class RandomState(object):
             - :meth:`numpy.random.RandomState.lognormal`
 
         """
+        from cupy_backends.cuda.libs import curand
+
         if any(isinstance(arg, cupy.ndarray) for arg in (mean, sigma)):
             x = self.normal(mean, sigma, size, dtype)
             cupy.exp(x, out=x)
@@ -294,7 +295,7 @@ class RandomState(object):
             func = curand.generateLogNormalDouble
         return self._generate_normal(func, size, dtype, mean, sigma)
 
-    def logseries(self, p, size=None, dtype=int):
+    def logseries(self, p, size=None, dtype='l'):
         """Returns an array of samples drawn from a log series distribution.
 
         .. warning::
@@ -444,6 +445,8 @@ class RandomState(object):
             - :meth:`numpy.random.RandomState.normal`
 
         """
+        from cupy_backends.cuda.libs import curand
+
         dtype = _check_and_get_dtype(dtype)
         if size is None:
             size = cupy.broadcast(loc, scale).shape
@@ -527,7 +530,7 @@ class RandomState(object):
         self._update_seed(y.size)
         return y
 
-    def poisson(self, lam=1.0, size=None, dtype=int):
+    def poisson(self, lam=1.0, size=None, dtype='l'):
         """Returns an array of samples drawn from the poisson distribution.
 
         .. seealso::
@@ -596,6 +599,8 @@ class RandomState(object):
         '', 'T x', 'x = (x == (T)1) ? 0 : x', 'cupy_random_x_mod_1')
 
     def _random_sample_raw(self, size, dtype):
+        from cupy_backends.cuda.libs import curand
+
         dtype = _check_and_get_dtype(dtype)
         out = cupy.empty(size, dtype=dtype)
         if dtype.char == 'f':
@@ -682,10 +687,10 @@ class RandomState(object):
                     'mx must be non-negative (actual: {})'.format(mx))
             elif mx <= _UINT32_MAX:
                 dtype = numpy.uint32
-                upper_limit = _UINT32_MAX - (1 << 32) % (mx + 1)
+                upper_limit = dtype(_UINT32_MAX - (1 << 32) % (mx + 1))
             elif mx <= _UINT64_MAX:
                 dtype = numpy.uint64
-                upper_limit = _UINT64_MAX - (1 << 64) % (mx + 1)
+                upper_limit = dtype(_UINT64_MAX - (1 << 64) % (mx + 1))
             else:
                 raise ValueError(
                     'mx must be within uint64 range (actual: {})'.format(mx))
@@ -752,6 +757,8 @@ class RandomState(object):
         return sample.reshape(size)
 
     def _curand_generate(self, num, dtype):
+        from cupy_backends.cuda.libs import curand
+
         sample = cupy.empty((num,), dtype=dtype)
         # Call 32-bit RNG to fill 32-bit or 64-bit `sample`
         size32 = sample.view(dtype=numpy.uint32).size
@@ -784,6 +791,8 @@ class RandomState(object):
             - :meth:`numpy.random.RandomState.seed`
 
         """
+        from cupy_backends.cuda.libs import curand
+
         if seed is None:
             try:
                 seed_str = binascii.hexlify(os.urandom(8))
@@ -794,8 +803,14 @@ class RandomState(object):
             if isinstance(seed, numpy.ndarray):
                 seed = int(hashlib.md5(seed).hexdigest()[:16], 16)
             else:
-                seed = int(
-                    numpy.asarray(seed).astype(numpy.uint64, casting='safe'))
+                seed_arr = numpy.asarray(seed)
+                if seed_arr.dtype.kind not in 'biu':
+                    raise TypeError('Seed must be an integer.')
+                seed = int(seed_arr)
+                # Check that no integer overflow occurred during the cast
+                if seed < 0 or seed >= 2**64:
+                    raise ValueError(
+                        'Seed must be an integer between 0 and 2**64 - 1')
 
         curand.setPseudoRandomGeneratorSeed(self._generator, seed)
         if (self.method not in (curand.CURAND_RNG_PSEUDO_MT19937,
@@ -883,6 +898,8 @@ class RandomState(object):
             :meth:`numpy.random.RandomState.tomaxint`
 
         """
+        from cupy_backends.cuda.libs import curand
+
         if size is None:
             size = ()
         sample = cupy.empty(size, dtype=cupy.int_)
@@ -1113,12 +1130,11 @@ class RandomState(object):
             raise NotImplementedError
 
         if p is not None:
-            p = cupy.broadcast_to(p, (size, a_size))
-            index = cupy.argmax(cupy.log(p) +
-                                self.gumbel(size=(size, a_size)),
-                                axis=1)
-            if not isinstance(shape, int):
-                index = cupy.reshape(index, shape)
+            # https://github.com/numpy/numpy/blob/v2.0.1/numpy/random/mtrand.pyx#L1013  # NOQA
+            cdf = p.cumsum()
+            cdf /= cdf[-1]
+            uniform_samples = self.random_sample(shape)
+            index = cdf.searchsorted(uniform_samples, side='right')
         else:
             if a_size == 0:  # TODO: (#4511) Fix `randint` instead
                 a_size = 1
@@ -1159,6 +1175,8 @@ class RandomState(object):
 
     def _permutation(self, num):
         """Returns a permuted range."""
+        from cupy_backends.cuda.libs import curand
+
         sample = cupy.empty((num,), dtype=numpy.int32)
         curand.generate(self._generator, sample.data.ptr, num)
         array = cupy.argsort(sample)

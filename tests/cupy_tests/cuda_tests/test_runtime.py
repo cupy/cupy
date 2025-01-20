@@ -54,4 +54,12 @@ def test_assumed_runtime_version():
     # by running the same logic in non-CUDA Python environment.
     # When this fails, `runtime.runtimeGetVersion()` logic needs to be fixed.
     (major, minor) = nvrtc.getVersion()
-    assert runtime.runtimeGetVersion() == major * 1000 + minor * 10
+    assert runtime._getLocalRuntimeVersion() == major * 1000 + minor * 10
+
+
+def test_major_version():
+    major = runtime._getCUDAMajorVersion()
+    if runtime.is_hip:
+        assert major == 0
+    else:
+        assert 10 < major < 20

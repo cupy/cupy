@@ -264,20 +264,12 @@ class AtomicOp(BuiltinFunc):
         if ctype.dtype.name not in self._dtypes:
             raise TypeError(f'`{name}` does not support {ctype.dtype} input.')
         # On HIP, 'e' is not supported and we will never reach here
-        if (op == 'Add' and ctype.dtype.char == 'e'
-                and runtime.runtimeGetVersion() < 10000):
-            raise RuntimeError(
-                'float16 atomic operation is not supported before CUDA 10.0.')
         value = _compile._astype_scalar(value, ctype, 'same_kind', env)
         value = Data.init(value, env)
         if op == 'CAS':
             assert value2 is not None
             # On HIP, 'H' is not supported and we will never reach here
             if ctype.dtype.char == 'H':
-                if runtime.runtimeGetVersion() < 10010:
-                    raise RuntimeError(
-                        'uint16 atomic operation is not supported before '
-                        'CUDA 10.1')
                 if int(device.get_compute_capability()) < 70:
                     raise RuntimeError(
                         'uint16 atomic operation is not supported before '
@@ -348,10 +340,11 @@ class GridFunc(BuiltinFunc):
 
         elts_code = ', '.join(self._code.format(n=n) for n in dims)
         ctype = _cuda_types.Tuple([_cuda_types.uint32]*ndim)
+        # STD is defined in carray.cuh
         if ndim == 2:
-            return Data(f'thrust::make_pair({elts_code})', ctype)
+            return Data(f'STD::make_pair({elts_code})', ctype)
         else:
-            return Data(f'thrust::make_tuple({elts_code})', ctype)
+            return Data(f'STD::make_tuple({elts_code})', ctype)
 
 
 class WarpShuffleOp(BuiltinFunc):

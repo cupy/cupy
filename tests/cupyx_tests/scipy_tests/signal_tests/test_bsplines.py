@@ -113,3 +113,54 @@ class TestQSplineEval:
             1.396, 4.094])
         cj = scp.signal.qspline1d(y)
         return scp.signal.qspline1d_eval(cj, newx, dx=dx, x0=x[0])
+
+
+@testing.with_requires('scipy')
+class TestCSpline2D:
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-4, rtol=1e-4)
+    def test_cspline2d_iir1(self, xp, scp):
+        image = testing.shaped_random((71, 73), xp, xp.float64,
+                                      scale=1, seed=181819142)
+        return scp.signal.cspline2d(image, -1.0)
+
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-4, rtol=1e-4)
+    def test_cspline2d_iir2(self, xp, scp):
+        image = testing.shaped_random((71, 73), xp, xp.float64,
+                                      scale=1, seed=181819142)
+        return scp.signal.cspline2d(image, 8.0)
+
+
+@testing.with_requires('scipy')
+class TestQSpline2D:
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-4, rtol=1e-4)
+    def test_qspline2d_iir1(self, xp, scp):
+        image = testing.shaped_random((71, 73), xp, xp.float64,
+                                      scale=1, seed=181819142)
+        return scp.signal.qspline2d(image)
+
+
+@testing.with_requires('scipy')
+class TestSplineFilter:
+    def test_spline_filter_lambda_zero(self):
+        for xp, scp in [(cupy, cupyx.scipy), (np, scipy)]:
+            with pytest.raises(ValueError):
+                scp.signal.spline_filter(xp.asarray([0.]), 0)
+
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-4, rtol=1e-4)
+    def test_spline_filter(self, xp, scp):
+        data = testing.shaped_random(
+            (12, 12), xp, xp.float64, scale=1, seed=12457)
+        data = 10 * (1 - 2 * data)
+        return scp.signal.spline_filter(data, 0)
+
+
+@testing.with_requires('scipy')
+class TestGaussSpline:
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_gauss_spline(self, xp, scp):
+        return scp.signal.gauss_spline(0.0, 0)
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_gauss_spline_list(self, xp, scp):
+        knots = [-1.0, 0.0, -1.0]
+        return scp.signal.gauss_spline(knots, 3)
