@@ -652,6 +652,7 @@ class TestCooMatrixScipyComparison:
             with pytest.raises(ValueError):
                 m.dot(x)
 
+    @testing.with_requires("scipy!=1.15.0", "scipy!=1.15.1")
     def test_dot_unsupported(self):
         for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
             m = _make(xp, sp, self.dtype)
