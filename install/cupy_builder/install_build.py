@@ -169,6 +169,8 @@ def get_compiler_setting(ctx: Context, use_hip):
 
     if use_hip:
         extra_compile_args.append('-std=c++11')
+        define_macros.append(
+            ('THRUST_DEVICE_SYSTEM', 'THRUST_DEVICE_SYSTEM_HIP'))
 
     if PLATFORM_WIN32:
         nvtx_path = _environment.get_nvtx_path()
