@@ -203,7 +203,7 @@ class TestCscMatrix:
         cupy.testing.assert_array_equal(n.indptr, self.m.indptr)
         assert n.shape == self.m.shape
 
-    @testing.with_requires('scipy')
+    @testing.with_requires('scipy<1.15')
     def test_init_dense_invalid_ndim(self):
         for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
             with pytest.raises(TypeError):
