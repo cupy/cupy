@@ -6,7 +6,7 @@ from cupy import testing
 import cupyx.scipy.special  # NOQA
 
 
-@testing.with_requires("scipy>=1.14")
+@testing.with_requires("scipy>=1.15")
 class TestGamma:
 
     @pytest.mark.parametrize('function', ['gamma', 'loggamma', 'rgamma'])
@@ -51,7 +51,7 @@ class TestGamma:
 
     # skip on SciPy < 1.5 due to: https://github.com/scipy/scipy/issues/11315
     @pytest.mark.parametrize('function', ['gamma', 'loggamma', 'rgamma'])
-    @testing.for_all_dtypes()
+    @testing.for_dtypes("efdFD")
     @testing.numpy_cupy_allclose(atol=1e-2, rtol=1e-3, scipy_name='scp')
     @testing.with_requires('scipy>=1.5.0')
     def test_inf_and_nan(self, xp, scp, dtype, function):

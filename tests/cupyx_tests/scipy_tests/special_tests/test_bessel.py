@@ -5,10 +5,10 @@ from cupy import testing
 import cupyx.scipy.special  # NOQA
 
 
-@testing.with_requires('scipy')
+@testing.with_requires('scipy>=1.15')
 class TestSpecial:
 
-    @testing.for_dtypes(['e', 'f', 'd'])
+    @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(rtol=1e-5, scipy_name='scp')
     def check_unary(self, name, xp, scp, dtype):
         import scipy.special  # NOQA
@@ -63,7 +63,7 @@ class TestSpecial:
         return scp.special.yn(n[:, xp.newaxis], a[xp.newaxis, :])
 
 
-@testing.with_requires('scipy')
+@testing.with_requires('scipy>=1.15')
 class TestFusionSpecial(unittest.TestCase):
 
     @testing.for_dtypes(['e', 'f', 'd'])
@@ -115,7 +115,6 @@ class TestFusionSpecial(unittest.TestCase):
     def test_k1e(self):
         self.check_unary('k1e')
 
-    @testing.with_requires("scipy>=1.14")
     @testing.for_dtypes(['e', 'f', 'd'])
     @testing.numpy_cupy_allclose(rtol=1e-5, scipy_name='scp')
     def test_chbevl_dependent_fusion(self, dtype, xp, scp):
