@@ -98,3 +98,14 @@ def sph_harm(m, n, theta, phi, out=None):
         "and are planned to be removed in the future."))
 
     return _sph_harm(m, n, theta, phi, out=out)
+
+
+def sph_harm_y(n, m, theta, phi, *, diff_n=0):
+    """Spherical Harmonic.
+
+    .. seealso:: :meth:`scipy.special.sph_harm`
+    """
+    if diff_n != 0:
+        raise NotImplementedError("Derivatives not implemented.")
+
+    return _sph_harm(m, n, phi, theta)
