@@ -60,3 +60,59 @@ def boxcox_llf(lmb, data):
         logvar = _log_var(logx)
 
     return (lmb - 1) * cupy.sum(logdata, axis=0) - N/2 * logvar
+
+
+def kstat(data, n=2):
+    """
+    Return the nth k-statistic (1<=n<=4 so far).
+
+    The nth k-statistic k_n is the unique symmetric unbiased estimator of the
+    nth cumulant kappa_n.
+
+    Parameters
+    ----------
+    data : array_like
+        Input array. Note that n-D input gets flattened.
+    n : int, {1, 2, 3, 4}, optional
+        Default is equal to 2.
+
+    Returns
+    -------
+    kstat : float
+        The nth k-statistic.
+
+    See Also
+    --------
+    scipy.stats.kstat
+    """
+    if n > 4 or n < 1:
+        raise ValueError("k-statistics only supported for 1<=n<=4")
+    n = int(n)
+    S = cupy.zeros(n + 1, cupy.float64)
+    data = data.ravel()
+    N = data.size
+
+    # raise ValueError on empty input
+    if N == 0:
+        raise ValueError("Data input must not be empty")
+
+    # on nan input, return nan without warning
+    if cupy.isnan(cupy.sum(data)):
+        return cupy.nan
+    
+    for k in range(1, n + 1):
+        S[k] = cupy.sum(data**k, axis=0)
+    if n == 1:
+        return S[1] * 1.0/N
+    elif n == 2:
+        return (N*S[2] - S[1]**2.0) / (N*(N - 1.0))
+    elif n == 3:
+        return (2*S[1]**3 - 3*N*S[1]*S[2] + N*N*S[3]) / (N*(N - 1.0)*(N - 2.0))
+    elif n == 4:
+        return ((-6*S[1]**4 + 12*N*S[1]**2 * S[2] - 3*N*(N-1.0)*S[2]**2 -
+                 4*N*(N+1)*S[1]*S[3] + N*N*(N+1)*S[4]) /
+                (N*(N-1.0)*(N-2.0)*(N-3.0)))
+    else:
+        raise ValueError("Should not be here.")
+
+

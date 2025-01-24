@@ -23,6 +23,7 @@ Other statistical functionality
    :toctree: generated/
 
    boxcox_llf
+   kstat
    zmap
    zscore
 
