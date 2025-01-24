@@ -97,6 +97,32 @@ cpdef enum:
     # cudaMemLocationType
     cudaMemLocationTypeDevice = 1
 
+    # cudaGraphNodeType
+    cudaGraphNodeTypeKernel = 0x00
+    cudaGraphNodeTypeMemcpy = 0x01
+    cudaGraphNodeTypeMemset = 0x02
+    cudaGraphNodeTypeHost = 0x03
+    cudaGraphNodeTypeGraph = 0x04
+    cudaGraphNodeTypeEmpty = 0x05
+    cudaGraphNodeTypeWaitEvent = 0x06
+    cudaGraphNodeTypeEventRecord = 0x07
+    cudaGraphNodeTypeExtSemaphoreSignal = 0x08
+    cudaGraphNodeTypeExtSemaphoreWait = 0x09
+    cudaGraphNodeTypeMemAlloc = 0x0a
+    cudaGraphNodeTypeMemFree = 0x0b
+    cudaGraphNodeTypeConditional = 0x0d
+
+    # cudaGraphConditionalNodeType
+    cudaGraphCondTypeIf = 0
+    cudaGraphCondTypeWhile = 1
+
+    # cudaGraphConditionalHandleFlags
+    cudaGraphCondAssignDefault = 1
+
+    # cudaStreamUpdateCaptureDependenciesFlags
+    cudaStreamAddCaptureDependencies = 0x0
+    cudaStreamSetCaptureDependencies = 0x1
+
     # cudaGraphDebugDotFlags
     cudaGraphDebugDotFlagsVerbose = 1<<0
     cudaGraphDebugDotFlagsKernelNodeParams = 1<<2
