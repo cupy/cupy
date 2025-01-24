@@ -23,7 +23,17 @@ python3 -m pip install --user pytest-timeout pytest-xdist
 pushd tests
 timeout --signal INT --kill-after 10 60 python3 -c 'import cupy; cupy.show_config(_full=True)'
 test_retval=0
-timeout --signal INT --kill-after 60 18000 python3 -m pytest "${pytest_opts[@]}" "${PYTEST_FILES[@]}" || test_retval=$?
+
+###
+#export CUPY_CACHE_DIR=/tmp/this_pr_only
+#export CUPY_CUDA_COMPILE_WITH_DEBUG=1
+#mkdir -p "${CUPY_CACHE_DIR}"
+#compute-sanitizer --tool memcheck --padding 16 $(pyenv which python3) -m pytest "${pytest_opts[@]}" -v cupyx_tests/scipy_tests/interpolate_tests/test_ndgriddata.py || test_retval=$?
+compute-sanitizer --tool memcheck --padding 16 $(pyenv which python3) -m pytest "${pytest_opts[@]}" -v -k 'test_alternative_call[True-linear]' cupyx_tests/scipy_tests/interpolate_tests/test_ndgriddata.py || test_retval=$?
+compute-sanitizer --tool memcheck --padding 16 $(pyenv which python3) -m pytest "${pytest_opts[@]}" -v -k 'test_multivalue_2d[True-linear]' cupyx_tests/scipy_tests/interpolate_tests/test_ndgriddata.py || test_retval=$?
+exit 1
+###
+
 popd
 
 case ${test_retval} in
