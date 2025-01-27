@@ -141,3 +141,8 @@ class TestBoxcox_llf:
             return numpy.array(result)
         else:
             return result
+
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=atol, rtol=rtol)
+    def test_instability_around_zero(self, xp, scp):
+        data = xp.asarray([2003, 1950, 1997, 2000, 2009], dtype=numpy.float64)
+        return scp.stats.boxcox_llf(1e-8, data)
