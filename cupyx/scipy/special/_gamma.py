@@ -5,9 +5,9 @@ from cupyx.scipy.special._loggamma import loggamma_definition
 _gamma_body = """
 
     if (isinf(in0) && in0 < 0) {
-        out0 = -1.0 / 0.0;
+        out0 = CUDART_NAN;
     } else if (in0 < 0. && in0 == floor(in0)) {
-        out0 = 1.0 / 0.0;
+        out0 = CUDART_NAN;
     } else {
         out0 = tgamma(in0);
     }
@@ -136,6 +136,9 @@ __device__ double rgamma(double x)
     double w, y, z;
     int sign;
 
+    if (isinf(x)) {
+        return 0.0;
+    }
     if (x > 34.84425627277176174) {
         return exp(-lgamma(x));
     }
