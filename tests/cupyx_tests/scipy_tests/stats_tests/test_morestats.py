@@ -1,4 +1,7 @@
+import sys
+
 import numpy
+import pytest
 import scipy.stats
 
 import cupy
@@ -142,6 +145,9 @@ class TestBoxcox_llf:
         else:
             return result
 
+    @pytest.mark.skipif(
+        not sys.platform.startswith('linux'),
+        reason="Return value of scipy.stats.boxcox_llf has large error")
     @testing.with_requires('scipy>=1.13')
     @testing.numpy_cupy_allclose(scipy_name='scp', atol=atol, rtol=rtol)
     def test_instability_around_zero(self, xp, scp):
