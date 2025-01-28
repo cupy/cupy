@@ -252,6 +252,11 @@ def _quantile_unchecked(a, q, axis=None, out=None,
         if out is None:
             ret = cupy.empty(ap.shape[:-1] + q.shape, dtype=dtype)
         else:
+            if out.ndim == 0 and q.ndim == 0:
+                out[...] = ap.flatten()[int(indices)]
+                return out
+            if out.ndim < ap.ndim:
+                raise ValueError("Output array has insufficient dimensions.")
             ret = cupy.rollaxis(out, 0, out.ndim)
 
         cupy.ElementwiseKernel(
