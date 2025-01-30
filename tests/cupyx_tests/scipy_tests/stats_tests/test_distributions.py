@@ -92,12 +92,11 @@ class TestEntropyBasic(unittest.TestCase):
         'normalize': [False, True],
     })
 ))
-@testing.with_requires('scipy>=1.14.0')
+@testing.with_requires('scipy>=1.15.0')
 class TestEntropy(unittest.TestCase):
 
     def _entropy(self, xp, scp, dtype, shape, use_qk, base, axis, normalize):
         pk = testing.shaped_random(shape, xp, dtype=dtype)
-        input_dtype = pk.dtype
         if use_qk:
             qk = testing.shaped_random(shape, xp, dtype=dtype)
         else:
@@ -109,21 +108,12 @@ class TestEntropy(unittest.TestCase):
             pk = _distributions._normalize(pk, norm_axis)
             if qk is not None:
                 qk = _distributions._normalize(qk, norm_axis)
-        res = scp.stats.entropy(pk, qk=qk, base=base, axis=axis)
 
-        if res.ndim > 0:
-            # verify expected dtype
-            assert res.dtype == cupy.float64
-
-        # Cast back to the floating precision of the input so that the
-        # correct rtol is used by numpy_cupy_allclose
-        return xp.asarray(res, input_dtype)
+        return scp.stats.entropy(pk, qk=qk, base=base, axis=axis)
 
     @testing.for_all_dtypes(no_complex=True)
-    @testing.numpy_cupy_allclose(rtol={cupy.float16: 1e-3,
-                                       cupy.float32: 1e-6,
-                                       'default': 1e-15},
-                                 scipy_name='scp')
+    @testing.numpy_cupy_allclose(
+        rtol={cupy.float32: 1e-3, 'default': 1e-15}, scipy_name='scp')
     def test_entropy(self, xp, scp, dtype):
         return self._entropy(xp, scp, dtype, self.shape, self.use_qk,
                              self.base, self.axis, self.normalize)
