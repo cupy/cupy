@@ -172,9 +172,12 @@ def _get_max_compute_capability():
         # CUDA 11.1 - 11.7
         # Note: 87 is for Jetson Orin
         nvrtc_max_compute_capability = '86'
-    else:
-        # CUDA 11.8+
+    elif (major == 11 and minor == 8) or (major == 12 and minor < 8):
+        # CUDA 11.8, 12.0 - 12.7
         nvrtc_max_compute_capability = '90'
+    else:
+        # CUDA 12.8+
+        nvrtc_max_compute_capability = '120'
 
     return nvrtc_max_compute_capability
 
@@ -200,7 +203,7 @@ def _get_arch():
     if arch in _tegra_archs:
         return arch
     else:
-        return min(arch, nvrtc_max_compute_capability)
+        return min(arch, nvrtc_max_compute_capability, key=int)
 
 
 @_util.memoize(for_each_device=True)
@@ -215,7 +218,7 @@ def _get_arch_for_options_for_nvrtc(arch=None):
         arch = _get_arch()
     if (
         not _use_ptx
-        and arch <= _get_max_compute_capability()
+        and int(arch) <= int(_get_max_compute_capability())
     ):
         return f'-arch=sm_{arch}', 'cubin'
     return f'-arch=compute_{arch}', 'ptx'
