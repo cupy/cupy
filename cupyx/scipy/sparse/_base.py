@@ -23,7 +23,7 @@ except ImportError:
 # TODO(asi1024): Implement _spbase
 
 
-class spmatrix(object):
+class spmatrix:
 
     """Base class of all sparse matrixes.
 

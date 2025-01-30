@@ -45,7 +45,7 @@ def prepare_input(x, y, axis, dydx=None):
     if x.shape[0] < 2:
         raise ValueError("`x` must contain at least 2 elements.")
     if x.shape[0] != y.shape[axis]:
-        raise ValueError("The length of `y` along `axis`={0} doesn't "
+        raise ValueError("The length of `y` along `axis`={} doesn't "
                          "match the length of `x`".format(axis))
 
     if not cupy.all(cupy.isfinite(x)):
