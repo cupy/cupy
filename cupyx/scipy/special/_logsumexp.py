@@ -47,7 +47,7 @@ def logsumexp(a, axis=None, b=None, keepdims=False, return_sign=False):
             a = a + 0.  # promote to at least float
             a[b == 0] = -cp.inf
 
-    a_max = cp.max(a, axis=axis, keepdims=True)
+    a_max = cp.max(a.real, axis=axis, keepdims=True)
 
     if a_max.ndim > 0:
         a_max[~cp.isfinite(a_max)] = 0
@@ -61,8 +61,11 @@ def logsumexp(a, axis=None, b=None, keepdims=False, return_sign=False):
 
     s = cp.sum(tmp, axis=axis, keepdims=keepdims)
     if return_sign:
-        sgn = cp.sign(s)
-        s *= sgn
+        if s.dtype.char == 'c':
+            sgn = s / cp.where(s == 0, 1, cp.abs(s))
+        else:
+            sgn = cp.sign(s)
+        s = cp.abs(s)
     out = cp.log(s)
 
     if not keepdims:
