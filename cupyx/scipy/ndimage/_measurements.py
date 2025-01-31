@@ -6,6 +6,7 @@ import numpy
 import cupy
 from cupy import _core
 from cupy import _util
+from cupyx.scipy.ndimage._bbox_slices import create_bbox_slice_tuple
 
 
 def label(input, structure=None, output=None):
@@ -1584,11 +1585,5 @@ def find_objects(input, max_label=0):
 
     # Copy bounding box coordinates to the CPU to create Python slice objects
     bbox_coords_cpu = cupy.asnumpy(bbox_coords[:max_label, :])  # synchronize
-    bbox_slices = [
-        tuple(
-            slice(int(box[2 * d]), int(box[2 * d + 1]))
-            for d in range(ndim)
-        ) if box[0] != int_max else None
-        for box in bbox_coords_cpu
-    ]
+    bbox_slices = create_bbox_slice_tuple(bbox_coords_cpu, int_max)
     return bbox_slices
