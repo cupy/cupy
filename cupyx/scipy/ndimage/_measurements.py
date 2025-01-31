@@ -1352,7 +1352,7 @@ def value_indices(arr, *, ignore_value=None, adaptive_index_dtype=False):
         raise ValueError('Parameter \'arr\' must be an integer array')
     if adaptive_index_dtype:
         # determined the minimum signed integer type needed to store the
-        # index rangle
+        # index range
         raveled_int_type = cupy.min_scalar_type(-(int(arr.size) + 1))
         coord_int_type = cupy.min_scalar_type(-(max(arr.shape) + 1))
     arr1d = arr.reshape(-1)
@@ -1378,3 +1378,130 @@ def value_indices(arr, *, ignore_value=None, adaptive_index_dtype=False):
         out[value] = tuple(c[offset:offset + count] for c in coords)
         offset += count
     return out
+
+
+def _unravel_loop_index(var_name, ndim, uint_t="unsigned int"):
+    """
+    declare a multi-index array in_coord and unravel the 1D index, i into it.
+    This code assumes that the array is a C-ordered array.
+    """
+
+    if ndim == 1:
+        code = f"""
+        {uint_t} in_coord[1];
+        in_coord[0] = i;\n"""
+        return code
+
+    code = f"""
+        {uint_t} in_coord[{ndim}];
+        {uint_t} s, t, idx = i;"""
+    for j in range(ndim - 1, 0, -1):
+        code += f"""
+        s = {var_name}.shape()[{j}];
+        t = idx / s;
+        in_coord[{j}] = idx - t * s;
+        idx = t;"""
+    code += """
+        in_coord[0] = idx;\n"""
+    return code
+
+
+@cupy.memoize(for_each_device=True)
+def get_bbox_coords_kernel(coord_dtype, ndim):
+    coord_dtype = cupy.dtype(coord_dtype)
+
+    uint_t = (
+        "unsigned int" if coord_dtype.itemsize <= 4 else "unsigned long long"
+    )
+
+    source = f"""
+        // empirically found that scipy's find_objects ignores negative values
+        if (image[i] > 0) {{
+            {uint_t} offset = 0;"""
+    source += _unravel_loop_index("image", ndim, uint_t=uint_t)
+    for d in range(ndim):
+        source += f"""
+            offset = (image[i] - 1) * {2 * ndim} + {2*d};
+            // store interleaved minima/maxima
+            atomicMin(&bbox[offset], in_coord[{d}]);
+            atomicMax(&bbox[offset + 1], in_coord[{d}] + 1);"""
+    source += """
+          }\n"""
+
+    inputs = "raw X image"
+    outputs = f"raw {coord_dtype.name} bbox"
+    name = f"cucim_bbox_{ndim}d_{coord_dtype.char}"
+    return cupy.ElementwiseKernel(
+        inputs, outputs, source, name=name
+    )
+
+
+def find_objects(input, max_label=0):
+    """
+    Find objects in a labeled array.
+
+    Parameters
+    ----------
+    input : ndarray of ints
+        Array containing objects defined by different labels. Labels with
+        value 0 are ignored.
+    max_label : int, optional
+        Maximum label to be searched for in `input`. If max_label is not
+        given, the positions of all objects are returned.
+
+    Returns
+    -------
+    object_slices : list of tuples
+        A list of tuples, with each tuple containing N slices (with N the
+        dimension of the input array). Slices correspond to the minimal
+        parallelepiped that contains the object. If a number is missing,
+        None is returned instead of a slice. The label ``l`` corresponds to
+        the index ``l-1`` in the returned list.
+
+    See Also
+    --------
+    label, center_of_mass
+
+    .. warning::
+
+        This function will synchronize the device.
+    """
+
+    image = input
+    if image.dtype.kind not in 'bui':
+        raise TypeError(
+            f"Input dtype {image.dtype.name} cannot be interpreted as an "
+            "integer"
+        )
+    if max_label < 1:
+        max_label = int(image.max())  # synchronize
+
+    # choose 32 or 64-bit coordinate type for atomicMin and atomicMax
+    coord_dtype = cupy.uint32 if max(image.shape) < 2**32 else cupy.uint64
+    bbox_coords_kernel = get_bbox_coords_kernel(coord_dtype, image.ndim)
+
+    ndim = image.ndim
+    # 0 is the correct initial value for coordinate maxima
+    bbox_coords = cupy.zeros((max_label, 2 * ndim), dtype=coord_dtype)
+
+    # Initialize value for coordinate minima. Note that the order of
+    # coordinates on axis 1 is min_0, max_0, min_1, max_1 ... min_n, max_n.
+    int_max = cupy.iinfo(coord_dtype).max
+    bbox_coords[:, ::2] = int_max
+
+    # make a copy if the inputs are not already C-contiguous
+    if not image.flags.c_contiguous:
+        image = cupy.ascontiguousarray(image)
+
+    bbox_coords_kernel(image, bbox_coords, size=image.size)
+
+    # Copy bounding box coordinates to the CPU to create Python slice objects
+    bbox_coords_cpu = cupy.asnumpy(bbox_coords[:max_label, :])  # synchronize
+    bbox_slices = [
+        tuple(
+            slice(int(box[2 * d]), int(box[2 * d + 1]))
+            for d in range(ndim)
+        ) if box[0] != int_max else None
+        for box in bbox_coords_cpu
+    ]
+    return bbox_slices
