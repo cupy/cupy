@@ -191,14 +191,14 @@ class TestBasic:
 class TestCopytoFromScalar:
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(accept_error=TypeError)
+    @testing.numpy_cupy_allclose(accept_error=(TypeError, OverflowError))
     def test_copyto(self, xp, dtype):
         dst = xp.ones(self.dst_shape, dtype=dtype)
         xp.copyto(dst, self.src)
         return dst
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(accept_error=TypeError)
+    @testing.numpy_cupy_allclose(accept_error=(TypeError, OverflowError))
     def test_copyto_where(self, xp, dtype):
         dst = xp.ones(self.dst_shape, dtype=dtype)
         mask = (testing.shaped_arange(
@@ -207,6 +207,7 @@ class TestCopytoFromScalar:
         return dst
 
 
+@testing.with_requires("numpy>=2.1")
 @pytest.mark.parametrize(
     'casting', ['no', 'equiv', 'safe', 'same_kind', 'unsafe'])
 class TestCopytoFromNumpyScalar:

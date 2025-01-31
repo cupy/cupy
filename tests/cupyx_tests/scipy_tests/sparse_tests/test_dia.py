@@ -84,18 +84,25 @@ class TestDiaMatrix(unittest.TestCase):
         n = _make_complex(cupy, sparse, self.dtype)
         cupy.testing.assert_array_equal(n.conjugate().data, n.data.conj())
 
-    @unittest.skipUnless(scipy_available, 'requires scipy')
+    @testing.with_requires('scipy>=1.14')
     def test_str(self):
+        dtype_name = numpy.dtype(self.dtype).name
         if numpy.dtype(self.dtype).kind == 'f':
-            expect = '''  (1, 1)\t1.0
+            expect = f'''<DIAgonal sparse matrix of dtype '{dtype_name}'
+\twith 5 stored elements (2 diagonals) and shape (3, 4)>
+  Coords\tValues
+  (1, 1)\t1.0
   (2, 2)\t2.0
   (1, 0)\t3.0
-  (2, 1)\t4.0'''
+  (2, 1)\t4.0'''  # NOQA
         else:
-            expect = '''  (1, 1)\t(1+0j)
+            expect = f'''<DIAgonal sparse matrix of dtype '{dtype_name}'
+\twith 5 stored elements (2 diagonals) and shape (3, 4)>
+  Coords\tValues
+  (1, 1)\t(1+0j)
   (2, 2)\t(2+0j)
   (1, 0)\t(3+0j)
-  (2, 1)\t(4+0j)'''
+  (2, 1)\t(4+0j)'''  # NOQA
         assert str(self.m) == expect
 
     def test_toarray(self):
@@ -239,6 +246,7 @@ class TestDiaMatrixScipyComparison(unittest.TestCase):
         m = self.make(xp, sp, self.dtype)
         return m.toarray()
 
+    @testing.with_requires('scipy<1.14')
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_A(self, xp, sp):
         m = self.make(xp, sp, self.dtype)

@@ -256,7 +256,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
         elif _base.isdense(arg1):
             if arg1.ndim > 2:
-                raise TypeError('expected dimension <= 2 array or matrix')
+                raise ValueError('expected dimension <= 2 array or matrix')
             elif arg1.ndim == 1:
                 arg1 = arg1[None]
             elif arg1.ndim == 0:

@@ -218,6 +218,7 @@ class TestFusionScalar(unittest.TestCase):
 
         return func
 
+    @testing.with_requires('numpy>=1.25')
     @testing.for_all_dtypes_combination(names=('dtype1', 'dtype2'))
     @fusion_utils.check_fusion()
     def test_numpy_scalar_l(self, xp, dtype1, dtype2):

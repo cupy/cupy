@@ -21,13 +21,18 @@ RUN yum -y install \
 
 ENV PATH "/usr/lib64/ccache:${PATH}"
 
+RUN yum -y install openssl11-devel
+ENV CFLAGS "-I/usr/include/openssl11"
+ENV CPPFLAGS "-I/usr/include/openssl11"
+ENV LDFLAGS "-L/usr/lib64/openssl11"
+
 RUN git clone https://github.com/pyenv/pyenv.git /opt/pyenv
 ENV PYENV_ROOT "/opt/pyenv"
 ENV PATH "${PYENV_ROOT}/shims:${PYENV_ROOT}/bin:${PATH}"
-RUN pyenv install 3.9.6 && \
-    pyenv global 3.9.6 && \
+RUN pyenv install 3.10.15 && \
+    pyenv global 3.10.15 && \
     pip install -U setuptools pip wheel
 
-RUN pip install -U 'numpy==1.22.*' 'scipy==1.7.*' 'optuna==3.*' 'cython==0.29.*'
+RUN pip install -U 'numpy==1.24.*' 'scipy==1.10.*' 'optuna==3.*' 'cython==0.29.*'
 RUN pip uninstall -y mpi4py cuda-python && \
     pip check

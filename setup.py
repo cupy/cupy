@@ -23,28 +23,19 @@ setup_requires = [
     'fastrlock>=0.5',
 ]
 install_requires = [
-    'numpy>=1.22,<2.3',
+    'numpy>=1.24,<2.4',
     'fastrlock>=0.5',
 ]
 extras_require = {
     'all': [
-        'scipy>=1.7,<1.14',  # see #4773
+        'scipy>=1.10,<1.17',  # see #4773
         'Cython>=0.29.22,<3',
         'optuna>=2.0',
-    ],
-    # TODO(kmaehashi): remove stylecheck and update the contribution guide
-    'stylecheck': [
-        'autopep8==1.5.5',
-        'flake8==3.8.4',
-        'pbr==5.5.1',
-        'pycodestyle==2.6.0',
-
-        'mypy==1.4.1',
-        'types-setuptools==57.4.14',
     ],
     'test': [
         # 4.2 <= pytest < 6.2 is slow collecting tests and times out on CI.
         # pytest < 7.2 has some different behavior that makes our CI fail
+        'packaging',
         'pytest>=7.2',
         'hypothesis>=6.37.2,<6.55.0',
         'mpmath'

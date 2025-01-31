@@ -69,10 +69,9 @@ cdef inline void initialize() except *:
     global _L
     if _L is not None:
         return
-    _initialize()
+    _L = _initialize()
 
-cdef void _initialize() except *:
-    global _L
+cdef SoftLink _initialize():
     _L = _get_softlink()
 
     global nvrtcGetErrorString
@@ -110,6 +109,8 @@ cdef void _initialize() except *:
     global nvrtcGetNVVM
     nvrtcGetNVVM = <F_nvrtcGetNVVM>_L.get('GetNVVM')
 
+    return _L
+
 
 cdef SoftLink _get_softlink():
     cdef int runtime_version
@@ -139,5 +140,8 @@ cdef SoftLink _get_softlink():
         elif runtime_version < 6_00_00000:
             # ROCm 5.x
             libname = 'libamdhip64.so.5'
+        elif runtime_version < 7_00_00000:
+            # ROCm 6.x
+            libname = 'libamdhip64.so.6'
 
     return SoftLink(libname, prefix, mandatory=True)

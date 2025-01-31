@@ -88,18 +88,27 @@ class TestBeta:
 @testing.with_requires('scipy>=1.12.0rc1')
 class TestBetaInc:
 
-    @pytest.mark.parametrize('function', ['betainc', 'betaincinv'])
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
-    def test_arange(self, xp, scp, dtype, function):
+    def test_betainc_arange(self, xp, scp, dtype):
         import scipy.special  # NOQA
 
-        func = getattr(scp.special, function)
         a = testing.shaped_arange((1, 10, 1), xp, dtype)
         b = testing.shaped_arange((10, 1, 1), xp, dtype)
         x = xp.asarray([0, 0.25, 0.5, 0.75, 1], dtype=dtype).reshape(1, 1, 5)
-        # return scp.special.betainc(a, b, x)
-        return func(a, b, x)
+        return scp.special.betainc(a, b, x)
+
+    # due to a bug: https://github.com/scipy/scipy/issues/21426
+    @testing.with_requires('scipy!=1.14.0', 'scipy!=1.14.1')
+    @testing.for_all_dtypes(no_complex=True)
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
+    def test_betaincinv_arange(self, xp, scp, dtype):
+        import scipy.special  # NOQA
+
+        a = testing.shaped_arange((1, 10, 1), xp, dtype)
+        b = testing.shaped_arange((10, 1, 1), xp, dtype)
+        x = xp.asarray([0, 0.25, 0.5, 0.75, 1], dtype=dtype).reshape(1, 1, 5)
+        return scp.special.betaincinv(a, b, x)
 
     @pytest.mark.parametrize('function', ['betainc', 'betaincinv'])
     @testing.for_float_dtypes()

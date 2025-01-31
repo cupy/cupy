@@ -270,17 +270,33 @@ cudaError_t cudaPointerGetAttributes(cudaPointerAttributes *attributes,
                                      const void* ptr) {
     cudaError_t status = hipPointerGetAttributes(attributes, ptr);
     if (status == cudaSuccess) {
-        switch (attributes->memoryType) {
+#if HIP_VERSION >= 60000000
+        switch (attributes->type) {
+            case 0 /* hipMemoryTypeHost */:
+                attributes->type = (hipMemoryType)1; /* cudaMemoryTypeHost */
+                return status;
+            case 1 /* hipMemoryTypeDevice */:
+                attributes->type = (hipMemoryType)2; /* cudaMemoryTypeDevice */
+                return status;
+#else
+       switch (attributes->memoryType) {
             case 0 /* hipMemoryTypeHost */:
                 attributes->memoryType = (hipMemoryType)1; /* cudaMemoryTypeHost */
                 return status;
             case 1 /* hipMemoryTypeDevice */:
                 attributes->memoryType = (hipMemoryType)2; /* cudaMemoryTypeDevice */
                 return status;
+#endif
             default:
                 /* we don't care the rest of possibilities */
                 return status;
         }
+#if HIP_VERSION < 60000000
+    // #8335
+    } else if (status == cudaErrorInvalidValue) {
+        attributes->memoryType = (hipMemoryType)0; /* cudaMemoryTypeUnregistered */
+        return cudaSuccess;
+#endif
     } else {
         return status;
     }
@@ -528,6 +544,14 @@ cudaError_t cudaGraphLaunch(cudaGraphExec_t graphExec, cudaStream_t stream) {
 
 cudaError_t cudaGraphUpload(...) {
     return hipErrorUnknown;
+}
+
+cudaError_t cudaGraphDebugDotPrint(cudaGraph_t graph, const char* path, unsigned int flags) {
+#if HIP_VERSION >= 50500000
+    return hipGraphDebugDotPrint(graph, path, flags);
+#else
+    return hipErrorUnknown;
+#endif
 }
 
 } // extern "C"

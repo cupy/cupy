@@ -84,6 +84,15 @@ cudaError_t cudaMemPoolGetAttribute(...) {
 
 #endif
 
+#if CUDA_VERSION < 11030
+// APIs added in CUDA 11.3
+
+cudaError_t cudaGraphDebugDotPrint(...) {
+    return cudaErrorUnknown;
+}
+
+#endif
+
 } // extern "C"
 
 #endif // #ifndef INCLUDE_GUARD_CUDA_CUPY_CUDA_RUNTIME_H

@@ -388,7 +388,7 @@ def _convert_output_to_ndarray(c_out, n_out, sp_name, check_sparse_format):
         assert scipy.sparse.issparse(n_out)
         if check_sparse_format:
             assert c_out.format == n_out.format
-        return c_out.A, n_out.A
+        return c_out.toarray(), n_out.toarray()
     if (isinstance(c_out, cupy.ndarray)
             and isinstance(n_out, (numpy.ndarray, numpy.generic))):
         # ndarray output case.

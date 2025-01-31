@@ -5,6 +5,7 @@
 # Matrix and vector products
 # -----------------------------------------------------------------------------
 from cupy.linalg._product import matrix_power  # NOQA
+from cupy.linalg._product import linalg_cross as cross  # NOQA
 
 # -----------------------------------------------------------------------------
 # Decompositions

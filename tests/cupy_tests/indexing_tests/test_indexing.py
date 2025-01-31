@@ -264,6 +264,7 @@ class TestChoose(unittest.TestCase):
 
 class TestSelect(unittest.TestCase):
 
+    @testing.with_requires("numpy>=2.0")
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
     @testing.numpy_cupy_array_equal()
     def test_select(self, xp, dtype):
@@ -272,6 +273,7 @@ class TestSelect(unittest.TestCase):
         choicelist = [a, a**2]
         return xp.select(condlist, choicelist)
 
+    @testing.with_requires("numpy>=2.0")
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_array_almost_equal()
     def test_select_complex(self, xp, dtype):
@@ -280,6 +282,7 @@ class TestSelect(unittest.TestCase):
         choicelist = [a, a**2]
         return xp.select(condlist, choicelist)
 
+    @testing.with_requires("numpy>=2.0")
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
     @testing.numpy_cupy_array_equal()
     def test_select_default(self, xp, dtype):
@@ -289,6 +292,7 @@ class TestSelect(unittest.TestCase):
         default = 3
         return xp.select(condlist, choicelist, default)
 
+    @testing.with_requires("numpy>=2.0")
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_array_almost_equal()
     def test_select_default_complex(self, xp, dtype):
@@ -298,6 +302,7 @@ class TestSelect(unittest.TestCase):
         default = 3
         return xp.select(condlist, choicelist, default)
 
+    @testing.with_requires("numpy>=2.0")
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
     @testing.numpy_cupy_array_equal()
     def test_select_odd_shaped_broadcastable(self, xp, dtype):
@@ -307,6 +312,7 @@ class TestSelect(unittest.TestCase):
         choicelist = [a, b]
         return xp.select(condlist, choicelist)
 
+    @testing.with_requires("numpy>=2.0")
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-5)
     def test_select_odd_shaped_broadcastable_complex(self, xp, dtype):
@@ -325,6 +331,7 @@ class TestSelect(unittest.TestCase):
         choicelist = [a, b]
         return xp.select(condlist, choicelist)
 
+    @testing.with_requires("numpy>=2.0")
     @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_array_equal()
     def test_select_choicelist_condlist_broadcast(self, xp, dtype):

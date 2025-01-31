@@ -630,6 +630,8 @@ def _unpack_index(index):
             row, col = index
         elif len(index) == 1:
             row, col = index[0], slice(None)
+        elif len(index) == 0:
+            row, col = slice(None), slice(None)
         else:
             raise IndexError('invalid number of indices')
     else:

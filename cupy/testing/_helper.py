@@ -1,28 +1,31 @@
+from __future__ import annotations
+
 import contextlib
+import importlib.metadata
 import inspect
-from typing import Callable
 import unittest
-from unittest import mock
 import warnings
+from collections.abc import Callable
+from importlib.metadata import PackageNotFoundError
+from unittest import mock
 
 import numpy
 
 import cupy
-from cupy._core import internal
 import cupyx
 import cupyx.scipy.sparse
-
+from cupy._core import internal
 from cupy.testing._pytest_impl import is_available
-
 
 if is_available():
     import pytest
+
     _skipif: Callable[..., Callable[[Callable], Callable]] = pytest.mark.skipif
 else:
     _skipif = unittest.skipIf
 
 
-def with_requires(*requirements):
+def with_requires(*requirements: str) -> Callable[[Callable], Callable]:
     """Run a test case only when given requirements are satisfied.
 
     .. admonition:: Example
@@ -30,8 +33,10 @@ def with_requires(*requirements):
        This test case runs only when `numpy>=1.18` is installed.
 
        >>> from cupy import testing
+       ...
+       ...
        ... class Test(unittest.TestCase):
-       ...     @testing.with_requires('numpy>=1.18')
+       ...     @testing.with_requires("numpy>=1.18")
        ...     def test_for_numpy_1_18(self):
        ...         pass
 
@@ -40,36 +45,40 @@ def with_requires(*requirements):
             run a given test case.
 
     """
-    msg = 'requires: {}'.format(','.join(requirements))
-    return _skipif(not installed(requirements), reason=msg)
+    msg = f"requires: {','.join(requirements)}"
+    return _skipif(not installed(*requirements), reason=msg)
 
 
-def installed(*specifiers):
+def installed(*specifiers: str) -> bool:
     """Returns True if the current environment satisfies the specified
     package requirement.
 
     Args:
         specifiers: Version specifiers (e.g., `numpy>=1.20.0`).
     """
-    # Delay import of pkg_resources because it is excruciatingly slow.
-    # See https://github.com/pypa/setuptools/issues/510
-    import pkg_resources
+    # Make `packaging` a soft requirement
+    from packaging.requirements import Requirement
 
     for spec in specifiers:
+        req = Requirement(spec)
         try:
-            pkg_resources.require(spec)
-        except pkg_resources.ResolutionError:
+            found = importlib.metadata.version(req.name)
+        except PackageNotFoundError:
+            return False
+        expected = req.specifier
+        # If no constrait is given, skip
+        if expected and (not expected.contains(found, prereleases=True)):
             return False
     return True
 
 
-def numpy_satisfies(version_range):
+def numpy_satisfies(version_range: str) -> bool:
     """Returns True if numpy version satisfies the specified criteria.
 
     Args:
         version_range: A version specifier (e.g., `>=1.13.0`).
     """
-    return installed('numpy{}'.format(version_range))
+    return installed(f"numpy{version_range}")
 
 
 def shaped_arange(shape, xp=cupy, dtype=numpy.float32, order='C'):
@@ -187,6 +196,30 @@ def shaped_sparse_random(
         raise ValueError('Unknown module: {}'.format(sp))
 
     return a.asformat(format)
+
+
+def shaped_linspace(start, stop, shape, xp=cupy, dtype=numpy.float32):
+    """Returns an array with given shape, array module, and dtype.
+
+    Args:
+        start (int): The starting value.
+        stop (int): The end value.
+        shape (tuple of int): Shape of returned ndarray.
+        xp (numpy or cupy): Array module to use.
+        dtype (dtype): Dtype of returned ndarray.
+
+    Returns:
+        numpy.ndarray or cupy.ndarray:
+    """
+    dtype = numpy.dtype(dtype)
+    size = numpy.prod(shape)
+    if dtype == '?':
+        start = max(start, 0)
+        stop = min(stop, 1)
+    elif dtype.kind == 'u':
+        start = max(start, 0)
+    a = numpy.linspace(start, stop, size)
+    return xp.array(a.astype(dtype).reshape(shape))
 
 
 def generate_matrix(

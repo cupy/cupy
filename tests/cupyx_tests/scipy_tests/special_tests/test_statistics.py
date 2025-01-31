@@ -17,13 +17,15 @@ class _TestBase:
     def test_ndtri(self):
         self.check_unary_linspace0_1('ndtri')
 
+    @testing.with_requires("scipy>=1.14")
     def test_logit(self):
         self.check_unary_lower_precision('logit')
 
+    @testing.with_requires("scipy>=1.14")
     def test_expit(self):
         self.check_unary_lower_precision('expit')
 
-    @testing.with_requires('scipy>=1.8.0rc0')
+    @testing.with_requires("scipy>=1.14")
     def test_log_expit(self):
         self.check_unary_lower_precision('log_expit')
 

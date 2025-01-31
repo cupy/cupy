@@ -285,10 +285,12 @@ class TestArgsort(unittest.TestCase):
 
     def argsort(self, a, axis=-1):
         if self.external:
+            # Need to explicitly specify kind="stable"
+            # numpy uses "quicksort" as default
             xp = cupy.get_array_module(a)
-            return xp.argsort(a, axis=axis)
+            return xp.argsort(a, axis=axis, kind="stable")
         else:
-            return a.argsort(axis=axis)
+            return a.argsort(axis=axis, kind="stable")
 
     # Test base cases
 
@@ -394,30 +396,6 @@ class TestArgsort(unittest.TestCase):
         a = testing.shaped_random((2, 3, 4), xp, dtype)
         a[0, 2, 1] = a[1, 1, 3] = xp.nan
         return self.argsort(a)
-
-
-@pytest.mark.filterwarnings('ignore:.*msort.*:DeprecationWarning')
-class TestMsort(unittest.TestCase):
-
-    # Test base cases
-
-    def test_msort_zero_dim(self):
-        for xp in (numpy, cupy):
-            a = testing.shaped_random((), xp)
-            with pytest.raises(AxisError):
-                xp.msort(a)
-
-    @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_equal()
-    def test_msort_one_dim(self, xp, dtype):
-        a = testing.shaped_random((10,), xp, dtype)
-        return xp.msort(a)
-
-    @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_equal()
-    def test_msort_multi_dim(self, xp, dtype):
-        a = testing.shaped_random((2, 3), xp, dtype)
-        return xp.msort(a)
 
 
 class TestSort_complex(unittest.TestCase):

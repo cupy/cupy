@@ -67,12 +67,13 @@ def _get_binary_erosion_kernel(
         name += '_invert'
     has_weights = not all_weights_nonzero
 
+    modes = ('constant',) * len(w_shape)
     return _filters_core._generate_nd_kernel(
         name,
         pre,
         found,
         '',
-        'constant', w_shape, int_type, offsets, 0, ctype='Y',
+        modes, w_shape, int_type, offsets, 0, ctype='Y',
         has_weights=has_weights, has_structure=False, has_mask=masked,
         binary_morphology=True)
 
@@ -151,7 +152,7 @@ def generate_binary_structure(rank, connectivity):
 
 
 def _binary_erosion(input, structure, iterations, mask, output, border_value,
-                    origin, invert, brute_force=True):
+                    origin, invert, brute_force=True, *, axes=None):
     try:
         iterations = operator.index(iterations)
     except TypeError:
@@ -159,8 +160,11 @@ def _binary_erosion(input, structure, iterations, mask, output, border_value,
 
     if input.dtype.kind == 'c':
         raise TypeError('Complex type not supported')
+    ndim = input.ndim
+    axes = _util._check_axes(axes, ndim)
+    num_axes = len(axes)
     if structure is None:
-        structure = generate_binary_structure(input.ndim, 1)
+        structure = generate_binary_structure(num_axes, 1)
         all_weights_nonzero = input.ndim == 1
         center_is_true = True
         structure_shape = structure.shape
@@ -174,13 +178,19 @@ def _binary_erosion(input, structure, iterations, mask, output, border_value,
         structure_shape = structure.shape
         # transfer to CPU for use in determining if it is fully dense
         # structure_cpu = cupy.asnumpy(structure)
-        if structure.ndim != input.ndim:
+        if structure.ndim != num_axes:
             raise RuntimeError(
                 'structure and input must have same dimensionality')
         if not structure.flags.c_contiguous:
             structure = cupy.ascontiguousarray(structure)
         if structure.size < 1:
             raise RuntimeError('structure must not be empty')
+
+    if num_axes < ndim:
+        structure = _util._expand_footprint(
+            ndim, axes, structure, footprint_name="structure"
+        )
+        structure_shape = structure.shape
 
     if mask is not None:
         if mask.shape != input.shape:
@@ -190,7 +200,9 @@ def _binary_erosion(input, structure, iterations, mask, output, border_value,
         masked = True
     else:
         masked = False
-    origin = _util._fix_sequence_arg(origin, input.ndim, 'origin', int)
+    origin = _util._fix_sequence_arg(origin, num_axes, 'origin', int)
+    if num_axes < ndim:
+        origin = _util._expand_origin(ndim, axes, origin)
 
     if isinstance(output, cupy.ndarray):
         if output.dtype.kind == 'c':
@@ -303,7 +315,7 @@ def _prep_structure(structure, ndim):
 
 
 def binary_erosion(input, structure=None, iterations=1, mask=None, output=None,
-                   border_value=0, origin=0, brute_force=False):
+                   border_value=0, origin=0, brute_force=False, *, axes=None):
     """Multidimensional binary erosion with a given structuring element.
 
     Binary erosion is a mathematical morphology operation used for image
@@ -312,10 +324,14 @@ def binary_erosion(input, structure=None, iterations=1, mask=None, output=None,
     Args:
         input(cupy.ndarray): The input binary array_like to be eroded.
             Non-zero (True) elements form the subset to be eroded.
-        structure(cupy.ndarray, optional): The structuring element used for the
-            erosion. Non-zero elements are considered True. If no structuring
-            element is provided an element is generated with a square
-            connectivity equal to one. (Default value = None).
+        structure(cupy.ndarray or tuple or int, optional): The structuring
+            element used for the erosion. Non-zero elements are considered
+            true. If no structuring element is provided an element is
+            generated with a square connectivity equal to one. If a tuple of
+            integers is provided, a structuring element of the specified shape
+            is used (all elements true). If an integer is provided, the
+            structuring element will have the same size along all axes.
+            (Default value = None).
         iterations(int, optional): The erosion is repeated ``iterations`` times
             (one, by default). If iterations is less than 1, the erosion is
             repeated until the result does not change anymore. Only an integer
@@ -334,6 +350,9 @@ def binary_erosion(input, structure=None, iterations=1, mask=None, output=None,
             candidates to be updated (eroded) in the current iteration; if
             True all pixels are considered as candidates for erosion,
             regardless of what happened in the previous iteration.
+        axes (tuple of int or None): The axes over which to apply the filter.
+            If None, `input` is filtered along all axes. If an `origin` tuple
+            is provided, its length must match the number of axes.
 
     Returns:
         cupy.ndarray: The result of binary erosion.
@@ -346,20 +365,25 @@ def binary_erosion(input, structure=None, iterations=1, mask=None, output=None,
     """
     structure, _, _ = _prep_structure(structure, input.ndim)
     return _binary_erosion(input, structure, iterations, mask, output,
-                           border_value, origin, 0, brute_force)
+                           border_value, origin, 0, brute_force, axes=axes)
 
 
 def binary_dilation(input, structure=None, iterations=1, mask=None,
-                    output=None, border_value=0, origin=0, brute_force=False):
+                    output=None, border_value=0, origin=0, brute_force=False,
+                    *, axes=None):
     """Multidimensional binary dilation with the given structuring element.
 
     Args:
         input(cupy.ndarray): The input binary array_like to be dilated.
             Non-zero (True) elements form the subset to be dilated.
-        structure(cupy.ndarray, optional): The structuring element used for the
-            dilation. Non-zero elements are considered True. If no structuring
-            element is provided an element is generated with a square
-            connectivity equal to one. (Default value = None).
+        structure(cupy.ndarray or tuple or int, optional): The structuring
+            element used for the dilation. Non-zero elements are considered
+            true. If no structuring element is provided an element is
+            generated with a square connectivity equal to one. If a tuple of
+            integers is provided, a structuring element of the specified shape
+            is used (all elements true). If an integer is provided, the
+            structuring element will have the same size along all axes.
+            (Default value = None).
         iterations(int, optional): The dilation is repeated ``iterations``
             times (one, by default). If iterations is less than 1, the dilation
             is repeated until the result does not change anymore. Only an
@@ -378,6 +402,9 @@ def binary_dilation(input, structure=None, iterations=1, mask=None,
             candidates to be updated (dilated) in the current iteration; if
             True all pixels are considered as candidates for dilation,
             regardless of what happened in the previous iteration.
+        axes (tuple of int or None): The axes over which to apply the filter.
+            If None, `input` is filtered along all axes. If an `origin` tuple
+            is provided, its length must match the number of axes.
 
     Returns:
         cupy.ndarray: The result of binary dilation.
@@ -390,7 +417,8 @@ def binary_dilation(input, structure=None, iterations=1, mask=None,
     """
     structure, structure_shape, symmetric = _prep_structure(structure,
                                                             input.ndim)
-    origin = _util._fix_sequence_arg(origin, input.ndim, 'origin', int)
+    axes = _util._check_axes(axes, input.ndim)
+    origin = _util._fix_sequence_arg(origin, len(axes), 'origin', int)
     # no point in flipping if already symmetric
     if not symmetric:
         structure = structure[tuple([slice(None, None, -1)] * structure.ndim)]
@@ -399,11 +427,11 @@ def binary_dilation(input, structure=None, iterations=1, mask=None,
         if not structure_shape[ii] & 1:
             origin[ii] -= 1
     return _binary_erosion(input, structure, iterations, mask, output,
-                           border_value, origin, 1, brute_force)
+                           border_value, origin, 1, brute_force, axes=axes)
 
 
 def binary_opening(input, structure=None, iterations=1, output=None, origin=0,
-                   mask=None, border_value=0, brute_force=False):
+                   mask=None, border_value=0, brute_force=False, *, axes=None):
     """
     Multidimensional binary opening with the given structuring element.
 
@@ -414,13 +442,13 @@ def binary_opening(input, structure=None, iterations=1, output=None, origin=0,
         input(cupy.ndarray): The input binary array to be opened.
             Non-zero (True) elements form the subset to be opened.
         structure(cupy.ndarray or tuple or int, optional): The structuring
-            element used for the erosion. Non-zero elements are considered
-            True. If no structuring element is provided an element is generated
-            with a square connectivity equal to one. (Default value = None). If
-            a tuple of integers is provided, a structuring element of the
-            specified shape is used (all elements True). If an integer is
-            provided, the structuring element will have the same size along all
-            axes.
+            element used for the opening. Non-zero elements are considered
+            true. If no structuring element is provided an element is
+            generated with a square connectivity equal to one. If a tuple of
+            integers is provided, a structuring element of the specified shape
+            is used (all elements true). If an integer is provided, the
+            structuring element will have the same size along all axes.
+            (Default value = None).
         iterations(int, optional): The opening is repeated ``iterations`` times
             (one, by default). If iterations is less than 1, the opening is
             repeated until the result does not change anymore. Only an integer
@@ -439,6 +467,9 @@ def binary_opening(input, structure=None, iterations=1, output=None, origin=0,
             candidates to be updated (dilated) in the current iteration; if
             True all pixels are considered as candidates for opening,
             regardless of what happened in the previous iteration.
+        axes (tuple of int or None): The axes over which to apply the filter.
+            If None, `input` is filtered along all axes. If an `origin` tuple
+            is provided, its length must match the number of axes.
 
     Returns:
         cupy.ndarray: The result of binary opening.
@@ -451,13 +482,13 @@ def binary_opening(input, structure=None, iterations=1, output=None, origin=0,
     """
     structure, _, _ = _prep_structure(structure, input.ndim)
     tmp = binary_erosion(input, structure, iterations, mask, None,
-                         border_value, origin, brute_force)
+                         border_value, origin, brute_force, axes=axes)
     return binary_dilation(tmp, structure, iterations, mask, output,
-                           border_value, origin, brute_force)
+                           border_value, origin, brute_force, axes=axes)
 
 
 def binary_closing(input, structure=None, iterations=1, output=None, origin=0,
-                   mask=None, border_value=0, brute_force=False):
+                   mask=None, border_value=0, brute_force=False, *, axes=None):
     """
     Multidimensional binary closing with the given structuring element.
 
@@ -468,13 +499,13 @@ def binary_closing(input, structure=None, iterations=1, output=None, origin=0,
         input(cupy.ndarray): The input binary array to be closed.
             Non-zero (True) elements form the subset to be closed.
         structure(cupy.ndarray or tuple or int, optional): The structuring
-            element used for the erosion. Non-zero elements are considered
-            True. If no structuring element is provided an element is generated
-            with a square connectivity equal to one. (Default value = None). If
-            a tuple of integers is provided, a structuring element of the
-            specified shape is used (all elements True). If an integer is
-            provided, the structuring element will have the same size along all
-            axes.
+            element used for the closing. Non-zero elements are considered
+            true. If no structuring element is provided an element is
+            generated with a square connectivity equal to one. If a tuple of
+            integers is provided, a structuring element of the specified shape
+            is used (all elements true). If an integer is provided, the
+            structuring element will have the same size along all axes.
+            (Default value = None).
         iterations(int, optional): The closing is repeated ``iterations`` times
             (one, by default). If iterations is less than 1, the closing is
             repeated until the result does not change anymore. Only an integer
@@ -493,6 +524,9 @@ def binary_closing(input, structure=None, iterations=1, output=None, origin=0,
             candidates to be updated (dilated) in the current iteration; if
             True all pixels are considered as candidates for closing,
             regardless of what happened in the previous iteration.
+        axes (tuple of int or None): The axes over which to apply the filter.
+            If None, `input` is filtered along all axes. If an `origin` tuple
+            is provided, its length must match the number of axes.
 
     Returns:
         cupy.ndarray: The result of binary closing.
@@ -505,13 +539,13 @@ def binary_closing(input, structure=None, iterations=1, output=None, origin=0,
     """
     structure, _, _ = _prep_structure(structure, input.ndim)
     tmp = binary_dilation(input, structure, iterations, mask, None,
-                          border_value, origin, brute_force)
+                          border_value, origin, brute_force, axes=axes)
     return binary_erosion(tmp, structure, iterations, mask, output,
-                          border_value, origin, brute_force)
+                          border_value, origin, brute_force, axes=axes)
 
 
 def binary_hit_or_miss(input, structure1=None, structure2=None, output=None,
-                       origin1=0, origin2=None):
+                       origin1=0, origin2=None, *, axes=None):
     """
     Multidimensional binary hit-or-miss transform.
 
@@ -536,6 +570,9 @@ def binary_hit_or_miss(input, structure1=None, structure2=None, output=None,
             second part of the structuring element ``structure2``, by default 0
             for a centered structure. If a value is provided for ``origin1``
             and not for ``origin2``, then ``origin2`` is set to ``origin1``.
+        axes (tuple of int or None): The axes over which to apply the filter.
+            If None, `input` is filtered along all axes. If an `origin` tuple
+            is provided, its length must match the number of axes.
 
     Returns:
         cupy.ndarray: Hit-or-miss transform of ``input`` with the given
@@ -551,17 +588,19 @@ def binary_hit_or_miss(input, structure1=None, structure2=None, output=None,
         structure1 = generate_binary_structure(input.ndim, 1)
     if structure2 is None:
         structure2 = cupy.logical_not(structure1)
-    origin1 = _util._fix_sequence_arg(origin1, input.ndim, 'origin1', int)
+    axes = _util._check_axes(axes, input.ndim)
+    num_axes = len(axes)
+    origin1 = _util._fix_sequence_arg(origin1, num_axes, 'origin1', int)
     if origin2 is None:
         origin2 = origin1
     else:
-        origin2 = _util._fix_sequence_arg(origin2, input.ndim, 'origin2', int)
+        origin2 = _util._fix_sequence_arg(origin2, num_axes, 'origin2', int)
 
     tmp1 = _binary_erosion(input, structure1, 1, None, None, 0, origin1, 0,
-                           False)
+                           False, axes=axes)
     inplace = isinstance(output, cupy.ndarray)
     result = _binary_erosion(input, structure2, 1, None, output, 0, origin2, 1,
-                             False)
+                             False, axes=axes)
     if inplace:
         cupy.logical_not(output, output)
         cupy.logical_and(tmp1, output, output)
@@ -571,7 +610,7 @@ def binary_hit_or_miss(input, structure1=None, structure2=None, output=None,
 
 
 def binary_propagation(input, structure=None, mask=None, output=None,
-                       border_value=0, origin=0):
+                       border_value=0, origin=0, *, axes=None):
     """
     Multidimensional binary propagation with the given structuring element.
 
@@ -589,6 +628,9 @@ def binary_propagation(input, structure=None, mask=None, output=None,
         border_value (int, optional): Value at the border in the output array.
             The value is cast to 0 or 1.
         origin (int or tuple of ints, optional): Placement of the filter.
+        axes (tuple of int or None): The axes over which to apply the filter.
+            If None, `input` is filtered along all axes. If an `origin` tuple
+            is provided, its length must match the number of axes.
 
     Returns:
         cupy.ndarray : Binary propagation of ``input`` inside ``mask``.
@@ -600,10 +642,11 @@ def binary_propagation(input, structure=None, mask=None, output=None,
     .. seealso:: :func:`scipy.ndimage.binary_propagation`
     """
     return binary_dilation(input, structure, -1, mask, output, border_value,
-                           origin, brute_force=True)
+                           origin, brute_force=True, axes=axes)
 
 
-def binary_fill_holes(input, structure=None, output=None, origin=0):
+def binary_fill_holes(input, structure=None, output=None, origin=0, *,
+                      axes=None):
     """Fill the holes in binary objects.
 
     Args:
@@ -618,6 +661,9 @@ def binary_fill_holes(input, structure=None, output=None, origin=0):
             is created.
         origin (int, tuple of ints, optional): Position of the structuring
             element.
+        axes (tuple of int or None): The axes over which to apply the filter.
+            If None, `input` is filtered along all axes. If an `origin` tuple
+            is provided, its length must match the number of axes.
 
     Returns:
         cupy.ndarray: Transformation of the initial image ``input`` where holes
@@ -635,17 +681,17 @@ def binary_fill_holes(input, structure=None, output=None, origin=0):
     # TODO (grlee77): set brute_force=False below once implemented
     if inplace:
         binary_dilation(tmp, structure, -1, mask, output, 1, origin,
-                        brute_force=True)
+                        brute_force=True, axes=axes)
         cupy.logical_not(output, output)
     else:
         output = binary_dilation(tmp, structure, -1, mask, None, 1, origin,
-                                 brute_force=True)
+                                 brute_force=True, axes=axes)
         cupy.logical_not(output, output)
         return output
 
 
 def grey_erosion(input, size=None, footprint=None, structure=None, output=None,
-                 mode='reflect', cval=0.0, origin=0):
+                 mode='reflect', cval=0.0, origin=0, *, axes=None):
     """Calculates a greyscale erosion.
 
     Args:
@@ -670,6 +716,9 @@ def grey_erosion(input, size=None, footprint=None, structure=None, output=None,
             placement of the filter, relative to the center of the current
             element of the input. Default of 0 is equivalent to
             ``(0,)*input.ndim``.
+        axes (tuple of int or None): The axes over which to apply the filter.
+            If None, `input` is filtered along all axes. If an `origin` tuple
+            is provided, its length must match the number of axes.
 
     Returns:
         cupy.ndarray: The result of greyscale erosion.
@@ -681,11 +730,13 @@ def grey_erosion(input, size=None, footprint=None, structure=None, output=None,
         raise ValueError('size, footprint or structure must be specified')
 
     return _filters._min_or_max_filter(input, size, footprint, structure,
-                                       output, mode, cval, origin, 'min')
+                                       output, mode, cval, origin, 'min',
+                                       axes=axes)
 
 
 def grey_dilation(input, size=None, footprint=None, structure=None,
-                  output=None, mode='reflect', cval=0.0, origin=0):
+                  output=None, mode='reflect', cval=0.0, origin=0, *,
+                  axes=None):
     """Calculates a greyscale dilation.
 
     Args:
@@ -710,6 +761,9 @@ def grey_dilation(input, size=None, footprint=None, structure=None,
             placement of the filter, relative to the center of the current
             element of the input. Default of 0 is equivalent to
             ``(0,)*input.ndim``.
+        axes (tuple of int or None): The axes over which to apply the filter.
+            If None, `input` is filtered along all axes. If an `origin` tuple
+            is provided, its length must match the number of axes.
 
     Returns:
         cupy.ndarray: The result of greyscale dilation.
@@ -726,7 +780,8 @@ def grey_dilation(input, size=None, footprint=None, structure=None,
         footprint = cupy.array(footprint)
         footprint = footprint[tuple([slice(None, None, -1)] * footprint.ndim)]
 
-    origin = _util._fix_sequence_arg(origin, input.ndim, 'origin', int)
+    axes = _util._check_axes(axes, input.ndim)
+    origin = _util._fix_sequence_arg(origin, len(axes), 'origin', int)
     for i in range(len(origin)):
         origin[i] = -origin[i]
         if footprint is not None:
@@ -741,11 +796,13 @@ def grey_dilation(input, size=None, footprint=None, structure=None,
             origin[i] -= 1
 
     return _filters._min_or_max_filter(input, size, footprint, structure,
-                                       output, mode, cval, origin, 'max')
+                                       output, mode, cval, origin, 'max',
+                                       axes=axes)
 
 
 def grey_closing(input, size=None, footprint=None, structure=None,
-                 output=None, mode='reflect', cval=0.0, origin=0):
+                 output=None, mode='reflect', cval=0.0, origin=0, *,
+                 axes=None):
     """Calculates a multi-dimensional greyscale closing.
 
     Args:
@@ -770,6 +827,9 @@ def grey_closing(input, size=None, footprint=None, structure=None,
             placement of the filter, relative to the center of the current
             element of the input. Default of 0 is equivalent to
             ``(0,)*input.ndim``.
+        axes (tuple of int or None): The axes over which to apply the filter.
+            If None, `input` is filtered along all axes. If an `origin` tuple
+            is provided, its length must match the number of axes.
 
     Returns:
         cupy.ndarray: The result of greyscale closing.
@@ -779,14 +839,14 @@ def grey_closing(input, size=None, footprint=None, structure=None,
     if (size is not None) and (footprint is not None):
         warnings.warn('ignoring size because footprint is set', UserWarning,
                       stacklevel=2)
-    tmp = grey_dilation(input, size, footprint, structure, None, mode, cval,
-                        origin)
-    return grey_erosion(tmp, size, footprint, structure, output, mode, cval,
-                        origin)
+    kwargs = dict(mode=mode, cval=cval, origin=origin, axes=axes)
+    tmp = grey_dilation(input, size, footprint, structure, None, **kwargs)
+    return grey_erosion(tmp, size, footprint, structure, output, **kwargs)
 
 
 def grey_opening(input, size=None, footprint=None, structure=None,
-                 output=None, mode='reflect', cval=0.0, origin=0):
+                 output=None, mode='reflect', cval=0.0, origin=0, *,
+                 axes=None):
     """Calculates a multi-dimensional greyscale opening.
 
     Args:
@@ -811,6 +871,9 @@ def grey_opening(input, size=None, footprint=None, structure=None,
             placement of the filter, relative to the center of the current
             element of the input. Default of 0 is equivalent to
             ``(0,)*input.ndim``.
+        axes (tuple of int or None): The axes over which to apply the filter.
+            If None, `input` is filtered along all axes. If an `origin` tuple
+            is provided, its length must match the number of axes.
 
     Returns:
         cupy.ndarray: The result of greyscale opening.
@@ -820,10 +883,9 @@ def grey_opening(input, size=None, footprint=None, structure=None,
     if (size is not None) and (footprint is not None):
         warnings.warn('ignoring size because footprint is set', UserWarning,
                       stacklevel=2)
-    tmp = grey_erosion(input, size, footprint, structure, None, mode, cval,
-                       origin)
-    return grey_dilation(tmp, size, footprint, structure, output, mode, cval,
-                         origin)
+    kwargs = dict(mode=mode, cval=cval, origin=origin, axes=axes)
+    tmp = grey_erosion(input, size, footprint, structure, None, **kwargs)
+    return grey_dilation(tmp, size, footprint, structure, output, **kwargs)
 
 
 def morphological_gradient(
@@ -835,6 +897,8 @@ def morphological_gradient(
     mode='reflect',
     cval=0.0,
     origin=0,
+    *,
+    axes=None,
 ):
     """
     Multidimensional morphological gradient.
@@ -865,23 +929,23 @@ def morphological_gradient(
             placement of the filter, relative to the center of the current
             element of the input. Default of 0 is equivalent to
             ``(0,)*input.ndim``.
+        axes (tuple of int or None): The axes over which to apply the filter.
+            If None, `input` is filtered along all axes. If an `origin` tuple
+            is provided, its length must match the number of axes.
 
     Returns:
         cupy.ndarray: The morphological gradient of the input.
 
     .. seealso:: :func:`scipy.ndimage.morphological_gradient`
     """
-    tmp = grey_dilation(
-        input, size, footprint, structure, None, mode, cval, origin
-    )
+    kwargs = dict(mode=mode, cval=cval, origin=origin, axes=axes)
+    tmp = grey_dilation(input, size, footprint, structure, None, **kwargs)
     if isinstance(output, cupy.ndarray):
-        grey_erosion(
-            input, size, footprint, structure, output, mode, cval, origin
-        )
+        grey_erosion(input, size, footprint, structure, output, **kwargs)
         return cupy.subtract(tmp, output, output)
     else:
         return tmp - grey_erosion(
-            input, size, footprint, structure, None, mode, cval, origin
+            input, size, footprint, structure, None, **kwargs
         )
 
 
@@ -894,6 +958,8 @@ def morphological_laplace(
     mode='reflect',
     cval=0.0,
     origin=0,
+    *,
+    axes=None,
 ):
     """
     Multidimensional morphological laplace.
@@ -921,26 +987,24 @@ def morphological_laplace(
             placement of the filter, relative to the center of the current
             element of the input. Default of 0 is equivalent to
             ``(0,)*input.ndim``.
+        axes (tuple of int or None): The axes over which to apply the filter.
+            If None, `input` is filtered along all axes. If an `origin` tuple
+            is provided, its length must match the number of axes.
 
     Returns:
         cupy.ndarray: The morphological laplace of the input.
 
     .. seealso:: :func:`scipy.ndimage.morphological_laplace`
     """
-    tmp1 = grey_dilation(
-        input, size, footprint, structure, None, mode, cval, origin
-    )
+    kwargs = dict(mode=mode, cval=cval, origin=origin, axes=axes)
+    tmp1 = grey_dilation(input, size, footprint, structure, None, **kwargs)
     if isinstance(output, cupy.ndarray):
-        grey_erosion(
-            input, size, footprint, structure, output, mode, cval, origin
-        )
+        grey_erosion(input, size, footprint, structure, output, **kwargs)
         cupy.add(tmp1, output, output)
         cupy.subtract(output, input, output)
         return cupy.subtract(output, input, output)
     else:
-        tmp2 = grey_erosion(
-            input, size, footprint, structure, None, mode, cval, origin
-        )
+        tmp2 = grey_erosion(input, size, footprint, structure, None, **kwargs)
         cupy.add(tmp1, tmp2, tmp2)
         cupy.subtract(tmp2, input, tmp2)
         cupy.subtract(tmp2, input, tmp2)
@@ -956,6 +1020,8 @@ def white_tophat(
     mode='reflect',
     cval=0.0,
     origin=0,
+    *,
+    axes=None,
 ):
     """
     Multidimensional white tophat filter.
@@ -982,6 +1048,9 @@ def white_tophat(
             placement of the filter, relative to the center of the current
             element of the input. Default of 0 is equivalent to
             ``(0,)*input.ndim``.
+        axes (tuple of int or None): The axes over which to apply the filter.
+            If None, `input` is filtered along all axes. If an `origin` tuple
+            is provided, its length must match the number of axes.
 
     Returns:
         cupy.ndarray: Result of the filter of ``input`` with ``structure``.
@@ -992,12 +1061,9 @@ def white_tophat(
         warnings.warn(
             'ignoring size because footprint is set', UserWarning, stacklevel=2
         )
-    tmp = grey_erosion(
-        input, size, footprint, structure, None, mode, cval, origin
-    )
-    tmp = grey_dilation(
-        tmp, size, footprint, structure, output, mode, cval, origin
-    )
+    kwargs = dict(mode=mode, cval=cval, origin=origin, axes=axes)
+    tmp = grey_erosion(input, size, footprint, structure, None, **kwargs)
+    tmp = grey_dilation(tmp, size, footprint, structure, output, **kwargs)
     if input.dtype == numpy.bool_ and tmp.dtype == numpy.bool_:
         cupy.bitwise_xor(input, tmp, out=tmp)
     else:
@@ -1014,6 +1080,8 @@ def black_tophat(
     mode='reflect',
     cval=0.0,
     origin=0,
+    *,
+    axes=None,
 ):
     """
     Multidimensional black tophat filter.
@@ -1040,6 +1108,9 @@ def black_tophat(
             placement of the filter, relative to the center of the current
             element of the input. Default of 0 is equivalent to
             ``(0,)*input.ndim``.
+        axes (tuple of int or None): The axes over which to apply the filter.
+            If None, `input` is filtered along all axes. If an `origin` tuple
+            is provided, its length must match the number of axes.
 
     Returns:
         cupy.ndarry : Result of the filter of ``input`` with ``structure``.
@@ -1050,12 +1121,9 @@ def black_tophat(
         warnings.warn(
             'ignoring size because footprint is set', UserWarning, stacklevel=2
         )
-    tmp = grey_dilation(
-        input, size, footprint, structure, None, mode, cval, origin
-    )
-    tmp = grey_erosion(
-        tmp, size, footprint, structure, output, mode, cval, origin
-    )
+    kwargs = dict(mode=mode, cval=cval, origin=origin, axes=axes)
+    tmp = grey_dilation(input, size, footprint, structure, None, **kwargs)
+    tmp = grey_erosion(tmp, size, footprint, structure, output, **kwargs)
     if input.dtype == numpy.bool_ and tmp.dtype == numpy.bool_:
         cupy.bitwise_xor(tmp, input, out=tmp)
     else:

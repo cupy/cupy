@@ -338,6 +338,8 @@ def polyval(p, x):
             res = res + prod * c
             prod = prod * x
         return res
+    if not isinstance(x, cupy.ndarray):
+        x = cupy.asarray(x)
     dtype = numpy.result_type(p.dtype.type(0), x)
     p = p.astype(dtype, copy=False)
     if p.size == 0:

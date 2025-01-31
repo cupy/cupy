@@ -8,6 +8,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+from typing import Optional
 import warnings
 
 from cupy.cuda import device
@@ -16,6 +17,7 @@ from cupy.cuda import get_rocm_path
 from cupy_backends.cuda.api import driver
 from cupy_backends.cuda.api import runtime
 from cupy_backends.cuda.libs import nvrtc
+from cupy import _environment
 from cupy import _util
 
 _cuda_hip_version = driver.get_build_version()
@@ -96,18 +98,52 @@ def _get_extra_path_for_msvc():
         # The compiler is already on PATH, no extra path needed.
         return None
 
-    try:
-        import setuptools
-        vctools = setuptools.msvc.EnvironmentInfo(platform.machine()).VCTools
-    except Exception as e:
-        warnings.warn(f'Failed to auto-detect cl.exe path: {type(e)}: {e}')
-        return None
+    cl_exe_dir = _get_cl_exe_dir()
+    if cl_exe_dir:
+        return cl_exe_dir
 
-    for path in vctools:
-        cl_exe = os.path.join(path, 'cl.exe')
-        if os.path.exists(cl_exe):
-            return path
-    warnings.warn(f'cl.exe could not be found in {vctools}')
+    cl_exe_dir = _get_cl_exe_dir_fallback()
+    if cl_exe_dir:
+        return cl_exe_dir
+
+    return None
+
+
+def _get_cl_exe_dir() -> Optional[str]:
+    try:
+        try:
+            # setuptools.msvc is missing in setuptools v74.0.0.
+            # setuptools.msvc requires explicit import in setuptools v74.1.0+.
+            import setuptools.msvc
+        except Exception:
+            return None
+        vctools = setuptools.msvc.EnvironmentInfo(platform.machine()).VCTools
+        for path in vctools:
+            cl_exe = os.path.join(path, 'cl.exe')
+            if os.path.exists(cl_exe):
+                return path
+        warnings.warn(f'cl.exe could not be found in {vctools}')
+    except Exception as e:
+        warnings.warn(
+            f'Failed to find cl.exe with setuptools.msvc: {type(e)}: {e}')
+    return None
+
+
+def _get_cl_exe_dir_fallback() -> Optional[str]:
+    # Discover cl.exe without relying on undocumented setuptools.msvc API.
+    # As of now this code path exists only for setuptools 74.0.0 (see #8583).
+    # N.B. This takes few seconds as this incurs cmd.exe (vcvarsall.bat)
+    # invocation.
+    try:
+        from setuptools import Distribution
+        from setuptools.command.build_ext import build_ext
+        ext = build_ext(Distribution({'name': 'cupy_cl_exe_discover'}))
+        ext.setup_shlib_compiler()
+        ext.shlib_compiler.initialize()  # MSVCCompiler only
+        return os.path.dirname(ext.shlib_compiler.cc)
+    except Exception as e:
+        warnings.warn(
+            f'Failed to find cl.exe with setuptools: {type(e)}: {e}')
     return None
 
 
@@ -136,11 +172,25 @@ def _get_max_compute_capability():
         # CUDA 11.1 - 11.7
         # Note: 87 is for Jetson Orin
         nvrtc_max_compute_capability = '86'
-    else:
-        # CUDA 11.8+
+    elif (major == 11 and minor == 8) or (major == 12 and minor < 8):
+        # CUDA 11.8, 12.0 - 12.7
         nvrtc_max_compute_capability = '90'
+    else:
+        # CUDA 12.8+
+        nvrtc_max_compute_capability = '120'
 
     return nvrtc_max_compute_capability
+
+
+@_util.memoize()
+def _get_extra_include_dir_opts():
+    major, minor = _get_nvrtc_version()
+    return tuple(
+        f'-I{d}'
+        for d in _environment._get_include_dir_from_conda_or_wheel(
+            major, minor
+        )
+    )
 
 
 @_util.memoize(for_each_device=True)
@@ -153,7 +203,7 @@ def _get_arch():
     if arch in _tegra_archs:
         return arch
     else:
-        return min(arch, nvrtc_max_compute_capability)
+        return min(arch, nvrtc_max_compute_capability, key=int)
 
 
 @_util.memoize(for_each_device=True)
@@ -168,7 +218,7 @@ def _get_arch_for_options_for_nvrtc(arch=None):
         arch = _get_arch()
     if (
         not _use_ptx
-        and arch <= _get_max_compute_capability()
+        and int(arch) <= int(_get_max_compute_capability())
     ):
         return f'-arch=sm_{arch}', 'cubin'
     return f'-arch=compute_{arch}', 'ptx'
@@ -521,6 +571,7 @@ def _compile_with_cache_cuda(
     if jitify and backend != 'nvrtc':
         raise ValueError('jitify only works with NVRTC')
 
+    options += _get_extra_include_dir_opts()
     env = ((arch, options, _get_nvrtc_version(), backend)
            + _get_arch_for_options_for_nvrtc(arch))
     base = _empty_file_preprocess_cache.get(env, None)

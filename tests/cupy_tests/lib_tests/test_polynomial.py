@@ -755,6 +755,7 @@ class TestPolyvalDtypesCombination:
         b = testing.shaped_arange((3,), xp, dtype2)
         return xp.polyval(a, b)
 
+    @testing.with_requires('numpy>=1.25')
     @testing.for_all_dtypes_combination(names=['dtype1', 'dtype2'], full=True)
     @testing.numpy_cupy_allclose(rtol=1e-6)
     def test_polyval_diff_types_array_scalar(self, xp, dtype1, dtype2):

@@ -87,6 +87,7 @@ class TestCov(unittest.TestCase):
                 xp.cov(a, y, rowvar, bias, ddof,
                        fweights, aweights, dtype=dtype)
 
+    @testing.with_requires("numpy>=2.2")
     def test_cov(self):
         self.check((2, 3))
         self.check((2,), (2,))

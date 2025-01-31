@@ -205,20 +205,30 @@ class TestCooMatrix:
         ], dtype=self.dtype)
         numpy.testing.assert_allclose(m.toarray(), expect)
 
-    @testing.with_requires('scipy')
+    @testing.with_requires('scipy>=1.14')
     def test_str(self):
+        dtype_name = numpy.dtype(self.dtype).name
         if numpy.dtype(self.dtype).kind == 'b':
-            expect = '''  (0, 0)\tFalse
+            expect = f'''<COOrdinate sparse matrix of dtype '{dtype_name}'
+\twith 4 stored elements and shape (3, 4)>
+  Coords\tValues
+  (0, 0)\tFalse
   (0, 1)\tTrue
   (1, 3)\tTrue
   (2, 2)\tTrue'''
         elif numpy.dtype(self.dtype).kind == 'f':
-            expect = '''  (0, 0)\t0.0
+            expect = f'''<COOrdinate sparse matrix of dtype '{dtype_name}'
+\twith 4 stored elements and shape (3, 4)>
+  Coords\tValues
+  (0, 0)\t0.0
   (0, 1)\t1.0
   (1, 3)\t2.0
   (2, 2)\t3.0'''
         elif numpy.dtype(self.dtype).kind == 'c':
-            expect = '''  (0, 0)\t0j
+            expect = f'''<COOrdinate sparse matrix of dtype '{dtype_name}'
+\twith 4 stored elements and shape (3, 4)>
+  Coords\tValues
+  (0, 0)\t0j
   (0, 1)\t(1+0j)
   (1, 3)\t(2+0j)
   (2, 2)\t(3+0j)'''
@@ -336,7 +346,7 @@ class TestCooMatrixInit:
 
     def test_invalid_format(self):
         for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
-            with pytest.raises(TypeError):
+            with pytest.raises((TypeError, ValueError)):
                 sp.coo_matrix(
                     (self.data(xp), self.row(xp)), shape=self.shape)
 
@@ -511,10 +521,11 @@ class TestCooMatrixScipyComparison:
         m = self.make(xp, sp, self.dtype)
         return m.toarray()
 
+    @testing.with_requires('scipy<1.14')
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_A(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
-        return m.A
+        return m.toarray()
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_tocoo(self, xp, sp):
@@ -621,7 +632,7 @@ class TestCooMatrixScipyComparison:
             with pytest.raises(ValueError):
                 m.dot(x)
 
-    @testing.numpy_cupy_allclose(sp_name='sp')
+    @testing.numpy_cupy_allclose(sp_name='sp', contiguous_check=False)
     def test_dot_dense_matrix(self, xp, sp):
         m = _make(xp, sp, self.dtype)
         x = xp.arange(8).reshape(4, 2).astype(self.dtype)
@@ -641,6 +652,7 @@ class TestCooMatrixScipyComparison:
             with pytest.raises(ValueError):
                 m.dot(x)
 
+    @testing.with_requires("scipy!=1.15.0", "scipy!=1.15.1")
     def test_dot_unsupported(self):
         for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
             m = _make(xp, sp, self.dtype)
@@ -800,7 +812,7 @@ class TestCooMatrixScipyComparison:
             with pytest.raises(ValueError):
                 m * x
 
-    @testing.numpy_cupy_allclose(sp_name='sp')
+    @testing.numpy_cupy_allclose(sp_name='sp', contiguous_check=False)
     def test_mul_dense_matrix(self, xp, sp):
         m = _make(xp, sp, self.dtype)
         x = xp.arange(8).reshape(4, 2).astype(self.dtype)
@@ -863,7 +875,7 @@ class TestCooMatrixScipyComparison:
         x = xp.array(2, dtype=self.dtype)
         return x * m
 
-    @testing.numpy_cupy_allclose(sp_name='sp')
+    @testing.numpy_cupy_allclose(sp_name='sp', contiguous_check=False)
     def test_rmul_dense_matrix(self, xp, sp):
         m = _make(xp, sp, self.dtype)
         x = xp.arange(12).reshape(4, 3).astype(self.dtype)

@@ -1,6 +1,9 @@
+import operator
 import warnings
+from collections.abc import Iterable
 
 import cupy
+from cupy import AxisError
 
 
 def _is_integer_output(output, input):
@@ -91,6 +94,25 @@ def _check_mode(mode):
     return mode
 
 
+def _check_axes(axes, ndim):
+    if axes is None:
+        return tuple(range(ndim))
+    elif cupy.isscalar(axes):
+        axes = (operator.index(axes),)
+    elif isinstance(axes, Iterable):
+        for ax in axes:
+            axes = tuple(operator.index(ax) for ax in axes)
+            if ax < -ndim or ax > ndim - 1:
+                raise AxisError(f"specified axis: {ax} is out of range")
+        axes = tuple(ax % ndim if ax < 0 else ax for ax in axes)
+    else:
+        message = "axes must be an integer, iterable of integers, or None"
+        raise ValueError(message)
+    if len(tuple(set(axes))) != len(axes):
+        raise ValueError("axes must be unique")
+    return axes
+
+
 def _get_inttype(input):
     # The integer type to use for indices in the input array
     # The indices actually use byte positions and we can't just use
@@ -99,6 +121,47 @@ def _get_inttype(input):
     nbytes = sum((x-1)*abs(stride) for x, stride in
                  zip(input.shape, input.strides)) + input.dtype.itemsize
     return 'int' if nbytes < (1 << 31) else 'ptrdiff_t'
+
+
+def _expand_origin(ndim_image, axes, origin):
+    num_axes = len(axes)
+    origins = _fix_sequence_arg(origin, num_axes, 'origin', int)
+    if num_axes < ndim_image:
+        # set origin = 0 for any axes not being filtered
+        origins_temp = [
+            0,
+        ] * ndim_image
+        for o, ax in zip(origins, axes):
+            origins_temp[ax] = o
+        origins = origins_temp
+    return origins
+
+
+def _expand_footprint(ndim_image, axes, footprint, footprint_name='footprint'):
+    num_axes = len(axes)
+    if num_axes < ndim_image:
+        if footprint.ndim != num_axes:
+            raise RuntimeError(
+                f'{footprint_name}.ndim ({footprint.ndim}) '
+                f'must match len(axes) ({num_axes})'
+            )
+
+        footprint = cupy.expand_dims(
+            footprint, tuple(ax for ax in range(ndim_image) if ax not in axes)
+        )
+    return footprint
+
+
+def _expand_mode(ndim_image, axes, mode):
+    num_axes = len(axes)
+    if not isinstance(mode, str) and isinstance(mode, Iterable):
+        # set mode = 'constant' for any axes not being filtered
+        modes = _fix_sequence_arg(mode, num_axes, 'mode', str)
+        modes_temp = ['constant'] * ndim_image
+        for m, ax in zip(modes, axes):
+            modes_temp[ax] = m
+        mode = modes_temp
+    return mode
 
 
 def _generate_boundary_condition_ops(mode, ix, xsize, int_t="int",

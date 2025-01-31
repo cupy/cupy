@@ -83,6 +83,7 @@ from cupyx.scipy.special._erf import erfcinv  # NOQA
 # Legendre functions
 from cupyx.scipy.special._lpmv import lpmv  # NOQA
 from cupyx.scipy.special._sph_harm import sph_harm  # NOQA
+from cupyx.scipy.special._sph_harm import sph_harm_y  # NOQA
 
 # Other special functions
 from cupyx.scipy.special._binom import binom  # NOQA
@@ -94,6 +95,8 @@ from cupyx.scipy.special._logsoftmax import log_softmax  # NOQA
 from cupyx.scipy.special._zeta import zeta  # NOQA
 from cupyx.scipy.special._zetac import zetac  # NOQA
 from cupyx.scipy.special._lambertw import lambertw  # NOQA
+from cupyx.scipy.special._sici import sici  # NOQA
+from cupyx.scipy.special._sici import shichi  # NOQA
 
 # Convenience functions
 from cupyx.scipy.special._basic import cbrt  # NOQA

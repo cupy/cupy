@@ -1,6 +1,8 @@
 Param(
     [String]$cuda,
     [String]$python,
+    [String]$numpy,
+    [String]$scipy,
     [String]$test
 )
 
@@ -85,7 +87,7 @@ function Main {
 
     echo "Building..."
     $build_retval = 0
-    RunOrDie python -m pip install -U "numpy" "scipy==1.12.*"
+    RunOrDie python -m pip install "numpy==$numpy.*" "scipy==$scipy.*"
     python -m pip install ".[all,test]" -v > cupy_build_log.txt
     if (-not $?) {
         $build_retval = $LastExitCode
@@ -134,7 +136,7 @@ function Main {
     echo "CuPy Configuration:"
     RunOrDie python -c "import cupy; print(cupy); cupy.show_config()"
     echo "Running test..."
-    $test_retval = RunWithTimeout -timeout 32767 -output ../cupy_test_log.txt -- python -m pytest -rfEX @pytest_opts .
+    $test_retval = RunWithTimeout -timeout 18000 -output ../cupy_test_log.txt -- python -m pytest -rfEX @pytest_opts .
     popd
 
     if (-Not $is_pull_request) {

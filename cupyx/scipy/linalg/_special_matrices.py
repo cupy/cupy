@@ -6,88 +6,6 @@ from cupy import _core
 from cupyx.scipy.linalg import _uarray
 
 
-@_uarray.implements('tri')
-def tri(N, M=None, k=0, dtype=None):
-    """ Construct (``N``, ``M``) matrix filled with ones at and below the
-    ``k``-th diagonal. The matrix has ``A[i,j] == 1`` for ``i <= j + k``.
-
-    Args:
-        N (int): The size of the first dimension of the matrix.
-        M (int, optional): The size of the second dimension of the matrix. If
-            ``M`` is None, ``M = N`` is assumed.
-        k (int, optional):  Number of subdiagonal below which matrix is filled
-            with ones. ``k = 0`` is the main diagonal, ``k < 0`` subdiagonal
-            and ``k > 0`` superdiagonal.
-        dtype (dtype, optional): Data type of the matrix.
-
-    Returns:
-        cupy.ndarray: Tri matrix.
-
-    .. seealso:: :func:`scipy.linalg.tri`
-    """
-    warnings.warn("'tri'/'tril/'triu' are deprecated", DeprecationWarning)
-
-    if M is None:
-        M = N
-    elif isinstance(M, str):
-        # handle legacy interface
-        M, dtype = N, M
-    # TODO: no outer method
-    # m = cupy.greater_equal.outer(cupy.arange(k, N+k), cupy.arange(M))
-    # return m if dtype is None else m.astype(dtype, copy=False)
-    return cupy.tri(N, M, k, bool if dtype is None else dtype)
-
-
-@_uarray.implements('tril')
-def tril(m, k=0):
-    """Make a copy of a matrix with elements above the ``k``-th diagonal
-    zeroed.
-
-    Args:
-        m (cupy.ndarray): Matrix whose elements to return
-        k (int, optional): Diagonal above which to zero elements.
-            ``k == 0`` is the main diagonal, ``k < 0`` subdiagonal and
-            ``k > 0`` superdiagonal.
-
-    Returns:
-        (cupy.ndarray): Return is the same shape and type as ``m``.
-
-    .. seealso:: :func:`scipy.linalg.tril`
-    """
-    warnings.warn("'tri'/'tril/'triu' are deprecated", DeprecationWarning)
-
-    # this is ~2x faster than cupy.tril for a 500x500 float64 matrix
-    t = tri(m.shape[0], m.shape[1], k=k, dtype=m.dtype.char)
-    t *= m
-    return t
-
-
-@_uarray.implements('triu')
-def triu(m, k=0):
-    """Make a copy of a matrix with elements below the ``k``-th diagonal
-    zeroed.
-
-    Args:
-        m (cupy.ndarray): Matrix whose elements to return
-        k (int, optional): Diagonal above which to zero elements.
-            ``k == 0`` is the main diagonal, ``k < 0`` subdiagonal and
-            ``k > 0`` superdiagonal.
-
-    Returns:
-        (cupy.ndarray): Return matrix with zeroed elements below the kth
-        diagonal and has same shape and type as ``m``.
-
-    .. seealso:: :func:`scipy.linalg.triu`
-    """
-    warnings.warn("'tri'/'tril/'triu' are deprecated", DeprecationWarning)
-
-    # this is ~25% faster than cupy.tril for a 500x500 float64 matrix
-    t = tri(m.shape[0], m.shape[1], k - 1, m.dtype.char)
-    cupy.subtract(1, t, out=t)
-    t *= m
-    return t
-
-
 @_uarray.implements('toeplitz')
 def toeplitz(c, r=None):
     """Construct a Toeplitz matrix.
@@ -261,6 +179,12 @@ def kron(a, b):
 
     .. seealso:: :func:`scipy.linalg.kron`
     """
+    warnings.warn(
+        '`cupyx.scipy.linalg.kron` has been deprecated in CuPy v14 and will '
+        'be removed in the near future. Please use `cupy.kron` instead.',
+        DeprecationWarning,
+    )
+
     o = cupy.outer(a, b)
     o = o.reshape(a.shape + b.shape)
     return cupy.concatenate(cupy.concatenate(o, axis=1), axis=1)

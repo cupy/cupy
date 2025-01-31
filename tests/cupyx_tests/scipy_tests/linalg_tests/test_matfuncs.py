@@ -76,6 +76,7 @@ class TestKhatriRao:
         testing.assert_array_equal(res1, res2)
 
 
+@testing.with_requires("scipy")
 class TestExpM:
 
     def test_zero(self):

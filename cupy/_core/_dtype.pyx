@@ -1,11 +1,13 @@
 cimport cython  # NOQA
+
 import numpy
 import warnings
 
 from cupy_backends.cuda.api cimport runtime
+from cupy.exceptions import ComplexWarning
 
 
-all_type_chars = '?bhilqBHILQefdFD'
+cdef str all_type_chars = '?bhilqBHILQefdFD'
 # for c in '?bhilqBHILQefdFD':
 #    print('#', c, '...', np.dtype(c).name)
 # ? ... bool
@@ -114,7 +116,7 @@ cpdef void _raise_if_invalid_cast(
             # Complex warning, we are dropping the imagine part:
             warnings.warn(
                 'Casting complex values to real discards the imaginary part',
-                numpy.ComplexWarning)
+                ComplexWarning)
 
         return
 
@@ -124,3 +126,28 @@ cpdef void _raise_if_invalid_cast(
     raise TypeError(
         f'Cannot cast {argname} from {from_dt!r} to {to_dt!r} '
         f'according to the rule \'{casting}\'')
+
+
+cdef dict dtype_format = {
+    intern("?"): intern("?"),
+    intern("b"): intern("b"),
+    intern("h"): intern("h"),
+    intern("i"): intern("i"),
+    intern("l"): intern("l"),
+    intern("q"): intern("q"),
+    intern("B"): intern("B"),
+    intern("H"): intern("H"),
+    intern("I"): intern("I"),
+    intern("L"): intern("L"),
+    intern("Q"): intern("Q"),
+    intern("e"): intern("e"),
+    intern("f"): intern("f"),
+    intern("d"): intern("d"),
+    intern("F"): intern("Zf"),
+    intern("D"): intern("Zd"),
+}
+
+
+@cython.profile(False)
+cdef void populate_format(Py_buffer* buf, str dtype) except*:
+    buf.format = dtype_format[dtype]
