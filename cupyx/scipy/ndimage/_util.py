@@ -100,8 +100,8 @@ def _check_axes(axes, ndim):
     elif cupy.isscalar(axes):
         axes = (operator.index(axes),)
     elif isinstance(axes, Iterable):
+        axes = tuple(operator.index(ax) for ax in axes)
         for ax in axes:
-            axes = tuple(operator.index(ax) for ax in axes)
             if ax < -ndim or ax > ndim - 1:
                 raise AxisError(f"specified axis: {ax} is out of range")
         axes = tuple(ax % ndim if ax < 0 else ax for ax in axes)

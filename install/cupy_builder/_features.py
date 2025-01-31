@@ -144,6 +144,7 @@ _cuda_files = [
     'cupy.fft._callback',
     'cupy.lib._polynomial',
     'cupy._util',
+    'cupyx.scipy.ndimage._bbox_slices',
 ]
 
 # Libraries required for cudart_static
