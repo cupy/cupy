@@ -68,6 +68,39 @@ class TestShapedRandomBool(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
+    'xp': [numpy, cupy],
+}))
+class TestShapedLinspace(unittest.TestCase):
+
+    @testing.for_dtypes('bhilqefdFD')
+    def test_basic(self, dtype):
+        a = testing.shaped_linspace(-3, 3, (20, 30), self.xp, dtype)
+        e = numpy.linspace(-3, 3, 600).reshape(20, 30).astype(dtype)
+        assert isinstance(a, self.xp.ndarray)
+        assert a.shape == (20, 30)
+        assert a.dtype == dtype
+        testing.assert_allclose(a, e)
+
+    @testing.for_dtypes('BHILQ')
+    def test_unsigned(self, dtype):
+        a = testing.shaped_linspace(-3, 3, (20, 30), self.xp, dtype)
+        e = numpy.linspace(0, 3, 600).reshape(20, 30).astype(dtype)
+        assert isinstance(a, self.xp.ndarray)
+        assert a.shape == (20, 30)
+        assert a.dtype == dtype
+        testing.assert_allclose(a, e)
+
+    @testing.for_dtypes('?')
+    def test_bool(self, dtype):
+        a = testing.shaped_linspace(-3, 3, (20, 30), self.xp, dtype)
+        e = numpy.linspace(0, 1, 600).reshape(20, 30).astype(dtype)
+        assert isinstance(a, self.xp.ndarray)
+        assert a.shape == (20, 30)
+        assert a.dtype == dtype
+        testing.assert_allclose(a, e)
+
+
+@testing.parameterize(*testing.product({
     'dtype': [
         numpy.float16, numpy.float32, numpy.float64,
         numpy.complex64, numpy.complex128,
