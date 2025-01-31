@@ -136,6 +136,36 @@ def nanmin(a, axis=None, out=None, keepdims=False, initial=None, where=True):
 
     return res
 
+def nanmax(a, axis=None, out=None, keepdims=False):
+    """Returns the maximum of an array along an axis ignoring NaN.
+
+    When there is a slice whose elements are all NaN, a :class:`RuntimeWarning`
+    is raised and NaN is returned.
+
+    Args:
+        a (cupy.ndarray): Array to take the maximum.
+        axis (int): Along which axis to take the maximum. The flattened array
+            is used by default.
+        out (cupy.ndarray): Output array.
+        keepdims (bool): If ``True``, the axis is remained as an axis of
+            size one.
+
+    Returns:
+        cupy.ndarray: The maximum of ``a``, along the axis if specified.
+
+    .. warning::
+
+        This function may synchronize the device.
+
+    .. seealso:: :func:`numpy.nanmax`
+
+    """
+    # TODO(niboshi): Avoid synchronization.
+    res = _core.nanmax(a, axis=axis, out=out, keepdims=keepdims)
+    if content.isnan(res).any():  # synchronize!
+        warnings.warn('All-NaN slice encountered', RuntimeWarning)
+    return res
+
 
 def ptp(a, axis=None, out=None, keepdims=False):
     """Returns the range of values (maximum - minimum) along an axis.
