@@ -5,6 +5,8 @@ SciPy Cython file:
 https://github.com/scipy/scipy/blob/master/scipy/special/sph_harm.pxd
 """
 
+import warnings
+
 from cupy import _core
 
 from cupyx.scipy.special._poch import poch_definition
@@ -71,7 +73,7 @@ __device__ complex<double> sph_harmonic(int m, int n, double theta, double phi)
 )
 
 
-sph_harm = _core.create_ufunc(
+_sph_harm = _core.create_ufunc(
     "cupyx_scipy_lpmv",
     ("iiff->F", "iidd->D", "llff->F", "lldd->D"),
     "out0 = out0_type(sph_harmonic(in0, in1, in2, in3));",
@@ -82,3 +84,28 @@ sph_harm = _core.create_ufunc(
 
     """,
 )
+
+
+def sph_harm(m, n, theta, phi, out=None):
+    """Spherical Harmonic.
+
+    .. seealso:: :meth:`scipy.special.sph_harm`
+
+    """
+
+    warnings.warn(DeprecationWarning(
+        "`cupyx.scipy.special.sph_harm` is deprecated in CuPy v14 "
+        "and are planned to be removed in the future."))
+
+    return _sph_harm(m, n, theta, phi, out=out)
+
+
+def sph_harm_y(n, m, theta, phi, *, diff_n=0):
+    """Spherical Harmonic.
+
+    .. seealso:: :meth:`scipy.special.sph_harm`
+    """
+    if diff_n != 0:
+        raise NotImplementedError("Derivatives not implemented.")
+
+    return _sph_harm(m, n, phi, theta)

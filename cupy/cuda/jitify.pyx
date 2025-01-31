@@ -44,7 +44,7 @@ cdef extern from 'cupy_jitify.h' namespace "jitify::detail" nogil:
 # users.
 cdef extern from *:
     """
-    const int build_num = 3;
+    const int build_num = 4;
     """
     const int build_num
 

@@ -65,7 +65,7 @@
 #include <cuda/std/utility>
 
 // Fallback to global namespace for functions unsupported on NVRTC Jit
-#ifdef _LIBCUDACXX_COMPILER_NVRTC
+#ifdef __CUDACC_RTC__
 #include <cuda_runtime.h>
 #endif
 
@@ -106,7 +106,7 @@ XSF_HOST_DEVICE inline double asinh(double x) { return cuda::std::asinh(x); }
 XSF_HOST_DEVICE inline bool signbit(double x) { return cuda::std::signbit(x); }
 
 // Fallback to global namespace for functions unsupported on NVRTC
-#ifndef _LIBCUDACXX_COMPILER_NVRTC
+#ifndef __CUDACC_RTC__
 XSF_HOST_DEVICE inline double ceil(double x) { return cuda::std::ceil(x); }
 XSF_HOST_DEVICE inline double floor(double x) { return cuda::std::floor(x); }
 XSF_HOST_DEVICE inline double round(double x) { return cuda::std::round(x); }

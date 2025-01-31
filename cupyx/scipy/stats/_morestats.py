@@ -56,7 +56,7 @@ def boxcox_llf(lmb, data):
         variance = cupy.var(logdata, axis=0)
         logvar = cupy.log(variance)
     else:
-        logx = lmb * logdata - cupy.log(abs(lmb))
-        logvar = _log_var(logx)
+        logx = lmb * logdata
+        logvar = _log_var(logx) - 2 * cupy.log(abs(lmb))
 
     return (lmb - 1) * cupy.sum(logdata, axis=0) - N/2 * logvar

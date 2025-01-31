@@ -449,7 +449,6 @@ class TestDigitizeInvalid(unittest.TestCase):
                 xp.digitize(x, bins)
 
 
-@pytest.mark.skip(reason="XXX: NP2.0: histogramdd dtype")
 @testing.parameterize(
     *testing.product(
         {'weights': [None, 1, 2],
@@ -525,7 +524,6 @@ class TestHistogramddErrors(unittest.TestCase):
             y, bin_edges = cupy.histogramdd(x, bins=bins)
 
 
-@pytest.mark.skip(reason="XXX: NP2.0: histogram2d dtype")
 @testing.parameterize(
     *testing.product(
         {'weights': [None, 1, 2],
