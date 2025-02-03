@@ -530,3 +530,143 @@ class TestValueIndices:
         image = cupy.zeros(self.shape, dtype=dtype)
         with pytest.raises(ValueError):
             cupyx.scipy.ndimage.value_indices(image)
+
+
+@testing.with_requires('scipy')
+class TestFindObjectsBasic():
+
+    @testing.numpy_cupy_equal(scipy_name='scp')
+    def test_find_objects_ones_1d(self, xp, scp):
+        data = xp.ones([5], dtype=cupy.int64)
+        return scp.ndimage.find_objects(data)
+
+    @pytest.mark.parametrize('expansion_factor', [1, 10, 100, 1000, 10000])
+    @testing.numpy_cupy_equal(scipy_name='scp')
+    def test_find_objects1d(self, xp, scp, expansion_factor):
+        data = xp.asarray([1, 0, 2, 2, 0, 3])
+        # using kronecker-product as a way to replacate elements with same
+        # general shape distribution but at different array sizes
+        data = xp.kron(
+            data, xp.ones((expansion_factor, ), dtype=data.dtype)
+        )
+        return scp.ndimage.find_objects(data)
+
+    @testing.for_int_dtypes(no_bool=True)
+    @pytest.mark.parametrize('expansion_factor', [1, 20, 400])
+    @testing.numpy_cupy_equal(scipy_name='scp')
+    def test_find_objects2d(self, xp, scp, dtype, expansion_factor):
+        data = xp.asarray([[1, 0, 0, 0, 0, 0],
+                           [0, 0, 2, 2, 0, 0],
+                           [0, 0, 2, 2, 2, 0],
+                           [3, 3, 0, 0, 0, 0],
+                           [3, 3, 0, 0, 0, 0],
+                           [0, 0, 0, 4, 4, 0]], dtype=dtype)
+        # using kronecker-product as a way to replacate elements with same
+        # general shape distribution but at different array sizes
+        data = xp.kron(
+            data, xp.ones((expansion_factor, ) * data.ndim, dtype=dtype)
+        )
+        return scp.ndimage.find_objects(data)
+
+    @pytest.mark.parametrize('max_label', [-1, 0, 1, 2, 3, 4, 100])
+    @testing.numpy_cupy_equal(scipy_name='scp')
+    def test_find_objects_max_label(self, xp, scp, max_label):
+        data = xp.asarray([[1, 0, 0, 0, 0, 0],
+                           [0, 0, 2, 2, 0, 0],
+                           [0, 0, 2, 2, 2, 0],
+                           [3, 3, 0, 0, 0, 0],
+                           [3, 3, 0, 0, 0, 0],
+                           [0, 0, 0, 4, 4, 0]])
+        return scp.ndimage.find_objects(data, max_label=max_label)
+
+    @testing.for_signed_dtypes()
+    @pytest.mark.parametrize('expansion_factor', [1, 20, 400])
+    @testing.numpy_cupy_equal(scipy_name='scp')
+    def test_find_objects_negative_values(self, xp, scp, dtype,
+                                          expansion_factor):
+        data = xp.asarray([[1, 0, 0, 0, 0, 0],
+                           [0, 0, -2, 2, 0, 0],
+                           [0, 0, -2, 2, 2, 0],
+                           [-3, -3, 0, 0, 0, 0],
+                           [-3, -3, 0, 0, 0, 0],
+                           [0, 0, 0, 4, 4, 0]], dtype=dtype)
+        # using kronecker-product as a way to replacate elements with same
+        # general shape distribution but at different array sizes
+        data = xp.kron(
+            data, xp.ones((expansion_factor, ) * data.ndim, dtype=dtype)
+        )
+        return scp.ndimage.find_objects(data)
+
+    @testing.for_dtypes([cupy.float16, cupy.float32, cupy.float64,
+                         cupy.complex64, cupy.complex128])
+    @testing.numpy_cupy_equal(scipy_name='scp')
+    def test_find_objects_invalid_types(self, xp, scp, dtype):
+        data = xp.asarray([[1, 0, 0, 0, 0, 0],
+                           [0, 0, 2, 2, 0, 0],
+                           [0, 0, 2, 2, 2, 0],
+                           [3, 3, 0, 0, 0, 0],
+                           [3, 3, 0, 0, 0, 0],
+                           [0, 0, 0, 4, 4, 0]], dtype=dtype)
+        # floating point types raise a TypeError
+        with pytest.raises(TypeError):
+            scp.ndimage.find_objects(data)
+
+    @testing.numpy_cupy_equal(scipy_name='scp')
+    @pytest.mark.parametrize('expansion_factor', [1, 25])
+    def test_find_objects_3d(self, xp, scp, expansion_factor):
+        dtype = xp.uint8
+        data = xp.asarray([[1, 0, 0, 0, 0, 0],
+                           [0, 0, 2, 2, 0, 0],
+                           [0, 0, 2, 2, 2, 0],
+                           [3, 3, 0, 0, 0, 0],
+                           [3, 3, 0, 0, 0, 0],
+                           [0, 0, 0, 4, 4, 0]], dtype=dtype)
+        data_3d = xp.tile(data[cupy.newaxis, :, :], (8, 1, 1))
+        data_3d[0, ...] = 0
+        data_3d[-1, 1:-1, 1:-1] = 5
+        # using kronecker-product as a way to replacate elements with same
+        # general shape distribution but at different array sizes
+        data_3d = xp.kron(
+            data, xp.ones((expansion_factor, ) * data_3d.ndim, dtype=dtype)
+        )
+        return scp.ndimage.find_objects(data_3d)
+
+    @pytest.mark.parametrize('expansion_factor', [1, 20, 400])
+    @testing.numpy_cupy_equal(scipy_name='scp')
+    def test_find_objects2d_missing_label(self, xp, scp, expansion_factor):
+        dtype = xp.uint8
+        data = xp.asarray([[1, 0, 0, 0, 0, 0],
+                           [0, 0, 2, 2, 0, 0],
+                           [0, 0, 2, 2, 2, 0],
+                           [0, 0, 0, 0, 0, 0],
+                           [0, 0, 0, 0, 0, 0],
+                           [0, 0, 0, 4, 4, 0]], dtype=dtype)
+        # using kronecker-product as a way to replacate elements with same
+        # general shape distribution but at different array sizes
+        data = xp.kron(
+            data, xp.ones((expansion_factor, ) * data.ndim, dtype=dtype)
+        )
+        return scp.ndimage.find_objects(data)
+
+    @pytest.mark.parametrize('expansion_factor', [1, 20, 400])
+    @testing.numpy_cupy_equal(scipy_name='scp')
+    @pytest.mark.parametrize("contiguous_type", ["C", "F", "strided"])
+    def test_find_objects_non_contiguous(self, xp, scp, expansion_factor,
+                                         contiguous_type):
+        dtype = xp.uint8
+        data = xp.asarray([[1, 0, 0, 0, 0, 0],
+                           [0, 0, 2, 2, 0, 0],
+                           [0, 0, 2, 2, 2, 0],
+                           [0, 0, 0, 0, 0, 0],
+                           [0, 0, 0, 0, 0, 0],
+                           [0, 0, 0, 4, 4, 0]], dtype=dtype)
+        # using kronecker-product as a way to replacate elements with same
+        # general shape distribution but at different array sizes
+        data = xp.kron(
+            data, xp.ones((expansion_factor, ) * data.ndim, dtype=dtype)
+        )
+        if contiguous_type == "F":
+            data = xp.asfortranarray(data)
+        if contiguous_type == "strided":
+            data = data[::2, ::2]
+        return scp.ndimage.find_objects(data)
