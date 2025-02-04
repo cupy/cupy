@@ -9,7 +9,7 @@ ACTIONS="$(dirname $0)/actions"
 
 export NVCC="ccache nvcc"
 
-export CUPY_ACCELERATORS="cutensor,cub"
+export CUPY_ACCELERATORS="cutensor"
 
 "$ACTIONS/build.sh"
 export OMPI_ALLOW_RUN_AS_ROOT=1
