@@ -60,6 +60,20 @@ from cupy.exceptions import ComplexWarning
 NUMPY_1x = numpy.__version__ < '2'
 
 
+cdef extern from *:
+    """
+    #define _str_(s) #s
+    #define _xstr_(s) _str_(s)
+    const char* cupy_cache_key = _xstr_(CUPY_CACHE_KEY);
+    #undef _xstr_
+    #undef _str_
+    """
+    const char* cupy_cache_key  # set at build time
+
+
+CUPY_CACHE_KEY = bytes(cupy_cache_key).decode()
+
+
 # If rop of cupy.ndarray is called, cupy's op is the last chance.
 # If op of cupy.ndarray is called and the `other` is cupy.ndarray, too,
 # it is safe to call cupy's op.

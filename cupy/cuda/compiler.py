@@ -155,6 +155,12 @@ def _get_nvrtc_version():
     return _nvrtc_version
 
 
+@_util.memoize()
+def _get_cupy_cache_key():
+    from cupy._core import core
+    return core.CUPY_CACHE_KEY
+
+
 # Known archs for Tegra/Jetson/Xavier/etc
 _tegra_archs = ('32', '53', '62', '72', '87')
 
@@ -580,7 +586,8 @@ def _compile_with_cache_cuda(
         base = _preprocess('', options, arch, backend)
         _empty_file_preprocess_cache[env] = base
 
-    key_src = '%s %s %s %s' % (env, base, source, extra_source)
+    key_src = '%s %s %s %s %s' % (
+        env, base, source, extra_source, _get_cupy_cache_key())
     key_src = key_src.encode('utf-8')
     name = _hash_hexdigest(key_src) + '.cubin'
 
