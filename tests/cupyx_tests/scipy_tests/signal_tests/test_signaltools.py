@@ -344,7 +344,7 @@ class TestOrderFilter:
     @testing.numpy_cupy_allclose(atol=1e-8, rtol=1e-8, scipy_name='scp',
                                  accept_error=ValueError)  # for even kernels
     def test_order_filter(self, xp, scp, dtype):
-        if dtype == xp.longlong and "1.15.0" <= scipy_version <= "1.15.1":
+        if dtype == xp.longlong and "1.15.0" <= scipy_version < "1.16.0":
             # https://github.com/scipy/scipy/issues/22368
             return xp.array([])  # Skip
         a = testing.shaped_random(self.a, xp, dtype)
@@ -379,7 +379,7 @@ class TestMedFilt:
         atol=1e-8, rtol=1e-8, scipy_name='scp',
         accept_error=ValueError)  # for even kernels
     def test_medfilt(self, xp, scp, dtype):
-        if dtype == xp.longlong and "1.15.0" <= scipy_version <= "1.15.1":
+        if dtype == xp.longlong and "1.15.0" <= scipy_version < "1.16.0":
             # https://github.com/scipy/scipy/issues/22368
             return xp.array([])  # Skip
         if sys.platform == 'win32':
