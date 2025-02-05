@@ -3249,7 +3249,7 @@ CuPy CI Test Coverage
      - 
    * - 
      - cutensor
-     - 2
+     - 🚨
      - 
      - 
      - 
@@ -3270,8 +3270,8 @@ CuPy CI Test Coverage
      - 
      - 
      - 
-     - ✅
-     - ✅
+     - 
+     - 
      - 
      - 
      - 
@@ -3329,7 +3329,7 @@ CuPy CI Test Coverage
      - 
    * - 
      - cutensor,cub
-     - 26
+     - 28
      - 
      - 
      - 
@@ -3350,8 +3350,8 @@ CuPy CI Test Coverage
      - ✅
      - ✅
      - ✅
-     - 
-     - 
+     - ✅
+     - ✅
      - ✅
      - ✅
      - ✅
