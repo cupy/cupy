@@ -66,7 +66,7 @@ cdef extern from *:
     const char* cupy_cache_key  # set at build time
 
 
-CUPY_CACHE_KEY = bytes(cupy_cache_key).decode()
+CUPY_CACHE_KEY = cupy_cache_key.decode()
 
 
 # If rop of cupy.ndarray is called, cupy's op is the last chance.
