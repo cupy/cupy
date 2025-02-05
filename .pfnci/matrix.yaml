@@ -322,7 +322,7 @@
   mpi4py: null
   cython: "0.29"
   cuda-python: null
-  env:CUPY_ACCELERATORS: "cutensor"
+  env:CUPY_ACCELERATORS: "cutensor,cub"
   test: "unit"
 
 # CUDA 12.3 (Multi-GPU) | Linux
@@ -332,7 +332,6 @@
   target: "cuda123.multi"
   mpi4py: "3"
   test: "unit-multi"
-  env:CUPY_ACCELERATORS: "cutensor"
 
 # CUDA 12.4 | Linux
 - project: "cupy.linux.cuda124"
