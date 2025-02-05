@@ -9,6 +9,12 @@ import pytest
 
 import cupy
 from cupy import testing
+from cupy.cuda import cufft, Device
+
+
+pytestmark = pytest.mark.skipif(
+    cufft.getVersion() == 11303 and Device().compute_capability == '120',
+    reason="cuFFT static callbacks in CUDA 12.8.0 do not support sm120")
 
 
 @contextlib.contextmanager
