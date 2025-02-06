@@ -4,9 +4,9 @@ from cupy_backends.cuda._softlink cimport SoftLink
 
 
 # Error handling
-ctypedef int (*F_cuGetErrorName)(Result error, const char** pStr) noexcept nogil
+ctypedef int (*F_cuGetErrorName)(Result error, const char** pStr) noexcept nogil  # NOQA
 cdef F_cuGetErrorName cuGetErrorName
-ctypedef int (*F_cuGetErrorString)(Result error, const char** pStr) noexcept nogil
+ctypedef int (*F_cuGetErrorString)(Result error, const char** pStr) noexcept nogil  # NOQA
 cdef F_cuGetErrorString cuGetErrorString
 
 # Primary context management

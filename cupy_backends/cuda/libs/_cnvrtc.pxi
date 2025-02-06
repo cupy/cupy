@@ -9,7 +9,7 @@ ctypedef void* nvrtcProgram
 # TODO(kmaehashi): Remove this alias.
 ctypedef nvrtcProgram Program
 
-ctypedef const char* (*F_nvrtcGetErrorString)(nvrtcResult result) noexcept nogil
+ctypedef const char* (*F_nvrtcGetErrorString)(nvrtcResult result) noexcept nogil  # NOQA
 cdef F_nvrtcGetErrorString nvrtcGetErrorString
 
 ctypedef nvrtcResult (*F_nvrtcVersion)(int *major, int *minor) noexcept nogil
@@ -20,7 +20,7 @@ ctypedef nvrtcResult (*F_nvrtcCreateProgram)(
     const char** headers, const char** includeNames) noexcept nogil
 cdef F_nvrtcCreateProgram nvrtcCreateProgram
 
-ctypedef nvrtcResult (*F_nvrtcDestroyProgram)(nvrtcProgram *prog) noexcept nogil
+ctypedef nvrtcResult (*F_nvrtcDestroyProgram)(nvrtcProgram *prog) noexcept nogil  # NOQA
 cdef F_nvrtcDestroyProgram nvrtcDestroyProgram
 
 ctypedef nvrtcResult (*F_nvrtcCompileProgram)(
@@ -30,13 +30,13 @@ cdef F_nvrtcCompileProgram nvrtcCompileProgram
 ctypedef nvrtcResult (*F_nvrtcGetPTXSize)(nvrtcProgram prog, size_t *ptxSizeRet) noexcept nogil  # NOQA
 cdef F_nvrtcGetPTXSize nvrtcGetPTXSize
 
-ctypedef nvrtcResult (*F_nvrtcGetPTX)(nvrtcProgram prog, char *ptx) noexcept nogil
+ctypedef nvrtcResult (*F_nvrtcGetPTX)(nvrtcProgram prog, char *ptx) noexcept nogil  # NOQA
 cdef F_nvrtcGetPTX nvrtcGetPTX
 
 ctypedef nvrtcResult (*F_nvrtcGetCUBINSize)(nvrtcProgram prog, size_t *cubinSizeRet) noexcept nogil  # NOQA
 cdef F_nvrtcGetCUBINSize nvrtcGetCUBINSize
 
-ctypedef nvrtcResult (*F_nvrtcGetCUBIN)(nvrtcProgram prog, char *cubin) noexcept nogil
+ctypedef nvrtcResult (*F_nvrtcGetCUBIN)(nvrtcProgram prog, char *cubin) noexcept nogil  # NOQA
 cdef F_nvrtcGetCUBIN nvrtcGetCUBIN
 
 ctypedef nvrtcResult (*F_nvrtcGetProgramLogSize)(nvrtcProgram prog, size_t* logSizeRet) noexcept nogil  # NOQA
@@ -51,16 +51,16 @@ cdef F_nvrtcAddNameExpression nvrtcAddNameExpression
 ctypedef nvrtcResult (*F_nvrtcGetLoweredName)(nvrtcProgram, const char*, const char**) noexcept nogil  # NOQA
 cdef F_nvrtcGetLoweredName nvrtcGetLoweredName
 
-ctypedef nvrtcResult (*F_nvrtcGetNumSupportedArchs)(int* numArchs) noexcept nogil
+ctypedef nvrtcResult (*F_nvrtcGetNumSupportedArchs)(int* numArchs) noexcept nogil  # NOQA
 cdef F_nvrtcGetNumSupportedArchs nvrtcGetNumSupportedArchs
 
-ctypedef nvrtcResult (*F_nvrtcGetSupportedArchs)(int* supportedArchs) noexcept nogil
+ctypedef nvrtcResult (*F_nvrtcGetSupportedArchs)(int* supportedArchs) noexcept nogil  # NOQA
 cdef F_nvrtcGetSupportedArchs nvrtcGetSupportedArchs
 
 ctypedef nvrtcResult (*F_nvrtcGetNVVMSize)(nvrtcProgram prog, size_t *nvvmSizeRet) noexcept nogil  # NOQA
 cdef F_nvrtcGetNVVMSize nvrtcGetNVVMSize
 
-ctypedef nvrtcResult (*F_nvrtcGetNVVM)(nvrtcProgram prog, char *nvvm) noexcept nogil
+ctypedef nvrtcResult (*F_nvrtcGetNVVM)(nvrtcProgram prog, char *nvvm) noexcept nogil  # NOQA
 cdef F_nvrtcGetNVVM nvrtcGetNVVM
 
 
