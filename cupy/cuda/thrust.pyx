@@ -33,11 +33,12 @@ cdef public char* cupy_malloc(void *m, size_t size) with gil:
     return <char *>mem.ptr
 
 
-cdef public void cupy_free(void *m, char* ptr) with gil:
+cdef public int cupy_free(void *m, char* ptr) except -1 with gil:
     if ptr == <char *>0:
-        return
+        return 0
     cdef _MemoryManager mm = <_MemoryManager>m
     del mm.memory[<size_t>ptr]
+    return 0
 
 
 ###############################################################################
