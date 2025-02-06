@@ -576,6 +576,35 @@ struct From<unsigned short> {
     }
 };
 
+template<>
+struct From<char> {
+    template<typename T>
+    static __device__ T cast_value(
+        char* x,
+        const int row_sz,
+        const int row,
+        const int pos
+    ) {
+        unsigned char x_u = reinterpret_cast<unsigned char*>(x)[row_sz * row + pos];
+        printf("%du - ", x_u);
+        return (T)(x_u);
+    }
+};
+
+template<>
+struct From<unsigned char> {
+    template<typename T>
+    static __device__ T cast_value(
+        unsigned char* x,
+        const int row_sz,
+        const int row,
+        const int pos
+    ) {
+        unsigned char x_u = x[row_sz * row + pos];
+        return (T)(x_u);
+    }
+};
+
 
 template<typename U, typename T>
 __global__ void map_crc(
@@ -584,7 +613,8 @@ __global__ void map_crc(
     const int n_rows,
     const int row_sz,
     const int blocks_per_row,
-    bool map_x
+    bool map_x,
+    bool debug
 ) {
     extern __shared__ __align__(sizeof(T)) unsigned long long block_crc_a[512];
     T* block_crc = reinterpret_cast<T*>(block_crc_a);
@@ -599,6 +629,9 @@ __global__ void map_crc(
             if(map_x) {
                 T from_u = From<U>::template cast_value<T>(x, row_sz, row, pos);
                 x_crc = ccrc<T>(from_u, 0);
+                if(debug && row == 99) {
+                    printf("%d: %d %llu %llu |", threadIdx.x, x[row_sz * row + pos], from_u, x_crc);
+                }
 
             } else {
                 x_crc = crc[row_sz * row + pos];
@@ -612,6 +645,9 @@ __global__ void map_crc(
                 if (threadIdx.x < stride) {
                     T this_crc = block_crc[threadIdx.x];
                     T other_crc = block_crc[threadIdx.x + stride];
+                    /**if(row == 99) {
+                        printf("%llu (%d) <-> %llu (%d) | ", this_crc, threadIdx.x, other_crc, threadIdx.x + stride);
+                    }**/
                     block_crc[threadIdx.x] = ccrc_both(this_crc, other_crc);
                 }
                 __syncthreads();
@@ -712,10 +748,18 @@ def unique(ar, return_index=False, return_inverse=False,
         in_type = _get_typename(ar.dtype)
         crc_type = _type_map[in_type]
 
+        debug = cupy.dtype(ar2.dtype) is cupy.dtype(cupy.int8)
+        if debug:
+            breakpoint()
+
         crc_comp = _unique_nd_module.get_function(
             f'map_crc<{in_type}, {crc_type}>')
         crc_comp((n_blocks,), (block_sz,), (
-            ar2, crc, n_rows, row_sz, blocks_per_row, True))
+            ar2, crc, int(n_rows), int(row_sz), int(blocks_per_row), True,
+            debug))
+
+        if debug:
+            print(crc)
 
         if blocks_per_row > 1:
             while blocks_per_row > 1:
@@ -734,12 +778,14 @@ def unique(ar, return_index=False, return_inverse=False,
     ret = _unique_1d(ar, return_index=return_index,
                      return_inverse=return_inverse,
                      return_counts=return_counts,
-                     equal_nan=equal_nan)
+                     equal_nan=equal_nan, inverse_shape=ar.shape)
 
     if axis is not None:
         _, index, *rest = ret
-
         unique_values = ar2[index]
+        if cupy.dtype(ar2.dtype) is cupy.dtype(cupy.int8):
+            # breakpoint()
+            print(ar)
         unique_idx = _ndarray_argsort2d(unique_values, 0)
         unique_values = unique_values[unique_idx]
 
@@ -753,7 +799,7 @@ def unique(ar, return_index=False, return_inverse=False,
 
         if return_inverse:
             inv_idx, *rest = rest
-            ret += (unique_idx[inv_idx],)
+            ret += (cupy.argsort(unique_idx)[inv_idx],)
 
         if return_counts:
             counts, *_ = rest
