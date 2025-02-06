@@ -1032,3 +1032,24 @@ configs {
     command: ".pfnci\\windows\\run.bat 12.6 3.12 2.1 1.14 test"
   }
 }
+
+configs {
+  key: "cupy.win.cuda128"
+  value {
+    requirement {
+      cpu: 8
+      memory: 24
+      disk: 10
+      gpu: 2
+      image: "windows"
+    }
+    time_limit {
+      seconds: 72000
+    }
+    checkout_strategy {
+      include_dot_git: true
+    }
+    environment_variables { key: "GPU" value: "2" }
+    command: ".pfnci\\windows\\run.bat 12.8 3.12 2.1 1.14 test"
+  }
+}
