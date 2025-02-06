@@ -37,8 +37,8 @@ namespace cuda {
 #endif // #if CUPY_USE_HIP
 
 
-extern "C++" char *cupy_malloc(void *, size_t);
-extern "C++" void cupy_free(void *, char *);
+extern "C" char *cupy_malloc(void *, size_t);
+extern "C" void cupy_free(void *, char *);
 
 
 class cupy_allocator {
