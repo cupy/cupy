@@ -92,7 +92,7 @@ class TestEntropyBasic(unittest.TestCase):
         'normalize': [False, True],
     })
 ))
-@testing.with_requires("scipy<1.14.0")
+@testing.with_requires("scipy<1.15.0")
 class TestEntropy(unittest.TestCase):
 
     def _entropy(self, xp, scp, dtype, shape, use_qk, base, axis, normalize):
