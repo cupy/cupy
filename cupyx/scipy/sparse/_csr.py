@@ -127,7 +127,7 @@ class csr_matrix(_compressed._compressed_sparse_matrix):
             out = cupy.logical_not(res.toarray())
             return csr_matrix(out)
         raise NotImplementedError
-
+            
     def __eq__(self, other):
         return self._comparison(other, operator.eq, '_eq_')
 
