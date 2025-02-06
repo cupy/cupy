@@ -176,8 +176,12 @@ nccl:
       "12.2":  # Note: DEB package unavailable on Ubuntu 20.04
       "12.4":
       "12.5":
-      "12.6":  # tentative
-      "12.8":  # tentative
+      "12.6":
+  "2.25":
+    spec: "2.25.*"
+    cuda:
+      "12.4":
+      "12.8":
 cutensor:
   # https://docs.nvidia.com/cuda/cutensor/
   # https://developer.nvidia.com/cutensor/downloads
