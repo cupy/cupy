@@ -220,6 +220,39 @@ class SharedMemory(BuiltinFunc):
         return Data(name, _cuda_types.Ptr(ctype))
 
 
+class LocalMemory(BuiltinFunc):
+
+    def __call__(self, dtype, size, alignment=None):
+        """Allocates local memory and returns it as a 1-D array.
+
+        Args:
+            dtype (dtype):
+                The dtype of the returned array.
+            size (int or tuple):
+                If ``int`` type, the size of static local memory.
+                If ``tuple`` type, the size of an n-dim static local memory.
+                Does not use __extern__ keyword like shared memory does
+            alignment (int or None): Enforce the alignment via __align__(N).
+        """
+        super().__call__()
+
+    def call_const(self, env, dtype, size, alignment=None):
+        name = env.get_fresh_variable_name(prefix='_lmem')
+        ctype = _cuda_typerules.to_ctype(dtype)
+        if (type(size) is int):
+            size = (size,)
+        if not (isinstance(size, tuple)):
+            raise 'size of local_memory must be int, or a tuple of ints'
+        var = Data(name, _cuda_types.LocalMem(ctype, size, alignment))
+        env.decls[name] = var
+        env.locals[name] = var
+        return_ctype = ctype
+        for i in range(len(size)):
+            return_ctype = _cuda_types.ContiguousArray(
+                return_ctype, size[len(size)-(i+1):])
+        return Data(name, return_ctype)
+
+
 class AtomicOp(BuiltinFunc):
 
     def __init__(self, op, dtypes):
@@ -448,6 +481,7 @@ range_ = RangeFunc()
 syncthreads = SyncThreads()
 syncwarp = SyncWarp()
 shared_memory = SharedMemory()
+local_memory = LocalMemory()
 grid = GridFunc('grid')
 gridsize = GridFunc('gridsize')
 laneid = LaneID()
