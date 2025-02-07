@@ -6,7 +6,6 @@ from cupy.cuda cimport graph
 
 from cupy import _util
 
-
 cdef object _thread_local = threading.local()
 
 
@@ -205,6 +204,10 @@ class _BaseStream:
         self.ptr = ptr
         self.device_id = device_id
 
+        # Takes the reference to capturing graph when starting capture to an
+        # existing graph.
+        self._capturing_graph = None
+
     def __eq__(self, other):
         # This operator needed as the ptr may be shared between multiple Stream
         # instances (e.g, `Stream.null` singleton and `Stream(null=True)` or
@@ -326,7 +329,7 @@ class _BaseStream:
         """
         runtime.streamWaitEvent(self.ptr, event.ptr)
 
-    def begin_capture(self, mode=None):
+    def begin_capture(self, mode=None, to_graph=None):
         """Begin stream capture to construct a CUDA graph.
 
         A call to this function must be paired with a call to
@@ -382,7 +385,26 @@ class _BaseStream:
             # (Though, ideally stream capture should be used together with
             # the async APIs, such as cudaMallocAsync.)
             mode = runtime.streamCaptureModeRelaxed
-        runtime.streamBeginCapture(self.ptr, mode)
+
+        if to_graph is None:
+            runtime.streamBeginCapture(self.ptr, mode)
+        else:
+            IF (0 < CUPY_CUDA_VERSION < 12030) or (0 < CUPY_HIP_VERSION):
+                raise RuntimeError(
+                    'Starting capture to an existing graph requires '
+                    'CUDA 12.3 or later'
+                )
+
+            # Assuming to_graph is an empty graph
+            runtime.streamBeginCaptureToGraph(
+                self.ptr,
+                to_graph.graph,
+                0,  # dependencies_ptr
+                0,  # dependency_data_ptr
+                0,  # num_deps
+                mode
+            )
+            self._capturing_graph = to_graph
 
     def end_capture(self):
         """End stream capture and retrieve the constructed CUDA graph.
@@ -401,8 +423,17 @@ class _BaseStream:
         """
         if runtime._is_hip_environment:
             raise RuntimeError('This function is not supported on HIP')
-        cdef intptr_t g = runtime.streamEndCapture(self.ptr)
-        return graph.Graph.from_stream(g)
+
+        cdef intptr_t g
+        try:
+            g = runtime.streamEndCapture(self.ptr)
+        finally:
+            capturing_graph = self._capturing_graph
+            self._capturing_graph = None
+        if capturing_graph is not None:
+            return capturing_graph
+        else:
+            return graph.Graph.from_stream(g, owned=True)
 
     def is_capturing(self):
         """Check if the stream is capturing.
