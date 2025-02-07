@@ -60,7 +60,7 @@ def _compute(xp, scp, lmb, data):
     return result, _dtype(data.dtype, xp)
 
 
-@testing.with_requires('scipy<1.12.0rc1')
+@testing.with_requires('scipy<1.15')
 class TestBoxcox_llf:
 
     @testing.for_all_dtypes(no_bool=True)
