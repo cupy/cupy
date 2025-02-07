@@ -57,7 +57,7 @@ class TestIncludesCompileCUDA:
 
     def _get_options(self):
         return (
-            '-std=c++14',
+            '-std=c++17',
             *cupy._core.core._get_cccl_include_options(),
             '-I{}'.format(cupy._core.core._get_header_dir_path()),
             '-I{}'.format(os.path.join(cupy.cuda.get_cuda_path(), 'include')),
