@@ -190,7 +190,7 @@ def _quantile_unchecked(a, q, axis=None, out=None,
         zerod = False
     if q.ndim > 1:
         raise ValueError('Expected q to have a dimension of 1.\n'
-                         'Actual: {0} != 1'.format(q.ndim))
+                         'Actual: {} != 1'.format(q.ndim))
     if isinstance(axis, int):
         axis = axis,
     if keepdims:
@@ -242,7 +242,7 @@ def _quantile_unchecked(a, q, axis=None, out=None,
         pass
     else:
         raise ValueError('Unexpected interpolation method.\n'
-                         'Actual: \'{0}\' not in (\'linear\', \'lower\', '
+                         'Actual: \'{}\' not in (\'linear\', \'lower\', '
                          '\'higher\', \'midpoint\')'.format(method))
 
     if indices.dtype == cupy.int32:
