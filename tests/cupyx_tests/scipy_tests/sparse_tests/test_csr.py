@@ -19,10 +19,6 @@ from cupy import testing
 import cupyx.cusparse
 from cupyx.scipy import sparse
 
-scipy_113_or_later = False
-if scipy_available:
-    scipy_113_or_later = scipy.__version__ >= "1.13"
-
 
 def _make(xp, sp, dtype):
     data = xp.array([0, 1, 2, 3], dtype)
@@ -251,11 +247,11 @@ class TestCsrMatrix:
         cupy.testing.assert_array_equal(n.indptr, self.m.indptr)
         assert n.shape == self.m.shape
 
-    @testing.with_requires('scipy')
+    @testing.with_requires('scipy>=1.15')
     def test_init_dense_invalid_ndim(self):
         for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
             m = xp.zeros((1, 1, 1), dtype=self.dtype)
-            with pytest.raises(TypeError):
+            with pytest.raises(ValueError):
                 sp.csr_matrix(m)
 
     def test_copy(self):
@@ -2155,12 +2151,8 @@ class TestCsrMatrixDiagonal:
         cupyx_a = cupyx_a.copy()
         scipy_a.setdiag(x, k=k)
         cupyx_a.setdiag(cupy.array(x), k=k)
-        testing.assert_allclose(scipy_a.data, cupyx_a.data)
-        testing.assert_array_equal(scipy_a.indices, cupyx_a.indices)
-        testing.assert_array_equal(scipy_a.indptr, cupyx_a.indptr)
+        testing.assert_allclose(scipy_a.todense(), cupyx_a.todense())
 
-    @pytest.mark.xfail(scipy_113_or_later,
-                       reason="XXX: np2.0: weak promotion")
     @testing.for_dtypes('fdFD')
     def test_setdiag(self, dtype):
         scipy_a, cupyx_a = self._make_matrix(dtype)
@@ -2174,8 +2166,6 @@ class TestCsrMatrixDiagonal:
                 x = numpy.ones((x_len,), dtype=dtype)
                 self._test_setdiag(scipy_a, cupyx_a, x, k)
 
-    @pytest.mark.xfail(scipy_113_or_later,
-                       reason="XXX: np2.0: weak promotion")
     @testing.for_dtypes('fdFD')
     def test_setdiag_scalar(self, dtype):
         scipy_a, cupyx_a = self._make_matrix(dtype)

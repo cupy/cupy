@@ -144,6 +144,7 @@ _cuda_files = [
     'cupy.fft._callback',
     'cupy.lib._polynomial',
     'cupy._util',
+    'cupyx.scipy.ndimage._bbox_slices',
 ]
 
 # Libraries required for cudart_static
@@ -441,7 +442,7 @@ def get_features(ctx: Context) -> Dict[str, Feature]:
 
 
 class CUDA_cuda(Feature):
-    minimum_cuda_version = 10020
+    minimum_cuda_version = 11020
 
     def __init__(self, ctx: Context):
         super().__init__(ctx)
@@ -486,6 +487,6 @@ class CUDA_cuda(Feature):
         if self._version < self.minimum_cuda_version:
             utils.print_warning(
                 'CUDA version is too old: %d' % self._version,
-                'CUDA 10.2 or newer is required')
+                'CUDA 11.2 or newer is required')
             return False
         return True
