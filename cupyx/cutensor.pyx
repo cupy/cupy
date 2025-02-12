@@ -751,7 +751,7 @@ cdef _get_scalar_dtype(out_dtype):
 
 def contraction(
         alpha, _ndarray_base A, mode_A, _ndarray_base B, mode_B,
-        beta, _ndarray_base C, mode_C,
+        beta, _ndarray_base C, mode_C, D=None,
         int op_A=cutensor.OP_IDENTITY, int op_B=cutensor.OP_IDENTITY,
         int op_C=cutensor.OP_IDENTITY, int algo=cutensor.ALGO_DEFAULT,
         int jit_mode=cutensor.JIT_MODE_NONE, int compute_desc=0,
@@ -760,7 +760,7 @@ def contraction(
 
     This routine computes the tensor contraction:
 
-        C = alpha * op_A(A) * op_B(B) + beta * op_C(C)
+        D = alpha * op_A(A) * op_B(B) + beta * op_C(C)
 
     Args:
         alpha (scalar): Scaling factor for A * B.
@@ -771,6 +771,7 @@ def contraction(
         beta (scalar): Scaling factor for C.
         C (cupy.ndarray): Input/output tensor.
         mode_C (tuple of int/str or Mode): A mode for tensor C.
+        D (cupy.ndarray or None): output tensor. None means D == C.
         algo (cutensorAlgo_t): Allows users to select a specific algorithm.
             ALGO_DEFAULT lets the heuristic choose the algorithm.
             Any value >= 0 selects a specific GEMM-like algorithm and
@@ -788,6 +789,8 @@ def contraction(
     Examples:
         See examples/cutensor/contraction.py
     """
+    if D is None:
+        D = C
     desc_A = create_tensor_descriptor(A)
     desc_B = create_tensor_descriptor(B)
     desc_C = create_tensor_descriptor(C)
@@ -804,13 +807,12 @@ def contraction(
     ws = core._ndarray_init(
         _cupy.ndarray, shape_t(1, ws_size), dtype=_numpy.int8, obj=None)
     scalar_dtype = _get_scalar_dtype(C.dtype)
-    out = C
     cutensor.contract(
         _get_handle().ptr, plan.ptr,
         _create_scalar(alpha, scalar_dtype).ptr, A.data.ptr, B.data.ptr,
-        _create_scalar(beta, scalar_dtype).ptr, C.data.ptr, out.data.ptr,
+        _create_scalar(beta, scalar_dtype).ptr, C.data.ptr, D.data.ptr,
         ws.data.ptr, ws_size)
-    return out
+    return D
 
 
 cdef dict _reduction_compute_descs = {
@@ -829,7 +831,7 @@ cpdef OperationDescriptor create_reduction(
         int op_reduce, int compute_desc=0):
     """Create a operation descriprot for reduce operation:
 
-        C = alpha * reduce_op(op_A(A)) + beta * op_C(C))
+        C = alpha * reduce_op(op_A(A) + beta * op_C(C))
 
     Args:
         desc_A (TensorDescriptor):
@@ -1606,7 +1608,6 @@ cpdef MgContractionDescriptor create_mg_contraction_descriptor(
         MgTensorDescriptor descA, Mode modeA,
         MgTensorDescriptor descB, Mode modeB,
         MgTensorDescriptor descC, Mode modeC,
-        MgTensorDescriptor descD, Mode modeD,
         int compute_desc=0, devices=None):
     """Create a multi-GPU contraction descriptor.
 
@@ -1617,8 +1618,6 @@ cpdef MgContractionDescriptor create_mg_contraction_descriptor(
         ModeB (Mode):
         descC (MgTensorDescriptor):
         ModeC (Mode):
-        descD (MgTensorDescriptor):
-        ModeD (Mode):
         compute_desc (cutensorComputeDescriptor_t): Datatype used in
             contraction. Default value is `0`, means determined by dtype
             of tensors. Other choices are:
@@ -1651,7 +1650,6 @@ cpdef MgContractionDescriptor create_mg_contraction_descriptor(
            descA.ptr, modeA.data,
            descB.ptr, modeB.data,
            descC.ptr, modeC.data,
-           descD.ptr, modeD.data,
            compute_desc)
     if key not in _mg_contraction_descriptors:
         _mg_contraction_descriptors[key]=MgContractionDescriptor(
@@ -1659,7 +1657,7 @@ cpdef MgContractionDescriptor create_mg_contraction_descriptor(
             descA.ptr, modeA.data,
             descB.ptr, modeB.data,
             descC.ptr, modeC.data,
-            descD.ptr, modeD.data, compute_desc)
+            descC.ptr, modeC.data, compute_desc)
     return _mg_contraction_descriptors[key]
 
 cpdef MgContractionFind create_mg_contraction_find(
@@ -1707,7 +1705,7 @@ cpdef MgContractionPlan create_mg_contraction_plan(
 
 
 def contractionMg(alpha, A, modeA, B, modeB, beta, C, modeC,
-                  D=None, modeD=None, int compute_desc=0,
+                  D=None, int compute_desc=0,
                   int ws_pref=cutensor.WORKSPACE_RECOMMENDED,
                   deviceBuf=None, hostBuf=None, streams=None,
                   devices=None):
@@ -1724,8 +1722,6 @@ def contractionMg(alpha, A, modeA, B, modeB, beta, C, modeC,
         modeC (tuple of int/str or Mode): A mode for tensor C.
         D (numpy.ndarray or cupy.ndarray or ndarray_mg or None): Output
             tensor. Default value `None` means using C for output.
-        modeD (tuple of int/str or Mode or None): A mode for tensor D.
-            Default value `None` means the same as modeC.
         compute_desc (cutensorComputeDescriptor_t): Datatype used in
             contraction. Default value is `0`, means determined by dtype
             of tensors. Other choices are:
@@ -1761,15 +1757,10 @@ def contractionMg(alpha, A, modeA, B, modeB, beta, C, modeC,
     modeC = create_mode(*modeC)
     if D is None:
         D = C
-        descD = descC
-        modeD = modeC
     else:
         D = to_mg_ndarray(D)
-        descD = create_mg_tensor_descriptor(D, devices)
-        modeD = create_mode(*modeD)
     desc = create_mg_contraction_descriptor(
-        descA, modeA, descB, modeB, descC, modeC, descD, modeD,
-        compute_desc, devices)
+        descA, modeA, descB, modeB, descC, modeC, compute_desc, devices)
     find = create_mg_contraction_find(devices=devices)
     num_devices = handle.num_devices
     deviceBufSize = _numpy.zeros((num_devices,), dtype=_numpy.int64)
@@ -1834,8 +1825,6 @@ def contractionMgWorkspace(
         modeC (tuple of int/str or Mode): A mode for tensor C.
         D (numpy.ndarray or cupy.ndarray or ndarray_mg or None): Output
             tensor. Default value `None` means using C for output.
-        modeD (tuple of int/str or Mode or None): A mode for tensor D.
-            Default value `None` means the same as modeC.
         compute_desc (cutensorComputeDescriptor_t): Datatype used in
             contraction. Default value is `0`, means determined by dtype
             of tensors. Other choices are:
@@ -1866,15 +1855,10 @@ def contractionMgWorkspace(
     modeC = create_mode(*modeC)
     if D is None:
         D = C
-        descD = descC
-        modeD = modeC
     else:
         D = to_mg_ndarray(D)
-        descD = create_mg_tensor_descriptor(D, devices)
-        modeD = create_mode(*modeD)
     desc = create_mg_contraction_descriptor(
-        descA, modeA, descB, modeB, descC, modeC, descD, modeD,
-        compute_desc, devices)
+        descA, modeA, descB, modeB, descC, modeC, compute_desc, devices)
     find = create_mg_contraction_find(devices=devices)
     num_devices = handle.num_devices
     deviceBufSize = _numpy.zeros((num_devices,), dtype=_numpy.int64)
