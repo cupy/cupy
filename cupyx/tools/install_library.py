@@ -71,12 +71,6 @@ def _make_cudnn_record(cuda_version):
 # Latest cuDNN versions: https://developer.nvidia.com/rdp/cudnn-download
 _cudnn_records.append(_make_cudnn_record('12.x'))
 _cudnn_records.append(_make_cudnn_record('11.x'))  # CUDA 11.2+
-_cudnn_records.append(_make_cudnn_record('11.1'))
-_cudnn_records.append(_make_cudnn_record('11.0'))
-_cudnn_records.append(__make_cudnn_record(
-    '10.2', '8.7.0',
-    'cudnn-linux-x86_64-8.7.0.84_cuda10-archive.tar.xz',
-    'cudnn-windows-x86_64-8.7.0.84_cuda10-archive.zip'))
 library_records['cudnn'] = _cudnn_records
 
 
@@ -110,9 +104,9 @@ def __make_cutensor_record(
 
 def _make_cutensor_record(cuda_version):
     return __make_cutensor_record(
-        cuda_version, '2.0.1',
-        'libcutensor-linux-x86_64-2.0.1.2-archive.tar.xz',
-        'libcutensor-windows-x86_64-2.0.1.2-archive.zip')
+        cuda_version, '2.1.0',
+        'libcutensor-linux-x86_64-2.1.0.9-archive.tar.xz',
+        'libcutensor-windows-x86_64-2.1.0.9-archive.zip')
 
 
 _cutensor_records.append(_make_cutensor_record('12.x'))
@@ -143,20 +137,11 @@ def _make_nccl_record(
 
 # https://docs.nvidia.com/deeplearning/nccl/release-notes/overview.html
 _nccl_records.append(_make_nccl_record(
-    '12.x', '2.16.2', '2.16.2',
-    'nccl_2.16.2-1+cuda12.0_x86_64.txz'))
+    '12.x', '2.25.1', '2.25.1',
+    'nccl_2.25.1-1+cuda12.8_x86_64.txz'))
 _nccl_records.append(_make_nccl_record(
-    '11.x', '2.16.2', '2.16.2',  # CUDA 11.2+
-    'nccl_2.16.2-1+cuda11.8_x86_64.txz'))
-_nccl_records.append(_make_nccl_record(
-    '11.1', '2.8.4', '2.8',
-    'nccl_2.8.4-1+cuda11.1_x86_64.txz'))
-_nccl_records.append(_make_nccl_record(
-    '11.0', '2.16.2', '2.16.2',
-    'nccl_2.16.2-1+cuda11.0_x86_64.txz'))
-_nccl_records.append(_make_nccl_record(
-    '10.2', '2.15.5', '2.15.5',
-    'nccl_2.15.5-1+cuda10.2_x86_64.txz'))
+    '11.x', '2.16.5', '2.16.5',  # CUDA 11.2+
+    'nccl_2.16.5-1+cuda11.8_x86_64.txz'))
 library_records['nccl'] = _nccl_records
 
 
