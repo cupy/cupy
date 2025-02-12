@@ -514,6 +514,7 @@ cdef class MemoryPointer:
                 'the current stream is capturing, so synchronous API calls '
                 'are disallowed')
         if size > 0:
+            # This function assumes that the current device is the src device.
             device._enable_peer_access(src.device_id, self.device_id)
             runtime.memcpy(self.ptr, src.ptr, size,
                            runtime.memcpyDefault)
@@ -534,6 +535,7 @@ cdef class MemoryPointer:
         else:
             stream_ptr = stream.ptr
         if size > 0:
+            # This function assumes that the current device is the src device.
             device._enable_peer_access(src.device_id, self.device_id)
             runtime.memcpyAsync(self.ptr, src.ptr, size,
                                 runtime.memcpyDefault, stream_ptr)
