@@ -193,6 +193,7 @@ cdef inline void _mod_compile(str tempdir, str mod_name, str obj_host) except*:
 # other SMs always use sm_X0's symbols only and do not have their own
 # specializations.
 cdef dict _cc_major_map = {
+    '10': ('100',),
     '9': ('90',),
     '8': ('80', '86', '87'),
     '7': ('70', '72', '75'),
@@ -214,7 +215,7 @@ cdef inline str _prune(str temp_dir, str cache_dir, str _cufft_ver, str arch):
                                         'lib' + cufft_lib_pruned + '.a')
         if not os.path.isfile(cufft_lib_cached):
             comm = [_nvprune]
-            for cc in _cc_major_map[arch[0]]:
+            for cc in _cc_major_map[arch[:-1]]:
                 comm.append(f'--generate-code=arch=compute_{cc},code=sm_{cc}')
             comm += [cufft_lib_full, '-o', cufft_lib_temp]
             p = subprocess.run(comm,
