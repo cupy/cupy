@@ -2755,7 +2755,7 @@ CuPy CI Test Coverage
      - 
      - 
    * - cython
-     - 0.29
+     - 3
      - 38
      - ✅
      - ✅
