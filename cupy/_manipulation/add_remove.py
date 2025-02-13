@@ -411,68 +411,6 @@ static const __device__ unsigned int crc32_tab[256] = {
 	0xBE2DA0A5L, 0x4C4623A6L, 0x5F16D052L, 0xAD7D5351L
 };
 
-static const unsigned short crc16_tab[256] =
-{
-    0x0000, 0x1189, 0x2312, 0x329B, 0x4624, 0x57AD, 0x6536, 0x74BF,
-    0x8C48, 0x9DC1, 0xAF5A, 0xBED3, 0xCA6C, 0xDBE5, 0xE97E, 0xF8F7,
-    0x1081, 0x0108, 0x3393, 0x221A, 0x56A5, 0x472C, 0x75B7, 0x643E,
-    0x9CC9, 0x8D40, 0xBFDB, 0xAE52, 0xDAED, 0xCB64, 0xF9FF, 0xE876,
-    0x2102, 0x308B, 0x0210, 0x1399, 0x6726, 0x76AF, 0x4434, 0x55BD,
-    0xAD4A, 0xBCC3, 0x8E58, 0x9FD1, 0xEB6E, 0xFAE7, 0xC87C, 0xD9F5,
-    0x3183, 0x200A, 0x1291, 0x0318, 0x77A7, 0x662E, 0x54B5, 0x453C,
-    0xBDCB, 0xAC42, 0x9ED9, 0x8F50, 0xFBEF, 0xEA66, 0xD8FD, 0xC974,
-    0x4204, 0x538D, 0x6116, 0x709F, 0x0420, 0x15A9, 0x2732, 0x36BB,
-    0xCE4C, 0xDFC5, 0xED5E, 0xFCD7, 0x8868, 0x99E1, 0xAB7A, 0xBAF3,
-    0x5285, 0x430C, 0x7197, 0x601E, 0x14A1, 0x0528, 0x37B3, 0x263A,
-    0xDECD, 0xCF44, 0xFDDF, 0xEC56, 0x98E9, 0x8960, 0xBBFB, 0xAA72,
-    0x6306, 0x728F, 0x4014, 0x519D, 0x2522, 0x34AB, 0x0630, 0x17B9,
-    0xEF4E, 0xFEC7, 0xCC5C, 0xDDD5, 0xA96A, 0xB8E3, 0x8A78, 0x9BF1,
-    0x7387, 0x620E, 0x5095, 0x411C, 0x35A3, 0x242A, 0x16B1, 0x0738,
-    0xFFCF, 0xEE46, 0xDCDD, 0xCD54, 0xB9EB, 0xA862, 0x9AF9, 0x8B70,
-    0x8408, 0x9581, 0xA71A, 0xB693, 0xC22C, 0xD3A5, 0xE13E, 0xF0B7,
-    0x0840, 0x19C9, 0x2B52, 0x3ADB, 0x4E64, 0x5FED, 0x6D76, 0x7CFF,
-    0x9489, 0x8500, 0xB79B, 0xA612, 0xD2AD, 0xC324, 0xF1BF, 0xE036,
-    0x18C1, 0x0948, 0x3BD3, 0x2A5A, 0x5EE5, 0x4F6C, 0x7DF7, 0x6C7E,
-    0xA50A, 0xB483, 0x8618, 0x9791, 0xE32E, 0xF2A7, 0xC03C, 0xD1B5,
-    0x2942, 0x38CB, 0x0A50, 0x1BD9, 0x6F66, 0x7EEF, 0x4C74, 0x5DFD,
-    0xB58B, 0xA402, 0x9699, 0x8710, 0xF3AF, 0xE226, 0xD0BD, 0xC134,
-    0x39C3, 0x284A, 0x1AD1, 0x0B58, 0x7FE7, 0x6E6E, 0x5CF5, 0x4D7C,
-    0xC60C, 0xD785, 0xE51E, 0xF497, 0x8028, 0x91A1, 0xA33A, 0xB2B3,
-    0x4A44, 0x5BCD, 0x6956, 0x78DF, 0x0C60, 0x1DE9, 0x2F72, 0x3EFB,
-    0xD68D, 0xC704, 0xF59F, 0xE416, 0x90A9, 0x8120, 0xB3BB, 0xA232,
-    0x5AC5, 0x4B4C, 0x79D7, 0x685E, 0x1CE1, 0x0D68, 0x3FF3, 0x2E7A,
-    0xE70E, 0xF687, 0xC41C, 0xD595, 0xA12A, 0xB0A3, 0x8238, 0x93B1,
-    0x6B46, 0x7ACF, 0x4854, 0x59DD, 0x2D62, 0x3CEB, 0x0E70, 0x1FF9,
-    0xF78F, 0xE606, 0xD49D, 0xC514, 0xB1AB, 0xA022, 0x92B9, 0x8330,
-    0x7BC7, 0x6A4E, 0x58D5, 0x495C, 0x3DE3, 0x2C6A, 0x1EF1, 0x0F78
-};
-
-static const unsigned char crc8_tab[] = {
-    0x00, 0x07, 0x0e, 0x09, 0x1c, 0x1b, 0x12, 0x15, 0x38, 0x3f, 0x36, 0x31,
-    0x24, 0x23, 0x2a, 0x2d, 0x70, 0x77, 0x7e, 0x79, 0x6c, 0x6b, 0x62, 0x65,
-    0x48, 0x4f, 0x46, 0x41, 0x54, 0x53, 0x5a, 0x5d, 0xe0, 0xe7, 0xee, 0xe9,
-    0xfc, 0xfb, 0xf2, 0xf5, 0xd8, 0xdf, 0xd6, 0xd1, 0xc4, 0xc3, 0xca, 0xcd,
-    0x90, 0x97, 0x9e, 0x99, 0x8c, 0x8b, 0x82, 0x85, 0xa8, 0xaf, 0xa6, 0xa1,
-    0xb4, 0xb3, 0xba, 0xbd, 0xc7, 0xc0, 0xc9, 0xce, 0xdb, 0xdc, 0xd5, 0xd2,
-    0xff, 0xf8, 0xf1, 0xf6, 0xe3, 0xe4, 0xed, 0xea, 0xb7, 0xb0, 0xb9, 0xbe,
-    0xab, 0xac, 0xa5, 0xa2, 0x8f, 0x88, 0x81, 0x86, 0x93, 0x94, 0x9d, 0x9a,
-    0x27, 0x20, 0x29, 0x2e, 0x3b, 0x3c, 0x35, 0x32, 0x1f, 0x18, 0x11, 0x16,
-    0x03, 0x04, 0x0d, 0x0a, 0x57, 0x50, 0x59, 0x5e, 0x4b, 0x4c, 0x45, 0x42,
-    0x6f, 0x68, 0x61, 0x66, 0x73, 0x74, 0x7d, 0x7a, 0x89, 0x8e, 0x87, 0x80,
-    0x95, 0x92, 0x9b, 0x9c, 0xb1, 0xb6, 0xbf, 0xb8, 0xad, 0xaa, 0xa3, 0xa4,
-    0xf9, 0xfe, 0xf7, 0xf0, 0xe5, 0xe2, 0xeb, 0xec, 0xc1, 0xc6, 0xcf, 0xc8,
-    0xdd, 0xda, 0xd3, 0xd4, 0x69, 0x6e, 0x67, 0x60, 0x75, 0x72, 0x7b, 0x7c,
-    0x51, 0x56, 0x5f, 0x58, 0x4d, 0x4a, 0x43, 0x44, 0x19, 0x1e, 0x17, 0x10,
-    0x05, 0x02, 0x0b, 0x0c, 0x21, 0x26, 0x2f, 0x28, 0x3d, 0x3a, 0x33, 0x34,
-    0x4e, 0x49, 0x40, 0x47, 0x52, 0x55, 0x5c, 0x5b, 0x76, 0x71, 0x78, 0x7f,
-    0x6a, 0x6d, 0x64, 0x63, 0x3e, 0x39, 0x30, 0x37, 0x22, 0x25, 0x2c, 0x2b,
-    0x06, 0x01, 0x08, 0x0f, 0x1a, 0x1d, 0x14, 0x13, 0xae, 0xa9, 0xa0, 0xa7,
-    0xb2, 0xb5, 0xbc, 0xbb, 0x96, 0x91, 0x98, 0x9f, 0x8a, 0x8d, 0x84, 0x83,
-    0xde, 0xd9, 0xd0, 0xd7, 0xc2, 0xc5, 0xcc, 0xcb, 0xe6, 0xe1, 0xe8, 0xef,
-    0xfa, 0xfd, 0xf4, 0xf3
-};
-
-
 template<typename T>
 __device__ const T* get_crc_table() {
     return nullptr;
@@ -486,16 +424,6 @@ __device__ const unsigned long long* get_crc_table() {
 template<>
 __device__ const unsigned int* get_crc_table() {
     return crc32_tab;
-}
-
-template<>
-__device__ const unsigned short* get_crc_table() {
-    return crc16_tab;
-}
-
-template<>
-__device__ const unsigned char* get_crc_table() {
-    return crc8_tab;
 }
 
 template<typename T>
@@ -527,8 +455,6 @@ template<typename U>
 struct From {
     template<typename T>
     static __device__ T cast_value(U* x, const int row_sz, const int row, const int pos) {
-        // U x_u = x[row_sz * row + pos];
-        // return (T)(x_u);
         T* x_u = reinterpret_cast<T*>(x);
         return x_u[row_sz * row + pos];
     }
@@ -592,6 +518,20 @@ struct From<char> {
 };
 
 template<>
+struct From<signed char> {
+    template<typename T>
+    static __device__ T cast_value(
+        signed char* x,
+        const int row_sz,
+        const int row,
+        const int pos
+    ) {
+        unsigned char x_u = reinterpret_cast<unsigned char*>(x)[row_sz * row + pos];
+        return (T)(x_u);
+    }
+};
+
+template<>
 struct From<unsigned char> {
     template<typename T>
     static __device__ T cast_value(
@@ -613,8 +553,7 @@ __global__ void map_crc(
     const int n_rows,
     const int row_sz,
     const int blocks_per_row,
-    bool map_x,
-    bool debug
+    bool map_x
 ) {
     extern __shared__ __align__(sizeof(T)) unsigned long long block_crc_a[512];
     T* block_crc = reinterpret_cast<T*>(block_crc_a);
@@ -629,9 +568,6 @@ __global__ void map_crc(
             if(map_x) {
                 T from_u = From<U>::template cast_value<T>(x, row_sz, row, pos);
                 x_crc = ccrc<T>(from_u, 0);
-                if(debug && row == 99) {
-                    printf("%d: %d %llu %llu |", threadIdx.x, x[row_sz * row + pos], from_u, x_crc);
-                }
 
             } else {
                 x_crc = crc[row_sz * row + pos];
@@ -645,9 +581,6 @@ __global__ void map_crc(
                 if (threadIdx.x < stride) {
                     T this_crc = block_crc[threadIdx.x];
                     T other_crc = block_crc[threadIdx.x + stride];
-                    /**if(row == 99) {
-                        printf("%llu (%d) <-> %llu (%d) | ", this_crc, threadIdx.x, other_crc, threadIdx.x + stride);
-                    }**/
                     block_crc[threadIdx.x] = ccrc_both(this_crc, other_crc);
                 }
                 __syncthreads();
@@ -729,17 +662,22 @@ def unique(ar, return_index=False, return_inverse=False,
         ar2 = ar.reshape(orig_shape[0], math.prod(orig_shape[1:]))
         ar2 = cupy.ascontiguousarray(ar2)
         is_complex = cupy.iscomplexobj(ar2)
-        if not equal_nan:
+        if cupy.issubdtype(ar2.dtype, cupy.inexact):
             nan_mask = cupy.isnan(ar2)
-            if cupy.issubdtype(ar2.dtype, cupy.inexact):
-                ar2[nan_mask] = cupy.random.random(nan_mask.shape, ar2.dtype)
+            map_dtype = ar2.dtype
+            if is_complex:
+                original_nan = ar2[nan_mask]
+                map_dtype = cupy.dtype(cupy.dtype(ar2.dtype).char.lower())
+            ar2[nan_mask] = cupy.random.random(
+                nan_mask.shape, map_dtype)[nan_mask]
 
         n_rows, row_sz = ar2.shape
         if is_complex:
             row_sz *= 2
 
-        n_blocks = min(n_rows, 512)
-        block_sz = min(row_sz, 512)
+        is_empty = row_sz == 0
+        n_blocks = max(min(n_rows, 512), 1)
+        block_sz = max(min(row_sz, 512), 1)
 
         blocks_per_row = (row_sz + block_sz - 1) // block_sz
 
@@ -748,18 +686,10 @@ def unique(ar, return_index=False, return_inverse=False,
         in_type = _get_typename(ar.dtype)
         crc_type = _type_map[in_type]
 
-        debug = cupy.dtype(ar2.dtype) is cupy.dtype(cupy.int8)
-        if debug:
-            breakpoint()
-
         crc_comp = _unique_nd_module.get_function(
             f'map_crc<{in_type}, {crc_type}>')
         crc_comp((n_blocks,), (block_sz,), (
-            ar2, crc, int(n_rows), int(row_sz), int(blocks_per_row), True,
-            debug))
-
-        if debug:
-            print(crc)
+            ar2, crc, int(n_rows), int(row_sz), int(blocks_per_row), True))
 
         if blocks_per_row > 1:
             while blocks_per_row > 1:
@@ -782,12 +712,18 @@ def unique(ar, return_index=False, return_inverse=False,
 
     if axis is not None:
         _, index, *rest = ret
+        if cupy.issubdtype(ar2.dtype, cupy.inexact):
+            values = cupy.nan
+            if is_complex:
+                values = original_nan
+            ar2[nan_mask] = values
+
         unique_values = ar2[index]
-        if cupy.dtype(ar2.dtype) is cupy.dtype(cupy.int8):
-            # breakpoint()
-            print(ar)
         unique_idx = _ndarray_argsort2d(unique_values, 0)
         unique_values = unique_values[unique_idx]
+        if unique_values.shape[0] == 0 and len(orig_shape[1:]) > 0:
+            unique_values = cupy.empty(
+                (1,) + orig_shape[1:], dtype=unique_values.dtype)
 
         unique_values = unique_values.reshape(
             unique_values.shape[0], *orig_shape[1:])
@@ -795,15 +731,24 @@ def unique(ar, return_index=False, return_inverse=False,
 
         ret = (unique_values,)
         if orig_ret_index:
-            ret += (index[unique_idx],)
+            if is_empty:
+                ret += (cupy.zeros(1, dtype=cupy.int64),)
+            else:
+                ret += (index[unique_idx],)
 
         if return_inverse:
-            inv_idx, *rest = rest
-            ret += (cupy.argsort(unique_idx)[inv_idx],)
+            if is_empty:
+                ret += (cupy.zeros(n_rows, dtype=cupy.int64),)
+            else:
+                inv_idx, *rest = rest
+                ret += (cupy.argsort(unique_idx)[inv_idx],)
 
         if return_counts:
-            counts, *_ = rest
-            ret += (counts[unique_idx],)
+            if is_empty:
+                ret += (cupy.asarray([n_rows], dtype=cupy.int64),)
+            else:
+                counts, *_ = rest
+                ret += (counts[unique_idx],)
 
     return ret
 
