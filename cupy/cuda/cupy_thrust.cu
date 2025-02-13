@@ -506,7 +506,41 @@ public:
                 break;
             };
         }
+        if(isnan(i_data[p])) {
+            return false;
+        } else if(isnan(j_data[p])) {
+            return true;
+        }
+
         return i_data[p] < j_data[p];
+    }
+private:
+    const T *_data;
+    const size_t _stride;
+};
+
+
+template <typename T>
+class less2d_complex {
+public:
+    less2d_complex(const T *data, const size_t stride):_data(data), _stride(stride) {}
+    __device__ bool operator()(size_t i, size_t j) const {
+        const T* i_data = _data + _stride * i;
+        const T* j_data = _data + _stride * j;
+
+        int p;
+        for(p = 0; p < _stride; p++) {
+            if(isnan(i_data[p].real()) && isnan(j_data[p].real())) {
+                if(i_data[p].imag() != j_data[p].imag()) {
+                    break;
+                }
+            } else if(i_data[p] != j_data[p]) {
+                break;
+            }
+        }
+
+        return complex_less<T>(i_data[p], j_data[p]);
+
     }
 private:
     const T *_data;
@@ -525,6 +559,8 @@ struct _argsort2d {
 
         thrust::device_ptr<size_t> dp_idx_first, dp_idx_last;
 
+        std::cout << "testing type " << typeid(T).name() << std::endl;
+
         // Generate an index sequence.
         dp_idx_first = thrust::device_pointer_cast(static_cast<size_t*>(idx_start));
         dp_idx_last  = thrust::device_pointer_cast(static_cast<size_t*>(idx_start) + shape[0]);
@@ -536,6 +572,50 @@ struct _argsort2d {
             less2d<T>(static_cast<T*>(data_start), shape[1]));
     }
 };
+
+template <>
+__forceinline__ void _argsort2d::operator()<complex<float>>(size_t *idx_start, void *data_start,
+                                void *keys_start,
+                                const std::vector<ptrdiff_t>& shape,
+                                intptr_t stream, void *memory) {
+
+    cudaStream_t stream_ = (cudaStream_t)stream;
+    cupy_allocator alloc(memory);
+
+    thrust::device_ptr<size_t> dp_idx_first, dp_idx_last;
+
+    // Generate an index sequence.
+    dp_idx_first = thrust::device_pointer_cast(static_cast<size_t*>(idx_start));
+    dp_idx_last  = thrust::device_pointer_cast(static_cast<size_t*>(idx_start) + shape[0]);
+
+    thrust::stable_sort(
+        cuda::par(alloc).on(stream_),
+        dp_idx_first,
+        dp_idx_last,
+        less2d_complex<complex<float>>(static_cast<thrust::complex<float>*>(data_start), shape[1]));
+}
+
+template <>
+__forceinline__ void _argsort2d::operator()<complex<double>>(size_t *idx_start, void *data_start,
+                                void *keys_start,
+                                const std::vector<ptrdiff_t>& shape,
+                                intptr_t stream, void *memory) {
+
+    cudaStream_t stream_ = (cudaStream_t)stream;
+    cupy_allocator alloc(memory);
+
+    thrust::device_ptr<size_t> dp_idx_first, dp_idx_last;
+
+    // Generate an index sequence.
+    dp_idx_first = thrust::device_pointer_cast(static_cast<size_t*>(idx_start));
+    dp_idx_last  = thrust::device_pointer_cast(static_cast<size_t*>(idx_start) + shape[0]);
+
+    thrust::stable_sort(
+        cuda::par(alloc).on(stream_),
+        dp_idx_first,
+        dp_idx_last,
+        less2d_complex<complex<double>>(static_cast<thrust::complex<double>*>(data_start), shape[1]));
+}
 
 //
 // APIs exposed to CuPy
