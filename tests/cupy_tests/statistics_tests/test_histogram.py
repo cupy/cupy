@@ -406,6 +406,27 @@ class TestCubHistogram(unittest.TestCase):
         out = xp.histogram(A, bins=amax, range=[0, amax])
         return out
 
+    @testing.for_int_dtypes('dtype', no_bool=True)
+    @testing.numpy_cupy_array_equal()
+    def test_bincount_gh7698(self, xp, dtype):
+        dtype = xp.dtype(dtype)
+        max_val = xp.iinfo(dtype).max if dtype.itemsize < 4 else 65536
+        if dtype == xp.uint64:
+            pytest.skip("only numpy raises exception on uint64 input")
+
+        # https://github.com/cupy/cupy/issues/7698
+        x = xp.arange(max_val, dtype=dtype)
+
+        if xp is numpy:
+            return xp.bincount(x)
+
+        # xp is cupy, first ensure we really use CUB
+        cub_func = 'cupy._statistics.histogram.cub.device_histogram'
+        with testing.AssertFunctionIsCalled(cub_func):
+            xp.bincount(x)
+        # ...then perform the actual computation
+        return xp.bincount(x)
+
 
 @testing.parameterize(*testing.product(
     {'bins': [
