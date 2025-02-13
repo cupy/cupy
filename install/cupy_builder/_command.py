@@ -108,6 +108,10 @@ class custom_build_ext(setuptools.command.build_ext.build_ext):
             # Allow not implementing reversed method
             # https://github.com/cupy/cupy/issues/5893#issuecomment-944909015
             'c_api_binop_methods': True,
+            # Keep the behavior same as Cython 0.29.x.
+            # https://github.com/cupy/cupy/pull/8457#issuecomment-2656568499
+            'binding': False,
+            'legacy_implicit_noexcept': True,
         }
 
         # Compile-time constants to be used in Cython code
