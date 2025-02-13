@@ -171,7 +171,7 @@ class Generated:
         # whether to include cuda/barrier
         self.include_cuda_barrier = False
         # compiler options
-        self.options = ('-DCUPY_JIT_MODE', '--std=c++14',
+        self.options = ('-DCUPY_JIT_MODE', '--std=c++17',
                         # WAR: for compiling any CCCL header
                         '-DCUB_DISABLE_BF16_SUPPORT',)
         # workaround for hipRTC: as of ROCm 4.1.0 hipRTC still does not
