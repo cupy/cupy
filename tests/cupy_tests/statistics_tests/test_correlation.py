@@ -87,14 +87,11 @@ class TestCov(unittest.TestCase):
                 xp.cov(a, y, rowvar, bias, ddof,
                        fweights, aweights, dtype=dtype)
 
+    @testing.with_requires("numpy>=2.2")
     def test_cov(self):
         self.check((2, 3))
         self.check((2,), (2,))
-
-        if numpy.lib.NumpyVersion(numpy.__version__) < '2.2.0':
-            # XXX: NumPy 2.2.0 raises a ValueError.
-            self.check((1, 3), (1, 3), rowvar=False)
-
+        self.check((1, 3), (1, 3), rowvar=False)
         self.check((2, 3), (2, 3), rowvar=False)
         self.check((2, 3), bias=True)
         self.check((2, 3), ddof=2)

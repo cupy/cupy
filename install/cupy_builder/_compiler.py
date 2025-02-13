@@ -60,6 +60,25 @@ def _nvcc_gencode_options(cuda_version: int) -> List[str]:
         # architectures:
         #
         #   https://docs.nvidia.com/cuda/cuda-compiler-driver-nvcc/index.html#options-for-steering-gpu-code-generation
+        #
+        # CuPy utilizes CUDA Minor Version Compatibility to support all CUDA
+        # minor versions in a single binary package (e.g., `cupy-cuda12x`). To
+        # achieve this, CUBIN must be generated for all supported compute
+        # capabilities instead of PTX. This is because executing PTX requires
+        # CUDA driver newer than the one used to compile the code, and we often
+        # use the latest CUDA Driver to build our binary package. See also:
+        #
+        #   https://docs.nvidia.com/deploy/cuda-compatibility/index.html#application-considerations-for-minor-version-compatibility
+        #
+        # In addition, to allow running CuPy with future (not yet released)
+        # GPUs, PTX for the latest architecture is also included as a
+        # fallback. c.f.:
+        #
+        #   https://forums.developer.nvidia.com/t/software-migration-guide-for-nvidia-blackwell-rtx-gpus-a-guide-to-cuda-12-8-pytorch-tensorrt-and-llama-cpp/321330
+        #
+        # Jetson platforms are also targetted when built under aarch64. c.f.:
+        #
+        #   https://docs.nvidia.com/cuda/cuda-for-tegra-appnote/index.html#deployment-considerations-for-cuda-upgrade-package
 
         aarch64 = (platform.machine() == 'aarch64')
         if cuda_version >= 12000:
@@ -72,14 +91,17 @@ def _nvcc_gencode_options(cuda_version: int) -> List[str]:
                          ('compute_80', 'sm_80'),
                          ('compute_86', 'sm_86'),
                          ('compute_89', 'sm_89'),
-                         ('compute_90', 'sm_90'),
-                         'compute_90']
+                         ('compute_90', 'sm_90'),]
+            if cuda_version >= 12080:
+                arch_list += [('compute_100', 'sm_100'),
+                              ('compute_120', 'sm_120'),
+                              'compute_100']
+            else:
+                arch_list.append('compute_90')
+
             if aarch64:
-                # Jetson TX1/TX2 are excluded as they don't support JetPack 5
-                # (CUDA 11.4).
+                # JetPack 5 (CUDA 12.0-12.2) or JetPack 6 (CUDA 12.2+)
                 arch_list += [
-                    # ('compute_53', 'sm_53'),  # Jetson (TX1 / Nano)
-                    # ('compute_62', 'sm_62'),  # Jetson (TX2)
                     ('compute_72', 'sm_72'),  # Jetson (Xavier)
                     ('compute_87', 'sm_87'),  # Jetson (Orin)
                 ]
@@ -98,19 +120,12 @@ def _nvcc_gencode_options(cuda_version: int) -> List[str]:
                          ('compute_90', 'sm_90'),
                          'compute_90']
             if aarch64:
-                # Jetson TX1/TX2 are excluded as they don't support JetPack 5
-                # (CUDA 11.4).
+                # JetPack 5 (CUDA 11.4/11.8)
                 arch_list += [
-                    # ('compute_53', 'sm_53'),  # Jetson (TX1 / Nano)
-                    # ('compute_62', 'sm_62'),  # Jetson (TX2)
                     ('compute_72', 'sm_72'),  # Jetson (Xavier)
                     ('compute_87', 'sm_87'),  # Jetson (Orin)
                 ]
         elif cuda_version >= 11040:
-            # To utilize CUDA Minor Version Compatibility (`cupy-cuda11x`),
-            # CUBIN must be generated for all supported compute capabilities
-            # instead of PTX:
-            # https://docs.nvidia.com/deploy/cuda-compatibility/index.html#application-considerations
             arch_list = [('compute_35', 'sm_35'),
                          ('compute_37', 'sm_37'),
                          ('compute_50', 'sm_50'),
@@ -123,11 +138,8 @@ def _nvcc_gencode_options(cuda_version: int) -> List[str]:
                          ('compute_86', 'sm_86'),
                          'compute_86']
             if aarch64:
-                # Jetson TX1/TX2 are excluded as they don't support JetPack 5
-                # (CUDA 11.4).
+                # JetPack 5 (CUDA 11.4/11.8)
                 arch_list += [
-                    # ('compute_53', 'sm_53'),  # Jetson (TX1 / Nano)
-                    # ('compute_62', 'sm_62'),  # Jetson (TX2)
                     ('compute_72', 'sm_72'),  # Jetson (Xavier)
                     ('compute_87', 'sm_87'),  # Jetson (Orin)
                 ]

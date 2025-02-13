@@ -22,18 +22,18 @@ repos:
       - id: autopep8
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.6.9
+    rev: v0.8.3
     hooks:
       - id: ruff
 
   - repo: https://github.com/MarcoGorelli/cython-lint
-    rev: v0.16.2
+    rev: v0.16.6
     hooks:
       - id: cython-lint
         args: ["--max-line-length", "79"]
 
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.12.0
+    rev: v1.13.0
     hooks:
       - id: mypy
         # Keep in sync with the list in setup.cfg
