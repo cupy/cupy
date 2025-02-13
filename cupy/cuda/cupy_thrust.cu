@@ -559,8 +559,6 @@ struct _argsort2d {
 
         thrust::device_ptr<size_t> dp_idx_first, dp_idx_last;
 
-        std::cout << "testing type " << typeid(T).name() << std::endl;
-
         // Generate an index sequence.
         dp_idx_first = thrust::device_pointer_cast(static_cast<size_t*>(idx_start));
         dp_idx_last  = thrust::device_pointer_cast(static_cast<size_t*>(idx_start) + shape[0]);
