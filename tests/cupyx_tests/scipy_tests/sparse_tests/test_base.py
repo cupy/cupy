@@ -19,7 +19,7 @@ class TestSpmatrix(unittest.TestCase):
             class DummySparseGPU(sparse.spmatrix):
 
                 def __init__(self, maxprint=50, shape=None, nnz=0):
-                    super(DummySparseGPU, self).__init__(maxprint)
+                    super().__init__(maxprint)
                     self._shape = shape
                     self._nnz = nnz
 
@@ -34,7 +34,7 @@ class TestSpmatrix(unittest.TestCase):
             class DummySparseCPU(scipy.sparse._base._spbase):
 
                 def __init__(self, maxprint=50, shape=None, nnz=0):
-                    super(DummySparseCPU, self).__init__(
+                    super().__init__(
                         None, maxprint=maxprint)
                     self._shape = shape
                     self._nnz = nnz
