@@ -124,9 +124,7 @@ function Main {
 
     DownloadCache "${cache_archive}"
 
-    if (-Not $is_pull_request) {
-        $Env:CUPY_TEST_FULL_COMBINATION = "1"
-    }
+    $Env:CUPY_TEST_FULL_COMBINATION = "1"
 
     # Install dependency for cuDNN 8.3+
     echo ">> Installing zlib"
