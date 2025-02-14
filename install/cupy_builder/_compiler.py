@@ -209,7 +209,7 @@ class DeviceCompilerUnix(DeviceCompilerBase):
 
         cuda_version = self._context.features['cuda'].get_version()
         postargs = _nvcc_gencode_options(cuda_version) + [
-            '-O2', '--compiler-options="-fPIC"',
+            '-Xfatbin=-compress-all', '-O2', '--compiler-options="-fPIC"',
             '--expt-relaxed-constexpr']
         num_threads = int(os.environ.get('CUPY_NUM_NVCC_THREADS', '2'))
         # Note: we only support CUDA 11.2+ since CuPy v13.0.0.
