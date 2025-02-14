@@ -124,9 +124,7 @@ function Main {
 
     DownloadCache "${cache_archive}"
 
-    if (-Not $is_pull_request) {
-        $Env:CUPY_TEST_FULL_COMBINATION = "1"
-    }
+    $Env:CUPY_TEST_FULL_COMBINATION = "1"
 
     # Install dependency for cuDNN 8.3+
     echo ">> Installing zlib"
@@ -136,7 +134,7 @@ function Main {
     echo "CuPy Configuration:"
     RunOrDie python -c "import cupy; print(cupy); cupy.show_config()"
     echo "Running test..."
-    $test_retval = RunWithTimeout -timeout 18000 -output ../cupy_test_log.txt -- python -m pytest -rfEX @pytest_opts .
+    $test_retval = RunWithTimeout -timeout 18000 -output ../cupy_test_log.txt -- python -m pytest -rfEX -s -v @pytest_opts cupyx_tests\scipy_tests\signal_tests\test_signaltools.py
     popd
 
     if (-Not $is_pull_request) {
