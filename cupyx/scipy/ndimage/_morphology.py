@@ -8,6 +8,7 @@ import cupy
 from cupy import _core
 
 from cupyx.scipy.ndimage import _filters_core
+from cupyx.scipy.ndimage import _measurements
 from cupyx.scipy.ndimage import _util
 from cupyx.scipy.ndimage import _filters
 
@@ -648,22 +649,75 @@ def binary_propagation(input, structure=None, mask=None, output=None,
                            origin, brute_force=True, axes=axes)
 
 
+def _binary_fill_holes_non_iterative(input, output=None):
+    """Non-iterative method for hole filling.
+
+    This algorithm is based on inverting the input and then using `label` to
+    label the holes distinctly from the background. This information is then
+    used to create a holes mask which can be applied to fill the holes in the
+    original input.
+
+    Initial benchmarks indicate this is a faster approach than calling
+    binary_dilation iteratively:
+
+    https://github.com/cupy/cupy/issues/8867#issuecomment-2659471046
+    """
+
+    # make sure all background pixels at the boundary have the same label
+    if input.dtype == cupy.uint8:
+        input = input.view(bool)
+    elif input.dtype != bool:
+        input = input.astype(bool)
+    ndim = input.ndim
+    binary_mask = cupy.pad(input, 1, mode='constant', constant_values=0)
+
+    # assign unique labels the background and holes
+    inverse_binary_mask = ~binary_mask
+    inverse_labels, _ = _measurements.label(inverse_binary_mask)
+
+    # After inversion, what was originally the background will now be the
+    # first foreground label encountered. This is ensured due to the
+    # single voxel padding done above and the fact that the `label`
+    # function scans linearly through the array.
+    background_index = 1
+    # set the background back to 0 in the inverse mask so we have a mask
+    # of just the holes
+    inverse_binary_mask[inverse_labels == background_index] = 0
+
+    # add binary holes to the original mask and relabel
+    temp = cupy.logical_or(binary_mask, inverse_binary_mask)
+
+    remove_padding = (slice(1, -1),) * ndim
+    temp = temp[remove_padding]
+    if output is None:
+        output = cupy.ascontiguousarray(temp)
+    else:
+        output[:] = temp
+    return output
+
+
 def binary_fill_holes(input, structure=None, output=None, origin=0, *,
                       axes=None):
     """Fill the holes in binary objects.
 
     Args:
         input (cupy.ndarray): N-D binary array with holes to be filled.
-        structure (cupy.ndarray, optional):  Structuring element used in the
-            computation; large-size elements make computations faster but may
-            miss holes separated from the background by thin regions. The
-            default element (with a square connectivity equal to one) yields
-            the intuitive result where all holes in the input have been filled.
+        structure (cupy.ndarray, optional):  For CuPy, it is recommended to
+            leave this None so that a faster non-iterative algorithm will be
+            used. This default is equivalent in behavior to the default
+            structure use by SciPy. If `structure` array is provided, the
+            relatively slow iterative algorithm from SciPy will be used.
+            In that case, a larger-size structure can make the iterative
+            computations faster, but may miss holes separated from the
+            background by thin regions. The default element (with a square
+            connectivity equal to one) yields the intuitive result where all
+            holes in the input have been filled.
         output (cupy.ndarray, dtype or None, optional): Array of the same shape
             as input, into which the output is placed. By default, a new array
             is created.
         origin (int, tuple of ints, optional): Position of the structuring
-            element.
+            element. Note that if this is changed from its default value of
+            0, it will force a slower iterative algorithm to be used.
         axes (tuple of int or None): The axes over which to apply the filter.
             If None, `input` is filtered along all axes. If an `origin` tuple
             is provided, its length must match the number of axes.
@@ -676,8 +730,24 @@ def binary_fill_holes(input, structure=None, output=None, origin=0, *,
 
         This function may synchronize the device.
 
+    .. warning::
+
+        It is recommended to keep the default setting of output=None and
+        origin==0 so that a faster, non-iterative algorithm can be used.
+
     .. seealso:: :func:`scipy.ndimage.binary_fill_holes`
     """
+    axes = _util._check_axes(axes, input.ndim)
+    filter_all_axes = axes == tuple(range(input.ndim))
+    if isinstance(origin, int):
+        origin = (origin,) * len(axes)
+    if structure is None and all(o == 0 for o in origin) and filter_all_axes:
+        return _binary_fill_holes_non_iterative(input, output=output)
+    else:
+        warnings.warn(
+            'It is recommended to keep the default structure=None and '
+            'origin=0, so that a faster non-iterative algorithm can be used.'
+        )
     mask = cupy.logical_not(input)
     tmp = cupy.zeros(mask.shape, bool)
     inplace = isinstance(output, cupy.ndarray)
