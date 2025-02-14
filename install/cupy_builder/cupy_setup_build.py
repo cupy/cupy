@@ -317,6 +317,9 @@ def make_extensions(ctx: Context, compiler, use_cython):
     # https://groups.google.com/forum/#!topic/theano-users/3ihQYiTRG4E
     settings['define_macros'].append(('_FORCE_INLINES', '1'))
 
+    # Ensure all "cdef public" APIs have C linkage.
+    settings['define_macros'].append(('CYTHON_EXTERN_C', 'extern "C"'))
+
     if ctx.linetrace:
         settings['define_macros'].append(('CYTHON_TRACE', '1'))
         settings['define_macros'].append(('CYTHON_TRACE_NOGIL', '1'))
