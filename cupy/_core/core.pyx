@@ -392,7 +392,7 @@ cdef class _ndarray_base:
         # TODO(leofang): use flags
         if (not is_ump_supported(self.data.device_id)
                 or not self.is_host_accessible()):
-            raise RuntimeError(
+            raise TypeError(
                 'Accessing a CuPy ndarry on CPU is not allowed except when '
                 'using system memory (on HMM or ATS enabled systems, need to '
                 'set CUPY_ENABLE_UMP=1) or managed memory')
