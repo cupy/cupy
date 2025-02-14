@@ -165,3 +165,11 @@ def squeeze(a, axis=None):
     """
     # TODO(okuta): check type
     return a.squeeze(axis)
+#Apply over axes function
+def apply_over_axes(func, a, axes):
+    a = cupy.asarray(a)
+    if not isinstance(axes, (tuple, list)):
+        axes = [axes]
+    for axis in axes:
+        a = cupy.expand_dims(func(a, axis = axes), axis)
+    return a
