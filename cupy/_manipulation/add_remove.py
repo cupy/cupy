@@ -454,9 +454,66 @@ __device__ T ccrc_both(
 template<typename U>
 struct From {
     template<typename T>
-    static __device__ T cast_value(U* x, const int row_sz, const int row, const int pos) {
+    static __device__ T cast_value(U* x, T* nan_seed, const int row_sz, const int row, const int pos) {
         T* x_u = reinterpret_cast<T*>(x);
         return x_u[row_sz * row + pos];
+    }
+};
+
+template<>
+struct From<double> {
+    template<typename T>
+    static __device__ T cast_value(
+        double* x,
+        T* nan_seed,
+        const int row_sz,
+        const int row,
+        const int pos
+    ) {
+        if(isnan(x[row_sz * row + pos])) {
+            return nan_seed[0];
+        } else {
+            T* x_u = reinterpret_cast<T*>(x);
+            return x_u[row_sz * row + pos];
+        }
+    }
+};
+
+template<>
+struct From<float> {
+    template<typename T>
+    static __device__ T cast_value(
+        float* x,
+        T* nan_seed,
+        const int row_sz,
+        const int row,
+        const int pos
+    ) {
+        if(isnan(x[row_sz * row + pos])) {
+            return nan_seed[0];
+        } else {
+            T* x_u = reinterpret_cast<T*>(x);
+            return x_u[row_sz * row + pos];
+        }
+    }
+};
+
+template<typename U>
+struct From<thrust::complex<U>> {
+    template<typename T>
+    static __device__ T cast_value(
+        thrust::complex<U>* x,
+        T* nan_seed,
+        const int row_sz,
+        const int row,
+        const int pos
+    ) {
+        if(isnan(x[row_sz * row + pos])) {
+            return nan_seed[0];
+        } else {
+            T* x_u = reinterpret_cast<T*>(x);
+            return x_u[row_sz * row + pos];
+        }
     }
 };
 
@@ -465,6 +522,7 @@ struct From<half> {
     template<typename T>
     static __device__ T cast_value(
         half* x,
+        T* nan_seed,
         const int row_sz,
         const int row,
         const int pos
@@ -479,6 +537,7 @@ struct From<short> {
     template<typename T>
     static __device__ T cast_value(
         short* x,
+        T* nan_seed,
         const int row_sz,
         const int row,
         const int pos
@@ -493,6 +552,7 @@ struct From<unsigned short> {
     template<typename T>
     static __device__ T cast_value(
         unsigned short* x,
+        T* nan_seed,
         const int row_sz,
         const int row,
         const int pos
@@ -507,12 +567,12 @@ struct From<char> {
     template<typename T>
     static __device__ T cast_value(
         char* x,
+        T* nan_seed,
         const int row_sz,
         const int row,
         const int pos
     ) {
         unsigned char x_u = reinterpret_cast<unsigned char*>(x)[row_sz * row + pos];
-        printf("%du - ", x_u);
         return (T)(x_u);
     }
 };
@@ -522,6 +582,7 @@ struct From<signed char> {
     template<typename T>
     static __device__ T cast_value(
         signed char* x,
+        T* nan_seed,
         const int row_sz,
         const int row,
         const int pos
@@ -536,6 +597,7 @@ struct From<unsigned char> {
     template<typename T>
     static __device__ T cast_value(
         unsigned char* x,
+        T* nan_seed,
         const int row_sz,
         const int row,
         const int pos
@@ -550,6 +612,7 @@ template<typename U, typename T>
 __global__ void map_crc(
     U* x,
     T* crc,
+    T* nan_seed,
     const int n_rows,
     const int row_sz,
     const int blocks_per_row,
@@ -564,9 +627,12 @@ __global__ void map_crc(
 
     for(int row = idx / blockDim.x; row < n_rows; row += n_threads) {
         for(int pos = idx % blockDim.x; pos < row_sz; pos += blockDim.x) {
+            int cur_row_block = pos / blockDim.x;
+            T* block_nan_seed = nan_seed + blocks_per_row * row + cur_row_block;
             T x_crc;
             if(map_x) {
-                T from_u = From<U>::template cast_value<T>(x, row_sz, row, pos);
+                T from_u = From<U>::template cast_value<T>(
+                    x, block_nan_seed, row_sz, row, pos);
                 x_crc = ccrc<T>(from_u, 0);
 
             } else {
@@ -587,8 +653,8 @@ __global__ void map_crc(
             }
 
             if(threadIdx.x == 0) {
-                int cur_row_block = pos / blockDim.x;
                 crc[blocks_per_row * row + cur_row_block] = block_crc[threadIdx.x];
+                nan_seed[blocks_per_row * row + cur_row_block]++;
             }
         }
 
@@ -662,14 +728,6 @@ def unique(ar, return_index=False, return_inverse=False,
         ar2 = ar.reshape(orig_shape[0], math.prod(orig_shape[1:]))
         ar2 = cupy.ascontiguousarray(ar2)
         is_complex = cupy.iscomplexobj(ar2)
-        if cupy.issubdtype(ar2.dtype, cupy.inexact):
-            nan_mask = cupy.isnan(ar2)
-            map_dtype = ar2.dtype
-            if is_complex:
-                original_nan = ar2[nan_mask]
-                map_dtype = cupy.dtype(cupy.dtype(ar2.dtype).char.lower())
-            ar2[nan_mask] = cupy.random.random(
-                nan_mask.shape, map_dtype)[nan_mask]
 
         n_rows, row_sz = ar2.shape
         if is_complex:
@@ -683,20 +741,24 @@ def unique(ar, return_index=False, return_inverse=False,
 
         crc = cupy.empty((n_rows, blocks_per_row),
                          dtype=_dtype_map[ar.dtype])
+        random_seed = cupy.random.randint(
+            1, 2**31 - 1, size=(n_rows, blocks_per_row),
+            dtype=_dtype_map[ar.dtype])
         in_type = _get_typename(ar.dtype)
         crc_type = _type_map[in_type]
 
         crc_comp = _unique_nd_module.get_function(
             f'map_crc<{in_type}, {crc_type}>')
         crc_comp((n_blocks,), (block_sz,), (
-            ar2, crc, int(n_rows), int(row_sz), int(blocks_per_row), True))
+            ar2, crc, random_seed,
+            int(n_rows), int(row_sz), int(blocks_per_row), True))
 
         if blocks_per_row > 1:
             while blocks_per_row > 1:
                 new_blocks_per_row = (
                     blocks_per_row + block_sz - 1) // block_sz
                 crc_comp((n_blocks,), (block_sz,), (
-                    None, crc, n_rows, blocks_per_row,
+                    None, crc, random_seed, n_rows, blocks_per_row,
                     new_blocks_per_row, False))
                 blocks_per_row = new_blocks_per_row
 
@@ -712,11 +774,6 @@ def unique(ar, return_index=False, return_inverse=False,
 
     if axis is not None:
         _, index, *rest = ret
-        if cupy.issubdtype(ar2.dtype, cupy.inexact):
-            values = cupy.nan
-            if is_complex:
-                values = original_nan
-            ar2[nan_mask] = values
 
         unique_values = ar2[index]
         unique_idx = _ndarray_argsort2d(unique_values, 0)
