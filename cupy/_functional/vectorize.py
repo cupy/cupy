@@ -12,7 +12,7 @@ def _get_input_type(arg):
         return numpy.dtype(type(arg)).char
 
 
-class vectorize(object):
+class vectorize:
     """Generalized function class.
 
     .. seealso:: :class:`numpy.vectorize`

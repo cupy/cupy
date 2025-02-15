@@ -309,7 +309,7 @@ class TestFourierUniform:
     )
 )
 @testing.with_requires('scipy')
-class TestFourierEllipsoid():
+class TestFourierEllipsoid:
     def _test_real_nd(self, xp, scp, x, real_axis):
         if x.ndim == 1 and scipy_version < '1.5.3':
             # 1D case gives an incorrect result in SciPy < 1.5.3
@@ -379,7 +379,7 @@ class TestFourierEllipsoid():
 
 
 @testing.with_requires('scipy')
-class TestFourierEllipsoidInvalid():
+class TestFourierEllipsoidInvalid:
 
     # SciPy < 1.5 raises ValueError instead of AxisError
     @testing.with_requires('scipy>=1.5.0')
