@@ -11,6 +11,7 @@ import cupyx.scipy.signal
 
 try:
     import scipy.signal  # NOQA
+    scipy_version = np.lib.NumpyVersion(scipy.__version__)
 except ImportError:
     pass
 
@@ -343,6 +344,9 @@ class TestOrderFilter:
     @testing.numpy_cupy_allclose(atol=1e-8, rtol=1e-8, scipy_name='scp',
                                  accept_error=ValueError)  # for even kernels
     def test_order_filter(self, xp, scp, dtype):
+        if dtype == xp.longlong and "1.15.0" <= scipy_version < "1.16.0":
+            # https://github.com/scipy/scipy/issues/22368
+            return xp.array([])  # Skip
         a = testing.shaped_random(self.a, xp, dtype)
         d = self.domain
         d = d[:a.ndim] if isinstance(d, tuple) else (d,)*a.ndim
@@ -375,6 +379,9 @@ class TestMedFilt:
         atol=1e-8, rtol=1e-8, scipy_name='scp',
         accept_error=ValueError)  # for even kernels
     def test_medfilt(self, xp, scp, dtype):
+        if dtype == xp.longlong and "1.15.0" <= scipy_version < "1.16.0":
+            # https://github.com/scipy/scipy/issues/22368
+            return xp.array([])  # Skip
         if sys.platform == 'win32':
             pytest.xfail('medfilt broken for Scipy 1.7.0 in windows')
         volume = testing.shaped_random(self.volume, xp, dtype)
