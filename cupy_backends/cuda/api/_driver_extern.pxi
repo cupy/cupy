@@ -4,68 +4,68 @@ from cupy_backends.cuda._softlink cimport SoftLink
 
 
 # Error handling
-ctypedef int (*F_cuGetErrorName)(Result error, const char** pStr) nogil
+ctypedef int (*F_cuGetErrorName)(Result error, const char** pStr) noexcept nogil  # NOQA
 cdef F_cuGetErrorName cuGetErrorName
-ctypedef int (*F_cuGetErrorString)(Result error, const char** pStr) nogil
+ctypedef int (*F_cuGetErrorString)(Result error, const char** pStr) noexcept nogil  # NOQA
 cdef F_cuGetErrorString cuGetErrorString
 
 # Primary context management
-ctypedef int (*F_cuDevicePrimaryCtxRelease)(Device dev) nogil
+ctypedef int (*F_cuDevicePrimaryCtxRelease)(Device dev) noexcept nogil
 cdef F_cuDevicePrimaryCtxRelease cuDevicePrimaryCtxRelease
 
 # Context management
-ctypedef int (*F_cuCtxGetCurrent)(Context* pctx) nogil
+ctypedef int (*F_cuCtxGetCurrent)(Context* pctx) noexcept nogil
 cdef F_cuCtxGetCurrent cuCtxGetCurrent
-ctypedef int (*F_cuCtxSetCurrent)(Context ctx) nogil
+ctypedef int (*F_cuCtxSetCurrent)(Context ctx) noexcept nogil
 cdef F_cuCtxSetCurrent cuCtxSetCurrent
-ctypedef int (*F_cuCtxCreate)(Context* pctx, unsigned int flags, Device dev) nogil  # NOQA
+ctypedef int (*F_cuCtxCreate)(Context* pctx, unsigned int flags, Device dev) noexcept nogil  # NOQA
 cdef F_cuCtxCreate cuCtxCreate
-ctypedef int (*F_cuCtxDestroy)(Context ctx) nogil
+ctypedef int (*F_cuCtxDestroy)(Context ctx) noexcept nogil
 cdef F_cuCtxDestroy cuCtxDestroy
-ctypedef int (*F_cuCtxGetDevice)(Device*) nogil
+ctypedef int (*F_cuCtxGetDevice)(Device*) noexcept nogil
 cdef F_cuCtxGetDevice cuCtxGetDevice
 
 # Module load and kernel execution
-ctypedef int (*F_cuLinkCreate)(unsigned int numOptions, CUjit_option* options, void** optionValues, LinkState* stateOut) nogil  # NOQA
+ctypedef int (*F_cuLinkCreate)(unsigned int numOptions, CUjit_option* options, void** optionValues, LinkState* stateOut) noexcept nogil  # NOQA
 cdef F_cuLinkCreate cuLinkCreate
-ctypedef int (*F_cuLinkAddData)(LinkState state, CUjitInputType type, void* data, size_t size, const char* name, unsigned int  numOptions, CUjit_option* options, void** optionValues) nogil  # NOQA
+ctypedef int (*F_cuLinkAddData)(LinkState state, CUjitInputType type, void* data, size_t size, const char* name, unsigned int  numOptions, CUjit_option* options, void** optionValues) noexcept nogil  # NOQA
 cdef F_cuLinkAddData cuLinkAddData
-ctypedef int (*F_cuLinkAddFile)(LinkState state, CUjitInputType type, const char* path, unsigned int numOptions, CUjit_option* options, void** optionValues) nogil  # NOQA
+ctypedef int (*F_cuLinkAddFile)(LinkState state, CUjitInputType type, const char* path, unsigned int numOptions, CUjit_option* options, void** optionValues) noexcept nogil  # NOQA
 cdef F_cuLinkAddFile cuLinkAddFile
-ctypedef int (*F_cuLinkComplete)(LinkState state, void** cubinOut, size_t* sizeOut) nogil  # NOQA
+ctypedef int (*F_cuLinkComplete)(LinkState state, void** cubinOut, size_t* sizeOut) noexcept nogil  # NOQA
 cdef F_cuLinkComplete cuLinkComplete
-ctypedef int (*F_cuLinkDestroy)(LinkState state) nogil
+ctypedef int (*F_cuLinkDestroy)(LinkState state) noexcept nogil
 cdef F_cuLinkDestroy cuLinkDestroy
-ctypedef int (*F_cuModuleLoad)(Module* module, char* fname) nogil
+ctypedef int (*F_cuModuleLoad)(Module* module, char* fname) noexcept nogil
 cdef F_cuModuleLoad cuModuleLoad
-ctypedef int (*F_cuModuleLoadData)(Module* module, void* image) nogil
+ctypedef int (*F_cuModuleLoadData)(Module* module, void* image) noexcept nogil
 cdef F_cuModuleLoadData cuModuleLoadData
-ctypedef int (*F_cuModuleUnload)(Module hmod) nogil
+ctypedef int (*F_cuModuleUnload)(Module hmod) noexcept nogil
 cdef F_cuModuleUnload cuModuleUnload
-ctypedef int (*F_cuModuleGetFunction)(Function* hfunc, Module hmod, char* name) nogil  # NOQA
+ctypedef int (*F_cuModuleGetFunction)(Function* hfunc, Module hmod, char* name) noexcept nogil  # NOQA
 cdef F_cuModuleGetFunction cuModuleGetFunction
-ctypedef int (*F_cuModuleGetGlobal)(Deviceptr* dptr, size_t* bytes, Module hmod, char* name) nogil  # NOQA
+ctypedef int (*F_cuModuleGetGlobal)(Deviceptr* dptr, size_t* bytes, Module hmod, char* name) noexcept nogil  # NOQA
 cdef F_cuModuleGetGlobal cuModuleGetGlobal
-ctypedef int (*F_cuLaunchKernel)(Function f, unsigned int gridDimX, unsigned int gridDimY, unsigned int gridDimZ, unsigned int blockDimX, unsigned int blockDimY, unsigned int blockDimZ, unsigned int sharedMemBytes, Stream hStream, void** kernelParams, void** extra) nogil  # NOQA
+ctypedef int (*F_cuLaunchKernel)(Function f, unsigned int gridDimX, unsigned int gridDimY, unsigned int gridDimZ, unsigned int blockDimX, unsigned int blockDimY, unsigned int blockDimZ, unsigned int sharedMemBytes, Stream hStream, void** kernelParams, void** extra) noexcept nogil  # NOQA
 cdef F_cuLaunchKernel cuLaunchKernel
-ctypedef int (*F_cuLaunchCooperativeKernel)(Function f, unsigned int gridDimX, unsigned int gridDimY, unsigned int gridDimZ, unsigned int blockDimX, unsigned int blockDimY, unsigned int blockDimZ, unsigned int sharedMemBytes, Stream hStream, void** kernelParams) nogil  # NOQA
+ctypedef int (*F_cuLaunchCooperativeKernel)(Function f, unsigned int gridDimX, unsigned int gridDimY, unsigned int gridDimZ, unsigned int blockDimX, unsigned int blockDimY, unsigned int blockDimZ, unsigned int sharedMemBytes, Stream hStream, void** kernelParams) noexcept nogil  # NOQA
 cdef F_cuLaunchCooperativeKernel cuLaunchCooperativeKernel
 
 # Kernel attributes
-ctypedef int (*F_cuFuncGetAttribute)(int *pi, CUfunction_attribute attrib, Function hfunc) nogil  # NOQA
+ctypedef int (*F_cuFuncGetAttribute)(int *pi, CUfunction_attribute attrib, Function hfunc) noexcept nogil  # NOQA
 cdef F_cuFuncGetAttribute cuFuncGetAttribute
 
-ctypedef int (*F_cuFuncSetAttribute)(Function hfunc, CUfunction_attribute attrib, int value) nogil  # NOQA
+ctypedef int (*F_cuFuncSetAttribute)(Function hfunc, CUfunction_attribute attrib, int value) noexcept nogil  # NOQA
 cdef F_cuFuncSetAttribute cuFuncSetAttribute
 
 # Occupancy
-ctypedef int (*F_cuOccupancyMaxActiveBlocksPerMultiprocessor)(int* numBlocks, Function func, int blockSize, size_t dynamicSMemSize) nogil  # NOQA
+ctypedef int (*F_cuOccupancyMaxActiveBlocksPerMultiprocessor)(int* numBlocks, Function func, int blockSize, size_t dynamicSMemSize) noexcept nogil  # NOQA
 cdef F_cuOccupancyMaxActiveBlocksPerMultiprocessor cuOccupancyMaxActiveBlocksPerMultiprocessor  # NOQA
-ctypedef int (*F_cuOccupancyMaxPotentialBlockSize)(int* minGridSize, int* blockSize, Function func, CUoccupancyB2DSize block2shmem, size_t dynamicSMemSize, int blockSizeLimit) nogil  # NOQA
+ctypedef int (*F_cuOccupancyMaxPotentialBlockSize)(int* minGridSize, int* blockSize, Function func, CUoccupancyB2DSize block2shmem, size_t dynamicSMemSize, int blockSizeLimit) noexcept nogil  # NOQA
 cdef F_cuOccupancyMaxPotentialBlockSize cuOccupancyMaxPotentialBlockSize
 
 # Stream
-ctypedef int (*F_cuStreamGetCtx)(Stream hStream, Context* pctx) nogil
+ctypedef int (*F_cuStreamGetCtx)(Stream hStream, Context* pctx) noexcept nogil
 cdef F_cuStreamGetCtx cuStreamGetCtx
 
 

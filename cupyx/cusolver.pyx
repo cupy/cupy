@@ -59,11 +59,11 @@ cdef extern from '../cupy_backends/cupy_lapack.h' nogil:
 
 ctypedef int(*gesvd_ptr)(intptr_t, char, char, int, int, intptr_t,
                          intptr_t, intptr_t, intptr_t,
-                         intptr_t, int, intptr_t, int) nogil
+                         intptr_t, int, intptr_t, int) noexcept nogil
 ctypedef int(*geqrf_ptr)(intptr_t, int, int, intptr_t, int, intptr_t,
-                         intptr_t, int, intptr_t, int) nogil
+                         intptr_t, int, intptr_t, int) noexcept nogil
 ctypedef int(*orgqr_ptr)(intptr_t, int, int, int, intptr_t, int, intptr_t,
-                         intptr_t, int, intptr_t, int, int) nogil
+                         intptr_t, int, intptr_t, int, int) noexcept nogil
 
 
 _available_cuda_version = {
