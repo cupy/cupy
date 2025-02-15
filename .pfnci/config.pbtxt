@@ -861,7 +861,7 @@ configs {
       include_dot_git: true
     }
     environment_variables { key: "GPU" value: "2" }
-    command: ".pfnci\\windows\\run.bat 11.7 3.10 2.1 1.14 test"
+    command: ".pfnci\\windows\\run.bat 11.7 3.13 2.2 1.14 test"
   }
 }
 
@@ -1050,6 +1050,6 @@ configs {
       include_dot_git: true
     }
     environment_variables { key: "GPU" value: "2" }
-    command: ".pfnci\\windows\\run.bat 12.8 3.12 2.1 1.14 test"
+    command: ".pfnci\\windows\\run.bat 12.8 3.13 2.2 1.14 test"
   }
 }
