@@ -56,4 +56,5 @@ jobs:
             --event "${GITHUB_EVENT_NAME}" \
             --webhook "${GITHUB_EVENT_PATH}" \
             --projects ./.pfnci/config.tags.json \
-            --external-tag jenkins
+            --external-tag jenkins \
+            --external-tag rocm
