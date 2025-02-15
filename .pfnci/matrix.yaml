@@ -20,7 +20,7 @@
   scipy: "1.7"
   optuna: "3"
   mpi4py: null
-  cython: "3"
+  cython: "0.29"
   cuda-python: null
   env:CUPY_ACCELERATORS: ""
   test: "unit"
@@ -230,7 +230,7 @@
   scipy: "1.9"
   optuna: "3"
   mpi4py: null
-  cython: "3"
+  cython: "0.29"
   cuda-python: null
   env:CUPY_ACCELERATORS: "cutensor,cub"
   test: "unit"
