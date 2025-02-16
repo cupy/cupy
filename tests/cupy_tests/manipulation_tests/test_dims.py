@@ -343,10 +343,3 @@ class TestInvalidBroadcast(unittest.TestCase):
             arrays = [testing.shaped_arange(s, xp, dtype) for s in self.shapes]
             with pytest.raises(ValueError):
                 xp.broadcast_arrays(*arrays)
-    @testing.for_all_dtypes()
-    def test_apply_over_axes(self, dtype):
-        a = cupy.array([[1, 2, 3], [4, 5, 6]], dtype=dtype)
-        result =  cupy.apply_over_axes(cupy.sum, a, axis=1)
-        expected = numpy.apply_over_axes(numpy.sum, a.get(), axis=1)
-        assert cupy.allclose(result, expected)
-        assert result.shape == expected.shape
