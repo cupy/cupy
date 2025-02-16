@@ -78,6 +78,9 @@ cuda:
   "12.6":
     full_version: "12.6.0"
     repository: "nvidia/cuda"
+  "12.8":
+    full_version: "12.8.0"
+    repository: "nvidia/cuda"
 rocm:
   null:
     full_version: null
@@ -174,6 +177,11 @@ nccl:
       "12.4":
       "12.5":
       "12.6":
+  "2.25":
+    spec: "2.25.*"
+    cuda:
+      "12.4":
+      "12.8":
 cutensor:
   # https://docs.nvidia.com/cuda/cutensor/
   # https://developer.nvidia.com/cutensor/downloads
@@ -198,6 +206,7 @@ cutensor:
       "12.4":
       "12.5":
       "12.6":
+      "12.8":
 cusparselt:
   # https://docs.nvidia.com/cuda/cusparselt/
   # https://developer.nvidia.com/cusparselt/downloads
@@ -213,6 +222,7 @@ cusparselt:
       "12.4":
       "12.5":
       "12.6":
+      "12.8":
 cudnn:
   # https://docs.nvidia.com/deeplearning/cudnn/support-matrix/index.html
   # https://docs.nvidia.com/deeplearning/cudnn/archives/
@@ -253,6 +263,8 @@ cudnn:
       "12.5": # assumed
         alias: "12.0"
       "12.6": # assumed
+        alias: "12.0"
+      "12.8": # assumed
         alias: "12.0"
 
 ###############################################################################
@@ -393,8 +405,8 @@ mpi4py:
   "3":
     spec: "==3.*"
 cython:
-  "0.29":
-    spec: "==0.29.*"
+  "3":
+    spec: "==3.*"
   "pre":
     spec: ">=0a0"  # latest, including pre-releases
 cuda-python:
