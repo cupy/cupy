@@ -134,3 +134,10 @@ def put_along_axis(arr, indices, values, axis):
 
         # use the fancy index
         arr[_make_along_axis_idx(arr_shape, indices, axis)] = values
+def apply_over_axes(func, a, axes):
+    a = cupy.asarray(a)
+    if not isinstance(axes, (tuple, list)):
+        axes = [axes]
+        for axis in axes:
+            a = cupy.expand_dims(func(a, axis=axis), axis)
+    return a

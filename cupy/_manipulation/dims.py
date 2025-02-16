@@ -165,3 +165,4 @@ def squeeze(a, axis=None):
     """
     # TODO(okuta): check type
     return a.squeeze(axis)
+
