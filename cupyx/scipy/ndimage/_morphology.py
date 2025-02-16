@@ -743,7 +743,7 @@ def binary_fill_holes(input, structure=None, output=None, origin=0, *,
         origin = (origin,) * len(axes)
     if structure is None and all(o == 0 for o in origin) and filter_all_axes:
         return _binary_fill_holes_non_iterative(input, output=output)
-    else:
+    elif filter_all_axes:
         warnings.warn(
             'It is recommended to keep the default structure=None and '
             'origin=0, so that a faster non-iterative algorithm can be used.'
