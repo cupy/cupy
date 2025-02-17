@@ -14,6 +14,6 @@ Functional programming
    :toctree: generated/
 
    apply_along_axis
-   apply_over_axis
+   apply_over_axes
    vectorize
    piecewise
