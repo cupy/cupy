@@ -891,7 +891,7 @@ configs {
   value {
     requirement {
       cpu: 8
-      memory: 24
+      memory: 36
       disk: 10
       gpu: 2
       image: "windows"
