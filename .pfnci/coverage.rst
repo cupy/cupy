@@ -3579,7 +3579,7 @@ CuPy CI Test Coverage
      - 
    * - 
      - cutensor,cub
-     - 28
+     - 30
      - 
      - 
      - 
