@@ -14,6 +14,8 @@ class TestCustomStruct(unittest.TestCase):
         )
 
     def test_packed_matrix(self):
+        import subprocess
+        subprocess.run('nvidia-smi')
         output = example_test.run_example('custom_struct/packed_matrix.py')
         assert re.match(
             r"Kernel output matches expected value for type 'float'.\r?\n"
