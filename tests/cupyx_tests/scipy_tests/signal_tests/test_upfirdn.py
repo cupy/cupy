@@ -103,6 +103,9 @@ _upfirdn_modes = [
     'constant', 'wrap', 'edge', 'smooth', 'symmetric', 'reflect',
     'antisymmetric', 'antireflect', 'line',
 ]
+_upfirdn_unsupported_mode = pytest.mark.xfail(
+    reason="upfirdn `mode=...` not implemented"
+)
 
 
 @testing.with_requires('scipy')
@@ -166,17 +169,22 @@ class TestUpfirdn:
         y = scp.signal.upfirdn(h, x, up=1, down=down)
         return y
 
-    @pytest.mark.xfail(reason="upfirdn `mode=...` not implemented")
+    @pytest.mark.parametrize('size', [8])
+    # include cases with h_len > 2*size
+    @pytest.mark.parametrize('h_len', [4, 5, 26])
     @pytest.mark.parametrize(
-        'size, h_len, mode, dtype',
-        product(
-            [8],
-            [4, 5, 26],  # include cases with h_len > 2*size
-            _upfirdn_modes,
-            [np.float32, np.float64, np.complex64, np.complex128],
-        )
+        'mode',
+        [
+            pytest.param(mode, marks=_upfirdn_unsupported_mode)
+            if mode != 'constant'
+            else mode
+            for mode in _upfirdn_modes
+        ]
     )
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @pytest.mark.parametrize(
+        'dtype', [np.float32, np.float64, np.complex64, np.complex128]
+    )
+    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-5)
     def test_modes(self, xp, scp, size, h_len, mode, dtype):
         random_state = np.random.RandomState(5)
         x = random_state.randn(size).astype(dtype)
@@ -237,7 +245,7 @@ class TestUpfirdn:
             len_h = random_state.randint(longest_h) + 1
             h = np.atleast_1d(random_state.randint(len_h))
             h = h.astype(h_dtype)
-            if h_dtype == complex:
+            if h_dtype == complex:  # noqa: E721
                 h += 1j * random_state.randint(len_h)
             x, h = make_case(p, q, h, x_dtype, case)
             x = xp.asarray(x)

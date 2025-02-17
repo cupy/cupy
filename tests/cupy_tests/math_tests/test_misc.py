@@ -77,9 +77,9 @@ class TestMisc:
     @testing.for_dtypes(['e', 'f', 'd', 'F', 'D'])
     @testing.numpy_cupy_array_equal()
     def check_binary_nan(self, name, xp, dtype):
-        a = xp.array([-3, numpy.NAN, -1, numpy.NAN, 0, numpy.NAN, 2],
+        a = xp.array([-3, numpy.nan, -1, numpy.nan, 0, numpy.nan, 2],
                      dtype=dtype)
-        b = xp.array([numpy.NAN, numpy.NAN, 1, 0, numpy.NAN, -1, -2],
+        b = xp.array([numpy.nan, numpy.nan, 1, 0, numpy.nan, -1, -2],
                      dtype=dtype)
         return getattr(xp, name)(a, b)
 
@@ -107,12 +107,12 @@ class TestMisc:
         a = testing.shaped_arange((2, 3, 4), xp, dtype)
         return a.clip(3, None)
 
+    @testing.with_requires("numpy>=2.1")
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
-    def test_clip_min_max_none(self, dtype):
-        for xp in (numpy, cupy):
-            a = testing.shaped_arange((2, 3, 4), xp, dtype)
-            with pytest.raises(ValueError):
-                a.clip(None, None)
+    @testing.numpy_cupy_array_equal()
+    def test_clip_min_max_none(self, xp, dtype):
+        a = testing.shaped_arange((2, 3, 4), xp, dtype)
+        return a.clip(None, None)
 
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_array_equal()
@@ -171,15 +171,20 @@ class TestMisc:
         a = xp.array([2, 3, 4], dtype=dtype)
         return xp.fabs(a)
 
+    @testing.with_requires("numpy>=2.0")
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(atol=1e-5)
     def test_fabs_negative(self, xp, dtype):
+        if numpy.issubdtype(dtype, numpy.unsignedinteger):
+            pytest.skip("trying to set negative value to unsigned integer")
         a = xp.array([-2.0, -4.0, 0.0, 4.0], dtype=dtype)
         return xp.fabs(a)
 
+    @testing.with_requires('numpy>=2.0')
     def test_sign(self):
         self.check_unary('sign', no_bool=True)
 
+    @testing.with_requires('numpy>=2.0')
     def test_sign_negative(self):
         self.check_unary_negative('sign', no_bool=True)
 

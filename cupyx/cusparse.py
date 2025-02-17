@@ -143,7 +143,7 @@ _available_hipsparse_version = {
     'dense2csc': (305, None),
     'dense2csr': (305, None),
     'csr2csr_compress': (305, None),
-    'csrsm2': (305, None),  # avaiable since 305 but seems buggy
+    'csrsm2': (305, None),  # available since 305 but seems buggy
     'csrilu02': (305, None),
     'denseToSparse': (402, None),
     'sparseToDense': (402, None),
@@ -1177,7 +1177,7 @@ def dense2csc(x):
         handle, m, n, descr.descriptor,
         x.data.ptr, m, nnz_per_col.data.ptr,
         data.data.ptr, indices.data.ptr, indptr.data.ptr)
-    # Note that a desciptor is recreated
+    # Note that a descriptor is recreated
     csc = cupyx.scipy.sparse.csc_matrix((data, indices, indptr), shape=x.shape)
     csc._has_canonical_format = True
     return csc
@@ -1223,7 +1223,7 @@ def dense2csr(x):
         handle, m, n, descr.descriptor,
         x.data.ptr, m, nnz_per_row.data.ptr,
         data.data.ptr, indptr.data.ptr, indices.data.ptr)
-    # Note that a desciptor is recreated
+    # Note that a descriptor is recreated
     csr = cupyx.scipy.sparse.csr_matrix((data, indices, indptr), shape=x.shape)
     csr._has_canonical_format = True
     return csr
@@ -1380,8 +1380,8 @@ def spmv(a, x, y=None, alpha=1, beta=0, transa=False):
             Sparse matrix A
         x (cupy.ndarray): Dense vector x
         y (cupy.ndarray or None): Dense vector y
-        alpha (scalar): Coefficent
-        beta (scalar): Coefficent
+        alpha (scalar): Coefficient
+        beta (scalar): Coefficient
         transa (bool): If ``True``, op(A) = transpose of A.
 
     Returns:
@@ -1447,8 +1447,8 @@ def spmm(a, b, c=None, alpha=1, beta=0, transa=False, transb=False):
             Sparse matrix A
         b (cupy.ndarray): Dense matrix B
         c (cupy.ndarray or None): Dense matrix C
-        alpha (scalar): Coefficent
-        beta (scalar): Coefficent
+        alpha (scalar): Coefficient
+        beta (scalar): Coefficient
         transa (bool): If ``True``, op(A) = transpose of A.
         transb (bool): If ``True``, op(B) = transpose of B.
 
@@ -1520,7 +1520,7 @@ def csrsm2(a, b, alpha=1.0, lower=True, unit_diag=False, transa=False,
             Sparse matrix with dimension ``(M, M)``.
         b (cupy.ndarray): Dense vector or matrix with dimension ``(M)`` or
             ``(M, K)``.
-        alpha (float or complex): Coefficent.
+        alpha (float or complex): Coefficient.
         lower (bool):
             True: ``a`` is lower triangle matrix.
             False: ``a`` is upper triangle matrix.
@@ -1535,7 +1535,7 @@ def csrsm2(a, b, alpha=1.0, lower=True, unit_diag=False, transa=False,
             True: blocking algorithm is used.
             False: non-blocking algorithm is used.
         level_info (bool):
-            True: solves it with level infromation.
+            True: solves it with level information.
             False: solves it without level information.
 
     Note: ``b`` will be overwritten.
@@ -1664,7 +1664,7 @@ def csrilu02(a, level_info=False):
         a (cupyx.scipy.sparse.csr_matrix):
             Sparse matrix with dimension ``(M, M)``.
         level_info (bool):
-            True: solves it with level infromation.
+            True: solves it with level information.
             False: solves it without level information.
 
     Note: ``a`` will be overwritten. This function does not support fill-in
@@ -1789,7 +1789,7 @@ def denseToSparse(x, format='csr'):
         row = _cupy.zeros(nnz, 'i')
         col = _cupy.zeros(nnz, 'i')
         # Note: I would like to use empty() here, but that might cause an
-        # exeption in the row/col number check when creating the coo_matrix,
+        # exception in the row/col number check when creating the coo_matrix,
         # so I used zeros() instead.
         data = _cupy.empty(nnz, x.dtype)
         y = cupyx.scipy.sparse.coo_matrix((data, (row, col)), shape=x.shape)
@@ -1941,7 +1941,7 @@ def spsm(a, b, alpha=1.0, lower=True, unit_diag=False, transa=False):
     if b._f_contiguous:
         op_b = _cusparse.CUSPARSE_OPERATION_NON_TRANSPOSE
     elif b._c_contiguous:
-        if _cusparse.get_build_version() < 11701:  # eariler than CUDA 11.6
+        if _cusparse.get_build_version() < 11701:  # earlier than CUDA 11.6
             raise ValueError('b must be F-contiguous.')
         b = b.T
         op_b = _cusparse.CUSPARSE_OPERATION_TRANSPOSE
@@ -2049,14 +2049,31 @@ def spgemm(a, b, alpha=1):
     algo = _cusparse.CUSPARSE_SPGEMM_DEFAULT
     null_ptr = 0
 
-    # Analyze the matrices A and B to understand the memory requirement
-    buff1_size = _cusparse.spGEMM_workEstimation(
-        handle, op_a, op_b, alpha.data, mat_a.desc, mat_b.desc, beta.data,
-        mat_c.desc, cuda_dtype, algo, spgemm_descr, 0, null_ptr)
-    buff1 = _cupy.empty(buff1_size, _cupy.int8)
-    _cusparse.spGEMM_workEstimation(
-        handle, op_a, op_b, alpha.data, mat_a.desc, mat_b.desc, beta.data,
-        mat_c.desc, cuda_dtype, algo, spgemm_descr, buff1_size, buff1.data.ptr)
+    try:
+        # Analyze the matrices A and B to understand the memory requirement
+        buff1_size = _cusparse.spGEMM_workEstimation(
+            handle, op_a, op_b, alpha.data, mat_a.desc, mat_b.desc, beta.data,
+            mat_c.desc, cuda_dtype, algo, spgemm_descr, 0, null_ptr)
+        buff1 = _cupy.empty(buff1_size, _cupy.int8)
+        _cusparse.spGEMM_workEstimation(
+            handle, op_a, op_b, alpha.data, mat_a.desc, mat_b.desc, beta.data,
+            mat_c.desc, cuda_dtype, algo, spgemm_descr, buff1_size,
+            buff1.data.ptr)
+
+    except _cusparse.CuSparseError as cse:
+        # If the memory required is too high and cuSPARSE >= 12.0, fall back
+        # to ALG2
+        if getVersion() < 12000:
+            raise cse
+        algo = _cusparse.CUSPARSE_SPGEMM_ALG2
+        buff1_size = _cusparse.spGEMM_workEstimation(
+            handle, op_a, op_b, alpha.data, mat_a.desc, mat_b.desc, beta.data,
+            mat_c.desc, cuda_dtype, algo, spgemm_descr, 0, null_ptr)
+        buff1 = _cupy.empty(buff1_size, _cupy.int8)
+        _cusparse.spGEMM_workEstimation(
+            handle, op_a, op_b, alpha.data, mat_a.desc, mat_b.desc, beta.data,
+            mat_c.desc, cuda_dtype, algo, spgemm_descr, buff1_size,
+            buff1.data.ptr)
 
     # Compute the intermediate product of A and B
     buff2_size = _cusparse.spGEMM_compute(

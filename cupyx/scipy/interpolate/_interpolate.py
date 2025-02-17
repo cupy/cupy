@@ -868,9 +868,9 @@ class _PPolyBase:
     def _get_dtype(self, dtype):
         if (cupy.issubdtype(dtype, cupy.complexfloating)
                 or cupy.issubdtype(self.c.dtype, cupy.complexfloating)):
-            return cupy.complex_
+            return cupy.complex128
         else:
-            return cupy.float_
+            return cupy.float64
 
     @classmethod
     def construct_fast(cls, c, x, extrapolate=None, axis=0):
@@ -1014,7 +1014,7 @@ class _PPolyBase:
             extrapolate = self.extrapolate
         x = cupy.asarray(x)
         x_shape, x_ndim = x.shape, x.ndim
-        x = cupy.ascontiguousarray(x.ravel(), dtype=cupy.float_)
+        x = cupy.ascontiguousarray(x.ravel(), dtype=cupy.float64)
 
         # With periodic extrapolation we map x to the segment
         # [self.x[0], self.x[-1]].
@@ -1927,9 +1927,9 @@ class BPoly(_PPolyBase):
         dta, dtb = ya.dtype, yb.dtype
         if (cupy.issubdtype(dta, cupy.complexfloating) or
                 cupy.issubdtype(dtb, cupy.complexfloating)):
-            dt = cupy.complex_
+            dt = cupy.complex128
         else:
-            dt = cupy.float_
+            dt = cupy.float64
 
         na, nb = len(ya), len(yb)
         n = na + nb
@@ -2049,9 +2049,9 @@ class NdPPoly:
     def _get_dtype(self, dtype):
         if (cupy.issubdtype(dtype, cupy.complexfloating)
                 or cupy.issubdtype(self.c.dtype, cupy.complexfloating)):
-            return cupy.complex_
+            return cupy.complex128
         else:
-            return cupy.float_
+            return cupy.float64
 
     def _ensure_c_contiguous(self):
         if not self.c.flags.c_contiguous:

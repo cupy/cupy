@@ -64,3 +64,7 @@ cpdef int _update_order_char(
     bint is_c_contiguous, bint is_f_contiguous, int order_char)
 
 cpdef tuple _broadcast_shapes(shapes)
+
+cdef bint _is_layout_expected(
+    const bint c_contiguous, const bint f_contiguous,
+    expected_order) except*

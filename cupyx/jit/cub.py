@@ -29,7 +29,7 @@ def _include_cub(env):
         # WAR: warp_reduce.cuh is implicitly included.
         env.generated.add_code('#include <cub/block/block_reduce.cuh>')
         env.generated.backend = 'nvrtc'
-        env.generated.jitify = True
+        env.generated.jitify = False
 
 
 def _get_cub_namespace():

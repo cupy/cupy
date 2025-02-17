@@ -9,6 +9,12 @@ import pytest
 
 import cupy
 from cupy import testing
+from cupy.cuda import cufft, Device
+
+
+pytestmark = pytest.mark.skipif(
+    cufft.getVersion() == 11303 and Device().compute_capability == '120',
+    reason="cuFFT static callbacks in CUDA 12.8.0 do not support sm120")
 
 
 @contextlib.contextmanager
@@ -410,13 +416,11 @@ class Test1dCallbacks:
 
 @testing.parameterize(
     {'shape': (3, 4), 's': None, 'axes': None, 'norm': None},
-    {'shape': (3, 4), 's': (1, None), 'axes': None, 'norm': None},
-    {'shape': (3, 4), 's': (1, 5), 'axes': None, 'norm': None},
+    {'shape': (3, 4), 's': (1, 5), 'axes': (-2, -1), 'norm': None},
     {'shape': (3, 4), 's': None, 'axes': (-2, -1), 'norm': None},
     {'shape': (3, 4), 's': None, 'axes': None, 'norm': 'ortho'},
     {'shape': (2, 3, 4), 's': None, 'axes': None, 'norm': None},
-    {'shape': (2, 3, 4), 's': (1, 4, None), 'axes': None, 'norm': None},
-    {'shape': (2, 3, 4), 's': (1, 4, 10), 'axes': None, 'norm': None},
+    {'shape': (2, 3, 4), 's': (1, 4, 10), 'axes': (-3, -2, -1), 'norm': None},
     {'shape': (2, 3, 4), 's': None, 'axes': (-3, -2, -1), 'norm': None},
     {'shape': (2, 3, 4), 's': None, 'axes': None, 'norm': 'ortho'},
     {'shape': (2, 3, 4), 's': (2, 3), 'axes': (0, 1, 2), 'norm': 'ortho'},

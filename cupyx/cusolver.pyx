@@ -59,11 +59,11 @@ cdef extern from '../cupy_backends/cupy_lapack.h' nogil:
 
 ctypedef int(*gesvd_ptr)(intptr_t, char, char, int, int, intptr_t,
                          intptr_t, intptr_t, intptr_t,
-                         intptr_t, int, intptr_t, int) nogil
+                         intptr_t, int, intptr_t, int) noexcept nogil
 ctypedef int(*geqrf_ptr)(intptr_t, int, int, intptr_t, int, intptr_t,
-                         intptr_t, int, intptr_t, int) nogil
+                         intptr_t, int, intptr_t, int) noexcept nogil
 ctypedef int(*orgqr_ptr)(intptr_t, int, int, int, intptr_t, int, intptr_t,
-                         intptr_t, int, intptr_t, int, int) nogil
+                         intptr_t, int, intptr_t, int, int) noexcept nogil
 
 
 _available_cuda_version = {
@@ -169,7 +169,7 @@ def gesvdj(a, full_matrices=True, compute_uv=True, overwrite_a=False):
 
     handle = _device.get_cusolver_handle()
     m, n = a.shape
-    a = _cupy.array(a, order='F', copy=not overwrite_a)
+    a = _cupy.array(a, order='F', copy=(None if overwrite_a else True))
     lda = m
     mn = min(m, n)
     s = _cupy.empty(mn, dtype=s_dtype)
@@ -231,7 +231,8 @@ cpdef _gesvdj_batched(a, full_matrices, compute_uv, overwrite_a):
 
     handle = _device.get_cusolver_handle()
     batch_size, m, n = a.shape
-    a = _cupy.array(a.swapaxes(-2, -1), order='C', copy=not overwrite_a)
+    a = _cupy.array(a.swapaxes(-2, -1), order='C',
+                    copy=(None if overwrite_a else True))
     if runtime._is_hip_environment:
         # rocsolver_<t>gesvd_batched has a different signature...
         ap = _linalg._mat_ptrs(a)

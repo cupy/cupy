@@ -3,6 +3,7 @@ import numpy
 import pytest
 
 from cupy import testing
+from cupy.exceptions import AxisError
 # TODO (grlee77): use fft instead of fftpack once min. supported scipy >= 1.4
 import cupyx.scipy.fft  # NOQA
 import cupyx.scipy.fftpack  # NOQA
@@ -384,7 +385,7 @@ class TestFourierEllipsoidInvalid():
     @testing.with_requires('scipy>=1.5.0')
     def test_0d_input(self):
         for xp, scp in zip((numpy, cupy), (scipy, cupyx.scipy)):
-            with pytest.raises(numpy.AxisError):
+            with pytest.raises(AxisError):
                 scp.ndimage.fourier_ellipsoid(xp.asarray(5.0), size=2)
         return
 
@@ -404,9 +405,9 @@ class TestFourierEllipsoidInvalid():
         # as of 1.5.4, it does not.
         shape = (6, 8)
         for xp, scp in zip((numpy, cupy), (scipy, cupyx.scipy)):
-            with pytest.raises(numpy.AxisError):
+            with pytest.raises(AxisError):
                 scp.ndimage.fourier_ellipsoid(xp.ones(shape), 2, axis=2)
-            with pytest.raises(numpy.AxisError):
+            with pytest.raises(AxisError):
                 scp.ndimage.fourier_ellipsoid(xp.ones(shape), 2, axis=-3)
         return
 

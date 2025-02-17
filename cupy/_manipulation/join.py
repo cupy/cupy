@@ -1,3 +1,5 @@
+import warnings
+
 import cupy
 from cupy import _core
 
@@ -128,6 +130,16 @@ def vstack(tup, *, dtype=None, casting='same_kind'):
     """
     return concatenate([cupy.atleast_2d(m) for m in tup], 0,
                        dtype=dtype, casting=casting)
+
+
+def row_stack(tup, *, dtype=None, casting='same_kind'):
+    warnings.warn(
+        "`row_stack` alias is deprecated. "
+        "Use `cp.vstack` directly.",
+        DeprecationWarning,
+        stacklevel=1
+    )
+    return vstack(tup, dtype=dtype, casting=casting)
 
 
 def stack(tup, axis=0, out=None, *, dtype=None, casting='same_kind'):

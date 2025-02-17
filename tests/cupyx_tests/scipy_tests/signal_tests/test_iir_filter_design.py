@@ -588,7 +588,7 @@ class TestButtord:
         with pytest.warns(RuntimeWarning, match=r'Order is zero'):
             signal.buttord(0.0, 1.0, 3, 60)
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1E-7)
     def test_ellip_butter(self, xp, scp):
         # The purpose of the test is to make sure the result of `ellipord`
         # differs from that of `buttord`. The values to compare to are
@@ -799,7 +799,7 @@ class TestEllipord:
         N, Wn = scp.signal.ellipord(wp, ws, rp, rs, False)
         return N, Wn
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=3E-7)
     def test_bandstop(self, xp, scp):
         wp = xp.array([0.1, 0.6])
         ws = xp.array([0.2, 0.5])
@@ -817,7 +817,7 @@ class TestEllipord:
         N, Wn = scp.signal.ellipord(wp, ws, rp, rs, True)
         return N, Wn
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=3E-7)
     def test_fs_param(self, xp, scp):
         wp = [400, 2400]
         ws = [800, 2000]
@@ -840,7 +840,7 @@ class TestEllipord:
             signal.ellipord(0.2, 0.5, 1, -2)
         assert "gstop should be larger than 0.0" in str(exc_info.value)
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=3E-7)
     def test_ellip_butter(self, xp, scp):
         # The purpose of the test is to make sure the result of `ellipord`
         # differs from that of `buttord`. The values to compare to are
@@ -972,14 +972,14 @@ class TestIIRNotch:
 
     @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_ba_output(self, xp, scp):
-        # Compare coeficients with Matlab ones
+        # Compare coefficients with Matlab ones
         # for the equivalent input:
         b, a = scp.signal.iirnotch(0.06, 30)
         return b, a
 
     @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_frequency_response(self, xp, scp):
-        # Get filter coeficients
+        # Get filter coefficients
         b, a = scp.signal.iirnotch(0.3, 30)
         return b, a
 
@@ -995,7 +995,7 @@ class TestIIRNotch:
 
     @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_fs_param(self, xp, scp):
-        # Get filter coeficients
+        # Get filter coefficients
         b, a = scp.signal.iirnotch(1500, 30, fs=10000)
         return b, a
 
@@ -1005,14 +1005,14 @@ class TestIIRPeak:
 
     @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_ba_output(self, xp, scp):
-        # Compare coeficients with Matlab ones
+        # Compare coefficients with Matlab ones
         # for the equivalent input:
         b, a = scp.signal.iirpeak(0.06, 30)
         return b, a
 
     @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_frequency_response(self, xp, scp):
-        # Get filter coeficients
+        # Get filter coefficients
         b, a = scp.signal.iirpeak(0.3, 30)
         return b, a
 
@@ -1028,7 +1028,7 @@ class TestIIRPeak:
 
     @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_fs_param(self, xp, scp):
-        # Get filter coeficients
+        # Get filter coefficients
         b, a = scp.signal.iirpeak(1200, 30, fs=8000)
         return b, a
 

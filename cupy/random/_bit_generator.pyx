@@ -76,7 +76,9 @@ class _cuRANDGenerator(BitGenerator):
         # Raw kernel has problems with integers with the 64th bit set
         self._seed = self._seed_seq.generate_state(1, numpy.uint32)[0]
         if size < 0:
-            size = 8 * 256 * cupy.cuda.runtime.cudaDevAttrMultiProcessorCount
+            size = 8 * 256 * runtime.deviceGetAttribute(
+                runtime.cudaDevAttrMultiProcessorCount,
+                self._current_device_id)
         self._size = size
         cdef uint64_t b_size = self._type_size() * size
         self._state = cupy.zeros(b_size, dtype=numpy.int8)

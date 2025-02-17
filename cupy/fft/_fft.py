@@ -662,6 +662,13 @@ def _default_fft_func(a, s=None, axes=None, plan=None, value_type='C2C'):
     return _fft
 
 
+def _compat_caster(a, axes):
+    real_dtype = np.result_type(a.real.dtype, 1.0)
+    if axes is not None and len(axes) == 1:
+        return lambda x: x.astype(real_dtype, copy=False)
+    return lambda x: x
+
+
 def fft(a, n=None, axis=-1, norm=None):
     """Compute the one-dimensional FFT.
 
@@ -865,7 +872,8 @@ def irfft(a, n=None, axis=-1, norm=None):
     """
     from cupy.cuda import cufft
 
-    return _fft(a, (n,), (axis,), norm, cufft.CUFFT_INVERSE, 'C2R')
+    caster = _compat_caster(a, (axis,))
+    return caster(_fft(a, (n,), (axis,), norm, cufft.CUFFT_INVERSE, 'C2R'))
 
 
 def rfft2(a, s=None, axes=(-2, -1), norm=None):
@@ -920,8 +928,9 @@ def irfft2(a, s=None, axes=(-2, -1), norm=None):
     """
     from cupy.cuda import cufft
 
+    caster = _compat_caster(a, axes)
     func = _default_fft_func(a, s, axes, value_type='C2R')
-    return func(a, s, axes, norm, cufft.CUFFT_INVERSE, 'C2R')
+    return caster(func(a, s, axes, norm, cufft.CUFFT_INVERSE, 'C2R'))
 
 
 def rfftn(a, s=None, axes=None, norm=None):
@@ -985,8 +994,9 @@ def irfftn(a, s=None, axes=None, norm=None):
     """
     from cupy.cuda import cufft
 
+    caster = _compat_caster(a, axes)
     func = _default_fft_func(a, s, axes, value_type='C2R')
-    return func(a, s, axes, norm, cufft.CUFFT_INVERSE, 'C2R')
+    return caster(func(a, s, axes, norm, cufft.CUFFT_INVERSE, 'C2R'))
 
 
 def _swap_direction(norm):
@@ -1098,7 +1108,7 @@ def fftshift(x, axes=None):
     x = cupy.asarray(x)
     if axes is None:
         axes = list(range(x.ndim))
-    elif isinstance(axes, np.compat.integer_types):
+    elif isinstance(axes, int):
         axes = (axes,)
     return cupy.roll(x, [x.shape[axis] // 2 for axis in axes], axes)
 
@@ -1119,6 +1129,6 @@ def ifftshift(x, axes=None):
     x = cupy.asarray(x)
     if axes is None:
         axes = list(range(x.ndim))
-    elif isinstance(axes, np.compat.integer_types):
+    elif isinstance(axes, int):
         axes = (axes,)
     return cupy.roll(x, [-(x.shape[axis] // 2) for axis in axes], axes)

@@ -85,15 +85,15 @@ def _align_nums(nums):
 
 def _polycoeffs_from_zeros(zeros, tol=10):
     # a clone of numpy.poly, simplified
-    dtyp = (cupy.complex_
+    dtyp = (cupy.complex128
             if cupy.issubdtype(zeros.dtype, cupy.complexfloating)
-            else cupy.float_)
+            else cupy.float64)
     a = cupy.ones(1, dtype=dtyp)
     for z in zeros:
         a = cupy.convolve(a, cupy.r_[1, -z], mode='full')
 
     # Use real output if possible.
-    if dtyp == cupy.complex_:
+    if dtyp == cupy.complex128:
         mask = cupy.abs(a.imag) < tol * cupy.finfo(a.dtype).eps
         a.imag[mask] = 0.0
         if mask.shape[0] == a.shape[0]:
@@ -1951,7 +1951,7 @@ def _find_nat_freq(stopb, passb, gpass, gstop, filter_type, filter_kind):
         nat = ((stopb ** 2 - passb[0] * passb[1]) /
                (stopb * (passb[0] - passb[1])))
     else:
-        raise ValueError(f"should not happen: {filter_type =}.")
+        raise ValueError(f"should not happen: {filter_type=}.")
 
     nat = min(cupy.abs(nat))
     return nat, passb

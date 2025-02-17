@@ -5,7 +5,7 @@ from cupy._core import fusion  # NOQA
 from cupy._core import internal  # NOQA
 
 
-# internal APIs for testing and developement
+# internal APIs for testing and development
 from cupy._core._accelerator import set_elementwise_accelerators  # NOQA
 from cupy._core._accelerator import set_reduction_accelerators  # NOQA
 from cupy._core._accelerator import set_routine_accelerators  # NOQA
@@ -46,7 +46,7 @@ from cupy._core._routines_manipulation import broadcast_to  # NOQA
 from cupy._core._routines_manipulation import concatenate_method  # NOQA
 from cupy._core._routines_manipulation import moveaxis  # NOQA
 from cupy._core._routines_manipulation import rollaxis  # NOQA
-from cupy._core._routines_manipulation import size  # NOQA'
+from cupy._core._routines_manipulation import size  # NOQA
 from cupy._core._routines_math import absolute  # NOQA
 from cupy._core._routines_math import add  # NOQA
 from cupy._core._routines_math import angle, angle_deg  # NOQA

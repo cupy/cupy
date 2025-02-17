@@ -5,6 +5,7 @@ import pytest
 
 import cupy
 from cupy import testing
+from cupy.exceptions import AxisError
 
 
 @testing.parameterize(*(testing.product({'axis': [0, 1, -1]})))
@@ -104,7 +105,7 @@ def test_apply_along_axis_invalid_axis():
     for xp in [numpy, cupy]:
         a = xp.ones((8, 4))
         for axis in [-3, 2]:
-            with pytest.raises(numpy.AxisError):
+            with pytest.raises(AxisError):
                 xp.apply_along_axis(xp.sum, axis, a)
 
 

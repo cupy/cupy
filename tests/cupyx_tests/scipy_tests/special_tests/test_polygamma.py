@@ -1,16 +1,17 @@
+import platform
 import unittest
 
 from cupy import testing
 import cupyx.scipy.special  # NOQA
 import numpy
+import pytest
 
 import warnings
 
 
-@testing.with_requires('scipy')
+@testing.with_requires("scipy>=1.14")
 class TestPolygamma(unittest.TestCase):
 
-    @testing.with_requires('scipy>=1.1.0')
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(atol=1e-5, scipy_name='scp')
     def test_arange(self, xp, scp, dtype):
@@ -20,7 +21,6 @@ class TestPolygamma(unittest.TestCase):
         b = testing.shaped_arange((2, 3), xp, dtype)
         return scp.special.polygamma(a, b)
 
-    @testing.with_requires('scipy>=1.1.0')
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(atol=1e-3, rtol=1e-3, scipy_name='scp')
     def test_linspace(self, xp, scp, dtype):
@@ -42,7 +42,9 @@ class TestPolygamma(unittest.TestCase):
         return scp.special.polygamma(
             dtype(2.), dtype(1.5)).astype(numpy.float32)
 
-    @testing.with_requires('scipy>=1.1.0')
+    @pytest.mark.xfail(
+        platform.machine() == "aarch64",
+        reason="aarch64 scipy does not match cupy/x86 see Scipy #20159")
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(atol=1e-2, rtol=1e-3, scipy_name='scp')
     def test_inf_and_nan(self, xp, scp, dtype):

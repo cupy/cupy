@@ -727,7 +727,8 @@ def apply_iir_sos(x, sos, axis=-1, zi=None, dtype=None, block_sz=1024,
 
     if zi is not None:
         zi_out = zi_out.reshape(zi_shape)
-        zi_out = cupy.moveaxis(zi_out, -1, axis)
+        if len(zi_shape) > 2:
+            zi_out = cupy.moveaxis(zi_out, -1, axis)
         if not zi_out.flags.c_contiguous:
             zi_out = zi_out.copy()
 

@@ -24,7 +24,7 @@ described in [5]_.
 
 .. [3] http://fourier.eng.hmc.edu/e161/lectures/dct/node2.html
 
-.. [4] https://dsp.stackexchange.com/questions/2807/fast-cosine-transform-via-fft  # noqa
+.. [4] https://dsp.stackexchange.com/questions/2807/fast-cosine-transform-via-fft
 
 .. [5] X. Shao, S. G. Johnson. Type-II/III DCT/DST algorithms with reduced
     number of arithmetic operations, Signal Processing, Volume 88, Issue 6,
@@ -35,13 +35,11 @@ import math
 import numbers
 import operator
 
-import numpy
-
 import cupy
 from cupy import _core
 from cupy.fft._fft import _cook_shape
 from cupyx.scipy.fft import _fft
-
+from cupy.exceptions import AxisError
 
 __all__ = ['dct', 'dctn', 'dst', 'dstn', 'idct', 'idctn', 'idst', 'idstn']
 
@@ -163,7 +161,7 @@ def _dct_or_dst_type2(
         The transformed array.
     """
     if axis < -x.ndim or axis >= x.ndim:
-        raise numpy.AxisError('axis out of range')
+        raise AxisError('axis out of range')
     if axis < 0:
         axis += x.ndim
     if n is not None and n < 1:
@@ -284,7 +282,7 @@ def _dct_or_dst_type3(
 
     """
     if axis < -x.ndim or axis >= x.ndim:
-        raise numpy.AxisError('axis out of range')
+        raise AxisError('axis out of range')
     if axis < 0:
         axis += x.ndim
     if n is not None and n < 1:

@@ -1,29 +1,28 @@
 import cupy
 
 import operator
-import warnings
 
 
-def _deprecate_as_int(x, desc):
+def _as_int(x, desc):
+    """
+    Like `operator.index`, but emits a custom exception when passed an
+    incorrect type
+
+    Parameters
+    ----------
+    x : int-like
+        Value to interpret as an integer
+    desc : str
+        description to include in any error message
+
+    Raises
+    ------
+    TypeError : if x is a float or non-numeric
+    """
     try:
         return operator.index(x)
     except TypeError as e:
-        try:
-            ix = int(x)
-        except TypeError:
-            pass
-        else:
-            if ix == x:
-                warnings.warn(
-                    'In future, this will raise TypeError, as {} will '
-                    'need to be an integer not just an integral float.'
-                    .format(desc),
-                    DeprecationWarning,
-                    stacklevel=3
-                )
-                return ix
-
-        raise TypeError('{} must be an integer'.format(desc)) from e
+        raise TypeError(f"{desc} must be an integer, received {x}") from e
 
 
 def trimseq(seq):
@@ -39,6 +38,10 @@ def trimseq(seq):
     .. seealso:: :func:`numpy.polynomial.polyutils.trimseq`
 
     """
+    if seq.ndim == 0:
+        raise TypeError('Input must be 1-d array')
+    if seq.ndim > 1:
+        raise ValueError('Input must be 1-d array')
     if seq.size == 0:
         return seq
     ret = cupy.trim_zeros(seq, trim='b')

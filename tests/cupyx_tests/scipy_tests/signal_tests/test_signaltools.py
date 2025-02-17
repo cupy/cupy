@@ -814,6 +814,13 @@ class TestSosFilt:
         out, _ = scp.signal.sosfilt(sos, x, zi=zi)
         return out
 
+    def test_sosfilt_zi_sosfilt(self):
+        sos = cupyx.scipy.signal.butter(6, 0.2, output='sos')
+        zi = cupyx.scipy.signal.sosfilt_zi(sos)
+        _, zf = cupyx.scipy.signal.sosfilt(
+            sos, cupy.ones(40, dtype=cupy.float64), zi=zi)
+        testing.assert_allclose(zi, zf)
+
 
 @testing.with_requires('scipy')
 class TestDetrend:

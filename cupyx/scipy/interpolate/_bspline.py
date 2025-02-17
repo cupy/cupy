@@ -57,7 +57,7 @@ __global__ void find_interval(
     int default_value = left - 1 < k ? k : left - 1;
     int result = found ? mid + 1 : default_value + 1;
 
-    while(xp >= *&t[result] && result != n) {
+    while(result != n && xp >= *&t[result]) {
         result++;
     }
 
@@ -319,7 +319,7 @@ def _make_design_matrix(x, t, k, extrapolate, indices):
                   (t, None, k, 0, x, intervals, None, bspline_basis, 0, 0,
                    x.shape[0]))
 
-    data = cupy.zeros(x.shape[0] * (k + 1), dtype=cupy.float_)
+    data = cupy.zeros(x.shape[0] * (k + 1), dtype=cupy.float64)
     design_mat_kernel = _get_module_func(
         DESIGN_MAT_MODULE, 'compute_design_matrix', indices)
     design_mat_kernel(((x.shape[0] + 128 - 1) // 128,), (128,),
@@ -371,7 +371,7 @@ def splder(tck, n=1):
             # See e.g. Schumaker, Spline Functions: Basic Theory, Chapter 5
 
             # Compute the denominator in the differentiation formula.
-            # (and append traling dims, if necessary)
+            # (and append trailing dims, if necessary)
             dt = t[k+1:-1] - t[1:-k-1]
             dt = dt[sh]
             # Compute the new coefficients
@@ -733,7 +733,7 @@ class BSpline:
 
         x = cupy.asarray(x)
         x_shape, x_ndim = x.shape, x.ndim
-        x = cupy.ascontiguousarray(cupy.ravel(x), dtype=cupy.float_)
+        x = cupy.ascontiguousarray(cupy.ravel(x), dtype=cupy.float64)
 
         # With periodic extrapolation we map x to the segment
         # [self.t[k], self.t[n]].
@@ -903,7 +903,7 @@ class BSpline:
 
             if n_periods > 0:
                 # Evaluate the difference of antiderivatives.
-                x = cupy.asarray([ts, te], dtype=cupy.float_)
+                x = cupy.asarray([ts, te], dtype=cupy.float64)
                 _evaluate_spline(ta, ca.reshape(ca.shape[0], -1),
                                  ka, x, 0, False, out)
                 integral = out[1] - out[0]
@@ -919,23 +919,23 @@ class BSpline:
             # If b <= te then we need to integrate over [a, b], otherwise
             # over [a, te] and from xs to what is remained.
             if b <= te:
-                x = cupy.asarray([a, b], dtype=cupy.float_)
+                x = cupy.asarray([a, b], dtype=cupy.float64)
                 _evaluate_spline(ta, ca.reshape(ca.shape[0], -1),
                                  ka, x, 0, False, out)
                 integral += out[1] - out[0]
             else:
-                x = cupy.asarray([a, te], dtype=cupy.float_)
+                x = cupy.asarray([a, te], dtype=cupy.float64)
                 _evaluate_spline(ta, ca.reshape(ca.shape[0], -1),
                                  ka, x, 0, False, out)
                 integral += out[1] - out[0]
 
-                x = cupy.asarray([ts, ts + b - te], dtype=cupy.float_)
+                x = cupy.asarray([ts, ts + b - te], dtype=cupy.float64)
                 _evaluate_spline(ta, ca.reshape(ca.shape[0], -1),
                                  ka, x, 0, False, out)
                 integral += out[1] - out[0]
         else:
             # Evaluate the difference of antiderivatives.
-            x = cupy.asarray([a, b], dtype=cupy.float_)
+            x = cupy.asarray([a, b], dtype=cupy.float64)
             _evaluate_spline(ta, ca.reshape(ca.shape[0], -1),
                              ka, x, 0, extrapolate, out)
             integral = out[1] - out[0]

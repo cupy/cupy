@@ -292,6 +292,18 @@ cudaError_t cudaStreamCreateWithFlags(...) {
     return cudaSuccess;
 }
 
+cudaError_t cudaStreamCreateWithPriority(...) {
+    return cudaSuccess;
+}
+
+cudaError_t cudaStreamGetFlags(...) {
+    return cudaSuccess;
+}
+
+cudaError_t cudaStreamGetPriority(...) {
+    return cudaSuccess;
+}
+
 cudaError_t cudaStreamDestroy(...) {
     return cudaSuccess;
 }
@@ -419,6 +431,10 @@ cudaError_t cudaGraphLaunch(...) {
 }
 
 cudaError_t cudaGraphUpload(...) {
+    return cudaSuccess;
+}
+
+cudaError_t cudaGraphDebugDotPrint(...) {
     return cudaSuccess;
 }
 

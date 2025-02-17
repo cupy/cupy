@@ -71,7 +71,7 @@ class coo_matrix(sparse_data._data_matrix):
             col = x.col
 
             if arg1.format != self.format:
-                # When formats are differnent, all arrays are already copied
+                # When formats are different, all arrays are already copied
                 copy = False
 
             if shape is None:
@@ -472,7 +472,7 @@ class coo_matrix(sparse_data._data_matrix):
         return self.tocsr().toarray(order=order, out=out)
 
     def tocoo(self, copy=False):
-        """Converts the matrix to COOdinate format.
+        """Converts the matrix to COOrdinate format.
 
         Args:
             copy (bool): If ``False``, it shares data arrays as much as

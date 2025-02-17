@@ -1,5 +1,3 @@
-import unittest
-
 import numpy
 import pytest
 
@@ -12,7 +10,33 @@ from cupy import testing
 @testing.parameterize(*testing.product({
     'order': ('C', 'F'),
 }))
-class TestArrayReduction(unittest.TestCase):
+class TestArrayReduction:
+
+    @pytest.fixture(scope='class')
+    def exclude_cutensor(self):
+        # cuTENSOR seems to have issues in handling inf/nan in reduction-based
+        # routines, so we use this fixture to skip testing it
+        self.old_routine_accelerators = _acc.get_routine_accelerators()
+        self.old_reduction_accelerators = _acc.get_reduction_accelerators()
+
+        rot_acc = self.old_routine_accelerators.copy()
+        try:
+            rot_acc.remove(_acc.ACCELERATOR_CUTENSOR)
+        except ValueError:
+            pass
+        _acc.set_routine_accelerators(rot_acc)
+
+        red_acc = self.old_reduction_accelerators.copy()
+        try:
+            red_acc.remove(_acc.ACCELERATOR_CUTENSOR)
+        except ValueError:
+            pass
+        _acc.set_reduction_accelerators(red_acc)
+
+        yield
+
+        _acc.set_routine_accelerators(self.old_routine_accelerators)
+        _acc.set_reduction_accelerators(self.old_reduction_accelerators)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(contiguous_check=False)
@@ -64,9 +88,7 @@ class TestArrayReduction(unittest.TestCase):
 
     @testing.for_float_dtypes()
     @testing.numpy_cupy_allclose(contiguous_check=False)
-    def test_max_nan(self, xp, dtype):
-        if _acc.ACCELERATOR_CUTENSOR in _acc.get_routine_accelerators():
-            pytest.skip()
+    def test_max_nan(self, xp, dtype, exclude_cutensor):
         a = xp.array([float('nan'), 1, -1], dtype, order=self.order)
         return a.max()
 
@@ -80,6 +102,13 @@ class TestArrayReduction(unittest.TestCase):
     @testing.numpy_cupy_allclose(contiguous_check=False)
     def test_max_nan_imag(self, xp, dtype):
         a = xp.array([float('nan')*1.j, 1.j, -1.j], dtype, order=self.order)
+        return a.max()
+
+    @testing.for_float_dtypes()
+    @testing.numpy_cupy_allclose(contiguous_check=False)
+    def test_max_inf(self, exclude_cutensor, xp, dtype):
+        # cupy/cupy#8180
+        a = xp.array([-float('inf'), -float('inf')], dtype, order=self.order)
         return a.max()
 
     @testing.for_all_dtypes()
@@ -132,9 +161,7 @@ class TestArrayReduction(unittest.TestCase):
 
     @testing.for_float_dtypes()
     @testing.numpy_cupy_allclose(contiguous_check=False)
-    def test_min_nan(self, xp, dtype):
-        if _acc.ACCELERATOR_CUTENSOR in _acc.get_routine_accelerators():
-            pytest.skip()
+    def test_min_nan(self, xp, dtype, exclude_cutensor):
         a = xp.array([float('nan'), 1, -1], dtype, order=self.order)
         return a.min()
 
@@ -150,77 +177,12 @@ class TestArrayReduction(unittest.TestCase):
         a = xp.array([float('nan')*1.j, 1.j, -1.j], dtype, order=self.order)
         return a.min()
 
-    # skip bool: numpy's ptp raises a TypeError on bool inputs
-    @testing.for_all_dtypes(no_bool=True)
-    @testing.numpy_cupy_allclose(contiguous_check=False)
-    def test_ptp_all(self, xp, dtype):
-        a = testing.shaped_random((2, 3), xp, dtype, order=self.order)
-        return a.ptp()
-
-    @testing.with_requires('numpy>=1.15')
-    @testing.for_all_dtypes(no_bool=True)
-    @testing.numpy_cupy_allclose(contiguous_check=False)
-    def test_ptp_all_keepdims(self, xp, dtype):
-        a = testing.shaped_random((2, 3), xp, dtype, order=self.order)
-        return a.ptp(keepdims=True)
-
-    @testing.for_all_dtypes(no_bool=True)
-    @testing.numpy_cupy_allclose(contiguous_check=False)
-    def test_ptp_axis_large(self, xp, dtype):
-        a = testing.shaped_random((3, 1000), xp, dtype, order=self.order)
-        return a.ptp(axis=0)
-
-    @testing.for_all_dtypes(no_bool=True)
-    @testing.numpy_cupy_allclose(contiguous_check=False)
-    def test_ptp_axis0(self, xp, dtype):
-        a = testing.shaped_random((2, 3, 4), xp, dtype, order=self.order)
-        return a.ptp(axis=0)
-
-    @testing.for_all_dtypes(no_bool=True)
-    @testing.numpy_cupy_allclose(contiguous_check=False)
-    def test_ptp_axis1(self, xp, dtype):
-        a = testing.shaped_random((2, 3, 4), xp, dtype, order=self.order)
-        return a.ptp(axis=1)
-
-    @testing.for_all_dtypes(no_bool=True)
-    @testing.numpy_cupy_allclose(contiguous_check=False)
-    def test_ptp_axis2(self, xp, dtype):
-        a = testing.shaped_random((2, 3, 4), xp, dtype, order=self.order)
-        return a.ptp(axis=2)
-
-    @testing.with_requires('numpy>=1.15')
-    @testing.for_all_dtypes(no_bool=True)
-    @testing.numpy_cupy_allclose(contiguous_check=False)
-    def test_ptp_multiple_axes(self, xp, dtype):
-        a = testing.shaped_random((2, 3, 4), xp, dtype, order=self.order)
-        return a.ptp(axis=(1, 2))
-
-    @testing.with_requires('numpy>=1.15')
-    @testing.for_all_dtypes(no_bool=True)
-    @testing.numpy_cupy_allclose(contiguous_check=False)
-    def test_ptp_multiple_axes_keepdims(self, xp, dtype):
-        a = testing.shaped_random((2, 3, 4), xp, dtype, order=self.order)
-        return a.ptp(axis=(1, 2), keepdims=True)
-
     @testing.for_float_dtypes()
     @testing.numpy_cupy_allclose(contiguous_check=False)
-    def test_ptp_nan(self, xp, dtype):
-        if _acc.ACCELERATOR_CUTENSOR in _acc.get_routine_accelerators():
-            pytest.skip()
-        a = xp.array([float('nan'), 1, -1], dtype, order=self.order)
-        return a.ptp()
-
-    @testing.for_complex_dtypes()
-    @testing.numpy_cupy_allclose(contiguous_check=False)
-    def test_ptp_nan_real(self, xp, dtype):
-        a = xp.array([float('nan'), 1, -1], dtype, order=self.order)
-        return a.ptp()
-
-    @testing.for_complex_dtypes()
-    @testing.numpy_cupy_allclose(contiguous_check=False)
-    def test_ptp_nan_imag(self, xp, dtype):
-        a = xp.array([float('nan')*1.j, 1.j, -1.j], dtype, order=self.order)
-        return a.ptp()
+    def test_min_inf(self, xp, dtype, exclude_cutensor):
+        # cupy/cupy#8180
+        a = xp.array([float('inf'), float('inf')], dtype, order=self.order)
+        return a.min()
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(contiguous_check=False)
@@ -254,9 +216,7 @@ class TestArrayReduction(unittest.TestCase):
 
     @testing.for_float_dtypes()
     @testing.numpy_cupy_allclose(contiguous_check=False)
-    def test_argmax_nan(self, xp, dtype):
-        if _acc.ACCELERATOR_CUTENSOR in _acc.get_routine_accelerators():
-            pytest.skip()
+    def test_argmax_nan(self, xp, dtype, exclude_cutensor):
         a = xp.array([float('nan'), 1, -1], dtype, order=self.order)
         return a.argmax()
 
@@ -304,9 +264,7 @@ class TestArrayReduction(unittest.TestCase):
 
     @testing.for_float_dtypes()
     @testing.numpy_cupy_allclose(contiguous_check=False)
-    def test_argmin_nan(self, xp, dtype):
-        if _acc.ACCELERATOR_CUTENSOR in _acc.get_routine_accelerators():
-            pytest.skip()
+    def test_argmin_nan(self, xp, dtype, exclude_cutensor):
         a = xp.array([float('nan'), 1, -1], dtype, order=self.order)
         return a.argmin()
 

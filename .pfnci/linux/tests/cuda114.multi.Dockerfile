@@ -14,7 +14,7 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
        && \
     apt-get -qqy install ccache git curl && \
     apt-get -qqy --allow-change-held-packages \
-            --allow-downgrades install 'libnccl2=2.16.*+cuda11.8' 'libnccl-dev=2.16.*+cuda11.8' 'libcutensor2=2.0.*' 'libcutensor-dev=2.0.*' 'libcusparselt0=0.2.0.*' 'libcusparselt-dev=0.2.0.*' 'libcudnn8=8.8.*+cuda11.8' 'libcudnn8-dev=8.8.*+cuda11.8'
+            --allow-downgrades install 'libnccl2=2.16.*+cuda11.8' 'libnccl-dev=2.16.*+cuda11.8' 'libcutensor2=2.0.*' 'libcutensor-dev=2.0.*' 'libcudnn8=8.8.*+cuda11.8' 'libcudnn8-dev=8.8.*+cuda11.8'
 
 ENV PATH "/usr/lib/ccache:${PATH}"
 
@@ -24,10 +24,10 @@ RUN /update-alternatives-cutensor.sh
 RUN git clone https://github.com/pyenv/pyenv.git /opt/pyenv
 ENV PYENV_ROOT "/opt/pyenv"
 ENV PATH "${PYENV_ROOT}/shims:${PYENV_ROOT}/bin:${PATH}"
-RUN pyenv install 3.11.0 && \
-    pyenv global 3.11.0 && \
+RUN pyenv install 3.11.10 && \
+    pyenv global 3.11.10 && \
     pip install -U setuptools pip wheel
 
-RUN pip install -U 'numpy==1.24.*' 'scipy==1.10.*' 'optuna==3.*' 'mpi4py==3.*' 'cython==0.29.*'
+RUN pip install -U 'numpy==1.25.*' 'scipy==1.11.*' 'optuna==3.*' 'mpi4py==3.*' 'cython==3.*'
 RUN pip uninstall -y cuda-python && \
     pip check

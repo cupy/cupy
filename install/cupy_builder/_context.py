@@ -66,13 +66,17 @@ class Context:
         hasher = hashlib.sha1(usedforsecurity=False)
         for include_file in include_files:
             with open(include_file, 'rb') as f:
-                hasher.update(include_file.encode())
+                relpath = os.path.relpath(include_file, source_root)
+                hasher.update(relpath.encode())
                 hasher.update(f.read())
                 hasher.update(b'\x00')
         cache_key = hasher.hexdigest()
         print(f'Cache key ({len(include_files)} files '
               f'matching {include_pattern}): {cache_key}')
         self.cupy_cache_key = cache_key
+
+        # Host compiler path for Windows, see `_command.py`.
+        self.win32_cl_exe_path: Optional[str] = None
 
 
 def parse_args(argv: List[str]) -> Tuple[Any, List[str]]:

@@ -57,21 +57,49 @@ def _convert_1d_args(ndim, weights, origin, axis):
     return weights, tuple(origins)
 
 
-def _check_nd_args(input, weights, mode, origin, wghts_name='filter weights'):
-    _util._check_mode(mode)
-    # Weights must always be less than 2 GiB
-    if weights.nbytes >= (1 << 31):
-        raise RuntimeError('weights must be 2 GiB or less, use FFTs instead')
-    weight_dims = [x for x in weights.shape if x != 0]
-    if len(weight_dims) != input.ndim:
-        raise RuntimeError('{} array has incorrect shape'.format(wghts_name))
-    origins = _util._fix_sequence_arg(origin, len(weight_dims), 'origin', int)
+def _check_nd_args(input, weights, mode, origin, wghts_name='filter weights',
+                   sizes=None, axes=None, raise_on_zero_size_weight=False):
+    axes = _util._check_axes(axes, input.ndim)
+    num_axes = len(axes)
+    modes = _util._fix_sequence_arg(mode, num_axes, 'origin', str)
+    for mode in modes:
+        _util._check_mode(mode)
+    origins = _util._fix_sequence_arg(origin, num_axes, 'origin', int)
+    if isinstance(weights, cupy.ndarray) and num_axes < input.ndim:
+        # expand origins ,footprint and structure if num_axes < input.ndim
+        weights = _util._expand_footprint(
+            input.ndim, axes, weights, footprint_name='weights'
+        )
+        origins = _util._expand_origin(input.ndim, axes, origins)
+        modes = _util._expand_mode(input.ndim, axes, modes)
+
+        # now filter all axes
+        axes = tuple(range(input.ndim))
+    if weights is not None:
+        # Weights must always be less than 2 GiB
+        if weights.nbytes >= (1 << 31):
+            raise RuntimeError(
+                'weights must be 2 GiB or less, use FFTs instead')
+        weight_dims = [x for x in weights.shape if x != 0]
+        if raise_on_zero_size_weight and any(w == 0 for w in weights.shape):
+            raise ValueError('All-zero footprint is not supported')
+        if len(weight_dims) != input.ndim:
+            raise RuntimeError(f'{wghts_name} array has incorrect shape')
+    elif sizes is None:
+        raise ValueError('must specify either weights array or sizes')
+    else:
+        if numpy.isscalar(sizes):
+            sizes = (sizes,) * num_axes
+        if len(sizes) != num_axes:
+            raise ValueError('sizes must match len(axes)')
+        weight_dims = sizes
     for origin, width in zip(origins, weight_dims):
         _util._check_origin(origin, width)
-    return tuple(origins), _util._get_inttype(input)
+    int_type = _util._get_inttype(input)
+    return axes, weights, tuple(origins), tuple(modes), int_type
 
 
-def _run_1d_filters(filters, input, args, output, mode, cval, origin=0):
+def _run_1d_filters(filters, input, axes, args, output, modes, cval, origin=0):
     """
     Runs a series of 1D filters forming an nd filter. The filters must be a
     list of callables that take input, arg, axis, output, mode, cval, origin.
@@ -79,20 +107,22 @@ def _run_1d_filters(filters, input, args, output, mode, cval, origin=0):
     filter. Individual filters can be None causing that axis to be skipped.
     """
     output = _util._get_output(output, input)
-    modes = _util._fix_sequence_arg(mode, input.ndim, 'mode',
+    axes = _util._check_axes(axes, input.ndim)
+    num_axes = len(axes)
+    modes = _util._fix_sequence_arg(modes, num_axes, 'mode',
                                     _util._check_mode)
     # for filters, "wrap" is a synonym for "grid-wrap".
     modes = ['grid-wrap' if m == 'wrap' else m for m in modes]
-    origins = _util._fix_sequence_arg(origin, input.ndim, 'origin', int)
+    origins = _util._fix_sequence_arg(origin, num_axes, 'origin', int)
     n_filters = sum(filter is not None for filter in filters)
     if n_filters == 0:
         _core.elementwise_copy(input, output)
         return output
     # We can't operate in-place efficiently, so use a 2-buffer system
     temp = _util._get_output(output.dtype, input) if n_filters > 1 else None
-    iterator = zip(filters, args, modes, origins)
+    iterator = zip(axes, filters, args, modes, origins)
     # skip any axes where the filter is None
-    for axis, (fltr, arg, mode, origin) in enumerate(iterator):
+    for (axis, fltr, arg, mode, origin) in iterator:
         if fltr is not None:
             break
     # To avoid need for any additional copies, we have to start with a
@@ -104,7 +134,7 @@ def _run_1d_filters(filters, input, args, output, mode, cval, origin=0):
     else:
         fltr(input, arg, axis, output, mode, cval, origin)
         input, output = output, temp
-    for axis, (fltr, arg, mode, origin) in enumerate(iterator, start=axis + 1):
+    for (axis, fltr, arg, mode, origin) in iterator:
         if fltr is None:
             continue
         fltr(input, arg, axis, output, mode, cval, origin)
@@ -145,7 +175,8 @@ def _call_kernel(kernel, input, weights, output, structure=None,
     output = _util._get_output(output, input, None, complex_output)
     needs_temp = cupy.shares_memory(output, input, 'MAY_SHARE_BOUNDS')
     if needs_temp:
-        output, temp = _util._get_output(output.dtype, input), output
+        output, temp = _util._get_output(output.dtype, input, None,
+                                         complex_output), output
     args.append(output)
     kernel(*args)
     if needs_temp:
@@ -161,7 +192,7 @@ if runtime.is_hip:
 '''
 else:
     includes = r'''
-#include <type_traits>  // let Jitify handle this
+#include <cupy/cuda_workaround.h>  // provide C++ std:: coverage
 #include <cupy/math_constants.h>
 
 template<> struct std::is_floating_point<float16> : std::true_type {};
@@ -189,7 +220,7 @@ __device__ __forceinline__ bool nonzero(T x) { return x != static_cast<T>(0); }
 """
 
 
-def _generate_nd_kernel(name, pre, found, post, mode, w_shape, int_type,
+def _generate_nd_kernel(name, pre, found, post, modes, w_shape, int_type,
                         offsets, cval, ctype='X', preamble='', options=(),
                         has_weights=True, has_structure=False, has_mask=False,
                         binary_morphology=False, all_weights_nonzero=False):
@@ -208,8 +239,15 @@ def _generate_nd_kernel(name, pre, found, post, mode, w_shape, int_type,
         in_params += ', raw M mask'
     out_params = 'Y y'
 
-    # for filters, "wrap" is a synonym for "grid-wrap"
-    mode = 'grid-wrap' if mode == 'wrap' else mode
+    constant_mode = False
+    if isinstance(modes, str):
+        modes = 'grid-wrap' if modes == 'wrap' else modes
+        modes = (modes,) * ndim
+        num_unique_modes = 1
+    else:
+        modes = tuple('grid-wrap' if m == 'wrap' else m for m in modes)
+        num_unique_modes = len(set(modes))
+    constant_mode = (num_unique_modes == 1 and modes[0] == 'constant')
 
     # CArray: remove xstride_{j}=... from string
     size = ('%s xsize_{j}=x.shape()[{j}], ysize_{j} = _raw_y.shape()[{j}]'
@@ -217,7 +255,7 @@ def _generate_nd_kernel(name, pre, found, post, mode, w_shape, int_type,
     sizes = [size.format(j=j) for j in range(ndim)]
     inds = _util._generate_indices_ops(ndim, int_type, offsets)
     # CArray: remove expr entirely
-    expr = ' + '.join(['ix_{}'.format(j) for j in range(ndim)])
+    expr = ' + '.join([f'ix_{j}' for j in range(ndim)])
 
     ws_init = ws_pre = ws_post = ''
     if has_weights or has_structure:
@@ -234,24 +272,23 @@ def _generate_nd_kernel(name, pre, found, post, mode, w_shape, int_type,
     for j in range(ndim):
         if w_shape[j] == 1:
             # CArray: string becomes 'inds[{j}] = ind_{j};', remove (int_)type
-            loops.append('{{ {type} ix_{j} = ind_{j} * xstride_{j};'.
-                         format(j=j, type=int_type))
+            loops.append(f'{{ {int_type} ix_{j} = ind_{j} * xstride_{j};')
         else:
             boundary = _util._generate_boundary_condition_ops(
-                mode, 'ix_{}'.format(j), 'xsize_{}'.format(j), int_type)
+                modes[j], f'ix_{j}', f'xsize_{j}', int_type)
             # CArray: last line of string becomes inds[{j}] = ix_{j};
-            loops.append('''
-    for (int iw_{j} = 0; iw_{j} < {wsize}; iw_{j}++)
+            loops.append(f'''
+    for (int iw_{j} = 0; iw_{j} < {w_shape[j]}; iw_{j}++)
     {{
-        {type} ix_{j} = ind_{j} + iw_{j};
+        {int_type} ix_{j} = ind_{j} + iw_{j};
         {boundary}
         ix_{j} *= xstride_{j};
-        '''.format(j=j, wsize=w_shape[j], boundary=boundary, type=int_type))
+        ''')
 
     # CArray: string becomes 'x[inds]', no format call needed
-    value = '(*(X*)&data[{expr}])'.format(expr=expr)
-    if mode == 'constant':
-        cond = ' || '.join(['(ix_{} < 0)'.format(j) for j in range(ndim)])
+    value = f'(*(X*)&data[{expr}])'
+    if constant_mode:
+        cond = ' || '.join([f'(ix_{j} < 0)' for j in range(ndim)])
 
     if cval is numpy.nan:
         cval = 'CUDART_NAN'
@@ -263,9 +300,8 @@ def _generate_nd_kernel(name, pre, found, post, mode, w_shape, int_type,
     if binary_morphology:
         found = found.format(cond=cond, value=value)
     else:
-        if mode == 'constant':
-            value = '(({cond}) ? cast<{ctype}>({cval}) : {value})'.format(
-                cond=cond, ctype=ctype, cval=cval, value=value)
+        if constant_mode:
+            value = f'(({cond}) ? cast<{ctype}>({cval}) : {value})'
         found = found.format(value=value)
 
     # CArray: replace comment and next line in string with
@@ -290,9 +326,13 @@ def _generate_nd_kernel(name, pre, found, post, mode, w_shape, int_type,
                ws_init=ws_init, ws_pre=ws_pre, ws_post=ws_post,
                loops='\n'.join(loops), found=found, end_loops='}'*ndim)
 
-    mode_str = mode.replace('-', '_')  # avoid potential hyphen in kernel name
+    # avoid potential hyphen in kernel name
+    if num_unique_modes > 1:
+        mode_str = '_'.join(m.replace('-', '_') for m in modes)
+    else:
+        mode_str = modes[0].replace('-', '_')
     name = 'cupyx_scipy_ndimage_{}_{}d_{}_w{}'.format(
-        name, ndim, mode_str, '_'.join(['{}'.format(x) for x in w_shape]))
+        name, ndim, mode_str, '_'.join([f'{x}' for x in w_shape]))
     if all_weights_nonzero:
         name += '_all_nonzero'
     if int_type == 'ptrdiff_t':
@@ -302,7 +342,7 @@ def _generate_nd_kernel(name, pre, found, post, mode, w_shape, int_type,
     if has_mask:
         name += '_with_mask'
     preamble = includes + _CAST_FUNCTION + preamble
-    options += ('--std=c++11', '-DCUPY_USE_JITIFY')
+    options += ('--std=c++11', )
     return cupy.ElementwiseKernel(in_params, out_params, operation, name,
                                   reduce_dims=False, preamble=preamble,
                                   options=options)

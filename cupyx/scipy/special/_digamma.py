@@ -30,12 +30,20 @@ template<int N> static __device__ double polevl(double x, double coef[])
 '''
 
 
-digamma_preamble = "#include <cupy/special/digamma.h>"
+digamma_preamble = "#include <cupy/xsf/digamma.h>"
 
 
 digamma = _core.create_ufunc(
-    'cupyx_scipy_special_digamma', ('f->f', 'd->d', 'F->F', 'D->D'),
-    'out0 = special::digamma(in0)',
+    'cupyx_scipy_special_digamma',
+    (
+        ('l->d', 'out0 = xsf::digamma(double(in0))'),
+        ('e->d', 'out0 = xsf::digamma(double(in0))',),
+        'f->f',
+        'd->d',
+        'F->F',
+        'D->D',
+    ),
+    'out0 = xsf::digamma(in0)',
     preamble=digamma_preamble,
     doc="""The digamma function.
 

@@ -94,11 +94,11 @@ def _get_outer_edges(a, range):
                 'supplied range of [{}, {}] is not finite'.format(
                     first_edge, last_edge))
     elif a.size == 0:
-        first_edge = 0.0
-        last_edge = 1.0
+        first_edge = 0
+        last_edge = 1
     else:
-        first_edge = float(a.min())
-        last_edge = float(a.max())
+        first_edge = a.min()
+        last_edge = a.max()
         if not (cupy.isfinite(first_edge) and cupy.isfinite(last_edge)):
             raise ValueError(
                 'autodetected range of [{}, {}] is not finite'.format(
@@ -171,7 +171,7 @@ def _get_bin_edges(a, bins, range):
     return bin_edges
 
 
-def histogram(x, bins=10, range=None, weights=None, density=False):
+def histogram(x, bins=10, range=None, density=False, weights=None):
     """Computes the histogram of a set of data.
 
     Args:

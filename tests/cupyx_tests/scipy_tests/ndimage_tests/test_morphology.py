@@ -1,3 +1,4 @@
+import cupy
 import numpy
 import pytest
 
@@ -59,17 +60,33 @@ class TestIterateStructure:
 
 
 @testing.parameterize(*(
-    testing.product({
-        'x_dtype': [numpy.bool_, numpy.int8, numpy.uint8, numpy.float32,
-                    numpy.float64],
+    testing.product({  # cases with boolean input and output
+        'x_dtype': [bool],
         'border_value': [0, 1],
         'structure': [None, [1, 0, 1], [1, 1, 0]],
         'origin': [-1, 0, 1],
-        'data': [[], [1, 1, 0, 1, 1]],
+        'data': [[1, 1, 0, 1, 1]],
+        'filter': ['binary_erosion', 'binary_dilation'],
+        'output': [None]}
+    ) + testing.product({  # cases with empty data
+        'x_dtype': [bool],
+        'border_value': [0],
+        'structure': [None],
+        'origin': [0],
+        'data': [[]],
+        'filter': ['binary_erosion', 'binary_dilation'],
+        'output': [None]}
+    ) + testing.product({  # dtype and output combinations
+        'x_dtype': [numpy.bool_, numpy.int8, numpy.uint8, numpy.float32,
+                    numpy.float64],
+        'border_value': [0],
+        'structure': [[1, 1, 0]],
+        'origin': [0],
+        'data': [[1, 1, 0, 1, 1]],
         'filter': ['binary_erosion', 'binary_dilation'],
         'output': [None, numpy.float32, numpy.int8, 'array']}
-    ))
-)
+    )
+))
 @testing.with_requires('scipy')
 class TestBinaryErosionAndDilation1d:
     def _filter(self, xp, scp, x):
@@ -96,8 +113,8 @@ class TestBinaryErosionAndDilation1d:
 
 
 @testing.parameterize(*(
-    testing.product({
-        'x_dtype': [numpy.bool_, numpy.float64],
+    testing.product({  # cases with boolean input and output
+        'x_dtype': [bool],
         'border_value': [0, 1],
         'connectivity': [1, 2],
         'origin': [0, 1],
@@ -120,9 +137,25 @@ class TestBinaryErosionAndDilation1d:
                   [0, 0, 0, 0, 0, 0, 0, 0]],
                  ],
         'filter': ['binary_opening', 'binary_closing'],
+        'output': [None]}
+    ) + testing.product({  # dtype and output combinations
+        'x_dtype': [numpy.bool_, numpy.float64],
+        'border_value': [0],
+        'connectivity': [1],
+        'origin': [0],
+        'data': [[[0, 1, 0, 0, 0, 0, 0, 0],
+                  [1, 1, 1, 0, 0, 0, 0, 0],
+                  [0, 1, 0, 0, 0, 1, 0, 0],
+                  [0, 0, 0, 1, 1, 1, 1, 0],
+                  [0, 0, 1, 1, 0, 1, 0, 0],
+                  [0, 1, 1, 1, 1, 1, 1, 0],
+                  [0, 0, 1, 0, 0, 1, 0, 0],
+                  [0, 0, 0, 0, 0, 0, 0, 0]],
+                 ],
+        'filter': ['binary_opening', 'binary_closing'],
         'output': [None, numpy.float32, numpy.int8]}
-    ))
-)
+    )
+))
 @testing.with_requires('scipy>=1.1.0')
 class TestBinaryOpeningAndClosing:
     def _filter(self, xp, scp, x):
@@ -143,7 +176,59 @@ class TestBinaryOpeningAndClosing:
 
 @testing.parameterize(*(
     testing.product({
-        'x_dtype': [numpy.bool_, numpy.float64],
+        'border_value': [0, 1],
+        'structure': [2, (3, 1), (1, 3), (3, 3)],
+        'data': [[[0, 1, 0, 0, 0, 0, 0, 0],
+                  [1, 1, 1, 0, 0, 0, 0, 0],
+                  [0, 1, 0, 0, 0, 1, 0, 0],
+                  [0, 0, 0, 1, 1, 1, 1, 0],
+                  [0, 0, 1, 1, 0, 1, 0, 0],
+                  [0, 1, 1, 1, 1, 1, 1, 0],
+                  [0, 0, 1, 0, 0, 1, 0, 0],
+                  [0, 0, 0, 0, 0, 0, 0, 0]],
+
+                 [[1, 1, 1, 0, 0, 0, 0, 0],
+                  [1, 1, 1, 0, 0, 0, 0, 0],
+                  [1, 1, 1, 1, 1, 1, 1, 0],
+                  [0, 0, 1, 1, 1, 1, 1, 0],
+                  [0, 1, 1, 1, 0, 1, 1, 0],
+                  [0, 1, 1, 1, 1, 1, 1, 0],
+                  [0, 1, 1, 1, 1, 1, 1, 0],
+                  [0, 0, 0, 0, 0, 0, 0, 0]],
+                 ],
+        'filter': ['binary_erosion', 'binary_dilation', 'binary_opening',
+                   'binary_closing']}
+    ))
+)
+@testing.with_requires('scipy>=1.1.0')
+class TestBinaryMorphologyTupleFootprint:
+    def _filter(self, x, structure):
+        filter = getattr(cupyx.scipy.ndimage, self.filter)
+        return filter(x, structure, iterations=1, output=None, origin=0,
+                      mask=None, border_value=self.border_value,
+                      brute_force=True)
+
+    def test_binary_opening_and_closing(self):
+        """Compare tuple-based footprint to a matching ndarray one.
+
+        SciPy doesn't support specifying the footprint as a tuple (the overhead
+        of small array allocation is much less on the CPU), so we compare
+        CuPy with tuple to CuPy with an equivalent ndarray instead.
+        """
+        x = cupy.asarray(self.data, dtype=bool)
+        if numpy.isscalar(self.structure):
+            ndarray_structure = cupy.ones((self.structure, ) * x.ndim,
+                                          dtype=bool)
+        else:
+            ndarray_structure = cupy.ones(self.structure, dtype=bool)
+        tuple_result = self._filter(x, self.structure)
+        ndarray_result = self._filter(x, ndarray_structure)
+        testing.assert_array_equal(tuple_result, ndarray_result)
+
+
+@testing.parameterize(*(
+    testing.product({
+        'x_dtype': [bool],
         'connectivity': [1, 2],
         'origin': [-1, 0, 1],
         'data': [[[0, 0, 0, 0, 0, 0, 0, 0],
@@ -170,6 +255,19 @@ class TestBinaryOpeningAndClosing:
                   [0, 0, 1, 0, 0, 1, 1, 1],
                   [0, 0, 0, 0, 0, 0, 0, 0]],
                  ],
+        'output': [None]}
+    ) + testing.product({  # dtype and output combinations
+        'x_dtype': [numpy.bool_, numpy.float64],
+        'connectivity': [1],
+        'origin': [0],
+        'data': [[[0, 0, 0, 0, 0, 0, 0, 0],
+                  [0, 0, 0, 1, 1, 0, 0, 0],
+                  [0, 0, 1, 0, 0, 1, 0, 0],
+                  [0, 0, 1, 0, 0, 1, 0, 0],
+                  [0, 0, 1, 0, 0, 1, 0, 0],
+                  [0, 0, 0, 1, 1, 0, 0, 0],
+                  [0, 0, 0, 0, 0, 0, 0, 0]],
+                 ],
         'output': [None, numpy.float32, numpy.int8]}
     ))
 )
@@ -190,8 +288,8 @@ class TestBinaryFillHoles:
 
 
 @testing.parameterize(*(
-    testing.product({
-        'x_dtype': [numpy.bool_, numpy.float64],
+    testing.product({  # cases with boolean input and output
+        'x_dtype': [bool],
         'struct': ['same', 'separate'],
         'origins': [((0, 0), (0, 0)),
                     ((0, 1), (-1, 0))],
@@ -218,9 +316,23 @@ class TestBinaryFillHoles:
                   [0, 1, 1, 1, 1, 1, 1, 0],
                   [0, 0, 0, 0, 0, 0, 0, 0]],
                  ],
+        'output': [None]}
+    ) + testing.product({  # dtype and output combinations
+        'x_dtype': [numpy.bool_, numpy.float64],
+        'struct': ['same', 'separate'],
+        'origins': [((0, 0), (0, 0))],
+        'data': [[[0, 1, 0, 0, 1, 1, 1, 0],
+                  [1, 1, 1, 0, 0, 0, 0, 0],
+                  [0, 1, 0, 1, 1, 1, 1, 0],
+                  [0, 0, 1, 1, 1, 1, 1, 0],
+                  [0, 1, 1, 1, 0, 1, 1, 0],
+                  [0, 0, 0, 0, 1, 1, 1, 0],
+                  [0, 1, 1, 1, 1, 1, 1, 0],
+                  [0, 0, 0, 0, 0, 0, 0, 0]],
+                 ],
         'output': [None, numpy.float32, numpy.int8]}
-    ))
-)
+    )
+))
 @testing.with_requires('scipy')
 class TestBinaryHitOrMiss:
     def _filter(self, xp, scp, x):
@@ -249,8 +361,8 @@ class TestBinaryHitOrMiss:
 
 
 @testing.parameterize(*(
-    testing.product({
-        'x_dtype': [numpy.bool_, numpy.float64],
+    testing.product({  # cases with boolean input and output
+        'x_dtype': [bool],
         'border_value': [0, 1],
         'connectivity': [1, 2],
         'origin': [0, 1],
@@ -290,9 +402,33 @@ class TestBinaryHitOrMiss:
                   [0, 0, 0, 0, 0, 0, 0, 0],
                   [0, 0, 0, 0, 0, 0, 0, 0]],
                  ],
+        'output': [None]}
+    ) + testing.product({  # dtype and output combinations
+        'x_dtype': [numpy.bool_, numpy.float64],
+        'border_value': [0],
+        'connectivity': [1],
+        'origin': [0],
+        'mask': [[[0, 1, 0, 0, 0, 0, 0, 0],
+                  [0, 1, 1, 0, 0, 0, 0, 0],
+                  [0, 0, 1, 0, 0, 0, 0, 0],
+                  [0, 0, 0, 0, 0, 1, 0, 0],
+                  [0, 0, 0, 1, 1, 0, 0, 0],
+                  [0, 0, 1, 0, 0, 1, 0, 0],
+                  [0, 0, 0, 0, 0, 0, 0, 0],
+                  [0, 0, 0, 0, 0, 0, 0, 0]],
+                 ],
+        'data': [[[0, 1, 0, 0, 0, 0, 0, 0],
+                  [0, 0, 0, 0, 0, 0, 0, 0],
+                  [0, 0, 0, 0, 0, 0, 0, 0],
+                  [0, 0, 0, 0, 0, 0, 0, 0],
+                  [0, 0, 0, 0, 0, 0, 0, 0],
+                  [0, 1, 0, 0, 0, 0, 0, 0],
+                  [0, 0, 0, 0, 0, 0, 0, 0],
+                  [0, 0, 0, 0, 0, 0, 0, 0]],
+                 ],
         'output': [None, numpy.float32, numpy.int8]}
-    ))
-)
+    )
+))
 @testing.with_requires('scipy')
 class TestBinaryPropagation:
     def _filter(self, xp, scp, x):
@@ -312,18 +448,28 @@ class TestBinaryPropagation:
 
 
 @testing.parameterize(*(
-    testing.product({
-        'x_dtype': [numpy.int8, numpy.float32],
+    testing.product({  # cases with boolean input and output
+        'x_dtype': [bool],
         'border_value': [0, 1],
         'connectivity': [1, 2],
         'origin': [0, -1],
         'shape': [(64,), (16, 15), (5, 7, 9)],
         'density': [0.1, 0.5, 0.9],
         'filter': ['binary_erosion', 'binary_dilation'],
+        'iterations': [1],
+        'output': [None]}
+    ) + testing.product({
+        'x_dtype': [numpy.int8, numpy.float32],
+        'border_value': [0],
+        'connectivity': [1],
+        'origin': [0],
+        'shape': [(18, 13)],
+        'density': [0.2],
+        'filter': ['binary_erosion', 'binary_dilation'],
         'iterations': [1, 2, 0],
         'output': [None, numpy.float32, 'array']}
-    ))
-)
+    )
+))
 @testing.with_requires('scipy')
 class TestBinaryErosionAndDilation:
     def _filter(self, xp, scp, x):
@@ -343,6 +489,56 @@ class TestBinaryErosionAndDilation:
 
     @testing.numpy_cupy_array_equal(scipy_name='scp')
     def test_binary_erosion_and_dilation(self, xp, scp):
+        if self.x_dtype == self.output:
+            pytest.skip('redundant')
+        rstate = numpy.random.RandomState(5)
+        x = rstate.randn(*self.shape) > self.density
+        x = xp.asarray(x, dtype=self.x_dtype)
+        return self._filter(xp, scp, x)
+
+
+@testing.parameterize(*(
+    testing.product({  # cases with boolean input and output
+        'x_dtype': [bool],
+        'border_value': [0],
+        'connectivity': [1],
+        'origin': [(0, 1)],
+        'shape': [(16, 15), (5, 7, 9)],
+        'axes': [(0, 1), (0, -1), (-2, -1), (1,)],
+        'density': [0.1, 0.5, 0.9],
+        'filter': ['binary_erosion', 'binary_dilation', 'binary_opening',
+                   'binary_closing', 'binary_hit_or_miss',
+                   'binary_propagation', 'binary_fill_holes'],
+        'output': [None]}
+    )
+))
+@testing.with_requires('scipy>=1.15.0rc1')
+class TestBinaryMorphologyAxes:
+    def _filter(self, xp, scp, x):
+        filter = getattr(scp.ndimage, self.filter)
+        ndim = len(self.shape)
+        kwargs = {}
+        if self.axes is None:
+            structure = scp.ndimage.generate_binary_structure(
+                ndim, self.connectivity)
+        else:
+            structure = scp.ndimage.generate_binary_structure(
+                len(self.axes), self.connectivity)
+        if len(self.origin) > len(self.axes):
+            self.origin = [self.origin[ax] for ax in self.axes]
+
+        if self.filter not in ["binary_hit_or_miss", "binary_fill_holes"]:
+            kwargs["border_value"] = self.border_value
+
+        if self.filter == "binary_hit_or_miss":
+            kwargs["origin1"] = self.origin
+            kwargs["origin2"] = self.origin
+        else:
+            kwargs["origin"] = self.origin
+        return filter(x, structure, axes=self.axes, **kwargs)
+
+    @testing.numpy_cupy_array_equal(scipy_name='scp')
+    def test_binary_morphology_axes(self, xp, scp):
         if self.x_dtype == self.output:
             pytest.skip('redundant')
         rstate = numpy.random.RandomState(5)
@@ -607,4 +803,49 @@ class TestWhiteTophatAndBlackTopHat:
         x = testing.shaped_random(self.shape, xp, self.x_dtype)
         if self.x_dtype == self.output:
             pytest.skip('redundant')
+        return self._filter(xp, scp, x)
+
+
+@testing.parameterize(*(
+    testing.product({
+        'shape': [(8, 9), (3, 4, 7, 8)],
+        'size': [3],
+        'axes': [(0, 1), (0, -1), (-2, -1)],
+        'footprint': [None, 'random'],
+        'structure': [None, 'random'],
+        'mode': ['reflect'],
+        'cval': [0.0],
+        'x_dtype': [numpy.int16, numpy.float32],
+        'filter': ['grey_erosion', 'grey_dilation', 'grey_opening',
+                   'grey_closing', 'morphological_laplace',
+                   'morphological_gradient', 'white_tophat', 'black_tophat']
+    })
+))
+@testing.with_requires('scipy>=1.15.0rc1')
+class TestGreyMorphologyAxes:
+
+    def _filter(self, xp, scp, x):
+        filter = getattr(scp.ndimage, self.filter)
+        num_axes = len(self.axes)
+        origin = (-1, 1, -1, 1)[:num_axes]
+        if self.footprint is None:
+            footprint = None
+        else:
+            shape = (self.size, ) * num_axes
+            r = testing.shaped_random(shape, xp, scale=1)
+            footprint = xp.where(r < .5, 1, 0)
+            if not footprint.any():
+                footprint = xp.ones(shape)
+        if self.structure is None:
+            structure = None
+        else:
+            shape = (self.size, ) * num_axes
+            structure = testing.shaped_random(shape, xp, dtype=xp.int32)
+        return filter(x, size=self.size, footprint=footprint,
+                      structure=structure, mode=self.mode, cval=self.cval,
+                      origin=origin, axes=self.axes)
+
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
+    def test_grey_morphology_axes(self, xp, scp):
+        x = testing.shaped_random(self.shape, xp, self.x_dtype)
         return self._filter(xp, scp, x)

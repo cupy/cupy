@@ -380,24 +380,23 @@ def compile_in_memory(in_memory):
         yield m
 
 
-@testing.parameterize(
-    # First test NVRTC
-    {'backend': 'nvrtc', 'in_memory': False},
-    # this run will read from in-memory cache
-    {'backend': 'nvrtc', 'in_memory': True},
-    # this run will force recompilation
-    {'backend': 'nvrtc', 'in_memory': True, 'clean_up': True},
-    # Below is the same set of NVRTC tests, with Jitify turned on. For tests
-    # that can already pass, it shouldn't matter whether Jitify is on or not,
-    # and the only side effect is to add overhead. It doesn't make sense to
-    # test NVCC + Jitify.
-    {'backend': 'nvrtc', 'in_memory': False, 'jitify': True},
-    {'backend': 'nvrtc', 'in_memory': True, 'jitify': True},
-    {'backend': 'nvrtc', 'in_memory': True, 'clean_up': True, 'jitify': True},
-    # Finally, we test NVCC
-    {'backend': 'nvcc', 'in_memory': False},
-)
-class TestRaw(unittest.TestCase):
+def find_nvcc_ver():
+    nvcc_ver_pattern = r'release (\d+\.\d+)'
+    cmd = cupy.cuda.get_nvcc_path().split()
+    cmd += ['--version']
+    cache_ctx = use_temporary_cache_dir()
+    with cache_ctx as cache_path:
+        output = compiler._run_cc(cmd, cache_path, 'nvcc')
+    match = re.search(nvcc_ver_pattern, output)
+    assert match
+
+    # convert to driver ver format
+    major, minor = match.group(1).split('.')
+    return int(major) * 1000 + int(minor) * 10
+
+
+# TODO(leofang): Further refactor the test suite to avoid using unittest?
+class _TestRawBase:
 
     _nvcc_ver = None
     _nvrtc_ver = None
@@ -527,16 +526,7 @@ class TestRaw(unittest.TestCase):
         if self._nvcc_ver:
             return self._nvcc_ver
 
-        nvcc_ver_pattern = r'release (\d+\.\d+)'
-        cmd = cupy.cuda.get_nvcc_path().split()
-        cmd += ['--version']
-        output = compiler._run_cc(cmd, self.cache_dir, 'nvcc')
-        match = re.search(nvcc_ver_pattern, output)
-        assert match
-
-        # convert to driver ver format
-        major, minor = match.group(1).split('.')
-        self._nvcc_ver = int(major) * 1000 + int(minor) * 10
+        self._nvcc_ver = find_nvcc_ver()
         return self._nvcc_ver
 
     def _find_nvrtc_ver(self):
@@ -1112,6 +1102,37 @@ class TestRaw(unittest.TestCase):
         assert cupy.allclose(y, x1 + x2)
 
 
+@testing.parameterize(
+    # First test NVRTC
+    {'backend': 'nvrtc', 'in_memory': False},
+    # this run will read from in-memory cache
+    {'backend': 'nvrtc', 'in_memory': True},
+    # this run will force recompilation
+    {'backend': 'nvrtc', 'in_memory': True, 'clean_up': True},
+    # Finally, we test NVCC
+    {'backend': 'nvcc', 'in_memory': False},
+)
+class TestRaw(_TestRawBase, unittest.TestCase):
+    pass
+
+
+# Recent CCCL has made Jitify cold-launch very slow, see the discussion
+# starting https://github.com/cupy/cupy/pull/8899#issuecomment-2613022424.
+# TODO(leofang): Further refactor the test suite?
+@testing.parameterize(
+    # Below is the same set of NVRTC tests, with Jitify turned on. For tests
+    # that can already pass, it shouldn't matter whether Jitify is on or not,
+    # and the only side effect is to add overhead. It doesn't make sense to
+    # test NVCC + Jitify.
+    {'backend': 'nvrtc', 'in_memory': False, 'jitify': True},
+    {'backend': 'nvrtc', 'in_memory': True, 'jitify': True},
+    {'backend': 'nvrtc', 'in_memory': True, 'clean_up': True, 'jitify': True},
+)
+@testing.slow
+class TestRawWithJitify(_TestRawBase, unittest.TestCase):
+    pass
+
+
 _test_grid_sync = r'''
 #include <cooperative_groups.h>
 
@@ -1136,6 +1157,9 @@ void test_grid_sync(const float* x1, const float* x2, float* y, int n) {
     'n': [10, 100, 1000],
     'block': [64, 256],
 }))
+@unittest.skipIf(
+    find_nvcc_ver() >= 12020,
+    "fp16 header compatibility issue, see cupy#8412")
 @unittest.skipUnless(
     9000 <= cupy.cuda.runtime.runtimeGetVersion(),
     'Requires CUDA 9.x or later')
@@ -1266,7 +1290,7 @@ class TestRawPicklable(unittest.TestCase):
         # run another process to check the pickle
         s = subprocess.run([sys.executable, 'TestRawPicklable.py'] + test_args,
                            cwd=self.temp_dir)
-        s.check_returncode()  # raise if unsuccess
+        s.check_returncode()  # raise if unsuccessful
 
 
 # a slightly more realistic kernel involving std utilities
@@ -1284,11 +1308,15 @@ __global__ void shift (T* a, int N) {
 '''
 
 
+# Recent CCCL has made Jitify cold-launch very slow, see the discussion
+# starting https://github.com/cupy/cupy/pull/8899#issuecomment-2613022424.
+# TODO(leofang): Further refactor the test suite?
 @testing.parameterize(*testing.product({
     'jitify': (False, True),
 }))
 @unittest.skipIf(cupy.cuda.runtime.is_hip,
                  'Jitify does not support ROCm/HIP')
+@testing.slow
 class TestRawJitify(unittest.TestCase):
 
     def setUp(self):
@@ -1334,14 +1362,8 @@ class TestRawJitify(unittest.TestCase):
         # nvbugs 3641496).
         options = ('-DCUB_DISABLE_BF16_SUPPORT',)
 
-        if self.jitify:
-            # Jitify will make it work
-            self._helper(hdr, options)
-        else:
-            # NVRTC cannot find C++ std headers without Jitify
-            with pytest.raises(cupy.cuda.compiler.CompileException) as ex:
-                self._helper(hdr, options)
-            assert 'cannot open source file' in str(ex.value)
+        # Compiling CUB headers now works with or without Jitify.
+        self._helper(hdr, options)
 
     def test_jitify2(self):
         # NVRTC cannot compile any code involving std

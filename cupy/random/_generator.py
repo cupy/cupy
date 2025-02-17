@@ -5,6 +5,7 @@ import hashlib
 import operator
 import os
 import time
+import weakref
 
 import numpy
 import warnings
@@ -58,17 +59,10 @@ class RandomState(object):
         if method is None:
             method = curand.CURAND_RNG_PSEUDO_DEFAULT
         self._generator = curand.createGenerator(method)
+        self._finalizer = weakref.finalize(
+            self, curand.destroyGenerator, self._generator)
         self.method = method
         self.seed(seed)
-
-    def __del__(self, is_shutting_down=_util.is_shutting_down):
-        from cupy_backends.cuda.libs import curand
-
-        # When createGenerator raises an error, _generator is not initialized
-        if is_shutting_down():
-            return
-        if hasattr(self, '_generator'):
-            curand.destroyGenerator(self._generator)
 
     def _update_seed(self, size):
         self._rk_seed = (self._rk_seed + size) % _UINT64_MAX
@@ -208,7 +202,7 @@ class RandomState(object):
         self._update_seed(y.size)
         return y
 
-    def geometric(self, p, size=None, dtype=int):
+    def geometric(self, p, size=None, dtype='l'):
         """Returns an array of samples drawn from the geometric distribution.
 
         .. seealso::
@@ -223,7 +217,7 @@ class RandomState(object):
         self._update_seed(y.size)
         return y
 
-    def hypergeometric(self, ngood, nbad, nsample, size=None, dtype=int):
+    def hypergeometric(self, ngood, nbad, nsample, size=None, dtype='l'):
         """Returns an array of samples drawn from the hypergeometric distribution.
 
         .. seealso::
@@ -301,7 +295,7 @@ class RandomState(object):
             func = curand.generateLogNormalDouble
         return self._generate_normal(func, size, dtype, mean, sigma)
 
-    def logseries(self, p, size=None, dtype=int):
+    def logseries(self, p, size=None, dtype='l'):
         """Returns an array of samples drawn from a log series distribution.
 
         .. warning::
@@ -536,7 +530,7 @@ class RandomState(object):
         self._update_seed(y.size)
         return y
 
-    def poisson(self, lam=1.0, size=None, dtype=int):
+    def poisson(self, lam=1.0, size=None, dtype='l'):
         """Returns an array of samples drawn from the poisson distribution.
 
         .. seealso::
@@ -693,10 +687,10 @@ class RandomState(object):
                     'mx must be non-negative (actual: {})'.format(mx))
             elif mx <= _UINT32_MAX:
                 dtype = numpy.uint32
-                upper_limit = _UINT32_MAX - (1 << 32) % (mx + 1)
+                upper_limit = dtype(_UINT32_MAX - (1 << 32) % (mx + 1))
             elif mx <= _UINT64_MAX:
                 dtype = numpy.uint64
-                upper_limit = _UINT64_MAX - (1 << 64) % (mx + 1)
+                upper_limit = dtype(_UINT64_MAX - (1 << 64) % (mx + 1))
             else:
                 raise ValueError(
                     'mx must be within uint64 range (actual: {})'.format(mx))
@@ -809,8 +803,14 @@ class RandomState(object):
             if isinstance(seed, numpy.ndarray):
                 seed = int(hashlib.md5(seed).hexdigest()[:16], 16)
             else:
-                seed = int(
-                    numpy.asarray(seed).astype(numpy.uint64, casting='safe'))
+                seed_arr = numpy.asarray(seed)
+                if seed_arr.dtype.kind not in 'biu':
+                    raise TypeError('Seed must be an integer.')
+                seed = int(seed_arr)
+                # Check that no integer overflow occurred during the cast
+                if seed < 0 or seed >= 2**64:
+                    raise ValueError(
+                        'Seed must be an integer between 0 and 2**64 - 1')
 
         curand.setPseudoRandomGeneratorSeed(self._generator, seed)
         if (self.method not in (curand.CURAND_RNG_PSEUDO_MT19937,
@@ -1130,12 +1130,11 @@ class RandomState(object):
             raise NotImplementedError
 
         if p is not None:
-            p = cupy.broadcast_to(p, (size, a_size))
-            index = cupy.argmax(cupy.log(p) +
-                                self.gumbel(size=(size, a_size)),
-                                axis=1)
-            if not isinstance(shape, int):
-                index = cupy.reshape(index, shape)
+            # https://github.com/numpy/numpy/blob/v2.0.1/numpy/random/mtrand.pyx#L1013  # NOQA
+            cdf = p.cumsum()
+            cdf /= cdf[-1]
+            uniform_samples = self.random_sample(shape)
+            index = cdf.searchsorted(uniform_samples, side='right')
         else:
             if a_size == 0:  # TODO: (#4511) Fix `randint` instead
                 a_size = 1
