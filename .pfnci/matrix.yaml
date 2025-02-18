@@ -180,7 +180,7 @@
   _inherits: "cupy.linux.cuda117"
   tags: ["@push", "full", "multi", "cuda117"]
   target: "cuda117.multi"
-  mpi4py: "3"
+  mpi4py: "4"
   test: "unit-multi"
 
 # CUDA 11.8 | Linux
@@ -240,7 +240,7 @@
   _inherits: "cupy.linux.cuda120"
   tags: ["@push", "full", "mini", "multi", "cuda120"]
   target: "cuda120.multi"
-  mpi4py: "3"
+  mpi4py: "4"
   test: "unit-multi"
 
 # CUDA 12.1 | Linux
@@ -420,7 +420,7 @@
   _inherits: "cupy.linux.cuda126"
   tags: ["@push", "full", "multi", "cuda126"]
   target: "cuda126.multi"
-  mpi4py: "3"
+  mpi4py: "4"
   test: "unit-multi"
 
 # CUDA 12.8 | Linux
