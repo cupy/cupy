@@ -114,8 +114,8 @@ _METRICS_NAMES = list(_METRICS.keys())
 def check_soft_dependencies():
     if not cuvs_available:
         if not pylibraft_available:
-            raise RuntimeError('cuVS >= 24.12 or pylibraft < '
-                               '24.12 should be installed to use this feature')
+            raise RuntimeError('cuVS >= 25.02 or pylibraft < '
+                               '25.02 should be installed to use this feature')
 
 
 def minkowski(u, v, p):
