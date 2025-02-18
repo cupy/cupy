@@ -28,6 +28,6 @@ RUN pyenv install 3.10.15 && \
     pyenv global 3.10.15 && \
     pip install -U setuptools pip wheel
 
-RUN pip install -U 'numpy==1.22.*' 'scipy==1.7.*' 'optuna==3.*' 'cython==0.29.*' 'cuda-python==11.*'
+RUN pip install -U 'numpy==1.22.*' 'scipy==1.7.*' 'optuna==3.*' 'cython==3.*' 'cuda-python==11.*'
 RUN pip uninstall -y mpi4py && \
     pip check

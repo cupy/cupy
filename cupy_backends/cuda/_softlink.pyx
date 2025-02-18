@@ -49,7 +49,7 @@ cdef class SoftLink:
         return cython.operator.dereference(<func_ptr*>ptr)
 
 
-cdef int _fail_unsupported() nogil except -1:
+cdef int _fail_unsupported() except -1 nogil:
     with gil:
         raise AssertionError('''
 *** The requested function is not supported in the current version of
@@ -59,7 +59,7 @@ cdef int _fail_unsupported() nogil except -1:
 ***   https://github.com/cupy/cupy/issues
 ''')
 
-cdef int _fail_not_found() nogil except -1:
+cdef int _fail_not_found() except -1 nogil:
     with gil:
         raise AssertionError('''
 *** The requested function could not be found in the library.
