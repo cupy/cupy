@@ -450,7 +450,7 @@ def validate_schema(schema: SchemaType) -> None:
                         raise ValueError(
                             f'unknown CUDA version: {cuda} '
                             f'while parsing schema {key}:{value}')
-        elif key in ('numpy', 'scipy'):
+        elif key in ('numpy', 'scipy', 'mpi4py'):
             for value, value_schema in key_schema.items():
                 for python in value_schema.get('python', []):
                     if python not in schema['python'].keys():
@@ -517,7 +517,7 @@ def validate_matrixes(schema: SchemaType, matrixes: List[Matrix]) -> None:
                     raise ValueError(
                         f'{matrix.project}: CUDA {matrix.cuda} '
                         f'not supported by {key} {value}')
-            elif key in ('numpy', 'scipy'):
+            elif key in ('numpy', 'scipy', 'mpi4py'):
                 supports = schema[key][value].get('python', None)
                 if supports is not None and matrix.python not in supports:
                     raise ValueError(
