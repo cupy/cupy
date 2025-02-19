@@ -94,11 +94,11 @@ def _get_outer_edges(a, range):
                 'supplied range of [{}, {}] is not finite'.format(
                     first_edge, last_edge))
     elif a.size == 0:
-        first_edge = 0.0
-        last_edge = 1.0
+        first_edge = 0
+        last_edge = 1
     else:
-        first_edge = float(a.min())
-        last_edge = float(a.max())
+        first_edge = a.min()
+        last_edge = a.max()
         if not (cupy.isfinite(first_edge) and cupy.isfinite(last_edge)):
             raise ValueError(
                 'autodetected range of [{}, {}] is not finite'.format(
@@ -341,10 +341,7 @@ def histogramdd(sample, bins=10, range=None, weights=None, density=False):
                 )
             smin, smax = _get_outer_edges(sample[:, i], range[i])
             num = int(bins[i] + 1)  # synchronize!
-            dtyp = (sample.dtype
-                    if issubclass(sample.dtype.type, numpy.inexact)
-                    else numpy.float64)
-            edges[i] = cupy.linspace(smin, smax, num, dtype=dtyp)
+            edges[i] = cupy.linspace(smin, smax, num)
         elif cupy.ndim(bins[i]) == 1:
             if not isinstance(bins[i], cupy.ndarray):
                 raise ValueError('array-like bins not supported')

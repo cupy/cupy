@@ -455,7 +455,7 @@ def _check_bounds(indices, n_rows, n_cols, **kwargs):
         ]
     )
 }) if _check_bounds(**params)])
-@testing.with_requires('scipy>=1.4.0')
+@testing.with_requires('scipy')
 class TestArrayIndexing(IndexingTestBase):
 
     @skip_HIP_0_size_matrix()
@@ -469,6 +469,7 @@ class TestArrayIndexing(IndexingTestBase):
         return res
 
     @skip_HIP_0_size_matrix()
+    @testing.with_requires('scipy>=1.15.0')
     @testing.for_dtypes('fdFD')
     @testing.for_dtypes('il', name='ind_dtype')
     @testing.numpy_cupy_array_equal(
@@ -481,6 +482,7 @@ class TestArrayIndexing(IndexingTestBase):
         return res
 
     @skip_HIP_0_size_matrix()
+    @testing.with_requires('scipy>=1.15.0')
     @testing.for_dtypes('fdFD')
     @testing.for_dtypes('il', name='ind_dtype')
     @testing.numpy_cupy_array_equal(

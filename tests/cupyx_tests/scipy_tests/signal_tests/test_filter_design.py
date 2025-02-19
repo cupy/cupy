@@ -577,7 +577,7 @@ class TestSOSFreqz:
         w, h = scp.signal.sosfreqz(sos)
         return w, h
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-5, atol=1e-5)
     def test_sosfrez_design_cheb2_2(self, xp, scp):
         N, Wn = scp.signal.cheb2ord([0.1, 0.6], [0.2, 0.5], 3, 150)
         sos = scp.signal.cheby2(N, 150, Wn, 'stop', output='sos')

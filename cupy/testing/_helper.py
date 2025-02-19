@@ -198,6 +198,30 @@ def shaped_sparse_random(
     return a.asformat(format)
 
 
+def shaped_linspace(start, stop, shape, xp=cupy, dtype=numpy.float32):
+    """Returns an array with given shape, array module, and dtype.
+
+    Args:
+        start (int): The starting value.
+        stop (int): The end value.
+        shape (tuple of int): Shape of returned ndarray.
+        xp (numpy or cupy): Array module to use.
+        dtype (dtype): Dtype of returned ndarray.
+
+    Returns:
+        numpy.ndarray or cupy.ndarray:
+    """
+    dtype = numpy.dtype(dtype)
+    size = numpy.prod(shape)
+    if dtype == '?':
+        start = max(start, 0)
+        stop = min(stop, 1)
+    elif dtype.kind == 'u':
+        start = max(start, 0)
+    a = numpy.linspace(start, stop, size)
+    return xp.array(a.astype(dtype).reshape(shape))
+
+
 def generate_matrix(
         shape, xp=cupy, dtype=numpy.float32, *, singular_values=None):
     r"""Returns a matrix with specified singular values.

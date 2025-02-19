@@ -60,6 +60,20 @@ from cupy.exceptions import ComplexWarning
 NUMPY_1x = numpy.__version__ < '2'
 
 
+cdef extern from *:
+    """
+    #define _str_(s) #s
+    #define _xstr_(s) _str_(s)
+    const char* cupy_cache_key = _xstr_(CUPY_CACHE_KEY);
+    #undef _xstr_
+    #undef _str_
+    """
+    const char* cupy_cache_key  # set at build time
+
+
+CUPY_CACHE_KEY = cupy_cache_key.decode()
+
+
 # If rop of cupy.ndarray is called, cupy's op is the last chance.
 # If op of cupy.ndarray is called and the `other` is cupy.ndarray, too,
 # it is safe to call cupy's op.
@@ -395,7 +409,7 @@ cdef class _ndarray_base:
         # TODO(leofang): use flags
         if (not is_ump_supported(self.data.device_id)
                 or not self.is_host_accessible()):
-            raise RuntimeError(
+            raise TypeError(
                 'Accessing a CuPy ndarry on CPU is not allowed except when '
                 'using system memory (on HMM or ATS enabled systems, need to '
                 'set CUPY_ENABLE_UMP=1) or managed memory')
@@ -2359,7 +2373,7 @@ cpdef tuple assemble_cupy_compiler_options(tuple options):
                 # is out
                 if minor < 2:
                     _bundled_include = 'cuda-12'
-                elif minor < 7:
+                elif minor < 9:
                     _bundled_include = f'cuda-12.{minor}'
                 else:
                     # Unsupported CUDA 12.x variant
