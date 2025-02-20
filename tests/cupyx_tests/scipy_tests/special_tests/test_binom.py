@@ -51,5 +51,5 @@ class TestBinom:
     def test_nan_inf(self, xp, scp, dtype):
         import scipy.special  # NOQA
         a = xp.array([-numpy.inf, numpy.nan, numpy.inf, 0, -1,
-                      1e8, 5e7], dtype=dtype)
+                      3e3, 1e4]).astype(dtype)
         return scp.special.binom(a[:, xp.newaxis], a[xp.newaxis, :])

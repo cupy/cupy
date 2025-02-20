@@ -12,7 +12,7 @@ except ImportError:
     pass
 
 
-@testing.with_requires('scipy')
+@testing.with_requires('scipy>=1.15')
 class TestLogsumexp:
 
     @testing.for_all_dtypes(no_bool=True)

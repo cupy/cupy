@@ -41,6 +41,9 @@ def logsumexp(a, axis=None, b=None, keepdims=False, return_sign=False):
     scipy.special.logsumexp
 
     """
+    if a.dtype.kind in 'biu':
+        a = a.astype(cp.float64)
+
     if b is not None:
         a, b = cp.broadcast_arrays(a, b)
         if cp.any(b == 0):
