@@ -628,7 +628,7 @@ def cdist(XA, XB, metric='euclidean', out=None, **kwargs):
             output_arr = out if out is not None else cupy.zeros((mA, mB),
                                                                 dtype=XA.dtype,
                                                                 order=XA_order)
-            pairwise_distance(XA, XB, output_arr, metric, p=p)
+            pairwise_distance(XA, XB, output_arr, metric, p)
             return output_arr
         else:
             raise ValueError('Unknown Distance Metric: %s' % mstr)
