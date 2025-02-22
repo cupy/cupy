@@ -6,6 +6,7 @@ import pytest
 
 import cupy
 from cupy import testing
+from cupy._core import _accelerator
 
 
 # Note that numpy.bincount does not support uint64 on 64-bit environment
@@ -328,9 +329,104 @@ class TestHistogram(unittest.TestCase):
                 xp.bincount(x, minlength=-1)
 
 
-# TODO(leofang): we temporarily remove CUB histogram support for now,
-# see cupy/cupy#7698. When it's ready, revert the commit that checked
-# in this comment to restore the support.
+# This class compares CUB results against NumPy's
+@unittest.skipUnless(cupy.cuda.cub.available, 'The CUB routine is not enabled')
+class TestCubHistogram(unittest.TestCase):
+
+    def setUp(self):
+        self.old_accelerators = _accelerator.get_routine_accelerators()
+        _accelerator.set_routine_accelerators(['cub'])
+
+    def tearDown(self):
+        _accelerator.set_routine_accelerators(self.old_accelerators)
+
+    @testing.for_all_dtypes(no_bool=True, no_complex=True)
+    @testing.numpy_cupy_array_equal()
+    def test_histogram(self, xp, dtype):
+        x = testing.shaped_arange((10,), xp, dtype)
+
+        if xp is numpy:
+            return xp.histogram(x)
+
+        # xp is cupy, first ensure we really use CUB
+        cub_func = 'cupy._statistics.histogram.cub.device_histogram'
+        with testing.AssertFunctionIsCalled(cub_func):
+            xp.histogram(x)
+        # ...then perform the actual computation
+        return xp.histogram(x)
+
+    @testing.for_all_dtypes(no_bool=True, no_complex=True)
+    @testing.numpy_cupy_array_equal()
+    def test_histogram_range_float(self, xp, dtype):
+        a = testing.shaped_arange((10,), xp, dtype)
+        h, b = xp.histogram(a, testing.shaped_arange((10,), xp, numpy.float64))
+        assert int(h.sum()) == 10
+        return h, b
+
+    @testing.for_all_dtypes_combination(['dtype_a', 'dtype_b'],
+                                        no_bool=True, no_complex=True)
+    @testing.numpy_cupy_array_equal()
+    def test_histogram_with_bins(self, xp, dtype_a, dtype_b):
+        x = testing.shaped_arange((10,), xp, dtype_a)
+        bins = testing.shaped_arange((4,), xp, dtype_b)
+
+        if xp is numpy:
+            return xp.histogram(x, bins)[0]
+
+        # xp is cupy, first ensure we really use CUB
+        cub_func = 'cupy._statistics.histogram.cub.device_histogram'
+        with testing.AssertFunctionIsCalled(cub_func):
+            xp.histogram(x, bins)
+        # ...then perform the actual computation
+        return xp.histogram(x, bins)[0]
+
+    @testing.for_all_dtypes_combination(['dtype_a', 'dtype_b'],
+                                        no_bool=True, no_complex=True)
+    @testing.numpy_cupy_array_equal()
+    def test_histogram_with_bins2(self, xp, dtype_a, dtype_b):
+        x = testing.shaped_arange((10,), xp, dtype_a)
+        bins = testing.shaped_arange((4,), xp, dtype_b)
+
+        if xp is numpy:
+            return xp.histogram(x, bins)[1]
+
+        # xp is cupy, first ensure we really use CUB
+        cub_func = 'cupy._statistics.histogram.cub.device_histogram'
+        with testing.AssertFunctionIsCalled(cub_func):
+            xp.histogram(x, bins)
+        # ...then perform the actual computation
+        return xp.histogram(x, bins)[1]
+
+    @testing.slow
+    @testing.numpy_cupy_array_equal()
+    def test_no_oom(self, xp):
+        # ensure the workaround for NVIDIA/cub#613 kicks in
+        amax = 28854312
+        A = xp.linspace(0, amax, num=amax,
+                        endpoint=True, retstep=False, dtype=xp.int32)
+        out = xp.histogram(A, bins=amax, range=[0, amax])
+        return out
+
+    @testing.for_int_dtypes('dtype', no_bool=True)
+    @testing.numpy_cupy_array_equal()
+    def test_bincount_gh7698(self, xp, dtype):
+        dtype = xp.dtype(dtype)
+        max_val = xp.iinfo(dtype).max if dtype.itemsize < 4 else 65536
+        if dtype == xp.uint64:
+            pytest.skip("only numpy raises exception on uint64 input")
+
+        # https://github.com/cupy/cupy/issues/7698
+        x = xp.arange(max_val, dtype=dtype)
+
+        if xp is numpy:
+            return xp.bincount(x)
+
+        # xp is cupy, first ensure we really use CUB
+        cub_func = 'cupy._statistics.histogram.cub.device_histogram'
+        with testing.AssertFunctionIsCalled(cub_func):
+            xp.bincount(x)
+        # ...then perform the actual computation
+        return xp.bincount(x)
 
 
 @testing.parameterize(*testing.product(
