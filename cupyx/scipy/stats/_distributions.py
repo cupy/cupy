@@ -41,8 +41,11 @@ def entropy(pk, qk=None, base=None, axis=0):
     """
     if pk.dtype.kind == 'c' or qk is not None and qk.dtype.kind == 'c':
         raise TypeError("complex dtype not supported")
+    elif pk.dtype.kind == 'f':
+        float_type = cupy.result_type(pk, cupy.float32)
+    else:
+        float_type = cupy.float64
 
-    float_type = cupy.float64
     pk = pk.astype(float_type, copy=False)
     pk = _normalize(pk, axis)
     if qk is None:
