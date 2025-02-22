@@ -1,11 +1,7 @@
 # AUTO GENERATED: DO NOT EDIT!
-ARG BASE_IMAGE="rocm/dev-ubuntu-20.04:5.0"
+ARG BASE_IMAGE="nvidia/cuda:12.8.0-devel-ubuntu20.04"
 FROM ${BASE_IMAGE}
 
-RUN export DEBIAN_FRONTEND=noninteractive && \
-    ( apt-get -qqy update || true ) && \
-    apt-get -qqy install ca-certificates && \
-    curl -qL https://repo.radeon.com/rocm/rocm.gpg.key | apt-key add -
 RUN export DEBIAN_FRONTEND=noninteractive && \
     apt-get -qqy update && \
     apt-get -qqy install \
@@ -14,26 +10,24 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
        curl llvm libncursesw5-dev xz-utils tk-dev \
        libxml2-dev libxmlsec1-dev libffi-dev \
        liblzma-dev \
-\
+       libopenmpi-dev \
        && \
     apt-get -qqy install ccache git curl && \
     apt-get -qqy --allow-change-held-packages \
-            --allow-downgrades install rocm-dev hipblas hipfft hipsparse hipcub rocsparse rocrand rocthrust rocsolver rocfft rocprim rccl
+            --allow-downgrades install 'libnccl2=2.25.*+cuda12.8' 'libnccl-dev=2.25.*+cuda12.8' 'libcutensor2=2.0.*' 'libcutensor-dev=2.0.*' 'libcusparselt0=0.6.1.*' 'libcusparselt-dev=0.6.1.*' 'libcudnn8=8.8.*+cuda12.0' 'libcudnn8-dev=8.8.*+cuda12.0'
 
 ENV PATH "/usr/lib/ccache:${PATH}"
 
-ENV ROCM_HOME "/opt/rocm"
-ENV LD_LIBRARY_PATH "${ROCM_HOME}/lib"
-ENV CPATH "${ROCM_HOME}/include"
-ENV LDFLAGS "-L${ROCM_HOME}/lib"
+COPY setup/update-alternatives-cutensor.sh /
+RUN /update-alternatives-cutensor.sh
 
 RUN git clone https://github.com/pyenv/pyenv.git /opt/pyenv
 ENV PYENV_ROOT "/opt/pyenv"
 ENV PATH "${PYENV_ROOT}/shims:${PYENV_ROOT}/bin:${PATH}"
-RUN pyenv install 3.11.10 && \
-    pyenv global 3.11.10 && \
+RUN pyenv install 3.12.6 && \
+    pyenv global 3.12.6 && \
     pip install -U setuptools pip wheel
 
-RUN pip install -U 'numpy==1.25.*' 'scipy==1.12.*' 'optuna==3.*' 'cython==3.*'
-RUN pip uninstall -y mpi4py cuda-python && \
+RUN pip install -U 'numpy==2.2.*' 'scipy==1.14.*' 'optuna==4.*' 'mpi4py==3.*' 'cython==3.*'
+RUN pip uninstall -y cuda-python && \
     pip check
