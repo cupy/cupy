@@ -484,8 +484,8 @@ mpi4py:
   "3":
     spec: "==3.*"
 cython:
-  "0.29":
-    spec: "==0.29.*"
+  "3":
+    spec: "==3.*"
   "pre":
     spec: ">=0a0"  # latest, including pre-releases
 cuda-python:
