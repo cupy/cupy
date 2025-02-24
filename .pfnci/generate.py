@@ -450,7 +450,7 @@ def validate_schema(schema: SchemaType) -> None:
                         raise ValueError(
                             f'unknown CUDA version: {cuda} '
                             f'while parsing schema {key}:{value}')
-        elif key in ('numpy', 'scipy'):
+        elif key in ('numpy', 'scipy', 'mpi4py'):
             for value, value_schema in key_schema.items():
                 for python in value_schema.get('python', []):
                     if python not in schema['python'].keys():
@@ -465,28 +465,30 @@ def validate_schema(schema: SchemaType) -> None:
 
 
 def validate_matrixes(schema: SchemaType, matrixes: List[Matrix]) -> None:
+    errors = []
+
     # Validate overall consistency
     project_seen = set()
     system_target_seen = set()
     for matrix in matrixes:
         if not hasattr(matrix, 'project'):
-            raise ValueError(f'matrix must have a project: {matrix}')
+            errors.append(f'matrix must have a project: {matrix}')
 
         if matrix.project in project_seen:
-            raise ValueError(f'{matrix.project}: duplicate project name')
+            errors.append(f'{matrix.project}: duplicate project name')
         project_seen.add(matrix.project)
 
         if not hasattr(matrix, 'target'):
-            raise ValueError(f'{matrix.project}: target is missing')
+            errors.append(f'{matrix.project}: target is missing')
 
         if (matrix.system, matrix.target) in system_target_seen:
-            raise ValueError(
+            errors.append(
                 f'{matrix.project}: duplicate system/target combination: '
                 f'{matrix.system}/{matrix.target}')
         system_target_seen.add((matrix.system, matrix.target))
 
         if not hasattr(matrix, 'tags'):
-            raise ValueError(f'{matrix.project}: tags is missing')
+            errors.append(f'{matrix.project}: tags is missing')
 
     # Validate consistency for each matrix
     for matrix in matrixes:
@@ -494,40 +496,44 @@ def validate_matrixes(schema: SchemaType, matrixes: List[Matrix]) -> None:
             continue
 
         if matrix.cuda is None and matrix.rocm is None:
-            raise ValueError(
+            errors.append(
                 f'{matrix.project}: Either cuda nor rocm must be non-null')
 
         if matrix.cuda is not None and matrix.rocm is not None:
-            raise ValueError(
+            errors.append(
                 f'{matrix.project}: cuda and rocm are mutually exclusive')
 
         for key, key_schema in schema.items():
             possible_values = list(key_schema.keys())
             if not hasattr(matrix, key):
-                raise ValueError(f'{matrix.project}: {key} is missing')
+                errors.append(f'{matrix.project}: {key} is missing')
             value = getattr(matrix, key)
             if value not in possible_values:
-                raise ValueError(
+                errors.append(
                     f'{matrix.project}: {key} must be one of '
                     f'{possible_values} but got {value}')
 
             if key in ('nccl', 'cutensor', 'cusparselt', 'cudnn'):
                 supports = schema[key][value].get('cuda', None)
                 if supports is not None and matrix.cuda not in supports:
-                    raise ValueError(
+                    errors.append(
                         f'{matrix.project}: CUDA {matrix.cuda} '
                         f'not supported by {key} {value}')
-            elif key in ('numpy', 'scipy'):
+            elif key in ('numpy', 'scipy', 'mpi4py'):
                 supports = schema[key][value].get('python', None)
                 if supports is not None and matrix.python not in supports:
-                    raise ValueError(
+                    errors.append(
                         f'{matrix.project}: Python {matrix.python} '
                         f'not supported by {key} {value}')
                 supports = schema[key][value].get('numpy', None)
                 if supports is not None and matrix.numpy not in supports:
-                    raise ValueError(
+                    errors.append(
                         f'{matrix.project}: NumPy {matrix.numpy} '
                         f'not supported by {key} {value}')
+    if len(errors) != 0:
+        raise ValueError(
+            'CI matrix is invalid:\n' +
+            '\n'.join([f'  * {err}' for err in errors]))
 
 
 def expand_inherited_matrixes(matrixes: List[Matrix]) -> None:
