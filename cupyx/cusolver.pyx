@@ -76,6 +76,7 @@ _available_cuda_version = {
     'gesv': (10020, None),
     'gels': (11000, None),
     'csrlsvqr': (9000, None),
+    'geev': (12060, None),
 }
 
 _available_hip_version = {

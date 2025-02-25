@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import numpy
 
 import cupy
@@ -5,6 +7,15 @@ from cupy.cuda import device
 from cupy.cuda import runtime
 from cupy.linalg import _util
 from cupy._core import _dtype
+
+
+def _check_dtype(dtype: numpy.dtype | str) -> None:
+    if isinstance(dtype, numpy.dtype):
+        dtype = dtype.char
+    if dtype not in "fdFD":
+        raise RuntimeError(
+            "Only float32, float64, complex64, and complex128 are supported"
+        )
 
 
 def _syevd(a, UPLO, with_eigen_vector, overwrite_a=False):
@@ -38,9 +49,7 @@ def _syevd(a, UPLO, with_eigen_vector, overwrite_a=False):
         uplo = cublas.CUBLAS_FILL_MODE_UPPER
 
     if not runtime.is_hip:
-        if dtype.char not in 'fdFD':
-            raise RuntimeError('Only float32, float64, complex64, and '
-                               'complex128 are supported')
+        _check_dtype(dtype)
         type_v = _dtype.to_cuda_dtype(dtype)
         type_w = _dtype.to_cuda_dtype(real_dtype)
         params = cusolver.createParams()
@@ -88,7 +97,59 @@ def _syevd(a, UPLO, with_eigen_vector, overwrite_a=False):
     return w.astype(w_dtype, copy=False), v.astype(v_dtype, copy=False)
 
 
-# TODO(okuta): Implement eig
+def _geev(a, with_eigen_vector, overwrite_a=False):
+    from cupy_backends.cuda.libs import cusolver
+    from cupyx.cusolver import check_availability
+
+    if not check_availability('geev'):
+        raise RuntimeError('geev is not available')
+    if runtime.is_hip:
+        raise NotImplementedError("geev is not implemented for HIP")
+
+    dtype, _ = _util.linalg_common_type(a)
+    _check_dtype(dtype)
+    complex_dtype = numpy.dtype(dtype.char.upper())
+
+    # Force complex-number computation for human-readable output format
+    a_ = a.astype(complex_dtype, order='F', copy=not overwrite_a)
+
+    m, lda = a.shape
+    w = cupy.empty(m, complex_dtype)
+    # Used for both right and (uncomputed) left eigenvectors
+    v = cupy.empty_like(a, dtype=complex_dtype, order='F')
+    dev_info = cupy.empty((), numpy.int32)
+    handle = device.Device().cusolver_handle
+
+    if with_eigen_vector:
+        jobvr = cusolver.CUSOLVER_EIG_MODE_VECTOR
+    else:
+        jobvr = cusolver.CUSOLVER_EIG_MODE_NOVECTOR
+    # Skip computing left eigenvectors
+    jobvl = cusolver.CUSOLVER_EIG_MODE_NOVECTOR
+
+    type_complex = _dtype.to_cuda_dtype(complex_dtype)
+    params = cusolver.createParams()
+    try:
+        work_device_size, work_host_size = cusolver.xgeev_bufferSize(
+            handle, params, jobvl, jobvr, m, type_complex, a_.data.ptr, lda,
+            type_complex, w.data.ptr, type_complex, v.data.ptr, lda,
+            type_complex, v.data.ptr, lda, type_complex)
+        work_device = cupy.empty(work_device_size, 'b')
+        work_host = numpy.empty(work_host_size, 'b')
+        cusolver.xgeev(
+            handle, params, jobvl, jobvr, m, type_complex, a_.data.ptr, lda,
+            type_complex, w.data.ptr, type_complex, v.data.ptr, lda,
+            type_complex, v.data.ptr, lda, type_complex, work_device.data.ptr,
+            work_device_size, work_host.ctypes.data, work_host_size,
+            dev_info.data.ptr)
+    finally:
+        cusolver.destroyParams(params)
+    cupy.linalg._util._check_cusolver_dev_info_if_synchronization_allowed(
+        cusolver.xgeev, dev_info)
+
+    if all(w.imag == 0.0):
+        return w.real, v.real
+    return w, v
 
 
 def eigh(a, UPLO='L'):
@@ -141,7 +202,53 @@ def eigh(a, UPLO='L'):
         return _syevd(a, UPLO, True)
 
 
-# TODO(okuta): Implement eigvals
+def eig(a):
+    """
+    Return the eigenvalues and eigenvectors of a matrix.
+
+    Returns two objects, a 1-D array containing the eigenvalues of `a`, and
+    a 2-D square array or matrix (depending on the input type) of the
+    corresponding eigenvectors (in columns).
+
+    Args:
+        a (cupy.ndarray): A symmetric 2-D square matrix ``(M, M)`` or a batch
+            of symmetric 2-D square matrices ``(..., M, M)``.
+    Returns:
+        tuple of :class:`~cupy.ndarray`:
+            Returns a tuple ``(w, v)``. ``w`` contains eigenvalues and
+            ``v`` contains eigenvectors. ``v[:, i]`` is an eigenvector
+            corresponding to an eigenvalue ``w[i]``. For batch input,
+            ``v[k, :, i]`` is an eigenvector corresponding to an eigenvalue
+            ``w[k, i]`` of ``a[k]``.
+    Notes:
+        There is no guarantee of the order of the eigenvalues:
+        it can even be different from ``numpy.linalg.eig``.
+
+    .. warning::
+        This function calls one or more cuSOLVER routine(s) which may yield
+        invalid results if input conditions are not met.
+        To detect these invalid results, you can set the `linalg`
+        configuration to a value that is not `ignore` in
+        :func:`cupyx.errstate` or :func:`cupyx.seterr`.
+
+    .. seealso:: :func:`numpy.linalg.eig`
+    """
+    _util._assert_stacked_2d(a)
+    _util._assert_stacked_square(a)
+
+    if a.size == 0:
+        _, v_dtype = _util.linalg_common_type(a)
+        w = cupy.empty(a.shape[:-1], v_dtype)
+        v = cupy.empty(a.shape, v_dtype)
+        return w, v
+
+    if a.ndim == 2:
+        return _geev(a, True)
+
+    work = [_geev(a[ind, :, :], True) for ind in numpy.ndindex(a.shape[:-2])]
+    w = cupy.stack([x[0] for x in work])
+    v = cupy.stack([x[1] for x in work])
+    return w.reshape(a.shape[:-1]), v.reshape(a.shape)
 
 
 def eigvalsh(a, UPLO='L'):
@@ -183,3 +290,48 @@ def eigvalsh(a, UPLO='L'):
         return cupyx.cusolver.syevj(a, UPLO, False)
     else:
         return _syevd(a, UPLO, False)[0]
+
+
+def eigvals(a):
+    """
+    Compute the eigenvalues of a matrix.
+
+    Main difference from eig: the eigenvectors are not computed.
+
+    Args:
+        a (cupy.ndarray): A symmetric 2-D square matrix ``(M, M)`` or a batch
+            of symmetric 2-D square matrices ``(..., M, M)``.
+    Returns:
+        cupy.ndarray:
+            Returns eigenvalues as a vector ``w``. For batch input,
+            ``w[k]`` is a vector of eigenvalues of matrix ``a[k]``.
+    Notes:
+        There is no guarantee of the order of the eigenvalues:
+        it can even be different from ``numpy.linalg.eigvals``.
+
+    .. warning::
+        This function calls one or more cuSOLVER routine(s) which may yield
+        invalid results if input conditions are not met.
+        To detect these invalid results, you can set the `linalg`
+        configuration to a value that is not `ignore` in
+        :func:`cupyx.errstate` or :func:`cupyx.seterr`.
+
+    .. seealso:: :func:`numpy.linalg.eigvals`
+    """
+    _util._assert_stacked_2d(a)
+    _util._assert_stacked_square(a)
+
+    if a.size == 0:
+        _, v_dtype = _util.linalg_common_type(a)
+        w = cupy.empty(a.shape[:-1], v_dtype)
+        return w
+
+        return cupy.empty(a.shape[:-1], a.dtype)
+
+    if a.ndim == 2:
+        return _geev(a, False)[0]
+
+    work = [
+        _geev(a[ind, :, :], False)[0] for ind in numpy.ndindex(a.shape[:-2])
+    ]
+    return cupy.stack(work).reshape(a.shape[:-1])
