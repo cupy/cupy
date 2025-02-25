@@ -99,7 +99,10 @@ def _syevd(a, UPLO, with_eigen_vector, overwrite_a=False):
 
 def _geev(a, with_eigen_vector, overwrite_a=False):
     from cupy_backends.cuda.libs import cusolver
+    from cupyx.cusolver import check_availability
 
+    if not check_availability('geev'):
+        raise RuntimeError('geev is not available')
     if runtime.is_hip:
         raise NotImplementedError("geev is not implemented for HIP")
 
