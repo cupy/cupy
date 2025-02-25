@@ -7,6 +7,7 @@ from cupy.cuda import runtime
 from cupy import testing
 from cupyx import cusolver
 
+
 def _get_hermitian(xp, a, UPLO):
     if UPLO == 'U':
         return xp.triu(a) + xp.triu(a, 1).swapaxes(-2, -1).conj()
