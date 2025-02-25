@@ -27,7 +27,7 @@ cdef uint32_t IMPL_VER_MAJOR = 1
 cdef uint32_t IMPL_VER_MINOR = 0
 
 
-cdef void pycapsule_deleter(object dltensor):
+cdef void pycapsule_deleter(object dltensor) noexcept:
     cdef DLManagedTensor* dlm_tensor
     cdef DLManagedTensorVersioned *dlm_tensor_ver
 
@@ -45,7 +45,7 @@ cdef void pycapsule_deleter(object dltensor):
         pass
 
 
-cdef void deleter(DLManagedTensor* tensor) with gil:
+cdef void deleter(DLManagedTensor* tensor) noexcept with gil:
     # Delete fully initialized DLManagedTensor
     stdlib.free(tensor.dl_tensor.shape)
     cpython.Py_DECREF(<_ndarray_base>tensor.manager_ctx)
@@ -53,7 +53,7 @@ cdef void deleter(DLManagedTensor* tensor) with gil:
     stdlib.free(tensor)
 
 
-cdef void deleter_ver(DLManagedTensorVersioned* tensor) with gil:
+cdef void deleter_ver(DLManagedTensorVersioned* tensor) noexcept with gil:
     # Delete fully initialized DLManagedTensorVersioned
     stdlib.free(tensor.dl_tensor.shape)
     cpython.Py_DECREF(<_ndarray_base>tensor.manager_ctx)
@@ -104,7 +104,7 @@ cdef DLDevice get_dlpack_device(_ndarray_base array):
 cpdef object toDlpack(
     _ndarray_base array, bint use_versioned=True, bint to_cpu=False,
     bint ensure_copy=False, stream=None
-) except +:
+):
     """Create a dlpack capsule for an array.
 
     Parameters
@@ -342,7 +342,7 @@ cdef class DLPackMemory(memory.BaseMemory):
 
 # The name of this function is following the framework integration guide of
 # TensorComprehensions.
-cpdef _ndarray_base fromDlpack(object dltensor) except +:
+cpdef _ndarray_base fromDlpack(object dltensor):
     """Zero-copy conversion from a DLPack tensor to a :class:`~cupy.ndarray`.
 
     DLPack is a open in memory tensor structure proposed in this repository:
@@ -392,7 +392,7 @@ cpdef _ndarray_base fromDlpack(object dltensor) except +:
     return _dlpack_to_cupy_array(dltensor)
 
 
-cdef inline _ndarray_base _dlpack_to_cupy_array(dltensor) except +:
+cdef inline _ndarray_base _dlpack_to_cupy_array(dltensor):
     cdef DLPackMemory mem = DLPackMemory(dltensor)
     cdef DLDataType dtype = mem.dl_tensor.dtype
     cdef int bits = dtype.bits

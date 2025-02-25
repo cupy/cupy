@@ -38,7 +38,7 @@ namespace cuda {
 
 
 extern "C" char *cupy_malloc(void *, size_t);
-extern "C" void cupy_free(void *, char *);
+extern "C" int cupy_free(void *, char *);
 
 
 class cupy_allocator {
