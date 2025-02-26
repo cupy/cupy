@@ -587,12 +587,12 @@ def binary_hit_or_miss(input, structure1=None, structure2=None, output=None,
 
     .. seealso:: :func:`scipy.ndimage.binary_hit_or_miss`
     """
-    if structure1 is None:
-        structure1 = generate_binary_structure(input.ndim, 1)
-    if structure2 is None:
-        structure2 = cupy.logical_not(structure1)
     axes = _util._check_axes(axes, input.ndim)
     num_axes = len(axes)
+    if structure1 is None:
+        structure1 = generate_binary_structure(num_axes, 1)
+    if structure2 is None:
+        structure2 = cupy.logical_not(structure1)
     origin1 = _util._fix_sequence_arg(origin1, num_axes, 'origin1', int)
     if origin2 is None:
         origin2 = origin1
