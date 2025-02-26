@@ -14,7 +14,7 @@ Requirements
     * This requirement is optional if you install CuPy from ``conda-forge``. However, you still need to have a compatible
       driver installed for your GPU. See :ref:`install_cupy_from_conda_forge` for details.
 
-* `Python <https://python.org/>`_: v3.9 / v3.10 / v3.11 / v3.12
+* `Python <https://python.org/>`_: v3.9 / v3.10 / v3.11 / v3.12 / v3.13
 
 .. note::
 
@@ -31,7 +31,7 @@ NumPy/SciPy-compatible API in CuPy v13 is based on NumPy 1.26 and SciPy 1.11, an
 
     * Required only when copying sparse matrices from GPU to CPU (see :doc:`../reference/scipy_sparse`.)
 
-* `Optuna <https://optuna.org/>`_ (*optional*): v3.x
+* `Optuna <https://optuna.org/>`_ (*optional*): v3.x / v4.x
 
     * Required only when using :ref:`kernel_param_opt`.
 
@@ -54,7 +54,7 @@ Part of the CUDA features in CuPy will be activated only when the corresponding 
 
     * The library to accelerate tensor operations. See :doc:`../reference/environment` for the details.
 
-* `NCCL <https://developer.nvidia.com/nccl>`_: v2.16 / v2.17
+* `NCCL <https://developer.nvidia.com/nccl>`_: v2.16 / v2.17 / v2.18 / v2.19 / v2.20 / v2.21 / v2.22 / v2.25
 
     * The library to perform collective multi-GPU / multi-node computations.
 
