@@ -110,13 +110,16 @@ def _geev(a, with_eigen_vector, overwrite_a=False):
     _check_dtype(dtype)
     complex_dtype = numpy.dtype(dtype.char.upper())
 
-    # Force complex-number computation for human-readable output format
-    a_ = a.astype(complex_dtype, order='F', copy=not overwrite_a)
+    # Only when requesting eigenvectors, we force complex-number computation
+    # because cuSolver returns real eigenvectors for real input that needs
+    # to be post-processed otherwise.
+    mat_a_type = complex_dtype if with_eigen_vector else dtype
+    a_ = a.astype(mat_a_type, order='F', copy=not overwrite_a)
 
     m, lda = a.shape
     w = cupy.empty(m, complex_dtype)
     # Used for both right and (uncomputed) left eigenvectors
-    v = cupy.empty_like(a, dtype=complex_dtype, order='F')
+    v = cupy.empty_like(a, dtype=mat_a_type, order='F')
     dev_info = cupy.empty((), numpy.int32)
     handle = device.Device().cusolver_handle
 
@@ -128,18 +131,20 @@ def _geev(a, with_eigen_vector, overwrite_a=False):
     jobvl = cusolver.CUSOLVER_EIG_MODE_NOVECTOR
 
     type_complex = _dtype.to_cuda_dtype(complex_dtype)
+    type_mat_a = _dtype.to_cuda_dtype(mat_a_type)
+
     params = cusolver.createParams()
     try:
         work_device_size, work_host_size = cusolver.xgeev_bufferSize(
-            handle, params, jobvl, jobvr, m, type_complex, a_.data.ptr, lda,
-            type_complex, w.data.ptr, type_complex, v.data.ptr, lda,
-            type_complex, v.data.ptr, lda, type_complex)
+            handle, params, jobvl, jobvr, m, type_mat_a, a_.data.ptr, lda,
+            type_complex, w.data.ptr, type_mat_a, v.data.ptr, lda,
+            type_mat_a, v.data.ptr, lda, type_mat_a)
         work_device = cupy.empty(work_device_size, 'b')
         work_host = numpy.empty(work_host_size, 'b')
         cusolver.xgeev(
-            handle, params, jobvl, jobvr, m, type_complex, a_.data.ptr, lda,
-            type_complex, w.data.ptr, type_complex, v.data.ptr, lda,
-            type_complex, v.data.ptr, lda, type_complex, work_device.data.ptr,
+            handle, params, jobvl, jobvr, m, type_mat_a, a_.data.ptr, lda,
+            type_complex, w.data.ptr, type_mat_a, v.data.ptr, lda,
+            type_mat_a, v.data.ptr, lda, type_mat_a, work_device.data.ptr,
             work_device_size, work_host.ctypes.data, work_host_size,
             dev_info.data.ptr)
     finally:
