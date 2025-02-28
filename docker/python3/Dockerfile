@@ -9,4 +9,4 @@ RUN apt-get update -y && \
     rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
 
 RUN pip3 install --no-cache-dir -U setuptools pip
-RUN pip3 install --no-cache-dir "cupy-cuda12x[all]==13.3.0"
+RUN pip3 install --no-cache-dir "cupy-cuda12x[all]==13.4.0"
