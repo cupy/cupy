@@ -127,6 +127,10 @@ function Main {
     if (-Not $is_pull_request) {
         $Env:CUPY_TEST_FULL_COMBINATION = "1"
     }
+    # Skip full test for these CUDA versions as compilation seems so slow
+    if (($cuda -eq "12.0") -or ($cuda -eq "12.1") -or ($cuda -eq "12.2")) {
+        $Env:CUPY_TEST_FULL_COMBINATION = "0"
+    }
 
     # Install dependency for cuDNN 8.3+
     echo ">> Installing zlib"
