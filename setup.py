@@ -19,7 +19,7 @@ if not cupy_builder.preflight_check(ctx):
 
 # TODO(kmaehashi): migrate to pyproject.toml (see #4727, #4619)
 setup_requires = [
-    'Cython>=0.29.22,<3',
+    'Cython>=3',
     'fastrlock>=0.5',
 ]
 install_requires = [
@@ -29,7 +29,7 @@ install_requires = [
 extras_require = {
     'all': [
         'scipy>=1.10,<1.17',  # see #4773
-        'Cython>=0.29.22,<3',
+        'Cython>=3',
         'optuna>=2.0',
     ],
     'test': [
@@ -106,6 +106,7 @@ Programming Language :: Python :: 3.9
 Programming Language :: Python :: 3.10
 Programming Language :: Python :: 3.11
 Programming Language :: Python :: 3.12
+Programming Language :: Python :: 3.13
 Programming Language :: Python :: 3 :: Only
 Programming Language :: Cython
 Topic :: Software Development

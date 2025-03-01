@@ -253,7 +253,9 @@ class DeviceCompilerWin32(DeviceCompilerBase):
         # to build CuPy because some Python versions were built using it.
         # REF: https://wiki.python.org/moin/WindowsCompilers
         postargs += ['-allow-unsupported-compiler']
-        postargs += ['-Xcompiler', '/MD', '-D_USE_MATH_DEFINES']
+        # "/bigobj" to silence `fatal error C1128: number of sections exceeded
+        # object file format limit`
+        postargs += ['-Xcompiler', '/MD /bigobj', '-D_USE_MATH_DEFINES']
         # Bumping C++ standard from C++14 to C++17 for "if constexpr"
         num_threads = int(os.environ.get('CUPY_NUM_NVCC_THREADS', '2'))
         postargs += ['--std=c++17',

@@ -504,6 +504,41 @@ configs {
   }
 }
 
+# CUDA 12.8 | Linux
+configs {
+  key: "cupy.linux.cuda128"
+  value {
+    requirement {
+      cpu: 8
+      memory: 50
+      disk: 10
+      gpu: 1
+    }
+    time_limit: {
+      seconds: 21600
+    }
+    environment_variables { key: "GPU" value: "1" }
+    command: ".pfnci/linux/main-flexci.sh cuda128"
+  }
+}
+# CUDA 12.8 (Multi-GPU) | Linux
+configs {
+  key: "cupy.linux.cuda128.multi"
+  value {
+    requirement {
+      cpu: 8
+      memory: 50
+      disk: 10
+      gpu: 2
+    }
+    time_limit: {
+      seconds: 21600
+    }
+    environment_variables { key: "GPU" value: "2" }
+    command: ".pfnci/linux/main-flexci.sh cuda128.multi"
+  }
+}
+
 # CUDA 11.x + CUDA Python
 configs {
   key: "cupy.linux.cuda11x-cuda-python"
@@ -826,7 +861,7 @@ configs {
       include_dot_git: true
     }
     environment_variables { key: "GPU" value: "2" }
-    command: ".pfnci\\windows\\run.bat 11.7 3.10 2.1 1.14 test"
+    command: ".pfnci\\windows\\run.bat 11.7 3.13 2.2 1.14 test"
   }
 }
 
@@ -856,7 +891,7 @@ configs {
   value {
     requirement {
       cpu: 8
-      memory: 24
+      memory: 36
       disk: 10
       gpu: 2
       image: "windows"
@@ -877,7 +912,7 @@ configs {
   value {
     requirement {
       cpu: 8
-      memory: 24
+      memory: 36
       disk: 10
       gpu: 2
       image: "windows"
@@ -898,7 +933,7 @@ configs {
   value {
     requirement {
       cpu: 8
-      memory: 24
+      memory: 36
       disk: 10
       gpu: 2
       image: "windows"
@@ -919,7 +954,7 @@ configs {
   value {
     requirement {
       cpu: 8
-      memory: 24
+      memory: 36
       disk: 10
       gpu: 2
       image: "windows"
@@ -940,7 +975,7 @@ configs {
   value {
     requirement {
       cpu: 8
-      memory: 24
+      memory: 36
       disk: 10
       gpu: 2
       image: "windows"
@@ -961,7 +996,7 @@ configs {
   value {
     requirement {
       cpu: 8
-      memory: 24
+      memory: 36
       disk: 10
       gpu: 2
       image: "windows"
@@ -982,7 +1017,7 @@ configs {
   value {
     requirement {
       cpu: 8
-      memory: 24
+      memory: 36
       disk: 10
       gpu: 2
       image: "windows"
@@ -995,5 +1030,26 @@ configs {
     }
     environment_variables { key: "GPU" value: "2" }
     command: ".pfnci\\windows\\run.bat 12.6 3.12 2.1 1.14 test"
+  }
+}
+
+configs {
+  key: "cupy.win.cuda128"
+  value {
+    requirement {
+      cpu: 8
+      memory: 36
+      disk: 10
+      gpu: 2
+      image: "windows"
+    }
+    time_limit {
+      seconds: 72000
+    }
+    checkout_strategy {
+      include_dot_git: true
+    }
+    environment_variables { key: "GPU" value: "2" }
+    command: ".pfnci\\windows\\run.bat 12.8 3.13 2.2 1.14 test"
   }
 }
