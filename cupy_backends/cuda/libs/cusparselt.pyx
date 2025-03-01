@@ -45,6 +45,7 @@ cdef extern from '../../cupy_cusparselt.h' nogil:
     ctypedef int cusparseLtMatmulAlgAttribute_t 'cusparseLtMatmulAlgAttribute_t'  # NOQA
     ctypedef int cusparseLtSplitKMode_t 'cusparseLtSplitKMode_t'
     ctypedef int cusparseLtPruneAlg_t 'cusparseLtPruneAlg_t'
+    ctypedef int cusparseLtMatmulMatrixScale_t 'cusparseLtMatmulMatrixScale_t'
 
     # Management Functions
     cusparseStatus_t cusparseLtInit(cusparseLtHandle_t* handle)
@@ -265,7 +266,6 @@ cdef class MatmulPlan:
 # Error handling
 ###############################################################################
 
-
 @cython.profile(False)
 cpdef inline check_status(int status):
     if status != 0:
@@ -280,10 +280,21 @@ cpdef init(Handle handle):
     status = cusparseLtInit(<cusparseLtHandle_t*> handle._ptr)
     check_status(status)
 
-
 cpdef destroy(Handle handle):
     """Releases hardware resources used by the cuSPARSELt library"""
     status = cusparseLtDestroy(<cusparseLtHandle_t*> handle._ptr)
+    check_status(status)
+
+cpdef getVersion(Handle handle, size_t version):
+    """Get the version number of the cuSPARSELt library"""
+    status = cusparseLtGetVersion(<cusparseLtHandle_t*> handle._ptr,
+                                <int*> version)
+    check_status(status)
+
+cpdef getProperty(int propertyType, size_t valueType):
+    """Get the value of the requested property"""
+    status = cusparseLtGetProperty(<LibraryPropertyType> propertyType,
+                                <int*> valueType)
     check_status(status)
 
 ###############################################################################
