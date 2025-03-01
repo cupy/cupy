@@ -1858,7 +1858,7 @@ CuPy CI Test Coverage
      - ✅
    * - cusparselt
      - null
-     - 24
+     - 38
      - ✅
      - ✅
      - ✅
