@@ -694,6 +694,13 @@ def _binary_fill_holes_non_iterative(input, structure=None, output=None):
     if output is None:
         output = cupy.ascontiguousarray(temp)
     else:
+        # handle output argument as in _binary_erosion
+        if isinstance(output, cupy.ndarray):
+            if output.dtype.kind == 'c':
+                raise TypeError('Complex output type not supported')
+        else:
+            output = bool
+        output = _util._get_output(output, input)
         output[:] = temp
     return output
 
