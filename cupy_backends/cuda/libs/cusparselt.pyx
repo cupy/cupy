@@ -292,11 +292,6 @@ cpdef getVersion(Handle handle, size_t version):
                                   <int*> version)
     check_status(status)
 
-cpdef getProperty(int propertyType, size_t valueType):
-    """Get the value of the requested property"""
-    status = cusparseLtGetProperty(<libraryPropertyType> propertyType,
-                                   <int*> valueType)
-    check_status(status)
 
 ###############################################################################
 # cuSPARSELt: Matmul Functions
