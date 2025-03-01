@@ -15,7 +15,7 @@ from cupy_backends.cuda.libs import cusparse as _cusparse
 # Types
 ###############################################################################
 cdef extern from *:
-    ctypedef void* LibraryPropertyType 'libraryPropertyType_t'
+    ctypedef void* libraryPropertyType 'libraryPropertyType'
 
 
 cdef extern from '../../cupy_cusparselt.h' nogil:
@@ -53,7 +53,7 @@ cdef extern from '../../cupy_cusparselt.h' nogil:
     cusparseStatus_t cusparseLtGetVersion(
         const cusparseLtHandle_t* handle, int* version)
     cusparseStatus_t cusparseLtGetProperty(
-        LibraryPropertyType propertyType, int* value)
+        libraryPropertyType propertyType, int* value)
 
     # Matmul Functions
     cusparseStatus_t cusparseLtDenseDescriptorInit(
@@ -294,7 +294,7 @@ cpdef getVersion(Handle handle, size_t version):
 
 cpdef getProperty(int propertyType, size_t valueType):
     """Get the value of the requested property"""
-    status = cusparseLtGetProperty(<LibraryPropertyType> propertyType,
+    status = cusparseLtGetProperty(<libraryPropertyType> propertyType,
                                    <int*> valueType)
     check_status(status)
 
