@@ -266,6 +266,7 @@ cdef class MatmulPlan:
 # Error handling
 ###############################################################################
 
+
 @cython.profile(False)
 cpdef inline check_status(int status):
     if status != 0:
@@ -288,13 +289,13 @@ cpdef destroy(Handle handle):
 cpdef getVersion(Handle handle, size_t version):
     """Get the version number of the cuSPARSELt library"""
     status = cusparseLtGetVersion(<cusparseLtHandle_t*> handle._ptr,
-                                <int*> version)
+                                  <int*> version)
     check_status(status)
 
 cpdef getProperty(int propertyType, size_t valueType):
     """Get the value of the requested property"""
     status = cusparseLtGetProperty(<LibraryPropertyType> propertyType,
-                                <int*> valueType)
+                                   <int*> valueType)
     check_status(status)
 
 ###############################################################################
