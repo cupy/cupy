@@ -649,7 +649,7 @@ def binary_propagation(input, structure=None, mask=None, output=None,
                            origin, brute_force=True, axes=axes)
 
 
-def _binary_fill_holes_non_iterative(input, output=None):
+def _binary_fill_holes_non_iterative(input, structure=None, output=None):
     """Non-iterative method for hole filling.
 
     This algorithm is based on inverting the input and then using `label` to
@@ -673,7 +673,9 @@ def _binary_fill_holes_non_iterative(input, output=None):
 
     # assign unique labels the background and holes
     inverse_binary_mask = ~binary_mask
-    inverse_labels, _ = _measurements.label(inverse_binary_mask)
+    inverse_labels, _ = _measurements.label(
+        inverse_binary_mask, structure=structure
+    )
 
     # After inversion, what was originally the background will now be the
     # first foreground label encountered. This is ensured due to the
@@ -741,12 +743,13 @@ def binary_fill_holes(input, structure=None, output=None, origin=0, *,
     filter_all_axes = axes == tuple(range(input.ndim))
     if isinstance(origin, int):
         origin = (origin,) * len(axes)
-    if structure is None and all(o == 0 for o in origin) and filter_all_axes:
-        return _binary_fill_holes_non_iterative(input, output=output)
+    if all(o == 0 for o in origin) and filter_all_axes:
+        return _binary_fill_holes_non_iterative(
+            input, structure=structure, output=output)
     elif filter_all_axes:
         warnings.warn(
-            'It is recommended to keep the default structure=None and '
-            'origin=0, so that a faster non-iterative algorithm can be used.'
+            'It is recommended to keep the default origin=0 so that a faster '
+            'non-iterative algorithm can be used.'
         )
     mask = cupy.logical_not(input)
     tmp = cupy.zeros(mask.shape, bool)
