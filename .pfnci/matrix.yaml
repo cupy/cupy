@@ -574,7 +574,7 @@
   rocm: null
   nccl: "2.16"
   cutensor: "2.0"
-  cusparselt: null  # TODO use cuSPARSELt 0.6+ after bumping CUDA to 12.x
+  cusparselt: null
   cudnn: "8.8"
   python: "3.12"
   numpy: "1.26"
@@ -604,7 +604,7 @@
   rocm: null
   nccl: "2.16"
   cutensor: "2.0"
-  cusparselt: null  # TODO use cuSPARSELt 0.6+ after bumping CUDA to 12.x
+  cusparselt: null
   cudnn: "8.8"
   python: "3.12"
   numpy: "1.26"
@@ -631,7 +631,7 @@
   rocm: null
   nccl: "2.16"
   cutensor: "2.0"
-  cusparselt: null  # TODO use cuSPARSELt 0.6+ after bumping CUDA to 12.x
+  cusparselt: null
   cudnn: "8.8"
   python: "3.12"
   numpy: "pre"
