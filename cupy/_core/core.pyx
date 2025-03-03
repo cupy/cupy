@@ -396,7 +396,7 @@ cdef class _ndarray_base:
             event = curr_stream.record()
             stream.wait_event(event)
 
-        return dlpack.toDlpack(
+        return dlpack._toDlpack(
             self, use_versioned=use_versioned, to_cpu=to_cpu,
             ensure_copy=copy is True, stream=stream)
 
@@ -2197,10 +2197,7 @@ cdef class _ndarray_base:
             :class:`PyCapsule` objects. Use the :func:`~cupy.from_dlpack`
             array constructor instead.
         """
-        warnings.warn(
-            "This method is deprecated and will be removed in a future "
-            "release. Use the cupy.from_dlpack() array constructor instead.",
-            cupy.VisibleDeprecationWarning)
+        # Note: We use the "public" API to show the deprecation warning.
         return dlpack.toDlpack(self)
 
 

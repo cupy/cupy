@@ -124,7 +124,25 @@ cpdef object toDlpack(
         If `None`, we make sure to synchronize to have the data available
         as soon as we return.  Otherwise, we use this stream to copy the
         data (as requested by the user).
+
+    .. warning::
+
+        This function is deprecated in favor of :func:`~cupy.from_dlpack` and
+        will be removed in a future version of CuPy.
+
     """
+    warnings.warn(
+        "This function is deprecated and will be removed in a future "
+        "release. Use the cupy.from_dlpack() array constructor instead.",
+        cupy.VisibleDeprecationWarning)
+    return _toDlpack(array, use_versioned=use_versioned, to_cpu=to_cpu,
+                     ensure_copy=ensure_copy, stream=stream)
+
+
+cdef object _toDlpack(
+    _ndarray_base array, bint use_versioned=True, bint to_cpu=False,
+    bint ensure_copy=False, stream=None
+):
     cdef DLManagedTensor* dlm_tensor
     cdef DLManagedTensorVersioned* dlm_tensor_ver
     cdef DLTensor* dl_tensor
@@ -387,8 +405,10 @@ cpdef _ndarray_base fromDlpack(object dltensor):
         >>> cupy.testing.assert_array_equal(array1, array2)
 
     """
-    warnings.warn('This function is deprecated in favor of cupy.from_dlpack',
-                  cupy.VisibleDeprecationWarning)
+    warnings.warn(
+        "This function is deprecated and will be removed in a future "
+        "release. Use the cupy.from_dlpack() array constructor instead.",
+        cupy.VisibleDeprecationWarning)
     return _dlpack_to_cupy_array(dltensor)
 
 
