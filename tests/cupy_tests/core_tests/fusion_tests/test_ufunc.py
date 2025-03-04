@@ -314,3 +314,12 @@ class TestFusionScalar(unittest.TestCase):
             return scalar
 
         return func
+
+    @testing.for_all_dtypes_combination(names=('dtype1', 'dtype2'))
+    @fusion_utils.check_fusion(generate_inputs_name='numpy_scalar_param_r')
+    def test_scalar_and_constant_mix(self, xp, dtype1, dtype2):
+        # Example from gh-8536
+        def func(array, scalar):
+            return 1.0 - (array * array) / (scalar * scalar)
+
+        return func
