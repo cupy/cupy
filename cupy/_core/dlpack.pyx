@@ -102,7 +102,7 @@ cdef DLDevice get_dlpack_device(_ndarray_base array):
 # The name of this function is following the framework integration guide of
 # TensorComprehensions.
 cpdef object toDlpack(
-    _ndarray_base array, bint use_versioned=True, bint to_cpu=False,
+    _ndarray_base array, bint use_versioned=False, bint to_cpu=False,
     bint ensure_copy=False, stream=None
 ):
     """Create a dlpack capsule for an array.
