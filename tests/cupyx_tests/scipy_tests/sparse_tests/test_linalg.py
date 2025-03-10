@@ -80,9 +80,9 @@ class TestLsqr(unittest.TestCase):
 @testing.with_requires('scipy')
 class TestMatrixNorm:
 
-    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4, sp_name='sp',
-                                 accept_error=(ValueError,
-                                               NotImplementedError))
+    @testing.numpy_cupy_allclose(
+        rtol=1e-3, atol=1e-4, sp_name='sp', type_check=False,
+        accept_error=(ValueError, NotImplementedError))
     def test_matrix_norm(self, xp, sp):
         if runtime.is_hip and self.ord in (1, -1, numpy.inf, -numpy.inf):
             pytest.xfail('csc spmv is buggy')
@@ -91,7 +91,13 @@ class TestMatrixNorm:
         a = xp.arange(9, dtype=self.dtype) - 4
         b = a.reshape((3, 3))
         b = sp.csr_matrix(b, dtype=self.dtype)
-        return sp.linalg.norm(b, ord=self.ord, axis=self.axis)
+
+        # NumPy: Returns python float
+        # CuPy: Returns 0-dim cupy.ndarray
+        out = sp.linalg.norm(b, ord=self.ord, axis=self.axis)
+        out = xp.asarray(out)
+        assert out.ndim == 0
+        return out
 
 
 @testing.parameterize(*testing.product({
