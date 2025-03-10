@@ -74,7 +74,7 @@ function Main {
     ActivatePython $python
 
     # Setup build environment variables
-    $Env:CUPY_NUM_BUILD_JOBS = "16"
+    $Env:CUPY_NUM_BUILD_JOBS = "8"
     $Env:CUPY_NVCC_GENERATE_CODE = "current"
     echo "Environment:"
     RunOrDie cmd.exe /C set
