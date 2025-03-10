@@ -45,7 +45,7 @@ cdef public int cupy_free(void *m, char* ptr) except -1 with gil:
 # Extern
 ###############################################################################
 
-cdef extern from 'cupy_thrust.h':
+cdef extern from 'cupy_thrust.h' nogil:
     void thrust_sort(int, void *, size_t *, const vector.vector[ptrdiff_t]&,
                      intptr_t, void *)
     void thrust_lexsort(
@@ -87,7 +87,8 @@ cpdef sort(dtype, intptr_t data_start, intptr_t keys_start,
         raise RuntimeError('either the GPU or the CUDA Toolkit does not '
                            'support fp16')
 
-    thrust_sort(dtype_id, _data_start, _keys_start, shape, _strm, mem)
+    with nogil:
+        thrust_sort(dtype_id, _data_start, _keys_start, shape, _strm, mem)
 
 
 cpdef lexsort(dtype, intptr_t idx_start, intptr_t keys_start,
@@ -108,7 +109,8 @@ cpdef lexsort(dtype, intptr_t idx_start, intptr_t keys_start,
         raise RuntimeError('either the GPU or the CUDA Toolkit does not '
                            'support fp16')
 
-    thrust_lexsort(dtype_id, idx_ptr, keys_ptr, k, n, _strm, mem)
+    with nogil:
+        thrust_lexsort(dtype_id, idx_ptr, keys_ptr, k, n, _strm, mem)
 
 
 cpdef argsort(dtype, intptr_t idx_start, intptr_t data_start,
@@ -130,6 +132,6 @@ cpdef argsort(dtype, intptr_t idx_start, intptr_t data_start,
     if dtype_id == 8 and not common._is_fp16_supported():
         raise RuntimeError('either the GPU or the CUDA Toolkit does not '
                            'support fp16')
-
-    thrust_argsort(
-        dtype_id, _idx_start, _data_start, _keys_start, shape, _strm, mem)
+    with nogil:
+        thrust_argsort(
+            dtype_id, _idx_start, _data_start, _keys_start, shape, _strm, mem)
