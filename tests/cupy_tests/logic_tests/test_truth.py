@@ -261,6 +261,13 @@ class TestIntersect1d:
         b = xp.array([4, 6, 2, 5, 7, 6], dtype=dtype)
         return xp.intersect1d(a, b, return_indices=True)
 
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_empty_intersection(self, xp, dtype):
+        a = xp.array([], dtype=dtype)
+        b = xp.array([0], dtype=dtype)
+        return xp.intersect1d(a, b, return_indices=True)
+
 
 class TestUnion1d:
 
