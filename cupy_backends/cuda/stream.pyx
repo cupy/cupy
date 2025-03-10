@@ -12,11 +12,13 @@ cdef bint _ptds = bool(int(
 
 
 cdef class _ThreadLocal:
-    cdef list current_stream  # list of intptr_t
+    cdef list current_stream             # list of intptr_t
+    cdef list current_cublas_workspaces  # list of (intptr_t, size_t)
 
     def __init__(self):
         cdef int i, num_devices = runtime.getDeviceCount()
         self.current_stream = [0 for i in range(num_devices)]
+        self.current_cublas_workspaces = [(0, 0) for i in range(num_devices)]
 
     @staticmethod
     cdef _ThreadLocal get():
@@ -41,6 +43,23 @@ cdef class _ThreadLocal:
         if curr_stream == 0 and is_ptds_enabled():
             return runtime.streamPerThread
         return curr_stream
+
+    cdef void set_current_cublas_workspace(
+        self, intptr_t ptr, size_t size, int device_id=-1
+    ):
+        if device_id == -1:
+            device_id = runtime.getDevice()
+        self.current_cublas_workspaces[device_id] = (ptr, size)
+
+    cdef (intptr_t, size_t) get_current_cublas_workspace(
+        self, int device_id=-1
+    ):
+        if device_id == -1:
+            device_id = runtime.getDevice()
+        cdef intptr_t ptr
+        cdef size_t size
+        ptr, size = self.current_cublas_workspaces[device_id]
+        return ptr, size
 
 
 cdef intptr_t get_current_stream_ptr():
@@ -101,3 +120,13 @@ cdef bint is_ptds_enabled():
         # HIP does not support PTDS, just ignore the env var
         return False
     return _ptds
+
+cpdef void set_current_cublas_workspace(
+    intptr_t ptr, size_t size, int device_id=-1
+):
+    tls = _ThreadLocal.get()
+    tls.set_current_cublas_workspace(ptr, size, device_id)
+
+cpdef (intptr_t, size_t) get_current_cublas_workspace(int device_id=-1):
+    tls = _ThreadLocal.get()
+    return tls.get_current_cublas_workspace(device_id)
