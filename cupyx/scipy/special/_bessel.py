@@ -10,8 +10,8 @@ from cupy import _core
 from cupyx.scipy.special._gamma import chbevl_implementation
 
 j0 = _core.create_ufunc(
-    'cupyx_scipy_special_j0', ('f->f', 'd->d'),
-    'out0 = j0(in0)',
+    'cupyx_scipy_special_j0', ('l->d', 'L->d', 'e->d', 'f->f', 'd->d'),
+    'out0 = j0(out0_type(in0))',
     doc='''Bessel function of the first kind of order 0.
 
     .. seealso:: :meth:`scipy.special.j0`
@@ -20,8 +20,8 @@ j0 = _core.create_ufunc(
 
 
 j1 = _core.create_ufunc(
-    'cupyx_scipy_special_j1', ('f->f', 'd->d'),
-    'out0 = j1(in0)',
+    'cupyx_scipy_special_j1', ('l->d', 'L->d', 'e->d', 'f->f', 'd->d'),
+    'out0 = j1(out0_type(in0))',
     doc='''Bessel function of the first kind of order 1.
 
     .. seealso:: :meth:`scipy.special.j1`
@@ -30,8 +30,8 @@ j1 = _core.create_ufunc(
 
 
 y0 = _core.create_ufunc(
-    'cupyx_scipy_special_y0', ('f->f', 'd->d'),
-    'out0 = y0(in0)',
+    'cupyx_scipy_special_y0', ('l->d', 'L->d', 'e->d', 'f->f', 'd->d'),
+    'out0 = y0(out0_type(in0))',
     doc='''Bessel function of the second kind of order 0.
 
     .. seealso:: :meth:`scipy.special.y0`
@@ -40,8 +40,8 @@ y0 = _core.create_ufunc(
 
 
 y1 = _core.create_ufunc(
-    'cupyx_scipy_special_y1', ('f->f', 'd->d'),
-    'out0 = y1(in0)',
+    'cupyx_scipy_special_y1', ('l->d', 'L->d', 'e->d', 'f->f', 'd->d'),
+    'out0 = y1(out0_type(in0))',
     doc='''Bessel function of the second kind of order 1.
 
     .. seealso:: :meth:`scipy.special.y1`
@@ -73,8 +73,8 @@ yn = _core.create_ufunc(
 
 
 i0 = _core.create_ufunc(
-    'cupyx_scipy_special_i0', ('f->f', 'd->d'),
-    'out0 = cyl_bessel_i0(in0)',
+    'cupyx_scipy_special_i0', ('l->d', 'L->d', 'e->d', 'f->f', 'd->d'),
+    'out0 = cyl_bessel_i0(out0_type(in0))',
     doc='''Modified Bessel function of order 0.
 
     .. seealso:: :meth:`scipy.special.i0`
@@ -83,8 +83,8 @@ i0 = _core.create_ufunc(
 
 
 i0e = _core.create_ufunc(
-    'cupyx_scipy_special_i0e', ('f->f', 'd->d'),
-    'out0 = exp(-abs(in0)) * cyl_bessel_i0(in0)',
+    'cupyx_scipy_special_i0e', ('l->d', 'L->d', 'e->d', 'f->f', 'd->d'),
+    'out0 = exp(-abs(out0_type(in0))) * cyl_bessel_i0(out0_type(in0))',
     doc='''Exponentially scaled modified Bessel function of order 0.
 
     .. seealso:: :meth:`scipy.special.i0e`
@@ -93,8 +93,8 @@ i0e = _core.create_ufunc(
 
 
 i1 = _core.create_ufunc(
-    'cupyx_scipy_special_i1', ('f->f', 'd->d'),
-    'out0 = cyl_bessel_i1(in0)',
+    'cupyx_scipy_special_i1', ('l->d', 'L->d', 'e->d', 'f->f', 'd->d'),
+    'out0 = cyl_bessel_i1(out0_type(in0))',
     doc='''Modified Bessel function of order 1.
 
     .. seealso:: :meth:`scipy.special.i1`
@@ -103,8 +103,8 @@ i1 = _core.create_ufunc(
 
 
 i1e = _core.create_ufunc(
-    'cupyx_scipy_special_i1e', ('f->f', 'd->d'),
-    'out0 = exp(-abs(in0)) * cyl_bessel_i1(in0)',
+    'cupyx_scipy_special_i1e', ('l->d', 'L->d', 'e->d', 'f->f', 'd->d'),
+    'out0 = exp(-abs(out0_type(in0))) * cyl_bessel_i1(out0_type(in0))',
     doc='''Exponentially scaled modified Bessel function of order 1.
 
     .. seealso:: :meth:`scipy.special.i1e`
@@ -392,7 +392,7 @@ __device__ float k1f(float x){
 
 k0 = _core.create_ufunc(
     'cupyx_scipy_special_k0',
-    (('f->f', 'out0 = k0f(in0)'), 'd->d'),
+    ('l->d', 'L->d', 'e->d', ('f->f', 'out0 = k0f(in0)'), 'd->d'),
     'out0 = k0(in0)',
     preamble=k_preamble,
     doc='''Modified Bessel function of the second kind of order 0.
@@ -410,8 +410,8 @@ k0 = _core.create_ufunc(
 
 k0e = _core.create_ufunc(
     'cupyx_scipy_special_k0e',
-    (('f->f', 'out0 = expf(in0) * k0f(in0)'), 'd->d'),
-    'out0 = exp(in0) * k0(in0)',
+    ('l->d', 'L->d', 'e->d', ('f->f', 'out0 = expf(in0) * k0f(in0)'), 'd->d'),
+    'out0 = exp(out0_type(in0)) * k0(in0)',
     preamble=k_preamble,
     doc='''Exponentially scaled modified Bessel function K of order 0
 
@@ -428,7 +428,7 @@ k0e = _core.create_ufunc(
 
 k1 = _core.create_ufunc(
     'cupyx_scipy_special_k1',
-    (('f->f', 'out0 = k1f(in0)'), 'd->d'),
+    ('l->d', 'L->d', 'e->d', ('f->f', 'out0 = k1f(in0)'), 'd->d'),
     'out0 = k1(in0)',
     preamble=k_preamble,
     doc='''Modified Bessel function of the second kind of order 1.
@@ -446,8 +446,8 @@ k1 = _core.create_ufunc(
 
 k1e = _core.create_ufunc(
     'cupyx_scipy_special_k1e',
-    (('f->f', 'out0 = expf(in0) * k1f(in0)'), 'd->d'),
-    'out0 = exp(in0) * k1(in0)',
+    ('l->d', 'L->d', 'e->d', ('f->f', 'out0 = expf(in0) * k1f(in0)'), 'd->d'),
+    'out0 = exp(out0_type(in0)) * k1(in0)',
     preamble=k_preamble,
     doc='''Exponentially scaled modified Bessel function K of order 1
 
