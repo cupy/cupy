@@ -551,7 +551,11 @@ class _FusionHistory(object):
                         # decidable statically, because it depends on the value
                         # of the scalar variable.
                         scalar_value = arg.dtype.type(0)
-                    if not numpy.can_cast(scalar_value, in_dtypes[i]):
+                    # Can-cast usage works OK mostly, but doesn't for Python
+                    # scalars on NumPy 2.  Phrase it as a promotion instead.
+                    # (This may be a band-aid, v14 logic is refactored.)
+                    promoted = numpy.result_type(scalar_value, in_dtypes[i])
+                    if promoted != in_dtypes[i]:
                         return False
                 else:
                     assert False
