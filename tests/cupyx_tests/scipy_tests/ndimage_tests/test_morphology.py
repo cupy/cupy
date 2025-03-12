@@ -501,8 +501,8 @@ class TestBinaryErosionAndDilation:
     testing.product({  # cases with boolean input and output
         'x_dtype': [bool],
         'border_value': [0],
-        'connectivity': [1],
-        'origin': [(0, 1)],
+        'connectivity': [1, None],
+        'origin': [(0, 0), (0, 1)],
         'shape': [(16, 15), (5, 7, 9)],
         'axes': [(0, 1), (0, -1), (-2, -1), (1,)],
         'density': [0.1, 0.5, 0.9],
@@ -519,11 +519,17 @@ class TestBinaryMorphologyAxes:
         ndim = len(self.shape)
         kwargs = {}
         if self.axes is None:
-            structure = scp.ndimage.generate_binary_structure(
-                ndim, self.connectivity)
+            if self.connectivity is None:
+                structure = None
+            else:
+                structure = scp.ndimage.generate_binary_structure(
+                    ndim, self.connectivity)
         else:
-            structure = scp.ndimage.generate_binary_structure(
-                len(self.axes), self.connectivity)
+            if self.connectivity is None:
+                structure = None
+            else:
+                structure = scp.ndimage.generate_binary_structure(
+                    len(self.axes), self.connectivity)
         if len(self.origin) > len(self.axes):
             self.origin = [self.origin[ax] for ax in self.axes]
 
