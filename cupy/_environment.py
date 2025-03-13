@@ -346,8 +346,9 @@ def _preload_library(lib):
                 filename)
             for x in ['lib', 'lib64', 'bin']]
         if lib == 'cutensor':
+            min_pypi_version = config[lib]['min_pypi_version']
             libpath_cands = (
-                _get_cutensor_from_wheel(version, config['cuda']) +
+                _get_cutensor_from_wheel(min_pypi_version, config['cuda']) +
                 libpath_cands)
 
         for libpath in libpath_cands:
@@ -411,7 +412,9 @@ def _get_cutensor_from_wheel(version: str, cuda: str) -> List[str]:
         actual[1] >= expected[1] and
         actual[2] >= expected[2]
     )
-    if not is_compatible:
+    if is_compatible:
+        _log(f'cuTENSOR wheel found: {cutensor_dist.version}')
+    else:
         _log('cuTENSOR wheel incompatible: '
              f'expected {version}, found {cutensor_dist.version}')
         return []
@@ -442,8 +445,9 @@ def _preload_warning(lib, exc):
         cuda = config['cuda']
         if lib == 'cutensor':
             cuda_major = cuda.split('.')[0]
-            version = config['cutensor']['version']
-            cmd = f'pip install "cutensor-cu{cuda_major}~={version}"'
+            version = config['cutensor']['min_pypi_version']
+            major = _parse_version(version)[0]
+            cmd = f'pip install "cutensor-cu{cuda_major}>={version},<{major+1}"'  # NOQA
         else:
             cmd = f'python -m cupyx.tools.install_library --library {lib} --cuda {cuda}'  # NOQA
     elif config['packaging'] == 'conda':

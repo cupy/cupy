@@ -82,10 +82,12 @@ def _make_cutensor_url(platform, filename):
 
 
 def __make_cutensor_record(
-        cuda_version, public_version, filename_linux, filename_windows):
+        cuda_version, public_version, min_pypi_version,
+        filename_linux, filename_windows):
     return {
         'cuda': cuda_version,
         'cutensor': public_version,
+        'min_pypi_version': min_pypi_version,
         'assets': {
             'Linux': {
                 'url': _make_cutensor_url('linux', filename_linux),
@@ -103,8 +105,12 @@ def __make_cutensor_record(
 
 
 def _make_cutensor_record(cuda_version):
+    # cuTENSOR guarantees ABI compatibility within the major version (#9017).
+    # `min_pypi_version` must be bumped only when:
+    # (1) Bumping the major version, or
+    # (2) CuPy started to use APIs introduced in minor versions
     return __make_cutensor_record(
-        cuda_version, '2.1.0',
+        cuda_version, '2.1.0', '2.0.0',
         'libcutensor-linux-x86_64-2.1.0.9-archive.tar.xz',
         'libcutensor-windows-x86_64-2.1.0.9-archive.zip')
 
