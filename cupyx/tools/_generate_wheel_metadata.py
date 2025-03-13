@@ -37,8 +37,11 @@ def _generate_wheel_metadata(cuda_version, target_system, libraries):
     for library in libraries:
         for record in _get_records(library, cuda_version):
             if record['cuda'] == cuda_version:
+                version = record[library]
+                min_pypi_version = record.get('min_pypi_version', version)
                 metadata = {
-                    'version': record[library],
+                    'version': version,
+                    'min_pypi_version': min_pypi_version,
                     'filenames': record['assets'][target_system]['filenames'],
                 }
                 break
