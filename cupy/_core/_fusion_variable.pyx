@@ -179,6 +179,16 @@ class _TraceScalar(_TraceVariable):
         self.const_value = const_value
         self.pytype = sctype if sctype in (int, float, complex) else False
 
+    @staticmethod
+    def _float_to_str(x):
+        if numpy.isinf(x):
+            if x < 0:
+                return '-CUDART_INF'
+            return 'CUDART_INF'
+        if numpy.isnan(x):
+            return 'CUDART_INF'
+        return str(x)
+
     @property
     def var_name(self):
         if self.const_value is None:
@@ -188,9 +198,10 @@ class _TraceScalar(_TraceVariable):
         if self.dtype.kind == 'c':
             return '{}({}, {})'.format(
                 get_typename(self.dtype),
-                self.const_value.real,
-                self.const_value.imag)
-        return str(self.const_value)
+                self._float_to_str(self.const_value.real),
+                self._float_to_str(self.const_value.imag),
+            )
+        return self._float_to_str(self.const_value)
 
     @property
     def lvar_name(self):
