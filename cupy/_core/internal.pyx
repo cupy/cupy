@@ -535,3 +535,20 @@ cpdef tuple _broadcast_shapes(shapes):
         result_shape.append(out_dim)
 
     return tuple(result_shape)
+
+
+cdef bint _is_layout_expected(
+        const bint c_contiguous, const bint f_contiguous,
+        expected_order) except*:
+    cdef int order_char = _normalize_order(expected_order)
+    order_char = _update_order_char(
+        c_contiguous, f_contiguous, order_char)
+    # order_char is either C or F from now on
+    if c_contiguous and f_contiguous:
+        return True
+    if c_contiguous and order_char == b'C':
+        return True
+    elif f_contiguous and order_char == b'F':
+        return True
+    else:
+        return False
