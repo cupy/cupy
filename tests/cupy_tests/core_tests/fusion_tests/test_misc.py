@@ -190,6 +190,18 @@ class TestSpecialValues(FusionTestBase):
         mask = testing.shaped_random((N,), xp=xp, dtype=dtype) > 0.5
         return func(points, mask)
 
+    @testing.for_float_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_nan_where(self, xp, dtype):
+        @cupy.fuse()
+        def func(points, mask):
+            return xp.where(mask[:, xp.newaxis], xp.nan, points)
+
+        N = 256
+        points = testing.shaped_random((N, 2), xp=xp, dtype=dtype)
+        mask = testing.shaped_random((N,), xp=xp, dtype=dtype) > 0.5
+        return func(points, mask)
+
 
 class TestFusionDecorator(unittest.TestCase):
     def test_without_paren(self):
