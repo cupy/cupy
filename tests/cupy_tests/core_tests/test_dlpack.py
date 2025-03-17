@@ -42,14 +42,15 @@ class DLDummy:
 
 class TestDLPackConversion:
 
-    @pytest.mark.filterwarnings('ignore::DeprecationWarning')
     @testing.for_all_dtypes(no_bool=False)
-    def test_conversion(self, dtype):
+    def test_conversion(self, dtype, recwarn):
         orig_array = _gen_array(dtype)
         tensor = orig_array.toDlpack()
         out_array = cupy.fromDlpack(tensor)
         testing.assert_array_equal(orig_array, out_array)
         testing.assert_array_equal(orig_array.data.ptr, out_array.data.ptr)
+        for w in recwarn:
+            assert issubclass(w.category, cupy.VisibleDeprecationWarning)
 
 
 class TestNewDLPackConversion:
@@ -251,8 +252,7 @@ class TestDLTensorMemory:
         del tensor
         assert pool.n_free_blocks() == 1
 
-    @pytest.mark.filterwarnings('ignore::DeprecationWarning')
-    def test_multiple_consumption_error(self):
+    def test_multiple_consumption_error(self, recwarn):
         # Prevent segfault, see #3611
         array = cupy.empty(10)
         tensor = array.toDlpack()
@@ -260,3 +260,5 @@ class TestDLTensorMemory:
         with pytest.raises(ValueError) as e:
             array3 = cupy.fromDlpack(tensor)  # noqa
         assert 'consumed multiple times' in str(e.value)
+        for w in recwarn:
+            assert issubclass(w.category, cupy.VisibleDeprecationWarning)
