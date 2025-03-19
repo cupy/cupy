@@ -3,12 +3,13 @@ import warnings
 
 try:
     import cuquantum
-    if hasattr(cuquantum, 'bindings'): 
+    if hasattr(cuquantum, 'bindings'):
         # cuquantum-python >= 25.03
-        from cuquantum.bindings import cutensornet # binding module
-        from cuquantum import tensornet # module for pythonic APIs
+        from cuquantum.bindings import cutensornet  # binding module
+        from cuquantum import tensornet  # module for pythonic APIs
     else:
-        # for cuquantum < 25.03, bindings & pythonic APIs all reside under cuquantum.cutensornet
+        # for cuquantum < 25.03, bindings & pythonic APIs
+        # all reside under cuquantum.cutensornet
         from cuquantum import cutensornet
         tensornet = cutensornet
 except ImportError:
