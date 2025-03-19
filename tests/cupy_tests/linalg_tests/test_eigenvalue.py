@@ -20,7 +20,7 @@ def _get_hermitian(xp, a, UPLO):
 @pytest.mark.skipif(
     runtime.is_hip and driver.get_build_version() < 402,
     reason='eigensolver not added until ROCm 4.2.0')
-class TestEigenvalue:
+class TestSymEigenvalue:
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4, contiguous_check=False)
@@ -128,6 +128,71 @@ class TestEigenvalue:
         return w
 
 
+@pytest.mark.skipif(runtime.is_hip, reason="hip does not support eig")
+class TestEigenvalue:
+
+    @testing.for_all_dtypes(no_float16=True)
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4, contiguous_check=False)
+    def test_eig(self, xp, dtype):
+        if numpy.dtype(dtype).kind == 'c':
+            a = xp.array([[1, 2j, 3], [4j, 5, 6j], [7, 8j, 9]], dtype)
+        else:
+            a = xp.array([[1, 0, 3], [0, 5, 0], [7, 0, 9]], dtype)
+        w, v = xp.linalg.eig(a)
+        tol = 1e-5
+        testing.assert_allclose(a @ v, v @ xp.diag(w), atol=tol, rtol=tol)
+        # Canonicalize the order
+        return xp.sort(w)
+
+    @testing.for_all_dtypes(no_float16=True)
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4, contiguous_check=False)
+    def test_eig_hermitian(self, xp, dtype):
+        if numpy.dtype(dtype).kind == 'c':
+            a = xp.array([[1, 2j, 3], [4j, 5, 6j], [7, 8j, 9]], dtype)
+        else:
+            a = xp.array([[1, 0, 3], [0, 5, 0], [7, 0, 9]], dtype)
+        a = _get_hermitian(xp, a, 'U')
+        w, v = xp.linalg.eig(a)
+        tol = 1e-5
+        testing.assert_allclose(a @ v, v @ xp.diag(w), atol=tol, rtol=tol)
+        # Canonicalize the order
+        return xp.sort(w)
+
+    @testing.for_all_dtypes(no_float16=True, no_complex=True)
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4)
+    def test_eigvals(self, xp, dtype):
+        a = xp.array([[1, 0, 3], [0, 5, 0], [7, 0, 9]], dtype)
+        w = xp.linalg.eigvals(a)
+        # Canonicalize the order
+        return xp.sort(w)
+
+    @testing.for_all_dtypes(no_float16=True, no_complex=True)
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4)
+    def test_eigvals_sym(self, xp, dtype):
+        a = xp.array([[1, 0, 3], [0, 5, 0], [7, 0, 9]], dtype)
+        a = _get_hermitian(xp, a, 'U')
+        w = xp.linalg.eigvals(a)
+        # Canonicalize the order
+        return xp.sort(w)
+
+    @testing.for_complex_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4)
+    def test_eigvals_complex(self, xp, dtype):
+        a = xp.array([[1, 2j, 3], [4j, 5, 6j], [7, 8j, 9]], dtype)
+        w = xp.linalg.eigvals(a)
+        # Canonicalize the order
+        return xp.sort(w)
+
+    @testing.for_complex_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4)
+    def test_eigvals_hermitian(self, xp, dtype):
+        a = xp.array([[1, 2j, 3], [4j, 5, 6j], [7, 8j, 9]], dtype)
+        a = _get_hermitian(xp, a, 'U')
+        w = xp.linalg.eigvals(a)
+        # Canonicalize the order
+        return xp.sort(w)
+
+
 @pytest.mark.parametrize('UPLO', ['U', 'L'])
 @pytest.mark.parametrize('shape', [
     (0, 0),
@@ -137,7 +202,7 @@ class TestEigenvalue:
 @pytest.mark.skipif(
     runtime.is_hip and driver.get_build_version() < 402,
     reason='eigensolver not added until ROCm 4.2.0')
-class TestEigenvalueEmpty:
+class TestSymEigenvalueEmpty:
 
     @testing.for_dtypes('ifdFD')
     @testing.numpy_cupy_allclose()
@@ -154,6 +219,32 @@ class TestEigenvalueEmpty:
         return xp.linalg.eigvalsh(a, UPLO=UPLO)
 
 
+@pytest.mark.parametrize(
+    "shape",
+    [
+        (0, 0),
+        (2, 0, 0),
+        (0, 3, 3),
+    ],
+)
+@pytest.mark.skipif(runtime.is_hip, reason="hip does not support eig")
+class TestEigenvalueEmpty:
+
+    @testing.for_dtypes('ifdFD')
+    @testing.numpy_cupy_allclose()
+    def test_eig(self, xp, dtype, shape):
+        a = xp.empty(shape, dtype)
+        assert a.size == 0
+        return xp.linalg.eig(a)
+
+    @testing.for_dtypes('ifdFD')
+    @testing.numpy_cupy_allclose()
+    def test_eigvals(self, xp, dtype, shape):
+        a = xp.empty(shape, dtype)
+        assert a.size == 0
+        return xp.linalg.eigvals(a)
+
+
 @pytest.mark.parametrize('UPLO', ['U', 'L'])
 @pytest.mark.parametrize('shape', [
     (),
@@ -166,7 +257,7 @@ class TestEigenvalueEmpty:
 @pytest.mark.skipif(
     runtime.is_hip and driver.get_build_version() < 402,
     reason='eigensolver not added until ROCm 4.2.0')
-class TestEigenvalueInvalid:
+class TestSymEigenvalueInvalid:
 
     def test_eigh_shape_error(self, UPLO, shape):
         for xp in (numpy, cupy):
@@ -179,3 +270,30 @@ class TestEigenvalueInvalid:
             a = xp.zeros(shape)
             with pytest.raises(numpy.linalg.LinAlgError):
                 xp.linalg.eigvalsh(a, UPLO)
+
+
+@pytest.mark.parametrize(
+    "shape",
+    [
+        (),
+        (3,),
+        (2, 3),
+        (4, 0),
+        (2, 2, 3),
+        (0, 2, 3),
+    ],
+)
+@pytest.mark.skipif(runtime.is_hip, reason="hip does not support eig")
+class TestEigenvalueInvalid:
+
+    def test_eigh_shape_error(self, shape):
+        for xp in (numpy, cupy):
+            a = xp.zeros(shape)
+            with pytest.raises(numpy.linalg.LinAlgError):
+                xp.linalg.eig(a)
+
+    def test_eigvalsh_shape_error(self, shape):
+        for xp in (numpy, cupy):
+            a = xp.zeros(shape)
+            with pytest.raises(numpy.linalg.LinAlgError):
+                xp.linalg.eigvals(a)
