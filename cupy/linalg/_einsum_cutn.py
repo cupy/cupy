@@ -3,9 +3,16 @@ import warnings
 
 try:
     import cuquantum
-    from cuquantum import cutensornet
+    if hasattr(cuquantum, 'bindings'): 
+        # cuquantum-python >= 25.03
+        from cuquantum.bindings import cutensornet # binding module
+        from cuquantum import tensornet # module for pythonic APIs
+    else:
+        # for cuquantum < 25.03, bindings & pythonic APIs all reside under cuquantum.cutensornet
+        from cuquantum import cutensornet
+        tensornet = cutensornet
 except ImportError:
-    cuquantum = cutensornet = None
+    cuquantum = cutensornet = tensornet = None
 
 import cupy
 from cupy import _util
@@ -154,13 +161,13 @@ def _try_use_cutensornet(*args, **kwargs):
     cutn_optimizer = {'path': path} if path else None
 
     if len(args) == 2:
-        out = cutensornet.contract(
+        out = tensornet.contract(
             args[0], *operands, options=cutn_options, optimize=cutn_optimizer)
     elif len(args) == 3:
         inputs = [i for pair in zip(operands, args[0]) for i in pair]
         if args[2] is not None:
             inputs.append(args[2])
-        out = cutensornet.contract(
+        out = tensornet.contract(
             *inputs, options=cutn_options, optimize=cutn_optimizer)
     else:
         assert False
