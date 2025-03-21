@@ -801,7 +801,8 @@ class RandomState(object):
                 seed = (time.time() * 1000000) % _UINT64_MAX
         else:
             if isinstance(seed, numpy.ndarray):
-                seed = int(hashlib.md5(seed, usedforsecurity=False).hexdigest()[:16], 16)
+                seed = int(hashlib.md5(
+                    seed, usedforsecurity=False).hexdigest()[:16], 16)
             else:
                 seed_arr = numpy.asarray(seed)
                 if seed_arr.dtype.kind not in 'biu':
