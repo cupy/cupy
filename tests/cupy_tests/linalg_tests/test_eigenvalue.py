@@ -359,6 +359,11 @@ class TestStackedEigenvalues:
 
         ev_cpu = numpy.take_along_axis(ev_cpu, ew_cpu_ind[..., None], axis=-1)
         ev_gpu = cupy.take_along_axis(ev_gpu, ew_gpu_ind[..., None], axis=-1)
+
+        # eigenvectors can be off by a factor of -1
+        scale_vec = numpy.divide(ev_cpu[..., 0], ev_gpu.get()[..., 0])
+        ev_cpu *= scale_vec[..., None]
+
         cupy.testing.assert_allclose(ev_gpu, ev_cpu, rtol=1e-5, atol=1e-4)
 
     @testing.for_dtypes([

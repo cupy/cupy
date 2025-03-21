@@ -97,6 +97,31 @@ def _syevd(a, UPLO, with_eigen_vector, overwrite_a=False):
     return w.astype(w_dtype, copy=False), v.astype(v_dtype, copy=False)
 
 
+# assemble complex eigen vectors from real eigen vectors
+_assemble_complex_evs_kernel = cupy._core.ElementwiseKernel(
+    'uint64 n, raw C w, raw R v_real', 'raw C v_complex',
+    '''
+        int col_idx = i % n;
+        auto ew_i       = w[col_idx].imag();
+        // if img == 0 -> ev = ev[i]
+        // if img positive -> ev = ev[i] + i*ev[i+1]
+        // if img negative -> ev = ev[i-1] - i*ev[i]
+        int real_idx = i - ((ew_i < 0) ? 1 : 0);
+        int img_idx  = i + ((ew_i > 0) ? 1 : 0);
+        R factor     = ((ew_i > 0) ? R(1.0) : ((ew_i < 0) ? R(-1.0) : R(0.0)));
+        v_complex[i].real(v_real[real_idx]);
+        v_complex[i].imag(factor * v_real[img_idx]);
+    ''',
+    'cupy_assemble_complex_evs_kernel'
+)
+
+
+def _assemble_complex_evs(w, v_real):
+    n = len(w)
+    v_complex = _assemble_complex_evs_kernel(n, w, v_real, size=n*n)
+    return v_complex
+
+
 def _geev(a, with_eigen_vector, overwrite_a=False):
     from cupy_backends.cuda.libs import cusolver
     from cupyx.cusolver import check_availability
@@ -106,20 +131,16 @@ def _geev(a, with_eigen_vector, overwrite_a=False):
     if runtime.is_hip:
         raise NotImplementedError("geev is not implemented for HIP")
 
-    dtype, _ = _util.linalg_common_type(a)
-    _check_dtype(dtype)
-    complex_dtype = numpy.dtype(dtype.char.upper())
+    input_dtype, _ = _util.linalg_common_type(a)
+    _check_dtype(input_dtype)
+    complex_dtype = numpy.dtype(input_dtype.char.upper())
 
-    # Only when requesting eigenvectors, we force complex-number computation
-    # because cuSolver returns real eigenvectors for real input that needs
-    # to be post-processed otherwise.
-    mat_a_type = complex_dtype if with_eigen_vector else dtype
-    a_ = a.astype(mat_a_type, order='F', copy=not overwrite_a)
+    a_ = a.astype(input_dtype, order='F', copy=not overwrite_a)
 
     m, lda = a.shape
     w = cupy.empty(m, complex_dtype)
     # Used for both right and (uncomputed) left eigenvectors
-    v = cupy.empty_like(a, dtype=mat_a_type, order='F')
+    v = cupy.empty_like(a, dtype=input_dtype, order='F')
     dev_info = cupy.empty((), numpy.int32)
     handle = device.Device().cusolver_handle
 
@@ -131,20 +152,20 @@ def _geev(a, with_eigen_vector, overwrite_a=False):
     jobvl = cusolver.CUSOLVER_EIG_MODE_NOVECTOR
 
     type_complex = _dtype.to_cuda_dtype(complex_dtype)
-    type_mat_a = _dtype.to_cuda_dtype(mat_a_type)
+    type_input = _dtype.to_cuda_dtype(input_dtype)
 
     params = cusolver.createParams()
     try:
         work_device_size, work_host_size = cusolver.xgeev_bufferSize(
-            handle, params, jobvl, jobvr, m, type_mat_a, a_.data.ptr, lda,
-            type_complex, w.data.ptr, type_mat_a, v.data.ptr, lda,
-            type_mat_a, v.data.ptr, lda, type_mat_a)
+            handle, params, jobvl, jobvr, m, type_input, a_.data.ptr, lda,
+            type_complex, w.data.ptr, type_input, v.data.ptr, lda,
+            type_input, v.data.ptr, lda, type_input)
         work_device = cupy.empty(work_device_size, 'b')
         work_host = numpy.empty(work_host_size, 'b')
         cusolver.xgeev(
-            handle, params, jobvl, jobvr, m, type_mat_a, a_.data.ptr, lda,
-            type_complex, w.data.ptr, type_mat_a, v.data.ptr, lda,
-            type_mat_a, v.data.ptr, lda, type_mat_a, work_device.data.ptr,
+            handle, params, jobvl, jobvr, m, type_input, a_.data.ptr, lda,
+            type_complex, w.data.ptr, type_input, v.data.ptr, lda,
+            type_input, v.data.ptr, lda, type_input, work_device.data.ptr,
             work_device_size, work_host.ctypes.data, work_host_size,
             dev_info.data.ptr)
     finally:
@@ -152,8 +173,18 @@ def _geev(a, with_eigen_vector, overwrite_a=False):
     cupy.linalg._util._check_cusolver_dev_info_if_synchronization_allowed(
         cusolver.xgeev, dev_info)
 
-    if all(w.imag == 0.0):
-        return w.real, v.real
+    real_input = type_input != type_complex
+    real_output = all(w.imag == 0.0)
+
+    if real_output:
+        w = w.real
+        if not real_input:
+            v = v.real
+    elif real_input and with_eigen_vector:
+        # in case we have real input and complex output we need to
+        # assemble complex eigen vectors from real eigen vectors
+        v = _assemble_complex_evs(w, v).reshape(m, m)
+
     return w, v
 
 
