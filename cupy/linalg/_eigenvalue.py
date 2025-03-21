@@ -250,7 +250,7 @@ def eig(a):
     if a.ndim == 2:
         return _geev(a, True)
 
-    work = [_geev(a[ind, :, :], True) for ind in numpy.ndindex(a.shape[:-2])]
+    work = [_geev(a[*ind, :, :], True) for ind in numpy.ndindex(a.shape[:-2])]
     w = cupy.stack([x[0] for x in work])
     v = cupy.stack([x[1] for x in work])
     return w.reshape(a.shape[:-1]), v.reshape(a.shape)
@@ -337,6 +337,6 @@ def eigvals(a):
         return _geev(a, False)[0]
 
     work = [
-        _geev(a[ind, :, :], False)[0] for ind in numpy.ndindex(a.shape[:-2])
+        _geev(a[*ind, :, :], False)[0] for ind in numpy.ndindex(a.shape[:-2])
     ]
     return cupy.stack(work).reshape(a.shape[:-1])
