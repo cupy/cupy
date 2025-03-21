@@ -318,3 +318,103 @@ class TestEigenvalueInvalid:
             a = xp.zeros(shape)
             with pytest.raises(numpy.linalg.LinAlgError):
                 xp.linalg.eigvals(a)
+
+
+@pytest.mark.skipif(runtime.is_hip, reason="hip does not support eig")
+class TestStackedEigenvalues:
+
+    def check_eigvals(self, dtype, shape):
+        array = testing.shaped_random(shape, numpy, dtype=dtype, seed=42)
+        a_cpu = numpy.asarray(array, dtype=dtype)
+        a_gpu = cupy.asarray(array, dtype=dtype)
+        ew_cpu = numpy.linalg.eigvals(a_cpu)
+        ew_gpu = cupy.linalg.eigvals(a_gpu)
+
+        # Check if the input matrix is not broken
+        cupy.testing.assert_allclose(a_gpu, a_cpu)
+
+        # sort eigenvalues
+        ew_cpu = numpy.sort(ew_cpu, axis=-1)
+        ew_gpu = cupy.sort(ew_gpu, axis=-1)
+
+        cupy.testing.assert_allclose(ew_gpu, ew_cpu, rtol=1e-5, atol=1e-4)
+
+    def check_eig(self, dtype, shape):
+        array = testing.shaped_random(shape, numpy, dtype=dtype, seed=42)
+        a_cpu = numpy.asarray(array, dtype=dtype)
+        a_gpu = cupy.asarray(array, dtype=dtype)
+        ew_cpu, ev_cpu = numpy.linalg.eig(a_cpu)
+        ew_gpu, ev_gpu = cupy.linalg.eig(a_gpu)
+
+        # Check if the input matrix is not broken
+        cupy.testing.assert_allclose(a_gpu, a_cpu)
+
+        # sort by eigenvalues
+        ew_cpu_ind = numpy.argsort(ew_cpu, axis=-1)
+        ew_gpu_ind = cupy.argsort(ew_gpu, axis=-1)
+
+        ew_cpu = numpy.take_along_axis(ew_cpu, ew_cpu_ind, axis=-1)
+        ew_gpu = cupy.take_along_axis(ew_gpu, ew_gpu_ind, axis=-1)
+        cupy.testing.assert_allclose(ew_gpu, ew_cpu, rtol=1e-5, atol=1e-4)
+
+        ev_cpu = numpy.take_along_axis(ev_cpu, ew_cpu_ind[..., None], axis=-1)
+        ev_gpu = cupy.take_along_axis(ev_gpu, ew_gpu_ind[..., None], axis=-1)
+        cupy.testing.assert_allclose(ev_gpu, ev_cpu, rtol=1e-5, atol=1e-4)
+
+    @testing.for_dtypes([
+        numpy.float32, numpy.float64, numpy.complex64, numpy.complex128,
+    ])
+    def test_3d_eigvals(self, dtype):
+        self.check_eigvals(dtype, (12, 1, 1))
+        self.check_eigvals(dtype, (2, 17, 17))
+        self.check_eigvals(dtype, (1, 4, 4))
+        self.check_eigvals(dtype, (33, 3, 3))
+
+    @testing.for_dtypes([
+        numpy.float32, numpy.float64, numpy.complex64, numpy.complex128,
+    ])
+    def test_4d_eigvals(self, dtype):
+        self.check_eigvals(dtype, (2, 7, 4, 4))
+        self.check_eigvals(dtype, (1, 2, 3, 3))
+        self.check_eigvals(dtype, (4, 1, 3, 3))
+        self.check_eigvals(dtype, (6, 4, 7, 7))
+        self.check_eigvals(dtype, (3, 2, 1, 1))
+
+    @testing.for_dtypes([
+        numpy.float32, numpy.float64, numpy.complex64, numpy.complex128,
+    ])
+    def test_5d_eigvals(self, dtype):
+        self.check_eigvals(dtype, (2, 7, 3, 4, 4))
+        self.check_eigvals(dtype, (1, 3, 2, 3, 3))
+        self.check_eigvals(dtype, (4, 1, 4, 3, 3))
+        self.check_eigvals(dtype, (6, 4, 1, 7, 7))
+        self.check_eigvals(dtype, (5, 3, 2, 1, 1))
+
+    @testing.for_dtypes([
+        numpy.float32, numpy.float64, numpy.complex64, numpy.complex128,
+    ])
+    def test_3d_eig(self, dtype):
+        self.check_eig(dtype, (12, 1, 1))
+        self.check_eig(dtype, (2, 17, 17))
+        self.check_eig(dtype, (1, 4, 4))
+        self.check_eig(dtype, (33, 3, 3))
+
+    @testing.for_dtypes([
+        numpy.float32, numpy.float64, numpy.complex64, numpy.complex128,
+    ])
+    def test_4d_eig(self, dtype):
+        self.check_eig(dtype, (2, 7, 4, 4))
+        self.check_eig(dtype, (1, 2, 3, 3))
+        self.check_eig(dtype, (4, 1, 3, 3))
+        self.check_eig(dtype, (6, 4, 7, 7))
+        self.check_eig(dtype, (3, 2, 1, 1))
+
+    @testing.for_dtypes([
+        numpy.float32, numpy.float64, numpy.complex64, numpy.complex128,
+    ])
+    def test_5d_eig(self, dtype):
+        self.check_eig(dtype, (2, 7, 3, 4, 4))
+        self.check_eig(dtype, (1, 3, 2, 3, 3))
+        self.check_eig(dtype, (4, 1, 4, 3, 3))
+        self.check_eig(dtype, (6, 4, 1, 7, 7))
+        self.check_eig(dtype, (5, 3, 2, 1, 1))
