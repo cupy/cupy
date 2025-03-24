@@ -135,7 +135,10 @@ def _geev(a, with_eigen_vector, overwrite_a=False):
     _check_dtype(input_dtype)
     complex_dtype = numpy.dtype(input_dtype.char.upper())
 
-    a_ = a.astype(input_dtype, order='F', copy=not overwrite_a)
+    if input_dtype != a.dtype:
+        a_ = a.astype(input_dtype, order='C', copy=not overwrite_a)
+    else:
+        a_ = a
 
     m, lda = a.shape
     w = cupy.empty(m, complex_dtype)
@@ -278,12 +281,18 @@ def eig(a):
         v = cupy.empty(a.shape, v_dtype)
         return w, v
 
+    a = cupy.swapaxes(a, -2, -1).copy(order='C')
+
     if a.ndim == 2:
-        return _geev(a, True)
+        w, v = _geev(a, True)
+        a = cupy.swapaxes(a, -2, -1).copy(order='C')
+        return w, v
 
     work = [_geev(a[*ind, :, :], True) for ind in numpy.ndindex(a.shape[:-2])]
     w = cupy.stack([x[0] for x in work])
     v = cupy.stack([x[1] for x in work])
+
+    a = cupy.swapaxes(a, -2, -1).copy(order='C')
     return w.reshape(a.shape[:-1]), v.reshape(a.shape)
 
 
@@ -364,10 +373,15 @@ def eigvals(a):
 
         return cupy.empty(a.shape[:-1], a.dtype)
 
+    a = cupy.swapaxes(a, -2, -1).copy(order='C')
+
     if a.ndim == 2:
-        return _geev(a, False)[0]
+        w = _geev(a, False)[0]
+        a = cupy.swapaxes(a, -2, -1).copy(order='C')
+        return w
 
     work = [
         _geev(a[*ind, :, :], False)[0] for ind in numpy.ndindex(a.shape[:-2])
     ]
+    a = cupy.swapaxes(a, -2, -1).copy(order='C')
     return cupy.stack(work).reshape(a.shape[:-1])
