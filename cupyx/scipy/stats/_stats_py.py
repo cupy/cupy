@@ -104,7 +104,8 @@ def zmap(scores, compare, axis=0, ddof=0, nan_policy='propagate'):
     a = compare
 
     if a.size == 0:
-        return cupy.empty(a.shape)
+        dtype = a.dtype if a.dtype.kind in 'fc' else cupy.float64
+        return cupy.empty(a.shape, dtype)
 
     if nan_policy == 'raise':
         contains_nan = cupy.isnan(cupy.sum(a))

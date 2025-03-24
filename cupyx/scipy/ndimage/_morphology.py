@@ -363,7 +363,8 @@ def binary_erosion(input, structure=None, iterations=1, mask=None, output=None,
 
     .. seealso:: :func:`scipy.ndimage.binary_erosion`
     """
-    structure, _, _ = _prep_structure(structure, input.ndim)
+    axes = _util._check_axes(axes, input.ndim)
+    structure, _, _ = _prep_structure(structure, len(axes))
     return _binary_erosion(input, structure, iterations, mask, output,
                            border_value, origin, 0, brute_force, axes=axes)
 
@@ -415,9 +416,9 @@ def binary_dilation(input, structure=None, iterations=1, mask=None,
 
     .. seealso:: :func:`scipy.ndimage.binary_dilation`
     """
-    structure, structure_shape, symmetric = _prep_structure(structure,
-                                                            input.ndim)
     axes = _util._check_axes(axes, input.ndim)
+    structure, structure_shape, symmetric = _prep_structure(structure,
+                                                            len(axes))
     origin = _util._fix_sequence_arg(origin, len(axes), 'origin', int)
     # no point in flipping if already symmetric
     if not symmetric:
@@ -480,7 +481,8 @@ def binary_opening(input, structure=None, iterations=1, output=None, origin=0,
 
     .. seealso:: :func:`scipy.ndimage.binary_opening`
     """
-    structure, _, _ = _prep_structure(structure, input.ndim)
+    axes = _util._check_axes(axes, input.ndim)
+    structure, _, _ = _prep_structure(structure, len(axes))
     tmp = binary_erosion(input, structure, iterations, mask, None,
                          border_value, origin, brute_force, axes=axes)
     return binary_dilation(tmp, structure, iterations, mask, output,
@@ -537,7 +539,8 @@ def binary_closing(input, structure=None, iterations=1, output=None, origin=0,
 
     .. seealso:: :func:`scipy.ndimage.binary_closing`
     """
-    structure, _, _ = _prep_structure(structure, input.ndim)
+    axes = _util._check_axes(axes, input.ndim)
+    structure, _, _ = _prep_structure(structure, len(axes))
     tmp = binary_dilation(input, structure, iterations, mask, None,
                           border_value, origin, brute_force, axes=axes)
     return binary_erosion(tmp, structure, iterations, mask, output,
@@ -584,12 +587,12 @@ def binary_hit_or_miss(input, structure1=None, structure2=None, output=None,
 
     .. seealso:: :func:`scipy.ndimage.binary_hit_or_miss`
     """
-    if structure1 is None:
-        structure1 = generate_binary_structure(input.ndim, 1)
-    if structure2 is None:
-        structure2 = cupy.logical_not(structure1)
     axes = _util._check_axes(axes, input.ndim)
     num_axes = len(axes)
+    if structure1 is None:
+        structure1 = generate_binary_structure(num_axes, 1)
+    if structure2 is None:
+        structure2 = cupy.logical_not(structure1)
     origin1 = _util._fix_sequence_arg(origin1, num_axes, 'origin1', int)
     if origin2 is None:
         origin2 = origin1
