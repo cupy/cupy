@@ -318,18 +318,8 @@ def _jitify_prep(source, options, cu_path):
     return options, headers, include_names
 
 
-_has_usedforsecurity = (sys.version_info >= (3, 9))
-
-
-def _hash_hexdigest(value):
-    if _has_usedforsecurity:
-        hashobj = hashlib.sha1(value, usedforsecurity=False)
-    else:
-        hashobj = hashlib.sha1(value)
-    return hashobj.hexdigest()
-
-
-_hash_length = len(_hash_hexdigest(b''))  # 40 for SHA1
+_hash_length = len(hashlib.sha1(
+    b'', usedforsecurity=False).hexdigest())  # 40 for SHA1
 
 
 def compile_using_nvrtc(source, options=(), arch=None, filename='kern.cu',
@@ -589,7 +579,7 @@ def _compile_with_cache_cuda(
     key_src = '%s %s %s %s %s' % (
         env, base, source, extra_source, _get_cupy_cache_key())
     key_src = key_src.encode('utf-8')
-    name = _hash_hexdigest(key_src) + '.cubin'
+    name = hashlib.sha1(key_src, usedforsecurity=False).hexdigest() + '.cubin'
 
     mod = function.Module()
 
@@ -608,7 +598,8 @@ def _compile_with_cache_cuda(
             if len(data) >= _hash_length:
                 hash = data[:_hash_length]
                 cubin = data[_hash_length:]
-                cubin_hash = _hash_hexdigest(cubin).encode('ascii')
+                cubin_hash = hashlib.sha1(
+                    cubin, usedforsecurity=False).hexdigest().encode('ascii')
                 if hash == cubin_hash:
                     mod.load(cubin)
                     return mod
@@ -643,7 +634,8 @@ def _compile_with_cache_cuda(
 
     if not cache_in_memory:
         # Write to disk cache
-        cubin_hash = _hash_hexdigest(cubin).encode('ascii')
+        cubin_hash = hashlib.sha1(
+            cubin, usedforsecurity=False).hexdigest().encode('ascii')
 
         # shutil.move is not atomic operation, so it could result in a
         # corrupted file. We detect it by appending a hash at the beginning
@@ -928,7 +920,7 @@ def _compile_with_cache_hip(source, options, arch, cache_dir, extra_source,
 
     key_src = '%s %s %s %s' % (env, base, source, extra_source)
     key_src = key_src.encode('utf-8')
-    name = _hash_hexdigest(key_src) + '.hsaco'
+    name = hashlib.sha1(key_src, usedforsecurity=False).hexdigest() + '.hsaco'
 
     mod = function.Module()
 
@@ -947,7 +939,8 @@ def _compile_with_cache_hip(source, options, arch, cache_dir, extra_source,
             if len(data) >= _hash_length:
                 hash_value = data[:_hash_length]
                 binary = data[_hash_length:]
-                binary_hash = _hash_hexdigest(binary).encode('ascii')
+                binary_hash = hashlib.sha1(
+                    binary, usedforsecurity=False).hexdigest().encode('ascii')
                 if hash_value == binary_hash:
                     mod.load(binary)
                     return mod
@@ -967,7 +960,8 @@ def _compile_with_cache_hip(source, options, arch, cache_dir, extra_source,
 
     if not cache_in_memory:
         # Write to disk cache
-        binary_hash = _hash_hexdigest(binary).encode('ascii')
+        binary_hash = hashlib.sha1(
+            binary, usedforsecurity=False).hexdigest().encode('ascii')
 
         # shutil.move is not atomic operation, so it could result in a
         # corrupted file. We detect it by appending a hash at the beginning

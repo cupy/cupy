@@ -364,7 +364,7 @@ cdef class _CallbackManager:
         # are considered identical regardless of which plan is actually
         # executed at the time of generation
         mod_name = 'cupy_callback_'
-        mod_name += hashlib.md5(
+        mod_name += hashlib.sha1(
             keys.encode(), usedforsecurity=False).hexdigest()
         mod_name = mod_name.replace('.', '')
         mod_filename = mod_name + _ext_suffix
