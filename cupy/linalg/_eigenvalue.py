@@ -371,8 +371,6 @@ def eigvals(a):
         w = cupy.empty(a.shape[:-1], v_dtype)
         return w
 
-        return cupy.empty(a.shape[:-1], a.dtype)
-
     a = cupy.swapaxes(a, -2, -1).copy(order='C')
 
     if a.ndim == 2:
