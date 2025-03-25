@@ -52,7 +52,8 @@ class TestSymIIROrder:
 
         if numpy.lib.NumpyVersion(scipy.__version__) >= "1.15.0":
             if omega in ('zero', 'random'):
-                pytest.xfail(reason="Large numerical error occurs")
+                # TODO(asi1024): Fix numerical error
+                pytest.xfail(reason="XXX: Large numerical error occurs")
 
         if omega == 'pi':
             omega = xp.asarray(xp.pi, dtype=dtype)[0]
