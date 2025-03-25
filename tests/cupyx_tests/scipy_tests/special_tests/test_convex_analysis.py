@@ -18,7 +18,7 @@ class TestSpecialConvex(unittest.TestCase):
         testing.assert_allclose(cupyx.scipy.special.huber(2, 2.5),
                                 2 * (2.5 - 0.5 * 2))
 
-    @testing.for_float_dtypes()
+    @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_huber(self, xp, scp, dtype):
         import scipy.special  # NOQA
