@@ -35,7 +35,7 @@ class TestZeta(unittest.TestCase):
 
         return scp.special.zeta(dtype(2.), dtype(1.5))
 
-    @testing.for_all_dtypes(no_complex=True)
+    @testing.for_float_dtypes()
     @testing.numpy_cupy_allclose(atol=1e-2, rtol=1e-3, scipy_name='scp')
     def test_inf_and_nan(self, xp, scp, dtype):
         import scipy.special  # NOQA

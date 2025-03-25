@@ -7,12 +7,12 @@ from cupy import _core
 
 
 gammaln = _core.create_ufunc(
-    'cupyx_scipy_special_gammaln', ('f->f', 'd->d'),
+    'cupyx_scipy_special_gammaln', ('l->d', 'e->d', 'f->f', 'd->d'),
     '''
-    if (isinf(in0) && in0 < 0) {
+    if (isinf(out0_type(in0)) && in0 < 0) {
         out0 = -1.0 / 0.0;
     } else {
-        out0 = lgamma(in0);
+        out0 = lgamma(out0_type(in0));
     }
     ''',
     doc="""Logarithm of the absolute value of the Gamma function.
