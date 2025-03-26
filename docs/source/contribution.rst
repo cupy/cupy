@@ -123,7 +123,42 @@ It is also appreciated to make such a backport PR by any contributors, though, s
 Issues and Pull Requests
 ------------------------
 
-In this section, we explain how to send pull requests (PRs).
+In this section, we explain how to send issues and pull requests (PRs).
+
+How to File an Issue
+~~~~~~~~~~~~~~~~~~~~
+
+(Work in progress.)
+
+AI Policies
+...........
+
+Recently, CuPy has received an enormous amount of bug reports in which AI/LLM tools were exploited to search
+for, e.g., unexpected corner cases of CuPy in which NumPy's behaviors are mismatched. We would like to reiterate
+that CuPy being a community project is managed and maintained by humans, not bots or AIs, and human beings
+have limited bandwidth and capacity in triaging and responding to bug reports in addition to other development
+activities. In light of recent incidents, we develop the following guidelines:
+
+- Please do not spam CuPy's issue tracker with AI-based contents.
+- Please do not misuse CuPy as a testbed for your AI development or experiment.
+- Please understand :doc:`certain deviations from NumPy <user_guide/difference>` are expected.
+- Please only file bug reports that actually impacts daily/production use of CuPy, not for hypothetical/pedantic
+  scenarios.
+- Please make sure bug reports are *not filed anonymously* (see below).
+
+The CuPy team reserves rights to close any bug reports proactively and preemptively without further notices, if
+it is determined by the team that the reports are potentially filed with computer programs, including AI/LLM tools.
+A typical alerting sign of misusing AI tools is massive bug reports filed by the same GitHub account that has all
+activities locked (which we referred to as "anonymously"), as shown with GH profiles that look like this:
+
+.. image:: ./_static/anonymous_github_profile.png
+   :width: 300
+
+which gives the team no way to determine the true intention or potential use cases.
+
+If you believe your bug reports are legitimate and can be encountered in real life, but get closed by accident,
+please kindly let us know via the `mailing list <https://groups.google.com/forum/#!forum/cupy>`_.
+
 
 How to Send a Pull Request
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
