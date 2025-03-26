@@ -118,7 +118,7 @@ class TestApplyOverAxes(unittest.TestCase):
 
     def test_apply_over_axis_invalid_0darr(self):
         # cupy will not accept 0darr, but numpy does
-        with pytest.raises(numpy.exceptions.AxisError):
+        with pytest.raises(cupy.exceptions.AxisError):
             a = cupy.array(42)
             cupy.apply_over_axes(cupy.sum, a, 0)
         # test for numpy, it can run without error
@@ -142,7 +142,7 @@ class TestApplyOverAxes(unittest.TestCase):
         for xp in [numpy, cupy]:
             a = xp.ones((8, 4))
             axis = 3
-            with pytest.raises(numpy.exceptions.AxisError):
+            with pytest.raises(cupy.exceptions.AxisError):
                 xp.apply_over_axes(xp.sum, a, axis)
 
 
