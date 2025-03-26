@@ -116,13 +116,13 @@ _assemble_complex_evs_kernel = cupy._core.ElementwiseKernel(
 )
 
 
-def _assemble_complex_evs(w, v_real):
+def _assemble_complex_evs(w, v_real, shape):
     n = len(w)
     v_complex = _assemble_complex_evs_kernel(n, w, v_real, size=n*n)
-    return v_complex
+    return v_complex.reshape(shape)
 
 
-def _geev(a, with_eigen_vector, overwrite_a=False):
+def _geev(a, with_eigen_vector):
     from cupy_backends.cuda.libs import cusolver
     from cupyx.cusolver import check_availability
 
@@ -135,15 +135,24 @@ def _geev(a, with_eigen_vector, overwrite_a=False):
     _check_dtype(input_dtype)
     complex_dtype = numpy.dtype(input_dtype.char.upper())
 
+    # preconvert input to be col-major for each matrix
+    a = cupy.swapaxes(a, -2, -1).copy(order='C')
+
     if input_dtype != a.dtype:
-        a_ = a.astype(input_dtype, order='C', copy=not overwrite_a)
+        a_ = a.astype(input_dtype, order='C', copy=True)
     else:
         a_ = a
 
-    m, lda = a.shape
-    w = cupy.empty(m, complex_dtype)
+    m, lda = a.shape[-2:]
+
+    w = cupy.empty(a.shape[:-1], dtype=complex_dtype)
+    v = cupy.empty_like(a, dtype=complex_dtype)
+
     # Used for both right and (uncomputed) left eigenvectors
-    v = cupy.empty_like(a, dtype=input_dtype, order='F')
+    real_input = input_dtype != complex_dtype
+    if real_input:
+        v_real = cupy.empty((m, m), dtype=input_dtype, order='F')
+
     dev_info = cupy.empty((), numpy.int32)
     handle = device.Device().cusolver_handle
 
@@ -159,34 +168,59 @@ def _geev(a, with_eigen_vector, overwrite_a=False):
 
     params = cusolver.createParams()
     try:
+        v_ = v_real if real_input else v
         work_device_size, work_host_size = cusolver.xgeev_bufferSize(
             handle, params, jobvl, jobvr, m, type_input, a_.data.ptr, lda,
-            type_complex, w.data.ptr, type_input, v.data.ptr, lda,
-            type_input, v.data.ptr, lda, type_input)
+            type_complex, w.data.ptr, type_input, v_.data.ptr, lda,
+            type_input, v_.data.ptr, lda, type_input)
         work_device = cupy.empty(work_device_size, 'b')
         work_host = numpy.empty(work_host_size, 'b')
-        cusolver.xgeev(
-            handle, params, jobvl, jobvr, m, type_input, a_.data.ptr, lda,
-            type_complex, w.data.ptr, type_input, v.data.ptr, lda,
-            type_input, v.data.ptr, lda, type_input, work_device.data.ptr,
-            work_device_size, work_host.ctypes.data, work_host_size,
-            dev_info.data.ptr)
+
+        if len(a.shape) > 2:
+            for ind in numpy.ndindex(a.shape[:-2]):
+                a_ind = a_[*ind, :, :]
+                w_ind = w[*ind, :]
+                v_ind = v_real if real_input else v[*ind, :, :]
+                cusolver.xgeev(
+                    handle, params, jobvl, jobvr, m, type_input,
+                    a_ind.data.ptr, lda, type_complex, w_ind.data.ptr,
+                    type_input, v_ind.data.ptr, lda, type_input,
+                    v_ind.data.ptr, lda, type_input, work_device.data.ptr,
+                    work_device_size, work_host.ctypes.data, work_host_size,
+                    dev_info.data.ptr)
+                if real_input and with_eigen_vector:
+                    # in case we have real input and complex output we need to
+                    # assemble complex eigen vectors from real eigen vectors
+                    v[*ind, :,
+                        :] = _assemble_complex_evs(w_ind, v_ind, a_ind.shape)
+        else:
+            cusolver.xgeev(
+                handle, params, jobvl, jobvr, m, type_input, a_.data.ptr,
+                lda, type_complex, w.data.ptr, type_input, v_.data.ptr, lda,
+                type_input, v_.data.ptr, lda, type_input, work_device.data.ptr,
+                work_device_size, work_host.ctypes.data, work_host_size,
+                dev_info.data.ptr)
+            if real_input and with_eigen_vector:
+                # in case we have real input and complex output we need to
+                # assemble complex eigen vectors from real eigen vectors
+                v = _assemble_complex_evs(w, v_, a_.shape)
+
     finally:
         cusolver.destroyParams(params)
     cupy.linalg._util._check_cusolver_dev_info_if_synchronization_allowed(
         cusolver.xgeev, dev_info)
 
-    real_input = type_input != type_complex
-    real_output = all(w.imag == 0.0)
+    a = cupy.swapaxes(a, -2, -1).copy(order='C')
 
+    # no need to swap axes back for real input as
+    # _assemble_complex_evs already transposes
+    if with_eigen_vector and not real_input:
+        v = cupy.swapaxes(v, -2, -1).copy(order='C')
+
+    real_output = (w.imag == 0.0).all()
     if real_output:
         w = w.real
-        if not real_input:
-            v = v.real
-    elif real_input and with_eigen_vector:
-        # in case we have real input and complex output we need to
-        # assemble complex eigen vectors from real eigen vectors
-        v = _assemble_complex_evs(w, v).reshape(m, m)
+        v = v.real
 
     return w, v
 
@@ -281,19 +315,7 @@ def eig(a):
         v = cupy.empty(a.shape, v_dtype)
         return w, v
 
-    a = cupy.swapaxes(a, -2, -1).copy(order='C')
-
-    if a.ndim == 2:
-        w, v = _geev(a, True)
-        a = cupy.swapaxes(a, -2, -1).copy(order='C')
-        return w, v
-
-    work = [_geev(a[*ind, :, :], True) for ind in numpy.ndindex(a.shape[:-2])]
-    w = cupy.stack([x[0] for x in work])
-    v = cupy.stack([x[1] for x in work])
-
-    a = cupy.swapaxes(a, -2, -1).copy(order='C')
-    return w.reshape(a.shape[:-1]), v.reshape(a.shape)
+    return _geev(a, True)
 
 
 def eigvalsh(a, UPLO='L'):
@@ -371,15 +393,4 @@ def eigvals(a):
         w = cupy.empty(a.shape[:-1], v_dtype)
         return w
 
-    a = cupy.swapaxes(a, -2, -1).copy(order='C')
-
-    if a.ndim == 2:
-        w = _geev(a, False)[0]
-        a = cupy.swapaxes(a, -2, -1).copy(order='C')
-        return w
-
-    work = [
-        _geev(a[*ind, :, :], False)[0] for ind in numpy.ndindex(a.shape[:-2])
-    ]
-    a = cupy.swapaxes(a, -2, -1).copy(order='C')
-    return cupy.stack(work).reshape(a.shape[:-1])
+    return _geev(a, False)[0]
