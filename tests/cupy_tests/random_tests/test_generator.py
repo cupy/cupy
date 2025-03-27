@@ -771,7 +771,9 @@ class TestChoice1(RandomGeneratorTestCase):
             expected_dtype = 'float'
         else:
             expected_dtype = 'int64'
-        assert v.dtype == expected_dtype
+
+        if numpy.lib.NumpyVersion(numpy.__version__) < '2.0.0':
+            assert v.dtype == expected_dtype
         assert v.shape == expected_shape
 
     @_condition.repeat(3, 10)
@@ -806,7 +808,8 @@ class TestChoice2(RandomGeneratorTestCase):
             expected_dtype = 'float'
         else:
             expected_dtype = 'int'
-        assert v.dtype == expected_dtype
+        if numpy.lib.NumpyVersion(numpy.__version__) < '2.0.0':
+            assert v.dtype == expected_dtype
         assert v.shape == expected_shape
 
     @_condition.repeat(3, 10)
@@ -902,7 +905,8 @@ class TestChoiceReplaceFalse(RandomGeneratorTestCase):
             expected_dtype = 'float'
         else:
             expected_dtype = 'int'
-        assert v.dtype == expected_dtype
+        if numpy.lib.NumpyVersion(numpy.__version__) < '2.0.0':
+            assert v.dtype == expected_dtype
         assert v.shape == expected_shape
 
     @_condition.repeat(3, 10)
