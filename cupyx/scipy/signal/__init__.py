@@ -107,6 +107,7 @@ from cupyx.scipy.signal._fir_filter_design import firwin  # NOQA
 from cupyx.scipy.signal._fir_filter_design import firwin2  # NOQA
 from cupyx.scipy.signal._fir_filter_design import firls  # NOQA
 from cupyx.scipy.signal._fir_filter_design import minimum_phase  # NOQA
+from cupyx.scipy.signal._fir_filter_design import remez  # NOQA
 
 from cupyx.scipy.signal._filter_design import findfreqs  # NOQA
 from cupyx.scipy.signal._filter_design import freqs  # NOQA
