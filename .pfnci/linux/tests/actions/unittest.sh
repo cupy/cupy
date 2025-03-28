@@ -1,5 +1,6 @@
 #!/bin/bash
 
+echo "::group::Test - Unit Test"
 set -uex
 
 MARKER="${1:-}"; shift
@@ -25,6 +26,9 @@ timeout --signal INT --kill-after 10 60 python3 -c 'import cupy; cupy.show_confi
 test_retval=0
 timeout --signal INT --kill-after 60 18000 python3 -m pytest "${pytest_opts[@]}" "${PYTEST_FILES[@]}" || test_retval=$?
 popd
+
+set +uex
+echo "::endgroup::"
 
 case ${test_retval} in
     0 )
