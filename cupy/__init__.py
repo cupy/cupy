@@ -794,6 +794,7 @@ def ndim(a):
 
 from cupy._util import clear_memo  # NOQA
 from cupy._util import memoize  # NOQA
+from cupy._util import ndenumerate
 
 from cupy._core import ElementwiseKernel  # NOQA
 from cupy._core import RawKernel  # NOQA
