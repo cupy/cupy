@@ -8,7 +8,11 @@ import warnings
 import cupy
 from cupy_backends.cuda.api cimport runtime
 
-
+def ndenumerate(a:cupy.ndarray):
+  shape=a.shape
+  for i in cupy.ndindex(shape):
+    yield i,a[i]
+    
 DEF CYTHON_BUILD_VER = CUPY_CYTHON_VERSION
 cython_build_ver = CYTHON_BUILD_VER
 
