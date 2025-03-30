@@ -342,6 +342,14 @@ def can_cast(from_, to, casting='safe'):
     from_ = from_.dtype if isinstance(from_, ndarray) else from_
     return _numpy.can_cast(from_, to, casting=casting)
 
+def ndenumerate(a:cupy.ndarray):
+    """ enumerate a given array in cupy """
+    try:
+        shape=a.shape
+    except:
+        raise ValueError("array should be a cupy array")
+    for i in cupy.ndindex(shape):
+        yield i,a[i]
 
 def common_type(*arrays):
     """Return a scalar type which is common to the input arrays.
