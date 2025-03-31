@@ -47,6 +47,7 @@ class TestLegendreFunctions:
 @testing.with_requires("scipy")
 class TestBasic:
 
+    @testing.with_requires('scipy<1.15')
     @testing.for_dtypes("efd")
     @numpy_cupy_allclose(scipy_name="scp")
     def test_gammasgn(self, xp, scp, dtype):
