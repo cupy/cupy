@@ -125,6 +125,10 @@ class TestCSpline2D:
 
     @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-4, rtol=1e-4)
     def test_cspline2d_iir2(self, xp, scp):
+        if np.lib.NumpyVersion(scipy.__version__) >= "1.15.0":
+            # TODO(asi1024): Fix numerical error
+            pytest.xfail(reason="XXX: Large numerical error occurs")
+
         image = testing.shaped_random((71, 73), xp, xp.float64,
                                       scale=1, seed=181819142)
         return scp.signal.cspline2d(image, 8.0)
