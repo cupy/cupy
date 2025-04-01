@@ -664,7 +664,8 @@ def numpy_cupy_array_equal(err_msg='', verbose=True, name='xp',
     .. seealso:: :func:`cupy.testing.assert_array_equal`
     """
     def check_func(x, y):
-        _array.assert_array_equal(x, y, err_msg, verbose, strides_check)
+        _array.assert_array_equal(
+            x, y, err_msg, verbose, strides_check=strides_check)
     return _make_decorator(check_func, name, type_check, False,
                            accept_error, sp_name, scipy_name)
 
