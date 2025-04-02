@@ -47,7 +47,7 @@ def assert_allclose(
 
 
 def assert_array_almost_equal(
-        actual, desired, decimal=7, err_msg='', verbose=True,
+        actual, desired, decimal=6, err_msg='', verbose=True,
 ):
     """Raises an AssertionError if objects are not equal up to desired precision.
 
@@ -117,7 +117,7 @@ def assert_array_equal(
 
     .. seealso:: :func:`numpy.testing.assert_array_equal`
     """
-    if numpy.lib.NumpyVersion(numpy.__version__) >= '2.0.0':
+    if numpy.lib.NumpyVersion(numpy.__version__) >= '1.24.0':
         numpy.testing.assert_array_equal(
             cupy.asnumpy(actual), cupy.asnumpy(desired), err_msg=err_msg,
             verbose=verbose, strict=strict,
@@ -208,5 +208,5 @@ def assert_array_less(x, y, err_msg='', verbose=True, *, strict=False):
             )
         numpy.testing.assert_array_less(
             cupy.asnumpy(x), cupy.asnumpy(y), err_msg=err_msg,
-            verbose=verbose, strict=strict,
+            verbose=verbose,
         )
