@@ -1,4 +1,5 @@
 import math
+import sys
 import warnings
 
 import numpy
@@ -126,6 +127,14 @@ class TestSumprod:
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-6)
     def test_sum_axes4(self, xp, dtype):
+        if (
+                numpy.__version__ >= numpy.lib.NumpyVersion('2.0.0') and
+                sys.platform == 'win32' and
+                numpy.dtype(dtype).kind in 'iu'
+        ):
+            # Different behaviour for integer overflow from NumPy 2.0.
+            return xp.array(())  # Skip
+
         a = testing.shaped_arange((20, 30, 40, 50), xp, dtype)
         return a.sum(axis=(0, 2, 3))
 
@@ -355,6 +364,14 @@ class TestCubReduction:
     @testing.for_dtypes('bhilBHILfdF')
     @testing.numpy_cupy_allclose(rtol=1E-4)
     def test_cub_cumprod(self, xp, dtype):
+        if (
+                numpy.__version__ >= numpy.lib.NumpyVersion('2.0.0') and
+                sys.platform == 'win32' and
+                numpy.dtype(dtype).kind in 'iu'
+        ):
+            # Different behaviour for integer overflow from NumPy 2.0.
+            return xp.array(())  # Skip
+
         if self.backend == 'block':
             pytest.skip('does not support')
 
@@ -471,6 +488,14 @@ class TestNansumNanprodLong:
     @testing.for_all_dtypes(no_bool=True, no_float16=True)
     @testing.numpy_cupy_allclose()
     def test_nansum_all(self, xp, dtype):
+        if (
+                numpy.__version__ >= numpy.lib.NumpyVersion('2.0.0') and
+                sys.platform == 'win32' and
+                numpy.dtype(dtype).kind in 'iu'
+        ):
+            # Different behaviour for integer overflow from NumPy 2.0.
+            return xp.array(())  # Skip
+
         if (not self._numpy_nanprod_implemented() or
                 not self._do_transposed_axis_test()):
             return xp.array(())
@@ -479,6 +504,14 @@ class TestNansumNanprodLong:
     @testing.for_all_dtypes(no_bool=True, no_float16=True)
     @testing.numpy_cupy_allclose(contiguous_check=False)
     def test_nansum_axis_transposed(self, xp, dtype):
+        if (
+                numpy.__version__ >= numpy.lib.NumpyVersion('2.0.0') and
+                sys.platform == 'win32' and
+                numpy.dtype(dtype).kind in 'iu'
+        ):
+            # Different behaviour for integer overflow from NumPy 2.0.
+            return xp.array(())  # Skip
+
         if (not self._numpy_nanprod_implemented() or
                 not self._do_transposed_axis_test()):
             return xp.array(())
@@ -533,6 +566,14 @@ class TestNansumNanprodAxes:
     @testing.for_all_dtypes(no_bool=True, no_float16=True)
     @testing.numpy_cupy_allclose(rtol=1e-6)
     def test_nansum_axes(self, xp, dtype):
+        if (
+                numpy.__version__ >= numpy.lib.NumpyVersion('2.0.0') and
+                sys.platform == 'win32' and
+                numpy.dtype(dtype).kind in 'iu'
+        ):
+            # Different behaviour for integer overflow from NumPy 2.0.
+            return xp.array(())  # Skip
+
         a = testing.shaped_arange(self.shape, xp, dtype)
         if not issubclass(dtype, xp.integer):
             a[:, 1] = xp.nan
@@ -710,6 +751,14 @@ class TestCumprod:
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-6)
     def test_cumprod_2dim_without_axis(self, xp, dtype):
+        if (
+                numpy.__version__ >= numpy.lib.NumpyVersion('2.0.0') and
+                sys.platform == 'win32' and
+                numpy.dtype(dtype).kind in 'iu'
+        ):
+            # Different behaviour for integer overflow from NumPy 2.0.
+            return xp.array(())  # Skip
+
         a = testing.shaped_arange((4, 5), xp, dtype)
         return self._cumprod(xp, a)
 
@@ -816,6 +865,14 @@ class TestNanCumSumProd:
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
     def test_nancumsumprod(self, xp, dtype):
+        if (
+                numpy.__version__ >= numpy.lib.NumpyVersion('2.0.0') and
+                sys.platform == 'win32' and
+                numpy.dtype(dtype).kind in 'iu'
+        ):
+            # Different behaviour for integer overflow from NumPy 2.0.
+            return xp.array(())  # Skip
+
         if self.axis is not None and self.axis >= len(self.shape):
             pytest.skip()
         a = xp.array(self._make_array(dtype))
