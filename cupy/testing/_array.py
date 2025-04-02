@@ -1,3 +1,6 @@
+import warnings
+
+import numpy
 import numpy.testing
 
 import cupy
@@ -23,11 +26,24 @@ def assert_allclose(
     .. seealso:: :func:`numpy.testing.assert_allclose`
 
     """  # NOQA
-    numpy.testing.assert_allclose(
-        cupy.asnumpy(actual), cupy.asnumpy(desired),
-        rtol=rtol, atol=atol, equal_nan=equal_nan, err_msg=err_msg,
-        verbose=verbose, strict=strict,
-    )
+    if numpy.lib.NumpyVersion(numpy.__version__) >= '2.0.0':
+        numpy.testing.assert_allclose(
+            cupy.asnumpy(actual), cupy.asnumpy(desired),
+            rtol=rtol, atol=atol, equal_nan=equal_nan, err_msg=err_msg,
+            verbose=verbose, strict=strict,
+        )
+    else:
+        if strict:
+            warnings.warn(
+                '`cupy.testing.assert_allclose` does not support `strict` '
+                'option with NumPy v1.',
+                RuntimeWarning
+            )
+        numpy.testing.assert_allclose(
+            cupy.asnumpy(actual), cupy.asnumpy(desired),
+            rtol=rtol, atol=atol, equal_nan=equal_nan, err_msg=err_msg,
+            verbose=verbose,
+        )
 
 
 def assert_array_almost_equal(
@@ -101,10 +117,22 @@ def assert_array_equal(
 
     .. seealso:: :func:`numpy.testing.assert_array_equal`
     """
-    numpy.testing.assert_array_equal(
-        cupy.asnumpy(actual), cupy.asnumpy(desired), err_msg=err_msg,
-        verbose=verbose, strict=strict,
-    )
+    if numpy.lib.NumpyVersion(numpy.__version__) >= '2.0.0':
+        numpy.testing.assert_array_equal(
+            cupy.asnumpy(actual), cupy.asnumpy(desired), err_msg=err_msg,
+            verbose=verbose, strict=strict,
+        )
+    else:
+        if strict:
+            warnings.warn(
+                '`cupy.testing.assert_allclose` does not support `strict` '
+                'option with NumPy v1.',
+                RuntimeWarning
+            )
+        numpy.testing.assert_array_equal(
+            cupy.asnumpy(actual), cupy.asnumpy(desired), err_msg=err_msg,
+            verbose=verbose,
+        )
 
     if strides_check:
         if actual.strides != desired.strides:
@@ -166,7 +194,19 @@ def assert_array_less(x, y, err_msg='', verbose=True, *, strict=False):
 
     .. seealso:: :func:`numpy.testing.assert_array_less`
     """  # NOQA
-    numpy.testing.assert_array_less(
-        cupy.asnumpy(x), cupy.asnumpy(y), err_msg=err_msg,
-        verbose=verbose, strict=strict,
-    )
+    if numpy.lib.NumpyVersion(numpy.__version__) >= '2.0.0':
+        numpy.testing.assert_array_less(
+            cupy.asnumpy(x), cupy.asnumpy(y), err_msg=err_msg,
+            verbose=verbose, strict=strict,
+        )
+    else:
+        if strict:
+            warnings.warn(
+                '`cupy.testing.assert_allclose` does not support `strict` '
+                'option with NumPy v1.',
+                RuntimeWarning
+            )
+        numpy.testing.assert_array_less(
+            cupy.asnumpy(x), cupy.asnumpy(y), err_msg=err_msg,
+            verbose=verbose, strict=strict,
+        )
