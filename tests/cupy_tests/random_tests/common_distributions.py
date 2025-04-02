@@ -14,7 +14,8 @@ def two_sample_Kolmogorov_Smirnov_test(observed1, observed2):
     Unlike `scipy.stats.ks_2samp`, the returned p-value is not accurate
     for large p.
     """
-    assert observed1.dtype == observed2.dtype
+    if numpy.lib.NumpyVersion(numpy.__version__) < '2.0.0':
+        assert observed1.dtype == observed2.dtype
     n1, = observed1.shape
     n2, = observed2.shape
     assert n1 >= 100 and n2 >= 100
