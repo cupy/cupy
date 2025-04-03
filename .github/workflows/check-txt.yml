@@ -1,0 +1,44 @@
+name: Format/lint text files
+
+on: pull_request
+
+jobs:
+  format-prettier:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - run: corepack enable pnpm
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: latest
+
+      - run: pnpm dlx prettier --write . '!third_party' '!.pfnci/config.tags.json'
+
+      - uses: reviewdog/action-suggester@v1
+        with:
+          tool_name: prettier
+
+  lint-md:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - run: corepack enable pnpm
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: latest
+
+      - run: |
+          pnpm install markdownlint-cli
+          TARGETS="$(find . -name '*.md' ! -path './third_party/**' ! -path './node_modules/**')"
+          # Allow the following (subject to change):
+          # - 001 (heading-increment)
+          # - 013 (line-length)
+          # - 033 (no-inline-html)
+          # - 041 (first-line-h1)
+          pnpm markdownlint --disable MD001 MD013 MD033 MD041 -- ${TARGETS}

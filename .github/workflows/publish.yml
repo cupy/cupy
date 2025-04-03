@@ -15,33 +15,33 @@ jobs:
   precheck:
     runs-on: ubuntu-latest
     permissions:
-      contents: write  # to read draft releases
+      contents: write # to read draft releases
     steps:
-    - name: Checkout
-      uses: actions/checkout@v4
-      with:
-        repository: cupy/cupy-release-tools
-        ref: ${{ inputs.branch }}
-    - name: Setup Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.10'
-    - name: Check
-      env:
-        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: |
-        STATUS=0
-        pip install distlib
-        ./check_release_assets.py --version "${{ inputs.release }}" --github > result.txt || STATUS=1
-        cat result.txt
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          repository: cupy/cupy-release-tools
+          ref: ${{ inputs.branch }}
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+      - name: Check
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          STATUS=0
+          pip install distlib
+          ./check_release_assets.py --version "${{ inputs.release }}" --github > result.txt || STATUS=1
+          cat result.txt
 
-        echo '## Check Result' >> "${GITHUB_STEP_SUMMARY}"
-        echo '```' >> "${GITHUB_STEP_SUMMARY}"
-        cat result.txt >> "${GITHUB_STEP_SUMMARY}"
-        echo '```' >> "${GITHUB_STEP_SUMMARY}"
-        echo "::notice::Release: $(gh -R cupy/cupy release view '${{ inputs.release }}' --json 'url' --jq '.url')"
+          echo '## Check Result' >> "${GITHUB_STEP_SUMMARY}"
+          echo '```' >> "${GITHUB_STEP_SUMMARY}"
+          cat result.txt >> "${GITHUB_STEP_SUMMARY}"
+          echo '```' >> "${GITHUB_STEP_SUMMARY}"
+          echo "::notice::Release: $(gh -R cupy/cupy release view '${{ inputs.release }}' --json 'url' --jq '.url')"
 
-        exit ${STATUS}
+          exit ${STATUS}
 
   upload:
     needs: precheck
@@ -49,50 +49,50 @@ jobs:
       name: pypi-release
       url: https://pypi.org/org/cupy/
     permissions:
-      contents: write  # to read draft releases
+      contents: write # to read draft releases
       id-token: write
     runs-on: ubuntu-latest
     steps:
-    - name: Download (sdist)
-      env:
-        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: gh -R cupy/cupy release download "${{ inputs.release }}" --dir dist --pattern "cupy-*.tar.gz"
-    - name: Download (wheels)
-      if: ${{ inputs.branch != 'main' }}
-      env:
-        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: gh -R cupy/cupy release download "${{ inputs.release }}" --dir dist --pattern "cupy_*.whl"
-    - name: Enumerate Files
-      run: |
-        cd dist
-        ls -al $(find . -type f | sort) > ../files.txt
-        cat ../files.txt
+      - name: Download (sdist)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh -R cupy/cupy release download "${{ inputs.release }}" --dir dist --pattern "cupy-*.tar.gz"
+      - name: Download (wheels)
+        if: ${{ inputs.branch != 'main' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh -R cupy/cupy release download "${{ inputs.release }}" --dir dist --pattern "cupy_*.whl"
+      - name: Enumerate Files
+        run: |
+          cd dist
+          ls -al $(find . -type f | sort) > ../files.txt
+          cat ../files.txt
 
-        echo '```' >> "${GITHUB_STEP_SUMMARY}"
-        cat ../files.txt >> "${GITHUB_STEP_SUMMARY}"
-        echo '```' >> "${GITHUB_STEP_SUMMARY}"
-    - name: Publish to PyPI
-      uses: pypa/gh-action-pypi-publish@release/v1
-      with:
-        skip-existing: true
-        print-hash: true
+          echo '```' >> "${GITHUB_STEP_SUMMARY}"
+          cat ../files.txt >> "${GITHUB_STEP_SUMMARY}"
+          echo '```' >> "${GITHUB_STEP_SUMMARY}"
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          skip-existing: true
+          print-hash: true
 
   postcheck:
     needs: upload
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout
-      uses: actions/checkout@v4
-      with:
-        repository: cupy/cupy-release-tools
-        ref: ${{ inputs.branch }}
-    - name: Setup Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.10'
-    - name: Check
-      run: |
-        sleep 60s  # wait for PyPI to be updated
-        pip install distlib
-        CHECK_WHEEL="${{ inputs.branch != 'main' && '--pypi-wheel' || '' }}"
-        ./check_release_assets.py --version "${{ inputs.release }}" --pypi-sdist ${CHECK_WHEEL}
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          repository: cupy/cupy-release-tools
+          ref: ${{ inputs.branch }}
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+      - name: Check
+        run: |
+          sleep 60s  # wait for PyPI to be updated
+          pip install distlib
+          CHECK_WHEEL="${{ inputs.branch != 'main' && '--pypi-wheel' || '' }}"
+          ./check_release_assets.py --version "${{ inputs.release }}" --pypi-sdist ${CHECK_WHEEL}
