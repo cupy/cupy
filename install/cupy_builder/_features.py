@@ -1,5 +1,5 @@
 import sys
-from typing import Any, Dict, List
+from typing import Any
 
 import cupy_builder.install_build as build
 import cupy_builder.install_utils as utils
@@ -18,17 +18,17 @@ class Feature:
         self.required = False
 
         # List of Cython modules.
-        self.modules: List[str] = []
+        self.modules: list[str] = []
 
         # C/C++ headers required for the feature.
         # This is used only for testing availability of the feature.
-        self.includes: List[str] = []
+        self.includes: list[str] = []
 
         # Libraries (shared/static) on the search path to be linked.
-        self.libraries: List[str] = []
+        self.libraries: list[str] = []
 
         # Static libraries (manually searched) to be linked.
-        self.static_libraries: List[str] = []
+        self.static_libraries: list[str] = []
 
         # Version of the feature.
         self._version: Any = self._UNDETERMINED
@@ -61,7 +61,7 @@ class Feature:
         return getattr(self, key)
 
 
-def _from_dict(d: Dict[str, Any], ctx: Context) -> Feature:
+def _from_dict(d: dict[str, Any], ctx: Context) -> Feature:
     # Define a feature from dict.
     # TODO(kmaehashi): Remove this transient function.
     f = Feature(ctx)
@@ -149,11 +149,11 @@ _cuda_files = [
 
 # Libraries required for cudart_static
 _cudart_static_libs = (
-    (['pthread', 'rt', 'dl'] if sys.platform == 'linux' else [])
+    ['pthread', 'rt', 'dl'] if sys.platform == 'linux' else []
 )
 
 
-def get_features(ctx: Context) -> Dict[str, Feature]:
+def get_features(ctx: Context) -> dict[str, Feature]:
     # We handle nvtx (and likely any other future support) here, because
     # the HIP stubs (hip/cupy_*.h) would cause many symbols
     # to leak into all these modules even if unused. It's easier for all of
