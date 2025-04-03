@@ -1,9 +1,18 @@
 import cupy
+
+cuvs_available = False
+pylibraft_available = False
 try:
-    from pylibraft.distance import pairwise_distance
-    pylibraft_available = True
-except ModuleNotFoundError:
-    pylibraft_available = False
+    from cuvs.distance import pairwise_distance
+    cuvs_available = True
+except ImportError:
+    try:
+        # cuVS distance primitives were previously in pylibraft
+        from pylibraft.distance import pairwise_distance
+        pylibraft_available = True
+    except ImportError:
+        cuvs_available = False
+        pylibraft_available = False
 
 
 def _convert_to_type(X, out_type):
@@ -102,6 +111,13 @@ _METRIC_ALIAS = dict((alias, info)
 _METRICS_NAMES = list(_METRICS.keys())
 
 
+def check_soft_dependencies():
+    if not cuvs_available:
+        if not pylibraft_available:
+            raise RuntimeError('cuVS >= 24.12 or pylibraft < '
+                               '24.12 should be installed to use this feature')
+
+
 def minkowski(u, v, p):
     """Compute the Minkowski distance between two 1-D arrays.
 
@@ -116,14 +132,21 @@ def minkowski(u, v, p):
     Returns:
         minkowski (double): The Minkowski distance between vectors `u` and `v`.
     """
-    if not pylibraft_available:
-        raise RuntimeError('pylibraft is not installed')
-    u = cupy.asarray(u)
-    v = cupy.asarray(v)
-    output_arr = cupy.zeros((1,), dtype=u.dtype)
+
+    check_soft_dependencies()
+
+    u_order = "F" if cupy.isfortran(u) else "C"
+    v_order = "F" if cupy.isfortran(v) else "C"
+
+    if u_order != v_order:
+        raise ValueError('u and v must have the same layout '
+                         '(u.order=%s, v.order=%s' % (u_order, v_order))
+
+    output_arr = cupy.empty((1, 1), dtype=u.dtype, order=u_order)
+
     pairwise_distance(u, v, output_arr, "minkowski", p)
 
-    return output_arr[0]
+    return output_arr[0, 0]
 
 
 def canberra(u, v):
@@ -141,14 +164,20 @@ def canberra(u, v):
     Returns:
         canberra (double): The Canberra distance between vectors `u` and `v`.
     """
-    if not pylibraft_available:
-        raise RuntimeError('pylibraft is not installed')
-    u = cupy.asarray(u)
-    v = cupy.asarray(v)
-    output_arr = cupy.zeros((1,), dtype=u.dtype)
+    check_soft_dependencies()
+
+    u_order = "F" if cupy.isfortran(u) else "C"
+    v_order = "F" if cupy.isfortran(v) else "C"
+
+    if u_order != v_order:
+        raise ValueError('u and v must have the same layout '
+                         '(u.order=%s, v.order=%s' % (u_order, v_order))
+
+    output_arr = cupy.empty((1, 1), dtype=u.dtype, order=u_order)
+
     pairwise_distance(u, v, output_arr, "canberra")
 
-    return output_arr[0]
+    return output_arr[0, 0]
 
 
 def chebyshev(u, v):
@@ -166,14 +195,20 @@ def chebyshev(u, v):
     Returns:
         chebyshev (double): The Chebyshev distance between vectors `u` and `v`.
     """
-    if not pylibraft_available:
-        raise RuntimeError('pylibraft is not installed')
-    u = cupy.asarray(u)
-    v = cupy.asarray(v)
-    output_arr = cupy.zeros((1,), dtype=u.dtype)
+    check_soft_dependencies()
+
+    u_order = "F" if cupy.isfortran(u) else "C"
+    v_order = "F" if cupy.isfortran(v) else "C"
+
+    if u_order != v_order:
+        raise ValueError('u and v must have the same layout '
+                         '(u.order=%s, v.order=%s' % (u_order, v_order))
+
+    output_arr = cupy.empty((1, 1), dtype=u.dtype, order=u_order)
+
     pairwise_distance(u, v, output_arr, "chebyshev")
 
-    return output_arr[0]
+    return output_arr[0, 0]
 
 
 def cityblock(u, v):
@@ -192,14 +227,20 @@ def cityblock(u, v):
         cityblock (double): The City Block distance between
         vectors `u` and `v`.
     """
-    if not pylibraft_available:
-        raise RuntimeError('pylibraft is not installed')
-    u = cupy.asarray(u)
-    v = cupy.asarray(v)
-    output_arr = cupy.zeros((1,), dtype=u.dtype)
+    check_soft_dependencies()
+
+    u_order = "F" if cupy.isfortran(u) else "C"
+    v_order = "F" if cupy.isfortran(v) else "C"
+
+    if u_order != v_order:
+        raise ValueError('u and v must have the same layout '
+                         '(u.order=%s, v.order=%s' % (u_order, v_order))
+
+    output_arr = cupy.empty((1, 1), dtype=u.dtype, order=u_order)
+
     pairwise_distance(u, v, output_arr, "cityblock")
 
-    return output_arr[0]
+    return output_arr[0, 0]
 
 
 def correlation(u, v):
@@ -222,14 +263,20 @@ def correlation(u, v):
         correlation (double): The correlation distance between
         vectors `u` and `v`.
     """
-    if not pylibraft_available:
-        raise RuntimeError('pylibraft is not installed')
-    u = cupy.asarray(u)
-    v = cupy.asarray(v)
-    output_arr = cupy.zeros((1,), dtype=u.dtype)
+    check_soft_dependencies()
+
+    u_order = "F" if cupy.isfortran(u) else "C"
+    v_order = "F" if cupy.isfortran(v) else "C"
+
+    if u_order != v_order:
+        raise ValueError('u and v must have the same layout '
+                         '(u.order=%s, v.order=%s' % (u_order, v_order))
+
+    output_arr = cupy.empty((1, 1), dtype=u.dtype, order=u_order)
+
     pairwise_distance(u, v, output_arr, "correlation")
 
-    return output_arr[0]
+    return output_arr[0, 0]
 
 
 def cosine(u, v):
@@ -249,14 +296,20 @@ def cosine(u, v):
     Returns:
         cosine (double): The Cosine distance between vectors `u` and `v`.
     """
-    if not pylibraft_available:
-        raise RuntimeError('pylibraft is not installed')
-    u = cupy.asarray(u)
-    v = cupy.asarray(v)
-    output_arr = cupy.zeros((1,), dtype=u.dtype)
+    check_soft_dependencies()
+
+    u_order = "F" if cupy.isfortran(u) else "C"
+    v_order = "F" if cupy.isfortran(v) else "C"
+
+    if u_order != v_order:
+        raise ValueError('u and v must have the same layout '
+                         '(u.order=%s, v.order=%s' % (u_order, v_order))
+
+    output_arr = cupy.empty((1, 1), dtype=u.dtype, order=u_order)
+
     pairwise_distance(u, v, output_arr, "cosine")
 
-    return output_arr[0]
+    return output_arr[0, 0]
 
 
 def hamming(u, v):
@@ -278,14 +331,20 @@ def hamming(u, v):
     Returns:
         hamming (double): The Hamming distance between vectors `u` and `v`.
     """
-    if not pylibraft_available:
-        raise RuntimeError('pylibraft is not installed')
-    u = cupy.asarray(u)
-    v = cupy.asarray(v)
-    output_arr = cupy.zeros((1,), dtype=u.dtype)
+    check_soft_dependencies()
+
+    u_order = "F" if cupy.isfortran(u) else "C"
+    v_order = "F" if cupy.isfortran(v) else "C"
+
+    if u_order != v_order:
+        raise ValueError('u and v must have the same layout '
+                         '(u.order=%s, v.order=%s' % (u_order, v_order))
+
+    output_arr = cupy.empty((1, 1), dtype=u.dtype, order=u_order)
+
     pairwise_distance(u, v, output_arr, "hamming")
 
-    return output_arr[0]
+    return output_arr[0, 0]
 
 
 def euclidean(u, v):
@@ -303,14 +362,20 @@ def euclidean(u, v):
     Returns:
         euclidean (double): The Euclidean distance between vectors `u` and `v`.
     """
-    if not pylibraft_available:
-        raise RuntimeError('pylibraft is not installed')
-    u = cupy.asarray(u)
-    v = cupy.asarray(v)
-    output_arr = cupy.zeros((1,), dtype=u.dtype)
+    check_soft_dependencies()
+
+    u_order = "F" if cupy.isfortran(u) else "C"
+    v_order = "F" if cupy.isfortran(v) else "C"
+
+    if u_order != v_order:
+        raise ValueError('u and v must have the same layout '
+                         '(u.order=%s, v.order=%s' % (u_order, v_order))
+
+    output_arr = cupy.empty((1, 1), dtype=u.dtype, order=u_order)
+
     pairwise_distance(u, v, output_arr, "euclidean")
 
-    return output_arr[0]
+    return output_arr[0, 0]
 
 
 def jensenshannon(u, v):
@@ -332,14 +397,20 @@ def jensenshannon(u, v):
         jensenshannon (double): The Jensen-Shannon distance between
         vectors `u` and `v`.
     """
-    if not pylibraft_available:
-        raise RuntimeError('pylibraft is not installed')
-    u = cupy.asarray(u)
-    v = cupy.asarray(v)
-    output_arr = cupy.zeros((1,), dtype=u.dtype)
+    check_soft_dependencies()
+
+    u_order = "F" if cupy.isfortran(u) else "C"
+    v_order = "F" if cupy.isfortran(v) else "C"
+
+    if u_order != v_order:
+        raise ValueError('u and v must have the same layout '
+                         '(u.order=%s, v.order=%s' % (u_order, v_order))
+
+    output_arr = cupy.empty((1, 1), dtype=u.dtype, order=u_order)
+
     pairwise_distance(u, v, output_arr, "jensenshannon")
 
-    return output_arr[0]
+    return output_arr[0, 0]
 
 
 def russellrao(u, v):
@@ -361,14 +432,20 @@ def russellrao(u, v):
     Returns:
         hamming (double): The Hamming distance between vectors `u` and `v`.
     """
-    if not pylibraft_available:
-        raise RuntimeError('pylibraft is not installed')
-    u = cupy.asarray(u)
-    v = cupy.asarray(v)
-    output_arr = cupy.zeros((1,), dtype=u.dtype)
+    check_soft_dependencies()
+
+    u_order = "F" if cupy.isfortran(u) else "C"
+    v_order = "F" if cupy.isfortran(v) else "C"
+
+    if u_order != v_order:
+        raise ValueError('u and v must have the same layout '
+                         '(u.order=%s, v.order=%s' % (u_order, v_order))
+
+    output_arr = cupy.empty((1, 1), dtype=u.dtype, order=u_order)
+
     pairwise_distance(u, v, output_arr, "russellrao")
 
-    return output_arr[0]
+    return output_arr[0, 0]
 
 
 def sqeuclidean(u, v):
@@ -387,14 +464,20 @@ def sqeuclidean(u, v):
         sqeuclidean (double): The squared Euclidean distance between
         vectors `u` and `v`.
     """
-    if not pylibraft_available:
-        raise RuntimeError('pylibraft is not installed.')
-    u = cupy.asarray(u)
-    v = cupy.asarray(v)
-    output_arr = cupy.zeros((1,), dtype=u.dtype)
+    check_soft_dependencies()
+
+    u_order = "F" if cupy.isfortran(u) else "C"
+    v_order = "F" if cupy.isfortran(v) else "C"
+
+    if u_order != v_order:
+        raise ValueError('u and v must have the same layout '
+                         '(u.order=%s, v.order=%s' % (u_order, v_order))
+
+    output_arr = cupy.empty((1, 1), dtype=u.dtype, order=u_order)
+
     pairwise_distance(u, v, output_arr, "sqeuclidean")
 
-    return output_arr[0]
+    return output_arr[0, 0]
 
 
 def hellinger(u, v):
@@ -414,14 +497,20 @@ def hellinger(u, v):
         hellinger (double): The Hellinger distance between
         vectors `u` and `v`.
     """
-    if not pylibraft_available:
-        raise RuntimeError('pylibraft is not installed')
-    u = cupy.asarray(u)
-    v = cupy.asarray(v)
-    output_arr = cupy.zeros((1,), dtype=u.dtype)
+    check_soft_dependencies()
+
+    u_order = "F" if cupy.isfortran(u) else "C"
+    v_order = "F" if cupy.isfortran(v) else "C"
+
+    if u_order != v_order:
+        raise ValueError('u and v must have the same layout '
+                         '(u.order=%s, v.order=%s' % (u_order, v_order))
+
+    output_arr = cupy.empty((1, 1), dtype=u.dtype, order=u_order)
+
     pairwise_distance(u, v, output_arr, "hellinger")
 
-    return output_arr[0]
+    return output_arr[0, 0]
 
 
 def kl_divergence(u, v):
@@ -440,14 +529,22 @@ def kl_divergence(u, v):
         kl_divergence (double): The Kullback-Leibler divergence between
         vectors `u` and `v`.
     """
-    if not pylibraft_available:
-        raise RuntimeError('pylibraft is not installed')
+    check_soft_dependencies()
+
     u = cupy.asarray(u)
     v = cupy.asarray(v)
-    output_arr = cupy.zeros((1,), dtype=u.dtype)
+
+    u_order = "F" if cupy.isfortran(u) else "C"
+    v_order = "F" if cupy.isfortran(v) else "C"
+
+    if u_order != v_order:
+        raise ValueError('u and v must have the same layout '
+                         '(u.order=%s, v.order=%s' % (u_order, v_order))
+
+    output_arr = cupy.empty((1, 1), dtype=u.dtype, order=u_order)
     pairwise_distance(u, v, output_arr, "kl_divergence")
 
-    return output_arr[0]
+    return output_arr[0, 0]
 
 
 def cdist(XA, XB, metric='euclidean', out=None, **kwargs):
@@ -479,10 +576,22 @@ def cdist(XA, XB, metric='euclidean', out=None, **kwargs):
             ``dist(u=XA[i], v=XB[j])`` is computed and stored in the
             :math:`ij` th entry.
     """
-    if not pylibraft_available:
-        raise RuntimeError('pylibraft is not installed')
-    XA = cupy.asarray(XA, dtype='float32')
-    XB = cupy.asarray(XB, dtype='float32')
+    check_soft_dependencies()
+
+    if pylibraft_available or \
+            (cuvs_available and XA.dtype not in ['float32', 'float64']):
+        XA = cupy.asarray(XA, dtype='float32')
+
+    if pylibraft_available or \
+            (cuvs_available and XB.dtype not in ['float32', 'float64']):
+        XB = cupy.asarray(XB, dtype='float32')
+
+    XA_order = "F" if cupy.isfortran(XA) else "C"
+    XB_order = "F" if cupy.isfortran(XB) else "C"
+
+    if XA_order != XB_order:
+        raise ValueError('XA and XB must have the same layout '
+                         '(XA.order=%s, XB.order=%s' % (XA_order, XB_order))
 
     s = XA.shape
     sB = XB.shape
@@ -501,19 +610,24 @@ def cdist(XA, XB, metric='euclidean', out=None, **kwargs):
     p = kwargs["p"] if "p" in kwargs else 2.0
 
     if out is not None:
-        if out.dtype != 'float32':
+        if (pylibraft_available and out.dtype != 'float32') or \
+                (cuvs_available and out.dtype not in ['float32', 'float64']):
+            out_order = "F" if cupy.isfortran(out) else "C"
+            if out_order != XA_order:
+                raise ValueError('out must have same layout as input '
+                                 '(out.order=%s)' % out_order)
             out = out.astype('float32', copy=False)
         if out.shape != (mA, mB):
             cupy.resize(out, (mA, mB))
-        out[:] = 0.0
 
     if isinstance(metric, str):
         mstr = metric.lower()
         metric_info = _METRIC_ALIAS.get(mstr, None)
         if metric_info is not None:
-            output_arr = out if out is not None else cupy.zeros((mA, mB),
-                                                                dtype=XA.dtype)
-            pairwise_distance(XA, XB, output_arr, metric, p=p)
+            output_arr = out if out is not None else cupy.empty((mA, mB),
+                                                                dtype=XA.dtype,
+                                                                order=XA_order)
+            pairwise_distance(XA, XB, output_arr, metric, p)
             return output_arr
         else:
             raise ValueError('Unknown Distance Metric: %s' % mstr)

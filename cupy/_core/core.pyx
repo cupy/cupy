@@ -60,6 +60,20 @@ from cupy.exceptions import ComplexWarning
 NUMPY_1x = numpy.__version__ < '2'
 
 
+cdef extern from *:
+    """
+    #define _str_(s) #s
+    #define _xstr_(s) _str_(s)
+    const char* cupy_cache_key = _xstr_(CUPY_CACHE_KEY);
+    #undef _xstr_
+    #undef _str_
+    """
+    const char* cupy_cache_key  # set at build time
+
+
+CUPY_CACHE_KEY = cupy_cache_key.decode()
+
+
 # If rop of cupy.ndarray is called, cupy's op is the last chance.
 # If op of cupy.ndarray is called and the `other` is cupy.ndarray, too,
 # it is safe to call cupy's op.
@@ -382,7 +396,7 @@ cdef class _ndarray_base:
             event = curr_stream.record()
             stream.wait_event(event)
 
-        return dlpack.toDlpack(
+        return dlpack._toDlpack(
             self, use_versioned=use_versioned, to_cpu=to_cpu,
             ensure_copy=copy is True, stream=stream)
 
@@ -395,7 +409,7 @@ cdef class _ndarray_base:
         # TODO(leofang): use flags
         if (not is_ump_supported(self.data.device_id)
                 or not self.is_host_accessible()):
-            raise RuntimeError(
+            raise TypeError(
                 'Accessing a CuPy ndarry on CPU is not allowed except when '
                 'using system memory (on HMM or ATS enabled systems, need to '
                 'set CUPY_ENABLE_UMP=1) or managed memory')
@@ -2176,28 +2190,14 @@ cdef class _ndarray_base:
             dltensor (:class:`PyCapsule`): Output DLPack tensor which is
             encapsulated in a :class:`PyCapsule` object.
 
-        .. seealso::
-
-            :meth:`~cupy.fromDlpack` is a method for zero-copy conversion from
-            a DLPack tensor (which is encapsulated in a :class:`PyCapsule`
-            object) to a :class:`ndarray`
-
         .. warning::
 
-            As of the DLPack v0.3 specification, it is (implicitly) assumed
-            that the user is responsible to ensure the Producer and the
-            Consumer are operating on the same stream. This requirement might
-            be relaxed/changed in a future DLPack version.
-
-        .. admonition:: Example
-
-            >>> import cupy
-            >>> array1 = cupy.array([0, 1, 2], dtype=cupy.float32)
-            >>> dltensor = array1.toDlpack()
-            >>> array2 = cupy.fromDlpack(dltensor)
-            >>> cupy.testing.assert_array_equal(array1, array2)
-
+            This method is deprecated and will be removed in a future release.
+            In particular, we discourage explicit user management of any
+            :class:`PyCapsule` objects. Use the :func:`~cupy.from_dlpack`
+            array constructor instead.
         """
+        # Note: We use the "public" API to show the deprecation warning.
         return dlpack.toDlpack(self)
 
 
@@ -2359,7 +2359,7 @@ cpdef tuple assemble_cupy_compiler_options(tuple options):
                 # is out
                 if minor < 2:
                     _bundled_include = 'cuda-12'
-                elif minor < 7:
+                elif minor < 9:
                     _bundled_include = f'cuda-12.{minor}'
                 else:
                     # Unsupported CUDA 12.x variant
@@ -2797,6 +2797,7 @@ cdef _ndarray_base _array_default(
     cdef intptr_t ptr_h = <intptr_t>(a_cpu.ctypes.data)
     if pinned_memory.is_memory_pinned(ptr_h):
         a.data.copy_from_host_async(ptr_h, nbytes, stream)
+        pinned_memory._add_to_watch_list(stream.record(), a_cpu)
     else:
         # The input numpy array does not live on pinned memory, so we allocate
         # an extra buffer and copy from it to avoid potential data race, see

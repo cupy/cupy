@@ -317,6 +317,9 @@ def make_extensions(ctx: Context, compiler, use_cython):
     # https://groups.google.com/forum/#!topic/theano-users/3ihQYiTRG4E
     settings['define_macros'].append(('_FORCE_INLINES', '1'))
 
+    # Ensure all "cdef public" APIs have C linkage.
+    settings['define_macros'].append(('CYTHON_EXTERN_C', 'extern "C"'))
+
     if ctx.linetrace:
         settings['define_macros'].append(('CYTHON_TRACE', '1'))
         settings['define_macros'].append(('CYTHON_TRACE_NOGIL', '1'))
@@ -328,6 +331,9 @@ def make_extensions(ctx: Context, compiler, use_cython):
         settings['define_macros'].append(('__HIP_PLATFORM_AMD__', '1'))
         # deprecated since ROCm 4.2.0
         settings['define_macros'].append(('__HIP_PLATFORM_HCC__', '1'))
+        # Fix for ROCm 6.3.0, See https://github.com/ROCm/rocThrust/issues/502
+        settings['define_macros'].append(
+            ('THRUST_DEVICE_SYSTEM', 'THRUST_DEVICE_SYSTEM_HIP'))
     settings['define_macros'].append(('CUPY_CACHE_KEY', ctx.cupy_cache_key))
 
     try:
@@ -426,10 +432,6 @@ def make_extensions(ctx: Context, compiler, use_cython):
         if module['name'] == 'dlpack':
             # if any change is made to the DLPack header, we force recompiling
             s['depends'] = ['./cupy/_core/include/cupy/_dlpack/dlpack.h']
-
-        if module['name'] == 'numpy_allocator':
-            # ensure the cdef public APIs have C linkage
-            s['define_macros'].append(('CYTHON_EXTERN_C', 'extern "C"'))
 
         for f in module['file']:
             s_file = copy.deepcopy(s)
