@@ -7,7 +7,7 @@ name = "cupy"
 description = "CuPy: NumPy & SciPy for GPU"
 authors = [{ name = "Seiya Tokui", email = "tokui@preferred.jp" }]
 maintainers = [{ name = "CuPy Developers" }]
-license = { file = "LICENSE" }
+license-files = ["LICENSE", "docs/source/license.rst"]
 classifiers = [
   "Development Status :: 5 - Production/Stable",
   "Intended Audience :: Science/Research",
