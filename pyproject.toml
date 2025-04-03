@@ -1,0 +1,52 @@
+[build-system]
+requires = ["setuptools>=66.1", "wheel", "Cython>=3", "fastrlock>=0.5"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cupy"
+description = "CuPy: NumPy & SciPy for GPU"
+authors = [{ name = "Seiya Tokui", email = "tokui@preferred.jp" }]
+maintainers = [{ name = "CuPy Developers" }]
+license = { file = "LICENSE" }
+classifiers = [
+  "Development Status :: 5 - Production/Stable",
+  "Intended Audience :: Science/Research",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Cython",
+  "Topic :: Software Development",
+  "Topic :: Scientific/Engineering",
+  "Operating System :: POSIX",
+  "Operating System :: Microsoft :: Windows",
+]
+requires-python = ">=3.9"
+dependencies = ["numpy>=1.24,<2.4", "fastrlock>=0.5"]
+dynamic = ["version"]
+
+[project.optional-dependencies]
+"all" = [
+  "scipy>=1.10,<1.17", # see #4773
+  "Cython>=3",
+  "optuna>=2.0",
+]
+"test" = ["packaging", "pytest>=7.2", "hypothesis>=6.37.2,<6.55.0", "mpmath"]
+
+[project.urls]
+Homepage = "https://cupy.dev/"
+Documentation = "https://docs.cupy.dev/"
+"Bug Tracker" = "https://github.com/cupy/cupy/issues"
+"Source Code" = "https://github.com/cupy/cupy"
+
+[tool.setuptools.packages.find]
+exclude = ["install", "tests"]
+
+[tool.setuptools.dynamic]
+version = { attr = "cupy._version.__version__" }
