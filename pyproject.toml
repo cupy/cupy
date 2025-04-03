@@ -116,3 +116,24 @@ include = ["cupy/*", "cupyx/*", "examples/*"]
 
 [tool.coverage.report]
 ecxlude_lines = ["if __name__ == .__main__.:"]
+
+[tool.ruff]
+target-version = "py39"
+line-length = 79
+extend-exclude = [
+  "cupy/array_api",
+  "docs/source",
+  "tests/cupy_tests/array_api_tests",
+  "third_party",
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "W"]
+
+[tool.ruff.lint.per-file-ignores]
+"cupyx/scipy/special/_gammainc.py" = [
+  "E501", # line-too-long (table of constants)
+]
+"tests/typing_tests/cupy_tests/creation_tests/test_basic.pyi" = [
+  "E501", # line-too-long (long comments)
+]
