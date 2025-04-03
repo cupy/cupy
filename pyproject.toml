@@ -109,3 +109,10 @@ filterwarnings = [
   # TODO(kmaehashi): Remove distutils from cupy_builder to remove this
   "ignore:Absolute path '(.+?)' is being replaced with a relative path '(.+?)' for outputs:DeprecationWarning:distutils",
 ]
+
+[tool.coverage.run]
+plugins = "Cython.Coverage"
+include = ["cupy/*", "cupyx/*", "examples/*"]
+
+[tool.coverage.report]
+ecxlude_lines = ["if __name__ == .__main__.:"]
