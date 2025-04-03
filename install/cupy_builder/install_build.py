@@ -167,7 +167,8 @@ def get_compiler_setting(ctx: Context, use_hip):
         library_dirs.append(os.path.join(rocm_path, 'lib'))
 
     if use_hip:
-        extra_compile_args.append('-std=c++11')
+        # ROCm 5.3 and above requires c++14
+        extra_compile_args.append('-std=c++14')
 
     if PLATFORM_WIN32:
         nvtx_path = _environment.get_nvtx_path()

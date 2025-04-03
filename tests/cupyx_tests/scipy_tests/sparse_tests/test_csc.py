@@ -203,10 +203,10 @@ class TestCscMatrix:
         cupy.testing.assert_array_equal(n.indptr, self.m.indptr)
         assert n.shape == self.m.shape
 
-    @testing.with_requires('scipy')
+    @testing.with_requires('scipy>=1.15')
     def test_init_dense_invalid_ndim(self):
         for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
-            with pytest.raises(TypeError):
+            with pytest.raises(ValueError):
                 m = xp.zeros((1, 1, 1), dtype=self.dtype)
                 sp.csc_matrix(m)
 
@@ -1402,8 +1402,6 @@ class TestUfunc:
 
     @testing.numpy_cupy_allclose(sp_name='sp', atol=1e-5)
     def test_ufun(self, xp, sp):
-        if self.ufunc == "sign" and numpy.dtype(self.dtype).kind == 'c':
-            pytest.xfail(reason="XXX: np2.0: should behave as legacy sign")
         x = _make(xp, sp, self.dtype)
         x.data *= 0.1
         func = getattr(x, self.ufunc)
