@@ -1,7 +1,9 @@
 import cupy
 
+
 def gmean(a, axis=0, dtype=None, weights=None):
-    # This is just the gmean function from scipy, but adapted to use cp functions instead of numpy/scipy ones.
+    # This is just the gmean function from scipy,
+    # but adapted to use cp functions instead of numpy/scipy ones.
     r"""Compute the weighted geometric mean along the specified axis.
 
     The weighted geometric mean of the array :math:`a_i` associated to weights
@@ -53,12 +55,18 @@ def gmean(a, axis=0, dtype=None, weights=None):
            Archimedes Foundation, 1983
 
     """
-    
-    with cupy.errstate(divide='ignore'):
-        log_a = cupy.log(a)
 
-    return cupy.exp(cupy.mean(log_a, axis=axis, dtype=dtype, weights=weights))
+    if dtype == cupy.float16:
+        # Avoid large numerical errors in float16
+        dtype = cupy.float32
 
+    a = cupy.asarray(a, dtype=dtype)
+    if weights is not None:
+        weights = cupy.asarray(weights, dtype=dtype)
+
+    log_a = cupy.log(a)
+
+    return cupy.exp(cupy.average(log_a, axis=axis, weights=weights))
 
 
 def _first(arr, axis):
