@@ -299,7 +299,8 @@ def geomspace(start, stop, num=50, endpoint=True, dtype=None, axis=0):
     log_start = cupy.log10(start)
     log_stop = cupy.log10(stop)
 
-    result = logspace(log_start, log_stop, num=num, endpoint=endpoint, base=10.0, dtype=dt)
+    result = logspace(log_start, log_stop, num=num,
+                      endpoint=endpoint, base=10.0, dtype=dt)
 
     if num > 0:
         result[0] = start
