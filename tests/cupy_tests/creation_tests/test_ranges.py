@@ -300,6 +300,115 @@ class TestRanges(unittest.TestCase):
         stop = xp.array([2, 0], dtype=dtype_range)
         return xp.logspace(start, stop, num=5, dtype=dtype_out, axis=1)
 
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_allclose() # Use allclose for geomspace
+    def test_geomspace_basic(self, xp, dtype):
+        return xp.geomspace(1, 10000, 5, dtype=dtype)
+
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_allclose()
+    def test_geomspace_decreasing(self, xp, dtype):
+        return xp.geomspace(1000, 10, 4, dtype=dtype)
+
+    @testing.for_all_dtypes(no_bool=True, no_complex=True) # Exclude complex here
+    @testing.numpy_cupy_allclose()
+    def test_geomspace_negative(self, xp, dtype):
+        if xp.dtype(dtype).kind == 'u': # Skip unsigned integers
+            pytest.skip('Unsigned integers cannot represent negative values')
+        return xp.geomspace(-2, -32, 5, dtype=dtype)
+
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_allclose()
+    def test_geomspace_zero_num(self, xp, dtype):
+        return xp.geomspace(1, 10, 0, dtype=dtype)
+
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_allclose()
+    def test_geomspace_one_num(self, xp, dtype):
+        return xp.geomspace(1, 10, 1, dtype=dtype)
+
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_allclose()
+    def test_geomspace_no_endpoint(self, xp, dtype):
+        return xp.geomspace(2, 32, 5, dtype=dtype, endpoint=False)
+
+    @testing.numpy_cupy_allclose()
+    def test_geomspace_no_dtype_int(self, xp):
+        return xp.geomspace(1, 1000, 4)
+
+    @testing.numpy_cupy_allclose()
+    def test_geomspace_no_dtype_float(self, xp):
+        return xp.geomspace(1.5, 50.5, 6)
+
+    @testing.numpy_cupy_allclose()
+    def test_geomspace_float_args_with_int_dtype(self, xp):
+        return xp.geomspace(2.1, 60.1, 7, dtype=int)
+
+    def test_geomspace_invalid_args(self):
+        for xp in (numpy, cupy):
+            # Start or stop is zero (invalid for geomspace)
+            with pytest.raises(ValueError):
+                xp.geomspace(0, 10)
+            with pytest.raises(ValueError):
+                xp.geomspace(10, 0)
+            with pytest.raises(ValueError):
+                xp.geomspace(0, 0)
+            # Start and stop have different signs (invalid for real dtypes)
+            with pytest.raises(ValueError):
+                xp.geomspace(-1, 1)
+            with pytest.raises(ValueError):
+                xp.geomspace(1, -1)
+            # Negative num
+            with pytest.raises(ValueError):
+                xp.geomspace(1, 10, -1)
+
+    @testing.for_complex_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_geomspace_complex_basic(self, xp, dtype):
+        # Simple complex progression [1+1j, 10+10j, 100+100j]
+        return xp.geomspace(1 + 1j, 100 + 100j, 3, dtype=dtype)
+
+    @testing.for_complex_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_geomspace_complex_imaginary(self, xp, dtype):
+        # Purely imaginary [2j, 4j, 8j, 16j]
+        return xp.geomspace(2j, 16j, 4, dtype=dtype)
+
+    @testing.for_complex_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_geomspace_complex_sign_change(self, xp, dtype):
+        # Valid for complex: progression from -1 to 1 via complex plane
+        # Should be [-1, 1j, 1] for num=3
+        return xp.geomspace(-1, 1, 3, dtype=dtype)
+
+    @testing.with_requires('numpy>=1.16') # Array start/stop support added later
+    @testing.for_all_dtypes_combination(names=('dtype_range', 'dtype_out'),
+                                        no_bool=True, no_complex=True)
+    @testing.numpy_cupy_allclose(rtol=1e-5) # Might need tolerance adjustment
+    def test_geomspace_array_start_stop(self, xp, dtype_range, dtype_out):
+        # Using positive values to avoid sign issues with real dtypes
+        start = xp.array([1, 100], dtype=dtype_range)
+        stop = xp.array([1000, 10], dtype=dtype_range)
+        return xp.geomspace(start, stop, num=5, dtype=dtype_out)
+
+    @testing.with_requires('numpy>=1.16')
+    @testing.for_all_dtypes_combination(names=('dtype_range', 'dtype_out'),
+                                        no_bool=True, no_complex=True)
+    @testing.numpy_cupy_allclose(rtol=1e-5)
+    def test_geomspace_array_start_stop_axis(self, xp, dtype_range, dtype_out):
+        # Test with axis=1
+        start = xp.array([1, 100], dtype=dtype_range)
+        stop = xp.array([1000, 10], dtype=dtype_range)
+        return xp.geomspace(start, stop, num=5, dtype=dtype_out, axis=1)
+
+    @testing.with_requires('numpy>=1.16')
+    @testing.for_complex_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_geomspace_complex_array_start_stop(self, xp, dtype):
+        # Complex array inputs
+        start = xp.array([1+1j, 10-10j], dtype=dtype)
+        stop = xp.array([100+100j, -1-1j], dtype=dtype) # Different signs ok
+        return xp.geomspace(start, stop, num=4, dtype=dtype)
 
 @testing.parameterize(
     *testing.product({
