@@ -3,7 +3,7 @@ import math
 import numpy
 
 import cupy
-from cupy import _core, result_type
+from cupy import _core
 
 
 def arange(start, stop=None, step=1, dtype=None):
@@ -253,6 +253,7 @@ def logspace(start, stop, num=50, endpoint=True, base=10.0, dtype=None,
         y = y.astype(cupy.float64)
     return _core.power(base, y).astype(dtype)
 
+
 def geomspace(start, stop, num=50, endpoint=True, dtype=None, axis=0):
     """
     Return numbers spaced evenly on a log scale (a geometric progression).
@@ -283,7 +284,7 @@ def geomspace(start, stop, num=50, endpoint=True, dtype=None, axis=0):
     if cupy.any(start == 0) or cupy.any(stop == 0):
         raise ValueError('Geometric sequence cannot include zero')
 
-    dt = result_type(start, stop, float(num), cupy.zeros((), dtype=dtype))
+    dt = cupy.result_type(start, stop, float(num), cupy.zeros((), dtype=dtype))
     if dtype is None:
         dtype = dt
     else:
@@ -312,6 +313,7 @@ def geomspace(start, stop, num=50, endpoint=True, dtype=None, axis=0):
         result = cupy.moveaxis(result, 0, axis)
 
     return result.astype(dtype, copy=False)
+
 
 def meshgrid(*xi, **kwargs):
     """Return coordinate matrices from coordinate vectors.
