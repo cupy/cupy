@@ -63,7 +63,7 @@ def main(args):
     parser.add_argument('--library',
                         choices=['cudnn', 'cutensor', 'nccl'],
                         action='append',
-                        required=True)
+                        default=[])
     params = parser.parse_args(args)
 
     print(json.dumps(

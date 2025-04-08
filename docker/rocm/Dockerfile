@@ -12,7 +12,10 @@ RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.9 2 
     update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.8 1
 
 RUN python3 -m pip install --no-cache-dir -U setuptools pip
-RUN python3 -m pip install --no-cache-dir -f https://pip.cupy.dev/pre/ "cupy-rocm-5-0[all]==13.0.0rc1"
+# TODO(kmaehashi): ROCm binary packages are currently unavailable.
+# See https://github.com/cupy/cupy/issues/8607#issuecomment-2658763950
+# `.github/workflows/docker.yml` needs to be fixed to restart uploading the image.
+RUN python3 -m pip install --no-cache-dir -f https://pip.cupy.dev/pre/ "cupy-rocm-5-0[all]==14.0.0a1"
 
 ENV LD_LIBRARY_PATH=/opt/rocm/lib:$LD_LIBRARY_PATH
 RUN python3 -c "import cupy; cupy.show_config()"
