@@ -4,6 +4,7 @@ import unittest
 
 import cupy
 from cupy import testing
+import pytest
 
 
 class TestNpz(unittest.TestCase):
@@ -26,7 +27,7 @@ class TestNpz(unittest.TestCase):
         data = object()
 
         sio = io.BytesIO()
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             cupy.save(sio, data, allow_pickle=False)
         sio.close()
 
@@ -48,7 +49,7 @@ class TestNpz(unittest.TestCase):
         sio.close()
 
         sio = io.BytesIO(s)
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             cupy.load(sio, allow_pickle=False)
         sio.close()
 
@@ -98,3 +99,84 @@ class TestNpz(unittest.TestCase):
         sio.close()
 
         testing.assert_array_equal(a, b)
+
+    @testing.for_all_dtypes()
+    def test_get_value(self, dtype):
+        a1 = testing.shaped_arange((2, 3, 4), dtype=dtype)
+        a2 = testing.shaped_arange((2, 3, 4), dtype=dtype)
+
+        sio = io.BytesIO()
+        cupy.savez(sio, a1, a2)
+        s = sio.getvalue()
+        sio.close()
+
+        sio = io.BytesIO(s)
+        npz = cupy.load(sio)
+        b1 = npz.get('arr_0')
+        b2 = npz.get('arr_1')
+        sio.close()
+
+        testing.assert_array_equal(a1, b1)
+        testing.assert_array_equal(a2, b2)
+
+    @testing.for_all_dtypes()
+    def test_get_default(self, dtype):
+        a = testing.shaped_arange((2, 3, 4), dtype=dtype)
+
+        sio = io.BytesIO()
+        cupy.savez(sio, a)
+        s = sio.getvalue()
+        sio.close()
+
+        sio = io.BytesIO(s)
+        npz = cupy.load(sio)
+        assert npz.get("fakeIndex", "Default") == "Default"
+
+        sio.close()
+
+    @testing.for_all_dtypes()
+    def test_BagObj(self, dtype):
+        a = testing.shaped_arange((2, 3, 4), dtype=dtype)
+        b = testing.shaped_arange((4, 5, 6), dtype=dtype)
+
+        sio = io.BytesIO()
+        cupy.savez(sio, a=a, b=b)
+        s = sio.getvalue()
+        sio.close()
+
+        sio = io.BytesIO(s)
+        npz = cupy.load(sio)
+        assert dir(npz.f) == ['a', 'b']
+        testing.assert_array_equal(a, npz.f.a)
+        testing.assert_array_equal(b, npz.f.b)
+
+        sio.close()
+
+    @testing.for_all_dtypes()
+    def test_npzfile_dict(self, dtype):
+        a = testing.shaped_arange((2, 3, 4), dtype=dtype)
+        b = testing.shaped_arange((4, 5, 6), dtype=dtype)
+
+        sio = io.BytesIO()
+        cupy.savez(sio, a=a, b=b)
+        s = sio.getvalue()
+        sio.close()
+
+        sio = io.BytesIO(s)
+        npz = cupy.load(sio)
+
+        assert len(npz) == 2
+        assert 'a' in npz
+        assert 'b' in npz
+
+        assert 'a' in npz.keys()
+        assert 'b' in npz.keys()
+
+        for key in npz:
+            assert key in ['a', 'b']
+
+        for key, value in npz.items():
+            assert key in ['a', 'b']
+            testing.assert_array_equal(value, npz[key])
+
+        sio.close()
