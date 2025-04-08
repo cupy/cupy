@@ -38,6 +38,23 @@ class spmatrix(object):
                 'This class is not intended to be instantiated directly.')
         self.maxprint = maxprint
 
+    def __repr__(self):
+        format_strings = {
+            "coo": "COOrdinate format",
+            "csr": "Compressed Sparse Row format",
+            "csc": "Compressed Sparse Column format",
+            "dia": "DIAgonal format",
+        }
+        matrix_type = str(self.format)
+        stored_elements = self.getnnz() if hasattr(self, "getnnz") \
+            else self.nnz
+        return (
+            f"<{self._shape[0]}x{self._shape[1]} sparse matrix " \
+            f"of type '{self.dtype}'\n " \
+            f"on device {cupy.cuda.get_device_id()} with {stored_elements} "
+            f"stored elements in {format_strings[matrix_type]}>"
+        )
+
     @property
     def device(self):
         """CUDA device on which this array resides."""
