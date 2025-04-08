@@ -210,6 +210,7 @@ from cupy._creation.from_data import genfromtxt  # NOQA
 from cupy._creation.ranges import arange  # NOQA
 from cupy._creation.ranges import linspace  # NOQA
 from cupy._creation.ranges import logspace  # NOQA
+from cupy._creation.ranges import geomspace  # NOQA
 from cupy._creation.ranges import meshgrid  # NOQA
 from cupy._creation.ranges import mgrid  # NOQA
 from cupy._creation.ranges import ogrid  # NOQA
