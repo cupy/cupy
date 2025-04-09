@@ -28,7 +28,10 @@ classifiers = [
   "Operating System :: Microsoft :: Windows",
 ]
 requires-python = ">=3.9"
-dependencies = ["numpy>=1.24,<2.4", "fastrlock>=0.5"]
+dependencies = [
+  "numpy>=1.24,<2.4",  # see #4773
+  "fastrlock>=0.5",
+]
 dynamic = ["version"]
 
 [project.optional-dependencies]
@@ -40,8 +43,8 @@ dynamic = ["version"]
 "test" = ["packaging", "pytest>=7.2", "hypothesis>=6.37.2,<6.55.0", "mpmath"]
 
 [project.urls]
-Homepage = "https://cupy.dev/"
-Documentation = "https://docs.cupy.dev/"
+"Homepage" = "https://cupy.dev/"
+"Documentation" = "https://docs.cupy.dev/"
 "Bug Tracker" = "https://github.com/cupy/cupy/issues"
 "Source Code" = "https://github.com/cupy/cupy"
 
