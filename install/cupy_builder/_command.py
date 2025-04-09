@@ -147,7 +147,7 @@ class custom_build_ext(setuptools.command.build_ext.build_ext):
         Cython.Build.cythonize(
             self.extensions, verbose=True, nthreads=nthreads, language_level=3,
             compiler_directives=compiler_directives, annotate=ctx.annotate,
-            compile_time_env=compile_time_env, cache=True)
+            compile_time_env=compile_time_env)
 
     def build_extensions(self) -> None:
         ctx = cupy_builder.get_context()
