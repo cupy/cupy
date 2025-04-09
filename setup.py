@@ -50,9 +50,10 @@ package_data = {
 package_data['cupy'] += cupy_setup_build.prepare_wheel_libs(ctx)
 
 
-if len(sys.argv) < 2 or sys.argv[1] == 'egg_info':
-    # Extensions are unnecessary for egg_info generation as all sources files
+if len(sys.argv) < 2 or sys.argv[1] == 'dist_info':
+    # Extensions are unnecessary for dist_info generation as all sources files
     # can be enumerated via MANIFEST.in.
+    print('Skipping extensions configuration')
     ext_modules = []
 else:
     ext_modules = cupy_setup_build.get_ext_modules(True, ctx)
