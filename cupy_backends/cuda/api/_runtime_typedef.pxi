@@ -48,6 +48,35 @@ cdef extern from *:
     ctypedef int StreamCaptureMode 'cudaStreamCaptureMode'
     ctypedef void* Graph 'cudaGraph_t'
     ctypedef void* GraphExec 'cudaGraphExec_t'
+    ctypedef int StreamUpdateCaptureDependenciesFlags \
+        'cudaStreamUpdateCaptureDependenciesFlags'
+
+    ctypedef unsigned long long GraphConditionalHandle \
+        'cudaGraphConditionalHandle'
+    ctypedef struct GraphEdgeData 'cudaGraphEdgeData':
+        unsigned char from_port
+        unsigned char to_port
+        unsigned char type
+        unsigned char[5] reserved
+
+    ctypedef int GraphNodeType 'cudaGraphNodeType'
+    ctypedef int GraphConditionalNodeType 'cudaGraphConditionalNodeType'
+    ctypedef struct ConditionalNodeParams 'cudaConditionalNodeParams':
+        GraphConditionalHandle handle
+        GraphConditionalNodeType type
+        unsigned int size
+        Graph* phGraph_out
+    ctypedef struct GraphNodeParams 'cudaGraphNodeParams':
+        GraphNodeType       type
+        int[3]              reserved0
+
+        # NOTE:
+        # This is incomplete definition of the unnamed union inside of
+        # `cudaGraphNodeParams` only supports `cudaConditionalNodeParams`
+        long long[29]         reserved1
+        ConditionalNodeParams conditional
+
+        long long           reserved2
 
     # This is for the annoying nested struct cudaResourceDesc, which is not
     # perfectly supported in Cython
