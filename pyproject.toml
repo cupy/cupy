@@ -1,4 +1,6 @@
 [build-system]
+# Need to be installed explicitly due to `--no-build-isolation`
+# Keep in sync with `docs/source/contribution.rst`
 requires = ["setuptools>=77", "wheel", "Cython>=3", "fastrlock>=0.5"]
 build-backend = "setuptools.build_meta"
 
