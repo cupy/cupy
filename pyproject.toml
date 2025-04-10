@@ -31,7 +31,7 @@ classifiers = [
 ]
 requires-python = ">=3.9"
 dependencies = [
-  "numpy>=1.24,<2.4",  # see #4773
+  "numpy>=1.24,<2.4", # see #4773
   "fastrlock>=0.5",
 ]
 dynamic = ["version"]
@@ -51,7 +51,7 @@ dynamic = ["version"]
 "Source Code" = "https://github.com/cupy/cupy"
 
 [tool.setuptools.packages.find]
-exclude = ["install", "tests"]
+include = ["cupy", "cupyx", "cupy_backends"]
 
 [tool.setuptools.dynamic]
 version = { attr = "cupy._version.__version__" }
