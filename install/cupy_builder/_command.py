@@ -144,6 +144,7 @@ class custom_build_ext(setuptools.command.build_ext.build_ext):
             # Disable multiprocessing on Windows (spawn)
             nthreads = 0
 
+        # MEMO: DO NOT use `cache=True`
         Cython.Build.cythonize(
             self.extensions, verbose=True, nthreads=nthreads, language_level=3,
             compiler_directives=compiler_directives, annotate=ctx.annotate,
