@@ -1,3 +1,4 @@
+import gc
 import io
 import unittest
 import re
@@ -9,6 +10,7 @@ from cupy.cuda import memory_hooks
 class TestLineProfileHook(unittest.TestCase):
 
     def setUp(self):
+        gc.collect()
         self.pool = memory.MemoryPool()
 
     def test_print_report(self):
