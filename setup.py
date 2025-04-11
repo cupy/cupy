@@ -50,7 +50,7 @@ package_data = {
 package_data['cupy'] += cupy_setup_build.prepare_wheel_libs(ctx)
 
 
-if len(sys.argv) < 2 or sys.argv[1] == 'dist_info':
+if ctx.setup_command == 'dist_info':
     # Extensions are unnecessary for dist_info generation as all sources files
     # can be enumerated via MANIFEST.in.
     print('Skipping extensions configuration')

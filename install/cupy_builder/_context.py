@@ -25,6 +25,7 @@ class Context:
             _env: Mapping[str, str] = os.environ,
             _argv: List[str] = sys.argv):
         self.source_root = source_root
+        self.setup_command = _argv[1] if len(_argv) >= 2 else ''
 
         self.use_cuda_python = _get_env_bool(
             'CUPY_USE_CUDA_PYTHON', False, _env)
