@@ -67,6 +67,40 @@ class TestTrim:
 
 
 @testing.with_requires('scipy')
+class TestGmean:
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(
+        scipy_name='scp', rtol=1e-6, contiguous_check=False)
+    @pytest.mark.parametrize('shape', [(24,), (6, 4), (6, 4, 3), (4, 6)])
+    def test_base(self, xp, scp, dtype, shape):
+        a = testing.shaped_random(
+            shape, xp=xp, dtype=dtype, scale=100)
+        return scp.stats.gmean(a)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(
+        scipy_name='scp', rtol=1e-5, contiguous_check=False)
+    @pytest.mark.parametrize('axis', [0, 1, 2, 3, -1, None])
+    def test_axis(self, xp, scp, dtype, axis):
+        a = testing.shaped_random(
+            (5, 6, 4, 7), xp=xp, dtype=dtype, scale=100)
+        return scp.stats.gmean(a, axis=axis)
+
+    def test_weights(self):
+        a_cp = cupy.asarray([1, 2, 3, 4, 5])
+        a_np = numpy.asarray([1, 2, 3, 4, 5])
+
+        weights_cp = cupy.asarray([0.1, 0.2, 0.3, 0.4, 0.5])
+        weights_np = numpy.asarray([0.1, 0.2, 0.3, 0.4, 0.5])
+
+        result_cp = cupyx.scipy.stats.gmean(a_cp, weights=weights_cp)
+        result_np = scipy.stats.gmean(a_np, weights=weights_np)
+
+        cupy.testing.assert_allclose(result_cp, result_np, rtol=1e-5)
+
+
+@testing.with_requires('scipy')
 class TestZmap:
 
     @testing.for_all_dtypes(no_bool=True)
