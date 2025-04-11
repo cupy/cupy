@@ -1,5 +1,6 @@
 from itertools import chain
-from typing import Any, Callable, Iterable, Optional
+from typing import Any, Callable, Optional
+from collections.abc import Iterable
 
 import numpy
 from numpy.typing import ArrayLike
