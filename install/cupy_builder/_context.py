@@ -35,7 +35,6 @@ class Context:
         self.library_dirs = _get_env_path('CUPY_LIBRARY_PATH', _env)
 
         cmdopts, _argv[:] = parse_args(_argv)
-        self.package_name: str = cmdopts.cupy_package_name
         self.long_description_path: Optional[str] = (
             cmdopts.cupy_long_description)
         self.wheel_libs: List[str] = cmdopts.cupy_wheel_lib
@@ -83,9 +82,6 @@ class Context:
 def parse_args(argv: List[str]) -> Tuple[Any, List[str]]:
     parser = argparse.ArgumentParser(add_help=False)
 
-    parser.add_argument(
-        '--cupy-package-name', type=str, default='cupy',
-        help='alternate package name')
     parser.add_argument(
         '--cupy-long-description', type=str, default=None,
         help='path to the long description file (reST)')
