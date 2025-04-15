@@ -380,7 +380,9 @@ def get_features(ctx: Context) -> Dict[str, Feature]:
             ('cupy.cuda.thrust', ['cupy/cuda/cupy_thrust.cu']),
         ],
         'include': [
-            'thrust/version.h',
+            # WAR #9098:
+            # rocThrust 3.3.0 (ROCm 6.4.0) cannot be compiled by host compiler
+            # 'thrust/version.h',
         ],
         'libraries': [
             'amdhip64',  # was hiprtc and hip_hcc before ROCm 3.8.0
