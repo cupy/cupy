@@ -286,11 +286,13 @@ cpdef destroy(Handle handle):
     status = cusparseLtDestroy(<cusparseLtHandle_t*> handle._ptr)
     check_status(status)
 
-cpdef getVersion(Handle handle, size_t version):
+cpdef int getVersion(Handle handle) except? -1:
     """Get the version number of the cuSPARSELt library"""
+    cdef int version
     status = cusparseLtGetVersion(<cusparseLtHandle_t*> handle._ptr,
-                                  <int*> version)
+                                  &version)
     check_status(status)
+    return version
 
 
 ###############################################################################
