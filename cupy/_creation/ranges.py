@@ -278,11 +278,18 @@ def geomspace(start, stop, num=50, endpoint=True, dtype=None, axis=0):
 
     .. seealso:: :func:`numpy.geomspace`
     """
-    start = cupy.asanyarray(start)
-    stop = cupy.asanyarray(stop)
 
-    if cupy.any(start == 0) or cupy.any(stop == 0):
-        raise ValueError('Geometric sequence cannot include zero')
+    # Fast track if parameters are scalars
+    if cupy.isscalar(start) and cupy.isscalar(stop):
+        if start == 0 or stop == 0:
+            raise ValueError('Geometric sequence cannot include zero')
+        start = cupy.asanyarray(start)
+        stop = cupy.asanyarray(stop)
+    else:
+        start = cupy.asanyarray(start)
+        stop = cupy.asanyarray(stop)
+        if cupy.any(start == 0) or cupy.any(stop == 0):
+            raise ValueError('Geometric sequence cannot include zero')
 
     dt = cupy.result_type(start, stop, float(num), cupy.zeros((), dtype=dtype))
     if dtype is None:
