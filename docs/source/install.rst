@@ -62,7 +62,7 @@ Part of the CUDA features in CuPy will be activated only when the corresponding 
 
     * The library to accelerate deep neural network computations.
 
-* `cuSPARSELt <https://docs.nvidia.com/cuda/cusparselt/>`_: v0.6.0 / v0.6.1
+* `cuSPARSELt <https://docs.nvidia.com/cuda/cusparselt/>`_: v0.7.0 / v0.7.1
 
     * The library to accelerate sparse matrix-matrix multiplication.
 
