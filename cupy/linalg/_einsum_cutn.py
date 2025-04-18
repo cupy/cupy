@@ -11,11 +11,12 @@ _tls = threading.local()
 
 cuquantum = cutensornet = tensornet = None
 
+
 def _maybe_lazy_load_cutensornet():
     global cuquantum, cutensornet, tensornet
 
     if cuquantum is not None:
-        return 
+        return
 
     try:
         import cuquantum
