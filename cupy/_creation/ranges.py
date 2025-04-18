@@ -254,6 +254,36 @@ def logspace(start, stop, num=50, endpoint=True, base=10.0, dtype=None,
     return _core.power(base, y).astype(dtype)
 
 
+def _geomspace_scalar(start, stop, num=50, endpoint=True, dtype=None):
+    """
+    Scalar implementation for geomspace using NumPy for calculation.
+    Assumes start and stop are Python scalars.
+
+    Args:
+        start: Start of the interval.
+        stop: End of the interval.
+        num: Number of elements.
+        endpoint (bool): If ``True``, the stop value is included as the last
+            element. Otherwise, the stop value is omitted.
+        dtype: Data type specifier. It is inferred from the start and stop
+            arguments by default.
+    Returns:
+        cupy.ndarray: The 1-D array of ranged values.
+
+    .. seealso:: :func:`numpy.geomspace`
+    """
+    if start == 0 or stop == 0:
+        raise ValueError('Geometric sequence cannot include zero')
+
+    np_result = numpy.geomspace(start, stop, int(
+        num), endpoint=endpoint, dtype=dtype)
+
+    # return object as cupy array
+    cp_result = cupy.asarray(np_result)
+
+    return cp_result
+
+
 def geomspace(start, stop, num=50, endpoint=True, dtype=None, axis=0):
     """
     Return numbers spaced evenly on a log scale (a geometric progression).
@@ -284,15 +314,12 @@ def geomspace(start, stop, num=50, endpoint=True, dtype=None, axis=0):
 
     # Fast track if parameters are scalars
     if cupy.isscalar(start) and cupy.isscalar(stop):
-        if start == 0 or stop == 0:
-            raise ValueError('Geometric sequence cannot include zero')
-        start = cupy.asanyarray(start)
-        stop = cupy.asanyarray(stop)
-    else:
-        start = cupy.asanyarray(start)
-        stop = cupy.asanyarray(stop)
-        if cupy.any(start == 0) or cupy.any(stop == 0):
-            raise ValueError('Geometric sequence cannot include zero')
+        return _geomspace_scalar(start, stop, num, endpoint, dtype)
+
+    start = cupy.asanyarray(start)
+    stop = cupy.asanyarray(stop)
+    if cupy.any(start == 0) or cupy.any(stop == 0):
+        raise ValueError('Geometric sequence cannot include zero')
 
     dt = cupy.result_type(start, stop, float(num), cupy.zeros((), dtype=dtype))
     if dtype is None:
