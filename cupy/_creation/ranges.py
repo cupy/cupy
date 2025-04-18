@@ -279,6 +279,9 @@ def geomspace(start, stop, num=50, endpoint=True, dtype=None, axis=0):
     .. seealso:: :func:`numpy.geomspace`
     """
 
+    if num < 0:
+        raise ValueError("Number of samples, `num`, must be non-negative.")
+
     # Fast track if parameters are scalars
     if cupy.isscalar(start) and cupy.isscalar(stop):
         if start == 0 or stop == 0:
