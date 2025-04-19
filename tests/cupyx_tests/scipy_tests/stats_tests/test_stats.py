@@ -129,7 +129,8 @@ class TestGmean:
         a = xp.array([[1, 2, 3], [4, xp.nan, 5], [6, 7, 8]], dtype=dtype)
         weights = xp.array(
             [[9, 10, xp.nan], [11, 12, 13], [14, 15, 16]], dtype=dtype)
-        return scp.stats.gmean(a, weights=weights, nan_policy='omit', axis=None)
+        return scp.stats.gmean(a, weights=weights,
+                               nan_policy='omit', axis=None)
 
     @testing.for_dtypes('fdFD')
     def test_gmean_nan_policy_raise(self, dtype):
