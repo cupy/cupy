@@ -1,7 +1,8 @@
 import cupy
 
 
-def gmean(a, axis=0, dtype=None, weights=None):
+def gmean(a, axis=0, dtype=None, weights=None,
+          nan_policy='propagate', keepdims=False):
     # This is just the gmean function from scipy,
     # but adapted to use cp functions instead of numpy/scipy ones.
     r"""Compute the weighted geometric mean along the specified axis.
@@ -56,6 +57,9 @@ def gmean(a, axis=0, dtype=None, weights=None):
 
     """
 
+    if nan_policy not in ['propagate', 'raise', 'omit']:
+        raise ValueError("nan_policy must be one of propagate, raise, omit")
+
     if dtype == cupy.float16:
         # Avoid large numerical errors in float16
         dtype = cupy.float32
@@ -66,7 +70,44 @@ def gmean(a, axis=0, dtype=None, weights=None):
 
     log_a = cupy.log(a)
 
-    return cupy.exp(cupy.average(log_a, axis=axis, weights=weights))
+    if nan_policy == 'propagate':
+
+        # The cupy functions implicitly follow this policy
+        return cupy.exp(cupy.average(log_a, axis=axis, weights=weights,
+                                     keepdims=keepdims))
+
+    # Check whether there even are any nans
+    anan = cupy.isnan(log_a).any()
+    if weights is None:
+        wnan = False
+    else:
+        wnan = cupy.isnan(weights).any()
+
+    if not (wnan or anan):
+        # If there are no nans we can again just use the functions normally
+        return cupy.exp(cupy.average(log_a, axis=axis, weights=weights,
+                                     keepdims=keepdims))
+
+    # If we reach this point, there are nans somewhere
+    if nan_policy == 'raise':
+        raise ValueError("The input contains nan values")
+
+    # At this point nan_policy must then be omit
+    if nan_policy == 'omit':
+
+        # If there are no weights, we can just use the nanmean function
+        if weights is None:
+            return cupy.exp(cupy.nanmean(log_a, axis=axis, keepdims=keepdims))
+
+        # If there are weights, we need to normalize them to 1 for each axis
+        # First, we need to remove the weights whose corresponding entry is nan
+        else:
+
+            weights = cupy.where(cupy.isnan(log_a), 0, weights)
+
+            weights /= cupy.nansum(weights, axis=axis, keepdims=True)
+            log_a *= weights
+            return cupy.exp(cupy.nansum(log_a, axis=axis, keepdims=keepdims))
 
 
 def _first(arr, axis):

@@ -99,6 +99,46 @@ class TestGmean:
 
         cupy.testing.assert_allclose(result_cp, result_np, rtol=1e-5)
 
+    @testing.for_dtypes('fdFD')
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=atol, rtol=rtol)
+    def test_zmap_nan_policy_propagate(self, xp, scp, dtype):
+        a = xp.array([4, 1, 1, xp.nan], dtype=dtype)
+        weights = xp.array([xp.nan, 4, 1, 5], dtype=dtype)
+        with numpy.errstate(invalid='ignore'):
+            return scp.stats.gmean(a, weights=weights, nan_policy='propagate')
+
+    @testing.for_dtypes('fdFD')
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=atol, rtol=rtol)
+    def test_gmean_nan_policy_omit(self, xp, scp, dtype):
+        a = xp.array([[1, 2, 3], [4, xp.nan, 5], [6, 7, 8]], dtype=dtype)
+        weights = xp.array(
+            [[9, 10, xp.nan], [11, 12, 13], [14, 15, 16]], dtype=dtype)
+        return scp.stats.gmean(a, weights=weights, nan_policy='omit', axis=0)
+
+    @testing.for_dtypes('fdFD')
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=atol, rtol=rtol)
+    def test_gmean_nan_policy_omit_with_axes(self, xp, scp, dtype):
+        a = xp.array([[1, 2, 3], [4, xp.nan, 5], [6, 7, 8]], dtype=dtype)
+        weights = xp.array(
+            [[9, 10, xp.nan], [11, 12, 13], [14, 15, 16]], dtype=dtype)
+        return scp.stats.gmean(a, weights=weights, nan_policy='omit', axis=1)
+
+    @testing.for_dtypes('fdFD')
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=atol, rtol=rtol)
+    def test_gmean_nan_policy_omit_with_axes_None(self, xp, scp, dtype):
+        a = xp.array([[1, 2, 3], [4, xp.nan, 5], [6, 7, 8]], dtype=dtype)
+        weights = xp.array(
+            [[9, 10, xp.nan], [11, 12, 13], [14, 15, 16]], dtype=dtype)
+        return scp.stats.gmean(a, weights=weights, nan_policy='omit', axis=None)
+
+    @testing.for_dtypes('fdFD')
+    def test_gmean_nan_policy_raise(self, dtype):
+        for xp, scp in [(numpy, scipy), (cupy, cupyx.scipy)]:
+            a = xp.array([[4, 1], [4, xp.nan]], dtype=dtype)
+            weights = xp.array([[4, xp.nan], [4, 1]], dtype=dtype)
+            with pytest.raises(ValueError):
+                scp.stats.gmean(a, weights=weights, nan_policy='raise')
+
 
 @testing.with_requires('scipy')
 class TestZmap:
