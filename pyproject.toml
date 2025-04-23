@@ -51,7 +51,7 @@ dynamic = ["version"]
 "Source Code" = "https://github.com/cupy/cupy"
 
 [tool.setuptools.packages.find]
-include = ["cupy", "cupyx", "cupy_backends"]
+include = ["cupy*", "cupyx*", "cupy_backends*"]
 
 [tool.setuptools.dynamic]
 version = { attr = "cupy._version.__version__" }
