@@ -63,7 +63,6 @@ class Context:
         self.include_dirs = _get_env_path('CUPY_INCLUDE_PATH', _env)
         self.library_dirs = _get_env_path('CUPY_LIBRARY_PATH', _env)
 
-        # Ported from command line arguments
         # path to the long description file (reST)
         self.long_description_path = _env.get("CUPY_INSTALL_LONG_DESCRIPTION")
         # wheel metadata (cupy/.data/_wheel.json)
