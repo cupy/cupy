@@ -1,29 +1,59 @@
+from __future__ import annotations
+
 import argparse
+import dataclasses
 import glob
 import hashlib
 import os
 import sys
-from typing import Any, List, Mapping, Optional, Tuple
+from typing import TYPE_CHECKING, Any
 
 import cupy_builder
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
+
+    from install.cupy_builder._features import Feature
 
 
 def _get_env_bool(name: str, default: bool, env: Mapping[str, str]) -> bool:
     return env[name] != '0' if name in env else default
 
 
-def _get_env_path(name: str, env: Mapping[str, str]) -> List[str]:
+def _get_env_path(name: str, env: Mapping[str, str]) -> list[str]:
     paths = env.get(name, None)
     if paths is None:
         return []
     return [x for x in paths.split(os.pathsep) if len(x) != 0]
 
 
+@dataclasses.dataclass
 class Context:
+    source_root: str
+    setup_command: str
+    use_cuda_python: bool
+    use_hip: bool
+    include_dirs: list[str]
+    library_dirs: list[str]
+    long_description_path: str | None
+    wheel_libs: list[str]
+    wheel_includes: list[str]
+    wheel_metadata_path: str | None
+    no_rpath: bool
+    profile: bool
+    linetrace: bool
+    annotate: bool
+    use_stub: bool
+    no_rpath: bool
+    use_stub: bool
+    features: dict[str, Feature]
+    cupy_cache_key: str
+    win32_cl_exe_path: str | None
+
     def __init__(
             self, source_root: str, *,
             _env: Mapping[str, str] = os.environ,
-            _argv: List[str] = sys.argv):
+            _argv: list[str] = sys.argv):
         self.source_root = source_root
         self.setup_command = _argv[1] if len(_argv) >= 2 else ''
 
@@ -35,17 +65,17 @@ class Context:
         self.library_dirs = _get_env_path('CUPY_LIBRARY_PATH', _env)
 
         cmdopts, _argv[:] = parse_args(_argv)
-        self.long_description_path: Optional[str] = (
+        self.long_description_path = (
             cmdopts.cupy_long_description)
-        self.wheel_libs: List[str] = cmdopts.cupy_wheel_lib
-        self.wheel_includes: List[str] = cmdopts.cupy_wheel_include
-        self.wheel_metadata_path: Optional[str] = (
+        self.wheel_libs = cmdopts.cupy_wheel_lib
+        self.wheel_includes = cmdopts.cupy_wheel_include
+        self.wheel_metadata_path = (
             cmdopts.cupy_wheel_metadata)
-        self.no_rpath: bool = cmdopts.cupy_no_rpath
-        self.profile: bool = cmdopts.cupy_profile
-        self.linetrace: bool = cmdopts.cupy_coverage
-        self.annotate: bool = cmdopts.cupy_coverage
-        self.use_stub: bool = cmdopts.cupy_no_cuda
+        self.no_rpath = cmdopts.cupy_no_rpath
+        self.profile = cmdopts.cupy_profile
+        self.linetrace = cmdopts.cupy_coverage
+        self.annotate = cmdopts.cupy_coverage
+        self.use_stub = cmdopts.cupy_no_cuda
 
         if _get_env_bool('CUPY_INSTALL_NO_RPATH', False, _env):
             self.no_rpath = True
@@ -76,10 +106,10 @@ class Context:
         self.cupy_cache_key = cache_key
 
         # Host compiler path for Windows, see `_command.py`.
-        self.win32_cl_exe_path: Optional[str] = None
+        self.win32_cl_exe_path = None
 
 
-def parse_args(argv: List[str]) -> Tuple[Any, List[str]]:
+def parse_args(argv: list[str]) -> tuple[Any, list[str]]:
     parser = argparse.ArgumentParser(add_help=False)
 
     parser.add_argument(
