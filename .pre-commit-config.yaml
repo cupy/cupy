@@ -42,7 +42,7 @@ repos:
       - id: mypy
         name: "mypy (install)"
         files: "^install/"
-        args: [--config-file, "install/mypy.ini", "--explicit-package-bases"]
+        args: [--config-file, "install/mypy.ini"]
         additional_dependencies: [numpy, types-setuptools, types-PyYAML]
 
   - repo: local

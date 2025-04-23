@@ -12,7 +12,7 @@ import cupy_builder
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
-    from install.cupy_builder._features import Feature
+    from cupy_builder._features import Feature
 
 
 def _get_env_bool(
