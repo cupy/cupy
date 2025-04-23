@@ -120,10 +120,45 @@ Please follow these rules when you create a feature backport PR.
 Note: PRs that do not include any changes/additions to APIs (e.g. bug fixes, documentation improvements) are usually backported by core dev members.
 It is also appreciated to make such a backport PR by any contributors, though, so that the overall development proceeds more smoothly!
 
+
 Issues and Pull Requests
 ------------------------
 
-In this section, we explain how to send pull requests (PRs).
+In this section, we explain how to send issues and pull requests (PRs).
+
+AI Policies
+~~~~~~~~~~~
+
+In the era of AI explosion, it is exciting to see how AI/LLM tools make programmers' lives easier and boost developers'
+productivity, resulting in a paradigm shift that has transformative impact to open source software development. Great
+benefits, however, are accompanied by costs that require serious treatment. For example, recently CuPy has received an
+enormous amount of bug reports in which AI tools were exploited to search for, e.g., unexpected corner cases of CuPy
+which mismatch with NumPy's behaviors but are unlikely hit by human users, or subtleties in CPU/GPU architecture and
+execution differences not yet fully understood by AI.
+
+In light of recent incidents, we would like to reiterate that CuPy being a community project is managed and maintained
+by humans, not bots or AIs, and human beings have limited bandwidth and capacity in triaging and responding to bug
+reports in addition to other development activities. A flooded issue tracker or PR review queue also hinders the
+discoverability of useful information and discussions.
+
+To ensure a smooth transition to AI-assisted development, we kindly encourage users to follow these guidelines:
+
+- Please do not spam CuPy's issue tracker with AI-based contents.
+- Please do not misuse the CuPy community as a testbed for your AI development or experiment.
+- Please understand :doc:`certain deviations from NumPy <user_guide/difference>` are expected.
+- Please only file bug reports that actually impact daily/production use of CuPy, not for hypothetical/pedantic
+  scenarios.
+
+The CuPy team reserves rights to close any bug reports proactively and preemptively without further notices, if
+it is determined by the team that the above guidelines are not followed by the reporter.
+
+If you believe your bug reports are legitimate and can be encountered in real life, but get closed by accident,
+please kindly let us know by pinging ``@cupy/triage-team`` in the closed issue.
+
+How to File an Issue
+~~~~~~~~~~~~~~~~~~~~
+
+(Work in progress.)
 
 How to Send a Pull Request
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
