@@ -1,12 +1,11 @@
 from __future__ import annotations
 
-import argparse
 import dataclasses
 import glob
 import hashlib
 import os
 import sys
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import cupy_builder
 
@@ -16,7 +15,9 @@ if TYPE_CHECKING:
     from install.cupy_builder._features import Feature
 
 
-def _get_env_bool(name: str, default: bool, env: Mapping[str, str]) -> bool:
+def _get_env_bool(
+    name: str, env: Mapping[str, str], *, default: bool = False
+) -> bool:
     return env[name] != '0' if name in env else default
 
 
@@ -36,14 +37,10 @@ class Context:
     include_dirs: list[str]
     library_dirs: list[str]
     long_description_path: str | None
-    wheel_libs: list[str]
-    wheel_includes: list[str]
     wheel_metadata_path: str | None
-    no_rpath: bool
     profile: bool
     linetrace: bool
     annotate: bool
-    use_stub: bool
     no_rpath: bool
     use_stub: bool
     features: dict[str, Feature]
@@ -53,32 +50,29 @@ class Context:
     def __init__(
             self, source_root: str, *,
             _env: Mapping[str, str] = os.environ,
-            _argv: list[str] = sys.argv):
+            _argv: list[str] = sys.argv) -> None:
         self.source_root = source_root
         self.setup_command = _argv[1] if len(_argv) >= 2 else ''
 
-        self.use_cuda_python = _get_env_bool(
-            'CUPY_USE_CUDA_PYTHON', False, _env)
-        self.use_hip = _get_env_bool(
-            'CUPY_INSTALL_USE_HIP', False, _env)
+        self.use_cuda_python = _get_env_bool('CUPY_USE_CUDA_PYTHON', _env)
+        self.use_hip = _get_env_bool('CUPY_INSTALL_USE_HIP', _env)
         self.include_dirs = _get_env_path('CUPY_INCLUDE_PATH', _env)
         self.library_dirs = _get_env_path('CUPY_LIBRARY_PATH', _env)
 
-        cmdopts, _argv[:] = parse_args(_argv)
-        self.long_description_path = (
-            cmdopts.cupy_long_description)
-        self.wheel_libs = cmdopts.cupy_wheel_lib
-        self.wheel_includes = cmdopts.cupy_wheel_include
-        self.wheel_metadata_path = (
-            cmdopts.cupy_wheel_metadata)
-        self.no_rpath = cmdopts.cupy_no_rpath
-        self.profile = cmdopts.cupy_profile
-        self.linetrace = cmdopts.cupy_coverage
-        self.annotate = cmdopts.cupy_coverage
-        self.use_stub = cmdopts.cupy_no_cuda
-
-        if _get_env_bool('CUPY_INSTALL_NO_RPATH', False, _env):
-            self.no_rpath = True
+        # Ported from command line arguments
+        # path to the long description file (reST)
+        self.long_description_path = _env.get("CUPY_INSTALL_LONG_DESCRIPTION")
+        # wheel metadata (cupy/.data/_wheel.json)
+        self.wheel_metadata_path = _env.get("CUPY_INSTALL_WHEEL_METADATA")
+        # disable adding default library directories to RPATH
+        self.no_rpath = _get_env_bool("CUPY_INSTALL_NO_RPATH", _env)
+        # enable profiling for Cython code
+        self.profile = _get_env_bool("CUPY_INSTALL_PROFILE", _env)
+        # enable coverage for Cython code
+        self.annotate = self.linetrace = _get_env_bool(
+            "CUPY_INSTALL_COVERAGE", _env)
+        # build CuPy with stub header file
+        self.use_stub = _get_env_bool("CUPY_INSTALL_NO_CUDA", _env)
 
         if os.environ.get('READTHEDOCS', None) == 'True':
             self.use_stub = True
@@ -107,39 +101,3 @@ class Context:
 
         # Host compiler path for Windows, see `_command.py`.
         self.win32_cl_exe_path = None
-
-
-def parse_args(argv: list[str]) -> tuple[Any, list[str]]:
-    parser = argparse.ArgumentParser(add_help=False)
-
-    parser.add_argument(
-        '--cupy-long-description', type=str, default=None,
-        help='path to the long description file (reST)')
-    parser.add_argument(
-        '--cupy-wheel-lib', type=str, action='append', default=[],
-        help='shared library to copy into the wheel '
-             '(can be specified for multiple times)')
-    parser.add_argument(
-        '--cupy-wheel-include', type=str, action='append', default=[],
-        help='An include file to copy into the wheel. '
-             'Delimited by a colon. '
-             'The former part is a full path of the source include file and '
-             'the latter is the relative path within cupy wheel. '
-             '(can be specified for multiple times)')
-    parser.add_argument(
-        '--cupy-wheel-metadata', type=str, default=None,
-        help='wheel metadata (cupy/.data/_wheel.json)')
-    parser.add_argument(
-        '--cupy-no-rpath', action='store_true', default=False,
-        help='disable adding default library directories to RPATH')
-    parser.add_argument(
-        '--cupy-profile', action='store_true', default=False,
-        help='enable profiling for Cython code')
-    parser.add_argument(
-        '--cupy-coverage', action='store_true', default=False,
-        help='enable coverage for Cython code')
-    parser.add_argument(
-        '--cupy-no-cuda', action='store_true', default=False,
-        help='build CuPy with stub header file')
-
-    return parser.parse_known_args(argv)

@@ -77,7 +77,6 @@ class TestParseArgs:
         options, remaining = parse_args(args)
         assert options.cupy_package_name == 'cupy-cudaXXX'
         assert options.cupy_long_description == 'foo.rst'
-        assert options.cupy_wheel_lib == ['lib1', 'lib2']
         assert options.cupy_wheel_metadata == '_wheel.json'
         assert options.cupy_no_rpath
         assert options.cupy_profile
