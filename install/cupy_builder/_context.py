@@ -12,8 +12,6 @@ import cupy_builder
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
-    from cupy_builder._features import Feature
-
 
 def _get_env_bool(
     name: str, env: Mapping[str, str], *, default: bool = False
@@ -44,7 +42,7 @@ class Context:
     linetrace: bool
     annotate: bool
     no_rpath: bool
-    features: dict[str, Feature]
+    features: dict[str, cupy_builder.Feature]
     cupy_cache_key: str
     win32_cl_exe_path: str | None
 
