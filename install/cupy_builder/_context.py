@@ -47,6 +47,10 @@ class Context:
     cupy_cache_key: str
     win32_cl_exe_path: str | None
 
+    # Deprecated
+    wheel_libs: list[str]
+    wheel_includes: list[str]
+
     def __init__(
             self, source_root: str, *,
             _env: Mapping[str, str] = os.environ,
@@ -101,3 +105,7 @@ class Context:
 
         # Host compiler path for Windows, see `_command.py`.
         self.win32_cl_exe_path = None
+
+        # Deprecated
+        self.wheel_libs = []
+        self.wheel_includes = []
