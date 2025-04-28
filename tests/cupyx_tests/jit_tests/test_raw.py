@@ -397,6 +397,133 @@ class TestRaw:
         expected = x.reshape(32, 32)[:, ::-1].ravel()
         assert bool((y == expected).all())
 
+    def test_local_vs_shared_memory(self):
+        @jit.rawkernel()
+        def f(x, y):
+            tid = jit.grid(1)
+
+            smem = jit.shared_memory(numpy.int32, 32)
+            lmem = jit.local_memory(numpy.int32, 32)
+            smem[tid] = tid
+            lmem[tid] = tid
+            jit.syncthreads()
+            smem[31-tid] = tid
+            lmem[31-tid] = tid
+            jit.syncthreads()
+            x[tid] += smem[tid]
+            y[tid] += lmem[tid]
+
+        x = cupy.zeros(32, dtype=int)
+        y = cupy.zeros(32, dtype=int)
+        expected_x = cupy.arange(31, -1, -1, dtype=int)
+        expected_y = cupy.arange(32, dtype=int)
+        f[1, 32](x, y)
+        assert bool((x == expected_x).all())
+        assert bool((y == expected_y).all())
+
+    def test_multidimensional_local_memory(self):
+        @jit.rawkernel()
+        def f(x, y, z):
+            tid = jit.grid(1)
+
+            lmem = jit.local_memory(numpy.int32, (2, 3))
+            lmem2 = jit.local_memory(numpy.int32, (2, 2, 2))
+            lmem3 = jit.local_memory(numpy.int32, (2, 2, 2, 2))
+
+            for i in range(2):
+                for j in range(3):
+                    lmem[i][j] = 1
+                for j in range(2):
+                    for k in range(2):
+                        lmem2[i][j][k] = 1
+                        for m in range(2):
+                            lmem3[i][j][k][m] = 1
+            jit.syncthreads()
+            for i in range(2):
+                for j in range(3):
+                    x[tid] += lmem[i][j]
+                for j in range(2):
+                    for k in range(2):
+                        y[tid] += lmem2[i][j][k]
+                        for m in range(2):
+                            z[tid] += lmem3[i][j][k][m]
+
+        x = cupy.zeros(32, dtype=int)
+        y = cupy.zeros(32, dtype=int)
+        z = cupy.zeros(32, dtype=int)
+        f[1, 32](x, y, z)
+        assert bool((x == 6).all())
+        assert bool((y == 8).all())
+        assert bool((z == 16).all())
+
+    def test_local_memory_assignment(self):
+        @jit.rawkernel()
+        def f(x, y, z):
+            tid = jit.grid(1)
+
+            lmem = jit.local_memory(numpy.int32, (2, 2, 2, 2))
+
+            # create local variable from local_memory array
+            lmem[1][1][1][0] = 4
+            value = lmem[1][1][1][0]
+
+            # set value in local_memory using pointer
+            pointer = lmem[1][1][1]
+            pointer[1] = 5
+
+            # set value in local_memory using higher-order pointer,
+            # and chained pointers
+            pointer2 = lmem[1]
+            pointer3 = pointer2[1]
+            pointer3[0][1] = 6
+
+            x[tid] = value
+            y[tid] = lmem[1][1][1][1]
+            z[tid] = lmem[1][1][0][1]
+
+        x = cupy.zeros(32, dtype=int)
+        y = cupy.zeros(32, dtype=int)
+        z = cupy.zeros(32, dtype=int)
+        f[1, 32](x, y, z)
+        assert bool((x == 4).all())
+        assert bool((y == 5).all())
+        assert bool((z == 6).all())
+
+    def test_local_memory_in_device_functions(self):
+        @jit.rawkernel(device=True)
+        def device_func(arr):
+            # test out 1D tuple of length 1, for good measure
+            lmem = jit.local_memory(numpy.int32, (1, ))
+            lmem[0] = arr[0]+1
+            arr[1] = lmem[0]
+
+        @jit.rawkernel(device=True)
+        def device_func2(arr):
+            lmem = jit.local_memory(numpy.int32, (1, ))
+            lmem[0] = arr[0][0][0]+2
+            arr[0][0][1] = lmem[0]
+
+        @jit.rawkernel()
+        def f(x, y):
+            tid = jit.grid(1)
+
+            lmem = jit.local_memory(numpy.int32, (2, ))
+            lmem2 = jit.local_memory(numpy.int32, (2, 2, 2))
+
+            lmem[0] = 1
+            device_func(lmem)
+            lmem2[0][0][0] = 1
+            device_func2(lmem2)
+
+            x[tid] += lmem[1]
+            y[tid] += lmem2[0][0][1]
+
+        x = cupy.zeros(32, dtype=int)
+        y = cupy.zeros(32, dtype=int)
+        f[1, 32](x, y)
+        assert bool((x == 2).all())
+        assert bool((y == 3).all())
+
     @staticmethod
     def _check(a, e):
         if a.dtype == numpy.float16:
