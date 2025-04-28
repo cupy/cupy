@@ -445,9 +445,8 @@ def cho_solve(c_and_lower, b, overwrite_b=False, check_finite=True):
     if check_finite:
         indexes = (numpy.tril_indices(c.shape[-1], -1) if lower else
                    numpy.triu_indices(c.shape[-1], 1))
-        if not cupy.isfinite(c[..., *indexes]).all():
+        if not cupy.isfinite(c[..., indexes[0], indexes[1]]).all():
             raise ValueError("Input array contains NaN or infinity.")
-        del indexes
         if not cupy.isfinite(b).all():
             raise ValueError("Input array contains NaN or infinity.")
 

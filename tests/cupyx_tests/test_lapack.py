@@ -212,10 +212,11 @@ class TestPotrs(unittest.TestCase):
         if xp == cupy:
             L = xp.linalg.cholesky(a)
             if self.lower:
-                L[..., *numpy.triu_indices(L.shape[-1], 1)] = numpy.nan
+                indexes = numpy.triu_indices(L.shape[-1], 1)
             else:
                 L = xp.moveaxis(L, -1, -2).conj()
-                L[..., *numpy.tril_indices(L.shape[-1], -1)] = numpy.nan
+                indexes = numpy.tril_indices(L.shape[-1], -1)
+            L[..., indexes[0], indexes[1]] = numpy.nan
             L = cupy.asarray(L, order=self.order)
             return lapack.potrs(L, b, self.lower)
         else:

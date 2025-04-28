@@ -378,10 +378,11 @@ class TestChosolve(unittest.TestCase):
         if xp == cupy:
             L = xp.linalg.cholesky(a)
             if self.lower:
-                L[..., *numpy.triu_indices(L.shape[-1], 1)] = numpy.nan
+                indexes = numpy.triu_indices(L.shape[-1], 1)
             else:
                 L = xp.moveaxis(L, -1, -2).conj()
-                L[..., *numpy.tril_indices(L.shape[-1], -1)] = numpy.nan
+                indexes = numpy.tril_indices(L.shape[-1], -1)
+            L[..., indexes[0], indexes[1]] = numpy.nan
             L = cupy.asarray(L, order=self.order)
             return cupy.linalg.cho_solve(
                 (L, self.lower), b, overwrite_b=self.overwrite_b)
@@ -403,9 +404,11 @@ class TestChosolve(unittest.TestCase):
 
         L = cupy.linalg.cholesky(a)
         if self.lower:
-            L[..., *numpy.triu_indices(L.shape[-1], 1)] = 0
+            indexes = numpy.triu_indices(L.shape[-1], 1)
         else:
-            L[..., *numpy.tril_indices(L.shape[-1], -1)] = 0
+            L = cupy.moveaxis(L, -1, -2).conj()
+            indexes = numpy.tril_indices(L.shape[-1], -1)
+        L[..., indexes[0], indexes[1]] = numpy.nan
         L = cupy.asarray(L, order=self.order)
         b_copy = cupy.asarray(b, copy=True)
         cupy.linalg.cho_solve((L, self.lower), b, overwrite_b=False)
