@@ -8,6 +8,7 @@ from cupy import testing
 from cupy.testing import _condition
 import cupyx
 from cupy.cublas import get_batched_gesv_limit, set_batched_gesv_limit
+from cupyx import cusolver
 
 
 @testing.parameterize(*testing.product({
@@ -339,3 +340,80 @@ class TestTensorInv(unittest.TestCase):
     def test_invalid_index(self):
         self.check_ind((12, 3, 4), ind=-1)
         self.check_ind((18, 3, 3, 2), ind=0)
+
+
+@testing.parameterize(*testing.product({
+    'shape': [(3, 4, 2, 2), (5, 3, 3), (7, 7)],
+    'nrhs': [None, 1, 8],
+    'lower': [True, False],
+    'order': ['C', 'F'],
+    'overwrite_b': [True, False]
+}))
+class TestChosolve(unittest.TestCase):
+
+    @staticmethod
+    def _solve(a, b):
+        if (
+            numpy.lib.NumpyVersion(numpy.__version__) < "2.0.0"
+            or a.shape[:-1] != b.shape
+        ):
+            return numpy.linalg.solve(a, b)
+        b = b[..., numpy.newaxis]
+        return numpy.linalg.solve(a, b)[..., 0]
+
+    @testing.for_dtypes('fdFD')
+    @testing.numpy_cupy_allclose(atol=1e-5)
+    def test_chosolve(self, xp, dtype):
+
+        if (len(self.shape) > 2 and
+                not cusolver.check_availability('potrsBatched')):
+            pytest.skip('potrsBatched is not available')
+
+        a = self._create_posdef_matrix(xp, self.shape, dtype)
+        b_shape = list(self.shape[:-1])
+        if self.nrhs is not None:
+            b_shape.append(self.nrhs)
+        b = testing.shaped_random(b_shape, xp, dtype=dtype)
+
+        if xp == cupy:
+            L = xp.linalg.cholesky(a)
+            if self.lower:
+                L[..., *numpy.triu_indices(L.shape[-1], 1)] = numpy.nan
+            else:
+                L = xp.moveaxis(L, -1, -2).conj()
+                L[..., *numpy.tril_indices(L.shape[-1], -1)] = numpy.nan
+            L = cupy.asarray(L, order=self.order)
+            return cupy.linalg.cho_solve(
+                (L, self.lower), b, overwrite_b=self.overwrite_b)
+        else:
+            return self._solve(a, b)
+
+    @testing.for_dtypes('fdFD')
+    def test_chosolve_does_not_overwrite_b(self, dtype):
+
+        if (len(self.shape) > 2 and
+                not cusolver.check_availability('potrsBatched')):
+            pytest.skip('potrsBatched is not available')
+
+        a = self._create_posdef_matrix(cupy, self.shape, dtype)
+        b_shape = list(self.shape[:-1])
+        if self.nrhs is not None:
+            b_shape.append(self.nrhs)
+        b = testing.shaped_random(b_shape, cupy, dtype=dtype)
+
+        L = cupy.linalg.cholesky(a)
+        if self.lower:
+            L[..., *numpy.triu_indices(L.shape[-1], 1)] = 0
+        else:
+            L[..., *numpy.tril_indices(L.shape[-1], -1)] = 0
+        L = cupy.asarray(L, order=self.order)
+        b_copy = cupy.asarray(b, copy=True)
+        cupy.linalg.cho_solve((L, self.lower), b, overwrite_b=False)
+        assert cupy.all(b == b_copy).get()
+
+    def _create_posdef_matrix(self, xp, shape, dtype):
+        n = shape[-1]
+        a = testing.shaped_random(shape, xp, dtype, scale=1)
+        a = a @ a.swapaxes(-2, -1).conjugate()
+        a = a + n * xp.eye(n)
+        return a
