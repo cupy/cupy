@@ -134,39 +134,6 @@ def _csr_row_index(Ax, Aj, Ap, rows):
     return Bx, Bj, Bp
 
 
-_csr_col_index_ker = _core.ElementwiseKernel(
-    'I Aj, T Ax, raw T mask, raw I new_idx',
-    'I Bj, T Bx',
-    '''
-    T mul = mask[Aj];
-    I idx = new_idx[Aj];
-
-    Bj = idx;
-    Bx = Ax*mul;
-    ''', 'cupyx_scipy_sparse_csr_col_index_ker'
-)
-
-
-def _csr_col_index(Ax, Aj, Ap, cols, n_cols):
-    """Populate indices and data arrays from the given row index
-    Args:
-        Ax (cupy.ndarray): data array from input sparse matrix
-        Aj (cupy.ndarray): indices array from input sparse matrix
-        Ap (cupy.ndarray): indptr array from input sparse matrix
-        cols (cupy.ndarray): index array of rows to populate
-        n_cols (int): number of columns in input sparse matrix
-    Returns:
-        Bx (cupy.ndarray): data array of output sparse matrix
-        Bj (cupy.ndarray): indices array of output sparse matrix
-        Ap (cupy.ndarray): indptr array from input sparse matrix
-    """
-    mask = cupy.zeros(n_cols, dtype=Ax.dtype)
-    new_idx = cupy.zeros(n_cols, dtype=cupy.int32)
-    mask[cols] = 1
-    new_idx[cols] = cupy.arange(cols.size, dtype=cupy.int32)
-    Bj, Bx = _csr_col_index_ker(Aj, Ax, mask, new_idx)
-    return Bx, Bj, Ap
-
 
 def _csr_indptr_to_coo_rows(nnz, Bp):
     from cupy_backends.cuda.libs import cusparse
