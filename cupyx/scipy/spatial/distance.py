@@ -142,7 +142,7 @@ def minkowski(u, v, p):
         raise ValueError('u and v must have the same layout '
                          '(u.order=%s, v.order=%s' % (u_order, v_order))
 
-    output_arr = cupy.zeros((1, 1), dtype=u.dtype, order=u_order)
+    output_arr = cupy.empty((1, 1), dtype=u.dtype, order=u_order)
 
     pairwise_distance(u, v, output_arr, "minkowski", p)
 
@@ -173,7 +173,7 @@ def canberra(u, v):
         raise ValueError('u and v must have the same layout '
                          '(u.order=%s, v.order=%s' % (u_order, v_order))
 
-    output_arr = cupy.zeros((1, 1), dtype=u.dtype, order=u_order)
+    output_arr = cupy.empty((1, 1), dtype=u.dtype, order=u_order)
 
     pairwise_distance(u, v, output_arr, "canberra")
 
@@ -204,7 +204,7 @@ def chebyshev(u, v):
         raise ValueError('u and v must have the same layout '
                          '(u.order=%s, v.order=%s' % (u_order, v_order))
 
-    output_arr = cupy.zeros((1, 1), dtype=u.dtype, order=u_order)
+    output_arr = cupy.empty((1, 1), dtype=u.dtype, order=u_order)
 
     pairwise_distance(u, v, output_arr, "chebyshev")
 
@@ -236,7 +236,7 @@ def cityblock(u, v):
         raise ValueError('u and v must have the same layout '
                          '(u.order=%s, v.order=%s' % (u_order, v_order))
 
-    output_arr = cupy.zeros((1, 1), dtype=u.dtype, order=u_order)
+    output_arr = cupy.empty((1, 1), dtype=u.dtype, order=u_order)
 
     pairwise_distance(u, v, output_arr, "cityblock")
 
@@ -272,7 +272,7 @@ def correlation(u, v):
         raise ValueError('u and v must have the same layout '
                          '(u.order=%s, v.order=%s' % (u_order, v_order))
 
-    output_arr = cupy.zeros((1, 1), dtype=u.dtype, order=u_order)
+    output_arr = cupy.empty((1, 1), dtype=u.dtype, order=u_order)
 
     pairwise_distance(u, v, output_arr, "correlation")
 
@@ -305,7 +305,7 @@ def cosine(u, v):
         raise ValueError('u and v must have the same layout '
                          '(u.order=%s, v.order=%s' % (u_order, v_order))
 
-    output_arr = cupy.zeros((1, 1), dtype=u.dtype, order=u_order)
+    output_arr = cupy.empty((1, 1), dtype=u.dtype, order=u_order)
 
     pairwise_distance(u, v, output_arr, "cosine")
 
@@ -340,7 +340,7 @@ def hamming(u, v):
         raise ValueError('u and v must have the same layout '
                          '(u.order=%s, v.order=%s' % (u_order, v_order))
 
-    output_arr = cupy.zeros((1, 1), dtype=u.dtype, order=u_order)
+    output_arr = cupy.empty((1, 1), dtype=u.dtype, order=u_order)
 
     pairwise_distance(u, v, output_arr, "hamming")
 
@@ -371,7 +371,7 @@ def euclidean(u, v):
         raise ValueError('u and v must have the same layout '
                          '(u.order=%s, v.order=%s' % (u_order, v_order))
 
-    output_arr = cupy.zeros((1, 1), dtype=u.dtype, order=u_order)
+    output_arr = cupy.empty((1, 1), dtype=u.dtype, order=u_order)
 
     pairwise_distance(u, v, output_arr, "euclidean")
 
@@ -406,7 +406,7 @@ def jensenshannon(u, v):
         raise ValueError('u and v must have the same layout '
                          '(u.order=%s, v.order=%s' % (u_order, v_order))
 
-    output_arr = cupy.zeros((1, 1), dtype=u.dtype, order=u_order)
+    output_arr = cupy.empty((1, 1), dtype=u.dtype, order=u_order)
 
     pairwise_distance(u, v, output_arr, "jensenshannon")
 
@@ -441,7 +441,7 @@ def russellrao(u, v):
         raise ValueError('u and v must have the same layout '
                          '(u.order=%s, v.order=%s' % (u_order, v_order))
 
-    output_arr = cupy.zeros((1, 1), dtype=u.dtype, order=u_order)
+    output_arr = cupy.empty((1, 1), dtype=u.dtype, order=u_order)
 
     pairwise_distance(u, v, output_arr, "russellrao")
 
@@ -473,7 +473,7 @@ def sqeuclidean(u, v):
         raise ValueError('u and v must have the same layout '
                          '(u.order=%s, v.order=%s' % (u_order, v_order))
 
-    output_arr = cupy.zeros((1, 1), dtype=u.dtype, order=u_order)
+    output_arr = cupy.empty((1, 1), dtype=u.dtype, order=u_order)
 
     pairwise_distance(u, v, output_arr, "sqeuclidean")
 
@@ -506,7 +506,7 @@ def hellinger(u, v):
         raise ValueError('u and v must have the same layout '
                          '(u.order=%s, v.order=%s' % (u_order, v_order))
 
-    output_arr = cupy.zeros((1, 1), dtype=u.dtype, order=u_order)
+    output_arr = cupy.empty((1, 1), dtype=u.dtype, order=u_order)
 
     pairwise_distance(u, v, output_arr, "hellinger")
 
@@ -541,7 +541,7 @@ def kl_divergence(u, v):
         raise ValueError('u and v must have the same layout '
                          '(u.order=%s, v.order=%s' % (u_order, v_order))
 
-    output_arr = cupy.zeros((1, 1), dtype=u.dtype, order=u_order)
+    output_arr = cupy.empty((1, 1), dtype=u.dtype, order=u_order)
     pairwise_distance(u, v, output_arr, "kl_divergence")
 
     return output_arr[0, 0]
@@ -619,13 +619,12 @@ def cdist(XA, XB, metric='euclidean', out=None, **kwargs):
             out = out.astype('float32', copy=False)
         if out.shape != (mA, mB):
             cupy.resize(out, (mA, mB))
-        out[:] = 0.0
 
     if isinstance(metric, str):
         mstr = metric.lower()
         metric_info = _METRIC_ALIAS.get(mstr, None)
         if metric_info is not None:
-            output_arr = out if out is not None else cupy.zeros((mA, mB),
+            output_arr = out if out is not None else cupy.empty((mA, mB),
                                                                 dtype=XA.dtype,
                                                                 order=XA_order)
             pairwise_distance(XA, XB, output_arr, metric, p)

@@ -14,7 +14,7 @@ Requirements
     * This requirement is optional if you install CuPy from ``conda-forge``. However, you still need to have a compatible
       driver installed for your GPU. See :ref:`install_cupy_from_conda_forge` for details.
 
-* `Python <https://python.org/>`_: v3.10 / v3.11 / v3.12
+* `Python <https://python.org/>`_: v3.10 / v3.11 / v3.12 / v3.13
 
 .. note::
 
@@ -31,7 +31,7 @@ NumPy/SciPy-compatible API in CuPy v14 is based on NumPy 2.1 and SciPy 1.14, and
 
     * Required only when copying sparse matrices from GPU to CPU (see :doc:`../reference/scipy_sparse`.)
 
-* `Optuna <https://optuna.org/>`_ (*optional*): v3.x
+* `Optuna <https://optuna.org/>`_ (*optional*): v3.x / v4.x
 
     * Required only when using :ref:`kernel_param_opt`.
 
@@ -54,7 +54,7 @@ Part of the CUDA features in CuPy will be activated only when the corresponding 
 
     * The library to accelerate tensor operations. See :doc:`../reference/environment` for the details.
 
-* `NCCL <https://developer.nvidia.com/nccl>`_: v2.16 / v2.17
+* `NCCL <https://developer.nvidia.com/nccl>`_: v2.16 / v2.17 / v2.18 / v2.19 / v2.20 / v2.21 / v2.22 / v2.25
 
     * The library to perform collective multi-GPU / multi-node computations.
 
@@ -62,7 +62,7 @@ Part of the CUDA features in CuPy will be activated only when the corresponding 
 
     * The library to accelerate deep neural network computations.
 
-* `cuSPARSELt <https://docs.nvidia.com/cuda/cusparselt/>`_: v0.6.0 / v0.6.1
+* `cuSPARSELt <https://docs.nvidia.com/cuda/cusparselt/>`_: v0.7.0 / v0.7.1
 
     * The library to accelerate sparse matrix-matrix multiplication.
 
@@ -405,17 +405,17 @@ On CentOS 6 / 7::
 
 
 Using CuPy on AMD GPU (experimental)
-====================================
+------------------------------------
 
 CuPy has an experimental support for AMD GPU (ROCm).
 
 Requirements
-------------
+~~~~~~~~~~~~
 
-* `AMD GPU supported by ROCm <https://github.com/RadeonOpenCompute/ROCm#Hardware-and-Software-Support>`_
+* `AMD GPU supported by ROCm <https://rocm.docs.amd.com/projects/install-on-linux/en/latest/reference/system-requirements.html>`_
 
-* `ROCm <https://rocmdocs.amd.com/en/latest/index.html>`_: v4.3 / v5.0
-    * See the `ROCm Installation Guide <https://rocmdocs.amd.com/en/latest/Installation_Guide/Installation-Guide.html>`_ for details.
+* `ROCm <https://rocm.docs.amd.com/en/latest/>`_ 4.x / 5.x / 6.x
+    * See the `Installation Guide <https://rocm.docs.amd.com/projects/install-on-linux/en/latest/install/quick-start.html>`_ for details.
 
 The following ROCm libraries are required:
 
@@ -423,15 +423,20 @@ The following ROCm libraries are required:
 
   $ sudo apt install hipblas hipsparse rocsparse rocrand hiprand rocthrust rocsolver rocfft hipfft hipcub rocprim rccl roctracer-dev
 
+.. note::
+
+   ROCm binary packages (wheels) and ROCm Docker images are unavailable in recent CuPy versions (v13.4.0+).
+   We are currently working on improving packaging to improve this situation. Follow `#8607 <https://github.com/cupy/cupy/issues/8607>`_ for the latest status.
+
 Environment Variables
----------------------
+~~~~~~~~~~~~~~~~~~~~~
 
 When building or running CuPy for ROCm, the following environment variables are effective.
 
 * ``ROCM_HOME``: directory containing the ROCm software (e.g., ``/opt/rocm``).
 
 Docker
-------
+~~~~~~
 
 You can try running CuPy for ROCm using Docker.
 
@@ -442,7 +447,7 @@ You can try running CuPy for ROCm using Docker.
 .. _install_hip:
 
 Installing Binary Packages
---------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Wheels (precompiled binary packages) are available for Linux (x86_64).
 Package names are different depending on your ROCm version.
@@ -457,8 +462,12 @@ Package names are different depending on your ROCm version.
    * - v5.0
      - ``$ pip install cupy-rocm-5-0``
 
+.. note::
+
+   As of now, you need to build CuPy from source to use CuPy with ROCm 6+.
+
 Building CuPy for ROCm From Source
-----------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 To build CuPy from source, set the ``CUPY_INSTALL_USE_HIP``, ``ROCM_HOME``, and ``HCC_AMDGPU_TARGET`` environment variables.
 (``HCC_AMDGPU_TARGET`` is the ISA name supported by your GPU.
@@ -469,7 +478,7 @@ You can specify a comma-separated list of ISAs if you have multiple GPUs of diff
 
   $ export CUPY_INSTALL_USE_HIP=1
   $ export ROCM_HOME=/opt/rocm
-  $ export HCC_AMDGPU_TARGET=gfx906
+  $ export HCC_AMDGPU_TARGET=gfx908
   $ pip install cupy
 
 .. note::
@@ -478,7 +487,7 @@ You can specify a comma-separated list of ISAs if you have multiple GPUs of diff
   This behavior is specific to ROCm builds; when building CuPy for NVIDIA CUDA, the build result is not affected by the host configuration.
 
 Limitations
------------
+~~~~~~~~~~~
 
 The following features are not available due to the limitation of ROCm or because that they are specific to CUDA:
 
