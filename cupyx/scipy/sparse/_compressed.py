@@ -614,37 +614,24 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
                 _scalar.get_typename(self.data.real.dtype),
             )
             fillB = self._fill_B_complex.get_function(ker_name)
-            threads = 32
-            fillB((M,),
-                  (threads,),
-                  (M,
-                   self.indptr,
-                   self.indices,
-                   self.data,
-                   col_offset,
-                   col_order,
-                   Bp,
-                   Bj,
-                   Bx)
-                  )
         else:
             ker_name = 'fill_B<{}>'.format(
                 _scalar.get_typename(self.data.dtype),
             )
             fillB = self._fill_B.get_function(ker_name)
-            threads = 32
-            fillB((M,),
-                  (threads,),
-                  (M,
-                   self.indptr,
-                   self.indices,
-                   self.data,
-                   col_offset,
-                   col_order,
-                   Bp,
-                   Bj,
-                   Bx)
-                  )
+        threads = 32
+        fillB((M,),
+              (threads,),
+              (M,
+               self.indptr,
+               self.indices,
+               self.data,
+               col_offset,
+               col_order,
+               Bp,
+               Bj,
+               Bx),
+              )
 
         out = self.__class__(
             (Bx, Bj, Bp),
