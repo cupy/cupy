@@ -646,7 +646,6 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
                    Bx)
                   )
 
-        print(self._swap(M, n_idx))
         out = self.__class__(
             (Bx, Bj, Bp),
             dtype=self.dtype,
