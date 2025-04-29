@@ -134,7 +134,6 @@ def _csr_row_index(Ax, Aj, Ap, rows):
     return Bx, Bj, Bp
 
 
-
 def _csr_indptr_to_coo_rows(nnz, Bp):
     from cupy_backends.cuda.libs import cusparse
 

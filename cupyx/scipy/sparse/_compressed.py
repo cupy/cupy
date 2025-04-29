@@ -512,7 +512,6 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
                           ],
     )
 
-
     _fill_B_kernel_complex = r"""
     template<typename T> __global__ void
     fill_B_complex(const int  n_row,
@@ -571,15 +570,15 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         n_idx = idx.size
         new_shape = self._swap(M, n_idx)
         if self.nnz == 0 or n_idx == 0:
-            
+
             return self.__class__(new_shape, dtype=self.dtype)
 
-        #Create buffers
+        # Create buffers
         col_counts = cupy.zeros(N, dtype=cupy.int32)
         Bp = cupy.empty(M + 1, dtype=cupy.int32)
         Bp[0] = 0
 
-        #Count occurences of each column
+        # Count occurences of each column
         thread_count = 256
 
         block_count = (n_idx + thread_count - 1) // thread_count
@@ -588,15 +587,15 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
                        (thread_count,),
                        (n_idx, idx, col_counts))
 
-        #Compute Bp
+        # Compute Bp
         self._calc_Bp_minor((M,),
-                (thread_count,),
-                (M,
-                self.indptr,
-                self.indices,
-                col_counts,
-                Bp)
-            )
+                            (thread_count,),
+                            (M,
+                             self.indptr,
+                             self.indices,
+                             col_counts,
+                             Bp)
+                            )
 
         # Compute col_order and col_offset
         col_order = cupy.argsort(idx).astype(cupy.int32)
@@ -609,43 +608,43 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         Bj = cupy.empty(nnzB, dtype=cupy.int32)
         Bx = cupy.empty(nnzB, dtype=self.data.dtype)
 
-        #Compute Bj and Bx
+        # Compute Bj and Bx
         if self.dtype.kind == 'c':
             ker_name = 'fill_B_complex<{}>'.format(
                 _scalar.get_typename(self.data.real.dtype),
             )
             fillB = self._fill_B_complex.get_function(ker_name)
-            threads= 32
+            threads = 32
             fillB((M,),
-                (threads,),
-                (M,
-                self.indptr,
-                self.indices,
-                self.data,
-                col_offset,
-                col_order,
-                Bp,
-                Bj,
-                Bx)
-            )
+                  (threads,),
+                  (M,
+                   self.indptr,
+                   self.indices,
+                   self.data,
+                   col_offset,
+                   col_order,
+                   Bp,
+                   Bj,
+                   Bx)
+                  )
         else:
             ker_name = 'fill_B<{}>'.format(
                 _scalar.get_typename(self.data.dtype),
             )
             fillB = self._fill_B.get_function(ker_name)
-            threads= 32
+            threads = 32
             fillB((M,),
-                (threads,),
-                (M,
-                self.indptr,
-                self.indices,
-                self.data,
-                col_offset,
-                col_order,
-                Bp,
-                Bj,
-                Bx)
-            )
+                  (threads,),
+                  (M,
+                   self.indptr,
+                   self.indices,
+                   self.data,
+                   col_offset,
+                   col_order,
+                   Bp,
+                   Bj,
+                   Bx)
+                  )
 
         print(self._swap(M, n_idx))
         out = self.__class__(
@@ -654,7 +653,6 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             shape=new_shape,
         )
         return out
-
 
     def _major_slice(self, idx, copy=False):
         """Index along the major axis where idx is a slice object.
