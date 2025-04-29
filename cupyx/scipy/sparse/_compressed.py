@@ -508,7 +508,60 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         code=_fill_B_kernel,
         options=('-std=c++11',),
         name_expressions=['fill_B<float>',
-                          'fill_B<double>'],
+                          'fill_B<double>',
+                          ],
+    )
+
+
+    _fill_B_kernel_complex = r"""
+    template<typename T> __global__ void
+    fill_B_complex(const int  n_row,
+                        const int* __restrict__ Ap,
+                        const int* __restrict__ Aj,
+                        const   T* __restrict__ Ax,
+                        const int* __restrict__ col_offset,
+                        const int* __restrict__ col_order,
+                        const int* __restrict__ Bp,
+                        int*       __restrict__ Bj,
+                        T*       __restrict__ Bx)
+    {
+        // 1 block = 1 row
+        const int row = blockIdx.x;
+        if (row >= n_row) return;
+
+        // atomic write pointer
+        __shared__ int row_ptr;
+        if (threadIdx.x == 0) row_ptr = Bp[row];
+        __syncthreads();
+
+        for (int p = Ap[row] +threadIdx.x; p < Ap[row + 1]; p +=blockDim.x)
+        {
+            int col   = Aj[p];
+            int stop  = col_offset[col];
+            int start = (col == 0) ? 0 : col_offset[col - 1];
+            int cnt   = stop - start;
+            if (cnt == 0) continue;
+
+            T v = Ax[p*2];
+            T i = Ax[p*2+1];
+            // unique slice for this thread
+            int my_out = atomicAdd(&row_ptr, cnt);
+            for (int k = 0; k < cnt; ++k)
+            {
+                Bj[my_out + k] = col_order[start + k];
+                Bx[(my_out + k)*2] = v;
+                Bx[(my_out + k)*2 + 1] = i;
+            }
+        }
+    }
+    """
+
+    _fill_B_complex = _core.RawModule(
+        code=_fill_B_kernel_complex,
+        options=('-std=c++11',),
+        name_expressions=['fill_B_complex<float>',
+                          'fill_B_complex<double>',
+                          ],
     )
 
     def _minor_index_fancy(self, idx):
@@ -516,8 +569,10 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         """
         M, N = self._swap(*self.shape)
         n_idx = idx.size
+        new_shape = self._swap(M, n_idx)
         if self.nnz == 0 or n_idx == 0:
-            return self.__class__((M, n_idx), dtype=self.dtype)
+            
+            return self.__class__(new_shape, dtype=self.dtype)
 
         #Create buffers
         col_counts = cupy.zeros(N, dtype=cupy.int32)
@@ -555,30 +610,50 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         Bx = cupy.empty(nnzB, dtype=self.data.dtype)
 
         #Compute Bj and Bx
-        ker_name = 'fill_B<{}>'.format(
-            _scalar.get_typename(self.data.dtype),
-        )
+        if self.dtype.kind == 'c':
+            ker_name = 'fill_B_complex<{}>'.format(
+                _scalar.get_typename(self.data.real.dtype),
+            )
+            fillB = self._fill_B_complex.get_function(ker_name)
+            threads= 32
+            fillB((M,),
+                (threads,),
+                (M,
+                self.indptr,
+                self.indices,
+                self.data,
+                col_offset,
+                col_order,
+                Bp,
+                Bj,
+                Bx)
+            )
+        else:
+            ker_name = 'fill_B<{}>'.format(
+                _scalar.get_typename(self.data.dtype),
+            )
+            fillB = self._fill_B.get_function(ker_name)
+            threads= 32
+            fillB((M,),
+                (threads,),
+                (M,
+                self.indptr,
+                self.indices,
+                self.data,
+                col_offset,
+                col_order,
+                Bp,
+                Bj,
+                Bx)
+            )
 
-        print(ker_name)
-        fillB = self._fill_B.get_function(ker_name)
-        threads= 32
-        fillB((M,),
-            (threads,),
-            (M,
-            self.indptr,
-            self.indices,
-            self.data,
-            col_offset,
-            col_order,
-            Bp,
-            Bj,
-            Bx)
-        )
-        return self.__class__(
+        print(self._swap(M, n_idx))
+        out = self.__class__(
             (Bx, Bj, Bp),
             dtype=self.dtype,
-            shape=self._swap(M, n_idx),
+            shape=new_shape,
         )
+        return out
 
 
     def _major_slice(self, idx, copy=False):
