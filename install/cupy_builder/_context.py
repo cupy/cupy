@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 import cupy_builder
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping
+    from collections.abc import Mapping, Sequence
 
 
 def _get_env_bool(
@@ -53,7 +53,7 @@ class Context:
     def __init__(
             self, source_root: str, *,
             _env: Mapping[str, str] = os.environ,
-            _argv: list[str] = sys.argv) -> None:
+            _argv: Sequence[str] = sys.argv) -> None:
         self.source_root = source_root
         self.setup_command = _argv[1] if len(_argv) >= 2 else ''
 
