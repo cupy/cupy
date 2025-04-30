@@ -521,9 +521,7 @@ def prepare_wheel_libs(ctx: Context):
     package_files = [x[1] for x in files_to_copy] + [
         'cupy/.data/_depends.json',
     ]
-    return [
-        os.path.relpath(f, "cupy") for f in package_files if os.path.isfile(f)
-    ]
+    return [os.path.relpath(f, 'cupy') for f in package_files]
 
 
 def get_ext_modules(use_cython: bool, ctx: Context):
