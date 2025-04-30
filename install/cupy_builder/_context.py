@@ -74,10 +74,10 @@ class Context:
         # disable adding default library directories to RPATH
         self.no_rpath = _get_env_bool("CUPY_INSTALL_NO_RPATH", _env)
         # enable profiling for Cython code
-        self.profile = _get_env_bool("CUPY_INSTALL_PROFILE", _env)
+        self.profile = _get_env_bool("CUPY_INSTALL_CYTHON_PROFILE", _env)
         # enable coverage for Cython code
         self.annotate = self.linetrace = _get_env_bool(
-            "CUPY_INSTALL_COVERAGE", _env)
+            "CUPY_INSTALL_CYTHON_COVERAGE", _env)
 
         if os.environ.get('READTHEDOCS', None) == 'True':
             self.use_stub = True

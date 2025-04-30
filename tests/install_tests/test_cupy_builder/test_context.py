@@ -60,12 +60,11 @@ class TestContext:
             'CUPY_INSTALL_USE_HIP': '1',
             'CUPY_INCLUDE_PATH': f'/tmp/include{os.pathsep}/tmp2/include',
             'CUPY_LIBRARY_PATH': f'/tmp/lib{os.pathsep}/tmp2/lib',
-            # Ported from args
             'CUPY_INSTALL_LONG_DESCRIPTION': 'foo.rst',
             'CUPY_INSTALL_WHEEL_METADATA': '_wheel.json',
             'CUPY_INSTALL_NO_RPATH': '1',
-            'CUPY_INSTALL_PROFILE': '1',
-            'CUPY_INSTALL_COVERAGE': '1',
+            'CUPY_INSTALL_CYTHON_PROFILE': '1',
+            'CUPY_INSTALL_CYTHON_COVERAGE': '1',
             'CUPY_INSTALL_NO_MEANING': '1',  # dummy
         }, _argv=[])
 
