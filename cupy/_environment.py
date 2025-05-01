@@ -11,7 +11,7 @@ import platform
 import re
 import shutil
 import sys
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Optional
 import warnings
 
 
@@ -268,14 +268,14 @@ def get_cupy_cuda_lib_path():
     return os.path.abspath(cupy_cuda_lib_path)
 
 
-def get_preload_config() -> Optional[Dict[str, Any]]:
+def get_preload_config() -> Optional[dict[str, Any]]:
     global _preload_config
     if _preload_config is None:
         _preload_config = _get_json_data('_wheel.json')
     return _preload_config
 
 
-def _get_json_data(name: str) -> Optional[Dict[str, Any]]:
+def _get_json_data(name: str) -> Optional[dict[str, Any]]:
     config_path = os.path.join(
         get_cupy_install_path(), 'cupy', '.data', name)
     if not os.path.exists(config_path):
@@ -384,7 +384,7 @@ def _preload_library(lib):
                 _log(f'Library {lib} could not be preloaded: {e}')
 
 
-def _parse_version(version: str) -> Tuple[int, int, int]:
+def _parse_version(version: str) -> tuple[int, int, int]:
     parts = re.split(r'[^\d]', version, maxsplit=3)
     major = int(parts[0])
     minor = int(parts[1]) if len(parts) >= 2 else 0
@@ -392,7 +392,7 @@ def _parse_version(version: str) -> Tuple[int, int, int]:
     return major, minor, patch
 
 
-def _get_cutensor_from_wheel(version: str, cuda: str) -> List[str]:
+def _get_cutensor_from_wheel(version: str, cuda: str) -> list[str]:
     """
     Returns the list of shared library path candidates for cuTENSOR
     installed via Pip (cutensor-cuXX package).
@@ -464,7 +464,7 @@ You can install the library by:
 ''')
 
 
-def _get_include_dir_from_conda_or_wheel(major: int, minor: int) -> List[str]:
+def _get_include_dir_from_conda_or_wheel(major: int, minor: int) -> list[str]:
     # FP16 headers from CUDA 12.2+ depends on headers from CUDA Runtime.
     # See https://github.com/cupy/cupy/issues/8466.
     if major < 12 or (major == 12 and minor < 2):

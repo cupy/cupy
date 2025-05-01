@@ -23,7 +23,7 @@ def _eval_or_error(func, errors):
         return repr(e)
 
 
-class _InstallInfo(object):
+class _InstallInfo:
 
     # TODO(niboshi): Add is_binary_distribution
 

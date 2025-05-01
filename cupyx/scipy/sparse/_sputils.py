@@ -74,9 +74,9 @@ def validateaxis(axis):
         # dimensions, so let's make it explicit that they are not
         # allowed to be passed in
         if isinstance(axis, tuple):
-            raise TypeError(("Tuples are not accepted for the 'axis' "
-                             "parameter. Please pass in one of the "
-                             "following: {-2, -1, 0, 1, None}."))
+            raise TypeError("Tuples are not accepted for the 'axis' "
+                            "parameter. Please pass in one of the "
+                            "following: {-2, -1, 0, 1, None}.")
 
         axis_type = type(axis)
 
