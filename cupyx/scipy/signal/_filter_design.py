@@ -566,7 +566,7 @@ def _validate_sos(sos):
     return sos, n_sections
 
 
-def sosfreqz(sos, worN=512, whole=False, fs=2*pi):
+def freqz_sos(sos, worN=512, whole=False, fs=2*pi):
     r"""
     Compute the frequency response of a digital filter in SOS format.
 
@@ -626,6 +626,11 @@ def sosfreqz(sos, worN=512, whole=False, fs=2*pi):
         w, rowh = freqz(row[:3], row[3:], worN=worN, whole=whole, fs=fs)
         h *= rowh
     return w, h
+
+
+def sosfreqz(sos, worN=512, whole=False, fs=2*pi):
+    """A legacy alias for freqz_sos."""
+    return freqz_sos(sos, worN, whole, fs)
 
 
 def _hz_to_erb(hz):
