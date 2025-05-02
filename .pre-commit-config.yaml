@@ -16,10 +16,10 @@ repos:
       - id: fix-byte-order-marker
       - id: check-yaml
 
-  - repo: https://github.com/hhatto/autopep8
-    rev: v2.3.1
-    hooks:
-      - id: autopep8
+#  - repo: https://github.com/hhatto/autopep8
+#    rev: v2.3.1
+#    hooks:
+#      - id: autopep8
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.8.3
