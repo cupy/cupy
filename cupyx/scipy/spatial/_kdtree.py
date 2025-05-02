@@ -444,7 +444,7 @@ class KDTree:
         -----
         The `output_type= 'set'` is supported in this updated version.
 
-        
+
         Examples
         --------
         You can search all pairs of points in a kd-tree within a distance:
@@ -463,7 +463,7 @@ class KDTree:
         >>> plt.show()
 
         """
-        
+
         if output_type == 'set':
             # Return a set of pairs (i, j)
             results = set()  # Using set to store unique pairs
@@ -491,13 +491,13 @@ class KDTree:
             tree = self.tree.astype(common_dtype)
         if cupy.dtype(x.dtype) is not common_dtype:
             x = x.astype(common_dtype)
-        
+
         return find_nodes_in_radius(
             x, tree, self.index, self.boxsize, self.bounds,
             r, p=p, eps=eps, return_sorted=True, return_tuples=True,
             adjust_to_box=self.copy_query_points
         )
-    
+
     def count_neighbors(self, other, r, p=2.0, weights=None, cumulative=True):
         """
         Count how many nearby pairs can be formed.
