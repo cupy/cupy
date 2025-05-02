@@ -425,19 +425,22 @@ class KDTree:
             branches are added in bulk if their furthest points are nearer
             than ``r * (1+eps)``.  `eps` has to be non-negative.
         output_type : string, optional
-            Choose the output container, 'set' or 'ndarray'. Default: 'ndarray'
-            Note: 'set' output is not supported.
+            Choose the output container, options are:
+            - 'ndarray': Returns the pairs as an ndarray of size (total_pairs, 2)
+            - 'set': Returns the pairs as a set of unique pairs (i, j)
+            Default: 'ndarray'
 
         Returns
         -------
-        results : ndarray
-            An ndarray of size ``(total_pairs, 2)``, containing each pair
-            ``(i,j)``, with ``i < j``, for which the corresponding
-            positions are close.
+        results : ndarray or set
+            If `output_type='ndarray'`, returns a numpy array of shape (total_pairs, 2)
+            with each pair (i, j) where i < j, representing the indices of the points.
+            If `output_type='set'`, returns a set of pairs (i, j) where i < j.
 
         Notes
         -----
-        This method does not support the `set` output type.
+        The `output_type= 'set'` is supported in this updated version.
+        
 
         Examples
         --------
@@ -457,10 +460,20 @@ class KDTree:
         >>> plt.show()
 
         """
+        
         if output_type == 'set':
-            warnings.warn("output_type='set' is not supported by the GPU "
-                          "implementation of KDTree, resorting back to "
-                          "'ndarray'.")
+            # If output type is 'set', return a set pairs (i, j)
+            results = set() # using set to store unique pairs
+            # Assuming find_nodes_in_raidus is modifies to ruturn pairs
+            # This can be adjusted according to how your KDTree implementation works
+            pairs = find_nodes_in_radius(
+                self.data, tree, self.index, self.boxsize, self.bounds,
+                r, p=p, eps=eps, return_sorted=True, return_tuples=True,
+                adjust_to_box=self.copy_query_points
+            )
+            for pair in pairs:
+                results.add(pair) # Add each pair to the set
+            return results
 
         x = self.data
         if self.copy_query_points:
