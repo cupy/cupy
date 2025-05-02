@@ -444,8 +444,8 @@ class KDTree:
         Notes
         -----
         The `output_type= 'set'` is supported in this updated version.
-        
 
+        
         Examples
         --------
         You can search all pairs of points in a kd-tree within a distance:
