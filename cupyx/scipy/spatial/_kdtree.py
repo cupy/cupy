@@ -426,16 +426,20 @@ class KDTree:
             than ``r * (1+eps)``.  `eps` has to be non-negative.
         output_type : string, optional
             Choose the output container, options are:
-            - 'ndarray': Returns the pairs as an ndarray of size (total_pairs, 2)
+            - 'ndarray': Returns the pairs as an ndarray of size
+            (total_pairs, 2)
             - 'set': Returns the pairs as a set of unique pairs (i, j)
             Default: 'ndarray'
 
         Returns
         -------
         results : ndarray or set
-            If `output_type='ndarray'`, returns a numpy array of shape (total_pairs, 2)
-            with each pair (i, j) where i < j, representing the indices of the points.
-            If `output_type='set'`, returns a set of pairs (i, j) where i < j.
+            If `output_type='ndarray'`, returns a numpy array of shape
+            (total_pairs, 2)
+            with each pair (i, j) where i < j, representing the indices of
+            the points.
+            If `output_type='set'`, returns a set of pairs (i, j) where
+            i < j.
 
         Notes
         -----
@@ -465,9 +469,11 @@ class KDTree:
             # If output type is 'set', return a set pairs (i, j)
             results = set() # using set to store unique pairs
             # Assuming find_nodes_in_raidus is modifies to ruturn pairs
-            # This can be adjusted according to how your KDTree implementation works
+            # This can be adjusted according to how your KDTree
+            # implementation works
+
             pairs = find_nodes_in_radius(
-                self.data, tree, self.index, self.boxsize, self.bounds,
+                self.data, self.tree, self.index, self.boxsize, self.bounds,
                 r, p=p, eps=eps, return_sorted=True, return_tuples=True,
                 adjust_to_box=self.copy_query_points
             )
