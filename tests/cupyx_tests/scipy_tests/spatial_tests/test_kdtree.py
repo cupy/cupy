@@ -337,3 +337,12 @@ class TestPairs:
         _, tree = create_random_kd_tree(xp, scp, *args, scale=1.0)
         res = tree.query_pairs(0.5, output_type='ndarray')
         return res
+    def test_query_pairs_set_output_type(self, xp, scp):
+        _, tree = create_random_kd_tree(xp, scp, *args, scale=1.0)
+        pairs = tree.query_pairs(r=0.5, output_type='set')
+        
+        # Check that the result is a set
+        assert isinstance(pairs, set)
+        
+        # Ensure that i < j in all pairs
+        assert all(i < j for i, j in pairs)
