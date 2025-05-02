@@ -1,4 +1,3 @@
-
 import warnings
 
 import cupy
@@ -466,26 +465,24 @@ class KDTree:
         """
         
         if output_type == 'set':
-           # If output type is 'set', return a set pairs (i, j)
-            results = set() # using set to store unique pairs
-            # Assuming find_nodes_in_raidus is modifies to ruturn pairs
-            # This can be adjusted according to how your KDTree
-            # implementation works
+            # Return a set of pairs (i, j)
+            results = set()  # Using set to store unique pairs
 
+            # Assuming find_nodes_in_radius is modified to return pairs
             pairs = find_nodes_in_radius(
                 self.data, self.tree, self.index, self.boxsize, self.bounds,
                 r, p=p, eps=eps, return_sorted=True, return_tuples=True,
                 adjust_to_box=self.copy_query_points
             )
             for pair in pairs:
-                results.add(pair) # Add each pair to the set
+                results.add(pair)  # Add each pair to the set
             return results
 
         x = self.data
         if self.copy_query_points:
             if x.dtype != cupy.float64:
-                raise ValueError('periodic KDTree is only available '
-                                 'on float64')
+                raise ValueError(
+                    'periodic KDTree is only available on float64')
             x = x.copy()
 
         common_dtype = cupy.result_type(self.tree.dtype, x.dtype)
@@ -494,12 +491,13 @@ class KDTree:
             tree = self.tree.astype(common_dtype)
         if cupy.dtype(x.dtype) is not common_dtype:
             x = x.astype(common_dtype)
-
+        
         return find_nodes_in_radius(
             x, tree, self.index, self.boxsize, self.bounds,
             r, p=p, eps=eps, return_sorted=True, return_tuples=True,
-            adjust_to_box=self.copy_query_points)
-
+            adjust_to_box=self.copy_query_points
+        )
+    
     def count_neighbors(self, other, r, p=2.0, weights=None, cumulative=True):
         """
         Count how many nearby pairs can be formed.
