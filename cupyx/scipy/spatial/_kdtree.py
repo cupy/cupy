@@ -466,7 +466,7 @@ class KDTree:
         """
         
         if output_type == 'set':
-            # If output type is 'set', return a set pairs (i, j)
+           # If output type is 'set', return a set pairs (i, j)
             results = set() # using set to store unique pairs
             # Assuming find_nodes_in_raidus is modifies to ruturn pairs
             # This can be adjusted according to how your KDTree
@@ -622,4 +622,3 @@ class KDTree:
             return coo_matrix(dist)
         return dist
 #
-                                   
