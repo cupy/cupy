@@ -15,7 +15,7 @@ from cupy_backends.cuda.libs import cusparse as _cusparse
 # Types
 ###############################################################################
 cdef extern from *:
-    ctypedef void* LibraryPropertyType 'libraryPropertyType_t'
+    ctypedef void* libraryPropertyType 'libraryPropertyType'
 
 
 cdef extern from '../../cupy_cusparselt.h' nogil:
@@ -45,6 +45,7 @@ cdef extern from '../../cupy_cusparselt.h' nogil:
     ctypedef int cusparseLtMatmulAlgAttribute_t 'cusparseLtMatmulAlgAttribute_t'  # NOQA
     ctypedef int cusparseLtSplitKMode_t 'cusparseLtSplitKMode_t'
     ctypedef int cusparseLtPruneAlg_t 'cusparseLtPruneAlg_t'
+    ctypedef int cusparseLtMatmulMatrixScale_t 'cusparseLtMatmulMatrixScale_t'
 
     # Management Functions
     cusparseStatus_t cusparseLtInit(cusparseLtHandle_t* handle)
@@ -52,7 +53,7 @@ cdef extern from '../../cupy_cusparselt.h' nogil:
     cusparseStatus_t cusparseLtGetVersion(
         const cusparseLtHandle_t* handle, int* version)
     cusparseStatus_t cusparseLtGetProperty(
-        LibraryPropertyType propertyType, int* value)
+        libraryPropertyType propertyType, int* value)
 
     # Matmul Functions
     cusparseStatus_t cusparseLtDenseDescriptorInit(
@@ -280,11 +281,19 @@ cpdef init(Handle handle):
     status = cusparseLtInit(<cusparseLtHandle_t*> handle._ptr)
     check_status(status)
 
-
 cpdef destroy(Handle handle):
     """Releases hardware resources used by the cuSPARSELt library"""
     status = cusparseLtDestroy(<cusparseLtHandle_t*> handle._ptr)
     check_status(status)
+
+cpdef int getVersion(Handle handle) except? -1:
+    """Get the version number of the cuSPARSELt library"""
+    cdef int version
+    status = cusparseLtGetVersion(<cusparseLtHandle_t*> handle._ptr,
+                                  &version)
+    check_status(status)
+    return version
+
 
 ###############################################################################
 # cuSPARSELt: Matmul Functions

@@ -318,15 +318,8 @@ def _jitify_prep(source, options, cu_path):
     return options, headers, include_names
 
 
-_has_usedforsecurity = (sys.version_info >= (3, 9))
-
-
 def _hash_hexdigest(value):
-    if _has_usedforsecurity:
-        hashobj = hashlib.sha1(value, usedforsecurity=False)
-    else:
-        hashobj = hashlib.sha1(value)
-    return hashobj.hexdigest()
+    return hashlib.sha1(value, usedforsecurity=False).hexdigest()
 
 
 _hash_length = len(_hash_hexdigest(b''))  # 40 for SHA1

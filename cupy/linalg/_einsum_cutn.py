@@ -1,20 +1,6 @@
 import threading
 import warnings
 
-try:
-    import cuquantum
-    if hasattr(cuquantum, 'bindings'):
-        # cuquantum-python >= 25.03
-        from cuquantum.bindings import cutensornet  # binding module
-        from cuquantum import tensornet  # module for pythonic APIs
-    else:
-        # for cuquantum < 25.03, bindings & pythonic APIs
-        # all reside under cuquantum.cutensornet
-        from cuquantum import cutensornet
-        tensornet = cutensornet
-except ImportError:
-    cuquantum = cutensornet = tensornet = None
-
 import cupy
 from cupy import _util
 from cupy._core import _accelerator
@@ -22,6 +8,29 @@ from cupy.cuda.device import Handle
 
 
 _tls = threading.local()
+
+cuquantum = cutensornet = tensornet = None
+
+
+def _maybe_lazy_load_cutensornet():
+    global cuquantum, cutensornet, tensornet
+
+    if cuquantum is not None:
+        return
+
+    try:
+        import cuquantum
+        if hasattr(cuquantum, 'bindings'):
+            # cuquantum-python >= 25.03
+            from cuquantum.bindings import cutensornet  # binding module
+            from cuquantum import tensornet  # module for pythonic APIs
+        else:
+            # for cuquantum < 25.03, bindings & pythonic APIs
+            # all reside under cuquantum.cutensornet
+            from cuquantum import cutensornet
+            tensornet = cutensornet
+    except ImportError:
+        pass
 
 
 @_util.memoize()
@@ -72,6 +81,8 @@ def _try_use_cutensornet(*args, **kwargs):
     if (_accelerator.ACCELERATOR_CUTENSORNET not in
             _accelerator.get_routine_accelerators()):
         return None
+
+    _maybe_lazy_load_cutensornet()
 
     if cutensornet is None:
         warnings.warn(

@@ -36,8 +36,9 @@ class GDel2D:
         self.tri_num = 0
 
         # self.points = cupy.array(points, copy=True)
-        self.points = points
-        self.point_vec = cupy.empty((self.n_points, 2), dtype=points.dtype)
+        self.points = points.astype(cupy.float64)
+        self.point_vec = cupy.empty((self.n_points, 2),
+                                    dtype=self.points.dtype)
         self.point_vec[:-1] = points
 
         self.triangles = cupy.empty((4, 3), dtype=cupy.int32)
