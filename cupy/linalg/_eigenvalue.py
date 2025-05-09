@@ -178,9 +178,9 @@ def _geev(a, with_eigen_vector):
 
         if len(a.shape) > 2:
             for ind in numpy.ndindex(a.shape[:-2]):
-                a_ind = a_[*ind, :, :]
-                w_ind = w[*ind, :]
-                v_ind = v_real if real_input else v[*ind, :, :]
+                a_ind = a_[ind]
+                w_ind = w[ind]
+                v_ind = v_real if real_input else v[ind]
                 cusolver.xgeev(
                     handle, params, jobvl, jobvr, m, type_input,
                     a_ind.data.ptr, lda, type_complex, w_ind.data.ptr,
@@ -191,8 +191,7 @@ def _geev(a, with_eigen_vector):
                 if real_input and with_eigen_vector:
                     # in case we have real input and complex output we need to
                     # assemble complex eigen vectors from real eigen vectors
-                    v[*ind, :,
-                        :] = _assemble_complex_evs(w_ind, v_ind, a_ind.shape)
+                    v[ind] = _assemble_complex_evs(w_ind, v_ind, a_ind.shape)
         else:
             cusolver.xgeev(
                 handle, params, jobvl, jobvr, m, type_input, a_.data.ptr,
