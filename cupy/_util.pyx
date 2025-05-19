@@ -5,6 +5,8 @@ import functools
 import os
 import warnings
 
+import cython
+
 import cupy
 from cupy_backends.cuda.api cimport runtime
 
@@ -50,6 +52,7 @@ def memoize(bint for_each_device=False):
         _memos.append(memo)
 
         @functools.wraps(f)
+        @cython.binding(True)
         def ret(*args, **kwargs):
             cdef int id = -1
             cdef dict m = memo
