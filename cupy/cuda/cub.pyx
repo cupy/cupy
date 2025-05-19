@@ -85,6 +85,9 @@ cdef extern from 'cupy_cub.h' nogil:
 
 available = True
 
+# Expose enum members under this namespace
+globals().update(getattr(cupy_cub_op, '__members__'))
+
 
 def get_build_version():
     if CUPY_CUB_VERSION_CODE == -1:
