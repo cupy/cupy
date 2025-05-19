@@ -42,7 +42,6 @@ Data type testing
 .. csv-table::
    :align: left
 
-   # isdtype
    ``issubdtype`` (alias of :func:`numpy.issubdtype`)
 
 Miscellaneous
