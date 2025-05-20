@@ -1,12 +1,21 @@
 from __future__ import annotations
 import ast
-import collections
 import inspect
 import linecache
 import numbers
 import re
 import sys
-from typing import Any, Dict, List, Optional, Sequence, Tuple, TypeVar, Union
+from typing import (
+    Any,
+    Dict,
+    List,
+    Optional,
+    Sequence,
+    Tuple,
+    TypeVar,
+    Union,
+    NamedTuple,
+)
 import warnings
 import types
 
@@ -38,7 +47,7 @@ if (3, 8) <= sys.version_info:
 else:
     _CastingType = str
 
-Result = collections.namedtuple(
+Result = NamedTuple(
     'Result',
     [
         'func_name',
