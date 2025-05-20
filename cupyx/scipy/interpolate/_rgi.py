@@ -1,3 +1,4 @@
+from __future__ import annotations
 __all__ = ['RegularGridInterpolator', 'interpn']
 
 import itertools

@@ -1,3 +1,4 @@
+from __future__ import annotations
 from ctypes import Structure, c_int, c_byte
 
 

@@ -1,3 +1,4 @@
+from __future__ import annotations
 import contextlib as _contextlib
 from cupy.cuda import runtime as _runtime
 from cupyx.profiler._time import benchmark  # NOQA

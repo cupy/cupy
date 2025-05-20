@@ -1,3 +1,4 @@
+from __future__ import annotations
 import contextlib
 from itertools import chain
 from typing import Any, Iterator, Optional, Union

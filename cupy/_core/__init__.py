@@ -1,4 +1,5 @@
 # mypy: ignore-errors
+from __future__ import annotations
 
 from cupy._core import core  # NOQA
 from cupy._core import fusion  # NOQA

@@ -2,6 +2,7 @@
 ltisys -- a collection of classes and functions for modeling linear
 time invariant systems.
 """
+from __future__ import annotations
 import warnings
 import copy
 from math import sqrt

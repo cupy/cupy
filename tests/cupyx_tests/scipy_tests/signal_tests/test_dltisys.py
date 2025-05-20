@@ -1,3 +1,4 @@
+from __future__ import annotations
 from math import sqrt, pi
 
 from pytest import raises as assert_raises

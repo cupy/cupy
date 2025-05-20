@@ -1,3 +1,4 @@
+from __future__ import annotations
 import cupy
 import numpy as np
 from cupy._core import internal

@@ -6,6 +6,7 @@ https://github.com/scipy/scipy/blob/eba29d69846ab1299976ff4af71c106188397ccc/sci
 ``spline_weights_inline`` is a dict where the key is the spline order and the
 value is the spline weight initialization code.
 """
+from __future__ import annotations
 
 spline_weights_inline = {}
 

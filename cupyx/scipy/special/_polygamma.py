@@ -1,3 +1,4 @@
+from __future__ import annotations
 import cupy
 from cupyx.scipy.special import _digamma
 from cupyx.scipy.special import _gamma

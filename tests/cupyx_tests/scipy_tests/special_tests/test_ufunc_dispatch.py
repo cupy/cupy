@@ -1,3 +1,4 @@
+from __future__ import annotations
 import numpy
 import cupy
 import cupyx.scipy.special

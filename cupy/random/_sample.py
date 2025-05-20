@@ -1,3 +1,4 @@
+from __future__ import annotations
 from cupy import _core
 from cupy._creation import basic
 from cupy.random import _distributions

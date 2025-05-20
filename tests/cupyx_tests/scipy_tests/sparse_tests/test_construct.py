@@ -1,3 +1,4 @@
+from __future__ import annotations
 import functools
 import re
 from unittest import mock

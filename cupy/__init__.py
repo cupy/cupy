@@ -1,3 +1,4 @@
+from __future__ import annotations
 import functools as _functools
 import sys as _sys
 

@@ -4,6 +4,7 @@
 #
 # This script executes simple communication and computation with 2 MPI
 # processes, each of which uses a different GPU
+from __future__ import annotations
 
 import cupy
 from mpi4py import MPI

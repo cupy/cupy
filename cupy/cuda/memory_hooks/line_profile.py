@@ -1,3 +1,4 @@
+from __future__ import annotations
 from os import path
 import sys
 import traceback

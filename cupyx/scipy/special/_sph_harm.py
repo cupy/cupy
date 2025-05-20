@@ -4,6 +4,7 @@ SciPy Cython file:
 
 https://github.com/scipy/scipy/blob/master/scipy/special/sph_harm.pxd
 """
+from __future__ import annotations
 
 import warnings
 

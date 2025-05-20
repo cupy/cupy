@@ -1,3 +1,4 @@
+from __future__ import annotations
 from cupy._core._kernel import create_ufunc
 
 

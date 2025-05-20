@@ -1,3 +1,4 @@
+from __future__ import annotations
 import distutils.ccompiler
 import os
 import os.path

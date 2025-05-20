@@ -1,6 +1,7 @@
 """
 Convenience interface to N-D interpolation
 """
+from __future__ import annotations
 
 import cupy
 from cupyx.scipy.interpolate._interpnd import (
