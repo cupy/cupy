@@ -6,10 +6,15 @@ extend-exclude = [
   "docs/source",
   "tests/cupy_tests/array_api_tests",
   "third_party",
+  ".github",
+  ".pfnci",
 ]
 
 [lint]
-select = ["E", "F", "W"]
+select = ["E", "FA", "F", "I002", "PYI", "W"]
+
+[lint.isort]
+required-imports = ["from __future__ import annotations"]
 
 [lint.per-file-ignores]
 "cupyx/scipy/special/_gammainc.py" = [
