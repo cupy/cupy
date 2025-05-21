@@ -87,8 +87,8 @@ function Main {
 
     echo "Building..."
     $build_retval = 0
-    RunOrDie python -m pip install "numpy==$numpy.*" "scipy==$scipy.*"
-    python -m pip install ".[all,test]" -v > cupy_build_log.txt
+    RunOrDie python -m pip install "numpy==$numpy.*" "scipy==$scipy.*" "Cython==3.*" "fastrlock>=0.5"
+    python -m pip install --no-build-isolation ".[all,test]" -v > cupy_build_log.txt
     if (-not $?) {
         $build_retval = $LastExitCode
     }
