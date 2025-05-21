@@ -423,8 +423,10 @@ mpi4py:
       - "3.12"
       - "3.13"
 cython:
-  "3":
-    spec: "==3.*"
+  "3.0":
+    spec: "==3.0.*"
+  "3.1":
+    spec: "==3.1.*"
   "pre":
     spec: ">=0a0"  # latest, including pre-releases
 fastrlock:
