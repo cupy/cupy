@@ -46,6 +46,7 @@ class Context:
     features: dict[str, cupy_builder.Feature]
     cupy_cache_key: str
     win32_cl_exe_path: str | None
+    dev_configure_cache: bool
 
     # Deprecated
     wheel_libs: list[str]
@@ -107,6 +108,15 @@ class Context:
 
         # Host compiler path for Windows, see `_command.py`.
         self.win32_cl_exe_path = None
+
+        # EXPERIMENTAL: Persist the build configuration to a cache file to
+        # skip re-configuring modules when rebuilding during development.
+        # Only effective in editable mode (i.e. `pip install -e .`).
+        # This is solely intended for use by CuPy developers.
+        # End users should NEVER use this flag.
+        self.dev_configure_cache = (
+            _get_env_bool("CUPY_INSTALL_CONFIGURE_CACHE", _env)
+            and self.setup_command == "editable_wheel")
 
         # Deprecated
         self.wheel_libs = []
