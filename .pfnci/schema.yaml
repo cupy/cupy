@@ -517,6 +517,9 @@ cython:
     spec: "==3.1.*"
   "pre":
     spec: ">=0a0"  # latest, including pre-releases
+fastrlock:
+  "latest":
+    spec: ">=0.5"  # latest, stable
 cuda-python:
   null:
     spec: null
