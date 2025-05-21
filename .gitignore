@@ -16,6 +16,7 @@ _readthedocs_build
 /docs/source/reference/**/generated
 /tags
 *.egg-info/
+*.dist-info/
 dist/
 htmlcov/
 .idea/
