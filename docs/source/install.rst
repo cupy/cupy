@@ -194,7 +194,7 @@ If you want to install the latest development version of CuPy from a cloned Git 
 
 .. note::
 
-   Cython 0.29.22 or later is required to build CuPy from source.
+   Cython 3 is required to build CuPy from source.
    It will be automatically installed during the build process if not available.
 
 
