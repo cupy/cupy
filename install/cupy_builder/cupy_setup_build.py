@@ -297,6 +297,7 @@ def _find_static_library(name: str) -> str:
 def make_extensions(ctx: Context, compiler, use_cython):
     """Produce a list of Extension instances which passed to cythonize()."""
 
+    ctx.calculate_cache_key()
     CACHE_FILE = f"{ctx.source_root}/.cupy_builder.cache"
     if ctx.dev_configure_cache and os.path.exists(CACHE_FILE):
         with open(CACHE_FILE, "rb") as f:

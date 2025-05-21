@@ -44,7 +44,7 @@ class Context:
     annotate: bool
     no_rpath: bool
     features: dict[str, cupy_builder.Feature]
-    cupy_cache_key: str
+    cupy_cache_key: str | None
     win32_cl_exe_path: str | None
     dev_configure_cache: bool
 
@@ -86,25 +86,8 @@ class Context:
 
         self.features = cupy_builder.get_features(self)
 
-        # Calculate cache key for this build
-        print('Generating cache key from header files...')
-        include_pattern = os.path.join(
-            source_root, 'cupy', '_core', 'include', '**')
-        include_files = [
-            f for f in sorted(glob.glob(include_pattern, recursive=True))
-            if os.path.isfile(f)
-        ]
-        hasher = hashlib.sha1(usedforsecurity=False)
-        for include_file in include_files:
-            with open(include_file, 'rb') as f:
-                relpath = os.path.relpath(include_file, source_root)
-                hasher.update(relpath.encode())
-                hasher.update(f.read())
-                hasher.update(b'\x00')
-        cache_key = hasher.hexdigest()
-        print(f'Cache key ({len(include_files)} files '
-              f'matching {include_pattern}): {cache_key}')
-        self.cupy_cache_key = cache_key
+        # Cache key for this build.
+        self.cupy_cache_key = None
 
         # Host compiler path for Windows, see `_command.py`.
         self.win32_cl_exe_path = None
@@ -121,3 +104,23 @@ class Context:
         # Deprecated
         self.wheel_libs = []
         self.wheel_includes = []
+
+    def calculate_cache_key(self) -> None:
+        print('Generating cache key from header files...')
+        include_pattern = os.path.join(
+            self.source_root, 'cupy', '_core', 'include', '**')
+        include_files = [
+            f for f in sorted(glob.glob(include_pattern, recursive=True))
+            if os.path.isfile(f)
+        ]
+        hasher = hashlib.sha1(usedforsecurity=False)
+        for include_file in include_files:
+            with open(include_file, 'rb') as f:
+                relpath = os.path.relpath(include_file, self.source_root)
+                hasher.update(relpath.encode())
+                hasher.update(f.read())
+                hasher.update(b'\x00')
+        cache_key = hasher.hexdigest()
+        print(f'Cache key ({len(include_files)} files '
+              f'matching {include_pattern}): {cache_key}')
+        self.cupy_cache_key = cache_key
