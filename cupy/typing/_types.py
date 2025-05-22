@@ -1,21 +1,11 @@
 from __future__ import annotations
-from collections.abc import Sequence
 
-from typing import Any, Literal, SupportsIndex, TypeVar, Union
+from typing import Any, TypeVar
 
 import numpy
+from numpy.typing import ArrayLike, DTypeLike, NBitBase  # noqa: F401
+
 from cupy._core import core
 
-from numpy.typing import ArrayLike  # NOQA
-from numpy.typing import DTypeLike  # NOQA
-from numpy.typing import NBitBase  # NOQA
-
-
-# Shapes
-_Shape = tuple[int, ...]
-_ShapeLike = Union[SupportsIndex, Sequence[SupportsIndex]]
-
-_OrderKACF = Literal[None, "K", "A", "C", "F"]
-_OrderCF = Literal[None, "C", "F"]
-_ScalarType_co = TypeVar("_ScalarType_co", bound=numpy.generic, covariant=True)
-NDArray = core.ndarray[Any, numpy.dtype[_ScalarType_co]]
+_ScalarType = TypeVar("_ScalarType", bound=numpy.generic)
+NDArray = core.ndarray[Any, numpy.dtype[_ScalarType]]
