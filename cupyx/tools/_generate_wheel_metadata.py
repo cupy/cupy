@@ -12,7 +12,6 @@ This tool is NOT intended for end-user use.
 import argparse
 import json
 import os.path
-import platform
 import subprocess
 import sys
 
@@ -58,8 +57,8 @@ def main(args):
 
     parser.add_argument('--cuda', type=str, required=True,
                         help='CUDA version')
-    parser.add_argument('--target', type=str,
-                        help='Target system (default: platform.system())')
+    parser.add_argument('--target', type=str, required=True,
+                        help='Target system (e.g., Linux:x86_64')
     parser.add_argument('--library',
                         choices=['cudnn', 'cutensor', 'nccl'],
                         action='append',
@@ -69,7 +68,7 @@ def main(args):
     print(json.dumps(
         _generate_wheel_metadata(
             params.cuda,
-            params.target or platform.system(),
+            params.target,
             params.library,
         ), indent=4
     ))
