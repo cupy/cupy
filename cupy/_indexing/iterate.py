@@ -4,6 +4,14 @@ import cupy
 from cupy import _core
 from cupy._core import internal
 
+def ndenumerate(a:cupy.ndarray):
+    """ enumerate a given array in cupy """
+    try:
+        shape=a.shape
+    except:
+        raise ValueError("array should be a cupy array")
+    for i in cupy.ndindex(shape):
+        yield i,a[i]
 
 class flatiter:
     """Flat iterator object to iterate over arrays.
