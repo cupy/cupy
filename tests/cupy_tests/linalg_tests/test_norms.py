@@ -249,3 +249,57 @@ class TestCond(unittest.TestCase):
 
         res = xp.linalg.cond(A, self.ord)
         return res
+
+    @testing.for_float_dtypes(no_float16=True)
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4)
+    def test_basic(self, xp, dtype):
+        A = testing.shaped_arange((2, 2), xp, dtype=dtype)
+        return xp.linalg.cond(A, self.ord)
+
+    @testing.for_float_dtypes(no_float16=True)
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4)
+    def test_generalized_1(self, xp, dtype):
+        A = testing.shaped_arange((2, 2), xp, dtype=dtype)
+        A = xp.array([A, 2 * A, 3 * A])
+        return xp.linalg.cond(A, self.ord)
+
+    @testing.for_float_dtypes(no_float16=True)
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4)
+    def test_generalized_2(self, xp, dtype):
+        A = testing.shaped_arange((2, 2), xp, dtype=dtype)
+        A = xp.array([A, 2 * A, 3 * A])
+        A = xp.array([A]*2*3).reshape((3, 2)+A.shape)
+
+        return xp.linalg.cond(A, self.ord)
+
+    @testing.for_float_dtypes(no_float16=True)
+    def test_0x0(self, xp, dtype):
+        A = xp.empty((0, 0), dtype=dtype)
+        for xp in (numpy, cupy):
+            with pytest.raises(numpy.linalg.LinAlgError,
+                               match="cond is not defined on empty arrays"):
+                return xp.linalg.cond(A, self.ord)
+
+    @testing.for_float_dtypes(no_float16=True)
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4)
+    def test_1x1(self, xp, dtype):
+        A = xp.ones((1, 1), dtype=dtype)
+        return xp.linalg.cond(A, self.ord)
+
+    @testing.for_float_dtypes(no_float16=True)
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4)
+    def test_8x8(self, xp, dtype):
+        A = testing.shaped_arange(
+            (8, 8), xp, dtype=dtype)+xp.diag(xp.ones(8, dtype=dtype))
+        return xp.linalg.cond(A, self.ord)
+
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4)
+    def test_nonarray(self, xp):
+        A = [[1., 2.], [3., 4.]]
+        return xp.linalg.cond(A, self.ord)
+
+    @testing.for_float_dtypes(no_float16=True)
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4)
+    def test_hermitian(self, xp, dtype):
+        A = xp.array([[1., 2.], [2., 1.]], dtype=dtype)
+        return xp.linalg.cond(A, self.ord)
