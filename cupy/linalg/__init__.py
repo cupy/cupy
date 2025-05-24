@@ -24,6 +24,7 @@ from cupy.linalg._eigenvalue import eigvalsh  # NOQA
 # Norms and other numbers
 # -----------------------------------------------------------------------------
 from cupy.linalg._norms import norm  # NOQA
+from cupy.linalg._norms import cond  # NOQA
 from cupy.linalg._norms import det  # NOQA
 from cupy.linalg._norms import matrix_rank  # NOQA
 from cupy.linalg._norms import slogdet  # NOQA
@@ -45,5 +46,5 @@ from numpy.linalg import LinAlgError  # NOQA
 
 
 __all__ = ["matrix_power", "cholesky", "qr", "svd", "eigh", "eigvalsh", "norm",
-           "det", "matrix_rank", "slogdet", "solve", "tensorsolve", "inv",
-           "pinv", "tensorinv", "LinAlgError"]
+           "cond", "det", "matrix_rank", "slogdet", "solve", "tensorsolve",
+           "inv", "pinv", "tensorinv", "LinAlgError"]

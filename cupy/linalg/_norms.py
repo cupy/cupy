@@ -7,6 +7,8 @@ from cupy.linalg import _util
 
 import functools
 
+import cupyx
+
 
 def _multi_svd_norm(x, row_axis, col_axis, op):
     y = cupy.moveaxis(x, (row_axis, col_axis), (-2, -1))
@@ -157,7 +159,41 @@ def norm(x, ord=None, axis=None, keepdims=False):
         raise ValueError('Improper number of dimensions to norm.')
 
 
-# TODO(okuta): Implement cond
+def cond(x, p=None):
+    x = cupy.asarray(x)  # in case we have a matrix
+    if x.size == 0:
+        raise cupy.linalg.LinAlgError("cond is not defined on empty arrays")
+    if p is None or p == 2 or p == -2:
+        _, s, _ = cupy.linalg.svd(x, compute_uv=True)
+        with cupyx.errstate(linalg='ignore'):
+            if p == -2:
+                r = s[..., -1] / s[..., 0]
+            else:
+                r = s[..., 0] / s[..., -1]
+    else:
+        # Call inv(x) ignoring errors. The result array will
+        # contain nans in the entries where inversion failed.
+
+        _util._assert_cupy_array(x)
+        _util._assert_stacked_2d(x)
+        _util._assert_stacked_square(x)
+        t, result_t = _util.linalg_common_type(x)
+        with cupyx.errstate(linalg='ignore'):
+            invx = cupy.linalg.inv(x)
+            r = norm(x, p, axis=(-2, -1)) * norm(invx, p, axis=(-2, -1))
+        r = r.astype(result_t, copy=False)
+
+    # Convert nans to infs unless the original array had nan entries
+    r = cupy.asarray(r)
+    nan_mask = cupy.isnan(r)
+    if nan_mask.any():
+        nan_mask &= ~cupy.isnan(x).any(axis=(-2, -1))
+        if r.ndim > 0:
+            r[nan_mask] = cupy.inf
+        elif nan_mask:
+            r[()] = cupy.inf
+
+    return r
 
 
 def det(a):

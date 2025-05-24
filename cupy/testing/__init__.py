@@ -30,6 +30,7 @@ from cupy.testing._loops import for_dtypes_combination  # NOQA
 from cupy.testing._loops import for_float_dtypes  # NOQA
 from cupy.testing._loops import for_int_dtypes  # NOQA
 from cupy.testing._loops import for_int_dtypes_combination  # NOQA
+from cupy.testing._loops import for_parameters  # NOQA
 from cupy.testing._loops import for_orders  # NOQA
 from cupy.testing._loops import for_signed_dtypes  # NOQA
 from cupy.testing._loops import for_signed_dtypes_combination  # NOQA

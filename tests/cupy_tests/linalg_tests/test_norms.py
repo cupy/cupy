@@ -9,7 +9,6 @@ import cupyx
 
 
 class TestTrace(unittest.TestCase):
-
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
     def test_trace(self, xp, dtype):
@@ -46,7 +45,6 @@ class TestTrace(unittest.TestCase):
 })
 )
 class TestNorm(unittest.TestCase):
-
     @testing.for_all_dtypes(no_float16=True)
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4)
     def test_norm(self, xp, dtype):
@@ -206,3 +204,48 @@ class TestSlogdet(unittest.TestCase):
             a = testing.shaped_arange((2,), xp, dtype)
             with pytest.raises(numpy.linalg.LinAlgError):
                 xp.linalg.slogdet(a)
+
+
+@testing.parameterize(
+    *testing.product({"ord": [-numpy.inf, -2, -1, 1, 2, numpy.inf, "fro"]})
+)
+class TestCond(unittest.TestCase):
+    def test_basic_nonsvd(self):
+        # Smoketest the non-svd norms
+        A = cupy.array([[1.0, 0, 1], [0, -2.0, 0], [0, 0, 3.0]])
+        testing.assert_array_almost_equal(cupy.linalg.cond(A, cupy.inf), 4)
+        testing.assert_array_almost_equal(
+            cupy.linalg.cond(A, -cupy.inf), 2 / 3
+        )
+        testing.assert_array_almost_equal(cupy.linalg.cond(A, 1), 4)
+        testing.assert_array_almost_equal(cupy.linalg.cond(A, -1), 0.5)
+        testing.assert_array_almost_equal(
+            cupy.linalg.cond(A, "fro"), cupy.sqrt(265 / 12)
+        )
+
+    @testing.for_parameters("fill_value", [1.0, 0.0])
+    @testing.for_float_dtypes(no_float16=True)
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4)
+    def test_singular(self, xp, dtype, fill_value):
+        A = xp.full(fill_value=fill_value, shape=(2, 2), dtype=dtype)
+        result = xp.linalg.cond(A, self.ord)
+
+        # singular matrices don't always hit infinity.
+        result = xp.asarray(result)  # numpy is scalar and can't be replaced
+        large_number = 1.0 / (xp.finfo(dtype).eps)
+        result[result >= large_number] = xp.inf
+
+        return result
+
+    @testing.for_float_dtypes(no_float16=True)
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4)
+    def test_stacked_singular(self, xp, dtype):
+        # Check behavior when only some of the stacked matrices are
+        # singular
+
+        A = xp.arange(16, dtype=dtype).reshape((2, 2, 2, 2))
+        A[0, 0] = 0
+        A[1, 1] = 0
+
+        res = xp.linalg.cond(A, self.ord)
+        return res
