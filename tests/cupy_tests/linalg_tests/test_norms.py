@@ -9,6 +9,7 @@ import cupyx
 
 
 class TestTrace(unittest.TestCase):
+
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
     def test_trace(self, xp, dtype):
@@ -45,6 +46,7 @@ class TestTrace(unittest.TestCase):
 })
 )
 class TestNorm(unittest.TestCase):
+
     @testing.for_all_dtypes(no_float16=True)
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4)
     def test_norm(self, xp, dtype):
@@ -223,11 +225,23 @@ class TestCond(unittest.TestCase):
             cupy.linalg.cond(A, "fro"), cupy.sqrt(265 / 12)
         )
 
-    @testing.for_parameters("fill_value", [1.0, 0.0])
     @testing.for_float_dtypes(no_float16=True)
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4)
-    def test_singular(self, xp, dtype, fill_value):
-        A = xp.full(fill_value=fill_value, shape=(2, 2), dtype=dtype)
+    def test_singular_zeros(self, xp, dtype):
+        A = xp.zeros(shape=(2, 2), dtype=dtype)
+        result = xp.linalg.cond(A, self.ord)
+
+        # singular matrices don't always hit infinity.
+        result = xp.asarray(result)  # numpy is scalar and can't be replaced
+        large_number = 1.0 / (xp.finfo(dtype).eps)
+        result[result >= large_number] = xp.inf
+
+        return result
+
+    @testing.for_float_dtypes(no_float16=True)
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4)
+    def test_singular_ones(self, xp, dtype):
+        A = xp.ones(shape=(2, 2), dtype=dtype)
         result = xp.linalg.cond(A, self.ord)
 
         # singular matrices don't always hit infinity.
@@ -273,12 +287,12 @@ class TestCond(unittest.TestCase):
         return xp.linalg.cond(A, self.ord)
 
     @testing.for_float_dtypes(no_float16=True)
-    def test_0x0(self, xp, dtype):
-        A = xp.empty((0, 0), dtype=dtype)
+    def test_0x0(self, dtype):
         for xp in (numpy, cupy):
+            A = xp.empty((0, 0), dtype=dtype)
             with pytest.raises(numpy.linalg.LinAlgError,
                                match="cond is not defined on empty arrays"):
-                return xp.linalg.cond(A, self.ord)
+                xp.linalg.cond(A, self.ord)
 
     @testing.for_float_dtypes(no_float16=True)
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4)

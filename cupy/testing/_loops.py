@@ -1173,33 +1173,6 @@ def for_int_dtypes_combination(names=('dtype',), no_bool=False, full=None):
     return for_dtypes_combination(types, names, full)
 
 
-def for_parameters(name, parameters):
-    """Decorator to parameterize tests with arbitrary values.
-
-    Args:
-         name(str): Argument name to which the specified parameter is passed.
-         parameters(list of parameter): parameter values to be tested.
-
-    This decorator adds a keyword argument specified by ``name``
-    to the test fixtures. Then, the fixtures run by passing each element of
-    ``parameters`` to the named argument.
-
-    """
-    def decorator(impl):
-        @_wraps_partial(impl, name)
-        def test_func(*args, **kw):
-            for parameter in parameters:
-                try:
-                    kw[name] = parameter
-                    impl(*args, **kw)
-                except Exception:
-                    print(name, 'is', parameter)
-                    raise
-
-        return test_func
-    return decorator
-
-
 def for_orders(orders, name='order'):
     """Decorator to parameterize tests with order.
 
@@ -1212,7 +1185,19 @@ def for_orders(orders, name='order'):
     ``orders`` to the named argument.
 
     """
-    return for_parameters(name=name, parameters=orders)
+    def decorator(impl):
+        @_wraps_partial(impl, name)
+        def test_func(*args, **kw):
+            for order in orders:
+                try:
+                    kw[name] = order
+                    impl(*args, **kw)
+                except Exception:
+                    print(name, 'is', order)
+                    raise
+
+        return test_func
+    return decorator
 
 
 def for_CF_orders(name='order'):
