@@ -28,6 +28,6 @@ RUN pyenv install 3.12.6 && \
     pyenv global 3.12.6 && \
     pip install -U setuptools pip wheel
 
-RUN pip install -U 'numpy==1.26.*' 'scipy==1.13.*' 'optuna==3.*' 'cython==3.*' 'cuda-python==11.*'
+RUN pip install -U 'numpy==1.26.*' 'scipy==1.13.*' 'optuna==3.*' 'cython==3.0.*' 'fastrlock>=0.5' 'cuda-python==11.*'
 RUN pip uninstall -y mpi4py && \
     pip check

@@ -25,6 +25,7 @@ Bessel functions
    i1
    i1e
    spherical_yn
+   wright_bessel
 
 
 Raw statistical functions
@@ -88,6 +89,7 @@ Gamma and related functions
    gamma
    gammaln
    loggamma
+   gammasgn
    gammainc
    gammaincinv
    gammaincc
@@ -95,7 +97,9 @@ Gamma and related functions
    beta
    betaln
    betainc
+   # betaincc
    betaincinv
+   # betainccinv
    psi
    rgamma
    polygamma
@@ -104,12 +108,23 @@ Gamma and related functions
    poch
 
 
-Elliptic integrals
-------------------
+Elliptic functions and integrals
+--------------------------------
 
+.. autosummary::
+   :toctree: generated/
+
+   ellipj
    ellipk
    ellipkm1
-   ellipj
+   ellipkinc
+   # ellipe
+   ellipeinc
+   # elliprc
+   # elliprd
+   # elliprf
+   # elliprg
+   # elliprj
 
 
 Error function and Fresnel integrals
@@ -135,21 +150,40 @@ Legendre functions
    sph_harm
 
 
+Lambert W and related functions
+-------------------------------
+
+.. autosummary::
+   :toctree: generated/
+
+   lambertw
+
+
 Other special functions
 -----------------------
 
 .. autosummary::
    :toctree: generated/
 
+   # agm
+   # bernoulli
+   binom
+   # diric
+   # euler
+   expn
    exp1
    expi
-   expn
-   exprel
+   # factorial
+   # factorial2
+   # factorialk
+   shichi
+   sici
    softmax
-   lambertw
    log_softmax
+   # spence
    zeta
    zetac
+   # softplus
 
 
 Convenience functions
@@ -169,8 +203,10 @@ Convenience functions
    log1p
    expm1
    cosm1
+   # powm1
    round
    xlogy
    xlog1py
    logsumexp
+   exprel
    sinc
