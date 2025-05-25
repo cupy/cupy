@@ -160,6 +160,29 @@ def norm(x, ord=None, axis=None, keepdims=False):
 
 
 def cond(x, p=None):
+    """Returns the condition number of a matrix.
+
+    This function computes the condition number using one of several norms,
+    depending on the value of `p`.
+
+    Args:
+        x (cupy.ndarray): The matrix whose condition number is computed.
+        p (str, int, optional): The norm type used.
+            The following norms are supported:
+            - None: 2-norm
+            - 'fro': Frobenius norm.
+            - inf: max(sum(abs(x), axis=1)).
+            - -inf: min(sum(abs(x), axis=1)).
+            - 1: max(sum(abs(x), axis=0)).
+            - -1: min(sum(abs(x), axis=0)).
+            - 2: 2-norm (largest singular value).
+            - -2: smallest singular value.
+
+    Returns:
+        cupy.ndarray: The condition number of the matrix. May be infinite.
+    """
+    # This function is implemented as a direct adaption of the numpy
+    # implementation to cupy API. This includes comments.
     x = cupy.asarray(x)  # in case we have a matrix
     if x.size == 0:
         raise cupy.linalg.LinAlgError("cond is not defined on empty arrays")
