@@ -266,6 +266,12 @@ class TestCond(unittest.TestCase):
 
     @testing.for_float_dtypes(no_float16=True)
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4)
+    def test_default(self, xp, dtype):
+        A = testing.shaped_arange((2, 2), xp, dtype=dtype)
+        return xp.linalg.cond(A)
+
+    @testing.for_float_dtypes(no_float16=True)
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4)
     def test_basic(self, xp, dtype):
         A = testing.shaped_arange((2, 2), xp, dtype=dtype)
         return xp.linalg.cond(A, self.ord)
