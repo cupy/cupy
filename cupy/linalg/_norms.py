@@ -169,6 +169,7 @@ def cond(x, p=None):
         x (cupy.ndarray): The matrix whose condition number is computed.
         p (str, int, optional): The norm type used.
             The following norms are supported:
+
             - None: 2-norm
             - 'fro': Frobenius norm.
             - inf: max(sum(abs(x), axis=1)).
