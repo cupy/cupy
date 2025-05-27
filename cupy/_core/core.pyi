@@ -154,7 +154,7 @@ class ndarray(Generic[_DTypeT_co]):
         axis: _Index | None = ...,
     ) -> NDArray[numpy.intp]: ...
     def searchsorted(
-        self,  # >= 1D array
+        self,
         v: ArrayLike,
         side: _SortSide = ...,
         sorter: _ArrayLikeInt_co | None = ...,
@@ -167,6 +167,10 @@ class ndarray(Generic[_DTypeT_co]):
         axis: _Index | None = ...,
         out: None = ...,
     ) -> NDArray[Any]: ...
+    @overload
+    def compress(
+        self, condition: _ArrayLikeInt_co, axis: _Index | None, out: _ArrayT
+    ) -> _ArrayT: ...
     @overload
     def compress(
         self,
