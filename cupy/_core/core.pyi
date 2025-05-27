@@ -8,7 +8,7 @@ from typing_extensions import Self
 
 from cupy import dtype
 from cupy._core.flags import Flags
-from cupy.typing._types import NDArray, DTypeLike, ArrayLike
+from cupy.typing._types import NDArray, DTypeLike, ArrayLike, _BoolOrIntArrayT
 from cupy.typing._internal import (
     _ArrayLikeInt_co,
     _SortSide,
@@ -22,6 +22,8 @@ from cupy.typing._internal import (
     _ArrayT,
     _ModeKind,
 )
+
+# MEMO: Some methods have special overloads for most-conventional use cases.
 
 class ndarray(Generic[_DTypeT_co]):
     def __cuda_array_interface__(self) -> dict[str, Any]: ...
@@ -182,3 +184,420 @@ class ndarray(Generic[_DTypeT_co]):
     def diagonal(
         self, offset: _Index = ..., axis1: _Index = ..., axis2: _Index = ...
     ) -> Self: ...
+    # SPECIAL
+    @overload
+    def max(self: NDArray[_ScalarT]) -> _ScalarT: ...
+    @overload
+    def max(
+        self,
+        axis: _ShapeLike | None = ...,
+        out: None = ...,
+        keepdims: bool = ...,
+    ) -> Any: ...
+    @overload
+    def max(
+        self,
+        axis: _ShapeLike | None,
+        out: _ArrayT,
+        keepdims: bool = ...,
+    ) -> _ArrayT: ...
+    @overload
+    def max(
+        self,
+        axis: _ShapeLike | None = ...,
+        *,
+        out: _ArrayT,
+        keepdims: bool = ...,
+    ) -> _ArrayT: ...
+    # SPECIAL
+    @overload
+    def argmax(self) -> numpy.intp: ...
+    @overload
+    def argmax(
+        self,
+        axis: _Index,
+        out: None = ...,
+        dtype: DTypeLike = ...,
+        keepdims: bool = ...,
+    ) -> Any: ...
+    @overload
+    def argmax(
+        self,
+        axis: _Index | None,
+        out: _BoolOrIntArrayT,
+        dtype: DTypeLike = ...,
+        keepdims: bool = ...,
+    ) -> _BoolOrIntArrayT: ...
+    @overload
+    def argmax(
+        self,
+        axis: _Index | None = ...,
+        *,
+        out: _BoolOrIntArrayT,
+        dtype: DTypeLike = ...,
+        keepdims: bool = ...,
+    ) -> _BoolOrIntArrayT: ...
+    # SPECIAL
+    @overload
+    def min(self: NDArray[_ScalarT]) -> _ScalarT: ...
+    @overload
+    def min(
+        self,
+        axis: _ShapeLike | None = ...,
+        out: None = ...,
+        keepdims: bool = ...,
+    ) -> Any: ...
+    @overload
+    def min(
+        self,
+        axis: _ShapeLike | None,
+        out: _ArrayT,
+        keepdims: bool = ...,
+    ) -> _ArrayT: ...
+    @overload
+    def min(
+        self,
+        axis: _ShapeLike | None = ...,
+        *,
+        out: _ArrayT,
+        keepdims: bool = ...,
+    ) -> _ArrayT: ...
+    # SPECIAL
+    @overload
+    def argmin(self) -> numpy.intp: ...
+    @overload
+    def argmin(
+        self,
+        axis: _Index,
+        out: None = ...,
+        dtype: DTypeLike = ...,
+        keepdims: bool = ...,
+    ) -> Any: ...
+    @overload
+    def argmin(
+        self,
+        axis: _Index | None,
+        out: _BoolOrIntArrayT,
+        dtype: DTypeLike = ...,
+        keepdims: bool = ...,
+    ) -> _BoolOrIntArrayT: ...
+    @overload
+    def argmin(
+        self,
+        axis: _Index | None = ...,
+        *,
+        out: _BoolOrIntArrayT,
+        dtype: DTypeLike = ...,
+        keepdims: bool = ...,
+    ) -> _BoolOrIntArrayT: ...
+    # SPECIAL
+    @overload
+    def ptp(self: NDArray[_ScalarT]) -> _ScalarT: ...
+    @overload
+    def ptp(
+        self,
+        axis: _ShapeLike | None = ...,
+        out: None = ...,
+        keepdims: bool = ...,
+    ) -> Any: ...
+    @overload
+    def ptp(
+        self,
+        axis: _ShapeLike | None,
+        out: _ArrayT,
+        keepdims: bool = ...,
+    ) -> _ArrayT: ...
+    @overload
+    def ptp(
+        self,
+        axis: _ShapeLike | None = ...,
+        *,
+        out: _ArrayT,
+        keepdims: bool = ...,
+    ) -> _ArrayT: ...
+    @overload
+    def clip(
+        self,
+        min: ArrayLike | None = ...,
+        max: ArrayLike | None = ...,
+        out: None = ...,
+    ) -> NDArray[Any]: ...
+    @overload
+    def clip(
+        self,
+        min: ArrayLike | None,
+        max: ArrayLike | None,
+        out: _ArrayT,
+    ) -> _ArrayT: ...
+    @overload
+    def clip(
+        self,
+        min: ArrayLike | None = ...,
+        max: ArrayLike | None = ...,
+        *,
+        out: _ArrayT,
+    ) -> _ArrayT: ...
+    @overload
+    def round(self, decimals: _Index = ..., out: None = ...) -> Self: ...
+    @overload
+    def round(self, decimals: _Index, out: _ArrayT) -> _ArrayT: ...
+    @overload
+    def round(self, decimals: _Index = ..., *, out: _ArrayT) -> _ArrayT: ...
+    @overload
+    def trace(
+        self,
+        offset: _Index = ...,
+        axis1: _Index = ...,
+        axis2: _Index = ...,
+        dtype: DTypeLike = ...,
+        out: None = ...,
+    ) -> Any: ...
+    @overload
+    def trace(
+        self,
+        offset: _Index,
+        axis1: _Index,
+        axis2: _Index,
+        dtype: DTypeLike,
+        out: _ArrayT,
+    ) -> _ArrayT: ...
+    @overload
+    def trace(
+        self,
+        offset: _Index = ...,
+        axis1: _Index = ...,
+        axis2: _Index = ...,
+        dtype: DTypeLike = ...,
+        *,
+        out: _ArrayT,
+    ) -> _ArrayT: ...
+    # SPECIAL
+    @overload
+    def sum(self: NDArray[_ScalarT]) -> _ScalarT: ...
+    @overload
+    def sum(
+        self,
+        axis: _ShapeLike | None = ...,
+        dtype: DTypeLike | None = ...,
+        out: None = ...,
+        keepdims: bool = ...,
+    ) -> Any: ...
+    @overload
+    def sum(
+        self,
+        axis: _ShapeLike | None,
+        dtype: DTypeLike | None,
+        out: _ArrayT,
+        keepdims: bool = ...,
+    ) -> _ArrayT: ...
+    @overload
+    def sum(
+        self,
+        axis: _ShapeLike | None = ...,
+        dtype: DTypeLike | None = ...,
+        *,
+        out: _ArrayT,
+        keepdims: bool = ...,
+    ) -> _ArrayT: ...
+    # SPECIAL
+    @overload
+    def cumsum(self: NDArray[_ScalarT]) -> NDArray[_ScalarT]: ...
+    @overload
+    def cumsum(
+        self,
+        axis: _Index | None = ...,
+        dtype: DTypeLike | None = ...,
+        out: None = ...,
+    ) -> NDArray[Any]: ...
+    @overload
+    def cumsum(
+        self, axis: _Index | None, dtype: DTypeLike | None, out: _ArrayT
+    ) -> _ArrayT: ...
+    @overload
+    def cumsum(
+        self,
+        axis: _Index | None = ...,
+        dtype: DTypeLike | None = ...,
+        *,
+        out: _ArrayT,
+    ) -> _ArrayT: ...
+    @overload
+    def mean(
+        self,
+        axis: _ShapeLike | None = ...,
+        dtype: DTypeLike | None = ...,
+        out: None = ...,
+        keepdims: bool = ...,
+    ) -> Any: ...
+    @overload
+    def mean(
+        self,
+        axis: _ShapeLike | None,
+        dtype: DTypeLike | None,
+        out: _ArrayT,
+        keepdims: bool = ...,
+    ) -> _ArrayT: ...
+    @overload
+    def var(
+        self,
+        axis: _ShapeLike | None = ...,
+        dtype: DTypeLike | None = ...,
+        out: None = ...,
+        ddof: float = ...,
+        keepdims: bool = ...,
+    ) -> Any: ...
+    @overload
+    def var(
+        self,
+        axis: _ShapeLike | None,
+        dtype: DTypeLike | None,
+        out: _ArrayT,
+        ddof: float = ...,
+        keepdims: bool = ...,
+    ) -> _ArrayT: ...
+    @overload
+    def var(
+        self,
+        axis: _ShapeLike | None = ...,
+        dtype: DTypeLike | None = ...,
+        *,
+        out: _ArrayT,
+        ddof: float = ...,
+        keepdims: bool = ...,
+    ) -> _ArrayT: ...
+    @overload
+    def std(
+        self,
+        axis: _ShapeLike | None = ...,
+        dtype: DTypeLike | None = ...,
+        out: None = ...,
+        ddof: float = ...,
+        keepdims: bool = ...,
+    ) -> Any: ...
+    @overload
+    def std(
+        self,
+        axis: _ShapeLike | None,
+        dtype: DTypeLike | None,
+        out: _ArrayT,
+        ddof: float = ...,
+        keepdims: bool = ...,
+    ) -> _ArrayT: ...
+    @overload
+    def std(
+        self,
+        axis: _ShapeLike | None = ...,
+        dtype: DTypeLike | None = ...,
+        *,
+        out: _ArrayT,
+        ddof: float = ...,
+        keepdims: bool = ...,
+    ) -> _ArrayT: ...
+    # SPECIAL
+    @overload
+    def prod(self: NDArray[_ScalarT]) -> _ScalarT: ...
+    @overload
+    def prod(
+        self,
+        axis: _ShapeLike | None = ...,
+        dtype: DTypeLike | None = ...,
+        out: None = ...,
+        keepdims: bool = ...,
+    ) -> Any: ...
+    @overload
+    def prod(
+        self,
+        axis: _ShapeLike | None,
+        dtype: DTypeLike | None,
+        out: _ArrayT,
+        keepdims: bool = ...,
+    ) -> _ArrayT: ...
+    @overload
+    def prod(
+        self,
+        axis: _ShapeLike | None = ...,
+        dtype: DTypeLike | None = ...,
+        *,
+        out: _ArrayT,
+        keepdims: bool = ...,
+    ) -> _ArrayT: ...
+    # SPECIAL
+    @overload
+    def cumprod(self: NDArray[_ScalarT]) -> NDArray[_ScalarT]: ...
+    @overload
+    def cumprod(
+        self,
+        axis: _Index | None = ...,
+        dtype: DTypeLike | None = ...,
+        out: None = ...,
+    ) -> NDArray[Any]: ...
+    @overload
+    def cumprod(
+        self, axis: _Index | None, dtype: DTypeLike | None, out: _ArrayT
+    ) -> _ArrayT: ...
+    @overload
+    def cumprod(
+        self,
+        axis: _Index | None = ...,
+        dtype: DTypeLike | None = ...,
+        *,
+        out: _ArrayT,
+    ) -> _ArrayT: ...
+    @overload
+    def all(
+        self,
+        axis: None = ...,
+        out: None = ...,
+        keepdims: Literal[False, 0] = ...,
+    ) -> numpy.bool: ...
+    @overload
+    def all(
+        self,
+        axis: int | tuple[int, ...] | None = ...,
+        out: None = ...,
+        keepdims: _Index = ...,
+    ) -> numpy.bool | NDArray[numpy.bool]: ...
+    @overload
+    def all(
+        self,
+        axis: int | tuple[int, ...] | None,
+        out: _ArrayT,
+        keepdims: _Index = ...,
+    ) -> _ArrayT: ...
+    @overload
+    def all(
+        self,
+        axis: int | tuple[int, ...] | None = ...,
+        *,
+        out: _ArrayT,
+        keepdims: _Index = ...,
+    ) -> _ArrayT: ...
+    @overload
+    def any(
+        self,
+        axis: None = ...,
+        out: None = ...,
+        keepdims: Literal[False, 0] = ...,
+    ) -> numpy.bool: ...
+    @overload
+    def any(
+        self,
+        axis: int | tuple[int, ...] | None = ...,
+        out: None = ...,
+        keepdims: _Index = ...,
+    ) -> numpy.bool | NDArray[numpy.bool]: ...
+    @overload
+    def any(
+        self,
+        axis: int | tuple[int, ...] | None,
+        out: _ArrayT,
+        keepdims: _Index = ...,
+    ) -> _ArrayT: ...
+    @overload
+    def any(
+        self,
+        axis: int | tuple[int, ...] | None = ...,
+        *,
+        out: _ArrayT,
+        keepdims: _Index = ...,
+    ) -> _ArrayT: ...
