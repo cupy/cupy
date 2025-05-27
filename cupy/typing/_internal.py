@@ -11,3 +11,5 @@ _ShapeLike = SupportsIndex | Sequence[SupportsIndex]
 _OrderKACF = Literal["K", "A", "C", "F"] | None
 _DTypeLike = type[_ScalarT] | numpy.dtype[_ScalarT]
 _ArrayT = TypeVar("_ArrayT", bound=core.ndarray)
+
+_Index = int  # MEMO: May be SupportsIndex
