@@ -217,11 +217,6 @@ def _geev(a, with_eigen_vector):
     if with_eigen_vector and not real_input:
         v = cupy.swapaxes(v, -2, -1).copy(order='C')
 
-    real_output = (w.imag == 0.0).all()
-    if real_output:
-        w = w.real
-        v = v.real
-
     return w, v
 
 
