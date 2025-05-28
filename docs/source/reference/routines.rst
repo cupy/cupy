@@ -13,6 +13,7 @@ These functions cover a subset of
    manipulation
    binary
    dtype
+   emath
    fft
    functional
    indexing
