@@ -125,6 +125,7 @@ def _assemble_complex_evs(w, v_real, shape):
 def _geev(a, with_eigen_vector):
     from cupy_backends.cuda.libs import cusolver
     from cupyx.cusolver import check_availability
+    from cupyx import empty_pinned
 
     if not check_availability('geev'):
         raise RuntimeError('geev is not available')
@@ -174,7 +175,7 @@ def _geev(a, with_eigen_vector):
             type_complex, w.data.ptr, type_input, v_.data.ptr, lda,
             type_input, v_.data.ptr, lda, type_input)
         work_device = cupy.empty(work_device_size, 'b')
-        work_host = numpy.empty(work_host_size, 'b')
+        work_host = empty_pinned(work_host_size, 'b')
 
         if len(a.shape) > 2:
             for ind in numpy.ndindex(a.shape[:-2]):
