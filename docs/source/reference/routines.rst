@@ -21,7 +21,6 @@ These functions cover a subset of
    logic
    math
    misc
-   pad
    polynomials
    random
    set
