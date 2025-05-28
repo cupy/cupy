@@ -15,6 +15,16 @@ def _get_hermitian(xp, a, UPLO):
         return xp.tril(a) + xp.tril(a, -1).swapaxes(-2, -1).conj()
 
 
+def _real_to_complex(x):
+    if x.dtype == 'float32':
+        return x.astype(numpy.complex64)
+    elif x.dtype == 'float64':
+        return x.astype(numpy.complex128)
+    else:
+        assert numpy.iscomplexobj(x)
+        return x
+
+
 @testing.parameterize(*testing.product({
     'UPLO': ['U', 'L'],
 }))
@@ -130,8 +140,10 @@ class TestSymEigenvalue:
 
 
 @pytest.mark.skipif(runtime.is_hip, reason="hip does not support eig")
+@pytest.mark.skipif(
+    cupy.cuda.runtime.runtimeGetVersion() < 12060,
+    reason='Requires CUDA 12.6+')
 class TestEigenvalue:
-
     @testing.for_all_dtypes(no_float16=True)
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4, contiguous_check=False)
     def test_eig(self, xp, dtype):
@@ -144,6 +156,7 @@ class TestEigenvalue:
         w, v = xp.linalg.eig(a)
         tol = 1e-5
         testing.assert_allclose(a @ v, v @ xp.diag(w), atol=tol, rtol=tol)
+        w = _real_to_complex(w)
         # Canonicalize the order
         return xp.sort(w)
 
@@ -160,6 +173,7 @@ class TestEigenvalue:
         w, v = xp.linalg.eig(a)
         tol = 1e-5
         testing.assert_allclose(a @ v, v @ xp.diag(w), atol=tol, rtol=tol)
+        w = _real_to_complex(w)
         # Canonicalize the order
         return xp.sort(w)
 
@@ -170,6 +184,7 @@ class TestEigenvalue:
             pytest.skip('geev is not available')
         a = xp.array([[1, 0, 3], [0, 5, 0], [7, 0, 9]], dtype)
         w = xp.linalg.eigvals(a)
+        w = _real_to_complex(w)
         # Canonicalize the order
         return xp.sort(w)
 
@@ -181,6 +196,7 @@ class TestEigenvalue:
         a = xp.array([[1, 0, 3], [0, 5, 0], [7, 0, 9]], dtype)
         a = _get_hermitian(xp, a, 'U')
         w = xp.linalg.eigvals(a)
+        w = _real_to_complex(w)
         # Canonicalize the order
         return xp.sort(w)
 
@@ -241,6 +257,9 @@ class TestSymEigenvalueEmpty:
     ],
 )
 @pytest.mark.skipif(runtime.is_hip, reason="hip does not support eig")
+@pytest.mark.skipif(
+    cupy.cuda.runtime.runtimeGetVersion() < 12060,
+    reason='Requires CUDA 12.6+')
 class TestEigenvalueEmpty:
 
     @testing.for_dtypes('ifdFD')
@@ -301,9 +320,12 @@ class TestSymEigenvalueInvalid:
     ],
 )
 @pytest.mark.skipif(runtime.is_hip, reason="hip does not support eig")
+@pytest.mark.skipif(
+    cupy.cuda.runtime.runtimeGetVersion() < 12060,
+    reason='Requires CUDA 12.6+')
 class TestEigenvalueInvalid:
 
-    def test_eigh_shape_error(self, shape):
+    def test_eig_shape_error(self, shape):
         if not cusolver.check_availability('geev'):
             pytest.skip('geev is not available')
         for xp in (numpy, cupy):
@@ -311,7 +333,7 @@ class TestEigenvalueInvalid:
             with pytest.raises(numpy.linalg.LinAlgError):
                 xp.linalg.eig(a)
 
-    def test_eigvalsh_shape_error(self, shape):
+    def test_eigvals_shape_error(self, shape):
         if not cusolver.check_availability('geev'):
             pytest.skip('geev is not available')
         for xp in (numpy, cupy):
@@ -321,9 +343,18 @@ class TestEigenvalueInvalid:
 
 
 @pytest.mark.skipif(runtime.is_hip, reason="hip does not support eig")
+@pytest.mark.skipif(
+    cupy.cuda.runtime.runtimeGetVersion() < 12060,
+    reason='Requires CUDA 12.6+')
 class TestStackedEigenvalues:
 
     def check_eig(self, ew_gpu, ew_cpu, ev_gpu=None, ev_cpu=None):
+        # upcast real to complex -- cupy does always return complex type
+        if numpy.isrealobj(ew_cpu) and numpy.iscomplexobj(ew_gpu):
+            ew_cpu = ew_cpu.astype(ew_gpu.dtype)
+            if ev_gpu is not None:
+                ev_cpu = ev_cpu.astype(ev_gpu.dtype)
+
         # sort by eigenvalues
         ew_cpu_ind = numpy.argsort(ew_cpu, axis=-1)
         ew_gpu_ind = cupy.argsort(ew_gpu, axis=-1)
