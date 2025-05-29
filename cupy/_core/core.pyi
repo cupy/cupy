@@ -15,6 +15,7 @@ from cupy.typing._types import (
     _IntArrayT,
     _ArrayT,
 )
+from cupy.typing._proto import _SupportsFileMethods
 from cupy.typing._internal import (
     _SortSide,
     _ArrayLikeInt,
@@ -52,7 +53,10 @@ class ndarray(Generic[_DTypeT_co]):
     def tolist(self: NDArray[_ScalarT]) -> list[Any]: ...
     def tobytes(self, order: _OrderKACF = ...) -> bytes: ...
     def tofile(
-        self, fid: StrOrBytesPath, sep: str = ..., format: str = ...
+        self,
+        fid: StrOrBytesPath | _SupportsFileMethods,
+        sep: str = ...,
+        format: str = ...,
     ) -> None: ...
     def dump(self, file: StrOrBytesPath | SupportsWrite[bytes]) -> None: ...
     def dumps(self) -> bytes: ...

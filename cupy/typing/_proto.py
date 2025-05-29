@@ -1,0 +1,9 @@
+from __future__ import annotations
+
+from _typeshed import SupportsFlush
+from typing import Protocol, SupportsIndex
+
+class _SupportsFileMethods(SupportsFlush, Protocol):
+    def fileno(self) -> SupportsIndex: ...
+    def tell(self) -> SupportsIndex: ...
+    def seek(self, offset: int, whence: int, /) -> object: ...
