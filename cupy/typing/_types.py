@@ -9,6 +9,5 @@ from cupy._core import core
 
 NDArray = core.ndarray[numpy.dtype[_ScalarT]]
 
-_BoolOrIntArrayT = TypeVar(
-    "_BoolOrIntArrayT", bound=NDArray[numpy.integer | numpy.bool]
-)
+_ArrayT = TypeVar("_ArrayT", bound=core.ndarray)
+_IntArrayT = TypeVar("_IntArrayT", bound=NDArray[numpy.integer])

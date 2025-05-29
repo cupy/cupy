@@ -8,9 +8,14 @@ from typing_extensions import Self
 
 from cupy import dtype
 from cupy._core.flags import Flags
-from cupy.typing._types import NDArray, DTypeLike, ArrayLike, _BoolOrIntArrayT
+from cupy.typing._types import (
+    NDArray,
+    DTypeLike,
+    ArrayLike,
+    _IntArrayT,
+    _ArrayT,
+)
 from cupy.typing._internal import (
-    _ArrayLikeInt_co,
     _SortSide,
     _ArrayLikeInt,
     _DTypeT_co,
@@ -19,7 +24,6 @@ from cupy.typing._internal import (
     _DTypeLike,
     _ScalarT,
     _ShapeLike,
-    _ArrayT,
     _ModeKind,
 )
 
@@ -98,33 +102,33 @@ class ndarray(Generic[_DTypeT_co]):
     @overload
     def take(
         self,
-        indices: _ArrayLikeInt_co,
+        indices: _ArrayLikeInt,
         axis: _Index | None = ...,
         out: None = ...,
     ) -> Self: ...
     @overload
     def take(
         self,
-        indices: _ArrayLikeInt_co,
+        indices: _ArrayLikeInt,
         axis: _Index | None = ...,
         *out: _ArrayT,
     ) -> _ArrayT: ...
     def put(
         self,
-        indices: _ArrayLikeInt_co,
+        indices: _ArrayLikeInt,
         values: ArrayLike,
         mode: _ModeKind = ...,
     ) -> None: ...
     @overload
     def repeat(
         self,
-        repeats: _ArrayLikeInt_co,
+        repeats: _ArrayLikeInt,
         axis: None = ...,
     ) -> Self: ...
     @overload
     def repeat(
         self,
-        repeats: _ArrayLikeInt_co,
+        repeats: _ArrayLikeInt,
         axis: _Index,
     ) -> Self: ...
     @overload
@@ -159,24 +163,24 @@ class ndarray(Generic[_DTypeT_co]):
         self,
         v: ArrayLike,
         side: _SortSide = ...,
-        sorter: _ArrayLikeInt_co | None = ...,
+        sorter: _ArrayLikeInt | None = ...,
     ) -> NDArray[numpy.intp]: ...
     def nonzero(self) -> tuple[NDArray[numpy.intp], ...]: ...
     @overload
     def compress(
         self,
-        condition: _ArrayLikeInt_co,
+        condition: _ArrayLikeInt,
         axis: _Index | None = ...,
         out: None = ...,
     ) -> NDArray[Any]: ...
     @overload
     def compress(
-        self, condition: _ArrayLikeInt_co, axis: _Index | None, out: _ArrayT
+        self, condition: _ArrayLikeInt, axis: _Index | None, out: _ArrayT
     ) -> _ArrayT: ...
     @overload
     def compress(
         self,
-        condition: _ArrayLikeInt_co,
+        condition: _ArrayLikeInt,
         axis: _Index | None = ...,
         *,
         out: _ArrayT,
@@ -224,19 +228,19 @@ class ndarray(Generic[_DTypeT_co]):
     def argmax(
         self,
         axis: _Index | None,
-        out: _BoolOrIntArrayT,
+        out: _IntArrayT,
         dtype: DTypeLike = ...,
         keepdims: bool = ...,
-    ) -> _BoolOrIntArrayT: ...
+    ) -> _IntArrayT: ...
     @overload
     def argmax(
         self,
         axis: _Index | None = ...,
         *,
-        out: _BoolOrIntArrayT,
+        out: _IntArrayT,
         dtype: DTypeLike = ...,
         keepdims: bool = ...,
-    ) -> _BoolOrIntArrayT: ...
+    ) -> _IntArrayT: ...
     # SPECIAL
     @overload
     def min(self: NDArray[_ScalarT]) -> _ScalarT: ...
@@ -277,19 +281,19 @@ class ndarray(Generic[_DTypeT_co]):
     def argmin(
         self,
         axis: _Index | None,
-        out: _BoolOrIntArrayT,
+        out: _IntArrayT,
         dtype: DTypeLike = ...,
         keepdims: bool = ...,
-    ) -> _BoolOrIntArrayT: ...
+    ) -> _IntArrayT: ...
     @overload
     def argmin(
         self,
         axis: _Index | None = ...,
         *,
-        out: _BoolOrIntArrayT,
+        out: _IntArrayT,
         dtype: DTypeLike = ...,
         keepdims: bool = ...,
-    ) -> _BoolOrIntArrayT: ...
+    ) -> _IntArrayT: ...
     # SPECIAL
     @overload
     def ptp(self: NDArray[_ScalarT]) -> _ScalarT: ...
