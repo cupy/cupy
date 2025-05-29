@@ -240,6 +240,17 @@ cusolverStatus_t cusolverDnXsyevd(...) {
 }
 #endif // #if CUDA_VERSION < 11010
 
+#if CUDA_VERSION < 12060
+// Functions added in CUDA 12.6
+cusolverStatus_t cusolverDnXgeev_bufferSize(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+cusolverStatus_t cusolverDnXgeev(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+#endif // #if CUDA_VERSION < 12060
+
 } // extern "C"
 
 #endif // #ifndef INCLUDE_GUARD_CUDA_CUPY_CUSOLVER_H

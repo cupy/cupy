@@ -59,9 +59,9 @@ Matrix eigenvalues
 .. autosummary::
    :toctree: generated/
 
-   # linalg.eig
+   linalg.eig
    linalg.eigh
-   # linalg.eigvals
+   linalg.eigvals
    linalg.eigvalsh
 
 Norms and other numbers
