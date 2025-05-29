@@ -9,6 +9,7 @@ from typing import Any, Literal, Sequence, SupportsIndex, TypeVar
 # Miscellaneous types
 _Index = int  # MEMO: SupportsIndex in numpy
 _ScalarT = TypeVar("_ScalarT", bound=numpy.generic)
+_ScalarLike_co = complex | numpy.generic
 _DTypeT_co = TypeVar("_DTypeT_co", bound=numpy.dtype, covariant=True)
 _DTypeT = TypeVar("_DTypeT", bound=numpy.dtype)
 _ShapeLike = SupportsIndex | Sequence[SupportsIndex]
