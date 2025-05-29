@@ -1,6 +1,7 @@
 import json
 import os
 import os.path
+import shutil
 import subprocess
 import sys
 from typing import Any, Dict, List, Tuple
@@ -210,6 +211,23 @@ class custom_build_ext(setuptools.command.build_ext.build_ext):
 
     def build_extension(self, ext: setuptools.Extension) -> None:
         ctx = cupy_builder.get_context()
+
+        # The setuptools always uses temp dir for PEP 660 builds, which means
+        # incremental compilation is not possible. Here we workaround that by
+        # manually checking if the build can be skipped. See also:
+        # https://github.com/pypa/setuptools/blob/v78.1.0/setuptools/command/editable_wheel.py#L333-L334
+        # https://github.com/pypa/setuptools/blob/v78.1.0/setuptools/_distutils/command/build_ext.py#L532-L538
+        if ctx.setup_command == 'editable_wheel' and not self.force:
+            ext_build_lib = self.get_ext_fullpath(ext.name)
+            ext_inplace = os.path.relpath(ext_build_lib, self.build_lib)
+            if (os.path.exists(ext_inplace) and
+                    max(_get_timestamp(f) for f in (ext.sources + ext.depends))
+                    < _get_timestamp(ext_inplace)):
+                print(f'skip building \'{ext.name}\' extension (up-to-date)')
+                # Pretend as if it was just built.
+                os.makedirs(os.path.dirname(ext_build_lib), exist_ok=True)
+                shutil.copy2(ext_inplace, ext_build_lib)
+                return
 
         # Compile "*.cu" files into object files.
         sources_cpp, extra_objects = compile_device_code(ctx, ext)

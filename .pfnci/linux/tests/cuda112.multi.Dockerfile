@@ -28,6 +28,6 @@ RUN pyenv install 3.9.6 && \
     pyenv global 3.9.6 && \
     pip install -U setuptools pip wheel
 
-RUN pip install -U 'numpy==1.22.*' 'scipy==1.7.*' 'optuna==3.*' 'cython==3.1.*'
+RUN pip install -U 'numpy==1.22.*' 'scipy==1.7.*' 'optuna==3.*' 'cython==3.1.*' 'fastrlock>=0.5'
 RUN pip uninstall -y mpi4py cuda-python && \
     pip check
