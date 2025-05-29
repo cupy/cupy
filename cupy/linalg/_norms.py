@@ -188,7 +188,7 @@ def cond(x, p=None):
     if x.size == 0:
         raise cupy.linalg.LinAlgError("cond is not defined on empty arrays")
     if p is None or p == 2 or p == -2:
-        _, s, _ = cupy.linalg.svd(x, compute_uv=True)
+        s = cupy.linalg.svd(x, compute_uv=False)
         with cupyx.errstate(linalg='ignore'):
             if p == -2:
                 r = s[..., -1] / s[..., 0]
