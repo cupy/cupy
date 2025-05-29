@@ -10,6 +10,7 @@ from cupy._core import core
 NDArray = core.ndarray[numpy.dtype[_ScalarT]]
 
 _ArrayT = TypeVar("_ArrayT", bound=core.ndarray)
+_NumpyArrayT = TypeVar("_NumpyArrayT", bound=numpy.ndarray)
 _IntArrayT = TypeVar("_IntArrayT", bound=NDArray[numpy.integer])
 _NumericArrayT = TypeVar("_NumericArrayT", bound=NDArray[numpy.number])
 _RealArrayT = TypeVar(

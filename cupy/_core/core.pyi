@@ -9,6 +9,7 @@ from typing_extensions import Self
 from cupy import dtype
 from cupy._core.flags import Flags
 from cupy.cuda.device import Device
+from cupy.cuda.stream import Stream
 from cupy.typing._types import (
     NDArray,
     DTypeLike,
@@ -16,6 +17,7 @@ from cupy.typing._types import (
     _IntArrayT,
     _NumericArrayT,
     _IntegralArrayT,
+    _NumpyArrayT,
     _RealArrayT,
     _ArrayT,
 )
@@ -25,6 +27,7 @@ from cupy.typing._internal import (
     _ArrayLikeInt,
     _DTypeT_co,
     _ScalarLike_co,
+    _OrderCAF,
     _Index,
     _OrderKACF,
     _DTypeLike,
@@ -651,3 +654,26 @@ class ndarray(Generic[_DTypeT_co]):
     def dot(self, b: ArrayLike, out: _ArrayT) -> _ArrayT: ...
     @property
     def device(self) -> Device: ...
+    @overload
+    def get(
+        self: NDArray[_ScalarT],
+        stream: Stream | None = ...,
+        order: _OrderCAF = ...,
+        out: None = ...,
+        blocking: bool = ...,
+    ) -> numpy.typing.NDArray[_ScalarT]: ...
+    @overload
+    def get(
+        self,
+        stream: Stream | None = ...,
+        order: _OrderCAF = ...,
+        *,
+        out: _NumpyArrayT,
+        blocking: bool = ...,
+    ) -> _NumpyArrayT: ...
+    def set(
+        self: NDArray[_ScalarT],
+        arr: numpy.typing.NDArray[_ScalarT],
+        stream: Stream | None = ...,
+    ) -> None: ...
+    def reduced_view(self) -> Self: ...
