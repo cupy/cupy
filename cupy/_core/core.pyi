@@ -8,6 +8,7 @@ from typing_extensions import Self
 
 from cupy import dtype
 from cupy._core.flags import Flags
+from cupy.cuda.device import Device
 from cupy.typing._types import (
     NDArray,
     DTypeLike,
@@ -648,3 +649,5 @@ class ndarray(Generic[_DTypeT_co]):
     def dot(self, b: ArrayLike, out: None = ...) -> Any: ...
     @overload
     def dot(self, b: ArrayLike, out: _ArrayT) -> _ArrayT: ...
+    @property
+    def device(self) -> Device: ...
