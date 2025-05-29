@@ -11,3 +11,10 @@ NDArray = core.ndarray[numpy.dtype[_ScalarT]]
 
 _ArrayT = TypeVar("_ArrayT", bound=core.ndarray)
 _IntArrayT = TypeVar("_IntArrayT", bound=NDArray[numpy.integer])
+_NumericArrayT = TypeVar("_NumericArrayT", bound=NDArray[numpy.number])
+_RealArrayT = TypeVar(
+    "_RealArrayT", bound=NDArray[numpy.floating | numpy.integer | numpy.bool]
+)
+_IntegralArrayT = TypeVar(
+    "_IntegralArrayT", bound=NDArray[numpy.integer | numpy.bool]
+)
