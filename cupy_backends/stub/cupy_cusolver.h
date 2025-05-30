@@ -995,7 +995,7 @@ cusolverStatus_t cusolverDnXsyevd(...) {
     return CUSOLVER_STATUS_SUCCESS;
 }
 
-// Functions added in CUDA 12.6
+// Functions added in cuSOLVER 11.7 (CUDA 12.6.2)
 cusolverStatus_t cusolverDnXgeev_bufferSize(...) {
     return CUSOLVER_STATUS_SUCCESS;
 }
