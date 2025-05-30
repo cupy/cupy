@@ -1,39 +1,56 @@
 from collections.abc import Iterator
-from typing import Any, Generic, Literal
+from typing import Any, ClassVar, Generic, Literal, Protocol, overload
 
-from _typeshed import StrOrBytesPath, SupportsWrite
-from typing import overload
 import numpy
+from _typeshed import StrOrBytesPath, SupportsWrite
+from typing_extensions import Self
 
 from cupy import dtype
 from cupy._core.flags import Flags
 from cupy.cuda.device import Device
 from cupy.cuda.stream import Stream
-from cupy.typing._types import (
-    NDArray,
-    DTypeLike,
-    ArrayLike,
-    _IntArrayT,
-    _NumericArrayT,
-    _IntegralArrayT,
-    _NumpyArrayT,
-    _RealArrayT,
-    _ArrayT,
-)
-from cupy.typing._proto import _SupportsFileMethods
 from cupy.typing._internal import (
-    _SortSide,
     _ArrayLikeInt,
-    _DTypeT_co,
-    _ScalarLike_co,
-    _OrderCAF,
-    _Index,
-    _OrderKACF,
     _DTypeLike,
+    _DTypeT_co,
+    _Index,
+    _ModeKind,
+    _OrderCAF,
+    _OrderKACF,
+    _ScalarLike_co,
     _ScalarT,
     _ShapeLike,
-    _ModeKind,
+    _SortSide,
 )
+from cupy.typing._proto import _SupportsFileMethods
+from cupy.typing._types import (
+    ArrayLike,
+    DTypeLike,
+    NDArray,
+    _ArrayT,
+    _IntArrayT,
+    _IntegralArrayT,
+    _NumericArrayT,
+    _NumpyArrayT,
+    _RealArrayT,
+)
+
+class _SupportsRealImag(Protocol):
+    @overload
+    def __get__(
+        self, instance: _RealArrayT, owner: type | None = ...
+    ) -> _RealArrayT: ...
+    @overload
+    def __get__(
+        self, instance: NDArray[numpy.complex64], owner: type | None = ...
+    ) -> NDArray[numpy.float32]: ...
+    @overload
+    def __get__(
+        self, instance: NDArray[numpy.complex128], owner: type | None = ...
+    ) -> NDArray[numpy.float64]: ...
+    @overload
+    def __get__(self, instance: None, owner: type | None = ...) -> Self: ...
+    def __set__(self, instance: NDArray[Any], value: ArrayLike) -> None: ...
 
 # MEMO: Some methods have special overloads for most-conventional use cases.
 
@@ -635,7 +652,8 @@ class ndarray(Generic[_DTypeT_co]):
     # TODO: Annotate binary operators
     def conj(self) -> ndarray[_DTypeT_co]: ...
     def conjugate(self) -> ndarray[_DTypeT_co]: ...
-    # TODO: Annotate real/imag
+    real: ClassVar[_SupportsRealImag]
+    imag: ClassVar[_SupportsRealImag]
     # TODO: Annotate remaining dunders
     def __copy__(self) -> ndarray[_DTypeT_co]: ...
     def __deepcopy__(
