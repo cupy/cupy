@@ -15,7 +15,6 @@ from cupy.typing._internal import (
     _DTypeT_co,
     _Index,
     _ModeKind,
-    _OrderCAF,
     _OrderKACF,
     _ScalarLike_co,
     _ScalarT,
@@ -682,7 +681,7 @@ class ndarray(Generic[_DTypeT_co]):
     def get(
         self: NDArray[_ScalarT],
         stream: Stream | None = ...,
-        order: _OrderCAF = ...,
+        order: Literal["C", "A", "F"] = ...,
         out: None = ...,
         blocking: bool = ...,
     ) -> numpy.typing.NDArray[_ScalarT]: ...
@@ -690,7 +689,7 @@ class ndarray(Generic[_DTypeT_co]):
     def get(
         self,
         stream: Stream | None = ...,
-        order: _OrderCAF = ...,
+        order: Literal["C", "A", "F"] = ...,
         *,
         out: _NumpyArrayT,
         blocking: bool = ...,

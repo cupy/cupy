@@ -6,9 +6,8 @@ import numpy
 
 import cupy
 from cupy._core.internal import _get_strides_for_order_K, _update_order_char
-from cupy.typing._types import (
-    _OrderKACF, _OrderCF, _ShapeLike, DTypeLike, NDArray,
-)
+from cupy.typing._types import DTypeLike, NDArray
+from cupy.typing._internal import _OrderCF, _ShapeLike, _OrderKACF
 
 
 def empty(
