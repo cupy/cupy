@@ -1,7 +1,6 @@
 """Thin wrapper of CUSOLVER."""
 from libc.stdint cimport intptr_t, int64_t
 
-cpdef _get_cuda_build_version()
 
 ###############################################################################
 # Types
