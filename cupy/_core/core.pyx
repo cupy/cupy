@@ -1617,10 +1617,9 @@ cdef class _ndarray_base:
             'Please use `.get()` to construct a NumPy array explicitly.')
 
     @classmethod
-    def __class_getitem__(cls, tuple item):
+    def __class_getitem__(cls, *args):
         from types import GenericAlias
-        item1, item2 = item
-        return GenericAlias(ndarray, (item1, item2))
+        return GenericAlias(ndarray, args)
 
     # TODO(okuta): Implement __array_wrap__
 
