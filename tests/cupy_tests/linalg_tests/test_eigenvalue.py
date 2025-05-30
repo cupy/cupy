@@ -140,9 +140,6 @@ class TestSymEigenvalue:
 
 
 @pytest.mark.skipif(runtime.is_hip, reason="hip does not support eig")
-@pytest.mark.skipif(
-    cupy.cuda.runtime.runtimeGetVersion() < 12060,
-    reason='Requires CUDA 12.6+')
 class TestEigenvalue:
     @testing.for_all_dtypes(no_float16=True)
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4, contiguous_check=False)
@@ -257,9 +254,6 @@ class TestSymEigenvalueEmpty:
     ],
 )
 @pytest.mark.skipif(runtime.is_hip, reason="hip does not support eig")
-@pytest.mark.skipif(
-    cupy.cuda.runtime.runtimeGetVersion() < 12060,
-    reason='Requires CUDA 12.6+')
 class TestEigenvalueEmpty:
 
     @testing.for_dtypes('ifdFD')
@@ -320,9 +314,6 @@ class TestSymEigenvalueInvalid:
     ],
 )
 @pytest.mark.skipif(runtime.is_hip, reason="hip does not support eig")
-@pytest.mark.skipif(
-    cupy.cuda.runtime.runtimeGetVersion() < 12060,
-    reason='Requires CUDA 12.6+')
 class TestEigenvalueInvalid:
 
     def test_eig_shape_error(self, shape):
@@ -343,9 +334,6 @@ class TestEigenvalueInvalid:
 
 
 @pytest.mark.skipif(runtime.is_hip, reason="hip does not support eig")
-@pytest.mark.skipif(
-    cupy.cuda.runtime.runtimeGetVersion() < 12060,
-    reason='Requires CUDA 12.6+')
 class TestStackedEigenvalues:
 
     def check_eig(self, ew_gpu, ew_cpu, ev_gpu=None, ev_cpu=None):
@@ -403,6 +391,8 @@ class TestStackedEigenvalues:
         numpy.float32, numpy.float64, numpy.complex64, numpy.complex128,
     ])
     def test_3d_eigvals(self, dtype):
+        if not cusolver.check_availability('geev'):
+            pytest.skip('geev is not available')
         self.check_eigvals_for_shape(dtype, (12, 1, 1))
         self.check_eigvals_for_shape(dtype, (2, 17, 17))
         self.check_eigvals_for_shape(dtype, (1, 4, 4))
@@ -412,6 +402,8 @@ class TestStackedEigenvalues:
         numpy.float32, numpy.float64, numpy.complex64, numpy.complex128,
     ])
     def test_4d_eigvals(self, dtype):
+        if not cusolver.check_availability('geev'):
+            pytest.skip('geev is not available')
         self.check_eigvals_for_shape(dtype, (2, 7, 4, 4))
         self.check_eigvals_for_shape(dtype, (1, 2, 3, 3))
         self.check_eigvals_for_shape(dtype, (4, 1, 3, 3))
@@ -422,6 +414,8 @@ class TestStackedEigenvalues:
         numpy.float32, numpy.float64, numpy.complex64, numpy.complex128,
     ])
     def test_5d_eigvals(self, dtype):
+        if not cusolver.check_availability('geev'):
+            pytest.skip('geev is not available')
         self.check_eigvals_for_shape(dtype, (2, 7, 3, 4, 4))
         self.check_eigvals_for_shape(dtype, (1, 3, 2, 3, 3))
         self.check_eigvals_for_shape(dtype, (4, 1, 4, 3, 3))
@@ -432,6 +426,8 @@ class TestStackedEigenvalues:
         numpy.float32, numpy.float64, numpy.complex64, numpy.complex128,
     ])
     def test_3d_eig(self, dtype):
+        if not cusolver.check_availability('geev'):
+            pytest.skip('geev is not available')
         self.check_eig_for_shape(dtype, (12, 1, 1))
         self.check_eig_for_shape(dtype, (2, 17, 17))
         self.check_eig_for_shape(dtype, (1, 4, 4))
@@ -441,6 +437,8 @@ class TestStackedEigenvalues:
         numpy.float32, numpy.float64, numpy.complex64, numpy.complex128,
     ])
     def test_4d_eig(self, dtype):
+        if not cusolver.check_availability('geev'):
+            pytest.skip('geev is not available')
         self.check_eig_for_shape(dtype, (2, 7, 4, 4))
         self.check_eig_for_shape(dtype, (1, 2, 3, 3))
         self.check_eig_for_shape(dtype, (4, 1, 3, 3))
@@ -451,6 +449,8 @@ class TestStackedEigenvalues:
         numpy.float32, numpy.float64, numpy.complex64, numpy.complex128,
     ])
     def test_5d_eig(self, dtype):
+        if not cusolver.check_availability('geev'):
+            pytest.skip('geev is not available')
         self.check_eig_for_shape(dtype, (2, 7, 3, 4, 4))
         self.check_eig_for_shape(dtype, (1, 3, 2, 3, 3))
         self.check_eig_for_shape(dtype, (4, 1, 4, 3, 3))
@@ -461,6 +461,8 @@ class TestStackedEigenvalues:
         numpy.float32, numpy.float64,
     ])
     def test_real_to_real(self, dtype):
+        if not cusolver.check_availability('geev'):
+            pytest.skip('geev is not available')
         # add input matrices with real result
         mat1 = numpy.eye(9, dtype=dtype).reshape((1, 9, 9)) * 2
         mat2 = numpy.eye(9, dtype=dtype).reshape((1, 9, 9)) * 3
@@ -478,6 +480,8 @@ class TestStackedEigenvalues:
         numpy.float32, numpy.float64,
     ])
     def test_mixed_real_complex(self, dtype):
+        if not cusolver.check_availability('geev'):
+            pytest.skip('geev is not available')
         array = testing.shaped_random((7, 9, 9), numpy, dtype=dtype, seed=42)
         a_cpu = numpy.asarray(array, dtype=dtype)
 
