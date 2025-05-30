@@ -1,13 +1,14 @@
 from __future__ import annotations
 
-from numpy.typing import ArrayLike, DTypeLike, NBitBase  # noqa: F401
-from typing import TypeVar
+from typing import Any, TypeVar
+
 import numpy
-from cupy.typing._internal import _ScalarT
+from numpy.typing import ArrayLike, DTypeLike, NBitBase  # noqa: F401
 
 from cupy._core import core
+from cupy.typing._internal import _ScalarT
 
-NDArray = core.ndarray[numpy.dtype[_ScalarT]]
+NDArray = core.ndarray[Any, numpy.dtype[_ScalarT]]
 
 _ArrayT = TypeVar("_ArrayT", bound=core.ndarray)
 _NumpyArrayT = TypeVar("_NumpyArrayT", bound=numpy.ndarray)
