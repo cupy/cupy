@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import ast
 import inspect
 import linecache
@@ -47,17 +48,15 @@ if (3, 8) <= sys.version_info:
 else:
     _CastingType = str
 
-Result = NamedTuple(
-    'Result',
-    [
-        'func_name',
-        'code',
-        'return_type',
-        'enable_cooperative_groups',
-        'backend',
-        'options',
-        'jitify',
-    ])
+
+class Result(NamedTuple):
+    func_name: str
+    code: str
+    return_type: _cuda_types.TypeBase
+    enable_cooperative_groups: bool
+    backend: str
+    options: tuple[str, ...]
+    jitify: bool
 
 
 class _JitCompileError(Exception):
