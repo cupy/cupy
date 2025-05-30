@@ -3,11 +3,20 @@ from __future__ import annotations
 from typing import Any, TypeVar
 
 import numpy
-from numpy.typing import ArrayLike, DTypeLike, NBitBase  # noqa: F401
+from numpy.typing import DTypeLike, NBitBase  # noqa: F401
 
 from cupy._core import core
 from cupy.typing._internal import _ScalarT
+from cupy.typing._proto import _Buffer, _NestedSequence, _SupportsArray
 
+# numpy.typing.ArrayLike minus str/bytes
+ArrayLike = (
+    _Buffer
+    | complex
+    | _NestedSequence[complex]
+    | _SupportsArray[numpy.dtype[Any]]
+    | _NestedSequence[_SupportsArray[numpy.dtype[Any]]]
+)
 NDArray = core.ndarray[Any, numpy.dtype[_ScalarT]]
 
 _ArrayT = TypeVar("_ArrayT", bound=core.ndarray)
