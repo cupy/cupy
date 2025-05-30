@@ -450,7 +450,7 @@
   cutensor: "2.0"
   cusparselt: "0.7.1"
   cudnn: "8.8"
-  python: "3.12"
+  python: "3.13t"
   numpy: "2.2"
   scipy: "1.15"
   optuna: "4"
@@ -466,6 +466,7 @@
   _inherits: "cupy.linux.cuda128"
   tags: ["@push", "full", "mini", "multi", "cuda128"]
   target: "cuda128.multi"
+  python: "3.12"  # mpi4py no-GIL build unavailable
   mpi4py: "3"
   test: "unit-multi"
 
