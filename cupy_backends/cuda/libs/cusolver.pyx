@@ -2,10 +2,12 @@
 
 """Thin wrapper of CUSOLVER."""
 
+import sys as _sys
 cimport cython  # NOQA
 
 from cupy_backends.cuda.api cimport runtime
 from cupy_backends.cuda cimport stream as stream_module
+from cupy_backends.cuda._softlink cimport SoftLink
 
 
 ###############################################################################
@@ -935,21 +937,6 @@ cdef extern from '../../cupy_lapack.h' nogil:
         void *bufferOnDevice, size_t workspaceInBytesOnDevice,
         void *bufferOnHost, size_t workspaceInBytesOnHost, int *info)
 
-    int cusolverDnXgeev_bufferSize(
-        Handle handle, Params params, EigMode jobvl, EigMode jobvr, int64_t n,
-        DataType dataTypeA, void *A, int64_t lda, DataType dataTypeW,
-        void *W, DataType dataTypeVL, void *VL, int64_t ldvl,
-        DataType dataTypeVR, void *VR, int64_t ldvr, DataType computeType,
-        size_t *workspaceInBytesOnDevice, size_t *workspaceInBytesOnHost)
-    int cusolverDnXgeev(
-        Handle handle, Params params, EigMode jobvl, EigMode jobvr,
-        int64_t n, DataType dataTypeA, void *A, int64_t lda,
-        DataType dataTypeW, void *W, DataType dataTypeVL, void *VL,
-        int64_t ldvl, DataType dataTypeVR, void *VR, int64_t ldvr,
-        DataType computeType, void *bufferOnDevice,
-        size_t workspaceInBytesOnDevice, void *bufferOnHost,
-        size_t workspaceInBytesOnHost, int *info)
-
     ###########################################################################
     # Sparse LAPACK Functions
     ###########################################################################
@@ -1014,6 +1001,22 @@ cdef extern from '../../cupy_lapack.h' nogil:
         const int *csrRowPtrA, const int *csrColIndA, cuDoubleComplex mu0,
         const cuDoubleComplex *x0, int maxite, double eps, cuDoubleComplex *mu,
         cuDoubleComplex *x)
+
+
+ctypedef int (*f_type)(...) nogil  # NOQA
+IF 12000 <= CUPY_CUDA_VERSION < 13000:
+    if _sys.platform == 'linux':
+        _libname = 'libcusolver.so.11'
+    else:
+        _libname = 'cusolver64_11.dll'
+ELSE:
+    _libname = None
+
+cdef SoftLink _lib = SoftLink(_libname, 'cusolver')
+# cuSOLVER 11.7+ (CUDA 12.6.2+)
+cdef f_type cusolverDnXgeev = <f_type>_lib.get('DnXgeev')
+cdef f_type cusolverDnXgeev_bufferSize = <f_type>_lib.get('DnXgeev_bufferSize')
+
 
 ###############################################################################
 # Error handling
