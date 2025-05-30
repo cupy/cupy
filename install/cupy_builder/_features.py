@@ -142,6 +142,7 @@ _cuda_files = [
     'cupy.cuda.stream',
     'cupy.cuda.graph',
     'cupy.cuda.texture',
+    'cupy.cuda.fastrlock.rlock',
     'cupy.fft._cache',
     'cupy.fft._callback',
     'cupy.lib._polynomial',
