@@ -10,7 +10,7 @@ import threading
 import warnings
 import weakref
 
-from fastrlock cimport rlock
+from .fastrlock cimport rlock
 from libc.stdint cimport int8_t
 from libc.stdint cimport intptr_t
 from libc.stdint cimport UINT64_MAX
