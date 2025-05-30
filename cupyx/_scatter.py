@@ -1,4 +1,6 @@
 from __future__ import annotations
+
+
 def scatter_add(a, slices, value):
     """Adds given values to specified elements of an array.
 

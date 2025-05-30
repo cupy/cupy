@@ -7,6 +7,7 @@ if TYPE_CHECKING:
 else:
     SupportsFlush = object
 
+
 class _SupportsFileMethods(SupportsFlush, Protocol):
     def fileno(self) -> SupportsIndex: ...
     def tell(self) -> SupportsIndex: ...
