@@ -3,9 +3,6 @@ from __future__ import annotations
 import numpy
 from typing import Any, Literal, Sequence, SupportsIndex, TypeVar
 
-# MEMO
-# Protocol types are currently not included for simplicity
-
 # Miscellaneous types
 _Index = int  # MEMO: SupportsIndex in numpy
 _ScalarT = TypeVar("_ScalarT", bound=numpy.generic)
