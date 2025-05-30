@@ -1112,6 +1112,15 @@ cpdef tuple _getVersion():
             getProperty(PATCH_LEVEL))
 
 
+cpdef int _getVersionNumber():
+    """
+    Returns cuSOLVER's runtime version in the same expression as
+    `CUSOLVER_VERSION` defined in `cusolver_common.h`.
+    """
+    cdef tuple v = _getVersion()
+    return v[0] * 1000 + v[1] * 100 + v[2]
+
+
 ###############################################################################
 # Context
 ###############################################################################

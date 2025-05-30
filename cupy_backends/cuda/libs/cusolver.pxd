@@ -49,6 +49,7 @@ cpdef enum:
 
 cpdef int getProperty(int type) except? -1
 cpdef tuple _getVersion()
+cpdef int _getVersionNumber() except? -1
 
 ###############################################################################
 # Context
