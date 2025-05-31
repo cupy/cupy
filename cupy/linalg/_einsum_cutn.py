@@ -1,12 +1,6 @@
 import threading
 import warnings
 
-try:
-    import cuquantum
-    from cuquantum import cutensornet
-except ImportError:
-    cuquantum = cutensornet = None
-
 import cupy
 from cupy import _util
 from cupy._core import _accelerator
@@ -14,6 +8,29 @@ from cupy.cuda.device import Handle
 
 
 _tls = threading.local()
+
+cuquantum = cutensornet = tensornet = None
+
+
+def _maybe_lazy_load_cutensornet():
+    global cuquantum, cutensornet, tensornet
+
+    if cuquantum is not None:
+        return
+
+    try:
+        import cuquantum
+        if hasattr(cuquantum, 'bindings'):
+            # cuquantum-python >= 25.03
+            from cuquantum.bindings import cutensornet  # binding module
+            from cuquantum import tensornet  # module for pythonic APIs
+        else:
+            # for cuquantum < 25.03, bindings & pythonic APIs
+            # all reside under cuquantum.cutensornet
+            from cuquantum import cutensornet
+            tensornet = cutensornet
+    except ImportError:
+        pass
 
 
 @_util.memoize()
@@ -64,6 +81,8 @@ def _try_use_cutensornet(*args, **kwargs):
     if (_accelerator.ACCELERATOR_CUTENSORNET not in
             _accelerator.get_routine_accelerators()):
         return None
+
+    _maybe_lazy_load_cutensornet()
 
     if cutensornet is None:
         warnings.warn(
@@ -154,13 +173,13 @@ def _try_use_cutensornet(*args, **kwargs):
     cutn_optimizer = {'path': path} if path else None
 
     if len(args) == 2:
-        out = cutensornet.contract(
+        out = tensornet.contract(
             args[0], *operands, options=cutn_options, optimize=cutn_optimizer)
     elif len(args) == 3:
         inputs = [i for pair in zip(operands, args[0]) for i in pair]
         if args[2] is not None:
             inputs.append(args[2])
-        out = cutensornet.contract(
+        out = tensornet.contract(
             *inputs, options=cutn_options, optimize=cutn_optimizer)
     else:
         assert False

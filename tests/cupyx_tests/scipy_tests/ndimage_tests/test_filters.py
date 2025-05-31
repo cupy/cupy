@@ -109,7 +109,22 @@ class FilterTestCaseBase:
         # Many specialized filters have no weights and this returns None.
 
         if self.filter in ('convolve', 'correlate'):
-            return testing.shaped_random(self._kshape, xp, self._dtype)
+            if getattr(self, "axes", None) is None:
+                # keep 0 values as-is, retain only first _ndim non-zero values
+                # (necessary for intended test from )
+                kshape = []
+                num_non_zero = 0
+                for v in self._kshape:
+                    if num_non_zero < self._ndim or v == 0:
+                        kshape.append(v)
+                    if v != 0:
+                        num_non_zero += 1
+                kshape = tuple(kshape)
+            else:
+                if numpy.isscalar(self.axes):
+                    self.axes = (self.axes,)
+                kshape = [self._kshape[ax] for ax in self.axes]
+            return testing.shaped_random(kshape, xp, self._dtype)
 
         if self.filter in ('convolve1d', 'correlate1d'):
             return testing.shaped_random((self.ksize,), xp, self._dtype)
@@ -144,7 +159,10 @@ class FilterTestCaseBase:
             if not self.footprint:
                 return self.ksize
             # generate footprint with same number of dimensions as axes
-            kshape = self._kshape
+            if getattr(self, "axes", None) is None:
+                kshape = self._kshape[:self._ndim]
+            else:
+                kshape = [self._kshape[ax] for ax in self.axes]
             footprint = testing.shaped_random(kshape, xp, scale=1) > 0.5
             if not footprint.any():
                 footprint = xp.ones(kshape)
@@ -153,15 +171,6 @@ class FilterTestCaseBase:
         if self.filter in ('uniform_filter1d', 'generic_filter1d',
                            'minimum_filter1d', 'maximum_filter1d'):
             return self.ksize
-
-        if self.filter == 'uniform_filter':
-            if getattr(self, "axes", None) is None:
-                kshape = self._kshape[:self._ndim]
-            else:
-                if numpy.isscalar(self.axes):
-                    self.axes = (self.axes,)
-                kshape = [self._kshape[ax] for ax in self.axes]
-            return kshape
 
         # gaussian_filter*, prewitt, sobel, *laplace, and *_gradient_magnitude
         # all have no 'weights' or similar argument so return None
@@ -373,7 +382,7 @@ class TestFilterFast(FilterTestCaseBase):
             'filter': ['gaussian_filter'],
             'sigma': [1.5, 2.25, (1.5, 2.25, 1.0, 3.0)],
             'radius': [None, 2, (1, 2, 3, 4)],
-            'mode': [('reflect', 'nearest', 'mirror', 'wrap')],
+            'mode': [('reflect', 'nearest', 'mirror', 'constant', 'wrap')],
             'truncate': [2.75],
         }) +
         testing.product({
@@ -398,7 +407,7 @@ class TestFilterFast(FilterTestCaseBase):
             'filter': ['maximum_filter', 'minimum_filter'],
             'origin': [0, (0, 1, 1, 0)],
             'ksize': [(3, 3, 4, 5)],
-            'mode': [('reflect', 'nearest', 'mirror', 'wrap')],
+            'mode': [('reflect', 'nearest', 'mirror', 'constant', 'wrap')],
             'cval': [0, 2],
             'footprint': [False],
         }) +
@@ -407,7 +416,7 @@ class TestFilterFast(FilterTestCaseBase):
             'filter': ['maximum_filter', 'minimum_filter'],
             'origin': [0, (0, 1, 1, 0)],
             'kshape': [(3, 5, 3, 5)],
-            'mode': ['reflect'],
+            'mode': ['constant'],
             'cval': [0, 2],
             'footprint': [True],
         }) +
@@ -415,7 +424,7 @@ class TestFilterFast(FilterTestCaseBase):
             'filter': ['uniform_filter'],
             'origin': [0, (0, 1, 1, 0)],
             'kshape': [(3, 5, 3, 5)],
-            'mode': [('reflect', 'nearest', 'mirror', 'wrap')],
+            'mode': [('reflect', 'constant', 'mirror', 'nearest', 'wrap')],
             'cval': [0, 2],
         }),
         # common arguments for all filters to test axes
@@ -455,6 +464,56 @@ class TestFilterFastAxes(FilterTestCaseBase):
                 "origin and nonseparable footprint "
                 "(https://github.com/scipy/scipy/issues/20652)."
             )
+        self._hip_skip_invalid_condition()
+        return self._filter(xp, scp)
+
+
+# Check cases with various axes and axis-specific args
+# Same approach as TestFilterFastAxes, but includes filters updated in
+# SciPy>=1.15 instead of SciPy>=1.11.
+@testing.parameterize(*(
+    testing.product_dict(
+        testing.product({
+            'filter': ['correlate', 'convolve'],
+            'origin': [0, (0, 1, 1, 0)],
+            'kshape': [(3, 5, 3, 5)],
+            'mode': ['reflect', 'constant'],
+            'cval': [0, 2],
+        }) +
+        testing.product({
+            'filter': ['laplace'],
+            'mode': [('reflect', 'nearest', 'mirror', 'constant')],
+            'cval': [0, 2],
+        }) +
+        testing.product({
+            'filter': ['gaussian_gradient_magnitude', 'gaussian_laplace'],
+            'mode': [('reflect', 'constant', 'mirror', 'nearest')],
+            'sigma': [0.5, 3.2],
+            'cval': [0, 2],
+        }),
+        # common arguments for all filters to test axes
+        testing.product({
+            'shape': [(4, 5), (6, 4, 5), (3, 4, 5, 6)],
+            'dtype': [numpy.uint8, numpy.float64],
+            'output': [numpy.float64],
+            'axes': [None, (0, -1), (1,), 0],
+        })
+    )
+))
+@testing.with_requires('scipy>=1.15.0rc1')
+class TestFilterFastAxesSciPy15(FilterTestCaseBase):
+
+    def _hip_skip_invalid_condition(self):
+        if not runtime.is_hip:
+            return
+        # TODO: run on HIP to see if any specific cases need to be skipped
+        # (as done for TestFilterFast)
+        # invalids = [(15, (3, 4, 5, 6))]
+        # if (self.percentile, self.shape) in invalids:
+        #     pytest.xfail('ROCm/HIP may have a bug')
+
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
+    def test_filter(self, xp, scp):
         self._hip_skip_invalid_condition()
         return self._filter(xp, scp)
 
@@ -583,6 +642,48 @@ def lt_pyfunc(x):
 ))
 @testing.with_requires('scipy')
 class TestGenericFilter(FilterTestCaseBase):
+
+    _func_or_kernels = {
+        'rms_raw': rms_raw,
+        'rms_red': rms_red,
+        'rms_pyfunc': rms_pyfunc,
+        'lt_raw': lt_raw,
+        'lt_red': lt_red,
+        'lt_pyfunc': lt_pyfunc,
+    }
+
+    def get_func_or_kernel(self, xp):
+        return self._func_or_kernels[
+            self.func_or_kernel[1 if xp == numpy else 0]]
+
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
+    def test_filter(self, xp, scp):
+        # Need to deal with the different versions of the functions given to
+        # numpy vs cupy
+        self.function = self.get_func_or_kernel(xp)
+        return self._filter(xp, scp)
+
+
+# This tests generic_filter with axes arguments (SciPy>=1.15 only)
+@testing.parameterize(*(
+    testing.product({
+        'filter': ['generic_filter'],
+        'func_or_kernel': [
+            ('rms_raw', 'rms_pyfunc'),
+            ('lt_red', 'lt_pyfunc'),
+        ],
+        'footprint': [False, True],
+        'shape': [(6, 7), (6, 7, 8)],
+        'kshape': [(3, 4, 3)],
+        'origin': [0, (-1, 1, 0)],
+        'dtype': [numpy.uint16, numpy.float64],
+        'axes': [(0, 1), (-2, -1), (0, -1)],
+        'mode': ['constant', 'reflect'],
+    })
+)
+)
+@testing.with_requires('scipy>=1.15.0rc1')
+class TestGenericFilterAxes(FilterTestCaseBase):
 
     _func_or_kernels = {
         'rms_raw': rms_raw,

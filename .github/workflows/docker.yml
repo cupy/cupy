@@ -28,8 +28,9 @@ jobs:
         include:
           - context: "docker/python3"
             base: "cupy/cupy"
-          - context: "docker/rocm"
-            base: "cupy/cupy-rocm"
+          # TODO(kmaehashi): See `docker/rocm/Dockerfile`.
+          #- context: "docker/rocm"
+          #  base: "cupy/cupy-rocm"
     env:
       DOCKER_TAG_NAME: |
         ${{

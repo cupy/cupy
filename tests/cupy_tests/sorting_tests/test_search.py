@@ -319,6 +319,31 @@ class TestWhereTwoArrays:
         return xp.where(cond, x, y)
 
 
+@testing.with_requires("numpy>=2.0")
+@testing.parameterize(
+    {'scalar_value': 1},
+    {'scalar_value': 1.0},
+    {'scalar_value': 1 + 2j},
+)
+class TestWhereArrayAndScalar:
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_where_array_scalar(self, xp, dtype):
+        cond = testing.shaped_random((2, 3, 4), xp, xp.bool_)
+        x = testing.shaped_random((2, 3, 4), xp, dtype, seed=0)
+        y = self.scalar_value
+        return xp.where(cond, x, y)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_where_scalar_array(self, xp, dtype):
+        cond = testing.shaped_random((2, 3, 4), xp, xp.bool_)
+        x = self.scalar_value
+        y = testing.shaped_random((2, 3, 4), xp, dtype, seed=0)
+        return xp.where(cond, x, y)
+
+
 @testing.parameterize(
     {'cond_shape': (2, 3, 4)},
     {'cond_shape': (4,)},

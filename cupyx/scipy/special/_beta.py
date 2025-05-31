@@ -390,7 +390,7 @@ __noinline__ __device__ double lbeta(double a, double b)
 
 beta = _core.create_ufunc(
     "cupyx_scipy_beta",
-    ("ff->f", "dd->d"),
+    ("ll->d", "LL->d", "ee->d", "ff->f", "dd->d"),
     "out0 = out0_type(beta(in0, in1));",
     preamble=(
         beta_preamble +
@@ -425,7 +425,7 @@ beta = _core.create_ufunc(
 
 betaln = _core.create_ufunc(
     "cupyx_scipy_betaln",
-    ("ff->f", "dd->d"),
+    ("ll->d", "LL->d", "ee->d", "ff->f", "dd->d"),
     "out0 = out0_type(lbeta(in0, in1));",
     preamble=(
         beta_preamble +

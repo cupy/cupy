@@ -7,6 +7,13 @@ Linear algebra (:mod:`cupy.linalg`)
 
 .. seealso:: :doc:`scipy_linalg`
 
+The ``@`` operator
+------------------
+
+The ``@`` operator is preferable to other methods when computing the matrix product between 2d arrays.
+The :func:`cupy.matmul` function implements the ``@`` operator.
+
+
 .. currentmodule:: cupy
 
 Matrix and vector products
@@ -16,14 +23,24 @@ Matrix and vector products
    :toctree: generated/
 
    dot
+   # linalg.multi_dot
    vdot
+   # vecdot
+   # linalg.vecdot
    inner
    outer
+   # linalg.outer
    matmul
+   # linalg.matmul (Array API compatible location)
+   # matvec
+   # vecmat
    tensordot
+   # linalg.tensordot (Array API compatible location)
    einsum
+   # einsum_path
    linalg.matrix_power
    kron
+   linalg.cross
 
 Decompositions
 --------------
@@ -34,6 +51,7 @@ Decompositions
    linalg.cholesky
    linalg.qr
    linalg.svd
+   # linalg.svdvals
 
 Matrix eigenvalues
 ------------------
@@ -41,7 +59,9 @@ Matrix eigenvalues
 .. autosummary::
    :toctree: generated/
 
+   linalg.eig
    linalg.eigh
+   linalg.eigvals
    linalg.eigvalsh
 
 Norms and other numbers
@@ -51,11 +71,14 @@ Norms and other numbers
    :toctree: generated/
 
    linalg.norm
+   # linalg.matrix_norm (Array API compatible)
+   # linalg.vector_norm (Array API compatible)
+   # linalg.cond
    linalg.det
    linalg.matrix_rank
    linalg.slogdet
    trace
-
+   # linalg.trace (Array API compatible)
 
 Solving equations and inverting matrices
 ----------------------------------------
@@ -69,3 +92,12 @@ Solving equations and inverting matrices
    linalg.inv
    linalg.pinv
    linalg.tensorinv
+
+Other matrix operations
+-----------------------
+.. autosummary::
+   :toctree: generated/
+
+   diagonal
+   # linalg.diagonal (Array API compatible)
+   # linalg.matrix_transpose (Array API compatible)

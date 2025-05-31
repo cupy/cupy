@@ -862,3 +862,27 @@ class TestRaw:
         x = cupy.zeros((30), dtype=dtype)
         f((5,), (6,), (x,))
         testing.assert_array_equal(x, numpy.full_like(x, cupy.nan))
+
+    def test_return_empty(self):
+        @jit.rawkernel()
+        def f(x, y):
+            tid = jit.threadIdx.x + jit.blockDim.x * jit.blockIdx.x
+            y[tid] = x[tid]
+            return
+
+        x = testing.shaped_random((30,), dtype=numpy.int32, seed=0)
+        y = testing.shaped_random((30,), dtype=numpy.int32, seed=1)
+        f((5,), (6,), (x, y))
+        assert bool((x == y).all())
+
+    def test_return_none(self):
+        @jit.rawkernel()
+        def f(x, y):
+            tid = jit.threadIdx.x + jit.blockDim.x * jit.blockIdx.x
+            y[tid] = x[tid]
+            return None
+
+        x = testing.shaped_random((30,), dtype=numpy.int32, seed=0)
+        y = testing.shaped_random((30,), dtype=numpy.int32, seed=1)
+        f((5,), (6,), (x, y))
+        assert bool((x == y).all())

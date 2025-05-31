@@ -87,8 +87,8 @@ function Main {
 
     echo "Building..."
     $build_retval = 0
-    RunOrDie python -m pip install "numpy==$numpy.*" "scipy==$scipy.*"
-    python -m pip install ".[all,test]" -v > cupy_build_log.txt
+    RunOrDie python -m pip install "numpy==$numpy.*" "scipy==$scipy.*" "Cython==3.*" "fastrlock>=0.5"
+    python -m pip install --no-build-isolation ".[all,test]" -v > cupy_build_log.txt
     if (-not $?) {
         $build_retval = $LastExitCode
     }
@@ -126,6 +126,10 @@ function Main {
 
     if (-Not $is_pull_request) {
         $Env:CUPY_TEST_FULL_COMBINATION = "1"
+    }
+    # Skip full test for these CUDA versions as compilation seems so slow
+    if (($cuda -eq "12.0") -or ($cuda -eq "12.1") -or ($cuda -eq "12.2")) {
+        $Env:CUPY_TEST_FULL_COMBINATION = "0"
     }
 
     # Install dependency for cuDNN 8.3+
