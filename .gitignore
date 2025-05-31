@@ -23,6 +23,7 @@ htmlcov/
 .vs/
 .cache/
 .pytest_cache/
+cupy/_version.py
 cupy/.data/
 cupy/cuda/thrust.h
 cupy/_core/numpy_allocator.h

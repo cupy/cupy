@@ -1,7 +1,7 @@
 [build-system]
 # Need to be installed manually when using `--no-build-isolation`.
 # Keep in sync with `docs/source/contribution.rst`.
-requires = ["setuptools>=77", "wheel", "Cython>=3,<3.2", "fastrlock>=0.5"]
+requires = ["setuptools>=77", "setuptools-scm>=8", "wheel", "Cython>=3,<3.2", "fastrlock>=0.5"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -53,8 +53,8 @@ dynamic = ["version"]
 [tool.setuptools.packages.find]
 include = ["cupy*", "cupyx*", "cupy_backends*"]
 
-[tool.setuptools.dynamic]
-version = { attr = "cupy._version.__version__" }
+[tool.setuptools_scm]
+version_file = "cupy/_version.py"
 
 [tool.autopep8]
 exclude = "*.git*, *.eggs*, *cupy/array_api*, *tests/cupy_tests/array_api_tests*, *docs/source*"
