@@ -3,7 +3,7 @@
 import collections
 import weakref
 
-from fastrlock cimport rlock
+from .fastrlock cimport rlock
 
 from cupy_backends.cuda.api import runtime
 
