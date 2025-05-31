@@ -1,3 +1,4 @@
+from __future__ import annotations
 import dataclasses
 import typing
 from typing import Callable, Optional

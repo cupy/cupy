@@ -1,4 +1,5 @@
 """Functions for FIR filter design."""
+from __future__ import annotations
 import math
 
 from cupy.fft import fft, ifft

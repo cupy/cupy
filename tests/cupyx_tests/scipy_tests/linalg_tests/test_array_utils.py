@@ -1,3 +1,4 @@
+from __future__ import annotations
 import numpy as np
 from numpy import linalg
 from cupyx.scipy.linalg import bandwidth

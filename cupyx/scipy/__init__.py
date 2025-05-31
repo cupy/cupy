@@ -1,3 +1,4 @@
+from __future__ import annotations
 import sys as _sys
 
 from cupy._core import ndarray as _ndarray

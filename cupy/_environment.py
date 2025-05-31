@@ -1,6 +1,7 @@
 """
 This file must not depend on any other CuPy modules.
 """
+from __future__ import annotations
 
 import ctypes
 import importlib.metadata

@@ -1,3 +1,4 @@
+from __future__ import annotations
 from cupy import _core
 from cupy._math import ufunc
 from cupy_backends.cuda.api import runtime

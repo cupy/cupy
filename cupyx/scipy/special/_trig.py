@@ -4,6 +4,7 @@ https://github.com/scipy/scipy/blob/master/scipy/special/_trig.pxd
 
 Note: The CUDA Math library defines the real-valued cospi, sinpi
 """
+from __future__ import annotations
 
 csinpi_definition = """
 

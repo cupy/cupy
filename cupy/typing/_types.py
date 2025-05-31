@@ -1,20 +1,31 @@
-from collections.abc import Sequence
+from __future__ import annotations
 
-from typing import Any, Literal, SupportsIndex, TypeVar, Union
+from typing import Any, TypeVar
 
 import numpy
+from numpy.typing import DTypeLike, NBitBase  # noqa: F401
+
 from cupy._core import core
+from cupy.typing._internal import _ScalarT
+from cupy.typing._proto import _Buffer, _NestedSequence, _SupportsArray
 
-from numpy.typing import ArrayLike  # NOQA
-from numpy.typing import DTypeLike  # NOQA
-from numpy.typing import NBitBase  # NOQA
+# numpy.typing.ArrayLike minus str/bytes
+ArrayLike = (
+    _Buffer
+    | complex
+    | _NestedSequence[complex]
+    | _SupportsArray[numpy.dtype[Any]]
+    | _NestedSequence[_SupportsArray[numpy.dtype[Any]]]
+)
+NDArray = core.ndarray[Any, numpy.dtype[_ScalarT]]
 
-
-# Shapes
-_Shape = tuple[int, ...]
-_ShapeLike = Union[SupportsIndex, Sequence[SupportsIndex]]
-
-_OrderKACF = Literal[None, "K", "A", "C", "F"]
-_OrderCF = Literal[None, "C", "F"]
-_ScalarType_co = TypeVar("_ScalarType_co", bound=numpy.generic, covariant=True)
-NDArray = core.ndarray[Any, numpy.dtype[_ScalarType_co]]
+_ArrayT = TypeVar("_ArrayT", bound=core.ndarray)
+_NumpyArrayT = TypeVar("_NumpyArrayT", bound=numpy.ndarray)
+_IntArrayT = TypeVar("_IntArrayT", bound=NDArray[numpy.integer])
+_NumericArrayT = TypeVar("_NumericArrayT", bound=NDArray[numpy.number])
+_RealArrayT = TypeVar(
+    "_RealArrayT", bound=NDArray[numpy.floating | numpy.integer | numpy.bool]
+)
+_IntegralArrayT = TypeVar(
+    "_IntegralArrayT", bound=NDArray[numpy.integer | numpy.bool]
+)

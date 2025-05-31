@@ -1,3 +1,4 @@
+from __future__ import annotations
 from cupy.random import _generator
 
 

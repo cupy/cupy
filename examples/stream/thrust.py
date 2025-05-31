@@ -1,4 +1,5 @@
 # nvprof --print-gpu-trace python examples/stream/thrust.py
+from __future__ import annotations
 import cupy
 
 x = cupy.array([1, 3, 2])

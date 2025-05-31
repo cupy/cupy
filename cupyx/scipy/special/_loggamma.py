@@ -7,6 +7,7 @@ https://github.com/scipy/scipy/blob/master/scipy/special/_evalpoly.pxd
 https://github.com/scipy/scipy/blob/master/scipy/special/_loggamma.pxd
 
 """
+from __future__ import annotations
 
 from cupy import _core
 from cupyx.scipy.special._complexstuff import zlog1_definition

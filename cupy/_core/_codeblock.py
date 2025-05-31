@@ -1,3 +1,4 @@
+from __future__ import annotations
 from typing import Any, List
 
 _CodeType = Any  # TODO(asi1024): Correct type annotation
