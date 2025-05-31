@@ -73,7 +73,7 @@ Norms and other numbers
    linalg.norm
    # linalg.matrix_norm (Array API compatible)
    # linalg.vector_norm (Array API compatible)
-   # linalg.cond
+   linalg.cond
    linalg.det
    linalg.matrix_rank
    linalg.slogdet
