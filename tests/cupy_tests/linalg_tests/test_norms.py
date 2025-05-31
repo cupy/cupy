@@ -212,19 +212,6 @@ class TestSlogdet(unittest.TestCase):
     *testing.product({"ord": [-numpy.inf, -2, -1, 1, 2, numpy.inf, "fro"]})
 )
 class TestCond(unittest.TestCase):
-    def test_basic_nonsvd(self):
-        # Smoketest the non-svd norms
-        A = cupy.array([[1.0, 0, 1], [0, -2.0, 0], [0, 0, 3.0]])
-        testing.assert_array_almost_equal(cupy.linalg.cond(A, cupy.inf), 4)
-        testing.assert_array_almost_equal(
-            cupy.linalg.cond(A, -cupy.inf), 2 / 3
-        )
-        testing.assert_array_almost_equal(cupy.linalg.cond(A, 1), 4)
-        testing.assert_array_almost_equal(cupy.linalg.cond(A, -1), 0.5)
-        testing.assert_array_almost_equal(
-            cupy.linalg.cond(A, "fro"), cupy.sqrt(265 / 12)
-        )
-
     @testing.for_float_dtypes(no_float16=True)
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4)
     def test_singular_zeros(self, xp, dtype):
@@ -323,3 +310,18 @@ class TestCond(unittest.TestCase):
     def test_hermitian(self, xp, dtype):
         A = xp.array([[1., 2.], [2., 1.]], dtype=dtype)
         return xp.linalg.cond(A, self.ord)
+
+
+class TestCondBasicNonSVD(unittest.TestCase):
+    def test_basic_nonsvd(self):
+        # Smoketest the non-svd norms
+        A = cupy.array([[1.0, 0, 1], [0, -2.0, 0], [0, 0, 3.0]])
+        testing.assert_array_almost_equal(cupy.linalg.cond(A, cupy.inf), 4)
+        testing.assert_array_almost_equal(
+            cupy.linalg.cond(A, -cupy.inf), 2 / 3
+        )
+        testing.assert_array_almost_equal(cupy.linalg.cond(A, 1), 4)
+        testing.assert_array_almost_equal(cupy.linalg.cond(A, -1), 0.5)
+        testing.assert_array_almost_equal(
+            cupy.linalg.cond(A, "fro"), cupy.sqrt(265 / 12)
+        )
