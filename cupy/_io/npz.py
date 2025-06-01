@@ -1,17 +1,65 @@
+import collections.abc
 import warnings
+import weakref
 
 import numpy
 
 import cupy
 
-
 _support_allow_pickle = (numpy.lib.NumpyVersion(numpy.__version__) >= '1.10.0')
 
 
-class NpzFile(object):
+class BagObj:
+    """
+    Convert attribute look-ups to getitems on the object passed in.
+    """
+
+    def __init__(self, obj):
+        # Use weakref to make NpzFile objects collectable by refcount
+        self._obj = weakref.proxy(obj)
+
+    def __getattribute__(self, key):
+        try:
+            return object.__getattribute__(self, '_obj')[key]
+        except KeyError:
+            raise AttributeError(key) from None
+
+    def __dir__(self):
+        """
+        Enables dir(bagobj) to list the files in an NpzFile.
+
+        This also enables tab-completion in an interpreter or IPython.
+        """
+        return list(object.__getattribute__(self, '_obj').keys())
+
+
+class NpzFile(collections.abc.Mapping):
+    """
+    NpzFile(npz_file)
+
+    A dictionary-like object with lazy-loading of files in the zipped
+    archive provided on construction.
+
+    `NpzFile` is used to load files in the NumPy ``.npz`` data archive
+    format. It assumes that files in the archive have a ``.npy`` extension,
+    other files are ignored.
+
+    The arrays and file strings are lazily loaded on either
+    getitem access using ``obj['key']`` or attribute lookup using
+    ``obj.f.key``. A list of all files (without ``.npy`` extensions) can
+    be obtained with ``obj.files`` and the ZipFile object itself using
+    ``obj.zip``.
+
+    Attributes:
+       f (BagObj): An object on which attribute can be performed as an
+         alternative to getitem access on the `NpzFile` instance itself.
+
+    .. seealso:: :class:`numpy.lib.npyio.NpzFile`
+    """
 
     def __init__(self, npz_file):
         self.npz_file = npz_file
+        self.f = BagObj(self)
 
     def __enter__(self):
         self.npz_file.__enter__()
@@ -24,8 +72,51 @@ class NpzFile(object):
         arr = self.npz_file[key]
         return cupy.array(arr)
 
+    def __iter__(self):
+        return iter(self.npz_file.files)
+
+    def __len__(self):
+        return len(self.npz_file.files)
+
+    def __contains__(self, key):
+        return self.npz_file.__contains__(key)
+
+    def __repr__(self):
+        return self.npz_file.__repr__()
+
     def close(self):
+        """
+        Close the file.
+        """
         self.npz_file.close()
+
+    # Work around problems with the docstrings in the Mapping methods
+    # They contain a `->`, which confuses the type annotation interpretations
+    # of sphinx-docs. See https://github.com/numpy/numpy/pull/25964.
+
+    def get(self, key, default=None):
+        """
+        D.get(k,[,d]) returns D[k] if k in D, else d.  d defaults to None.
+        """
+        return collections.abc.Mapping.get(self, key, default)
+
+    def keys(self):
+        """
+        D.keys() returns a set-like object providing a view on the keys
+        """
+        return collections.abc.Mapping.keys(self)
+
+    def values(self):
+        """
+        D.values() returns a set-like object providing a view on the values
+        """
+        return collections.abc.Mapping.values(self)
+
+    def items(self):
+        """
+        D.items() returns a set-like object providing a view on the items
+        """
+        return collections.abc.Mapping.items(self)
 
 
 def load(file, mmap_mode=None, allow_pickle=None):
