@@ -42,6 +42,11 @@ from cupy.typing._standalone import (
 
 # TODO: Add shape support (currently Any)
 class ndarray(Generic[_ShapeT_co, _DTypeT_co]):
+    # Attributes
+    # TODO: Annotate memory pointer
+    base: ndarray[Any, _DTypeT_co] | None
+    dtype: _DTypeT_co
+    size: int
     # TODO: Annotate dlpack interface
     def __cuda_array_interface__(self) -> dict[str, Any]: ...
     @property
