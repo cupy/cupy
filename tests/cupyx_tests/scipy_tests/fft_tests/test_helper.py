@@ -1,3 +1,4 @@
+from __future__ import annotations
 import unittest
 
 import cupyx.scipy.fft as cp_fft

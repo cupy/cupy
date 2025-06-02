@@ -1,3 +1,4 @@
+from __future__ import annotations
 from cupy._core.core import create_ufunc
 
 rsqrt = create_ufunc(

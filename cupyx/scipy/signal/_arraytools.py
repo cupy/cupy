@@ -1,6 +1,7 @@
 """
 Functions for acting on a axis of an array.
 """
+from __future__ import annotations
 import cupy
 
 

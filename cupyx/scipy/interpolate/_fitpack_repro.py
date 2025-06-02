@@ -19,6 +19,7 @@
          p. 165 (1975).
          https://doi.org/10.1016/0771-050X(75)90034-0
 """
+from __future__ import annotations
 import warnings
 import operator
 import cupy

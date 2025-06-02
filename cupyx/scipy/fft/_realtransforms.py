@@ -30,6 +30,7 @@ described in [5]_.
     number of arithmetic operations, Signal Processing, Volume 88, Issue 6,
     pp. 1553-1564, 2008.
 """
+from __future__ import annotations
 
 import math
 import numbers

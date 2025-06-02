@@ -1,3 +1,4 @@
+from __future__ import annotations
 import atexit
 from ctypes import sizeof
 import multiprocessing

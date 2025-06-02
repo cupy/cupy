@@ -211,7 +211,7 @@ cdef class _ndarray_base:
         raise RuntimeError('Must not be directly instantiated')
 
     def _init(self, shape, dtype=float, memptr=None, strides=None,
-              order='C'):
+              order=None):
         cdef Py_ssize_t x, itemsize
         cdef tuple s = internal.get_size(shape)
         del shape
@@ -1617,10 +1617,9 @@ cdef class _ndarray_base:
             'Please use `.get()` to construct a NumPy array explicitly.')
 
     @classmethod
-    def __class_getitem__(cls, tuple item):
-        from types import GenericAlias
-        item1, item2 = item
-        return GenericAlias(ndarray, (item1, item2))
+    def __class_getitem__(cls, _):
+        # Discard generic parameters on runtime.
+        return cls
 
     # TODO(okuta): Implement __array_wrap__
 

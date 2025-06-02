@@ -129,10 +129,20 @@ extend-exclude = [
   "docs/source",
   "tests/cupy_tests/array_api_tests",
   "third_party",
+  ".github",
+  ".pfnci",
 ]
 
 [tool.ruff.lint]
-select = ["E", "F", "W"]
+# TODO: Resolve UP035 (deprecated typing alias)
+select = ["E", "FA", "F", "I002", "PYI", "W"]
+extend-ignore = [
+  "PYI018", # Allow unused private alias
+  "PYI046", # Allow unused private protocol
+]
+
+[tool.ruff.lint.isort]
+required-imports = ["from __future__ import annotations"]
 
 [tool.ruff.lint.per-file-ignores]
 "cupyx/scipy/special/_gammainc.py" = [

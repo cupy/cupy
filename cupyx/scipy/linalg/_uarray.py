@@ -1,3 +1,4 @@
+from __future__ import annotations
 import numpy as np
 import cupy
 import cupy.linalg as _cp_linalg

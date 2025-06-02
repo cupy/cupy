@@ -1,3 +1,4 @@
+from __future__ import annotations
 from cupy_builder._command import filter_files_by_extension
 
 

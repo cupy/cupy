@@ -1,3 +1,4 @@
+from __future__ import annotations
 import cupy
 from cupy import _core
 from cupy._core import fusion

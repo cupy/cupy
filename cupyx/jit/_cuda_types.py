@@ -1,3 +1,4 @@
+from __future__ import annotations
 from typing import Mapping, Optional, Sequence, Union, TYPE_CHECKING
 
 import numpy
@@ -319,7 +320,7 @@ _suffix_literals_dict: Mapping[str, str] = {
 
 
 def get_cuda_code_from_constant(
-        x: Union[bool, int, float, complex],
+        x: Union[bool, complex],
         ctype: Scalar,
 ) -> str:
     dtype = ctype.dtype
