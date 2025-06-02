@@ -9,30 +9,30 @@ from cupy import dtype
 from cupy._core.flags import Flags
 from cupy.cuda.device import Device
 from cupy.cuda.stream import Stream
-from cupy.typing._internal import (
-    _ArrayLikeInt,
+from cupy.typing import DTypeLike
+from cupy.typing._array import (
+    ArrayLike,
+    NDArray,
+    _ArrayT,
+    _IntArrayT,
+    _IntegralArrayT,
+    _NumericArrayT,
+    _RealArrayT,
+)
+from cupy.typing._internal import _ArrayLikeInt
+from cupy.typing._standalone import (
     _DTypeLike,
     _DTypeT_co,
     _Index,
     _ModeKind,
+    _NumpyArrayT,
     _OrderKACF,
     _ScalarLike_co,
     _ScalarT,
     _ShapeLike,
     _ShapeT_co,
     _SortSide,
-)
-from cupy.typing._proto import _SupportsFileMethods
-from cupy.typing._types import (
-    ArrayLike,
-    DTypeLike,
-    NDArray,
-    _ArrayT,
-    _IntArrayT,
-    _IntegralArrayT,
-    _NumericArrayT,
-    _NumpyArrayT,
-    _RealArrayT,
+    _SupportsFileMethods,
 )
 
 class _SupportsRealImag(Protocol):

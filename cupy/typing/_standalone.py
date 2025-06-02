@@ -1,12 +1,21 @@
+"""Type utilities not dependent on cupy."""
+
 from __future__ import annotations
 
 import sys
 import typing
 from collections.abc import Iterator
-from typing import TYPE_CHECKING, Any, Protocol, SupportsIndex, TypeVar
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Literal,
+    Protocol,
+    Sequence,
+    SupportsIndex,
+    TypeVar,
+)
 
-from cupy._core import core
-from cupy.typing._internal import _DTypeT_co
+import numpy
 
 if TYPE_CHECKING:
     from _typeshed import SupportsFlush
@@ -28,12 +37,7 @@ class _SupportsFileMethods(SupportsFlush, Protocol):
     def seek(self, offset: int, whence: int, /) -> object: ...
 
 
-@typing.runtime_checkable
-class _SupportsArray(Protocol[_DTypeT_co]):
-    # Only covers default signature (no optional args provided)
-    def __array__(self) -> core.ndarray[Any, _DTypeT_co]: ...
-
-
+_T = TypeVar("_T")
 _T_co = TypeVar("_T_co", covariant=True)
 
 
@@ -61,3 +65,20 @@ class _NestedSequence(Protocol[_T_co]):
 
     def index(self, value: Any, /) -> int:
         raise NotImplementedError
+
+
+# Miscellaneous types
+_Index = int  # MEMO: SupportsIndex in numpy
+_ScalarT = TypeVar("_ScalarT", bound=numpy.generic)
+_ScalarLike_co = complex | numpy.generic
+_DTypeT_co = TypeVar("_DTypeT_co", bound=numpy.dtype, covariant=True)
+_ShapeT_co = TypeVar("_ShapeT_co", bound=tuple[int, ...], covariant=True)
+_DTypeT = TypeVar("_DTypeT", bound=numpy.dtype)
+_ShapeLike = SupportsIndex | Sequence[SupportsIndex]
+_OrderKACF = Literal["K", "A", "C", "F", None]
+_OrderCAF = Literal["C", "A", "F", None]
+_OrderCF = Literal["C", "F", None]
+_DTypeLike = type[_ScalarT] | numpy.dtype[_ScalarT]
+_ModeKind = Literal["raise", "wrap", "clip"]
+_SortSide = Literal["left", "right"]
+_NumpyArrayT = TypeVar("_NumpyArrayT", bound=numpy.ndarray)
