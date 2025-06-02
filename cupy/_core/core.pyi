@@ -1,5 +1,5 @@
 from collections.abc import Callable, Iterable, Iterator, Mapping
-from typing import Any, ClassVar, Generic, Literal, overload
+from typing import Any, ClassVar, Generic, Literal, SupportsIndex, overload
 
 import numpy
 from _typeshed import StrOrBytesPath, SupportsWrite
@@ -25,7 +25,6 @@ from cupy.typing._standalone import (
     _DTypeLike,
     _DTypeT_co,
     _FloatT,
-    _Index,
     _InexactT,
     _ModeKind,
     _NumpyArrayT,
@@ -105,36 +104,36 @@ class ndarray(Generic[_ShapeT_co, _DTypeT_co]):
     def view(self, dtype: DTypeLike, type: type[_ArrayT]) -> _ArrayT: ...
     def fill(self, value: Any) -> None: ...
     def reshape(
-        self, *shape: _Index, order: _OrderKACF = ...
+        self, *shape: SupportsIndex, order: _OrderKACF = ...
     ) -> ndarray[Any, _DTypeT_co]: ...
-    def transpose(self, *axes: _Index) -> ndarray[Any, _DTypeT_co]: ...
+    def transpose(self, *axes: SupportsIndex) -> ndarray[Any, _DTypeT_co]: ...
     def swapaxes(
-        self, axis1: _Index, axis2: _Index
+        self, axis1: SupportsIndex, axis2: SupportsIndex
     ) -> ndarray[Any, _DTypeT_co]: ...
     def flatten(self, order: _OrderKACF = ...) -> ndarray[Any, _DTypeT_co]: ...
     def squeeze(
         self,
-        axis: _Index | tuple[_Index, ...] | None = ...,
+        axis: SupportsIndex | tuple[SupportsIndex, ...] | None = ...,
     ) -> ndarray[Any, _DTypeT_co]: ...
     @overload
     def take(
         self: NDArray[_ScalarT],
         indices: int | numpy.integer,
-        axis: _Index | None = ...,
+        axis: SupportsIndex | None = ...,
         out: None = ...,
     ) -> _ScalarT: ...
     @overload
     def take(
         self,
         indices: _ArrayLikeInt_co,
-        axis: _Index | None = ...,
+        axis: SupportsIndex | None = ...,
         out: None = ...,
     ) -> ndarray[Any, _DTypeT_co]: ...
     @overload
     def take(
         self,
         indices: _ArrayLikeInt_co,
-        axis: _Index | None = ...,
+        axis: SupportsIndex | None = ...,
         *out: _ArrayT,
     ) -> _ArrayT: ...
     def put(
@@ -153,7 +152,7 @@ class ndarray(Generic[_ShapeT_co, _DTypeT_co]):
     def repeat(
         self,
         repeats: _ArrayLikeInt_co,
-        axis: _Index,
+        axis: SupportsIndex,
     ) -> ndarray[Any, _DTypeT_co]: ...
     @overload
     def choose(
@@ -165,23 +164,23 @@ class ndarray(Generic[_ShapeT_co, _DTypeT_co]):
     ) -> _ArrayT: ...
     def sort(
         self,
-        axis: _Index = ...,
+        axis: SupportsIndex = ...,
         kind: Literal["stable"] | None = ...,
     ) -> None: ...
     def argsort(
         self,
-        axis: _Index | None = ...,
+        axis: SupportsIndex | None = ...,
         kind: Literal["stable"] | None = ...,
     ) -> NDArray[Any]: ...
     def partition(
         self,
         kth: _ArrayLikeInt_co,
-        axis: _Index = ...,
+        axis: SupportsIndex = ...,
     ) -> None: ...
     def argpartition(
         self,
         kth: _ArrayLikeInt_co,
-        axis: _Index | None = ...,
+        axis: SupportsIndex | None = ...,
     ) -> NDArray[numpy.intp]: ...
     def searchsorted(
         self,
@@ -194,23 +193,29 @@ class ndarray(Generic[_ShapeT_co, _DTypeT_co]):
     def compress(
         self,
         condition: _ArrayLikeInt_co,
-        axis: _Index | None = ...,
+        axis: SupportsIndex | None = ...,
         out: None = ...,
     ) -> NDArray[Any]: ...
     @overload
     def compress(
-        self, condition: _ArrayLikeInt_co, axis: _Index | None, out: _ArrayT
+        self,
+        condition: _ArrayLikeInt_co,
+        axis: SupportsIndex | None,
+        out: _ArrayT,
     ) -> _ArrayT: ...
     @overload
     def compress(
         self,
         condition: _ArrayLikeInt_co,
-        axis: _Index | None = ...,
+        axis: SupportsIndex | None = ...,
         *,
         out: _ArrayT,
     ) -> _ArrayT: ...
     def diagonal(
-        self, offset: _Index = ..., axis1: _Index = ..., axis2: _Index = ...
+        self,
+        offset: SupportsIndex = ...,
+        axis1: SupportsIndex = ...,
+        axis2: SupportsIndex = ...,
     ) -> ndarray[Any, _DTypeT_co]: ...
     # SPECIAL
     @overload
@@ -243,7 +248,7 @@ class ndarray(Generic[_ShapeT_co, _DTypeT_co]):
     @overload
     def argmax(
         self,
-        axis: _Index,
+        axis: SupportsIndex,
         out: None = ...,
         dtype: DTypeLike = ...,
         keepdims: bool = ...,
@@ -251,7 +256,7 @@ class ndarray(Generic[_ShapeT_co, _DTypeT_co]):
     @overload
     def argmax(
         self,
-        axis: _Index | None,
+        axis: SupportsIndex | None,
         out: _IntArrayT,
         dtype: DTypeLike = ...,
         keepdims: bool = ...,
@@ -259,7 +264,7 @@ class ndarray(Generic[_ShapeT_co, _DTypeT_co]):
     @overload
     def argmax(
         self,
-        axis: _Index | None = ...,
+        axis: SupportsIndex | None = ...,
         *,
         out: _IntArrayT,
         dtype: DTypeLike = ...,
@@ -296,7 +301,7 @@ class ndarray(Generic[_ShapeT_co, _DTypeT_co]):
     @overload
     def argmin(
         self,
-        axis: _Index,
+        axis: SupportsIndex,
         out: None = ...,
         dtype: DTypeLike = ...,
         keepdims: bool = ...,
@@ -304,7 +309,7 @@ class ndarray(Generic[_ShapeT_co, _DTypeT_co]):
     @overload
     def argmin(
         self,
-        axis: _Index | None,
+        axis: SupportsIndex | None,
         out: _IntArrayT,
         dtype: DTypeLike = ...,
         keepdims: bool = ...,
@@ -312,7 +317,7 @@ class ndarray(Generic[_ShapeT_co, _DTypeT_co]):
     @overload
     def argmin(
         self,
-        axis: _Index | None = ...,
+        axis: SupportsIndex | None = ...,
         *,
         out: _IntArrayT,
         dtype: DTypeLike = ...,
@@ -367,36 +372,38 @@ class ndarray(Generic[_ShapeT_co, _DTypeT_co]):
     ) -> _ArrayT: ...
     @overload
     def round(
-        self, decimals: _Index = ..., out: None = ...
+        self, decimals: SupportsIndex = ..., out: None = ...
     ) -> ndarray[Any, _DTypeT_co]: ...
     @overload
-    def round(self, decimals: _Index, out: _ArrayT) -> _ArrayT: ...
+    def round(self, decimals: SupportsIndex, out: _ArrayT) -> _ArrayT: ...
     @overload
-    def round(self, decimals: _Index = ..., *, out: _ArrayT) -> _ArrayT: ...
+    def round(
+        self, decimals: SupportsIndex = ..., *, out: _ArrayT
+    ) -> _ArrayT: ...
     @overload
     def trace(
         self,
-        offset: _Index = ...,
-        axis1: _Index = ...,
-        axis2: _Index = ...,
+        offset: SupportsIndex = ...,
+        axis1: SupportsIndex = ...,
+        axis2: SupportsIndex = ...,
         dtype: DTypeLike = ...,
         out: None = ...,
     ) -> Any: ...
     @overload
     def trace(
         self,
-        offset: _Index,
-        axis1: _Index,
-        axis2: _Index,
+        offset: SupportsIndex,
+        axis1: SupportsIndex,
+        axis2: SupportsIndex,
         dtype: DTypeLike,
         out: _ArrayT,
     ) -> _ArrayT: ...
     @overload
     def trace(
         self,
-        offset: _Index = ...,
-        axis1: _Index = ...,
-        axis2: _Index = ...,
+        offset: SupportsIndex = ...,
+        axis1: SupportsIndex = ...,
+        axis2: SupportsIndex = ...,
         dtype: DTypeLike = ...,
         *,
         out: _ArrayT,
@@ -435,18 +442,18 @@ class ndarray(Generic[_ShapeT_co, _DTypeT_co]):
     @overload
     def cumsum(
         self,
-        axis: _Index | None = ...,
+        axis: SupportsIndex | None = ...,
         dtype: DTypeLike | None = ...,
         out: None = ...,
     ) -> NDArray[Any]: ...
     @overload
     def cumsum(
-        self, axis: _Index | None, dtype: DTypeLike | None, out: _ArrayT
+        self, axis: SupportsIndex | None, dtype: DTypeLike | None, out: _ArrayT
     ) -> _ArrayT: ...
     @overload
     def cumsum(
         self,
-        axis: _Index | None = ...,
+        axis: SupportsIndex | None = ...,
         dtype: DTypeLike | None = ...,
         *,
         out: _ArrayT,
@@ -582,18 +589,18 @@ class ndarray(Generic[_ShapeT_co, _DTypeT_co]):
     @overload
     def cumprod(
         self,
-        axis: _Index | None = ...,
+        axis: SupportsIndex | None = ...,
         dtype: DTypeLike | None = ...,
         out: None = ...,
     ) -> NDArray[Any]: ...
     @overload
     def cumprod(
-        self, axis: _Index | None, dtype: DTypeLike | None, out: _ArrayT
+        self, axis: SupportsIndex | None, dtype: DTypeLike | None, out: _ArrayT
     ) -> _ArrayT: ...
     @overload
     def cumprod(
         self,
-        axis: _Index | None = ...,
+        axis: SupportsIndex | None = ...,
         dtype: DTypeLike | None = ...,
         *,
         out: _ArrayT,
@@ -610,14 +617,14 @@ class ndarray(Generic[_ShapeT_co, _DTypeT_co]):
         self,
         axis: int | tuple[int, ...] | None = ...,
         out: None = ...,
-        keepdims: _Index = ...,
+        keepdims: SupportsIndex = ...,
     ) -> numpy.bool | NDArray[numpy.bool]: ...
     @overload
     def all(
         self,
         axis: int | tuple[int, ...] | None,
         out: _ArrayT,
-        keepdims: _Index = ...,
+        keepdims: SupportsIndex = ...,
     ) -> _ArrayT: ...
     @overload
     def all(
@@ -625,7 +632,7 @@ class ndarray(Generic[_ShapeT_co, _DTypeT_co]):
         axis: int | tuple[int, ...] | None = ...,
         *,
         out: _ArrayT,
-        keepdims: _Index = ...,
+        keepdims: SupportsIndex = ...,
     ) -> _ArrayT: ...
     @overload
     def any(
@@ -639,14 +646,14 @@ class ndarray(Generic[_ShapeT_co, _DTypeT_co]):
         self,
         axis: int | tuple[int, ...] | None = ...,
         out: None = ...,
-        keepdims: _Index = ...,
+        keepdims: SupportsIndex = ...,
     ) -> numpy.bool | NDArray[numpy.bool]: ...
     @overload
     def any(
         self,
         axis: int | tuple[int, ...] | None,
         out: _ArrayT,
-        keepdims: _Index = ...,
+        keepdims: SupportsIndex = ...,
     ) -> _ArrayT: ...
     @overload
     def any(
@@ -654,7 +661,7 @@ class ndarray(Generic[_ShapeT_co, _DTypeT_co]):
         axis: int | tuple[int, ...] | None = ...,
         *,
         out: _ArrayT,
-        keepdims: _Index = ...,
+        keepdims: SupportsIndex = ...,
     ) -> _ArrayT: ...
     def __nonzero__(self) -> bool: ...
     def __neg__(self: _NumericArrayT) -> _NumericArrayT: ...
@@ -689,7 +696,9 @@ class ndarray(Generic[_ShapeT_co, _DTypeT_co]):
         self, key: _ArrayInt_co | tuple[_ArrayInt_co, ...], /
     ) -> ndarray[Any, _DTypeT_co]: ...
     @overload
-    def __getitem__(self, key: _Index | tuple[_Index, ...], /) -> Any: ...
+    def __getitem__(
+        self, key: SupportsIndex | tuple[SupportsIndex, ...], /
+    ) -> Any: ...
     @overload
     def __getitem__(self, key: _ToIndices, /) -> ndarray[Any, _DTypeT_co]: ...
     # MEMO: May be overloaded

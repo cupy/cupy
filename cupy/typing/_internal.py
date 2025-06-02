@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import typing
 from types import EllipsisType
-from typing import TYPE_CHECKING, Any, Protocol
+from typing import TYPE_CHECKING, Any, Protocol, SupportsIndex
 
 import numpy
 
@@ -13,7 +13,6 @@ from cupy.typing._standalone import (
     _T,
     _DTypeT,
     _DTypeT_co,
-    _Index,
     _NestedSequence,
     _ScalarT,
 )
@@ -54,5 +53,5 @@ _ArrayLikeComplex_co = _DualArrayLike[
 _ArrayLikeNumber_co = _ArrayLikeComplex_co
 
 # Index-like
-_ToIndex = _Index | slice | EllipsisType | _ArrayLikeInt_co | None
+_ToIndex = SupportsIndex | slice | EllipsisType | _ArrayLikeInt_co | None
 _ToIndices = _ToIndex | tuple[_ToIndex, ...]
