@@ -3,13 +3,16 @@
 from __future__ import annotations
 
 import typing
-from typing import Any, Protocol, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Protocol
+
+import numpy
 
 from cupy._core import core
 from cupy.typing._standalone import _T, _DTypeT, _DTypeT_co, _NestedSequence
 
 if TYPE_CHECKING:
     from typing_extensions import TypeAlias
+
 
 @typing.runtime_checkable
 class _SupportsArray(Protocol[_DTypeT_co]):
@@ -25,4 +28,15 @@ _DualArrayLike: TypeAlias = (
 )
 
 # Anything castable to ndarray with specified dtype (work in progress)
-_ArrayLikeInt = Any
+_ArrayLikeBool_co = _DualArrayLike[numpy.dtype[numpy.bool], bool]
+_ArrayLikeUInt_co = _DualArrayLike[
+    numpy.dtype[numpy.bool | numpy.unsignedinteger], bool
+]
+_ArrayLikeInt_co = _DualArrayLike[numpy.dtype[numpy.bool | numpy.integer], int]
+_ArrayLikeFloat_co = _DualArrayLike[
+    numpy.dtype[numpy.bool | numpy.integer | numpy.floating], float
+]
+_ArrayLikeComplex_co = _DualArrayLike[
+    numpy.dtype[numpy.bool | numpy.number], complex
+]
+_ArrayLikeNumber_co = _ArrayLikeComplex_co

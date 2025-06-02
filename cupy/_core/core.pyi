@@ -19,7 +19,7 @@ from cupy.typing._array import (
     _NumericArrayT,
     _RealArrayT,
 )
-from cupy.typing._internal import _ArrayLikeInt
+from cupy.typing._internal import _ArrayLikeInt_co
 from cupy.typing._standalone import (
     _DTypeLike,
     _DTypeT_co,
@@ -135,33 +135,33 @@ class ndarray(Generic[_ShapeT_co, _DTypeT_co]):
     @overload
     def take(
         self,
-        indices: _ArrayLikeInt,
+        indices: _ArrayLikeInt_co,
         axis: _Index | None = ...,
         out: None = ...,
     ) -> ndarray[Any, _DTypeT_co]: ...
     @overload
     def take(
         self,
-        indices: _ArrayLikeInt,
+        indices: _ArrayLikeInt_co,
         axis: _Index | None = ...,
         *out: _ArrayT,
     ) -> _ArrayT: ...
     def put(
         self,
-        indices: _ArrayLikeInt,
+        indices: _ArrayLikeInt_co,
         values: ArrayLike,
         mode: _ModeKind = ...,
     ) -> None: ...
     @overload
     def repeat(
         self,
-        repeats: _ArrayLikeInt,
+        repeats: _ArrayLikeInt_co,
         axis: None = ...,
     ) -> ndarray[Any, _DTypeT_co]: ...
     @overload
     def repeat(
         self,
-        repeats: _ArrayLikeInt,
+        repeats: _ArrayLikeInt_co,
         axis: _Index,
     ) -> ndarray[Any, _DTypeT_co]: ...
     @overload
@@ -184,36 +184,36 @@ class ndarray(Generic[_ShapeT_co, _DTypeT_co]):
     ) -> NDArray[Any]: ...
     def partition(
         self,
-        kth: _ArrayLikeInt,
+        kth: _ArrayLikeInt_co,
         axis: _Index = ...,
     ) -> None: ...
     def argpartition(
         self,
-        kth: _ArrayLikeInt,
+        kth: _ArrayLikeInt_co,
         axis: _Index | None = ...,
     ) -> NDArray[numpy.intp]: ...
     def searchsorted(
         self,
         v: ArrayLike,
         side: _SortSide = ...,
-        sorter: _ArrayLikeInt | None = ...,
+        sorter: _ArrayLikeInt_co | None = ...,
     ) -> NDArray[numpy.intp]: ...
     def nonzero(self) -> tuple[NDArray[numpy.intp], ...]: ...
     @overload
     def compress(
         self,
-        condition: _ArrayLikeInt,
+        condition: _ArrayLikeInt_co,
         axis: _Index | None = ...,
         out: None = ...,
     ) -> NDArray[Any]: ...
     @overload
     def compress(
-        self, condition: _ArrayLikeInt, axis: _Index | None, out: _ArrayT
+        self, condition: _ArrayLikeInt_co, axis: _Index | None, out: _ArrayT
     ) -> _ArrayT: ...
     @overload
     def compress(
         self,
-        condition: _ArrayLikeInt,
+        condition: _ArrayLikeInt_co,
         axis: _Index | None = ...,
         *,
         out: _ArrayT,
