@@ -1,9 +1,8 @@
 from collections.abc import Iterator
-from typing import Any, ClassVar, Generic, Literal, Protocol, overload
+from typing import Any, ClassVar, Generic, Literal, overload
 
 import numpy
 from _typeshed import StrOrBytesPath, SupportsWrite
-from typing_extensions import Self
 
 from cupy import dtype
 from cupy._core.flags import Flags
@@ -18,6 +17,7 @@ from cupy.typing._array import (
     _IntegralArrayT,
     _NumericArrayT,
     _RealArrayT,
+    _SupportsRealImag,
 )
 from cupy.typing._internal import _ArrayLikeInt_co
 from cupy.typing._standalone import (
@@ -34,23 +34,6 @@ from cupy.typing._standalone import (
     _SortSide,
     _SupportsFileMethods,
 )
-
-class _SupportsRealImag(Protocol):
-    @overload
-    def __get__(
-        self, instance: _RealArrayT, owner: type | None = ...
-    ) -> _RealArrayT: ...
-    @overload
-    def __get__(
-        self, instance: NDArray[numpy.complex64], owner: type | None = ...
-    ) -> NDArray[numpy.float32]: ...
-    @overload
-    def __get__(
-        self, instance: NDArray[numpy.complex128], owner: type | None = ...
-    ) -> NDArray[numpy.float64]: ...
-    @overload
-    def __get__(self, instance: None, owner: type | None = ...) -> Self: ...
-    def __set__(self, instance: NDArray[Any], value: ArrayLike) -> None: ...
 
 # MEMO: Some methods have special overloads for most-conventional use cases.
 

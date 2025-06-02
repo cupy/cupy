@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, TypeVar
+from typing import Any, Protocol, TypeVar, overload
 
 import numpy
 
@@ -21,3 +21,23 @@ _RealArrayT = TypeVar(
 _IntegralArrayT = TypeVar(
     "_IntegralArrayT", bound=NDArray[numpy.integer | numpy.bool]
 )
+
+
+class _SupportsRealImag(Protocol):
+    @overload
+    def __get__(
+        self, instance: _RealArrayT, owner: type | None = ...
+    ) -> _RealArrayT: ...
+    @overload
+    def __get__(
+        self, instance: NDArray[numpy.complex64], owner: type | None = ...
+    ) -> NDArray[numpy.float32]: ...
+    @overload
+    def __get__(
+        self, instance: NDArray[numpy.complex128], owner: type | None = ...
+    ) -> NDArray[numpy.float64]: ...
+    @overload
+    def __get__(
+        self, instance: None, owner: type | None = ...
+    ) -> _SupportsRealImag: ...
+    def __set__(self, instance: NDArray[Any], value: ArrayLike) -> None: ...
