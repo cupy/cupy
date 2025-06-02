@@ -533,7 +533,7 @@ class TestValueIndices:
 
 
 @testing.with_requires('scipy')
-class TestFindObjectsBasic():
+class TestFindObjectsBasic:
 
     @testing.numpy_cupy_equal(scipy_name='scp')
     def test_find_objects_ones_1d(self, xp, scp):
