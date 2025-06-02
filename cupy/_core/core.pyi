@@ -29,7 +29,6 @@ from cupy.typing._standalone import (
     _InexactT,
     _ModeKind,
     _NumpyArrayT,
-    _OrderCF,
     _OrderKACF,
     _ScalarLike_co,
     _ScalarT,
@@ -49,7 +48,7 @@ class ndarray(Generic[_ShapeT_co, _DTypeT_co]):
         dtype: DTypeLike = ...,
         memptr: MemoryPointer | None = ...,
         strides: _ShapeLike | None = ...,
-        order: _OrderCF = ...,
+        order: str | None = ...,
     ) -> None: ...
     # Attributes
     base: ndarray[Any, _DTypeT_co] | None
