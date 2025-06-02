@@ -114,6 +114,7 @@ from cupyx.scipy.signal._filter_design import freqs_zpk  # NOQA
 
 from cupyx.scipy.signal._filter_design import freqz  # NOQA
 from cupyx.scipy.signal._filter_design import freqz_zpk  # NOQA
+from cupyx.scipy.signal._filter_design import freqz_sos  # NOQA
 from cupyx.scipy.signal._filter_design import sosfreqz  # NOQA
 
 from cupyx.scipy.signal._waveforms import chirp  # NOQA

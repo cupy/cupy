@@ -212,16 +212,9 @@ cusparselt:
   # https://developer.nvidia.com/cusparselt/downloads
   null:
     spec: null
-  "0.6.1":
-    spec: "0.6.1.*"
+  "0.7.1":
+    spec: "0.7.1.*"
     cuda:
-      "12.0":
-      "12.1":
-      "12.2":
-      "12.3":
-      "12.4":
-      "12.5":
-      "12.6":
       "12.8":
 cudnn:
   # https://docs.nvidia.com/deeplearning/cudnn/support-matrix/index.html
@@ -430,10 +423,15 @@ mpi4py:
       - "3.12"
       - "3.13"
 cython:
-  "3":
-    spec: "==3.*"
+  "3.0":
+    spec: "==3.0.*"
+  "3.1":
+    spec: "==3.1.*"
   "pre":
     spec: ">=0a0"  # latest, including pre-releases
+fastrlock:
+  "latest":
+    spec: ">=0.5"  # latest, stable
 cuda-python:
   null:
     spec: null

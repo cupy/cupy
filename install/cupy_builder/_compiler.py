@@ -172,8 +172,9 @@ def _nvcc_gencode_options(cuda_version: int) -> list[str]:
 
 class DeviceCompilerBase:
     """A class that invokes NVCC or HIPCC."""
+    _context: Context
 
-    def __init__(self, ctx: Context):
+    def __init__(self, ctx: Context) -> None:
         self._context = ctx
 
     def _get_preprocess_options(self, ext: Extension) -> list[str]:
