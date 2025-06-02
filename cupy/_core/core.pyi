@@ -42,7 +42,7 @@ from cupy.typing._standalone import (
 # TODO: Add shape support (currently Any)
 class ndarray(Generic[_ShapeT_co, _DTypeT_co]):
     # Attributes
-    # TODO: Annotate memory pointer
+    # TODO: Annotate memory pointer and __init__
     base: ndarray[Any, _DTypeT_co] | None
     dtype: _DTypeT_co
     size: int
