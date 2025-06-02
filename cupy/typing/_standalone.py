@@ -74,9 +74,12 @@ _DTypeT_co = TypeVar("_DTypeT_co", bound=numpy.dtype, covariant=True)
 _ShapeT_co = TypeVar("_ShapeT_co", bound=tuple[int, ...], covariant=True)
 _DTypeT = TypeVar("_DTypeT", bound=numpy.dtype)
 _ShapeLike = SupportsIndex | Sequence[SupportsIndex]
-_OrderKACF = Literal["K", "A", "C", "F", None]
-_OrderCAF = Literal["C", "A", "F", None]
-_OrderCF = Literal["C", "F", None]
+_NonNullKACF = Literal["K", "A", "C", "F"]
+_NonNullCAF = Literal["A", "C", "F"]
+_NonNullCF = Literal["C", "F"]
+_OrderKACF = _NonNullKACF | None
+_OrderCAF = _NonNullCAF | None
+_OrderCF = _NonNullCF | None
 _DTypeLike = type[_ScalarT] | numpy.dtype[_ScalarT]
 _ModeKind = Literal["raise", "wrap", "clip"]
 _SortSide = Literal["left", "right"]
