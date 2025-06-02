@@ -82,3 +82,7 @@ _DTypeLike = type[_ScalarT] | numpy.dtype[_ScalarT]
 _ModeKind = Literal["raise", "wrap", "clip"]
 _SortSide = Literal["left", "right"]
 _NumpyArrayT = TypeVar("_NumpyArrayT", bound=numpy.ndarray)
+
+# Typed scalars
+_FloatT = TypeVar("_FloatT", bound=numpy.floating)
+_InexactT = TypeVar("_InexactT", bound=numpy.inexact)

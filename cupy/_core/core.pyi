@@ -24,7 +24,9 @@ from cupy.typing._internal import _ArrayLikeInt_co, _ToIndices
 from cupy.typing._standalone import (
     _DTypeLike,
     _DTypeT_co,
+    _FloatT,
     _Index,
+    _InexactT,
     _ModeKind,
     _NumpyArrayT,
     _OrderKACF,
@@ -444,6 +446,9 @@ class ndarray(Generic[_ShapeT_co, _DTypeT_co]):
         *,
         out: _ArrayT,
     ) -> _ArrayT: ...
+    # SPECIAL
+    @overload
+    def mean(self: NDArray[_InexactT]) -> _InexactT: ...
     @overload
     def mean(
         self,
@@ -460,6 +465,17 @@ class ndarray(Generic[_ShapeT_co, _DTypeT_co]):
         out: _ArrayT,
         keepdims: bool = ...,
     ) -> _ArrayT: ...
+    # SPECIAL
+    @overload
+    def var(self: NDArray[_FloatT], ddof: float = ...) -> _FloatT: ...
+    @overload
+    def var(
+        self: NDArray[numpy.complex64], ddof: float = ...
+    ) -> numpy.float32: ...
+    @overload
+    def var(
+        self: NDArray[numpy.complex128], ddof: float = ...
+    ) -> numpy.float64: ...
     @overload
     def var(
         self,
@@ -488,6 +504,17 @@ class ndarray(Generic[_ShapeT_co, _DTypeT_co]):
         ddof: float = ...,
         keepdims: bool = ...,
     ) -> _ArrayT: ...
+    # SPECIAL
+    @overload
+    def std(self: NDArray[_FloatT], ddof: float = ...) -> _FloatT: ...
+    @overload
+    def std(
+        self: NDArray[numpy.complex64], ddof: float = ...
+    ) -> numpy.float32: ...
+    @overload
+    def std(
+        self: NDArray[numpy.complex128], ddof: float = ...
+    ) -> numpy.float64: ...
     @overload
     def std(
         self,
