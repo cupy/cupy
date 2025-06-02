@@ -211,7 +211,7 @@ cdef class _ndarray_base:
         raise RuntimeError('Must not be directly instantiated')
 
     def _init(self, shape, dtype=float, memptr=None, strides=None,
-              order='C'):
+              order=None):
         cdef Py_ssize_t x, itemsize
         cdef tuple s = internal.get_size(shape)
         del shape
