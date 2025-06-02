@@ -6,6 +6,7 @@ from _typeshed import StrOrBytesPath, SupportsWrite
 
 from cupy._core.flags import Flags
 from cupy.cuda.device import Device
+from cupy.cuda.memory import MemoryPointer
 from cupy.cuda.stream import Stream
 from cupy.typing import DTypeLike
 from cupy.typing._array import (
@@ -41,10 +42,18 @@ from cupy.typing._standalone import (
 
 # TODO: Add shape support (currently Any)
 class ndarray(Generic[_ShapeT_co, _DTypeT_co]):
+    def __init__(
+        self,
+        shape: _ShapeLike,
+        dtype: DTypeLike = ...,
+        memptr: MemoryPointer | None = ...,
+        strides: _ShapeLike | None = ...,
+        order: Literal["C", "F"] = ...,
+    ) -> None: ...
     # Attributes
-    # TODO: Annotate memory pointer and __init__
     base: ndarray[Any, _DTypeT_co] | None
     dtype: _DTypeT_co
+    memptr: MemoryPointer
     size: int
     # TODO: Annotate dlpack interface
     def __cuda_array_interface__(self) -> dict[str, Any]: ...
