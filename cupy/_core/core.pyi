@@ -53,8 +53,8 @@ class ndarray(Generic[_ShapeT_co, _DTypeT_co]):
     ) -> None: ...
     # Attributes
     base: ndarray[Any, _DTypeT_co] | None
+    data: MemoryPointer
     dtype: _DTypeT_co
-    memptr: MemoryPointer
     size: int
     # TODO: Annotate dlpack interface
     def __cuda_array_interface__(self) -> dict[str, Any]: ...
