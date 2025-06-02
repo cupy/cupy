@@ -12,6 +12,7 @@ from cupy.typing import DTypeLike
 from cupy.typing._array import (
     ArrayLike,
     NDArray,
+    _ArrayInt_co,
     _ArrayT,
     _IntArrayT,
     _IntegralArrayT,
@@ -19,7 +20,7 @@ from cupy.typing._array import (
     _RealArrayT,
     _SupportsRealImag,
 )
-from cupy.typing._internal import _ArrayLikeInt_co
+from cupy.typing._internal import _ArrayLikeInt_co, _ToIndices
 from cupy.typing._standalone import (
     _DTypeLike,
     _DTypeT_co,
@@ -645,6 +646,16 @@ class ndarray(Generic[_ShapeT_co, _DTypeT_co]):
     ) -> ndarray[Any, _DTypeT_co]: ...
     def __iter__(self: NDArray[_ScalarT]) -> Iterator[_ScalarT]: ...
     def __len__(self) -> int: ...
+    @overload
+    def __getitem__(
+        self, key: _ArrayInt_co | tuple[_ArrayInt_co, ...], /
+    ) -> ndarray[Any, _DTypeT_co]: ...
+    @overload
+    def __getitem__(self, key: _Index | tuple[_Index, ...], /) -> Any: ...
+    @overload
+    def __getitem__(self, key: _ToIndices, /) -> ndarray[Any, _DTypeT_co]: ...
+    # MEMO: May be overloaded
+    def __setitem__(self, key: _ToIndices, value: ArrayLike, /) -> None: ...
     def __int__(self) -> int: ...
     def __float__(self) -> float: ...
     def __complex__(self) -> complex: ...

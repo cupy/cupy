@@ -3,12 +3,19 @@
 from __future__ import annotations
 
 import typing
+from types import EllipsisType
 from typing import TYPE_CHECKING, Any, Protocol
 
 import numpy
 
 from cupy._core import core
-from cupy.typing._standalone import _T, _DTypeT, _DTypeT_co, _NestedSequence
+from cupy.typing._standalone import (
+    _T,
+    _DTypeT,
+    _DTypeT_co,
+    _Index,
+    _NestedSequence,
+)
 
 if TYPE_CHECKING:
     from typing_extensions import TypeAlias
@@ -40,3 +47,7 @@ _ArrayLikeComplex_co = _DualArrayLike[
     numpy.dtype[numpy.bool | numpy.number], complex
 ]
 _ArrayLikeNumber_co = _ArrayLikeComplex_co
+
+# Index-like
+_ToIndex = _Index | slice | EllipsisType | _ArrayLikeInt_co | None
+_ToIndices = _ToIndex | tuple[_ToIndex, ...]
