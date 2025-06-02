@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any, Protocol, TypeVar, overload
 
 import numpy
+import typing
 
 from cupy._core import core
 from cupy.typing._internal import _DualArrayLike
@@ -13,6 +14,7 @@ ArrayLike = _Buffer | _DualArrayLike[numpy.dtype[Any], complex]
 NDArray = core.ndarray[Any, numpy.dtype[_ScalarT]]
 
 _ArrayT = TypeVar("_ArrayT", bound=core.ndarray)
+_ArrayT_co = TypeVar("_ArrayT_co", bound=core.ndarray, covariant=True)
 _IntArrayT = TypeVar("_IntArrayT", bound=NDArray[numpy.integer])
 _NumericArrayT = TypeVar("_NumericArrayT", bound=NDArray[numpy.number])
 _RealArrayT = TypeVar(
@@ -47,3 +49,8 @@ class _SupportsRealImag(Protocol):
         self, instance: None, owner: type | None = ...
     ) -> _SupportsRealImag: ...
     def __set__(self, instance: NDArray[Any], value: ArrayLike) -> None: ...
+
+
+@typing.runtime_checkable
+class _SupportsArrayA(Protocol[_ArrayT_co]):
+    def __array__(self) -> _ArrayT_co: ...

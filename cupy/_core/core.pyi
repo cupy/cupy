@@ -4,7 +4,6 @@ from typing import Any, ClassVar, Generic, Literal, overload
 import numpy
 from _typeshed import StrOrBytesPath, SupportsWrite
 
-from cupy import dtype
 from cupy._core.flags import Flags
 from cupy.cuda.device import Device
 from cupy.cuda.stream import Stream
@@ -18,9 +17,10 @@ from cupy.typing._array import (
     _IntegralArrayT,
     _NumericArrayT,
     _RealArrayT,
+    _SupportsArrayA,
     _SupportsRealImag,
 )
-from cupy.typing._internal import _ArrayLikeInt_co, _ToIndices
+from cupy.typing._internal import _ArrayLike, _ArrayLikeInt_co, _ToIndices
 from cupy.typing._standalone import (
     _DTypeLike,
     _DTypeT_co,
@@ -77,23 +77,23 @@ class ndarray(Generic[_ShapeT_co, _DTypeT_co]):
         dtype: _DTypeLike[_ScalarT],
         order: _OrderKACF = ...,
         copy: bool = ...,
-    ) -> ndarray[Any, dtype[_ScalarT]]: ...
+    ) -> ndarray[Any, numpy.dtype[_ScalarT]]: ...
     @overload
     def astype(
         self,
         dtype: DTypeLike,
         order: _OrderKACF = ...,
         copy: bool = ...,
-    ) -> ndarray[Any, dtype]: ...
+    ) -> ndarray[Any, numpy.dtype]: ...
     def copy(self, order: _OrderKACF = ...) -> ndarray[Any, _DTypeT_co]: ...
     @overload
     def view(self) -> ndarray[Any, _DTypeT_co]: ...
     @overload
-    def view(self, dtype: DTypeLike) -> ndarray[Any, dtype]: ...
+    def view(self, dtype: DTypeLike) -> ndarray[Any, numpy.dtype]: ...
     @overload
     def view(
         self, dtype: _DTypeLike[_ScalarT]
-    ) -> ndarray[Any, dtype[_ScalarT]]: ...
+    ) -> ndarray[Any, numpy.dtype[_ScalarT]]: ...
     @overload
     def view(self, type: type[_ArrayT]) -> _ArrayT: ...
     @overload
@@ -736,3 +736,80 @@ class ndarray(Generic[_ShapeT_co, _DTypeT_co]):
         stream: Stream | None = ...,
     ) -> None: ...
     def reduced_view(self) -> ndarray[Any, _DTypeT_co]: ...
+
+@overload
+def array(
+    obj: _ArrayT,
+    dtype: None = ...,
+    *,
+    copy: bool = ...,
+    order: _OrderKACF = ...,
+    subok: bool = ...,
+    ndmin: int = ...,
+    blocking: bool = ...,
+) -> _ArrayT: ...
+@overload
+def array(
+    obj: _SupportsArrayA[_ArrayT],
+    dtype: None = ...,
+    *,
+    copy: bool = ...,
+    order: _OrderKACF = ...,
+    subok: bool = ...,
+    ndmin: Literal[0] = ...,
+    blocking: bool = ...,
+) -> _ArrayT: ...
+@overload
+def array(
+    obj: _ArrayLike[_ScalarT],
+    dtype: None = ...,
+    *,
+    copy: bool = ...,
+    order: _OrderKACF = ...,
+    subok: bool = ...,
+    ndmin: int = ...,
+    blocking: bool = ...,
+) -> NDArray[_ScalarT]: ...
+@overload
+def array(
+    obj: Any,
+    dtype: _DTypeLike[_ScalarT],
+    *,
+    copy: bool = ...,
+    order: _OrderKACF = ...,
+    subok: bool = ...,
+    ndmin: int = ...,
+    blocking: bool = ...,
+) -> NDArray[_ScalarT]: ...
+@overload
+def array(
+    obj: Any,
+    dtype: DTypeLike | None = ...,
+    *,
+    copy: bool = ...,
+    order: _OrderKACF = ...,
+    subok: bool = ...,
+    ndmin: int = ...,
+    blocking: bool = ...,
+) -> NDArray[Any]: ...
+@overload
+def ascontiguousarray(a: _ArrayT, dtype: None = ...) -> _ArrayT: ...
+@overload
+def ascontiguousarray(
+    a: NDArray[Any], dtype: _DTypeLike[_ScalarT]
+) -> NDArray[_ScalarT]: ...
+@overload
+def ascontiguousarray(
+    a: NDArray[Any], dtype: DTypeLike | None
+) -> NDArray[Any]: ...
+@overload
+def asfortranarray(a: _ArrayT, dtype: None = ...) -> _ArrayT: ...
+@overload
+def asfortranarray(
+    a: NDArray[Any], dtype: _DTypeLike[_ScalarT]
+) -> NDArray[_ScalarT]: ...
+@overload
+def asfortranarray(
+    a: NDArray[Any], dtype: DTypeLike | None
+) -> NDArray[Any]: ...
+def min_scalar_type(a: ArrayLike) -> numpy.dtype[Any]: ...

@@ -15,6 +15,7 @@ from cupy.typing._standalone import (
     _DTypeT_co,
     _Index,
     _NestedSequence,
+    _ScalarT,
 )
 
 if TYPE_CHECKING:
@@ -22,14 +23,18 @@ if TYPE_CHECKING:
 
 
 @typing.runtime_checkable
-class _SupportsArray(Protocol[_DTypeT_co]):
+class _SupportsArrayD(Protocol[_DTypeT_co]):
     # Only covers default signature (no optional args provided)
     def __array__(self) -> core.ndarray[Any, _DTypeT_co]: ...
 
 
+_ArrayLike: TypeAlias = (
+    _SupportsArrayD[numpy.dtype[_ScalarT]]
+    | _NestedSequence[_SupportsArrayD[numpy.dtype[_ScalarT]]]
+)
 _DualArrayLike: TypeAlias = (
-    _SupportsArray[_DTypeT]
-    | _NestedSequence[_SupportsArray[_DTypeT]]
+    _SupportsArrayD[_DTypeT]
+    | _NestedSequence[_SupportsArrayD[_DTypeT]]
     | _T
     | _NestedSequence[_T]
 )
