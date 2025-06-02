@@ -1,5 +1,13 @@
 from collections.abc import Callable, Iterable, Iterator, Mapping
-from typing import Any, ClassVar, Generic, Literal, SupportsIndex, overload
+from typing import (
+    Any,
+    ClassVar,
+    Generic,
+    Literal,
+    SupportsIndex,
+    TypeVar,
+    overload,
+)
 
 import numpy
 from _typeshed import StrOrBytesPath, SupportsWrite
@@ -24,7 +32,6 @@ from cupy.typing._array import (
 from cupy.typing._internal import _ArrayLike, _ArrayLikeInt_co, _ToIndices
 from cupy.typing._standalone import (
     _DTypeLike,
-    _DTypeT_co,
     _FloatT,
     _InexactT,
     _ModeKind,
@@ -34,15 +41,27 @@ from cupy.typing._standalone import (
     _ScalarLike_co,
     _ScalarT,
     _ShapeLike,
-    _ShapeT_co,
     _SortSide,
     _SupportsFileMethods,
+)
+
+_ShapeWithDefaultT_co = TypeVar(
+    "_ShapeWithDefaultT_co",
+    bound=tuple[int, ...],
+    default=tuple[Any, ...],
+    covariant=True,
+)
+_DTypeWithDefaultT_co = TypeVar(
+    "_DTypeWithDefaultT_co",
+    bound=numpy.dtype,
+    default=numpy.dtype[Any],
+    covariant=True,
 )
 
 # MEMO: Some methods have special overloads for most-conventional use cases.
 
 # TODO: Add shape support (currently Any)
-class ndarray(Generic[_ShapeT_co, _DTypeT_co]):
+class ndarray(Generic[_ShapeWithDefaultT_co, _DTypeWithDefaultT_co]):
     def __init__(
         self,
         shape: _ShapeLike,
@@ -52,9 +71,9 @@ class ndarray(Generic[_ShapeT_co, _DTypeT_co]):
         order: str | None = ...,
     ) -> None: ...
     # Attributes
-    base: ndarray[Any, _DTypeT_co] | None
+    base: ndarray[Any, _DTypeWithDefaultT_co] | None
     data: MemoryPointer
-    dtype: _DTypeT_co
+    dtype: _DTypeWithDefaultT_co
     size: int
     # TODO: Annotate dlpack interface
     def __cuda_array_interface__(self) -> dict[str, Any]: ...
@@ -73,9 +92,9 @@ class ndarray(Generic[_ShapeT_co, _DTypeT_co]):
     @property
     def nbytes(self) -> int: ...
     @property
-    def T(self) -> ndarray[Any, _DTypeT_co]: ...
+    def T(self) -> ndarray[Any, _DTypeWithDefaultT_co]: ...
     @property
-    def mT(self) -> ndarray[Any, _DTypeT_co]: ...
+    def mT(self) -> ndarray[Any, _DTypeWithDefaultT_co]: ...
     @property
     def flat(self: NDArray[_ScalarT]) -> Iterator[_ScalarT]: ...
     def item(self: NDArray[_ScalarT]) -> _ScalarT: ...
@@ -103,9 +122,11 @@ class ndarray(Generic[_ShapeT_co, _DTypeT_co]):
         order: _OrderKACF = ...,
         copy: bool = ...,
     ) -> ndarray[Any, numpy.dtype]: ...
-    def copy(self, order: _OrderKACF = ...) -> ndarray[Any, _DTypeT_co]: ...
+    def copy(
+        self, order: _OrderKACF = ...
+    ) -> ndarray[Any, _DTypeWithDefaultT_co]: ...
     @overload
-    def view(self) -> ndarray[Any, _DTypeT_co]: ...
+    def view(self) -> ndarray[Any, _DTypeWithDefaultT_co]: ...
     @overload
     def view(self, dtype: DTypeLike) -> ndarray[Any, numpy.dtype]: ...
     @overload
@@ -119,16 +140,20 @@ class ndarray(Generic[_ShapeT_co, _DTypeT_co]):
     def fill(self, value: Any) -> None: ...
     def reshape(
         self, *shape: SupportsIndex, order: _OrderKACF = ...
-    ) -> ndarray[Any, _DTypeT_co]: ...
-    def transpose(self, *axes: SupportsIndex) -> ndarray[Any, _DTypeT_co]: ...
+    ) -> ndarray[Any, _DTypeWithDefaultT_co]: ...
+    def transpose(
+        self, *axes: SupportsIndex
+    ) -> ndarray[Any, _DTypeWithDefaultT_co]: ...
     def swapaxes(
         self, axis1: SupportsIndex, axis2: SupportsIndex
-    ) -> ndarray[Any, _DTypeT_co]: ...
-    def flatten(self, order: _OrderKACF = ...) -> ndarray[Any, _DTypeT_co]: ...
+    ) -> ndarray[Any, _DTypeWithDefaultT_co]: ...
+    def flatten(
+        self, order: _OrderKACF = ...
+    ) -> ndarray[Any, _DTypeWithDefaultT_co]: ...
     def squeeze(
         self,
         axis: SupportsIndex | tuple[SupportsIndex, ...] | None = ...,
-    ) -> ndarray[Any, _DTypeT_co]: ...
+    ) -> ndarray[Any, _DTypeWithDefaultT_co]: ...
     @overload
     def take(
         self: NDArray[_ScalarT],
@@ -142,7 +167,7 @@ class ndarray(Generic[_ShapeT_co, _DTypeT_co]):
         indices: _ArrayLikeInt_co,
         axis: SupportsIndex | None = ...,
         out: None = ...,
-    ) -> ndarray[Any, _DTypeT_co]: ...
+    ) -> ndarray[Any, _DTypeWithDefaultT_co]: ...
     @overload
     def take(
         self,
@@ -161,13 +186,13 @@ class ndarray(Generic[_ShapeT_co, _DTypeT_co]):
         self,
         repeats: _ArrayLikeInt_co,
         axis: None = ...,
-    ) -> ndarray[Any, _DTypeT_co]: ...
+    ) -> ndarray[Any, _DTypeWithDefaultT_co]: ...
     @overload
     def repeat(
         self,
         repeats: _ArrayLikeInt_co,
         axis: SupportsIndex,
-    ) -> ndarray[Any, _DTypeT_co]: ...
+    ) -> ndarray[Any, _DTypeWithDefaultT_co]: ...
     @overload
     def choose(
         self, choices: ArrayLike, out: None = ..., mode: _ModeKind = ...
@@ -230,7 +255,7 @@ class ndarray(Generic[_ShapeT_co, _DTypeT_co]):
         offset: SupportsIndex = ...,
         axis1: SupportsIndex = ...,
         axis2: SupportsIndex = ...,
-    ) -> ndarray[Any, _DTypeT_co]: ...
+    ) -> ndarray[Any, _DTypeWithDefaultT_co]: ...
     # SPECIAL
     @overload
     def max(self: NDArray[_ScalarT]) -> _ScalarT: ...
@@ -387,7 +412,7 @@ class ndarray(Generic[_ShapeT_co, _DTypeT_co]):
     @overload
     def round(
         self, decimals: SupportsIndex = ..., out: None = ...
-    ) -> ndarray[Any, _DTypeT_co]: ...
+    ) -> ndarray[Any, _DTypeWithDefaultT_co]: ...
     @overload
     def round(self, decimals: SupportsIndex, out: _ArrayT) -> _ArrayT: ...
     @overload
@@ -688,15 +713,15 @@ class ndarray(Generic[_ShapeT_co, _DTypeT_co]):
     def __abs__(self: NDArray[numpy.complex128]) -> NDArray[numpy.float64]: ...
     def __invert__(self: _IntegralArrayT) -> _IntegralArrayT: ...
     # TODO: Annotate binary operators
-    def conj(self) -> ndarray[Any, _DTypeT_co]: ...
-    def conjugate(self) -> ndarray[Any, _DTypeT_co]: ...
+    def conj(self) -> ndarray[Any, _DTypeWithDefaultT_co]: ...
+    def conjugate(self) -> ndarray[Any, _DTypeWithDefaultT_co]: ...
     real: ClassVar[_SupportsRealImag]
     imag: ClassVar[_SupportsRealImag]
     # TODO: Annotate remaining dunders
-    def __copy__(self) -> ndarray[Any, _DTypeT_co]: ...
+    def __copy__(self) -> ndarray[Any, _DTypeWithDefaultT_co]: ...
     def __deepcopy__(
         self, memo: dict[int, Any] | None
-    ) -> ndarray[Any, _DTypeT_co]: ...
+    ) -> ndarray[Any, _DTypeWithDefaultT_co]: ...
     def __reduce__(
         self: NDArray[_ScalarT],
     ) -> tuple[
@@ -708,13 +733,15 @@ class ndarray(Generic[_ShapeT_co, _DTypeT_co]):
     @overload
     def __getitem__(
         self, key: _ArrayInt_co | tuple[_ArrayInt_co, ...], /
-    ) -> ndarray[Any, _DTypeT_co]: ...
+    ) -> ndarray[Any, _DTypeWithDefaultT_co]: ...
     @overload
     def __getitem__(
         self, key: SupportsIndex | tuple[SupportsIndex, ...], /
     ) -> Any: ...
     @overload
-    def __getitem__(self, key: _ToIndices, /) -> ndarray[Any, _DTypeT_co]: ...
+    def __getitem__(
+        self, key: _ToIndices, /
+    ) -> ndarray[Any, _DTypeWithDefaultT_co]: ...
     # MEMO: May be overloaded
     def __setitem__(self, key: _ToIndices, value: ArrayLike, /) -> None: ...
     def __array_function__(
@@ -763,7 +790,7 @@ class ndarray(Generic[_ShapeT_co, _DTypeT_co]):
         arr: numpy.typing.NDArray[_ScalarT],
         stream: Stream | None = ...,
     ) -> None: ...
-    def reduced_view(self) -> ndarray[Any, _DTypeT_co]: ...
+    def reduced_view(self) -> ndarray[Any, _DTypeWithDefaultT_co]: ...
 
 @overload
 def array(
