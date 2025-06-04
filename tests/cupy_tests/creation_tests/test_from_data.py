@@ -685,7 +685,7 @@ class TestCudaArrayInterfaceBigArray(unittest.TestCase):
 
 @pytest.mark.skipif(
     cupy.cuda.runtime.is_hip, reason='HIP does not support this')
-class DummyObjectWithCudaArrayInterface(object):
+class DummyObjectWithCudaArrayInterface:
     def __init__(self, a, ver, include_strides=False, mask=None, stream=None):
         assert ver in tuple(range(max_cuda_array_interface_version+1))
         self.a = None

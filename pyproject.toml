@@ -132,7 +132,11 @@ extend-exclude = [
 ]
 
 [tool.ruff.lint]
-select = ["E", "F", "W"]
+select = ["E", "F", "W", "UP"]
+extend-ignore = [
+  "UP031", # printf-string-formatting
+  "UP032", # f-string
+]
 
 [tool.ruff.lint.per-file-ignores]
 "cupyx/scipy/special/_gammainc.py" = [
