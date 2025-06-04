@@ -2,7 +2,7 @@ import cupy as cp
 
 
 def read_code(code_filename, params):
-    with open(code_filename, 'r') as f:
+    with open(code_filename) as f:
         code = f.read()
     for k, v in params.items():
         code = '#define ' + k + ' ' + str(v) + '\n' + code

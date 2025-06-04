@@ -175,7 +175,7 @@ class TestTexture:
 
         if (self.mem_type == 'linear' and dim != 1) or \
            (self.mem_type == 'pitch2D' and dim != 2):
-            pytest.skip('The test case {0} is inapplicable for {1} and thus '
+            pytest.skip('The test case {} is inapplicable for {} and thus '
                         'skipped.'.format(self.dimensions, self.mem_type))
 
         # generate input data and allocate output buffer
