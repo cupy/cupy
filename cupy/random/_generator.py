@@ -1183,17 +1183,16 @@ class RandomState(object):
         array = cupy.argsort(sample)
         return array
 
-    def permuted(a:cp.ndarray,axis=0,type=cp.int32):
-	"""Returns a pertated array for multi dimensional array"""
+    def permuted(self,a,axis=0,type=numpy.int32):
+        #"""Returns a pertated array for multi dimensional array."""
         #added type to tweek the sample datatype if you run out of memory
         #check axis
-        if axis > a.ndim or axis<0:
+        if (axis > a.ndim) or (axis < 0):
             raise TypeError('Axis not valid')
         num = a.shape
-
-        sample = cp.empty(num,dtype=type) #empty memory of equal shape to array a
+        sample = cupy.empty(num,dtype=type) #empty memory of equal shape to array a
         curand.generate(self._generator,sample.data.ptr,num[axis]) #give data and number to generator to rearrange in place
-        order = cp.argsort(sample,axis=axis) # reorder the array which basically shuffles it
+        order = cupy.argsort(sample,axis=axis) # reorder the array which basically shuffles it
         return(a[order])
 
     _gumbel_kernel = _core.ElementwiseKernel(
