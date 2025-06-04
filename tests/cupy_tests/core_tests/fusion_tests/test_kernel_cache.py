@@ -7,7 +7,7 @@ import cupy
 from cupy import testing
 
 
-class CreateMock(object):
+class CreateMock:
 
     def __init__(self, target):
         self.target = eval(target)

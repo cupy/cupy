@@ -5,7 +5,7 @@ import platform
 import shutil
 import sys
 import subprocess
-from typing import Any, Optional, List
+from typing import Any, Optional
 
 from setuptools import Extension
 
@@ -13,7 +13,7 @@ from cupy_builder._context import Context
 import cupy_builder.install_build as build
 
 
-def _nvcc_gencode_options(cuda_version: int) -> List[str]:
+def _nvcc_gencode_options(cuda_version: int) -> list[str]:
     """Returns NVCC GPU code generation options."""
 
     if sys.argv == ['setup.py', 'develop']:
@@ -177,16 +177,16 @@ class DeviceCompilerBase:
     def __init__(self, ctx: Context) -> None:
         self._context = ctx
 
-    def _get_preprocess_options(self, ext: Extension) -> List[str]:
+    def _get_preprocess_options(self, ext: Extension) -> list[str]:
         # https://setuptools.pypa.io/en/latest/deprecated/distutils/apiref.html#distutils.core.Extension
         # https://github.com/pypa/setuptools/blob/v60.0.0/setuptools/_distutils/command/build_ext.py#L524-L526
         incdirs = ext.include_dirs[:]
-        macros: List[Any] = ext.define_macros[:]
+        macros: list[Any] = ext.define_macros[:]
         for undef in ext.undef_macros:
             macros.append((undef,))
         return distutils.ccompiler.gen_preprocess_options(macros, incdirs)
 
-    def spawn(self, commands: List[str]) -> None:
+    def spawn(self, commands: list[str]) -> None:
         print('Command:', commands)
         subprocess.check_call(commands)
 
@@ -286,7 +286,7 @@ class DeviceCompilerWin32(DeviceCompilerBase):
                   'setuptools.msvc could not be imported')
             return None
 
-        vctools: List[str] = setuptools.msvc.EnvironmentInfo(
+        vctools: list[str] = setuptools.msvc.EnvironmentInfo(
             platform.machine()).VCTools
         for path in vctools:
             cl_exe = os.path.join(path, 'cl.exe')

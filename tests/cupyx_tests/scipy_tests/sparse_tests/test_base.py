@@ -1,8 +1,10 @@
 import unittest
 
 import pytest
+
 try:
     import scipy.sparse
+
     scipy_available = True
 except ImportError:
     scipy_available = False
@@ -11,15 +13,14 @@ from cupy import testing
 from cupyx.scipy import sparse
 
 
-@testing.with_requires('scipy>=1.11', 'scipy<1.14')
+@testing.with_requires("scipy>=1.11", "scipy<1.14")
 class TestSpmatrix(unittest.TestCase):
-
     def dummy_class(self, sp):
         if sp is sparse:
-            class DummySparseGPU(sparse.spmatrix):
 
+            class DummySparseGPU(sparse.spmatrix):
                 def __init__(self, maxprint=50, shape=None, nnz=0):
-                    super(DummySparseGPU, self).__init__(maxprint)
+                    super().__init__(maxprint)
                     self._shape = shape
                     self._nnz = nnz
 
@@ -31,10 +32,10 @@ class TestSpmatrix(unittest.TestCase):
 
             return DummySparseGPU
         else:
-            class DummySparseCPU(scipy.sparse._base._spbase):
 
+            class DummySparseCPU(scipy.sparse._base._spbase):
                 def __init__(self, maxprint=50, shape=None, nnz=0):
-                    super(DummySparseCPU, self).__init__(maxprint)
+                    super().__init__(maxprint)
                     self._shape = shape
                     self._nnz = nnz
 
@@ -58,12 +59,12 @@ class TestSpmatrix(unittest.TestCase):
             with pytest.raises(TypeError):
                 len(s)
 
-    @testing.numpy_cupy_equal(sp_name='sp')
+    @testing.numpy_cupy_equal(sp_name="sp")
     def test_bool_true(self, xp, sp):
         s = self.dummy_class(sp)(shape=(1, 1), nnz=1)
         return bool(s)
 
-    @testing.numpy_cupy_equal(sp_name='sp')
+    @testing.numpy_cupy_equal(sp_name="sp")
     def test_bool_false(self, xp, sp):
         s = self.dummy_class(sp)(shape=(1, 1), nnz=0)
         return bool(s)
@@ -74,12 +75,12 @@ class TestSpmatrix(unittest.TestCase):
             with pytest.raises(ValueError):
                 bool(s)
 
-    @testing.numpy_cupy_equal(sp_name='sp')
+    @testing.numpy_cupy_equal(sp_name="sp")
     def test_asformat_none(self, xp, sp):
         s = self.dummy_class(sp)()
         assert s.asformat(None) is s
 
-    @testing.numpy_cupy_equal(sp_name='sp')
+    @testing.numpy_cupy_equal(sp_name="sp")
     def test_maxprint(self, xp, sp):
         s = self.dummy_class(sp)(maxprint=30)
         return s.maxprint

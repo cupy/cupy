@@ -253,7 +253,7 @@ def compute_root_from_lambda(lamb):
     omega = np.arctan(np.sqrt((144 * lamb - 1.0) / xi))
     tmp2 = np.sqrt(xi)
     r = ((24 * lamb - 1 - tmp2) / (24 * lamb) *
-         np.sqrt((48*lamb + 24 * lamb * tmp)) / tmp2)
+         np.sqrt(48*lamb + 24 * lamb * tmp) / tmp2)
     return r, omega
 
 

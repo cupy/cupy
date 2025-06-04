@@ -1,6 +1,7 @@
 import contextlib
 from itertools import chain
-from typing import Any, Iterator, Optional, Union
+from typing import Any, Optional, Union
+from collections.abc import Iterator
 
 import numpy
 

@@ -143,7 +143,7 @@ def _non_zero_cmp(mat, am, zero, m):
             zero_ind)
 
 
-class _minmax_mixin(object):
+class _minmax_mixin:
     """Mixin for min and max methods.
     These are not implemented for dia_matrix, hence the separate class.
 
@@ -177,8 +177,8 @@ class _minmax_mixin(object):
 
     def _min_or_max(self, axis, out, min_or_max, explicit):
         if out is not None:
-            raise ValueError(("Sparse matrices do not support "
-                              "an 'out' parameter."))
+            raise ValueError("Sparse matrices do not support "
+                             "an 'out' parameter.")
 
         _sputils.validateaxis(axis)
 
