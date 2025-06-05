@@ -129,6 +129,8 @@ extend-exclude = [
   "docs/source",
   "tests/cupy_tests/array_api_tests",
   "third_party",
+  # MEMO: Already removed in `main` branch
+  "cupyx/fallback_mode/fallback.py",
 ]
 
 [tool.ruff.lint]
