@@ -97,6 +97,7 @@ from cupy.random._generator import RandomState  # NOQA
 from cupy.random._generator import reset_states  # NOQA
 from cupy.random._generator import seed  # NOQA
 from cupy.random._generator import set_random_state  # NOQA
+from cupy.random._permutations import permuted  # NOQA
 from cupy.random._permutations import permutation  # NOQA
 from cupy.random._permutations import shuffle  # NOQA
 from cupy.random._sample import choice  # NOQA

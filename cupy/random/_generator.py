@@ -1183,26 +1183,28 @@ class RandomState:
         array = cupy.argsort(sample)
         return array
 
-    def permuted(self,a,axis=0,type=numpy.int32):
-        #"""Returns a pertated array for multi dimensional array."""
-        #added type to tweek the sample datatype if you run out of memory
-        #check axis
+    def permuted(self, a, axis=0, type=numpy.int32):
+        """Returns a pertated array for multi dimensional array."""
+        from cupy_backends.cuda.libs import curand
+        # added type to tweek the sample datatype if you run out of memory
+        # check axis
         if (axis > a.ndim) or (axis < 0):
             raise TypeError('Axis not valid')
         num = a.shape
-        sample = cupy.empty(num,dtype=type) #empty memory of equal shape to array a
-        curand.generate(self._generator,sample.data.ptr,num[axis]) #give data and number to generator to rearrange in place
-        order = cupy.argsort(sample,axis=axis) # reorder the array which basically shuffles it
-        return(a[order])
+        # empty memory of equal shape to array a
+        sample = cupy.empty(num, dtype=type)
+        # give data and number to generator to rearrange in place
+        curand.generate(self._generator, sample.data.ptr, sample.view().size)
+        # reorder the array which basically shuffles it
+        order = cupy.argsort(sample, axis=axis)
+        return (cupy.take_along_axis(a, order, axis=axis))
 
     _gumbel_kernel = _core.ElementwiseKernel(
         'T x, T loc, T scale', 'T y',
         'y = T(loc) - log(-log(x)) * T(scale)',
         'cupy_gumbel_kernel')
 
-
-
-    def gumbel(self, loc=0.0, scale=1.0, size=None, dtype=float):
+    def gumbel(self, loc=0.0, scale=1.0, size=None, dtype=numpy.int16):
         """Returns an array of samples drawn from a Gumbel distribution.
 
         .. seealso::
