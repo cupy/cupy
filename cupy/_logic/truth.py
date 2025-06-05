@@ -160,6 +160,12 @@ def intersect1d(arr1, arr2, assume_unique=False, return_indices=False):
     numpy.intersect1d
 
     """
+    if arr1.size == 0 or arr2.size == 0:
+        if return_indices:
+            return cupy.array([]), -1, -1
+        else:
+            return cupy.array([])
+
     if not assume_unique:
         if return_indices:
             arr1, ind1 = cupy.unique(arr1, return_index=True)
