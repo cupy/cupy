@@ -132,7 +132,7 @@ extend-exclude = [
 ]
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "UP"]
+select = ["E", "F", "W", "UP", "I002"]
 extend-ignore = [
   "UP031", # printf-string-formatting
   "UP032", # f-string
@@ -145,3 +145,6 @@ extend-ignore = [
 "tests/typing_tests/cupy_tests/creation_tests/test_basic.pyi" = [
   "E501", # line-too-long (long comments)
 ]
+
+[tool.ruff.lint.isort]
+required-imports = ["from __future__ import annotations"]
