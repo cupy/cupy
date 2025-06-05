@@ -2,7 +2,7 @@
 import cupy
 from cupy import testing
 
-import cupyx.scipy.signal  # NOQAs
+import cupyx.scipy.signal  # NOQA
 
 import pytest
 import numpy as np

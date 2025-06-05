@@ -129,10 +129,16 @@ extend-exclude = [
   "docs/source",
   "tests/cupy_tests/array_api_tests",
   "third_party",
+  # MEMO: Already removed in `main` branch
+  "cupyx/fallback_mode/fallback.py",
 ]
 
 [tool.ruff.lint]
-select = ["E", "F", "W"]
+select = ["E", "F", "W", "UP"]
+extend-ignore = [
+  "UP031", # printf-string-formatting
+  "UP032", # f-string
+]
 
 [tool.ruff.lint.per-file-ignores]
 "cupyx/scipy/special/_gammainc.py" = [

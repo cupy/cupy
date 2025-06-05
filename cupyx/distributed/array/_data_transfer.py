@@ -1,6 +1,7 @@
 import contextlib
 import dataclasses
-from typing import Any, Iterable, Iterator
+from typing import Any
+from collections.abc import Iterable, Iterator
 
 from cupy._core.core import ndarray
 import cupy._creation.from_data as _creation_from_data
