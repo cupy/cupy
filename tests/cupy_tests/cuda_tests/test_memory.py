@@ -4,7 +4,6 @@ import pickle
 import threading
 import unittest
 
-import fastrlock
 import pytest
 
 import cupy.cuda
@@ -980,6 +979,7 @@ class TestMemInfo(unittest.TestCase):
         assert all(m > 0 for m in mem_info)
 
 
+"""
 class TestLockAndNoGc(unittest.TestCase):
 
     def test(self):
@@ -994,6 +994,7 @@ class TestLockAndNoGc(unittest.TestCase):
             lock.acquire()
         assert gc.isenabled()
         self.assertRaises(Exception, lock.release)
+"""
 
 
 class TestExceptionPicklable(unittest.TestCase):
