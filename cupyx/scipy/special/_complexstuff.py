@@ -20,7 +20,6 @@ Notes:
 from __future__ import annotations
 
 
-
 zlog1_definition = """
 
 /* Compute log, paying special attention to accuracy around 1. We
