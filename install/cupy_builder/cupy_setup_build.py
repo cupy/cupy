@@ -334,7 +334,7 @@ def make_extensions(ctx: Context, compiler, use_cython):
         # Fix for ROCm 6.3.0, See https://github.com/ROCm/rocThrust/issues/502
         settings['define_macros'].append(
             ('THRUST_DEVICE_SYSTEM', 'THRUST_DEVICE_SYSTEM_HIP'))
-        # Fix for https://github.com/ROCm/rocThrust/commit/df75ae8520fad81f1dc9a4b3b66358137c34daa6
+        # Fix for ROCm 6.3.2 #9098
         settings['define_macros'].append(('__HIP__', '1'))
     settings['define_macros'].append(('CUPY_CACHE_KEY', ctx.cupy_cache_key))
 
