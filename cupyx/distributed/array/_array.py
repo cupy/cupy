@@ -98,7 +98,7 @@ class DistributedArray(ndarray):
     _streams: dict[int, Stream]
     _comms: dict[int, _Communicator]
 
-    def __new__(
+    def __new__(  # noqa: PYI034
         cls, shape: tuple[int, ...], dtype: DTypeLike,
         chunks_map: dict[int, list[_Chunk]],
         mode: _modes.Mode = _modes.REPLICA,

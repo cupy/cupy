@@ -322,8 +322,8 @@ _suffix_literals_dict: Mapping[str, str] = {
 
 
 def get_cuda_code_from_constant(
-        x: bool | int | float | complex,
-        ctype: Scalar,
+    x: bool | complex,
+    ctype: Scalar,
 ) -> str:
     dtype = ctype.dtype
     ctype_str = str(ctype)
