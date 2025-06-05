@@ -7,6 +7,7 @@ valid for inputs that match the given type annotations.
 """
 
 from __future__ import annotations
+
 from cupy.cuda import Device
 
 

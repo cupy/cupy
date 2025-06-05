@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import unittest
 
 from . import _from_install_import

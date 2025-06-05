@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from cupy import _core
 from cupyx.scipy.special._loggamma import loggamma_definition
 

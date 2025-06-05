@@ -3,6 +3,8 @@
 #
 # (*) https://docs.nvidia.com/cuda/cusparselt/getting_started.html#code-example
 #
+from __future__ import annotations
+
 import cupy
 import numpy
 

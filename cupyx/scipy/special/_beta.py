@@ -12,6 +12,8 @@ https://github.com/scipy/scipy/blob/main/scipy/special/cephes/incbi.c
 Cephes Math Library, Release 2.3:  March, 1995
 Copyright 1984, 1995 by Stephen L. Moshier
 """
+from __future__ import annotations
+
 
 from cupy import _core
 from cupyx.scipy.special._digamma import polevl_definition

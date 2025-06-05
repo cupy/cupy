@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import distutils.ccompiler
 import os
 import os.path
@@ -5,7 +7,7 @@ import platform
 import shutil
 import sys
 import subprocess
-from typing import Any, Optional
+from typing import Any
 
 from setuptools import Extension
 
@@ -268,7 +270,7 @@ class DeviceCompilerWin32(DeviceCompilerBase):
         print('NVCC options:', postargs)
         self.spawn(compiler_so + cc_args + [src, '-o', obj] + postargs)
 
-    def _find_host_compiler_path(self) -> Optional[str]:
+    def _find_host_compiler_path(self) -> str | None:
         # c.f. cupy.cuda.compiler._get_extra_path_for_msvc
         cl_exe = shutil.which('cl.exe')
         if cl_exe:

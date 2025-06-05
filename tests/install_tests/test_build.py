@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from distutils import ccompiler
 from distutils import sysconfig
 import os
