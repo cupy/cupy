@@ -8,6 +8,8 @@ This tool is NOT intended for end-user use.
 
 # This script will also be used as a standalone script when building wheels.
 # Keep the script runnable without CuPy dependency.
+from __future__ import annotations
+
 
 import argparse
 import json

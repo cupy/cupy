@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import dataclasses
 import typing
 from typing import Callable, Optional
@@ -168,10 +170,10 @@ def _group_by_batch(
 
 
 def _reshape_array_with(
-    arr: '_array.DistributedArray',
+    arr: _array.DistributedArray,
     f_shape: Callable[[tuple[int,   ...]], tuple[int,   ...]],
     f_idx:   Callable[[tuple[slice, ...]], tuple[slice, ...]],
-) -> '_array.DistributedArray':
+) -> _array.DistributedArray:
     def reshape_chunk(chunk: _chunk._Chunk) -> _chunk._Chunk:
         data = chunk.array.reshape(f_shape(chunk.array.shape))
         index = f_idx(chunk.index)
@@ -188,21 +190,21 @@ def _reshape_array_with(
         shape, arr.dtype, chunks_map, arr._mode, arr._comms)
 
 
-def _prepend_one_to_shape(arr) -> '_array.DistributedArray':
+def _prepend_one_to_shape(arr) -> _array.DistributedArray:
     return _reshape_array_with(
         arr,
         lambda shape: (1,) + shape,
         lambda idx: (slice(None),) + idx)
 
 
-def _append_one_to_shape(arr) -> '_array.DistributedArray':
+def _append_one_to_shape(arr) -> _array.DistributedArray:
     return _reshape_array_with(
         arr,
         lambda shape: shape + (1,),
         lambda idx: idx + (slice(None),))
 
 
-def _pop_from_shape(arr) -> '_array.DistributedArray':
+def _pop_from_shape(arr) -> _array.DistributedArray:
     assert arr.shape[-1] == 1
     return _reshape_array_with(
         arr,
@@ -210,7 +212,7 @@ def _pop_from_shape(arr) -> '_array.DistributedArray':
         lambda idx: idx[:-1])
 
 
-def _pop_front_from_shape(arr) -> '_array.DistributedArray':
+def _pop_front_from_shape(arr) -> _array.DistributedArray:
     assert arr.shape[0] == 1
     return _reshape_array_with(
         arr,
@@ -219,9 +221,9 @@ def _pop_front_from_shape(arr) -> '_array.DistributedArray':
 
 
 def matmul(
-    a: '_array.DistributedArray', b: '_array.DistributedArray',
-    out: Optional['_array.DistributedArray'] = None, **kwargs,
-) -> '_array.DistributedArray':
+    a: _array.DistributedArray, b: _array.DistributedArray,
+    out: Optional[_array.DistributedArray] = None, **kwargs,
+) -> _array.DistributedArray:
     """Matrix multiplication between distributed arrays.
 
     The arguments must have compatible :attr:`~DistributedArray.shape` and

@@ -3,6 +3,7 @@
 #
 # FlexCI Dispatcher: Trigger FlexCI based on webhooks.
 #
+from __future__ import annotations
 
 import argparse
 import hmac

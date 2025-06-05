@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 def byte_bounds(a):
     """Returns pointers to the end-points of an array.
 

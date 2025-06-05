@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import contextlib
 from itertools import chain
 from typing import Any, Optional, Union
@@ -30,11 +32,11 @@ class _ArrayPlaceholder:
         self.shape = shape
         self.device = device
 
-    def reshape(self, new_shape: tuple[int, ...]) -> '_ArrayPlaceholder':
+    def reshape(self, new_shape: tuple[int, ...]) -> _ArrayPlaceholder:
         return _ArrayPlaceholder(new_shape, self.device)
 
     def to_ndarray(
-            self, mode: '_modes.Mode', dtype: numpy.dtype) -> ndarray:
+            self, mode: _modes.Mode, dtype: numpy.dtype) -> ndarray:
         with self.device:
             if mode is _modes.REPLICA:
                 data = _creation_basic.empty(self.shape, dtype)
@@ -72,7 +74,7 @@ class _Chunk:
         cls, shape: tuple[int, ...], device: Union[int, Device],
         index: tuple[slice, ...],
         updates: Optional[list[_data_transfer._PartialUpdate]] = None,
-    ) -> '_Chunk':
+    ) -> _Chunk:
         if isinstance(device, int):
             device = Device(device)
 
@@ -96,7 +98,7 @@ class _Chunk:
     ) -> None:
         self.updates.append((update, idx))
 
-    def copy(self) -> '_Chunk':
+    def copy(self) -> _Chunk:
         # TODO: Calling flush here would reduce the amount of future copying
         if isinstance(self.array, _ArrayPlaceholder):
             data = self.array
@@ -109,7 +111,7 @@ class _Chunk:
         return _Chunk(data, ready, self.index, list(self.updates),
                       prevent_gc=self.prevent_gc)
 
-    def flush(self, mode: '_modes.Mode') -> None:
+    def flush(self, mode: _modes.Mode) -> None:
         """Apply all updates in-place."""
         if len(self.updates) == 0:
             return
@@ -132,7 +134,7 @@ class _Chunk:
             self.updates = []
 
     def apply_to(
-        self, target: '_Chunk', mode: '_modes.Mode',
+        self, target: _Chunk, mode: _modes.Mode,
         shape: tuple[int, ...],
         comms: dict[int, _data_transfer._Communicator],
         streams: dict[int, Stream],
@@ -204,7 +206,7 @@ class _Chunk:
 
 
 def _all_reduce_intersections(
-    op_mode: '_modes._OpMode', shape: tuple[int, ...],
+    op_mode: _modes._OpMode, shape: tuple[int, ...],
     chunk_map: dict[int, list[_Chunk]],
     comms: dict[int, _Communicator], streams: dict[int, Stream],
 ) -> None:
