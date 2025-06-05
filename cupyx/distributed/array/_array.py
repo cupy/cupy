@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from itertools import chain
-from typing import Any, Callable, Optional
+from typing import Any, Callable
 from collections.abc import Iterable
 
 import numpy
@@ -102,7 +102,7 @@ class DistributedArray(ndarray):
         cls, shape: tuple[int, ...], dtype: DTypeLike,
         chunks_map: dict[int, list[_Chunk]],
         mode: _modes.Mode = _modes.REPLICA,
-        comms: Optional[dict[int, _Communicator]] = None,
+        comms: dict[int, _Communicator] | None = None,
     ) -> DistributedArray:
         mem = _MultiDeviceDummyMemory(0)
         memptr = _MultiDeviceDummyPointer(mem, 0)
@@ -873,7 +873,7 @@ def distributed_array(
 
     # Define how to form a chunk from (dev, idx, src_array)
     make_chunk: Callable[
-        [int, int, tuple[slice, ...], ndarray, Optional[list[Any]]],
+        [int, int, tuple[slice, ...], ndarray, list[Any] | None],
         _Chunk
     ]
 

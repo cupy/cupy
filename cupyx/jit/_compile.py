@@ -292,7 +292,7 @@ class Environment:
         self.generated = generated
         self.count = 0
 
-    def __getitem__(self, key: str) -> Optional[Union[Constant, Data]]:
+    def __getitem__(self, key: str) -> Constant | Data | None:
         if key in self.locals:
             return self.locals[key]
         if key in self.params:
@@ -392,9 +392,9 @@ def _transpile_function_internal(
 
 def _eval_operand(
         op: ast.AST,
-        args: Sequence[Union[Constant, Data]],
+        args: Sequence[Constant | Data],
         env: Environment,
-) -> Union[Constant, Data]:
+) -> Constant | Data:
     if is_constants(*args):
         pyfunc = _cuda_typerules.get_pyfunc(type(op))
         return Constant(pyfunc(*[x.obj for x in args]))
@@ -431,8 +431,8 @@ def _eval_operand(
 
 def _call_ufunc(
         ufunc: _kernel.ufunc,
-        args: Sequence[Union[Constant, Data]],
-        dtype: Optional[numpy.dtype],
+        args: Sequence[Constant | Data],
+        dtype: numpy.dtype | None,
         env: Environment,
 ) -> Data:
     if len(args) != ufunc.nin:
@@ -692,7 +692,7 @@ def _transpile_expr(expr: ast.expr, env: Environment) -> _internal_types.Expr:
 
 
 def _transpile_expr_internal(
-        expr: Optional[ast.expr],
+        expr: ast.expr | None,
         env: Environment,
 ) -> _internal_types.Expr:
     if isinstance(expr, ast.BoolOp):
@@ -737,7 +737,7 @@ def _transpile_expr_internal(
     if isinstance(expr, ast.Call):
         func = _transpile_expr(expr.func, env)
         args = [_transpile_expr(x, env) for x in expr.args]
-        kwargs: dict[str, Union[Constant, Data]] = {}
+        kwargs: dict[str, Constant | Data] = {}
         for kw in expr.keywords:
             assert kw.arg is not None
             kwargs[kw.arg] = _transpile_expr(kw.value, env)
@@ -847,7 +847,7 @@ def _transpile_expr_internal(
 
 
 def _emit_assign_stmt(
-        lvalue: Union[Constant, Data],
+        lvalue: Constant | Data,
         rvalue: Data,
         env: Environment,
 ) -> _CodeType:
@@ -912,7 +912,7 @@ def _indexing(
         array: _internal_types.Expr,
         index: _internal_types.Expr,
         env: Environment,
-) -> Union[Data, Constant]:
+) -> Data | Constant:
     if isinstance(array, Constant):
         if isinstance(index, Constant):
             return Constant(array.obj[index.obj])
@@ -1022,8 +1022,8 @@ def _astype_scalar(
 
 
 def _infer_type(
-        x: Union[Constant, Data],
-        hint: Union[Constant, Data],
+        x: Constant | Data,
+        hint: Constant | Data,
         env: Environment,
 ) -> Data:
     if not isinstance(x, Constant) or isinstance(x.obj, numpy.generic):

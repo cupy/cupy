@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import dataclasses
 import typing
-from typing import Callable, Optional
+from typing import Callable
 
 import cupy
 from cupyx.distributed.array import _array
@@ -222,7 +222,7 @@ def _pop_front_from_shape(arr) -> _array.DistributedArray:
 
 def matmul(
     a: _array.DistributedArray, b: _array.DistributedArray,
-    out: Optional[_array.DistributedArray] = None, **kwargs,
+    out: _array.DistributedArray | None = None, **kwargs,
 ) -> _array.DistributedArray:
     """Matrix multiplication between distributed arrays.
 

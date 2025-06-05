@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Optional, Union, TYPE_CHECKING
+from typing import TYPE_CHECKING
 from collections.abc import Mapping, Sequence
 
 import numpy
@@ -19,7 +19,7 @@ class TypeBase:
     def __str__(self) -> str:
         raise NotImplementedError
 
-    def declvar(self, x: str, init: Optional[Data]) -> str:
+    def declvar(self, x: str, init: Data | None) -> str:
         if init is None:
             return f'{self} {x}'
         return f'{self} {x} = {init.code}'
@@ -39,7 +39,7 @@ class Void(TypeBase):
 
 class Unknown(TypeBase):
 
-    def __init__(self, *, label: Optional[str] = None) -> None:
+    def __init__(self, *, label: str | None = None) -> None:
         self.label = label
 
     def __str__(self) -> str:
@@ -223,8 +223,8 @@ class SharedMem(ArrayBase):
     def __init__(
             self,
             child_type: TypeBase,
-            size: Optional[int],
-            alignment: Optional[int] = None,
+            size: int | None,
+            alignment: int | None = None,
     ) -> None:
         if not (isinstance(size, int) or size is None):
             raise 'size of shared_memory must be integer or `None`'
@@ -234,7 +234,7 @@ class SharedMem(ArrayBase):
         self._alignment = alignment
         super().__init__(child_type, 1)
 
-    def declvar(self, x: str, init: Optional[Data]) -> str:
+    def declvar(self, x: str, init: Data | None) -> str:
         assert init is None
         if self._alignment is not None:
             code = f'__align__({self._alignment})'
@@ -322,7 +322,7 @@ _suffix_literals_dict: Mapping[str, str] = {
 
 
 def get_cuda_code_from_constant(
-        x: Union[bool, int, float, complex],
+        x: bool | int | float | complex,
         ctype: Scalar,
 ) -> str:
     dtype = ctype.dtype

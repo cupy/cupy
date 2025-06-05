@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import contextlib
 from itertools import chain
-from typing import Any, Optional, Union
+from typing import Any
 from collections.abc import Iterator
 
 import numpy
@@ -49,7 +49,7 @@ class _ArrayPlaceholder:
 
 
 class _Chunk:
-    array: Union[ndarray, _ArrayPlaceholder]
+    array: ndarray | _ArrayPlaceholder
     ready: Event
     index: tuple[slice, ...]
     updates: list[_data_transfer._PartialUpdate]
@@ -58,9 +58,9 @@ class _Chunk:
     # Rule: whenever data is DataPlaceholder, ready is empty
 
     def __init__(
-        self, data: Union[ndarray, _ArrayPlaceholder], ready: Event,
+        self, data: ndarray | _ArrayPlaceholder, ready: Event,
         index: tuple[slice, ...],
-        updates: Optional[list[_data_transfer._PartialUpdate]] = None,
+        updates: list[_data_transfer._PartialUpdate] | None = None,
         prevent_gc: Any = None
     ) -> None:
         self.array = data
@@ -71,9 +71,9 @@ class _Chunk:
 
     @classmethod
     def create_placeholder(
-        cls, shape: tuple[int, ...], device: Union[int, Device],
+        cls, shape: tuple[int, ...], device: int | Device,
         index: tuple[slice, ...],
-        updates: Optional[list[_data_transfer._PartialUpdate]] = None,
+        updates: list[_data_transfer._PartialUpdate] | None = None,
     ) -> _Chunk:
         if isinstance(device, int):
             device = Device(device)

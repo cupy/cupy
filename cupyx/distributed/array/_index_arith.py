@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import typing
-from typing import Any, Optional
+from typing import Any
 
 
 def _extgcd(a: int, b: int) -> tuple[int, int]:
@@ -24,7 +24,7 @@ def _extgcd(a: int, b: int) -> tuple[int, int]:
     return c, x
 
 
-def _crt(a1: int, n1: int, a2: int, n2: int) -> Optional[tuple[int, int]]:
+def _crt(a1: int, n1: int, a2: int, n2: int) -> tuple[int, int] | None:
     # Return x, n with x == a1 (mod n1), x == a2 (mod n2), n == lcm(n1, n2).
     # Choose the minimum value for x with x >= max(a1, a2). Return None if no
     # solution exists.
@@ -48,7 +48,7 @@ def _crt(a1: int, n1: int, a2: int, n2: int) -> Optional[tuple[int, int]]:
     return x, n
 
 
-def _slice_intersection(a: slice, b: slice, length: int) -> Optional[slice]:
+def _slice_intersection(a: slice, b: slice, length: int) -> slice | None:
     # Return the intersection of slice a, b. None if they are disjoint.
     a_start, a_stop, a_step = a.indices(length)
     b_start, b_stop, b_step = b.indices(length)
@@ -82,7 +82,7 @@ def _index_for_subslice(a: slice, sub: slice, length: int) -> slice:
 def _index_intersection(
     a_idx: tuple[slice, ...], b_idx: tuple[slice, ...],
     shape: tuple[int, ...],
-) -> Optional[tuple[slice, ...]]:
+) -> tuple[slice, ...] | None:
     # Return None if a, b are disjoint.
     assert len(a_idx) == len(b_idx)
     result = tuple(_slice_intersection(a, b, length)
