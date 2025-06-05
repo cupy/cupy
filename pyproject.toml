@@ -132,7 +132,7 @@ extend-exclude = [
 ]
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "UP", "I002", "FA", "PYI"]
+select = ["E", "F", "W", "UP", "I002", "FA", "PYI", "PLC01"]
 extend-ignore = [
   "UP031", # printf-string-formatting
   "UP032", # f-string
