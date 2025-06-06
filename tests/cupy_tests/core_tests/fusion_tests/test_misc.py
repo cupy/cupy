@@ -450,7 +450,7 @@ class TestFusionMultiDevice(unittest.TestCase):
         return out1, out2
 
 
-class TestFusionInvalid():
+class TestFusionInvalid:
 
     def test_branch(self):
         @cupy.fuse()

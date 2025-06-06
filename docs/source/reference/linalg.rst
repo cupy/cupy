@@ -59,9 +59,9 @@ Matrix eigenvalues
 .. autosummary::
    :toctree: generated/
 
-   # linalg.eig
+   linalg.eig
    linalg.eigh
-   # linalg.eigvals
+   linalg.eigvals
    linalg.eigvalsh
 
 Norms and other numbers
@@ -73,7 +73,7 @@ Norms and other numbers
    linalg.norm
    # linalg.matrix_norm (Array API compatible)
    # linalg.vector_norm (Array API compatible)
-   # linalg.cond
+   linalg.cond
    linalg.det
    linalg.matrix_rank
    linalg.slogdet
