@@ -4,12 +4,10 @@ import numpy
 
 import cupy
 import math
-import itertools
 
 from cupy import _core
 from cupy._core._scalar import get_typename
 from cupy._core._routines_sorting import _ndarray_argsort2d
-from cupy_backends.cuda.api import runtime
 
 
 def delete(arr, indices, axis=None):
@@ -180,34 +178,25 @@ def _unique_update_mask_equal_nan(mask, x0):
     mask[:] = cupy.logical_and(mask, mask1)
 
 
-def _get_typename(dtype):
-    typename = get_typename(dtype)
-    if numpy.dtype(dtype).kind == 'c':
-        typename = 'thrust::' + typename
-    elif typename == 'float16':
-        if runtime.is_hip:
-            # 'half' in name_expressions weirdly raises
-            # HIPRTC_ERROR_NAME_EXPRESSION_NOT_VALID in getLoweredName() on
-            # ROCm
-            typename = '__half'
-        else:
-            typename = 'half'
-    return typename
+def get_crc_dtype(dtype):
+    itemsize = numpy.dtype(dtype).itemsize
+    if (itemsize == 4 or
+            (numpy.issubdtype(dtype, numpy.complexfloating) and
+                itemsize == 8)):
+        return cupy.uint32
+    return cupy.uint64
 
 
-_64bitd = itertools.product(
-    [cupy.complex128, cupy.float64, cupy.int64, cupy.uint64], [cupy.uint64])
-_32bitd = itertools.product(
-    [cupy.complex64, cupy.float32, cupy.int32, cupy.uint32], [cupy.uint32])
-_16bitd = itertools.product(
-    [cupy.float16, cupy.int16, cupy.uint16], [cupy.uint64])
-_8bitd = itertools.product([cupy.bool_, cupy.int8, cupy.uint8], [cupy.uint64])
-_all_types_i = list(itertools.chain(_64bitd, _32bitd, _16bitd, _8bitd))
-_all_types = [(_get_typename(x), _get_typename(y)) for x, y in _all_types_i]
-_dtype_map = {numpy.dtype(x): numpy.dtype(y) for x, y in _all_types_i}
-_type_map = dict(_all_types)
+_dtypes = [
+    cupy.complex128, cupy.float64, cupy.int64, cupy.uint64,
+    cupy.complex64, cupy.float32, cupy.int32, cupy.uint32,
+    cupy.float16, cupy.int16, cupy.uint16,
+    cupy.bool_, cupy.int8, cupy.uint8
+]
 
-map_crc_def = [f'map_crc<{x}, {y}>' for x, y in _all_types]
+
+map_crc_def = [f'map_crc<{get_typename(x)}, {get_typename(get_crc_dtype(x))}>'
+               for x in _dtypes]
 
 _unique_nd_module = _core.RawModule(code='''
 #include <cupy/carray.cuh>
@@ -740,12 +729,13 @@ def unique(ar, return_index=False, return_inverse=False,
         blocks_per_row = (row_sz + block_sz - 1) // block_sz
 
         crc = cupy.empty((n_rows, blocks_per_row),
-                         dtype=_dtype_map[ar.dtype])
-        random_seed = cupy.random.randint(
+                         dtype=get_crc_dtype(ar.dtype))
+        rng = cupy.random.default_rng(1234)
+        random_seed = rng.uniform(
             1, 2**31 - 1, size=(n_rows, blocks_per_row),
-            dtype=_dtype_map[ar.dtype])
-        in_type = _get_typename(ar.dtype)
-        crc_type = _type_map[in_type]
+            dtype=get_crc_dtype(ar.dtype))
+        in_type = get_typename(ar.dtype)
+        crc_type = get_typename(get_crc_dtype(ar.dtype))
 
         crc_comp = _unique_nd_module.get_function(
             f'map_crc<{in_type}, {crc_type}>')
