@@ -42,15 +42,13 @@ class TestBasic:
         a.fill(0)
         return a
 
-    @testing.with_requires('numpy>=1.20')
+    @testing.with_requires('numpy>=2.3')
     @testing.for_CF_orders()
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_equal()
-    def test_empty_scalar_none(self, xp, dtype, order):
-        with testing.assert_warns(DeprecationWarning):
-            a = xp.empty(None, dtype=dtype, order=order)
-        a.fill(0)
-        return a
+    def test_empty_scalar_none(self, dtype, order):
+        for xp in (numpy, cupy):
+            with pytest.raises(TypeError, match=r"Use ()"):
+                xp.empty(None, dtype=dtype, order=order)
 
     @testing.for_CF_orders()
     @testing.for_all_dtypes()
@@ -196,13 +194,13 @@ class TestBasic:
     def test_zeros_scalar(self, xp, dtype, order):
         return xp.zeros((), dtype=dtype, order=order)
 
-    @testing.with_requires('numpy>=1.20')
+    @testing.with_requires('numpy>=2.3')
     @testing.for_CF_orders()
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_equal()
-    def test_zeros_scalar_none(self, xp, dtype, order):
-        with testing.assert_warns(DeprecationWarning):
-            return xp.zeros(None, dtype=dtype, order=order)
+    def test_zeros_scalar_none(self, dtype, order):
+        for xp in (numpy, cupy):
+            with pytest.raises(TypeError, match=r"Use ()"):
+                xp.zeros(None, dtype=dtype, order=order)
 
     @testing.for_CF_orders()
     @testing.for_all_dtypes()
