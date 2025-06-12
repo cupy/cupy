@@ -40,7 +40,6 @@ from cupy.linalg._solve import lstsq  # NOQA
 from cupy.linalg._solve import inv  # NOQA
 from cupy.linalg._solve import pinv  # NOQA
 from cupy.linalg._solve import tensorinv  # NOQA
-from cupy.linalg._solve import cho_solve
 
 # -----------------------------------------------------------------------------
 # Exceptions
@@ -68,5 +67,4 @@ __all__ = [
     "pinv",
     "tensorinv",
     "LinAlgError",
-    "cho_solve",
 ]

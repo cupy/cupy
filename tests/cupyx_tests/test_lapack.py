@@ -196,7 +196,7 @@ class TestPotrs(unittest.TestCase):
         return numpy.linalg.solve(a, b)[..., 0]
 
     @testing.for_dtypes('fdFD')
-    @testing.numpy_cupy_allclose(atol=1e-5)
+    @testing.numpy_cupy_allclose(atol=1e-5, contiguous_check=False)
     def test_potrs(self, xp, dtype):
 
         if (len(self.shape) > 2 and

@@ -444,7 +444,7 @@ def potrs(L, b, lower):
     # Conjugate back if necessary
     if L.flags.c_contiguous and b.size < L.size:
         b = b.conj()
-    return _cupy.asarray(b, order='C').reshape(b_shape)
+    return b.reshape(b_shape)
 
 
 def _batched_potrs(L, b, lower: bool):
@@ -531,4 +531,4 @@ def _batched_potrs(L, b, lower: bool):
             b = b_tmp.conj()
 
     # Return b in the original shape
-    return _cupy.asarray(b, order='C').reshape(b_shape)
+    return b.reshape(b_shape)
