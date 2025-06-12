@@ -18,12 +18,15 @@ from cupy.linalg._decomposition import svd  # NOQA
 # Matrix eigenvalues
 # -----------------------------------------------------------------------------
 from cupy.linalg._eigenvalue import eigh  # NOQA
+from cupy.linalg._eigenvalue import eig  # NOQA
 from cupy.linalg._eigenvalue import eigvalsh  # NOQA
+from cupy.linalg._eigenvalue import eigvals  # NOQA
 
 # -----------------------------------------------------------------------------
 # Norms and other numbers
 # -----------------------------------------------------------------------------
 from cupy.linalg._norms import norm  # NOQA
+from cupy.linalg._norms import cond  # NOQA
 from cupy.linalg._norms import det  # NOQA
 from cupy.linalg._norms import matrix_rank  # NOQA
 from cupy.linalg._norms import slogdet  # NOQA
@@ -45,6 +48,25 @@ from cupy.linalg._solve import cho_solve
 from numpy.linalg import LinAlgError  # NOQA
 
 
-__all__ = ["matrix_power", "cholesky", "qr", "svd", "eigh", "eigvalsh", "norm",
-           "det", "matrix_rank", "slogdet", "solve", "tensorsolve", "inv",
-           "pinv", "tensorinv", "LinAlgError", "cho_solve"]
+__all__ = [
+    "matrix_power",
+    "cholesky",
+    "qr",
+    "svd",
+    "eigh",
+    "eig",
+    "eigvalsh",
+    "eigvals",
+    "norm",
+    "cond",
+    "det",
+    "matrix_rank",
+    "slogdet",
+    "solve",
+    "tensorsolve",
+    "inv",
+    "pinv",
+    "tensorinv",
+    "LinAlgError",
+    "cho_solve",
+]

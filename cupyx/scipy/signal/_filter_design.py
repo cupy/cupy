@@ -566,7 +566,7 @@ def _validate_sos(sos):
     return sos, n_sections
 
 
-def sosfreqz(sos, worN=512, whole=False, fs=2*pi):
+def freqz_sos(sos, worN=512, whole=False, fs=2*pi):
     r"""
     Compute the frequency response of a digital filter in SOS format.
 
@@ -626,6 +626,11 @@ def sosfreqz(sos, worN=512, whole=False, fs=2*pi):
         w, rowh = freqz(row[:3], row[3:], worN=worN, whole=whole, fs=fs)
         h *= rowh
     return w, h
+
+
+def sosfreqz(sos, worN=512, whole=False, fs=2*pi):
+    """A legacy alias for freqz_sos."""
+    return freqz_sos(sos, worN, whole, fs)
 
 
 def _hz_to_erb(hz):
@@ -793,7 +798,7 @@ def gammatone(freq, ftype, order=None, numtaps=None, fs=None):
         scale_factor /= float_factorial(order - 1)
         scale_factor /= fs
         b *= scale_factor
-        a = [1.0]
+        a = cupy.asarray([1.0])
 
     # Calculate IIR gammatone filter
     elif ftype == 'iir':

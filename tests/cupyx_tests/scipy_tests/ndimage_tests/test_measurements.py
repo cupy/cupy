@@ -372,7 +372,7 @@ class TestMeasurementsSelect:
     'shape': [(200,), (16, 20)],
 }))
 @testing.with_requires('scipy')
-class TestHistogram():
+class TestHistogram:
 
     def _make_image(self, shape, xp, dtype, scale):
         return testing.shaped_random(shape, xp, dtype=dtype, scale=scale)
@@ -413,7 +413,7 @@ class TestHistogram():
     'pass_positions': [True, False],
 }))
 @testing.with_requires('scipy')
-class TestLabeledComprehension():
+class TestLabeledComprehension:
 
     def _make_image(self, shape, xp, dtype, scale):
         if dtype == xp.bool_:
@@ -533,7 +533,7 @@ class TestValueIndices:
 
 
 @testing.with_requires('scipy')
-class TestFindObjectsBasic():
+class TestFindObjectsBasic:
 
     @testing.numpy_cupy_equal(scipy_name='scp')
     def test_find_objects_ones_1d(self, xp, scp):

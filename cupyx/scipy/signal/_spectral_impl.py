@@ -325,7 +325,7 @@ def _spectral_helper(
 
     if boundary not in boundary_funcs:
         raise ValueError(
-            "Unknown boundary option '{0}', must be one of: {1}".format(
+            "Unknown boundary option '{}', must be one of: {}".format(
                 boundary, list(boundary_funcs.keys())
             )
         )
