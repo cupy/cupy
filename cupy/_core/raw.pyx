@@ -76,7 +76,7 @@ cdef class RawKernel:
         self.__name__ = name
 
     def __call__(self, grid, block, args, **kwargs):
-        """__call__(self, grid, block, args, *, shared_mem=0)
+        """__call__(self, grid, block, args, \*, shared_mem=0)
 
         Compiles and invokes the kernel.
 
