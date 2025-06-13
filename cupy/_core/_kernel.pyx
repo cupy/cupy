@@ -1074,9 +1074,13 @@ cdef function.Function _get_ufunc_kernel(
             return a;
         }
         """
+    # Use C++17 for xsf special function library.
+    # Note: Cython only allows omitting trailing keyword arguments
+    # so after_loop must be included here even though it is taking
+    # the default value. See https://github.com/cython/cython/issues/1630.
     return _get_simple_elementwise_kernel(
         params, arginfos, operation, name, type_map, preamble,
-        loop_prep=loop_prep)
+        loop_prep=loop_prep, after_loop='', options=("--std=c++17",))
 
 
 cdef dict _mst_unsigned_to_signed = {
