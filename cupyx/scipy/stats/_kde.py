@@ -3,6 +3,7 @@ import cupy
 from cupy._core._scalar import get_typename
 
 from cupyx.scipy.linalg import solve_triangular
+from cupyx.scipy.special import ndtr
 
 
 GAUSSIAN_MODULE = cupy.RawModule(code=r"""
@@ -38,8 +39,41 @@ __global__ void gaussian_estimate_inner(
     }
 }
 
+template<typename T>
+__global__ void gaussian_estimate_log(
+        const T* points, const T* log_values, const T* xi, T* estimate,
+        const T* cho_cov, int n, int m, int d, int p) {
+
+    int idx = blockDim.x * blockIdx.x + threadIdx.x;
+    if(idx >= n * m) {
+        return;
+    }
+
+    T log_norm = (- d / 2.0) * log(2 * CUDART_PI);
+    for(int i = 0; i < d; i++) {
+        log_norm -= log(cho_cov[d * i + i]);
+    }
+
+    int i = idx / m;
+    int j = idx % m;
+
+    T arg = 0;
+    for(int k = 0; k < d; k++) {
+        T residual = points[d * i + k] - xi[d * j + k];
+        arg += residual * residual;
+    }
+
+    arg = -arg / 2 + log_norm;
+    for(int k = 0; k < p; k++) {
+        estimate[p * j + k] = log(exp(estimate[p * j + k]) +
+                                  exp(arg + log_values[p * i + k]));
+    }
+
+}
+
 """, options=('-std=c++11',), name_expressions=[
-    'gaussian_estimate_inner<float>', 'gaussian_estimate_inner<double>'])
+    'gaussian_estimate_inner<float>', 'gaussian_estimate_inner<double>',
+    'gaussian_estimate_log<float>', 'gaussian_estimate_log<double>'])
 
 
 def gaussian_kernel_estimate(points, values, xi, cho_cov, dtype, c_dtype):
@@ -94,6 +128,67 @@ def gaussian_kernel_estimate(points, values, xi, cho_cov, dtype, c_dtype):
     gaussian_kernel_estimate_inner(
         (n_blocks,), (block_sz,), (points_, values_, xi_,
                                    estimate, cho_cov_, n, m, d, p))
+
+    return estimate
+
+
+def gaussian_kernel_estimate_log(points, values, xi, cho_cov, dtype, c_dtype):
+    """
+    Evaluate the log of the estimated pdf on a provided set of points.
+
+    Parameters
+    ----------
+    points : array_like with shape (n, d)
+        Data points to estimate from in ``d`` dimensions.
+    values : real[:, :] with shape (n, p)
+        Multivariate values associated with the data points.
+    xi : array_like with shape (m, d)
+        Coordinates to evaluate the estimate at in ``d`` dimensions.
+    cho_cov : array_like with shape (d, d)
+        (Lower) Cholesky factor of the covariance.
+
+    Returns
+    -------
+    estimate : double[:, :] with shape (m, p)
+        The log of the multivariate Gaussian kernel estimate evaluated at the
+        input coordinates.
+    """
+
+    n = points.shape[0]
+    d = points.shape[1]
+    m = xi.shape[0]
+    p = values.shape[1]
+
+    if xi.shape[1] != d:
+        raise ValueError("points and xi must have same trailing dim")
+    if cho_cov.shape[0] != d or cho_cov.shape[1] != d:
+        raise ValueError("Covariance matrix must match data dims")
+
+    # Rescale the data
+    cho_cov_ = cho_cov.astype(dtype, copy=False)
+    points_ = cupy.asarray(solve_triangular(cho_cov, points.T, lower=True).T,
+                           dtype=dtype)
+    xi_ = cupy.asarray(solve_triangular(cho_cov, xi.T, lower=True).T,
+                       dtype=dtype)
+    values_ = values.astype(dtype, copy=False)
+
+    log_values_ = cupy.log(values_)
+
+    # Create the result array and evaluate the weighted sum
+    estimate = cupy.full((m, p), fill_value=-cupy.inf, dtype=dtype)
+
+    total = n * m
+    block_sz = 128
+    n_blocks = ((total + block_sz - 1) // block_sz)
+
+    gaussian_kernel_log = GAUSSIAN_MODULE.get_function(
+        f'gaussian_estimate_log<{c_dtype}>')
+
+    gaussian_kernel_log(
+        (n_blocks,), (block_sz,), (points_, log_values_, xi_,
+                                   estimate, cho_cov_, n, m, d, p))
+
+    return estimate
 
 
 class gaussian_kde:
@@ -428,6 +523,290 @@ class gaussian_kde:
         self.cho_cov = (self._data_cho_cov * self.factor).astype(cupy.float64)
         self.log_det = 2 * cupy.log(
             cupy.diag(self.cho_cov * cupy.sqrt(2 * cupy.pi))).sum()
+
+    def integrate_gaussian(self, mean, cov):
+        """
+        Multiply estimated density by a multivariate Gaussian and integrate
+        over the whole space.
+
+        Parameters
+        ----------
+        mean : aray_like
+            A 1-D array, specifying the mean of the Gaussian.
+        cov : array_like
+            A 2-D array, specifying the covariance matrix of the Gaussian.
+
+        Returns
+        -------
+        result : scalar
+            The value of the integral.
+
+        Raises
+        ------
+        ValueError
+            If the mean or covariance of the input Gaussian differs from
+            the KDE's dimensionality.
+
+        """
+        raise NotImplementedError('CuPy is missing cho_solve')
+
+    def integrate_box_1d(self, low, high):
+        """
+        Computes the integral of a 1D pdf between two bounds.
+
+        Parameters
+        ----------
+        low : scalar
+            Lower bound of integration.
+        high : scalar
+            Upper bound of integration.
+
+        Returns
+        -------
+        value : scalar
+            The result of the integral.
+
+        Raises
+        ------
+        ValueError
+            If the KDE is over more than one dimension.
+
+        """
+        if self.d != 1:
+            raise ValueError("integrate_box_1d() only handles 1D pdfs")
+
+        stdev = cupy.ravel(cupy.sqrt(self.covariance))[0]
+
+        normalized_low = cupy.ravel((low - self.dataset) / stdev)
+        normalized_high = cupy.ravel((high - self.dataset) / stdev)
+
+        delta = ndtr(normalized_high) - ndtr(normalized_low)
+        value = cupy.sum(self.weights * delta, axis=-1)
+        return value
+
+    def integrate_box(self, low_bounds, high_bounds, maxpts=None, *, rng=None):
+        """Computes the integral of a pdf over a rectangular interval.
+
+        Parameters
+        ----------
+        low_bounds : array_like
+            A 1-D array containing the lower bounds of integration.
+        high_bounds : array_like
+            A 1-D array containing the upper bounds of integration.
+        maxpts : int, optional
+            The maximum number of points to use for integration.
+        rng : `numpy.random.Generator`, optional
+            Pseudorandom number generator state. When `rng` is None, a new
+            generator is created using entropy from the operating system. Types
+            other than `numpy.random.Generator` are passed to
+            `numpy.random.default_rng` to instantiate a ``Generator``.
+
+        Returns
+        -------
+        value : scalar
+            The result of the integral.
+
+        """
+        raise NotImplementedError('CuPy is missing stats.multivariate_normal')
+
+    def integrate_kde(self, other):
+        """
+        Computes the integral of the product of this  kernel density estimate
+        with another.
+
+        Parameters
+        ----------
+        other : gaussian_kde instance
+            The other kde.
+
+        Returns
+        -------
+        value : scalar
+            The result of the integral.
+
+        Raises
+        ------
+        ValueError
+            If the KDEs have different dimensionality.
+
+        """
+        raise NotImplementedError('CuPy is missing linalg.cho_solve')
+
+    def resample(self, size=None, seed=None):
+        """Randomly sample a dataset from the estimated pdf.
+
+        Parameters
+        ----------
+        size : int, optional
+            The number of samples to draw.  If not provided, then the size is
+            the same as the effective number of samples in the underlying
+            dataset.
+        seed : {None, int, `numpy.random.Generator`, `numpy.random.RandomState`}, optional
+            If `seed` is None (or `np.random`), the `numpy.random.RandomState`
+            singleton is used.
+            If `seed` is an int, a new ``RandomState`` instance is used,
+            seeded with `seed`.
+            If `seed` is already a ``Generator`` or ``RandomState`` instance then
+            that instance is used.
+
+        Returns
+        -------
+        resample : (self.d, `size`) ndarray
+            The sampled dataset.
+
+        """  # numpy/numpydoc#87  # noqa: E501
+        if size is None:
+            size = int(self.neff)
+
+        random_state = cupy.random.RandomState(seed)
+        norm = cupy.transpose(random_state.multivariate_normal(
+            cupy.zeros((self.d,), float), self.covariance, size=size
+        ))
+        indices = random_state.choice(self.n, size=size, p=self.weights)
+        means = self.dataset[:, indices]
+
+        return means + norm
+
+    def scotts_factor(self):
+        """Compute Scott's factor.
+
+        Returns
+        -------
+        s : float
+            Scott's factor.
+        """
+        return cupy.power(self.neff, -1./(self.d+4))
+
+    def silverman_factor(self):
+        """Compute the Silverman factor.
+
+        Returns
+        -------
+        s : float
+            The silverman factor.
+        """
+        return cupy.power(self.neff*(self.d+2.0)/4.0, -1./(self.d+4))
+
+    #  Default method to calculate bandwidth, can be overwritten by subclass
+    covariance_factor = scotts_factor
+    covariance_factor.__doc__ = """Computes the bandwidth factor `factor`.
+        The default is `scotts_factor`.  A subclass can overwrite this
+        method to provide a different method, or set it through a call to
+        `set_bandwidth`."""
+
+    @property
+    def inv_cov(self):
+        # Re-compute from scratch each time because I'm not sure how this is
+        # used in the wild. (Perhaps users change the `dataset`, since it's
+        # not a private attribute?) `_compute_covariance` used to recalculate
+        # all these, so we'll recalculate everything now that this is a
+        # a property.
+        self.factor = self.covariance_factor()
+        self._data_covariance = cupy.atleast_2d(
+            cupy.cov(self.dataset, rowvar=1, bias=False,
+                     aweights=self.weights))
+        return cupy.linalg.inv(self._data_covariance) / self.factor ** 2
+
+    def pdf(self, x):
+        """
+        Evaluate the estimated pdf on a provided set of points.
+
+        Notes
+        -----
+        This is an alias for `gaussian_kde.evaluate`.  See the ``evaluate``
+        docstring for more details.
+
+        """
+        return self.evaluate(x)
+
+    def logpdf(self, x):
+        """
+        Evaluate the log of the estimated pdf on a provided set of points.
+        """
+        points = cupy.atleast_2d(x)
+
+        d, m = points.shape
+        if d != self.d:
+            if d == 1 and m == self.d:
+                # points was passed in as a row vector
+                points = cupy.reshape(points, (self.d, 1))
+                m = 1
+            else:
+                msg = (f"points have dimension {d}, "
+                       f"dataset has dimension {self.d}")
+                raise ValueError(msg)
+
+        output_dtype, spec = _get_output_dtype(self.covariance, points)
+        result = gaussian_kernel_estimate_log(
+            self.dataset.T, self.weights[:, None],
+            points.T, self.cho_cov, output_dtype, spec)
+
+        return result[:, 0]
+
+    def marginal(self, dimensions):
+        """Return a marginal KDE distribution
+
+        Parameters
+        ----------
+        dimensions : int or 1-d array_like
+            The dimensions of the multivariate distribution corresponding
+            with the marginal variables, that is, the indices of the dimensions
+            that are being retained. The other dimensions are marginalized out.
+
+        Returns
+        -------
+        marginal_kde : gaussian_kde
+            An object representing the marginal distribution.
+
+        Notes
+        -----
+        .. versionadded:: 1.10.0
+
+        """
+
+        dims = cupy.atleast_1d(dimensions)
+
+        if not cupy.issubdtype(dims.dtype, cupy.integer):
+            msg = ("Elements of `dimensions` must be integers - the indices "
+                   "of the marginal variables being retained.")
+            raise ValueError(msg)
+
+        n = len(self.dataset)  # number of dimensions
+        original_dims = dims.copy()
+
+        dims[dims < 0] = n + dims[dims < 0]
+
+        if len(cupy.unique(dims)) != len(dims):
+            msg = ("All elements of `dimensions` must be unique.")
+            raise ValueError(msg)
+
+        i_invalid = (dims < 0) | (dims >= n)
+        if cupy.where(cupy.any(i_invalid), True, False):
+            msg = (f"Dimensions {original_dims[i_invalid]} are invalid "
+                   f"for a distribution in {n} dimensions.")
+            raise ValueError(msg)
+
+        dataset = self.dataset[dims]
+        weights = self.weights
+
+        return gaussian_kde(dataset, bw_method=self.covariance_factor(),
+                            weights=weights)
+
+    @property
+    def weights(self):
+        try:
+            return self._weights
+        except AttributeError:
+            self._weights = cupy.ones(self.n) / self.n
+            return self._weights
+
+    @property
+    def neff(self):
+        try:
+            return self._neff
+        except AttributeError:
+            self._neff = 1 / cupy.sum(self.weights * self.weights, axis=-1)
+            return self._neff
 
 
 def _get_output_dtype(covariance, points):
