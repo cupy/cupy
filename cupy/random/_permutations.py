@@ -1,5 +1,5 @@
 from cupy.random import _generator
-
+import numpy as np
 
 def shuffle(a):
     """Shuffles an array.
@@ -31,7 +31,7 @@ def permutation(a):
     return rs.permutation(a)
 
 
-def permuted(a, axis=0):
+def permuted(a, axis=0,type=np.uint16):
     """Returns a permutation of an array for each row.
 
     Args:
@@ -46,4 +46,4 @@ def permuted(a, axis=0):
     .. seealso:: :meth:`numpy.random.permuted`
     """
     rs = _generator.get_random_state()
-    return rs.permuted(a, axis=axis, type=int)
+    return rs.permuted(a, axis=axis, type=type)
