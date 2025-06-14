@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import contextlib
 import dataclasses
 from typing import Any
@@ -29,7 +31,7 @@ class _AsyncData:
     ready: Event
     prevent_gc: Any = None      # TODO: Release it to avoid OOM
 
-    def copy(self) -> '_AsyncData':
+    def copy(self) -> _AsyncData:
         with self.on_ready() as stream:
             array = self.array.copy()
             stream.record(self.ready)

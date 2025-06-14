@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import cupy
 from cupy import _core
 import cupy._core._routines_manipulation as _manipulation

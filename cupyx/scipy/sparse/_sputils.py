@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import cupy
 import operator
 import numpy

@@ -3,6 +3,8 @@ Spline poles and boundary handling implemented as in SciPy
 
 https://github.com/scipy/scipy/blob/master/scipy/ndimage/src/ni_splines.c
 """
+from __future__ import annotations
+
 import functools
 import math
 import operator

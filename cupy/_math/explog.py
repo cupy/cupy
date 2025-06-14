@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from cupy import _core
 from cupy._math import ufunc
 

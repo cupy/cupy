@@ -1,6 +1,8 @@
 """
 This file must not depend on any other CuPy modules.
 """
+from __future__ import annotations
+
 
 import ctypes
 import importlib.metadata
@@ -11,7 +13,7 @@ import platform
 import re
 import shutil
 import sys
-from typing import Any, Optional
+from typing import Any
 import warnings
 
 
@@ -268,14 +270,14 @@ def get_cupy_cuda_lib_path():
     return os.path.abspath(cupy_cuda_lib_path)
 
 
-def get_preload_config() -> Optional[dict[str, Any]]:
+def get_preload_config() -> dict[str, Any] | None:
     global _preload_config
     if _preload_config is None:
         _preload_config = _get_json_data('_wheel.json')
     return _preload_config
 
 
-def _get_json_data(name: str) -> Optional[dict[str, Any]]:
+def _get_json_data(name: str) -> dict[str, Any] | None:
     config_path = os.path.join(
         get_cupy_install_path(), 'cupy', '.data', name)
     if not os.path.exists(config_path):

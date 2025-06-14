@@ -3,6 +3,7 @@
 #
 # FlexCI Dispatcher: Trigger FlexCI based on webhooks.
 #
+from __future__ import annotations
 
 import argparse
 import hmac
@@ -10,7 +11,7 @@ import json
 import os
 import re
 import sys
-from typing import Any, Optional
+from typing import Any
 import urllib.request
 
 import github
@@ -94,7 +95,7 @@ def _fill_commit_status(
             state='success', description='Skipped', context=context)
 
 
-def extract_requested_tags(comment: str) -> Optional[set[str]]:
+def extract_requested_tags(comment: str) -> set[str] | None:
     """
     Returns the set of test tags requested in the comment.
     """

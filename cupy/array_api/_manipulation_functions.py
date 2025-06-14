@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+
 from ._array_object import Array
 from ._data_type_functions import result_type
 

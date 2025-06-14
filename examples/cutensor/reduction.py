@@ -1,6 +1,8 @@
 #
 # C_{m,v} = alpha * A_{m,h,k,v} + beta * C_{m,v}
 #
+from __future__ import annotations
+
 import numpy
 import cupy
 from cupyx import cutensor

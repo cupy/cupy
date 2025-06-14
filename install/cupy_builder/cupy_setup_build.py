@@ -1,4 +1,6 @@
 # mypy: ignore-errors
+from __future__ import annotations
+
 
 import copy
 from distutils import ccompiler
