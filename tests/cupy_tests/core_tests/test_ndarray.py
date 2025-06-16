@@ -25,6 +25,7 @@ def wrap_take(array, *args, **kwargs):
 
 class TestNdarrayInit(unittest.TestCase):
 
+    @testing.with_requires('numpy<2.3')
     def test_shape_none(self):
         with testing.assert_warns(DeprecationWarning):
             a = cupy.ndarray(None)
