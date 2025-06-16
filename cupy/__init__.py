@@ -3,9 +3,18 @@ import sys as _sys
 
 import numpy as _numpy
 
-from cupy import _environment
-from cupy import _version
 
+try:
+    from cupy import _version
+except ImportError as exc:
+    raise ImportError("""
+Error importing CuPy: you should not try to import CuPy from its source
+directory; please exit the CuPy source tree, and relaunch your Python
+interpreter from there.
+""") from exc
+
+
+from cupy import _environment
 
 _environment._detect_duplicate_installation()  # NOQA
 _environment._setup_win32_dll_directory()  # NOQA
