@@ -1,6 +1,18 @@
 import cupy
 
 
+def polyadd(c1, c2):
+    """Add one polynomial to another.
+
+    Args:
+        c1, c2 (cupy.ndarray): 1-D arrays of polynomial coefficients ordered
+            from low to high.
+
+    Returns:
+        cupy.ndarray: The coefficient array representing their sum.
+    """
+    return cupy.polynomial.polyutils._add(c1, c2)
+
 def polyvander(x, deg):
     """Computes the Vandermonde matrix of given degree.
 

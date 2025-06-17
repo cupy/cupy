@@ -2,6 +2,28 @@ import cupy
 
 import operator
 
+def _add(c1, c2):
+    """Helper function used to implement the `<type>add` functions.
+
+    Parameters
+    ----------
+    c1, c2 : array_like
+        1-d arrays of polynomial coefficients to add.
+
+    Returns
+    -------
+    out : ndarray
+        The sum of the inputs, with trailing zeros removed.
+    """
+    # c1, c2 are trimmed copies
+    [c1, c2] = as_series([c1, c2])
+    if len(c1) > len(c2):
+        c1[:c2.size] += c2
+        ret = c1
+    else:
+        c2[:c1.size] += c1
+        ret = c2
+    return trimseq(ret)
 
 def _as_int(x, desc):
     """
@@ -23,7 +45,6 @@ def _as_int(x, desc):
         return operator.index(x)
     except TypeError as e:
         raise TypeError(f"{desc} must be an integer, received {x}") from e
-
 
 def trimseq(seq):
     """Removes small polynomial series coefficients.
