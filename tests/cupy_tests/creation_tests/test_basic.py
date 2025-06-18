@@ -42,7 +42,7 @@ class TestBasic:
         a.fill(0)
         return a
 
-    @testing.with_requires('numpy>=1.20')
+    @testing.with_requires('numpy>=1.20', 'numpy<2.3')
     @testing.for_CF_orders()
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
@@ -196,7 +196,7 @@ class TestBasic:
     def test_zeros_scalar(self, xp, dtype, order):
         return xp.zeros((), dtype=dtype, order=order)
 
-    @testing.with_requires('numpy>=1.20')
+    @testing.with_requires('numpy>=1.20', 'numpy<2.3')
     @testing.for_CF_orders()
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
