@@ -87,6 +87,7 @@ class TestMatmul(unittest.TestCase):
     }))
 class TestMatmulOut(unittest.TestCase):
 
+    @testing.with_requires('numpy!=2.3.0')  # numpy#29164
     @testing.for_all_dtypes(name='dtype1')
     @testing.for_all_dtypes(name='dtype2')
     @testing.numpy_cupy_allclose(

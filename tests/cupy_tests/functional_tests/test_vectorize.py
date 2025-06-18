@@ -8,6 +8,7 @@ from cupy import testing
 from cupy.cuda import runtime
 
 
+@testing.with_requires('numpy!=2.3.0')  # numpy#29189
 class TestVectorizeOps(unittest.TestCase):
 
     def _run(self, func, xp, dtypes):
@@ -222,6 +223,7 @@ class TestVectorizeOps(unittest.TestCase):
         return self._run(my_usub, xp, [dtype])
 
 
+@testing.with_requires('numpy!=2.3.0')  # numpy#29189
 class TestVectorizeExprs(unittest.TestCase):
 
     @testing.for_all_dtypes(name='cond_dtype', no_complex=True)
@@ -288,6 +290,7 @@ class TestVectorizeExprs(unittest.TestCase):
         return f(x)
 
 
+@testing.with_requires('numpy!=2.3.0')  # numpy#29189
 class TestVectorizeInstructions(unittest.TestCase):
 
     @testing.for_all_dtypes()
@@ -589,6 +592,7 @@ class TestVectorizeConstants(unittest.TestCase):
         return f(x1, x2)
 
 
+@testing.with_requires('numpy!=2.3.0')  # numpy#29189
 class TestVectorizeBroadcast(unittest.TestCase):
 
     @testing.for_all_dtypes(no_bool=True)
@@ -625,6 +629,7 @@ class TestVectorizeBroadcast(unittest.TestCase):
         return f(x1, x2)
 
 
+@testing.with_requires('numpy!=2.3.0')  # numpy#29189
 class TestVectorize(unittest.TestCase):
 
     @testing.for_all_dtypes(no_bool=True)
