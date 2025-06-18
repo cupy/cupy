@@ -1,5 +1,6 @@
 import cupy
 
+
 def polydiv(c1, c2):
     """
     Divide one polynomial by another.
@@ -19,13 +20,13 @@ def polydiv(c1, c2):
 
     c1, c2 = cupy.polynomial.polyutils.as_series([c1, c2], trim=True)
     c1 = c1.copy()
-    
+
     if c2[-1] == 0:
         raise ZeroDivisionError()
 
     lc1 = len(c1)
     lc2 = len(c2)
-    
+
     if lc1 < lc2:
         return c1[:1] * 0, c1
     elif lc2 == 1:
@@ -41,6 +42,7 @@ def polydiv(c1, c2):
             i -= 1
             j -= 1
         return c1[j + 1:] / scl, cupy.polynomial.polyutils.trimseq(c1[:j + 1])
+
 
 def polyvander(x, deg):
     """Computes the Vandermonde matrix of given degree.

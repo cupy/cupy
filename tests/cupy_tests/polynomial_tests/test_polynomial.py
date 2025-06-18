@@ -24,7 +24,7 @@ class TestPolynomial(unittest.TestCase):
         c2 = xp.array([3, 2, 1], dtype)
         q, r = xp.polynomial.polynomial.polydiv(c1, c2)
         return xp.concatenate((q, r))
-    
+
     @testing.for_all_dtypes(no_float16=True, no_bool=True)
     @testing.numpy_cupy_allclose(rtol=1e-6, atol=1e-8)
     def test_div_lower_degree_dividend(self, xp, dtype):
@@ -111,7 +111,8 @@ class TestPolynomial(unittest.TestCase):
     def test_unsigned_negative_literal_creation(self, dtype):
         for xp in (numpy, cupy):
             if xp.dtype(dtype).kind != 'u':
-                pytest.skip("unsigned dtype: negative literals not representable")
+                pytest.skip(
+                    "unsigned dtype: negative literals not representable")
             with pytest.raises(OverflowError):
                 xp.array([1, -1], dtype)
 
@@ -125,7 +126,7 @@ class TestPolynomial(unittest.TestCase):
         c2 = xp.array([1-1j, 2j], dtype)
         q, r = xp.polynomial.polynomial.polydiv(c1, c2)
         return xp.concatenate((q, r))
-    
+
     @testing.for_all_dtypes(no_float16=True)
     @testing.numpy_cupy_allclose(rtol=1e-5)
     def test_polyvander1(self, xp, dtype):
