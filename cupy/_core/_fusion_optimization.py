@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from cupy._core import _fusion_variable
 from cupy._core import _fusion_op
 

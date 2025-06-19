@@ -15,6 +15,7 @@ of ndarray.
 
 from __future__ import annotations
 
+
 import operator
 from enum import IntEnum
 from ._creation_functions import asarray

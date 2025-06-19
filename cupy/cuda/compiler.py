@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import copy
 import hashlib
 import math
@@ -8,7 +10,6 @@ import shutil
 import subprocess
 import sys
 import tempfile
-from typing import Optional
 import warnings
 
 from cupy.cuda import device
@@ -109,7 +110,7 @@ def _get_extra_path_for_msvc():
     return None
 
 
-def _get_cl_exe_dir() -> Optional[str]:
+def _get_cl_exe_dir() -> str | None:
     try:
         try:
             # setuptools.msvc is missing in setuptools v74.0.0.
@@ -129,7 +130,7 @@ def _get_cl_exe_dir() -> Optional[str]:
     return None
 
 
-def _get_cl_exe_dir_fallback() -> Optional[str]:
+def _get_cl_exe_dir_fallback() -> str | None:
     # Discover cl.exe without relying on undocumented setuptools.msvc API.
     # As of now this code path exists only for setuptools 74.0.0 (see #8583).
     # N.B. This takes few seconds as this incurs cmd.exe (vcvarsall.bat)

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 try:
     import scipy.sparse
     _scipy_available = True

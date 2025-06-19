@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 import functools
 import itertools
-from typing import Any, NoReturn, Optional, Union, TYPE_CHECKING
+from typing import Any, NoReturn, TYPE_CHECKING
 
 from cupyx.jit import _cuda_types
 from cupyx.jit import _cuda_typerules
@@ -36,7 +38,7 @@ class Data(Expr):
         return f'<Data code = "{self.code}", type = {self.ctype}>'
 
     @classmethod
-    def init(cls, x: Expr, env) -> 'Data':
+    def init(cls, x: Expr, env) -> Data:
         if isinstance(x, Data):
             return x
         if isinstance(x, Constant):
@@ -75,9 +77,9 @@ class Range(Expr):
     def __init__(
             self, start: Data, stop: Data, step: Data,
             ctype: _cuda_types.Scalar,
-            step_is_positive: Optional[bool],
+            step_is_positive: bool | None,
             *,
-            unroll: Union[None, int, bool] = None,
+            unroll: None | int | bool = None,
     ) -> None:
         self.start = start
         self.stop = stop
@@ -92,7 +94,7 @@ class BuiltinFunc(Expr):
     # - either call or call_const
     # - `__call__` with a correct signature, which calls the parent's __call__
 
-    def call(self, env: 'Environment', *args, **kwargs) -> Expr:
+    def call(self, env: Environment, *args, **kwargs) -> Expr:
         for x in itertools.chain(args, kwargs.values()):
             if not isinstance(x, Constant):
                 raise TypeError('Arguments must be constants.')
@@ -100,7 +102,7 @@ class BuiltinFunc(Expr):
         kwargs = dict([(k, v.obj) for k, v in kwargs.items()])
         return self.call_const(env, *args, **kwargs)
 
-    def call_const(self, env: 'Environment', *args: Any, **kwarg: Any) -> Expr:
+    def call_const(self, env: Environment, *args: Any, **kwarg: Any) -> Expr:
         raise NotImplementedError
 
     def __init__(self) -> None:
