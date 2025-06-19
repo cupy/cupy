@@ -1,4 +1,3 @@
-from __future__ import annotations
 from cupy.cuda import runtime as _runtime
 from cupyx.jit import _compile
 from cupyx.jit import _cuda_types

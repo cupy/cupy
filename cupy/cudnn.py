@@ -1,4 +1,3 @@
-from __future__ import annotations
 import warnings
 
 from cupyx.cudnn import *  # NOQA

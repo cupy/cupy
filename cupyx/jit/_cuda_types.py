@@ -1,4 +1,3 @@
-from __future__ import annotations
 from typing import Mapping, Optional, Sequence, Union, TYPE_CHECKING
 
 import numpy

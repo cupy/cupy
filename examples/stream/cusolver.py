@@ -1,5 +1,4 @@
 # nvprof --print-gpu-trace python examples/stream/cusolver.py
-from __future__ import annotations
 import cupy
 
 x = cupy.array([[1, 0, 3], [0, 5, 0], [7, 0, 9]], float)

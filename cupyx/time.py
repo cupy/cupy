@@ -1,4 +1,3 @@
-from __future__ import annotations
 import math as _math
 import warnings as _warnings
 

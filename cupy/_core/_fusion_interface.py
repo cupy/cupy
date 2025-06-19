@@ -1,4 +1,3 @@
-from __future__ import annotations
 import numpy
 
 from cupy._core._dtype import get_dtype

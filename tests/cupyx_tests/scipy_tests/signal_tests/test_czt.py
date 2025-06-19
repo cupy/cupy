@@ -3,7 +3,6 @@
 '''
 A unit test module for czt.py
 '''
-from __future__ import annotations
 from math import pi
 
 import pytest

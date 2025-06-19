@@ -1,5 +1,4 @@
 """Lambert W function"""
-from __future__ import annotations
 
 from cupy import _core
 

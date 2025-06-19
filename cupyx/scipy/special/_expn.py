@@ -5,7 +5,6 @@
 # Cephes Math Library Release 1.1:  March, 1985
 # Copyright 1985 by Stephen L. Moshier
 # Direct inquiries to 30 Frost Street, Cambridge, MA 02140
-from __future__ import annotations
 
 from cupy import _core
 

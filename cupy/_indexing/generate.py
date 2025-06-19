@@ -1,5 +1,4 @@
 # class s_(object):
-from __future__ import annotations
 
 import functools
 import numbers

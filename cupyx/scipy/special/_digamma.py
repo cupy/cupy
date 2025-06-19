@@ -8,7 +8,6 @@ Copyright 1984, 1987, 1988 by Stephen L. Moshier
 polevl_definition is kept because it is used elsewhere in CuPy,
 although it is now no longer used in digamma.
 """
-from __future__ import annotations
 
 from cupy import _core
 

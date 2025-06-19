@@ -16,7 +16,6 @@ The fortran code in scipy originated in the following book.
 
     Copyrighted but permission granted to use code in programs.
 """
-from __future__ import annotations
 
 from cupy import _core
 

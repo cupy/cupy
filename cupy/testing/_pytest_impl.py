@@ -1,4 +1,3 @@
-from __future__ import annotations
 import unittest
 
 import cupy.testing._parameterized

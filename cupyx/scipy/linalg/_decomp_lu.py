@@ -1,4 +1,3 @@
-from __future__ import annotations
 from warnings import warn
 
 import numpy

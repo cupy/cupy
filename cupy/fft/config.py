@@ -1,4 +1,3 @@
-from __future__ import annotations
 from cupy import _util
 
 # expose cache handles to this module

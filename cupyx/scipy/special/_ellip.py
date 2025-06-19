@@ -5,7 +5,6 @@
 #
 # Cephes Math Library Release 2.8:  June, 2000
 # Copyright 1984, 1987, 1992, 2000 by Stephen L. Moshier
-from __future__ import annotations
 
 from cupy import _core
 from cupyx.scipy.special._digamma import polevl_definition

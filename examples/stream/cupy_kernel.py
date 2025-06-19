@@ -1,5 +1,4 @@
 # nvprof --print-gpu-trace python examples/stream/cupy_kernel.py
-from __future__ import annotations
 import cupy
 
 x = cupy.array([1, 2, 3])

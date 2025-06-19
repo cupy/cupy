@@ -1,5 +1,4 @@
 """ A vendored copy of scipy.optimize.fminbound."""
-from __future__ import annotations
 
 import cupy
 

@@ -1,5 +1,4 @@
 # nvprof --print-gpu-trace python examples/stream/cusparse.py
-from __future__ import annotations
 import cupy
 import cupyx
 

@@ -1,7 +1,6 @@
 '''Fast Hankel transforms using the FFTLog algorithm.
 The implementation closely follows the Fortran code of Hamilton (2000).
 '''
-from __future__ import annotations
 
 import math
 from warnings import warn

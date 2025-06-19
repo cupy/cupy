@@ -1,4 +1,3 @@
-from __future__ import annotations
 import cupy as _cupy
 import numpy as np
 

@@ -1,5 +1,4 @@
 # nvprof --print-gpu-trace python examples/stream/cudnn.py
-from __future__ import annotations
 import cupy
 import cupy.cuda.cudnn
 import cupyx.cudnn

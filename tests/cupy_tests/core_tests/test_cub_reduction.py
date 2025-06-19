@@ -1,4 +1,3 @@
-from __future__ import annotations
 from itertools import combinations
 import unittest
 import sys

@@ -1,4 +1,3 @@
-from __future__ import annotations
 from cupyx.jit import _cuda_types
 from cupyx.jit import _cuda_typerules
 from cupyx.jit import _internal_types

@@ -1,4 +1,3 @@
-from __future__ import annotations
 import typing
 from typing import Sequence
 from itertools import chain

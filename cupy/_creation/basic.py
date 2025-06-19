@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import math
 import operator
 from collections.abc import Sequence

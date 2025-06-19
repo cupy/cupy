@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import os
 
 from cupy_builder._context import (

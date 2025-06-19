@@ -1,5 +1,4 @@
 # nvprof --print-gpu-trace python examples/stream/curand.py
-from __future__ import annotations
 import cupy
 
 rand = cupy.random.RandomState()

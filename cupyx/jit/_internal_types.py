@@ -1,4 +1,3 @@
-from __future__ import annotations
 import functools
 import itertools
 from typing import Any, NoReturn, Optional, Union, TYPE_CHECKING

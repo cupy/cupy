@@ -1,4 +1,3 @@
-from __future__ import annotations
 import urllib.request
 import sys
 from typing import Tuple

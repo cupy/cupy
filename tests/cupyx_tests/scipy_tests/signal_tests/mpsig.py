@@ -1,7 +1,6 @@
 """
 Some signal functions implemented using mpmath.
 """
-from __future__ import annotations
 
 try:
     import mpmath

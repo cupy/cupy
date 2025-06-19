@@ -1,4 +1,3 @@
-from __future__ import annotations
 import cupy
 from cupy._core import core
 

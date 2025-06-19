@@ -1,5 +1,4 @@
 # mypy: ignore-errors
-from __future__ import annotations
 
 import contextlib
 import logging

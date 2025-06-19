@@ -1,4 +1,3 @@
-from __future__ import annotations
 import cupy
 from cupy_backends.cuda.api import runtime
 from cupy import _util

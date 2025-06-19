@@ -1,4 +1,3 @@
-from __future__ import annotations
 import dataclasses
 from pathlib import Path
 import shutil

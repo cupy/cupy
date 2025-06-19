@@ -2,7 +2,6 @@
 
 Split off _filter_design.py
 """
-from __future__ import annotations
 import warnings
 import math
 from math import pi, prod

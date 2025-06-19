@@ -1,4 +1,3 @@
-from __future__ import annotations
 
 import cupy
 from cupyx.scipy.spatial.delaunay_2d._tri import GDel2D

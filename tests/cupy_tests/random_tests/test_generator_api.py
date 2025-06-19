@@ -1,4 +1,3 @@
-from __future__ import annotations
 import threading
 import unittest
 import pytest

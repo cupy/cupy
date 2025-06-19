@@ -1,4 +1,3 @@
-from __future__ import annotations
 import unittest
 
 from cupy.cuda import pinned_memory

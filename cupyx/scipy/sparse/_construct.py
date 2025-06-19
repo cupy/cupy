@@ -1,4 +1,3 @@
-from __future__ import annotations
 import numpy
 import cupy
 from cupyx.scipy.sparse import _coo
