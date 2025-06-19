@@ -65,4 +65,4 @@ Iterating over arrays
    ndindex
    # nested_iters
    flatiter
-   iterable
+   # iterable (alias)

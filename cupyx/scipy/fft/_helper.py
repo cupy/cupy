@@ -1,9 +1,10 @@
-from typing import Dict, List, Tuple
+from __future__ import annotations
+
 
 import math
 
 
-_next_fast_len_cache: Dict[Tuple[int, List[int]], int] = {}
+_next_fast_len_cache: dict[tuple[int, list[int]], int] = {}
 
 
 def _next_fast_len_impl(n, primes):

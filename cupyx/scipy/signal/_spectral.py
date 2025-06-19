@@ -23,6 +23,8 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 """
+from __future__ import annotations
+
 
 import warnings
 
@@ -1095,7 +1097,7 @@ def istft(
         if len(win.shape) != 1:
             raise ValueError("window must be 1-D")
         if win.shape[0] != nperseg:
-            raise ValueError("window must have length of {0}".format(nperseg))
+            raise ValueError("window must have length of {}".format(nperseg))
 
     ifunc = cupy.fft.irfft if input_onesided else cupy.fft.ifft
     xsubs = ifunc(Zxx, axis=-2, n=nfft)[..., :nperseg, :]

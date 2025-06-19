@@ -3,6 +3,8 @@ cuDNN Wrapper
 
 Use `cupy_backends.cuda.libs.cudnn` directly in CuPy codebase.
 """
+from __future__ import annotations
+
 
 from cupy import _environment
 

@@ -31,7 +31,7 @@ classifiers = [
 ]
 requires-python = ">=3.9"
 dependencies = [
-  "numpy>=1.24,<2.4", # see #4773
+  "numpy>=1.24,<2.6", # see #4773
   "fastrlock>=0.5",
 ]
 dynamic = ["version"]
@@ -134,15 +134,11 @@ extend-exclude = [
 ]
 
 [tool.ruff.lint]
-# TODO: Resolve UP035 (deprecated typing alias)
-select = ["E", "FA", "F", "I002", "PYI", "W"]
+select = ["E", "F", "W", "UP", "I002", "FA", "PYI", "PLC01"]
 extend-ignore = [
-  "PYI018", # Allow unused private alias
-  "PYI046", # Allow unused private protocol
+  "UP031", # printf-string-formatting
+  "UP032", # f-string
 ]
-
-[tool.ruff.lint.isort]
-required-imports = ["from __future__ import annotations"]
 
 [tool.ruff.lint.per-file-ignores]
 "cupyx/scipy/special/_gammainc.py" = [
@@ -151,3 +147,6 @@ required-imports = ["from __future__ import annotations"]
 "tests/typing_tests/cupy_tests/creation_tests/test_basic.pyi" = [
   "E501", # line-too-long (long comments)
 ]
+
+[tool.ruff.lint.isort]
+required-imports = ["from __future__ import annotations"]

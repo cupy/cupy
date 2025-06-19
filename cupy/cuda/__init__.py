@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import contextlib
 import warnings
 
@@ -24,7 +26,7 @@ from cupy_backends.cuda.libs import nvrtc  # NOQA
 _available = None
 
 
-class _UnavailableModule():
+class _UnavailableModule:
     available = False
 
     def __init__(self, name):

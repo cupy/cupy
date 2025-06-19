@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from os import path
 import sys
 import traceback
@@ -114,7 +116,7 @@ class LineProfileHook(memory_hook.MemoryHook):
             self._print_frame(child, depth=depth + 1, file=file)
 
 
-class StackFrame(object):
+class StackFrame:
     """Compatibility layer for outputs of traceback.extract_stack().
 
     Attributes:
@@ -134,7 +136,7 @@ class StackFrame(object):
             self.name = obj.name
 
 
-class MemoryFrame(object):
+class MemoryFrame:
     """A single stack frame along with sum of memory usage at the frame.
 
     Attributes:

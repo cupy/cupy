@@ -1,5 +1,7 @@
 """Indexing mixin for sparse matrix classes.
 """
+from __future__ import annotations
+
 
 import cupy
 from cupy import _core
@@ -338,7 +340,7 @@ _csr_sample_values_kern = _core.ElementwiseKernel(
 ''', 'cupyx_scipy_sparse_csr_sample_values_kern')
 
 
-class IndexMixin(object):
+class IndexMixin:
     """
     This class provides common dispatching and validation logic for indexing.
     """

@@ -1,4 +1,6 @@
-from typing import Any, List
+from __future__ import annotations
+
+from typing import Any
 
 _CodeType = Any  # TODO(asi1024): Correct type annotation
 
@@ -11,8 +13,8 @@ class CodeBlock:
         self._head = '' if head == '' else head + ' '
         self._codes = codes
 
-    def _to_str_list(self, indent_width: int = 0) -> List[str]:
-        codes: List[str] = []
+    def _to_str_list(self, indent_width: int = 0) -> list[str]:
+        codes: list[str] = []
         codes.append(' ' * indent_width + self._head + '{')
         for code in self._codes:
             next_indent_width = indent_width + 2

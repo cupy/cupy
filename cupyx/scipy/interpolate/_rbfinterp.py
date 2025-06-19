@@ -1,4 +1,6 @@
 """Module for RBF interpolation."""
+from __future__ import annotations
+
 import math
 import warnings
 from itertools import combinations_with_replacement
@@ -718,7 +720,7 @@ class RBFInterpolator:
         nnei = len(y)
 
         # in each chunk we consume the same space we already occupy
-        chunksize = memory_budget // ((self.powers.shape[0] + nnei)) + 1
+        chunksize = memory_budget // (self.powers.shape[0] + nnei) + 1
         if chunksize <= nx:
             out = cp.empty((nx, self.d.shape[1]), dtype=float)
             for i in range(0, nx, chunksize):

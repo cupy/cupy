@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import unittest
 
 import numpy
@@ -13,7 +15,7 @@ def _boundary_inputs(boundary, rtol, atol):
     return [left, boundary, right]
 
 
-class _TestBase(object):
+class _TestBase:
 
     def test_erf(self):
         self.check_unary('erf')

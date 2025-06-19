@@ -1,5 +1,8 @@
+from __future__ import annotations
+
 import ast
-from typing import Any, Callable, Mapping, Optional, Tuple, Type
+from typing import Any, Callable
+from collections.abc import Mapping
 
 import numpy
 import numpy.typing as npt
@@ -39,7 +42,7 @@ _scalar_gt = _core.create_comparison('scalar_less', '>')
 _scalar_gte = _core.create_comparison('scalar_less', '>=')
 
 
-_py_ops: Mapping[Type[ast.AST], Callable[..., Any]] = {
+_py_ops: Mapping[type[ast.AST], Callable[..., Any]] = {
     ast.And: lambda x, y: x and y,
     ast.Or: lambda x, y: x or y,
     ast.Add: operator.add,
@@ -66,7 +69,7 @@ _py_ops: Mapping[Type[ast.AST], Callable[..., Any]] = {
 }
 
 
-_numpy_ops: Mapping[Type[ast.AST], cupy.ufunc] = {
+_numpy_ops: Mapping[type[ast.AST], cupy.ufunc] = {
     ast.And: ops.logical_and,
     ast.Or: ops.logical_or,
     ast.Add: arithmetic.add,
@@ -93,11 +96,11 @@ _numpy_ops: Mapping[Type[ast.AST], cupy.ufunc] = {
 }
 
 
-def get_pyfunc(op_type: Type[ast.AST]) -> Callable[..., Any]:
+def get_pyfunc(op_type: type[ast.AST]) -> Callable[..., Any]:
     return _py_ops[op_type]
 
 
-def get_ufunc(mode: str, op_type: Type[ast.AST]) -> cupy.ufunc:
+def get_ufunc(mode: str, op_type: type[ast.AST]) -> cupy.ufunc:
     if mode == 'numpy':
         return _numpy_ops[op_type]
     if mode == 'cuda':
@@ -145,8 +148,8 @@ def _cuda_can_cast(from_dtype: npt.DTypeLike, to_dtype: npt.DTypeLike) -> bool:
 
 def guess_routine(
         ufunc: cupy.ufunc,
-        in_types: Tuple[numpy.dtype, ...],
-        dtype: Optional[numpy.dtype],
+        in_types: tuple[numpy.dtype, ...],
+        dtype: numpy.dtype | None,
         mode: str,
 ) -> cupy._core._kernel._Op:
     if dtype is not None:

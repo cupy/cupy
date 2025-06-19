@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import contextlib
 import io
 import queue
@@ -362,8 +364,8 @@ class TestPlanCache(unittest.TestCase):
         curr_size += 1
         curr_memsize += node1.plan.work_area.mem.size
         stdout = intercept_stdout(cache.show_info)
-        assert '{0} / {1} (counts)'.format(curr_size, size) in stdout
-        assert '{0} / {1} (bytes)'.format(curr_memsize, memsize) in stdout
+        assert '{} / {} (counts)'.format(curr_size, size) in stdout
+        assert '{} / {} (bytes)'.format(curr_memsize, memsize) in stdout
         assert str(node1) in stdout
 
         a = testing.shaped_random((1024,), cupy, cupy.complex64)
@@ -373,8 +375,8 @@ class TestPlanCache(unittest.TestCase):
         curr_size += 1
         curr_memsize += node2.plan.work_area.mem.size
         stdout = intercept_stdout(cache.show_info)
-        assert '{0} / {1} (counts)'.format(curr_size, size) in stdout
-        assert '{0} / {1} (bytes)'.format(curr_memsize, memsize) in stdout
+        assert '{} / {} (counts)'.format(curr_size, size) in stdout
+        assert '{} / {} (bytes)'.format(curr_memsize, memsize) in stdout
         assert str(node2) + '\n' + str(node1) in stdout
 
         # test deletion
@@ -384,8 +386,8 @@ class TestPlanCache(unittest.TestCase):
         curr_size -= 1
         curr_memsize -= node2.plan.work_area.mem.size
         stdout = intercept_stdout(cache.show_info)
-        assert '{0} / {1} (counts)'.format(curr_size, size) in stdout
-        assert '{0} / {1} (bytes)'.format(curr_memsize, memsize) in stdout
+        assert '{} / {} (counts)'.format(curr_size, size) in stdout
+        assert '{} / {} (bytes)'.format(curr_memsize, memsize) in stdout
         assert str(node2) not in stdout
 
     @multi_gpu_config(gpu_configs=[[0, 1], [1, 0]])

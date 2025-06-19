@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import unittest
 
 import pytest
@@ -308,7 +310,8 @@ class TestUnique:
     @testing.numpy_cupy_array_equal()
     def test_unique_values(self, xp, dtype):
         a = testing.shaped_random((100, 100), xp, dtype)
-        return xp.unique_values(a)
+        out = xp.unique_values(a)  # may not be sorted from NumPy 2.3.
+        return xp.sort(out)
 
 
 @testing.parameterize(*testing.product({

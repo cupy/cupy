@@ -58,12 +58,7 @@ cpdef inline void _check_not_bool(object x) except *:
 @cython.profile(False)
 cpdef inline tuple get_size(object size):
     if size is None:
-        warnings.warn(
-            'Passing None into shape arguments as an alias for () is '
-            'deprecated.',
-            DeprecationWarning,
-        )
-        return ()
+        raise TypeError("Use () not None as shape arguments")
     if cpython.PySequence_Check(size):
         # A numpy.ndarray unconditionally succeeds in PySequence_Check as
         # it implements __getitem__, but zero-dim one is an unsized object

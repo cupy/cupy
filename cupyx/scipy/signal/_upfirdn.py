@@ -25,6 +25,8 @@ FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 
 """
+from __future__ import annotations
+
 
 from math import ceil
 import cupy
@@ -338,7 +340,7 @@ def _get_tpb_bpg():
     return threadsperblock, blockspergrid
 
 
-class _UpFIRDn(object):
+class _UpFIRDn:
     def __init__(self, h, x_dtype, up, down):
         """Helper for resampling"""
         h = cupy.asarray(h)

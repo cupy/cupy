@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import unittest
 
 import numpy
@@ -77,7 +79,7 @@ class TestFusionArrayContents(FusionUnaryUfuncTestBase):
 
     def generate_inputs(self, xp, has_nan, dtype):
         if numpy.dtype(dtype).kind not in ('f', 'c'):
-            return super(TestFusionArrayContents, self).generate_inputs(
+            return super().generate_inputs(
                 xp, dtype)
 
         nan = numpy.nan

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import re
 
 import numpy
@@ -19,7 +21,7 @@ _OUTPUT_ARGUMENTS = '{0:}(?:,{0:})*'.format(
     _ARGUMENT
 )  # Use `'{0:}(?:,{0:})*,?'` if gufunc-
 # signature should be allowed for length 1 tuple returns
-_SIGNATURE = '^{0:}->{1:}$'.format(_INPUT_ARGUMENTS, _OUTPUT_ARGUMENTS)
+_SIGNATURE = '^{:}->{:}$'.format(_INPUT_ARGUMENTS, _OUTPUT_ARGUMENTS)
 
 
 def _parse_gufunc_signature(signature):

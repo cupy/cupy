@@ -10,10 +10,10 @@ from typing import (
     Any,
     Literal,
     Protocol,
-    Sequence,
     SupportsIndex,
     TypeVar,
 )
+from collections.abc import Sequence
 
 import numpy
 

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+from __future__ import annotations
 
 import argparse
 import json
@@ -8,7 +9,8 @@ import sys
 
 import yaml
 
-from typing import Any, Dict, List, Mapping, Tuple
+from typing import Any
+from collections.abc import Mapping
 
 
 SchemaType = Mapping[str, Any]
@@ -22,7 +24,7 @@ class Matrix:
         }
         self._rec.update(record)
 
-    def env(self) -> Dict[str, Any]:
+    def env(self) -> dict[str, Any]:
         envvars = {}
         for k, v in self._rec.items():
             if not k.startswith('env:') or v is None:
@@ -35,10 +37,10 @@ class Matrix:
             return self._rec[key]
         raise AttributeError(f'"{key}" not defined in matrix {self._rec}')
 
-    def copy(self) -> 'Matrix':
+    def copy(self) -> Matrix:
         return Matrix(self._rec.copy())
 
-    def update(self, matrix: 'Matrix') -> None:
+    def update(self, matrix: Matrix) -> None:
         self._rec.update(matrix._rec)
 
 
@@ -215,7 +217,7 @@ class LinuxGenerator:
         lines.append('')
         return '\n'.join(lines)
 
-    def _additional_packages(self, kind: str) -> List[str]:
+    def _additional_packages(self, kind: str) -> list[str]:
         assert kind in ('apt', 'yum')
         matrix = self.matrix
         if matrix.cuda is not None:
@@ -344,11 +346,11 @@ class LinuxGenerator:
 
 
 class CoverageGenerator:
-    def __init__(self, schema: SchemaType, matrixes: List[Matrix]):
+    def __init__(self, schema: SchemaType, matrixes: list[Matrix]):
         self.schema = schema
         self.matrixes = matrixes
 
-    def generate_rst(self) -> Tuple[str, List[str]]:
+    def generate_rst(self) -> tuple[str, list[str]]:
         # Generate a matrix table.
         table = [
             ['Param', '', '#', 'Test'] + [''] * (len(self.matrixes) - 1),
@@ -418,7 +420,7 @@ class CoverageGenerator:
 
 
 class TagGenerator:
-    def __init__(self, matrixes: List[Matrix]):
+    def __init__(self, matrixes: list[Matrix]):
         self.matrixes = matrixes
 
     def generate(self) -> str:
@@ -464,7 +466,7 @@ def validate_schema(schema: SchemaType) -> None:
                             f'while parsing schema {key}:{value}')
 
 
-def validate_matrixes(schema: SchemaType, matrixes: List[Matrix]) -> None:
+def validate_matrixes(schema: SchemaType, matrixes: list[Matrix]) -> None:
     errors = []
 
     # Validate overall consistency
@@ -536,7 +538,7 @@ def validate_matrixes(schema: SchemaType, matrixes: List[Matrix]) -> None:
             '\n'.join([f'  * {err}' for err in errors]))
 
 
-def expand_inherited_matrixes(matrixes: List[Matrix]) -> None:
+def expand_inherited_matrixes(matrixes: list[Matrix]) -> None:
     prj2mat = {m.project: m for m in matrixes}
     for matrix in matrixes:
         if matrix._inherits is None:
@@ -554,7 +556,7 @@ def log(msg: str, visible: bool = True) -> None:
         print(msg)
 
 
-def parse_args(argv: List[str]) -> Any:
+def parse_args(argv: list[str]) -> Any:
     parser = argparse.ArgumentParser()
     parser.add_argument('-s', '--schema', type=str, default=None)
     parser.add_argument('-m', '--matrix', type=str, default=None)
@@ -564,7 +566,7 @@ def parse_args(argv: List[str]) -> Any:
     return parser.parse_args()
 
 
-def main(argv: List[str]) -> int:
+def main(argv: list[str]) -> int:
     options = parse_args(argv)
 
     basedir = os.path.abspath(os.path.dirname(argv[0]))

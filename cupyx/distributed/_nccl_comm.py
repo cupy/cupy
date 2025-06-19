@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import numpy
 import warnings
 
@@ -502,7 +504,7 @@ class _SparseNCCLCommunicator:
         # We get the elements from the array and send them
         # so that other process can create receiving arrays for it
         # However, this exchange synchronizes the gpus
-        sizes_shape = shape + tuple((a.size for a in arrays))
+        sizes_shape = shape + tuple(a.size for a in arrays)
         return sizes_shape
 
     @classmethod
