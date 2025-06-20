@@ -132,3 +132,50 @@ class TestPolynomial(unittest.TestCase):
             a = testing.shaped_random((5,), xp, dtype=bool)
             with pytest.raises(Exception):
                 xp.polynomial.polynomial.polycompanion(a)
+
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_allclose(rtol=1e-5)
+    def test_polymul_simple(self, xp, dtype):
+        a = xp.array([1, 2, 3], dtype=dtype)
+        b = xp.array([3, 2, 1], dtype=dtype)
+        return xp.polynomial.polynomial.polymul(a, b)
+
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_allclose(rtol=1e-5)
+    def test_polymul_zeros(self, xp, dtype):
+        a = xp.array([0, 0, 1], dtype=dtype)
+        b = xp.array([0, 1, 0], dtype=dtype)
+        return xp.polynomial.polynomial.polymul(a, b)
+
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-7)
+    def test_polymul_monomials(self, xp, dtype):
+        results = []
+        for i in range(5):
+            for j in range(5):
+                a = xp.zeros(i + 1, dtype=dtype)
+                b = xp.zeros(j + 1, dtype=dtype)
+                a[-1] = 1
+                b[-1] = 1
+                results.append(xp.polynomial.polynomial.polymul(a, b))
+        return results
+
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_allclose(rtol=1e-5)
+    def test_polymul_random(self, xp, dtype):
+        a = testing.shaped_random((10,), xp, dtype)
+        b = testing.shaped_random((5,), xp, dtype)
+        return xp.polynomial.polynomial.polymul(a, b)
+
+    def test_polymul_types(self):
+        for dtype in [numpy.float32, numpy.float64, numpy.complex64,
+                      numpy.complex128, numpy.int32, numpy.int64]:
+            a_numpy = numpy.array([1, 2, 3], dtype=dtype)
+            b_numpy = numpy.array([3, 2, 1], dtype=dtype)
+            a_cupy = cupy.array([1, 2, 3], dtype=dtype)
+            b_cupy = cupy.array([3, 2, 1], dtype=dtype)
+
+            res_numpy = numpy.polynomial.polynomial.polymul(a_numpy, b_numpy)
+            res_cupy = cupy.polynomial.polynomial.polymul(a_cupy, b_cupy)
+
+            cupy.testing.assert_allclose(res_cupy, res_numpy, rtol=1e-5)
