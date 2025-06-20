@@ -284,10 +284,8 @@ class TestPolynomial(unittest.TestCase):
 
     def test_polyder_invalid_params(self):
         for xp in (numpy, cupy):
-            # Test non-int m
             with pytest.raises(TypeError):
                 xp.polynomial.polynomial.polyder([0], .5)
 
-            # Test negative m
             with pytest.raises(ValueError):
                 xp.polynomial.polynomial.polyder([0], -1)
