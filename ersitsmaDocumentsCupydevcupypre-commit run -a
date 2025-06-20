@@ -1,0 +1,96 @@
+[1mdiff --git a/cupy/polynomial/polynomial.py b/cupy/polynomial/polynomial.py[m
+[1mindex ca478eea0..6eb316b0b 100644[m
+[1m--- a/cupy/polynomial/polynomial.py[m
+[1m+++ b/cupy/polynomial/polynomial.py[m
+[36m@@ -179,3 +179,36 @@[m [mdef polyvalfromroots(x, r, tensor=True):[m
+         elif x.ndim >= r.ndim:[m
+             raise ValueError("x.ndim must be < r.ndim when tensor == False")[m
+     return cupy.prod(x - r, axis=0)[m
+[32m+[m
+[32m+[m
+[32m+[m[32mdef polymul(c1, c2):[m
+[32m+[m[32m    """[m
+[32m+[m[32m    Multiply one polynomial by another.[m
+[32m+[m
+[32m+[m[32m    Returns the product of two polynomials `c1` * `c2`.  The arguments are[m
+[32m+[m[32m    sequences of coefficients, from lowest order term to highest, e.g.,[m
+[32m+[m[32m    [1,2,3] represents the polynomial ``1 + 2*x + 3*x**2.``[m
+[32m+[m
+[32m+[m[32m    Parameters[m
+[32m+[m[32m    ----------[m
+[32m+[m[32m    c1, c2 : array_like[m
+[32m+[m[32m        1-D arrays of coefficients representing a polynomial, relative to the[m
+[32m+[m[32m        "standard" basis, and ordered from lowest order term to highest.[m
+[32m+[m
+[32m+[m[32m    Returns[m
+[32m+[m[32m    -------[m
+[32m+[m[32m    out : cupy.ndarray[m
+[32m+[m[32m        Of the coefficients of their product.[m
+[32m+[m
+[32m+[m[32m    See Also[m
+[32m+[m[32m    --------[m
+[32m+[m[32m    polyadd, polysub, polymulx, polydiv, polypow[m
+[32m+[m
+[32m+[m[32m    .. seealso:: :func:`numpy.polynomial.polynomial.polymul`[m
+[32m+[m[32m    """[m
+[32m+[m[32m    from cupy.polynomial import polyutils[m
+[32m+[m[32m    from cupy._math import misc[m
+[32m+[m[32m    # c1, c2 are trimmed copies[m
+[32m+[m[32m    [c1, c2] = polyutils.as_series([c1, c2])[m
+[32m+[m[32m    ret = misc.convolve(c1, c2, mode='full')[m
+[32m+[m[32m    return polyutils.trimseq(ret)[m
+[1mdiff --git a/tests/cupy_tests/polynomial_tests/test_polynomial.py b/tests/cupy_tests/polynomial_tests/test_polynomial.py[m
+[1mindex ea9a09e07..ff7bc64b1 100644[m
+[1m--- a/tests/cupy_tests/polynomial_tests/test_polynomial.py[m
+[1m+++ b/tests/cupy_tests/polynomial_tests/test_polynomial.py[m
+[36m@@ -132,3 +132,50 @@[m [mclass TestPolynomial(unittest.TestCase):[m
+             a = testing.shaped_random((5,), xp, dtype=bool)[m
+             with pytest.raises(Exception):[m
+                 xp.polynomial.polynomial.polycompanion(a)[m
+[32m+[m
+[32m+[m[32m    @testing.for_all_dtypes(no_bool=True)[m
+[32m+[m[32m    @testing.numpy_cupy_allclose(rtol=1e-5)[m
+[32m+[m[32m    def test_polymul_simple(self, xp, dtype):[m
+[32m+[m[32m        a = xp.array([1, 2, 3], dtype=dtype)[m
+[32m+[m[32m        b = xp.array([3, 2, 1], dtype=dtype)[m
+[32m+[m[32m        return xp.polynomial.polynomial.polymul(a, b)[m
+[32m+[m
+[32m+[m[32m    @testing.for_all_dtypes(no_bool=True)[m
+[32m+[m[32m    @testing.numpy_cupy_allclose(rtol=1e-5)[m
+[32m+[m[32m    def test_polymul_zeros(self, xp, dtype):[m
+[32m+[m[32m        a = xp.array([0, 0, 1], dtype=dtype)[m
+[32m+[m[32m        b = xp.array([0, 1, 0], dtype=dtype)[m
+[32m+[m[32m        return xp.polynomial.polynomial.polymul(a, b)[m
+[32m+[m
+[32m+[m[32m    @testing.for_all_dtypes(no_bool=True)[m
+[32m+[m[32m    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-7)[m
+[32m+[m[32m    def test_polymul_monomials(self, xp, dtype):[m
+[32m+[m[32m        results = [][m
+[32m+[m[32m        for i in range(5):[m
+[32m+[m[32m            for j in range(5):[m
+[32m+[m[32m                a = xp.zeros(i + 1, dtype=dtype)[m
+[32m+[m[32m                b = xp.zeros(j + 1, dtype=dtype)[m
+[32m+[m[32m                a[-1] = 1[m
+[32m+[m[32m                b[-1] = 1[m
+[32m+[m[32m                results.append(xp.polynomial.polynomial.polymul(a, b))[m
+[32m+[m[32m        return results[m
+[32m+[m
+[32m+[m[32m    @testing.for_all_dtypes(no_bool=True)[m
+[32m+[m[32m    @testing.numpy_cupy_allclose(rtol=1e-5)[m
+[32m+[m[32m    def test_polymul_random(self, xp, dtype):[m
+[32m+[m[32m        a = testing.shaped_random((10,), xp, dtype)[m
+[32m+[m[32m        b = testing.shaped_random((5,), xp, dtype)[m
+[32m+[m[32m        return xp.polynomial.polynomial.polymul(a, b)[m
+[32m+[m
+[32m+[m[32m    def test_polymul_types(self):[m
+[32m+[m[32m        for dtype in [numpy.float32, numpy.float64, numpy.complex64,[m
+[32m+[m[32m                      numpy.complex128, numpy.int32, numpy.int64]:[m
+[32m+[m[32m            a_numpy = numpy.array([1, 2, 3], dtype=dtype)[m
+[32m+[m[32m            b_numpy = numpy.array([3, 2, 1], dtype=dtype)[m
+[32m+[m[32m            a_cupy = cupy.array([1, 2, 3], dtype=dtype)[m
+[32m+[m[32m            b_cupy = cupy.array([3, 2, 1], dtype=dtype)[m
+[32m+[m
+[32m+[m[32m            res_numpy = numpy.polynomial.polynomial.polymul(a_numpy, b_numpy)[m
+[32m+[m[32m            res_cupy = cupy.polynomial.polynomial.polymul(a_cupy, b_cupy)[m
+[32m+[m
+[32m+[m[32m            cupy.testing.assert_allclose(res_cupy, res_numpy, rtol=1e-5)[m
