@@ -139,10 +139,8 @@ class TestPolynomial(unittest.TestCase):
         results = []
         for i in range(5):
             for j in range(5):
-                # Construimos polinomios monomiales con un único coeficiente
                 c1 = xp.array([0] * i + [1], dtype=dtype)
                 c2 = xp.array([0] * j + [1], dtype=dtype)
-                # Llamamos a polysub en xp, que puede ser numpy o cupy
                 out = xp.polynomial.polynomial.polysub(c1, c2)
                 results.append(out)
         return results
