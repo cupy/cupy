@@ -114,7 +114,18 @@ def trimcoef(c, tol=0):
 
 
 def _sub(c1, c2):
-    """Resta dos arreglos de coeficientes polinomiales."""
+    """Subtract polynomial coefficients.
+
+    Args:
+        c1 (cupy.ndarray): 1-D array of polynomial coefficients ordered
+            from low to high degree.
+        c2 (cupy.ndarray): 1-D array of polynomial coefficients ordered
+            from low to high degree.
+
+    Returns:
+        cupy.ndarray: The coefficient array representing their difference.
+
+    """
     [c1, c2] = as_series([c1, c2], trim=True)
     if c1.size > c2.size:
         c1[:c2.size] -= c2

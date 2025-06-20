@@ -136,10 +136,6 @@ class TestPolynomial(unittest.TestCase):
     @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_allclose(rtol=1e-6, atol=1e-7)
     def test_polysub_mononomials(self, xp, dtype):
-        """
-        Verifica que la sustracción de polinomios coincida con el
-        comportamiento esperado cuando se resta un monomio de otro.
-        """
         results = []
         for i in range(5):
             for j in range(5):
