@@ -118,6 +118,26 @@ def polyval(x, c, tensor=True):
     return c0
 
 
+def polysub(c1, c2):
+    """Subtract one polynomial from another.
+
+    Args:
+        c1 (cupy.ndarray): 1-D array of polynomial coefficients ordered
+            from low to high degree.
+        c2 (cupy.ndarray): 1-D array of polynomial coefficients ordered
+            from low to high degree.
+
+    Returns:
+        cupy.ndarray: The coefficient array representing their difference.
+
+    .. seealso:: :func:`numpy.polynomial.polynomial.polysub`
+
+    """
+    from cupy.polynomial import polyutils
+    [c1, c2] = polyutils.as_series([c1, c2])
+    return polyutils._sub(c1, c2)
+
+
 def polyvalfromroots(x, r, tensor=True):
     """
     Evaluate a polynomial specified by its roots at points x.
