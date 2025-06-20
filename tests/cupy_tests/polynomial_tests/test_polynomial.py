@@ -162,46 +162,38 @@ class TestPolynomial(unittest.TestCase):
     @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_allclose(rtol=1e-5)
     def test_polyint_zeroth(self, xp, dtype):
-        """Test that m=0 integration does nothing."""
         c = testing.shaped_random((5,), xp, dtype)
         return xp.polynomial.polynomial.polyint(c, m=0)
 
     @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_allclose(rtol=1e-5)
     def test_polyint_simple(self, xp, dtype):
-        """Test single integration with constant."""
         c = xp.array([1, 2, 3], dtype=dtype)
         return xp.polynomial.polynomial.polyint(c, m=1, k=[5])
 
     @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_allclose(rtol=1e-5)
     def test_polyint_with_lbnd(self, xp, dtype):
-        """Test integration with lower bound."""
         c = xp.array([1, 2, 3], dtype=dtype)
         result = xp.polynomial.polynomial.polyint(c, m=1, k=[5], lbnd=-1)
-        # Evaluate at the lower bound to verify constant
         p = xp.polynomial.polynomial.polyval(-1, result)
-        # Combine in a homogeneous array to avoid dtype=object
         return xp.concatenate([result, xp.array([p], dtype=result.dtype)])
 
     @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_allclose(rtol=1e-5)
     def test_polyint_with_scaling(self, xp, dtype):
-        """Test integration with scaling."""
         c = xp.array([1, 2, 3], dtype=dtype)
         return xp.polynomial.polynomial.polyint(c, m=1, k=[5], scl=2)
 
     @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_allclose(rtol=1e-5)
     def test_polyint_multiple(self, xp, dtype):
-        """Test multiple integrations with default k."""
         c = xp.array([1, 2, 3], dtype=dtype)
         return xp.polynomial.polynomial.polyint(c, m=3)
 
     @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_allclose(rtol=1e-5)
     def test_polyint_multiple_with_k(self, xp, dtype):
-        """Test multiple integrations with defined k."""
         c = xp.array([1, 2, 3], dtype=dtype)
         k = xp.array([1, 2, 3])
         return xp.polynomial.polynomial.polyint(c, m=3, k=k)
@@ -209,35 +201,30 @@ class TestPolynomial(unittest.TestCase):
     @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_allclose(rtol=1e-5)
     def test_polyint_multiple_with_lbnd(self, xp, dtype):
-        """Test multiple integrations with lower bound."""
         c = xp.array([1, 2, 3], dtype=dtype)
         return xp.polynomial.polynomial.polyint(c, m=3, lbnd=-1)
 
     @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_allclose(rtol=1e-5)
     def test_polyint_multiple_with_scaling(self, xp, dtype):
-        """Test multiple integrations with scaling."""
         c = xp.array([1, 2, 3], dtype=dtype)
         return xp.polynomial.polynomial.polyint(c, m=3, scl=2)
 
     @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_allclose(rtol=1e-5)
     def test_polyint_axis0(self, xp, dtype):
-        """Test integration along axis 0."""
         c = testing.shaped_random((3, 4), xp, dtype)
         return xp.polynomial.polynomial.polyint(c, axis=0)
 
     @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_allclose(rtol=1e-5)
     def test_polyint_axis1(self, xp, dtype):
-        """Test integration along axis 1."""
         c = testing.shaped_random((3, 4), xp, dtype)
         return xp.polynomial.polynomial.polyint(c, axis=1)
 
     @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_allclose(rtol=1e-5)
     def test_polyint_deriv_inverse_relation(self, xp, dtype):
-        """Test that derivation is the inverse of integration."""
         c = testing.shaped_random((5,), xp, dtype)
         integ = xp.polynomial.polynomial.polyint(c, m=2)
         deriv = xp.polynomial.polynomial.polyder(integ, m=2)
@@ -246,22 +233,18 @@ class TestPolynomial(unittest.TestCase):
     @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_allclose(rtol=1e-5)
     def test_polyder_zero_deriv(self, xp, dtype):
-        """Test that zeroth derivative returns the same polynomial."""
         a = testing.shaped_random((10,), xp, dtype)
         return xp.polynomial.polynomial.polyder(a, m=0)
 
     @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_allclose(rtol=1e-5)
     def test_polyder_simple(self, xp, dtype):
-        """Test simple derivative."""
-        # [1, 2, 3] -> [2, 6]
         c = xp.array([1, 2, 3], dtype=dtype)
         return xp.polynomial.polynomial.polyder(c)
 
     @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_allclose(rtol=1e-5)
     def test_polyder_inverse_polyint_m1(self, xp, dtype):
-        """Test that derivation is inverse of integration (m=1)."""
         c = testing.shaped_random((5,), xp, dtype)
         polyint_c = xp.polynomial.polynomial.polyint(c, m=1)
         return xp.polynomial.polynomial.polyder(polyint_c, m=1)
@@ -269,7 +252,6 @@ class TestPolynomial(unittest.TestCase):
     @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_allclose(rtol=1e-5)
     def test_polyder_inverse_polyint_m2(self, xp, dtype):
-        """Test that derivation is inverse of integration (m=2)."""
         c = testing.shaped_random((5,), xp, dtype)
         polyint_c = xp.polynomial.polynomial.polyint(c, m=2)
         return xp.polynomial.polynomial.polyder(polyint_c, m=2)
@@ -291,21 +273,16 @@ class TestPolynomial(unittest.TestCase):
     @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_allclose(rtol=1e-5)
     def test_polyder_axis0(self, xp, dtype):
-        """Test that axis=0 keyword works."""
-        # Test 2D array
         c = testing.shaped_random((3, 4), xp, dtype)
         return xp.polynomial.polynomial.polyder(c, axis=0)
 
     @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_allclose(rtol=1e-5)
     def test_polyder_axis1(self, xp, dtype):
-        """Test that axis=1 keyword works."""
-        # Test 2D array
         c = testing.shaped_random((3, 4), xp, dtype)
         return xp.polynomial.polynomial.polyder(c, axis=1)
 
     def test_polyder_invalid_params(self):
-        """Test polyder with invalid parameters."""
         for xp in (numpy, cupy):
             # Test non-int m
             with pytest.raises(TypeError):
