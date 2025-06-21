@@ -1,5 +1,5 @@
 import os
-from typing import List, Optional
+from typing import Optional
 
 
 def print_warning(*lines: str) -> None:
@@ -9,11 +9,11 @@ def print_warning(*lines: str) -> None:
     print('**************************************************')
 
 
-def get_path(key: str) -> List[str]:
+def get_path(key: str) -> list[str]:
     return os.environ.get(key, '').split(os.pathsep)
 
 
-def search_on_path(filenames: List[str]) -> Optional[str]:
+def search_on_path(filenames: list[str]) -> Optional[str]:
     for p in get_path('PATH'):
         for filename in filenames:
             full = os.path.join(p, filename)
