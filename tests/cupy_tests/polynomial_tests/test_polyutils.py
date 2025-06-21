@@ -170,3 +170,37 @@ class TestTrimcoefInvalid(unittest.TestCase):
             a = testing.shaped_random((5,), xp, bool)
             with pytest.raises(ValueError):
                 xp.polynomial.polyutils.trimcoef(a)
+
+
+class TestGetDomain(unittest.TestCase):
+
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_allclose()
+    def test_getdomain_real(self, xp, dtype):
+        if numpy.dtype(dtype).kind == 'u':  # u for unsigned integers
+            x = xp.array([1, 10, 3, 5], dtype=dtype)
+        else:
+            x = xp.array([1, 10, 3, -1], dtype=dtype)
+        return xp.polynomial.polyutils.getdomain(x)
+
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_allclose()
+    def test_getdomain_complex(self, xp, dtype):
+        if dtype not in (xp.complex64, xp.complex128):
+            return xp.array([0], dtype=dtype)
+        x = xp.array([1 + 1j, 1 - 1j, 0, 2], dtype=dtype)
+        return xp.polynomial.polyutils.getdomain(x)
+
+    @testing.numpy_cupy_allclose()
+    def test_getdomain_empty(self, xp):
+        x = xp.array([], dtype=xp.float64)
+        try:
+            return xp.polynomial.polyutils.getdomain(x)
+        except ValueError:
+            return xp.array([0, 0], dtype=xp.float64)
+
+    def test_getdomain_ndim(self):
+        for xp in (numpy, cupy):
+            x = xp.array([[1, 2], [3, 4]], dtype=xp.float64)
+            with pytest.raises(ValueError):
+                xp.polynomial.polyutils.getdomain(x)
