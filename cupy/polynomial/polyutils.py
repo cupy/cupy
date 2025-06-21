@@ -111,3 +111,45 @@ def trimcoef(c, tol=0):
     if ind == 0:
         return cupy.zeros_like(c[:1])
     return c[: ind]
+
+
+def mapparms(old, new):
+    """Linear map parameters between domains.
+
+    Args:
+        old, new (array_like): Domains. Each domain must convert to a 1-d array
+            containing precisely two values.
+
+    Returns:
+        tuple: offset, scale: The map ``L(x) = offset + scale*x`` maps the
+        first domain to the second.
+
+    .. seealso:: :func:`numpy.polynomial.polyutils.mapparms`
+
+    """
+    oldlen = old[1] - old[0]
+    newlen = new[1] - new[0]
+    off = (old[1] * new[0] - old[0] * new[1]) / oldlen
+    scl = newlen / oldlen
+    return off, scl
+
+
+def mapdomain(x, old, new):
+    """Apply linear map to input points.
+
+    Args:
+        x (array_like): Points to be mapped.
+        old, new (array_like): The two domains that determine the map.
+
+    Returns:
+        cupy.ndarray: Array of points of the same shape as `x`, after
+        application of the linear map between the two domains.
+
+    .. seealso:: :func:`numpy.polynomial.polyutils.mapdomain`
+
+    """
+    if (type(x) not in (int, float, complex) and
+            not isinstance(x, cupy.generic)):
+        x = cupy.asarray(x)
+    off, scl = mapparms(old, new)
+    return off + scl * x
