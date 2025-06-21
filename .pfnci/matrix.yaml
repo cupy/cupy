@@ -451,7 +451,7 @@
   cusparselt: "0.7.1"
   cudnn: "8.8"
   python: "3.12"
-  numpy: "2.2"
+  numpy: "2.3"
   scipy: "1.15"
   optuna: "4"
   mpi4py: null
