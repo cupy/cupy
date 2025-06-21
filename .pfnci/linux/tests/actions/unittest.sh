@@ -21,9 +21,9 @@ fi
 python3 -m pip install --user pytest-timeout pytest-xdist
 
 pushd tests
-timeout --signal INT --kill-after 10 60 python3 -c 'import cupy; cupy.show_config(_full=True)'
+timeout --signal INT --kill-after 10 60 python3 -X gil=0 -c 'import cupy; cupy.show_config(_full=True)'
 test_retval=0
-timeout --signal INT --kill-after 60 18000 python3 -m pytest "${pytest_opts[@]}" "${PYTEST_FILES[@]}" || test_retval=$?
+timeout --signal INT --kill-after 60 18000 python3 -X gil=0 -m pytest "${pytest_opts[@]}" "${PYTEST_FILES[@]}" || test_retval=$?
 popd
 
 case ${test_retval} in
