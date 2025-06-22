@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+from __future__ import annotations
 
 import argparse
 import json
@@ -36,10 +37,10 @@ class Matrix:
             return self._rec[key]
         raise AttributeError(f'"{key}" not defined in matrix {self._rec}')
 
-    def copy(self) -> 'Matrix':
+    def copy(self) -> Matrix:
         return Matrix(self._rec.copy())
 
-    def update(self, matrix: 'Matrix') -> None:
+    def update(self, matrix: Matrix) -> None:
         self._rec.update(matrix._rec)
 
 
