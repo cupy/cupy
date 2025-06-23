@@ -5,12 +5,13 @@ from typing import (
     Generic,
     Literal,
     SupportsIndex,
-    TypeVar,
     overload,
 )
 
 import numpy
 from _typeshed import StrOrBytesPath, SupportsWrite
+# Necessary to use `default`
+from typing_extensions import TypeVar
 
 from cupy._core.flags import Flags
 from cupy.cuda.device import Device
