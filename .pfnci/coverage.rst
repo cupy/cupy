@@ -2527,7 +2527,6 @@ CuPy CI Test Coverage
      - 
      - 
      - 
-     - 
    * - 
      - 2.3
      - 2
