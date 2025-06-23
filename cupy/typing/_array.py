@@ -28,7 +28,6 @@ _ArrayUInt_co = NDArray[numpy.unsignedinteger | numpy.bool]
 _ArrayInt_co = NDArray[numpy.integer | numpy.bool]
 _ArrayFloat_co = NDArray[numpy.floating | numpy.integer | numpy.bool]
 _ArrayComplex_co = NDArray[numpy.inexact | numpy.integer | numpy.bool]
-_ArrayNumber_co = NDArray[numpy.number | numpy.bool]
 
 
 class _SupportsRealImag(Protocol):
