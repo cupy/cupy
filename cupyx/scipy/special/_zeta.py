@@ -7,6 +7,8 @@
 # Direct inquiries to 30 Frost Street, Cambridge, MA 02140
 
 # TODO(YoshikawaMasashi): float implementation of zeta function
+from __future__ import annotations
+
 
 from cupy import _core
 

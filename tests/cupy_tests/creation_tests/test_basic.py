@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import numpy
 import pytest
 import warnings

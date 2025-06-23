@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 import math
-from typing import Any, Optional
+from typing import Any
 
 import numpy
 
@@ -69,7 +71,7 @@ def empty_like(
         dtype: DTypeLike = None,
         order: _OrderKACF = 'K',
         subok: None = None,
-        shape: Optional[_ShapeLike] = None,
+        shape: _ShapeLike | None = None,
 ) -> NDArray[Any]:
     """Returns a new array with same shape and dtype of a given array.
 
@@ -108,7 +110,7 @@ def empty_like(
 
 def eye(
         N: int,
-        M: Optional[int] = None,
+        M: int | None = None,
         k: int = 0,
         dtype: DTypeLike = float,
         order: _OrderCF = 'C',
@@ -190,7 +192,7 @@ def ones_like(
         dtype: DTypeLike = None,
         order: _OrderKACF = 'K',
         subok: None = None,
-        shape: Optional[_ShapeLike] = None,
+        shape: _ShapeLike | None = None,
 ) -> NDArray[Any]:
     """Returns an array of ones with same shape and dtype as a given array.
 
@@ -257,7 +259,7 @@ def zeros_like(
         dtype: DTypeLike = None,
         order: _OrderKACF = 'K',
         subok: None = None,
-        shape: Optional[_ShapeLike] = None,
+        shape: _ShapeLike | None = None,
 ) -> NDArray[Any]:
     """Returns an array of zeros with same shape and dtype as a given array.
 
@@ -334,7 +336,7 @@ def full_like(
         dtype: DTypeLike = None,
         order: _OrderKACF = 'K',
         subok: None = None,
-        shape: Optional[_ShapeLike] = None,
+        shape: _ShapeLike | None = None,
 ) -> NDArray[Any]:
     """Returns a full array with same shape and dtype as a given array.
 
