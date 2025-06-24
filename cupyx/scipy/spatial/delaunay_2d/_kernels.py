@@ -2950,6 +2950,7 @@ RealType*           coords
                 }
 
                 if(!isInTri) {
+                    if (nextNearest == -1) break;
                     nearest = triOpp[nextNearest];
                     visited[off + 1] = nextNearest;
                 }
