@@ -418,7 +418,7 @@ def _find_compatible_wheel(
     is_compatible = (
         actual[0] == expected[0] and
         (
-            actual[1] >= expected[1] or
+            actual[1] > expected[1] or
             (actual[1] == expected[1] and actual[2] >= expected[2])
         )
     )
