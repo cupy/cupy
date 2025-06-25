@@ -163,7 +163,7 @@ def _get_cupy_cache_key():
 
 
 # Known archs for Tegra/Jetson/Xavier/etc
-_tegra_archs = ('32', '53', '62', '72', '87', '101')
+_tegra_archs = ('32', '53', '62', '72', '87')
 
 
 @_util.memoize()
