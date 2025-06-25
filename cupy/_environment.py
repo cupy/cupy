@@ -397,7 +397,7 @@ def _parse_version(version: str) -> Tuple[int, int, int]:
 
 def _find_compatible_wheel(
         package_prefix: str, version: str, cuda: str
-) -> importlib.metadata.Distribution | None:
+) -> Optional[importlib.metadata.Distribution]:
     """
     Returns the distribution of the given package name and version
     installed via pip (e.g., cutensor-cuXX).
