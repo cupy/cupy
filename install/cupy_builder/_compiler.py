@@ -113,8 +113,6 @@ def _nvcc_gencode_options(cuda_version: int) -> list[str]:
                     ('compute_72', 'sm_72'),  # Jetson (Xavier)
                     ('compute_87', 'sm_87'),  # Jetson (Orin)
                 ]
-                if 12080 <= cuda_version:
-                    arch_list.append(('compute_101', 'sm_101'))
         elif cuda_version >= 11080:
             arch_list = [('compute_35', 'sm_35'),
                          ('compute_37', 'sm_37'),
