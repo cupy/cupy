@@ -102,9 +102,7 @@ def _nvcc_gencode_options(cuda_version: int) -> list[str]:
                               'compute_100']
             elif 12090 <= cuda_version:
                 arch_list += [('compute_100f', 'sm_100'),
-                              ('compute_103f', 'sm_103'),
                               ('compute_120f', 'sm_120'),
-                              ('compute_121f', 'sm_121'),
                               'compute_100']
 
             if aarch64:
