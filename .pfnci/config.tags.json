@@ -280,6 +280,12 @@
     "cupy.win.cuda128": [
         "@push",
         "full",
+        "windows",
+        "cuda128"
+    ],
+    "cupy.win.cuda129": [
+        "@push",
+        "full",
         "mini",
         "windows",
         "cuda128"
