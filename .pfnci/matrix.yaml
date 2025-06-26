@@ -814,6 +814,12 @@
 - project: "cupy.win.cuda128"
   _extern: true
   target: "cuda128"
+  tags: ["@push", "full", "windows", "cuda128"]
+  system: "windows"
+
+- project: "cupy.win.cuda129"
+  _extern: true
+  target: "cuda129"
   tags: ["@push", "full", "mini", "windows", "cuda128"]
   system: "windows"
 
