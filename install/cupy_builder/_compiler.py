@@ -92,12 +92,16 @@ def _nvcc_gencode_options(cuda_version: int) -> List[str]:
                          ('compute_86', 'sm_86'),
                          ('compute_89', 'sm_89'),
                          ('compute_90', 'sm_90'),]
-            if cuda_version >= 12080:
+            if cuda_version < 12080:
+                arch_list.append('compute_90')
+            elif 12080 <= cuda_version < 12090:
                 arch_list += [('compute_100', 'sm_100'),
                               ('compute_120', 'sm_120'),
                               'compute_100']
-            else:
-                arch_list.append('compute_90')
+            elif 12090 <= cuda_version:
+                arch_list += [('compute_100f', 'sm_100'),
+                              ('compute_120f', 'sm_120'),
+                              'compute_100']
 
             if aarch64:
                 # JetPack 5 (CUDA 12.0-12.2) or JetPack 6 (CUDA 12.2+)
