@@ -820,7 +820,7 @@
 - project: "cupy.win.cuda129"
   _extern: true
   target: "cuda129"
-  tags: ["@push", "full", "mini", "windows", "cuda128"]
+  tags: ["@push", "full", "mini", "windows", "cuda129"]
   system: "windows"
 
 - project: "cupy.linux.cuda-rapids"
