@@ -3,6 +3,8 @@
 '''
 A unit test module for czt.py
 '''
+from __future__ import annotations
+
 from math import pi
 
 import pytest
@@ -64,8 +66,7 @@ zf_checks = [check_zoom_fft, check_zoom_fft_2, check_zoom_fft_3, check_czt]
 
 def _gen_random_signal():
     lengths = testing.shaped_random((8, 200, 20))
-    for x in lengths:
-        yield x
+    yield from lengths
 
 
 @testing.with_requires("scipy >= 1.8.0")

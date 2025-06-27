@@ -7,6 +7,7 @@ recursive-include cupy_backends *.pyx *.pxd *.pxi
 
 # Fail-safe to avoid including Cythoinzed sources in sdist.
 recursive-exclude cupy *.cpp
+recursive-exclude cupyx *.cpp
 recursive-exclude cupy_backends *.cpp
 
 # Installers

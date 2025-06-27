@@ -1,4 +1,6 @@
 # Bessel Functions
+from __future__ import annotations
+
 from cupyx.scipy.special._bessel import i0  # NOQA
 from cupyx.scipy.special._bessel import i0e  # NOQA
 from cupyx.scipy.special._bessel import i1  # NOQA

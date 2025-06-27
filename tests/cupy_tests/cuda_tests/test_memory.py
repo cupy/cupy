@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import ctypes
 import gc
 import pickle
@@ -938,7 +940,7 @@ class TestAllocatorDisabled(unittest.TestCase):
         self._check_pool_not_used()
 
 
-class PythonAllocator(object):
+class PythonAllocator:
     def __init__(self):
         self.malloc_called = False
         self.free_called = False

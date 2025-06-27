@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import atexit
 import binascii
 import functools
@@ -25,7 +27,7 @@ _UINT32_MAX = 0xffffffff
 _UINT64_MAX = 0xffffffffffffffff
 
 
-class RandomState(object):
+class RandomState:
 
     """Portable container of a pseudo-random number generator.
 

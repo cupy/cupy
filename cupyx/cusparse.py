@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import functools as _functools
 
 import numpy as _numpy
@@ -14,7 +16,7 @@ from cupy import _util
 import cupyx.scipy.sparse
 
 
-class MatDescriptor(object):
+class MatDescriptor:
 
     def __init__(self, descriptor):
         self.descriptor = descriptor
@@ -1268,7 +1270,7 @@ def _dtype_to_IndexType(dtype):
         raise TypeError
 
 
-class BaseDescriptor(object):
+class BaseDescriptor:
 
     def __init__(self, descriptor, get=None, destroyer=None):
         self.desc = descriptor

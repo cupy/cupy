@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 import platform
 import tempfile
@@ -30,9 +32,6 @@ class TestInstallLibrary:
     @pytest.mark.skipif(
         platform.system() == 'Windows',
         reason='NCCL is only available for Linux')
-    @pytest.mark.skipif(
-        platform.machine() == "aarch64",
-        reason="FIXME")  # TODO(leofang)
     @pytest.mark.parametrize('cuda', _get_supported_cuda_versions('nccl'))
     @testing.slow
     def test_install_nccl(self, cuda):

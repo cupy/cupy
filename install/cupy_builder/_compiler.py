@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import distutils.ccompiler
 import os
 import os.path
@@ -5,7 +7,7 @@ import platform
 import shutil
 import sys
 import subprocess
-from typing import Any, Optional, List
+from typing import Any
 
 from setuptools import Extension
 
@@ -13,7 +15,7 @@ from cupy_builder._context import Context
 import cupy_builder.install_build as build
 
 
-def _nvcc_gencode_options(cuda_version: int) -> List[str]:
+def _nvcc_gencode_options(cuda_version: int) -> list[str]:
     """Returns NVCC GPU code generation options."""
 
     if sys.argv == ['setup.py', 'develop']:
@@ -92,12 +94,16 @@ def _nvcc_gencode_options(cuda_version: int) -> List[str]:
                          ('compute_86', 'sm_86'),
                          ('compute_89', 'sm_89'),
                          ('compute_90', 'sm_90'),]
-            if cuda_version >= 12080:
+            if cuda_version < 12080:
+                arch_list.append('compute_90')
+            elif 12080 <= cuda_version < 12090:
                 arch_list += [('compute_100', 'sm_100'),
                               ('compute_120', 'sm_120'),
                               'compute_100']
-            else:
-                arch_list.append('compute_90')
+            elif 12090 <= cuda_version:
+                arch_list += [('compute_100f', 'sm_100'),
+                              ('compute_120f', 'sm_120'),
+                              'compute_100']
 
             if aarch64:
                 # JetPack 5 (CUDA 12.0-12.2) or JetPack 6 (CUDA 12.2+)
@@ -172,20 +178,21 @@ def _nvcc_gencode_options(cuda_version: int) -> List[str]:
 
 class DeviceCompilerBase:
     """A class that invokes NVCC or HIPCC."""
+    _context: Context
 
-    def __init__(self, ctx: Context):
+    def __init__(self, ctx: Context) -> None:
         self._context = ctx
 
-    def _get_preprocess_options(self, ext: Extension) -> List[str]:
+    def _get_preprocess_options(self, ext: Extension) -> list[str]:
         # https://setuptools.pypa.io/en/latest/deprecated/distutils/apiref.html#distutils.core.Extension
         # https://github.com/pypa/setuptools/blob/v60.0.0/setuptools/_distutils/command/build_ext.py#L524-L526
         incdirs = ext.include_dirs[:]
-        macros: List[Any] = ext.define_macros[:]
+        macros: list[Any] = ext.define_macros[:]
         for undef in ext.undef_macros:
             macros.append((undef,))
         return distutils.ccompiler.gen_preprocess_options(macros, incdirs)
 
-    def spawn(self, commands: List[str]) -> None:
+    def spawn(self, commands: list[str]) -> None:
         print('Command:', commands)
         subprocess.check_call(commands)
 
@@ -267,7 +274,7 @@ class DeviceCompilerWin32(DeviceCompilerBase):
         print('NVCC options:', postargs)
         self.spawn(compiler_so + cc_args + [src, '-o', obj] + postargs)
 
-    def _find_host_compiler_path(self) -> Optional[str]:
+    def _find_host_compiler_path(self) -> str | None:
         # c.f. cupy.cuda.compiler._get_extra_path_for_msvc
         cl_exe = shutil.which('cl.exe')
         if cl_exe:
@@ -285,7 +292,7 @@ class DeviceCompilerWin32(DeviceCompilerBase):
                   'setuptools.msvc could not be imported')
             return None
 
-        vctools: List[str] = setuptools.msvc.EnvironmentInfo(
+        vctools: list[str] = setuptools.msvc.EnvironmentInfo(
             platform.machine()).VCTools
         for path in vctools:
             cl_exe = os.path.join(path, 'cl.exe')

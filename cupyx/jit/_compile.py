@@ -1,11 +1,13 @@
+from __future__ import annotations
+
 import ast
-import collections
 import inspect
 import linecache
 import numbers
 import re
 import sys
-from typing import Any, Dict, List, Optional, Sequence, Tuple, TypeVar, Union
+from typing import Any, NamedTuple, Optional, TypeVar, Union
+from collections.abc import Sequence
 import warnings
 import types
 
@@ -37,17 +39,15 @@ if (3, 8) <= sys.version_info:
 else:
     _CastingType = str
 
-Result = collections.namedtuple(
-    'Result',
-    [
-        'func_name',
-        'code',
-        'return_type',
-        'enable_cooperative_groups',
-        'backend',
-        'options',
-        'jitify',
-    ])
+
+class Result(NamedTuple):
+    func_name: str
+    code: str
+    return_type: _cuda_types.TypeBase
+    enable_cooperative_groups: bool
+    backend: str
+    options: tuple[str, ...]
+    jitify: bool
 
 
 class _JitCompileError(Exception):
@@ -157,11 +157,11 @@ class Generated:
 
     def __init__(self) -> None:
         # list of str
-        self.codes: List[str] = []
+        self.codes: list[str] = []
         # (function, in_types) => Optional(function_name, return_type)
         self.device_function: \
-            Dict[Tuple[Any, Tuple[_cuda_types.TypeBase, ...]],
-                 Tuple[str, _cuda_types.TypeBase]] = {}
+            dict[tuple[Any, tuple[_cuda_types.TypeBase, ...]],
+                 tuple[str, _cuda_types.TypeBase]] = {}
         # whether to use cooperative launch
         self.enable_cg = False
         # whether to include cooperative_groups.h
@@ -245,7 +245,7 @@ def _transpile_func_obj(func, attributes, mode, in_types, ret_type, generated):
     return name, env.ret_type
 
 
-def _indent(lines: List[str], spaces: str = '  ') -> List[str]:
+def _indent(lines: list[str], spaces: str = '  ') -> list[str]:
     return [spaces + line for line in lines]
 
 
@@ -275,21 +275,21 @@ class Environment:
     def __init__(
             self,
             mode: str,
-            consts: Dict[str, Constant],
-            params: Dict[str, Data],
+            consts: dict[str, Constant],
+            params: dict[str, Data],
             ret_type: _cuda_types.TypeBase,
             generated: Generated,
     ):
         self.mode = mode
         self.consts = consts
         self.params = params
-        self.locals: Dict[str, Data] = {}
-        self.decls: Dict[str, Data] = {}
+        self.locals: dict[str, Data] = {}
+        self.decls: dict[str, Data] = {}
         self.ret_type = ret_type
         self.generated = generated
         self.count = 0
 
-    def __getitem__(self, key: str) -> Optional[Union[Constant, Data]]:
+    def __getitem__(self, key: str) -> Constant | Data | None:
         if key in self.locals:
             return self.locals[key]
         if key in self.params:
@@ -349,15 +349,13 @@ def _transpile_function_internal(
         # TODO(asi1024): Support for `ast.ClassDef`.
         raise NotImplementedError('Not supported: {}'.format(type(func)))
     if len(func.decorator_list) > 0:
-        if sys.version_info >= (3, 9):
-            # Code path for Python versions that support `ast.unparse`.
-            for deco in func.decorator_list:
-                deco_code = ast.unparse(deco)
-                if not any(word in deco_code
-                           for word in ['rawkernel', 'vectorize']):
-                    warnings.warn(
-                        f'Decorator {deco_code} may not supported in JIT.',
-                        RuntimeWarning)
+        for deco in func.decorator_list:
+            deco_code = ast.unparse(deco)
+            if not any(word in deco_code
+                       for word in ['rawkernel', 'vectorize']):
+                warnings.warn(
+                    f'Decorator {deco_code} may not supported in JIT.',
+                    RuntimeWarning)
     arguments = func.args
     if arguments.vararg is not None:
         raise NotImplementedError('`*args` is not supported currently.')
@@ -391,9 +389,9 @@ def _transpile_function_internal(
 
 def _eval_operand(
         op: ast.AST,
-        args: Sequence[Union[Constant, Data]],
+        args: Sequence[Constant | Data],
         env: Environment,
-) -> Union[Constant, Data]:
+) -> Constant | Data:
     if is_constants(*args):
         pyfunc = _cuda_typerules.get_pyfunc(type(op))
         return Constant(pyfunc(*[x.obj for x in args]))
@@ -430,8 +428,8 @@ def _eval_operand(
 
 def _call_ufunc(
         ufunc: _kernel.ufunc,
-        args: Sequence[Union[Constant, Data]],
-        dtype: Optional[numpy.dtype],
+        args: Sequence[Constant | Data],
+        dtype: numpy.dtype | None,
         env: Environment,
 ) -> Data:
     if len(args) != ufunc.nin:
@@ -500,7 +498,7 @@ __device__ {out_type} {ufunc_name}({params}) {{
 
 
 def _transpile_stmts(
-        stmts: List[ast.stmt],
+        stmts: list[ast.stmt],
         is_toplevel: bool,
         env: Environment,
 ) -> _CodeType:
@@ -691,7 +689,7 @@ def _transpile_expr(expr: ast.expr, env: Environment) -> _internal_types.Expr:
 
 
 def _transpile_expr_internal(
-        expr: Optional[ast.expr],
+        expr: ast.expr | None,
         env: Environment,
 ) -> _internal_types.Expr:
     if isinstance(expr, ast.BoolOp):
@@ -736,7 +734,7 @@ def _transpile_expr_internal(
     if isinstance(expr, ast.Call):
         func = _transpile_expr(expr.func, env)
         args = [_transpile_expr(x, env) for x in expr.args]
-        kwargs: Dict[str, Union[Constant, Data]] = {}
+        kwargs: dict[str, Constant | Data] = {}
         for kw in expr.keywords:
             assert kw.arg is not None
             kwargs[kw.arg] = _transpile_expr(kw.value, env)
@@ -846,7 +844,7 @@ def _transpile_expr_internal(
 
 
 def _emit_assign_stmt(
-        lvalue: Union[Constant, Data],
+        lvalue: Constant | Data,
         rvalue: Data,
         env: Environment,
 ) -> _CodeType:
@@ -911,7 +909,7 @@ def _indexing(
         array: _internal_types.Expr,
         index: _internal_types.Expr,
         env: Environment,
-) -> Union[Data, Constant]:
+) -> Data | Constant:
     if isinstance(array, Constant):
         if isinstance(index, Constant):
             return Constant(array.obj[index.obj])
@@ -1021,8 +1019,8 @@ def _astype_scalar(
 
 
 def _infer_type(
-        x: Union[Constant, Data],
-        hint: Union[Constant, Data],
+        x: Constant | Data,
+        hint: Constant | Data,
         env: Environment,
 ) -> Data:
     if not isinstance(x, Constant) or isinstance(x.obj, numpy.generic):

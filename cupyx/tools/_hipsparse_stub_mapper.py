@@ -1,6 +1,7 @@
+from __future__ import annotations
+
 import urllib.request
 import sys
-from typing import Tuple
 
 
 # Take cupy_backends/stub/cupy_cusparse.h and generate
@@ -34,7 +35,7 @@ hip_versions = ("3.5.0", "3.7.0", "3.8.0", "3.9.0", "4.0.0", "4.2.0")
 
 
 # typedefs
-typedefs: Tuple[str, ...]
+typedefs: tuple[str, ...]
 typedefs = ('cusparseIndexBase_t', 'cusparseStatus_t', 'cusparseHandle_t',
             'cusparseMatDescr_t', 'csrsv2Info_t', 'csrsm2Info_t',
             'csric02Info_t', 'bsric02Info_t', 'csrilu02Info_t',
@@ -344,8 +345,8 @@ def main(hip_h, cu_h, stubs, hip_version, init):
                     hip_stub_h.append("#endif")
             else:
                 hip_stub_h.append(
-                    (line[:line.find('return')+6]
-                     + ' HIPSPARSE_STATUS_NOT_SUPPORTED;'))
+                    line[:line.find('return')+6]
+                    + ' HIPSPARSE_STATUS_NOT_SUPPORTED;')
 
         elif 'return' in line:
             if 'CUSPARSE_STATUS' in line:
@@ -368,12 +369,12 @@ def main(hip_h, cu_h, stubs, hip_version, init):
 
 
 if __name__ == '__main__':
-    with open('cupy_backends/stub/cupy_cusparse.h', 'r') as f:
+    with open('cupy_backends/stub/cupy_cusparse.h') as f:
         stubs = f.read()
 
     init = False
     for cu_ver in cu_versions:
-        with open(cusparse_h.format(cu_ver), 'r') as f:
+        with open(cusparse_h.format(cu_ver)) as f:
             cu_h = f.read()
 
         x = 0

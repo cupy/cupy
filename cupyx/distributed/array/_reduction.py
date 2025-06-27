@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import typing
 from typing import Any
 
@@ -11,7 +13,7 @@ from cupyx.distributed.array import _modes
 
 
 def _execute(
-    arr: '_array.DistributedArray', kernel, axis: int, dtype: DTypeLike,
+    arr: _array.DistributedArray, kernel, axis: int, dtype: DTypeLike,
 ) -> Any:
     overwrites = False
     mode_overrides = {

@@ -1,5 +1,8 @@
+from __future__ import annotations
+
 from itertools import chain
-from typing import Any, Callable, Iterable, Optional
+from typing import Any, Callable
+from collections.abc import Iterable
 
 import numpy
 from numpy.typing import ArrayLike
@@ -95,12 +98,12 @@ class DistributedArray(ndarray):
     _streams: dict[int, Stream]
     _comms: dict[int, _Communicator]
 
-    def __new__(
+    def __new__(  # noqa: PYI034
         cls, shape: tuple[int, ...], dtype: DTypeLike,
         chunks_map: dict[int, list[_Chunk]],
         mode: _modes.Mode = _modes.REPLICA,
-        comms: Optional[dict[int, _Communicator]] = None,
-    ) -> 'DistributedArray':
+        comms: dict[int, _Communicator] | None = None,
+    ) -> DistributedArray:
         mem = _MultiDeviceDummyMemory(0)
         memptr = _MultiDeviceDummyPointer(mem, 0)
         obj = super().__new__(cls, shape, dtype, memptr=memptr)
@@ -284,7 +287,7 @@ class DistributedArray(ndarray):
 
         return chunks_map
 
-    def _to_op_mode(self, op_mode: _modes.Mode) -> 'DistributedArray':
+    def _to_op_mode(self, op_mode: _modes.Mode) -> DistributedArray:
         # Return a view or a copy of the chunks_map in the given mode
         if self._mode is op_mode:
             return self
@@ -304,7 +307,7 @@ class DistributedArray(ndarray):
         return DistributedArray(
             self.shape, self.dtype, chunks_map, op_mode, self._comms)
 
-    def change_mode(self, mode: _modes.Mode) -> 'DistributedArray':
+    def change_mode(self, mode: _modes.Mode) -> DistributedArray:
         """Return a view or a copy in the given mode.
 
         Args:
@@ -316,7 +319,7 @@ class DistributedArray(ndarray):
         """
         return self._to_op_mode(mode)
 
-    def reshard(self, index_map: dict[int, Any]) -> 'DistributedArray':
+    def reshard(self, index_map: dict[int, Any]) -> DistributedArray:
         """Return a view or a copy having the given index_map.
 
         Data transfers across devices are done on separate streams created
@@ -870,7 +873,7 @@ def distributed_array(
 
     # Define how to form a chunk from (dev, idx, src_array)
     make_chunk: Callable[
-        [int, int, tuple[slice, ...], ndarray, Optional[list[Any]]],
+        [int, int, tuple[slice, ...], ndarray, list[Any] | None],
         _Chunk
     ]
 

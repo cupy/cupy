@@ -2,19 +2,12 @@
 
 """Thin wrapper of CUSOLVER."""
 
+import sys as _sys
 cimport cython  # NOQA
 
 from cupy_backends.cuda.api cimport runtime
 from cupy_backends.cuda cimport stream as stream_module
-
-
-cpdef _get_cuda_build_version():
-    if CUPY_CUDA_VERSION > 0:
-        return CUPY_CUDA_VERSION
-    elif CUPY_HIP_VERSION > 0:
-        return CUPY_HIP_VERSION
-    else:
-        return 0
+from cupy_backends.cuda._softlink cimport SoftLink
 
 
 ###############################################################################
@@ -1009,6 +1002,22 @@ cdef extern from '../../cupy_lapack.h' nogil:
         const cuDoubleComplex *x0, int maxite, double eps, cuDoubleComplex *mu,
         cuDoubleComplex *x)
 
+
+ctypedef int (*f_type)(...) nogil  # NOQA
+IF 12000 <= CUPY_CUDA_VERSION < 13000:
+    if _sys.platform == 'linux':
+        _libname = 'libcusolver.so.11'
+    else:
+        _libname = 'cusolver64_11.dll'
+ELSE:
+    _libname = None
+
+cdef SoftLink _lib = SoftLink(_libname, 'cusolver')
+# cuSOLVER 11.7+ (CUDA 12.6.2+)
+cdef f_type cusolverDnXgeev = <f_type>_lib.get('DnXgeev')
+cdef f_type cusolverDnXgeev_bufferSize = <f_type>_lib.get('DnXgeev_bufferSize')
+
+
 ###############################################################################
 # Error handling
 ###############################################################################
@@ -1095,6 +1104,15 @@ cpdef tuple _getVersion():
     return (getProperty(MAJOR_VERSION),
             getProperty(MINOR_VERSION),
             getProperty(PATCH_LEVEL))
+
+
+cpdef int _getVersionNumber():
+    """
+    Returns cuSOLVER's runtime version in the same expression as
+    `CUSOLVER_VERSION` defined in `cusolver_common.h`.
+    """
+    cdef tuple v = _getVersion()
+    return v[0] * 1000 + v[1] * 100 + v[2]
 
 
 ###############################################################################
@@ -3488,6 +3506,40 @@ cpdef xsyevd(
             <void*>bufferOnHost, workspaceInBytesOnHost, <int*>info)
     check_status(status)
 
+cpdef (size_t, size_t) xgeev_bufferSize(
+        intptr_t handle, intptr_t params, int jobvl, int jobvr, int64_t n,
+        int dataTypeA, intptr_t A, int64_t lda, int dataTypeW,
+        intptr_t W, int dataTypeVL, intptr_t VL, int64_t ldvl,
+        int dataTypeVR, intptr_t VR, int64_t ldvr, int computeType) except *:
+    cdef size_t workspaceInBytesOnDevice, workspaceInBytesOnHost
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cusolverDnXgeev_bufferSize(
+            <Handle>handle, <Params>params, <EigMode>jobvl, <EigMode>jobvr, n,
+            <DataType>dataTypeA, <void*>A, lda, <DataType>dataTypeW, <void*>W,
+            <DataType>dataTypeVL, <void*>VL, ldvl, <DataType>dataTypeVR,
+            <void*>VR, ldvr, <DataType>computeType, &workspaceInBytesOnDevice,
+            &workspaceInBytesOnHost)
+    check_status(status)
+    return workspaceInBytesOnDevice, workspaceInBytesOnHost
+
+cpdef xgeev(
+        intptr_t handle, intptr_t params, int jobvl, int jobvr,
+        int64_t n, intptr_t dataTypeA, intptr_t A, int64_t lda, int dataTypeW,
+        intptr_t W, int dataTypeVL, intptr_t VL, int64_t ldvl, int dataTypeVR,
+        intptr_t VR, int64_t ldvr, int computeType, intptr_t bufferOnDevice,
+        size_t workspaceInBytesOnDevice, intptr_t bufferOnHost,
+        size_t workspaceInBytesOnHost, intptr_t info):
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cusolverDnXgeev(
+            <Handle>handle, <Params>params, <EigMode>jobvl, <EigMode>jobvr,
+            n, <DataType>dataTypeA, <void*>A, lda, <DataType>dataTypeW,
+            <void*>W, <DataType>dataTypeVL, <void*>VL, ldvl,
+            <DataType>dataTypeVR, <void*>VR, ldvr, <DataType>computeType,
+            <void*>bufferOnDevice, workspaceInBytesOnDevice,
+            <void*>bufferOnHost, workspaceInBytesOnHost, <int*>info)
+    check_status(status)
 
 ###############################################################################
 # Sparse LAPACK Functions

@@ -1,4 +1,7 @@
-from typing import Any, Mapping
+from __future__ import annotations
+
+from typing import Any
+from collections.abc import Mapping
 import warnings
 
 import cupy
