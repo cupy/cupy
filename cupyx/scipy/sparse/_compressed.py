@@ -415,20 +415,232 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             _index._csr_row_index(self.data, self.indices, self.indptr, idx),
             shape=new_shape, copy=False)
 
+    _bincount_kernel = r"""
+    extern "C" __global__
+    void bincount_idx_global(const int  n_idx,
+                            const int* __restrict__ idx,
+                            int*       __restrict__ col_cnt)
+    {
+        int k = blockIdx.x * blockDim.x + threadIdx.x;
+        if (k >= n_idx) return;
+        atomicAdd(col_cnt + idx[k], 1);
+    }
+    """
+
+    _bincount = _core.RawKernel(_bincount_kernel, "bincount_idx_global")
+
+    _calc_Bp_kernel = r"""
+    extern "C" __global__
+    void row_kept_count(const int  n_row,
+                        const int* __restrict__ Ap,
+                        const int* __restrict__ Aj,
+                        const int* __restrict__ col_cnt,
+                        int*       __restrict__ Bp)
+{
+    // 1 block = 1 row
+    const int row = blockIdx.x;
+    if (row >= n_row) return;
+
+    int local = 0;
+    for (int p = Ap[row] + threadIdx.x; p < Ap[row + 1]; p += blockDim.x)
+        local += col_cnt[Aj[p]];
+
+    #pragma unroll
+    for (int offs = 16; offs; offs >>= 1)
+        local += __shfl_down_sync(0xffffffff, local, offs);
+
+    static __shared__ int s[32];              // one per warp
+    if ((threadIdx.x & 31) == 0) s[threadIdx.x>>5] = local;
+    __syncthreads();
+
+    if (threadIdx.x < 32) {
+        int val = (threadIdx.x < (blockDim.x>>5)) ? s[threadIdx.x] : int(0);
+        #pragma unroll
+        for (int offset = 16; offset > 0; offset >>= 1)
+            val += __shfl_down_sync(0xffffffff, val, offset);
+        if (threadIdx.x == 0) Bp[row + 1] = val;
+    }
+}
+"""
+
+    _calc_Bp_minor = _core.RawKernel(_calc_Bp_kernel, "row_kept_count")
+
+    _fill_B_kernel = r"""
+    template<typename T> __global__ void
+    fill_B(const int  n_row,
+                        const int* __restrict__ Ap,
+                        const int* __restrict__ Aj,
+                        const   T* __restrict__ Ax,
+                        const int* __restrict__ col_offset,
+                        const int* __restrict__ col_order,
+                        const int* __restrict__ Bp,
+                        int*       __restrict__ Bj,
+                        T*       __restrict__ Bx)
+    {
+        // 1 block = 1 row
+        const int row = blockIdx.x;
+        if (row >= n_row) return;
+
+        // atomic write pointer
+        __shared__ int row_ptr;
+        if (threadIdx.x == 0) row_ptr = Bp[row];
+        __syncthreads();
+
+        for (int p = Ap[row] +threadIdx.x; p < Ap[row + 1]; p +=blockDim.x)
+        {
+            int col   = Aj[p];
+            int stop  = col_offset[col];
+            int start = (col == 0) ? 0 : col_offset[col - 1];
+            int cnt   = stop - start;
+            if (cnt == 0) continue;
+
+            T v = Ax[p];
+            // unique slice for this thread
+            int my_out = atomicAdd(&row_ptr, cnt);
+            for (int k = 0; k < cnt; ++k)
+            {
+                Bj[my_out + k] = col_order[start + k];
+                Bx[my_out + k] = v;
+            }
+        }
+    }
+    """
+
+    _fill_B = _core.RawModule(
+        code=_fill_B_kernel,
+        options=('-std=c++11',),
+        name_expressions=['fill_B<float>',
+                          'fill_B<double>',
+                          ],
+    )
+
+    _fill_B_kernel_complex = r"""
+    template<typename T> __global__ void
+    fill_B_complex(const int  n_row,
+                        const int* __restrict__ Ap,
+                        const int* __restrict__ Aj,
+                        const   T* __restrict__ Ax,
+                        const int* __restrict__ col_offset,
+                        const int* __restrict__ col_order,
+                        const int* __restrict__ Bp,
+                        int*       __restrict__ Bj,
+                        T*       __restrict__ Bx)
+    {
+        // 1 block = 1 row
+        const int row = blockIdx.x;
+        if (row >= n_row) return;
+
+        // atomic write pointer
+        __shared__ int row_ptr;
+        if (threadIdx.x == 0) row_ptr = Bp[row];
+        __syncthreads();
+
+        for (int p = Ap[row] +threadIdx.x; p < Ap[row + 1]; p +=blockDim.x)
+        {
+            int col   = Aj[p];
+            int stop  = col_offset[col];
+            int start = (col == 0) ? 0 : col_offset[col - 1];
+            int cnt   = stop - start;
+            if (cnt == 0) continue;
+
+            T v = Ax[p*2];
+            T i = Ax[p*2+1];
+            // unique slice for this thread
+            int my_out = atomicAdd(&row_ptr, cnt);
+            for (int k = 0; k < cnt; ++k)
+            {
+                Bj[my_out + k] = col_order[start + k];
+                Bx[(my_out + k)*2] = v;
+                Bx[(my_out + k)*2 + 1] = i;
+            }
+        }
+    }
+    """
+
+    _fill_B_complex = _core.RawModule(
+        code=_fill_B_kernel_complex,
+        options=('-std=c++11',),
+        name_expressions=['fill_B_complex<float>',
+                          'fill_B_complex<double>',
+                          ],
+    )
+
     def _minor_index_fancy(self, idx):
         """Index along the minor axis where idx is an array of ints.
         """
-        M, _ = self._swap(*self.shape)
-        N = idx.size
-        new_shape = self._swap(M, N)
-        if self.nnz == 0 or N == 0:
+        M, N = self._swap(*self.shape)
+        n_idx = idx.size
+        new_shape = self._swap(M, n_idx)
+        if self.nnz == 0 or n_idx == 0:
+
             return self.__class__(new_shape, dtype=self.dtype)
 
-        if idx.size * M < self.nnz:
-            # TODO (asi1024): Implement faster algorithm.
-            pass
+        # Create buffers
+        col_counts = cupy.zeros(N, dtype=cupy.int32)
+        Bp = cupy.empty(M + 1, dtype=cupy.int32)
+        Bp[0] = 0
 
-        return self._tocsx()._major_index_fancy(idx)._tocsx()
+        # Count occurences of each column
+        thread_count = 256
+
+        block_count = (n_idx + thread_count - 1) // thread_count
+
+        self._bincount((block_count,),
+                       (thread_count,),
+                       (n_idx, idx, col_counts))
+
+        # Compute Bp
+        self._calc_Bp_minor((M,),
+                            (thread_count,),
+                            (M,
+                             self.indptr,
+                             self.indices,
+                             col_counts,
+                             Bp)
+                            )
+
+        # Compute col_order and col_offset
+        col_order = cupy.argsort(idx).astype(cupy.int32)
+        col_offset = cupy.cumsum(col_counts, dtype=cupy.int32)
+
+        # Compute Bp
+        Bp[1:] = cupy.cumsum(Bp[1:], dtype=cupy.int32)
+        nnzB = int(Bp[-1].get())
+
+        Bj = cupy.empty(nnzB, dtype=cupy.int32)
+        Bx = cupy.empty(nnzB, dtype=self.data.dtype)
+
+        # Compute Bj and Bx
+        if self.dtype.kind == 'c':
+            ker_name = 'fill_B_complex<{}>'.format(
+                _scalar.get_typename(self.data.real.dtype),
+            )
+            fillB = self._fill_B_complex.get_function(ker_name)
+        else:
+            ker_name = 'fill_B<{}>'.format(
+                _scalar.get_typename(self.data.dtype),
+            )
+            fillB = self._fill_B.get_function(ker_name)
+        threads = 32
+        fillB((M,),
+              (threads,),
+              (M,
+               self.indptr,
+               self.indices,
+               self.data,
+               col_offset,
+               col_order,
+               Bp,
+               Bj,
+               Bx),
+              )
+
+        out = self.__class__(
+            (Bx, Bj, Bp),
+            dtype=self.dtype,
+            shape=new_shape,
+        )
+        return out
 
     def _major_slice(self, idx, copy=False):
         """Index along the major axis where idx is a slice object.
