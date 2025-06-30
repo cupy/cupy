@@ -506,12 +506,15 @@ class spmatrix:
            :meth:`scipy.sparse.spmatrix.sum`
 
         """
-        _sputils.validateaxis(axis)
-
         # This implementation uses multiplication, though it is not efficient
         # for some matrix types. These should override this function.
 
         m, n = self.shape
+
+        if self.ndim == 2 and axis == (0, 1):
+            axis = None
+
+        _sputils.validateaxis(axis)
 
         if axis is None:
             return self.dot(cupy.ones(n, dtype=self.dtype)).sum(
