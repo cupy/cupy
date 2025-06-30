@@ -87,7 +87,7 @@ class TestBeta:
                                 3.1811881124242447, rtol=1e-14, atol=0)
 
 
-@testing.with_requires('scipy>=1.12.0rc1')
+@testing.with_requires("scipy>=1.16")
 class TestBetaInc:
 
     @testing.for_all_dtypes(no_complex=True)
