@@ -10,6 +10,40 @@ from cupy import testing
 
 
 class TestPolynomial(unittest.TestCase):
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_array_equal()
+    def test_polyadd_basic(self, xp, dtype):
+        a = xp.array([1, 2, 3], dtype=dtype)
+        b = xp.array([3, 2, 1], dtype=dtype)
+        return xp.polynomial.polynomial.polyadd(a, b)
+
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_array_equal()
+    def test_polyadd_different_lengths1(self, xp, dtype):
+        a = xp.array([1, 2, 3, 4], dtype=dtype)
+        b = xp.array([3, 2, 1], dtype=dtype)
+        return xp.polynomial.polynomial.polyadd(a, b)
+
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_array_equal()
+    def test_polyadd_different_lengths2(self, xp, dtype):
+        a = xp.array([1, 2], dtype=dtype)
+        b = xp.array([3, 2, 1, 0, 5], dtype=dtype)
+        return xp.polynomial.polynomial.polyadd(a, b)
+
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_array_equal()
+    def test_polyadd_zeros(self, xp, dtype):
+        a = xp.zeros(5, dtype=dtype)
+        b = xp.array([1, 2, 3], dtype=dtype)
+        return xp.polynomial.polynomial.polyadd(a, b)
+
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_array_equal()
+    def test_polyadd_trailing_zeros(self, xp, dtype):
+        a = xp.array([1, 2, 3, 0, 0], dtype=dtype)
+        b = xp.array([3, 2, 1, 0, 0, 0], dtype=dtype)
+        return xp.polynomial.polynomial.polyadd(a, b)
 
     @testing.for_all_dtypes(no_float16=True)
     @testing.numpy_cupy_allclose(rtol=1e-5)
