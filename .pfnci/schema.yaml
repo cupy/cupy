@@ -81,6 +81,9 @@ cuda:
   "12.8":
     full_version: "12.8.0"
     repository: "nvidia/cuda"
+  "12.9":
+    full_version: "12.9.1"
+    repository: "nvidia/cuda"
 rocm:
   null:
     full_version: null
@@ -175,8 +178,22 @@ nccl:
   "2.25":
     spec: "2.25.*"
     cuda:
+      "12.2":
       "12.4":
       "12.8":
+  "2.26":
+    spec: "2.26.*"
+    cuda:
+      "12.2":
+      "12.4":
+      "12.8":
+      "12.9":
+  "2.27":
+    spec: "2.27.*"
+    cuda:
+      "12.2":
+      "12.4":
+      "12.9":
 cutensor:
   # https://docs.nvidia.com/cuda/cutensor/
   # https://developer.nvidia.com/cutensor/downloads
@@ -202,6 +219,7 @@ cutensor:
       "12.5":
       "12.6":
       "12.8":
+      "12.9":
 cusparselt:
   # https://docs.nvidia.com/cuda/cusparselt/
   # https://developer.nvidia.com/cusparselt/downloads
@@ -225,6 +243,7 @@ cusparselt:
       "12.5":  # TODO(kmaehashi): Tentatively use v0.2.0 for CUDA 12
       "12.6":  # TODO(kmaehashi): Tentatively use v0.2.0 for CUDA 12
       "12.8":  # TODO(kmaehashi): Tentatively use v0.2.0 for CUDA 12
+      "12.9":  # TODO(kmaehashi): Tentatively use v0.2.0 for CUDA 12
 cudnn:
   # https://docs.nvidia.com/deeplearning/cudnn/support-matrix/index.html
   # https://docs.nvidia.com/deeplearning/cudnn/archives/
@@ -267,6 +286,8 @@ cudnn:
       "12.6": # assumed
         alias: "12.0"
       "12.8": # assumed
+        alias: "12.0"
+      "12.9": # assumed
         alias: "12.0"
 
 ###############################################################################
@@ -350,6 +371,13 @@ numpy:
       - "3.11"
       - "3.12"
       - "3.13"
+  "2.3":
+    spec: "==2.3.*"
+    python:
+      - "3.11"
+      - "3.12"
+      - "3.13"
+      # - "3.14"
   "pre":
     spec: ">=0a0,<2"  # latest NumPy v1.x, including pre-releases
 scipy:
@@ -481,6 +509,7 @@ scipy:
       - "2.0"
       - "2.1"
       - "2.2"
+      - "2.3"
   "pre":
     spec: ">=0a0"  # latest, including pre-releases
 optuna:

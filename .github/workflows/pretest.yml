@@ -12,6 +12,7 @@ jobs:
       with:
         # Checkout using commit hash to make "no-commit-to-branch" test pass.
         ref: ${{ github.sha }}
+        submodules: recursive
 
     - name: Setup Python
       uses: actions/setup-python@v5

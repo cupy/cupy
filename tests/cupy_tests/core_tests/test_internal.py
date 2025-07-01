@@ -34,6 +34,7 @@ class TestProdSequence(unittest.TestCase):
 
 class TestGetSize:
 
+    @testing.with_requires('numpy<2.3')
     def test_none(self):
         with testing.assert_warns(DeprecationWarning):
             assert internal.get_size(None) == ()

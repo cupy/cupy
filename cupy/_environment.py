@@ -31,8 +31,6 @@ Wheel packages are built against specific versions of CUDA libraries
 To avoid loading wrong version, these shared libraries are manually
 preloaded.
 
-# TODO(kmaehashi): Support NCCL
-
 Example of `_preload_config` is as follows:
 
 {
@@ -350,6 +348,11 @@ def _preload_library(lib):
             libpath_cands = (
                 _get_cutensor_from_wheel(min_pypi_version, config['cuda']) +
                 libpath_cands)
+        elif lib == 'nccl':
+            min_pypi_version = config[lib]['min_pypi_version']
+            libpath_cands = (
+                _get_nccl_from_wheel(min_pypi_version, config['cuda']) +
+                libpath_cands)
 
         for libpath in libpath_cands:
             if not os.path.exists(libpath):
@@ -392,40 +395,72 @@ def _parse_version(version: str) -> tuple[int, int, int]:
     return major, minor, patch
 
 
+def _find_compatible_wheel(
+        package_prefix: str, version: str, cuda: str
+) -> Optional[importlib.metadata.Distribution]:
+    """
+    Returns the distribution of the given package name and version
+    installed via pip (e.g., cutensor-cuXX).
+    If the package is not found or incompatible, returns None.
+    """
+    cuda_major_ver, _ = cuda.split('.')
+    pkg = f'{package_prefix}-cu{cuda_major_ver}'
+    try:
+        dist = importlib.metadata.distribution(pkg)
+    except importlib.metadata.PackageNotFoundError:
+        _log(f'{package_prefix} wheel package ({pkg}) not installed')
+        return None
+
+    actual = _parse_version(dist.version)
+    expected = _parse_version(version)
+    is_compatible = (
+        actual[0] == expected[0] and
+        (
+            actual[1] > expected[1] or
+            (actual[1] == expected[1] and actual[2] >= expected[2])
+        )
+    )
+    if not is_compatible:
+        _log(f'{package_prefix} wheel package ({pkg}) incompatible: '
+             f'expected {version}, found {dist.version}')
+        return None
+    _log(f'{package_prefix} wheel package ({pkg}) found: {dist.version}')
+    return dist
+
+
 def _get_cutensor_from_wheel(version: str, cuda: str) -> list[str]:
     """
     Returns the list of shared library path candidates for cuTENSOR
     installed via Pip (cutensor-cuXX package).
     """
-    cuda_major_ver, _ = cuda.split('.')
-    cutensor_pkg = f'cutensor-cu{cuda_major_ver}'
-    try:
-        cutensor_dist = importlib.metadata.distribution(cutensor_pkg)
-    except importlib.metadata.PackageNotFoundError:
-        _log(f'cuTENSOR wheel package not installed: {cutensor_pkg}')
+    dist = _find_compatible_wheel('cutensor', version, cuda)
+    if dist is None:
         return []
-
-    actual = _parse_version(cutensor_dist.version)
-    expected = _parse_version(version)
-    is_compatible = (
-        actual[0] == expected[0] and
-        actual[1] >= expected[1] and
-        actual[2] >= expected[2]
-    )
-    if is_compatible:
-        _log(f'cuTENSOR wheel found: {cutensor_dist.version}')
-    else:
-        _log('cuTENSOR wheel incompatible: '
-             f'expected {version}, found {cutensor_dist.version}')
-        return []
-
     if sys.platform == 'linux':
-        shared_lib = cutensor_dist.locate_file(
+        shared_lib = dist.locate_file(
             f'cutensor/lib/libcutensor.so.{version.split(".")[0]}'
         )
     else:
-        shared_lib = cutensor_dist.locate_file('cutensor\\bin\\cutensor.dll')
+        shared_lib = dist.locate_file('cutensor\\bin\\cutensor.dll')
     return [str(shared_lib)]
+
+
+def _get_nccl_from_wheel(version: str, cuda: str) -> list[str]:
+    """
+    Returns the list of shared library path candidates for NCCL
+    installed via Pip (nvidia-nccl-cuXX package).
+    """
+    if sys.platform != 'linux':
+        return []
+    dist = _find_compatible_wheel('nvidia-nccl', version, cuda)
+    if dist is None:
+        return []
+    shared_libs = [
+        dist.locate_file(
+            f'nvidia/nccl/lib/libnccl.so.{version.split(".")[0]}'
+        ),
+    ]
+    return [str(lib) for lib in shared_libs]
 
 
 def _preload_warning(lib, exc):
@@ -435,11 +470,15 @@ def _preload_warning(lib, exc):
 
     if config['packaging'] == 'pip':
         cuda = config['cuda']
+        cuda_major = cuda.split('.')[0]
         if lib == 'cutensor':
-            cuda_major = cuda.split('.')[0]
             version = config['cutensor']['min_pypi_version']
             major = _parse_version(version)[0]
             cmd = f'pip install "cutensor-cu{cuda_major}>={version},<{major+1}"'  # NOQA
+        elif lib == 'nccl':
+            version = config['nccl']['min_pypi_version']
+            major = _parse_version(version)[0]
+            cmd = f'pip install "nvidia-nccl-cu{cuda_major}>={version},<{major+1}"'  # NOQA
         else:
             cmd = f'python -m cupyx.tools.install_library --library {lib} --cuda {cuda}'  # NOQA
     elif config['packaging'] == 'conda':
