@@ -10,9 +10,11 @@ import cupyx.scipy.special
 
 class _TestBase:
 
+    @testing.with_requires('scipy>=1.16')
     def test_ndtr(self):
         self.check_unary_linspace0_1('ndtr')
 
+    @testing.with_requires('scipy>=1.16')
     def test_log_ndtr(self):
         self.check_unary_linspace0_1('log_ndtr')
 
@@ -158,6 +160,7 @@ class _TestDistributionsBase:
 @testing.with_requires('scipy')
 class TestTwoArgumentDistribution(_TestDistributionsBase):
 
+    @testing.with_requires('scipy>=1.16')
     @pytest.mark.skipif(cupy.cuda.runtime.is_hip,
                         reason="avoid failures observed on HIP")
     @pytest.mark.parametrize('function', ['chdtr', 'chdtrc', 'chdtri',
