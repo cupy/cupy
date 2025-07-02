@@ -613,13 +613,12 @@ class TestCooMatrixScipyComparison:
         x = _make3(xp, sp, self.dtype).tocoo()
         return m.dot(x)
 
-    @testing.with_requires('scipy>=1.8.0rc1')
-    def test_dot_zero_dim(self):
-        for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
-            m = _make(xp, sp, self.dtype)
-            x = xp.array(2, dtype=self.dtype)
-            with pytest.raises(ValueError):
-                m.dot(x)
+    @testing.with_requires('scipy>=1.16')
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_dot_zero_dim(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        x = xp.array(2, dtype=self.dtype)
+        return m.dot(x)
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_dot_dense_vector(self, xp, sp):
@@ -957,11 +956,11 @@ class TestCooMatrixScipyComparison:
             with pytest.raises(ValueError):
                 m ** -1
 
-    def test_sum_tuple_axis(self):
-        for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
-            m = _make(xp, sp, self.dtype)
-            with pytest.raises(TypeError):
-                m.sum(axis=(0, 1))
+    @testing.with_requires('scipy>=1.16')
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_sum_tuple_axis(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        return m.sum(axis=(0, 1))
 
     def test_sum_float_axis(self):
         for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
