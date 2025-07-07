@@ -53,6 +53,10 @@ dynamic = [
 "Bug Tracker" = "https://github.com/cupy/cupy/issues"
 "Source Code" = "https://github.com/cupy/cupy"
 
+[tool.setuptools]
+# Do not include files listed in MANIFEST.in to wheels.
+include-package-data = false
+
 [tool.setuptools.packages.find]
 include = ["cupy*", "cupyx*", "cupy_backends*"]
 
