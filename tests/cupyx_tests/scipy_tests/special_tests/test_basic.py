@@ -44,7 +44,7 @@ class TestLegendreFunctions:
         return scp.special.lpmv(order, degree, vals)
 
 
-@testing.with_requires("scipy")
+@testing.with_requires("scipy<1.16")
 class TestBasic:
 
     @testing.with_requires('scipy<1.15')
