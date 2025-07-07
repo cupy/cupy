@@ -58,6 +58,15 @@ class TestSolveTriangular(unittest.TestCase):
         self.check_x((5, 5), (5, 2))
         self.check_x((5, 5), (5, 5))
 
+    @pytest.mark.xfail(strict=True, reason="not implemented")
+    def test_solve_batchwise(self):
+        self.check_x((3, 3, 3), (3,))
+        self.check_x((3, 3, 3), (3, 2))
+        self.check_x((8, 3, 3), (3, 2))
+        self.check_x((3, 3), (8, 3, 2))
+        self.check_x((8, 3, 3), (8, 3, 2))
+        self.check_x((2, 1, 3, 3), (1, 4, 3, 2))
+
     def check_shape(self, a_shape, b_shape):
         for xp, sp in ((numpy, scipy), (cupy, cupyx.scipy)):
             a = xp.random.rand(*a_shape)
@@ -74,6 +83,7 @@ class TestSolveTriangular(unittest.TestCase):
         self.check_shape((3, 3), (2,))
         self.check_shape((3, 3), (2, 2))
         self.check_shape((3, 3, 4), (3,))
+        self.check_shape((3, 3, 3), (2, 3))
 
     def check_infinite(self, a_shape, b_shape):
         for xp, sp in ((numpy, scipy), (cupy, cupyx.scipy)):
