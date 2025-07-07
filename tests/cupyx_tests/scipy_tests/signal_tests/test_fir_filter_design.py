@@ -4,11 +4,18 @@ import platform
 
 import cupy
 
+import cupyx.scipy
 import cupyx.scipy.signal as signal
 from cupy import testing
 
 import pytest
 from pytest import raises as assert_raises
+import numpy as np
+
+try:
+    import scipy.signal  # NOQA
+except ImportError:
+    pass
 
 
 @testing.with_requires("scipy")
@@ -447,3 +454,40 @@ class TestMinimumPhase:
         if xp == cupy:
             h_linear = cupy.asarray(h_linear)
         return scp.signal.minimum_phase(h_linear, method="hilbert")
+
+
+@testing.with_requires("scipy")
+class TestRemez:
+
+    @pytest.mark.parametrize('mod', [(cupy, cupyx.scipy), (np, scipy)])
+    def test_bad_args(self, mod):
+        xp, scp = mod
+        with pytest.raises(ValueError):
+            scp.signal.remez(11, xp.asarray([0.1, 0.4]), xp.asarray([1]),
+                             type='pooka')
+
+    @testing.numpy_cupy_allclose(scipy_name="scp")
+    def test_hilbert(self, xp, scp):
+        N = 11  # number of taps in the filter
+        a = 0.1  # width of the transition band
+
+        # design an unity gain hilbert bandpass filter from w to 0.5-w
+        h = scp.signal.remez(N, xp.asarray([a, 0.5 - a]),
+                             xp.asarray([1]), type='hilbert')
+        return h
+
+    @testing.numpy_cupy_allclose(scipy_name="scp")
+    def test_compare(self, xp, scp):
+        # test comparison to MATLAB
+        h = scp.signal.remez(
+            12, xp.asarray([0, 0.3, 0.5, 1]), xp.asarray([1, 0]), fs=2.)
+        h2 = scp.signal.remez(
+            21, xp.asarray([0, 0.8, 0.9, 1]), xp.asarray([0, 1]), fs=2.)
+        return h, h2
+
+    @pytest.mark.parametrize('mod', [(cupy, cupyx.scipy), (np, scipy)])
+    def test_fs_validation(self, mod):
+        xp, scp = mod
+        with pytest.raises(ValueError, match="Sampling.*single scalar"):
+            scp.signal.remez(11, xp.asarray([.1]), xp.asarray([1]),
+                             fs=xp.array([10, 20]))
