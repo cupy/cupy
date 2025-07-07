@@ -31,7 +31,10 @@ from cupy import _core
 # Note: cast complex<single> to complex<double> or tests fail tolerance
 log1p = _core.create_ufunc(
     'cupyx_scipy_log1p',
-    (('f->f', 'out0 = log1pf(in0)'),
+    (('l->d', 'out0 = log1p(double(in0))'),
+     ('L->d', 'out0 = log1p(double(in0))'),
+     ('e->d', 'out0 = log1p(double(in0))'),
+     ('f->f', 'out0 = log1pf(in0)'),
      ('F->F', 'out0 = out0_type(log1p((complex<double>)in0))'),
      'd->d', 'D->D'),
     'out0 = log1p(in0);',
@@ -62,7 +65,10 @@ cbrt = _core.create_ufunc(
 
 exp2 = _core.create_ufunc(
     'cupyx_scipy_special_exp2',
-    (('f->f', 'out0 = exp2f(in0)'), 'd->d'),
+    (('e->d', 'out0 = exp2(double(in0))'),
+     ('l->d', 'out0 = exp2(double(in0))'),
+     ('L->d', 'out0 = exp2(double(in0))'),
+     ('f->f', 'out0 = exp2f(in0)'), 'd->d'),
     'out0 = exp2(in0)',
     doc='''Computes ``2**x``.
 
@@ -73,7 +79,10 @@ exp2 = _core.create_ufunc(
 
 exp10 = _core.create_ufunc(
     'cupyx_scipy_special_exp10',
-    (('f->f', 'out0 = exp10f(in0)'), 'd->d'),
+    (('e->d', 'out0 = exp10(double(in0))'),
+     ('l->d', 'out0 = exp10(double(in0))'),
+     ('L->d', 'out0 = exp10(double(in0))'),
+     ('f->f', 'out0 = exp10f(in0)'), 'd->d'),
     'out0 = exp10(in0)',
     doc='''Computes ``10**x``.
 
@@ -84,7 +93,10 @@ exp10 = _core.create_ufunc(
 
 expm1 = _core.create_ufunc(
     'cupyx_scipy_special_expm1',
-    (('f->f', 'out0 = expm1f(in0)'), 'd->d', 'F->F', 'D->D'),
+    (('e->d', 'out0 = expm1(double(in0))'),
+     ('l->d', 'out0 = expm1(double(in0))'),
+     ('L->d', 'out0 = expm1(double(in0))'),
+     ('f->f', 'out0 = expm1f(in0)'), 'd->d', 'F->F', 'D->D'),
     'out0 = expm1(in0)',
     doc='''Computes ``exp(x) - 1``.
 
