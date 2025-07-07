@@ -34,7 +34,10 @@ dependencies = [
   "numpy>=1.24,<2.6", # see #4773
   "fastrlock>=0.5",
 ]
-dynamic = ["version"]
+dynamic = [
+  "version",
+  "readme",  # long_description
+]
 
 [project.optional-dependencies]
 "all" = [
