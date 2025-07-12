@@ -17,7 +17,7 @@ function DownloadCache([String]$gcs_dir, [String]$cupy_kernel_cache_file) {
     echo "Downloading kernel cache..."
     gsutil -m -q cp "$gcs_dir/$cupy_kernel_cache_file" .
     if (-not $?) {
-        echo "*** Kernel cache unavailable"
+        echo "*** Kernel cache unavailable ($gcs_dir/$cupy_kernel_cache_file)"
     } else {
         echo "Extracting kernel cache..."
         RunOrDie 7z x $cupy_kernel_cache_file
