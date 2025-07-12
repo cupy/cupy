@@ -20,7 +20,7 @@ function DownloadCache([String]$gcs_dir, [String]$cupy_kernel_cache_file) {
         echo "*** Kernel cache unavailable ($gcs_dir/$cupy_kernel_cache_file)"
     } else {
         echo "Extracting kernel cache..."
-        RunOrDie 7z x $cupy_kernel_cache_file
+        RunOrDie 7z x -aoa $cupy_kernel_cache_file
         rm $cupy_kernel_cache_file
     }
     popd
