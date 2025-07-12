@@ -77,8 +77,10 @@ main() {
     =====================================================================
   "
 
-  set -x
-  for stage in ${STAGES}; do case "${stage}" in
+  for stage in ${STAGES}; do
+    echo "*** Running stage: ${stage}"
+    set -x
+    case "${stage}" in
     build )
       tests_dir="${repo_root}/.pfnci/linux/tests"
       DOCKER_BUILDKIT=1 docker build \
@@ -185,7 +187,9 @@ main() {
       echo "Unsupported stage: ${stage}" >&2
       exit 1
       ;;
-  esac; done
+  esac;
+  set +x
+  done
 }
 
 gsutil_with_retry() {
