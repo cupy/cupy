@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 
 import cupy
 from cupyx.scipy.spatial.delaunay_2d._schewchuk import SCHEWCHUK_DEF
@@ -2948,6 +2950,7 @@ RealType*           coords
                 }
 
                 if(!isInTri) {
+                    if (nextNearest == -1) break;
                     nearest = triOpp[nextNearest];
                     visited[off + 1] = nextNearest;
                 }

@@ -1,4 +1,6 @@
 #!/usr/bin/env python
+from __future__ import annotations
+
 
 import glob
 import os
@@ -59,7 +61,7 @@ else:
     ext_modules = cupy_setup_build.get_ext_modules(True, ctx)
 
 
-long_description = None
+long_description = ''
 if ctx.long_description_path is not None:
     with open(ctx.long_description_path) as f:
         long_description = f.read()

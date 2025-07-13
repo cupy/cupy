@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import math
 import unittest
 
@@ -33,10 +35,6 @@ class TestProdSequence(unittest.TestCase):
 
 
 class TestGetSize:
-
-    def test_none(self):
-        with testing.assert_warns(DeprecationWarning):
-            assert internal.get_size(None) == ()
 
     def check_collection(self, a):
         assert internal.get_size(a) == tuple(a)

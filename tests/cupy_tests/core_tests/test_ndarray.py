@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import copy
 import unittest
 
@@ -26,9 +28,8 @@ def wrap_take(array, *args, **kwargs):
 class TestNdarrayInit(unittest.TestCase):
 
     def test_shape_none(self):
-        with testing.assert_warns(DeprecationWarning):
-            a = cupy.ndarray(None)
-        assert a.shape == ()
+        with pytest.raises(TypeError):
+            cupy.ndarray(None)
 
     def test_shape_int(self):
         a = cupy.ndarray(3)

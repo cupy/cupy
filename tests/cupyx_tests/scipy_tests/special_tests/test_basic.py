@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import math
 
 import cupy
@@ -44,7 +46,7 @@ class TestLegendreFunctions:
         return scp.special.lpmv(order, degree, vals)
 
 
-@testing.with_requires("scipy>=1.15")
+@testing.with_requires("scipy>=1.16")
 class TestBasic:
 
     @testing.for_all_dtypes(no_complex=True)

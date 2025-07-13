@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+
 import dataclasses
 import glob
 import hashlib
@@ -43,8 +44,10 @@ class Context:
     annotate: bool
     no_rpath: bool
     features: dict[str, cupy_builder.Feature]
-    cupy_cache_key: str
+    cupy_cache_key: str | None
     win32_cl_exe_path: str | None
+    dev_configure_cache: bool
+    dev_configure_cache_key: str
 
     # Deprecated
     wheel_libs: list[str]
@@ -84,29 +87,55 @@ class Context:
 
         self.features = cupy_builder.get_features(self)
 
-        # Calculate cache key for this build
-        print('Generating cache key from header files...')
-        include_pattern = os.path.join(
-            source_root, 'cupy', '_core', 'include', '**')
-        include_files = [
-            f for f in sorted(glob.glob(include_pattern, recursive=True))
-            if os.path.isfile(f)
-        ]
-        hasher = hashlib.sha1(usedforsecurity=False)
-        for include_file in include_files:
-            with open(include_file, 'rb') as f:
-                relpath = os.path.relpath(include_file, source_root)
-                hasher.update(relpath.encode())
-                hasher.update(f.read())
-                hasher.update(b'\x00')
-        cache_key = hasher.hexdigest()
-        print(f'Cache key ({len(include_files)} files '
-              f'matching {include_pattern}): {cache_key}')
-        self.cupy_cache_key = cache_key
+        # Cache key for this build.
+        self.cupy_cache_key = None
 
         # Host compiler path for Windows, see `_command.py`.
         self.win32_cl_exe_path = None
 
+        # EXPERIMENTAL: Persist the build configuration to a cache file to
+        # skip re-configuring modules when rebuilding during development.
+        # Only effective in editable mode (i.e. `pip install -e .`).
+        # This is solely intended for use by CuPy developers.
+        # End users should NEVER use this flag.
+        self.dev_configure_cache = (
+            _get_env_bool("CUPY_INSTALL_CONFIGURE_CACHE", _env)
+            and self.setup_command == "editable_wheel")
+        if self.dev_configure_cache:
+            self.calculate_dev_cache_key()
+
         # Deprecated
         self.wheel_libs = []
         self.wheel_includes = []
+
+    def calculate_cupy_cache_key(self) -> None:
+        print('Generating CUPY_CACHE_KEY from header files...')
+        pattern = os.path.join(
+            self.source_root, 'cupy', '_core', 'include', '**')
+        cache_key, count = self._calculate_checksum(pattern)
+        print(f'CUPY_CACHE_KEY ({count} files '
+              f'matching {pattern}): {cache_key}')
+        self.cupy_cache_key = cache_key
+
+    def calculate_dev_cache_key(self) -> None:
+        print('Generating configure cache key...')
+        pattern = os.path.join(
+            self.source_root, 'install', 'cupy_builder', '**')
+        cache_key, count = self._calculate_checksum(pattern)
+        print(f'Configure cache key ({count} files '
+              f'matching {pattern}): {cache_key}')
+        self.dev_configure_cache_key = cache_key
+
+    def _calculate_checksum(self, glob_pattern: str) -> tuple[str, int]:
+        files = [
+            f for f in sorted(glob.glob(glob_pattern, recursive=True))
+            if os.path.isfile(f)
+        ]
+        hasher = hashlib.sha1(usedforsecurity=False)
+        for path in files:
+            with open(path, 'rb') as f:
+                relpath = os.path.relpath(path, self.source_root)
+                hasher.update(relpath.encode())
+                hasher.update(f.read())
+                hasher.update(b'\x00')
+        return hasher.hexdigest(), len(files)

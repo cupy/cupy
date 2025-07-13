@@ -1,4 +1,6 @@
 """Circular and hyperbolic sine and cosine integrals."""
+from __future__ import annotations
+
 
 from cupy import _core
 

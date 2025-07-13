@@ -1,4 +1,4 @@
-import typing as _typing
+from __future__ import annotations
 
 # Legacy modules
 from cupy_builder import cupy_setup_build  # NOQA
@@ -12,7 +12,7 @@ from cupy_builder._features import Feature  # NOQA
 from cupy_builder._features import get_features  # NOQA
 
 
-_context: _typing.Optional[Context] = None
+_context: Context | None = None
 
 
 def initialize(context: Context) -> None:

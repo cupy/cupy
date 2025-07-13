@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import distutils.ccompiler
 import os
 import os.path
@@ -5,7 +7,7 @@ import platform
 import shutil
 import sys
 import subprocess
-from typing import Any, Optional
+from typing import Any
 
 from setuptools import Extension
 
@@ -92,12 +94,16 @@ def _nvcc_gencode_options(cuda_version: int) -> list[str]:
                          ('compute_86', 'sm_86'),
                          ('compute_89', 'sm_89'),
                          ('compute_90', 'sm_90'),]
-            if cuda_version >= 12080:
+            if cuda_version < 12080:
+                arch_list.append('compute_90')
+            elif 12080 <= cuda_version < 12090:
                 arch_list += [('compute_100', 'sm_100'),
                               ('compute_120', 'sm_120'),
                               'compute_100']
-            else:
-                arch_list.append('compute_90')
+            elif 12090 <= cuda_version:
+                arch_list += [('compute_100f', 'sm_100'),
+                              ('compute_120f', 'sm_120'),
+                              'compute_100']
 
             if aarch64:
                 # JetPack 5 (CUDA 12.0-12.2) or JetPack 6 (CUDA 12.2+)
@@ -268,7 +274,7 @@ class DeviceCompilerWin32(DeviceCompilerBase):
         print('NVCC options:', postargs)
         self.spawn(compiler_so + cc_args + [src, '-o', obj] + postargs)
 
-    def _find_host_compiler_path(self) -> Optional[str]:
+    def _find_host_compiler_path(self) -> str | None:
         # c.f. cupy.cuda.compiler._get_extra_path_for_msvc
         cl_exe = shutil.which('cl.exe')
         if cl_exe:

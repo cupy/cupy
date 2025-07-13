@@ -8,6 +8,8 @@ Installs the latest CUDA library supported by CuPy.
 
 # This script will also be used as a standalone script when building wheels.
 # Keep the script runnable without CuPy dependency.
+from __future__ import annotations
+
 
 import argparse
 import json
@@ -128,11 +130,12 @@ def _make_nccl_url(public_version, filename):
 
 
 def _make_nccl_record(
-        cuda_version, full_version, public_version,
+        cuda_version, full_version, public_version, min_pypi_version,
         filename_linux_x86_64, filename_linux_aarch64):
     return {
         'cuda': cuda_version,
         'nccl': full_version,
+        'min_pypi_version': min_pypi_version,
         'assets': {
             'Linux:x86_64': {
                 'url': _make_nccl_url(
@@ -150,11 +153,11 @@ def _make_nccl_record(
 
 # https://docs.nvidia.com/deeplearning/nccl/release-notes/overview.html
 _nccl_records.append(_make_nccl_record(
-    '12.x', '2.25.1', '2.25.1',
+    '12.x', '2.25.1', '2.25.1', '2.16.5',
     'nccl_2.25.1-1+cuda12.8_x86_64.txz',
     'nccl_2.25.1-1+cuda12.8_aarch64.txz'))
 _nccl_records.append(_make_nccl_record(
-    '11.x', '2.16.5', '2.16.5',  # CUDA 11.2+
+    '11.x', '2.16.5', '2.16.5', '2.16.5',  # CUDA 11.2+
     'nccl_2.16.5-1+cuda11.8_x86_64.txz',
     'nccl_2.16.5-1+cuda11.8_aarch64.txz'))
 library_records['nccl'] = _nccl_records

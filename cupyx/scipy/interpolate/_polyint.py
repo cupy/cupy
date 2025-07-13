@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import cupy
 from cupyx.scipy._lib._util import _asarray_validated, float_factorial
 

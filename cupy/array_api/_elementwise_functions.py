@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+
 from ._dtypes import (
     _boolean_dtypes,
     _floating_dtypes,
