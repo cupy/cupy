@@ -260,7 +260,21 @@ class TestMisc:
         return y
 
     @pytest.mark.parametrize('kwarg', ['nan', 'posinf', 'neginf'])
-    def test_nan_to_num_broadcast(self, kwarg):
+    @testing.numpy_cupy_array_equal()
+    def test_nan_to_num_broadcast_same_shapes(self, xp, kwarg):
+        x = xp.asarray([[0, 1, xp.nan, 4], [11, xp.nan, 12, 13]], dtype=xp.float64)
+        y = xp.zeros((2, 4), dtype=xp.float64)
+        return xp.nan_to_num(x, **{kwarg: y})
+
+    @pytest.mark.parametrize('kwarg', ['nan', 'posinf', 'neginf'])
+    @testing.numpy_cupy_array_equal()
+    def test_nan_to_num_broadcast_different_shapes(self, xp, kwarg):
+        x = xp.asarray([[0, 1, xp.nan, 4], [11, xp.nan, 12, 13]], dtype=xp.float64)
+        y = xp.zeros((2, 1), dtype=xp.float64)
+        return xp.nan_to_num(x, **{kwarg: y})
+
+    @pytest.mark.parametrize('kwarg', ['nan', 'posinf', 'neginf'])
+    def test_nan_to_num_broadcast_invalid_shapes(self, kwarg):
         for xp in (numpy, cupy):
             x = xp.asarray([0, 1, xp.nan, 4], dtype=xp.float64)
             y = xp.zeros((2, 4), dtype=xp.float64)
