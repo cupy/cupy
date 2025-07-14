@@ -18,7 +18,7 @@ def _add(c1, c2):
     out : ndarray
         The sum of the inputs, with trailing zeros removed.
     """
-    [c1, c2] = as_series([c1, c2])
+    [c1, c2] = as_series([c1, c2], trimseq=False)
     if len(c1) > len(c2):
         c1[:c2.size] += c2
         ret = c1
