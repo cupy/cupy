@@ -53,6 +53,7 @@ main() {
   docker_cache_from="${docker_image}"
   cache_archive="linux-${TARGET}-${base_branch}.tar.gz"
   cache_gcs_dir="${CACHE_GCS_DIR:-gs://tmp-asia-pfn-public-ci/cupy-ci/cache}"
+  cache_pr_gcs_dir="${cache_gcs_dir}-pr-${PULL_REQUEST:-0}"
 
   if [[ "${DOCKER_IMAGE_CACHE:-1}" = "0" ]]; then
     docker_cache_from=""
@@ -71,12 +72,15 @@ main() {
     Docker Image        : ${docker_image}
     Docker Image Cache  : ${docker_cache_from}
     Remote Cache        : ${cache_gcs_dir}/${cache_archive}
+    Remote Cache (PR)   : ${cache_pr_gcs_dir}/${cache_archive}
     Local Cache         : ${CACHE_DIR:-(not set)}
     =====================================================================
   "
 
-  set -x
-  for stage in ${STAGES}; do case "${stage}" in
+  for stage in ${STAGES}; do
+    echo "*** Running stage: ${stage}"
+    set -x
+    case "${stage}" in
     build )
       tests_dir="${repo_root}/.pfnci/linux/tests"
       DOCKER_BUILDKIT=1 docker build \
@@ -106,6 +110,12 @@ main() {
         du -h "${cache_archive}" &&
         tar -x -f "${cache_archive}" -C "${CACHE_DIR}" &&
         rm -f "${cache_archive}" || echo "WARNING: Remote cache could not be retrieved."
+      if [[ "${PULL_REQUEST:-0}" != "0" ]]; then
+        gsutil_with_retry -m -q cp "${cache_pr_gcs_dir}/${cache_archive}" . &&
+          du -h "${cache_archive}" &&
+          tar -x -f "${cache_archive}" -C "${CACHE_DIR}" &&
+          rm -f "${cache_archive}" || echo "WARNING: Remote cache (for pull-request) could not be retrieved."
+      fi
       ;;
 
     cache_put )
@@ -116,7 +126,11 @@ main() {
       fi
       tar -c -f "${cache_archive}" -C "${CACHE_DIR}" .
       du -h "${cache_archive}"
-      gsutil -m -q cp "${cache_archive}" "${cache_gcs_dir}/"
+      if [[ "${PULL_REQUEST:-0}" != "0" ]]; then
+        gsutil -m -q cp "${cache_archive}" "${cache_pr_gcs_dir}/"
+      else
+        gsutil -m -q cp "${cache_archive}" "${cache_gcs_dir}/"
+      fi
       rm -f "${cache_archive}"
       ;;
 
@@ -173,7 +187,9 @@ main() {
       echo "Unsupported stage: ${stage}" >&2
       exit 1
       ;;
-  esac; done
+  esac;
+  set +x
+  done
 }
 
 gsutil_with_retry() {

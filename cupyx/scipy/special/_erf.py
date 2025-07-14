@@ -4,7 +4,7 @@ from cupy import _core
 
 
 erf = _core.create_ufunc(
-    'cupyx_scipy_special_erf', ('f->f', 'd->d'),
+    'cupyx_scipy_special_erf', ('e->d', 'f->f', 'd->d'),
     'out0 = erf(in0)',
     doc='''Error function.
 
@@ -14,7 +14,7 @@ erf = _core.create_ufunc(
 
 
 erfc = _core.create_ufunc(
-    'cupyx_scipy_special_erfc', ('f->f', 'd->d'),
+    'cupyx_scipy_special_erfc', ('e->d', 'f->f', 'd->d'),
     'out0 = erfc(in0)',
     doc='''Complementary error function.
 
@@ -24,7 +24,7 @@ erfc = _core.create_ufunc(
 
 
 erfcx = _core.create_ufunc(
-    'cupyx_scipy_special_erfcx', ('f->f', 'd->d'),
+    'cupyx_scipy_special_erfcx', ('e->d', 'f->f', 'd->d'),
     'out0 = erfcx(in0)',
     doc='''Scaled complementary error function.
 

@@ -34,7 +34,10 @@ dependencies = [
   "numpy>=1.24,<2.6", # see #4773
   "fastrlock>=0.5",
 ]
-dynamic = ["version"]
+dynamic = [
+  "version",
+  "readme",  # long_description
+]
 
 [project.optional-dependencies]
 "all" = [
@@ -49,6 +52,10 @@ dynamic = ["version"]
 "Documentation" = "https://docs.cupy.dev/"
 "Bug Tracker" = "https://github.com/cupy/cupy/issues"
 "Source Code" = "https://github.com/cupy/cupy"
+
+[tool.setuptools]
+# Do not include files listed in MANIFEST.in to wheels.
+include-package-data = false
 
 [tool.setuptools.packages.find]
 include = ["cupy*", "cupyx*", "cupy_backends*"]
