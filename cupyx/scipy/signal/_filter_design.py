@@ -463,7 +463,7 @@ def freqz(b, a=1, worN=512, whole=False, plot=None, fs=2*pi,
                 # Move the first axis of h to the end.
                 h = cupy.moveaxis(h, 0, -1)
     else:
-        w = cupy.atleast_1d(worN)
+        w = cupy.atleast_1d(worN).real
         w = 2 * pi * w / fs
 
     if h is None:  # still need to compute using freqs w
