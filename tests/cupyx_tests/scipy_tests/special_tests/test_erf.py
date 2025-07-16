@@ -13,25 +13,27 @@ def _boundary_inputs(boundary, rtol, atol):
     return [left, boundary, right]
 
 
+@testing.with_requires('scipy')
 class _TestBase:
 
+    @testing.with_requires('scipy<1.16.0')
     def test_erf(self):
         self.check_unary('erf')
 
+    @testing.with_requires('scipy<1.16.0')
     def test_erfc(self):
         self.check_unary('erfc')
 
+    @testing.with_requires('scipy<1.16.0')
     def test_erfcx(self):
         self.check_unary('erfcx')
 
-    @testing.with_requires('scipy>=1.4.0')
     def test_erfinv(self):
         self.check_unary('erfinv')
         self.check_unary_random('erfinv', scale=2, offset=-1)
         self.check_unary_boundary('erfinv', boundary=-1)
         self.check_unary_boundary('erfinv', boundary=1)
 
-    @testing.with_requires('scipy>=1.4.0')
     def test_erfcinv(self):
         self.check_unary('erfcinv')
         self.check_unary_random('erfcinv', scale=2, offset=0)
