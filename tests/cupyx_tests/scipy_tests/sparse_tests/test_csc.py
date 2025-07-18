@@ -1088,11 +1088,11 @@ class TestCscMatrixScipyComparison:
         assert m.has_sorted_indices
         return m
 
-    def test_sum_tuple_axis(self):
-        for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
-            m = self.make(xp, sp, self.dtype)
-            with pytest.raises(TypeError):
-                m.sum(axis=(0, 1))
+    @testing.with_requires('scipy>=1.16')
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_sum_tuple_axis(self, xp, sp):
+        m = self.make(xp, sp, self.dtype)
+        return m.sum(axis=(0, 1))
 
     def test_sum_too_large_axis(self):
         for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
