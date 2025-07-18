@@ -510,6 +510,7 @@ class TestGetWindow:
         # Unknown window type error
         assert_raises(ValueError, windows.get_window, 'broken', 4)
 
+    @testing.with_requires("scipy>=1.16")
     @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-13, atol=1e-13)
     def test_array_as_window(self, xp, scp):
         # scipy github issue 3603
@@ -518,7 +519,7 @@ class TestGetWindow:
 
         win = scp.signal.windows.get_window(('kaiser', 8.0), osfactor // 2)
         if hasattr(scp.signal, 'resample'):
-            with assert_raises(ValueError, match='must have the same length'):
+            with assert_raises(ValueError, match='window length is not equal'):
                 scp.signal.resample(sig, len(sig) * osfactor, window=win)
         return win
 
