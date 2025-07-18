@@ -1065,6 +1065,12 @@ def issctype(rep):
         return False
 
 
+if _numpy.__version__ >= "2":
+    from numpy import bool  # NOQA
+    from numpy import long  # NOQA
+    from numpy import ulong  # NOQA
+
+
 # np 2.0: XXX shims for things moved in np 2.0
 if _numpy.__version__ < "2":
     from numpy import format_parser  # NOQA
