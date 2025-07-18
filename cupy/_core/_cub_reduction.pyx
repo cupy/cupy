@@ -133,7 +133,7 @@ __global__ void ${name}(${params}) {
   }
 
   // each block handles the reduction of 1 segment
-  size_t segment_idx = blockIdx.x * _segment_size;
+  size_t segment_idx = size_t(blockIdx.x) * _segment_size;
   const type_mid_in* segment_head = _in0 + segment_idx;
   size_t i = 0;  // tile head within the segment
   int tile_size = (BLOCK_SIZE * ITEMS_PER_THREAD < _segment_size ?
