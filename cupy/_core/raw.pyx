@@ -45,9 +45,9 @@ cdef class RawKernel:
         standard (``-std=c++11``) if it's not specified in ``options``.
 
     .. note::
-        Unlike `ElementwiseKernel`, `RawKernel` ignores any views on CuPy arrays. 
-        You are responsible for handling strides manually.
-        For example, passing `matrix.T` will be treated as if you passed `matrix`.
+        Unlike `ElementwiseKernel`, `RawKernel` ignores any views on
+        CuPy arrays. You are responsible for handling strides manually.
+        For example, passing `matrix.T` is treated as if you passed `matrix`.
 
     .. _Jitify:
         https://github.com/NVIDIA/jitify
