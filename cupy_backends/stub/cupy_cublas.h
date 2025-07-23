@@ -37,6 +37,10 @@ cublasStatus_t cublasGetStream(...) {
     return CUBLAS_STATUS_SUCCESS;
 }
 
+cublasStatus_t cublasSetWorkspace(...) {
+    return CUBLAS_STATUS_SUCCESS;
+}
+
 // Math Mode
 cublasStatus_t cublasSetMathMode(...) {
     return CUBLAS_STATUS_SUCCESS;
