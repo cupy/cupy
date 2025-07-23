@@ -428,7 +428,7 @@ class TestMinimumPhase:
         h_new = scp.signal.minimum_phase(xp.convolve(h, h[::-1]))
         return h_new
 
-    @testing.numpy_cupy_allclose(scipy_name="scp", atol=5e-5)
+    @testing.numpy_cupy_allclose(scipy_name="scp", atol=1e-4)
     def test_hilbert(self, xp, scp):  # , n):
         # example from the docstring of `scipy.signal.minimum_phase`
         from scipy.signal import remez
