@@ -568,7 +568,6 @@ class TestVectorizeConstants(unittest.TestCase):
 
     @testing.numpy_cupy_array_equal()
     def test_vectorize_const_value(self, xp):
-
         def my_func(x1, x2):
             return x1 - x2 + const
 
@@ -580,7 +579,6 @@ class TestVectorizeConstants(unittest.TestCase):
 
     @testing.numpy_cupy_array_equal()
     def test_vectorize_const_attr(self, xp):
-
         def my_func(x1, x2):
             return x1 - x2 + const.x
 
@@ -672,3 +670,83 @@ class TestVectorize(unittest.TestCase):
         a = cupy.array([0.4, -0.2, 1.8, -1.2], dtype=cupy.float32)
         with pytest.raises(TypeError):
             return f(a)
+
+
+class TestVectorizeExclude(unittest.TestCase):
+    def _run(self, func, xp, dtypes, excluded=None):
+        f = xp.vectorize(func, excluded=excluded)
+        args = [
+            testing.shaped_random((20, 30), xp, dtype, seed=seed)
+            for seed, dtype in enumerate(dtypes)
+        ]
+        if excluded is not None:
+            param = func.__code__.co_varnames[:func.__code__.co_argcount]
+            excluded = [i for i, arg in enumerate(param) if arg in excluded]
+            for index in excluded:
+                test = testing.shaped_random((1, 1), xp, dtypes[index])[0][0]
+                args[index] = test
+                # Ugly implementation, but testing doesn't
+                # have a method to return a singular value not a matrix
+
+        return f(*args)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-6)
+    def test_vectorize_reciprocal(self, xp, dtype):
+        def addition(x, y, z):
+            return x + y + z
+
+        return self._run(addition, xp, [dtype, dtype, dtype], excluded=['y'])
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-6)
+    def test_all_excluded(self, xp, dtype):
+        def addition(x, y, z):
+            return x + y + z
+
+        return self._run(addition, xp,
+                         [dtype, dtype, dtype], excluded=['x', 'y', 'z'])
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-6)
+    def test_none_excluded(self, xp, dtype):
+        def addition(x, y, z):
+            return x + y + z
+
+        return self._run(addition, xp, [dtype, dtype, dtype], excluded=[])
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-6)
+    def test_excluded_vectorize_broadcast(self, xp, dtype):
+        def my_func(x1, x2, x3):
+            return x1 + x2 + x3
+
+        f = xp.vectorize(my_func, excluded=['x1'])
+        x1 = testing.shaped_random((1, 1), xp, dtype)[0][0]
+        x2 = testing.shaped_random((30,), xp, dtype, seed=2)
+        x3 = testing.shaped_random((20, 30), xp, dtype, seed=3)
+        return f(x1, x2, x3)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-5)
+    def test_excluded_shape(self, xp, dtype):
+        def my_func(x1, x2, x3):
+            return x1 + x2 + x2 * x1
+
+        f = xp.vectorize(my_func, excluded=['x2'])
+        x1 = testing.shaped_random((20, 30, 40), xp, dtype, seed=12)
+        x2 = testing.shaped_random((30, 40), xp, dtype, seed=2)
+        x3 = testing.shaped_random((20, 30, 40), xp, dtype, seed=5)
+        return f(x1, x2, x3)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-5)
+    def test_excluded_shape_flat(self, xp, dtype):
+        def my_func(x1: xp, x2, x3):
+            return x1 + x2 + x2 * x1
+
+        f = xp.vectorize(my_func, excluded=['x2'])
+        x1 = testing.shaped_random((20, 30, 40), xp, dtype, seed=12)
+        x2 = testing.shaped_random((40,), xp, dtype, seed=2)
+        x3 = testing.shaped_random((20, 30, 40), xp, dtype, seed=5)
+        return f(x1, x2, x3)
