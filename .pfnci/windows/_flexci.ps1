@@ -115,6 +115,13 @@ function IsPullRequestTest() {
     return ${Env:FLEXCI_BRANCH} -ne $null -and ${Env:FLEXCI_BRANCH}.StartsWith("refs/pull/")
 }
 
+function GetPullRequestNumber() {
+    if (${Env:FLEXCI_BRANCH} -match "refs/pull/(\d+)/") {
+        return $matches[1]
+    }
+    return 0
+}
+
 function PrioritizeFlexCIDaemon() {
     echo "Prioritizing FlexCI daemon process..."
     wmic.exe process where 'name="imosci.exe"' CALL setpriority realtime
