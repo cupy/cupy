@@ -288,7 +288,7 @@
         "full",
         "mini",
         "windows",
-        "cuda128"
+        "cuda129"
     ],
     "cupy.linux.cuda-rapids": [
         "@push",

@@ -254,11 +254,11 @@ class TestDiaMatrixScipyComparison(unittest.TestCase):
         m = self.make(xp, sp, self.dtype)
         return m.A
 
-    def test_sum_tuple_axis(self):
-        for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
-            m = _make(xp, sp, self.dtype)
-            with pytest.raises(TypeError):
-                m.sum(axis=(0, 1))
+    @testing.with_requires('scipy>=1.16')
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_sum_tuple_axis(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        return m.sum(axis=(0, 1))
 
     def test_sum_float_axis(self):
         for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
