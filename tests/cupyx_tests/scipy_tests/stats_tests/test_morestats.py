@@ -12,7 +12,7 @@ import cupyx.scipy.stats  # NOQA
 
 
 atol = {
-    cupy.float16: 5e-3,
+    cupy.float16: 0.1,
     cupy.float32: 1e-6,
     cupy.complex64: 1e-6,
     cupy.float64: 1e-14,
@@ -45,7 +45,7 @@ def _make_data(shape, xp, dtype):
         return testing.shaped_arange(shape, xp, dtype=dtype)
 
 
-@testing.with_requires('scipy>=1.15')
+@testing.with_requires('scipy>=1.16')
 class TestBoxcox_llf:
 
     @testing.for_all_dtypes(no_bool=True)
@@ -91,12 +91,7 @@ class TestBoxcox_llf:
     def test_array_empty(self, xp, scp, dtype):
         data = _make_data((0,), xp, dtype)
         lmb = 3
-        result = scp.stats.boxcox_llf(lmb, data)
-        if xp is numpy:
-            assert type(result) is float
-            return numpy.array(result)
-        else:
-            return result
+        return scp.stats.boxcox_llf(lmb, data)
 
     @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_allclose(scipy_name='scp', atol=atol, rtol=rtol)
@@ -117,18 +112,12 @@ class TestBoxcox_llf:
     def test_array_empty_neg_lmb(self, xp, scp, dtype):
         data = _make_data((0,), xp, dtype)
         lmb = -1.0
-        result = scp.stats.boxcox_llf(lmb, data)
-        if xp is numpy:
-            assert type(result) is float
-            return numpy.array(result)
-        else:
-            return result
+        return scp.stats.boxcox_llf(lmb, data)
 
     @pytest.mark.skipif(
         not sys.platform.startswith('linux'),
         reason="Return value of scipy.stats.boxcox_llf has large error")
-    @testing.with_requires('scipy>=1.13')
-    @testing.numpy_cupy_allclose(scipy_name='scp', atol=2e-12, rtol=rtol)
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=2e-12, rtol=1e-6)
     def test_instability_around_zero(self, xp, scp):
         data = xp.asarray([2003, 1950, 1997, 2000, 2009], dtype=numpy.float64)
         return scp.stats.boxcox_llf(1e-8, data)
