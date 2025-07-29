@@ -777,6 +777,20 @@ cpdef PointerAttributes pointerGetAttributes(intptr_t ptr):
     ELSE:  # for RTD
         return None
 
+
+cpdef int pointerGetMemoryType(intptr_t ptr) except -1:
+    ''' Get the memory type, returns -1 for RTD '''
+    cdef _PointerAttributes attrs
+    status = cudaPointerGetAttributes(&attrs, <void*>ptr)
+    check_status(status)
+    IF CUPY_CUDA_VERSION > 0 or 60000000 <= CUPY_HIP_VERSION:
+        return attrs.type
+    ELIF 0 < CUPY_HIP_VERSION < 60000000:
+        return attrs.memoryType
+    ELSE:
+        raise ValueError("Fetching memory unsupported.")
+
+
 cpdef intptr_t deviceGetDefaultMemPool(int device) except? 0:
     '''Get the default mempool on the current device.'''
     if _is_hip_environment:
