@@ -151,3 +151,29 @@ cdef dict dtype_format = {
 @cython.profile(False)
 cdef void populate_format(Py_buffer* buf, str dtype) except*:
     buf.format = dtype_format[dtype]
+
+
+cdef dict _num_to_str_and_descr = {}
+
+
+@cython.profile(False)
+cdef tuple get_str_and_descr(dtype):
+    """Get the `.str` and `.descr` for use in the cuda array interface.
+
+    Unfortunately, NumPy is rather slow about this, so we rely on always
+    native byte-order and just fast-path all normal types via the type number.
+
+    NOTE: This function assumes only native byte-order inputs are possible.
+    """
+    res = _num_to_str_and_descr.get(dtype.num)
+
+    if res is not None:
+        return res
+
+    res = (dtype.str, dtype.descr)
+    if dtype.isbuiltin:
+        # `isbuiltin` is a bit weird, but if not zero, we should be able to
+        # cache (In practice, it should give what we want here)
+        _num_to_str_and_descr[dtype.num] = res
+
+    return res

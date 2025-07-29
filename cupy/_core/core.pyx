@@ -278,16 +278,18 @@ cdef class _ndarray_base:
         if runtime._is_hip_environment:
             raise AttributeError(
                 'HIP/ROCm does not support cuda array interface')
+
+        str, descr = _dtype.get_str_and_descr(self.dtype)
         cdef dict desc = {
             'shape': self.shape,
-            'typestr': self.dtype.str,
-            'descr': self.dtype.descr,
+            'typestr': str,
+            'descr': descr,
         }
         cdef int ver = _util.CUDA_ARRAY_INTERFACE_EXPORT_VERSION
         cdef intptr_t stream_ptr
 
         if ver == 3:
-            stream_ptr = stream_module.get_current_stream_ptr()
+            stream_ptr = stream_module.get_current_stream().ptr
             # CAI v3 says setting the stream field to 0 is disallowed
             if stream_ptr == 0:
                 stream_ptr = _stream_module.get_default_stream_ptr()
