@@ -2,6 +2,7 @@
 
 """Thin wrapper of CUBLAS."""
 
+import os
 cimport cython  # NOQA
 
 from cupy_backends.cuda.api cimport runtime
@@ -28,6 +29,8 @@ cdef extern from '../../cupy_blas.h' nogil:
     int cublasGetVersion(Handle handle, int* version)
     int cublasGetPointerMode(Handle handle, PointerMode* mode)
     int cublasSetPointerMode(Handle handle, PointerMode mode)
+    int cublasSetWorkspace(Handle handle, void* workspace,
+                           size_t workspaceSizeInBytes)
 
     # Stream
     int cublasSetStream(Handle handle, Stream streamId)
@@ -497,10 +500,19 @@ cpdef setPointerMode(intptr_t handle, int mode):
         status = cublasSetPointerMode(<Handle>handle, <PointerMode>mode)
     check_status(status)
 
+cpdef setWorkspace(intptr_t handle, intptr_t workspace,
+                   size_t workspaceSizeInBytes):
+    with nogil:
+        status = cublasSetWorkspace(<Handle>handle, <void*>workspace,
+                                    workspaceSizeInBytes)
+    check_status(status)
 
 ###############################################################################
 # Stream
 ###############################################################################
+
+_allow_stream_graph_capture = \
+    os.getenv("CUPY_EXPERIMENTAL_CUDA_LIB_GRAPH_CAPTURE", "0") != "0"
 
 cpdef setStream(intptr_t handle, size_t stream):
     # TODO(leofang): It seems most of cuBLAS APIs support stream capture (as of
@@ -508,15 +520,34 @@ cpdef setStream(intptr_t handle, size_t stream):
     # https://docs.nvidia.com/cuda/cublas/index.html#CUDA-graphs
     # Before we come up with a robust strategy to test the support conditions,
     # we disable this functionality.
-    if not runtime._is_hip_environment and runtime.streamIsCapturing(stream):
+    is_capturing = runtime.streamIsCapturing(stream)
+    if (
+        not _allow_stream_graph_capture and
+        not runtime._is_hip_environment and is_capturing
+    ):
         raise NotImplementedError(
-            'calling cuBLAS API during stream capture is currently '
-            'unsupported')
+            'Set the environment variable '
+            '`CUPY_EXPERIMENTAL_CUDA_LIB_GRAPH_CAPTURE=1` to allow '
+            'calling cuBLAS API during stream capture')
 
     with nogil:
         status = cublasSetStream(<Handle>handle, <Stream>stream)
     check_status(status)
 
+    # Set cublas workspace if available.
+    # We need to set workspace after setting stream because
+    # cublasSetStream resets workspace setting.
+    # See: https://docs.nvidia.com/cuda/cublas/#cublassetworkspace
+    cdef intptr_t workspace
+    cdef size_t workspace_size
+    if is_capturing:
+        workspace, workspace_size = \
+            stream_module.get_current_cublas_workspace()
+        if workspace != 0:
+            with nogil:
+                status = cublasSetWorkspace(
+                    <Handle>handle, <void*>workspace, workspace_size)
+            check_status(status)
 
 cpdef size_t getStream(intptr_t handle) except? 0:
     cdef Stream stream

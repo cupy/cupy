@@ -81,6 +81,8 @@ cpdef destroy(intptr_t handle)
 cpdef int getVersion(intptr_t handle) except? -1
 cpdef int getPointerMode(intptr_t handle) except? -1
 cpdef setPointerMode(intptr_t handle, int mode)
+cpdef setWorkspace(intptr_t handle, intptr_t workspace,
+                   size_t workspaceSizeInBytes)
 
 
 ###############################################################################

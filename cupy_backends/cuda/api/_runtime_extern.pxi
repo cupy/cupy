@@ -123,8 +123,22 @@ cdef extern from '../../cupy_backend_runtime.h' nogil:
     int cudaStreamWaitEvent(driver.Stream stream, driver.Event event,
                             unsigned int flags)
     int cudaStreamBeginCapture(driver.Stream stream, StreamCaptureMode mode)
+    int cudaStreamBeginCaptureToGraph(driver.Stream stream, Graph graph,
+                                      const GraphNode* dependencies,
+                                      const GraphEdgeData* dependencyData,
+                                      size_t numDependencies,
+                                      StreamCaptureMode mode)
     int cudaStreamEndCapture(driver.Stream stream, Graph*)
     int cudaStreamIsCapturing(driver.Stream stream, StreamCaptureStatus*)
+    int cudaStreamGetCaptureInfo_v2(driver.Stream stream,
+                                    StreamCaptureStatus* captureStatus_out,
+                                    unsigned long long* id_out,
+                                    Graph* graph_out,
+                                    const GraphNode** dependencies_out,
+                                    size_t* numDependencies_out)
+    int cudaStreamUpdateCaptureDependencies(
+        driver.Stream stream, GraphNode* dependencies,
+        size_t numDependencies, unsigned int flags)
     int cudaEventCreate(driver.Event* event)
     int cudaEventCreateWithFlags(driver.Event* event, unsigned int flags)
     int cudaEventDestroy(driver.Event event)
@@ -150,11 +164,16 @@ cdef extern from '../../cupy_backend_runtime.h' nogil:
     int cudaDestroySurfaceObject(SurfaceObject surObject)
 
     # Graph
+    int cudaGraphCreate(Graph* graph, unsigned int flags)
     int cudaGraphDestroy(Graph graph)
     int cudaGraphExecDestroy(GraphExec graph)
     int cudaGraphInstantiate(GraphExec*, Graph, GraphNode*, char*, size_t)
     int cudaGraphLaunch(GraphExec, driver.Stream)
     int cudaGraphUpload(GraphExec, driver.Stream)
+    int cudaGraphConditionalHandleCreate(
+        GraphConditionalHandle*, Graph, unsigned int, unsigned int)
+    int cudaGraphAddNode(
+        GraphNode*, Graph, const GraphNode*, size_t, GraphNodeParams*)
     int cudaGraphDebugDotPrint(Graph, const char*, unsigned int)
 
     # Constants

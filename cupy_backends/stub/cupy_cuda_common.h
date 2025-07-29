@@ -31,6 +31,7 @@ struct CUmod_st;
 struct CUstream_st;
 struct CUgraph_st;
 struct CUgraphExec_st;
+struct CUgraphNode_st;
 struct CUlinkState_st;
 
 
@@ -43,6 +44,7 @@ typedef struct CUstream_st* CUstream;
 typedef struct CUstream_st* cudaStream_t;
 typedef struct CUgraph_st* cudaGraph_t;
 typedef struct CUgraphExec_st* cudaGraphExec_t;
+typedef struct CUgraphNode_st* cudaGraphNode_t;
 typedef struct CUlinkState_st* CUlinkState;
 typedef struct CUarray_st* CUarray;
 struct CUDA_ARRAY_DESCRIPTOR {
@@ -52,6 +54,31 @@ struct CUDA_ARRAY_DESCRIPTOR {
     size_t Width;
 };
 
+enum cudaStreamUpdateCaptureDependenciesFlags {};
+enum cudaGraphNodeType{};
+enum cudaGraphConditionalNodeType {};
+typedef unsigned long long cudaGraphConditionalHandle;
+struct cudaConditionalNodeParams {
+    cudaGraphConditionalHandle handle;
+    cudaGraphConditionalNodeType type;
+    unsigned int size;
+    cudaGraph_t* phGraph_out;
+};
+struct cudaGraphNodeParams {
+    cudaGraphNodeType type;
+    int reserved0[3];
+    union {
+        long long reserved1[29];
+        struct cudaConditionalNodeParams conditional;
+    };
+    long long reserved2;
+};
+typedef struct cudaGraphEdgeData_st {
+    unsigned char from_port;
+    unsigned char to_port;
+    unsigned char type;
+    unsigned char reserved[5];
+} cudaGraphEdgeData;
 
 ///////////////////////////////////////////////////////////////////////////////
 // cuda_runtime.h
