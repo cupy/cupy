@@ -1110,6 +1110,7 @@ class TestCsrMatrixScipyComparison:
         assert m.has_sorted_indices
         return m
 
+    @testing.with_requires('scipy<1.16')
     def test_sum_tuple_axis(self):
         for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
             m = self.make(xp, sp, self.dtype)
