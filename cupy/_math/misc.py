@@ -416,10 +416,6 @@ def _check_nan_inf(x, dtype, neg=None):
         x = 0
     elif x is None and neg is not None:
         x = cupy.finfo(dtype).min if neg else cupy.finfo(dtype).max
-    elif cupy.isnan(x):
-        x = cupy.nan
-    elif cupy.isinf(x):
-        x = cupy.inf * (-1)**(x < 0)
     return cupy.asanyarray(x, dtype)
 
 
