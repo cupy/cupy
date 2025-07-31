@@ -127,6 +127,7 @@ cdef uint8_t get_dlpack_dtype_code_itemsize(dtype, size_t *size) except? 255:
     else:
         # One-off special handling for `ml_dtypes`
         if dtype.name == "bfloat16":
+            size[0] = 2
             return <uint8_t>kDLBfloat
         else:
             raise BufferError('dtype is not supported for dlpack export')
