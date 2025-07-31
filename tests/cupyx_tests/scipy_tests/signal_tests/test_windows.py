@@ -507,6 +507,7 @@ class TestGetWindow:
         # Unknown window type error
         assert_raises(ValueError, windows.get_window, 'broken', 4)
 
+    @testing.with_requires("scipy<1.16")
     @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-13, atol=1e-13)
     def test_array_as_window(self, xp, scp):
         # scipy github issue 3603
