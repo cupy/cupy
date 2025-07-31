@@ -289,7 +289,7 @@ cdef class _ndarray_base:
         cdef intptr_t stream_ptr
 
         if ver == 3:
-            stream_ptr = stream_module.get_current_stream().ptr
+            stream_ptr = stream_module.get_current_stream_ptr()
             # CAI v3 says setting the stream field to 0 is disallowed
             if stream_ptr == 0:
                 stream_ptr = _stream_module.get_default_stream_ptr()
