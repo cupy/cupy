@@ -1,4 +1,6 @@
-import threading
+cimport cpython
+from cpython.pythread cimport (
+    PyThread_tss_create, PyThread_tss_get, PyThread_tss_set)
 
 from cupy_backends.cuda.api cimport runtime
 from cupy_backends.cuda cimport stream as backends_stream
@@ -7,7 +9,11 @@ from cupy.cuda cimport graph
 from cupy import _util
 
 
-cdef object _thread_local = threading.local()
+# TODO(seberg): Note that this does no garbage collection on the thread
+# local state or stored data.  Not sure if one should (ideally) have that.
+cdef Py_tss_t _thread_local_key
+if PyThread_tss_create(&_thread_local_key) != 0:
+    raise MemoryError()
 
 
 cdef class _ThreadLocal:
@@ -32,10 +38,14 @@ cdef class _ThreadLocal:
 
     @staticmethod
     cdef _ThreadLocal get():
-        try:
-            tls = _thread_local.tls
-        except AttributeError:
-            tls = _thread_local.tls = _ThreadLocal()
+        cdef void *tls = PyThread_tss_get(&_thread_local_key)
+        if tls == NULL:
+            new = _ThreadLocal()
+            tls = <void *>new
+            if PyThread_tss_set(&_thread_local_key, tls) != 0:
+                raise MemoryError()
+            cpython.Py_INCREF(new)  # stored in thread local
+
         return <_ThreadLocal>tls
 
     cdef void push_stream(self, stream, int device_id) except*:
