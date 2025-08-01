@@ -245,6 +245,7 @@ class TestDiaMatrixScipyComparison(unittest.TestCase):
         m = self.make(xp, sp, self.dtype)
         return m.A
 
+    @testing.with_requires('scipy<1.16')
     def test_sum_tuple_axis(self):
         for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
             m = _make(xp, sp, self.dtype)

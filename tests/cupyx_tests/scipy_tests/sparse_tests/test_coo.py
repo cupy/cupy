@@ -601,7 +601,7 @@ class TestCooMatrixScipyComparison:
         x = _make3(xp, sp, self.dtype).tocoo()
         return m.dot(x)
 
-    @testing.with_requires('scipy>=1.8.0rc1')
+    @testing.with_requires('scipy<1.16')
     def test_dot_zero_dim(self):
         for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
             m = _make(xp, sp, self.dtype)
@@ -945,6 +945,7 @@ class TestCooMatrixScipyComparison:
             with pytest.raises(ValueError):
                 m ** -1
 
+    @testing.with_requires('scipy<1.16')
     def test_sum_tuple_axis(self):
         for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
             m = _make(xp, sp, self.dtype)
