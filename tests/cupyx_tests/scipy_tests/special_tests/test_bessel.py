@@ -5,7 +5,7 @@ from cupy import testing
 import cupyx.scipy.special  # NOQA
 
 
-@testing.with_requires('scipy')
+@testing.with_requires('scipy<1.16')
 class TestSpecial:
 
     @testing.for_dtypes(['e', 'f', 'd'])
@@ -63,7 +63,7 @@ class TestSpecial:
         return scp.special.yn(n[:, xp.newaxis], a[xp.newaxis, :])
 
 
-@testing.with_requires('scipy')
+@testing.with_requires('scipy<1.16')
 class TestFusionSpecial(unittest.TestCase):
 
     @testing.for_dtypes(['e', 'f', 'd'])

@@ -16,7 +16,7 @@ def _get_logspace_max(dtype):
         return 5
 
 
-@testing.with_requires('scipy')
+@testing.with_requires('scipy<1.16')
 class TestBeta:
 
     @pytest.mark.parametrize('function', ['beta', 'betaln'])

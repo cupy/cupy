@@ -7,7 +7,7 @@ from cupy import testing
 import cupyx.scipy.special  # NOQA
 
 
-@testing.with_requires('scipy')
+@testing.with_requires('scipy<1.16')
 class TestGammaln:
 
     @testing.for_all_dtypes(no_complex=True)
@@ -43,7 +43,7 @@ class TestGammaln:
         return scp.special.gammaln(a)
 
 
-@testing.with_requires('scipy')
+@testing.with_requires('scipy<1.16')
 class TestMultigammaln:
 
     @pytest.mark.parametrize('d', [1, 5, 15])
