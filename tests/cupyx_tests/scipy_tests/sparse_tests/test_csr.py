@@ -1917,11 +1917,13 @@ class TestCsrMatrixMaximumMinimum:
         b = self._make_sp_matrix_col(self.b_dtype, xp, sp).toarray()
         return getattr(a, self.opt)(b)
 
+    @testing.with_requires('scipy<1.16')
     @testing.numpy_cupy_array_equal(sp_name='sp')
     def test_scalar_plus(self, xp, sp):
         a = self._make_sp_matrix(self.a_dtype, xp, sp)
         return getattr(a, self.opt)(0.5)
 
+    @testing.with_requires('scipy<1.16')
     @testing.numpy_cupy_array_equal(sp_name='sp')
     def test_scalar_minus(self, xp, sp):
         a = self._make_sp_matrix(self.a_dtype, xp, sp)
