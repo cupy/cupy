@@ -326,7 +326,7 @@ def meshgrid(*xi, **kwargs):
     return meshes_br
 
 
-class nd_grid(object):
+class nd_grid:
     """Construct a multi-dimensional "meshgrid".
 
     ``grid = nd_grid()`` creates an instance which will return a mesh-grid
