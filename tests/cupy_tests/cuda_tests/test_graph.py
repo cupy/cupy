@@ -103,6 +103,28 @@ class TestGraph:
         testing.assert_array_equal(b, 3 * a)
 
     @pytest.mark.parametrize('upload', (True, False))
+    def test_capture_launch_host_func(self, upload):
+        s = cupy.cuda.Stream(non_blocking=True)
+
+        counter = {'count': 0}
+
+        def callback(x):
+            x['count'] += 1
+
+        with s:
+            s.begin_capture()
+            s.launch_host_func(callback, counter)
+            g = s.end_capture()
+        if upload:
+            g.upload()
+        g.launch()
+        cuda.stream.get_current_stream().synchronize()
+        assert counter['count'] == 1
+        g.launch()
+        cuda.stream.get_current_stream().synchronize()
+        assert counter['count'] == 2
+
+    @pytest.mark.parametrize('upload', (True, False))
     def test_stream_fork_join(self, upload):
         s1 = cupy.cuda.Stream(non_blocking=True)
         s2 = cupy.cuda.Stream(non_blocking=True)
