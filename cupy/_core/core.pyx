@@ -2718,11 +2718,11 @@ cdef inline _ndarray_base _try_skip_h2d_copy(
     if not (obj_dtype == get_dtype(dtype) if dtype is not None else True):
         return None
 
-    # CuPy onlt supports numerical dtypes
+    # CuPy only supports numerical dtypes
     if obj_dtype.char not in _dtype.all_type_chars:
         return None
 
-    # CUDA onlt supports little endianness
+    # CUDA only supports little endianness
     if obj_dtype.byteorder not in ('|', '=', '<'):
         return None
 
