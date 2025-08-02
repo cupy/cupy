@@ -2760,8 +2760,8 @@ cdef _ndarray_base _array_default(
     # Fast path: zero-copy a NumPy array if possible
     if not blocking:
         a = _try_skip_h2d_copy(obj, dtype, copy, order, ndmin)
-    if a is not None:
-        return a
+        if a is not None:
+            return a
 
     if order is not None and len(order) >= 1 and order[0] in 'KAka':
         if isinstance(obj, numpy.ndarray) and obj.flags.fnc:
