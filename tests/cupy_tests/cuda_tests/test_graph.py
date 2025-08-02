@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import gc
+
 import pytest
 
 import cupy
@@ -109,11 +111,15 @@ class TestGraph:
         counter = {'count': 0}
 
         def callback(x):
-            x['count'] += 1
+            nonlocal counter
+            counter['count'] += x['delta']
 
         with s:
             s.begin_capture()
-            s.launch_host_func(callback, counter)
+            # Let launch_host_func keep the reference to the callback/args.
+            s.launch_host_func(callback, {'delta': 1})
+            del callback
+            gc.collect()
             g = s.end_capture()
         if upload:
             g.upload()
