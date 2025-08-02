@@ -38,6 +38,10 @@ class TestFromData(unittest.TestCase):
         a = testing.shaped_arange((2, 3, 4), numpy, dtype)
         return xp.array(a, order=order)
 
+    def test_array_from_numpy_blocking(self):
+        a = testing.shaped_arange((2, 3, 4), numpy, numpy.float32)
+        testing.assert_array_equal(cupy.array(a, blocking=True), a)
+
     @testing.for_orders('CFAK')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
@@ -383,6 +387,10 @@ class TestFromData(unittest.TestCase):
         a = testing.shaped_arange((2, 3, 4), xp, dtype)
         return xp.asarray(a)
 
+    def test_asarray_blocking(self):
+        a = testing.shaped_arange((2, 3, 4), numpy, numpy.float32)
+        testing.assert_array_equal(cupy.asarray(a, blocking=True), a)
+
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_asarray_is_not_copied(self, xp, dtype):
@@ -434,6 +442,10 @@ class TestFromData(unittest.TestCase):
         # Make a computation here as just moving big-endian data back and forth
         # happens to work before the change in #5828
         return b + b
+
+    def test_asanyarray_blocking(self):
+        a = testing.shaped_arange((2, 3, 4), numpy, numpy.float32)
+        testing.assert_array_equal(cupy.asanyarray(a, blocking=True), a)
 
     @testing.for_CF_orders()
     @testing.for_all_dtypes()
