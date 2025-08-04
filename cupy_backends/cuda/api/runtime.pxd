@@ -271,6 +271,7 @@ cpdef streamSynchronize(intptr_t stream)
 cpdef streamAddCallback(intptr_t stream, callback, intptr_t arg,
                         unsigned int flags=*)
 cpdef launchHostFunc(intptr_t stream, callback, intptr_t arg)
+cpdef _launchHostFuncUnmanaged(intptr_t stream, tuple func_arg)
 cpdef streamQuery(intptr_t stream)
 cpdef streamWaitEvent(intptr_t stream, intptr_t event, unsigned int flags=*)
 cpdef streamBeginCapture(intptr_t stream, int mode=*)

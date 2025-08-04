@@ -10,13 +10,18 @@ cdef class Graph:
 
     """
 
-    cdef void _init(self, intptr_t graph, intptr_t graphExec) except*:
+    cdef void _init(
+        self, intptr_t graph, intptr_t graphExec, object host_funcargs
+    ) except*:
         if graph > 0:
             # at this point cudaGraphExec_t has been instantiated, so we no
             # longer need to hold the cudaGraph_t
             runtime.graphDestroy(graph)
         self.graph = 0
         self.graphExec = graphExec
+        # Reference to the host functions and arguments captured by
+        # cudaLaunchHostFunc.
+        self.host_funcargs = host_funcargs
 
     def __dealloc__(self):
         if self.graph > 0:
@@ -30,11 +35,11 @@ cdef class Graph:
             'be created via stream capture')
 
     @staticmethod
-    cdef Graph from_stream(intptr_t g):
+    cdef Graph from_stream(intptr_t g, object host_funcargs):
         # TODO(leofang): optionally print out the error log?
         cdef intptr_t ge = runtime.graphInstantiate(g)
         cdef Graph graph = Graph.__new__(Graph)
-        graph._init(g, ge)
+        graph._init(g, ge, host_funcargs)
         return graph
 
     cpdef launch(self, stream=None):
