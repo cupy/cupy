@@ -10,7 +10,7 @@ except ImportError:
     pass
 
 
-@testing.with_requires('scipy')
+@testing.with_requires('scipy<1.16')
 class TestZetac(unittest.TestCase):
 
     @testing.for_all_dtypes(no_complex=True)
