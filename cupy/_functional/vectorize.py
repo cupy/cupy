@@ -44,14 +44,15 @@ class vectorize:
         if otypes is not None:
             self.otypes = ''.join([numpy.dtype(t).char for t in otypes])
 
-        if excluded is not None:
-            raise NotImplementedError(
-                'cupy.vectorize does not support `excluded` option currently.')
-
         if signature is not None:
             raise NotImplementedError(
                 'cupy.vectorize does not support `signature`'
                 ' option currently.')
+        args = pyfunc.__code__.co_varnames[:pyfunc.__code__.co_argcount]
+        if excluded is not None:
+            self.excluded = \
+                [args.index(arg) for arg in args if arg in excluded]
+            # args are passed in positionally later, so this is best format
 
     @staticmethod
     def _get_body(return_type, call):
@@ -100,5 +101,23 @@ class vectorize:
                 options=('-DCUPY_JIT_MODE', '--std=c++17'),
             )
             self._kernel_cache[itypes] = kern
+
+        if self.excluded is not None and len(args) > len(self.excluded):
+            def copy_shape(obj, copy):
+                if isinstance(obj, cupy.ndarray):
+                    new_obj = cupy.empty_like(obj)
+                    new_obj[:] = copy
+                    return new_obj
+                elif isinstance(obj, (list, tuple)):
+                    return type(obj)(copy_shape(item, copy) for item in obj)
+
+            reference_shape = 0
+            arg_list = list(args)
+            while reference_shape in self.excluded:
+                reference_shape += 1
+            for Index in self.excluded:
+                arg_list[Index] = (
+                    copy_shape(arg_list[reference_shape], arg_list[Index]))
+            args = tuple(arg_list)
 
         return kern(*args)
