@@ -46,8 +46,6 @@ __device__ long long atomicAdd(long long *address, long long val) {
 }
 #endif // __CUDA_ARCH__
 
-#define __builtin_unreachable() __assume(false)
-
 #else // CUPY_NO_CUDA
 
 typedef struct CUstream_st *cudaStream_t;
