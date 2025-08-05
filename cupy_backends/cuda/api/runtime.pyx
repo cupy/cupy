@@ -872,6 +872,12 @@ cdef _HostFnFunc(void* func_arg) with gil:
     cpython.Py_DECREF(obj)
 
 
+cdef _HostFnFuncUnmanaged(void* func_arg) with gil:
+    obj = <object>func_arg
+    func, arg = obj
+    func(arg)
+
+
 cpdef streamAddCallback(intptr_t stream, callback, intptr_t arg,
                         unsigned int flags=0):
     if _is_hip_environment and stream == 0:
@@ -887,6 +893,10 @@ cpdef streamAddCallback(intptr_t stream, callback, intptr_t arg,
 
 
 cpdef launchHostFunc(intptr_t stream, callback, intptr_t arg):
+    # N.B. Currently this function should not be called during CUDA graph
+    # capture, as the reference to the callback/arg will be DECREFed on the
+    # first callback.
+    # Eventually this should be replaced by `_launchHostFuncUnmanaged`.
     if _is_hip_environment:
         raise RuntimeError('This feature is not supported on HIP')
 
@@ -895,6 +905,20 @@ cpdef launchHostFunc(intptr_t stream, callback, intptr_t arg):
     with nogil:
         status = cudaLaunchHostFunc(
             <driver.Stream>stream, <HostFn>_HostFnFunc,
+            <void*>func_arg)
+    check_status(status)
+
+
+cpdef _launchHostFuncUnmanaged(intptr_t stream, tuple func_arg):
+    # Private API for CuPy internal use only.
+    # The caller is responsible for managing the lifetime of `callback_arg`,
+    # which is a `tuple(callback_function, argument)`.
+    if _is_hip_environment:
+        raise RuntimeError('This feature is not supported on HIP')
+
+    with nogil:
+        status = cudaLaunchHostFunc(
+            <driver.Stream>stream, <HostFn>_HostFnFuncUnmanaged,
             <void*>func_arg)
     check_status(status)
 
