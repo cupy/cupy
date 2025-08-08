@@ -92,8 +92,8 @@ cdef extern from '../../cupy_backend_runtime.h' nogil:
         int cudaMemPrefetchAsync(const void *devPtr, size_t count,
                                  _MemLocation location, int flags,
                                  driver.Stream stream)
-    int cudaMemAdvise(const void *devPtr, size_t count,
-                      MemoryAdvise advice, _MemLocation device)
+        int cudaMemAdvise(const void *devPtr, size_t count,
+                          MemoryAdvise advice, _MemLocation device)
     ELSE:
         int cudaMemPrefetchAsync(const void *devPtr, size_t count, int dstDevice,
                                  driver.Stream stream)

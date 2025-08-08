@@ -236,7 +236,7 @@ cdef class ManagedMemory(BaseMemory):
         if size > 0:
             self.ptr = runtime.mallocManaged(size)
 
-    def prefetch(self, stream, *, int device_id=runtime.cudaInvalidDeviceId, int flags=0):
+    def prefetch(self, stream, *, int device_id=runtime.cudaInvalidDeviceId):
         """(experimental) Prefetch memory.
 
         Args:
@@ -245,6 +245,7 @@ cdef class ManagedMemory(BaseMemory):
         """
         if device_id == runtime.cudaInvalidDeviceId:
             device_id = self.device_id
+        flags = 0
         runtime.memPrefetchAsync(self.ptr, self.size, device_id, flags, stream.ptr)
 
     def advise(self, int advise, device.Device dev):
@@ -322,7 +323,8 @@ cdef class SystemMemory(BaseMemory):
         """
         if device_id == runtime.cudaInvalidDeviceId:
             device_id = self.device_id
-        runtime.memPrefetchAsync(self.ptr, self.size, device_id, stream.ptr)
+        flags = 0
+        runtime.memPrefetchAsync(self.ptr, self.size, device_id, flags, stream.ptr)
 
     def advise(self, int advise, device.Device dev):
         """Advise about the usage of this memory.

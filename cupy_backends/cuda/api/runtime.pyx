@@ -749,9 +749,9 @@ cpdef memAdvise(intptr_t devPtr, size_t count, int advice, int device):
         cdef _MemLocation loc_c
         c_memset(&loc_c, 0, sizeof(_MemLocation))
         loc_c.location.type = cudaMemLocationTypeDevice
-        loc_c.location.id = devId
+        loc_c.location.id = device
         with nogil:
-            status = cudamemadvise(<void*>devptr, count,
+            status = cudaMemAdvise(<void*>devPtr, count,
                                    <MemoryAdvise>advice, loc_c)
 
     check_status(status)
