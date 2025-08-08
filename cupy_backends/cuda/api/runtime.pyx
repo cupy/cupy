@@ -695,20 +695,40 @@ cpdef memsetAsync(intptr_t ptr, int value, size_t size, intptr_t stream):
     check_status(status)
 
 cpdef memPrefetchAsync(intptr_t devPtr, size_t count, int dstDevice,
-                       intptr_t stream):
+                       int flags, intptr_t stream):
     if 0 < CUPY_HIP_VERSION < 40300000:
         raise RuntimeError('Managed memory requires ROCm 4.3+')
-    with nogil:
-        status = cudaMemPrefetchAsync(<void*>devPtr, count, dstDevice,
-                                      <driver.Stream> stream)
+    IF CUPY_CUDA_VERSION < 13000:
+        with nogil:
+            status = cudaMemPrefetchAsync(<void*>devPtr, count, dstDevice,
+                                          <driver.Stream> stream)
+    ELSE:
+        cdef _MemLocation loc_c
+        c_memset(&loc_c, 0, sizeof(_MemLocation))
+        loc_c.location.type = cudaMemLocationTypeDevice
+        loc_c.location.id = dstDevice
+        with nogil:
+            status = cudaMemPrefetchAsync(<void*>devPtr, count,
+                                          loc_c, flags,
+                                          <driver.Stream> stream)
     check_status(status)
 
 cpdef memAdvise(intptr_t devPtr, size_t count, int advice, int device):
     if 0 < CUPY_HIP_VERSION < 40300000:
         raise RuntimeError('Managed memory requires ROCm 4.3+')
-    with nogil:
-        status = cudaMemAdvise(<void*>devPtr, count,
-                               <MemoryAdvise>advice, device)
+    IF CUPY_CUDA_VERSION < 13000:
+        with nogil:
+            status = cudamemadvise(<void*>devptr, count,
+                                   <memoryadvise>advice, device)
+    ELSE:
+        cdef _MemLocation loc_c
+        c_memset(&loc_c, 0, sizeof(_MemLocation))
+        loc_c.location.type = cudaMemLocationTypeDevice
+        loc_c.location.id = devId
+        with nogil:
+            status = cudamemadvise(<void*>devptr, count,
+                                   <MemoryAdvise>advice, loc_c)
+
     check_status(status)
 
 cpdef PointerAttributes pointerGetAttributes(intptr_t ptr):

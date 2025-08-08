@@ -95,7 +95,11 @@ cpdef enum:
     # cudaMemHandleTypeWin32Kmt = 0x4
 
     # cudaMemLocationType
+    cudaMemLocationTypeInvalid = 0          # CUDA 12.0
     cudaMemLocationTypeDevice = 1
+    cudaMemLocationTypeHost = 2             # CUDA 12.0
+    cudaMemLocationTypeHostNuma = 3         # CUDA 12.0
+    cudaMemLocationTypeHostNumaCurrent = 4  # CUDA 12.0
 
     # cudaGraphDebugDotFlags
     cudaGraphDebugDotFlagsVerbose = 1<<0

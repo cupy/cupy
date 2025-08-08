@@ -88,10 +88,17 @@ cdef extern from '../../cupy_backend_runtime.h' nogil:
     int cudaMemset(void* devPtr, int value, size_t count)
     int cudaMemsetAsync(void* devPtr, int value, size_t count,
                         driver.Stream stream)
-    int cudaMemPrefetchAsync(const void *devPtr, size_t count, int dstDevice,
-                             driver.Stream stream)
+    IF CUPY_CUDA_VERSION >= 13000:
+        int cudaMemPrefetchAsync(const void *devPtr, size_t count,
+                                 _MemLocation location, int flags,
+                                 driver.Stream stream)
     int cudaMemAdvise(const void *devPtr, size_t count,
-                      MemoryAdvise advice, int device)
+                      MemoryAdvise advice, _MemLocation device)
+    ELSE:
+        int cudaMemPrefetchAsync(const void *devPtr, size_t count, int dstDevice,
+                                 driver.Stream stream)
+        int cudaMemAdvise(const void *devPtr, size_t count,
+                          MemoryAdvise advice, int device)
     int cudaDeviceGetDefaultMemPool(MemPool*, int)
     int cudaDeviceGetMemPool(MemPool*, int)
     int cudaDeviceSetMemPool(int, MemPool)
