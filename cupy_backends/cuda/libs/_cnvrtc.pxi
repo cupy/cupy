@@ -132,7 +132,7 @@ cdef SoftLink _get_softlink():
             else:
                 libname = 'nvrtc64_120_0.dll'
         elif runtime_version == 13:
-            # CUDA 12.x
+            # CUDA 13.x
             if _sys.platform == 'linux':
                 libname = 'libnvrtc.so.13'
             else:
