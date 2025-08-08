@@ -574,6 +574,41 @@ configs {
   }
 }
 
+# CUDA 13.0 | Linux
+configs {
+  key: "cupy.linux.cuda130"
+  value {
+    requirement {
+      cpu: 8
+      memory: 60
+      disk: 10
+      gpu: 1
+    }
+    time_limit: {
+      seconds: 21600
+    }
+    environment_variables { key: "GPU" value: "1" }
+    command: ".pfnci/linux/main-flexci.sh cuda130"
+  }
+}
+# CUDA 13.0 (Multi-GPU) | Linux
+configs {
+  key: "cupy.linux.cuda130.multi"
+  value {
+    requirement {
+      cpu: 8
+      memory: 60
+      disk: 10
+      gpu: 2
+    }
+    time_limit: {
+      seconds: 21600
+    }
+    environment_variables { key: "GPU" value: "2" }
+    command: ".pfnci/linux/main-flexci.sh cuda130.multi"
+  }
+}
+
 # CUDA 11.x + CUDA Python
 configs {
   key: "cupy.linux.cuda11x-cuda-python"
