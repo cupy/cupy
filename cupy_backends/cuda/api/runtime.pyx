@@ -327,7 +327,7 @@ cpdef getDeviceProperties(int device):
         properties['reservedSharedMemPerBlock'] = (
             props.reservedSharedMemPerBlock)
     if (
-        CUPY_USE_CUDA_PYTHON 
+        CUPY_USE_CUDA_PYTHON
         or (CUPY_CUDA_VERSION >= 9020 and CUPY_CUDA_VERSION < 13000)
     ):
         properties['deviceOverlap'] = props.deviceOverlap
