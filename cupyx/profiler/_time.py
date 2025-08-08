@@ -52,7 +52,7 @@ class _PerfCaseResult:
         holding times spent on GPU in seconds.
 
         These values are measured using ``cudaEventElapsedTime`` with events
-        recoreded before/after each repeat step.
+        recorded before/after each repeat step.
         """
         return self._ts[1:]
 
