@@ -84,16 +84,17 @@ def _nvcc_gencode_options(cuda_version: int) -> list[str]:
 
         aarch64 = (platform.machine() == 'aarch64')
         if cuda_version >= 12000:
-            arch_list = [('compute_50', 'sm_50'),
-                         ('compute_52', 'sm_52'),
-                         ('compute_60', 'sm_60'),
-                         ('compute_61', 'sm_61'),
-                         ('compute_70', 'sm_70'),
-                         ('compute_75', 'sm_75'),
-                         ('compute_80', 'sm_80'),
+            arch_list = [('compute_80', 'sm_80'),
                          ('compute_86', 'sm_86'),
                          ('compute_89', 'sm_89'),
-                         ('compute_90', 'sm_90'),]
+                         ('compute_90', 'sm_90')]
+            if cuda_version < 13000:
+                arch_list += [('compute_50', 'sm_50'),
+                              ('compute_52', 'sm_52'),
+                              ('compute_60', 'sm_60'),
+                              ('compute_61', 'sm_61'),
+                              ('compute_70', 'sm_70'),
+                              ('compute_75', 'sm_75')]
             if cuda_version < 12080:
                 arch_list.append('compute_90')
             elif 12080 <= cuda_version < 12090:
