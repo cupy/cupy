@@ -635,7 +635,7 @@ def interpn(points, values, xi, method="linear", bounds_error=True,
                                  "in dimension %d" % i)
 
     # perform interpolation
-    interp = RegularGridInterpolator(
-        points, values, method=method, bounds_error=bounds_error, fill_value=fill_value
-    )
+    interp = RegularGridInterpolator(points, values, method=method,
+                                     bounds_error=bounds_error,
+                                     fill_value=fill_value)
     return interp(xi)
