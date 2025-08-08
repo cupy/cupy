@@ -326,15 +326,20 @@ cpdef getDeviceProperties(int device):
             props.accessPolicyMaxWindowSize)
         properties['reservedSharedMemPerBlock'] = (
             props.reservedSharedMemPerBlock)
-    if CUPY_USE_CUDA_PYTHON or CUPY_CUDA_VERSION < 13000:
+    if (
+        CUPY_USE_CUDA_PYTHON 
+        or (CUPY_CUDA_VERSION >= 9020 and CUPY_CUDA_VERSION < 13000)
+    ):
         properties['deviceOverlap'] = props.deviceOverlap
         properties['maxTexture1DLinear'] = props.maxTexture1DLinear
         properties['singleToDoublePrecisionPerfRatio'] = (
             props.singleToDoublePrecisionPerfRatio)
     elif CUPY_CUDA_VERSION >= 13000:
         deviceOverlap = deviceGetAttribute(cudaDevAttrGpuOverlap, device)
-        maxTexture1DLinear = deviceGetAttribute(cudaDevAttrMaxTexture1DLinearWidth, device)
-        singleToDoublePrecisionPerfRatio = deviceGetAttribute(cudaDevAttrSingleToDoublePrecisionPerfRatio, device)
+        maxTexture1DLinear = deviceGetAttribute(
+            cudaDevAttrMaxTexture1DLinearWidth, device)
+        singleToDoublePrecisionPerfRatio = deviceGetAttribute(
+            cudaDevAttrSingleToDoublePrecisionPerfRatio, device)
         properties['deviceOverlap'] = deviceOverlap
         properties['maxTexture1DLinear'] = maxTexture1DLinear
         properties['singleToDoublePrecisionPerfRatio'] = (
