@@ -1382,6 +1382,8 @@ ELIF 12000 <= CUPY_CUDA_VERSION < 13000:
     else:
         _libname = 'cusparse64_12.dll'
 ELIF 13000 <= CUPY_CUDA_VERSION < 14000:
+    # libcusparse SO.VERSION are independent of the
+    # CUDA Toolkit version and 12 is correct
     if _sys.platform == 'linux':
         _libname = 'libcusparse.so.12'
     else:

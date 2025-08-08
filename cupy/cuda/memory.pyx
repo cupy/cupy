@@ -245,8 +245,7 @@ cdef class ManagedMemory(BaseMemory):
         """
         if device_id == runtime.cudaInvalidDeviceId:
             device_id = self.device_id
-        runtime.memPrefetchAsync(
-            self.ptr, self.size, device_id, stream.ptr)
+        runtime.memPrefetchAsync(self.ptr, self.size, device_id, stream.ptr)
 
     def advise(self, int advise, device.Device dev):
         """(experimental) Advise about the usage of this memory.
@@ -323,8 +322,7 @@ cdef class SystemMemory(BaseMemory):
         """
         if device_id == runtime.cudaInvalidDeviceId:
             device_id = self.device_id
-        runtime.memPrefetchAsync(
-            self.ptr, self.size, device_id, stream.ptr)
+        runtime.memPrefetchAsync(self.ptr, self.size, device_id, stream.ptr)
 
     def advise(self, int advise, device.Device dev):
         """Advise about the usage of this memory.
