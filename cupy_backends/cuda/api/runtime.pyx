@@ -210,12 +210,28 @@ cpdef int deviceGetAttribute(int attrib, int device) except? -1:
 
 cpdef getDeviceProperties(int device):
     cdef DeviceProp props
+    cdef int ret
     cdef int status = cudaGetDeviceProperties(&props, device)
     check_status(status)
 
     cdef dict properties = {'name': b'UNAVAILABLE'}  # for RTD
 
     # Common properties to CUDA 9.0, 9.2, 10.x, 11.x, and HIP
+    IF CUPY_CUDA_VERSION >= 13000:
+        clockRate = deviceGetAttribute(cudaDevAttrClockRate, device)
+        kernelExecTimeoutEnabled = deviceGetAttribute(
+            cudaDevAttrKernelExecTimeout, device)
+        memoryClockRate = deviceGetAttribute(
+            cudaDevAttrMemoryClockRate, device)
+        computeMode = deviceGetAttribute(cudaDevAttrComputeMode, device)
+        cooperativeMultiDeviceLaunch = False
+    ELSE:
+        clockRate = props.clockRate
+        kernelExecTimeoutEnabled = props.kernelExecTimeoutEnabled
+        memoryClockRate = props.memoryClockRate
+        computeMode = props.computeMode
+        cooperativeMultiDeviceLaunch = props.cooperativeMultiDeviceLaunch
+
     IF CUPY_CUDA_VERSION > 0 or CUPY_HIP_VERSION > 0:
         properties = {
             'name': props.name,
@@ -226,17 +242,17 @@ cpdef getDeviceProperties(int device):
             'maxThreadsPerBlock': props.maxThreadsPerBlock,
             'maxThreadsDim': tuple(props.maxThreadsDim),
             'maxGridSize': tuple(props.maxGridSize),
-            'clockRate': props.clockRate,
+            'clockRate': clockRate,
             'totalConstMem': props.totalConstMem,
             'major': props.major,
             'minor': props.minor,
             'textureAlignment': props.textureAlignment,
             'texturePitchAlignment': props.texturePitchAlignment,
             'multiProcessorCount': props.multiProcessorCount,
-            'kernelExecTimeoutEnabled': props.kernelExecTimeoutEnabled,
+            'kernelExecTimeoutEnabled': kernelExecTimeoutEnabled,
             'integrated': props.integrated,
             'canMapHostMemory': props.canMapHostMemory,
-            'computeMode': props.computeMode,
+            'computeMode': computeMode,
             'maxTexture1D': props.maxTexture1D,
             'maxTexture2D': tuple(props.maxTexture2D),
             'maxTexture3D': tuple(props.maxTexture3D),
@@ -246,18 +262,16 @@ cpdef getDeviceProperties(int device):
             'pciDeviceID': props.pciDeviceID,
             'pciDomainID': props.pciDomainID,
             'tccDriver': props.tccDriver,
-            'memoryClockRate': props.memoryClockRate,
+            'memoryClockRate': memoryClockRate,
             'memoryBusWidth': props.memoryBusWidth,
             'l2CacheSize': props.l2CacheSize,
             'maxThreadsPerMultiProcessor': props.maxThreadsPerMultiProcessor,
             'isMultiGpuBoard': props.isMultiGpuBoard,
             'cooperativeLaunch': props.cooperativeLaunch,
-            'cooperativeMultiDeviceLaunch': props.cooperativeMultiDeviceLaunch,
+            'cooperativeMultiDeviceLaunch': cooperativeMultiDeviceLaunch,
         }
     IF CUPY_USE_CUDA_PYTHON or CUPY_CUDA_VERSION >= 9020:
-        properties['deviceOverlap'] = props.deviceOverlap
         properties['maxTexture1DMipmap'] = props.maxTexture1DMipmap
-        properties['maxTexture1DLinear'] = props.maxTexture1DLinear
         properties['maxTexture1DLayered'] = tuple(props.maxTexture1DLayered)
         properties['maxTexture2DMipmap'] = tuple(props.maxTexture2DMipmap)
         properties['maxTexture2DLinear'] = tuple(props.maxTexture2DLinear)
@@ -289,8 +303,6 @@ cpdef getDeviceProperties(int device):
         properties['multiGpuBoardGroupID'] = props.multiGpuBoardGroupID
         properties['hostNativeAtomicSupported'] = (
             props.hostNativeAtomicSupported)
-        properties['singleToDoublePrecisionPerfRatio'] = (
-            props.singleToDoublePrecisionPerfRatio)
         properties['pageableMemoryAccess'] = props.pageableMemoryAccess
         properties['concurrentManagedAccess'] = props.concurrentManagedAccess
         properties['computePreemptionSupported'] = (
@@ -314,6 +326,19 @@ cpdef getDeviceProperties(int device):
             props.accessPolicyMaxWindowSize)
         properties['reservedSharedMemPerBlock'] = (
             props.reservedSharedMemPerBlock)
+    if CUPY_USE_CUDA_PYTHON or CUPY_CUDA_VERSION < 13000:
+        properties['deviceOverlap'] = props.deviceOverlap
+        properties['maxTexture1DLinear'] = props.maxTexture1DLinear
+        properties['singleToDoublePrecisionPerfRatio'] = (
+            props.singleToDoublePrecisionPerfRatio)
+    elif CUPY_CUDA_VERSION >= 13000:
+        deviceOverlap = deviceGetAttribute(cudaDevAttrGpuOverlap, device)
+        maxTexture1DLinear = deviceGetAttribute(cudaDevAttrMaxTexture1DLinearWidth, device)
+        singleToDoublePrecisionPerfRatio = deviceGetAttribute(cudaDevAttrSingleToDoublePrecisionPerfRatio, device)
+        properties['deviceOverlap'] = deviceOverlap
+        properties['maxTexture1DLinear'] = maxTexture1DLinear
+        properties['singleToDoublePrecisionPerfRatio'] = (
+            singleToDoublePrecisionPerfRatio)
     IF CUPY_HIP_VERSION > 0:  # HIP-only props
         properties['clockInstructionRate'] = props.clockInstructionRate
         properties['maxSharedMemoryPerMultiProcessor'] = (
