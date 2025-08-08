@@ -247,7 +247,7 @@ cpdef memcpy3DAsync(intptr_t Memcpy3DParmsPtr, intptr_t stream)
 cpdef memset(intptr_t ptr, int value, size_t size)
 cpdef memsetAsync(intptr_t ptr, int value, size_t size, intptr_t stream)
 cpdef memPrefetchAsync(intptr_t devPtr, size_t count, int dstDevice,
-                       int flags, intptr_t stream)
+                       intptr_t stream)
 cpdef memAdvise(intptr_t devPtr, size_t count, int advice, int device)
 cpdef PointerAttributes pointerGetAttributes(intptr_t ptr)
 cpdef intptr_t deviceGetDefaultMemPool(int) except? 0

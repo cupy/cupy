@@ -725,7 +725,7 @@ cpdef memsetAsync(intptr_t ptr, int value, size_t size, intptr_t stream):
     check_status(status)
 
 cpdef memPrefetchAsync(intptr_t devPtr, size_t count, int dstDevice,
-                       int flags, intptr_t stream):
+                       intptr_t stream):
     if 0 < CUPY_HIP_VERSION < 40300000:
         raise RuntimeError('Managed memory requires ROCm 4.3+')
     IF CUPY_CUDA_VERSION < 13000:
@@ -739,7 +739,7 @@ cpdef memPrefetchAsync(intptr_t devPtr, size_t count, int dstDevice,
         loc_c.location.id = dstDevice
         with nogil:
             status = cudaMemPrefetchAsync(<void*>devPtr, count,
-                                          loc_c, flags,
+                                          loc_c, 0,
                                           <driver.Stream> stream)
     check_status(status)
 

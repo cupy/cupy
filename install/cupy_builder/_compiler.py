@@ -87,7 +87,6 @@ def _nvcc_gencode_options(cuda_version: int) -> list[str]:
             arch_list = [('compute_75', 'sm_75'),
                          ('compute_80', 'sm_80'),
                          ('compute_86', 'sm_86'),
-                         ('compute_88', 'sm_88'),
                          ('compute_89', 'sm_89'),
                          ('compute_90', 'sm_90'),
                          ('compute_100f', 'sm_100'),
