@@ -90,7 +90,7 @@ def _nvcc_gencode_options(cuda_version: int) -> list[str]:
                          ('compute_89', 'sm_89'),
                          ('compute_90', 'sm_90'),
                          ('compute_100f', 'sm_100'),
-                         ('compute_120f', 'sm_1020'),
+                         ('compute_120f', 'sm_120'),
                          'compute_120']
             if aarch64:
                 # JetPack
