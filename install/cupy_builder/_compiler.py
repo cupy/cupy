@@ -87,7 +87,6 @@ def _nvcc_gencode_options(cuda_version: int) -> list[str]:
             arch_list = [('compute_75', 'sm_75'),
                          ('compute_80', 'sm_80'),
                          ('compute_86', 'sm_86'),
-                         ('compute_87', 'sm_87'),
                          ('compute_88', 'sm_88'),
                          ('compute_89', 'sm_89'),
                          ('compute_90', 'sm_90'),
@@ -97,8 +96,8 @@ def _nvcc_gencode_options(cuda_version: int) -> list[str]:
             if aarch64:
                 # JetPack
                 arch_list += [
-                    ('compute_87', 'sm_87'),  # Jetson (Orin)
-                    ('compute_110', 'sm_110'),  # Jetson
+                    ('compute_87', 'sm_87'),    # Jetson (Orin)
+                    ('compute_110', 'sm_110'),  # Jetson (Thor)
                 ]
         if cuda_version >= 12000:
             arch_list = [('compute_50', 'sm_50'),
