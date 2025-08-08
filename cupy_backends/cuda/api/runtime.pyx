@@ -743,8 +743,8 @@ cpdef memAdvise(intptr_t devPtr, size_t count, int advice, int device):
         raise RuntimeError('Managed memory requires ROCm 4.3+')
     IF CUPY_CUDA_VERSION < 13000:
         with nogil:
-            status = cudamemadvise(<void*>devptr, count,
-                                   <memoryadvise>advice, device)
+            status = cudaMemAdvise(<void*>devPtr, count,
+                                   <MemoryAdvise>advice, device)
     ELSE:
         cdef _MemLocation loc_c
         c_memset(&loc_c, 0, sizeof(_MemLocation))
