@@ -75,6 +75,6 @@ cpdef object toDlpack(
     _ndarray_base array, bint use_versioned=*, bint to_cpu=*,
     bint ensure_copy=*, stream=*) except +
 cdef object _toDlpack(
-    _ndarray_base array, bint use_versioned=*, bint to_cpu=*,
-    bint ensure_copy=*, stream=*) except +
+    _ndarray_base array, bint use_versioned, bint to_cpu,
+    bint ensure_copy) except +
 cpdef _ndarray_base fromDlpack(object dltensor) except +
