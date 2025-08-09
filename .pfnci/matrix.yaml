@@ -483,7 +483,7 @@
   cudnn: "8.8"
   python: "3.12"
   numpy: "2.3"
-  scipy: "1.15"
+  scipy: "1.16"
   optuna: "4"
   mpi4py: null
   cython: "3.1"
@@ -600,7 +600,7 @@
   cudnn: null
   python: "3.12"
   numpy: "1.26"
-  scipy: "1.15"
+  scipy: "1.16"
   optuna: "4"
   mpi4py: null
   cython: "3.0"

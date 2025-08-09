@@ -61,12 +61,10 @@ __device__ void _cupy_upfirdn1D( const T *__restrict__ inp,
 
     for ( size_t tid = t; tid < outW; tid += stride ) {
 
-#if ( __CUDACC_VER_MAJOR__ >= 11 ) && ( __CUDACC_VER_MINOR__ >= 2 )
         __builtin_assume( padded_len > 0 );
         __builtin_assume( up > 0 );
         __builtin_assume( down > 0 );
         __builtin_assume( tid > 0 );
-#endif
 
         const int x_idx { static_cast<int>( ( tid * down ) / up ) % padded_len };
         int       h_idx { static_cast<int>( ( tid * down ) % up * h_per_phase ) };
@@ -174,22 +172,16 @@ __device__ void _cupy_upfirdn2D( const T *__restrict__ inp,
             int x_idx {};
             int h_idx {};
 
-#if ( __CUDACC_VER_MAJOR__ >= 11 ) && ( __CUDACC_VER_MINOR__ >= 2 )
             __builtin_assume( padded_len > 0 );
             __builtin_assume( up > 0 );
             __builtin_assume( down > 0 );
-#endif
 
             if ( axis == 1 ) {
-#if ( __CUDACC_VER_MAJOR__ >= 11 ) && ( __CUDACC_VER_MINOR__ >= 2 )
                 __builtin_assume( x > 0 );
-#endif
                 x_idx = ( static_cast<int>( x * down ) / up ) % padded_len;
                 h_idx = ( x * down ) % up * h_per_phase;
             } else {
-#if ( __CUDACC_VER_MAJOR__ >= 11 ) && ( __CUDACC_VER_MINOR__ >= 2 )
                 __builtin_assume( y > 0 );
-#endif
                 x_idx = ( static_cast<int>( y * down ) / up ) % padded_len;
                 h_idx = ( y * down ) % up * h_per_phase;
             }
