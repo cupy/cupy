@@ -7,3 +7,6 @@ CUDA Toolkit release.
 
 * ``cuda-11`` contains headers from CTK 11.8.0.
 * ``cuda-12`` contains headers from CTK 12.1.1.
+
+For CUDA 12.2+, we don't bundle header files as the header depends on `vector_types.h` etc.
+https://docs.cupy.dev/en/latest/install.html#cupy-always-raises-nvrtc-error-compilation-6
