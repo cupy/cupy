@@ -23,7 +23,8 @@ class TestNvrtcArch(unittest.TestCase):
             assert compiler._get_arch() == expected_arch
         cupy.clear_memo()  # _get_arch result is cached
 
-    @unittest.skipUnless(9000 <= cuda_version(), 'Requires CUDA 9.x or later')
+    @unittest.skipUnless(
+        9000 <= cuda_version() < 13000, 'Requires CUDA 9.x-12.x')
     def test_get_arch_cuda9(self):
         self._check_get_arch('62', '62')  # Tegra
         self._check_get_arch('70', '70')
