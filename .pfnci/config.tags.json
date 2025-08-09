@@ -182,6 +182,19 @@
         "multi",
         "cuda129"
     ],
+    "cupy.linux.cuda130": [
+        "@push",
+        "full",
+        "mini",
+        "cuda130"
+    ],
+    "cupy.linux.cuda130.multi": [
+        "@push",
+        "full",
+        "mini",
+        "multi",
+        "cuda130"
+    ],
     "cupy.linux.cuda-slow": [
         "slow"
     ],
@@ -289,6 +302,13 @@
         "mini",
         "windows",
         "cuda129"
+    ],
+    "cupy.win.cuda130": [
+        "@push",
+        "full",
+        "mini",
+        "windows",
+        "cuda130"
     ],
     "cupy.linux.cuda-rapids": [
         "@push",

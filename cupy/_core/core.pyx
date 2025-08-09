@@ -2364,6 +2364,8 @@ cpdef tuple assemble_cupy_compiler_options(tuple options):
                 else:
                     # Unsupported CUDA 12.x variant
                     _bundled_include = None
+            elif major == 13:
+                _bundled_include = f'cuda-13.{minor}'
             else:
                 # CUDA versions not yet supported.
                 _bundled_include = None
