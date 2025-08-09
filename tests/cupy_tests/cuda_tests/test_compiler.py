@@ -49,7 +49,8 @@ class TestNvrtcArch(unittest.TestCase):
     def _compile(self, arch):
         compiler.compile_using_nvrtc('', arch=arch)
 
-    @unittest.skipUnless(9000 <= cuda_version(), 'Requires CUDA 9.0 or later')
+    @unittest.skipUnless(
+        9000 <= cuda_version() < 13000, 'Requires CUDA 9.x-12.x')
     def test_compile_cuda9(self):
         # This test is intended to detect specification change in NVRTC API.
 
