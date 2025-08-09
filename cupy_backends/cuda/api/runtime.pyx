@@ -210,7 +210,6 @@ cpdef int deviceGetAttribute(int attrib, int device) except? -1:
 
 cpdef getDeviceProperties(int device):
     cdef DeviceProp props
-    cdef int ret
     cdef int status = cudaGetDeviceProperties(&props, device)
     check_status(status)
 
