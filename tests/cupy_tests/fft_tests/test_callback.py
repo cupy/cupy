@@ -440,6 +440,9 @@ class Test1dCallbacks:
                     reason='callbacks are only supported on Linux')
 @pytest.mark.skipif(cupy.cuda.runtime.is_hip,
                     reason='hipFFT does not support callbacks')
+@pytest.mark.skipif((cuda_version() >= 13000
+                     and get_compute_capability() == '75'),
+                    reason='CUDA 13 cuFFT doesn\'t support cc 7.5')
 class TestNdCallbacks:
 
     def _test_load_helper(self, xp, dtype, fft_func):
