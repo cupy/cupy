@@ -479,6 +479,7 @@ def _preprocess(source, options, arch, backend):
             raise
     elif backend == 'nvcc':
         try:
+            options = options + ('-o', 'preprocess.ptx')
             result = compile_using_nvcc(source, options, arch, 'preprocess.cu',
                                         code_type='ptx')
         except CompileException as e:

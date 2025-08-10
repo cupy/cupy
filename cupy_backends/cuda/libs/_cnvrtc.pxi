@@ -131,6 +131,12 @@ cdef SoftLink _get_softlink():
                 libname = 'libnvrtc.so.12'
             else:
                 libname = 'nvrtc64_120_0.dll'
+        elif runtime_version == 13:
+            # CUDA 13.x
+            if _sys.platform == 'linux':
+                libname = 'libnvrtc.so.13'
+            else:
+                libname = 'nvrtc64_130_0.dll'
     elif CUPY_HIP_VERSION != 0:
         runtime_version = runtime.runtimeGetVersion()
         prefix = 'hiprtc'
