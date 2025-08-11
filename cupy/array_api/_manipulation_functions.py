@@ -20,7 +20,7 @@ def concat(
     # Note: Casting rules here are different from the np.concatenate default
     # (no for scalars with axis=None, no cross-kind casting)
     dtype = result_type(*arrays)
-    arrays = tuple(a._array for a in arrays)
+    arrays = tuple(a._array for a in arrays)  # type: ignore[misc]
     return Array._new(np.concatenate(arrays, axis=axis, dtype=dtype))
 
 
@@ -95,5 +95,5 @@ def stack(arrays: Union[Tuple[Array, ...], List[Array]], /, *, axis: int = 0) ->
     """
     # Call result type here just to raise on disallowed type combinations
     result_type(*arrays)
-    arrays = tuple(a._array for a in arrays)
+    arrays = tuple(a._array for a in arrays)  # type: ignore[misc]
     return Array._new(np.stack(arrays, axis=axis))

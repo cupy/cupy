@@ -60,12 +60,12 @@ class Array:
     functions, such as asarray().
 
     """
-    _array: np.ndarray
+    _array: np.ndarray[Any, Any]
 
     # Use a custom constructor instead of __init__, as manually initializing
     # this class is not supported API.
     @classmethod
-    def _new(cls, x: Union[np.ndarray, np.generic], /) -> Array:
+    def _new(cls, x, /) -> Array:
         """
         This is a private method for initializing the array API Array
         object.
@@ -529,7 +529,7 @@ class Array:
         self._validate_index(key)
         if isinstance(key, Array):
             # Indexing self._array with array_api arrays can be erroneous
-            key = key._array
+            key = key._array  # type: ignore[assignment]
         res = self._array.__getitem__(key)
         return self._new(res)
 
@@ -724,7 +724,7 @@ class Array:
         self._validate_index(key)
         if isinstance(key, Array):
             # Indexing self._array with array_api arrays can be erroneous
-            key = key._array
+            key = key._array  # type: ignore[assignment]
         self._array.__setitem__(key, asarray(value)._array)
 
     def __sub__(self: Array, other: Union[int, float, Array], /) -> Array:
