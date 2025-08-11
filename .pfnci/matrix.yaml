@@ -510,7 +510,7 @@
   rocm: null
   nccl: "2.27"
   cutensor: null  # TODO
-  cusparselt: "0.2.0"
+  cusparselt: null
   cudnn: null
   python: "3.12"
   numpy: "2.3"

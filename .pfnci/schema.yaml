@@ -248,7 +248,7 @@ cusparselt:
       "12.6":  # TODO(kmaehashi): Tentatively use v0.2.0 for CUDA 12
       "12.8":  # TODO(kmaehashi): Tentatively use v0.2.0 for CUDA 12
       "12.9":  # TODO(kmaehashi): Tentatively use v0.2.0 for CUDA 12
-      "13.0":  # TODO(kmaehashi): Tentatively use v0.2.0 for CUDA 13
+      # Disable cuSPARSELt for CUDA 13 in CuPy v13
 cudnn:
   # https://docs.nvidia.com/deeplearning/cudnn/support-matrix/index.html
   # https://docs.nvidia.com/deeplearning/cudnn/archives/
