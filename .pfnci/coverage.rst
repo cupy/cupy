@@ -2125,7 +2125,7 @@ CuPy CI Test Coverage
      - ✅
    * - cusparselt
      - null
-     - 5
+     - 7
      - 
      - 
      - ✅
@@ -2158,8 +2158,8 @@ CuPy CI Test Coverage
      - 
      - 
      - 
-     - 
-     - 
+     - ✅
+     - ✅
      - ✅
      - ✅
      - ✅
@@ -2171,7 +2171,7 @@ CuPy CI Test Coverage
      - 
    * - 
      - 0.2.0
-     - 38
+     - 36
      - ✅
      - ✅
      - 
@@ -2204,8 +2204,8 @@ CuPy CI Test Coverage
      - ✅
      - ✅
      - ✅
-     - ✅
-     - ✅
+     - 
+     - 
      - 
      - 
      - 
