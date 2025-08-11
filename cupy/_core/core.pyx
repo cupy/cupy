@@ -2354,20 +2354,11 @@ cpdef tuple assemble_cupy_compiler_options(tuple options):
             major, minor = nvrtc.getVersion()
             if major == 11:
                 _bundled_include = 'cuda-11'
-            elif major == 12:
-                # TODO(leofang): update the upper bound when a new release
-                # is out
-                if minor < 2:
-                    _bundled_include = 'cuda-12'
-                elif minor < 9:
-                    _bundled_include = f'cuda-12.{minor}'
-                else:
-                    # Unsupported CUDA 12.x variant
-                    _bundled_include = None
-            elif major == 13:
-                _bundled_include = f'cuda-13.{minor}'
+            elif major == 12 and minor < 2:
+                # Use bundled header for CUDA 12.0 and 12.1 only.
+                _bundled_include = 'cuda-12'
             else:
-                # CUDA versions not yet supported.
+                # Do not use bundled includes dir after CUDA 12.2+.
                 _bundled_include = None
 
             # Check if headers from cudart wheels are available.
