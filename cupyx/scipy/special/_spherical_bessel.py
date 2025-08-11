@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import cupy
 from cupy import _core
 
@@ -73,14 +75,14 @@ __device__ double spherical_yn_d_real(int n, double x) {
 
 _spherical_yn_real = _core.create_ufunc(
     "cupyx_scipy_spherical_yn_real",
-    ("if->d", "id->d"),
+    ("id->d", "ld->d"),
     "out0 = out0_type(spherical_yn_real(in0, in1))",
     preamble=spherical_bessel_preamble,
 )
 
 _spherical_dyn_real = _core.create_ufunc(
     "cupyx_scipy_spherical_dyn_real",
-    ("if->d", "id->d"),
+    ("id->d", "ld->d"),
     "out0 = out0_type(spherical_yn_d_real(in0, in1));",
     preamble=spherical_bessel_preamble,
 )

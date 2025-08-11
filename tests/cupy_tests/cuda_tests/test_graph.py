@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+import gc
+
 import pytest
 
 import cupy
@@ -8,8 +12,6 @@ import cupyx
 
 @pytest.mark.skipif(cuda.runtime.is_hip,
                     reason='HIP does not support this')
-@pytest.mark.skipif(cuda.driver.get_build_version() < 10010,
-                    reason='Only CUDA 10.1+ supports this')
 class TestGraph:
 
     def _helper1(self, a):
@@ -101,6 +103,32 @@ class TestGraph:
         g.launch()
         s.synchronize()
         testing.assert_array_equal(b, 3 * a)
+
+    @pytest.mark.parametrize('upload', (True, False))
+    def test_capture_launch_host_func(self, upload):
+        s = cupy.cuda.Stream(non_blocking=True)
+
+        counter = {'count': 0}
+
+        def callback(x):
+            nonlocal counter
+            counter['count'] += x['delta']
+
+        with s:
+            s.begin_capture()
+            # Let launch_host_func keep the reference to the callback/args.
+            s.launch_host_func(callback, {'delta': 1})
+            del callback
+            gc.collect()
+            g = s.end_capture()
+        if upload:
+            g.upload()
+        g.launch()
+        cuda.stream.get_current_stream().synchronize()
+        assert counter['count'] == 1
+        g.launch()
+        cuda.stream.get_current_stream().synchronize()
+        assert counter['count'] == 2
 
     @pytest.mark.parametrize('upload', (True, False))
     def test_stream_fork_join(self, upload):
@@ -343,3 +371,20 @@ class TestGraph:
         # check s left the capture mode and permits normal usage
         assert not s.is_capturing()
         s.synchronize()
+
+    @pytest.mark.skipif(cuda.driver.get_build_version() < 11030,
+                        reason='Requires CUDA 11.3+')
+    def test_debug_dot_str(self):
+        s = cupy.cuda.Stream(non_blocking=True)
+
+        a = cupy.random.random((100,))
+        with s:
+            s.begin_capture()
+            cupy.sin(a)
+            g = s.end_capture()
+            debug_str = g.debug_dot_str()
+            assert 'cupy_sin' in debug_str
+            debug_str_verbose = g.debug_dot_str(
+                cupy.cuda.runtime.cudaGraphDebugDotFlagsVerbose)
+            assert 'cupy_sin' in debug_str_verbose
+            assert debug_str != debug_str_verbose

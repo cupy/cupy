@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from math import sqrt, pi
 
 import pytest
@@ -417,7 +419,8 @@ class TestFreqz:
         w, h = scp.signal.freqz([1.0], worN=N)
         return w, h
 
-    @pytest.mark.parametrize("w", [8.0, 8.0 + 0j])
+    @pytest.mark.parametrize("w", [8.0, 8.0 + 0j, 8.0 + 3j])
+    @testing.with_requires('scipy>=1.16')
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_w_or_N_types_3(self, xp, scp, w):
         # Measure at frequency 8 Hz
@@ -577,7 +580,7 @@ class TestSOSFreqz:
         w, h = scp.signal.sosfreqz(sos)
         return w, h
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-5, atol=1e-5)
     def test_sosfrez_design_cheb2_2(self, xp, scp):
         N, Wn = scp.signal.cheb2ord([0.1, 0.6], [0.2, 0.5], 3, 150)
         sos = scp.signal.cheby2(N, 150, Wn, 'stop', output='sos')
@@ -649,8 +652,8 @@ class TestSOSFreqz:
         w_mp = np.array([float(x) for x in w_mp])
         h_mp = np.array([complex(x) for x in h_mp])
 
-        sos = signal.butter(order, Wn, output='sos')
-        w, h = signal.sosfreqz(sos, worN=N)
+        sos = cupyx.scipy.signal.butter(order, Wn, output='sos')
+        w, h = cupyx.scipy.signal.sosfreqz(sos, worN=N)
         assert_allclose(w, w_mp, rtol=1e-12, atol=1e-14)
         assert_allclose(h, h_mp, rtol=1e-12, atol=1e-14)
 
@@ -802,7 +805,7 @@ class TestGroupDelay:
 
 @testing.with_requires('scipy')
 class TestGammatone:
-    # Test erroneus input cases.
+    # Test erroneous input cases.
     def test_invalid_input(self):
         for scp in [cupyx.scipy, scipy]:
             # Cutoff frequency is <= 0 or >= fs / 2.

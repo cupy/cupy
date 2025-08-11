@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import numpy
 import warnings
 
@@ -491,7 +493,7 @@ class _SparseNCCLCommunicator:
     @classmethod
     def _get_internal_arrays(cls, array):
         if sparse.isspmatrix_coo(array):
-            array.sum_duplicates()  # set it to cannonical form
+            array.sum_duplicates()  # set it to canonical form
             return (array.data, array.row, array.col)
         elif sparse.isspmatrix_csr(array) or sparse.isspmatrix_csc(array):
             return (array.data, array.indptr, array.indices)
@@ -502,7 +504,7 @@ class _SparseNCCLCommunicator:
         # We get the elements from the array and send them
         # so that other process can create receiving arrays for it
         # However, this exchange synchronizes the gpus
-        sizes_shape = shape + tuple((a.size for a in arrays))
+        sizes_shape = shape + tuple(a.size for a in arrays)
         return sizes_shape
 
     @classmethod
@@ -667,7 +669,7 @@ class _SparseNCCLCommunicator:
         if comm.rank != root:
             arrays = [
                 cupy.empty(s, dtype=a.dtype) for s, a in zip(sizes, arrays)]
-        # TODO(ecastill): measure if its faster to just contatenate
+        # TODO(ecastill): measure if its faster to just concatenate
         # the arrays in a single one and send it
         nccl.groupStart()
         for a in arrays:

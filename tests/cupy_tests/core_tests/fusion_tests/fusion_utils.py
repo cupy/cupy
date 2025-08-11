@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import numpy
 
 import cupy
@@ -48,7 +50,7 @@ def check_fusion(
             check_array(actual, expected, **check_array_kwargs)
 
         elif isinstance(expected, (list, tuple)):
-            assert type(actual) == type(expected)
+            assert type(actual) is type(expected)
             for item_actual, item_expected in zip(actual, expected):
                 check(xp, item_actual, item_expected)
 
@@ -139,5 +141,7 @@ def check_fusion(
 def can_use_grid_synchronization():
     return (
         not cupy.cuda.runtime.is_hip and
-        int(cupy.cuda.device.get_compute_capability()) >= 70
+        int(cupy.cuda.device.get_compute_capability()) >= 70 and
+        (cupy.cuda.runtime.runtimeGetVersion() <=
+         cupy.cuda.runtime.driverGetVersion())  # depends on PTX
     )

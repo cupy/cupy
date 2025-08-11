@@ -1,9 +1,12 @@
+from __future__ import annotations
+
 import numpy
 import pytest
 import warnings
 
 import cupy
 from cupy import testing
+from cupy.exceptions import ComplexWarning
 
 
 class TestBasic:
@@ -41,15 +44,13 @@ class TestBasic:
         a.fill(0)
         return a
 
-    @testing.with_requires('numpy>=1.20')
+    @testing.with_requires('numpy>=2.3')
     @testing.for_CF_orders()
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_equal()
-    def test_empty_scalar_none(self, xp, dtype, order):
-        with testing.assert_warns(DeprecationWarning):
-            a = xp.empty(None, dtype=dtype, order=order)
-        a.fill(0)
-        return a
+    def test_empty_scalar_none(self, dtype, order):
+        for xp in (numpy, cupy):
+            with pytest.raises(TypeError, match=r"Use ()"):
+                xp.empty(None, dtype=dtype, order=order)
 
     @testing.for_CF_orders()
     @testing.for_all_dtypes()
@@ -195,13 +196,13 @@ class TestBasic:
     def test_zeros_scalar(self, xp, dtype, order):
         return xp.zeros((), dtype=dtype, order=order)
 
-    @testing.with_requires('numpy>=1.20')
+    @testing.with_requires('numpy>=2.3')
     @testing.for_CF_orders()
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_equal()
-    def test_zeros_scalar_none(self, xp, dtype, order):
-        with testing.assert_warns(DeprecationWarning):
-            return xp.zeros(None, dtype=dtype, order=order)
+    def test_zeros_scalar_none(self, dtype, order):
+        for xp in (numpy, cupy):
+            with pytest.raises(TypeError, match=r"Use ()"):
+                xp.zeros(None, dtype=dtype, order=order)
 
     @testing.for_CF_orders()
     @testing.for_all_dtypes()
@@ -261,7 +262,7 @@ class TestBasic:
     @testing.numpy_cupy_array_equal()
     def test_full_dtypes_cpu_input(self, xp, dtype1, dtype2):
         with warnings.catch_warnings():
-            warnings.simplefilter('ignore', numpy.ComplexWarning)
+            warnings.simplefilter('ignore', ComplexWarning)
             return xp.full(
                 (2, 3, 4), numpy.array(1, dtype=dtype1), dtype=dtype2)
 
@@ -277,7 +278,7 @@ class TestBasic:
     def test_full_like_dtypes_cpu_input(self, xp, dtype1, dtype2):
         a = xp.ndarray((2, 3, 4), dtype=dtype1)
         with warnings.catch_warnings():
-            warnings.simplefilter('ignore', numpy.ComplexWarning)
+            warnings.simplefilter('ignore', ComplexWarning)
             return xp.full_like(a, numpy.array(1, dtype=dtype1))
 
     def test_full_like_subok(self):

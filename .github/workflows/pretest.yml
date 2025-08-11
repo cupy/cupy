@@ -12,6 +12,7 @@ jobs:
       with:
         # Checkout using commit hash to make "no-commit-to-branch" test pass.
         ref: ${{ github.sha }}
+        submodules: recursive
 
     - name: Setup Python
       uses: actions/setup-python@v5
@@ -41,6 +42,7 @@ jobs:
         # TODO: Test against various NumPy/SciPy versions.
         pip install 'numpy==1.25.*' 'scipy==1.10.*'
         pip install 'mypy==1.5.*' 'types-setuptools==57.4.14' 'pytest>=7.2'
+        sed -i s/error::cupy.exceptions./error::numpy./ pyproject.toml  # Because no cupy here. See cupy#8346
         pytest -v tests/typing_tests/test_typing.py
 
   build-cuda:
@@ -57,7 +59,7 @@ jobs:
     - name: Setup Python
       uses: actions/setup-python@v5
       with:
-        python-version: '3.9'
+        python-version: '3.12'
 
     - name: Setup cache
       uses: actions/cache@v4
@@ -77,7 +79,7 @@ jobs:
 
     - name: Build
       run: |
-        pip install -U pip wheel
+        pip install -U pip wheel setuptools
         READTHEDOCS=True pip install -v -e .
         ccache --max-size 0.5Gi --cleanup --show-stats
 
@@ -105,4 +107,4 @@ jobs:
 
     - name: Build & Test
       run: |
-        docker run --rm -v "${PWD}:/src" -w /src "rocm/dev-ubuntu-20.04:5.0-complete" bash .github/workflows/pretest-rocm-test.sh
+        docker run --rm -v "${PWD}:/src" -w /src "rocm/dev-ubuntu-22.04:6.4" bash .github/workflows/scripts/pretest-rocm-test.sh

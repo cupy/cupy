@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import pickle
 import pytest
 import warnings
@@ -77,7 +79,7 @@ def _is_conditionally_positive_definite(kernel, m, xp, scp):
     ntests = 100
     for ndim in [1, 2, 3, 4, 5]:
         # Generate sample points with a Halton sequence to avoid samples that
-        # are too close to eachother, which can make the matrix singular.
+        # are too close to each other, which can make the matrix singular.
         seq = Halton(ndim, scramble=False, seed=_np.random.RandomState())
         for _ in range(ntests):
             x = xp.asarray(2*seq.random(nx)) - 1
@@ -386,7 +388,8 @@ class _TestRBFInterpolator:
 
     @testing.numpy_cupy_allclose(scipy_name='scp', accept_error=UserWarning)
     @pytest.mark.parametrize('kernel',
-                             [kl for kl in _NAME_TO_MIN_DEGREE])
+                             [kl for kl in _NAME_TO_MIN_DEGREE
+                              if _NAME_TO_MIN_DEGREE[kl] >= 1])
     def test_degree_warning(self, xp, scp, kernel):
         y = xp.linspace(0, 1, 5)[:, None]
         d = xp.zeros(5)
@@ -394,6 +397,15 @@ class _TestRBFInterpolator:
         with warnings.catch_warnings():
             warnings.simplefilter("error")
             self.build(scp, y, d, epsilon=1.0, kernel=kernel, degree=deg-1)
+
+    @pytest.mark.parametrize('kernel', [kl for kl in _NAME_TO_MIN_DEGREE])
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_minus_one_degree(self, xp, scp, kernel):
+        # Make sure a degree of -1 is accepted without any warning.
+        y = xp.linspace(0, 1, 5)[:, None]
+        d = xp.zeros(5)
+        f = self.build(scp, y, d, epsilon=1.0, kernel=kernel, degree=-1)
+        return f(y)
 
     @testing.numpy_cupy_allclose(scipy_name='scp', accept_error=LinAlgError)
     def test_rank_error(self, xp, scp):

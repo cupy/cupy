@@ -24,9 +24,10 @@ from CuSignal under terms of the MIT license.
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
+from __future__ import annotations
+
 
 import warnings
-from typing import Set
 
 import cupy
 import numpy as np
@@ -2003,7 +2004,7 @@ def taylor(M, nbar=4, sll=30, norm=True, sym=True):
     The Taylor window taper function approximates the Dolph-Chebyshev window's
     constant sidelobe level for a parameterized number of near-in sidelobes,
     but then allows a taper beyond [2]_.
-    The SAR (synthetic aperature radar) community commonly uses Taylor
+    The SAR (synthetic aperture radar) community commonly uses Taylor
     weighting for image formation processing because it provides strong,
     selectable sidelobe suppression with minimum broadening of the
     mainlobe [1]_.
@@ -2207,7 +2208,7 @@ for k, v in _win_equiv_raw.items():
         _win_equiv[key] = v[0]
 
 # Keep track of which windows need additional parameters
-_needs_param: Set[str] = set()
+_needs_param: set[str] = set()
 for k, v in _win_equiv_raw.items():
     if v[1]:
         _needs_param.update(k)

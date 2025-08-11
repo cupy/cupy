@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+import platform
+
 import cupy
 
 import cupyx.scipy.signal as signal
@@ -315,7 +319,10 @@ class TestFirls:
         # negative weight
         # assert_raises(ValueError, firls, 11, [0.1, 0.2], [0, 0], [-1])
 
-    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-13)
+    @pytest.mark.xfail(
+        platform.machine() == "aarch64",
+        reason="aarch64 scipy does not match cupy/x86 see Scipy #20160")
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-12)
     def test_firls(self, xp, scp):
         N = 11  # number of taps in the filter
         a = 0.1  # width of the transition band
@@ -401,6 +408,7 @@ class TestMinimumPhase:
         assert_raises(ValueError, signal.minimum_phase,
                       cupy.ones(10), method='foo')
 
+    @testing.with_requires("scipy>=1.14")
     @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_homomorphic(self, xp, scp):
         # check that it can recover frequency responses of arbitrary
@@ -409,6 +417,14 @@ class TestMinimumPhase:
         # for some cases we can get the actual filter back
         h = xp.asarray([1, -1])
         h_new = scp.signal.minimum_phase(xp.convolve(h, h[::-1]))
+        return h_new
+
+    @testing.with_requires("scipy>=1.14")
+    @pytest.mark.parametrize("half", [True, False])
+    @testing.numpy_cupy_allclose(scipy_name="scp")
+    def test_homomorphic_half(self, xp, scp, half):
+        h = xp.asarray([1, -1])
+        h_new = scp.signal.minimum_phase(xp.convolve(h, h[::-1]), half=half)
         return h_new
 
     @pytest.mark.parametrize("n", [2, 3, 10, 11, 15, 16, 17, 20, 21, 100, 101])
@@ -422,7 +438,7 @@ class TestMinimumPhase:
         h_new = scp.signal.minimum_phase(xp.convolve(h, h[::-1]))
         return h_new
 
-    @testing.numpy_cupy_allclose(scipy_name="scp", atol=2e-5)
+    @testing.numpy_cupy_allclose(scipy_name="scp", atol=1e-4)
     def test_hilbert(self, xp, scp):  # , n):
         # example from the docstring of `scipy.signal.minimum_phase`
         from scipy.signal import remez

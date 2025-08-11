@@ -1,9 +1,11 @@
+from __future__ import annotations
+
 import functools
 import os
 import unittest
 
 
-class QuietTestRunner(object):
+class QuietTestRunner:
 
     def run(self, suite):
         result = unittest.TestResult()
@@ -39,7 +41,7 @@ def repeat_with_success_at_least(times, min_success):
             results = []
 
             def fail():
-                msg = '\nFail: {0}, Success: {1}'.format(
+                msg = '\nFail: {}, Success: {}'.format(
                     failure_counter, success_counter)
                 if len(results) > 0:
                     first = results[0]
@@ -63,7 +65,7 @@ def repeat_with_success_at_least(times, min_success):
                 result = QuietTestRunner().run(suite)
                 if len(result.skipped) == 1:
                     # "Skipped" is a special case of "Successful".
-                    # When the test has been skipped, immedeately quit the
+                    # When the test has been skipped, immediately quit the
                     # test regardleess of `times` and `min_success` by raising
                     # SkipTest exception using the original reason.
                     instance.skipTest(result.skipped[0][1])

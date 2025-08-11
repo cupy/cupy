@@ -1,13 +1,17 @@
+from __future__ import annotations
+
 
 import io
 import warnings
 
 import numpy
 import pytest
+from pytest import raises as assert_raises
 
 import cupy
 from cupy.cuda import runtime
 from cupy import testing
+from cupy.testing import assert_array_almost_equal
 import cupyx.scipy.interpolate  # NOQA
 from cupyx.scipy.interpolate import CubicHermiteSpline
 
@@ -18,7 +22,7 @@ except ImportError:
 
 
 if cupy.cuda.runtime.runtimeGetVersion() < 11000:
-    # Workarounds precison issues in CUDA 10.2 + float16
+    # Workarounds precision issues in CUDA 10.2 + float16
     default_atol = 5e-2
     default_rtol = 1e-1
 else:
@@ -161,7 +165,9 @@ class TestBarycentric:
         return scp.interpolate.barycentric_interpolate(xs, ys, test_xs)
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(
+        scipy_name='scp', accept_error=OverflowError
+    )
     def test_array_input(self, xp, scp, dtype):
         x = 1000 * xp.arange(1, 11, dtype=dtype)
         y = xp.arange(1, 11, dtype=dtype)
@@ -743,3 +749,580 @@ class TestCubicSpline:
         S = scp.interpolate.CubicSpline(x, y)
         q = xp.linspace(0, 1, 201)
         return S(q)
+
+
+class TestInterp1D:
+
+    def setup_method(self):
+        self.x5 = numpy.arange(5.)
+        self.x10 = numpy.arange(10.)
+        self.y10 = numpy.arange(10.)
+        self.x25 = self.x10.reshape((2, 5))
+        self.x2 = numpy.arange(2.)
+        self.y2 = numpy.arange(2.)
+        self.x1 = numpy.array([0.])
+        self.y1 = numpy.array([0.])
+
+        self.y210 = numpy.arange(20.).reshape((2, 10))
+        self.y102 = numpy.arange(20.).reshape((10, 2))
+        self.y225 = numpy.arange(20.).reshape((2, 2, 5))
+        self.y25 = numpy.arange(10.).reshape((2, 5))
+        self.y235 = numpy.arange(30.).reshape((2, 3, 5))
+        self.y325 = numpy.arange(30.).reshape((3, 2, 5))
+
+        # Edge updated test matrix 1
+        # array([[ 30,   1,   2,   3,   4,   5,   6,   7,   8, -30],
+        #        [ 30,  11,  12,  13,  14,  15,  16,  17,  18, -30]])
+        self.y210_edge_updated = numpy.arange(20.).reshape((2, 10))
+        self.y210_edge_updated[:, 0] = 30
+        self.y210_edge_updated[:, -1] = -30
+
+        # Edge updated test matrix 2
+        # array([[ 30,  30],
+        #       [  2,   3],
+        #       [  4,   5],
+        #       [  6,   7],
+        #       [  8,   9],
+        #       [ 10,  11],
+        #       [ 12,  13],
+        #       [ 14,  15],
+        #       [ 16,  17],
+        #       [-30, -30]])
+        self.y102_edge_updated = numpy.arange(20.).reshape((10, 2))
+        self.y102_edge_updated[0, :] = 30
+        self.y102_edge_updated[-1, :] = -30
+
+        self.fill_value = -100.0
+
+    def test_init(self):
+        # Check that the attributes are initialized appropriately by the
+        # constructor.
+        x10, y10, y210, y102 = map(cupy.asarray,
+                                   (self.x10, self.y10, self.y210, self.y102)
+                                   )
+        interp1d = cupyx.scipy.interpolate.interp1d
+
+        assert interp1d(x10, y10).copy
+        assert not interp1d(x10, y10, copy=False).copy
+        assert interp1d(x10, y10).bounds_error
+        assert not interp1d(x10, y10, bounds_error=False).bounds_error
+        assert cupy.isnan(interp1d(x10, y10).fill_value)
+        assert interp1d(x10, y10, fill_value=3.0).fill_value == 3.0
+        assert interp1d(x10, y10, fill_value=(
+            1.0, 2.0)).fill_value == (1.0, 2.0)
+        assert interp1d(x10, y10).axis == 0
+        assert interp1d(x10, y210).axis == 1
+        assert interp1d(x10, y102, axis=0).axis == 0
+        assert (interp1d(x10, y10).x == x10).all()
+        assert (interp1d(x10, y10).y == y10).all()
+        assert (interp1d(x10, y210).y == y210).all()
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_assume_sorted(self, xp, scp):
+        x10 = xp.asarray(self.x10)
+        y10 = xp.asarray(self.y10)
+        # Check for unsorted arrays
+        interp10_unsorted = scp.interpolate.interp1d(x10[::-1], y10[::-1])
+        return interp10_unsorted(x10)
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_assume_sorted_2D(self, xp, scp):
+        # Check that if y is a 2-D array, things are still consistent
+        x10 = xp.asarray(self.x10)
+        y210 = xp.asarray(self.y210)
+        interp10_y_2d_unsorted = scp.interpolate.interp1d(
+            x10[::-1], y210[:, ::-1]
+        )
+        return interp10_y_2d_unsorted(x10)
+
+    @pytest.mark.parametrize('kind', ['linear', 'slinear'])
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_linear(self, xp, scp, kind):
+        # Check the actual implementation of linear interpolation.
+        x10 = xp.asarray(self.x10)
+        y10 = xp.asarray(self.y10)
+
+        interp10 = scp.interpolate.interp1d(x10, y10, kind=kind)
+        extrapolator = scp.interpolate.interp1d(x10, y10, kind=kind,
+                                                fill_value='extrapolate')
+        xval = xp.asarray([-1., 0, 9, 11])
+        return interp10(x10), extrapolator(xval)
+
+    @pytest.mark.parametrize('dtyp', ['float16', 'float32', 'float64'])
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_linear_dtypes(self, xp, scp, dtyp):
+        x = xp.arange(8, dtype=dtyp)
+        y = x.copy()
+        yp = scp.interpolate.interp1d(x, y, kind='linear')(x)
+        return yp
+
+    @testing.with_requires("scipy>=1.10")
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_linear_dtypes_2(self, xp, scp):
+        # regression test for gh-14531, where 1D linear interpolation has been
+        # has been extended to delegate to numpy.interp for integer dtypes
+        x = xp.asarray([0, 1, 2])
+        y = xp.asarray([xp.nan, 0, 1])
+        yp = scp.interpolate.interp1d(x, y)(x)
+        return yp
+
+    @pytest.mark.parametrize('kind', ['slinear', 'zero', 'quadratic', 'cubic'])
+    @pytest.mark.parametrize('dt_r', ['float16', 'float32', 'float64'])
+    @pytest.mark.parametrize('dt_n', ['float16', 'float32', 'float64'])
+    @pytest.mark.parametrize('dt_rc', ['float16', 'float32', 'float64',
+                                       'complex64', 'complex128'])
+    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=2e-7, atol=1e-15)
+    def test_slinear_dtypes(self, xp, scp, dt_n, dt_r, dt_rc, kind):
+        # regression test for gh-7273: 1D slinear interpolation fails with
+        # float32 inputs
+        x = xp.arange(0, 10, dtype=dt_r)
+        y = xp.exp(-x / 3.0).astype(dt_rc)
+        xnew = x.astype(dt_n)
+        return scp.interpolate.interp1d(
+            x, y, kind=kind, bounds_error=False
+        )(xnew)
+
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-15)
+    def test_cubic(self, xp, scp):
+        # Check the actual implementation of spline interpolation.
+        x10 = xp.asarray(self.x10)
+        y10 = xp.asarray(self.y10)
+        f = scp.interpolate.interp1d(x10, y10, kind='cubic')
+        return f(x10), f(xp.asarray([2.4, 5.6, 6.0]))
+
+    @testing.with_requires("scipy>=1.10")
+    @pytest.mark.parametrize('kind',
+                             ['nearest', 'nearest-up', 'previous', 'next']
+                             )
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_nearest(self, xp, scp, kind):
+        # Check the actual implementation of nearest-neighbour interpolation.
+        # Nearest asserts that half-integer case (1.5) rounds down to 1
+        x10 = xp.asarray(self.x10)
+        y10 = xp.asarray(self.y10)
+        f = scp.interpolate.interp1d(x10, y10, kind=kind)
+        fe = scp.interpolate.interp1d(x10, y10, kind=kind,
+                                      fill_value='extrapolate')
+        xval = xp.asarray([2.4, 5.6, 6.0])
+        xe = xp.asarray([-1., 0, 9, 11])
+        return f(1.2), f(1.5), f(xval), fe(xe)
+
+    @testing.with_requires("scipy>=1.10")
+    @pytest.mark.parametrize('kind', ['previous', 'next'])
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_previous_2(self, xp, scp, kind):
+        x10 = xp.asarray(self.x10)
+        y10 = xp.asarray(self.y10)
+        y210 = xp.asarray(self.y210)
+        y102 = xp.asarray(self.y102)
+
+        interpolator1D = scp.interpolate.interp1d(x10, y10, kind=kind,
+                                                  fill_value='extrapolate')
+        interpolator2D = scp.interpolate.interp1d(x10, y210, kind=kind,
+                                                  fill_value='extrapolate')
+        interpolator2DAxis0 = scp.interpolate.interp1d(
+            x10, y102, kind=kind, axis=0, fill_value='extrapolate'
+        )
+
+        xval = xp.asarray([-1, -2, 5, 8, 12, 25])
+        xval2 = xp.asarray([-2, 5, 12])
+        return (interpolator1D(xval),
+                interpolator2D(xval),
+                interpolator2DAxis0(xval2))
+
+    @testing.with_requires("scipy>=1.10")
+    @pytest.mark.parametrize('kind', ['previous', 'next'])
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_previous_3(self, xp, scp, kind):
+        # Tests for gh-16813
+        x = xp.asarray([0, 1, 2])
+        y = xp.asarray([0, 1, -1])
+        xv = xp.asarray([-2, -1, 0, 1, 2, 3, 5])
+
+        interpolator1D = scp.interpolate.interp1d(x, y, kind=kind,
+                                                  fill_value='extrapolate',
+                                                  assume_sorted=True)
+
+        x1 = xp.asarray([2, 0, 1])   # x is not ascending
+        y1 = xp.asarray([-1, 0, 1])
+        interpolator1D_ns = scp.interpolate.interp1d(x1, y1, kind=kind,
+                                                     fill_value='extrapolate',
+                                                     assume_sorted=True)
+
+        x10 = xp.asarray(self.x10)
+        y210 = xp.asarray(self.y210_edge_updated)
+        interpolator2D = scp.interpolate.interp1d(x10, y210,
+                                                  kind=kind,
+                                                  fill_value='extrapolate')
+        xv1 = xp.asarray([-1, -2, 5, 8, 12, 25])
+
+        y102 = xp.asarray(self.y102_edge_updated)
+        interpolator2DAxis0 = scp.interpolate.interp1d(
+            x10, y102, kind=kind, axis=0, fill_value='extrapolate')
+
+        xv2 = xp.asarray([-2, 5, 11])
+        return (interpolator1D(xv),
+                interpolator1D_ns(xv),
+                interpolator2D(xv1),
+                interpolator2DAxis0(xv2))
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_zero(self, xp, scp):
+        # Check the actual implementation of zero-order spline interpolation.
+        x10 = xp.asarray(self.x10)
+        y10 = xp.asarray(self.y10)
+        xv = xp.asarray([2.4, 5.6, 6.0])
+
+        f = scp.interpolate.interp1d(x10, y10, kind='zero')
+        return f(1.2), f(1.5), f(xv), f(x10)
+
+    def bounds_check_helper(self, interpolant, test_array, fail_value):
+        # Asserts that a ValueError is raised and that the error message
+        # contains the value causing this exception.
+        assert_raises(ValueError, interpolant, test_array)
+        try:
+            interpolant(test_array)
+        except ValueError as err:
+            assert (f"{fail_value}" in str(err))
+
+    @pytest.mark.parametrize('kind', ['linear', 'cubic', 'nearest', 'previous',
+                                      'next', 'slinear', 'zero', 'quadratic'])
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-15)
+    def test_bounds(self, kind, xp, scp):
+        x10 = xp.asarray(self.x10)
+        y10 = xp.asarray(self.y10)
+        fill_value = self.fill_value
+
+        # Test that our handling of out-of-bounds input is correct.
+        extrap10 = scp.interpolate.interp1d(x10, y10, fill_value=fill_value,
+                                            bounds_error=False, kind=kind)
+
+        xval1 = xp.asarray([[[11.2], [-3.4], [12.6], [19.3]]])
+        xval2 = xp.asarray([-1.0, 0.0, 5.0, 9.0, 11.0])
+        return extrap10(11.2), extrap10(-3.4), extrap10(xval1), extrap10(xval2)
+
+    @pytest.mark.parametrize('kind', ['linear', 'cubic', 'nearest', 'previous',
+                                      'next', 'slinear', 'zero', 'quadratic'])
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=2e-15)
+    def test_bounds_nan_fill(self, kind, xp, scp):
+        x = xp.arange(10).astype(int)
+        y = xp.arange(10).astype(int)
+        c = scp.interpolate.interp1d(x, y, kind=kind,
+                                     fill_value=cupy.nan, bounds_error=False)
+        yi = c(x - 1)
+        return yi
+
+    def _check_fill_value(self, kind):
+        interp1d = cupyx.scipy.interpolate.interp1d
+        x10 = cupy.asarray(self.x10)
+        y10 = cupy.asarray(self.y10)
+
+        x5 = cupy.asarray(self.x5)
+        y235, y325, y225, y25 = map(cupy.asarray,
+                                    (self.y235, self.y325, self.y225, self.y25)
+                                    )
+
+        interp = interp1d(x10, y10, kind=kind,
+                          fill_value=(-100, 100), bounds_error=False)
+        assert_array_almost_equal(interp(10), 100)
+        assert_array_almost_equal(interp(-10), -100)
+        assert_array_almost_equal(interp([-10, 10]), [-100, 100])
+
+        # Proper broadcasting:
+        #    interp along axis of length 5
+        # other dim=(2, 3), (3, 2), (2, 2), or (2,)
+
+        # one singleton fill_value (works for all)
+        for y in (y235, y325, y225, y25):
+            interp = interp1d(x5, y, kind=kind, axis=-1,
+                              fill_value=100, bounds_error=False)
+            assert_array_almost_equal(interp(10), 100)
+            assert_array_almost_equal(interp(-10), 100)
+            assert_array_almost_equal(interp([-10, 10]), 100)
+
+            # singleton lower, singleton upper
+            interp = interp1d(x5, y, kind=kind, axis=-1,
+                              fill_value=(-100, 100), bounds_error=False)
+            assert_array_almost_equal(interp(10), 100)
+            assert_array_almost_equal(interp(-10), -100)
+            if y.ndim == 3:
+                result = [[[-100, 100]] * y.shape[1]] * y.shape[0]
+            else:
+                result = [[-100, 100]] * y.shape[0]
+            assert_array_almost_equal(interp([-10, 10]), result)
+
+        # one broadcastable (3,) fill_value
+        fill_value = [100, 200, 300]
+        for y in (y325, y225):
+            assert_raises(ValueError, interp1d, self.x5, y, kind=kind,
+                          axis=-1, fill_value=fill_value, bounds_error=False)
+        interp = interp1d(self.x5, self.y235, kind=kind, axis=-1,
+                          fill_value=fill_value, bounds_error=False)
+        assert_array_almost_equal(interp(10), [[100, 200, 300]] * 2)
+        assert_array_almost_equal(interp(-10), [[100, 200, 300]] * 2)
+        assert_array_almost_equal(interp([-10, 10]), [[[100, 100],
+                                                       [200, 200],
+                                                       [300, 300]]] * 2)
+
+        # one broadcastable (2,) fill_value
+        fill_value = [100, 200]
+        assert_raises(ValueError, interp1d, self.x5, self.y235, kind=kind,
+                      axis=-1, fill_value=fill_value, bounds_error=False)
+        for y in (y225, y325, y25):
+            interp = interp1d(x5, y, kind=kind, axis=-1,
+                              fill_value=fill_value, bounds_error=False)
+            result = [100, 200]
+            if y.ndim == 3:
+                result = [result] * y.shape[0]
+            assert_array_almost_equal(interp(10), result)
+            assert_array_almost_equal(interp(-10), result)
+            result = [[100, 100], [200, 200]]
+            if y.ndim == 3:
+                result = [result] * y.shape[0]
+            assert_array_almost_equal(interp([-10, 10]), result)
+
+        # broadcastable (3,) lower, singleton upper
+        fill_value = (cupy.array([-100, -200, -300]), 100)
+        for y in (y325, y225):
+            assert_raises(ValueError, interp1d, self.x5, y, kind=kind,
+                          axis=-1, fill_value=fill_value, bounds_error=False)
+        interp = interp1d(x5, y235, kind=kind, axis=-1,
+                          fill_value=fill_value, bounds_error=False)
+        assert_array_almost_equal(interp(10), 100)
+        assert_array_almost_equal(interp(-10), [[-100, -200, -300]] * 2)
+        assert_array_almost_equal(interp([-10, 10]), [[[-100, 100],
+                                                       [-200, 100],
+                                                       [-300, 100]]] * 2)
+
+        # broadcastable (2,) lower, singleton upper
+        fill_value = (cupy.array([-100, -200]), 100)
+        assert_raises(ValueError, interp1d, self.x5, self.y235, kind=kind,
+                      axis=-1, fill_value=fill_value, bounds_error=False)
+        for y in (y225, y325, y25):
+            interp = interp1d(x5, y, kind=kind, axis=-1,
+                              fill_value=fill_value, bounds_error=False)
+            assert_array_almost_equal(interp(10), 100)
+            result = [-100, -200]
+            if y.ndim == 3:
+                result = [result] * y.shape[0]
+            assert_array_almost_equal(interp(-10), result)
+            result = [[-100, 100], [-200, 100]]
+            if y.ndim == 3:
+                result = [result] * y.shape[0]
+            assert_array_almost_equal(interp([-10, 10]), result)
+
+        # broadcastable (3,) lower, broadcastable (3,) upper
+        fill_value = ([-100, -200, -300], [100, 200, 300])
+        for y in (y325, y225):
+            assert_raises(ValueError, interp1d, self.x5, y, kind=kind,
+                          axis=-1, fill_value=fill_value, bounds_error=False)
+        for ii in range(2):  # check ndarray as well as list here
+            if ii == 1:
+                fill_value = tuple(cupy.array(f) for f in fill_value)
+            interp = interp1d(x5, y235, kind=kind, axis=-1,
+                              fill_value=fill_value, bounds_error=False)
+            assert_array_almost_equal(interp(10), [[100, 200, 300]] * 2)
+            assert_array_almost_equal(interp(-10), [[-100, -200, -300]] * 2)
+            assert_array_almost_equal(interp([-10, 10]), [[[-100, 100],
+                                                           [-200, 200],
+                                                           [-300, 300]]] * 2)
+        # broadcastable (2,) lower, broadcastable (2,) upper
+        fill_value = ([-100, -200], [100, 200])
+        assert_raises(ValueError, interp1d, x5, y235, kind=kind,
+                      axis=-1, fill_value=fill_value, bounds_error=False)
+        for y in (y325, y225, y25):
+            interp = interp1d(x5, y, kind=kind, axis=-1,
+                              fill_value=fill_value, bounds_error=False)
+            result = [100, 200]
+            if y.ndim == 3:
+                result = [result] * y.shape[0]
+            assert_array_almost_equal(interp(10), result)
+            result = [-100, -200]
+            if y.ndim == 3:
+                result = [result] * y.shape[0]
+            assert_array_almost_equal(interp(-10), result)
+            result = [[-100, 100], [-200, 200]]
+            if y.ndim == 3:
+                result = [result] * y.shape[0]
+            assert_array_almost_equal(interp([-10, 10]), result)
+
+        # one broadcastable (2, 2) array-like
+        fill_value = [[100, 200], [1000, 2000]]
+        for y in (y235, y325, y25):
+            assert_raises(ValueError, interp1d, x5, y, kind=kind,
+                          axis=-1, fill_value=fill_value, bounds_error=False)
+        for ii in range(2):
+            if ii == 1:
+                fill_value = cupy.array(fill_value)
+            interp = interp1d(x5, y225, kind=kind, axis=-1,
+                              fill_value=fill_value, bounds_error=False)
+            assert_array_almost_equal(interp(10), [[100, 200], [1000, 2000]])
+            assert_array_almost_equal(interp(-10), [[100, 200], [1000, 2000]])
+            assert_array_almost_equal(interp([-10, 10]), [[[100, 100],
+                                                           [200, 200]],
+                                                          [[1000, 1000],
+                                                           [2000, 2000]]])
+
+        # broadcastable (2, 2) lower, broadcastable (2, 2) upper
+        fill_value = ([[-100, -200], [-1000, -2000]],
+                      [[100, 200], [1000, 2000]])
+        for y in (y235, y325, y25):
+            assert_raises(ValueError, interp1d, x5, y, kind=kind,
+                          axis=-1, fill_value=fill_value, bounds_error=False)
+        for ii in range(2):
+            if ii == 1:
+                fill_value = (cupy.array(
+                    fill_value[0]), cupy.array(fill_value[1]))
+            interp = interp1d(x5, y225, kind=kind, axis=-1,
+                              fill_value=fill_value, bounds_error=False)
+            assert_array_almost_equal(interp(10), [[100, 200], [1000, 2000]])
+            assert_array_almost_equal(interp(-10), [[-100, -200],
+                                                    [-1000, -2000]])
+            assert_array_almost_equal(interp([-10, 10]), [[[-100, 100],
+                                                           [-200, 200]],
+                                                          [[-1000, 1000],
+                                                           [-2000, 2000]]])
+
+    @pytest.mark.parametrize('kind', ['linear', 'nearest', 'cubic', 'slinear',
+                                      'quadratic', 'zero', 'previous', 'next']
+                             )
+    def test_fill_value(self, kind):
+        # test that two-element fill value works
+        self._check_fill_value(kind)
+
+    def test_fill_value_writeable(self):
+        # backwards compat: fill_value is a public writeable attribute
+        x10, y10 = map(cupy.asarray, (self.x10, self.y10))
+        interp = cupyx.scipy.interpolate.interp1d(x10, y10, fill_value=123.0)
+        assert interp.fill_value == 123.0
+        interp.fill_value = 321.0
+        assert interp.fill_value == 321.0
+
+    def _nd_check_interp(self, kind='linear'):
+        # Check the behavior when the inputs and outputs are multidimensional.
+        x10, y10, y210, y102 = map(
+            cupy.asarray, (self.x10, self.y10, self.y210, self.y102))
+        interp1d = cupyx.scipy.interpolate.interp1d
+
+        # Multidimensional input.
+        interp10 = interp1d(x10, y10, kind=kind)
+        assert_array_almost_equal(interp10(cupy.array([[3., 5.], [2., 7.]])),
+                                  cupy.array([[3., 5.], [2., 7.]]))
+
+        # Scalar input -> 0-dim scalar array output
+        assert isinstance(interp10(1.2), cupy.ndarray)
+        assert interp10(1.2).shape == ()
+
+        # Multidimensional outputs.
+        interp210 = interp1d(x10, y210, kind=kind)
+        assert_array_almost_equal(interp210(1.), cupy.array([1., 11.]))
+        assert_array_almost_equal(interp210(cupy.array([1., 2.])),
+                                  cupy.array([[1., 2.], [11., 12.]]))
+
+        interp102 = interp1d(x10, y102, axis=0, kind=kind)
+        assert_array_almost_equal(interp102(1.), cupy.array([2.0, 3.0]))
+        assert_array_almost_equal(interp102(cupy.array([1., 3.])),
+                                  cupy.array([[2., 3.], [6., 7.]]))
+
+        # Both at the same time!
+        x_new = cupy.array([[3., 5.], [2., 7.]])
+        assert_array_almost_equal(interp210(x_new),
+                                  cupy.array([[[3., 5.], [2., 7.]],
+                                              [[13., 15.], [12., 17.]]]))
+        assert_array_almost_equal(interp102(x_new),
+                                  cupy.array([[[6., 7.], [10., 11.]],
+                                              [[4., 5.], [14., 15.]]]))
+
+    def _nd_check_shape(self, kind='linear'):
+        # Check large N-D output shape
+        a = [4, 5, 6, 7]
+        y = cupy.arange(cupy.prod(cupy.asarray(a))).reshape(*a)
+        for n, s in enumerate(a):
+            x = cupy.arange(s)
+            z = cupyx.scipy.interpolate.interp1d(x, y, axis=n, kind=kind)
+            assert_array_almost_equal(z(x), y, err_msg=kind)
+
+            x2 = cupy.arange(2*3*1).reshape((2, 3, 1)) / 12.
+            b = list(a)
+            b[n:n+1] = [2, 3, 1]
+            assert_array_almost_equal(z(x2).shape, b, err_msg=kind)
+
+    @pytest.mark.parametrize('kind', ['linear', 'cubic', 'slinear',
+                                      'quadratic',
+                                      'nearest', 'zero', 'previous', 'next'])
+    def test_nd(self, kind):
+        self._nd_check_interp(kind)
+        self._nd_check_shape(kind)
+
+    @pytest.mark.parametrize('kind', ['linear', 'cubic', 'slinear',
+                                      'quadratic',
+                                      'nearest', 'zero', 'previous', 'next'])
+    @pytest.mark.parametrize('dtyp', ['complex64', 'complex128'])
+    def test_complex(self, kind, dtyp):
+        x = cupy.array([1, 2.5, 3, 3.1, 4, 6.4, 7.9, 8.0, 9.5, 10])
+        y = x * x ** (1 + 2j)
+        y = y.astype(dtyp)
+
+        # simple test
+        c = cupyx.scipy.interpolate.interp1d(x, y, kind=kind)
+        assert_array_almost_equal(y[:-1], c(x)[:-1])
+
+        # check against interpolating real+imag separately
+        xi = cupy.linspace(1, 10, 31)
+        cr = cupyx.scipy.interpolate.interp1d(x, y.real, kind=kind)
+        ci = cupyx.scipy.interpolate.interp1d(x, y.imag, kind=kind)
+        assert_array_almost_equal(c(xi).real, cr(xi))
+        assert_array_almost_equal(c(xi).imag, ci(xi))
+
+    @pytest.mark.parametrize('kind', ['nearest', 'previous', 'next'])
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_overflow_nearest(self, xp, scp, kind):
+        # Test that the x range doesn't overflow when given integers as input
+        x = xp.array([0, 50, 127], dtype=xp.int8)
+        ii = scp.interpolate.interp1d(x, x, kind=kind)
+        return ii(x)
+
+    @pytest.mark.parametrize('kind', ['zero', 'slinear'])
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_local_nans(self, xp, scp, kind):
+        # check that for local interpolation kinds (slinear, zero) a single nan
+        # only affects its local neighborhood
+        x = xp.arange(10).astype(float)
+        y = x.copy()
+        y[6] = xp.nan
+        ir = scp.interpolate.interp1d(x, y, kind=kind)
+        return ir([4.9, 7.0])
+
+    @pytest.mark.parametrize('kind', ['quadratic', 'cubic'])
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_spline_nans(self, xp, scp, kind):
+        # Backwards compat: a single nan makes the whole spline interpolation
+        # return nans in an array of the correct shape. And it doesn't raise,
+        # just quiet nans because of backcompat.
+        x = xp.arange(8).astype(float)
+        y = x.copy()
+        yn = y.copy()
+        yn[3] = xp.nan
+
+        irn = scp.interpolate.interp1d(x, yn, kind=kind)
+        vals = tuple(irn(xv) for xv in (6, [1, 6], [[1, 6], [3, 5]]))
+        return vals
+
+    def test_all_nans(self):
+        # regression test for gh-11637: interp1d core dumps with all-nan `x`
+        x = cupy.ones(10) * cupy.nan
+        y = cupy.arange(10)
+        with assert_raises(ValueError):
+            cupyx.scipy.interpolate.interp1d(x, y, kind='cubic')
+
+    @testing.with_requires("scipy>=1.10")
+    @pytest.mark.parametrize(
+        "kind", ("linear", "nearest", "nearest-up", "previous", "next")
+    )
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_single_value(self, xp, scp, kind):
+        # https://github.com/scipy/scipy/issues/4043
+        f = scp.interpolate.interp1d(xp.asarray([1.5]), xp.asarray([6]),
+                                     kind=kind, bounds_error=False,
+                                     fill_value=(2, 10))
+        return f(xp.asarray([1, 1.5, 2]))

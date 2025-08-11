@@ -1,15 +1,20 @@
+from __future__ import annotations
+
 import operator
 from math import prod
 
-from numpy.core.multiarray import normalize_axis_index
+import numpy
+if numpy.__version__ < '2':
+    from numpy.core.multiarray import normalize_axis_index
+else:
+    from numpy.lib.array_utils import normalize_axis_index
 
 import cupy
 from cupyx.scipy import sparse
 from cupyx.scipy.sparse.linalg import spsolve
-from cupyx.scipy.interpolate._bspline import _get_dtype, _as_float_array
-
 from cupyx.scipy.interpolate._bspline import (
-    _get_module_func, INTERVAL_MODULE, D_BOOR_MODULE, BSpline)
+    _get_dtype, _as_float_array, _get_module_func, INTERVAL_MODULE,
+    D_BOOR_MODULE, BSpline)
 
 
 #################################
@@ -240,7 +245,7 @@ def make_interp_spline(x, y, k=3, t=None, bc_type=None, axis=0,
         c = cupy.zeros((nt,) + y.shape[1:], dtype=float)
         return BSpline.construct_fast(t, c, k, axis=axis)
 
-    # Consruct the colocation matrix of b-splines + boundary conditions.
+    # Construct the colocation matrix of b-splines + boundary conditions.
     # The coefficients of the interpolating B-spline function are the solution
     # of the linear system `A @ c = rhs` where `A` is the colocation matrix
     # (i.e., each row of A corresponds to a data point in the `x` array and
@@ -266,7 +271,7 @@ def make_interp_spline(x, y, k=3, t=None, bc_type=None, axis=0,
         # Prepare the I/O arrays for the kernels. We only need the non-zero
         # b-splines at x[0] and x[-1], but the kernel wants more arrays which
         # we allocate and ignore (mode != 1)
-        temp = cupy.zeros((nt, ), dtype=float)
+        temp = cupy.zeros((2 * k + 1, ), dtype=float)
         num_c = 1
         dummy_c = cupy.empty((nt, num_c), dtype=float)
         out = cupy.empty((1, 1), dtype=dummy_c.dtype)
@@ -384,7 +389,7 @@ def _make_interp_spline_full_matrix(x, y, k, t, bc_type):
     nt = t.size - k - 1
     assert nt - n == nleft + nright
 
-    # Consruct the colocation matrix of b-splines + boundary conditions.
+    # Construct the colocation matrix of b-splines + boundary conditions.
     # The coefficients of the interpolating B-spline function are the solution
     # of the linear system `A @ c = rhs` where `A` is the colocation matrix
     # (i.e., each row of A corresponds to a data point in the `x` array and
@@ -529,3 +534,345 @@ def _make_periodic_spline(x, y, t, k, axis):
     coef = cupy.ascontiguousarray(coef.reshape((n + k - 1,) + y.shape[1:]))
     return BSpline.construct_fast(t, coef, k,
                                   extrapolate='periodic', axis=axis)
+
+
+# ### LSQ spline helpers
+
+
+QR_KERNEL = r'''
+typedef long long ssize_t ;
+
+/*
+ * Compute the parameters of the Givens transformation: LAPACK's dlartg
+ * replacement.
+ *
+ * Naive computation, following
+ * https://www.netlib.org/lapack/explore-3.1.1-html/dlartg.f.html
+ *
+ */
+template<typename T>
+__global__ void
+dlartg(T *f, T *g, T *cs, T *sn, T *r) {
+
+    if (*g == 0) {
+        *cs = 1.0;
+        *sn = 0.0;
+        *r = *f;
+    }
+    else if (*f == 0){
+        *cs = 0.0;
+        *sn = 1.0;
+        *r = *g;
+    }
+    else {
+        T piv = fabs(*f);
+
+        if (piv >= *g) {
+            T sq = *g / *f;
+            *r = piv * sqrt(1.0 + sq*sq);
+        } else {
+            T sq = *f / *g;
+            *r = *g * sqrt(1.0 + sq*sq);
+        }
+
+        *cs = *f / *r;
+        *sn = *g / *r;
+    }
+}
+
+
+/*
+ * Givens-rotate a pair [f, g] -> [f_out, g_out]
+ */
+template<typename T>
+__global__ void
+fprota(T c, T s, T f, T g, T *f_out, T *g_out) {
+    *f_out =  c*f + s*g;
+    *g_out = -s*f + c*g;
+}
+
+
+// 2D array indexing: R(i, j)
+#define IDX(i, j, ncols) ( (ncols)*(i) + (j) )
+
+
+
+/*
+ *  Solve the LSQ problem ||y - A@c||^2 via QR factorization.
+ *
+ *  QR factorization follows FITPACK: we reduce A row-by-row by Givens
+ *  rotations. To zero out the lower triangle, we use in the row `i`
+ *   and column `j < i`, the diagonal element in that column. That way, the
+ *  sequence is (here `[x]` are the pair of elements to Givens-rotate)
+ *
+ *   [x] x x x       x  x  x x      x  x  x x      x x  x  x      x x x x
+ *   [x] x x x  ->   0 [x] x x  ->  0 [x] x x  ->  0 x  x  x  ->  0 x x x
+ *    0  x x x       0 [x] x x      0  0  x x      0 0 [x] x      0 0 x x
+ *    0  x x x       0  x  x x      0 [x] x x      0 0 [x] x      0 0 0 x
+ *
+ *  The matrix A has a special structure: each row has at most (k+1)
+ *  consecutive non-zeros, so we only store them.
+ *
+ *  On exit, the return matrix, also of shape (m, k+1), contains
+ *  elements of the upper triangular matrix `R[i, i: i + k + 1]`.
+ *
+ *  When we process the element (i, j), we store the rotated row in R[i, :],
+ *  and *shift it to the left*, so that the the diagonal element is always in
+ *  the zero-th place. This way, the process above becomes
+ *
+ *   [x] x x x       x  x x x       x  x x x       x  x x x      x x x x
+ *   [x] x x x  ->  [x] x x -  ->  [x] x x -   ->  x  x x -  ->  x x x -
+ *    x  x x -      [x] x x -       x  x - -      [x] x - -      x x - -
+ *    x  x x -       x  x x -      [x] x x -      [x] x - -      x - - -
+ *
+ *  The most confusing part is that when rotating the row `i` with a row `j`
+ *  above it, the offsets differ: for the upper row  `j`, `R[j, 0]` is the
+ *  diagonal element, while for the row `i`, `R[i, 0]` is the element being
+ *  annihilated.
+ *
+ *  NB. This row-by-row Givens reduction process follows FITPACK:
+ *  https://github.com/scipy/scipy/blob/maintenance/1.11.x/scipy/interpolate/fitpack/fpcurf.f#L112-L161
+ *
+ *  A possibly more efficient way could be to note that all data points which
+ *  lie between two knots all have the same offset: if
+ *  `t[i] < x_1 .... x_s < t[i+1]`, the `s-1` corresponding rows form an
+ *  `(s-1, k+1)`-sized "block".
+ *  Then a blocked QR implementation could look like
+ *  https://people.sc.fsu.edu/~jburkardt/f77_src/band_qr/band_qr.f
+ *
+ *  We implement the FITPACK procedure here, even though it is inherently
+ *  sequential.
+ *
+ *  The `startrow` optional argument accounts for the scenatio with a two-step
+ *  factorization. Namely, the preceding rows are assumed to be already
+ *  processed and are skipped.
+ *  This is to account for the scenario where we append new rows to an already
+ *  triangularized matrix.
+ *
+ *  Note that this routine MODIFIES `a` & `y` in-place.
+ *
+ */
+__global__ void
+qr_reduce(double *a, int m, int nz, // a(m, nz), packed
+          ssize_t *offset,          // offset(m)
+          int nc,                   // dense would be a(m, nc)
+          double *y, int ydim1,     // y(m, ydim1)
+          int startrow=1
+)
+{
+    for (ssize_t i=startrow; i < m; i++) {
+        ssize_t oi = offset[i];
+        ssize_t i_nc = i < nc ? i : nc;  // the diagonal in row i
+        for (ssize_t j=oi; j < nc; j++) {
+
+            // rotate only the lower diagonal
+            if (j >= i_nc) {
+                break;
+            }
+
+            // in dense format: diag a1[j, j] vs a1[i, j]
+            double c, s, r;
+            dlartg(&a[IDX(j, 0, nz)],    // R(j, 0)
+                   &a[IDX(i, 0, nz)],    // R(i, 0)
+                   &c,
+                   &s,
+                   &r);
+
+            // rotate l.h.s.
+            a[IDX(j, 0, nz)] = r;  //R(j, 0) = r;
+            for (ssize_t l=1; l < nz; ++l) {
+                double r0, r1;
+                fprota(c, s,
+                       a[IDX(j, l, nz)], a[IDX(i, l, nz)],
+                       &r0, &r1);
+                a[IDX(j, l, nz)] = r0;
+                a[IDX(i, l-1, nz)] = r1;
+            }
+            a[IDX(i, nz-1, nz)] = 0.0;
+
+            // rotate r.h.s.
+            for (ssize_t l=0; l < ydim1; ++l) {
+                double r0, r1;
+                fprota(c, s,
+                       y[IDX(j, l, ydim1)], y[IDX(i, l, ydim1)],
+                       &r0, &r1);
+                y[IDX(j, l, ydim1)] = r0; // y(j, l) = r0;
+                y[IDX(i, l, ydim1)] = r1; // y(i, l) = r1;
+            }
+        }
+        if (i < nc) {
+            offset[i] = i;
+        }
+
+    } // for(i = ...
+}
+
+'''  # NOQA
+
+
+TYPES = ['double']
+
+QR_MODULE = cupy.RawModule(
+    code=QR_KERNEL, options=('-std=c++14',),
+    name_expressions=[
+        f'dlartg<{type_name}>' for type_name in TYPES] + ['qr_reduce'],
+)
+
+
+def _lsq_solve_qr(x, y, t, k, w):
+    """Solve for the LSQ spline coeffs given x, y and knots.
+    `y` is always 2D: for 1D data, the shape is ``(m, 1)``.
+    `w` is always 1D: one weight value per `x` value.
+    """
+    # prepare the l.h.s.
+    from ._bspline import _make_design_matrix
+    m = x.shape[0]
+    indices = cupy.empty(m*(k+1), dtype=cupy.int64)
+    A, indices = _make_design_matrix(x, t, k, True, indices)
+    R = A.reshape(m, k+1)
+
+    offset = indices[::(k+1)].copy()
+    nc = t.shape[0] - k - 1
+
+    # prepare the r.h.s.
+    assert y.ndim == 2
+    y_w = y * w[:, None]
+
+    # solve the LSQ problem: triangularize the l.h.s.
+    qr_reduce = _get_module_func(QR_MODULE, 'qr_reduce')
+    qr_reduce((1,), (1,),
+              (R, m, k+1,
+               offset,
+               nc,
+               y_w, y_w.shape[1], 1)
+              )
+
+    # backsubstitution solve for the coefficients
+    cc = fpback(R, nc, y_w)
+
+    return R, y_w, cc
+
+
+def fpback(R, nc, y):
+    """Backsubsitution solve upper triangular banded `R @ c = y.`
+    `R` is in the "packed" format: `R[i, :]` is `a[i, i:i+k+1]`
+    """
+    _, nz = R.shape
+    assert y.shape[0] == R.shape[0]
+
+    c = cupy.zeros_like(y[:nc])
+    c[nc-1, ...] = y[nc-1, ...] / R[nc-1, 0]
+    for i in range(nc-2, -1, -1):
+        nel = min(nz, nc-i)
+        # NB: broadcast R across trailing dimensions of `c`.
+        summ = (R[i, 1:nel, None] * c[i+1:i+nel, ...]).sum(axis=0)
+        c[i, ...] = (y[i] - summ) / R[i, 0]
+    return c
+
+
+def make_lsq_spline(x, y, t, k=3, w=None, axis=0, check_finite=True, *,
+                    method="qr"):
+    r"""Construct a BSpline via an LSQ (Least SQuared) fit.
+
+    The result is a linear combination
+
+        .. math::
+            S(x) = \sum_j c_j B_j(x; t)
+
+    of the B-spline basis elements, :math:`B_j(x; t)`, which minimizes
+
+        .. math::
+            \sum_{j} \left( w_j \times (S(x_j) - y_j) \right)^2
+
+    Parameters
+    ----------
+    x : array_like, shape (m,)
+        Abscissas.
+    y : array_like, shape (m, ...)
+        Ordinates.
+    t : array_like, shape (n + k + 1,).
+        Knots.
+        Knots and data points must satisfy Schoenberg-Whitney conditions.
+    k : int, optional
+        B-spline degree. Default is cubic, ``k = 3``.
+    w : array_like, shape (m,), optional
+        Weights for spline fitting. Must be positive. If ``None``,
+        then weights are all equal.
+        Default is ``None``.
+    axis : int, optional
+        Interpolation axis. Default is zero.
+    check_finite : bool, optional
+        Whether to check that the input arrays contain only finite numbers.
+        Disabling may give a performance gain, but may result in problems
+        (crashes, non-termination) if the inputs do contain infinities or NaNs.
+        Default is True.
+
+    Returns
+    -------
+    b : a BSpline object of the degree ``k`` with knots ``t``.
+
+    See Also
+    --------
+    scipy.interpolate.make_lsq_spline
+    BSpline : base class representing the B-spline objects
+    make_interp_spline : a similar factory function for interpolating splines
+
+
+    Notes
+    -----
+    The number of data points must be larger than the spline degree ``k``.
+    Knots ``t`` must satisfy the Schoenberg-Whitney conditions,
+    i.e., there must be a subset of data points ``x[j]`` such that
+    ``t[j] < x[j] < t[j+k+1]``, for ``j=0, 1,...,n-k-2``.
+
+    """
+    x = _as_float_array(x, check_finite)
+    y = _as_float_array(y, check_finite)
+    t = _as_float_array(t, check_finite)
+    if w is not None:
+        w = _as_float_array(w, check_finite)
+    else:
+        w = cupy.ones_like(x)
+    k = operator.index(k)
+    axis = normalize_axis_index(axis, y.ndim)
+
+    y = cupy.moveaxis(y, axis, 0)    # now internally interp axis is zero
+
+    if x.ndim != 1 or any(x[1:] - x[:-1] <= 0):
+        raise ValueError("Expect x to be a 1-D sorted array_like.")
+    if x.ndim != 1:
+        raise ValueError("Expect x to be a 1-D sequence.")
+    if x.shape[0] < k+1:
+        raise ValueError("Need more x points.")
+    if k < 0:
+        raise ValueError("Expect non-negative k.")
+    if t.ndim != 1 or any(t[1:] - t[:-1] < 0):
+        raise ValueError("Expect t to be a 1-D sorted array_like.")
+        raise ValueError("Expect t to be a 1D strictly increasing sequence.")
+    if x.size != y.shape[0]:
+        raise ValueError(
+            f'Shapes of x {x.shape} and y {y.shape} are incompatible')
+    if k > 0 and any((x < t[k]) | (x > t[-k])):
+        raise ValueError('Out of bounds w/ x = %s.' % x)
+    if x.size != w.size:
+        raise ValueError(
+            f'Shapes of x {x.shape} and w {w.shape} are incompatible')
+    if method != "qr":
+        raise ValueError(f"{method=} is not supported.")
+    if any(x[1:] - x[:-1] < 0):
+        raise ValueError("Expect x to be a 1D non-decreasing sequence.")
+
+    # number of coefficients
+    nc = t.size - k - 1
+
+    # multiple r.h.s
+    extradim = prod(y.shape[1:])
+    yy = y.reshape(-1, extradim)
+
+    # solve
+    _, _, c = _lsq_solve_qr(x, yy, t, k, w)
+
+    # restore the shape of `c` for both single and multiple r.h.s.
+    c = c.reshape((nc,) + y.shape[1:])
+    c = cupy.ascontiguousarray(c)
+    return BSpline.construct_fast(t, c, k, axis=axis)

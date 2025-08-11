@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import unittest
 
 import numpy
@@ -77,7 +79,7 @@ class TestFusionArrayContents(FusionUnaryUfuncTestBase):
 
     def generate_inputs(self, xp, has_nan, dtype):
         if numpy.dtype(dtype).kind not in ('f', 'c'):
-            return super(TestFusionArrayContents, self).generate_inputs(
+            return super().generate_inputs(
                 xp, dtype)
 
         nan = numpy.nan
@@ -368,14 +370,14 @@ class TestFusionManipulation(unittest.TestCase):
     def test_where(self, xp, dtype1, dtype2):
         return lambda cond, x, y: xp.where(cond, x, y)
 
-    # TODO(imanishi): Supoort complex dtypes
+    # TODO(imanishi): Support complex dtypes
     @testing.for_all_dtypes_combination(
         names=('dtype1', 'dtype2'), no_complex=True)
     @fusion_utils.check_fusion(accept_error=(TypeError,))
     def test_copyto(self, xp, dtype1, dtype2):
         return lambda cond, x, y: xp.copyto(x, y)
 
-    # TODO(imanishi): Supoort complex dtypes
+    # TODO(imanishi): Support complex dtypes
     @pytest.mark.xfail(reason='Issue #5848')
     @testing.for_all_dtypes_combination(
         names=('dtype1', 'dtype2'), no_complex=True)
@@ -383,7 +385,7 @@ class TestFusionManipulation(unittest.TestCase):
     def test_copyto_compat_broadcast(self, xp, dtype1, dtype2):
         return lambda cond, x, y: xp.copyto(x, y[None])
 
-    # TODO(imanishi): Supoort complex dtypes
+    # TODO(imanishi): Support complex dtypes
     @testing.for_all_dtypes_combination(
         names=('dtype1', 'dtype2'), no_complex=True)
     @fusion_utils.check_fusion(accept_error=(TypeError,))

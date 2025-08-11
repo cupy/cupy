@@ -7,6 +7,8 @@ https://github.com/scipy/scipy/blob/master/scipy/special/_evalpoly.pxd
 https://github.com/scipy/scipy/blob/master/scipy/special/_loggamma.pxd
 
 """
+from __future__ import annotations
+
 
 from cupy import _core
 from cupyx.scipy.special._complexstuff import zlog1_definition
@@ -201,6 +203,8 @@ __device__ complex<double> loggamma_taylor(complex<double> z)
 loggamma = _core.create_ufunc(
     'cupyx_scipy_loggamma',
     (
+        ('l->d', 'out0 = loggamma_real(in0)'),
+        ('e->d', 'out0 = loggamma_real(in0)'),
         ('f->f', 'out0 = out0_type(loggamma_real(in0))'),
         ('d->d', 'out0 = loggamma_real(in0)'),
         'F->F',

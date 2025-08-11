@@ -9,58 +9,58 @@ ctypedef void* nvrtcProgram
 # TODO(kmaehashi): Remove this alias.
 ctypedef nvrtcProgram Program
 
-ctypedef const char* (*F_nvrtcGetErrorString)(nvrtcResult result) nogil
+ctypedef const char* (*F_nvrtcGetErrorString)(nvrtcResult result) noexcept nogil  # NOQA
 cdef F_nvrtcGetErrorString nvrtcGetErrorString
 
-ctypedef nvrtcResult (*F_nvrtcVersion)(int *major, int *minor) nogil
+ctypedef nvrtcResult (*F_nvrtcVersion)(int *major, int *minor) noexcept nogil
 cdef F_nvrtcVersion nvrtcVersion
 
 ctypedef nvrtcResult (*F_nvrtcCreateProgram)(
     nvrtcProgram* prog, const char* src, const char* name, int numHeaders,
-    const char** headers, const char** includeNames) nogil
+    const char** headers, const char** includeNames) noexcept nogil
 cdef F_nvrtcCreateProgram nvrtcCreateProgram
 
-ctypedef nvrtcResult (*F_nvrtcDestroyProgram)(nvrtcProgram *prog) nogil
+ctypedef nvrtcResult (*F_nvrtcDestroyProgram)(nvrtcProgram *prog) noexcept nogil  # NOQA
 cdef F_nvrtcDestroyProgram nvrtcDestroyProgram
 
 ctypedef nvrtcResult (*F_nvrtcCompileProgram)(
-    nvrtcProgram prog, int numOptions, const char** options) nogil
+    nvrtcProgram prog, int numOptions, const char** options) noexcept nogil
 cdef F_nvrtcCompileProgram nvrtcCompileProgram
 
-ctypedef nvrtcResult (*F_nvrtcGetPTXSize)(nvrtcProgram prog, size_t *ptxSizeRet) nogil  # NOQA
+ctypedef nvrtcResult (*F_nvrtcGetPTXSize)(nvrtcProgram prog, size_t *ptxSizeRet) noexcept nogil  # NOQA
 cdef F_nvrtcGetPTXSize nvrtcGetPTXSize
 
-ctypedef nvrtcResult (*F_nvrtcGetPTX)(nvrtcProgram prog, char *ptx) nogil
+ctypedef nvrtcResult (*F_nvrtcGetPTX)(nvrtcProgram prog, char *ptx) noexcept nogil  # NOQA
 cdef F_nvrtcGetPTX nvrtcGetPTX
 
-ctypedef nvrtcResult (*F_nvrtcGetCUBINSize)(nvrtcProgram prog, size_t *cubinSizeRet) nogil  # NOQA
+ctypedef nvrtcResult (*F_nvrtcGetCUBINSize)(nvrtcProgram prog, size_t *cubinSizeRet) noexcept nogil  # NOQA
 cdef F_nvrtcGetCUBINSize nvrtcGetCUBINSize
 
-ctypedef nvrtcResult (*F_nvrtcGetCUBIN)(nvrtcProgram prog, char *cubin) nogil
+ctypedef nvrtcResult (*F_nvrtcGetCUBIN)(nvrtcProgram prog, char *cubin) noexcept nogil  # NOQA
 cdef F_nvrtcGetCUBIN nvrtcGetCUBIN
 
-ctypedef nvrtcResult (*F_nvrtcGetProgramLogSize)(nvrtcProgram prog, size_t* logSizeRet) nogil  # NOQA
+ctypedef nvrtcResult (*F_nvrtcGetProgramLogSize)(nvrtcProgram prog, size_t* logSizeRet) noexcept nogil  # NOQA
 cdef F_nvrtcGetProgramLogSize nvrtcGetProgramLogSize
 
-ctypedef nvrtcResult (*F_nvrtcGetProgramLog)(nvrtcProgram prog, char* log) nogil  # NOQA
+ctypedef nvrtcResult (*F_nvrtcGetProgramLog)(nvrtcProgram prog, char* log) noexcept nogil  # NOQA
 cdef F_nvrtcGetProgramLog nvrtcGetProgramLog
 
-ctypedef nvrtcResult (*F_nvrtcAddNameExpression)(nvrtcProgram, const char*) nogil  # NOQA
+ctypedef nvrtcResult (*F_nvrtcAddNameExpression)(nvrtcProgram, const char*) noexcept nogil  # NOQA
 cdef F_nvrtcAddNameExpression nvrtcAddNameExpression
 
-ctypedef nvrtcResult (*F_nvrtcGetLoweredName)(nvrtcProgram, const char*, const char**) nogil  # NOQA
+ctypedef nvrtcResult (*F_nvrtcGetLoweredName)(nvrtcProgram, const char*, const char**) noexcept nogil  # NOQA
 cdef F_nvrtcGetLoweredName nvrtcGetLoweredName
 
-ctypedef nvrtcResult (*F_nvrtcGetNumSupportedArchs)(int* numArchs) nogil
+ctypedef nvrtcResult (*F_nvrtcGetNumSupportedArchs)(int* numArchs) noexcept nogil  # NOQA
 cdef F_nvrtcGetNumSupportedArchs nvrtcGetNumSupportedArchs
 
-ctypedef nvrtcResult (*F_nvrtcGetSupportedArchs)(int* supportedArchs) nogil
+ctypedef nvrtcResult (*F_nvrtcGetSupportedArchs)(int* supportedArchs) noexcept nogil  # NOQA
 cdef F_nvrtcGetSupportedArchs nvrtcGetSupportedArchs
 
-ctypedef nvrtcResult (*F_nvrtcGetNVVMSize)(nvrtcProgram prog, size_t *nvvmSizeRet) nogil  # NOQA
+ctypedef nvrtcResult (*F_nvrtcGetNVVMSize)(nvrtcProgram prog, size_t *nvvmSizeRet) noexcept nogil  # NOQA
 cdef F_nvrtcGetNVVMSize nvrtcGetNVVMSize
 
-ctypedef nvrtcResult (*F_nvrtcGetNVVM)(nvrtcProgram prog, char *nvvm) nogil
+ctypedef nvrtcResult (*F_nvrtcGetNVVM)(nvrtcProgram prog, char *nvvm) noexcept nogil  # NOQA
 cdef F_nvrtcGetNVVM nvrtcGetNVVM
 
 ctypedef nvrtcResult (*F_nvrtcGetLTOIRSize)(nvrtcProgram prog, size_t *ltoirSizeRet) nogil  # NOQA
@@ -75,10 +75,9 @@ cdef inline void initialize() except *:
     global _L
     if _L is not None:
         return
-    _initialize()
+    _L = _initialize()
 
-cdef void _initialize() except *:
-    global _L
+cdef SoftLink _initialize():
     _L = _get_softlink()
 
     global nvrtcGetErrorString
@@ -120,6 +119,8 @@ cdef void _initialize() except *:
     global nvrtcGetLTOIR
     nvrtcGetLTOIR = <F_nvrtcGetLTOIR>_L.get('GetLTOIR')
 
+    return _L
+
 
 cdef SoftLink _get_softlink():
     cdef int runtime_version
@@ -140,6 +141,12 @@ cdef SoftLink _get_softlink():
                 libname = 'libnvrtc.so.12'
             else:
                 libname = 'nvrtc64_120_0.dll'
+        elif runtime_version == 13:
+            # CUDA 13.x
+            if _sys.platform == 'linux':
+                libname = 'libnvrtc.so.13'
+            else:
+                libname = 'nvrtc64_130_0.dll'
     elif CUPY_HIP_VERSION != 0:
         runtime_version = runtime.runtimeGetVersion()
         prefix = 'hiprtc'
@@ -149,5 +156,8 @@ cdef SoftLink _get_softlink():
         elif runtime_version < 6_00_00000:
             # ROCm 5.x
             libname = 'libamdhip64.so.5'
+        elif runtime_version < 7_00_00000:
+            # ROCm 6.x
+            libname = 'libamdhip64.so.6'
 
     return SoftLink(libname, prefix, mandatory=True)

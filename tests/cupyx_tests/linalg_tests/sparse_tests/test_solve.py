@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import unittest
 
 import numpy
@@ -61,7 +63,7 @@ class TestLschol(unittest.TestCase):
 
     @_condition.retry(10)
     def test_ndarray(self):
-        A = cp.array(self.A.A, dtype=self.dtype)
+        A = cp.array(self.A.toarray(), dtype=self.dtype)
         b = cp.array(self.b, dtype=self.dtype)
         x = cupyx.linalg.sparse.lschol(A, b)
         testing.assert_array_almost_equal(x, self.x, decimal=self.decimal)

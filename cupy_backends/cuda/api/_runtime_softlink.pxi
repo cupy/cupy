@@ -17,15 +17,16 @@ cdef inline void initialize() except *:
     global _L
     if _L is not None:
         return
-    _initialize()
+    _L = _initialize()
 
 
-cdef void _initialize() except *:
-    global _L
+cdef SoftLink _initialize():
     _L = _get_softlink()
 
     global DYN_cudaRuntimeGetVersion
     DYN_cudaRuntimeGetVersion = <F_cudaRuntimeGetVersion>_L.get('RuntimeGetVersion')  # noqa
+
+    return _L
 
 
 cdef SoftLink _get_softlink():
@@ -46,6 +47,12 @@ cdef SoftLink _get_softlink():
                 libname = 'libcudart.so.12'
             else:
                 libname = 'cudart64_12.dll'
+        elif 13000 <= CUPY_CUDA_VERSION < 14000:
+            # CUDA 13.x
+            if _sys.platform == 'linux':
+                libname = 'libcudart.so.13'
+            else:
+                libname = 'cudart64_13.dll'
     elif CUPY_HIP_VERSION != 0:
         # Use CUDA-to-HIP layer defined in the header.
         libname = __file__

@@ -92,6 +92,7 @@ jobs:
         python-version: '3.10'
     - name: Check
       run: |
+        sleep 60s  # wait for PyPI to be updated
         pip install distlib
         CHECK_WHEEL="${{ inputs.branch != 'main' && '--pypi-wheel' || '' }}"
         ./check_release_assets.py --version "${{ inputs.release }}" --pypi-sdist ${CHECK_WHEEL}

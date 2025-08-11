@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import numpy
 import pytest
 
@@ -13,10 +15,10 @@ def _get_logspace_max(dtype):
     elif dtype.char == 'f':
         return 30
     elif dtype.char == 'e':
-        return 5
+        return 4
 
 
-@testing.with_requires('scipy')
+@testing.with_requires('scipy>=1.15')
 class TestBeta:
 
     @pytest.mark.parametrize('function', ['beta', 'betaln'])
@@ -35,7 +37,7 @@ class TestBeta:
         cupy.cuda.runtime.runtimeGetVersion() < 5_00_00000,
         reason='ROCm/HIP fails in ROCm 4.x')
     @pytest.mark.parametrize('function', ['beta', 'betaln'])
-    @testing.for_float_dtypes()
+    @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
     def test_linspace(self, xp, scp, dtype, function):
         import scipy.special  # NOQA
@@ -43,7 +45,7 @@ class TestBeta:
         func = getattr(scp.special, function)
         # TODO: Some choices of start/stop value can give mismatched location
         #       of +inf or -inf values.
-        x = xp.linspace(-20, 21, 50, dtype=dtype)
+        x = testing.shaped_linspace(-20, 21, 50, xp=xp, dtype=dtype)
         return func(x[:, xp.newaxis], x[xp.newaxis, :])
 
     @pytest.mark.parametrize('function', ['beta', 'betaln'])
@@ -85,24 +87,33 @@ class TestBeta:
                                 3.1811881124242447, rtol=1e-14, atol=0)
 
 
-@testing.with_requires('scipy>=1.12.0rc1')
+@testing.with_requires("scipy>=1.16")
 class TestBetaInc:
 
-    @pytest.mark.parametrize('function', ['betainc', 'betaincinv'])
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
-    def test_arange(self, xp, scp, dtype, function):
+    def test_betainc_arange(self, xp, scp, dtype):
         import scipy.special  # NOQA
 
-        func = getattr(scp.special, function)
         a = testing.shaped_arange((1, 10, 1), xp, dtype)
         b = testing.shaped_arange((10, 1, 1), xp, dtype)
         x = xp.asarray([0, 0.25, 0.5, 0.75, 1], dtype=dtype).reshape(1, 1, 5)
-        # return scp.special.betainc(a, b, x)
-        return func(a, b, x)
+        return scp.special.betainc(a, b, x)
+
+    # due to a bug: https://github.com/scipy/scipy/issues/21426
+    @testing.with_requires('scipy!=1.14.0', 'scipy!=1.14.1')
+    @testing.for_all_dtypes(no_complex=True)
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
+    def test_betaincinv_arange(self, xp, scp, dtype):
+        import scipy.special  # NOQA
+
+        a = testing.shaped_arange((1, 10, 1), xp, dtype)
+        b = testing.shaped_arange((10, 1, 1), xp, dtype)
+        x = xp.asarray([0, 0.25, 0.5, 0.75, 1], dtype=dtype).reshape(1, 1, 5)
+        return scp.special.betaincinv(a, b, x)
 
     @pytest.mark.parametrize('function', ['betainc', 'betaincinv'])
-    @testing.for_float_dtypes()
+    @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
     def test_linspace(self, xp, scp, dtype, function):
         import scipy.special  # NOQA
@@ -110,7 +121,7 @@ class TestBetaInc:
         func = getattr(scp.special, function)
         # TODO: Some choices of start/stop value can give mismatched location
         #       of +inf or -inf values.
-        tmp = xp.linspace(-20, 21, 10, dtype=dtype)
+        tmp = testing.shaped_linspace(-20, 21, 10, xp=xp, dtype=dtype)
         a = tmp[:, xp.newaxis, xp.newaxis]
         b = tmp[xp.newaxis, :, xp.newaxis]
         x = xp.linspace(0, 1, 5, dtype=dtype)[xp.newaxis, xp.newaxis, :]

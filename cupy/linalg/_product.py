@@ -1,5 +1,8 @@
+from __future__ import annotations
+
 import collections.abc
 import numbers
+import warnings
 
 import numpy
 
@@ -140,6 +143,13 @@ def cross(a, b, axisa=-1, axisb=-1, axisc=-1, axis=None):
         msg = ('incompatible dimensions for cross product\n'
                '(dimension must be 2 or 3)')
         raise ValueError(msg)
+    if a.shape[-1] == 2 or b.shape[-1] == 2:
+        # Deprecated in NumPy 2.0, 2023-09-26
+        warnings.warn(
+            "Arrays of 2-dimensional vectors are deprecated. Use arrays of "
+            "3-dimensional vectors instead.",
+            DeprecationWarning, stacklevel=2
+        )
 
     # Create the output array
     shape = cupy.broadcast(a[..., 0], b[..., 0]).shape
@@ -207,6 +217,48 @@ def cross(a, b, axisa=-1, axisb=-1, axisc=-1, axis=None):
             cp2 -= a1 * b0
 
     return cupy.moveaxis(cp, -1, axisc)
+
+
+def linalg_cross(x1, x2, /, *, axis=-1):
+    """Returns the cross product of 3-element vectors.
+
+    If ``x1`` and/or ``x2`` are multi-dimensional arrays, then
+    the cross-product of each pair of corresponding 3-element vectors
+    is independently computed.
+
+    This function is Array API compatible, contrary to
+    :func:`cupy.cross`.
+
+    Parameters
+    ----------
+    x1 : ndarray
+        The first input array.
+    x2 : array_like
+        The second input array. Must be compatible with ``x1`` for all
+        non-compute axes. The size of the axis over which to compute
+        the cross-product must be the same size as the respective axis
+        in ``x1``.
+    axis : int, optional
+        The axis (dimension) of ``x1`` and ``x2`` containing the vectors for
+        which to compute the cross-product. Default: ``-1``.
+
+    Returns
+    -------
+    out : ndarray
+        An array containing the cross products.
+
+    See Also
+    --------
+    cupy.cross
+    numpy.linalg.cross
+    """
+    if x1.shape != x2.shape:
+        raise ValueError('x1 and x2 must have the same shape')
+    if x1.ndim == 0:
+        raise ValueError('cross() requires arrays of dimension at least 1')
+    if x1.shape[axis] != 3:
+        raise ValueError('cross() dimension must equal 3')
+    return cross(x1, x2, axis=axis)
 
 
 def inner(a, b):

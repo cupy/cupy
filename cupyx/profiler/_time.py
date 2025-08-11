@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import math as _math
 import time as _time
 
@@ -50,7 +52,7 @@ class _PerfCaseResult:
         holding times spent on GPU in seconds.
 
         These values are measured using ``cudaEventElapsedTime`` with events
-        recoreded before/after each repeat step.
+        recorded before/after each repeat step.
         """
         return self._ts[1:]
 
@@ -105,7 +107,7 @@ def benchmark(
 
     Args:
         func (callable): a callable object to be timed.
-        args (tuple): positional argumens to be passed to the callable.
+        args (tuple): positional arguments to be passed to the callable.
         kwargs (dict): keyword arguments to be passed to the callable.
         n_repeat (int): number of times the callable is called. Increasing
             this value would improve the collected statistics at the cost

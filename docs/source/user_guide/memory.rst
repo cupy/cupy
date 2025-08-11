@@ -145,7 +145,7 @@ which may or may not be desired.
 Stream Ordered Memory Allocator is a new feature added since CUDA 11.2. CuPy provides an *experimental* interface to it.
 Similar to CuPy's memory pool, Stream Ordered Memory Allocator also allocates/deallocates memory *asynchronously* from/to
 a memory pool in a stream-ordered fashion. The key difference is that it is a built-in feature implemented in the CUDA
-driver by NVIDIA, so other CUDA applications in the same processs can easily allocate memory from the same pool.
+driver by NVIDIA, so other CUDA applications in the same process can easily allocate memory from the same pool.
 
 To enable a memory pool that manages stream ordered memory, you can construct a new :class:`~cupy.cuda.MemoryAsyncPool`
 instance:
@@ -198,3 +198,51 @@ Be sure to do this before any other CuPy operations.
 
    # Disable memory pool for pinned memory (CPU).
    cupy.cuda.set_pinned_memory_allocator(None)
+
+
+Unified memory programming (UMP) support (**experimental!**)
+............................................................
+
+It is possible to make both NumPy and CuPy use/share system allocated memory on Heterogeneous Memory Management
+(HMM) or Address Translation Services (ATS) enabled systems, such as the NVIDIA Grace Hopper Superchip.
+To activate this capability, currently you need to:
+
+1. Install `numpy_allocator <https://github.com/inaccel/numpy-allocator/>`_
+2. Set the environment variable ``CUPY_ENABLE_UMP=1``
+3. Make a memory pool for CuPy to draw system memory (``malloc_system``), for example:
+
+.. code-block:: py
+
+    import cupy as cp
+    cp.cuda.set_allocator(cp.cuda.MemoryPool(cp.cuda.memory.malloc_system).malloc)
+
+4. Switch to the aligned allocator for NumPy to draw system memory
+
+.. code-block:: py
+   
+    import cupy._core.numpy_allocator as ac
+    import numpy_allocator
+    import ctypes
+    lib = ctypes.CDLL(ac.__file__)
+    class my_allocator(metaclass=numpy_allocator.type):
+        _calloc_ = ctypes.addressof(lib._calloc)
+        _malloc_ = ctypes.addressof(lib._malloc)
+        _realloc_ = ctypes.addressof(lib._realloc)
+        _free_ = ctypes.addressof(lib._free)
+    my_allocator.__enter__()  # change the allocator globally
+
+With this setup change, all the data movement APIs such as :meth:`~cupy.ndarray.get()`, :func:`~cupy.asnumpy`  and
+:func:`~cupy.asarray` become no-op (no copy is done), and the following code is accelerated:
+
+.. code-block:: py
+
+    # a, b, c are np.ndarray, d is cp.ndarray
+    a = np.random.random(100)
+    b = np.random.random(100)
+    c = np.add(a, b)
+    d = cp.matmul(cp.asarray(a), cp.asarray(c))
+
+Essentially, the distinction of CPU/GPU *memory* spaces is gone, and ``np``/``cp`` are used to represent
+the *execution* space (whether the code should run on CPU or GPU).
+
+Apart from the setup configuration for NumPy/CuPy, no user code chage is required.

@@ -94,16 +94,6 @@ cdef function.Function _get_simple_elementwise_kernel(
     return _get_simple_elementwise_kernel_from_code(name, code, options)
 
 
-cdef inline int _get_kind_score(int kind):
-    if b'b' == kind:
-        return 0
-    if b'u' == kind or b'i' == kind:
-        return 1
-    if b'f' == kind or b'c' == kind:
-        return 2
-    return -1
-
-
 @cython.profile(False)
 cpdef inline _check_peer_access(_ndarray_base arr, int device_id):
     if arr.data.device_id == device_id:
@@ -125,6 +115,7 @@ cpdef inline _check_peer_access(_ndarray_base arr, int device_id):
 
 
 cdef inline _preprocess_arg(int dev_id, arg, bint use_c_scalar):
+    weak_t = False
     if isinstance(arg, _ndarray_base):
         s = arg
         _check_peer_access(<_ndarray_base>s, dev_id)
@@ -137,16 +128,17 @@ cdef inline _preprocess_arg(int dev_id, arg, bint use_c_scalar):
         s = arg.__cupy_get_ndarray__()
         _check_peer_access(<_ndarray_base>s, dev_id)
     else:  # scalars or invalid args
+        weak_t = type(arg) if type(arg) in [int, float, complex] else False
         if use_c_scalar:
             s = _scalar.scalar_to_c_scalar(arg)
         else:
             s = _scalar.scalar_to_numpy_scalar(arg)
         if s is None:
             raise TypeError('Unsupported type %s' % type(arg))
-    return s
+    return s, weak_t
 
 
-cdef list _preprocess_args(int dev_id, args, bint use_c_scalar):
+cdef tuple _preprocess_args(int dev_id, args, bint use_c_scalar):
     """Preprocesses arguments for kernel invocation
 
     - Checks device compatibility for ndarrays
@@ -155,9 +147,12 @@ cdef list _preprocess_args(int dev_id, args, bint use_c_scalar):
       - If use_c_scalar is False, into NumPy scalars.
     """
     cdef list ret = []
+    cdef list weaks = []
     for arg in args:
-        ret.append(_preprocess_arg(dev_id, arg, use_c_scalar))
-    return ret
+        p_arg, weak_t = _preprocess_arg(dev_id, arg, use_c_scalar)
+        ret.append(p_arg)
+        weaks.append(weak_t)
+    return ret, tuple(weaks)
 
 
 cdef list _preprocess_optional_args(int dev_id, args, bint use_c_scalar):
@@ -173,7 +168,7 @@ cdef list _preprocess_optional_args(int dev_id, args, bint use_c_scalar):
         if arg is None:
             ret.append(None)
         else:
-            ret.append(_preprocess_arg(dev_id, arg, use_c_scalar))
+            ret.append(_preprocess_arg(dev_id, arg, use_c_scalar)[0])
     return ret
 
 
@@ -629,7 +624,7 @@ cdef list _broadcast(list args, tuple params, bint use_size, shape_t& shape):
 
 
 cdef _numpy_can_cast = numpy.can_cast
-
+cdef _numpy_result_type = numpy.result_type
 
 cdef list _get_out_args_from_optionals(
     subtype, list out_args, tuple out_types, const shape_t& out_shape, casting,
@@ -866,7 +861,7 @@ cdef class ElementwiseKernel:
                 return arg.__cupy_override_elementwise_kernel__(
                     self, *args, **kwargs)
         dev_id = device.get_device_id()
-        arg_list = _preprocess_args(dev_id, args, True)
+        arg_list, _ = _preprocess_args(dev_id, args, True)
 
         out_args = arg_list[self.nin:]
         # _broadcast updates shape
@@ -1079,47 +1074,63 @@ cdef function.Function _get_ufunc_kernel(
             return a;
         }
         """
+    # Use C++17 for xsf special function library.
+    # Note: Cython only allows omitting trailing keyword arguments
+    # so after_loop must be included here even though it is taking
+    # the default value. See https://github.com/cython/cython/issues/1630.
     return _get_simple_elementwise_kernel(
         params, arginfos, operation, name, type_map, preamble,
-        loop_prep=loop_prep)
-
-
-cdef inline bint _check_should_use_min_scalar(list in_args) except? -1:
-    cdef int kind, max_array_kind, max_scalar_kind
-    cdef bint all_scalars
-    all_scalars = True
-    max_array_kind = -1
-    max_scalar_kind = -1
-    for i in in_args:
-        kind = _get_kind_score(ord(i.dtype.kind))
-        if isinstance(i, _ndarray_base):
-            all_scalars = False
-            max_array_kind = max(max_array_kind, kind)
-        else:
-            max_scalar_kind = max(max_scalar_kind, kind)
-    return (max_scalar_kind != -1 and
-            not all_scalars and
-            max_array_kind >= max_scalar_kind)
+        loop_prep=loop_prep, after_loop='', options=("--std=c++17",))
 
 
 cdef dict _mst_unsigned_to_signed = {
     i: (numpy.iinfo(j).max, (i, j))
     for i, j in [(numpy.dtype(i).type, numpy.dtype(i.lower()).type)
                  for i in "BHILQ"]}
-cdef _numpy_min_scalar_type = numpy.min_scalar_type
 
-cdef _min_scalar_type(x):
-    # A non-negative integer may have two locally minimum scalar
-    # types: signed/unsigned integer.
-    # Return both for can_cast, while numpy.min_scalar_type only returns
-    # the unsigned type.
-    t = _numpy_min_scalar_type(x)
-    dt = t.type
-    if t.kind == 'u':
-        m, dt2 = <tuple>_mst_unsigned_to_signed[dt]
-        if x <= m:
-            return dt2
-    return dt
+
+cdef inline int _get_kind_score(type kind):
+    if issubclass(kind, numpy.bool_):
+        return 0
+    if issubclass(kind, (numpy.integer, int)):
+        return 1
+    if issubclass(kind, (numpy.inexact, float, complex)):
+        return 2
+    # unknown type, assume higher score
+    return 3
+
+
+cdef inline bint _check_should_use_weak_scalar(
+    tuple in_types, tuple weaks
+) except? -1:
+    """The promotion strategy of finding the first matching loop is not
+    equipped to deal with correct promotion when mixing weak scalars and
+    arrays/strong types.
+    To fix this we (also NumPy when it uses this strategy) check if the scalars
+    have a higher kind and do not use them if they do.
+
+    This prevents e.g. `uint8(1) + 0.` from picking a float64 loop.
+    """
+    cdef int kind, max_array_kind, max_scalar_kind
+    cdef bint all_scalars_or_arrays
+
+    if weaks is None:
+        # equivalent to (False,)*len(in_types)
+        return False
+
+    max_array_kind = -1
+    max_scalar_kind = -1
+    for in_t, w_t in zip(in_types, weaks):
+        if w_t:
+            kind = _get_kind_score(w_t)
+            max_scalar_kind = max(max_scalar_kind, kind)
+        else:
+            kind = _get_kind_score(in_t)
+            max_array_kind = max(max_array_kind, kind)
+
+    all_scalars_or_arrays = max_scalar_kind == -1 or max_array_kind == -1
+
+    return not all_scalars_or_arrays and max_array_kind >= max_scalar_kind
 
 
 cdef class ufunc:
@@ -1156,7 +1167,6 @@ cdef class ufunc:
         readonly object _doc
         public object __doc__
         readonly object __name__
-        readonly object __module__
 
     def __init__(
             self, name, nin, nout, _Ops ops, preamble='', loop_prep='', doc='',
@@ -1267,6 +1277,7 @@ cdef class ufunc:
         # parse inputs (positional) and outputs (positional or keyword)
         in_args = args[:self.nin]
         out_args = args[self.nin:]
+
         if out is not None:
             if out_args:
                 raise ValueError('Cannot specify \'out\' as both '
@@ -1283,14 +1294,14 @@ cdef class ufunc:
                 out_args = out,
 
         dev_id = device.get_device_id()
-        in_args = _preprocess_args(dev_id, in_args, False)
+        in_args, weaks = _preprocess_args(dev_id, in_args, False)
         out_args = _preprocess_optional_args(dev_id, out_args, False)
         given_out_args = [o for o in out_args if o is not None]
 
         # TODO(kataoka): Typecheck `in_args` w.r.t. `casting` (before
         # broadcast).
         if has_where:
-            where_args = _preprocess_args(dev_id, (where,), False)
+            where_args, _ = _preprocess_args(dev_id, (where,), False)
             x = where_args[0]
             if isinstance(x, _ndarray_base):
                 # NumPy seems using casting=safe here
@@ -1332,7 +1343,8 @@ cdef class ufunc:
                     return ret
 
         op = self._ops.guess_routine(
-            self.name, self._routine_cache, in_args, dtype, self._out_ops)
+            self.name, self._routine_cache, in_args, weaks, dtype,
+            self._out_ops)
 
         # Determine a template object from which we initialize the output when
         # inputs have subclass instances
@@ -1349,6 +1361,7 @@ cdef class ufunc:
 
         out_args = _get_out_args_from_optionals(
             subtype, out_args, op.out_types, shape, casting, template)
+
         if self.nout == 1:
             ret = out_args[0]
         else:
@@ -1584,21 +1597,22 @@ cdef class _Ops:
         return _Ops(tuple(ops_))
 
     cpdef _Op guess_routine(
-            self, str name, dict cache, list in_args, dtype, _Ops out_ops):
+            self, str name, dict cache, list in_args, tuple weaks, dtype,
+            _Ops out_ops):
         cdef _Ops ops_
+
         if dtype is None:
-            use_raw_value = _check_should_use_min_scalar(in_args)
-            if use_raw_value:
-                in_types = tuple([
-                    a.dtype.type if isinstance(a, _ndarray_base)
-                    else _min_scalar_type(a)
-                    for a in in_args])
-            else:
-                in_types = tuple([a.dtype.type for a in in_args])
-            op = cache.get(in_types, ())
+            assert all([isinstance(a, (_ndarray_base, numpy.generic))
+                        for a in in_args])
+            in_types = tuple([a.dtype.type for a in in_args])
+
+            if not _check_should_use_weak_scalar(in_types, weaks):
+                weaks = (False,) * len(in_args)
+
+            op = cache.get((in_types, weaks), ())
             if op is ():
-                op = self._guess_routine_from_in_types(in_types)
-                cache[in_types] = op
+                op = self._guess_routine_from_in_types(in_types, weaks)
+                cache[(in_types, weaks)] = op
         else:
             op = cache.get(dtype, ())
             if op is ():
@@ -1610,6 +1624,20 @@ cdef class _Ops:
             # raise TypeError if the type combination is disallowed
             (<_Op>op).check_valid()
 
+            if weaks is None:
+                return op
+
+            # check for overflow in operands. Consider `np.uint8(1) + 300`.
+            # Per NEP 50 this raises OverflowError because 300 overflows uint8.
+            # We can only check it after the operand types are known
+            for i in range(len(in_args)):
+                if weaks[i] is not int:
+                    continue
+                # Note: For simplicity, check even if `in_type` is e.g. float
+                integer_argument = int(in_args[i])
+                in_type = op.in_types[i]
+                in_type(integer_argument)  # Check if user input fits loop
+
             return op
 
         if dtype is None:
@@ -1618,21 +1646,35 @@ cdef class _Ops:
                         (dtype, name))
 
     cpdef _Op _guess_routine_from_in_types(
-            self, tuple in_types, object can_cast=_numpy_can_cast):
+            self, tuple in_types, tuple weaks=None,
+            object can_cast=_numpy_can_cast
+    ):
         cdef _Op op
         cdef tuple op_types
         cdef Py_ssize_t n = len(in_types)
         cdef Py_ssize_t i
+
         for op in self.ops:
             op_types = op.in_types
             for i in range(n):
                 it = in_types[i]
                 ot = op_types[i]
-                if isinstance(it, tuple):
-                    if not can_cast(it[0], ot) and not can_cast(it[1], ot):
+                weak_t = weaks[i] if weaks is not None else False
+
+                # XXX: Remove assert (reachable only for pre NEP 50 logic)
+                assert(not isinstance(it, tuple))
+
+                if not can_cast(it, ot):
+                    if not weak_t:
                         break
-                elif not can_cast(it, ot):
-                    break
+
+                    # If `result_type` doesn't return `ot` then the weak
+                    # scalar caused promotion and operand cannot be used.
+                    try:
+                        if _numpy_result_type(weak_t(0), ot) != ot:
+                            break
+                    except TypeError:
+                        break
             else:
                 return op
         return None

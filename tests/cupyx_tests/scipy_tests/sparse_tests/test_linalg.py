@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import contextlib
 import functools
 import re
@@ -61,7 +63,7 @@ class TestLsqr(unittest.TestCase):
     @_condition.retry(10)
     @testing.numpy_cupy_allclose(atol=1e-1, sp_name='sp')
     def test_ndarray(self, xp, sp):
-        A = xp.array(self.A.A, dtype=self.dtype)
+        A = xp.array(self.A.toarray(), dtype=self.dtype)
         b = xp.array(self.b, dtype=self.dtype)
         x = sp.linalg.lsqr(A, b)
         return x[0]
@@ -367,16 +369,10 @@ class TestCg:
         x0 = None
         if self.x0 == 'ones':
             x0 = xp.ones((self.n,), dtype=dtype)
-        atol = None
+        atol = 0.0
         if self.atol == 'select-by-dtype':
             atol = self._atol[dtype.char.lower()]
-        if atol is None and xp == numpy:
-            # Note: If atol is None or not specified, Scipy (at least 1.5.3)
-            # raises DeprecationWarning
-            with pytest.deprecated_call():
-                return sp.linalg.cg(a, b, x0=x0, M=M, atol=atol)
-        else:
-            return sp.linalg.cg(a, b, x0=x0, M=M, atol=atol)
+        return sp.linalg.cg(a, b, x0=x0, M=M, atol=atol)
 
     @testing.for_dtypes('fdFD')
     @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
@@ -521,18 +517,11 @@ class TestGmres:
         x0 = None
         if self.x0 == 'ones':
             x0 = xp.ones((self.n,), dtype=dtype)
-        atol = None
+        atol = 0.0
         if self.atol == 'select-by-dtype':
             atol = self._atol[dtype.char.lower()]
-        if atol is None and xp == numpy:
-            # Note: If atol is None or not specified, Scipy (at least 1.5.3)
-            # raises DeprecationWarning
-            with pytest.deprecated_call():
-                return sp.linalg.gmres(
-                    a, b, x0=x0, restart=self.restart, M=M, atol=atol)
-        else:
-            return sp.linalg.gmres(
-                a, b, x0=x0, restart=self.restart, M=M, atol=atol)
+        return sp.linalg.gmres(
+            a, b, x0=x0, restart=self.restart, M=M, atol=atol)
 
     @testing.for_dtypes('fdFD')
     @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
@@ -812,7 +801,9 @@ class TestSpsolveTriangular:
     @pytest.mark.parametrize('format', ['csr', 'csc', 'coo'])
     @testing.for_dtypes('fdFD')
     @testing.numpy_cupy_allclose(
-        rtol=1e-5, atol=1e-5, sp_name='sp', contiguous_check=False)
+        rtol=1e-5, atol=1e-5, sp_name='sp', contiguous_check=False,
+        type_check=False,  # "XXX: Dtypes differ on np2.0 / win scipy1.14
+    )
     def test_sparse(self, format, dtype, xp, sp):
         a, b = self._make_matrix(dtype, xp)
         a = sp.coo_matrix(a).asformat(format)
@@ -1216,12 +1207,7 @@ class TestLOBPCG:
         runtime.is_hip and driver.get_build_version() >= 5_00_00000,
         reason='ROCm 5.0+ may have a bug')
     @pytest.mark.xfail(
-        cupy.cuda.cusolver._getVersion() in (
-            (11, 4, 5),  # CUDA 12.1.1
-            (11, 5, 0),  # CUDA 12.2.0
-            (11, 5, 1),  # CUDA 12.2.1
-            (11, 5, 2),  # CUDA 12.2.2
-        ),
+        cupy.cuda.cusolver._getVersion() >= (11, 4, 5),  # CUDA 12.1.1+
         reason='cuSOLVER in CUDA 12.1+ may have a bug',
         strict=False,  # Seems only failing with Volta (V100 / T4)
     )
@@ -1313,7 +1299,7 @@ class TestLOBPCGForDiagInput:
         X = testing.shaped_random((n, m), xp=xp, dtype=xp.dtype(self.X_dtype),
                                   seed=1234)
 
-        # Require tht returned eigenvectors be in the orthogonal
+        # Require that returned eigenvectors be in the orthogonal
         # complement of the first few standard basis vectors
         # (Cannot be sparse array)
         m_excluded = 3
@@ -1403,52 +1389,55 @@ class TestLsmr:
 
     density = 0.01
 
-    def _make_matrix(self, xp):
+    def _make_matrix(self, xp, dtype):
         shape = (self.m, self.n)
-        a = testing.shaped_random(shape, xp, scale=1)
+        a = testing.shaped_random(shape, xp, dtype, scale=1)
         mask = testing.shaped_random(shape, xp, scale=1)
         a[mask > self.density] = 0
         return a
 
-    def _make_normalized_vector(self, xp):
-        b = testing.shaped_random((self.m,), xp, scale=1)
+    def _make_normalized_vector(self, xp, dtype):
+        b = testing.shaped_random((self.m,), xp, dtype, scale=1)
         return b / xp.linalg.norm(b)
 
     def _test_lsmr(self, xp, sp, a):
-        b = self._make_normalized_vector(xp)
+        b = self._make_normalized_vector(xp, a.dtype)
         x0 = None
         if self.x0 == 'ones':
             x0 = xp.ones((self.n,))
         return sp.linalg.lsmr(a, b, x0=x0, damp=self.damp)
 
+    @testing.for_float_dtypes(no_float16=True)
     @testing.numpy_cupy_allclose(rtol=1e-1, atol=1e-1, sp_name='sp')
-    def test_sparse(self, xp, sp):
+    def test_sparse(self, xp, sp, dtype):
         if runtime.is_hip and self.format in ('csr', 'csc'):
             pytest.xfail('may be buggy')  # trans=True
 
         if (self.damp == 0 and self.x0 == 'ones' and self.n != 20):
             pytest.skip()
-        a = self._make_matrix(xp)
+        a = self._make_matrix(xp, dtype)
         a = sp.coo_matrix(a).asformat(self.format)
         if self.use_linear_operator:
             a = sp.linalg.aslinearoperator(a)
         return self._test_lsmr(xp, sp, a)[0]
 
+    @testing.for_float_dtypes(no_float16=True)
     @testing.numpy_cupy_allclose(rtol=1e-1, atol=1e-1, sp_name='sp')
-    def test_dense(self, xp, sp):
+    def test_dense(self, xp, sp, dtype):
         if (self.damp == 0 and self.x0 == 'ones' and self.n != 20):
             pytest.skip()
-        a = self._make_matrix(xp)
+        a = self._make_matrix(xp, dtype)
         if self.use_linear_operator:
             a = sp.linalg.aslinearoperator(a)
         return self._test_lsmr(xp, sp, a)[0]
 
-    def test_invalid(self):
+    @testing.for_float_dtypes(no_float16=True)
+    def test_invalid(self, dtype):
         if not (self.x0 is None and self.use_linear_operator is False):
             pytest.skip()
         for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
-            a = self._make_matrix(xp)
-            b = self._make_normalized_vector(xp)
+            a = self._make_matrix(xp, dtype)
+            b = self._make_normalized_vector(xp, dtype)
             ng_a = xp.ones((self.m, ))
             with pytest.raises(ValueError):
                 sp.linalg.lsmr(ng_a, b)
@@ -1507,16 +1496,10 @@ class TestCgs:
         x0 = None
         if self.x0 == 'ones':
             x0 = xp.ones((self.n,), dtype=dtype)
-        atol = None
+        atol = 0.0
         if self.atol == 'select-by-dtype':
             atol = self._atol[dtype.char.lower()]
-        if atol is None and xp == numpy:
-            # Note: If atol is None or not specified, Scipy (at least 1.5.3)
-            # raises DeprecationWarning
-            with pytest.deprecated_call():
-                return sp.linalg.cgs(a, b, x0=x0, M=M, atol=atol)
-        else:
-            return sp.linalg.cgs(a, b, x0=x0, M=M, atol=atol)
+        return sp.linalg.cgs(a, b, x0=x0, M=M, atol=atol)
 
     @testing.for_dtypes('fdFD')
     @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')

@@ -11,14 +11,11 @@ Order statistics
 .. autosummary::
    :toctree: generated/
 
-   amin
-   amax
-   nanmin
-   nanmax
    ptp
    percentile
+   # nanpercentile
    quantile
-
+   # nanquantile
 
 Averages and variances
 ----------------------
@@ -36,9 +33,8 @@ Averages and variances
    nanstd
    nanvar
 
-
-Correlations
-------------
+Correlating
+-----------
 
 .. autosummary::
    :toctree: generated/
@@ -46,7 +42,6 @@ Correlations
    corrcoef
    correlate
    cov
-
 
 Histograms
 ----------
@@ -58,4 +53,5 @@ Histograms
    histogram2d
    histogramdd
    bincount
+   # histogram_bin_edges
    digitize

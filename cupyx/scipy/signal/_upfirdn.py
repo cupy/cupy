@@ -25,6 +25,8 @@ FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 
 """
+from __future__ import annotations
+
 
 from math import ceil
 import cupy
@@ -59,12 +61,10 @@ __device__ void _cupy_upfirdn1D( const T *__restrict__ inp,
 
     for ( size_t tid = t; tid < outW; tid += stride ) {
 
-#if ( __CUDACC_VER_MAJOR__ >= 11 ) && ( __CUDACC_VER_MINOR__ >= 2 )
         __builtin_assume( padded_len > 0 );
         __builtin_assume( up > 0 );
         __builtin_assume( down > 0 );
         __builtin_assume( tid > 0 );
-#endif
 
         const int x_idx { static_cast<int>( ( tid * down ) / up ) % padded_len };
         int       h_idx { static_cast<int>( ( tid * down ) % up * h_per_phase ) };
@@ -172,22 +172,16 @@ __device__ void _cupy_upfirdn2D( const T *__restrict__ inp,
             int x_idx {};
             int h_idx {};
 
-#if ( __CUDACC_VER_MAJOR__ >= 11 ) && ( __CUDACC_VER_MINOR__ >= 2 )
             __builtin_assume( padded_len > 0 );
             __builtin_assume( up > 0 );
             __builtin_assume( down > 0 );
-#endif
 
             if ( axis == 1 ) {
-#if ( __CUDACC_VER_MAJOR__ >= 11 ) && ( __CUDACC_VER_MINOR__ >= 2 )
                 __builtin_assume( x > 0 );
-#endif
                 x_idx = ( static_cast<int>( x * down ) / up ) % padded_len;
                 h_idx = ( x * down ) % up * h_per_phase;
             } else {
-#if ( __CUDACC_VER_MAJOR__ >= 11 ) && ( __CUDACC_VER_MINOR__ >= 2 )
                 __builtin_assume( y > 0 );
-#endif
                 x_idx = ( static_cast<int>( y * down ) / up ) % padded_len;
                 h_idx = ( y * down ) % up * h_per_phase;
             }
@@ -338,7 +332,7 @@ def _get_tpb_bpg():
     return threadsperblock, blockspergrid
 
 
-class _UpFIRDn(object):
+class _UpFIRDn:
     def __init__(self, h, x_dtype, up, down):
         """Helper for resampling"""
         h = cupy.asarray(h)
@@ -441,7 +435,7 @@ def upfirdn(
     up=1,
     down=1,
     axis=-1,
-    mode=None,
+    mode="constant",
     cval=0
 ):
     """
@@ -462,9 +456,9 @@ def upfirdn(
         linear filter. The filter is applied to each subarray along
         this axis. Default is -1.
     mode : str, optional
-        This parameter is not implemented.
+        This parameter is not implemented for values other than ``"constant"``.
     cval : float, optional
-        This parameter is not implemented.
+        This parameter is not implemented for values other than 0.
 
     Returns
     -------
@@ -492,8 +486,10 @@ def upfirdn(
     .. [1] P. P. Vaidyanathan, Multirate Systems and Filter Banks,
        Prentice Hall, 1993.
     """
-    if mode is not None or cval != 0:
-        raise NotImplementedError(f"{mode = } and {cval =} not implemented.")
+    if mode is None:
+        mode = "constant"  # For backwards compatibility
+    if mode != "constant" or cval != 0:
+        raise NotImplementedError(f"{mode=} and {cval=} not implemented.")
 
     ufd = _UpFIRDn(h, x.dtype, int(up), int(down))
     # This is equivalent to (but faster than) using cp.apply_along_axis

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import pickle
 import threading
 import unittest
@@ -7,7 +9,7 @@ from cupy import testing
 from cupy.cuda import driver
 
 
-@unittest.skipIf(cupy.cuda.runtime.is_hip, 'Context API is dperecated in HIP')
+@unittest.skipIf(cupy.cuda.runtime.is_hip, 'Context API is deprecated in HIP')
 class TestDriver(unittest.TestCase):
     def test_ctxGetCurrent(self):
         # Make sure to create context.

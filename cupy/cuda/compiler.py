@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import copy
 import hashlib
 import math
@@ -16,6 +18,7 @@ from cupy.cuda import get_rocm_path
 from cupy_backends.cuda.api import driver
 from cupy_backends.cuda.api import runtime
 from cupy_backends.cuda.libs import nvrtc
+from cupy import _environment
 from cupy import _util
 
 _cuda_hip_version = driver.get_build_version()
@@ -59,21 +62,23 @@ def _run_cc(cmd, cwd, backend, log_stream=None):
                 path = extra_path + os.pathsep + os.environ.get('PATH', '')
                 env = copy.deepcopy(env)
                 env['PATH'] = path
-        log = subprocess.check_output(cmd, cwd=cwd, env=env,
-                                      stderr=subprocess.STDOUT,
-                                      universal_newlines=True)
+        log = subprocess.check_output(
+            cmd, cwd=cwd, env=env,
+            stderr=subprocess.STDOUT,
+            universal_newlines=True,
+            creationflags=(subprocess.CREATE_NO_WINDOW if _win32 else 0))
         if log_stream is not None:
             log_stream.write(log)
         return log
     except subprocess.CalledProcessError as e:
-        msg = ('`{0}` command returns non-zero exit status. \n'
-               'command: {1}\n'
-               'return-code: {2}\n'
+        msg = ('`{}` command returns non-zero exit status. \n'
+               'command: {}\n'
+               'return-code: {}\n'
                'stdout/stderr: \n'
-               '{3}'.format(backend,
-                            e.cmd,
-                            e.returncode,
-                            e.output))
+               '{}'.format(backend,
+                           e.cmd,
+                           e.returncode,
+                           e.output))
         if backend == 'nvcc':
             raise NVCCException(msg)
         elif backend == 'hipcc':
@@ -94,18 +99,52 @@ def _get_extra_path_for_msvc():
         # The compiler is already on PATH, no extra path needed.
         return None
 
-    try:
-        import setuptools
-        vctools = setuptools.msvc.EnvironmentInfo(platform.machine()).VCTools
-    except Exception as e:
-        warnings.warn(f'Failed to auto-detect cl.exe path: {type(e)}: {e}')
-        return None
+    cl_exe_dir = _get_cl_exe_dir()
+    if cl_exe_dir:
+        return cl_exe_dir
 
-    for path in vctools:
-        cl_exe = os.path.join(path, 'cl.exe')
-        if os.path.exists(cl_exe):
-            return path
-    warnings.warn(f'cl.exe could not be found in {vctools}')
+    cl_exe_dir = _get_cl_exe_dir_fallback()
+    if cl_exe_dir:
+        return cl_exe_dir
+
+    return None
+
+
+def _get_cl_exe_dir() -> str | None:
+    try:
+        try:
+            # setuptools.msvc is missing in setuptools v74.0.0.
+            # setuptools.msvc requires explicit import in setuptools v74.1.0+.
+            import setuptools.msvc
+        except Exception:
+            return None
+        vctools = setuptools.msvc.EnvironmentInfo(platform.machine()).VCTools
+        for path in vctools:
+            cl_exe = os.path.join(path, 'cl.exe')
+            if os.path.exists(cl_exe):
+                return path
+        warnings.warn(f'cl.exe could not be found in {vctools}')
+    except Exception as e:
+        warnings.warn(
+            f'Failed to find cl.exe with setuptools.msvc: {type(e)}: {e}')
+    return None
+
+
+def _get_cl_exe_dir_fallback() -> str | None:
+    # Discover cl.exe without relying on undocumented setuptools.msvc API.
+    # As of now this code path exists only for setuptools 74.0.0 (see #8583).
+    # N.B. This takes few seconds as this incurs cmd.exe (vcvarsall.bat)
+    # invocation.
+    try:
+        from setuptools import Distribution
+        from setuptools.command.build_ext import build_ext
+        ext = build_ext(Distribution({'name': 'cupy_cl_exe_discover'}))
+        ext.setup_shlib_compiler()
+        ext.shlib_compiler.initialize()  # MSVCCompiler only
+        return os.path.dirname(ext.shlib_compiler.cc)
+    except Exception as e:
+        warnings.warn(
+            f'Failed to find cl.exe with setuptools: {type(e)}: {e}')
     return None
 
 
@@ -115,6 +154,12 @@ def _get_nvrtc_version():
         _nvrtc_version = nvrtc.getVersion()
 
     return _nvrtc_version
+
+
+@_util.memoize()
+def _get_cupy_cache_key():
+    from cupy._core import core
+    return core.CUPY_CACHE_KEY
 
 
 # Known archs for Tegra/Jetson/Xavier/etc
@@ -134,11 +179,25 @@ def _get_max_compute_capability():
         # CUDA 11.1 - 11.7
         # Note: 87 is for Jetson Orin
         nvrtc_max_compute_capability = '86'
-    else:
-        # CUDA 11.8+
+    elif (major == 11 and minor == 8) or (major == 12 and minor < 8):
+        # CUDA 11.8, 12.0 - 12.7
         nvrtc_max_compute_capability = '90'
+    else:
+        # CUDA 12.8+
+        nvrtc_max_compute_capability = '120'
 
     return nvrtc_max_compute_capability
+
+
+@_util.memoize()
+def _get_extra_include_dir_opts():
+    major, minor = _get_nvrtc_version()
+    return tuple(
+        f'-I{d}'
+        for d in _environment._get_include_dir_from_conda_or_wheel(
+            major, minor
+        )
+    )
 
 
 @_util.memoize(for_each_device=True)
@@ -151,7 +210,7 @@ def _get_arch():
     if arch in _tegra_archs:
         return arch
     else:
-        return min(arch, nvrtc_max_compute_capability)
+        return min(arch, nvrtc_max_compute_capability, key=int)
 
 
 @_util.memoize(for_each_device=True)
@@ -166,7 +225,7 @@ def _get_arch_for_options_for_nvrtc(arch=None):
         arch = _get_arch()
     if (
         not _use_ptx
-        and arch <= _get_max_compute_capability()
+        and int(arch) <= int(_get_max_compute_capability())
     ):
         return f'-arch=sm_{arch}', 'cubin'
     return f'-arch=compute_{arch}', 'ptx'
@@ -260,15 +319,8 @@ def _jitify_prep(source, options, cu_path):
     return options, headers, include_names
 
 
-_has_usedforsecurity = (sys.version_info >= (3, 9))
-
-
 def _hash_hexdigest(value):
-    if _has_usedforsecurity:
-        hashobj = hashlib.sha1(value, usedforsecurity=False)
-    else:
-        hashobj = hashlib.sha1(value)
-    return hashobj.hexdigest()
+    return hashlib.sha1(value, usedforsecurity=False).hexdigest()
 
 
 _hash_length = len(_hash_hexdigest(b''))  # 40 for SHA1
@@ -430,6 +482,7 @@ def _preprocess(source, options, arch, backend):
             raise
     elif backend == 'nvcc':
         try:
+            options = options + ('-o', 'preprocess.ptx')
             result = compile_using_nvcc(source, options, arch, 'preprocess.cu',
                                         code_type='ptx')
         except CompileException as e:
@@ -521,6 +574,7 @@ def _compile_with_cache_cuda(
     if jitify and backend != 'nvrtc':
         raise ValueError('jitify only works with NVRTC')
 
+    options += _get_extra_include_dir_opts()
     env = ((arch, options, _get_nvrtc_version(), backend)
            + _get_arch_for_options_for_nvrtc(arch))
     base = _empty_file_preprocess_cache.get(env, None)
@@ -529,7 +583,8 @@ def _compile_with_cache_cuda(
         base = _preprocess('', options, arch, backend)
         _empty_file_preprocess_cache[env] = base
 
-    key_src = '%s %s %s %s' % (env, base, source, extra_source)
+    key_src = '%s %s %s %s %s' % (
+        env, base, source, extra_source, _get_cupy_cache_key())
     key_src = key_src.encode('utf-8')
     name = _hash_hexdigest(key_src) + '.cubin'
 
@@ -617,7 +672,7 @@ class CompileException(Exception):
         self.name = name
         self.options = options
         self.backend = backend
-        super(CompileException, self).__init__()
+        super().__init__()
 
     def __reduce__(self):
         return (type(self), (self._msg, self.source, self.name,
@@ -734,9 +789,9 @@ def compile_using_hipcc(source, options, arch, log_stream=None):
         if not os.path.isfile(out_path):
             raise HIPCCException(
                 '`hipcc` command does not generate output file. \n'
-                'command: {0}\n'
+                'command: {}\n'
                 'stdout/stderr: \n'
-                '{1}'.format(cmd, output))
+                '{}'.format(cmd, output))
         with open(out_path, 'rb') as f:
             return f.read()
 

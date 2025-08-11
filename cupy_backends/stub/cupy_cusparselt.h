@@ -14,12 +14,14 @@ typedef enum {} cudaDataType;
 typedef enum {} cusparseOrder_t;
 typedef enum {} cusparseOperation_t;
 typedef enum {} cusparseLtSparsity_t;
-typedef enum {} cusparseLtMatDescAttribute_t;
 typedef enum {} cusparseComputeType;
+typedef enum {} cusparseLtMatDescAttribute_t;
 typedef enum {} cusparseLtMatmulDescAttribute_t;
 typedef enum {} cusparseLtMatmulAlg_t;
 typedef enum {} cusparseLtMatmulAlgAttribute_t;
+typedef enum {} cusparseLtSplitKMode_t;
 typedef enum {} cusparseLtPruneAlg_t;
+typedef enum {} cusparseLtMatmulMatrixScale_t;
 
 typedef void* cudaStream_t;
 typedef void* cusparseLtHandle_t;
@@ -33,6 +35,14 @@ cusparseStatus_t cusparseLtInit(...) {
 }
 
 cusparseStatus_t cusparseLtDestroy(...) {
+    return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseLtGetVersion(...) {
+    return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseLtGetProperty(...) {
     return CUSPARSE_STATUS_SUCCESS;
 }
 

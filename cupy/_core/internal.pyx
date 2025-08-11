@@ -8,6 +8,7 @@ from libc.stdint cimport uint32_t
 import warnings
 
 import numpy
+from cupy.exceptions import AxisError
 
 from cupy._core.core cimport _ndarray_base
 
@@ -57,12 +58,7 @@ cpdef inline void _check_not_bool(object x) except *:
 @cython.profile(False)
 cpdef inline tuple get_size(object size):
     if size is None:
-        warnings.warn(
-            'Passing None into shape arguments as an alias for () is '
-            'deprecated.',
-            DeprecationWarning,
-        )
-        return ()
+        raise TypeError("Use () not None as shape arguments")
     if cpython.PySequence_Check(size):
         # A numpy.ndarray unconditionally succeeds in PySequence_Check as
         # it implements __getitem__, but zero-dim one is an unsized object
@@ -434,7 +430,7 @@ cpdef Py_ssize_t _normalize_axis_index(
 
     """
     if not (-ndim <= axis < ndim):
-        raise numpy.AxisError(axis, ndim)
+        raise AxisError(axis, ndim)
     if axis < 0:
         axis += ndim
     return axis
@@ -534,3 +530,20 @@ cpdef tuple _broadcast_shapes(shapes):
         result_shape.append(out_dim)
 
     return tuple(result_shape)
+
+
+cdef bint _is_layout_expected(
+        const bint c_contiguous, const bint f_contiguous,
+        expected_order) except*:
+    cdef int order_char = _normalize_order(expected_order)
+    order_char = _update_order_char(
+        c_contiguous, f_contiguous, order_char)
+    # order_char is either C or F from now on
+    if c_contiguous and f_contiguous:
+        return True
+    if c_contiguous and order_char == b'C':
+        return True
+    elif f_contiguous and order_char == b'F':
+        return True
+    else:
+        return False

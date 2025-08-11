@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import math
 
 import cupy
@@ -37,47 +39,48 @@ class TestLegendreFunctions:
 
     @pytest.mark.parametrize("order", [0, 1, 2, 3, 4])
     @pytest.mark.parametrize("degree", [0, 1, 2, 3, 4, 5, 10, 20, 30, 40, 50])
-    @testing.for_dtypes("efd")
+    @testing.for_all_dtypes(no_complex=True)
     @numpy_cupy_allclose(scipy_name="scp", atol=1e-12)
     def test_lpmv(self, xp, scp, dtype, order, degree):
-        vals = xp.linspace(-1, 1, 100, dtype=dtype)
+        vals = testing.shaped_linspace(-1, 1, 100, xp=xp, dtype=dtype)
         return scp.special.lpmv(order, degree, vals)
 
 
-@testing.with_requires("scipy")
+@testing.with_requires("scipy>=1.16")
 class TestBasic:
 
-    @testing.for_dtypes("efd")
+    @testing.for_all_dtypes(no_complex=True)
     @numpy_cupy_allclose(scipy_name="scp")
     def test_gammasgn(self, xp, scp, dtype):
-        vals = xp.linspace(-4, 4, 100, dtype=dtype)
+        vals = testing.shaped_linspace(-4, 4, 10, xp=xp, dtype=dtype)
         return scp.special.gammasgn(vals)
 
-    @testing.for_dtypes("efdFD")
+    @testing.for_all_dtypes()
     @numpy_cupy_allclose(scipy_name="scp", rtol=1e-5)
     def test_log1p_linspace(self, xp, scp, dtype):
-        vals = xp.linspace(-100, 100, 1000, dtype=dtype)
+        vals = testing.shaped_linspace(-100, 100, 1000, xp=xp, dtype=dtype)
         dtype = xp.dtype(dtype)
         if dtype.kind == 'c':
             # broadcast to mix large and small real vs. imaginary
             vals = vals[::10, xp.newaxis] + 1j * vals[xp.newaxis, ::10]
         return xp.abs(scp.special.log1p(vals))
 
-    @testing.for_dtypes("efFdD")
+    @testing.for_all_dtypes()
     @numpy_cupy_allclose(scipy_name="scp", rtol=1e-5)
     def test_log1p_logspace(self, xp, scp, dtype):
         dtype = xp.dtype(dtype)
-        vals = xp.logspace(-10, 10, 1000, dtype=dtype)
+        vals = testing.shaped_linspace(-10, 10, 1000, xp=xp, dtype=dtype)
         if dtype.kind == 'c':
             # broadcast to mix large and small real vs. imaginary
             vals = vals[::10, xp.newaxis] + 1j * vals[xp.newaxis, ::10]
         return xp.abs(scp.special.log1p(vals))
 
-    @testing.for_dtypes("efd")
+    @testing.for_all_dtypes(no_complex=True)
     @numpy_cupy_allclose(scipy_name="scp", rtol=rtol)
     def test_log1p_path2(self, xp, scp, dtype):
         # test values for code path corresponding to range [1/sqrt(2), sqrt(2)]
-        vals = xp.linspace(1 / math.sqrt(2), math.sqrt(2), 1000, dtype=dtype)
+        vals = testing.shaped_linspace(
+            1 / math.sqrt(2), math.sqrt(2), 1000, xp=xp, dtype=dtype)
         return scp.special.log1p(vals)
 
     def test_log1p_real(self):
@@ -90,26 +93,26 @@ class TestBasic:
         assert_array_equal(log1p(inf), inf)
 
     @pytest.mark.parametrize("function", ["xlogy", "xlog1py"])
-    @testing.for_dtypes("efdFD")
+    @testing.for_all_dtypes()
     @numpy_cupy_allclose(scipy_name="scp", rtol={'default': 1e-3,
                                                  cupy.float64: 1e-12})
     def test_xlogy(self, xp, scp, dtype, function):
         # only test with values > 0 to avoid NaNs
-        x = xp.linspace(-100, 100, 1000, dtype=dtype)
-        y = xp.linspace(0.001, 100, 1000, dtype=dtype)
+        x = testing.shaped_linspace(-100, 100, 1000, xp=xp, dtype=dtype)
+        y = testing.shaped_linspace(0.001, 100, 1000, xp=xp, dtype=dtype)
         if x.dtype.kind == 'c':
             x -= 1j * x
             y += 1j * y
         return getattr(scp.special, function)(x, y)
 
     @pytest.mark.parametrize("function", ["xlogy", "xlog1py"])
-    @testing.for_dtypes('efdFD')
+    @testing.for_all_dtypes()
     @numpy_cupy_allclose(scipy_name="scp", rtol={'default': 1e-3,
                                                  cupy.float64: 1e-12})
     def test_xlogy_zeros(self, xp, scp, dtype, function):
         # only test with values > 0 to avoid NaNs
         x = xp.zeros((1, 100), dtype=dtype)
-        y = xp.linspace(-10, 10, 100, dtype=dtype)
+        y = testing.shaped_linspace(-10, 10, 100, xp=xp, dtype=dtype)
         if y.dtype.kind == 'c':
             y += 1j * y
         return getattr(scp.special, function)(x, y)
@@ -122,48 +125,48 @@ class TestBasic:
         assert cupy.all(cupy.isnan(func(cupy.nan, y)))
         assert cupy.all(cupy.isnan(func(y, cupy.nan)))
 
-    @testing.for_dtypes("efd")
+    @testing.for_all_dtypes(no_complex=True)
     @numpy_cupy_allclose(scipy_name="scp", rtol=1e-6)
     def test_exp2(self, xp, scp, dtype):
-        vals = xp.linspace(-100, 100, 200, dtype=dtype)
+        vals = testing.shaped_linspace(-100, 100, 200, xp=xp, dtype=dtype)
         return scp.special.exp2(vals)
 
-    @testing.for_dtypes("efd")
+    @testing.for_all_dtypes(no_complex=True)
     @numpy_cupy_allclose(scipy_name="scp", rtol=1e-6)
     def test_exp10(self, xp, scp, dtype):
         if xp.dtype(dtype).char == 'd':
-            vals = xp.linspace(-100, 100, 100, dtype=dtype)
+            vals = testing.shaped_linspace(-100, 100, 200, xp=xp, dtype=dtype)
         else:
             # Note: comparisons start to fail outside this range
             #       np.finfo(np.float32).max is 3.4028235e+38
-            vals = xp.linspace(-37, 37, 100, dtype=dtype)
+            vals = testing.shaped_linspace(-37, 37, 100, xp=xp, dtype=dtype)
         return scp.special.exp10(vals)
 
-    @testing.for_dtypes("efdFD")
+    @testing.for_all_dtypes()
     @numpy_cupy_allclose(scipy_name="scp", rtol=1e-6)
     def test_expm1(self, xp, scp, dtype):
-        vals = xp.linspace(-50, 50, 200, dtype=dtype)
+        vals = testing.shaped_linspace(-50, 50, 200, xp=xp, dtype=dtype)
         if xp.dtype(dtype).kind == 'c':
             # broadcast to mix small and large real and imaginary parts
             vals = vals[:, xp.newaxis] + 1j * vals[xp.newaxis, :]
         return scp.special.expm1(vals)
 
-    @testing.for_dtypes("efd")
+    @testing.for_all_dtypes(no_complex=True)
     @numpy_cupy_allclose(scipy_name="scp", rtol=1e-6)
     def test_cosm1(self, xp, scp, dtype):
-        vals = xp.linspace(-50, 50, 200, dtype=dtype)
+        vals = testing.shaped_linspace(-50, 50, 200, xp=xp, dtype=dtype)
         return scp.special.cosm1(vals)
 
-    @testing.for_dtypes("efd")
+    @testing.for_all_dtypes(no_complex=True)
     @numpy_cupy_allclose(scipy_name="scp", rtol=1e-6)
     def test_cosm1_close_to_zero(self, xp, scp, dtype):
-        vals = xp.linspace(-1e-8, 1e-8, 200, dtype=dtype)
+        vals = testing.shaped_linspace(-1e-8, 1e-8, 200, xp=xp, dtype=dtype)
         return scp.special.cosm1(vals)
 
-    @testing.for_dtypes("efd")
+    @testing.for_all_dtypes(no_complex=True)
     @numpy_cupy_allclose(scipy_name="scp", rtol=1e-6)
     def test_radian(self, xp, scp, dtype):
-        tmp = xp.linspace(-100, 100, 10, dtype=dtype)
+        tmp = testing.shaped_linspace(-100, 100, 10, xp=xp, dtype=dtype)
         d = tmp[:, xp.newaxis, xp.newaxis]
         m = tmp[xp.newaxis, : xp.newaxis]
         s = tmp[xp.newaxis, xp.newaxis, :]
@@ -175,15 +178,15 @@ class TestBasic:
                          atol={'default': 1e-6, cupy.float64: 1e-12},
                          rtol=1e-6)
     def test_trig_degrees(self, xp, scp, dtype, function):
-        vals = xp.linspace(-100, 100, 200, dtype=dtype)
+        vals = testing.shaped_linspace(-100, 100, 200, xp=xp, dtype=dtype)
         # test at exact multiples of 45 degrees
         vals = xp.concatenate((vals, xp.arange(-360, 361, 45, dtype=dtype)))
         return getattr(scp.special, function)(vals)
 
-    @testing.for_dtypes("efd")
+    @testing.for_all_dtypes(no_complex=True)
     @numpy_cupy_allclose(scipy_name="scp", rtol=1e-6)
     def test_cbrt(self, xp, scp, dtype):
-        vals = xp.linspace(-100, 100, 200, dtype=dtype)
+        vals = testing.shaped_linspace(-100, 100, 200, xp=xp, dtype=dtype)
         return scp.special.cbrt(vals)
 
     # TODO: omit "e" since SciPy will promote to "f", but CuPy does not
@@ -192,22 +195,24 @@ class TestBasic:
     def test_round(self, xp, scp, dtype):
         vals = xp.concatenate(
             (
-                xp.linspace(-2, 2, 100, dtype=dtype),
+                testing.shaped_linspace(-2, 2, 100, xp=xp, dtype=dtype),
                 # test at half-integer locations
                 xp.asarray([-2.5, -1.5, -0.5, 0.5, 1.5, 2.5], dtype=dtype),
             )
         )
         return scp.special.round(vals)
 
+    @testing.with_requires("numpy>=2.0")
     # Exclude 'e' here because of deficiency in the NumPy/SciPy
     # implementation for float16 dtype. This was also noted in
     # cupy_tests/math_tests/test_special.py
     @testing.for_dtypes("fd")
     @numpy_cupy_allclose(scipy_name="scp", rtol=1e-6, atol=1e-6)
     def test_sinc(self, xp, scp, dtype):
-        vals = xp.linspace(-100, 100, 200, dtype=dtype)
+        vals = testing.shaped_linspace(-100, 100, 200, xp=xp, dtype=dtype)
         return scp.special.sinc(vals)
 
+    @testing.with_requires("numpy>=2.0")
     # TODO: Should we make all int dtypes convert to float64 and test for that?
     #       currently int8->float16, int16->float32, etc... but for
     #       numpy.sinc/scipy.special.sinc any int type becomes float64.

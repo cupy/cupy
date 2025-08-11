@@ -5,6 +5,8 @@
 #
 # Cephes Math Library Release 2.8:  June, 2000
 # Copyright 1984, 1987, 1992, 2000 by Stephen L. Moshier
+from __future__ import annotations
+
 
 from cupy import _core
 from cupyx.scipy.special._digamma import polevl_definition
@@ -230,5 +232,34 @@ ellipj = _core.create_ufunc(
         sn, cn, dn, ph: Computed values.
 
      .. seealso:: :data:`scipy.special.ellipj`
+    """
+)
+
+ellipkinc_preamble = "#include <cupy/xsf/cephes/ellik.h>"
+ellipeinc_preamble = "#include <cupy/xsf/cephes/ellie.h>"
+
+ellipkinc = _core.create_ufunc(
+    'cupyx_scipy_special_ellipkinc', ('ff->f', 'dd->d'),
+    'out0 = xsf::cephes::ellik(in0, in1)',
+    preamble=ellipkinc_preamble,
+    doc="""ellipkinc
+
+    Incomplete elliptic integral of the first kind
+
+    .. seealso:: :meth:`scipy.special.ellipkinc`
+
+    """
+)
+
+ellipeinc = _core.create_ufunc(
+    'cupyx_scipy_special_ellipeinc', ('ff->f', 'dd->d'),
+    'out0 = xsf::cephes::ellie(in0, in1)',
+    preamble=ellipeinc_preamble,
+    doc="""ellipeinc
+
+    Incomplete elliptic integral of the second kind
+
+    .. seealso:: :meth:`scipy.special.ellipeinc`
+
     """
 )

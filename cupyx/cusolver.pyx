@@ -59,23 +59,24 @@ cdef extern from '../cupy_backends/cupy_lapack.h' nogil:
 
 ctypedef int(*gesvd_ptr)(intptr_t, char, char, int, int, intptr_t,
                          intptr_t, intptr_t, intptr_t,
-                         intptr_t, int, intptr_t, int) nogil
+                         intptr_t, int, intptr_t, int) noexcept nogil
 ctypedef int(*geqrf_ptr)(intptr_t, int, int, intptr_t, int, intptr_t,
-                         intptr_t, int, intptr_t, int) nogil
+                         intptr_t, int, intptr_t, int) noexcept nogil
 ctypedef int(*orgqr_ptr)(intptr_t, int, int, int, intptr_t, int, intptr_t,
-                         intptr_t, int, intptr_t, int, int) nogil
+                         intptr_t, int, intptr_t, int, int) noexcept nogil
 
 
 _available_cuda_version = {
-    'gesvdj': (9000, None),
-    'gesvdjBatched': (9000, None),
-    'gesvda': (10010, None),
-    'potrfBatched': (9010, None),
-    'potrsBatched': (9010, None),
-    'syevj': (9000, None),
-    'gesv': (10020, None),
-    'gels': (11000, None),
-    'csrlsvqr': (9000, None),
+    'gesvdj': (0, None),
+    'gesvdjBatched': (0, None),
+    'gesvda': (0, None),
+    'potrfBatched': (0, None),
+    'potrsBatched': (0, None),
+    'syevj': (0, None),
+    'gesv': (0, None),
+    'gels': (0, None),
+    'csrlsvqr': (0, None),
+    'geev': (11700, None),
 }
 
 _available_hip_version = {
@@ -90,6 +91,7 @@ _available_hip_version = {
     'gesv': (_numpy.inf, None),
     'gels': (_numpy.inf, None),
     'csrlsvqr': (_numpy.inf, None),
+    'geev': (_numpy.inf, None),
 }
 
 _available_compute_capability = {
@@ -102,9 +104,10 @@ _available_compute_capability = {
 def check_availability(name):
     if not _runtime.is_hip:
         available_version = _available_cuda_version
+        version = cusolver._getVersionNumber()
     else:
         available_version = _available_hip_version
-    version = cusolver._get_cuda_build_version()
+        version = CUPY_HIP_VERSION
     if name not in available_version:
         msg = 'No available version information specified for {}'.format(name)
         raise ValueError(msg)
@@ -169,7 +172,7 @@ def gesvdj(a, full_matrices=True, compute_uv=True, overwrite_a=False):
 
     handle = _device.get_cusolver_handle()
     m, n = a.shape
-    a = _cupy.array(a, order='F', copy=not overwrite_a)
+    a = _cupy.array(a, order='F', copy=(None if overwrite_a else True))
     lda = m
     mn = min(m, n)
     s = _cupy.empty(mn, dtype=s_dtype)
@@ -231,7 +234,8 @@ cpdef _gesvdj_batched(a, full_matrices, compute_uv, overwrite_a):
 
     handle = _device.get_cusolver_handle()
     batch_size, m, n = a.shape
-    a = _cupy.array(a.swapaxes(-2, -1), order='C', copy=not overwrite_a)
+    a = _cupy.array(a.swapaxes(-2, -1), order='C',
+                    copy=(None if overwrite_a else True))
     if runtime._is_hip_environment:
         # rocsolver_<t>gesvd_batched has a different signature...
         ap = _linalg._mat_ptrs(a)

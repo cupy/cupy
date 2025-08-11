@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import cupy
 import numpy as np
 from cupy._core import internal
@@ -28,7 +30,7 @@ class _data_matrix(_base.spmatrix):
         raise NotImplementedError
 
     def __abs__(self):
-        """Elementwise abosulte."""
+        """Elementwise absolute."""
         return self._with_data(abs(self.data))
 
     def __neg__(self):
@@ -143,7 +145,7 @@ def _non_zero_cmp(mat, am, zero, m):
             zero_ind)
 
 
-class _minmax_mixin(object):
+class _minmax_mixin:
     """Mixin for min and max methods.
     These are not implemented for dia_matrix, hence the separate class.
 
@@ -177,8 +179,8 @@ class _minmax_mixin(object):
 
     def _min_or_max(self, axis, out, min_or_max, explicit):
         if out is not None:
-            raise ValueError(("Sparse matrices do not support "
-                              "an 'out' parameter."))
+            raise ValueError("Sparse matrices do not support "
+                             "an 'out' parameter.")
 
         _sputils.validateaxis(axis)
 
@@ -380,7 +382,13 @@ class _minmax_mixin(object):
 def _install_ufunc(func_name):
 
     def f(self):
-        ufunc = getattr(cupy, func_name)
+        if func_name == "sign":
+            # scipy.sparse_matrix.sign behaves compatible with
+            # numpy.sign in NumPy 1.x series.
+            ufunc = cupy._math.misc._legacy_sign
+        else:
+            ufunc = getattr(cupy, func_name)
+
         result = ufunc(self.data)
         return self._with_data(result)
 

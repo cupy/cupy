@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import pickle
 import unittest
 
@@ -84,18 +86,25 @@ class TestDiaMatrix(unittest.TestCase):
         n = _make_complex(cupy, sparse, self.dtype)
         cupy.testing.assert_array_equal(n.conjugate().data, n.data.conj())
 
-    @unittest.skipUnless(scipy_available, 'requires scipy')
+    @testing.with_requires('scipy>=1.14')
     def test_str(self):
+        dtype_name = numpy.dtype(self.dtype).name
         if numpy.dtype(self.dtype).kind == 'f':
-            expect = '''  (1, 1)\t1.0
+            expect = f'''<DIAgonal sparse matrix of dtype '{dtype_name}'
+\twith 5 stored elements (2 diagonals) and shape (3, 4)>
+  Coords\tValues
+  (1, 1)\t1.0
   (2, 2)\t2.0
   (1, 0)\t3.0
-  (2, 1)\t4.0'''
+  (2, 1)\t4.0'''  # NOQA
         else:
-            expect = '''  (1, 1)\t(1+0j)
+            expect = f'''<DIAgonal sparse matrix of dtype '{dtype_name}'
+\twith 5 stored elements (2 diagonals) and shape (3, 4)>
+  Coords\tValues
+  (1, 1)\t(1+0j)
   (2, 2)\t(2+0j)
   (1, 0)\t(3+0j)
-  (2, 1)\t(4+0j)'''
+  (2, 1)\t(4+0j)'''  # NOQA
         assert str(self.m) == expect
 
     def test_toarray(self):
@@ -239,16 +248,17 @@ class TestDiaMatrixScipyComparison(unittest.TestCase):
         m = self.make(xp, sp, self.dtype)
         return m.toarray()
 
+    @testing.with_requires('scipy<1.14')
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_A(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         return m.A
 
-    def test_sum_tuple_axis(self):
-        for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
-            m = _make(xp, sp, self.dtype)
-            with pytest.raises(TypeError):
-                m.sum(axis=(0, 1))
+    @testing.with_requires('scipy>=1.16')
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_sum_tuple_axis(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        return m.sum(axis=(0, 1))
 
     def test_sum_float_axis(self):
         for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
@@ -327,7 +337,7 @@ class TestDiaMatrixSum(unittest.TestCase):
             HIP_version = driver.get_build_version()
             if HIP_version < 5_00_00000:
                 # internally a temporary CSC matrix is generated and thus
-                # casues problems (see test_csc.py)
+                # causes problems (see test_csc.py)
                 pytest.xfail('spmv is buggy (trans=True)')
 
     @testing.numpy_cupy_allclose(sp_name='sp')

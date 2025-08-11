@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import unittest
 
 import numpy
@@ -114,6 +116,16 @@ class TestPosv(unittest.TestCase):
         if not cusolver.check_availability('potrsBatched'):
             pytest.skip('potrsBatched is not available')
 
+    @staticmethod
+    def _solve(a, b):
+        if (
+            numpy.lib.NumpyVersion(numpy.__version__) < "2.0.0"
+            or a.shape[:-1] != b.shape
+        ):
+            return numpy.linalg.solve(a, b)
+        b = b[..., numpy.newaxis]
+        return numpy.linalg.solve(a, b)[..., 0]
+
     @testing.for_dtypes('fdFD')
     @testing.numpy_cupy_allclose(atol=1e-5)
     def test_posv(self, xp, dtype):
@@ -130,7 +142,7 @@ class TestPosv(unittest.TestCase):
         if xp == cupy:
             return lapack.posv(a, b)
         else:
-            return numpy.linalg.solve(a, b)
+            return self._solve(a, b)
 
     def _create_posdef_matrix(self, xp, shape, dtype):
         n = shape[-1]

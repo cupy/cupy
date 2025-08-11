@@ -11,7 +11,6 @@ from libc.stdint cimport uint64_t
 import numpy
 
 from cupy._core cimport _dtype
-from cupy._core import _dtype as _dtype_module
 from cupy._core cimport internal
 
 
@@ -33,8 +32,8 @@ cdef dict _typenames_base = {
     numpy.dtype('float64'): 'double',
     numpy.dtype('float32'): 'float',
     numpy.dtype('float16'): 'float16',
-    numpy.dtype('complex128'): 'complex<double>',
-    numpy.dtype('complex64'): 'complex<float>',
+    numpy.dtype('complex128'): 'thrust::complex<double>',
+    numpy.dtype('complex64'): 'thrust::complex<float>',
     numpy.dtype('int64'): 'long long',
     numpy.dtype('int32'): 'int',
     numpy.dtype('int16'): 'short',
@@ -79,7 +78,7 @@ cdef dict _dtype_kind_size_dict = {}
 
 cdef _setup_type_dict():
     cdef char k
-    for i in _dtype_module.all_type_chars:
+    for i in _dtype.all_type_chars:
         d = numpy.dtype(i)
         t = d.type
         _typenames[t] = _typenames_base[d]

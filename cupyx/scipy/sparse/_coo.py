@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import numpy
 try:
     import scipy.sparse
@@ -71,7 +73,7 @@ class coo_matrix(sparse_data._data_matrix):
             col = x.col
 
             if arg1.format != self.format:
-                # When formats are differnent, all arrays are already copied
+                # When formats are different, all arrays are already copied
                 copy = False
 
             if shape is None:
@@ -472,7 +474,7 @@ class coo_matrix(sparse_data._data_matrix):
         return self.tocsr().toarray(order=order, out=out)
 
     def tocoo(self, copy=False):
-        """Converts the matrix to COOdinate format.
+        """Converts the matrix to COOrdinate format.
 
         Args:
             copy (bool): If ``False``, it shares data arrays as much as
@@ -556,6 +558,16 @@ class coo_matrix(sparse_data._data_matrix):
         shape = self.shape[1], self.shape[0]
         return coo_matrix(
             (self.data, (self.col, self.row)), shape=shape, copy=copy)
+
+    def dot(self, other):
+        """Ordinary dot product"""
+        if _util.isscalarlike(other):
+            return coo_matrix(
+                (self.data * other, (self.row, self.col)),
+                shape=self.shape, copy=True,
+            )
+        else:
+            return self @ other
 
 
 def isspmatrix_coo(x):

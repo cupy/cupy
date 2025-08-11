@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import warnings
 
 import numpy
@@ -477,7 +479,7 @@ def lobpcg(A, X,
             # Once explicitGramFlag, forever explicitGramFlag.
             explicitGramFlag = True
 
-        # Shared memory assingments to simplify the code
+        # Shared memory assignments to simplify the code
         if B is None:
             blockVectorBX = blockVectorX
             activeBlockVectorBR = activeBlockVectorR

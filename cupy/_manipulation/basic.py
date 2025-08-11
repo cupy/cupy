@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import itertools
 
 import numpy
@@ -27,15 +29,20 @@ def copyto(dst, src, casting='same_kind', where=None):
     .. seealso:: :func:`numpy.copyto`
 
     """
-    src_is_numpy_scalar = False
-
+    src_is_scalar = False
     src_type = type(src)
-    src_is_python_scalar = src_type in (
-        int, bool, float, complex,
-        fusion._FusionVarScalar, _fusion_interface._ScalarProxy)
-    if src_is_python_scalar:
-        src_dtype = numpy.dtype(type(src))
-        can_cast = numpy.can_cast(src, dst.dtype, casting)
+
+    if src_type in (bool, int, float, complex):
+        dst_arr = numpy.empty((), dtype=dst.dtype)
+        # NumPy 1.x and 2.0 make implementing copyto cast safety hard, so
+        # test whether NumPy copy allows the copy operation:
+        numpy.copyto(dst_arr, src, casting=casting)
+        can_cast = True
+        src_is_scalar = True
+    elif src_type in (fusion._FusionVarScalar, _fusion_interface._ScalarProxy):
+        src_dtype = src.dtype
+        can_cast = numpy.can_cast(src_dtype, dst.dtype, casting)
+        src_is_scalar = True
     elif isinstance(src, numpy.ndarray) or numpy.isscalar(src):
         if src.size != 1:
             raise ValueError(
@@ -43,7 +50,7 @@ def copyto(dst, src, casting='same_kind', where=None):
         src_dtype = src.dtype
         can_cast = numpy.can_cast(src, dst.dtype, casting)
         src = src.item()
-        src_is_numpy_scalar = True
+        src_is_scalar = True
     else:
         src_dtype = src.dtype
         can_cast = numpy.can_cast(src_dtype, dst.dtype, casting)
@@ -63,7 +70,7 @@ def copyto(dst, src, casting='same_kind', where=None):
             fusion._call_ufunc(search._where_ufunc, where, src, dst, dst)
         return
 
-    if not src_is_python_scalar and not src_is_numpy_scalar:
+    if not src_is_scalar:
         # Check broadcast condition
         # - for fast-paths and
         # - for a better error message (than ufunc's).
@@ -88,7 +95,7 @@ def copyto(dst, src, casting='same_kind', where=None):
     if dst.size == 0:
         return
 
-    if src_is_python_scalar or src_is_numpy_scalar:
+    if src_is_scalar:
         _core.elementwise_copy(src, dst)
         return
 

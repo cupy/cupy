@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 
 import cupy
 from cupyx.scipy.spatial.delaunay_2d._tri import GDel2D
@@ -5,8 +7,6 @@ from cupyx.scipy.spatial.delaunay_2d._tri import GDel2D
 
 class Delaunay:
     """
-    Delaunay(points, furthest_site=False, incremental=False)
-
     Delaunay tessellation in 2 dimensions.
 
     Parameters
@@ -33,35 +33,9 @@ class Delaunay:
         Indices of neighbor simplices for each simplex.
         The kth neighbor is opposite to the kth vertex.
         For simplices at the boundary, -1 denotes no neighbor.0
-    vertex_to_simplex : ndarray of int, shape (npoints,)
-        Lookup array, from a vertex, to some simplex which it is a part of.
-        If qhull option "Qc" was not specified, the list will contain -1
-        for points that are not vertices of the tessellation.
-    convex_hull : ndarray of int, shape (nfaces, ndim)
-        Vertices of facets forming the convex hull of the point set.
-        The array contains the indices of the points belonging to
-        the (N-1)-dimensional facets that form the convex hull
-        of the triangulation.
-
-        .. note::
-
-           Computing convex hulls via the Delaunay triangulation is
-           inefficient and subject to increased numerical instability.
-           Use `ConvexHull` instead.
-    coplanar : ndarray of int, shape (ncoplanar, 3)
-        Indices of coplanar points and the corresponding indices of
-        the nearest facet and the nearest vertex.  Coplanar
-        points are input points which were *not* included in the
-        triangulation due to numerical precision issues.
-
-        If option "Qc" is not specified, this list is not computed.
-
-        .. versionadded:: 0.12.0
     vertex_neighbor_vertices : tuple of two ndarrays of int; (indptr, indices)
         Neighboring vertices of vertices. The indices of neighboring
         vertices of vertex `k` are ``indices[indptr[k]:indptr[k+1]]``.
-    furthest_site
-        True if this was a furthest site triangulation and False if not.
 
     Notes
     -----
@@ -71,8 +45,8 @@ class Delaunay:
     References
     ----------
     .. [1] A GPU accelerated algorithm for 3D Delaunay triangulation (2014).
-    Thanh-Tung Cao, Ashwin Nanjappa, Mingcen Gao, Tiow-Seng Tan.
-    Proc. 18th ACM SIGGRAPH Symp. Interactive 3D Graphics and Games, 47-55.
+        Thanh-Tung Cao, Ashwin Nanjappa, Mingcen Gao, Tiow-Seng Tan.
+        Proc. 18th ACM SIGGRAPH Symp. Interactive 3D Graphics and Games, 47-55.
     """
 
     def __init__(self, points, furthest_site=False, incremental=False):

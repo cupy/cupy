@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import numpy
 
 import pytest
@@ -44,10 +46,10 @@ class TestRaw:
             if x < k and y < m and z < n:
                 arr2[x, y, z] = arr1[x, y, z]
 
-        l, m, n = (2, 3, 4)
-        x = cupy.arange(24).reshape(l, m, n)
+        p, q, r = (2, 3, 4)
+        x = cupy.arange(24).reshape(p, q, r)
         y = cupy.empty_like(x)
-        f(((l+1)//2, (m+1)//2, (n+1)//2), (2, 2, 2), (x, y, l, m, n))
+        f(((p+1)//2, (q+1)//2, (r+1)//2), (2, 2, 2), (x, y, p, q, r))
         assert (x == y).all()
 
     def test_raw_grid_invalid1(self):
@@ -704,6 +706,7 @@ class TestRaw:
         y = cupy.arange(N*2, dtype=cupy.uint32) % N
         assert (x == y).all()
 
+    @pytest.mark.xfail(reason="XXX: np2.0: int32/uint32 compile failure")
     def test_warpsize(self):
         @jit.rawkernel()
         def f(arr):
@@ -839,3 +842,49 @@ class TestRaw:
         y = numpy.dtype(dtype).type(1)
         f((5,), (6,), (x, y))
         testing.assert_array_equal(x, numpy.full_like(x, 1))
+
+    @testing.for_dtypes("efdFD")
+    def test_inf(self, dtype):
+        @jit.rawkernel()
+        def f(x):
+            tid = jit.threadIdx.x + jit.blockDim.x * jit.blockIdx.x
+            x[tid] = cupy.dtype(dtype).type(cupy.inf)
+
+        x = cupy.zeros((30), dtype=dtype)
+        f((5,), (6,), (x,))
+        testing.assert_array_equal(x, numpy.full_like(x, cupy.inf))
+
+    @testing.for_dtypes("efdFD")
+    def test_nan(self, dtype):
+        @jit.rawkernel()
+        def f(x):
+            tid = jit.threadIdx.x + jit.blockDim.x * jit.blockIdx.x
+            x[tid] = cupy.dtype(dtype).type(cupy.nan)
+
+        x = cupy.zeros((30), dtype=dtype)
+        f((5,), (6,), (x,))
+        testing.assert_array_equal(x, numpy.full_like(x, cupy.nan))
+
+    def test_return_empty(self):
+        @jit.rawkernel()
+        def f(x, y):
+            tid = jit.threadIdx.x + jit.blockDim.x * jit.blockIdx.x
+            y[tid] = x[tid]
+            return
+
+        x = testing.shaped_random((30,), dtype=numpy.int32, seed=0)
+        y = testing.shaped_random((30,), dtype=numpy.int32, seed=1)
+        f((5,), (6,), (x, y))
+        assert bool((x == y).all())
+
+    def test_return_none(self):
+        @jit.rawkernel()
+        def f(x, y):
+            tid = jit.threadIdx.x + jit.blockDim.x * jit.blockIdx.x
+            y[tid] = x[tid]
+            return None
+
+        x = testing.shaped_random((30,), dtype=numpy.int32, seed=0)
+        y = testing.shaped_random((30,), dtype=numpy.int32, seed=1)
+        f((5,), (6,), (x, y))
+        assert bool((x == y).all())

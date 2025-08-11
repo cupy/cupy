@@ -138,6 +138,9 @@ def generate():
             '_add_newdoc_ufunc',
             'fastCopyAndTranspose',
             'kernel_version',
+            'ScalarType',
+            'sctypeDict',
+            'typecodes',
             'test',
             'Tester',
         ], footnotes={
@@ -258,6 +261,22 @@ def generate():
     buf += _section(
         'Sparse Matrices',
         'scipy.sparse', 'cupyx.scipy.sparse', 'SciPy', exclude=['test'])
+    buf += _section(
+        'Sparse Matrices: COOrdinate Format',
+        'scipy.sparse', 'cupyx.scipy.sparse', 'SciPy', klass='coo_matrix', 
+        exclude=['test'])
+    buf += _section(
+        'Sparse Matrices: Compressed Sparse Column',
+        'scipy.sparse', 'cupyx.scipy.sparse', 'SciPy', klass='csc_matrix', 
+        exclude=['test'])
+    buf += _section(
+        'Sparse Matrices: Compressed Sparse Row',
+        'scipy.sparse', 'cupyx.scipy.sparse', 'SciPy', klass='csr_matrix', 
+        exclude=['test'])
+    buf += _section(
+        'Sparse Matrices: DIAgonal Storage',
+        'scipy.sparse', 'cupyx.scipy.sparse', 'SciPy', klass='dia_matrix', 
+        exclude=['test'])
     buf += _section(
         'Sparse Linear Algebra',
         'scipy.sparse.linalg', 'cupyx.scipy.sparse.linalg', 'SciPy',

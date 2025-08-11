@@ -260,7 +260,7 @@ The second kind of usage is to use the low-level, *private* CuPy APIs. You need 
     plan.fft(a, out_cp, cufft.CUFFT_FORWARD)
 
     out_np = numpy.fft.fft(a)  # use NumPy's fft
-    # np.fft.fft alway returns np.complex128
+    # np.fft.fft always returns np.complex128
     if dtype is numpy.complex64:
         out_np = out_np.astype(dtype)
 
@@ -309,7 +309,7 @@ Half-precision FFT
     out_np = out_np.view(np.float32)
     out_np = out_np.astype(np.float16)
 
-    # don't worry about accruacy for now, as we probably lost a lot during casting
+    # don't worry about accuracy for now, as we probably lost a lot during casting
     print('ok' if cp.mean(cp.abs(out - cp.asarray(out_np))) < 0.1 else 'not ok')
 
 The 64-bit indexing support for all high-level FFT APIs is planned for a future CuPy release.

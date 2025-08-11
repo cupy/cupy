@@ -81,6 +81,7 @@ Filter design
    freqs_zpk
    freqz
    freqz_zpk
+   freqz_sos
    sosfreqz
    firwin
    firwin2

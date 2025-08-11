@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import cupy
 import cupyx.scipy.fft
 
@@ -221,11 +223,7 @@ fabs = _core.create_ufunc(
 
 _unsigned_sign = 'out0 = in0 > 0'
 _complex_sign = '''
-if (in0.real() == 0) {
-  out0 = (in0.imag() > 0) - (in0.imag() < 0);
-} else {
-  out0 = (in0.real() > 0) - (in0.real() < 0);
-}
+out0 = in0 / abs(in0)
 '''
 sign = _core.create_ufunc(
     'cupy_sign',
@@ -241,6 +239,25 @@ sign = _core.create_ufunc(
     .. seealso:: :data:`numpy.sign`
 
     ''')
+
+
+_legacy_complex_sign = '''
+if (in0.real() == 0) {
+  out0 = (in0.imag() > 0) - (in0.imag() < 0);
+} else {
+  out0 = (in0.real() > 0) - (in0.real() < 0);
+}
+'''
+
+# Compatible with `numpy.sign` in NumPy v1
+_legacy_sign = _core.create_ufunc(
+    'cupy_sign',
+    ('b->b', ('B->B', _unsigned_sign), 'h->h', ('H->H', _unsigned_sign),
+     'i->i', ('I->I', _unsigned_sign), 'l->l', ('L->L', _unsigned_sign),
+     'q->q', ('Q->Q', _unsigned_sign), 'e->e', 'f->f', 'd->d',
+     ('F->F', _legacy_complex_sign), ('D->D', _legacy_complex_sign)),
+    'out0 = (in0 > 0) - (in0 < 0)'
+)
 
 
 heaviside = _core.create_ufunc(
@@ -399,10 +416,6 @@ def _check_nan_inf(x, dtype, neg=None):
         x = 0
     elif x is None and neg is not None:
         x = cupy.finfo(dtype).min if neg else cupy.finfo(dtype).max
-    elif cupy.isnan(x):
-        x = cupy.nan
-    elif cupy.isinf(x):
-        x = cupy.inf * (-1)**(x < 0)
     return cupy.asanyarray(x, dtype)
 
 

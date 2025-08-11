@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import collections
 import os
 import subprocess
@@ -5,6 +7,11 @@ import sys
 
 import pytest
 
+
+# enable NEP 50 weak promotion rules
+import numpy
+if numpy.lib.NumpyVersion(numpy.__version__) < "2.0.0":
+    numpy._set_promotion_state("weak")
 
 # Enable `testdir` fixture to test `cupy.testing`.
 # `pytest_plugins` cannot be locally configured. See also
@@ -72,3 +79,22 @@ class DeferPlugin:
         # With PyTest's default, the print will be shown as
         # "--- Captured stdout setup ---" on failure.
         print(f'CUDA_VISIBLE_DEVICES={devices}')
+
+
+if int(os.environ.get('CUPY_ENABLE_UMP', 0)) != 0:
+    # Make sure malloc is used in a stream-ordered fashion
+    import cupy as cp
+    cp.cuda.set_allocator(cp.cuda.MemoryPool(
+        cp.cuda.memory.malloc_system).malloc)
+
+    import cupy._core.numpy_allocator as ac
+    import numpy_allocator
+    import ctypes
+    lib = ctypes.CDLL(ac.__file__)
+
+    class my_allocator(metaclass=numpy_allocator.type):
+        _calloc_ = ctypes.addressof(lib._calloc)
+        _malloc_ = ctypes.addressof(lib._malloc)
+        _realloc_ = ctypes.addressof(lib._realloc)
+        _free_ = ctypes.addressof(lib._free)
+    my_allocator.__enter__()

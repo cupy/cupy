@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import numbers
 
 import numpy
@@ -23,7 +25,7 @@ except ImportError:
 # TODO(asi1024): Implement _spbase
 
 
-class spmatrix(object):
+class spmatrix:
 
     """Base class of all sparse matrixes.
 
@@ -490,7 +492,7 @@ class spmatrix(object):
         """Sums the matrix elements over a given axis.
 
         Args:
-            axis (int or ``None``): Axis along which the sum is comuted.
+            axis (int or ``None``): Axis along which the sum is computed.
                 If it is ``None``, it computes the sum of all the elements.
                 Select from ``{None, 0, 1, -2, -1}``.
             dtype: The type of returned matrix. If it is not specified, type
@@ -504,12 +506,15 @@ class spmatrix(object):
            :meth:`scipy.sparse.spmatrix.sum`
 
         """
-        _sputils.validateaxis(axis)
-
         # This implementation uses multiplication, though it is not efficient
         # for some matrix types. These should override this function.
 
         m, n = self.shape
+
+        if self.ndim == 2 and axis == (0, 1):
+            axis = None
+
+        _sputils.validateaxis(axis)
 
         if axis is None:
             return self.dot(cupy.ones(n, dtype=self.dtype)).sum(

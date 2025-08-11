@@ -24,6 +24,8 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 """
+from __future__ import annotations
+
 
 import math
 import cupy
@@ -36,9 +38,7 @@ from cupyx import jit
 
 def _get_typename(dtype):
     typename = get_typename(dtype)
-    if cupy.dtype(dtype).kind == 'c':
-        typename = 'thrust::' + typename
-    elif typename == 'float16':
+    if typename == 'float16':
         if runtime.is_hip:
             # 'half' in name_expressions weirdly raises
             # HIPRTC_ERROR_NAME_EXPRESSION_NOT_VALID in getLoweredName() on
@@ -615,7 +615,7 @@ def _select_by_peak_threshold(x, peaks, tmin, tmax):
 
     """
     # Stack thresholds on both sides to make min / max operations easier:
-    # tmin is compared with the smaller, and tmax with the greater thresold to
+    # tmin is compared with the smaller, and tmax with the greater threshold to
     # each peak's side
     stacked_thresholds = cupy.vstack([x[peaks] - x[peaks - 1],
                                       x[peaks] - x[peaks + 1]])
@@ -727,9 +727,8 @@ def _arg_wlen_as_expected(value):
         value = -1
     elif 1 < value:
         # Round up to a positive integer
-        if not cupy.can_cast(value, cupy.int64, "safe"):
-            value = math.ceil(value)
-        value = int(value)
+        value = math.ceil(value)
+        value = cupy.intp(value)
     else:
         raise ValueError('`wlen` must be larger than 1, was {}'
                          .format(value))

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import numpy
 import pytest
 
@@ -8,22 +10,26 @@ import cupyx.scipy.special
 
 class _TestBase:
 
+    @testing.with_requires('scipy>=1.16')
     def test_ndtr(self):
         self.check_unary_linspace0_1('ndtr')
 
+    @testing.with_requires('scipy>=1.16')
     def test_log_ndtr(self):
         self.check_unary_linspace0_1('log_ndtr')
 
     def test_ndtri(self):
         self.check_unary_linspace0_1('ndtri')
 
+    @testing.with_requires("scipy>=1.14")
     def test_logit(self):
         self.check_unary_lower_precision('logit')
 
+    @testing.with_requires("scipy>=1.14")
     def test_expit(self):
         self.check_unary_lower_precision('expit')
 
-    @testing.with_requires('scipy>=1.8.0rc0')
+    @testing.with_requires("scipy>=1.14")
     def test_log_expit(self):
         self.check_unary_lower_precision('log_expit')
 
@@ -154,6 +160,7 @@ class _TestDistributionsBase:
 @testing.with_requires('scipy')
 class TestTwoArgumentDistribution(_TestDistributionsBase):
 
+    @testing.with_requires('scipy>=1.16')
     @pytest.mark.skipif(cupy.cuda.runtime.is_hip,
                         reason="avoid failures observed on HIP")
     @pytest.mark.parametrize('function', ['chdtr', 'chdtrc', 'chdtri',

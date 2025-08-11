@@ -25,6 +25,8 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 """
+from __future__ import annotations
+
 
 import cupy
 import cupyx.scipy.ndimage
@@ -69,8 +71,9 @@ def sepfir2d(input, hrow, hcol):
     hrow = hrow.astype(dtype, copy=False)
     hcol = hcol.astype(dtype, copy=False)
     filters = (hcol[::-1].conj(), hrow[::-1].conj())
+    axes = (0, 1)
     return cupyx.scipy.ndimage._filters._run_1d_correlates(
-        input, (0, 1), lambda i: filters[i], None, 'reflect', 0)
+        input, axes, (0, 1), lambda i: filters[i], None, 'reflect', 0)
 
 
 def _quadratic(x):
@@ -253,7 +256,7 @@ def compute_root_from_lambda(lamb):
     omega = np.arctan(np.sqrt((144 * lamb - 1.0) / xi))
     tmp2 = np.sqrt(xi)
     r = ((24 * lamb - 1 - tmp2) / (24 * lamb) *
-         np.sqrt((48*lamb + 24 * lamb * tmp)) / tmp2)
+         np.sqrt(48*lamb + 24 * lamb * tmp) / tmp2)
     return r, omega
 
 
@@ -523,7 +526,7 @@ def spline_filter(Iin, lmbda=5.0):
     Returns
     -------
     res : ndarray
-        filterd input data
+        filtered input data
 
     """
     intype = Iin.dtype.char

@@ -22,6 +22,8 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 """
+from __future__ import annotations
+
 
 import cupy
 from cupyx.scipy.signal import windows
@@ -159,7 +161,7 @@ def ca_cfar(array, guard_cells, reference_cells, pfa=1e-3):
     reference_cells_x : int
         one-sided reference cell count in the first dimension.
     reference_cells_y : int
-        one-sided referenc cell count in the second dimension.
+        one-sided reference cell count in the second dimension.
     pfa : float
         Probability of false alarm.
     Returns

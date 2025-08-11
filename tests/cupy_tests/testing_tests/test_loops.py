@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import re
 import unittest
 
@@ -7,6 +9,7 @@ import pytest
 import cupy
 from cupy import testing
 from cupy.testing import _loops
+from cupy.exceptions import AxisError
 
 
 class _Exception1(Exception):
@@ -176,7 +179,7 @@ class TestCheckCupyNumpyError(unittest.TestCase):
             @testing.numpy_cupy_raises()
             def dummy_axis_error(self, xp):
                 if xp is cupy:
-                    raise numpy.AxisError(self.tbs.get(cupy))
+                    raise AxisError(self.tbs.get(cupy))
                 elif xp is numpy:
                     raise TypeError(self.tbs.get(numpy))
 
@@ -190,7 +193,7 @@ class TestCheckCupyNumpyError(unittest.TestCase):
             @testing.numpy_cupy_raises()
             def dummy_axis_error(self, xp):
                 if xp is cupy:
-                    raise numpy.AxisError(self.tbs.get(cupy))
+                    raise AxisError(self.tbs.get(cupy))
                 elif xp is numpy:
                     raise ValueError(self.tbs.get(numpy))
 
@@ -204,7 +207,7 @@ class TestCheckCupyNumpyError(unittest.TestCase):
             @testing.numpy_cupy_raises()
             def dummy_axis_error(self, xp):
                 if xp is cupy:
-                    raise numpy.AxisError(self.tbs.get(cupy))
+                    raise AxisError(self.tbs.get(cupy))
                 elif xp is numpy:
                     raise IndexError(self.tbs.get(numpy))
 
@@ -214,7 +217,7 @@ class TestCheckCupyNumpyError(unittest.TestCase):
             dummy_axis_error(self)
 
 
-class NumPyCuPyDecoratorBase(object):
+class NumPyCuPyDecoratorBase:
 
     def test_valid(self):
         decorator = getattr(testing, self.decorator)()
@@ -247,7 +250,7 @@ def cupy_error(_, xp):
         raise ValueError()
 
 
-class NumPyCuPyDecoratorBase2(object):
+class NumPyCuPyDecoratorBase2:
 
     def test_accept_error_numpy(self):
         decorator = getattr(testing, self.decorator)(accept_error=False)

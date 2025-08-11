@@ -1,7 +1,6 @@
 """Thin wrapper of CUSOLVER."""
 from libc.stdint cimport intptr_t, int64_t
 
-cpdef _get_cuda_build_version()
 
 ###############################################################################
 # Types
@@ -49,6 +48,7 @@ cpdef enum:
 
 cpdef int getProperty(int type) except? -1
 cpdef tuple _getVersion()
+cpdef int _getVersionNumber() except? -1
 
 ###############################################################################
 # Context
@@ -463,7 +463,7 @@ cpdef zgesvd(intptr_t handle, char jobu, char jobvt, int m, int n, size_t A,
              int lda, size_t S, size_t U, int ldu, size_t VT, int ldvt,
              size_t Work, int lwork, size_t rwork, size_t devInfo)
 
-# gesvdj ... Singular value decomposition using Jacobi mathod
+# gesvdj ... Singular value decomposition using Jacobi method
 cpdef intptr_t createGesvdjInfo() except? 0
 cpdef destroyGesvdjInfo(intptr_t info)
 

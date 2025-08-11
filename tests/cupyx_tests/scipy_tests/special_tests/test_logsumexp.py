@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import pytest
 
 import numpy
@@ -12,7 +14,7 @@ except ImportError:
     pass
 
 
-@testing.with_requires('scipy')
+@testing.with_requires('scipy>=1.15')
 class TestLogsumexp:
 
     @testing.for_all_dtypes(no_bool=True)
@@ -38,6 +40,7 @@ class TestLogsumexp:
         a = xp.array([[100, 1000], [1e10, 1e-10]])
         return scp.special.logsumexp(a, axis=-1, keepdims=True)
 
+    @testing.with_requires('scipy>=1.13')
     @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-6)
     def test_array_inputs(self, xp, scp, dtype):
@@ -46,6 +49,7 @@ class TestLogsumexp:
         a = testing.shaped_random((100, 1000), xp, dtype=dtype)
         return scp.special.logsumexp(a)
 
+    @testing.with_requires('numpy>=2.0')
     @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_sign_argument(self, xp, scp, dtype):
@@ -60,6 +64,7 @@ class TestLogsumexp:
         b = xp.array([1, -1]).astype(dtype)
         return scp.special.logsumexp(a, b=b, return_sign=True)
 
+    @testing.with_requires('numpy>=2.0')
     @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-6)
     def test_sign_multi_dims(self, xp, scp, dtype):
@@ -69,6 +74,7 @@ class TestLogsumexp:
         b = testing.shaped_random((1, 1, 1, 4), xp, dtype=dtype)
         return scp.special.logsumexp(a, b=b, return_sign=True)
 
+    @testing.with_requires('numpy>=2.0')
     @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-6)
     def test_sign_multi_dims_axis(self, xp, scp, dtype):
@@ -76,6 +82,7 @@ class TestLogsumexp:
         b = testing.shaped_random((1, 2, 3, 4), xp, dtype=dtype)
         return scp.special.logsumexp(a, axis=2, b=b, return_sign=True)
 
+    @testing.with_requires('numpy>=2.0')
     @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-6)
     def test_sign_multi_dims_axis_2d(self, xp, scp, dtype):
@@ -90,6 +97,7 @@ class TestLogsumexp:
         b = xp.array([1, 0], dtype=dtype)
         return scp.special.logsumexp(a, b=b)
 
+    @testing.with_requires('scipy>=1.13')
     @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_b_multi_dims(self, xp, scp, dtype):
@@ -104,6 +112,8 @@ class TestLogsumexp:
         a = xp.array([cupy.inf, -cupy.inf, cupy.nan, -cupy.nan])
         return scp.special.logsumexp(a)
 
+    # TODO(asi1024): Fix after initial_value is supported in cupy.max
+    @testing.with_requires('scipy<1.14')
     @testing.for_all_dtypes(no_bool=True)
     def test_empty_array_inputs(self, dtype):
         a = numpy.array([], dtype=dtype)

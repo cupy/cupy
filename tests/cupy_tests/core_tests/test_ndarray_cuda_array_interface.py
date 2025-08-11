@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import unittest
 import pytest
 
@@ -10,7 +12,7 @@ from cupy import testing
 # TODO(leofang): test PTDS in this file
 
 
-class DummyObjectWithCudaArrayInterface(object):
+class DummyObjectWithCudaArrayInterface:
 
     def __init__(self, a, ver=3):
         self.a = a
@@ -36,6 +38,7 @@ class DummyObjectWithCudaArrayInterface(object):
     'stream': ('null', 'new'),
     'ver': (2, 3),
 }))
+@testing.with_requires('numpy>=1.25')
 @pytest.mark.skipif(cupy.cuda.runtime.is_hip,
                     reason='HIP does not support this')
 class TestArrayUfunc(unittest.TestCase):

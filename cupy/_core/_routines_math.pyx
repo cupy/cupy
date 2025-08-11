@@ -1,4 +1,5 @@
 import string
+import sys
 
 import numpy
 
@@ -134,8 +135,6 @@ cdef _ndarray_base _ndarray_cumprod(_ndarray_base self, axis, dtype, out):
 
 
 cdef _ndarray_base _ndarray_clip(_ndarray_base self, a_min, a_max, out):
-    if a_min is None and a_max is None:
-        raise ValueError('array_clip: must set either max or min')
     kind = self.dtype.kind
     if a_min is None:
         if kind == 'f':
@@ -695,11 +694,11 @@ cpdef scan_core(
         if dtype is None:
             kind = a.dtype.kind
             if kind == 'b':
-                dtype = numpy.dtype('l')
-            elif kind == 'i' and a.dtype.itemsize < numpy.dtype('l').itemsize:
-                dtype = numpy.dtype('l')
-            elif kind == 'u' and a.dtype.itemsize < numpy.dtype('L').itemsize:
-                dtype = numpy.dtype('L')
+                dtype = numpy.dtype('int64')
+            elif kind == 'i':
+                dtype = numpy.dtype('int64')
+            elif kind == 'u':
+                dtype = numpy.dtype('uint64')
             else:
                 dtype = a.dtype
         result = None
@@ -764,12 +763,24 @@ cpdef _ndarray_base _nanprod(_ndarray_base a, axis, dtype, out, keepdims):
         return _nanprod_keep_dtype(a, axis, dtype, out, keepdims)
 
 
+if sys.platform == "win32":
+    _sumprod_types = (
+        '?->q', 'b->q', 'B->Q', 'h->q', 'H->Q', 'i->q', 'I->Q', 'l->q', 'L->Q',
+        'q->q', 'Q->Q',
+        ('e->e', (None, None, None, 'float')),
+        'f->f', 'd->d', 'F->F', 'D->D',
+    )
+else:
+    _sumprod_types = (
+        '?->l', 'b->l', 'B->L', 'h->l', 'H->L', 'i->l', 'I->L', 'l->l', 'L->L',
+        'q->q', 'Q->Q',
+        ('e->e', (None, None, None, 'float')),
+        'f->f', 'd->d', 'F->F', 'D->D',
+    )
+
+
 _sum_auto_dtype = create_reduction_func(
-    'cupy_sum',
-    ('?->l', 'b->l', 'B->L', 'h->l', 'H->L', 'i->l', 'I->L', 'l->l', 'L->L',
-     'q->q', 'Q->Q',
-     ('e->e', (None, None, None, 'float')),
-     'f->f', 'd->d', 'F->F', 'D->D'),
+    'cupy_sum', _sumprod_types,
     ('in0', 'a + b', 'out0 = type_out0_raw(a)', None), 0)
 
 
@@ -783,11 +794,7 @@ _sum_keep_dtype = create_reduction_func(
 
 
 _nansum_auto_dtype = create_reduction_func(
-    'cupy_nansum',
-    ('?->l', 'b->l', 'B->L', 'h->l', 'H->L', 'i->l', 'I->L', 'l->l', 'L->L',
-     'q->q', 'Q->Q',
-     ('e->e', (None, None, None, 'float')),
-     'f->f', 'd->d', 'F->F', 'D->D'),
+    'cupy_nansum', _sumprod_types,
     ('(in0 == in0) ? in0 : type_in0_raw(0)',
      'a + b', 'out0 = type_out0_raw(a)', None), 0)
 
@@ -813,11 +820,7 @@ _nansum_complex_dtype = create_reduction_func(
 
 
 _prod_auto_dtype = create_reduction_func(
-    'cupy_prod',
-    ('?->l', 'b->l', 'B->L', 'h->l', 'H->L', 'i->l', 'I->L', 'l->l', 'L->L',
-     'q->q', 'Q->Q',
-     ('e->e', (None, None, None, 'float')),
-     'f->f', 'd->d', 'F->F', 'D->D'),
+    'cupy_prod', _sumprod_types,
     ('in0', 'a * b', 'out0 = type_out0_raw(a)', None), 1)
 
 
@@ -831,11 +834,7 @@ _prod_keep_dtype = create_reduction_func(
 
 
 _nanprod_auto_dtype = create_reduction_func(
-    'cupy_nanprod',
-    ('?->l', 'b->l', 'B->L', 'h->l', 'H->L', 'i->l', 'I->L', 'l->l', 'L->L',
-     'q->q', 'Q->Q',
-     ('e->e', (None, None, None, 'float')),
-     'f->f', 'd->d', 'F->F', 'D->D'),
+    'cupy_nanprod', _sumprod_types,
     ('(in0 == in0) ? in0 : type_in0_raw(1)',
      'a * b', 'out0 = type_out0_raw(a)', None), 1)
 
@@ -1037,11 +1036,18 @@ _subtract = create_arithmetic(
     cutensor_op=('OP_ADD', 1, -1), scatter_op='sub')
 
 
+# NB: Cannot define loops with short ints in the NEP 50 world. Consider
+# `cupy.arange(3, dtype=cp.uint8) / (-2)`. It would select the 'BB->d' loop,
+# and the kernel would have a declaration `uint8_t in1;`, this converts
+# -2 to uint8_t at initialization (modulo UINT8_MAX, likely).
+# The family of qq loops is a work-around to achieve almost correct promotion.
+# TODO(seberg): Per-ufunc promotion or per-loop type resolution is probably
+#               needed for a full fix.
 _true_divide = create_ufunc(
     'cupy_true_divide',
-    ('bb->d', 'BB->d', 'hh->d', 'HH->d', 'ii->d', 'II->d', 'll->d', 'LL->d',
-     'qq->d', 'QQ->d', 'ee->e', 'ff->f', 'dd->d', 'FF->F', 'DD->D'),
-    'out0 = (out0_type)in0 / (out0_type)in1',
+    ('qq->d', 'qQ->d', 'Qq->d', 'QQ->d',
+     'ee->e', 'ff->f', 'dd->d', 'FF->F', 'DD->D'),
+    'out0 = static_cast<out0_type>(in0) / static_cast<out0_type>(in1)',
     doc='''Elementwise true division (i.e. division as floating values).
 
     .. seealso:: :data:`numpy.true_divide`

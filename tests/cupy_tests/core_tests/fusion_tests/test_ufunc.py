@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import itertools
 import unittest
 
@@ -61,7 +63,7 @@ class TestFusionBroadcast(unittest.TestCase):
     def test_broadcast(self, xp):
         return lambda x, y: x + y
 
-    # TODO(asi1024): Uncomment after replace fusion implementaiton.
+    # TODO(asi1024): Uncomment after replace fusion implementation.
 
     # @fusion_utils.check_fusion(accept_error=ValueError)
     # def test_broadcast_inplace(self, xp):
@@ -218,6 +220,7 @@ class TestFusionScalar(unittest.TestCase):
 
         return func
 
+    @testing.with_requires('numpy>=1.25')
     @testing.for_all_dtypes_combination(names=('dtype1', 'dtype2'))
     @fusion_utils.check_fusion()
     def test_numpy_scalar_l(self, xp, dtype1, dtype2):
@@ -312,5 +315,14 @@ class TestFusionScalar(unittest.TestCase):
         def func(array, scalar):
             scalar += array
             return scalar
+
+        return func
+
+    @testing.for_all_dtypes_combination(names=('dtype1', 'dtype2'))
+    @fusion_utils.check_fusion(generate_inputs_name='numpy_scalar_param_r')
+    def test_scalar_and_constant_mix(self, xp, dtype1, dtype2):
+        # Example from gh-8536
+        def func(array, scalar):
+            return 1.0 - (array * array) / (scalar * scalar)
 
         return func

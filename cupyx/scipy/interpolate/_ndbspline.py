@@ -1,11 +1,15 @@
+from __future__ import annotations
 
+import itertools
 import operator
 from math import prod
 
 import cupy
 
 from cupyx.scipy.interpolate._bspline import _get_dtype, _get_module_func
+from cupyx.scipy.interpolate._bspline2 import _not_a_knot
 from cupyx.scipy.sparse import csr_matrix
+from cupyx.scipy.sparse.linalg import spsolve
 
 
 TYPES = ['double', 'thrust::complex<double>']
@@ -134,10 +138,12 @@ __global__ void compute_nd_bsplines(
         const int* nu, bool extrapolate, bool check_all_validity,
         long long* intervals, double* splines, bool* invalid) {
 
-    int start = getCurThreadIdx() / ndim;
-    int dim_idx = getCurThreadIdx() % ndim;
+    int total = n_xi * ndim;
 
-    for(int idx = start; idx < n_xi; idx += getThreadNum()) {
+    for(int midx = getCurThreadIdx(); midx < total; midx += getThreadNum()) {
+        int idx = midx / ndim;
+        int dim_idx = midx % ndim;
+
         double xd = xi[ndim * idx + dim_idx];
         const double* dim_t = t + max_t * dim_idx;
         const long long dim_k = k[dim_idx];
@@ -208,10 +214,12 @@ __global__ void store_nd_bsplines(
         long long* volume, int ndim, int n_xi, const long long* max_k,
         long long* out_idx, double* out) {
 
-    int start = getCurThreadIdx() / volume[0];
-    int iflat = getCurThreadIdx() % volume[0];
+    int total = n_xi * volume[0];
 
-    for(int idx = start; idx < n_xi; idx += getThreadNum()) {
+    for(int midx = getCurThreadIdx(); midx < total; midx += getThreadNum()) {
+        int idx = midx / volume[0];
+        int iflat = midx % volume[0];
+
         const double* idx_splines = b + ndim * (2 * max_k[0] + 2) * idx;
         const long long* idx_b = indices_k1d + ndim * iflat;
 
@@ -396,12 +404,12 @@ def colloc_nd(xvals, t, len_t, k):
     # Precompute the shape and strides of the coefficients array.
     # This would have been the NdBSpline coefficients; in the present context
     # this is a helper to compute the indices into the collocation matrix.
-    c_shape = tuple(len(t[d]) - k1_shape[d] for d in range(ndim))
+    c_shape = len_t - cupy.asarray(k1_shape, dtype=len_t.dtype)
 
     # The computation is equivalent to
     # >>> x = cupy.empty(c_shape)
     # >>> cstrides = [s // 8 for s in x.strides]
-    cs = cupy.asarray(c_shape[1:] + (1,))
+    cs = cupy.r_[c_shape[1:], 1]
     cstrides = cupy.cumprod(cs[::-1], dtype=cupy.int64)[::-1].copy()
 
     # tabulate flat indices for iterating over the (k+1)**ndim subarray of
@@ -491,7 +499,7 @@ class NdBSpline:
             k = (k,) * ndim
 
         if len(k) != ndim:
-            raise ValueError(f"{len(t) = } != {len(k) = }.")
+            raise ValueError(f"{len(t)=} != {len(k)=}.")
 
         self.k = tuple(operator.index(ki) for ki in k)
         self.t = tuple(cupy.ascontiguousarray(ti, dtype=float) for ti in t)
@@ -571,10 +579,10 @@ class NdBSpline:
             nu = cupy.asarray(nu, dtype=cupy.int32)
             if nu.ndim != 1 or nu.shape[0] != ndim:
                 raise ValueError(
-                    f"invalid number of derivative orders {nu = } for "
+                    f"invalid number of derivative orders {nu=} for "
                     f"ndim = {len(self.t)}.")
             if cupy.any(nu < 0).item():
-                raise ValueError(f"derivatives must be positive, got {nu = }")
+                raise ValueError(f"derivatives must be positive, got {nu=}")
 
         # prepare xi : shape (..., m1, ..., md) -> (1, m1, ..., md)
         xi = cupy.asarray(xi, dtype=float)
@@ -655,7 +663,7 @@ class NdBSpline:
         if len(t) != ndim:
             raise ValueError(
                 f"Data and knots are inconsistent: len(t) = {len(t)} for "
-                f" {ndim = }."
+                f" {ndim=}."
             )
         try:
             len(k)
@@ -673,3 +681,76 @@ class NdBSpline:
         kk = cupy.asarray(k, dtype=cupy.int64)
         data, indices, indptr = colloc_nd(xvals, _t, len_t, kk)
         return csr_matrix((data, indices, indptr))
+
+
+def make_ndbspl(points, values, k=3):
+    """Construct an interpolating NdBspline.
+
+    Parameters
+    ----------
+    points : tuple of ndarrays of float, with shapes (m1,), ... (mN,)
+        The points defining the regular grid in N dimensions. The points in
+        each dimension (i.e. every element of the `points` tuple) must be
+        strictly ascending or descending.
+    values : ndarray of float, shape (m1, ..., mN, ...)
+        The data on the regular grid in n dimensions.
+    k : int, optional
+        The spline degree. Must be odd. Default is cubic, k=3
+    solver : a `scipy.sparse.linalg` solver (iterative or direct), optional.
+        An iterative solver from `scipy.sparse.linalg` or a direct one,
+        `sparse.sparse.linalg.spsolve`.
+        Used to solve the sparse linear system
+        ``design_matrix @ coefficients = rhs`` for the coefficients.
+        Default is `scipy.sparse.linalg.gcrotmk`
+    solver_args : dict, optional
+        Additional arguments for the solver. The call signature is
+        ``solver(csr_array, rhs_vector, **solver_args)``
+
+    Returns
+    -------
+    spl : NdBSpline object
+
+    Notes
+    -----
+    Boundary conditions are not-a-knot in all dimensions.
+    """
+    ndim = len(points)
+    xi_shape = tuple(len(x) for x in points)
+
+    try:
+        len(k)
+    except TypeError:
+        # make k a tuple
+        k = (k,)*ndim
+
+    for d, point in enumerate(points):
+        numpts = len(cupy.atleast_1d(point))
+        if numpts <= k[d]:
+            raise ValueError(f"There are {numpts} points in dimension {d},"
+                             f" but order {k[d]} requires at least "
+                             f" {k[d]+1} points per dimension.")
+
+    t = tuple(_not_a_knot(cupy.asarray(
+        points[d], dtype=float), k[d]) for d in range(ndim))
+    xvals = cupy.asarray(
+        [xv for xv in itertools.product(*points)], dtype=float)
+
+    # construct the colocation matrix
+    matr = NdBSpline.design_matrix(xvals, t, k)
+
+    # Solve for the coefficients given `values`.
+    # Trailing dimensions: first ndim dimensions are data, the rest are batch
+    # dimensions, so stack `values` into a 2D array for `spsolve` to
+    # understand.
+    v_shape = values.shape
+    vals_shape = (prod(v_shape[:ndim]), prod(v_shape[ndim:]))
+    vals = values.reshape(vals_shape)
+
+    if cupy.issubdtype(vals.dtype, cupy.complexfloating):
+        # avoid upcasting the l.h.s. to complex (that doubles the memory)
+        coef = (spsolve(matr, vals.real) +
+                spsolve(matr, vals.imag) * 1.j)
+    else:
+        coef = spsolve(matr, vals)
+    coef = coef.reshape(xi_shape + v_shape[ndim:])
+    return NdBSpline(t, coef, k)

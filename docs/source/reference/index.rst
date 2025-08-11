@@ -13,7 +13,7 @@ API Reference
 
 ..
   For NumPy/SciPy-compatible APIs (ndarray, ufunc, routines, scipy),
-  omit the module name prefix in the API list, following the convension in
+  omit the module name prefix in the API list, following the convention in
   NumPy/SciPy documentation.
   For CuPy-specific APIs, use fully-qualified names.
 

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import copy
 import itertools
 import operator
@@ -150,6 +152,9 @@ def _parse_einsum_input(args):
                 msg + ' operands provided to einstein sum function than '
                 'specified in the subscripts string')
 
+        # NumPy ignores 'weak' scalars and always returns i64/f64
+        operands = [cupy.asarray(op) for op in operands]
+
     else:
         args = list(args)
         operands = []
@@ -161,6 +166,8 @@ def _parse_einsum_input(args):
             output_subscript = _parse_int_subscript(args[0])
         else:
             output_subscript = None
+
+        operands = [cupy.asarray(op) for op in operands]
 
     return input_subscripts, output_subscript, operands
 

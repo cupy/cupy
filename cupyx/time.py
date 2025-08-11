@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import math as _math
 import warnings as _warnings
 
@@ -34,7 +36,7 @@ def repeat(
 
     Args:
         func (callable): a callable object to be timed.
-        args (tuple): positional argumens to be passed to the callable.
+        args (tuple): positional arguments to be passed to the callable.
         kwargs (dict): keyword arguments to be passed to the callable.
         n_repeat (int): number of times the callable is called. Increasing
             this value would improve the collected statistics at the cost

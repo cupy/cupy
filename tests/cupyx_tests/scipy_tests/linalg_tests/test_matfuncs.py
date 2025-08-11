@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import numpy as np
 from numpy import linalg
 
@@ -76,6 +78,7 @@ class TestKhatriRao:
         testing.assert_array_equal(res1, res2)
 
 
+@testing.with_requires("scipy")
 class TestExpM:
 
     def test_zero(self):
@@ -109,3 +112,23 @@ class TestExpM:
     def test_dtypes(self, xp, scp, dtype):
         a = xp.eye(2, dtype=dtype)
         return scp.linalg.expm(a)
+
+    @testing.numpy_cupy_allclose(scipy_name='scp', contiguous_check=False)
+    def test_gh_9138(self, xp, scp):
+        rng = np.random.default_rng(123)
+        a = rng.standard_normal(size=(3, 3))
+        a = a + 1j*rng.standard_normal(size=(3, 3))
+        A = a.conj().T - a
+        A = xp.asarray(A)
+        return scp.linalg.expm(A)
+
+    def test_gh_9138_2(self):
+        # make sure expm(antisym matrix) is unitary (to a good accuracy)
+        rng = np.random.default_rng(123)
+        a = rng.standard_normal(size=(3, 3))
+        a = a + 1j*rng.standard_normal(size=(3, 3))
+        A = a.conj().T - a
+        A = cupy.asarray(A)
+
+        U = cx_linalg.expm(A)
+        testing.assert_allclose(U.conj().T @ U, cupy.eye(3), atol=1e-14)

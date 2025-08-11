@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import cupy
 from cupy import _core
 
@@ -27,7 +29,7 @@ def asarray_chkfinite(a, dtype=None, order=None):
     return a
 
 
-def asfarray(a, dtype=cupy.float_):
+def asfarray(a, dtype=cupy.float64):
     """Converts array elements to float type.
 
     Args:
@@ -41,7 +43,7 @@ def asfarray(a, dtype=cupy.float_):
 
     """
     if not cupy.issubdtype(dtype, cupy.inexact):
-        dtype = cupy.float_
+        dtype = cupy.float64
     return cupy.asarray(a, dtype=dtype)
 
 
@@ -114,7 +116,7 @@ def require(a, dtype=None, requirements=None):
         order = 'C_CONTIGUOUS'
         requirements.remove('C')
 
-    copy = 'OWNDATA' in requirements
+    copy = True if 'OWNDATA' in requirements else None
     try:
         arr = cupy.array(a, dtype=dtype, order=order, copy=copy, subok=False)
     except TypeError:

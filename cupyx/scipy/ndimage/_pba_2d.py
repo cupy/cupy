@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import math
 import numbers
 import os
@@ -68,7 +70,7 @@ def get_pba2d_src(block_size_2d=64, marker=-32768, pixel_int2_t="short2"):
         make_pixel_func=make_pixel_func
     )
     kernel_directory = os.path.join(os.path.dirname(__file__), "cuda")
-    with open(os.path.join(kernel_directory, "pba_kernels_2d.h"), "rt") as f:
+    with open(os.path.join(kernel_directory, "pba_kernels_2d.h")) as f:
         pba2d_kernels = "\n".join(f.readlines())
 
     pba2d_code += pba2d_kernels
@@ -117,7 +119,7 @@ def _get_pack_kernel(int_type, marker=-32768):
 
 def _pack_int2(arr, marker=-32768, int_dtype=cupy.int16):
     if arr.ndim != 2:
-        raise ValueError("only 2d arr suppported")
+        raise ValueError("only 2d arr supported")
     int2_dtype = cupy.dtype({"names": ["x", "y"], "formats": [int_dtype] * 2})
     out = cupy.zeros(arr.shape + (2,), dtype=int_dtype)
     assert out.size == 2 * arr.size
@@ -433,7 +435,7 @@ def _pba_2d(arr, sampling=None, return_distances=True, return_indices=False,
         block,
         (input_arr, input_arr, size, bandSize2),
     )
-    # Repeatly merging two bands into one
+    # Repeatedly merging two bands into one
     noBand = m2
     while noBand > 1:
         grid = (math.ceil(size / block[0]), noBand // 2)

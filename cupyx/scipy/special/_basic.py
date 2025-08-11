@@ -22,6 +22,8 @@ Cephes Math Library Release 2.0:  April, 1987
 Copyright 1984, 1987 by Stephen L. Moshier
 Direct inquiries to 30 Frost Street, Cambridge, MA 02140
 """
+from __future__ import annotations
+
 
 from cupy import _core
 
@@ -29,7 +31,10 @@ from cupy import _core
 # Note: cast complex<single> to complex<double> or tests fail tolerance
 log1p = _core.create_ufunc(
     'cupyx_scipy_log1p',
-    (('f->f', 'out0 = log1pf(in0)'),
+    (('l->d', 'out0 = log1p(double(in0))'),
+     ('L->d', 'out0 = log1p(double(in0))'),
+     ('e->d', 'out0 = log1p(double(in0))'),
+     ('f->f', 'out0 = log1pf(in0)'),
      ('F->F', 'out0 = out0_type(log1p((complex<double>)in0))'),
      'd->d', 'D->D'),
     'out0 = log1p(in0);',
@@ -49,8 +54,8 @@ log1p = _core.create_ufunc(
 
 cbrt = _core.create_ufunc(
     'cupyx_scipy_special_cbrt',
-    (('f->f', 'out0 = cbrtf(in0)'), 'd->d'),
-    'out0 = cbrt(in0)',
+    ('l->d', 'L->d', 'e->d', ('f->f', 'out0 = cbrtf(in0)'), 'd->d'),
+    'out0 = cbrt(double(in0))',
     doc='''Cube root.
 
     .. seealso:: :meth:`scipy.special.cbrt`
@@ -60,7 +65,10 @@ cbrt = _core.create_ufunc(
 
 exp2 = _core.create_ufunc(
     'cupyx_scipy_special_exp2',
-    (('f->f', 'out0 = exp2f(in0)'), 'd->d'),
+    (('e->d', 'out0 = exp2(double(in0))'),
+     ('l->d', 'out0 = exp2(double(in0))'),
+     ('L->d', 'out0 = exp2(double(in0))'),
+     ('f->f', 'out0 = exp2f(in0)'), 'd->d'),
     'out0 = exp2(in0)',
     doc='''Computes ``2**x``.
 
@@ -71,7 +79,10 @@ exp2 = _core.create_ufunc(
 
 exp10 = _core.create_ufunc(
     'cupyx_scipy_special_exp10',
-    (('f->f', 'out0 = exp10f(in0)'), 'd->d'),
+    (('e->d', 'out0 = exp10(double(in0))'),
+     ('l->d', 'out0 = exp10(double(in0))'),
+     ('L->d', 'out0 = exp10(double(in0))'),
+     ('f->f', 'out0 = exp10f(in0)'), 'd->d'),
     'out0 = exp10(in0)',
     doc='''Computes ``10**x``.
 
@@ -82,7 +93,10 @@ exp10 = _core.create_ufunc(
 
 expm1 = _core.create_ufunc(
     'cupyx_scipy_special_expm1',
-    (('f->f', 'out0 = expm1f(in0)'), 'd->d', 'F->F', 'D->D'),
+    (('e->d', 'out0 = expm1(double(in0))'),
+     ('l->d', 'out0 = expm1(double(in0))'),
+     ('L->d', 'out0 = expm1(double(in0))'),
+     ('f->f', 'out0 = expm1f(in0)'), 'd->d', 'F->F', 'D->D'),
     'out0 = expm1(in0)',
     doc='''Computes ``exp(x) - 1``.
 
@@ -92,7 +106,16 @@ expm1 = _core.create_ufunc(
 
 exprel = _core.create_ufunc(
     'cupyx_scipy_special_exprel',
-    (('f->f'), 'd->d', 'F->F', 'D->D'),
+    (
+        ('l->d', 'out0 = in0 != 0 ? expm1(double(in0)) / in0 : 1'),
+        ('L->d', 'out0 = in0 != 0 ? expm1(double(in0)) / in0 : 1'),
+        ('e->d', 'out0 = abs(in0) >= 1e-16 ? expm1(double(in0)) / in0 : 1'),
+        'f->f',
+        'd->d',
+        'F->F',
+        'D->D',
+    ),
+
     'out0 = abs(in0) >= 1e-16 ? expm1(in0) / in0 : 1',
     doc='''Computes ``(exp(x) - 1) / x``.
 
@@ -144,7 +167,7 @@ __device__ static double cosm1(double x)
 """
 
 cosm1 = _core.create_ufunc(
-    'cupyx_scipy_special_cosm1', ('f->f', 'd->d'),
+    'cupyx_scipy_special_cosm1', ('l->d', 'L->d', 'e->d', 'f->f', 'd->d'),
     'out0 = cosm1(in0)',
     preamble=cosm1_implementation,
     doc='''Computes ``cos(x) - 1``.
@@ -159,7 +182,7 @@ pi180_preamble = """
 
 cosdg = _core.create_ufunc(
     'cupyx_scipy_special_cosdg',
-    (('f->f', 'out0 = cosf(PI180 * in0)'), 'd->d'),
+    ('l->d', 'L->d', 'e->d', ('f->f', 'out0 = cosf(PI180 * in0)'), 'd->d'),
     'out0 = cos(PI180 * in0)',
     preamble=pi180_preamble,
     doc='''Cosine of x with x in degrees.
@@ -171,7 +194,7 @@ cosdg = _core.create_ufunc(
 
 sindg = _core.create_ufunc(
     'cupyx_scipy_special_sindg',
-    (('f->f', 'out0 = sinf(PI180 * in0)'), 'd->d'),
+    ('l->d', 'L->d', 'e->d', ('f->f', 'out0 = sinf(PI180 * in0)'), 'd->d'),
     'out0 = sin(PI180 * in0)',
     preamble=pi180_preamble,
     doc='''Sine of x with x in degrees.
@@ -254,7 +277,7 @@ __device__ static double tancot(double xx, int cotflg)
 """
 
 tandg = _core.create_ufunc(
-    'cupyx_scipy_special_tandg', ('f->f', 'd->d'),
+    'cupyx_scipy_special_tandg', ('l->d', 'L->d', 'e->d', 'f->f', 'd->d'),
     'out0 = tandg(in0)',
     preamble=tancot_implementation,
     doc='''Tangent of x with x in degrees.
@@ -265,7 +288,7 @@ tandg = _core.create_ufunc(
 
 
 cotdg = _core.create_ufunc(
-    'cupyx_scipy_special_cotdg', ('f->f', 'd->d'),
+    'cupyx_scipy_special_cotdg', ('l->d', 'L->d', 'e->d', 'f->f', 'd->d'),
     'out0 = cotdg(in0)',
     preamble=tancot_implementation,
     doc='''Cotangent of x with x in degrees.
@@ -287,8 +310,9 @@ __device__ T radian(T d, T m, T s)
 """
 
 radian = _core.create_ufunc(
-    'cupyx_scipy_special_radian', ('fff->f', 'ddd->d'),
-    'out0 = radian(in0, in1, in2)',
+    'cupyx_scipy_special_radian',
+    ('lll->d', 'LLL->d', 'eee->d', 'fff->f', 'ddd->d'),
+    'out0 = radian(out0_type(in0), out0_type(in1), out0_type(in2))',
     preamble=radian_implementation,
     doc='''Degrees, minutes, seconds to radians:
 

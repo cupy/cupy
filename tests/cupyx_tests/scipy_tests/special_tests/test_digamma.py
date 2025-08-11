@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import unittest
 
 from cupy import testing
@@ -5,10 +7,9 @@ import cupyx.scipy.special  # NOQA
 import numpy
 
 
-@testing.with_requires('scipy')
+@testing.with_requires("scipy>=1.14")
 class TestDigamma(unittest.TestCase):
 
-    @testing.with_requires('scipy>=1.1.0')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(atol=1e-13, rtol=1e-15, scipy_name='scp')
     def test_arange(self, xp, scp, dtype):
@@ -17,7 +18,6 @@ class TestDigamma(unittest.TestCase):
         a = testing.shaped_arange((2, 3), xp, dtype)
         return scp.special.digamma(a)
 
-    @testing.with_requires('scipy>=1.1.0')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(atol=1e-13, rtol=1e-10, scipy_name='scp')
     def test_linspace_positive(self, xp, scp, dtype):
@@ -27,7 +27,6 @@ class TestDigamma(unittest.TestCase):
         a = xp.asarray(a)
         return scp.special.digamma(a)
 
-    @testing.with_requires('scipy>=1.1.0')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(atol=1e-13, rtol=1e-10, scipy_name='scp')
     def test_linspace_negative(self, xp, scp, dtype):
@@ -45,7 +44,7 @@ class TestDigamma(unittest.TestCase):
         return scp.special.digamma(dtype(1.5))
 
     @testing.with_requires('scipy>=1.1.0')
-    @testing.for_all_dtypes()
+    @testing.for_dtypes("efdFD")
     @testing.numpy_cupy_allclose(atol=1e-13, rtol=1e-10, scipy_name='scp')
     def test_inf_and_nan(self, xp, scp, dtype):
         import scipy.special  # NOQA

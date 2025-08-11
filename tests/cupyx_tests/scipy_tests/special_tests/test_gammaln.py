@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import math
 
 import numpy
@@ -7,7 +9,7 @@ from cupy import testing
 import cupyx.scipy.special  # NOQA
 
 
-@testing.with_requires('scipy')
+@testing.with_requires('scipy>=1.15')
 class TestGammaln:
 
     @testing.for_all_dtypes(no_complex=True)

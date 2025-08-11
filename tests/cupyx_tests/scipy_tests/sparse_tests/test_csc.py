@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import pickle
 import sys
 
@@ -203,10 +205,10 @@ class TestCscMatrix:
         cupy.testing.assert_array_equal(n.indptr, self.m.indptr)
         assert n.shape == self.m.shape
 
-    @testing.with_requires('scipy')
+    @testing.with_requires('scipy>=1.15')
     def test_init_dense_invalid_ndim(self):
         for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
-            with pytest.raises(TypeError):
+            with pytest.raises(ValueError):
                 m = xp.zeros((1, 1, 1), dtype=self.dtype)
                 sp.csc_matrix(m)
 
@@ -246,18 +248,25 @@ class TestCscMatrix:
         ]
         numpy.testing.assert_allclose(m.toarray(), expect)
 
-    @testing.with_requires('scipy')
+    @testing.with_requires('scipy>=1.14')
     def test_str(self):
+        dtype_name = numpy.dtype(self.dtype).name
         if numpy.dtype(self.dtype).kind == 'f':
-            expect = '''  (0, 0)\t0.0
+            expect = f'''<Compressed Sparse Column sparse matrix of dtype '{dtype_name}'
+\twith 4 stored elements and shape (3, 4)>
+  Coords\tValues
+  (0, 0)\t0.0
   (0, 1)\t1.0
   (2, 2)\t3.0
-  (1, 3)\t2.0'''
+  (1, 3)\t2.0'''  # NOQA
         elif numpy.dtype(self.dtype).kind == 'c':
-            expect = '''  (0, 0)\t0j
+            expect = f'''<Compressed Sparse Column sparse matrix of dtype '{dtype_name}'
+\twith 4 stored elements and shape (3, 4)>
+  Coords\tValues
+  (0, 0)\t0j
   (0, 1)\t(1+0j)
   (2, 2)\t(3+0j)
-  (1, 3)\t(2+0j)'''
+  (1, 3)\t(2+0j)'''  # NOQA
 
         assert str(self.m) == expect
 
@@ -506,6 +515,7 @@ class TestCscMatrixScipyComparison:
             with pytest.raises(ValueError):
                 m.toarray(order='#')
 
+    @testing.with_requires('scipy<1.14')
     @testing.numpy_cupy_allclose(sp_name='sp', contiguous_check=False)
     def test_A(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
@@ -1078,11 +1088,11 @@ class TestCscMatrixScipyComparison:
         assert m.has_sorted_indices
         return m
 
-    def test_sum_tuple_axis(self):
-        for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
-            m = self.make(xp, sp, self.dtype)
-            with pytest.raises(TypeError):
-                m.sum(axis=(0, 1))
+    @testing.with_requires('scipy>=1.16')
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_sum_tuple_axis(self, xp, sp):
+        m = self.make(xp, sp, self.dtype)
+        return m.sum(axis=(0, 1))
 
     def test_sum_too_large_axis(self):
         for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):

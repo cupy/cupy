@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import pickle
 import unittest
 from unittest import mock
@@ -21,7 +23,8 @@ class TestNvrtcArch(unittest.TestCase):
             assert compiler._get_arch() == expected_arch
         cupy.clear_memo()  # _get_arch result is cached
 
-    @unittest.skipUnless(9000 <= cuda_version(), 'Requires CUDA 9.x or later')
+    @unittest.skipUnless(
+        9000 <= cuda_version() < 13000, 'Requires CUDA 9.x-12.x')
     def test_get_arch_cuda9(self):
         self._check_get_arch('62', '62')  # Tegra
         self._check_get_arch('70', '70')
@@ -37,10 +40,17 @@ class TestNvrtcArch(unittest.TestCase):
     def test_get_arch_cuda11(self):
         self._check_get_arch('80', '80')
 
+    @unittest.skipUnless(12080 <= cuda_version(),
+                         'Requires CUDA 12.8 or later')
+    def test_get_arch_cuda128(self):
+        self._check_get_arch('100', '100')
+        self._check_get_arch('120', '120')
+
     def _compile(self, arch):
         compiler.compile_using_nvrtc('', arch=arch)
 
-    @unittest.skipUnless(9000 <= cuda_version(), 'Requires CUDA 9.0 or later')
+    @unittest.skipUnless(
+        9000 <= cuda_version() < 13000, 'Requires CUDA 9.x-12.x')
     def test_compile_cuda9(self):
         # This test is intended to detect specification change in NVRTC API.
 

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import unittest
 
 import numpy
@@ -148,7 +150,7 @@ class TestPermutationRandomness(unittest.TestCase):
     # frequency of appearance of 0 and 1 at each bit position of
     # whole elements in the sub-array should become similar
     # when elements count of original array is 2^N.
-    # Note that this is not an establishd method to check randomness.
+    # Note that this is not an established method to check randomness.
     # TODO(anaruse): implement randomness check using some established methods.
     @_condition.repeat_with_success_at_least(5, 3)
     def test_permutation_randomness(self):

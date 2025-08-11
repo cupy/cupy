@@ -8,6 +8,7 @@ Cephes Math Library Release 2.0:  April, 1987
 Copyright 1984, 1987 by Stephen L. Moshier
 Direct inquiries to 30 Frost Street, Cambridge, MA 02140
 """
+from __future__ import annotations
 
 
 from cupy import _core
@@ -301,7 +302,7 @@ zetac_preamble = (polevl_definition+p1evl_definition +
                   _lanczos_preamble+zetac_definition)
 
 zetac = _core.create_ufunc(
-    'cupyx_scipy_special_zetac', ('f->f', 'd->d'),
+    'cupyx_scipy_special_zetac', ('l->d', 'L->d', 'e->d', 'f->f', 'd->d'),
     'out0 = zetac(in0)',
     preamble=zetac_preamble,
     doc="""Riemann zeta function minus 1.

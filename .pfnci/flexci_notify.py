@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 # Note: keep this script runnable Python 3.6 until FlexCI Python update
+from __future__ import annotations
 
 import sys
 import os

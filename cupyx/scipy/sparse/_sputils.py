@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import cupy
 import operator
 import numpy
@@ -69,16 +71,16 @@ def get_index_dtype(arrays=(), maxval=None, check_contents=False):
 
 def validateaxis(axis):
     if axis is not None:
-        axis_type = type(axis)
-
         # In NumPy, you can pass in tuples for 'axis', but they are
         # not very useful for sparse matrices given their limited
         # dimensions, so let's make it explicit that they are not
         # allowed to be passed in
-        if axis_type == tuple:
-            raise TypeError(("Tuples are not accepted for the 'axis' "
-                             "parameter. Please pass in one of the "
-                             "following: {-2, -1, 0, 1, None}."))
+        if isinstance(axis, tuple):
+            raise TypeError("Tuples are not accepted for the 'axis' "
+                            "parameter. Please pass in one of the "
+                            "following: {-2, -1, 0, 1, None}.")
+
+        axis_type = type(axis)
 
         # If not a tuple, check that the provided axis is actually
         # an integer and raise a TypeError similar to NumPy's

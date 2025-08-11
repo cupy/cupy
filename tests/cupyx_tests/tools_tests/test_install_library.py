@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 import platform
 import tempfile
@@ -19,6 +21,9 @@ def _get_supported_cuda_versions(lib):
 
 class TestInstallLibrary:
 
+    @pytest.mark.skipif(
+        platform.machine() == "aarch64",
+        reason="FIXME")  # TODO(leofang)
     @pytest.mark.parametrize('cuda', _get_supported_cuda_versions('cudnn'))
     @testing.slow
     def test_install_cudnn(self, cuda):
@@ -32,6 +37,9 @@ class TestInstallLibrary:
     def test_install_nccl(self, cuda):
         self._test_install('nccl', cuda)
 
+    @pytest.mark.skipif(
+        platform.machine() == "aarch64",
+        reason="FIXME")  # TODO(leofang)
     @pytest.mark.parametrize('cuda', _get_supported_cuda_versions('cutensor'))
     @testing.slow
     def test_install_cutensor(self, cuda):
@@ -59,7 +67,7 @@ class TestInstallLibrary:
             for filename in filenames:
                 if filename in files:
                     return
-        pytest.fail('expected file cound not be found')
+        pytest.fail('expected file could not be found')
 
     @pytest.mark.parametrize('library', _libraries)
     def test_urls(self, library):

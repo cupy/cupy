@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import numpy
 
 import cupy
@@ -168,12 +170,17 @@ def lsmr(A, b, x0=None, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8,
     if maxiter is None:
         maxiter = minDim * 5
 
+    if x0 is None:
+        dtype = cupy.result_type(A, b, float)
+    else:
+        dtype = cupy.result_type(A, b, x0, float)
+
     u = b.copy()
     normb = cublas.nrm2(b)
     beta = normb.copy()
     normb = normb.get().item()
     if x0 is None:
-        x = cupy.zeros((n,), dtype=A.dtype)
+        x = cupy.zeros((n,), dtype=dtype)
     else:
         if not (x0.shape == (n,) or x0.shape == (n, 1)):
             raise ValueError('x0 has incompatible dimensions')
@@ -183,7 +190,7 @@ def lsmr(A, b, x0=None, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8,
 
     beta_cpu = beta.get().item()
 
-    v = cupy.zeros(n)
+    v = cupy.zeros(n, dtype)
     alpha = cupy.zeros((), dtype=beta.dtype)
     alpha_cpu = 0
 
@@ -207,7 +214,7 @@ def lsmr(A, b, x0=None, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8,
     sbar = 0
 
     h = v.copy()
-    hbar = cupy.zeros(n)
+    hbar = cupy.zeros(n, dtype)
     # x = cupy.zeros(n)
 
     # Initialize variables for estimation of ||r||.
@@ -410,7 +417,7 @@ def spsolve_triangular(A, b, lower=True, overwrite_A=False, overwrite_b=False,
         b (cupy.ndarray):
             Dense vector or matrix with dimension ``(M)`` or ``(M, K)``.
         lower (bool):
-            Whether ``A`` is a lower or upper trinagular matrix.
+            Whether ``A`` is a lower or upper triangular matrix.
             If True, it is lower triangular, otherwise, upper triangular.
         overwrite_A (bool):
             (not supported)
@@ -525,7 +532,7 @@ def spsolve(A, b):
         return cupyx.cusolver.csrlsvqr(A, b)
 
 
-class SuperLU():
+class SuperLU:
 
     def __init__(self, obj):
         """LU factorization of a sparse matrix.
@@ -892,7 +899,7 @@ def minres(A, b, x0=None, shift=0.0, tol=1e-5, maxiter=None,
 
         itn += 1
         s = 1.0 / beta
-        v = s * y
+        v = (s * y).astype(y.dtype)   # XXX: np2.0: keep v f32 is y is f32
 
         y = matvec(v)
         y -= shift * v
@@ -1021,6 +1028,10 @@ def minres(A, b, x0=None, shift=0.0, tol=1e-5, maxiter=None,
         info = maxiter
     else:
         info = 0
+
+    # XXX: np2.0: keep backwards compat under weak promotion
+    if x.dtype == 'float32':
+        x = x.astype(cupy.float64)
 
     return x, info
 

@@ -1,4 +1,10 @@
-from numpy.lib import index_tricks
+from __future__ import annotations
+
+import numpy
+if numpy.__version__ < '2':
+    from numpy.lib import index_tricks
+else:
+    import numpy.lib._index_tricks_impl as index_tricks  # type: ignore[no-redef]  # NOQA
 
 import cupy
 from cupy._core import internal
@@ -63,6 +69,90 @@ def apply_along_axis(func1d, axis, arr, *args, **kwargs):
     return buff
 
 
+def apply_over_axes(func, a, axes):
+    """
+    Apply a function repeatedly over multiple axes.
+
+    `func` is called as `res = func(a, axis)`, where `axis` is the first
+    element of `axes`.  The result `res` of the function call must have
+    either the same dimensions as `a` or one less dimension.  If `res`
+    has one less dimension than `a`, a dimension is inserted before
+    `axis`.  The call to `func` is then repeated for each axis in `axes`,
+    with `res` as the first argument.
+
+    Parameters
+    ----------
+    func : function
+        This function must take two arguments, `func(a, axis)`.
+    a : array_like
+        Input array.
+    axes : array_like
+        Axes over which `func` is applied; the elements must be integers.
+
+    Returns
+    -------
+    apply_over_axis : ndarray
+        The output array.  The number of dimensions is the same as `a`,
+        but the shape can be different.  This depends on whether `func`
+        changes the shape of its output with respect to its input.
+
+    See Also
+    --------
+    apply_along_axis :
+        Apply a function to 1-D slices of an array along the given axis.
+
+    Notes
+    -----
+    This function is equivalent to tuple axis arguments to reorderable ufuncs
+    with keepdims=True. Tuple axis arguments to ufuncs have been available.
+
+    Examples
+    --------
+    >>> a = np.arange(24).reshape(2,3,4)
+    >>> a
+    array([[[ 0,  1,  2,  3],
+            [ 4,  5,  6,  7],
+            [ 8,  9, 10, 11]],
+           [[12, 13, 14, 15],
+            [16, 17, 18, 19],
+            [20, 21, 22, 23]]])
+
+    Sum over axes 0 and 2. The result has same number of dimensions
+    as the original array:
+
+    >>> np.apply_over_axes(np.sum, a, [0,2])
+    array([[[ 60],
+            [ 92],
+            [124]]])
+
+    Tuple axis arguments to ufuncs are equivalent:
+
+    >>> np.sum(a, axis=(0,2), keepdims=True)
+    array([[[ 60],
+            [ 92],
+            [124]]])
+
+    """
+    val = cupy.asarray(a)
+    N = a.ndim
+    # axes is short, no need to use `cupy.array`
+    if numpy.array(axes).ndim == 0:
+        axes = (axes,)
+    for axis in axes:
+        axis = internal._normalize_axis_index(axis, N)
+        res = func(val, axis)
+        if res.ndim == val.ndim:
+            val = res
+        else:
+            res = cupy.expand_dims(res, axis)
+            if res.ndim == val.ndim:
+                val = res
+            else:
+                raise ValueError("function is not returning "
+                                 "an array of the correct shape")
+    return val
+
+
 def _make_along_axis_idx(arr_shape, indices, axis):
     # compute dimensions to iterate over
 
@@ -76,8 +166,8 @@ def _make_along_axis_idx(arr_shape, indices, axis):
     dest_dims = list(range(axis)) + [None] + \
         list(range(axis + 1, indices.ndim))
 
-    # build a fancy index, consisting of orthogonal aranges, with the
-    # requested index inserted at the right location
+    # build a fancy index, consisting of orthogonal cupy.arange calls,
+    # with the requested index inserted at the right location
     fancy_index = []
     for dim, n in zip(dest_dims, arr_shape):
         if dim is None:

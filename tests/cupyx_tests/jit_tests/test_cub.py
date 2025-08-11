@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import cupy
 from cupy import testing
 from cupy_backends.cuda.api import runtime
@@ -16,8 +18,8 @@ class TestCubWarpReduce:
                 dtype=WarpReduce.TempStorage, size=1)
             i, j = jit.blockIdx.x, jit.threadIdx.x
             value = x[i, j]
-            aggregater = WarpReduce(temp_storage[0])
-            aggregate = aggregater.Sum(value)
+            aggregator = WarpReduce(temp_storage[0])
+            aggregate = aggregator.Sum(value)
             if j == 0:
                 y[i] = aggregate
 
@@ -40,8 +42,8 @@ class TestCubWarpReduce:
                 dtype=WarpReduce.TempStorage, size=1)
             i, j = jit.blockIdx.x, jit.threadIdx.x
             value = x[i, j]
-            aggregater = WarpReduce(temp_storage[0])
-            aggregate = aggregater.Reduce(value, jit.cub.Sum())
+            aggregator = WarpReduce(temp_storage[0])
+            aggregate = aggregator.Reduce(value, jit.cub.Sum())
             if j == 0:
                 y[i] = aggregate
 
@@ -64,8 +66,8 @@ class TestCubWarpReduce:
                 dtype=WarpReduce.TempStorage, size=1)
             i, j = jit.blockIdx.x, jit.threadIdx.x
             value = x[i, j]
-            aggregater = WarpReduce(temp_storage[0])
-            aggregate = aggregater.Reduce(value, jit.cub.Max())
+            aggregator = WarpReduce(temp_storage[0])
+            aggregate = aggregator.Reduce(value, jit.cub.Max())
             if j == 0:
                 y[i] = aggregate
 
@@ -91,8 +93,8 @@ class TestCubBlockReduce:
                 dtype=BlockReduce.TempStorage, size=1)
             i, j = jit.blockIdx.x, jit.threadIdx.x
             value = x[i, j]
-            aggregater = BlockReduce(temp_storage[0])
-            aggregate = aggregater.Sum(value)
+            aggregator = BlockReduce(temp_storage[0])
+            aggregate = aggregator.Sum(value)
             if j == 0:
                 y[i] = aggregate
 
@@ -114,8 +116,8 @@ class TestCubBlockReduce:
                 dtype=BlockReduce.TempStorage, size=1)
             i, j = jit.blockIdx.x, jit.threadIdx.x
             value = x[i, j]
-            aggregater = BlockReduce(temp_storage[0])
-            aggregate = aggregater.Reduce(value, jit.cub.Min())
+            aggregator = BlockReduce(temp_storage[0])
+            aggregate = aggregator.Reduce(value, jit.cub.Min())
             if j == 0:
                 y[i] = aggregate
 

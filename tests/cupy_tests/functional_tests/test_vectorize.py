@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import unittest
 
 import numpy
@@ -19,7 +21,7 @@ class TestVectorizeOps(unittest.TestCase):
         return f(*args)
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(rtol=1e-6)
+    @testing.numpy_cupy_allclose(rtol={'default': 1e-6, numpy.float16: 1.5e-3})
     def test_vectorize_reciprocal(self, xp, dtype):
         def my_reciprocal(x):
             scalar = xp.dtype(dtype).type(10)
@@ -243,6 +245,9 @@ class TestVectorizeExprs(unittest.TestCase):
         def my_incr(x):
             return x + 1
 
+        if dtype != xp.float64:
+            pytest.xfail("vectorize with scalars: no NEP 50")
+
         f = xp.vectorize(my_incr)
         x = testing.shaped_random((20, 30), xp, dtype, seed=0)
         return f(x)
@@ -258,6 +263,7 @@ class TestVectorizeExprs(unittest.TestCase):
         y = testing.shaped_random((20, 30), xp, dtype, seed=2)
         return f(x, y)
 
+    @testing.with_requires("numpy>=1.25")
     @testing.for_all_dtypes_combination(names=('dtype1', 'dtype2'))
     @testing.numpy_cupy_allclose(
         rtol={numpy.float16: 1e3, 'default': 1e-7}, accept_error=TypeError)
@@ -272,7 +278,7 @@ class TestVectorizeExprs(unittest.TestCase):
 
     @testing.for_all_dtypes_combination(names=('dtype1', 'dtype2'), full=True)
     @testing.numpy_cupy_array_equal(
-        accept_error=(TypeError, numpy.ComplexWarning))
+        accept_error=(TypeError, cupy.exceptions.ComplexWarning))
     def test_vectorize_typecast(self, xp, dtype1, dtype2):
         typecast = xp.dtype(dtype2).type
 

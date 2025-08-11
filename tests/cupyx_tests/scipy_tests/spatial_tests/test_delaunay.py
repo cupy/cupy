@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 
 from cupy import testing
 
@@ -58,8 +60,10 @@ def compute_random_points(tri_points, xp):
 
 class TestDelaunay:
     @testing.numpy_cupy_allclose(scipy_name='scp')
-    def test_2d_triangulation(self, xp, scp):
-        points = testing.shaped_random((100, 2), xp, xp.float64)
+    @pytest.mark.parametrize(
+        'dtype', [cupy.float64, cupy.float32, cupy.float16])
+    def test_2d_triangulation(self, xp, scp, dtype):
+        points = testing.shaped_random((100, 2), xp, dtype)
         tri = scp.spatial.Delaunay(points)
         return xp.sort(xp.sort(tri.simplices, axis=-1), axis=0)
 

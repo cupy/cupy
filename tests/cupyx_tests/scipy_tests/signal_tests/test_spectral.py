@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import pytest
 
 import numpy as np
@@ -11,7 +13,7 @@ import cupyx.scipy.signal  # NOQA
 try:
     import scipy.signal  # NOQA
 except ImportError:
-    pass
+    scipy = None
 
 
 @pytest.mark.xfail(

@@ -1,114 +1,141 @@
-import argparse
+from __future__ import annotations
+
+
+import dataclasses
 import glob
 import hashlib
 import os
 import sys
-from typing import Any, List, Mapping, Optional, Tuple
+from typing import TYPE_CHECKING
 
 import cupy_builder
 
+if TYPE_CHECKING:
+    from collections.abc import Mapping, Sequence
 
-def _get_env_bool(name: str, default: bool, env: Mapping[str, str]) -> bool:
+
+def _get_env_bool(
+    name: str, env: Mapping[str, str], *, default: bool = False
+) -> bool:
     return env[name] != '0' if name in env else default
 
 
-def _get_env_path(name: str, env: Mapping[str, str]) -> List[str]:
+def _get_env_path(name: str, env: Mapping[str, str]) -> list[str]:
     paths = env.get(name, None)
     if paths is None:
         return []
     return [x for x in paths.split(os.pathsep) if len(x) != 0]
 
 
+@dataclasses.dataclass
 class Context:
+    source_root: str
+    setup_command: str
+
+    use_cuda_python: bool
+    use_hip: bool
+    use_stub: bool
+    include_dirs: list[str]
+    library_dirs: list[str]
+    long_description_path: str | None
+    wheel_metadata_path: str | None
+    profile: bool
+    linetrace: bool
+    annotate: bool
+    no_rpath: bool
+    features: dict[str, cupy_builder.Feature]
+    cupy_cache_key: str | None
+    win32_cl_exe_path: str | None
+    dev_configure_cache: bool
+    dev_configure_cache_key: str
+
+    # Deprecated
+    wheel_libs: list[str]
+    wheel_includes: list[str]
+
     def __init__(
             self, source_root: str, *,
             _env: Mapping[str, str] = os.environ,
-            _argv: List[str] = sys.argv):
+            _argv: Sequence[str] = sys.argv) -> None:
         self.source_root = source_root
+        self.setup_command = _argv[1] if len(_argv) >= 2 else ''
 
-        self.use_cuda_python = _get_env_bool(
-            'CUPY_USE_CUDA_PYTHON', False, _env)
-        self.use_hip = _get_env_bool(
-            'CUPY_INSTALL_USE_HIP', False, _env)
+        self.use_cuda_python = _get_env_bool('CUPY_USE_CUDA_PYTHON', _env)
+        self.use_hip = _get_env_bool('CUPY_INSTALL_USE_HIP', _env)
+
+        # Build CuPy with stub header file
+        self.use_stub = _get_env_bool("CUPY_INSTALL_USE_STUB", _env)
+
+        # Extra paths to search for libraries/headers during build
         self.include_dirs = _get_env_path('CUPY_INCLUDE_PATH', _env)
         self.library_dirs = _get_env_path('CUPY_LIBRARY_PATH', _env)
 
-        cmdopts, _argv[:] = parse_args(_argv)
-        self.package_name: str = cmdopts.cupy_package_name
-        self.long_description_path: Optional[str] = (
-            cmdopts.cupy_long_description)
-        self.wheel_libs: List[str] = cmdopts.cupy_wheel_lib
-        self.wheel_includes: List[str] = cmdopts.cupy_wheel_include
-        self.wheel_metadata_path: Optional[str] = (
-            cmdopts.cupy_wheel_metadata)
-        self.no_rpath: bool = cmdopts.cupy_no_rpath
-        self.profile: bool = cmdopts.cupy_profile
-        self.linetrace: bool = cmdopts.cupy_coverage
-        self.annotate: bool = cmdopts.cupy_coverage
-        self.use_stub: bool = cmdopts.cupy_no_cuda
-
-        if _get_env_bool('CUPY_INSTALL_NO_RPATH', False, _env):
-            self.no_rpath = True
+        # path to the long description file (reST)
+        self.long_description_path = _env.get("CUPY_INSTALL_LONG_DESCRIPTION")
+        # wheel metadata (cupy/.data/_wheel.json)
+        self.wheel_metadata_path = _env.get("CUPY_INSTALL_WHEEL_METADATA")
+        # disable adding default library directories to RPATH
+        self.no_rpath = _get_env_bool("CUPY_INSTALL_NO_RPATH", _env)
+        # enable profiling for Cython code
+        self.profile = _get_env_bool("CUPY_INSTALL_CYTHON_PROFILE", _env)
+        # enable coverage for Cython code
+        self.annotate = self.linetrace = _get_env_bool(
+            "CUPY_INSTALL_CYTHON_COVERAGE", _env)
 
         if os.environ.get('READTHEDOCS', None) == 'True':
             self.use_stub = True
 
         self.features = cupy_builder.get_features(self)
 
-        # Calculate cache key for this build
-        print('Generating cache key from header files...')
-        include_pattern = os.path.join(
-            source_root, 'cupy', '_core', 'include', '**')
-        include_files = [
-            f for f in sorted(glob.glob(include_pattern, recursive=True))
+        # Cache key for this build.
+        self.cupy_cache_key = None
+
+        # Host compiler path for Windows, see `_command.py`.
+        self.win32_cl_exe_path = None
+
+        # EXPERIMENTAL: Persist the build configuration to a cache file to
+        # skip re-configuring modules when rebuilding during development.
+        # Only effective in editable mode (i.e. `pip install -e .`).
+        # This is solely intended for use by CuPy developers.
+        # End users should NEVER use this flag.
+        self.dev_configure_cache = (
+            _get_env_bool("CUPY_INSTALL_CONFIGURE_CACHE", _env)
+            and self.setup_command == "editable_wheel")
+        if self.dev_configure_cache:
+            self.calculate_dev_cache_key()
+
+        # Deprecated
+        self.wheel_libs = []
+        self.wheel_includes = []
+
+    def calculate_cupy_cache_key(self) -> None:
+        print('Generating CUPY_CACHE_KEY from header files...')
+        pattern = os.path.join(
+            self.source_root, 'cupy', '_core', 'include', '**')
+        cache_key, count = self._calculate_checksum(pattern)
+        print(f'CUPY_CACHE_KEY ({count} files '
+              f'matching {pattern}): {cache_key}')
+        self.cupy_cache_key = cache_key
+
+    def calculate_dev_cache_key(self) -> None:
+        print('Generating configure cache key...')
+        pattern = os.path.join(
+            self.source_root, 'install', 'cupy_builder', '**')
+        cache_key, count = self._calculate_checksum(pattern)
+        print(f'Configure cache key ({count} files '
+              f'matching {pattern}): {cache_key}')
+        self.dev_configure_cache_key = cache_key
+
+    def _calculate_checksum(self, glob_pattern: str) -> tuple[str, int]:
+        files = [
+            f for f in sorted(glob.glob(glob_pattern, recursive=True))
             if os.path.isfile(f)
         ]
         hasher = hashlib.sha1(usedforsecurity=False)
-        for include_file in include_files:
-            with open(include_file, 'rb') as f:
-                hasher.update(include_file.encode())
+        for path in files:
+            with open(path, 'rb') as f:
+                relpath = os.path.relpath(path, self.source_root)
+                hasher.update(relpath.encode())
                 hasher.update(f.read())
                 hasher.update(b'\x00')
-        cache_key = hasher.hexdigest()
-        print(f'Cache key ({len(include_files)} files '
-              f'matching {include_pattern}): {cache_key}')
-        self.cupy_cache_key = cache_key
-
-
-def parse_args(argv: List[str]) -> Tuple[Any, List[str]]:
-    parser = argparse.ArgumentParser(add_help=False)
-
-    parser.add_argument(
-        '--cupy-package-name', type=str, default='cupy',
-        help='alternate package name')
-    parser.add_argument(
-        '--cupy-long-description', type=str, default=None,
-        help='path to the long description file (reST)')
-    parser.add_argument(
-        '--cupy-wheel-lib', type=str, action='append', default=[],
-        help='shared library to copy into the wheel '
-             '(can be specified for multiple times)')
-    parser.add_argument(
-        '--cupy-wheel-include', type=str, action='append', default=[],
-        help='An include file to copy into the wheel. '
-             'Delimited by a colon. '
-             'The former part is a full path of the source include file and '
-             'the latter is the relative path within cupy wheel. '
-             '(can be specified for multiple times)')
-    parser.add_argument(
-        '--cupy-wheel-metadata', type=str, default=None,
-        help='wheel metadata (cupy/.data/_wheel.json)')
-    parser.add_argument(
-        '--cupy-no-rpath', action='store_true', default=False,
-        help='disable adding default library directories to RPATH')
-    parser.add_argument(
-        '--cupy-profile', action='store_true', default=False,
-        help='enable profiling for Cython code')
-    parser.add_argument(
-        '--cupy-coverage', action='store_true', default=False,
-        help='enable coverage for Cython code')
-    parser.add_argument(
-        '--cupy-no-cuda', action='store_true', default=False,
-        help='build CuPy with stub header file')
-
-    return parser.parse_known_args(argv)
+        return hasher.hexdigest(), len(files)

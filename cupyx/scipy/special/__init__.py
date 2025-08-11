@@ -1,4 +1,6 @@
 # Bessel Functions
+from __future__ import annotations
+
 from cupyx.scipy.special._bessel import i0  # NOQA
 from cupyx.scipy.special._bessel import i0e  # NOQA
 from cupyx.scipy.special._bessel import i1  # NOQA
@@ -13,6 +15,7 @@ from cupyx.scipy.special._bessel import y0  # NOQA
 from cupyx.scipy.special._bessel import y1  # NOQA
 from cupyx.scipy.special._bessel import yn  # NOQA
 from cupyx.scipy.special._spherical_bessel import spherical_yn  # NOQA
+from cupyx.scipy.special._wright_bessel import wright_bessel  # NOQA
 
 # Raw statistical functions
 from cupyx.scipy.special._stats_distributions import bdtr  # NOQA
@@ -82,6 +85,7 @@ from cupyx.scipy.special._erf import erfcinv  # NOQA
 # Legendre functions
 from cupyx.scipy.special._lpmv import lpmv  # NOQA
 from cupyx.scipy.special._sph_harm import sph_harm  # NOQA
+from cupyx.scipy.special._sph_harm import sph_harm_y  # NOQA
 
 # Other special functions
 from cupyx.scipy.special._binom import binom  # NOQA
@@ -93,6 +97,8 @@ from cupyx.scipy.special._logsoftmax import log_softmax  # NOQA
 from cupyx.scipy.special._zeta import zeta  # NOQA
 from cupyx.scipy.special._zetac import zetac  # NOQA
 from cupyx.scipy.special._lambertw import lambertw  # NOQA
+from cupyx.scipy.special._sici import sici  # NOQA
+from cupyx.scipy.special._sici import shichi  # NOQA
 
 # Convenience functions
 from cupyx.scipy.special._basic import cbrt  # NOQA
@@ -117,3 +123,5 @@ from cupy._math.special import sinc  # NOQA
 from cupyx.scipy.special._ellip import ellipk  # NOQA
 from cupyx.scipy.special._ellip import ellipkm1  # NOQA
 from cupyx.scipy.special._ellip import ellipj  # NOQA
+from cupyx.scipy.special._ellip import ellipkinc  # NOQA
+from cupyx.scipy.special._ellip import ellipeinc  # NOQA

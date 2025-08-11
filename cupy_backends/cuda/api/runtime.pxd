@@ -275,6 +275,7 @@ cpdef streamSynchronize(intptr_t stream)
 cpdef streamAddCallback(intptr_t stream, callback, intptr_t arg,
                         unsigned int flags=*)
 cpdef launchHostFunc(intptr_t stream, callback, intptr_t arg)
+cpdef _launchHostFuncUnmanaged(intptr_t stream, tuple func_arg)
 cpdef streamQuery(intptr_t stream)
 cpdef streamWaitEvent(intptr_t stream, intptr_t event, unsigned int flags=*)
 cpdef streamBeginCapture(intptr_t stream, int mode=*)
@@ -325,6 +326,7 @@ cpdef graphExecDestroy(intptr_t graphExec)
 cpdef intptr_t graphInstantiate(intptr_t graph) except? 0
 cpdef graphLaunch(intptr_t graphExec, intptr_t stream)
 cpdef graphUpload(intptr_t graphExec, intptr_t stream)
+cpdef graphDebugDotPrint(intptr_t graph, str path, unsigned int flags)
 
 
 ##############################################################################

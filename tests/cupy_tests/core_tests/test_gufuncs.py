@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import numpy
 import pytest
 
@@ -166,7 +168,7 @@ class TestGUFuncDtype:
             testing.assert_allclose(z, x)
 
 
-class TestGUFuncOrder():
+class TestGUFuncOrder:
 
     @pytest.mark.parametrize('order', ['C', 'F', 'K'])
     @testing.numpy_cupy_array_equal(strides_check=True)
@@ -196,7 +198,7 @@ class TestGUFuncOrder():
             assert z.flags.f_contiguous
 
 
-class TestGUFuncSignatures():
+class TestGUFuncSignatures:
     def test_signatures(self):
         dtypes = 'fdihq'
         dtypes_access = {d: None for d in dtypes}

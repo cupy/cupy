@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 
 import cupy
 
@@ -11,7 +13,8 @@ from cupyx.scipy.spatial.delaunay_2d._kernels import (
     relocate_points_exact, mark_inf_tri, collect_free_slots, make_compact_map,
     compact_tris, update_vert_idx, get_morton_number, compute_distance_2d,
     init_predicate, make_key_from_tri_has_vert, check_if_coplanar_points,
-    find_vertex_neighbors, encode_barycenters, find_closest_tri)
+    encode_edges, encode_barycenters, find_closest_tri, count_vertex_neighbors,
+    fill_vertex_neighbors)
 
 
 def _compute_triangle_orientation(det):
@@ -35,8 +38,9 @@ class GDel2D:
         self.tri_num = 0
 
         # self.points = cupy.array(points, copy=True)
-        self.points = points
-        self.point_vec = cupy.empty((self.n_points, 2), dtype=points.dtype)
+        self.points = points.astype(cupy.float64)
+        self.point_vec = cupy.empty((self.n_points, 2),
+                                    dtype=self.points.dtype)
         self.point_vec[:-1] = points
 
         self.triangles = cupy.empty((4, 3), dtype=cupy.int32)
@@ -51,7 +55,7 @@ class GDel2D:
         self.vert_tri = cupy.zeros(self.n_points, dtype=cupy.int32)
 
         self._org_flip_num = []
-        self._node_neighbors = None
+        self.vertex_neighbors = None
 
         self._tri_enc = None
         self._enc_idx = None
@@ -530,20 +534,33 @@ class GDel2D:
         return self.triangles, self.triangle_opp
 
     def vertex_neighbor_vertices(self):
-        if self._node_neighbors is None:
-            full_neighbors = cupy.zeros(
-                (self.n_points - 1, self.n_points - 1), dtype=cupy.bool_)
+        if self.vertex_neighbors is None:
+            # Euler characteristic
+            # n_edges = self.n_points + self.triangles.shape[0] - 2
+            edge_enc = cupy.empty(3 * self.triangles.shape[0],
+                                  dtype=cupy.uint32)
+            self.edges = cupy.empty((3 * self.triangles.shape[0], 2),
+                                    dtype=cupy.int32)
+            encode_edges(
+                self.triangles, self.points, self.min_val, self.range_val,
+                edge_enc, self.edges)
 
-            find_vertex_neighbors(
-                self.triangles, self.n_points - 1, full_neighbors)
-            indptr = cupy.empty(self.n_points, cupy.int32)
-            cupy.cumsum(cupy.sum(full_neighbors, -1, cupy.int32),
-                        dtype=cupy.int32, out=indptr[1:])
-            indptr[0] = 0
+            edge_enc, edge_idx = cupy.unique(edge_enc, return_index=True)
+            self.edges = self.edges[edge_idx]
+            vertex_count = cupy.zeros(
+                self.points.shape[0] + 1, dtype=cupy.int32)
 
-            _, indices = cupy.where(full_neighbors)
-            self._node_neighbors = indptr, indices.astype(cupy.int32)
-        return self._node_neighbors
+            count_vertex_neighbors(self.edges, vertex_count[1:])
+
+            self.vertex_off = cupy.cumsum(vertex_count).astype(cupy.int64)
+            self.vertex_neighbors = cupy.empty(
+                self.vertex_off[-1].item(), dtype=cupy.int32)
+
+            fill_vertex_neighbors(
+                self.edges, self.vertex_off, vertex_count[1:],
+                self.vertex_neighbors)
+
+        return self.vertex_off, self.vertex_neighbors
 
     def encode_barycenters(self):
         out = cupy.empty(self.triangles.shape[0], dtype=cupy.uint32)

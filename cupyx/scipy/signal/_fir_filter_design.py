@@ -1,4 +1,6 @@
 """Functions for FIR filter design."""
+from __future__ import annotations
+
 import math
 
 from cupy.fft import fft, ifft
@@ -118,7 +120,7 @@ def kaiserord(ripple, width):
     A = abs(ripple)  # in case somebody is confused as to what's meant
     if A < 8:
         # Formula for N is not valid in this range.
-        raise ValueError("Requested maximum ripple attentuation %f is too "
+        raise ValueError("Requested maximum ripple attenuation %f is too "
                          "small for the Kaiser formula." % A)
     beta = kaiser_beta(A)
 
@@ -706,7 +708,7 @@ def firls(numtaps, bands, desired, weight=None, fs=2):
 
     # We have that:
     #     q(n) = 1/π ∫W(ω)cos(nω)dω (over 0->π)
-    # Using our nomalization ω=πf and with a constant weight W over each
+    # Using our normalization ω=πf and with a constant weight W over each
     # interval f1->f2 we get:
     #     q(n) = W∫cos(πnf)df (0->1) = Wf sin(πnf)/πnf
     # integrated over each f1->f2 pair (i.e., value at f2 - value at f1).
@@ -783,7 +785,7 @@ def _dhtm(mag):
     return recon
 
 
-def minimum_phase(h, method='homomorphic', n_fft=None):
+def minimum_phase(h, method='homomorphic', n_fft=None, half=True):
     """Convert a linear-phase FIR filter to minimum phase
 
     Parameters
@@ -807,6 +809,13 @@ def minimum_phase(h, method='homomorphic', n_fft=None):
     n_fft : int
         The number of points to use for the FFT. Should be at least a
         few times larger than the signal length (see Notes).
+
+    half : bool
+        If ``True``, create a filter that is half the length of the original, with a
+        magnitude spectrum that is the square root of the original. If ``False``,
+        create a filter that is the same length as the original, with a magnitude
+        spectrum that is designed to match the original (only supported when
+        ``method='homomorphic'``).
 
     Returns
     -------
@@ -900,19 +909,20 @@ def minimum_phase(h, method='homomorphic', n_fft=None):
         # take 0.25*log(|H|**2) = 0.5*log(|H|)
         h_temp += 1e-7 * h_temp[h_temp > 0].min()  # don't let log blow up
         cupy.log(h_temp, out=h_temp)
-        h_temp *= 0.5
+        if half:
+            h_temp *= 0.5
         # IDFT
         h_temp = ifft(h_temp).real
         # multiply pointwise by the homomorphic filter
         # lmin[n] = 2u[n] - d[n]
         win = cupy.zeros(n_fft)
         win[0] = 1
-        stop = (len(h) + 1) // 2
+        stop = n_fft // 2
         win[1:stop] = 2
-        if len(h) % 2:
+        if n_fft % 2:
             win[stop] = 1
         h_temp *= win
         h_temp = ifft(cupy.exp(fft(h_temp)))
         h_minimum = h_temp.real
-    n_out = n_half + len(h) % 2
+    n_out = (n_half + len(h) % 2) if half else len(h)
     return h_minimum[:n_out]

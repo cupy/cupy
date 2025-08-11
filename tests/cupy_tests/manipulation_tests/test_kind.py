@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import unittest
 import pytest
 
@@ -27,13 +29,6 @@ class TestKind(unittest.TestCase):
                 error = ValueError
             with pytest.raises(error):
                 xp.asarray_chkfinite(a, dtype=dtype, order=order)
-
-    @testing.for_all_dtypes()
-    def test_asfarray(self, dtype):
-        a = cupy.asarray([1, 2, 3])
-        a_gpu = cupy.asfarray(a, dtype)
-        a_cpu = numpy.asfarray(a.get(), dtype)
-        assert a_cpu.dtype == a_gpu.dtype
 
     @testing.for_all_dtypes()
     def test_asfortranarray1(self, dtype):

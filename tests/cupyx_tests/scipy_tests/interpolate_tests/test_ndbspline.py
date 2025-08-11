@@ -1,4 +1,8 @@
+from __future__ import annotations
 
+import numpy
+import cupy
+from cupy.cuda import runtime
 from cupy import testing
 
 import cupyx.scipy.interpolate  # NOQA
@@ -391,3 +395,133 @@ class TestNdBSpline:
             scp.interpolate.NdBSpline.design_matrix([[1, 2]], t3, [k]*3)
 
         return dm.todense(), dm1.todense()
+
+    @testing.with_requires('scipy>=1.13')
+    @pytest.mark.parametrize('k', [(3, 1), (1, 3), (1, 1), (3, 3)])
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_design_matrix_2(self, xp, scp, k):
+        xvals = [(a, b)
+                 for a, b in
+                 itertools.product(xp.arange(6), xp.arange(7) + 1.5)
+                 ]
+        xvals = xp.asarray(xvals)
+
+        t = (xp.array([0., 0., 0., 0., 2., 3., 5., 5., 5., 5.]),
+             xp.array([1.5, 1.5, 2.5, 3.5, 4.5, 5.5, 6.5, 7.5, 7.5])
+             )
+
+        dm = scp.interpolate.NdBSpline.design_matrix(xvals, t, k)
+        return dm.todense()
+
+
+@pytest.mark.skipif(runtime.is_hip, reason='csrlsvqr not available')
+@testing.with_requires('scipy>=1.13')
+class TestMakeND:
+
+    def _make(self, xp):
+        if xp == cupy:
+            return cupyx.scipy.interpolate._ndbspline.make_ndbspl
+        else:
+            import functools
+            import scipy.sparse.linalg as ssl
+            return functools.partial(scipy.interpolate._ndbspline.make_ndbspl,
+                                     solver=ssl.spsolve)
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_2D_separable_simple(self, xp, scp):
+        x = xp.arange(6)
+        y = xp.arange(6) + 0.5
+        values = x[:, None]**3 * (y**3 + 2*y)[None, :]
+        xi = [(a, b) for a, b in itertools.product(x, y)]
+
+        make_ndbspl = self._make(xp)
+        bspl = make_ndbspl((x, y), values, k=1)
+        return bspl(xi), bspl.c
+
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-11)
+    def test_2D_separable_trailing_dims(self, xp, scp):
+        # test `c` with trailing dimensions, i.e. c.ndim > ndim
+        x = xp.arange(6)
+        y = xp.arange(6)
+        xi = [(a, b) for a, b in itertools.product(x, y)]
+
+        # make values4.shape = (6, 6, 4)
+        values = x[:, None]**3 * (y**3 + 2*y)[None, :]
+        values4 = xp.dstack((values, values, values, values))
+
+        make_ndbspl = self._make(xp)
+        bspl = make_ndbspl((x, y), values4, k=3)
+        return bspl(xi), bspl.c
+
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-13)
+    def test_2D_separable_trailing_dims_2(self, xp, scp):
+        x = xp.arange(6)
+        y = xp.arange(6)
+        xi = [(a, b) for a, b in itertools.product(x, y)]
+
+        # make values4.shape = (6, 6, 4)
+        values = x[:, None]**3 * (y**3 + 2*y)[None, :]
+        values4 = xp.dstack((values, values, values, values))
+
+        # now two trailing dimensions
+        values22 = values4.reshape((6, 6, 2, 2))
+
+        make_ndbspl = self._make(xp)
+        bspl = make_ndbspl((x, y), values22, k=3)
+        return bspl(xi)
+
+    @pytest.mark.parametrize('k', [(3, 3), (1, 1), (3, 1), (1, 3), (3, 5)])
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-12)
+    def test_2D_mixed(self, k, xp, scp):
+        # make a 2D separable spline w/ len(tx) != len(ty)
+        x = xp.arange(6)
+        y = xp.arange(7) + 1.5
+        xi = [(a, b) for a, b in itertools.product(x, y)]
+        values = (x**3)[:, None] * (y**2 + 2*y)[None, :]
+        make_ndbspl = self._make(xp)
+        bspl = make_ndbspl((x, y), values, k=k)
+        return bspl(xi)
+
+    def _get_sample_2d_data(self, xp):
+        # from test_rgi.py::TestIntepN
+        x = xp.array([.5, 2., 3., 4., 5.5, 6.])
+        y = xp.array([.5, 2., 3., 4., 5.5, 6.])
+        z = xp.array(
+            [
+                [1, 2, 1, 2, 1, 1],
+                [1, 2, 1, 2, 1, 1],
+                [1, 2, 3, 2, 1, 1],
+                [1, 2, 2, 2, 1, 1],
+                [1, 2, 1, 2, 1, 1],
+                [1, 2, 2, 2, 1, 1],
+            ]
+        )
+        return x, y, z
+
+    @pytest.mark.parametrize('k', [1, 3, 5])
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_2D_vs_RGI_k(self, xp, scp, k):
+        x, y, z = self._get_sample_2d_data(xp)
+        make_ndbspl = self._make(xp)
+        bspl = make_ndbspl((x, y), z, k=1)
+        xi = xp.array([[1, 2.3, 5.3, 0.5, 3.3, 1.2, 3],
+                       [1, 3.3, 1.2, 4.0, 5.0, 1.0, 3]]).T
+        return bspl(xi)
+
+    @pytest.mark.parametrize(
+        'k, meth', [(1, 'linear'), (3, 'cubic_legacy'), (5, 'quintic_legacy')]
+    )
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_3D_random_vs_RGI(self, k, meth, xp, scp):
+        rndm = numpy.random.default_rng(123456)
+        x = xp.cumsum(xp.asarray(rndm.uniform(size=6)))
+        y = xp.cumsum(xp.asarray(rndm.uniform(size=7)))
+        z = xp.cumsum(xp.asarray(rndm.uniform(size=8)))
+        values = xp.asarray(rndm.uniform(size=(6, 7, 8)))
+
+        make_ndbspl = self._make(xp)
+        bspl = make_ndbspl((x, y, z), values, k=k)
+
+        xi = rndm.uniform(low=0.7, high=2.1, size=(11, 3))
+        xi = xp.asarray(xi)
+        return bspl(xi)

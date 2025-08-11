@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import re
 
 import numpy
@@ -19,11 +21,11 @@ _OUTPUT_ARGUMENTS = '{0:}(?:,{0:})*'.format(
     _ARGUMENT
 )  # Use `'{0:}(?:,{0:})*,?'` if gufunc-
 # signature should be allowed for length 1 tuple returns
-_SIGNATURE = '^{0:}->{1:}$'.format(_INPUT_ARGUMENTS, _OUTPUT_ARGUMENTS)
+_SIGNATURE = '^{:}->{:}$'.format(_INPUT_ARGUMENTS, _OUTPUT_ARGUMENTS)
 
 
 def _parse_gufunc_signature(signature):
-    # The code has been modifyed from dask to support optional dimensions
+    # The code has been modified from dask to support optional dimensions
     if not isinstance(signature, str):
         raise TypeError('Signature is not a string')
 
@@ -259,7 +261,7 @@ class _OpsRegister:
             # find the typecasting rules
             op = self._determine_from_signature(signature)
         elif dtype is not None:
-            if type(dtype) == tuple:
+            if isinstance(dtype, tuple):
                 # TODO(ecastill) support dtype tuples
                 raise RuntimeError('dtype with tuple is not yet supported')
             op = self._determine_from_dtype(dtype)
@@ -388,7 +390,7 @@ class _GUFunc:
     def _apply_func_to_inputs(self, func, dim, sizes, dims, args, outs):
         # Apply function
         # The resulting array is loop_output_dims+the specified dims
-        # Some functions have batching logic inside due to higly
+        # Some functions have batching logic inside due to highly
         # optimized CUDA libraries so we just call them
         if self._supports_batched or dim == len(dims):
             # Check if the function supports out, order and other args
@@ -465,7 +467,7 @@ class _GUFunc:
             if len(transposed_outs) == len(outs):
                 outs = transposed_outs
 
-        # we cant directly broadcast arrays together since their core dims
+        # we can't directly broadcast arrays together since their core dims
         # might differ. Only the loop dimensions are broadcastable
         shape = internal._broadcast_shapes(
             [a.shape[:-len(self._input_coredimss)] for a in args])
@@ -626,14 +628,14 @@ class _GUFunc:
         ret_dtype = None
         func = self._func
 
-        # this will cast the inputs appropiately
+        # this will cast the inputs appropriately
         args, ret_dtype, func = self._ops_register.determine_dtype(
             args, dtype, casting, signature)
 
-        if not type(self._signature) == str:
+        if not isinstance(self._signature, str):
             raise TypeError('`signature` has to be of type string')
 
-        if outs is not None and type(outs) != tuple:
+        if outs is not None and not isinstance(outs, tuple):
             if isinstance(outs, cupy.ndarray):
                 outs = (outs,)
             else:
@@ -643,7 +645,7 @@ class _GUFunc:
 
         input_coredimss = self._input_coredimss
         output_coredimss = self._output_coredimss
-        if outs is not None and type(outs) != tuple:
+        if outs is not None and not isinstance(outs, tuple):
             raise TypeError('`outs` must be a tuple')
         # Axes
         input_axes, output_axes = _validate_normalize_axes(

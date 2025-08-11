@@ -33,18 +33,19 @@ cdef public char* cupy_malloc(void *m, size_t size) with gil:
     return <char *>mem.ptr
 
 
-cdef public void cupy_free(void *m, char* ptr) with gil:
+cdef public int cupy_free(void *m, char* ptr) except -1 with gil:
     if ptr == <char *>0:
-        return
+        return 0
     cdef _MemoryManager mm = <_MemoryManager>m
     del mm.memory[<size_t>ptr]
+    return 0
 
 
 ###############################################################################
 # Extern
 ###############################################################################
 
-cdef extern from 'cupy_thrust.h':
+cdef extern from 'cupy_thrust.h' nogil:
     void thrust_sort(int, void *, size_t *, const vector.vector[ptrdiff_t]&,
                      intptr_t, void *)
     void thrust_lexsort(
@@ -69,7 +70,7 @@ def get_build_version():
 
 
 cpdef sort(dtype, intptr_t data_start, intptr_t keys_start,
-           const vector.vector[ptrdiff_t]& shape) except +:
+           const vector.vector[ptrdiff_t]& shape):
     cdef void* _data_start = <void*>data_start
     cdef size_t* _keys_start = <size_t*>keys_start
     cdef intptr_t _strm = stream.get_current_stream_ptr()
@@ -86,11 +87,12 @@ cpdef sort(dtype, intptr_t data_start, intptr_t keys_start,
         raise RuntimeError('either the GPU or the CUDA Toolkit does not '
                            'support fp16')
 
-    thrust_sort(dtype_id, _data_start, _keys_start, shape, _strm, mem)
+    with nogil:
+        thrust_sort(dtype_id, _data_start, _keys_start, shape, _strm, mem)
 
 
 cpdef lexsort(dtype, intptr_t idx_start, intptr_t keys_start,
-              size_t k, size_t n) except +:
+              size_t k, size_t n):
     cdef size_t* idx_ptr = <size_t*>idx_start
     cdef void* keys_ptr = <void*>keys_start
     cdef intptr_t _strm = stream.get_current_stream_ptr()
@@ -107,12 +109,13 @@ cpdef lexsort(dtype, intptr_t idx_start, intptr_t keys_start,
         raise RuntimeError('either the GPU or the CUDA Toolkit does not '
                            'support fp16')
 
-    thrust_lexsort(dtype_id, idx_ptr, keys_ptr, k, n, _strm, mem)
+    with nogil:
+        thrust_lexsort(dtype_id, idx_ptr, keys_ptr, k, n, _strm, mem)
 
 
 cpdef argsort(dtype, intptr_t idx_start, intptr_t data_start,
               intptr_t keys_start,
-              const vector.vector[ptrdiff_t]& shape) except +:
+              const vector.vector[ptrdiff_t]& shape):
     cdef size_t*_idx_start = <size_t*>idx_start
     cdef void* _data_start = <void*>data_start
     cdef size_t* _keys_start = <size_t*>keys_start
@@ -129,6 +132,6 @@ cpdef argsort(dtype, intptr_t idx_start, intptr_t data_start,
     if dtype_id == 8 and not common._is_fp16_supported():
         raise RuntimeError('either the GPU or the CUDA Toolkit does not '
                            'support fp16')
-
-    thrust_argsort(
-        dtype_id, _idx_start, _data_start, _keys_start, shape, _strm, mem)
+    with nogil:
+        thrust_argsort(
+            dtype_id, _idx_start, _data_start, _keys_start, shape, _strm, mem)

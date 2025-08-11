@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import copy
 import unittest
 
@@ -13,6 +15,7 @@ from cupy import _core
 from cupy import cuda
 from cupy import get_array_module
 from cupy import testing
+from cupy.exceptions import AxisError
 
 
 def wrap_take(array, *args, **kwargs):
@@ -25,9 +28,8 @@ def wrap_take(array, *args, **kwargs):
 class TestNdarrayInit(unittest.TestCase):
 
     def test_shape_none(self):
-        with testing.assert_warns(DeprecationWarning):
-            a = cupy.ndarray(None)
-        assert a.shape == ()
+        with pytest.raises(TypeError):
+            cupy.ndarray(None)
 
     def test_shape_int(self):
         a = cupy.ndarray(3)
@@ -143,11 +145,17 @@ class TestNdarrayInitRaise(unittest.TestCase):
         with pytest.raises(ValueError):
             _core.array(arr)
 
+    @testing.with_requires('numpy>=2.0')
+    @testing.numpy_cupy_array_equal()
+    def test_upper_limit_ndim(self, xp):
+        shape = [1 for i in range(64)]
+        return xp.zeros(shape, dtype=xp.int8)
+
     def test_excessive_ndim(self):
         for xp in (numpy, cupy):
             with pytest.raises(ValueError):
                 xp.ndarray(
-                    shape=[1 for i in range(33)], dtype=xp.int8)
+                    shape=[1 for i in range(65)], dtype=xp.int8)
 
 
 @testing.parameterize(
@@ -486,12 +494,12 @@ class TestNdarrayTakeErrorAxisOverRun(unittest.TestCase):
     def test_axis_overrun1(self):
         for xp in (numpy, cupy):
             a = testing.shaped_arange(self.shape, xp)
-            with pytest.raises(numpy.AxisError):
+            with pytest.raises(AxisError):
                 wrap_take(a, self.indices, axis=self.axis)
 
     def test_axis_overrun2(self):
         a = testing.shaped_arange(self.shape, cupy)
-        with pytest.raises(numpy.AxisError):
+        with pytest.raises(AxisError):
             wrap_take(a, self.indices, axis=self.axis)
 
 

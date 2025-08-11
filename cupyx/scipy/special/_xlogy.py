@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from cupy import _core
 
 
@@ -20,8 +22,11 @@ static __device__ T xlogy(T x, T y) {
 # Note: SciPy only defines dd->d and DD->D
 xlogy = _core.create_ufunc(
     'cupy_xlogy',
-    ('ee->f', 'ff->f', 'dd->d', 'FF->F', 'DD->D'),
-    'out0 = out0_type(xlogy(in0, in1));',
+    (('ee->d', 'out0 = out0_type(xlogy(double(in0), double(in1)))'),
+     ('ll->d', 'out0 = out0_type(xlogy(double(in0), double(in1)))'),
+     ('LL->d', 'out0 = out0_type(xlogy(double(in0), double(in1)))'),
+     'ff->f', 'dd->d', 'FF->F', 'DD->D'),
+    'out0 = out0_type(xlogy(in0, in1))',
     preamble=xlogy_definition,
     doc='''Compute ``x*log(y)`` so that the result is 0 if ``x = 0``.
 
@@ -52,8 +57,11 @@ static __device__ T xlog1py(T x, T y) {
 # Note: SciPy only defines dd->d and DD->D
 xlog1py = _core.create_ufunc(
     'cupy_xlog1py',
-    ('ee->f', 'ff->f', 'dd->d', 'FF->F', 'DD->D'),
-    'out0 = out0_type(xlog1py(in0, in1));',
+    (('ee->d', 'out0 = out0_type(xlog1py(double(in0), double(in1)))'),
+     ('ll->d', 'out0 = out0_type(xlog1py(double(in0), double(in1)))'),
+     ('LL->d', 'out0 = out0_type(xlog1py(double(in0), double(in1)))'),
+     'ff->f', 'dd->d', 'FF->F', 'DD->D'),
+    'out0 = out0_type(xlog1py(in0, in1))',
     preamble=xlog1py_definition,
     doc='''Compute ``x*log1p(y)`` so that the result is 0 if ``x = 0``.
 

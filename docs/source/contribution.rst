@@ -120,10 +120,45 @@ Please follow these rules when you create a feature backport PR.
 Note: PRs that do not include any changes/additions to APIs (e.g. bug fixes, documentation improvements) are usually backported by core dev members.
 It is also appreciated to make such a backport PR by any contributors, though, so that the overall development proceeds more smoothly!
 
+
 Issues and Pull Requests
 ------------------------
 
-In this section, we explain how to send pull requests (PRs).
+In this section, we explain how to send issues and pull requests (PRs).
+
+AI Policies
+~~~~~~~~~~~
+
+In the era of AI explosion, it is exciting to see how AI/LLM tools make programmers' lives easier and boost developers'
+productivity, resulting in a paradigm shift that has transformative impact to open source software development. Great
+benefits, however, are accompanied by costs that require serious treatment. For example, recently CuPy has received an
+enormous amount of bug reports in which AI tools were exploited to search for, e.g., unexpected corner cases of CuPy
+which mismatch with NumPy's behaviors but are unlikely hit by human users, or subtleties in CPU/GPU architecture and
+execution differences not yet fully understood by AI.
+
+In light of recent incidents, we would like to reiterate that CuPy being a community project is managed and maintained
+by humans, not bots or AIs, and human beings have limited bandwidth and capacity in triaging and responding to bug
+reports in addition to other development activities. A flooded issue tracker or PR review queue also hinders the
+discoverability of useful information and discussions.
+
+To ensure a smooth transition to AI-assisted development, we kindly encourage users to follow these guidelines:
+
+- Please do not spam CuPy's issue tracker with AI-based contents.
+- Please do not misuse the CuPy community as a testbed for your AI development or experiment.
+- Please understand :doc:`certain deviations from NumPy <user_guide/difference>` are expected.
+- Please only file bug reports that actually impact daily/production use of CuPy, not for hypothetical/pedantic
+  scenarios.
+
+The CuPy team reserves rights to close any bug reports proactively and preemptively without further notices, if
+it is determined by the team that the above guidelines are not followed by the reporter.
+
+If you believe your bug reports are legitimate and can be encountered in real life, but get closed by accident,
+please kindly let us know by pinging ``@cupy/triage-team`` in the closed issue.
+
+How to File an Issue
+~~~~~~~~~~~~~~~~~~~~
+
+(Work in progress.)
 
 How to Send a Pull Request
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -173,32 +208,26 @@ Coding Guidelines
 
 We use `PEP8 <https://www.python.org/dev/peps/pep-0008/>`_ and a part of `OpenStack Style Guidelines <https://docs.openstack.org/developer/hacking/>`_ related to general coding style as our basic style guidelines.
 
-You can use ``autopep8`` and ``flake8`` commands to check your code.
+You can use ``pre-commit`` to check your code.
+First install it with the following command::
 
-In order to avoid confusion from using different tool versions, we pin the versions of those tools.
-Install them with the following command (from within the top directory of CuPy repository)::
-
-  $ pip install -e '.[stylecheck]'
+  $ pip install pre-commit
 
 And check your code with::
 
-  $ autopep8 path/to/your/code.py
-  $ flake8 path/to/your/code.py
+  $ pre-commit run -a
 
-To check Cython code, use ``.flake8.cython`` configuration file::
+The above command runs various checks listed in the ``.pre-commit-config.yaml`` file, including linting (detect potential errors), formatting (enforce PEP8), and so on.
+If you want to automate the checking process, you can install the pre-commit hook::
 
-  $ flake8 --config=.flake8.cython path/to/your/cython/code.pyx
+  $ pre-commit install
 
-The ``autopep8`` supports automatically correct Python code to conform to the PEP 8 style guide::
+Once installed, your code should be checked each time you commit.
+Before sending a pull request, be sure to check that your code passes the ``pre-commit`` checking.
 
-  $ autopep8 --in-place path/to/your/code.py
-
-The ``flake8`` command lets you know the part of your code not obeying our style guidelines.
-Before sending a pull request, be sure to check that your code passes the ``flake8`` checking.
-
-Note that ``flake8`` command is not perfect.
+Note that ``pre-commit`` check is not perfect.
 It does not check some of the style guidelines.
-Here is a (not-complete) list of the rules that ``flake8`` cannot check.
+Here is a (not-complete) list of the rules that ``pre-commit`` cannot check.
 
 * Relative imports are prohibited. [H304]
 * Importing non-module symbols is prohibited.
@@ -214,7 +243,7 @@ Once you send a pull request, your coding style is automatically checked by `Git
 The reviewing process starts after the check passes.
 
 The CuPy is designed based on NumPy's API design. CuPy's source code and documents contain the original NumPy ones.
-Please note the followings when writing the document.
+Please note the following when writing the document.
 
 * In order to identify overlapping parts, it is preferable to add some remarks
   that this document is just copied or altered from the original one. It is
@@ -254,13 +283,17 @@ How to Run Tests
 
 In order to run unit tests at the repository root, you first have to build Cython files in place by running the following command::
 
-  $ pip install -e .
+  $ pip install --no-build-isolation -e .
 
 .. note::
 
-  When you modify ``*.pxd`` files, before running ``pip install -e .``, you must clean ``*.cpp`` and ``*.so`` files once with the following command, because Cython does not automatically rebuild those files nicely::
+  When you modify ``*.pxd`` files, before running ``pip install --no-build-isolation -e .``, you must clean ``*.cpp`` and ``*.so`` files once with the following command, because Cython does not automatically rebuild those files nicely::
 
     $ git clean -fdx
+
+  In addition, you need to manually install the build-time dependencies listed in the ``build-system.requires`` section of ``pyproject.toml`` before running the above command::
+
+    $ pip install "setuptools>=77" wheel "Cython>=3,<3.2" "fastrlock>=0.5"
 
 Once Cython modules are built, you can run unit tests by running the following command at the repository root::
 
@@ -384,7 +417,7 @@ Open ``index.html`` with the browser and see if it is rendered as expected.
 .. note::
 
    Docstrings (documentation comments in the source code) are collected from the installed CuPy module.
-   If you modified docstrings, make sure to install the module (e.g., using `pip install -e .`) before building the documentation.
+   If you modified docstrings, make sure to install the module (e.g., using `pip install --no-build-isolation -e .`) before building the documentation.
 
 
 Tips for Developers
@@ -397,9 +430,12 @@ Install as Editable
 
 During the development we recommend using ``pip`` with ``-e`` option to install as editable mode::
 
-  $ pip install -e .
+  $ pip install --no-build-isolation -e .
 
-Please note that even with ``-e``, you will have to rerun ``pip install -e .`` to regenerate C++ sources using Cython if you modified Cython source files (e.g., ``*.pyx`` files).
+The ``--no-build-isolation`` option enables incremental compilation.
+More specifically, the build runs inside the ``build/temp.*`` directory instead of the isolated temporary directory created for each invocation, reusing object files generated in the previous build.
+
+Please note that even with ``-e``, you will have to rerun ``pip install --no-build-isolation -e .`` to regenerate C++ sources using Cython if you modified Cython source files (e.g., ``*.pyx`` files).
 
 Use ccache
 ~~~~~~~~~~
@@ -418,3 +454,14 @@ For example, if you only run your CuPy build with NVIDIA P100 and V100, you can 
   $ export CUPY_NVCC_GENERATE_CODE=arch=compute_60,code=sm_60;arch=compute_70,code=sm_70
 
 See :doc:`reference/environment` for the description.
+
+Development on Microsoft Windows
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+CuPy uses symbolic links in the source tree.
+If you are developing on Windows (outside of WSL), you will need additional setup before cloning the CuPy repository.
+
+* Run ``git config --global core.symlinks true`` to enable symbolic link support in Git.
+* `Activate Developer Mode <https://learn.microsoft.com/en-us/windows/apps/get-started/enable-your-device-for-development#activate-developer-mode>`_ to allow Git using symbolic link without Administrator privilege.
+
+Once configured, you can clone the repository by ``git clone --recursive https://github.com/cupy/cupy.git``.

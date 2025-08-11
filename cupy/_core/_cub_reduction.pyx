@@ -36,7 +36,8 @@ cdef function.Function _create_cub_reduction_function(
         #    license issue we can't yet bundle bf16 headers. CUB offers us a
         #    band-aid solution to avoid including the latter (NVIDIA/cub#478,
         #    nvbugs 3641496).
-        options += ('--std=c++11', '-DCUB_DISABLE_BF16_SUPPORT')
+        # 3. Recent CCCL versions need C++17.
+        options += ('--std=c++17', '-DCUB_DISABLE_BF16_SUPPORT')
 
     cdef str backend
     if runtime._is_hip_environment:
@@ -46,9 +47,10 @@ cdef function.Function _create_cub_reduction_function(
         backend = 'nvcc'  # this is confusing...
         jitify = False
     else:
-        # use jitify + nvrtc
+        # use nvrtc
         backend = 'nvrtc'
-        jitify = True
+        # We rely on the type traits in cccl to avoid using jitify
+        jitify = False
 
     # TODO(leofang): try splitting the for-loop into full tiles and partial
     # tiles to utilize LoadDirectBlockedVectorized? See, for example,
@@ -131,7 +133,7 @@ __global__ void ${name}(${params}) {
   }
 
   // each block handles the reduction of 1 segment
-  size_t segment_idx = blockIdx.x * _segment_size;
+  size_t segment_idx = size_t(blockIdx.x) * _segment_size;
   const type_mid_in* segment_head = _in0 + segment_idx;
   size_t i = 0;  // tile head within the segment
   int tile_size = (BLOCK_SIZE * ITEMS_PER_THREAD < _segment_size ?

@@ -8,6 +8,8 @@ Installs the latest CUDA library supported by CuPy.
 
 # This script will also be used as a standalone script when building wheels.
 # Keep the script runnable without CuPy dependency.
+from __future__ import annotations
+
 
 import argparse
 import json
@@ -45,12 +47,12 @@ def __make_cudnn_record(
         'cuda': cuda_version,
         'cudnn': public_version,
         'assets': {
-            'Linux': {
+            'Linux:x86_64': {
                 'url': _make_cudnn_url('linux-x86_64', filename_linux),
                 'filenames': [f'libcudnn{suffix}.so.{public_version}'
                               for suffix in suffix_list]
             },
-            'Windows': {
+            'Windows:x86_64': {
                 'url': _make_cudnn_url('windows-x86_64', filename_windows),
                 'filenames': [f'cudnn{suffix}64_{major_version}.dll'
                               for suffix in suffix_list]
@@ -71,12 +73,6 @@ def _make_cudnn_record(cuda_version):
 # Latest cuDNN versions: https://developer.nvidia.com/rdp/cudnn-download
 _cudnn_records.append(_make_cudnn_record('12.x'))
 _cudnn_records.append(_make_cudnn_record('11.x'))  # CUDA 11.2+
-_cudnn_records.append(_make_cudnn_record('11.1'))
-_cudnn_records.append(_make_cudnn_record('11.0'))
-_cudnn_records.append(__make_cudnn_record(
-    '10.2', '8.7.0',
-    'cudnn-linux-x86_64-8.7.0.84_cuda10-archive.tar.xz',
-    'cudnn-windows-x86_64-8.7.0.84_cuda10-archive.zip'))
 library_records['cudnn'] = _cudnn_records
 
 
@@ -88,28 +84,37 @@ def _make_cutensor_url(platform, filename):
 
 
 def __make_cutensor_record(
-        cuda_version, public_version, filename_linux, filename_windows):
+        cuda_version, public_version, min_pypi_version,
+        filename_linux, filename_windows):
     return {
         'cuda': cuda_version,
         'cutensor': public_version,
+        'min_pypi_version': min_pypi_version,
         'assets': {
-            'Linux': {
+            'Linux:x86_64': {
                 'url': _make_cutensor_url('linux', filename_linux),
-                'filenames': ['libcutensor.so.{}'.format(public_version)],
+                'filenames': [
+                    'libcutensor.so.{}'.format(public_version),
+                    'libcutensorMg.so.{}'.format(public_version),
+                ],
             },
-            'Windows': {
+            'Windows:x86_64': {
                 'url': _make_cutensor_url('windows', filename_windows),
-                'filenames': ['cutensor.dll'],
+                'filenames': ['cutensor.dll', 'cutensorMg.dll'],
             },
         }
     }
 
 
 def _make_cutensor_record(cuda_version):
+    # cuTENSOR guarantees ABI compatibility within the major version (#9017).
+    # `min_pypi_version` must be bumped only when:
+    # (1) Bumping the major version, or
+    # (2) CuPy started to use APIs introduced in minor versions
     return __make_cutensor_record(
-        cuda_version, '2.0.0',
-        'libcutensor-linux-x86_64-2.0.0.7-archive.tar.xz',
-        'libcutensor-windows-x86_64-2.0.0.7-archive.zip')
+        cuda_version, '2.1.0', '2.0.0',
+        'libcutensor-linux-x86_64-2.1.0.9-archive.tar.xz',
+        'libcutensor-windows-x86_64-2.1.0.9-archive.zip')
 
 
 _cutensor_records.append(_make_cutensor_record('12.x'))
@@ -121,17 +126,25 @@ def _make_nccl_url(public_version, filename):
     # https://developer.download.nvidia.com/compute/redist/nccl/v2.8/nccl_2.8.4-1+cuda11.2_x86_64.txz
     return (
         'https://developer.download.nvidia.com/compute/redist/nccl/' +
-        'v{}/{}'.format(public_version, filename))
+        f'v{public_version}/{filename}')
 
 
 def _make_nccl_record(
-        cuda_version, full_version, public_version, filename_linux):
+        cuda_version, full_version, public_version, min_pypi_version,
+        filename_linux_x86_64, filename_linux_aarch64):
     return {
         'cuda': cuda_version,
         'nccl': full_version,
+        'min_pypi_version': min_pypi_version,
         'assets': {
-            'Linux': {
-                'url': _make_nccl_url(public_version, filename_linux),
+            'Linux:x86_64': {
+                'url': _make_nccl_url(
+                    public_version, filename_linux_x86_64),
+                'filenames': ['libnccl.so.{}'.format(full_version)],
+            },
+            'Linux:aarch64': {
+                'url': _make_nccl_url(
+                    public_version, filename_linux_aarch64),
                 'filenames': ['libnccl.so.{}'.format(full_version)],
             },
         },
@@ -140,20 +153,17 @@ def _make_nccl_record(
 
 # https://docs.nvidia.com/deeplearning/nccl/release-notes/overview.html
 _nccl_records.append(_make_nccl_record(
-    '12.x', '2.16.2', '2.16.2',
-    'nccl_2.16.2-1+cuda12.0_x86_64.txz'))
+    '13.x', '2.27.7', '2.27.7', '2.27.7',
+    'nccl_2.27.7-1+cuda13.0_x86_64.txz',
+    'nccl_2.27.7-1+cuda13.0_aarch64.txz'))
 _nccl_records.append(_make_nccl_record(
-    '11.x', '2.16.2', '2.16.2',  # CUDA 11.2+
-    'nccl_2.16.2-1+cuda11.8_x86_64.txz'))
+    '12.x', '2.25.1', '2.25.1', '2.16.5',
+    'nccl_2.25.1-1+cuda12.8_x86_64.txz',
+    'nccl_2.25.1-1+cuda12.8_aarch64.txz'))
 _nccl_records.append(_make_nccl_record(
-    '11.1', '2.8.4', '2.8',
-    'nccl_2.8.4-1+cuda11.1_x86_64.txz'))
-_nccl_records.append(_make_nccl_record(
-    '11.0', '2.16.2', '2.16.2',
-    'nccl_2.16.2-1+cuda11.0_x86_64.txz'))
-_nccl_records.append(_make_nccl_record(
-    '10.2', '2.15.5', '2.15.5',
-    'nccl_2.15.5-1+cuda10.2_x86_64.txz'))
+    '11.x', '2.16.5', '2.16.5', '2.16.5',  # CUDA 11.2+
+    'nccl_2.16.5-1+cuda11.8_x86_64.txz',
+    'nccl_2.16.5-1+cuda11.8_aarch64.txz'))
 library_records['nccl'] = _nccl_records
 
 
@@ -172,10 +182,12 @@ def _unpack_archive(filename, extract_dir):
             raise RuntimeError(msg)
 
 
-def install_lib(cuda, prefix, library):
-    if platform.uname().machine.lower() not in ('x86_64', 'amd64'):
+def install_lib(cuda, prefix, library, arch):
+    if library == 'nccl' and arch in ('x86_64', 'aarch64'):
+        pass  # Supported
+    elif arch != 'x86_64':
         raise RuntimeError('''
-Currently this tool only supports x86_64 architecture.''')
+Currently this tool only supports x86_64 or aarch64 architecture for NCCL.''')
     record = None
     lib_records = library_records
     for record in lib_records[library]:
@@ -194,7 +206,7 @@ Should be one of {}.'''.format(str([x['cuda'] for x in lib_records[library]])))
 The destination directory {} already exists.
 Remove the directory first if you want to reinstall.'''.format(destination))
 
-    target_platform = platform.system()
+    target_platform = f'{platform.system()}:{arch}'
     asset = record['assets'].get(target_platform, None)
     if asset is None:
         raise RuntimeError('''
@@ -278,6 +290,9 @@ def main(args):
                         help='Library to install')
     parser.add_argument('--cuda', type=str, required=True,
                         help='CUDA version')
+    parser.add_argument('--arch', choices=['x86_64', 'aarch64'],
+                        default=None,
+                        help='Target arhitecture (x86_64 or aarch64)')
     parser.add_argument('--prefix', type=str, default=None,
                         help='Install destination')
     parser.add_argument('--action', choices=['install', 'dump'],
@@ -285,11 +300,21 @@ def main(args):
                         help='Action to perform')
     params = parser.parse_args(args)
 
+    if params.arch is None:
+        machine = platform.uname().machine.lower()
+        if machine in ('x86_64', 'amd64'):
+            params.arch = 'x86_64'
+        elif machine == 'aarch64':
+            params.arch = 'aarch64'
+        else:
+            raise AssertionError(f'unsupported architecture: {machine}')
+
     if params.prefix is not None:
         params.prefix = os.path.abspath(params.prefix)
 
     if params.action == 'install':
-        install_lib(params.cuda, params.prefix, params.library)
+        install_lib(params.cuda, params.prefix, params.library,
+                    params.arch)
     elif params.action == 'dump':
         print(json.dumps(library_records[params.library], indent=4))
     else:

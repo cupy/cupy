@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import operator
 import os
 import shutil
@@ -12,6 +14,7 @@ import pytest
 
 import cupy
 import cupyx
+from cupy import testing
 
 
 def _run_script(code):
@@ -132,13 +135,14 @@ class TestAliases(unittest.TestCase):
             assert xp.bitwise_not is xp.invert
 
 
+@testing.with_requires("numpy>=2.0")
 @pytest.mark.parametrize('name', [
-    'AxisError',
-    'ComplexWarning',
-    'ModuleDeprecationWarning',
-    'RankWarning',
-    'TooHardError',
-    'VisibleDeprecationWarning',
+    'exceptions.AxisError',
+    'exceptions.ComplexWarning',
+    'exceptions.ModuleDeprecationWarning',
+    'exceptions.RankWarning',
+    'exceptions.TooHardError',
+    'exceptions.VisibleDeprecationWarning',
     'linalg.LinAlgError'
 ])
 def test_error_classes(name):

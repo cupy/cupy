@@ -1,12 +1,14 @@
+from __future__ import annotations
+
+import os
 import tempfile
 import unittest
 
+import numpy
 import pytest
 
 import cupy
-from cupy import cuda
-from cupy import testing
-import numpy
+from cupy import cuda, testing
 
 
 class TestFromData(unittest.TestCase):
@@ -36,6 +38,10 @@ class TestFromData(unittest.TestCase):
         a = testing.shaped_arange((2, 3, 4), numpy, dtype)
         return xp.array(a, order=order)
 
+    def test_array_from_numpy_blocking(self):
+        a = testing.shaped_arange((2, 3, 4), numpy, numpy.float32)
+        testing.assert_array_equal(cupy.array(a, blocking=True), a)
+
     @testing.for_orders('CFAK')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
@@ -45,7 +51,9 @@ class TestFromData(unittest.TestCase):
 
     @testing.for_orders('CFAK')
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_equal(strides_check=True)
+    @testing.numpy_cupy_array_equal(
+        # when zero-copy, we may not be able to guarantee strides
+        strides_check=not bool(int(os.environ.get('CUPY_ENABLE_UMP', 0))))
     def test_array_from_numpy_c_and_f(self, xp, dtype, order):
         a = numpy.ones((1, 3, 1), dtype=dtype)
         return xp.array(a, order=order)
@@ -281,25 +289,38 @@ class TestFromData(unittest.TestCase):
             for i in range(2)]
         return xp.array(a, dtype=numpy.dtype(dtype2).char, order=dst_order)
 
+    @testing.with_requires("numpy>=2.0")
     @testing.for_orders('CFAK')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
-    def test_array_no_copy(self, xp, dtype, order):
+    def test_array_copy_none(self, xp, dtype, order):
+        a = testing.shaped_arange((2, 3, 4), xp, dtype)
+        b = xp.array(a, copy=None, order=order)
+        a.fill(0)
+        return b
+
+    @testing.with_requires("numpy>=2.0")
+    @testing.for_orders('CFAK')
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal(accept_error=ValueError)
+    def test_array_copy_false(self, xp, dtype, order):
         a = testing.shaped_arange((2, 3, 4), xp, dtype)
         b = xp.array(a, copy=False, order=order)
         a.fill(0)
         return b
 
+    @testing.with_requires("numpy>=2.0")
     @testing.for_orders('CFAK')
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_equal()
+    @testing.numpy_cupy_array_equal(accept_error=ValueError)
     def test_array_f_contiguous_input(self, xp, dtype, order):
         a = testing.shaped_arange((2, 3, 4), xp, dtype, order='F')
         b = xp.array(a, copy=False, order=order)
         return b
 
+    @testing.with_requires("numpy>=2.0")
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_equal()
+    @testing.numpy_cupy_array_equal(accept_error=ValueError)
     def test_array_f_contiguous_output(self, xp, dtype):
         a = testing.shaped_arange((2, 3, 4), xp, dtype)
         b = xp.array(a, copy=False, order='F')
@@ -330,6 +351,7 @@ class TestFromData(unittest.TestCase):
         assert y.device.id == 1
         testing.assert_array_equal(x, y)
 
+    @testing.with_requires("numpy>=2.0")
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_array_no_copy_ndmin(self, xp, dtype):
@@ -364,6 +386,10 @@ class TestFromData(unittest.TestCase):
     def test_asarray(self, xp, dtype):
         a = testing.shaped_arange((2, 3, 4), xp, dtype)
         return xp.asarray(a)
+
+    def test_asarray_blocking(self):
+        a = testing.shaped_arange((2, 3, 4), numpy, numpy.float32)
+        testing.assert_array_equal(cupy.asarray(a, blocking=True), a)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
@@ -416,6 +442,10 @@ class TestFromData(unittest.TestCase):
         # Make a computation here as just moving big-endian data back and forth
         # happens to work before the change in #5828
         return b + b
+
+    def test_asanyarray_blocking(self):
+        a = testing.shaped_arange((2, 3, 4), numpy, numpy.float32)
+        testing.assert_array_equal(cupy.asanyarray(a, blocking=True), a)
 
     @testing.for_CF_orders()
     @testing.for_all_dtypes()
@@ -669,7 +699,7 @@ class TestCudaArrayInterfaceBigArray(unittest.TestCase):
 
 @pytest.mark.skipif(
     cupy.cuda.runtime.is_hip, reason='HIP does not support this')
-class DummyObjectWithCudaArrayInterface(object):
+class DummyObjectWithCudaArrayInterface:
     def __init__(self, a, ver, include_strides=False, mask=None, stream=None):
         assert ver in tuple(range(max_cuda_array_interface_version+1))
         self.a = None
@@ -733,7 +763,7 @@ class DummyObjectWithCudaArrayInterface(object):
 @testing.parameterize(
     *testing.product({
         'ndmin': [0, 1, 2, 3],
-        'copy': [True, False],
+        'copy': [True, False, None],
         'xp': [numpy, cupy]
     })
 )
@@ -741,6 +771,9 @@ class TestArrayPreservationOfShape(unittest.TestCase):
 
     @testing.for_all_dtypes()
     def test_cupy_array(self, dtype):
+        if self.xp is numpy and self.copy is False:
+            pytest.skip()
+
         shape = 2, 3
         a = testing.shaped_arange(shape, self.xp, dtype)
         cupy.array(a, copy=self.copy, ndmin=self.ndmin)
@@ -753,7 +786,7 @@ class TestArrayPreservationOfShape(unittest.TestCase):
 @testing.parameterize(
     *testing.product({
         'ndmin': [0, 1, 2, 3],
-        'copy': [True, False],
+        'copy': [True, False, None],
         'xp': [numpy, cupy]
     })
 )
@@ -761,10 +794,13 @@ class TestArrayCopy(unittest.TestCase):
 
     @testing.for_all_dtypes()
     def test_cupy_array(self, dtype):
+        if self.xp is numpy and self.copy is False:
+            pytest.skip()
+
         a = testing.shaped_arange((2, 3), self.xp, dtype)
         actual = cupy.array(a, copy=self.copy, ndmin=self.ndmin)
 
-        should_copy = (self.xp is numpy) or self.copy
+        should_copy = (self.xp is numpy) or (self.copy is True)
         # TODO(Kenta Oono): Better determination of copy.
         is_copied = not ((actual is a) or (actual.base is a) or
                          (actual.base is a.base and a.base is not None))
