@@ -18,7 +18,7 @@ from cupy.cuda import stream
 
 
 ctypedef Result (*F_cufftXtSetJITCallback)(
-    Handle plan, const void* callback, size_t callback_size,
+    Handle plan, const char* callback_name, const void* callback, size_t callback_size,
     callbackType callback_type, void **caller_info) nogil
 cdef F_cufftXtSetJITCallback cufftXtSetJITCallback
 
@@ -45,12 +45,14 @@ cdef SoftLink _get_softlink():
     cdef str prefix = 'cufft'
     cdef str libname = None
 
-    if CUPY_CUDA_VERSION != 0:
+    if CUPY_CUDA_VERSION != 0 and _sys.platform == 'linux':
         runtime_version = runtime.runtimeGetVersion()
         if 12020 <= runtime_version < 13000:
             # CUDA 12.2+
-            if _sys.platform == 'linux':
-                libname = 'libcufft.so.11'
+            libname = 'libcufft.so.11'
+        elif 13000 <= runtime_version < 14000:  # TODO: we don't actually know the upper bound!
+            # CUDA 13.0+
+            libname = 'libcufft.so.12'
 
     if libname is None:
         raise NotImplementedError
@@ -1262,16 +1264,18 @@ cpdef intptr_t setCallback(
 
 
 cpdef void setJITCallback(
-        intptr_t plan, bytes callback, int callback_type,
+        intptr_t plan, str callback_name, bytes callback, int callback_type,
         intptr_t caller_info) except*:
     initialize()
     cdef Handle h = <Handle>plan  # no-cython-lint
+    cdef bytes callback_name_data = callback_name.encode()
+    cdef char* callback_name_ptr = callback_name_data
     cdef char* callback_ptr = callback
     cdef size_t callback_size = len(callback)
     cdef void* caller_info_ptr = <void*>(caller_info)
 
     with nogil:
         result = cufftXtSetJITCallback(
-            h, callback_ptr, callback_size, <callbackType>callback_type,
-            &caller_info_ptr)
+            h, callback_name_ptr, callback_ptr, callback_size,
+            <callbackType>callback_type, &caller_info_ptr)
     check_result(result)

@@ -177,6 +177,7 @@ class Test1dCallbacks:
             types = ('x', 'cufftDoubleReal', 'cufftCallbackLoadD',
                      'cufftJITCallbackLoadDoubleReal')
         cb_load = _set_load_cb(code, *types, cb_ver=self.cb_ver)
+        cb_load_name = types[-1] if self.cb_ver == 'jit' else None
 
         a = testing.shaped_random(self.shape, xp, dtype)
         if xp is np:
@@ -190,7 +191,8 @@ class Test1dCallbacks:
         else:
             with use_temporary_cache_dir():
                 with xp.fft.config.set_cufft_callbacks(
-                        cb_load=cb_load, cb_ver=self.cb_ver):
+                        cb_load=cb_load, cb_load_name=cb_load_name,
+                        cb_ver=self.cb_ver):
                     out = fft(a, n=self.n, norm=self.norm)
 
         return out
@@ -244,6 +246,7 @@ class Test1dCallbacks:
             types = ('x.y', 'cufftDoubleComplex', 'cufftCallbackStoreZ',
                      'cufftJITCallbackStoreDoubleComplex')
         cb_store = _set_store_cb(code, *types, cb_ver=self.cb_ver)
+        cb_store_name = types[-1] if self.cb_ver == 'jit' else None
 
         a = testing.shaped_random(self.shape, xp, dtype)
         if xp is np:
@@ -259,7 +262,8 @@ class Test1dCallbacks:
         else:
             with use_temporary_cache_dir():
                 with xp.fft.config.set_cufft_callbacks(
-                        cb_store=cb_store, cb_ver=self.cb_ver):
+                        cb_store=cb_store, cb_store_name=cb_store_name,
+                        cb_ver=self.cb_ver):
                     out = fft(a, n=self.n, norm=self.norm)
 
         return out
@@ -330,7 +334,9 @@ class Test1dCallbacks:
                 store_types = ('x', 'cufftDoubleReal', 'cufftCallbackStoreD',
                                'cufftJITCallbackStoreDoubleReal')
         cb_load = _set_load_cb(load_code, *load_types, cb_ver=self.cb_ver)
+        cb_load_name = load_types[-1] if self.cb_ver == 'jit' else None
         cb_store = _set_store_cb(store_code, *store_types, cb_ver=self.cb_ver)
+        cb_store_name = store_types[-1] if self.cb_ver == 'jit' else None
 
         a = testing.shaped_random(self.shape, xp, dtype)
         if xp is np:
@@ -347,7 +353,8 @@ class Test1dCallbacks:
         else:
             with use_temporary_cache_dir():
                 with xp.fft.config.set_cufft_callbacks(
-                        cb_load=cb_load, cb_store=cb_store,
+                        cb_load=cb_load, cb_load_name=cb_load_name,
+                        cb_store=cb_store, cb_store_name=cb_store_name,
                         cb_ver=self.cb_ver):
                     out = fft(a, n=self.n, norm=self.norm)
 
@@ -383,15 +390,13 @@ class Test1dCallbacks:
         c = _load_callback_with_aux2
         # for simplicity we use the JIT callback names for both legacy/jit
         if dtype == np.complex64:
-            cb_load = _set_load_cb(
-                c, 'x.x', 'cufftComplex', 'cufftCallbackLoadC',
-                'cufftJITCallbackLoadComplex', 'float',
-                cb_ver=self.cb_ver)
+            types = ('x.x', 'cufftComplex', 'cufftCallbackLoadC',
+                'cufftJITCallbackLoadComplex', 'float')
         else:  # complex128
-            cb_load = _set_load_cb(
-                c, 'x.x', 'cufftDoubleComplex', 'cufftCallbackLoadZ',
-                'cufftJITCallbackLoadDoubleComplex', 'double',
-                cb_ver=self.cb_ver)
+            types = ('x.x', 'cufftDoubleComplex', 'cufftCallbackLoadZ',
+                'cufftJITCallbackLoadDoubleComplex', 'double')
+        cb_load = _set_load_cb(c, *types, cb_ver=self.cb_ver)
+        cb_load_name = types[3] if self.cb_ver == 'jit' else None
 
         a = testing.shaped_random(self.shape, xp, dtype)
         out_last = self.n if self.n is not None else self.shape[-1]
@@ -410,8 +415,8 @@ class Test1dCallbacks:
         else:
             with use_temporary_cache_dir():
                 with xp.fft.config.set_cufft_callbacks(
-                        cb_load=cb_load, cb_load_aux_arr=b,
-                        cb_ver=self.cb_ver):
+                        cb_load=cb_load, cb_load_name=cb_load_name,
+                        cb_load_aux_arr=b, cb_ver=self.cb_ver):
                     out = fft(a, n=self.n, norm=self.norm)
 
         return out
@@ -474,7 +479,9 @@ class Test1dCallbacks:
                     'x', 'cufftDoubleReal', 'cufftCallbackStoreD',
                     'cufftJITCallbackStoreDoubleReal', 'double')
         cb_load = _set_load_cb(load_code, *load_types, cb_ver=self.cb_ver)
+        cb_load_name = load_types[3] if self.cb_ver == 'jit' else None
         cb_store = _set_store_cb(store_code, *store_types, cb_ver=self.cb_ver)
+        cb_store_name = store_types[3] if self.cb_ver == 'jit' else None
 
         a = testing.shaped_random(self.shape, xp, dtype)
         if xp is np:
@@ -491,7 +498,8 @@ class Test1dCallbacks:
         else:
             with use_temporary_cache_dir():
                 with xp.fft.config.set_cufft_callbacks(
-                        cb_load=cb_load, cb_store=cb_store,
+                        cb_load=cb_load, cb_load_name=cb_load_name,
+                        cb_store=cb_store, cb_store_name=cb_store_name,
                         cb_load_aux_arr=load_aux, cb_store_aux_arr=store_aux,
                         cb_ver=self.cb_ver):
                     out = fft(a, n=self.n, norm=self.norm)
@@ -572,6 +580,7 @@ class TestNdCallbacks:
             types = ('x', 'cufftDoubleReal', 'cufftCallbackLoadD',
                      'cufftJITCallbackLoadDoubleReal')
         cb_load = _set_load_cb(load_code, *types, cb_ver=self.cb_ver)
+        cb_load_name = types[3] if self.cb_ver == 'jit' else None
 
         a = testing.shaped_random(self.shape, xp, dtype)
         if xp is np:
@@ -585,7 +594,8 @@ class TestNdCallbacks:
         else:
             with use_temporary_cache_dir():
                 with xp.fft.config.set_cufft_callbacks(
-                        cb_load=cb_load, cb_ver=self.cb_ver):
+                        cb_load=cb_load, cb_load_name=cb_load_name,
+                        cb_ver=self.cb_ver):
                     out = fft(a, s=self.s, axes=self.axes, norm=self.norm)
 
         return out
@@ -643,6 +653,7 @@ class TestNdCallbacks:
             types = ('x.y', 'cufftDoubleComplex', 'cufftCallbackStoreZ',
                      'cufftJITCallbackStoreDoubleComplex')
         cb_store = _set_store_cb(store_code, *types, cb_ver=self.cb_ver)
+        cb_store_name = types[3] if self.cb_ver == 'jit' else None
 
         a = testing.shaped_random(self.shape, xp, dtype)
         if xp is np:
@@ -658,7 +669,8 @@ class TestNdCallbacks:
         else:
             with use_temporary_cache_dir():
                 with xp.fft.config.set_cufft_callbacks(
-                        cb_store=cb_store, cb_ver=self.cb_ver):
+                        cb_store=cb_store, cb_store_name=cb_store_name,
+                        cb_ver=self.cb_ver):
                     out = fft(a, s=self.s, axes=self.axes, norm=self.norm)
 
         return out
@@ -734,7 +746,9 @@ class TestNdCallbacks:
                 store_types = ('x', 'cufftDoubleReal', 'cufftCallbackStoreD',
                                'cufftJITCallbackStoreDoubleReal')
         cb_load = _set_load_cb(load_code, *load_types, cb_ver=self.cb_ver)
+        cb_load_name = load_types[3] if self.cb_ver == 'jit' else None
         cb_store = _set_store_cb(store_code, *store_types, cb_ver=self.cb_ver)
+        cb_store_name = store_types[3] if self.cb_ver == 'jit' else None
 
         a = testing.shaped_random(self.shape, xp, dtype)
         if xp is np:
@@ -751,7 +765,8 @@ class TestNdCallbacks:
         else:
             with use_temporary_cache_dir():
                 with xp.fft.config.set_cufft_callbacks(
-                        cb_load=cb_load, cb_store=cb_store,
+                        cb_load=cb_load, cb_load_name=cb_load_name,
+                        cb_store=cb_store, cb_store_name=cb_store_name,
                         cb_ver=self.cb_ver):
                     out = fft(a, s=self.s, axes=self.axes, norm=self.norm)
 
@@ -831,7 +846,9 @@ class TestNdCallbacks:
                 store_types = ('x', 'cufftDoubleReal', 'cufftCallbackStoreD',
                                'cufftJITCallbackStoreDoubleReal', 'double')
         cb_load = _set_load_cb(load_code, *load_types, cb_ver=self.cb_ver)
+        cb_load_name = load_types[3] if self.cb_ver == 'jit' else None
         cb_store = _set_store_cb(store_code, *store_types, cb_ver=self.cb_ver)
+        cb_store_name = store_types[3] if self.cb_ver == 'jit' else None
 
         a = testing.shaped_random(self.shape, xp, dtype)
         if xp is np:
@@ -848,7 +865,8 @@ class TestNdCallbacks:
         else:
             with use_temporary_cache_dir():
                 with xp.fft.config.set_cufft_callbacks(
-                        cb_load=cb_load, cb_store=cb_store,
+                        cb_load=cb_load, cb_load_name=cb_load_name,
+                        cb_store=cb_store, cb_store_name=cb_store_name,
                         cb_load_aux_arr=load_aux, cb_store_aux_arr=store_aux,
                         cb_ver=self.cb_ver):
                     out = fft(a, s=self.s, axes=self.axes, norm=self.norm)

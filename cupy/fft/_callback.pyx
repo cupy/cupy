@@ -16,6 +16,7 @@ from cupy.cuda.memory cimport MemoryPointer
 import hashlib
 import importlib
 import os
+import re
 import shutil
 import string
 import subprocess
@@ -103,6 +104,7 @@ cdef inline void _set_vars() except*:
     _cuda_path = get_cuda_path()
     if _cuda_path is not None:
         _cuda_include = os.path.join(_cuda_path, 'include')
+        # TODO(leofang): this does not honor conda's new layout
         _nvprune = os.path.join(_cuda_path, 'bin/nvprune')
         if not os.path.isfile(_nvprune):
             _nvprune = None
@@ -526,12 +528,16 @@ cdef class _JITCallbackManager(_CallbackManager):
     cdef:
         readonly object cb_load
         readonly object cb_store
+        readonly str cb_load_name
+        readonly str cb_store_name
         readonly bytes cb_load_lto
         readonly bytes cb_store_lto
 
     def __init__(self,
                  cb_load=None,
                  cb_store=None,
+                 str cb_load_name=None,
+                 str cb_store_name=None,
                  MemoryPointer cb_load_data=None,
                  MemoryPointer cb_store_data=None,
                  tuple nvrtc_options=(),
@@ -541,6 +547,8 @@ cdef class _JITCallbackManager(_CallbackManager):
         self.identity = "jit"
         self.cb_load = cb_load
         self.cb_store = cb_store
+        self.cb_load_name = cb_load_name
+        self.cb_store_name = cb_store_name
         self.cb_load_data = cb_load_data
         self.cb_store_data = cb_store_data
 
@@ -650,14 +658,18 @@ cdef class _JITCallbackManager(_CallbackManager):
             if cb_load_data is not None:
                 cb_load_ptr = cb_load_data.ptr
             cufft.setJITCallback(
-                plan, self.cb_load_lto, cb_load_type, cb_load_ptr)
+                plan, self.cb_load_name, self.cb_load_lto, cb_load_type, cb_load_ptr)
         if self.cb_store:
             if cb_store_data is not None:
                 cb_store_ptr = cb_store_data.ptr
             cufft.setJITCallback(
-                plan, self.cb_store_lto, cb_store_type, cb_store_ptr)
+                plan, self.cb_store_name, self.cb_store_lto, cb_store_type, cb_store_ptr)
 
         return plan
+
+
+# RHS is a valid C identifier pattern
+cdef object cupy_callback_pattern = re.compile(r'=\s*([A-Za-z_][A-Za-z0-9_]*)\s*;')
 
 
 cdef class set_cufft_callbacks:
@@ -673,6 +685,14 @@ cdef class set_cufft_callbacks:
             data to be used in the load callback. **DEPRECATED.**
         cb_store_aux_arr (cupy.ndarray, optional): A CuPy array containing
             data to be used in the store callback. **DEPRECATED.**
+        cb_load_name (str): A string contains device kernel for the load
+            callback. If not defined, we attempt to infer from the provided
+            ``cb_load`` but it may fail. Only needed when using
+            ``cb_ver="jit"``.
+        cb_store_name (str): A string contains device kernel for the store
+            callback. If not defined, we attempt to infer from the provided
+            ``cb_store`` but it may fail. Only needed when using
+            ``cb_ver="jit"``.
         cb_load_data (MemoryPointer, optional): A memory chunk containing
             data to be used in the load callback.
         cb_store_data (MemoryPointer, optional): A memory chunk containing
@@ -738,7 +758,7 @@ cdef class set_cufft_callbacks:
     .. seealso:: `cuFFT Callback Routines`_
 
     .. _cuFFT Callback Routines:
-        https://docs.nvidia.com/cuda/cufft/index.html#callback-routines
+        https://docs.nvidia.com/cuda/cufft/index.html#cufft-callback-routines
 
     """
     # this class should have been a simple function decorated by @contextlib.
@@ -754,6 +774,8 @@ cdef class set_cufft_callbacks:
                  *,
                  _ndarray_base cb_load_aux_arr=None,
                  _ndarray_base cb_store_aux_arr=None,
+                 str cb_load_name=None,
+                 str cb_store_name=None,
                  MemoryPointer cb_load_data=None,
                  MemoryPointer cb_store_data=None,
                  str cb_ver='legacy',
@@ -781,6 +803,11 @@ cdef class set_cufft_callbacks:
         cdef _CallbackManager mgr = _callback_mgr.get(key)
         if mgr is None:
             if cb_ver == 'legacy':
+                # TODO(leofang): adjust tests to allow raising this
+                # warnings.warn(
+                #     'Using the legacy callback is considered deprecated, '
+                #     'please switch to use cb_ver="jit" instead',
+                #     DeprecationWarning)
                 mgr = _LegacyCallbackManager(
                     cb_load='' if cb_load is None else cb_load,
                     cb_store='' if cb_store is None else cb_store,
@@ -789,9 +816,21 @@ cdef class set_cufft_callbacks:
                 )
                 _callback_mgr[key] = mgr  # keep the Python module alive
             else:  # cb_ver = 'jit'
+                if cb_load is not None and cb_load_name is None:
+                    try:
+                        cb_load_name = cupy_callback_pattern.search('d_loadCallbackPtr').group(1)
+                    except AttributeError:
+                        cb_load_name = ""
+                if cb_store is not None and cb_store_name is None:
+                    try:
+                        cb_store_name = cupy_callback_pattern.search('d_storeCallbackPtr').group(1)
+                    except AttributeError:
+                        cb_store_name = ""
                 mgr = _JITCallbackManager(
                     cb_load=cb_load,
                     cb_store=cb_store,
+                    cb_load_name=cb_load_name,
+                    cb_store_name=cb_store_name,
                     cb_load_data=cb_load_data,
                     cb_store_data=cb_store_data,
                     nvrtc_options=nvrtc_options,
