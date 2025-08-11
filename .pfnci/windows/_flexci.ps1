@@ -84,14 +84,6 @@ function ActivateCuDNN($cudnn_version, $cuda_version) {
     $Env:PATH = "$base\bin;" + $Env:PATH
 }
 
-function ActivateNVTX1() {
-    $base = "C:\Development\NvToolsExt"
-    $Env:NVTOOLSEXT_PATH = "C:\Development\NvToolsExt"
-    $Env:CL = "-I$base\include " + $Env:CL
-    $Env:LINK = "/LIBPATH:$base\lib\x64 " + $Env:LINK
-    $Env:PATH = "$base\bin\x64;" + $Env:PATH
-}
-
 function InstallZLIB() {
     Copy-Item -Path "C:\Development\ZLIB\zlibwapi.dll" -Destination "C:\Windows\System32"
 }
