@@ -68,7 +68,6 @@ function Main {
     } else {
         ActivateCuDNN "8.8" $cuda
     }
-    ActivateNVTX1
     ActivatePython $python
 
     # Setup build environment variables
