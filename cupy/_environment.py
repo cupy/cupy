@@ -232,6 +232,11 @@ def _setup_win32_dll_directory():
             if cuda_bin_path is not None:
                 _log('Adding DLL search path: {}'.format(cuda_bin_path))
                 os.add_dll_directory(cuda_bin_path)
+                cuda_bin_x64_path = os.path.join(cuda_bin_path, 'x64')
+                if os.path.exists(cuda_bin_x64_path):
+                    _log('Adding DLL search path (for CUDA 13): '
+                         f'{cuda_bin_x64_path}')
+                    os.add_dll_directory(cuda_bin_x64_path)
             if wheel_libdir is not None:
                 _log('Adding DLL search path: {}'.format(wheel_libdir))
                 os.add_dll_directory(wheel_libdir)
@@ -522,7 +527,13 @@ def _get_include_dir_from_conda_or_wheel(major: int, minor: int) -> List[str]:
             return []
 
     # Look for headers in wheels
-    pkg_name = f'nvidia-cuda-runtime-cu{major}'
+    if major in (11, 12):
+        pkg_name = f'nvidia-cuda-runtime-cu{major}'
+        dir_name = 'cuda_runtime'
+    else:
+        # New layout (CUDA 13+)
+        pkg_name = 'nvidia-cuda-runtime'
+        dir_name = f'cu{major}'
     ver_str = f'{major}.{minor}'
     _log(f'Looking for {pkg_name}=={ver_str}.*')
     try:
@@ -532,7 +543,7 @@ def _get_include_dir_from_conda_or_wheel(major: int, minor: int) -> List[str]:
         return []
 
     if dist.version == ver_str or dist.version.startswith(f'{ver_str}.'):
-        include_dir = dist.locate_file('nvidia/cuda_runtime/include')
+        include_dir = dist.locate_file(f'nvidia/{dir_name}/include')
         if not include_dir.exists():
             _log('The include directory could not be found')
             return []
@@ -564,6 +575,7 @@ def _detect_duplicate_installation():
         'cupy-cuda118',
         'cupy-cuda11x',
         'cupy-cuda12x',
+        'cupy-cuda13x',
         'cupy-rocm-4-0',
         'cupy-rocm-4-1',
         'cupy-rocm-4-2',

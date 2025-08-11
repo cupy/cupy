@@ -19,7 +19,7 @@ os:
     system: "linux"
   "centos:8":
     system: "linux"
-  "ws:2016":
+  "ws:2022":
     system: "windows"
 
 ###############################################################################
@@ -83,6 +83,9 @@ cuda:
     repository: "nvidia/cuda"
   "12.9":
     full_version: "12.9.1"
+    repository: "nvidia/cuda"
+  "13.0":
+    full_version: "13.0.0"
     repository: "nvidia/cuda"
 rocm:
   null:
@@ -194,6 +197,7 @@ nccl:
       "12.2":
       "12.4":
       "12.9":
+      "13.0":
 cutensor:
   # https://docs.nvidia.com/cuda/cutensor/
   # https://developer.nvidia.com/cutensor/downloads
@@ -244,6 +248,7 @@ cusparselt:
       "12.6":  # TODO(kmaehashi): Tentatively use v0.2.0 for CUDA 12
       "12.8":  # TODO(kmaehashi): Tentatively use v0.2.0 for CUDA 12
       "12.9":  # TODO(kmaehashi): Tentatively use v0.2.0 for CUDA 12
+      # Disable cuSPARSELt for CUDA 13 in CuPy v13
 cudnn:
   # https://docs.nvidia.com/deeplearning/cudnn/support-matrix/index.html
   # https://docs.nvidia.com/deeplearning/cudnn/archives/

@@ -63,9 +63,9 @@ function Main {
     # Setup environment
     echo "Using CUDA $cuda and Python $python"
     ActivateCUDA $cuda
-    if ($cuda -eq "10.2") {
-        ActivateCuDNN "8.6" $cuda
-    } else {
+    if ($cuda.startswith("11.")) {
+        ActivateCuDNN "8.8" $cuda
+    } elseif ($cuda.startswith("12.")) {
         ActivateCuDNN "8.8" $cuda
     }
     ActivatePython $python
