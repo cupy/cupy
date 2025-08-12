@@ -20,8 +20,6 @@ cdef extern from *:
     ctypedef enum Type 'cufftType_t':
         pass
 
-
-cdef extern from "<cufftXt.h>":
     ctypedef enum callbackType 'cufftXtCallbackType':
         pass
 
