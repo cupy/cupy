@@ -1,8 +1,13 @@
+import string
+
 import cupy as cp
 
+
 # a load callback that overwrites the input array to 1
-code = r'''
-__device__ cufftComplex CB_ConvertInputC(
+callback_name = 'my_complex_load_cb'
+
+code = string.Template(r'''
+__device__ cufftComplex ${callback_name}(
     void *dataIn,
     size_t offset,
     void *callerInfo,
@@ -13,8 +18,8 @@ __device__ cufftComplex CB_ConvertInputC(
     x.y = 0.;
     return x;
 }
-__device__ cufftCallbackLoadC d_loadCallbackPtr = CB_ConvertInputC;
-'''
+__device__ cufftCallbackLoadC d_loadCallbackPtr = ${callback_name};
+''').substitute(callback_name=callback_name)
 
 a = cp.random.random((64, 128, 128)).astype(cp.complex64)
 

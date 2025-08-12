@@ -1,8 +1,12 @@
+import string
+
 import cupy as cp
 import numpy as np
 
 
-code = r"""
+callback_name = 'my_complex_load_cb'
+
+code = string.Template(r"""
 #include <cufftXt.h>
 
 struct cb_params {
@@ -10,10 +14,10 @@ struct cb_params {
     unsigned signal_size;
 };
 
-__device__ cufftComplex cufftJITCallbackLoadComplex(void *input,
-                                                    size_t index,
-                                                    void *info,
-                                                    void *sharedmem) {
+__device__ cufftComplex ${callback_name}(void *input,
+                                         unsigned long long index,
+                                         void *info,
+                                         void *sharedmem) {
     const cb_params* params = static_cast<const cb_params*>(info);
     cufftComplex* cb_output = static_cast<cufftComplex*>(input);
     const unsigned sample   = index % params->signal_size;
@@ -21,7 +25,7 @@ __device__ cufftComplex cufftJITCallbackLoadComplex(void *input,
     return (sample < params->window_N) ? cb_output[index] \
                                        : cufftComplex{0.f, 0.f};
 }
-"""
+""").substitute(callback_name=callback_name)
 
 
 # Problem input parameters
@@ -81,6 +85,7 @@ out = cp.fft.rfft(input_signals)
 # Apply window via load callback and inverse-transform the signal
 print("Transforming signal with irfft (cufftExecC2R)")
 with cp.fft.config.set_cufft_callbacks(cb_load=code,
+                                       cb_load_name=callback_name,
                                        cb_load_data=memptr_d,
                                        cb_ver='jit'):
     out = cp.fft.irfft(out)

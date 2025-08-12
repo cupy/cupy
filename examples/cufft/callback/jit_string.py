@@ -4,14 +4,14 @@ import cupy as cp
 
 
 # a load callback that overwrites the input array to 1
-callback_name = 'cufftJITCallbackLoadComplex'
+callback_name = 'my_complex_load_cb'
 
 code = string.Template(r'''
 #include <cufftXt.h>
 
 __device__ cufftComplex ${callback_name}(
     void *dataIn,
-    size_t offset,
+    unsigned long long offset,
     void *callerInfo,
     void *sharedPtr)
 {
