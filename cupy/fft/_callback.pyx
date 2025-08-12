@@ -658,14 +658,14 @@ cdef class _JITCallbackManager(_CallbackManager):
             if cb_load_data is not None:
                 cb_load_ptr = cb_load_data.ptr
             cufft.setJITCallback(
-                plan, self.cb_load_name, self.cb_load_lto, cb_load_type,
-                cb_load_ptr)
+                <intptr_t>plan, self.cb_load_name, self.cb_load_lto,
+                cb_load_type, cb_load_ptr)
         if self.cb_store:
             if cb_store_data is not None:
                 cb_store_ptr = cb_store_data.ptr
             cufft.setJITCallback(
-                plan, self.cb_store_name, self.cb_store_lto, cb_store_type,
-                cb_store_ptr)
+                <intptr_t>plan, self.cb_store_name, self.cb_store_lto,
+                cb_store_type, cb_store_ptr)
 
         return plan
 
