@@ -23,11 +23,6 @@ from cupy.cuda import cufft, Device
 from cupy.cuda.device import get_compute_capability
 
 
-pytestmark = pytest.mark.skipif(
-    cufft.getVersion() == 11303 and Device().compute_capability == '120',
-    reason="cuFFT static callbacks in CUDA 12.8.0 do not support sm120")
-
-
 def cuda_version():
     return cupy.cuda.runtime.runtimeGetVersion()
 
@@ -36,11 +31,19 @@ cb_ver_for_test = ('legacy', 'jit')
 
 
 def check_should_skip_legacy_test():
+    if not sys.platform.startswith('linux'):
+        pytest.skip('legacy callbacks are only supported on Linux')
     if Cython is None:
         pytest.skip("no working Cython")
     if 'LD_PRELOAD' in os.environ:
         pytest.skip("legacy callback does not work if libcufft.so "
                     "is preloaded")
+    if cufft.getVersion() == 13000 and get_compute_capability() == '75':
+        pytest.skip('cuFFT legacy callbacks in CUDA 13.0.0 do not support '
+                    'cc 7.5')
+    if cufft.getVersion() == 11303 and get_compute_capability() == '120':
+        pytest.skip('cuFFT legacy callbacks in CUDA 12.8.0 do not support '
+                    'cc 12.0')
 
 
 @contextlib.contextmanager
@@ -53,7 +56,7 @@ def use_temporary_cache_dir():
 
 _load_callback = r'''
 __device__ ${data_type} ${cb_name}(
-    void* dataIn, size_t offset, void* callerInfo, void* sharedPtr)
+    void* dataIn, ${offset_type} offset, void* callerInfo, void* sharedPtr)
 {
     ${data_type} x = ((${data_type}*)dataIn)[offset];
     ${element} *= 2.5;
@@ -65,7 +68,7 @@ __device__ ${load_type} d_loadCallbackPtr = ${cb_name};
 
 _load_callback_with_aux = r'''
 __device__ ${data_type} ${cb_name}(
-    void* dataIn, size_t offset, void* callerInfo, void* sharedPtr)
+    void* dataIn, ${offset_type} offset, void* callerInfo, void* sharedPtr)
 {
     ${data_type} x = ((${data_type}*)dataIn)[offset];
     ${element} *= *((${aux_type}*)callerInfo);
@@ -77,7 +80,7 @@ __device__ ${load_type} d_loadCallbackPtr = ${cb_name};
 
 _load_callback_with_aux2 = r'''
 __device__ ${data_type} ${cb_name}(
-    void* dataIn, size_t offset, void* callerInfo, void* sharedPtr)
+    void* dataIn, ${offset_type} offset, void* callerInfo, void* sharedPtr)
 {
     ${data_type} x = ((${data_type}*)dataIn)[offset];
     ${element} *= ((${aux_type}*)callerInfo)[offset];
@@ -89,7 +92,7 @@ __device__ ${load_type} d_loadCallbackPtr = ${cb_name};
 
 _store_callback = r'''
 __device__ void ${cb_name}(
-    void *dataOut, size_t offset, ${data_type} element,
+    void *dataOut, ${offset_type} offset, ${data_type} element,
     void *callerInfo, void *sharedPointer)
 {
     ${data_type} x = element;
@@ -102,7 +105,7 @@ __device__ ${store_type} d_storeCallbackPtr = ${cb_name};
 
 _store_callback_with_aux = r'''
 __device__ void ${cb_name}(
-    void *dataOut, size_t offset, ${data_type} element,
+    void *dataOut, ${offset_type} offset, ${data_type} element,
     void *callerInfo, void *sharedPointer)
 {
     ${data_type} x = element;
@@ -120,9 +123,11 @@ def _set_load_cb(
     callback = string.Template(code).substitute(
         data_type=data_type,
         aux_type=aux_type,
-        load_type=callback_type,
+        load_type=(callback_type if cb_ver == 'legacy' else \
+                   callback_type.replace('cufftCallback', 'cufftJITCallback')),
         cb_name=callback_name,
-        element=element)
+        element=element,
+        offset_type=('size_t' if cb_ver == 'legacy' else 'unsigned long long'))
     if cb_ver == 'jit':
         callback = "#include <cufftXt.h>\n\n" + callback
     return callback
@@ -134,9 +139,11 @@ def _set_store_cb(
     callback = string.Template(code).substitute(
         data_type=data_type,
         aux_type=aux_type,
-        store_type=callback_type,
+        store_type=(callback_type if cb_ver == 'legacy' else \
+                    callback_type.replace('cufftCallback', 'cufftJITCallback')),
         cb_name=callback_name,
-        element=element)
+        element=element,
+        offset_type=('size_t' if cb_ver == 'legacy' else 'unsigned long long'))
     if cb_ver == 'jit':
         callback = "#include <cufftXt.h>\n\n" + callback
     return callback
@@ -148,13 +155,8 @@ def _set_store_cb(
     'norm': [None, 'ortho'],
     'cb_ver': cb_ver_for_test,
 }))
-@pytest.mark.skipif(not sys.platform.startswith('linux'),
-                    reason='callbacks are only supported on Linux')
 @pytest.mark.skipif(cupy.cuda.runtime.is_hip,
                     reason='hipFFT does not support callbacks')
-@pytest.mark.skipif((cuda_version() >= 13000
-                     and get_compute_capability() == '75'),
-                    reason='CUDA 13 cuFFT doesn\'t support cc 7.5')
 class Test1dCallbacks:
 
     def _test_load_helper(self, xp, dtype, fft_func):
@@ -551,13 +553,8 @@ class Test1dCallbacks:
         ),
     )
 ))
-@pytest.mark.skipif(not sys.platform.startswith('linux'),
-                    reason='callbacks are only supported on Linux')
 @pytest.mark.skipif(cupy.cuda.runtime.is_hip,
                     reason='hipFFT does not support callbacks')
-@pytest.mark.skipif((cuda_version() >= 13000
-                     and get_compute_capability() == '75'),
-                    reason='CUDA 13 cuFFT doesn\'t support cc 7.5')
 class TestNdCallbacks:
 
     def _test_load_helper(self, xp, dtype, fft_func):
