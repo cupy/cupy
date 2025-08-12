@@ -670,9 +670,10 @@ cdef class _JITCallbackManager(_CallbackManager):
         return <intptr_t>plan
 
 
+# LHS is our legacy convention
 # RHS is a valid C identifier pattern
 cdef object cupy_callback_pattern = re.compile(
-    r'=\s*([A-Za-z_][A-Za-z0-9_]*)\s*;')
+    r'd_(?:load|store)CallbackPtr\s*=\s*([A-Za-z_]\w*)\s*;')
 
 
 cdef class set_cufft_callbacks:
@@ -820,18 +821,18 @@ cdef class set_cufft_callbacks:
             else:  # cb_ver = 'jit'
                 # We help users reuse their legacy callbacks with minimal
                 # code changes
-                if cb_load is not None and cb_load_name is None:
+                if isinstance(cb_load, str) and cb_load_name is None:
                     try:
                         cb_load_name = cupy_callback_pattern.search(
-                            'd_loadCallbackPtr').group(1)
+                            cb_load).group(1)
                     except AttributeError:
                         raise ValueError(
                             'cb_load_name cannot be inferred, please specify '
                             'it explicitly') from None
-                if cb_store is not None and cb_store_name is None:
+                if isinstance(cb_store, str) and cb_store_name is None:
                     try:
                         cb_store_name = cupy_callback_pattern.search(
-                            'd_storeCallbackPtr').group(1)
+                            cb_store).group(1)
                     except AttributeError:
                         raise ValueError(
                             'cb_store_name cannot be inferred, please specify '

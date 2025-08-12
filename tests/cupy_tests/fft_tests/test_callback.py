@@ -173,10 +173,9 @@ class TestInputValidationWith1dCallbacks:
 
     shape = (10,)
     norm = 'ortho'
-    cb_ver = 'legacy'
     dtype = np.complex64
 
-    def test_fft_load(self):
+    def test_fft_load_legacy(self):
         check_should_skip_legacy_test()
         warnings.resetwarnings()
 
@@ -184,17 +183,35 @@ class TestInputValidationWith1dCallbacks:
         code = _load_callback
         types = ('x.x', 'cufftComplex', 'cufftCallbackLoadC',
                  'cufftJITCallbackLoadComplex')
-        cb_load = _set_load_cb(code, *types, cb_ver=self.cb_ver)
+        cb_load = _set_load_cb(code, *types, cb_ver='legacy')
 
         a = testing.shaped_random(self.shape, cupy, self.dtype)
         with pytest.deprecated_call(
                 match='legacy callback is considered deprecated'):
             with use_temporary_cache_dir():
                 with cupy.fft.config.set_cufft_callbacks(
-                        cb_load=cb_load, cb_ver=self.cb_ver):
+                        cb_load=cb_load, cb_ver='legacy'):
                     fft(a, norm=self.norm)
 
-    def test_fft_store(self):
+    def test_fft_load_jit_no_name(self):
+        check_should_skip_legacy_test()
+        warnings.resetwarnings()
+
+        fft = cupy.fft.fft
+        code = _load_callback
+        types = ('x.x', 'cufftComplex', 'cufftCallbackLoadC',
+                 'cufftJITCallbackLoadComplex')
+        cb_load = _set_load_cb(code, *types, cb_ver='jit')
+
+        a = testing.shaped_random(self.shape, cupy, self.dtype)
+        with use_temporary_cache_dir():
+            # We omit passing cb_load_name. The test infra setup would check
+            # if we can infer it correctly.
+            with cupy.fft.config.set_cufft_callbacks(
+                    cb_load=cb_load, cb_ver='jit'):
+                fft(a, norm=self.norm)
+
+    def test_fft_store_legacy(self):
         check_should_skip_legacy_test()
         warnings.resetwarnings()
 
@@ -202,17 +219,35 @@ class TestInputValidationWith1dCallbacks:
         code = _store_callback
         types = ('x.y', 'cufftComplex', 'cufftCallbackStoreC',
                  'cufftJITCallbackStoreComplex')
-        cb_store = _set_store_cb(code, *types, cb_ver=self.cb_ver)
+        cb_store = _set_store_cb(code, *types, cb_ver='legacy')
 
         a = testing.shaped_random(self.shape, cupy, self.dtype)
         with pytest.deprecated_call(
                 match='legacy callback is considered deprecated'):
             with use_temporary_cache_dir():
                 with cupy.fft.config.set_cufft_callbacks(
-                        cb_store=cb_store, cb_ver=self.cb_ver):
+                        cb_store=cb_store, cb_ver='legacy'):
                     fft(a, norm=self.norm)
 
-    def test_fft_load_store_aux(self):
+    def test_fft_store_jit_no_name(self):
+        check_should_skip_legacy_test()
+        warnings.resetwarnings()
+
+        fft = cupy.fft.fft
+        code = _store_callback
+        types = ('x.y', 'cufftComplex', 'cufftCallbackStoreC',
+                 'cufftJITCallbackStoreComplex')
+        cb_store = _set_store_cb(code, *types, cb_ver='jit')
+
+        a = testing.shaped_random(self.shape, cupy, self.dtype)
+        with use_temporary_cache_dir():
+            # We omit passing cb_store_name. The test infra setup would check
+            # if we can infer it correctly.
+            with cupy.fft.config.set_cufft_callbacks(
+                    cb_store=cb_store, cb_ver='jit'):
+                fft(a, norm=self.norm)
+
+    def test_fft_load_store_legacy_aux(self):
         check_should_skip_legacy_test()
         warnings.resetwarnings()
 
@@ -229,8 +264,8 @@ class TestInputValidationWith1dCallbacks:
         store_types = (
             'x.y', 'cufftComplex', 'cufftCallbackStoreC',
             'cufftJITCallbackStoreComplex', 'float')
-        cb_load = _set_load_cb(load_code, *load_types, cb_ver=self.cb_ver)
-        cb_store = _set_store_cb(store_code, *store_types, cb_ver=self.cb_ver)
+        cb_load = _set_load_cb(load_code, *load_types, cb_ver='legacy')
+        cb_store = _set_store_cb(store_code, *store_types, cb_ver='legacy')
 
         a = testing.shaped_random(self.shape, cupy, self.dtype)
         with pytest.deprecated_call(
@@ -241,7 +276,7 @@ class TestInputValidationWith1dCallbacks:
                 with cupy.fft.config.set_cufft_callbacks(
                         cb_load=cb_load, cb_store=cb_store,
                         cb_load_aux_arr=load_aux, cb_store_aux_arr=store_aux,
-                        cb_ver=self.cb_ver):
+                        cb_ver='legacy'):
                     fft(a, norm=self.norm)
 
 
