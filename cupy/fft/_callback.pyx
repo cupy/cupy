@@ -667,7 +667,7 @@ cdef class _JITCallbackManager(_CallbackManager):
                 <intptr_t>plan, self.cb_store_name, self.cb_store_lto,
                 cb_store_type, cb_store_ptr)
 
-        return plan
+        return <intptr_t>plan
 
 
 # RHS is a valid C identifier pattern
