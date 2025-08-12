@@ -38,17 +38,24 @@ cdef inline void _initialize() except *:
     _L = _get_softlink()
 
     global cufftXtSetJITCallback
-    cufftXtSetJITCallback = <F_cufftXtSetJITCallback>_L.get('XtSetJITCallback')
+    if CUPY_CUDA_VERSION < 13000:
+        # __cufftXtSetJITCallback_12_7
+        cufftXtSetJITCallback = <F_cufftXtSetJITCallback>_L.get(
+            'XtSetJITCallback_12_7')
+    else:
+        cufftXtSetJITCallback = <F_cufftXtSetJITCallback>_L.get(
+            'XtSetJITCallback')
 
 cdef SoftLink _get_softlink():
     cdef int runtime_version
-    cdef str prefix = 'cufft'
+    cdef str prefix = None
     cdef str libname = None
 
     if CUPY_CUDA_VERSION != 0:
         runtime_version = runtime.runtimeGetVersion()
-        if 12020 <= runtime_version < 13000:
-            # CUDA 12.2+
+        if 12080 <= runtime_version < 13000:
+            # CUDA 12.8+
+            prefix = '__cufft'
             if _sys.platform == 'linux':
                 libname = 'libcufft.so.11'
             else:  # win
@@ -56,6 +63,7 @@ cdef SoftLink _get_softlink():
         # TODO(leofang): we don't actually know the upper bound!
         elif 13000 <= runtime_version < 14000:
             # CUDA 13.0+
+            prefix = 'cufft'
             if _sys.platform == 'linux':
                 libname = 'libcufft.so.12'
             else:  # win
