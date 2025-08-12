@@ -45,15 +45,21 @@ cdef SoftLink _get_softlink():
     cdef str prefix = 'cufft'
     cdef str libname = None
 
-    if CUPY_CUDA_VERSION != 0 and _sys.platform == 'linux':
+    if CUPY_CUDA_VERSION != 0:
         runtime_version = runtime.runtimeGetVersion()
         if 12020 <= runtime_version < 13000:
             # CUDA 12.2+
-            libname = 'libcufft.so.11'
+            if _sys.platform == 'linux':
+                libname = 'libcufft.so.11'
+            else:  # win
+                libname = 'cufft64_11.dll'
         # TODO(leofang): we don't actually know the upper bound!
         elif 13000 <= runtime_version < 14000:
             # CUDA 13.0+
-            libname = 'libcufft.so.12'
+            if _sys.platform == 'linux':
+                libname = 'libcufft.so.12'
+            else:  # win
+                libname = 'cufft64_12.dll'
 
     if libname is None:
         raise NotImplementedError
