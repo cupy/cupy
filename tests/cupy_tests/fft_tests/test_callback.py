@@ -6,7 +6,6 @@ import string
 import sys
 import tempfile
 from unittest import mock
-import warnings
 
 try:
     import Cython

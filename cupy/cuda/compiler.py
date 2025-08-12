@@ -647,7 +647,7 @@ def _compile_with_cache_cuda(
     elif backend == 'nvcc':
         if to_ltoir:
             # TODO(leofang): It's also possible to get LTO IR from nvcc
-             raise NotImplementedError
+            raise NotImplementedError
         rdc = _is_cudadevrt_needed(options)
         cubin = compile_using_nvcc(source, options, arch,
                                    name + '.cu', code_type='cubin',
