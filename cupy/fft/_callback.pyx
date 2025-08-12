@@ -577,12 +577,12 @@ cdef class _JITCallbackManager(_CallbackManager):
         return _cuda_include
 
     cdef _sanity_checks(self, cb_load, cb_store, cb_load_data, cb_store_data):
+        from cupy.cuda.cufft import getVersion as get_cufft_version
         if runtime._is_hip_environment:
             raise RuntimeError('hipFFT does not support callbacks')
-        if not sys.platform.startswith('linux'):
-            raise RuntimeError('cuFFT callbacks are only available on Linux')
-        if not (sys.maxsize > 2**32):
-            raise RuntimeError('cuFFT callbacks require 64 bit OS')
+        if get_cufft_version() < 11303:
+            raise RuntimeError(
+                'JIT callback support requires cuFFT from CUDA 12.8+')
         if cb_load is None and cb_store is None:
             raise ValueError('need to specify either cb_load or cb_store, '
                              'or both')

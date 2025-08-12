@@ -47,6 +47,11 @@ def check_should_skip_legacy_test():
                     'cc 12.0')
 
 
+def check_should_skip_jit_test():
+    if cufft.getVersion() < 11303:
+         pytest.skip('JIT callbacks require cuFFT from CUDA 12.8+')
+
+
 @contextlib.contextmanager
 def use_temporary_cache_dir():
     target = 'cupy.fft._callback.get_cache_dir'
@@ -253,6 +258,8 @@ class Test1dCallbacks:
     def _test_load_helper(self, xp, dtype, fft_func):
         if self.cb_ver == 'legacy':
             check_should_skip_legacy_test()
+        else:
+            check_should_skip_jit_test()
 
         # for simplicity we use the JIT callback names for both legacy/jit
         fft = getattr(xp.fft, fft_func)
@@ -317,6 +324,8 @@ class Test1dCallbacks:
     def _test_store_helper(self, xp, dtype, fft_func):
         if self.cb_ver == 'legacy':
             check_should_skip_legacy_test()
+        else:
+            check_should_skip_jit_test()
 
         fft = getattr(xp.fft, fft_func)
         code = _store_callback
@@ -392,6 +401,8 @@ class Test1dCallbacks:
     def _test_load_store_helper(self, xp, dtype, fft_func):
         if self.cb_ver == 'legacy':
             check_should_skip_legacy_test()
+        else:
+            check_should_skip_jit_test()
 
         # for simplicity we use the JIT callback names for both legacy/jit
         fft = getattr(xp.fft, fft_func)
@@ -491,6 +502,8 @@ class Test1dCallbacks:
     def test_fft_load_aux(self, xp, dtype):
         if self.cb_ver == 'legacy':
             check_should_skip_legacy_test()
+        else:
+            check_should_skip_jit_test()
 
         fft = xp.fft.fft
         c = _load_callback_with_aux2
@@ -530,6 +543,8 @@ class Test1dCallbacks:
     def _test_load_store_aux_helper(self, xp, dtype, fft_func):
         if self.cb_ver == 'legacy':
             check_should_skip_legacy_test()
+        else:
+            check_should_skip_jit_test()
 
         fft = getattr(xp.fft, fft_func)
         load_code = _load_callback_with_aux
@@ -667,6 +682,8 @@ class TestNdCallbacks:
     def _test_load_helper(self, xp, dtype, fft_func):
         if self.cb_ver == 'legacy':
             check_should_skip_legacy_test()
+        else:
+            check_should_skip_jit_test()
 
         # for simplicity we use the JIT callback names for both legacy/jit
         fft = getattr(xp.fft, fft_func)
@@ -735,6 +752,8 @@ class TestNdCallbacks:
     def _test_store_helper(self, xp, dtype, fft_func):
         if self.cb_ver == 'legacy':
             check_should_skip_legacy_test()
+        else:
+            check_should_skip_jit_test()
 
         fft = getattr(xp.fft, fft_func)
         store_code = _store_callback
@@ -814,6 +833,8 @@ class TestNdCallbacks:
     def _test_load_store_helper(self, xp, dtype, fft_func):
         if self.cb_ver == 'legacy':
             check_should_skip_legacy_test()
+        else:
+            check_should_skip_jit_test()
 
         fft = getattr(xp.fft, fft_func)
         load_code = _load_callback
@@ -915,6 +936,8 @@ class TestNdCallbacks:
     def _test_load_store_aux_helper(self, xp, dtype, fft_func):
         if self.cb_ver == 'legacy':
             check_should_skip_legacy_test()
+        else:
+            check_should_skip_jit_test()
 
         fft = getattr(xp.fft, fft_func)
         load_code = _load_callback_with_aux
