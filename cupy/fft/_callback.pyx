@@ -806,11 +806,10 @@ cdef class set_cufft_callbacks:
         cdef _CallbackManager mgr = _callback_mgr.get(key)
         if mgr is None:
             if cb_ver == 'legacy':
-                # TODO(leofang): adjust tests to allow raising this
-                # warnings.warn(
-                #     'Using the legacy callback is considered deprecated, '
-                #     'please switch to use cb_ver="jit" instead',
-                #     DeprecationWarning)
+                warnings.warn(
+                    'Using the legacy callback is considered deprecated, '
+                    'please switch to use cb_ver="jit" instead',
+                    DeprecationWarning)
                 mgr = _LegacyCallbackManager(
                     cb_load='' if cb_load is None else cb_load,
                     cb_store='' if cb_store is None else cb_store,

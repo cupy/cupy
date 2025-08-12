@@ -6,6 +6,7 @@ import string
 import sys
 import tempfile
 from unittest import mock
+import warnings
 
 try:
     import Cython
@@ -52,6 +53,10 @@ def use_temporary_cache_dir():
     with tempfile.TemporaryDirectory() as path:
         with mock.patch(target, lambda: path):
             yield path
+
+
+suppress_legacy_warning = pytest.mark.filterwarnings(
+    "ignore:.*legacy callback.*:DeprecationWarning")
 
 
 _load_callback = r'''
@@ -144,13 +149,95 @@ def _set_store_cb(
     callback = string.Template(code).substitute(
         data_type=data_type,
         aux_type=aux_type,
-        load_type=callback_type,
+        store_type=callback_type,
         cb_name=callback_name,
         element=element,
         offset_type=('size_t' if cb_ver == 'legacy' else 'unsigned long long'))
     if cb_ver == 'jit':
         callback = "#include <cufftXt.h>\n\n" + callback
     return callback
+
+
+# Note: this class is place here instead of at the end of this file, because
+# pytest does not reset warnings internally, and other tests would suppress
+# the warnings such that at the end we have no warnings to capture, but we want
+# to ensure warnings are raised.
+@pytest.mark.skipif(cupy.cuda.runtime.is_hip,
+                    reason='hipFFT does not support callbacks')
+class TestInputValidationWith1dCallbacks:
+
+    shape = (10,)
+    norm = 'ortho'
+    cb_ver = 'legacy'
+    dtype = np.complex64
+
+    def test_fft_load(self):
+        check_should_skip_legacy_test()
+        warnings.resetwarnings()
+
+        fft = cupy.fft.fft
+        code = _load_callback
+        types = ('x.x', 'cufftComplex', 'cufftCallbackLoadC',
+                 'cufftJITCallbackLoadComplex')
+        cb_load = _set_load_cb(code, *types, cb_ver=self.cb_ver)
+
+        a = testing.shaped_random(self.shape, cupy, self.dtype)
+        with pytest.deprecated_call(
+                match='legacy callback is considered deprecated'):
+            with use_temporary_cache_dir():
+                with cupy.fft.config.set_cufft_callbacks(
+                        cb_load=cb_load, cb_ver=self.cb_ver):
+                    fft(a, norm=self.norm)
+
+    def test_fft_store(self):
+        check_should_skip_legacy_test()
+        warnings.resetwarnings()
+
+        fft = cupy.fft.fft
+        code = _store_callback
+        types = ('x.y', 'cufftComplex', 'cufftCallbackStoreC',
+                 'cufftJITCallbackStoreComplex')
+        cb_store = _set_store_cb(code, *types, cb_ver=self.cb_ver)
+
+        a = testing.shaped_random(self.shape, cupy, self.dtype)
+        with pytest.deprecated_call(
+                match='legacy callback is considered deprecated'):
+            with use_temporary_cache_dir():
+                with cupy.fft.config.set_cufft_callbacks(
+                        cb_store=cb_store, cb_ver=self.cb_ver):
+                    fft(a, norm=self.norm)
+
+    def test_fft_load_store_aux(self):
+        check_should_skip_legacy_test()
+        warnings.resetwarnings()
+
+        fft = cupy.fft.fft
+        dtype = self.dtype
+        load_code = _load_callback_with_aux
+        store_code = _store_callback_with_aux
+        load_aux = cupy.asarray(2.5, dtype=cupy.dtype(dtype).char.lower())
+        store_aux = cupy.asarray(3.8, dtype=cupy.dtype(dtype).char.lower())
+
+        load_types = (
+            'x.x', 'cufftComplex', 'cufftCallbackLoadC',
+            'cufftJITCallbackLoadComplex', 'float')
+        store_types = (
+            'x.y', 'cufftComplex', 'cufftCallbackStoreC',
+            'cufftJITCallbackStoreComplex', 'float')
+        cb_load = _set_load_cb(load_code, *load_types, cb_ver=self.cb_ver)
+        cb_store = _set_store_cb(store_code, *store_types, cb_ver=self.cb_ver)
+
+        a = testing.shaped_random(self.shape, cupy, self.dtype)
+        with pytest.deprecated_call(
+                match='cb_load_aux_arr or cb_store_aux_arr is deprecated'), \
+            pytest.deprecated_call(
+                match='legacy callback is considered deprecated'):
+            with use_temporary_cache_dir():
+                with cupy.fft.config.set_cufft_callbacks(
+                        cb_load=cb_load, cb_store=cb_store,
+                        cb_load_aux_arr=load_aux, cb_store_aux_arr=store_aux,
+                        cb_ver=self.cb_ver):
+                    fft(a, norm=self.norm)
 
 
 @testing.parameterize(*testing.product({
@@ -203,21 +290,25 @@ class Test1dCallbacks:
 
         return out
 
+    @suppress_legacy_warning
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, contiguous_check=False)
     def test_fft_load(self, xp, dtype):
         return self._test_load_helper(xp, dtype, 'fft')
 
+    @suppress_legacy_warning
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, contiguous_check=False)
     def test_ifft_load(self, xp, dtype):
         return self._test_load_helper(xp, dtype, 'ifft')
 
+    @suppress_legacy_warning
     @testing.for_float_dtypes(no_float16=True)
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, contiguous_check=False)
     def test_rfft_load(self, xp, dtype):
         return self._test_load_helper(xp, dtype, 'rfft')
 
+    @suppress_legacy_warning
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, contiguous_check=False)
     def test_irfft_load(self, xp, dtype):
@@ -274,21 +365,25 @@ class Test1dCallbacks:
 
         return out
 
+    @suppress_legacy_warning
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, contiguous_check=False)
     def test_fft_store(self, xp, dtype):
         return self._test_store_helper(xp, dtype, 'fft')
 
+    @suppress_legacy_warning
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, contiguous_check=False)
     def test_ifft_store(self, xp, dtype):
         return self._test_store_helper(xp, dtype, 'ifft')
 
+    @suppress_legacy_warning
     @testing.for_float_dtypes(no_float16=True)
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, contiguous_check=False)
     def test_rfft_store(self, xp, dtype):
         return self._test_store_helper(xp, dtype, 'rfft')
 
+    @suppress_legacy_warning
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, contiguous_check=False)
     def test_irfft_store(self, xp, dtype):
@@ -366,26 +461,31 @@ class Test1dCallbacks:
 
         return out
 
+    @suppress_legacy_warning
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, contiguous_check=False)
     def test_fft_load_store(self, xp, dtype):
         return self._test_load_store_helper(xp, dtype, 'fft')
 
+    @suppress_legacy_warning
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, contiguous_check=False)
     def test_ifft_load_store(self, xp, dtype):
         return self._test_load_store_helper(xp, dtype, 'ifft')
 
+    @suppress_legacy_warning
     @testing.for_float_dtypes(no_float16=True)
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, contiguous_check=False)
     def test_rfft_load_store(self, xp, dtype):
         return self._test_load_store_helper(xp, dtype, 'rfft')
 
+    @suppress_legacy_warning
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, contiguous_check=False)
     def test_irfft_load_store(self, xp, dtype):
         return self._test_load_store_helper(xp, dtype, 'irfft')
 
+    @suppress_legacy_warning
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, contiguous_check=False)
     def test_fft_load_aux(self, xp, dtype):
@@ -422,7 +522,7 @@ class Test1dCallbacks:
             with use_temporary_cache_dir():
                 with xp.fft.config.set_cufft_callbacks(
                         cb_load=cb_load, cb_load_name=cb_load_name,
-                        cb_load_aux_arr=b, cb_ver=self.cb_ver):
+                        cb_load_data=b.data, cb_ver=self.cb_ver):
                     out = fft(a, n=self.n, norm=self.norm)
 
         return out
@@ -506,27 +606,32 @@ class Test1dCallbacks:
                 with xp.fft.config.set_cufft_callbacks(
                         cb_load=cb_load, cb_load_name=cb_load_name,
                         cb_store=cb_store, cb_store_name=cb_store_name,
-                        cb_load_aux_arr=load_aux, cb_store_aux_arr=store_aux,
+                        cb_load_data=load_aux.data,
+                        cb_store_data=store_aux.data,
                         cb_ver=self.cb_ver):
                     out = fft(a, n=self.n, norm=self.norm)
 
         return out
 
+    @suppress_legacy_warning
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, contiguous_check=False)
     def test_fft_load_store_aux(self, xp, dtype):
         return self._test_load_store_aux_helper(xp, dtype, 'fft')
 
+    @suppress_legacy_warning
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, contiguous_check=False)
     def test_ifft_load_store_aux(self, xp, dtype):
         return self._test_load_store_aux_helper(xp, dtype, 'ifft')
 
+    @suppress_legacy_warning
     @testing.for_float_dtypes(no_float16=True)
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, contiguous_check=False)
     def test_rfft_load_store_aux(self, xp, dtype):
         return self._test_load_store_aux_helper(xp, dtype, 'rfft')
 
+    @suppress_legacy_warning
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, contiguous_check=False)
     def test_irfft_load_store_aux(self, xp, dtype):
@@ -537,14 +642,12 @@ class Test1dCallbacks:
     testing.product_dict(
         [
             {'shape': (3, 4), 's': None, 'axes': None, 'norm': None},
-            {'shape': (3, 4), 's': (1, None), 'axes': None, 'norm': None},
-            {'shape': (3, 4), 's': (1, 5), 'axes': None, 'norm': None},
+            {'shape': (3, 4), 's': (1, 5), 'axes': (-2, -1), 'norm': None},
             {'shape': (3, 4), 's': None, 'axes': (-2, -1), 'norm': None},
             {'shape': (3, 4), 's': None, 'axes': None, 'norm': 'ortho'},
             {'shape': (2, 3, 4), 's': None, 'axes': None, 'norm': None},
-            {'shape': (2, 3, 4), 's': (1, 4, None),
-             'axes': None, 'norm': None},
-            {'shape': (2, 3, 4), 's': (1, 4, 10), 'axes': None, 'norm': None},
+            {'shape': (2, 3, 4), 's': (1, 4, 10),
+             'axes': (-3, -2, -1), 'norm': None},
             {'shape': (2, 3, 4), 's': None,
              'axes': (-3, -2, -1), 'norm': None},
             {'shape': (2, 3, 4), 's': None, 'axes': None, 'norm': 'ortho'},
@@ -601,24 +704,28 @@ class TestNdCallbacks:
 
         return out
 
+    @suppress_legacy_warning
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_fftn_load(self, xp, dtype):
         return self._test_load_helper(xp, dtype, 'fftn')
 
+    @suppress_legacy_warning
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_ifftn_load(self, xp, dtype):
         return self._test_load_helper(xp, dtype, 'ifftn')
 
+    @suppress_legacy_warning
     @testing.for_float_dtypes(no_float16=True)
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_rfftn_load(self, xp, dtype):
         return self._test_load_helper(xp, dtype, 'rfftn')
 
+    @suppress_legacy_warning
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -676,24 +783,28 @@ class TestNdCallbacks:
 
         return out
 
+    @suppress_legacy_warning
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_fftn_store(self, xp, dtype):
         return self._test_store_helper(xp, dtype, 'fftn')
 
+    @suppress_legacy_warning
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_ifftn_store(self, xp, dtype):
         return self._test_store_helper(xp, dtype, 'ifftn')
 
+    @suppress_legacy_warning
     @testing.for_float_dtypes(no_float16=True)
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_rfftn_store(self, xp, dtype):
         return self._test_store_helper(xp, dtype, 'rfftn')
 
+    @suppress_legacy_warning
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -773,24 +884,28 @@ class TestNdCallbacks:
 
         return out
 
+    @suppress_legacy_warning
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_fftn_load_store(self, xp, dtype):
         return self._test_load_store_helper(xp, dtype, 'fftn')
 
+    @suppress_legacy_warning
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_ifftn_load_store(self, xp, dtype):
         return self._test_load_store_helper(xp, dtype, 'ifftn')
 
+    @suppress_legacy_warning
     @testing.for_float_dtypes(no_float16=True)
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_rfftn_load_store(self, xp, dtype):
         return self._test_load_store_helper(xp, dtype, 'rfftn')
 
+    @suppress_legacy_warning
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -868,30 +983,35 @@ class TestNdCallbacks:
                 with xp.fft.config.set_cufft_callbacks(
                         cb_load=cb_load, cb_load_name=cb_load_name,
                         cb_store=cb_store, cb_store_name=cb_store_name,
-                        cb_load_aux_arr=load_aux, cb_store_aux_arr=store_aux,
+                        cb_load_data=load_aux.data,
+                        cb_store_data=store_aux.data,
                         cb_ver=self.cb_ver):
                     out = fft(a, s=self.s, axes=self.axes, norm=self.norm)
 
         return out
 
+    @suppress_legacy_warning
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_fftn_load_store_aux(self, xp, dtype):
         return self._test_load_store_aux_helper(xp, dtype, 'fftn')
 
+    @suppress_legacy_warning
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_ifftn_load_store_aux(self, xp, dtype):
         return self._test_load_store_aux_helper(xp, dtype, 'ifftn')
 
+    @suppress_legacy_warning
     @testing.for_float_dtypes(no_float16=True)
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_rfftn_load_store_aux(self, xp, dtype):
         return self._test_load_store_aux_helper(xp, dtype, 'rfftn')
 
+    @suppress_legacy_warning
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
