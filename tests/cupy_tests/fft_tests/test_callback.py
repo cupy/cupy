@@ -49,7 +49,7 @@ def check_should_skip_legacy_test():
 
 def check_should_skip_jit_test():
     if cufft.getVersion() < 11303:
-         pytest.skip('JIT callbacks require cuFFT from CUDA 12.8+')
+        pytest.skip('JIT callbacks require cuFFT from CUDA 12.8+')
 
 
 @contextlib.contextmanager
