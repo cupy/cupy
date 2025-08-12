@@ -29,7 +29,7 @@ import warnings
 from cupy import __version__ as _cupy_ver
 from cupy._environment import (get_nvcc_path, get_cuda_path)
 from cupy.cuda.compiler import (_get_bool_env_variable, CompileException)
-from cupy.cuda.compiler import _compile_ltoir_with_cache_cuda
+from cupy.cuda.compiler import _compile_with_cache_cuda
 
 
 cdef extern from '../cuda/cupy_cufft.h' nogil:
@@ -600,8 +600,8 @@ cdef class _JITCallbackManager(_CallbackManager):
     cdef bytes compile_lto(self, str source, tuple options):
         options += ('--std=c++11', '-I' + self._get_cuda_include())
         # TODO(leofang): support log_stream & jitify
-        return _compile_ltoir_with_cache_cuda(
-            source, options, None, get_cache_dir())
+        return _compile_with_cache_cuda(
+            source, options, None, get_cache_dir(), to_ltoir=True)
 
     cpdef create_plan(self, intptr_t prealloc_plan, tuple plan_info):
         cdef str plan_type
