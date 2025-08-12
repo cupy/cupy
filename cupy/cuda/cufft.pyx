@@ -18,8 +18,8 @@ from cupy.cuda import stream
 
 
 ctypedef Result (*F_cufftXtSetJITCallback)(
-    Handle plan, const char* callback_name, const void* callback, size_t callback_size,
-    callbackType callback_type, void **caller_info) nogil
+    Handle plan, const char* callback_name, const void* callback,
+    size_t callback_size, callbackType callback_type, void **caller_info) nogil
 cdef F_cufftXtSetJITCallback cufftXtSetJITCallback
 
 
@@ -50,7 +50,8 @@ cdef SoftLink _get_softlink():
         if 12020 <= runtime_version < 13000:
             # CUDA 12.2+
             libname = 'libcufft.so.11'
-        elif 13000 <= runtime_version < 14000:  # TODO: we don't actually know the upper bound!
+        # TODO(leofang): we don't actually know the upper bound!
+        elif 13000 <= runtime_version < 14000:
             # CUDA 13.0+
             libname = 'libcufft.so.12'
 

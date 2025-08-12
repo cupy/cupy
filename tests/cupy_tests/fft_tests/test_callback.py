@@ -19,7 +19,7 @@ import pytest
 
 import cupy
 from cupy import testing
-from cupy.cuda import cufft, Device
+from cupy.cuda import cufft
 from cupy.cuda.device import get_compute_capability
 
 
@@ -120,11 +120,13 @@ __device__ ${store_type} d_storeCallbackPtr = ${cb_name};
 def _set_load_cb(
         code, element, data_type, callback_type, callback_name,
         aux_type=None, cb_ver=''):
+    if cb_ver == 'jit':
+        callback_type = callback_type.replace(
+            'cufftCallback', 'cufftJITCallback')
     callback = string.Template(code).substitute(
         data_type=data_type,
         aux_type=aux_type,
-        load_type=(callback_type if cb_ver == 'legacy' else \
-                   callback_type.replace('cufftCallback', 'cufftJITCallback')),
+        load_type=callback_type,
         cb_name=callback_name,
         element=element,
         offset_type=('size_t' if cb_ver == 'legacy' else 'unsigned long long'))
@@ -136,11 +138,13 @@ def _set_load_cb(
 def _set_store_cb(
         code, element, data_type, callback_type, callback_name,
         aux_type=None, cb_ver=''):
+    if cb_ver == 'jit':
+        callback_type = callback_type.replace(
+            'cufftCallback', 'cufftJITCallback')
     callback = string.Template(code).substitute(
         data_type=data_type,
         aux_type=aux_type,
-        store_type=(callback_type if cb_ver == 'legacy' else \
-                    callback_type.replace('cufftCallback', 'cufftJITCallback')),
+        load_type=callback_type,
         cb_name=callback_name,
         element=element,
         offset_type=('size_t' if cb_ver == 'legacy' else 'unsigned long long'))
@@ -393,10 +397,10 @@ class Test1dCallbacks:
         # for simplicity we use the JIT callback names for both legacy/jit
         if dtype == np.complex64:
             types = ('x.x', 'cufftComplex', 'cufftCallbackLoadC',
-                'cufftJITCallbackLoadComplex', 'float')
+                     'cufftJITCallbackLoadComplex', 'float')
         else:  # complex128
             types = ('x.x', 'cufftDoubleComplex', 'cufftCallbackLoadZ',
-                'cufftJITCallbackLoadDoubleComplex', 'double')
+                     'cufftJITCallbackLoadDoubleComplex', 'double')
         cb_load = _set_load_cb(c, *types, cb_ver=self.cb_ver)
         cb_load_name = types[3] if self.cb_ver == 'jit' else None
 

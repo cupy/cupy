@@ -587,7 +587,7 @@ cdef class _JITCallbackManager(_CallbackManager):
             raise ValueError('need to specify either cb_load or cb_store, '
                              'or both')
         if cb_load is not None and cb_store is not None:
-            if type(cb_load) != type(cb_store):
+            if type(cb_load) is not type(cb_store):
                 raise TypeError("when both cb_load and cb_store are given, "
                                 "they must be of the same type")
         if cb_load_data is not None:
@@ -658,18 +658,21 @@ cdef class _JITCallbackManager(_CallbackManager):
             if cb_load_data is not None:
                 cb_load_ptr = cb_load_data.ptr
             cufft.setJITCallback(
-                plan, self.cb_load_name, self.cb_load_lto, cb_load_type, cb_load_ptr)
+                plan, self.cb_load_name, self.cb_load_lto, cb_load_type,
+                cb_load_ptr)
         if self.cb_store:
             if cb_store_data is not None:
                 cb_store_ptr = cb_store_data.ptr
             cufft.setJITCallback(
-                plan, self.cb_store_name, self.cb_store_lto, cb_store_type, cb_store_ptr)
+                plan, self.cb_store_name, self.cb_store_lto, cb_store_type,
+                cb_store_ptr)
 
         return plan
 
 
 # RHS is a valid C identifier pattern
-cdef object cupy_callback_pattern = re.compile(r'=\s*([A-Za-z_][A-Za-z0-9_]*)\s*;')
+cdef object cupy_callback_pattern = re.compile(
+    r'=\s*([A-Za-z_][A-Za-z0-9_]*)\s*;')
 
 
 cdef class set_cufft_callbacks:
@@ -816,16 +819,24 @@ cdef class set_cufft_callbacks:
                 )
                 _callback_mgr[key] = mgr  # keep the Python module alive
             else:  # cb_ver = 'jit'
+                # We help users reuse their legacy callbacks with minimal
+                # code changes
                 if cb_load is not None and cb_load_name is None:
                     try:
-                        cb_load_name = cupy_callback_pattern.search('d_loadCallbackPtr').group(1)
+                        cb_load_name = cupy_callback_pattern.search(
+                            'd_loadCallbackPtr').group(1)
                     except AttributeError:
-                        cb_load_name = ""
+                        raise ValueError(
+                            'cb_load_name cannot be inferred, please specify '
+                            'it explicitly') from None
                 if cb_store is not None and cb_store_name is None:
                     try:
-                        cb_store_name = cupy_callback_pattern.search('d_storeCallbackPtr').group(1)
+                        cb_store_name = cupy_callback_pattern.search(
+                            'd_storeCallbackPtr').group(1)
                     except AttributeError:
-                        cb_store_name = ""
+                        raise ValueError(
+                            'cb_store_name cannot be inferred, please specify '
+                            'it explicitly') from None
                 mgr = _JITCallbackManager(
                     cb_load=cb_load,
                     cb_store=cb_store,
