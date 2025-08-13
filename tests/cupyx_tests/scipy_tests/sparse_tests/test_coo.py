@@ -601,7 +601,7 @@ class TestCooMatrixScipyComparison:
         x = _make3(xp, sp, self.dtype).tocoo()
         return m.dot(x)
 
-    @testing.with_requires('scipy<1.16')
+    @testing.with_requires('scipy>=1.8.0rc1', 'scipy<1.16')
     def test_dot_zero_dim(self):
         for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
             m = _make(xp, sp, self.dtype)
