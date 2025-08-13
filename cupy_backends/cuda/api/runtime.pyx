@@ -12,9 +12,9 @@ There are four differences compared to the original C API.
 from libc.stdint cimport uint64_t
 from libc.string cimport memset as c_memset
 
-import threading as _threading
-
 cimport cpython  # NOQA
+from cpython.pythread cimport (
+    PyThread_tss_create, PyThread_tss_get, PyThread_tss_set)
 cimport cython  # NOQA
 
 from cupy_backends.cuda.api cimport driver  # NOQA
@@ -48,7 +48,11 @@ cdef class MemPoolProps:
 # Thread-local storage
 ###############################################################################
 
-cdef object _thread_local = _threading.local()
+# TODO(seberg): Note that this does no garbage collection on the thread
+# local state or stored data.  Not sure if one should (ideally) have that.
+cdef Py_tss_t _thread_local_key
+if PyThread_tss_create(&_thread_local_key) != 0:
+    raise MemoryError()
 
 
 cdef class _ThreadLocal:
@@ -61,10 +65,14 @@ cdef class _ThreadLocal:
 
     @staticmethod
     cdef _ThreadLocal get():
-        try:
-            tls = _thread_local.tls
-        except AttributeError:
-            tls = _thread_local.tls = _ThreadLocal()
+        cdef void *tls = PyThread_tss_get(&_thread_local_key)
+        if tls == NULL:
+            new = _ThreadLocal()
+            tls = <void *>new
+            if PyThread_tss_set(&_thread_local_key, tls) != 0:
+                raise MemoryError()
+            cpython.Py_INCREF(new)  # stored in thread local
+
         return <_ThreadLocal>tls
 
 
@@ -784,6 +792,18 @@ cpdef PointerAttributes pointerGetAttributes(intptr_t ptr):
             attrs.type)
     ELSE:  # for RTD
         return None
+
+cpdef int pointerGetMemoryType(intptr_t ptr) except -1:
+    ''' Get the memory type, returns -1 for RTD '''
+    cdef _PointerAttributes attrs
+    status = cudaPointerGetAttributes(&attrs, <void*>ptr)
+    check_status(status)
+    IF CUPY_CUDA_VERSION > 0 or 60000000 <= CUPY_HIP_VERSION:
+        return attrs.type
+    ELIF 0 < CUPY_HIP_VERSION < 60000000:
+        return attrs.memoryType
+    ELSE:
+        raise ValueError("Fetching memory unsupported.")
 
 cpdef intptr_t deviceGetDefaultMemPool(int device) except? 0:
     '''Get the default mempool on the current device.'''
