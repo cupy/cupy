@@ -2,14 +2,6 @@ from libc.stdint cimport intptr_t
 
 from cupy_backends.cuda.api cimport runtime
 from cupy._core.core cimport _ndarray_base
-from cupy.cuda cimport cufft  # this is the module without legacy callback
-from cupy.cuda.cufft cimport (
-    CUFFT_C2C, CUFFT_C2R, CUFFT_R2C,
-    CUFFT_Z2Z, CUFFT_Z2D, CUFFT_D2Z,
-    CUFFT_CB_LD_COMPLEX, CUFFT_CB_LD_COMPLEX_DOUBLE,
-    CUFFT_CB_LD_REAL, CUFFT_CB_LD_REAL_DOUBLE,
-    CUFFT_CB_ST_COMPLEX, CUFFT_CB_ST_COMPLEX_DOUBLE,
-    CUFFT_CB_ST_REAL, CUFFT_CB_ST_REAL_DOUBLE,)
 from cupy.cuda.device cimport get_compute_capability
 from cupy.cuda.memory cimport MemoryPointer
 
@@ -30,20 +22,6 @@ from cupy import __version__ as _cupy_ver
 from cupy._environment import (get_nvcc_path, get_cuda_path)
 from cupy.cuda.compiler import (_get_bool_env_variable, CompileException)
 from cupy.cuda.compiler import _compile_with_cache_cuda
-
-
-cdef extern from '../cuda/cupy_cufft.h' nogil:
-    ctypedef int Result 'cufftResult_t'
-    IF CUPY_HIP_VERSION > 0:
-        ctypedef struct hipHandle 'hipfftHandle_t':
-            pass
-        ctypedef hipHandle* Handle 'cufftHandle'
-    ELSE:
-        ctypedef int Handle 'cufftHandle'
-
-    # cuFFT Helper Function
-    Result cufftCreate(Handle *plan)
-    Result cufftSetAutoAllocation(Handle plan, int autoAllocate)
 
 
 # information needed for building an external module
@@ -485,6 +463,14 @@ cdef class _LegacyCallbackManager(_CallbackManager):
             follow.
 
         '''
+        from cupy.cuda.cufft import (
+            CUFFT_C2C, CUFFT_C2R, CUFFT_R2C,
+            CUFFT_Z2Z, CUFFT_Z2D, CUFFT_D2Z,
+            CUFFT_CB_LD_COMPLEX, CUFFT_CB_LD_COMPLEX_DOUBLE,
+            CUFFT_CB_LD_REAL, CUFFT_CB_LD_REAL_DOUBLE,
+            CUFFT_CB_ST_COMPLEX, CUFFT_CB_ST_COMPLEX_DOUBLE,
+            CUFFT_CB_ST_REAL, CUFFT_CB_ST_REAL_DOUBLE,)
+
         cdef MemoryPointer cb_load_data = self.cb_load_data
         cdef MemoryPointer cb_store_data = self.cb_store_data
         cdef intptr_t cb_load_ptr=0, cb_store_ptr=0
@@ -622,6 +608,14 @@ cdef class _JITCallbackManager(_CallbackManager):
             follow.
 
         '''
+        from cupy.cuda.cufft import (
+            CUFFT_C2C, CUFFT_C2R, CUFFT_R2C,
+            CUFFT_Z2Z, CUFFT_Z2D, CUFFT_D2Z,
+            CUFFT_CB_LD_COMPLEX, CUFFT_CB_LD_COMPLEX_DOUBLE,
+            CUFFT_CB_LD_REAL, CUFFT_CB_LD_REAL_DOUBLE,
+            CUFFT_CB_ST_COMPLEX, CUFFT_CB_ST_COMPLEX_DOUBLE,
+            CUFFT_CB_ST_REAL, CUFFT_CB_ST_REAL_DOUBLE,)
+
         cdef MemoryPointer cb_load_data = self.cb_load_data
         cdef MemoryPointer cb_store_data = self.cb_store_data
         cdef intptr_t cb_load_ptr=0, cb_store_ptr=0
@@ -647,12 +641,9 @@ cdef class _JITCallbackManager(_CallbackManager):
         else:
             raise ValueError
 
-        cdef Handle plan
-        with nogil:
-            result = cufftCreate(&plan)
-            if result == 0:
-                result = cufftSetAutoAllocation(plan, 0)
-        cufft.check_result(result)
+        from cupy.cuda import cufft
+        cdef intptr_t plan = cufft.create()
+        cufft.setAutoAllocation(plan, 0)
 
         if self.cb_load:
             if cb_load_data is not None:

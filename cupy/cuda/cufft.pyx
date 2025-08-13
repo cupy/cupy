@@ -20,7 +20,7 @@ from cupy.cuda import stream
 ctypedef Result (*F_cufftXtSetJITCallback)(
     Handle plan, const char* callback_name, const void* callback,
     size_t callback_size, callbackType callback_type, void **caller_info) nogil
-cdef F_cufftXtSetJITCallback cufftXtSetJITCallback
+cdef F_cufftXtSetJITCallback _cufftXtSetJITCallback
 
 
 # ****************** SoftLink utilities ******************
@@ -37,13 +37,13 @@ cdef inline void _initialize() except *:
     global _L
     _L = _get_softlink()
 
-    global cufftXtSetJITCallback
+    global _cufftXtSetJITCallback
     if CUPY_CUDA_VERSION < 13000:
         # __cufftXtSetJITCallback_12_7
-        cufftXtSetJITCallback = <F_cufftXtSetJITCallback>_L.get(
+        _cufftXtSetJITCallback = <F_cufftXtSetJITCallback>_L.get(
             'XtSetJITCallback_12_7')
     else:
-        cufftXtSetJITCallback = <F_cufftXtSetJITCallback>_L.get(
+        _cufftXtSetJITCallback = <F_cufftXtSetJITCallback>_L.get(
             'XtSetJITCallback')
 
 cdef SoftLink _get_softlink():
@@ -1259,7 +1259,8 @@ cpdef XtExec(intptr_t plan, intptr_t idata, intptr_t odata, int direction):
 
 
 cpdef intptr_t setCallback(
-        intptr_t plan, int cb_type, bint is_load, intptr_t aux_arr=0) except*:
+        intptr_t plan, int cb_type, bint is_load,
+        intptr_t aux_arr=0) except?-1:
     cdef Handle h = <Handle>plan  # no-cython-lint
     cdef int result  # no-cython-lint
     cdef void** callerInfo  # no-cython-lint
@@ -1278,9 +1279,25 @@ cpdef intptr_t setCallback(
                            'support callback')
 
 
-cpdef void setJITCallback(
+cpdef intptr_t create() except?-1:
+    cdef Handle plan
+    with nogil:
+        result = cufftCreate(&plan)
+    check_result(result)
+    return <intptr_t>plan
+
+
+cpdef int setAutoAllocation(intptr_t plan, int autoAllocate) except?-1:
+    cdef Handle h = <Handle>plan
+    with nogil:
+        result = cufftSetAutoAllocation(h, autoAllocate)
+    check_result(result)
+    return 0
+
+
+cpdef int setJITCallback(
         intptr_t plan, str callback_name, bytes callback, int callback_type,
-        intptr_t caller_info) except*:
+        intptr_t caller_info) except?-1:
     initialize()
     cdef Handle h = <Handle>plan  # no-cython-lint
     cdef bytes callback_name_data = callback_name.encode()
@@ -1290,7 +1307,8 @@ cpdef void setJITCallback(
     cdef void* caller_info_ptr = <void*>(caller_info)
 
     with nogil:
-        result = cufftXtSetJITCallback(
+        result = _cufftXtSetJITCallback(
             h, callback_name_ptr, callback_ptr, callback_size,
             <callbackType>callback_type, &caller_info_ptr)
     check_result(result)
+    return 0
