@@ -473,7 +473,7 @@
   target: "cuda129"
   tags: ["@push", "full", "mini", "cuda129"]
   system: "linux"
-  os: "ubuntu:20.04"
+  os: "ubuntu:24.04"
   cuda: "12.9"
   rocm: null
   nccl: "2.26"
@@ -505,7 +505,7 @@
   target: "cuda130"
   tags: ["@push", "full", "mini", "cuda130"]
   system: "linux"
-  os: "ubuntu:22.04"
+  os: "ubuntu:24.04"
   cuda: "13.0"
   rocm: null
   nccl: "2.27"
