@@ -459,9 +459,6 @@ def make_extensions(ctx: Context, compiler, use_cython):
             s_file = copy.deepcopy(s)
             name = module_extension_name(f)
 
-            if name.endswith('fft._callback') and not PLATFORM_LINUX:
-                continue
-
             rpath = []
             if not ctx.no_rpath:
                 # Add library directories (e.g., `/usr/local/cuda/lib64`) to
