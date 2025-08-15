@@ -10,7 +10,7 @@ import json
 import os
 import re
 import sys
-from typing import Any, Dict, Optional, Set
+from typing import Any, Optional
 import urllib.request
 
 import github
@@ -23,8 +23,8 @@ def _log(msg: str) -> None:
 
 
 def _forward_to_flexci(
-        event_name: str, payload: Dict[str, Any], secret: str,
-        projects: Set[str], base_url: str) -> bool:
+        event_name: str, payload: dict[str, Any], secret: str,
+        projects: set[str], base_url: str) -> bool:
     """
     Submits the GitHub webhook payload to FlexCI.
     """
@@ -58,8 +58,8 @@ def _forward_to_flexci(
 
 
 def _fill_commit_status(
-        event_name: str, payload: Dict[str, Any], token: str,
-        projects: Set[str], context_prefix: str, base_url: str) -> None:
+        event_name: str, payload: dict[str, Any], token: str,
+        projects: set[str], context_prefix: str, base_url: str) -> None:
     gh_repo = github.Github(token).get_repo(payload['repository']['full_name'])
     if event_name == 'push':
         sha = payload['after']
@@ -94,7 +94,7 @@ def _fill_commit_status(
             state='success', description='Skipped', context=context)
 
 
-def extract_requested_tags(comment: str) -> Optional[Set[str]]:
+def extract_requested_tags(comment: str) -> Optional[set[str]]:
     """
     Returns the set of test tags requested in the comment.
     """
@@ -197,8 +197,8 @@ def main(argv: Any) -> int:
         _log(f'Invalid event name: {event_name}')
         return 1
 
-    projects_dispatch: Set[str] = set()
-    projects_skip: Set[str] = set()
+    projects_dispatch: set[str] = set()
+    projects_skip: set[str] = set()
     for project, tags in project_tags.items():
         dispatch = (len(set(tags) & requested_tags) != 0)
         if dispatch:
