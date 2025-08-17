@@ -6,7 +6,8 @@ from __future__ import annotations
 
 import cupy
 from cupyx.scipy.interpolate._interpnd import (
-    NDInterpolatorBase, _ndim_coords_from_arrays)
+    LinearNDInterpolator, NDInterpolatorBase,
+    CloughTocher2DInterpolator, _ndim_coords_from_arrays)
 from cupyx.scipy.spatial import KDTree
 
 
@@ -157,3 +158,171 @@ class NearestNDInterpolator(NDInterpolatorBase):
         interp_values = interp_values.reshape(new_shape)
 
         return interp_values
+
+
+def griddata(points, values, xi,
+             method='linear', fill_value=cupy.nan, rescale=False):
+    """
+    Interpolate unstructured N-dimensional data using GPU-accelerated CuPy.
+
+    This function performs interpolation of scattered data points onto a set of
+    query points using GPU-accelerated algorithms, leveraging CuPy for
+    high-performance computation.
+    It supports nearest-neighbor, linear, and cubic interpolation methods
+    for 1D and multi-dimensional data.
+
+    Parameters
+    ----------
+    points : 2-D ndarray of floats with shape (n, D),
+    or length D tuple of 1-D ndarrays with shape (n,)
+        Data point coordinates. Must be a CuPy array
+        or convertible to one.
+    values : ndarray of float or complex, shape (n,)
+        Data values corresponding to `points`.
+        Must be a CuPy array or convertible to one.
+    xi : 2-D ndarray of floats with shape (m, D),
+    or length D tuple of ndarrays broadcastable to the same shape
+        Points at which to interpolate data.
+        Must be a CuPy array or convertible to one.
+    method : {'linear', 'nearest', 'cubic'}, optional
+        Method of interpolation. One of:
+
+        ``nearest``
+          Returns the value at the data point closest
+          to the point of interpolation.
+          See `NearestNDInterpolator` for more details.
+
+        ``linear``
+          Tessellates the input point set to N-D simplices
+          and interpolates linearly on each simplex.
+          See `LinearNDInterpolator` for more details.
+
+        ``cubic``
+          For 1D data, uses a cubic spline (see `CubicSpline`).
+          For 2D data, uses a piecewise cubic,
+          continuously differentiable (C1),
+          and approximately curvature-minimizing polynomial surface
+          (see `CloughTocher2DInterpolator`).
+          Not supported for dimensions > 2.
+
+    fill_value : float, optional
+        Value used to fill in for requested points
+        outside the convex hull of the input points.
+        If not provided, the default is ``nan``.
+        This option has no effect for the 'nearest' method.
+    rescale : bool, optional
+        Rescale points to the unit cube before performing interpolation.
+        This is useful if some of the input dimensions
+        have incommensurable units and differ by many orders of magnitude.
+
+    Returns
+    -------
+    ndarray
+        Array of interpolated values with shape determined by `xi`.
+
+    Notes
+    -----
+    - This implementation is fully GPU-accelerated using CuPy,
+        ensuring high performance for large datasets.
+    - For 'nearest' and 'linear' methods, the function uses Delaunay
+        triangulation on the GPU for multi-dimensional data.
+    - For 'cubic' interpolation in 1D, it employs `CubicSpline`.
+        In 2D, it uses `CloughTocher2DInterpolator`.
+    - The `rescale` option normalizes input coordinates
+        to a unit cube on the GPU, which may improve numerical stability.
+    - All inputs (`points`, `values`, `xi`) are converted to CuPy arrays
+        to ensure GPU compatibility.
+    - For optimal performance, ensure inputs are already CuPy arrays
+        to avoid CPU-GPU data transfers.
+
+    Examples
+    --------
+    Suppose we want to interpolate the 2-D function:
+
+    >>> def func(x, y):
+    ...     return x * (1 - x) * cupy.cos(4 * cupy.pi * x) *
+            cupy.sin(4 * cupy.pi * y**2)**2
+
+    on a grid in [0, 1]x[0, 1]:
+
+    >>> grid_x, grid_y = cupy.mgrid[0:1:100j, 0:1:200j]
+    >>> rng = cupy.random.default_rng()
+    >>> points = rng.random((1000, 2))
+    >>> values = func(points[:, 0], points[:, 1])
+
+    Interpolate using different methods:
+
+    >>> from cupyx.scipy.interpolate import griddata
+    >>> grid_z0 = griddata(points, values, (grid_x, grid_y), method='nearest')
+    >>> grid_z1 = griddata(points, values, (grid_x, grid_y), method='linear')
+    >>> grid_z2 = griddata(points, values, (grid_x, grid_y), method='cubic')
+
+    Visualize the results (assuming matplotlib with CuPy backend):
+
+    >>> import matplotlib.pyplot as plt
+    >>> plt.subplot(221)
+    >>> plt.imshow(func(grid_x, grid_y).get().T,
+        extent=(0, 1, 0, 1), origin='lower')
+    >>> plt.plot(points[:, 0].get(), points[:, 1].get(), 'k.', ms=1)
+    >>> plt.title('Original')
+    >>> plt.subplot(222)
+    >>> plt.imshow(grid_z0.get().T, extent=(0, 1, 0, 1), origin='lower')
+    >>> plt.title('Nearest')
+    >>> plt.subplot(223)
+    >>> plt.imshow(grid_z1.get().T, extent=(0, 1, 0, 1), origin='lower')
+    >>> plt.title('Linear')
+    >>> plt.subplot(224)
+    >>> plt.imshow(grid_z2.get().T, extent=(0, 1, 0, 1), origin='lower')
+    >>> plt.title('Cubic')
+    >>> plt.gcf().set_size_inches(6, 6)
+    >>> plt.show()
+
+    See Also
+    --------
+    LinearNDInterpolator : Piecewise linear interpolator in N dimensions.
+    NearestNDInterpolator : Nearest-neighbor interpolator in N dimensions.
+    CloughTocher2DInterpolator : Piecewise cubic, C1 smooth,
+    curvature-minimizing interpolator in 2D.
+    CubicSpline : Cubic spline interpolator for 1D data.
+    RegularGridInterpolator : Interpolator on a regular or rectilinear grid
+    in arbitrary dimensions.
+    interpn : Interpolation on a regular grid or rectilinear grid.
+    """
+    points = _ndim_coords_from_arrays(points)
+    if points.ndim < 2:
+        ndim = points.ndim
+    else:
+        ndim = points.shape[-1]
+
+    if ndim == 1 and method in ('nearest', 'linear', 'cubic'):
+        from ._polyint import interp1d
+        points = points.ravel()
+        if isinstance(xi, tuple):
+            if len(xi) != 1:
+                raise ValueError("invalid number of dimensions in xi")
+            xi, = xi
+        # Sort points/values together, necessary as input for interp1d
+        idx = cupy.argsort(points)
+        points = points[idx]
+        values = values[idx]
+        if method == 'nearest':
+            fill_value = 'extrapolate'
+        ip = interp1d(points, values, kind=method, axis=0, bounds_error=False,
+                      fill_value=fill_value)
+        return ip(xi)
+    elif method == 'nearest':
+        ip = NearestNDInterpolator(points, values, rescale=rescale)
+        return ip(xi)
+    elif method == 'linear':
+        ip = LinearNDInterpolator(points, values, fill_value=fill_value,
+                                  rescale=rescale)
+        return ip(xi)
+    elif method == 'cubic' and ndim == 2:
+        ip = CloughTocher2DInterpolator(points, values, fill_value=fill_value,
+                                        rescale=rescale)
+        return ip(xi)
+    else:
+        raise ValueError(
+            f"Unknown interpolation method {method!r} "
+            f"for {ndim} dimensional data"
+        )
