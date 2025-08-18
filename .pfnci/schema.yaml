@@ -70,7 +70,7 @@ cuda:
     full_version: "12.3.0"
     repository: "nvidia/cuda"
   "12.4":
-    full_version: "12.4.0"
+    full_version: "12.4.1"
     repository: "nvidia/cuda"
   "12.5":
     full_version: "12.5.0"
