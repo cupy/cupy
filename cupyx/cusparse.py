@@ -1359,12 +1359,11 @@ class DnMatDescriptor(BaseDescriptor):
     @classmethod
     def create(cls, a):
         assert a.ndim == 2
-        assert a.flags.f_contiguous
         rows, cols = a.shape
-        ld = rows
+        ld = cols if a.flags.c_contiguous else rows
         cuda_dtype = _dtype.to_cuda_dtype(a.dtype)
         desc = _cusparse.createDnMat(rows, cols, ld, a.data.ptr, cuda_dtype,
-                                     _cusparse.CUSPARSE_ORDER_COL)
+                                     _cusparse.CUSPARSE_ORDER_ROW if a.flags.c_contiguous else _cusparse.CUSPARSE_ORDER_COL)
         get = _cusparse.dnMatGet
         destroy = _cusparse.destroyDnMat
         return DnMatDescriptor(desc, get, destroy)
@@ -1747,7 +1746,8 @@ def denseToSparse(x, format='csr'):
 
     assert x.ndim == 2
     assert x.dtype.char in 'fdFD'
-    x = _cupy.asfortranarray(x)
+    # TODO: why does this improve C-contiguous timings to cast if the array is already c contiguous?
+    x = _cupy.ascontiguousarray(x) if (format == "csr" and x.flags.c_contiguous) else _cupy.asfortranarray(x)
     desc_x = DnMatDescriptor.create(x)
     if format == 'csr':
         y = cupyx.scipy.sparse.csr_matrix(x.shape, dtype=x.dtype)
@@ -1802,13 +1802,12 @@ def denseToSparse(x, format='csr'):
     return y
 
 
-def sparseToDense(x, out=None):
+def sparseToDense(x, out=None, order=None):
     """Converts sparse matrix to a dense matrix.
 
     Args:
         x (cupyx.scipy.sparse.spmatrix): A sparse matrix to convert.
         out (cupy.ndarray or None): A dense metrix to store the result.
-            It must be F-contiguous.
 
     Returns:
         cupy.ndarray: A converted dense matrix.
@@ -1820,9 +1819,8 @@ def sparseToDense(x, out=None):
     dtype = x.dtype
     assert dtype.char in 'fdFD'
     if out is None:
-        out = _cupy.zeros(x.shape, dtype=dtype, order='F')
+        out = _cupy.zeros(x.shape, dtype=dtype, order="F" if order is None else order)
     else:
-        assert out.flags.f_contiguous
         assert out.dtype == dtype
 
     desc_x = SpMatDescriptor.create(x)
