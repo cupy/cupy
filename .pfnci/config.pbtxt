@@ -510,7 +510,7 @@ configs {
   value {
     requirement {
       cpu: 8
-      memory: 50
+      memory: 60
       disk: 10
       gpu: 1
     }
@@ -527,7 +527,7 @@ configs {
   value {
     requirement {
       cpu: 8
-      memory: 50
+      memory: 60
       disk: 10
       gpu: 2
     }
@@ -545,7 +545,7 @@ configs {
   value {
     requirement {
       cpu: 8
-      memory: 50
+      memory: 60
       disk: 10
       gpu: 1
     }
@@ -562,7 +562,7 @@ configs {
   value {
     requirement {
       cpu: 8
-      memory: 50
+      memory: 60
       disk: 10
       gpu: 2
     }
@@ -571,6 +571,41 @@ configs {
     }
     environment_variables { key: "GPU" value: "2" }
     command: ".pfnci/linux/main-flexci.sh cuda129.multi"
+  }
+}
+
+# CUDA 13.0 | Linux
+configs {
+  key: "cupy.linux.cuda130"
+  value {
+    requirement {
+      cpu: 8
+      memory: 60
+      disk: 10
+      gpu: 1
+    }
+    time_limit: {
+      seconds: 21600
+    }
+    environment_variables { key: "GPU" value: "1" }
+    command: ".pfnci/linux/main-flexci.sh cuda130"
+  }
+}
+# CUDA 13.0 (Multi-GPU) | Linux
+configs {
+  key: "cupy.linux.cuda130.multi"
+  value {
+    requirement {
+      cpu: 8
+      memory: 60
+      disk: 10
+      gpu: 2
+    }
+    time_limit: {
+      seconds: 21600
+    }
+    environment_variables { key: "GPU" value: "2" }
+    command: ".pfnci/linux/main-flexci.sh cuda130.multi"
   }
 }
 
@@ -1106,6 +1141,27 @@ configs {
       include_dot_git: true
     }
     environment_variables { key: "GPU" value: "2" }
-    command: ".pfnci\\windows\\run.bat 12.9 3.13 2.3 1.15 test"
+    command: ".pfnci\\windows\\run.bat 12.9 3.13 2.3 1.16 test"
+  }
+}
+
+configs {
+  key: "cupy.win.cuda130"
+  value {
+    requirement {
+      cpu: 8
+      memory: 36
+      disk: 10
+      gpu: 2
+      image: "windows"
+    }
+    time_limit {
+      seconds: 72000
+    }
+    checkout_strategy {
+      include_dot_git: true
+    }
+    environment_variables { key: "GPU" value: "2" }
+    command: ".pfnci\\windows\\run.bat 13.0 3.13 2.3 1.16 test"
   }
 }

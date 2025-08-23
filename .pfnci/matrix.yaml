@@ -469,7 +469,6 @@
   test: "unit-multi"
 
 # CUDA 12.9 | Linux
-# The latest CUDA version matrix is intended to cover the highest supported combination.
 - project: "cupy.linux.cuda129"
   target: "cuda129"
   tags: ["@push", "full", "mini", "cuda129"]
@@ -483,7 +482,7 @@
   cudnn: "8.8"
   python: "3.12"
   numpy: "2.3"
-  scipy: "1.15"
+  scipy: "1.16"
   optuna: "4"
   mpi4py: null
   cython: "3.1"
@@ -497,6 +496,38 @@
   _inherits: "cupy.linux.cuda129"
   tags: ["@push", "full", "mini", "multi", "cuda129"]
   target: "cuda129.multi"
+  mpi4py: "3"
+  test: "unit-multi"
+
+# CUDA 13.0 | Linux
+# The latest CUDA version matrix is intended to cover the highest supported combination.
+- project: "cupy.linux.cuda130"
+  target: "cuda130"
+  tags: ["@push", "full", "mini", "cuda130"]
+  system: "linux"
+  os: "ubuntu:22.04"
+  cuda: "13.0"
+  rocm: null
+  nccl: "2.27"
+  cutensor: null  # TODO
+  cusparselt: "0.7.1"
+  cudnn: null
+  python: "3.12"
+  numpy: "2.3"
+  scipy: "1.16"
+  optuna: "4"
+  mpi4py: null
+  cython: "3.1"
+  fastrlock: "latest"
+  cuda-python: null
+  env:CUPY_ACCELERATORS: "cutensor,cub"
+  test: "unit"
+
+# CUDA 13.0 (Multi-GPU) | Linux
+- project: "cupy.linux.cuda130.multi"
+  _inherits: "cupy.linux.cuda130"
+  tags: ["@push", "full", "mini", "multi", "cuda130"]
+  target: "cuda130.multi"
   mpi4py: "3"
   test: "unit-multi"
 
@@ -600,7 +631,7 @@
   cudnn: null
   python: "3.12"
   numpy: "1.26"
-  scipy: "1.15"
+  scipy: "1.16"
   optuna: "4"
   mpi4py: null
   cython: "3.0"
@@ -821,6 +852,12 @@
   _extern: true
   target: "cuda129"
   tags: ["@push", "full", "mini", "windows", "cuda129"]
+  system: "windows"
+
+- project: "cupy.win.cuda130"
+  _extern: true
+  target: "cuda130"
+  tags: ["@push", "full", "mini", "windows", "cuda130"]
   system: "windows"
 
 - project: "cupy.linux.cuda-rapids"

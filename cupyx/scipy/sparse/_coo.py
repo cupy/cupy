@@ -559,6 +559,16 @@ class coo_matrix(sparse_data._data_matrix):
         return coo_matrix(
             (self.data, (self.col, self.row)), shape=shape, copy=copy)
 
+    def dot(self, other):
+        """Ordinary dot product"""
+        if _util.isscalarlike(other):
+            return coo_matrix(
+                (self.data * other, (self.row, self.col)),
+                shape=self.shape, copy=True,
+            )
+        else:
+            return self @ other
+
 
 def isspmatrix_coo(x):
     """Checks if a given matrix is of COO format.

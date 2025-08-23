@@ -12,11 +12,16 @@ import pytest
 import cupy
 from cupy import testing
 from cupy.cuda import cufft, Device
+from cupy.cuda.device import get_compute_capability
 
 
 pytestmark = pytest.mark.skipif(
     cufft.getVersion() == 11303 and Device().compute_capability == '120',
     reason="cuFFT static callbacks in CUDA 12.8.0 do not support sm120")
+
+
+def cuda_version():
+    return cupy.cuda.runtime.runtimeGetVersion()
 
 
 @contextlib.contextmanager
@@ -116,6 +121,9 @@ def _set_store_cb(code, element, data_type, callback_type, aux_type=None):
                     reason='callbacks are only supported on Linux')
 @pytest.mark.skipif(cupy.cuda.runtime.is_hip,
                     reason='hipFFT does not support callbacks')
+@pytest.mark.skipif((cuda_version() >= 13000
+                     and get_compute_capability() == '75'),
+                    reason='CUDA 13 cuFFT doesn\'t support cc 7.5')
 class Test1dCallbacks:
 
     def _test_load_helper(self, xp, dtype, fft_func):
@@ -432,6 +440,9 @@ class Test1dCallbacks:
                     reason='callbacks are only supported on Linux')
 @pytest.mark.skipif(cupy.cuda.runtime.is_hip,
                     reason='hipFFT does not support callbacks')
+@pytest.mark.skipif((cuda_version() >= 13000
+                     and get_compute_capability() == '75'),
+                    reason='CUDA 13 cuFFT doesn\'t support cc 7.5')
 class TestNdCallbacks:
 
     def _test_load_helper(self, xp, dtype, fft_func):

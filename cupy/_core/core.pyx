@@ -2354,18 +2354,11 @@ cpdef tuple assemble_cupy_compiler_options(tuple options):
             major, minor = nvrtc.getVersion()
             if major == 11:
                 _bundled_include = 'cuda-11'
-            elif major == 12:
-                # TODO(leofang): update the upper bound when a new release
-                # is out
-                if minor < 2:
-                    _bundled_include = 'cuda-12'
-                elif minor < 9:
-                    _bundled_include = f'cuda-12.{minor}'
-                else:
-                    # Unsupported CUDA 12.x variant
-                    _bundled_include = None
+            elif major == 12 and minor < 2:
+                # Use bundled header for CUDA 12.0 and 12.1 only.
+                _bundled_include = 'cuda-12'
             else:
-                # CUDA versions not yet supported.
+                # Do not use bundled includes dir after CUDA 12.2+.
                 _bundled_include = None
 
             # Check if headers from cudart wheels are available.
@@ -2718,11 +2711,11 @@ cdef inline _ndarray_base _try_skip_h2d_copy(
     if not (obj_dtype == get_dtype(dtype) if dtype is not None else True):
         return None
 
-    # CuPy onlt supports numerical dtypes
+    # CuPy only supports numerical dtypes
     if obj_dtype.char not in _dtype.all_type_chars:
         return None
 
-    # CUDA onlt supports little endianness
+    # CUDA only supports little endianness
     if obj_dtype.byteorder not in ('|', '=', '<'):
         return None
 
@@ -2760,8 +2753,8 @@ cdef _ndarray_base _array_default(
     # Fast path: zero-copy a NumPy array if possible
     if not blocking:
         a = _try_skip_h2d_copy(obj, dtype, copy, order, ndmin)
-    if a is not None:
-        return a
+        if a is not None:
+            return a
 
     if order is not None and len(order) >= 1 and order[0] in 'KAka':
         if isinstance(obj, numpy.ndarray) and obj.flags.fnc:

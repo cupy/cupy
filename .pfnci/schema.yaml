@@ -19,7 +19,7 @@ os:
     system: "linux"
   "centos:8":
     system: "linux"
-  "ws:2016":
+  "ws:2022":
     system: "windows"
 
 ###############################################################################
@@ -70,7 +70,7 @@ cuda:
     full_version: "12.3.0"
     repository: "nvidia/cuda"
   "12.4":
-    full_version: "12.4.0"
+    full_version: "12.4.1"
     repository: "nvidia/cuda"
   "12.5":
     full_version: "12.5.0"
@@ -83,6 +83,9 @@ cuda:
     repository: "nvidia/cuda"
   "12.9":
     full_version: "12.9.1"
+    repository: "nvidia/cuda"
+  "13.0":
+    full_version: "13.0.0"
     repository: "nvidia/cuda"
 rocm:
   null:
@@ -199,6 +202,7 @@ nccl:
       "12.2":
       "12.4":
       "12.9":
+      "13.0":
 cutensor:
   # https://docs.nvidia.com/cuda/cutensor/
   # https://developer.nvidia.com/cutensor/downloads
@@ -235,6 +239,7 @@ cusparselt:
     cuda:
       "12.8":
       "12.9":
+      "13.0":
 cudnn:
   # https://docs.nvidia.com/deeplearning/cudnn/support-matrix/index.html
   # https://docs.nvidia.com/deeplearning/cudnn/archives/
@@ -418,6 +423,19 @@ scipy:
       - "3.13"
     numpy:
       - "1.24"
+      - "1.25"
+      - "1.26"
+      - "2.0"
+      - "2.1"
+      - "2.2"
+      - "2.3"
+  "1.16":
+    spec: "==1.16.*"
+    python:
+      - "3.11"
+      - "3.12"
+      - "3.13"
+    numpy:
       - "1.25"
       - "1.26"
       - "2.0"

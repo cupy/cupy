@@ -1005,10 +1005,17 @@ cdef extern from '../../cupy_lapack.h' nogil:
 
 ctypedef int (*f_type)(...) nogil  # NOQA
 IF 12000 <= CUPY_CUDA_VERSION < 13000:
+    # CUDA 12.x
     if _sys.platform == 'linux':
         _libname = 'libcusolver.so.11'
     else:
         _libname = 'cusolver64_11.dll'
+ELIF 13000 <= CUPY_CUDA_VERSION < 14000:
+    # CUDA 13.x
+    if _sys.platform == 'linux':
+        _libname = 'libcusolver.so.12'
+    else:
+        _libname = 'cusolver64_12.dll'
 ELSE:
     _libname = None
 
