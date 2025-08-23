@@ -6,6 +6,18 @@ This page covers changes introduced in each major version that users should know
 Please see also the :ref:`compatibility_matrix` for supported environments of each major version.
 
 
+CuPy v14
+========
+
+Dropping cuDNN Support
+----------------------
+
+CuPy v14 no longer supports cuDNN.
+All cuDNN-related functionality has been completely removed from CuPy.
+
+Users who need to access cuDNN functionality from Python should consider using `cudnn-frontend <https://github.com/NVIDIA/cudnn-frontend>`_ instead, which provides direct access to the NVIDIA cuDNN library.
+
+
 CuPy v13
 ========
 
@@ -31,6 +43,7 @@ Requirement Changes
 The following versions are no longer supported in CuPy v13.
 
 * CUDA 11.1 or earlier
+* cuDNN 8.7 or earlier
 * cuTENSOR 1.x
     * Support for cuTENSOR 2.0 is added starting with CuPy v13, and support for cuTENSOR 1.x will be dropped.
       This is because there are significant API changes from cuTENSOR 1.x to 2.0, and from the maintenance perspective, it is not practical to support both cuTENSOR 1.x and 2.0 APIs simultaneously.
@@ -331,10 +344,10 @@ Dropping Support of CUDA 9.0
 CUDA 9.0 is no longer supported.
 Use CUDA 9.2 or later.
 
-Dropping Support of NCCL v2.3
---------------------------------
+Dropping Support of cuDNN v7.5 and NCCL v2.3
+--------------------------------------------
 
-NCCL v2.3 (or earlier) is no longer supported.
+cuDNN v7.5 (or earlier) and NCCL v2.3 (or earlier) are no longer supported.
 
 Dropping Support of NumPy 1.16 and SciPy 1.3
 --------------------------------------------
@@ -346,10 +359,10 @@ Dropping Support of Python 3.5
 
 Python 3.5 is no longer supported in CuPy v9.
 
-NCCL No Longer Included in Wheels
-----------------------------------
+NCCL and cuDNN No Longer Included in Wheels
+-------------------------------------------
 
-NCCL shared libraries are no longer included in wheels (see `#4850 <https://github.com/cupy/cupy/issues/4850>`_ for discussions). 
+NCCL and cuDNN shared libraries are no longer included in wheels (see `#4850 <https://github.com/cupy/cupy/issues/4850>`_ for discussions). 
 You can manually install them after installing wheel if you don't have a previous installation; see :doc:`install` for details.
 
 cuTENSOR Enabled in Wheels
@@ -357,11 +370,11 @@ cuTENSOR Enabled in Wheels
 
 cuTENSOR can now be used when installing CuPy via wheels.
 
-``cupy.cuda.nccl`` Module Needs Explicit Import
-----------------------------------------------
+``cupy.cuda.{nccl,cudnn}`` Modules Needs Explicit Import
+--------------------------------------------------------
 
-Previously ``cupy.cuda.nccl`` module was automatically imported.
-Since CuPy v9, this module needs to be explicitly imported (i.e., ``import cupy.cuda.nccl``).)
+Previously ``cupy.cuda.nccl`` and ``cupy.cuda.cudnn`` modules were automatically imported.
+Since CuPy v9, these modules need to be explicitly imported (i.e., ``import cupy.cuda.nccl`` / ``import cupy.cuda.cudnn``.)
 
 Baseline API Update
 -------------------
@@ -441,8 +454,8 @@ CuPy v6
 Binary Packages Ignore ``LD_LIBRARY_PATH``
 ------------------------------------------
 
-Prior to CuPy v6, ``LD_LIBRARY_PATH`` environment variable can be used to override NCCL libraries bundled in the binary distribution (also known as wheels).
-In CuPy v6, ``LD_LIBRARY_PATH`` will be ignored during discovery of NCCL; CuPy binary distributions always use libraries that comes with the package to avoid errors caused by unexpected override.
+Prior to CuPy v6, ``LD_LIBRARY_PATH`` environment variable can be used to override cuDNN / NCCL libraries bundled in the binary distribution (also known as wheels).
+In CuPy v6, ``LD_LIBRARY_PATH`` will be ignored during discovery of cuDNN / NCCL; CuPy binary distributions always use libraries that comes with the package to avoid errors caused by unexpected override.
 
 
 CuPy v5
@@ -462,7 +475,7 @@ CuPy v5 no longer supports CUDA 7.0 / 7.5.
 Update of Docker Images
 -----------------------
 
-CuPy official Docker images (see :doc:`install` for details) are now updated to use CUDA 9.2.
+CuPy official Docker images (see :doc:`install` for details) are now updated to use CUDA 9.2 and cuDNN 7.
 
 To use these images, you may need to upgrade the NVIDIA driver on your host.
 See `Requirements of nvidia-docker <https://github.com/NVIDIA/nvidia-docker/wiki/CUDA#requirements>`_ for details.
@@ -547,7 +560,7 @@ For this rule, :func:`cupy.scatter_add` has been moved to :func:`cupyx.scatter_a
 Update of Docker Images
 -----------------------
 
-CuPy official Docker images (see :doc:`install` for details) are now updated to use CUDA 8.0.
+CuPy official Docker images (see :doc:`install` for details) are now updated to use CUDA 8.0 and cuDNN 6.0.
 This change was introduced because CUDA 7.5 does not support NVIDIA Pascal GPUs.
 
 To use these images, you may need to upgrade the NVIDIA driver on your host.
@@ -577,6 +590,7 @@ Compatibility Matrix
      - ROCm
      - cuTENSOR
      - NCCL
+     - cuDNN
      - Python
      - NumPy
      - SciPy
@@ -588,6 +602,7 @@ Compatibility Matrix
      - 4.3~
      - 2.0~
      - 2.16~
+     - n/a
      - 3.9~
      - 1.22~
      - 1.7~
@@ -599,6 +614,7 @@ Compatibility Matrix
      - 4.3~
      - 2.0~
      - 2.16~
+     - 8.8~
      - 3.9~
      - 1.22~
      - 1.7~
@@ -610,6 +626,7 @@ Compatibility Matrix
      - 4.3 & 5.0
      - 1.4~1.7
      - 2.8~2.17
+     - 7.6~8.8
      - 3.8~3.12
      - 1.21~1.26
      - 1.7~1.11
@@ -621,6 +638,7 @@ Compatibility Matrix
      - 4.3 & 5.0
      - 1.4~1.6
      - 2.8~2.16
+     - 7.6~8.7
      - 3.7~3.11
      - 1.20~1.24
      - 1.6~1.9
@@ -632,6 +650,7 @@ Compatibility Matrix
      - 4.0 & 4.2 & 4.3 & 5.0
      - 1.3~1.5
      - 2.8~2.11
+     - 7.6~8.4
      - 3.7~3.10
      - 1.18~1.22
      - 1.4~1.8
@@ -643,6 +662,7 @@ Compatibility Matrix
      - 3.5~4.3
      - 1.2~1.3
      - 2.4 & 2.6~2.11
+     - 7.6~8.2
      - 3.6~3.9
      - 1.17~1.21
      - 1.4~1.7
@@ -654,6 +674,7 @@ Compatibility Matrix
      - 3.x [2]_
      - 1.2
      - 2.0~2.8
+     - 7.0~8.1
      - 3.5~3.9
      - 1.16~1.20
      - 1.3~1.6
@@ -665,6 +686,7 @@ Compatibility Matrix
      - 2.x [2]_
      - 1.0
      - 1.3~2.7
+     - 5.0~8.0
      - 3.5~3.8
      - 1.9~1.19
      - (not specified)
@@ -676,6 +698,7 @@ Compatibility Matrix
      - n/a
      - n/a
      - 1.3~2.4
+     - 5.0~7.5
      - 2.7 & 3.4~3.8
      - 1.9~1.17
      - (not specified)
@@ -687,6 +710,7 @@ Compatibility Matrix
      - n/a
      - n/a
      - 1.3~2.4
+     - 5.0~7.5
      - 2.7 & 3.4~3.7
      - 1.9~1.16
      - (not specified)
@@ -698,6 +722,7 @@ Compatibility Matrix
      - n/a
      - n/a
      - 1.3~2.2
+     - 4.0~7.1
      - 2.7 & 3.4~3.6
      - 1.9~1.14
      - (not specified)
