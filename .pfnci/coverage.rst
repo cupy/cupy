@@ -2310,14 +2310,7 @@ CuPy CI Test Coverage
      - 
      - 
      - 
-   * - cudnn
-     - null
-     - 6
-     - 
-     - 
-     - 
-     - 
-     - 
+
      - 
      - 
      - 

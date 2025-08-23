@@ -382,14 +382,14 @@ def _preload_library(lib):
             _log('File {} could not be found'.format(filename))
 
             # Lookup library with fully-qualified version (e.g.,
-            # `libcudnn.so.X.Y.Z`).
+            # `libnccl.so.X.Y.Z`).
             _log(f'Trying to load {filename} from default search path')
             try:
                 _preload_libs[lib][filename] = ctypes.CDLL(filename)
                 _log('Loaded')
             except Exception as e:
                 # Fallback to the standard shared library lookup which only
-                # uses the major version (e.g., `libcudnn.so.X`).
+                # uses the major version (e.g., `libnccl.so.X`).
                 _log(f'Library {lib} could not be preloaded: {e}')
 
 

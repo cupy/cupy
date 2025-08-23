@@ -134,7 +134,7 @@ However, if for any reason you need to force-install a particular CUDA version (
 
     cuTENSOR, and NCCL are available on ``conda-forge`` as optional dependencies. The following command can install them all at once::
 
-        $ conda install -c conda-forge cupy cudnn cutensor nccl
+        $ conda install -c conda-forge cupy cutensor nccl
 
     Each of them can also be installed separately as needed.
 
@@ -171,7 +171,7 @@ However, if wheels cannot meet your requirements (e.g., you are running non-Linu
 .. note::
 
    When installing CuPy from source, features provided by additional CUDA libraries will be disabled if these libraries are not available at the build time.
-   See :ref:`install_cudnn` for the instructions.
+   See :ref:`install_nccl` for the instructions.
 
 .. note::
 
@@ -281,7 +281,7 @@ If you are using certain versions of conda, it may fail to build CuPy with error
 This is due to a bug in conda (see `conda/conda#6030 <https://github.com/conda/conda/issues/6030>`_ for details).
 If you encounter this problem, please upgrade your conda.
 
-.. _install_cudnn:
+.. _install_nccl:
 
 Installing NCCL
 ~~~~~~~~~~~~~~~
