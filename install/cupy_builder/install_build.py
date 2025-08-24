@@ -407,7 +407,6 @@ def get_thrust_version(formatted=False):
     return _thrust_version
 
 
-
 def check_nccl_version(compiler, settings):
     global _nccl_version
 
