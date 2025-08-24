@@ -301,11 +301,6 @@ Once Cython modules are built, you can run unit tests by running the following c
 
 CUDA must be installed to run unit tests.
 
-Some GPU tests require cuDNN to run.
-In order to skip unit tests that require cuDNN, specify ``-m='not cudnn'`` option::
-
-  $ python -m pytest path/to/your/test.py -m='not cudnn'
-
 Some GPU tests involve multiple GPUs.
 If you want to run GPU tests with insufficient number of GPUs, specify the number of available GPUs to ``CUPY_TEST_GPU_LIMIT``.
 For example, if you have only one GPU, launch ``pytest`` by the following command to skip multi-GPU tests::

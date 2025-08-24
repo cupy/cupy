@@ -115,10 +115,10 @@ rocm:
 ###############################################################################
 # CUDA Optional Libraries
 ###############################################################################
-# The optional libraries to install: NCCL, cuTENSOR, cuSPARSELt and cuDNN.
+# The optional libraries to install: NCCL, cuTENSOR, and cuSPARSELt.
 # `spec` must be a version specifier accepted by apt and yum.
 # `cuda` lists the supported CUDA version.
-# `cuda.alias` (cuDNN/NCCL) is an alias name for package name suffix.
+# `cuda.alias` (ex: NCCL) is an alias name for package name suffix.
 nccl:
   # https://docs.nvidia.com/deeplearning/nccl/archives/
   # https://developer.nvidia.com/nccl/nccl-download
@@ -240,51 +240,6 @@ cusparselt:
       "12.8":
       "12.9":
       "13.0":
-cudnn:
-  # https://docs.nvidia.com/deeplearning/cudnn/support-matrix/index.html
-  # https://docs.nvidia.com/deeplearning/cudnn/archives/
-  # https://developer.nvidia.com/rdp/cudnn-download
-  null:
-    spec: null
-  "8.8":
-    spec: "8.8.*"
-    cuda:
-      # "11.0":
-      #   alias: "11.8"
-      # "11.1":
-      #   alias: "11.8"
-      "11.2":
-        alias: "11.8"
-      "11.3":
-        alias: "11.8"
-      "11.4":
-        alias: "11.8"
-      "11.5":
-        alias: "11.8"
-      "11.6":
-        alias: "11.8"
-      "11.7":
-        alias: "11.8"
-      "11.8":
-        alias: "11.8"
-      "12.0":
-        alias: "12.0"
-      "12.1":  # TODO(kmaehashi): cuDNN 8.9 should be used
-        alias: "12.0"
-      "12.2":  # assumed
-        alias: "12.0"
-      "12.3":  # assumed
-        alias: "12.0"
-      "12.4":  # assumed
-        alias: "12.0"
-      "12.5": # assumed
-        alias: "12.0"
-      "12.6": # assumed
-        alias: "12.0"
-      "12.8": # assumed
-        alias: "12.0"
-      "12.9": # assumed
-        alias: "12.0"
 
 ###############################################################################
 # Python

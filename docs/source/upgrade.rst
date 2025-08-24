@@ -6,6 +6,18 @@ This page covers changes introduced in each major version that users should know
 Please see also the :ref:`compatibility_matrix` for supported environments of each major version.
 
 
+CuPy v14
+========
+
+Dropping cuDNN Support
+----------------------
+
+CuPy v14 no longer supports cuDNN.
+All cuDNN-related functionality has been completely removed from CuPy.
+
+Users who need to access cuDNN functionality from Python should consider using `cuDNN Frontend <https://github.com/NVIDIA/cudnn-frontend>`_ instead, which provides direct access to the NVIDIA cuDNN library in both C++ and Python.
+
+
 CuPy v13
 ========
 
@@ -590,7 +602,7 @@ Compatibility Matrix
      - 4.3~
      - 2.0~
      - 2.16~
-     - 8.8~
+     - n/a
      - 3.9~
      - 1.22~
      - 1.7~
