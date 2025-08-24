@@ -170,7 +170,7 @@ main() {
 
       if [[ ${stage} = test || ${stage} = benchmark ]]; then
         "${docker_args[@]}" --volume="${repo_root}:/src:ro" --workdir "/src" \
-            "${docker_image}" timeout 8h bash "/src/.pfnci/linux/tests/${TARGET}.sh" &
+            "${docker_image}" -c timeout 8h bash "/src/.pfnci/linux/tests/${TARGET}.sh" &
         docker_pid=$!
         trap "kill -KILL ${docker_pid}; docker kill '${container_name}' & wait; exit 1" TERM INT HUP
         wait $docker_pid
