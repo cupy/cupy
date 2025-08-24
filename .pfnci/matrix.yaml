@@ -14,7 +14,7 @@
   nccl: "2.16"
   cutensor: null
   cusparselt: null
-  cudnn: "8.8"
+  cudnn: null
   python: "3.10"
   numpy: "1.24"
   scipy: "1.10"
@@ -45,7 +45,7 @@
   nccl: "2.16"
   cutensor: "2.0"
   cusparselt: null
-  cudnn: "8.8"
+  cudnn: null
   python: "3.10"
   numpy: "1.24"
   scipy: "1.11"
@@ -76,7 +76,7 @@
   nccl: "2.16"
   cutensor: "2.0"
   cusparselt: null
-  cudnn: "8.8"
+  cudnn: null
   python: "3.11"
   numpy: "1.25"
   scipy: "1.11"
@@ -107,7 +107,7 @@
   nccl: "2.16"
   cutensor: "2.0"
   cusparselt: null
-  cudnn: "8.8"
+  cudnn: null
   python: "3.11"
   numpy: "1.26"
   scipy: "1.11"
@@ -138,7 +138,7 @@
   nccl: "2.16"
   cutensor: "2.0"
   cusparselt: null
-  cudnn: "8.8"
+  cudnn: null
   python: "3.11"
   numpy: "1.24"
   scipy: "1.12"
@@ -169,7 +169,7 @@
   nccl: "2.16"
   cutensor: "2.0"
   cusparselt: null
-  cudnn: "8.8"
+  cudnn: null
   python: "3.13"
   numpy: "2.2"
   scipy: "1.14"
@@ -200,7 +200,7 @@
   nccl: "2.16"
   cutensor: "2.0"
   cusparselt: null
-  cudnn: "8.8"
+  cudnn: null
   python: "3.10"
   numpy: "1.26"
   scipy: "1.12"
@@ -231,7 +231,7 @@
   nccl: "2.17"
   cutensor: "2.0"
   cusparselt: null
-  cudnn: "8.8"
+  cudnn: null
   python: "3.13"
   numpy: "2.2"
   scipy: "1.14"
@@ -262,7 +262,7 @@
   nccl: "2.17"
   cutensor: "2.0"
   cusparselt: null
-  cudnn: "8.8"
+  cudnn: null
   python: "3.11"
   numpy: "1.25"
   scipy: "1.13"
@@ -293,7 +293,7 @@
   nccl: "2.18"
   cutensor: "2.0"
   cusparselt: null
-  cudnn: "8.8"
+  cudnn: null
   python: "3.11"
   numpy: "1.26"
   scipy: "1.13"
@@ -324,7 +324,7 @@
   nccl: "2.19"
   cutensor: "2.0"
   cusparselt: null
-  cudnn: "8.8"
+  cudnn: null
   python: "3.11"
   numpy: "2.0"
   scipy: "1.14"
@@ -355,7 +355,7 @@
   nccl: "2.20"
   cutensor: "2.0"
   cusparselt: null
-  cudnn: "8.8"
+  cudnn: null
   python: "3.12"
   numpy: "1.26"
   scipy: "1.15"
@@ -386,7 +386,7 @@
   nccl: "2.21"
   cutensor: "2.0"
   cusparselt: null
-  cudnn: "8.8"
+  cudnn: null
   python: "3.12"
   numpy: "2.1"
   scipy: "1.14"
@@ -417,7 +417,7 @@
   nccl: "2.22"
   cutensor: "2.0"
   cusparselt: null
-  cudnn: "8.8"
+  cudnn: null
   python: "3.13"
   numpy: "2.2"
   scipy: "1.14"
@@ -448,7 +448,7 @@
   nccl: "2.26"
   cutensor: "2.0"
   cusparselt: "0.7.1"
-  cudnn: "8.8"
+  cudnn: null
   python: "3.12"
   numpy: "2.3"
   scipy: "1.15"
@@ -479,7 +479,7 @@
   nccl: "2.26"
   cutensor: "2.0"
   cusparselt: "0.7.1"
-  cudnn: "8.8"
+  cudnn: null
   python: "3.12"
   numpy: "2.3"
   scipy: "1.16"
@@ -655,7 +655,7 @@
   nccl: "2.16"
   cutensor: "2.0"
   cusparselt: null
-  cudnn: "8.8"
+  cudnn: null
   python: "3.12"
   numpy: "1.26"
   scipy: "1.14"
@@ -686,7 +686,7 @@
   nccl: "2.16"
   cutensor: "2.0"
   cusparselt: null
-  cudnn: "8.8"
+  cudnn: null
   python: "3.12"
   numpy: "1.26"
   scipy: "1.14"
@@ -714,7 +714,7 @@
   nccl: "2.16"
   cutensor: "2.0"
   cusparselt: null
-  cudnn: "8.8"
+  cudnn: null
   python: "3.12"
   numpy: "pre"
   scipy: "pre"
@@ -741,7 +741,7 @@
   nccl: "2.16"
   cutensor: "2.0"
   cusparselt: null
-  cudnn: "8.8"
+  cudnn: null
   python: "3.12"
   numpy: "1.26"
   scipy: "1.13"
