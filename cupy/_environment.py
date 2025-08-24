@@ -564,7 +564,7 @@ def _get_include_dir_from_conda_or_wheel(major: int, minor: int) -> list[str]:
 
 def _detect_duplicate_installation():
     # List of all CuPy packages, including out-dated ones.
-    known = {
+    known = (
         'cupy',
         'cupy-cuda80',
         'cupy-cuda90',
@@ -590,16 +590,15 @@ def _detect_duplicate_installation():
         'cupy-rocm-4-2',
         'cupy-rocm-4-3',
         'cupy-rocm-5-0',
-    }
-    # use metadata.get to be resilient to namespace packages
-    # that may be leftover in the user's path???
-    # something else might be triggering "Name" not existing
-    # But without a safe ".get" a KeyError might be raised
-    # not allowing us to get through the setup
-    # https://github.com/cupy/cupy/issues/8440
-    installed_names = {d.metadata.get("Name", None)
-                       for d in importlib.metadata.distributions()}
-    cupy_installed = known & installed_names
+    )
+    cupy_installed = []
+    for k in known:
+        try:
+            importlib.metadata.distribution(k)
+            cupy_installed.append(k)
+        except importlib.metadata.PackageNotFoundError:
+            pass
+
     if 1 < len(cupy_installed):
         cupy_packages_list = ', '.join(sorted(cupy_installed))
         warnings.warn(f'''
