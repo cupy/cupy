@@ -151,6 +151,7 @@ def get_compiler_setting(ctx: Context, use_hip):
         include_dirs.append(os.path.join(cuda_path, 'include'))
         if PLATFORM_WIN32:
             library_dirs.append(os.path.join(cuda_path, 'bin'))
+            library_dirs.append(os.path.join(cuda_path, 'bin', 'x64'))
             library_dirs.append(os.path.join(cuda_path, 'lib', 'x64'))
         else:
             library_dirs.append(os.path.join(cuda_path, 'lib64'))
@@ -746,7 +747,7 @@ def conda_update_dirs(include_dirs, library_dirs):
         # executable in the build environment, not the target environment.
         # This assumes, however, that the build/host environments see the same
         # CUDA Toolkit.
-        if os.environ.get('CONDA_OVERRIDE_CUDA', '0').startswith('12'):
+        if os.environ.get('CONDA_OVERRIDE_CUDA', '0').startswith(('12', '13')):
             include_dirs.insert(
                 0,
                 f'{os.environ["BUILD_PREFIX"]}/targets/x86_64-linux/include')
@@ -761,7 +762,7 @@ def conda_update_dirs(include_dirs, library_dirs):
         include_dirs.append(f'{os.environ["BUILD_PREFIX"]}/include')
         library_dirs.append(f'{os.environ["BUILD_PREFIX"]}/lib')
 
-    if os.environ.get('CONDA_OVERRIDE_CUDA', '0').startswith('12'):
+    if os.environ.get('CONDA_OVERRIDE_CUDA', '0').startswith(('12', '13')):
         if PLATFORM_LINUX:
             include_dirs.append(
                 f'{os.environ["BUILD_PREFIX"]}/targets/'
