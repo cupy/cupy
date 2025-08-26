@@ -1078,14 +1078,14 @@ class RandomState:
         """Generates the smallest power of 2 larger than or equal to max_val"""
         # Start with max_val
         mask = max_val
-        # Propagate 1's through all higher bits to ensure the mask covers all bits greater than max_val
+        # set all bits lower than the highest set bit to 1
         mask |= mask >> 1
         mask |= mask >> 2
         mask |= mask >> 4
         mask |= mask >> 8
         mask |= mask >> 16
         mask |= mask >> 32
-        # Return the smallest power of 2 that is greater than or equal to max_val
+        # Return the smallest power of 2 greater than or equal to max_val
         return mask
 
     def choice(self, a, size=None, replace=True, p=None):
@@ -1158,7 +1158,7 @@ class RandomState:
                     while hash_set[loc] != -1 and hash_set[loc] != val:
                         loc = (loc + 1) & mask
 
-                    if hash_set[loc] == -1:  # If it's not found, insert the value
+                    if hash_set[loc] == -1:  # If not found, insert the value
                         hash_set[loc] = val
                         indices[j - (a_size - size)] = val
                     else:  # If collision, insert `j` (the current index)
