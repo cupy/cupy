@@ -1144,9 +1144,11 @@ class RandomState:
                 set_size = int(1.2 * size)  # 1.2 * size to avoid collisions
                 mask = self._gen_mask(set_size)  # Generate the mask
                 set_size = 1 + mask  # Ensure set_size is the next power of 2
-                hash_set = cupy.full(set_size, -1, dtype=cupy.int64)  # Initialize hash set
-                
-                indices = cupy.empty(size, dtype=cupy.int64) # To store selected indices
+                # Initialize hash set
+                hash_set = cupy.full(set_size, -1, dtype=cupy.int64)
+
+                # To store selected indices
+                indices = cupy.empty(size, dtype=cupy.int64)
                 for j in range(a_size - size, a_size):
                     # Generate random index
                     val = self.randint(0, j)
