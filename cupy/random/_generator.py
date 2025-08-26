@@ -1137,7 +1137,7 @@ class RandomState:
                     'Cannot take a larger sample than population when '
                     '\'replace=False\'')
             if isinstance(a, int):
-                # Floyd's algorithm for sampling without replacement
+                # Random sampling without replacement from range(a)
 
                 # Ensure size is an integer before using it
                 size = int(size)
