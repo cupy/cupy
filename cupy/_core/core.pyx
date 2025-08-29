@@ -2342,7 +2342,7 @@ cpdef void warn_on_unsupported_std(tuple options):
                 warnings.warn(
                     'hipRTC on some ROCm 7.0 builds have a known bug '
                     'that causes RTC to break when the standard is set '
-                    'to c++11. Please use c++14, or use ROCm >= 7.0'
+                    'to c++11. Please use c++14, or use ROCm > 7.0'
                 )
         elif '-std=c++03' in opt:
             warnings.warn('CCCL requires c++11 or above')
