@@ -17,6 +17,12 @@ All cuDNN-related functionality has been completely removed from CuPy.
 
 Users who need to access cuDNN functionality from Python should consider using `cuDNN Frontend <https://github.com/NVIDIA/cudnn-frontend>`_ instead, which provides direct access to the NVIDIA cuDNN library in both C++ and Python.
 
+cuSOLVER, cuSPARSE, and cuTENSOR is supported only via cupyx
+------------------------------------------------------------
+
+cuSOLVER, cuSPARSE, and cuTENSOR functionality was previously moved to :mod:`cupyx` but a shim was provided in :mod:`cupy` for backward compatibility.
+That shim has now been removed in CuPy v14, so all usage of those modules must be updated to import from :mod:`cupyx`.
+
 
 CuPy v13
 ========
