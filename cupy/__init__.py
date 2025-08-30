@@ -43,8 +43,6 @@ from cupy import fft  # NOQA
 from cupy import linalg  # NOQA
 from cupy import polynomial  # NOQA
 from cupy import random  # NOQA
-# `cupy.sparse` is deprecated in v8
-from cupy import sparse  # NOQA
 from cupy import testing  # NOQA  # NOQA
 
 
@@ -1149,5 +1147,4 @@ _embed_signatures(globals())
 _embed_signatures(fft.__dict__)
 _embed_signatures(linalg.__dict__)
 _embed_signatures(random.__dict__)
-_embed_signatures(sparse.__dict__)
 _embed_signatures(testing.__dict__)
