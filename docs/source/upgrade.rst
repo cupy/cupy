@@ -23,6 +23,10 @@ cuSOLVER, cuSPARSE, and cuTENSOR is supported only via cupyx
 cuSOLVER, cuSPARSE, and cuTENSOR functionality was previously moved to :mod:`cupyx` but a shim was provided in :mod:`cupy` for backward compatibility.
 That shim has now been removed in CuPy v14, so all usage of those modules must be updated to import from :mod:`cupyx`.
 
+cupy.sparse is removed; use cupyx.scipy.sparse
+----------------------------------------------
+
+:mod:`cupy.sparse` module, which has been deprecated since CuPy v8 and moved to :mod:`cupyx.scipy.sparse`, has now been removed.
 
 CuPy v13
 ========
