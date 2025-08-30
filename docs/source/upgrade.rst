@@ -17,16 +17,16 @@ All cuDNN-related functionality has been completely removed from CuPy.
 
 Users who need to access cuDNN functionality from Python should consider using `cuDNN Frontend <https://github.com/NVIDIA/cudnn-frontend>`_ instead, which provides direct access to the NVIDIA cuDNN library in both C++ and Python.
 
-cuSOLVER, cuSPARSE, and cuTENSOR is supported only via cupyx
-------------------------------------------------------------
+Various deprecated modules have been moved to :mod:`cupyx`
+----------------------------------------------------------
 
-cuSOLVER, cuSPARSE, and cuTENSOR functionality was previously moved to :mod:`cupyx` but a shim was provided in :mod:`cupy` for backward compatibility.
-That shim has now been removed in CuPy v14, so all usage of those modules must be updated to import from :mod:`cupyx`.
+The following :mod:`cupy` submodules have been removed, with replacements in :mod:`cupyx`:
+- :mod:`cupy.cusolver` -> :mod:`cupyx.scipy.linalg.cusolver` (deprecated in CuPy v12)
+- :mod:`cupy.cusparse` -> :mod:`cupyx.scipy.sparse.cusparse` (deprecated in CuPy v12)
+- :mod:`cupy.cutensor` -> :mod:`cupyx.scipy.linalg.cutensor` (deprecated in CuPy v12)
+- :mod:`cupy.sparse` -> :mod:`cupyx.scipy.sparse` (deprecated in CuPy v8)
+- :mod:`cupy.prof` -> :mod:`cupyx.profiler` (deprecated in CuPy v10)
 
-cupy.sparse is removed; use cupyx.scipy.sparse
-----------------------------------------------
-
-:mod:`cupy.sparse` module, which has been deprecated since CuPy v8 and moved to :mod:`cupyx.scipy.sparse`, has now been removed.
 
 CuPy v13
 ========
