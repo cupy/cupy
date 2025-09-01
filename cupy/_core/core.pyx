@@ -2326,14 +2326,33 @@ cdef inline str _translate_cucomplex_to_thrust(str source):
     return ''.join(lines)
 
 
+cpdef bint use_default_std(tuple options):
+    cdef str opt
+    for opt in options:
+        if ('-std=' in opt) or ('--std=' in opt):
+            return False
+    return True
+
+cpdef void warn_on_unsupported_std(tuple options):
+    cdef str opt
+    for opt in options:
+        if _is_hip:
+            major, minor = nvrtc.getVersion()
+            if '-std=c++11' in opt and minor == 0 and major == 7:
+                warnings.warn(
+                    'hipRTC on some ROCm 7.0 builds have a known bug '
+                    'that causes RTC to break when the standard is set '
+                    'to c++11. Please use c++14, or use ROCm > 7.0'
+                )
+        elif '-std=c++03' in opt:
+            warnings.warn('CCCL requires c++11 or above')
+
+
 cpdef tuple assemble_cupy_compiler_options(tuple options):
-    for op in options:
-        if '-std=c++' in op:
-            if op.endswith('03'):
-                warnings.warn('CCCL requires c++11 or above')
-            break
+    if use_default_std(options):
+        options += ('--std=c++14',)
     else:
-        options += ('--std=c++11',)
+        warn_on_unsupported_std(options)
 
     # make sure bundled CCCL is searched first
     options = (_get_cccl_include_options()
