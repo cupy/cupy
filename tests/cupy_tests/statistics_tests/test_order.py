@@ -268,6 +268,49 @@ class TestQuantileMethods:
         q = testing.shaped_random((5,), xp, scale=1)
         return xp.quantile(a, q, axis=0, keepdims=True, method=method)
 
+@testing.with_requires('numpy>=2.0')
+@pytest.mark.parametrize("func,q", [(numpy.percentile, 50), (numpy.quantile, 0.5)])
+def test_numpy_axes_empty_raises_error(func, q):
+    with pytest.raises(IndexError):
+        func(numpy.empty((0, )), q)
+    with pytest.raises(IndexError):
+        func(numpy.empty((0, 1)), q, axis=0)
+    with pytest.raises(IndexError):
+        func(numpy.empty((1, 0)), q, axis=1)
+    with pytest.raises(IndexError):
+        func(numpy.empty((1, 1, 0)), q, axis=(1, 2))
+
+@pytest.mark.parametrize("func,q", [(cupy.percentile, 50), (cupy.quantile, 0.5)])
+def test_cupy_axes_empty_raises_error(func, q):
+    with pytest.raises(IndexError):
+        func(cupy.empty((0, )), q)
+    with pytest.raises(IndexError):
+        func(cupy.empty((0, 1)), q, axis=0)
+    with pytest.raises(IndexError):
+        func(cupy.empty((1, 0)), q, axis=1)
+    with pytest.raises(IndexError):
+        func(cupy.empty((1, 1, 0)), q, axis=(1, 2))
+    
+@pytest.mark.parametrize("func,q", [(cupy.percentile, 50), (cupy.quantile, 0.5)])
+def test_cupy_negative_axes_empty_raises_error(func, q):
+    with pytest.raises(IndexError):
+        func(cupy.empty((1, 0)), q, axis=-1)
+    with pytest.raises(IndexError):
+        func(cupy.empty((0, 1)), q, axis=-2)
+    with pytest.raises(IndexError):
+        func(cupy.empty((1, 1, 0)), q, axis=(-1, -2))
+        
+@pytest.mark.xfail(reason="CuPy reshape on size-0 uses -1; pending fix for gh-9110", strict=False)
+@pytest.mark.parametrize("func,q", [(cupy.percentile, 50), (cupy.quantile, 0.5)])
+def test_cupy_axes_empty_raises_no_error(func, q):
+    assert func(cupy.empty((0, 1)), q, axis=1).size == 0
+    assert func(cupy.empty((1, 0)), q, axis=0).size == 0
+    assert func(cupy.empty((1, 1, 0)), q, axis=(0, 1)).size == 0
+
+@pytest.mark.parametrize("func,q", [(cupy.percentile, 50), (cupy.quantile, 0.5)])
+def test_cupy_axes_none_empty_raises_error(func, q):
+    with pytest.raises(IndexError):
+        func(cupy.empty((0,)), q, axis=None)
 
 class TestOrder:
 
@@ -437,3 +480,5 @@ class TestPercentileMonotonic:
         assert xp.all(xp.diff(percentiles) >= 0)
 
         return percentiles
+
+
