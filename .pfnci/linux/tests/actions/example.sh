@@ -32,7 +32,6 @@ python3 cutensor/reduction.py
 
 # stream
 python3 stream/cublas.py
-python3 stream/cudnn.py
 python3 stream/cufft.py
 python3 stream/cupy_event.py
 python3 stream/cupy_kernel.py
