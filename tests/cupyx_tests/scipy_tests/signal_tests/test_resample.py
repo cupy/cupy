@@ -191,6 +191,23 @@ class TestResample:
         return results
 
     @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_resample2d(self, xp, scp):
+        print("")
+        results = []
+        for nx in range(10000, 100000, 10000):
+            for down in [2, 3, 8]:
+                for ny in range(1, 50, down):
+                    for axis in [0, 1]:
+                        x = testing.shaped_random(
+                            (nx * (1 - axis) + ny * axis,
+                             ny * (1 - axis) + nx * axis),
+                            xp, xp.float64, scale=1.0)
+                        y_s = scp.signal.resample_poly(
+                            x, up=1, down=down, axis=axis)
+                        results.append(y_s)
+        return results
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_poly_vs_filtfilt(self, xp, scp):
         # Check that up=1.0 gives same answer as filtfilt + slicing
         # random_state = xp.random.RandomState(17)
