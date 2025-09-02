@@ -1,4 +1,5 @@
 from __future__ import annotations
+import os as _os
 
 import functools as _functools
 import sys as _sys
@@ -51,6 +52,11 @@ from cupy import testing  # NOQA  # NOQA
 # import class and function
 from cupy._core import ndarray  # NOQA
 from cupy._core import ufunc  # NOQA
+
+if getattr(cuda.runtime, "is_hip", False) and "ROCM_HOME" not in _os.environ:
+    raise ImportError("ROCM_HOME is not set but a HIP/ROCm backend was "
+                      "detected. Please set with `export ROCM_HOME=/opt/rocm`"
+                      " or similar.")
 
 
 # =============================================================================
