@@ -278,10 +278,12 @@ cdef class _ndarray_base:
         if runtime._is_hip_environment:
             raise AttributeError(
                 'HIP/ROCm does not support cuda array interface')
+
+        str, descr = _dtype.get_str_and_descr(self.dtype)
         cdef dict desc = {
             'shape': self.shape,
-            'typestr': self.dtype.str,
-            'descr': self.dtype.descr,
+            'typestr': str,
+            'descr': descr,
         }
         cdef int ver = _util.CUDA_ARRAY_INTERFACE_EXPORT_VERSION
         cdef intptr_t stream_ptr
@@ -314,13 +316,15 @@ cdef class _ndarray_base:
 
         return desc
 
-    def __dlpack__(
-            self, *, stream=None, max_version=None, dl_device=None, copy=None):
+    def __dlpack__(self, *, stream=None, tuple max_version=None,
+                   dl_device=None, copy=None):
         cdef bint use_versioned = False
         cdef bint to_cpu = False
+        cdef intptr_t consumer_stream = -2  # invalid value
+        cdef intptr_t curr_stream_ptr
 
         # Check if we can export version 1
-        if max_version is not None and max_version[0] >= 1:
+        if max_version is not None and <Py_ssize_t>max_version[0] >= 1:
             use_versioned = True
 
         # If the user passed dl_device we must honor it, so check if it either
@@ -354,13 +358,19 @@ cdef class _ndarray_base:
         curr_stream_ptr = curr_stream.ptr
 
         # stream must be an int for CUDA/ROCm
-        if to_cpu and stream is None:
-            # We will use the current stream to copy/sync later.
-            stream = None
+        if to_cpu:
+            # We simply ignore a possibly passed stream here.  Previously,
+            # we assumed this was a CPU stream, but DLPack doesn't say this
+            # (because CPU has no streams and the stream should match the
+            # requested device).
+            curr_stream = -1  # synchronization ensured in toDlpack()
         elif not runtime._is_hip_environment:  # CUDA
             if stream is None:
-                stream = runtime.streamLegacy
-            elif not isinstance(stream, int) or stream < -1:
+                consumer_stream = runtime.streamLegacy
+            elif isinstance(stream, int):
+                consumer_stream = stream
+
+            if consumer_stream < -1:
                 # DLPack does not accept 0 as a valid stream, but there is a
                 # bug in PyTorch that exports the default stream as 0, which
                 # renders the protocol unusable, we will accept a 0 value
@@ -368,7 +378,7 @@ cdef class _ndarray_base:
                 raise ValueError(
                     f'On CUDA, the valid stream for the DLPack protocol is -1,'
                     f' 1, 2, or any larger value, but {stream} was provided')
-            if stream == 0:
+            elif consumer_stream == 0:
                 warnings.warn(
                     'Stream 0 is passed from a library that you are'
                     ' converting to; CuPy assumes 0 as a legacy default '
@@ -379,26 +389,29 @@ cdef class _ndarray_base:
                 curr_stream_ptr = runtime.streamLegacy
         else:  # ROCm/HIP
             if stream is None:
-                stream = 0
-            elif (not isinstance(stream, int) or stream < -1
-                    or stream in (1, 2)):
+                consumer_stream = 0
+            elif isinstance(stream, int):
+                consumer_stream = stream
+
+            if (consumer_stream <= 2
+                    and consumer_stream != -1 and consumer_stream != 0):
                 raise ValueError(
                     f'On ROCm/HIP, the valid stream for the DLPack protocol is'
                     f' -1, 0, or any value > 2, but {stream} was provided')
 
-        # if -1, no stream order should be established; otherwise, the consumer
-        # stream should wait for the work on CuPy's current stream to finish
-        if stream is None or stream < 0:
-            # Establish no stream order for now (for `stream=None` do it later)
-            stream = None
-        elif stream != curr_stream_ptr:
-            stream = stream_mod.ExternalStream(stream)
+        # if -1, no stream order should be established;
+        # otherwise, the consumer stream should wait for the work on CuPy's
+        # current stream to finish
+        if consumer_stream < 0:
+            pass  # Establish no stream order (includes to_cpu)
+        elif consumer_stream != curr_stream_ptr:
+            stream = stream_mod.ExternalStream(consumer_stream)
             event = curr_stream.record()
             stream.wait_event(event)
 
         return dlpack._toDlpack(
             self, use_versioned=use_versioned, to_cpu=to_cpu,
-            ensure_copy=copy is True, stream=stream)
+            ensure_copy=copy is True)
 
     def __dlpack_device__(self):
         cdef dlpack.DLDevice dldevice = dlpack.get_dlpack_device(self)

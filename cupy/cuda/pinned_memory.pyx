@@ -354,5 +354,4 @@ cdef class PinnedMemoryPool:
 
 
 cpdef bint is_memory_pinned(intptr_t data) except*:
-    cdef runtime.PointerAttributes attrs = runtime.pointerGetAttributes(data)
-    return (attrs.type == runtime.memoryTypeHost)
+    return (runtime.pointerGetMemoryType(data) == runtime.memoryTypeHost)
