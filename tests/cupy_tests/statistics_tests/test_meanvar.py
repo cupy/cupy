@@ -126,6 +126,22 @@ class TestNanMedian:
             a = testing.shaped_random(self.shape, numpy, dtype=dtype)
         return a
 
+    def test_nanmedian_invalid_axis(self):
+        for xp in [numpy, cupy]:
+            a = testing.shaped_random((3, 4, 5), xp)
+
+            with pytest.raises(AxisError):
+                xp.nanmedian(a, -a.ndim - 1, keepdims=False)
+
+            with pytest.raises(AxisError):
+                xp.nanmedian(a, a.ndim, keepdims=False)
+
+            with pytest.raises(AxisError):
+                xp.nanmedian(a, (-a.ndim - 1, 1), keepdims=False)
+
+            with pytest.raises(AxisError):
+                xp.nanmedian(a, (0, a.ndim,), keepdims=False)
+
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
     def test_nanmedian(self, xp, dtype):

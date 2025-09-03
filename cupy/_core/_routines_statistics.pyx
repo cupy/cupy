@@ -470,6 +470,10 @@ cpdef _ndarray_base _nanmedian(
     if not sequence.PySequence_Check(axis):
         axis = (axis,)
 
+    for ax in axis:
+        if ax >= a.ndim or ax < -a.ndim:
+            raise AxisError(f"axis {ax} is out of bounds for array of dimension {a.ndim}")
+
     reduce_axis = []
     reduce_shape = []
     out_axis = []
