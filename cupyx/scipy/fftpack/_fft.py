@@ -91,8 +91,8 @@ def get_fft_plan(a, shape=None, axes=None, value_type='C2C'):
         if n == 1:
             axis1D = axes[0]
             if axis1D >= a.ndim or axis1D < -a.ndim:
-                err = 'The chosen axis ({0}) exceeds the number of '\
-                      'dimensions of a ({1})'.format(axis1D, a.ndim)
+                err = 'The chosen axis ({}) exceeds the number of '\
+                      'dimensions of a ({})'.format(axis1D, a.ndim)
                 raise ValueError(err)
         elif n > 3:
             raise ValueError('Only up to three axes is supported')

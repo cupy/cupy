@@ -530,7 +530,7 @@ def spsolve(A, b):
         return cupyx.cusolver.csrlsvqr(A, b)
 
 
-class SuperLU():
+class SuperLU:
 
     def __init__(self, obj):
         """LU factorization of a sparse matrix.
