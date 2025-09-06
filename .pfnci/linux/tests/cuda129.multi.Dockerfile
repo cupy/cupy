@@ -31,3 +31,5 @@ RUN pyenv install 3.12.6 && \
 RUN pip install -U 'numpy==2.3.*' 'scipy==1.16.*' 'optuna==4.*' 'mpi4py==3.*' 'cython==3.1.*' 'fastrlock>=0.5'
 RUN pip uninstall -y cuda-python && \
     pip check
+
+RUN mkdir /home/cupy-user && chmod 777 /home/cupy-user
