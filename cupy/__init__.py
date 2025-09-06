@@ -1,6 +1,4 @@
 from __future__ import annotations
-import sys
-import importlib.util
 
 import functools as _functools
 import sys as _sys
@@ -1153,14 +1151,15 @@ _embed_signatures(globals())
 # https://docs.python.org/3/library/importlib.html#implementing-lazy-imports
 
 
-def lazy_import(name):
+def _lazy_import(name):
+    import importlib.util
     spec = importlib.util.find_spec(name)
     loader = importlib.util.LazyLoader(spec.loader)
     spec.loader = loader
     module = importlib.util.module_from_spec(spec)
-    sys.modules[name] = module
+    _sys.modules[name] = module
     loader.exec_module(module)
     return module
 
 
-testing = lazy_import("cupy.testing")
+testing = _lazy_import("cupy.testing")
