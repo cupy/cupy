@@ -21,11 +21,12 @@ Various deprecated modules have been moved to :mod:`cupyx`
 ----------------------------------------------------------
 
 The following :mod:`cupy` submodules have been removed, with replacements in :mod:`cupyx`:
-- :mod:`cupy.cusolver` -> :mod:`cupyx.scipy.linalg.cusolver` (deprecated in CuPy v12)
-- :mod:`cupy.cusparse` -> :mod:`cupyx.scipy.sparse.cusparse` (deprecated in CuPy v12)
-- :mod:`cupy.cutensor` -> :mod:`cupyx.scipy.linalg.cutensor` (deprecated in CuPy v12)
-- :mod:`cupy.sparse` -> :mod:`cupyx.scipy.sparse` (deprecated in CuPy v8)
-- :mod:`cupy.prof` -> :mod:`cupyx.profiler` (deprecated in CuPy v10)
+
+* ``cupy.sparse`` -> :mod:`cupyx.scipy.sparse` (deprecated in CuPy v8)
+* ``cupy.prof`` -> :mod:`cupyx.profiler` (deprecated in CuPy v10)
+* ``cupy.cusolver`` -> :mod:`cupyx.scipy.linalg.cusolver` (undocumented API, deprecated in CuPy v12)
+* ``cupy.cusparse`` -> :mod:`cupyx.scipy.sparse.cusparse` (undocumented API, deprecated in CuPy v12)
+* ``cupy.cutensor`` -> :mod:`cupyx.scipy.linalg.cutensor` (undocumented API, deprecated in CuPy v12)
 
 
 CuPy v13
