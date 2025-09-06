@@ -1,4 +1,4 @@
-FROM nvidia/cuda:12.2.0-devel-ubuntu22.04
+FROM nvidia/cuda:13.0.0-devel-ubuntu24.04
 
 RUN apt-get update -y && \
     apt-get install -y --no-install-recommends \
@@ -9,4 +9,4 @@ RUN apt-get update -y && \
     rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
 
 RUN pip3 install --no-cache-dir -U setuptools pip
-RUN pip3 install --no-cache-dir -f https://pip.cupy.dev/pre/ "cupy-cuda12x[all]==14.0.0a1"
+RUN pip3 install --no-cache-dir -f https://pip.cupy.dev/pre/ "cupy-cuda13x[all]==14.0.0a1"
