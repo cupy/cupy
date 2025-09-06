@@ -43,8 +43,6 @@ from cupy import fft  # NOQA
 from cupy import linalg  # NOQA
 from cupy import polynomial  # NOQA
 from cupy import random  # NOQA
-# `cupy.sparse` is deprecated in v8
-from cupy import sparse  # NOQA
 
 # import class and function
 from cupy._core import ndarray  # NOQA
