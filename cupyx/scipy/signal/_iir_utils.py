@@ -220,10 +220,10 @@ template<typename U, typename T>
 __global__ void compute_correction_factors_sos(
         const int m, const T* f_const, U* all_out) {
 
-    extern __shared__ __align__(sizeof(T)) thrust::complex<double> bc_d[2];
+    __shared__ __align__(sizeof(T)) thrust::complex<double> bc_d[2];
     T* b_c = reinterpret_cast<T*>(bc_d);
 
-    extern __shared__ __align__(sizeof(T)) thrust::complex<double> off_d[4];
+    __shared__ __align__(sizeof(T)) thrust::complex<double> off_d[4];
     U* off_cache = reinterpret_cast<U*>(off_d);
 
     int idx = threadIdx.x;
@@ -263,8 +263,8 @@ __global__ void first_pass_iir_sos(
         const int m, const int n, const int n_blocks,
         const T* factors, T* out, T* carries) {
 
-    extern __shared__ unsigned int thread_status[2];
-    extern __shared__ __align__(sizeof(T)) thrust::complex<double> fc_d[2 * 1024];
+    __shared__ unsigned int thread_status[2];
+    __shared__ __align__(sizeof(T)) thrust::complex<double> fc_d[2 * 1024];
     T* factor_cache = reinterpret_cast<T*>(fc_d);
 
     int orig_idx = blockDim.x * (blockIdx.x % n_blocks) + threadIdx.x;
@@ -345,7 +345,7 @@ __global__ void correct_carries_sos(
     const int m, const int n_blocks, const int carries_stride,
     const int offset, const T* factors, T* carries) {
 
-    extern __shared__ __align__(sizeof(T)) thrust::complex<double> fcd3[4];
+    __shared__ __align__(sizeof(T)) thrust::complex<double> fcd3[4];
     T* factor_cache = reinterpret_cast<T*>(fcd3);
 
     int idx = threadIdx.x;
@@ -381,10 +381,10 @@ __global__ void second_pass_iir_sos(
         const int n_blocks, const int offset, const T* factors,
         T* carries, T* out) {
 
-    extern __shared__ __align__(sizeof(T)) thrust::complex<double> fcd2[2 * 1024];
+    __shared__ __align__(sizeof(T)) thrust::complex<double> fcd2[2 * 1024];
     T* factor_cache = reinterpret_cast<T*>(fcd2);
 
-    extern __shared__ __align__(sizeof(T)) thrust::complex<double> c_d[2];
+    __shared__ __align__(sizeof(T)) thrust::complex<double> c_d[2];
     T* carries_cache = reinterpret_cast<T*>(c_d);
 
     int idx = blockDim.x * (blockIdx.x % n_blocks) + threadIdx.x;
@@ -427,10 +427,10 @@ __global__ void fir_sos(
         const int m, const int n, const int carries_stride, const int n_blocks,
         const int offset, const T* sos, T* carries, T* out) {
 
-    extern __shared__ __align__(sizeof(T)) thrust::complex<double> fir_cc[1024 + 2];
+    __shared__ __align__(sizeof(T)) thrust::complex<double> fir_cc[1024 + 2];
     T* fir_cache = reinterpret_cast<T*>(fir_cc);
 
-    extern __shared__ __align__(sizeof(T)) thrust::complex<double> fir_b[3];
+    __shared__ __align__(sizeof(T)) thrust::complex<double> fir_b[3];
     T* b = reinterpret_cast<T*>(fir_b);
 
     int idx = blockDim.x * (blockIdx.x % n_blocks) + threadIdx.x;
