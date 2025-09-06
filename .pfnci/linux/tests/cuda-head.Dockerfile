@@ -31,3 +31,5 @@ RUN pyenv install 3.11.10 && \
 RUN pip install -U 'numpy>=0a0,<2' 'scipy>=0a0' 'optuna>=0a0' 'cython==3.0.*' 'fastrlock>=0.5'
 RUN pip uninstall -y mpi4py cuda-python && \
     pip check
+
+RUN mkdir /home/cupy-user && chmod 777 /home/cupy-user
