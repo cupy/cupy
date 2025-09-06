@@ -45,8 +45,6 @@ from cupy import polynomial  # NOQA
 from cupy import random  # NOQA
 # `cupy.sparse` is deprecated in v8
 from cupy import sparse  # NOQA
-from cupy import testing  # NOQA  # NOQA
-
 
 # import class and function
 from cupy._core import ndarray  # NOQA
@@ -1146,8 +1144,22 @@ def _embed_signatures(dirs):
 
 
 _embed_signatures(globals())
-_embed_signatures(fft.__dict__)
-_embed_signatures(linalg.__dict__)
-_embed_signatures(random.__dict__)
-_embed_signatures(sparse.__dict__)
-_embed_signatures(testing.__dict__)
+
+# Lazy import testing. Set up after _embed_signatures so that we don't access
+# any cupy.testing attributes. cupy.testing does not contain any ufuncs so it
+# is not necessary to call _embed_signatures on it.
+# https://docs.python.org/3/library/importlib.html#implementing-lazy-imports
+
+
+def _lazy_import(name):
+    import importlib.util
+    spec = importlib.util.find_spec(name)
+    loader = importlib.util.LazyLoader(spec.loader)
+    spec.loader = loader
+    module = importlib.util.module_from_spec(spec)
+    _sys.modules[name] = module
+    loader.exec_module(module)
+    return module
+
+
+testing = _lazy_import("cupy.testing")
