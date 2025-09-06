@@ -31,3 +31,5 @@ RUN pyenv install 3.10.15 && \
 RUN pip install -U 'numpy==1.22.*' 'scipy==1.7.*' 'optuna==3.*' 'cython==3.0.*' 'fastrlock>=0.5' 'cuda-python==11.*'
 RUN pip uninstall -y mpi4py && \
     pip check
+
+RUN mkdir /home/cupy-user && chmod 777 /home/cupy-user
