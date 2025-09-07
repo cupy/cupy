@@ -469,9 +469,9 @@ def make_extensions(ctx: Context, compiler, use_cython):
                 # Add `cupy/.data/lib` (where shared libraries included in
                 # wheels reside) to RPATH.
                 # The path is resolved relative to the module, e.g., use
-                # `$ORIGIN/../cupy/.data/lib` for `cupy/cudnn.so` and
+                # `$ORIGIN/../cupy/.data/lib` for `cupy/nccl.so` and
                 # `$ORIGIN/../../../cupy/.data/lib` for
-                # `cupy_backends/cuda/libs/cudnn.so`.
+                # `cupy_backends/cuda/libs/nccl.so`.
                 depth = name.count('.')
                 rpath.append(
                     '{}{}/cupy/.data/lib'.format(_rpath_base(), '/..' * depth))
