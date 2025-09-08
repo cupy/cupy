@@ -56,7 +56,8 @@ __global__ void kernel(const Matrix<T>* A,
 
 def main():
     N = 8
-    module = cupy.RawModule(code=code, name_expressions=('kernel<float>', 'kernel<double>'))
+    module = cupy.RawModule(code=code, name_expressions=(
+        'kernel<float>', 'kernel<double>'))
 
     # The kernel computes out = A*B+C where A, B and C are 4x4 matrices.
     # A and B are arrays of N such matrices and C is a matrix kernel parameter.

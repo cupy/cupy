@@ -9,6 +9,7 @@ import cupy
 from cupy import testing
 from cupy.cuda import runtime
 
+
 def _rocm_version_major():
     if not getattr(runtime, "is_hip", False):
         return -1
@@ -16,10 +17,11 @@ def _rocm_version_major():
     version = runtime.runtimeGetVersion()
     major = version // 10_000_000
     return int(major)
-    
+
 
 _ROCM_VER_MAJOR = _rocm_version_major()
 _IS_HIP_LT7 = bool(_ROCM_VER_MAJOR != -1 and int(_ROCM_VER_MAJOR) < 7)
+
 
 @pytest.mark.skipif(_IS_HIP_LT7, reason="Skip on ROCm < 7 (HIP).")
 class TestVectorizeOps(unittest.TestCase):
@@ -235,6 +237,7 @@ class TestVectorizeOps(unittest.TestCase):
 
         return self._run(my_usub, xp, [dtype])
 
+
 @pytest.mark.skipif(_IS_HIP_LT7, reason="Skip on ROCm < 7 (HIP).")
 class TestVectorizeExprs(unittest.TestCase):
 
@@ -300,6 +303,7 @@ class TestVectorizeExprs(unittest.TestCase):
         f = xp.vectorize(my_typecast)
         x = testing.shaped_random((20, 30), xp, dtype1, seed=1)
         return f(x)
+
 
 @pytest.mark.skipif(_IS_HIP_LT7, reason="Skip on ROCm < 7 (HIP).")
 class TestVectorizeInstructions(unittest.TestCase):
@@ -378,6 +382,7 @@ class TestVectorizeInstructions(unittest.TestCase):
         f = xp.vectorize(my_nonconst_result)
         x = testing.shaped_random((20, 30), xp, numpy.int32, seed=1)
         return f(x)
+
 
 @pytest.mark.skipif(_IS_HIP_LT7, reason="Skip on ROCm < 7 (HIP).")
 class TestVectorizeStmts(unittest.TestCase):
@@ -575,6 +580,7 @@ class _MyClass:
     def __init__(self, x):
         self.x = x
 
+
 @pytest.mark.skipif(_IS_HIP_LT7, reason="Skip on ROCm < 7 (HIP).")
 class TestVectorizeConstants(unittest.TestCase):
 
@@ -601,6 +607,7 @@ class TestVectorizeConstants(unittest.TestCase):
         x1 = testing.shaped_random((20, 30), xp, xp.int64, seed=1)
         x2 = testing.shaped_random((20, 30), xp, xp.int64, seed=2)
         return f(x1, x2)
+
 
 @pytest.mark.skipif(_IS_HIP_LT7, reason="Skip on ROCm < 7 (HIP).")
 class TestVectorizeBroadcast(unittest.TestCase):
@@ -637,6 +644,7 @@ class TestVectorizeBroadcast(unittest.TestCase):
         x1 = testing.shaped_random((20, 30), xp, dtype, seed=1)
         x2 = dtype(1)
         return f(x1, x2)
+
 
 @pytest.mark.skipif(_IS_HIP_LT7, reason="Skip on ROCm < 7 (HIP).")
 class TestVectorize(unittest.TestCase):
