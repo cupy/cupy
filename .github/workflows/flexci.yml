@@ -30,7 +30,7 @@ jobs:
       if: github.event_name == 'issue_comment'
       env:
         GH_TOKEN: ${{ github.token }}
-      run:
+      run: |
         echo "pr_base_ref=$(gh api '${{ github.event.issue.pull_request.url }}' | jq -r .base.ref)" >> "${GITHUB_OUTPUT}"
         echo "pr_merge_ref=refs/pull/${{ github.event.issue.number }}/merge" >> "${GITHUB_OUTPUT}"
 
