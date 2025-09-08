@@ -153,10 +153,11 @@ cdef SoftLink _get_softlink():
             # ROCm 7.x:
             libname = 'libhiprtc.so.7'
         else:
-            # Unsupported ROCm version. If using a new ROCm major please add support above.
+            # Unsupported ROCm version. If using a new ROCm
+            # major please add support above.
             raise RuntimeError(
                 f"Unsupported ROCm version: {runtime_version} detected in "
-                f"_cnvrtc.pxi - Please update the code to support this version."
+                f"_cnvrtc.pxi - Please update code to support this version."
             )
 
     return SoftLink(libname, prefix, mandatory=True)

@@ -190,7 +190,8 @@ def _call_kernel(kernel, input, weights, output, structure=None,
 if runtime.is_hip:
     includes = r'''
 // workaround for HIP: line begins with #include
-#include <cupy/math_constants.h>\n
+#include <cupy/math_constants.h>
+#include <type_traits>
 '''
 else:
     includes = r'''

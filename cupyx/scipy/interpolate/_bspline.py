@@ -171,7 +171,8 @@ __global__ void d_boor(
 '''
 
 D_BOOR_MODULE = cupy.RawModule(code=D_BOOR_KERNEL,
-    name_expressions=[f'd_boor<{type_name}>' for type_name in TYPES])
+                               name_expressions=[f'd_boor<{type_name}>'
+                                                 for type_name in TYPES])
 
 
 DESIGN_MAT_KERNEL = r'''
