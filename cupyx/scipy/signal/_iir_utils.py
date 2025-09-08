@@ -474,7 +474,7 @@ __global__ void fir_sos(
 """  # NOQA
 
 IIR_MODULE = cupy.RawModule(
-    code=IIR_KERNEL, options=('-std=c++11',),
+    code=IIR_KERNEL,
     name_expressions=[f'compute_correction_factors<{x}, {y}>'
                       for x, y in TYPE_PAIR_NAMES] +
                      [f'correct_carries<{x}>' for x in TYPE_NAMES] +
@@ -482,7 +482,7 @@ IIR_MODULE = cupy.RawModule(
                      [f'second_pass_iir<{x}>' for x in TYPE_NAMES])
 
 IIR_SOS_MODULE = cupy.RawModule(
-    code=IIR_SOS_KERNEL, options=('-std=c++11',),
+    code=IIR_SOS_KERNEL,
     name_expressions=[f'compute_correction_factors_sos<{x}, {y}>'
                       for x, y in TYPE_PAIR_NAMES] +
     [f'pick_carries<{x}>' for x in TYPE_NAMES] +

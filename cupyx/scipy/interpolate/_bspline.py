@@ -68,8 +68,7 @@ __global__ void find_interval(
 }
 '''
 
-INTERVAL_MODULE = cupy.RawModule(
-    code=INTERVAL_KERNEL, options=('-std=c++11',),)
+INTERVAL_MODULE = cupy.RawModule(code=INTERVAL_KERNEL,)
 #    name_expressions=[f'find_interval<{type_name}>' for type_name in TYPES])
 
 
@@ -171,8 +170,7 @@ __global__ void d_boor(
 }
 '''
 
-D_BOOR_MODULE = cupy.RawModule(
-    code=D_BOOR_KERNEL, options=('-std=c++11',),
+D_BOOR_MODULE = cupy.RawModule(code=D_BOOR_KERNEL,
     name_expressions=[f'd_boor<{type_name}>' for type_name in TYPES])
 
 
@@ -202,7 +200,7 @@ __global__ void compute_design_matrix(
 '''
 
 DESIGN_MAT_MODULE = cupy.RawModule(
-    code=DESIGN_MAT_KERNEL, options=('-std=c++11',),
+    code=DESIGN_MAT_KERNEL,
     name_expressions=[f'compute_design_matrix<{itype}>'
                       for itype in INT_TYPES])
 
