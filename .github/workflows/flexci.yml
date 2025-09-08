@@ -32,11 +32,19 @@ jobs:
         GH_TOKEN: ${{ github.token }}
       run:
         echo "pr_base_ref=$(gh api '${{ github.event.issue.pull_request.url }}' | jq -r .base.ref)" >> "${GITHUB_OUTPUT}"
+        echo "pr_merge_ref=refs/pull/${{ github.event.issue.number }}/merge" >> "${GITHUB_OUTPUT}"
 
-    - name: Checkout
+    - name: Checkout (Base Branch)
       uses: actions/checkout@v4
       with:
         ref: ${{ github.event_name == 'issue_comment' && steps.base.outputs.pr_base_ref || github.event.pull_request.merge_commit_sha }}
+
+    - name: Checkout (Untrusted Pull-Request Code)
+      if: github.event_name == 'issue_comment'
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ steps.base.outputs.pr_merge_ref }}
+        path: _pr_untrusted
 
     - name: Setup Python
       uses: actions/setup-python@v5
@@ -51,9 +59,10 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ github.token }}
         FLEXCI_WEBHOOK_SECRET: ${{ secrets.FLEXCI_WEBHOOK_SECRET }}
+        PROJECTS_ROOT_DIR: ${{ github.event_name == 'issue_comment' && '_pr_untrusted' || '.' }}
       run: |
         ./.github/workflows/scripts/flexci_dispatcher.py \
             --event "${GITHUB_EVENT_NAME}" \
             --webhook "${GITHUB_EVENT_PATH}" \
-            --projects ./.pfnci/config.tags.json \
+            --projects "${PROJECTS_ROOT_DIR}/.pfnci/config.tags.json" \
             --external-tag jenkins
