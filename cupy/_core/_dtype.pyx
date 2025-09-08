@@ -4,7 +4,6 @@ import numpy
 import warnings
 
 from cupy_backends.cuda.api cimport runtime
-from cupy.exceptions import ComplexWarning
 
 
 cdef str all_type_chars = '?bhilqBHILQefdFD'
