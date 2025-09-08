@@ -835,7 +835,7 @@ class TestZoom:
     'zoom': [(1, 1), (3, 5), (8, 2), (8, 8)],
     'mode': ['nearest', 'reflect', 'mirror', 'grid-wrap', 'grid-constant'],
 }))
-class TestZoomOrder0IntegerGrid():
+class TestZoomOrder0IntegerGrid:
 
     def test_zoom_grid_by_int_order0(self):
         # When grid_mode is True,  order 0 zoom should be the same as
@@ -858,7 +858,7 @@ class TestZoomOrder0IntegerGrid():
     'order': [0, 1, 2, 3, 4, 5],
     'grid_mode': [False, True],
 }))
-class TestZoomOutputSize1():
+class TestZoomOutputSize1:
 
     @testing.for_float_dtypes(no_float16=True)
     @testing.numpy_cupy_allclose(atol=1e-5, scipy_name='scp')
