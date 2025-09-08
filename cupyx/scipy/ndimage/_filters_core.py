@@ -344,7 +344,6 @@ def _generate_nd_kernel(name, pre, found, post, modes, w_shape, int_type,
     if has_mask:
         name += '_with_mask'
     preamble = includes + _CAST_FUNCTION + preamble
-    options += ('--std=c++11', )
     return cupy.ElementwiseKernel(in_params, out_params, operation, name,
                                   reduce_dims=False, preamble=preamble,
                                   options=options)
