@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import unittest
-import pytest
 
 from cupy_backends.cuda import stream as stream_module
 import cupy
@@ -77,8 +76,6 @@ class TestArrayUfunc(unittest.TestCase):
     'stream': ('null', 'new'),
     'ver': (2, 3),
 }))
-
-
 class TestElementwiseKernel(unittest.TestCase):
 
     def setUp(self):
@@ -114,8 +111,6 @@ class TestElementwiseKernel(unittest.TestCase):
     'stream': ('null', 'new'),
     'ver': (2, 3),
 }))
-
-
 class TestSimpleReductionFunction(unittest.TestCase):
 
     def setUp(self):
@@ -153,8 +148,6 @@ class TestSimpleReductionFunction(unittest.TestCase):
     'stream': ('null', 'new'),
     'ver': (2, 3),
 }))
-
-
 class TestReductionKernel(unittest.TestCase):
 
     def setUp(self):
@@ -197,8 +190,6 @@ class TestReductionKernel(unittest.TestCase):
     {'shape': (10, 10), 'slices': (slice(2, None), slice(2, None))},
     {'shape': (10, 10), 'slices': (slice(2, None), slice(4, None))},
 )
-
-
 class TestSlicingMemoryPointer(unittest.TestCase):
 
     @testing.for_all_dtypes_combination(names=['dtype'])
@@ -287,8 +278,6 @@ class TestCUDAArrayInterfaceCompliance(unittest.TestCase):
 @testing.parameterize(*testing.product({
     'stream': ('null', 'new', 'ptds'),
 }))
-
-
 class TestCUDAArrayInterfaceStream(unittest.TestCase):
     def setUp(self):
         if cupy.cuda.runtime.is_hip and self.stream == 'ptds':

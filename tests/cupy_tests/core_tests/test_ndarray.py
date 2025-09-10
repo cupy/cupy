@@ -347,7 +347,7 @@ class TestNdarrayCudaInterfaceStream(unittest.TestCase):
     def setUp(self):
         if cupy.cuda.runtime.is_hip and self.stream == 'ptds':
             self.skipTest('HIP does not support PTDS')
-        
+
         if self.stream == 'null':
             self.stream = cuda.Stream.null
         elif self.stream == 'new':
