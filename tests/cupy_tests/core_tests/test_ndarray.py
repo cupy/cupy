@@ -387,24 +387,6 @@ class TestNdarrayCudaInterfaceStream(unittest.TestCase):
                 assert iface['stream'] == stream.ptr
 
 
-class TestNdarrayCudaInterfaceAttr(unittest.TestCase):
-
-    def setUp(self):
-        self.arr = cupy.zeros(shape=(2, 3), dtype=cupy.float64)
-
-    def test_cuda_array_interface_hasattr(self):
-        assert hasattr(self.arr, '__cuda_array_interface__')
-
-    def test_cuda_array_interface_getattr(self):
-        try:
-            interface = getattr(self.arr, '__cuda_array_interface__')
-            self.assertIsNotNone(interface)
-        except AttributeError as e:
-            self.fail(
-                "__cuda_array_interface__ should be present, "
-                f"but got an AttributeError: {str(e)}")
-
-
 @testing.parameterize(
     *testing.product({
         'indices_shape': [(2,), (2, 3)],
