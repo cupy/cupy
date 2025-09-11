@@ -15,6 +15,8 @@ os:
     system: "linux"
   "ubuntu:22.04":    # CUDA 11.7+
     system: "linux"
+  "ubuntu:24.04":    # CUDA 12.5.1+
+    system: "linux"
   "centos:7":
     system: "linux"
   "centos:8":
