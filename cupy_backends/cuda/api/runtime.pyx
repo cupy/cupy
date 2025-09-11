@@ -1178,9 +1178,13 @@ cpdef graphExecDestroy(intptr_t graphExec):
 cpdef intptr_t graphInstantiate(intptr_t graph) except? 0:
     # TODO(leofang): support reporting error log?
     cdef GraphExec ge
-    with nogil:
-        status = cudaGraphInstantiate(<GraphExec*>(&ge), <Graph>graph,
-                                      NULL, NULL, 0)
+    IF CUPY_HIP_VERSION > 0:
+        with nogil:
+            status = cudaGraphInstantiate(<GraphExec*>(&ge), <Graph>graph,
+                                          NULL, NULL, 0)
+    ELSE:
+        with nogil:
+            status = cudaGraphInstantiate(<GraphExec*>(&ge), <Graph>graph, 0)
     check_status(status)
     return <intptr_t>ge
 

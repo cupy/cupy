@@ -160,7 +160,7 @@ cdef extern from '../../cupy_backend_runtime.h' nogil:
     # Graph
     int cudaGraphDestroy(Graph graph)
     int cudaGraphExecDestroy(GraphExec graph)
-    int cudaGraphInstantiate(GraphExec*, Graph, GraphNode*, char*, size_t)
+    int cudaGraphInstantiate(GraphExec*, Graph, unsigned long long)
     int cudaGraphLaunch(GraphExec, driver.Stream)
     int cudaGraphUpload(GraphExec, driver.Stream)
     int cudaGraphDebugDotPrint(Graph, const char*, unsigned int)
