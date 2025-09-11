@@ -1179,8 +1179,7 @@ cpdef intptr_t graphInstantiate(intptr_t graph) except? 0:
     # TODO(leofang): support reporting error log?
     cdef GraphExec ge
     with nogil:
-        status = cudaGraphInstantiate(<GraphExec*>(&ge), <Graph>graph,
-                                      NULL, NULL, 0)
+        status = cudaGraphInstantiate(<GraphExec*>(&ge), <Graph>graph, 0)
     check_status(status)
     return <intptr_t>ge
 
