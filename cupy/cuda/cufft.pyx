@@ -31,10 +31,9 @@ cdef inline void initialize() except *:
     global _L
     if _L is not None:
         return
-    _initialize()
+    _L = _initialize()
 
-cdef inline void _initialize() except *:
-    global _L
+cdef SoftLink _initialize() except *:
     _L = _get_softlink()
 
     global _cufftXtSetJITCallback
@@ -45,6 +44,8 @@ cdef inline void _initialize() except *:
     else:
         _cufftXtSetJITCallback = <F_cufftXtSetJITCallback>_L.get(
             'XtSetJITCallback')
+
+    return _L
 
 cdef SoftLink _get_softlink():
     cdef int runtime_version
