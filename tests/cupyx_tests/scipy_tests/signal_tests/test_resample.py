@@ -192,7 +192,6 @@ class TestResample:
 
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_resample2d(self, xp, scp):
-        print("")
         results = []
         for nx in range(10000, 100000, 10000):
             for down in [2, 3, 8]:
