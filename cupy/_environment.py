@@ -29,7 +29,7 @@ Library Preloading
 ------------------
 
 Wheel packages are built against specific versions of CUDA libraries
-(cuTENSOR/NCCL/cuDNN).
+(cuTENSOR/NCCL).
 To avoid loading wrong version, these shared libraries are manually
 preloaded.
 
@@ -42,12 +42,12 @@ Example of `_preload_config` is as follows:
     # CUDA version string
     'cuda': '11.0',
 
-    'cudnn': {
-        # cuDNN version string
-        'version': '8.0.0',
+    'nccl': {
+        # NCCL version string
+        'version': '2.8.0',
 
         # names of the shared library
-        'filenames': ['libcudnn.so.X.Y.Z']  # or `cudnn64_X.dll` for Windows
+        'filenames': ['libnccl.so.X.Y.Z']
     }
 }
 
@@ -58,7 +58,6 @@ not expected to be parsed by end-users.
 _preload_config = None
 
 _preload_libs = {
-    'cudnn': None,
     'nccl': None,
     'cutensor': None,
 }
@@ -263,7 +262,7 @@ def get_cupy_cuda_lib_path():
 
     Shared libraries are looked up from
     `$CUPY_CUDA_LIB_PATH/$CUDA_VER/$LIB_NAME/$LIB_VER/{lib,lib64,bin}`,
-    e.g., `~/.cupy/cuda_lib/11.2/cudnn/8.1.1/lib64/libcudnn.so.8.1.1`.
+    e.g., `~/.cupy/cuda_lib/11.2/nccl/2.8.0/lib64/libnccl.so.2.8.0`.
 
     The default $CUPY_CUDA_LIB_PATH is `~/.cupy/cuda_lib`.
     """
@@ -343,8 +342,8 @@ def _preload_library(lib):
         _log(f'Looking for {lib} version {version} ({filename})')
 
         # "lib": cuTENSOR (Linux/Windows) / NCCL (Linux)
-        # "lib64": cuDNN (Linux)
-        # "bin": cuDNN (Windows)
+        # "lib64": NCCL (Linux)
+        # "bin": NCCL (Windows)
         libpath_cands = [
             os.path.join(
                 cupy_cuda_lib_path, config['cuda'], lib, version, x,
@@ -383,14 +382,14 @@ def _preload_library(lib):
             _log('File {} could not be found'.format(filename))
 
             # Lookup library with fully-qualified version (e.g.,
-            # `libcudnn.so.X.Y.Z`).
+            # `libnccl.so.X.Y.Z`).
             _log(f'Trying to load {filename} from default search path')
             try:
                 _preload_libs[lib][filename] = ctypes.CDLL(filename)
                 _log('Loaded')
             except Exception as e:
                 # Fallback to the standard shared library lookup which only
-                # uses the major version (e.g., `libcudnn.so.X`).
+                # uses the major version (e.g., `libnccl.so.X`).
                 _log(f'Library {lib} could not be preloaded: {e}')
 
 

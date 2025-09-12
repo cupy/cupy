@@ -83,17 +83,6 @@ class LinuxGenerator:
                     '    apt-get -qqy install ca-certificates && \\',
                     '    curl -qL https://repo.radeon.com/rocm/rocm.gpg.key | apt-key add -',  # NOQA
                 ]
-            elif matrix.cudnn is not None:
-                major = matrix.cudnn.split('.')[0]
-                if major == '7':
-                    ubuntu_version = os_version.replace('.', '')
-                    lines += [
-                        'RUN export DEBIAN_FRONTEND=noninteractive && \\',
-                        '    apt-get -qqy update && \\',
-                        '    apt-get -qqy install software-properties-common && \\',  # NOQA
-                        f'    apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/machine-learning/repos/ubuntu{ubuntu_version}/x86_64/7fa2af80.pub && \\',  # NOQA
-                        f'    add-apt-repository "deb https://developer.download.nvidia.com/compute/machine-learning/repos/ubuntu{ubuntu_version}/x86_64/ /"',  # NOQA
-                        '']
 
             lines += [
                 'RUN export DEBIAN_FRONTEND=noninteractive && \\',
@@ -227,7 +216,6 @@ class LinuxGenerator:
             nccl = matrix.nccl
             cutensor = matrix.cutensor
             cusparselt = matrix.cusparselt
-            cudnn = matrix.cudnn
             if nccl is not None:
                 spec = self.schema['nccl'][nccl]['spec']
                 nccl_cuda_schema = self.schema['nccl'][nccl]['cuda'][cuda]
@@ -259,21 +247,6 @@ class LinuxGenerator:
                 else:
                     packages.append(f'libcusparselt{major}-{spec}')
                     packages.append(f'libcusparselt-devel-{spec}')
-            if cudnn is not None:
-                spec = self.schema['cudnn'][cudnn]['spec']
-                cudnn_cuda_schema = self.schema['cudnn'][cudnn]['cuda'][cuda]
-                alias = cuda
-                if cudnn_cuda_schema is not None:
-                    alias = cudnn_cuda_schema['alias']
-                major = cudnn.split('.')[0]
-                if apt:
-                    packages.append(f'libcudnn{major}={spec}+cuda{alias}')
-                    packages.append(f'libcudnn{major}-dev={spec}+cuda{alias}')
-                else:
-                    packages.append(
-                        f'libcudnn{major}-{spec}-*.cuda{alias}')
-                    packages.append(
-                        f'libcudnn{major}-devel-{spec}-*.cuda{alias}')
             return packages
         elif matrix.rocm is not None:
             return self.schema['rocm'][matrix.rocm]['packages']  # type: ignore[no-any-return] # NOQA
@@ -445,7 +418,7 @@ def validate_schema(schema: SchemaType) -> None:
                     raise ValueError(
                         f'unknown system: {system} '
                         f'while parsing schema os:{value}')
-        if key in ('nccl', 'cutensor', 'cusparselt', 'cudnn'):
+        if key in ('nccl', 'cutensor', 'cusparselt'):
             for value, value_schema in key_schema.items():
                 for cuda, _ in value_schema.get('cuda', {}).items():
                     if cuda not in schema['cuda'].keys():
@@ -515,7 +488,7 @@ def validate_matrixes(schema: SchemaType, matrixes: list[Matrix]) -> None:
                     f'{matrix.project}: {key} must be one of '
                     f'{possible_values} but got {value}')
 
-            if key in ('nccl', 'cutensor', 'cusparselt', 'cudnn'):
+            if key in ('nccl', 'cutensor', 'cusparselt'):
                 supports = schema[key][value].get('cuda', None)
                 if supports is not None and matrix.cuda not in supports:
                     errors.append(

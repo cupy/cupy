@@ -58,10 +58,6 @@ Part of the CUDA features in CuPy will be activated only when the corresponding 
 
     * The library to perform collective multi-GPU / multi-node computations.
 
-* `cuDNN <https://developer.nvidia.com/cudnn>`_: v8.8
-
-    * The library to accelerate deep neural network computations.
-
 * `cuSPARSELt <https://docs.nvidia.com/cuda/cusparselt/>`_: v0.7.0 / v0.7.1
 
     * The library to accelerate sparse matrix-matrix multiplication.
@@ -90,7 +86,7 @@ Package names are different depending on your CUDA Toolkit version.
 
 .. note::
 
-   To enable features provided by additional CUDA libraries (cuTENSOR / NCCL / cuDNN), you need to install them manually.
+   To enable features provided by additional CUDA libraries (cuTENSOR / NCCL), you need to install them manually.
    If you installed CuPy via wheels, you can use the installer command below to setup these libraries in case you don't have a previous installation::
 
     $ python -m cupyx.tools.install_library --cuda 11.x --library cutensor
@@ -136,9 +132,9 @@ However, if for any reason you need to force-install a particular CUDA version (
 
 .. note::
 
-    cuDNN, cuTENSOR, and NCCL are available on ``conda-forge`` as optional dependencies. The following command can install them all at once::
+    cuTENSOR, and NCCL are available on ``conda-forge`` as optional dependencies. The following command can install them all at once::
 
-        $ conda install -c conda-forge cupy cudnn cutensor nccl
+        $ conda install -c conda-forge cupy cutensor nccl
 
     Each of them can also be installed separately as needed.
 
@@ -164,7 +160,7 @@ Installing CuPy from Source
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Use of wheel packages is recommended whenever possible.
-However, if wheels cannot meet your requirements (e.g., you are running non-Linux environment or want to use a version of CUDA / cuDNN / NCCL not supported by wheels), you can also build CuPy from source.
+However, if wheels cannot meet your requirements (e.g., you are running non-Linux environment or want to use a version of CUDA / NCCL not supported by wheels), you can also build CuPy from source.
 
 .. note::
 
@@ -175,11 +171,11 @@ However, if wheels cannot meet your requirements (e.g., you are running non-Linu
 .. note::
 
    When installing CuPy from source, features provided by additional CUDA libraries will be disabled if these libraries are not available at the build time.
-   See :ref:`install_cudnn` for the instructions.
+   See :ref:`install_nccl` for the instructions.
 
 .. note::
 
-   If you upgrade or downgrade the version of CUDA Toolkit, cuDNN, NCCL or cuTENSOR, you may need to reinstall CuPy.
+   If you upgrade or downgrade the version of CUDA Toolkit, NCCL or cuTENSOR, you may need to reinstall CuPy.
    See :ref:`install_reinstall` for details.
 
 You can install the latest stable release version of the `CuPy source package <https://pypi.python.org/pypi/cupy>`_ via ``pip``.
@@ -285,26 +281,23 @@ If you are using certain versions of conda, it may fail to build CuPy with error
 This is due to a bug in conda (see `conda/conda#6030 <https://github.com/conda/conda/issues/6030>`_ for details).
 If you encounter this problem, please upgrade your conda.
 
-.. _install_cudnn:
+.. _install_nccl:
 
-Installing cuDNN and NCCL
-~~~~~~~~~~~~~~~~~~~~~~~~~
+Installing NCCL
+~~~~~~~~~~~~~~~
 
-We recommend installing cuDNN and NCCL using binary packages (i.e., using ``apt`` or ``yum``) provided by NVIDIA.
+We recommend installing NCCL using binary packages (i.e., using ``apt`` or ``yum``) provided by NVIDIA.
 
-If you want to install tar-gz version of cuDNN and NCCL, we recommend installing it under the ``CUDA_PATH`` directory.
-For example, if you are using Ubuntu, copy ``*.h`` files to ``include`` directory and ``*.so*`` files to ``lib64`` directory::
-
-  $ cp /path/to/cudnn.h $CUDA_PATH/include
-  $ cp /path/to/libcudnn.so* $CUDA_PATH/lib64
+If you want to install tar-gz version of NCCL, we recommend installing it under the ``CUDA_PATH`` directory.
+For example, if you are using Ubuntu, copy ``*.h`` files to ``include`` directory and ``*.so*`` files to ``lib64`` directory.
 
 The destination directories depend on your environment.
 
-If you want to use cuDNN or NCCL installed in another directory, please use ``CFLAGS``, ``LDFLAGS`` and ``LD_LIBRARY_PATH`` environment variables before installing CuPy::
+If you want to use NCCL installed in another directory, please use ``CFLAGS``, ``LDFLAGS`` and ``LD_LIBRARY_PATH`` environment variables before installing CuPy::
 
-  $ export CFLAGS=-I/path/to/cudnn/include
-  $ export LDFLAGS=-L/path/to/cudnn/lib
-  $ export LD_LIBRARY_PATH=/path/to/cudnn/lib:$LD_LIBRARY_PATH
+  $ export CFLAGS=-I/path/to/nccl/include
+  $ export LDFLAGS=-L/path/to/nccl/lib
+  $ export LD_LIBRARY_PATH=/path/to/nccl/lib:$LD_LIBRARY_PATH
 
 .. _install_cuda:
 
@@ -505,7 +498,6 @@ The following features are not available due to the limitation of ROCm or becaus
 The following features are not yet supported:
 
 * Sparse matrices (``cupyx.scipy.sparse``)
-* cuDNN (hipDNN)
 * Hermitian/symmetric eigenvalue solver (``cupy.linalg.eigh``)
 * Polynomial roots (uses Hermitian/symmetric eigenvalue solver)
 * Splines in ``cupyx.scipy.interpolate`` (``make_interp_spline``, spline modes of ``RegularGridInterpolator``/``interpn``), as they depend on sparse matrices.
