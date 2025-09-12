@@ -83,8 +83,6 @@ class _RuntimeInfo:
     cuda_extra_include_dirs = None
 
     # Optional Libraries
-    cudnn_build_version = None
-    cudnn_version = None
     nccl_build_version = None
     nccl_runtime_version = None
     cub_build_version = None
@@ -191,22 +189,6 @@ class _RuntimeInfo:
                     cupy._environment._get_include_dir_from_conda_or_wheel(
                         *nvrtc_version))
 
-        # cuDNN
-        if cupy._environment._can_attempt_preload('cudnn'):
-            if full:
-                cupy._environment._preload_library('cudnn')
-            else:
-                self.cudnn_build_version = (
-                    '(not loaded; try `import cupy.cuda.cudnn` first)')
-                self.cudnn_version = self.cudnn_build_version
-        try:
-            import cupy_backends.cuda.libs.cudnn as cudnn
-            self.cudnn_build_version = cudnn.get_build_version()
-            self.cudnn_version = _eval_or_error(
-                cudnn.getVersion, cudnn.CuDNNError)
-        except ImportError:
-            pass
-
         # NCCL
         if cupy._environment._can_attempt_preload('nccl'):
             if full:
@@ -302,8 +284,6 @@ class _RuntimeInfo:
         ]
 
         records += [
-            ('cuDNN Build Version', self.cudnn_build_version),
-            ('cuDNN Version', self.cudnn_version),
             ('NCCL Build Version', self.nccl_build_version),
             ('NCCL Runtime Version', self.nccl_runtime_version),
             ('cuTENSOR Version', self.cutensor_version),

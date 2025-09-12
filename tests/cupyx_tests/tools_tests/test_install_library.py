@@ -11,7 +11,7 @@ from cupyx.tools import install_library
 import pytest
 
 
-_libraries = ['cudnn', 'nccl', 'cutensor']
+_libraries = ['nccl', 'cutensor']
 
 
 def _get_supported_cuda_versions(lib):
@@ -20,14 +20,6 @@ def _get_supported_cuda_versions(lib):
 
 
 class TestInstallLibrary:
-
-    @pytest.mark.skipif(
-        platform.machine() == "aarch64",
-        reason="FIXME")  # TODO(leofang)
-    @pytest.mark.parametrize('cuda', _get_supported_cuda_versions('cudnn'))
-    @testing.slow
-    def test_install_cudnn(self, cuda):
-        self._test_install('cudnn', cuda)
 
     @pytest.mark.skipif(
         platform.system() == 'Windows',

@@ -17,7 +17,7 @@ RUN yum -y install \
        xz-devel && \
     yum -y install epel-release && \
     yum -y install "@Development Tools" ccache git curl && \
-    yum -y install 'libnccl-2.16.*-*+cuda11.8' 'libnccl-devel-2.16.*-*+cuda11.8' 'libcudnn8-8.8.*-*.cuda11.8' 'libcudnn8-devel-8.8.*-*.cuda11.8'
+    yum -y install 'libnccl-2.16.*-*+cuda11.8' 'libnccl-devel-2.16.*-*+cuda11.8'
 
 ENV PATH "/usr/lib64/ccache:${PATH}"
 
@@ -36,3 +36,5 @@ RUN pyenv install 3.10.15 && \
 RUN pip install -U 'numpy==1.24.*' 'scipy==1.10.*' 'optuna==3.*' 'cython==3.1.*' 'fastrlock>=0.5'
 RUN pip uninstall -y mpi4py cuda-python && \
     pip check
+
+RUN mkdir /home/cupy-user && chmod 777 /home/cupy-user

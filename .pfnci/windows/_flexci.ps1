@@ -62,28 +62,6 @@ function ActivateCUDA($version) {
     $Env:PATH = "$Env:CUDA_PATH\bin;$Env:CUDA_PATH\bin\x64;" + $Env:PATH
 }
 
-function ActivateCuDNN($cudnn_version, $cuda_version) {
-    # Only supports CUDA 11 and 12.
-    if ($cudnn_version -eq "8.8") {
-        $cudnn = "v8.8.1"
-    } else {
-        throw "Unsupported cuDNN version: $cudnn_version"
-    }
-
-    if ($cuda_version.startswith("11.")) {
-        $cuda = "11"
-    } elseif ($cuda_version.startswith("12.")) {
-        $cuda = "12"
-    } else {
-        throw "Unsupported CUDA version: $cuda_version"
-    }
-
-    $base = "C:\Development\cuDNN\$cudnn\cuda$cuda"
-    $Env:CL = "-I$base\include " + $Env:CL
-    $Env:LINK = "/LIBPATH:$base\lib\x64 " + $Env:LINK
-    $Env:PATH = "$base\bin;" + $Env:PATH
-}
-
 function InstallZLIB() {
     Copy-Item -Path "C:\Development\ZLIB\zlibwapi.dll" -Destination "C:\Windows\System32"
 }
