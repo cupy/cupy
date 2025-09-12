@@ -151,7 +151,6 @@ def get_compiler_setting(ctx: Context, use_hip):
         include_dirs.append(os.path.join(cuda_path, 'include'))
         if PLATFORM_WIN32:
             library_dirs.append(os.path.join(cuda_path, 'bin'))
-            library_dirs.append(os.path.join(cuda_path, 'bin', 'x64'))
             library_dirs.append(os.path.join(cuda_path, 'lib', 'x64'))
         else:
             library_dirs.append(os.path.join(cuda_path, 'lib64'))
