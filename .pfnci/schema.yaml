@@ -437,8 +437,8 @@ fastrlock:
 cuda-python:
   null:
     spec: null
-  "11":
-    spec: "==11.*"
+  "12":
+    spec: "==12.*"
 
 ###############################################################################
 # Environment Variables

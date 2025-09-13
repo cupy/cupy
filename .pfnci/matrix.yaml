@@ -706,25 +706,25 @@
 # CUDA Python Test
 ###############################################################################
 
-# CUDA 11.x / CUDA Python | Linux
-- project: "cupy.linux.cuda11x-cuda-python"
-  target: "cuda11x-cuda-python"
+# CUDA 12.x / CUDA Python | Linux
+- project: "cupy.linux.cuda12x-cuda-python"
+  target: "cuda12x-cuda-python"
   tags: ["@push", "full", "mini", "cuda-python"]
   system: "linux"
   os: "ubuntu:20.04"
-  cuda: "11.8"
+  cuda: "12.9"
   rocm: null
-  nccl: "2.16"
+  nccl: "2.26"
   cutensor: "2.0"
   cusparselt: null
   python: "3.12"
-  numpy: "1.26"
-  scipy: "1.13"
-  optuna: "3"
+  numpy: "2.3"
+  scipy: "1.16"
+  optuna: "4"
   mpi4py: null
   cython: "3.0"
   fastrlock: "latest"
-  cuda-python: "11"
+  cuda-python: "12"
   env:CUPY_ACCELERATORS: "cutensor,cub"
   env:CUPY_USE_CUDA_PYTHON: "1"
   test: "unit"
