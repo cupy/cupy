@@ -366,7 +366,8 @@ def make_extensions(ctx: Context, compiler, use_cython):
                        f'{os.environ["BUILD_PREFIX"]}/bin/ld')
         if (PLATFORM_LINUX and (
                 int(os.environ.get('CONDA_BUILD_CROSS_COMPILATION', 0)) == 1 or
-                os.environ.get('CONDA_OVERRIDE_CUDA', '0').startswith('12'))):
+                os.environ.get('CONDA_OVERRIDE_CUDA', '0').startswith(
+                    ('12', '13')))):
             # If cross-compiling, we need build_and_run() & build_shlib() to
             # use the compiler on the build platform to generate stub files
             # that are executable in the build environment, not the target
