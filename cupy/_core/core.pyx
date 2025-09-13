@@ -2354,10 +2354,11 @@ cpdef tuple assemble_cupy_compiler_options(tuple options):
     else:
         warn_on_unsupported_std(options)
 
-    # make sure bundled CCCL is searched first
-    options = (_get_cccl_include_options()
-               + options
-               + ('-I%s' % _get_header_dir_path(),))
+    if not _is_hip:
+        # make sure bundled CCCL is searched first
+        options += (_get_cccl_include_options(),)
+
+    options += ('-I%s' % _get_header_dir_path(),)
 
     global _cuda_path
     if _cuda_path == '':
