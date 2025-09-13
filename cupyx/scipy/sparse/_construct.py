@@ -7,6 +7,7 @@ from cupyx.scipy.sparse import _csc
 from cupyx.scipy.sparse import _csr
 from cupyx.scipy.sparse import _dia
 from cupyx.scipy.sparse import _sputils
+from cupyx.scipy.sparse import _base
 
 
 def eye(m, n=None, k=0, dtype='d', format=None):
@@ -493,6 +494,109 @@ def diags(diagonals, offsets=0, shape=None, format=None, dtype=None):
             raise
 
     return _dia.dia_matrix((data_arr, offsets), shape=(m, n)).asformat(format)
+
+
+def block_diag(mats, format=None, dtype=None):
+    """
+    Build a block diagonal sparse matrix from provided matrices.
+
+    Parameters
+    ----------
+    mats : sequence of matrices or arrays
+        Input matrices or arrays. Can be sparse or dense.
+    format : str, optional
+        The sparse format of the result (e.g., "csr"). If not given, the result
+        is returned in "coo" format.
+    dtype : dtype specifier, optional
+        The data-type of the output. If not given, the dtype is
+        determined from that of `mats`.
+
+    Returns
+    -------
+    res : coo_matrix
+        A sparse matrix in the specified format.
+
+    See Also
+    --------
+    scipy.sparse.block_diag
+
+    Examples
+    --------
+    >>> from cupyx.scipy.sparse import coo_matrix, block_diag
+    >>> import cupy
+    >>> A = coo_matrix(cupy.array([[1, 2], [3, 4]], dtype=cupy.float32))
+    >>> B = coo_matrix(cupy.array([[5], [6]], dtype=cupy.float32))
+    >>> C = coo_matrix(cupy.array([[7]], dtype=cupy.float32))
+    >>> block_diag((A, B, C)).toarray()
+    array([[1., 2., 0., 0.],
+           [3., 4., 0., 0.],
+           [0., 0., 5., 0.],
+           [0., 0., 6., 0.],
+           [0., 0., 0., 7.]], dtype=float32)
+    """
+    row = []
+    col = []
+    data = []
+    r_idx = 0
+    c_idx = 0
+
+    # Track if any input sparse matrices use 64-bit indices
+    has_int64_indices = False
+
+    for a in mats:
+        # Convert scalars and lists to dense CuPy arrays
+        if isinstance(a, (list, int, float)):
+            a = cupy.atleast_2d(a)
+
+        if _base.issparse(a):
+            a = a.tocoo()
+
+            # Check for 64-bit indices in the input
+            if not has_int64_indices and a.row.dtype == cupy.int64:
+                has_int64_indices = True
+
+            nrows, ncols = a.shape
+
+            row.append(a.row + r_idx)
+            col.append(a.col + c_idx)
+            data.append(a.data)
+        else:
+            # Handle dense arrays
+            a = cupy.atleast_2d(a)
+            nrows, ncols = a.shape
+            # Create row/col indices for every element in the dense array
+            a_row, a_col = cupy.divmod(cupy.arange(nrows * ncols), ncols)
+            row.append(a_row + r_idx)
+            col.append(a_col + c_idx)
+            data.append(a.ravel())
+
+        r_idx += nrows
+        c_idx += ncols
+
+    # Determine the required index dtype for the output matrix
+    max_dim = max(r_idx, c_idx)
+
+    if has_int64_indices or max_dim > cupy.iinfo(cupy.int32).max:
+        idx_dtype = cupy.int64
+    else:
+        idx_dtype = cupy.int32
+
+    # Concatenate all parts into single arrays
+    final_row = cupy.concatenate(row).astype(idx_dtype, copy=False)
+    final_col = cupy.concatenate(col).astype(idx_dtype, copy=False)
+    final_data = cupy.concatenate(data)
+
+    new_shape = (r_idx, c_idx)
+
+    # Create the final sparse matrix
+    result = _coo.coo_matrix((final_data, (final_row, final_col)),
+                             shape=new_shape, dtype=dtype)
+
+    # Convert to the desired format if specified
+    if format is not None:
+        return result.asformat(format)
+
+    return result
 
 
 def kron(A, B, format=None):
