@@ -80,13 +80,15 @@ template <typename T>
 __device__ inline unsigned int _cupy_bitcount(T x) {
   if (sizeof(T) <= 4) {
     unsigned int ux = static_cast<unsigned int>(x);
-    if (sizeof(T) < 4) {
-      const unsigned int mask = (sizeof(T) == 1 ? 0xFFu : 0xFFFFu);
-      ux &= mask;
+    if ((T)(-1) < (T)0 && x < 0) {
+      ux = ~ux + 1u;
     }
     return __popc(ux);
   } else {
     unsigned long long ux = static_cast<unsigned long long>(x);
+    if ((T)(-1) < (T)0 && x < 0) {
+      ux = ~ux + 1ull;
+    }
     return __popcll(ux);
   }
 }

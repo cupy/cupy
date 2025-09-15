@@ -30,41 +30,15 @@ class TestElementwise(unittest.TestCase):
         self.check_binary_int('bitwise_xor')
 
     def test_bitwise_count(self):
-        @testing.numpy_cupy_array_equal()
-        def _check(xp):
-            import numpy as _np
-            import cupy as _cp
-            a = xp.array([-3, -2, -1, 0, 1, 2, 3]).astype(xp.int32)
-            if xp is _np:
-                if hasattr(_np, 'bit_count'):
-                    return _np.bit_count(a)
-                # fallback for older NumPy: view as unsigned and count bits
-                width = a.dtype.itemsize * 8
-                mask = (1 << width) - 1
-                ua = a.astype(_np.uint32, copy=False).view({
-                    1: _np.uint8, 2: _np.uint16, 4: _np.uint32, 8: _np.uint64
-                }[a.dtype.itemsize])
-                # use Python int.bit_count elementwise
-                return _np.fromiter(((int(v) & mask).bit_count() for v in a.ravel()),
-                                    dtype=_np.uint8).reshape(a.shape)
-            else:
-                return _cp.bitwise_count(a)
-        _check()
+        import cupy as _cp
+        x = _cp.array([0, 1, 2, 3, 255], dtype=_cp.uint8)
+        assert (_cp.bit_count(x) == _cp.bitwise_count(x)).all()
+        import numpy as _np
+        if hasattr(_np, 'bit_count'):
+            self.check_unary_int('bit_count')
+        else:
+            self.check_unary_int('bitwise_count')
 
-    def test_bit_count_alias(self):
-        @testing.numpy_cupy_array_equal()
-        def _check(xp):
-            import numpy as _np
-            import cupy as _cp
-            a = xp.array([0, 1, 2, 3, 255]).astype(xp.uint8)
-            if xp is _np:
-                if hasattr(_np, 'bit_count'):
-                    return _np.bit_count(a)
-                return _np.fromiter((int(v).bit_count() for v in a.ravel()),
-                                    dtype=_np.uint8).reshape(a.shape)
-            else:
-                return _cp.bit_count(a)
-        _check()
 
     def test_invert(self):
         self.check_unary_int('invert')
