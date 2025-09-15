@@ -597,3 +597,19 @@ def svd(a, full_matrices=True, compute_uv=True):
             return vt, s, u
     else:
         return s
+
+        
+def svdvals(a):
+    """Compute singular values of a matrix.
+
+    Equivalent to :func:`svd` with ``compute_uv=False``.
+
+    Args:
+        a (cupy.ndarray): Input array with shape ``(..., M, N)``.
+
+    Returns:
+        cupy.ndarray: Singular values of ``a`` in descending order.
+
+    .. seealso:: :func:`numpy.linalg.svdvals`, :func:`cupy.linalg.svd`
+    """
+    return svd(a, compute_uv=False)
