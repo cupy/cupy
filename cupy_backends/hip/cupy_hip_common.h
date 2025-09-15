@@ -2,6 +2,7 @@
 #define INCLUDE_GUARD_HIP_CUPY_COMMON_H
 
 #include <hip/hip_runtime_api.h>
+#define HIPBLAS_V2
 #if HIP_VERSION >= 50530600
 #include <hipblas/hipblas.h>
 #include <rocsolver/rocsolver.h>
