@@ -307,6 +307,8 @@ from cupy._binary.elementwise import bitwise_and  # NOQA
 from cupy._binary.elementwise import bitwise_or  # NOQA
 from cupy._binary.elementwise import bitwise_xor  # NOQA
 from cupy._binary.elementwise import bitwise_not  # NOQA
+from cupy._binary.elementwise import bitwise_count  # NOQA
+from cupy._binary.elementwise import bit_count  # NOQA
 from cupy._binary.elementwise import invert  # NOQA
 from cupy._binary.elementwise import left_shift  # NOQA
 from cupy._binary.elementwise import right_shift  # NOQA
