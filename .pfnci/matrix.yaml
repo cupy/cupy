@@ -619,8 +619,8 @@
   env:CUPY_ACCELERATORS: null
   test: "unit"
 
-  # ROCm 6.4 | Linux
-  # The latest ROCm version matrix is intended to cover the highest supported combination.
+# ROCm 6.4 | Linux
+# The latest ROCm version matrix is intended to cover the highest supported combination.
 - project: "cupy.linux.rocm-6-4"
   _url: "https://jenkins.preferred.jp/job/chainer/job/cupy_main/TEST=rocm-6-4,label=mnj-mi50/"
   tags: null  # self-hosted
