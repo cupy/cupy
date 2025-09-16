@@ -182,7 +182,9 @@ def zpk2sos(z, p, k, pairing=None, *, analog=False):
                          'pairing must be "minimal"')
 
     if len(z) == len(p) == 0:
-        if isinstance(k, cupy.ndarray):
+        if isinstance(k, cupy.ndarray) and k.ndim == 0:
+            # check ndim == 0 to make error message simpler in
+            # case where a non-0d CuPy array is mistakenly passed.
             k = k.get()
         if not analog:
             return cupy.array([[k, 0., 0., 1., 0., 0.]])
