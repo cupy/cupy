@@ -54,9 +54,11 @@ CuPy CI Test Coverage
      - 
      - 
      - 
+     - 
    * - 
      - System
      - 
+     - linux
      - linux
      - linux
      - linux
@@ -142,13 +144,15 @@ CuPy CI Test Coverage
      - `rocm-5-0 <t35_>`_ `🐳 <d35_>`_ `📜 <s35_>`_
      - `rocm-5-3 <t36_>`_ `🐳 <d36_>`_ `📜 <s36_>`_
      - `rocm-6-2 <t37_>`_ `🐳 <d37_>`_ `📜 <s37_>`_
-     - `cuda-slow <t38_>`_ `🐳 <d38_>`_ `📜 <s38_>`_
-     - `cuda-example <t39_>`_ `🐳 <d39_>`_ `📜 <s39_>`_
-     - `cuda-head <t40_>`_ `🐳 <d40_>`_ `📜 <s40_>`_
-     - `cuda11x-cuda-python <t41_>`_ `🐳 <d41_>`_ `📜 <s41_>`_
-     - `benchmark.head <t42_>`_ `🐳 <d42_>`_ `📜 <s42_>`_
-     - `benchmark <t43_>`_ `🐳 <d43_>`_ `📜 <s43_>`_
+     - `rocm-6-4 <t38_>`_ `🐳 <d38_>`_ `📜 <s38_>`_
+     - `cuda-slow <t39_>`_ `🐳 <d39_>`_ `📜 <s39_>`_
+     - `cuda-example <t40_>`_ `🐳 <d40_>`_ `📜 <s40_>`_
+     - `cuda-head <t41_>`_ `🐳 <d41_>`_ `📜 <s41_>`_
+     - `cuda12x-cuda-python <t42_>`_ `🐳 <d42_>`_ `📜 <s42_>`_
+     - `benchmark.head <t43_>`_ `🐳 <d43_>`_ `📜 <s43_>`_
+     - `benchmark <t44_>`_ `🐳 <d44_>`_ `📜 <s44_>`_
    * - 
+     - 
      - 
      - 
      - 
@@ -197,7 +201,8 @@ CuPy CI Test Coverage
      - 
    * - system
      - linux
-     - 44
+     - 45
+     - ✅
      - ✅
      - ✅
      - ✅
@@ -289,6 +294,7 @@ CuPy CI Test Coverage
      - 
      - 
      - 
+     - 
    * - os
      - ubuntu:20.04
      - 39
@@ -330,6 +336,7 @@ CuPy CI Test Coverage
      - ✅
      - ✅
      - 
+     - 
      - ✅
      - ✅
      - ✅
@@ -338,7 +345,7 @@ CuPy CI Test Coverage
      - ✅
    * - 
      - ubuntu:22.04
-     - 3
+     - 4
      - 
      - 
      - 
@@ -376,6 +383,7 @@ CuPy CI Test Coverage
      - 
      - 
      - 
+     - ✅
      - ✅
      - 
      - 
@@ -430,9 +438,11 @@ CuPy CI Test Coverage
      - 
      - 
      - 
+     - 
    * - 
      - centos:8
      - 🚨
+     - 
      - 
      - 
      - 
@@ -524,9 +534,10 @@ CuPy CI Test Coverage
      - 
      - 
      - 
+     - 
    * - cuda
      - null
-     - 4
+     - 5
      - 
      - 
      - 
@@ -561,6 +572,7 @@ CuPy CI Test Coverage
      - 
      - 
      - 
+     - ✅
      - ✅
      - ✅
      - ✅
@@ -576,6 +588,7 @@ CuPy CI Test Coverage
      - 2
      - ✅
      - ✅
+     - 
      - 
      - 
      - 
@@ -665,6 +678,7 @@ CuPy CI Test Coverage
      - 
      - 
      - 
+     - 
    * - 
      - 11.4
      - 2
@@ -674,6 +688,7 @@ CuPy CI Test Coverage
      - 
      - ✅
      - ✅
+     - 
      - 
      - 
      - 
@@ -759,6 +774,7 @@ CuPy CI Test Coverage
      - 
      - 
      - 
+     - 
    * - 
      - 11.6
      - 2
@@ -772,6 +788,7 @@ CuPy CI Test Coverage
      - 
      - ✅
      - ✅
+     - 
      - 
      - 
      - 
@@ -853,9 +870,10 @@ CuPy CI Test Coverage
      - 
      - 
      - 
+     - 
    * - 
      - 11.8
-     - 8
+     - 7
      - 
      - 
      - 
@@ -894,10 +912,11 @@ CuPy CI Test Coverage
      - 
      - 
      - 
+     - 
      - ✅
      - ✅
      - ✅
-     - ✅
+     - 
      - ✅
      - ✅
    * - 
@@ -919,6 +938,7 @@ CuPy CI Test Coverage
      - 
      - ✅
      - ✅
+     - 
      - 
      - 
      - 
@@ -994,6 +1014,7 @@ CuPy CI Test Coverage
      - 
      - 
      - 
+     - 
    * - 
      - 12.2
      - 2
@@ -1017,6 +1038,7 @@ CuPy CI Test Coverage
      - 
      - ✅
      - ✅
+     - 
      - 
      - 
      - 
@@ -1088,6 +1110,7 @@ CuPy CI Test Coverage
      - 
      - 
      - 
+     - 
    * - 
      - 12.4
      - 2
@@ -1115,6 +1138,7 @@ CuPy CI Test Coverage
      - 
      - ✅
      - ✅
+     - 
      - 
      - 
      - 
@@ -1182,6 +1206,7 @@ CuPy CI Test Coverage
      - 
      - 
      - 
+     - 
    * - 
      - 12.6
      - 2
@@ -1213,6 +1238,7 @@ CuPy CI Test Coverage
      - 
      - ✅
      - ✅
+     - 
      - 
      - 
      - 
@@ -1276,9 +1302,10 @@ CuPy CI Test Coverage
      - 
      - 
      - 
+     - 
    * - 
      - 12.9
-     - 2
+     - 3
      - 
      - 
      - 
@@ -1321,6 +1348,7 @@ CuPy CI Test Coverage
      - 
      - 
      - 
+     - ✅
      - 
      - 
    * - 
@@ -1370,6 +1398,7 @@ CuPy CI Test Coverage
      - 
      - 
      - 
+     - 
    * - rocm
      - null
      - 40
@@ -1407,6 +1436,7 @@ CuPy CI Test Coverage
      - ✅
      - ✅
      - ✅
+     - 
      - 
      - 
      - 
@@ -1464,6 +1494,7 @@ CuPy CI Test Coverage
      - 
      - 
      - 
+     - 
    * - 
      - 5.0
      - 1
@@ -1503,6 +1534,7 @@ CuPy CI Test Coverage
      - 
      - 
      - ✅
+     - 
      - 
      - 
      - 
@@ -1558,6 +1590,7 @@ CuPy CI Test Coverage
      - 
      - 
      - 
+     - 
    * - 
      - 6.2
      - 1
@@ -1605,9 +1638,58 @@ CuPy CI Test Coverage
      - 
      - 
      - 
+     - 
+   * - 
+     - 6.4
+     - 1
+     - 
+     - 
+     - 
+     - 
+     - 
+     - 
+     - 
+     - 
+     - 
+     - 
+     - 
+     - 
+     - 
+     - 
+     - 
+     - 
+     - 
+     - 
+     - 
+     - 
+     - 
+     - 
+     - 
+     - 
+     - 
+     - 
+     - 
+     - 
+     - 
+     - 
+     - 
+     - 
+     - 
+     - 
+     - 
+     - 
+     - 
+     - 
+     - ✅
+     - 
+     - 
+     - 
+     - 
+     - 
+     - 
    * - nccl
      - null
-     - 4
+     - 5
      - 
      - 
      - 
@@ -1642,6 +1724,7 @@ CuPy CI Test Coverage
      - 
      - 
      - 
+     - ✅
      - ✅
      - ✅
      - ✅
@@ -1654,7 +1737,7 @@ CuPy CI Test Coverage
      - 
    * - 
      - 2.16
-     - 20
+     - 19
      - ✅
      - ✅
      - ✅
@@ -1693,10 +1776,11 @@ CuPy CI Test Coverage
      - 
      - 
      - 
+     - 
      - ✅
      - ✅
      - ✅
-     - ✅
+     - 
      - ✅
      - ✅
    * - 
@@ -1720,6 +1804,7 @@ CuPy CI Test Coverage
      - ✅
      - ✅
      - ✅
+     - 
      - 
      - 
      - 
@@ -1793,6 +1878,7 @@ CuPy CI Test Coverage
      - 
      - 
      - 
+     - 
    * - 
      - 2.19
      - 2
@@ -1818,6 +1904,7 @@ CuPy CI Test Coverage
      - 
      - ✅
      - ✅
+     - 
      - 
      - 
      - 
@@ -1887,6 +1974,7 @@ CuPy CI Test Coverage
      - 
      - 
      - 
+     - 
    * - 
      - 2.21
      - 2
@@ -1916,6 +2004,7 @@ CuPy CI Test Coverage
      - 
      - ✅
      - ✅
+     - 
      - 
      - 
      - 
@@ -1981,6 +2070,7 @@ CuPy CI Test Coverage
      - 
      - 
      - 
+     - 
    * - 
      - 2.25
      - 🚨
@@ -2028,9 +2118,10 @@ CuPy CI Test Coverage
      - 
      - 
      - 
+     - 
    * - 
      - 2.26
-     - 4
+     - 5
      - 
      - 
      - 
@@ -2073,6 +2164,7 @@ CuPy CI Test Coverage
      - 
      - 
      - 
+     - ✅
      - 
      - 
    * - 
@@ -2122,9 +2214,10 @@ CuPy CI Test Coverage
      - 
      - 
      - 
+     - 
    * - cutensor
      - null
-     - 8
+     - 9
      - ✅
      - ✅
      - 
@@ -2157,6 +2250,7 @@ CuPy CI Test Coverage
      - 
      - 
      - 
+     - ✅
      - ✅
      - ✅
      - ✅
@@ -2210,6 +2304,7 @@ CuPy CI Test Coverage
      - 
      - 
      - 
+     - 
      - ✅
      - ✅
      - ✅
@@ -2218,7 +2313,7 @@ CuPy CI Test Coverage
      - ✅
    * - cusparselt
      - null
-     - 38
+     - 39
      - ✅
      - ✅
      - ✅
@@ -2253,6 +2348,7 @@ CuPy CI Test Coverage
      - 
      - 
      - 
+     - ✅
      - ✅
      - ✅
      - ✅
@@ -2310,6 +2406,7 @@ CuPy CI Test Coverage
      - 
      - 
      - 
+     - 
    * - python
      - 3.10
      - 9
@@ -2355,11 +2452,12 @@ CuPy CI Test Coverage
      - 
      - 
      - 
+     - 
      - ✅
      - ✅
    * - 
      - 3.11
-     - 13
+     - 14
      - 
      - 
      - 
@@ -2398,6 +2496,7 @@ CuPy CI Test Coverage
      - ✅
      - 
      - 
+     - ✅
      - 
      - 
      - 
@@ -2445,6 +2544,7 @@ CuPy CI Test Coverage
      - 
      - ✅
      - ✅
+     - 
      - ✅
      - ✅
      - ✅
@@ -2482,6 +2582,7 @@ CuPy CI Test Coverage
      - 
      - ✅
      - ✅
+     - 
      - 
      - 
      - 
@@ -2545,9 +2646,10 @@ CuPy CI Test Coverage
      - 
      - 
      - 
+     - 
    * - numpy
      - 1.24
-     - 7
+     - 8
      - ✅
      - ✅
      - ✅
@@ -2586,6 +2688,7 @@ CuPy CI Test Coverage
      - 
      - 
      - 
+     - ✅
      - 
      - 
      - 
@@ -2639,9 +2742,10 @@ CuPy CI Test Coverage
      - 
      - 
      - 
+     - 
    * - 
      - 1.26
-     - 15
+     - 14
      - 
      - 
      - 
@@ -2680,10 +2784,11 @@ CuPy CI Test Coverage
      - 
      - ✅
      - ✅
+     - 
      - ✅
      - ✅
      - 
-     - ✅
+     - 
      - ✅
      - ✅
    * - 
@@ -2711,6 +2816,7 @@ CuPy CI Test Coverage
      - 
      - ✅
      - ✅
+     - 
      - 
      - 
      - 
@@ -2780,6 +2886,7 @@ CuPy CI Test Coverage
      - 
      - 
      - 
+     - 
    * - 
      - 2.2
      - 6
@@ -2827,9 +2934,10 @@ CuPy CI Test Coverage
      - 
      - 
      - 
+     - 
    * - 
      - 2.3
-     - 6
+     - 7
      - 
      - 
      - 
@@ -2872,11 +2980,13 @@ CuPy CI Test Coverage
      - 
      - 
      - 
+     - ✅
      - 
      - 
    * - 
      - pre
      - 1
+     - 
      - 
      - 
      - 
@@ -2968,6 +3078,7 @@ CuPy CI Test Coverage
      - 
      - 
      - 
+     - 
    * - 
      - 1.10
      - 3
@@ -3006,6 +3117,7 @@ CuPy CI Test Coverage
      - 
      - 
      - ✅
+     - 
      - 
      - 
      - 
@@ -3062,9 +3174,10 @@ CuPy CI Test Coverage
      - 
      - 
      - 
+     - 
    * - 
      - 1.12
-     - 7
+     - 8
      - 
      - 
      - 
@@ -3103,6 +3216,7 @@ CuPy CI Test Coverage
      - ✅
      - 
      - 
+     - ✅
      - 
      - 
      - 
@@ -3111,7 +3225,7 @@ CuPy CI Test Coverage
      - ✅
    * - 
      - 1.13
-     - 5
+     - 4
      - 
      - 
      - 
@@ -3153,7 +3267,8 @@ CuPy CI Test Coverage
      - 
      - 
      - 
-     - ✅
+     - 
+     - 
      - 
      - 
    * - 
@@ -3196,6 +3311,7 @@ CuPy CI Test Coverage
      - 
      - 
      - ✅
+     - 
      - 
      - ✅
      - ✅
@@ -3250,9 +3366,10 @@ CuPy CI Test Coverage
      - 
      - 
      - 
+     - 
    * - 
      - 1.16
-     - 5
+     - 6
      - 
      - 
      - 
@@ -3295,11 +3412,13 @@ CuPy CI Test Coverage
      - 
      - 
      - 
+     - ✅
      - 
      - 
    * - 
      - pre
      - 1
+     - 
      - 
      - 
      - 
@@ -3391,6 +3510,7 @@ CuPy CI Test Coverage
      - 
      - 
      - 
+     - 
    * - 
      - 3
      - 34
@@ -3434,13 +3554,14 @@ CuPy CI Test Coverage
      - 
      - ✅
      - ✅
-     - 
      - ✅
+     - 
+     - 
      - ✅
      - ✅
    * - 
      - 4
-     - 9
+     - 10
      - 
      - 
      - 
@@ -3483,11 +3604,13 @@ CuPy CI Test Coverage
      - 
      - 
      - 
+     - ✅
      - 
      - 
    * - 
      - pre
      - 1
+     - 
      - 
      - 
      - 
@@ -3534,7 +3657,7 @@ CuPy CI Test Coverage
      - 
    * - mpi4py
      - null
-     - 28
+     - 29
      - ✅
      - ✅
      - ✅
@@ -3569,6 +3692,7 @@ CuPy CI Test Coverage
      - 
      - ✅
      - 
+     - ✅
      - ✅
      - ✅
      - ✅
@@ -3626,6 +3750,7 @@ CuPy CI Test Coverage
      - 
      - 
      - 
+     - 
    * - 
      - 4
      - 3
@@ -3673,9 +3798,10 @@ CuPy CI Test Coverage
      - 
      - 
      - 
+     - 
    * - cython
      - 3.0
-     - 36
+     - 37
      - 
      - 
      - ✅
@@ -3710,6 +3836,7 @@ CuPy CI Test Coverage
      - 
      - 
      - 
+     - ✅
      - ✅
      - ✅
      - ✅
@@ -3767,6 +3894,7 @@ CuPy CI Test Coverage
      - 
      - 
      - 
+     - 
    * - 
      - pre
      - 🚨
@@ -3814,9 +3942,11 @@ CuPy CI Test Coverage
      - 
      - 
      - 
+     - 
    * - fastrlock
      - latest
-     - 44
+     - 45
+     - ✅
      - ✅
      - ✅
      - ✅
@@ -3863,7 +3993,8 @@ CuPy CI Test Coverage
      - ✅
    * - cuda-python
      - null
-     - 43
+     - 44
+     - ✅
      - ✅
      - ✅
      - ✅
@@ -3909,8 +4040,9 @@ CuPy CI Test Coverage
      - ✅
      - ✅
    * - 
-     - 11
+     - 12
      - 1
+     - 
      - 
      - 
      - 
@@ -3957,7 +4089,7 @@ CuPy CI Test Coverage
      - 
    * - env:CUPY_ACCELERATORS
      - null
-     - 4
+     - 5
      - 
      - 
      - 
@@ -3992,6 +4124,7 @@ CuPy CI Test Coverage
      - 
      - 
      - 
+     - ✅
      - ✅
      - ✅
      - ✅
@@ -4007,6 +4140,7 @@ CuPy CI Test Coverage
      - 3
      - ✅
      - ✅
+     - 
      - 
      - 
      - 
@@ -4096,6 +4230,7 @@ CuPy CI Test Coverage
      - 
      - 
      - 
+     - 
    * - 
      - cub,cutensor
      - 3
@@ -4103,6 +4238,7 @@ CuPy CI Test Coverage
      - 
      - ✅
      - ✅
+     - 
      - 
      - 
      - 
@@ -4184,6 +4320,7 @@ CuPy CI Test Coverage
      - 
      - 
      - 
+     - 
      - ✅
      - 
      - 
@@ -4192,7 +4329,7 @@ CuPy CI Test Coverage
      - ✅
    * - test
      - unit
-     - 23
+     - 24
      - ✅
      - 
      - ✅
@@ -4227,6 +4364,7 @@ CuPy CI Test Coverage
      - 
      - ✅
      - 
+     - ✅
      - ✅
      - ✅
      - ✅
@@ -4284,9 +4422,11 @@ CuPy CI Test Coverage
      - 
      - 
      - 
+     - 
    * - 
      - unit-slow
      - 1
+     - 
      - 
      - 
      - 
@@ -4373,6 +4513,7 @@ CuPy CI Test Coverage
      - 
      - 
      - 
+     - 
      - ✅
      - 
      - 
@@ -4381,6 +4522,7 @@ CuPy CI Test Coverage
    * - 
      - benchmark
      - 2
+     - 
      - 
      - 
      - 
@@ -4540,21 +4682,24 @@ CuPy CI Test Coverage
 .. _t37: https://github.com/cupy/self-hosted-ci/actions/workflows/ci.yml
 .. _d37: linux/tests/rocm-6-2.Dockerfile
 .. _s37: linux/tests/rocm-6-2.sh
-.. _t38: https://ci.preferred.jp/cupy.linux.cuda-slow/
-.. _d38: linux/tests/cuda-slow.Dockerfile
-.. _s38: linux/tests/cuda-slow.sh
-.. _t39: https://ci.preferred.jp/cupy.linux.cuda-example/
-.. _d39: linux/tests/cuda-example.Dockerfile
-.. _s39: linux/tests/cuda-example.sh
-.. _t40: https://ci.preferred.jp/cupy.linux.cuda-head/
-.. _d40: linux/tests/cuda-head.Dockerfile
-.. _s40: linux/tests/cuda-head.sh
-.. _t41: https://ci.preferred.jp/cupy.linux.cuda11x-cuda-python/
-.. _d41: linux/tests/cuda11x-cuda-python.Dockerfile
-.. _s41: linux/tests/cuda11x-cuda-python.sh
-.. _t42: https://ci.preferred.jp/cupy.linux.benchmark.head/
-.. _d42: linux/tests/benchmark.head.Dockerfile
-.. _s42: linux/tests/benchmark.head.sh
-.. _t43: https://ci.preferred.jp/cupy.linux.benchmark.pr/
-.. _d43: linux/tests/benchmark.Dockerfile
-.. _s43: linux/tests/benchmark.sh
+.. _t38: https://jenkins.preferred.jp/job/chainer/job/cupy_main/TEST=rocm-6-4,label=mnj-mi50/
+.. _d38: linux/tests/rocm-6-4.Dockerfile
+.. _s38: linux/tests/rocm-6-4.sh
+.. _t39: https://ci.preferred.jp/cupy.linux.cuda-slow/
+.. _d39: linux/tests/cuda-slow.Dockerfile
+.. _s39: linux/tests/cuda-slow.sh
+.. _t40: https://ci.preferred.jp/cupy.linux.cuda-example/
+.. _d40: linux/tests/cuda-example.Dockerfile
+.. _s40: linux/tests/cuda-example.sh
+.. _t41: https://ci.preferred.jp/cupy.linux.cuda-head/
+.. _d41: linux/tests/cuda-head.Dockerfile
+.. _s41: linux/tests/cuda-head.sh
+.. _t42: https://ci.preferred.jp/cupy.linux.cuda12x-cuda-python/
+.. _d42: linux/tests/cuda12x-cuda-python.Dockerfile
+.. _s42: linux/tests/cuda12x-cuda-python.sh
+.. _t43: https://ci.preferred.jp/cupy.linux.benchmark.head/
+.. _d43: linux/tests/benchmark.head.Dockerfile
+.. _s43: linux/tests/benchmark.head.sh
+.. _t44: https://ci.preferred.jp/cupy.linux.benchmark.pr/
+.. _d44: linux/tests/benchmark.Dockerfile
+.. _s44: linux/tests/benchmark.sh

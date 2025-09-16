@@ -207,7 +207,7 @@
     "cupy.linux.cuda-head": [
         "head"
     ],
-    "cupy.linux.cuda11x-cuda-python": [
+    "cupy.linux.cuda12x-cuda-python": [
         "@push",
         "full",
         "mini",
