@@ -600,8 +600,6 @@ max_cuda_array_interface_version = 3
     'ver': tuple(range(max_cuda_array_interface_version+1)),
     'strides': (False, None, True),
 }))
-@pytest.mark.skipif(
-    cupy.cuda.runtime.is_hip, reason='HIP does not support this')
 class TestCudaArrayInterface(unittest.TestCase):
     @testing.for_all_dtypes()
     def test_base(self, dtype):
@@ -670,8 +668,6 @@ class TestCudaArrayInterface(unittest.TestCase):
     'ver': tuple(range(1, max_cuda_array_interface_version+1)),
     'strides': (False, None, True),
 }))
-@pytest.mark.skipif(
-    cupy.cuda.runtime.is_hip, reason='HIP does not support this')
 class TestCudaArrayInterfaceMaskedArray(unittest.TestCase):
     # TODO(leofang): update this test when masked array is supported
     @testing.for_all_dtypes()
@@ -686,8 +682,6 @@ class TestCudaArrayInterfaceMaskedArray(unittest.TestCase):
 
 # marked slow as either numpy or cupy could go OOM in this test
 @testing.slow
-@pytest.mark.skipif(
-    cupy.cuda.runtime.is_hip, reason='HIP does not support this')
 class TestCudaArrayInterfaceBigArray(unittest.TestCase):
     def test_with_over_size_array(self):
         # real example from #3009
@@ -697,8 +691,6 @@ class TestCudaArrayInterfaceBigArray(unittest.TestCase):
         testing.assert_array_equal(a, b)
 
 
-@pytest.mark.skipif(
-    cupy.cuda.runtime.is_hip, reason='HIP does not support this')
 class DummyObjectWithCudaArrayInterface:
     def __init__(self, a, ver, include_strides=False, mask=None, stream=None):
         assert ver in tuple(range(max_cuda_array_interface_version+1))
