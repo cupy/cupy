@@ -356,6 +356,7 @@ class TestZpk2Sos:
         with pytest.raises(ValueError, match=r'k must be real'):
             signal.zpk2sos(cupy.array([1]), cupy.array([2]), k=1j)
 
+
 @testing.with_requires("scipy")
 class TestTf2Sos:
 
