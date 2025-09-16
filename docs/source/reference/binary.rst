@@ -21,7 +21,6 @@ Elementwise bit operations
    right_shift
    bitwise_right_shift
    bitwise_count
-   bit_count
 
 
 Bit packing

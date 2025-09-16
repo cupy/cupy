@@ -72,13 +72,13 @@ cdef _bitwise_count = create_ufunc(
 
     Only integer arrays are handled.
 
-    .. seealso:: :data:`numpy.bit_count`
+    .. seealso:: :data:`numpy.bitwise_count`
 
     ''',
     preamble='''
 template <typename T>
-__device__ inline unsigned int _cupy_bitcount(T x) {
-  if (sizeof(T) <= 4) {
+__device__ inline int _cupy_bitcount(T x) {
+    if (sizeof(T) <= 4) {
     unsigned int ux = static_cast<unsigned int>(x);
     if ((T)(-1) < (T)0 && x < 0) {
       ux = ~ux + 1u;

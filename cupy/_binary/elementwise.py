@@ -18,9 +18,6 @@ bitwise_not = _core.invert
 bitwise_count = _core.bitwise_count
 
 
-bit_count = _core.bitwise_count
-
-
 invert = _core.invert
 
 
