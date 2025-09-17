@@ -2356,7 +2356,7 @@ cpdef tuple assemble_cupy_compiler_options(tuple options):
 
     if not _is_hip:
         # make sure bundled CCCL is searched first
-        options += (_get_cccl_include_options(),)
+        options = (_get_cccl_include_options() + options)
 
     options += ('-I%s' % _get_header_dir_path(),)
 
