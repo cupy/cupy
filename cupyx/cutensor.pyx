@@ -807,7 +807,7 @@ def contraction(
         _get_handle().ptr, plan.ptr, cutensor.PLAN_REQUIRED_WORKSPACE,
         actual_ws_size.ctypes.data, actual_ws_size.itemsize)
     ws_size = actual_ws_size.item()
-    assert ws_size <= estimated_ws_size, "Workspace size is larger than the estimated workspace size" # NOQA
+    assert ws_size <= estimated_ws_size, "Workspace size is larger than the estimated workspace size"  # NOQA
     ws = core._ndarray_init(
         _cupy.ndarray, shape_t(1, ws_size), dtype=_numpy.int8, obj=None)
     scalar_dtype = _get_scalar_dtype(C.dtype)

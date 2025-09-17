@@ -78,10 +78,10 @@ cdef extern from '../../cupy_cutensor.h' nogil:
         PlanPreference_t pref,
         uint64_t workspaceSizeLimit)
     Status_t cutensorPlanGetAttribute(
-        Handle_t handle, 
-        Plan_t plan, 
-        PlanAttribute_t attr, 
-        void* buf, 
+        Handle_t handle,
+        Plan_t plan,
+        PlanAttribute_t attr,
+        void* buf,
         size_t sizeInBytes)
     Status_t cutensorDestroyPlan(Plan_t plan)
 
@@ -394,11 +394,16 @@ cpdef intptr_t createPlan(
     check_status(status)
     return <intptr_t>plan
 
-cpdef getPlanAttribute(intptr_t handle, intptr_t plan, int attr, intptr_t buf, size_t sizeInBytes):
+cpdef getPlanAttribute(
+        intptr_t handle,
+        intptr_t plan,
+        int attr,
+        intptr_t buf,
+        size_t sizeInBytes):
     """Retrieves information about an already-created plan."""
     with nogil:
         status = cutensorPlanGetAttribute(
-            <Handle_t>handle, <Plan_t>plan, 
+            <Handle_t>handle, <Plan_t>plan,
             <PlanAttribute_t>attr, <void*>buf, <size_t>sizeInBytes)
     check_status(status)
 
