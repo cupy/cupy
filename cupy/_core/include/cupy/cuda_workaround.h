@@ -34,6 +34,7 @@ namespace std {
     using cuda::std::is_lvalue_reference;
     using cuda::std::is_same;
     using cuda::std::is_signed;
+    using cuda::std::is_signed_v;
     using cuda::std::is_pointer;
     using cuda::std::is_unsigned;
     using cuda::std::is_volatile;

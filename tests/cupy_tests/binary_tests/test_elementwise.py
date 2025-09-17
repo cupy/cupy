@@ -35,9 +35,14 @@ class TestElementwise(unittest.TestCase):
         import numpy as np
         info = np.iinfo(dtype)
         if np.issubdtype(dtype, np.signedinteger):
-            obj = np.array([0, -1, 1, info.min, info.min + 1, info.max, info.max - 1, info.max // 2], dtype=object)
+            obj = np.array([
+                0, -1, 1, info.min, info.min + 1,
+                info.max, info.max - 1, info.max // 2,
+            ], dtype=object)
         else:
-            obj = np.array([0, 1, info.max, info.max - 1, info.max // 2], dtype=object)
+            obj = np.array([
+                0, 1, info.max, info.max - 1, info.max // 2,
+            ], dtype=object)
         a = xp.asarray(obj, dtype=dtype)
         return xp.bitwise_count(a)
 

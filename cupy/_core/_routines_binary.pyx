@@ -66,7 +66,10 @@ cdef _invert = create_ufunc(
 
 cdef _bitwise_count = create_ufunc(
     'cupy_bitwise_count',
-    ('b->B', 'B->B', 'h->B', 'H->B', 'i->B', 'I->B', 'l->B', 'L->B', 'q->B', 'Q->B'),
+    (
+        'b->B', 'B->B', 'h->B', 'H->B', 'i->B', 'I->B',
+        'l->B', 'L->B', 'q->B', 'Q->B',
+    ),
     'out0 = _cupy_bitcount(in0);',
     doc='''Computes the number of 1-bits in each element.
 
@@ -76,21 +79,27 @@ cdef _bitwise_count = create_ufunc(
 
     ''',
     preamble='''
+#include <cupy/cuda_workaround.h>
+
 template <typename T>
 __device__ inline int _cupy_bitcount(T x) {
     if (sizeof(T) <= 4) {
-    unsigned int ux = static_cast<unsigned int>(x);
-    if ((T)(-1) < (T)0 && x < 0) {
-      ux = ~ux + 1u;
+        unsigned int ux = static_cast<unsigned int>(x);
+        if constexpr (std::is_signed_v<T>) {
+            if(x<0){
+                ux = ~ux + 1u;
+            }
+        }
+        return static_cast<int>(__popc(ux));
+    } else {
+        unsigned long long ux = static_cast<unsigned long long>(x);
+        if constexpr (std::is_signed_v<T>) {
+            if(x<0){
+                ux = ~ux + 1ull;
+            }
+        }
+        return static_cast<int>(__popcll(ux));
     }
-    return __popc(ux);
-  } else {
-    unsigned long long ux = static_cast<unsigned long long>(x);
-    if ((T)(-1) < (T)0 && x < 0) {
-      ux = ~ux + 1ull;
-    }
-    return __popcll(ux);
-  }
 }
 ''')
 
