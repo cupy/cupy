@@ -394,7 +394,7 @@ cpdef intptr_t createPlan(
     check_status(status)
     return <intptr_t>plan
 
-cpdef getPlanAttribute(
+cpdef planGetAttribute(
         intptr_t handle,
         intptr_t plan,
         int attr,

@@ -184,7 +184,7 @@ cpdef intptr_t createPlan(
     intptr_t pref,
     uint64_t workspaceSizeLimit) except? 0
 
-cpdef getPlanAttribute(
+cpdef planGetAttribute(
     intptr_t handle,
     intptr_t plan,
     int attr,

@@ -803,7 +803,7 @@ def contraction(
         _get_handle().ptr, operator.ptr, plan_pref.ptr, ws_pref)
     plan = create_plan(operator, plan_pref, ws_limit=estimated_ws_size)
     actual_ws_size = _numpy.empty(1, dtype=_numpy.uint64)
-    cutensor.getPlanAttribute(
+    cutensor.planGetAttribute(
         _get_handle().ptr, plan.ptr, cutensor.PLAN_REQUIRED_WORKSPACE,
         actual_ws_size.ctypes.data, actual_ws_size.itemsize)
     ws_size = actual_ws_size.item()
