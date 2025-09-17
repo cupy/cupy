@@ -114,6 +114,9 @@ rocm:
   "6.4":
     full_version: "6.4.3-complete"
     packages: []
+  "7.0":
+    full_version: "7.0-complete"
+    packages: []
 
 ###############################################################################
 # CUDA Optional Libraries
