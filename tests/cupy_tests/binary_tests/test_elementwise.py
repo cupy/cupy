@@ -29,6 +29,24 @@ class TestElementwise(unittest.TestCase):
     def test_bitwise_xor(self):
         self.check_binary_int('bitwise_xor')
 
+    @testing.for_int_dtypes(no_bool=True)
+    @testing.numpy_cupy_array_equal()
+    def test_bitwise_count(self, xp, dtype):
+        import numpy as np
+        info = np.iinfo(dtype)
+        if np.issubdtype(dtype, np.signedinteger):
+            obj = np.array([
+                0, -1, 1, info.min, info.min + 1,
+                info.max, info.max - 1, info.max // 2,
+            ], dtype=dtype)
+        else:
+            obj = np.array([
+                0, 1, info.max, info.max - 1, info.max // 2,
+            ], dtype=dtype)
+        a = xp.asarray(obj, dtype=dtype)
+        self.check_unary_int('bitwise_count')
+        return xp.bitwise_count(a)
+
     def test_invert(self):
         self.check_unary_int('invert')
 
