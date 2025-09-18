@@ -33,6 +33,7 @@ cupy_package_data = [
     'cupy/cuda/cupy_cufft.h',  # for cuFFT callback
     'cupy/cuda/cufft.pxd',  # for cuFFT callback
     'cupy/cuda/cufft.pyx',  # for cuFFT callback
+    'cupy_backends/cuda/_softlink.pxd',  # for cuFFT callback
     'cupy/random/cupy_distributions.cu',
     'cupy/random/cupy_distributions.cuh',
     'cupyx/scipy/ndimage/cuda/LICENSE',
