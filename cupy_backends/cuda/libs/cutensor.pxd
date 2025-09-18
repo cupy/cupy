@@ -47,6 +47,9 @@ cpdef enum:
     WORKSPACE_RECOMMENDED = 2  # NOQA, The most suitable algorithm will be available
     WORKSPACE_MAX = 3          # NOQA, All algorithms will be available
 
+    # cutensorPlanAttribute_t
+    PLAN_REQUIRED_WORKSPACE = 0  # NOQA, The required workspace size for the plan
+
     # cutensorOperator_t (Unary)
     OP_IDENTITY = 1  # NOQA, Identity operator (i.e., elements are not changed)
     OP_SQRT = 2      # NOQA, Square root
@@ -180,6 +183,14 @@ cpdef intptr_t createPlan(
     intptr_t desc,
     intptr_t pref,
     uint64_t workspaceSizeLimit) except? 0
+
+cpdef planGetAttribute(
+    intptr_t handle,
+    intptr_t plan,
+    int attr,
+    intptr_t buf,
+    size_t sizeInBytes)
+
 cpdef destroyPlan(intptr_t plan)
 
 # cutensorElementwiseTrinary

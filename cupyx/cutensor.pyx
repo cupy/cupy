@@ -798,9 +798,16 @@ def contraction(
         desc_A, mode_A, op_A, desc_B, mode_B, op_B, desc_C, mode_C, op_C,
         compute_desc)
     plan_pref = create_plan_preference(algo=algo, jit_mode=jit_mode)
-    ws_size = cutensor.estimateWorkspaceSize(
+    # Query the estimated workspace size
+    estimated_ws_size = cutensor.estimateWorkspaceSize(
         _get_handle().ptr, operator.ptr, plan_pref.ptr, ws_pref)
-    plan = create_plan(operator, plan_pref, ws_limit=ws_size)
+    plan = create_plan(operator, plan_pref, ws_limit=estimated_ws_size)
+    actual_ws_size = _numpy.empty(1, dtype=_numpy.uint64)
+    cutensor.planGetAttribute(
+        _get_handle().ptr, plan.ptr, cutensor.PLAN_REQUIRED_WORKSPACE,
+        actual_ws_size.ctypes.data, actual_ws_size.itemsize)
+    ws_size = actual_ws_size.item()
+    assert ws_size <= estimated_ws_size, "Workspace size is larger than the estimated workspace size"  # NOQA
     ws = core._ndarray_init(
         _cupy.ndarray, shape_t(1, ws_size), dtype=_numpy.int8, obj=None)
     scalar_dtype = _get_scalar_dtype(C.dtype)
