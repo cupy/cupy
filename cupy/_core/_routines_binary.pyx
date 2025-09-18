@@ -83,9 +83,9 @@ cdef _bitwise_count = create_ufunc(
 
 template <typename T>
 __device__ inline int _cupy_bitcount(T x) {
-    if (sizeof(T) <= 4) {
+    if constexpr (sizeof(T) <= 4) {
         unsigned int ux = static_cast<unsigned int>(x);
-        if constexpr (std::is_signed_v<T>) {
+        if constexpr (std::is_signed<T>::value) {
             if(x<0){
                 ux = ~ux + 1u;
             }
@@ -93,7 +93,7 @@ __device__ inline int _cupy_bitcount(T x) {
         return static_cast<int>(__popc(ux));
     } else {
         unsigned long long ux = static_cast<unsigned long long>(x);
-        if constexpr (std::is_signed_v<T>) {
+        if constexpr (std::is_signed<T>::value) {
             if(x<0){
                 ux = ~ux + 1ull;
             }

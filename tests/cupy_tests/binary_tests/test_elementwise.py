@@ -38,12 +38,13 @@ class TestElementwise(unittest.TestCase):
             obj = np.array([
                 0, -1, 1, info.min, info.min + 1,
                 info.max, info.max - 1, info.max // 2,
-            ], dtype=object)
+            ], dtype=dtype)
         else:
             obj = np.array([
                 0, 1, info.max, info.max - 1, info.max // 2,
-            ], dtype=object)
+            ], dtype=dtype)
         a = xp.asarray(obj, dtype=dtype)
+        self.check_unary_int('bitwise_count')
         return xp.bitwise_count(a)
 
     def test_invert(self):
