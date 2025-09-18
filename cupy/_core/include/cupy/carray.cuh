@@ -231,6 +231,7 @@ __device__ int signbit(float16 x) {return x.signbit();}
 #include <thrust/pair.h>
 namespace STD = thrust;
 #else
+#include <tuple>
 #include <cupy/cuda_workaround.h>
 namespace STD = std;
 #endif  // CUPY_JIT_NVCC
