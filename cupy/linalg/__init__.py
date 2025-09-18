@@ -15,6 +15,7 @@ from cupy.linalg._product import linalg_cross as cross  # NOQA
 from cupy.linalg._decomposition import cholesky  # NOQA
 from cupy.linalg._decomposition import qr  # NOQA
 from cupy.linalg._decomposition import svd  # NOQA
+from cupy.linalg._decomposition import svdvals  # NOQA
 
 # -----------------------------------------------------------------------------
 # Matrix eigenvalues
@@ -54,6 +55,7 @@ __all__ = [
     "cholesky",
     "qr",
     "svd",
+    "svdvals",
     "eigh",
     "eig",
     "eigvalsh",
