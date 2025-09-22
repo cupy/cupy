@@ -1091,3 +1091,32 @@ class TestHilbert2:
     def test_hilbert2_types(self, dtype, xp, scp):
         in_typed = xp.zeros((2, 32), dtype=dtype)
         return scp.signal.hilbert2(in_typed)
+
+    @testing.with_requires("scipy>=1.17")
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_1d_input(self, xp, scp):
+        x = xp.asarray([0., 1., 1., 0., -1., -1.])
+        x0a = scp.signal.hilbert2(xp.reshape(x, (6, 1)))
+        return x0a
+
+    @testing.with_requires("scipy>=1.17")
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_parameter_N(self, xp, scp):
+        """Compare passing tuple to single int. """
+        x = xp.zeros((5, 5))
+        x0_a = scp.signal.hilbert2(x, N=4)
+        x1_a = scp.signal.hilbert2(x, N=(4, 4))
+        return x0_a, x1_a
+
+    @testing.with_requires("scipy>=1.17")
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-15)
+    @pytest.mark.parametrize('shape', [(4, 5), (5, 4), (4, 4), (5, 5)])
+    def test_quadrant_values(self, shape, xp, scp):
+        x_f = xp.ones(shape, dtype=xp.complex128)  # FFT of input signal
+        x_f[0 , 0] += 7
+        x = xp.real(scp.fft.ifft2(x_f))  # x.imag is zero
+
+        x_as = scp.signal.hilbert2(x)
+        x_as_f = scp.fft.fft2(x_as)
+
+        return x_as_f
