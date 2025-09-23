@@ -20,6 +20,7 @@ cdef extern from '../../cupy_cutensor.h' nogil:
     ctypedef int JitMode_t 'cutensorJitMode_t'
     ctypedef int Operator_t 'cutensorOperator_t'
     ctypedef int WorksizePreference_t 'cutensorWorksizePreference_t'
+    ctypedef int PlanAttribute_t 'cutensorPlanAttribute_t'
     ctypedef int DataType_t 'cutensorDataType_t'
     ctypedef int ComputeType_t 'cutensorComputeType_t'
 
@@ -76,6 +77,12 @@ cdef extern from '../../cupy_cutensor.h' nogil:
         OperationDescriptor_t desc,
         PlanPreference_t pref,
         uint64_t workspaceSizeLimit)
+    Status_t cutensorPlanGetAttribute(
+        Handle_t handle,
+        Plan_t plan,
+        PlanAttribute_t attr,
+        void* buf,
+        size_t sizeInBytes)
     Status_t cutensorDestroyPlan(Plan_t plan)
 
     # cutensorElementwiseTrinary
@@ -386,6 +393,19 @@ cpdef intptr_t createPlan(
             <PlanPreference_t>pref, workspaceSizeLimit)
     check_status(status)
     return <intptr_t>plan
+
+cpdef planGetAttribute(
+        intptr_t handle,
+        intptr_t plan,
+        int attr,
+        intptr_t buf,
+        size_t sizeInBytes):
+    """Retrieves information about an already-created plan."""
+    with nogil:
+        status = cutensorPlanGetAttribute(
+            <Handle_t>handle, <Plan_t>plan,
+            <PlanAttribute_t>attr, <void*>buf, <size_t>sizeInBytes)
+    check_status(status)
 
 cpdef destroyPlan(intptr_t plan):
     with nogil:
