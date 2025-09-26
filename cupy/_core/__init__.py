@@ -26,6 +26,7 @@ from cupy._core._reduction import ReductionKernel  # NOQA
 from cupy._core._routines_binary import bitwise_and  # NOQA
 from cupy._core._routines_binary import bitwise_or  # NOQA
 from cupy._core._routines_binary import bitwise_xor  # NOQA
+from cupy._core._routines_binary import bitwise_count  # NOQA
 from cupy._core._routines_binary import invert  # NOQA
 from cupy._core._routines_binary import left_shift  # NOQA
 from cupy._core._routines_binary import right_shift  # NOQA
