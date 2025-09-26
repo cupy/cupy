@@ -111,7 +111,7 @@ __global__ void compute_symiirorder2_bwd_sc(
 """
 
 SYMIIR2_MODULE = cupy.RawModule(
-    code=SYMIIR2_KERNEL, options=('-std=c++11',),
+    code=SYMIIR2_KERNEL,
     name_expressions=[f'compute_symiirorder2_bwd_sc<{t}>'
                       for t in ['float', 'double']] +
     [f'compute_symiirorder2_fwd_sc<{t}>'

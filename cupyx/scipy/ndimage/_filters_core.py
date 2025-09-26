@@ -190,7 +190,8 @@ def _call_kernel(kernel, input, weights, output, structure=None,
 if runtime.is_hip:
     includes = r'''
 // workaround for HIP: line begins with #include
-#include <cupy/math_constants.h>\n
+#include <cupy/math_constants.h>
+#include <type_traits>
 '''
 else:
     includes = r'''
@@ -344,7 +345,6 @@ def _generate_nd_kernel(name, pre, found, post, modes, w_shape, int_type,
     if has_mask:
         name += '_with_mask'
     preamble = includes + _CAST_FUNCTION + preamble
-    options += ('--std=c++11', )
     return cupy.ElementwiseKernel(in_params, out_params, operation, name,
                                   reduce_dims=False, preamble=preamble,
                                   options=options)
