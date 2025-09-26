@@ -476,3 +476,145 @@ class TestKronsum:
         assert kronsum.shape == (a.shape[0] * b.shape[0],
                                  a.shape[1] * b.shape[1])
         return kronsum
+
+
+@testing.parameterize(*testing.product({
+    'dtype': (numpy.float32, numpy.float64, numpy.complex64, numpy.complex128),
+    'format': ('csr', 'csc', 'coo')
+}))
+@testing.with_requires('scipy')
+class TestBlockDiag:
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_block_diag_basic(self, xp, sp):
+        """Basic test for block_diag"""
+
+        A = sp.coo_matrix(xp.array([[1, 2], [3, 4]], dtype=self.dtype))
+        B = sp.coo_matrix(xp.array([[5], [6]], dtype=self.dtype))
+        C = sp.coo_matrix(xp.array([[7]], dtype=self.dtype))
+
+        result = sp.block_diag((A, B, C))
+
+        return result
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_block_diag_dtype(self, xp, sp):
+        """Test block_diag with explicit dtype"""
+        A = sp.coo_matrix(xp.array([[1, 2], [3, 4]], dtype=self.dtype))
+        B = sp.coo_matrix(xp.array([[5], [6]], dtype=self.dtype))
+
+        result = sp.block_diag((A, B), dtype=self.dtype)
+        assert result.dtype == self.dtype
+        return result
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_block_diag_format(self, xp, sp):
+        """Test block_diag with different output formats"""
+        A = sp.coo_matrix(xp.array([[1, 2], [3, 4]], dtype=self.dtype))
+        B = sp.coo_matrix(xp.array([[5, 6]], dtype=self.dtype))
+
+        result = sp.block_diag((A, B), format=self.format)
+        assert result.format == self.format
+
+        return result
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_block_diag_dtypes_formats(self, xp, sp):
+        """Test block_diag with various dtypes and formats"""
+        A = sp.coo_matrix(xp.array([[1, 2], [3, 4]], dtype=self.dtype))
+        B = sp.coo_matrix(xp.array([[5], [6]], dtype=self.dtype))
+
+        result = sp.block_diag((A, B), format=self.format)
+        assert result.format == self.format
+        assert result.dtype == self.dtype
+        return result
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_block_diag_scalar_1d_args(self, xp, sp):
+        """Test block_diag with scalar and 1d arguments"""
+
+        result = sp.block_diag(
+            [[2.0, 3.0], 4.0], dtype=self.dtype, format=self.format)
+        assert result.format == self.format
+        assert result.dtype == self.dtype
+        return result
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_block_diag_single_matrix(self, xp, sp):
+        """Test block_diag with single matrix input"""
+        result = sp.block_diag(
+            [[1.0, 0.0]], dtype=self.dtype, format=self.format)
+        assert result.format == self.format
+        assert result.dtype == self.dtype
+        return result
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_block_diag_single_scalar(self, xp, sp):
+        """Test block_diag with single scalar"""
+        result = sp.block_diag([1.0], dtype=self.dtype, format=self.format)
+        assert result.format == self.format
+        assert result.dtype == self.dtype
+        return result
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_block_diag_dense_arrays(self, xp, sp):
+        """Test block_diag with dense arrays"""
+        A = xp.array([[1, 2], [3, 4]], dtype=self.dtype)
+        B = xp.array([[5], [6]], dtype=self.dtype)
+        C = xp.array([[7]], dtype=self.dtype)
+
+        result = sp.block_diag((A, B, C), dtype=self.dtype, format=self.format)
+        assert result.format == self.format
+        assert result.dtype == self.dtype
+        return result
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_block_diag_mixed_sparse_dense(self, xp, sp):
+        """Test block_diag with mixed sparse and dense inputs"""
+        A = sp.coo_matrix(xp.array([[1, 2], [3, 4]], dtype=self.dtype))
+        B = xp.array([[5], [6]], dtype=self.dtype)
+        C = sp.csr_matrix(xp.array([[7]], dtype=self.dtype))
+
+        result = sp.block_diag((A, B, C), dtype=self.dtype, format=self.format)
+        assert result.format == self.format
+        assert result.dtype == self.dtype
+        return result
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_block_diag_empty_blocks(self, xp, sp):
+        """Test block_diag with empty blocks"""
+        A = sp.coo_matrix(xp.array([[1, 2], [3, 4]], dtype=self.dtype))
+        B = sp.coo_matrix((2, 0), dtype=self.dtype)
+        C = sp.coo_matrix(xp.array([[5]], dtype=self.dtype))
+
+        result = sp.block_diag((A, B, C), dtype=self.dtype, format=self.format)
+        assert result.format == self.format
+        assert result.dtype == self.dtype
+        return result
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_block_diag_1d_sparse(self, xp, sp):
+        """Test block_diag with 1D sparse arrays"""
+
+        A = sp.coo_matrix(xp.array([1.0, 0.0, 3.0], dtype=self.dtype))
+        B = sp.coo_matrix(xp.array([0.0, 4.0], dtype=self.dtype))
+
+        result = sp.block_diag([A, B], dtype=self.dtype, format=self.format)
+        assert result.format == self.format
+        assert result.dtype == self.dtype
+        return result
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_block_diag_nested_lists(self, xp, sp):
+        """Test block_diag with nested list inputs"""
+        result1 = sp.block_diag(
+            [[[1.0, 0.0]]], dtype=self.dtype, format=self.format)
+        result2 = sp.block_diag(
+            [[[1.0], [0.0]]], dtype=self.dtype, format=self.format)
+
+        assert result1.format == self.format
+        assert result1.dtype == self.dtype
+        assert result2.format == self.format
+        assert result2.dtype == self.dtype
+
+        return result1, result2
