@@ -368,3 +368,123 @@ class TestSVD(unittest.TestCase):
         self.check_usv((0, 2, 3, 4))
         self.check_usv((1, 2, 0, 4))
         self.check_usv((1, 2, 3, 0))
+
+
+@testing.fix_random()
+class TestSVDVals(unittest.TestCase):
+
+    def setUp(self):
+        self.seed = testing.generate_seed()
+
+    @testing.for_dtypes([
+        numpy.int32, numpy.int64, numpy.uint32, numpy.uint64,
+        numpy.float32, numpy.float64, numpy.complex64, numpy.complex128,
+    ])
+    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-4)
+    def check_svdvals(self, shape, xp, dtype):
+        array = testing.shaped_random(shape, xp, dtype=dtype, seed=self.seed)
+        a = xp.asarray(array, dtype=dtype)
+        a_copy = a.copy()
+        result = xp.linalg.svdvals(a)
+        # Check if the input matrix is not broken
+        assert (a == a_copy).all()
+        return result
+
+    @_condition.repeat(3, 10)
+    def test_svdvals_rank2(self):
+        self.check_svdvals((3, 7))
+        self.check_svdvals((2, 2))
+        self.check_svdvals((7, 3))
+
+    @_condition.repeat(3, 10)
+    def test_svdvals_rank3(self):
+        self.check_svdvals((2, 3, 4))
+        self.check_svdvals((2, 3, 7))
+        self.check_svdvals((2, 4, 4))
+        self.check_svdvals((2, 7, 3))
+        self.check_svdvals((2, 4, 3))
+
+    @_condition.repeat(3, 10)
+    def test_svdvals_rank3_loop(self):
+        # This tests the loop-based batched gesvd on CUDA (_gesvd_batched)
+        self.check_svdvals((2, 64, 64))
+        self.check_svdvals((2, 64, 32))
+        self.check_svdvals((2, 32, 64))
+
+    @_condition.repeat(3, 10)
+    def test_svdvals_rank4(self):
+        self.check_svdvals((2, 2, 3, 4))
+        self.check_svdvals((2, 2, 3, 7))
+        self.check_svdvals((2, 2, 4, 4))
+        self.check_svdvals((2, 2, 7, 3))
+        self.check_svdvals((2, 2, 4, 3))
+
+    @_condition.repeat(3, 10)
+    def test_svdvals_rank4_loop(self):
+        # This tests the loop-based batched gesvd on CUDA (_gesvd_batched)
+        self.check_svdvals((3, 2, 64, 64))
+        self.check_svdvals((3, 2, 64, 32))
+        self.check_svdvals((3, 2, 32, 64))
+
+    @testing.with_requires('numpy>=1.16')
+    def test_svdvals_rank2_empty_array(self):
+        self.check_svdvals((0, 3))
+        self.check_svdvals((3, 0))
+        self.check_svdvals((1, 0))
+
+    @testing.with_requires('numpy>=1.16')
+    @testing.numpy_cupy_array_equal()
+    def test_svdvals_rank2_empty_array_compute_uv_false(self, xp):
+        array = xp.empty((3, 0))
+        return xp.linalg.svdvals(array)
+
+    @testing.with_requires('numpy>=1.16')
+    def test_svdvals_rank3_empty_array(self):
+        self.check_svdvals((0, 3, 4))
+        self.check_svdvals((3, 0, 4))
+        self.check_svdvals((3, 4, 0))
+        self.check_svdvals((3, 0, 0))
+        self.check_svdvals((0, 3, 0))
+        self.check_svdvals((0, 0, 3))
+
+    @testing.with_requires('numpy>=1.16')
+    @testing.numpy_cupy_array_equal()
+    def test_svdvals_rank3_empty_array_compute_uv_false1(self, xp):
+        array = xp.empty((3, 0, 4))
+        return xp.linalg.svdvals(array)
+
+    @testing.with_requires('numpy>=1.16')
+    @testing.numpy_cupy_array_equal()
+    def test_svdvals_rank3_empty_array_compute_uv_false2(self, xp):
+        array = xp.empty((0, 3, 4))
+        return xp.linalg.svdvals(array)
+
+    @testing.with_requires('numpy>=1.16')
+    def test_svdvals_rank4_empty_array(self):
+        self.check_svdvals((0, 2, 3, 4))
+        self.check_svdvals((1, 2, 0, 4))
+        self.check_svdvals((1, 2, 3, 0))
+
+    @testing.fix_random()
+    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-4)
+    def test_svdvals_properties(self, xp):
+        # Test that singular values are non-negative and in descending order
+        a_xp = testing.shaped_random((5, 4), xp, dtype=numpy.float64, seed=self.seed)
+        s = xp.linalg.svdvals(a_xp)
+        # property checks in the same backend
+        assert xp.all(s >= 0)
+        assert xp.all(s[:-1] >= s[1:])
+        return s
+
+    @testing.fix_random()
+    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-4)
+    def test_svdvals_complex_properties(self, xp):
+        # Test complex matrices
+        a_real = testing.shaped_random((5, 4), xp, dtype=numpy.float64, seed=self.seed)
+        a_imag = testing.shaped_random((5, 4), xp, dtype=numpy.float64, seed=self.seed + 1)
+        a_xp = a_real.astype(numpy.complex128) + 1j * a_imag.astype(numpy.complex128)
+        s = xp.linalg.svdvals(a_xp)
+        # property checks in the same backend
+        assert xp.all(s >= 0)
+        assert xp.all(s[:-1] >= s[1:])
+        return s
