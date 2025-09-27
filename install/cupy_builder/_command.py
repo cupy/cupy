@@ -135,6 +135,9 @@ class custom_build_ext(setuptools.command.build_ext.build_ext):
         elif ctx.use_hip:  # on ROCm/HIP
             compile_time_env['CUPY_CUDA_VERSION'] = 0
             compile_time_env['CUPY_HIP_VERSION'] = build.get_hip_version()
+        elif ctx.use_ascend:  # on CANN/ascend
+            compile_time_env['CUPY_CUDA_VERSION'] = 0
+            compile_time_env['CUPY_CANN_VERSION'] = build.get_cann_version()
         else:  # on CUDA
             compile_time_env['CUPY_CUDA_VERSION'] = (
                 ctx.features['cuda'].get_version())

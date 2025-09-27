@@ -34,6 +34,7 @@ class Context:
 
     use_cuda_python: bool
     use_hip: bool
+    use_ascend: bool
     use_stub: bool
     include_dirs: list[str]
     library_dirs: list[str]
@@ -62,6 +63,7 @@ class Context:
 
         self.use_cuda_python = _get_env_bool('CUPY_USE_CUDA_PYTHON', _env)
         self.use_hip = _get_env_bool('CUPY_INSTALL_USE_HIP', _env)
+        self.use_ascend = _get_env_bool('CUPY_INSTALL_USE_ASCEND', _env)
 
         # Build CuPy with stub header file
         self.use_stub = _get_env_bool("CUPY_INSTALL_USE_STUB", _env)

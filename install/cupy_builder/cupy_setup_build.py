@@ -220,7 +220,7 @@ def preconfigure_modules(ctx: Context, MODULES, compiler, settings):
                 break
 
     # Get a list of the CC of the devices connected to this node
-    if not ctx.use_hip:
+    if not ctx.use_hip and not ctx.use_ascend:
         build.check_compute_capabilities(compiler, settings)
 
     if len(ret) != len(MODULES):
@@ -356,6 +356,9 @@ def make_extensions(ctx: Context, compiler, use_cython):
         # Fix for ROCm 6.3.0, See https://github.com/ROCm/rocThrust/issues/502
         settings['define_macros'].append(
             ('THRUST_DEVICE_SYSTEM', 'THRUST_DEVICE_SYSTEM_HIP'))
+    if ctx.use_ascend:
+        settings['define_macros'].append(('CUPY_USE_ASCEND', '1'))
+
     settings['define_macros'].append(('CUPY_CACHE_KEY', ctx.cupy_cache_key))
 
     try:

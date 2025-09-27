@@ -413,6 +413,8 @@ def get_features(ctx: Context) -> dict[str, Feature]:
             _from_dict(HIP_thrust, ctx),
             _from_dict(COMMON_dlpack, ctx),
         ]
+    elif ctx.use_ascend:
+        features = []
     else:
         features = [
             CUDA_cuda(ctx),
@@ -428,6 +430,13 @@ def get_features(ctx: Context) -> dict[str, Feature]:
             _from_dict(COMMON_dlpack, ctx),
         ]
     return {f.name: f for f in features}
+
+
+class CUPY_ascend(Feature):
+    minimum_cann_version = 820
+    def __init__(self, ctx: Context):
+        super().__init__(ctx)
+        self.name = 'ascend'
 
 
 class CUDA_cuda(Feature):

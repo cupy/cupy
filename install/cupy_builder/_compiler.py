@@ -217,6 +217,8 @@ class DeviceCompilerUnix(DeviceCompilerBase):
     def compile(self, obj: str, src: str, ext: Extension) -> None:
         if self._context.use_hip:
             self._compile_unix_hipcc(obj, src, ext)
+        elif self._context.use_ascend:
+            self._compile_unix_ascendcc(obj, src, ext)
         else:
             self._compile_unix_nvcc(obj, src, ext)
 
@@ -257,6 +259,22 @@ class DeviceCompilerUnix(DeviceCompilerBase):
         print('HIPCC options:', postargs)
         self.spawn(compiler_so + base_opts + cc_args + [src, '-o', obj] +
                    postargs)
+        
+    def _compile_unix_ascendcc(self, obj: str, src: str, ext: Extension) -> None:
+        cc_args = self._get_preprocess_options(ext) + ['-c']
+
+        # For Ascend ccec source files, compile with bisheng (clang-like compiler)
+        # --cce-soc-version=Ascend910B --cce-soc-core-type=AICore
+        sdk_path = build.get_cann_path()
+        base_opts = build.get_compiler_base_options(sdk_path)
+        compiler_so = sdk_path
+
+        postargs = ['-O2', '-fPIC', '--include', 'kernel_operator.h'] # TODO
+        # Note: we only support CANN 8.1+ since CuPy v11.0.0.
+        postargs += ['--std=c++17']
+        print('ASCEND C compiler options:', postargs)
+        self.spawn(compiler_so + base_opts + cc_args + [src, '-o', obj] +
+                   postargs)
 
 
 class DeviceCompilerWin32(DeviceCompilerBase):
@@ -264,6 +282,8 @@ class DeviceCompilerWin32(DeviceCompilerBase):
     def compile(self, obj: str, src: str, ext: Extension) -> None:
         if self._context.use_hip:
             raise RuntimeError('ROCm is not supported on Windows')
+        if self._context.use_ascend:
+            raise RuntimeError('Ascend CANN for cupy is not supported on Windows')
 
         compiler_so = build.get_nvcc_path()
         cc_args = self._get_preprocess_options(ext) + ['-c']

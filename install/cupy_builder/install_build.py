@@ -26,9 +26,11 @@ PLATFORM_LINUX = sys.platform.startswith('linux')
 PLATFORM_WIN32 = sys.platform.startswith('win32')
 
 minimum_hip_version = 305  # for ROCm 3.5.0+
+minimum_cann_version = 810 # CANN 8.1
 
 _cuda_path = 'NOT_INITIALIZED'
 _rocm_path = 'NOT_INITIALIZED'
+_cann_path = 'NOT_INITIALIZED'
 _compiler_base_options = None
 
 
@@ -53,6 +55,18 @@ def get_rocm_path():
 
     _rocm_path = os.environ.get('ROCM_HOME', '')
     return _rocm_path
+
+
+def get_cann_path():
+    global _cann_path
+
+    # Use a magic word to represent the cache not filled because None is a
+    # valid return value.
+    if _cann_path != 'NOT_INITIALIZED':
+        return _cann_path
+
+    _cann_path = os.environ.get('ASCEND_HOME_PATH', '')
+    return _cann_path
 
 
 def get_cuda_path():
@@ -130,12 +144,14 @@ def get_hipcc_path() -> list[str]:
         return None
 
 
-def get_compiler_setting(ctx: Context, use_hip):
+def get_compiler_setting(ctx: Context, backend: str):
     cuda_path = None
     rocm_path = None
 
-    if use_hip:
+    if backend == "hip":
         rocm_path = get_rocm_path()
+    elif backend == "ascend":
+        cann_path = get_cann_path()
     else:
         cuda_path = get_cuda_path()
 
@@ -166,9 +182,11 @@ def get_compiler_setting(ctx: Context, use_hip):
         include_dirs.append(os.path.join(rocm_path, 'include', 'rccl'))
         library_dirs.append(os.path.join(rocm_path, 'lib'))
 
-    if use_hip:
+    if backend == "hip":
         # ROCm 5.3 and above requires c++14
         extra_compile_args.append('-std=c++14')
+    elif backend == "ascend":
+        pass
 
     if PLATFORM_WIN32:
         nvtx_path = _environment.get_nvtx_path()
@@ -288,6 +306,7 @@ def _get_compiler_base_options(compiler_path):
 
 
 _hip_version = None
+_cann_version = None
 _thrust_version = None
 _nccl_version = None
 _cutensor_version = None
@@ -335,6 +354,53 @@ def get_hip_version(formatted: bool = False) -> int:
     if formatted:
         return str(_hip_version)
     return _hip_version
+
+
+def check_cann_version(compiler, settings):
+    global _cann_version
+    global _cann_path 
+    info_file_path = f"{_cann_path}/version.cfg"
+    try:
+        with open(info_file_path, 'r') as f:
+            content = f.read()
+            # match 'version=[8.2.0.0.0.201:xxx]'
+            pattern = r'version=\[(\d+)\.(\d+)\.(\d+)'
+            match = re.search(pattern, content)
+            if match:
+                major = int(match.group(1))
+                minor = int(match.group(2))
+                patch = int(match.group(3))
+                _cann_version = major * 100 + minor * 10 + patch
+            else:
+                utils.print_warning(
+                    "CANN version found but specific version string not matched in info file."
+                )
+                return False
+    except FileNotFoundError:
+        utils.print_warning("CANN install version.cfg file not found. Please check the installation path.")
+        return False
+    except Exception as e:
+        utils.print_warning(f"Error reading and parsing CANN version: {e}")
+        return False
+
+    if _cann_version < minimum_cann_version:
+        utils.print_warning(
+            'CANN version %d is too old:' % _cann_version,
+            'CANN version or newer is required' % minimum_cann_version)
+        return False
+
+    return True
+
+
+def get_cann_version(formatted: bool = False) -> int:
+    """Return ascend CANN version cached in check_cann_version()."""
+    global _cann_version
+    if _cann_version is None:
+        msg = 'check_cann_version() must be called first.'
+        raise RuntimeError(msg)
+    if formatted:
+        return str(_hip_version)
+    return _cann_version
 
 
 def check_compute_capabilities(compiler, settings):
