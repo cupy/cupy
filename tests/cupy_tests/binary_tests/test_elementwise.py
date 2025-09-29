@@ -29,6 +29,7 @@ class TestElementwise(unittest.TestCase):
     def test_bitwise_xor(self):
         self.check_binary_int('bitwise_xor')
 
+    @testing.with_requires('numpy>=2.0.0')
     @testing.for_int_dtypes(no_bool=True)
     @testing.numpy_cupy_array_equal()
     def test_bitwise_count(self, xp, dtype):
