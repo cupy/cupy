@@ -9,6 +9,10 @@
 
 #include "hip/cupy_rccl.h"
 
+#elif defined(CUPY_USE_ASCEND)
+
+#include "ascend/cupy_hccl.h"
+
 #else // #ifndef CUPY_NO_CUDA
 
 #include "stub/cupy_nccl.h"

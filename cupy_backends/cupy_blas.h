@@ -5,6 +5,10 @@
 
 #include "hip/cupy_hipblas.h"
 
+#elif CUPY_USE_ASCEND
+
+#include "ascend/cupy_ascend_blas.h"
+
 #elif !defined(CUPY_NO_CUDA)
 
 #include "cuda/cupy_cublas.h"

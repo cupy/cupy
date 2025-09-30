@@ -5,6 +5,10 @@
 
 #include "hip/cupy_cuComplex.h"
 
+#elif CUPY_USE_ASCEND
+
+#include "ascend/cupy_cuComplex.h"
+
 #elif !defined(CUPY_NO_CUDA)
 
 #include <cuComplex.h>

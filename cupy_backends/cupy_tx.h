@@ -4,6 +4,9 @@
 #if CUPY_USE_HIP
 
 #include "hip/cupy_roctx.h"
+
+#elif CUPY_USE_ASCEND
+
 #include "stub/cupy_nvtx.h"
 
 #elif !defined(CUPY_NO_CUDA)

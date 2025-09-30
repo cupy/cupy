@@ -192,7 +192,7 @@ cdef int check_stream_device_match(int device_id) except? -1:
 
 class _BaseStream:
 
-    """CUDA stream.
+    """Base class for all kind of stream types (GPU, NPU, ...).
 
     Attributes:
         ~Stream.ptr (intptr_t): Raw stream handle.

@@ -5,6 +5,10 @@
 
 #include "hip/cupy_profiler.h"
 
+#elif CUPY_USE_ASCEND
+
+#include "ascend/cupy_ascend_profiler.h"
+
 #elif !defined(CUPY_NO_CUDA)
 
 #include "cuda/cupy_cuda_profiler_api.h"

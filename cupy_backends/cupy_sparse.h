@@ -10,6 +10,11 @@
 #include "hip/cupy_hip_common.h"
 #include "hip/cupy_hipsparse.h"
 
+#elif CUPY_USE_ASCEND
+// CANN does not yet support sparse blas
+#include "stub/cupy_cuda_common.h"
+#include "stub/cupy_cusparse.h"
+
 #else
 
 #include "stub/cupy_cuda_common.h"

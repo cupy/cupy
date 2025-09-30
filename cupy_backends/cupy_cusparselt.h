@@ -1,7 +1,7 @@
 #ifndef INCLUDE_GUARD_CUPY_CUSPARSELT_H
 #define INCLUDE_GUARD_CUPY_CUSPARSELT_H
 
-#ifdef CUPY_USE_HIP
+#ifdef CUPY_USE_HIP || CUPY_USE_ASCEND
 
 #include "stub/cupy_cusparselt.h"
 

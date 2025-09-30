@@ -5,6 +5,11 @@
 
 #include "hip/cupy_hiprand.h"
 
+#elif CUPY_USE_ASCEND
+// ASCEND has randon number support, but not yet impl
+//#include "ascend/cupy_ascend_rand.h"
+#include "stub/cupy_curand.h"  // gracefully error
+
 #elif !defined(CUPY_NO_CUDA)
 
 #include <curand.h>
