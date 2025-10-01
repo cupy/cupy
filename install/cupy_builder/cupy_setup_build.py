@@ -100,6 +100,7 @@ def preconfigure_modules(ctx: Context, MODULES, compiler, settings):
 
     nvcc_path = build.get_nvcc_path()
     hipcc_path = build.get_hipcc_path()
+    ascendcc = build.get_ascendcc_path()
     summary = [
         '',
         '************************************************************',
@@ -113,13 +114,16 @@ def preconfigure_modules(ctx: Context, MODULES, compiler, settings):
             nvcc_path if nvcc_path else '(not found)'),
         '  hipcc command      : {}'.format(
             hipcc_path if hipcc_path else '(not found)'),
+        '  ascend cc command  : {}'.format(
+            ascendcc if ascendcc else '(not found)'),
         '',
         'Environment Variables:',
     ]
 
     for key in ['CFLAGS', 'LDFLAGS', 'LIBRARY_PATH',
-                'CUDA_PATH', 'NVCC', 'HIPCC',
-                'ROCM_HOME']:
+                'CUDA_PATH', 'NVCC', # nvidia
+                'HIPCC', 'ROCM_HOME', # AMD
+                'ASCEND_HOME_PATH']:
         summary += ['  {:<16}: {}'.format(key, os.environ.get(key, '(none)'))]
 
     summary += [
@@ -316,9 +320,8 @@ def make_extensions(ctx: Context, compiler, use_cython):
 
     MODULES = ctx.features.values()
 
-    no_cuda = ctx.use_stub
-    use_hip = not no_cuda and ctx.use_hip
-    settings = build.get_compiler_setting(ctx, use_hip)
+    no_cuda = ctx.use_stub # TODO: this is not precise has more backends added
+    settings = build.get_compiler_setting(ctx, ctx.get_backend_name())
 
     include_dirs = settings['include_dirs']
 
@@ -347,7 +350,7 @@ def make_extensions(ctx: Context, compiler, use_cython):
         settings['define_macros'].append(('CYTHON_TRACE_NOGIL', '1'))
     if no_cuda:
         settings['define_macros'].append(('CUPY_NO_CUDA', '1'))
-    if use_hip:
+    if ctx.use_hip:
         settings['define_macros'].append(('CUPY_USE_HIP', '1'))
         # introduced since ROCm 4.2.0
         settings['define_macros'].append(('__HIP_PLATFORM_AMD__', '1'))
@@ -431,7 +434,7 @@ def make_extensions(ctx: Context, compiler, use_cython):
             # cupy_backends/cupy_lapack.h has C++ template code
             compile_args.append('--std=c++11')
             # openmp is required for cusolver
-            if use_hip:
+            if ctx.use_hip:
                 pass
             elif compiler.compiler_type == 'unix':
                 compile_args.append('-fopenmp')

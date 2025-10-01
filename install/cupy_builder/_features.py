@@ -104,34 +104,7 @@ _cuda_files = [
     'cupy_backends.cuda.libs.nvrtc',
     'cupy_backends.cuda.stream',
     'cupy_backends.cuda._softlink',
-    'cupy._core._accelerator',
-    'cupy._core._carray',
-    'cupy._core._cub_reduction',
-    'cupy._core._dtype',
-    'cupy._core._fusion_kernel',
-    'cupy._core._fusion_thread_local',
-    'cupy._core._fusion_trace',
-    'cupy._core._fusion_variable',
-    'cupy._core._kernel',
-    'cupy._core._memory_range',
-    'cupy._core._optimize_config',
-    'cupy._core._reduction',
-    'cupy._core._routines_binary',
-    'cupy._core._routines_indexing',
-    'cupy._core._routines_linalg',
-    'cupy._core._routines_logic',
-    'cupy._core._routines_manipulation',
-    'cupy._core._routines_math',
-    'cupy._core._routines_sorting',
-    'cupy._core._routines_statistics',
-    'cupy._core._scalar',
-    'cupy._core.core',
-    'cupy._core.flags',
-    'cupy._core.internal',
-    'cupy._core.fusion',
-    'cupy._core.new_fusion',
-    'cupy._core.numpy_allocator',
-    'cupy._core.raw',
+    # python cude backend api
     'cupy.cuda.common',
     'cupy.cuda.cufft',
     'cupy.cuda.device',
@@ -140,14 +113,93 @@ _cuda_files = [
     'cupy.cuda.pinned_memory',
     'cupy.cuda.function',
     'cupy.cuda.stream',
-    'cupy.cuda.graph',
-    'cupy.cuda.texture',
-    'cupy.fft._cache',
-    'cupy.fft._callback',
-    'cupy.lib._polynomial',
-    'cupy._util',
-    'cupyx.scipy.ndimage._bbox_slices',
 ]
+
+if False:  # TODO detect ascend
+    _cuda_files += [
+        'cupy._core._accelerator',
+        'cupy._core._carray',
+        'cupy._core._cub_reduction',
+        'cupy._core._dtype',
+        'cupy._core._fusion_kernel',
+        'cupy._core._fusion_thread_local',
+        'cupy._core._fusion_trace',
+        'cupy._core._fusion_variable',
+        'cupy._core._kernel',
+        'cupy._core._memory_range',
+        'cupy._core._optimize_config',
+        'cupy._core._reduction',
+        'cupy._core._routines_binary',
+        'cupy._core._routines_indexing',
+        'cupy._core._routines_linalg',
+        'cupy._core._routines_logic',
+        'cupy._core._routines_manipulation',
+        'cupy._core._routines_math',
+        'cupy._core._routines_sorting',
+        'cupy._core._routines_statistics',
+        'cupy._core._scalar',
+        'cupy._core.core',
+        'cupy._core.flags',
+        'cupy._core.internal',
+        'cupy._core.fusion',
+        'cupy._core.new_fusion',
+        'cupy._core.numpy_allocator',
+        'cupy._core.raw',
+        'cupy.cuda.graph',
+        'cupy.cuda.texture',
+        'cupy.fft._cache',
+        'cupy.fft._callback',
+        'cupy.lib._polynomial',
+        'cupy._util',
+        'cupyx.scipy.ndimage._bbox_slices',
+    ]
+else:
+    _cuda_files += [
+        # 'cupy._core._accelerator',
+        'cupy._core._carray',
+        # 'cupy._core._cub_reduction',
+        'cupy._core._dtype',
+        # 'cupy._core._fusion_kernel',
+        # 'cupy._core._fusion_thread_local',
+        # 'cupy._core._fusion_trace',
+        # 'cupy._core._fusion_variable',
+        'cupy._core._memory_range',
+        'cupy._core._optimize_config',
+        'cupy._core._kernel',
+        #('cupy._core._kernel', ['cupy/_ascend/_core/_kernel.pyd', 'cupy/_ascend/_core/_kernel.pyx']),
+        ('cupy._core._reduction', ['cupy/_ascend/_core/_reduction.pyd', 'cupy/_ascend/_core/_reduction.pyx']),
+        ('cupy._core._routines_binary', ['cupy/_ascend/_core/_routines_binary.pyd',
+                                         'cupy/_ascend/_core/_routines_binary.pyx']),
+        ('cupy._core._routines_indexing',['cupy/_ascend/_core/_routines_indexing.pyd',
+                                          'cupy/_ascend/_core/_routines_indexing.pyx']),
+        ('cupy._core._routines_linalg', ['cupy/_ascend/_core/_routines_linalg.pyd',
+                                         'cupy/_ascend/_core/_routines_linalg.pyx']),
+        ('cupy._core._routines_logic', ['cupy/_ascend/_core/_routines_logic.pyd',
+                                        'cupy/_ascend/_core/_routines_logic.pyx']),
+        ('cupy._core._routines_manipulation', ['cupy/_ascend/_core/_routines_manipulation.pyd',
+                                               'cupy/_ascend/_core/_routines_manipulation.pyx']),
+        ('cupy._core._routines_math', ['cupy/_ascend/_core/_routines_math.pyd',
+                                       'cupy/_ascend/_core/_routines_math.pyx']),
+        ('cupy._core._routines_sorting', ['cupy/_ascend/_core/_routines_sorting.pyd',
+                                          'cupy/_ascend/_core/_routines_sorting.pyx']),
+        ('cupy._core._routines_statistics', ['cupy/_ascend/_core/_routines_statistics.pyd',
+                                             'cupy/_ascend/_core/_routines_statistics.pyx']),
+        'cupy._core._scalar',
+        'cupy._core.core',
+        'cupy._core.flags',
+        'cupy._core.internal',
+        # 'cupy._core.fusion',
+        # 'cupy._core.new_fusion',
+        'cupy._core.numpy_allocator',
+        'cupy._core.raw',
+        # 'cupy.cuda.graph',
+        # 'cupy.cuda.texture',
+        # 'cupy.fft._cache',
+        # 'cupy.fft._callback',
+        # 'cupy.lib._polynomial',
+        'cupy._util',
+        # 'cupyx.scipy.ndimage._bbox_slices',
+    ]
 
 # Libraries required for cudart_static
 _cudart_static_libs = (
@@ -414,7 +466,10 @@ def get_features(ctx: Context) -> dict[str, Feature]:
             _from_dict(COMMON_dlpack, ctx),
         ]
     elif ctx.use_ascend:
-        features = []
+        features = [
+            CUPY_ascend(ctx),
+            # _from_dict(COMMON_dlpack, ctx)
+        ]
     else:
         features = [
             CUDA_cuda(ctx),
@@ -437,6 +492,22 @@ class CUPY_ascend(Feature):
     def __init__(self, ctx: Context):
         super().__init__(ctx)
         self.name = 'ascend'
+        self.required = True
+        self.modules = _cuda_files
+        self.includes = []
+        self.libraries = (
+            # CANN Runtime
+            ["ascendcl", "runtime", "nnopbase", "graph", "profapi"] +
+            # asdsip Toolkit
+            ['asdsip', 'asdsip_core', 'asdsip_host', 'mki']
+        )
+        #  _find_static_library() support CUDA backend only
+        self.static_libraries = [] # ["ascendcl", 'asdsip_static', 'mki_static']
+        self._version = self._UNDETERMINED
+        cann_path = build.get_cann_path()
+        self.configure = build.check_cann_version
+        build.check_cann_version(None, None)
+        self._version = build.get_cann_version()
 
 
 class CUDA_cuda(Feature):

@@ -141,3 +141,13 @@ class Context:
                 hasher.update(f.read())
                 hasher.update(b'\x00')
         return hasher.hexdigest(), len(files)
+    
+    def get_backend_name(self):
+        if self.use_stub:
+            return "stub"
+        elif self.use_hip:
+            return "hip"
+        elif self.use_ascend:
+            return "ascend"
+        else:
+            return "cuda"

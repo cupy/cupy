@@ -76,6 +76,7 @@ def _get_timestamp(path: str) -> float:
 
 
 def dumpbin_dependents(dumpbin: str, path: str) -> list[str]:
+    # windows tool dumpbin
     args = [dumpbin, '/nologo', '/dependents', path]
     try:
         p = subprocess.run(args, stdout=subprocess.PIPE)

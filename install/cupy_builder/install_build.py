@@ -26,7 +26,7 @@ PLATFORM_LINUX = sys.platform.startswith('linux')
 PLATFORM_WIN32 = sys.platform.startswith('win32')
 
 minimum_hip_version = 305  # for ROCm 3.5.0+
-minimum_cann_version = 810 # CANN 8.1
+minimum_cann_version = 820 # CANN 8.2
 
 _cuda_path = 'NOT_INITIALIZED'
 _rocm_path = 'NOT_INITIALIZED'
@@ -65,7 +65,9 @@ def get_cann_path():
     if _cann_path != 'NOT_INITIALIZED':
         return _cann_path
 
-    _cann_path = os.environ.get('ASCEND_HOME_PATH', '')
+    _cann_path = os.environ.get('ASCEND_HOME_PATH', 'NOT_INITIALIZED')
+    if _cann_path == 'NOT_INITIALIZED':
+        logging.error("env var: ASCEND_HOME_PATH is not exported")
     return _cann_path
 
 
@@ -143,10 +145,27 @@ def get_hipcc_path() -> list[str]:
     else:
         return None
 
+def get_ascendcc_path() -> list[str]:
+    cann_path = get_cann_path()
+    if cann_path is None:
+        return None
+
+    if PLATFORM_WIN32:
+        ascendcc_bin = 'compiler/ccec_compiler/bin/bisheng.exe'
+    else:
+        ascendcc_bin = 'compiler/ccec_compiler/bin/bisheng'
+
+    ascendcc_bin = os.path.join(cann_path, ascendcc_bin)
+    if os.path.exists(ascendcc_bin):
+        return [ascendcc_bin]
+    else:
+        print("Warning: cann_path found, but compiler path not found")
+        return None
 
 def get_compiler_setting(ctx: Context, backend: str):
     cuda_path = None
     rocm_path = None
+    cann_path = None
 
     if backend == "hip":
         rocm_path = get_rocm_path()
@@ -169,7 +188,7 @@ def get_compiler_setting(ctx: Context, backend: str):
             library_dirs.append(os.path.join(cuda_path, 'lib64'))
             library_dirs.append(os.path.join(cuda_path, 'lib'))
 
-    if rocm_path:
+    elif backend == "hip":
         include_dirs.append(os.path.join(rocm_path, 'include'))
         include_dirs.append(os.path.join(rocm_path, 'include', 'hip'))
         include_dirs.append(os.path.join(rocm_path, 'include', 'rocrand'))
@@ -182,11 +201,15 @@ def get_compiler_setting(ctx: Context, backend: str):
         include_dirs.append(os.path.join(rocm_path, 'include', 'rccl'))
         library_dirs.append(os.path.join(rocm_path, 'lib'))
 
-    if backend == "hip":
         # ROCm 5.3 and above requires c++14
         extra_compile_args.append('-std=c++14')
     elif backend == "ascend":
-        pass
+        extra_compile_args.append('-std=c++17')
+        include_dirs.append(os.path.join(cann_path, 'include'))
+        include_dirs.append(os.path.join(cann_path, '../../nnal/asdsip/latest/include'))
+        library_dirs.append(os.path.join(cann_path, 'lib64'))
+        library_dirs.append(os.path.join(cann_path, 'runtime/lib64'))
+        library_dirs.append(os.path.join(cann_path, '../../nnal/asdsip/latest/lib'))
 
     if PLATFORM_WIN32:
         nvtx_path = _environment.get_nvtx_path()
@@ -202,28 +225,29 @@ def get_compiler_setting(ctx: Context, backend: str):
     # Note that starting CuPy v8 we no longer use CUB_PATH, and starting v13
     # we no longer use Thrust/CUB bundled in CUDA.
 
-    # for <cupy/complex.cuh>
-    cupy_header = os.path.join(
-        cupy_builder.get_context().source_root, 'cupy/_core/include')
-    global _jitify_path
-    _jitify_path = os.path.join(cupy_header, 'cupy/_jitify')
-    global _cub_path
-    if rocm_path:
-        _cub_path = os.path.join(rocm_path, 'include', 'hipcub')
-        if not os.path.exists(_cub_path):
-            raise Exception('Please install hipCUB and retry')
-        _thrust_path = None
-        _libcudacxx_path = None
-    else:
-        # all bundled together under cccl
-        _cub_path = os.path.join(cupy_header, 'cupy/_cccl/cub')
-        _thrust_path = os.path.join(cupy_header, 'cupy/_cccl/thrust')
-        _libcudacxx_path = os.path.join(cupy_header, 'cupy/_cccl/libcudacxx')
-    include_dirs.insert(0, cupy_header)
-    include_dirs.insert(0, _cub_path)
-    if _thrust_path and _libcudacxx_path:
-        include_dirs.insert(0, _thrust_path)
-        include_dirs.insert(0, _libcudacxx_path)
+    if backend != "ascend":
+        # for <cupy/complex.cuh>
+        cupy_header = os.path.join(
+            cupy_builder.get_context().source_root, 'cupy/_core/include')
+        global _jitify_path
+        _jitify_path = os.path.join(cupy_header, 'cupy/_jitify')
+        global _cub_path
+        if rocm_path:
+            _cub_path = os.path.join(rocm_path, 'include', 'hipcub')
+            if not os.path.exists(_cub_path):
+                raise Exception('Please install hipCUB and retry')
+            _thrust_path = None
+            _libcudacxx_path = None
+        else:
+            # all bundled together under cccl
+            _cub_path = os.path.join(cupy_header, 'cupy/_cccl/cub')
+            _thrust_path = os.path.join(cupy_header, 'cupy/_cccl/thrust')
+            _libcudacxx_path = os.path.join(cupy_header, 'cupy/_cccl/libcudacxx')
+        include_dirs.insert(0, cupy_header)
+        include_dirs.insert(0, _cub_path)
+        if _thrust_path and _libcudacxx_path:
+            include_dirs.insert(0, _thrust_path)
+            include_dirs.insert(0, _libcudacxx_path)
 
     return {
         'include_dirs': include_dirs,
@@ -307,6 +331,7 @@ def _get_compiler_base_options(compiler_path):
 
 _hip_version = None
 _cann_version = None
+
 _thrust_version = None
 _nccl_version = None
 _cutensor_version = None
@@ -404,7 +429,7 @@ def get_cann_version(formatted: bool = False) -> int:
 
 
 def check_compute_capabilities(compiler, settings):
-    """Return compute capabilities of the installed devices."""
+    """Return CUDA compute capabilities of the installed devices."""
     global _compute_capabilities
     try:
         src = '''
