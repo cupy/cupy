@@ -225,22 +225,6 @@ python:
 # When adding a new NumPy version, you may also need to add the version to the
 # list of supported Python versions in SciPy.
 numpy:
-  "1.24":
-    spec: "==1.24.*"
-    python:
-      - "3.10"
-      - "3.11"
-  "1.25":
-    spec: "==1.25.*"
-    python:
-      - "3.10"
-      - "3.11"
-  "1.26":
-    spec: "==1.26.*"
-    python:
-      - "3.10"
-      - "3.11"
-      - "3.12"
   "2.0":
     spec: "==2.0.*"
     python:
@@ -275,43 +259,6 @@ scipy:
     # Note: Optuna depends on SciPy, so Optuna must also be set to null when
     # setting SciPy to null to run tests without SciPy.
     spec: null
-  "1.10":
-    spec: "==1.10.*"
-    python:
-      - "3.10"
-      - "3.11"
-    numpy:
-      - "1.24"
-  "1.11":
-    spec: "==1.11.*"
-    python:
-      - "3.10"
-      - "3.11"
-      - "3.12"
-    numpy:
-      - "1.24"
-      - "1.25"
-      - "1.26"
-  "1.12":
-    spec: "==1.12.*"
-    python:
-      - "3.10"
-      - "3.11"
-      - "3.12"
-    numpy:
-      - "1.24"
-      - "1.25"
-      - "1.26"
-  "1.13":
-    spec: "==1.13.*"
-    python:
-      - "3.10"
-      - "3.11"
-      - "3.12"
-    numpy:
-      - "1.24"
-      - "1.25"
-      - "1.26"
   "1.14":
     spec: "==1.14.*"
     python:
@@ -320,9 +267,6 @@ scipy:
       - "3.12"
       - "3.13"
     numpy:
-      - "1.24"
-      - "1.25"
-      - "1.26"
       - "2.0"
       - "2.1"
       - "2.2"
@@ -334,9 +278,6 @@ scipy:
       - "3.12"
       - "3.13"
     numpy:
-      - "1.24"
-      - "1.25"
-      - "1.26"
       - "2.0"
       - "2.1"
       - "2.2"
@@ -348,8 +289,6 @@ scipy:
       - "3.12"
       - "3.13"
     numpy:
-      - "1.25"
-      - "1.26"
       - "2.0"
       - "2.1"
       - "2.2"
