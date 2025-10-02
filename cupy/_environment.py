@@ -566,6 +566,16 @@ def _detect_duplicate_installation():
     # List of all CuPy packages, including out-dated ones.
     known = (
         'cupy',
+        'cupy-cuda102',
+        'cupy-cuda110',
+        'cupy-cuda111',
+        'cupy-cuda112',
+        'cupy-cuda113',
+        'cupy-cuda114',
+        'cupy-cuda115',
+        'cupy-cuda116',
+        'cupy-cuda117',
+        'cupy-cuda11x',
         'cupy-cuda12x',
         'cupy-cuda13x',
         'cupy-rocm-4-0',
