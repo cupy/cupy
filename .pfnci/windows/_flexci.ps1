@@ -16,7 +16,23 @@ function ActivatePython($version) {
 }
 
 function ActivateCUDA($version) {
-    if ($version -eq "12.0") {
+    if ($version -eq "11.2") {
+        $Env:CUDA_PATH = $Env:CUDA_PATH_V11_2
+    } elseif ($version -eq "11.3") {
+        $Env:CUDA_PATH = $Env:CUDA_PATH_V11_3
+    } elseif ($version -eq "11.4") {
+        $Env:CUDA_PATH = $Env:CUDA_PATH_V11_4
+    } elseif ($version -eq "11.5") {
+        $Env:CUDA_PATH = $Env:CUDA_PATH_V11_5
+    } elseif ($version -eq "11.6") {
+        $Env:CUDA_PATH = $Env:CUDA_PATH_V11_6
+    } elseif ($version -eq "11.7") {
+        $Env:CUDA_PATH = $Env:CUDA_PATH_V11_7
+    } elseif ($version -eq "11.8") {
+        $Env:CUDA_PATH = $Env:CUDA_PATH_V11_8
+    } elseif ($version -eq "11.x") {
+        $Env:CUDA_PATH = $Env:CUDA_PATH_V11_8
+    } elseif ($version -eq "12.0") {
         $Env:CUDA_PATH = $Env:CUDA_PATH_V12_0
     } elseif ($version -eq "12.1") {
         $Env:CUDA_PATH = $Env:CUDA_PATH_V12_1
