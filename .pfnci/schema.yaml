@@ -36,27 +36,6 @@ cuda:
   null:
     full_version: null
     repository: null
-  "11.2":
-    full_version: "11.2.2"
-    repository: "nvidia/cuda"
-  "11.3":
-    full_version: "11.3.1"
-    repository: "nvidia/cuda"
-  "11.4":
-    full_version: "11.4.3"
-    repository: "nvidia/cuda"
-  "11.5":
-    full_version: "11.5.2"
-    repository: "nvidia/cuda"
-  "11.6":
-    full_version: "11.6.2"
-    repository: "nvidia/cuda"
-  "11.7":
-    full_version: "11.7.1"
-    repository: "nvidia/cuda"
-  "11.8":
-    full_version: "11.8.0"
-    repository: "nvidia/cuda"
   "12.0":
     full_version: "12.0.1"
     repository: "nvidia/cuda"
@@ -133,45 +112,26 @@ nccl:
   "2.16":
     spec: "2.16.*"
     cuda:
-      # Note: DEB package for CUDA 11.x unavailable on Ubuntu 22.04
-      # "11.0":
-      "11.2":  # assumed
-        alias: "11.8"
-      "11.3":  # assumed
-        alias: "11.8"
-      "11.4":  # assumed
-        alias: "11.8"
-      "11.5":  # assumed
-        alias: "11.8"
-      "11.6":  # assumed
-        alias: "11.8"
-      "11.7":  # assumed
-        alias: "11.8"
-      "11.8":
       "12.0":
   "2.17":
     spec: "2.17.*"
     cuda:
-      # "11.0":  -- DEB/RPM packages are unavailable
       "12.0":  # Note: DEB package unavailable on Ubuntu 22.04
       "12.1":
   "2.18":
     spec: "2.18.*"
     cuda:
-      # "11.0":  -- DEB/RPM packages are unavailable
       "12.0":  # Note: DEB package unavailable on Ubuntu 22.04
       "12.2":
   "2.19":
     spec: "2.19.*"
     cuda:
-      # "11.0":  -- DEB/RPM packages are unavailable
       "12.0":  # Note: DEB package unavailable on Ubuntu 22.04
       "12.2":
       "12.3":
   "2.20":
     spec: "2.20.*"
     cuda:
-      # "11.0":  -- DEB/RPM packages are unavailable
       "12.0":  # Note: DEB package unavailable on Ubuntu 22.04
       "12.2":  # Note: DEB package unavailable on Ubuntu 22.04
       "12.3":
@@ -217,15 +177,6 @@ cutensor:
   "2.0":
     spec: "2.0.*"
     cuda:
-      # "10.2":  -- cuTENSOR distributed through binary package does not support CUDA 10.2
-      # "11.0":
-      "11.2":
-      "11.3":
-      "11.4":
-      "11.5":
-      "11.6":
-      "11.7":
-      "11.8":
       "12.0":
       "12.1":
       "12.2":
