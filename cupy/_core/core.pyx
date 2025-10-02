@@ -11,9 +11,8 @@ import numpy
 
 import cupy
 from cupy import _environment
-from cupy._core._kernel import create_ufunc
-from cupy._core._kernel import ElementwiseKernel
 from cupy._core._ufuncs import elementwise_copy
+
 from cupy._core import flags as _flags
 from cupy._core import syncdetect
 from cupy import cuda
@@ -34,7 +33,7 @@ from cupy._core cimport _carray
 from cupy._core cimport _dtype
 from cupy._core._dtype cimport get_dtype
 from cupy._core._dtype cimport populate_format
-from cupy._core._kernel cimport create_ufunc
+
 from cupy._core cimport _routines_binary as _binary
 from cupy._core cimport _routines_indexing as _indexing
 from cupy._core cimport _routines_linalg as _linalg
@@ -1208,9 +1207,9 @@ cdef class _ndarray_base:
 
         """  # NOQA
         if decimals < 0 and issubclass(self.dtype.type, numpy.integer):
-            return _round_ufunc_neg_uint(self, -decimals, out=out)
+            return _math._round_ufunc_neg_uint(self, -decimals, out=out)
         else:
-            return _round_ufunc(self, decimals, out=out)
+            return _math._round_ufunc(self, decimals, out=out)
 
     cpdef _ndarray_base trace(
             self, offset=0, axis1=0, axis2=1, dtype=None, out=None):
@@ -1463,7 +1462,7 @@ cdef class _ndarray_base:
 
     def __divmod__(x, y):
         if isinstance(y, ndarray):
-            return divmod(x, y)
+            return _math._divmod(x, y)
         elif _should_use_rop(x, y):
             return NotImplemented
         else:
@@ -2430,125 +2429,6 @@ cpdef function.Module compile_with_cache(
         jitify=jitify)
 
 
-# =============================================================================
-# Routines
-# =============================================================================
-
-cdef str _id = 'out0 = in0'
-
-cdef fill_kernel = ElementwiseKernel('T x', 'T y', 'y = x', 'cupy_fill')
-
-cdef str _divmod_float = '''
-    out0_type a = _floor_divide(in0, in1);
-    out0 = a;
-    out1 = in0 - a * in1'''
-
-
-divmod = create_ufunc(
-    'cupy_divmod',
-    ('bb->bb', 'BB->BB', 'hh->hh', 'HH->HH', 'ii->ii', 'II->II', 'll->ll',
-     'LL->LL', 'qq->qq', 'QQ->QQ',
-     ('ee->ee', _divmod_float),
-     ('ff->ff', _divmod_float),
-     ('dd->dd', _divmod_float)),
-    '''
-    if (in1 == 0) {
-        out0 = 0;
-        out1 = 0;
-    } else {
-        out0_type a = _floor_divide(in0, in1);
-        out0 = a;
-        out1 = in0 - a * in1;
-    }''')
-
-
-cdef _round_preamble = '''
-#ifdef __HIP_DEVICE_COMPILE__
-#define round_float llrintf
-#else
-#define round_float __float2ll_rn
-#endif
-
-template<typename T> __device__ T pow10(long long n){
-  T x = 1, a = 10;
-  while (n) {
-    if (n & 1) x *= a;
-    a *= a;
-    n >>= 1;
-  }
-  return x;
-};
-'''
-
-
-cdef _round_float = '''
-if (in1 == 0) {
-    out0 = rint(in0);
-} else {
-    double x;
-    x = pow10<double>(abs(in1));  // TODO(okuta): Move before loop
-    out0 = in1 < 0 ? rint(in0 / x) * x : rint(in0 * x) / x;
-}'''
-
-cdef _round_complex = '''
-if (in1 == 0) {
-    out0 = in0_type(rint(in0.real()), rint(in0.imag()));
-} else {
-    double x = pow10<double>(abs(in1));  // TODO(okuta): Move before loop
-    if (in1 < 0) {
-        out0 = in0_type(rint(in0.real() / x) * x,
-                        rint(in0.imag() / x) * x);
-    } else {
-        out0 = in0_type(rint(in0.real() * x) / x,
-                        rint(in0.imag() * x) / x);
-    }
-}'''
-
-
-# There is a known incompatibility with NumPy (as of 1.16.4) such as
-# `numpy.around(2**63, -1) == cupy.around(2**63, -1)` gives `False`.
-#
-# NumPy seems to round integral values via double.  As double has
-# only 53 bit precision, last few bits of (u)int64 value may be lost.
-# As a consequence, `numpy.around(2**63, -1)` does NOT round up the
-# last digit (9223372036854775808 instead of ...810).
-#
-# The following code fixes the problem, so `cupy.around(2**63, -1)`
-# gives `...810`, which (may correct but) is incompatible with NumPy.
-_round_ufunc = create_ufunc(
-    'cupy_round',
-    ('?q->e',
-     'bq->b', 'Bq->B', 'hq->h', 'Hq->H', 'iq->i', 'Iq->I', 'lq->l', 'Lq->L',
-     'qq->q', 'Qq->Q',
-     ('eq->e', _round_float),
-     ('fq->f', _round_float),
-     ('dq->d', _round_float),
-     ('Fq->F', _round_complex),
-     ('Dq->D', _round_complex)),
-    '''
-    out0 = in0;
-    ''', preamble=_round_preamble)
-
-
-_round_ufunc_neg_uint = create_ufunc(
-    'cupy_round_neg_uint',
-    ('?q->e',
-     'bq->b', 'Bq->B', 'hq->h', 'Hq->H', 'iq->i', 'Iq->I', 'lq->l', 'Lq->L',
-     'qq->q', 'Qq->Q'),
-    '''
-        // TODO(okuta): Move before loop
-        long long x = pow10<long long>(in1 - 1);
-
-        // TODO(okuta): Check Numpy
-        // `cupy.around(-123456789, -4)` works as follows:
-        // (1) scale by `x` above: -123456.789
-        // (2) split at the last 2 digits: -123400 + (-5.6789 * 10)
-        // (3) round the latter by `rint()`: -123400 + (-6.0 * 10)
-        // (4) unscale by `x` above: -123460000
-        long long q = in0 / x / 100;
-        int r = in0 - q*x*100;
-        out0 = (q*100 + round_float(r/(x*10.0f))*10) * x;
-    ''', preamble=_round_preamble)
 
 
 # -----------------------------------------------------------------------------
