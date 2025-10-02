@@ -42,14 +42,13 @@ Choose the right package for your platform.
 
 | Platform              | Architecture      | Command                                                       |
 | --------------------- | ----------------- | ------------------------------------------------------------- |
-| CUDA 11.x (11.2+)     | x86_64 / aarch64  | `pip install cupy-cuda11x`                                    |
 | CUDA 12.x             | x86_64 / aarch64  | `pip install cupy-cuda12x`                                    |
 | CUDA 13.x             | x86_64 / aarch64  | `pip install cupy-cuda13x`                                    |
 | ROCm 4.3 (*[experimental](https://docs.cupy.dev/en/latest/install.html#using-cupy-on-amd-gpu-experimental)*)          | x86_64            | `pip install cupy-rocm-4-3`                                   |
 | ROCm 5.0 (*[experimental](https://docs.cupy.dev/en/latest/install.html#using-cupy-on-amd-gpu-experimental)*)          | x86_64            | `pip install cupy-rocm-5-0`                                   |
 
 > [!NOTE]\
-> To install pre-releases, append `--pre -U -f https://pip.cupy.dev/pre` (e.g., `pip install cupy-cuda11x --pre -U -f https://pip.cupy.dev/pre`).
+> To install pre-releases, append `--pre -U -f https://pip.cupy.dev/pre` (e.g., `pip install cupy-cuda13x --pre -U -f https://pip.cupy.dev/pre`).
 
 ### Conda
 
