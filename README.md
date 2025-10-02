@@ -49,7 +49,7 @@ Choose the right package for your platform.
 | ROCm 5.0 (*[experimental](https://docs.cupy.dev/en/latest/install.html#using-cupy-on-amd-gpu-experimental)*)          | x86_64            | `pip install cupy-rocm-5-0`                                   |
 
 > [!NOTE]\
-> To install pre-releases, append `--pre -U -f https://pip.cupy.dev/pre` (e.g., `pip install cupy-cuda13x --pre -U -f https://pip.cupy.dev/pre`).
+> To install pre-releases, append `--pre -U -f https://pip.cupy.dev/pre` (e.g., `pip install cupy-cuda12x --pre -U -f https://pip.cupy.dev/pre`).
 
 ### Conda
 
