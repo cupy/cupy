@@ -10,7 +10,7 @@ from cupy.testing import assert_allclose, assert_array_equal
 INVALID_POINTS = [(1, -1), (0, 0), (-1, 1), (cp.nan, 1), (1, cp.nan)]
 
 
-class TestGammainc(object):
+class TestGammainc:
     @pytest.mark.skipif(
         cp.cuda.runtime.is_hip and
         cp.cuda.runtime.runtimeGetVersion() < 5_00_00000,
@@ -108,7 +108,7 @@ class TestGammainc(object):
         assert_allclose(x, y, rtol=1e-10)
 
 
-class TestGammaincc(object):
+class TestGammaincc:
     @pytest.mark.parametrize("a, x", INVALID_POINTS)
     def test_domain(self, a, x):
         assert cp.isnan(sc.gammaincc(a, x))
