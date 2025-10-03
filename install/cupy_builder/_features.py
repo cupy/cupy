@@ -93,6 +93,7 @@ def _from_dict(d: dict[str, Any], ctx: Context) -> Feature:
 # source file required to build the extension with appending '.pyx'
 # file extension.
 
+
 _cuda_files = [
     'cupy_backends.cuda.api.driver',
     'cupy_backends.cuda.api._driver_enum',
@@ -127,6 +128,7 @@ _cuda_files = [
     'cupy._core._optimize_config',
     'cupy._core._reduction',
     'cupy._core._routines_binary',
+    'cupy._core._routines_creation',
     'cupy._core._routines_indexing',
     'cupy._core._routines_linalg',
     'cupy._core._routines_logic',
@@ -136,6 +138,9 @@ _cuda_files = [
     'cupy._core._routines_statistics',
     'cupy._core._scalar',
     'cupy._core.core',
+    'cupy._core._compile_with_cache',
+    # ('cupy._core.core', ['cupy/_core/core.pyx',
+    #                      'cupy/_core/_routines_creation.pyx']),
     'cupy._core.flags',
     'cupy._core.internal',
     'cupy._core.fusion',
