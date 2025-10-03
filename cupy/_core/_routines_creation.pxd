@@ -5,7 +5,7 @@ cpdef _ndarray_base array(
     obj, dtype=*, copy=*, order=*, bint subok=*, Py_ssize_t ndmin=*,
     bint blocking=*)
 cpdef _ndarray_base _convert_object_with_cuda_array_interface(a)
-
+cdef tuple _array_info_from_nested_sequence(obj)
 cdef _ndarray_base _ndarray_init(subtype, const shape_t& shape, dtype, obj)
 
 cdef _ndarray_base _create_ndarray_from_shape_strides(

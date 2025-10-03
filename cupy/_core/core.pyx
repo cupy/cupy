@@ -2222,7 +2222,7 @@ cpdef min_scalar_type(a):
     """
     if isinstance(a, ndarray):
         return a.dtype
-    _, concat_type, concat_dtype = _array_info_from_nested_sequence(a)
+    _, concat_type, concat_dtype = _creation._array_info_from_nested_sequence(a)
     if concat_type is not None:
         return concat_dtype
     return numpy.min_scalar_type(a)

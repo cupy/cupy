@@ -1,16 +1,6 @@
 # mypy: ignore-errors
 from __future__ import annotations
 
-import sys
-# use C macro to choose device
-CUPY_USE_CANN = True
-# import class and function
-if CUPY_USE_CANN:
-    from cupy._ascend._core import _kernel as _ascend_kernel
-    sys.modules['cupy._ascend._core._kernel'] = _ascend_kernel
-else: # GPU
-    pass
-
 from cupy._core import core  # NOQA
 #from cupy._core import fusion  # NOQA
 from cupy._core import internal  # NOQA
