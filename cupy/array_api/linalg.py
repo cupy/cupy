@@ -202,7 +202,7 @@ def matrix_rank(x: Array, /, *, rtol: Optional[Union[float, Array]] = None) -> A
         tol = S.max(axis=-1, keepdims=True) * max(x.shape[-2:]) * np.finfo(S.dtype).eps
     else:
         if isinstance(rtol, Array):
-            rtol = rtol._array
+            rtol = rtol._array  # type: ignore[assignment]
         # Note: this is different from np.linalg.matrix_rank, which does not multiply
         # the tolerance by the largest singular value.
         tol = S.max(axis=-1, keepdims=True)*np.asarray(rtol)[..., np.newaxis]
