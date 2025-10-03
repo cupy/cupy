@@ -139,8 +139,6 @@ _cuda_files = [
     'cupy._core._scalar',
     'cupy._core.core',
     'cupy._core._compile_with_cache',
-    # ('cupy._core.core', ['cupy/_core/core.pyx',
-    #                      'cupy/_core/_routines_creation.pyx']),
     'cupy._core.flags',
     'cupy._core.internal',
     'cupy._core.fusion',
