@@ -1,11 +1,18 @@
 # =============================================================================
 # compile_with_cache, split from core.pyx
 # =============================================================================
+import os
+import re
+import warnings
+
 cimport cython  # NOQA
 cimport cpython
 
 from cupy_backends.cuda.api cimport runtime
 from cupy_backends.cuda.libs cimport nvrtc
+from cupy import cuda
+from cupy.cuda cimport function
+from cupy import _environment
 
 cdef bint _is_hip = runtime._is_hip_environment
 cdef str _cuda_path = ''  # '' for uninitialized, None for non-existing
@@ -143,10 +150,11 @@ cpdef tuple assemble_cupy_compiler_options(tuple options):
     else:
         warn_on_unsupported_std(options)
 
-    # make sure bundled CCCL is searched first
-    options = (_get_cccl_include_options()
-               + options
-               + ('-I%s' % _get_header_dir_path(),))
+    if not _is_hip:
+        # make sure bundled CCCL is searched first
+        options += (_get_cccl_include_options(),)
+
+    options += ('-I%s' % _get_header_dir_path(),)
 
     global _cuda_path
     if _cuda_path == '':

@@ -11,7 +11,7 @@ from cupy import _util
 from cupy.cuda import thrust
 
 from cupy._core cimport _routines_manipulation as _manipulation
-from cupy._core cimport compile_with_cache
+from cupy._core._compile_with_cache cimport compile_with_cache
 from cupy._core.core cimport _ndarray_base
 from cupy._core cimport internal
 

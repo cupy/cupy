@@ -18,9 +18,9 @@ from cupy._core cimport _optimize_config
 from cupy._core cimport _routines_manipulation as _manipulation
 from cupy._core cimport _scalar
 from cupy._core._scalar import get_typename as _get_typename
-from cupy._core.core cimport _convert_object_with_cuda_array_interface
-from cupy._core.core cimport _create_ndarray_from_shape_strides
-from cupy._core cimport compile_with_cache
+from cupy._core._routines_creation cimport _convert_object_with_cuda_array_interface
+from cupy._core._routines_creation cimport _create_ndarray_from_shape_strides
+from cupy._core._compile_with_cache cimport compile_with_cache
 from cupy._core.core cimport _ndarray_base
 from cupy._core cimport internal
 from cupy.cuda cimport device

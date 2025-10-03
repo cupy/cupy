@@ -15,8 +15,8 @@ from cupy import _util
 from cupy_backends.cuda.api cimport runtime
 from cupy._core cimport _accelerator
 from cupy._core._dtype cimport get_dtype
-from cupy._core.core cimport _ndarray_init
-from cupy._core cimport compile_with_cache
+from cupy._core._routines_creation cimport _ndarray_init
+from cupy._core._compile_with_cache cimport compile_with_cache
 from cupy._core.core cimport _ndarray_base
 from cupy.cuda cimport memory
 
@@ -1128,8 +1128,6 @@ _clip = create_ufunc(
 # Routines: round divmod split from more.pyx
 # =============================================================================
 cdef str _id = 'out0 = in0'
-
-cdef fill_kernel = ElementwiseKernel('T x', 'T y', 'y = x', 'cupy_fill')
 
 cdef str _divmod_float = '''
     out0_type a = _floor_divide(in0, in1);

@@ -4,38 +4,34 @@ import contextlib
 import functools
 import os
 import pickle
-import re
 import warnings
 
 import numpy
-
-import cupy
-from cupy import _environment
-from cupy._core._ufuncs import elementwise_copy
-
-from cupy._core import flags as _flags
-from cupy._core import syncdetect
-from cupy import cuda
-from cupy.cuda import memory as memory_module
-from cupy.cuda import stream as stream_mod
-
-
-from cupy_backends.cuda.api.runtime import CUDARuntimeError
-from cupy import _util
-
 cimport cython  # NOQA
 cimport cpython
 from libc.stdint cimport int64_t, intptr_t
 from libc cimport stdlib
 from cpython cimport Py_buffer
 
+import cupy
+from cupy import _environment
+from cupy import _util
+from cupy._core._ufuncs import elementwise_copy
+from cupy._core import flags as _flags
+from cupy._core import syncdetect
+#from cupy import cuda
+from cupy.cuda import memory as memory_module
+from cupy.cuda import stream as stream_mod
+
 from cupy._core cimport _carray
 from cupy._core cimport _dtype
 from cupy._core._dtype cimport get_dtype
 from cupy._core._dtype cimport populate_format
+from cupy._core._kernel import ElementwiseKernel
 
 from cupy._core cimport _routines_binary as _binary
 from cupy._core cimport _routines_indexing as _indexing
+from cupy._core cimport _routines_creation as _creation
 from cupy._core cimport _routines_linalg as _linalg
 from cupy._core cimport _routines_logic as _logic
 from cupy._core cimport _routines_manipulation as _manipulation
@@ -52,11 +48,12 @@ from cupy.cuda cimport memory
 from cupy.cuda cimport stream as stream_module
 from cupy_backends.cuda cimport stream as _stream_module
 from cupy_backends.cuda.api cimport runtime
+from cupy_backends.cuda.api.runtime import CUDARuntimeError
 
 from cupy.exceptions import ComplexWarning
 
 NUMPY_1x = numpy.__version__ < '2'
-
+cdef fill_kernel = ElementwiseKernel('T x', 'T y', 'y = x', 'cupy_fill')
 
 cdef extern from *:
     """
@@ -656,7 +653,7 @@ cdef class _ndarray_base:
 
         if order_char == b'K':
             strides = internal._get_strides_for_order_K(self, dtype)
-            newarray = _ndarray_init(ndarray, self._shape, dtype, None)
+            newarray = _creation._ndarray_init(ndarray, self._shape, dtype, None)
             # TODO(niboshi): Confirm update_x_contiguity flags
             newarray._set_shape_and_strides(self._shape, strides, True, True)
         else:
@@ -740,7 +737,7 @@ cdef class _ndarray_base:
             x = self.astype(self.dtype, order=order, copy=False)
         finally:
             runtime.setDevice(prev_device)
-        newarray = _ndarray_init(ndarray, x._shape, x.dtype, None)
+        newarray = _creation._ndarray_init(ndarray, x._shape, x.dtype, None)
         if not x._c_contiguous and not x._f_contiguous:
             raise NotImplementedError(
                 'CuPy cannot copy non-contiguous array between devices.')
@@ -925,7 +922,7 @@ cdef class _ndarray_base:
            :meth:`numpy.ndarray.ravel`
 
         """
-        return _internal_ascontiguousarray(
+        return _creation._internal_ascontiguousarray(
             _manipulation._ndarray_ravel(self, order))
 
     cpdef _ndarray_base squeeze(self, axis=None):
@@ -1597,7 +1594,7 @@ cdef class _ndarray_base:
             runtime.setDevice(prev_device)
 
     def __reduce__(self):
-        return array, (self.get(),)
+        return _creation.array, (self.get(),)
 
     # Basic customization:
 
@@ -1942,9 +1939,9 @@ cdef class _ndarray_base:
                     runtime.setDevice(self.device.id)
                     with stream:
                         if out.flags.c_contiguous:
-                            a_gpu = _internal_ascontiguousarray(self)
+                            a_gpu = _creation._internal_ascontiguousarray(self)
                         elif out.flags.f_contiguous:
-                            a_gpu = _internal_asfortranarray(self)
+                            a_gpu = _creation._internal_asfortranarray(self)
                         else:
                             raise RuntimeError(
                                 '`out` cannot be specified when copying to '
@@ -1985,9 +1982,9 @@ cdef class _ndarray_base:
                     runtime.setDevice(self.device.id)
                     with stream:
                         if order == 'C':
-                            a_gpu = _internal_ascontiguousarray(self)
+                            a_gpu = _creation._internal_ascontiguousarray(self)
                         elif order == 'F':
-                            a_gpu = _internal_asfortranarray(self)
+                            a_gpu = _creation._internal_asfortranarray(self)
                         else:
                             raise ValueError(
                                 'unsupported order: {}'.format(order))

@@ -6,6 +6,8 @@ from cupy.cuda.function cimport CPointer
 from cupy._core._carray cimport shape_t
 from cupy._core._carray cimport strides_t
 
+# after split out creation, some types must be exported
+cdef object ndarray
 
 cdef class _ndarray_base:
     cdef:
@@ -92,21 +94,3 @@ cdef class _ndarray_base:
         self, Py_ssize_t itemsize, bint is_c_contiguous)
     cdef CPointer get_pointer(self)
     cpdef object toDlpack(self)
-
-# TODO(niboshi): Move to _routines_creation.pyx
-# split core.pyx, but keep the definition here in core.pxd
-
-cpdef _ndarray_base array(
-    obj, dtype=*, copy=*, order=*, bint subok=*, Py_ssize_t ndmin=*,
-    bint blocking=*)
-cpdef _ndarray_base _convert_object_with_cuda_array_interface(a)
-
-cdef _ndarray_base _ndarray_init(subtype, const shape_t& shape, dtype, obj)
-
-cdef _ndarray_base _create_ndarray_from_shape_strides(
-    subtype, const shape_t& shape, const strides_t& strides, dtype, obj)
-
-cpdef _ndarray_base _internal_ascontiguousarray(_ndarray_base a)
-cpdef _ndarray_base _internal_asfortranarray(_ndarray_base a)
-cpdef _ndarray_base ascontiguousarray(_ndarray_base a, dtype=*)
-cpdef _ndarray_base asfortranarray(_ndarray_base a, dtype=*)
