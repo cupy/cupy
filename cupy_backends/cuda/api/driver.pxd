@@ -26,7 +26,8 @@ IF CUPY_USE_CUDA_PYTHON:
     ctypedef CUfilter_mode Filter_mode
 ELSE:
     include "_driver_typedef.pxi"
-    from cupy_backends.cuda.api._driver_enum cimport *
+    IF CUPY_CANN_VERSION <= 0:
+        from cupy_backends.cuda.api._driver_enum cimport *
 
 
 ###############################################################################
@@ -54,45 +55,45 @@ cpdef int ctxGetDevice() except? -1
 ###############################################################################
 # Module load and kernel execution
 ###############################################################################
+IF CUPY_CANN_VERSION <= 0:
+    cpdef intptr_t linkCreate() except? 0
+    cpdef linkAddData(intptr_t state, int input_type, bytes data, unicode name)
+    cpdef linkAddFile(intptr_t state, int input_type, unicode path)
+    cpdef bytes linkComplete(intptr_t state)
+    cpdef linkDestroy(intptr_t state)
+    cpdef intptr_t moduleLoad(str filename) except? 0
+    cpdef intptr_t moduleLoadData(bytes image) except? 0
+    cpdef moduleUnload(intptr_t module)
+    cpdef intptr_t moduleGetFunction(intptr_t module, str funcname) except? 0
+    cpdef intptr_t moduleGetGlobal(intptr_t module, str varname) except? 0
+    cpdef launchKernel(
+        intptr_t f, unsigned int grid_dim_x, unsigned int grid_dim_y,
+        unsigned int grid_dim_z, unsigned int block_dim_x,
+        unsigned int block_dim_y, unsigned int block_dim_z,
+        unsigned int shared_mem_bytes, intptr_t stream, intptr_t kernel_params,
+        intptr_t extra)
+    cpdef launchCooperativeKernel(
+        intptr_t f, unsigned int grid_dim_x, unsigned int grid_dim_y,
+        unsigned int grid_dim_z, unsigned int block_dim_x,
+        unsigned int block_dim_y, unsigned int block_dim_z,
+        unsigned int shared_mem_bytes, intptr_t stream, intptr_t kernel_params)
 
-cpdef intptr_t linkCreate() except? 0
-cpdef linkAddData(intptr_t state, int input_type, bytes data, unicode name)
-cpdef linkAddFile(intptr_t state, int input_type, unicode path)
-cpdef bytes linkComplete(intptr_t state)
-cpdef linkDestroy(intptr_t state)
-cpdef intptr_t moduleLoad(str filename) except? 0
-cpdef intptr_t moduleLoadData(bytes image) except? 0
-cpdef moduleUnload(intptr_t module)
-cpdef intptr_t moduleGetFunction(intptr_t module, str funcname) except? 0
-cpdef intptr_t moduleGetGlobal(intptr_t module, str varname) except? 0
-cpdef launchKernel(
-    intptr_t f, unsigned int grid_dim_x, unsigned int grid_dim_y,
-    unsigned int grid_dim_z, unsigned int block_dim_x,
-    unsigned int block_dim_y, unsigned int block_dim_z,
-    unsigned int shared_mem_bytes, intptr_t stream, intptr_t kernel_params,
-    intptr_t extra)
-cpdef launchCooperativeKernel(
-    intptr_t f, unsigned int grid_dim_x, unsigned int grid_dim_y,
-    unsigned int grid_dim_z, unsigned int block_dim_x,
-    unsigned int block_dim_y, unsigned int block_dim_z,
-    unsigned int shared_mem_bytes, intptr_t stream, intptr_t kernel_params)
+    ###############################################################################
+    # Kernel attributes
+    ###############################################################################
 
-###############################################################################
-# Kernel attributes
-###############################################################################
+    cpdef int funcGetAttribute(int attribute, intptr_t func) except? -2
+    cpdef funcSetAttribute(intptr_t func, int attribute, int value)
 
-cpdef int funcGetAttribute(int attribute, intptr_t func) except? -2
-cpdef funcSetAttribute(intptr_t func, int attribute, int value)
+    ###############################################################################
+    # Occupancy
+    ###############################################################################
 
-###############################################################################
-# Occupancy
-###############################################################################
+    cpdef int occupancyMaxActiveBlocksPerMultiprocessor(
+        intptr_t func, int blockSize, size_t dynamicSMemSize)
 
-cpdef int occupancyMaxActiveBlocksPerMultiprocessor(
-    intptr_t func, int blockSize, size_t dynamicSMemSize)
-
-cpdef occupancyMaxPotentialBlockSize(intptr_t func, size_t dynamicSMemSize,
-                                     int blockSizeLimit)
+    cpdef occupancyMaxPotentialBlockSize(intptr_t func, size_t dynamicSMemSize,
+                                        int blockSizeLimit)
 
 ###############################################################################
 # Stream management

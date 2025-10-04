@@ -26,43 +26,44 @@ ctypedef int (*F_cuCtxGetDevice)(Device*) noexcept nogil
 cdef F_cuCtxGetDevice cuCtxGetDevice
 
 # Module load and kernel execution
-ctypedef int (*F_cuLinkCreate)(unsigned int numOptions, CUjit_option* options, void** optionValues, LinkState* stateOut) noexcept nogil  # NOQA
-cdef F_cuLinkCreate cuLinkCreate
-ctypedef int (*F_cuLinkAddData)(LinkState state, CUjitInputType type, void* data, size_t size, const char* name, unsigned int  numOptions, CUjit_option* options, void** optionValues) noexcept nogil  # NOQA
-cdef F_cuLinkAddData cuLinkAddData
-ctypedef int (*F_cuLinkAddFile)(LinkState state, CUjitInputType type, const char* path, unsigned int numOptions, CUjit_option* options, void** optionValues) noexcept nogil  # NOQA
-cdef F_cuLinkAddFile cuLinkAddFile
-ctypedef int (*F_cuLinkComplete)(LinkState state, void** cubinOut, size_t* sizeOut) noexcept nogil  # NOQA
-cdef F_cuLinkComplete cuLinkComplete
-ctypedef int (*F_cuLinkDestroy)(LinkState state) noexcept nogil
-cdef F_cuLinkDestroy cuLinkDestroy
-ctypedef int (*F_cuModuleLoad)(Module* module, char* fname) noexcept nogil
-cdef F_cuModuleLoad cuModuleLoad
-ctypedef int (*F_cuModuleLoadData)(Module* module, void* image) noexcept nogil
-cdef F_cuModuleLoadData cuModuleLoadData
-ctypedef int (*F_cuModuleUnload)(Module hmod) noexcept nogil
-cdef F_cuModuleUnload cuModuleUnload
-ctypedef int (*F_cuModuleGetFunction)(Function* hfunc, Module hmod, char* name) noexcept nogil  # NOQA
-cdef F_cuModuleGetFunction cuModuleGetFunction
-ctypedef int (*F_cuModuleGetGlobal)(Deviceptr* dptr, size_t* bytes, Module hmod, char* name) noexcept nogil  # NOQA
-cdef F_cuModuleGetGlobal cuModuleGetGlobal
-ctypedef int (*F_cuLaunchKernel)(Function f, unsigned int gridDimX, unsigned int gridDimY, unsigned int gridDimZ, unsigned int blockDimX, unsigned int blockDimY, unsigned int blockDimZ, unsigned int sharedMemBytes, Stream hStream, void** kernelParams, void** extra) noexcept nogil  # NOQA
-cdef F_cuLaunchKernel cuLaunchKernel
-ctypedef int (*F_cuLaunchCooperativeKernel)(Function f, unsigned int gridDimX, unsigned int gridDimY, unsigned int gridDimZ, unsigned int blockDimX, unsigned int blockDimY, unsigned int blockDimZ, unsigned int sharedMemBytes, Stream hStream, void** kernelParams) noexcept nogil  # NOQA
-cdef F_cuLaunchCooperativeKernel cuLaunchCooperativeKernel
+IF CUPY_CANN_VERSION <= 0:
+    ctypedef int (*F_cuLinkCreate)(unsigned int numOptions, CUjit_option* options, void** optionValues, LinkState* stateOut) noexcept nogil  # NOQA
+    cdef F_cuLinkCreate cuLinkCreate
+    ctypedef int (*F_cuLinkAddData)(LinkState state, CUjitInputType type, void* data, size_t size, const char* name, unsigned int  numOptions, CUjit_option* options, void** optionValues) noexcept nogil  # NOQA
+    cdef F_cuLinkAddData cuLinkAddData
+    ctypedef int (*F_cuLinkAddFile)(LinkState state, CUjitInputType type, const char* path, unsigned int numOptions, CUjit_option* options, void** optionValues) noexcept nogil  # NOQA
+    cdef F_cuLinkAddFile cuLinkAddFile
+    ctypedef int (*F_cuLinkComplete)(LinkState state, void** cubinOut, size_t* sizeOut) noexcept nogil  # NOQA
+    cdef F_cuLinkComplete cuLinkComplete
+    ctypedef int (*F_cuLinkDestroy)(LinkState state) noexcept nogil
+    cdef F_cuLinkDestroy cuLinkDestroy
+    ctypedef int (*F_cuModuleLoad)(Module* module, char* fname) noexcept nogil
+    cdef F_cuModuleLoad cuModuleLoad
+    ctypedef int (*F_cuModuleLoadData)(Module* module, void* image) noexcept nogil
+    cdef F_cuModuleLoadData cuModuleLoadData
+    ctypedef int (*F_cuModuleUnload)(Module hmod) noexcept nogil
+    cdef F_cuModuleUnload cuModuleUnload
+    ctypedef int (*F_cuModuleGetFunction)(Function* hfunc, Module hmod, char* name) noexcept nogil  # NOQA
+    cdef F_cuModuleGetFunction cuModuleGetFunction
+    ctypedef int (*F_cuModuleGetGlobal)(Deviceptr* dptr, size_t* bytes, Module hmod, char* name) noexcept nogil  # NOQA
+    cdef F_cuModuleGetGlobal cuModuleGetGlobal
+    ctypedef int (*F_cuLaunchKernel)(Function f, unsigned int gridDimX, unsigned int gridDimY, unsigned int gridDimZ, unsigned int blockDimX, unsigned int blockDimY, unsigned int blockDimZ, unsigned int sharedMemBytes, Stream hStream, void** kernelParams, void** extra) noexcept nogil  # NOQA
+    cdef F_cuLaunchKernel cuLaunchKernel
+    ctypedef int (*F_cuLaunchCooperativeKernel)(Function f, unsigned int gridDimX, unsigned int gridDimY, unsigned int gridDimZ, unsigned int blockDimX, unsigned int blockDimY, unsigned int blockDimZ, unsigned int sharedMemBytes, Stream hStream, void** kernelParams) noexcept nogil  # NOQA
+    cdef F_cuLaunchCooperativeKernel cuLaunchCooperativeKernel
 
-# Kernel attributes
-ctypedef int (*F_cuFuncGetAttribute)(int *pi, CUfunction_attribute attrib, Function hfunc) noexcept nogil  # NOQA
-cdef F_cuFuncGetAttribute cuFuncGetAttribute
+    # Kernel attributes
+    ctypedef int (*F_cuFuncGetAttribute)(int *pi, CUfunction_attribute attrib, Function hfunc) noexcept nogil  # NOQA
+    cdef F_cuFuncGetAttribute cuFuncGetAttribute
 
-ctypedef int (*F_cuFuncSetAttribute)(Function hfunc, CUfunction_attribute attrib, int value) noexcept nogil  # NOQA
-cdef F_cuFuncSetAttribute cuFuncSetAttribute
+    ctypedef int (*F_cuFuncSetAttribute)(Function hfunc, CUfunction_attribute attrib, int value) noexcept nogil  # NOQA
+    cdef F_cuFuncSetAttribute cuFuncSetAttribute
 
-# Occupancy
-ctypedef int (*F_cuOccupancyMaxActiveBlocksPerMultiprocessor)(int* numBlocks, Function func, int blockSize, size_t dynamicSMemSize) noexcept nogil  # NOQA
-cdef F_cuOccupancyMaxActiveBlocksPerMultiprocessor cuOccupancyMaxActiveBlocksPerMultiprocessor  # NOQA
-ctypedef int (*F_cuOccupancyMaxPotentialBlockSize)(int* minGridSize, int* blockSize, Function func, CUoccupancyB2DSize block2shmem, size_t dynamicSMemSize, int blockSizeLimit) noexcept nogil  # NOQA
-cdef F_cuOccupancyMaxPotentialBlockSize cuOccupancyMaxPotentialBlockSize
+    # Occupancy
+    ctypedef int (*F_cuOccupancyMaxActiveBlocksPerMultiprocessor)(int* numBlocks, Function func, int blockSize, size_t dynamicSMemSize) noexcept nogil  # NOQA
+    cdef F_cuOccupancyMaxActiveBlocksPerMultiprocessor cuOccupancyMaxActiveBlocksPerMultiprocessor  # NOQA
+    ctypedef int (*F_cuOccupancyMaxPotentialBlockSize)(int* minGridSize, int* blockSize, Function func, CUoccupancyB2DSize block2shmem, size_t dynamicSMemSize, int blockSizeLimit) noexcept nogil  # NOQA
+    cdef F_cuOccupancyMaxPotentialBlockSize cuOccupancyMaxPotentialBlockSize
 
 # Stream
 ctypedef int (*F_cuStreamGetCtx)(Stream hStream, Context* pctx) noexcept nogil
@@ -103,38 +104,39 @@ cdef SoftLink _initialize():
     cuCtxDestroy = <F_cuCtxDestroy>_L.get(f'CtxDestroy{version}')
     global cuCtxGetDevice
     cuCtxGetDevice = <F_cuCtxGetDevice>_L.get('CtxGetDevice')
-    global cuLinkCreate
-    cuLinkCreate = <F_cuLinkCreate>_L.get(f'LinkCreate{version}')
-    global cuLinkAddData
-    cuLinkAddData = <F_cuLinkAddData>_L.get(f'LinkAddData{version}')
-    global cuLinkAddFile
-    cuLinkAddFile = <F_cuLinkAddFile>_L.get(f'LinkAddFile{version}')
-    global cuLinkComplete
-    cuLinkComplete = <F_cuLinkComplete>_L.get('LinkComplete')
-    global cuLinkDestroy
-    cuLinkDestroy = <F_cuLinkDestroy>_L.get('LinkDestroy')
-    global cuModuleLoad
-    cuModuleLoad = <F_cuModuleLoad>_L.get('ModuleLoad')
-    global cuModuleLoadData
-    cuModuleLoadData = <F_cuModuleLoadData>_L.get('ModuleLoadData')
-    global cuModuleUnload
-    cuModuleUnload = <F_cuModuleUnload>_L.get('ModuleUnload')
-    global cuModuleGetFunction
-    cuModuleGetFunction = <F_cuModuleGetFunction>_L.get('ModuleGetFunction')
-    global cuModuleGetGlobal
-    cuModuleGetGlobal = <F_cuModuleGetGlobal>_L.get(f'ModuleGetGlobal{version}')  # NOQA
-    global cuLaunchKernel
-    cuLaunchKernel = <F_cuLaunchKernel>_L.get('LaunchKernel')
-    global cuLaunchCooperativeKernel
-    cuLaunchCooperativeKernel = <F_cuLaunchCooperativeKernel>_L.get('LaunchCooperativeKernel')  # NOQA
-    global cuFuncGetAttribute
-    cuFuncGetAttribute = <F_cuFuncGetAttribute>_L.get('FuncGetAttribute')
-    global cuFuncSetAttribute
-    cuFuncSetAttribute = <F_cuFuncSetAttribute>_L.get('FuncSetAttribute')
-    global cuOccupancyMaxActiveBlocksPerMultiprocessor
-    cuOccupancyMaxActiveBlocksPerMultiprocessor = <F_cuOccupancyMaxActiveBlocksPerMultiprocessor>_L.get('OccupancyMaxActiveBlocksPerMultiprocessor')  # NOQA
-    global cuOccupancyMaxPotentialBlockSize
-    cuOccupancyMaxPotentialBlockSize = <F_cuOccupancyMaxPotentialBlockSize>_L.get('OccupancyMaxPotentialBlockSize')  # NOQA
+    IF CUPY_CANN_VERSION <= 0:
+        global cuLinkCreate
+        cuLinkCreate = <F_cuLinkCreate>_L.get(f'LinkCreate{version}')
+        global cuLinkAddData
+        cuLinkAddData = <F_cuLinkAddData>_L.get(f'LinkAddData{version}')
+        global cuLinkAddFile
+        cuLinkAddFile = <F_cuLinkAddFile>_L.get(f'LinkAddFile{version}')
+        global cuLinkComplete
+        cuLinkComplete = <F_cuLinkComplete>_L.get('LinkComplete')
+        global cuLinkDestroy
+        cuLinkDestroy = <F_cuLinkDestroy>_L.get('LinkDestroy')
+        global cuModuleLoad
+        cuModuleLoad = <F_cuModuleLoad>_L.get('ModuleLoad')
+        global cuModuleLoadData
+        cuModuleLoadData = <F_cuModuleLoadData>_L.get('ModuleLoadData')
+        global cuModuleUnload
+        cuModuleUnload = <F_cuModuleUnload>_L.get('ModuleUnload')
+        global cuModuleGetFunction
+        cuModuleGetFunction = <F_cuModuleGetFunction>_L.get('ModuleGetFunction')
+        global cuModuleGetGlobal
+        cuModuleGetGlobal = <F_cuModuleGetGlobal>_L.get(f'ModuleGetGlobal{version}')  # NOQA
+        global cuLaunchKernel
+        cuLaunchKernel = <F_cuLaunchKernel>_L.get('LaunchKernel')
+        global cuLaunchCooperativeKernel
+        cuLaunchCooperativeKernel = <F_cuLaunchCooperativeKernel>_L.get('LaunchCooperativeKernel')  # NOQA
+        global cuFuncGetAttribute
+        cuFuncGetAttribute = <F_cuFuncGetAttribute>_L.get('FuncGetAttribute')
+        global cuFuncSetAttribute
+        cuFuncSetAttribute = <F_cuFuncSetAttribute>_L.get('FuncSetAttribute')
+        global cuOccupancyMaxActiveBlocksPerMultiprocessor
+        cuOccupancyMaxActiveBlocksPerMultiprocessor = <F_cuOccupancyMaxActiveBlocksPerMultiprocessor>_L.get('OccupancyMaxActiveBlocksPerMultiprocessor')  # NOQA
+        global cuOccupancyMaxPotentialBlockSize
+        cuOccupancyMaxPotentialBlockSize = <F_cuOccupancyMaxPotentialBlockSize>_L.get('OccupancyMaxPotentialBlockSize')  # NOQA
     global cuStreamGetCtx
     cuStreamGetCtx = <F_cuStreamGetCtx>_L.get('StreamGetCtx')
 

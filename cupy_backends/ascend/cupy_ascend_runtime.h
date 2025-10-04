@@ -1,7 +1,8 @@
 #ifndef INCLUDE_GUARD_ASCEND_CUPY_RUNTIME_H
 #define INCLUDE_GUARD_ASCEND_CUPY_RUNTIME_H
 
-#include "acl/acl.h"          // AscendCL主头文件 [6,7,8](@ref)
+#include "acl/acl.h"          // AscendCL主头文件
+#include "acl/acl_mdl.h"      // model record
 #include "cupy_ascend_common.h" // 假设的自定义头文件
 
 constexpr int ASCEND_DEFAULT_STREAM_PRIORITY = 1; // TODO: value
@@ -31,16 +32,14 @@ cudaError_t cudaGetLastError() {
 }
 
 cudaError_t cudaDriverGetVersion(int *driverVersion) {
-    // CANN version might be obtained through other means (e.g., system info).
-    // aclsysGetCANNVersion(aclCANNPackageName name, aclCANNPackageVersion *version);
-    *driverVersion = 800; // Placeholder: Assuming CANN 8.0
+    // CANN driver package version might be obtained through other means (e.g., system info).
+    *driverVersion = 820; // Placeholder: Assuming CANN 8.0
     return ACL_SUCCESS;
 }
 
 cudaError_t cudaRuntimeGetVersion(int *runtimeVersion) {
-    // WARNING: No direct equivalent in AscendCL for runtime version query.
-    // CANN version might be obtained through other means.
-    *runtimeVersion = 800; // Placeholder: Assuming CANN 8.0
+    // TODO: aclsysGetCANNVersion(aclCANNPackageName name, aclCANNPackageVersion *version);
+    *runtimeVersion = 820; // Placeholder: Assuming CANN 8.0
     return ACL_SUCCESS;
 }
 
@@ -84,6 +83,7 @@ cudaError_t cudaGetDevice(int *deviceId) {
     return ret;
 }
 
+#ifndef CUPY_INSTALL_USE_ASCEND
 cudaError_t cudaGetDeviceProperties(cudaDeviceProp *prop, int device) {
     // // WARNING: AscendCL device properties structure (aclrtDeviceProp) is different from cudaDeviceProp.
     // // Requires manual mapping of fields.
@@ -130,6 +130,7 @@ cudaError_t cudaDeviceGetPCIBusId(char *pciBusId, int len, int device) {
     // WARNING: Missing direct equivalent in AscendCL for getting PCI Bus ID.
     return ACL_ERROR_FEATURE_UNSUPPORTED;
 }
+#endif
 
 cudaError_t cudaGetDeviceCount(int *count) {
     uint32_t cc = 0;
@@ -148,6 +149,7 @@ cudaError_t cudaDeviceSynchronize() {
     return ret;
 }
 
+#ifndef CUPY_INSTALL_USE_ASCEND
 cudaError_t cudaDeviceCanAccessPeer(int* canAccessPeer, int deviceId,
                                     int peerDeviceId) {
     // WARNING: Peer access might be handled differently or not supported in AscendCL. [8](@ref)
@@ -175,33 +177,36 @@ cudaError_t cudaDeviceSetLimit(cudaLimit limit, size_t value) {
     // WARNING: No direct equivalent concept of "limits" in AscendCL.
     return ACL_ERROR_INVALID_PARAM;
 }
+#endif
 
-// IPC operations
-cudaError_t cudaIpcCloseMemHandle(void* devPtr) {
-    // WARNING: Inter-Process Communication (IPC) handles likely not directly portable to AscendCL. [8](@ref)
-    // AscendCL may have different mechanisms for resource sharing between processes.
-    return ACL_ERROR_FEATURE_UNSUPPORTED;
-}
+#ifndef CUPY_INSTALL_USE_ASCEND
+    // IPC operations
+    cudaError_t cudaIpcCloseMemHandle(void* devPtr) {
+        // WARNING: Inter-Process Communication (IPC) handles likely not directly portable to AscendCL. [8](@ref)
+        // AscendCL may have different mechanisms for resource sharing between processes.
+        return ACL_ERROR_FEATURE_UNSUPPORTED;
+    }
 
-cudaError_t cudaIpcGetEventHandle(cudaIpcEventHandle_t* handle, cudaEvent_t event) {
-    // WARNING: Missing direct equivalent in AscendCL for event IPC.
-    return ACL_ERROR_FEATURE_UNSUPPORTED;
-}
+    cudaError_t cudaIpcGetEventHandle(cudaIpcEventHandle_t* handle, cudaEvent_t event) {
+        // WARNING: Missing direct equivalent in AscendCL for event IPC.
+        return ACL_ERROR_FEATURE_UNSUPPORTED;
+    }
 
-cudaError_t cudaIpcGetMemHandle(cudaIpcMemHandle_t* handle, void* devPtr) {
-    // WARNING: Missing direct equivalent in AscendCL for memory IPC.
-    return ACL_ERROR_FEATURE_UNSUPPORTED;
-}
+    cudaError_t cudaIpcGetMemHandle(cudaIpcMemHandle_t* handle, void* devPtr) {
+        // WARNING: Missing direct equivalent in AscendCL for memory IPC.
+        return ACL_ERROR_FEATURE_UNSUPPORTED;
+    }
 
-cudaError_t cudaIpcOpenEventHandle(cudaEvent_t* event, cudaIpcEventHandle_t handle) {
-    // WARNING: Missing direct equivalent in AscendCL for opening event IPC handle.
-    return ACL_ERROR_FEATURE_UNSUPPORTED;
-}
+    cudaError_t cudaIpcOpenEventHandle(cudaEvent_t* event, cudaIpcEventHandle_t handle) {
+        // WARNING: Missing direct equivalent in AscendCL for opening event IPC handle.
+        return ACL_ERROR_FEATURE_UNSUPPORTED;
+    }
 
-cudaError_t cudaIpcOpenMemHandle(void** devPtr, cudaIpcMemHandle_t handle, unsigned int flags) {
-    // WARNING: Missing direct equivalent in AscendCL for opening memory IPC handle.
-    return ACL_ERROR_FEATURE_UNSUPPORTED;
-}
+    cudaError_t cudaIpcOpenMemHandle(void** devPtr, cudaIpcMemHandle_t handle, unsigned int flags) {
+        // WARNING: Missing direct equivalent in AscendCL for opening memory IPC handle.
+        return ACL_ERROR_FEATURE_UNSUPPORTED;
+    }
+#endif
 
 // Memory management
 // Stub enums and structs remain, but their usage might differ in AscendCL.
@@ -221,20 +226,8 @@ struct cudaMemPoolProps {  // stub
 };
 
 cudaError_t cudaMalloc(void** ptr, size_t size) {
-    aclError ret = aclrtMalloc(ptr, size, ACL_MEM_MALLOC_HUGE_FIRST); // Example flag [8](@ref)
+    aclError ret = aclrtMalloc(ptr, size, ACL_MEM_MALLOC_HUGE_FIRST);
     return ret;
-}
-
-cudaError_t cudaMalloc3DArray(...) {
-    // WARNING: Missing direct equivalent in AscendCL for 3D array allocation.
-    // AscendCL uses aclDataBuffer and aclTensorDesc for data management.
-    return ACL_ERROR_FEATURE_UNSUPPORTED;
-}
-
-cudaError_t cudaMallocArray(...) {
-    // WARNING: Missing direct equivalent in AscendCL for array allocation.
-    // AscendCL uses aclDataBuffer and aclTensorDesc for data management.
-    return ACL_ERROR_FEATURE_UNSUPPORTED;
 }
 
 cudaError_t cudaMallocAsync(...) {
@@ -243,7 +236,7 @@ cudaError_t cudaMallocAsync(...) {
 }
 
 cudaError_t cudaHostAlloc(void** ptr, size_t size, unsigned int flags) {
-    // AscendCL: Use aclrtMallocHost for pinned host memory. [8](@ref)
+    // AscendCL: Use aclrtMallocHost for pinned host memory.
     aclError ret = aclrtMallocHost(ptr, size);
     return ret;
 }
@@ -269,11 +262,6 @@ int cudaFree(void* ptr) {
     return ret;
 }
 
-cudaError_t cudaFreeArray(...) {
-    // WARNING: Missing direct equivalent in AscendCL for freeing arrays.
-    return ACL_ERROR_FEATURE_UNSUPPORTED;
-}
-
 cudaError_t cudaFreeHost(void* ptr) {
     aclError ret = aclrtFreeHost(ptr); 
     return ret;
@@ -297,6 +285,7 @@ cudaError_t cudaMemcpy(void* dst, const void* src, size_t sizeBytes,
         case cudaMemcpyHostToDevice: aclKind = ACL_MEMCPY_HOST_TO_DEVICE; break;
         case cudaMemcpyDeviceToHost: aclKind = ACL_MEMCPY_DEVICE_TO_HOST; break;
         case cudaMemcpyDeviceToDevice: aclKind = ACL_MEMCPY_DEVICE_TO_DEVICE; break;
+        case cudaMemcpyDefault: aclKind = ACL_MEMCPY_DEFAULT; break;
         default: return ACL_ERROR_INVALID_PARAM;
     }
     aclError ret = aclrtMemcpy(dst, sizeBytes, src, sizeBytes, aclKind); 
@@ -311,9 +300,41 @@ cudaError_t cudaMemcpyAsync(void* dst, const void* src, size_t sizeBytes,
         case cudaMemcpyHostToDevice: aclKind = ACL_MEMCPY_HOST_TO_DEVICE; break;
         case cudaMemcpyDeviceToHost: aclKind = ACL_MEMCPY_DEVICE_TO_HOST; break;
         case cudaMemcpyDeviceToDevice: aclKind = ACL_MEMCPY_DEVICE_TO_DEVICE; break;
+        case cudaMemcpyDefault: aclKind = ACL_MEMCPY_DEFAULT; break;
         default: return ACL_ERROR_INVALID_PARAM;
     }
     aclError ret = aclrtMemcpyAsync(dst, sizeBytes, src, sizeBytes, aclKind, stream); 
+    return ret;
+}
+
+cudaError_t cudaMemcpy2D(void *dst, size_t dpitch,
+    const void *src, size_t spitch, size_t width, size_t height, cudaMemcpyKind kind) {
+    aclrtMemcpyKind aclKind;
+    switch (kind) {
+        case cudaMemcpyHostToHost:   aclKind = ACL_MEMCPY_HOST_TO_HOST; break;
+        case cudaMemcpyHostToDevice: aclKind = ACL_MEMCPY_HOST_TO_DEVICE; break;
+        case cudaMemcpyDeviceToHost: aclKind = ACL_MEMCPY_DEVICE_TO_HOST; break;
+        case cudaMemcpyDeviceToDevice: aclKind = ACL_MEMCPY_DEVICE_TO_DEVICE; break;
+        case cudaMemcpyDefault: aclKind = ACL_MEMCPY_DEFAULT; break;
+        default: return ACL_ERROR_INVALID_PARAM;
+    }
+    aclError ret = aclrtMemcpy2d(dst, dpitch, src, spitch, width, height, aclKind); 
+    return ret;
+}
+
+cudaError_t cudaMemcpy2DAsync(void *dst, size_t dpitch,
+    const void *src, size_t spitch, size_t width, size_t height, cudaMemcpyKind kind,
+    cudaStream_t stream) {
+    aclrtMemcpyKind aclKind;
+    switch (kind) {
+        case cudaMemcpyHostToHost:   aclKind = ACL_MEMCPY_HOST_TO_HOST; break;
+        case cudaMemcpyHostToDevice: aclKind = ACL_MEMCPY_HOST_TO_DEVICE; break;
+        case cudaMemcpyDeviceToHost: aclKind = ACL_MEMCPY_DEVICE_TO_HOST; break;
+        case cudaMemcpyDeviceToDevice: aclKind = ACL_MEMCPY_DEVICE_TO_DEVICE; break;
+        case cudaMemcpyDefault: aclKind = ACL_MEMCPY_DEFAULT; break;
+        default: return ACL_ERROR_INVALID_PARAM;
+    }
+    aclError ret = aclrtMemcpy2dAsync(dst, dpitch, src, spitch, width, height, aclKind, stream); 
     return ret;
 }
 
@@ -331,14 +352,21 @@ cudaError_t cudaMemcpyPeerAsync(void* dst, int dstDevice, const void* src,
     return ACL_ERROR_FEATURE_UNSUPPORTED;
 }
 
-cudaError_t cudaMemcpy2D(...) {
-    // WARNING: Missing direct equivalent in AscendCL for 2D memory copy.
-    // Might need implementation using 1D copies or specific AscendCL functions.
+#ifndef CUPY_INSTALL_USE_ASCEND
+cudaError_t cudaMalloc3DArray(...) {
+    // WARNING: Missing direct equivalent in AscendCL for 3D array allocation.
+    // AscendCL uses aclDataBuffer and aclTensorDesc for data management.
     return ACL_ERROR_FEATURE_UNSUPPORTED;
 }
 
-cudaError_t cudaMemcpy2DAsync(...) {
-    // WARNING: Missing direct equivalent in AscendCL for async 2D memory copy.
+cudaError_t cudaMallocArray(...) {
+    // WARNING: Missing direct equivalent in AscendCL for array allocation.
+    // AscendCL uses aclDataBuffer and aclTensorDesc for data management.
+    return ACL_ERROR_FEATURE_UNSUPPORTED;
+}
+
+cudaError_t cudaFreeArray(...) {
+    // WARNING: Missing direct equivalent in AscendCL for freeing arrays.
     return ACL_ERROR_FEATURE_UNSUPPORTED;
 }
 
@@ -371,6 +399,7 @@ cudaError_t cudaMemcpy3DAsync(...) {
     // WARNING: Missing direct equivalent in AscendCL for async 3D memory copy.
     return ACL_ERROR_FEATURE_UNSUPPORTED;
 }
+#endif
 
 cudaError_t cudaMemset(void* dst, int value, size_t sizeBytes) {
     aclError ret = aclrtMemset(dst, sizeBytes, value, sizeBytes); 
@@ -403,6 +432,8 @@ cudaError_t cudaPointerGetAttributes(cudaPointerAttributes *attributes,
     return ACL_ERROR_FEATURE_UNSUPPORTED;
 }
 
+#ifndef CUPY_INSTALL_USE_ASCEND
+// ====================== MemPool is supported by ascend ===================
 // ====================== MemPool is also not supported on ROCm ===================
 cudaError_t cudaMallocFromPoolAsync(...) {
     // WARNING: Missing direct equivalent in AscendCL for memory pools.
@@ -448,27 +479,24 @@ cudaError_t cudaMemPoolSetAttribute(...) {
     // WARNING: Missing direct equivalent in AscendCL.
     return ACL_ERROR_FEATURE_UNSUPPORTED;
 }
+#endif
 
 
 // Stream and Event
 // AscendCL has its own stream and event types (aclrtStream, aclrtEvent).
-#if CANN_VERSION >= 0x08030000
-typedef aclrtStreamCaptureMode cudaStreamCaptureMode; // WARNING: Check if AscendCL supports stream capture
-typedef aclrtStreamCaptureStatus cudaStreamCaptureStatus; // WARNING: Check if AscendCL supports stream capture
-#else
-enum cudaStreamCaptureMode {};
-enum cudaStreamCaptureStatus {};
-#endif
+typedef aclmdlRICaptureMode cudaStreamCaptureMode;
+typedef aclmdlRICaptureStatus cudaStreamCaptureStatus;
+
 
 cudaError_t cudaStreamCreate(cudaStream_t stream) {
-    aclError ret = aclrtCreateStream(stream); 
+    aclError ret = aclrtCreateStream(&stream); 
     return ret;
 }
 
 cudaError_t cudaStreamCreateWithFlags(cudaStream_t stream,
                                       unsigned int flags) {
     // WARNING: AscendCL's aclrtCreateStream might not use the same flags as HIP. [8](@ref)
-    aclError ret = aclrtCreateStreamWithConfig(stream, ASCEND_DEFAULT_STREAM_PRIORITY, flags); // Check exact API
+    aclError ret = aclrtCreateStreamWithConfig(&stream, ASCEND_DEFAULT_STREAM_PRIORITY, flags); // Check exact API
     return ret;
 }
 
@@ -476,7 +504,7 @@ cudaError_t cudaStreamCreateWithPriority(cudaStream_t stream,
                                          unsigned int flags,
                                          int priority) {
     // WARNING: AscendCL might have different priority mechanisms. [8](@ref)
-    aclError ret = aclrtCreateStreamWithConfig(stream, priority, flags); // Check exact API
+    aclError ret = aclrtCreateStreamWithConfig(&stream, priority, flags); // Check exact API
     return ret;
 }
 
@@ -526,13 +554,13 @@ cudaError_t cudaStreamWaitEvent(cudaStream_t stream, cudaEvent_t event,
 }
 
 cudaError_t cudaEventCreate(cudaEvent_t event) {
-    aclError ret = aclrtCreateEvent(event);
+    aclError ret = aclrtCreateEvent(&event);
     return ret;
 }
 
 cudaError_t cudaEventCreateWithFlags(cudaEvent_t event, unsigned flags) {
     // WARNING: AscendCL's aclrtCreateEvent might not use the same flags. [8](@ref)
-    aclError ret = aclrtCreateEventWithFlag(event, flags); // Check exact API
+    aclError ret = aclrtCreateEventWithFlag(&event, flags); // Check exact API
     return ret;
 }
 
@@ -547,6 +575,7 @@ cudaError_t cudaEventElapsedTime(float *ms, cudaEvent_t start,
     return ret;
 }
 
+// TODO: convert the cudaEventStatus?
 cudaError_t cudaEventQuery(cudaEvent_t event) {
     aclrtEventRecordedStatus status;
     aclError ret = aclrtQueryEventStatus(event, &status); // extra arg: status
@@ -584,7 +613,7 @@ cudaError_t cudaStreamIsCapturing(cudaStream_t stream,
 // These calls (aclInit, aclFinalize) should be integrated into the main application lifecycle.
 
 // ================ GPU render API is not supported on ASCEND NPU============================
-#if !CUPY_USE_ASCEND
+#ifndef CUPY_INSTALL_USE_ASCEND
 // Texture is not supported on NPU
 cudaError_t cudaCreateTextureObject(...) {
     return ACL_ERROR_FEATURE_UNSUPPORTED;
@@ -635,7 +664,7 @@ cudaError_t cudaDestroySurfaceObject(cudaSurfaceObject_t surfObject) {
 #endif
 
 // =================================================
-// CUDA  Ascend has graph, but not sure if they are related
+// Ascend has graph, but not sure if they are related with cuGraph
 cudaError_t cudaGraphInstantiate(
     cudaGraphExec_t* pGraphExec,
 	cudaGraph_t graph,

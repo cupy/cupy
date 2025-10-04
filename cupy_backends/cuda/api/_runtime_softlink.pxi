@@ -57,4 +57,8 @@ cdef SoftLink _get_softlink():
         # Use CUDA-to-HIP layer defined in the header.
         libname = __file__
 
+    elif CUPY_CANN_VERSION != 0:
+        # TODO: ASCEND
+        libname = __file__
+
     return SoftLink(libname, prefix, mandatory=True)

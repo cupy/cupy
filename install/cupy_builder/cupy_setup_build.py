@@ -361,6 +361,7 @@ def make_extensions(ctx: Context, compiler, use_cython):
             ('THRUST_DEVICE_SYSTEM', 'THRUST_DEVICE_SYSTEM_HIP'))
     if ctx.use_ascend:
         settings['define_macros'].append(('CUPY_USE_ASCEND', '1'))
+        settings['define_macros'].append(('CUPY_CANN_VERSION', '820'))
 
     settings['define_macros'].append(('CUPY_CACHE_KEY', ctx.cupy_cache_key))
 

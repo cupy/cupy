@@ -10,6 +10,9 @@
 
 extern "C" {
 
+bool hip_environment = false;
+bool cann_environment = true;
+
 ///////////////////////////////////////////////////////////////////////////////
 // cuda.h (替换为AscendCL等效)
 ///////////////////////////////////////////////////////////////////////////////
@@ -33,13 +36,13 @@ typedef int CUdevice;  // AscendCL device is also int id
 typedef aclDataBuffer* CUdeviceptr; // AscendCL数据缓冲区指针
 typedef aclrtContext CUcontext; // AscendCL上下文
 typedef aclrtStream* CUstream; // AscendCL Stream
-typedef aclrtStream* cudaStream_t;
+typedef aclrtStream cudaStream_t;
 typedef aclrtEvent* CUevent; // AscendCL事件
-typedef aclrtEvent* cudaEvent_t;
+typedef aclrtEvent cudaEvent_t;
 typedef void (*cudaStreamCallback_t)(aclrtStream* stream, aclError status, void* userData); // Adapted to AscendCL stream callback signature
 typedef void (*cudaHostFn_t)(void* userData); // Can be implemented via threads/tasks
 
-// GraphExecutation, ascend ge has similar functions
+// TODO: GraphExecutation, ascend ge has similar functions
 #if 1
 typedef void* cudaGraph_t;
 typedef void* cudaGraphNode_t;
@@ -53,9 +56,9 @@ typedef void* cudaGraphExec_t;
 ///////////////////////////////////////////////////////////////////////////////
 // CUDA 2DArray Interface, cuda.h (can be done via dlpack to exchange buffer with torch)
 ///////////////////////////////////////////////////////////////////////////////
-
-enum CUarray_format {}; // WARNING: Missing direct equivalent - AscendCL uses aclDataType
-typedef struct CUarray_st* CUarray; // WARNING: Missing direct equivalent - AscendCL uses aclDataBuffer/aclTensorDesc for data management
+#ifndef CUPY_INSTALL_USE_ASCEND
+enum CUarray_format {}; // this enum is defined in <cuda.h>
+typedef struct CUarray_st* CUarray; // AscendCL uses aclDataBuffer/aclTensorDesc for data management
 struct CUDA_ARRAY_DESCRIPTOR {
     size_t Width;             /**< Width of array */
     size_t Height;            /**< Height of array */
@@ -86,29 +89,35 @@ enum {
 typedef struct {} cudaDeviceProp; // Use aclDeviceDesc for device properties (partial info)
 typedef int cudaDeviceAttr; // WARNING: No direct equivalent set of attributes, use aclDeviceGetDesc
 
+#endif
+
 ///////////////////////////////////////////////////////////////////////////////
 // Memory cuda_runtime.h
 ///////////////////////////////////////////////////////////////////////////////
-typedef int cudaLimit; //  resourc limit: cudaLimitPrintfFifoSize
+typedef int cudaLimit; //  resource limit: cudaLimitPrintfFifoSize
 typedef int cudaMemoryAdvise; // WARNING: No direct equivalent for unified memory advice
 typedef enum {
     cudaMemcpyHostToHost,
     cudaMemcpyHostToDevice,
     cudaMemcpyDeviceToHost,
-    cudaMemcpyDeviceToDevice
-} cudaMemcpyKind; // AscendCL memory copy direction
+    cudaMemcpyDeviceToDevice,
+    cudaMemcpyDefault
+} cudaMemcpyKind; // AscendCL memory copy direction, compatible with cuda
 
 typedef void* cudaMemPool_t; // WARNING: Missing direct equivalent for memory pool, use void* placeholder
 enum cudaMemPoolAttr {}; // WARNING: Missing direct equivalent, use empty enum def
 
 // ​ cudaMemoryTypeHost（主机内存）、cudaMemoryTypeDevice（设备内存）和 cudaMemoryTypeManaged（统一内存）
-typedef struct {} cudaPointerAttributes; // AscendCL has no such, use empty struct to get compiled
+typedef struct {
+    int device;
+    void *devicePointer;
+    void *hostPointer;
+} cudaPointerAttributes; // AscendCL has no such, use empty struct to get compiled
 
 enum CUaddress_mode {}; // WARNING: Missing direct equivalent for texture address mode
 enum CUfilter_mode {}; // WARNING: Missing direct equivalent for texture filter mode
 
-//#define CUPY_USE_ASCEND 1
-//#if !CUPY_USE_ASCEND
+#ifndef CUPY_INSTALL_USE_ASCEND
 ///////////////////////////////////////////////////////////////////////////////
 // ascend NPU AICORE does not support, dvpp may has similar feature
 // The following texture/surface related types and enums have no direct equivalent in AscendCL
@@ -146,14 +155,12 @@ typedef struct {}  cudaChannelFormatDesc; // WARNING: Missing direct equivalent
 typedef struct {}  cudaResourceDesc; // WARNING: Missing direct equivalent
 typedef struct {}  cudaTextureDesc; // WARNING: Missing direct equivalent
 
-//#endif
-
 // IPC operations
 // WARNING: Inter-Process Communication (IPC) handles likely not directly portable to AscendCL.
 // AscendCL may have different mechanisms for resource sharing between processes.
 typedef void* cudaIpcMemHandle_t; // WARNING: Missing direct equivalent
 typedef void* cudaIpcEventHandle_t; // WARNING: Missing direct equivalent
-
+#endif
 
 ///////////////////////////////////////////////////////////////////////////////
 // blas & lapack (hipBLAS/rocBLAS & rocSOLVER) -> Replace with AscendCL equivalents
@@ -181,11 +188,13 @@ typedef aclError cublasStatus_t; // Use AscendCL error type
 typedef int cublasComputeType_t; // WARNING: Missing direct equivalent in AscendCL BLAS
 
 // SOLVER (rocSOLVER/cuSOLVER replacement)
-// WARNING: AscendCL's support for direct solver routines (like rocSOLVER) 
+// AscendCL's support for direct solver routines (like rocSOLVER) is under develop
 // might be limited or offered through different interfaces (e.g., specific operators in om models).
 // Consider using Ascend's provided operators or leveraging MindSpore etc. for higher-level solver functionality.
+#ifndef CUPY_INSTALL_USE_ASCEND
 typedef aclError cusolverStatus_t; // Use AscendCL error type
 typedef void* cusolverDnHandle_t; // WARNING: Missing direct equivalent handle for dense solvers
+#endif
 
 } // extern "C"
 

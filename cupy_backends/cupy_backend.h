@@ -7,7 +7,7 @@
 
 #elif CUPY_USE_ASCEND
 
-#include "ascend/cupy_ascend.h"
+#include "ascend/cupy_ascend_common.h"
 
 #elif !defined(CUPY_NO_CUDA)
 

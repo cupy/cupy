@@ -92,7 +92,9 @@ IF CUPY_USE_CUDA_PYTHON:
 
 ELSE:
     include "_runtime_typedef.pxi"
-    from cupy_backends.cuda.api._runtime_enum cimport *
+    IF CUPY_CANN_VERSION <= 0:
+        # cudaDevAttr has no coresponding in Ascend CANN
+        from cupy_backends.cuda.api._runtime_enum cimport *
 
 
 # For backward compatibility, keep APIs not prefixed with "cuda".
@@ -158,7 +160,7 @@ cdef int deviceAttributeComputeCapabilityMinor
 ###############################################################################
 
 cdef bint _is_hip_environment
-
+cdef bint _is_cann_environment
 
 ###############################################################################
 # Error handling
@@ -181,20 +183,22 @@ cpdef int _getCUDAMajorVersion() except? -1
 ###############################################################################
 
 cpdef int getDevice() except? -1
-cpdef int deviceGetAttribute(int attrib, int device) except? -1
-cpdef int deviceGetByPCIBusId(str pci_bus_id) except? -1
-cpdef str deviceGetPCIBusId(int device)
-cpdef int getDeviceCount() except? -1
 cpdef setDevice(int device)
+cpdef int getDeviceCount() except? -1
 cpdef deviceSynchronize()
-cpdef getDeviceProperties(int device)
+IF CUPY_CANN_VERSION <= 0:
+    cpdef int deviceGetAttribute(int attrib, int device) except? -1
+    cpdef int deviceGetByPCIBusId(str pci_bus_id) except? -1
+    cpdef str deviceGetPCIBusId(int device)
 
-cpdef int deviceCanAccessPeer(int device, int peerDevice) except? -1
-cpdef deviceEnablePeerAccess(int peerDevice)
-cpdef _deviceEnsurePeerAccess(int peerDevice)
+    cpdef getDeviceProperties(int device)
 
-cpdef size_t deviceGetLimit(int limit) except? -1
-cpdef deviceSetLimit(int limit, size_t value)
+    cpdef int deviceCanAccessPeer(int device, int peerDevice) except? -1
+    cpdef deviceEnablePeerAccess(int peerDevice)
+    cpdef _deviceEnsurePeerAccess(int peerDevice)
+
+    cpdef size_t deviceGetLimit(int limit) except? -1
+    cpdef deviceSetLimit(int limit, size_t value)
 
 
 ###############################################################################
@@ -203,61 +207,68 @@ cpdef deviceSetLimit(int limit, size_t value)
 
 cpdef intptr_t malloc(size_t size) except? 0
 cpdef intptr_t mallocManaged(size_t size, unsigned int flags=*) except? 0
-cpdef intptr_t malloc3DArray(intptr_t desc, size_t width, size_t height,
-                             size_t depth, unsigned int flags=*) except? 0
-cpdef intptr_t mallocArray(intptr_t desc, size_t width, size_t height,
-                           unsigned int flags=*) except? 0
 cpdef intptr_t mallocAsync(size_t size, intptr_t stream) except? 0
-cpdef intptr_t mallocFromPoolAsync(size_t, intptr_t, intptr_t) except? 0
 cpdef intptr_t hostAlloc(size_t size, unsigned int flags) except? 0
 cpdef hostRegister(intptr_t ptr, size_t size, unsigned int flags)
 cpdef hostUnregister(intptr_t ptr)
 cpdef free(intptr_t ptr)
 cpdef freeHost(intptr_t ptr)
-cpdef freeArray(intptr_t ptr)
 cpdef freeAsync(intptr_t ptr, intptr_t stream)
 cpdef memGetInfo()
 cpdef memcpy(intptr_t dst, intptr_t src, size_t size, int kind)
 cpdef memcpyAsync(intptr_t dst, intptr_t src, size_t size, int kind,
                   intptr_t stream)
+cpdef memcpy2D(intptr_t dst, size_t dpitch, intptr_t src, size_t spitch,
+            size_t width, size_t height, MemoryKind kind)
+cpdef memcpy2DAsync(intptr_t dst, size_t dpitch, intptr_t src, size_t spitch,
+                    size_t width, size_t height, MemoryKind kind,
+                    intptr_t stream)
 cpdef memcpyPeer(intptr_t dst, int dstDevice, intptr_t src, int srcDevice,
                  size_t size)
 cpdef memcpyPeerAsync(intptr_t dst, int dstDevice,
                       intptr_t src, int srcDevice,
                       size_t size, intptr_t stream)
-cpdef memcpy2D(intptr_t dst, size_t dpitch, intptr_t src, size_t spitch,
-               size_t width, size_t height, MemoryKind kind)
-cpdef memcpy2DAsync(intptr_t dst, size_t dpitch, intptr_t src, size_t spitch,
-                    size_t width, size_t height, MemoryKind kind,
-                    intptr_t stream)
-cpdef memcpy2DFromArray(intptr_t dst, size_t dpitch, intptr_t src,
-                        size_t wOffset, size_t hOffset, size_t width,
-                        size_t height, int kind)
-cpdef memcpy2DFromArrayAsync(intptr_t dst, size_t dpitch, intptr_t src,
-                             size_t wOffset, size_t hOffset, size_t width,
-                             size_t height, int kind, intptr_t stream)
-cpdef memcpy2DToArray(intptr_t dst, size_t wOffset, size_t hOffset,
-                      intptr_t src, size_t spitch, size_t width, size_t height,
-                      int kind)
-cpdef memcpy2DToArrayAsync(intptr_t dst, size_t wOffset, size_t hOffset,
-                           intptr_t src, size_t spitch, size_t width,
-                           size_t height, int kind, intptr_t stream)
-cpdef memcpy3D(intptr_t Memcpy3DParmsPtr)
-cpdef memcpy3DAsync(intptr_t Memcpy3DParmsPtr, intptr_t stream)
+
+IF CUPY_CANN_VERSION <= 0:
+    # xDArray memory
+    cpdef intptr_t malloc3DArray(intptr_t desc, size_t width, size_t height,
+                                size_t depth, unsigned int flags=*) except? 0
+    cpdef intptr_t mallocArray(intptr_t desc, size_t width, size_t height,
+                            unsigned int flags=*) except? 0
+    cpdef freeArray(intptr_t ptr)
+    cpdef memcpy2DFromArray(intptr_t dst, size_t dpitch, intptr_t src,
+                            size_t wOffset, size_t hOffset, size_t width,
+                            size_t height, int kind)
+    cpdef memcpy2DFromArrayAsync(intptr_t dst, size_t dpitch, intptr_t src,
+                                size_t wOffset, size_t hOffset, size_t width,
+                                size_t height, int kind, intptr_t stream)
+    cpdef memcpy2DToArray(intptr_t dst, size_t wOffset, size_t hOffset,
+                        intptr_t src, size_t spitch, size_t width, size_t height,
+                        int kind)
+    cpdef memcpy2DToArrayAsync(intptr_t dst, size_t wOffset, size_t hOffset,
+                            intptr_t src, size_t spitch, size_t width,
+                            size_t height, int kind, intptr_t stream)
+    cpdef memcpy3D(intptr_t Memcpy3DParmsPtr)
+    cpdef memcpy3DAsync(intptr_t Memcpy3DParmsPtr, intptr_t stream)
+
 cpdef memset(intptr_t ptr, int value, size_t size)
 cpdef memsetAsync(intptr_t ptr, int value, size_t size, intptr_t stream)
 cpdef memPrefetchAsync(intptr_t devPtr, size_t count, int dstDevice,
                        intptr_t stream)
 cpdef memAdvise(intptr_t devPtr, size_t count, int advice, int device)
 cpdef PointerAttributes pointerGetAttributes(intptr_t ptr)
-cpdef intptr_t deviceGetDefaultMemPool(int) except? 0
-cpdef intptr_t deviceGetMemPool(int) except? 0
-cpdef deviceSetMemPool(int, intptr_t)
-cpdef intptr_t memPoolCreate(MemPoolProps) except? 0
-cpdef memPoolDestroy(intptr_t)
-cpdef memPoolTrimTo(intptr_t, size_t)
-cpdef memPoolGetAttribute(intptr_t, int)
-cpdef memPoolSetAttribute(intptr_t, int, object)
+
+IF CUPY_CANN_VERSION <= 0:
+    # MemoryPool
+    cpdef intptr_t mallocFromPoolAsync(size_t, intptr_t, intptr_t) except? 0
+    cpdef intptr_t deviceGetDefaultMemPool(int) except? 0
+    cpdef intptr_t deviceGetMemPool(int) except? 0
+    cpdef deviceSetMemPool(int, intptr_t)
+    cpdef intptr_t memPoolCreate(MemPoolProps) except? 0
+    cpdef memPoolDestroy(intptr_t)
+    cpdef memPoolTrimTo(intptr_t, size_t)
+    cpdef memPoolGetAttribute(intptr_t, int)
+    cpdef memPoolSetAttribute(intptr_t, int, object)
 
 
 ###############################################################################
@@ -300,33 +311,33 @@ cdef _ensure_context()
 ##############################################################################
 # Texture
 ##############################################################################
+IF CUPY_CANN_VERSION <= 0:
+    cpdef uintmax_t createTextureObject(
+        intptr_t ResDesc, intptr_t TexDesc) except? 0
+    cpdef destroyTextureObject(uintmax_t texObject)
+    cdef ChannelFormatDesc getChannelDesc(intptr_t array) except*
+    cdef ResourceDesc getTextureObjectResourceDesc(uintmax_t texobj) except*
+    cdef TextureDesc getTextureObjectTextureDesc(uintmax_t texobj) except*
+    cdef Extent make_Extent(size_t w, size_t h, size_t d) except*
+    cdef Pos make_Pos(size_t x, size_t y, size_t z) except*
+    cdef PitchedPtr make_PitchedPtr(
+        intptr_t d, size_t p, size_t xsz, size_t ysz) except*
 
-cpdef uintmax_t createTextureObject(
-    intptr_t ResDesc, intptr_t TexDesc) except? 0
-cpdef destroyTextureObject(uintmax_t texObject)
-cdef ChannelFormatDesc getChannelDesc(intptr_t array) except*
-cdef ResourceDesc getTextureObjectResourceDesc(uintmax_t texobj) except*
-cdef TextureDesc getTextureObjectTextureDesc(uintmax_t texobj) except*
-cdef Extent make_Extent(size_t w, size_t h, size_t d) except*
-cdef Pos make_Pos(size_t x, size_t y, size_t z) except*
-cdef PitchedPtr make_PitchedPtr(
-    intptr_t d, size_t p, size_t xsz, size_t ysz) except*
-
-cpdef uintmax_t createSurfaceObject(intptr_t ResDesc) except? 0
-cpdef destroySurfaceObject(uintmax_t surfObject)
-# TODO(leofang): add cudaGetSurfaceObjectResourceDesc
+    cpdef uintmax_t createSurfaceObject(intptr_t ResDesc) except? 0
+    cpdef destroySurfaceObject(uintmax_t surfObject)
+    # TODO(leofang): add cudaGetSurfaceObjectResourceDesc
 
 
 ##############################################################################
 # Graph
 ##############################################################################
-
-cpdef graphDestroy(intptr_t graph)
-cpdef graphExecDestroy(intptr_t graphExec)
-cpdef intptr_t graphInstantiate(intptr_t graph) except? 0
-cpdef graphLaunch(intptr_t graphExec, intptr_t stream)
-cpdef graphUpload(intptr_t graphExec, intptr_t stream)
-cpdef graphDebugDotPrint(intptr_t graph, str path, unsigned int flags)
+IF CUPY_CANN_VERSION <= 0:
+    cpdef graphDestroy(intptr_t graph)
+    cpdef graphExecDestroy(intptr_t graphExec)
+    cpdef intptr_t graphInstantiate(intptr_t graph) except? 0
+    cpdef graphLaunch(intptr_t graphExec, intptr_t stream)
+    cpdef graphUpload(intptr_t graphExec, intptr_t stream)
+    cpdef graphDebugDotPrint(intptr_t graph, str path, unsigned int flags)
 
 
 ##############################################################################
