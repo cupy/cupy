@@ -22,9 +22,10 @@ from cupy._core._dtype cimport get_dtype, _raise_if_invalid_cast
 from cupy._core._memory_range cimport may_share_bounds
 from cupy._core._scalar import get_typename as _get_typename
 from cupy._core cimport core
-from cupy._core.core cimport _convert_object_with_cuda_array_interface
-from cupy._core.core cimport _ndarray_init
-from cupy._core.core cimport compile_with_cache
+from cupy._core._routines_creation cimport _convert_object_with_cuda_array_interface
+from cupy._core._routines_creation cimport _ndarray_init
+from cupy._core import _routines_creation as _creation
+from cupy._core._compile_with_cache cimport compile_with_cache
 from cupy._core.core cimport _ndarray_base
 from cupy._core cimport internal
 from cupy_backends.cuda.api cimport runtime
@@ -1425,8 +1426,8 @@ cdef class ufunc:
            :meth:`numpy.ufunc.outer`
 
         """
-        A = core.array(A)
-        B = core.array(B)
+        A = _creation.array(A)
+        B = _creation.array(B)
         ndim_a = A.ndim
         ndim_b = B.ndim
         A = A.reshape(A.shape + (1,) * ndim_b)

@@ -3,9 +3,9 @@ from cupy._core cimport _kernel
 from cupy._core cimport _optimize_config
 from cupy._core cimport _reduction
 from cupy._core cimport _scalar
-from cupy._core.core cimport compile_with_cache
+from cupy._core._compile_with_cache cimport compile_with_cache
 from cupy._core.core cimport _ndarray_base
-from cupy._core.core cimport _internal_ascontiguousarray
+from cupy._core._routines_creation cimport _internal_ascontiguousarray
 from cupy._core cimport internal
 from cupy.cuda cimport cub
 from cupy.cuda cimport function

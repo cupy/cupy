@@ -18,9 +18,9 @@ from cupy._core cimport _accelerator
 from cupy._core._carray cimport shape_t
 from cupy._core._dtype cimport to_cuda_dtype
 from cupy._core._scalar cimport get_typename
-from cupy._core.core cimport _internal_ascontiguousarray
-from cupy._core.core cimport _ndarray_init
-from cupy._core.core cimport ascontiguousarray
+from cupy._core._routines_creation cimport _internal_ascontiguousarray
+from cupy._core._routines_creation cimport _ndarray_init
+from cupy._core._routines_creation cimport ascontiguousarray
 from cupy._core.core cimport _ndarray_base
 from cupy._core cimport _memory_range
 from cupy._core cimport _routines_manipulation as _manipulation

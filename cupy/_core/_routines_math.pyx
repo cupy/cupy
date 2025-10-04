@@ -5,7 +5,7 @@ import numpy
 
 import cupy
 from cupy._core._reduction import create_reduction_func
-from cupy._core._kernel import create_ufunc, _get_warpsize
+from cupy._core._kernel import create_ufunc, ElementwiseKernel, _get_warpsize
 from cupy._core._scalar import get_typename
 from cupy._core._ufuncs import elementwise_copy
 import cupy._core.core as core
@@ -15,8 +15,8 @@ from cupy import _util
 from cupy_backends.cuda.api cimport runtime
 from cupy._core cimport _accelerator
 from cupy._core._dtype cimport get_dtype
-from cupy._core.core cimport _ndarray_init
-from cupy._core.core cimport compile_with_cache
+from cupy._core._routines_creation cimport _ndarray_init
+from cupy._core._compile_with_cache cimport compile_with_cache
 from cupy._core.core cimport _ndarray_base
 from cupy.cuda cimport memory
 
@@ -1124,6 +1124,124 @@ _clip = create_ufunc(
     'out0 = in1 > in2 ? in2 : (in0 < in1 ? in1 : (in0 > in2 ? in2 : in0))')
 
 
+# =============================================================================
+# Routines: round divmod split from more.pyx
+# =============================================================================
+cdef str _id = 'out0 = in0'
+
+cdef str _divmod_float = '''
+    out0_type a = _floor_divide(in0, in1);
+    out0 = a;
+    out1 = in0 - a * in1'''
+
+
+_divmod = create_ufunc(
+    'cupy_divmod',
+    ('bb->bb', 'BB->BB', 'hh->hh', 'HH->HH', 'ii->ii', 'II->II', 'll->ll',
+     'LL->LL', 'qq->qq', 'QQ->QQ',
+     ('ee->ee', _divmod_float),
+     ('ff->ff', _divmod_float),
+     ('dd->dd', _divmod_float)),
+    '''
+    if (in1 == 0) {
+        out0 = 0;
+        out1 = 0;
+    } else {
+        out0_type a = _floor_divide(in0, in1);
+        out0 = a;
+        out1 = in0 - a * in1;
+    }''')
+
+
+cdef _round_preamble = '''
+#ifdef __HIP_DEVICE_COMPILE__
+#define round_float llrintf
+#else
+#define round_float __float2ll_rn
+#endif
+
+template<typename T> __device__ T pow10(long long n){
+  T x = 1, a = 10;
+  while (n) {
+    if (n & 1) x *= a;
+    a *= a;
+    n >>= 1;
+  }
+  return x;
+};
+'''
+
+
+cdef _round_float = '''
+if (in1 == 0) {
+    out0 = rint(in0);
+} else {
+    double x;
+    x = pow10<double>(abs(in1));  // TODO(okuta): Move before loop
+    out0 = in1 < 0 ? rint(in0 / x) * x : rint(in0 * x) / x;
+}'''
+
+cdef _round_complex = '''
+if (in1 == 0) {
+    out0 = in0_type(rint(in0.real()), rint(in0.imag()));
+} else {
+    double x = pow10<double>(abs(in1));  // TODO(okuta): Move before loop
+    if (in1 < 0) {
+        out0 = in0_type(rint(in0.real() / x) * x,
+                        rint(in0.imag() / x) * x);
+    } else {
+        out0 = in0_type(rint(in0.real() * x) / x,
+                        rint(in0.imag() * x) / x);
+    }
+}'''
+
+
+# There is a known incompatibility with NumPy (as of 1.16.4) such as
+# `numpy.around(2**63, -1) == cupy.around(2**63, -1)` gives `False`.
+#
+# NumPy seems to round integral values via double.  As double has
+# only 53 bit precision, last few bits of (u)int64 value may be lost.
+# As a consequence, `numpy.around(2**63, -1)` does NOT round up the
+# last digit (9223372036854775808 instead of ...810).
+#
+# The following code fixes the problem, so `cupy.around(2**63, -1)`
+# gives `...810`, which (may correct but) is incompatible with NumPy.
+_round_ufunc = create_ufunc(
+    'cupy_round',
+    ('?q->e',
+     'bq->b', 'Bq->B', 'hq->h', 'Hq->H', 'iq->i', 'Iq->I', 'lq->l', 'Lq->L',
+     'qq->q', 'Qq->Q',
+     ('eq->e', _round_float),
+     ('fq->f', _round_float),
+     ('dq->d', _round_float),
+     ('Fq->F', _round_complex),
+     ('Dq->D', _round_complex)),
+    '''
+    out0 = in0;
+    ''', preamble=_round_preamble)
+
+
+_round_ufunc_neg_uint = create_ufunc(
+    'cupy_round_neg_uint',
+    ('?q->e',
+     'bq->b', 'Bq->B', 'hq->h', 'Hq->H', 'iq->i', 'Iq->I', 'lq->l', 'Lq->L',
+     'qq->q', 'Qq->Q'),
+    '''
+        // TODO(okuta): Move before loop
+        long long x = pow10<long long>(in1 - 1);
+
+        // TODO(okuta): Check Numpy
+        // `cupy.around(-123456789, -4)` works as follows:
+        // (1) scale by `x` above: -123456.789
+        // (2) split at the last 2 digits: -123400 + (-5.6789 * 10)
+        // (3) round the latter by `rint()`: -123400 + (-6.0 * 10)
+        // (4) unscale by `x` above: -123460000
+        long long q = in0 / x / 100;
+        int r = in0 - q*x*100;
+        out0 = (q*100 + round_float(r/(x*10.0f))*10) * x;
+    ''', preamble=_round_preamble)
+
+
 # Variables to expose to Python
 # (cythonized data cannot be exposed to Python, even with cpdef.)
 
@@ -1143,6 +1261,7 @@ floor_divide = _floor_divide
 remainder = _remainder
 absolute = _absolute
 sqrt = _sqrt
+divmod = _divmod
 
 sum_auto_dtype = _sum_auto_dtype  # used from cupy/math/sumprod.py
 nansum_auto_dtype = _nansum_auto_dtype  # used from cupy/math/sumprod.py

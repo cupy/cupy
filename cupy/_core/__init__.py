@@ -1,12 +1,11 @@
 # mypy: ignore-errors
 from __future__ import annotations
 
-
 from cupy._core import core  # NOQA
 from cupy._core import fusion  # NOQA
 from cupy._core import internal  # NOQA
 
-
+from cupy._core._compile_with_cache import compile_with_cache
 # internal APIs for testing and development
 from cupy._core._accelerator import set_elementwise_accelerators  # NOQA
 from cupy._core._accelerator import set_reduction_accelerators  # NOQA
@@ -15,8 +14,6 @@ from cupy._core._accelerator import get_elementwise_accelerators  # NOQA
 from cupy._core._accelerator import get_reduction_accelerators  # NOQA
 from cupy._core._accelerator import get_routine_accelerators  # NOQA
 
-
-# import class and function
 from cupy._core._kernel import create_ufunc  # NOQA
 from cupy._core._kernel import ElementwiseKernel  # NOQA
 from cupy._core._kernel import ufunc  # NOQA
@@ -66,6 +63,7 @@ from cupy._core._routines_math import subtract  # NOQA
 from cupy._core._routines_math import true_divide  # NOQA
 from cupy._core._routines_statistics import nanmax  # NOQA
 from cupy._core._routines_statistics import nanmin  # NOQA
+
 from cupy._core.core import _internal_ascontiguousarray  # NOQA
 from cupy._core.core import _internal_asfortranarray  # NOQA
 from cupy._core.core import array  # NOQA
