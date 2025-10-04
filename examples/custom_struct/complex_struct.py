@@ -84,8 +84,7 @@ def main():
     sizes = cupy.ndarray(shape=(5,), dtype=numpy.uint64)
     offsets = cupy.ndarray(shape=(5,), dtype=numpy.uint64)
 
-    kernel = cupy.RawKernel(
-        struct_layout_code, 'get_struct_layout', options=('--std=c++11',))
+    kernel = cupy.RawKernel(struct_layout_code, 'get_struct_layout',)
     kernel((1,), (1,), (itemsize, sizes, offsets))
 
     (itemsize, sizes, offsets) = map(cupy.asnumpy, (itemsize, sizes, offsets))
