@@ -1,5 +1,5 @@
 # AUTO GENERATED: DO NOT EDIT!
-ARG BASE_IMAGE="nvidia/cuda:11.8.0-devel-ubuntu20.04"
+ARG BASE_IMAGE="nvidia/cuda:12.9.1-devel-ubuntu20.04"
 FROM ${BASE_IMAGE}
 
 RUN export DEBIAN_FRONTEND=noninteractive && \
@@ -14,7 +14,7 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
        && \
     apt-get -qqy install ccache git curl && \
     apt-get -qqy --allow-change-held-packages \
-            --allow-downgrades install 'libnccl2=2.16.*+cuda11.8' 'libnccl-dev=2.16.*+cuda11.8' 'libcutensor2=2.0.*' 'libcutensor-dev=2.0.*'
+            --allow-downgrades install 'libnccl2=2.27.*+cuda12.9' 'libnccl-dev=2.27.*+cuda12.9' 'libcutensor2=2.0.*' 'libcutensor-dev=2.0.*'
 
 ENV PATH "/usr/lib/ccache:${PATH}"
 
