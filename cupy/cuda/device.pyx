@@ -84,36 +84,42 @@ cpdef str get_compute_capability():
 
 cdef bint _enable_peer_access(int device, int peer) except -1:
     """Enable accessing memory allocated on `peer` from `device`."""
-    if device == peer:
+    IF CUPY_CANN_VERSION <= 0:
+        if device == peer:
+            return True
+
+        cdef int can_access = runtime.deviceCanAccessPeer(device, peer)
+        if can_access == 0:
+            return False
+
+        cdef int current = runtime.getDevice()
+        runtime.setDevice(device)
+        try:
+            # Note: external libraries may disable the peer access, so we need to
+            # call this everytime. See #5496.
+            runtime._deviceEnsurePeerAccess(peer)
+        finally:
+            runtime.setDevice(current)
         return True
-
-    cdef int can_access = runtime.deviceCanAccessPeer(device, peer)
-    if can_access == 0:
+    ELSE:
+        print("WARNING: cupy-ascend has not yet impl device peer access")
         return False
-
-    cdef int current = runtime.getDevice()
-    runtime.setDevice(device)
-    try:
-        # Note: external libraries may disable the peer access, so we need to
-        # call this everytime. See #5496.
-        runtime._deviceEnsurePeerAccess(peer)
-    finally:
-        runtime.setDevice(current)
-    return True
 
 
 @_util.memoize()
 def _get_attributes(device_id):
     """Return a dict containing all device attributes."""
     d = {}
-    for k, v in runtime_module.__dict__.items():
-        if k.startswith('cudaDevAttr'):
-            try:
-                name = k.replace('cudaDevAttr', '', 1)
-                d[name] = runtime.deviceGetAttribute(v, device_id)
-            except runtime_module.CUDARuntimeError as e:
-                if e.status != runtime.errorInvalidValue:
-                    raise
+    IF CUPY_CANN_VERSION <= 0:
+        msg = "cudaDevAttr can not be got from device_id " + str(device_id)
+        for k, v in runtime_module.__dict__.items():
+            if k.startswith('cudaDevAttr'):
+                try:
+                    name = k.replace('cudaDevAttr', '', 1)
+                    d[name] = runtime.deviceGetAttribute(v, device_id)
+                except runtime_module.CUDARuntimeError as e:
+                    if e.status != runtime.errorInvalidValue:
+                        raise RuntimeError(msg)
     return d
 
 
@@ -149,22 +155,23 @@ cdef class Device:
         else:
             self.id = int(device)
 
-    @classmethod
-    def from_pci_bus_id(cls, pci_bus_id):
-        """Returns a new device instance based on a PCI Bus ID
+    IF CUPY_CANN_VERSION <= 0:
+        @classmethod
+        def from_pci_bus_id(cls, pci_bus_id):
+            """Returns a new device instance based on a PCI Bus ID
 
-        Args:
-            pci_bus_id (str):
-                The string for a device in the following format
-                [domain]:[bus]:[device].[function] where domain, bus, device,
-                and function are all hexadecimal values.
-        Returns:
-            device (Device):
-                An instance of the Device class that has the PCI Bus ID as
-                given by the argument pci_bus_id.
-        """
-        device_id = runtime.deviceGetByPCIBusId(pci_bus_id)
-        return cls(device_id)
+            Args:
+                pci_bus_id (str):
+                    The string for a device in the following format
+                    [domain]:[bus]:[device].[function] where domain, bus, device,
+                    and function are all hexadecimal values.
+            Returns:
+                device (Device):
+                    An instance of the Device class that has the PCI Bus ID as
+                    given by the argument pci_bus_id.
+            """
+            device_id = runtime.deviceGetByPCIBusId(pci_bus_id)
+            return cls(device_id)
 
     def __int__(self):
         return self.id
@@ -210,20 +217,23 @@ cdef class Device:
         by the string '35'.
 
         """
-        if self.id in _compute_capabilities:
-            return _compute_capabilities[self.id]
-        prev_device = runtime.getDevice()
-        try:
-            runtime.setDevice(self.id)
-            major = runtime.deviceGetAttribute(
-                runtime.deviceAttributeComputeCapabilityMajor, self.id)
-            minor = runtime.deviceGetAttribute(
-                runtime.deviceAttributeComputeCapabilityMinor, self.id)
-            cc = '%d%d' % (major, minor)
-            _compute_capabilities[self.id] = cc
-            return cc
-        finally:
-            runtime.setDevice(prev_device)
+        IF CUPY_CANN_VERSION <= 0:
+            if self.id in _compute_capabilities:
+                return _compute_capabilities[self.id]
+            prev_device = runtime.getDevice()
+            try:
+                runtime.setDevice(self.id)
+                major = runtime.deviceGetAttribute(
+                    runtime.deviceAttributeComputeCapabilityMajor, self.id)
+                minor = runtime.deviceGetAttribute(
+                    runtime.deviceAttributeComputeCapabilityMinor, self.id)
+                cc = '%d%d' % (major, minor)
+                _compute_capabilities[self.id] = cc
+                return cc
+            finally:
+                runtime.setDevice(prev_device)
+        ELSE:
+            return 82 # TODO: ASCEND not yet impl
 
     def _get_handle(self, name, create_func, destroy_func):
         handles = getattr(_thread_local, name, None)
@@ -319,17 +329,19 @@ cdef class Device:
         """
         return _get_attributes(self.id)
 
-    @property
-    def pci_bus_id(self):
-        """A string of the PCI Bus ID
 
-        Returns:
-            pci_bus_id (str):
-                Returned identifier string for the device in the following
-                format [domain]:[bus]:[device].[function] where domain, bus,
-                device, and function are all hexadecimal values.
-        """
-        return runtime.deviceGetPCIBusId(self.id)
+    IF CUPY_CANN_VERSION <= 0:
+        @property
+        def pci_bus_id(self):
+            """A string of the PCI Bus ID
+
+            Returns:
+                pci_bus_id (str):
+                    Returned identifier string for the device in the following
+                    format [domain]:[bus]:[device].[function] where domain, bus,
+                    device, and function are all hexadecimal values.
+            """
+            return runtime.deviceGetPCIBusId(self.id)
 
     def __richcmp__(Device self, object other, int op):
         if op == 2:

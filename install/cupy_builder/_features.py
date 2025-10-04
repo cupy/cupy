@@ -160,17 +160,18 @@ _ascend_files = [
     # #'cupy_backends.cuda.libs.curand',
     # #'cupy_backends.cuda.libs.cusparse',
     # #'cupy_backends.cuda.libs.nvrtc',
-    # 'cupy_backends.cuda.stream',
-    # 'cupy_backends.cuda._softlink',
+    'cupy_backends.cuda.stream',
+    'cupy_backends.cuda._softlink',
     # # high level OO API
-    # 'cupy.cuda.common',
+    #'cupy.cuda.common',
     # #'cupy.cuda.cufft',
-    # 'cupy.cuda.device',
+    'cupy.cuda.device', # device-runtime capacity like sparse curand
     # 'cupy.cuda.memory',
-    # 'cupy.cuda.memory_hook',
+    'cupy.cuda.memory_hook', # backend independnet
     # 'cupy.cuda.pinned_memory',
     # #'cupy.cuda.function',
-    # 'cupy.cuda.stream',
+    'cupy.cuda.stream',
+    'cupy._util' # backend independnet
 ]
 
 # Libraries required for cudart_static
