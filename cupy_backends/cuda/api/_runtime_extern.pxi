@@ -17,16 +17,17 @@ cdef extern from '../../cupy_backend_runtime.h' nogil:
     int cudaSetDevice(int device)
     int cudaDeviceSynchronize()
 
+    int cudaDeviceCanAccessPeer(int* canAccessPeer, int device,
+                                int peerDevice)
+    int cudaDeviceEnablePeerAccess(int peerDevice, unsigned int flags)
+    int cudaDeviceDisablePeerAccess(int peerDevice)
+
     IF CUPY_CANN_VERSION <= 0:
         # CANN ascend device does not supported/impl by this porting
         int cudaDeviceGetAttribute(int* value, DeviceAttr attr, int device)
         int cudaDeviceGetByPCIBusId(int* device, const char* pciBusId)
         int cudaDeviceGetPCIBusId(char* pciBusId, int len, int device)
         int cudaGetDeviceProperties(DeviceProp* prop, int device)
-        int cudaDeviceCanAccessPeer(int* canAccessPeer, int device,
-                                    int peerDevice)
-        int cudaDeviceEnablePeerAccess(int peerDevice, unsigned int flags)
-        int cudaDeviceDisablePeerAccess(int peerDevice)
         int cudaDeviceGetLimit(size_t* value, Limit limit)
         int cudaDeviceSetLimit(Limit limit, size_t value)
 

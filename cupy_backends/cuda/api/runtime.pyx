@@ -435,29 +435,31 @@ cpdef deviceSynchronize():
         status = cudaDeviceSynchronize()
     check_status(status)
 
+# PeerAccess has corresponding in ASCEND
+cpdef int deviceCanAccessPeer(int device, int peerDevice) except? -1:
+    cdef int ret
+    status = cudaDeviceCanAccessPeer(&ret, device, peerDevice)
+    check_status(status)
+    return ret
+
+cpdef deviceEnablePeerAccess(int peerDevice):
+    status = cudaDeviceEnablePeerAccess(peerDevice, 0)
+    check_status(status)
+
+cpdef deviceDisablePeerAccess(int peerDevice):
+    status = cudaDeviceDisablePeerAccess(peerDevice)
+    check_status(status)
+
+cpdef _deviceEnsurePeerAccess(int peerDevice):
+    status = cudaDeviceEnablePeerAccess(peerDevice, 0)
+    if status == 0:
+        return
+    elif status == errorPeerAccessAlreadyEnabled:
+        cudaGetLastError()  # clear error status
+        return
+    check_status(status)
+
 IF CUPY_CANN_VERSION <= 0:
-    cpdef int deviceCanAccessPeer(int device, int peerDevice) except? -1:
-        cdef int ret
-        status = cudaDeviceCanAccessPeer(&ret, device, peerDevice)
-        check_status(status)
-        return ret
-
-    cpdef deviceEnablePeerAccess(int peerDevice):
-        status = cudaDeviceEnablePeerAccess(peerDevice, 0)
-        check_status(status)
-
-    cpdef deviceDisablePeerAccess(int peerDevice):
-        status = cudaDeviceDisablePeerAccess(peerDevice)
-        check_status(status)
-
-    cpdef _deviceEnsurePeerAccess(int peerDevice):
-        status = cudaDeviceEnablePeerAccess(peerDevice, 0)
-        if status == 0:
-            return
-        elif status == errorPeerAccessAlreadyEnabled:
-            cudaGetLastError()  # clear error status
-            return
-        check_status(status)
 
     cpdef size_t deviceGetLimit(int limit) except? -1:
         cdef size_t value

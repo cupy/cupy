@@ -186,16 +186,16 @@ cpdef int getDevice() except? -1
 cpdef setDevice(int device)
 cpdef int getDeviceCount() except? -1
 cpdef deviceSynchronize()
+
+cpdef int deviceCanAccessPeer(int device, int peerDevice) except? -1
+cpdef deviceEnablePeerAccess(int peerDevice)
+cpdef _deviceEnsurePeerAccess(int peerDevice)
+
 IF CUPY_CANN_VERSION <= 0:
     cpdef int deviceGetAttribute(int attrib, int device) except? -1
+    cpdef getDeviceProperties(int device)
     cpdef int deviceGetByPCIBusId(str pci_bus_id) except? -1
     cpdef str deviceGetPCIBusId(int device)
-
-    cpdef getDeviceProperties(int device)
-
-    cpdef int deviceCanAccessPeer(int device, int peerDevice) except? -1
-    cpdef deviceEnablePeerAccess(int peerDevice)
-    cpdef _deviceEnsurePeerAccess(int peerDevice)
 
     cpdef size_t deviceGetLimit(int limit) except? -1
     cpdef deviceSetLimit(int limit, size_t value)

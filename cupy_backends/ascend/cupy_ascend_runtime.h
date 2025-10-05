@@ -149,25 +149,24 @@ cudaError_t cudaDeviceSynchronize() {
     return ret;
 }
 
-#ifndef CUPY_INSTALL_USE_ASCEND
 cudaError_t cudaDeviceCanAccessPeer(int* canAccessPeer, int deviceId,
                                     int peerDeviceId) {
-    // WARNING: Peer access might be handled differently or not supported in AscendCL. [8](@ref)
     // Ascend hardware and software stack may have different interconnect capabilities.
-    *canAccessPeer = 0; // Placeholder: Assuming no peer access by default
-    return ACL_ERROR_FEATURE_UNSUPPORTED;
+    aclError ret = aclrtDeviceCanAccessPeer(canAccessPeer, deviceId, peerDeviceId);
+    return ret;
 }
 
 cudaError_t cudaDeviceEnablePeerAccess(int peerDeviceId, unsigned int flags) {
-    // WARNING: Missing direct equivalent in AscendCL for enabling peer access.
-    return ACL_ERROR_FEATURE_UNSUPPORTED;
+    aclError ret = aclrtDeviceEnablePeerAccess(peerDeviceId, flags);
+    return ret;
 }
 
 cudaError_t cudaDeviceDisablePeerAccess(int peerDeviceId) {
-    // WARNING: Missing direct equivalent in AscendCL for disabling peer access.
-    return ACL_ERROR_FEATURE_UNSUPPORTED;
+    aclError ret = aclrtDeviceDisablePeerAccess(peerDeviceId);
+    return ret;
 }
 
+#ifndef CUPY_INSTALL_USE_ASCEND
 cudaError_t cudaDeviceGetLimit(size_t* pValue, cudaLimit limit) {
     // WARNING: No direct equivalent concept of "limits" in AscendCL.
     return ACL_ERROR_INVALID_PARAM;
@@ -273,12 +272,20 @@ cudaError_t cudaFreeAsync(...) {
 }
 
 int cudaMemGetInfo(size_t* free, size_t* total) {
-    aclError ret = aclrtGetMemInfo(ACL_DDR_MEM, free, total); // Example: Query DDR memory [8](@ref)
+    // TODO: Edge devices such as 310P has no HBM, but DDR
+    size_t free_ddr = 0;
+    size_t total_ddr = 0;
+    aclError ret = aclrtGetMemInfo(ACL_DDR_MEM, &free_ddr, &total_ddr);
+
+    size_t free_hbm = 0;
+    size_t total_hbm = 0;
+    aclError ret = aclrtGetMemInfo(ACL_HBM_MEM, &free_hbm, &total_hbm);
+    *free = std::max(free_ddr, free_hbm);
+    *total = std::max(total_ddr, total_hbm);
     return ret;
 }
 
-cudaError_t cudaMemcpy(void* dst, const void* src, size_t sizeBytes,
-                       cudaMemcpyKind kind) {
+inline aclrtMemcpyKind _convertMemcpyKind(cudaMemcpyKind kind){
     aclrtMemcpyKind aclKind;
     switch (kind) {
         case cudaMemcpyHostToHost:   aclKind = ACL_MEMCPY_HOST_TO_HOST; break;
@@ -286,38 +293,28 @@ cudaError_t cudaMemcpy(void* dst, const void* src, size_t sizeBytes,
         case cudaMemcpyDeviceToHost: aclKind = ACL_MEMCPY_DEVICE_TO_HOST; break;
         case cudaMemcpyDeviceToDevice: aclKind = ACL_MEMCPY_DEVICE_TO_DEVICE; break;
         case cudaMemcpyDefault: aclKind = ACL_MEMCPY_DEFAULT; break;
-        default: return ACL_ERROR_INVALID_PARAM;
+        default: return ACL_MEMCPY_DEFAULT;  // ACL_ERROR_INVALID_PARAM;
     }
+    return aclKind;
+}
+
+cudaError_t cudaMemcpy(void* dst, const void* src, size_t sizeBytes,
+                       cudaMemcpyKind kind) {
+    aclrtMemcpyKind aclKind = _convertMemcpyKind(kind);
     aclError ret = aclrtMemcpy(dst, sizeBytes, src, sizeBytes, aclKind); 
     return ret;
 }
 
 cudaError_t cudaMemcpyAsync(void* dst, const void* src, size_t sizeBytes,
                             cudaMemcpyKind kind, cudaStream_t stream) {
-    aclrtMemcpyKind aclKind;
-    switch (kind) {
-        case cudaMemcpyHostToHost:   aclKind = ACL_MEMCPY_HOST_TO_HOST; break;
-        case cudaMemcpyHostToDevice: aclKind = ACL_MEMCPY_HOST_TO_DEVICE; break;
-        case cudaMemcpyDeviceToHost: aclKind = ACL_MEMCPY_DEVICE_TO_HOST; break;
-        case cudaMemcpyDeviceToDevice: aclKind = ACL_MEMCPY_DEVICE_TO_DEVICE; break;
-        case cudaMemcpyDefault: aclKind = ACL_MEMCPY_DEFAULT; break;
-        default: return ACL_ERROR_INVALID_PARAM;
-    }
+    aclrtMemcpyKind aclKind = _convertMemcpyKind(kind);
     aclError ret = aclrtMemcpyAsync(dst, sizeBytes, src, sizeBytes, aclKind, stream); 
     return ret;
 }
 
 cudaError_t cudaMemcpy2D(void *dst, size_t dpitch,
     const void *src, size_t spitch, size_t width, size_t height, cudaMemcpyKind kind) {
-    aclrtMemcpyKind aclKind;
-    switch (kind) {
-        case cudaMemcpyHostToHost:   aclKind = ACL_MEMCPY_HOST_TO_HOST; break;
-        case cudaMemcpyHostToDevice: aclKind = ACL_MEMCPY_HOST_TO_DEVICE; break;
-        case cudaMemcpyDeviceToHost: aclKind = ACL_MEMCPY_DEVICE_TO_HOST; break;
-        case cudaMemcpyDeviceToDevice: aclKind = ACL_MEMCPY_DEVICE_TO_DEVICE; break;
-        case cudaMemcpyDefault: aclKind = ACL_MEMCPY_DEFAULT; break;
-        default: return ACL_ERROR_INVALID_PARAM;
-    }
+    aclrtMemcpyKind aclKind = _convertMemcpyKind(kind);
     aclError ret = aclrtMemcpy2d(dst, dpitch, src, spitch, width, height, aclKind); 
     return ret;
 }
@@ -325,22 +322,14 @@ cudaError_t cudaMemcpy2D(void *dst, size_t dpitch,
 cudaError_t cudaMemcpy2DAsync(void *dst, size_t dpitch,
     const void *src, size_t spitch, size_t width, size_t height, cudaMemcpyKind kind,
     cudaStream_t stream) {
-    aclrtMemcpyKind aclKind;
-    switch (kind) {
-        case cudaMemcpyHostToHost:   aclKind = ACL_MEMCPY_HOST_TO_HOST; break;
-        case cudaMemcpyHostToDevice: aclKind = ACL_MEMCPY_HOST_TO_DEVICE; break;
-        case cudaMemcpyDeviceToHost: aclKind = ACL_MEMCPY_DEVICE_TO_HOST; break;
-        case cudaMemcpyDeviceToDevice: aclKind = ACL_MEMCPY_DEVICE_TO_DEVICE; break;
-        case cudaMemcpyDefault: aclKind = ACL_MEMCPY_DEFAULT; break;
-        default: return ACL_ERROR_INVALID_PARAM;
-    }
+    aclrtMemcpyKind aclKind = _convertMemcpyKind(kind);
     aclError ret = aclrtMemcpy2dAsync(dst, dpitch, src, spitch, width, height, aclKind, stream); 
     return ret;
 }
 
 cudaError_t cudaMemcpyPeer(void* dst, int dstDeviceId, const void* src,
                            int srcDeviceId, size_t sizeBytes) {
-    // WARNING: Peer-to-peer memory copy might be handled differently in AscendCL. [8](@ref)
+    // TODO: Peer-to-peer memory copy might be handled differently in AscendCL.
     // It might require explicit enablement or use different functions.
     return ACL_ERROR_FEATURE_UNSUPPORTED;
 }
@@ -348,7 +337,7 @@ cudaError_t cudaMemcpyPeer(void* dst, int dstDeviceId, const void* src,
 cudaError_t cudaMemcpyPeerAsync(void* dst, int dstDevice, const void* src,
                                 int srcDevice, size_t sizeBytes,
                                 cudaStream_t stream) {
-    // WARNING: Peer-to-peer memory copy might be handled differently in AscendCL. [8](@ref)
+    // TODO: Peer-to-peer memory copy might be handled differently in AscendCL.
     return ACL_ERROR_FEATURE_UNSUPPORTED;
 }
 
