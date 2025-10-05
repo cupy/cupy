@@ -2,7 +2,8 @@ import threading
 
 from cupy_backends.cuda.api cimport runtime
 from cupy_backends.cuda cimport stream as backends_stream
-from cupy.cuda cimport graph
+# TODO: ASCEND not impl yet
+#from cupy.cuda cimport graph
 
 from cupy import _util
 
@@ -409,7 +410,10 @@ class _BaseStream:
         host_funcargs = self._graph_host_funcargs
         self._graph_host_funcargs = None
         cdef intptr_t g = runtime.streamEndCapture(self.ptr)
-        return graph.Graph.from_stream(g, host_funcargs)
+        IF CUPY_CANN_VERSION <= 0: # TODO: ASCEND not impl yet
+            return graph.Graph.from_stream(g, host_funcargs)
+        ELSE:
+            return None
 
     def is_capturing(self):
         """Check if the stream is capturing.

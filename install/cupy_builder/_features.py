@@ -180,7 +180,10 @@ _ascend_files = [
     'cupy._core.core',  # define _ndarray_base
     'cupy._core.flags',
     'cupy._core.internal',
+    'cupy._core.dlpack',
     'cupy._core.numpy_allocator',
+    'cupy._core._memory_range',
+    'cupy._core._optimize_config',
 ]
 
 # Libraries required for cudart_static

@@ -94,6 +94,9 @@ def get_rocm_path():
         _rocm_path = _get_rocm_path()
     return _rocm_path
 
+def get_cann_path():
+    # TODO: ASCEND
+    return "/usr/local/Ascend/ascend-toolkit/latest"
 
 def get_hipcc_path():
     # Returns the path to the hipcc command or None if not found.
