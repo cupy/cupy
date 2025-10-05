@@ -279,7 +279,7 @@ int cudaMemGetInfo(size_t* free, size_t* total) {
 
     size_t free_hbm = 0;
     size_t total_hbm = 0;
-    aclError ret = aclrtGetMemInfo(ACL_HBM_MEM, &free_hbm, &total_hbm);
+    ret = aclrtGetMemInfo(ACL_HBM_MEM, &free_hbm, &total_hbm);
     *free = std::max(free_ddr, free_hbm);
     *total = std::max(total_ddr, total_hbm);
     return ret;

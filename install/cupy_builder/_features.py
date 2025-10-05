@@ -163,10 +163,10 @@ _ascend_files = [
     'cupy_backends.cuda.stream',
     'cupy_backends.cuda._softlink',
     # # high level OO API
-    #'cupy.cuda.common',
+    'cupy.cuda.common', #  cudaDataType
     # #'cupy.cuda.cufft',
     'cupy.cuda.device', # device-runtime capacity like sparse curand
-    # 'cupy.cuda.memory',
+    'cupy.cuda.memory',
     'cupy.cuda.memory_hook', # backend independnet
     # 'cupy.cuda.pinned_memory',
     # #'cupy.cuda.function',

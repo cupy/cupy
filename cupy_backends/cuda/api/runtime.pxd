@@ -95,6 +95,10 @@ ELSE:
     IF CUPY_CANN_VERSION <= 0:
         # cudaDevAttr has no coresponding in Ascend CANN
         from cupy_backends.cuda.api._runtime_enum cimport *
+    ELSE:
+        cpdef enum:
+            cudaCpuDeviceId = -1
+            cudaInvalidDeviceId = -2
 
 
 # For backward compatibility, keep APIs not prefixed with "cuda".
