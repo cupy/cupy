@@ -18,7 +18,7 @@ ret aclnnAddGetWorkspaceSize(selfTensor, otherTensor, alpha, outTensor, &workspa
 */
 template<typename WsFunc, typename Operand, typename... Args>
 aclError aclBinaryOpRun(
-    aclTensor* selfTensor,
+    const aclTensor* selfTensor,
     Operand otherTensor, // operand can be aclScalar* or aclTensor*
     aclTensor* outTensor,
     WsFunc wsfunc, AclnnKernelFunc kfunc,
@@ -92,10 +92,10 @@ aclError aclBinaryInplaceOpRun(
     return ACL_SUCCESS;
 }
 
-// output = self <op> other * scalar
+// output = self <op> other * scalar,  3 operands here scalar is one operand
 template<typename WsFunc, typename Operand, typename Scalar, typename... Args>
 aclError aclBinaryScalarOpRun(
-    aclTensor* selfTensor, Operand otherTensor, Scalar scalar, aclTensor* outTensor,
+    const aclTensor* selfTensor, Operand otherTensor, Scalar scalar, aclTensor* outTensor,
     WsFunc wsfunc, AclnnKernelFunc kfunc, aclrtStream stream, bool sync,
     Args&&... args)
 {
@@ -137,6 +137,43 @@ aclError aclBinaryScalarOpRun(
 // aclError aclBinaryForeachOpRun(aclTensorList inputs, aclTensorList others, aclTensorList outputs,
 //     WsFunc wsfunc, AclnnKernelFunc kfunc, aclrtStream stream, bool sync,
 //     Args&&... args)
+
+template<typename WsFunc, typename Operand, typename... Args>
+aclError aclUnaryOpRun(
+    Operand selfTensor,
+    Operand outTensor,
+    WsFunc wsfunc, AclnnKernelFunc kfunc,
+    aclrtStream stream, bool sync,
+    Args&&... args)
+{
+    uint64_t workspaceSize = 0;
+    aclOpExecutor* executor = nullptr;
+
+    // 第一段: 获取所需Workspace大小
+    aclError ret = wsfunc(selfTensor, outTensor, std::forward<Args>(args)..., &workspaceSize, &executor);
+    // e.g. aclnnStatus aclnnAsinGetWorkspaceSize(const aclTensor* self, aclTensor* out, uint64_t* workspaceSize, aclOpExecutor** executor);
+    if (ret != ACL_SUCCESS) { /* 错误处理 */ }
+
+    void* workspaceAddr = nullptr;
+    if (workspaceSize > 0) {
+        ret = aclrtMalloc(&workspaceAddr, workspaceSize, ACL_MEM_MALLOC_HUGE_FIRST);
+    }
+
+    // 第二段: 在指定的Stream上执行算子, this is fixed func type
+    ret = kfunc(workspaceAddr, workspaceSize, executor, stream);
+    if (ret != ACL_SUCCESS) {
+        std::cout << "Failed to run the kernel";
+        return ACL_ERROR_RT_FAILURE;
+    }
+
+    if(sync) {
+        aclrtSynchronizeStream(stream);
+    }
+    if (workspaceSize > 0) {
+        ret = aclrtFree(workspaceAddr);
+    }
+    return ACL_SUCCESS;
+}
 
 template<typename WsFunc, typename Operand, typename... Args>
 aclError aclUnaryOpRun(
