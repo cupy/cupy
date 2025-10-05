@@ -8,19 +8,23 @@ from cupy._environment import get_cuda_path  # NOQA
 from cupy._environment import get_nvcc_path  # NOQA
 from cupy._environment import get_rocm_path  # NOQA
 from cupy._environment import get_hipcc_path  # NOQA
-from cupy.cuda import compiler  # NOQA
+from cupy._environment import get_cann_path # NOQA
+
+_is_ascend = True
+if not _is_ascend:
+    from cupy.cuda import compiler  # NOQA
+    from cupy.cuda import function  # NOQA
+    from cupy.cuda import texture  # NOQA
 from cupy.cuda import device  # NOQA
-from cupy.cuda import function  # NOQA
 from cupy.cuda import memory  # NOQA
 from cupy.cuda import memory_hook  # NOQA
 from cupy.cuda import memory_hooks  # NOQA
 from cupy.cuda import pinned_memory  # NOQA
 from cupy.cuda import profiler  # NOQA
 from cupy.cuda import stream  # NOQA
-from cupy.cuda import texture  # NOQA
+
 from cupy_backends.cuda.api import driver  # NOQA
 from cupy_backends.cuda.api import runtime  # NOQA
-from cupy_backends.cuda.libs import nvrtc  # NOQA
 
 
 _available = None
@@ -32,9 +36,15 @@ class _UnavailableModule:
     def __init__(self, name):
         self.__name__ = name
 
+try:
+    from cupy_backends.cuda.libs import nvrtc  # NOQA
+except ImportError:
+    cub = _UnavailableModule('cupy.cuda.nvrtc')
 
-from cupy.cuda import cub  # NOQA
-
+try:
+    from cupy.cuda import cub  # NOQA
+except ImportError:
+    cub = _UnavailableModule('cupy.cuda.cub')
 
 try:
     from cupy_backends.cuda.libs import nvtx  # NOQA
@@ -119,8 +129,9 @@ def get_local_runtime_version() -> int:
 from cupy.cuda.device import Device  # NOQA
 from cupy.cuda.device import get_cublas_handle  # NOQA
 from cupy.cuda.device import get_device_id  # NOQA
-from cupy.cuda.function import Function  # NOQA
-from cupy.cuda.function import Module  # NOQA
+if not _is_ascend:
+    from cupy.cuda.function import Function  # NOQA
+    from cupy.cuda.function import Module  # NOQA
 from cupy.cuda.memory import alloc  # NOQA
 from cupy.cuda.memory import BaseMemory  # NOQA
 from cupy.cuda.memory import malloc_managed  # NOQA
@@ -130,7 +141,8 @@ from cupy.cuda.memory import Memory  # NOQA
 from cupy.cuda.memory import MemoryAsync  # NOQA
 from cupy.cuda.memory import MemoryPointer  # NOQA
 from cupy.cuda.memory import MemoryPool  # NOQA
-from cupy.cuda.memory import MemoryAsyncPool  # NOQA
+if not _is_ascend:
+    from cupy.cuda.memory import MemoryAsyncPool  # NOQA
 from cupy.cuda.memory import PythonFunctionAllocator  # NOQA
 from cupy.cuda.memory import CFunctionAllocator  # NOQA
 from cupy.cuda.memory import set_allocator  # NOQA
@@ -147,7 +159,8 @@ from cupy.cuda.stream import get_current_stream  # NOQA
 from cupy.cuda.stream import get_elapsed_time  # NOQA
 from cupy.cuda.stream import Stream  # NOQA
 from cupy.cuda.stream import ExternalStream  # NOQA
-from cupy.cuda.graph import Graph  # NOQA
+if not _is_ascend:
+    from cupy.cuda.graph import Graph  # NOQA
 
 
 @contextlib.contextmanager
