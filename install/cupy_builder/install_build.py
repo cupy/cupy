@@ -207,6 +207,7 @@ def get_compiler_setting(ctx: Context, backend: str):
         extra_compile_args.append('-std=c++17')
         include_dirs.append(os.path.join(cann_path, 'include'))
         include_dirs.append(os.path.join(cann_path, '../../nnal/asdsip/latest/include'))
+        include_dirs.append(os.path.join(cann_path, 'include/aclnn'))
         library_dirs.append(os.path.join(cann_path, 'lib64'))
         library_dirs.append(os.path.join(cann_path, 'runtime/lib64'))
         library_dirs.append(os.path.join(cann_path, '../../nnal/asdsip/latest/lib'))

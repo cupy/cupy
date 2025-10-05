@@ -167,12 +167,20 @@ _ascend_files = [
     # #'cupy.cuda.cufft',
     'cupy.cuda.device', # device-runtime capacity like sparse curand
     'cupy.cuda.memory', # MemoryAsyncPool is not supported
-    'cupy.cuda.memory_hook', # backend independnet
+    'cupy.cuda.memory_hook', # backend independent
     'cupy.cuda.pinned_memory',
     # #'cupy.cuda.function',
     'cupy.cuda.stream',
-    'cupy._util' # backend independnet
+    'cupy._util', # backend independent:  context manager, memoise
+    'cupy_backends.ascend.api.acl_utils',
     # =============== seperate line for low-high api
+    'cupy._core._carray',
+    'cupy._core._dtype',
+    'cupy._core._scalar',
+    'cupy._core.core',  # define _ndarray_base
+    'cupy._core.flags',
+    'cupy._core.internal',
+    'cupy._core.numpy_allocator',
 ]
 
 # Libraries required for cudart_static
