@@ -177,8 +177,9 @@ from numpy import complex128  # NOQA
 # -----------------------------------------------------------------------------
 # Functional routines
 # -----------------------------------------------------------------------------
-from cupy._functional.piecewise import piecewise  # NOQA
-from cupy._functional.vectorize import vectorize  # NOQA
+# TODO:  ElementwiseKernel() not yet impl
+#from cupy._functional.piecewise import piecewise  # NOQA
+#from cupy._functional.vectorize import vectorize  # NOQA
 from cupy.lib._shape_base import apply_along_axis  # NOQA
 from cupy.lib._shape_base import apply_over_axes  # NOQA
 from cupy.lib._shape_base import put_along_axis    # NOQA
@@ -189,8 +190,8 @@ if hasattr(_numpy, 'broadcast_shapes'):  # NumPy 1.20
     from numpy import broadcast_shapes  # NOQA
 
 
-from cupy._binary.packing import packbits  # NOQA
-from cupy._binary.packing import unpackbits  # NOQA
+#from cupy._binary.packing import packbits  # NOQA
+#from cupy._binary.packing import unpackbits  # NOQA
 
 
 def binary_repr(num, width=None):
@@ -320,9 +321,9 @@ def isscalar(element):
 # Miscellaneous routines
 # -----------------------------------------------------------------------------
 from cupy._misc.byte_bounds import byte_bounds  # NOQA
-from cupy._misc.memory_ranges import may_share_memory  # NOQA
-from cupy._misc.memory_ranges import shares_memory  # NOQA
-from cupy._misc.who import who  # NOQA
+#from cupy._misc.memory_ranges import may_share_memory  # NOQA
+#from cupy._misc.memory_ranges import shares_memory  # NOQA
+#from cupy._misc.who import who  # NOQA
 
 # Borrowed from NumPy
 from numpy import iterable  # NOQA
@@ -344,7 +345,7 @@ from cupy.exceptions import VisibleDeprecationWarning  # NOQA
 # -----------------------------------------------------------------------------
 # Undocumented functions
 # -----------------------------------------------------------------------------
-from cupy._core import size  # NOQA
+#from cupy._core import size  # NOQA
 
 
 def ndim(a):
@@ -450,8 +451,8 @@ def get_array_module(*args):
             return _cupy
     return _numpy
 
-
-fuse = _core.fusion.fuse
+# TODO: ASCEND does not support fuse
+#fuse = _core.fusion.fuse
 
 disable_experimental_feature_warning = False
 
