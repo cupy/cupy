@@ -24,6 +24,10 @@ cdef extern from '../../cupy_nccl.h':
         pass
     ctypedef enum ncclDataType_t:
         pass
+    cdef enum ncclSplitColor_t:
+        NCCL_SPLIT_NOCOLOR
+    ctypedef struct ncclConfig_t:
+        pass
 
     const char* ncclGetErrorString(ncclResult_t result) nogil
     ncclResult_t ncclGetVersion(int* version) nogil
@@ -32,6 +36,8 @@ cdef extern from '../../cupy_nccl.h':
     ncclResult_t ncclGetUniqueId(ncclUniqueId* uniqueId) nogil
     ncclResult_t ncclCommInitRank(ncclComm_t* comm, int ndev,
                                   ncclUniqueId commId, int rank) nogil
+    ncclResult_t ncclCommSplit(ncclComm_t comm, int color, int key,
+                                 ncclComm_t* newcomm, ncclConfig_t* config) nogil
     ncclResult_t ncclCommInitAll(ncclComm_t* comm, int ndev,
                                  const int* devlist)
     ncclResult_t ncclGroupStart() nogil
@@ -532,7 +538,7 @@ cdef class NcclCommunicator:
         cdef ncclComm_t new_comm = <ncclComm_t>0
         cdef NcclCommunicator new_nccl_comm
 
-        if color == -1:
+        if color == NCCL_SPLIT_NOCOLOR:
             # The process is not included in any communicator.
             return None
 
