@@ -187,10 +187,11 @@ _ascend_files = [
     'cupy._core._memory_range',
     'cupy._core._optimize_config',
     ('cupy._core._kernel', ['cupy/_ascend/_core/_kernel.pyx']),
-    ('cupy._core._routines_math', ['cupy/_ascend/_core/_routines_math.pyx']),
+    ('cupy._core._routines_math', ['cupy/_core/_routines_math.pyx']),
     ('cupy._core._routines_binary', ['cupy/_ascend/_core/_routines_binary.pyx']),
     'cupy._core._routines_creation',
     'cupy._core._routines_manipulation',
+    #('cupy._core._reduction', ['cupy/_ascend/_core/_routines_reduction.pyx'])
 ]
 
 # Libraries required for cudart_static

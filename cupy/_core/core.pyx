@@ -28,7 +28,7 @@ from cupy._core._carray cimport shape_t
 from cupy._core cimport _dtype
 from cupy._core._dtype cimport get_dtype
 from cupy._core._dtype cimport populate_format
-from cupy._core._kernel import ElementwiseKernel # only fill_kernel use this
+from cupy._core._kernel import ElementwiseKernel, create_ufunc # only fill_kernel use this
 
 from cupy._core cimport _routines_binary as _binary
 #from cupy._core cimport _routines_indexing as _indexing
@@ -45,7 +45,7 @@ from cupy._core cimport dlpack
 from cupy._core cimport internal
 from cupy.cuda cimport device
 # TODO: ASCEND not yet impl
-#from cupy.cuda cimport function
+from cupy.cuda cimport function
 from cupy.cuda cimport pinned_memory
 from cupy.cuda cimport memory
 from cupy.cuda cimport stream as stream_module  # CUPY TODO: repeated import
@@ -56,7 +56,15 @@ from cupy_backends.cuda.api.runtime import CUDARuntimeError
 from cupy.exceptions import ComplexWarning
 
 NUMPY_1x = numpy.__version__ < '2'
-cdef fill_kernel = ElementwiseKernel('T x', 'T y', 'y = x', 'cupy_fill')
+#cdef fill_kernel = ElementwiseKernel('T x', 'T y', 'y = x', 'cupy_fill')
+cdef fill_kernel = create_ufunc(
+    'cupy_fill_scalar',
+    ('dd->d', 'FF->D',
+     ('DD->D', 'out0 = in1 == in1_type(0) ? in1_type(1): pow(in0, in1)')),
+    'out0 = pow(in0, in1)',
+    doc=''' not actually working
+    '''  # NOQA
+)
 
 cdef extern from *:
     """

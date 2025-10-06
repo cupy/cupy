@@ -177,3 +177,6 @@ cdef shape_t _reduce_dims(list args, tuple params, const shape_t& shape)
 cpdef ElementwiseKernel(in_params, out_params, operation,
                  name=*, reduce_dims=*, preamble=*,
                  no_return=*, return_tuple=*, doc=*)
+
+cpdef create_reduction_func(
+    name, ops, routine=*, identity=*, preamble=*, sort_reduce_axis=*)
