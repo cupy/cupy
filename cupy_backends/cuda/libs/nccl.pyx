@@ -492,3 +492,53 @@ cdef class NcclCommunicator:
             result = ncclCommGetAsyncError(self._comm, &asyncError)
         check_status(asyncError)
         check_status(result)
+
+    def commSplit(self, int color, int key):
+        """Split the communicator into multiple, disjoint communicators.
+
+        Args:
+            color (int): Controls the assignment of processes to
+                communicators. Processes with the same color are
+                assigned to the same communicator. If color is ``-1``,
+                the process is not included in any communicator.
+            key (int): Controls the rank assignment within
+                the new communicator. The process with the lowest key
+                value is assigned rank 0.
+
+        Returns:
+            NcclCommunicator: A new communicator.
+
+        .. note::
+            This method requires NCCL 2.7 or newer.
+            When split, there should not be any outstanding NCCL operations on the comm.
+            Otherwise, it might cause a deadlock.
+            .. code-block:: python
+
+                from cupy.cuda import nccl
+                comm = nccl.NcclCommunicator(world_size, uid, rank)
+                new_comm = comm.commSplit(color, key)
+                if new_comm is not None:
+                    # use new_comm for collective communication
+                    new_comm.destroy()
+                comm.destroy()
+
+        .. seealso:: `ncclCommSplit`_
+
+        .. _ncclCommSplit:
+            https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/api/comms.html#ncclcommsplit
+        """
+        if NCCL_VERSION_CODE < 2700:
+            raise RuntimeError('ncclCommSplit is not available in this version')
+        cdef ncclComm_t new_comm = <ncclComm_t>0
+        cdef NcclCommunicator new_nccl_comm
+
+        if color == -1:
+            # The process is not included in any communicator.
+            return None
+
+        with nogil:
+            status = ncclCommSplit(self._comm, color, key, &new_comm, NULL)
+        check_status(status)
+        new_nccl_comm = NcclCommunicator.__new__(NcclCommunicator)
+        new_nccl_comm._comm = new_comm
+        return new_nccl_comm
