@@ -48,7 +48,10 @@ def module_extension_sources(file, use_cython, no_cuda):
             others1.append(source)
         others = others1
 
-    return [pyx] + others
+    if others:
+        return others # pyx is put in different places
+    else:
+        return [pyx] # single pyx file as the module name
 
 
 def get_required_modules(MODULES):
