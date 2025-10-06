@@ -15,7 +15,6 @@ cdef class Function:
                         size_t block_max_size=*, stream=*,
                         bint enable_cooperative_groups=*)
 
-
 cdef class Module:
 
     cdef:

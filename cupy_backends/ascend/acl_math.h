@@ -57,7 +57,7 @@
 #include "aclnnop/aclnn_bitwise_xor_tensor.h"
 #include "aclnnop/aclnn_bitwise_xor_scalar.h"
 #include "aclnnop/aclnn_bitwise_not.h" // numpy op: np.invert
-//#include "aclnnop/aclnn_bitwise_shift.h"  // numpy op: _left_shift
+// #include "aclnnop/aclnn_shift_left.h"  // numpy op: _left_shift
 
 // logical op: for bool/cast_to_bool input tensor
 #include "aclnnop/aclnn_logical_and.h"

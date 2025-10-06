@@ -171,7 +171,7 @@ _ascend_files = [
     'cupy.cuda.memory', # MemoryAsyncPool is not supported
     'cupy.cuda.memory_hook', # backend independent
     'cupy.cuda.pinned_memory',
-    # #'cupy.cuda.function',
+    'cupy.cuda.function', # only compile code for CPointer
     'cupy.cuda.stream',
     'cupy._util', # backend independent:  context manager, memoise
     'cupy_backends.ascend.api.acl_utils',
@@ -190,7 +190,7 @@ _ascend_files = [
     ('cupy._core._routines_math', ['cupy/_ascend/_core/_routines_math.pyx']),
     ('cupy._core._routines_binary', ['cupy/_ascend/_core/_routines_binary.pyx']),
     'cupy._core._routines_creation',
-    #'cupy._core._routine_manimulation',
+    'cupy._core._routines_manipulation',
 ]
 
 # Libraries required for cudart_static

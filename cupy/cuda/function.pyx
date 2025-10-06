@@ -17,7 +17,7 @@ from cupy_backends.cuda.api cimport driver
 from cupy_backends.cuda.api cimport runtime
 from cupy.cuda cimport stream as stream_module
 from cupy.cuda.memory cimport MemoryPointer
-from cupy.cuda.texture cimport TextureObject, SurfaceObject
+#from cupy.cuda.texture cimport TextureObject, SurfaceObject
 from cupy.cuda import device
 
 
@@ -115,8 +115,9 @@ cdef inline CPointer _pointer(x):
         return CIntptr(x.ptr)
     if isinstance(x, CPointer):
         return x
-    if isinstance(x, (TextureObject, SurfaceObject)):
-        return CUIntMax(x.ptr)
+    IF CUPY_CANN_VERSION <= 0:
+        if isinstance(x, (TextureObject, SurfaceObject)):
+            return CUIntMax(x.ptr)
     if isinstance(x, numpy.ndarray):
         # All numpy.ndarray work with CNumpyArray to pass a kernel argument by
         # value. Here we allow only arrays of size one so that users do not
@@ -164,139 +165,222 @@ cdef inline size_t _get_stream(stream) except *:
     else:
         return stream.ptr
 
+IF CUPY_CANN_VERSION <= 0:
+    cdef _launch(intptr_t func, Py_ssize_t grid0, int grid1, int grid2,
+                Py_ssize_t block0, int block1, int block2,
+                args, Py_ssize_t shared_mem, size_t stream,
+                bint enable_cooperative_groups=False):
+        cdef list pargs = []
+        cdef vector.vector[void*] kargs
+        cdef CPointer cp
+        kargs.reserve(len(args))
+        for a in args:
+            cp = _pointer(a)
+            pargs.append(cp)  # keep the CPointer objects alive
+            kargs.push_back(cp.ptr)
 
-cdef _launch(intptr_t func, Py_ssize_t grid0, int grid1, int grid2,
-             Py_ssize_t block0, int block1, int block2,
-             args, Py_ssize_t shared_mem, size_t stream,
-             bint enable_cooperative_groups=False):
-    cdef list pargs = []
-    cdef vector.vector[void*] kargs
-    cdef CPointer cp
-    kargs.reserve(len(args))
-    for a in args:
-        cp = _pointer(a)
-        pargs.append(cp)  # keep the CPointer objects alive
-        kargs.push_back(cp.ptr)
+        runtime._ensure_context()
 
-    runtime._ensure_context()
-
-    cdef int dev_id
-    cdef int num_sm
-    cdef int max_grid_size
-    if enable_cooperative_groups:
-        dev_id = device.get_device_id()
-        num_sm = device._get_attributes(dev_id)['MultiProcessorCount']
-        max_grid_size = driver.occupancyMaxActiveBlocksPerMultiprocessor(
-            func, block0 * block1 * block2, shared_mem) * num_sm
-        if grid0 * grid1 * grid2 > max_grid_size:
-            if grid1 == grid2 == 1:
-                warnings.warn('The grid size will be reduced from {} to {}, '
-                              'as the specified grid size exceeds the limit.'.
-                              format(grid0, max_grid_size))
-                grid0 = max_grid_size
-            else:
-                raise ValueError('The specified grid size ({} * {} * {}) '
-                                 'exceeds the limit ({}).'.
-                                 format(grid0, grid1, grid2, max_grid_size))
-        driver.launchCooperativeKernel(
-            func, <int>grid0, grid1, grid2, <int>block0, block1, block2,
-            <int>shared_mem, stream, <intptr_t>kargs.data())
-    else:
-        driver.launchKernel(
-            func, <int>grid0, grid1, grid2, <int>block0, block1, block2,
-            <int>shared_mem, stream, <intptr_t>kargs.data(), <intptr_t>0)
-
-
-cdef class Function:
-
-    """CUDA kernel function."""
-
-    def __init__(self, Module module, str funcname):
-        self.module = module  # to keep module loaded
-        self.ptr = driver.moduleGetFunction(module.ptr, funcname)
-
-    def __call__(self, tuple grid, tuple block, args, size_t shared_mem=0,
-                 stream=None, enable_cooperative_groups=False):
-        grid = (grid + (1, 1))[:3]
-        block = (block + (1, 1))[:3]
-        s = _get_stream(stream)
-        _launch(
-            self.ptr,
-            max(1, grid[0]), max(1, grid[1]), max(1, grid[2]),
-            max(1, block[0]), max(1, block[1]), max(1, block[2]),
-            args, shared_mem, s, enable_cooperative_groups)
-
-    cpdef linear_launch(self, size_t size, args, size_t shared_mem=0,
-                        size_t block_max_size=128, stream=None,
-                        bint enable_cooperative_groups=False):
-        # TODO(beam2d): Tune it
-        cdef size_t gridx = min(
-            0x7fffffffUL, (size + block_max_size - 1) // block_max_size)
-        cdef size_t blockx = min(block_max_size, size)
-        s = _get_stream(stream)
-        _launch(
-            self.ptr,
-            gridx, 1, 1, blockx, 1, 1,
-            args,
-            shared_mem, s, enable_cooperative_groups)
+        cdef int dev_id
+        cdef int num_sm
+        cdef int max_grid_size
+        if enable_cooperative_groups:
+            dev_id = device.get_device_id()
+            num_sm = device._get_attributes(dev_id)['MultiProcessorCount']
+            max_grid_size = driver.occupancyMaxActiveBlocksPerMultiprocessor(
+                func, block0 * block1 * block2, shared_mem) * num_sm
+            if grid0 * grid1 * grid2 > max_grid_size:
+                if grid1 == grid2 == 1:
+                    warnings.warn('The grid size will be reduced from {} to {}, '
+                                'as the specified grid size exceeds the limit.'.
+                                format(grid0, max_grid_size))
+                    grid0 = max_grid_size
+                else:
+                    raise ValueError('The specified grid size ({} * {} * {}) '
+                                    'exceeds the limit ({}).'.
+                                    format(grid0, grid1, grid2, max_grid_size))
+            driver.launchCooperativeKernel(
+                func, <int>grid0, grid1, grid2, <int>block0, block1, block2,
+                <int>shared_mem, stream, <intptr_t>kargs.data())
+        else:
+            driver.launchKernel(
+                func, <int>grid0, grid1, grid2, <int>block0, block1, block2,
+                <int>shared_mem, stream, <intptr_t>kargs.data(), <intptr_t>0)
 
 
-cdef class Module:
+    cdef class Function:
 
-    """CUDA kernel module."""
+        """CUDA kernel function."""
 
-    def __init__(self):
-        self.ptr = 0
-        self.mapping = None
+        def __init__(self, Module module, str funcname):
+            self.module = module  # to keep module loaded
+            self.ptr = driver.moduleGetFunction(module.ptr, funcname)
 
-    def __dealloc__(self):
-        if self.ptr:
-            driver.moduleUnload(self.ptr)
+        def __call__(self, tuple grid, tuple block, args, size_t shared_mem=0,
+                    stream=None, enable_cooperative_groups=False):
+            grid = (grid + (1, 1))[:3]
+            block = (block + (1, 1))[:3]
+            s = _get_stream(stream)
+            _launch(
+                self.ptr,
+                max(1, grid[0]), max(1, grid[1]), max(1, grid[2]),
+                max(1, block[0]), max(1, block[1]), max(1, block[2]),
+                args, shared_mem, s, enable_cooperative_groups)
+
+        cpdef linear_launch(self, size_t size, args, size_t shared_mem=0,
+                            size_t block_max_size=128, stream=None,
+                            bint enable_cooperative_groups=False):
+            # TODO(beam2d): Tune it
+            cdef size_t gridx = min(
+                0x7fffffffUL, (size + block_max_size - 1) // block_max_size)
+            cdef size_t blockx = min(block_max_size, size)
+            s = _get_stream(stream)
+            _launch(
+                self.ptr,
+                gridx, 1, 1, blockx, 1, 1,
+                args,
+                shared_mem, s, enable_cooperative_groups)
+
+
+    cdef class Module:
+
+        """CUDA kernel module."""
+
+        def __init__(self):
+            self.ptr = 0
+            self.mapping = None
+
+        def __dealloc__(self):
+            if self.ptr:
+                driver.moduleUnload(self.ptr)
+                self.ptr = 0
+
+        cpdef load_file(self, filename):
+            if isinstance(filename, bytes):
+                filename = filename.decode()
+            runtime._ensure_context()
+            self.ptr = driver.moduleLoad(filename)
+
+        cpdef load(self, bytes cubin):
+            runtime._ensure_context()
+            self.ptr = driver.moduleLoadData(cubin)
+
+        cpdef get_global_var(self, name):
+            if isinstance(name, bytes):
+                name = name.decode()
+            return driver.moduleGetGlobal(self.ptr, name)
+
+        cpdef get_function(self, name):
+            if isinstance(name, bytes):
+                name = name.decode()
+            return Function(self, name)
+
+        cpdef _set_mapping(self, dict mapping):
+            self.mapping = mapping
+
+
+    cdef class LinkState:
+
+        """CUDA link state."""
+
+        def __init__(self):
+            runtime._ensure_context()
+            self.ptr = driver.linkCreate()
+
+        def __dealloc__(self):
+            if self.ptr:
+                driver.linkDestroy(self.ptr)
+                self.ptr = 0
+
+        cpdef add_ptr_data(self, bytes data, unicode name):
+            driver.linkAddData(self.ptr, driver.CU_JIT_INPUT_PTX, data, name)
+
+        cpdef add_ptr_file(self, unicode path):
+            driver.linkAddFile(self.ptr, driver.CU_JIT_INPUT_LIBRARY, path)
+
+        cpdef bytes complete(self):
+            cubin = driver.linkComplete(self.ptr)
+            return cubin
+ELSE:
+    cdef class Function:
+
+        """stub kernel function (to make import possible)"""
+
+        def __init__(self, Module module, str funcname):
+            self.module = module  # to keep module loaded
+            self.ptr = 0 # TODO
+
+        def __call__(self, tuple grid, tuple block, args, size_t shared_mem=0,
+                    stream=None, enable_cooperative_groups=False):
+            pass # TODO
+
+        cpdef linear_launch(self, size_t size, args, size_t shared_mem=0,
+                            size_t block_max_size=128, stream=None,
+                            bint enable_cooperative_groups=False):
+            pass # TODO
+
+
+    cdef class Module:
+
+        """ kernel module."""
+
+        def __init__(self):
+            self.ptr = 0
+            self.mapping = None
+
+        def __dealloc__(self):
+            if self.ptr:
+                #driver.moduleUnload(self.ptr) # TODO
+                self.ptr = 0
+
+        cpdef load_file(self, filename):
+            if isinstance(filename, bytes):
+                filename = filename.decode()
+            runtime._ensure_context()
+            #self.ptr = driver.moduleLoad(filename)
+            self.ptr = 0 # TODO
+
+        cpdef load(self, bytes cubin):
+            runtime._ensure_context()
+            #self.ptr = driver.moduleLoadData(cubin)
+            self.ptr = 0 # TODO
+
+        cpdef get_global_var(self, name):
+            if isinstance(name, bytes):
+                name = name.decode()
+            #return driver.moduleGetGlobal(self.ptr, name)
+            return None # TODO
+
+        cpdef get_function(self, name):
+            if isinstance(name, bytes):
+                name = name.decode()
+            return Function(self, name)
+
+        cpdef _set_mapping(self, dict mapping):
+            self.mapping = mapping
+
+    cdef class LinkState:
+
+        """CUDA link state."""
+
+        def __init__(self):
+            runtime._ensure_context()
             self.ptr = 0
 
-    cpdef load_file(self, filename):
-        if isinstance(filename, bytes):
-            filename = filename.decode()
-        runtime._ensure_context()
-        self.ptr = driver.moduleLoad(filename)
+        def __dealloc__(self):
+            if self.ptr:
+                #driver.linkDestroy(self.ptr)
+                self.ptr = 0
 
-    cpdef load(self, bytes cubin):
-        runtime._ensure_context()
-        self.ptr = driver.moduleLoadData(cubin)
+        cpdef add_ptr_data(self, bytes data, unicode name):
+            #driver.linkAddData(self.ptr, driver.CU_JIT_INPUT_PTX, data, name)
+            pass
 
-    cpdef get_global_var(self, name):
-        if isinstance(name, bytes):
-            name = name.decode()
-        return driver.moduleGetGlobal(self.ptr, name)
+        cpdef add_ptr_file(self, unicode path):
+            #driver.linkAddFile(self.ptr, driver.CU_JIT_INPUT_LIBRARY, path)
+            pass
 
-    cpdef get_function(self, name):
-        if isinstance(name, bytes):
-            name = name.decode()
-        return Function(self, name)
-
-    cpdef _set_mapping(self, dict mapping):
-        self.mapping = mapping
-
-
-cdef class LinkState:
-
-    """CUDA link state."""
-
-    def __init__(self):
-        runtime._ensure_context()
-        self.ptr = driver.linkCreate()
-
-    def __dealloc__(self):
-        if self.ptr:
-            driver.linkDestroy(self.ptr)
-            self.ptr = 0
-
-    cpdef add_ptr_data(self, bytes data, unicode name):
-        driver.linkAddData(self.ptr, driver.CU_JIT_INPUT_PTX, data, name)
-
-    cpdef add_ptr_file(self, unicode path):
-        driver.linkAddFile(self.ptr, driver.CU_JIT_INPUT_LIBRARY, path)
-
-    cpdef bytes complete(self):
-        cubin = driver.linkComplete(self.ptr)
-        return cubin
+        cpdef bytes complete(self):
+            #cubin = driver.linkComplete(self.ptr)
+            #return cubin
+            return None

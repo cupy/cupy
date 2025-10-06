@@ -19,7 +19,7 @@ from cupy.cuda import device  # NOQA
 from cupy.cuda import memory  # NOQA
 from cupy.cuda import memory_hook  # NOQA
 from cupy.cuda import memory_hooks  # NOQA
-from cupy.cuda import pinned_memory  # NOQA
+#from cupy.cuda import pinned_memory  # NOQA
 from cupy.cuda import profiler  # NOQA
 from cupy.cuda import stream  # NOQA
 
@@ -149,11 +149,12 @@ from cupy.cuda.memory import set_allocator  # NOQA
 from cupy.cuda.memory import get_allocator  # NOQA
 from cupy.cuda.memory import UnownedMemory  # NOQA
 from cupy.cuda.memory_hook import MemoryHook  # NOQA
-from cupy.cuda.pinned_memory import alloc_pinned_memory  # NOQA
-from cupy.cuda.pinned_memory import PinnedMemory  # NOQA
-from cupy.cuda.pinned_memory import PinnedMemoryPointer  # NOQA
-from cupy.cuda.pinned_memory import PinnedMemoryPool  # NOQA
-from cupy.cuda.pinned_memory import set_pinned_memory_allocator  # NOQA
+if not _is_ascend:
+    from cupy.cuda.pinned_memory import alloc_pinned_memory  # NOQA
+    from cupy.cuda.pinned_memory import PinnedMemory  # NOQA
+    from cupy.cuda.pinned_memory import PinnedMemoryPointer  # NOQA
+    from cupy.cuda.pinned_memory import PinnedMemoryPool  # NOQA
+    from cupy.cuda.pinned_memory import set_pinned_memory_allocator  # NOQA
 from cupy.cuda.stream import Event  # NOQA
 from cupy.cuda.stream import get_current_stream  # NOQA
 from cupy.cuda.stream import get_elapsed_time  # NOQA
