@@ -1,5 +1,5 @@
 import cython
-import cpython
+cimport cpython
 
 from cupy_backends.ascend.api.acl_types cimport *
 from cupy._core import _dtype
@@ -62,8 +62,8 @@ cdef aclDataType numpy_to_acl_dtype(dtype,
     elif dtype_char == '?':
         return aclDataType.ACL_BOOL
     else:
+        #raise TypeError('dtype is not supported: {}'.format(dtype)) # TODO: consider throw?
         return aclDataType.ACL_DT_UNDEFINED
-        #raise TypeError('dtype is not supported: {}'.format(dtype))
 
 
 # 主转换函数
@@ -152,3 +152,7 @@ cdef aclTensor* cupy_ndarray_to_acl_tensor(_ndarray_base cupy_array) except *:
         if acl_tensor != NULL:
             aclDestroyTensor(acl_tensor)
         raise e
+
+# TODO not impl yet
+cdef object register_acl_ufunc(str opname, object opcfunc) except*:
+    return None

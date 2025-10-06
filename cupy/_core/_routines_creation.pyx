@@ -34,13 +34,16 @@ NUMPY_1x = numpy.__version__ < '2'
 cdef bint _is_ump_enabled = (int(os.environ.get('CUPY_ENABLE_UMP', '0')) != 0)
 
 cdef inline bint is_ump_supported(int device_id) except*:
-    if (_is_ump_enabled
-            # 1 for both HMM/ATS addressing modes
-            # this assumes device_id is a GPU device ordinal (not -1)
-            and runtime.deviceGetAttribute(
-                runtime.cudaDevAttrPageableMemoryAccess, device_id)):
-        return True
-    else:
+    IF CUPY_CANN_VERSION <= 0:
+        if (_is_ump_enabled
+                # 1 for both HMM/ATS addressing modes
+                # this assumes device_id is a GPU device ordinal (not -1)
+                and runtime.deviceGetAttribute(
+                    runtime.cudaDevAttrPageableMemoryAccess, device_id)):
+            return True
+        else:
+            return False
+    ELSE:
         return False
 
 cpdef _ndarray_base array(obj, dtype=None, copy=True, order='K',

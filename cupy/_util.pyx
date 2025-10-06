@@ -5,7 +5,7 @@ import functools
 import os
 import warnings
 
-import cython
+cimport cython
 
 import cupy
 from cupy_backends.cuda.api cimport runtime

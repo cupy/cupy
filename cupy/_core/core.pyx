@@ -16,7 +16,7 @@ from cpython cimport Py_buffer
 import cupy
 from cupy import _environment
 from cupy import _util
-from cupy._core._ufuncs import elementwise_copy
+from cupy._core._ufuncs import elementwise_copy # pure python func, wrap over create_ufunc()
 from cupy._core import flags as _flags
 from cupy._core import syncdetect
 #from cupy import cuda
@@ -24,28 +24,31 @@ from cupy.cuda import memory as memory_module
 from cupy.cuda import stream as stream_mod
 
 from cupy._core cimport _carray
+from cupy._core._carray cimport shape_t
 from cupy._core cimport _dtype
 from cupy._core._dtype cimport get_dtype
 from cupy._core._dtype cimport populate_format
-from cupy._core._kernel import ElementwiseKernel
+from cupy._core._kernel import ElementwiseKernel # only fill_kernel use this
 
 from cupy._core cimport _routines_binary as _binary
-from cupy._core cimport _routines_indexing as _indexing
+#from cupy._core cimport _routines_indexing as _indexing
 from cupy._core cimport _routines_creation as _creation
-from cupy._core cimport _routines_linalg as _linalg
-from cupy._core cimport _routines_logic as _logic
+#from cupy._core cimport _routines_linalg as _linalg
+#from cupy._core cimport _routines_logic as _logic
 from cupy._core cimport _routines_manipulation as _manipulation
 from cupy._core cimport _routines_math as _math
-from cupy._core cimport _routines_sorting as _sorting
-from cupy._core cimport _routines_statistics as _statistics
+#from cupy._core cimport _routines_sorting as _sorting
+#from cupy._core cimport _routines_statistics as _statistics
+
 from cupy._core cimport _scalar
 from cupy._core cimport dlpack
 from cupy._core cimport internal
 from cupy.cuda cimport device
-from cupy.cuda cimport function
+# TODO: ASCEND not yet impl
+#from cupy.cuda cimport function
 from cupy.cuda cimport pinned_memory
 from cupy.cuda cimport memory
-from cupy.cuda cimport stream as stream_module
+from cupy.cuda cimport stream as stream_module  # CUPY TODO: repeated import
 from cupy_backends.cuda cimport stream as _stream_module
 from cupy_backends.cuda.api cimport runtime
 from cupy_backends.cuda.api.runtime import CUDARuntimeError
@@ -941,28 +944,6 @@ cdef class _ndarray_base:
         """
         return _manipulation._ndarray_squeeze(self, axis)
 
-    # -------------------------------------------------------------------------
-    # Item selection and manipulation
-    # -------------------------------------------------------------------------
-    cpdef _ndarray_base take(self, indices, axis=None, out=None):
-        """Returns an array of elements at given indices along the axis.
-
-        .. seealso::
-           :func:`cupy.take` for full documentation,
-           :meth:`numpy.ndarray.take`
-
-        """
-        return _indexing._ndarray_take(self, indices, axis, out)
-
-    cpdef put(self, indices, values, mode='wrap'):
-        """Replaces specified elements of an array with given values.
-
-        .. seealso::
-           :func:`cupy.put` for full documentation,
-           :meth:`numpy.ndarray.put`
-        """
-        return _indexing._ndarray_put(self, indices, values, mode)
-
     cpdef repeat(self, repeats, axis=None):
         """Returns an array with repeated arrays along an axis.
 
@@ -973,395 +954,418 @@ cdef class _ndarray_base:
         """
         return _manipulation._ndarray_repeat(self, repeats, axis)
 
-    cpdef choose(self, choices, out=None, mode='raise'):
-        # TODO(niboshi): Write docstring
-        return _indexing._ndarray_choose(self, choices, out, mode)
+    IF CUPY_CANN_VERSION <= 0: # TODO: indexing later
+        # -------------------------------------------------------------------------
+        # Item selection and manipulation
+        # -------------------------------------------------------------------------
+        cpdef _ndarray_base take(self, indices, axis=None, out=None):
+            """Returns an array of elements at given indices along the axis.
+
+            .. seealso::
+            :func:`cupy.take` for full documentation,
+            :meth:`numpy.ndarray.take`
+
+            """
+            return _indexing._ndarray_take(self, indices, axis, out)
+
+        cpdef put(self, indices, values, mode='wrap'):
+            """Replaces specified elements of an array with given values.
+
+            .. seealso::
+            :func:`cupy.put` for full documentation,
+            :meth:`numpy.ndarray.put`
+            """
+            return _indexing._ndarray_put(self, indices, values, mode)
+
+        cpdef choose(self, choices, out=None, mode='raise'):
+            # TODO(niboshi): Write docstring
+            return _indexing._ndarray_choose(self, choices, out, mode)
 
-    @staticmethod
-    def _check_kind_sort(kind):
-        if kind is not None and kind != "stable":
-            raise ValueError("kind can only be None or 'stable'")
+        @staticmethod
+        def _check_kind_sort(kind):
+            if kind is not None and kind != "stable":
+                raise ValueError("kind can only be None or 'stable'")
 
-    cpdef sort(self, int axis=-1, kind=None):
-        """Sort an array, in-place with a stable sorting algorithm.
+        cpdef sort(self, int axis=-1, kind=None):
+            """Sort an array, in-place with a stable sorting algorithm.
 
-        Args:
-            axis (int): Axis along which to sort. Default is -1, which means
-                sort along the last axis.
-            kind: Default is `None`, which is equivalent to 'stable'. Unlike in
-                NumPy any other options are not accepted here.
+            Args:
+                axis (int): Axis along which to sort. Default is -1, which means
+                    sort along the last axis.
+                kind: Default is `None`, which is equivalent to 'stable'. Unlike in
+                    NumPy any other options are not accepted here.
 
-        .. note::
-           For its implementation reason, ``ndarray.sort`` currently supports
-           only arrays with their own data, and does not fully support ``kind``
-           and ``order`` parameters that ``numpy.ndarray.sort`` does support.
+            .. note::
+            For its implementation reason, ``ndarray.sort`` currently supports
+            only arrays with their own data, and does not fully support ``kind``
+            and ``order`` parameters that ``numpy.ndarray.sort`` does support.
 
-        .. seealso::
-            :func:`cupy.sort` for full documentation,
-            :meth:`numpy.ndarray.sort`
+            .. seealso::
+                :func:`cupy.sort` for full documentation,
+                :meth:`numpy.ndarray.sort`
 
-        """
-        self._check_kind_sort(kind)
-        _sorting._ndarray_sort(self, axis)
+            """
+            self._check_kind_sort(kind)
+            _sorting._ndarray_sort(self, axis)
 
-    cpdef _ndarray_base argsort(self, axis=-1, kind=None):
-        """Returns the indices that would sort an array with stable sorting
+        cpdef _ndarray_base argsort(self, axis=-1, kind=None):
+            """Returns the indices that would sort an array with stable sorting
 
-        Args:
-            axis (int or None): Axis along which to sort. Default is -1, which
-                means sort along the last axis. If None is supplied, the array
-                is flattened before sorting.
-            kind: Default is `None`, which is equivalent to 'stable'. Unlike in
-                NumPy any other options are not accepted here.
+            Args:
+                axis (int or None): Axis along which to sort. Default is -1, which
+                    means sort along the last axis. If None is supplied, the array
+                    is flattened before sorting.
+                kind: Default is `None`, which is equivalent to 'stable'. Unlike in
+                    NumPy any other options are not accepted here.
 
-        Returns:
-            cupy.ndarray: Array of indices that sort the array.
+            Returns:
+                cupy.ndarray: Array of indices that sort the array.
 
-        .. seealso::
-            :func:`cupy.argsort` for full documentation,
-            :meth:`numpy.ndarray.argsort`
+            .. seealso::
+                :func:`cupy.argsort` for full documentation,
+                :meth:`numpy.ndarray.argsort`
 
-        """
-        self._check_kind_sort(kind)
-        return _sorting._ndarray_argsort(self, axis)
+            """
+            self._check_kind_sort(kind)
+            return _sorting._ndarray_argsort(self, axis)
 
-    cpdef partition(self, kth, int axis=-1):
-        """Partitions an array.
+        cpdef partition(self, kth, int axis=-1):
+            """Partitions an array.
 
-        Args:
-            kth (int or sequence of ints): Element index to partition by. If
-                supplied with a sequence of k-th it will partition all elements
-                indexed by k-th of them into their sorted position at once.
+            Args:
+                kth (int or sequence of ints): Element index to partition by. If
+                    supplied with a sequence of k-th it will partition all elements
+                    indexed by k-th of them into their sorted position at once.
 
-            axis (int): Axis along which to sort. Default is -1, which means
-                sort along the last axis.
+                axis (int): Axis along which to sort. Default is -1, which means
+                    sort along the last axis.
 
-        .. seealso::
-            :func:`cupy.partition` for full documentation,
-            :meth:`numpy.ndarray.partition`
+            .. seealso::
+                :func:`cupy.partition` for full documentation,
+                :meth:`numpy.ndarray.partition`
 
-        """
-        _sorting._ndarray_partition(self, kth, axis)
+            """
+            _sorting._ndarray_partition(self, kth, axis)
 
-    cpdef _ndarray_base argpartition(self, kth, axis=-1):
-        """Returns the indices that would partially sort an array.
+        cpdef _ndarray_base argpartition(self, kth, axis=-1):
+            """Returns the indices that would partially sort an array.
 
-        Args:
-            kth (int or sequence of ints): Element index to partition by. If
-                supplied with a sequence of k-th it will partition all elements
-                indexed by k-th of them into their sorted position at once.
-            axis (int or None): Axis along which to sort. Default is -1, which
-                means sort along the last axis. If None is supplied, the array
-                is flattened before sorting.
+            Args:
+                kth (int or sequence of ints): Element index to partition by. If
+                    supplied with a sequence of k-th it will partition all elements
+                    indexed by k-th of them into their sorted position at once.
+                axis (int or None): Axis along which to sort. Default is -1, which
+                    means sort along the last axis. If None is supplied, the array
+                    is flattened before sorting.
 
-        Returns:
-            cupy.ndarray: Array of the same type and shape as ``a``.
+            Returns:
+                cupy.ndarray: Array of the same type and shape as ``a``.
 
-        .. seealso::
-            :func:`cupy.argpartition` for full documentation,
-            :meth:`numpy.ndarray.argpartition`
+            .. seealso::
+                :func:`cupy.argpartition` for full documentation,
+                :meth:`numpy.ndarray.argpartition`
 
-        """
-        return _sorting._ndarray_argpartition(self, kth, axis)
+            """
+            return _sorting._ndarray_argpartition(self, kth, axis)
 
-    def searchsorted(self, v, side='left', sorter=None):
-        """Finds indices where elements of v should be inserted to maintain order.
+        def searchsorted(self, v, side='left', sorter=None):
+            """Finds indices where elements of v should be inserted to maintain order.
 
-        For full documentation, see :func:`cupy.searchsorted`
+            For full documentation, see :func:`cupy.searchsorted`
 
-        Returns:
+            Returns:
 
-        .. seealso:: :func:`numpy.searchsorted`
+            .. seealso:: :func:`numpy.searchsorted`
 
-        """  # NOQA
-        return cupy.searchsorted(self, v, side, sorter)
+            """  # NOQA
+            return cupy.searchsorted(self, v, side, sorter)
 
-    cpdef tuple nonzero(self):
-        """Return the indices of the elements that are non-zero.
+        cpdef tuple nonzero(self):
+            """Return the indices of the elements that are non-zero.
 
-        Returned Array is containing the indices of the non-zero elements
-        in that dimension.
+            Returned Array is containing the indices of the non-zero elements
+            in that dimension.
 
-        Returns:
-            tuple of arrays: Indices of elements that are non-zero.
+            Returns:
+                tuple of arrays: Indices of elements that are non-zero.
 
-        .. warning::
+            .. warning::
 
-            This function may synchronize the device.
+                This function may synchronize the device.
 
-        .. seealso::
-            :func:`numpy.nonzero`
+            .. seealso::
+                :func:`numpy.nonzero`
 
-        """
-        return _indexing._ndarray_nonzero(self)
+            """
+            return _indexing._ndarray_nonzero(self)
 
-    cpdef _ndarray_base compress(self, condition, axis=None, out=None):
-        """Returns selected slices of this array along given axis.
+        cpdef _ndarray_base compress(self, condition, axis=None, out=None):
+            """Returns selected slices of this array along given axis.
 
-        .. warning::
+            .. warning::
 
-            This function may synchronize the device.
+                This function may synchronize the device.
 
-        .. seealso::
-           :func:`cupy.compress` for full documentation,
-           :meth:`numpy.ndarray.compress`
+            .. seealso::
+            :func:`cupy.compress` for full documentation,
+            :meth:`numpy.ndarray.compress`
 
-        """
-        return _indexing._ndarray_compress(self, condition, axis, out)
+            """
+            return _indexing._ndarray_compress(self, condition, axis, out)
 
-    cpdef _ndarray_base diagonal(self, offset=0, axis1=0, axis2=1):
-        """Returns a view of the specified diagonals.
+        cpdef _ndarray_base diagonal(self, offset=0, axis1=0, axis2=1):
+            """Returns a view of the specified diagonals.
 
-        .. seealso::
-           :func:`cupy.diagonal` for full documentation,
-           :meth:`numpy.ndarray.diagonal`
+            .. seealso::
+            :func:`cupy.diagonal` for full documentation,
+            :meth:`numpy.ndarray.diagonal`
 
-        """
-        return _indexing._ndarray_diagonal(self, offset, axis1, axis2)
+            """
+            return _indexing._ndarray_diagonal(self, offset, axis1, axis2)
 
-    # -------------------------------------------------------------------------
-    # Calculation
-    # -------------------------------------------------------------------------
-    cpdef _ndarray_base max(self, axis=None, out=None, keepdims=False):
-        """Returns the maximum along a given axis.
+        # -------------------------------------------------------------------------
+        # Calculation
+        # -------------------------------------------------------------------------
+        cpdef _ndarray_base max(self, axis=None, out=None, keepdims=False):
+            """Returns the maximum along a given axis.
 
-        .. seealso::
-           :func:`cupy.amax` for full documentation,
-           :meth:`numpy.ndarray.max`
+            .. seealso::
+            :func:`cupy.amax` for full documentation,
+            :meth:`numpy.ndarray.max`
 
-        """
-        return _statistics._ndarray_max(self, axis, out, None, keepdims)
+            """
+            return _statistics._ndarray_max(self, axis, out, None, keepdims)
 
-    cpdef _ndarray_base argmax(
-            self, axis=None, out=None, dtype=None, keepdims=False):
-        """Returns the indices of the maximum along a given axis.
+        cpdef _ndarray_base argmax(
+                self, axis=None, out=None, dtype=None, keepdims=False):
+            """Returns the indices of the maximum along a given axis.
 
-        .. note::
-           ``dtype`` and ``keepdim`` arguments are specific to CuPy. They are
-           not in NumPy.
+            .. note::
+            ``dtype`` and ``keepdim`` arguments are specific to CuPy. They are
+            not in NumPy.
 
-        .. note::
-           ``axis`` argument accepts a tuple of ints, but this is specific to
-           CuPy. NumPy does not support it.
+            .. note::
+            ``axis`` argument accepts a tuple of ints, but this is specific to
+            CuPy. NumPy does not support it.
 
-        .. seealso::
-           :func:`cupy.argmax` for full documentation,
-           :meth:`numpy.ndarray.argmax`
+            .. seealso::
+            :func:`cupy.argmax` for full documentation,
+            :meth:`numpy.ndarray.argmax`
 
-        """
-        return _statistics._ndarray_argmax(self, axis, out, dtype, keepdims)
+            """
+            return _statistics._ndarray_argmax(self, axis, out, dtype, keepdims)
 
-    cpdef _ndarray_base min(self, axis=None, out=None, keepdims=False):
-        """Returns the minimum along a given axis.
+        cpdef _ndarray_base min(self, axis=None, out=None, keepdims=False):
+            """Returns the minimum along a given axis.
 
-        .. seealso::
-           :func:`cupy.amin` for full documentation,
-           :meth:`numpy.ndarray.min`
+            .. seealso::
+            :func:`cupy.amin` for full documentation,
+            :meth:`numpy.ndarray.min`
 
-        """
-        return _statistics._ndarray_min(self, axis, out, None, keepdims)
+            """
+            return _statistics._ndarray_min(self, axis, out, None, keepdims)
 
-    cpdef _ndarray_base argmin(
-            self, axis=None, out=None, dtype=None, keepdims=False):
-        """Returns the indices of the minimum along a given axis.
+        cpdef _ndarray_base argmin(
+                self, axis=None, out=None, dtype=None, keepdims=False):
+            """Returns the indices of the minimum along a given axis.
 
-        .. note::
-           ``dtype`` and ``keepdim`` arguments are specific to CuPy. They are
-           not in NumPy.
+            .. note::
+            ``dtype`` and ``keepdim`` arguments are specific to CuPy. They are
+            not in NumPy.
 
-        .. note::
-           ``axis`` argument accepts a tuple of ints, but this is specific to
-           CuPy. NumPy does not support it.
+            .. note::
+            ``axis`` argument accepts a tuple of ints, but this is specific to
+            CuPy. NumPy does not support it.
 
-        .. seealso::
-           :func:`cupy.argmin` for full documentation,
-           :meth:`numpy.ndarray.argmin`
+            .. seealso::
+            :func:`cupy.argmin` for full documentation,
+            :meth:`numpy.ndarray.argmin`
 
-        """
-        return _statistics._ndarray_argmin(self, axis, out, dtype, keepdims)
+            """
+            return _statistics._ndarray_argmin(self, axis, out, dtype, keepdims)
 
-    cpdef _ndarray_base ptp(self, axis=None, out=None, keepdims=False):
-        """Returns (maximum - minimum) along a given axis.
+        cpdef _ndarray_base ptp(self, axis=None, out=None, keepdims=False):
+            """Returns (maximum - minimum) along a given axis.
 
-        .. seealso::
-           :func:`cupy.ptp` for full documentation,
-           :meth:`numpy.ndarray.ptp`
+            .. seealso::
+            :func:`cupy.ptp` for full documentation,
+            :meth:`numpy.ndarray.ptp`
 
-        """
-        return _statistics._ndarray_ptp(self, axis, out, keepdims)
+            """
+            return _statistics._ndarray_ptp(self, axis, out, keepdims)
 
-    cpdef _ndarray_base clip(self, min=None, max=None, out=None):
-        """Returns an array with values limited to [min, max].
+        cpdef _ndarray_base clip(self, min=None, max=None, out=None):
+            """Returns an array with values limited to [min, max].
 
-        .. seealso::
-           :func:`cupy.clip` for full documentation,
-           :meth:`numpy.ndarray.clip`
+            .. seealso::
+            :func:`cupy.clip` for full documentation,
+            :meth:`numpy.ndarray.clip`
 
-        """
-        return _math._ndarray_clip(self, min, max, out)
+            """
+            return _math._ndarray_clip(self, min, max, out)
 
-    cpdef _ndarray_base round(self, decimals=0, out=None):
-        """Returns an array with values rounded to the given number of decimals.
+        cpdef _ndarray_base round(self, decimals=0, out=None):
+            """Returns an array with values rounded to the given number of decimals.
 
-        .. seealso::
-           :func:`cupy.around` for full documentation,
-           :meth:`numpy.ndarray.round`
+            .. seealso::
+            :func:`cupy.around` for full documentation,
+            :meth:`numpy.ndarray.round`
 
-        """  # NOQA
-        if decimals < 0 and issubclass(self.dtype.type, numpy.integer):
-            return _round_ufunc_neg_uint(self, -decimals, out=out)
-        else:
-            return _round_ufunc(self, decimals, out=out)
+            """  # NOQA
+            if decimals < 0 and issubclass(self.dtype.type, numpy.integer):
+                return _round_ufunc_neg_uint(self, -decimals, out=out)
+            else:
+                return _round_ufunc(self, decimals, out=out)
 
-    cpdef _ndarray_base trace(
-            self, offset=0, axis1=0, axis2=1, dtype=None, out=None):
-        """Returns the sum along diagonals of the array.
+        cpdef _ndarray_base trace(
+                self, offset=0, axis1=0, axis2=1, dtype=None, out=None):
+            """Returns the sum along diagonals of the array.
 
-        .. seealso::
-           :func:`cupy.trace` for full documentation,
-           :meth:`numpy.ndarray.trace`
+            .. seealso::
+            :func:`cupy.trace` for full documentation,
+            :meth:`numpy.ndarray.trace`
 
-        """
-        d = self.diagonal(offset, axis1, axis2)
-        return d.sum(-1, dtype, out, False)
+            """
+            d = self.diagonal(offset, axis1, axis2)
+            return d.sum(-1, dtype, out, False)
 
-    cpdef _ndarray_base sum(
-            self, axis=None, dtype=None, out=None, keepdims=False):
-        """Returns the sum along a given axis.
+        cpdef _ndarray_base sum(
+                self, axis=None, dtype=None, out=None, keepdims=False):
+            """Returns the sum along a given axis.
 
-        .. seealso::
-           :func:`cupy.sum` for full documentation,
-           :meth:`numpy.ndarray.sum`
+            .. seealso::
+            :func:`cupy.sum` for full documentation,
+            :meth:`numpy.ndarray.sum`
 
-        """
-        return _math._ndarray_sum(self, axis, dtype, out, keepdims)
+            """
+            return _math._ndarray_sum(self, axis, dtype, out, keepdims)
 
-    cpdef _ndarray_base cumsum(self, axis=None, dtype=None, out=None):
-        """Returns the cumulative sum of an array along a given axis.
+        cpdef _ndarray_base cumsum(self, axis=None, dtype=None, out=None):
+            """Returns the cumulative sum of an array along a given axis.
 
-        .. seealso::
-           :func:`cupy.cumsum` for full documentation,
-           :meth:`numpy.ndarray.cumsum`
+            .. seealso::
+            :func:`cupy.cumsum` for full documentation,
+            :meth:`numpy.ndarray.cumsum`
 
-        """
-        return _math._ndarray_cumsum(self, axis, dtype, out)
+            """
+            return _math._ndarray_cumsum(self, axis, dtype, out)
 
-    cpdef _ndarray_base mean(
-            self, axis=None, dtype=None, out=None, keepdims=False):
-        """Returns the mean along a given axis.
+        cpdef _ndarray_base mean(
+                self, axis=None, dtype=None, out=None, keepdims=False):
+            """Returns the mean along a given axis.
 
-        .. seealso::
-           :func:`cupy.mean` for full documentation,
-           :meth:`numpy.ndarray.mean`
-
-        """
-        return _statistics._ndarray_mean(self, axis, dtype, out, keepdims)
-
-    cpdef _ndarray_base var(
-            self, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
-        """Returns the variance along a given axis.
-
-        .. seealso::
-           :func:`cupy.var` for full documentation,
-           :meth:`numpy.ndarray.var`
-
-        """
-        return _statistics._ndarray_var(
-            self, axis, dtype, out, ddof, keepdims)
-
-    cpdef _ndarray_base std(
-            self, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
-        """Returns the standard deviation along a given axis.
-
-        .. seealso::
-           :func:`cupy.std` for full documentation,
-           :meth:`numpy.ndarray.std`
-
-        """
-        return _statistics._ndarray_std(self, axis, dtype, out, ddof, keepdims)
-
-    cpdef _ndarray_base prod(
-            self, axis=None, dtype=None, out=None, keepdims=None):
-        """Returns the product along a given axis.
-
-        .. seealso::
-           :func:`cupy.prod` for full documentation,
-           :meth:`numpy.ndarray.prod`
-
-        """
-        return _math._ndarray_prod(self, axis, dtype, out, keepdims)
-
-    cpdef _ndarray_base cumprod(self, axis=None, dtype=None, out=None):
-        """Returns the cumulative product of an array along a given axis.
-
-        .. seealso::
-           :func:`cupy.cumprod` for full documentation,
-           :meth:`numpy.ndarray.cumprod`
-
-        """
-        return _math._ndarray_cumprod(self, axis, dtype, out)
-
-    cpdef _ndarray_base _add_reduceat(self, indices, axis, dtype, out):
-        return _indexing._add_reduceat(self, indices, axis, dtype, out)
-
-    cpdef _ndarray_base all(self, axis=None, out=None, keepdims=False):
-        # TODO(niboshi): Write docstring
-        return _logic._ndarray_all(self, axis, out, keepdims)
-
-    cpdef _ndarray_base any(self, axis=None, out=None, keepdims=False):
-        # TODO(niboshi): Write docstring
-        return _logic._ndarray_any(self, axis, out, keepdims)
-
-    # -------------------------------------------------------------------------
-    # Arithmetic and comparison operations
-    # -------------------------------------------------------------------------
-    # Comparison operators:
-
-    def __richcmp__(object self, object other, int op):
-        if isinstance(other, ndarray):
-            if op == 0:
-                return _logic._ndarray_less(self, other)
-            if op == 1:
-                return _logic._ndarray_less_equal(self, other)
-            if op == 2:
-                return _logic._ndarray_equal(self, other)
-            if op == 3:
-                return _logic._ndarray_not_equal(self, other)
-            if op == 4:
-                return _logic._ndarray_greater(self, other)
-            if op == 5:
-                return _logic._ndarray_greater_equal(self, other)
-        elif not _should_use_rop(self, other):
-            if isinstance(other, numpy.ndarray) and other.ndim == 0:
-                other = other.item()  # Workaround for numpy<1.13
-            if op == 0:
-                return numpy.less(self, other)
-            if op == 1:
-                return numpy.less_equal(self, other)
-            if op == 2:
-                # cupy.ndarray does not support dtype=object, but
-                # allow comparison with None, Ellipsis, and etc.
-                if type(other).__eq__ is object.__eq__ or other is None:
-                    # Implies `other` is neither (Python/NumPy) scalar nor
-                    # ndarray. With object's default __eq__, it never
-                    # equals to an element of cupy.ndarray.
-                    return cupy.zeros(self._shape, dtype=cupy.bool_)
-                return numpy.equal(self, other)
-            if op == 3:
-                if (
-                    type(other).__eq__ is object.__eq__
-                    and type(other).__ne__ is object.__ne__
-                ) or other is None:
-                    # Similar to eq, but ne falls back to `not __eq__`.
-                    return cupy.ones(self._shape, dtype=cupy.bool_)
-                return numpy.not_equal(self, other)
-            if op == 4:
-                return numpy.greater(self, other)
-            if op == 5:
-                return numpy.greater_equal(self, other)
-        return NotImplemented
-
-    # Truth value of an array (bool):
+            .. seealso::
+            :func:`cupy.mean` for full documentation,
+            :meth:`numpy.ndarray.mean`
+
+            """
+            return _statistics._ndarray_mean(self, axis, dtype, out, keepdims)
+
+        cpdef _ndarray_base var(
+                self, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
+            """Returns the variance along a given axis.
+
+            .. seealso::
+            :func:`cupy.var` for full documentation,
+            :meth:`numpy.ndarray.var`
+
+            """
+            return _statistics._ndarray_var(
+                self, axis, dtype, out, ddof, keepdims)
+
+        cpdef _ndarray_base std(
+                self, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
+            """Returns the standard deviation along a given axis.
+
+            .. seealso::
+            :func:`cupy.std` for full documentation,
+            :meth:`numpy.ndarray.std`
+
+            """
+            return _statistics._ndarray_std(self, axis, dtype, out, ddof, keepdims)
+
+        cpdef _ndarray_base prod(
+                self, axis=None, dtype=None, out=None, keepdims=None):
+            """Returns the product along a given axis.
+
+            .. seealso::
+            :func:`cupy.prod` for full documentation,
+            :meth:`numpy.ndarray.prod`
+
+            """
+            return _math._ndarray_prod(self, axis, dtype, out, keepdims)
+
+        cpdef _ndarray_base cumprod(self, axis=None, dtype=None, out=None):
+            """Returns the cumulative product of an array along a given axis.
+
+            .. seealso::
+            :func:`cupy.cumprod` for full documentation,
+            :meth:`numpy.ndarray.cumprod`
+
+            """
+            return _math._ndarray_cumprod(self, axis, dtype, out)
+
+        cpdef _ndarray_base _add_reduceat(self, indices, axis, dtype, out):
+            return _indexing._add_reduceat(self, indices, axis, dtype, out)
+
+        cpdef _ndarray_base all(self, axis=None, out=None, keepdims=False):
+            # TODO(niboshi): Write docstring
+            return _logic._ndarray_all(self, axis, out, keepdims)
+
+        cpdef _ndarray_base any(self, axis=None, out=None, keepdims=False):
+            # TODO(niboshi): Write docstring
+            return _logic._ndarray_any(self, axis, out, keepdims)
+
+        # -------------------------------------------------------------------------
+        # Arithmetic and comparison operations
+        # -------------------------------------------------------------------------
+        # Comparison operators:
+
+        def __richcmp__(object self, object other, int op):
+            if isinstance(other, ndarray):
+                if op == 0:
+                    return _logic._ndarray_less(self, other)
+                if op == 1:
+                    return _logic._ndarray_less_equal(self, other)
+                if op == 2:
+                    return _logic._ndarray_equal(self, other)
+                if op == 3:
+                    return _logic._ndarray_not_equal(self, other)
+                if op == 4:
+                    return _logic._ndarray_greater(self, other)
+                if op == 5:
+                    return _logic._ndarray_greater_equal(self, other)
+            elif not _should_use_rop(self, other):
+                if isinstance(other, numpy.ndarray) and other.ndim == 0:
+                    other = other.item()  # Workaround for numpy<1.13
+                if op == 0:
+                    return numpy.less(self, other)
+                if op == 1:
+                    return numpy.less_equal(self, other)
+                if op == 2:
+                    # cupy.ndarray does not support dtype=object, but
+                    # allow comparison with None, Ellipsis, and etc.
+                    if type(other).__eq__ is object.__eq__ or other is None:
+                        # Implies `other` is neither (Python/NumPy) scalar nor
+                        # ndarray. With object's default __eq__, it never
+                        # equals to an element of cupy.ndarray.
+                        return cupy.zeros(self._shape, dtype=cupy.bool_)
+                    return numpy.equal(self, other)
+                if op == 3:
+                    if (
+                        type(other).__eq__ is object.__eq__
+                        and type(other).__ne__ is object.__ne__
+                    ) or other is None:
+                        # Similar to eq, but ne falls back to `not __eq__`.
+                        return cupy.ones(self._shape, dtype=cupy.bool_)
+                    return numpy.not_equal(self, other)
+                if op == 4:
+                    return numpy.greater(self, other)
+                if op == 5:
+                    return numpy.greater_equal(self, other)
+            return NotImplemented
+
+        # Truth value of an array (bool):
 
     def __nonzero__(self):
         if self.size == 0:
@@ -1377,210 +1381,211 @@ cdef class _ndarray_base:
                    'ambiguous. Use a.any() or a.all()')
             raise ValueError(msg)
 
-    # Unary operations:
+    IF CUPY_CANN_VERSION <= 0: # TODO: math later
+        # Unary operations:
 
-    def __neg__(self):
-        return _math._negative(self)
+        def __neg__(self):
+            return _math._negative(self)
 
-    def __pos__(self):
-        if self.dtype == numpy.bool_:
-            msg = ("Applying '+' to a non-numerical array is ill-defined. "
-                   'Returning a copy, but in the future this will error.')
-            warnings.warn(msg, DeprecationWarning)
-            return self.copy()
-        return _math._positive(self)
+        def __pos__(self):
+            if self.dtype == numpy.bool_:
+                msg = ("Applying '+' to a non-numerical array is ill-defined. "
+                    'Returning a copy, but in the future this will error.')
+                warnings.warn(msg, DeprecationWarning)
+                return self.copy()
+            return _math._positive(self)
 
-    def __abs__(self):
-        return _math._absolute(self)
+        def __abs__(self):
+            return _math._absolute(self)
 
-    def __invert__(self):
-        return _binary._invert(self)
+        def __invert__(self):
+            return _binary._invert(self)
 
-    # Arithmetic:
+        # Arithmetic:
 
-    def __add__(x, y):
-        if isinstance(y, ndarray):
-            return _math._add(x, y)
-        elif _should_use_rop(x, y):
-            return NotImplemented
-        else:
-            return numpy.add(x, y)
+        def __add__(x, y):
+            if isinstance(y, ndarray):
+                return _math._add(x, y)
+            elif _should_use_rop(x, y):
+                return NotImplemented
+            else:
+                return numpy.add(x, y)
 
-    def __sub__(x, y):
-        if isinstance(y, ndarray):
-            return _math._subtract(x, y)
-        elif _should_use_rop(x, y):
-            return NotImplemented
-        else:
-            return numpy.subtract(x, y)
+        def __sub__(x, y):
+            if isinstance(y, ndarray):
+                return _math._subtract(x, y)
+            elif _should_use_rop(x, y):
+                return NotImplemented
+            else:
+                return numpy.subtract(x, y)
 
-    def __mul__(x, y):
-        if isinstance(y, ndarray):
-            return _math._multiply(x, y)
-        elif _should_use_rop(x, y):
-            return NotImplemented
-        else:
-            return numpy.multiply(x, y)
+        def __mul__(x, y):
+            if isinstance(y, ndarray):
+                return _math._multiply(x, y)
+            elif _should_use_rop(x, y):
+                return NotImplemented
+            else:
+                return numpy.multiply(x, y)
 
-    def __matmul__(x, y):
-        if isinstance(y, ndarray):
-            return _linalg.matmul(x, y)
-        elif _should_use_rop(x, y):
-            return NotImplemented
-        else:
-            return numpy.matmul(x, y)
+        def __matmul__(x, y):
+            if isinstance(y, ndarray):
+                return _linalg.matmul(x, y)
+            elif _should_use_rop(x, y):
+                return NotImplemented
+            else:
+                return numpy.matmul(x, y)
 
-    def __div__(x, y):
-        if isinstance(y, ndarray):
-            return _math._divide(x, y)
-        elif _should_use_rop(x, y):
-            return NotImplemented
-        else:
-            return numpy.divide(x, y)
+        def __div__(x, y):
+            if isinstance(y, ndarray):
+                return _math._divide(x, y)
+            elif _should_use_rop(x, y):
+                return NotImplemented
+            else:
+                return numpy.divide(x, y)
 
-    def __truediv__(x, y):
-        if isinstance(y, ndarray):
-            return _math._true_divide(x, y)
-        elif _should_use_rop(x, y):
-            return NotImplemented
-        else:
-            return numpy.true_divide(x, y)
+        def __truediv__(x, y):
+            if isinstance(y, ndarray):
+                return _math._true_divide(x, y)
+            elif _should_use_rop(x, y):
+                return NotImplemented
+            else:
+                return numpy.true_divide(x, y)
 
-    def __floordiv__(x, y):
-        if isinstance(y, ndarray):
-            return _math._floor_divide(x, y)
-        elif _should_use_rop(x, y):
-            return NotImplemented
-        else:
-            return numpy.floor_divide(x, y)
+        def __floordiv__(x, y):
+            if isinstance(y, ndarray):
+                return _math._floor_divide(x, y)
+            elif _should_use_rop(x, y):
+                return NotImplemented
+            else:
+                return numpy.floor_divide(x, y)
 
-    def __mod__(x, y):
-        if isinstance(y, ndarray):
-            return _math._remainder(x, y)
-        elif _should_use_rop(x, y):
-            return NotImplemented
-        else:
-            return numpy.remainder(x, y)
+        def __mod__(x, y):
+            if isinstance(y, ndarray):
+                return _math._remainder(x, y)
+            elif _should_use_rop(x, y):
+                return NotImplemented
+            else:
+                return numpy.remainder(x, y)
 
-    def __divmod__(x, y):
-        if isinstance(y, ndarray):
-            return divmod(x, y)
-        elif _should_use_rop(x, y):
-            return NotImplemented
-        else:
-            return numpy.divmod(x, y)
+        def __divmod__(x, y):
+            if isinstance(y, ndarray):
+                return divmod(x, y)
+            elif _should_use_rop(x, y):
+                return NotImplemented
+            else:
+                return numpy.divmod(x, y)
 
-    def __pow__(x, y, modulo):
-        # Note that we ignore the modulo argument as well as NumPy.
-        if isinstance(y, ndarray):
-            return _math._power(x, y)
-        elif _should_use_rop(x, y):
-            return NotImplemented
-        else:
-            return numpy.power(x, y)
+        def __pow__(x, y, modulo):
+            # Note that we ignore the modulo argument as well as NumPy.
+            if isinstance(y, ndarray):
+                return _math._power(x, y)
+            elif _should_use_rop(x, y):
+                return NotImplemented
+            else:
+                return numpy.power(x, y)
 
-    def __lshift__(x, y):
-        if isinstance(y, ndarray):
-            return _binary._left_shift(x, y)
-        elif _should_use_rop(x, y):
-            return NotImplemented
-        else:
-            return numpy.left_shift(x, y)
+        def __lshift__(x, y):
+            if isinstance(y, ndarray):
+                return _binary._left_shift(x, y)
+            elif _should_use_rop(x, y):
+                return NotImplemented
+            else:
+                return numpy.left_shift(x, y)
 
-    def __rshift__(x, y):
-        if isinstance(y, ndarray):
-            return _binary._right_shift(x, y)
-        elif _should_use_rop(x, y):
-            return NotImplemented
-        else:
-            return numpy.right_shift(x, y)
+        def __rshift__(x, y):
+            if isinstance(y, ndarray):
+                return _binary._right_shift(x, y)
+            elif _should_use_rop(x, y):
+                return NotImplemented
+            else:
+                return numpy.right_shift(x, y)
 
-    def __and__(x, y):
-        if isinstance(y, ndarray):
-            return _binary._bitwise_and(x, y)
-        elif _should_use_rop(x, y):
-            return NotImplemented
-        else:
-            return numpy.bitwise_and(x, y)
+        def __and__(x, y):
+            if isinstance(y, ndarray):
+                return _binary._bitwise_and(x, y)
+            elif _should_use_rop(x, y):
+                return NotImplemented
+            else:
+                return numpy.bitwise_and(x, y)
 
-    def __or__(x, y):
-        if isinstance(y, ndarray):
-            return _binary._bitwise_or(x, y)
-        elif _should_use_rop(x, y):
-            return NotImplemented
-        else:
-            return numpy.bitwise_or(x, y)
+        def __or__(x, y):
+            if isinstance(y, ndarray):
+                return _binary._bitwise_or(x, y)
+            elif _should_use_rop(x, y):
+                return NotImplemented
+            else:
+                return numpy.bitwise_or(x, y)
 
-    def __xor__(x, y):
-        if isinstance(y, ndarray):
-            return _binary._bitwise_xor(x, y)
-        elif _should_use_rop(x, y):
-            return NotImplemented
-        else:
-            return numpy.bitwise_xor(x, y)
+        def __xor__(x, y):
+            if isinstance(y, ndarray):
+                return _binary._bitwise_xor(x, y)
+            elif _should_use_rop(x, y):
+                return NotImplemented
+            else:
+                return numpy.bitwise_xor(x, y)
 
-    # Arithmetic, in-place:
+        # Arithmetic, in-place:
 
-    def __iadd__(self, other):
-        return _math._add(self, other, self)
+        def __iadd__(self, other):
+            return _math._add(self, other, self)
 
-    def __isub__(self, other):
-        return _math._subtract(self, other, self)
+        def __isub__(self, other):
+            return _math._subtract(self, other, self)
 
-    def __imul__(self, other):
-        return _math._multiply(self, other, self)
+        def __imul__(self, other):
+            return _math._multiply(self, other, self)
 
-    def __idiv__(self, other):
-        return _math._divide(self, other, self)
+        def __idiv__(self, other):
+            return _math._divide(self, other, self)
 
-    def __itruediv__(self, other):
-        return _math._true_divide(self, other, self)
+        def __itruediv__(self, other):
+            return _math._true_divide(self, other, self)
 
-    def __ifloordiv__(self, other):
-        return _math._floor_divide(self, other, self)
+        def __ifloordiv__(self, other):
+            return _math._floor_divide(self, other, self)
 
-    def __imod__(self, other):
-        return _math._remainder(self, other, self)
+        def __imod__(self, other):
+            return _math._remainder(self, other, self)
 
-    def __ipow__(self, other):
-        return _math._power(self, other, self)
+        def __ipow__(self, other):
+            return _math._power(self, other, self)
 
-    def __ilshift__(self, other):
-        return _binary._left_shift(self, other, self)
+        def __ilshift__(self, other):
+            return _binary._left_shift(self, other, self)
 
-    def __irshift__(self, other):
-        return _binary._right_shift(self, other, self)
+        def __irshift__(self, other):
+            return _binary._right_shift(self, other, self)
 
-    def __iand__(self, other):
-        return _binary._bitwise_and(self, other, self)
+        def __iand__(self, other):
+            return _binary._bitwise_and(self, other, self)
 
-    def __ior__(self, other):
-        return _binary._bitwise_or(self, other, self)
+        def __ior__(self, other):
+            return _binary._bitwise_or(self, other, self)
 
-    def __ixor__(self, other):
-        return _binary._bitwise_xor(self, other, self)
+        def __ixor__(self, other):
+            return _binary._bitwise_xor(self, other, self)
 
-    cpdef _ndarray_base conj(self):
-        return _math._ndarray_conj(self)
+        cpdef _ndarray_base conj(self):
+            return _math._ndarray_conj(self)
 
-    cpdef _ndarray_base conjugate(self):
-        return _math._ndarray_conj(self)
+        cpdef _ndarray_base conjugate(self):
+            return _math._ndarray_conj(self)
 
-    @property
-    def real(self):
-        return _math._ndarray_real_getter(self)
+        @property
+        def real(self):
+            return _math._ndarray_real_getter(self)
 
-    @real.setter
-    def real(self, value):
-        _math._ndarray_real_setter(self, value)
+        @real.setter
+        def real(self, value):
+            _math._ndarray_real_setter(self, value)
 
-    @property
-    def imag(self):
-        return _math._ndarray_imag_getter(self)
+        @property
+        def imag(self):
+            return _math._ndarray_imag_getter(self)
 
-    @imag.setter
-    def imag(self, value):
-        _math._ndarray_imag_setter(self, value)
+        @imag.setter
+        def imag(self, value):
+            _math._ndarray_imag_setter(self, value)
 
     # -------------------------------------------------------------------------
     # Special methods
@@ -1634,221 +1639,223 @@ cdef class _ndarray_base:
             raise TypeError('len() of unsized object')
         return self._shape[0]
 
-    def __getitem__(self, slices):
-        """x.__getitem__(y) <==> x[y]
+    IF CUPY_CANN_VERSION <= 0: # TODO indexing later
+        def __getitem__(self, slices):
+            """x.__getitem__(y) <==> x[y]
 
-        Supports both basic and advanced indexing.
+            Supports both basic and advanced indexing.
 
-        .. note::
+            .. note::
 
-            Currently, it does not support ``slices`` that consists of more
-            than one boolean arrays
+                Currently, it does not support ``slices`` that consists of more
+                than one boolean arrays
 
-        .. note::
+            .. note::
 
-           CuPy handles out-of-bounds indices differently from NumPy.
-           NumPy handles them by raising an error, but CuPy wraps around them.
-
-        Example:
-
-            >>> a = cupy.arange(3)
-            >>> a[[1, 3]]
-            array([1, 0])
-
-        """
-        return _indexing._ndarray_getitem(self, slices)
-
-    def __setitem__(self, slices, value):
-        """x.__setitem__(slices, y) <==> x[slices] = y
-
-        Supports both basic and advanced indexing.
-
-        .. note::
-
-            Currently, it does not support ``slices`` that consists of more
-            than one boolean arrays
-
-        .. note::
-
-            CuPy handles out-of-bounds indices differently from NumPy when
-            using integer array indexing.
+            CuPy handles out-of-bounds indices differently from NumPy.
             NumPy handles them by raising an error, but CuPy wraps around them.
 
-            >>> import cupy
-            >>> x = cupy.arange(3)
-            >>> x[[1, 3]] = 10
-            >>> x
-            array([10, 10,  2])
+            Example:
 
-        .. note::
+                >>> a = cupy.arange(3)
+                >>> a[[1, 3]]
+                array([1, 0])
 
-            The behavior differs from NumPy when integer arrays in ``slices``
-            reference the same location multiple times.
-            In that case, the value that is actually stored is undefined.
+            """
+            return _indexing._ndarray_getitem(self, slices)
 
-            >>> import cupy
-            >>> a = cupy.zeros((2,))
-            >>> i = cupy.arange(10000) % 2
-            >>> v = cupy.arange(10000).astype(cupy.float64)
-            >>> a[i] = v
-            >>> a  # doctest: +SKIP
-            array([9150., 9151.])
+        def __setitem__(self, slices, value):
+            """x.__setitem__(slices, y) <==> x[slices] = y
 
-            On the other hand, NumPy stores the value corresponding to the
-            last index among the indices referencing duplicate locations.
+            Supports both basic and advanced indexing.
 
-            >>> import numpy
-            >>> a_cpu = numpy.zeros((2,))
-            >>> i_cpu = numpy.arange(10000) % 2
-            >>> v_cpu = numpy.arange(10000).astype(numpy.float64)
-            >>> a_cpu[i_cpu] = v_cpu
-            >>> a_cpu
-            array([9998., 9999.])
+            .. note::
 
-        """
-        if _util.ENABLE_SLICE_COPY and (
-                type(slices) is slice
-                and slices == slice(None, None, None)
-                and isinstance(value, numpy.ndarray)
-        ):
-            if (self.dtype == value.dtype
-                    and self.shape == value.shape
-                    and (self._f_contiguous or self._c_contiguous)):
-                order = 'F' if self._f_contiguous else 'C'
-                tmp = value.ravel(order)
-                ptr = tmp.ctypes.data
-                self.data.copy_from_host_async(ptr, self.nbytes)
+                Currently, it does not support ``slices`` that consists of more
+                than one boolean arrays
+
+            .. note::
+
+                CuPy handles out-of-bounds indices differently from NumPy when
+                using integer array indexing.
+                NumPy handles them by raising an error, but CuPy wraps around them.
+
+                >>> import cupy
+                >>> x = cupy.arange(3)
+                >>> x[[1, 3]] = 10
+                >>> x
+                array([10, 10,  2])
+
+            .. note::
+
+                The behavior differs from NumPy when integer arrays in ``slices``
+                reference the same location multiple times.
+                In that case, the value that is actually stored is undefined.
+
+                >>> import cupy
+                >>> a = cupy.zeros((2,))
+                >>> i = cupy.arange(10000) % 2
+                >>> v = cupy.arange(10000).astype(cupy.float64)
+                >>> a[i] = v
+                >>> a  # doctest: +SKIP
+                array([9150., 9151.])
+
+                On the other hand, NumPy stores the value corresponding to the
+                last index among the indices referencing duplicate locations.
+
+                >>> import numpy
+                >>> a_cpu = numpy.zeros((2,))
+                >>> i_cpu = numpy.arange(10000) % 2
+                >>> v_cpu = numpy.arange(10000).astype(numpy.float64)
+                >>> a_cpu[i_cpu] = v_cpu
+                >>> a_cpu
+                array([9998., 9999.])
+
+            """
+            if _util.ENABLE_SLICE_COPY and (
+                    type(slices) is slice
+                    and slices == slice(None, None, None)
+                    and isinstance(value, numpy.ndarray)
+            ):
+                if (self.dtype == value.dtype
+                        and self.shape == value.shape
+                        and (self._f_contiguous or self._c_contiguous)):
+                    order = 'F' if self._f_contiguous else 'C'
+                    tmp = value.ravel(order)
+                    ptr = tmp.ctypes.data
+                    self.data.copy_from_host_async(ptr, self.nbytes)
+                else:
+                    raise ValueError(
+                        'copying a numpy.ndarray to a cupy.ndarray by empty slice '
+                        'assignment must ensure arrays have same shape and dtype')
             else:
-                raise ValueError(
-                    'copying a numpy.ndarray to a cupy.ndarray by empty slice '
-                    'assignment must ensure arrays have same shape and dtype')
-        else:
-            _indexing._ndarray_setitem(self, slices, value)
+                _indexing._ndarray_setitem(self, slices, value)
 
-    def scatter_add(self, slices, value):
-        """Adds given values to specified elements of an array.
+        def scatter_add(self, slices, value):
+            """Adds given values to specified elements of an array.
 
-        .. seealso::
-            :func:`cupyx.scatter_add` for full documentation.
+            .. seealso::
+                :func:`cupyx.scatter_add` for full documentation.
 
-        """
-        warnings.warn(
-            '`ndarray.scatter_add` is deprecated. '
-            'Please use `cupy.add.at` instead.',
-            DeprecationWarning)
-        self._scatter_op(slices, value, 'add')
+            """
+            warnings.warn(
+                '`ndarray.scatter_add` is deprecated. '
+                'Please use `cupy.add.at` instead.',
+                DeprecationWarning)
+            self._scatter_op(slices, value, 'add')
 
-    def scatter_max(self, slices, value):
-        """Stores a maximum value of elements specified by indices to an array.
+        def scatter_max(self, slices, value):
+            """Stores a maximum value of elements specified by indices to an array.
 
-        .. seealso::
-            :func:`cupyx.scatter_max` for full documentation.
+            .. seealso::
+                :func:`cupyx.scatter_max` for full documentation.
 
-        """
-        warnings.warn(
-            '`ndarray.scatter_max` is deprecated '
-            'Please use `cupy.maximum.at` instead.',
-            DeprecationWarning)
-        self._scatter_op(slices, value, 'max')
+            """
+            warnings.warn(
+                '`ndarray.scatter_max` is deprecated '
+                'Please use `cupy.maximum.at` instead.',
+                DeprecationWarning)
+            self._scatter_op(slices, value, 'max')
 
-    def scatter_min(self, slices, value):
-        """Stores a minimum value of elements specified by indices to an array.
+        def scatter_min(self, slices, value):
+            """Stores a minimum value of elements specified by indices to an array.
 
-        .. seealso::
-            :func:`cupyx.scatter_min` for full documentation.
+            .. seealso::
+                :func:`cupyx.scatter_min` for full documentation.
 
-        """
-        warnings.warn(
-            '`ndarray.scatter_min` is deprecated '
-            'Please use `cupy.minimum.at` instead.',
-            DeprecationWarning)
-        self._scatter_op(slices, value, 'min')
+            """
+            warnings.warn(
+                '`ndarray.scatter_min` is deprecated '
+                'Please use `cupy.minimum.at` instead.',
+                DeprecationWarning)
+            self._scatter_op(slices, value, 'min')
 
-    def _scatter_op(self, slices, value, op):
-        _indexing._scatter_op(self, slices, value, op)
+        def _scatter_op(self, slices, value, op):
+            _indexing._scatter_op(self, slices, value, op)
 
     # TODO(okuta): Implement __getslice__
     # TODO(okuta): Implement __setslice__
     # TODO(okuta): Implement __contains__
 
-    # numpy/ufunc compat
-    def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
+    IF CUPY_CANN_VERSION <= 0: # TODO: not impl yet, may be not possible
+        # numpy/ufunc compat
+        def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
 
-        """Apply unary or binary ufunc to this array
+            """Apply unary or binary ufunc to this array
 
-        If binary, only allow if second argument is another cupy ndarray or
-        a number, i.e., raise ValueError instead of silently converting a
-        numpy array.
-        """
-        import cupy  # top-level ufuncs
-        import cupyx.scipy.special  # special ufuncs
-        inout = inputs
-        if 'out' in kwargs:
-            # need to unfold tuple argument in kwargs
-            # TODO(ecastill) GUFuncs support more than one output
-            out = kwargs['out']
-            if len(out) != 1:
-                raise ValueError('The \'out\' parameter must have exactly one '
-                                 'array value')
-            inout += out
-            kwargs['out'] = out[0]
+            If binary, only allow if second argument is another cupy ndarray or
+            a number, i.e., raise ValueError instead of silently converting a
+            numpy array.
+            """
+            import cupy  # top-level ufuncs
+            import cupyx.scipy.special  # special ufuncs
+            inout = inputs
+            if 'out' in kwargs:
+                # need to unfold tuple argument in kwargs
+                # TODO(ecastill) GUFuncs support more than one output
+                out = kwargs['out']
+                if len(out) != 1:
+                    raise ValueError('The \'out\' parameter must have exactly one '
+                                    'array value')
+                inout += out
+                kwargs['out'] = out[0]
 
-        if method in (
-                '__call__', 'outer', 'at', 'reduce', 'accumulate', 'reduceat'
-        ):
-            name = ufunc.__name__
-            try:
-                func = getattr(cupy, name, None) or getattr(
-                    cupyx.scipy.special, name
-                )
-                if method != '__call__':
-                    func = getattr(func, method)
-            except AttributeError:
-                return NotImplemented
-            for x in inout:
-                # numpy.ndarray is handled and then TypeError is raised due to
-                # implicit host-to-device conversion.
-                # Except for numpy.ndarray, types should be supported by
-                # `_kernel._preprocess_args`.
-                check = (hasattr(x, '__cuda_array_interface__')
-                         or hasattr(x, '__cupy_get_ndarray__'))
-                if runtime._is_hip_environment and isinstance(x, ndarray):
-                    check = True
-                if (not check
-                        and not type(x) in _scalar.scalar_type_set
-                        and not isinstance(x, numpy.ndarray)):
+            if method in (
+                    '__call__', 'outer', 'at', 'reduce', 'accumulate', 'reduceat'
+            ):
+                name = ufunc.__name__
+                try:
+                    func = getattr(cupy, name, None) or getattr(
+                        cupyx.scipy.special, name
+                    )
+                    if method != '__call__':
+                        func = getattr(func, method)
+                except AttributeError:
                     return NotImplemented
-            if name in [
-                    'greater', 'greater_equal', 'less', 'less_equal',
-                    'equal', 'not_equal']:
-                # workaround for numpy/numpy#12142
-                inputs = tuple([
-                    x.item()
-                    if isinstance(x, numpy.ndarray) and x.ndim == 0
-                    else x
-                    for x in inputs
-                ])
-            return func(*inputs, **kwargs)
-        else:
-            return NotImplemented
-
-    def __array_function__(self, func, types, args, kwargs):
-        try:
-            module = functools.reduce(
-                getattr, func.__module__.split('.')[1:], cupy)
-            cupy_func = getattr(module, func.__name__)
-        except AttributeError:
-            return NotImplemented
-        if cupy_func is func:
-            # avoid NumPy func
-            return NotImplemented
-        for t in types:
-            for handled_type in _HANDLED_TYPES:
-                if issubclass(t, handled_type):
-                    break
+                for x in inout:
+                    # numpy.ndarray is handled and then TypeError is raised due to
+                    # implicit host-to-device conversion.
+                    # Except for numpy.ndarray, types should be supported by
+                    # `_kernel._preprocess_args`.
+                    check = (hasattr(x, '__cuda_array_interface__')
+                            or hasattr(x, '__cupy_get_ndarray__'))
+                    if runtime._is_hip_environment and isinstance(x, ndarray):
+                        check = True
+                    if (not check
+                            and not type(x) in _scalar.scalar_type_set
+                            and not isinstance(x, numpy.ndarray)):
+                        return NotImplemented
+                if name in [
+                        'greater', 'greater_equal', 'less', 'less_equal',
+                        'equal', 'not_equal']:
+                    # workaround for numpy/numpy#12142
+                    inputs = tuple([
+                        x.item()
+                        if isinstance(x, numpy.ndarray) and x.ndim == 0
+                        else x
+                        for x in inputs
+                    ])
+                return func(*inputs, **kwargs)
             else:
                 return NotImplemented
-        return cupy_func(*args, **kwargs)
+
+        def __array_function__(self, func, types, args, kwargs):
+            try:
+                module = functools.reduce(
+                    getattr, func.__module__.split('.')[1:], cupy)
+                cupy_func = getattr(module, func.__name__)
+            except AttributeError:
+                return NotImplemented
+            if cupy_func is func:
+                # avoid NumPy func
+                return NotImplemented
+            for t in types:
+                for handled_type in _HANDLED_TYPES:
+                    if issubclass(t, handled_type):
+                        break
+                else:
+                    return NotImplemented
+            return cupy_func(*args, **kwargs)
 
     # Conversion:
 
@@ -1881,18 +1888,19 @@ cdef class _ndarray_base:
     def __format__(self, format_spec):
         return format(self.get(), format_spec)
 
-    # -------------------------------------------------------------------------
-    # Methods outside of the ndarray main documentation
-    # -------------------------------------------------------------------------
-    def dot(self, _ndarray_base b, _ndarray_base out=None):
-        """Returns the dot product with given array.
+    IF CUPY_CANN_VERSION <= 0: # TODO: not impl yet
+        # -------------------------------------------------------------------------
+        # Methods outside of the ndarray main documentation
+        # -------------------------------------------------------------------------
+        def dot(self, _ndarray_base b, _ndarray_base out=None):
+            """Returns the dot product with given array.
 
-        .. seealso::
-           :func:`cupy.dot` for full documentation,
-           :meth:`numpy.ndarray.dot`
+            .. seealso::
+            :func:`cupy.dot` for full documentation,
+            :meth:`numpy.ndarray.dot`
 
-        """
-        return _linalg.dot(self, b, out)
+            """
+            return _linalg.dot(self, b, out)
 
     # -------------------------------------------------------------------------
     # Cupy specific attributes and methods
@@ -2169,8 +2177,9 @@ cdef class _ndarray_base:
             self._f_contiguous = True
             self._update_c_contiguity()
 
-    cdef function.CPointer get_pointer(self):
-        return _CArray_from_ndarray(self)
+    IF CUPY_CANN_VERSION <= 0: # ASCEND does not support from kernel pointer
+        cdef function.CPointer get_pointer(self):
+            return _CArray_from_ndarray(self)
 
     cpdef object toDlpack(self):
         """Zero-copy conversion to a DLPack tensor.
