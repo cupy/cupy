@@ -1054,7 +1054,7 @@ cdef _unlock_no_gc(recursive_mutex& lock, bint gc_mode):
     lock.unlock()
 
 
-cdef class LockAndNoGc:
+cdef class _LockAndNoGc:
     """A context manager that ensures single-thread execution
     and no garbage collection in the wrapped code.
     The purpose of disabling GC is to prevent unexpected recursion.
@@ -1065,7 +1065,7 @@ cdef class LockAndNoGc:
     cdef bint _gc
 
     def __init__(self):
-        raise TypeError("cannot create LockAndNoGC from Python")
+        raise TypeError("cannot create _LockAndNoGc from Python")
 
     def __cinit__(self):
         self._lock = NULL
@@ -1078,9 +1078,32 @@ cdef class LockAndNoGc:
 
 
 cdef lock_and_no_gc(recursive_mutex& lock):
-    cdef LockAndNoGc self = LockAndNoGc.__new__(LockAndNoGc)
+    cdef _LockAndNoGc self = _LockAndNoGc.__new__(_LockAndNoGc)
     self._lock = &lock
     return self
+
+
+def _test_lock_and_no_gc():
+    # Test function defined here as it requires the C++ mutex
+    import gc
+    cdef recursive_mutex lock
+    ctx = lock_and_no_gc(lock)
+
+    assert gc.isenabled()
+    if lock.try_lock():
+        lock.unlock()
+    else:
+        raise AssertionError("lock held too early")
+
+    with ctx:
+        assert not gc.isenabled()
+        lock.release()
+        lock.acquire()
+    assert gc.isenabled()
+    if lock.try_lock():
+        lock.unlock()
+    else:
+        raise AssertionError("lock not released by end")
 
 
 @cython.final
