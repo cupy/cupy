@@ -224,6 +224,7 @@ cpdef function.Module compile_with_cache(
 
     options = assemble_cupy_compiler_options(options)
 
+    # here, do not `from cuda import compiler`,  to avoid circular import
     return cuda.compiler._compile_module_with_cache(
         source, options, arch, cachd_dir, extra_source, backend,
         enable_cooperative_groups=enable_cooperative_groups,

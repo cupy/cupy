@@ -13,7 +13,8 @@ import tempfile
 import warnings
 
 from cupy.cuda import device
-from cupy.cuda import function
+#from cupy.cuda import function
+from cupy import cuda
 from cupy.cuda import get_rocm_path
 from cupy_backends.cuda.api import driver
 from cupy_backends.cuda.api import runtime
@@ -586,7 +587,7 @@ def _compile_with_cache_cuda(
     key_src = key_src.encode('utf-8')
     name = _hash_hexdigest(key_src) + '.cubin'
 
-    mod = function.Module()
+    mod = cuda.function.Module()
 
     if not cache_in_memory:
         # Read from disk cache
@@ -619,7 +620,7 @@ def _compile_with_cache_cuda(
             log_stream, cache_in_memory, jitify)
         if _is_cudadevrt_needed(options):
             # for separate compilation
-            ls = function.LinkState()
+            ls = cuda.function.LinkState()
             ls.add_ptr_data(ptx, 'cupy.ptx')
             _cudadevrt = _get_cudadevrt_path()
             ls.add_ptr_file(_cudadevrt)
@@ -925,7 +926,7 @@ def _compile_with_cache_hip(source, options, arch, cache_dir, extra_source,
     key_src = key_src.encode('utf-8')
     name = _hash_hexdigest(key_src) + '.hsaco'
 
-    mod = function.Module()
+    mod = cuda.function.Module()
 
     if not cache_in_memory:
         # Read from disk cache
