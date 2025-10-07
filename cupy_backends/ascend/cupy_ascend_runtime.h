@@ -9,7 +9,10 @@ constexpr int ASCEND_DEFAULT_STREAM_PRIORITY = 1; // TODO: value
 
 extern "C" {
 
-bool ascend_environment = true; // 环境标识符改为Ascend
+bool ascend_environment = true; //  backend name: Ascend
+
+// IMPORTANT: AscendCL requires explicit initialization and finalization
+// These calls (aclInit, aclFinalize) should be integrated into the main application lifecycle.
 
 // Error handling
 const char* cudaGetErrorName(cudaError_t aclError) {
@@ -33,24 +36,24 @@ cudaError_t cudaGetLastError() {
 
 cudaError_t cudaDriverGetVersion(int *driverVersion) {
     // CANN driver package version might be obtained through other means (e.g., system info).
-    *driverVersion = 820; // Placeholder: Assuming CANN 8.0
+    *driverVersion = 820; // TODO: Assuming CANN 8.2
     return ACL_SUCCESS;
 }
 
 cudaError_t cudaRuntimeGetVersion(int *runtimeVersion) {
     // TODO: aclsysGetCANNVersion(aclCANNPackageName name, aclCANNPackageVersion *version);
-    *runtimeVersion = 820; // Placeholder: Assuming CANN 8.0
+    *runtimeVersion = 820; // Placeholder: Assuming CANN 8.2
     return ACL_SUCCESS;
 }
 
-// Primary context management
+// Primary context management, cuDevicePrimaryCtxRetain()
 CUresult cuDevicePrimaryCtxRelease(CUdevice dev) {
     // WARNING: Missing direct equivalent in AscendCL for primary context release.
     // Context management in AscendCL is explicit via aclrtDestroyContext.
     return ACL_ERROR_FEATURE_UNSUPPORTED;
 }
 
-// Context management
+// Context management: 
 CUresult cuCtxGetCurrent(CUcontext *ctx) {
     aclError ret = aclrtGetCurrentContext(ctx);
     return ret;
@@ -62,7 +65,12 @@ CUresult cuCtxSetCurrent(CUcontext ctx) {
 }
 
 CUresult cuCtxCreate(CUcontext* pctx, unsigned int flags, CUdevice dev) {
-    aclError ret = aclrtCreateContext(pctx, dev); // Note: AscendCL's create context might not use flags the same way
+    // ASCEND create context and stream when SetDevice
+    // while CUDA create Context and binding to Device
+    aclError ret = aclrtSetDevice(dev);
+    ret = aclrtGetCurrentContext(pctx);
+    // Note: AscendCL's create context might not use flags the same way
+    // aclrtCtxSetSysParamOpt() could be the API to set flags
     return ret;
 }
 
@@ -71,17 +79,6 @@ CUresult cuCtxDestroy(CUcontext ctx) {
     return ret;
 }
 
-CUresult cuCtxGetDevice(CUdevice *device) {
-    // WARNING: Might not have direct equivalent. Often retrieved from context or set device.
-    // Implementation depends on how device is associated with context in AscendCL.
-    return ACL_ERROR_FEATURE_UNSUPPORTED;
-}
-
-// CUdevice operations -> Replaced with AscendCL device operations
-cudaError_t cudaGetDevice(int *deviceId) {
-    aclError ret = aclrtGetDevice(deviceId); 
-    return ret;
-}
 
 #ifndef CUPY_INSTALL_USE_ASCEND
 cudaError_t cudaGetDeviceProperties(cudaDeviceProp *prop, int device) {
@@ -102,7 +99,7 @@ cudaError_t cudaGetDeviceProperties(cudaDeviceProp *prop, int device) {
 cudaError_t cudaDeviceGetAttribute(int* pi, cudaDeviceAttr attr,
                                    int deviceId) {
     // // WARNING: AscendCL device attributes are different from CUDA/HIP.
-    // // Use aclrtGetDeviceProperties or specific aclGet* functions. [8](@ref)
+    // // Use aclrtGetDeviceProperties or specific aclGet* functions. 
     // // This is a placeholder and requires mapping CUDA attributes to AscendCL properties.
     // aclrtDeviceProp prop;
     // aclError ret = aclrtGetDeviceProperties(&prop, deviceId);
@@ -144,8 +141,14 @@ cudaError_t cudaSetDevice(int deviceId) {
     return ret;
 }
 
+// Returns the device handle (int) for the current context
+cudaError_t cudaGetDevice(CUdevice *deviceId) {
+    aclError ret = aclrtGetDevice(deviceId); 
+    return ret;
+}
+
 cudaError_t cudaDeviceSynchronize() {
-    aclError ret = aclrtSynchronizeDevice(); // Synchronizes all streams on the current device. [8](@ref)
+    aclError ret = aclrtSynchronizeDevice(); // Synchronizes all streams on the current device. 
     return ret;
 }
 
@@ -181,7 +184,7 @@ cudaError_t cudaDeviceSetLimit(cudaLimit limit, size_t value) {
 #ifndef CUPY_INSTALL_USE_ASCEND
     // IPC operations
     cudaError_t cudaIpcCloseMemHandle(void* devPtr) {
-        // WARNING: Inter-Process Communication (IPC) handles likely not directly portable to AscendCL. [8](@ref)
+        // WARNING: Inter-Process Communication (IPC) handles likely not directly portable to AscendCL. 
         // AscendCL may have different mechanisms for resource sharing between processes.
         return ACL_ERROR_FEATURE_UNSUPPORTED;
     }
@@ -231,6 +234,7 @@ cudaError_t cudaMalloc(void** ptr, size_t size) {
 
 cudaError_t cudaMallocAsync(...) {
     // WARNING: Missing direct equivalent in AscendCL for asynchronous allocation.
+    throw std::runtime_error("cudaMallocAsync() is not supported on ASCEND");
     return ACL_ERROR_FEATURE_UNSUPPORTED;
 }
 
@@ -253,6 +257,7 @@ cudaError_t cudaHostUnregister(...) {
 cudaError_t cudaMallocManaged(void** ptr, size_t size, unsigned int flags) {
     // WARNING: Unified Memory Management (UVM) might be handled differently in AscendCL.
     // Check AscendCL documentation for similar concepts (e.g., aclrtMalloc with specific flags).
+    throw std::runtime_error("cudaMallocManaged() is not supported on ASCEND");
     return ACL_ERROR_FEATURE_UNSUPPORTED;
 }
 
@@ -404,19 +409,21 @@ cudaError_t cudaMemsetAsync(void* dst, int value, size_t sizeBytes,
 cudaError_t cudaMemAdvise(const void *devPtr, size_t count,
                           cudaMemoryAdvise advice, int device) {
     // WARNING: Missing direct equivalent in AscendCL for memory advice.
+    throw std::runtime_error("cudaMemAdvise() is not supported on ASCEND");
     return ACL_ERROR_FEATURE_UNSUPPORTED;
 }
 
 cudaError_t cudaMemPrefetchAsync(const void *devPtr, size_t count,
 				 int dstDevice, cudaStream_t stream) {
     // WARNING: Missing direct equivalent in AscendCL for async memory prefetch.
+    
     return ACL_ERROR_FEATURE_UNSUPPORTED;
 }
 
 cudaError_t cudaPointerGetAttributes(cudaPointerAttributes *attributes,
                                      const void* ptr) {
     // WARNING: AscendCL's pointer attribute query might differ.
-    // Use aclrtGetPointerInfo or similar functions if available. [8](@ref)
+    // Use aclrtGetPointerInfo or similar functions if available. 
     // This is a complex function to map, requires detailed understanding of AscendCL memory model.
     return ACL_ERROR_FEATURE_UNSUPPORTED;
 }
@@ -473,9 +480,6 @@ cudaError_t cudaMemPoolSetAttribute(...) {
 
 // Stream and Event
 // AscendCL has its own stream and event types (aclrtStream, aclrtEvent).
-typedef aclmdlRICaptureMode cudaStreamCaptureMode;
-typedef aclmdlRICaptureStatus cudaStreamCaptureStatus;
-
 
 cudaError_t cudaStreamCreate(cudaStream_t stream) {
     aclError ret = aclrtCreateStream(&stream); 
@@ -484,7 +488,7 @@ cudaError_t cudaStreamCreate(cudaStream_t stream) {
 
 cudaError_t cudaStreamCreateWithFlags(cudaStream_t stream,
                                       unsigned int flags) {
-    // WARNING: AscendCL's aclrtCreateStream might not use the same flags as HIP. [8](@ref)
+    // TODO: AscendCL's aclrtCreateStream might not use the same flags as HIP.
     aclError ret = aclrtCreateStreamWithConfig(&stream, ASCEND_DEFAULT_STREAM_PRIORITY, flags); // Check exact API
     return ret;
 }
@@ -492,7 +496,7 @@ cudaError_t cudaStreamCreateWithFlags(cudaStream_t stream,
 cudaError_t cudaStreamCreateWithPriority(cudaStream_t stream,
                                          unsigned int flags,
                                          int priority) {
-    // WARNING: AscendCL might have different priority mechanisms. [8](@ref)
+    // WARNING: AscendCL might have different priority mechanisms.
     aclError ret = aclrtCreateStreamWithConfig(&stream, priority, flags); // Check exact API
     return ret;
 }
@@ -525,7 +529,7 @@ cudaError_t cudaStreamAddCallback(cudaStream_t stream,
 }
 
 cudaError_t cudaLaunchHostFunc(cudaStream_t stream, cudaHostFn_t fn, void* userData) {
-    // WARNING: Missing direct equivalent in AscendCL for host function launch.
+    // TODO:  aclError aclrtSubscribeHostFunc(uint64_t hostFuncThreadId, aclrtStream exeStream);
     return ACL_ERROR_FEATURE_UNSUPPORTED;
 }
 
@@ -548,7 +552,7 @@ cudaError_t cudaEventCreate(cudaEvent_t event) {
 }
 
 cudaError_t cudaEventCreateWithFlags(cudaEvent_t event, unsigned flags) {
-    // WARNING: AscendCL's aclrtCreateEvent might not use the same flags. [8](@ref)
+    // WARNING: AscendCL's aclrtCreateEvent might not use the same flags. 
     aclError ret = aclrtCreateEventWithFlag(&event, flags); // Check exact API
     return ret;
 }
@@ -581,25 +585,57 @@ cudaError_t cudaEventSynchronize(cudaEvent_t event) {
     return ret;
 }
 
+typedef aclmdlRICaptureMode cudaStreamCaptureMode;
+typedef aclmdlRICaptureStatus cudaStreamCaptureStatus;
+typedef aclmdlRI cudaGraph_t;
+
 cudaError_t cudaStreamBeginCapture(cudaStream_t stream,
                                    cudaStreamCaptureMode mode) {
     // WARNING: Missing direct equivalent in AscendCL for stream capture.
-    return ACL_ERROR_FEATURE_UNSUPPORTED;
+    return aclmdlRICaptureBegin(stream, mode);
 }
 
 cudaError_t cudaStreamEndCapture(cudaStream_t stream, cudaGraph_t* pGraph) {
     // WARNING: Missing direct equivalent in AscendCL for stream capture.
-    return ACL_ERROR_FEATURE_UNSUPPORTED;
+    return aclmdlRICaptureEnd(stream, pGraph);
 }
 
 cudaError_t cudaStreamIsCapturing(cudaStream_t stream,
                                   cudaStreamCaptureStatus* pCaptureStatus) {
-    // WARNING: Missing direct equivalent in AscendCL for stream capture. 
+    // TODO:  aclmdlRICaptureGetInfo
     return ACL_ERROR_FEATURE_UNSUPPORTED;
 }
 
-// IMPORTANT: AscendCL requires explicit initialization and finalization
-// These calls (aclInit, aclFinalize) should be integrated into the main application lifecycle.
+// =================================================
+// Ascend has graph, but not sure if they are related with cuGraph
+cudaError_t cudaGraphInstantiate(
+    cudaGraphExec_t* pGraphExec,
+	cudaGraph_t graph,
+	cudaGraphNode_t* pErrorNode,
+	char* pLogBuffer,
+	size_t bufferSize) {
+    return ACL_ERROR_FEATURE_UNSUPPORTED;
+}
+
+cudaError_t cudaGraphDestroy(cudaGraph_t graph) {
+    return ACL_ERROR_FEATURE_UNSUPPORTED;
+}
+
+cudaError_t cudaGraphExecDestroy(cudaGraphExec_t graphExec) {
+    return ACL_ERROR_FEATURE_UNSUPPORTED;
+}
+
+cudaError_t cudaGraphLaunch(cudaGraphExec_t graphExec, cudaStream_t stream) {
+    return ACL_ERROR_FEATURE_UNSUPPORTED;
+}
+
+cudaError_t cudaGraphUpload(...) {
+    return ACL_ERROR_FEATURE_UNSUPPORTED;
+}
+
+cudaError_t cudaGraphDebugDotPrint(cudaGraph_t graph, const char* path, unsigned int flags) {
+    return ACL_ERROR_FEATURE_UNSUPPORTED;
+}
 
 // ================ GPU render API is not supported on ASCEND NPU============================
 #ifndef CUPY_INSTALL_USE_ASCEND
@@ -651,38 +687,6 @@ cudaError_t cudaDestroySurfaceObject(cudaSurfaceObject_t surfObject) {
     return ACL_ERROR_FEATURE_UNSUPPORTED;
 }
 #endif
-
-// =================================================
-// Ascend has graph, but not sure if they are related with cuGraph
-cudaError_t cudaGraphInstantiate(
-    cudaGraphExec_t* pGraphExec,
-	cudaGraph_t graph,
-	cudaGraphNode_t* pErrorNode,
-	char* pLogBuffer,
-	size_t bufferSize) {
-    return ACL_ERROR_FEATURE_UNSUPPORTED;
-}
-
-cudaError_t cudaGraphDestroy(cudaGraph_t graph) {
-    return ACL_ERROR_FEATURE_UNSUPPORTED;
-}
-
-cudaError_t cudaGraphExecDestroy(cudaGraphExec_t graphExec) {
-    return ACL_ERROR_FEATURE_UNSUPPORTED;
-}
-
-cudaError_t cudaGraphLaunch(cudaGraphExec_t graphExec, cudaStream_t stream) {
-    return ACL_ERROR_FEATURE_UNSUPPORTED;
-}
-
-cudaError_t cudaGraphUpload(...) {
-    return ACL_ERROR_FEATURE_UNSUPPORTED;
-}
-
-cudaError_t cudaGraphDebugDotPrint(cudaGraph_t graph, const char* path, unsigned int flags) {
-    return ACL_ERROR_FEATURE_UNSUPPORTED;
-}
-
 
 } // extern "C"
 
