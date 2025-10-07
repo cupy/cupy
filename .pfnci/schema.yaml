@@ -174,8 +174,8 @@ cutensor:
   # https://developer.nvidia.com/cutensor/downloads
   null:
     spec: null
-  "2.0":
-    spec: "2.0.*"
+  "2.3":
+    spec: "2.3.*"
     cuda:
       "12.0":
       "12.1":
@@ -186,6 +186,7 @@ cutensor:
       "12.6":
       "12.8":
       "12.9":
+      "13.0":
 cusparselt:
   # https://docs.nvidia.com/cuda/cusparselt/
   # https://developer.nvidia.com/cusparselt/downloads

@@ -152,11 +152,12 @@ class LinuxGenerator:
 
         # Update alternatives for cuTENSOR for the current CUDA version.
         if matrix.cutensor is not None:
-            lines += [
-                'COPY setup/update-alternatives-cutensor.sh /',
-                'RUN /update-alternatives-cutensor.sh',
-                '',
-            ]
+            cuda_major = matrix.cuda.split('.')[0]
+            lines.append(
+                'ENV LD_LIBRARY_PATH='
+                f'/usr/lib/x86_64-linux-gnu/libcutensor/{cuda_major}'
+                ':${LD_LIBRARY_PATH}'
+            )
 
         # Set environment variables for ROCm.
         if matrix.rocm is not None:
@@ -238,9 +239,12 @@ class LinuxGenerator:
             if cutensor is not None:
                 spec = self.schema['cutensor'][cutensor]['spec']
                 major = cutensor.split('.')[0]
+                cuda_major = cuda.split('.')[0]
                 if apt:
-                    packages.append(f'libcutensor{major}={spec}')
-                    packages.append(f'libcutensor-dev={spec}')
+                    packages.append(
+                        f'libcutensor{major}-cuda-{cuda_major}={spec}')
+                    packages.append(
+                        f'libcutensor{major}-dev-cuda-{cuda_major}={spec}')
                 else:
                     packages.append(f'libcutensor{major}-{spec}')
                     packages.append(f'libcutensor-devel-{spec}')
