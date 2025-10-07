@@ -19,7 +19,6 @@
   optuna: "3"
   mpi4py: null
   cython: "3.0"
-  fastrlock: "latest"
   cuda-python: null
   env:CUPY_ACCELERATORS: "cutensor,cub"
   test: "unit"
@@ -49,7 +48,6 @@
   optuna: "3"
   mpi4py: null
   cython: "3.0"
-  fastrlock: "latest"
   cuda-python: null
   env:CUPY_ACCELERATORS: "cutensor,cub"
   test: "unit"
@@ -79,7 +77,6 @@
   optuna: "3"
   mpi4py: null
   cython: "3.0"
-  fastrlock: "latest"
   cuda-python: null
   env:CUPY_ACCELERATORS: "cutensor,cub"
   test: "unit"
@@ -109,7 +106,6 @@
   optuna: "3"
   mpi4py: null
   cython: "3.0"
-  fastrlock: "latest"
   cuda-python: null
   env:CUPY_ACCELERATORS: "cutensor,cub"
   test: "unit"
@@ -139,7 +135,6 @@
   optuna: "3"
   mpi4py: null
   cython: "3.0"
-  fastrlock: "latest"
   cuda-python: null
   env:CUPY_ACCELERATORS: "cutensor,cub"
   test: "unit"
@@ -169,7 +164,6 @@
   optuna: "3"
   mpi4py: null
   cython: "3.0"
-  fastrlock: "latest"
   cuda-python: null
   env:CUPY_ACCELERATORS: "cutensor,cub"
   test: "unit"
@@ -199,7 +193,6 @@
   optuna: "4"
   mpi4py: null
   cython: "3.0"
-  fastrlock: "latest"
   cuda-python: null
   env:CUPY_ACCELERATORS: "cutensor,cub"
   test: "unit"
@@ -229,7 +222,6 @@
   optuna: "4"
   mpi4py: null
   cython: "3.1"
-  fastrlock: "latest"
   cuda-python: null
   env:CUPY_ACCELERATORS: "cutensor,cub"
   test: "unit"
@@ -259,7 +251,6 @@
   optuna: "4"
   mpi4py: null
   cython: "3.1"
-  fastrlock: "latest"
   cuda-python: null
   env:CUPY_ACCELERATORS: "cutensor,cub"
   test: "unit"
@@ -290,7 +281,6 @@
   optuna: "4"
   mpi4py: null
   cython: "3.1"
-  fastrlock: "latest"
   cuda-python: null
   env:CUPY_ACCELERATORS: "cutensor,cub"
   test: "unit"
@@ -332,7 +322,6 @@
   optuna: "3"
   mpi4py: null
   cython: "3.0"
-  fastrlock: "latest"
   cuda-python: null
   env:CUPY_ACCELERATORS: null
   test: "unit"
@@ -355,7 +344,6 @@
   optuna: "3"
   mpi4py: null
   cython: "3.0"
-  fastrlock: "latest"
   cuda-python: null
   env:CUPY_ACCELERATORS: null
   test: "unit"
@@ -379,7 +367,6 @@
   optuna: "3"
   mpi4py: null
   cython: "3.0"
-  fastrlock: "latest"
   cuda-python: null
   env:CUPY_ACCELERATORS: null
   test: "unit"
@@ -403,7 +390,6 @@
   optuna: "4"
   mpi4py: null
   cython: "3.0"
-  fastrlock: "latest"
   cuda-python: null
   env:CUPY_ACCELERATORS: null
   test: "unit"
@@ -428,7 +414,6 @@
   optuna: "3"
   mpi4py: null
   cython: "3.0"
-  fastrlock: "latest"
   cuda-python: null
   env:CUPY_ACCELERATORS: null
   test: "unit"
@@ -453,7 +438,6 @@
   optuna: "3"
   mpi4py: null
   cython: "3.0"
-  fastrlock: "latest"
   cuda-python: null
   env:CUPY_ACCELERATORS: null
   test: "unit"
@@ -479,7 +463,6 @@
   optuna: "3"
   mpi4py: null
   cython: "3.0"
-  fastrlock: "latest"
   cuda-python: null
   env:CUPY_ACCELERATORS: "cutensor,cub"
   test: "unit-slow"
@@ -509,7 +492,6 @@
   optuna: "3"
   mpi4py: null
   cython: "3.0"
-  fastrlock: "latest"
   cuda-python: null
   env:CUPY_ACCELERATORS: ""
   test: "example"
@@ -536,7 +518,6 @@
   optuna: "pre"
   mpi4py: null
   cython: "3.0"
-  fastrlock: "latest"
   cuda-python: null
   env:CUPY_ACCELERATORS: "cub,cutensor"
   test: "unit"
@@ -562,7 +543,6 @@
   optuna: "4"
   mpi4py: null
   cython: "3.0"
-  fastrlock: "latest"
   cuda-python: "12"
   env:CUPY_ACCELERATORS: "cutensor,cub"
   env:CUPY_USE_CUDA_PYTHON: "1"
