@@ -12,8 +12,9 @@ cimport cython  # NOQA
 from libcpp cimport vector
 
 from cupy._core._dtype cimport get_dtype, _raise_if_invalid_cast
-from cupy._core cimport core
+from cupy._core import _ndarray # for python class `ndarray`
 from cupy._core.core cimport _ndarray_base
+from cupy._core import _routines_creation as _creation
 from cupy._core cimport internal
 from cupy._core._kernel cimport _check_peer_access, _preprocess_args
 
@@ -548,7 +549,7 @@ cpdef _ndarray_base _repeat(_ndarray_base a, repeats, axis=None):
     if axis is None:
         if broadcast:
             a = _reshape(a, (-1, 1))
-            ret = core.ndarray((a.size, repeats[0]), dtype=a.dtype)
+            ret = _ndarray.ndarray((a.size, repeats[0]), dtype=a.dtype)
             if ret.size:
                 elementwise_copy(a, ret)
             return ret.ravel()
@@ -567,7 +568,7 @@ cpdef _ndarray_base _repeat(_ndarray_base a, repeats, axis=None):
 
     ret_shape = list(a.shape)
     ret_shape[axis] = sum(repeats)
-    ret = core.ndarray(ret_shape, dtype=a.dtype)
+    ret = _ndarray.ndarray(ret_shape, dtype=a.dtype)
     a_index = [slice(None)] * len(ret_shape)
     ret_index = list(a_index)
     offset = 0
@@ -654,7 +655,7 @@ cpdef _ndarray_base concatenate_method(
     # Prpare the output array
     shape_t = tuple(shape0)
     if out is None:
-        out = core.ndarray(shape_t, dtype=dtype)
+        out = _ndarray.ndarray(shape_t, dtype=dtype)
     else:
         if len(out.shape) != len(shape_t):
             raise ValueError('Output array has wrong dimensionality')
@@ -815,7 +816,7 @@ IF CUPY_CANN_VERSION <= 0:
         for i, a in enumerate(arrays):
             _check_peer_access(a, device_id)
             ptrs[i] = a.data.ptr
-        x = core.array(ptrs)
+        x = _creation.array(ptrs)
 
         if same_shape_and_contiguous:
             base = internal.prod_sequence(shape[axis:]) // len(arrays)
@@ -833,7 +834,7 @@ IF CUPY_CANN_VERSION <= 0:
             cum += <int>a._shape[axis]
 
         _concatenate_kernel(
-            x, axis, core.array(cum_sizes), core.array(x_strides), out)
+            x, axis, _creation.array(cum_sizes), _creation.array(x_strides), out)
         return out
 
 

@@ -19,6 +19,8 @@ from cupy import _util
 from cupy._core._ufuncs import elementwise_copy # pure python func, wrap over create_ufunc()
 from cupy._core import flags as _flags
 from cupy._core import syncdetect
+from cupy._core import _ndarray
+from cupy._core._ndarray import ndarray
 #from cupy import cuda
 from cupy.cuda import memory as memory_module
 from cupy.cuda import stream as stream_mod
@@ -130,86 +132,6 @@ cdef inline bint is_ump_supported(int device_id) except*:
             return False
     ELSE:
         return False
-
-
-class ndarray(_ndarray_base):
-    """
-    __init__(self, shape, dtype=float, memptr=None, strides=None, order='C')
-
-    Multi-dimensional array on a CUDA device.
-
-    This class implements a subset of methods of :class:`numpy.ndarray`.
-    The difference is that this class allocates the array content on the
-    current GPU device.
-
-    Args:
-        shape (tuple of ints): Length of axes.
-        dtype: Data type. It must be an argument of :class:`numpy.dtype`.
-        memptr (cupy.cuda.MemoryPointer): Pointer to the array content head.
-        strides (tuple of ints or None): Strides of data in memory.
-        order ({'C', 'F'}): Row-major (C-style) or column-major
-            (Fortran-style) order.
-
-    Attributes:
-        base (None or cupy.ndarray): Base array from which this array is
-            created as a view.
-        data (cupy.cuda.MemoryPointer): Pointer to the array content head.
-        ~ndarray.dtype(numpy.dtype): Dtype object of element type.
-
-            .. seealso::
-               `Data type objects (dtype) \
-               <https://numpy.org/doc/stable/reference/arrays.dtypes.html>`_
-        ~ndarray.size (int): Number of elements this array holds.
-
-            This is equivalent to product over the shape tuple.
-
-            .. seealso:: :attr:`numpy.ndarray.size`
-
-    """
-
-    __module__ = 'cupy'
-    __slots__ = []
-
-    def __new__(cls, *args, _obj=None, _no_init=False, **kwargs):
-        x = super().__new__(cls, *args, **kwargs)
-        if _no_init:
-            return x
-        x._init(*args, **kwargs)
-        if cls is not ndarray:
-            x.__array_finalize__(_obj)
-        return x
-
-    def __init__(self, *args, **kwargs):
-        # Prevent from calling the super class `_ndarray_base.__init__()` as
-        # it is used to check accidental direct instantiation of underlaying
-        # `_ndarray_base` extention.
-        pass
-
-    def __array_finalize__(self, obj):
-        pass
-
-    # We provide the Python-level wrapper of `view` method to follow NumPy's
-    # API signature, as it seems that Cython's `cpdef`d methods does not take
-    # an argument named `type`. Cython also does not take starargs
-    # (`*args` and `**kwargs`) for `cpdef`d methods so we can not interpret the
-    # arguments `dtype` and `type` from them.
-    def view(self, dtype=None, type=None):
-        """Returns a view of the array.
-
-        Args:
-            dtype: If this is different from the data type of the array, the
-                returned view reinterpret the memory sequence as an array of
-                this type.
-
-        Returns:
-            cupy.ndarray: A view of the array. A reference to the original
-            array is stored at the :attr:`~ndarray.base` attribute.
-
-        .. seealso:: :meth:`numpy.ndarray.view`
-
-        """
-        return super(ndarray, self).view(dtype=dtype, array_class=type)
-
 
 cdef class _ndarray_base:
 
@@ -670,11 +592,11 @@ cdef class _ndarray_base:
 
         if order_char == b'K':
             strides = internal._get_strides_for_order_K(self, dtype)
-            newarray = _creation._ndarray_init(ndarray, self._shape, dtype, None)
+            newarray = _creation._ndarray_init(_ndarray.ndarray, self._shape, dtype, None)
             # TODO(niboshi): Confirm update_x_contiguity flags
             newarray._set_shape_and_strides(self._shape, strides, True, True)
         else:
-            newarray = ndarray(self.shape, dtype=dtype, order=chr(order_char))
+            newarray = _ndarray.ndarray(self.shape, dtype=dtype, order=chr(order_char))
 
         if self.size == 0:
             # skip copy
@@ -754,7 +676,7 @@ cdef class _ndarray_base:
             x = self.astype(self.dtype, order=order, copy=False)
         finally:
             runtime.setDevice(prev_device)
-        newarray = _creation._ndarray_init(ndarray, x._shape, x.dtype, None)
+        newarray = _creation._ndarray_init(_ndarray.ndarray, x._shape, x.dtype, None)
         if not x._c_contiguous and not x._f_contiguous:
             raise NotImplementedError(
                 'CuPy cannot copy non-contiguous array between devices.')
@@ -2185,9 +2107,8 @@ cdef class _ndarray_base:
             self._f_contiguous = True
             self._update_c_contiguity()
 
-    IF CUPY_CANN_VERSION <= 0: # ASCEND does not support from kernel pointer
-        cdef function.CPointer get_pointer(self):
-            return _CArray_from_ndarray(self)
+    cdef function.CPointer get_pointer(self):
+        return _CArray_from_ndarray(self)
 
     cpdef object toDlpack(self):
         """Zero-copy conversion to a DLPack tensor.
@@ -2225,7 +2146,7 @@ cdef inline _carray.CArray _CArray_from_ndarray(_ndarray_base arr):
     return carr
 
 
-_HANDLED_TYPES = (ndarray, numpy.ndarray)
+_HANDLED_TYPES = (_ndarray.ndarray, numpy.ndarray)
 
 # not sure where this min_scalar_type should be put? core.pyx not the best
 

@@ -6,8 +6,6 @@ from cupy.cuda.function cimport CPointer
 from cupy._core._carray cimport shape_t
 from cupy._core._carray cimport strides_t
 
-# after split out creation, some types must be exported
-cdef object ndarray
 
 cdef class _ndarray_base:
     cdef:
@@ -45,7 +43,7 @@ cdef class _ndarray_base:
     cpdef _ndarray_base ravel(self, order=*)
     cpdef _ndarray_base squeeze(self, axis=*)
     cpdef repeat(self, repeats, axis=*)
-    IF CUPY_CANN_VERSION <= 0:
+    IF CUPY_CANN_VERSION <= 0: # TODO ASCEND indexing, math
         cpdef _ndarray_base take(self, indices, axis=*, out=*)
         cpdef put(self, indices, values, mode=*)
         cpdef choose(self, choices, out=*, mode=*)
@@ -93,5 +91,5 @@ cdef class _ndarray_base:
                              bint update_f_contiguity, obj)
     cpdef _set_contiguous_strides(
         self, Py_ssize_t itemsize, bint is_c_contiguous)
-    #cdef CPointer get_pointer(self)
+    cdef CPointer get_pointer(self)
     cpdef object toDlpack(self)
