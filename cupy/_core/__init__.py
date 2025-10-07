@@ -71,7 +71,7 @@ from cupy._core.core._routines_creation import ascontiguousarray  # NOQA
 from cupy._core.core._routines_creation import asfortranarray  # NOQA
 from cupy._core.core._routines_math import divmode # NOQA
 from cupy._core.core import elementwise_copy  # NOQA
-from cupy._core.core import ndarray  # NOQA
+from cupy._core._ndarray import ndarray  # NOQA
 from cupy._core.dlpack import fromDlpack  # NOQA
 from cupy._core.dlpack import from_dlpack  # NOQA
 from cupy._core.internal import complete_slice  # NOQA

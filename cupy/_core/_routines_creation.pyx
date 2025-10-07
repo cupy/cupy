@@ -12,7 +12,8 @@ import warnings
 import cupy
 from cupy import _util
 from cupy._core._ufuncs import elementwise_copy
-from cupy._core.core cimport _ndarray_base, ndarray
+from cupy._core.core cimport _ndarray_base
+from cupy._core._ndarray import ndarray
 from cupy._core.core cimport shape_t, strides_t
 from cupy._core cimport _dtype
 from cupy._core._dtype cimport get_dtype
