@@ -182,6 +182,7 @@ _ascend_files = [
     'cupy._core.core',  # define _ndarray_base
     'cupy._core.flags',
     'cupy._core.internal',
+    'cupy._core._accelerator', # ascend does not need it, less code edit
     'cupy._core.dlpack',
     'cupy._core.numpy_allocator',
     'cupy._core._memory_range',
@@ -191,7 +192,20 @@ _ascend_files = [
     ('cupy._core._routines_binary', ['cupy/_ascend/_core/_routines_binary.pyx']),
     'cupy._core._routines_creation',
     'cupy._core._routines_manipulation',
-    #('cupy._core._reduction', ['cupy/_ascend/_core/_routines_reduction.pyx'])
+    #('cupy._core._routines_logic', ['cupy/_ascend/_core/_routines_logic.pyx']),
+    #('cupy._core._reduction', ['cupy/_ascend/_core/_routines_reduction.pyx']),  # not easy job
+    #('cupy._core._routines_indexing', ['cupy/_ascend/_core/_routines_indexing.pyx']), # not so difficult
+    #('cupy._core._routines_sorting', ['cupy/_ascend/_core/_routines_binary.pyx']), # 
+    #('cupy._core._routines_statistic', ['cupy/_ascend/_core/_routines_statistic.pyx']), # ascend partially support
+    # =========== Future work ================
+    # 'cupy.cuda.graph',  # not sure if possible
+    # 'cupy.cuda.texture', # GPU only 
+    # 'cupy._core._accelerator', # cuda only 
+    # 'cupy._core._cub_reduction', # gpu only
+    # 'cupy.fft._cache',  # TODO
+    # 'cupy.fft._callback', # TODO
+    # 'cupy.lib._polynomial', # TODO
+    # 'cupyx.scipy.ndimage._bbox_slices', # possible, TODO
 ]
 
 # Libraries required for cudart_static

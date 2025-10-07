@@ -1120,7 +1120,7 @@ cpdef ElementwiseKernel(in_params, out_params, operation,
     ops_ = _ops_from_tuples((in_params, out_params), operation)
     return ufunc(
         name, ops_.nin, ops_.nout, ops_, preamble,
-        doc, default_casting=default_casting, out_ops=None,
+        doc, default_casting=None, out_ops=None,
         cutensor_op=None, scatter_op=None)
 
 

@@ -13,6 +13,7 @@ cdef _ndarray_base _ndarray_cumsum(_ndarray_base self, axis, dtype, out)
 cdef _ndarray_base _ndarray_cumprod(_ndarray_base self, axis, dtype, out)
 cdef _ndarray_base _ndarray_clip(_ndarray_base self, a_min, a_max, out)
 
+# TODO: ASCEND not sure if nan op is supported
 #cpdef _ndarray_base _nansum(_ndarray_base a, axis, dtype, out, keepdims)
 #cpdef _ndarray_base _nanprod(_ndarray_base a, axis, dtype, out, keepdims)
 
@@ -20,6 +21,7 @@ cpdef enum scan_op:
     SCAN_SUM = 0
     SCAN_PROD = 1
 
+# TODO: ASCEND not yet impl
 #cdef _ndarray_base scan(_ndarray_base a, op, dtype=*, _ndarray_base out=*,
 #                        incomplete=*, chunk_size=*)
 
