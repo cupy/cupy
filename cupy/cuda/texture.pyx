@@ -4,7 +4,7 @@ from libc.string cimport memset as c_memset
 import numpy
 
 from cupy._core.core cimport _ndarray_base
-from cupy._core.core cimport _internal_ascontiguousarray
+from cupy._core._routines_creation cimport _internal_ascontiguousarray
 from cupy_backends.cuda.api cimport runtime
 from cupy_backends.cuda.api.runtime cimport Array, \
     ChannelFormatDesc, ChannelFormatKind, \

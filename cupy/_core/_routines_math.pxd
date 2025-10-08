@@ -37,3 +37,6 @@ cdef object _floor_divide
 cdef object _remainder
 cdef object _absolute
 cdef object _sqrt
+cdef object _round_ufunc
+cdef object _round_ufunc_neg_uint
+cdef object _divmod

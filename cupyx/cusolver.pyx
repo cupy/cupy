@@ -13,19 +13,18 @@ from cupy_backends.cuda.libs.cusolver cimport (  # noqa
     sgesvd_bufferSize, dgesvd_bufferSize, cgesvd_bufferSize, zgesvd_bufferSize,
     sgeqrf_bufferSize, dgeqrf_bufferSize, cgeqrf_bufferSize, zgeqrf_bufferSize,
     sorgqr_bufferSize, dorgqr_bufferSize, cungqr_bufferSize, zungqr_bufferSize)
-
-from cupy.cuda cimport memory
-from cupy._core.core cimport _internal_ascontiguousarray
-from cupy._core.core cimport _ndarray_init, _ndarray_base
-
-import cupy as _cupy
 from cupy_backends.cuda.api import runtime as _runtime
 from cupy_backends.cuda.libs import cublas as _cublas
 from cupy_backends.cuda.libs import cusolver as _cusolver
 from cupy.cuda import device as _device
-from cupy._core import _routines_linalg as _linalg
-from cupy import _util
+from cupy.cuda cimport memory
 
+from cupy._core.core cimport _ndarray_base
+from cupy._core import _routines_linalg as _linalg
+from cupy._core cimport _routines_creation as _creation
+
+from cupy import _util
+import cupy as _cupy
 import cupyx as _cupyx
 
 
@@ -318,14 +317,14 @@ cpdef _gesvd_batched(a, a_dtype, full_matrices, compute_uv, overwrite_a):
     k = n  # = min(m, n) where m >= n is ensured above
     if compute_uv:
         if full_matrices:
-            u = _ndarray_init(_cupy.ndarray, (batch_size, m, m), a_dtype, None)
+            u = _creation._ndarray_init(_cupy.ndarray, (batch_size, m, m), a_dtype, None)
             vt = x[..., :n]
             job_u = b'A'
             job_vt = b'O'
             u_ptr, vt_ptr = u.data.ptr, 0
         else:
             u = x
-            vt = _ndarray_init(
+            vt = _creation._ndarray_init(
                 _cupy.ndarray, (batch_size, k, n), a_dtype, None)
             job_u = b'O'
             job_vt = b'S'
@@ -334,10 +333,10 @@ cpdef _gesvd_batched(a, a_dtype, full_matrices, compute_uv, overwrite_a):
         u_ptr, vt_ptr = 0, 0  # Use nullptr
         job_u = b'N'
         job_vt = b'N'
-    s = _ndarray_init(_cupy.ndarray, (batch_size, k), s_dtype, None)
+    s = _creation._ndarray_init(_cupy.ndarray, (batch_size, k), s_dtype, None)
     s_ptr = s.data.ptr
     cdef intptr_t handle = _device.get_cusolver_handle()
-    dev_info = _ndarray_init(_cupy.ndarray, (batch_size,), _numpy.int32, None)
+    dev_info = _creation._ndarray_init(_cupy.ndarray, (batch_size,), _numpy.int32, None)
     info_ptr = dev_info.data.ptr
 
     if a_dtype == 'f':
@@ -854,7 +853,7 @@ def csrlsvqr(A, b, tol=0, reorder=1):
 
     tol = max(tol, 0)
     m = A.shape[0]
-    b = _internal_ascontiguousarray(b)
+    b = _creation._internal_ascontiguousarray(b)
     x = _cupy.empty((m,), dtype=dtype)
     singularity = _numpy.empty((1,), _numpy.int32)
 
@@ -892,7 +891,7 @@ cpdef _geqrf_orgqr_batched(a, mode):
     x_ptr = ap.data.ptr
 
     cdef intptr_t handle = _device.get_cusolver_handle()
-    dev_info = _ndarray_init(_cupy.ndarray, (batch_size,), _numpy.int32, None)
+    dev_info = _creation._ndarray_init(_cupy.ndarray, (batch_size,), _numpy.int32, None)
     info_ptr = dev_info.data.ptr
 
     cdef geqrf_ptr geqrf
