@@ -148,7 +148,11 @@ extern "C" {
     DECLARE_ACL_BINARY_OPS_FUNC(BitwiseXorTensor)
     //DECLARE_ACL_BINARY_OPS_FUNC(BitwiseXorScalar)
 
-    //DECLARE_ACL_UNARY_OPS_FUNC(BitwiseNot)
+    // BitwiseNot has no inplace version, so can not use the macro to clear
+    aclError aclop_BitwiseNot(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream) {
+        return aclUnaryOpRun(self, out,
+        aclnnBitwiseNotGetWorkspaceSize, aclnnBitwiseNot, stream, false);
+    }
 
     DECLARE_ACL_UNARY_OPS_FUNC(Cos)
 

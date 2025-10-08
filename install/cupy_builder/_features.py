@@ -189,13 +189,12 @@ _ascend_files = [
     'cupy._core._optimize_config',
     ('cupy._core._kernel', ['cupy/_ascend/_core/_kernel.pyx']),
     ('cupy._core._routines_math', ['cupy/_core/_routines_math.pyx']),
-    ('cupy._core._routines_binary', ['cupy/_ascend/_core/_routines_binary.pyx']),
+    ('cupy._core._routines_binary', ['cupy/_core/_routines_binary.pyx']),
     'cupy._core._routines_creation',
     'cupy._core._routines_manipulation',
     #('cupy._core._routines_logic', ['cupy/_ascend/_core/_routines_logic.pyx']),
     #('cupy._core._reduction', ['cupy/_ascend/_core/_routines_reduction.pyx']),  # not easy job
     #('cupy._core._routines_indexing', ['cupy/_ascend/_core/_routines_indexing.pyx']), # not so difficult
-    #('cupy._core._routines_sorting', ['cupy/_ascend/_core/_routines_binary.pyx']), # 
     #('cupy._core._routines_statistic', ['cupy/_ascend/_core/_routines_statistic.pyx']), # ascend partially support
     # =========== Future work ================
     # 'cupy.cuda.graph',  # not sure if possible

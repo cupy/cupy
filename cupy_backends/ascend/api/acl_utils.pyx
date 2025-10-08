@@ -294,8 +294,16 @@ cdef aclError launch_acl_func(string opname, tuple ops, bint inplace, size_t str
 cdef extern from "../acl_math.h" nogil:
     aclError aclop_BitwiseAndTensor(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream)
     aclError aclop_InplaceBitwiseAndTensor(aclTensor* self, const aclTensor* other, aclrtStream stream)
+    aclError aclop_BitwiseOrTensor(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream)
+    aclError aclop_InplaceBitwiseOrTensor(aclTensor* self, const aclTensor* other, aclrtStream stream)
+    aclError aclop_BitwiseXorTensor(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream)
+    aclError aclop_InplaceBitwiseXorTensor(aclTensor* self, const aclTensor* other, aclrtStream stream)
+    aclError aclop_BitwiseNotTensor(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream)
+    aclError aclop_InplaceBitwiseNotTensor(aclTensor* self, const aclTensor* other, aclrtStream stream)
+
     aclError aclop_Add(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream)
     #aclError aclop_InplaceAdd(aclTensor* self, const aclTensor* other, aclrtStream stream)
+
     aclError aclop_Cos(const aclTensor* self,  aclTensor* out, aclrtStream stream)
     aclError aclop_InplaceCos(aclTensor* self,  aclrtStream stream)
 
