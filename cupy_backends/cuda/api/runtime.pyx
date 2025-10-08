@@ -952,9 +952,6 @@ cdef _HostFnFuncUnmanaged(void* func_arg) with gil:
 
 cpdef streamAddCallback(intptr_t stream, callback, intptr_t arg,
                         unsigned int flags=0):
-    if _is_hip_environment and stream == 0:
-        raise RuntimeError('HIP does not allow adding callbacks to the '
-                           'default (null) stream')
     func_arg = (callback, arg)
     cpython.Py_INCREF(func_arg)
     with nogil:
@@ -969,8 +966,6 @@ cpdef launchHostFunc(intptr_t stream, callback, intptr_t arg):
     # capture, as the reference to the callback/arg will be DECREFed on the
     # first callback.
     # Eventually this should be replaced by `_launchHostFuncUnmanaged`.
-    if _is_hip_environment:
-        raise RuntimeError('This feature is not supported on HIP')
 
     func_arg = (callback, arg)
     cpython.Py_INCREF(func_arg)
@@ -1007,8 +1002,6 @@ cpdef streamWaitEvent(intptr_t stream, intptr_t event, unsigned int flags=0):
 
 
 cpdef streamBeginCapture(intptr_t stream, int mode=streamCaptureModeRelaxed):
-    if _is_hip_environment:
-        raise RuntimeError('streamBeginCapture is not supported in ROCm')
     # TODO(leofang): check and raise if stream == 0?
     with nogil:
         status = cudaStreamBeginCapture(<driver.Stream>stream,
@@ -1019,8 +1012,6 @@ cpdef streamBeginCapture(intptr_t stream, int mode=streamCaptureModeRelaxed):
 cpdef intptr_t streamEndCapture(intptr_t stream) except? 0:
     # TODO(leofang): check and raise if stream == 0?
     cdef Graph g
-    if _is_hip_environment:
-        raise RuntimeError('streamEndCapture is not supported in ROCm')
     with nogil:
         status = cudaStreamEndCapture(<driver.Stream>stream, &g)
     check_status(status)
@@ -1029,8 +1020,6 @@ cpdef intptr_t streamEndCapture(intptr_t stream) except? 0:
 
 cpdef bint streamIsCapturing(intptr_t stream) except*:
     cdef StreamCaptureStatus s
-    if _is_hip_environment:
-        raise RuntimeError('streamIsCapturing is not supported in ROCm')
     with nogil:
         status = cudaStreamIsCapturing(<driver.Stream>stream, &s)
     check_status(status)  # cudaErrorStreamCaptureImplicit could be raised here
