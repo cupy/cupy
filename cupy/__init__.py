@@ -1092,7 +1092,7 @@ if _numpy.__version__ < "2":
 else:
 
     _template = '''\
-''This function has been removed in NumPy v2.
+This function has been removed in NumPy v2.
 Use {recommendation} instead.
 '''
 
