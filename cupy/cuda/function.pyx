@@ -322,7 +322,7 @@ ELSE:
 
     cdef class Module:
 
-        """ kernel module."""
+        """ kernel module (binary kernel file loaded into memory)"""
 
         def __init__(self):
             self.ptr = 0
@@ -330,7 +330,8 @@ ELSE:
 
         def __dealloc__(self):
             if self.ptr:
-                #driver.moduleUnload(self.ptr) # TODO
+                #driver.moduleUnload(self.ptr)
+                # TODO: Ascend aclrtLoadBinary, -> backend abstrction layer
                 self.ptr = 0
 
         cpdef load_file(self, filename):
@@ -361,7 +362,7 @@ ELSE:
 
     cdef class LinkState:
 
-        """CUDA link state."""
+        """link state."""
 
         def __init__(self):
             runtime._ensure_context()

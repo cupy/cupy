@@ -12,7 +12,7 @@
 g++ -std=c++11 aclnn_*_demo.cpp \
   -I/usr/local/Ascend/ascend-toolkit/latest/include \
   -L/usr/local/Ascend/ascend-toolkit/latest/lib64 \
-  -lascendcl -lnnopbase -lopapi \
+  -lascendcl -lnnopbase -laclnn_math -laclnn_rand -llibacl_op_compiler -lopapi \
   -o aclnn_matmul_demo
 */
 

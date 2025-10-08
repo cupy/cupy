@@ -11,6 +11,8 @@ cimport cython  # NOQA
 from libcpp cimport vector
 from cupy.cuda cimport device
 from cupy.cuda cimport memory
+from cupy.cuda cimport function
+from cupy.cuda cimport stream as stream_module
 from cupy._core cimport _carray
 from cupy._core cimport _scalar
 from cupy._core._dtype cimport get_dtype, _raise_if_invalid_cast
@@ -19,9 +21,17 @@ from cupy._core._scalar import get_typename as _get_typename
 from cupy._core cimport core
 
 from cupy._core._routines_creation cimport _ndarray_init
+from cupy._core cimport _routines_creation as _creation
 from cupy._core.core cimport _ndarray_base
 from cupy._core cimport internal
 from cupy_backends.cuda.api cimport runtime
+from cupy_backends.ascend.api.acl_utils cimport launch_acl_func
+
+cdef inline size_t _get_stream(stream) except *:
+    if stream is None:
+        return stream_module.get_current_stream_ptr()
+    else:
+        return stream.ptr
 
 cdef inline bint _contains_zero(const shape_t& v) except? -1:
     for i in range(v.size()):
@@ -678,8 +688,8 @@ cdef inline bint _check_should_use_weak_scalar(
 
 
 cdef class ufunc:
-    """Universal function (simplifed for ascend aclnnop), 
-    remove: where_param, cutensor, fusion, function.Function
+    """Universal function (simplifed for ascend), 
+    remove: cutensor, fusion, reduce func, modified function.Function(kernel)
     Attributes:
         ~ufunc.name (str): The name of the universal function.
         ~ufunc.nin (int): Number of input arguments.
@@ -690,13 +700,21 @@ cdef class ufunc:
         readonly Py_ssize_t nin
         readonly Py_ssize_t nout
         readonly Py_ssize_t nargs
-        readonly object name
+        readonly object name # such as "cupy_add"
         readonly _Ops _ops  # normal routines
         # routines based on explicitly given output dtype
-        readonly _Ops _out_ops
-        readonly object _default_casting
-        readonly str _scatter_op
-        readonly tuple _params
+        readonly _Ops _out_ops # CIndexer
+        readonly object _preamble # string, prefix for kernel source
+        readonly object _loop_prep # string, code insert at the beginning of loop
+        readonly object _default_casting # default to 'same_kind'
+        readonly object _cutensor_op # cutensor only, ignore
+        readonly int _cutensor_alpha
+        readonly int _cutensor_gamma
+        readonly str _scatter_op # inplace op
+        readonly tuple _params # in + out + other
+        readonly tuple _params_with_where # mask condition, op element only if True
+        readonly dict _routine_cache # what is the difference between _kernel_memo
+        readonly dict _kernel_memo # cache dict of key->kernel
         readonly object _doc
         public object __doc__
         readonly object __name__
@@ -712,6 +730,8 @@ cdef class ufunc:
         self.nargs = nin + nout
         self._ops = ops
         self._out_ops = out_ops
+        self._preamble = preamble
+        self._loop_prep = loop_prep
         self._doc = doc
         self.__doc__ = doc
         if default_casting is None:
@@ -729,6 +749,11 @@ cdef class ufunc:
         _other_params = (
             ParameterInfo('CIndexer _ind', False),)
         self._params = _in_params + _out_params + _other_params
+        self._params_with_where = (
+            _in_params + (ParameterInfo('T _where', False),)
+            + _out_params + _other_params)
+        self._routine_cache = {}
+        self._kernel_memo = {}
 
     def __repr__(self):
         return '<ufunc \'%s\'>' % self.name
@@ -811,10 +836,30 @@ cdef class ufunc:
         out_args = _preprocess_optional_args(dev_id, out_args, False)
         given_out_args = [o for o in out_args if o is not None]
 
+        # TODO(kataoka): Typecheck `in_args` w.r.t. `casting` (before
+        # broadcast).
+        if has_where:
+            where_args, _ = _preprocess_args(dev_id, (where,), False)
+            x = where_args[0]
+            if isinstance(x, _ndarray_base):
+                # NumPy seems using casting=safe here
+                if x.dtype != bool:
+                    raise TypeError(
+                        f'Cannot cast array data from {x.dtype!r} to '
+                        f'{get_dtype(bool)!r} according to the rule \'safe\'')
+            else:
+                # NumPy does not seem raising TypeError.
+                # CuPy does not have to support `where=object()` etc. and
+                # `_preprocess_args` rejects it anyway.
+                where_args[0] = _scalar.CScalar.from_numpy_scalar_with_dtype(
+                    x, numpy.bool_)
+        else:
+            where_args = []
+
         # _copy_in_args_if_needed updates in_args
         _copy_in_args_if_needed(in_args, given_out_args)
-        #_copy_in_args_if_needed(where_args, given_out_args)
-        broad_values = in_args + given_out_args
+        _copy_in_args_if_needed(where_args, given_out_args)
+        broad_values = in_args + where_args + given_out_args
         # _broadcast updates shape
         internal._broadcast_core(broad_values, shape)
 
@@ -862,9 +907,11 @@ cdef class ufunc:
         arginfos = _get_arginfos(inout_args)
 
         # TODO: ASCEND launch kernel
-        kern = self._get_ufunc_kernel(dev_id, op, arginfos, has_where)
-        kern.linear_launch(indexer.size, inout_args)
-
+        runtime._ensure_context()
+        s = _get_stream(None)
+        launch_acl_func(self.name, inout_args, False, s)
+        #kern = self._get_ufunc_kernel(dev_id, op, arginfos, has_where)
+        #kern.linear_launch(indexer.size, inout_args)
         return ret
 
     cdef str _get_name_with_type(self, tuple arginfos, bint has_where):
@@ -880,6 +927,37 @@ cdef class ufunc:
             elif arginfo.is_scalar():
                 inout_type_words.append(dtype.rstrip('0123456789'))
         return '{}__{}'.format(name, '_'.join(inout_type_words))
+    
+    """
+    #  ASCEND does not need this func
+    cdef function.Function _get_ufunc_kernel(
+            self, int dev_id, _Op op, tuple arginfos, bint has_where):
+        cdef function.Function kern
+        key = (dev_id, op, arginfos, has_where)
+        kern = self._kernel_memo.get(key, None)
+        if kern is None:
+            name = self._get_name_with_type(arginfos, has_where)
+            params = self._params_with_where if has_where else self._params
+            kern = _get_ufunc_kernel(
+                op.in_types, op.out_types, op.routine, arginfos, has_where,
+                params, name, self._preamble, self._loop_prep)
+            self._kernel_memo[key] = kern
+        return kern
+    """
+    def outer(self, A, B, **kwargs):
+        """Apply the ufunc operation to all pairs of elements in A and B.
+
+        .. seealso::
+           :meth:`numpy.ufunc.outer`
+
+        """
+        A = _creation.array(A)
+        B = _creation.array(B)
+        ndim_a = A.ndim
+        ndim_b = B.ndim
+        A = A.reshape(A.shape + (1,) * ndim_b)
+        B = B.reshape((1,) * ndim_a + B.shape)
+        return self(A, B, **kwargs)
 
     def at(self, a, indices, b=None):
         """Apply in place operation on the operand ``a`` for elements
@@ -930,7 +1008,7 @@ def _ufunc_doc_signature_formatter(ufunc, name):
 
 
 cdef class _Op:
-
+    # dtypes are coded as single char, routine is callable?
     def __init__(
             self, tuple in_types, tuple out_types, object routine,
             object error_func):
@@ -978,7 +1056,7 @@ cdef class _Op:
 
 
 cdef class _Ops:
-
+    # why multiple _Op is needed?
     def __init__(self, tuple ops):
         assert len(ops) > 0
         nin = ops[0].nin
@@ -1145,7 +1223,7 @@ cdef _ops_from_tuples(object ops, routine):
     """
     return _Ops(tuple(ops_))
 
-# TODO: ASCEND not impl yet
+# TODO: ASCEND not impl yet, reduction function
 cpdef create_reduction_func(
         name, ops, routine=None, identity=None, preamble='',
         sort_reduce_axis=True):

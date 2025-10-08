@@ -504,7 +504,8 @@ class CUPY_ascend(Feature):
         self.includes = []
         self.libraries = (
             # CANN Runtime
-            ["ascendcl", "runtime", "nnopbase", "graph", "profapi"] +
+            ["ascendcl", "runtime", "aclnn_ops_train", "aclnn_ops_infer",  "nnopbase","aclnn_math",
+             "aclnn_rand", "acl_op_compiler",  "graph", "profapi"] +
             # asdsip Toolkit
             ['asdsip', 'asdsip_core', 'asdsip_host', 'mki']
         )

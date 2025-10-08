@@ -135,53 +135,51 @@
 #include "acl/acl.h"
 
 
-#define DECLARE_BINARY_OPS_FUNC(opname) \
-    aclError aclOp##opname(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream) { \
-        return aclBinaryOpRun(self, other, out, \
-            aclnn##opnameGetWorkspaceSize, aclnn##opname, stream, false); \
-    } \
-    aclError aclop_Inplace##opname(aclTensor* self, const aclTensor* other, aclrtStream stream) { \
-        return aclBinaryInplaceOpRun(self, other, \
-            aclnnInplace##opnameGetWorkspaceSize, aclnnInplace##opname, stream, false); \
-    } 
-
-    // aclError acl##opnameScalarOp(const aclTensor* self, const aclScalar* other, aclTensor* out, aclrtStream stream) { \
-    //     return aclBinaryOpRun(self, other, out, \
-    //         aclnn##opname_ScalarGetWorkspaceSize, aclnn##opname_Scalar, stream, false); \
-    // } \
-    // aclError acl##opname_ScalarInpOp(aclTensor* self, const aclScalar* other, aclrtStream stream) { \
-    //     return aclBinaryInplaceOpRun(self, other, \
-    //         aclnnInplace##opname_ScalarGetWorkspaceSize, aclnn##opname_Scalar, stream, false); \
-    // }
-
 #ifdef __cplusplus
 extern "C" {
 #endif
-    // why not working?
-    // DECLARE_BINARY_OPS_FUNC(BitwiseAndTensor)
-    // DECLARE_BINARY_OPS_FUNC(BitwiseAndScalar)
 
-    aclError aclop_BitwiseAndTensor(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream) {
-        return aclBinaryOpRun(self, other, out,
-            aclnnBitwiseAndTensorGetWorkspaceSize, aclnnBitwiseAndTensor, stream, false); 
-    }
-    aclError aclop_InplaceBitwiseAndTensor(aclTensor* self, const aclTensor* other, aclrtStream stream) {
-        return aclBinaryInplaceOpRun(self, other,
-            aclnnInplaceBitwiseAndTensorGetWorkspaceSize, aclnnBitwiseAndTensor, stream, false); 
-    }
-    aclError aclop_BitwiseAndScalar(const aclTensor* self, const aclScalar* other, aclTensor* out, aclrtStream stream) {
-        return aclBinaryOpRun(self, other, out,
-            aclnnBitwiseAndScalarGetWorkspaceSize, aclnnBitwiseAndScalar, stream, false); 
-    }
-    aclError aclop_InplaceBitwiseAndScalar(aclTensor* self, const aclScalar* other, aclrtStream stream) {
-        return aclBinaryInplaceOpRun(self, other,
-            aclnnInplaceBitwiseAndScalarGetWorkspaceSize, aclnnBitwiseAndScalar, stream, false); 
-    }
+    DECLARE_ACL_BINARY_OPS_FUNC(BitwiseAndTensor)
+    //DECLARE_ACL_BINARY_OPS_FUNC(BitwiseAndScalar)
 
-    aclError aclop_Add(aclTensor* self, aclTensor* other, aclTensor* out, aclrtStream stream) {
+    DECLARE_ACL_BINARY_OPS_FUNC(BitwiseOrTensor)
+    //DECLARE_ACL_BINARY_OPS_FUNC(BitwiseOrScalar)
+
+    DECLARE_ACL_BINARY_OPS_FUNC(BitwiseXorTensor)
+    //DECLARE_ACL_BINARY_OPS_FUNC(BitwiseXorScalar)
+
+    //DECLARE_ACL_UNARY_OPS_FUNC(BitwiseNot)
+
+    DECLARE_ACL_UNARY_OPS_FUNC(Cos)
+
+    //DECLARE_BINARY_OPS_FUNC(Matmul);
+
+    // aclError aclop_BitwiseAndTensor(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream) {
+    //     return aclBinaryOpRun(self, other, out,
+    //         aclnnBitwiseAndTensorGetWorkspaceSize, aclnnBitwiseAndTensor, stream, false); 
+    // }
+    // aclError aclop_InplaceBitwiseAndTensor(aclTensor* self, const aclTensor* other, aclrtStream stream) {
+    //     return aclBinaryInplaceOpRun(self, other,
+    //         aclnnInplaceBitwiseAndTensorGetWorkspaceSize, aclnnBitwiseAndTensor, stream, false); 
+    // }
+    // aclError aclop_BitwiseAndScalar(const aclTensor* self, const aclScalar* other, aclTensor* out, aclrtStream stream) {
+    //     return aclBinaryOpRun(self, other, out,
+    //         aclnnBitwiseAndScalarGetWorkspaceSize, aclnnBitwiseAndScalar, stream, false); 
+    // }
+    // aclError aclop_InplaceBitwiseAndScalar(aclTensor* self, const aclScalar* other, aclrtStream stream) {
+    //     return aclBinaryInplaceOpRun(self, other,
+    //         aclnnInplaceBitwiseAndScalarGetWorkspaceSize, aclnnBitwiseAndScalar, stream, false); 
+    // }
+
+    // ascend add op is special with one extra scalar coeff, so can not use the macro to declare
+    aclError aclop_Add(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream) {
         return aclBinaryScalarOpRun(self, other, 1.0, out,
         aclnnAddGetWorkspaceSize, aclnnAdd, stream, false);
     }
+    // aclError aclop_InplaceAdd(aclTensor* self, const aclTensor* other, aclrtStream stream) {
+    //     return aclBinaryScalarOpRun(self, other, 1.0,
+    //     aclnnInplaceAddGetWorkspaceSize, aclnnAdd, stream, false);
+    // }
 
 #ifdef __cplusplus
 }

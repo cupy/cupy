@@ -1,10 +1,13 @@
 # acl_tensor_converter.pyx
 cimport cython
-from libc.stdint cimport int64_t, uint64_t
-from cpython.mem cimport PyMem_Malloc, PyMem_Free
+from libc.stdint cimport int64_t, int32_t, uint64_t
 
 # 定义ACL数据类型和函数
 cdef extern from "acl/acl.h" nogil:
+    ctypedef int32_t aclnnStatus
+    ctypedef int aclError
+    ctypedef void* aclrtStream
+    cdef cppclass aclTensor
     ctypedef enum aclDataType:
         ACL_DT_UNDEFINED = -1,
         ACL_FLOAT = 0,
@@ -28,8 +31,3 @@ cdef extern from "acl/acl.h" nogil:
         ACL_FORMAT_ND = 1,
         ACL_FORMAT_NCHW = 2,
         ACL_FORMAT_NHWC = 3
-
-cdef extern from "aclnn/opdev/common_types.h" nogil:
-    ctypedef struct aclTensor:
-        # 一个opaque的 aclTensor pointer类型， 可以传递pointer
-        pass

@@ -1,11 +1,17 @@
 import cython
 cimport cpython
+from cpython.mem cimport PyMem_Malloc, PyMem_Free
+from collections import namedtuple
 
-from cupy_backends.ascend.api.acl_types cimport *
+#from cupy_backends.ascend.api.acl_types cimport *
 from cupy._core import _dtype
 from cupy._core.core import _ndarray_base
+from libcpp.map cimport map as cpp_map
+from libcpp.vector cimport vector
 
-cdef extern from "aclnn/opdev/common_types.h":  
+
+cdef extern from "aclnn/opdev/common_types.h" nogil:
+    cdef cppclass aclTensor # declare/import externally declared C++ class
     aclTensor* aclCreateTensor(
         const int64_t* viewDims,
         uint64_t viewDimsNum,
@@ -18,7 +24,7 @@ cdef extern from "aclnn/opdev/common_types.h":
         void* tensorData
     )
 
-    void aclDestroyTensor(aclTensor* tensor)
+    aclnnStatus aclDestroyTensor(const aclTensor *tensor)
 
 
 cdef aclDataType numpy_to_acl_dtype(dtype,
@@ -64,6 +70,8 @@ cdef aclDataType numpy_to_acl_dtype(dtype,
     else:
         #raise TypeError('dtype is not supported: {}'.format(dtype)) # TODO: consider throw?
         return aclDataType.ACL_DT_UNDEFINED
+
+    
 
 
 # 主转换函数
@@ -153,6 +161,200 @@ cdef aclTensor* cupy_ndarray_to_acl_tensor(_ndarray_base cupy_array) except *:
             aclDestroyTensor(acl_tensor)
         raise e
 
-# TODO not impl yet
-cdef object register_acl_ufunc(str opname, object opcfunc) except*:
-    return None
+
+cdef extern from "../acl_opinfo.h":
+    # 操作类型枚举
+    cdef enum OpType:
+        INVALID_OP = -1
+        UNARY_OP = 0
+        INPLACE_UNARY_OP = 1
+        BINARY_OP = 4
+        INPLACE_BINARY_OP = 5
+        SCALAR_BINARY_OP = 6
+        INPLACE_SCALAR_BINARY_OP = 7
+        TRI_OP = 8
+        INPLACE_TRI_OP = 9
+
+    cdef cppclass OpInfo:
+        # 构造函数
+        OpInfo() except +
+        OpInfo(string op_name, OpType op_type) except +
+        
+        # 成员变量
+        string op_name
+        OpType op_type
+        
+        # 比较运算符
+        bint operator==(const OpInfo& other) const
+        bint operator!=(const OpInfo& other) const
+        bint operator<(const OpInfo& other) const
+        bint operator>(const OpInfo& other) const
+        bint operator<=(const OpInfo& other) const
+        bint operator>=(const OpInfo& other) const
+
+# operator_function_ptr registry: TODO: thread safety
+#cdef cpp_map[OpInfo, FuncPtrUnion] _builtin_operators # unordered map for better performance
+cdef cpp_map[OpInfo, FuncPtrUnion] _builtin_operators
+#cdef _builtin_operators = {}  
+
+# 定义函数指针类型
+ctypedef aclError (*TriOpFunc)(const aclTensor* self, const aclTensor* other,
+    const aclTensor* other2, aclTensor* out, aclrtStream stream)
+ctypedef aclError (*InplaceTriOpFunc)(aclTensor* self, const aclTensor* other, aclrtStream stream)
+# TODO: BinaryScalarOpFunc
+ctypedef aclError (*BinaryOpFunc)(const aclTensor* self, const aclTensor* other,
+    aclTensor* out, aclrtStream stream)
+ctypedef aclError (*InplaceBinaryOpFunc)(aclTensor* self, const aclTensor* other, aclrtStream stream)
+# TODO: out = self + scalar
+ctypedef aclError (*UnaryOpFunc)(const aclTensor* self, aclTensor* out, aclrtStream stream)
+ctypedef aclError (*InplaceUnaryOpFunc)(aclTensor* self, aclrtStream stream)
+
+# 函数指针联合体，用于存储不同类型的操作
+ctypedef union FuncPtrUnion:
+    # TODO: failed nullptr is that a choice?
+    UnaryOpFunc unary_op
+    InplaceUnaryOpFunc inplace_unary_op
+    BinaryOpFunc binary_op
+    InplaceBinaryOpFunc inplace_binary_op
+    TriOpFunc tri_op
+    InplaceTriOpFunc inplace_tri_op
+
+cdef aclError register_acl_ufunc(string opname, OpType op_type, FuncPtrUnion func_ptr) except * nogil:
+    cdef OpInfo op_info
+    op_info.op_name = opname
+    op_info.op_type = op_type
+    
+    if _builtin_operators.find(op_info) != _builtin_operators.end():
+        # 操作已存在，可以选择覆盖或报错, 这里我们选择覆盖
+        _builtin_operators[op_info] = func_ptr
+        return 0 # ACL_SUCCESS
+    else:
+        _builtin_operators[op_info] = func_ptr
+        return 0
+
+cdef OpType get_op_type(tuple ops, bint inplace):
+    cdef bint has_scalar = False # TODO: detect and return op_type
+    if len(ops) == 3 and not inplace:  # 二元操作
+        return BINARY_OP
+    elif len(ops) == 2 and inplace:  # 原地二元操作
+        return INPLACE_BINARY_OP  
+    elif len(ops) == 2 and not inplace:  # 一元操作
+        return UNARY_OP
+    elif len(ops) == 1 and inplace:  # 原地一元操作
+        return INPLACE_UNARY_OP
+    else:
+        raise RuntimeError("Operator type can not be decided")
+    return INVALID_OP
+
+cdef aclError launch_acl_func(string opname, tuple ops, bint inplace, size_t stream_ptr) except *:
+    # 检查操作是否已注册
+    cdef OpInfo op_info
+    op_info.op_name = opname
+    op_info.op_type = get_op_type(ops, inplace)
+    if _builtin_operators.find(op_info) == _builtin_operators.end():
+        raise KeyError(f"Operator {opname} not registered")
+    
+    cdef FuncPtrUnion func_ptr = _builtin_operators[op_info]
+    cdef aclError ret = 0
+    cdef aclrtStream stream = <aclrtStream>stream_ptr
+    # 转换为ACL张量列表
+    cdef vector[aclTensor*] tensors
+    for op in ops:
+        tensors.push_back(cupy_ndarray_to_acl_tensor(op))
+    try:
+        if len(ops) == 3:  # 二元操作
+            if op_info.op_type != BINARY_OP:
+                raise RuntimeError(f"Operator {opname} is not a binary operator")
+            ret = func_ptr.binary_op(tensors[0], tensors[1], tensors[2], stream)
+        
+        elif len(ops) == 2 and inplace:  # 原地二元操作
+            if op_info.op_type != INPLACE_BINARY_OP:
+                raise RuntimeError(f"Operator {opname} is not an inplace binary operator")
+            ret = func_ptr.inplace_binary_op(tensors[0], tensors[1], stream)
+        
+        elif len(ops) == 2 and not inplace:  # 一元操作
+            if op_info.op_type != UNARY_OP:
+                raise RuntimeError(f"Operator {opname} and is not a unary operator")
+            ret = func_ptr.unary_op(tensors[0], tensors[1], stream)
+        
+        elif len(ops) == 1 and inplace:  # 原地一元操作
+            if op_info.op_type != INPLACE_UNARY_OP:
+                raise RuntimeError(f"Operator {opname.decode('utf-8')} is not an inplace unary operator")
+            ret = func_ptr.inplace_unary_op(tensors[0], stream)
+        else:
+            raise RuntimeError("Invalid number of operands or inplace flag")
+            # TODO:  std::runtime_error() with nogil
+    finally:
+        # does not deallocate array buffer, but shapes, strides
+        for t in tensors:
+            # TODO: deal with aclScalar
+            aclDestroyTensor(t)  # 假设destroyAclTensor函数已存在
+    return ret
+
+cdef extern from "../acl_math.h" nogil:
+    aclError aclop_BitwiseAndTensor(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream)
+    aclError aclop_InplaceBitwiseAndTensor(aclTensor* self, const aclTensor* other, aclrtStream stream)
+    aclError aclop_Add(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream)
+    #aclError aclop_InplaceAdd(aclTensor* self, const aclTensor* other, aclrtStream stream)
+    aclError aclop_Cos(const aclTensor* self,  aclTensor* out, aclrtStream stream)
+    aclError aclop_InplaceCos(aclTensor* self,  aclrtStream stream)
+
+# 初始化函数，注册内置操作
+cdef void init_builtin_operators():
+    cdef FuncPtrUnion func_union
+    
+    # 注册aclop_Add作为二元操作
+    func_union.binary_op = aclop_Add
+    register_acl_ufunc("ascend_add", BINARY_OP, func_union)
+    
+    # 注册aclop_InplaceAnd作为原地二元操作
+    #func_union.inplace_binary_op = aclop_InplaceAdd
+    #register_acl_ufunc("ascend_inplace_add", INPLACE_BINARY_OP, func_union)
+
+    # 注册aclop_Add作为二元操作
+    func_union.binary_op = aclop_BitwiseAndTensor
+    register_acl_ufunc("ascend_bitwise_and", BINARY_OP, func_union)
+    
+    # 注册aclop_InplaceAnd作为原地二元操作
+    func_union.inplace_binary_op = aclop_InplaceBitwiseAndTensor
+    register_acl_ufunc("ascend_inplace_bitwise_and", INPLACE_BINARY_OP, func_union)
+
+    # 注册aclop_Cos操作
+    func_union.unary_op = aclop_Cos
+    register_acl_ufunc("ascend_cos", UNARY_OP, func_union)
+    
+    # 注册aclop_InplaceCos作为原地操作
+    func_union.inplace_unary_op = aclop_InplaceCos
+    register_acl_ufunc("ascend_inplace_cos", INPLACE_UNARY_OP, func_union)
+
+
+def py_register_acl_ufunc(str opname, int func_type, long func_ptr):
+    """Python层级的操作注册函数, func_type is OpType enum value"""
+    cdef string c_opname = opname.encode('utf-8')
+    cdef FuncPtrUnion func_union
+    cdef OpType op_type
+    
+    op_type = <OpType>func_type
+    if op_type == BINARY_OP:
+        func_union.binary_op = <BinaryOpFunc>func_ptr
+    elif op_type == INPLACE_BINARY_OP:
+        func_union.inplace_binary_op = <InplaceBinaryOpFunc>func_ptr
+    elif op_type == UNARY_OP:
+        func_union.unary_op = <UnaryOpFunc>func_ptr
+    elif op_type == INPLACE_UNARY_OP:
+        func_union.inplace_unary_op = <InplaceUnaryOpFunc>func_ptr
+    else:
+        raise ValueError("Invalid function type")
+    
+    return register_acl_ufunc(c_opname, op_type, func_union)
+
+'''
+# TODO: passing stream, how?
+def py_launch_acl_func(str opname, tuple ops, bint inplace=False):
+    """Python层级的ACL函数启动器"""
+    cdef string c_opname = opname.encode('utf-8')
+    return launch_acl_func(c_opname, ops, inplace)
+'''
+
+# TODO: not sure if it is possible to run during import 模块初始化时注册内置操作
+init_builtin_operators()
