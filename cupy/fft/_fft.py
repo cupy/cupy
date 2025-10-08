@@ -145,13 +145,13 @@ def _exec_fft(a, direction, value_type, norm, axis, overwrite_x,
         mgr = config.get_current_callback_manager()
         if mgr is not None:
             # to avoid a weird segfault, we generate and cache distinct plans
-            # for every possible (load_aux, store_aux) pairs; the plans are
+            # for every possible (load_data, store_data) pairs; the plans are
             # still generated from the same external Python module
-            load_aux = mgr.cb_load_aux_arr
-            store_aux = mgr.cb_store_aux_arr
+            load_data = mgr.cb_load_data
+            store_data = mgr.cb_store_data
             keys += (mgr.cb_load, mgr.cb_store,
-                     0 if load_aux is None else load_aux.data.ptr,
-                     0 if store_aux is None else store_aux.data.ptr)
+                     0 if load_data is None else load_data.ptr,
+                     0 if store_data is None else store_data.ptr)
         cache = get_plan_cache()
         cached_plan = cache.get(keys)
         if cached_plan is not None:
@@ -164,8 +164,12 @@ def _exec_fft(a, direction, value_type, norm, axis, overwrite_x,
             if devices:
                 raise NotImplementedError('multi-GPU cuFFT callbacks are not '
                                           'yet supported')
-            plan = mgr.create_plan(('Plan1d', keys[:-5]))
-            mgr.set_callbacks(plan)
+            if mgr.identity == "legacy":
+                plan = mgr.create_plan(('Plan1d', keys[:-5]))
+                mgr.set_callbacks(plan)
+            else:  # identity = "jit"
+                plan = mgr.set_callbacks(fft_type)
+                plan = mgr.create_plan(plan, ('Plan1d', keys[:-5]))
             cache[keys] = plan
     else:
         # check plan validity
@@ -449,13 +453,13 @@ def _get_cufft_plan_nd(
     mgr = config.get_current_callback_manager()
     if mgr is not None:
         # to avoid a weird segfault, we generate and cache distinct plans
-        # for every possible (load_aux, store_aux) pairs; the plans are
+        # for every possible (load_data, store_data) pairs; the plans are
         # still generated from the same external Python module
-        load_aux = mgr.cb_load_aux_arr
-        store_aux = mgr.cb_store_aux_arr
+        load_data = mgr.cb_load_data
+        store_data = mgr.cb_store_data
         keys += (mgr.cb_load, mgr.cb_store,
-                 0 if load_aux is None else load_aux.data.ptr,
-                 0 if store_aux is None else store_aux.data.ptr)
+                 0 if load_data is None else load_data.ptr,
+                 0 if store_data is None else store_data.ptr)
     cache = get_plan_cache()
     cached_plan = cache.get(keys)
     if cached_plan is not None:
@@ -465,8 +469,12 @@ def _get_cufft_plan_nd(
         if to_cache:
             cache[keys] = plan
     else:  # has callback
-        plan = mgr.create_plan(('PlanNd', keys[:-4]))
-        mgr.set_callbacks(plan)
+        if mgr.identity == "legacy":
+            plan = mgr.create_plan(('PlanNd', keys[:-4]))
+            mgr.set_callbacks(plan)
+        else:  # identity = "jit"
+            plan = mgr.set_callbacks(fft_type)
+            plan = mgr.create_plan(plan, ('PlanNd', keys[:-4]))
         if to_cache:
             cache[keys] = plan
 
