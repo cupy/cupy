@@ -238,9 +238,10 @@ class LinuxGenerator:
             if cutensor is not None:
                 spec = self.schema['cutensor'][cutensor]['spec']
                 major = cutensor.split('.')[0]
+                cuda_major = cuda.split('.')[0]
                 if apt:
-                    packages.append(f'libcutensor{major}={spec}')
-                    packages.append(f'libcutensor-dev={spec}')
+                    packages.append(
+                        f'libcutensor{major}-cuda-{cuda_major}={spec}')
                 else:
                     packages.append(f'libcutensor{major}-{spec}')
                     packages.append(f'libcutensor-devel-{spec}')

@@ -5,10 +5,8 @@
 set -ue
 
 case "${CUDA_VERSION:-}" in
-    10.2.* )  CUTENSOR_CUDA_PREFIX="10.2" ;;
-    11.0.* )  CUTENSOR_CUDA_PREFIX="11.0" ;;
-    11.*   )  CUTENSOR_CUDA_PREFIX="11"   ;;
     12.*   )  CUTENSOR_CUDA_PREFIX="12"   ;;
+    13.*   )  CUTENSOR_CUDA_PREFIX="13"   ;;
     *      )  echo "Unknown CUDA_VERSION: ${CUDA_VERSION:-(not set)}" && exit 1 ;;
 esac
 echo "CUDA version prefix for cuTENSOR derived from CUDA_VERSION (${CUDA_VERSION}): ${CUTENSOR_CUDA_PREFIX}"
