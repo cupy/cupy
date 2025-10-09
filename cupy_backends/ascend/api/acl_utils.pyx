@@ -304,6 +304,8 @@ cdef extern from "../acl_math.h" nogil:
     aclError aclop_Add(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream)
     #aclError aclop_InplaceAdd(aclTensor* self, const aclTensor* other, aclrtStream stream)
 
+    aclError aclop_MatMul(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream)
+
     aclError aclop_Cos(const aclTensor* self,  aclTensor* out, aclrtStream stream)
     aclError aclop_InplaceCos(aclTensor* self,  aclrtStream stream)
 
@@ -319,10 +321,14 @@ cdef void init_builtin_operators():
     #func_union.inplace_binary_op = aclop_InplaceAdd
     #register_acl_ufunc("ascend_inplace_add", INPLACE_BINARY_OP, func_union)
 
-    # 注册aclop_Add作为二元操作
-    func_union.binary_op = aclop_BitwiseAndTensor
-    register_acl_ufunc("ascend_bitwise_and", BINARY_OP, func_union)
+    # 注册aclop_MatMul作为二元操作
+    func_union.binary_op = aclop_MatMul
+    register_acl_ufunc("ascend_matmul", BINARY_OP, func_union)
     
+    # 注册aclop_InplaceAnd作为原地二元操作
+    func_union.inplace_binary_op = aclop_InplaceBitwiseAndTensor
+    register_acl_ufunc("ascend_inplace_bitwise_and", INPLACE_BINARY_OP, func_union)
+
     # 注册aclop_InplaceAnd作为原地二元操作
     func_union.inplace_binary_op = aclop_InplaceBitwiseAndTensor
     register_acl_ufunc("ascend_inplace_bitwise_and", INPLACE_BINARY_OP, func_union)
@@ -334,6 +340,7 @@ cdef void init_builtin_operators():
     # 注册aclop_InplaceCos作为原地操作
     func_union.inplace_unary_op = aclop_InplaceCos
     register_acl_ufunc("ascend_inplace_cos", INPLACE_UNARY_OP, func_union)
+
 
 
 def py_register_acl_ufunc(str opname, int func_type, long func_ptr):

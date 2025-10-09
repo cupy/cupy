@@ -192,6 +192,7 @@ _ascend_files = [
     ('cupy._core._routines_binary', ['cupy/_core/_routines_binary.pyx']),
     'cupy._core._routines_creation',
     'cupy._core._routines_manipulation',
+    ('cupy._core._routines_linalg', ['cupy/_ascend/_core/_routines_linalg.pyx']),
     #('cupy._core._routines_logic', ['cupy/_ascend/_core/_routines_logic.pyx']),
     #('cupy._core._reduction', ['cupy/_ascend/_core/_routines_reduction.pyx']),  # not easy job
     #('cupy._core._routines_indexing', ['cupy/_ascend/_core/_routines_indexing.pyx']), # not so difficult

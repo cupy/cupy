@@ -106,6 +106,7 @@
 // count
 
 // creation op with dim info
+#include "aclnnop/aclnn_matmul.h"
 // arange, eye, diag, linspace, ones, zeros, 
 #include "aclnnop/aclnn_arange.h"
 #include "aclnnop/aclnn_eye.h"  //  np.eye == np.identity(N)
@@ -184,6 +185,13 @@ extern "C" {
     //     return aclBinaryScalarOpRun(self, other, 1.0,
     //     aclnnInplaceAddGetWorkspaceSize, aclnnAdd, stream, false);
     // }
+
+    aclError aclop_MatMul(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream) {
+        uint8_t math_type = 0; // keep dtype precision KEPP_DTYPE
+        return aclBinaryOpRun(self, other, out,
+            aclnnMatmulGetWorkspaceSize, aclnnMatmul, stream,  false, math_type); 
+    }
+    
 
 #ifdef __cplusplus
 }
