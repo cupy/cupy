@@ -1113,7 +1113,7 @@ class TestHilbert2:
     @pytest.mark.parametrize('shape', [(4, 5), (5, 4), (4, 4), (5, 5)])
     def test_quadrant_values(self, shape, xp, scp):
         x_f = xp.ones(shape, dtype=xp.complex128)  # FFT of input signal
-        x_f[0 , 0] += 7
+        x_f[0, 0] += 7
         x = xp.real(scp.fft.ifft2(x_f))  # x.imag is zero
 
         x_as = scp.signal.hilbert2(x)
