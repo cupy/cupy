@@ -24,8 +24,6 @@ cdef extern from '../../cupy_nccl.h':
         pass
     ctypedef enum ncclDataType_t:
         pass
-    cdef enum ncclSplitColor_t:
-        NCCL_SPLIT_NOCOLOR
     ctypedef struct ncclConfig_t:
         pass
 
@@ -37,7 +35,7 @@ cdef extern from '../../cupy_nccl.h':
     ncclResult_t ncclCommInitRank(ncclComm_t* comm, int ndev,
                                   ncclUniqueId commId, int rank) nogil
     ncclResult_t ncclCommSplit(ncclComm_t comm, int color, int key,
-                                 ncclComm_t* newcomm, ncclConfig_t* config) nogil
+                               ncclComm_t* newcomm, ncclConfig_t* config) nogil
     ncclResult_t ncclCommInitAll(ncclComm_t* comm, int ndev,
                                  const int* devlist)
     ncclResult_t ncclGroupStart() nogil
@@ -515,9 +513,9 @@ cdef class NcclCommunicator:
             NcclCommunicator: A new communicator.
 
         .. note::
-            This method requires NCCL 2.7 or newer.
-            When split, there should not be any outstanding NCCL operations on the comm.
-            Otherwise, it might cause a deadlock.
+            This method requires NCCL 2.18.1 or newer.
+            When split, there should not be any outstanding NCCL operations
+            on the comm. Otherwise, it might cause a deadlock.
             .. code-block:: python
 
                 from cupy.cuda import nccl
@@ -533,18 +531,19 @@ cdef class NcclCommunicator:
         .. _ncclCommSplit:
             https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/api/comms.html#ncclcommsplit
         """
-        if NCCL_VERSION_CODE < 2700:
-            raise RuntimeError('ncclCommSplit is not available in this version')
+        if NCCL_VERSION_CODE < 21801:
+            raise RuntimeError(
+                'ncclCommSplit is not available in this version'
+            )
         cdef ncclComm_t new_comm = <ncclComm_t>0
         cdef NcclCommunicator new_nccl_comm
-
-        if color == NCCL_SPLIT_NOCOLOR:
-            # The process is not included in any communicator.
-            return None
 
         with nogil:
             status = ncclCommSplit(self._comm, color, key, &new_comm, NULL)
         check_status(status)
+        if new_comm == NULL:
+            return None
+
         new_nccl_comm = NcclCommunicator.__new__(NcclCommunicator)
         new_nccl_comm._comm = new_comm
         return new_nccl_comm
