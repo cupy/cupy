@@ -1101,12 +1101,12 @@ class TestHilbert2:
 
     @testing.with_requires("scipy>=1.17")
     @testing.numpy_cupy_allclose(scipy_name='scp')
-    def test_parameter_N(self, xp, scp):
+    @pytest.mark.parametrize("N", [4, (4, 4)])
+    def test_parameter_N(self, xp, scp, N):
         """Compare passing tuple to single int. """
         x = xp.zeros((5, 5))
-        x0_a = scp.signal.hilbert2(x, N=4)
-        x1_a = scp.signal.hilbert2(x, N=(4, 4))
-        return x0_a, x1_a
+        x_a = scp.signal.hilbert2(x, N=N)
+        return x_a
 
     @testing.with_requires("scipy>=1.17")
     @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-15)
