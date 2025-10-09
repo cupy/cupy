@@ -1092,14 +1092,8 @@ if _numpy.__version__ < "2":
 else:
 
     _template = '''\
-''This function has been removed in NumPy v2.
+This function has been removed in NumPy v2.
 Use {recommendation} instead.
-
-CuPy has been providing this function as an alias to the NumPy
-implementation, so it cannot be used in environments with NumPy
-v2 installed. If you rely on this function and you cannot modify
-the code to use {recommendation}, please downgrade NumPy to v1.26
-or earlier.
 '''
 
     def find_common_type(*args, **kwds):
