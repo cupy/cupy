@@ -6,7 +6,6 @@ import pickle
 import threading
 import unittest
 
-import fastrlock
 import pytest
 
 import cupy.cuda
@@ -985,17 +984,7 @@ class TestMemInfo(unittest.TestCase):
 class TestLockAndNoGc(unittest.TestCase):
 
     def test(self):
-        lock = fastrlock.rlock.FastRLock()
-        ctx = memory.LockAndNoGc(lock)
-
-        assert gc.isenabled()
-        self.assertRaises(Exception, lock.release)
-        with ctx:
-            assert not gc.isenabled()
-            lock.release()
-            lock.acquire()
-        assert gc.isenabled()
-        self.assertRaises(Exception, lock.release)
+        memory._test_lock_and_no_gc()
 
 
 class TestExceptionPicklable(unittest.TestCase):
