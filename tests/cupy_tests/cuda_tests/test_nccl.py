@@ -64,6 +64,16 @@ class TestNCCL(unittest.TestCase):
         comm = nccl.NcclCommunicator(1, id, 0)
         assert 1 == comm.size()
 
+    @unittest.skipUnless(nccl_version >= 21801, 'Using old NCCL')
+    def test_comm_split(self):
+        id = nccl.get_unique_id()
+        comm = nccl.NcclCommunicator(1, id, 0)
+        new_comm = comm.commSplit(color=0, key=0)
+        if new_comm is not None:
+            assert 1 == comm.size()
+            new_comm.destroy()
+        comm.destroy()
+
     @testing.multi_gpu(2)
     @unittest.skipUnless(nccl_version >= 2700, 'Using old NCCL')
     def test_send_recv(self):

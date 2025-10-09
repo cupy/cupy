@@ -324,9 +324,10 @@ cdef class NcclCommunicator:
         .. _ncclCommInitAll:
             https://docs.nvidia.com/deeplearning/sdk/nccl-developer-guide/docs/api/comms.html#ncclcomminitall
         """  # noqa
-        cdef int i, ndev
-        cdef list comms = [], devlist = []
-        cdef NcclCommunicator comm
+        cdef:
+            int i, ndev
+            list comms = [], devlist = []
+            NcclCommunicator comm
 
         if isinstance(devices, list):
             ndev = len(devices)
@@ -516,6 +517,7 @@ cdef class NcclCommunicator:
             This method requires NCCL 2.18.1 or newer.
             When split, there should not be any outstanding NCCL operations
             on the comm. Otherwise, it might cause a deadlock.
+
             .. code-block:: python
 
                 from cupy.cuda import nccl
@@ -530,7 +532,7 @@ cdef class NcclCommunicator:
 
         .. _ncclCommSplit:
             https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/api/comms.html#ncclcommsplit
-        """
+        """  # noqa
         if NCCL_VERSION_CODE < 21801:
             raise RuntimeError(
                 'ncclCommSplit is not available in this version'
