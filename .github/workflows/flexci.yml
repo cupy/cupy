@@ -32,7 +32,6 @@ jobs:
         GH_TOKEN: ${{ github.token }}
       run: |
         echo "pr_base_ref=$(gh api '${{ github.event.issue.pull_request.url }}' | jq -r .base.ref)" >> "${GITHUB_OUTPUT}"
-        echo "pr_merge_ref=refs/pull/${{ github.event.issue.number }}/merge" >> "${GITHUB_OUTPUT}"
 
     - name: Checkout (Base Branch)
       uses: actions/checkout@v4
@@ -43,13 +42,13 @@ jobs:
       if: github.event_name == 'issue_comment'
       uses: actions/checkout@v4
       with:
-        ref: ${{ steps.base.outputs.pr_merge_ref }}
+        ref: "refs/pull/${{ github.event.issue.number }}/merge"
         path: _pr_untrusted
 
     - name: Setup Python
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v6
       with:
-        python-version: '3.10'
+        python-version: '3.13'
 
     - name: Setup Environment
       run: |
