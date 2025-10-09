@@ -50,6 +50,10 @@ ncclResult_t ncclCommInitRank(...) {
     return ncclSuccess;
 }
 
+ncclResult_t ncclCommSplit(...) {
+    return ncclSuccess;
+}
+
 ncclResult_t ncclCommInitAll(...) {
     return ncclSuccess;
 }
