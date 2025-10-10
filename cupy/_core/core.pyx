@@ -2564,16 +2564,9 @@ cpdef _ndarray_base array(obj, dtype=None, copy=True, order='K',
     if order is None:
         order = 'K'
 
-    if isinstance(obj, ndarray):
-        return _array_from_cupy_ndarray(obj, dtype, copy, order, ndmin)
-
-    if hasattr(obj, '__cuda_array_interface__'):
-        return _array_from_cuda_array_interface(
-            obj, dtype, copy, order, subok, ndmin)
-
-    if hasattr(obj, '__cupy_get_ndarray__'):
-        return _array_from_cupy_ndarray(
-            obj.__cupy_get_ndarray__(), dtype, copy, order, ndmin)
+    cdef _ndarray_base arr = _convert_from_cupy_like(obj, error=False)
+    if arr is not None:
+        return _array_from_cupy_ndarray(arr, dtype, copy, order, ndmin)
 
     concat_shape, concat_type, concat_dtype = (
         _array_info_from_nested_sequence(obj))
@@ -3008,6 +3001,7 @@ cpdef _ndarray_base asfortranarray(_ndarray_base a, dtype=None):
 
 
 cpdef _ndarray_base _convert_object_with_cuda_array_interface(a):
+    # NOTE: Most code should use this indirectly via `_convert_from_cupy_like`
 
     cdef Py_ssize_t sh, st
     cdef dict desc = a.__cuda_array_interface__
