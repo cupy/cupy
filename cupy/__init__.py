@@ -33,6 +33,16 @@ import cupyx as _cupyx  # NOQA
 
 
 def is_available():
+    """Return True if GPU execution is available.
+
+    This function can be used to guard code for cases where CuPy is installed
+    but not usable, typically because the system has no GPU.
+    It checks whether the driver can be queried for devices and that there is
+    at least one device available.
+
+    Returns:
+        bool: True if GPU execution is possible.
+    """
     return cuda.is_available()
 
 
