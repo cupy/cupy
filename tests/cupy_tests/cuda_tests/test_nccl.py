@@ -67,7 +67,9 @@ class TestNCCL(unittest.TestCase):
     @unittest.skipUnless(nccl_version >= 21801, 'Using old NCCL')
     def test_comm_split(self):
         id = nccl.get_unique_id()
-        comm = nccl.NcclCommunicator(1, id, 0)
+        config = nccl.NcclConfig()
+        config.split_share = 1
+        comm = nccl.NcclCommunicator(1, id, 0, config)
         new_comm = comm.commSplit(color=0, key=0)
         if new_comm is not None:
             assert 1 == comm.size()

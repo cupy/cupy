@@ -7,6 +7,7 @@ cimport cython  # NOQA
 
 from libc.stdint cimport intptr_t
 from libcpp cimport vector
+import warnings
 
 from cupy_backends.cuda.api cimport runtime
 
@@ -24,8 +25,6 @@ cdef extern from '../../cupy_nccl.h':
         pass
     ctypedef enum ncclDataType_t:
         pass
-    ctypedef struct ncclConfig_t:
-        pass
 
     const char* ncclGetErrorString(ncclResult_t result) nogil
     ncclResult_t ncclGetVersion(int* version) nogil
@@ -34,8 +33,6 @@ cdef extern from '../../cupy_nccl.h':
     ncclResult_t ncclGetUniqueId(ncclUniqueId* uniqueId) nogil
     ncclResult_t ncclCommInitRank(ncclComm_t* comm, int ndev,
                                   ncclUniqueId commId, int rank) nogil
-    ncclResult_t ncclCommSplit(ncclComm_t comm, int color, int key,
-                               ncclComm_t* newcomm, ncclConfig_t* config) nogil
     ncclResult_t ncclCommInitAll(ncclComm_t* comm, int ndev,
                                  const int* devlist)
     ncclResult_t ncclGroupStart() nogil
@@ -76,6 +73,18 @@ cdef extern from '../../cupy_nccl.h':
     # Build-time version
     int NCCL_VERSION_CODE
 
+IF NCCL_VERSION_CODE >= 21801:
+    cdef extern from '../../cupy_nccl.h':
+        ctypedef struct ncclConfig_t:
+            # expose more fields when necessary
+            int splitShare
+
+        ncclResult_t ncclCommInitRankConfig(ncclComm_t* comm, int ndev,
+                                            ncclUniqueId commId, int rank,
+                                            ncclConfig_t* config) nogil
+        ncclResult_t ncclCommSplit(ncclComm_t comm, int color, int key,
+                                   ncclComm_t* newcomm,
+                                   ncclConfig_t* config) nogil
 
 cdef dict ERROR1 = {
     0: 'NCCL_ERROR_SUCCESS',
@@ -247,6 +256,32 @@ cpdef groupEnd():
     check_status(status)
 
 
+IF NCCL_VERSION_CODE >= 21801:
+    cdef class NcclConfig:
+        """Configuration for NCCL communicator creation.
+
+        .. seealso:: `ncclConfig_t`_
+
+        .. _ncclConfig_t:
+            https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/api/types.html#ncclconfig-t
+        """  # noqa
+
+        cdef:
+            ncclConfig_t _config
+
+        def __cinit__(self):
+            self._config.splitShare = 0
+
+        property split_share:
+            def __get__(self): return self._config.splitShare
+            def __set__(self, int v): self._config.splitShare = v
+
+ELSE:
+    cdef class NcclConfig:
+        def __cinit__(self):
+            pass
+
+
 cdef class NcclCommunicator:
     """ Initialize an NCCL communicator for one device controlled by one
     process.
@@ -255,6 +290,8 @@ cdef class NcclCommunicator:
         ndev (int): Total number of GPUs to be used.
         commId (tuple): The unique ID returned by :func:`get_unique_id`.
         rank (int): The rank of the GPU managed by the current process.
+        config (NcclConfig): Configuration for communicator creation.
+            None by default.
 
     Returns:
         NcclCommunicator: An ``NcclCommunicator`` instance.
@@ -265,10 +302,15 @@ cdef class NcclCommunicator:
         controlling multiple devices by one process, use :meth:`initAll`
         instead.
 
-    .. seealso:: `ncclCommInitRank`_
+    .. seealso::
+        `ncclCommInitRank`_
+        `ncclCommInitRankConfig`_
 
     .. _ncclCommInitRank:
         https://docs.nvidia.com/deeplearning/sdk/nccl-developer-guide/docs/api/comms.html#ncclcomminitrank
+    
+    .. _ncclCommInitRankConfig:
+        https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/api/comms.html#ncclcomminitrankconfig
     """  # noqa
 
     cdef:
@@ -277,13 +319,28 @@ cdef class NcclCommunicator:
     def __cinit__(self):
         self._comm = <ncclComm_t>0
 
-    def __init__(self, int ndev, tuple commId, int rank):
+    def __init__(self, int ndev, tuple commId, int rank,
+                 NcclConfig config=None):
+        cdef ncclResult_t status
         cdef ncclUniqueId _uniqueId
         assert len(commId) == NCCL_UNIQUE_ID_BYTES
         for i in range(NCCL_UNIQUE_ID_BYTES):
             _uniqueId.internal[i] = commId[i]
-        with nogil:
-            status = ncclCommInitRank(&self._comm, ndev, _uniqueId, rank)
+
+        if NCCL_VERSION_CODE < 21801:
+            if config is not None:
+                warnings.warn(
+                    'NcclConfig is ignored in this version of NCCL',
+                    RuntimeWarning)
+            with nogil:
+                status = ncclCommInitRank(&self._comm, ndev, _uniqueId, rank)
+        else:
+            with nogil:
+                cdef ncclConfig_t* c_config = (
+                    &config._config if config else NULL
+                )
+                status = ncclCommInitRankConfig(&self._comm, ndev,
+                                                _uniqueId, rank, c_config)
         check_status(status)
 
     def __dealloc__(self):
@@ -498,7 +555,7 @@ cdef class NcclCommunicator:
         check_status(asyncError)
         check_status(result)
 
-    def commSplit(self, int color, int key):
+    def commSplit(self, int color, int key, NcclConfig config=None):
         """Split the communicator into multiple, disjoint communicators.
 
         Args:
@@ -509,6 +566,8 @@ cdef class NcclCommunicator:
             key (int): Controls the rank assignment within
                 the new communicator. The process with the lowest key
                 value is assigned rank 0.
+            config (NcclConfig): Configuration for communicator creation.
+                NULL by default.
 
         Returns:
             NcclCommunicator: A new communicator.
@@ -539,9 +598,10 @@ cdef class NcclCommunicator:
             )
         cdef ncclComm_t new_comm = <ncclComm_t>0
         cdef NcclCommunicator new_nccl_comm
+        cdef ncclConfig_t* c_config = &config._config if config else NULL
 
         with nogil:
-            status = ncclCommSplit(self._comm, color, key, &new_comm, NULL)
+            status = ncclCommSplit(self._comm, color, key, &new_comm, c_config)
         check_status(status)
         if new_comm == NULL:
             return None
