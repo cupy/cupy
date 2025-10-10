@@ -9,6 +9,8 @@ import pytest
 
 import cupy
 from cupy import cuda, testing
+from cupy.testing._protocol_helpers import (
+    DummyObjectWithCuPyGetNDArray, DummyObjectWithCudaArrayInterface)
 
 
 class TestFromData(unittest.TestCase):
@@ -691,67 +693,6 @@ class TestCudaArrayInterfaceBigArray(unittest.TestCase):
         testing.assert_array_equal(a, b)
 
 
-class DummyObjectWithCudaArrayInterface:
-    def __init__(self, a, ver, include_strides=False, mask=None, stream=None):
-        assert ver in tuple(range(max_cuda_array_interface_version+1))
-        self.a = None
-        if isinstance(a, cupy.ndarray):
-            self.a = a
-        else:
-            self.shape, self.strides, self.typestr, self.descr, self.data = a
-        self.ver = ver
-        self.include_strides = include_strides
-        self.mask = mask
-        self.stream = stream
-
-    @property
-    def __cuda_array_interface__(self):
-        if self.a is not None:
-            desc = {
-                'shape': self.a.shape,
-                'typestr': self.a.dtype.str,
-                'descr': self.a.dtype.descr,
-                'data': (self.a.data.ptr, False),
-                'version': self.ver,
-            }
-            if self.a.flags.c_contiguous:
-                if self.include_strides is True:
-                    desc['strides'] = self.a.strides
-                elif self.include_strides is None:
-                    desc['strides'] = None
-                else:  # self.include_strides is False
-                    pass
-            else:  # F contiguous or neither
-                desc['strides'] = self.a.strides
-        else:
-            desc = {
-                'shape': self.shape,
-                'typestr': self.typestr,
-                'descr': self.descr,
-                'data': (self.data, False),
-                'version': self.ver,
-            }
-            if self.include_strides is True:
-                desc['strides'] = self.strides
-            elif self.include_strides is None:
-                desc['strides'] = None
-            else:  # self.include_strides is False
-                pass
-        if self.mask is not None:
-            desc['mask'] = self.mask
-        # The stream field is kept here for compliance. However, since the
-        # synchronization is done via calling a cpdef function, which cannot
-        # be mock-tested.
-        if self.stream is not None:
-            if self.stream is cuda.Stream.null:
-                desc['stream'] = cuda.runtime.streamLegacy
-            elif (not cuda.runtime.is_hip) and self.stream is cuda.Stream.ptds:
-                desc['stream'] = cuda.runtime.streamPerThread
-            else:
-                desc['stream'] = self.stream.ptr
-        return desc
-
-
 @testing.parameterize(
     *testing.product({
         'ndmin': [0, 1, 2, 3],
@@ -805,3 +746,34 @@ class TestArrayInvalidObject(unittest.TestCase):
         a = numpy.array([1, 2, 3], dtype=object)
         with self.assertRaises(ValueError):
             cupy.array(a)
+
+
+class TestArrayCuPyGetNDArray(unittest.TestCase):
+    def test_cupy_get_ndarray(self):
+        a = cupy.array([1, 2, 3])
+        dummy = DummyObjectWithCuPyGetNDArray(a)
+        res = cupy.asarray(dummy)
+        assert a is res  # OK if it was a view
+
+
+class TestArrayNestedCuPyLike:
+    @pytest.mark.parametrize('cupy_like', [
+        DummyObjectWithCuPyGetNDArray,
+        DummyObjectWithCudaArrayInterface,
+    ])
+    def test_nested_gpu_arrays_simple(self, cupy_like):
+        cupy_arr = cupy.array([1, 2, 3])
+        arr = cupy_like(cupy_arr)
+        if cupy_like is DummyObjectWithCuPyGetNDArray:
+            # __cupy_get_ndarray__ path currently assumes .shape and .dtype
+            arr.shape = (3,)
+            arr.dtype = cupy_arr.dtype
+
+        with pytest.raises(Exception):
+            # Make sure we would fail if going via numpy
+            # (numpy object arrays are likely here which fail cupy)
+            cupy.array(numpy.asarray(arr))
+
+        res = cupy.asarray([arr, arr])
+        expected = cupy.array([cupy_arr, cupy_arr])
+        testing.assert_array_equal(res, expected)
