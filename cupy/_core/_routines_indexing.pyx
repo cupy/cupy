@@ -262,6 +262,7 @@ cpdef list _prepare_slice_list(slices):
                 # keep scalar int
                 continue
 
+        # TODO(seberg): This check seems unnecessary to me?
         if cupy.min_scalar_type(s).char == 'O':
             raise IndexError(
                 'arrays used as indices must be of integer (or boolean) type')

@@ -754,3 +754,26 @@ class TestArrayCuPyGetNDArray(unittest.TestCase):
         dummy = DummyObjectWithCuPyGetNDArray(a)
         res = cupy.asarray(dummy)
         assert a is res  # OK if it was a view
+
+
+class TestArrayNestedCuPyLike:
+    @pytest.mark.parametrize('cupy_like', [
+        DummyObjectWithCuPyGetNDArray,
+        DummyObjectWithCudaArrayInterface,
+    ])
+    def test_nested_gpu_arrays_simple(self, cupy_like):
+        cupy_arr = cupy.array([1, 2, 3])
+        arr = cupy_like(cupy_arr)
+        if cupy_like is DummyObjectWithCuPyGetNDArray:
+            # __cupy_get_ndarray__ path currently assumes .shape and .dtype
+            arr.shape = (3,)
+            arr.dtype = cupy_arr.dtype
+
+        with pytest.raises(Exception):
+            # Make sure we would fail if going via numpy
+            # (numpy object arrays are likely here which fail cupy)
+            cupy.array(numpy.asarray(arr))
+
+        res = cupy.asarray([arr, arr])
+        expected = cupy.array([cupy_arr, cupy_arr])
+        testing.assert_array_equal(res, expected)
