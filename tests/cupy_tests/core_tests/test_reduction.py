@@ -11,6 +11,9 @@ from cupy import _core
 from cupy import testing
 from cupy.exceptions import ComplexWarning, AxisError
 
+from cupy.testing._protocol_helpers import (
+    DummyObjectWithCuPyGetNDArray, DummyObjectWithCudaArrayInterface)
+
 
 _noncontiguous_params = [
     # reduce at head axes
@@ -234,3 +237,22 @@ class TestLargeMultiDimReduction(
         shape = (4, 3, 2, 4, 3, 2, 2)
         axis = (1, 4, 3, 6)
         self.check_int8_sum(shape, axis=axis, keepdims=True)
+
+
+class TestArgumentTypes:
+    kernel = _core.create_reduction_func(
+        'my_sum', ('f->f',), ('in0', 'a + b', 'out0 = a', None), 0)
+
+    @pytest.mark.parametrize('cupy_like', [
+        DummyObjectWithCuPyGetNDArray,
+        DummyObjectWithCudaArrayInterface,
+    ])
+    def test_cupy_like_protocols(self, cupy_like):
+        # Check that reduction kernels work on the cupy like protocols
+        x = cupy_like(cupy.arange(10, dtype=cupy.float32))
+        res = self.kernel(x)
+        assert res == 45
+
+    def test_bad_argument(self):
+        with pytest.raises(TypeError, match="Argument 'a' has incorrect type"):
+            self.kernel(numpy.array([1, 2, 3]))
