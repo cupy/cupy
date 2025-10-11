@@ -21,18 +21,22 @@
 #define NCCL_PATCH 0
 #endif
 
+#ifndef NCCL_VERSION
+#define NCCL_VERSION(X,Y,Z) (((X) <= 2 && (Y) <= 8) ? (X) * 1000 + (Y) * 100 + (Z) : (X) * 10000 + (Y) * 100 + (Z))
+#endif
+
 #ifndef NCCL_VERSION_CODE
-#define NCCL_VERSION_CODE (NCCL_MAJOR * 1000 + NCCL_MINOR * 100 + NCCL_PATCH)
+#define NCCL_VERSION_CODE NCCL_VERSION(NCCL_MAJOR, NCCL_MINOR, NCCL_PATCH)
 #endif
 
 
-#if (NCCL_VERSION_CODE >= 2000)
+#if (NCCL_VERSION_CODE >= NCCL_VERSION(2, 0, 0))
 
 ncclDataType_t _get_proper_datatype(ncclDataType_t datatype) {
     return datatype;
 }
 
-#else // #if (NCCL_VERSION_CODE >= 2000)
+#else // #if (NCCL_VERSION_CODE >= NCCL_VERSION(2, 0, 0))
 
 #define NCCL_CHAR_V1 ncclChar
 #define NCCL_INT_V1 ncclInt
@@ -68,25 +72,25 @@ ncclResult_t ncclGroupEnd() {
     return ncclSuccess;
 }
 #endif // #ifndef CUPY_NO_CUDA
-#endif // #if (NCCL_VERSION_CODE < 2000)
+#endif // #if (NCCL_VERSION_CODE < NCCL_VERSION(2, 0, 0))
 
-#if (NCCL_VERSION_CODE < 2200)
+#if (NCCL_VERSION_CODE < NCCL_VERSION(2, 2, 0))
 // New function in 2.2
 ncclResult_t ncclBroadcast(const void* sendbuff, void* recvbuff, size_t count,
 			   ncclDataType_t datatype, int root, ncclComm_t comm,
 			   cudaStream_t stream) {
     return ncclSuccess;
 }
-#endif // #if (NCCL_VERSION_CODE < 2200)
+#endif // #if (NCCL_VERSION_CODE < NCCL_VERSION(2, 2, 0))
 
-#if (NCCL_VERSION_CODE < 2304)
+#if (NCCL_VERSION_CODE < NCCL_VERSION(2, 3, 4))
 
 ncclResult_t ncclGetVersion(int *version) {
     *version = 0;
     return ncclSuccess;
 }
 
-#endif // #if (NCCL_VERSION_CODE < 2304)
+#endif // #if (NCCL_VERSION_CODE < NCCL_VERSION(2, 3, 4))
 
 ncclResult_t _ncclAllReduce(const void* sendbuff, void* recvbuff, size_t count,
                             ncclDataType_t datatype, ncclRedOp_t op, ncclComm_t comm,
@@ -131,14 +135,14 @@ ncclResult_t _ncclAllGather(const void* sendbuff, void* recvbuff, size_t sendcou
                             ncclDataType_t datatype, ncclComm_t comm,
                             cudaStream_t stream) {
     ncclDataType_t _datatype = _get_proper_datatype(datatype);
-#if (NCCL_VERSION_CODE >= 2000)
+#if (NCCL_VERSION_CODE >= NCCL_VERSION(2, 0, 0))
     return ncclAllGather(sendbuff, recvbuff, sendcount, _datatype, comm, stream);
 #else
     return ncclAllGather(sendbuff, sendcount, _datatype, recvbuff, comm, stream);
-#endif // #if (NCCL_VERSION_CODE < 2000)
+#endif // #if (NCCL_VERSION_CODE < NCCL_VERSION(2, 0, 0))
 }
 
-#if (NCCL_VERSION_CODE < 2400)
+#if (NCCL_VERSION_CODE < NCCL_VERSION(2, 4, 0))
 // New functions in 2.4
 #define UNUSED(x) ((void)x)
 
@@ -153,7 +157,7 @@ void ncclCommAbort(ncclComm_t comm) {
 }
 #endif
 
-#if (NCCL_VERSION_CODE < 2700)
+#if (NCCL_VERSION_CODE < NCCL_VERSION(2, 7, 0))
 // New functions in 2.7
 ncclResult_t ncclSend(const void* sendbuff, size_t count, ncclDataType_t datatype,
                       int peer, ncclComm_t comm, cudaStream_t stream) {
@@ -162,6 +166,27 @@ ncclResult_t ncclSend(const void* sendbuff, size_t count, ncclDataType_t datatyp
 
 ncclResult_t ncclRecv(void* recvbuff, size_t count, ncclDataType_t datatype,
                       int peer, ncclComm_t comm, cudaStream_t stream) {
+    return ncclSuccess;
+}
+#endif
+
+if (NCCL_VERSION_CODE < NCCL_VERSION(2, 17, 0))
+struct ncclConfig_t {
+if (NCCL_VERSION_CODE < NCCL_VERSION(2, 18, 0))
+    int splitShare;
+#endif // #if (NCCL_VERSION_CODE < NCCL_VERSION(2, 18, 0))
+};
+#endif // #if (NCCL_VERSION_CODE < NCCL_VERSION(2, 17, 0))
+
+#if (NCCL_VERSION_CODE < NCCL_VERSION(2, 18, 0))
+// New functions in 2.18
+ncclResult_t ncclCommSplit(ncclComm_t comm, int color, int key, ncclComm_t* newcomm,
+                           ncclConfig_t* config) {
+    return ncclSuccess;
+}
+
+ncclResult_t ncclCommInitRankConfig(ncclComm_t* comm, int nranks, ncclUniqueId* commId,
+                                    int myrank, ncclConfig_t* config) {
     return ncclSuccess;
 }
 #endif

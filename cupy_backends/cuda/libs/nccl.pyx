@@ -7,9 +7,9 @@ cimport cython  # NOQA
 
 from libc.stdint cimport intptr_t
 from libcpp cimport vector
-import warnings
 
 from cupy_backends.cuda.api cimport runtime
+from nccl cimport NCCL_VERSION
 
 cdef extern from '../../cupy_nccl.h':
     ctypedef struct ncclComm:
@@ -25,6 +25,8 @@ cdef extern from '../../cupy_nccl.h':
         pass
     ctypedef enum ncclDataType_t:
         pass
+    ctypedef struct ncclConfig_t:
+        pass
 
     const char* ncclGetErrorString(ncclResult_t result) nogil
     ncclResult_t ncclGetVersion(int* version) nogil
@@ -33,6 +35,11 @@ cdef extern from '../../cupy_nccl.h':
     ncclResult_t ncclGetUniqueId(ncclUniqueId* uniqueId) nogil
     ncclResult_t ncclCommInitRank(ncclComm_t* comm, int ndev,
                                   ncclUniqueId commId, int rank) nogil
+    ncclResult_t ncclCommInitRankConfig(ncclComm_t* comm, int nranks,
+                                        ncclUniqueId* commId, int myrank,
+                                        ncclConfig_t* config)
+    ncclResult_t ncclCommSplit(ncclComm_t comm, int color, int key,
+                               ncclComm_t* newcomm, ncclConfig_t* config)
     ncclResult_t ncclCommInitAll(ncclComm_t* comm, int ndev,
                                  const int* devlist)
     ncclResult_t ncclGroupStart() nogil
@@ -73,18 +80,6 @@ cdef extern from '../../cupy_nccl.h':
     # Build-time version
     int NCCL_VERSION_CODE
 
-IF NCCL_VERSION_CODE >= 21801:
-    cdef extern from '../../cupy_nccl.h':
-        ctypedef struct ncclConfig_t:
-            # expose more fields when necessary
-            int splitShare
-
-        ncclResult_t ncclCommInitRankConfig(ncclComm_t* comm, int ndev,
-                                            ncclUniqueId commId, int rank,
-                                            ncclConfig_t* config) nogil
-        ncclResult_t ncclCommSplit(ncclComm_t comm, int color, int key,
-                                   ncclComm_t* newcomm,
-                                   ncclConfig_t* config) nogil
 
 cdef dict ERROR1 = {
     0: 'NCCL_ERROR_SUCCESS',
@@ -125,7 +120,7 @@ class NcclError(RuntimeError):
         cdef const char* msg
         with nogil:
             msg = ncclGetErrorString(<ncclResult_t>status)
-        if NCCL_VERSION_CODE < 2000:
+        if NCCL_VERSION_CODE < NCCL_VERSION(2, 0, 0):
             s = ERROR1[status]
         else:
             s = ERROR2[status]
@@ -213,7 +208,7 @@ cpdef groupStart():
     .. _Group calls:
         https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/usage/groups.html
     """
-    if NCCL_VERSION_CODE < 2000:
+    if NCCL_VERSION_CODE < NCCL_VERSION(2, 0, 0):
         raise RuntimeError('ncclGroupStart is not available in this version')
     with nogil:
         status = ncclGroupStart()
@@ -249,37 +244,35 @@ cpdef groupEnd():
     .. _Group calls:
         https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/usage/groups.html
     """
-    if NCCL_VERSION_CODE < 2000:
+    if NCCL_VERSION_CODE < NCCL_VERSION(2, 0, 0):
         raise RuntimeError('ncclGroupEnd is not available in this version')
     with nogil:
         status = ncclGroupEnd()
     check_status(status)
 
 
-IF NCCL_VERSION_CODE >= 21801:
-    cdef class NcclConfig:
-        """Configuration for NCCL communicator creation.
+cdef class NcclConfig:
+    """Configuration for NCCL communicator creation.
 
-        .. seealso:: `ncclConfig_t`_
+    .. seealso:: `ncclConfig_t`_
 
-        .. _ncclConfig_t:
-            https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/api/types.html#ncclconfig-t
-        """  # noqa
+    .. _ncclConfig_t:
+        https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/api/types.html#ncclconfig-t
+    """  # noqa
 
-        cdef:
-            ncclConfig_t _config
+    cdef:
+        ncclConfig_t _config
 
-        def __cinit__(self):
-            self._config.splitShare = 0
+    def __init__(self, split_share=0):
+        if NCCL_VERSION_CODE < NCCL_VERSION(2, 17, 0):
+            raise RuntimeError(
+                'NcclConfig is not supported in this version')
+        self._config.splitShare = split_share
+        # expose more fields when necessary
 
-        property split_share:
-            def __get__(self): return self._config.splitShare
-            def __set__(self, int v): self._config.splitShare = v
-
-ELSE:
-    cdef class NcclConfig:
-        def __cinit__(self):
-            pass
+    property split_share:
+        def __get__(self):
+            return self._config.splitShare
 
 
 cdef class NcclCommunicator:
@@ -327,11 +320,10 @@ cdef class NcclCommunicator:
         for i in range(NCCL_UNIQUE_ID_BYTES):
             _uniqueId.internal[i] = commId[i]
 
-        if NCCL_VERSION_CODE < 21801:
+        if NCCL_VERSION_CODE < NCCL_VERSION(2, 18, 0):
             if config is not None:
-                warnings.warn(
-                    'NcclConfig is ignored in this version of NCCL',
-                    RuntimeWarning)
+                raise RuntimeError(
+                    'NcclConfig is not supported in this version')
             with nogil:
                 status = ncclCommInitRank(&self._comm, ndev, _uniqueId, rank)
         else:
@@ -339,8 +331,8 @@ cdef class NcclCommunicator:
                 cdef ncclConfig_t* c_config = (
                     &config._config if config else NULL
                 )
-                status = ncclCommInitRankConfig(&self._comm, ndev,
-                                                _uniqueId, rank, c_config)
+                status = ncclCommInitRankConfig(&self._comm, ndev, _uniqueId,
+                                                rank, c_config)
         check_status(status)
 
     def __dealloc__(self):
@@ -436,7 +428,7 @@ cdef class NcclCommunicator:
             self._comm = <ncclComm_t>0
 
     cpdef abort(self):
-        if NCCL_VERSION_CODE < 2400:
+        if NCCL_VERSION_CODE < NCCL_VERSION(2, 4, 0):
             raise RuntimeError('ncclCommAbort is not available'
                                ' in this version')
         if self._comm:
@@ -485,7 +477,7 @@ cdef class NcclCommunicator:
 
     def broadcast(self, intptr_t sendbuff, intptr_t recvbuff, size_t count,
                   int datatype, int root, intptr_t stream):
-        if NCCL_VERSION_CODE < 2200:
+        if NCCL_VERSION_CODE < NCCL_VERSION(2, 2, 0):
             # ncclBroadcast is not available in NCCL 2.1 or older.
             if self.rank_id() == root and sendbuff != recvbuff:
                 runtime.memcpyAsync(recvbuff, sendbuff,
@@ -526,7 +518,7 @@ cdef class NcclCommunicator:
 
     def send(self, intptr_t sendbuf, size_t count, int datatype, int peer,
              intptr_t stream):
-        if NCCL_VERSION_CODE < 2700:
+        if NCCL_VERSION_CODE < NCCL_VERSION(2, 7, 0):
             raise RuntimeError('ncclSend is not available in this version')
         with nogil:
             status = ncclSend(<void*>sendbuf, count, <ncclDataType_t>datatype,
@@ -535,7 +527,7 @@ cdef class NcclCommunicator:
 
     def recv(self, intptr_t recvbuf, size_t count, int datatype, int peer,
              intptr_t stream):
-        if NCCL_VERSION_CODE < 2700:
+        if NCCL_VERSION_CODE < NCCL_VERSION(2, 7, 0):
             raise RuntimeError('ncclRecv is not available in this version')
         with nogil:
             status = ncclRecv(<void*>recvbuf, count, <ncclDataType_t>datatype,
@@ -543,7 +535,7 @@ cdef class NcclCommunicator:
         check_status(status)
 
     def check_async_error(self):
-        if NCCL_VERSION_CODE < 2400:
+        if NCCL_VERSION_CODE < NCCL_VERSION(2, 4, 0):
             raise RuntimeError('ncclCommGetAsyncError is not available'
                                ' in this version')
         cdef ncclResult_t asyncError = ncclSuccess
@@ -592,7 +584,7 @@ cdef class NcclCommunicator:
         .. _ncclCommSplit:
             https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/api/comms.html#ncclcommsplit
         """  # noqa
-        if NCCL_VERSION_CODE < 21801:
+        if NCCL_VERSION_CODE < NCCL_VERSION(2, 18, 0):
             raise RuntimeError(
                 'ncclCommSplit is not available in this version'
             )
