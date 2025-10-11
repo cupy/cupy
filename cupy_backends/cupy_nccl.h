@@ -185,8 +185,8 @@ ncclResult_t ncclCommSplit(ncclComm_t comm, int color, int key, ncclComm_t* newc
     return ncclSuccess;
 }
 
-ncclResult_t ncclCommInitRankConfig(ncclComm_t* comm, int nranks, ncclUniqueId* commId,
-                                    int myrank, ncclConfig_t* config) {
+ncclResult_t ncclCommInitRankConfig(ncclComm_t* comm, int nranks, ncclUniqueId commId,
+                                    int rank, ncclConfig_t* config) {
     return ncclSuccess;
 }
 #endif

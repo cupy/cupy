@@ -9,7 +9,7 @@ from libc.stdint cimport intptr_t
 from libcpp cimport vector
 
 from cupy_backends.cuda.api cimport runtime
-from nccl cimport NCCL_VERSION
+from cupy_backends.cuda.libs.nccl cimport NCCL_VERSION
 
 cdef extern from '../../cupy_nccl.h':
     ctypedef struct ncclComm:
@@ -36,10 +36,10 @@ cdef extern from '../../cupy_nccl.h':
     ncclResult_t ncclCommInitRank(ncclComm_t* comm, int ndev,
                                   ncclUniqueId commId, int rank) nogil
     ncclResult_t ncclCommInitRankConfig(ncclComm_t* comm, int nranks,
-                                        ncclUniqueId* commId, int myrank,
-                                        ncclConfig_t* config)
+                                        ncclUniqueId commId, int rank,
+                                        ncclConfig_t* config) nogil
     ncclResult_t ncclCommSplit(ncclComm_t comm, int color, int key,
-                               ncclComm_t* newcomm, ncclConfig_t* config)
+                               ncclComm_t* newcomm, ncclConfig_t* config) nogil
     ncclResult_t ncclCommInitAll(ncclComm_t* comm, int ndev,
                                  const int* devlist)
     ncclResult_t ncclGroupStart() nogil
@@ -328,10 +328,8 @@ cdef class NcclCommunicator:
             with nogil:
                 status = ncclCommInitRank(&self._comm, ndev, _uniqueId, rank)
         else:
+            c_config = &config._config if config else NULL
             with nogil:
-                c_config = (
-                    &config._config if config else NULL
-                )
                 status = ncclCommInitRankConfig(&self._comm, ndev, _uniqueId,
                                                 rank, c_config)
         check_status(status)
