@@ -170,9 +170,9 @@ ncclResult_t ncclRecv(void* recvbuff, size_t count, ncclDataType_t datatype,
 }
 #endif
 
-if (NCCL_VERSION_CODE < NCCL_VERSION(2, 17, 0))
+#if (NCCL_VERSION_CODE < NCCL_VERSION(2, 17, 0))
 struct ncclConfig_t {
-if (NCCL_VERSION_CODE < NCCL_VERSION(2, 18, 0))
+#if (NCCL_VERSION_CODE < NCCL_VERSION(2, 18, 0))
     int splitShare;
 #endif // #if (NCCL_VERSION_CODE < NCCL_VERSION(2, 18, 0))
 };
