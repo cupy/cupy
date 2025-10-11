@@ -316,6 +316,7 @@ cdef class NcclCommunicator:
                  NcclConfig config=None):
         cdef ncclResult_t status
         cdef ncclUniqueId _uniqueId
+        cdef ncclConfig_t* c_config
         assert len(commId) == NCCL_UNIQUE_ID_BYTES
         for i in range(NCCL_UNIQUE_ID_BYTES):
             _uniqueId.internal[i] = commId[i]
@@ -328,7 +329,7 @@ cdef class NcclCommunicator:
                 status = ncclCommInitRank(&self._comm, ndev, _uniqueId, rank)
         else:
             with nogil:
-                cdef ncclConfig_t* c_config = (
+                c_config = (
                     &config._config if config else NULL
                 )
                 status = ncclCommInitRankConfig(&self._comm, ndev, _uniqueId,
