@@ -9,6 +9,7 @@ from libc.stdint cimport intptr_t
 from libcpp cimport vector
 
 from cupy_backends.cuda.api cimport runtime
+from cupy_backends.cuda.libs.nccl cimport NCCL_VERSION
 
 cdef extern from '../../cupy_nccl.h':
     ctypedef struct ncclComm:
@@ -24,6 +25,8 @@ cdef extern from '../../cupy_nccl.h':
         pass
     ctypedef enum ncclDataType_t:
         pass
+    ctypedef struct ncclConfig_t:
+        pass
 
     const char* ncclGetErrorString(ncclResult_t result) nogil
     ncclResult_t ncclGetVersion(int* version) nogil
@@ -32,6 +35,11 @@ cdef extern from '../../cupy_nccl.h':
     ncclResult_t ncclGetUniqueId(ncclUniqueId* uniqueId) nogil
     ncclResult_t ncclCommInitRank(ncclComm_t* comm, int ndev,
                                   ncclUniqueId commId, int rank) nogil
+    ncclResult_t ncclCommInitRankConfig(ncclComm_t* comm, int nranks,
+                                        ncclUniqueId commId, int rank,
+                                        ncclConfig_t* config) nogil
+    ncclResult_t ncclCommSplit(ncclComm_t comm, int color, int key,
+                               ncclComm_t* newcomm, ncclConfig_t* config) nogil
     ncclResult_t ncclCommInitAll(ncclComm_t* comm, int ndev,
                                  const int* devlist)
     ncclResult_t ncclGroupStart() nogil
@@ -112,7 +120,7 @@ class NcclError(RuntimeError):
         cdef const char* msg
         with nogil:
             msg = ncclGetErrorString(<ncclResult_t>status)
-        if NCCL_VERSION_CODE < 2000:
+        if NCCL_VERSION_CODE < NCCL_VERSION(2, 0, 0):
             s = ERROR1[status]
         else:
             s = ERROR2[status]
@@ -200,7 +208,7 @@ cpdef groupStart():
     .. _Group calls:
         https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/usage/groups.html
     """
-    if NCCL_VERSION_CODE < 2000:
+    if NCCL_VERSION_CODE < NCCL_VERSION(2, 0, 0):
         raise RuntimeError('ncclGroupStart is not available in this version')
     with nogil:
         status = ncclGroupStart()
@@ -236,11 +244,35 @@ cpdef groupEnd():
     .. _Group calls:
         https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/usage/groups.html
     """
-    if NCCL_VERSION_CODE < 2000:
+    if NCCL_VERSION_CODE < NCCL_VERSION(2, 0, 0):
         raise RuntimeError('ncclGroupEnd is not available in this version')
     with nogil:
         status = ncclGroupEnd()
     check_status(status)
+
+
+cdef class NcclConfig:
+    """Configuration for NCCL communicator creation.
+
+    .. seealso:: `ncclConfig_t`_
+
+    .. _ncclConfig_t:
+        https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/api/types.html#ncclconfig-t
+    """  # noqa
+
+    cdef:
+        ncclConfig_t _config
+
+    def __init__(self, split_share=0):
+        if NCCL_VERSION_CODE < NCCL_VERSION(2, 17, 0):
+            raise RuntimeError(
+                'NcclConfig is not supported in this version')
+        self._config.splitShare = split_share
+        # expose more fields when necessary
+
+    property split_share:
+        def __get__(self):
+            return self._config.splitShare
 
 
 cdef class NcclCommunicator:
@@ -251,6 +283,8 @@ cdef class NcclCommunicator:
         ndev (int): Total number of GPUs to be used.
         commId (tuple): The unique ID returned by :func:`get_unique_id`.
         rank (int): The rank of the GPU managed by the current process.
+        config (NcclConfig): Configuration for communicator creation.
+            None by default.
 
     Returns:
         NcclCommunicator: An ``NcclCommunicator`` instance.
@@ -261,10 +295,15 @@ cdef class NcclCommunicator:
         controlling multiple devices by one process, use :meth:`initAll`
         instead.
 
-    .. seealso:: `ncclCommInitRank`_
+    .. seealso::
+        `ncclCommInitRank`_
+        `ncclCommInitRankConfig`_
 
     .. _ncclCommInitRank:
         https://docs.nvidia.com/deeplearning/sdk/nccl-developer-guide/docs/api/comms.html#ncclcomminitrank
+    
+    .. _ncclCommInitRankConfig:
+        https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/api/comms.html#ncclcomminitrankconfig
     """  # noqa
 
     cdef:
@@ -273,13 +312,26 @@ cdef class NcclCommunicator:
     def __cinit__(self):
         self._comm = <ncclComm_t>0
 
-    def __init__(self, int ndev, tuple commId, int rank):
+    def __init__(self, int ndev, tuple commId, int rank,
+                 NcclConfig config=None):
+        cdef ncclResult_t status
         cdef ncclUniqueId _uniqueId
+        cdef ncclConfig_t* c_config
         assert len(commId) == NCCL_UNIQUE_ID_BYTES
         for i in range(NCCL_UNIQUE_ID_BYTES):
             _uniqueId.internal[i] = commId[i]
-        with nogil:
-            status = ncclCommInitRank(&self._comm, ndev, _uniqueId, rank)
+
+        if NCCL_VERSION_CODE < NCCL_VERSION(2, 18, 0):
+            if config is not None:
+                raise RuntimeError(
+                    'NcclConfig is not supported in this version')
+            with nogil:
+                status = ncclCommInitRank(&self._comm, ndev, _uniqueId, rank)
+        else:
+            c_config = &config._config if config else NULL
+            with nogil:
+                status = ncclCommInitRankConfig(&self._comm, ndev, _uniqueId,
+                                                rank, c_config)
         check_status(status)
 
     def __dealloc__(self):
@@ -320,9 +372,10 @@ cdef class NcclCommunicator:
         .. _ncclCommInitAll:
             https://docs.nvidia.com/deeplearning/sdk/nccl-developer-guide/docs/api/comms.html#ncclcomminitall
         """  # noqa
-        cdef int i, ndev
-        cdef list comms = [], devlist = []
-        cdef NcclCommunicator comm
+        cdef:
+            int i, ndev
+            list comms = [], devlist = []
+            NcclCommunicator comm
 
         if isinstance(devices, list):
             ndev = len(devices)
@@ -374,7 +427,7 @@ cdef class NcclCommunicator:
             self._comm = <ncclComm_t>0
 
     cpdef abort(self):
-        if NCCL_VERSION_CODE < 2400:
+        if NCCL_VERSION_CODE < NCCL_VERSION(2, 4, 0):
             raise RuntimeError('ncclCommAbort is not available'
                                ' in this version')
         if self._comm:
@@ -423,7 +476,7 @@ cdef class NcclCommunicator:
 
     def broadcast(self, intptr_t sendbuff, intptr_t recvbuff, size_t count,
                   int datatype, int root, intptr_t stream):
-        if NCCL_VERSION_CODE < 2200:
+        if NCCL_VERSION_CODE < NCCL_VERSION(2, 2, 0):
             # ncclBroadcast is not available in NCCL 2.1 or older.
             if self.rank_id() == root and sendbuff != recvbuff:
                 runtime.memcpyAsync(recvbuff, sendbuff,
@@ -464,7 +517,7 @@ cdef class NcclCommunicator:
 
     def send(self, intptr_t sendbuf, size_t count, int datatype, int peer,
              intptr_t stream):
-        if NCCL_VERSION_CODE < 2700:
+        if NCCL_VERSION_CODE < NCCL_VERSION(2, 7, 0):
             raise RuntimeError('ncclSend is not available in this version')
         with nogil:
             status = ncclSend(<void*>sendbuf, count, <ncclDataType_t>datatype,
@@ -473,7 +526,7 @@ cdef class NcclCommunicator:
 
     def recv(self, intptr_t recvbuf, size_t count, int datatype, int peer,
              intptr_t stream):
-        if NCCL_VERSION_CODE < 2700:
+        if NCCL_VERSION_CODE < NCCL_VERSION(2, 7, 0):
             raise RuntimeError('ncclRecv is not available in this version')
         with nogil:
             status = ncclRecv(<void*>recvbuf, count, <ncclDataType_t>datatype,
@@ -481,7 +534,7 @@ cdef class NcclCommunicator:
         check_status(status)
 
     def check_async_error(self):
-        if NCCL_VERSION_CODE < 2400:
+        if NCCL_VERSION_CODE < NCCL_VERSION(2, 4, 0):
             raise RuntimeError('ncclCommGetAsyncError is not available'
                                ' in this version')
         cdef ncclResult_t asyncError = ncclSuccess
@@ -492,3 +545,58 @@ cdef class NcclCommunicator:
             result = ncclCommGetAsyncError(self._comm, &asyncError)
         check_status(asyncError)
         check_status(result)
+
+    def commSplit(self, int color, int key, NcclConfig config=None):
+        """Split the communicator into multiple, disjoint communicators.
+
+        Args:
+            color (int): Controls the assignment of processes to
+                communicators. Processes with the same color are
+                assigned to the same communicator. If color is ``-1``,
+                the process is not included in any communicator.
+            key (int): Controls the rank assignment within
+                the new communicator. The process with the lowest key
+                value is assigned rank 0.
+            config (NcclConfig): Configuration for communicator creation.
+                NULL by default.
+
+        Returns:
+            NcclCommunicator: A new communicator.
+
+        .. note::
+            This method requires NCCL 2.18.1 or newer.
+            When split, there should not be any outstanding NCCL operations
+            on the comm. Otherwise, it might cause a deadlock.
+
+            .. code-block:: python
+
+                from cupy.cuda import nccl
+                comm = nccl.NcclCommunicator(world_size, uid, rank)
+                new_comm = comm.commSplit(color, key)
+                if new_comm is not None:
+                    # use new_comm for collective communication
+                    new_comm.destroy()
+                comm.destroy()
+
+        .. seealso:: `ncclCommSplit`_
+
+        .. _ncclCommSplit:
+            https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/api/comms.html#ncclcommsplit
+        """  # noqa
+        if NCCL_VERSION_CODE < NCCL_VERSION(2, 18, 0):
+            raise RuntimeError(
+                'ncclCommSplit is not available in this version'
+            )
+        cdef ncclComm_t new_comm = <ncclComm_t>0
+        cdef NcclCommunicator new_nccl_comm
+        cdef ncclConfig_t* c_config = &config._config if config else NULL
+
+        with nogil:
+            status = ncclCommSplit(self._comm, color, key, &new_comm, c_config)
+        check_status(status)
+        if new_comm == NULL:
+            return None
+
+        new_nccl_comm = NcclCommunicator.__new__(NcclCommunicator)
+        new_nccl_comm._comm = new_comm
+        return new_nccl_comm
