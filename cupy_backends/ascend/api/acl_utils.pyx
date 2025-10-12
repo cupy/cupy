@@ -246,7 +246,7 @@ cdef OpType get_op_type(tuple ops, bint inplace):
         raise RuntimeError("Operator type can not be decided")
     return INVALID_OP
 
-cdef aclError launch_acl_func(string opname, tuple ops, bint inplace, size_t stream_ptr) except *:
+cdef aclError launch_acl_func(string opname, tuple ops, bint inplace, nullptr_t stream_ptr) except *:
     # 检查操作是否已注册
     cdef OpInfo op_info
     op_info.op_name = opname
@@ -256,7 +256,7 @@ cdef aclError launch_acl_func(string opname, tuple ops, bint inplace, size_t str
     
     cdef FuncPtrUnion func_ptr = _builtin_operators[op_info]
     cdef aclError ret = 0
-    cdef aclrtStream stream = <aclrtStream>stream_ptr
+    cdef aclrtStream stream = <aclrtStream>NULL  # there is error, so use stream.null
     # 转换为ACL张量列表
     cdef vector[aclTensor*] tensors
     for op in ops:

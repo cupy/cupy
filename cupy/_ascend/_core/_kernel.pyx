@@ -903,7 +903,7 @@ cdef class ufunc:
         inout_args.extend(out_args)
         shape = _reduce_dims(inout_args, self._params, shape)
         indexer = _carray._indexer_init(shape)
-        inout_args.append(indexer)
+        #inout_args.append(indexer) # ASCEND does not support indexer yet
         arginfos = _get_arginfos(inout_args)
 
         # TODO: ASCEND launch kernel
