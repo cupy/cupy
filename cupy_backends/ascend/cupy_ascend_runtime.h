@@ -481,28 +481,28 @@ cudaError_t cudaMemPoolSetAttribute(...) {
 // Stream and Event
 // AscendCL has its own stream and event types (aclrtStream, aclrtEvent).
 
-cudaError_t cudaStreamCreate(cudaStream_t stream) {
-    aclError ret = aclrtCreateStream(&stream); 
+cudaError_t cudaStreamCreate(cudaStream_t* stream) {
+    aclError ret = aclrtCreateStream(stream); 
     return ret;
 }
 
-cudaError_t cudaStreamCreateWithFlags(cudaStream_t stream,
+cudaError_t cudaStreamCreateWithFlags(cudaStream_t* stream,
                                       unsigned int flags) {
     // TODO: AscendCL's aclrtCreateStream might not use the same flags as HIP.
-    aclError ret = aclrtCreateStreamWithConfig(&stream, ASCEND_DEFAULT_STREAM_PRIORITY, flags); // Check exact API
+    aclError ret = aclrtCreateStreamWithConfig(stream, ASCEND_DEFAULT_STREAM_PRIORITY, flags); // Check exact API
     return ret;
 }
 
-cudaError_t cudaStreamCreateWithPriority(cudaStream_t stream,
+cudaError_t cudaStreamCreateWithPriority(cudaStream_t* stream,
                                          unsigned int flags,
                                          int priority) {
     // WARNING: AscendCL might have different priority mechanisms.
-    aclError ret = aclrtCreateStreamWithConfig(&stream, priority, flags); // Check exact API
+    aclError ret = aclrtCreateStreamWithConfig(stream, priority, flags); // Check exact API
     return ret;
 }
 
 cudaError_t cudaStreamGetFlags(cudaStream_t stream, unsigned int *flags) {
-    // WARNING: Missing direct equivalent in AscendCL for getting stream flags.
+    // TODO: stream flags conversion either here or in runtime.pyx
     return ACL_ERROR_FEATURE_UNSUPPORTED;
 }
 
@@ -536,24 +536,25 @@ cudaError_t cudaLaunchHostFunc(cudaStream_t stream, cudaHostFn_t fn, void* userD
 // Returns cudaSuccess if all operations in stream have completed, or cudaErrorNotReady if not.
 cudaError_t cudaStreamQuery(cudaStream_t stream) {
     aclrtStreamStatus status;
-    aclError ret = aclrtStreamQuery(stream, &status); // TODO
+    aclError ret = aclrtStreamQuery(stream, &status); // TODO, StreamQueryStatus
     return ret;
 }
 
+// TODO: conversion of flags
 cudaError_t cudaStreamWaitEvent(cudaStream_t stream, cudaEvent_t event,
                                 unsigned int flags) {
     aclError ret = aclrtStreamWaitEvent(stream, event);
     return ret;
 }
 
-cudaError_t cudaEventCreate(cudaEvent_t event) {
-    aclError ret = aclrtCreateEvent(&event);
+cudaError_t cudaEventCreate(cudaEvent_t* event) {
+    aclError ret = aclrtCreateEvent(event);
     return ret;
 }
 
-cudaError_t cudaEventCreateWithFlags(cudaEvent_t event, unsigned flags) {
-    // WARNING: AscendCL's aclrtCreateEvent might not use the same flags. 
-    aclError ret = aclrtCreateEventWithFlag(&event, flags); // Check exact API
+cudaError_t cudaEventCreateWithFlags(cudaEvent_t* event, unsigned flags) {
+    // TODO:  event flags conversion 
+    aclError ret = aclrtCreateEventWithFlag(event, flags); // Check exact API
     return ret;
 }
 

@@ -35,9 +35,9 @@ const CUresult cudaErrorPeerAccessAlreadyEnabled = ACL_ERROR_FEATURE_UNSUPPORTED
 typedef int CUdevice;  // AscendCL device is also int id
 typedef aclDataBuffer* CUdeviceptr; // AscendCL数据缓冲区指针
 typedef aclrtContext CUcontext; // AscendCL上下文
-typedef aclrtStream* CUstream; // AscendCL Stream
+typedef aclrtStream CUstream; // AscendCL Stream
 typedef aclrtStream cudaStream_t;
-typedef aclrtEvent* CUevent; // AscendCL事件
+typedef aclrtEvent CUevent; // AscendCL事件
 typedef aclrtEvent cudaEvent_t;
 typedef void (*cudaStreamCallback_t)(aclrtStream* stream, aclError status, void* userData); // Adapted to AscendCL stream callback signature
 typedef void (*cudaHostFn_t)(void* userData); // Can be implemented via threads/tasks

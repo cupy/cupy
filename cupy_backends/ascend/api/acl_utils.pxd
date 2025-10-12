@@ -1,4 +1,5 @@
 cimport cpython
+from libc.stdint cimport intptr_t
 from libcpp.string cimport string
 from cupy._core.core cimport _ndarray_base
 include 'acl_types.pxi'
