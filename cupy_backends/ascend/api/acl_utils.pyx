@@ -23,8 +23,10 @@ cdef extern from "aclnn/opdev/common_types.h" nogil:
         uint64_t storageDimsNum,
         void* tensorData
     )
+    aclScalar* aclCreateScalar(void* value, aclDataType dataType)
 
     aclnnStatus aclDestroyTensor(const aclTensor *tensor)
+    aclnnStatus aclDestroyScalar(const aclScalar *scalar)
 
 
 cdef aclDataType numpy_to_acl_dtype(dtype,
@@ -71,7 +73,55 @@ cdef aclDataType numpy_to_acl_dtype(dtype,
         #raise TypeError('dtype is not supported: {}'.format(dtype)) # TODO: consider throw?
         return aclDataType.ACL_DT_UNDEFINED
 
+
+cdef aclScalar* cupy_scalar_to_acl_scalar(_cupy_scalar s) except*:
+    """
+    将 CuPy 标量对象转换为 aclScalar。
+    参数:
+        s: CuPy 标量对象，应具有 `dtype` 属性和数据指针访问方式。
+    返回:
+        aclScalar: 转换后的 ACL 标量。
+    异常:
+        TypeError: 如果输入不是预期的 CuPy 标量类型。
+        ValueError: 如果 dtype 转换失败或数据指针无效。
+    """
+    cdef void* value_ptr = NULL
+    cdef aclScalar* acl_scalar = NULL
+    cdef aclDataType dtype
     
+    try:
+        dtype = numpy_to_acl_dtype(s.dtype)
+        # 根据数据类型分配内存并复制值, TODO: only support int32 float64?
+        if s.dtype.kind == 'i':  # 整数类型
+            value_ptr = PyMem_Malloc(sizeof(long))
+            if value_ptr == NULL:
+                raise MemoryError("Failed to allocate memory for integer scalar")
+            (<long*>value_ptr)[0] = s.item()
+        elif s.dtype.kind == 'f':  # 浮点类型
+            value_ptr = PyMem_Malloc(sizeof(double))
+            if value_ptr == NULL:
+                raise MemoryError("Failed to allocate memory for float scalar")
+            (<double*>value_ptr)[0] = s.item()
+        elif s.dtype.kind == 'b':  # 布尔类型
+            value_ptr = PyMem_Malloc(sizeof(bool))
+            if value_ptr == NULL:
+                raise MemoryError("Failed to allocate memory for bool scalar")
+            (<bint*>value_ptr)[0] = s.item()
+        else:
+            raise TypeError(f"Unsupported dtype kind: {s.dtype.kind}")
+        
+        # 创建aclScalar
+        acl_scalar = aclCreateScalar(value_ptr, dtype)
+        if acl_scalar == NULL:
+            raise RuntimeError("Failed to create aclScalar")
+        return acl_scalar
+    except Exception:
+        # 异常处理：确保资源清理
+        if value_ptr != NULL:
+            PyMem_Free(value_ptr)
+        if acl_scalar != NULL:
+            aclDestroyScalar(acl_scalar)
+        raise MemoryError("Failed to free aclScalar")
 
 
 # 主转换函数
@@ -201,11 +251,13 @@ cdef cpp_map[OpInfo, FuncPtrUnion] _builtin_operators
 ctypedef aclError (*TriOpFunc)(const aclTensor* self, const aclTensor* other,
     const aclTensor* other2, aclTensor* out, aclrtStream stream)
 ctypedef aclError (*InplaceTriOpFunc)(aclTensor* self, const aclTensor* other, aclrtStream stream)
-# TODO: BinaryScalarOpFunc
+
 ctypedef aclError (*BinaryOpFunc)(const aclTensor* self, const aclTensor* other,
     aclTensor* out, aclrtStream stream)
 ctypedef aclError (*InplaceBinaryOpFunc)(aclTensor* self, const aclTensor* other, aclrtStream stream)
-# TODO: out = self + scalar
+ctypedef aclError (*ScalarBinaryOpFunc)(const aclTensor* self, const aclScalar* other,
+    aclTensor* out, aclrtStream stream) 
+ctypedef aclError (*InplaceScalarBinaryOpFunc)(aclTensor* self, const aclScalar* other, aclrtStream stream) 
 ctypedef aclError (*UnaryOpFunc)(const aclTensor* self, aclTensor* out, aclrtStream stream)
 ctypedef aclError (*InplaceUnaryOpFunc)(aclTensor* self, aclrtStream stream)
 
@@ -216,6 +268,8 @@ ctypedef union FuncPtrUnion:
     InplaceUnaryOpFunc inplace_unary_op
     BinaryOpFunc binary_op
     InplaceBinaryOpFunc inplace_binary_op
+    ScalarBinaryOpFunc scalar_binary_op
+    InplaceScalarBinaryOpFunc inplace_scalar_binary_op
     TriOpFunc tri_op
     InplaceTriOpFunc inplace_tri_op
 
@@ -232,8 +286,8 @@ cdef aclError register_acl_ufunc(string opname, OpType op_type, FuncPtrUnion fun
         _builtin_operators[op_info] = func_ptr
         return 0
 
-cdef OpType get_op_type(tuple ops, bint inplace):
-    cdef bint has_scalar = False # TODO: detect and return op_type
+cdef OpType get_op_type(tuple ops, bint inplace, bint has_scalar = False):
+    # TODO: Ternary op
     if len(ops) == 3 and not inplace:  # 二元操作
         return BINARY_OP
     elif len(ops) == 2 and inplace:  # 原地二元操作
@@ -248,29 +302,51 @@ cdef OpType get_op_type(tuple ops, bint inplace):
 
 cdef aclError launch_acl_func(string opname, tuple ops, bint inplace, intptr_t stream_ptr) except *:
     # 检查操作是否已注册
+    cdef aclScalar* scalar_ptr = NULL
+    for op in ops:
+        typ = type(op)
+        if typ is _cupy_scalar:
+            scalar_ptr = cupy_scalar_to_acl_scalar(op)
+    cdef has_scalar = scalar_ptr != NULL
+
     cdef OpInfo op_info
     op_info.op_name = opname
-    op_info.op_type = get_op_type(ops, inplace)
+    op_info.op_type = get_op_type(ops, inplace, has_scalar)
     if _builtin_operators.find(op_info) == _builtin_operators.end():
         raise KeyError(f"Operator {opname} not registered")
     
     cdef FuncPtrUnion func_ptr = _builtin_operators[op_info]
     cdef aclError ret = 0
     cdef aclrtStream stream = <aclrtStream>NULL  # there is error, so use stream.null
+
     # 转换为ACL张量列表
     cdef vector[aclTensor*] tensors
     for op in ops:
-        tensors.push_back(cupy_ndarray_to_acl_tensor(op))
+        typ = type(op)
+        if issubclass(typ, _ndarray_base):
+            tensors.push_back(cupy_ndarray_to_acl_tensor(op))
+        elif typ is _cupy_scalar:
+            pass
+        else:
+            raise RuntimeError("Operand is not ndarray or scalar: ", op)
     try:
-        if len(ops) == 3:  # 二元操作
+        if len(ops) == 3 and not has_scalar and not inplace:  # 二元操作
             if op_info.op_type != BINARY_OP:
                 raise RuntimeError(f"Operator {opname} is not a binary operator")
             ret = func_ptr.binary_op(tensors[0], tensors[1], tensors[2], stream)
-        
         elif len(ops) == 2 and inplace:  # 原地二元操作
             if op_info.op_type != INPLACE_BINARY_OP:
                 raise RuntimeError(f"Operator {opname} is not an inplace binary operator")
             ret = func_ptr.inplace_binary_op(tensors[0], tensors[1], stream)
+
+        elif len(ops) == 3 and has_scalar and not inplace:  #  out = self <biop> scalar
+            if op_info.op_type != SCALAR_BINARY_OP:
+                raise RuntimeError(f"Operator {opname} is not an scalar binary operator")
+            ret = func_ptr.scalar_binary_op(tensors[0], scalar_ptr, tensors[1], stream)
+        elif len(ops) == 2 and has_scalar:  #  out = self <biop> scalar
+            if op_info.op_type != INPLACE_SCALAR_BINARY_OP:
+                raise RuntimeError(f"Operator {opname} is not an inplace scalar binary operator")
+            ret = func_ptr.inplace_scalar_binary_op(tensors[0], scalar_ptr, stream)
         
         elif len(ops) == 2 and not inplace:  # 一元操作
             if op_info.op_type != UNARY_OP:
@@ -289,6 +365,8 @@ cdef aclError launch_acl_func(string opname, tuple ops, bint inplace, intptr_t s
         for t in tensors:
             # TODO: deal with aclScalar
             aclDestroyTensor(t)  # 假设destroyAclTensor函数已存在
+        if scalar_ptr:
+            aclDestroyScalar(scalar_ptr)
 
         # TODO: check ret error code
     return ret
@@ -296,6 +374,9 @@ cdef aclError launch_acl_func(string opname, tuple ops, bint inplace, intptr_t s
 cdef extern from "../acl_math.h" nogil:
     aclError aclop_BitwiseAndTensor(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream)
     aclError aclop_InplaceBitwiseAndTensor(aclTensor* self, const aclTensor* other, aclrtStream stream)
+    aclError aclop_BitwiseAndScalar(const aclTensor* self, const aclScalar* other, aclTensor* out, aclrtStream stream)
+    aclError aclop_InplaceBitwiseAndScalar(aclTensor* self, const aclScalar* other, aclrtStream stream)
+
     aclError aclop_BitwiseOrTensor(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream)
     aclError aclop_InplaceBitwiseOrTensor(aclTensor* self, const aclTensor* other, aclrtStream stream)
     aclError aclop_BitwiseXorTensor(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream)
@@ -327,13 +408,19 @@ cdef void init_builtin_operators():
     func_union.binary_op = aclop_MatMul
     register_acl_ufunc("ascend_matmul", BINARY_OP, func_union)
     
-    # 注册aclop_InplaceAnd作为原地二元操作
+    # 注册aclop_BitwiseAnd作为二元操作
+    func_union.binary_op = aclop_BitwiseAndTensor
+    register_acl_ufunc("ascend_bitwise_and", INPLACE_BINARY_OP, func_union)
+    # 注册aclop_InplaceBitwiseAnd作为原地二元操作
     func_union.inplace_binary_op = aclop_InplaceBitwiseAndTensor
     register_acl_ufunc("ascend_inplace_bitwise_and", INPLACE_BINARY_OP, func_union)
 
-    # 注册aclop_InplaceAnd作为原地二元操作
-    func_union.inplace_binary_op = aclop_InplaceBitwiseAndTensor
-    register_acl_ufunc("ascend_inplace_bitwise_and", INPLACE_BINARY_OP, func_union)
+    # 注册aclop_BitwiseAndScalar作为原地二元操作
+    func_union.scalar_binary_op = aclop_BitwiseAndScalar
+    register_acl_ufunc("ascend_scalar_bitwise_and", SCALAR_BINARY_OP, func_union)
+    # 注册aclop_InplaceBitwiseAndScalar作为原地二元操作
+    func_union.inplace_scalar_binary_op = aclop_InplaceBitwiseAndScalar
+    register_acl_ufunc("ascend_inplace_scalar_bitwise_and", INPLACE_SCALAR_BINARY_OP, func_union)
 
     # 注册aclop_Cos操作
     func_union.unary_op = aclop_Cos

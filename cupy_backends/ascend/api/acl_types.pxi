@@ -8,6 +8,7 @@ cdef extern from "acl/acl.h" nogil:
     ctypedef int aclError
     ctypedef void* aclrtStream
     cdef cppclass aclTensor
+    cdef cppclass aclScalar
     ctypedef enum aclDataType:
         ACL_DT_UNDEFINED = -1,
         ACL_FLOAT = 0,
