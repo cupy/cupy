@@ -118,7 +118,7 @@ class TestCommSplit:
     def test_comm_split(self, config):
         id = nccl.get_unique_id()
         comm = nccl.NcclCommunicator(1, id, 0, config)
-        new_comm = comm.commSplit(color=0, key=0)
+        new_comm = comm.commSplit(color=0, key=0, config=config)
         assert new_comm is not None
         assert 1 == new_comm.size()
         new_comm.destroy()
