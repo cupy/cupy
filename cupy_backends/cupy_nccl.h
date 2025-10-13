@@ -22,7 +22,9 @@
 #endif
 
 #ifndef NCCL_VERSION
-#define NCCL_VERSION(X,Y,Z) (((X) <= 2 && (Y) <= 8) ? (X) * 1000 + (Y) * 100 + (Z) : (X) * 10000 + (Y) * 100 + (Z))
+#define NCCL_VERSION(X, Y, Z)                                                  \
+  (((X) <= 2 && (Y) <= 8) ? (X)*1000 + (Y)*100 + (Z)                           \
+                          : (X)*10000 + (Y)*100 + (Z))
 #endif
 
 #ifndef NCCL_VERSION_CODE

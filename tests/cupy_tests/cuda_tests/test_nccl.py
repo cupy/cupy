@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import pickle
+import pytest
 import unittest
 
 import cupy
@@ -64,17 +65,11 @@ class TestNCCL(unittest.TestCase):
         comm = nccl.NcclCommunicator(1, id, 0)
         assert 1 == comm.size()
 
-    @unittest.skipUnless(nccl_version >= 21801, 'Using old NCCL')
-    def test_comm_split(self):
-        id = nccl.get_unique_id()
+    def test_nccl_config(self):
         config = nccl.NcclConfig()
-        config.split_share = 1
-        comm = nccl.NcclCommunicator(1, id, 0, config)
-        new_comm = comm.commSplit(color=0, key=0)
-        if new_comm is not None:
-            assert 1 == comm.size()
-            new_comm.destroy()
-        comm.destroy()
+        assert config.split_share == 0
+        config = nccl.NcclConfig(split_share=1)
+        assert config.split_share == 1
 
     @testing.multi_gpu(2)
     @unittest.skipUnless(nccl_version >= 2700, 'Using old NCCL')
@@ -113,3 +108,25 @@ class TestExceptionPicklable(unittest.TestCase):
         e2 = pickle.loads(pickle.dumps(e1))
         assert e1.args == e2.args
         assert str(e1) == str(e2)
+
+
+@pytest.mark.skipif(nccl_version < 21801, reason='Using old NCCL')
+class TestCommSplit:
+    @pytest.mark.parametrize(
+        "config", [nccl.NcclConfig(), nccl.NcclConfig(split_share=1), None]
+    )
+    def test_comm_split(self, config):
+        id = nccl.get_unique_id()
+        comm = nccl.NcclCommunicator(1, id, 0, config)
+        new_comm = comm.commSplit(color=0, key=0)
+        assert new_comm is not None
+        assert 1 == new_comm.size()
+        new_comm.destroy()
+        comm.destroy()
+
+    def test_split_no_color(self):
+        id = nccl.get_unique_id()
+        comm = nccl.NcclCommunicator(1, id, 0)
+        new_comm = comm.commSplit(color=-1, key=0)
+        assert new_comm is None
+        comm.destroy()

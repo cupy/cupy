@@ -26,7 +26,7 @@ cdef extern from '../../cupy_nccl.h':
     ctypedef enum ncclDataType_t:
         pass
     ctypedef struct ncclConfig_t:
-        pass
+        int splitShare
 
     const char* ncclGetErrorString(ncclResult_t result) nogil
     ncclResult_t ncclGetVersion(int* version) nogil
@@ -561,7 +561,8 @@ cdef class NcclCommunicator:
                 NULL by default.
 
         Returns:
-            NcclCommunicator: A new communicator.
+            NcclCommunicator: A new communicator. Return ``None`` if color is
+                ``-1``.
 
         .. note::
             This method requires NCCL 2.18.1 or newer.
