@@ -172,24 +172,35 @@ ncclResult_t ncclRecv(void* recvbuff, size_t count, ncclDataType_t datatype,
 }
 #endif
 
-#if (NCCL_VERSION_CODE < NCCL_VERSION(2, 17, 0))
-struct ncclConfig_t {
 #if (NCCL_VERSION_CODE < NCCL_VERSION(2, 18, 0))
+// mock `ncclConfig_t` with our own struct
+typedef struct {
+    // expose more fields if necessary
     int splitShare;
-#endif // #if (NCCL_VERSION_CODE < NCCL_VERSION(2, 18, 0))
-};
-#endif // #if (NCCL_VERSION_CODE < NCCL_VERSION(2, 17, 0))
+} _ncclConfig_t;
 
-#if (NCCL_VERSION_CODE < NCCL_VERSION(2, 18, 0))
-// New functions in 2.18
-ncclResult_t ncclCommSplit(ncclComm_t comm, int color, int key, ncclComm_t* newcomm,
-                           ncclConfig_t* config) {
+ncclResult_t _ncclCommSplit(ncclComm_t comm, int color, int key, ncclComm_t* newcomm,
+                            _ncclConfig_t* config) {
     return ncclSuccess;
 }
 
-ncclResult_t ncclCommInitRankConfig(ncclComm_t* comm, int nranks, ncclUniqueId commId,
-                                    int rank, ncclConfig_t* config) {
+ncclResult_t _ncclCommInitRankConfig(ncclComm_t* comm, int nranks, ncclUniqueId commId,
+                                     int rank, _ncclConfig_t* config) {
     return ncclSuccess;
+}
+
+#else // #if (NCCL_VERSION_CODE >= NCCL_VERSION(2, 18, 0))
+// reuse the original struct
+typedef ncclConfig_t _ncclConfig_t;
+
+ncclResult_t _ncclCommSplit(ncclComm_t comm, int color, int key, ncclComm_t* newcomm,
+                            _ncclConfig_t* config) {
+    return ncclCommSplit(comm, color, key, newcomm, config);
+}
+
+ncclResult_t _ncclCommInitRankConfig(ncclComm_t* comm, int nranks, ncclUniqueId commId,
+                                     int rank, _ncclConfig_t* config) {
+    return ncclCommInitRankConfig(comm, nranks, commId, rank, config);
 }
 #endif
 

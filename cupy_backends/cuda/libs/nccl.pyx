@@ -25,7 +25,7 @@ cdef extern from '../../cupy_nccl.h':
         pass
     ctypedef enum ncclDataType_t:
         pass
-    ctypedef struct ncclConfig_t:
+    ctypedef struct _ncclConfig_t:
         int splitShare
 
     const char* ncclGetErrorString(ncclResult_t result) nogil
@@ -35,11 +35,12 @@ cdef extern from '../../cupy_nccl.h':
     ncclResult_t ncclGetUniqueId(ncclUniqueId* uniqueId) nogil
     ncclResult_t ncclCommInitRank(ncclComm_t* comm, int ndev,
                                   ncclUniqueId commId, int rank) nogil
-    ncclResult_t ncclCommInitRankConfig(ncclComm_t* comm, int nranks,
-                                        ncclUniqueId commId, int rank,
-                                        ncclConfig_t* config) nogil
-    ncclResult_t ncclCommSplit(ncclComm_t comm, int color, int key,
-                               ncclComm_t* newcomm, ncclConfig_t* config) nogil
+    ncclResult_t _ncclCommInitRankConfig(ncclComm_t* comm, int nranks,
+                                         ncclUniqueId commId, int rank,
+                                         _ncclConfig_t* config) nogil
+    ncclResult_t _ncclCommSplit(ncclComm_t comm, int color, int key,
+                                ncclComm_t* newcomm,
+                                _ncclConfig_t* config) nogil
     ncclResult_t ncclCommInitAll(ncclComm_t* comm, int ndev,
                                  const int* devlist)
     ncclResult_t ncclGroupStart() nogil
@@ -261,7 +262,7 @@ cdef class NcclConfig:
     """  # noqa
 
     cdef:
-        ncclConfig_t _config
+        _ncclConfig_t _config
 
     def __init__(self, split_share=0):
         if NCCL_VERSION_CODE < NCCL_VERSION(2, 17, 0):
@@ -316,7 +317,7 @@ cdef class NcclCommunicator:
                  NcclConfig config=None):
         cdef ncclResult_t status
         cdef ncclUniqueId _uniqueId
-        cdef ncclConfig_t* c_config
+        cdef _ncclConfig_t* c_config
         assert len(commId) == NCCL_UNIQUE_ID_BYTES
         for i in range(NCCL_UNIQUE_ID_BYTES):
             _uniqueId.internal[i] = commId[i]
@@ -330,8 +331,8 @@ cdef class NcclCommunicator:
         else:
             c_config = &config._config if config else NULL
             with nogil:
-                status = ncclCommInitRankConfig(&self._comm, ndev, _uniqueId,
-                                                rank, c_config)
+                status = _ncclCommInitRankConfig(&self._comm, ndev, _uniqueId,
+                                                 rank, c_config)
         check_status(status)
 
     def __dealloc__(self):
@@ -590,10 +591,11 @@ cdef class NcclCommunicator:
             )
         cdef ncclComm_t new_comm = <ncclComm_t>0
         cdef NcclCommunicator new_nccl_comm
-        cdef ncclConfig_t* c_config = &config._config if config else NULL
+        cdef _ncclConfig_t* c_config = &config._config if config else NULL
 
         with nogil:
-            status = ncclCommSplit(self._comm, color, key, &new_comm, c_config)
+            status = _ncclCommSplit(self._comm, color, key, &new_comm,
+                                    c_config)
         check_status(status)
         if new_comm == NULL:
             return None
