@@ -97,7 +97,4 @@ cpdef intptr_t get_default_stream_ptr():
 
 
 cdef bint is_ptds_enabled():
-    if runtime._is_hip_environment:
-        # HIP does not support PTDS, just ignore the env var
-        return False
     return _ptds

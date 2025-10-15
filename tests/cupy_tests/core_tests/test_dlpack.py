@@ -184,9 +184,7 @@ class TestNewDLPackConversion:
             assert numpy.may_share_memory(arr_nocopy, arr1)
 
     def test_stream(self):
-        allowed_streams = ['null', True]
-        if not cuda.runtime.is_hip:
-            allowed_streams.append('ptds')
+        allowed_streams = ['null', 'ptds']
 
         # stream order is automatically established via DLPack protocol
         for src_s in [self._get_stream(s) for s in allowed_streams]:

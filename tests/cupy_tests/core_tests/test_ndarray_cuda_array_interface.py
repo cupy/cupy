@@ -4,7 +4,6 @@ import unittest
 
 from cupy_backends.cuda import stream as stream_module
 import cupy
-import cupy_backends
 from cupy import _core
 from cupy import testing
 
@@ -29,11 +28,7 @@ class DummyObjectWithCudaArrayInterface:
         }
         if self.ver == 3:
             stream = cupy.cuda.get_current_stream()
-            # Only non-default streams use their actual ptr values. (ROCm)
-            if cupy_backends.cuda.api.runtime.is_hip:
-                desc['stream'] = stream.ptr
-            else:
-                desc['stream'] = 1 if stream.ptr == 0 else stream.ptr  # noqa: F821, E501
+            desc['stream'] = 1 if stream.ptr == 0 else stream.ptr  # noqa: F821, E501
         return desc
 
 
@@ -280,8 +275,6 @@ class TestCUDAArrayInterfaceCompliance(unittest.TestCase):
 }))
 class TestCUDAArrayInterfaceStream(unittest.TestCase):
     def setUp(self):
-        if cupy.cuda.runtime.is_hip and self.stream == 'ptds':
-            self.skipTest('HIP does not support PTDS')
 
         if self.stream == 'null':
             self.stream = cupy.cuda.Stream.null
