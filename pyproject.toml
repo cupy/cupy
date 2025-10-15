@@ -140,8 +140,13 @@ extend-exclude = [
 [tool.ruff.lint]
 select = ["E", "F", "W", "UP", "I002", "FA", "PYI", "PLC01"]
 extend-ignore = [
+  "UP007", # [*] Use `X | Y` for type annotations
   "UP031", # printf-string-formatting
   "UP032", # f-string
+  "UP035", # [*] Import from `collections.abc` instead: `Callable`
+  "UP038", # Use `X | Y` in `isinstance` call instead of `(X, Y)`
+  "UP041", # [*] Replace aliased errors with `TimeoutError`
+  "UP045", # Use `X | None` for type annotations
 ]
 
 [tool.ruff.lint.per-file-ignores]
