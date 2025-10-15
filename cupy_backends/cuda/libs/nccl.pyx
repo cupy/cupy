@@ -33,6 +33,7 @@ cdef extern from '../../cupy_nccl.h':
     ncclResult_t ncclCommGetAsyncError(ncclComm_t comm,
                                        ncclResult_t *asyncError) nogil
     ncclResult_t ncclGetUniqueId(ncclUniqueId* uniqueId) nogil
+    _ncclConfig_t ncclConfigInitializer() nogil
     ncclResult_t ncclCommInitRank(ncclComm_t* comm, int ndev,
                                   ncclUniqueId commId, int rank) nogil
     ncclResult_t _ncclCommInitRankConfig(ncclComm_t* comm, int nranks,
@@ -263,6 +264,9 @@ cdef class NcclConfig:
 
     cdef:
         _ncclConfig_t _config
+
+    def __cinit__(self):
+        self._config = ncclConfigInitializer()
 
     def __init__(self, split_share=0):
         if NCCL_VERSION_CODE < NCCL_VERSION(2, 17, 0):

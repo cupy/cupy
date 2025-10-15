@@ -179,13 +179,17 @@ typedef struct {
     int splitShare;
 } _ncclConfig_t;
 
-ncclResult_t _ncclCommSplit(ncclComm_t comm, int color, int key, ncclComm_t* newcomm,
-                            _ncclConfig_t* config) {
+static inline _ncclConfig_t ncclConfigInitializer() {
+    return _ncclConfig_t{0};
+}
+
+ncclResult_t _ncclCommSplit(ncclComm_t comm, int color, int key, ncclComm_t *newcomm,
+                            _ncclConfig_t *config) {
     return ncclSuccess;
 }
 
-ncclResult_t _ncclCommInitRankConfig(ncclComm_t* comm, int nranks, ncclUniqueId commId,
-                                     int rank, _ncclConfig_t* config) {
+ncclResult_t _ncclCommInitRankConfig(ncclComm_t *comm, int nranks, ncclUniqueId commId,
+                                     int rank, _ncclConfig_t *config) {
     return ncclSuccess;
 }
 
@@ -193,13 +197,17 @@ ncclResult_t _ncclCommInitRankConfig(ncclComm_t* comm, int nranks, ncclUniqueId 
 // reuse the original struct
 typedef ncclConfig_t _ncclConfig_t;
 
-ncclResult_t _ncclCommSplit(ncclComm_t comm, int color, int key, ncclComm_t* newcomm,
-                            _ncclConfig_t* config) {
+static inline _ncclConfig_t ncclConfigInitializer() {
+    return (_ncclConfig_t)NCCL_CONFIG_INITIALIZER;
+}
+
+ncclResult_t _ncclCommSplit(ncclComm_t comm, int color, int key, ncclComm_t *newcomm,
+                            _ncclConfig_t *config) {
     return ncclCommSplit(comm, color, key, newcomm, config);
 }
 
-ncclResult_t _ncclCommInitRankConfig(ncclComm_t* comm, int nranks, ncclUniqueId commId,
-                                     int rank, _ncclConfig_t* config) {
+ncclResult_t _ncclCommInitRankConfig(ncclComm_t *comm, int nranks, ncclUniqueId commId,
+                                     int rank, _ncclConfig_t *config) {
     return ncclCommInitRankConfig(comm, nranks, commId, rank, config);
 }
 #endif
