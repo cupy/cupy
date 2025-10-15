@@ -21,11 +21,11 @@ ENV PATH "/usr/lib/ccache:${PATH}"
 RUN git clone https://github.com/pyenv/pyenv.git /opt/pyenv
 ENV PYENV_ROOT "/opt/pyenv"
 ENV PATH "${PYENV_ROOT}/shims:${PYENV_ROOT}/bin:${PATH}"
-RUN pyenv install 3.12.6 && \
-    pyenv global 3.12.6 && \
+RUN pyenv install 3.14.0 && \
+    pyenv global 3.14.0 && \
     pip install -U setuptools pip wheel
 
-RUN pip install -U 'numpy==2.3.*' 'scipy==1.16.*' 'optuna==4.*' 'mpi4py==3.*' 'cython==3.1.*'
+RUN pip install -U 'numpy==2.3.*' 'scipy==1.16.*' 'optuna==4.*' 'mpi4py==4.*' 'cython==3.1.*'
 RUN pip uninstall -y cuda-python && \
     pip check
 
