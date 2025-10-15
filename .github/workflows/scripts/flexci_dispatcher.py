@@ -86,8 +86,12 @@ def _fill_commit_status(
         _log('No projects to complement commit status')
         return
 
+    # Get the latest commit status for each context.
     _log(f'Checking statuses for commit {sha}')
-    contexts = {s.context: s for s in gh_commit.get_statuses()}
+    contexts = {
+        s.context: s
+        for s in sorted(gh_commit.get_statuses(), key=lambda s: s.updated_at)
+    }
     force_skip_contexts: list[str] = []
     for prj in projects:
         context = f'{context_prefix}/{prj}'
