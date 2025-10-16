@@ -3079,10 +3079,11 @@ cpdef min_scalar_type(a):
 
     .. seealso:: :func:`numpy.min_scalar_type`
     """
-    if isinstance(a, ndarray):
-        return a.dtype
+    cdef _ndarray_base arr = _convert_from_cupy_like(a, error=False)
+    if arr is not None:
+        return arr.dtype
 
-    _, concat_type, concat_dtype = _compute_concat_info_impl(a)
+    _, concat_type, concat_dtype = _array_info_from_nested_sequence(a)
     if concat_type is not None:
         return concat_dtype
     return numpy.min_scalar_type(a)

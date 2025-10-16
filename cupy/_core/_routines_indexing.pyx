@@ -18,6 +18,7 @@ from cupy._core cimport _routines_math as _math
 from cupy._core cimport _routines_manipulation as _manipulation
 from cupy._core.core cimport _convert_from_cupy_like, _ndarray_base
 from cupy._core cimport internal
+from cupy._core cimport _dtype
 
 
 # _ndarray_base members
@@ -262,16 +263,31 @@ cpdef list _prepare_slice_list(slices):
                 # keep scalar int
                 continue
 
-        # TODO(seberg): This check seems unnecessary to me?
-        if cupy.min_scalar_type(s).char == 'O':
-            raise IndexError(
-                'arrays used as indices must be of integer (or boolean) type')
         try:
             s = core.array(s, dtype=None, copy=None)
-        except ValueError:
-            # "Unsupported dtype"
+        except ValueError as e:
+            # Conversion failed, presumably with "Unsupported dtype".
+
+            # If this is a NumPy array, it should have an unsupportd dtype
+            # raise that as as not "integer or boolean" dtype.
+            if isinstance(s, numpy.ndarray):
+                if s.dtype.char not in _dtype.all_type_chars:
+                    raise IndexError(
+                        'arrays used as indices must be of integer '
+                        '(or boolean) type')
+                # Unlikely/impossible, but there was another error re-raise
+                raise
+
+            try:
+                numpy.asarray(s)  # check if NumPy can convert the index
+            except Exception:
+                # Can't convert, raise original (probably identical) error.
+                # For example `[1, [2]]` is "ragged" and fails this way.
+                raise e from None
+
+            # Probably an arbitrary object, so give generic error:
             raise IndexError(
-                'only integers, slices (`:`), ellipsis (`...`),'
+                'only integers, slices (`:`), ellipsis (`...`), '
                 'numpy.newaxis (`None`) and integer or '
                 'boolean arrays are valid indices')
         if fix_empty_dtype and s.size == 0:
