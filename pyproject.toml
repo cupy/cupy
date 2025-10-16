@@ -142,7 +142,6 @@ extend-ignore = [
   "UP031", # printf-string-formatting
   "UP032", # f-string
   "UP038", # Use `X | Y` in `isinstance` call instead of `(X, Y)`
-  "UP041", # [*] Replace aliased errors with `TimeoutError`
 ]
 
 [tool.ruff.lint.per-file-ignores]
