@@ -4,34 +4,39 @@ import warnings
 import numpy
 
 import cupy
+from cupy.cuda import compiler
 from cupy import _util
 
 cimport cython  # NOQA
 
 from libcpp cimport vector
+
 from cupy.xpu cimport device
-from cupy.xpu cimport memory
 from cupy.xpu cimport function
-from cupy.xpu cimport stream as stream_module
+from cupy.xpu cimport memory
+from cupy.cuda cimport texture
+from cupy._core cimport _accelerator
 from cupy._core cimport _carray
 from cupy._core cimport _scalar
 from cupy._core._dtype cimport get_dtype, _raise_if_invalid_cast
 from cupy._core._memory_range cimport may_share_bounds
 from cupy._core._scalar import get_typename as _get_typename
 from cupy._core cimport core
-
+from cupy._core._routines_creation cimport _convert_object_with_cuda_array_interface
 from cupy._core._routines_creation cimport _ndarray_init
-from cupy._core cimport _routines_creation as _creation
+from cupy._core import _routines_creation as _creation
+from cupy._core._compile_with_cache cimport compile_with_cache
 from cupy._core.core cimport _ndarray_base
 from cupy._core cimport internal
 from cupy_backends.cuda.api cimport runtime
-from cupy_backends.ascend.api.acl_utils cimport launch_acl_func
 
-cdef inline size_t _get_stream(stream) except *:
-    if stream is None:
-        return stream_module.get_current_stream_ptr()
-    else:
-        return stream.ptr
+try:
+    import cupy_backends.cuda.libs.cutensor as cuda_cutensor
+except ImportError:
+    cuda_cutensor = None
+
+from cupy._core import _fusion_thread_local
+
 
 cdef inline bint _contains_zero(const shape_t& v) except? -1:
     for i in range(v.size()):
@@ -39,12 +44,56 @@ cdef inline bint _contains_zero(const shape_t& v) except? -1:
             return True
     return False
 
+
 @_util.memoize(for_each_device=True)
 def _get_warpsize():
     device_id = runtime.getDevice()
-    # TODO: ASCEND not compatible,  return 32 typical for NV gpu
-    #return runtime.getDeviceProperties(device_id)['warpSize']
-    return 32
+    return runtime.getDeviceProperties(device_id)['warpSize']
+
+
+cdef str _get_simple_elementwise_kernel_code(
+        tuple params, tuple arginfos, str operation, str name,
+        _TypeMap type_map, str preamble, str loop_prep='', str after_loop=''):
+    # No loop unrolling due to avoid 64-bit division
+    module_code = string.Template('''
+    ${typedef_preamble}
+    ${preamble}
+    extern "C" __global__ void ${name}(${params}) {
+      ${loop_prep};
+      #pragma unroll 1
+      CUPY_FOR(i, _ind.size()) {
+        _ind.set(i);
+        ${operation};
+      }
+      ${after_loop};
+    }
+    ''').substitute(
+        typedef_preamble=type_map.get_typedef_code(),
+        params=_get_kernel_params(params, arginfos),
+        operation=operation,
+        name=name,
+        preamble=preamble,
+        loop_prep=loop_prep,
+        after_loop=after_loop)
+    return module_code
+
+
+cdef function.Function _get_simple_elementwise_kernel_from_code(
+        str name, str code, tuple options=()):
+    module = compile_with_cache(code, options)
+    return module.get_function(name)
+
+
+cdef function.Function _get_simple_elementwise_kernel(
+        tuple params, tuple arginfos, str operation, str name,
+        _TypeMap type_map, str preamble, str loop_prep='', str after_loop='',
+        tuple options=()):
+    code = _get_simple_elementwise_kernel_code(
+        params, arginfos, operation, name, type_map, preamble, loop_prep,
+        after_loop
+    )
+    return _get_simple_elementwise_kernel_from_code(name, code, options)
+
 
 @cython.profile(False)
 cpdef inline _check_peer_access(_ndarray_base arr, int device_id):
@@ -70,6 +119,11 @@ cdef inline _preprocess_arg(int dev_id, arg, bint use_c_scalar):
     weak_t = False
     if isinstance(arg, _ndarray_base):
         s = arg
+        _check_peer_access(<_ndarray_base>s, dev_id)
+    elif isinstance(arg, texture.TextureObject):
+        s = arg
+    elif hasattr(arg, '__cuda_array_interface__'):
+        s = _convert_object_with_cuda_array_interface(arg)
         _check_peer_access(<_ndarray_base>s, dev_id)
     elif hasattr(arg, '__cupy_get_ndarray__'):
         s = arg.__cupy_get_ndarray__()
@@ -118,6 +172,7 @@ cdef list _preprocess_optional_args(int dev_id, args, bint use_c_scalar):
             ret.append(_preprocess_arg(dev_id, arg, use_c_scalar)[0])
     return ret
 
+
 cdef class _ArgInfo:
     # Holds metadata of an argument.
     # This class is immutable and used as a part of hash keys.
@@ -152,9 +207,8 @@ cdef class _ArgInfo:
             return _ArgInfo.from_indexer(arg)
         if typ is memory.MemoryPointer:
             return _ArgInfo.from_memptr(arg)
-        IF CUPY_CANN_VERSION <= 0:
-            if typ is texture.TextureObject:
-                return _ArgInfo.from_texture(arg)
+        if typ is texture.TextureObject:
+            return _ArgInfo.from_texture(arg)
         assert False, typ
 
     @staticmethod
@@ -191,13 +245,12 @@ cdef class _ArgInfo:
             ARG_KIND_POINTER, memory.MemoryPointer, None, 0, True, True)
         return ret
 
-    IF CUPY_CANN_VERSION <= 0:
-        @staticmethod
-        cdef _ArgInfo from_texture(texture.TextureObject arg):
-            cdef _ArgInfo ret = _ArgInfo.__new__(_ArgInfo)
-            ret._init(
-                ARG_KIND_TEXTURE, texture.TextureObject, None, 0, True, True)
-            return ret
+    @staticmethod
+    cdef _ArgInfo from_texture(texture.TextureObject arg):
+        cdef _ArgInfo ret = _ArgInfo.__new__(_ArgInfo)
+        ret._init(
+            ARG_KIND_TEXTURE, texture.TextureObject, None, 0, True, True)
+        return ret
 
     def __hash__(self):
         return hash((self.arg_kind, self.type, self.dtype, self.ndim,
@@ -252,9 +305,8 @@ cdef class _ArgInfo:
             return _get_typename(self.dtype)
         if self.arg_kind == ARG_KIND_INDEXER:
             return 'CIndexer<%d, %d>' % (self.ndim, self.index_32_bits)
-        IF CUPY_CANN_VERSION <= 0:
-            if self.arg_kind == ARG_KIND_TEXTURE:
-                return 'cudaTextureObject_t'
+        if self.arg_kind == ARG_KIND_TEXTURE:
+            return 'cudaTextureObject_t'
         assert False
 
     cdef str get_param_c_type(self, ParameterInfo p):
@@ -274,6 +326,7 @@ cdef class _ArgInfo:
 cdef tuple _get_arginfos(list args):
     return tuple([_ArgInfo.from_arg(a) for a in args])
 
+
 cdef str _get_kernel_params(tuple params, tuple arginfos):
     cdef ParameterInfo p
     cdef _ArgInfo arginfo
@@ -286,6 +339,7 @@ cdef str _get_kernel_params(tuple params, tuple arginfos):
             arginfo.get_param_c_type(p),
             arginfo.get_c_var_name(p)))
     return ', '.join(lst)
+
 
 cdef shape_t _reduce_dims(list args, tuple params, const shape_t& shape):
     """ Remove contiguous stride to optimize CUDA kernel."""
@@ -636,6 +690,399 @@ cdef list _get_out_args_with_params(
     return out_args
 
 
+@_util.memoize()
+def _get_elementwise_kernel_code(
+        tuple arginfos, _TypeMap type_map,
+        tuple params, str operation, str name,
+        str preamble, str loop_prep='', str after_loop='', tuple options=()):
+    cdef _ArgInfo arginfo
+
+    op = []
+    for p, arginfo in zip(params, arginfos):
+        if arginfo.is_ndarray() and not p.raw:
+            if p.is_const:
+                fmt = 'const {t} &{n} = _raw_{n}[_ind.get()];'
+            else:
+                fmt = '{t} &{n} = _raw_{n}[_ind.get()];'
+            op.append(fmt.format(t=p.ctype, n=p.name))
+    op.append(operation)
+    operation = '\n'.join(op)
+    return _get_simple_elementwise_kernel_code(
+        params, arginfos, operation, name, type_map,
+        preamble, loop_prep, after_loop)
+
+
+@_util.memoize(for_each_device=True)
+def _get_elementwise_kernel(
+        tuple arginfos, _TypeMap type_map,
+        tuple params, str operation, str name,
+        str preamble, str loop_prep='', str after_loop='', tuple options=()):
+    cdef str code = _get_elementwise_kernel_code(
+        arginfos, type_map, params, operation, name, preamble, loop_prep,
+        after_loop
+    )
+    return _get_simple_elementwise_kernel_from_code(name, code, options)
+
+
+cdef class ElementwiseKernel:
+
+    """User-defined elementwise kernel.
+
+    This class can be used to define an elementwise kernel with or without
+    broadcasting.
+
+    The kernel is compiled at an invocation of the
+    :meth:`~ElementwiseKernel.__call__` method,
+    which is cached for each device.
+    The compiled binary is also cached into a file under the
+    ``$HOME/.cupy/kernel_cache/`` directory with a hashed file name. The cached
+    binary is reused by other processes.
+
+    Args:
+        in_params (str): Input argument list.
+        out_params (str): Output argument list.
+        operation (str): The body in the loop written in CUDA-C/C++.
+        name (str): Name of the kernel function. It should be set for
+            readability of the performance profiling.
+        reduce_dims (bool): If ``False``, the shapes of array arguments are
+            kept within the kernel invocation. The shapes are reduced
+            (i.e., the arrays are reshaped without copy to the minimum
+            dimension) by default. It may make the kernel fast by reducing the
+            index calculations.
+        options (tuple): Compile options passed to NVRTC. For details, see
+            https://docs.nvidia.com/cuda/nvrtc/index.html#group__options.
+        preamble (str): Fragment of the CUDA-C/C++ code that is inserted at the
+            top of the cu file.
+        no_return (bool): If ``True``, __call__ returns ``None``.
+        return_tuple (bool): If ``True``, __call__ always returns tuple of
+            array even if single value is returned.
+        loop_prep (str): Fragment of the CUDA-C/C++ code that is inserted at
+            the top of the kernel function definition and above the ``for``
+            loop.
+        after_loop (str): Fragment of the CUDA-C/C++ code that is inserted at
+            the bottom of the kernel function definition.
+
+    """
+
+    cdef:
+        readonly tuple in_params
+        readonly tuple out_params
+        readonly Py_ssize_t nin
+        readonly Py_ssize_t nout
+        readonly Py_ssize_t nargs
+        readonly tuple params
+        readonly object operation
+        readonly str name
+        readonly str __name__
+        readonly bint reduce_dims
+        readonly object preamble
+        readonly bint no_return
+        readonly bint return_tuple
+        readonly dict kwargs
+        readonly dict _params_type_memo
+        readonly dict _elementwise_kernel_memo
+        readonly dict _cached_codes
+
+    def __init__(self, in_params, out_params, operation,
+                 name='kernel', reduce_dims=True, preamble='',
+                 no_return=False, return_tuple=False, **kwargs):
+        if not compiler.is_valid_kernel_name(name):
+            raise ValueError(
+                'Invalid kernel name: "%s"' % name)
+
+        self.in_params = _get_param_info(in_params, True)
+        self.out_params = _get_param_info(out_params, False)
+        self.nin = len(self.in_params)
+        self.nout = len(self.out_params)
+        self.nargs = self.nin + self.nout
+        param_rest = _get_param_info('CIndexer _ind', False)
+        self.params = self.in_params + self.out_params + param_rest
+        self.operation = operation
+        self.name = name
+        self.reduce_dims = reduce_dims
+        self.preamble = preamble
+        self.no_return = no_return
+        self.return_tuple = return_tuple
+        self.kwargs = kwargs
+        self._params_type_memo = {}
+        self._cached_codes = {}
+        names = [p.name for p in self.in_params + self.out_params]
+        if 'i' in names:
+            raise ValueError('Can not use \'i\' as a parameter name')
+        self._elementwise_kernel_memo = {}
+        # This is for profiling mechanisms to auto infer a name
+        self.__name__ = name
+
+    def __call__(self, *args, **kwargs):
+        """Compiles and invokes the elementwise kernel.
+
+        The compilation runs only if the kernel is not cached. Note that the
+        kernels with different argument dtypes or dimensions are not
+        compatible. It means that single ElementwiseKernel object may be
+        compiled into multiple kernel binaries.
+
+        Args:
+            args: Arguments of the kernel.
+            size (int): Range size of the indices.  By default, the range size
+                is automatically determined from the result of broadcasting.
+                This parameter must be specified if and only if all ndarrays
+                are `raw` and the range size cannot be determined
+                automatically.
+            block_size (int): Number of threads per block. By default, the
+                value is set to 128.
+
+        Returns:
+            If ``no_return`` has not set, arrays are returned according to the
+            ``out_params`` argument of the ``__init__`` method.
+            If ``no_return`` has set, ``None`` is returned.
+
+        """
+        cdef function.Function kern
+        cdef Py_ssize_t size, i
+        cdef list in_args, out_args
+        cdef tuple in_types, out_types
+        cdef shape_t shape
+
+        size = kwargs.pop('size', -1)
+        stream = kwargs.pop('stream', None)
+        block_size = kwargs.pop('block_size', 128)
+        if len(kwargs):
+            raise TypeError('Wrong arguments %s' % kwargs)
+        if block_size <= 0:
+            raise ValueError('block_size must be greater than zero')
+        n_args = len(args)
+        if n_args != self.nin and n_args != self.nargs:
+            raise TypeError(
+                'Wrong number of arguments for {!r}. '
+                'It must be either {} or {} (with outputs), '
+                'but given {}.'.format(
+                    self.name, self.nin, self.nargs, n_args))
+        for arg in args:
+            if hasattr(arg, '__cupy_override_elementwise_kernel__'):
+                return arg.__cupy_override_elementwise_kernel__(
+                    self, *args, **kwargs)
+        dev_id = device.get_device_id()
+        arg_list, _ = _preprocess_args(dev_id, args, True)
+
+        out_args = arg_list[self.nin:]
+        # _broadcast updates shape
+        in_args = _broadcast(
+            arg_list, self.params, size != -1, shape)[:self.nin]
+
+        in_ndarray_types = []
+        for a in in_args:
+            if isinstance(a, _ndarray_base):
+                t = a.dtype.type
+            elif isinstance(a, texture.TextureObject):
+                t = 'cudaTextureObject_t'
+            else:
+                t = None
+            in_ndarray_types.append(t)
+        in_ndarray_types = tuple(in_ndarray_types)
+        out_ndarray_types = tuple([a.dtype.type for a in out_args])
+
+        in_types, out_types, type_map = self._decide_params_type(
+            in_ndarray_types, out_ndarray_types)
+
+        is_size_specified = False
+        if size != -1:
+            shape.assign(1, size)
+            is_size_specified = True
+
+        out_args = _get_out_args_with_params(
+            out_args, out_types, shape, self.out_params, is_size_specified)
+        if self.no_return:
+            ret = None
+        elif not self.return_tuple and self.nout == 1:
+            ret = out_args[0]
+        else:
+            ret = tuple(out_args)
+
+        if _contains_zero(shape):
+            return ret
+
+        for i, x in enumerate(in_args):
+            if type(x) is _scalar.CScalar:
+                (<_scalar.CScalar>x).apply_dtype(in_types[i])
+
+        inout_args = in_args + out_args
+
+        if self.reduce_dims:
+            shape = _reduce_dims(inout_args, self.params, shape)
+        indexer = _carray._indexer_init(shape)
+        inout_args.append(indexer)
+
+        arginfos = _get_arginfos(inout_args)
+        kern = self._get_elementwise_kernel(dev_id, arginfos, type_map)
+        kern.linear_launch(indexer.size, inout_args, shared_mem=0,
+                           block_max_size=block_size, stream=stream)
+        return ret
+
+    cpdef tuple _decide_params_type(
+            self, tuple in_args_dtype, tuple out_args_dtype):
+        key = (in_args_dtype, out_args_dtype)
+        ret = self._params_type_memo.get(key, None)
+        if ret is not None:
+            return ret
+        ret = _decide_params_type_core(
+            self.in_params, self.out_params, in_args_dtype, out_args_dtype)
+        self._params_type_memo[key] = ret
+        return ret
+
+    cpdef function.Function _get_elementwise_kernel(
+            self, int dev_id, tuple arginfos, _TypeMap type_map):
+        key = (
+            dev_id,
+            arginfos,
+            type_map)
+        kern = self._elementwise_kernel_memo.get(key, None)
+        if kern is not None:
+            return kern
+        kern = _get_elementwise_kernel(
+            arginfos, type_map, self.params, self.operation,
+            self.name, self.preamble, **self.kwargs)
+
+        # Store the compiled kernel in the cache.
+        # Potentially overwrite a duplicate cache entry because
+        # _get_elementwise_kernel() may include IO wait.
+        in_types = []
+        for x in arginfos:
+            if x.type is cupy.ndarray:
+                in_types.append(cupy.dtype(x.dtype).char)
+        in_types = tuple(in_types)
+        if in_types not in self._cached_codes:
+            code = _get_elementwise_kernel_code(
+                arginfos, type_map, self.params, self.operation,
+                self.name, self.preamble, **self.kwargs)
+            self._cached_codes[in_types] = code
+        self._elementwise_kernel_memo[key] = kern
+        return kern
+
+    @property
+    def cached_codes(self):
+        """Returns a dict that has input types as keys and codes values.
+
+        This proprety method is for debugging purpose.
+        The return value is not guaranteed to keep backward compatibility.
+        """
+        if len(self._cached_codes) == 0:
+            warnings.warn(
+                'No codes are cached because compilation is deferred until '
+                'the first function call.')
+        return dict([(k, v) for k, v in self._cached_codes.items()])
+
+    @property
+    def cached_code(self):
+        """Returns `next(iter(self.cached_codes.values()))`.
+
+        This proprety method is for debugging purpose.
+        The return value is not guaranteed to keep backward compatibility.
+        """
+        codes = self._cached_codes
+        if len(codes) > 1:
+            warnings.warn(
+                'The input types of the kernel could not be inferred. '
+                'Please use `.cached_codes` instead.')
+        return next(iter(codes.values()))
+
+
+cdef str fix_cast_expr(src_type, dst_type, str expr):
+    src_kind = get_dtype(src_type).kind
+    dst_kind = get_dtype(dst_type).kind
+    if src_kind == dst_kind:
+        return expr
+    if src_kind == 'b':
+        # HIP has an issue with bool conversions detailed below
+        if runtime._is_hip_environment:
+            return f'_hip_bool_cast({expr})'
+        else:
+            return f'({expr}) ? 1 : 0'
+    if src_kind == 'c':
+        if dst_kind == 'b':
+            return f'({expr}) != {_scalar.get_typename(src_type)}()'
+        else:  # dst_kind in 'iuf' (int, uint, float)
+            return f'({expr}).real()'
+    return expr
+
+
+cdef function.Function _get_ufunc_kernel(
+        tuple in_types, tuple out_types, routine, tuple arginfos,
+        bint has_where, params,
+        name, preamble, loop_prep):
+    cdef _ArgInfo arginfo
+    cdef str str_type, str_var
+
+    offset_where = len(in_types)
+    offset_out = offset_where
+    if has_where:
+        offset_out += 1
+
+    types = []
+    op = []
+    if has_where:
+        arginfo = arginfos[offset_where]
+        if arginfo.is_ndarray():
+            op.append('if(!_raw__where[_ind.get()]) continue;')
+        else:
+            op.append('if(!_where) continue;')
+    for i, x in enumerate(in_types):
+        str_var = 'in%d' % i
+        str_type = str_var + '_type'
+        types.append((str_type, x))
+        arginfo = arginfos[i]
+        if arginfo.is_ndarray():
+            op.append('const {} {}({});'.format(
+                str_type,
+                str_var,
+                fix_cast_expr(arginfo.dtype, x, f'_raw_{str_var}[_ind.get()]')
+            ))
+
+    out_op = []
+    for i, x in enumerate(out_types):
+        str_var = 'out%d' % i
+        str_type = str_var + '_type'
+        types.append((str_type, x))
+        arginfo = arginfos[i + offset_out]
+        op.append(f'{str_type} {str_var};')
+        out_op.append('{} = {};'.format(
+            f'_raw_{str_var}[_ind.get()]',
+            fix_cast_expr(x, arginfo.dtype, str_var)
+        ))
+
+    type_map = _TypeMap(tuple(types))
+
+    op.append(routine)
+    op.append(';')
+    op.extend(out_op)
+    operation = '\n'.join(op)
+    # HIP/ROCm 4.3 has an issue with ifs and ternary operators
+    #
+    # int bool(int x) {
+    #     if (x != 0) return 1;
+    #     return 0;
+    # }
+    #
+    # bool(5) == 1;  //false
+    # bool(5) == 5;  //true
+    #
+    # also it simplifies  (a ? 1 : 0)  directly to a, and yields
+    # an incorrect value
+    if runtime._is_hip_environment:
+        preamble += """
+        __device__ int _hip_bool_cast(long long int x) {
+            volatile int a = 1;
+            if (x == 0) a = 0;
+            return a;
+        }
+        """
+    # Use C++17 for xsf special function library.
+    # Note: Cython only allows omitting trailing keyword arguments
+    # so after_loop must be included here even though it is taking
+    # the default value. See https://github.com/cython/cython/issues/1630.
+    return _get_simple_elementwise_kernel(
+        params, arginfos, operation, name, type_map, preamble,
+        loop_prep=loop_prep, after_loop='', options=("--std=c++17",))
+
 
 cdef dict _mst_unsigned_to_signed = {
     i: (numpy.iinfo(j).max, (i, j))
@@ -688,14 +1135,17 @@ cdef inline bint _check_should_use_weak_scalar(
 
 
 cdef class ufunc:
-    """Universal function (simplifed for ascend), 
-    remove: cutensor, fusion, reduce func, modified function.Function(kernel)
+
+    """Universal function.
+
     Attributes:
         ~ufunc.name (str): The name of the universal function.
         ~ufunc.nin (int): Number of input arguments.
         ~ufunc.nout (int): Number of output arguments.
         ~ufunc.nargs (int): Number of all arguments.
+
     """
+
     cdef:
         readonly Py_ssize_t nin
         readonly Py_ssize_t nout
@@ -703,16 +1153,16 @@ cdef class ufunc:
         readonly object name # such as "cupy_add"
         readonly _Ops _ops  # normal routines
         # routines based on explicitly given output dtype
-        readonly _Ops _out_ops # CIndexer
+        readonly _Ops _out_ops
         readonly object _preamble # string, prefix for kernel source
         readonly object _loop_prep # string, code insert at the beginning of loop
-        readonly object _default_casting # default to 'same_kind'
+        readonly object _default_casting
         readonly object _cutensor_op # cutensor only, ignore
         readonly int _cutensor_alpha
         readonly int _cutensor_gamma
         readonly str _scatter_op # inplace op
-        readonly tuple _params # in + out + other
-        readonly tuple _params_with_where # mask condition, op element only if True
+        readonly tuple _params #
+        readonly tuple _params_with_where # where?
         readonly dict _routine_cache # what is the difference between _kernel_memo
         readonly dict _kernel_memo # cache dict of key->kernel
         readonly object _doc
@@ -738,6 +1188,11 @@ cdef class ufunc:
             self._default_casting = 'same_kind'
         else:
             self._default_casting = default_casting
+
+        if cutensor_op is not None and cuda_cutensor is not None:
+            self._cutensor_op, self._cutensor_alpha, self._cutensor_gamma = (
+                getattr(cuda_cutensor, cutensor_op[0]),
+                cutensor_op[1], cutensor_op[2])
         self._scatter_op = scatter_op
 
         _in_params = tuple(
@@ -788,7 +1243,15 @@ cdef class ufunc:
             Output array or a tuple of output arrays.
 
         """
+        for arg in args:
+            if hasattr(arg, '__cupy_override_elementwise_kernel__'):
+                return arg.__cupy_override_elementwise_kernel__(
+                    self, *args, **kwargs)
 
+        if _fusion_thread_local.is_fusing():
+            return _fusion_thread_local.call_ufunc(self, *args, **kwargs)
+
+        cdef function.Function kern
         cdef list broad_values
         cdef shape_t shape
 
@@ -863,6 +1326,23 @@ cdef class ufunc:
         # _broadcast updates shape
         internal._broadcast_core(broad_values, shape)
 
+        if (self._cutensor_op is not None
+                and _accelerator.ACCELERATOR_CUTENSOR in
+                _accelerator._elementwise_accelerators):
+            if (self.nin == 2 and self.nout == 1 and
+                    isinstance(in_args[0], _ndarray_base) and
+                    isinstance(in_args[1], _ndarray_base)):
+                import cupyx.cutensor
+                ret = cupyx.cutensor._try_elementwise_binary_routine(
+                    in_args[0], in_args[1], dtype,
+                    out_args[0] if len(out_args) == 1 else None,
+                    self._cutensor_op,
+                    self._cutensor_alpha,
+                    self._cutensor_gamma,
+                )
+                if ret is not None:
+                    return ret
+
         op = self._ops.guess_routine(
             self.name, self._routine_cache, in_args, weaks, dtype,
             self._out_ops)
@@ -903,15 +1383,12 @@ cdef class ufunc:
         inout_args.extend(out_args)
         shape = _reduce_dims(inout_args, self._params, shape)
         indexer = _carray._indexer_init(shape)
-        #inout_args.append(indexer) # ASCEND does not support indexer yet
+        inout_args.append(indexer)
         arginfos = _get_arginfos(inout_args)
 
-        # TODO: ASCEND launch kernel
-        runtime._ensure_context()
-        s = _get_stream(None)
-        launch_acl_func(self.name, inout_args, False, s)
-        #kern = self._get_ufunc_kernel(dev_id, op, arginfos, has_where)
-        #kern.linear_launch(indexer.size, inout_args)
+        kern = self._get_ufunc_kernel(dev_id, op, arginfos, has_where)
+
+        kern.linear_launch(indexer.size, inout_args)
         return ret
 
     cdef str _get_name_with_type(self, tuple arginfos, bint has_where):
@@ -927,9 +1404,7 @@ cdef class ufunc:
             elif arginfo.is_scalar():
                 inout_type_words.append(dtype.rstrip('0123456789'))
         return '{}__{}'.format(name, '_'.join(inout_type_words))
-    
-    """
-    #  ASCEND does not need this func
+
     cdef function.Function _get_ufunc_kernel(
             self, int dev_id, _Op op, tuple arginfos, bint has_where):
         cdef function.Function kern
@@ -943,7 +1418,7 @@ cdef class ufunc:
                 params, name, self._preamble, self._loop_prep)
             self._kernel_memo[key] = kern
         return kern
-    """
+
     def outer(self, A, B, **kwargs):
         """Apply the ufunc operation to all pairs of elements in A and B.
 
@@ -970,6 +1445,43 @@ cdef class ufunc:
             a._scatter_op(indices, b, self._scatter_op)
         else:
             raise NotImplementedError(f'`{self.name}.at` is not supported yet')
+
+    def reduce(self, array, axis=0, dtype=None, out=None, keepdims=False):
+        """Reduce ``array`` applying ufunc.
+
+        .. seealso::
+           :meth:`numpy.ufunc.reduce`
+        """
+        if self.name == 'cupy_add':
+            return array.sum(axis, dtype, out, keepdims)
+        if self.name == 'cupy_multiply':
+            return array.prod(axis, dtype, out, keepdims)
+        raise NotImplementedError(f'`{self.name}.reduce` is not supported yet')
+
+    def accumulate(self, array, axis=0, dtype=None, out=None):
+        """Accumulate ``array`` applying ufunc.
+
+        .. seealso::
+           :meth:`numpy.ufunc.accumulate`
+        """
+        if self.name == 'cupy_add':
+            return array.cumsum(axis, dtype, out)
+        if self.name == 'cupy_multiply':
+            return array.cumprod(axis, dtype, out)
+        raise NotImplementedError(
+            f'`{self.name}.accumulate` is not supported yet')
+
+    def reduceat(self, array, indices, axis=0, dtype=None, out=None):
+        """Reduce ``array`` applying ufunc with indices.
+
+        .. seealso::
+           :meth:`numpy.ufunc.reduceat`
+        """
+        if self.name == 'cupy_add':
+            return array._add_reduceat(indices, axis, dtype, out)
+        raise NotImplementedError(
+            f'`{self.name}.reduceat` is not supported yet')
+
 
 def _ufunc_doc_signature_formatter(ufunc, name):
     # Based on implementation in NumPy (numpy/_core/_internal.py)
@@ -1008,7 +1520,7 @@ def _ufunc_doc_signature_formatter(ufunc, name):
 
 
 cdef class _Op:
-    # dtypes are coded as single char, routine is callable?
+
     def __init__(
             self, tuple in_types, tuple out_types, object routine,
             object error_func):
@@ -1056,7 +1568,7 @@ cdef class _Op:
 
 
 cdef class _Ops:
-    # why multiple _Op is needed?
+
     def __init__(self, tuple ops):
         assert len(ops) > 0
         nin = ops[0].nin
@@ -1180,6 +1692,7 @@ cdef class _Ops:
                 return op
         return None
 
+
 cpdef create_ufunc(name, ops, routine=None, preamble='', doc='',
                    default_casting=None, loop_prep='', out_ops=None,
                    cutensor_op=None, scatter_op=None):
@@ -1189,44 +1702,3 @@ cpdef create_ufunc(name, ops, routine=None, preamble='', doc='',
         name, ops_.nin, ops_.nout, ops_, preamble,
         loop_prep, doc, default_casting=default_casting, out_ops=_out_ops,
         cutensor_op=cutensor_op, scatter_op=scatter_op)
-
-# ASCEND refactor:  TODO **kwargs arg how??
-# emulate ElementwiseKernel class with create_ufunc()        
-cpdef ElementwiseKernel(in_params, out_params, operation,
-                 name='my_kernel_name', reduce_dims=True, preamble='',
-                 no_return=False, return_tuple=False, doc=""):
-    ops_ = _ops_from_tuples((in_params, out_params), operation)
-    return ufunc(
-        name, ops_.nin, ops_.nout, ops_, preamble,
-        doc, default_casting=None, out_ops=None,
-        cutensor_op=None, scatter_op=None)
-
-
-# TODO: ASCEND not impl yet
-cdef _ops_from_tuples(object ops, routine):
-    ops_ = []
-    #raise NotImplementedError("ElementwiseKernel() not yet impl")  # TODO: import time error
-    """
-    for t in ops:
-        if isinstance(t, tuple):
-            typ, rt = t
-            if isinstance(rt, tuple):
-                rt = tuple([r1 or r2 for r1, r2 in zip(rt, routine)])
-            elif not isinstance(rt, str):
-                assert callable(rt)
-                ops_.append(_Op.from_type_and_error_func(typ, rt))
-                continue
-        else:
-            assert isinstance(t, str)
-            typ, rt = t, routine
-        ops_.append(_Op.from_type_and_routine(typ, rt))
-    """
-    return _Ops(tuple(ops_))
-
-# TODO: ASCEND not impl yet, reduction function
-cpdef create_reduction_func(
-        name, ops, routine=None, identity=None, preamble='',
-        sort_reduce_axis=True):
-    ops_ = _Ops.from_tuples(ops, routine)
-    return ufunc(
-        name, ops_.nin, ops_.nout, ops_, preamble)

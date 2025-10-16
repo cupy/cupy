@@ -15,10 +15,10 @@ from cupy._core cimport _carray
 from cupy._core.core cimport _ndarray_base
 from cupy_backends.cuda.api cimport driver
 from cupy_backends.cuda.api cimport runtime
-from cupy.cuda cimport stream as stream_module
-from cupy.cuda.memory cimport MemoryPointer
-#from cupy.cuda.texture cimport TextureObject, SurfaceObject
-from cupy.cuda import device
+from cupy.xpu cimport stream as stream_module
+from cupy.xpu.memory cimport MemoryPointer
+#from cupy.xpu.texture cimport TextureObject, SurfaceObject
+from cupy.xpu import device
 
 
 cdef class CPointer:

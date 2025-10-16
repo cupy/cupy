@@ -22,8 +22,8 @@ from cupy._core import syncdetect
 from cupy._core import _ndarray
 from cupy._core._ndarray import ndarray
 #from cupy import cuda
-from cupy.cuda import memory as memory_module
-from cupy.cuda import stream as stream_mod
+from cupy.xpu import memory as memory_module
+from cupy.xpu import stream as stream_mod
 
 from cupy._core cimport _carray
 from cupy._core._carray cimport shape_t
@@ -45,12 +45,12 @@ from cupy._core cimport _routines_math as _math
 from cupy._core cimport _scalar
 from cupy._core cimport dlpack
 from cupy._core cimport internal
-from cupy.cuda cimport device
+from cupy.xpu cimport device
 # TODO: ASCEND not yet impl
-from cupy.cuda cimport function
-from cupy.cuda cimport pinned_memory
-from cupy.cuda cimport memory
-from cupy.cuda cimport stream as stream_module  # CUPY TODO: repeated import
+from cupy.xpu cimport function
+from cupy.xpu cimport pinned_memory
+from cupy.xpu cimport memory
+from cupy.xpu cimport stream as stream_module  # CUPY TODO: repeated import
 from cupy_backends.cuda cimport stream as _stream_module
 from cupy_backends.cuda.api cimport runtime
 from cupy_backends.cuda.api.runtime import CUDARuntimeError
@@ -1844,7 +1844,7 @@ cdef class _ndarray_base:
         """Returns a copy of the array on host memory.
 
         Args:
-            stream (cupy.cuda.Stream): CUDA stream object. If given, the
+            stream (cupy.xpu.Stream): CUDA stream object. If given, the
                 stream is used to perform the copy. Otherwise, the current
                 stream is used.
             order ({'C', 'F', 'A'}): The desired memory layout of the host
@@ -1957,7 +1957,7 @@ cdef class _ndarray_base:
 
         Args:
             arr (numpy.ndarray): The source array on the host memory.
-            stream (cupy.cuda.Stream): CUDA stream object. If given, the
+            stream (cupy.xpu.Stream): CUDA stream object. If given, the
                 stream is used to perform the copy. Otherwise, the current
                 stream is used.
         """
@@ -2108,6 +2108,9 @@ cdef class _ndarray_base:
             self._update_c_contiguity()
 
     cdef function.CPointer get_pointer(self):
+        return _CArray_from_ndarray(self)
+
+    cdef function.CPointer ptr(self):
         return _CArray_from_ndarray(self)
 
     cpdef object toDlpack(self):

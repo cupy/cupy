@@ -5,7 +5,6 @@ import numpy
 
 import cupy
 #from cupy._core._reduction import create_reduction_func # TODO: reduction
-from cupy._core._kernel import create_reduction_func
 from cupy._core._kernel import create_ufunc, _get_warpsize
 from cupy._core._scalar import get_typename
 from cupy._core._ufuncs import elementwise_copy
@@ -22,7 +21,7 @@ from cupy._core.core cimport _ndarray_base
 from cupy.xpu cimport memory
 
 # TODO: ASCEND not suported
-#from cupy.xpu import cub
+#from cupy.cuda import cub
 
 try:
     import cupy_backends.cuda.libs.cutensor as cuda_cutensor
@@ -87,20 +86,19 @@ cdef _ndarray_base _ndarray_imag_setter(_ndarray_base self, value):
 
 cdef _ndarray_base _ndarray_prod(
         _ndarray_base self, axis, dtype, out, keepdims):
-    IF CUPY_CANN_VERSION <= 0:
-        for accelerator in _accelerator._routine_accelerators:
-            result = None
-            if accelerator == _accelerator.ACCELERATOR_CUB:
-                # result will be None if the reduction is not compatible with CUB
-                result = cub.cub_reduction(
-                    self, cub.CUPY_CUB_PROD, axis, dtype, out, keepdims)
-            if (accelerator == _accelerator.ACCELERATOR_CUTENSOR and
-                    cuda_cutensor is not None):
-                from cupyx import cutensor
-                result = cutensor._try_reduction_routine(
-                    self, axis, dtype, out, keepdims, cuda_cutensor.OP_MUL, 1, 0)
-            if result is not None:
-                return result
+    for accelerator in _accelerator._routine_accelerators:
+        result = None
+        if accelerator == _accelerator.ACCELERATOR_CUB:
+            # result will be None if the reduction is not compatible with CUB
+            result = cub.cub_reduction(
+                self, cub.CUPY_CUB_PROD, axis, dtype, out, keepdims)
+        if (accelerator == _accelerator.ACCELERATOR_CUTENSOR and
+                cuda_cutensor is not None):
+            from cupyx import cutensor
+            result = cutensor._try_reduction_routine(
+                self, axis, dtype, out, keepdims, cuda_cutensor.OP_MUL, 1, 0)
+        if result is not None:
+            return result
     if dtype is None:
         return _prod_auto_dtype(self, axis, dtype, out, keepdims)
     else:
@@ -109,20 +107,19 @@ cdef _ndarray_base _ndarray_prod(
 
 cdef _ndarray_base _ndarray_sum(
         _ndarray_base self, axis, dtype, out, keepdims):
-    IF CUPY_CANN_VERSION <= 0:
-        for accelerator in _accelerator._routine_accelerators:
-            result = None
-            if accelerator == _accelerator.ACCELERATOR_CUB:
-                # result will be None if the reduction is not compatible with CUB
-                result = cub.cub_reduction(
-                    self, cub.CUPY_CUB_SUM, axis, dtype, out, keepdims)
-            if (accelerator == _accelerator.ACCELERATOR_CUTENSOR and
-                    cuda_cutensor is not None):
-                from cupyx import cutensor
-                result = cutensor._try_reduction_routine(
-                    self, axis, dtype, out, keepdims, cuda_cutensor.OP_ADD, 1, 0)
-            if result is not None:
-                return result
+    for accelerator in _accelerator._routine_accelerators:
+        result = None
+        if accelerator == _accelerator.ACCELERATOR_CUB:
+            # result will be None if the reduction is not compatible with CUB
+            result = cub.cub_reduction(
+                self, cub.CUPY_CUB_SUM, axis, dtype, out, keepdims)
+        if (accelerator == _accelerator.ACCELERATOR_CUTENSOR and
+                cuda_cutensor is not None):
+            from cupyx import cutensor
+            result = cutensor._try_reduction_routine(
+                self, axis, dtype, out, keepdims, cuda_cutensor.OP_ADD, 1, 0)
+        if result is not None:
+            return result
 
     if dtype is None:
         return _sum_auto_dtype(self, axis, dtype, out, keepdims)

@@ -3,7 +3,7 @@ cimport cython  # NOQA
 from libc.stdint cimport int8_t
 from libc.stdint cimport int32_t
 
-from cupy.cuda.function cimport CPointer
+from cupy.xpu.function cimport CPointer
 
 
 @cython.final

@@ -1,5 +1,5 @@
 
-from cupy.cuda.function cimport Module
+from cupy.xpu.function cimport Module
 
 cpdef Module compile_with_cache(str source, tuple options=*, arch=*,
                                 cachd_dir=*, prepend_cupy_headers=*,

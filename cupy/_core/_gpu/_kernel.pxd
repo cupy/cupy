@@ -1,6 +1,3 @@
-"""
-same as the cupy main's version
-"""
 from libcpp cimport vector
 
 from cupy._core cimport _carray
@@ -8,6 +5,7 @@ from cupy._core cimport _scalar
 from cupy._core._carray cimport shape_t
 from cupy._core.core cimport _ndarray_base
 from cupy.xpu cimport memory
+from cupy.cuda cimport texture
 
 
 cdef class ParameterInfo:
@@ -24,7 +22,7 @@ cdef enum _ArgKind:
     ARG_KIND_INDEXER
     ARG_KIND_SCALAR
     ARG_KIND_POINTER
-    #ARG_KIND_TEXTURE
+    ARG_KIND_TEXTURE
 
 
 cdef class _ArgInfo:
@@ -63,9 +61,8 @@ cdef class _ArgInfo:
     @staticmethod
     cdef _ArgInfo from_memptr(memory.MemoryPointer arg)
 
-    IF CUPY_CANN_VERSION <= 0:
-        @staticmethod
-        cdef _ArgInfo from_texture(texture.TextureObject arg)
+    @staticmethod
+    cdef _ArgInfo from_texture(texture.TextureObject arg)
 
     cdef _ArgInfo as_ndarray_with_ndim(self, int ndim)
 
@@ -172,11 +169,3 @@ cpdef _check_peer_access(_ndarray_base arr, int device_id)
 cdef tuple _preprocess_args(int dev_id, args, bint use_c_scalar)
 
 cdef shape_t _reduce_dims(list args, tuple params, const shape_t& shape)
-
-# TODO: ASCEND temp solution, mimic this class with create_ufunc, **kwargs
-cpdef ElementwiseKernel(in_params, out_params, operation,
-                 name=*, reduce_dims=*, preamble=*,
-                 no_return=*, return_tuple=*, doc=*)
-
-cpdef create_reduction_func(
-    name, ops, routine=*, identity=*, preamble=*, sort_reduce_axis=*)

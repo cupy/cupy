@@ -20,11 +20,11 @@ from cupy._core._dtype cimport get_dtype
 from cupy._core cimport internal
 from cupy._core cimport _routines_manipulation as _manipulation
 
-from cupy.cuda import memory as memory_module
-from cupy.cuda cimport stream as stream_module
-from cupy.cuda cimport device
-from cupy.cuda cimport pinned_memory
-from cupy.cuda cimport memory
+from cupy.xpu import memory as memory_module
+from cupy.xpu cimport stream as stream_module
+from cupy.xpu cimport device
+from cupy.xpu cimport pinned_memory
+from cupy.xpu cimport memory
 
 from cupy_backends.cuda.api cimport runtime
 from cupy_backends.cuda.api.runtime import CUDARuntimeError

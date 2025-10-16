@@ -1,7 +1,7 @@
 from libcpp cimport vector
-from cupy.cuda cimport memory
+from cupy.xpu cimport memory
 
-from cupy.cuda.function cimport CPointer
+from cupy.xpu.function cimport CPointer
 
 from cupy._core._carray cimport shape_t
 from cupy._core._carray cimport strides_t
@@ -93,3 +93,4 @@ cdef class _ndarray_base:
         self, Py_ssize_t itemsize, bint is_c_contiguous)
     cdef CPointer get_pointer(self)
     cpdef object toDlpack(self)
+    cpdef CPointer ptr(self)

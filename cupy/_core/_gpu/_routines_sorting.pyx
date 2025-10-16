@@ -8,7 +8,7 @@ from cupy._core._scalar import get_typename as _get_typename
 from cupy._core._ufuncs import elementwise_copy
 import cupy._core.core as core
 from cupy import _util
-from cupy.cuda import thrust
+from cupy.xpu import thrust
 
 from cupy._core cimport _routines_manipulation as _manipulation
 from cupy._core._compile_with_cache cimport compile_with_cache
@@ -20,7 +20,7 @@ cdef _ndarray_sort(_ndarray_base self, int axis):
     cdef int ndim = self._shape.size()
     cdef _ndarray_base data
 
-    if not cupy.cuda.thrust.available:
+    if not cupy.xpu.thrust.available:
         raise RuntimeError('Thrust is needed to use cupy.sort. Please '
                            'install CUDA Toolkit with Thrust then '
                            'reinstall CuPy after uninstalling it.')
@@ -68,7 +68,7 @@ cdef _ndarray_base _ndarray_argsort(_ndarray_base self, axis):
     cdef int _axis, ndim
     cdef _ndarray_base data
 
-    if not cupy.cuda.thrust.available:
+    if not cupy.xpu.thrust.available:
         raise RuntimeError('Thrust is needed to use cupy.argsort. Please '
                            'install CUDA Toolkit with Thrust then '
                            'reinstall CuPy after uninstalling it.')

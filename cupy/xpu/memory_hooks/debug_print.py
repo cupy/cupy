@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import sys
 
-from cupy.cuda import memory_hook
+from cupy.xpu import memory_hook
 
 
 class DebugPrintHook(memory_hook.MemoryHook):
@@ -18,9 +18,9 @@ class DebugPrintHook(memory_hook.MemoryHook):
         Code example::
 
             >>> import cupy
-            >>> from cupy.cuda import memory_hooks
+            >>> from cupy.xpu import memory_hooks
             >>>
-            >>> cupy.cuda.set_allocator(cupy.cuda.MemoryPool().malloc)
+            >>> cupy.xpu.set_allocator(cupy.xpu.MemoryPool().malloc)
             >>> with memory_hooks.DebugPrintHook():
             ...     x = cupy.array([1, 2, 3])
             ...     del x  # doctest:+SKIP

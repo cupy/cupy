@@ -139,7 +139,7 @@ cdef class Device:
     original one.
 
     Args:
-        device (int or cupy.cuda.Device): Index of the device to manipulate. Be
+        device (int or cupy.xpu.Device): Index of the device to manipulate. Be
             careful that the device ID (a.k.a. GPU ID) is zero origin. If it is
             a Device object, then its ID is used. The current device is
             selected by default.

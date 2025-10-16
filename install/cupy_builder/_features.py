@@ -165,14 +165,14 @@ _ascend_files = [
     'cupy_backends.cuda.stream',
     'cupy_backends.cuda._softlink',
     # # high level OO API
-    'cupy.cuda.common', #  cudaDataType
+    #'cupy.cuda.common', #  cudaDataType
     # #'cupy.cuda.cufft',
-    'cupy.cuda.device', # device-runtime capacity like sparse curand
-    'cupy.cuda.memory', # MemoryAsyncPool is not supported
-    'cupy.cuda.memory_hook', # backend independent
-    'cupy.cuda.pinned_memory',
-    'cupy.cuda.function', # only compile code for CPointer
-    'cupy.cuda.stream',
+    'cupy.xpu.device', # device-runtime capacity like sparse curand
+    'cupy.xpu.memory', # MemoryAsyncPool is not supported
+    'cupy.xpu.memory_hook', # backend independent
+    'cupy.xpu.pinned_memory',
+    'cupy.xpu.function', # only compile code for CPointer
+    'cupy.xpu.stream',
     'cupy._util', # backend independent:  context manager, memoise
     'cupy_backends.ascend.api.acl_utils',
     # =============== seperate line for low-high api

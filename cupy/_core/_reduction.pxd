@@ -1,7 +1,7 @@
 from cupy._core._carray cimport shape_t
 from cupy._core cimport _kernel
 from cupy._core.core cimport _ndarray_base
-from cupy.cuda cimport function
+from cupy.xpu cimport function
 
 
 cdef Py_ssize_t _block_size

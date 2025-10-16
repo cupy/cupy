@@ -18,9 +18,9 @@ from libc.stdlib cimport malloc as c_malloc
 from libc.stdlib cimport free as c_free
 from libcpp cimport algorithm
 
-from cupy.cuda cimport device
-from cupy.cuda cimport memory_hook
-from cupy.cuda cimport stream as stream_module
+from cupy.xpu cimport device
+from cupy.xpu cimport memory_hook
+from cupy.xpu cimport stream as stream_module
 from cupy_backends.cuda.api cimport driver
 from cupy_backends.cuda.api cimport runtime
 
@@ -81,7 +81,7 @@ cdef class BaseMemory:
     Attributes:
         ~Memory.ptr (int): Pointer to the place within the buffer.
         ~Memory.size (int): Size of the memory allocation in bytes.
-        ~Memory.device (~cupy.cuda.Device): Device whose memory the pointer
+        ~Memory.device (~cupy.xpu.Device): Device whose memory the pointer
             refers to.
     """
 
@@ -241,7 +241,7 @@ cdef class ManagedMemory(BaseMemory):
         """(experimental) Prefetch memory.
 
         Args:
-            stream (cupy.cuda.Stream): CUDA stream.
+            stream (cupy.xpu.Stream): CUDA stream.
             device_id (int): CUDA device ID (-1 for CPU).
         """
         if device_id == runtime.cudaInvalidDeviceId:
@@ -253,7 +253,7 @@ cdef class ManagedMemory(BaseMemory):
 
         Args:
             advics (int): Advise to be applied for this memory.
-            dev (cupy.cuda.Device): Device to apply the advice for.
+            dev (cupy.xpu.Device): Device to apply the advice for.
 
         """
         runtime.memAdvise(self.ptr, self.size, advise, dev.id)
@@ -318,7 +318,7 @@ cdef class SystemMemory(BaseMemory):
         """Prefetch memory.
 
         Args:
-            stream (cupy.cuda.Stream): CUDA stream.
+            stream (cupy.xpu.Stream): CUDA stream.
             device_id (int): CUDA device ID (-1 for CPU).
         """
         if device_id == runtime.cudaInvalidDeviceId:
@@ -330,7 +330,7 @@ cdef class SystemMemory(BaseMemory):
 
         Args:
             advics (int): Advise to be applied for this memory.
-            dev (cupy.cuda.Device): Device to apply the advice for.
+            dev (cupy.xpu.Device): Device to apply the advice for.
 
         """
         # TODO(leofang): switch to cudaMemAdvice_v2 from CUDA 12.2
@@ -358,7 +358,7 @@ cdef class _Chunk:
     sorted by base address that must be contiguous.
 
     Args:
-        mem (~cupy.cuda.Memory): The device memory buffer.
+        mem (~cupy.xpu.Memory): The device memory buffer.
         offset (int): An offset bytes from the head of the buffer.
         size (int): Chunk size in bytes.
         stream_ident (intptr_t): Value to uniquely identify the stream.
@@ -431,14 +431,14 @@ cdef class MemoryPointer:
     and a pointer to a place within this buffer.
 
     Args:
-        mem (~cupy.cuda.BaseMemory): The device memory buffer.
+        mem (~cupy.xpu.BaseMemory): The device memory buffer.
         offset (int): An offset from the head of the buffer to the place this
             pointer refers.
 
     Attributes:
-        ~MemoryPointer.device (~cupy.cuda.Device): Device whose memory the
+        ~MemoryPointer.device (~cupy.xpu.Device): Device whose memory the
             pointer refers to.
-        ~MemoryPointer.mem (~cupy.cuda.BaseMemory): The device memory buffer.
+        ~MemoryPointer.mem (~cupy.xpu.BaseMemory): The device memory buffer.
         ~MemoryPointer.ptr (int): Pointer to the place within the buffer.
     """
 
@@ -496,7 +496,7 @@ cdef class MemoryPointer:
         """Copies a memory sequence from a (possibly different) device.
 
         Args:
-            src (cupy.cuda.MemoryPointer): Source memory pointer.
+            src (cupy.xpu.MemoryPointer): Source memory pointer.
             size (int): Size of the sequence in bytes.
 
         .. warning::
@@ -524,9 +524,9 @@ cdef class MemoryPointer:
         """Copies a memory from a (possibly different) device asynchronously.
 
         Args:
-            src (cupy.cuda.MemoryPointer): Source memory pointer.
+            src (cupy.xpu.MemoryPointer): Source memory pointer.
             size (int): Size of the sequence in bytes.
-            stream (cupy.cuda.Stream): CUDA stream.
+            stream (cupy.xpu.Stream): CUDA stream.
                 The default uses CUDA stream of the current context.
 
         """
@@ -573,7 +573,7 @@ cdef class MemoryPointer:
             mem (int or ctypes.c_void_p): Source memory pointer. It must point
                 to pinned memory.
             size (int): Size of the sequence in bytes.
-            stream (cupy.cuda.Stream): CUDA stream.
+            stream (cupy.xpu.Stream): CUDA stream.
                 The default uses CUDA stream of the current context.
 
         """
@@ -597,11 +597,11 @@ cdef class MemoryPointer:
         """Copies a memory sequence from a (possibly different) device or host.
 
         This function is a useful interface that selects appropriate one from
-        :meth:`~cupy.cuda.MemoryPointer.copy_from_device` and
-        :meth:`~cupy.cuda.MemoryPointer.copy_from_host`.
+        :meth:`~cupy.xpu.MemoryPointer.copy_from_device` and
+        :meth:`~cupy.xpu.MemoryPointer.copy_from_host`.
 
         Args:
-            mem (int or ctypes.c_void_p or cupy.cuda.MemoryPointer):
+            mem (int or ctypes.c_void_p or cupy.xpu.MemoryPointer):
                 Source memory pointer.
             size (int): Size of the sequence in bytes.
 
@@ -621,14 +621,14 @@ cdef class MemoryPointer:
         """Copies a memory sequence from an arbitrary place asynchronously.
 
         This function is a useful interface that selects appropriate one from
-        :meth:`~cupy.cuda.MemoryPointer.copy_from_device_async` and
-        :meth:`~cupy.cuda.MemoryPointer.copy_from_host_async`.
+        :meth:`~cupy.xpu.MemoryPointer.copy_from_device_async` and
+        :meth:`~cupy.xpu.MemoryPointer.copy_from_host_async`.
 
         Args:
-            mem (int or ctypes.c_void_p or cupy.cuda.MemoryPointer):
+            mem (int or ctypes.c_void_p or cupy.xpu.MemoryPointer):
                 Source memory pointer.
             size (int): Size of the sequence in bytes.
-            stream (cupy.cuda.Stream): CUDA stream.
+            stream (cupy.xpu.Stream): CUDA stream.
                 The default uses CUDA stream of the current context.
 
         """
@@ -671,7 +671,7 @@ cdef class MemoryPointer:
             mem (int or ctypes.c_void_p): Target memory pointer. It must point
                 to pinned memory.
             size (int): Size of the sequence in bytes.
-            stream (cupy.cuda.Stream): CUDA stream.
+            stream (cupy.xpu.Stream): CUDA stream.
                 The default uses CUDA stream of the current context.
 
         """
@@ -722,7 +722,7 @@ cdef class MemoryPointer:
         Args:
             value (int): Value to fill.
             size (int): Size of the sequence in bytes.
-            stream (cupy.cuda.Stream): CUDA stream.
+            stream (cupy.xpu.Stream): CUDA stream.
                 The default uses CUDA stream of the current context.
 
         """
@@ -758,7 +758,7 @@ cpdef MemoryPointer malloc_async(size_t size):
         size (int): Size of the memory allocation in bytes.
 
     Returns:
-        ~cupy.cuda.MemoryPointer: Pointer to the allocated buffer.
+        ~cupy.xpu.MemoryPointer: Pointer to the allocated buffer.
 
     .. warning::
         This feature is currently experimental and subject to change.
@@ -791,7 +791,7 @@ cpdef MemoryPointer malloc_managed(size_t size):
         size (int): Size of the memory allocation in bytes.
 
     Returns:
-        ~cupy.cuda.MemoryPointer: Pointer to the allocated buffer.
+        ~cupy.xpu.MemoryPointer: Pointer to the allocated buffer.
     """
     mem = ManagedMemory(size)
     return MemoryPointer(mem, 0)
@@ -824,7 +824,7 @@ cpdef MemoryPointer malloc_system(size_t size):
         size (int): Size of the memory allocation in bytes.
 
     Returns:
-        ~cupy.cuda.MemoryPointer: Pointer to the allocated buffer.
+        ~cupy.xpu.MemoryPointer: Pointer to the allocated buffer.
     """
     mem = SystemMemory(size)
     return MemoryPointer(mem, 0)
@@ -864,13 +864,13 @@ cdef inline intptr_t _get_stream_identifier(intptr_t stream_ptr):
 cpdef MemoryPointer alloc(size):
     """Calls the current allocator.
 
-    Use :func:`~cupy.cuda.set_allocator` to change the current allocator.
+    Use :func:`~cupy.xpu.set_allocator` to change the current allocator.
 
     Args:
         size (int): Size of the memory allocation.
 
     Returns:
-        ~cupy.cuda.MemoryPointer: Pointer to the allocated buffer.
+        ~cupy.xpu.MemoryPointer: Pointer to the allocated buffer.
 
     """
     return get_allocator()(size)
@@ -881,7 +881,7 @@ cpdef set_allocator(allocator=None):
 
     Args:
         allocator (function): CuPy memory allocator. It must have the same
-            interface as the :func:`cupy.cuda.alloc` function, which takes the
+            interface as the :func:`cupy.xpu.alloc` function, which takes the
             buffer size as an argument and returns the device buffer of that
             size. When ``None`` is specified, raw memory allocator will be
             used (i.e., memory pool is disabled).
@@ -894,7 +894,7 @@ cpdef set_allocator(allocator=None):
         raise ValueError('Can\'t change the global allocator inside '
                          '`using_allocator` context manager')
     if allocator is malloc_async:
-        _util.experimental('cupy.cuda.malloc_async')
+        _util.experimental('cupy.xpu.malloc_async')
     _current_allocator = allocator
 
 
@@ -1594,7 +1594,7 @@ cdef class MemoryPool:
             size (int): Size of the memory buffer to allocate in bytes.
 
         Returns:
-            ~cupy.cuda.MemoryPointer: Pointer to the allocated buffer.
+            ~cupy.xpu.MemoryPointer: Pointer to the allocated buffer.
 
         """
         mp = <SingleDeviceMemoryPool>self._pools[device.get_device_id()]
@@ -1604,7 +1604,7 @@ cdef class MemoryPool:
         """Releases free blocks.
 
         Args:
-            stream (cupy.cuda.Stream): Release free blocks in the arena
+            stream (cupy.xpu.Stream): Release free blocks in the arena
                 of the given stream. The default releases blocks in all
                 arenas.
 
@@ -1758,7 +1758,7 @@ IF CUPY_CANN_VERSION <= 0:
             readonly bint memoryAsyncHasStat
 
         def __init__(self, pool_handles='current'):
-            _util.experimental('cupy.cuda.MemoryAsyncPool')
+            _util.experimental('cupy.xpu.MemoryAsyncPool')
             cdef int dev_id, prev_dev_id, dev_counts
             cdef dict limit = _parse_limit_string()
             dev_counts = runtime.getDeviceCount()
@@ -1821,7 +1821,7 @@ IF CUPY_CANN_VERSION <= 0:
                 size (int): Size of the memory buffer to allocate in bytes.
 
             Returns:
-                ~cupy.cuda.MemoryPointer: Pointer to the allocated buffer.
+                ~cupy.xpu.MemoryPointer: Pointer to the allocated buffer.
 
             """
             cdef size_t rounded_size = _round_size(size)
@@ -1870,7 +1870,7 @@ IF CUPY_CANN_VERSION <= 0:
             """Releases free memory.
 
             Args:
-                stream (cupy.cuda.Stream): Release memory freed on the given
+                stream (cupy.xpu.Stream): Release memory freed on the given
                     ``stream``. If ``stream`` is ``None``, the current stream is
                     used.
 
@@ -2116,8 +2116,8 @@ cdef class PythonFunctionAllocator:
 
     If the external memory management supports asynchronous operations,
     the current CuPy stream can be retrieved inside ``malloc_func`` and
-    ``free_func`` by calling :func:`cupy.cuda.get_current_stream()`. To
-    use external streams, wrap them with :func:`cupy.cuda.ExternalStream`.
+    ``free_func`` by calling :func:`cupy.xpu.get_current_stream()`. To
+    use external streams, wrap them with :func:`cupy.xpu.ExternalStream`.
 
     Args:
         malloc_func (function): *malloc* function to be called.

@@ -13,7 +13,7 @@ class ndarray(_ndarray_base):
     Args:
         shape (tuple of ints): Length of axes.
         dtype: Data type. It must be an argument of :class:`numpy.dtype`.
-        memptr (cupy.cuda.MemoryPointer): Pointer to the array content head.
+        memptr (cupy.xpu.MemoryPointer): Pointer to the array content head.
         strides (tuple of ints or None): Strides of data in memory.
         order ({'C', 'F'}): Row-major (C-style) or column-major
             (Fortran-style) order.
@@ -21,7 +21,7 @@ class ndarray(_ndarray_base):
     Attributes:
         base (None or cupy.ndarray): Base array from which this array is
             created as a view.
-        data (cupy.cuda.MemoryPointer): Pointer to the array content head.
+        data (cupy.xpu.MemoryPointer): Pointer to the array content head.
         ~ndarray.dtype(numpy.dtype): Dtype object of element type.
 
             .. seealso::

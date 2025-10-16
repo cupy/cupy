@@ -10,7 +10,7 @@ import warnings
 import cupy
 from cupy import _core
 from cupy_backends.cuda.libs import cublas
-from cupy.cuda import device
+from cupy.xpu import device
 from cupy.linalg import _util
 
 _batched_gesv_limit = 256

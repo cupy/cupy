@@ -11,7 +11,7 @@ cimport cpython
 from cupy_backends.cuda.api cimport runtime
 from cupy_backends.cuda.libs cimport nvrtc
 from cupy import cuda
-from cupy.cuda cimport function
+from cupy.xpu cimport function
 from cupy import _environment
 
 cdef bint _is_hip = runtime._is_hip_environment

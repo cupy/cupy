@@ -12,8 +12,8 @@ import sys
 import tempfile
 import warnings
 
-from cupy.cuda import device
-from cupy.cuda import function
+from cupy.xpu import device
+from cupy.xpu import function
 from cupy.cuda import get_rocm_path
 from cupy_backends.cuda.api import driver
 from cupy_backends.cuda.api import runtime

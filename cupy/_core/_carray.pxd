@@ -2,7 +2,7 @@ cimport cython  # NOQA
 from libc.stdint cimport intptr_t
 from libcpp cimport vector
 
-from cupy.cuda cimport function # use only `function.CPointer`
+from cupy.xpu cimport function # use only `function.CPointer`
 
 
 ctypedef vector.vector[Py_ssize_t] shape_t

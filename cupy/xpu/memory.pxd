@@ -4,7 +4,7 @@ from libc.stdint cimport intptr_t
 from libcpp cimport vector
 from libcpp cimport map
 
-from cupy.cuda cimport device
+from cupy.xpu cimport device
 
 
 @cython.no_gc

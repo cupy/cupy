@@ -1,7 +1,7 @@
 from libc.string cimport memcpy
 from cpython.mem cimport PyMem_Malloc, PyMem_Free
 
-from cupy.cuda cimport function
+from cupy.xpu cimport function
 from cupy._core cimport internal
 
 

@@ -4,7 +4,7 @@ import cupy
 
 from cupy_backends.cuda.api cimport driver
 from cupy_backends.cuda.api cimport runtime
-from cupy.cuda.function cimport Function, Module
+from cupy.xpu.function cimport Function, Module
 
 
 cdef class RawKernel:

@@ -148,7 +148,7 @@ cdef class _EventWatcher:
         The ``obj`` are automatically released when the event done.
 
         Args:
-            event (cupy.cuda.Event): The CUDA event to be monitored.
+            event (cupy.xpu.Event): The CUDA event to be monitored.
             obj: The object to be held.
         """
         rlock.lock_fastrlock(self._lock, -1, True)
@@ -192,7 +192,7 @@ cpdef _add_to_watch_list(event, obj):
     The ``obj`` are automatically released when the event done.
 
     Args:
-        event (cupy.cuda.Event): The CUDA event to be monitored.
+        event (cupy.xpu.Event): The CUDA event to be monitored.
         obj: The object to be held.
     """
     _watcher.add(event, obj)
@@ -201,14 +201,14 @@ cpdef _add_to_watch_list(event, obj):
 cpdef PinnedMemoryPointer alloc_pinned_memory(size_t size):
     """Calls the current allocator.
 
-    Use :func:`~cupy.cuda.set_pinned_memory_allocator` to change the current
+    Use :func:`~cupy.xpu.set_pinned_memory_allocator` to change the current
     allocator.
 
     Args:
         size (int): Size of the memory allocation.
 
     Returns:
-        ~cupy.cuda.PinnedMemoryPointer: Pointer to the allocated buffer.
+        ~cupy.xpu.PinnedMemoryPointer: Pointer to the allocated buffer.
 
     """
     _watcher.check_and_release()
@@ -220,7 +220,7 @@ cpdef set_pinned_memory_allocator(allocator=None):
 
     Args:
         allocator (function): CuPy pinned memory allocator. It must have the
-            same interface as the :func:`cupy.cuda.alloc_pinned_memory`
+            same interface as the :func:`cupy.xpu.alloc_pinned_memory`
             function, which takes the buffer size as an argument and returns
             the device buffer of that size. When ``None`` is specified, raw
             memory allocator is used (i.e., memory pool is disabled).

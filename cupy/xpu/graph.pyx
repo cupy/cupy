@@ -9,7 +9,7 @@ cdef class Graph:
     """The CUDA graph object.
 
     Currently this class cannot be initiated by the user and must be created
-    via stream capture. See :meth:`~cupy.cuda.Stream.begin_capture` for detail.
+    via stream capture. See :meth:`~cupy.xpu.Stream.begin_capture` for detail.
 
     """
 
@@ -45,7 +45,7 @@ cdef class Graph:
         """Launch the CUDA graph on the given stream.
 
         Args:
-            stream (:class:`~cupy.cuda.Stream`): A CuPy stream object. If not
+            stream (:class:`~cupy.xpu.Stream`): A CuPy stream object. If not
                 specified (using the default value `None`), the graph is
                 launched on the current stream.
 
@@ -66,7 +66,7 @@ cdef class Graph:
         """Upload the CUDA graph to the given stream.
 
         Args:
-            stream (:class:`~cupy.cuda.Stream`): A CuPy stream object. If not
+            stream (:class:`~cupy.xpu.Stream`): A CuPy stream object. If not
                 specified (using the default value `None`), the graph is
                 uploaded the current stream.
 

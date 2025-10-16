@@ -15,7 +15,7 @@ from cupy._core cimport _accelerator
 from cupy._core cimport _routines_math as _math
 from cupy._core.core cimport _ndarray_base
 
-from cupy.cuda import cub
+from cupy.xpu import cub
 
 try:
     import cupy_backends.cuda.libs.cutensor as cuda_cutensor

@@ -230,7 +230,7 @@ cdef class poly1d:
         """Returns a copy of poly1d object on host memory.
 
         Args:
-            stream (cupy.cuda.Stream): CUDA stream object. If it is given, the
+            stream (cupy.xpu.Stream): CUDA stream object. If it is given, the
                 copy runs asynchronously. Otherwise, the copy is synchronous.
                 The default uses CUDA stream object of the current context.
 
@@ -246,7 +246,7 @@ cdef class poly1d:
 
         Args:
             polyin (numpy.poly1d): The source object on the host memory.
-            stream (cupy.cuda.Stream): CUDA stream object. If it is given, the
+            stream (cupy.xpu.Stream): CUDA stream object. If it is given, the
                 copy runs asynchronously. Otherwise, the copy is synchronous.
                 The default uses CUDA stream object of the current context.
 

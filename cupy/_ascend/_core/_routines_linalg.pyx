@@ -25,11 +25,11 @@ from cupy._core.core cimport _ndarray_base
 from cupy._core cimport _memory_range
 from cupy._core cimport _routines_manipulation as _manipulation
 from cupy._core cimport _routines_math as _math # use only multiply
-from cupy.cuda cimport device
+from cupy.xpu cimport device
 from cupy_backends.cuda.api cimport runtime
 
 
-cdef extern from '../../cupy_backends/cupy_complex.h':
+cdef extern from '../../../cupy_backends/cupy_complex.h':
     ctypedef struct cuComplex 'cuComplex':
         float x, y
 
@@ -51,7 +51,7 @@ cdef dict compute_type_str = {
     7: 'COMPUTE_TYPE_TF32',
 }
 
-
+# TODO ComputeType maybe diff for diff xpu backend
 cpdef int to_compute_type_index(dtype) except -1:
     cdef str dtype_char = numpy.dtype(dtype).char
     if dtype_char == 'e':
@@ -63,6 +63,16 @@ cpdef int to_compute_type_index(dtype) except -1:
     else:
         raise TypeError('dtype is not supported: {}'.format(dtype))
 
+cpdef get_compute_type(dtype):
+    global compute_types
+    cdef int index = to_compute_type_index(dtype)
+    if compute_types[index] == COMPUTE_TYPE_TBD:
+        compute_type = COMPUTE_TYPE_DEFAULT
+        dtype_char = numpy.dtype(dtype).char
+        if dtype_char in 'fF' and int(os.getenv('CUPY_TF32', '0')) > 0:
+            compute_type = COMPUTE_TYPE_TF32
+        set_compute_type(dtype, compute_type)
+    return compute_types[index]
 
 cpdef set_compute_type(dtype, compute_type):
     global compute_types
@@ -88,6 +98,9 @@ cpdef compute_type_to_str(compute_type):
     else:
         return compute_type
 
+cdef _ascend_matmul(_ndarray_base a, _ndarray_base b, _ndarray_base out=None):
+    # TODO launch_acl_func("ascend_matmul")
+    pass
 
 cpdef _ndarray_base matmul(
         _ndarray_base a, _ndarray_base b, _ndarray_base out=None):
@@ -125,15 +138,19 @@ cpdef _ndarray_base matmul(
 
     ndim = max(orig_a_ndim, orig_b_ndim)
     if ndim <= 2:
-        if out is None:
-            return dot(a, b, out)
-        ret_dtype = numpy.promote_types(a.dtype, b.dtype)
-        if out._c_contiguous and ret_dtype == out.dtype:
-            return dot(a, b, out)
-        c = _ndarray_init(cupy.ndarray, out._shape, dtype=ret_dtype, obj=None)
-        dot(a, b, c)
-        elementwise_copy(c, out)
-        return out
+        IF CUPY_CANN_VERSION <= 0:
+            if out is None:
+                return dot(a, b, out)
+            ret_dtype = numpy.promote_types(a.dtype, b.dtype)
+            if out._c_contiguous and ret_dtype == out.dtype:
+                return dot(a, b, out)
+            c = _ndarray_init(cupy.ndarray, out._shape, dtype=ret_dtype, obj=None)
+            dot(a, b, c)
+            elementwise_copy(c, out)
+            return out
+        ELSE:
+            out = _ascend_matmul(a, b, out)
+            return out
 
     orig_a = a
     orig_b = b
@@ -268,7 +285,7 @@ cpdef _ndarray_base matmul(
     zero = numpy.array(0, dtype=dtype)
     if not use_broadcast:
         if dtype == numpy.float32:
-            launch_acl_func("ascend_matmul")
+            out = _ascend_matmul(a, b, out)
         else:
             raise TypeError(dtype, a.dtype, b.dtype)
 

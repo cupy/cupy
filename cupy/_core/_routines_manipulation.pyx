@@ -18,7 +18,7 @@ from cupy._core import _routines_creation as _creation
 from cupy._core cimport internal
 from cupy._core._kernel cimport _check_peer_access, _preprocess_args
 
-from cupy.cuda import device
+from cupy.xpu import device
 
 
 @cython.final

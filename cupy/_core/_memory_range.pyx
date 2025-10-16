@@ -1,5 +1,5 @@
 from cupy._core.core cimport _ndarray_base
-from cupy.cuda cimport memory
+from cupy.xpu cimport memory
 
 from libcpp.pair cimport pair
 

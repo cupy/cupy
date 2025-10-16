@@ -3,7 +3,7 @@ import threading
 from cupy_backends.cuda.api cimport runtime
 from cupy_backends.cuda cimport stream as backends_stream
 # TODO: ASCEND not impl yet
-#from cupy.cuda cimport graph
+#from cupy.xpu cimport graph
 
 from cupy import _util
 
@@ -92,7 +92,7 @@ cpdef get_current_stream(int device_id=-1):
         device_id (int, optional): Index of the device to check for the current
             stream. The currently active device is selected by default.
     Returns:
-        cupy.cuda.Stream: The current CUDA stream.
+        cupy.xpu.Stream: The current CUDA stream.
     """
     tls = _ThreadLocal.get()
     return tls.get_current_stream(device_id)
@@ -107,7 +107,7 @@ class Event(object):
 
     Args:
         block (bool): If ``True``, the event blocks on the
-            :meth:`~cupy.cuda.Event.synchronize` method.
+            :meth:`~cupy.xpu.Event.synchronize` method.
         disable_timing (bool): If ``True``, the event does not prepare the
             timing data.
         interprocess (bool): If ``True``, the event can be passed to other
@@ -143,10 +143,10 @@ class Event(object):
         """Records the event to a stream.
 
         Args:
-            stream (cupy.cuda.Stream): CUDA stream to record event. The null
+            stream (cupy.xpu.Stream): CUDA stream to record event. The null
                 stream is used by default.
 
-        .. seealso:: :meth:`cupy.cuda.Stream.record`
+        .. seealso:: :meth:`cupy.xpu.Stream.record`
 
         """
         if stream is None:
@@ -306,13 +306,13 @@ class _BaseStream:
         """Records an event on the stream.
 
         Args:
-            event (None or cupy.cuda.Event): CUDA event. If ``None``, then a
+            event (None or cupy.xpu.Event): CUDA event. If ``None``, then a
                 new plain event is created and used.
 
         Returns:
-            cupy.cuda.Event: The recorded event.
+            cupy.xpu.Event: The recorded event.
 
-        .. seealso:: :meth:`cupy.cuda.Event.record`
+        .. seealso:: :meth:`cupy.xpu.Event.record`
 
         """
         if event is None:
@@ -326,7 +326,7 @@ class _BaseStream:
         The future work on this stream will be done after the event.
 
         Args:
-            event (cupy.cuda.Event): CUDA event.
+            event (cupy.xpu.Event): CUDA event.
 
         """
         runtime.streamWaitEvent(self.ptr, event.ptr)
@@ -357,7 +357,7 @@ class _BaseStream:
 
         Args:
             mode (int): The stream capture mode. Default is
-                :data:`~cupy.cuda.runtime.streamCaptureModeRelaxed`.
+                :data:`~cupy.xpu.runtime.streamCaptureModeRelaxed`.
 
         .. note:: During the stream capture, synchronous device-host transfers
             are not allowed. This has a particular implication for CuPy APIs,
@@ -394,7 +394,7 @@ class _BaseStream:
         """End stream capture and retrieve the constructed CUDA graph.
 
         Returns:
-            cupy.cuda.Graph:
+            cupy.xpu.Graph:
                 A CUDA graph object that encapsulates the captured work.
 
         .. note:: Currently this capability is not supported on HIP.

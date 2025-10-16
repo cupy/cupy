@@ -9,8 +9,8 @@ import cupy
 from cupy import _core
 from cupy._core import _accelerator
 from cupy.cuda import cub
-from cupy.cuda import common
-from cupy.cuda import runtime
+from cupy.xpu import common
+from cupy.xpu import runtime
 
 
 # rename builtin range for use in functions that take a range argument

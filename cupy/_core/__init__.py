@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from cupy._core import core  # NOQA
-#from cupy._core import fusion  # NOQA
+
 from cupy._core import internal  # NOQA
 
 # import class and function
@@ -13,15 +13,19 @@ from cupy._core._kernel import _get_warpsize  # NOQA
 
 _is_ascend_environment = True
 if not _is_ascend_environment:
-
     # internal APIs for testing and development
-    from cupy._core._accelerator import set_elementwise_accelerators  # NOQA
-    from cupy._core._accelerator import set_reduction_accelerators  # NOQA
-    from cupy._core._accelerator import set_routine_accelerators  # NOQA
-    from cupy._core._accelerator import get_elementwise_accelerators  # NOQA
-    from cupy._core._accelerator import get_reduction_accelerators  # NOQA
-    from cupy._core._accelerator import get_routine_accelerators  # NOQA
+    from cupy._core._gpu._accelerator import set_elementwise_accelerators  # NOQA
+    from cupy._core._gpu._accelerator import set_reduction_accelerators  # NOQA
+    from cupy._core._gpu._accelerator import set_routine_accelerators  # NOQA
+    from cupy._core._gpu._accelerator import get_elementwise_accelerators  # NOQA
+    from cupy._core._gpu._accelerator import get_reduction_accelerators  # NOQA
+    from cupy._core._gpu._accelerator import get_routine_accelerators  # NOQA
 
+    from cupy._core._gpu import fusion  # NOQA
+    from cupy._core._gpu.raw import RawKernel  # NOQA
+    from cupy._core._gpu.raw import RawModule  # NOQA
+
+if not _is_ascend_environment:
     from cupy._core._reduction import create_reduction_func  # NOQA
     from cupy._core._reduction import ReductionKernel  # NOQA
     from cupy._core._routines_binary import bitwise_and  # NOQA
@@ -82,6 +86,3 @@ from cupy._core.dlpack import from_dlpack  # NOQA
 from cupy._core.internal import complete_slice  # NOQA
 from cupy._core.internal import get_size  # NOQA
 
-if not _is_ascend_environment:
-    from cupy._core.raw import RawKernel  # NOQA
-    from cupy._core.raw import RawModule  # NOQA

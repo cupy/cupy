@@ -385,7 +385,7 @@ def asnumpy(a, stream=None, order='C', out=None, *, blocking=True):
 
     Args:
         a: Arbitrary object that can be converted to :class:`numpy.ndarray`.
-        stream (cupy.cuda.Stream): CUDA stream object. If given, the
+        stream (cupy.xpu.Stream): XPU stream object. If given, the
             stream is used to perform the copy. Otherwise, the current
             stream is used. Note that if ``a`` is not a :class:`cupy.ndarray`
             object, then this argument has no effect.
@@ -469,12 +469,12 @@ def get_default_memory_pool():
     """Returns CuPy default memory pool for GPU memory.
 
     Returns:
-        cupy.cuda.MemoryPool: The memory pool object.
+        cupy.xpu.MemoryPool: The memory pool object.
 
     .. note::
        If you want to disable memory pool, please use the following code.
 
-       >>> cupy.cuda.set_allocator(None)
+       >>> cupy.xpu.set_allocator(None)
 
     """
     return _default_memory_pool
@@ -484,12 +484,12 @@ def get_default_pinned_memory_pool():
     """Returns CuPy default memory pool for pinned memory.
 
     Returns:
-        cupy.cuda.PinnedMemoryPool: The memory pool object.
+        cupy.xpu.PinnedMemoryPool: The memory pool object.
 
     .. note::
        If you want to disable memory pool, please use the following code.
 
-       >>> cupy.cuda.set_pinned_memory_allocator(None)
+       >>> cupy.xpu.set_pinned_memory_allocator(None)
 
     """
     return _default_pinned_memory_pool

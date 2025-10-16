@@ -4,7 +4,7 @@ from os import path
 import sys
 import traceback
 
-from cupy.cuda import memory_hook
+from cupy.xpu import memory_hook
 
 
 class LineProfileHook(memory_hook.MemoryHook):
@@ -17,7 +17,7 @@ class LineProfileHook(memory_hook.MemoryHook):
     Example:
         Code example::
 
-            from cupy.cuda import memory_hooks
+            from cupy.xpu import memory_hooks
             hook = memory_hooks.LineProfileHook()
             with hook:
                 # some CuPy codes

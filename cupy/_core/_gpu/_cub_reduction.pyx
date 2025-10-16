@@ -8,15 +8,15 @@ from cupy._core.core cimport _ndarray_base
 from cupy._core._routines_creation cimport _internal_ascontiguousarray
 from cupy._core cimport internal
 from cupy.cuda cimport cub
-from cupy.cuda cimport function
-from cupy.cuda cimport memory
+from cupy.xpu cimport function
+from cupy.xpu cimport memory
 from cupy_backends.cuda.api cimport runtime
 
 import math
 import string
 from cupy import _environment
 from cupy._core._kernel import _get_param_info
-from cupy.cuda import driver
+from cupy.xpu import driver
 from cupy import _util
 
 
