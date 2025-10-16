@@ -149,3 +149,38 @@ class TestCommSplit:
         new_comm = comm.commSplit(color=-1, key=0)
         assert new_comm is None
         comm.destroy()
+
+    @testing.multi_gpu(4)
+    def test_4_processes_2_subcomm(self):
+        import multiprocessing as mp
+        id = nccl.get_unique_id()
+
+        def worker(rank, world_size):
+            cuda.Device(rank).use()
+            global_comm = nccl.NcclCommunicator(
+                world_size, id, rank, nccl.NcclConfig(split_share=1)
+            )
+            color = 0 if rank < 2 else 1
+            sub_comm = global_comm.commSplit(color, rank)
+            assert sub_comm is not None
+            send_buf = cupy.array([rank], dtype=cupy.int8)
+            recv_buf = cupy.empty_like(send_buf)
+            sub_comm.allReduce(
+                send_buf.data.ptr, recv_buf.data.ptr, send_buf.size,
+                nccl.NCCL_INT8, nccl.NCCL_SUM, cuda.Stream.null.ptr,
+            )
+            cuda.Stream.null.synchronize()
+            expected = (
+                cupy.array([0 + 1], dtype=cupy.int8)
+                if color == 0
+                else cupy.array([2 + 3], dtype=cupy.int8)
+            )
+            testing.assert_array_equal(recv_buf, expected)
+            sub_comm.destroy()
+            global_comm.destroy()
+
+        procs = [mp.Process(target=worker, args=(i, 4,)) for i in range(4)]
+        for p in procs:
+            p.start()
+        for p in procs:
+            p.join()
