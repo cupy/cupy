@@ -1086,7 +1086,7 @@ cdef lock_and_no_gc(recursive_mutex& lock):
 def _test_lock_and_no_gc():
     # Test function defined here as it requires the C++ mutex
     # unfortunately we can only test the GC part of the manager
-    # easily because C++ locks can't introspected.  We would need
+    # easily because C++ locks can't be introspected.  We would need
     # a second thread just to see if that can lock or not.
     import gc
     cdef recursive_mutex lock
