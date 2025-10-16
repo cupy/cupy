@@ -7,6 +7,10 @@ import numpy
 
 import cupy
 from cupy._core import core
+from cupy.cuda.compiler import _get_arch
+from cupy.cuda.compiler import _get_nvrtc_version
+from cupy.cuda.compiler import _jitify_prep
+from cupy.cuda.compiler import _NVRTCProgram
 from cupyx.jit import _compile
 from cupyx.jit import _cuda_typerules
 from cupyx.jit import _cuda_types
@@ -128,6 +132,74 @@ class _JitRawKernel:
             new_args.append(a)
 
         kern(grid, block, tuple(new_args), shared_mem, stream, enable_cg)
+
+    def get_lto_ir(self, args):
+        """(Experimental) Get the IR for JIT LTO.
+
+        Args:
+            args (tuple):
+                Arguments of the kernel. The type of all elements must be
+                ``bool``, ``int``, ``float``, ``complex``, NumPy scalar or
+                ``cupy.ndarray``. Currently this is used only to hint the
+                compiler for type inference.
+        """
+        in_types = []
+        for x in args:
+            if isinstance(x, cupy.ndarray):
+                t = _cuda_types.CArray.from_ndarray(x)
+            elif numpy.isscalar(x):
+                t = _cuda_typerules.get_ctype_from_scalar(self._mode, x)
+            else:
+                raise TypeError(f'{type(x)} is not supported for RawKernel')
+            in_types.append(t)
+        in_types = tuple(in_types)
+        device_id = cupy.cuda.get_device_id()
+
+        lto_ir = self._cache.get((in_types, device_id, 'lto'))
+        if lto_ir is None:
+            result = self._cached_codes.get(in_types)
+            if result is None:
+                result = _compile.transpile(
+                    self._func,
+                    ['__device__'],
+                    self._mode,
+                    in_types,
+                    None  # TODO(leofang): is this valid?
+                )
+                self._cached_codes[in_types] = result
+
+            options = (
+                '-DCUPY_JIT_MODE', '--std=c++14', '-dlto',
+                f'-arch=compute_{_get_arch()}')
+            backend = result.backend
+            if backend != 'nvrtc':
+                raise RuntimeError(
+                    'the generated device code is currently not compilable '
+                    'using NVRTC')
+
+            cu_path = 'jit_device'  # TODO: does this matter?
+            source = result.code
+            jitify = result.jitify
+            if jitify:
+                options, headers, include_names = _jitify_prep(
+                    source, options, cu_path)
+            else:
+                headers = include_names = ()
+                major_version, minor_version = _get_nvrtc_version()
+                # TODO(leofang): this is from cupy/cuda/compiler.py, check if
+                # this statement is still valid now that we fix the CCCL issues
+                if major_version >= 12:
+                    # Starting with CUDA 12.0, even without using jitify, some
+                    # tests cause an error if the following option is not
+                    # included.
+                    options += ('--device-as-default-execution-space',)
+            program = _NVRTCProgram(
+                source, cu_path, headers, include_names, method='lto')
+            # TODO(leofang): support log_stream
+            lto_ir, _ = program.compile(options)
+            self._cache[(in_types, device_id, 'lto')] = lto_ir
+
+        return lto_ir
 
     def __getitem__(self, grid_and_block):
         """Numba-style kernel call.
