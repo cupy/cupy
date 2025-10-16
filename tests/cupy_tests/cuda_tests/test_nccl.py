@@ -13,9 +13,16 @@ from cupy import testing
 nccl_available = nccl.available
 
 if nccl_available:
-    nccl_version = nccl.get_version()
+    nccl_version_code = nccl.get_version()
 else:
-    nccl_version = -1
+    nccl_version_code = -1
+
+
+def nccl_version(x, y, z):
+    return (
+        (x * 1000 + y * 100 + z) if (x <= 2 and y <=
+                                     8) else (x * 10000 + y * 100 + z)
+    )
 
 
 @unittest.skipUnless(nccl_available, 'nccl is not installed')
@@ -27,13 +34,15 @@ class TestNCCL(unittest.TestCase):
         assert 0 == comm.rank_id()
         comm.destroy()
 
-    @unittest.skipUnless(nccl_version >= 2400, 'Using old NCCL')
+    @unittest.skipUnless(nccl_version_code >= nccl_version(2, 4, 0),
+                         'Using old NCCL')
     def test_abort(self):
         id = nccl.get_unique_id()
         comm = nccl.NcclCommunicator(1, id, 0)
         comm.abort()
 
-    @unittest.skipUnless(nccl_version >= 2400, 'Using old NCCL')
+    @unittest.skipUnless(nccl_version_code >= nccl_version(2, 4, 0),
+                         'Using old NCCL')
     def test_check_async_error(self):
         id = nccl.get_unique_id()
         comm = nccl.NcclCommunicator(1, id, 0)
@@ -72,7 +81,8 @@ class TestNCCL(unittest.TestCase):
         assert config.split_share == 1
 
     @testing.multi_gpu(2)
-    @unittest.skipUnless(nccl_version >= 2700, 'Using old NCCL')
+    @unittest.skipUnless(nccl_version_code >= nccl_version(2, 7, 0),
+                         'Using old NCCL')
     def test_send_recv(self):
         devs = [0, 1]
         comms = nccl.NcclCommunicator.initAll(devs)
@@ -110,11 +120,20 @@ class TestExceptionPicklable(unittest.TestCase):
         assert str(e1) == str(e2)
 
 
-@pytest.mark.skipif(nccl_version < 21801, reason='Using old NCCL')
+@pytest.mark.skipif(
+    nccl_version_code < nccl_version(2, 18, 1), reason='Using old NCCL'
+)
 class TestCommSplit:
-    @pytest.mark.parametrize(
-        "config", [nccl.NcclConfig(), nccl.NcclConfig(split_share=1), None]
-    )
+    # use generate_config_params to avoid NcclConfig construction failure
+    # on old NCCL versions, because parametrize happens before skipif check
+    def generate_config_params():
+        return (
+            [nccl.NcclConfig(), nccl.NcclConfig(split_share=1), None]
+            if nccl_version_code >= nccl_version(2, 18, 1)
+            else []
+        )
+
+    @pytest.mark.parametrize("config", generate_config_params())
     def test_comm_split(self, config):
         id = nccl.get_unique_id()
         comm = nccl.NcclCommunicator(1, id, 0, config)
