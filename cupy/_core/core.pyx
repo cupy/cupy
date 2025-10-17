@@ -2685,12 +2685,24 @@ cdef _ndarray_base _array_from_nested_numpy_sequence(
     return a
 
 
+cdef _flatten_into_list_and_ensure_1d(object obj, result):
+    # Recursively flatten the input `obj` while by appending to
+    # the passed `result` list.
+    if isinstance(obj, (list, tuple)):
+        for elem in obj:
+            _flatten_into_list_and_ensure_1d(elem, result)
+        return
+
+    # Ensure obj is a cupy ndarray (might have __array_cuda_interface__)
+    cdef arr = _convert_from_cupy_like(obj, error="Nested array")
+    # And convert each scalar (0-dim) ndarray to 1-dim
+    result.append(cupy.expand_dims(arr, 0) if arr.ndim == 0 else arr)
+
+
 cdef _ndarray_base _array_from_nested_cupy_sequence(
         obj, dtype, shape, order, bint blocking):
-    lst = _flatten_list(obj)
-
-    # convert each scalar (0-dim) ndarray to 1-dim
-    lst = [cupy.expand_dims(x, 0) if x.ndim == 0 else x for x in lst]
+    lst = []
+    _flatten_into_list_and_ensure_1d(obj, lst)
 
     a = _manipulation.concatenate_method(lst, 0)
     a = a.reshape(shape)
@@ -2842,6 +2854,10 @@ cdef tuple _compute_concat_info_impl(obj):
     if hasattr(obj, '__cupy_get_ndarray__'):
         return obj.shape, ndarray, obj.dtype
 
+    if (cai := getattr(obj, '__cuda_array_interface__', None)) is not None:
+        # Assume __cuda_array_interface__ is cheap enough to call twice
+        return cai['shape'], ndarray, numpy.dtype(cai['typestr'])
+
     if isinstance(obj, (list, tuple)):
         dim = len(obj)
         if dim == 0:
@@ -2868,15 +2884,6 @@ cdef tuple _compute_concat_info_impl(obj):
         return (dim,) + concat_shape, concat_type, concat_dtype
 
     return None, None, None
-
-
-cdef list _flatten_list(object obj):
-    ret = []
-    if isinstance(obj, (list, tuple)):
-        for elem in obj:
-            ret += _flatten_list(elem)
-        return ret
-    return [obj]
 
 
 cdef bint _numpy_concatenate_has_out_argument = (
@@ -3072,8 +3079,10 @@ cpdef min_scalar_type(a):
 
     .. seealso:: :func:`numpy.min_scalar_type`
     """
-    if isinstance(a, ndarray):
-        return a.dtype
+    cdef _ndarray_base arr = _convert_from_cupy_like(a, error=False)
+    if arr is not None:
+        return arr.dtype
+
     _, concat_type, concat_dtype = _array_info_from_nested_sequence(a)
     if concat_type is not None:
         return concat_dtype
