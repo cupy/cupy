@@ -190,3 +190,4 @@ class TestCommSplit:
             p.start()
         for p in procs:
             p.join()
+            assert p.exitcode == 0
