@@ -150,8 +150,9 @@ class LinuxGenerator:
         else:
             raise AssertionError
 
-        # Update alternatives for cuTENSOR for the current CUDA version.
+        # Define environment variables to discover cuTENSOR during build/runtime.
         if matrix.cutensor is not None:
+            # The following assumes cuTENSOR 2.3+ package layout.
             cuda_major = matrix.cuda.split('.')[0]
             lines.append(
                 'ENV CUPY_INCLUDE_PATH='
