@@ -154,6 +154,16 @@ class LinuxGenerator:
         if matrix.cutensor is not None:
             cuda_major = matrix.cuda.split('.')[0]
             lines.append(
+                'ENV CUPY_INCLUDE_PATH='
+                f'/usr/include/libcutensor/{cuda_major}'
+                ':${CUPY_INCLUDE_PATH}'
+            )
+            lines.append(
+                'ENV CUPY_LIBRARY_PATH='
+                f'/usr/lib/x86_64-linux-gnu/libcutensor/{cuda_major}'
+                ':${CUPY_LIBRARY_PATH}'
+            )
+            lines.append(
                 'ENV LD_LIBRARY_PATH='
                 f'/usr/lib/x86_64-linux-gnu/libcutensor/{cuda_major}'
                 ':${LD_LIBRARY_PATH}'
