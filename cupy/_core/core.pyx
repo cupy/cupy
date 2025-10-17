@@ -2110,7 +2110,7 @@ cdef class _ndarray_base:
     cdef function.CPointer get_pointer(self):
         return _CArray_from_ndarray(self)
 
-    cdef function.CPointer ptr(self):
+    cpdef function.CPointer data_ptr(self):
         return _CArray_from_ndarray(self)
 
     cpdef object toDlpack(self):

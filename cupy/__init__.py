@@ -27,14 +27,14 @@ Original error:
 ''') from exc
 
 
-from cupy import cuda  # NOQA
+from cupy import xpu  # NOQA
 # Do not make `cupy.cupyx` available because it is confusing.
 # TODO: ASCEND  usable only if this cupy module has been ported
 #import cupyx as _cupyx  # NOQA
 
 
 def is_available():
-    return cuda.is_available()
+    return xpu.is_available()
 
 
 __version__ = _version.__version__
@@ -458,11 +458,11 @@ disable_experimental_feature_warning = False
 
 
 # set default allocator
-_default_memory_pool = cuda.MemoryPool()
-_default_pinned_memory_pool = cuda.PinnedMemoryPool()
+_default_memory_pool = xpu.MemoryPool()
+_default_pinned_memory_pool = xpu.PinnedMemoryPool()
 
-cuda.set_allocator(_default_memory_pool.malloc)
-cuda.set_pinned_memory_allocator(_default_pinned_memory_pool.malloc)
+xpu.set_allocator(_default_memory_pool.malloc)
+xpu.set_pinned_memory_allocator(_default_pinned_memory_pool.malloc)
 
 
 def get_default_memory_pool():

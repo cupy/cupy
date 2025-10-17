@@ -182,7 +182,7 @@ _ascend_files = [
     'cupy._core.core',  # define _ndarray_base
     'cupy._core.flags',
     'cupy._core.internal',
-    'cupy._core._accelerator', # ascend does not need it, less code edit
+    #'cupy._core._accelerator', # ascend does not need it, less code edit
     'cupy._core.dlpack',
     'cupy._core.numpy_allocator',
     'cupy._core._memory_range',

@@ -14,7 +14,7 @@ from cupy._core cimport internal
 from cupy import _util
 
 from cupy_backends.cuda.api cimport runtime
-from cupy._core cimport _accelerator
+#from cupy._core cimport _accelerator
 from cupy._core._dtype cimport get_dtype
 from cupy._core._routines_creation cimport _ndarray_init
 #from cupy._core._compile_with_cache cimport compile_with_cache

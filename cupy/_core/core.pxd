@@ -93,4 +93,4 @@ cdef class _ndarray_base:
         self, Py_ssize_t itemsize, bint is_c_contiguous)
     cdef CPointer get_pointer(self)
     cpdef object toDlpack(self)
-    cpdef CPointer ptr(self)
+    cpdef CPointer data_ptr(self)
