@@ -14,10 +14,13 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
        && \
     apt-get -qqy install ccache git curl && \
     apt-get -qqy --allow-change-held-packages \
-            --allow-downgrades install 'libnccl2=2.27.*+cuda13.0' 'libnccl-dev=2.27.*+cuda13.0' 'libcusparselt0=0.7.1.*' 'libcusparselt-dev=0.7.1.*'
+            --allow-downgrades install 'libnccl2=2.27.*+cuda13.0' 'libnccl-dev=2.27.*+cuda13.0' 'libcutensor2-cuda-13=2.3.*' 'libcutensor2-dev-cuda-13=2.3.*' 'libcusparselt0=0.7.1.*' 'libcusparselt-dev=0.7.1.*'
 
 ENV PATH "/usr/lib/ccache:${PATH}"
 
+ENV CUPY_INCLUDE_PATH=/usr/include/libcutensor/13:${CUPY_INCLUDE_PATH}
+ENV CUPY_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu/libcutensor/13:${CUPY_LIBRARY_PATH}
+ENV LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu/libcutensor/13:${LD_LIBRARY_PATH}
 RUN git clone https://github.com/pyenv/pyenv.git /opt/pyenv
 ENV PYENV_ROOT "/opt/pyenv"
 ENV PATH "${PYENV_ROOT}/shims:${PYENV_ROOT}/bin:${PATH}"

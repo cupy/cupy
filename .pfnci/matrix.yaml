@@ -11,7 +11,7 @@
   cuda: "12.0"
   rocm: null
   nccl: "2.17"
-  cutensor: "2.0"
+  cutensor: "2.3"
   cusparselt: null
   python: "3.10"
   numpy: "2.0"
@@ -40,7 +40,7 @@
   cuda: "12.1"
   rocm: null
   nccl: "2.17"
-  cutensor: "2.0"
+  cutensor: "2.3"
   cusparselt: null
   python: "3.11"
   numpy: "2.1"
@@ -69,7 +69,7 @@
   cuda: "12.2"
   rocm: null
   nccl: "2.18"
-  cutensor: "2.0"
+  cutensor: "2.3"
   cusparselt: null
   python: "3.11"
   numpy: "2.0"
@@ -98,7 +98,7 @@
   cuda: "12.3"
   rocm: null
   nccl: "2.19"
-  cutensor: "2.0"
+  cutensor: null
   cusparselt: null
   python: "3.11"
   numpy: "2.1"
@@ -127,7 +127,7 @@
   cuda: "12.4"
   rocm: null
   nccl: "2.20"
-  cutensor: "2.0"
+  cutensor: "2.3"
   cusparselt: null
   python: "3.12"
   numpy: "2.2"
@@ -156,7 +156,7 @@
   cuda: "12.5"
   rocm: null
   nccl: "2.21"
-  cutensor: "2.0"
+  cutensor: "2.3"
   cusparselt: null
   python: "3.12"
   numpy: "2.0"
@@ -185,7 +185,7 @@
   cuda: "12.6"
   rocm: null
   nccl: "2.22"
-  cutensor: "2.0"
+  cutensor: "2.3"
   cusparselt: null
   python: "3.13"
   numpy: "2.2"
@@ -214,7 +214,7 @@
   cuda: "12.8"
   rocm: null
   nccl: "2.26"
-  cutensor: "2.0"
+  cutensor: null
   cusparselt: "0.7.1"
   python: "3.12"
   numpy: "2.3"
@@ -243,7 +243,7 @@
   cuda: "12.9"
   rocm: null
   nccl: "2.26"
-  cutensor: "2.0"
+  cutensor: "2.3"
   cusparselt: "0.7.1"
   python: "3.12"
   numpy: "2.3"
@@ -273,7 +273,7 @@
   cuda: "13.0"
   rocm: null
   nccl: "2.27"
-  cutensor: null  # TODO
+  cutensor: "2.3"
   cusparselt: "0.7.1"
   python: "3.14"
   numpy: "2.3"
@@ -455,7 +455,7 @@
   cuda: "12.9"
   rocm: null
   nccl: "2.27"
-  cutensor: "2.0"
+  cutensor: "2.3"
   cusparselt: null
   python: "3.12"
   numpy: "2.3"
@@ -484,7 +484,7 @@
   cuda: "12.9"
   rocm: null
   nccl: "2.27"
-  cutensor: "2.0"
+  cutensor: "2.3"
   cusparselt: null
   python: "3.12"
   numpy: "2.3"
@@ -510,7 +510,7 @@
   cuda: "12.9"
   rocm: null
   nccl: "2.27"
-  cutensor: "2.0"
+  cutensor: "2.3"
   cusparselt: null
   python: "3.12"
   numpy: "pre"
@@ -535,7 +535,7 @@
   cuda: "12.9"
   rocm: null
   nccl: "2.26"
-  cutensor: "2.0"
+  cutensor: "2.3"
   cusparselt: null
   python: "3.12"
   numpy: "2.3"
