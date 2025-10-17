@@ -275,7 +275,7 @@
   nccl: "2.27"
   cutensor: null  # TODO
   cusparselt: "0.7.1"
-  python: "3.12"
+  python: "3.14"
   numpy: "2.3"
   scipy: "1.16"
   optuna: "4"
@@ -290,7 +290,7 @@
   _inherits: "cupy.linux.cuda130"
   tags: ["@push", "full", "mini", "multi", "cuda130"]
   target: "cuda130.multi"
-  mpi4py: "3"
+  mpi4py: "4"
   test: "unit-multi"
 
 ###############################################################################

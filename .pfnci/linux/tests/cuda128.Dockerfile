@@ -24,8 +24,8 @@ RUN /update-alternatives-cutensor.sh
 RUN git clone https://github.com/pyenv/pyenv.git /opt/pyenv
 ENV PYENV_ROOT "/opt/pyenv"
 ENV PATH "${PYENV_ROOT}/shims:${PYENV_ROOT}/bin:${PATH}"
-RUN pyenv install 3.12.6 && \
-    pyenv global 3.12.6 && \
+RUN pyenv install 3.12.11 && \
+    pyenv global 3.12.11 && \
     pip install -U setuptools pip wheel
 
 RUN pip install -U 'numpy==2.3.*' 'scipy==1.15.*' 'optuna==4.*' 'cython==3.1.*'
