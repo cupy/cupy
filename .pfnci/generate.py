@@ -150,7 +150,7 @@ class LinuxGenerator:
         else:
             raise AssertionError
 
-        # Define environment variables to discover cuTENSOR during build/runtime.
+        # Define env vars to discover cuTENSOR during build/runtime.
         if matrix.cutensor is not None:
             # The following assumes cuTENSOR 2.3+ package layout.
             cuda_major = matrix.cuda.split('.')[0]
