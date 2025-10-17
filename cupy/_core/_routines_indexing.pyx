@@ -18,7 +18,6 @@ from cupy._core cimport _routines_math as _math
 from cupy._core cimport _routines_manipulation as _manipulation
 from cupy._core.core cimport _convert_from_cupy_like, _ndarray_base
 from cupy._core cimport internal
-from cupy._core cimport _dtype
 
 
 # _ndarray_base members
@@ -271,10 +270,10 @@ cpdef list _prepare_slice_list(slices):
             # If this is a NumPy array, it should have an unsupportd dtype
             # raise that as as not "integer or boolean" dtype.
             if isinstance(s, numpy.ndarray):
-                if s.dtype.char not in _dtype.all_type_chars:
+                if s.dtype.kind not in {'b', 'i', 'u'}:
                     raise IndexError(
-                        'arrays used as indices must be of integer '
-                        '(or boolean) type')
+                        'arrays used as indices must be of integer or boolean '
+                        'type (actual: {})'.format(s.dtype.type))
                 # Unlikely/impossible, but there was another error re-raise
                 raise
 
