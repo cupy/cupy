@@ -77,8 +77,6 @@ Package names are different depending on your CUDA Toolkit version.
 
    * - CUDA
      - Command
-   * - **v11.2 ~ 11.8** (x86_64 / aarch64)
-     - ``pip install cupy-cuda11x``
    * - **v12.x** (x86_64 / aarch64)
      - ``pip install cupy-cuda12x``
    * - **v13.x** (x86_64 / aarch64)
