@@ -85,9 +85,10 @@ Package names are different depending on your CUDA Toolkit version.
 .. note::
 
    To enable features provided by additional CUDA libraries (cuTENSOR / NCCL), you need to install them manually.
-   If you installed CuPy via wheels, you can use the installer command below to setup these libraries in case you don't have a previous installation::
+   If you installed CuPy via PyPI, the easiest way to setup these libraries is to use ``cutensor-cuXX`` and ``nvidia-nccl-cuXX`` PyPI packages, e.g.:::
 
-    $ python -m cupyx.tools.install_library --cuda 11.x --library cutensor
+    $ pip install "cutensor-cu13==2.3.*"
+    $ pip install "nvidia-nccl-cu13==2.27.*"
 
 .. note::
 
