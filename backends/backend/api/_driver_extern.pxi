@@ -70,7 +70,7 @@ ctypedef int (*F_cuStreamGetCtx)(Stream hStream, Context* pctx) noexcept nogil
 cdef F_cuStreamGetCtx cuStreamGetCtx
 
 
-cdef extern from '../../cupy_backend.h' nogil:
+cdef extern from '../../cupy_backend_common.h' nogil:
     # Build-time version
     enum: CUDA_VERSION
 

@@ -27,7 +27,7 @@ ELSE:
     include '_driver_extern.pxi'
     pass  # for cython-lint
 
-cdef extern from '../../cupy_backend.h' nogil:
+cdef extern from '../../cupy_backend_common.h' nogil:
     # Build-time version
     # Note: CUDA_VERSION is defined either in CUDA Python or _driver_extern.pxi
     enum: HIP_VERSION
@@ -35,6 +35,10 @@ cdef extern from '../../cupy_backend.h' nogil:
 IF CUPY_CANN_VERSION <= 0:
     # Provide access to constants from Python.
     from backends.cuda.api._driver_enum import *
+ELSE:
+    cpdef enum:
+        # CUresult
+        CUDA_ERROR_INVALID_VALUE = 1
 
 
 ###############################################################################

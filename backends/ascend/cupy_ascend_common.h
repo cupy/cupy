@@ -3,7 +3,7 @@
 
 #include <acl/acl.h>  // has version
 #include <acl/acl_base.h>
-#__has_include(<blas_api.h>) // CANN 8.2 provide BlAS by NNAL's AsdSip namepace
+#if __has_include(<blas_api.h>) // CANN 8.2 provide BlAS by NNAL's AsdSip namepace
 #include <blas_api.h>
 #endif
 
@@ -164,7 +164,7 @@ typedef void* cudaIpcEventHandle_t; // WARNING: Missing direct equivalent
 /* AscendCL provides its own set of libraries for linear algebra and other operations.
  * These are not direct API-for-API replacements but serve similar functions.
  */
-#__has_include(<blas_api.h>)
+#if __has_include(<blas_api.h>)
 typedef AsdSip::asdBlasHandle cublasHandle_t; // AscendCL BLAS handle
 typedef AsdSip::asdBlasStatus cublasStatus_t; // Use AscendCL BLAS error type enum
 

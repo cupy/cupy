@@ -15,7 +15,7 @@ from cupy.cuda cimport stream as stream_module
 from cupy_backends.cuda.api.runtime import CUDARuntimeError
 
 
-cdef extern from '../../cupy_backends/cupy_backend.h':
+cdef extern from '../../cupy_backends/cupy_backend_common.h':
     pass
 
 cdef extern from '../../cupy_backends/cupy_backend_runtime.h':

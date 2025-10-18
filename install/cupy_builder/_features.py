@@ -154,10 +154,11 @@ _cuda_files = [
 ]
 
 _ascend_files = [
+    'backends.cuda.api._driver_enum',  # JIT can be ignored
+    'backends.cuda.api._runtime_enum',
+    # 'backends.cuda.api._device_prop',
     'backends.backend.api.driver', # empty driver.pyx
-    'backends.backend.api._driver_enum',  # JIT can be ignored
     'backends.backend.api.runtime',
-    'backends.backend.api._runtime_enum',
     # 'backends.cuda.libs.cublas',
     # 'backends.cuda.libs.curand',
     # 'backends.cuda.libs.cusparse',

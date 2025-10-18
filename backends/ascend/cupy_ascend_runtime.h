@@ -2,7 +2,7 @@
 #define INCLUDE_GUARD_ASCEND_CUPY_RUNTIME_H
 
 #include "acl/acl.h"          // AscendCL主头文件
-#__has_include("acl/acl_mdl.h")
+#if __has_include("acl/acl_mdl.h")
 #include "acl/acl_mdl.h"      // model record
 #endif
 #include "cupy_ascend_common.h" // 假设的自定义头文件
@@ -444,7 +444,7 @@ cudaError_t cudaEventSynchronize(cudaEvent_t event) {
 ///////////////////////////////////////////////////////////////////////////////
 // graph and graph/stream capture
 ///////////////////////////////////////////////////////////////////////////////
-#__has_include("acl/acl_mdl.h")
+#if __has_include("acl/acl_mdl.h")
 
 typedef aclmdlRICaptureMode cudaStreamCaptureMode;
 typedef aclmdlRICaptureStatus cudaStreamCaptureStatus;

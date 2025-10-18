@@ -1,3 +1,5 @@
+#include "cupy_ascend_common.h"
+
 // ================ GPU render API is not supported on ASCEND NPU============================
 #ifndef CUPY_INSTALL_USE_ASCEND
 // Texture is not supported on NPU
