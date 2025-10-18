@@ -142,6 +142,63 @@ def nanprod(a, axis=None, dtype=None, out=None, keepdims=False):
     return _math._nanprod(a, axis, dtype, out, keepdims)
 
 
+def _cumulative_func(x, func, axis, dtype, out, include_initial, identity):
+    x = cupy.atleast_1d(x)
+    x_ndim = x.ndim
+    if axis is None:
+        if x_ndim >= 2:
+            raise ValueError("For arrays which have more than one dimension "
+                             "``axis`` argument is required.")
+        axis = 0
+
+    if out is not None and include_initial:
+        item = [slice(None)] * x_ndim
+        item[axis] = slice(1, None)
+        func.accumulate(x, axis=axis, dtype=dtype, out=out[tuple(item)])
+        item[axis] = 0
+        out[tuple(item)] = identity
+        return out
+
+    res = func.accumulate(x, axis=axis, dtype=dtype, out=out)
+    if include_initial:
+        initial_shape = list(x.shape)
+        initial_shape[axis] = 1
+        res = cupy.concat(
+            [cupy.full_like(res, identity, shape=initial_shape), res],
+            axis=axis,
+        )
+
+    return res
+
+
+def cumulative_sum(x, /, *, axis=None, dtype=None, out=None,
+                   include_initial=False):
+    """Returns the cumulative sum of an array along a given axis.
+    This function is an Array API compatible alternative to `cupy.cumsum`.
+
+    Args:
+        a (cupy.ndarray): Input array.
+        axis (int): Axis along which the cumulative sum is computed. The
+            default (None) is only allowed for one-dimensional arrays. For
+            arrays with more than one dimension ``axis`` is required.
+        dtype: Data type specifier.
+        out (cupy.ndarray): Output array.
+        include_initial: bool, optional
+            Boolean indicating whether to include the initial value (zeros) as
+            the first value in the output. With ``include_initial=True``
+            the shape of the output is different than the shape of the input.
+            Default: ``False``.
+
+    Returns:
+        cupy.ndarray: The result array.
+
+    .. seealso:: :func:`numpy.cumulative_sum`
+    """
+
+    return _cumulative_func(x, _math.add, axis, dtype, out, include_initial,
+                            identity=0)
+
+
 def cumsum(a, axis=None, dtype=None, out=None):
     """Returns the cumulative sum of an array along a given axis.
 
