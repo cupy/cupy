@@ -15,7 +15,7 @@
 
 #else // #ifndef CUPY_NO_CUDA
 
-#include "stub/cupy_cuda_runtime.h"
+#include "stub/cupy_stub_runtime.h"
 
 #endif // #ifndef CUPY_NO_CUDA
 #endif // #ifndef INCLUDE_GUARD_CUPY_CUDA_RUNTIME_H

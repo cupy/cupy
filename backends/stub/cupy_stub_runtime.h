@@ -3,7 +3,7 @@
 #ifndef INCLUDE_GUARD_STUB_CUPY_CUDA_RUNTIME_H
 #define INCLUDE_GUARD_STUB_CUPY_CUDA_RUNTIME_H
 
-#include "cupy_cuda_common.h"
+#include "cupy_stube_common.h"
 
 extern "C" {
 

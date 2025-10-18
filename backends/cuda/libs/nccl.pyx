@@ -10,7 +10,7 @@ from libcpp cimport vector
 
 from cupy_backends.cuda.api cimport runtime
 
-cdef extern from '../../cupy_nccl.h':
+cdef extern from '../../cupy_xccl.h':
     ctypedef struct ncclComm:
         pass
     ctypedef ncclComm* ncclComm_t

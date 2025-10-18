@@ -3,8 +3,9 @@
 
 #include <acl/acl.h>  // has version
 #include <acl/acl_base.h>
+#__has_include(<blas_api.h>) // CANN 8.2 provide BlAS by NNAL's AsdSip namepace
 #include <blas_api.h>
-// #include <acl/ops/acl_op.h> // 可能需要，但搜索未明确对应rocsolver的等效项
+#endif
 
 #define CUDA_VERSION 0
 
@@ -12,10 +13,6 @@ extern "C" {
 
 bool hip_environment = false;
 bool cann_environment = true;
-
-///////////////////////////////////////////////////////////////////////////////
-// cuda.h (替换为AscendCL等效)
-///////////////////////////////////////////////////////////////////////////////
 
 typedef aclError CUresult; // AscendCL错误类型
 // Conditionally define CUDA_SUCCESS only if it's not defined
@@ -162,29 +159,29 @@ typedef void* cudaIpcEventHandle_t; // WARNING: Missing direct equivalent
 #endif
 
 ///////////////////////////////////////////////////////////////////////////////
-// blas & lapack (hipBLAS/rocBLAS & rocSOLVER) -> Replace with AscendCL equivalents
+// blas & lapack
 ///////////////////////////////////////////////////////////////////////////////
 /* AscendCL provides its own set of libraries for linear algebra and other operations.
  * These are not direct API-for-API replacements but serve similar functions.
  */
-
+#__has_include(<blas_api.h>)
 typedef AsdSip::asdBlasHandle cublasHandle_t; // AscendCL BLAS handle
+typedef AsdSip::asdBlasStatus cublasStatus_t; // Use AscendCL BLAS error type enum
 
 // translation of these enum (int) will be done in higher layer, from numpy.dtype directly into aclDataType
-typedef int cudaDataType_t; // Map to aclDataType
+typedef aclDataType cudaDataType_t; // Map to aclDataType
 // BLAS enumeration types - AscendCL may use different enums or parameters
-typedef int cublasDiagType_t;
-typedef int cublasFillMode_t;
-typedef int cublasSideMode_t;
+typedef AsdSip::asdBlasDiagType_t cublasDiagType_t;
+typedef AsdSip::asdBlasFillMode_t cublasFillMode_t;
+typedef AsdSip::asdBlasSideMode_t cublasSideMode_t;
+typedef AsdSip::asdBlasOperation_t cublasOperation_t;
 
-typedef int cublasOperation_t;
+// TODO: ASCEND
 typedef int cublasPointerMode_t; // WARNING: Check aclblasPointerMode enum if available
 typedef enum {} cublasGemmAlgo_t; // WARNING: Missing direct equivalent - algorithm selection might differ
 typedef enum {} cublasMath_t; // WARNING: Missing direct equivalent
-
-typedef aclError cublasStatus_t; // Use AscendCL error type
-
 typedef int cublasComputeType_t; // WARNING: Missing direct equivalent in AscendCL BLAS
+#endif
 
 // SOLVER (rocSOLVER/cuSOLVER replacement)
 // AscendCL's support for direct solver routines (like rocSOLVER) is under develop
@@ -193,6 +190,7 @@ typedef int cublasComputeType_t; // WARNING: Missing direct equivalent in Ascend
 #ifndef CUPY_INSTALL_USE_ASCEND
 typedef aclError cusolverStatus_t; // Use AscendCL error type
 typedef void* cusolverDnHandle_t; // WARNING: Missing direct equivalent handle for dense solvers
+typedef void* cusolverSpHandle_t; // WARNING: Missing direct equivalent handle for sparse solvers
 #endif
 
 } // extern "C"

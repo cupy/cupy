@@ -15,7 +15,7 @@
 
 #else // #ifndef CUPY_NO_CUDA
 
-#include "stub/cupy_profiler.h"
+#include "stub/cupy_stub_profiler.h"
 
 #endif // #ifndef CUPY_NO_CUDA
 #endif // #ifndef INCLUDE_GUARD_CUPY_PROFILER_H
