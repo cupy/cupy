@@ -26,8 +26,8 @@ from cupy.xpu cimport device
 from cupy.xpu cimport pinned_memory
 from cupy.xpu cimport memory
 
-from cupy_backends.cuda.api cimport runtime
-from cupy_backends.cuda.api.runtime import CUDARuntimeError
+from backends.backend.api cimport runtime
+from backends.backend.api.runtime import CUDARuntimeError
 
 
 NUMPY_1x = numpy.__version__ < '2'
@@ -418,7 +418,7 @@ cpdef _ndarray_base _internal_ascontiguousarray(_ndarray_base a):
 
 
 cpdef _ndarray_base _internal_asfortranarray(_ndarray_base a):
-    from cupy_backends.cuda.libs import cublas
+    from backends.backend.libs import cublas
 
     cdef _ndarray_base newarray
     cdef int m, n

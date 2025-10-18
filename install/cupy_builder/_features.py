@@ -154,19 +154,19 @@ _cuda_files = [
 ]
 
 _ascend_files = [
-    'cupy_backends.cuda.api.driver', # empty driver.pyx
-    'cupy_backends.cuda.api._driver_enum',  # JIT can be ignored
-    'cupy_backends.cuda.api.runtime',
-    'cupy_backends.cuda.api._runtime_enum',
-    # 'cupy_backends.cuda.libs.cublas',
-    # #'cupy_backends.cuda.libs.curand',
-    # #'cupy_backends.cuda.libs.cusparse',
-    # #'cupy_backends.cuda.libs.nvrtc',
-    'cupy_backends.cuda.stream',
-    'cupy_backends.cuda._softlink',
+    'backends.backend.api.driver', # empty driver.pyx
+    'backends.backend.api._driver_enum',  # JIT can be ignored
+    'backends.backend.api.runtime',
+    'backends.backend.api._runtime_enum',
+    # 'backends.cuda.libs.cublas',
+    # 'backends.cuda.libs.curand',
+    # 'backends.cuda.libs.cusparse',
+    # 'backends.cuda.libs.nvrtc',
+    'backends.backend.stream',
+    'backends.backend._softlink',
     # # high level OO API
-    #'cupy.cuda.common', #  cudaDataType
-    # #'cupy.cuda.cufft',
+    # 'cupy.cuda.common', #  cudaDataType
+    # 'cupy.cuda.cufft',
     'cupy.xpu.device', # device-runtime capacity like sparse curand
     'cupy.xpu.memory', # MemoryAsyncPool is not supported
     'cupy.xpu.memory_hook', # backend independent
@@ -174,7 +174,7 @@ _ascend_files = [
     'cupy.xpu.function', # only compile code for CPointer
     'cupy.xpu.stream',
     'cupy._util', # backend independent:  context manager, memoise
-    'cupy_backends.ascend.api.acl_utils',
+    'backends.ascend.api.acl_utils',
     # =============== seperate line for low-high api
     'cupy._core._carray',
     'cupy._core._dtype',
@@ -182,7 +182,6 @@ _ascend_files = [
     'cupy._core.core',  # define _ndarray_base
     'cupy._core.flags',
     'cupy._core.internal',
-    #'cupy._core._accelerator', # ascend does not need it, less code edit
     'cupy._core.dlpack',
     'cupy._core.numpy_allocator',
     'cupy._core._memory_range',
@@ -192,7 +191,7 @@ _ascend_files = [
     ('cupy._core._routines_binary', ['cupy/_core/_routines_binary.pyx']),
     'cupy._core._routines_creation',
     'cupy._core._routines_manipulation',
-    ('cupy._core._routines_linalg', ['cupy/_ascend/_core/_routines_linalg.pyx']),
+    #('cupy._core._routines_linalg', ['cupy/_ascend/_core/_routines_linalg.pyx']),
     #('cupy._core._routines_logic', ['cupy/_ascend/_core/_routines_logic.pyx']),
     #('cupy._core._reduction', ['cupy/_ascend/_core/_routines_reduction.pyx']),  # not easy job
     #('cupy._core._routines_indexing', ['cupy/_ascend/_core/_routines_indexing.pyx']), # not so difficult
@@ -200,8 +199,8 @@ _ascend_files = [
     # =========== Future work ================
     # 'cupy.cuda.graph',  # not sure if possible
     # 'cupy.cuda.texture', # GPU only 
-    # 'cupy._core._accelerator', # cuda only 
-    # 'cupy._core._cub_reduction', # gpu only
+    ('cupy._core._accelerator', ["cupy/_core/_gpu/_accelerator.pyx"]) # cuda only 
+    # 'cupy._core._cub_reduction', # cuda only
     # 'cupy.fft._cache',  # TODO
     # 'cupy.fft._callback', # TODO
     # 'cupy.lib._polynomial', # TODO

@@ -17,8 +17,8 @@ import threading as _threading
 cimport cpython  # NOQA
 cimport cython  # NOQA
 
-from cupy_backends.cuda.api cimport driver  # NOQA
-from cupy_backends.cuda.libs cimport nvrtc  # no-cython-lint
+from backends.backend.api cimport driver  # NOQA
+from backends.backend.libs cimport nvrtc  # no-cython-lint
 
 
 ###############################################################################
@@ -101,10 +101,10 @@ deviceAttributeComputeCapabilityMinor = cudaDevAttrComputeCapabilityMinor
 
 # Provide access to constants from Python.
 # TODO(kmaehashi): Deprecate aliases above so that we can just do:
-# from cupy_backends.cuda.api._runtime_enum import *
+# from backends.backend.api._runtime_enum import *
 def _export_enum():
     import sys
-    import cupy_backends.cuda.api._runtime_enum as _runtime_enum
+    import backends.backend.api._runtime_enum as _runtime_enum
     this = sys.modules[__name__]
     for key in dir(_runtime_enum):
         if not key.startswith('_'):

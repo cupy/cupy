@@ -1,8 +1,8 @@
 import os
 import tempfile
 
-from cupy_backends.cuda.api cimport runtime
-from cupy_backends.cuda cimport stream as stream_module
+from backends.backend.api cimport runtime
+from backends.backend cimport stream as stream_module
 
 
 cdef class Graph:

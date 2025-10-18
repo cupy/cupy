@@ -1,7 +1,7 @@
 import threading
 
-from cupy_backends.cuda.api cimport runtime
-from cupy_backends.cuda cimport stream as backends_stream
+from backends.backend.api cimport runtime
+from backends.backend cimport stream as backends_stream
 # TODO: ASCEND not impl yet
 #from cupy.xpu cimport graph
 

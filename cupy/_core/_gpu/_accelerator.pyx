@@ -1,6 +1,6 @@
 import os
 
-from cupy_backends.cuda.api cimport runtime
+from backends.backend.api cimport runtime
 
 
 cdef list _elementwise_accelerators = []

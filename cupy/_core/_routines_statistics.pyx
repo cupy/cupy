@@ -18,7 +18,7 @@ from cupy._core.core cimport _ndarray_base
 from cupy.xpu import cub
 
 try:
-    import cupy_backends.cuda.libs.cutensor as cuda_cutensor
+    import backends.backend.libs.cutensor as cuda_cutensor
 except ImportError:
     cuda_cutensor = None
 

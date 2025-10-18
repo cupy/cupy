@@ -24,8 +24,8 @@ from cupy._core._routines_creation cimport _ndarray_init
 from cupy._core cimport _routines_creation as _creation
 from cupy._core.core cimport _ndarray_base
 from cupy._core cimport internal
-from cupy_backends.cuda.api cimport runtime
-from cupy_backends.ascend.api.acl_utils cimport launch_acl_func
+from backends.backend.api cimport runtime
+from backends.ascend.api.acl_utils cimport launch_acl_func
 
 cdef inline size_t _get_stream(stream) except *:
     if stream is None:

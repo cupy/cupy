@@ -8,7 +8,7 @@ import warnings
 cimport cython
 
 import cupy
-from cupy_backends.cuda.api cimport runtime
+from backends.backend.api cimport runtime
 
 
 DEF CYTHON_BUILD_VER = CUPY_CYTHON_VERSION

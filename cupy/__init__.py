@@ -8,6 +8,9 @@ import numpy as _numpy
 from cupy import _environment
 from cupy import _version
 
+# module alias to keep compatible for cupy.cuda code
+import backends
+cupy_backends = backends
 
 _environment._detect_duplicate_installation()  # NOQA
 _environment._setup_win32_dll_directory()  # NOQA

@@ -33,7 +33,7 @@ cdef extern from '../../cupy_backend.h' nogil:
     enum: HIP_VERSION
 
 # Provide access to constants from Python.
-from cupy_backends.cuda.api._driver_enum import *
+from backends.backend.api._driver_enum import *
 
 
 ###############################################################################

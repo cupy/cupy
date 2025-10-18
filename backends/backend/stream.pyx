@@ -1,7 +1,7 @@
 import os as _os
 import threading as _threading
 
-from cupy_backends.cuda.api cimport runtime
+from backends.backend.api cimport runtime
 
 
 cdef object _thread_local = _threading.local()

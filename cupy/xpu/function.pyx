@@ -13,8 +13,8 @@ from libcpp cimport vector
 
 from cupy._core cimport _carray
 from cupy._core.core cimport _ndarray_base
-from cupy_backends.cuda.api cimport driver
-from cupy_backends.cuda.api cimport runtime
+from backends.backend.api cimport driver
+from backends.backend.api cimport runtime
 from cupy.xpu cimport stream as stream_module
 from cupy.xpu.memory cimport MemoryPointer
 #from cupy.xpu.texture cimport TextureObject, SurfaceObject

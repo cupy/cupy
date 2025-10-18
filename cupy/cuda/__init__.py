@@ -1,3 +1,5 @@
+import warnings
+
 from cupy_backends.cuda.api import driver  # NOQA
 from cupy_backends.cuda.api import runtime  # NOQA
 

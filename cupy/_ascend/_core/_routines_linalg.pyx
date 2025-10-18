@@ -25,7 +25,7 @@ from cupy._core cimport _memory_range
 from cupy._core cimport _routines_manipulation as _manipulation
 from cupy._core cimport _routines_math as _math # use only multiply
 from cupy.xpu cimport device
-from cupy_backends.cuda.api cimport runtime
+from backends.backend.api cimport runtime
 
 
 cdef extern from '../../../cupy_backends/cupy_complex.h':
@@ -122,7 +122,7 @@ cpdef _ndarray_base matmul(
     .. seealso:: :func:`numpy.matmul`
 
     """
-    #from cupy_backends.cuda.libs import cublas
+    #from backends.backend.libs import cublas
 
     cdef Py_ssize_t i, n, m, ka, kb, a_sh, b_sh, c_sh, ldc
     cdef Py_ssize_t batchCount, a_part_outshape, b_part_outshape

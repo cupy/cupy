@@ -1,6 +1,6 @@
 import sys as _sys
 
-from cupy_backends.cuda._softlink cimport SoftLink
+from backends.backend._softlink cimport SoftLink
 
 
 # Error handling

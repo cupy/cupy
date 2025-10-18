@@ -10,7 +10,7 @@ from cupy._environment import get_rocm_path  # NOQA
 from cupy._environment import get_hipcc_path  # NOQA
 from cupy._environment import get_cann_path # NOQA
 
-#from cupy_backends.cuda.runtime import is_ascend as _is_ascend
+#from backends.backend.runtime import is_ascend as _is_ascend
 
 _is_ascend = True # TODO: ASCEND get from env?
 if not _is_ascend:
@@ -25,8 +25,8 @@ from cupy.xpu import pinned_memory  # NOQA
 from cupy.xpu import profiler  # NOQA
 from cupy.xpu import stream  # NOQA
 
-from cupy_backends.cuda.api import driver  # NOQA
-from cupy_backends.cuda.api import runtime  # NOQA
+from backends.backend.api import driver  # NOQA
+from backends.backend.api import runtime  # NOQA
 
 # import class and function
 from cupy.xpu.device import Device  # NOQA
