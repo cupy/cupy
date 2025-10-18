@@ -32,8 +32,9 @@ cdef extern from '../../cupy_backend.h' nogil:
     # Note: CUDA_VERSION is defined either in CUDA Python or _driver_extern.pxi
     enum: HIP_VERSION
 
-# Provide access to constants from Python.
-from backends.backend.api._driver_enum import *
+IF CUPY_CANN_VERSION <= 0:
+    # Provide access to constants from Python.
+    from backends.cuda.api._driver_enum import *
 
 
 ###############################################################################

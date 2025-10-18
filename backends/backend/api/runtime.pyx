@@ -18,7 +18,8 @@ cimport cpython  # NOQA
 cimport cython  # NOQA
 
 from backends.backend.api cimport driver  # NOQA
-from backends.backend.libs cimport nvrtc  # no-cython-lint
+IF CUPY_USE_CUDA_PYTHON:
+    from backends.cuda.libs cimport nvrtc  # no-cython-lint
 
 
 ###############################################################################
@@ -95,23 +96,26 @@ errorMemoryAllocation = cudaErrorMemoryAllocation
 errorPeerAccessAlreadyEnabled = cudaErrorPeerAccessAlreadyEnabled
 errorContextIsDestroyed = cudaErrorContextIsDestroyed
 errorInvalidResourceHandle = cudaErrorInvalidResourceHandle
+
 deviceAttributeComputeCapabilityMajor = cudaDevAttrComputeCapabilityMajor
 deviceAttributeComputeCapabilityMinor = cudaDevAttrComputeCapabilityMinor
 
 
-# Provide access to constants from Python.
-# TODO(kmaehashi): Deprecate aliases above so that we can just do:
-# from backends.backend.api._runtime_enum import *
-def _export_enum():
-    import sys
-    import backends.backend.api._runtime_enum as _runtime_enum
-    this = sys.modules[__name__]
-    for key in dir(_runtime_enum):
-        if not key.startswith('_'):
-            setattr(this, key, getattr(_runtime_enum, key))
+IF CUPY_CANN_VERSION <= 0:
+    # Provide access to constants from Python.
+    # TODO(kmaehashi): Deprecate aliases above so that we can just do:
+    # from backends.cuda.api._runtime_enum import *
+    # from backends.cuda.api._device_prop import *
+    def _export_enum():
+        import sys
+        import backends.backend.api._runtime_enum as _runtime_enum
+        this = sys.modules[__name__]
+        for key in dir(_runtime_enum):
+            if not key.startswith('_'):
+                setattr(this, key, getattr(_runtime_enum, key))
 
 
-_export_enum()
+    _export_enum()
 
 
 ###############################################################################
@@ -122,7 +126,7 @@ _is_hip_environment = hip_environment  # for runtime being cimport'd
 is_hip = hip_environment  # for runtime being import'd
 
 _is_cann_environment = cann_environment
-is_cann = cann_environment
+is_ascend = cann_environment
 
 ###############################################################################
 # Error handling
