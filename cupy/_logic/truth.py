@@ -3,7 +3,7 @@ from __future__ import annotations
 import cupy
 from cupy._core import _routines_logic as _logic
 from cupy._core import _fusion_thread_local
-from cupy._sorting import search as _search
+#from cupy._sorting import search as _search  # intersect1d need _search
 from cupy import _util
 
 

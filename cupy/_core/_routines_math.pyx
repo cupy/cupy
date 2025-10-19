@@ -675,6 +675,7 @@ floor_divide = _floor_divide
 remainder = _remainder
 absolute = _absolute
 sqrt = _sqrt
+divmod = _divmod
 
 sum_auto_dtype = _sum_auto_dtype  # used from cupy/math/sumprod.py
 nansum_auto_dtype = _nansum_auto_dtype  # used from cupy/math/sumprod.py

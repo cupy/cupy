@@ -1,5 +1,7 @@
 from cupy._core._kernel import create_ufunc
-from cupy._core._reduction import create_reduction_func
+# TODO(ASCEND) temp solution to make it compilable
+#from cupy._core._reduction import create_reduction_func
+from cupy._core._kernel import create_reduction_func
 
 from cupy._core.core cimport _ndarray_base
 

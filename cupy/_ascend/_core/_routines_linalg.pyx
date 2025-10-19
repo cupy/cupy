@@ -28,7 +28,7 @@ from cupy.xpu cimport device
 from backends.backend.api cimport runtime
 
 
-cdef extern from '../../../cupy_backends/cupy_complex.h':
+cdef extern from '../../../backends/cupy_complex.h':
     ctypedef struct cuComplex 'cuComplex':
         float x, y
 
@@ -50,7 +50,7 @@ cdef dict compute_type_str = {
     7: 'COMPUTE_TYPE_TF32',
 }
 
-# TODO ComputeType maybe diff for diff xpu backend
+# TODO(ASCEND) ComputeType maybe diff for diff xpu backend
 cpdef int to_compute_type_index(dtype) except -1:
     cdef str dtype_char = numpy.dtype(dtype).char
     if dtype_char == 'e':

@@ -9,10 +9,9 @@ from cupy._environment import get_rocm_path  # NOQA
 from cupy._environment import get_hipcc_path  # NOQA
 from cupy._environment import get_cann_path # NOQA
 
-#from cupy_backends.cuda.runtime import is_ascend as _is_ascend
+from backends.backend.api.runtime import is_ascend
 
-_is_ascend = True # TODO: ASCEND get from env?
-if not _is_ascend:
+if not is_ascend():
     from cupy.xpu import compiler  # NOQA
     from cupy.xpu import texture  # NOQA
 from cupy.xpu import function  # NOQA

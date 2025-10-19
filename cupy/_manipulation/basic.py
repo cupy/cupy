@@ -5,10 +5,12 @@ import itertools
 import numpy
 
 from cupy import _core
-from cupy._core import _fusion_interface
-from cupy._core import fusion
-from cupy._sorting import search
 from backends.backend.api import runtime
+if not runtime.is_ascend():
+    # TODO(ASCEND) better deal with not supported feature
+    from cupy._core import _fusion_interface
+    from cupy._core import fusion
+    from cupy._sorting import search
 
 
 def copyto(dst, src, casting='same_kind', where=None):

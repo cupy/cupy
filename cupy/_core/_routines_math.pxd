@@ -13,7 +13,7 @@ cdef _ndarray_base _ndarray_cumsum(_ndarray_base self, axis, dtype, out)
 cdef _ndarray_base _ndarray_cumprod(_ndarray_base self, axis, dtype, out)
 cdef _ndarray_base _ndarray_clip(_ndarray_base self, a_min, a_max, out)
 
-# TODO: ASCEND not sure if nan op is supported
+# TODO: ASCEND not sure if nan op is supported (env variable) control NaN behavior
 #cpdef _ndarray_base _nansum(_ndarray_base a, axis, dtype, out, keepdims)
 #cpdef _ndarray_base _nanprod(_ndarray_base a, axis, dtype, out, keepdims)
 
@@ -40,3 +40,4 @@ cdef object _floor_divide
 cdef object _remainder
 cdef object _absolute
 cdef object _sqrt
+cdef object _divmod

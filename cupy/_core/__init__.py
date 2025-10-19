@@ -11,8 +11,8 @@ from cupy._core._kernel import ElementwiseKernel  # NOQA
 from cupy._core._kernel import ufunc  # NOQA
 from cupy._core._kernel import _get_warpsize  # NOQA
 
-_is_ascend_environment = True
-if not _is_ascend_environment:
+from backends.backend.api import runtime
+if not runtime.is_ascend():
     # internal APIs for testing and development
     from cupy._core._gpu._accelerator import set_elementwise_accelerators  # NOQA
     from cupy._core._gpu._accelerator import set_reduction_accelerators  # NOQA
@@ -24,60 +24,70 @@ if not _is_ascend_environment:
     from cupy._core._gpu import fusion  # NOQA
     from cupy._core._gpu.raw import RawKernel  # NOQA
     from cupy._core._gpu.raw import RawModule  # NOQA
+else:
+    from cupy._ascend._core import fusion_stub as fusion
+    _fusion_thread_local = fusion
+    from cupy._core._kernel import create_reduction_func
 
-if not _is_ascend_environment:
+if not runtime.is_ascend():
     from cupy._core._reduction import create_reduction_func  # NOQA
     from cupy._core._reduction import ReductionKernel  # NOQA
-    from cupy._core._routines_binary import bitwise_and  # NOQA
-    from cupy._core._routines_binary import bitwise_or  # NOQA
-    from cupy._core._routines_binary import bitwise_xor  # NOQA
-    from cupy._core._routines_binary import invert  # NOQA
-    from cupy._core._routines_binary import left_shift  # NOQA
-    from cupy._core._routines_binary import right_shift  # NOQA
-    from cupy._core._routines_linalg import _mat_ptrs  # NOQA
-    from cupy._core._routines_linalg import dot  # NOQA
-    from cupy._core._routines_linalg import get_compute_type  # NOQA
-    from cupy._core._routines_linalg import matmul  # NOQA
-    from cupy._core._routines_linalg import set_compute_type  # NOQA
-    from cupy._core._routines_linalg import tensordot_core  # NOQA
-    from cupy._core._routines_logic import create_comparison  # NOQA
-    from cupy._core._routines_logic import equal  # NOQA
-    from cupy._core._routines_logic import greater  # NOQA
-    from cupy._core._routines_logic import greater_equal  # NOQA
-    from cupy._core._routines_logic import less  # NOQA
-    from cupy._core._routines_logic import less_equal  # NOQA
-    from cupy._core._routines_logic import not_equal  # NOQA
-    from cupy._core._routines_manipulation import array_split  # NOQA
-    from cupy._core._routines_manipulation import broadcast  # NOQA
-    from cupy._core._routines_manipulation import broadcast_to  # NOQA
-    from cupy._core._routines_manipulation import concatenate_method  # NOQA
-    from cupy._core._routines_manipulation import moveaxis  # NOQA
-    from cupy._core._routines_manipulation import rollaxis  # NOQA
-    from cupy._core._routines_manipulation import size  # NOQA
-    from cupy._core._routines_math import absolute  # NOQA
-    from cupy._core._routines_math import add  # NOQA
-    from cupy._core._routines_math import angle, angle_deg  # NOQA
-    from cupy._core._routines_math import conjugate  # NOQA
-    from cupy._core._routines_math import divide  # NOQA
-    from cupy._core._routines_math import floor_divide  # NOQA
-    from cupy._core._routines_math import multiply  # NOQA
-    from cupy._core._routines_math import negative  # NOQA
-    from cupy._core._routines_math import positive  # NOQA
-    from cupy._core._routines_math import power  # NOQA
-    from cupy._core._routines_math import remainder  # NOQA
-    from cupy._core._routines_math import sqrt  # NOQA
-    from cupy._core._routines_math import subtract  # NOQA
-    from cupy._core._routines_math import true_divide  # NOQA
-    from cupy._core._routines_statistics import nanmax  # NOQA
-    from cupy._core._routines_statistics import nanmin  # NOQA
 
+from cupy._core._routines_binary import bitwise_and  # NOQA
+from cupy._core._routines_binary import bitwise_or  # NOQA
+from cupy._core._routines_binary import bitwise_xor  # NOQA
+from cupy._core._routines_binary import invert  # NOQA
+from cupy._core._routines_binary import left_shift  # NOQA
+from cupy._core._routines_binary import right_shift  # NOQA
+
+# from cupy._core._routines_linalg import _mat_ptrs  # NOQA
+# from cupy._core._routines_linalg import dot  # NOQA
+# from cupy._core._routines_linalg import get_compute_type  # NOQA
+# from cupy._core._routines_linalg import matmul  # NOQA
+# from cupy._core._routines_linalg import set_compute_type  # NOQA
+# from cupy._core._routines_linalg import tensordot_core  # NOQA
+
+from cupy._core._routines_logic import create_comparison  # NOQA
+from cupy._core._routines_logic import equal  # NOQA
+from cupy._core._routines_logic import greater  # NOQA
+from cupy._core._routines_logic import greater_equal  # NOQA
+from cupy._core._routines_logic import less  # NOQA
+from cupy._core._routines_logic import less_equal  # NOQA
+from cupy._core._routines_logic import not_equal  # NOQA
+
+from cupy._core._routines_manipulation import array_split  # NOQA
+from cupy._core._routines_manipulation import broadcast  # NOQA
+from cupy._core._routines_manipulation import broadcast_to  # NOQA
+from cupy._core._routines_manipulation import concatenate_method  # NOQA
+from cupy._core._routines_manipulation import moveaxis  # NOQA
+from cupy._core._routines_manipulation import rollaxis  # NOQA
+from cupy._core._routines_manipulation import size  # NOQA
+
+from cupy._core._routines_math import absolute  # NOQA
+from cupy._core._routines_math import add  # NOQA
+from cupy._core._routines_math import angle, angle_deg  # NOQA
+from cupy._core._routines_math import conjugate  # NOQA
+from cupy._core._routines_math import divide  # NOQA
+from cupy._core._routines_math import floor_divide  # NOQA
+from cupy._core._routines_math import multiply  # NOQA
+from cupy._core._routines_math import negative  # NOQA
+from cupy._core._routines_math import positive  # NOQA
+from cupy._core._routines_math import power  # NOQA
+from cupy._core._routines_math import remainder  # NOQA
+from cupy._core._routines_math import sqrt  # NOQA
+from cupy._core._routines_math import subtract  # NOQA
+from cupy._core._routines_math import true_divide  # NOQA
+from cupy._core._routines_math import divmod # NOQA
+
+# from cupy._core._routines_statistics import nanmax  # NOQA
+# from cupy._core._routines_statistics import nanmin  # NOQA
 
 from cupy._core._routines_creation import _internal_ascontiguousarray  # NOQA
 from cupy._core._routines_creation import _internal_asfortranarray  # NOQA
 from cupy._core._routines_creation import array  # NOQA
 from cupy._core._routines_creation import ascontiguousarray  # NOQA
 from cupy._core._routines_creation import asfortranarray  # NOQA
-#from cupy._core.core._routines_math import divmode # NOQA
+
 
 from cupy._core.core import elementwise_copy  # NOQA
 from cupy._core._ndarray import ndarray  # NOQA

@@ -11,6 +11,7 @@ from cupy import _version
 # module alias to keep compatible for cupy.cuda code
 import backends
 cupy_backends = backends
+from backends.backend.api.runtime import is_ascend
 
 _environment._detect_duplicate_installation()  # NOQA
 _environment._setup_win32_dll_directory()  # NOQA
@@ -42,6 +43,11 @@ def is_available():
 
 __version__ = _version.__version__
 
+# ASCEND TODO
+# from cupy import fft  # NOQA
+# from cupy import linalg  # NOQA
+# from cupy import polynomial  # NOQA
+# from cupy import random  # NOQA
 
 # import class and function
 from cupy._core import ndarray  # NOQA
@@ -176,11 +182,53 @@ from numpy import complex128  # NOQA
 # https://numpy.org/doc/stable/reference/routines.html
 # =============================================================================
 
+# -----------------------------------------------------------------------------
+# Array creation routines
+# -----------------------------------------------------------------------------
+from cupy._creation.basic import astype   # NOQA
+from cupy._creation.basic import empty  # NOQA
+from cupy._creation.basic import empty_like  # NOQA
+from cupy._creation.basic import eye  # NOQA
+from cupy._creation.basic import full  # NOQA
+from cupy._creation.basic import full_like  # NOQA
+from cupy._creation.basic import identity  # NOQA
+from cupy._creation.basic import ones  # NOQA
+from cupy._creation.basic import ones_like  # NOQA
+from cupy._creation.basic import zeros  # NOQA
+from cupy._creation.basic import zeros_like  # NOQA
+
+from cupy._creation.from_data import copy  # NOQA
+from cupy._creation.from_data import array  # NOQA
+from cupy._creation.from_data import asanyarray  # NOQA
+from cupy._creation.from_data import asarray  # NOQA
+from cupy._creation.from_data import ascontiguousarray  # NOQA
+from cupy._creation.from_data import fromfile  # NOQA
+from cupy._creation.from_data import fromfunction  # NOQA
+from cupy._creation.from_data import fromiter  # NOQA
+from cupy._creation.from_data import frombuffer  # NOQA
+from cupy._creation.from_data import fromstring  # NOQA
+from cupy._creation.from_data import loadtxt  # NOQA
+from cupy._creation.from_data import genfromtxt  # NOQA
+
+from cupy._creation.ranges import arange  # NOQA
+from cupy._creation.ranges import linspace  # NOQA
+from cupy._creation.ranges import logspace  # NOQA
+from cupy._creation.ranges import meshgrid  # NOQA
+from cupy._creation.ranges import mgrid  # NOQA
+from cupy._creation.ranges import ogrid  # NOQA
+
+# ASCEND TODO
+# from cupy._creation.matrix import diag  # NOQA
+# from cupy._creation.matrix import diagflat  # NOQA
+# from cupy._creation.matrix import tri  # NOQA
+# from cupy._creation.matrix import tril  # NOQA
+# from cupy._creation.matrix import triu  # NOQA
+# from cupy._creation.matrix import vander  # NOQA
 
 # -----------------------------------------------------------------------------
 # Functional routines
 # -----------------------------------------------------------------------------
-# TODO:  ElementwiseKernel() not yet impl
+# ASCEND TODO:  ElementwiseKernel() not yet impl
 #from cupy._functional.piecewise import piecewise  # NOQA
 #from cupy._functional.vectorize import vectorize  # NOQA
 from cupy.lib._shape_base import apply_along_axis  # NOQA
@@ -192,9 +240,98 @@ from cupy.lib._shape_base import put_along_axis    # NOQA
 if hasattr(_numpy, 'broadcast_shapes'):  # NumPy 1.20
     from numpy import broadcast_shapes  # NOQA
 
+# -----------------------------------------------------------------------------
+# Array manipulation routines
+# -----------------------------------------------------------------------------
+# ASCEND TODO: concat
+from cupy._manipulation.basic import copyto  # NOQA
 
-#from cupy._binary.packing import packbits  # NOQA
-#from cupy._binary.packing import unpackbits  # NOQA
+from cupy._manipulation.shape import shape  # NOQA
+from cupy._manipulation.shape import ravel  # NOQA
+from cupy._manipulation.shape import reshape  # NOQA
+
+from cupy._manipulation.transpose import moveaxis  # NOQA
+from cupy._manipulation.transpose import rollaxis  # NOQA
+from cupy._manipulation.transpose import swapaxes  # NOQA
+from cupy._manipulation.transpose import transpose  # NOQA
+
+# NumPy 2.0 aliases
+permute_dims = transpose
+
+from cupy._manipulation.dims import atleast_1d  # NOQA
+from cupy._manipulation.dims import atleast_2d  # NOQA
+from cupy._manipulation.dims import atleast_3d  # NOQA
+from cupy._manipulation.dims import broadcast  # NOQA
+from cupy._manipulation.dims import broadcast_arrays  # NOQA
+from cupy._manipulation.dims import broadcast_to  # NOQA
+from cupy._manipulation.dims import expand_dims  # NOQA
+from cupy._manipulation.dims import squeeze  # NOQA
+
+from cupy._manipulation.join import column_stack  # NOQA
+from cupy._manipulation.join import concatenate  # NOQA
+from cupy._manipulation.join import dstack  # NOQA
+from cupy._manipulation.join import hstack  # NOQA
+from cupy._manipulation.join import row_stack  # NOQA
+from cupy._manipulation.join import stack  # NOQA
+from cupy._manipulation.join import vstack  # NOQA
+
+# NumPy 2.0 alias
+concat = concatenate
+
+from cupy._manipulation.kind import asarray_chkfinite  # NOQA
+from cupy._manipulation.kind import asfarray  # NOQA
+from cupy._manipulation.kind import asfortranarray  # NOQA
+from cupy._manipulation.kind import require  # NOQA
+
+from cupy._manipulation.split import array_split  # NOQA
+from cupy._manipulation.split import dsplit  # NOQA
+from cupy._manipulation.split import hsplit  # NOQA
+from cupy._manipulation.split import split  # NOQA
+from cupy._manipulation.split import vsplit  # NOQA
+
+from cupy._manipulation.tiling import repeat  # NOQA
+from cupy._manipulation.tiling import tile  # NOQA
+# TODO: relies on ReduceKernel
+# from cupy._manipulation.add_remove import delete  # NOQA
+# from cupy._manipulation.add_remove import append  # NOQA
+# from cupy._manipulation.add_remove import resize  # NOQA
+# from cupy._manipulation.add_remove import unique  # NOQA
+# from cupy._manipulation.add_remove import unique_all  # NOQA
+# from cupy._manipulation.add_remove import unique_counts  # NOQA
+# from cupy._manipulation.add_remove import unique_values  # NOQA
+# from cupy._manipulation.add_remove import unique_inverse  # NOQA
+# from cupy._manipulation.add_remove import trim_zeros  # NOQA
+
+from cupy._manipulation.rearrange import flip  # NOQA
+from cupy._manipulation.rearrange import fliplr  # NOQA
+from cupy._manipulation.rearrange import flipud  # NOQA
+from cupy._manipulation.rearrange import roll  # NOQA
+from cupy._manipulation.rearrange import rot90  # NOQA
+
+# Borrowed from NumPy
+if hasattr(_numpy, 'broadcast_shapes'):  # NumPy 1.20
+    from numpy import broadcast_shapes  # NOQA
+
+
+# -----------------------------------------------------------------------------
+# Binary operations
+# -----------------------------------------------------------------------------
+from cupy._binary.elementwise import bitwise_and  # NOQA
+from cupy._binary.elementwise import bitwise_or  # NOQA
+from cupy._binary.elementwise import bitwise_xor  # NOQA
+from cupy._binary.elementwise import bitwise_not  # NOQA
+from cupy._binary.elementwise import invert  # NOQA
+from cupy._binary.elementwise import left_shift  # NOQA
+from cupy._binary.elementwise import right_shift  # NOQA
+
+# NumPy 2.0 aliases
+bitwise_left_shift = left_shift
+bitwise_right_shift = right_shift
+bitwise_invert = invert
+
+# ASCEND TODO
+# from cupy._binary.packing import packbits  # NOQA
+# from cupy._binary.packing import unpackbits  # NOQA
 
 
 def binary_repr(num, width=None):
@@ -275,6 +412,10 @@ from numpy import typename  # NOQA
 # -----------------------------------------------------------------------------
 # TODO(beam2d): Implement it
 
+# -----------------------------------------------------------------------------
+# Indexing routines
+# -----------------------------------------------------------------------------
+# TODO (ASCEND) not tested and enabled yet
 
 # Borrowed from NumPy
 from numpy import index_exp  # NOQA
@@ -311,6 +452,41 @@ from numpy import get_printoptions  # NOQA
 from numpy import set_printoptions  # NOQA
 from numpy import printoptions  # NOQA
 
+# -----------------------------------------------------------------------------
+# Linear algebra
+# -----------------------------------------------------------------------------
+# ASCEND TODO
+
+# -----------------------------------------------------------------------------
+# Logic functions
+# -----------------------------------------------------------------------------
+from cupy._logic.comparison import allclose  # NOQA
+from cupy._logic.comparison import array_equal  # NOQA
+from cupy._logic.comparison import array_equiv  # NOQA
+from cupy._logic.comparison import isclose  # NOQA
+
+from cupy._logic.content import isfinite  # NOQA
+from cupy._logic.content import isinf  # NOQA
+from cupy._logic.content import isnan  # NOQA
+from cupy._logic.content import isneginf  # NOQA
+from cupy._logic.content import isposinf  # NOQA
+
+from cupy._logic.truth import in1d  # NOQA
+from cupy._logic.truth import isin  # NOQA
+
+from cupy._logic.type_testing import iscomplex  # NOQA
+from cupy._logic.type_testing import iscomplexobj  # NOQA
+from cupy._logic.type_testing import isfortran  # NOQA
+from cupy._logic.type_testing import isreal  # NOQA
+from cupy._logic.type_testing import isrealobj  # NOQA
+
+from cupy._logic.truth import in1d  # NOQA
+from cupy._logic.truth import intersect1d  # NOQA
+from cupy._logic.truth import isin  # NOQA
+from cupy._logic.truth import setdiff1d  # NOQA
+from cupy._logic.truth import setxor1d  # NOQA
+from cupy._logic.truth import union1d  # NOQA
+
 
 def isscalar(element):
     """Returns True if the type of num is a scalar type.
@@ -319,6 +495,81 @@ def isscalar(element):
     """
     return _numpy.isscalar(element)
 
+
+from cupy._logic.ops import logical_and  # NOQA
+from cupy._logic.ops import logical_not  # NOQA
+from cupy._logic.ops import logical_or  # NOQA
+from cupy._logic.ops import logical_xor  # NOQA
+
+from cupy._logic.comparison import equal  # NOQA
+from cupy._logic.comparison import greater  # NOQA
+from cupy._logic.comparison import greater_equal  # NOQA
+from cupy._logic.comparison import less  # NOQA
+from cupy._logic.comparison import less_equal  # NOQA
+from cupy._logic.comparison import not_equal  # NOQA
+
+from cupy._logic.truth import all  # NOQA
+from cupy._logic.truth import any  # NOQA
+
+# -----------------------------------------------------------------------------
+# Polynomial functions
+# -----------------------------------------------------------------------------
+# ASCEND TODO
+
+# -----------------------------------------------------------------------------
+# Mathematical functions
+# -----------------------------------------------------------------------------
+from cupy._math.trigonometric import arccos  # NOQA
+from cupy._math.trigonometric import arcsin  # NOQA
+from cupy._math.trigonometric import arctan  # NOQA
+from cupy._math.trigonometric import arctan2  # NOQA
+
+# a(rc)trig aliases, following NumPy 2.0
+atan = arctan
+atan2 = arctan2
+asin = arcsin
+acos = arccos
+
+from cupy._math.trigonometric import cos  # NOQA
+from cupy._math.trigonometric import deg2rad  # NOQA
+from cupy._math.trigonometric import degrees  # NOQA
+from cupy._math.trigonometric import hypot  # NOQA
+from cupy._math.trigonometric import rad2deg  # NOQA
+from cupy._math.trigonometric import radians  # NOQA
+from cupy._math.trigonometric import sin  # NOQA
+from cupy._math.trigonometric import tan  # NOQA
+from cupy._math.trigonometric import unwrap  # NOQA
+
+from cupy._math.hyperbolic import arccosh  # NOQA
+from cupy._math.hyperbolic import arcsinh  # NOQA
+from cupy._math.hyperbolic import arctanh  # NOQA
+from cupy._math.hyperbolic import cosh  # NOQA
+from cupy._math.hyperbolic import sinh  # NOQA
+from cupy._math.hyperbolic import tanh  # NOQA
+
+# a(rc)hyp aliases, following NumPy 2.0
+acosh = arccosh
+asinh = arcsinh
+atanh = arctanh
+
+# ASCEND TODO not yet check if there is op available
+
+from cupy._math.arithmetic import add  # NOQA
+from cupy._math.arithmetic import divide  # NOQA
+from cupy._math.arithmetic import divmod  # NOQA
+from cupy._math.arithmetic import floor_divide  # NOQA
+from cupy._math.arithmetic import float_power  # NOQA
+from cupy._math.arithmetic import fmod  # NOQA
+from cupy._math.arithmetic import modf  # NOQA
+from cupy._math.arithmetic import multiply  # NOQA
+from cupy._math.arithmetic import negative  # NOQA
+from cupy._math.arithmetic import positive  # NOQA
+from cupy._math.arithmetic import power  # NOQA
+from cupy._math.arithmetic import reciprocal  # NOQA
+from cupy._math.arithmetic import remainder  # NOQA
+from cupy._math.arithmetic import remainder as mod  # NOQA
+from cupy._math.arithmetic import subtract  # NOQA
+from cupy._math.arithmetic import true_divide  # NOQA
 
 # -----------------------------------------------------------------------------
 # Miscellaneous routines
@@ -330,6 +581,21 @@ from cupy._misc.byte_bounds import byte_bounds  # NOQA
 
 # Borrowed from NumPy
 from numpy import iterable  # NOQA
+
+
+# -----------------------------------------------------------------------------
+# Padding
+# -----------------------------------------------------------------------------
+#from cupy._padding.pad import pad  # NOQA
+
+# -----------------------------------------------------------------------------
+# Sorting, searching, and counting
+# -----------------------------------------------------------------------------
+
+
+# -----------------------------------------------------------------------------
+# Statistics
+# -----------------------------------------------------------------------------
 
 
 
@@ -348,7 +614,7 @@ from cupy.exceptions import VisibleDeprecationWarning  # NOQA
 # -----------------------------------------------------------------------------
 # Undocumented functions
 # -----------------------------------------------------------------------------
-#from cupy._core import size  # NOQA
+from cupy._core import size  # NOQA
 
 
 def ndim(a):
@@ -509,6 +775,12 @@ _deprecated_apis = [
     'uint0',
     'bool8',
 ]
+
+# TODO (ASCEND)
+# # np 2.0: XXX shims for things removed in np 2.0
+# alltrue = all
+# sometrue = any
+# trapz = trapezoid
 
 # https://github.com/numpy/numpy/blob/v1.26.4/numpy/core/numerictypes.py#L283-L322   # NOQA
 

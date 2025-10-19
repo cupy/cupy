@@ -1204,8 +1204,7 @@ cpdef ElementwiseKernel(in_params, out_params, operation,
 
 # TODO: ASCEND not impl yet
 cdef _ops_from_tuples(object ops, routine):
-    ops_ = []
-    #raise NotImplementedError("ElementwiseKernel() not yet impl")  # TODO: import time error
+    ops_ = [_Op.from_type_and_routine("ii->i", routine)]
     """
     for t in ops:
         if isinstance(t, tuple):
