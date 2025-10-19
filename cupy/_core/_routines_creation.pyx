@@ -304,11 +304,12 @@ cdef _ndarray_base _array_default(
         # the discussion here:
         # https://github.com/cupy/cupy/pull/5155#discussion_r621808782
         mem = _alloc_async_transfer_buffer(nbytes)
-        if mem is not None:
+        #if mem is not None:
+        if False:
             src_cpu = numpy.frombuffer(mem, a_dtype, a_cpu.size)
             src_cpu[:] = a_cpu.ravel(order)
             a.data.copy_from_host_async(mem.ptr, nbytes, stream)
-            pinned_memory._add_to_watch_list(stream.record(), mem)
+            pinned_memory._add_to_watch_list(stream.record(), mem) # TODO (ASCEND) bug not fixed
         else:
             a.data.copy_from_host_async(ptr_h, nbytes, stream)
 

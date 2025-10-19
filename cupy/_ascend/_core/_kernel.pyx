@@ -906,10 +906,10 @@ cdef class ufunc:
         #inout_args.append(indexer) # ASCEND does not support indexer yet
         arginfos = _get_arginfos(inout_args)
 
-        # TODO: ASCEND launch kernel
+        # TODO: ASCEND launch_kernel, inplace, scalar as op detection
         runtime._ensure_context()
         s = _get_stream(None)
-        launch_acl_func(self.name, inout_args, False, s)
+        launch_acl_func(self.name, inout_args, s)
         #kern = self._get_ufunc_kernel(dev_id, op, arginfos, has_where)
         #kern.linear_launch(indexer.size, inout_args)
         return ret

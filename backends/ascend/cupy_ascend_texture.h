@@ -1,3 +1,5 @@
+#ifndef INCLUDE_GUARD_ASCEND_TEXTURE_H
+#define INCLUDE_GUARD_ASCEND_TEXTURE_H
 #include "cupy_ascend_common.h"
 
 // ================ GPU render API is not supported on ASCEND NPU============================
@@ -50,3 +52,5 @@ cudaError_t cudaDestroySurfaceObject(cudaSurfaceObject_t surfObject) {
     return ACL_ERROR_FEATURE_UNSUPPORTED;
 }
 #endif
+
+#endif  // file include guard

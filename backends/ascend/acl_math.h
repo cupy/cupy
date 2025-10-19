@@ -132,7 +132,7 @@
 // qr, tril triu, matmul
 // trace, norm, det
 
-#include "./aclOpTemplate.h"
+#include "./acl_op_template.h"
 #include "acl/acl.h"
 
 

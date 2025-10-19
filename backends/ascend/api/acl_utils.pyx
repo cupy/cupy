@@ -3,12 +3,18 @@ cimport cpython
 from cpython.mem cimport PyMem_Malloc, PyMem_Free
 from collections import namedtuple
 
-#from cupy_backends.ascend.api.acl_types cimport *
 from cupy._core import _dtype
 from cupy._core.core import _ndarray_base
-from libcpp.map cimport map as cpp_map
+from libcpp.unordered_map cimport unordered_map as cpp_map
 from libcpp.vector cimport vector
 
+import threading as _threading
+
+from cupy.xpu import stream as stream_module
+
+ASCEND_OP_PREFIX = "ascend_"
+
+#include "backends/ascend/api/acl_types.pxi" # already included in pxd file
 
 cdef extern from "aclnn/opdev/common_types.h" nogil:
     cdef cppclass aclTensor # declare/import externally declared C++ class
@@ -222,8 +228,8 @@ cdef extern from "../acl_opinfo.h":
         INPLACE_BINARY_OP = 5
         SCALAR_BINARY_OP = 6
         INPLACE_SCALAR_BINARY_OP = 7
-        TRI_OP = 8
-        INPLACE_TRI_OP = 9
+        TERNARY_OP = 8
+        INPLACE_TERNARY_OP = 9
 
     cdef cppclass OpInfo:
         # 构造函数
@@ -242,15 +248,20 @@ cdef extern from "../acl_opinfo.h":
         bint operator<=(const OpInfo& other) const
         bint operator>=(const OpInfo& other) const
 
-# operator_function_ptr registry: TODO: thread safety
-#cdef cpp_map[OpInfo, FuncPtrUnion] _builtin_operators # unordered map for better performance
-cdef cpp_map[OpInfo, FuncPtrUnion] _builtin_operators
-#cdef _builtin_operators = {}  
+        cppclass Hash:
+            size_t operator()(const OpInfo& op) const
+
+# TODO: thread safety?
+# operator_function_ptr registry:
+#cdef cpp_map[OpInfo, FuncPtrUnion] _builtin_operators
+# unordered map for better performance
+cdef cpp_map[OpInfo, FuncPtrUnion, OpInfo.Hash] _builtin_operators
+
 
 # 定义函数指针类型
-ctypedef aclError (*TriOpFunc)(const aclTensor* self, const aclTensor* other,
+ctypedef aclError (*TernaryOpFunc)(const aclTensor* self, const aclTensor* other,
     const aclTensor* other2, aclTensor* out, aclrtStream stream)
-ctypedef aclError (*InplaceTriOpFunc)(aclTensor* self, const aclTensor* other, aclrtStream stream)
+ctypedef aclError (*InplaceTernaryOpFunc)(aclTensor* self, const aclTensor* other, aclrtStream stream)
 
 ctypedef aclError (*BinaryOpFunc)(const aclTensor* self, const aclTensor* other,
     aclTensor* out, aclrtStream stream)
@@ -270,8 +281,8 @@ ctypedef union FuncPtrUnion:
     InplaceBinaryOpFunc inplace_binary_op
     ScalarBinaryOpFunc scalar_binary_op
     InplaceScalarBinaryOpFunc inplace_scalar_binary_op
-    TriOpFunc tri_op
-    InplaceTriOpFunc inplace_tri_op
+    TernaryOpFunc tri_op
+    InplaceTernaryOpFunc inplace_tri_op
 
 cdef aclError register_acl_ufunc(string opname, OpType op_type, FuncPtrUnion func_ptr) except * nogil:
     cdef OpInfo op_info
@@ -287,7 +298,7 @@ cdef aclError register_acl_ufunc(string opname, OpType op_type, FuncPtrUnion fun
         return 0
 
 cdef OpType get_op_type(tuple ops, bint inplace, bint has_scalar = False):
-    # TODO: Ternary op
+    # TODO: Ternary op, has_scalar
     if len(ops) == 3 and not inplace:  # 二元操作
         return BINARY_OP
     elif len(ops) == 2 and inplace:  # 原地二元操作
@@ -300,24 +311,29 @@ cdef OpType get_op_type(tuple ops, bint inplace, bint has_scalar = False):
         raise RuntimeError("Operator type can not be decided")
     return INVALID_OP
 
-cdef aclError launch_acl_func(string opname, tuple ops, bint inplace, intptr_t stream_ptr) except *:
+cdef aclError launch_acl_func(str opname, tuple ops, intptr_t stream_ptr) except *:
     # 检查操作是否已注册
+    if opname.startswith("cupy_"):
+        opname = ASCEND_OP_PREFIX + opname[5:]
     cdef aclScalar* scalar_ptr = NULL
     for op in ops:
         typ = type(op)
         if typ is _cupy_scalar:
             scalar_ptr = cupy_scalar_to_acl_scalar(op)
     cdef has_scalar = scalar_ptr != NULL
+    cdef bint inplace = "inplace" in opname
 
     cdef OpInfo op_info
-    op_info.op_name = opname
+    op_info.op_name = opname.encode("utf-8")
     op_info.op_type = get_op_type(ops, inplace, has_scalar)
     if _builtin_operators.find(op_info) == _builtin_operators.end():
         raise KeyError(f"Operator {opname} not registered")
     
     cdef FuncPtrUnion func_ptr = _builtin_operators[op_info]
     cdef aclError ret = 0
-    cdef aclrtStream stream = <aclrtStream>NULL  # there is error, so use stream.null
+    cdef aclrtStream stream = <aclrtStream>NULL  # default stream always working, so use stream.null
+    if stream_ptr != <intptr_t>0:
+        stream = <aclrtStream>stream_ptr
 
     # 转换为ACL张量列表
     cdef vector[aclTensor*] tensors

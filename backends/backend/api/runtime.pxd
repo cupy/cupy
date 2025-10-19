@@ -164,7 +164,7 @@ cdef int deviceAttributeComputeCapabilityMinor
 ###############################################################################
 
 cdef bint _is_hip_environment
-cdef bint _is_cann_environment
+cdef bint _is_ascend
 
 ###############################################################################
 # Error handling

@@ -13,6 +13,25 @@ extern "C" {
 
 bool ascend_environment = true; //  backend name: Ascend
 
+aclError initBackend(int device_id) {
+    aclError ret;
+    ret = aclInit(nullptr);
+    if (ret != ACL_SUCCESS) {
+        return ret;
+    }
+    ret = aclrtSetDevice(device_id); // will create a default context and stream
+    return ret;
+}
+
+aclError finalizeBackend(int device_id) {
+    aclError ret;
+    ret = aclrtResetDevice(device_id);
+    if (ret != ACL_SUCCESS) {
+        return ret;
+    }
+    ret = aclFinalize();
+}
+
 // IMPORTANT: AscendCL requires explicit initialization and finalization
 // These calls (aclInit, aclFinalize) should be integrated into the main application lifecycle.
 
@@ -340,10 +359,21 @@ cudaError_t cudaStreamCreate(cudaStream_t* stream) {
     return ret;
 }
 
+// roughly mapping of stream flags, perhaps in the future no conversion
+uint32_t _xpuStreamFlagToAscend(unsigned flags) {
+    if (flags == 0) {
+        return ACL_STREAM_FAST_LAUNCH;
+    } else if (flags == 4) {
+        return ACL_STREAM_FAST_SYNC;
+    } else {
+        return ACL_STREAM_FAST_LAUNCH;  // HUGE, PERSISTENT
+    }
+}
+
 cudaError_t cudaStreamCreateWithFlags(cudaStream_t* stream,
                                       unsigned int flags) {
-    // TODO: AscendCL's aclrtCreateStream might not use the same flags as HIP.
-    aclError ret = aclrtCreateStreamWithConfig(stream, ASCEND_DEFAULT_STREAM_PRIORITY, flags); // Check exact API
+    uint32_t acl_flags = _xpuStreamFlagToAscend(flags);
+    aclError ret = aclrtCreateStreamWithConfig(stream, ASCEND_DEFAULT_STREAM_PRIORITY, acl_flags);
     return ret;
 }
 
@@ -351,7 +381,8 @@ cudaError_t cudaStreamCreateWithPriority(cudaStream_t* stream,
                                          unsigned int flags,
                                          int priority) {
     // WARNING: AscendCL might have different priority mechanisms.
-    aclError ret = aclrtCreateStreamWithConfig(stream, priority, flags); // Check exact API
+    uint32_t acl_flags = _xpuStreamFlagToAscend(flags);
+    aclError ret = aclrtCreateStreamWithConfig(stream, priority, acl_flags);
     return ret;
 }
 
@@ -394,21 +425,34 @@ cudaError_t cudaStreamQuery(cudaStream_t stream) {
     return ret;
 }
 
-// TODO: conversion of flags
+// roughly mapping of Event flags, cuda behavior has the baseline
+uint32_t _xpuEventFlagToAscend(unsigned flags) {
+    // cuda default to nonblocking, enableTimeline
+    if (flags == 0) {
+        return ACL_EVENT_TIME_LINE;
+    } else if (flags == 4) {
+        return ACL_EVENT_SYNC; // interprocess/stream sync
+    } else {
+        return ACL_EVENT_CAPTURE_STREAM_PROGRESS; // captue progress
+    }
+}
+
 cudaError_t cudaStreamWaitEvent(cudaStream_t stream, cudaEvent_t event,
                                 unsigned int flags) {
+    // TODO: what is the flag here meaning?
     aclError ret = aclrtStreamWaitEvent(stream, event);
     return ret;
 }
 
 cudaError_t cudaEventCreate(cudaEvent_t* event) {
+    // TODO: perhaps need to call cudaEventCreateWithFlags() to align behavior
     aclError ret = aclrtCreateEvent(event);
     return ret;
 }
 
 cudaError_t cudaEventCreateWithFlags(cudaEvent_t* event, unsigned flags) {
-    // TODO:  event flags conversion 
-    aclError ret = aclrtCreateEventWithFlag(event, flags); // Check exact API
+    uint32_t acl_flags = _xpuEventFlagToAscend(flags);
+    aclError ret = aclrtCreateEventWithFlag(event, acl_flags);
     return ret;
 }
 
@@ -452,12 +496,11 @@ typedef aclmdlRI cudaGraph_t;
 
 cudaError_t cudaStreamBeginCapture(cudaStream_t stream,
                                    cudaStreamCaptureMode mode) {
-    // WARNING: Missing direct equivalent in AscendCL for stream capture.
+    // WARNING: API mapping is not evaluated
     return aclmdlRICaptureBegin(stream, mode);
 }
 
 cudaError_t cudaStreamEndCapture(cudaStream_t stream, cudaGraph_t* pGraph) {
-    // WARNING: Missing direct equivalent in AscendCL for stream capture.
     return aclmdlRICaptureEnd(stream, pGraph);
 }
 
@@ -466,6 +509,27 @@ cudaError_t cudaStreamIsCapturing(cudaStream_t stream,
     // TODO:  aclmdlRICaptureGetInfo
     return ACL_ERROR_FEATURE_UNSUPPORTED;
 }
+#else
+
+typedef int cudaStreamCaptureMode;
+typedef int cudaStreamCaptureStatus;
+typedef void* cudaGraph_t;
+
+cudaError_t cudaStreamBeginCapture(cudaStream_t stream,
+                                   cudaStreamCaptureMode mode) {
+    return ACL_ERROR_FEATURE_UNSUPPORTED;
+}
+
+cudaError_t cudaStreamEndCapture(cudaStream_t stream, cudaGraph_t* pGraph) {
+    return ACL_ERROR_FEATURE_UNSUPPORTED;
+}
+
+cudaError_t cudaStreamIsCapturing(cudaStream_t stream,
+                                  cudaStreamCaptureStatus* pCaptureStatus) {
+    return ACL_ERROR_FEATURE_UNSUPPORTED;
+}
+#endif
+
 
 // =================================================
 // Ascend has graph, but not sure if they are related with cuGraph
@@ -497,7 +561,7 @@ cudaError_t cudaGraphUpload(...) {
 cudaError_t cudaGraphDebugDotPrint(cudaGraph_t graph, const char* path, unsigned int flags) {
     return ACL_ERROR_FEATURE_UNSUPPORTED;
 }
-#endif
+
 
 } // extern "C"
 

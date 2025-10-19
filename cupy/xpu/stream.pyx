@@ -554,6 +554,10 @@ class ExternalStream(_BaseStream):
         super().__init__(ptr, device_id)
 
 
-Stream.null = Stream(null=True)
-if not runtime._is_hip_environment:
-    Stream.ptds = Stream(ptds=True)
+IF CUPY_CANN_VERSION <= 0:
+    Stream.null = Stream(null=True)
+    if not runtime._is_hip_environment:
+        Stream.ptds = Stream(ptds=True)
+ELSE: # ascend
+    stream_ptr = <intptr_t>NULL # ascend also have the default null stream
+    Stream.null = _BaseStream(stream_ptr, device_id=0)

@@ -81,10 +81,6 @@ ELSE:
     include '_runtime_extern.pxi'
     pass  # for cython-lint
 
-cdef extern from '../../cupy_backend_runtime.h' nogil:
-    bint hip_environment
-    bint cann_environment
-
 
 ###############################################################################
 # Constants
@@ -101,6 +97,7 @@ deviceAttributeComputeCapabilityMajor = cudaDevAttrComputeCapabilityMajor
 deviceAttributeComputeCapabilityMinor = cudaDevAttrComputeCapabilityMinor
 
 
+# it is meaningless to export enum value ascend does not support
 IF CUPY_CANN_VERSION <= 0:
     # Provide access to constants from Python.
     # TODO(kmaehashi): Deprecate aliases above so that we can just do:
@@ -125,8 +122,7 @@ IF CUPY_CANN_VERSION <= 0:
 _is_hip_environment = hip_environment  # for runtime being cimport'd
 is_hip = hip_environment  # for runtime being import'd
 
-_is_cann_environment = cann_environment
-is_ascend = cann_environment
+_is_ascend = ascend_environment
 
 ###############################################################################
 # Error handling
@@ -156,6 +152,22 @@ cpdef inline check_status(int status):
 ###############################################################################
 # Initialization
 ###############################################################################
+
+cdef extern from '../../cupy_backend_runtime.h' nogil:
+    bint hip_environment
+    bint ascend_environment
+
+IF CUPY_CANN_VERSION > 0:
+    cdef extern from '../../cupy_backend_runtime.h' nogil:
+        int initBackend(int device_id)
+        int finalizeBackend(int device_id)
+
+    cdef initialize_backend(int device_id):
+        status = initBackend(device_id)
+        check_status(status)
+
+    # initialize ascend runtime and set device 0
+    initialize_backend(0)
 
 cpdef int driverGetVersion() except? -1:
     cdef int version

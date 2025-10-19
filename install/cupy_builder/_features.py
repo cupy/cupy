@@ -94,6 +94,7 @@ def _from_dict(d: dict[str, Any], ctx: Context) -> Feature:
 # file extension.
 
 
+# TODO (XPU refactor broken cuda build)
 _cuda_files = [
     'cupy_backends.cuda.api.driver',
     'cupy_backends.cuda.api._driver_enum',

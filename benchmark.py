@@ -1,5 +1,6 @@
 import numpy as np
 import cupy as cp
+from cupy import xpu # from cupy import cuda as xpu
 import time
 
 def warmup(gpu_func, gpu_data):
@@ -7,8 +8,8 @@ def warmup(gpu_func, gpu_data):
     预热GPU：通过运行一次操作来初始化GPU上下文，避免首次运行的开销。
     """
     if gpu_data is not None:
-        _ = gpu_func(gpu_data)
-        cp.cuda.Stream.null.synchronize()  # 确保操作完成
+        _ = gpu_func(*gpu_data)
+        xpu.Stream.null.synchronize()  # 确保操作完成
 
 def benchmark_vector_op(np_func, cp_func, np_vector1, np_vector2, cp_vector1, cp_vector2, 
                         unary=True, repeating=10, use_async=False):
@@ -52,17 +53,16 @@ def benchmark_vector_op(np_func, cp_func, np_vector1, np_vector2, cp_vector1, cp
         for _ in range(repeating):
             start = time.perf_counter()
             _ = cp_func(*cp_args)
-            cp.cuda.Stream.null.synchronize()  # 阻塞直到GPU完成
+            xpu.Stream.null.synchronize()  # 阻塞直到GPU完成
             end = time.perf_counter()
             cp_times.append(end - start)
     else:
         # 异步模式：使用非阻塞流
-        stream = cp.cuda.Stream()  # 创建新流
+        stream = xpu.Stream()  # 创建新流
         for _ in range(repeating):
             start = time.perf_counter()
             with stream:
                 _ = cp_func(*cp_args)  # 在流中提交操作
-            #stream.synchronize()  # 等待该流中的操作完成
             end = time.perf_counter()
             cp_times.append(end - start)
         stream.synchronize()  # 等待该流中的操作完成
@@ -116,11 +116,11 @@ def benchmark_mat_op(np_func, cp_func, np_mat_a, np_mat_b, cp_mat_a, cp_mat_b,
         for _ in range(repeating):
             start = time.perf_counter()
             _ = cp_func(*cp_args)
-            cp.cuda.Stream.null.synchronize()
+            xpu.Stream.null.synchronize()
             end = time.perf_counter()
             cp_times.append(end - start)
     else:
-        stream = cp.cuda.Stream()
+        stream = xpu.Stream()
         for _ in range(repeating):
             start = time.perf_counter()
             with stream:

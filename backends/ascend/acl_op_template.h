@@ -35,7 +35,10 @@ aclError aclBinaryOpRun(
     aclError ret = wsfunc(selfTensor, otherTensor, outTensor, std::forward<Args>(args)...,
         &workspaceSize, &executor);
     // e.g. ret = aclnnMatmulGetWorkspaceSize(a_tensor, b_tensor, out_tensor, math_type, &workspace_size, &executor);
-    if (ret != ACL_SUCCESS) { /* 错误处理 */ }
+    if (ret != ACL_SUCCESS) {
+        std::cout << "Failed to allocate workspace";
+        return ACL_ERROR_RT_FAILURE;
+    }
 
     void* workspaceAddr = nullptr;
     if (workspaceSize > 0) {
@@ -225,6 +228,18 @@ aclError aclUnaryInplaceOpRun(
         return aclBinaryInplaceOpRun(self, other, \
             aclnnInplace##opname##GetWorkspaceSize, aclnnInplace##opname, stream, false); \
     }
+
+
+// declare the out = self + sclar binary op and its inplace version
+#define DECLARE_ACL_BINARY_SCALAR_OPS_FUNC(opname) \
+    aclError aclop_##opname(const aclTensor* self, const aclScalar* other, aclTensor* out, aclrtStream stream) { \
+        return aclBinaryOpRun(self, other, out, \
+            aclnn##opname##GetWorkspaceSize, aclnn##opname, stream, false); \
+    } \
+    aclError aclop_Inplace##opname(aclTensor* self, const aclScalar* other, aclrtStream stream) { \
+        return aclBinaryInplaceOpRun(self, other, \
+            aclnnInplace##opname##GetWorkspaceSize, aclnnInplace##opname, stream, false); \
+    }    
 
 // declare the op and its inplace version
 #define DECLARE_ACL_UNARY_OPS_FUNC(opname) \
