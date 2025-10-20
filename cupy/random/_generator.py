@@ -1074,6 +1074,20 @@ class RandomState:
         self._update_seed(y.size)
         return y
 
+    def _gen_mask(self, max_val):
+        """Generates the smallest power of 2 larger than or equal to max_val"""
+        # Start with max_val
+        mask = max_val
+        # set all bits lower than the highest set bit to 1
+        mask |= mask >> 1
+        mask |= mask >> 2
+        mask |= mask >> 4
+        mask |= mask >> 8
+        mask |= mask >> 16
+        mask |= mask >> 32
+        # Return the smallest power of 2 greater than or equal to max_val
+        return mask
+
     def choice(self, a, size=None, replace=True, p=None):
         """Returns an array of random values from a given 1-D array.
 
@@ -1123,7 +1137,36 @@ class RandomState:
                     'Cannot take a larger sample than population when '
                     '\'replace=False\'')
             if isinstance(a, int):
-                indices = cupy.arange(a, dtype='l')
+                # Random sampling without replacement from range(a)
+
+                # Ensure size is an integer before using it
+                size = int(size)
+                set_size = int(1.2 * size)  # 1.2 * size to avoid collisions
+                mask = self._gen_mask(set_size)  # Generate the mask
+                set_size = 1 + mask  # Ensure set_size is the next power of 2
+                # Initialize hash set
+                hash_set = cupy.full(set_size, -1, dtype=cupy.int64)
+
+                # To store selected indices
+                indices = cupy.empty(size, dtype=cupy.int64)
+                for j in range(a_size - size, a_size):
+                    # Generate random index
+                    val = self.randint(0, j)
+                    loc = val & mask  # Hashing the value
+
+                    # Resolve collision with linear probing
+                    while hash_set[loc] != -1 and hash_set[loc] != val:
+                        loc = (loc + 1) & mask
+
+                    if hash_set[loc] == -1:  # If not found, insert the value
+                        hash_set[loc] = val
+                        indices[j - (a_size - size)] = val
+                    else:  # If collision, insert `j` (the current index)
+                        loc = j & mask
+                        while hash_set[loc] != -1:
+                            loc = (loc + 1) & mask
+                        hash_set[loc] = j
+                        indices[j - (a_size - size)] = j
             else:
                 indices = a.copy()
             self.shuffle(indices)
