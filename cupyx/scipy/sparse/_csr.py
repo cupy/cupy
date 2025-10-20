@@ -410,11 +410,8 @@ class csr_matrix(_compressed._compressed_sparse_matrix):
         if (cusparse.check_availability('sparseToDense')
                 and (not runtime.is_hip or (x.nnz > 0))):
             # On HIP, nnz=0 is problematic as of ROCm 4.2.0
-            y = cusparse.sparseToDense(x)
-            if order == 'F':
-                return y
-            elif order == 'C':
-                return cupy.ascontiguousarray(y)
+            if order in { 'C', 'F' }:
+                return cusparse.sparseToDense(x, order=order)
             else:
                 raise ValueError('order not understood')
         else:
