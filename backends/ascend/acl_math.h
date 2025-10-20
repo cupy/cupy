@@ -184,16 +184,18 @@ extern "C" {
 
     // ascend add op is special with one extra scalar coeff, so can not use the macro to declare
     aclError aclop_Add(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream) {
-        return aclBinaryScalarOpRun(self, other, 1.0, out,
+        float alpha = 1.0f;
+        return aclTernaryScalarOpRun(self, other, alpha, out,
         aclnnAddGetWorkspaceSize, aclnnAdd, stream, false);
     }
-    // aclError aclop_InplaceAdd(aclTensor* self, const aclTensor* other, aclrtStream stream) {
-    //     return aclBinaryScalarOpRun(self, other, 1.0,
-    //     aclnnInplaceAddGetWorkspaceSize, aclnnAdd, stream, false);
-    // }
+    aclError aclop_InplaceAdd(aclTensor* self, const aclTensor* other, aclrtStream stream) {
+        float alpha = 1.0f;
+        return aclTernaryInplaceScalarOpRun(self, other, alpha,
+        aclnnInplaceAddGetWorkspaceSize, aclnnInplaceAdd, stream, false);
+    }
 
     aclError aclop_MatMul(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream) {
-        uint8_t math_type = 0; // keep dtype precision KEPP_DTYPE
+        uint8_t math_type = 0; // keep dtype precision KEEP_DTYPE
         return aclBinaryOpRun(self, other, out,
             aclnnMatmulGetWorkspaceSize, aclnnMatmul, stream,  false, math_type); 
     }

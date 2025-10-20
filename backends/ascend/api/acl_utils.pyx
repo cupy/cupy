@@ -401,7 +401,7 @@ cdef extern from "../acl_math.h" nogil:
     aclError aclop_InplaceBitwiseNotTensor(aclTensor* self, const aclTensor* other, aclrtStream stream)
 
     aclError aclop_Add(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream)
-    #aclError aclop_InplaceAdd(aclTensor* self, const aclTensor* other, aclrtStream stream)
+    aclError aclop_InplaceAdd(aclTensor* self, const aclTensor* other, aclrtStream stream)
 
     aclError aclop_MatMul(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream)
 
@@ -435,8 +435,8 @@ cdef void init_builtin_operators():
     register_acl_ufunc("ascend_add", BINARY_OP, func_union)
     
     # 注册aclop_InplaceAnd作为原地二元操作
-    #func_union.inplace_binary_op = aclop_InplaceAdd
-    #register_acl_ufunc("ascend_inplace_add", INPLACE_BINARY_OP, func_union)
+    func_union.inplace_binary_op = aclop_InplaceAdd
+    register_acl_ufunc("ascend_inplace_add", INPLACE_BINARY_OP, func_union)
 
     # 注册aclop_MatMul作为二元操作
     func_union.binary_op = aclop_MatMul
@@ -527,12 +527,12 @@ def py_register_acl_ufunc(str opname, int func_type, long func_ptr):
     return register_acl_ufunc(c_opname, op_type, func_union)
 
 '''
-# TODO: passing stream, how?
+# TODO: passing stream by intptr_t
 def py_launch_acl_func(str opname, tuple ops, bint inplace=False):
     """Python层级的ACL函数启动器"""
     cdef string c_opname = opname.encode('utf-8')
     return launch_acl_func(c_opname, ops, inplace)
 '''
 
-# TODO: not sure if it is possible to run during import 模块初始化时注册内置操作
+# 模块初始化时注册内置操作
 init_builtin_operators()

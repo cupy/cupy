@@ -1,8 +1,8 @@
 # numpy for Ascend: fork from Cupy
 
-## 开发环境
+## 1. 开发环境
 
-### Ubuntu 24.04  in WSL2 (无昇腾硬件)
+### 1.1 Ubuntu 24.04  in WSL2 (无昇腾硬件)
 
 Ubuntu 22.04 似乎才是2025年推荐平台, 主要是python3.12不受支持, 但是通过conda安装得到pyhton3.10, 一样可以安装CANN
 
@@ -30,7 +30,7 @@ strings /lib/x86_64-linux-gnu/libstdc++.so.6 | grep GLIBCXX_3.4
 ln -s /lib/x86_64-linux-gnu/libstdc++.so.6 /home/qingfeng/miniconda3/lib/libstdc++.so.6
 ```
 
-### IDE: vscode 
+### 1.2 IDE: vscode 
 install extension 
 + Python C++ Debugger （混合debug 不确定对于cython有效）
 
@@ -38,24 +38,24 @@ install extension
 
 + vscode: cann debugger is under way
 
-#### ubuntu的C++开发环境安装 (三方依赖库)
+### 1.3 ubuntu的C++开发环境安装 (三方依赖库)
 
 ```sh
-# c++ 开发环境
+# c++ basic dev environment
 apt-get install -y gcc g++ make cmake libsqlite3-dev zlib1g-dev libssl-dev libffi-dev net-tools
-# python的依赖
+# python dependencies
 pip3 install attrs cython numpy==1.24 decorator sympy cffi pyyaml pathlib2 psutil protobuf==3.20 scipy requests absl-py
-# fastlock
+# this package is needed but not documented
+pip3 install fastrlock
 ```
 
-
-### CANN 安装（社区版）
+## 2. CANN 安装（社区版）
 
 CANN社区版本是新特性较多的先行版.
 
 [社区版资源下载-资源下载中心-昇腾社区](https://www.hiascend.com/developer/download/community/result?module=cann&cann=8.2.RC1)
 
-####  有硬件NPU:  昇腾driver, CANN toolkit, 算子kernel
+### 2.1  有硬件NPU:  昇腾driver, CANN toolkit, 算子kernel
 
 安装到用户HOME， 不需要root权限， 如果要运行和benchmark， 需要根据昇腾硬件
 
@@ -70,7 +70,7 @@ CANN社区版本是新特性较多的先行版.
 
 安装cann-toolkit成功之后, 记得source set_env.sh, 如果有两个CANN版本的话(root, 非root) 会导致后续nnal安装不了.
 
-#### 无NPU (无root权限): 可以开发功能, import 来测试, 但是不能调试
+### 2.2 无NPU (无root权限): 可以开发功能, import 来测试, 但是不能调试
 
 安装driver是必须root权限,  应为没有NPU, 也或者我的Ubuntu24.04 不知支持OS,   `sudo dpkg -i *.deb` 失败.
 
@@ -81,7 +81,7 @@ export LD_LIBRARY_PATH=$HOME/Ascend/driver/lib64/driver:$HOME/Ascend/driver/lib6
 
 本机没有昇腾卡，driver kernnel需要安装，否则没法`import cupy` 测试cython编译出来so文件是否, 可以导入.   
 
-#### BLAS: 昇腾CANN 8.2 toolkit NNAL
+### 2.3 BLAS: only available with CANN version 8.2 toolkit NNAL
 
 CANN 8.2RC1 （推荐最新稳定版本,只有个8.2 才有FFT和AsdSip的blas函数）， 
 
@@ -98,7 +98,7 @@ If you want to use asdsip module:
 -  To take effect for current user, you can exec command below: source /home/qingfeng/Ascend/nnal/asdsip/set_env.sh or add "source /home/qingfeng/Ascend/nnal/asdsip/set_env.sh" to ~/.bashrc.
 ```
 
-### install triton-ascend, torch-cpu (2.6) 
+### 2.4 install triton-ascend, torch-cpu (2.6) 
 
 ```bash
 # gitee上的torch-npu安装指南 依赖torch cpu 2.6.0
@@ -109,7 +109,7 @@ pip3 install torch-npu==2.6.0
 pip3 install triton-ascend
 ```
 
- 应该是没有安装ascend driver, `import torch` 会有这个错误, 
+应该是没有安装ascend driver, `import torch` 会有这个错误, 
 
 ImportError: libascend_hal.so: cannot open shared object file: No such file or directory, You can disable extension auto-loading with TORCH_DEVICE_BACKEND_AUTOLOAD=0.
 
@@ -122,30 +122,33 @@ ModelArts EulerOS (对应是OpenEuler 20.03) in docker  CANN 8.2, python 3.9 （
 进一步测试install脚本, 被benchmark加速效果
 
 
-## 编译和安装 numpy-ascend
+## 3. 编译和安装 numpy-ascend
 
-测试阶段： 建议clone 并修改代码
+
+###  3.1 开发测试阶段
+
+早期开发测试阶段： 建议clone 并修改代码
 
 ```sh
 git clone git@github.com:qingfengxia/numpy-ascend.git
 git checkout ascend
 ```
 
-
-### 第一阶段： 开发测试阶段
 从源代码编译 (假设已经安装CANN 8.2)
 
 ```bash
+cd cupy-ascend
 export CUPY_INSTALL_USE_ASCEND=1  # 对应C代码中 CUPY_USE_ASCEND， 编译时刻， 选择ascend backend
 #export ASCEND_TOOLKIT_HOME=/home/qingfeng/Ascend/ascend-toolkit/latest
 #export PATH=$ASCEND_TOOLKIT_HOME/bin:$PATH
 #export ASCEND_SOC_TARGET=gfx906  # Must match your specific NPU architecture
-cd cupy-ascend
-python setup.py develop
+
+export CUPY_INSTALL_USE_ASCEND=1 && python setup.py develop && python -c "import cupy._core"
 python -c "import cupy._core" # to test if it is importable without installation
 
 ```
 
+### 3.2 基本稳定阶段
 
 ```sh
 # 第二阶段： 如果测试比较稳定， 可以直接git拉去代码， 编译二进制wheel
@@ -156,27 +159,32 @@ pip install numpy-ascend
 # pip install cupy-cuda12x
 ```
 
-### benchmark.py 代码
+### 3.3 benchmark.py 代码
 
 开发了100小时, 达成MVP (最小功能单元), 测试了matmul, cos, add, 在910B实现了非常客观的加速, 几十到一百的加速. 
 看benchmark.py 
 
 但是还是有大量工作, 预计为1人年, 欢迎加入测试和开发. 
 
-## TODO
+## 4. TODO
 
-see <TODO.md> for list
+see [TODO.md](./TODO.md) for list of task.
 
-有固定的模版添加ASCEND的算子到numpy-ascend, 欢迎测试. 
+还有大量的算子需要加入, 参看如下commit, 有固定的模版添加ASCEND的算子到numpy-ascend, 欢迎测试. 
+https://github.com/qingfengxia/numpy-ascend/commit/863e0ff4c07994a45a204b8032db7c3da17f6c90
 
+如果添加代码后, 运行一下命令, 可以编译可以import表示成功.
+```sh
+export CUPY_INSTALL_USE_ASCEND=1 && python setup.py develop && python -c "import cupy._core"
+```
 
-## 架构调整说明 (backend): What has been done after fork
+## 5. 架构调整说明 (backend): What has been done after fork
 
-### _core/core.pyx 拆分出3个文件, 方便porting
+### 5.1 _core/core.pyx 拆分出3个文件, 方便porting
 
 这个已经提交上游社区了 refactor MR, 但是我编译有点问题, 还没有接受
 
-### backend中立API
+### 5.2 Neutral backend API
 
 #### cuda法律上是禁止二进制的转译
 
