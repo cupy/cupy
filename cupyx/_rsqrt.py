@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from cupy._core.core import create_ufunc
+from cupy._core._kernel import create_ufunc
 
 rsqrt = create_ufunc(
     'cupy_rsqrt',
