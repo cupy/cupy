@@ -407,6 +407,24 @@ cdef extern from "../acl_math.h" nogil:
 
     aclError aclop_Cos(const aclTensor* self,  aclTensor* out, aclrtStream stream)
     aclError aclop_InplaceCos(aclTensor* self,  aclrtStream stream)
+    aclError aclop_Sin(const aclTensor* self,  aclTensor* out, aclrtStream stream)
+    aclError aclop_InplaceSin(aclTensor* self,  aclrtStream stream)
+    aclError aclop_Tan(const aclTensor* self,  aclTensor* out, aclrtStream stream)
+    aclError aclop_InplaceTan(aclTensor* self,  aclrtStream stream)
+
+    aclError aclop_Acos(const aclTensor* self,  aclTensor* out, aclrtStream stream)
+    aclError aclop_InplaceAcos(aclTensor* self,  aclrtStream stream)
+    aclError aclop_Asin(const aclTensor* self,  aclTensor* out, aclrtStream stream)
+    aclError aclop_InplaceAsin(aclTensor* self,  aclrtStream stream)
+    aclError aclop_Atan(const aclTensor* self,  aclTensor* out, aclrtStream stream)
+    aclError aclop_InplaceAtan(aclTensor* self,  aclrtStream stream)
+
+    aclError aclop_Cosh(const aclTensor* self,  aclTensor* out, aclrtStream stream)
+    aclError aclop_InplaceCosh(aclTensor* self,  aclrtStream stream)
+    aclError aclop_Sinh(const aclTensor* self,  aclTensor* out, aclrtStream stream)
+    aclError aclop_InplaceSinh(aclTensor* self,  aclrtStream stream)
+    aclError aclop_Tanh(const aclTensor* self,  aclTensor* out, aclrtStream stream)
+    aclError aclop_InplaceTanh(aclTensor* self,  aclrtStream stream)
 
 # 初始化函数，注册内置操作
 cdef void init_builtin_operators():
@@ -441,11 +459,51 @@ cdef void init_builtin_operators():
     # 注册aclop_Cos操作
     func_union.unary_op = aclop_Cos
     register_acl_ufunc("ascend_cos", UNARY_OP, func_union)
-    
     # 注册aclop_InplaceCos作为原地操作
     func_union.inplace_unary_op = aclop_InplaceCos
     register_acl_ufunc("ascend_inplace_cos", INPLACE_UNARY_OP, func_union)
 
+    func_union.unary_op = aclop_Sin
+    register_acl_ufunc("ascend_sin", UNARY_OP, func_union)
+    func_union.inplace_unary_op = aclop_InplaceSin
+    register_acl_ufunc("ascend_inplace_sin", INPLACE_UNARY_OP, func_union)
+
+    func_union.unary_op = aclop_Tan
+    register_acl_ufunc("ascend_tan", UNARY_OP, func_union)
+    func_union.inplace_unary_op = aclop_InplaceTan
+    register_acl_ufunc("ascend_inplace_tan", INPLACE_UNARY_OP, func_union)
+    ##################### arcXXX op ######################
+    func_union.unary_op = aclop_Acos
+    register_acl_ufunc("ascend_acos", UNARY_OP, func_union)
+    # 注册aclop_InplaceCos作为原地操作
+    func_union.inplace_unary_op = aclop_InplaceAcos
+    register_acl_ufunc("ascend_inplace_acos", INPLACE_UNARY_OP, func_union)
+
+    func_union.unary_op = aclop_Asin
+    register_acl_ufunc("ascend_asin", UNARY_OP, func_union)
+    func_union.inplace_unary_op = aclop_InplaceAsin
+    register_acl_ufunc("ascend_inplace_asin", INPLACE_UNARY_OP, func_union)
+
+    func_union.unary_op = aclop_Atan
+    register_acl_ufunc("ascend_atan", UNARY_OP, func_union)
+    func_union.inplace_unary_op = aclop_InplaceAtan
+    register_acl_ufunc("ascend_inplace_atan", INPLACE_UNARY_OP, func_union)
+    ###################### cosh op ############
+    func_union.unary_op = aclop_Cosh
+    register_acl_ufunc("ascend_cosh", UNARY_OP, func_union)
+    # 注册aclop_InplaceCos作为原地操作
+    func_union.inplace_unary_op = aclop_InplaceCosh
+    register_acl_ufunc("ascend_inplace_cosh", INPLACE_UNARY_OP, func_union)
+
+    func_union.unary_op = aclop_Sinh
+    register_acl_ufunc("ascend_sinh", UNARY_OP, func_union)
+    func_union.inplace_unary_op = aclop_InplaceSinh
+    register_acl_ufunc("ascend_inplace_sinh", INPLACE_UNARY_OP, func_union)
+
+    func_union.unary_op = aclop_Tanh
+    register_acl_ufunc("ascend_tanh", UNARY_OP, func_union)
+    func_union.inplace_unary_op = aclop_InplaceTanh
+    register_acl_ufunc("ascend_inplace_tanh", INPLACE_UNARY_OP, func_union)
 
 
 def py_register_acl_ufunc(str opname, int func_type, long func_ptr):

@@ -156,8 +156,14 @@ extern "C" {
     }
 
     DECLARE_ACL_UNARY_OPS_FUNC(Cos)
-
-    //DECLARE_BINARY_OPS_FUNC(Matmul);
+    DECLARE_ACL_UNARY_OPS_FUNC(Sin)
+    DECLARE_ACL_UNARY_OPS_FUNC(Tan)
+    DECLARE_ACL_UNARY_OPS_FUNC(Acos)
+    DECLARE_ACL_UNARY_OPS_FUNC(Asin)
+    DECLARE_ACL_UNARY_OPS_FUNC(Atan)
+    DECLARE_ACL_UNARY_OPS_FUNC(Cosh)
+    DECLARE_ACL_UNARY_OPS_FUNC(Sinh)
+    DECLARE_ACL_UNARY_OPS_FUNC(Tanh)
 
     // aclError aclop_BitwiseAndTensor(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream) {
     //     return aclBinaryOpRun(self, other, out,
