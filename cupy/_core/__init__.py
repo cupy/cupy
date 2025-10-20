@@ -64,12 +64,12 @@ from cupy._core._routines_math import true_divide  # NOQA
 from cupy._core._routines_statistics import nanmax  # NOQA
 from cupy._core._routines_statistics import nanmin  # NOQA
 
-from cupy._core.core._routines_creation import _internal_ascontiguousarray  # NOQA
-from cupy._core.core._routines_creation import _internal_asfortranarray  # NOQA
-from cupy._core.core._routines_creation import array  # NOQA
-from cupy._core.core._routines_creation import ascontiguousarray  # NOQA
-from cupy._core.core._routines_creation import asfortranarray  # NOQA
-from cupy._core.core._routines_math import divmode # NOQA
+from cupy._core._routines_creation import _internal_ascontiguousarray  # NOQA
+from cupy._core._routines_creation import _internal_asfortranarray  # NOQA
+from cupy._core._routines_creation import array  # NOQA
+from cupy._core._routines_creation import ascontiguousarray  # NOQA
+from cupy._core._routines_creation import asfortranarray  # NOQA
+from cupy._core._routines_math import divmod # NOQA
 from cupy._core.core import elementwise_copy  # NOQA
 from cupy._core._ndarray import ndarray  # NOQA
 from cupy._core.dlpack import fromDlpack  # NOQA
