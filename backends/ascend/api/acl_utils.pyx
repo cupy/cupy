@@ -268,9 +268,13 @@ ctypedef aclError (*BinaryOpFunc)(const aclTensor* self, const aclTensor* other,
 ctypedef aclError (*InplaceBinaryOpFunc)(aclTensor* self, const aclTensor* other, aclrtStream stream)
 ctypedef aclError (*ScalarBinaryOpFunc)(const aclTensor* self, const aclScalar* other,
     aclTensor* out, aclrtStream stream) 
-ctypedef aclError (*InplaceScalarBinaryOpFunc)(aclTensor* self, const aclScalar* other, aclrtStream stream) 
+ctypedef aclError (*InplaceScalarBinaryOpFunc)(aclTensor* self, const aclScalar* other, aclrtStream stream)
+
 ctypedef aclError (*UnaryOpFunc)(const aclTensor* self, aclTensor* out, aclrtStream stream)
 ctypedef aclError (*InplaceUnaryOpFunc)(aclTensor* self, aclrtStream stream)
+
+ctypedef aclError (*ReductionOpFunc)(const aclTensor* self, const aclIntArray* dim, bint keepdim,
+    aclTensor* out, aclrtStream stream)
 
 # 函数指针联合体，用于存储不同类型的操作
 ctypedef union FuncPtrUnion:
@@ -283,6 +287,7 @@ ctypedef union FuncPtrUnion:
     InplaceScalarBinaryOpFunc inplace_scalar_binary_op
     TernaryOpFunc tri_op
     InplaceTernaryOpFunc inplace_tri_op
+    ReductionOpFunc reduction_op
 
 cdef aclError register_acl_ufunc(string opname, OpType op_type, FuncPtrUnion func_ptr) except * nogil:
     cdef OpInfo op_info
@@ -425,6 +430,10 @@ cdef extern from "../acl_math.h" nogil:
     aclError aclop_InplaceSinh(aclTensor* self,  aclrtStream stream)
     aclError aclop_Tanh(const aclTensor* self,  aclTensor* out, aclrtStream stream)
     aclError aclop_InplaceTanh(aclTensor* self,  aclrtStream stream)
+
+    aclError aclop_Any(const aclTensor* self, const aclIntArray* dim, bint keepdim, aclTensor* out, aclrtStream stream)
+    aclError aclop_All(const aclTensor* self, const aclIntArray* dim, bint keepdim, aclTensor* out, aclrtStream stream)
+
 
 # 初始化函数，注册内置操作
 cdef void init_builtin_operators():

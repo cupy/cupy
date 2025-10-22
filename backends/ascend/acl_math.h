@@ -48,6 +48,8 @@
 // reduction op
 #include "aclnnop/aclnn_all.h"
 #include "aclnnop/aclnn_any.h"
+#include "aclnnop/aclnn_sum.h"
+#include "aclnnop/aclnn_prod.h"
 
 // bitwise op: and not not xor
 #include "aclnnop/aclnn_bitwise_and_tensor.h"
@@ -140,14 +142,31 @@
 extern "C" {
 #endif
 
+    // aclError aclop_BitwiseAndTensor(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream) {
+    //     return aclBinaryOpRun(self, other, out,
+    //         aclnnBitwiseAndTensorGetWorkspaceSize, aclnnBitwiseAndTensor, stream, false); 
+    // }
+    // aclError aclop_InplaceBitwiseAndTensor(aclTensor* self, const aclTensor* other, aclrtStream stream) {
+    //     return aclBinaryInplaceOpRun(self, other,
+    //         aclnnInplaceBitwiseAndTensorGetWorkspaceSize, aclnnBitwiseAndTensor, stream, false); 
+    // }
+    // aclError aclop_BitwiseAndScalar(const aclTensor* self, const aclScalar* other, aclTensor* out, aclrtStream stream) {
+    //     return aclBinaryOpRun(self, other, out,
+    //         aclnnBitwiseAndScalarGetWorkspaceSize, aclnnBitwiseAndScalar, stream, false); 
+    // }
+    // aclError aclop_InplaceBitwiseAndScalar(aclTensor* self, const aclScalar* other, aclrtStream stream) {
+    //     return aclBinaryInplaceOpRun(self, other,
+    //         aclnnInplaceBitwiseAndScalarGetWorkspaceSize, aclnnBitwiseAndScalar, stream, false); 
+    // }
+
     DECLARE_ACL_BINARY_OPS_FUNC(BitwiseAndTensor)
-    //DECLARE_ACL_BINARY_OPS_FUNC(BitwiseAndScalar)
+    DECLARE_ACL_BINARY_SCALAR_OPS_FUNC(BitwiseAndScalar)
 
     DECLARE_ACL_BINARY_OPS_FUNC(BitwiseOrTensor)
-    //DECLARE_ACL_BINARY_OPS_FUNC(BitwiseOrScalar)
+    DECLARE_ACL_BINARY_SCALAR_OPS_FUNC(BitwiseOrScalar)
 
     DECLARE_ACL_BINARY_OPS_FUNC(BitwiseXorTensor)
-    //DECLARE_ACL_BINARY_OPS_FUNC(BitwiseXorScalar)
+    DECLARE_ACL_BINARY_SCALAR_OPS_FUNC(BitwiseXorScalar)
 
     // BitwiseNot has no inplace version, so can not use the macro to clear
     aclError aclop_BitwiseNot(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream) {
@@ -165,24 +184,7 @@ extern "C" {
     DECLARE_ACL_UNARY_OPS_FUNC(Sinh)
     DECLARE_ACL_UNARY_OPS_FUNC(Tanh)
 
-    // aclError aclop_BitwiseAndTensor(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream) {
-    //     return aclBinaryOpRun(self, other, out,
-    //         aclnnBitwiseAndTensorGetWorkspaceSize, aclnnBitwiseAndTensor, stream, false); 
-    // }
-    // aclError aclop_InplaceBitwiseAndTensor(aclTensor* self, const aclTensor* other, aclrtStream stream) {
-    //     return aclBinaryInplaceOpRun(self, other,
-    //         aclnnInplaceBitwiseAndTensorGetWorkspaceSize, aclnnBitwiseAndTensor, stream, false); 
-    // }
-    aclError aclop_BitwiseAndScalar(const aclTensor* self, const aclScalar* other, aclTensor* out, aclrtStream stream) {
-        return aclBinaryOpRun(self, other, out,
-            aclnnBitwiseAndScalarGetWorkspaceSize, aclnnBitwiseAndScalar, stream, false); 
-    }
-    aclError aclop_InplaceBitwiseAndScalar(aclTensor* self, const aclScalar* other, aclrtStream stream) {
-        return aclBinaryInplaceOpRun(self, other,
-            aclnnInplaceBitwiseAndScalarGetWorkspaceSize, aclnnBitwiseAndScalar, stream, false); 
-    }
-
-    // ascend add op is special with one extra scalar coeff, so can not use the macro to declare
+    // ascend ADD is ternary op with one extra scalar coeff, so can not use the macro to declare
     aclError aclop_Add(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream) {
         float alpha = 1.0f;
         return aclTernaryScalarOpRun(self, other, alpha, out,
@@ -195,11 +197,34 @@ extern "C" {
     }
 
     aclError aclop_MatMul(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream) {
-        uint8_t math_type = 0; // keep dtype precision KEEP_DTYPE
+        uint8_t math_type = 0; // 0 means keeping dtype precision KEEP_DTYPE
         return aclBinaryOpRun(self, other, out,
             aclnnMatmulGetWorkspaceSize, aclnnMatmul, stream,  false, math_type); 
     }
-    
+
+
+    aclError aclop_Any(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out, aclrtStream stream) {
+        return aclReductionOpRun(self, dim, keepdim, out,
+            aclnnAnyGetWorkspaceSize, aclnnAny, stream, false); 
+    }
+    // aclError aclop_All(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out, aclrtStream stream) {
+    //     return aclReductionOpRun(self, dim, keepdim, out,
+    //         aclnnAllGetWorkspaceSize, aclnnAll, stream, false); 
+    // }
+    DECLARE_ACL_REDUCTION_OPS_FUNC(All)
+
+    aclError aclop_Prod(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out, aclrtStream stream) {
+        int64_t dim_index = dim->GetData()[0];  // TODO, not sure how to convert
+        aclDataType dtype; // TODO extra parameter
+        return aclReductionOpRun(self, dim_index, keepdim, out,
+            aclnnProdDimGetWorkspaceSize, aclnnProdDim, stream, false, dtype); 
+    }
+    // Sum is very special without dim info?
+    // aclError aclop_Sum(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out, aclrtStream stream) {
+    //     int
+    //     return aclReductionOpRun(self, dim, keepdim, out,
+    //         aclnnSumGetWorkspaceSize, aclnnSum, stream, false); 
+    // }
 
 #ifdef __cplusplus
 }

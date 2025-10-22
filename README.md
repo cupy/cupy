@@ -21,7 +21,7 @@ Errors were encountered while processing:
 
 开发阶段， 不准备支持windows， 不支持conda， 仅仅支持pip
 
-#### libstdc++.so version issue for conda on Ubuntu 22.04
+#### libstdc++.so version issue for conda on Ubuntu 24.04
 ImportError: libstdc++.so.6: version `GLIBCXX_3.4.32' not found
 
 ```sh
