@@ -170,7 +170,7 @@ IF CUPY_CANN_VERSION > 0:
         check_status(status)
 
     # initialize ascend runtime and set device 0
-    #initialize_backend(0)
+    initialize_backend(0)
 
 cpdef int driverGetVersion() except? -1:
     cdef int version

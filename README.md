@@ -1,5 +1,8 @@
 # numpy for Ascend: fork from Cupy
 
+Status: benchmark.py 还不能运行 "SegmentationFault", h还是初始化的问题, 可能是NPU环境的代码修复, 还没有同步 (Oct25 解决)
+没有NPU开发: 需要注释掉 runtime.pyx "initialize_backend()" 否则不能import cupy
+
 ## 1. 开发环境
 
 ### 1.1 Ubuntu 24.04  in WSL2 (无昇腾硬件)
@@ -44,10 +47,12 @@ install extension
 # c++ basic dev environment
 apt-get install -y gcc g++ make cmake libsqlite3-dev zlib1g-dev libssl-dev libffi-dev net-tools
 # python dependencies
-pip3 install attrs cython numpy==1.24 decorator sympy cffi pyyaml pathlib2 psutil protobuf==3.20 scipy requests absl-py
+pip3 install attrs cython numpy==1.24 decorator sympy cffi pyyaml pathlib2 psutil protobuf==3.20 scipy requests absl-py cython==3.1
 # this package is needed but not documented
 pip3 install fastrlock
 ```
+
+cython 3.0 is not higher enough, use cython 3.1
 
 ## 2. CANN 安装（社区版）
 
