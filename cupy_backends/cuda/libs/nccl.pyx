@@ -157,13 +157,16 @@ def get_version():
 
 
 def get_unique_id():
+    """Fetch the NCCL unique ID as a Python bytes object.
+
+    .. versionchanged:: 14.0
+        Previously this returned a tuple of integers.
+    """
     cdef ncclUniqueId uniqueId
     with nogil:
         status = ncclGetUniqueId(&uniqueId)
     check_status(status)
-    ret = tuple([<char>uniqueId.internal[i]
-                 for i in range(NCCL_UNIQUE_ID_BYTES)])
-    return ret
+    return uniqueId.internal[:NCCL_UNIQUE_ID_BYTES]
 
 
 def _bytesize(datatype):
@@ -286,7 +289,7 @@ cdef class NcclCommunicator:
 
     Args:
         ndev (int): Total number of GPUs to be used.
-        commId (tuple): The unique ID returned by :func:`get_unique_id`.
+        commId (bytes): The unique ID returned by :func:`get_unique_id`.
         rank (int): The rank of the GPU managed by the current process.
         config (NcclConfig): Configuration for communicator creation.
             None by default.
@@ -317,14 +320,17 @@ cdef class NcclCommunicator:
     def __cinit__(self):
         self._comm = <ncclComm_t>0
 
-    def __init__(self, int ndev, tuple commId, int rank,
+    def __init__(self, int ndev, bytes commId, int rank,
                  NcclConfig config=None):
         cdef ncclResult_t status
         cdef ncclUniqueId _uniqueId
         cdef _ncclConfig_t* c_config
-        assert len(commId) == NCCL_UNIQUE_ID_BYTES
-        for i in range(NCCL_UNIQUE_ID_BYTES):
-            _uniqueId.internal[i] = commId[i]
+
+        if len(commId) != NCCL_UNIQUE_ID_BYTES:
+            raise ValueError(
+                f"commId length {len(commId)} != {NCCL_UNIQUE_ID_BYTES}.")
+
+        _uniqueId.internal[:] = <char *>commId  # memcpy (size checked above)
 
         if NCCL_VERSION_CODE < NCCL_VERSION(2, 18, 0):
             if config is not None:
