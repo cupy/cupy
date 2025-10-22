@@ -101,16 +101,11 @@ class NCCLBackend(_Backend):
         if rank == 0:
             self._store.run(host, port)
             nccl_id = nccl.get_unique_id()
-            # get_unique_id return negative values due to cython issues
-            # with bytes && c strings. We shift them by 128 to
-            # make them positive and send them as bytes to the proxy store
-            shifted_nccl_id = bytes([b + 128 for b in nccl_id])
-            self._store_proxy['nccl_id'] = shifted_nccl_id
+            self._store_proxy['nccl_id'] = nccl_id
             self._store_proxy.barrier()
         else:
             self._store_proxy.barrier()
             nccl_id = self._store_proxy['nccl_id']
-            nccl_id = tuple([int(b) - 128 for b in nccl_id])
         self._comm = nccl.NcclCommunicator(n_devices, nccl_id, rank)
 
     def _check_contiguous(self, array):
