@@ -1,4 +1,5 @@
 from libc.stdint cimport intptr_t
+from libcpp.mutex cimport recursive_mutex
 
 
 cdef class PinnedMemoryPointer:
@@ -29,8 +30,12 @@ cdef class PinnedMemoryPool:
         object _free
         object __weakref__
         object _weakref
-        object _lock
         size_t _allocation_unit_size
+        # NOTE: Never use `lock()` outside a nogil statement, because
+        # almost anything could release the GIL and then deadlocks happen
+        # if another thread tries to lock also (without the GIL released).
+        # You can try with `try_lock()` first though.
+        recursive_mutex _lock
 
     cpdef PinnedMemoryPointer malloc(self, size_t size)
     cpdef free(self, intptr_t ptr, size_t size)

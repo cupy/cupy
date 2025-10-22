@@ -174,8 +174,8 @@ cutensor:
   # https://developer.nvidia.com/cutensor/downloads
   null:
     spec: null
-  "2.0":
-    spec: "2.0.*"
+  "2.3":
+    spec: "2.3.*"
     cuda:
       "12.0":
       "12.1":
@@ -186,6 +186,7 @@ cutensor:
       "12.6":
       "12.8":
       "12.9":
+      "13.0":
 cusparselt:
   # https://docs.nvidia.com/cuda/cusparselt/
   # https://developer.nvidia.com/cusparselt/downloads
@@ -207,15 +208,17 @@ cusparselt:
 # list of supported Python versions in the Python libraries.
 python:
   "3.10":
-    spec: "3.10.15"
+    spec: "3.10.18"
   "3.11":
-    spec: "3.11.10"
+    spec: "3.11.13"
   "3.12":
-    spec: "3.12.6"
+    spec: "3.12.11"
   "3.13":
-    spec: "3.13.1"
+    spec: "3.13.8"
+  "3.14":
+    spec: "3.14.0"
   "pre":
-    spec: "3.14-dev"  # note that dependency python libraies may not work
+    spec: "3.15-dev"  # note that dependency python libraies may not work
 
 ###############################################################################
 # Python Libraries
@@ -250,7 +253,7 @@ numpy:
       - "3.11"
       - "3.12"
       - "3.13"
-      # - "3.14"
+      - "3.14"
   "pre":
     spec: ">=0a0"  # latest, including pre-releases
 scipy:
@@ -288,6 +291,7 @@ scipy:
       - "3.11"
       - "3.12"
       - "3.13"
+      - "3.14"
     numpy:
       - "2.0"
       - "2.1"
@@ -320,16 +324,12 @@ mpi4py:
       - "3.11"
       - "3.12"
       - "3.13"
+      - "3.14"
 cython:
-  "3.0":
-    spec: "==3.0.*"
   "3.1":
     spec: "==3.1.*"
   "pre":
     spec: ">=0a0"  # latest, including pre-releases
-fastrlock:
-  "latest":
-    spec: ">=0.5"  # latest, stable
 cuda-python:
   null:
     spec: null
