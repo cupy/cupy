@@ -33,6 +33,16 @@ import cupyx as _cupyx  # NOQA
 
 
 def is_available():
+    """Return True if GPU execution is available.
+
+    This function can be used to guard code for cases where CuPy is installed
+    but not usable, typically because the system has no GPU.
+    It checks whether the driver can be queried for devices and that there is
+    at least one device available.
+
+    Returns:
+        bool: True if GPU execution is possible.
+    """
     return cuda.is_available()
 
 
@@ -307,6 +317,7 @@ from cupy._binary.elementwise import bitwise_and  # NOQA
 from cupy._binary.elementwise import bitwise_or  # NOQA
 from cupy._binary.elementwise import bitwise_xor  # NOQA
 from cupy._binary.elementwise import bitwise_not  # NOQA
+from cupy._binary.elementwise import bitwise_count  # NOQA
 from cupy._binary.elementwise import invert  # NOQA
 from cupy._binary.elementwise import left_shift  # NOQA
 from cupy._binary.elementwise import right_shift  # NOQA
@@ -1091,14 +1102,8 @@ if _numpy.__version__ < "2":
 else:
 
     _template = '''\
-''This function has been removed in NumPy v2.
+This function has been removed in NumPy v2.
 Use {recommendation} instead.
-
-CuPy has been providing this function as an alias to the NumPy
-implementation, so it cannot be used in environments with NumPy
-v2 installed. If you rely on this function and you cannot modify
-the code to use {recommendation}, please downgrade NumPy to v1.26
-or earlier.
 '''
 
     def find_common_type(*args, **kwds):

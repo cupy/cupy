@@ -93,12 +93,8 @@ def is_available():
         _available = False
         try:
             _available = runtime.getDeviceCount() > 0
-        except Exception as e:
-            if (not runtime.is_hip and e.args[0] !=
-                    'cudaErrorNoDevice: no CUDA-capable device is detected'):
-                raise
-            elif runtime.is_hip and 'hipErrorNoDevice' not in e.args[0]:
-                raise
+        except Exception:
+            pass
     return _available
 
 

@@ -183,7 +183,7 @@ cdef inline void _mod_compile(str tempdir, str mod_name, str obj_host) except*:
                        '-I' + _python_include,
                        '-I' + _cuda_include,
                        '-I' + _cupy_include,
-                       '-fPIC', '-O2', '-std=c++11',
+                       '-fPIC', '-O2',
                        '-c', os.path.join(tempdir, mod_name + '.cpp'),
                        '-o', obj_host],
                        env=os.environ, cwd=tempdir)

@@ -171,7 +171,6 @@ _firwin_kernel = cupy.ElementwiseKernel(
     }
     """,
     "_firwin_kernel",
-    options=("-std=c++11",),
     loop_prep="const double alpha { 0.5 * ( numtaps - 1 ) };",
 )
 

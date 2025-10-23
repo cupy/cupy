@@ -22,6 +22,29 @@ import tempfile
 import urllib.request
 
 
+_deprecation_message = """
+******************************************************************************
+
+The "cupyx.tools.install_library" tool is deprecated and will be removed in
+a future CuPy release. To install NCCL/cuTENSOR libraries, please install them
+via package managers (pip/conda) that are used to install CuPy.
+
+You can use the following command to see if NCCL/cuTENSOR is already installed.
+If you see the version number displayed for "NCCL Runtime Version" or "cuTENSOR
+Version", they are available and enabled in your CuPy installation.
+
+  $ python -c 'import cupy; cupy.show_config(_full=True)'
+
+If you see "None" instead of the version number, and you installed CuPy via pip
+or conda, you can get the instructions to install these libraries by running
+the following commands:
+
+  $ python -c 'import cupy.cuda.nccl'
+  $ python -c 'import cupy.cuda.cutensor'
+
+******************************************************************************
+"""
+
 _cutensor_records = []
 _nccl_records = []
 library_records = {}
@@ -253,9 +276,11 @@ def main(args):
         params.prefix = os.path.abspath(params.prefix)
 
     if params.action == 'install':
+        print(_deprecation_message)
         install_lib(params.cuda, params.prefix, params.library,
                     params.arch)
     elif params.action == 'dump':
+        # This option is only for internal use by cupy-release-tools.
         print(json.dumps(library_records[params.library], indent=4))
     else:
         assert False

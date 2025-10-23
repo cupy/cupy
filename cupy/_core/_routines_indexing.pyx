@@ -16,7 +16,7 @@ from cupy._core._carray cimport strides_t
 from cupy._core cimport core
 from cupy._core cimport _routines_math as _math
 from cupy._core cimport _routines_manipulation as _manipulation
-from cupy._core.core cimport _ndarray_base
+from cupy._core.core cimport _convert_from_cupy_like, _ndarray_base
 from cupy._core cimport internal
 
 
@@ -1010,10 +1010,12 @@ cdef _scatter_op(_ndarray_base a, slices, value, op):
     y = a
 
     if op == 'update':
-        if not isinstance(value, _ndarray_base):
+        x = _convert_from_cupy_like(value, error=False)
+        if x is None:
+            # Refuse assignment from CPU arrays, see gh-2079
             y.fill(value)
             return
-        x = value
+
         if (internal.vector_equal(y._shape, x._shape) and
                 internal.vector_equal(y._strides, x._strides)):
             if y.data.ptr == x.data.ptr:
