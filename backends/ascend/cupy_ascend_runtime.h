@@ -89,7 +89,7 @@ CUresult cuCtxCreate(CUcontext* pctx, unsigned int flags, CUdevice dev) {
     // ASCEND create context and stream when SetDevice
     // while CUDA create Context and binding to Device
     aclError ret = aclrtSetDevice(dev);
-    ret = aclrtGetCurrentContext(pctx);
+    //ret = aclrtGetCurrentContext(pctx);
     // Note: AscendCL's create context might not use flags the same way
     // aclrtCtxSetSysParamOpt() could be the API to set flags
     return ret;

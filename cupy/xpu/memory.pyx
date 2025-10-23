@@ -581,6 +581,8 @@ cdef class MemoryPointer:
             stream_ptr = stream_module.get_current_stream_ptr()
         else:
             stream_ptr = stream.ptr
+        # TODO: ASCEND this code block cause segmentation fault on ASCEND
+        """
         if (
             not runtime._is_hip_environment
             and runtime.streamIsCapturing(stream_ptr)
@@ -588,6 +590,7 @@ cdef class MemoryPointer:
             raise RuntimeError(
                 'the current stream is capturing, so H2D transfers '
                 'are disallowed')
+        """
         if size > 0:
             ptr = mem if isinstance(mem, int) else mem.value
             runtime.memcpyAsync(self.ptr, ptr, size,

@@ -172,7 +172,7 @@ if __name__ == "__main__":
     # 定义测试函数
     np_cos, cp_cos = np.cos, cp.cos
     np_add, cp_add = np.add, cp.add
-    np_dot, cp_dot = np.dot, cp.dot
+    np_dot, cp_dot = np.matmul, cp.matmul
     
     print("\n" + "="*60)
     print("基准测试向量COS操作（单目运算，同步模式）")

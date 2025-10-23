@@ -155,7 +155,7 @@ cdef aclTensor* cupy_ndarray_to_acl_tensor(_ndarray_base cupy_array) except *:
     
     try:
         # 1. 获取CuPy数组的形状和维度
-        ndim = len(cupy_array._shape)
+        ndim = len(cupy_array._shape) # len() works for cython 3.1+ only
         
         # 分配内存用于存储维度信息
         view_dims = <int64_t*>PyMem_Malloc(ndim * sizeof(int64_t))
@@ -168,7 +168,8 @@ cdef aclTensor* cupy_ndarray_to_acl_tensor(_ndarray_base cupy_array) except *:
         # 填充维度信息
         for i in range(ndim):
             view_dims[i] = cupy_array._shape[i]
-            strides[i] = cupy_array._strides[i]
+            # aclTensor strids using element size, not the byte size
+            strides[i] = cupy_array._strides[i] / cupy_array.dtype.itemsize
             storage_dims[i] = cupy_array._shape[i]  # 假设存储形状与视图形状相同
         
         # 2. 映射数据类型
@@ -224,6 +225,7 @@ cdef extern from "../acl_opinfo.h":
         INVALID_OP = -1
         UNARY_OP = 0
         INPLACE_UNARY_OP = 1
+        REDUCTION_OP = 2
         BINARY_OP = 4
         INPLACE_BINARY_OP = 5
         SCALAR_BINARY_OP = 6
@@ -392,6 +394,50 @@ cdef aclError launch_acl_func(str opname, tuple ops, intptr_t stream_ptr) except
         # TODO: check ret error code
     return ret
 
+
+cdef aclError launch_reduction_op(str opname, tuple ops, intptr_t stream_ptr) except *:
+    # 检查操作是否已注册
+    if opname.startswith("cupy_"):
+        opname = ASCEND_OP_PREFIX + opname[5:]
+
+    cdef OpInfo op_info
+    op_info.op_name = opname.encode("utf-8")
+    op_info.op_type = REDUCTION_OP
+    if _builtin_operators.find(op_info) == _builtin_operators.end():
+        raise KeyError(f"Operator {opname} not registered")
+
+    cdef FuncPtrUnion func_ptr = _builtin_operators[op_info]
+    cdef aclError ret = 0
+    cdef aclrtStream stream = <aclrtStream>NULL  # default stream always working, so use stream.null
+    if stream_ptr != <intptr_t>0:
+        stream = <aclrtStream>stream_ptr
+
+    # TODO: 转换为ACL: self, dim, keepdim, out
+    """
+    cdef vector[aclTensor*] tensors
+    for op in ops:
+        typ = type(op)
+        if issubclass(typ, _ndarray_base):
+            tensors.push_back(cupy_ndarray_to_acl_tensor(op))
+        elif typ is _cupy_scalar:
+            pass
+        else:
+            raise RuntimeError("Operand is not ndarray or scalar: ", op)
+    try:
+        ret = func_ptr.reduction_op(tensors[0], tensors[1], tensors[2], stream)
+    """
+
+    finally:
+        # does not deallocate array buffer, but shapes, strides
+        for t in tensors:
+            # TODO: deal with aclScalar
+            aclDestroyTensor(t)  # 假设destroyAclTensor函数已存在
+        if scalar_ptr:
+            aclDestroyScalar(scalar_ptr)
+
+        # TODO: check ret error code
+    return ret
+
 cdef extern from "../acl_math.h" nogil:
     aclError aclop_BitwiseAndTensor(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream)
     aclError aclop_InplaceBitwiseAndTensor(aclTensor* self, const aclTensor* other, aclrtStream stream)
@@ -431,6 +477,8 @@ cdef extern from "../acl_math.h" nogil:
     aclError aclop_Tanh(const aclTensor* self,  aclTensor* out, aclrtStream stream)
     aclError aclop_InplaceTanh(aclTensor* self,  aclrtStream stream)
 
+# reduction ops
+cdef extern from "../acl_math.h" nogil:
     aclError aclop_Any(const aclTensor* self, const aclIntArray* dim, bint keepdim, aclTensor* out, aclrtStream stream)
     aclError aclop_All(const aclTensor* self, const aclIntArray* dim, bint keepdim, aclTensor* out, aclrtStream stream)
 
@@ -514,6 +562,8 @@ cdef void init_builtin_operators():
     func_union.inplace_unary_op = aclop_InplaceTanh
     register_acl_ufunc("ascend_inplace_tanh", INPLACE_UNARY_OP, func_union)
 
+    func_union.unary_op = aclop_Any
+    register_acl_ufunc("ascend_any", REDUCTION_OP, func_union)
 
 def py_register_acl_ufunc(str opname, int func_type, long func_ptr):
     """Python层级的操作注册函数, func_type is OpType enum value"""

@@ -1,6 +1,6 @@
 # numpy for Ascend: fork from Cupy
 
-Status: benchmark.py 还不能运行 "SegmentationFault", h还是初始化的问题, 可能是NPU环境的代码修复, 还没有同步 (Oct25 解决)
+Status (Oct23): benchmark.py 经过xpu重构后, NPU测试可以运行
 没有NPU开发: 需要注释掉 runtime.pyx "initialize_backend()" 否则不能import cupy
 
 ## 1. 开发环境
@@ -64,7 +64,7 @@ CANN社区版本是新特性较多的先行版.
 
 安装到用户HOME， 不需要root权限， 如果要运行和benchmark， 需要根据昇腾硬件
 
-```
+```sh
 #  install driver, skip here
 ./Downloads/Ascend-cann-toolkit_8.2.RC1_linux-x86_64.run --install
 # add set_env.sh into ~/.bashrc
@@ -146,10 +146,11 @@ cd cupy-ascend
 export CUPY_INSTALL_USE_ASCEND=1  # 对应C代码中 CUPY_USE_ASCEND， 编译时刻， 选择ascend backend
 #export ASCEND_TOOLKIT_HOME=/home/qingfeng/Ascend/ascend-toolkit/latest
 #export PATH=$ASCEND_TOOLKIT_HOME/bin:$PATH
-#export ASCEND_SOC_TARGET=gfx906  # Must match your specific NPU architecture
+which bisheng
 
 export CUPY_INSTALL_USE_ASCEND=1 && python setup.py develop && python -c "import cupy._core"
 python -c "import cupy._core" # to test if it is importable without installation
+export CUPY_INSTALL_USE_ASCEND=1 && python setup.py develop && python benchmark.py
 
 ```
 
