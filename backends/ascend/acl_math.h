@@ -40,16 +40,15 @@
 //is_inf, isclose, is_posinf isfinite, is_nan (no such)
 #include "aclnnop/aclnn_is_inf.h"
 #include "aclnnop/aclnn_isfinite.h"
+// is_real, is_posinf
 
 #include "aclnnop/aclnn_equal.h"
 #include "aclnnop/aclnn_isclose.h"
 // ge, eq, le, gt, lt, 
 #include "aclnnop/aclnn_ge_tensor.h"
-// reduction op
+// bool reduction op
 #include "aclnnop/aclnn_all.h"
 #include "aclnnop/aclnn_any.h"
-#include "aclnnop/aclnn_sum.h"
-#include "aclnnop/aclnn_prod.h"
 
 // bitwise op: and not not xor
 #include "aclnnop/aclnn_bitwise_and_tensor.h"
@@ -91,8 +90,10 @@
 #include "aclnnop/aclnn_gcd.h"
 
 // reduce op, how about dim
+#include "aclnnop/aclnn_reduce_sum.h"
 #include "aclnnop/aclnn_cumsum.h"
 #include "aclnnop/aclnn_cumprod.h"
+#include "aclnnop/aclnn_prod.h"
 #include "aclnnop/aclnn_max.h"  // nan?
 #include "aclnnop/aclnn_min.h"
 #include "aclnnop/aclnn_dot.h"
@@ -199,32 +200,69 @@ extern "C" {
     aclError aclop_MatMul(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream) {
         uint8_t math_type = 0; // 0 means keeping dtype precision KEEP_DTYPE
         return aclBinaryOpRun(self, other, out,
-            aclnnMatmulGetWorkspaceSize, aclnnMatmul, stream,  false, math_type); 
+            aclnnMatmulGetWorkspaceSize, aclnnMatmul, stream, false, math_type); 
     }
 
-
+    // DECLARE_ACL_REDUCTION_OPS_FUNC(Any)
     aclError aclop_Any(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out, aclrtStream stream) {
-        return aclReductionOpRun(self, dim, keepdim, out,
-            aclnnAnyGetWorkspaceSize, aclnnAny, stream, false); 
+        return aclReductionOpRun(self, out,
+            aclnnAnyGetWorkspaceSize, aclnnAny, stream, false, dim, keepdim); 
     }
-    // aclError aclop_All(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out, aclrtStream stream) {
-    //     return aclReductionOpRun(self, dim, keepdim, out,
-    //         aclnnAllGetWorkspaceSize, aclnnAll, stream, false); 
-    // }
     DECLARE_ACL_REDUCTION_OPS_FUNC(All)
+
+    // why this Min has no dim and keepdim control
+    aclError aclop_Max(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out, aclrtStream stream) {
+        return aclReductionOpRun(self, out,
+            aclnnMaxGetWorkspaceSize, aclnnMax, stream, false); 
+    }
+    aclError aclop_Min(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out, aclrtStream stream) {
+        return aclReductionOpRun(self, out,
+            aclnnMinGetWorkspaceSize, aclnnMin, stream, false); 
+    }
+    //DECLARE_ACL_REDUCTION_OPS_FUNC(Amin)
+    //DECLARE_ACL_REDUCTION_OPS_FUNC(Amax)
+    //DECLARE_ACL_REDUCTION_OPS_FUNC(ArgMax)
+    aclError aclop_ArgMax(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out, aclrtStream stream) {
+        int64_t dim_index = dim->GetData()[0];  // TODO, not sure how to convert
+        return aclReductionOpRun(self, out,
+            aclnnArgMaxGetWorkspaceSize, aclnnArgMax, stream, false, dim_index, keepdim); 
+    }
+    aclError aclop_ArgMin(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out, aclrtStream stream) {
+        int64_t dim_index = dim->GetData()[0];  // TODO caller will put int64_t dim into aclIntArray
+        return aclReductionOpRun(self, out,
+            aclnnArgMinGetWorkspaceSize, aclnnArgMin, stream, false, dim_index, keepdim); 
+    }
+
+    aclError aclop_Mean(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out, aclrtStream stream) {
+        aclDataType dtype; // TODO 指定输出张量的数据类型
+        return aclReductionOpRun(self, out,
+            aclnnMeanGetWorkspaceSize, aclnnMean, stream, false, dim, keepdim, dtype); 
+    }
+    //DECLARE_ACL_REDUCTION_OPS_FUNC(Var)
+    //DECLARE_ACL_REDUCTION_OPS_FUNC(Std)
 
     aclError aclop_Prod(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out, aclrtStream stream) {
         int64_t dim_index = dim->GetData()[0];  // TODO, not sure how to convert
-        aclDataType dtype; // TODO extra parameter
-        return aclReductionOpRun(self, dim_index, keepdim, out,
-            aclnnProdDimGetWorkspaceSize, aclnnProdDim, stream, false, dtype); 
+        aclDataType dtype; // TODO 指定输出张量的数据类型
+        return aclReductionOpRun(self, out,
+            aclnnProdDimGetWorkspaceSize, aclnnProdDim, stream, false, dim_index, keepdim, dtype); 
     }
-    // Sum is very special without dim info?
-    // aclError aclop_Sum(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out, aclrtStream stream) {
-    //     int
-    //     return aclReductionOpRun(self, dim, keepdim, out,
-    //         aclnnSumGetWorkspaceSize, aclnnSum, stream, false); 
-    // }
+
+    aclError aclop_Sum(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out, aclrtStream stream) {
+        aclDataType dtype; // TODO extra parameter from out Tensor, maybe  set by this func
+        return aclReductionOpRun(self, out,
+            aclnnReduceSumGetWorkspaceSize, aclnnReduceSum, stream, false, dim, keepdim, dtype); 
+    }
+
+    aclError aclop_Cumsum(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out, aclrtStream stream) {
+        int64_t dim_index = dim->GetData()[0];  // TODO, not sure how to convert
+        aclDataType dtype; // TODO extra parameter from out Tensor, maybe do the conversion outside this func
+        return aclReductionOpRun(self, out,
+            aclnnCumsumGetWorkspaceSize, aclnnCumsum, stream, false, dim_index, dtype); 
+    }
+    // TODO: Cumprod
+
+    // TODO: Outpout with 2 or more output like `divmod`
 
 #ifdef __cplusplus
 }

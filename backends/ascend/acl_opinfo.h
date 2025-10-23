@@ -9,6 +9,7 @@ enum OpType {
     INVALID_OP = -1,
     UNARY_OP = 0,
     INPLACE_UNARY_OP = 1,
+    REDUCTION_OP = 2,
     BINARY_OP = 4,
     INPLACE_BINARY_OP = 5,
     SCALAR_BINARY_OP = 6,

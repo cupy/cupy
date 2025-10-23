@@ -156,7 +156,10 @@ aclError aclTernaryInplaceScalarOpRun(
     aclError ret = wsfunc(selfTensor, otherTensor, alpha, std::forward<Args>(args)...,
         &workspaceSize, &executor);
     //ret = aclnnInplaceAddGetWorkspaceSize(selfTensor, otherTensor, alpha,  &workspaceSize, &executor);
-    if (ret != ACL_SUCCESS) { /* 错误处理 */ }
+    if (ret != ACL_SUCCESS) {
+        std::cout << "Failed to run WorkspaceSize for a kernel\n";
+        return ACL_ERROR_RT_FAILURE;
+    }
 
     void* workspaceAddr = nullptr;
     if (workspaceSize > 0) {
@@ -199,7 +202,10 @@ aclError aclUnaryOpRun(
     // 第一段: 获取所需Workspace大小
     aclError ret = wsfunc(selfTensor, outTensor, std::forward<Args>(args)..., &workspaceSize, &executor);
     // e.g. aclnnStatus aclnnAsinGetWorkspaceSize(const aclTensor* self, aclTensor* out, uint64_t* workspaceSize, aclOpExecutor** executor);
-    if (ret != ACL_SUCCESS) { /* 错误处理 */ }
+    if (ret != ACL_SUCCESS) {
+        std::cout << "Failed to run WorkspaceSize for a kernel\n";
+        return ACL_ERROR_RT_FAILURE;
+    }
 
     void* workspaceAddr = nullptr;
     if (workspaceSize > 0) {
@@ -236,7 +242,10 @@ aclError aclUnaryInplaceOpRun(
     // 第一段: 获取所需Workspace大小
     aclError ret = wsfunc(selfTensor, std::forward<Args>(args)..., &workspaceSize, &executor);
     // e.g. ret = aclnnMatmulGetWorkspaceSize(a_tensor, b_tensor, out_tensor, math_type, &workspace_size, &executor);
-    if (ret != ACL_SUCCESS) { /* 错误处理 */ }
+    if (ret != ACL_SUCCESS) {
+        std::cout << "Failed to run WorkspaceSize for a kernel\n";
+        return ACL_ERROR_RT_FAILURE;
+    }
 
     void* workspaceAddr = nullptr;
     if (workspaceSize > 0) {
@@ -258,6 +267,47 @@ aclError aclUnaryInplaceOpRun(
     }
     return ACL_SUCCESS;
 }
+
+template<typename WsFunc, typename OutType, typename... Args>
+aclError aclReductionOpRun(
+    const aclTensor* selfTensor,
+    //DimType dim, bool keepdim,
+    OutType outTensor,
+    WsFunc wsfunc, AclnnKernelFunc kfunc,
+    aclrtStream stream, bool sync,
+    Args&&... args)
+{
+    uint64_t workspaceSize = 0;
+    aclOpExecutor* executor = nullptr;
+
+    // 第一段: 获取所需Workspace大小
+    aclError ret = wsfunc(selfTensor, std::forward<Args>(args)..., outTensor, &workspaceSize, &executor);
+    if (ret != ACL_SUCCESS) {
+        std::cout << "Failed to run WorkspaceSize for a kernel\n";
+        return ACL_ERROR_RT_FAILURE;
+    }
+
+    void* workspaceAddr = nullptr;
+    if (workspaceSize > 0) {
+        ret = aclrtMalloc(&workspaceAddr, workspaceSize, ACL_MEM_MALLOC_HUGE_FIRST);
+    }
+
+    // 第二段: 在指定的Stream上执行算子, this is fixed func type
+    ret = kfunc(workspaceAddr, workspaceSize, executor, stream);
+    if (ret != ACL_SUCCESS) {
+        std::cout << "Failed to run the kernel";
+        return ACL_ERROR_RT_FAILURE;
+    }
+
+    if(sync) {
+        aclrtSynchronizeStream(stream);
+    }
+    if (workspaceSize > 0) {
+        ret = aclrtFree(workspaceAddr);
+    }
+    return ACL_SUCCESS;
+}
+
 
 // declare the op and its inplace version
 #define DECLARE_ACL_BINARY_OPS_FUNC(opname) \
@@ -282,7 +332,7 @@ aclError aclUnaryInplaceOpRun(
             aclnnInplace##opname##GetWorkspaceSize, aclnnInplace##opname, stream, false); \
     }    
 
-// declare the op and its inplace version
+// declare the unary op and its inplace version
 #define DECLARE_ACL_UNARY_OPS_FUNC(opname) \
     aclError aclop_##opname(const aclTensor* self, aclTensor* out, aclrtStream stream) { \
         return aclUnaryOpRun(self, out, \
@@ -293,5 +343,12 @@ aclError aclUnaryInplaceOpRun(
             aclnnInplace##opname##GetWorkspaceSize, aclnnInplace##opname, stream, false); \
     }
 
+// declare the reduction op (sum, prod, any, all), dim may have diff type
+#define DECLARE_ACL_REDUCTION_OPS_FUNC(opname) \
+    aclError aclop_##opname(const aclTensor* self, const aclIntArray* dim, bool keepdim, \
+        aclTensor* out, aclrtStream stream) { \
+        return aclReductionOpRun(self, out, \
+            aclnn##opname##GetWorkspaceSize, aclnn##opname, stream, false, dim, keepdim); \
+    } \
 
 #endif // end of header file

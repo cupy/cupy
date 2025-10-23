@@ -170,7 +170,7 @@ IF CUPY_CANN_VERSION > 0:
         check_status(status)
 
     # initialize ascend runtime and set device 0
-    initialize_backend(0)
+    #initialize_backend(0) # comment out this line if you do not have a NPU
 
 cpdef int driverGetVersion() except? -1:
     cdef int version
@@ -1034,17 +1034,19 @@ cpdef intptr_t streamEndCapture(intptr_t stream) except? 0:
 
 
 cpdef bint streamIsCapturing(intptr_t stream) except*:
-    cdef StreamCaptureStatus s
-    if _is_hip_environment:
-        raise RuntimeError('streamIsCapturing is not supported in ROCm')
-    with nogil:
-        status = cudaStreamIsCapturing(<driver.Stream>stream, &s)
-    check_status(status)  # cudaErrorStreamCaptureImplicit could be raised here
-    if s == <StreamCaptureStatus>streamCaptureStatusInvalidated:
-        raise RuntimeError('the stream was capturing, but an error has '
-                           'invalidated the capture sequence')
-    return <bint>s
-
+    IF CUPY_CANN_VERSION <= 0:
+        cdef StreamCaptureStatus s
+        if _is_hip_environment:
+            raise RuntimeError('streamIsCapturing is not supported in ROCm')
+        with nogil:
+            status = cudaStreamIsCapturing(<driver.Stream>stream, &s)
+        check_status(status)  # cudaErrorStreamCaptureImplicit could be raised here
+        if s == <StreamCaptureStatus>streamCaptureStatusInvalidated:
+            raise RuntimeError('the stream was capturing, but an error has '
+                            'invalidated the capture sequence')
+        return <bint>s
+    ELSE:
+        return False
 
 cpdef intptr_t eventCreate() except? 0:
     cdef driver.Event event

@@ -259,6 +259,8 @@ cdef extern from "../acl_opinfo.h":
 # unordered map for better performance
 cdef cpp_map[OpInfo, FuncPtrUnion, OpInfo.Hash] _builtin_operators
 
+cdef extern from "<cstdbool>" namespace "std":
+    ctypedef bint bool "bool"  # 将C++的bool映射到Cython的bint
 
 # 定义函数指针类型
 ctypedef aclError (*TernaryOpFunc)(const aclTensor* self, const aclTensor* other,
@@ -275,7 +277,7 @@ ctypedef aclError (*InplaceScalarBinaryOpFunc)(aclTensor* self, const aclScalar*
 ctypedef aclError (*UnaryOpFunc)(const aclTensor* self, aclTensor* out, aclrtStream stream)
 ctypedef aclError (*InplaceUnaryOpFunc)(aclTensor* self, aclrtStream stream)
 
-ctypedef aclError (*ReductionOpFunc)(const aclTensor* self, const aclIntArray* dim, bint keepdim,
+ctypedef aclError (*ReductionOpFunc)(const aclTensor* self, const aclIntArray* dim, bool keepdim,
     aclTensor* out, aclrtStream stream)
 
 # 函数指针联合体，用于存储不同类型的操作
@@ -395,6 +397,7 @@ cdef aclError launch_acl_func(str opname, tuple ops, intptr_t stream_ptr) except
     return ret
 
 
+# TODO: add output `dtype` param
 cdef aclError launch_reduction_op(str opname, tuple ops, intptr_t stream_ptr) except *:
     # 检查操作是否已注册
     if opname.startswith("cupy_"):
@@ -413,7 +416,8 @@ cdef aclError launch_reduction_op(str opname, tuple ops, intptr_t stream_ptr) ex
         stream = <aclrtStream>stream_ptr
 
     # TODO: 转换为ACL: self, dim, keepdim, out
-    """
+    cdef bint keepdim = False
+    cdef aclIntArray* dim  # TODO
     cdef vector[aclTensor*] tensors
     for op in ops:
         typ = type(op)
@@ -423,17 +427,14 @@ cdef aclError launch_reduction_op(str opname, tuple ops, intptr_t stream_ptr) ex
             pass
         else:
             raise RuntimeError("Operand is not ndarray or scalar: ", op)
-    try:
-        ret = func_ptr.reduction_op(tensors[0], tensors[1], tensors[2], stream)
-    """
 
+    try:
+        ret = func_ptr.reduction_op(tensors[0], dim, keepdim, tensors[1], stream)
     finally:
         # does not deallocate array buffer, but shapes, strides
         for t in tensors:
             # TODO: deal with aclScalar
             aclDestroyTensor(t)  # 假设destroyAclTensor函数已存在
-        if scalar_ptr:
-            aclDestroyScalar(scalar_ptr)
 
         # TODO: check ret error code
     return ret
@@ -481,7 +482,13 @@ cdef extern from "../acl_math.h" nogil:
 cdef extern from "../acl_math.h" nogil:
     aclError aclop_Any(const aclTensor* self, const aclIntArray* dim, bint keepdim, aclTensor* out, aclrtStream stream)
     aclError aclop_All(const aclTensor* self, const aclIntArray* dim, bint keepdim, aclTensor* out, aclrtStream stream)
-
+    aclError aclop_Max(const aclTensor* self, const aclIntArray* dim, bint keepdim, aclTensor* out, aclrtStream stream)
+    aclError aclop_Min(const aclTensor* self, const aclIntArray* dim, bint keepdim, aclTensor* out, aclrtStream stream)
+    aclError aclop_ArgMax(const aclTensor* self, const aclIntArray* dim, bint keepdim, aclTensor* out, aclrtStream stream)
+    aclError aclop_ArgMin(const aclTensor* self, const aclIntArray* dim, bint keepdim, aclTensor* out, aclrtStream stream)
+    aclError aclop_Mean(const aclTensor* self, const aclIntArray* dim, bint keepdim, aclTensor* out, aclrtStream stream)
+    aclError aclop_Sum(const aclTensor* self, const aclIntArray* dim, bint keepdim, aclTensor* out, aclrtStream stream)
+    aclError aclop_Prod(const aclTensor* self, const aclIntArray* dim, bint keepdim, aclTensor* out, aclrtStream stream)
 
 # 初始化函数，注册内置操作
 cdef void init_builtin_operators():
@@ -562,8 +569,23 @@ cdef void init_builtin_operators():
     func_union.inplace_unary_op = aclop_InplaceTanh
     register_acl_ufunc("ascend_inplace_tanh", INPLACE_UNARY_OP, func_union)
 
-    func_union.unary_op = aclop_Any
+    # reduction ops
+    func_union.reduction_op = aclop_Any
     register_acl_ufunc("ascend_any", REDUCTION_OP, func_union)
+    func_union.reduction_op = aclop_All
+    register_acl_ufunc("ascend_all", REDUCTION_OP, func_union)
+    func_union.reduction_op = aclop_Max
+    register_acl_ufunc("ascend_max", REDUCTION_OP, func_union)
+    func_union.reduction_op = aclop_Min
+    register_acl_ufunc("ascend_min", REDUCTION_OP, func_union)
+    func_union.reduction_op = aclop_ArgMax
+    register_acl_ufunc("ascend_argmax", REDUCTION_OP, func_union)
+    func_union.reduction_op = aclop_Mean
+    register_acl_ufunc("ascend_mean", REDUCTION_OP, func_union)
+    func_union.reduction_op = aclop_Sum
+    register_acl_ufunc("ascend_sum", REDUCTION_OP, func_union)
+    func_union.reduction_op = aclop_Prod
+    register_acl_ufunc("ascend_prod", REDUCTION_OP, func_union)
 
 def py_register_acl_ufunc(str opname, int func_type, long func_ptr):
     """Python层级的操作注册函数, func_type is OpType enum value"""
