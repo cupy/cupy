@@ -494,7 +494,7 @@ def _preload_warning(lib, exc):
             major = _parse_version(version)[0]
             cmd = f'pip install "nvidia-nccl-cu{cuda_major}>={version},<{major+1}"'  # NOQA
         else:
-            cmd = f'python -m cupyx.tools.install_library --library {lib} --cuda {cuda}'  # NOQA
+            raise AssertionError(f'Unknown library: {lib}')
     elif config['packaging'] == 'conda':
         cmd = f'conda install -c conda-forge {lib}'
     else:
