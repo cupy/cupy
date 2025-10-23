@@ -817,7 +817,7 @@ cdef class set_cufft_callbacks:
                 # code changes
                 if isinstance(cb_load, str) and cb_load_name is None:
                     try:
-                        cb_load_name = cupy_callback_pattern.search(
+                        cb_load_name = cupy_load_callback_pattern.search(
                             cb_load).group(1)
                     except AttributeError:
                         raise ValueError(
@@ -825,7 +825,7 @@ cdef class set_cufft_callbacks:
                             'it explicitly') from None
                 if isinstance(cb_store, str) and cb_store_name is None:
                     try:
-                        cb_store_name = cupy_callback_pattern.search(
+                        cb_store_name = cupy_store_callback_pattern.search(
                             cb_store).group(1)
                     except AttributeError:
                         raise ValueError(
