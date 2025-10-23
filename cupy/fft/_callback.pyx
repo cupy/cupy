@@ -663,8 +663,11 @@ cdef class _JITCallbackManager(_CallbackManager):
 
 # LHS is our legacy convention
 # RHS is a valid C identifier pattern
-cdef object cupy_callback_pattern = re.compile(
-    r'd_(?:load|store)CallbackPtr\s*=\s*([A-Za-z_]\w*)\s*;')
+cdef object cupy_load_callback_pattern = re.compile(
+    r'd_loadCallbackPtr\s*=\s*([A-Za-z_]\w*)\s*;')
+
+cdef object cupy_store_callback_pattern = re.compile(
+    r'd_storeCallbackPtr\s*=\s*([A-Za-z_]\w*)\s*;')
 
 
 cdef class set_cufft_callbacks:
