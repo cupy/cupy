@@ -70,31 +70,8 @@ rocm:
   null:
     full_version: null
     packages: []
-  "4.3":
-    full_version: "4.3.1"
-    packages: ['rocm-dev', 'hipblas', 'hipfft', 'hipsparse', 'hipcub',
-               'rocsparse', 'rocrand', 'rocthrust', 'rocsolver', 'rocfft',
-               'rocprim', 'rccl']
-  "5.0":
-    full_version: "5.0"
-    packages: ['rocm-dev', 'hipblas', 'hipfft', 'hipsparse', 'hipcub',
-               'rocsparse', 'rocrand', 'rocthrust', 'rocsolver', 'rocfft',
-               'rocprim', 'rccl']
-  "5.3":
-    full_version: "5.3"
-    packages: ['rocm-dev', 'hipblas', 'hipfft', 'hipsparse', 'hipcub',
-               'rocsparse', 'rocrand', 'rocthrust', 'rocsolver', 'rocfft',
-               'rocprim', 'rccl']
-  "6.2":
-    full_version: "6.2"
-    packages: ['rocm-dev', 'hipblas', 'hipfft', 'hipsparse', 'hipcub',
-               'rocsparse', 'rocrand', 'hiprand', 'rocthrust', 'rocsolver', 'rocfft',
-               'rocprim', 'rccl', 'roctracer-dev']
-  "6.4":
-    full_version: "6.4.3-complete"
-    packages: []
   "7.0":
-    full_version: "7.0-complete"
+    full_version: "7.0.2-complete"
     packages: []
 
 ###############################################################################
