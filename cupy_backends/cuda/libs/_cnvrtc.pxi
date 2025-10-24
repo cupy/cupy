@@ -63,6 +63,12 @@ cdef F_nvrtcGetNVVMSize nvrtcGetNVVMSize
 ctypedef nvrtcResult (*F_nvrtcGetNVVM)(nvrtcProgram prog, char *nvvm) noexcept nogil  # NOQA
 cdef F_nvrtcGetNVVM nvrtcGetNVVM
 
+ctypedef nvrtcResult (*F_nvrtcGetLTOIRSize)(nvrtcProgram prog, size_t *ltoirSizeRet) nogil  # NOQA
+cdef F_nvrtcGetLTOIRSize nvrtcGetLTOIRSize
+
+ctypedef nvrtcResult (*F_nvrtcGetLTOIR)(nvrtcProgram prog, char *ltoir) nogil
+cdef F_nvrtcGetLTOIR nvrtcGetLTOIR
+
 
 cdef SoftLink _L = None
 cdef inline void initialize() except *:
@@ -108,6 +114,10 @@ cdef SoftLink _initialize():
     nvrtcGetNVVMSize = <F_nvrtcGetNVVMSize>_L.get('GetNVVMSize')
     global nvrtcGetNVVM
     nvrtcGetNVVM = <F_nvrtcGetNVVM>_L.get('GetNVVM')
+    global nvrtcGetLTOIRSize
+    nvrtcGetLTOIRSize = <F_nvrtcGetLTOIRSize>_L.get('GetLTOIRSize')
+    global nvrtcGetLTOIR
+    nvrtcGetLTOIR = <F_nvrtcGetLTOIR>_L.get('GetLTOIR')
 
     return _L
 

@@ -4,19 +4,23 @@
 
 from libc.stdint cimport intptr_t
 
+
 cdef extern from *:
     ctypedef float Float 'cufftReal'
     ctypedef double Double 'cufftDoubleReal'
     ctypedef int Result 'cufftResult_t'
 
     IF CUPY_HIP_VERSION > 0:
-        ctypedef int Handle 'cufftHandle'
-    ELSE:
         ctypedef struct hipHandle 'hipfftHandle_t':
             pass
         ctypedef hipHandle* Handle 'cufftHandle'
+    ELSE:
+        ctypedef int Handle 'cufftHandle'
 
     ctypedef enum Type 'cufftType_t':
+        pass
+
+    ctypedef enum callbackType 'cufftXtCallbackType':
         pass
 
 
