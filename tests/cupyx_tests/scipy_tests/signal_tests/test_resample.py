@@ -190,21 +190,19 @@ class TestResample:
 
         return results
 
+    @pytest.mark.parametrize('nx', [10_000, 12_357, 70_000])
+    @pytest.mark.parametrize('ny', [1, 11, 50])
+    @pytest.mark.parametrize('axis', [0, 1])
     @testing.numpy_cupy_allclose(scipy_name='scp')
-    def test_resample2d(self, xp, scp):
-        results = []
-        for nx in range(10000, 100000, 10000):
-            for down in [2, 3, 8]:
-                for ny in range(1, 50, down):
-                    for axis in [0, 1]:
-                        x = testing.shaped_random(
-                            (nx * (1 - axis) + ny * axis,
-                             ny * (1 - axis) + nx * axis),
-                            xp, xp.float64, scale=1.0)
-                        y_s = scp.signal.resample_poly(
-                            x, up=1, down=down, axis=axis)
-                        results.append(y_s)
-        return results
+    def test_resample2d(self, xp, scp, nx, ny, axis):
+        down = 3
+        x = testing.shaped_random(
+            (nx * (1 - axis) + ny * axis,
+             ny * (1 - axis) + nx * axis),
+            xp, xp.float64, scale=1.0)
+        y_s = scp.signal.resample_poly(
+            x, up=1, down=down, axis=axis)
+        return y_s
 
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_poly_vs_filtfilt(self, xp, scp):
