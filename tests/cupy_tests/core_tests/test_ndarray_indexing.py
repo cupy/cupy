@@ -246,3 +246,23 @@ def test_setitem_with_cupy_like(cupy_like):
     a = cupy.zeros(10)
     a[...] = cupy_like(cupy.arange(10))
     testing.assert_array_equal(a, cupy.arange(10))
+
+
+@pytest.mark.parametrize('cupy_like', [
+    DummyObjectWithCuPyGetNDArray,
+    DummyObjectWithCudaArrayInterface,
+])
+def test_getitem_with_cupy_like_index(cupy_like):
+    # Test that normal assignment supports interfaces
+    a = cupy.zeros(10)
+    cupy_idx = cupy.arange(10)
+    idx = cupy_like(cupy_idx)
+    if cupy_like is DummyObjectWithCuPyGetNDArray:
+        # __cupy_get_ndarray__ path currently assumes .shape and .dtype
+        idx.shape = (10,)
+        idx.dtype = cupy_idx.dtype
+
+    # mostly to check that it works at all:
+    testing.assert_array_equal(a[idx], a[cupy_idx])
+    testing.assert_array_equal(a[idx,], a[cupy_idx,])
+    testing.assert_array_equal(a[[idx]], a[[cupy_idx]])
