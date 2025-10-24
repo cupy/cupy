@@ -3,6 +3,8 @@ from __future__ import annotations
 import pickle
 import unittest
 
+import pytest
+
 import cupy
 from cupy import cuda
 from cupy.cuda import nccl
@@ -63,6 +65,16 @@ class TestNCCL(unittest.TestCase):
         id = nccl.get_unique_id()
         comm = nccl.NcclCommunicator(1, id, 0)
         assert 1 == comm.size()
+
+    def test_comm_bad_id(self):
+        with pytest.raises(TypeError):
+            nccl.NcclCommunicator(1, None, 0)
+
+        with pytest.raises(TypeError):
+            nccl.NcclCommunicator(1, (1, 2, 3), 0)
+
+        with pytest.raises(ValueError, match="commId length 10 != 128."):
+            nccl.NcclCommunicator(1, b"1234567890", 0)
 
     @testing.multi_gpu(2)
     @unittest.skipUnless(nccl_version >= 2700, 'Using old NCCL')
