@@ -31,6 +31,41 @@ cdef dict _dtype_dict = {}
 cdef _dtype = numpy.dtype
 
 
+cdef bint check_supported_dtype(dtype, bint error) except -1:
+    """ Returns true on success but otherwise raises an error. """
+    cdef str dtype_char = dtype.char
+    if dtype_char in all_type_chars:
+        pass
+    elif dtype_char == "V" and dtype.fields is not None:
+        # Support structured dtypes (not subarray here specifically).
+        # We don't really need to know anything about the dtype, but cannot
+        # do references (copying back to CPU would be wrong).
+        # Of course... the user may not be able to _do_ anything with it!
+        if dtype.flags & (0x01 | 0x04):
+            # Note, NumPy may (currently) flag this if a dtype has "holes"
+            # such as `np.ones(10, dtype="i,O,i")[["f0", "f1"]]`.
+            raise ValueError(
+                f"Unsupported dtype {dtype} because it contains references "
+                "which cannot be supported by CuPy.\n"
+                "This may happen even if a dtype only contains basic types "
+                "if the original array contained e.g. object dtype.")
+
+        # We can represents the underlying bytes in CuPy, although it is very
+        # possible that the included fields will not be usable in the end.
+        # The simplest path is to inform users
+        pass
+    elif not error:
+        return False
+    else:
+        raise ValueError(f'Unsupported dtype {dtype}')
+
+    if dtype.byteorder == ">":
+        if not error:
+            return False
+        raise ValueError(
+            f'Unsupported dtype {dtype} with big-endian byte-order')
+
+
 cdef _init_dtype_dict():
     for i in (int, float, bool, complex, None):
         dtype = _dtype(i)
@@ -57,12 +92,17 @@ cpdef get_dtype(t):
 
 
 @cython.profile(False)
-cpdef tuple get_dtype_with_itemsize(t):
+cpdef tuple get_dtype_with_itemsize(t, bint check_support):
+    # check_support for clarity, mainly array creation has to check.
     ret = _dtype_dict.get(t, None)
-    if ret is None:
-        t = _dtype(t)
-        return t, t.itemsize
-    return ret
+    if ret is not None:
+        # Simple dtype request by user, always valid.
+        return ret
+
+    t = _dtype(t)
+    if check_support:
+        check_supported_dtype(t, error=True)
+    return t, t.itemsize
 
 
 cpdef int to_cuda_dtype(dtype, bint is_half_allowed=False) except -1:
