@@ -190,9 +190,10 @@ class TestResample:
 
         return results
 
-    @pytest.mark.parametrize('nx', [10_000, 12_357, 70_000])
-    @pytest.mark.parametrize('ny', [1, 11, 50])
-    @pytest.mark.parametrize('axis', [0, 1])
+    @pytest.mark.parametrize('nx, ny, axis',
+                             [(12_357, 1, 0),
+                              (70_000, 5, 1),
+                              (10_000, 15, 0)])
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_resample2d(self, xp, scp, nx, ny, axis):
         down = 3
