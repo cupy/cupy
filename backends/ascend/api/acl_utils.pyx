@@ -454,6 +454,23 @@ cdef extern from "../acl_math.h" nogil:
 
     aclError aclop_Add(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream)
     aclError aclop_InplaceAdd(aclTensor* self, const aclTensor* other, aclrtStream stream)
+    aclError aclop_Sub(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream)
+    aclError aclop_InplaceSub(aclTensor* self, const aclTensor* other, aclrtStream stream)
+    aclError aclop_Mul(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream)
+    aclError aclop_InplaceMul(aclTensor* self, const aclTensor* other, aclrtStream stream)
+    aclError aclop_Div(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream)
+    aclError aclop_InplaceDiv(aclTensor* self, const aclTensor* other, aclrtStream stream)
+
+    aclError aclop_Neg(const aclTensor* self,  aclTensor* out, aclrtStream stream)
+    aclError aclop_InplaceNeg(aclTensor* self,  aclrtStream stream)
+    aclError aclop_Reciprocal(const aclTensor* self,  aclTensor* out, aclrtStream stream)
+    aclError aclop_InplaceReciprocal(aclTensor* self,  aclrtStream stream)
+    aclError aclop_Signbit(const aclTensor* self,  aclTensor* out, aclrtStream stream)
+    aclError aclop_Abs(const aclTensor* self,  aclTensor* out, aclrtStream stream)
+    aclError aclop_Floor(const aclTensor* self,  aclTensor* out, aclrtStream stream)
+    aclError aclop_InplaceFloor(aclTensor* self,  aclrtStream stream)
+    aclError aclop_Ceil(const aclTensor* self,  aclTensor* out, aclrtStream stream)
+    aclError aclop_InplaceCeil(aclTensor* self,  aclrtStream stream)
 
     aclError aclop_MatMul(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream)
 
@@ -497,33 +514,78 @@ cdef void init_builtin_operators():
     # 注册aclop_Add作为二元操作
     func_union.binary_op = aclop_Add
     register_acl_ufunc("ascend_add", BINARY_OP, func_union)
-    
     # 注册aclop_InplaceAnd作为原地二元操作
     func_union.inplace_binary_op = aclop_InplaceAdd
     register_acl_ufunc("ascend_inplace_add", INPLACE_BINARY_OP, func_union)
 
+    func_union.binary_op = aclop_Sub
+    register_acl_ufunc("ascend_sub", BINARY_OP, func_union)
+    func_union.inplace_binary_op = aclop_InplaceSub
+    register_acl_ufunc("ascend_inplace_sub", INPLACE_BINARY_OP, func_union)
+
+    func_union.binary_op = aclop_Mul
+    register_acl_ufunc("ascend_mul", BINARY_OP, func_union)
+    func_union.inplace_binary_op = aclop_InplaceMul
+    register_acl_ufunc("ascend_inplace_mul", INPLACE_BINARY_OP, func_union)
+
+    func_union.binary_op = aclop_Div
+    register_acl_ufunc("ascend_div", BINARY_OP, func_union)
+    func_union.inplace_binary_op = aclop_InplaceDiv
+    register_acl_ufunc("ascend_inplace_vid", INPLACE_BINARY_OP, func_union)
+
+    func_union.unary_op = aclop_Reciprocal
+    register_acl_ufunc("ascend_reciprocal", UNARY_OP, func_union)
+    func_union.inplace_unary_op = aclop_InplaceReciprocal
+    register_acl_ufunc("ascend_inplace_reciprocal", INPLACE_UNARY_OP, func_union)
+
+    func_union.unary_op = aclop_Neg
+    register_acl_ufunc("ascend_neg", UNARY_OP, func_union)
+    func_union.inplace_unary_op = aclop_InplaceNeg
+    register_acl_ufunc("ascend_inplace_neg", INPLACE_UNARY_OP, func_union)
+    func_union.unary_op = aclop_Abs
+    register_acl_ufunc("ascend_abs", UNARY_OP, func_union)
+    func_union.unary_op = aclop_Signbit
+    register_acl_ufunc("ascend_signbit", UNARY_OP, func_union)
+
+    func_union.unary_op = aclop_Floor
+    register_acl_ufunc("ascend_floor", UNARY_OP, func_union)
+    func_union.inplace_unary_op = aclop_InplaceFloor
+    register_acl_ufunc("ascend_inplace_floor", INPLACE_UNARY_OP, func_union)
+    func_union.unary_op = aclop_Ceil
+    register_acl_ufunc("ascend_ceil", UNARY_OP, func_union)
+    func_union.inplace_unary_op = aclop_InplaceCeil
+    register_acl_ufunc("ascend_inplace_ceil", INPLACE_UNARY_OP, func_union)
+    """
+    DECLARE_ACL_UNARY_OPS_FUNC(Exp)
+    DECLARE_ACL_UNARY_OPS_FUNC(Expm1)
+    DECLARE_ACL_UNARY_OPS_FUNC(Log)
+    DECLARE_ACL_UNARY_OPS_FUNC(Log2)
+    DECLARE_ACL_UNARY_OPS_FUNC(Log10)
+    DECLARE_ACL_UNARY_OPS_FUNC(Log1p)
+    """
+
+    ###################################
     # 注册aclop_MatMul作为二元操作
     func_union.binary_op = aclop_MatMul
     register_acl_ufunc("ascend_matmul", BINARY_OP, func_union)
     
+    ###################################
     # 注册aclop_BitwiseAnd作为二元操作
     func_union.binary_op = aclop_BitwiseAndTensor
     register_acl_ufunc("ascend_bitwise_and", INPLACE_BINARY_OP, func_union)
-    # 注册aclop_InplaceBitwiseAnd作为原地二元操作
     func_union.inplace_binary_op = aclop_InplaceBitwiseAndTensor
     register_acl_ufunc("ascend_inplace_bitwise_and", INPLACE_BINARY_OP, func_union)
 
     # 注册aclop_BitwiseAndScalar作为原地二元操作
     func_union.scalar_binary_op = aclop_BitwiseAndScalar
     register_acl_ufunc("ascend_scalar_bitwise_and", SCALAR_BINARY_OP, func_union)
-    # 注册aclop_InplaceBitwiseAndScalar作为原地二元操作
     func_union.inplace_scalar_binary_op = aclop_InplaceBitwiseAndScalar
     register_acl_ufunc("ascend_inplace_scalar_bitwise_and", INPLACE_SCALAR_BINARY_OP, func_union)
 
-    # 注册aclop_Cos操作
+    ###############################################
+    # 注册aclop_Cos操作, 注册aclop_InplaceCos作为原地操作
     func_union.unary_op = aclop_Cos
     register_acl_ufunc("ascend_cos", UNARY_OP, func_union)
-    # 注册aclop_InplaceCos作为原地操作
     func_union.inplace_unary_op = aclop_InplaceCos
     register_acl_ufunc("ascend_inplace_cos", INPLACE_UNARY_OP, func_union)
 
@@ -552,7 +614,7 @@ cdef void init_builtin_operators():
     register_acl_ufunc("ascend_atan", UNARY_OP, func_union)
     func_union.inplace_unary_op = aclop_InplaceAtan
     register_acl_ufunc("ascend_inplace_atan", INPLACE_UNARY_OP, func_union)
-    ###################### cosh op ############
+    ###################### cosh op #####################
     func_union.unary_op = aclop_Cosh
     register_acl_ufunc("ascend_cosh", UNARY_OP, func_union)
     # 注册aclop_InplaceCos作为原地操作
@@ -569,7 +631,7 @@ cdef void init_builtin_operators():
     func_union.inplace_unary_op = aclop_InplaceTanh
     register_acl_ufunc("ascend_inplace_tanh", INPLACE_UNARY_OP, func_union)
 
-    # reduction ops
+    #################### reduction ops ####################
     func_union.reduction_op = aclop_Any
     register_acl_ufunc("ascend_any", REDUCTION_OP, func_union)
     func_union.reduction_op = aclop_All
@@ -578,14 +640,18 @@ cdef void init_builtin_operators():
     register_acl_ufunc("ascend_max", REDUCTION_OP, func_union)
     func_union.reduction_op = aclop_Min
     register_acl_ufunc("ascend_min", REDUCTION_OP, func_union)
-    func_union.reduction_op = aclop_ArgMax
+    func_union.reduction_op = aclop_ArgMin
     register_acl_ufunc("ascend_argmax", REDUCTION_OP, func_union)
     func_union.reduction_op = aclop_Mean
+    register_acl_ufunc("ascend_argmin", REDUCTION_OP, func_union)
+    func_union.reduction_op = aclop_ArgMax
     register_acl_ufunc("ascend_mean", REDUCTION_OP, func_union)
     func_union.reduction_op = aclop_Sum
     register_acl_ufunc("ascend_sum", REDUCTION_OP, func_union)
     func_union.reduction_op = aclop_Prod
     register_acl_ufunc("ascend_prod", REDUCTION_OP, func_union)
+
+
 
 def py_register_acl_ufunc(str opname, int func_type, long func_ptr):
     """Python层级的操作注册函数, func_type is OpType enum value"""

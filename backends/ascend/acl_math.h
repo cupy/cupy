@@ -20,11 +20,14 @@
 #include "aclnnop/aclnn_erfinv.h"
 
 #include "aclnnop/aclnn_exp.h"
+#include <aclnnop/aclnn_expm1.h>
 #include "aclnnop/aclnn_exp2.h"
 #include "aclnnop/aclnn_log.h"
 #include "aclnnop/aclnn_log1p.h"
 #include "aclnnop/aclnn_log2.h"
 #include "aclnnop/aclnn_log10.h"
+#include <aclnnop/aclnn_logaddexp.h>
+#include <aclnnop/aclnn_logaddexp2.h>
 #include "aclnnop/aclnn_sqrt.h"
 //#include "aclnnop/aclnn_square.h" // np.pow with scalar 2
 #include "aclnnop/aclnn_pow.h"  // np.pow
@@ -34,7 +37,9 @@
 #include "aclnnop/aclnn_ceil.h"
 #include "aclnnop/aclnn_floor.h"
 #include "aclnnop/aclnn_clamp.h"
-// sign, inverse, neg, reciprocal
+#include "aclnnop/aclnn_signbit.h"
+#include "aclnnop/aclnn_reciprocal.h"
+// sign, inverse
 
 // equal scalar, tensor, vector/list
 //is_inf, isclose, is_posinf isfinite, is_nan (no such)
@@ -76,7 +81,8 @@
 #include "aclnnop/aclnn_gcd.h"
 #include "aclnnop/aclnn_remainder.h"
 //#include "aclnnop/aclnn_mod.h"  // no such? fmode
-//floor_div
+//#include "aclnnop/aclnn_floordiv.h"
+
 
 // tertiary op, not numpy op
 //#include "aclnnop/aclnn_addcmul.h" // out = self + value * tensor1 * tensor2
@@ -188,14 +194,56 @@ extern "C" {
     // ascend ADD is ternary op with one extra scalar coeff, so can not use the macro to declare
     aclError aclop_Add(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream) {
         float alpha = 1.0f;
-        return aclTernaryScalarOpRun(self, other, alpha, out,
+        return aclTernaryOpRun(self, other, alpha, out,
         aclnnAddGetWorkspaceSize, aclnnAdd, stream, false);
     }
     aclError aclop_InplaceAdd(aclTensor* self, const aclTensor* other, aclrtStream stream) {
         float alpha = 1.0f;
-        return aclTernaryInplaceScalarOpRun(self, other, alpha,
+        return aclTernaryInplaceOpRun(self, other, alpha,
         aclnnInplaceAddGetWorkspaceSize, aclnnInplaceAdd, stream, false);
     }
+    aclError aclop_Sub(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream) {
+        float alpha = 1.0f;
+        return aclTernaryOpRun(self, other, alpha, out,
+        aclnnSubGetWorkspaceSize, aclnnSub, stream, false);
+    }
+    aclError aclop_InplaceSub(aclTensor* self, const aclTensor* other, aclrtStream stream) {
+        float alpha = 1.0f;
+        return aclTernaryInplaceOpRun(self, other, alpha,
+        aclnnInplaceSubGetWorkspaceSize, aclnnInplaceSub, stream, false);
+    }
+    DECLARE_ACL_BINARY_OPS_FUNC(Mul)
+    DECLARE_ACL_BINARY_OPS_FUNC(Div)
+    //DECLARE_ACL_BINARY_OPS_FUNC(FloorDiv)
+    //DECLARE_ACL_BINARY_OPS_FUNC(Mod)
+    // divmod has two outs
+
+    DECLARE_ACL_UNARY_OPS_FUNC(Reciprocal)
+    DECLARE_ACL_UNARY_OPS_FUNC(Neg)
+
+    //DECLARE_ACL_UNARY_OPS_FUNC(Signbit)  // no inplace version
+    aclError aclop_Signbit(const aclTensor* self, aclTensor* out, aclrtStream stream) {
+        return aclUnaryOpRun(self, out,
+        aclnnSignbitGetWorkspaceSize, aclnnSignbit, stream, false);
+    }
+    //DECLARE_ACL_UNARY_OPS_FUNC(Abs) // no inplace version
+    aclError aclop_Abs(const aclTensor* self, aclTensor* out, aclrtStream stream) {
+        return aclUnaryOpRun(self, out,
+        aclnnAbsGetWorkspaceSize, aclnnAbs, stream, false);
+    }
+    DECLARE_ACL_UNARY_OPS_FUNC(Floor)
+    DECLARE_ACL_UNARY_OPS_FUNC(Ceil)
+
+    DECLARE_ACL_UNARY_OPS_FUNC(Exp)
+    DECLARE_ACL_UNARY_OPS_FUNC(Expm1)
+    DECLARE_ACL_UNARY_OPS_FUNC(Log)
+    DECLARE_ACL_UNARY_OPS_FUNC(Log2)
+    DECLARE_ACL_UNARY_OPS_FUNC(Log10)
+    DECLARE_ACL_UNARY_OPS_FUNC(Log1p)
+
+    // Power has 3 version
+    // DECLARE_ACL_BINARY_OPS_FUNC(PowerTensorTensor)
+    // DECLARE_ACL_BINARY_SCALAR_OPS_FUNC(PowerTensorScalar)
 
     aclError aclop_MatMul(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream) {
         uint8_t math_type = 0; // 0 means keeping dtype precision KEEP_DTYPE
@@ -238,8 +286,17 @@ extern "C" {
         return aclReductionOpRun(self, out,
             aclnnMeanGetWorkspaceSize, aclnnMean, stream, false, dim, keepdim, dtype); 
     }
-    //DECLARE_ACL_REDUCTION_OPS_FUNC(Var)
+    aclError aclop_Std(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out, aclrtStream stream) {
+        int64_t correction; // TODO ?
+        return aclReductionOpRun(self, out,
+            aclnnStdGetWorkspaceSize, aclnnStd, stream, false, dim, correction, keepdim); 
+    }
     //DECLARE_ACL_REDUCTION_OPS_FUNC(Std)
+    aclError aclop_Var(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out, aclrtStream stream) {
+        bool unbiased; // TODO ?
+        return aclReductionOpRun(self, out,
+            aclnnVarGetWorkspaceSize, aclnnVar, stream, false, dim, unbiased, keepdim); 
+    }
 
     aclError aclop_Prod(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out, aclrtStream stream) {
         int64_t dim_index = dim->GetData()[0];  // TODO, not sure how to convert

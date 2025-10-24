@@ -100,7 +100,7 @@ aclError aclBinaryInplaceOpRun(
 
 // output = self <op> other * scalar,  3 operands here scalar is one operand
 template<typename WsFunc, typename Operand, typename Scalar, typename... Args>
-aclError aclTernaryScalarOpRun(
+aclError aclTernaryOpRun(
     const aclTensor* selfTensor, Operand otherTensor, Scalar scalar, aclTensor* outTensor,
     WsFunc wsfunc, AclnnKernelFunc kfunc, aclrtStream stream, bool sync,
     Args&&... args)
@@ -141,8 +141,8 @@ aclError aclTernaryScalarOpRun(
 
 // output = self <op> other * scalar,  3 operands here scalar is one operand
 template<typename WsFunc, typename Operand, typename Scalar, typename... Args>
-aclError aclTernaryInplaceScalarOpRun(
-    const aclTensor* selfTensor, Operand otherTensor, Scalar scalar,
+aclError aclTernaryInplaceOpRun(
+    aclTensor* selfTensor, Operand otherTensor, Scalar scalar,
     WsFunc wsfunc, AclnnKernelFunc kfunc, aclrtStream stream, bool sync,
     Args&&... args)
 {
