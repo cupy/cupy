@@ -51,7 +51,7 @@ library_records = {}
 
 
 def _make_cutensor_url(platform, filename):
-    # https://developer.download.nvidia.com/compute/cutensor/redist/libcutensor/linux-x86_64/libcutensor-linux-x86_64-1.5.0.3-archive.tar.xz
+    # https://developer.download.nvidia.com/compute/cutensor/redist/libcutensor/windows-x86_64/libcutensor-windows-x86_64-2.3.1.0_cuda13-archive.zip
     return (
         'https://developer.download.nvidia.com/compute/cutensor/' +
         f'redist/libcutensor/{platform}-x86_64/{filename}')
@@ -85,10 +85,12 @@ def _make_cutensor_record(cuda_version):
     # `min_pypi_version` must be bumped only when:
     # (1) Bumping the major version, or
     # (2) CuPy started to use APIs introduced in minor versions
+    cuda_major = cuda_version.split('.')[0]
     return __make_cutensor_record(
-        cuda_version, '2.1.0', '2.0.0',
-        'libcutensor-linux-x86_64-2.1.0.9-archive.tar.xz',
-        'libcutensor-windows-x86_64-2.1.0.9-archive.zip')
+        cuda_version, '2.3.0', '2.3.0',
+        f'libcutensor-linux-x86_64-2.3.1.0_cuda{cuda_major}-archive.tar.xz',
+        f'libcutensor-windows-x86_64-2.3.1.0_cuda{cuda_major}-archive.zip',
+    )
 
 
 _cutensor_records.append(_make_cutensor_record('12.x'))
