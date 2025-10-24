@@ -203,7 +203,13 @@ class LinuxGenerator:
                 f'RUN pip uninstall -y {shlex.join(pip_uninstall_args)} && \\',
                 '    pip check',
             ]
-        lines.append('')
+
+        # Setup for shell mode.
+        lines += [
+            '',
+            'RUN mkdir /home/cupy-user && chmod 777 /home/cupy-user',
+            '',
+        ]
         return '\n'.join(lines)
 
     def _additional_packages(self, kind: str) -> list[str]:
@@ -268,11 +274,15 @@ class LinuxGenerator:
 
         if matrix.cuda is not None:
             lines += [
+                'nvidia-smi',
+                '',
                 'export NVCC="ccache nvcc"',
                 '',
             ]
         elif matrix.rocm is not None:
             lines += [
+                'hipconfig',
+                '',
                 '# TODO(kmaehashi): Tentatively sparsen parameterization to make test run complete.',  # NOQA
                 'export CUPY_TEST_FULL_COMBINATION="0"',
                 'export CUPY_INSTALL_USE_HIP=1',
@@ -286,6 +296,12 @@ class LinuxGenerator:
                 f'export {key}="{value}"',
                 '',
             ]
+        lines += [
+            'echo "================ Environment Variables ================"',
+            'env',
+            'echo "======================================================="',
+            '',
+        ]
 
         lines += ['"$ACTIONS/build.sh"']
         if matrix.test.startswith('unit'):

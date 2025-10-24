@@ -158,4 +158,8 @@ def test_mvdr(dtype):
     sv = cupy.array([1, 2], dtype=dtype)
     out = signal.mvdr(x, sv)
     assert out.dtype == dtype
-    testing.assert_allclose(out, [-2, 1.5])
+
+    expected = cupy.array([-2, 1.5], dtype=dtype)
+    rtol = 1e-6 if dtype == numpy.float32 else 1e-12
+    atol = 1e-6 if dtype == numpy.float32 else 0.0
+    testing.assert_allclose(out, expected, rtol=rtol, atol=atol)

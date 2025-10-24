@@ -1,16 +1,15 @@
 from __future__ import annotations
 
 import unittest
-import pytest
 
 from cupy_backends.cuda import stream as stream_module
 import cupy
+import cupy_backends
 from cupy import _core
 from cupy import testing
 
 
 # TODO(leofang): test PTDS in this file
-
 
 class DummyObjectWithCudaArrayInterface:
 
@@ -30,7 +29,11 @@ class DummyObjectWithCudaArrayInterface:
         }
         if self.ver == 3:
             stream = cupy.cuda.get_current_stream()
-            desc['stream'] = 1 if stream.ptr == 0 else stream.ptr
+            # Only non-default streams use their actual ptr values. (ROCm)
+            if cupy_backends.cuda.api.runtime.is_hip:
+                desc['stream'] = stream.ptr
+            else:
+                desc['stream'] = 1 if stream.ptr == 0 else stream.ptr  # noqa: F821, E501
         return desc
 
 
@@ -39,8 +42,6 @@ class DummyObjectWithCudaArrayInterface:
     'ver': (2, 3),
 }))
 @testing.with_requires('numpy>=1.25')
-@pytest.mark.skipif(cupy.cuda.runtime.is_hip,
-                    reason='HIP does not support this')
 class TestArrayUfunc(unittest.TestCase):
 
     def setUp(self):
@@ -75,8 +76,6 @@ class TestArrayUfunc(unittest.TestCase):
     'stream': ('null', 'new'),
     'ver': (2, 3),
 }))
-@pytest.mark.skipif(cupy.cuda.runtime.is_hip,
-                    reason='HIP does not support this')
 class TestElementwiseKernel(unittest.TestCase):
 
     def setUp(self):
@@ -112,8 +111,6 @@ class TestElementwiseKernel(unittest.TestCase):
     'stream': ('null', 'new'),
     'ver': (2, 3),
 }))
-@pytest.mark.skipif(cupy.cuda.runtime.is_hip,
-                    reason='HIP does not support this')
 class TestSimpleReductionFunction(unittest.TestCase):
 
     def setUp(self):
@@ -151,8 +148,6 @@ class TestSimpleReductionFunction(unittest.TestCase):
     'stream': ('null', 'new'),
     'ver': (2, 3),
 }))
-@pytest.mark.skipif(cupy.cuda.runtime.is_hip,
-                    reason='HIP does not support this')
 class TestReductionKernel(unittest.TestCase):
 
     def setUp(self):
@@ -195,8 +190,6 @@ class TestReductionKernel(unittest.TestCase):
     {'shape': (10, 10), 'slices': (slice(2, None), slice(2, None))},
     {'shape': (10, 10), 'slices': (slice(2, None), slice(4, None))},
 )
-@pytest.mark.skipif(cupy.cuda.runtime.is_hip,
-                    reason='HIP does not support this')
 class TestSlicingMemoryPointer(unittest.TestCase):
 
     @testing.for_all_dtypes_combination(names=['dtype'])
@@ -240,8 +233,6 @@ test_cases_with_stream = [
 
 
 @testing.parameterize(*test_cases_with_stream)
-@pytest.mark.skipif(cupy.cuda.runtime.is_hip,
-                    reason='HIP does not support this')
 class TestCUDAArrayInterfaceCompliance(unittest.TestCase):
 
     def setUp(self):
@@ -287,10 +278,11 @@ class TestCUDAArrayInterfaceCompliance(unittest.TestCase):
 @testing.parameterize(*testing.product({
     'stream': ('null', 'new', 'ptds'),
 }))
-@pytest.mark.skipif(cupy.cuda.runtime.is_hip,
-                    reason='HIP does not support this')
 class TestCUDAArrayInterfaceStream(unittest.TestCase):
     def setUp(self):
+        if cupy.cuda.runtime.is_hip and self.stream == 'ptds':
+            self.skipTest('HIP does not support PTDS')
+
         if self.stream == 'null':
             self.stream = cupy.cuda.Stream.null
         elif self.stream == 'new':

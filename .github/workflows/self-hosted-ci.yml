@@ -28,6 +28,7 @@ jobs:
     outputs:
       head_sha: ${{ steps.pull-request.outputs.head_sha }}
       merge_commit_sha: ${{ steps.pull-request.outputs.merge_commit_sha }}
+      pull_request_number: ${{ github.event.issue.number || github.event.pull_request.number }}
     steps:
     # TODO Support workflow_dispatch and push.
     - name: 'Handle Pull Request Comments'
@@ -87,11 +88,13 @@ jobs:
       uses: peter-evans/repository-dispatch@v3
       with:
         repository: ${{ env.CI_REPO_OWNER }}/${{ env.CI_REPO_NAME }}
-        event-type: rocm-6-2
+        event-type: ci-linux
         token: ${{ steps.generate-token.outputs.token }}
         client-payload: |
           {
+            "targets": ["rocm-6-4"],
             "head_sha": "${{ needs.pre-dispatch.outputs.head_sha }}",
             "merge_commit_sha": "${{ needs.pre-dispatch.outputs.merge_commit_sha }}",
-            "url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            "url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}",
+            "pull_request": ${{ needs.pre-dispatch.outputs.pull_request_number }}
           }

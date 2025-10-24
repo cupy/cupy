@@ -1,5 +1,5 @@
 # AUTO GENERATED: DO NOT EDIT!
-ARG BASE_IMAGE="nvidia/cuda:12.4.1-devel-ubuntu20.04"
+ARG BASE_IMAGE="nvidia/cuda:12.9.1-devel-ubuntu20.04"
 FROM ${BASE_IMAGE}
 
 RUN export DEBIAN_FRONTEND=noninteractive && \
@@ -10,11 +10,11 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
        curl llvm libncursesw5-dev xz-utils tk-dev \
        libxml2-dev libxmlsec1-dev libffi-dev \
        liblzma-dev \
-       libopenmpi-dev \
+\
        && \
     apt-get -qqy install ccache git curl && \
     apt-get -qqy --allow-change-held-packages \
-            --allow-downgrades install 'libnccl2=2.20.*+cuda12.4' 'libnccl-dev=2.20.*+cuda12.4' 'libcutensor2=2.0.*' 'libcutensor-dev=2.0.*'
+            --allow-downgrades install 'libnccl2=2.26.*+cuda12.9' 'libnccl-dev=2.26.*+cuda12.9' 'libcutensor2=2.0.*' 'libcutensor-dev=2.0.*'
 
 ENV PATH "/usr/lib/ccache:${PATH}"
 
@@ -28,8 +28,8 @@ RUN pyenv install 3.12.6 && \
     pyenv global 3.12.6 && \
     pip install -U setuptools pip wheel
 
-RUN pip install -U 'numpy==1.26.*' 'scipy==1.15.*' 'optuna==3.*' 'mpi4py==3.*' 'cython==3.0.*' 'fastrlock>=0.5'
-RUN pip uninstall -y cuda-python && \
+RUN pip install -U 'numpy==2.3.*' 'scipy==1.16.*' 'optuna==4.*' 'cython==3.0.*' 'fastrlock>=0.5' 'cuda-python==12.*'
+RUN pip uninstall -y mpi4py && \
     pip check
 
 RUN mkdir /home/cupy-user && chmod 777 /home/cupy-user
