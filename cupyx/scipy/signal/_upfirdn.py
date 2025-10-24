@@ -28,7 +28,6 @@ DEALINGS IN THE SOFTWARE.
 from __future__ import annotations
 
 
-from math import ceil
 import cupy
 
 _upfirdn_modes = [
@@ -395,11 +394,14 @@ class _UpFIRDn:
         elif out.ndim == 2:
             # set up the kernel launch parameters
             threadsperblock = (8, 8)
-            blocks = ceil(out.shape[0] / threadsperblock[0])
+
+            blocks = (x.shape[0] + threadsperblock[0] -
+                      1) // threadsperblock[0]
             blockspergrid_x = (
                 blocks if blocks < _get_max_gdx() else _get_max_gdx())
 
-            blocks = ceil(out.shape[1] / threadsperblock[1])
+            blocks = (x.shape[1] + threadsperblock[1] -
+                      1) // threadsperblock[1]
             blockspergrid_y = (
                 blocks if blocks < _get_max_gdy() else _get_max_gdy())
 
@@ -408,7 +410,7 @@ class _UpFIRDn:
             # do computations
             kernel = UPFIRDN_MODULE.get_function(
                 f'_cupy_upfirdn2D_{out.dtype.name}')
-            kernel(threadsperblock, blockspergrid,
+            kernel(blockspergrid, threadsperblock,
                    (x,
                     x.shape[1],
                     self._h_trans_flip,
