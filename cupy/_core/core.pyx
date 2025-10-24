@@ -233,7 +233,8 @@ cdef class _ndarray_base:
         del s
 
         # dtype
-        self.dtype, itemsize = _dtype.get_dtype_with_itemsize(dtype)
+        self.dtype, itemsize = _dtype.get_dtype_with_itemsize(
+            dtype, check_support=True)
 
         # Store strides
         if strides is not None:
@@ -268,7 +269,8 @@ cdef class _ndarray_base:
             msg += f'{_carray.MAX_NDIM}, found {shape.size()}'
             raise ValueError(msg)
         self._shape = shape
-        self.dtype, itemsize = _dtype.get_dtype_with_itemsize(dtype)
+        self.dtype, itemsize = _dtype.get_dtype_with_itemsize(
+            dtype, check_support=True)
         self._set_contiguous_strides(itemsize, c_order)
         self.data = memory.alloc(self.size * itemsize)
         self._index_32_bits = (self.size * itemsize) <= (1 << 31)
@@ -789,7 +791,8 @@ cdef class _ndarray_base:
         if dtype is None:
             return v
 
-        v.dtype, v_is = _dtype.get_dtype_with_itemsize(dtype)
+        v.dtype, v_is = _dtype.get_dtype_with_itemsize(
+            dtype, check_support=True)
         self_is = self.dtype.itemsize
         if v_is == self_is:
             return v
@@ -2627,11 +2630,11 @@ cdef _ndarray_base _array_from_nested_sequence(
         concat_shape = (1,) * (ndmin - ndim) + concat_shape
 
     if dtype is None:
-        dtype = concat_dtype.newbyteorder('<')
+        dtype = _dtype.normalize_dtype(concat_dtype)
 
     if concat_type is numpy.ndarray:
         return _array_from_nested_numpy_sequence(
-            obj, concat_dtype, dtype, concat_shape, order, ndmin,
+            obj, dtype, concat_shape, order, ndmin,
             blocking)
     elif concat_type is ndarray:  # TODO(takagi) Consider subclases
         return _array_from_nested_cupy_sequence(
@@ -2641,14 +2644,16 @@ cdef _ndarray_base _array_from_nested_sequence(
 
 
 cdef _ndarray_base _array_from_nested_numpy_sequence(
-        arrays, src_dtype, dst_dtype, const shape_t& shape, order,
+        arrays, dst_dtype, const shape_t& shape, order,
         Py_ssize_t ndmin, bint blocking):
-    a_dtype = get_dtype(dst_dtype)  # convert to numpy.dtype
-    if a_dtype.char not in _dtype.all_type_chars:
-        raise ValueError('Unsupported dtype %s' % a_dtype)
+
+    # Convert to numpy dtype
+    a_dtype, itemsize = _dtype.get_dtype_with_itemsize(
+        dst_dtype, check_support=True)
+
     cdef _ndarray_base a  # allocate it after pinned memory is secured
     cdef size_t itemcount = internal.prod(shape)
-    cdef size_t nbytes = itemcount * a_dtype.itemsize
+    cdef size_t nbytes = itemcount * itemsize
 
     stream = stream_module.get_current_stream()
     # Note: even if arrays are already backed by pinned memory, we still need
@@ -2662,12 +2667,8 @@ cdef _ndarray_base _array_from_nested_numpy_sequence(
         src_cpu = (
             numpy.frombuffer(mem, a_dtype, itemcount)
             .reshape(shape, order=order))
-        _concatenate_numpy_array(
-            [numpy.expand_dims(e, 0) for e in arrays],
-            0,
-            get_dtype(src_dtype),
-            a_dtype,
-            src_cpu)
+        numpy.concatenate(arrays, axis=None, out=src_cpu, casting="unsafe")
+
         a = ndarray(shape, dtype=a_dtype, order=order)
         a.data.copy_from_host_async(mem.ptr, nbytes, stream)
         pinned_memory._add_to_watch_list(stream.record(), mem)
@@ -2731,12 +2732,7 @@ cdef inline _ndarray_base _try_skip_h2d_copy(
     if not (obj_dtype == get_dtype(dtype) if dtype is not None else True):
         return None
 
-    # CuPy only supports numerical dtypes
-    if obj_dtype.char not in _dtype.all_type_chars:
-        return None
-
-    # CUDA only supports little endianness
-    if obj_dtype.byteorder not in ('|', '=', '<'):
+    if not _dtype.check_supported_dtype(obj_dtype, error=False):
         return None
 
     # strides and the requested order could mismatch
@@ -2783,12 +2779,10 @@ cdef _ndarray_base _array_default(
             order = 'C'
 
     copy = False if NUMPY_1x else None
-
     a_cpu = numpy.array(obj, dtype=dtype, copy=copy, order=order,
                         ndmin=ndmin)
-    if a_cpu.dtype.char not in _dtype.all_type_chars:
-        raise ValueError('Unsupported dtype %s' % a_cpu.dtype)
-    a_cpu = a_cpu.astype(a_cpu.dtype.newbyteorder('<'), copy=False)
+
+    a_cpu = a_cpu.astype(_dtype.normalize_dtype(a_cpu.dtype), copy=False)
     a_dtype = a_cpu.dtype
 
     # We already made a copy, we should be able to use it
@@ -2884,21 +2878,6 @@ cdef tuple _compute_concat_info_impl(obj):
         return (dim,) + concat_shape, concat_type, concat_dtype
 
     return None, None, None
-
-
-cdef bint _numpy_concatenate_has_out_argument = (
-    numpy.lib.NumpyVersion(numpy.__version__) >= '1.14.0')
-
-
-cdef inline _concatenate_numpy_array(arrays, axis, src_dtype, dst_dtype, out):
-    # type(*_dtype) must be numpy.dtype
-
-    if (_numpy_concatenate_has_out_argument
-            and src_dtype.kind == dst_dtype.kind):
-        # concatenate only accepts same_kind casting
-        numpy.concatenate(arrays, axis, out)
-    else:
-        out[:] = numpy.concatenate(arrays, axis)
 
 
 cdef inline _alloc_async_transfer_buffer(Py_ssize_t nbytes):
@@ -3018,8 +2997,7 @@ cpdef _ndarray_base _convert_object_with_cuda_array_interface(a):
 
     ptr = desc['data'][0]
     dtype = numpy.dtype(desc['typestr'])
-    if dtype.byteorder == '>':
-        raise ValueError('CuPy does not support the big-endian byte-order')
+
     mask = desc.get('mask')
     if mask is not None:
         raise ValueError('CuPy currently does not support masked arrays.')
