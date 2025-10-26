@@ -94,6 +94,7 @@ jobs:
 
     - name: Import Test
       run: |
+        unset CUPY_CI
         python -c 'import cupy, cupyx'
 
   build-rocm:
