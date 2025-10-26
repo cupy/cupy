@@ -23,8 +23,6 @@ from cupy_backends.cuda.api import driver  # NOQA
 from cupy_backends.cuda.api import runtime  # NOQA
 from cupy_backends.cuda.libs import nvrtc  # NOQA
 
-from cuda import pathfinder
-
 
 _available = None
 
@@ -82,7 +80,6 @@ def __getattr__(key):
             except pathfinder.DynamicLibNotFoundError as e:
                 raise ImportError(str(e)) from e
         return _importlib.import_module('cupy.cuda.cufft')
-
 
     # `nvtx_enabled` flags are kept for backward compatibility with Chainer.
     # Note: module-level getattr only runs on Python 3.7+.

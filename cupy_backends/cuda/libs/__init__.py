@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import importlib as _importlib
 
 from cupy_backends.cuda.api import runtime as _runtime
