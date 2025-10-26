@@ -268,6 +268,44 @@ aclError aclUnaryInplaceOpRun(
     return ACL_SUCCESS;
 }
 
+template<typename WsFunc, typename... Args>
+aclError aclGeneralOpRun(
+    WsFunc wsfunc, AclnnKernelFunc kfunc,
+    aclrtStream stream, bool sync,
+    Args&&... args)
+{
+    uint64_t workspaceSize = 0;
+    aclOpExecutor* executor = nullptr;
+
+    // 第一段: 获取所需Workspace大小
+    aclError ret = wsfunc(std::forward<Args>(args)..., &workspaceSize, &executor);
+    if (ret != ACL_SUCCESS) {
+        std::cout << "Failed to run WorkspaceSize for a kernel\n";
+        return ACL_ERROR_RT_FAILURE;
+    }
+
+    void* workspaceAddr = nullptr;
+    if (workspaceSize > 0) {
+        ret = aclrtMalloc(&workspaceAddr, workspaceSize, ACL_MEM_MALLOC_HUGE_FIRST);
+    }
+
+    // 第二段: 在指定的Stream上执行算子, this is fixed func type
+    ret = kfunc(workspaceAddr, workspaceSize, executor, stream);
+    if (ret != ACL_SUCCESS) {
+        std::cout << "Failed to run the kernel";
+        return ACL_ERROR_RT_FAILURE;
+    }
+
+    if(sync) {
+        aclrtSynchronizeStream(stream);
+    }
+    if (workspaceSize > 0) {
+        ret = aclrtFree(workspaceAddr);
+    }
+    return ACL_SUCCESS;
+}
+
+
 template<typename WsFunc, typename OutType, typename... Args>
 aclError aclReductionOpRun(
     const aclTensor* selfTensor,
@@ -308,6 +346,12 @@ aclError aclReductionOpRun(
     return ACL_SUCCESS;
 }
 
+// op without inplace version
+#define DECLARE_ACL_BINARY_OP(opname) \
+    aclError aclop_##opname(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream) { \
+        return aclBinaryOpRun(self, other, out, \
+            aclnn##opname##GetWorkspaceSize, aclnn##opname, stream, false); \
+    }
 
 // declare the op and its inplace version
 #define DECLARE_ACL_BINARY_OPS_FUNC(opname) \
@@ -320,6 +364,12 @@ aclError aclReductionOpRun(
             aclnnInplace##opname##GetWorkspaceSize, aclnnInplace##opname, stream, false); \
     }
 
+// op without inplace version
+#define DECLARE_ACL_BINARY_SCALAR_OP(opname) \
+    aclError aclop_##opname(const aclTensor* self, const aclScalar* other, aclTensor* out, aclrtStream stream) { \
+        return aclBinaryOpRun(self, other, out, \
+            aclnn##opname##GetWorkspaceSize, aclnn##opname, stream, false); \
+    }
 
 // declare the out = self + sclar binary op and its inplace version
 #define DECLARE_ACL_BINARY_SCALAR_OPS_FUNC(opname) \
@@ -331,6 +381,13 @@ aclError aclReductionOpRun(
         return aclBinaryInplaceOpRun(self, other, \
             aclnnInplace##opname##GetWorkspaceSize, aclnnInplace##opname, stream, false); \
     }    
+
+// declare the unary op
+#define DECLARE_ACL_UNARY_OP(opname) \
+aclError aclop_##opname(const aclTensor* self, aclTensor* out, aclrtStream stream) { \
+    return aclUnaryOpRun(self, out, \
+        aclnn##opname##GetWorkspaceSize, aclnn##opname, stream, false); \
+}
 
 // declare the unary op and its inplace version
 #define DECLARE_ACL_UNARY_OPS_FUNC(opname) \

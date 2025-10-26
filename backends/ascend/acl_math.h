@@ -41,16 +41,32 @@
 #include "aclnnop/aclnn_reciprocal.h"
 // sign, inverse
 
-// equal scalar, tensor, vector/list
-//is_inf, isclose, is_posinf isfinite, is_nan (no such)
+// equal scalar, tensor, vector/list is_nan (no such)
 #include "aclnnop/aclnn_is_inf.h"
 #include "aclnnop/aclnn_isfinite.h"
-// is_real, is_posinf
-
-#include "aclnnop/aclnn_equal.h"
+#include "aclnnop/aclnn_isposinf.h"
+#include "aclnnop/aclnn_isneginf.h"
+// is_real
 #include "aclnnop/aclnn_isclose.h"
+
 // ge, eq, le, gt, lt, 
-#include "aclnnop/aclnn_ge_tensor.h"
+#include <aclnnop/aclnn_logical_and.h>
+#include <aclnnop/aclnn_logical_or.h>
+#include <aclnnop/aclnn_logical_not.h>
+#include <aclnnop/aclnn_logical_xor.h>
+#include <aclnnop/aclnn_gt_tensor.h>
+#include <aclnnop/aclnn_gt_scalar.h>
+#include <aclnnop/aclnn_ge_tensor.h>
+#include <aclnnop/aclnn_ge_scalar.h>
+#include <aclnnop/aclnn_lt_scalar.h>
+#include <aclnnop/aclnn_lt_tensor.h>
+#include <aclnnop/aclnn_le_tensor.h>
+#include <aclnnop/aclnn_le_scalar.h>
+#include <aclnnop/aclnn_equal.h>
+#include <aclnnop/aclnn_ne_scalar.h>
+#include <aclnnop/aclnn_ne_tensor.h>
+
+
 // bool reduction op
 #include "aclnnop/aclnn_all.h"
 #include "aclnnop/aclnn_any.h"
@@ -64,11 +80,6 @@
 #include "aclnnop/aclnn_bitwise_xor_scalar.h"
 #include "aclnnop/aclnn_bitwise_not.h" // numpy op: np.invert
 // #include "aclnnop/aclnn_shift_left.h"  // numpy op: _left_shift
-
-// logical op: for bool/cast_to_bool input tensor
-#include "aclnnop/aclnn_logical_and.h"
-#include "aclnnop/aclnn_logical_or.h"
-#include "aclnnop/aclnn_logical_not.h"
 
 // indexing: argsort, unique, sort
 
@@ -181,6 +192,32 @@ extern "C" {
         aclnnBitwiseNotGetWorkspaceSize, aclnnBitwiseNot, stream, false);
     }
 
+    // support double dtype? double is supported except for CubeCore matmul/dot
+    DECLARE_ACL_BINARY_OP(LogicalXor)
+    DECLARE_ACL_BINARY_OP(LogicalAnd)
+    DECLARE_ACL_BINARY_OP(LogicalOr)
+    DECLARE_ACL_UNARY_OP(LogicalNot)
+
+    DECLARE_ACL_BINARY_OP(GtTensor)
+    DECLARE_ACL_BINARY_SCALAR_OP(GtScalar)
+    DECLARE_ACL_BINARY_OP(GeTensor)
+    DECLARE_ACL_BINARY_SCALAR_OP(GeScalar)
+    DECLARE_ACL_BINARY_OP(LtTensor)
+    DECLARE_ACL_BINARY_SCALAR_OP(LtScalar)
+    DECLARE_ACL_BINARY_OP(LeTensor)
+    DECLARE_ACL_BINARY_SCALAR_OP(LeScalar)
+
+    DECLARE_ACL_BINARY_OP(Equal) // no inplace version
+    DECLARE_ACL_BINARY_SCALAR_OP(NeScalar)
+    DECLARE_ACL_BINARY_OP(NeTensor)
+    // IsClose() has extra args: double rtol, double atol, bool equal_nan
+    DECLARE_ACL_UNARY_OP(IsFinite)
+    DECLARE_ACL_UNARY_OP(IsInf)
+    DECLARE_ACL_UNARY_OP(IsPosInf)
+    DECLARE_ACL_UNARY_OP(IsNegInf)
+    // TODO: IsNaN() no such op? it depends on ascend env var controlled behavior
+
+    // ==============================================================
     DECLARE_ACL_UNARY_OPS_FUNC(Cos)
     DECLARE_ACL_UNARY_OPS_FUNC(Sin)
     DECLARE_ACL_UNARY_OPS_FUNC(Tan)

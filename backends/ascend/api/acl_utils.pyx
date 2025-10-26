@@ -467,6 +467,29 @@ cdef extern from "../acl_math.h" nogil:
     aclError aclop_BitwiseNotTensor(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream)
     aclError aclop_InplaceBitwiseNotTensor(aclTensor* self, const aclTensor* other, aclrtStream stream)
 
+    aclError aclop_LogicalAnd(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream)
+    aclError aclop_LogicalXor(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream)
+    aclError aclop_LogicalOr(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream)
+    aclError aclop_LogicalNot(const aclTensor* self, aclTensor* out, aclrtStream stream)
+
+    aclError aclop_GeTensor(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream)
+    aclError aclop_LeTensor(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream)
+    aclError aclop_GtTensor(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream)
+    aclError aclop_LtTensor(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream)
+    aclError aclop_NeTensor(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream)
+    aclError aclop_Equal(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream)
+
+    aclError aclop_GeScalar(const aclTensor* self, const aclScalar* other, aclTensor* out, aclrtStream stream)
+    aclError aclop_LeScalar(const aclTensor* self, const aclScalar* other, aclTensor* out, aclrtStream stream)
+    aclError aclop_GtScalar(const aclTensor* self, const aclScalar* other, aclTensor* out, aclrtStream stream)
+    aclError aclop_LtScalar(const aclTensor* self, const aclScalar* other, aclTensor* out, aclrtStream stream)
+    aclError aclop_NeScalar(const aclTensor* self, const aclScalar* other, aclTensor* out, aclrtStream stream)
+
+    aclError aclop_IsInf(const aclTensor* self, aclTensor* out, aclrtStream stream)
+    aclError aclop_IsPosInf(const aclTensor* self, aclTensor* out, aclrtStream stream)
+    aclError aclop_IsNegInf(const aclTensor* self, aclTensor* out, aclrtStream stream)
+    aclError aclop_IsFinite(const aclTensor* self, aclTensor* out, aclrtStream stream)
+    #############################################################################
     aclError aclop_Add(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream)
     aclError aclop_InplaceAdd(aclTensor* self, const aclTensor* other, aclrtStream stream)
     aclError aclop_Sub(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream)
@@ -525,7 +548,53 @@ cdef extern from "../acl_math.h" nogil:
 # 初始化函数，注册内置操作
 cdef void init_builtin_operators():
     cdef FuncPtrUnion func_union
-    
+
+    ###################################
+    # 注册aclop_BitwiseAnd作为二元操作
+    func_union.binary_op = aclop_BitwiseAndTensor
+    register_acl_ufunc("ascend_bitwise_and", BINARY_OP, func_union)
+    func_union.inplace_binary_op = aclop_InplaceBitwiseAndTensor
+    register_acl_ufunc("ascend_inplace_bitwise_and", INPLACE_BINARY_OP, func_union)
+
+    # 注册aclop_BitwiseAndScalar作为原地二元操作
+    func_union.scalar_binary_op = aclop_BitwiseAndScalar
+    register_acl_ufunc("ascend_scalar_bitwise_and", SCALAR_BINARY_OP, func_union)
+    func_union.inplace_scalar_binary_op = aclop_InplaceBitwiseAndScalar
+    register_acl_ufunc("ascend_inplace_scalar_bitwise_and", INPLACE_SCALAR_BINARY_OP, func_union)
+
+    func_union.binary_op = aclop_LogicalAnd
+    register_acl_ufunc("ascend_logical_and", BINARY_OP, func_union)
+    func_union.binary_op = aclop_LogicalOr
+    register_acl_ufunc("ascend_logical_or", BINARY_OP, func_union)
+    func_union.binary_op = aclop_LogicalXor
+    register_acl_ufunc("ascend_logical_xor", BINARY_OP, func_union)
+    func_union.unary_op = aclop_LogicalNot
+    register_acl_ufunc("ascend_logical_not", UNARY_OP, func_union)
+
+    func_union.binary_op = aclop_GeTensor
+    register_acl_ufunc("ascend_ge", BINARY_OP, func_union)
+    func_union.scalar_binary_op = aclop_GeScalar
+    register_acl_ufunc("ascend_scalar_ge", SCALAR_BINARY_OP, func_union)
+    func_union.binary_op = aclop_LeTensor
+    register_acl_ufunc("ascend_le", BINARY_OP, func_union)
+    func_union.scalar_binary_op = aclop_LeScalar
+    register_acl_ufunc("ascend_scalar_le", SCALAR_BINARY_OP, func_union)
+    func_union.binary_op = aclop_GtTensor
+    register_acl_ufunc("ascend_gt", BINARY_OP, func_union)
+    func_union.scalar_binary_op = aclop_GtScalar
+    register_acl_ufunc("ascend_scalar_gt", SCALAR_BINARY_OP, func_union)
+    func_union.binary_op = aclop_LtTensor
+    register_acl_ufunc("ascend_lt", BINARY_OP, func_union)
+    func_union.scalar_binary_op = aclop_LtScalar
+    register_acl_ufunc("ascend_scalar_lt", SCALAR_BINARY_OP, func_union)
+    func_union.binary_op = aclop_Equal
+    register_acl_ufunc("ascend_equal", BINARY_OP, func_union)
+    func_union.binary_op = aclop_NeTensor
+    register_acl_ufunc("ascend_ne", BINARY_OP, func_union)
+    func_union.scalar_binary_op = aclop_NeScalar
+    register_acl_ufunc("ascend_scalar_ne", SCALAR_BINARY_OP, func_union)
+    # TODO: IsInf
+    #############################################
     # 注册aclop_Add作为二元操作
     func_union.binary_op = aclop_Add
     register_acl_ufunc("ascend_add", BINARY_OP, func_union)
@@ -583,19 +652,6 @@ cdef void init_builtin_operators():
     # 注册aclop_MatMul作为二元操作
     func_union.binary_op = aclop_MatMul
     register_acl_ufunc("ascend_matmul", BINARY_OP, func_union)
-    
-    ###################################
-    # 注册aclop_BitwiseAnd作为二元操作
-    func_union.binary_op = aclop_BitwiseAndTensor
-    register_acl_ufunc("ascend_bitwise_and", INPLACE_BINARY_OP, func_union)
-    func_union.inplace_binary_op = aclop_InplaceBitwiseAndTensor
-    register_acl_ufunc("ascend_inplace_bitwise_and", INPLACE_BINARY_OP, func_union)
-
-    # 注册aclop_BitwiseAndScalar作为原地二元操作
-    func_union.scalar_binary_op = aclop_BitwiseAndScalar
-    register_acl_ufunc("ascend_scalar_bitwise_and", SCALAR_BINARY_OP, func_union)
-    func_union.inplace_scalar_binary_op = aclop_InplaceBitwiseAndScalar
-    register_acl_ufunc("ascend_inplace_scalar_bitwise_and", INPLACE_SCALAR_BINARY_OP, func_union)
 
     ###############################################
     # 注册aclop_Cos操作, 注册aclop_InplaceCos作为原地操作
