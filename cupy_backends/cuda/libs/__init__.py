@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib as _importlib
+import os as _os
 
 from cupy_backends.cuda.api import runtime as _runtime
 
@@ -22,5 +23,6 @@ def __getattr__(name):
         try:
             _pathfinder.load_nvidia_dynamic_lib(name)
         except _pathfinder.DynamicLibNotFoundError as e:
-            raise ImportError(str(e)) from e
+            if not (_os.environ.get('READTHEDOCS') == 'True'):
+                raise ImportError(str(e)) from e
     return _importlib.import_module(f'cupy_backends.cuda.libs.{name}')

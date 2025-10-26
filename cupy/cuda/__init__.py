@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-import importlib as _importlib
 import contextlib
+import importlib as _importlib
+import os as _os
 import warnings
 
 import cupy as _cupy
@@ -78,7 +79,8 @@ def __getattr__(key):
             try:
                 pathfinder.load_nvidia_dynamic_lib("cufft")
             except pathfinder.DynamicLibNotFoundError as e:
-                raise ImportError(str(e)) from e
+                if not (_os.environ.get('READTHEDOCS') == 'True'):
+                    raise ImportError(str(e)) from e
         return _importlib.import_module('cupy.cuda.cufft')
 
     # `nvtx_enabled` flags are kept for backward compatibility with Chainer.
