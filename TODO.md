@@ -1,18 +1,18 @@
 # TODO
 
 ## short term todo
-1. fill_kernel() -> aclnnop_FillScalar
+1. fill_kernel() -> aclnnop_FillScalar  GeneralOp 类型
 
-2. matmul (done), dot
+2. matmul (done), dot 
 
-3. enable most of math api  (done), aclnnop register yet done
+3. enable most of math api  (done), aclnnop register (almost done)
 
-4. BitwiseAddScalar op (done) yet register, _kernel.pyx need update
-===
-4. concat op, 
-   numpy_to_acl_dtype ->  numpy_dtype_to_acl_dtype
+4. BitwiseAddScalar op register, _kernel.pyx need update (done)
 
 5. reduction kernel, replaced by aclnnop
+===
+4. concat op
+   numpy_to_acl_dtype ->  numpy_dtype_to_acl_dtype
 
 6. triton-fusion (add data adaptor API)
 

@@ -15,3 +15,4 @@ cdef aclScalar* cupy_scalar_to_acl_scalar(_cupy_scalar s) except*
 #cdef int register_acl_ufunc(str opname, object opcfunc) except*
 # TODO: is size_t is the best type to pass C void* Pointer??
 cdef aclError launch_acl_func(str opname, tuple ops, intptr_t stream) except *
+cdef aclError launch_reduction_op(str opname, tuple ops, intptr_t stream_ptr) except *

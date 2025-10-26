@@ -30,9 +30,11 @@ cdef extern from "aclnn/opdev/common_types.h" nogil:
         void* tensorData
     )
     aclScalar* aclCreateScalar(void* value, aclDataType dataType)
+    aclIntArray* aclCreateIntArray(const int64_t *value, uint64_t size)
 
     aclnnStatus aclDestroyTensor(const aclTensor *tensor)
     aclnnStatus aclDestroyScalar(const aclScalar *scalar)
+    aclnnStatus aclDestroyIntArray(const aclIntArray *array)
 
 
 cdef aclDataType numpy_to_acl_dtype(dtype,
@@ -292,6 +294,7 @@ ctypedef union FuncPtrUnion:
     TernaryOpFunc tri_op
     InplaceTernaryOpFunc inplace_tri_op
     ReductionOpFunc reduction_op
+    #GeneralOpFunc general_op
 
 cdef aclError register_acl_ufunc(string opname, OpType op_type, FuncPtrUnion func_ptr) except * nogil:
     cdef OpInfo op_info
@@ -340,7 +343,7 @@ cdef aclError launch_acl_func(str opname, tuple ops, intptr_t stream_ptr) except
     
     cdef FuncPtrUnion func_ptr = _builtin_operators[op_info]
     cdef aclError ret = 0
-    cdef aclrtStream stream = <aclrtStream>NULL  # default stream always working, so use stream.null
+    cdef aclrtStream stream = <aclrtStream>NULL  # default stream always working
     if stream_ptr != <intptr_t>0:
         stream = <aclrtStream>stream_ptr
 
@@ -393,7 +396,8 @@ cdef aclError launch_acl_func(str opname, tuple ops, intptr_t stream_ptr) except
         if scalar_ptr:
             aclDestroyScalar(scalar_ptr)
 
-        # TODO: check ret error code
+        if ret != 0:
+            print("Failed to run the operator ", opname)
     return ret
 
 
@@ -411,20 +415,28 @@ cdef aclError launch_reduction_op(str opname, tuple ops, intptr_t stream_ptr) ex
 
     cdef FuncPtrUnion func_ptr = _builtin_operators[op_info]
     cdef aclError ret = 0
-    cdef aclrtStream stream = <aclrtStream>NULL  # default stream always working, so use stream.null
+    cdef aclrtStream stream = <aclrtStream>NULL  # default stream always working
     if stream_ptr != <intptr_t>0:
         stream = <aclrtStream>stream_ptr
 
     # TODO: 转换为ACL: self, dim, keepdim, out
-    cdef bint keepdim = False
-    cdef aclIntArray* dim  # TODO
+    cdef bint keepdim = True
+    cdef vector[int64_t] shape
+    cdef aclIntArray* dim = NULL
     cdef vector[aclTensor*] tensors
     for op in ops:
         typ = type(op)
         if issubclass(typ, _ndarray_base):
             tensors.push_back(cupy_ndarray_to_acl_tensor(op))
+        elif hasattr(op, 'size') and hasattr(op, 'push_back'):
+            # dim info from shape_t  vector.vector[Py_ssize_t]
+            for i in range(op.size()):
+                shape.push_back(op[i])
+            dim = aclCreateIntArray(shape.data(), len(op))
         elif typ is _cupy_scalar:
             pass
+        elif hasattr(op, "__bool__"): # keepdim
+            keepdim = op.__bool__()
         else:
             raise RuntimeError("Operand is not ndarray or scalar: ", op)
 
@@ -433,10 +445,13 @@ cdef aclError launch_reduction_op(str opname, tuple ops, intptr_t stream_ptr) ex
     finally:
         # does not deallocate array buffer, but shapes, strides
         for t in tensors:
-            # TODO: deal with aclScalar
             aclDestroyTensor(t)  # 假设destroyAclTensor函数已存在
+        if dim:
+            aclDestroyIntArray(dim)
 
-        # TODO: check ret error code
+        if ret != 0:
+            print("Failed to run the operator ", opname)
+            # TODO: check ret error code
     return ret
 
 cdef extern from "../acl_math.h" nogil:
