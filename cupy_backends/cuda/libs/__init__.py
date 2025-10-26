@@ -13,8 +13,13 @@ if not _runtime.is_hip:
 # remaining so). The problem we are solving is we want to load the required
 # C library before the submodule that needs it is imported. This list of
 # submodules are supported by the pathfinder.
+#
+# Note: Do NOT add "nvrtc" here. It is run-time linked instead of dynamically
+# linked, so its loading is further deferred (to inside SoftLink).
+# TODO(leofang): add cutensor (NVIDIA/cuda-python#1144)
+# TODO(leofang): add cusparselt
 _submodules = (
-    'cublas', 'cusolver', 'cusparse', 'curand', 'cufft', 'nvrtc', 'nccl',
+    'cublas', 'cusolver', 'cusparse', 'curand', 'cufft', 'nccl',
 )
 
 

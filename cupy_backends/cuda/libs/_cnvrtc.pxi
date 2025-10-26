@@ -147,6 +147,8 @@ cdef SoftLink _get_softlink():
                 libname = 'libnvrtc.so.13'
             else:
                 libname = 'nvrtc64_130_0.dll'
+        from cuda import pathfinder
+        pathfinder.load_nvidia_dynamic_lib('nvrtc')
     elif CUPY_HIP_VERSION != 0:
         runtime_version = runtime.runtimeGetVersion()
         prefix = 'hiprtc'
