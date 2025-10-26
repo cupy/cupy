@@ -11,8 +11,8 @@ Requirements
     * If you have multiple versions of CUDA Toolkit installed, CuPy will automatically choose one of the CUDA installations.
       See :ref:`install_cuda` for details.
 
-    * This requirement is optional if you install CuPy from ``conda-forge``. However, you still need to have a compatible
-      driver installed for your GPU. See :ref:`install_cupy_from_conda_forge` for details.
+    * This requirement is optional if you install both CUDA and CuPy from either PyPI or conda-forge. However, you still need to have a compatible
+      driver installed for your GPU. See :ref:`install_cupy_from_pypi` and :ref:`install_cupy_from_conda_forge` for details.
 
 * `Python <https://python.org/>`_: v3.10 / v3.11 / v3.12 / v3.13
 
@@ -66,6 +66,8 @@ Part of the CUDA features in CuPy will be activated only when the corresponding 
 Installing CuPy
 ---------------
 
+.. _install_cupy_from_pypi:
+
 Installing CuPy from PyPI
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -81,6 +83,12 @@ Package names are different depending on your CUDA Toolkit version.
      - ``pip install cupy-cuda12x``
    * - **v13.x** (x86_64 / aarch64)
      - ``pip install cupy-cuda13x``
+
+By default, the above command only installs CuPy itself, assuming a CUDA Toolkit is already installed on the system. To use NVIDIA's CUDA component wheels
+(and have a smaller installation footprint and better interoperability with other Python GPU libraries), you can pass ``[all]`` to install them all as
+optional dependencies, e.g.::
+
+   $ pip install cupy-cuda12x[all]
 
 .. note::
 
@@ -307,6 +315,7 @@ If you have installed CUDA on the non-default directory or multiple CUDA version
 
 CuPy uses the first CUDA installation directory found by the following order.
 
+#. ``cuda-pathfinder``'s `documented search order <https://nvidia.github.io/cuda-python/cuda-pathfinder/latest/generated/cuda.pathfinder.load_nvidia_dynamic_lib.html>`_.
 #. ``CUDA_PATH`` environment variable.
 #. The parent directory of ``nvcc`` command. CuPy looks for ``nvcc`` command from ``PATH`` environment variable.
 #. ``/usr/local/cuda``
