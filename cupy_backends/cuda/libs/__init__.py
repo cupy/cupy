@@ -28,6 +28,7 @@ def __getattr__(name):
         try:
             _pathfinder.load_nvidia_dynamic_lib(name)
         except _pathfinder.DynamicLibNotFoundError as e:
-            if not (_os.environ.get('READTHEDOCS') == 'True'):
+            if (not (_os.environ.get('READTHEDOCS') == 'True') and
+                    not (_os.environ.get('CUPY_CI') is not None)):
                 raise ImportError(str(e)) from e
     return _importlib.import_module(f'cupy_backends.cuda.libs.{name}')

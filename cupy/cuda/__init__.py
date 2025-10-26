@@ -79,7 +79,8 @@ def __getattr__(key):
             try:
                 pathfinder.load_nvidia_dynamic_lib("cufft")
             except pathfinder.DynamicLibNotFoundError as e:
-                if not (_os.environ.get('READTHEDOCS') == 'True'):
+                if (not (_os.environ.get('READTHEDOCS') == 'True') and
+                        not (_os.environ.get('CUPY_CI') is not None)):
                     raise ImportError(str(e)) from e
         return _importlib.import_module('cupy.cuda.cufft')
 
