@@ -219,7 +219,7 @@ IF CUPY_HIP_VERSION >= 40300000:
         # AMD-specific region
         hipDeviceAttributeAmdSpecificBegin = 10000
         hipDeviceAttributeClockInstructionRate = \
-                hipDeviceAttributeAmdSpecificBegin
+            hipDeviceAttributeAmdSpecificBegin
         hipDeviceAttributeArch
         hipDeviceAttributeMaxSharedMemoryPerMultiprocessor
         hipDeviceAttributeGcnArch
@@ -266,7 +266,8 @@ IF CUPY_HIP_VERSION >= 40300000:
         cudaDevAttrIsMultiGpuBoard = hipDeviceAttributeIsMultiGpuBoard
         cudaDevAttrKernelExecTimeout = hipDeviceAttributeKernelExecTimeout
         cudaDevAttrL2CacheSize = hipDeviceAttributeL2CacheSize
-        cudaDevAttrLocalL1CacheSupported = hipDeviceAttributeLocalL1CacheSupported
+        cudaDevAttrLocalL1CacheSupported = \
+            hipDeviceAttributeLocalL1CacheSupported
         cudaDevAttrLuid = hipDeviceAttributeLuid
         cudaDevAttrLuidDeviceNodeMask = hipDeviceAttributeLuidDeviceNodeMask
         cudaDevAttrManagedMemory = hipDeviceAttributeManagedMemory
@@ -347,7 +348,8 @@ IF CUPY_HIP_VERSION >= 40300000:
         cudaDevAttrMaxPitch = hipDeviceAttributeMaxPitch
         cudaDevAttrGlobalMemoryBusWidth = hipDeviceAttributeMemoryBusWidth
         cudaDevAttrMemoryClockRate = hipDeviceAttributeMemoryClockRate
-        cudaDevAttrMultiGpuBoardGroupID = hipDeviceAttributeMultiGpuBoardGroupID
+        cudaDevAttrMultiGpuBoardGroupID = \
+            hipDeviceAttributeMultiGpuBoardGroupID
         cudaDevAttrMultiProcessorCount = hipDeviceAttributeMultiprocessorCount
         cudaDevAttrPageableMemoryAccess = \
             hipDeviceAttributePageableMemoryAccess
