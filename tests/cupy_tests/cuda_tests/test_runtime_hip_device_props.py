@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import pytest
 
-import cupy as cp
 from cupy.cuda import runtime
 
 
