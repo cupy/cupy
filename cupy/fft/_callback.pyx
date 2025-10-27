@@ -296,7 +296,7 @@ cdef inline void _nvcc_link(
     mod_temp = os.path.join(tempdir, mod_filename)
     mod_cached = os.path.join(cache_dir, mod_filename)
     cmd = _nvcc + ['-shared', '-arch=sm_'+arch, obj_dev, obj_host,
-        '-Xlinker', '-Bsymbolic']
+                   '-Xlinker', '-Bsymbolic']
     if cufft_lib_pruned:
         cmd += ['-L'+cache_dir, '-l'+cufft_lib_pruned]
     else:
@@ -464,7 +464,8 @@ cdef class _LegacyCallbackManager(_CallbackManager):
             follow.
 
         '''
-        # Note: Do NOT use any object/function from the global cupy.cuda.cufft module!
+        # Note: Do NOT use any object/function from the global cupy.cuda.cufft
+        # module!
         cufft = self.mod
         CUFFT_C2C = cufft.CUFFT_C2C
         CUFFT_C2R = cufft.CUFFT_C2R
