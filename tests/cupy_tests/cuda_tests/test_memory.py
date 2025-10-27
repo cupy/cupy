@@ -908,7 +908,6 @@ class TestAllocator(unittest.TestCase):
         main_ptr, sub_ptr = self._reuse_between_thread(stream1, stream2)
         assert main_ptr != sub_ptr
 
-    @pytest.mark.skipif(cupy.cuda.runtime.is_hip, reason='No PTDS on HIP')
     def test_reuse_between_thread_ptds(self):
         stream = cupy.cuda.Stream.ptds
         main_ptr, sub_ptr = self._reuse_between_thread(stream, stream)
