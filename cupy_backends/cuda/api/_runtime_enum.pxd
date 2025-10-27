@@ -218,7 +218,8 @@ IF CUPY_HIP_VERSION >= 40300000:
 
         # AMD-specific region
         hipDeviceAttributeAmdSpecificBegin = 10000
-        hipDeviceAttributeClockInstructionRate = hipDeviceAttributeAmdSpecificBegin
+        hipDeviceAttributeClockInstructionRate = \
+                hipDeviceAttributeAmdSpecificBegin
         hipDeviceAttributeArch
         hipDeviceAttributeMaxSharedMemoryPerMultiprocessor
         hipDeviceAttributeGcnArch
@@ -238,21 +239,29 @@ IF CUPY_HIP_VERSION >= 40300000:
 
         # CUDA-style aliases for attributes that have CUDA counterparts
         cudaDevAttrEccEnabled = hipDeviceAttributeEccEnabled
-        cudaDevAttrAccessPolicyMaxWindowSize = hipDeviceAttributeAccessPolicyMaxWindowSize
+        cudaDevAttrAccessPolicyMaxWindowSize = \
+                hipDeviceAttributeAccessPolicyMaxWindowSize
         cudaDevAttrAsyncEngineCount = hipDeviceAttributeAsyncEngineCount
         cudaDevAttrCanMapHostMemory = hipDeviceAttributeCanMapHostMemory
-        cudaDevAttrCanUseHostPointerForRegisteredMem = hipDeviceAttributeCanUseHostPointerForRegisteredMem
+        cudaDevAttrCanUseHostPointerForRegisteredMem = \
+                hipDeviceAttributeCanUseHostPointerForRegisteredMem
         cudaDevAttrClockRate = hipDeviceAttributeClockRate
         cudaDevAttrComputeMode = hipDeviceAttributeComputeMode
-        cudaDevAttrComputePreemptionSupported = hipDeviceAttributeComputePreemptionSupported
+        cudaDevAttrComputePreemptionSupported = \
+                hipDeviceAttributeComputePreemptionSupported
         cudaDevAttrConcurrentKernels = hipDeviceAttributeConcurrentKernels
-        cudaDevAttrConcurrentManagedAccess = hipDeviceAttributeConcurrentManagedAccess
+        cudaDevAttrConcurrentManagedAccess = \
+                hipDeviceAttributeConcurrentManagedAccess
         cudaDevAttrCooperativeLaunch = hipDeviceAttributeCooperativeLaunch
-        cudaDevAttrCooperativeMultiDeviceLaunch = hipDeviceAttributeCooperativeMultiDeviceLaunch
+        cudaDevAttrCooperativeMultiDeviceLaunch = \
+                hipDeviceAttributeCooperativeMultiDeviceLaunch
         cudaDevAttrGpuOverlap = hipDeviceAttributeDeviceOverlap
-        cudaDevAttrDirectManagedMemAccessFromHost = hipDeviceAttributeDirectManagedMemAccessFromHost
-        cudaDevAttrGlobalL1CacheSupported = hipDeviceAttributeGlobalL1CacheSupported
-        cudaDevAttrHostNativeAtomicSupported = hipDeviceAttributeHostNativeAtomicSupported
+        cudaDevAttrDirectManagedMemAccessFromHost = \
+                hipDeviceAttributeDirectManagedMemAccessFromHost
+        cudaDevAttrGlobalL1CacheSupported = \
+                hipDeviceAttributeGlobalL1CacheSupported
+        cudaDevAttrHostNativeAtomicSupported = \
+                hipDeviceAttributeHostNativeAtomicSupported
         cudaDevAttrIntegrated = hipDeviceAttributeIntegrated
         cudaDevAttrIsMultiGpuBoard = hipDeviceAttributeIsMultiGpuBoard
         cudaDevAttrKernelExecTimeout = hipDeviceAttributeKernelExecTimeout
@@ -261,7 +270,8 @@ IF CUPY_HIP_VERSION >= 40300000:
         cudaDevAttrLuid = hipDeviceAttributeLuid
         cudaDevAttrLuidDeviceNodeMask = hipDeviceAttributeLuidDeviceNodeMask
         cudaDevAttrManagedMemory = hipDeviceAttributeManagedMemory
-        cudaDevAttrMaxBlocksPerMultiprocessor = hipDeviceAttributeMaxBlocksPerMultiProcessor
+        cudaDevAttrMaxBlocksPerMultiprocessor = \
+                hipDeviceAttributeMaxBlocksPerMultiProcessor
         cudaDevAttrMaxBlockDimX = hipDeviceAttributeMaxBlockDimX
         cudaDevAttrMaxBlockDimY = hipDeviceAttributeMaxBlockDimY
         cudaDevAttrMaxBlockDimZ = hipDeviceAttributeMaxBlockDimZ
@@ -269,69 +279,106 @@ IF CUPY_HIP_VERSION >= 40300000:
         cudaDevAttrMaxGridDimY = hipDeviceAttributeMaxGridDimY
         cudaDevAttrMaxGridDimZ = hipDeviceAttributeMaxGridDimZ
         cudaDevAttrMaxSurface1DWidth = hipDeviceAttributeMaxSurface1D
-        cudaDevAttrMaxSurface1DLayeredWidth = hipDeviceAttributeMaxSurface1DLayered
+        cudaDevAttrMaxSurface1DLayeredWidth = \
+                hipDeviceAttributeMaxSurface1DLayered
         cudaDevAttrMaxSurface2DWidth = hipDeviceAttributeMaxSurface2D
         cudaDevAttrMaxSurface2DHeight = hipDeviceAttributeMaxSurface2D
-        cudaDevAttrMaxSurface2DLayeredWidth = hipDeviceAttributeMaxSurface2DLayered
-        cudaDevAttrMaxSurface2DLayeredHeight = hipDeviceAttributeMaxSurface2DLayered
-        cudaDevAttrMaxSurface2DLayeredLayers = hipDeviceAttributeMaxSurface2DLayered
+        cudaDevAttrMaxSurface2DLayeredWidth = \
+                hipDeviceAttributeMaxSurface2DLayered
+        cudaDevAttrMaxSurface2DLayeredHeight = \
+                hipDeviceAttributeMaxSurface2DLayered
+        cudaDevAttrMaxSurface2DLayeredLayers = \
+                hipDeviceAttributeMaxSurface2DLayered
         cudaDevAttrMaxSurface3DWidth = hipDeviceAttributeMaxSurface3D
         cudaDevAttrMaxSurface3DHeight = hipDeviceAttributeMaxSurface3D
         cudaDevAttrMaxSurface3DDepth = hipDeviceAttributeMaxSurface3D
-        cudaDevAttrMaxSurfaceCubemapWidth = hipDeviceAttributeMaxSurfaceCubemap
-        cudaDevAttrMaxSurfaceCubemapLayeredWidth = hipDeviceAttributeMaxSurfaceCubemapLayered
-        cudaDevAttrMaxSurfaceCubemapLayeredLayers = hipDeviceAttributeMaxSurfaceCubemapLayered
+        cudaDevAttrMaxSurfaceCubemapWidth = \
+                hipDeviceAttributeMaxSurfaceCubemap
+        cudaDevAttrMaxSurfaceCubemapLayeredWidth = \
+                hipDeviceAttributeMaxSurfaceCubemapLayered
+        cudaDevAttrMaxSurfaceCubemapLayeredLayers = \
+                hipDeviceAttributeMaxSurfaceCubemapLayered
         cudaDevAttrMaxTexture1DWidth = hipDeviceAttributeMaxTexture1DWidth
-        cudaDevAttrMaxTexture1DLayeredWidth = hipDeviceAttributeMaxTexture1DLayered
-        cudaDevAttrMaxTexture1DLayeredLayers = hipDeviceAttributeMaxTexture1DLayered
-        cudaDevAttrMaxTexture1DLinearWidth = hipDeviceAttributeMaxTexture1DLinear
-        cudaDevAttrMaxTexture1DMipmappedWidth = hipDeviceAttributeMaxTexture1DMipmap
+        cudaDevAttrMaxTexture1DLayeredWidth = \
+                hipDeviceAttributeMaxTexture1DLayered
+        cudaDevAttrMaxTexture1DLayeredLayers = \
+                hipDeviceAttributeMaxTexture1DLayered
+        cudaDevAttrMaxTexture1DLinearWidth = \
+                hipDeviceAttributeMaxTexture1DLinear
+        cudaDevAttrMaxTexture1DMipmappedWidth = \
+                hipDeviceAttributeMaxTexture1DMipmap
         cudaDevAttrMaxTexture2DWidth = hipDeviceAttributeMaxTexture2DWidth
         cudaDevAttrMaxTexture2DHeight = hipDeviceAttributeMaxTexture2DHeight
-        cudaDevAttrMaxTexture2DGatherWidth = hipDeviceAttributeMaxTexture2DGather
-        cudaDevAttrMaxTexture2DGatherHeight = hipDeviceAttributeMaxTexture2DGather
-        cudaDevAttrMaxTexture2DLayeredWidth = hipDeviceAttributeMaxTexture2DLayered
-        cudaDevAttrMaxTexture2DLayeredHeight = hipDeviceAttributeMaxTexture2DLayered
-        cudaDevAttrMaxTexture2DLayeredLayers = hipDeviceAttributeMaxTexture2DLayered
-        cudaDevAttrMaxTexture2DLinearWidth = hipDeviceAttributeMaxTexture2DLinear
-        cudaDevAttrMaxTexture2DLinearHeight = hipDeviceAttributeMaxTexture2DLinear
-        cudaDevAttrMaxTexture2DLinearPitch = hipDeviceAttributeMaxTexture2DLinear
-        cudaDevAttrMaxTexture2DMipmappedWidth = hipDeviceAttributeMaxTexture2DMipmap
-        cudaDevAttrMaxTexture2DMipmappedHeight = hipDeviceAttributeMaxTexture2DMipmap
+        cudaDevAttrMaxTexture2DGatherWidth = \
+                hipDeviceAttributeMaxTexture2DGather
+        cudaDevAttrMaxTexture2DGatherHeight = \
+                hipDeviceAttributeMaxTexture2DGather
+        cudaDevAttrMaxTexture2DLayeredWidth = \
+                hipDeviceAttributeMaxTexture2DLayered
+        cudaDevAttrMaxTexture2DLayeredHeight = \
+                hipDeviceAttributeMaxTexture2DLayered
+        cudaDevAttrMaxTexture2DLayeredLayers = \
+                hipDeviceAttributeMaxTexture2DLayered
+        cudaDevAttrMaxTexture2DLinearWidth = \
+                hipDeviceAttributeMaxTexture2DLinear
+        cudaDevAttrMaxTexture2DLinearHeight = \
+                hipDeviceAttributeMaxTexture2DLinear
+        cudaDevAttrMaxTexture2DLinearPitch = \
+                hipDeviceAttributeMaxTexture2DLinear
+        cudaDevAttrMaxTexture2DMipmappedWidth = \
+                hipDeviceAttributeMaxTexture2DMipmap
+        cudaDevAttrMaxTexture2DMipmappedHeight = \
+                hipDeviceAttributeMaxTexture2DMipmap
         cudaDevAttrMaxTexture3DWidth = hipDeviceAttributeMaxTexture3DWidth
         cudaDevAttrMaxTexture3DHeight = hipDeviceAttributeMaxTexture3DHeight
         cudaDevAttrMaxTexture3DDepth = hipDeviceAttributeMaxTexture3DDepth
         cudaDevAttrMaxTexture3DWidthAlt = hipDeviceAttributeMaxTexture3DAlt
         cudaDevAttrMaxTexture3DHeightAlt = hipDeviceAttributeMaxTexture3DAlt
         cudaDevAttrMaxTexture3DDepthAlt = hipDeviceAttributeMaxTexture3DAlt
-        cudaDevAttrMaxTextureCubemapWidth = hipDeviceAttributeMaxTextureCubemap
-        cudaDevAttrMaxTextureCubemapLayeredWidth = hipDeviceAttributeMaxTextureCubemapLayered
-        cudaDevAttrMaxTextureCubemapLayeredLayers = hipDeviceAttributeMaxTextureCubemapLayered
+        cudaDevAttrMaxTextureCubemapWidth = \
+                hipDeviceAttributeMaxTextureCubemap
+        cudaDevAttrMaxTextureCubemapLayeredWidth = \
+                hipDeviceAttributeMaxTextureCubemapLayered
+        cudaDevAttrMaxTextureCubemapLayeredLayers = \
+                hipDeviceAttributeMaxTextureCubemapLayered
         cudaDevAttrMaxThreadsPerBlock = hipDeviceAttributeMaxThreadsPerBlock
-        cudaDevAttrMaxThreadsPerMultiProcessor = hipDeviceAttributeMaxThreadsPerMultiProcessor
+        cudaDevAttrMaxThreadsPerMultiProcessor = \
+                hipDeviceAttributeMaxThreadsPerMultiProcessor
         cudaDevAttrMaxPitch = hipDeviceAttributeMaxPitch
         cudaDevAttrGlobalMemoryBusWidth = hipDeviceAttributeMemoryBusWidth
         cudaDevAttrMemoryClockRate = hipDeviceAttributeMemoryClockRate
         cudaDevAttrMultiGpuBoardGroupID = hipDeviceAttributeMultiGpuBoardGroupID
         cudaDevAttrMultiProcessorCount = hipDeviceAttributeMultiprocessorCount
-        cudaDevAttrPageableMemoryAccess = hipDeviceAttributePageableMemoryAccess
-        cudaDevAttrPageableMemoryAccessUsesHostPageTables = hipDeviceAttributePageableMemoryAccessUsesHostPageTables
+        cudaDevAttrPageableMemoryAccess = \
+                hipDeviceAttributePageableMemoryAccess
+        cudaDevAttrPageableMemoryAccessUsesHostPageTables = \
+                hipDeviceAttributePageableMemoryAccessUsesHostPageTables
         cudaDevAttrPciBusId = hipDeviceAttributePciBusId
         cudaDevAttrPciDeviceId = hipDeviceAttributePciDeviceId
         cudaDevAttrPciDomainId = hipDeviceAttributePciDomainID
-        cudaDevAttrPersistingL2CacheMaxSize = hipDeviceAttributePersistingL2CacheMaxSize
-        cudaDevAttrMaxRegistersPerBlock = hipDeviceAttributeMaxRegistersPerBlock
-        cudaDevAttrMaxRegistersPerMultiprocessor = hipDeviceAttributeMaxRegistersPerMultiprocessor
-        cudaDevAttrReservedSharedMemoryPerBlock = hipDeviceAttributeReservedSharedMemPerBlock
-        cudaDevAttrMaxSharedMemoryPerBlock = hipDeviceAttributeMaxSharedMemoryPerBlock
-        cudaDevAttrMaxSharedMemoryPerBlockOptin = hipDeviceAttributeSharedMemPerBlockOptin
-        cudaDevAttrMaxSharedMemoryPerMultiprocessor = hipDeviceAttributeSharedMemPerMultiprocessor
-        cudaDevAttrSingleToDoublePrecisionPerfRatio = hipDeviceAttributeSingleToDoublePrecisionPerfRatio
-        cudaDevAttrStreamPrioritiesSupported = hipDeviceAttributeStreamPrioritiesSupported
+        cudaDevAttrPersistingL2CacheMaxSize = \
+                hipDeviceAttributePersistingL2CacheMaxSize
+        cudaDevAttrMaxRegistersPerBlock = \
+                hipDeviceAttributeMaxRegistersPerBlock
+        cudaDevAttrMaxRegistersPerMultiprocessor = \
+                hipDeviceAttributeMaxRegistersPerMultiprocessor
+        cudaDevAttrReservedSharedMemoryPerBlock = \
+                hipDeviceAttributeReservedSharedMemPerBlock
+        cudaDevAttrMaxSharedMemoryPerBlock = \
+                hipDeviceAttributeMaxSharedMemoryPerBlock
+        cudaDevAttrMaxSharedMemoryPerBlockOptin = \
+                hipDeviceAttributeSharedMemPerBlockOptin
+        cudaDevAttrMaxSharedMemoryPerMultiprocessor = \
+                hipDeviceAttributeSharedMemPerMultiprocessor
+        cudaDevAttrSingleToDoublePrecisionPerfRatio = \
+                hipDeviceAttributeSingleToDoublePrecisionPerfRatio
+        cudaDevAttrStreamPrioritiesSupported = \
+                hipDeviceAttributeStreamPrioritiesSupported
         cudaDevAttrSurfaceAlignment = hipDeviceAttributeSurfaceAlignment
         cudaDevAttrTccDriver = hipDeviceAttributeTccDriver
         cudaDevAttrTextureAlignment = hipDeviceAttributeTextureAlignment
-        cudaDevAttrTexturePitchAlignment = hipDeviceAttributeTexturePitchAlignment
+        cudaDevAttrTexturePitchAlignment = \
+                hipDeviceAttributeTexturePitchAlignment
         cudaDevAttrTotalConstantMemory = hipDeviceAttributeTotalConstantMemory
         cudaDevAttrTotalGlobalMem = hipDeviceAttributeTotalGlobalMem
         cudaDevAttrUnifiedAddressing = hipDeviceAttributeUnifiedAddressing

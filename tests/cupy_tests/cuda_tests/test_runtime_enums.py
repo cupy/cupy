@@ -22,10 +22,11 @@ def test_cuda_alias_enums_defined():
         assert hasattr(runtime, n), f'missing alias: {n}'
         val = getattr(runtime, n)
         assert isinstance(
-                val, int), f'alias {n} should be an int, got {type(val)}'
+            val, int), f'alias {n} should be an int, got {type(val)}'
 
 
-HIP_VERSION=runtime.runtimeGetVersion()
+HIP_VERSION = runtime.runtimeGetVersion()
+
 
 @pytest.mark.skipif(HIP_VERSION < 40300000, reason='Requires HIP >= 4.3.0')
 def test_hip_device_attribute_enums_defined_in_backend():
@@ -41,4 +42,4 @@ def test_hip_device_attribute_enums_defined_in_backend():
         assert hasattr(e, n), f'missing HIP enum: {n}'
         val = getattr(e, n)
         assert isinstance(
-                val, int), f'HIP enum {n} should be an int, got {type(val)}'
+            val, int), f'HIP enum {n} should be an int, got {type(val)}'
