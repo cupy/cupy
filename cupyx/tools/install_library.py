@@ -94,7 +94,7 @@ def _make_cutensor_record(cuda_version):
 
 
 _cutensor_records.append(_make_cutensor_record('12.x'))
-_cutensor_records.append(_make_cutensor_record('11.x'))  # CUDA 11.2+
+_cutensor_records.append(_make_cutensor_record('13.x'))
 library_records['cutensor'] = _cutensor_records
 
 
@@ -217,16 +217,12 @@ The current platform ({}) is not supported.'''.format(target_platform))
 
         print('Installing...')
         if library == 'cutensor':
-            if cuda.startswith('11.') and cuda != '11.0':
-                cuda = '11'
-            elif cuda.startswith('12.'):
-                cuda = '12'
             license = 'LICENSE'
             shutil.move(
                 os.path.join(outdir, dir_name, 'include'),
                 os.path.join(destination, 'include'))
             shutil.move(
-                os.path.join(outdir, dir_name, 'lib', cuda),
+                os.path.join(outdir, dir_name, 'lib'),
                 os.path.join(destination, 'lib'))
             shutil.move(
                 os.path.join(outdir, dir_name, license), destination)
