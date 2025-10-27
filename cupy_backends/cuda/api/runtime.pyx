@@ -344,6 +344,83 @@ cpdef getDeviceProperties(int device):
         properties['maxTexture1DLinear'] = maxTexture1DLinear
         properties['singleToDoublePrecisionPerfRatio'] = (
             singleToDoublePrecisionPerfRatio)
+    IF 60100000 <= CUPY_HIP_VERSION:
+        # Additional properties available starting from HIP 6.1.0 (R0600)
+        properties['uuid'] = props.uuid.bytes
+        properties['luid'] = props.luid
+        properties['luidDeviceNodeMask'] = props.luidDeviceNodeMask
+        # Texture/surface capabilities
+        properties['maxTexture1DMipmap'] = props.maxTexture1DMipmap
+        properties['maxTexture1DLayered'] = tuple(props.maxTexture1DLayered)
+        properties['maxTexture2DMipmap'] = tuple(props.maxTexture2DMipmap)
+        properties['maxTexture2DLinear'] = tuple(props.maxTexture2DLinear)
+        properties['maxTexture2DGather'] = tuple(props.maxTexture2DGather)
+        properties['maxTexture3DAlt'] = tuple(props.maxTexture3DAlt)
+        properties['maxTextureCubemap'] = props.maxTextureCubemap
+        properties['maxTextureCubemapLayered'] = tuple(
+            props.maxTextureCubemapLayered)
+        properties['maxSurface1D'] = props.maxSurface1D
+        properties['maxSurface1DLayered'] = tuple(props.maxSurface1DLayered)
+        properties['maxSurface2D'] = tuple(props.maxSurface2D)
+        properties['maxSurface2DLayered'] = tuple(props.maxSurface2DLayered)
+        properties['maxSurface3D'] = tuple(props.maxSurface3D)
+        properties['maxSurfaceCubemap'] = props.maxSurfaceCubemap
+        properties['maxSurfaceCubemapLayered'] = tuple(
+            props.maxSurfaceCubemapLayered)
+        properties['surfaceAlignment'] = props.surfaceAlignment
+        # Misc capabilities
+        properties['asyncEngineCount'] = props.asyncEngineCount
+        properties['unifiedAddressing'] = props.unifiedAddressing
+        properties['streamPrioritiesSupported'] = (
+            props.streamPrioritiesSupported)
+        properties['globalL1CacheSupported'] = props.globalL1CacheSupported
+        properties['localL1CacheSupported'] = props.localL1CacheSupported
+        properties['sharedMemPerMultiprocessor'] = (
+            props.sharedMemPerMultiprocessor)
+        properties['regsPerMultiprocessor'] = props.regsPerMultiprocessor
+        properties['managedMemory'] = props.managedMemory
+        properties['multiGpuBoardGroupID'] = props.multiGpuBoardGroupID
+        properties['hostNativeAtomicSupported'] = (
+            props.hostNativeAtomicSupported)
+        properties['pageableMemoryAccess'] = props.pageableMemoryAccess
+        properties['concurrentManagedAccess'] = (
+            props.concurrentManagedAccess)
+        properties['computePreemptionSupported'] = (
+            props.computePreemptionSupported)
+        properties['canUseHostPointerForRegisteredMem'] = (
+            props.canUseHostPointerForRegisteredMem)
+        properties['sharedMemPerBlockOptin'] = props.sharedMemPerBlockOptin
+        properties['pageableMemoryAccessUsesHostPageTables'] = (
+            props.pageableMemoryAccessUsesHostPageTables)
+        properties['directManagedMemAccessFromHost'] = (
+            props.directManagedMemAccessFromHost)
+        properties['persistingL2CacheMaxSize'] = props.persistingL2CacheMaxSize
+        properties['maxBlocksPerMultiProcessor'] = (
+            props.maxBlocksPerMultiProcessor)
+        properties['accessPolicyMaxWindowSize'] = (
+            props.accessPolicyMaxWindowSize)
+        properties['reservedSharedMemPerBlock'] = (
+            props.reservedSharedMemPerBlock)
+        # Memory pools and interop
+        properties['hostRegisterSupported'] = props.hostRegisterSupported
+        properties['sparseHipArraySupported'] = props.sparseHipArraySupported
+        properties['hostRegisterReadOnlySupported'] = (
+            props.hostRegisterReadOnlySupported)
+        properties['timelineSemaphoreInteropSupported'] = (
+            props.timelineSemaphoreInteropSupported)
+        properties['memoryPoolsSupported'] = props.memoryPoolsSupported
+        properties['gpuDirectRDMASupported'] = props.gpuDirectRDMASupported
+        properties['gpuDirectRDMAFlushWritesOptions'] = (
+            props.gpuDirectRDMAFlushWritesOptions)
+        properties['gpuDirectRDMAWritesOrdering'] = (
+            props.gpuDirectRDMAWritesOrdering)
+        properties['memoryPoolSupportedHandleTypes'] = (
+            props.memoryPoolSupportedHandleTypes)
+        properties['deferredMappingHipArraySupported'] = (
+            props.deferredMappingHipArraySupported)
+        properties['ipcEventSupported'] = props.ipcEventSupported
+        properties['clusterLaunch'] = props.clusterLaunch
+        properties['unifiedFunctionPointers'] = props.unifiedFunctionPointers
     IF CUPY_HIP_VERSION > 0:  # HIP-only props
         properties['clockInstructionRate'] = props.clockInstructionRate
         properties['maxSharedMemoryPerMultiProcessor'] = (
