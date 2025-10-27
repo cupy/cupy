@@ -28,7 +28,7 @@ RUN pyenv install 3.12.11 && \
     pyenv global 3.12.11 && \
     pip install -U setuptools pip wheel
 
-RUN pip install -U 'numpy>=0a0' 'scipy>=0a0' 'optuna>=0a0' 'cython==3.1.*' 'cuda-pathfinder>=1.3.1'
+RUN pip install -U 'numpy>=0a0' 'scipy>=0a0' 'optuna>=0a0' 'cython==3.1.*'
 RUN pip uninstall -y mpi4py cuda-python && \
     pip check
 

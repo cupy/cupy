@@ -68,10 +68,18 @@ if ctx.long_description_path is not None:
         long_description = f.read()
 
 
+dependencies = [
+    "numpy>=1.24,<2.6",  # see #4773
+]
+if not ctx.use_hip:
+    dependencies.append("cuda-pathfinder>=1.3.1,<2.0a0")
+
+
 setup(
     long_description=long_description,
     long_description_content_type='text/x-rst',
     package_data=package_data,
+    install_requires=dependencies,
     zip_safe=False,
     ext_modules=ext_modules,
     cmdclass={'build_ext': cupy_builder._command.custom_build_ext},

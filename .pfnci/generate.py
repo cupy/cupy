@@ -206,8 +206,6 @@ class LinuxGenerator:
             else:
                 pip_spec = self.schema[pylib][pylib_ver]['spec']
                 pip_args.append(f'{pylib}{pip_spec}')
-        if matrix.cuda is not None:
-            pip_args.append('cuda-pathfinder>=1.3.1')
         lines += [
             f'RUN pip install -U {shlex.join(pip_args)}',
         ]
