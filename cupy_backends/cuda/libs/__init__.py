@@ -19,7 +19,7 @@ if not _runtime.is_hip:
 # TODO(leofang): add cutensor (NVIDIA/cuda-python#1144)
 # TODO(leofang): add cusparselt
 _submodules = (
-    'cublas', 'cusolver', 'cusparse', 'curand', 'cufft', 'nccl',
+    'cublas', 'cusolver', 'cusparse', 'curand', 'nccl',
 )
 
 

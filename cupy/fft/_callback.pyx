@@ -295,7 +295,8 @@ cdef inline void _nvcc_link(
 
     mod_temp = os.path.join(tempdir, mod_filename)
     mod_cached = os.path.join(cache_dir, mod_filename)
-    cmd = _nvcc + ['-shared', '-arch=sm_'+arch, obj_dev, obj_host]
+    cmd = _nvcc + ['-shared', '-arch=sm_'+arch, obj_dev, obj_host,
+        '-Xlinker', '-Bsymbolic']
     if cufft_lib_pruned:
         cmd += ['-L'+cache_dir, '-l'+cufft_lib_pruned]
     else:
@@ -463,13 +464,22 @@ cdef class _LegacyCallbackManager(_CallbackManager):
             follow.
 
         '''
-        from cupy.cuda.cufft import (
-            CUFFT_C2C, CUFFT_C2R, CUFFT_R2C,
-            CUFFT_Z2Z, CUFFT_Z2D, CUFFT_D2Z,
-            CUFFT_CB_LD_COMPLEX, CUFFT_CB_LD_COMPLEX_DOUBLE,
-            CUFFT_CB_LD_REAL, CUFFT_CB_LD_REAL_DOUBLE,
-            CUFFT_CB_ST_COMPLEX, CUFFT_CB_ST_COMPLEX_DOUBLE,
-            CUFFT_CB_ST_REAL, CUFFT_CB_ST_REAL_DOUBLE,)
+        # Note: Do NOT use any object/function from the global cupy.cuda.cufft module!
+        cufft = self.mod
+        CUFFT_C2C = cufft.CUFFT_C2C
+        CUFFT_C2R = cufft.CUFFT_C2R
+        CUFFT_R2C = cufft.CUFFT_R2C
+        CUFFT_Z2Z = cufft.CUFFT_Z2Z
+        CUFFT_Z2D = cufft.CUFFT_Z2D
+        CUFFT_D2Z = cufft.CUFFT_D2Z
+        CUFFT_CB_LD_COMPLEX = cufft.CUFFT_CB_LD_COMPLEX
+        CUFFT_CB_LD_COMPLEX_DOUBLE = cufft.CUFFT_CB_LD_COMPLEX_DOUBLE
+        CUFFT_CB_LD_REAL = cufft.CUFFT_CB_LD_REAL
+        CUFFT_CB_LD_REAL_DOUBLE = cufft.CUFFT_CB_LD_REAL_DOUBLE
+        CUFFT_CB_ST_COMPLEX = cufft.CUFFT_CB_ST_COMPLEX
+        CUFFT_CB_ST_COMPLEX_DOUBLE = cufft.CUFFT_CB_ST_COMPLEX_DOUBLE
+        CUFFT_CB_ST_REAL = cufft.CUFFT_CB_ST_REAL
+        CUFFT_CB_ST_REAL_DOUBLE = cufft.CUFFT_CB_ST_REAL_DOUBLE
 
         cdef MemoryPointer cb_load_data = self.cb_load_data
         cdef MemoryPointer cb_store_data = self.cb_store_data
@@ -500,12 +510,12 @@ cdef class _LegacyCallbackManager(_CallbackManager):
         if self.cb_load:
             if cb_load_data is not None:
                 cb_load_ptr = cb_load_data.ptr
-            self.mod.setCallback(
+            cufft.setCallback(
                 plan.handle, cb_load_type, True, cb_load_ptr)
         if self.cb_store:
             if cb_store_data is not None:
                 cb_store_ptr = cb_store_data.ptr
-            self.mod.setCallback(
+            cufft.setCallback(
                 plan.handle, cb_store_type, False, cb_store_ptr)
 
 
