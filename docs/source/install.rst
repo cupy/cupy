@@ -408,7 +408,7 @@ Requirements
 
 * `AMD GPU supported by ROCm <https://rocm.docs.amd.com/projects/install-on-linux/en/latest/reference/system-requirements.html>`_
 
-* `ROCm <https://rocm.docs.amd.com/en/latest/>`_ 4.x / 5.x / 6.x
+* `ROCm <https://rocm.docs.amd.com/en/latest/>`_ 7.x
     * See the `Installation Guide <https://rocm.docs.amd.com/projects/install-on-linux/en/latest/install/quick-start.html>`_ for details.
 
 The following ROCm libraries are required:
@@ -416,11 +416,6 @@ The following ROCm libraries are required:
 ::
 
   $ sudo apt install hipblas hipsparse rocsparse rocrand hiprand rocthrust rocsolver rocfft hipfft hipcub rocprim rccl roctracer-dev
-
-.. note::
-
-   ROCm binary packages (wheels) and ROCm Docker images are unavailable in recent CuPy versions (v13.4.0+).
-   We are currently working on improving packaging to improve this situation. Follow `#8607 <https://github.com/cupy/cupy/issues/8607>`_ for the latest status.
 
 Environment Variables
 ~~~~~~~~~~~~~~~~~~~~~
@@ -443,29 +438,18 @@ You can try running CuPy for ROCm using Docker.
 Installing Binary Packages
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Wheels (precompiled binary packages) are available for Linux (x86_64).
-Package names are different depending on your ROCm version.
-
-.. list-table::
-   :header-rows: 1
-
-   * - ROCm
-     - Command
-   * - v4.3
-     - ``$ pip install cupy-rocm-4-3``
-   * - v5.0
-     - ``$ pip install cupy-rocm-5-0``
-
 .. note::
 
-   As of now, you need to build CuPy from source to use CuPy with ROCm 6+.
+   ROCm binary packages (wheels) and ROCm Docker images are unavailable in recent CuPy versions (v13.4.0+).
+   We are currently working on improving packaging to improve this situation. Follow `#8607 <https://github.com/cupy/cupy/issues/8607>`_ for the latest status.
+
 
 Building CuPy for ROCm From Source
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 To build CuPy from source, set the ``CUPY_INSTALL_USE_HIP``, ``ROCM_HOME``, and ``HCC_AMDGPU_TARGET`` environment variables.
 (``HCC_AMDGPU_TARGET`` is the ISA name supported by your GPU.
-Run ``rocminfo`` and use the value displayed in ``Name:`` line (e.g., ``gfx900``).
+Run ``rocminfo`` and use the value displayed in ``Name:`` line (e.g., ``gfx942``).
 You can specify a comma-separated list of ISAs if you have multiple GPUs of different architectures.)
 
 ::
@@ -485,14 +469,12 @@ Limitations
 
 The following features are not available due to the limitation of ROCm or because that they are specific to CUDA:
 
-* CUDA Array Interface
 * cuTENSOR
 * Handling extremely large arrays whose size is around 32-bit boundary (HIP is known to fail with sizes `2**32-1024`)
 * Atomic addition in FP16 (``cupy.ndarray.scatter_add`` and ``cupyx.scatter_add``)
 * Multi-GPU FFT and FFT callback
 * Some random number generation algorithms
 * Several options in RawKernel/RawModule APIs: Jitify, dynamic parallelism
-* Per-thread default stream
 
 The following features are not yet supported:
 
@@ -500,6 +482,7 @@ The following features are not yet supported:
 * Hermitian/symmetric eigenvalue solver (``cupy.linalg.eigh``)
 * Polynomial roots (uses Hermitian/symmetric eigenvalue solver)
 * Splines in ``cupyx.scipy.interpolate`` (``make_interp_spline``, spline modes of ``RegularGridInterpolator``/``interpn``), as they depend on sparse matrices.
+* Per-thread default stream (`#9407 <https://github.com/cupy/cupy/pull/9407>`_)
 
 The following features may not work in edge cases (e.g., some combinations of dtype):
 
