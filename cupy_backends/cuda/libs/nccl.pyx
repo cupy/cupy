@@ -330,7 +330,7 @@ cdef class NcclCommunicator:
             raise ValueError(
                 f"commId length {len(commId)} != {NCCL_UNIQUE_ID_BYTES}.")
 
-        _uniqueId.internal[:] = <char *>commId  # memcpy (size checked above)
+        _uniqueId.internal[0:NCCL_UNIQUE_ID_BYTES] = <char *>commId
 
         if NCCL_VERSION_CODE < NCCL_VERSION(2, 18, 0):
             if config is not None:
