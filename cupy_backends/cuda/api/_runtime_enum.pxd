@@ -661,8 +661,8 @@ ELIF CUPY_HIP_VERSION > 40300000:
         cudaDevAttrUnifiedAddressing = hipDeviceAttributeUnifiedAddressing
         cudaDevAttrUuid = hipDeviceAttributeUuid
         cudaDevAttrWarpSize = hipDeviceAttributeWarpSize
-        cudaDevAttrMemoryPoolsSupported = 114514 # place holder for cython
-        cudaDevAttrVirtualMemoryManagementSupported = 114515 # place holder
+        cudaDevAttrMemoryPoolsSupported = 114514  # place holder for cython
+        cudaDevAttrVirtualMemoryManagementSupported = 114515  # place holder
 ELIF CUPY_HIP_VERSION > 0:
     # separate in groups of 10 for easier counting...
     cpdef enum:
