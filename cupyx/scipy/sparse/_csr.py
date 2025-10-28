@@ -297,25 +297,17 @@ class csr_matrix(_compressed._compressed_sparse_matrix):
 
     def _maximum_minimum(self, other, cupy_op, op_name, dense_check):
         if _util.isscalarlike(other):
-            other = cupy.asarray(other, dtype=self.dtype)
+            dtype = cupy.result_type(self.dtype, other)
+            other = cupy.asarray(other)
             if dense_check(other):
-                dtype = self.dtype
-                # Note: This is a work-around to make the output dtype the same
-                # as SciPy. It might be SciPy version dependent.
-                if dtype == numpy.float32:
-                    dtype = numpy.float64
-                elif dtype == numpy.complex64:
-                    dtype = numpy.complex128
-                dtype = cupy.result_type(dtype, other)
                 other = other.astype(dtype, copy=False)
-                # Note: The computation steps below are different from SciPy.
                 new_array = cupy_op(self.todense(), other)
                 return csr_matrix(new_array)
             else:
                 self.sum_duplicates()
                 new_data = cupy_op(self.data, other)
                 return csr_matrix((new_data, self.indices, self.indptr),
-                                  shape=self.shape, dtype=self.dtype)
+                                  shape=self.shape, dtype=dtype)
         elif _util.isdense(other):
             self.sum_duplicates()
             other = cupy.atleast_2d(other)

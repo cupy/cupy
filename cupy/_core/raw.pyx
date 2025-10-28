@@ -42,7 +42,7 @@ cdef class RawKernel:
 
     .. note::
         Starting CuPy v13.0.0, `RawKernel` by default compiles with the C++11
-        standard (``-std=c++11``) if it's not specified in ``options``.
+        standard (``-std=c++14``) if it's not specified in ``options``.
 
     .. note::
         Unlike `ElementwiseKernel`, `RawKernel` ignores any views on
@@ -344,7 +344,7 @@ cdef class RawModule:
 
     .. note::
         Starting CuPy v13.0.0, `RawModule` by default compiles with the C++11
-        standard (``-std=c++11``) if it's not specified in ``options``.
+        standard (``-std=c++14``) if it's not specified in ``options``.
 
     .. note::
         Each kernel in ``RawModule`` possesses independent function attributes.
@@ -454,7 +454,7 @@ cdef class RawModule:
                 '''
 
                 kers = ('func<int>', 'func<float>', 'func<double>')
-                mod = cupy.RawModule(code=code, options=('--std=c++11',),
+                mod = cupy.RawModule(code=code, options=('--std=c++14',),
                                      name_expressions=kers)
 
                 // retrieve func<int>

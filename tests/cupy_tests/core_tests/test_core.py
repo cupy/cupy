@@ -11,6 +11,9 @@ from cupy._core import core
 from cupy import testing
 from cupy_tests.core_tests import test_raw
 
+from cupy.testing._protocol_helpers import (
+    DummyObjectWithCuPyGetNDArray, DummyObjectWithCudaArrayInterface)
+
 
 class TestSize(unittest.TestCase):
 
@@ -95,9 +98,24 @@ class TestMinScalarType:
         for v in (arr, (arr, arr)):
             assert cupy.min_scalar_type(v) is arr.dtype
 
+    @pytest.mark.parametrize('cupy_like', [
+        DummyObjectWithCuPyGetNDArray,
+        DummyObjectWithCudaArrayInterface,
+    ])
+    def test_cupy_likes_and_nested(self, cupy_like):
+        arr = cupy.array([[-1, 1]], dtype="int8")
+
+        obj = cupy_like(arr)
+        assert cupy.min_scalar_type(obj) is arr.dtype
+        if cupy_like is DummyObjectWithCuPyGetNDArray:
+            # __cupy_get_ndarray__ path currently assumes .shape and .dtype
+            obj.shape = arr.shape
+            obj.dtype = arr.dtype
+        assert cupy.min_scalar_type([obj, obj]) is arr.dtype
+
 
 @testing.parameterize(*testing.product({
-    'cxx': (None, '--std=c++11'),
+    'cxx': (None, '--std=c++14'),
 }))
 class TestCuPyHeaders(unittest.TestCase):
 

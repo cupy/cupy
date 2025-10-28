@@ -27,9 +27,9 @@ function DownloadCache([String]$gcs_dir, [String]$cupy_kernel_cache_file) {
 }
 
 function UploadCache([String]$gcs_dir, [String]$cupy_kernel_cache_file) {
-    # Maximum 1 GB
+    # Maximum 3 GiB
     echo "Trimming kernel cache..."
-    RunOrDie python .pfnci\trim_cupy_kernel_cache.py --max-size 1000000000 --rm
+    RunOrDie python .pfnci\trim_cupy_kernel_cache.py --max-size 3221225472 --rm
 
     pushd $Env:USERPROFILE
     # -mx=0 ... no compression
@@ -63,12 +63,6 @@ function Main {
     # Setup environment
     echo "Using CUDA $cuda and Python $python"
     ActivateCUDA $cuda
-    if ($cuda -eq "10.2") {
-        ActivateCuDNN "8.6" $cuda
-    } else {
-        ActivateCuDNN "8.8" $cuda
-    }
-    ActivateNVTX1
     ActivatePython $python
 
     # Setup build environment variables
@@ -85,7 +79,7 @@ function Main {
 
     echo "Building..."
     $build_retval = 0
-    RunOrDie python -m pip install "numpy==$numpy.*" "scipy==$scipy.*" "Cython==3.*" "fastrlock>=0.5"
+    RunOrDie python -m pip install "numpy==$numpy.*" "scipy==$scipy.*" "Cython==3.*"
     python -m pip install --no-build-isolation ".[all,test]" -v > cupy_build_log.txt
     if (-not $?) {
         $build_retval = $LastExitCode

@@ -275,9 +275,6 @@ cdef class _ndarray_base:
 
     @property
     def __cuda_array_interface__(self):
-        if runtime._is_hip_environment:
-            raise AttributeError(
-                'HIP/ROCm does not support cuda array interface')
         cdef dict desc = {
             'shape': self.shape,
             'typestr': self.dtype.str,
@@ -1814,8 +1811,6 @@ cdef class _ndarray_base:
                 # `_kernel._preprocess_args`.
                 check = (hasattr(x, '__cuda_array_interface__')
                          or hasattr(x, '__cupy_get_ndarray__'))
-                if runtime._is_hip_environment and isinstance(x, ndarray):
-                    check = True
                 if (not check
                         and not type(x) in _scalar.scalar_type_set
                         and not isinstance(x, numpy.ndarray)):
@@ -2326,19 +2321,39 @@ cdef inline str _translate_cucomplex_to_thrust(str source):
     return ''.join(lines)
 
 
-cpdef tuple assemble_cupy_compiler_options(tuple options):
-    for op in options:
-        if '-std=c++' in op:
-            if op.endswith('03'):
-                warnings.warn('CCCL requires c++11 or above')
-            break
-    else:
-        options += ('--std=c++11',)
+cpdef bint use_default_std(tuple options):
+    cdef str opt
+    for opt in options:
+        if ('-std=' in opt) or ('--std=' in opt):
+            return False
+    return True
 
-    # make sure bundled CCCL is searched first
-    options = (_get_cccl_include_options()
-               + options
-               + ('-I%s' % _get_header_dir_path(),))
+cpdef void warn_on_unsupported_std(tuple options):
+    cdef str opt
+    for opt in options:
+        if _is_hip:
+            major, minor = nvrtc.getVersion()
+            if '-std=c++11' in opt and minor == 0 and major == 7:
+                warnings.warn(
+                    'hipRTC on some ROCm 7.0 builds have a known bug '
+                    'that causes RTC to break when the standard is set '
+                    'to c++11. Please use c++14, or use ROCm > 7.0'
+                )
+        elif '-std=c++03' in opt:
+            warnings.warn('CCCL requires c++11 or above')
+
+
+cpdef tuple assemble_cupy_compiler_options(tuple options):
+    if use_default_std(options):
+        options += ('--std=c++14',)
+    else:
+        warn_on_unsupported_std(options)
+
+    if not _is_hip:
+        # make sure bundled CCCL is searched first
+        options = (_get_cccl_include_options() + options)
+
+    options += ('-I%s' % _get_header_dir_path(),)
 
     global _cuda_path
     if _cuda_path == '':
@@ -2354,18 +2369,11 @@ cpdef tuple assemble_cupy_compiler_options(tuple options):
             major, minor = nvrtc.getVersion()
             if major == 11:
                 _bundled_include = 'cuda-11'
-            elif major == 12:
-                # TODO(leofang): update the upper bound when a new release
-                # is out
-                if minor < 2:
-                    _bundled_include = 'cuda-12'
-                elif minor < 9:
-                    _bundled_include = f'cuda-12.{minor}'
-                else:
-                    # Unsupported CUDA 12.x variant
-                    _bundled_include = None
+            elif major == 12 and minor < 2:
+                # Use bundled header for CUDA 12.0 and 12.1 only.
+                _bundled_include = 'cuda-12'
             else:
-                # CUDA versions not yet supported.
+                # Do not use bundled includes dir after CUDA 12.2+.
                 _bundled_include = None
 
             # Check if headers from cudart wheels are available.
@@ -2556,16 +2564,9 @@ cpdef _ndarray_base array(obj, dtype=None, copy=True, order='K',
     if order is None:
         order = 'K'
 
-    if isinstance(obj, ndarray):
-        return _array_from_cupy_ndarray(obj, dtype, copy, order, ndmin)
-
-    if hasattr(obj, '__cuda_array_interface__'):
-        return _array_from_cuda_array_interface(
-            obj, dtype, copy, order, subok, ndmin)
-
-    if hasattr(obj, '__cupy_get_ndarray__'):
-        return _array_from_cupy_ndarray(
-            obj.__cupy_get_ndarray__(), dtype, copy, order, ndmin)
+    cdef _ndarray_base arr = _convert_from_cupy_like(obj, error=False)
+    if arr is not None:
+        return _array_from_cupy_ndarray(arr, dtype, copy, order, ndmin)
 
     concat_shape, concat_type, concat_dtype = (
         _array_info_from_nested_sequence(obj))
@@ -2684,12 +2685,24 @@ cdef _ndarray_base _array_from_nested_numpy_sequence(
     return a
 
 
+cdef _flatten_into_list_and_ensure_1d(object obj, result):
+    # Recursively flatten the input `obj` while by appending to
+    # the passed `result` list.
+    if isinstance(obj, (list, tuple)):
+        for elem in obj:
+            _flatten_into_list_and_ensure_1d(elem, result)
+        return
+
+    # Ensure obj is a cupy ndarray (might have __array_cuda_interface__)
+    cdef arr = _convert_from_cupy_like(obj, error="Nested array")
+    # And convert each scalar (0-dim) ndarray to 1-dim
+    result.append(cupy.expand_dims(arr, 0) if arr.ndim == 0 else arr)
+
+
 cdef _ndarray_base _array_from_nested_cupy_sequence(
         obj, dtype, shape, order, bint blocking):
-    lst = _flatten_list(obj)
-
-    # convert each scalar (0-dim) ndarray to 1-dim
-    lst = [cupy.expand_dims(x, 0) if x.ndim == 0 else x for x in lst]
+    lst = []
+    _flatten_into_list_and_ensure_1d(obj, lst)
 
     a = _manipulation.concatenate_method(lst, 0)
     a = a.reshape(shape)
@@ -2718,11 +2731,11 @@ cdef inline _ndarray_base _try_skip_h2d_copy(
     if not (obj_dtype == get_dtype(dtype) if dtype is not None else True):
         return None
 
-    # CuPy onlt supports numerical dtypes
+    # CuPy only supports numerical dtypes
     if obj_dtype.char not in _dtype.all_type_chars:
         return None
 
-    # CUDA onlt supports little endianness
+    # CUDA only supports little endianness
     if obj_dtype.byteorder not in ('|', '=', '<'):
         return None
 
@@ -2760,8 +2773,8 @@ cdef _ndarray_base _array_default(
     # Fast path: zero-copy a NumPy array if possible
     if not blocking:
         a = _try_skip_h2d_copy(obj, dtype, copy, order, ndmin)
-    if a is not None:
-        return a
+        if a is not None:
+            return a
 
     if order is not None and len(order) >= 1 and order[0] in 'KAka':
         if isinstance(obj, numpy.ndarray) and obj.flags.fnc:
@@ -2841,6 +2854,10 @@ cdef tuple _compute_concat_info_impl(obj):
     if hasattr(obj, '__cupy_get_ndarray__'):
         return obj.shape, ndarray, obj.dtype
 
+    if (cai := getattr(obj, '__cuda_array_interface__', None)) is not None:
+        # Assume __cuda_array_interface__ is cheap enough to call twice
+        return cai['shape'], ndarray, numpy.dtype(cai['typestr'])
+
     if isinstance(obj, (list, tuple)):
         dim = len(obj)
         if dim == 0:
@@ -2867,15 +2884,6 @@ cdef tuple _compute_concat_info_impl(obj):
         return (dim,) + concat_shape, concat_type, concat_dtype
 
     return None, None, None
-
-
-cdef list _flatten_list(object obj):
-    ret = []
-    if isinstance(obj, (list, tuple)):
-        for elem in obj:
-            ret += _flatten_list(elem)
-        return ret
-    return [obj]
 
 
 cdef bint _numpy_concatenate_has_out_argument = (
@@ -3000,9 +3008,7 @@ cpdef _ndarray_base asfortranarray(_ndarray_base a, dtype=None):
 
 
 cpdef _ndarray_base _convert_object_with_cuda_array_interface(a):
-    if runtime._is_hip_environment:
-        raise RuntimeError(
-            'HIP/ROCm does not support cuda array interface')
+    # NOTE: Most code should use this indirectly via `_convert_from_cupy_like`
 
     cdef Py_ssize_t sh, st
     cdef dict desc = a.__cuda_array_interface__
@@ -3073,8 +3079,10 @@ cpdef min_scalar_type(a):
 
     .. seealso:: :func:`numpy.min_scalar_type`
     """
-    if isinstance(a, ndarray):
-        return a.dtype
+    cdef _ndarray_base arr = _convert_from_cupy_like(a, error=False)
+    if arr is not None:
+        return arr.dtype
+
     _, concat_type, concat_dtype = _array_info_from_nested_sequence(a)
     if concat_type is not None:
         return concat_dtype

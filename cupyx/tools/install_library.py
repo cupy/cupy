@@ -22,58 +22,32 @@ import tempfile
 import urllib.request
 
 
-_cudnn_records = []
+_deprecation_message = """
+******************************************************************************
+
+The "cupyx.tools.install_library" tool is deprecated and will be removed in
+a future CuPy release. To install NCCL/cuTENSOR libraries, please install them
+via package managers (pip/conda) that are used to install CuPy.
+
+You can use the following command to see if NCCL/cuTENSOR is already installed.
+If you see the version number displayed for "NCCL Runtime Version" or "cuTENSOR
+Version", they are available and enabled in your CuPy installation.
+
+  $ python -c 'import cupy; cupy.show_config(_full=True)'
+
+If you see "None" instead of the version number, and you installed CuPy via pip
+or conda, you can get the instructions to install these libraries by running
+the following commands:
+
+  $ python -c 'import cupy.cuda.nccl'
+  $ python -c 'import cupy.cuda.cutensor'
+
+******************************************************************************
+"""
+
 _cutensor_records = []
 _nccl_records = []
 library_records = {}
-
-
-def _make_cudnn_url(platform, filename):
-    # https://developer.download.nvidia.com/compute/cudnn/redist/cudnn/linux-x86_64/cudnn-linux-x86_64-8.8.1.3_cuda12-archive.tar.xz
-    return (
-        'https://developer.download.nvidia.com/compute/cudnn/redist/cudnn/' +
-        f'{platform}/{filename}')
-
-
-def __make_cudnn_record(
-        cuda_version, public_version, filename_linux, filename_windows):
-    major_version = public_version.split('.')[0]
-    # Dependency order is documented at:
-    # https://docs.nvidia.com/deeplearning/cudnn/api/index.html
-    suffix_list = ['', '_ops_infer', '_ops_train',
-                   '_cnn_infer', '_cnn_train',
-                   '_adv_infer', '_adv_train']
-    return {
-        'cuda': cuda_version,
-        'cudnn': public_version,
-        'assets': {
-            'Linux:x86_64': {
-                'url': _make_cudnn_url('linux-x86_64', filename_linux),
-                'filenames': [f'libcudnn{suffix}.so.{public_version}'
-                              for suffix in suffix_list]
-            },
-            'Windows:x86_64': {
-                'url': _make_cudnn_url('windows-x86_64', filename_windows),
-                'filenames': [f'cudnn{suffix}64_{major_version}.dll'
-                              for suffix in suffix_list]
-            },
-        }
-    }
-
-
-def _make_cudnn_record(cuda_version):
-    cuda_major = int(cuda_version.split('.')[0])
-    assert cuda_major in (11, 12)
-    return __make_cudnn_record(
-        cuda_version, '8.8.1',
-        f'cudnn-linux-x86_64-8.8.1.3_cuda{cuda_major}-archive.tar.xz',
-        f'cudnn-windows-x86_64-8.8.1.3_cuda{cuda_major}-archive.zip')
-
-
-# Latest cuDNN versions: https://developer.nvidia.com/rdp/cudnn-download
-_cudnn_records.append(_make_cudnn_record('12.x'))
-_cudnn_records.append(_make_cudnn_record('11.x'))  # CUDA 11.2+
-library_records['cudnn'] = _cudnn_records
 
 
 def _make_cutensor_url(platform, filename):
@@ -153,6 +127,10 @@ def _make_nccl_record(
 
 # https://docs.nvidia.com/deeplearning/nccl/release-notes/overview.html
 _nccl_records.append(_make_nccl_record(
+    '13.x', '2.27.7', '2.27.7', '2.27.7',
+    'nccl_2.27.7-1+cuda13.0_x86_64.txz',
+    'nccl_2.27.7-1+cuda13.0_aarch64.txz'))
+_nccl_records.append(_make_nccl_record(
     '12.x', '2.25.1', '2.25.1', '2.16.5',
     'nccl_2.25.1-1+cuda12.8_x86_64.txz',
     'nccl_2.25.1-1+cuda12.8_aarch64.txz'))
@@ -208,12 +186,7 @@ Remove the directory first if you want to reinstall.'''.format(destination))
         raise RuntimeError('''
 The current platform ({}) is not supported.'''.format(target_platform))
 
-    if library == 'cudnn':
-        print('By downloading and using cuDNN, you accept the terms and'
-              ' conditions of the NVIDIA cuDNN Software License Agreement:')
-        print('  https://docs.nvidia.com/deeplearning/cudnn/sla/index.html')
-        print()
-    elif library == 'cutensor':
+    if library == 'cutensor':
         print('By downloading and using cuTENSOR, you accept the terms and'
               ' conditions of the NVIDIA cuTENSOR Software License Agreement:')
         print('  https://docs.nvidia.com/cuda/cutensor/license.html')
@@ -241,13 +214,7 @@ The current platform ({}) is not supported.'''.format(target_platform))
         dir_name = subdir[0]
 
         print('Installing...')
-        if library == 'cudnn':
-            libdirs = ['bin', 'lib'] if sys.platform == 'win32' else ['lib']
-            for item in libdirs + ['include', 'LICENSE']:
-                shutil.move(
-                    os.path.join(outdir, dir_name, item),
-                    os.path.join(destination, item))
-        elif library == 'cutensor':
+        if library == 'cutensor':
             if cuda.startswith('11.') and cuda != '11.0':
                 cuda = '11'
             elif cuda.startswith('12.'):
@@ -281,7 +248,7 @@ def main(args):
     parser = argparse.ArgumentParser()
 
     parser.add_argument('--library',
-                        choices=['cudnn', 'cutensor', 'nccl'],
+                        choices=['cutensor', 'nccl'],
                         required=True,
                         help='Library to install')
     parser.add_argument('--cuda', type=str, required=True,
@@ -309,9 +276,11 @@ def main(args):
         params.prefix = os.path.abspath(params.prefix)
 
     if params.action == 'install':
+        print(_deprecation_message)
         install_lib(params.cuda, params.prefix, params.library,
                     params.arch)
     elif params.action == 'dump':
+        # This option is only for internal use by cupy-release-tools.
         print(json.dumps(library_records[params.library], indent=4))
     else:
         assert False

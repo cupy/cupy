@@ -50,7 +50,6 @@ _qmf_kernel = cupy.ElementwiseKernel(
     output = ( coef[_ind.size() - ( i + 1 )] ) * sign;
     """,
     "_qmf_kernel",
-    options=("-std=c++11",),
 )
 
 
@@ -86,7 +85,6 @@ _morlet_kernel = cupy.ElementwiseKernel(
     output = temp * exp( -0.5 * ( x * x ) ) * pow( M_PI, -0.25 )
     """,
     "_morlet_kernel",
-    options=("-std=c++11",),
     loop_prep="const double end { s * 2.0 * M_PI }; \
                const double start { -s * 2.0 * M_PI }; \
                const double delta { ( end - start ) / ( _ind.size() - 1 ) };",
@@ -161,7 +159,6 @@ _ricker_kernel = cupy.ElementwiseKernel(
     total = A * mod * gauss;
     """,
     "_ricker_kernel",
-    options=("-std=c++11",),
     loop_prep="const double A { 2.0 / ( sqrt( 3 * a ) * pow( M_PI, 0.25 ) ) };"
     " const double wsq { a * a };",
 )
@@ -223,7 +220,6 @@ _morlet2_kernel = cupy.ElementwiseKernel(
         pow( M_PI, -0.25 )
     """,
     "_morlet_kernel",
-    options=("-std=c++11",),
     loop_prep="",
 )
 

@@ -294,8 +294,7 @@ __device__ void _tensordot_core_int_kernel_impl(
                         f'{name}<unsigned long>',
                         f'{name}<long long>',
                         f'{name}<unsigned long long>']
-    mod = cupy.RawModule(code=code, options=('--std=c++11',),
-                         name_expressions=name_expressions)
+    mod = cupy.RawModule(code=code, name_expressions=name_expressions)
     ker = mod.get_function(name + '<' + get_typename(dtype) + '>')
     return ker
 

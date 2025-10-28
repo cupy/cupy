@@ -75,6 +75,7 @@ cdef class _ThreadLocal:
 include '_runtime_softlink.pxi'
 
 IF CUPY_USE_CUDA_PYTHON:
+    # this means CUPY_CUDA_VERSION >= 12000
     from cuda.ccudart cimport *
 ELSE:
     include '_runtime_extern.pxi'
@@ -216,6 +217,21 @@ cpdef getDeviceProperties(int device):
     cdef dict properties = {'name': b'UNAVAILABLE'}  # for RTD
 
     # Common properties to CUDA 9.0, 9.2, 10.x, 11.x, and HIP
+    IF CUPY_CUDA_VERSION >= 13000:
+        clockRate = deviceGetAttribute(cudaDevAttrClockRate, device)
+        kernelExecTimeoutEnabled = deviceGetAttribute(
+            cudaDevAttrKernelExecTimeout, device)
+        memoryClockRate = deviceGetAttribute(
+            cudaDevAttrMemoryClockRate, device)
+        computeMode = deviceGetAttribute(cudaDevAttrComputeMode, device)
+        cooperativeMultiDeviceLaunch = False
+    ELSE:
+        clockRate = props.clockRate
+        kernelExecTimeoutEnabled = props.kernelExecTimeoutEnabled
+        memoryClockRate = props.memoryClockRate
+        computeMode = props.computeMode
+        cooperativeMultiDeviceLaunch = props.cooperativeMultiDeviceLaunch
+
     IF CUPY_CUDA_VERSION > 0 or CUPY_HIP_VERSION > 0:
         properties = {
             'name': props.name,
@@ -226,17 +242,17 @@ cpdef getDeviceProperties(int device):
             'maxThreadsPerBlock': props.maxThreadsPerBlock,
             'maxThreadsDim': tuple(props.maxThreadsDim),
             'maxGridSize': tuple(props.maxGridSize),
-            'clockRate': props.clockRate,
+            'clockRate': clockRate,
             'totalConstMem': props.totalConstMem,
             'major': props.major,
             'minor': props.minor,
             'textureAlignment': props.textureAlignment,
             'texturePitchAlignment': props.texturePitchAlignment,
             'multiProcessorCount': props.multiProcessorCount,
-            'kernelExecTimeoutEnabled': props.kernelExecTimeoutEnabled,
+            'kernelExecTimeoutEnabled': kernelExecTimeoutEnabled,
             'integrated': props.integrated,
             'canMapHostMemory': props.canMapHostMemory,
-            'computeMode': props.computeMode,
+            'computeMode': computeMode,
             'maxTexture1D': props.maxTexture1D,
             'maxTexture2D': tuple(props.maxTexture2D),
             'maxTexture3D': tuple(props.maxTexture3D),
@@ -246,18 +262,16 @@ cpdef getDeviceProperties(int device):
             'pciDeviceID': props.pciDeviceID,
             'pciDomainID': props.pciDomainID,
             'tccDriver': props.tccDriver,
-            'memoryClockRate': props.memoryClockRate,
+            'memoryClockRate': memoryClockRate,
             'memoryBusWidth': props.memoryBusWidth,
             'l2CacheSize': props.l2CacheSize,
             'maxThreadsPerMultiProcessor': props.maxThreadsPerMultiProcessor,
             'isMultiGpuBoard': props.isMultiGpuBoard,
             'cooperativeLaunch': props.cooperativeLaunch,
-            'cooperativeMultiDeviceLaunch': props.cooperativeMultiDeviceLaunch,
+            'cooperativeMultiDeviceLaunch': cooperativeMultiDeviceLaunch,
         }
     IF CUPY_USE_CUDA_PYTHON or CUPY_CUDA_VERSION >= 9020:
-        properties['deviceOverlap'] = props.deviceOverlap
         properties['maxTexture1DMipmap'] = props.maxTexture1DMipmap
-        properties['maxTexture1DLinear'] = props.maxTexture1DLinear
         properties['maxTexture1DLayered'] = tuple(props.maxTexture1DLayered)
         properties['maxTexture2DMipmap'] = tuple(props.maxTexture2DMipmap)
         properties['maxTexture2DLinear'] = tuple(props.maxTexture2DLinear)
@@ -289,8 +303,6 @@ cpdef getDeviceProperties(int device):
         properties['multiGpuBoardGroupID'] = props.multiGpuBoardGroupID
         properties['hostNativeAtomicSupported'] = (
             props.hostNativeAtomicSupported)
-        properties['singleToDoublePrecisionPerfRatio'] = (
-            props.singleToDoublePrecisionPerfRatio)
         properties['pageableMemoryAccess'] = props.pageableMemoryAccess
         properties['concurrentManagedAccess'] = props.concurrentManagedAccess
         properties['computePreemptionSupported'] = (
@@ -314,6 +326,24 @@ cpdef getDeviceProperties(int device):
             props.accessPolicyMaxWindowSize)
         properties['reservedSharedMemPerBlock'] = (
             props.reservedSharedMemPerBlock)
+    if (
+        CUPY_USE_CUDA_PYTHON
+        or (CUPY_CUDA_VERSION >= 9020 and CUPY_CUDA_VERSION < 13000)
+    ):
+        properties['deviceOverlap'] = props.deviceOverlap
+        properties['maxTexture1DLinear'] = props.maxTexture1DLinear
+        properties['singleToDoublePrecisionPerfRatio'] = (
+            props.singleToDoublePrecisionPerfRatio)
+    elif CUPY_CUDA_VERSION >= 13000:
+        deviceOverlap = deviceGetAttribute(cudaDevAttrGpuOverlap, device)
+        maxTexture1DLinear = deviceGetAttribute(
+            cudaDevAttrMaxTexture1DLinearWidth, device)
+        singleToDoublePrecisionPerfRatio = deviceGetAttribute(
+            cudaDevAttrSingleToDoublePrecisionPerfRatio, device)
+        properties['deviceOverlap'] = deviceOverlap
+        properties['maxTexture1DLinear'] = maxTexture1DLinear
+        properties['singleToDoublePrecisionPerfRatio'] = (
+            singleToDoublePrecisionPerfRatio)
     IF CUPY_HIP_VERSION > 0:  # HIP-only props
         properties['clockInstructionRate'] = props.clockInstructionRate
         properties['maxSharedMemoryPerMultiProcessor'] = (
@@ -698,17 +728,37 @@ cpdef memPrefetchAsync(intptr_t devPtr, size_t count, int dstDevice,
                        intptr_t stream):
     if 0 < CUPY_HIP_VERSION < 40300000:
         raise RuntimeError('Managed memory requires ROCm 4.3+')
-    with nogil:
-        status = cudaMemPrefetchAsync(<void*>devPtr, count, dstDevice,
-                                      <driver.Stream> stream)
+    IF CUPY_CUDA_VERSION < 13000:
+        with nogil:
+            status = cudaMemPrefetchAsync(<void*>devPtr, count, dstDevice,
+                                          <driver.Stream> stream)
+    ELSE:
+        cdef _MemLocation loc_c
+        c_memset(&loc_c, 0, sizeof(_MemLocation))
+        loc_c.location.type = cudaMemLocationTypeDevice
+        loc_c.location.id = dstDevice
+        with nogil:
+            status = cudaMemPrefetchAsync(<void*>devPtr, count,
+                                          loc_c, 0,
+                                          <driver.Stream> stream)
     check_status(status)
 
 cpdef memAdvise(intptr_t devPtr, size_t count, int advice, int device):
     if 0 < CUPY_HIP_VERSION < 40300000:
         raise RuntimeError('Managed memory requires ROCm 4.3+')
-    with nogil:
-        status = cudaMemAdvise(<void*>devPtr, count,
-                               <MemoryAdvise>advice, device)
+    IF CUPY_CUDA_VERSION < 13000:
+        with nogil:
+            status = cudaMemAdvise(<void*>devPtr, count,
+                                   <MemoryAdvise>advice, device)
+    ELSE:
+        cdef _MemLocation loc_c
+        c_memset(&loc_c, 0, sizeof(_MemLocation))
+        loc_c.location.type = cudaMemLocationTypeDevice
+        loc_c.location.id = device
+        with nogil:
+            status = cudaMemAdvise(<void*>devPtr, count,
+                                   <MemoryAdvise>advice, loc_c)
+
     check_status(status)
 
 cpdef PointerAttributes pointerGetAttributes(intptr_t ptr):
@@ -894,11 +944,14 @@ cdef _HostFnFunc(void* func_arg) with gil:
     cpython.Py_DECREF(obj)
 
 
+cdef _HostFnFuncUnmanaged(void* func_arg) with gil:
+    obj = <object>func_arg
+    func, arg = obj
+    func(arg)
+
+
 cpdef streamAddCallback(intptr_t stream, callback, intptr_t arg,
                         unsigned int flags=0):
-    if _is_hip_environment and stream == 0:
-        raise RuntimeError('HIP does not allow adding callbacks to the '
-                           'default (null) stream')
     func_arg = (callback, arg)
     cpython.Py_INCREF(func_arg)
     with nogil:
@@ -909,14 +962,30 @@ cpdef streamAddCallback(intptr_t stream, callback, intptr_t arg,
 
 
 cpdef launchHostFunc(intptr_t stream, callback, intptr_t arg):
-    if _is_hip_environment:
-        raise RuntimeError('This feature is not supported on HIP')
+    # N.B. Currently this function should not be called during CUDA graph
+    # capture, as the reference to the callback/arg will be DECREFed on the
+    # first callback.
+    # Eventually this should be replaced by `_launchHostFuncUnmanaged`.
 
     func_arg = (callback, arg)
     cpython.Py_INCREF(func_arg)
     with nogil:
         status = cudaLaunchHostFunc(
             <driver.Stream>stream, <HostFn>_HostFnFunc,
+            <void*>func_arg)
+    check_status(status)
+
+
+cpdef _launchHostFuncUnmanaged(intptr_t stream, tuple func_arg):
+    # Private API for CuPy internal use only.
+    # The caller is responsible for managing the lifetime of `callback_arg`,
+    # which is a `tuple(callback_function, argument)`.
+    if _is_hip_environment:
+        raise RuntimeError('This feature is not supported on HIP')
+
+    with nogil:
+        status = cudaLaunchHostFunc(
+            <driver.Stream>stream, <HostFn>_HostFnFuncUnmanaged,
             <void*>func_arg)
     check_status(status)
 
@@ -933,8 +1002,6 @@ cpdef streamWaitEvent(intptr_t stream, intptr_t event, unsigned int flags=0):
 
 
 cpdef streamBeginCapture(intptr_t stream, int mode=streamCaptureModeRelaxed):
-    if _is_hip_environment:
-        raise RuntimeError('streamBeginCapture is not supported in ROCm')
     # TODO(leofang): check and raise if stream == 0?
     with nogil:
         status = cudaStreamBeginCapture(<driver.Stream>stream,
@@ -945,8 +1012,6 @@ cpdef streamBeginCapture(intptr_t stream, int mode=streamCaptureModeRelaxed):
 cpdef intptr_t streamEndCapture(intptr_t stream) except? 0:
     # TODO(leofang): check and raise if stream == 0?
     cdef Graph g
-    if _is_hip_environment:
-        raise RuntimeError('streamEndCapture is not supported in ROCm')
     with nogil:
         status = cudaStreamEndCapture(<driver.Stream>stream, &g)
     check_status(status)
@@ -955,8 +1020,6 @@ cpdef intptr_t streamEndCapture(intptr_t stream) except? 0:
 
 cpdef bint streamIsCapturing(intptr_t stream) except*:
     cdef StreamCaptureStatus s
-    if _is_hip_environment:
-        raise RuntimeError('streamIsCapturing is not supported in ROCm')
     with nogil:
         status = cudaStreamIsCapturing(<driver.Stream>stream, &s)
     check_status(status)  # cudaErrorStreamCaptureImplicit could be raised here
@@ -1105,9 +1168,13 @@ cpdef graphExecDestroy(intptr_t graphExec):
 cpdef intptr_t graphInstantiate(intptr_t graph) except? 0:
     # TODO(leofang): support reporting error log?
     cdef GraphExec ge
-    with nogil:
-        status = cudaGraphInstantiate(<GraphExec*>(&ge), <Graph>graph,
-                                      NULL, NULL, 0)
+    IF CUPY_HIP_VERSION > 0 or 12000 > CUPY_CUDA_VERSION > 0:
+        with nogil:
+            status = cudaGraphInstantiate(<GraphExec*>(&ge), <Graph>graph,
+                                          NULL, NULL, 0)
+    ELSE:
+        with nogil:
+            status = cudaGraphInstantiate(<GraphExec*>(&ge), <Graph>graph, 0)
     check_status(status)
     return <intptr_t>ge
 

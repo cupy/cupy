@@ -6,7 +6,7 @@ Requirements
 
 * `NVIDIA CUDA GPU <https://developer.nvidia.com/cuda-gpus>`_ with the Compute Capability 3.0 or larger.
 
-* `CUDA Toolkit <https://developer.nvidia.com/cuda-toolkit>`_: v11.2 / v11.3 / v11.4 / v11.5 / v11.6 / v11.7 / v11.8 / v12.0 / v12.1 / v12.2 / v12.3 / v12.4 / v12.5 / v12.6 / v12.8 / v12.9
+* `CUDA Toolkit <https://developer.nvidia.com/cuda-toolkit>`_: v12.0 / v12.1 / v12.2 / v12.3 / v12.4 / v12.5 / v12.6 / v12.8 / v12.9 / v13.0
 
     * If you have multiple versions of CUDA Toolkit installed, CuPy will automatically choose one of the CUDA installations.
       See :ref:`install_cuda` for details.
@@ -23,11 +23,11 @@ Requirements
 Python Dependencies
 ~~~~~~~~~~~~~~~~~~~
 
-NumPy/SciPy-compatible API in CuPy v14 is based on NumPy 2.3 and SciPy 1.14, and has been tested against the following versions:
+NumPy/SciPy-compatible API in CuPy v14 is based on NumPy 2.3 and SciPy 1.16, and has been tested against the following versions:
 
-* `NumPy <https://numpy.org/>`_: v1.24 / v1.25 / v1.26 / v2.0 / v2.1 / v2.2 / v2.3
+* `NumPy <https://numpy.org/>`_: v2.0 / v2.1 / v2.2 / v2.3
 
-* `SciPy <https://scipy.org/>`_ (*optional*): v1.10 / v1.11 / v1.12 / v1.13 / v1.14
+* `SciPy <https://scipy.org/>`_ (*optional*): v1.14 / v1.15 / v1.16
 
     * Required only when copying sparse matrices from GPU to CPU (see :doc:`../reference/scipy_sparse`.)
 
@@ -54,13 +54,9 @@ Part of the CUDA features in CuPy will be activated only when the corresponding 
 
     * The library to accelerate tensor operations. See :doc:`../reference/environment` for the details.
 
-* `NCCL <https://developer.nvidia.com/nccl>`_: v2.16 / v2.17 / v2.18 / v2.19 / v2.20 / v2.21 / v2.22 / v2.25 / v2.26
+* `NCCL <https://developer.nvidia.com/nccl>`_: v2.16 / v2.17 / v2.18 / v2.19 / v2.20 / v2.21 / v2.22 / v2.25 / v2.26 / v2.27
 
     * The library to perform collective multi-GPU / multi-node computations.
-
-* `cuDNN <https://developer.nvidia.com/cudnn>`_: v8.8
-
-    * The library to accelerate deep neural network computations.
 
 * `cuSPARSELt <https://docs.nvidia.com/cuda/cusparselt/>`_: v0.7.0 / v0.7.1
 
@@ -81,17 +77,18 @@ Package names are different depending on your CUDA Toolkit version.
 
    * - CUDA
      - Command
-   * - **v11.2 ~ 11.8** (x86_64 / aarch64)
-     - ``pip install cupy-cuda11x``
    * - **v12.x** (x86_64 / aarch64)
      - ``pip install cupy-cuda12x``
+   * - **v13.x** (x86_64 / aarch64)
+     - ``pip install cupy-cuda13x``
 
 .. note::
 
-   To enable features provided by additional CUDA libraries (cuTENSOR / NCCL / cuDNN), you need to install them manually.
-   If you installed CuPy via wheels, you can use the installer command below to setup these libraries in case you don't have a previous installation::
+   To enable features provided by additional CUDA libraries (cuTENSOR / NCCL), you need to install them manually.
+   If you installed CuPy via PyPI, the easiest way to setup these libraries is to use ``cutensor-cuXX`` and ``nvidia-nccl-cuXX`` PyPI packages, e.g.:::
 
-    $ python -m cupyx.tools.install_library --cuda 11.x --library cutensor
+    $ pip install "cutensor-cu13==2.3.*"
+    $ pip install "nvidia-nccl-cu13==2.27.*"
 
 .. note::
 
@@ -134,9 +131,9 @@ However, if for any reason you need to force-install a particular CUDA version (
 
 .. note::
 
-    cuDNN, cuTENSOR, and NCCL are available on ``conda-forge`` as optional dependencies. The following command can install them all at once::
+    cuTENSOR, and NCCL are available on ``conda-forge`` as optional dependencies. The following command can install them all at once::
 
-        $ conda install -c conda-forge cupy cudnn cutensor nccl
+        $ conda install -c conda-forge cupy cutensor nccl
 
     Each of them can also be installed separately as needed.
 
@@ -162,7 +159,7 @@ Installing CuPy from Source
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Use of wheel packages is recommended whenever possible.
-However, if wheels cannot meet your requirements (e.g., you are running non-Linux environment or want to use a version of CUDA / cuDNN / NCCL not supported by wheels), you can also build CuPy from source.
+However, if wheels cannot meet your requirements (e.g., you are running non-Linux environment or want to use a version of CUDA / NCCL not supported by wheels), you can also build CuPy from source.
 
 .. note::
 
@@ -173,11 +170,11 @@ However, if wheels cannot meet your requirements (e.g., you are running non-Linu
 .. note::
 
    When installing CuPy from source, features provided by additional CUDA libraries will be disabled if these libraries are not available at the build time.
-   See :ref:`install_cudnn` for the instructions.
+   See :ref:`install_nccl` for the instructions.
 
 .. note::
 
-   If you upgrade or downgrade the version of CUDA Toolkit, cuDNN, NCCL or cuTENSOR, you may need to reinstall CuPy.
+   If you upgrade or downgrade the version of CUDA Toolkit, NCCL or cuTENSOR, you may need to reinstall CuPy.
    See :ref:`install_reinstall` for details.
 
 You can install the latest stable release version of the `CuPy source package <https://pypi.python.org/pypi/cupy>`_ via ``pip``.
@@ -283,26 +280,23 @@ If you are using certain versions of conda, it may fail to build CuPy with error
 This is due to a bug in conda (see `conda/conda#6030 <https://github.com/conda/conda/issues/6030>`_ for details).
 If you encounter this problem, please upgrade your conda.
 
-.. _install_cudnn:
+.. _install_nccl:
 
-Installing cuDNN and NCCL
-~~~~~~~~~~~~~~~~~~~~~~~~~
+Installing NCCL
+~~~~~~~~~~~~~~~
 
-We recommend installing cuDNN and NCCL using binary packages (i.e., using ``apt`` or ``yum``) provided by NVIDIA.
+We recommend installing NCCL using binary packages (i.e., using ``apt`` or ``yum``) provided by NVIDIA.
 
-If you want to install tar-gz version of cuDNN and NCCL, we recommend installing it under the ``CUDA_PATH`` directory.
-For example, if you are using Ubuntu, copy ``*.h`` files to ``include`` directory and ``*.so*`` files to ``lib64`` directory::
-
-  $ cp /path/to/cudnn.h $CUDA_PATH/include
-  $ cp /path/to/libcudnn.so* $CUDA_PATH/lib64
+If you want to install tar-gz version of NCCL, we recommend installing it under the ``CUDA_PATH`` directory.
+For example, if you are using Ubuntu, copy ``*.h`` files to ``include`` directory and ``*.so*`` files to ``lib64`` directory.
 
 The destination directories depend on your environment.
 
-If you want to use cuDNN or NCCL installed in another directory, please use ``CFLAGS``, ``LDFLAGS`` and ``LD_LIBRARY_PATH`` environment variables before installing CuPy::
+If you want to use NCCL installed in another directory, please use ``CFLAGS``, ``LDFLAGS`` and ``LD_LIBRARY_PATH`` environment variables before installing CuPy::
 
-  $ export CFLAGS=-I/path/to/cudnn/include
-  $ export LDFLAGS=-L/path/to/cudnn/lib
-  $ export LD_LIBRARY_PATH=/path/to/cudnn/lib:$LD_LIBRARY_PATH
+  $ export CFLAGS=-I/path/to/nccl/include
+  $ export LDFLAGS=-L/path/to/nccl/lib
+  $ export LD_LIBRARY_PATH=/path/to/nccl/lib:$LD_LIBRARY_PATH
 
 .. _install_cuda:
 
@@ -414,7 +408,7 @@ Requirements
 
 * `AMD GPU supported by ROCm <https://rocm.docs.amd.com/projects/install-on-linux/en/latest/reference/system-requirements.html>`_
 
-* `ROCm <https://rocm.docs.amd.com/en/latest/>`_ 4.x / 5.x / 6.x
+* `ROCm <https://rocm.docs.amd.com/en/latest/>`_ 7.x
     * See the `Installation Guide <https://rocm.docs.amd.com/projects/install-on-linux/en/latest/install/quick-start.html>`_ for details.
 
 The following ROCm libraries are required:
@@ -422,11 +416,6 @@ The following ROCm libraries are required:
 ::
 
   $ sudo apt install hipblas hipsparse rocsparse rocrand hiprand rocthrust rocsolver rocfft hipfft hipcub rocprim rccl roctracer-dev
-
-.. note::
-
-   ROCm binary packages (wheels) and ROCm Docker images are unavailable in recent CuPy versions (v13.4.0+).
-   We are currently working on improving packaging to improve this situation. Follow `#8607 <https://github.com/cupy/cupy/issues/8607>`_ for the latest status.
 
 Environment Variables
 ~~~~~~~~~~~~~~~~~~~~~
@@ -449,29 +438,18 @@ You can try running CuPy for ROCm using Docker.
 Installing Binary Packages
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Wheels (precompiled binary packages) are available for Linux (x86_64).
-Package names are different depending on your ROCm version.
-
-.. list-table::
-   :header-rows: 1
-
-   * - ROCm
-     - Command
-   * - v4.3
-     - ``$ pip install cupy-rocm-4-3``
-   * - v5.0
-     - ``$ pip install cupy-rocm-5-0``
-
 .. note::
 
-   As of now, you need to build CuPy from source to use CuPy with ROCm 6+.
+   ROCm binary packages (wheels) and ROCm Docker images are unavailable in recent CuPy versions (v13.4.0+).
+   We are currently working on improving packaging to improve this situation. Follow `#8607 <https://github.com/cupy/cupy/issues/8607>`_ for the latest status.
+
 
 Building CuPy for ROCm From Source
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 To build CuPy from source, set the ``CUPY_INSTALL_USE_HIP``, ``ROCM_HOME``, and ``HCC_AMDGPU_TARGET`` environment variables.
 (``HCC_AMDGPU_TARGET`` is the ISA name supported by your GPU.
-Run ``rocminfo`` and use the value displayed in ``Name:`` line (e.g., ``gfx900``).
+Run ``rocminfo`` and use the value displayed in ``Name:`` line (e.g., ``gfx942``).
 You can specify a comma-separated list of ISAs if you have multiple GPUs of different architectures.)
 
 ::
@@ -491,22 +469,20 @@ Limitations
 
 The following features are not available due to the limitation of ROCm or because that they are specific to CUDA:
 
-* CUDA Array Interface
 * cuTENSOR
 * Handling extremely large arrays whose size is around 32-bit boundary (HIP is known to fail with sizes `2**32-1024`)
 * Atomic addition in FP16 (``cupy.ndarray.scatter_add`` and ``cupyx.scatter_add``)
 * Multi-GPU FFT and FFT callback
 * Some random number generation algorithms
 * Several options in RawKernel/RawModule APIs: Jitify, dynamic parallelism
-* Per-thread default stream
 
 The following features are not yet supported:
 
 * Sparse matrices (``cupyx.scipy.sparse``)
-* cuDNN (hipDNN)
 * Hermitian/symmetric eigenvalue solver (``cupy.linalg.eigh``)
 * Polynomial roots (uses Hermitian/symmetric eigenvalue solver)
 * Splines in ``cupyx.scipy.interpolate`` (``make_interp_spline``, spline modes of ``RegularGridInterpolator``/``interpn``), as they depend on sparse matrices.
+* Per-thread default stream (`#9407 <https://github.com/cupy/cupy/pull/9407>`_)
 
 The following features may not work in edge cases (e.g., some combinations of dtype):
 

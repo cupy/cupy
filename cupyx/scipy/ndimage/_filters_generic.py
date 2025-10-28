@@ -271,4 +271,4 @@ void {name}(const byte* input, byte* output, const idx_t* x) {{
              rk_code=rk.code.replace('__global__', '__device__'),
              include_type_traits=include_type_traits,
              CAST=_filters_core._CAST_FUNCTION)
-    return cupy.RawKernel(code, name, ('--std=c++11',) + rk.options)
+    return cupy.RawKernel(code, name, rk.options)

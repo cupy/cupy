@@ -6,6 +6,29 @@ This page covers changes introduced in each major version that users should know
 Please see also the :ref:`compatibility_matrix` for supported environments of each major version.
 
 
+CuPy v14
+========
+
+Dropping cuDNN Support
+----------------------
+
+CuPy v14 no longer supports cuDNN.
+All cuDNN-related functionality has been completely removed from CuPy.
+
+Users who need to access cuDNN functionality from Python should consider using `cuDNN Frontend <https://github.com/NVIDIA/cudnn-frontend>`_ instead, which provides direct access to the NVIDIA cuDNN library in both C++ and Python.
+
+Various deprecated modules have been moved to :mod:`cupyx`
+----------------------------------------------------------
+
+The following :mod:`cupy` submodules have been removed, with replacements in :mod:`cupyx`:
+
+* ``cupy.sparse`` -> :mod:`cupyx.scipy.sparse` (deprecated in CuPy v8)
+* ``cupy.prof`` -> :mod:`cupyx.profiler` (deprecated in CuPy v10)
+* ``cupy.cusolver`` -> :mod:`cupyx.scipy.linalg.cusolver` (undocumented API, deprecated in CuPy v12)
+* ``cupy.cusparse`` -> :mod:`cupyx.scipy.sparse.cusparse` (undocumented API, deprecated in CuPy v12)
+* ``cupy.cutensor`` -> :mod:`cupyx.scipy.linalg.cutensor` (undocumented API, deprecated in CuPy v12)
+
+
 CuPy v13
 ========
 
@@ -590,8 +613,8 @@ Compatibility Matrix
      - 4.3~
      - 2.0~
      - 2.16~
-     - 8.8~
-     - 3.9~
+     - n/a
+     - 3.10~
      - 1.22~
      - 1.7~
      - NumPy 1.26 & SciPy 1.11
