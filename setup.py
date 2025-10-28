@@ -71,8 +71,26 @@ if ctx.long_description_path is not None:
 dependencies = [
     "numpy>=1.24,<2.6",  # see #4773
 ]
+optional_dependencies = {
+    "all": [
+        "scipy>=1.10,<1.17",  # see #4773
+        "Cython>=3",
+        "optuna>=2.0",
+    ],
+    "test": [
+        "packaging",
+        "pytest>=7.2",
+        "hypothesis>=6.37.2,<6.55.0",
+        "mpmath",
+    ],
+}
 if not ctx.use_hip:
     dependencies.append("cuda-pathfinder>=1.3.1,<2.0a0")
+    if ext_modules:
+        cuda_major = ctx.features["cuda"].get_version() // 1000
+        optional_dependencies["ctk"] = [
+            f"cuda-toolkit[nvrtc,cublas,cufft,cusolver,cusparse,curand]=={cuda_major}.*"  # NOQA
+        ]
 
 
 setup(
@@ -80,6 +98,7 @@ setup(
     long_description_content_type='text/x-rst',
     package_data=package_data,
     install_requires=dependencies,
+    extras_require=optional_dependencies,
     zip_safe=False,
     ext_modules=ext_modules,
     cmdclass={'build_ext': cupy_builder._command.custom_build_ext},
