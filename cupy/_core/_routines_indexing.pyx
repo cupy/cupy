@@ -1183,11 +1183,15 @@ cdef _ndarray_base _getitem_fields(_ndarray_base a, str name):
             "CuPy does not yet support accessing nested subarrays, "
             "please open an issue if you need this support.")
 
+    # Subclasses are finalized before modifying the dtype here
     v = a.view()
     v.data = a.data + offset
     v.dtype = new_dtype
-    # TODO: For user convenience it would be nice to check alignment here
-    # because it will be common that the data is unusable even if a basic type.
+    v._update_contiguity()  # if it was contiguous it most likely is not now
+    internal.check_aligned(v)  # raise if it seems to be unaligned.
+
+    # TODO(seberg): For user convenience it would be nice to check alignment
+    # because NumPy often creates unaligned structs that are unusable here.
     return v
 
 
