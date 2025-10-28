@@ -2667,7 +2667,9 @@ cdef _ndarray_base _array_from_nested_numpy_sequence(
         src_cpu = (
             numpy.frombuffer(mem, a_dtype, itemcount)
             .reshape(shape, order=order))
-        numpy.concatenate(arrays, axis=None, out=src_cpu, casting="unsafe")
+        numpy.concatenate(
+            [numpy.expand_dims(e, 0) for e in arrays], axis=0,
+            out=src_cpu, casting="unsafe")
 
         a = ndarray(shape, dtype=a_dtype, order=order)
         a.data.copy_from_host_async(mem.ptr, nbytes, stream)
