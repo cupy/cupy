@@ -87,7 +87,7 @@ class TestSearch:
 
     @testing.slow
     def test_argmax_int32_overflow(self):
-        a = testing.shaped_arange((2 ** 32 + 1,), cupy, numpy.float64)
+        a = cupy.arange(2 ** 32 + 1, dtype=cupy.float64)
         assert a.argmax().item() == 2 ** 32
 
     @testing.for_all_dtypes(no_complex=True)
@@ -166,7 +166,7 @@ class TestSearch:
 
     @testing.slow
     def test_argmin_int32_overflow(self):
-        a = testing.shaped_arange((2 ** 32 + 1,), cupy, numpy.float64)
+        a = cupy.arange(2 ** 32 + 1, dtype=cupy.float64)
         cupy.negative(a, out=a)
         assert a.argmin().item() == 2 ** 32
 
