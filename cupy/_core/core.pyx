@@ -35,12 +35,12 @@ from cupy._core._kernel import ElementwiseKernel, create_ufunc # only fill_kerne
 from cupy._core cimport _routines_binary as _binary
 #from cupy._core cimport _routines_indexing as _indexing
 from cupy._core cimport _routines_creation as _creation
-#from cupy._core cimport _routines_linalg as _linalg
-#from cupy._core cimport _routines_logic as _logic
+from cupy._core cimport _routines_linalg as _linalg
+from cupy._core cimport _routines_logic as _logic
 from cupy._core cimport _routines_manipulation as _manipulation
 from cupy._core cimport _routines_math as _math
 #from cupy._core cimport _routines_sorting as _sorting
-#from cupy._core cimport _routines_statistics as _statistics
+from cupy._core cimport _routines_statistics as _statistics
 
 from cupy._core cimport _scalar
 from cupy._core cimport dlpack
@@ -50,7 +50,7 @@ from cupy.xpu cimport device
 from cupy.xpu cimport function
 from cupy.xpu cimport pinned_memory
 from cupy.xpu cimport memory
-from cupy.xpu cimport stream as stream_module  # CUPY TODO: repeated import
+from cupy.xpu cimport stream as stream_module
 from backends.backend cimport stream as _stream_module
 from backends.backend.api cimport runtime
 from backends.backend.api.runtime import CUDARuntimeError
@@ -1053,100 +1053,6 @@ cdef class _ndarray_base:
             """
             return _indexing._ndarray_diagonal(self, offset, axis1, axis2)
 
-        # -------------------------------------------------------------------------
-        # Calculation
-        # -------------------------------------------------------------------------
-        cpdef _ndarray_base max(self, axis=None, out=None, keepdims=False):
-            """Returns the maximum along a given axis.
-
-            .. seealso::
-            :func:`cupy.amax` for full documentation,
-            :meth:`numpy.ndarray.max`
-
-            """
-            return _statistics._ndarray_max(self, axis, out, None, keepdims)
-
-        cpdef _ndarray_base argmax(
-                self, axis=None, out=None, dtype=None, keepdims=False):
-            """Returns the indices of the maximum along a given axis.
-
-            .. note::
-            ``dtype`` and ``keepdim`` arguments are specific to CuPy. They are
-            not in NumPy.
-
-            .. note::
-            ``axis`` argument accepts a tuple of ints, but this is specific to
-            CuPy. NumPy does not support it.
-
-            .. seealso::
-            :func:`cupy.argmax` for full documentation,
-            :meth:`numpy.ndarray.argmax`
-
-            """
-            return _statistics._ndarray_argmax(self, axis, out, dtype, keepdims)
-
-        cpdef _ndarray_base min(self, axis=None, out=None, keepdims=False):
-            """Returns the minimum along a given axis.
-
-            .. seealso::
-            :func:`cupy.amin` for full documentation,
-            :meth:`numpy.ndarray.min`
-
-            """
-            return _statistics._ndarray_min(self, axis, out, None, keepdims)
-
-        cpdef _ndarray_base argmin(
-                self, axis=None, out=None, dtype=None, keepdims=False):
-            """Returns the indices of the minimum along a given axis.
-
-            .. note::
-            ``dtype`` and ``keepdim`` arguments are specific to CuPy. They are
-            not in NumPy.
-
-            .. note::
-            ``axis`` argument accepts a tuple of ints, but this is specific to
-            CuPy. NumPy does not support it.
-
-            .. seealso::
-            :func:`cupy.argmin` for full documentation,
-            :meth:`numpy.ndarray.argmin`
-
-            """
-            return _statistics._ndarray_argmin(self, axis, out, dtype, keepdims)
-
-        cpdef _ndarray_base ptp(self, axis=None, out=None, keepdims=False):
-            """Returns (maximum - minimum) along a given axis.
-
-            .. seealso::
-            :func:`cupy.ptp` for full documentation,
-            :meth:`numpy.ndarray.ptp`
-
-            """
-            return _statistics._ndarray_ptp(self, axis, out, keepdims)
-
-        cpdef _ndarray_base clip(self, min=None, max=None, out=None):
-            """Returns an array with values limited to [min, max].
-
-            .. seealso::
-            :func:`cupy.clip` for full documentation,
-            :meth:`numpy.ndarray.clip`
-
-            """
-            return _math._ndarray_clip(self, min, max, out)
-
-        cpdef _ndarray_base round(self, decimals=0, out=None):
-            """Returns an array with values rounded to the given number of decimals.
-
-            .. seealso::
-            :func:`cupy.around` for full documentation,
-            :meth:`numpy.ndarray.round`
-
-            """  # NOQA
-            if decimals < 0 and issubclass(self.dtype.type, numpy.integer):
-                return _round_ufunc_neg_uint(self, -decimals, out=out)
-            else:
-                return _round_ufunc(self, decimals, out=out)
-
         cpdef _ndarray_base trace(
                 self, offset=0, axis1=0, axis2=1, dtype=None, out=None):
             """Returns the sum along diagonals of the array.
@@ -1159,143 +1065,231 @@ cdef class _ndarray_base:
             d = self.diagonal(offset, axis1, axis2)
             return d.sum(-1, dtype, out, False)
 
-        cpdef _ndarray_base sum(
-                self, axis=None, dtype=None, out=None, keepdims=False):
-            """Returns the sum along a given axis.
+    # -------------------------------------------------------------------------
+    # Calculation
+    # -------------------------------------------------------------------------
+    cpdef _ndarray_base max(self, axis=None, out=None, keepdims=False):
+        """Returns the maximum along a given axis.
 
-            .. seealso::
-            :func:`cupy.sum` for full documentation,
-            :meth:`numpy.ndarray.sum`
+        .. seealso::
+        :func:`cupy.amax` for full documentation,
+        :meth:`numpy.ndarray.max`
 
-            """
-            return _math._ndarray_sum(self, axis, dtype, out, keepdims)
+        """
+        return _statistics._ndarray_max(self, axis, out, None, keepdims)
 
-        cpdef _ndarray_base cumsum(self, axis=None, dtype=None, out=None):
-            """Returns the cumulative sum of an array along a given axis.
+    cpdef _ndarray_base argmax(
+            self, axis=None, out=None, dtype=None, keepdims=False):
+        """Returns the indices of the maximum along a given axis.
 
-            .. seealso::
-            :func:`cupy.cumsum` for full documentation,
-            :meth:`numpy.ndarray.cumsum`
+        .. note::
+        ``dtype`` and ``keepdim`` arguments are specific to CuPy. They are
+        not in NumPy.
 
-            """
-            return _math._ndarray_cumsum(self, axis, dtype, out)
+        .. note::
+        ``axis`` argument accepts a tuple of ints, but this is specific to
+        CuPy. NumPy does not support it.
 
-        cpdef _ndarray_base mean(
-                self, axis=None, dtype=None, out=None, keepdims=False):
-            """Returns the mean along a given axis.
+        .. seealso::
+        :func:`cupy.argmax` for full documentation,
+        :meth:`numpy.ndarray.argmax`
 
-            .. seealso::
-            :func:`cupy.mean` for full documentation,
-            :meth:`numpy.ndarray.mean`
+        """
+        return _statistics._ndarray_argmax(self, axis, out, dtype, keepdims)
 
-            """
-            return _statistics._ndarray_mean(self, axis, dtype, out, keepdims)
+    cpdef _ndarray_base min(self, axis=None, out=None, keepdims=False):
+        """Returns the minimum along a given axis.
 
-        cpdef _ndarray_base var(
-                self, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
-            """Returns the variance along a given axis.
+        .. seealso::
+        :func:`cupy.amin` for full documentation,
+        :meth:`numpy.ndarray.min`
 
-            .. seealso::
-            :func:`cupy.var` for full documentation,
-            :meth:`numpy.ndarray.var`
+        """
+        return _statistics._ndarray_min(self, axis, out, None, keepdims)
 
-            """
-            return _statistics._ndarray_var(
-                self, axis, dtype, out, ddof, keepdims)
+    cpdef _ndarray_base argmin(
+            self, axis=None, out=None, dtype=None, keepdims=False):
+        """Returns the indices of the minimum along a given axis.
 
-        cpdef _ndarray_base std(
-                self, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
-            """Returns the standard deviation along a given axis.
+        .. note::
+        ``dtype`` and ``keepdim`` arguments are specific to CuPy. They are
+        not in NumPy.
 
-            .. seealso::
-            :func:`cupy.std` for full documentation,
-            :meth:`numpy.ndarray.std`
+        .. note::
+        ``axis`` argument accepts a tuple of ints, but this is specific to
+        CuPy. NumPy does not support it.
 
-            """
-            return _statistics._ndarray_std(self, axis, dtype, out, ddof, keepdims)
+        .. seealso::
+        :func:`cupy.argmin` for full documentation,
+        :meth:`numpy.ndarray.argmin`
 
-        cpdef _ndarray_base prod(
-                self, axis=None, dtype=None, out=None, keepdims=None):
-            """Returns the product along a given axis.
+        """
+        return _statistics._ndarray_argmin(self, axis, out, dtype, keepdims)
 
-            .. seealso::
-            :func:`cupy.prod` for full documentation,
-            :meth:`numpy.ndarray.prod`
+    cpdef _ndarray_base ptp(self, axis=None, out=None, keepdims=False):
+        """Returns (maximum - minimum) along a given axis.
 
-            """
-            return _math._ndarray_prod(self, axis, dtype, out, keepdims)
+        .. seealso::
+        :func:`cupy.ptp` for full documentation,
+        :meth:`numpy.ndarray.ptp`
 
-        cpdef _ndarray_base cumprod(self, axis=None, dtype=None, out=None):
-            """Returns the cumulative product of an array along a given axis.
+        """
+        return _statistics._ndarray_ptp(self, axis, out, keepdims)
 
-            .. seealso::
-            :func:`cupy.cumprod` for full documentation,
-            :meth:`numpy.ndarray.cumprod`
+    cpdef _ndarray_base clip(self, min=None, max=None, out=None):
+        """Returns an array with values limited to [min, max].
 
-            """
-            return _math._ndarray_cumprod(self, axis, dtype, out)
+        .. seealso::
+        :func:`cupy.clip` for full documentation,
+        :meth:`numpy.ndarray.clip`
 
-        cpdef _ndarray_base _add_reduceat(self, indices, axis, dtype, out):
-            return _indexing._add_reduceat(self, indices, axis, dtype, out)
+        """
+        return _math._ndarray_clip(self, min, max, out)
 
-        cpdef _ndarray_base all(self, axis=None, out=None, keepdims=False):
-            # TODO(niboshi): Write docstring
-            return _logic._ndarray_all(self, axis, out, keepdims)
+    cpdef _ndarray_base round(self, decimals=0, out=None):
+        """Returns an array with values rounded to the given number of decimals.
 
-        cpdef _ndarray_base any(self, axis=None, out=None, keepdims=False):
-            # TODO(niboshi): Write docstring
-            return _logic._ndarray_any(self, axis, out, keepdims)
+        .. seealso::
+        :func:`cupy.around` for full documentation,
+        :meth:`numpy.ndarray.round`
 
-        # -------------------------------------------------------------------------
-        # Arithmetic and comparison operations
-        # -------------------------------------------------------------------------
-        # Comparison operators:
+        """  # NOQA
+        return _math._ndarray_round(self, decimals, out)
 
-        def __richcmp__(object self, object other, int op):
-            if isinstance(other, ndarray):
-                if op == 0:
-                    return _logic._ndarray_less(self, other)
-                if op == 1:
-                    return _logic._ndarray_less_equal(self, other)
-                if op == 2:
-                    return _logic._ndarray_equal(self, other)
-                if op == 3:
-                    return _logic._ndarray_not_equal(self, other)
-                if op == 4:
-                    return _logic._ndarray_greater(self, other)
-                if op == 5:
-                    return _logic._ndarray_greater_equal(self, other)
-            elif not _should_use_rop(self, other):
-                if isinstance(other, numpy.ndarray) and other.ndim == 0:
-                    other = other.item()  # Workaround for numpy<1.13
-                if op == 0:
-                    return numpy.less(self, other)
-                if op == 1:
-                    return numpy.less_equal(self, other)
-                if op == 2:
-                    # cupy.ndarray does not support dtype=object, but
-                    # allow comparison with None, Ellipsis, and etc.
-                    if type(other).__eq__ is object.__eq__ or other is None:
-                        # Implies `other` is neither (Python/NumPy) scalar nor
-                        # ndarray. With object's default __eq__, it never
-                        # equals to an element of cupy.ndarray.
-                        return cupy.zeros(self._shape, dtype=cupy.bool_)
-                    return numpy.equal(self, other)
-                if op == 3:
-                    if (
-                        type(other).__eq__ is object.__eq__
-                        and type(other).__ne__ is object.__ne__
-                    ) or other is None:
-                        # Similar to eq, but ne falls back to `not __eq__`.
-                        return cupy.ones(self._shape, dtype=cupy.bool_)
-                    return numpy.not_equal(self, other)
-                if op == 4:
-                    return numpy.greater(self, other)
-                if op == 5:
-                    return numpy.greater_equal(self, other)
-            return NotImplemented
+    cpdef _ndarray_base sum(
+            self, axis=None, dtype=None, out=None, keepdims=False):
+        """Returns the sum along a given axis.
 
-        # Truth value of an array (bool):
+        .. seealso::
+        :func:`cupy.sum` for full documentation,
+        :meth:`numpy.ndarray.sum`
+
+        """
+        return _math._ndarray_sum(self, axis, dtype, out, keepdims)
+
+    cpdef _ndarray_base cumsum(self, axis=None, dtype=None, out=None):
+        """Returns the cumulative sum of an array along a given axis.
+
+        .. seealso::
+        :func:`cupy.cumsum` for full documentation,
+        :meth:`numpy.ndarray.cumsum`
+
+        """
+        return _math._ndarray_cumsum(self, axis, dtype, out)
+
+    cpdef _ndarray_base mean(
+            self, axis=None, dtype=None, out=None, keepdims=False):
+        """Returns the mean along a given axis.
+
+        .. seealso::
+        :func:`cupy.mean` for full documentation,
+        :meth:`numpy.ndarray.mean`
+
+        """
+        return _statistics._ndarray_mean(self, axis, dtype, out, keepdims)
+
+    cpdef _ndarray_base var(
+            self, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
+        """Returns the variance along a given axis.
+
+        .. seealso::
+        :func:`cupy.var` for full documentation,
+        :meth:`numpy.ndarray.var`
+
+        """
+        return _statistics._ndarray_var(
+            self, axis, dtype, out, ddof, keepdims)
+
+    cpdef _ndarray_base std(
+            self, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
+        """Returns the standard deviation along a given axis.
+
+        .. seealso::
+        :func:`cupy.std` for full documentation,
+        :meth:`numpy.ndarray.std`
+
+        """
+        return _statistics._ndarray_std(self, axis, dtype, out, ddof, keepdims)
+
+    cpdef _ndarray_base prod(
+            self, axis=None, dtype=None, out=None, keepdims=None):
+        """Returns the product along a given axis.
+
+        .. seealso::
+        :func:`cupy.prod` for full documentation,
+        :meth:`numpy.ndarray.prod`
+
+        """
+        return _math._ndarray_prod(self, axis, dtype, out, keepdims)
+
+    cpdef _ndarray_base cumprod(self, axis=None, dtype=None, out=None):
+        """Returns the cumulative product of an array along a given axis.
+
+        .. seealso::
+        :func:`cupy.cumprod` for full documentation,
+        :meth:`numpy.ndarray.cumprod`
+
+        """
+        return _math._ndarray_cumprod(self, axis, dtype, out)
+
+    cpdef _ndarray_base all(self, axis=None, out=None, keepdims=False):
+        # TODO(niboshi): Write docstring
+        return _logic._ndarray_all(self, axis, out, keepdims)
+
+    cpdef _ndarray_base any(self, axis=None, out=None, keepdims=False):
+        # TODO(niboshi): Write docstring
+        return _logic._ndarray_any(self, axis, out, keepdims)
+
+    # -------------------------------------------------------------------------
+    # Arithmetic and comparison operations
+    # -------------------------------------------------------------------------
+    # Comparison operators:
+
+    def __richcmp__(object self, object other, int op):
+        if isinstance(other, ndarray):
+            if op == 0:
+                return _logic._ndarray_less(self, other)
+            if op == 1:
+                return _logic._ndarray_less_equal(self, other)
+            if op == 2:
+                return _logic._ndarray_equal(self, other)
+            if op == 3:
+                return _logic._ndarray_not_equal(self, other)
+            if op == 4:
+                return _logic._ndarray_greater(self, other)
+            if op == 5:
+                return _logic._ndarray_greater_equal(self, other)
+        elif not _should_use_rop(self, other):
+            if isinstance(other, numpy.ndarray) and other.ndim == 0:
+                other = other.item()  # Workaround for numpy<1.13
+            if op == 0:
+                return numpy.less(self, other)
+            if op == 1:
+                return numpy.less_equal(self, other)
+            if op == 2:
+                # cupy.ndarray does not support dtype=object, but
+                # allow comparison with None, Ellipsis, and etc.
+                if type(other).__eq__ is object.__eq__ or other is None:
+                    # Implies `other` is neither (Python/NumPy) scalar nor
+                    # ndarray. With object's default __eq__, it never
+                    # equals to an element of cupy.ndarray.
+                    return cupy.zeros(self._shape, dtype=cupy.bool_)
+                return numpy.equal(self, other)
+            if op == 3:
+                if (
+                    type(other).__eq__ is object.__eq__
+                    and type(other).__ne__ is object.__ne__
+                ) or other is None:
+                    # Similar to eq, but ne falls back to `not __eq__`.
+                    return cupy.ones(self._shape, dtype=cupy.bool_)
+                return numpy.not_equal(self, other)
+            if op == 4:
+                return numpy.greater(self, other)
+            if op == 5:
+                return numpy.greater_equal(self, other)
+        return NotImplemented
+
+    # Truth value of an array (bool):
 
     def __nonzero__(self):
         if self.size == 0:
@@ -1311,211 +1305,210 @@ cdef class _ndarray_base:
                    'ambiguous. Use a.any() or a.all()')
             raise ValueError(msg)
 
-    IF CUPY_CANN_VERSION <= 0: # TODO: math later
-        # Unary operations:
+    # Unary operations:
 
-        def __neg__(self):
-            return _math._negative(self)
+    def __neg__(self):
+        return _math._negative(self)
 
-        def __pos__(self):
-            if self.dtype == numpy.bool_:
-                msg = ("Applying '+' to a non-numerical array is ill-defined. "
-                    'Returning a copy, but in the future this will error.')
-                warnings.warn(msg, DeprecationWarning)
-                return self.copy()
-            return _math._positive(self)
+    def __pos__(self):
+        if self.dtype == numpy.bool_:
+            msg = ("Applying '+' to a non-numerical array is ill-defined. "
+                'Returning a copy, but in the future this will error.')
+            warnings.warn(msg, DeprecationWarning)
+            return self.copy()
+        return _math._positive(self)
 
-        def __abs__(self):
-            return _math._absolute(self)
+    def __abs__(self):
+        return _math._absolute(self)
 
-        def __invert__(self):
-            return _binary._invert(self)
+    def __invert__(self):
+        return _binary._invert(self)
 
-        # Arithmetic:
+    # Arithmetic:
 
-        def __add__(x, y):
-            if isinstance(y, ndarray):
-                return _math._add(x, y)
-            elif _should_use_rop(x, y):
-                return NotImplemented
-            else:
-                return numpy.add(x, y)
+    def __add__(x, y):
+        if isinstance(y, ndarray):
+            return _math._add(x, y)
+        elif _should_use_rop(x, y):
+            return NotImplemented
+        else:
+            return numpy.add(x, y)
 
-        def __sub__(x, y):
-            if isinstance(y, ndarray):
-                return _math._subtract(x, y)
-            elif _should_use_rop(x, y):
-                return NotImplemented
-            else:
-                return numpy.subtract(x, y)
+    def __sub__(x, y):
+        if isinstance(y, ndarray):
+            return _math._subtract(x, y)
+        elif _should_use_rop(x, y):
+            return NotImplemented
+        else:
+            return numpy.subtract(x, y)
 
-        def __mul__(x, y):
-            if isinstance(y, ndarray):
-                return _math._multiply(x, y)
-            elif _should_use_rop(x, y):
-                return NotImplemented
-            else:
-                return numpy.multiply(x, y)
+    def __mul__(x, y):
+        if isinstance(y, ndarray):
+            return _math._multiply(x, y)
+        elif _should_use_rop(x, y):
+            return NotImplemented
+        else:
+            return numpy.multiply(x, y)
 
-        def __matmul__(x, y):
-            if isinstance(y, ndarray):
-                return _linalg.matmul(x, y)
-            elif _should_use_rop(x, y):
-                return NotImplemented
-            else:
-                return numpy.matmul(x, y)
+    def __matmul__(x, y):
+        if isinstance(y, ndarray):
+            return _linalg.matmul(x, y)
+        elif _should_use_rop(x, y):
+            return NotImplemented
+        else:
+            return numpy.matmul(x, y)
 
-        def __div__(x, y):
-            if isinstance(y, ndarray):
-                return _math._divide(x, y)
-            elif _should_use_rop(x, y):
-                return NotImplemented
-            else:
-                return numpy.divide(x, y)
+    def __div__(x, y):
+        if isinstance(y, ndarray):
+            return _math._divide(x, y)
+        elif _should_use_rop(x, y):
+            return NotImplemented
+        else:
+            return numpy.divide(x, y)
 
-        def __truediv__(x, y):
-            if isinstance(y, ndarray):
-                return _math._true_divide(x, y)
-            elif _should_use_rop(x, y):
-                return NotImplemented
-            else:
-                return numpy.true_divide(x, y)
+    def __truediv__(x, y):
+        if isinstance(y, ndarray):
+            return _math._true_divide(x, y)
+        elif _should_use_rop(x, y):
+            return NotImplemented
+        else:
+            return numpy.true_divide(x, y)
 
-        def __floordiv__(x, y):
-            if isinstance(y, ndarray):
-                return _math._floor_divide(x, y)
-            elif _should_use_rop(x, y):
-                return NotImplemented
-            else:
-                return numpy.floor_divide(x, y)
+    def __floordiv__(x, y):
+        if isinstance(y, ndarray):
+            return _math._floor_divide(x, y)
+        elif _should_use_rop(x, y):
+            return NotImplemented
+        else:
+            return numpy.floor_divide(x, y)
 
-        def __mod__(x, y):
-            if isinstance(y, ndarray):
-                return _math._remainder(x, y)
-            elif _should_use_rop(x, y):
-                return NotImplemented
-            else:
-                return numpy.remainder(x, y)
+    def __mod__(x, y):
+        if isinstance(y, ndarray):
+            return _math._remainder(x, y)
+        elif _should_use_rop(x, y):
+            return NotImplemented
+        else:
+            return numpy.remainder(x, y)
 
-        def __divmod__(x, y):
-            if isinstance(y, ndarray):
-                return divmod(x, y)
-            elif _should_use_rop(x, y):
-                return NotImplemented
-            else:
-                return numpy.divmod(x, y)
+    def __divmod__(x, y):
+        if isinstance(y, ndarray):
+            return divmod(x, y)
+        elif _should_use_rop(x, y):
+            return NotImplemented
+        else:
+            return numpy.divmod(x, y)
 
-        def __pow__(x, y, modulo):
-            # Note that we ignore the modulo argument as well as NumPy.
-            if isinstance(y, ndarray):
-                return _math._power(x, y)
-            elif _should_use_rop(x, y):
-                return NotImplemented
-            else:
-                return numpy.power(x, y)
+    def __pow__(x, y, modulo):
+        # Note that we ignore the modulo argument as well as NumPy.
+        if isinstance(y, ndarray):
+            return _math._power(x, y)
+        elif _should_use_rop(x, y):
+            return NotImplemented
+        else:
+            return numpy.power(x, y)
 
-        def __lshift__(x, y):
-            if isinstance(y, ndarray):
-                return _binary._left_shift(x, y)
-            elif _should_use_rop(x, y):
-                return NotImplemented
-            else:
-                return numpy.left_shift(x, y)
+    def __lshift__(x, y):
+        if isinstance(y, ndarray):
+            return _binary._left_shift(x, y)
+        elif _should_use_rop(x, y):
+            return NotImplemented
+        else:
+            return numpy.left_shift(x, y)
 
-        def __rshift__(x, y):
-            if isinstance(y, ndarray):
-                return _binary._right_shift(x, y)
-            elif _should_use_rop(x, y):
-                return NotImplemented
-            else:
-                return numpy.right_shift(x, y)
+    def __rshift__(x, y):
+        if isinstance(y, ndarray):
+            return _binary._right_shift(x, y)
+        elif _should_use_rop(x, y):
+            return NotImplemented
+        else:
+            return numpy.right_shift(x, y)
 
-        def __and__(x, y):
-            if isinstance(y, ndarray):
-                return _binary._bitwise_and(x, y)
-            elif _should_use_rop(x, y):
-                return NotImplemented
-            else:
-                return numpy.bitwise_and(x, y)
+    def __and__(x, y):
+        if isinstance(y, ndarray):
+            return _binary._bitwise_and(x, y)
+        elif _should_use_rop(x, y):
+            return NotImplemented
+        else:
+            return numpy.bitwise_and(x, y)
 
-        def __or__(x, y):
-            if isinstance(y, ndarray):
-                return _binary._bitwise_or(x, y)
-            elif _should_use_rop(x, y):
-                return NotImplemented
-            else:
-                return numpy.bitwise_or(x, y)
+    def __or__(x, y):
+        if isinstance(y, ndarray):
+            return _binary._bitwise_or(x, y)
+        elif _should_use_rop(x, y):
+            return NotImplemented
+        else:
+            return numpy.bitwise_or(x, y)
 
-        def __xor__(x, y):
-            if isinstance(y, ndarray):
-                return _binary._bitwise_xor(x, y)
-            elif _should_use_rop(x, y):
-                return NotImplemented
-            else:
-                return numpy.bitwise_xor(x, y)
+    def __xor__(x, y):
+        if isinstance(y, ndarray):
+            return _binary._bitwise_xor(x, y)
+        elif _should_use_rop(x, y):
+            return NotImplemented
+        else:
+            return numpy.bitwise_xor(x, y)
 
-        # Arithmetic, in-place:
+    # Arithmetic, in-place:
 
-        def __iadd__(self, other):
-            return _math._add(self, other, self)
+    def __iadd__(self, other):
+        return _math._add(self, other, self)
 
-        def __isub__(self, other):
-            return _math._subtract(self, other, self)
+    def __isub__(self, other):
+        return _math._subtract(self, other, self)
 
-        def __imul__(self, other):
-            return _math._multiply(self, other, self)
+    def __imul__(self, other):
+        return _math._multiply(self, other, self)
 
-        def __idiv__(self, other):
-            return _math._divide(self, other, self)
+    def __idiv__(self, other):
+        return _math._divide(self, other, self)
 
-        def __itruediv__(self, other):
-            return _math._true_divide(self, other, self)
+    def __itruediv__(self, other):
+        return _math._true_divide(self, other, self)
 
-        def __ifloordiv__(self, other):
-            return _math._floor_divide(self, other, self)
+    def __ifloordiv__(self, other):
+        return _math._floor_divide(self, other, self)
 
-        def __imod__(self, other):
-            return _math._remainder(self, other, self)
+    def __imod__(self, other):
+        return _math._remainder(self, other, self)
 
-        def __ipow__(self, other):
-            return _math._power(self, other, self)
+    def __ipow__(self, other):
+        return _math._power(self, other, self)
 
-        def __ilshift__(self, other):
-            return _binary._left_shift(self, other, self)
+    def __ilshift__(self, other):
+        return _binary._left_shift(self, other, self)
 
-        def __irshift__(self, other):
-            return _binary._right_shift(self, other, self)
+    def __irshift__(self, other):
+        return _binary._right_shift(self, other, self)
 
-        def __iand__(self, other):
-            return _binary._bitwise_and(self, other, self)
+    def __iand__(self, other):
+        return _binary._bitwise_and(self, other, self)
 
-        def __ior__(self, other):
-            return _binary._bitwise_or(self, other, self)
+    def __ior__(self, other):
+        return _binary._bitwise_or(self, other, self)
 
-        def __ixor__(self, other):
-            return _binary._bitwise_xor(self, other, self)
+    def __ixor__(self, other):
+        return _binary._bitwise_xor(self, other, self)
 
-        cpdef _ndarray_base conj(self):
-            return _math._ndarray_conj(self)
+    cpdef _ndarray_base conj(self):
+        return _math._ndarray_conj(self)
 
-        cpdef _ndarray_base conjugate(self):
-            return _math._ndarray_conj(self)
+    cpdef _ndarray_base conjugate(self):
+        return _math._ndarray_conj(self)
 
-        @property
-        def real(self):
-            return _math._ndarray_real_getter(self)
+    @property
+    def real(self):
+        return _math._ndarray_real_getter(self)
 
-        @real.setter
-        def real(self, value):
-            _math._ndarray_real_setter(self, value)
+    @real.setter
+    def real(self, value):
+        _math._ndarray_real_setter(self, value)
 
-        @property
-        def imag(self):
-            return _math._ndarray_imag_getter(self)
+    @property
+    def imag(self):
+        return _math._ndarray_imag_getter(self)
 
-        @imag.setter
-        def imag(self, value):
-            _math._ndarray_imag_setter(self, value)
+    @imag.setter
+    def imag(self, value):
+        _math._ndarray_imag_setter(self, value)
 
     # -------------------------------------------------------------------------
     # Special methods
@@ -1570,6 +1563,9 @@ cdef class _ndarray_base:
         return self._shape[0]
 
     IF CUPY_CANN_VERSION <= 0: # TODO indexing later
+        cpdef _ndarray_base _add_reduceat(self, indices, axis, dtype, out):
+            return _indexing._add_reduceat(self, indices, axis, dtype, out)
+
         def __getitem__(self, slices):
             """x.__getitem__(y) <==> x[y]
 

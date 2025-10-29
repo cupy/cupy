@@ -38,7 +38,7 @@ cdef extern from "aclnn/opdev/common_types.h" nogil:
 
 
 cdef aclDataType numpy_to_acl_dtype(dtype,
-    bint is_half_allowed=False, bint is_double_supported=False):
+    bint is_half_allowed=True, bint is_double_supported=True):
     # double and complex128 is not supported on ASCEND910
     cdef str dtype_char
     try:

@@ -145,6 +145,12 @@ if __name__ == "__main__":
     M = 4000            # 矩阵尺寸4K x 4K
     repeating = 10
     
+    # 定义测试函数
+    np_cos, cp_cos = np.cos, cp.cos
+    np_add, cp_add = np.add, cp.add
+    np_dot, cp_dot = np.matmul, cp.matmul
+    np_sum, cp_sum = np.sum, cp.sum
+
     print("正在生成测试数据...（这可能需要一些时间）")
     
     # 生成向量数据（200M元素）
@@ -168,18 +174,19 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"生成矩阵数据时出错：{e}。请检查可用内存/显存。")
         exit(1)
-    
-    # 定义测试函数
-    np_cos, cp_cos = np.cos, cp.cos
-    np_add, cp_add = np.add, cp.add
-    np_dot, cp_dot = np.matmul, cp.matmul
-    
+        
     print("\n" + "="*60)
     print("基准测试向量COS操作（单目运算，同步模式）")
     print("="*60)
     np_time, cp_time, speedup = benchmark_vector_op(np_cos, cp_cos, np_vec1, None, cp_vec1, None, 
                                                     unary=True, repeating=repeating, use_async=False)
     
+    print("\n" + "="*60)
+    print("基准测试向量Sum操作（Reduction运算，异步模式）")
+    print("="*60)
+    np_time, cp_time, speedup = benchmark_vector_op(np_sum, cp_sum, np_vec1, None, cp_vec1, None, 
+                                                    unary=True, repeating=repeating, use_async=True)
+
     print("\n" + "="*60)
     print("基准测试向量加法操作（双目运算，异步模式）")
     print("="*60)

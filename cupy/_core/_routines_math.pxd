@@ -12,10 +12,11 @@ cdef _ndarray_base _ndarray_sum(_ndarray_base self, axis, dtype, out, keepdims)
 cdef _ndarray_base _ndarray_cumsum(_ndarray_base self, axis, dtype, out)
 cdef _ndarray_base _ndarray_cumprod(_ndarray_base self, axis, dtype, out)
 cdef _ndarray_base _ndarray_clip(_ndarray_base self, a_min, a_max, out)
+cpdef _ndarray_base _ndarray_round(_ndarray_base self, decimals, out)
 
-# TODO: ASCEND not sure if nan op is supported (env variable) control NaN behavior
-#cpdef _ndarray_base _nansum(_ndarray_base a, axis, dtype, out, keepdims)
-#cpdef _ndarray_base _nanprod(_ndarray_base a, axis, dtype, out, keepdims)
+# TODO: ASCEND nan op is supported (env variable control NaN behavior)
+cpdef _ndarray_base _nansum(_ndarray_base a, axis, dtype, out, keepdims)
+cpdef _ndarray_base _nanprod(_ndarray_base a, axis, dtype, out, keepdims)
 
 cpdef enum scan_op:
     SCAN_SUM = 0

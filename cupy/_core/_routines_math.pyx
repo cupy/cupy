@@ -655,6 +655,18 @@ _round_ufunc_neg_uint = create_ufunc(
         out0 = (q*100 + round_float(r/(x*10.0f))*10) * x;
     ''', preamble=_round_preamble)
 
+cpdef _ndarray_base _ndarray_round(_ndarray_base self, decimals, out):
+    """Returns an array with values rounded to the given number of decimals.
+
+    .. seealso::
+    :func:`cupy.around` for full documentation,
+    :meth:`numpy.ndarray.round`
+
+    """  # NOQA
+    if decimals < 0 and issubclass(self.dtype.type, numpy.integer):
+        return _round_ufunc_neg_uint(self, -decimals, out=out)
+    else:
+        return _round_ufunc(self, decimals, out=out)
 
 # Variables to expose to Python
 # (cythonized data cannot be exposed to Python, even with cpdef.)

@@ -455,7 +455,8 @@ from numpy import printoptions  # NOQA
 # -----------------------------------------------------------------------------
 # Linear algebra
 # -----------------------------------------------------------------------------
-# ASCEND TODO
+#TODO (ASCEND)
+from cupy._core import matmul
 
 # -----------------------------------------------------------------------------
 # Logic functions
@@ -514,7 +515,7 @@ from cupy._logic.truth import any  # NOQA
 # -----------------------------------------------------------------------------
 # Polynomial functions
 # -----------------------------------------------------------------------------
-# ASCEND TODO
+# TODO (ASCEND)
 
 # -----------------------------------------------------------------------------
 # Mathematical functions
@@ -553,6 +554,56 @@ asinh = arcsinh
 atanh = arctanh
 
 # ASCEND TODO not yet check if there is op available
+from cupy._math.rounding import around  # NOQA
+from cupy._math.rounding import ceil  # NOQA
+from cupy._math.rounding import fix  # NOQA
+from cupy._math.rounding import floor  # NOQA
+from cupy._math.rounding import rint  # NOQA
+from cupy._math.rounding import round  # NOQA
+from cupy._math.rounding import round_  # NOQA
+from cupy._math.rounding import trunc  # NOQA
+
+from cupy._math.sumprod import prod  # NOQA
+from cupy._math.sumprod import product  # NOQA
+from cupy._math.sumprod import sum  # NOQA
+from cupy._math.sumprod import cumprod  # NOQA
+from cupy._math.sumprod import cumproduct  # NOQA
+from cupy._math.sumprod import cumsum  # NOQA
+from cupy._math.sumprod import ediff1d  # NOQA
+from cupy._math.sumprod import nancumprod  # NOQA
+from cupy._math.sumprod import nancumsum  # NOQA
+from cupy._math.sumprod import nansum  # NOQA
+from cupy._math.sumprod import nanprod  # NOQA
+from cupy._math.sumprod import diff  # NOQA
+from cupy._math.sumprod import gradient  # NOQA
+from cupy._math.sumprod import trapezoid  # NOQA
+from cupy._math.window import bartlett  # NOQA
+from cupy._math.window import blackman  # NOQA
+from cupy._math.window import hamming  # NOQA
+from cupy._math.window import hanning  # NOQA
+from cupy._math.window import kaiser  # NOQA
+
+from cupy._math.explog import exp  # NOQA
+from cupy._math.explog import exp2  # NOQA
+from cupy._math.explog import expm1  # NOQA
+from cupy._math.explog import log  # NOQA
+from cupy._math.explog import log10  # NOQA
+from cupy._math.explog import log1p  # NOQA
+from cupy._math.explog import log2  # NOQA
+from cupy._math.explog import logaddexp  # NOQA
+from cupy._math.explog import logaddexp2  # NOQA
+
+from cupy._math.special import i0  # NOQA
+from cupy._math.special import sinc  # NOQA
+
+from cupy._math.floating import copysign  # NOQA
+from cupy._math.floating import frexp  # NOQA
+from cupy._math.floating import ldexp  # NOQA
+from cupy._math.floating import nextafter  # NOQA
+from cupy._math.floating import signbit  # NOQA
+
+from cupy._math.rational import gcd  # NOQA
+from cupy._math.rational import lcm  # NOQA
 
 from cupy._math.arithmetic import add  # NOQA
 from cupy._math.arithmetic import divide  # NOQA
@@ -596,8 +647,35 @@ from numpy import iterable  # NOQA
 # -----------------------------------------------------------------------------
 # Statistics
 # -----------------------------------------------------------------------------
+# from cupy._statistics.correlation import corrcoef  # NOQA
+# from cupy._statistics.correlation import cov  # NOQA
+# from cupy._statistics.correlation import correlate  # NOQA
 
+from cupy._statistics.order import amax  # NOQA
+from cupy._statistics.order import amax as max  # NOQA
+from cupy._statistics.order import amin  # NOQA
+from cupy._statistics.order import amin as min  # NOQA
+from cupy._statistics.order import nanmax  # NOQA
+from cupy._statistics.order import nanmin  # NOQA
+from cupy._statistics.order import percentile  # NOQA
+from cupy._statistics.order import ptp  # NOQA
+from cupy._statistics.order import quantile  # NOQA
 
+from cupy._statistics.meanvar import median  # NOQA
+from cupy._statistics.meanvar import average  # NOQA
+from cupy._statistics.meanvar import mean  # NOQA
+from cupy._statistics.meanvar import std  # NOQA
+from cupy._statistics.meanvar import var  # NOQA
+from cupy._statistics.meanvar import nanmedian  # NOQA
+from cupy._statistics.meanvar import nanmean  # NOQA
+from cupy._statistics.meanvar import nanstd  # NOQA
+from cupy._statistics.meanvar import nanvar  # NOQA
+
+# from cupy._statistics.histogram import bincount  # NOQA
+# from cupy._statistics.histogram import digitize  # NOQA
+# from cupy._statistics.histogram import histogram  # NOQA
+# from cupy._statistics.histogram import histogram2d  # NOQA
+# from cupy._statistics.histogram import histogramdd  # NOQA
 
 # -----------------------------------------------------------------------------
 # Exceptions and Warnings
