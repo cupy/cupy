@@ -67,7 +67,7 @@ def installed(*specifiers: str) -> bool:
         except PackageNotFoundError:
             return False
         expected = req.specifier
-        # If no constrait is given, skip
+        # If no constraint is given, skip
         if expected and (not expected.contains(found, prereleases=True)):
             return False
     return True
@@ -177,7 +177,7 @@ def shaped_sparse_random(
 
     Args:
         shape (tuple): Shape of returned sparse matrix.
-        sp (scipy.sparse or cupyx.scipy.sparse): Sparce matrix module to use.
+        sp (scipy.sparse or cupyx.scipy.sparse): Sparse matrix module to use.
         dtype (dtype): Dtype of returned sparse matrix.
         density (float): Density of returned sparse matrix.
         format (str): Format of returned sparse matrix.
