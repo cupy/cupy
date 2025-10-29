@@ -26,7 +26,6 @@ from cupy_backends.cuda.api cimport driver
 from cupy_backends.cuda.api cimport runtime
 
 from cupy_backends.cuda.api.runtime import CUDARuntimeError
-from cupy import _util
 
 
 cdef extern from "Python.h":
@@ -747,7 +746,7 @@ cpdef MemoryPointer _malloc(size_t size):
 
 
 cpdef MemoryPointer malloc_async(size_t size):
-    """(Experimental) Allocate memory from Stream Ordered Memory Allocator.
+    """Allocate memory from Stream Ordered Memory Allocator.
 
     This method can be used as a CuPy memory allocator. The simplest way to
     use CUDA's Stream Ordered Memory Allocator as the default allocator is
@@ -765,9 +764,6 @@ cpdef MemoryPointer malloc_async(size_t size):
 
     Returns:
         ~cupy.cuda.MemoryPointer: Pointer to the allocated buffer.
-
-    .. warning::
-        This feature is currently experimental and subject to change.
 
     .. seealso:: `Stream Ordered Memory Allocator`_
 
@@ -899,8 +895,6 @@ cpdef set_allocator(allocator=None):
     if getattr(_thread_local, 'allocator', None) is not None:
         raise ValueError('Can\'t change the global allocator inside '
                          '`using_allocator` context manager')
-    if allocator is malloc_async:
-        _util.experimental('cupy.cuda.malloc_async')
     _current_allocator = allocator
 
 
@@ -1735,7 +1729,7 @@ cdef class MemoryPool:
 
 
 cdef class MemoryAsyncPool:
-    """(Experimental) CUDA memory pool for all GPU devices on the host.
+    """CUDA memory pool for all GPU devices on the host.
 
     A memory pool preserves any allocations even if they are freed by the user.
     One instance of this class can be used for multiple devices. This class
@@ -1759,9 +1753,6 @@ cdef class MemoryAsyncPool:
             accepted, in which case the list length must equal to the total
             number of visible devices so that the mempools for each device can
             be set independently.
-
-    .. warning::
-        This feature is currently experimental and subject to change.
 
     .. note::
         :class:`MemoryAsyncPool` currently cannot work with memory hooks.
@@ -1793,7 +1784,6 @@ cdef class MemoryAsyncPool:
         readonly bint memoryAsyncHasStat
 
     def __init__(self, pool_handles='current'):
-        _util.experimental('cupy.cuda.MemoryAsyncPool')
         cdef int dev_id, prev_dev_id, dev_counts
         cdef dict limit = _parse_limit_string()
         dev_counts = runtime.getDeviceCount()
