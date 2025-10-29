@@ -1,7 +1,11 @@
 # AUTO GENERATED: DO NOT EDIT!
-ARG BASE_IMAGE="nvidia/cuda:11.7.1-devel-ubuntu20.04"
+ARG BASE_IMAGE="rocm/dev-ubuntu-22.04:7.0.2-complete"
 FROM ${BASE_IMAGE}
 
+RUN export DEBIAN_FRONTEND=noninteractive && \
+    ( apt-get -qqy update || true ) && \
+    apt-get -qqy install ca-certificates && \
+    curl -qL https://repo.radeon.com/rocm/rocm.gpg.key | apt-key add -
 RUN export DEBIAN_FRONTEND=noninteractive && \
     apt-get -qqy update && \
     apt-get -qqy install \
@@ -14,21 +18,23 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
        && \
     apt-get -qqy install ccache git curl && \
     apt-get -qqy --allow-change-held-packages \
-            --allow-downgrades install 'libnccl2=2.16.*+cuda11.8' 'libnccl-dev=2.16.*+cuda11.8' 'libcutensor2=2.0.*' 'libcutensor-dev=2.0.*'
+            --allow-downgrades install 
 
 ENV PATH "/usr/lib/ccache:${PATH}"
 
-COPY setup/update-alternatives-cutensor.sh /
-RUN /update-alternatives-cutensor.sh
+ENV ROCM_HOME "/opt/rocm"
+ENV LD_LIBRARY_PATH "${ROCM_HOME}/lib"
+ENV CPATH "${ROCM_HOME}/include"
+ENV LDFLAGS "-L${ROCM_HOME}/lib"
 
 RUN git clone https://github.com/pyenv/pyenv.git /opt/pyenv
 ENV PYENV_ROOT "/opt/pyenv"
 ENV PATH "${PYENV_ROOT}/shims:${PYENV_ROOT}/bin:${PATH}"
-RUN pyenv install 3.13.1 && \
-    pyenv global 3.13.1 && \
+RUN pyenv install 3.11.13 && \
+    pyenv global 3.11.13 && \
     pip install -U setuptools pip wheel
 
-RUN pip install -U 'numpy==2.2.*' 'scipy==1.14.*' 'optuna==3.*' 'cython==3.0.*' 'fastrlock>=0.5'
+RUN pip install -U 'numpy==2.3.*' 'scipy==1.16.*' 'optuna==3.*' 'cython==3.1.*'
 RUN pip uninstall -y mpi4py cuda-python && \
     pip check
 

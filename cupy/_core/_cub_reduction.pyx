@@ -11,6 +11,8 @@ from cupy.cuda cimport cub
 from cupy.cuda cimport function
 from cupy.cuda cimport memory
 from cupy_backends.cuda.api cimport runtime
+from cupy_backends.cuda.libs cimport nvrtc
+
 
 import math
 import string
@@ -27,8 +29,10 @@ cdef function.Function _create_cub_reduction_function(
         _kernel._TypeMap type_map, preamble, options):
     # A (incomplete) list of internal variables:
     # _J            : the index of an element in the array
+
+    major, _ = nvrtc.getVersion()
     # ROCm5.3 and above requires c++14
-    if runtime._is_hip_environment:
+    if runtime._is_hip_environment and major < 7:
         options += ('--std=c++14',)
     else:
         # 1. static_assert needs at least C++11 in NVRTC
@@ -36,21 +40,20 @@ cdef function.Function _create_cub_reduction_function(
         #    license issue we can't yet bundle bf16 headers. CUB offers us a
         #    band-aid solution to avoid including the latter (NVIDIA/cub#478,
         #    nvbugs 3641496).
-        # 3. Recent CCCL versions need C++17.
-        options += ('--std=c++17', '-DCUB_DISABLE_BF16_SUPPORT')
+        # 3. Recent CCCL and hipCUB versions need C++17.
+        options += ('--std=c++17',)
+        if not runtime._is_hip_environment:
+            options += ('-DCUB_DISABLE_BF16_SUPPORT',)
 
-    cdef str backend
+    cdef str backend = 'nvrtc'
     if runtime._is_hip_environment:
         # In ROCm, we need to set the include path. This does not work for
         # hiprtc as of ROCm 3.5.0, so we must use hipcc.
         options += ('-I' + _rocm_path + '/include', '-O2')
         backend = 'nvcc'  # this is confusing...
-        jitify = False
-    else:
-        # use nvrtc
-        backend = 'nvrtc'
-        # We rely on the type traits in cccl to avoid using jitify
-        jitify = False
+
+    # We rely on the type traits in cccl to avoid using jitify
+    jitify = False
 
     # TODO(leofang): try splitting the for-loop into full tiles and partial
     # tiles to utilize LoadDirectBlockedVectorized? See, for example,

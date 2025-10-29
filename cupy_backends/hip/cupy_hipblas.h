@@ -7,6 +7,15 @@
 #include <stdexcept>  // for gcc 10
 
 
+#if HIP_VERSION >= 70000000  // ROCm 7 renamed hipblas*Complex to hip*Complex
+#  if defined(__HIP_PLATFORM_HCC__) || defined(__HIP_PLATFORM_AMD__)
+#define hipblasDoubleComplex hipDoubleComplex
+#define hipblasComplex hipFloatComplex
+#define hipblasDatatype_t hipDataType
+#endif
+#else
+#define convert_hipblasComputeType_t convert_hipblasDatatype_t
+#endif
 extern "C" {
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -61,6 +70,30 @@ static hipblasDatatype_t convert_hipblasDatatype_t(cudaDataType_t type) {
     }
 }
 
+
+#if HIP_VERSION >= 70000000
+#  if defined(__HIP_PLATFORM_HCC__) || defined(__HIP_PLATFORM_AMD__)
+static hipblasComputeType_t convert_hipblasComputeType_t(cudaDataType_t type) {
+    switch(type)
+    {
+        case 2:   // CUDA_R_16F
+        case 14:  // CUDA_R_16BF
+        case 0:   // CUDA_R_32F
+        case 4:   // CUDA_C_32F
+            return HIPBLAS_COMPUTE_32F;
+        case 1:   // CUDA_R_64F
+        case 5:   // CUDA_C_64F
+            return HIPBLAS_COMPUTE_64F;
+        case 10:  // CUDA_R_32I
+        case 11:  // CUDA_C_32I
+            return HIPBLAS_COMPUTE_32I;
+        default:
+            throw std::invalid_argument(
+                "unsupported cudaDataType_t for hipblasComputeType_t: " + std::to_string(type));
+    }
+}
+#endif
+#endif
 
 // Context
 cublasStatus_t cublasCreate(cublasHandle_t* handle) {
@@ -376,7 +409,7 @@ cublasStatus_t cublasGemmStridedBatchedEx(cublasHandle_t handle, cublasOperation
                                        B, convert_hipblasDatatype_t(Btype), ldb, strideB,
                                        beta,
                                        C, convert_hipblasDatatype_t(Ctype), ldc, strideC,
-                                       batchCount, convert_hipblasDatatype_t(computeType),
+                                       batchCount, convert_hipblasComputeType_t(computeType),
                                        static_cast<hipblasGemmAlgo_t>(160));  // HIPBLAS_GEMM_DEFAULT
 }
 
@@ -525,7 +558,7 @@ cublasStatus_t cublasGemmEx(cublasHandle_t handle, cublasOperation_t transa, cub
                          B, convert_hipblasDatatype_t(Btype), ldb,
                          beta,
                          C, convert_hipblasDatatype_t(Ctype), ldc,
-                         convert_hipblasDatatype_t(computetype),
+                         convert_hipblasComputeType_t(computetype),
                          static_cast<hipblasGemmAlgo_t>(160));  // HIPBLAS_GEMM_DEFAULT
 }
 

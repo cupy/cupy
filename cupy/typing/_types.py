@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from typing import Any, Literal, SupportsIndex, TypeVar, Union
+from typing import Any, Literal, SupportsIndex, TypeVar
 
 import numpy
 from cupy._core import core
@@ -14,7 +14,7 @@ from numpy.typing import NBitBase  # NOQA
 
 # Shapes
 _Shape = tuple[int, ...]
-_ShapeLike = Union[SupportsIndex, Sequence[SupportsIndex]]
+_ShapeLike = SupportsIndex | Sequence[SupportsIndex]
 
 _OrderKACF = Literal[None, "K", "A", "C", "F"]
 _OrderCF = Literal[None, "C", "F"]

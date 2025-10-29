@@ -2,6 +2,8 @@
 cimport cpython  # NOQA
 cimport cython  # NOQA
 
+from libcpp.mutex cimport recursive_mutex
+
 import atexit
 import collections
 import gc
@@ -10,7 +12,6 @@ import threading
 import warnings
 import weakref
 
-from fastrlock cimport rlock
 from libc.stdint cimport int8_t
 from libc.stdint cimport intptr_t
 from libc.stdint cimport UINT64_MAX
@@ -25,7 +26,12 @@ from cupy_backends.cuda.api cimport driver
 from cupy_backends.cuda.api cimport runtime
 
 from cupy_backends.cuda.api.runtime import CUDARuntimeError
-from cupy import _util
+
+
+cdef extern from "Python.h":
+    int PyGC_Enable()
+    int PyGC_Disable()
+    int PyGC_IsEnabled()
 
 
 # cudaMalloc() is aligned to at least 512 bytes
@@ -353,7 +359,7 @@ cdef class _Chunk:
     """A chunk points to a device memory.
 
     A chunk might be a splitted memory block from a larger allocation.
-    The prev/next pointers contruct a doubly-linked list of memory addresses
+    The prev/next pointers construct a doubly-linked list of memory addresses
     sorted by base address that must be contiguous.
 
     Args:
@@ -740,7 +746,7 @@ cpdef MemoryPointer _malloc(size_t size):
 
 
 cpdef MemoryPointer malloc_async(size_t size):
-    """(Experimental) Allocate memory from Stream Ordered Memory Allocator.
+    """Allocate memory from Stream Ordered Memory Allocator.
 
     This method can be used as a CuPy memory allocator. The simplest way to
     use CUDA's Stream Ordered Memory Allocator as the default allocator is
@@ -758,9 +764,6 @@ cpdef MemoryPointer malloc_async(size_t size):
 
     Returns:
         ~cupy.cuda.MemoryPointer: Pointer to the allocated buffer.
-
-    .. warning::
-        This feature is currently experimental and subject to change.
 
     .. seealso:: `Stream Ordered Memory Allocator`_
 
@@ -782,7 +785,7 @@ cpdef MemoryPointer malloc_managed(size_t size):
     The advantage using managed memory in CuPy is that device memory
     oversubscription is possible for GPUs that have a non-zero value for the
     device attribute cudaDevAttrConcurrentManagedAccess.
-    CUDA >= 8.0 with GPUs later than or equal to Pascal is preferrable.
+    CUDA >= 8.0 with GPUs later than or equal to Pascal is preferable.
 
     Read more at: https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__MEMORY.html#axzz4qygc1Ry1  # NOQA
 
@@ -892,8 +895,6 @@ cpdef set_allocator(allocator=None):
     if getattr(_thread_local, 'allocator', None) is not None:
         raise ValueError('Can\'t change the global allocator inside '
                          '`using_allocator` context manager')
-    if allocator is malloc_async:
-        _util.experimental('cupy.cuda.malloc_async')
     _current_allocator = allocator
 
 
@@ -1021,53 +1022,75 @@ cpdef size_t _bin_index_from_size(size_t size):
     return (size - 1) // ALLOCATION_UNIT_SIZE
 
 
-cdef _gc_isenabled = gc.isenabled
-cdef _gc_disable = gc.disable
-cdef _gc_enable = gc.enable
-
-
-cdef bint _lock_no_gc(lock):
+cdef bint _lock_no_gc(recursive_mutex& lock):
     """Lock to ensure single thread execution and no garbage collection.
 
     Returns:
         bool: Whether GC is disabled.
     """
-    rlock.lock_fastrlock(lock, -1, True)
+    if not lock.try_lock():
+        with nogil:
+            lock.lock()
 
     # This function may be called from the context of finalizer
     # (e.g., `__dealloc__` of PooledMemory class).
     # If the process is going to be terminated, the module itself may
     # already been unavailable.
-    if not _exit_mode and _gc_isenabled():
-        _gc_disable()
+    if not _exit_mode and PyGC_IsEnabled():
+        PyGC_Disable()
         return True
     return False
 
 
-cdef _unlock_no_gc(lock, bint gc_mode):
+cdef _unlock_no_gc(recursive_mutex& lock, bint gc_mode):
     if gc_mode:
-        _gc_enable()
-    rlock.unlock_fastrlock(lock)
+        PyGC_Enable()
+    lock.unlock()
 
 
-cdef class LockAndNoGc:
+cdef class _LockAndNoGc:
     """A context manager that ensures single-thread execution
     and no garbage collection in the wrapped code.
     The purpose of disabling GC is to prevent unexpected recursion.
     See gh-2074 for details.
     """
 
-    cdef object _lock
+    cdef recursive_mutex *_lock
     cdef bint _gc
 
-    def __cinit__(self, lock):
-        self._lock = lock
+    def __init__(self):
+        raise TypeError("cannot create _LockAndNoGc from Python")
+
+    def __cinit__(self):
+        self._lock = NULL
 
     def __enter__(self):
-        self._gc = _lock_no_gc(self._lock)
+        self._gc = _lock_no_gc(cython.operator.dereference(self._lock))
 
     def __exit__(self, t, v, tb):
-        _unlock_no_gc(self._lock, self._gc)
+        _unlock_no_gc(cython.operator.dereference(self._lock), self._gc)
+
+
+cdef lock_and_no_gc(recursive_mutex& lock):
+    cdef _LockAndNoGc self = _LockAndNoGc.__new__(_LockAndNoGc)
+    self._lock = &lock
+    return self
+
+
+def _test_lock_and_no_gc():
+    # Test function defined here as it requires the C++ mutex
+    # unfortunately we can only test the GC part of the manager
+    # easily because C++ locks can't be introspected.  We would need
+    # a second thread just to see if that can lock or not.
+    import gc
+    cdef recursive_mutex lock
+    ctx = lock_and_no_gc(lock)
+
+    assert gc.isenabled()
+    with ctx:
+        assert not gc.isenabled()
+
+    assert gc.isenabled()
 
 
 @cython.final
@@ -1190,9 +1213,9 @@ cdef class SingleDeviceMemoryPool:
 
         object __weakref__
         object _weakref
-        object _free_lock
-        object _in_use_lock
-        object _total_bytes_lock
+        recursive_mutex _free_lock
+        recursive_mutex _in_use_lock
+        recursive_mutex _total_bytes_lock
         readonly int _device_id
 
     def __init__(self, allocator=None):
@@ -1203,9 +1226,6 @@ cdef class SingleDeviceMemoryPool:
         self._allocator = allocator
         self._weakref = weakref.ref(self)
         self._device_id = device.get_device_id()
-        self._free_lock = rlock.create_fastrlock()
-        self._in_use_lock = rlock.create_fastrlock()
-        self._total_bytes_lock = rlock.create_fastrlock()
 
         self.set_limit(**(_parse_limit_string()))
 
@@ -1294,11 +1314,13 @@ cdef class SingleDeviceMemoryPool:
             # cudaMalloc if a cache is not found
             chunk._init(mem, 0, size, stream_ident)
 
-        rlock.lock_fastrlock(self._in_use_lock, -1, True)
+        if not self._in_use_lock.try_lock():
+            with nogil:
+                self._in_use_lock.lock()
         try:
             self._in_use[chunk.ptr()] = chunk
         finally:
-            rlock.unlock_fastrlock(self._in_use_lock)
+            self._in_use_lock.unlock()
         pmem = PooledMemory.__new__(PooledMemory)
         pmem._init(chunk, self._weakref)
         ret = MemoryPointer.__new__(MemoryPointer)
@@ -1308,13 +1330,15 @@ cdef class SingleDeviceMemoryPool:
     cpdef free(self, intptr_t ptr, size_t size):
         cdef _Chunk chunk, c
 
-        rlock.lock_fastrlock(self._in_use_lock, -1, True)
+        if not self._in_use_lock.try_lock():
+            with nogil:
+                self._in_use_lock.lock()
         try:
             chunk = self._in_use.pop(ptr)
         except KeyError:
             raise RuntimeError('Cannot free out-of-pool memory')
         finally:
-            rlock.unlock_fastrlock(self._in_use_lock)
+            self._in_use_lock.unlock()
         stream_ident = chunk.stream_ident
 
         gc_mode = _lock_no_gc(self._free_lock)
@@ -1338,7 +1362,7 @@ cdef class SingleDeviceMemoryPool:
         """Free all **non-split** chunks"""
         cdef intptr_t stream_ident
 
-        with LockAndNoGc(self._free_lock):
+        with lock_and_no_gc(self._free_lock):
             # free blocks in all arenas
             if stream is None:
                 for stream_ident in list(self._arenas.iterkeys()):
@@ -1355,25 +1379,29 @@ cdef class SingleDeviceMemoryPool:
     cpdef size_t n_free_blocks(self):
         cdef size_t n = 0
         cdef _Arena arena
-        rlock.lock_fastrlock(self._free_lock, -1, True)
+        if not self._free_lock.try_lock():
+            with nogil:
+                self._free_lock.lock()
         try:
             for arena in self._arenas.itervalues():
                 for v in arena._free:
                     if v is not None:
                         n += len(v)
         finally:
-            rlock.unlock_fastrlock(self._free_lock)
+            self._free_lock.unlock()
         return n
 
     cpdef size_t used_bytes(self):
         cdef size_t size = 0
         cdef _Chunk chunk
-        rlock.lock_fastrlock(self._in_use_lock, -1, True)
+        if not self._in_use_lock.try_lock():
+            with nogil:
+                self._in_use_lock.lock()
         try:
             for chunk in self._in_use.itervalues():
                 size += chunk.size
         finally:
-            rlock.unlock_fastrlock(self._in_use_lock)
+            self._in_use_lock.unlock()
         return size
 
     cpdef size_t free_bytes(self):
@@ -1381,7 +1409,9 @@ cdef class SingleDeviceMemoryPool:
         cdef set free_list
         cdef _Chunk chunk
         cdef _Arena arena
-        rlock.lock_fastrlock(self._free_lock, -1, True)
+        if not self._free_lock.try_lock():
+            with nogil:
+                self._free_lock.lock()
         try:
             for arena in self._arenas.itervalues():
                 for free_list in arena._free:
@@ -1390,11 +1420,11 @@ cdef class SingleDeviceMemoryPool:
                     for chunk in free_list:
                         size += chunk.size
         finally:
-            rlock.unlock_fastrlock(self._free_lock)
+            self._free_lock.unlock()
         return size
 
     cpdef size_t total_bytes(self):
-        with LockAndNoGc(self._total_bytes_lock):
+        with lock_and_no_gc(self._total_bytes_lock):
             return self._total_bytes
 
     cpdef set_limit(self, size=None, fraction=None):
@@ -1418,11 +1448,11 @@ cdef class SingleDeviceMemoryPool:
             raise ValueError(
                 'memory limit size out of range: {}'.format(size))
 
-        with LockAndNoGc(self._total_bytes_lock):
+        with lock_and_no_gc(self._total_bytes_lock):
             self._total_bytes_limit = size
 
     cpdef size_t get_limit(self):
-        with LockAndNoGc(self._total_bytes_lock):
+        with lock_and_no_gc(self._total_bytes_lock):
             return self._total_bytes_limit
 
     cdef _compact_index(self, intptr_t stream_ident, bint free):
@@ -1462,7 +1492,7 @@ cdef class SingleDeviceMemoryPool:
             arena._index.swap(new_index)
             arena._flag.assign(new_index.size(), <int8_t>1)
         if size_to_free > 0:
-            with LockAndNoGc(self._total_bytes_lock):
+            with lock_and_no_gc(self._total_bytes_lock):
                 self._total_bytes -= size_to_free
 
     cdef object _get_chunk(self, size_t size, intptr_t stream_ident):
@@ -1496,7 +1526,7 @@ cdef class SingleDeviceMemoryPool:
     cdef BaseMemory _try_malloc(self, size_t size):
         cdef size_t limit
         cdef bint limit_ok
-        with LockAndNoGc(self._total_bytes_lock):
+        with lock_and_no_gc(self._total_bytes_lock):
             limit = self._total_bytes_limit
             if limit != 0:
                 limit_ok = (self._total_bytes + size) <= limit
@@ -1534,7 +1564,7 @@ cdef class SingleDeviceMemoryPool:
                     oom_error = True
         finally:
             if mem is None:
-                with LockAndNoGc(self._total_bytes_lock):
+                with lock_and_no_gc(self._total_bytes_lock):
                     self._total_bytes -= size
                     if oom_error:
                         raise OutOfMemoryError(size, self._total_bytes, limit)
@@ -1699,7 +1729,7 @@ cdef class MemoryPool:
 
 
 cdef class MemoryAsyncPool:
-    """(Experimental) CUDA memory pool for all GPU devices on the host.
+    """CUDA memory pool for all GPU devices on the host.
 
     A memory pool preserves any allocations even if they are freed by the user.
     One instance of this class can be used for multiple devices. This class
@@ -1723,9 +1753,6 @@ cdef class MemoryAsyncPool:
             accepted, in which case the list length must equal to the total
             number of visible devices so that the mempools for each device can
             be set independently.
-
-    .. warning::
-        This feature is currently experimental and subject to change.
 
     .. note::
         :class:`MemoryAsyncPool` currently cannot work with memory hooks.
@@ -1757,7 +1784,6 @@ cdef class MemoryAsyncPool:
         readonly bint memoryAsyncHasStat
 
     def __init__(self, pool_handles='current'):
-        _util.experimental('cupy.cuda.MemoryAsyncPool')
         cdef int dev_id, prev_dev_id, dev_counts
         cdef dict limit = _parse_limit_string()
         dev_counts = runtime.getDeviceCount()
@@ -1879,7 +1905,7 @@ cdef class MemoryAsyncPool:
             https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#stream-ordered-physical-page-caching-behavior
         """
         # We don't have access to the mempool internal, but if there are
-        # any memory asynchronously freed, a synchonization will make sure
+        # any memory asynchronously freed, a synchronization will make sure
         # they become visible (to both cudaMalloc and cudaMallocAsync). See
         # https://github.com/cupy/cupy/issues/3777#issuecomment-758890450
         if stream is None:

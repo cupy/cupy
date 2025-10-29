@@ -13,6 +13,8 @@ export MPLBACKEND=Agg
 
 pushd examples
 
+timeout --signal INT --kill-after 10 60 python3 -c 'import cupy; cupy.show_config(_full=True)'
+
 # K-means
 python3 kmeans/kmeans.py -m 1
 python3 kmeans/kmeans.py -m 1 --use-custom-kernel
