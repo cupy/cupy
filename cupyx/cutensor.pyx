@@ -250,7 +250,7 @@ cpdef TensorDescriptor create_tensor_descriptor(_ndarray_base a):
     """Create a tensor descriptor
 
     Args:
-        a (cupy.ndarray): tensor for which a descritpor are created.
+        a (cupy.ndarray): tensor for which a descriptor are created.
 
     Returns:
         (TensorDescriptor): A instance of class TensorDescriptor.
@@ -1295,7 +1295,7 @@ class ndarray_mg:
         """
         Args:
             x (numpy.ndarray or cupy.ndarray or list of cupy.ndarray): Arrays
-                to wrap. Non-distributed host(device) storage scheme is meaned
+                to wrap. Non-distributed host(device) storage scheme is meant
                 if x is a numpy(cupy) ndarray. Both pinned memory and pageable
                 host memory are allowed.
             **kwargs: Arbitrary keyword arguments.
@@ -1436,7 +1436,7 @@ cpdef MgTensorDescriptor create_mg_tensor_descriptor(a, devices=None):
     """Create a multi-GPU tensor descriptor
 
     Args:
-        a (cupy.ndarrayMg): The multi-GPU tensor for which a descritpor are
+        a (cupy.ndarrayMg): The multi-GPU tensor for which a descriptor are
             created.
         devices: device list to determine the multi-GPU handle.
 
@@ -1743,7 +1743,7 @@ def contractionMg(alpha, A, modeA, B, modeB, beta, C, modeC,
                 COMPUTE_DESC_32F = 4
                 COMPUTE_DESC_64F = 16
         ws_pref (cutensorWorksizePreference_t): User preference for the
-            workspace of cuTensor. Defaule value is
+            workspace of cuTensor. Default value is
             'cutensor.WORKSPACE_RECOMMENDED'.
         deviceBuf (list of cupy.ndarray or None): `None` means allocated
             when needed.
@@ -1853,7 +1853,7 @@ def contractionMgWorkspace(
                 COMPUTE_DESC_32F = 4
                 COMPUTE_DESC_64F = 16
         ws_pref (cutensorWorksizePreference_t): User preference for the
-            workspace of cuTensor. Defaule value is
+            workspace of cuTensor. Default value is
             'cutensor.WORKSPACE_RECOMMENDED'.
         devices (Sequence): device list to determine the multi-GPU handle.
 

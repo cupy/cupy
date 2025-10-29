@@ -255,7 +255,7 @@ def main(args):
                         help='CUDA version')
     parser.add_argument('--arch', choices=['x86_64', 'aarch64'],
                         default=None,
-                        help='Target arhitecture (x86_64 or aarch64)')
+                        help='Target architecture (x86_64 or aarch64)')
     parser.add_argument('--prefix', type=str, default=None,
                         help='Install destination')
     parser.add_argument('--action', choices=['install', 'dump'],

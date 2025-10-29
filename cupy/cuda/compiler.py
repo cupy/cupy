@@ -595,7 +595,7 @@ def _compile_with_cache_cuda(
         env, base, source, extra_source, _get_cupy_cache_key())
     key_src = key_src.encode('utf-8')
     # In the case of generating LTO IRs, we pass them around as chunks of
-    # bytes, so the filename extention is arbitrary
+    # bytes, so the filename extension is arbitrary
     name = _hash_hexdigest(key_src) + ('.ltoir' if to_ltoir else '.cubin')
 
     if not to_ltoir:

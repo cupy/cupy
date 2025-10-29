@@ -21,7 +21,7 @@ cdef const char* CAPSULE_NAME_VER = "dltensor_versioned"
 cdef const char* USED_CAPSULE_NAME = "used_dltensor"
 cdef const char* USED_CAPSULE_NAME_VER = "used_dltensor_versioned"
 
-# The higest major and minor DLPack version currently implemented and that
+# The highest major and minor DLPack version currently implemented and that
 # will be usually exported.
 cdef uint32_t IMPL_VER_MAJOR = 1
 cdef uint32_t IMPL_VER_MINOR = 0

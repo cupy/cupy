@@ -172,8 +172,8 @@ class ndarray(_ndarray_base):
 
     def __init__(self, *args, **kwargs):
         # Prevent from calling the super class `_ndarray_base.__init__()` as
-        # it is used to check accidental direct instantiation of underlaying
-        # `_ndarray_base` extention.
+        # it is used to check accidental direct instantiation of underlying
+        # `_ndarray_base` extension.
         pass
 
     def __array_finalize__(self, obj):
@@ -205,7 +205,7 @@ class ndarray(_ndarray_base):
 cdef class _ndarray_base:
 
     def __init__(self, *args, **kwargs):
-        # Raise an error if underlaying `_ndarray_base` extension type is
+        # Raise an error if underlying `_ndarray_base` extension type is
         # directly instantiated. We must instantiate `ndarray` class instead
         # for our ndarray subclassing mechanism.
         raise RuntimeError('Must not be directly instantiated')

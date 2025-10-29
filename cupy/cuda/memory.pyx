@@ -360,7 +360,7 @@ cdef class _Chunk:
     """A chunk points to a device memory.
 
     A chunk might be a splitted memory block from a larger allocation.
-    The prev/next pointers contruct a doubly-linked list of memory addresses
+    The prev/next pointers construct a doubly-linked list of memory addresses
     sorted by base address that must be contiguous.
 
     Args:
@@ -789,7 +789,7 @@ cpdef MemoryPointer malloc_managed(size_t size):
     The advantage using managed memory in CuPy is that device memory
     oversubscription is possible for GPUs that have a non-zero value for the
     device attribute cudaDevAttrConcurrentManagedAccess.
-    CUDA >= 8.0 with GPUs later than or equal to Pascal is preferrable.
+    CUDA >= 8.0 with GPUs later than or equal to Pascal is preferable.
 
     Read more at: https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__MEMORY.html#axzz4qygc1Ry1  # NOQA
 
@@ -1915,7 +1915,7 @@ cdef class MemoryAsyncPool:
             https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#stream-ordered-physical-page-caching-behavior
         """
         # We don't have access to the mempool internal, but if there are
-        # any memory asynchronously freed, a synchonization will make sure
+        # any memory asynchronously freed, a synchronization will make sure
         # they become visible (to both cudaMalloc and cudaMallocAsync). See
         # https://github.com/cupy/cupy/issues/3777#issuecomment-758890450
         if stream is None:

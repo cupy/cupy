@@ -7,7 +7,7 @@ from cupyx import jit
 Test to ensure that this file can be imported without CUDA Toolkit.
 """
 
-# Running without CUDA tookit, is_available should return False.
+# Running without CUDA toolkit, is_available should return False.
 assert isinstance(cupy.is_available(), bool)
 
 
