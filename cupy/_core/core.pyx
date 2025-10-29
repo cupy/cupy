@@ -2961,7 +2961,7 @@ cpdef _ndarray_base _internal_asfortranarray(_ndarray_base a):
     return newarray
 
 
-cpdef _ndarray_base ascontiguousarray(_ndarray_base a, dtype=None):
+cpdef _ndarray_base ascontiguousarray(_ndarray_base a not None, dtype=None):
     cdef bint same_dtype = False
     zero_dim = a._shape.size() == 0
     if dtype is None:
@@ -2982,7 +2982,7 @@ cpdef _ndarray_base ascontiguousarray(_ndarray_base a, dtype=None):
     return newarray
 
 
-cpdef _ndarray_base asfortranarray(_ndarray_base a, dtype=None):
+cpdef _ndarray_base asfortranarray(_ndarray_base a not None, dtype=None):
     cdef _ndarray_base newarray
     cdef bint same_dtype = False
     zero_dim = a._shape.size() == 0
