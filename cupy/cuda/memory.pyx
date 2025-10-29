@@ -747,7 +747,7 @@ cpdef MemoryPointer _malloc(size_t size):
 
 
 cpdef MemoryPointer malloc_async(size_t size):
-    """(Experimental) Allocate memory from Stream Ordered Memory Allocator.
+    """Allocate memory from Stream Ordered Memory Allocator.
 
     This method can be used as a CuPy memory allocator. The simplest way to
     use CUDA's Stream Ordered Memory Allocator as the default allocator is
@@ -765,9 +765,6 @@ cpdef MemoryPointer malloc_async(size_t size):
 
     Returns:
         ~cupy.cuda.MemoryPointer: Pointer to the allocated buffer.
-
-    .. warning::
-        This feature is currently experimental and subject to change.
 
     .. seealso:: `Stream Ordered Memory Allocator`_
 
@@ -1735,7 +1732,7 @@ cdef class MemoryPool:
 
 
 cdef class MemoryAsyncPool:
-    """(Experimental) CUDA memory pool for all GPU devices on the host.
+    """CUDA memory pool for all GPU devices on the host.
 
     A memory pool preserves any allocations even if they are freed by the user.
     One instance of this class can be used for multiple devices. This class
@@ -1759,9 +1756,6 @@ cdef class MemoryAsyncPool:
             accepted, in which case the list length must equal to the total
             number of visible devices so that the mempools for each device can
             be set independently.
-
-    .. warning::
-        This feature is currently experimental and subject to change.
 
     .. note::
         :class:`MemoryAsyncPool` currently cannot work with memory hooks.
