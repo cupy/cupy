@@ -2961,7 +2961,7 @@ cpdef _ndarray_base _internal_asfortranarray(_ndarray_base a):
     return newarray
 
 
-cpdef _ndarray_base ascontiguousarray(_ndarray_base a not None, dtype=None):
+cdef _ndarray_base _ascontiguousarray_impl(_ndarray_base a, dtype=None):
     cdef bint same_dtype = False
     zero_dim = a._shape.size() == 0
     if dtype is None:
@@ -2982,7 +2982,12 @@ cpdef _ndarray_base ascontiguousarray(_ndarray_base a not None, dtype=None):
     return newarray
 
 
-cpdef _ndarray_base asfortranarray(_ndarray_base a not None, dtype=None):
+def ascontiguousarray(_ndarray_base a not None, dtype=None):
+    """Implementation with None check to prevent segfaults."""
+    return _ascontiguousarray_impl(a, dtype)
+
+
+cdef _ndarray_base _asfortranarray_impl(_ndarray_base a, dtype=None):
     cdef _ndarray_base newarray
     cdef bint same_dtype = False
     zero_dim = a._shape.size() == 0
@@ -3005,6 +3010,11 @@ cpdef _ndarray_base asfortranarray(_ndarray_base a not None, dtype=None):
     newarray = ndarray((1,) if zero_dim else a.shape, dtype, order='F')
     elementwise_copy(a, newarray)
     return newarray
+
+
+def asfortranarray(_ndarray_base a not None, dtype=None):
+    """Implementation with None check to prevent segfaults."""
+    return _asfortranarray_impl(a, dtype)
 
 
 cpdef _ndarray_base _convert_object_with_cuda_array_interface(a):

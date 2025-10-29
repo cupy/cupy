@@ -96,8 +96,8 @@ cdef class _ndarray_base:
 
 cpdef _ndarray_base _internal_ascontiguousarray(_ndarray_base a)
 cpdef _ndarray_base _internal_asfortranarray(_ndarray_base a)
-cpdef _ndarray_base ascontiguousarray(_ndarray_base a, dtype=*)
-cpdef _ndarray_base asfortranarray(_ndarray_base a, dtype=*)
+cdef _ndarray_base _ascontiguousarray_impl(_ndarray_base a, dtype=*)
+cdef _ndarray_base _asfortranarray_impl(_ndarray_base a, dtype=*)
 
 cpdef Module compile_with_cache(str source, tuple options=*, arch=*,
                                 cachd_dir=*, prepend_cupy_headers=*,
