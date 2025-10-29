@@ -599,8 +599,8 @@ cdef class Plan1d:
 
         # First, get the buffers:
         # We need to manage the buffers ourselves in order to avoid excessive,
-        # unnecessary memory usage. Note that these buffers are used for in-place
-        # transforms, and are re-used (lifetime tied to the plan).
+        # unnecessary memory usage. Note that these buffers are used for
+        # in-place transforms, and are re-used (lifetime tied to the plan).
 
         if isinstance(a, cupy.ndarray) or isinstance(a, numpy.ndarray):
             if self.xtArr == 0 and self.xtArr_buffer is None:
