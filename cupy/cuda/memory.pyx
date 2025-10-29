@@ -26,7 +26,6 @@ from cupy_backends.cuda.api cimport driver
 from cupy_backends.cuda.api cimport runtime
 
 from cupy_backends.cuda.api.runtime import CUDARuntimeError
-from cupy import _util
 
 
 cdef extern from "Python.h":
@@ -896,8 +895,6 @@ cpdef set_allocator(allocator=None):
     if getattr(_thread_local, 'allocator', None) is not None:
         raise ValueError('Can\'t change the global allocator inside '
                          '`using_allocator` context manager')
-    if allocator is malloc_async:
-        _util.experimental('cupy.cuda.malloc_async')
     _current_allocator = allocator
 
 
@@ -1787,7 +1784,6 @@ cdef class MemoryAsyncPool:
         readonly bint memoryAsyncHasStat
 
     def __init__(self, pool_handles='current'):
-        _util.experimental('cupy.cuda.MemoryAsyncPool')
         cdef int dev_id, prev_dev_id, dev_counts
         cdef dict limit = _parse_limit_string()
         dev_counts = runtime.getDeviceCount()
