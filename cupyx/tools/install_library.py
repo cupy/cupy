@@ -140,8 +140,9 @@ library_records['nccl'] = _nccl_records
 
 
 def _unpack_archive(filename, extract_dir):
+    kwargs = {} if sys.version_info < (3, 12) else {"filter": "data"}
     try:
-        shutil.unpack_archive(filename, extract_dir)
+        shutil.unpack_archive(filename, extract_dir, **kwargs)
     except shutil.ReadError:
         print('The archive format is not supported in your Python '
               'environment. Falling back to "tar" command...')
