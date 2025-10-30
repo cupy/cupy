@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import cupy
-import cupyx.scipy.fft
 
 from cupy import _core
 from cupy._core import _routines_math as _math
@@ -80,6 +79,7 @@ def convolve(a, v, mode='full'):
 
 
 def _fft_convolve(a1, a2, mode):
+    import cupyx.scipy.fft
 
     offset = 0
     if a1.shape[-1] < a2.shape[-1]:

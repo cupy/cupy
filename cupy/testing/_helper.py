@@ -13,8 +13,6 @@ from unittest import mock
 import numpy
 
 import cupy
-import cupyx
-import cupyx.scipy.sparse
 from cupy._core import internal
 from cupy.testing._pytest_impl import is_available
 
@@ -171,7 +169,7 @@ def shaped_random(
 
 
 def shaped_sparse_random(
-        shape, sp=cupyx.scipy.sparse, dtype=numpy.float32,
+        shape, sp=None, dtype=numpy.float32,
         density=0.01, format='coo', seed=0):
     """Returns an array filled with random values.
 
@@ -189,14 +187,13 @@ def shaped_sparse_random(
     import scipy.sparse
     n_rows, n_cols = shape
     numpy.random.seed(seed)
+
     a = scipy.sparse.random(n_rows, n_cols, density).astype(dtype)
 
-    if sp is cupyx.scipy.sparse:
-        a = cupyx.scipy.sparse.coo_matrix(a)
-    elif sp is not scipy.sparse:
-        raise ValueError('Unknown module: {}'.format(sp))
-
-    return a.asformat(format)
+    try:
+        return sp.coo_matrix(a).asformat(format)
+    except AttributeError:
+        raise ValueError(f'Module {sp} does not have the expected sparse APIs')
 
 
 def shaped_linspace(start, stop, shape, xp=cupy, dtype=numpy.float32):
