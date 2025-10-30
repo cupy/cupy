@@ -87,7 +87,7 @@ def _make_cutensor_record(cuda_version):
     # (2) CuPy started to use APIs introduced in minor versions
     cuda_major = cuda_version.split('.')[0]
     return __make_cutensor_record(
-        cuda_version, '2.3.0', '2.3.0',
+        cuda_version, '2.3.1', '2.3.0',
         f'libcutensor-linux-x86_64-2.3.1.0_cuda{cuda_major}-archive.tar.xz',
         f'libcutensor-windows-x86_64-2.3.1.0_cuda{cuda_major}-archive.zip',
     )
