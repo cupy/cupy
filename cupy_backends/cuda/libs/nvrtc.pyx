@@ -22,7 +22,7 @@ from cupy_backends.cuda.api cimport runtime
 ###############################################################################
 
 IF CUPY_USE_CUDA_PYTHON:
-    from cuda.cnvrtc cimport *
+    from cuda.bindings.cynvrtc cimport *
     cdef inline void initialize():
         pass
 ELSE:

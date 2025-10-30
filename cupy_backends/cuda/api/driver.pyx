@@ -20,7 +20,7 @@ from libc.stdint cimport intptr_t
 ###############################################################################
 
 IF CUPY_USE_CUDA_PYTHON:
-    from cuda.ccuda cimport *
+    from cuda.bindings.cydriver cimport *
     cdef inline void initialize():
         return
 ELSE:
