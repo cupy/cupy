@@ -595,6 +595,20 @@ class TestFromData(unittest.TestCase):
             return a + a
 
 
+@pytest.mark.parametrize("func", [
+    lambda x: cupy.array(x),  # NumPy array
+    lambda x: cupy.asarray([x]),  # Nested NumPy array
+])
+def test_from_numpy_byteswapped(func):
+    # Cupy will byte-swap for the user when converting from NumPy
+    np_arr = numpy.arange(10, dtype=">i4")
+
+    cupy_arr = func(np_arr)
+    assert cupy_arr.dtype == "<i4"
+    # ignore first dimension we just care about byte-order
+    testing.assert_array_equal(np_arr, cupy_arr.reshape(-1))
+
+
 max_cuda_array_interface_version = 3
 
 

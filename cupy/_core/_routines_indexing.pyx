@@ -28,6 +28,9 @@ cdef _ndarray_base _ndarray_getitem(_ndarray_base self, slices):
     cdef list slice_list
     cdef _ndarray_base a
 
+    if isinstance(slices, str) and self.dtype.fields is not None:
+        return _getitem_fields(self, slices)
+
     slice_list = _prepare_slice_list(slices)
     a, adv = _view_getitem(self, slice_list)
     if adv is None:
@@ -47,6 +50,13 @@ cdef _ndarray_base _ndarray_getitem(_ndarray_base self, slices):
 cdef _ndarray_setitem(_ndarray_base self, slices, value):
     if isinstance(value, _ndarray_base):
         value = _squeeze_leading_unit_dims(value)
+
+    if isinstance(slices, str) and self.dtype.fields is not None:
+        # TODO: This is kinda right, but not quite due to finalization
+        # for subclasses.
+        self = _getitem_fields(self, slices)
+        slices = ...  # Need to assign the full thing as if an Ellipsis
+
     _scatter_op(self, slices, value, 'update')
 
 
@@ -1157,6 +1167,32 @@ cdef _ndarray_base _getitem_multiple(
     reduced_idx, start, stop = _prepare_multiple_array_indexing(
         a, start, slices)
     return _take(a, reduced_idx, start, stop)
+
+
+cdef _ndarray_base _getitem_fields(_ndarray_base a, str name):
+    cdef _ndarray_base v
+    try:
+        new_dtype, offset, *_ = a.dtype.fields[name]
+    except KeyError:
+        raise ValueError(f"no field name of {name}")
+
+    if new_dtype.shape:
+        # We do not attempt to check all of this ahead of time, so have to
+        # check it here.
+        raise ValueError(
+            "CuPy does not yet support accessing nested subarrays, "
+            "please open an issue if you need this support.")
+
+    # Subclasses are finalized before modifying the dtype here
+    v = a.view()
+    v.data = a.data + offset
+    v.dtype = new_dtype
+    v._update_contiguity()  # if it was contiguous it most likely is not now
+    internal.check_aligned(v)  # raise if it seems to be unaligned.
+
+    # TODO(seberg): For user convenience it would be nice to check alignment
+    # because NumPy often creates unaligned structs that are unusable here.
+    return v
 
 
 cdef _ndarray_base _add_reduceat(

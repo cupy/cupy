@@ -121,7 +121,7 @@ cdef _ndarray_base _create_ndarray_from_shape_strides(
 
 
 cdef inline _ndarray_base _convert_from_cupy_like(
-        obj, str error):
+        obj, error):
     """Inline function to convert cupy array-likes to cupy ndarray.
 
     Includes a check to allow passing a cupy.ndarray itself and converts the

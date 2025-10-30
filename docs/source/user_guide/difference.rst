@@ -114,6 +114,13 @@ Data types
 Data type of CuPy arrays cannot be non-numeric like strings or objects.
 See :ref:`overview` for details.
 
+CuPy has very minimal support for structured dtypes.  Arrays with structured
+dtypes can be created and indexed by a single field ``arr["name"]`` which
+also allows assignment.
+However, as of now, the user has to ensure alignment of the structure dtype
+fields (or the dtype itself) and launching kernels is not supported yet so
+even copying such an array is not possible.
+
 
 Universal Functions only work with CuPy array or scalar
 -------------------------------------------------------
