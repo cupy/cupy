@@ -34,8 +34,15 @@ cdef _dtype = numpy.dtype
 cdef bint check_supported_dtype(dtype, bint error) except -1:
     """ Returns true on success but otherwise raises an error. """
     cdef str dtype_char = dtype.char
+
+    if dtype.byteorder == ">":
+        if not error:
+            return False
+        raise ValueError(
+            f'Unsupported dtype {dtype} with big-endian byte-order')
+
     if dtype_char in all_type_chars:
-        pass
+        return True
     elif dtype_char == "V" and dtype.fields is not None:
         # Support structured dtypes (not subarray here specifically).
         # We don't really need to know anything about the dtype, but cannot
@@ -53,17 +60,11 @@ cdef bint check_supported_dtype(dtype, bint error) except -1:
         # We can represents the underlying bytes in CuPy, although it is very
         # possible that the included fields will not be usable in the end.
         # The simplest path is to inform users
-        pass
+        return True
     elif not error:
         return False
     else:
         raise ValueError(f'Unsupported dtype {dtype}')
-
-    if dtype.byteorder == ">":
-        if not error:
-            return False
-        raise ValueError(
-            f'Unsupported dtype {dtype} with big-endian byte-order')
 
 
 cdef _init_dtype_dict():
