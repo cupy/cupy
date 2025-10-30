@@ -182,14 +182,13 @@ def zpk2sos(z, p, k, pairing=None, *, analog=False):
                          'pairing must be "minimal"')
 
     if len(z) == len(p) == 0:
-        if isinstance(k, cupy.ndarray) and k.ndim == 0:
-            # check ndim == 0 to make error message simpler in
-            # case where a non-0d CuPy array is mistakenly passed.
-            k = k.get()
         if not analog:
-            return cupy.array([[k, 0., 0., 1., 0., 0.]])
-        else:
-            return cupy.array([[0., 0., k, 0., 0., 1.]])
+            out = cupy.array([[0., 0., 0., 1., 0., 0.]])
+            out[0][0] = k
+            return out
+        out = cupy.array([[0., 0., 0., 0., 0., 1.]])
+        out[0][2] = k
+        return out
 
     if pairing != 'minimal':
         # ensure we have the same number of poles and zeros, and make copies
