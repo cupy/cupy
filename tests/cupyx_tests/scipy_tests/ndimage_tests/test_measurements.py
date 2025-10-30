@@ -546,7 +546,7 @@ class TestFindObjectsBasic:
     @testing.numpy_cupy_equal(scipy_name='scp')
     def test_find_objects1d(self, xp, scp, expansion_factor):
         data = xp.asarray([1, 0, 2, 2, 0, 3])
-        # using kronecker-product as a way to replacate elements with same
+        # using kronecker-product as a way to replicate elements with same
         # general shape distribution but at different array sizes
         data = xp.kron(
             data, xp.ones((expansion_factor, ), dtype=data.dtype)
@@ -563,7 +563,7 @@ class TestFindObjectsBasic:
                            [3, 3, 0, 0, 0, 0],
                            [3, 3, 0, 0, 0, 0],
                            [0, 0, 0, 4, 4, 0]], dtype=dtype)
-        # using kronecker-product as a way to replacate elements with same
+        # using kronecker-product as a way to replicate elements with same
         # general shape distribution but at different array sizes
         data = xp.kron(
             data, xp.ones((expansion_factor, ) * data.ndim, dtype=dtype)
@@ -592,7 +592,7 @@ class TestFindObjectsBasic:
                            [-3, -3, 0, 0, 0, 0],
                            [-3, -3, 0, 0, 0, 0],
                            [0, 0, 0, 4, 4, 0]], dtype=dtype)
-        # using kronecker-product as a way to replacate elements with same
+        # using kronecker-product as a way to replicate elements with same
         # general shape distribution but at different array sizes
         data = xp.kron(
             data, xp.ones((expansion_factor, ) * data.ndim, dtype=dtype)
@@ -626,7 +626,7 @@ class TestFindObjectsBasic:
         data_3d = xp.tile(data[cupy.newaxis, :, :], (8, 1, 1))
         data_3d[0, ...] = 0
         data_3d[-1, 1:-1, 1:-1] = 5
-        # using kronecker-product as a way to replacate elements with same
+        # using kronecker-product as a way to replicate elements with same
         # general shape distribution but at different array sizes
         data_3d = xp.kron(
             data, xp.ones((expansion_factor, ) * data_3d.ndim, dtype=dtype)
@@ -643,7 +643,7 @@ class TestFindObjectsBasic:
                            [0, 0, 0, 0, 0, 0],
                            [0, 0, 0, 0, 0, 0],
                            [0, 0, 0, 4, 4, 0]], dtype=dtype)
-        # using kronecker-product as a way to replacate elements with same
+        # using kronecker-product as a way to replicate elements with same
         # general shape distribution but at different array sizes
         data = xp.kron(
             data, xp.ones((expansion_factor, ) * data.ndim, dtype=dtype)
@@ -662,7 +662,7 @@ class TestFindObjectsBasic:
                            [0, 0, 0, 0, 0, 0],
                            [0, 0, 0, 0, 0, 0],
                            [0, 0, 0, 4, 4, 0]], dtype=dtype)
-        # using kronecker-product as a way to replacate elements with same
+        # using kronecker-product as a way to replicate elements with same
         # general shape distribution but at different array sizes
         data = xp.kron(
             data, xp.ones((expansion_factor, ) * data.ndim, dtype=dtype)

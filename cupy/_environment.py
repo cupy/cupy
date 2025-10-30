@@ -582,6 +582,9 @@ def _detect_duplicate_installation():
         'cupy-rocm-4-2',
         'cupy-rocm-4-3',
         'cupy-rocm-5-0',
+
+        # Known forks that cannot coexist with official CuPy installations.
+        'amd-cupy',
     )
     cupy_installed = []
     for k in known:

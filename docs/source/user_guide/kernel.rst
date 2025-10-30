@@ -185,6 +185,10 @@ By using raw kernels, you can define kernels from raw CUDA source.
 :class:`~cupy.RawKernel` object allows you to call the kernel with CUDA's ``cuLaunchKernel`` interface.
 In other words, you have control over grid size, block size, shared memory size and stream.
 
+.. note::
+
+   Unlike ElementwiseKernel, RawKernel ignores any views on CuPy arrays. You are responsible for handling strides manually. For example, passing ``matrix.T`` will be treated as if you passed ``matrix``.
+
 .. doctest::
 
    >>> add_kernel = cp.RawKernel(r'''

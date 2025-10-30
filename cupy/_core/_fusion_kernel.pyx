@@ -42,7 +42,7 @@ def _cuda_compile(preamble, name, cuda_params, cuda_body, use_grid_sync):
         cuda_params=cuda_params,
         cuda_body=cuda_body)
 
-    # (For contributers) We can view the whole generated CUDA code
+    # (For contributors) We can view the whole generated CUDA code
     # by uncommenting the following line.
     # print(code)
 
@@ -229,7 +229,7 @@ cdef class FusedKernel:
         ])
 
     cdef tuple _get_kernel_size(self, list ndarray_list):
-        """Calculate the numnber of contiguous blocks in non-reduction axes
+        """Calculate the number of contiguous blocks in non-reduction axes
         of input arrays, and set them to ``self._contiguous_size``.
         """
         cdef _ndarray_base in_array, out_array
