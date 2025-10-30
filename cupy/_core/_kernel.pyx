@@ -30,7 +30,7 @@ from cupy._core cimport internal
 from cupy_backends.cuda.api cimport runtime
 
 try:
-    import cupy_backends.cuda.libs.cutensor as cuda_cutensor
+    from cupy_backends.cuda.libs import cutensor as cuda_cutensor
 except ImportError:
     cuda_cutensor = None
 

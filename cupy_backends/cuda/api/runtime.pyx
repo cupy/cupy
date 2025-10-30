@@ -18,7 +18,6 @@ cimport cpython  # NOQA
 cimport cython  # NOQA
 
 from cupy_backends.cuda.api cimport driver  # NOQA
-from cupy_backends.cuda.libs cimport nvrtc  # no-cython-lint
 
 
 ###############################################################################
@@ -165,16 +164,8 @@ cpdef int runtimeGetVersion() except? -1:
     """
 
     cdef int version
-    IF CUPY_USE_CUDA_PYTHON:
-        # Workarounds an issue that cuda-python returns its version instead of
-        # the real runtime version.
-        # https://github.com/NVIDIA/cuda-python/issues/16
-        cdef int major, minor
-        (major, minor) = nvrtc.getVersion()
-        version = major * 1000 + minor * 10
-    ELSE:
-        status = cudaRuntimeGetVersion(&version)
-        check_status(status)
+    status = cudaRuntimeGetVersion(&version)
+    check_status(status)
     return version
 
 

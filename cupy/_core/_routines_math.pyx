@@ -23,7 +23,7 @@ from cupy.cuda cimport memory
 from cupy.cuda import cub
 
 try:
-    import cupy_backends.cuda.libs.cutensor as cuda_cutensor
+    from cupy_backends.cuda.libs import cutensor as cuda_cutensor
 except ImportError:
     cuda_cutensor = None
 
