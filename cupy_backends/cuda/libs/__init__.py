@@ -16,10 +16,9 @@ if not _runtime.is_hip:
 #
 # Note: Do NOT add "nvrtc" here. It is run-time linked instead of dynamically
 # linked, so its loading is further deferred (to inside SoftLink).
-# TODO(leofang): add cutensor (NVIDIA/cuda-python#1144)
-# TODO(leofang): add cusparselt
+# TODO(leofang): add cusparselt (NVIDIA/cuda-python#1193)
 _submodules = (
-    'cublas', 'cusolver', 'cusparse', 'curand', 'nccl',
+    'cublas', 'cusolver', 'cusparse', 'curand', 'nccl', 'cutensor',
 )
 
 
