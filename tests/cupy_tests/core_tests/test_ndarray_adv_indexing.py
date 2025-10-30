@@ -337,6 +337,15 @@ class TestArrayInvalidIndexAdvGetitem:
                 a[self.indexes]
 
 
+class TestArrayBadDTypeIndexAdvGetitem:
+    @pytest.mark.parametrize('dtype', [object, "i,i", "float32", "str"])
+    def test_bad_dtype_adv_getitem(self, dtype):
+        # Test various bad dtypes, supported by CuPy or not.
+        a = cupy.arange(10)
+        with pytest.raises(IndexError, match="arrays used as indices"):
+            a[numpy.array([1, 2], dtype=dtype)]
+
+
 @testing.parameterize(
     {'shape': (0,), 'indexes': ([False],)},
     {'shape': (2, 3, 4),

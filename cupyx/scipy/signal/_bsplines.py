@@ -521,7 +521,7 @@ def spline_filter(Iin, lmbda=5.0):
     Iin : array_like
         input data set
     lmbda : float, optional
-        spline smooghing fall-off value, default is `5.0`.
+        spline smoothing fall-off value, default is `5.0`.
 
     Returns
     -------
@@ -554,7 +554,6 @@ _gauss_spline_kernel = cupy.ElementwiseKernel(
     output = 1 / sqrt( 2.0 * M_PI * signsq ) * exp( -( x * x ) * r_signsq );
     """,
     "_gauss_spline_kernel",
-    options=("-std=c++11",),
     loop_prep="const double signsq { ( n + 1 ) / 12.0 }; \
                const double r_signsq { 0.5 / signsq };",
 )

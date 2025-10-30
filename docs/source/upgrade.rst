@@ -614,7 +614,7 @@ Compatibility Matrix
      - 2.0~
      - 2.16~
      - n/a
-     - 3.9~
+     - 3.10~
      - 1.22~
      - 1.7~
      - NumPy 1.26 & SciPy 1.11

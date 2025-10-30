@@ -328,11 +328,15 @@ _hash_length = len(_hash_hexdigest(b''))  # 40 for SHA1
 
 def compile_using_nvrtc(source, options=(), arch=None, filename='kern.cu',
                         name_expressions=None, log_stream=None,
-                        cache_in_memory=False, jitify=False):
+                        cache_in_memory=False, jitify=False, method=None):
     def _compile(
-            source, options, cu_path, name_expressions, log_stream, jitify):
+            source, options, cu_path, name_expressions, log_stream, jitify,
+            method):
 
-        if not runtime.is_hip:
+        if method is not None:
+            assert method == "lto"
+            options += (f'-arch=compute_{arch}',)
+        elif not runtime.is_hip:
             arch_opt, method = _get_arch_for_options_for_nvrtc(arch)
             options += (arch_opt,)
         else:
@@ -367,13 +371,11 @@ def compile_using_nvrtc(source, options=(), arch=None, filename='kern.cu',
 
             with open(cu_path, 'w') as cu_file:
                 cu_file.write(source)
-
-            return _compile(source, options, cu_path,
-                            name_expressions, log_stream, jitify)
     else:
         cu_path = '' if not jitify else filename
-        return _compile(source, options, cu_path, name_expressions,
-                        log_stream, jitify)
+
+    return _compile(source, options, cu_path, name_expressions,
+                    log_stream, jitify, method)
 
 
 def compile_using_nvcc(source, options=(), arch=None,
@@ -512,7 +514,7 @@ _empty_file_preprocess_cache: dict = {}
 def _compile_module_with_cache(
         source, options=(), arch=None, cache_dir=None, extra_source=None,
         backend='nvrtc', *, enable_cooperative_groups=False,
-        name_expressions=None, log_stream=None, jitify=False):
+        name_expressions=None, log_stream=None, jitify=False, to_ltoir=False):
 
     if enable_cooperative_groups:
         if runtime.is_hip:
@@ -537,13 +539,13 @@ def _compile_module_with_cache(
         return _compile_with_cache_cuda(
             source, options, arch, cache_dir, extra_source, backend,
             enable_cooperative_groups, name_expressions, log_stream,
-            cache_in_memory, jitify)
+            cache_in_memory, jitify, to_ltoir)
 
 
 def _compile_with_cache_cuda(
         source, options, arch, cache_dir, extra_source=None, backend='nvrtc',
         enable_cooperative_groups=False, name_expressions=None,
-        log_stream=None, cache_in_memory=False, jitify=False):
+        log_stream=None, cache_in_memory=False, jitify=False, to_ltoir=False):
     # NVRTC does not use extra_source. extra_source is used for cache key.
     global _empty_file_preprocess_cache
     if cache_dir is None:
@@ -551,12 +553,18 @@ def _compile_with_cache_cuda(
     if arch is None:
         arch = _get_arch()
 
+    # TODO(leofang): consider move --device-as-default-execution-space
+    # (-default-device) to here to avoid double definition error
     options += ('-ftz=true',)
+
+    if to_ltoir:
+        options += ('-dlto',)
 
     if enable_cooperative_groups:
         # `cooperative_groups` requires relocatable device code.
         options += ('--device-c',)
 
+    # TODO(leofang): check if this works for LTO IR
     if _get_bool_env_variable('CUPY_CUDA_COMPILE_WITH_DEBUG', False):
         options += ('--device-debug', '--generate-line-info')
 
@@ -573,6 +581,8 @@ def _compile_with_cache_cuda(
         raise ValueError('jitify only works with NVRTC')
 
     options += _get_extra_include_dir_opts()
+    # TODO(leofang): technically we shouldn't use _get_nvrtc_version here if
+    # the backend is not nvrtc
     env = ((arch, options, _get_nvrtc_version(), backend)
            + _get_arch_for_options_for_nvrtc(arch))
     base = _empty_file_preprocess_cache.get(env, None)
@@ -584,9 +594,12 @@ def _compile_with_cache_cuda(
     key_src = '%s %s %s %s %s' % (
         env, base, source, extra_source, _get_cupy_cache_key())
     key_src = key_src.encode('utf-8')
-    name = _hash_hexdigest(key_src) + '.cubin'
+    # In the case of generating LTO IRs, we pass them around as chunks of
+    # bytes, so the filename extension is arbitrary
+    name = _hash_hexdigest(key_src) + ('.ltoir' if to_ltoir else '.cubin')
 
-    mod = function.Module()
+    if not to_ltoir:
+        mod = function.Module()
 
     if not cache_in_memory:
         # Read from disk cache
@@ -605,8 +618,11 @@ def _compile_with_cache_cuda(
                 cubin = data[_hash_length:]
                 cubin_hash = _hash_hexdigest(cubin).encode('ascii')
                 if hash == cubin_hash:
-                    mod.load(cubin)
-                    return mod
+                    if to_ltoir:
+                        return cubin
+                    else:
+                        mod.load(cubin)
+                        return mod
     else:
         # Enforce compiling -- the resulting kernel will be cached elsewhere,
         # so we do nothing
@@ -616,8 +632,8 @@ def _compile_with_cache_cuda(
         cu_name = '' if cache_in_memory else name + '.cu'
         ptx, mapping = compile_using_nvrtc(
             source, options, arch, cu_name, name_expressions,
-            log_stream, cache_in_memory, jitify)
-        if _is_cudadevrt_needed(options):
+            log_stream, cache_in_memory, jitify, 'lto' if to_ltoir else None)
+        if _is_cudadevrt_needed(options) and not to_ltoir:
             # for separate compilation
             ls = function.LinkState()
             ls.add_ptr_data(ptx, 'cupy.ptx')
@@ -626,8 +642,12 @@ def _compile_with_cache_cuda(
             cubin = ls.complete()
         else:
             cubin = ptx
-        mod._set_mapping(mapping)
+        if not to_ltoir:
+            mod._set_mapping(mapping)
     elif backend == 'nvcc':
+        if to_ltoir:
+            # TODO(leofang): It's also possible to get LTO IR from nvcc
+            raise NotImplementedError
         rdc = _is_cudadevrt_needed(options)
         cubin = compile_using_nvcc(source, options, arch,
                                    name + '.cu', code_type='cubin',
@@ -658,8 +678,11 @@ def _compile_with_cache_cuda(
         # we don't do any disk I/O
         pass
 
-    mod.load(cubin)
-    return mod
+    if to_ltoir:
+        return cubin
+    else:
+        mod.load(cubin)
+        return mod
 
 
 class CompileException(Exception):
@@ -742,8 +765,8 @@ class _NVRTCProgram:
                 return nvrtc.getCUBIN(self.ptr), mapping
             elif self.method == 'ptx':
                 return nvrtc.getPTX(self.ptr), mapping
-            # TODO(leofang): support JIT LTO using nvrtc.getNVVM()?
-            # need -dlto and -arch=compute_XX
+            elif self.method == 'lto':
+                return nvrtc.getLTOIR(self.ptr), mapping
             else:
                 raise RuntimeError('Unknown NVRTC compile method')
         except nvrtc.NVRTCError:

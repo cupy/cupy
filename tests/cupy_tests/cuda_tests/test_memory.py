@@ -6,7 +6,6 @@ import pickle
 import threading
 import unittest
 
-import fastrlock
 import pytest
 
 import cupy.cuda
@@ -909,7 +908,6 @@ class TestAllocator(unittest.TestCase):
         main_ptr, sub_ptr = self._reuse_between_thread(stream1, stream2)
         assert main_ptr != sub_ptr
 
-    @pytest.mark.skipif(cupy.cuda.runtime.is_hip, reason='No PTDS on HIP')
     def test_reuse_between_thread_ptds(self):
         stream = cupy.cuda.Stream.ptds
         main_ptr, sub_ptr = self._reuse_between_thread(stream, stream)
@@ -985,17 +983,7 @@ class TestMemInfo(unittest.TestCase):
 class TestLockAndNoGc(unittest.TestCase):
 
     def test(self):
-        lock = fastrlock.rlock.FastRLock()
-        ctx = memory.LockAndNoGc(lock)
-
-        assert gc.isenabled()
-        self.assertRaises(Exception, lock.release)
-        with ctx:
-            assert not gc.isenabled()
-            lock.release()
-            lock.acquire()
-        assert gc.isenabled()
-        self.assertRaises(Exception, lock.release)
+        memory._test_lock_and_no_gc()
 
 
 class TestExceptionPicklable(unittest.TestCase):

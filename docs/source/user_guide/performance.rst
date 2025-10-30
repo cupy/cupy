@@ -1,7 +1,7 @@
 Performance Best Practices
 ==========================
 
-Here we gather a few tricks and advices for improving CuPy's performance.
+Here we gather a few tricks and advice for improving CuPy's performance.
 
 Benchmarking
 ------------

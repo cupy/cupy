@@ -16,7 +16,7 @@ from cupy._core._carray cimport strides_t
 from cupy._core cimport core
 from cupy._core cimport _routines_math as _math
 from cupy._core cimport _routines_manipulation as _manipulation
-from cupy._core.core cimport _ndarray_base
+from cupy._core.core cimport _convert_from_cupy_like, _ndarray_base
 from cupy._core cimport internal
 
 
@@ -262,15 +262,31 @@ cpdef list _prepare_slice_list(slices):
                 # keep scalar int
                 continue
 
-        if cupy.min_scalar_type(s).char == 'O':
-            raise IndexError(
-                'arrays used as indices must be of integer (or boolean) type')
         try:
             s = core.array(s, dtype=None, copy=None)
-        except ValueError:
-            # "Unsupported dtype"
+        except ValueError as e:
+            # Conversion failed, presumably with "Unsupported dtype".
+
+            # If this is a NumPy array, it should have an unsupportd dtype
+            # raise that as as not "integer or boolean" dtype.
+            if isinstance(s, numpy.ndarray):
+                if s.dtype.kind not in {'b', 'i', 'u'}:
+                    raise IndexError(
+                        'arrays used as indices must be of integer or boolean '
+                        'type (actual: {})'.format(s.dtype.type))
+                # Unlikely/impossible, but there was another error re-raise
+                raise
+
+            try:
+                numpy.asarray(s)  # check if NumPy can convert the index
+            except Exception:
+                # Can't convert, raise original (probably identical) error.
+                # For example `[1, [2]]` is "ragged" and fails this way.
+                raise e from None
+
+            # Probably an arbitrary object, so give generic error:
             raise IndexError(
-                'only integers, slices (`:`), ellipsis (`...`),'
+                'only integers, slices (`:`), ellipsis (`...`), '
                 'numpy.newaxis (`None`) and integer or '
                 'boolean arrays are valid indices')
         if fix_empty_dtype and s.size == 0:
@@ -1010,10 +1026,12 @@ cdef _scatter_op(_ndarray_base a, slices, value, op):
     y = a
 
     if op == 'update':
-        if not isinstance(value, _ndarray_base):
+        x = _convert_from_cupy_like(value, error=False)
+        if x is None:
+            # Refuse assignment from CPU arrays, see gh-2079
             y.fill(value)
             return
-        x = value
+
         if (internal.vector_equal(y._shape, x._shape) and
                 internal.vector_equal(y._strides, x._strides)):
             if y.data.ptr == x.data.ptr:

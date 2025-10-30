@@ -18,7 +18,7 @@ from cupy._core cimport _optimize_config
 from cupy._core cimport _routines_manipulation as _manipulation
 from cupy._core cimport _scalar
 from cupy._core._scalar import get_typename as _get_typename
-from cupy._core.core cimport _convert_object_with_cuda_array_interface
+from cupy._core.core cimport _convert_from_cupy_like
 from cupy._core.core cimport _create_ndarray_from_shape_strides
 from cupy._core.core cimport compile_with_cache
 from cupy._core.core cimport _ndarray_base
@@ -518,7 +518,7 @@ cdef class _AbstractReductionKernel:
     def cached_codes(self):
         """Returns a dict that has input types as keys and codes values.
 
-        This proprety method is for debugging purpose.
+        This property method is for debugging purpose.
         The return value is not guaranteed to keep backward compatibility.
         """
         if len(self._cached_codes) == 0:
@@ -531,7 +531,7 @@ cdef class _AbstractReductionKernel:
     def cached_code(self):
         """Returns `next(iter(self.cached_codes.values()))`.
 
-        This proprety method is for debugging purpose.
+        This property method is for debugging purpose.
         The return value is not guaranteed to keep backward compatibility.
         """
         codes = self._cached_codes
@@ -591,18 +591,9 @@ cdef class _SimpleReductionKernel(_AbstractReductionKernel):
             return a.__cupy_override_reduction_kernel__(
                 self, axis, dtype, out, keepdims)
 
-        cdef _ndarray_base arr
+        cdef _ndarray_base arr = _convert_from_cupy_like(
+            a, error="Argument 'a'")
 
-        if isinstance(a, _ndarray_base):
-            arr = a
-        elif hasattr(a, '__cuda_array_interface__'):
-            arr = _convert_object_with_cuda_array_interface(a)
-        elif hasattr(a, '__cupy_get_ndarray__'):
-            arr = a.__cupy_get_ndarray__()
-        else:
-            raise TypeError(
-                'Argument \'a\' has incorrect type (expected %s, got %s)' %
-                (cupy.ndarray, type(a)))
         in_args = [arr]
 
         dev_id = device.get_device_id()

@@ -22,7 +22,7 @@ from cupy._core._dtype cimport get_dtype, _raise_if_invalid_cast
 from cupy._core._memory_range cimport may_share_bounds
 from cupy._core._scalar import get_typename as _get_typename
 from cupy._core cimport core
-from cupy._core.core cimport _convert_object_with_cuda_array_interface
+from cupy._core.core cimport _convert_from_cupy_like
 from cupy._core.core cimport _ndarray_init
 from cupy._core.core cimport compile_with_cache
 from cupy._core.core cimport _ndarray_base
@@ -116,17 +116,12 @@ cpdef inline _check_peer_access(_ndarray_base arr, int device_id):
 
 cdef inline _preprocess_arg(int dev_id, arg, bint use_c_scalar):
     weak_t = False
-    if isinstance(arg, _ndarray_base):
-        s = arg
+
+    s = _convert_from_cupy_like(arg, error=False)
+    if s is not None:
         _check_peer_access(<_ndarray_base>s, dev_id)
     elif isinstance(arg, texture.TextureObject):
         s = arg
-    elif hasattr(arg, '__cuda_array_interface__'):
-        s = _convert_object_with_cuda_array_interface(arg)
-        _check_peer_access(<_ndarray_base>s, dev_id)
-    elif hasattr(arg, '__cupy_get_ndarray__'):
-        s = arg.__cupy_get_ndarray__()
-        _check_peer_access(<_ndarray_base>s, dev_id)
     else:  # scalars or invalid args
         weak_t = type(arg) if type(arg) in [int, float, complex] else False
         if use_c_scalar:
@@ -961,7 +956,7 @@ cdef class ElementwiseKernel:
     def cached_codes(self):
         """Returns a dict that has input types as keys and codes values.
 
-        This proprety method is for debugging purpose.
+        This property method is for debugging purpose.
         The return value is not guaranteed to keep backward compatibility.
         """
         if len(self._cached_codes) == 0:
@@ -974,7 +969,7 @@ cdef class ElementwiseKernel:
     def cached_code(self):
         """Returns `next(iter(self.cached_codes.values()))`.
 
-        This proprety method is for debugging purpose.
+        This property method is for debugging purpose.
         The return value is not guaranteed to keep backward compatibility.
         """
         codes = self._cached_codes

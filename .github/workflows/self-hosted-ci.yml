@@ -92,7 +92,7 @@ jobs:
         token: ${{ steps.generate-token.outputs.token }}
         client-payload: |
           {
-            "targets": ["rocm-6-2"],
+            "targets": ["rocm-7-0"],
             "head_sha": "${{ needs.pre-dispatch.outputs.head_sha }}",
             "merge_commit_sha": "${{ needs.pre-dispatch.outputs.merge_commit_sha }}",
             "url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}",
