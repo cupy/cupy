@@ -57,12 +57,6 @@ cdef F_nvrtcGetNumSupportedArchs nvrtcGetNumSupportedArchs
 ctypedef nvrtcResult (*F_nvrtcGetSupportedArchs)(int* supportedArchs) noexcept nogil  # NOQA
 cdef F_nvrtcGetSupportedArchs nvrtcGetSupportedArchs
 
-ctypedef nvrtcResult (*F_nvrtcGetNVVMSize)(nvrtcProgram prog, size_t *nvvmSizeRet) noexcept nogil  # NOQA
-cdef F_nvrtcGetNVVMSize nvrtcGetNVVMSize
-
-ctypedef nvrtcResult (*F_nvrtcGetNVVM)(nvrtcProgram prog, char *nvvm) noexcept nogil  # NOQA
-cdef F_nvrtcGetNVVM nvrtcGetNVVM
-
 ctypedef nvrtcResult (*F_nvrtcGetLTOIRSize)(nvrtcProgram prog, size_t *ltoirSizeRet) nogil  # NOQA
 cdef F_nvrtcGetLTOIRSize nvrtcGetLTOIRSize
 
@@ -110,10 +104,6 @@ cdef SoftLink _initialize():
     nvrtcGetNumSupportedArchs = <F_nvrtcGetNumSupportedArchs>_L.get('GetNumSupportedArchs')  # NOQA
     global nvrtcGetSupportedArchs
     nvrtcGetSupportedArchs = <F_nvrtcGetSupportedArchs>_L.get('GetSupportedArchs')  # NOQA
-    global nvrtcGetNVVMSize
-    nvrtcGetNVVMSize = <F_nvrtcGetNVVMSize>_L.get('GetNVVMSize')
-    global nvrtcGetNVVM
-    nvrtcGetNVVM = <F_nvrtcGetNVVM>_L.get('GetNVVM')
     global nvrtcGetLTOIRSize
     nvrtcGetLTOIRSize = <F_nvrtcGetLTOIRSize>_L.get('GetLTOIRSize')
     global nvrtcGetLTOIR
