@@ -326,7 +326,7 @@ __host__ __device__ inline complex<T> operator*(const T& lhs, const complex<T>& 
 /*! Divides two \p complex numbers.
  *
  *  \param lhs The numerator (dividend).
- *  \param rhs The denominator (divisor).
+ *  \param rhs The denomimator (divisor).
  */
 template <typename T>
 __host__ __device__ inline complex<T> operator/(const complex<T>& lhs,
@@ -335,7 +335,7 @@ __host__ __device__ inline complex<T> operator/(const complex<T>& lhs,
 /*! Divides a \p complex number by a scalar.
  *
  *  \param lhs The complex numerator (dividend).
- *  \param rhs The scalar denominator (divisor).
+ *  \param rhs The scalar denomimator (divisor).
  */
 template <typename T>
 __host__ __device__ inline complex<T> operator/(const complex<T>& lhs, const T& rhs);
@@ -343,7 +343,7 @@ __host__ __device__ inline complex<T> operator/(const complex<T>& lhs, const T& 
 /*! Divides a scalar by a \p complex number.
  *
  *  \param lhs The scalar numerator (dividend).
- *  \param rhs The complex denominator (divisor).
+ *  \param rhs The complex denomimator (divisor).
  */
 template <typename T>
 __host__ __device__ inline complex<T> operator/(const T& lhs, const complex<T>& rhs);

@@ -420,9 +420,13 @@ The following ROCm libraries are required:
 Environment Variables
 ~~~~~~~~~~~~~~~~~~~~~
 
-When building or running CuPy for ROCm, the following environment variables are effective.
+When building or running CuPy for ROCm, the following environment variables are necessary to set.
 
 * ``ROCM_HOME``: directory containing the ROCm software (e.g., ``/opt/rocm``).
+
+.. note::
+    It is recommended to always have ROCm installed to `/opt/rocm`. Non standard install locations have a tendency
+    to break some functionality.
 
 Docker
 ~~~~~~
@@ -441,6 +445,8 @@ Installing Binary Packages
 .. note::
 
    ROCm binary packages (wheels) and ROCm Docker images are unavailable in recent CuPy versions (v13.4.0+).
+   AMD is currently hosting ROCm 6.4 wheels and can be installed with `pip install amd-cupy --extra-index-url=https://pypi.amd.com/simple`.
+   This wheel supports PTDS, CAI, and other misc bug fixes in addition to other v13.4 functionality.
    We are currently working on improving packaging to improve this situation. Follow `#8607 <https://github.com/cupy/cupy/issues/8607>`_ for the latest status.
 
 
@@ -482,7 +488,6 @@ The following features are not yet supported:
 * Hermitian/symmetric eigenvalue solver (``cupy.linalg.eigh``)
 * Polynomial roots (uses Hermitian/symmetric eigenvalue solver)
 * Splines in ``cupyx.scipy.interpolate`` (``make_interp_spline``, spline modes of ``RegularGridInterpolator``/``interpn``), as they depend on sparse matrices.
-* Per-thread default stream (`#9407 <https://github.com/cupy/cupy/pull/9407>`_)
 
 The following features may not work in edge cases (e.g., some combinations of dtype):
 
