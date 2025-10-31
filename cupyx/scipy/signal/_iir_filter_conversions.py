@@ -183,9 +183,12 @@ def zpk2sos(z, p, k, pairing=None, *, analog=False):
 
     if len(z) == len(p) == 0:
         if not analog:
-            return cupy.array([[k, 0., 0., 1., 0., 0.]])
-        else:
-            return cupy.array([[0., 0., k, 0., 0., 1.]])
+            out = cupy.array([[0., 0., 0., 1., 0., 0.]])
+            out[0][0] = k
+            return out
+        out = cupy.array([[0., 0., 0., 0., 0., 1.]])
+        out[0][2] = k
+        return out
 
     if pairing != 'minimal':
         # ensure we have the same number of poles and zeros, and make copies
