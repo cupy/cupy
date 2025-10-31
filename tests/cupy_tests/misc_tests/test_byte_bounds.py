@@ -76,3 +76,7 @@ class TestByteBounds:
         b_low = b.data.ptr - 2 * itemsize * (4 - 1)
         b_high = b.data.ptr + 1 * itemsize + 2 * 7 * itemsize * (2 - 1)
         assert cupy.byte_bounds(b) == (b_low, b_high)
+
+    def test_empty(self):
+        a = cupy.zeros((19, 0, 4))
+        assert cupy.byte_bounds(a) == (a.data.ptr, a.data.ptr)
