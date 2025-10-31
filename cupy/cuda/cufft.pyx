@@ -290,7 +290,7 @@ cdef _reorder_buffers(Handle plan, intptr_t xtArr, list xtArr_buffer):
 
 # This is meant to replace cufftXtMalloc().
 # We need to manage the buffers ourselves in order to 1. avoid excessive,
-# uncessary memory usage, and 2. use CuPy's memory pool.
+# unnecessary memory usage, and 2. use CuPy's memory pool.
 cdef _XtMalloc(list gpus, list sizes, XtSubFormat fmt):
     cdef XtArrayDesc* xtArr_desc
     cdef XtArray* xtArr
@@ -599,8 +599,8 @@ cdef class Plan1d:
 
         # First, get the buffers:
         # We need to manage the buffers ourselves in order to avoid excessive,
-        # uncessary memory usage. Note that these buffers are used for in-place
-        # transforms, and are re-used (lifetime tied to the plan).
+        # unnecessary memory usage. Note that these buffers are used for
+        # in-place transforms, and are re-used (lifetime tied to the plan).
 
         if isinstance(a, cupy.ndarray) or isinstance(a, numpy.ndarray):
             if self.xtArr == 0 and self.xtArr_buffer is None:

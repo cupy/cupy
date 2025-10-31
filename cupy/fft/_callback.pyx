@@ -334,7 +334,7 @@ cdef class _CallbackManager:
     cdef set_caller_infos(self,
                           MemoryPointer cb_load_data=None,
                           MemoryPointer cb_store_data=None):
-        '''Set the auxilliary arrays to be used by the load/store callbacks.
+        '''Set the auxiliary arrays to be used by the load/store callbacks.
         Corresponding to the ``callerInfo`` field in cuFFT's callback API.
 
         Args:

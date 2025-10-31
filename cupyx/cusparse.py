@@ -770,7 +770,7 @@ def csr2dense(x, out=None):
 
     Args:
         x (cupyx.scipy.sparse.csr_matrix): A sparse matrix to convert.
-        out (cupy.ndarray or None): A dense metrix to store the result.
+        out (cupy.ndarray or None): A dense matrix to store the result.
             It must be F-contiguous.
 
     Returns:
@@ -802,7 +802,7 @@ def csc2dense(x, out=None):
 
     Args:
         x (cupyx.scipy.sparse.csc_matrix): A sparse matrix to convert.
-        out (cupy.ndarray or None): A dense metrix to store the result.
+        out (cupy.ndarray or None): A dense matrix to store the result.
             It must be F-contiguous.
 
     Returns:
@@ -1807,7 +1807,7 @@ def sparseToDense(x, out=None):
 
     Args:
         x (cupyx.scipy.sparse.spmatrix): A sparse matrix to convert.
-        out (cupy.ndarray or None): A dense metrix to store the result.
+        out (cupy.ndarray or None): A dense matrix to store the result.
             It must be F-contiguous.
 
     Returns:

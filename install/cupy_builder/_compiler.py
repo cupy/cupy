@@ -78,7 +78,7 @@ def _nvcc_gencode_options(cuda_version: int) -> list[str]:
         #
         #   https://forums.developer.nvidia.com/t/software-migration-guide-for-nvidia-blackwell-rtx-gpus-a-guide-to-cuda-12-8-pytorch-tensorrt-and-llama-cpp/321330
         #
-        # Jetson platforms are also targetted when built under aarch64. c.f.:
+        # Jetson platforms are also targeted when built under aarch64. c.f.:
         #
         #   https://docs.nvidia.com/cuda/cuda-for-tegra-appnote/index.html#deployment-considerations-for-cuda-upgrade-package
 

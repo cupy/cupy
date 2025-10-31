@@ -124,12 +124,12 @@ class _TraceVariable:
 
     @property
     def var_name(self):
-        # The name of varialbe stored in global memory space.
+        # The name of variable stored in global memory space.
         raise NotImplementedError
 
     @property
     def lvar_name(self):
-        # The name of varialbe stored in registers in each thread.
+        # The name of variable stored in registers in each thread.
         raise NotImplementedError
 
     @property

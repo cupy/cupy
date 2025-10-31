@@ -80,6 +80,16 @@ class TestNCCL(unittest.TestCase):
         config = nccl.NcclConfig(split_share=1)
         assert config.split_share == 1
 
+    def test_comm_bad_id(self):
+        with pytest.raises(TypeError):
+            nccl.NcclCommunicator(1, None, 0)
+
+        with pytest.raises(TypeError):
+            nccl.NcclCommunicator(1, (1, 2, 3), 0)
+
+        with pytest.raises(ValueError, match="commId length 10 != 128."):
+            nccl.NcclCommunicator(1, b"1234567890", 0)
+
     @testing.multi_gpu(2)
     @unittest.skipUnless(nccl_version_code >= nccl_version(2, 7, 0),
                          'Using old NCCL')
