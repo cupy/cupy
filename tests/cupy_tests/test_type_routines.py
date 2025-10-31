@@ -91,3 +91,73 @@ class TestResultType(unittest.TestCase):
         ret = xp.result_type(input1, input2)
         assert isinstance(ret, numpy.dtype)
         return ret
+
+
+class TestIsDtype(unittest.TestCase):
+
+    @testing.numpy_cupy_equal()
+    def test_isdtype_bool(self, xp):
+        ret = xp.isdtype(xp.bool_, 'bool')
+        assert isinstance(ret, bool)
+        return ret
+
+    @testing.for_dtypes([numpy.int8, numpy.int16, numpy.int32, numpy.int64])
+    @testing.numpy_cupy_equal()
+    def test_isdtype_signed_integer(self, xp, dtype):
+        ret = xp.isdtype(dtype, 'signed integer')
+        assert isinstance(ret, bool)
+        return ret
+
+    @testing.for_dtypes([numpy.uint8, numpy.uint16, numpy.uint32,
+                         numpy.uint64])
+    @testing.numpy_cupy_equal()
+    def test_isdtype_unsigned_integer(self, xp, dtype):
+        ret = xp.isdtype(dtype, 'unsigned integer')
+        assert isinstance(ret, bool)
+        return ret
+
+    @testing.for_dtypes([numpy.int8, numpy.int32, numpy.uint16, numpy.uint64])
+    @testing.numpy_cupy_equal()
+    def test_isdtype_integral(self, xp, dtype):
+        ret = xp.isdtype(dtype, 'integral')
+        assert isinstance(ret, bool)
+        return ret
+
+    @testing.for_dtypes([numpy.float16, numpy.float32, numpy.float64])
+    @testing.numpy_cupy_equal()
+    def test_isdtype_real_floating(self, xp, dtype):
+        ret = xp.isdtype(dtype, 'real floating')
+        assert isinstance(ret, bool)
+        return ret
+
+    @testing.for_dtypes([numpy.complex64, numpy.complex128])
+    @testing.numpy_cupy_equal()
+    def test_isdtype_complex_floating(self, xp, dtype):
+        ret = xp.isdtype(dtype, 'complex floating')
+        assert isinstance(ret, bool)
+        return ret
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_equal()
+    def test_isdtype_numeric(self, xp, dtype):
+        ret = xp.isdtype(dtype, 'numeric')
+        assert isinstance(ret, bool)
+        return ret
+
+    @testing.numpy_cupy_equal()
+    def test_isdtype_dtype_match(self, xp):
+        ret = xp.isdtype(xp.float32, xp.float32)
+        assert isinstance(ret, bool)
+        return ret
+
+    @testing.numpy_cupy_equal()
+    def test_isdtype_dtype_no_match(self, xp):
+        ret = xp.isdtype(xp.float32, xp.float64)
+        assert isinstance(ret, bool)
+        return ret
+
+    @testing.numpy_cupy_equal()
+    def test_isdtype_tuple_kinds(self, xp):
+        ret = xp.isdtype(xp.complex128, ('real floating', 'complex floating'))
+        assert isinstance(ret, bool)
+        return ret
