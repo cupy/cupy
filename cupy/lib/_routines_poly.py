@@ -7,7 +7,6 @@ import numpy
 
 import cupy
 from cupy.exceptions import RankWarning
-import cupyx.scipy.fft
 
 
 def _wraps_polyroutine(func):
@@ -177,6 +176,7 @@ def _polypow(x, n):
         else:
             fft, ifft = cupy.fft.rfft, cupy.fft.irfft
         out_size = (x.size - 1) * n + 1
+        import cupyx.scipy.fft
         size = cupyx.scipy.fft.next_fast_len(out_size)
         fx = fft(x, size)
         fy = cupy.power(fx, n, fx)
