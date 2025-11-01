@@ -66,6 +66,7 @@ def _call_func_cupy(impl, args, kw, name, sp_name, scipy_name):
         import cupyx.scipy.sparse
         kw[sp_name] = cupyx.scipy.sparse
     if scipy_name:
+        import cupyx
         kw[scipy_name] = cupyx.scipy
     kw[name] = cupy
     result, error = _call_func(impl, args, kw)
