@@ -10,6 +10,13 @@
 using AclnnKernelFunc = aclnnStatus (*)(void* workspace, uint64_t workspaceSize, 
                                        aclOpExecutor* executor, aclrtStream stream);
 
+#define CHECK_STATUS(status) \
+do { \
+    if (status != ACL_SUCCESS) { \
+        std::cerr << "Failed to run acl function in " << __FUNCTION__ << ": " << \
+        __FILE__ << ":" <<__LINE__ << "," << aclGetRecentErrMsg() << std::endl; \
+    } \
+} while (0)
 // if template function not working, then use macro func
 
 /* inplace use another func (unary)
@@ -105,8 +112,13 @@ aclError aclTernaryOpRun(
     WsFunc wsfunc, AclnnKernelFunc kfunc, aclrtStream stream, bool sync,
     Args&&... args)
 {
-    float alphaValue = scalar; // TODO: aclDataType from type_trait
-    aclScalar* alpha = aclCreateScalar(&alphaValue, ACL_FLOAT);
+    aclScalar* alpha = nullptr;
+    if constexpr (std::is_scalar_v<Scalar>  && ! std::is_pointer_v<Scalar>) {
+        float alphaValue = scalar;
+        alpha = aclCreateScalar(&alphaValue, ACL_FLOAT);
+    } else {
+        alpha = scalar;
+    }
 
     uint64_t workspaceSize = 0;
     aclOpExecutor* executor = nullptr;
@@ -268,8 +280,10 @@ aclError aclUnaryInplaceOpRun(
     return ACL_SUCCESS;
 }
 
+// for irregular aclnn op, which may does not have self or out tensor
+// or there is non-fixed arg between self and out tensor
 template<typename WsFunc, typename... Args>
-aclError aclGeneralOpRun(
+aclError aclIrregularOpRun(
     WsFunc wsfunc, AclnnKernelFunc kfunc,
     aclrtStream stream, bool sync,
     Args&&... args)
@@ -401,7 +415,7 @@ aclError aclop_##opname(const aclTensor* self, aclTensor* out, aclrtStream strea
     }
 
 // declare the reduction op (sum, prod, any, all), dim may have diff type
-#define DECLARE_ACL_REDUCTION_OPS_FUNC(opname) \
+#define DECLARE_ACL_REDUCTION_OP(opname) \
     aclError aclop_##opname(const aclTensor* self, const aclIntArray* dim, bool keepdim, \
         aclTensor* out, aclrtStream stream) { \
         return aclReductionOpRun(self, out, \

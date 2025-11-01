@@ -126,6 +126,7 @@ ModelArts EulerOS (对应是OpenEuler 20.03) in docker  CANN 8.2, python 3.9 （
 
 进一步测试install脚本, 被benchmark加速效果
 
+for vector op, `double` is supported, possibly via AICPU, so it is very slow, slower than CPU but can keep data in device memory.
 
 ## 3. 编译和安装 numpy-ascend
 
@@ -183,6 +184,13 @@ https://github.com/qingfengxia/numpy-ascend/commit/863e0ff4c07994a45a204b8032db7
 ```sh
 export CUPY_INSTALL_USE_ASCEND=1 && python setup.py develop && python -c "import cupy._core"
 ```
+
+### 4.1 4 kinds of minimum (consider NaN)
+only float number can represent NaN (like inf, special value of float)
++ fmin 两个数组的逐元素最小值，忽略 NaN。binary op
++ minimum 两个数组的逐元素最小值，传播 NaN。binary op
++ amin 数组沿给定轴的最小值，传播 NaN。 reduction op
++ nanmin 数组沿给定轴的最小值，忽略 NaN。reduction op
 
 ## 5. 架构调整说明 (backend): What has been done after fork
 

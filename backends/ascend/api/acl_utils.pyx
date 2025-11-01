@@ -401,7 +401,7 @@ cdef aclError launch_acl_func(str opname, tuple ops, intptr_t stream_ptr) except
     return ret
 
 
-# TODO: add output `dtype` param
+# TODO: add output `dtype` param, set as outTensor's dtype
 cdef aclError launch_reduction_op(str opname, tuple ops, intptr_t stream_ptr) except *:
     # 检查操作是否已注册
     if opname.startswith("cupy_"):
@@ -435,7 +435,7 @@ cdef aclError launch_reduction_op(str opname, tuple ops, intptr_t stream_ptr) ex
             dim = aclCreateIntArray(shape.data(), len(op))
         elif typ is _cupy_scalar:
             pass
-        elif hasattr(op, "__bool__"): # keepdim
+        elif hasattr(op, "__bool__"): # keepdim bool python type
             keepdim = op.__bool__()
         else:
             raise RuntimeError("Operand is not ndarray or scalar: ", op)
@@ -535,6 +535,7 @@ cdef extern from "../acl_math.h" nogil:
 
 # reduction ops
 cdef extern from "../acl_math.h" nogil:
+
     aclError aclop_Any(const aclTensor* self, const aclIntArray* dim, bint keepdim, aclTensor* out, aclrtStream stream)
     aclError aclop_All(const aclTensor* self, const aclIntArray* dim, bint keepdim, aclTensor* out, aclrtStream stream)
     aclError aclop_Max(const aclTensor* self, const aclIntArray* dim, bint keepdim, aclTensor* out, aclrtStream stream)
@@ -544,6 +545,10 @@ cdef extern from "../acl_math.h" nogil:
     aclError aclop_Mean(const aclTensor* self, const aclIntArray* dim, bint keepdim, aclTensor* out, aclrtStream stream)
     aclError aclop_Sum(const aclTensor* self, const aclIntArray* dim, bint keepdim, aclTensor* out, aclrtStream stream)
     aclError aclop_Prod(const aclTensor* self, const aclIntArray* dim, bint keepdim, aclTensor* out, aclrtStream stream)
+    aclError aclop_Nansum(const aclTensor* self, const aclIntArray* dim, bint keepdim, aclTensor* out, aclrtStream stream)
+    #aclError aclop_Nanprod(const aclTensor* self, const aclIntArray* dim, bint keepdim, aclTensor* out, aclrtStream stream)
+    aclError aclop_Nancumprod(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out, aclrtStream stream)
+    aclError aclop_Nancumsum(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out, aclrtStream stream)
 
 # 初始化函数，注册内置操作
 cdef void init_builtin_operators():
@@ -721,8 +726,17 @@ cdef void init_builtin_operators():
     register_acl_ufunc("ascend_sum", REDUCTION_OP, func_union)
     func_union.reduction_op = aclop_Prod
     register_acl_ufunc("ascend_prod", REDUCTION_OP, func_union)
+    func_union.reduction_op = aclop_Nansum
+    register_acl_ufunc("ascend_nansum", REDUCTION_OP, func_union)
+    #func_union.reduction_op = aclop_Nanprod
+    #register_acl_ufunc("ascend_nanprod", REDUCTION_OP, func_union)
+    func_union.reduction_op = aclop_Nancumsum
+    register_acl_ufunc("ascend_nancumsum", REDUCTION_OP, func_union)
+    func_union.reduction_op = aclop_Nancumprod
+    register_acl_ufunc("ascend_nancumprod", REDUCTION_OP, func_union)
 
 
+# register_acl_irregular_func()
 
 def py_register_acl_ufunc(str opname, int func_type, long func_ptr):
     """Python层级的操作注册函数, func_type is OpType enum value"""
