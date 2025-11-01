@@ -3,8 +3,8 @@
 User-Defined Kernels
 ====================
 
-CuPy provides easy ways to define three types of CUDA kernels: elementwise kernels, reduction kernels and raw kernels.
-In this documentation, we describe how to define and call each kernels.
+CuPy provides easy ways to define three types of CUDA kernels: elementwise kernels, reduction kernels, and raw kernels.
+In this documentation, we describe how to define and call each kernel.
 
 
 Basics of elementwise kernels
@@ -58,7 +58,7 @@ Type-generic kernels
 --------------------
 
 If a type specifier is one character, then it is treated as a **type placeholder**.
-It can be used to define a type-generic kernels.
+It can be used to define a type-generic kernel.
 For example, the above ``squared_diff`` kernel can be made type-generic as follows:
 
 .. doctest::
@@ -69,7 +69,7 @@ For example, the above ``squared_diff`` kernel can be made type-generic as follo
    ...     'z = (x - y) * (x - y)',
    ...     'squared_diff_generic')
 
-Type placeholders of a same character in the kernel definition indicate the same type.
+Type placeholders of the same character in the kernel definition indicate the same type.
 The actual type of these placeholders is determined by the actual argument type.
 The ElementwiseKernel class first checks the output arguments and then the input arguments to determine the actual type.
 If no output arguments are given on the kernel invocation, then only the input arguments are used to determine the type.
@@ -87,7 +87,7 @@ The type placeholder can be used in the loop body code:
    ...     ''',
    ...     'squared_diff_generic')
 
-More than one type placeholder can be used in a kernel definition.
+More than one type of placeholder can be used in a kernel definition.
 For example, the above kernel can be further made generic over multiple arguments:
 
 .. doctest::
@@ -98,7 +98,7 @@ For example, the above kernel can be further made generic over multiple argument
    ...     'z = (x - y) * (x - y)',
    ...     'squared_diff_super_generic')
 
-Note that this kernel requires the output argument explicitly specified, because the type ``Z`` cannot be automatically determined from the input arguments.
+Note that this kernel requires the output argument to be explicitly specified, because the type ``Z`` cannot be automatically determined from the input arguments.
 
 
 Raw argument specifiers
@@ -110,10 +110,10 @@ We can tell the ElementwiseKernel class to use manual indexing by adding the ``r
 
 We can use the special variable ``i`` and method ``_ind.size()`` for the manual indexing.
 ``i`` indicates the index within the loop.
-``_ind.size()`` indicates total number of elements to apply the elementwise operation.
-Note that it represents the size **after** broadcast operation.
+``_ind.size()`` indicates the total number of elements to apply the elementwise operation.
+Note that it represents the size **after** the broadcast operation.
 
-For example, a kernel that adds two vectors with reversing one of them can be written as follows:
+For example, a kernel that adds two vectors by reversing one of them can be written as follows:
 
 .. doctest::
 
@@ -122,7 +122,7 @@ For example, a kernel that adds two vectors with reversing one of them can be wr
    ...     'z = x + y[_ind.size() - i - 1]',
    ...     'add_reverse')
 
-(Note that this is an artificial example and you can write such operation just by ``z = x + y[::-1]`` without defining a new kernel).
+(Note that this is an artificial example and you can write such an operation just by ``z = x + y[::-1]`` without defining a new kernel).
 A raw argument can be used like an array.
 The indexing operator ``y[_ind.size() - i - 1]`` involves an indexing computation on ``y``, so ``y`` can be arbitrarily shaped and strode.
 
@@ -169,7 +169,7 @@ For example, L2 norm along specified axes can be written as follows:
    array([ 5.477226 , 15.9687195], dtype=float32)
 
 .. note::
-   ``raw`` specifier is restricted for usages that the axes to be reduced are put at the head of the shape.
+   The ``raw`` specifier is restricted to usages where the axes to be reduced are put at the head of the shape.
    It means, if you want to use ``raw`` specifier for at least one argument, the ``axis`` argument must be ``0`` or a contiguous increasing sequence of integers starting from ``0``, like ``(0, 1)``, ``(0, 1, 2)``, etc.
 
 .. note::
@@ -183,7 +183,7 @@ Raw kernels can be defined by the :class:`~cupy.RawKernel` class.
 By using raw kernels, you can define kernels from raw CUDA source.
 
 :class:`~cupy.RawKernel` object allows you to call the kernel with CUDA's ``cuLaunchKernel`` interface.
-In other words, you have control over grid size, block size, shared memory size and stream.
+In other words, you have control over grid size, block size, shared memory size, and stream.
 
 .. note::
 
@@ -339,9 +339,9 @@ Custom user types
 
 It is possible to use custom types (composite types such as structures and structures of structures)
 as kernel arguments by defining a custom NumPy dtype.
-When doing this, it is your responsibility to match host and device structure memory layout.
+When doing this, it is your responsibility to match the host and device structure memory layout.
 The CUDA standard guarantees that the size of fundamental types on the host and device always match.
-It may however impose device alignment requirements on composite types.
+It may, however, impose device alignment requirements on composite types.
 This means that for composite types the struct member offsets may be different from what you might expect.
 
 When a kernel argument is passed by value, the CUDA driver will copy exactly ``sizeof(param_type)`` bytes starting from the beginning of the NumPy object data pointer, where ``param_type`` is the parameter type in your kernel. 
@@ -365,7 +365,7 @@ named members you can directly define such NumPy dtypes as the following:
     [(42., 0.62873816, 0.8953669)]
 
 Here ``arg`` can be used directly as a kernel argument.
-When there is no need to name fields you may prefer this syntax to define packed structures such as 
+When there is no need to name fields, you may prefer this syntax to define packed structures such as 
 vectors or matrices:
 
 .. doctest::
@@ -378,17 +378,17 @@ vectors or matrices:
 
 Here ``arg`` represents a 100-byte scalar (i.e. a NumPy array of size 1)
 that can be passed by value to any kernel.
-Kernel parameters are passed by value in a dedicated 4kB memory bank which has its own cache with broadcast.
+Kernel parameters are passed by value in a dedicated 4kB memory bank, which has its own cache with broadcast.
 Upper bound for total kernel parameters size is thus 4kB
 (see `this link <https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#function-parameters>`_).
 It may be important to note that this dedicated memory bank is not shared with the device ``__constant__`` memory space.
 
-For now, CuPy offers no helper routines to create user defined composite types. 
-Such composite types can however be built recursively using NumPy dtype `offsets` and `itemsize` capabilities,
+For now, CuPy offers no helper routines to create user-defined composite types. 
+Such composite types can however, be built recursively using NumPy dtype `offsets` and `itemsize` capabilities,
 see `cupy/examples/custum_struct <https://github.com/cupy/cupy/tree/main/examples/custom_struct>`_ for examples of advanced usage.
 
 .. warning::
-    You cannot directly pass static arrays as kernel arguments with the ``type arg[N]`` syntax where N is a compile time constant. The signature of ``__global__ void kernel(float arg[5])`` is seen as ``__global__ void kernel(float* arg)`` by the compiler. If you want to pass five floats to the kernel by value you need to define a custom structure ``struct float5 { float val[5]; };`` and modify the kernel signature to ``__global__ void kernel(float5 arg)``.
+    You cannot directly pass static arrays as kernel arguments with the ``type arg[N]`` syntax where N is a compile-time constant. The signature of ``__global__ void kernel(float arg[5])`` is seen as ``__global__ void kernel(float* arg)`` by the compiler. If you want to pass five floats to the kernel by value you need to define a custom structure ``struct float5 { float val[5]; };`` and modify the kernel signature to ``__global__ void kernel(float5 arg)``.
 
 
 Raw modules
@@ -505,7 +505,7 @@ The above kernel can be called on either scalars, NumPy arrays or CuPy arrays li
 
 At the first function call, the fused function analyzes the original function based on the abstracted information of arguments (e.g. their dtypes and ndims) and creates and caches an actual CUDA kernel.  From the second function call with the same input types, the fused function calls the previously cached kernel, so it is highly recommended to reuse the same decorated functions instead of decorating local functions that are defined multiple times.
 
-:func:`cupy.fuse` also supports simple reduction kernel.
+:func:`cupy.fuse` also supports a simple reduction kernel.
 
 .. doctest::
 
@@ -565,14 +565,14 @@ Both styles to launch the kernel, as shown above, are supported. The first two e
 
 .. _CUDA Programming Model: https://developer.nvidia.com/blog/cuda-refresher-cuda-programming-model/
 
-The compilation will be deferred until the first function call. CuPy's JIT compiler infers the types of arguments at the call time, and will cache the compiled kernels for speeding up any subsequent calls.
+The compilation will be deferred until the first function call. CuPy's JIT compiler infers the types of arguments at call time and will cache the compiled kernels for speeding up any subsequent calls.
 
 See :doc:`../reference/kernel` for a full list of API.
 
 Basic Design
 ^^^^^^^^^^^^
 
-CuPy's JIT compiler generates CUDA code via Python AST. We decided not to use Python bytecode to analyze the target function to avoid performance degradation. The CUDA source code generated from the Python bytecode will not effectively optimized by CUDA compiler, because for-loops and other control statements of the target function are fully transformed to jump instruction when converting the target function to bytecode.
+CuPy's JIT compiler generates CUDA code via Python AST. We decided not to use Python bytecode to analyze the target function to avoid performance degradation. The CUDA source code generated from the Python bytecode will not effectively be optimized by the CUDA compiler, because for-loops and other control statements of the target function are fully transformed to jump instruction when converting the target function to bytecode.
 
 Typing rule
 ^^^^^^^^^^^
