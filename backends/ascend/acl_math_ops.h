@@ -116,7 +116,6 @@
 
 #include "aclnnop/aclnn_argmax.h"  // return the index instead of value
 #include "aclnnop/aclnn_argmin.h"
-#include <aclnnop/aclnn_round.h>
 
 // statistics
 #include "aclnnop/aclnn_mean.h"
@@ -124,29 +123,6 @@
 #include "aclnnop/aclnn_var.h"
 // count
 
-// creation op:  with dim info
-// arange, eye, diag, linspace, ones, zeros, 
-#include "aclnnop/aclnn_arange.h"
-#include "aclnnop/aclnn_eye.h"  //  np.eye == np.identity(N)
-#include "aclnnop/aclnn_diag.h"  // UnaryScalarOp   not sure TODO
-// fill_scalar to impl   numpy op: no.one
-
-// manipulation op:  sort select take put
-#include "aclnnop/aclnn_fill_tensor.h" // fill_scalar, masked_fill
-#include "aclnnop/aclnn_flip.h"  // transpose ??
-//#include "aclnnop/aclnn_rot.h"
-#include "aclnnop/aclnn_stack.h"
-#include "aclnnop/aclnn_cat.h"
-#include "aclnnop/aclnn_flatten.h"
-//#include "aclnnop/aclnn_reshape.h"
-
-// indexing: argsort, unique, sort
-
-// manipulation: transpose, reshape, cast, pad continguous in aclnn_kernels/
-// #include "aclnn_kernels/transpose.h"
-// #include "aclnn_kernels/cast.h"
-// #include "aclnn_kernels/pad.h"
-// #include "aclnn_kernels/slice.h"
 
 // linalg matrix op: qr, tril triu, cross, trace, norm, det
 #include "aclnnop/aclnn_matmul.h"
@@ -309,7 +285,6 @@ extern "C" {
     }
     //DECLARE_ACL_REDUCTION_OP(Amin)
     //DECLARE_ACL_REDUCTION_OP(Amax)
-    //DECLARE_ACL_REDUCTION_OP(ArgMax)
     aclError aclop_ArgMax(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out, aclrtStream stream) {
         int64_t dim_index = dim->GetData()[0];  // TODO, not sure how to convert
         return aclReductionOpRun(self, out,
@@ -322,31 +297,31 @@ extern "C" {
     }
 
     aclError aclop_Mean(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out, aclrtStream stream) {
-        aclDataType dtype; // TODO 指定输出张量的数据类型
+        aclDataType dtype = GetDataType(out, self);
         return aclReductionOpRun(self, out,
             aclnnMeanGetWorkspaceSize, aclnnMean, stream, false, dim, keepdim, dtype); 
     }
     aclError aclop_Std(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out, aclrtStream stream) {
-        int64_t correction; // TODO ?
+        int64_t correction = 0; // numpy ddof default to 0, correction is added in numpy 2.0
         return aclReductionOpRun(self, out,
             aclnnStdGetWorkspaceSize, aclnnStd, stream, false, dim, correction, keepdim); 
     }
-    //DECLARE_ACL_REDUCTION_OP(Std)
     aclError aclop_Var(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out, aclrtStream stream) {
-        bool unbiased; // TODO ?
+        bool unbiased = true;
+        // TODO:  ddof/correction, default to zero, if keyword arg ddof is given, add impl here
         return aclReductionOpRun(self, out,
             aclnnVarGetWorkspaceSize, aclnnVar, stream, false, dim, unbiased, keepdim); 
     }
 
     aclError aclop_Prod(const aclTensor* self, const aclIntArray* axis, bool keepdim, aclTensor* out, aclrtStream stream) {
         int64_t dim_index = axis->GetData()[0];  // TODO, not sure how to convert
-        aclDataType dtype; //  self->GetDataType(); // TODO 指定输出张量的数据类型
+        aclDataType dtype = GetDataType(out, self);
         return aclReductionOpRun(self, out,
             aclnnProdDimGetWorkspaceSize, aclnnProdDim, stream, false, dim_index, keepdim, dtype); 
     }
 
     aclError aclop_Sum(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out, aclrtStream stream) {
-        aclDataType dtype; // self->GetDataType();
+        aclDataType dtype = GetDataType(out, self);
         return aclReductionOpRun(self, out,
             aclnnReduceSumGetWorkspaceSize, aclnnReduceSum, stream, false, dim, keepdim, dtype); 
     }
@@ -356,95 +331,21 @@ extern "C" {
             self, scalar, std::numeric_limits<float>::infinity(), -std::numeric_limits<float>::infinity(), out);
     }
 
-    /**
-     * 根据源张量创建新张量，保持相同形状但使用指定数据类型
-     * 
-     * @param source 源张量指针
-     * @param dtype 目标数据类型
-     * @return 新创建的张量指针，失败返回nullptr
-     */
-    aclTensor* aclTensorLike(const aclTensor* source, aclDataType dtype) {
-        // 参数检查
-        if (source == nullptr) {
-            std::cerr << "Error: Source tensor is null for aclTensorLike() " << std::endl;
-            return nullptr;
-        }
-        
-        aclError ret = ACL_SUCCESS;
-        // 获取维度数量
-        // 1. 获取并打印逻辑形状 (View Shape)
-        int64_t* viewDims = nullptr;
-        uint64_t viewDimsNum = 0;
-        ret = aclGetViewShape(source, &viewDims, &viewDimsNum);
-        CHECK_STATUS(ret);
-        int64_t* storageDims = nullptr;
-        uint64_t storageDimsNum = 0;
-        ret = aclGetStorageShape(source, &storageDims, &storageDimsNum);
-        CHECK_STATUS(ret);
-        int64_t* strides = nullptr;
-        uint64_t stridesNum = 0;
-        ret = aclGetViewStrides(source, &strides, &stridesNum);
-        CHECK_STATUS(ret);
-        // 2. 获取源张量的格式
-        aclFormat format;
-        ret = aclGetFormat(source, &format);
-        CHECK_STATUS(ret);
-        aclDataType source_dtype = ACL_DT_UNDEFINED;
-        ret = aclGetDataType(source, &source_dtype);
-        size_t source_type_size = aclDataTypeSize(source_dtype);
-        size_t type_size = aclDataTypeSize(dtype);
-        if (type_size == 0 || source_type_size == 0) {
-            std::cerr << "Error: Invalid data type size" << std::endl;
-            return nullptr;
-        }
-        float type_size_ratio = (float)type_size / (float)source_type_size;
-        // 4. 计算新张量所需内存大小
-        size_t element_count = 1;
-        for (size_t i = 0; i < storageDimsNum; ++i) {
-            element_count *= storageDims[i];
-            strides[i] = static_cast<int64_t>(strides[i] * type_size_ratio);
-        }
-        
-        size_t total_size = element_count * type_size;
-        
-        // 5. 分配设备内存
-        void* device_addr = nullptr;
-        ret = aclrtMalloc(&device_addr, total_size, ACL_MEM_MALLOC_HUGE_FIRST);
-        if (ret != ACL_SUCCESS || device_addr == nullptr) {
-            std::cerr << "Error: Failed to allocate device memory, error code: " << ret << std::endl;
-            return nullptr;
-        }
-        
-        aclTensor* new_tensor = aclCreateTensor(viewDims, viewDimsNum, dtype, 
-                                            strides, 0, format,
-                                            storageDims, storageDimsNum, device_addr);
-        
-        if (new_tensor == nullptr) {
-            std::cerr << "Error: Failed to create new tensor" << std::endl;
-            aclrtFree(device_addr);
-            return nullptr;
-        }
-        delete[] viewDims;
-        delete[] storageDims;
-        delete[] strides;
-        return new_tensor;
-    }
-
     aclError aclop_Cumsum(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out, aclrtStream stream) {
         int64_t dim_index = dim->GetData()[0];  // TODO, not sure how to convert
-        aclDataType dtype; //  self->GetDataType(); // TODO extra parameter from out Tensor, maybe do the conversion outside this func
+        aclDataType dtype = GetDataType(out, self); // extra parameter from out Tensor, maybe do the conversion outside this func
         return aclReductionOpRun(self, out,
             aclnnCumsumGetWorkspaceSize, aclnnCumsum, stream, false, dim_index, dtype); 
     }
     // dim: why it is a aclScalar?
     aclError aclop_Cumprod(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out, aclrtStream stream) {
         aclScalar* dim_index = nullptr; // TODO, not sure how to convert
-        aclDataType dtype; // self->GetDataType(); // TODO extra parameter from out Tensor, maybe do the conversion outside this func
+        aclDataType dtype = GetDataType(out, self); // TODO extra parameter from out Tensor, maybe do the conversion outside this func
         return aclReductionOpRun(self, out,
             aclnnCumprodGetWorkspaceSize, aclnnCumprod, stream, false, dim_index, dtype); 
     }
     aclError aclop_Nansum(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out, aclrtStream stream) {
-        aclDataType dtype; // self->GetDataType();
+        aclDataType dtype = GetDataType(out, self);
         return aclReductionOpRun(self, out,
             aclnnReduceNansumGetWorkspaceSize, aclnnReduceNansum, stream, false, dim, keepdim, dtype); 
     }
@@ -455,7 +356,7 @@ extern "C" {
     // }
     aclError aclop_Nancumprod(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out, aclrtStream stream) {
         aclScalar* dim_index = nullptr; // TODO, not sure how to convert
-        aclDataType dtype ; // self->GetDataType(); // TODO extra parameter from out Tensor, maybe do the conversion outside this func
+        aclDataType dtype = GetDataType(out, self);
         aclTensor* temp = aclTensorLike(self, dtype);
         float scalar = 0.0f;
         aclError ret = aclop_NanToNum(self, scalar, temp, stream);
@@ -468,7 +369,7 @@ extern "C" {
 
     aclError aclop_Nancumsum(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out, aclrtStream stream) {
         int64_t dim_index = dim->GetData()[0];  // TODO, not sure how to convert
-        aclDataType dtype ; //  self->GetDataType(); // TODO extra parameter from out Tensor, maybe do the conversion outside this func
+        aclDataType dtype = GetDataType(out, self);
         aclTensor* temp = aclTensorLike(self, dtype);
         float scalar = 0.0f;
         aclError ret = aclop_NanToNum(self, scalar, temp, stream);
@@ -479,21 +380,6 @@ extern "C" {
         return ret;
     }
     
-    // This is a general function, must be launched differently
-    aclError aclop_Round(const aclTensor* self, int decimals, aclTensor* out, aclrtStream stream) {
-        return aclBinaryOpRun(self, decimals, out,
-            aclnnRoundDecimalsGetWorkspaceSize, aclnnRoundDecimals, stream, false);
-    }
-    // TODO: fix, rint, around
-    // numpy.clip -> aclnnClamp
-    // aclError aclop_Clamp(const aclTensor* self, aclScalar* amin, aclScalar* amax, aclTensor* out, aclrtStream stream) {
-    //     ret = aclTernaryOpRun(self, amin, amax, out,
-    //         aclnnClampGetWorkspaceSize, aclnnClamp, stream, false);
-    // }
-
-    // arange() 
-    // TODO: Outpout with 2 or more output like `divmod`
-
 #ifdef __cplusplus
 }
 #endif

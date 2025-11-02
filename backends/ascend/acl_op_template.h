@@ -4,11 +4,13 @@
 #include <iostream>
 #include <utility> // for std::forward
 
+
 #include "acl/acl.h"
 #include "aclnn/opdev/common_types.h"
 
 using AclnnKernelFunc = aclnnStatus (*)(void* workspace, uint64_t workspaceSize, 
                                        aclOpExecutor* executor, aclrtStream stream);
+
 
 #define CHECK_STATUS(status) \
 do { \
@@ -17,7 +19,96 @@ do { \
         __FILE__ << ":" <<__LINE__ << "," << aclGetRecentErrMsg() << std::endl; \
     } \
 } while (0)
-// if template function not working, then use macro func
+
+// throw std::runtime_error(oss.str()); // may help to locate error, message may be buried
+
+inline aclDataType GetDataType(const aclTensor* out, const aclTensor* self = nullptr) {
+    aclDataType dtype = ACL_DT_UNDEFINED;
+    if (out) {
+        auto ret = aclGetDataType(self, &dtype);
+        CHECK_STATUS(ret);
+    }
+    else if (self) {
+        auto ret = aclGetDataType(self, &dtype);
+        CHECK_STATUS(ret);
+    }
+    return dtype;
+}
+
+/**
+ * 根据源张量创建新张量，保持相同形状但使用指定数据类型
+ * 
+ * @param source 源张量指针
+ * @param dtype 目标数据类型
+ * @return 新创建的张量指针，失败返回nullptr
+ */
+aclTensor* aclTensorLike(const aclTensor* source, aclDataType dtype) {
+    // 参数检查
+    if (source == nullptr) {
+        std::cerr << "Error: Source tensor is null for aclTensorLike() " << std::endl;
+        return nullptr;
+    }
+    
+    aclError ret = ACL_SUCCESS;
+    // 获取维度数量
+    // 1. 获取并打印逻辑形状 (View Shape)
+    int64_t* viewDims = nullptr;
+    uint64_t viewDimsNum = 0;
+    ret = aclGetViewShape(source, &viewDims, &viewDimsNum);
+    CHECK_STATUS(ret);
+    int64_t* storageDims = nullptr;
+    uint64_t storageDimsNum = 0;
+    ret = aclGetStorageShape(source, &storageDims, &storageDimsNum);
+    CHECK_STATUS(ret);
+    int64_t* strides = nullptr;
+    uint64_t stridesNum = 0;
+    ret = aclGetViewStrides(source, &strides, &stridesNum);
+    CHECK_STATUS(ret);
+    // 2. 获取源张量的格式
+    aclFormat format;
+    ret = aclGetFormat(source, &format);
+    CHECK_STATUS(ret);
+    aclDataType source_dtype = ACL_DT_UNDEFINED;
+    ret = aclGetDataType(source, &source_dtype);
+    size_t source_type_size = aclDataTypeSize(source_dtype);
+    size_t type_size = aclDataTypeSize(dtype);
+    if (type_size == 0 || source_type_size == 0) {
+        std::cerr << "Error: Invalid data type size" << std::endl;
+        return nullptr;
+    }
+    float type_size_ratio = (float)type_size / (float)source_type_size;
+    // 4. 计算新张量所需内存大小
+    size_t element_count = 1;
+    for (size_t i = 0; i < storageDimsNum; ++i) {
+        element_count *= storageDims[i];
+        strides[i] = static_cast<int64_t>(strides[i] * type_size_ratio);
+    }
+    
+    size_t total_size = element_count * type_size;
+    
+    // 5. 分配设备内存
+    void* device_addr = nullptr;
+    ret = aclrtMalloc(&device_addr, total_size, ACL_MEM_MALLOC_HUGE_FIRST);
+    if (ret != ACL_SUCCESS || device_addr == nullptr) {
+        std::cerr << "Error: Failed to allocate device memory, error code: " << ret << std::endl;
+        return nullptr;
+    }
+    
+    aclTensor* new_tensor = aclCreateTensor(viewDims, viewDimsNum, dtype, 
+                                        strides, 0, format,
+                                        storageDims, storageDimsNum, device_addr);
+    
+    if (new_tensor == nullptr) {
+        std::cerr << "Error: Failed to create new tensor" << std::endl;
+        aclrtFree(device_addr);
+        return nullptr;
+    }
+    delete[] viewDims;
+    delete[] storageDims;
+    delete[] strides;
+    return new_tensor;
+}
+
 
 /* inplace use another func (unary)
 op变种有 aclScalar(binary only), Foreach(TensorList), inplace(unary/binary)
@@ -112,7 +203,7 @@ aclError aclTernaryOpRun(
     WsFunc wsfunc, AclnnKernelFunc kfunc, aclrtStream stream, bool sync,
     Args&&... args)
 {
-    aclScalar* alpha = nullptr;
+    const aclScalar* alpha = nullptr;
     if constexpr (std::is_scalar_v<Scalar>  && ! std::is_pointer_v<Scalar>) {
         float alphaValue = scalar;
         alpha = aclCreateScalar(&alphaValue, ACL_FLOAT);

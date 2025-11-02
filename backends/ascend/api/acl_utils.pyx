@@ -282,6 +282,17 @@ ctypedef aclError (*InplaceUnaryOpFunc)(aclTensor* self, aclrtStream stream)
 ctypedef aclError (*ReductionOpFunc)(const aclTensor* self, const aclIntArray* dim, bool keepdim,
     aclTensor* out, aclrtStream stream)
 
+# TODO: typedef KargsType
+# aclTensorList is not convenient to use in C++, so use std::vector directly
+ctypedef aclError (*GeneralOpFunc)(const vector[const aclTensor] ins, const vector[aclTensor*] outs,
+    const vector[const aclScalar*]& args, const cpp_map[string, const aclScalar*]& kargs, aclrtStream stream)
+
+# irregular ops
+cdef extern from "../acl_general_ops.h" nogil:
+    aclError aclop_Round(const vector[const aclTensor] ins, const vector[aclTensor*] outs,
+        const vector[const aclScalar*]& args, const cpp_map[string, const aclScalar*]& kargs, aclrtStream stream)
+
+
 # 函数指针联合体，用于存储不同类型的操作
 ctypedef union FuncPtrUnion:
     # TODO: failed nullptr is that a choice?
@@ -294,7 +305,7 @@ ctypedef union FuncPtrUnion:
     TernaryOpFunc tri_op
     InplaceTernaryOpFunc inplace_tri_op
     ReductionOpFunc reduction_op
-    #GeneralOpFunc general_op
+    GeneralOpFunc general_op
 
 cdef aclError register_acl_ufunc(string opname, OpType op_type, FuncPtrUnion func_ptr) except * nogil:
     cdef OpInfo op_info
@@ -454,7 +465,7 @@ cdef aclError launch_reduction_op(str opname, tuple ops, intptr_t stream_ptr) ex
             # TODO: check ret error code
     return ret
 
-cdef extern from "../acl_math.h" nogil:
+cdef extern from "../acl_math_ops.h" nogil:
     aclError aclop_BitwiseAndTensor(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream)
     aclError aclop_InplaceBitwiseAndTensor(aclTensor* self, const aclTensor* other, aclrtStream stream)
     aclError aclop_BitwiseAndScalar(const aclTensor* self, const aclScalar* other, aclTensor* out, aclrtStream stream)
@@ -534,7 +545,7 @@ cdef extern from "../acl_math.h" nogil:
     aclError aclop_InplaceTanh(aclTensor* self,  aclrtStream stream)
 
 # reduction ops
-cdef extern from "../acl_math.h" nogil:
+cdef extern from "../acl_math_ops.h" nogil:
 
     aclError aclop_Any(const aclTensor* self, const aclIntArray* dim, bint keepdim, aclTensor* out, aclrtStream stream)
     aclError aclop_All(const aclTensor* self, const aclIntArray* dim, bint keepdim, aclTensor* out, aclrtStream stream)
