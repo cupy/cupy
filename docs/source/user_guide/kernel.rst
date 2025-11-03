@@ -113,7 +113,7 @@ We can use the special variable ``i`` and method ``_ind.size()`` for the manual 
 ``_ind.size()`` indicates the total number of elements to apply the elementwise operation.
 Note that it represents the size **after** the broadcast operation.
 
-For example, a kernel that adds two vectors by reversing one of them can be written as follows:
+For example, a kernel that adds two vectors with one of them reversed can be written as follows:
 
 .. doctest::
 
