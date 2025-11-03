@@ -225,9 +225,10 @@ cdef extern from "../acl_opinfo.h":
     # 操作类型枚举
     cdef enum OpType:
         INVALID_OP = -1
-        UNARY_OP = 0
-        INPLACE_UNARY_OP = 1
-        REDUCTION_OP = 2
+        GENERAL_OP = 0
+        UNARY_OP = 1
+        INPLACE_UNARY_OP = 2
+        REDUCTION_OP = 3
         BINARY_OP = 4
         INPLACE_BINARY_OP = 5
         SCALAR_BINARY_OP = 6
@@ -334,11 +335,54 @@ cdef OpType get_op_type(tuple ops, bint inplace, bint has_scalar = False):
         raise RuntimeError("Operator type can not be decided")
     return INVALID_OP
 
-cdef aclError launch_acl_func(str opname, tuple ops, intptr_t stream_ptr) except *:
-    # 检查操作是否已注册
+cdef aclError launch_general_func(str opname, list ins, list outs, list args, dict kargs, intptr_t stream_ptr) except *:
     if opname.startswith("cupy_"):
         opname = ASCEND_OP_PREFIX + opname[5:]
+    cdef OpInfo op_info
+    cdef FuncPtrUnion func_ptr
+    op_info.op_name = opname.encode("utf-8")
+    op_info.op_type = OpType.GENERAL_OP
+    if _builtin_operators.find(op_info) == _builtin_operators.end():
+        return launch_acl_func(opname, ins, outs, args, kargs, intptr_t stream_ptr)
+    func_ptr = _builtin_operators[op_info]
+    # TODO:  convert all ins, outs, args, kwargs, into aclTesnor/aclScalar
+
+    cdef vector[aclTensor*] intensors
+    for op in ins:
+        typ = type(op)
+        if issubclass(typ, _ndarray_base):
+            intensors.push_back(cupy_ndarray_to_acl_tensor(op))
+    cdef vector[aclTensor*] outtensors
+    for op in outs:
+        typ = type(op)
+        if issubclass(typ, _ndarray_base):
+            outtensors.push_back(cupy_ndarray_to_acl_tensor(op)) 
+
+    try:
+        ret = func_ptr.general_op(ins, outs, acl_args, acl_kargs, stream)
+    finally:
+        # does not deallocate array buffer, but shapes, strides
+        for t in intensors:
+            aclDestroyTensor(t)  # 假设destroyAclTensor函数已存在
+        for t in outtensors:
+            aclDestroyTensor(t)  # 假设destroyAclTensor函数已存在
+        # TODO
+        if ret != 0:
+            print("Failed to run the operator ", opname)
+    return ret
+
+
+cdef aclError launch_acl_func(str opname, list ops, list args, dict kargs, intptr_t stream_ptr) except *:
+    # TODO:  refactor the parameters: ins, outs, args, kargs
+
     cdef aclScalar* scalar_ptr = NULL
+    cdef OpInfo op_info
+    cdef FuncPtrUnion func_ptr
+    op_info.op_name = opname.encode("utf-8")
+    op_info.op_type = OpType.GENERAL_OP
+
+    # 区分scalar 和tensor 操作数, 应该是Broadcast应该处理的事情
+    # inplace op 是ASCEND引入的?
     for op in ops:
         typ = type(op)
         if typ is _cupy_scalar:
@@ -346,13 +390,11 @@ cdef aclError launch_acl_func(str opname, tuple ops, intptr_t stream_ptr) except
     cdef has_scalar = scalar_ptr != NULL
     cdef bint inplace = "inplace" in opname
 
-    cdef OpInfo op_info
-    op_info.op_name = opname.encode("utf-8")
     op_info.op_type = get_op_type(ops, inplace, has_scalar)
     if _builtin_operators.find(op_info) == _builtin_operators.end():
         raise KeyError(f"Operator {opname} not registered")
     
-    cdef FuncPtrUnion func_ptr = _builtin_operators[op_info]
+    func_ptr = _builtin_operators[op_info]
     cdef aclError ret = 0
     cdef aclrtStream stream = <aclrtStream>NULL  # default stream always working
     if stream_ptr != <intptr_t>0:
