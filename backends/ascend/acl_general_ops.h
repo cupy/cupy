@@ -9,35 +9,97 @@
 #include "aclnnop/aclnn_arange.h"
 #include "aclnnop/aclnn_eye.h"  //  np.eye == np.identity(N)
 #include "aclnnop/aclnn_diag.h"  // UnaryScalarOp   not sure TODO
-// fill_scalar to impl   numpy op: no.one
+#include "aclnnop/aclnn_trace.h" // UnaryOp
+
+// polar, real, conj, imag, complex
+
+// sinc, erfc, erf
+
+// indexing: argsort, unique, unique2, sort
+#include "aclnnop/aclnn_index.h"
+
+// normal, uniform distributions:
 
 // manipulation op:  sort select take put
+// use fill_scalar (zeros) to impl   numpy op: no.one
 #include "aclnnop/aclnn_fill_tensor.h" // fill_scalar, masked_fill
-#include "aclnnop/aclnn_flip.h"  // transpose ??
+#include "aclnnop/aclnn_fill_scalar.h"
+#include "aclnnop/aclnn_take.h"
+#include "aclnnop/aclnn_put.h"
+
+#include "aclnnop/aclnn_flip.h"
 //#include "aclnnop/aclnn_rot.h"
 #include "aclnnop/aclnn_stack.h"
 #include "aclnnop/aclnn_cat.h"
+// split, resize
 #include "aclnnop/aclnn_flatten.h"
-//#include "aclnnop/aclnn_reshape.h"
-
-// indexing: argsort, unique, sort
-
+#include "aclnnop/aclnn_permute.h"
+#include "aclnnop/aclnn_copy.h"
 // manipulation: transpose, reshape, cast, pad continguous in aclnn_kernels/
-// #include "aclnn_kernels/transpose.h"
-// #include "aclnn_kernels/cast.h"
-// #include "aclnn_kernels/pad.h"
-// #include "aclnn_kernels/slice.h"
+#include "aclnn_kernels/transpose.h"
+#include "aclnn_kernels/cast.h"
+#include "aclnn_kernels/pad.h"
+#include "aclnn_kernels/slice.h"
+#include "aclnn_kernels/reshape.h"
 
 #include "./acl_op_template.h"
 #include "./acl_scalar_arg.h"
 #include "acl/acl.h"
 
-    // arange() , // TODO: fix, rint(), around,
+    // arange(), 
+    // aclnnEyeGetWorkspaceSize(int64_t n, int64_t m, aclTensor* out,
+    // aclnnLinspaceGetWorkspaceSize(const aclScalar* start, const aclScalar* end, int64_t steps, aclTensor* out,
+
+    // TODO: fix, rint(), around,
+    // aclnnTraceGetWorkspaceSize(const aclTensor* self, aclTensor* out     
+    // aclnnTrilGetWorkspaceSize(const aclTensor* self, int64_t diagonal, aclTensor* out,  // set upper as zeros
+    // aclnnPermuteGetWorkspaceSize(const aclTensor* self, const aclIntArray* dims, aclTensor* out,
+
     // TODO: Outpout with 2 or more output like `divmod`
     // aclError aclop_Divmode(const std::vector<const aclTensor*> ins, const std::vector<aclTensor*> outs,
     //     const std::vector<const aclScalar*> args, aclrtStream stream) {
         
     // }
+
+    // two output tensor
+    // aclError aclop_Sort(){
+    //     ACLNN_API aclnnStatus aclnnSortGetWorkspaceSize(const aclTensor* self, bool stable, int64_t dim, bool descending,
+    //                                             aclTensor* valuesOut, aclTensor* indicesOut, uint64_t* workspaceSize,
+    //                                             aclOpExecutor** executor);
+    // }
+
+    // aclnnTopkGetWorkspaceSize(const aclTensor* self, int64_t k, int64_t dim, bool largest,
+    //                                             bool sorted, aclTensor* valuesOut, aclTensor* indicesOut,
+
+    // aclnnStackGetWorkspaceSize(const aclTensorList* tensors, int64_t dim, aclTensor* out,
+    // aclnnCatGetWorkspaceSize(const aclTensorList* tensors, int64_t dim, aclTensor* out,
+    // aclnnResizeGetWorkspaceSize(const aclTensor* self, const aclFloatArray* scales, const char* mode, aclTensor* out,
+    // aclnnFlattenGetWorkspaceSize(const aclTensor* self, int64_t axis, aclTensor* out,
+
+    // take is binary op
+    // aclnnTakeGetWorkspaceSize(const aclTensor* self, const aclTensor* index, aclTensor* out,
+    // aclnnInplacePutGetWorkspaceSize(aclTensor* selfRef, const aclTensor* index,
+    //                                                 const aclTensor* source, bool accumulate,
+
+    // aclnnCastGetWorkspaceSize(const aclTensor* self, const aclDataType dtype, aclTensor* out,
+    // aclnnInplaceCopyGetWorkspaceSize(aclTensor* selfRef, const aclTensor* src,
+    // fill_kernel = ElementwiseKernel('T x', 'T y', 'y = x', 'cupy_fill')
+    aclError aclop_Fill(const std::vector<const aclTensor*> ins, const std::vector<aclTensor*> outs,
+        const ArgsType& args, const KargsType& kargs, aclrtStream stream) {
+        const aclTensor* self = out[0];
+        if (args.size()) {
+            return aclInplaceBinaryOpRun(args[0], self,
+                aclnnInplaceFillScalarGetWorkspaceSize, aclnnInplaceFillScalar, stream, false);
+        } else if (ins.size() > 1) {
+            return aclInplaceBinaryOpRun(ins[1], self,
+                aclnnInplaceFillTensorGetWorkspaceSize, aclnnInplaceFillTensor, stream, false);
+        } else {
+            return ACL_ERROR_INVALID_PARAM;
+        }
+    }
+    // frexp() Decompose the elements of x into mantissa and twos exponent.
+
+    // astype():  casting UnaryOp with dtype
 
     // This is a general function, must be launched differently, keyward args?
     aclError aclop_Round(const std::vector<const aclTensor*> ins, const std::vector<aclTensor*> outs,

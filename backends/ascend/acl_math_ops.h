@@ -109,23 +109,26 @@
 #include "aclnnop/aclnn_prod.h"
 #include "aclnnop/aclnn_max.h"  // nan?
 #include "aclnnop/aclnn_min.h"
-#include "aclnnop/aclnn_dot.h"
-#include "aclnnop/aclnn_einsum.h" 
+#include "aclnnop/aclnn_einsum.h" // todo
 #include "aclnnop/aclnn_reduce_nansum.h"
 #include <aclnnop/aclnn_nan_to_num.h>
 
 #include "aclnnop/aclnn_argmax.h"  // return the index instead of value
 #include "aclnnop/aclnn_argmin.h"
+// amin, amax
 
 // statistics
 #include "aclnnop/aclnn_mean.h"
 #include "aclnnop/aclnn_std.h"
 #include "aclnnop/aclnn_var.h"
-// count
-
+// no count() op
+// cbrt
+// convolve,  mode='fill'
 
 // linalg matrix op: qr, tril triu, cross, trace, norm, det
 #include "aclnnop/aclnn_matmul.h"
+#include "aclnnop/aclnn_dot.h"
+// linalg_cross
 
 #include "./acl_op_template.h"
 #include "acl/acl.h"
