@@ -13,6 +13,7 @@ from cupy.cuda import device
 from cupy.cuda import memory
 from cupy.cuda import runtime
 from cupy.cuda import stream as stream_module
+from cupy.cuda import cuda_core_device_memory_resource_adaptor
 from cupy import testing
 
 
@@ -50,13 +51,9 @@ class TestUnownedMemory(unittest.TestCase):
     def check(self, device_id):
         if cupy.cuda.runtime.is_hip:
             if self.allocator is memory.malloc_managed:
-                if cupy.cuda.driver.get_build_version() < 40300000:
-                    raise unittest.SkipTest(
-                        'Managed memory requires ROCm 4.3+')
-                else:
-                    raise unittest.SkipTest(
-                        'hipPointerGetAttributes does not support managed '
-                        'memory')
+                raise unittest.SkipTest(
+                    'hipPointerGetAttributes does not support managed '
+                    'memory')
             if self.allocator is memory.malloc_async:
                 raise unittest.SkipTest('HIP does not support async mempool')
         else:
@@ -677,12 +674,6 @@ class TestParseMempoolLimitEnvVar(unittest.TestCase):
 class TestMemoryPool(unittest.TestCase):
 
     def setUp(self):
-        if (
-            cupy.cuda.runtime.is_hip and
-            cupy.cuda.driver.get_build_version() < 40300000 and
-            self.allocator is memory.malloc_managed
-        ):
-            raise unittest.SkipTest('Managed memory requires ROCm 4.3+')
         self.pool = memory.MemoryPool(self.allocator)
 
     def tearDown(self):
@@ -754,20 +745,28 @@ class TestMemoryPool(unittest.TestCase):
             assert 0 == self.pool.total_bytes()
 
 
-# TODO(leofang): test MemoryAsyncPool. We currently remove the test because
-# this test class requires the ability of creating a new pool, which we do
-# not support yet for MemoryAsyncPool.
 @testing.parameterize(*testing.product({
-    'mempool': ('MemoryPool',),
+    'mempool': ('MemoryPool', 'MemoryAsyncPool'),
 }))
 class TestAllocator(unittest.TestCase):
 
     def setUp(self):
-        if self.mempool == 'MemoryAsyncPool':
+        self.old_pool = cupy.get_default_memory_pool()
+        if self.mempool == 'MemoryPool':
+            self.pool = memory.MemoryPool()
+        else:
+            assert self.mempool == 'MemoryAsyncPool'
             if cupy.cuda.runtime.is_hip:
                 pytest.skip('HIP does not support async allocator')
-        self.old_pool = cupy.get_default_memory_pool()
-        self.pool = getattr(memory, self.mempool)()
+            # We rely on cuda.core for creating a new mempool via
+            # DeviceMemoryResource and wrapping it as a MemoryAsyncPool, since
+            # the mempool creation is nontrivial and it is better to let CUDA
+            # Python handle it.
+            try:
+                MemoryAsyncPool = cuda_core_device_memory_resource_adaptor()
+            except ModuleNotFoundError as e:
+                pytest.skip(f'adaptor not available: {str(e)}')
+            self.pool = MemoryAsyncPool()
         memory.set_allocator(self.pool.malloc)
 
     def tearDown(self):
