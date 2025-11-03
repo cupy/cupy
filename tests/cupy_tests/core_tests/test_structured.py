@@ -98,3 +98,15 @@ class TestFieldAccess:
         msg = "CuPy does not yet support accessing nested subarrays"
         with pytest.raises(ValueError, match=msg):
             a["f1"]
+
+
+class TestIndexing:
+    @testing.numpy_cupy_array_equal()
+    @pytest.mark.parametrize("sl", [slice(1, None), slice(None, None, 2)])
+    def test_slicing(self, xp, sl):
+        # As of writing, we can't copy a structured array because that
+        # requires a kernel launch.  But we can slice it fine.
+        a = xp.array([(1, 2), (3, 4), (5, 6)], dtype="i,i")
+        # Compare fields, because we cannot copy the strided structured array
+        # to a contiguous one to copy back to the CPU.
+        return (a[sl]["f0"], a[sl]["f1"])
