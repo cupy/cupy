@@ -37,10 +37,10 @@
 #include "aclnnop/aclnn_copy.h"
 // manipulation: transpose, reshape, cast, pad continguous in aclnn_kernels/
 #include "aclnn_kernels/transpose.h"
-#include "aclnn_kernels/cast.h"
-#include "aclnn_kernels/pad.h"
-#include "aclnn_kernels/slice.h"
-#include "aclnn_kernels/reshape.h"
+//#include "aclnn_kernels/cast.h"  // TODO: aclnn/opdev/platform.h:23:10: fatal error: platform/platform_info.h: No such file or directory
+//#include "aclnn_kernels/pad.h"
+//#include "aclnn_kernels/slice.h"
+//#include "aclnn_kernels/reshape.h"
 
 #include "./acl_op_template.h"
 #include "./acl_scalar_arg.h"
@@ -84,14 +84,14 @@
     // aclnnCastGetWorkspaceSize(const aclTensor* self, const aclDataType dtype, aclTensor* out,
     // aclnnInplaceCopyGetWorkspaceSize(aclTensor* selfRef, const aclTensor* src,
     // fill_kernel = ElementwiseKernel('T x', 'T y', 'y = x', 'cupy_fill')
-    aclError aclop_Fill(const std::vector<const aclTensor*> ins, const std::vector<aclTensor*> outs,
+    aclError aclop_Fill(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
         const ArgsType& args, const KargsType& kargs, aclrtStream stream) {
-        const aclTensor* self = out[0];
+        aclTensor* self = outs[0];
         if (args.size()) {
-            return aclInplaceBinaryOpRun(args[0], self,
+            return aclInplaceBinaryOpRun(self, args[0],
                 aclnnInplaceFillScalarGetWorkspaceSize, aclnnInplaceFillScalar, stream, false);
         } else if (ins.size() > 1) {
-            return aclInplaceBinaryOpRun(ins[1], self,
+            return aclInplaceBinaryOpRun(self, ins[0],
                 aclnnInplaceFillTensorGetWorkspaceSize, aclnnInplaceFillTensor, stream, false);
         } else {
             return ACL_ERROR_INVALID_PARAM;
@@ -102,7 +102,7 @@
     // astype():  casting UnaryOp with dtype
 
     // This is a general function, must be launched differently, keyward args?
-    aclError aclop_Round(const std::vector<const aclTensor*> ins, const std::vector<aclTensor*> outs,
+    aclError aclop_Round(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
         const ArgsType& args, const KargsType& kargs, aclrtStream stream) {
         const aclTensor* self = ins[0];
         aclTensor* out = outs[0];
@@ -111,7 +111,7 @@
             aclnnRoundDecimalsGetWorkspaceSize, aclnnRoundDecimals, stream, false);
     }
     // numpy.clip -> aclnnClamp
-    aclError aclop_Clamp(const std::vector<const aclTensor*> ins, const std::vector<aclTensor*> outs,
+    aclError aclop_Clamp(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
         const ArgsType& args, const KargsType& kargs, aclrtStream stream) {
         const aclTensor* self = ins[0];
         aclTensor* out = outs[0];

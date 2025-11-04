@@ -4,8 +4,7 @@ import sys
 import numpy
 
 import cupy
-#from cupy._core._reduction import create_reduction_func # TODO: reduction
-from cupy._core._kernel import create_reduction_func
+from cupy._core._reduction import create_reduction_func
 from cupy._core._kernel import create_ufunc, _get_warpsize
 from cupy._core._scalar import get_typename
 from cupy._core._ufuncs import elementwise_copy

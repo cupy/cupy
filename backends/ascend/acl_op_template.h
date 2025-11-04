@@ -160,7 +160,7 @@ aclError aclBinaryOpRun(
 }
 
 template<typename WsFunc, typename Operand, typename... Args>
-aclError aclBinaryInplaceOpRun(
+aclError aclInplaceBinaryOpRun(
     aclTensor* selfTensor,
     Operand otherTensor,
     WsFunc wsfunc, AclnnKernelFunc kfunc,
@@ -333,7 +333,7 @@ aclError aclUnaryOpRun(
 
 
 template<typename WsFunc, typename... Args>
-aclError aclUnaryInplaceOpRun(
+aclError aclInplaceUnaryOpRun(
     aclTensor* selfTensor,
     WsFunc wsfunc, AclnnKernelFunc kfunc,
     aclrtStream stream, bool sync,
@@ -465,7 +465,7 @@ aclError aclReductionOpRun(
             aclnn##opname##GetWorkspaceSize, aclnn##opname, stream, false); \
     } \
     aclError aclop_Inplace##opname(aclTensor* self, const aclTensor* other, aclrtStream stream) { \
-        return aclBinaryInplaceOpRun(self, other, \
+        return aclInplaceBinaryOpRun(self, other, \
             aclnnInplace##opname##GetWorkspaceSize, aclnnInplace##opname, stream, false); \
     }
 
@@ -483,7 +483,7 @@ aclError aclReductionOpRun(
             aclnn##opname##GetWorkspaceSize, aclnn##opname, stream, false); \
     } \
     aclError aclop_Inplace##opname(aclTensor* self, const aclScalar* other, aclrtStream stream) { \
-        return aclBinaryInplaceOpRun(self, other, \
+        return aclInplaceBinaryOpRun(self, other, \
             aclnnInplace##opname##GetWorkspaceSize, aclnnInplace##opname, stream, false); \
     }    
 
@@ -501,7 +501,7 @@ aclError aclop_##opname(const aclTensor* self, aclTensor* out, aclrtStream strea
             aclnn##opname##GetWorkspaceSize, aclnn##opname, stream, false); \
     } \
     aclError aclop_Inplace##opname(aclTensor* self, aclrtStream stream) { \
-        return aclUnaryInplaceOpRun(self, \
+        return aclInplaceUnaryOpRun(self, \
             aclnnInplace##opname##GetWorkspaceSize, aclnnInplace##opname, stream, false); \
     }
 

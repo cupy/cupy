@@ -58,15 +58,7 @@ from backends.backend.api.runtime import CUDARuntimeError
 from cupy.exceptions import ComplexWarning
 
 NUMPY_1x = numpy.__version__ < '2'
-#cdef fill_kernel = ElementwiseKernel('T x', 'T y', 'y = x', 'cupy_fill')
-cdef fill_kernel = create_ufunc(
-    'cupy_fill_scalar',
-    ('dd->d', 'FF->D',
-     ('DD->D', 'out0 = in1 == in1_type(0) ? in1_type(1): pow(in0, in1)')),
-    'out0 = pow(in0, in1)',
-    doc=''' not actually working
-    '''  # NOQA
-)
+cdef fill_kernel = ElementwiseKernel('T x', 'T y', 'y = x', 'cupy_fill')
 
 cdef extern from *:
     """

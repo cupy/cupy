@@ -24,14 +24,13 @@ if not runtime.is_ascend():
     from cupy._core._gpu import fusion  # NOQA
     from cupy._core._gpu.raw import RawKernel  # NOQA
     from cupy._core._gpu.raw import RawModule  # NOQA
+    from cupy._core._reduction import ReductionKernel  # NOQA
 else:
     from cupy._ascend._core import fusion_stub as fusion
     _fusion_thread_local = fusion
-    from cupy._core._kernel import create_reduction_func
 
-if not runtime.is_ascend():
-    from cupy._core._reduction import create_reduction_func  # NOQA
-    from cupy._core._reduction import ReductionKernel  # NOQA
+from cupy._core._reduction import create_reduction_func  # NOQA
+    
 
 from cupy._core._routines_binary import bitwise_and  # NOQA
 from cupy._core._routines_binary import bitwise_or  # NOQA

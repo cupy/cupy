@@ -636,209 +636,6 @@ cdef list _get_out_args_with_params(
     return out_args
 
 
-cdef class ElementwiseKernel:
-
-    """User-defined elementwise kernel.
-
-    This class can be used to define an elementwise kernel with or without
-    broadcasting.
-
-    The kernel is compiled at an invocation of the
-    :meth:`~ElementwiseKernel.__call__` method,
-    which is cached for each device.
-    The compiled binary is also cached into a file under the
-    ``$HOME/.cupy/kernel_cache/`` directory with a hashed file name. The cached
-    binary is reused by other processes.
-
-    Args:
-        in_params (str): Input argument list.
-        out_params (str): Output argument list.
-        operation (str): The body in the loop written in CUDA-C/C++.
-        name (str): Name of the kernel function. It should be set for
-            readability of the performance profiling.
-        reduce_dims (bool): If ``False``, the shapes of array arguments are
-            kept within the kernel invocation. The shapes are reduced
-            (i.e., the arrays are reshaped without copy to the minimum
-            dimension) by default. It may make the kernel fast by reducing the
-            index calculations.
-        options (tuple): Compile options passed to NVRTC. For details, see
-            https://docs.nvidia.com/cuda/nvrtc/index.html#group__options.
-        preamble (str): Fragment of the CUDA-C/C++ code that is inserted at the
-            top of the cu file.
-        no_return (bool): If ``True``, __call__ returns ``None``.
-        return_tuple (bool): If ``True``, __call__ always returns tuple of
-            array even if single value is returned.
-        loop_prep (str): Fragment of the CUDA-C/C++ code that is inserted at
-            the top of the kernel function definition and above the ``for``
-            loop.
-        after_loop (str): Fragment of the CUDA-C/C++ code that is inserted at
-            the bottom of the kernel function definition.
-
-    """
-
-    cdef:
-        readonly tuple in_params
-        readonly tuple out_params
-        readonly Py_ssize_t nin
-        readonly Py_ssize_t nout
-        readonly Py_ssize_t nargs
-        readonly tuple params
-        readonly object operation
-        readonly str name
-        readonly str __name__
-        readonly bint reduce_dims
-        readonly object preamble
-        readonly bint no_return
-        readonly bint return_tuple
-        readonly dict kwargs
-        readonly dict _params_type_memo
-        readonly dict _elementwise_kernel_memo
-        readonly dict _cached_codes
-
-    def __init__(self, in_params, out_params, operation,
-                 name='kernel', reduce_dims=True, preamble='',
-                 no_return=False, return_tuple=False, **kwargs):
-        if not compiler.is_valid_kernel_name(name):
-            raise ValueError(
-                'Invalid kernel name: "%s"' % name)
-
-        self.in_params = _get_param_info(in_params, True)
-        self.out_params = _get_param_info(out_params, False)
-        self.nin = len(self.in_params)
-        self.nout = len(self.out_params)
-        self.nargs = self.nin + self.nout
-        param_rest = _get_param_info('CIndexer _ind', False)
-        self.params = self.in_params + self.out_params + param_rest
-        self.operation = operation
-        self.name = name
-        self.reduce_dims = reduce_dims
-        self.preamble = preamble
-        self.no_return = no_return
-        self.return_tuple = return_tuple
-        self.kwargs = kwargs
-        self._params_type_memo = {}
-        self._cached_codes = {}
-        names = [p.name for p in self.in_params + self.out_params]
-        if 'i' in names:
-            raise ValueError('Can not use \'i\' as a parameter name')
-        self._elementwise_kernel_memo = {}
-        # This is for profiling mechanisms to auto infer a name
-        self.__name__ = name
-
-    def __call__(self, *args, **kwargs):
-        """Compiles and invokes the elementwise kernel.
-
-        The compilation runs only if the kernel is not cached. Note that the
-        kernels with different argument dtypes or dimensions are not
-        compatible. It means that single ElementwiseKernel object may be
-        compiled into multiple kernel binaries.
-
-        Args:
-            args: Arguments of the kernel.
-            size (int): Range size of the indices.  By default, the range size
-                is automatically determined from the result of broadcasting.
-                This parameter must be specified if and only if all ndarrays
-                are `raw` and the range size cannot be determined
-                automatically.
-            block_size (int): Number of threads per block. By default, the
-                value is set to 128.
-
-        Returns:
-            If ``no_return`` has not set, arrays are returned according to the
-            ``out_params`` argument of the ``__init__`` method.
-            If ``no_return`` has set, ``None`` is returned.
-
-        """
-        cdef function.Function kern
-        cdef Py_ssize_t size, i
-        cdef list in_args, out_args
-        cdef tuple in_types, out_types
-        cdef shape_t shape
-
-        size = kwargs.pop('size', -1)
-        stream = kwargs.pop('stream', None)
-        block_size = kwargs.pop('block_size', 128)
-        if len(kwargs):
-            raise TypeError('Wrong arguments %s' % kwargs)
-        if block_size <= 0:
-            raise ValueError('block_size must be greater than zero')
-        n_args = len(args)
-        if n_args != self.nin and n_args != self.nargs:
-            raise TypeError(
-                'Wrong number of arguments for {!r}. '
-                'It must be either {} or {} (with outputs), '
-                'but given {}.'.format(
-                    self.name, self.nin, self.nargs, n_args))
-        for arg in args:
-            if hasattr(arg, '__cupy_override_elementwise_kernel__'):
-                return arg.__cupy_override_elementwise_kernel__(
-                    self, *args, **kwargs)
-        dev_id = device.get_device_id()
-        arg_list, _ = _preprocess_args(dev_id, args, True)
-
-        out_args = arg_list[self.nin:]
-        # _broadcast updates shape
-        in_args = _broadcast(
-            arg_list, self.params, size != -1, shape)[:self.nin]
-
-        in_ndarray_types = []
-        for a in in_args:
-            if isinstance(a, _ndarray_base):
-                t = a.dtype.type
-            else:
-                t = None
-            in_ndarray_types.append(t)
-        in_ndarray_types = tuple(in_ndarray_types)
-        out_ndarray_types = tuple([a.dtype.type for a in out_args])
-
-        in_types, out_types, type_map = self._decide_params_type(
-            in_ndarray_types, out_ndarray_types)
-
-        is_size_specified = False
-        if size != -1:
-            shape.assign(1, size)
-            is_size_specified = True
-
-        out_args = _get_out_args_with_params(
-            out_args, out_types, shape, self.out_params, is_size_specified)
-        if self.no_return:
-            ret = None
-        elif not self.return_tuple and self.nout == 1:
-            ret = out_args[0]
-        else:
-            ret = tuple(out_args)
-
-        if _contains_zero(shape):
-            return ret
-
-        for i, x in enumerate(in_args):
-            if type(x) is _scalar.CScalar:
-                (<_scalar.CScalar>x).apply_dtype(in_types[i])
-
-        inout_args = in_args + out_args
-
-        if self.reduce_dims:
-            shape = _reduce_dims(inout_args, self.params, shape)
-        indexer = _carray._indexer_init(shape)
-        inout_args.append(indexer)
-
-        arginfos = _get_arginfos(inout_args)
-        #kern = self._get_elementwise_kernel(dev_id, arginfos, type_map)
-        #kern.linear_launch(indexer.size, inout_args, shared_mem=0,
-        #                   block_max_size=block_size, stream=stream)
-        return ret
-
-    cpdef tuple _decide_params_type(
-            self, tuple in_args_dtype, tuple out_args_dtype):
-        key = (in_args_dtype, out_args_dtype)
-        ret = self._params_type_memo.get(key, None)
-        if ret is not None:
-            return ret
-        ret = _decide_params_type_core(
-            self.in_params, self.out_params, in_args_dtype, out_args_dtype)
-        self._params_type_memo[key] = ret
-        return ret
-
 
 cdef dict _mst_unsigned_to_signed = {
     i: (numpy.iinfo(j).max, (i, j))
@@ -1103,7 +900,7 @@ cdef class ufunc:
         if has_where:
             x = broad_values[self.nin]
             #inout_args.append(x)
-            kargs["where"] = x
+            kwargs["where"] = x # TODO: not sure this is proper treatment
         #inout_args.extend(out_args)
         shape = _reduce_dims(inout_args, self._params, shape)
         indexer = _carray._indexer_init(shape)
@@ -1114,7 +911,7 @@ cdef class ufunc:
         runtime._ensure_context()
         s = _get_stream(None)
         list_arg = args[(self.nin + self.nout):]
-        launch_general_func(self.name, inout_args, out_args, list_args, kargs, s)
+        launch_general_func(self.name, inout_args, out_args, list_arg, kwargs, s)
         #kern = self._get_ufunc_kernel(dev_id, op, arginfos, has_where)
         #kern.linear_launch(indexer.size, inout_args)
         return ret
@@ -1395,3 +1192,205 @@ cpdef create_ufunc(name, ops, routine=None, preamble='', doc='',
         loop_prep, doc, default_casting=default_casting, out_ops=_out_ops,
         cutensor_op=cutensor_op, scatter_op=scatter_op)
 
+
+cdef class ElementwiseKernel:
+    """User-defined elementwise kernel.
+
+    This class can be used to define an elementwise kernel with or without
+    broadcasting.
+
+    The kernel is compiled at an invocation of the
+    :meth:`~ElementwiseKernel.__call__` method,
+    which is cached for each device.
+    The compiled binary is also cached into a file under the
+    ``$HOME/.cupy/kernel_cache/`` directory with a hashed file name. The cached
+    binary is reused by other processes.
+
+    Args:
+        in_params (str): Input argument list.
+        out_params (str): Output argument list.
+        operation (str): The body in the loop written in CUDA-C/C++.
+        name (str): Name of the kernel function. It should be set for
+            readability of the performance profiling.
+        reduce_dims (bool): If ``False``, the shapes of array arguments are
+            kept within the kernel invocation. The shapes are reduced
+            (i.e., the arrays are reshaped without copy to the minimum
+            dimension) by default. It may make the kernel fast by reducing the
+            index calculations.
+        options (tuple): Compile options passed to NVRTC. For details, see
+            https://docs.nvidia.com/cuda/nvrtc/index.html#group__options.
+        preamble (str): Fragment of the CUDA-C/C++ code that is inserted at the
+            top of the cu file.
+        no_return (bool): If ``True``, __call__ returns ``None``.
+        return_tuple (bool): If ``True``, __call__ always returns tuple of
+            array even if single value is returned.
+        loop_prep (str): Fragment of the CUDA-C/C++ code that is inserted at
+            the top of the kernel function definition and above the ``for``
+            loop.
+        after_loop (str): Fragment of the CUDA-C/C++ code that is inserted at
+            the bottom of the kernel function definition.
+
+    """
+
+    cdef:
+        readonly tuple in_params
+        readonly tuple out_params
+        readonly Py_ssize_t nin
+        readonly Py_ssize_t nout
+        readonly Py_ssize_t nargs
+        readonly tuple params
+        readonly object operation
+        readonly str name
+        readonly str __name__
+        readonly bint reduce_dims
+        readonly object preamble
+        readonly bint no_return
+        readonly bint return_tuple
+        readonly dict kwargs
+        readonly dict _params_type_memo
+        readonly dict _elementwise_kernel_memo
+        readonly dict _cached_codes
+
+    def __init__(self, in_params, out_params, operation,
+                 name='kernel', reduce_dims=True, preamble='',
+                 no_return=False, return_tuple=False, **kwargs):
+        #if not compiler.is_valid_kernel_name(name):
+        #    raise ValueError(
+        #        'Invalid kernel name: "%s"' % name)
+
+        self.in_params = _get_param_info(in_params, True)
+        self.out_params = _get_param_info(out_params, False)
+        self.nin = len(self.in_params)
+        self.nout = len(self.out_params)
+        self.nargs = self.nin + self.nout
+        param_rest = _get_param_info('CIndexer _ind', False)
+        self.params = self.in_params + self.out_params + param_rest
+        self.operation = operation
+        self.name = name
+        self.reduce_dims = reduce_dims
+        self.preamble = preamble
+        self.no_return = no_return
+        self.return_tuple = return_tuple
+        self.kwargs = kwargs
+        self._params_type_memo = {}
+        self._cached_codes = {}
+        names = [p.name for p in self.in_params + self.out_params]
+        if 'i' in names:
+            raise ValueError('Can not use \'i\' as a parameter name')
+        self._elementwise_kernel_memo = {}
+        # This is for profiling mechanisms to auto infer a name
+        self.__name__ = name
+
+    def __call__(self, *args, **kwargs):
+        """Compiles and invokes the elementwise kernel.
+
+        The compilation runs only if the kernel is not cached. Note that the
+        kernels with different argument dtypes or dimensions are not
+        compatible. It means that single ElementwiseKernel object may be
+        compiled into multiple kernel binaries.
+
+        Args:
+            args: Arguments of the kernel.
+            size (int): Range size of the indices.  By default, the range size
+                is automatically determined from the result of broadcasting.
+                This parameter must be specified if and only if all ndarrays
+                are `raw` and the range size cannot be determined
+                automatically.
+            block_size (int): Number of threads per block. By default, the
+                value is set to 128.
+
+        Returns:
+            If ``no_return`` has not set, arrays are returned according to the
+            ``out_params`` argument of the ``__init__`` method.
+            If ``no_return`` has set, ``None`` is returned.
+
+        """
+        cdef function.Function kern
+        cdef Py_ssize_t size, i
+        cdef list in_args, out_args
+        cdef tuple in_types, out_types
+        cdef shape_t shape
+
+        size = kwargs.pop('size', -1)
+        stream = kwargs.pop('stream', None)
+        #block_size = kwargs.pop('block_size', 128)
+        #if len(kwargs):
+        #    raise TypeError('Wrong arguments %s' % kwargs)
+        #if block_size <= 0:
+        #    raise ValueError('block_size must be greater than zero')
+        n_args = len(args)
+        if n_args != self.nin and n_args != self.nargs:
+            raise TypeError(
+                'Wrong number of arguments for {!r}. '
+                'It must be either {} or {} (with outputs), '
+                'but given {}.'.format(
+                    self.name, self.nin, self.nargs, n_args))
+        for arg in args:
+            if hasattr(arg, '__cupy_override_elementwise_kernel__'):
+                return arg.__cupy_override_elementwise_kernel__(
+                    self, *args, **kwargs)
+        dev_id = device.get_device_id()
+        arg_list, _ = _preprocess_args(dev_id, args, True)
+
+        out_args = arg_list[self.nin:]
+        # _broadcast updates shape
+        in_args = _broadcast(
+            arg_list, self.params, size != -1, shape)[:self.nin]
+
+        in_ndarray_types = []
+        for a in in_args:
+            if isinstance(a, _ndarray_base):
+                t = a.dtype.type
+            else:
+                t = None
+            in_ndarray_types.append(t)
+        in_ndarray_types = tuple(in_ndarray_types)
+        out_ndarray_types = tuple([a.dtype.type for a in out_args])
+
+        in_types, out_types, type_map = self._decide_params_type(
+            in_ndarray_types, out_ndarray_types)
+
+        is_size_specified = False
+        if size != -1:
+            shape.assign(1, size)
+            is_size_specified = True
+
+        out_args = _get_out_args_with_params(
+            out_args, out_types, shape, self.out_params, is_size_specified)
+        if self.no_return:
+            ret = None
+        elif not self.return_tuple and self.nout == 1:
+            ret = out_args[0]
+        else:
+            ret = tuple(out_args)
+
+        if _contains_zero(shape):
+            return ret
+
+        for i, x in enumerate(in_args):
+            if type(x) is _scalar.CScalar:
+                (<_scalar.CScalar>x).apply_dtype(in_types[i])
+
+        inout_args = in_args + out_args
+
+        if self.reduce_dims:
+            shape = _reduce_dims(inout_args, self.params, shape)
+        #indexer = _carray._indexer_init(shape)
+        #inout_args.append(indexer)
+
+        arginfos = _get_arginfos(inout_args)
+        #kern = self._get_elementwise_kernel(dev_id, arginfos, type_map)
+        #kern.linear_launch(indexer.size, inout_args, shared_mem=0,
+        #                   block_max_size=block_size, stream=stream)
+        return ret
+
+    cpdef tuple _decide_params_type(
+            self, tuple in_args_dtype, tuple out_args_dtype):
+        key = (in_args_dtype, out_args_dtype)
+        ret = self._params_type_memo.get(key, None)
+        if ret is not None:
+            return ret
+        ret = _decide_params_type_core(
+            self.in_params, self.out_params, in_args_dtype, out_args_dtype)
+        self._params_type_memo[key] = ret
+        return ret

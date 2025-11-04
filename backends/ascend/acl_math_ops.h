@@ -143,7 +143,7 @@ extern "C" {
     //         aclnnBitwiseAndTensorGetWorkspaceSize, aclnnBitwiseAndTensor, stream, false); 
     // }
     // aclError aclop_InplaceBitwiseAndTensor(aclTensor* self, const aclTensor* other, aclrtStream stream) {
-    //     return aclBinaryInplaceOpRun(self, other,
+    //     return aclInplaceBinaryOpRun(self, other,
     //         aclnnInplaceBitwiseAndTensorGetWorkspaceSize, aclnnBitwiseAndTensor, stream, false); 
     // }
     // aclError aclop_BitwiseAndScalar(const aclTensor* self, const aclScalar* other, aclTensor* out, aclrtStream stream) {
@@ -151,7 +151,7 @@ extern "C" {
     //         aclnnBitwiseAndScalarGetWorkspaceSize, aclnnBitwiseAndScalar, stream, false); 
     // }
     // aclError aclop_InplaceBitwiseAndScalar(aclTensor* self, const aclScalar* other, aclrtStream stream) {
-    //     return aclBinaryInplaceOpRun(self, other,
+    //     return aclInplaceBinaryOpRun(self, other,
     //         aclnnInplaceBitwiseAndScalarGetWorkspaceSize, aclnnBitwiseAndScalar, stream, false); 
     // }
 

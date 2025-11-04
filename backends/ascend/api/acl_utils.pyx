@@ -283,15 +283,24 @@ ctypedef aclError (*InplaceUnaryOpFunc)(aclTensor* self, aclrtStream stream)
 ctypedef aclError (*ReductionOpFunc)(const aclTensor* self, const aclIntArray* dim, bool keepdim,
     aclTensor* out, aclrtStream stream)
 
-# TODO: typedef KargsType
+
+# 为vector[const aclScalar*]&创建类型别名
+ctypedef vector[const aclScalar*] ArgsType
+ctypedef cpp_map[string, const aclScalar*] KwargsType
+
+# 4. 为迭代器创建别名（便于遍历）
+ctypedef vector[const aclScalar*].iterator ArgsIterator
+ctypedef cpp_map[string, const aclScalar*].const_iterator KwargsConstIterator
+#ctypedef pair[const string, const aclScalar*] KwargsItem
+
 # aclTensorList is not convenient to use in C++, so use std::vector directly
-ctypedef aclError (*GeneralOpFunc)(const vector[const aclTensor] ins, const vector[aclTensor*] outs,
-    const vector[const aclScalar*]& args, const cpp_map[string, const aclScalar*]& kargs, aclrtStream stream)
+ctypedef aclError (*GeneralOpFunc)(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
+    const ArgsType& args, const KwargsType& kargs, aclrtStream stream)
 
 # irregular ops
 cdef extern from "../acl_general_ops.h" nogil:
-    aclError aclop_Round(const vector[const aclTensor] ins, const vector[aclTensor*] outs,
-        const vector[const aclScalar*]& args, const cpp_map[string, const aclScalar*]& kargs, aclrtStream stream)
+    aclError aclop_Round(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
+        const ArgsType& args, const KwargsType& kargs, aclrtStream stream)
 
 
 # 函数指针联合体，用于存储不同类型的操作
@@ -343,11 +352,11 @@ cdef aclError launch_general_func(str opname, list ins, list outs, list args, di
     op_info.op_name = opname.encode("utf-8")
     op_info.op_type = OpType.GENERAL_OP
     if _builtin_operators.find(op_info) == _builtin_operators.end():
-        return launch_acl_func(opname, ins, outs, args, kargs, intptr_t stream_ptr)
+        return launch_acl_func(opname, ins + outs, args, kargs, stream_ptr)
     func_ptr = _builtin_operators[op_info]
     # TODO:  convert all ins, outs, args, kwargs, into aclTesnor/aclScalar
 
-    cdef vector[aclTensor*] intensors
+    cdef vector[const aclTensor*] intensors
     for op in ins:
         typ = type(op)
         if issubclass(typ, _ndarray_base):
@@ -358,14 +367,21 @@ cdef aclError launch_general_func(str opname, list ins, list outs, list args, di
         if issubclass(typ, _ndarray_base):
             outtensors.push_back(cupy_ndarray_to_acl_tensor(op)) 
 
+    cdef aclError ret = 0
+    cdef aclrtStream stream = <aclrtStream>NULL  # default stream always working
+    if stream_ptr != <intptr_t>0:
+        stream = <aclrtStream>stream_ptr
+
+    cdef ArgsType acl_args
+    cdef KwargsType acl_kargs
     try:
-        ret = func_ptr.general_op(ins, outs, acl_args, acl_kargs, stream)
+        ret = func_ptr.general_op(intensors, outtensors, acl_args, acl_kargs, stream)
     finally:
         # does not deallocate array buffer, but shapes, strides
-        for t in intensors:
-            aclDestroyTensor(t)  # 假设destroyAclTensor函数已存在
+        #for t in intensors:  # TODO: const iterator needed here
+        #    aclDestroyTensor(t)
         for t in outtensors:
-            aclDestroyTensor(t)  # 假设destroyAclTensor函数已存在
+            aclDestroyTensor(t)
         # TODO
         if ret != 0:
             print("Failed to run the operator ", opname)
