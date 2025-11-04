@@ -193,12 +193,14 @@ class TestRegularGridInterpolator:
                       (x, y), values, fill_value=1+2j)
 
     def test_fillvalue_type(self):
-        # from #3703; test that interpolator object construction succeeds
-        values = cp.ones((10, 20, 30), dtype='>f4')
-        points = [cp.arange(n) for n in values.shape]
-        # xi = [(1, 1, 1)]
-        RegularGridInterpolator(points, values)
-        RegularGridInterpolator(points, values, fill_value=0.)
+        # SciPy #3703; test that interpolator object construction succeeds
+        # (Should not work unless CuPy supports big endian data)
+        with pytest.raises(ValueError):
+            values = cp.ones((10, 20, 30), dtype='>f4')
+            points = [cp.arange(n) for n in values.shape]
+            # xi = [(1, 1, 1)]
+            RegularGridInterpolator(points, values)
+            RegularGridInterpolator(points, values, fill_value=0.)
 
     def test_length_one_axis(self):
         # gh-5890, gh-9524 : length-1 axis is legal for method='linear'.
