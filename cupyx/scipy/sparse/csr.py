@@ -1,4 +1,6 @@
+from __future__ import annotations
 import cupy
+
 
 class csr_matrix:
     def __init__(self, array):
@@ -8,4 +10,12 @@ class csr_matrix:
         self.nnz = int((self.data != 0).sum())
 
     def __repr__(self):
-        return f"<{self.shape[0]}x{self.shape[1]} sparse matrix with {self.nnz} stored elements>"
+        return (
+            f"<{self.shape[0]}x{self.shape[1]} sparse matrix with "
+            f"{self.nnz} stored elements>"
+        )
+
+
+if __name__ == "__main__":
+    m = csr_matrix([[1, 0], [0, 2]])
+    print(m)
