@@ -389,8 +389,7 @@ def reduced_binary_einsum(arr0, sub0, arr1, sub1, sub_others):
             continue
         else:
             if (
-                not cutensor.check_availability('contraction')
-                or arr0.dtype != arr1.dtype
+                arr0.dtype != arr1.dtype
                 or arr0.dtype not in (cupy.float32, cupy.float64,
                                       cupy.complex64, cupy.complex128)
             ):
