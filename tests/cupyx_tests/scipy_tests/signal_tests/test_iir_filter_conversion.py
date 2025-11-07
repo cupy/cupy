@@ -358,6 +358,37 @@ class TestZpk2Sos:
 
 
 @testing.with_requires("scipy")
+class TestTf2Sos:
+
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-12)
+    @pytest.mark.parametrize(
+        "num,den", [
+            ([2., 16, 44, 56, 32], [3., 3, -15, 18, -12]),
+            ([1.0, -3, 11, -27, 18], [3., 3, -15, 18, -12]),
+        ]
+    )
+    def test_basic(self, num, den, xp, scp):
+        num = xp.asarray(num)
+        den = xp.asarray(den)
+        sos = scp.signal.tf2sos(num, den)
+        return sos
+
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-12)
+    @pytest.mark.parametrize(
+        'b, a, analog', [
+            ([1.0], [1.0], False),
+            ([1.0], [1.0], True),
+            ([1.0], [1., 0., -1.01, 0, 0.01], False),
+            ([1.0], [1., 0., -1.01, 0, 0.01], True),
+        ]
+    )
+    def test_analog(self, b, a, analog, xp, scp):
+        b, a = xp.asarray(b), xp.asarray(a)
+        sos = scp.signal.tf2sos(b, a, analog=analog)
+        return sos
+
+
+@testing.with_requires("scipy")
 class TestTf2zpk:
 
     @pytest.mark.parametrize('dt', ('float64', 'complex128'))
