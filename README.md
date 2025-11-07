@@ -1,9 +1,10 @@
 # numpy for Ascend: fork from Cupy
 
 Status (Oct23): benchmark.py 经过xpu重构后, NPU测试可以运行
-没有NPU开发: 需要注释掉 runtime.pyx "initialize_backend()" 否则不能import cupy
+Nov 08: reduction op such as `sum()` is working
 
 ## 1. 开发环境
+没有NPU开发: 需要注释掉 runtime.pyx `initialize_backend(0)` 否则不能`import cupy`
 
 ### 1.1 Ubuntu 24.04  in WSL2 (无昇腾硬件)
 
@@ -52,7 +53,7 @@ pip3 install attrs cython numpy==1.24 decorator sympy cffi pyyaml pathlib2 psuti
 pip3 install fastrlock
 ```
 
-cython 3.0 is not higher enough, use cython 3.1
+cython 3.0 is not higher enough, use cython 3.1 for string auto conversion
 
 ## 2. CANN 安装（社区版）
 
@@ -149,9 +150,10 @@ export CUPY_INSTALL_USE_ASCEND=1  # 对应C代码中 CUPY_USE_ASCEND， 编译�
 #export PATH=$ASCEND_TOOLKIT_HOME/bin:$PATH
 which bisheng
 
+# --inplace for gdb debugging
 export CUPY_INSTALL_USE_ASCEND=1 && python setup.py develop && python -c "import cupy._core"
 python -c "import cupy._core" # to test if it is importable without installation
-export CUPY_INSTALL_USE_ASCEND=1 && python setup.py develop && python benchmark.py
+clear && export CUPY_INSTALL_USE_ASCEND=1 && python setup.py develop && python benchmark.py
 
 ```
 

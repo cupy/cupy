@@ -1,17 +1,20 @@
 # TODO
 
-## short term todo
+## short term todo (Nov 2025)
 1. fill_kernel() -> aclnnop_FillScalar  GeneralOp 类型
 
-2. matmul (done), dot 
+2. backends -> cupy.backends,  git mv + _features.py
+disable _preflight, so ignore Cutensor submodule
 
 3. enable most of math api  (done), aclnnop register (almost done)
+matmul (done), dot 
 
 4. BitwiseAddScalar op register, _kernel.pyx need update (done)
+pytest
 
 5. reduction kernel, replaced by aclnnop
 ===
-4. concat op
+4. concat/pad/reshape op
    numpy_to_acl_dtype ->  numpy_dtype_to_acl_dtype
 
 6. triton-fusion (add data adaptor API)

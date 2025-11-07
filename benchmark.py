@@ -193,10 +193,10 @@ if __name__ == "__main__":
     np_time, cp_time, speedup = benchmark_vector_op(np_add, cp_add, np_vec1, np_vec2, cp_vec1, cp_vec2, 
                                                     unary=False, repeating=repeating, use_async=True)
     
-    print("\n" + "="*60)
-    print("基准测试矩阵COS操作（单目运算，同步模式）")
+    print("\n" + "="*60) # cos, add is not supported for dim = 2 matrix for ASCEND
+    print("基准测试矩阵ADD操作（单目运算，同步模式）")
     print("="*60)
-    np_time, cp_time, speedup = benchmark_mat_op(np_cos, cp_cos, np_mat_a, None, cp_mat_a, None, 
+    np_time, cp_time, speedup = benchmark_mat_op(np_add, cp_add, np_mat_a, None, cp_mat_a, None, 
                                                  unary=True, repeating=repeating, use_async=False)
     
     print("\n" + "="*60)

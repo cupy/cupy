@@ -489,8 +489,8 @@ cdef class _AbstractReductionKernel:
                 out_shape = _reduce_dims(out_args, self.out_params, out_shape)
 
             params = self._params
-            ops = tuple([in_args[0], axis, keepdims, ret])
-            launch_reduction_op(self.name, ops, stream)
+            # TODO: kargs
+            launch_reduction_op(self.name, in_args, [ret], axis, keepdims, None, stream)
 
     def _get_optimized_params(
             self, optimize_config, in_args, out_args, in_shape, out_shape,

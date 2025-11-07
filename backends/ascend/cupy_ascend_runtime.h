@@ -30,6 +30,7 @@ aclError finalizeBackend(int device_id) {
         return ret;
     }
     ret = aclFinalize();
+    return ret;
 }
 
 // IMPORTANT: AscendCL requires explicit initialization and finalization

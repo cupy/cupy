@@ -13,6 +13,8 @@ import threading as _threading
 from cupy.xpu import stream as stream_module
 
 ASCEND_OP_PREFIX = "ascend_"
+from typing import List, Dict, Union  # 从typing模块导入（可选，更规范）
+ctypedef object sequence
 
 #include "backends/ascend/api/acl_types.pxi" # already included in pxd file
 
@@ -344,7 +346,7 @@ cdef OpType get_op_type(tuple ops, bint inplace, bint has_scalar = False):
         raise RuntimeError("Operator type can not be decided")
     return INVALID_OP
 
-cdef aclError launch_general_func(str opname, list ins, list outs, list args, dict kargs, intptr_t stream_ptr) except *:
+cdef aclError launch_general_func(str opname, sequence ins, sequence outs, list args, dict kargs, intptr_t stream_ptr) except *:
     if opname.startswith("cupy_"):
         opname = ASCEND_OP_PREFIX + opname[5:]
     cdef OpInfo op_info
@@ -352,15 +354,16 @@ cdef aclError launch_general_func(str opname, list ins, list outs, list args, di
     op_info.op_name = opname.encode("utf-8")
     op_info.op_type = OpType.GENERAL_OP
     if _builtin_operators.find(op_info) == _builtin_operators.end():
-        return launch_acl_func(opname, ins + outs, args, kargs, stream_ptr)
+        return launch_acl_func(opname, ins, outs, args, kargs, stream_ptr)
     func_ptr = _builtin_operators[op_info]
-    # TODO:  convert all ins, outs, args, kwargs, into aclTesnor/aclScalar
 
+    # TODO:  convert all ins, outs, args, kwargs, into aclTesnor/aclScalar
     cdef vector[const aclTensor*] intensors
     for op in ins:
         typ = type(op)
         if issubclass(typ, _ndarray_base):
             intensors.push_back(cupy_ndarray_to_acl_tensor(op))
+        # aclScalar
     cdef vector[aclTensor*] outtensors
     for op in outs:
         typ = type(op)
@@ -377,19 +380,39 @@ cdef aclError launch_general_func(str opname, list ins, list outs, list args, di
     try:
         ret = func_ptr.general_op(intensors, outtensors, acl_args, acl_kargs, stream)
     finally:
-        # does not deallocate array buffer, but shapes, strides
-        #for t in intensors:  # TODO: const iterator needed here
-        #    aclDestroyTensor(t)
+        # aclDestroyTensor does not deallocate array buffer, but shapes, strides
+        for i in range(intensors.size()):
+            t = intensors[i]
+            aclDestroyTensor(t)
         for t in outtensors:
             aclDestroyTensor(t)
-        # TODO
+        # TODO: aclDestroyScalar
         if ret != 0:
-            print("Failed to run the operator ", opname)
+            print("Failed to run the operator: ", opname)
     return ret
 
+cdef vector[aclTensor*] _create_ops_vector(sequence ins, sequence outs) except *:
+    cdef vector[aclTensor*] tensors
 
-cdef aclError launch_acl_func(str opname, list ops, list args, dict kargs, intptr_t stream_ptr) except *:
-    # TODO:  refactor the parameters: ins, outs, args, kargs
+    for op in ins:
+        typ = type(op)
+        if issubclass(typ, _ndarray_base):
+            tensors.push_back(cupy_ndarray_to_acl_tensor(op))
+        elif typ is _cupy_scalar:
+            pass # scalar_ptr has been processed above
+        else:
+            raise RuntimeError("Operand is not ndarray or scalar: ", op)
+
+    for op in outs: # out is tensor
+        typ = type(op)
+        if issubclass(typ, _ndarray_base):
+            tensors.push_back(cupy_ndarray_to_acl_tensor(op))
+        else:
+            raise RuntimeError("Operand is not ndarray: ", op)
+
+    return tensors
+
+cdef aclError launch_acl_func(str opname, sequence ops, sequence outs, list args, dict kargs, intptr_t stream_ptr) except *:
 
     cdef aclScalar* scalar_ptr = NULL
     cdef OpInfo op_info
@@ -403,8 +426,9 @@ cdef aclError launch_acl_func(str opname, list ops, list args, dict kargs, intpt
         typ = type(op)
         if typ is _cupy_scalar:
             scalar_ptr = cupy_scalar_to_acl_scalar(op)
+        # TODO: python int/float
     cdef has_scalar = scalar_ptr != NULL
-    cdef bint inplace = "inplace" in opname
+    cdef bint inplace = ("inplace" in opname) or len(outs) == 0
 
     op_info.op_type = get_op_type(ops, inplace, has_scalar)
     if _builtin_operators.find(op_info) == _builtin_operators.end():
@@ -417,15 +441,8 @@ cdef aclError launch_acl_func(str opname, list ops, list args, dict kargs, intpt
         stream = <aclrtStream>stream_ptr
 
     # 转换为ACL张量列表
-    cdef vector[aclTensor*] tensors
-    for op in ops:
-        typ = type(op)
-        if issubclass(typ, _ndarray_base):
-            tensors.push_back(cupy_ndarray_to_acl_tensor(op))
-        elif typ is _cupy_scalar:
-            pass
-        else:
-            raise RuntimeError("Operand is not ndarray or scalar: ", op)
+    tensors = _create_ops_vector(ops, outs)
+
     try:
         if len(ops) == 3 and not has_scalar and not inplace:  # 二元操作
             if op_info.op_type != BINARY_OP:
@@ -460,7 +477,6 @@ cdef aclError launch_acl_func(str opname, list ops, list args, dict kargs, intpt
     finally:
         # does not deallocate array buffer, but shapes, strides
         for t in tensors:
-            # TODO: deal with aclScalar
             aclDestroyTensor(t)  # 假设destroyAclTensor函数已存在
         if scalar_ptr:
             aclDestroyScalar(scalar_ptr)
@@ -471,7 +487,7 @@ cdef aclError launch_acl_func(str opname, list ops, list args, dict kargs, intpt
 
 
 # TODO: add output `dtype` param, set as outTensor's dtype
-cdef aclError launch_reduction_op(str opname, tuple ops, intptr_t stream_ptr) except *:
+cdef aclError launch_reduction_op(str opname, sequence ins, sequence outs, object axes, bint keepdims, dict kargs, intptr_t stream_ptr) except *:
     # 检查操作是否已注册
     if opname.startswith("cupy_"):
         opname = ASCEND_OP_PREFIX + opname[5:]
@@ -488,29 +504,29 @@ cdef aclError launch_reduction_op(str opname, tuple ops, intptr_t stream_ptr) ex
     if stream_ptr != <intptr_t>0:
         stream = <aclrtStream>stream_ptr
 
-    # TODO: 转换为ACL: self, dim, keepdim, out
-    cdef bint keepdim = True
     cdef vector[int64_t] shape
     cdef aclIntArray* dim = NULL
     cdef vector[aclTensor*] tensors
-    for op in ops:
-        typ = type(op)
-        if issubclass(typ, _ndarray_base):
-            tensors.push_back(cupy_ndarray_to_acl_tensor(op))
-        elif hasattr(op, 'size') and hasattr(op, 'push_back'):
-            # dim info from shape_t  vector.vector[Py_ssize_t]
-            for i in range(op.size()):
-                shape.push_back(op[i])
-            dim = aclCreateIntArray(shape.data(), len(op))
-        elif typ is _cupy_scalar:
-            pass
-        elif hasattr(op, "__bool__"): # keepdim bool python type
-            keepdim = op.__bool__()
-        else:
-            raise RuntimeError("Operand is not ndarray or scalar: ", op)
+
+    tensors = _create_ops_vector(ins, outs)
+
+    typ = type(axes) 
+    if hasattr(axes, 'size') and hasattr(axes, 'push_back'):
+        # dim/axes info from `shape_t` which is `vector.vector[Py_ssize_t]`
+        for i in range(axes.size()):
+            shape.push_back(axes[i])
+        dim = aclCreateIntArray(shape.data(), len(axes))
+    elif typ is _cupy_scalar:
+        pass
+    elif axes is None:
+        shape.push_back(0)
+    elif typ is int: # TODO, not sure if it works/compilable
+        shape.push_back(axes)
+    else:
+        raise RuntimeError("axis/axis is not tuple, shape, int type", axes)
 
     try:
-        ret = func_ptr.reduction_op(tensors[0], dim, keepdim, tensors[1], stream)
+        ret = func_ptr.reduction_op(tensors[0], dim, keepdims, tensors[1], stream)
     finally:
         # does not deallocate array buffer, but shapes, strides
         for t in tensors:
@@ -580,6 +596,7 @@ cdef extern from "../acl_math_ops.h" nogil:
     aclError aclop_InplaceCeil(aclTensor* self,  aclrtStream stream)
 
     aclError aclop_MatMul(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream)
+    aclError aclop_Dot(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream)
 
     aclError aclop_Cos(const aclTensor* self,  aclTensor* out, aclrtStream stream)
     aclError aclop_InplaceCos(aclTensor* self,  aclrtStream stream)
@@ -726,6 +743,8 @@ cdef void init_builtin_operators():
     # 注册aclop_MatMul作为二元操作
     func_union.binary_op = aclop_MatMul
     register_acl_ufunc("ascend_matmul", BINARY_OP, func_union)
+    func_union.binary_op = aclop_Dot
+    register_acl_ufunc("ascend_dot", BINARY_OP, func_union)
 
     ###############################################
     # 注册aclop_Cos操作, 注册aclop_InplaceCos作为原地操作
