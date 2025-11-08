@@ -910,8 +910,9 @@ cdef class ufunc:
         # TODO: ASCEND launch_kernel, inplace, scalar as op detection
         runtime._ensure_context()
         s = _get_stream(None)
-        list_arg = args[(self.nin + self.nout):]
-        launch_general_func(self.name, list(inout_args), list(out_args), list_arg, kwargs, s)
+        pos_args = list(args[(self.nin + self.nout):])
+
+        launch_general_func(self.name, list(inout_args), list(out_args), pos_args, kwargs, s)
         #kern = self._get_ufunc_kernel(dev_id, op, arginfos, has_where)
         #kern.linear_launch(indexer.size, inout_args)
         return ret

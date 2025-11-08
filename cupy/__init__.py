@@ -458,6 +458,7 @@ from numpy import printoptions  # NOQA
 # -----------------------------------------------------------------------------
 #TODO (ASCEND)
 from cupy._core import matmul
+from cupy._core import dot
 
 # -----------------------------------------------------------------------------
 # Logic functions

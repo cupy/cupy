@@ -25,7 +25,8 @@ Nov 08: reduction op such as `sum()` is working, most of common op ACLOP support
 1. `add` (all algorith op) , does not support shape dim > 1, while these can be done
 
 #### missing operators
-1. `power(scalar, tensor)` not supported, need some refactoring
+currently, only support tensor op tensor, some op support tensor op scalar (aclScalar not python double/int)
+1. `power(scalar, tensor)` not supported, need some refactoring, Operand as uniion of aclTensor* and aclScalar*
 2. inplace operator like `add` is working, while not sure it use InplaceOp or ASCEND nonIplanceOp
    inplace and nonInplace may have some diff, the save memory addr self and out  passed to op may lead to some error
 3. creation/manipulation/indexing, not tested, 

@@ -183,6 +183,11 @@ if __name__ == "__main__":
     cp_vec_ret += cp_vec1
     print("test inplace add op, with result", cp_vec_ret)
     print("="*60)
+
+    print("\n" + "="*60)
+    cp_vec_ret = cp.dot(cp_vec1, cp_vec2)
+    print("test dot op, with result", cp_vec_ret)
+    print("="*60)
         
     print("\n" + "="*60)
     print("基准测试向量COS操作（单目运算，同步模式）")
@@ -202,14 +207,14 @@ if __name__ == "__main__":
     np_time, cp_time, speedup = benchmark_vector_op(np_add, cp_add, np_vec1, np_vec2, cp_vec1, cp_vec2, 
                                                     unary=False, repeating=repeating, use_async=True)
     
-    print("\n" + "="*60) # cos, add is not supported for dim = 2 matrix for ASCEND
-    print("基准测试矩阵ADD操作（单目运算，同步模式）")
-    print("="*60)
-    np_time, cp_time, speedup = benchmark_mat_op(np_add, cp_add, np_mat_a, None, cp_mat_a, None, 
-                                                 unary=True, repeating=repeating, use_async=False)
-    
     print("\n" + "="*60)
     print("基准测试矩阵乘法操作（双目运算，异步模式）")
     print("="*60)
     np_time, cp_time, speedup = benchmark_mat_op(np_dot, cp_dot, np_mat_a, np_mat_b, cp_mat_a, cp_mat_b, 
                                                 unary=False, repeating=repeating, use_async=True)
+
+    # print("\n" + "="*60) # cos, add is not supported for dim = 2 matrix for ASCEND
+    # print("基准测试矩阵COS操作（单目运算，同步模式）")
+    # print("="*60)
+    # np_time, cp_time, speedup = benchmark_mat_op(np_cos, cp_cos, np_mat_a, None, cp_mat_a, None, 
+    #                                              unary=True, repeating=repeating, use_async=False)

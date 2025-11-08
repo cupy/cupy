@@ -376,13 +376,14 @@ cdef aclError launch_general_func(str opname, sequence ins, sequence outs, list 
 
     cdef ArgsType acl_args
     cdef KwargsType acl_kargs
+    cdef const aclTensor* ct
     try:
         ret = func_ptr.general_op(intensors, outtensors, acl_args, acl_kargs, stream)
     finally:
         # aclDestroyTensor does not deallocate array buffer, but shapes, strides
         for i in range(intensors.size()):
-            t = <const aclTensor*>intensors.at(i)
-            aclDestroyTensor(t)
+            ct = <const aclTensor*>intensors.at(i)
+            aclDestroyTensor(ct)
         for t in outtensors:
             aclDestroyTensor(t)
         # TODO: aclDestroyScalar
@@ -411,7 +412,7 @@ cdef vector[aclTensor*] _create_ops_vector(sequence ins, sequence outs) except *
 
     return tensors
 
-cdef aclError launch_acl_func(str opname, sequence ops, sequence outs, list args, dict kargs, intptr_t stream_ptr) except *:
+cdef aclError launch_acl_func(str opname, sequence ins, sequence outs, list args, dict kargs, intptr_t stream_ptr) except *:
 
     cdef aclScalar* scalar_ptr = NULL
     cdef OpInfo op_info
@@ -421,17 +422,19 @@ cdef aclError launch_acl_func(str opname, sequence ops, sequence outs, list args
 
     # 区分scalar 和tensor 操作数, 应该是Broadcast应该处理的事情
     # inplace op 是ASCEND引入的?
-    for op in ops:
+    for op in ins:
         typ = type(op)
         if typ is _cupy_scalar:
             scalar_ptr = cupy_scalar_to_acl_scalar(op)
         # TODO: python int/float
     cdef has_scalar = scalar_ptr != NULL
-    cdef bint inplace = ("inplace" in opname) or len(outs) == 0
+    # cupy inplace op does not generate a new op, but make self == out
+    cdef bint inplace = ("inplace" in opname) or not outs
+    cdef list ops = ins + outs
 
     op_info.op_type = get_op_type(ops, inplace, has_scalar)
     if _builtin_operators.find(op_info) == _builtin_operators.end():
-        raise KeyError(f"Operator {opname} not registered")
+        raise KeyError(f"Operator {opname} len(ops) = {len(ops)} not registered {inplace} {has_scalar}, {op_info.op_type}")
     
     func_ptr = _builtin_operators[op_info]
     cdef aclError ret = 0

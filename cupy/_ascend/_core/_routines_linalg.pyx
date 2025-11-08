@@ -176,7 +176,7 @@ cpdef _ndarray_base tensordot_core(
     #cdef intptr_t handle
     cdef _ndarray_base copy_to_out = None
     cdef str dtype = a.dtype.char
-    cdef int compute_capability = int(device.get_compute_capability())
+    #cdef int compute_capability = int(device.get_compute_capability())
     if dtype != b.dtype.char:
         dtype = numpy.promote_types(dtype, b.dtype).char
     if not a.size or not b.size:
@@ -187,13 +187,15 @@ cpdef _ndarray_base tensordot_core(
 
     if out is not None:
         assert out.flags.c_contiguous and out.dtype == dtype
+    else:
+        out = _ndarray_init(cupy.ndarray, ret_shape, dtype, None)
     
     launch_general_func("ascend_dot", [a, b], [out], None, None, 0)
     return out
 
 cdef _ndarray_base _ascend_matmul(_ndarray_base a, _ndarray_base b, _ndarray_base out):
-
-    return _ascend_dot(a, b, out)
+    launch_general_func("ascend_matmul", [a, b], [out], None, None, 0)
+    return out
 
 cpdef _ndarray_base matmul(
         _ndarray_base a, _ndarray_base b, _ndarray_base out=None):
