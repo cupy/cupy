@@ -4,8 +4,8 @@ from libc cimport stdlib
 from libc.stdint cimport intptr_t
 from libcpp.vector cimport vector
 
-from backends.backend.api cimport runtime
-from backends.backend cimport stream as stream_module
+from cupy.backends.backend.api cimport runtime
+from cupy.backends.backend cimport stream as stream_module
 from cupy._core.core cimport _ndarray_base
 from cupy.xpu cimport memory
 

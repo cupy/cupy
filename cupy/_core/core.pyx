@@ -51,9 +51,9 @@ from cupy.xpu cimport function
 from cupy.xpu cimport pinned_memory
 from cupy.xpu cimport memory
 from cupy.xpu cimport stream as stream_module
-from backends.backend cimport stream as _stream_module
-from backends.backend.api cimport runtime
-from backends.backend.api.runtime import CUDARuntimeError
+from cupy.backends.backend cimport stream as _stream_module
+from cupy.backends.backend.api cimport runtime
+from cupy.backends.backend.api.runtime import CUDARuntimeError
 
 from cupy.exceptions import ComplexWarning
 

@@ -3,8 +3,8 @@
 import threading
 
 from cupy._core import syncdetect
-from backends.backend.api cimport runtime
-from backends.backend.api import runtime as runtime_module
+from cupy.backends.backend.api cimport runtime
+from cupy.backends.backend.api import runtime as runtime_module
 from cupy import _util
 
 
@@ -260,7 +260,7 @@ cdef class Device:
         itself is different.
 
         """
-        from backends.backend.libs import cublas
+        from cupy.backends.backend.libs import cublas
         return self._get_handle(
             'cublas_handles', cublas.create, cublas.destroy)
 
@@ -272,7 +272,7 @@ cdef class Device:
         itself is different.
 
         """
-        from backends.backend.libs import cusolver
+        from cupy.backends.backend.libs import cusolver
         return self._get_handle(
             'cusolver_handles', cusolver.create, cusolver.destroy)
 
@@ -284,7 +284,7 @@ cdef class Device:
         itself is different.
 
         """
-        from backends.backend.libs import cusolver
+        from cupy.backends.backend.libs import cusolver
         return self._get_handle(
             'cusolver_sp_handles', cusolver.spCreate, cusolver.spDestroy)
 
@@ -296,7 +296,7 @@ cdef class Device:
         itself is different.
 
         """
-        from backends.backend.libs import cusparse
+        from cupy.backends.backend.libs import cusparse
         return self._get_handle(
             'cusparse_sp_handles', cusparse.create, cusparse.destroy)
 

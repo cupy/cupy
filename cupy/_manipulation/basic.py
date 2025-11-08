@@ -5,7 +5,7 @@ import itertools
 import numpy
 
 from cupy import _core
-from backends.backend.api import runtime
+from cupy.backends.backend.api import runtime
 if not runtime.is_ascend():
     # TODO(ASCEND) better deal with not supported feature
     from cupy._core import _fusion_interface

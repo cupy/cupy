@@ -1,6 +1,6 @@
 # Keep in sync with typenames exported in `runtime.pxd`.
 
-from backends.backend.api cimport driver
+from cupy.backends.backend.api cimport driver
 
 
 cdef extern from *:

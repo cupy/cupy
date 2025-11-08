@@ -27,7 +27,7 @@ IF CUPY_USE_CUDA_PYTHON:
 ELSE:
     include "_driver_typedef.pxi"
     IF CUPY_CANN_VERSION <= 0:
-        from backends.backend.api._driver_enum cimport *
+        from cupy.backends.backend.api._driver_enum cimport *
 
 
 ###############################################################################

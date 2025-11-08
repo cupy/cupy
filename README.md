@@ -8,6 +8,11 @@ Nov 08: reduction op such as `sum()` is working, most of common op ACLOP support
 
 ### limitation
 
+#### ascend backends
+
+1. `aclEvent` mapping is may have error to fix, causing memory error
+2. multiple NPU intialization yet design/tested
+
 #### dtype
 1. `add` (all algorith op) support double vector, int64 vector,  but it is slow, probably done by AICPU
 2. matrix: `dot/matmul` support only float32, float16, bfloat
@@ -139,7 +144,7 @@ pip3 install triton-ascend
 
 应该是没有安装ascend driver, `import torch` 会有这个错误, 
 
-ImportError: libascend_hal.so: cannot open shared object file: No such file or directory, You can disable extension auto-loading with TORCH_DEVICE_BACKEND_AUTOLOAD=0.
+> ImportError: libascend_hal.so: cannot open shared object file: No such file or directory, You can disable extension auto-loading with TORCH_DEVICE_BACKEND_AUTOLOAD=0.
 
 
 
@@ -172,12 +177,14 @@ export CUPY_INSTALL_USE_ASCEND=1  # 对应C代码中 CUPY_USE_ASCEND， 编译�
 #export PATH=$ASCEND_TOOLKIT_HOME/bin:$PATH
 which bisheng
 
-# --inplace for gdb debugging
+# cython --inplace for gdb debugging
 clear && export CUPY_INSTALL_USE_ASCEND=1 && python setup.py develop && python -c "import cupy._core"
 python -c "import cupy._core" # to test if it is importable without installation
 clear && export CUPY_INSTALL_USE_ASCEND=1 && python setup.py develop && python benchmark.py
 
 ```
+
+如果修改 .h 文件, 没有修改pyx文件, 可能导致不会触发编译, 这时候可以运行clean_cpp_so_files.sh 做全面清理. 
 
 ### 3.2 基本稳定阶段
 
@@ -238,7 +245,7 @@ CUDA的runtime API emulate 可能不违反EULA, 但是没有必要冒着未来�
 #### 中性化重构
 + cupy.cuda -> cupy.xpu                            XPU 泛指任何CPU之外的计算加速器
 
-+ cupy_backends.cuda -> backends.backend           为什么叫backends, 这是和torch保持移植. 
++ cupy_backends.cuda -> cupy.backends.backend           为什么叫backends, 这是和torch保持移植. 
 
 + xpuXXX 作为runtime的抽象API
 
@@ -259,17 +266,17 @@ sparse, 等ascend缺失的暂不做中性化处理, 直接放入cuda/libs
 #### split out cuda enum from backend
 
 这些基本GPU专用, 或者不是核心必须得代码, 拆出到cuda backend去维护
-backends.backend._runtime.pyx 
+cupy.backends.backend._runtime.pyx 
 
 ```python
 IF CUPY_CANN_VERSION <= 0:
     # Provide access to constants from Python.
     # TODO(kmaehashi): Deprecate aliases above so that we can just do:
-    # from backends.cuda.api._runtime_enum import *
-    # from backends.cuda.api._device_prop import *
+    # from cupy.backends.cuda.api._runtime_enum import *
+    # from cupy.backends.cuda.api._device_prop import *
     def _export_enum():
         import sys
-        import backends.backend.api._runtime_enum as _runtime_enum
+        import cupy.backends.backend.api._runtime_enum as _runtime_enum
         this = sys.modules[__name__]
         for key in dir(_runtime_enum):
             if not key.startswith('_'):

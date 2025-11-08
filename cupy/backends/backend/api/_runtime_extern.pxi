@@ -1,4 +1,4 @@
-from backends.backend.api cimport driver
+from cupy.backends.backend.api cimport driver
 
 
 cdef extern from '../../cupy_backend_runtime.h' nogil:

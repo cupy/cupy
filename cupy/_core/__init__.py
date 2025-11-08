@@ -11,7 +11,7 @@ from cupy._core._kernel import ElementwiseKernel  # NOQA
 from cupy._core._kernel import ufunc  # NOQA
 from cupy._core._kernel import _get_warpsize  # NOQA
 
-from backends.backend.api import runtime
+from cupy.backends.backend.api import runtime
 if not runtime.is_ascend():
     # internal APIs for testing and development
     from cupy._core._gpu._accelerator import set_elementwise_accelerators  # NOQA

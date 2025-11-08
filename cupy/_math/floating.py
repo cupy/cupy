@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from cupy import _core
 from cupy._math import ufunc
-from backends.backend.api import runtime
+from cupy.backends.backend.api import runtime
 
 
 signbit = _core.create_ufunc(

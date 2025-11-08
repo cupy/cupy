@@ -25,7 +25,7 @@ from cupy._core.core cimport _ndarray_base
 from cupy._core cimport internal
 from cupy.xpu cimport device
 from cupy.xpu cimport function
-from backends.backend.api cimport runtime
+from cupy.backends.backend.api cimport runtime
 
 import math
 import string
@@ -40,7 +40,7 @@ from cupy._core._ufuncs import elementwise_copy
 from cupy import _util
 
 IF CUPY_CANN_VERSION > 0:
-    from backends.ascend.api.acl_utils cimport launch_reduction_op
+    from cupy.backends.ascend.api.acl_utils cimport launch_reduction_op
 
 from cupy.xpu cimport stream as stream_module
 cdef inline size_t _get_stream(stream) except *:

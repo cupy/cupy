@@ -94,7 +94,7 @@ ELSE:
     include "_runtime_typedef.pxi"
     IF CUPY_CANN_VERSION <= 0:
         # cudaDevAttr has no coresponding in Ascend CANN
-        from backends.backend.api._runtime_enum cimport *
+        from cupy.backends.backend.api._runtime_enum cimport *
     ELSE:
         cpdef enum:
             cudaCpuDeviceId = -1

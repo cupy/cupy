@@ -21,10 +21,10 @@ from libcpp cimport algorithm
 from cupy.xpu cimport device
 from cupy.xpu cimport memory_hook
 from cupy.xpu cimport stream as stream_module
-from backends.backend.api cimport driver
-from backends.backend.api cimport runtime
+from cupy.backends.backend.api cimport driver
+from cupy.backends.backend.api cimport runtime
 
-from backends.backend.api.runtime import CUDARuntimeError
+from cupy.backends.backend.api.runtime import CUDARuntimeError
 from cupy import _util
 
 

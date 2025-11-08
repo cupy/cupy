@@ -3,11 +3,11 @@ cimport cython  # NOQA
 import numpy
 import warnings
 
-from backends.backend.api cimport runtime
+from cupy.backends.backend.api cimport runtime
 from cupy.exceptions import ComplexWarning
 
 # TODO: import can not been conditionally preprocessed
-from backends.ascend.api.acl_utils cimport numpy_to_acl_dtype
+from cupy.backends.ascend.api.acl_utils cimport numpy_to_acl_dtype
 
 cdef str all_type_chars = '?bhilqBHILQefdFD'
 # for c in '?bhilqBHILQefdFD':

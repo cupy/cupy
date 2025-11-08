@@ -34,7 +34,7 @@ cdef extern from '../../cupy_backend_common.h' nogil:
 
 IF CUPY_CANN_VERSION <= 0:
     # Provide access to constants from Python.
-    from backends.cuda.api._driver_enum import *
+    from cupy.backends.cuda.api._driver_enum import *
 ELSE:
     cpdef enum:
         # CUresult

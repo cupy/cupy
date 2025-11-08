@@ -1,7 +1,7 @@
 import os as _os
 import threading as _threading
 
-from backends.backend.api cimport runtime
+from cupy.backends.backend.api cimport runtime
 
 
 cdef object _thread_local = _threading.local()
@@ -75,7 +75,7 @@ cdef set_current_stream_ptr(intptr_t ptr, int device_id=-1):
 
         This method is intended to be called from `cupy.cuda.stream` module.
         Do not call this method from somewhere else; this method only changes
-        the default stream for `cupy_backends.*`, so the stream used will be
+        the default stream for `cupy.backends.*`, so the stream used will be
         inconsistent with the default one for `cupy.*`.
 
     """

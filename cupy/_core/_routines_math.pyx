@@ -12,7 +12,7 @@ import cupy._core.core as core
 from cupy._core cimport internal
 from cupy import _util
 
-from backends.backend.api cimport runtime
+from cupy.backends.backend.api cimport runtime
 #from cupy._core cimport _accelerator
 from cupy._core._dtype cimport get_dtype
 from cupy._core._routines_creation cimport _ndarray_init
@@ -24,7 +24,7 @@ from cupy.xpu cimport memory
 #from cupy.xpu import cub
 
 try:
-    import backends.backend.libs.cutensor as cuda_cutensor
+    import cupy.backends.backend.libs.cutensor as cuda_cutensor
 except ImportError:
     cuda_cutensor = None
 

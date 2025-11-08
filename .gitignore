@@ -28,4 +28,4 @@ cupy/.data/
 cupy/cuda/thrust.h
 cupy/_core/numpy_allocator.h
 .vscode/
-backends/ascend/demo/*
+cupy/backends/ascend/demo/*

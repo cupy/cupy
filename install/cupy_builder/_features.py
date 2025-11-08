@@ -96,25 +96,26 @@ def _from_dict(d: dict[str, Any], ctx: Context) -> Feature:
 
 # TODO (XPU refactor broken cuda build)
 _cuda_files = [
-    'cupy_backends.cuda.api.driver',
-    'cupy_backends.cuda.api._driver_enum',
-    'cupy_backends.cuda.api.runtime',
-    'cupy_backends.cuda.api._runtime_enum',
-    'cupy_backends.cuda.libs.cublas',
-    'cupy_backends.cuda.libs.curand',
-    'cupy_backends.cuda.libs.cusparse',
-    'cupy_backends.cuda.libs.nvrtc',
-    'cupy_backends.cuda.stream',
-    'cupy_backends.cuda._softlink',
+    'cupy.backends.cuda.api._driver_enum',  # JIT can be ignored
+    'cupy.backends.cuda.api._runtime_enum',
+    'cupy.backends.cuda.api._device_prop',
+    'cupy.backends.backend.api.driver', # empty driver.pyx
+    'cupy.backends.backend.api.runtime',
+    'cupy.backends.cuda.libs.cublas',
+    'cupy.backends.cuda.libs.curand',
+    'cupy.backends.cuda.libs.cusparse',
+    'cupy.backends.cuda.libs.nvrtc',
+    'cupy.backends.backend.stream',
+    'cupy.backends.backend._softlink',
     # python cude backend api
     'cupy.cuda.common',
     'cupy.cuda.cufft',
-    'cupy.cuda.device',
-    'cupy.cuda.memory',
-    'cupy.cuda.memory_hook',
-    'cupy.cuda.pinned_memory',
-    'cupy.cuda.function',
-    'cupy.cuda.stream',
+    'cupy.xpu.device',
+    'cupy.xpu.memory',
+    'cupy.xpu.memory_hook',
+    'cupy.xpu.pinned_memory',
+    'cupy.xpu.function',
+    'cupy.xpu.stream',
     'cupy._core._accelerator',
     'cupy._core._carray',
     'cupy._core._cub_reduction',
@@ -155,17 +156,17 @@ _cuda_files = [
 ]
 
 _ascend_files = [
-    'backends.cuda.api._driver_enum',  # JIT can be ignored
-    'backends.cuda.api._runtime_enum',
-    # 'backends.cuda.api._device_prop',
-    'backends.backend.api.driver', # empty driver.pyx
-    'backends.backend.api.runtime',
-    # 'backends.cuda.libs.cublas',
-    # 'backends.cuda.libs.curand',
-    # 'backends.cuda.libs.cusparse',
-    # 'backends.cuda.libs.nvrtc',
-    'backends.backend.stream',
-    'backends.backend._softlink',
+    'cupy.backends.cuda.api._driver_enum',  # JIT can be ignored
+    'cupy.backends.cuda.api._runtime_enum',
+    # 'cupy.backends.cuda.api._device_prop',
+    'cupy.backends.backend.api.driver', # empty driver.pyx
+    'cupy.backends.backend.api.runtime',
+    # 'cupy.backends.cuda.libs.cublas',
+    # 'cupy.backends.cuda.libs.curand',
+    # 'cupy.backends.cuda.libs.cusparse',
+    # 'cupy.backends.cuda.libs.nvrtc',
+    'cupy.backends.backend.stream',
+    'cupy.backends.backend._softlink',
     # # high level OO API
     # 'cupy.cuda.common', #  cudaDataType
     # 'cupy.cuda.cufft',
@@ -176,7 +177,7 @@ _ascend_files = [
     'cupy.xpu.function', # only compile code for CPointer
     'cupy.xpu.stream',
     'cupy._util', # backend independent:  context manager, memoise
-    'backends.ascend.api.acl_utils',
+    'cupy.backends.ascend.api.acl_utils',
     # =============== seperate line for low-high api
     'cupy._core._carray',
     'cupy._core._dtype',
@@ -196,7 +197,7 @@ _ascend_files = [
     ('cupy._core._routines_linalg', ['cupy/_ascend/_core/_routines_linalg.pyx']),
     ('cupy._core._routines_logic', ['cupy/_core/_routines_logic.pyx']),
     ('cupy._core._reduction', ['cupy/_core/_reduction.pyx']),  # not easy job
-    #('cupy._core._routines_indexing', ['cupy/_ascend/_core/_routines_indexing.pyx']), # not so difficult
+    #('cupy._core._routines_indexing', ['cupy/_core/_routines_indexing.pyx']), # not so difficult
     ('cupy._core._routines_statistics', ['cupy/_core/_routines_statistics.pyx']), # ascend partially support
     # =========== Future work ================
     # 'cupy.cuda.graph',  # not sure if possible
@@ -225,8 +226,8 @@ def get_features(ctx: Context) -> dict[str, Feature]:
         'name': 'cuda',
         'required': True,
         'file': _cuda_files + [
-            'cupy_backends.cuda.libs.nvtx',
-            'cupy_backends.cuda.libs.cusolver',
+            'cupy.backends.cuda.libs.nvtx',
+            'cupy.backends.cuda.libs.cusolver',
             'cupyx.cusolver',
         ],
         'include': [
@@ -258,7 +259,7 @@ def get_features(ctx: Context) -> dict[str, Feature]:
         'name': 'cusolver',
         'required': True,
         'file': [
-            'cupy_backends.cuda.libs.cusolver',
+            'cupy.backends.cuda.libs.cusolver',
             'cupyx.cusolver',
         ],
         'include': [
@@ -272,7 +273,7 @@ def get_features(ctx: Context) -> dict[str, Feature]:
     CUDA_nccl = {
         'name': 'nccl',
         'file': [
-            'cupy_backends.cuda.libs.nccl',
+            'cupy.backends.cuda.libs.nccl',
         ],
         'include': [
             'nccl.h',
@@ -286,7 +287,7 @@ def get_features(ctx: Context) -> dict[str, Feature]:
     CUDA_nvtx = {
         'name': 'nvtx',
         'file': [
-            'cupy_backends.cuda.libs.nvtx',
+            'cupy.backends.cuda.libs.nvtx',
         ],
         'include': [
             'nvtx3/nvToolsExt.h',
@@ -298,7 +299,7 @@ def get_features(ctx: Context) -> dict[str, Feature]:
     CUDA_cutensor = {
         'name': 'cutensor',
         'file': [
-            'cupy_backends.cuda.libs.cutensor',
+            'cupy.backends.cuda.libs.cutensor',
             'cupyx.cutensor',
         ],
         'include': [
@@ -383,7 +384,7 @@ def get_features(ctx: Context) -> dict[str, Feature]:
     CUDA_cusparselt = {
         'name': 'cusparselt',
         'file': [
-            'cupy_backends.cuda.libs.cusparselt',
+            'cupy.backends.cuda.libs.cusparselt',
         ],
         'include': [
             'cusparseLt.h',
@@ -412,7 +413,7 @@ def get_features(ctx: Context) -> dict[str, Feature]:
     HIP_nccl = {
         'name': 'nccl',
         'file': [
-            'cupy_backends.cuda.libs.nccl',
+            'cupy.backends.cuda.libs.nccl',
         ],
         'include': [
             'rccl.h',

@@ -1,1 +1,1 @@
-from backends.backend.api.runtime import *  # NOQA
+from cupy.backends.backend.api.runtime import *  # NOQA

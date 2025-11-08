@@ -182,7 +182,7 @@ class TestOptimizeBackends(unittest.TestCase):
         _accelerator.set_reduction_accelerators(self.old_reductions)
 
     def test_optimize1(self):
-        # Ensure the optimizer is run 3 times for all backends.
+        # Ensure the optimizer is run 3 times for all cupy.backends.
         func = 'cupyx.optimizing._optimize._optimize'
         times_called = 3
 
