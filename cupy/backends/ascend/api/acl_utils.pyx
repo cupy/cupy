@@ -13,8 +13,6 @@ import threading as _threading
 from cupy.xpu import stream as stream_module
 
 ASCEND_OP_PREFIX = "ascend_"
-from typing import List, Dict, Union  # 从typing模块导入（可选，更规范）
-ctypedef object sequence
 
 #include "backends/ascend/api/acl_types.pxi" # already included in pxd file
 
@@ -333,7 +331,7 @@ cdef aclError register_acl_ufunc(string opname, OpType op_type, FuncPtrUnion fun
         _builtin_operators[op_info] = func_ptr
         return 0
 
-cdef OpType get_op_type(sequence ops, bint inplace, bint has_scalar = False):
+cdef OpType get_op_type(object ops, bint inplace, bint has_scalar = False):
     # TODO: Ternary op, has_scalar
     if len(ops) == 3 and not inplace:  # 二元操作
         return BINARY_OP
@@ -383,7 +381,7 @@ cdef aclError launch_general_func(str opname, sequence ins, sequence outs, list 
     finally:
         # aclDestroyTensor does not deallocate array buffer, but shapes, strides
         for i in range(intensors.size()):
-            t = intensors.at(i)
+            t = <const aclTensor*>intensors.at(i)
             aclDestroyTensor(t)
         for t in outtensors:
             aclDestroyTensor(t)

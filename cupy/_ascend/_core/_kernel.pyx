@@ -911,7 +911,7 @@ cdef class ufunc:
         runtime._ensure_context()
         s = _get_stream(None)
         list_arg = args[(self.nin + self.nout):]
-        launch_general_func(self.name, inout_args, out_args, list_arg, kwargs, s)
+        launch_general_func(self.name, list(inout_args), list(out_args), list_arg, kwargs, s)
         #kern = self._get_ufunc_kernel(dev_id, op, arginfos, has_where)
         #kern.linear_launch(indexer.size, inout_args)
         return ret

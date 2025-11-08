@@ -13,6 +13,7 @@ fi
 
 # clean up so file ,to switch backend
 NUMPY_ASCEND_DIR=${SCRIPT_DIR}
+set -x
 cd ${NUMPY_ASCEND_DIR}/cupy/_core && rm *.cpp && rm *.so 
 cd ${NUMPY_ASCEND_DIR}/cupy/xpu && rm *.cpp && rm *.so
 cd ${NUMPY_ASCEND_DIR}/cupy/backends/backend/api && rm *.cpp && rm *.so 
