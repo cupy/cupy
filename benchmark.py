@@ -159,8 +159,10 @@ if __name__ == "__main__":
     try:
         np_vec1 = np.random.rand(N).astype(dtype)
         np_vec2 = np.random.rand(N).astype(dtype)
+        np_vec_ret = np.random.rand(N).astype(dtype)
         cp_vec1 = cp.asarray(np_vec1)  # 将NumPy数组转换为CuPy数组
         cp_vec2 = cp.asarray(np_vec2)
+        cp_vec_ret = cp.asarray(np_vec_ret)
         print(f"向量数据生成完成：NumPy数组形状 {np_vec1.shape}, CuPy数组形状 {cp_vec1.shape}")
     except Exception as e:
         print(f"生成向量数据时出错：{e}。请检查可用内存/显存。")
@@ -176,6 +178,11 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"生成矩阵数据时出错：{e}。请检查可用内存/显存。")
         exit(1)
+
+    print("\n" + "="*60)
+    cp_vec_ret += cp_vec1
+    print("test inplace add op, with result", cp_vec_ret)
+    print("="*60)
         
     print("\n" + "="*60)
     print("基准测试向量COS操作（单目运算，同步模式）")

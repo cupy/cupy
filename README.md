@@ -1,7 +1,29 @@
 # numpy for Ascend: fork from Cupy
 
-Status (Oct23): benchmark.py 经过xpu重构后, NPU测试可以运行
-Nov 08: reduction op such as `sum()` is working
+## status
+
+### progress
+Oct23: benchmark.py 经过xpu重构后, NPU测试可以运行
+Nov 08: reduction op such as `sum()` is working, most of common op ACLOP supported has been added into numpy-ascend
+
+### limitation
+
+#### dtype
+1. `add` (all algorith op) support double vector, int64 vector,  but it is slow, probably done by AICPU
+2. matrix: `dot/matmul` support only float32, float16, bfloat
+3. `bfloat` is not standard numpy type, so will not be supported
+4. `numpy.int64`  long 'l' on POSIX OS, 'q' on Windows?
+5. `cupy_scalar_to_acl_scalar(_cupy_scalar s)`
+
+#### shape
+
+1. `add` (all algorith op) , does not support shape dim > 1, while these can be done
+
+#### missing operators
+1. `power(scalar, tensor)` not supported, need some refactoring
+2. inplace operator like `add` is working, while not sure it use InplaceOp or ASCEND nonIplanceOp
+   inplace and nonInplace may have some diff, the save memory addr self and out  passed to op may lead to some error
+3. creation/manipulation/indexing, not tested, 
 
 ## 1. 开发环境
 没有NPU开发: 需要注释掉 runtime.pyx `initialize_backend(0)` 否则不能`import cupy`
@@ -151,7 +173,7 @@ export CUPY_INSTALL_USE_ASCEND=1  # 对应C代码中 CUPY_USE_ASCEND， 编译�
 which bisheng
 
 # --inplace for gdb debugging
-export CUPY_INSTALL_USE_ASCEND=1 && python setup.py develop && python -c "import cupy._core"
+clear && export CUPY_INSTALL_USE_ASCEND=1 && python setup.py develop && python -c "import cupy._core"
 python -c "import cupy._core" # to test if it is importable without installation
 clear && export CUPY_INSTALL_USE_ASCEND=1 && python setup.py develop && python benchmark.py
 

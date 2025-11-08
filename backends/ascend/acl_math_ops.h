@@ -165,7 +165,7 @@ extern "C" {
     DECLARE_ACL_BINARY_SCALAR_OPS_FUNC(BitwiseXorScalar)
 
     // BitwiseNot has no inplace version, so can not use the macro to clear
-    aclError aclop_BitwiseNot(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream) {
+    aclError aclop_BitwiseNot(const aclTensor* self, aclTensor* out, aclrtStream stream) {
         return aclUnaryOpRun(self, out,
         aclnnBitwiseNotGetWorkspaceSize, aclnnBitwiseNot, stream, false);
     }
@@ -229,9 +229,9 @@ extern "C" {
     }
     DECLARE_ACL_BINARY_OPS_FUNC(Mul)
     DECLARE_ACL_BINARY_OPS_FUNC(Div)
-    DECLARE_ACL_BINARY_OPS_FUNC(FloorDivide) // python // op
+    DECLARE_ACL_BINARY_OPS_FUNC(FloorDivide) // python  `//` int div op, output int
     DECLARE_ACL_BINARY_OPS_FUNC(FmodTensor)  // for float and ints
-    DECLARE_ACL_BINARY_OPS_FUNC(RemainderTensorTensor)
+    DECLARE_ACL_BINARY_OPS_FUNC(RemainderTensorTensor) // 
 
     // Remainder has TT, ST, TS , inplace version, aclnnRemainderTensorScalar&aclnnInplaceRemainderTensorScalar
     // TODO: Outpout with 2 or more output like `divmod`, but aclnnop has no such op

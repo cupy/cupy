@@ -42,6 +42,7 @@ from cupy import _util
 IF CUPY_CANN_VERSION > 0:
     from backends.ascend.api.acl_utils cimport launch_reduction_op
 
+from cupy.xpu cimport stream as stream_module
 cdef inline size_t _get_stream(stream) except *:
     if stream is None:
         return stream_module.get_current_stream_ptr()
@@ -496,7 +497,7 @@ cdef class _AbstractReductionKernel:
 
             params = self._params
             cdef s = _get_stream(stream)
-            print(f"ASCEND: DEBUG {name}, axis = {axis}, {keepdims}, {self._params}")
+            print(f"ASCEND: DEBUG {self.name}, axis = {axis}, {keepdims}, {self._params}")
             # TODO: kargs
             launch_reduction_op(self.name, in_args, [ret], axis, keepdims, None, s)
 

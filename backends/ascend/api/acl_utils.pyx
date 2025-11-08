@@ -383,7 +383,7 @@ cdef aclError launch_general_func(str opname, sequence ins, sequence outs, list 
     finally:
         # aclDestroyTensor does not deallocate array buffer, but shapes, strides
         for i in range(intensors.size()):
-            t = intensors[i]
+            t = intensors.at(i)
             aclDestroyTensor(t)
         for t in outtensors:
             aclDestroyTensor(t)
@@ -554,8 +554,7 @@ cdef extern from "../acl_math_ops.h" nogil:
     aclError aclop_InplaceBitwiseOrTensor(aclTensor* self, const aclTensor* other, aclrtStream stream)
     aclError aclop_BitwiseXorTensor(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream)
     aclError aclop_InplaceBitwiseXorTensor(aclTensor* self, const aclTensor* other, aclrtStream stream)
-    aclError aclop_BitwiseNotTensor(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream)
-    aclError aclop_InplaceBitwiseNotTensor(aclTensor* self, const aclTensor* other, aclrtStream stream)
+    aclError aclop_BitwiseNot(const aclTensor* self, aclTensor* out, aclrtStream stream) # no inplace version
 
     aclError aclop_LogicalAnd(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream)
     aclError aclop_LogicalXor(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream)
@@ -662,10 +661,10 @@ cdef void init_builtin_operators():
     func_union.inplace_binary_op = aclop_InplaceBitwiseXorTensor
     register_acl_ufunc("ascend_inplace_bitwise_xor", INPLACE_BINARY_OP, func_union)
 
-    func_union.unary_op = aclop_BitwiseNotTensor
+    func_union.unary_op = aclop_BitwiseNot
     register_acl_ufunc("ascend_bitwise_not", UNARY_OP, func_union)
-    func_union.inplace_unary_op = aclop_InplaceBitwiseNotTensor
-    register_acl_ufunc("ascend_inplace_bitwise_not", INPLACE_UNARY_OP, func_union)
+    # func_union.inplace_unary_op = aclop_InplaceBitwiseNotTensor
+    # register_acl_ufunc("ascend_inplace_bitwise_not", INPLACE_UNARY_OP, func_union)
 
     # 注册aclop_BitwiseAndScalar作为原地二元操作
     func_union.scalar_binary_op = aclop_BitwiseAndScalar
