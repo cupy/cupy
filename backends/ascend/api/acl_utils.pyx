@@ -73,14 +73,14 @@ cdef aclDataType numpy_to_acl_dtype(dtype,
         return aclDataType.ACL_INT32
     elif dtype_char == 'I':
         return aclDataType.ACL_UINT32
-    elif dtype_char == 'q' and is_double_supported:
+    elif (dtype_char == 'q' or dtype_char == 'l') and is_double_supported:
         return aclDataType.ACL_INT64
     elif dtype_char == 'Q' and is_double_supported:
         return aclDataType.ACL_UINT64
     elif dtype_char == '?':
         return aclDataType.ACL_BOOL
     else:
-        #raise TypeError('dtype is not supported: {}'.format(dtype)) # TODO: consider throw?
+        print('ASCEND: DEBUG dtype is not supported: {}'.format(dtype))
         return aclDataType.ACL_DT_UNDEFINED
 
 
@@ -101,7 +101,8 @@ cdef aclScalar* cupy_scalar_to_acl_scalar(_cupy_scalar s) except*:
     
     try:
         dtype = numpy_to_acl_dtype(s.dtype)
-        # 根据数据类型分配内存并复制值, TODO: only support int32 float64?
+        # 根据数据类型分配内存并复制值
+        #TODO: "S" for string, "O" for object, "C" for complex
         if s.dtype.kind == 'i':  # 整数类型
             value_ptr = PyMem_Malloc(sizeof(long))
             if value_ptr == NULL:
@@ -332,7 +333,7 @@ cdef aclError register_acl_ufunc(string opname, OpType op_type, FuncPtrUnion fun
         _builtin_operators[op_info] = func_ptr
         return 0
 
-cdef OpType get_op_type(tuple ops, bint inplace, bint has_scalar = False):
+cdef OpType get_op_type(sequence ops, bint inplace, bint has_scalar = False):
     # TODO: Ternary op, has_scalar
     if len(ops) == 3 and not inplace:  # 二元操作
         return BINARY_OP
@@ -449,6 +450,7 @@ cdef aclError launch_acl_func(str opname, sequence ops, sequence outs, list args
                 raise RuntimeError(f"Operator {opname} is not a binary operator")
             ret = func_ptr.binary_op(tensors[0], tensors[1], tensors[2], stream)
         elif len(ops) == 2 and inplace:  # 原地二元操作
+            print(f"ASCEND DEBUG: inplace operator {opname} called")
             if op_info.op_type != INPLACE_BINARY_OP:
                 raise RuntimeError(f"Operator {opname} is not an inplace binary operator")
             ret = func_ptr.inplace_binary_op(tensors[0], tensors[1], stream)
@@ -515,7 +517,6 @@ cdef aclError launch_reduction_op(str opname, sequence ins, sequence outs, objec
         # dim/axes info from `shape_t` which is `vector.vector[Py_ssize_t]`
         for i in range(axes.size()):
             shape.push_back(axes[i])
-        dim = aclCreateIntArray(shape.data(), len(axes))
     elif typ is _cupy_scalar:
         pass
     elif axes is None:
@@ -524,6 +525,10 @@ cdef aclError launch_reduction_op(str opname, sequence ins, sequence outs, objec
         shape.push_back(axes)
     else:
         raise RuntimeError("axis/axis is not tuple, shape, int type", axes)
+
+    if not shape.size():
+        shape.push_back(0)
+    dim = aclCreateIntArray(shape.data(), shape.size())
 
     try:
         ret = func_ptr.reduction_op(tensors[0], dim, keepdims, tensors[1], stream)
@@ -563,7 +568,7 @@ cdef extern from "../acl_math_ops.h" nogil:
     aclError aclop_LtTensor(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream)
     aclError aclop_NeTensor(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream)
     aclError aclop_Equal(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream)
-
+    # scalar operand
     aclError aclop_GeScalar(const aclTensor* self, const aclScalar* other, aclTensor* out, aclrtStream stream)
     aclError aclop_LeScalar(const aclTensor* self, const aclScalar* other, aclTensor* out, aclrtStream stream)
     aclError aclop_GtScalar(const aclTensor* self, const aclScalar* other, aclTensor* out, aclrtStream stream)
@@ -647,6 +652,21 @@ cdef void init_builtin_operators():
     func_union.inplace_binary_op = aclop_InplaceBitwiseAndTensor
     register_acl_ufunc("ascend_inplace_bitwise_and", INPLACE_BINARY_OP, func_union)
 
+    func_union.binary_op = aclop_BitwiseOrTensor
+    register_acl_ufunc("ascend_bitwise_or", BINARY_OP, func_union)
+    func_union.inplace_binary_op = aclop_InplaceBitwiseOrTensor
+    register_acl_ufunc("ascend_inplace_bitwise_or", INPLACE_BINARY_OP, func_union)
+
+    func_union.binary_op = aclop_BitwiseXorTensor
+    register_acl_ufunc("ascend_bitwise_xor", BINARY_OP, func_union)
+    func_union.inplace_binary_op = aclop_InplaceBitwiseXorTensor
+    register_acl_ufunc("ascend_inplace_bitwise_xor", INPLACE_BINARY_OP, func_union)
+
+    func_union.unary_op = aclop_BitwiseNotTensor
+    register_acl_ufunc("ascend_bitwise_not", UNARY_OP, func_union)
+    func_union.inplace_unary_op = aclop_InplaceBitwiseNotTensor
+    register_acl_ufunc("ascend_inplace_bitwise_not", INPLACE_UNARY_OP, func_union)
+
     # 注册aclop_BitwiseAndScalar作为原地二元操作
     func_union.scalar_binary_op = aclop_BitwiseAndScalar
     register_acl_ufunc("ascend_scalar_bitwise_and", SCALAR_BINARY_OP, func_union)
@@ -663,27 +683,27 @@ cdef void init_builtin_operators():
     register_acl_ufunc("ascend_logical_not", UNARY_OP, func_union)
 
     func_union.binary_op = aclop_GeTensor
-    register_acl_ufunc("ascend_ge", BINARY_OP, func_union)
+    register_acl_ufunc("ascend_greater_equal", BINARY_OP, func_union)
     func_union.scalar_binary_op = aclop_GeScalar
-    register_acl_ufunc("ascend_scalar_ge", SCALAR_BINARY_OP, func_union)
+    register_acl_ufunc("ascend_scalar_greater_equal", SCALAR_BINARY_OP, func_union)
     func_union.binary_op = aclop_LeTensor
-    register_acl_ufunc("ascend_le", BINARY_OP, func_union)
+    register_acl_ufunc("ascend_less_equal", BINARY_OP, func_union)
     func_union.scalar_binary_op = aclop_LeScalar
-    register_acl_ufunc("ascend_scalar_le", SCALAR_BINARY_OP, func_union)
+    register_acl_ufunc("ascend_scalar_less_equal", SCALAR_BINARY_OP, func_union)
     func_union.binary_op = aclop_GtTensor
-    register_acl_ufunc("ascend_gt", BINARY_OP, func_union)
+    register_acl_ufunc("ascend_greater", BINARY_OP, func_union)
     func_union.scalar_binary_op = aclop_GtScalar
-    register_acl_ufunc("ascend_scalar_gt", SCALAR_BINARY_OP, func_union)
+    register_acl_ufunc("ascend_scalar_greater", SCALAR_BINARY_OP, func_union)
     func_union.binary_op = aclop_LtTensor
-    register_acl_ufunc("ascend_lt", BINARY_OP, func_union)
+    register_acl_ufunc("ascend_less", BINARY_OP, func_union)
     func_union.scalar_binary_op = aclop_LtScalar
-    register_acl_ufunc("ascend_scalar_lt", SCALAR_BINARY_OP, func_union)
+    register_acl_ufunc("ascend_scalar_less", SCALAR_BINARY_OP, func_union)
     func_union.binary_op = aclop_Equal
     register_acl_ufunc("ascend_equal", BINARY_OP, func_union)
     func_union.binary_op = aclop_NeTensor
-    register_acl_ufunc("ascend_ne", BINARY_OP, func_union)
+    register_acl_ufunc("ascend_not_equal", BINARY_OP, func_union)
     func_union.scalar_binary_op = aclop_NeScalar
-    register_acl_ufunc("ascend_scalar_ne", SCALAR_BINARY_OP, func_union)
+    register_acl_ufunc("ascend_scalar_not_equal", SCALAR_BINARY_OP, func_union)
     # TODO: IsInf
     #############################################
     # 注册aclop_Add作为二元操作
@@ -694,19 +714,19 @@ cdef void init_builtin_operators():
     register_acl_ufunc("ascend_inplace_add", INPLACE_BINARY_OP, func_union)
 
     func_union.binary_op = aclop_Sub
-    register_acl_ufunc("ascend_sub", BINARY_OP, func_union)
+    register_acl_ufunc("ascend_subtract", BINARY_OP, func_union)
     func_union.inplace_binary_op = aclop_InplaceSub
-    register_acl_ufunc("ascend_inplace_sub", INPLACE_BINARY_OP, func_union)
+    register_acl_ufunc("ascend_inplace_substract", INPLACE_BINARY_OP, func_union)
 
     func_union.binary_op = aclop_Mul
-    register_acl_ufunc("ascend_mul", BINARY_OP, func_union)
+    register_acl_ufunc("ascend_multiply", BINARY_OP, func_union)
     func_union.inplace_binary_op = aclop_InplaceMul
-    register_acl_ufunc("ascend_inplace_mul", INPLACE_BINARY_OP, func_union)
+    register_acl_ufunc("ascend_inplace_multiply", INPLACE_BINARY_OP, func_union)
 
     func_union.binary_op = aclop_Div
-    register_acl_ufunc("ascend_div", BINARY_OP, func_union)
+    register_acl_ufunc("ascend_divide", BINARY_OP, func_union)
     func_union.inplace_binary_op = aclop_InplaceDiv
-    register_acl_ufunc("ascend_inplace_vid", INPLACE_BINARY_OP, func_union)
+    register_acl_ufunc("ascend_inplace_divide", INPLACE_BINARY_OP, func_union)
 
     func_union.unary_op = aclop_Reciprocal
     register_acl_ufunc("ascend_reciprocal", UNARY_OP, func_union)
@@ -714,9 +734,9 @@ cdef void init_builtin_operators():
     register_acl_ufunc("ascend_inplace_reciprocal", INPLACE_UNARY_OP, func_union)
 
     func_union.unary_op = aclop_Neg
-    register_acl_ufunc("ascend_neg", UNARY_OP, func_union)
+    register_acl_ufunc("ascend_negative", UNARY_OP, func_union)
     func_union.inplace_unary_op = aclop_InplaceNeg
-    register_acl_ufunc("ascend_inplace_neg", INPLACE_UNARY_OP, func_union)
+    register_acl_ufunc("ascend_inplace_negative", INPLACE_UNARY_OP, func_union)
     func_union.unary_op = aclop_Abs
     register_acl_ufunc("ascend_abs", UNARY_OP, func_union)
     func_union.unary_op = aclop_Signbit

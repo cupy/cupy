@@ -14,6 +14,7 @@
 // polar, real, conj, imag, complex
 
 // sinc, erfc, erf
+#include "aclnnop/aclnn_div.h"
 
 // indexing: argsort, unique, unique2, sort
 #include "aclnnop/aclnn_index.h"
@@ -55,12 +56,6 @@
     // aclnnTrilGetWorkspaceSize(const aclTensor* self, int64_t diagonal, aclTensor* out,  // set upper as zeros
     // aclnnPermuteGetWorkspaceSize(const aclTensor* self, const aclIntArray* dims, aclTensor* out,
 
-    // TODO: Outpout with 2 or more output like `divmod`
-    // aclError aclop_Divmode(const std::vector<const aclTensor*> ins, const std::vector<aclTensor*> outs,
-    //     const std::vector<const aclScalar*> args, aclrtStream stream) {
-        
-    // }
-
     // two output tensor
     // aclError aclop_Sort(){
     //     ACLNN_API aclnnStatus aclnnSortGetWorkspaceSize(const aclTensor* self, bool stable, int64_t dim, bool descending,
@@ -68,21 +63,35 @@
     //                                             aclOpExecutor** executor);
     // }
 
+    // frexp() Decompose the elements of x into mantissa and twos exponent.
+    // aclError aclop_Frexp(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
+    //     const ArgsType& args, const KargsType& kargs, aclrtStream stream) {
+    //     const aclTensor* self = ins[0];
+    //     aclTensor* out = outs[0];
+    //     int decimals = ToScalarArg<int>(args[0]);
+    //     return aclIrregularOpRun(aclnnFrexpGetWorkspaceSize, aclnnFrexp, stream, false,
+    //         self, outs);
+    // }
+
     // aclnnTopkGetWorkspaceSize(const aclTensor* self, int64_t k, int64_t dim, bool largest,
     //                                             bool sorted, aclTensor* valuesOut, aclTensor* indicesOut,
 
+    // no such concat
     // aclnnStackGetWorkspaceSize(const aclTensorList* tensors, int64_t dim, aclTensor* out,
     // aclnnCatGetWorkspaceSize(const aclTensorList* tensors, int64_t dim, aclTensor* out,
     // aclnnResizeGetWorkspaceSize(const aclTensor* self, const aclFloatArray* scales, const char* mode, aclTensor* out,
     // aclnnFlattenGetWorkspaceSize(const aclTensor* self, int64_t axis, aclTensor* out,
 
-    // take is binary op
-    // aclnnTakeGetWorkspaceSize(const aclTensor* self, const aclTensor* index, aclTensor* out,
+    DECLARE_ACL_BINARY_OP(Take)
+    //DECLARE_ACL_BINARY_OP(InplaceCopy)
+    // aclnnTakeGetWorkspaceSize(const aclTensor* self, const aclTensor* index, aclTensor* out, ...);
     // aclnnInplacePutGetWorkspaceSize(aclTensor* selfRef, const aclTensor* index,
     //                                                 const aclTensor* source, bool accumulate,
-
-    // aclnnCastGetWorkspaceSize(const aclTensor* self, const aclDataType dtype, aclTensor* out,
     // aclnnInplaceCopyGetWorkspaceSize(aclTensor* selfRef, const aclTensor* src,
+
+    
+    // astype():  casting UnaryOp with dtype
+    // aclnnCastGetWorkspaceSize(const aclTensor* self, const aclDataType dtype, aclTensor* out,
     // fill_kernel = ElementwiseKernel('T x', 'T y', 'y = x', 'cupy_fill')
     aclError aclop_Fill(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
         const ArgsType& args, const KargsType& kargs, aclrtStream stream) {
@@ -97,9 +106,6 @@
             return ACL_ERROR_INVALID_PARAM;
         }
     }
-    // frexp() Decompose the elements of x into mantissa and twos exponent.
-
-    // astype():  casting UnaryOp with dtype
 
     // This is a general function, must be launched differently, keyward args?
     aclError aclop_Round(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,

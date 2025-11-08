@@ -229,9 +229,24 @@ extern "C" {
     }
     DECLARE_ACL_BINARY_OPS_FUNC(Mul)
     DECLARE_ACL_BINARY_OPS_FUNC(Div)
-    DECLARE_ACL_BINARY_OPS_FUNC(FloorDivide)
+    DECLARE_ACL_BINARY_OPS_FUNC(FloorDivide) // python // op
     DECLARE_ACL_BINARY_OPS_FUNC(FmodTensor)  // for float and ints
-    // DivMod  has 3 modes: https://www.hiascend.com/document/detail/zh/canncommercial/82RC1/API/aolapi/context/aclnnDivMod&aclnnInplaceDivMod.md
+    DECLARE_ACL_BINARY_OPS_FUNC(RemainderTensorTensor)
+
+    // Remainder has TT, ST, TS , inplace version, aclnnRemainderTensorScalar&aclnnInplaceRemainderTensorScalar
+    // TODO: Outpout with 2 or more output like `divmod`, but aclnnop has no such op
+    aclError aclop_Divmod(const std::vector<const aclTensor*> ins, const std::vector<aclTensor*> outs,
+        const std::vector<const aclScalar*> args, const KargsType& kargs, aclrtStream stream) {
+        const aclTensor* self = ins[0];
+        int mode = 2;
+        // 0-对应None：默认不执行舍入。
+        // 1-对应trunc：将除法的小数部分舍入为零。
+        // 2-对应floor：向下舍入除法的结果。
+        auto ret = aclIrregularOpRun(aclnnDivModGetWorkspaceSize, aclnnDivMod, stream, false,
+            self, ins[0], mode, outs[0]);
+        return aclIrregularOpRun(aclnnRemainderTensorTensorGetWorkspaceSize, aclnnRemainderTensorTensor, stream, false,
+            self, ins[0], outs[1]);
+    }
 
     DECLARE_ACL_BINARY_OP(Maximum)
     DECLARE_ACL_BINARY_OP(Minimum)
@@ -268,6 +283,12 @@ extern "C" {
         uint8_t math_type = 0; // 0 means keeping dtype precision KEEP_DTYPE
         return aclBinaryOpRun(self, other, out,
             aclnnMatmulGetWorkspaceSize, aclnnMatmul, stream, false, math_type); 
+    }
+
+    // only bfloat, float32, float16 are supported
+    aclError aclop_Dot(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream) {
+        return aclBinaryOpRun(self, other, out,
+            aclnnDotGetWorkspaceSize, aclnnDot, stream, false); 
     }
 
     // DECLARE_ACL_REDUCTION_OP(Any)
