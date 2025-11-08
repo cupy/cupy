@@ -26,7 +26,7 @@ from cupy._core cimport _routines_manipulation as _manipulation
 from cupy._core cimport _routines_math as _math # use only multiply
 from cupy.xpu cimport device
 from backends.backend.api cimport runtime
-
+from backends.ascend.api.acl_utils cimport launch_general_func
 
 cdef extern from '../../../backends/cupy_complex.h':
     ctypedef struct cuComplex 'cuComplex':
@@ -97,9 +97,103 @@ cpdef compute_type_to_str(compute_type):
     else:
         return compute_type
 
-cdef _ascend_matmul(_ndarray_base a, _ndarray_base b, _ndarray_base out=None):
-    # TODO launch_acl_func("ascend_matmul")
-    pass
+cdef _ndarray_base _ascend_dot(_ndarray_base a, _ndarray_base b, _ndarray_base out):
+    launch_general_func("ascend_dot", [a, b], [out], None, None, 0)
+    return out
+
+cpdef _ndarray_base dot(_ndarray_base a, _ndarray_base b, _ndarray_base out=None):
+    # share all the code with cupy' orignal version
+    cdef Py_ssize_t a_ndim, b_ndim, a_axis, b_axis, n, m, k
+    cdef bint input_a_is_vec, input_b_is_vec
+    cdef shape_t ret_shape, shape
+
+    a_ndim = a._shape.size()
+    b_ndim = b._shape.size()
+
+    if out is not None:
+        if numpy.result_type(a.dtype, b.dtype) != out.dtype:
+            raise ValueError('Not supported dtype combination.')
+        if not out._c_contiguous:
+            raise ValueError('Output array must be C-contiguous')
+
+    if a_ndim == 0 or b_ndim == 0:
+        return _math._multiply(a, b, out=out)
+
+    input_a_is_vec = a_ndim == 1
+    input_b_is_vec = b_ndim == 1
+    if input_a_is_vec:
+        shape.clear()
+        shape.push_back(1)
+        shape.push_back(a.size)
+        a = _manipulation._reshape(a, shape)
+        a_ndim = 2
+    if input_b_is_vec:
+        shape.clear()
+        shape.push_back(b.size)
+        shape.push_back(1)
+        b = _manipulation._reshape(b, shape)
+        b_ndim = 2
+
+    a_axis = a_ndim - 1
+    b_axis = b_ndim - 2
+
+    if a._shape[a_axis] != b._shape[b_axis]:
+        raise ValueError('Axis dimension mismatch')
+
+    # TODO: ASCEND
+    #if a_axis:
+    #    a = _manipulation.rollaxis(a, a_axis, 0)
+    #if b_axis:
+    #    b = _manipulation.rollaxis(b, b_axis, 0)
+
+    k = a._shape[0]
+    if k != 0:
+        m = b.size // k
+        n = a.size // k
+    else:
+        # When k==0, the function must return a matrix filled with zero
+        # like NumPy.
+        m = 0
+        n = 0
+
+    if not input_a_is_vec:
+        ret_shape.insert(ret_shape.end(), a._shape.begin() + 1, a._shape.end())
+    if not input_b_is_vec:
+        ret_shape.insert(ret_shape.end(), b._shape.begin() + 1, b._shape.end())
+    if out is not None:
+        # TODO(kataoka): Make the condition strict
+        if k != 0 and out.size != n * m:
+            raise ValueError('Output array has an invalid size')
+
+    return tensordot_core(a, b, out, n, m, k, ret_shape)
+
+cpdef _ndarray_base tensordot_core(
+        _ndarray_base a, _ndarray_base b, _ndarray_base out, Py_ssize_t n,
+        Py_ssize_t m, Py_ssize_t k, const shape_t& ret_shape):
+    # out, if specified, must be C-contiguous and have correct shape.
+    cdef shape_t shape
+    #cdef Py_ssize_t transa, transb, lda, ldb
+    #cdef intptr_t handle
+    cdef _ndarray_base copy_to_out = None
+    cdef str dtype = a.dtype.char
+    cdef int compute_capability = int(device.get_compute_capability())
+    if dtype != b.dtype.char:
+        dtype = numpy.promote_types(dtype, b.dtype).char
+    if not a.size or not b.size:
+        if out is None:
+            out = _ndarray_init(cupy.ndarray, ret_shape, dtype, None)
+        out.fill(0)
+        return out
+
+    if out is not None:
+        assert out.flags.c_contiguous and out.dtype == dtype
+    
+    launch_general_func("ascend_dot", [a, b], [out], None, None, 0)
+    return out
+
+cdef _ndarray_base _ascend_matmul(_ndarray_base a, _ndarray_base b, _ndarray_base out):
+
+    return _ascend_dot(a, b, out)
 
 cpdef _ndarray_base matmul(
         _ndarray_base a, _ndarray_base b, _ndarray_base out=None):
@@ -136,8 +230,8 @@ cpdef _ndarray_base matmul(
         raise ValueError('Scalar operands are not allowed, use \'*\' instead')
 
     ndim = max(orig_a_ndim, orig_b_ndim)
-    if ndim <= 2:
-        IF CUPY_CANN_VERSION <= 0:
+    IF CUPY_CANN_VERSION <= 0:
+        if ndim <= 2:
             if out is None:
                 return dot(a, b, out)
             ret_dtype = numpy.promote_types(a.dtype, b.dtype)
@@ -147,9 +241,8 @@ cpdef _ndarray_base matmul(
             dot(a, b, c)
             elementwise_copy(c, out)
             return out
-        ELSE:
-            out = _ascend_matmul(a, b, out)
-            return out
+    ELSE:
+        pass # TODO. ascend_dot is not exported
 
     orig_a = a
     orig_b = b
@@ -280,8 +373,6 @@ cpdef _ndarray_base matmul(
     #cdef int cuda_dtype = to_cuda_dtype(dtype)
     #cdef int algo = cublas.CUBLAS_GEMM_DEFAULT
 
-    one = numpy.array(1, dtype=dtype)
-    zero = numpy.array(0, dtype=dtype)
     if not use_broadcast:
         if dtype == numpy.float32:
             out = _ascend_matmul(a, b, out)

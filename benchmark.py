@@ -105,7 +105,7 @@ def benchmark_mat_op(np_func, cp_func, np_mat_a, np_mat_b, cp_mat_a, cp_mat_b,
     np_times = []
     for _ in range(repeating):
         start = time.perf_counter()
-        _ = np_func(*np_args)
+        cpu_result = np_func(*np_args)
         end = time.perf_counter()
         np_times.append(end - start)
     np_avg = np.mean(np_times)
@@ -115,7 +115,7 @@ def benchmark_mat_op(np_func, cp_func, np_mat_a, np_mat_b, cp_mat_a, cp_mat_b,
     if not use_async:
         for _ in range(repeating):
             start = time.perf_counter()
-            _ = cp_func(*cp_args)
+            xpu_result = cp_func(*cp_args)
             xpu.Stream.null.synchronize()
             end = time.perf_counter()
             cp_times.append(end - start)
@@ -124,7 +124,7 @@ def benchmark_mat_op(np_func, cp_func, np_mat_a, np_mat_b, cp_mat_a, cp_mat_b,
         for _ in range(repeating):
             start = time.perf_counter()
             with stream:
-                _ = cp_func(*cp_args)
+                xpu_result = cp_func(*cp_args)
             stream.synchronize()
             end = time.perf_counter()
             cp_times.append(end - start)
@@ -133,6 +133,8 @@ def benchmark_mat_op(np_func, cp_func, np_mat_a, np_mat_b, cp_mat_a, cp_mat_b,
     # 计算加速比
     speedup_ratio = np_avg / cp_avg if cp_avg > 0 else 0
     
+    print(f"CPU result: ", cpu_result)
+    print(f"XPU result: ", xpu_result)
     print(f"NumPy 平均时间: {np_avg:.6f} 秒")
     print(f"CuPy (同步) 平均时间: {cp_avg:.6f} 秒")
     print(f"加速比: {speedup_ratio:.2f}x")

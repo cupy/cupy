@@ -6,12 +6,11 @@ cpdef compute_type_to_str(compute_type)
 
 cpdef get_compute_type(dtype)
 
-IF CUPY_CANN_VERSION <= 0:
-    cpdef _ndarray_base dot(_ndarray_base a, _ndarray_base b, _ndarray_base out=*)
+cpdef _ndarray_base dot(_ndarray_base a, _ndarray_base b, _ndarray_base out=*)
 
-    cpdef _ndarray_base tensordot_core(
-        _ndarray_base a, _ndarray_base b, _ndarray_base out, Py_ssize_t n,
-        Py_ssize_t m, Py_ssize_t k, const shape_t& ret_shape)
+cpdef _ndarray_base tensordot_core(
+    _ndarray_base a, _ndarray_base b, _ndarray_base out, Py_ssize_t n,
+    Py_ssize_t m, Py_ssize_t k, const shape_t& ret_shape)
 
 cpdef _ndarray_base matmul(
     _ndarray_base a, _ndarray_base b, _ndarray_base out=*)

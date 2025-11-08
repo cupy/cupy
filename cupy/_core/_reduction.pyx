@@ -42,6 +42,12 @@ from cupy import _util
 IF CUPY_CANN_VERSION > 0:
     from backends.ascend.api.acl_utils cimport launch_reduction_op
 
+cdef inline size_t _get_stream(stream) except *:
+    if stream is None:
+        return stream_module.get_current_stream_ptr()
+    else:
+        return stream.ptr
+
 IF CUPY_CANN_VERSION <= 0:
     cpdef str _create_reduction_function_code(
             name, block_size, reduce_type, params, arginfos, identity,
@@ -489,8 +495,10 @@ cdef class _AbstractReductionKernel:
                 out_shape = _reduce_dims(out_args, self.out_params, out_shape)
 
             params = self._params
+            cdef s = _get_stream(stream)
+            print(f"ASCEND: DEBUG {name}, axis = {axis}, {keepdims}, {self._params}")
             # TODO: kargs
-            launch_reduction_op(self.name, in_args, [ret], axis, keepdims, None, stream)
+            launch_reduction_op(self.name, in_args, [ret], axis, keepdims, None, s)
 
     def _get_optimized_params(
             self, optimize_config, in_args, out_args, in_shape, out_shape,
