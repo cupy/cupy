@@ -172,11 +172,3 @@ cpdef _check_peer_access(_ndarray_base arr, int device_id)
 cdef tuple _preprocess_args(int dev_id, args, bint use_c_scalar)
 
 cdef shape_t _reduce_dims(list args, tuple params, const shape_t& shape)
-
-# TODO: ASCEND temp solution, mimic this class with create_ufunc, **kwargs
-#cpdef ElementwiseKernel(in_params, out_params, operation,
-#                 name=*, reduce_dims=*, preamble=*,
-#                 no_return=*, return_tuple=*, doc=*)
-
-#cpdef create_reduction_func(
-#    name, ops, routine=*, identity=*, preamble=*, sort_reduce_axis=*)
