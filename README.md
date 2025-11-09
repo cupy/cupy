@@ -1,11 +1,20 @@
 # numpy for Ascend: fork from Cupy
 
+ascend-numpy's architecture from top to bottom
+
+1. numpy api in Python lang
+2. cupy._core in Cython lang
+3. cupy.xpu: high level backend api in cython lange
+4. cupy.backends.backend: abstraction of xpu low level backend api in c lang
+5. cupy.backends.ascend: impl in cython/c++
+
 ## status
 
 ### progress
-Oct23: benchmark.py 经过xpu重构后, NPU测试可以运行
+Oct 23: benchmark.py 经过xpu重构后, NPU测试可以运行
 Nov 08: reduction op such as `sum()` is working, most of common op ACLOP supported has been added into numpy-ascend
-
+TODO:  creation/manipulation/indexing ops
+UnitTest: `pytest tests/cupy_tests/math_tests/test_arithmetic.py `
 ### limitation
 
 #### ascend backends
@@ -17,8 +26,9 @@ Nov 08: reduction op such as `sum()` is working, most of common op ACLOP support
 1. `add` (all algorith op) support double vector, int64 vector,  but it is slow, probably done by AICPU
 2. matrix: `dot/matmul` support only float32, float16, bfloat
 3. `bfloat` is not standard numpy type, so will not be supported
-4. `numpy.int64`  long 'l' on POSIX OS, 'q' on Windows?
+4. `numpy.int64` is long 'l' on POSIX OS, 'q' on Windows?
 5. `cupy_scalar_to_acl_scalar(_cupy_scalar s)`
+5. cupy scalar operands must be cupy._scalar type
 
 #### shape
 
@@ -29,7 +39,7 @@ currently, only support tensor op tensor, some op support tensor op scalar (aclS
 1. `power(scalar, tensor)` not supported, need some refactoring, Operand as uniion of aclTensor* and aclScalar*
 2. inplace operator like `add` is working, while not sure it use InplaceOp or ASCEND nonIplanceOp
    inplace and nonInplace may have some diff, the save memory addr self and out  passed to op may lead to some error
-3. creation/manipulation/indexing, not tested, 
+3. creation/manipulation/indexing, not registered, not tested, 
 
 ## 1. 开发环境
 没有NPU开发: 需要注释掉 runtime.pyx `initialize_backend(0)` 否则不能`import cupy`

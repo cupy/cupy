@@ -11,6 +11,9 @@ from cupy import _version
 # module alias to keep compatible for cupy.cuda code
 from cupy import backends as cupy_backends
 _sys.modules["cupy_backends"] = cupy_backends
+_sys.modules.pop('cupy_backends.cuda', None)
+from cupy.backends import backend as xpu_backend
+_sys.modules["cupy_backends.cuda"] = xpu_backend
 
 from cupy.backends.backend.api.runtime import is_ascend
 

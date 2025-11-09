@@ -12,7 +12,7 @@ import cupy
 import cupy_backends
 
 
-is_hip = cupy_backends.cuda.api.runtime.is_hip
+is_hip = cupy.backends.backend.api.runtime.is_hip
 
 
 def _eval_or_error(func, errors):
