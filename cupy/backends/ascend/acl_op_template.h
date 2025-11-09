@@ -120,7 +120,7 @@ ret aclnnAddGetWorkspaceSize(selfTensor, otherTensor, alpha, outTensor, &workspa
 template<typename WsFunc, typename Operand, typename... Args>
 aclError aclBinaryOpRun(
     const aclTensor* selfTensor,
-    Operand otherTensor, // operand can be aclScalar* or aclTensor*
+    Operand other, // operand can be aclScalar* or aclTensor*
     aclTensor* outTensor,
     WsFunc wsfunc, AclnnKernelFunc kfunc,
     aclrtStream stream, bool sync,
@@ -128,13 +128,23 @@ aclError aclBinaryOpRun(
 {
     uint64_t workspaceSize = 0;
     aclOpExecutor* executor = nullptr;
+    aclError ret = 0;
 
-    // 第一段: 获取所需Workspace大小
-    aclError ret = wsfunc(selfTensor, otherTensor, outTensor, std::forward<Args>(args)...,
-        &workspaceSize, &executor);
+    const aclScalar* alpha = nullptr;
+    if constexpr (std::is_scalar_v<Operand>  && ! std::is_pointer_v<Operand>) {
+        float alphaValue = other;
+        alpha = aclCreateScalar(&alphaValue, ACL_FLOAT);
+        // 第一段: 获取所需Workspace大小
+        ret = wsfunc(selfTensor, alpha, outTensor, std::forward<Args>(args)...,
+            &workspaceSize, &executor);
+    } else {
+        ret = wsfunc(selfTensor, other, outTensor, std::forward<Args>(args)...,
+            &workspaceSize, &executor);
+    }
+
     // e.g. ret = aclnnMatmulGetWorkspaceSize(a_tensor, b_tensor, out_tensor, math_type, &workspace_size, &executor);
     if (ret != ACL_SUCCESS) {
-        std::cout << "Failed to allocate workspace";
+        std::cout << "Failed to allocate workspace \n";
         return ACL_ERROR_RT_FAILURE;
     }
 
@@ -146,7 +156,7 @@ aclError aclBinaryOpRun(
     // 第二段: 在指定的Stream上执行算子, this is fixed func type
     ret = kfunc(workspaceAddr, workspaceSize, executor, stream);
     if (ret != ACL_SUCCESS) {
-        std::cout << "Failed to run the kernel";
+        std::cout << "Failed to run the kernel\n";
         return ACL_ERROR_RT_FAILURE;
     }
 
@@ -173,7 +183,9 @@ aclError aclInplaceBinaryOpRun(
     // 第一段: 获取所需Workspace大小
     aclError ret = wsfunc(selfTensor, otherTensor, std::forward<Args>(args)..., &workspaceSize, &executor);
     // e.g.
-    if (ret != ACL_SUCCESS) { /* 错误处理 */ }
+    if (ret != ACL_SUCCESS) {
+        std::cout << "Failed to allocate workspace \n";
+    }
 
     void* workspaceAddr = nullptr;
     if (workspaceSize > 0) {
@@ -183,7 +195,7 @@ aclError aclInplaceBinaryOpRun(
     // 第二段: 在指定的Stream上执行算子, this is fixed func type
     ret = kfunc(workspaceAddr, workspaceSize, executor, stream);
     if (ret != ACL_SUCCESS) {
-        std::cout << "Failed to run the kernel";
+        std::cout << "Failed to run the kernel\n";
         return ACL_ERROR_RT_FAILURE;
     }
 
@@ -218,7 +230,9 @@ aclError aclTernaryOpRun(
     aclError ret = wsfunc(selfTensor, otherTensor, alpha, outTensor, std::forward<Args>(args)...,
         &workspaceSize, &executor);
     //ret = aclnnAddGetWorkspaceSize(selfTensor, otherTensor, alpha, outTensor, &workspaceSize, &executor);
-    if (ret != ACL_SUCCESS) { /* 错误处理 */ }
+    if (ret != ACL_SUCCESS) {
+        std::cout << "Failed to allocate workspace \n";
+    }
 
     void* workspaceAddr = nullptr;
     if (workspaceSize > 0) {
@@ -228,7 +242,7 @@ aclError aclTernaryOpRun(
     // 第二段: 在指定的Stream上执行算子, this is fixed func type
     ret = kfunc(workspaceAddr, workspaceSize, executor, stream);
     if (ret != ACL_SUCCESS) {
-        std::cout << "Failed to run the kernel";
+        std::cout << "Failed to run the kernel\n";
         return ACL_ERROR_RT_FAILURE;
     }
 
@@ -272,7 +286,7 @@ aclError aclTernaryInplaceOpRun(
     // 第二段: 在指定的Stream上执行算子, this is fixed func type
     ret = kfunc(workspaceAddr, workspaceSize, executor, stream);
     if (ret != ACL_SUCCESS) {
-        std::cout << "Failed to run the kernel";
+        std::cout << "Failed to run the kernel\n";
         return ACL_ERROR_RT_FAILURE;
     }
 
@@ -318,7 +332,7 @@ aclError aclUnaryOpRun(
     // 第二段: 在指定的Stream上执行算子, this is fixed func type
     ret = kfunc(workspaceAddr, workspaceSize, executor, stream);
     if (ret != ACL_SUCCESS) {
-        std::cout << "Failed to run the kernel";
+        std::cout << "Failed to run the kernel\n";
         return ACL_ERROR_RT_FAILURE;
     }
 

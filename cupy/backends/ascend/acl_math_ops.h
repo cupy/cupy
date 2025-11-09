@@ -1,6 +1,8 @@
 #ifndef CUPY_ACL_MATH_HEADER
 #define CUPY_ACL_MATH_HEADER
 
+#include <cmath>
+
 #include "aclnnop/aclnn_cos.h"
 #include "aclnnop/aclnn_cosh.h"
 #include "aclnnop/aclnn_sin.h"
@@ -14,10 +16,11 @@
 #include "aclnnop/aclnn_atan.h"
 #include "aclnnop/aclnn_atanh.h"
 #include "aclnnop/aclnn_atan2.h"
-
+// ldexp Returns x1 * 2**x2, element-wise.
 #include "aclnnop/aclnn_erf.h"
 #include "aclnnop/aclnn_erfc.h"
 #include "aclnnop/aclnn_erfinv.h"
+#include "aclnnop/aclnn_sinc.h"
 
 #include "aclnnop/aclnn_exp.h"
 #include <aclnnop/aclnn_expm1.h>
@@ -29,25 +32,38 @@
 #include <aclnnop/aclnn_logaddexp.h>
 #include <aclnnop/aclnn_logaddexp2.h>
 #include "aclnnop/aclnn_sqrt.h"
-//#include "aclnnop/aclnn_square.h" // np.pow with scalar 2
+// deg2rad, rad2deg, square is impl by tensor mul scalar
+// radians, degrees are alias to deg2rad, rad2deg
 #include "aclnnop/aclnn_pow.h"  // np.pow
+#include "aclnnop/aclnn_pow_tensor_tensor.h"
 
-#include "aclnnop/aclnn_abs.h"
+#include "aclnnop/aclnn_abs.h"  // numpy has 3 ops: abs, fabs, absolute
 #include "aclnnop/aclnn_neg.h"
+//#include "aclnnop/aclnn_pos.h" // no such op
 #include "aclnnop/aclnn_ceil.h"
 #include "aclnnop/aclnn_floor.h"
-#include "aclnnop/aclnn_clamp.h"
+#include "aclnnop/aclnn_clamp.h" // clip? 
 #include "aclnnop/aclnn_signbit.h"
 #include "aclnnop/aclnn_reciprocal.h"
-// sign, inverse
+// TODO: 
+#include "aclnnop/aclnn_heaviside.h"
+#include "aclnnop/aclnn_sign.h"
+#include "aclnnop/aclnn_inverse.h"
 
 // equal scalar, tensor, vector/list is_nan (no such)
 #include "aclnnop/aclnn_is_inf.h"
 #include "aclnnop/aclnn_isfinite.h"
 #include "aclnnop/aclnn_isposinf.h"
 #include "aclnnop/aclnn_isneginf.h"
-// is_real
 #include "aclnnop/aclnn_isclose.h"
+
+// TODO: complex related op
+// complex, imag, real, conj, conjugate, angle, absolute(can deal with complex)
+#include "aclnnop/aclnn_complex.h"
+//#include "aclnnop/aclnn_angle.h"
+// #include "aclnnop/aclnn_conjugate.h"
+#include "aclnnop/aclnn_real.h"
+//#include "aclnnop/aclnn_imaginary.h"
 
 // ge, eq, le, gt, lt, 
 #include <aclnnop/aclnn_logical_and.h>
@@ -87,6 +103,7 @@
 #include "aclnnop/aclnn_mul.h"
 #include "aclnnop/aclnn_div.h"
 #include "aclnnop/aclnn_gcd.h"
+//#include "aclnnop/aclnn_lcm.h" // no such
 #include "aclnnop/aclnn_remainder.h" // tensor scalar 4 combinations
 #include "aclnnop/aclnn_fmod_scalar.h"
 #include "aclnnop/aclnn_fmod_tensor.h" 
@@ -97,7 +114,7 @@
 // tertiary op, not numpy op
 //#include "aclnnop/aclnn_addcmul.h" // out = self + value * tensor1 * tensor2
 
-// foreach? batch, not numpy op
+// foreach tensor in aclTensorList, there is no such numpy op
 #include "aclnnop/aclnn_foreach_add_scalar.h"
 #include "aclnnop/aclnn_foreach_sub_scalar.h"
 #include "aclnnop/aclnn_foreach_mul_scalar.h"  // _v2?
@@ -109,21 +126,23 @@
 #include "aclnnop/aclnn_prod.h"
 #include "aclnnop/aclnn_max.h"  // nan?
 #include "aclnnop/aclnn_min.h"
-#include "aclnnop/aclnn_einsum.h" // todo
+#include "aclnnop/aclnn_einsum.h" // TODO
 #include "aclnnop/aclnn_reduce_nansum.h"
-#include <aclnnop/aclnn_nan_to_num.h>
+#include <aclnnop/aclnn_nan_to_num.h> // TODO, numpy has more control arg
 
 #include "aclnnop/aclnn_argmax.h"  // return the index instead of value
 #include "aclnnop/aclnn_argmin.h"
 // amin, amax
 
-// statistics
+// statistics, TODO: keyword args
 #include "aclnnop/aclnn_mean.h"
 #include "aclnnop/aclnn_std.h"
 #include "aclnnop/aclnn_var.h"
-// no count() op
-// cbrt
-// convolve,  mode='fill'
+#include "aclnnop/aclnn_bincount.h"
+#include "aclnnop/aclnn_median.h"
+#include "aclnnop/aclnn_aminmax.h" // ptp :  aminmax
+// missing quantile, percentile
+// include "aclnnop/aclnn_hist.h"
 
 // linalg matrix op: qr, tril triu, cross, trace, norm, det
 #include "aclnnop/aclnn_matmul.h"
@@ -185,7 +204,7 @@ extern "C" {
     DECLARE_ACL_BINARY_OP(LeTensor)
     DECLARE_ACL_BINARY_SCALAR_OP(LeScalar)
 
-    DECLARE_ACL_BINARY_OP(Equal) // no inplace version
+    DECLARE_ACL_BINARY_OP(Equal) // no inplace version, no scalar version
     DECLARE_ACL_BINARY_SCALAR_OP(NeScalar)
     DECLARE_ACL_BINARY_OP(NeTensor)
     // IsClose() has extra args: double rtol, double atol, bool equal_nan
@@ -205,6 +224,12 @@ extern "C" {
     DECLARE_ACL_UNARY_OPS_FUNC(Cosh)
     DECLARE_ACL_UNARY_OPS_FUNC(Sinh)
     DECLARE_ACL_UNARY_OPS_FUNC(Tanh)
+
+    DECLARE_ACL_BINARY_OP(Atan2)  // arctan(x1/x2)
+    DECLARE_ACL_UNARY_OPS_FUNC(Sinc)
+    DECLARE_ACL_UNARY_OPS_FUNC(Erf)
+    DECLARE_ACL_UNARY_OPS_FUNC(Erfc)
+    DECLARE_ACL_UNARY_OPS_FUNC(Erfinv)
 
     // ascend ADD is ternary op with one extra scalar coeff, so can not use the macro to declare
     aclError aclop_Add(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream) {
@@ -231,7 +256,24 @@ extern "C" {
     DECLARE_ACL_BINARY_OPS_FUNC(Div)
     DECLARE_ACL_BINARY_OPS_FUNC(FloorDivide) // python  `//` int div op, output int
     DECLARE_ACL_BINARY_OPS_FUNC(FmodTensor)  // for float and ints
-    DECLARE_ACL_BINARY_OPS_FUNC(RemainderTensorTensor) // 
+    DECLARE_ACL_BINARY_OPS_FUNC(RemainderTensorTensor) // remainder has 4 version
+    DECLARE_ACL_BINARY_OP(Gcd)
+
+    // Tensor op Scalar
+    DECLARE_ACL_BINARY_SCALAR_OP(Muls)
+    DECLARE_ACL_BINARY_SCALAR_OP(Divs)
+    //DECLARE_ACL_BINARY_SCALAR_OP(Adds)
+    //DECLARE_ACL_BINARY_SCALAR_OP(Subs)
+    aclError aclop_Adds(const aclTensor* self, const aclScalar* other, aclTensor* out, aclrtStream stream) {
+        float alpha = 1.0f;
+        return aclTernaryOpRun(self, other, alpha, out,
+        aclnnAddsGetWorkspaceSize, aclnnAdds, stream, false);
+    }
+    aclError aclop_Subs(const aclTensor* self, const aclScalar* other, aclTensor* out, aclrtStream stream) {
+        float alpha = 1.0f;
+        return aclTernaryOpRun(self, other, alpha, out,
+        aclnnSubsGetWorkspaceSize, aclnnSubs, stream, false);
+    }
 
     // Remainder has TT, ST, TS , inplace version, aclnnRemainderTensorScalar&aclnnInplaceRemainderTensorScalar
     // TODO: Outpout with 2 or more output like `divmod`, but aclnnop has no such op
@@ -244,8 +286,9 @@ extern "C" {
         // 2-对应floor：向下舍入除法的结果。
         auto ret = aclIrregularOpRun(aclnnDivModGetWorkspaceSize, aclnnDivMod, stream, false,
             self, ins[0], mode, outs[0]);
-        return aclIrregularOpRun(aclnnRemainderTensorTensorGetWorkspaceSize, aclnnRemainderTensorTensor, stream, false,
+        ret = aclIrregularOpRun(aclnnRemainderTensorTensorGetWorkspaceSize, aclnnRemainderTensorTensor, stream, false,
             self, ins[0], outs[1]);
+        return ret;
     }
 
     DECLARE_ACL_BINARY_OP(Maximum)
@@ -255,16 +298,42 @@ extern "C" {
     DECLARE_ACL_UNARY_OPS_FUNC(Reciprocal)
     DECLARE_ACL_UNARY_OPS_FUNC(Neg)
 
+        aclError aclop_Abs(const aclTensor* self, aclTensor* out, aclrtStream stream) {
+        return aclUnaryOpRun(self, out,
+        aclnnAbsGetWorkspaceSize, aclnnAbs, stream, false);
+    }
+
+    aclError aclop_Square(const aclTensor* self, aclTensor* out, aclrtStream stream) {
+        float power = 2.0f;
+        return aclBinaryOpRun(self, power, out,
+            aclnnPowTensorScalarGetWorkspaceSize, aclnnPowTensorScalar, stream, false); 
+    }
+    aclError aclop_Rsqrt(const aclTensor* self, aclTensor* out, aclrtStream stream) {
+        float power = -0.5f;
+        return aclBinaryOpRun(self, power, out,
+            aclnnPowTensorScalarGetWorkspaceSize, aclnnPowTensorScalar, stream, false); 
+    }
+    aclError aclop_Deg2rad(const aclTensor* self, aclTensor* out, aclrtStream stream) {
+        double ratio = M_PI / 180.0;
+        return aclBinaryOpRun(self, ratio, out,
+            aclnnMulsGetWorkspaceSize, aclnnMuls, stream, false); 
+    }
+    aclError aclop_Rad2deg(const aclTensor* self, aclTensor* out, aclrtStream stream) {
+        double ratio = 180.0 / M_PI;
+        return aclBinaryOpRun(self, ratio, out,
+            aclnnMulsGetWorkspaceSize, aclnnMuls, stream, false); 
+    }
+
     //DECLARE_ACL_UNARY_OPS_FUNC(Signbit)  // no inplace version
     aclError aclop_Signbit(const aclTensor* self, aclTensor* out, aclrtStream stream) {
         return aclUnaryOpRun(self, out,
         aclnnSignbitGetWorkspaceSize, aclnnSignbit, stream, false);
     }
     //DECLARE_ACL_UNARY_OPS_FUNC(Abs) // no inplace version
-    aclError aclop_Abs(const aclTensor* self, aclTensor* out, aclrtStream stream) {
-        return aclUnaryOpRun(self, out,
-        aclnnAbsGetWorkspaceSize, aclnnAbs, stream, false);
-    }
+    // aclError aclop_Abs(const aclTensor* self, aclTensor* out, aclrtStream stream) {
+    //     return aclUnaryOpRun(self, out,
+    //     aclnnAbsGetWorkspaceSize, aclnnAbs, stream, false);
+    // }
     DECLARE_ACL_UNARY_OPS_FUNC(Floor)
     DECLARE_ACL_UNARY_OPS_FUNC(Ceil)
 
@@ -276,20 +345,20 @@ extern "C" {
     DECLARE_ACL_UNARY_OPS_FUNC(Log1p)
 
     // Power has 3 version, Remainder has 4 version
-    // DECLARE_ACL_BINARY_OPS_FUNC(PowerTensorTensor)
-    // DECLARE_ACL_BINARY_SCALAR_OPS_FUNC(PowerTensorScalar)
+    DECLARE_ACL_BINARY_OP(PowTensorTensor)
+    DECLARE_ACL_BINARY_SCALAR_OPS_FUNC(PowTensorScalar)
 
-    aclError aclop_MatMul(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream) {
+    aclError aclop_Matmul(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream) {
         uint8_t math_type = 0; // 0 means keeping dtype precision KEEP_DTYPE
         return aclBinaryOpRun(self, other, out,
             aclnnMatmulGetWorkspaceSize, aclnnMatmul, stream, false, math_type); 
     }
-
     // only bfloat, float32, float16 are supported
-    aclError aclop_Dot(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream) {
-        return aclBinaryOpRun(self, other, out,
-            aclnnDotGetWorkspaceSize, aclnnDot, stream, false); 
-    }
+    DECLARE_ACL_BINARY_OP(Dot)
+    // aclError aclop_Dot(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream) {
+    //     return aclBinaryOpRun(self, other, out,
+    //         aclnnDotGetWorkspaceSize, aclnnDot, stream, false); 
+    // }
 
     // DECLARE_ACL_REDUCTION_OP(Any)
     aclError aclop_Any(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out, aclrtStream stream) {

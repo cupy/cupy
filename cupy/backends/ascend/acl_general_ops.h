@@ -1,9 +1,6 @@
 #ifndef CUPY_ACL_GENERAL_OPS_HEADER
 #define CUPY_ACL_GENERAL_OPS_HEADER
 
-#include <aclnnop/aclnn_round.h>
-#include <aclnnop/aclnn_clamp.h>
-
 // creation op:  with dim info
 // arange, eye, diag, linspace, ones, zeros, 
 #include "aclnnop/aclnn_arange.h"
@@ -11,12 +8,18 @@
 #include "aclnnop/aclnn_diag.h"  // UnaryScalarOp   not sure TODO
 #include "aclnnop/aclnn_trace.h" // UnaryOp
 
-// polar, real, conj, imag, complex
+// math ops, but it is irregular ops
+#include <aclnnop/aclnn_round.h>
+#include <aclnnop/aclnn_clamp.h>
 
-// sinc, erfc, erf
+// convolve,  mode='fill'
+#include "aclnnop/aclnn_fill_scalar.h"
+#include "aclnnop/aclnn_fill_tensor.h"
+
 #include "aclnnop/aclnn_div.h"
 
 // indexing: argsort, unique, unique2, sort
+// no count() , unique(), unique2() op
 #include "aclnnop/aclnn_index.h"
 
 // normal, uniform distributions:
@@ -36,6 +39,7 @@
 #include "aclnnop/aclnn_flatten.h"
 #include "aclnnop/aclnn_permute.h"
 #include "aclnnop/aclnn_copy.h"
+
 // manipulation: transpose, reshape, cast, pad continguous in aclnn_kernels/
 #include "aclnn_kernels/transpose.h"
 //#include "aclnn_kernels/cast.h"  // TODO: aclnn/opdev/platform.h:23:10: fatal error: platform/platform_info.h: No such file or directory
@@ -113,8 +117,8 @@
         const aclTensor* self = ins[0];
         aclTensor* out = outs[0];
         int decimals = ToScalarArg<int>(args[0]);
-        return aclBinaryOpRun(self, decimals, out,
-            aclnnRoundDecimalsGetWorkspaceSize, aclnnRoundDecimals, stream, false);
+        return aclIrregularOpRun(aclnnRoundDecimalsGetWorkspaceSize, aclnnRoundDecimals, stream, false,
+            self, decimals, out);
     }
     // numpy.clip -> aclnnClamp
     aclError aclop_Clamp(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,

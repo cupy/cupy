@@ -10,6 +10,7 @@ from cupy._core._kernel import create_ufunc  # NOQA
 from cupy._core._kernel import ElementwiseKernel  # NOQA
 from cupy._core._kernel import ufunc  # NOQA
 from cupy._core._kernel import _get_warpsize  # NOQA
+from cupy._core._reduction import ReductionKernel  # NOQA
 
 from cupy.backends.backend.api import runtime
 if not runtime.is_ascend():
@@ -22,11 +23,12 @@ if not runtime.is_ascend():
     from cupy._core._gpu._accelerator import get_routine_accelerators  # NOQA
 
     from cupy._core._gpu import fusion  # NOQA
-    from cupy._core._gpu.raw import RawKernel  # NOQA
-    from cupy._core._gpu.raw import RawModule  # NOQA
-    from cupy._core._reduction import ReductionKernel  # NOQA
+    from cupy._core.raw import RawKernel  # NOQA
+    from cupy._core.raw import RawModule  # NOQA
 else:
     from cupy._ascend._core import fusion_stub as fusion
+    from cupy._core.raw import RawKernel  # NOQA
+    from cupy._core.raw import RawModule  # NOQA
     _fusion_thread_local = fusion
 
 from cupy._core._reduction import create_reduction_func  # NOQA

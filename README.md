@@ -11,11 +11,14 @@ ascend-numpy's architecture from top to bottom
 ## status
 
 ### progress
+Oct 12: MVP for add, cos, matmul, benchmark
 Oct 23: benchmark.py 经过xpu重构后, NPU测试可以运行
-Nov 08: reduction op such as `sum()` is working, most of common op ACLOP supported has been added into numpy-ascend
+Nov 08: reduction op such as `sum()` is working, 90% math ops ACLOP supported has been added into numpy-ascend
+        UnitTest: `pytest tests/cupy_tests/math_tests/test_arithmetic.py `
+
 TODO:  creation/manipulation/indexing ops
-UnitTest: `pytest tests/cupy_tests/math_tests/test_arithmetic.py `
-### limitation
+
+### TODO
 
 #### ascend backends
 
@@ -34,12 +37,34 @@ UnitTest: `pytest tests/cupy_tests/math_tests/test_arithmetic.py `
 
 1. `add` (all algorith op) , does not support shape dim > 1, while these can be done
 
-#### missing operators
+#### 一些说明
 currently, only support tensor op tensor, some op support tensor op scalar (aclScalar not python double/int)
-1. `power(scalar, tensor)` not supported, need some refactoring, Operand as uniion of aclTensor* and aclScalar*
+1. `power(scalar, tensor)` not supported, need some refactoring, Operand as union of aclTensor* and aclScalar*
 2. inplace operator like `add` is working, while not sure it use InplaceOp or ASCEND nonIplanceOp
    inplace and nonInplace may have some diff, the save memory addr self and out  passed to op may lead to some error
-3. creation/manipulation/indexing, not registered, not tested, 
+3. creation/manipulation/indexing, geneal_ops not registered, not tested
+8. masked tensor/ndarray
+5. scalar op scalar: numpy/cupy 是不是也不支持这样的操作? 
+
+#### 核心op支持情况
++ math ops: 未注册 clamp, einsum, cbrt, trunc,  round/around, convolve (?),
+   radians (deg2rad), degrees (rad2deg), deg2rad, rad2deg 自己实现. 
+   数值计算: gradient, interp, trapezoid, diff 缺失
+   missing: lcm, frexp, ldexp, fix, rint
+   math complex numpy ops, 缺少几个ops但是自己实现很简单
+
++ Logica/bitwise 算子基本都有:  
+  ACLOP has no numpy op: `_left_shift`, `_left_right`
+
++ statistics reduction ops: 
+   已有: median, var, mean, std,  bincount 主要是看nan怎么处理, 部分做了注册
+   缺失" average, quantile, histgram (?), percentile, vecter op实现难度应该不太大
+   ptp (Range of values (maximum - minimum) along an axis.) -> Aminmax
+
+#### similar ops 需要验证numpy行为是否一致
+1. fmin, nanmin, min, amin
+2. remainder, fmod, modf
+3. rint, round, around
 
 ## 1. 开发环境
 没有NPU开发: 需要注释掉 runtime.pyx `initialize_backend(0)` 否则不能`import cupy`
