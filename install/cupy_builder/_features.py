@@ -197,7 +197,7 @@ _ascend_files = [
     ('cupy._core._routines_linalg', ['cupy/_ascend/_core/_routines_linalg.pyx']),
     ('cupy._core._routines_logic', ['cupy/_core/_routines_logic.pyx']),
     ('cupy._core._reduction', ['cupy/_core/_reduction.pyx']),  # not easy job
-    #('cupy._core._routines_indexing', ['cupy/_core/_routines_indexing.pyx']), # not so difficult
+    ('cupy._core._routines_indexing', ['cupy/_core/_routines_indexing.pyx']), # not so difficult
     ('cupy._core._routines_statistics', ['cupy/_core/_routines_statistics.pyx']), # ascend partially support
     ('cupy._core.raw', ['cupy/_ascend/_core/raw_kernel_stub.pyx']),
     # =========== Future work ================

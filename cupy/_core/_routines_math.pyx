@@ -83,6 +83,10 @@ cdef _ndarray_base _ndarray_imag_setter(_ndarray_base self, value):
     else:
         raise TypeError('cupy.ndarray does not have imaginary part to set')
 
+cdef _ndarray_base scan(
+        _ndarray_base a, op, dtype=None, _ndarray_base out=None,
+        incomplete=False, chunk_size=512):
+    pass
 
 cdef _ndarray_base _ndarray_prod(
         _ndarray_base self, axis, dtype, out, keepdims):

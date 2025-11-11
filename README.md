@@ -48,22 +48,33 @@ currently, only support tensor op tensor, some op support tensor op scalar (aclS
 8. masked tensor/ndarray
 5. scalar op scalar: numpy/cupy 是不是也不支持这样的操作? 
 
-#### 核心op支持情况
-+ math ops: 未注册 clamp, einsum, cbrt, trunc,  round/around, convolve (?),
-   radians (deg2rad), degrees (rad2deg), deg2rad, rad2deg. lcm 自己实现. 
-   数值计算: gradient, interp, trapezoid, diff 缺失
-   missing: frexp, ldexp, fix, rint
-   math complex numpy ops, 缺少几个ops但是自己实现很简单
+### 核心op支持情况
+#### math ops: 
++ 未注册 clamp, einsum, cbrt, trunc,  round/around, convolve (?),
++ 自己实现: radians (deg2rad), degrees (rad2deg), deg2rad, rad2deg. lcm . 
++ missing 数值计算: gradient, interp, trapezoid, diff 缺失
++ missing: frexp, ldexp, fix, rint
++ complex numpy ops, angle, conj, real 缺少几个ops但是自己实现很简单
++ scan, clip
 
-+ Logica/bitwise 算子基本都有:  
-  ACLOP has no numpy op: `_left_shift`, `_left_right`
+#### indexing ops
+slicing ? give view
+`math.scan()` is a dummy/empty func
+aclop has `take, choose, put, slice`
 
-+ statistics reduction ops: 
+#### manipulation ops
+
+
+#### Logica/bitwise 算子基本都有:  
+ACLOP has no numpy op: `_left_shift`, `_left_right`
+
+#### statistics reduction ops: 
    已有: median, var, mean, std,  bincount 主要是看nan怎么处理, 部分做了注册
    缺失" average, quantile, histgram (?), percentile, vecter op实现难度应该不太大
    ptp (Range of values (maximum - minimum) along an axis.) -> Aminmax
 
-#### similar ops 需要验证numpy行为是否一致
+
+### similar ops 需要验证numpy行为是否一致
 1. fmin, nanmin, min, amin
 2. remainder, fmod, modf
 3. rint, round, around

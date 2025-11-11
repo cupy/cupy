@@ -22,9 +22,9 @@ cpdef enum scan_op:
     SCAN_SUM = 0
     SCAN_PROD = 1
 
-# TODO: ASCEND not yet impl
-#cdef _ndarray_base scan(_ndarray_base a, op, dtype=*, _ndarray_base out=*,
-#                        incomplete=*, chunk_size=*)
+# TODO: ASCEND not yet impl, make a stub
+cdef _ndarray_base scan(_ndarray_base a, op, dtype=*, _ndarray_base out=*,
+                        incomplete=*, chunk_size=*)
 
 cdef object _sum_auto_dtype
 cdef object _add

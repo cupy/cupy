@@ -33,7 +33,7 @@ from cupy._core._dtype cimport populate_format
 from cupy._core._kernel import ElementwiseKernel, create_ufunc # only fill_kernel use this
 
 from cupy._core cimport _routines_binary as _binary
-#from cupy._core cimport _routines_indexing as _indexing
+from cupy._core cimport _routines_indexing as _indexing
 from cupy._core cimport _routines_creation as _creation
 from cupy._core cimport _routines_linalg as _linalg
 from cupy._core cimport _routines_logic as _logic
@@ -876,33 +876,88 @@ cdef class _ndarray_base:
         """
         return _manipulation._ndarray_repeat(self, repeats, axis)
 
-    IF CUPY_CANN_VERSION <= 0: # TODO: indexing later
-        # -------------------------------------------------------------------------
-        # Item selection and manipulation
-        # -------------------------------------------------------------------------
-        cpdef _ndarray_base take(self, indices, axis=None, out=None):
-            """Returns an array of elements at given indices along the axis.
+    # -------------------------------------------------------------------------
+    # Item selection and manipulation
+    # -------------------------------------------------------------------------
+    cpdef _ndarray_base take(self, indices, axis=None, out=None):
+        """Returns an array of elements at given indices along the axis.
 
-            .. seealso::
-            :func:`cupy.take` for full documentation,
-            :meth:`numpy.ndarray.take`
+        .. seealso::
+        :func:`cupy.take` for full documentation,
+        :meth:`numpy.ndarray.take`
 
-            """
-            return _indexing._ndarray_take(self, indices, axis, out)
+        """
+        return _indexing._ndarray_take(self, indices, axis, out)
 
-        cpdef put(self, indices, values, mode='wrap'):
-            """Replaces specified elements of an array with given values.
+    cpdef put(self, indices, values, mode='wrap'):
+        """Replaces specified elements of an array with given values.
 
-            .. seealso::
-            :func:`cupy.put` for full documentation,
-            :meth:`numpy.ndarray.put`
-            """
-            return _indexing._ndarray_put(self, indices, values, mode)
+        .. seealso::
+        :func:`cupy.put` for full documentation,
+        :meth:`numpy.ndarray.put`
+        """
+        return _indexing._ndarray_put(self, indices, values, mode)
 
-        cpdef choose(self, choices, out=None, mode='raise'):
-            # TODO(niboshi): Write docstring
-            return _indexing._ndarray_choose(self, choices, out, mode)
+    cpdef choose(self, choices, out=None, mode='raise'):
+        # TODO(niboshi): Write docstring
+        return _indexing._ndarray_choose(self, choices, out, mode)
 
+    cpdef tuple nonzero(self):
+        """Return the indices of the elements that are non-zero.
+
+        Returned Array is containing the indices of the non-zero elements
+        in that dimension.
+
+        Returns:
+            tuple of arrays: Indices of elements that are non-zero.
+
+        .. warning::
+
+            This function may synchronize the device.
+
+        .. seealso::
+            :func:`numpy.nonzero`
+
+        """
+        return _indexing._ndarray_nonzero(self)
+
+    cpdef _ndarray_base compress(self, condition, axis=None, out=None):
+        """Returns selected slices of this array along given axis.
+
+        .. warning::
+
+            This function may synchronize the device.
+
+        .. seealso::
+        :func:`cupy.compress` for full documentation,
+        :meth:`numpy.ndarray.compress`
+
+        """
+        return _indexing._ndarray_compress(self, condition, axis, out)
+
+    cpdef _ndarray_base diagonal(self, offset=0, axis1=0, axis2=1):
+        """Returns a view of the specified diagonals.
+
+        .. seealso::
+        :func:`cupy.diagonal` for full documentation,
+        :meth:`numpy.ndarray.diagonal`
+
+        """
+        return _indexing._ndarray_diagonal(self, offset, axis1, axis2)
+
+    cpdef _ndarray_base trace(
+            self, offset=0, axis1=0, axis2=1, dtype=None, out=None):
+        """Returns the sum along diagonals of the array.
+
+        .. seealso::
+        :func:`cupy.trace` for full documentation,
+        :meth:`numpy.ndarray.trace`
+
+        """
+        d = self.diagonal(offset, axis1, axis2)
+        return d.sum(-1, dtype, out, False)
+
+    IF CUPY_CANN_VERSION <= 0: # TODO: sorting later
         @staticmethod
         def _check_kind_sort(kind):
             if kind is not None and kind != "stable":
@@ -1001,61 +1056,6 @@ cdef class _ndarray_base:
 
             """  # NOQA
             return cupy.searchsorted(self, v, side, sorter)
-
-        cpdef tuple nonzero(self):
-            """Return the indices of the elements that are non-zero.
-
-            Returned Array is containing the indices of the non-zero elements
-            in that dimension.
-
-            Returns:
-                tuple of arrays: Indices of elements that are non-zero.
-
-            .. warning::
-
-                This function may synchronize the device.
-
-            .. seealso::
-                :func:`numpy.nonzero`
-
-            """
-            return _indexing._ndarray_nonzero(self)
-
-        cpdef _ndarray_base compress(self, condition, axis=None, out=None):
-            """Returns selected slices of this array along given axis.
-
-            .. warning::
-
-                This function may synchronize the device.
-
-            .. seealso::
-            :func:`cupy.compress` for full documentation,
-            :meth:`numpy.ndarray.compress`
-
-            """
-            return _indexing._ndarray_compress(self, condition, axis, out)
-
-        cpdef _ndarray_base diagonal(self, offset=0, axis1=0, axis2=1):
-            """Returns a view of the specified diagonals.
-
-            .. seealso::
-            :func:`cupy.diagonal` for full documentation,
-            :meth:`numpy.ndarray.diagonal`
-
-            """
-            return _indexing._ndarray_diagonal(self, offset, axis1, axis2)
-
-        cpdef _ndarray_base trace(
-                self, offset=0, axis1=0, axis2=1, dtype=None, out=None):
-            """Returns the sum along diagonals of the array.
-
-            .. seealso::
-            :func:`cupy.trace` for full documentation,
-            :meth:`numpy.ndarray.trace`
-
-            """
-            d = self.diagonal(offset, axis1, axis2)
-            return d.sum(-1, dtype, out, False)
 
     # -------------------------------------------------------------------------
     # Calculation
@@ -1554,101 +1554,102 @@ cdef class _ndarray_base:
             raise TypeError('len() of unsized object')
         return self._shape[0]
 
-    IF CUPY_CANN_VERSION <= 0: # TODO indexing later
-        cpdef _ndarray_base _add_reduceat(self, indices, axis, dtype, out):
-            return _indexing._add_reduceat(self, indices, axis, dtype, out)
 
-        def __getitem__(self, slices):
-            """x.__getitem__(y) <==> x[y]
+    cpdef _ndarray_base _add_reduceat(self, indices, axis, dtype, out):
+        return _indexing._add_reduceat(self, indices, axis, dtype, out)
 
-            Supports both basic and advanced indexing.
+    def __getitem__(self, slices):
+        """x.__getitem__(y) <==> x[y]
 
-            .. note::
+        Supports both basic and advanced indexing.
 
-                Currently, it does not support ``slices`` that consists of more
-                than one boolean arrays
+        .. note::
 
-            .. note::
+            Currently, it does not support ``slices`` that consists of more
+            than one boolean arrays
 
-            CuPy handles out-of-bounds indices differently from NumPy.
+        .. note::
+
+        CuPy handles out-of-bounds indices differently from NumPy.
+        NumPy handles them by raising an error, but CuPy wraps around them.
+
+        Example:
+
+            >>> a = cupy.arange(3)
+            >>> a[[1, 3]]
+            array([1, 0])
+
+        """
+        return _indexing._ndarray_getitem(self, slices)
+
+    def __setitem__(self, slices, value):
+        """x.__setitem__(slices, y) <==> x[slices] = y
+
+        Supports both basic and advanced indexing.
+
+        .. note::
+
+            Currently, it does not support ``slices`` that consists of more
+            than one boolean arrays
+
+        .. note::
+
+            CuPy handles out-of-bounds indices differently from NumPy when
+            using integer array indexing.
             NumPy handles them by raising an error, but CuPy wraps around them.
 
-            Example:
+            >>> import cupy
+            >>> x = cupy.arange(3)
+            >>> x[[1, 3]] = 10
+            >>> x
+            array([10, 10,  2])
 
-                >>> a = cupy.arange(3)
-                >>> a[[1, 3]]
-                array([1, 0])
+        .. note::
 
-            """
-            return _indexing._ndarray_getitem(self, slices)
+            The behavior differs from NumPy when integer arrays in ``slices``
+            reference the same location multiple times.
+            In that case, the value that is actually stored is undefined.
 
-        def __setitem__(self, slices, value):
-            """x.__setitem__(slices, y) <==> x[slices] = y
+            >>> import cupy
+            >>> a = cupy.zeros((2,))
+            >>> i = cupy.arange(10000) % 2
+            >>> v = cupy.arange(10000).astype(cupy.float64)
+            >>> a[i] = v
+            >>> a  # doctest: +SKIP
+            array([9150., 9151.])
 
-            Supports both basic and advanced indexing.
+            On the other hand, NumPy stores the value corresponding to the
+            last index among the indices referencing duplicate locations.
 
-            .. note::
+            >>> import numpy
+            >>> a_cpu = numpy.zeros((2,))
+            >>> i_cpu = numpy.arange(10000) % 2
+            >>> v_cpu = numpy.arange(10000).astype(numpy.float64)
+            >>> a_cpu[i_cpu] = v_cpu
+            >>> a_cpu
+            array([9998., 9999.])
 
-                Currently, it does not support ``slices`` that consists of more
-                than one boolean arrays
-
-            .. note::
-
-                CuPy handles out-of-bounds indices differently from NumPy when
-                using integer array indexing.
-                NumPy handles them by raising an error, but CuPy wraps around them.
-
-                >>> import cupy
-                >>> x = cupy.arange(3)
-                >>> x[[1, 3]] = 10
-                >>> x
-                array([10, 10,  2])
-
-            .. note::
-
-                The behavior differs from NumPy when integer arrays in ``slices``
-                reference the same location multiple times.
-                In that case, the value that is actually stored is undefined.
-
-                >>> import cupy
-                >>> a = cupy.zeros((2,))
-                >>> i = cupy.arange(10000) % 2
-                >>> v = cupy.arange(10000).astype(cupy.float64)
-                >>> a[i] = v
-                >>> a  # doctest: +SKIP
-                array([9150., 9151.])
-
-                On the other hand, NumPy stores the value corresponding to the
-                last index among the indices referencing duplicate locations.
-
-                >>> import numpy
-                >>> a_cpu = numpy.zeros((2,))
-                >>> i_cpu = numpy.arange(10000) % 2
-                >>> v_cpu = numpy.arange(10000).astype(numpy.float64)
-                >>> a_cpu[i_cpu] = v_cpu
-                >>> a_cpu
-                array([9998., 9999.])
-
-            """
-            if _util.ENABLE_SLICE_COPY and (
-                    type(slices) is slice
-                    and slices == slice(None, None, None)
-                    and isinstance(value, numpy.ndarray)
-            ):
-                if (self.dtype == value.dtype
-                        and self.shape == value.shape
-                        and (self._f_contiguous or self._c_contiguous)):
-                    order = 'F' if self._f_contiguous else 'C'
-                    tmp = value.ravel(order)
-                    ptr = tmp.ctypes.data
-                    self.data.copy_from_host_async(ptr, self.nbytes)
-                else:
-                    raise ValueError(
-                        'copying a numpy.ndarray to a cupy.ndarray by empty slice '
-                        'assignment must ensure arrays have same shape and dtype')
+        """
+        if _util.ENABLE_SLICE_COPY and (
+                type(slices) is slice
+                and slices == slice(None, None, None)
+                and isinstance(value, numpy.ndarray)
+        ):
+            if (self.dtype == value.dtype
+                    and self.shape == value.shape
+                    and (self._f_contiguous or self._c_contiguous)):
+                order = 'F' if self._f_contiguous else 'C'
+                tmp = value.ravel(order)
+                ptr = tmp.ctypes.data
+                self.data.copy_from_host_async(ptr, self.nbytes)
             else:
-                _indexing._ndarray_setitem(self, slices, value)
+                raise ValueError(
+                    'copying a numpy.ndarray to a cupy.ndarray by empty slice '
+                    'assignment must ensure arrays have same shape and dtype')
+        else:
+            _indexing._ndarray_setitem(self, slices, value)
 
+    IF CUPY_CANN_VERSION <= 0:
         def scatter_add(self, slices, value):
             """Adds given values to specified elements of an array.
 
@@ -1806,19 +1807,18 @@ cdef class _ndarray_base:
     def __format__(self, format_spec):
         return format(self.get(), format_spec)
 
-    IF CUPY_CANN_VERSION <= 0: # TODO: not impl yet
-        # -------------------------------------------------------------------------
-        # Methods outside of the ndarray main documentation
-        # -------------------------------------------------------------------------
-        def dot(self, _ndarray_base b, _ndarray_base out=None):
-            """Returns the dot product with given array.
+    # -------------------------------------------------------------------------
+    # Methods outside of the ndarray main documentation
+    # -------------------------------------------------------------------------
+    def dot(self, _ndarray_base b, _ndarray_base out=None):
+        """Returns the dot product with given array.
 
-            .. seealso::
-            :func:`cupy.dot` for full documentation,
-            :meth:`numpy.ndarray.dot`
+        .. seealso::
+        :func:`cupy.dot` for full documentation,
+        :meth:`numpy.ndarray.dot`
 
-            """
-            return _linalg.dot(self, b, out)
+        """
+        return _linalg.dot(self, b, out)
 
     # -------------------------------------------------------------------------
     # Cupy specific attributes and methods
