@@ -333,15 +333,20 @@ cdef aclError register_acl_ufunc(string opname, OpType op_type, FuncPtrUnion fun
 
 cdef OpType get_op_type(object ops, bint inplace, bint has_scalar = False):
     # TODO: Ternary op, has_scalar
-    if len(ops) == 3 and not inplace:  # 二元操作
-        return BINARY_OP
-    elif len(ops) == 2 and inplace:  # 原地二元操作
-        return INPLACE_BINARY_OP  
-    elif len(ops) == 2 and not inplace:  # 一元操作
-        return UNARY_OP
-    elif len(ops) == 1 and inplace:  # 原地一元操作
-        return INPLACE_UNARY_OP
+    if has_scalar:
+        if len(ops) == 3 and not inplace:  # 二元操作
+            return SCALAR_BINARY_OP
+        elif len(ops) == 2 and inplace:  # 原地二元操作
+            return INPLACE_SCALAR_BINARY_OP  
     else:
+        if len(ops) == 3 and not inplace:  # 二元操作
+            return BINARY_OP
+        elif len(ops) == 2 and inplace:  # 原地二元操作
+            return INPLACE_BINARY_OP  
+        elif len(ops) == 2 and not inplace:  # 一元操作
+            return UNARY_OP
+        elif len(ops) == 1 and inplace:  # 原地一元操作
+            return INPLACE_UNARY_OP
         raise RuntimeError("Operator type can not be decided")
     return INVALID_OP
 

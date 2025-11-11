@@ -41,7 +41,7 @@ def benchmark_vector_op(np_func, cp_func, np_vector1, np_vector2, cp_vector1, cp
     np_times = []
     for _ in range(repeating):
         start = time.perf_counter()
-        _ = np_func(*np_args)
+        cpu_result = np_func(*np_args)
         end = time.perf_counter()
         np_times.append(end - start)
     np_avg = np.mean(np_times)
@@ -52,7 +52,7 @@ def benchmark_vector_op(np_func, cp_func, np_vector1, np_vector2, cp_vector1, cp
         # 同步模式：使用默认流并显式同步
         for _ in range(repeating):
             start = time.perf_counter()
-            _ = cp_func(*cp_args)
+            xpu_result = cp_func(*cp_args)
             xpu.Stream.null.synchronize()  # 阻塞直到GPU完成
             end = time.perf_counter()
             cp_times.append(end - start)
@@ -62,13 +62,15 @@ def benchmark_vector_op(np_func, cp_func, np_vector1, np_vector2, cp_vector1, cp
         for _ in range(repeating):
             start = time.perf_counter()
             with stream:
-                _ = cp_func(*cp_args)  # 在流中提交操作
+                xpu_result = cp_func(*cp_args)  # 在流中提交操作
             end = time.perf_counter()
             cp_times.append(end - start)
         stream.synchronize()  # 等待该流中的操作完成
     cp_avg = np.mean(cp_times)
     
     # 计算加速比
+    print("cpu result: ", cpu_result)
+    print("xpu result: ", xpu_result)
     speedup_ratio = np_avg / cp_avg if cp_avg > 0 else 0
     print(f"NumPy 平均时间: {np_avg:.6f} 秒")
     print(f"CuPy (同步) 平均时间: {cp_avg:.6f} 秒")
@@ -181,6 +183,11 @@ if __name__ == "__main__":
 
     print("\n" + "="*60)
     cp_vec_ret += cp_vec1
+    print("test inplace add op, with result", cp_vec_ret)
+    print("="*60)
+
+    print("\n" + "="*60)
+    cp_vec_ret += cp.float32(2.0)
     print("test inplace add op, with result", cp_vec_ret)
     print("="*60)
 
