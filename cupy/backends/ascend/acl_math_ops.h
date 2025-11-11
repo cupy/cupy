@@ -259,11 +259,27 @@ extern "C" {
     DECLARE_ACL_BINARY_OPS_FUNC(RemainderTensorTensor) // remainder has 4 version
     DECLARE_ACL_BINARY_OP(Gcd)
 
+    aclError aclop_Lcm(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream) {
+        // how to deal with minus integer?
+        aclDataType dtype;
+        aclGetDataType(self, &dtype);
+        aclTensor* temp = aclTensorLike(self, dtype);
+        auto ret = aclBinaryOpRun(self, other, temp,
+            aclnnMulGetWorkspaceSize, aclnnMul, stream, false);
+        ret = aclUnaryOpRun(temp, temp, // on inplace version, is that OK?
+            aclnnAbsGetWorkspaceSize, aclnnAbs, stream, false);
+        aclTensor* gcd = aclTensorLike(self, dtype);
+        ret = aclBinaryOpRun(temp, other, gcd,
+            aclnnGcdGetWorkspaceSize, aclnnGcd, stream, false); 
+        ret = aclBinaryOpRun(temp, gcd, out,
+            aclnnDivGetWorkspaceSize, aclnnDiv, stream, false);
+        aclDestroyTensor(temp);
+        aclDestroyTensor(gcd);
+    }
+
     // Tensor op Scalar
     DECLARE_ACL_BINARY_SCALAR_OP(Muls)
     DECLARE_ACL_BINARY_SCALAR_OP(Divs)
-    //DECLARE_ACL_BINARY_SCALAR_OP(Adds)
-    //DECLARE_ACL_BINARY_SCALAR_OP(Subs)
     aclError aclop_Adds(const aclTensor* self, const aclScalar* other, aclTensor* out, aclrtStream stream) {
         float alpha = 1.0f;
         return aclTernaryOpRun(self, other, alpha, out,
@@ -298,7 +314,7 @@ extern "C" {
     DECLARE_ACL_UNARY_OPS_FUNC(Reciprocal)
     DECLARE_ACL_UNARY_OPS_FUNC(Neg)
 
-        aclError aclop_Abs(const aclTensor* self, aclTensor* out, aclrtStream stream) {
+    aclError aclop_Abs(const aclTensor* self, aclTensor* out, aclrtStream stream) {
         return aclUnaryOpRun(self, out,
         aclnnAbsGetWorkspaceSize, aclnnAbs, stream, false);
     }

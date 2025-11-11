@@ -32,10 +32,12 @@ TODO:  creation/manipulation/indexing ops
 4. `numpy.int64` is long 'l' on POSIX OS, 'q' on Windows?
 5. `cupy_scalar_to_acl_scalar(_cupy_scalar s)`
 5. cupy scalar operands must be cupy._scalar type
+6. if two operands have diff dtype, cupy will do promote_types in `XXXKernel`
 
 #### shape
 
 1. `add` (all algorith op) , does not support shape dim > 1, while these can be done
+2. CANN aclnn op kernel inside can deal with broadcast, just as pytorch/numpy
 
 #### 一些说明
 currently, only support tensor op tensor, some op support tensor op scalar (aclScalar not python double/int)
@@ -48,9 +50,9 @@ currently, only support tensor op tensor, some op support tensor op scalar (aclS
 
 #### 核心op支持情况
 + math ops: 未注册 clamp, einsum, cbrt, trunc,  round/around, convolve (?),
-   radians (deg2rad), degrees (rad2deg), deg2rad, rad2deg 自己实现. 
+   radians (deg2rad), degrees (rad2deg), deg2rad, rad2deg. lcm 自己实现. 
    数值计算: gradient, interp, trapezoid, diff 缺失
-   missing: lcm, frexp, ldexp, fix, rint
+   missing: frexp, ldexp, fix, rint
    math complex numpy ops, 缺少几个ops但是自己实现很简单
 
 + Logica/bitwise 算子基本都有:  
