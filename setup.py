@@ -15,8 +15,9 @@ from cupy_builder import cupy_setup_build  # NOQA
 
 ctx = cupy_builder.Context(source_root)
 cupy_builder.initialize(ctx)
-if not cupy_builder.preflight_check(ctx):
-    sys.exit(1)
+# ASCEND: temp disable third-party submodule, by add dlpack.h into source 
+# if not cupy_builder.preflight_check(ctx):
+#     sys.exit(1)
 
 
 # List of files that needs to be in the distribution (sdist/wheel).
