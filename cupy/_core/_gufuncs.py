@@ -462,7 +462,6 @@ class _GUFunc:
         """
         core_dims = {}
         outer_shapes = []
-        transposals = []
         for i, (arg, axs, coredims) in enumerate(
                 zip(args, in_axes, self._input_coredimss)):
             ndim = arg.ndim
@@ -502,27 +501,29 @@ class _GUFunc:
                 self._update_dims(i, core_dims, coredims[i_coredim], -1)
                 i_coredim += 1
 
+            if transpose is not None:
+                args[i] = arg.transpose(transpose)
+
             if ommitted_coredims:
+                assert transpose is None  # currently guaranteed
                 args[i] = cupy.expand_dims(arg, axis=tuple(ommitted_coredims))
 
             outer_shapes.append(outer_shape)
-            transposals.append(transpose)
 
         # The outer shape needs to be broadcast across all input operands.
         bc_outer_shape = internal._broadcast_shapes(outer_shapes)
 
         for i, (arg, outer_shape) in enumerate(zip(args, outer_shapes)):
             # Above, we figured out the transpose and outer shape, we still
-            # need to apply it (potentially)
-            transpose = transposals[i]
-            if transpose is not None:
-                arg = arg.transpose(transpose)
+            # need to apply it to broadcast (potentially)
             if outer_shape != bc_outer_shape:
                 arg = _manipulation.broadcast_to(
                     arg, bc_outer_shape + arg.shape[len(outer_shape):])
 
             args[i] = arg
 
+        # Figure out the outputs now based on the input shapes and core dims.
+        # (NumPy supports `out=` to fill in shapes sometimes, we do not yet.)
         untransposed_outs = []  # The return array is the untransposed one.
         for i, (out, axs, coredims) in enumerate(
                 zip(outs, out_axes, self._output_coredimss)):
@@ -532,6 +533,7 @@ class _GUFunc:
                 for i_cd, cd in enumerate(coredims):
                     dim = core_dims.get(cd[0], None)
                     if dim == -1:
+                        # Ommit dim in output is core-dim + outer ndim
                         ommitted_dims.append(i_cd + len(bc_outer_shape))
                     elif dim is None:
                         core_shape.append(1)  # should be a |1 core-dim
