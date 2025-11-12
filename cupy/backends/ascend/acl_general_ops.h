@@ -17,6 +17,7 @@
 #include "aclnnop/aclnn_fill_tensor.h"
 
 #include "aclnnop/aclnn_div.h"
+#include "aclnnop/aclnn_cast.h"
 
 // indexing: argsort, unique, unique2, sort
 // no count() , unique(), unique2() op
@@ -51,6 +52,7 @@
 #include "./acl_scalar_arg.h"
 #include "acl/acl.h"
 
+
     // arange(), 
     // aclnnEyeGetWorkspaceSize(int64_t n, int64_t m, aclTensor* out,
     // aclnnLinspaceGetWorkspaceSize(const aclScalar* start, const aclScalar* end, int64_t steps, aclTensor* out,
@@ -73,20 +75,87 @@
     //     const aclTensor* self = ins[0];
     //     aclTensor* out = outs[0];
     //     int decimals = ToScalarArg<int>(args[0]);
-    //     return aclIrregularOpRun(aclnnFrexpGetWorkspaceSize, aclnnFrexp, stream, false,
+    //     return aclIrregularOpRun(aclnnFrexpGetWorkspaceSize, aclnnFrexp, stream,
     //         self, outs);
     // }
 
     // aclnnTopkGetWorkspaceSize(const aclTensor* self, int64_t k, int64_t dim, bool largest,
     //                                             bool sorted, aclTensor* valuesOut, aclTensor* indicesOut,
 
-    // no such concat
-    // aclnnStackGetWorkspaceSize(const aclTensorList* tensors, int64_t dim, aclTensor* out,
-    // aclnnCatGetWorkspaceSize(const aclTensorList* tensors, int64_t dim, aclTensor* out,
-    // aclnnResizeGetWorkspaceSize(const aclTensor* self, const aclFloatArray* scales, const char* mode, aclTensor* out,
-    // aclnnFlattenGetWorkspaceSize(const aclTensor* self, int64_t axis, aclTensor* out,
 
-    DECLARE_ACL_BINARY_OP(Take)
+    // aclnnStackGetWorkspaceSize(const aclTensorList* tensors, int64_t dim, aclTensor* out,
+    aclError aclop_Stack(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
+        const ArgsType& args, const KargsType& kargs, aclrtStream stream) {
+        if (ins.size() >= 1) {
+            auto tl = ToAclTensorList(ins);
+            int64_t dim = GetScalarArg<int64_t>(args, 0, kargs, "dim");
+            return aclIrregularOpRun(aclnnStackGetWorkspaceSize, aclnnStack, stream,
+                tl, dim, outs[0]);
+        } else {
+            std::cout << "Error:" <<  __FUNCTION__  << " take args: tensorList, axis, out) \n";
+            return ACL_ERROR_INVALID_PARAM;
+        }
+    }
+
+    
+    aclError aclop_Concat(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
+        const ArgsType& args, const KargsType& kargs, aclrtStream stream) {
+        if (ins.size() >= 1) {
+            auto tl = ToAclTensorList(ins);
+            int64_t dim = GetScalarArg<int64_t>(args, 0, kargs, "dim");
+            return aclIrregularOpRun(aclnnCatGetWorkspaceSize, aclnnCat, stream,
+                tl, dim, outs[0]);
+        } else {
+            std::cout << "Error:" <<  __FUNCTION__  << " take args: tensorList, axis, out) \n";
+            return ACL_ERROR_INVALID_PARAM;
+        }
+    }
+
+    // numpy has no such op resize
+    // aclnnResizeGetWorkspaceSize(const aclTensor* self, const aclFloatArray* scales, const char* mode, aclTensor* out,
+
+    // aclnnFlattenGetWorkspaceSize(const aclTensor* self, int64_t axis, aclTensor* out,
+    aclError aclop_Flatten(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
+        const ArgsType& args, const KargsType& kargs, aclrtStream stream) {
+        if (outs.size() == 1) {
+            int64_t axis = GetScalarArg<int64_t>(args, 0, kargs, "axis");
+            return aclIrregularOpRun(aclnnFlattenGetWorkspaceSize, aclnnFlatten, stream,
+                ins[0], axis, outs[0]);
+        } else {
+            std::cout << "Error:" <<  __FUNCTION__  << " take input tensors (self), arg axis, and out tensor \n";
+            return ACL_ERROR_INVALID_PARAM;
+        }
+    }
+
+    // numpy.take_along_axis(arr, indices, axis=-1)
+    DECLARE_ACL_BINARY_OP(Take)  // axis=None, out=None, mode='raise'
+    // numpy.put(a, ind, v, mode='raise')
+    // aclError aclop_Put(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
+    //     const ArgsType& args, const KargsType& kargs, aclrtStream stream) {
+    //     aclTensor* self = ins[0];
+    //     if (args.size() == 3) {
+    //         return aclInplaceBinaryOpRun(self, ins[1], ins[2],
+    //             aclnnPutGetWorkspaceSize, aclnnPut, stream);
+    //     } else {
+    //         std::cout << "Error:" <<  __FUNCTION__  << " take 3 input tensors (self, index, value) \n";
+    //         return ACL_ERROR_INVALID_PARAM;
+    //     }
+    // }
+
+    aclError aclop_Cast(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
+        const ArgsType& args, const KargsType& kargs, aclrtStream stream) {
+        if (outs.size() == 1) {
+            const aclTensor* self = ins[0];
+            aclDataType dtype;
+            aclGetDataType(outs[0], &dtype);
+            return aclIrregularOpRun(aclnnCastGetWorkspaceSize, aclnnCast, stream,
+                self, dtype, outs[0]);
+        } else {
+            std::cout << "Error:" <<  __FUNCTION__  << " take 3 input tensors (self, index, value) \n";
+            return ACL_ERROR_INVALID_PARAM;
+        }
+    }
+
     //DECLARE_ACL_BINARY_OP(InplaceCopy)
     // aclnnTakeGetWorkspaceSize(const aclTensor* self, const aclTensor* index, aclTensor* out, ...);
     // aclnnInplacePutGetWorkspaceSize(aclTensor* selfRef, const aclTensor* index,
@@ -103,12 +172,20 @@
         if (args.size()) {
             return aclInplaceBinaryOpRun(self, args[0],
                 aclnnInplaceFillScalarGetWorkspaceSize, aclnnInplaceFillScalar, stream, false);
-        } else if (ins.size() > 1) {
+        } else if (ins.size() >= 1) {
             return aclInplaceBinaryOpRun(self, ins[0],
                 aclnnInplaceFillTensorGetWorkspaceSize, aclnnInplaceFillTensor, stream, false);
         } else {
             return ACL_ERROR_INVALID_PARAM;
         }
+    }
+
+    aclError aclop_fill(const aclTensorList* ins, const aclTensorList* outs,
+        const ArgsType& args, const KargsType& kargs, aclrtStream stream) {
+            // aclTensor* self = aclGetTensorList(tensorList, 0);  // no such api
+            // if (self) {
+            //     return 0;
+            // }
     }
 
     // This is a general function, must be launched differently, keyward args?
@@ -117,7 +194,7 @@
         const aclTensor* self = ins[0];
         aclTensor* out = outs[0];
         int decimals = ToScalarArg<int>(args[0]);
-        return aclIrregularOpRun(aclnnRoundDecimalsGetWorkspaceSize, aclnnRoundDecimals, stream, false,
+        return aclIrregularOpRun(aclnnRoundDecimalsGetWorkspaceSize, aclnnRoundDecimals, stream,
             self, decimals, out);
     }
     // numpy.clip -> aclnnClamp

@@ -44,10 +44,10 @@
 #include "aclnnop/aclnn_floor.h"
 #include "aclnnop/aclnn_clamp.h" // clip? 
 #include "aclnnop/aclnn_signbit.h"
+#include "aclnnop/aclnn_sign.h"
 #include "aclnnop/aclnn_reciprocal.h"
 // TODO: 
 #include "aclnnop/aclnn_heaviside.h"
-#include "aclnnop/aclnn_sign.h"
 #include "aclnnop/aclnn_inverse.h"
 
 // equal scalar, tensor, vector/list is_nan (no such)
@@ -275,6 +275,7 @@ extern "C" {
             aclnnDivGetWorkspaceSize, aclnnDiv, stream, false);
         aclDestroyTensor(temp);
         aclDestroyTensor(gcd);
+        return ret;
     }
 
     // Tensor op Scalar
@@ -300,9 +301,9 @@ extern "C" {
         // 0-对应None：默认不执行舍入。
         // 1-对应trunc：将除法的小数部分舍入为零。
         // 2-对应floor：向下舍入除法的结果。
-        auto ret = aclIrregularOpRun(aclnnDivModGetWorkspaceSize, aclnnDivMod, stream, false,
+        auto ret = aclIrregularOpRun(aclnnDivModGetWorkspaceSize, aclnnDivMod, stream,
             self, ins[0], mode, outs[0]);
-        ret = aclIrregularOpRun(aclnnRemainderTensorTensorGetWorkspaceSize, aclnnRemainderTensorTensor, stream, false,
+        ret = aclIrregularOpRun(aclnnRemainderTensorTensorGetWorkspaceSize, aclnnRemainderTensorTensor, stream,
             self, ins[0], outs[1]);
         return ret;
     }
@@ -340,11 +341,15 @@ extern "C" {
             aclnnMulsGetWorkspaceSize, aclnnMuls, stream, false); 
     }
 
-    //DECLARE_ACL_UNARY_OPS_FUNC(Signbit)  // no inplace version
-    aclError aclop_Signbit(const aclTensor* self, aclTensor* out, aclrtStream stream) {
-        return aclUnaryOpRun(self, out,
-        aclnnSignbitGetWorkspaceSize, aclnnSignbit, stream, false);
-    }
+    DECLARE_ACL_UNARY_OP(Real)
+    DECLARE_ACL_BINARY_OP(Complex)
+
+    DECLARE_ACL_BINARY_OP(LogAddExp2)
+    DECLARE_ACL_BINARY_OP(LogAddExp)
+
+    DECLARE_ACL_UNARY_OP(Signbit)  // no inplace version
+    DECLARE_ACL_UNARY_OP(Sign) 
+
     //DECLARE_ACL_UNARY_OPS_FUNC(Abs) // no inplace version
     // aclError aclop_Abs(const aclTensor* self, aclTensor* out, aclrtStream stream) {
     //     return aclUnaryOpRun(self, out,
@@ -436,7 +441,7 @@ extern "C" {
     }
 
     aclError aclop_NanToNum(const aclTensor* self, float scalar, aclTensor* out, aclrtStream stream) {
-        return aclIrregularOpRun(aclnnNanToNumGetWorkspaceSize, aclnnNanToNum, stream, false,
+        return aclIrregularOpRun(aclnnNanToNumGetWorkspaceSize, aclnnNanToNum, stream,
             self, scalar, std::numeric_limits<float>::infinity(), -std::numeric_limits<float>::infinity(), out);
     }
 

@@ -17,23 +17,23 @@
 using KargsType = std::unordered_map<std::string, const aclScalar*>;
 using ArgsType = std::vector<const aclScalar*>;
 
-// dict kargs has priority than the list unnamed arg
-template<typename ToScalarType>
-ToScalarType GetScalarArg(const ArgsType& args, int argIndex, const KargsType& kargs, std::string key)
-{
-    ToScalarType scalar;
-    aclScalar* arg = nullptr;
-    if (kargs.find(key) != kargs.end()) {
-        arg = kargs.at(key);
-    } else if (argIndex < args.size()) {
-        arg = args.at(argIndex);
-    } else {
-        std::cerr << "WARNING: Failed to get argument from args list or kargs dict, use the default scalar value\n";
-    }
-    if (arg) {
 
+inline aclTensorList* ToAclTensorList(const std::vector<const aclTensor*>& tempVector) {
+    aclTensorList* tensorList = aclCreateTensorList(
+        tempVector.data(),  // 指向aclTensor指针数组的指针
+        static_cast<uint64_t>(tempVector.size())  // 张量数量
+    );
+}
+
+bool HasScalarArg(const ArgsType& args, int argIndex, const KargsType& kargs, std::string key)
+{
+    if (kargs.find(key) != kargs.end()) {
+        return true;
+    } else if (argIndex < args.size()) {
+        return true;
+    } else {
+        return false;
     }
-    return scalar;
 }
 
 
@@ -208,6 +208,25 @@ ToScalarType ToScalarArg(const aclScalar* s, bool throw_on_error = true) {
     } else if constexpr (std::is_floating_point_v<ToScalarType>) {
         return CheckFloatArg<ToScalarType>(source_value, dtype);
     } // TODO: complex, string?
+}
+
+// dict kargs has priority than the list unnamed arg
+template<typename ToScalarType>
+ToScalarType GetScalarArg(const ArgsType& args, int argIndex, const KargsType& kargs, std::string key)
+{
+    ToScalarType scalar;
+    const aclScalar* arg = nullptr;
+    if (kargs.find(key) != kargs.end()) {
+        arg = kargs.at(key);
+    } else if (argIndex < args.size()) {
+        arg = args.at(argIndex);
+    } else {
+        std::cerr << "WARNING: Failed to get argument from args list or kargs dict, use the default scalar value\n";
+    }
+    if (arg) {
+        scalar = ToScalarArg<ToScalarType>(arg);
+    }
+    return scalar;
 }
 
 #endif // header file

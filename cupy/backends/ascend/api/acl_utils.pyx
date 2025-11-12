@@ -610,6 +610,7 @@ cdef extern from "../acl_math_ops.h" nogil:
     aclError aclop_Reciprocal(const aclTensor* self,  aclTensor* out, aclrtStream stream)
     aclError aclop_InplaceReciprocal(aclTensor* self,  aclrtStream stream)
     aclError aclop_Signbit(const aclTensor* self,  aclTensor* out, aclrtStream stream)
+    aclError aclop_Sign(const aclTensor* self,  aclTensor* out, aclrtStream stream)
     aclError aclop_Abs(const aclTensor* self,  aclTensor* out, aclrtStream stream)
     aclError aclop_Floor(const aclTensor* self,  aclTensor* out, aclrtStream stream)
     aclError aclop_InplaceFloor(aclTensor* self,  aclrtStream stream)
@@ -628,6 +629,8 @@ cdef extern from "../acl_math_ops.h" nogil:
     aclError aclop_Log2(const aclTensor* self,  aclTensor* out, aclrtStream stream)
     aclError aclop_Log10(const aclTensor* self,  aclTensor* out, aclrtStream stream)
     aclError aclop_Log1p(const aclTensor* self,  aclTensor* out, aclrtStream stream)
+    aclError aclop_LogAddExp(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream)
+    aclError aclop_LogAddExp2(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream)
 
     aclError aclop_Matmul(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream)
     aclError aclop_Dot(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream)
@@ -793,6 +796,8 @@ cdef void init_builtin_operators():
     register_acl_ufunc("ascend_abs", UNARY_OP, func_union)
     func_union.unary_op = aclop_Signbit
     register_acl_ufunc("ascend_signbit", UNARY_OP, func_union)
+    func_union.unary_op = aclop_Sign
+    register_acl_ufunc("ascend_sign", UNARY_OP, func_union)
 
     func_union.unary_op = aclop_Square
     register_acl_ufunc("ascend_square", UNARY_OP, func_union)
@@ -803,10 +808,14 @@ cdef void init_builtin_operators():
     func_union.unary_op = aclop_Rad2deg
     register_acl_ufunc("ascend_rad2deg", UNARY_OP, func_union)
 
-    #DECLARE_ACL_UNARY_OP(IsFinite)
-    #DECLARE_ACL_UNARY_OP(IsInf)
-    #DECLARE_ACL_UNARY_OP(IsPosInf)
-    #DECLARE_ACL_UNARY_OP(IsNegInf)
+    func_union.unary_op = aclop_IsFinite
+    register_acl_ufunc("ascend_is_finite", UNARY_OP, func_union)
+    func_union.unary_op = aclop_IsInf
+    register_acl_ufunc("ascend_is_inf", UNARY_OP, func_union)
+    func_union.unary_op = aclop_IsNegInf
+    register_acl_ufunc("ascend_is_negnative_inf", UNARY_OP, func_union)
+    func_union.unary_op = aclop_IsPosInf
+    register_acl_ufunc("ascend_is_positive_inf", UNARY_OP, func_union)
 
     func_union.unary_op = aclop_Floor
     register_acl_ufunc("ascend_floor", UNARY_OP, func_union)
@@ -829,6 +838,11 @@ cdef void init_builtin_operators():
     register_acl_ufunc("ascend_log10", UNARY_OP, func_union)
     func_union.unary_op = aclop_Log1p
     register_acl_ufunc("ascend_log1p", UNARY_OP, func_union)
+
+    func_union.binary_op = aclop_LogAddExp2
+    register_acl_ufunc("ascend_logaddexp2", BINARY_OP, func_union)
+    func_union.binary_op = aclop_LogAddExp
+    register_acl_ufunc("ascend_logaddexp", BINARY_OP, func_union)
 
     ###################################
     # 注册aclop_Matmul作为二元操作

@@ -390,7 +390,7 @@ aclError aclInplaceUnaryOpRun(
 template<typename WsFunc, typename... Args>
 aclError aclIrregularOpRun(
     WsFunc wsfunc, AclnnKernelFunc kfunc,
-    aclrtStream stream, bool sync,
+    aclrtStream stream,
     Args&&... args)
 {
     uint64_t workspaceSize = 0;
@@ -399,7 +399,7 @@ aclError aclIrregularOpRun(
     // 第一段: 获取所需Workspace大小
     aclError ret = wsfunc(std::forward<Args>(args)..., &workspaceSize, &executor);
     if (ret != ACL_SUCCESS) {
-        std::cout << "Failed to run WorkspaceSize for a kernel\n";
+        std::cout << "Failed to run WorkspaceSize for a irregular op kernel\n";
         return ACL_ERROR_RT_FAILURE;
     }
 
@@ -411,13 +411,10 @@ aclError aclIrregularOpRun(
     // 第二段: 在指定的Stream上执行算子, this is fixed func type
     ret = kfunc(workspaceAddr, workspaceSize, executor, stream);
     if (ret != ACL_SUCCESS) {
-        std::cout << "Failed to run the kernel";
+        std::cout << "Failed to run the irregular op kernel";
         return ACL_ERROR_RT_FAILURE;
     }
 
-    if(sync) {
-        aclrtSynchronizeStream(stream);
-    }
     if (workspaceSize > 0) {
         ret = aclrtFree(workspaceAddr);
     }

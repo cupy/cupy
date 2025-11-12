@@ -51,16 +51,16 @@ currently, only support tensor op tensor, some op support tensor op scalar (aclS
 ### 核心op支持情况
 #### math ops: 
 + 未注册 clamp, einsum, cbrt, trunc,  round/around, convolve (?),
-+ 自己实现: radians (deg2rad), degrees (rad2deg), deg2rad, rad2deg. lcm . 
++ 自己实现: radians (deg2rad), degrees (rad2deg), deg2rad, rad2deg. lcm 
 + missing 数值计算: gradient, interp, trapezoid, diff 缺失
-+ missing: frexp, ldexp, fix, rint
-+ complex numpy ops, angle, conj, real 缺少几个ops但是自己实现很简单
++ missing: frexp, ldexp, fix (Trunc), rint
++ complex numpy ops, angle, conj, real 缺少几个ops但是自己实现很简单, real, complex
 + scan, clip
 
 #### indexing ops
-slicing ? give view
-`math.scan()` is a dummy/empty func
-aclop has `take, choose, put, slice`
+slicing ? working, but it does not use `Slice` aclop
+`math.scan()` is a dummy/empty func, no such aclop
+aclop has `take, put, slice`, but no `choose`
 
 #### manipulation ops
 
