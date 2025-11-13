@@ -35,6 +35,7 @@ from cupy._core cimport _dtype
 from cupy._core._dtype cimport get_dtype
 from cupy._core._dtype cimport populate_format
 from cupy._core._kernel cimport create_ufunc
+from cupy._core cimport _memory_range
 from cupy._core cimport _routines_binary as _binary
 from cupy._core cimport _routines_indexing as _indexing
 from cupy._core cimport _routines_linalg as _linalg
@@ -212,7 +213,7 @@ cdef class _ndarray_base:
 
     def _init(self, shape, dtype=float, memptr=None, strides=None,
               order='C'):
-        cdef Py_ssize_t x, itemsize
+        cdef Py_ssize_t x, itemsize, alloc_size, left, right
         cdef tuple s = internal.get_size(shape)
         del shape
 
@@ -237,28 +238,41 @@ cdef class _ndarray_base:
 
         # Store strides
         if strides is not None:
-            # TODO(leofang): this should be removed (cupy/cupy#7818)
-            if memptr is None:
-                raise ValueError('memptr is required if strides is given.')
-            # NumPy (undocumented) behavior: when strides is set, order is
-            # ignored...
             self._set_shape_and_strides(self._shape, strides, True, True)
-        elif order_char == b'C':
-            self._set_contiguous_strides(itemsize, True)
-        elif order_char == b'F':
-            self._set_contiguous_strides(itemsize, False)
+            _memory_range.get_range(
+                itemsize, self._shape, self._strides, left, right)
+
+            if memptr is None:
+                alloc_size = right
+                # NumPy allows allocation+strides but allocates a contiguous
+                # buffer. We check the same offset is 0 and allocation fits
+                # a contiguous allocation (but we end up allocating less).
+                if left != 0:
+                    raise ValueError(
+                        "ndarray() with strides currently does not allow "
+                        "negative strides")
+                if right > self.size * self.itemsize:
+                    raise ValueError(
+                        f"ndarray() with strides must stay withing a "
+                        f"contiguous size of {self.size * itemsize} but got "
+                        f"{alloc_size}.")
+            else:
+                alloc_size = self.size * itemsize
         else:
-            assert False
+            self._set_contiguous_strides(itemsize, order_char == b'C')
+            alloc_size = self.size * itemsize
+
+        max_diff = max(alloc_size, self.size * itemsize)
+        self._index_32_bits = max_diff <= (1 << 31)
 
         # data
         if memptr is None:
-            self.data = memory.alloc(self.size * itemsize)
-            self._index_32_bits = (self.size * itemsize) <= (1 << 31)
+            self.data = memory.alloc(alloc_size)
         else:
             self.data = memptr
-            bound = cupy._core._memory_range.get_bound(self)
-            max_diff = max(bound[1] - bound[0], self.size * itemsize)
-            self._index_32_bits = max_diff <= (1 << 31)
+
+        # Note(seberg): We could check that we are not reaching past the
+        # allocated space (except for some external allocations).
 
     cdef _init_fast(self, const shape_t& shape, dtype, bint c_order):
         """ For internal ndarray creation. """
