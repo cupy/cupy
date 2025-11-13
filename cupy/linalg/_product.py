@@ -14,11 +14,45 @@ from cupy.linalg import _solve
 from cupy.linalg import _util
 
 
+def _try_fastcall_matmul(
+        a, b, out=None, axes=None, axis=None, keepdims=False,
+        casting=None, dtype=None, signature=None, order=None):
+    # Allow matmul to side-step gufunc machinery when no gufunc args
+    # are being used.  In theory e.g. dtype may be possible to handle.
+    # Matmul supports all inputs, but casting is tricky.
+    if (
+        axes is not None
+        or axis is not None
+        or keepdims
+        or casting != "same_kind"
+        or dtype is not None
+        or signature is not None
+        or order != 'K'
+    ):
+        return NotImplemented
+
+    if out is not None:
+        # Output casting would require passing on `casting=` so bail
+        # if there is any chance that casting may be needed.
+        if (
+                not isinstance(out, cupy.ndarray)
+                or not isinstance(a, cupy.ndarray)
+                or not isinstance(b, cupy.ndarray)
+        ):
+            return NotImplemented
+
+        if out.dtype != a.dtype or out.dtype != b.dtype:
+            return NotImplemented
+
+    return _core.matmul(a, b, out=out)
+
+
 matmul = _GUFunc(
     _core.matmul,
     '(n?,k),(k,m?)->(n?,m?)',
     supports_batched=True,
     supports_out=True,
+    try_fastcall_func=_try_fastcall_matmul,
     doc="""matmul(x1, x2, /, out=None, \\*\\*kwargs)
 
     Matrix product of two arrays.

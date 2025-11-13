@@ -259,6 +259,10 @@ class _GUFunc:
         supports_out (bool, optional):
             If the wrapped function supports out as one of its kwargs.
             Defaults to `False`.
+        try_fastcall_func (None, optional):
+            If not None this function is called with same arguments as the
+            gufunc itself.  Must return the final result or ``NotImplemented``
+            if the fast-path is not possible.
         signatures (list of tuple of str):
             Contains strings in the form of 'ii->i' with i being the char of a
             dtype. Each element of the list is a tuple with the string
@@ -275,7 +279,8 @@ class _GUFunc:
     def __init__(
             self, func, signature, *,
             name=None, doc=None,
-            supports_batched=False, supports_out=False, signatures=None):
+            supports_batched=False, supports_out=False, signatures=None,
+            try_fastcall_func=None):
         # We would like to create gufuncs from cupy regular ufuncs
         # so we can avoid most of the __call__ stuff
         self._func = func
@@ -288,6 +293,7 @@ class _GUFunc:
         # stuff internally due to CUDA libraries requirements
         self._supports_batched = supports_batched
         self._supports_out = supports_out
+        self._try_fastcall_func = try_fastcall_func
         signatures = signatures if signatures is not None else []
 
         # Preprocess the signature here
@@ -675,8 +681,12 @@ class _GUFunc:
         Returns:
             Output array or a tuple of output arrays.
         '''
-        ret_dtype = None
-        func = self._func
+        if self._try_fastcall_func is not None:
+            result = self._try_fastcall_func(
+                *args, out=out, axes=axes, axis=axis, keepdims=keepdims,
+                casting=casting, dtype=dtype, signature=signature, order=order)
+            if result is not NotImplemented:
+                return result
 
         # this will cast the inputs appropriately
         args, ret_dtype, func = self._ops_register.determine_dtype(
