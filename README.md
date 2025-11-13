@@ -36,7 +36,7 @@ TODO:  creation/manipulation/indexing ops
 
 #### shape
 
-1. `add` (all algorith op) , does not support shape dim > 1, while these can be done
+1. `add` (all algorith op) , does not support shape dim > 1? while these can be done
 2. CANN aclnn op kernel inside can deal with broadcast, just as pytorch/numpy
 
 #### 一些说明
@@ -45,7 +45,7 @@ currently, only support tensor op tensor, some op support tensor op scalar (aclS
 2. inplace operator like `add` is working, while not sure it use InplaceOp or ASCEND nonIplanceOp
    inplace and nonInplace may have some diff, the save memory addr self and out  passed to op may lead to some error
 3. creation/manipulation/indexing, geneal_ops not registered, not tested
-8. masked tensor/ndarray
+8. masked tensor/ndarray: its possible using kargs, using aclnn op
 5. scalar op scalar: numpy/cupy 是不是也不支持这样的操作? 
 
 ### 核心op支持情况
@@ -54,30 +54,32 @@ currently, only support tensor op tensor, some op support tensor op scalar (aclS
 + 自己实现: radians (deg2rad), degrees (rad2deg), deg2rad, rad2deg. lcm 
 + missing 数值计算: gradient, interp, trapezoid, diff 缺失
 + missing: frexp, ldexp, fix (Trunc), rint
-+ complex numpy ops, angle, conj, real 缺少几个ops但是自己实现很简单, real, complex
++ complex numpy ops: angle, conj,  缺少几个ops但是自己实现很简单,  real, complex
 + scan, clip
 
 #### indexing ops
 slicing ? working, but it does not use `Slice` aclop
 `math.scan()` is a dummy/empty func, no such aclop
-aclop has `take, put, slice`, but no `choose`
+aclop has `take, put(InplacePut), slice`, but no `choose`
 
 #### manipulation ops
-
+reshape (Reshape api)
+having: roll, permute, flip, repeat, 
 
 #### Logica/bitwise 算子基本都有:  
 ACLOP has no numpy op: `_left_shift`, `_left_right`
 
 #### statistics reduction ops: 
-   已有: median, var, mean, std,  bincount 主要是看nan怎么处理, 部分做了注册
-   缺失" average, quantile, histgram (?), percentile, vecter op实现难度应该不太大
-   ptp (Range of values (maximum - minimum) along an axis.) -> Aminmax
+已有: median, var, mean, std,  bincount, histgram (histc), 主要是看nan怎么处理, 部分做了注册
+缺失" average, quantile,  percentile, vecter op实现难度应该不太大
+ptp (Range of values (maximum - minimum) along an axis.) -> Aminmax
 
 
 ### similar ops 需要验证numpy行为是否一致
 1. fmin, nanmin, min, amin
 2. remainder, fmod, modf
 3. rint, round, around
+4. dot, matmul, mm, gemm, inner
 
 ## 1. 开发环境
 没有NPU开发: 需要注释掉 runtime.pyx `initialize_backend(0)` 否则不能`import cupy`

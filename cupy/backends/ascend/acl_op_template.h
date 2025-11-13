@@ -145,6 +145,7 @@ aclError aclBinaryOpRun(
     // e.g. ret = aclnnMatmulGetWorkspaceSize(a_tensor, b_tensor, out_tensor, math_type, &workspace_size, &executor);
     if (ret != ACL_SUCCESS) {
         std::cout << "Failed to allocate workspace \n";
+        CHECK_STATUS(ret);
         return ACL_ERROR_RT_FAILURE;
     }
 
@@ -157,6 +158,7 @@ aclError aclBinaryOpRun(
     ret = kfunc(workspaceAddr, workspaceSize, executor, stream);
     if (ret != ACL_SUCCESS) {
         std::cout << "Failed to run the kernel\n";
+        CHECK_STATUS(ret);
         return ACL_ERROR_RT_FAILURE;
     }
 
@@ -184,6 +186,7 @@ aclError aclInplaceBinaryOpRun(
     aclError ret = wsfunc(selfTensor, otherTensor, std::forward<Args>(args)..., &workspaceSize, &executor);
     // e.g.
     if (ret != ACL_SUCCESS) {
+        CHECK_STATUS(ret);
         std::cout << "Failed to allocate workspace \n";
     }
 
@@ -196,6 +199,7 @@ aclError aclInplaceBinaryOpRun(
     ret = kfunc(workspaceAddr, workspaceSize, executor, stream);
     if (ret != ACL_SUCCESS) {
         std::cout << "Failed to run the kernel\n";
+        CHECK_STATUS(ret);
         return ACL_ERROR_RT_FAILURE;
     }
 
@@ -231,6 +235,7 @@ aclError aclTernaryOpRun(
         &workspaceSize, &executor);
     //ret = aclnnAddGetWorkspaceSize(selfTensor, otherTensor, alpha, outTensor, &workspaceSize, &executor);
     if (ret != ACL_SUCCESS) {
+        CHECK_STATUS(ret);
         std::cout << "Failed to allocate workspace \n";
     }
 
@@ -243,6 +248,7 @@ aclError aclTernaryOpRun(
     ret = kfunc(workspaceAddr, workspaceSize, executor, stream);
     if (ret != ACL_SUCCESS) {
         std::cout << "Failed to run the kernel\n";
+        CHECK_STATUS(ret);
         return ACL_ERROR_RT_FAILURE;
     }
 
@@ -274,6 +280,7 @@ aclError aclTernaryInplaceOpRun(
         &workspaceSize, &executor);
     //ret = aclnnInplaceAddGetWorkspaceSize(selfTensor, otherTensor, alpha,  &workspaceSize, &executor);
     if (ret != ACL_SUCCESS) {
+        CHECK_STATUS(ret);
         std::cout << "Failed to run WorkspaceSize for a kernel\n";
         return ACL_ERROR_RT_FAILURE;
     }
@@ -287,6 +294,7 @@ aclError aclTernaryInplaceOpRun(
     ret = kfunc(workspaceAddr, workspaceSize, executor, stream);
     if (ret != ACL_SUCCESS) {
         std::cout << "Failed to run the kernel\n";
+        CHECK_STATUS(ret);
         return ACL_ERROR_RT_FAILURE;
     }
 
@@ -321,6 +329,7 @@ aclError aclUnaryOpRun(
     // e.g. aclnnStatus aclnnAsinGetWorkspaceSize(const aclTensor* self, aclTensor* out, uint64_t* workspaceSize, aclOpExecutor** executor);
     if (ret != ACL_SUCCESS) {
         std::cout << "Failed to run WorkspaceSize for a kernel\n";
+        CHECK_STATUS(ret);
         return ACL_ERROR_RT_FAILURE;
     }
 
@@ -333,6 +342,7 @@ aclError aclUnaryOpRun(
     ret = kfunc(workspaceAddr, workspaceSize, executor, stream);
     if (ret != ACL_SUCCESS) {
         std::cout << "Failed to run the kernel\n";
+        CHECK_STATUS(ret);
         return ACL_ERROR_RT_FAILURE;
     }
 
@@ -361,6 +371,7 @@ aclError aclInplaceUnaryOpRun(
     // e.g. ret = aclnnMatmulGetWorkspaceSize(a_tensor, b_tensor, out_tensor, math_type, &workspace_size, &executor);
     if (ret != ACL_SUCCESS) {
         std::cout << "Failed to run WorkspaceSize for a kernel\n";
+        CHECK_STATUS(ret);
         return ACL_ERROR_RT_FAILURE;
     }
 
@@ -373,6 +384,7 @@ aclError aclInplaceUnaryOpRun(
     ret = kfunc(workspaceAddr, workspaceSize, executor, stream);
     if (ret != ACL_SUCCESS) {
         std::cout << "Failed to run the kernel";
+        CHECK_STATUS(ret);
         return ACL_ERROR_RT_FAILURE;
     }
 
@@ -399,6 +411,7 @@ aclError aclIrregularOpRun(
     // 第一段: 获取所需Workspace大小
     aclError ret = wsfunc(std::forward<Args>(args)..., &workspaceSize, &executor);
     if (ret != ACL_SUCCESS) {
+        CHECK_STATUS(ret);
         std::cout << "Failed to run WorkspaceSize for a irregular op kernel\n";
         return ACL_ERROR_RT_FAILURE;
     }
@@ -411,6 +424,7 @@ aclError aclIrregularOpRun(
     // 第二段: 在指定的Stream上执行算子, this is fixed func type
     ret = kfunc(workspaceAddr, workspaceSize, executor, stream);
     if (ret != ACL_SUCCESS) {
+        CHECK_STATUS(ret);
         std::cout << "Failed to run the irregular op kernel";
         return ACL_ERROR_RT_FAILURE;
     }
@@ -438,6 +452,7 @@ aclError aclReductionOpRun(
     aclError ret = wsfunc(selfTensor, std::forward<Args>(args)..., outTensor, &workspaceSize, &executor);
     if (ret != ACL_SUCCESS) {
         std::cout << "Failed to run WorkspaceSize for a kernel\n";
+        CHECK_STATUS(ret);
         return ACL_ERROR_RT_FAILURE;
     }
 
@@ -450,6 +465,7 @@ aclError aclReductionOpRun(
     ret = kfunc(workspaceAddr, workspaceSize, executor, stream);
     if (ret != ACL_SUCCESS) {
         std::cout << "Failed to run the kernel";
+        CHECK_STATUS(ret);
         return ACL_ERROR_RT_FAILURE;
     }
 

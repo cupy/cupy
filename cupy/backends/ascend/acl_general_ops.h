@@ -43,10 +43,10 @@
 
 // manipulation: transpose, reshape, cast, pad continguous in aclnn_kernels/
 #include "aclnn_kernels/transpose.h"
-//#include "aclnn_kernels/cast.h"  // TODO: aclnn/opdev/platform.h:23:10: fatal error: platform/platform_info.h: No such file or directory
-//#include "aclnn_kernels/pad.h"
-//#include "aclnn_kernels/slice.h"
-//#include "aclnn_kernels/reshape.h"
+#include "aclnn_kernels/cast.h"
+#include "aclnn_kernels/pad.h"
+#include "aclnn_kernels/slice.h"
+#include "aclnn_kernels/reshape.h"  // use experiment/platform header
 
 #include "./acl_op_template.h"
 #include "./acl_scalar_arg.h"
@@ -97,11 +97,11 @@
         }
     }
 
-    
     aclError aclop_Concat(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
         const ArgsType& args, const KargsType& kargs, aclrtStream stream) {
         if (ins.size() >= 1) {
             auto tl = ToAclTensorList(ins);
+            // TODO: default dim value
             int64_t dim = GetScalarArg<int64_t>(args, 0, kargs, "dim");
             return aclIrregularOpRun(aclnnCatGetWorkspaceSize, aclnnCat, stream,
                 tl, dim, outs[0]);
@@ -135,7 +135,7 @@
     //     aclTensor* self = ins[0];
     //     if (args.size() == 3) {
     //         return aclInplaceBinaryOpRun(self, ins[1], ins[2],
-    //             aclnnPutGetWorkspaceSize, aclnnPut, stream);
+    //             aclnnInplacePutGetWorkspaceSize, aclnnInplacePut, stream);
     //     } else {
     //         std::cout << "Error:" <<  __FUNCTION__  << " take 3 input tensors (self, index, value) \n";
     //         return ACL_ERROR_INVALID_PARAM;

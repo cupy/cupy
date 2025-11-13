@@ -206,11 +206,12 @@ def get_compiler_setting(ctx: Context, backend: str):
     elif backend == "ascend":
         extra_compile_args.append('-std=c++17')
         include_dirs.append(os.path.join(cann_path, 'include'))
-        include_dirs.append(os.path.join(cann_path, '../../nnal/asdsip/latest/include'))
         include_dirs.append(os.path.join(cann_path, 'include/aclnn'))
+        include_dirs.append(os.path.join(cann_path, 'include/experiment/platform'))
         library_dirs.append(os.path.join(cann_path, 'lib64'))
         library_dirs.append(os.path.join(cann_path, 'runtime/lib64'))
         library_dirs.append(os.path.join(cann_path, '../../nnal/asdsip/latest/lib'))
+        include_dirs.append(os.path.join(cann_path, '../../nnal/asdsip/latest/include'))
 
     if PLATFORM_WIN32:
         nvtx_path = _environment.get_nvtx_path()
