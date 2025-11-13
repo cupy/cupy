@@ -3,7 +3,7 @@ import functools
 
 import numpy
 
-#from cupy._core._kernel import ElementwiseKernel # 2 concat kerne use this
+from cupy._core._kernel import ElementwiseKernel # 2 concat kerne use this
 from cupy._core._ufuncs import elementwise_copy
 from cupy.exceptions import AxisError
 
@@ -664,51 +664,47 @@ cpdef _ndarray_base concatenate_method(
 
     return _concatenate(arrays, axis, shape_t, out, casting)
 
-IF CUPY_CANN_VERSION <= 0:
-    cpdef _ndarray_base _concatenate(
-            list arrays, Py_ssize_t axis, tuple shape, _ndarray_base out,
-            str casting):
-        cdef _ndarray_base a, b
-        cdef Py_ssize_t i, aw, itemsize, axis_size
-        cdef bint all_same_type, same_shape_and_contiguous
-        # If arrays are large, Issuing each copy method is efficient.
-        cdef Py_ssize_t threshold_size = 2 * 1024 * 1024
 
-        dtype = out.dtype
-
-        if len(arrays) > 8:
-            all_same_type = True
-            same_shape_and_contiguous = True
-            axis_size = shape[axis] // len(arrays)
-            total_bytes = 0
-            itemsize = dtype.itemsize
-            for a in arrays:
-                if a.dtype != dtype:
-                    all_same_type = False
-                    break
-                if same_shape_and_contiguous:
-                    same_shape_and_contiguous = (
-                        a._c_contiguous and a._shape[axis] == axis_size)
-                total_bytes += a.size * itemsize
-
-            if all_same_type and total_bytes < threshold_size * len(arrays):
-                return _concatenate_single_kernel(
-                    arrays, axis, shape, dtype, same_shape_and_contiguous, out)
-
-        i = 0
-        slice_list = [slice(None)] * len(shape)
-        for a in arrays:
-            aw = a._shape[axis]
-            slice_list[axis] = slice(i, i + aw)
-            b = out[tuple(slice_list)]
-            elementwise_copy(a, b, casting=casting)
-            i += aw
-        return out
-ELSE: # TODO: ASCEND not yet impl
-    cpdef _ndarray_base _concatenate(
+cpdef _ndarray_base _concatenate(
         list arrays, Py_ssize_t axis, tuple shape, _ndarray_base out,
         str casting):
-        return None
+    cdef _ndarray_base a, b
+    cdef Py_ssize_t i, aw, itemsize, axis_size
+    cdef bint all_same_type, same_shape_and_contiguous
+    # If arrays are large, Issuing each copy method is efficient.
+    cdef Py_ssize_t threshold_size = 2 * 1024 * 1024
+
+    dtype = out.dtype
+
+    if len(arrays) > 8:
+        all_same_type = True
+        same_shape_and_contiguous = True
+        axis_size = shape[axis] // len(arrays)
+        total_bytes = 0
+        itemsize = dtype.itemsize
+        for a in arrays:
+            if a.dtype != dtype:
+                all_same_type = False
+                break
+            if same_shape_and_contiguous:
+                same_shape_and_contiguous = (
+                    a._c_contiguous and a._shape[axis] == axis_size)
+            total_bytes += a.size * itemsize
+
+        if all_same_type and total_bytes < threshold_size * len(arrays):
+            return _concatenate_single_kernel(
+                arrays, axis, shape, dtype, same_shape_and_contiguous, out)
+
+    i = 0
+    slice_list = [slice(None)] * len(shape)
+    for a in arrays:
+        aw = a._shape[axis]
+        slice_list[axis] = slice(i, i + aw)
+        b = out[tuple(slice_list)]
+        elementwise_copy(a, b, casting=casting)
+        i += aw
+    return out
+
 
 cpdef Py_ssize_t size(_ndarray_base a, axis=None) except? -1:
     """Returns the number of elements along a given axis.
@@ -798,93 +794,93 @@ cdef _normalize_axis_tuple(axis, Py_ssize_t ndim, shape_t &ret):
             raise ValueError('repeated axis')
         ret.push_back(ax)
 
-IF CUPY_CANN_VERSION <= 0:
-    cdef _ndarray_base _concatenate_single_kernel(
-            list arrays, Py_ssize_t axis, tuple shape, dtype,
-            bint same_shape_and_contiguous, _ndarray_base out):
-        cdef _ndarray_base a, x
-        cdef Py_ssize_t base, cum, ndim
-        cdef int i, j
-        cdef Py_ssize_t[:] ptrs
-        cdef Py_ssize_t[:] cum_sizes
-        cdef Py_ssize_t[:, :] x_strides
-        cdef int device_id = device.get_device_id()
 
-        assert out is not None
+cdef _ndarray_base _concatenate_single_kernel(
+        list arrays, Py_ssize_t axis, tuple shape, dtype,
+        bint same_shape_and_contiguous, _ndarray_base out):
+    cdef _ndarray_base a, x
+    cdef Py_ssize_t base, cum, ndim
+    cdef int i, j
+    cdef Py_ssize_t[:] ptrs
+    cdef Py_ssize_t[:] cum_sizes
+    cdef Py_ssize_t[:, :] x_strides
+    cdef int device_id = device.get_device_id()
 
-        ptrs = numpy.ndarray(len(arrays), numpy.int64)
-        for i, a in enumerate(arrays):
-            _check_peer_access(a, device_id)
-            ptrs[i] = a.data.ptr
-        x = _creation.array(ptrs)
+    assert out is not None
 
-        if same_shape_and_contiguous:
-            base = internal.prod_sequence(shape[axis:]) // len(arrays)
-            _concatenate_kernel_same_size(x, base, out)
-            return out
+    ptrs = numpy.ndarray(len(arrays), numpy.int64)
+    for i, a in enumerate(arrays):
+        _check_peer_access(a, device_id)
+        ptrs[i] = a.data.ptr
+    x = _creation.array(ptrs)
 
-        ndim = len(shape)
-        x_strides = numpy.ndarray((len(arrays), ndim), numpy.int64)
-        cum_sizes = numpy.ndarray(len(arrays), numpy.int64)
-        cum = 0
-        for i, a in enumerate(arrays):
-            for j in range(ndim):
-                x_strides[i, j] = <int>a._strides[j]
-            cum_sizes[i] = cum
-            cum += <int>a._shape[axis]
-
-        _concatenate_kernel(
-            x, axis, _creation.array(cum_sizes), _creation.array(x_strides), out)
+    if same_shape_and_contiguous:
+        base = internal.prod_sequence(shape[axis:]) // len(arrays)
+        _concatenate_kernel_same_size(x, base, out)
         return out
 
+    ndim = len(shape)
+    x_strides = numpy.ndarray((len(arrays), ndim), numpy.int64)
+    cum_sizes = numpy.ndarray(len(arrays), numpy.int64)
+    cum = 0
+    for i, a in enumerate(arrays):
+        for j in range(ndim):
+            x_strides[i, j] = <int>a._strides[j]
+        cum_sizes[i] = cum
+        cum += <int>a._shape[axis]
 
-    cdef _concatenate_kernel_same_size = ElementwiseKernel(
-        'raw P x, int64 base',
-        'T y',
-        '''
-        ptrdiff_t middle = i / base;
-        ptrdiff_t top = middle / x.size();
-        ptrdiff_t array_ind = middle - top * x.size();
-        ptrdiff_t offset = i + (top - middle) * base;
-        y = reinterpret_cast<T*>(x[array_ind])[offset];
-        ''',
-        'cupy_concatenate_same_size'
-    )
+    _concatenate_kernel(
+        x, axis, _creation.array(cum_sizes), _creation.array(x_strides), out)
+    return out
 
 
-    cdef _concatenate_kernel = ElementwiseKernel(
-        '''raw P x, int32 axis, raw int64 cum_sizes, raw int64 x_strides''',
-        'T y',
-        '''
-        ptrdiff_t axis_ind = _ind.get()[axis];
-        ptrdiff_t left = 0;
-        ptrdiff_t right = cum_sizes.size();
+cdef _concatenate_kernel_same_size = ElementwiseKernel(
+    'raw P x, int64 base',
+    'T y',
+    '''
+    ptrdiff_t middle = i / base;
+    ptrdiff_t top = middle / x.size();
+    ptrdiff_t array_ind = middle - top * x.size();
+    ptrdiff_t offset = i + (top - middle) * base;
+    y = reinterpret_cast<T*>(x[array_ind])[offset];
+    ''',
+    'cupy_concatenate_same_size'
+)
 
-        while (left < right - 1) {
-        ptrdiff_t m = (left + right) / 2;
-        if (axis_ind < cum_sizes[m]) {
-            right = m;
-        } else {
-            left = m;
-        }
-        }
 
-        ptrdiff_t array_ind = left;
-        axis_ind -= cum_sizes[left];
-        char* ptr = reinterpret_cast<char*>(x[array_ind]);
-        for (int j = _ind.ndim - 1; j >= 0; --j) {
-        ptrdiff_t ind[] = {array_ind, j};
-        ptrdiff_t offset;
-        if (j == axis) {
-            offset = axis_ind;
-        } else {
-            offset = _ind.get()[j];
-        }
-        ptr += x_strides[ind] * offset;
-        }
+cdef _concatenate_kernel = ElementwiseKernel(
+    '''raw P x, int32 axis, raw int64 cum_sizes, raw int64 x_strides''',
+    'T y',
+    '''
+    ptrdiff_t axis_ind = _ind.get()[axis];
+    ptrdiff_t left = 0;
+    ptrdiff_t right = cum_sizes.size();
 
-        y = *reinterpret_cast<T*>(ptr);
-        ''',
-        'cupy_concatenate',
-        reduce_dims=False
-    )
+    while (left < right - 1) {
+    ptrdiff_t m = (left + right) / 2;
+    if (axis_ind < cum_sizes[m]) {
+        right = m;
+    } else {
+        left = m;
+    }
+    }
+
+    ptrdiff_t array_ind = left;
+    axis_ind -= cum_sizes[left];
+    char* ptr = reinterpret_cast<char*>(x[array_ind]);
+    for (int j = _ind.ndim - 1; j >= 0; --j) {
+    ptrdiff_t ind[] = {array_ind, j};
+    ptrdiff_t offset;
+    if (j == axis) {
+        offset = axis_ind;
+    } else {
+        offset = _ind.get()[j];
+    }
+    ptr += x_strides[ind] * offset;
+    }
+
+    y = *reinterpret_cast<T*>(ptr);
+    ''',
+    'cupy_concatenate',
+    reduce_dims=False
+)

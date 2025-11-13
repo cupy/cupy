@@ -46,9 +46,8 @@
 #include "aclnnop/aclnn_signbit.h"
 #include "aclnnop/aclnn_sign.h"
 #include "aclnnop/aclnn_reciprocal.h"
-// TODO: 
+// TODO: not yet register
 #include "aclnnop/aclnn_heaviside.h"
-#include "aclnnop/aclnn_inverse.h"
 
 // equal scalar, tensor, vector/list is_nan (no such)
 #include "aclnnop/aclnn_is_inf.h"
@@ -140,13 +139,22 @@
 #include "aclnnop/aclnn_var.h"
 #include "aclnnop/aclnn_bincount.h"
 #include "aclnnop/aclnn_median.h"
+#include "aclnnop/aclnn_median.h" // nan version
 #include "aclnnop/aclnn_aminmax.h" // ptp :  aminmax
 // missing quantile, percentile
-// include "aclnnop/aclnn_hist.h"
+#include "aclnnop/aclnn_histc.h"
 
 // linalg matrix op: qr, tril triu, cross, trace, norm, det
 #include "aclnnop/aclnn_matmul.h"
 #include "aclnnop/aclnn_dot.h"
+#include "aclnnop/aclnn_inverse.h"
+#include "aclnnop/aclnn_trace.h"
+#include "aclnnop/aclnn_diag.h"
+#include "aclnnop/aclnn_qr.h"
+#include "aclnnop/aclnn_triangular_solve.h"
+#include "aclnnop/aclnn_triu.h"
+#include "aclnnop/aclnn_tril.h"
+//#include "aclnnop/aclnn_solve.h"
 // linalg_cross
 
 #include "./acl_op_template.h"
@@ -254,11 +262,12 @@ extern "C" {
     }
     DECLARE_ACL_BINARY_OPS_FUNC(Mul)
     DECLARE_ACL_BINARY_OPS_FUNC(Div)
+    // true_divide
     DECLARE_ACL_BINARY_OPS_FUNC(FloorDivide) // python  `//` int div op, output int
     DECLARE_ACL_BINARY_OPS_FUNC(FmodTensor)  // for float and ints
     DECLARE_ACL_BINARY_OPS_FUNC(RemainderTensorTensor) // remainder has 4 version
-    DECLARE_ACL_BINARY_OP(Gcd)
 
+    DECLARE_ACL_BINARY_OP(Gcd)
     aclError aclop_Lcm(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream) {
         // how to deal with minus integer?
         aclDataType dtype;
@@ -292,21 +301,6 @@ extern "C" {
         aclnnSubsGetWorkspaceSize, aclnnSubs, stream, false);
     }
 
-    // Remainder has TT, ST, TS , inplace version, aclnnRemainderTensorScalar&aclnnInplaceRemainderTensorScalar
-    // TODO: Outpout with 2 or more output like `divmod`, but aclnnop has no such op
-    aclError aclop_Divmod(const std::vector<const aclTensor*> ins, const std::vector<aclTensor*> outs,
-        const std::vector<const aclScalar*> args, const KargsType& kargs, aclrtStream stream) {
-        const aclTensor* self = ins[0];
-        int mode = 2;
-        // 0-对应None：默认不执行舍入。
-        // 1-对应trunc：将除法的小数部分舍入为零。
-        // 2-对应floor：向下舍入除法的结果。
-        auto ret = aclIrregularOpRun(aclnnDivModGetWorkspaceSize, aclnnDivMod, stream,
-            self, ins[0], mode, outs[0]);
-        ret = aclIrregularOpRun(aclnnRemainderTensorTensorGetWorkspaceSize, aclnnRemainderTensorTensor, stream,
-            self, ins[0], outs[1]);
-        return ret;
-    }
 
     DECLARE_ACL_BINARY_OP(Maximum)
     DECLARE_ACL_BINARY_OP(Minimum)
@@ -344,9 +338,6 @@ extern "C" {
     DECLARE_ACL_UNARY_OP(Real)
     DECLARE_ACL_BINARY_OP(Complex)
 
-    DECLARE_ACL_BINARY_OP(LogAddExp2)
-    DECLARE_ACL_BINARY_OP(LogAddExp)
-
     DECLARE_ACL_UNARY_OP(Signbit)  // no inplace version
     DECLARE_ACL_UNARY_OP(Sign) 
 
@@ -364,6 +355,8 @@ extern "C" {
     DECLARE_ACL_UNARY_OPS_FUNC(Log2)
     DECLARE_ACL_UNARY_OPS_FUNC(Log10)
     DECLARE_ACL_UNARY_OPS_FUNC(Log1p)
+    DECLARE_ACL_BINARY_OP(LogAddExp2)
+    DECLARE_ACL_BINARY_OP(LogAddExp)
 
     // Power has 3 version, Remainder has 4 version
     DECLARE_ACL_BINARY_OP(PowTensorTensor)

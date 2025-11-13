@@ -285,23 +285,19 @@ ctypedef aclError (*ReductionOpFunc)(const aclTensor* self, const aclIntArray* d
     aclTensor* out, aclrtStream stream)
 
 
+###########################################################################################
 # 为vector[const aclScalar*]&创建类型别名
 ctypedef vector[const aclScalar*] ArgsType
-ctypedef cpp_map[string, const aclScalar*] KwargsType
+ctypedef cpp_map[string, const aclScalar*] KargsType
 
 # 4. 为迭代器创建别名（便于遍历）
 ctypedef vector[const aclScalar*].iterator ArgsIterator
-ctypedef cpp_map[string, const aclScalar*].const_iterator KwargsConstIterator
+ctypedef cpp_map[string, const aclScalar*].const_iterator KargsConstIterator
 #ctypedef pair[const string, const aclScalar*] KwargsItem
 
 # aclTensorList is not convenient to use in C++, so use std::vector directly
 ctypedef aclError (*GeneralOpFunc)(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
-    const ArgsType& args, const KwargsType& kargs, aclrtStream stream)
-
-# irregular ops
-cdef extern from "../acl_general_ops.h" nogil:
-    aclError aclop_Round(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
-        const ArgsType& args, const KwargsType& kargs, aclrtStream stream)
+    const ArgsType& args, const KargsType& kargs, aclrtStream stream)
 
 
 # 函数指针联合体，用于存储不同类型的操作
@@ -380,7 +376,7 @@ cdef aclError launch_general_func(str opname, sequence ins, sequence outs, list 
         stream = <aclrtStream>stream_ptr
 
     cdef ArgsType acl_args
-    cdef KwargsType acl_kargs
+    cdef KargsType acl_kargs
     cdef const aclTensor* ct
     try:
         ret = func_ptr.general_op(intensors, outtensors, acl_args, acl_kargs, stream)
@@ -680,6 +676,7 @@ cdef extern from "../acl_math_ops.h" nogil:
     aclError aclop_Nancumprod(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out, aclrtStream stream)
     aclError aclop_Nancumsum(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out, aclrtStream stream)
 
+
 # 初始化函数，注册内置操作
 cdef void init_builtin_operators():
     cdef FuncPtrUnion func_union
@@ -782,8 +779,8 @@ cdef void init_builtin_operators():
     register_acl_ufunc("ascend_remainder", BINARY_OP, func_union)
     func_union.binary_op = aclop_PowTensorTensor
     register_acl_ufunc("ascend_pow", BINARY_OP, func_union)
-    #func_union.binary_op = aclop_Minimum
-    #register_acl_ufunc("ascend_minimum", BINARY_OP, func_union)
+    func_union.binary_op = aclop_Minimum
+    register_acl_ufunc("ascend_minimum", BINARY_OP, func_union)
 
     func_union.unary_op = aclop_Reciprocal
     register_acl_ufunc("ascend_reciprocal", UNARY_OP, func_union)
@@ -941,7 +938,33 @@ cdef void init_builtin_operators():
     register_acl_ufunc("ascend_nancumprod", REDUCTION_OP, func_union)
 
 
-# register_acl_irregular_func()
+# general ops
+cdef extern from "../acl_general_ops.h" nogil:
+    aclError aclop_Concat(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
+        const ArgsType& args, const KargsType& kargs, aclrtStream stream)
+    aclError aclop_Stack(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
+        const ArgsType& args, const KargsType& kargs, aclrtStream stream)
+
+    aclError aclop_Round(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
+        const ArgsType& args, const KargsType& kargs, aclrtStream stream)
+    #aclError aclop_Divmod(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
+    #    const ArgsType& args, const KargsType& kargs, aclrtStream stream)
+    aclError aclop_Clamp(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
+        const ArgsType& args, const KargsType& kargs, aclrtStream stream)
+
+cdef register_irregular_operators():
+    cdef FuncPtrUnion func_union
+    func_union.general_op = aclop_Concat
+    register_acl_ufunc("ascend_concaternate", GENERAL_OP, func_union)
+    func_union.general_op = aclop_Stack
+    register_acl_ufunc("ascend_stack", GENERAL_OP, func_union)
+    func_union.general_op = aclop_Round
+    register_acl_ufunc("ascend_round", GENERAL_OP, func_union)
+    #func_union.general_op = aclop_Divmod
+    register_acl_ufunc("ascend_divmod", GENERAL_OP, func_union)
+    func_union.general_op = aclop_Clamp
+    register_acl_ufunc("ascend_clip", GENERAL_OP, func_union)
+
 
 def py_register_acl_ufunc(str opname, int func_type, long func_ptr):
     """Python层级的操作注册函数, func_type is OpType enum value"""
@@ -973,3 +996,4 @@ def py_launch_acl_func(str opname, tuple ops, bint inplace=False):
 
 # 模块初始化时注册内置操作
 init_builtin_operators()
+register_irregular_operators()

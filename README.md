@@ -48,14 +48,14 @@ currently, only support tensor op tensor, some op support tensor op scalar (aclS
 8. masked tensor/ndarray: its possible using kargs, using aclnn op
 5. scalar op scalar: numpy/cupy 是不是也不支持这样的操作? 
 
-### 核心op支持情况
+### 核心op支持情况 ( see also Array API standard)
 #### math ops: 
-+ 未注册 clamp, einsum, cbrt, trunc,  round/around, convolve (?),
++ 未注册 clamp, einsum, cbrt, fix (Trunc), rint (Round), round/around, convolve (?),
 + 自己实现: radians (deg2rad), degrees (rad2deg), deg2rad, rad2deg. lcm 
 + missing 数值计算: gradient, interp, trapezoid, diff 缺失
-+ missing: frexp, ldexp, fix (Trunc), rint
++ missing: frexp, ldexp, 
 + complex numpy ops: angle, conj,  缺少几个ops但是自己实现很简单,  real, complex
-+ scan, clip
++ scan (numpy has no such op), clip, true_divide
 
 #### indexing ops
 slicing ? working, but it does not use `Slice` aclop
@@ -63,7 +63,7 @@ slicing ? working, but it does not use `Slice` aclop
 aclop has `take, put(InplacePut), slice`, but no `choose`
 
 #### manipulation ops
-reshape (Reshape api)
+reshape, split, does not need kernel, it is done in cython code on host (Reshape api)
 having: roll, permute, flip, repeat, 
 
 #### Logica/bitwise 算子基本都有:  

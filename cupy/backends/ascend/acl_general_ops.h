@@ -17,6 +17,7 @@
 #include "aclnnop/aclnn_fill_tensor.h"
 
 #include "aclnnop/aclnn_div.h"
+#include "aclnnop/aclnn_remainder.h"
 #include "aclnnop/aclnn_cast.h"
 
 // indexing: argsort, unique, unique2, sort
@@ -111,7 +112,7 @@
         }
     }
 
-    // numpy has no such op resize
+    // numpy has op resize, but diff from the scaling
     // aclnnResizeGetWorkspaceSize(const aclTensor* self, const aclFloatArray* scales, const char* mode, aclTensor* out,
 
     // aclnnFlattenGetWorkspaceSize(const aclTensor* self, int64_t axis, aclTensor* out,
@@ -197,6 +198,9 @@
         return aclIrregularOpRun(aclnnRoundDecimalsGetWorkspaceSize, aclnnRoundDecimals, stream,
             self, decimals, out);
     }
+
+    // numpy.range
+
     // numpy.clip -> aclnnClamp
     aclError aclop_Clamp(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
         const ArgsType& args, const KargsType& kargs, aclrtStream stream) {
@@ -206,6 +210,22 @@
         const aclScalar* amax = args[1];
         return aclTernaryOpRun(self, amin, amax, out,
             aclnnClampGetWorkspaceSize, aclnnClamp, stream, false);
+    }
+
+    // Remainder has TT, ST, TS , inplace version, aclnnRemainderTensorScalar&aclnnInplaceRemainderTensorScalar
+    // TODO: Outpout with 2 or more output like `divmod`, but aclnnop has no such op
+    aclError aclop_Divmod(const std::vector<const aclTensor*> ins, const std::vector<aclTensor*> outs,
+        const ArgsType& args, const KargsType& kargs, aclrtStream stream) {
+        const aclTensor* self = ins[0];
+        int mode = 2; // TODO
+        // 0-对应None：默认不执行舍入。
+        // 1-对应trunc：将除法的小数部分舍入为零。
+        // 2-对应floor：向下舍入除法的结果。
+        auto ret = aclIrregularOpRun(aclnnDivModGetWorkspaceSize, aclnnDivMod, stream,
+            self, ins[0], mode, outs[0]);
+        ret = aclIrregularOpRun(aclnnRemainderTensorTensorGetWorkspaceSize, aclnnRemainderTensorTensor, stream,
+            self, ins[0], outs[1]);
+        return ret;
     }
 
 #ifdef __cplusplus
