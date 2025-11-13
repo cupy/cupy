@@ -38,7 +38,7 @@ Original error:
 from cupy import xpu  # NOQA
 # Do not make `cupy.cupyx` available because it is confusing.
 # TODO: ASCEND  usable only if this cupy module has been ported
-#import cupyx as _cupyx  # NOQA
+import cupyx as _cupyx  # NOQA
 
 
 def is_available():

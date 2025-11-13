@@ -194,6 +194,12 @@ cpdef _ndarray_base tensordot_core(
     return out
 
 cdef _ndarray_base _ascend_matmul(_ndarray_base a, _ndarray_base b, _ndarray_base out):
+    # only for 2dim mat mul
+    if out is None:
+        assert a.shape[1] == b.shape[0]
+        ret_shape = [a.shape[0], b.shape[1]]
+        ret_dtype = numpy.promote_types(a.dtype, b.dtype)
+        out = _ndarray_init(cupy.ndarray, ret_shape, ret_dtype, None)
     launch_general_func("ascend_matmul", [a, b], [out], None, None, 0)
     return out
 
@@ -232,6 +238,7 @@ cpdef _ndarray_base matmul(
         raise ValueError('Scalar operands are not allowed, use \'*\' instead')
 
     ndim = max(orig_a_ndim, orig_b_ndim)
+
     IF CUPY_CANN_VERSION <= 0:
         if ndim <= 2:
             if out is None:
@@ -244,8 +251,10 @@ cpdef _ndarray_base matmul(
             elementwise_copy(c, out)
             return out
     ELSE:
-        pass # TODO. ascend_dot is not exported
+        if ndim == 2:
+            _ascend_matmul(a, b, out)
 
+    # TODO: code below lead to _ascend_matmul not working correctly
     orig_a = a
     orig_b = b
     a_part_outshape = b_part_outshape = 0
