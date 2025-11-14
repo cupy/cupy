@@ -40,7 +40,7 @@
 // split, resize
 #include "aclnnop/aclnn_flatten.h"
 #include "aclnnop/aclnn_permute.h"
-#include "aclnnop/aclnn_copy.h"
+#include "aclnnop/aclnn_cast.h"
 
 // manipulation: transpose, reshape, cast, pad continguous in aclnn_kernels/
 #include "aclnn_kernels/transpose.h"
@@ -72,7 +72,7 @@
 
     // frexp() Decompose the elements of x into mantissa and twos exponent.
     // aclError aclop_Frexp(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
-    //     const ArgsType& args, const KargsType& kargs, aclrtStream stream) {
+    //     const ArgsType& args, const KwargsType& kwargs, aclrtStream stream) {
     //     const aclTensor* self = ins[0];
     //     aclTensor* out = outs[0];
     //     int decimals = ToScalarArg<int>(args[0]);
@@ -86,10 +86,10 @@
 
     // aclnnStackGetWorkspaceSize(const aclTensorList* tensors, int64_t dim, aclTensor* out,
     aclError aclop_Stack(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
-        const ArgsType& args, const KargsType& kargs, aclrtStream stream) {
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream) {
         if (ins.size() >= 1) {
             auto tl = ToAclTensorList(ins);
-            int64_t dim = GetScalarArg<int64_t>(args, 0, kargs, "dim");
+            int64_t dim = GetScalarArg<int64_t>(args, 0, kwargs, "dim");
             return aclIrregularOpRun(aclnnStackGetWorkspaceSize, aclnnStack, stream,
                 tl, dim, outs[0]);
         } else {
@@ -99,11 +99,11 @@
     }
 
     aclError aclop_Concat(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
-        const ArgsType& args, const KargsType& kargs, aclrtStream stream) {
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream) {
         if (ins.size() >= 1) {
             auto tl = ToAclTensorList(ins);
             // TODO: default dim value
-            int64_t dim = GetScalarArg<int64_t>(args, 0, kargs, "dim");
+            int64_t dim = GetScalarArg<int64_t>(args, 0, kwargs, "dim");
             return aclIrregularOpRun(aclnnCatGetWorkspaceSize, aclnnCat, stream,
                 tl, dim, outs[0]);
         } else {
@@ -117,9 +117,9 @@
 
     // aclnnFlattenGetWorkspaceSize(const aclTensor* self, int64_t axis, aclTensor* out,
     aclError aclop_Flatten(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
-        const ArgsType& args, const KargsType& kargs, aclrtStream stream) {
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream) {
         if (outs.size() == 1) {
-            int64_t axis = GetScalarArg<int64_t>(args, 0, kargs, "axis");
+            int64_t axis = GetScalarArg<int64_t>(args, 0, kwargs, "axis");
             return aclIrregularOpRun(aclnnFlattenGetWorkspaceSize, aclnnFlatten, stream,
                 ins[0], axis, outs[0]);
         } else {
@@ -132,7 +132,7 @@
     DECLARE_ACL_BINARY_OP(Take)  // axis=None, out=None, mode='raise'
     // numpy.put(a, ind, v, mode='raise')
     // aclError aclop_Put(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
-    //     const ArgsType& args, const KargsType& kargs, aclrtStream stream) {
+    //     const ArgsType& args, const KwargsType& kwargs, aclrtStream stream) {
     //     aclTensor* self = ins[0];
     //     if (args.size() == 3) {
     //         return aclInplaceBinaryOpRun(self, ins[1], ins[2],
@@ -144,7 +144,7 @@
     // }
 
     aclError aclop_Cast(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
-        const ArgsType& args, const KargsType& kargs, aclrtStream stream) {
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream) {
         if (outs.size() == 1) {
             const aclTensor* self = ins[0];
             aclDataType dtype;
@@ -163,20 +163,20 @@
     //                                                 const aclTensor* source, bool accumulate,
     // aclnnInplaceCopyGetWorkspaceSize(aclTensor* selfRef, const aclTensor* src,
 
-    aclError aclop_Copy(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
-        const ArgsType& args, const KargsType& kargs, aclrtStream stream) {
-        const aclTensor* other = ins[0];
-        aclTensor* out = outs[0];
-        int decimals = ToScalarArg<int>(args[0]);
-        return aclIrregularOpRun(aclnnInplaceCopyGetWorkspaceSize, aclnnInplaceCopy, stream,
-            out, other);
-    }
+    // aclError aclop_Copy(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
+    //     const ArgsType& args, const KwargsType& kwargs, aclrtStream stream) {
+    //     const aclTensor* other = ins[0];
+    //     aclTensor* out = outs[0];
+    //     int decimals = ToScalarArg<int>(args[0]);
+    //     return aclIrregularOpRun(aclnnInplaceCopyGetWorkspaceSize, aclnnInplaceCopy, stream,
+    //         out, other);
+    // }
     
     // astype():  casting UnaryOp with dtype
     // aclnnCastGetWorkspaceSize(const aclTensor* self, const aclDataType dtype, aclTensor* out,
     // fill_kernel = ElementwiseKernel('T x', 'T y', 'y = x', 'cupy_fill')
     aclError aclop_Fill(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
-        const ArgsType& args, const KargsType& kargs, aclrtStream stream) {
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream) {
         aclTensor* self = outs[0];
         if (args.size()) {
             return aclInplaceBinaryOpRun(self, args[0],
@@ -190,19 +190,20 @@
     }
 
     aclError aclop_Arange(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
-        const ArgsType& args, const KargsType& kargs, aclrtStream stream) {
-        aclScalar* step = nullptr;
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream) {
+        const aclScalar* step = nullptr;
         if (args.size() >=3 ) {
             step = args.at(2);
-        } else if (HasScalarKwarg(kargs, "step")) {
-            step = kargs.at("step");
+        } else if (HasScalarKwarg(kwargs, "step")) {
+            step = kwargs.at("step");
         }
         return aclIrregularOpRun(aclnnArangeGetWorkspaceSize, aclnnArange, stream,
             args[0], args[1], step, outs[0]);
     }
 
+    // experimental api style
     aclError aclop_fill(const aclTensorList* ins, const aclTensorList* outs,
-        const ArgsType& args, const KargsType& kargs, aclrtStream stream) {
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream) {
             // aclTensor* self = aclGetTensorList(tensorList, 0);  // no such api
             // if (self) {
             //     return 0;
@@ -211,7 +212,7 @@
 
     // This is a general function, must be launched differently, keyward args?
     aclError aclop_Round(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
-        const ArgsType& args, const KargsType& kargs, aclrtStream stream) {
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream) {
         const aclTensor* self = ins[0];
         aclTensor* out = outs[0];
         int decimals = ToScalarArg<int>(args[0]);
@@ -219,11 +220,14 @@
             self, decimals, out);
     }
 
-    // numpy.range
+    aclError aclop_Copy(const aclTensor* other, aclTensor* out, aclrtStream stream) {
+        return aclIrregularOpRun(aclnnInplaceCopyGetWorkspaceSize, aclnnInplaceCopy, stream,
+            out, other);
+    }
 
     // numpy.clip -> aclnnClamp
     aclError aclop_Clamp(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
-        const ArgsType& args, const KargsType& kargs, aclrtStream stream) {
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream) {
         const aclTensor* self = ins[0];
         aclTensor* out = outs[0];
         const aclScalar* amin = args[0];
@@ -235,7 +239,7 @@
     // Remainder has TT, ST, TS , inplace version, aclnnRemainderTensorScalar&aclnnInplaceRemainderTensorScalar
     // TODO: Outpout with 2 or more output like `divmod`, but aclnnop has no such op
     aclError aclop_Divmod(const std::vector<const aclTensor*> ins, const std::vector<aclTensor*> outs,
-        const ArgsType& args, const KargsType& kargs, aclrtStream stream) {
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream) {
         const aclTensor* self = ins[0];
         int mode = 2; // TODO
         // 0-对应None：默认不执行舍入。

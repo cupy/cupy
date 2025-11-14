@@ -288,7 +288,7 @@ ctypedef aclError (*ReductionOpFunc)(const aclTensor* self, const aclIntArray* d
 ###########################################################################################
 # 为vector[const aclScalar*]&创建类型别名
 ctypedef vector[const aclScalar*] ArgsType
-ctypedef cpp_map[string, const aclScalar*] KargsType
+ctypedef cpp_map[string, const aclScalar*] KwargsType
 
 # 4. 为迭代器创建别名（便于遍历）
 ctypedef vector[const aclScalar*].iterator ArgsIterator
@@ -297,7 +297,7 @@ ctypedef cpp_map[string, const aclScalar*].const_iterator KargsConstIterator
 
 # aclTensorList is not convenient to use in C++, so use std::vector directly
 ctypedef aclError (*GeneralOpFunc)(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
-    const ArgsType& args, const KargsType& kargs, aclrtStream stream)
+    const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
 
 
 # 函数指针联合体，用于存储不同类型的操作
@@ -346,7 +346,7 @@ cdef OpType get_op_type(object ops, bint inplace, bint has_scalar = False):
         raise RuntimeError("Operator type can not be decided")
     return INVALID_OP
 
-cdef aclError launch_general_func(str opname, sequence ins, sequence outs, list args, dict kargs, intptr_t stream_ptr) except *:
+cdef aclError launch_general_func(str opname, sequence ins, sequence outs, list args, dict kwargs, intptr_t stream_ptr) except *:
     if opname.startswith("cupy_"):
         opname = ASCEND_OP_PREFIX + opname[5:]
     cdef OpInfo op_info
@@ -354,7 +354,7 @@ cdef aclError launch_general_func(str opname, sequence ins, sequence outs, list 
     op_info.op_name = opname.encode("utf-8")
     op_info.op_type = OpType.GENERAL_OP
     if _builtin_operators.find(op_info) == _builtin_operators.end():
-        return launch_acl_func(opname, ins, outs, args, kargs, stream_ptr)
+        return launch_acl_func(opname, ins, outs, args, kwargs, stream_ptr)
     func_ptr = _builtin_operators[op_info]
 
     # TODO:  convert all ins, outs, args, kwargs, into aclTesnor/aclScalar
@@ -376,7 +376,7 @@ cdef aclError launch_general_func(str opname, sequence ins, sequence outs, list 
         stream = <aclrtStream>stream_ptr
 
     cdef ArgsType acl_args
-    cdef KargsType acl_kargs
+    cdef KwargsType acl_kargs
     cdef const aclTensor* ct
     try:
         ret = func_ptr.general_op(intensors, outtensors, acl_args, acl_kargs, stream)
@@ -413,7 +413,7 @@ cdef vector[aclTensor*] _create_ops_vector(sequence ins, sequence outs) except *
 
     return tensors
 
-cdef aclError launch_acl_func(str opname, sequence ins, sequence outs, list args, dict kargs, intptr_t stream_ptr) except *:
+cdef aclError launch_acl_func(str opname, sequence ins, sequence outs, list args, dict kwargs, intptr_t stream_ptr) except *:
 
     cdef aclScalar* scalar_ptr = NULL
     cdef OpInfo op_info
@@ -491,7 +491,7 @@ cdef aclError launch_acl_func(str opname, sequence ins, sequence outs, list args
 
 
 # TODO: add output `dtype` param, set as outTensor's dtype
-cdef aclError launch_reduction_op(str opname, sequence ins, sequence outs, object axes, bint keepdims, dict kargs, intptr_t stream_ptr) except *:
+cdef aclError launch_reduction_op(str opname, sequence ins, sequence outs, object axes, bint keepdims, dict kwargs, intptr_t stream_ptr) except *:
     # 检查操作是否已注册
     if opname.startswith("cupy_"):
         opname = ASCEND_OP_PREFIX + opname[5:]
@@ -940,26 +940,27 @@ cdef void register_reduction_operators():
 
 # general ops
 cdef extern from "../acl_general_ops.h" nogil:
-
-    aclError aclop_Copy(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
-        const ArgsType& args, const KargsType& kargs, aclrtStream stream)
+    aclError aclop_Copy(const aclTensor* self,  aclTensor* out, aclrtStream stream)
+    # aclError aclop_Copy(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
+    #     const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
 
     aclError aclop_Concat(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
-        const ArgsType& args, const KargsType& kargs, aclrtStream stream)
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
     aclError aclop_Stack(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
-        const ArgsType& args, const KargsType& kargs, aclrtStream stream)
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
 
     aclError aclop_Round(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
-        const ArgsType& args, const KargsType& kargs, aclrtStream stream)
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
     #aclError aclop_Divmod(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
-    #    const ArgsType& args, const KargsType& kargs, aclrtStream stream)
+    #    const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
     aclError aclop_Clamp(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
-        const ArgsType& args, const KargsType& kargs, aclrtStream stream)
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
+
 
 cdef void register_irregular_operators():
     cdef FuncPtrUnion func_union
     func_union.general_op = aclop_Concat
-    register_acl_ufunc("ascend_concaternate", GENERAL_OP, func_union)
+    register_acl_ufunc("ascend_concatenate", GENERAL_OP, func_union)
     func_union.general_op = aclop_Stack
     register_acl_ufunc("ascend_stack", GENERAL_OP, func_union)
     func_union.general_op = aclop_Round

@@ -14,7 +14,7 @@
 #include "aclnn/opdev/common_types.h"
 #include "aclnn/opdev/data_type_utils.h"
 
-using KargsType = std::unordered_map<std::string, const aclScalar*>;
+using KwargsType = std::unordered_map<std::string, const aclScalar*>;
 using ArgsType = std::vector<const aclScalar*>;
 
 
@@ -23,9 +23,10 @@ inline aclTensorList* ToAclTensorList(const std::vector<const aclTensor*>& tempV
         tempVector.data(),  // 指向aclTensor指针数组的指针
         static_cast<uint64_t>(tempVector.size())  // 张量数量
     );
+    return tensorList;
 }
 
-bool HasScalarArg(const ArgsType& args, int argIndex, const KargsType& kargs, std::string key)
+bool HasScalarArg(const ArgsType& args, int argIndex, const KwargsType& kargs, std::string key)
 {
     if (kargs.find(key) != kargs.end()) {
         return true;
@@ -36,7 +37,7 @@ bool HasScalarArg(const ArgsType& args, int argIndex, const KargsType& kargs, st
     }
 }
 
-bool HasScalarKwarg(const KargsType& kargs, std::string key)
+bool HasScalarKwarg(const KwargsType& kargs, std::string key)
 {
     if (kargs.find(key) != kargs.end()) {
         return true;
@@ -221,7 +222,7 @@ ToScalarType ToScalarArg(const aclScalar* s, bool throw_on_error = true) {
 
 // dict kargs has priority than the list unnamed arg
 template<typename ToScalarType>
-ToScalarType GetScalarArg(const ArgsType& args, int argIndex, const KargsType& kargs, std::string key,
+ToScalarType GetScalarArg(const ArgsType& args, int argIndex, const KwargsType& kargs, std::string key,
     ToScalarType defaultValue = ToScalarType())
 {
     ToScalarType scalar = defaultValue;
