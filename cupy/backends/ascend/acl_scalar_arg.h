@@ -36,6 +36,15 @@ bool HasScalarArg(const ArgsType& args, int argIndex, const KargsType& kargs, st
     }
 }
 
+bool HasScalarKwarg(const KargsType& kargs, std::string key)
+{
+    if (kargs.find(key) != kargs.end()) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
 
 // 获取类型名称的辅助函数
 // template<typename T>
@@ -212,9 +221,10 @@ ToScalarType ToScalarArg(const aclScalar* s, bool throw_on_error = true) {
 
 // dict kargs has priority than the list unnamed arg
 template<typename ToScalarType>
-ToScalarType GetScalarArg(const ArgsType& args, int argIndex, const KargsType& kargs, std::string key)
+ToScalarType GetScalarArg(const ArgsType& args, int argIndex, const KargsType& kargs, std::string key,
+    ToScalarType defaultValue = ToScalarType())
 {
-    ToScalarType scalar;
+    ToScalarType scalar = defaultValue;
     const aclScalar* arg = nullptr;
     if (kargs.find(key) != kargs.end()) {
         arg = kargs.at(key);

@@ -18,7 +18,7 @@
 
 #include "aclnnop/aclnn_div.h"
 #include "aclnnop/aclnn_remainder.h"
-#include "aclnnop/aclnn_cast.h"
+#include "aclnnop/aclnn_copy.h"
 
 // indexing: argsort, unique, unique2, sort
 // no count() , unique(), unique2() op
@@ -163,6 +163,14 @@
     //                                                 const aclTensor* source, bool accumulate,
     // aclnnInplaceCopyGetWorkspaceSize(aclTensor* selfRef, const aclTensor* src,
 
+    aclError aclop_Copy(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
+        const ArgsType& args, const KargsType& kargs, aclrtStream stream) {
+        const aclTensor* other = ins[0];
+        aclTensor* out = outs[0];
+        int decimals = ToScalarArg<int>(args[0]);
+        return aclIrregularOpRun(aclnnInplaceCopyGetWorkspaceSize, aclnnInplaceCopy, stream,
+            out, other);
+    }
     
     // astype():  casting UnaryOp with dtype
     // aclnnCastGetWorkspaceSize(const aclTensor* self, const aclDataType dtype, aclTensor* out,
@@ -179,6 +187,18 @@
         } else {
             return ACL_ERROR_INVALID_PARAM;
         }
+    }
+
+    aclError aclop_Arange(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
+        const ArgsType& args, const KargsType& kargs, aclrtStream stream) {
+        aclScalar* step = nullptr;
+        if (args.size() >=3 ) {
+            step = args.at(2);
+        } else if (HasScalarKwarg(kargs, "step")) {
+            step = kargs.at("step");
+        }
+        return aclIrregularOpRun(aclnnArangeGetWorkspaceSize, aclnnArange, stream,
+            args[0], args[1], step, outs[0]);
     }
 
     aclError aclop_fill(const aclTensorList* ins, const aclTensorList* outs,

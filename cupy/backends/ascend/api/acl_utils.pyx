@@ -659,26 +659,8 @@ cdef extern from "../acl_math_ops.h" nogil:
     aclError aclop_Erfc(const aclTensor* self,  aclTensor* out, aclrtStream stream)
     aclError aclop_Erfinv(const aclTensor* self,  aclTensor* out, aclrtStream stream)
 
-# reduction ops
-cdef extern from "../acl_math_ops.h" nogil:
-
-    aclError aclop_Any(const aclTensor* self, const aclIntArray* dim, bint keepdim, aclTensor* out, aclrtStream stream)
-    aclError aclop_All(const aclTensor* self, const aclIntArray* dim, bint keepdim, aclTensor* out, aclrtStream stream)
-    aclError aclop_Max(const aclTensor* self, const aclIntArray* dim, bint keepdim, aclTensor* out, aclrtStream stream)
-    aclError aclop_Min(const aclTensor* self, const aclIntArray* dim, bint keepdim, aclTensor* out, aclrtStream stream)
-    aclError aclop_ArgMax(const aclTensor* self, const aclIntArray* dim, bint keepdim, aclTensor* out, aclrtStream stream)
-    aclError aclop_ArgMin(const aclTensor* self, const aclIntArray* dim, bint keepdim, aclTensor* out, aclrtStream stream)
-    aclError aclop_Mean(const aclTensor* self, const aclIntArray* dim, bint keepdim, aclTensor* out, aclrtStream stream)
-    aclError aclop_Sum(const aclTensor* self, const aclIntArray* dim, bint keepdim, aclTensor* out, aclrtStream stream)
-    aclError aclop_Prod(const aclTensor* self, const aclIntArray* dim, bint keepdim, aclTensor* out, aclrtStream stream)
-    aclError aclop_Nansum(const aclTensor* self, const aclIntArray* dim, bint keepdim, aclTensor* out, aclrtStream stream)
-    #aclError aclop_Nanprod(const aclTensor* self, const aclIntArray* dim, bint keepdim, aclTensor* out, aclrtStream stream)
-    aclError aclop_Nancumprod(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out, aclrtStream stream)
-    aclError aclop_Nancumsum(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out, aclrtStream stream)
-
-
 # 初始化函数，注册内置操作
-cdef void init_builtin_operators():
+cdef void register_math_operators():
     cdef FuncPtrUnion func_union
 
     ###################################
@@ -909,7 +891,25 @@ cdef void init_builtin_operators():
     func_union.unary_op = aclop_Erfinv
     register_acl_ufunc("ascend_erfinv", UNARY_OP, func_union)
 
-    #################### reduction ops ####################
+#################### reduction ops ####################
+cdef extern from "../acl_math_ops.h" nogil:
+
+    aclError aclop_Any(const aclTensor* self, const aclIntArray* dim, bint keepdim, aclTensor* out, aclrtStream stream)
+    aclError aclop_All(const aclTensor* self, const aclIntArray* dim, bint keepdim, aclTensor* out, aclrtStream stream)
+    aclError aclop_Max(const aclTensor* self, const aclIntArray* dim, bint keepdim, aclTensor* out, aclrtStream stream)
+    aclError aclop_Min(const aclTensor* self, const aclIntArray* dim, bint keepdim, aclTensor* out, aclrtStream stream)
+    aclError aclop_ArgMax(const aclTensor* self, const aclIntArray* dim, bint keepdim, aclTensor* out, aclrtStream stream)
+    aclError aclop_ArgMin(const aclTensor* self, const aclIntArray* dim, bint keepdim, aclTensor* out, aclrtStream stream)
+    aclError aclop_Mean(const aclTensor* self, const aclIntArray* dim, bint keepdim, aclTensor* out, aclrtStream stream)
+    aclError aclop_Sum(const aclTensor* self, const aclIntArray* dim, bint keepdim, aclTensor* out, aclrtStream stream)
+    aclError aclop_Prod(const aclTensor* self, const aclIntArray* dim, bint keepdim, aclTensor* out, aclrtStream stream)
+    aclError aclop_Nansum(const aclTensor* self, const aclIntArray* dim, bint keepdim, aclTensor* out, aclrtStream stream)
+    #aclError aclop_Nanprod(const aclTensor* self, const aclIntArray* dim, bint keepdim, aclTensor* out, aclrtStream stream)
+    aclError aclop_Nancumprod(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out, aclrtStream stream)
+    aclError aclop_Nancumsum(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out, aclrtStream stream)
+
+cdef void register_reduction_operators():
+    cdef FuncPtrUnion func_union
     func_union.reduction_op = aclop_Any
     register_acl_ufunc("ascend_any", REDUCTION_OP, func_union)
     func_union.reduction_op = aclop_All
@@ -940,6 +940,10 @@ cdef void init_builtin_operators():
 
 # general ops
 cdef extern from "../acl_general_ops.h" nogil:
+
+    aclError aclop_Copy(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
+        const ArgsType& args, const KargsType& kargs, aclrtStream stream)
+
     aclError aclop_Concat(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
         const ArgsType& args, const KargsType& kargs, aclrtStream stream)
     aclError aclop_Stack(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
@@ -952,7 +956,7 @@ cdef extern from "../acl_general_ops.h" nogil:
     aclError aclop_Clamp(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
         const ArgsType& args, const KargsType& kargs, aclrtStream stream)
 
-cdef register_irregular_operators():
+cdef void register_irregular_operators():
     cdef FuncPtrUnion func_union
     func_union.general_op = aclop_Concat
     register_acl_ufunc("ascend_concaternate", GENERAL_OP, func_union)
@@ -965,6 +969,8 @@ cdef register_irregular_operators():
     func_union.general_op = aclop_Clamp
     register_acl_ufunc("ascend_clip", GENERAL_OP, func_union)
 
+    func_union.unary_op = aclop_Copy
+    register_acl_ufunc("ascend_copy", UNARY_OP, func_union)
 
 def py_register_acl_ufunc(str opname, int func_type, long func_ptr):
     """Python层级的操作注册函数, func_type is OpType enum value"""
@@ -994,6 +1000,10 @@ def py_launch_acl_func(str opname, tuple ops, bint inplace=False):
     return launch_acl_func(c_opname, ops, inplace)
 '''
 
-# 模块初始化时注册内置操作
+cdef void init_builtin_operators():
+    register_math_operators()
+    register_reduction_operators()
+    register_irregular_operators()
+
+# only one function can be run during module init
 init_builtin_operators()
-register_irregular_operators()

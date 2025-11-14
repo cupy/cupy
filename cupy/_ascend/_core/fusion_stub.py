@@ -1,4 +1,4 @@
 # placeholder to reduce core code modification to upstream cupy
 
-def is_fusing():
+def _is_fusing():
     return False
