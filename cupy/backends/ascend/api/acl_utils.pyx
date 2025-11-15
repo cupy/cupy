@@ -68,7 +68,7 @@ cdef aclDataType numpy_to_acl_dtype(dtype,
         return aclDataType.ACL_INT16
     elif dtype_char == 'H':
         return aclDataType.ACL_UINT16
-    elif dtype_char == 'I':
+    elif dtype_char == 'i':
         return aclDataType.ACL_INT32
     elif dtype_char == 'I':
         return aclDataType.ACL_UINT32
@@ -975,15 +975,20 @@ cdef extern from "../acl_general_ops.h" nogil:
     # aclError aclop_Copy(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
     #     const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
 
+    aclError aclop_Arange(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
     aclError aclop_Concat(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
         const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
     aclError aclop_Stack(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
         const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
+    aclError aclop_Sort(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
 
+    # special math ops
     aclError aclop_Round(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
         const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
-    #aclError aclop_Divmod(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
-    #    const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
+    aclError aclop_Divmod(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
     aclError aclop_Clamp(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
         const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
 
@@ -994,9 +999,14 @@ cdef void register_irregular_operators():
     register_acl_ufunc("ascend_concatenate", GENERAL_OP, func_union)
     func_union.general_op = aclop_Stack
     register_acl_ufunc("ascend_stack", GENERAL_OP, func_union)
+    func_union.general_op = aclop_Sort
+    register_acl_ufunc("ascend_sort", GENERAL_OP, func_union)
+    func_union.general_op = aclop_Arange
+    register_acl_ufunc("ascend_arange", GENERAL_OP, func_union)
+
     func_union.general_op = aclop_Round
     register_acl_ufunc("ascend_round", GENERAL_OP, func_union)
-    #func_union.general_op = aclop_Divmod
+    func_union.general_op = aclop_Divmod
     register_acl_ufunc("ascend_divmod", GENERAL_OP, func_union)
     func_union.general_op = aclop_Clamp
     register_acl_ufunc("ascend_clip", GENERAL_OP, func_union)

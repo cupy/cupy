@@ -14,8 +14,13 @@ ascend-numpy's architecture from top to bottom
 Oct 12: MVP for add, cos, matmul, benchmark
 Oct 23: benchmark.py 经过xpu重构后, NPU测试可以运行
 Nov 08: reduction op such as `sum()` is working, 90% math ops ACLOP supported has been added into numpy-ascend
-        UnitTest: `pytest tests/cupy_tests/math_tests/test_arithmetic.py `
-Nov 15: arange(), clip(), copy(), non-math/irregular ops initially supported
+        UnitTest: `pytest tests/cupy_tests/math_tests/test_truth.py `
+Nov 15: concatenate(), clip(), copy(), non-math/irregular ops initially supported
+       + round(a, 2) segmentation fault, possible error in c++ arg conversion
+       + exp(a, 2.0) scalar 转化 not working, 可能是exp scalar op 没有注册
+       + matmul(a, b) 结果和np.matmul(b, a) 相同, 应该是代码某处有bug
+       + arange()  cupy_arange kernel is different arange numpy API
+       
 TODO:  creation/manipulation/indexing ops
 
 ## 核心op支持情况 ( see also Array API standard)
@@ -63,6 +68,7 @@ ACLOP having: roll, permute, flip, repeat,
 
 ### Logica/bitwise ops:  
 ACLOP misses numpy op: `_left_shift`, `_left_right`
+`cupy_is_close` not registered?
 
 ### statistics reduction ops: 
 registered: median, var, mean, std,  bincount, histgram (histc), 主要是看nan怎么处理, 部分做了注册
@@ -99,7 +105,6 @@ AsNumpy project has impl
 
 #### shape
 
-1. `add` (all algorith op) , does not support shape dim > 1? (it is a bug to be fixed for numpy-ascend)
 2. CANN aclnn op kernel inside can deal with broadcast, just as pytorch/numpy, while cupy deal with itself not in kernel
 
 #### 一些说明

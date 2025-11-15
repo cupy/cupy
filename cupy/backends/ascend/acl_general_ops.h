@@ -193,7 +193,8 @@
 
     // args such as `device, like, dtype` will be dealt by caller
     // numpy.arange(numpy.arange([start, ]stop, [step, ]) 
-    // cupy.arange() kernel is so diff, can not reuse the cupy_arange kernel name to register
+    // cupy.arange() kernel is so diff, can not reuse the cupy_arange kernel name to register?
+    // cupy_arange  take  start and step as input parameter
     aclError aclop_Arange(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
         const ArgsType& args, const KwargsType& kwargs, aclrtStream stream) {
         const aclScalar* step = nullptr;
@@ -242,11 +243,16 @@
     // This is a general function, must be launched differently, keyward args?
     aclError aclop_Round(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
         const ArgsType& args, const KwargsType& kwargs, aclrtStream stream) {
-        const aclTensor* self = ins[0];
-        aclTensor* out = outs[0];
-        int64_t decimals = ToScalarArg<int64_t>(args[0]); // will arithmetic scalar do static_cast?
-        return aclIrregularOpRun(aclnnRoundDecimalsGetWorkspaceSize, aclnnRoundDecimals, stream,
-            self, decimals, out);
+        if (args.size() && ins.size()) {
+            const aclTensor* self = ins[0];
+            aclTensor* out = outs[0];
+            int64_t decimals = ToScalarArg<int64_t>(args[0]); // will arithmetic scalar do static_cast?
+            return aclIrregularOpRun(aclnnRoundDecimalsGetWorkspaceSize, aclnnRoundDecimals, stream,
+                self, decimals, out);
+        } else {
+            std::cout << "ASCEND Error: Round() take a tensor and a int as input parameters\n";
+            return ACL_ERROR_INVALID_PARAM;
+        }
     }
 
     // `cupy_copy` register it as ufunc,  numpy has extra order=K args
@@ -288,7 +294,7 @@
     }
 
     // Remainder has TT, ST, TS , inplace version, aclnnRemainderTensorScalar&aclnnInplaceRemainderTensorScalar
-    aclError aclop_Divmod(const std::vector<const aclTensor*> ins, const std::vector<aclTensor*> outs,
+    aclError aclop_Divmod(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
         const ArgsType& args, const KwargsType& kwargs, aclrtStream stream) {
         const aclTensor* self = ins[0];
         int mode = 2; // TODO numpy mode -> aclop mode

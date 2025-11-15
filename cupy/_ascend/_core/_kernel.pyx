@@ -881,10 +881,10 @@ cdef class ufunc:
                 break
 
         # this func will create array if out is None, so shape here is out_shape
-        print(f"ASCEND: DEBUG, the output shape dim = {shape.size()}, {shape.at(0)}")
+        # print(f"ASCEND: DEBUG, the output shape dim = {shape.size()}, {shape.at(0)}")
         out_args = _get_out_args_from_optionals(
             subtype, out_args, op.out_types, shape, casting, template)
-        print(f"ASCEND: DEBUG, the output args are {out_args}")
+        # print(f"ASCEND: DEBUG, the output args are {out_args}")
 
         if self.nout == 1:
             ret = out_args[0]
@@ -912,19 +912,20 @@ cdef class ufunc:
             # TODO: not sure adding `where` to kwargs is a proper treatment
             kwargs["where"] = x
         # ASCEND: passing ins and outs in diff list
-        #inout_args.extend(out_args)
-        indexer_shape = _reduce_dims(inout_args.extend(out_args), self._params, shape)
+        # out_args = [] if out_args is None
+        # inout_args.extend(out_args)
+        # indexer_shape = _reduce_dims(inout_args.extend(out_args), self._params, shape)
         # indexer = _carray._indexer_init(indexer_shape)
         # TODO: ASCEND does not support indexer yet. indexer is CUDA only?
-        #inout_args.append(indexer)
-        arginfos = _get_arginfos(inout_args.extend(out_args))
-
+        # inout_args.append(indexer)
+  
         # TODO: ASCEND launch_kernel, inplace, scalar as op detection
         runtime._ensure_context()
         s = _get_stream(None)
         pos_args = list(args[(self.nin + self.nout):]) # the rest of positional args
 
         launch_general_func(self.name, list(inout_args), list(out_args), pos_args, kwargs, s)
+        #arginfos = _get_arginfos(inout_args.extend(out_args))
         #kern = self._get_ufunc_kernel(dev_id, op, arginfos, has_where)
         #kern.linear_launch(indexer.size, inout_args)
         return ret

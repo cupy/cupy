@@ -196,7 +196,7 @@ cpdef _ndarray_base tensordot_core(
     else:
         out = _ndarray_init(cupy.ndarray, ret_shape, dtype, None)
     print(f"ASCEND: DEBUG, dot() output shaep {ret_shape}")
-    _ascend_dot([a, b], [out])
+    _ascend_dot(a, b, out)
     return out
 
 cdef _ndarray_base _ascend_matmul(_ndarray_base a, _ndarray_base b, _ndarray_base out):
