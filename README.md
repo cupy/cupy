@@ -15,10 +15,72 @@ Oct 12: MVP for add, cos, matmul, benchmark
 Oct 23: benchmark.py 经过xpu重构后, NPU测试可以运行
 Nov 08: reduction op such as `sum()` is working, 90% math ops ACLOP supported has been added into numpy-ascend
         UnitTest: `pytest tests/cupy_tests/math_tests/test_arithmetic.py `
-
+Nov 15: arange(), clip(), copy(), non-math/irregular ops initially supported
 TODO:  creation/manipulation/indexing ops
 
-### TODO
+## 核心op支持情况 ( see also Array API standard)
+
+### introduction to Array API
+https://github.com/data-apis/array-api
+
+``` py
+np_arr = np.array([1, 2, 3])
+xp_np = np_arr.__array_namespace__()
+print(xp_np.__name__)  # 通常输出 'numpy.array_api'
+
+cp_arr = cp.array([1, 2, 3])
+xp_cp = cp_arr.__array_namespace__()
+print(xp_cp.__name__)  # 通常输出 'cupy.array_api'
+```
+
+```py
+import cupy as cp
+# 直接导入 CuPy 的 Array API 模块
+import cupy.array_api as cpx
+
+# 使用 cpx 模块中的函数创建数组、执行运算
+x_gpu = cpx.asarray([1, 2, 3, 4], device='cuda')  # 显式指定设备
+y_gpu = cpx.reshape(x_gpu, (2, 2))
+z_gpu = cpx.matmul(y_gpu, y_gpu)
+```
+
+### math ops: 
++ 未注册  einsum, cbrt, fix (Trunc), rint (Round), round/around, convolve (?),
++ 自己实现: radians (deg2rad), degrees (rad2deg), deg2rad, rad2deg. lcm, divmod 
++ missing 数值计算: gradient, interp, trapezoid, diff
++ missing: frexp, ldexp
++ complex numpy ops: angle, conj,  缺少几个ops但是自己实现很简单,  real, complex
++ scan (numpy has no such op), true_divide
+
+### indexing ops
+slicing ? working, but it does not use `Slice` aclop
+`math.scan()` is a dummy/empty func, no such aclop
+aclop has `take, put(InplacePut), slice`, but no `choose`
+
+### manipulation ops
+CUPY reshape, split, does not need kernel, it is done in cython code on host (Reshape api)
+ACLOP having: roll, permute, flip, repeat, 
+
+### Logica/bitwise ops:  
+ACLOP misses numpy op: `_left_shift`, `_left_right`
+
+### statistics reduction ops: 
+registered: median, var, mean, std,  bincount, histgram (histc), 主要是看nan怎么处理, 部分做了注册
+missing: average, quantile,  percentile, vecter op实现难度应该不太大
+ptp (Range of values (maximum - minimum) along an axis.) -> Aminmax
+
+### random and distribution
+
+AsNumpy project has impl
+
+### similar ops 需要验证numpy行为是否一致
+1. fmin, nanmin, min, amin
+2. remainder, fmod, modf
+3. rint, round, around
+4. dot, matmul, mm, gemm, inner
+
+
+### Extra user notes
 
 #### ascend backends
 
@@ -26,18 +88,19 @@ TODO:  creation/manipulation/indexing ops
 2. multiple NPU intialization yet design/tested
 
 #### dtype
+0. most ACLOP does not support `double`, `int64` while `+-*/` seems supported but slow
 1. `add` (all algorith op) support double vector, int64 vector,  but it is slow, probably done by AICPU
-2. matrix: `dot/matmul` support only float32, float16, bfloat
+2. matrix/linalgo: `dot/matmul` support only float32, float16, bfloat
 3. `bfloat` is not standard numpy type, so will not be supported
 4. `numpy.int64` is long 'l' on POSIX OS, 'q' on Windows?
 5. `cupy_scalar_to_acl_scalar(_cupy_scalar s)`
-5. cupy scalar operands must be cupy._scalar type
-6. if two operands have diff dtype, cupy will do promote_types in `XXXKernel`
+5. cupy scalar operands must be cupy._scalar type, it may be extended to python scalar in numpy-ascend (TODO)
+6. if two operands have diff dtype, cupy will do promote_types in `ElementwiseKernel`
 
 #### shape
 
-1. `add` (all algorith op) , does not support shape dim > 1? while these can be done
-2. CANN aclnn op kernel inside can deal with broadcast, just as pytorch/numpy
+1. `add` (all algorith op) , does not support shape dim > 1? (it is a bug to be fixed for numpy-ascend)
+2. CANN aclnn op kernel inside can deal with broadcast, just as pytorch/numpy, while cupy deal with itself not in kernel
 
 #### 一些说明
 currently, only support tensor op tensor, some op support tensor op scalar (aclScalar not python double/int)
@@ -48,38 +111,9 @@ currently, only support tensor op tensor, some op support tensor op scalar (aclS
 8. masked tensor/ndarray: its possible using kargs, using aclnn op
 5. scalar op scalar: numpy/cupy 是不是也不支持这样的操作? 
 
-### 核心op支持情况 ( see also Array API standard)
-#### math ops: 
-+ 未注册 clamp, einsum, cbrt, fix (Trunc), rint (Round), round/around, convolve (?),
-+ 自己实现: radians (deg2rad), degrees (rad2deg), deg2rad, rad2deg. lcm 
-+ missing 数值计算: gradient, interp, trapezoid, diff 缺失
-+ missing: frexp, ldexp, 
-+ complex numpy ops: angle, conj,  缺少几个ops但是自己实现很简单,  real, complex
-+ scan (numpy has no such op), clip, true_divide
 
-#### indexing ops
-slicing ? working, but it does not use `Slice` aclop
-`math.scan()` is a dummy/empty func, no such aclop
-aclop has `take, put(InplacePut), slice`, but no `choose`
-
-#### manipulation ops
-reshape, split, does not need kernel, it is done in cython code on host (Reshape api)
-having: roll, permute, flip, repeat, 
-
-#### Logica/bitwise 算子基本都有:  
-ACLOP has no numpy op: `_left_shift`, `_left_right`
-
-#### statistics reduction ops: 
-已有: median, var, mean, std,  bincount, histgram (histc), 主要是看nan怎么处理, 部分做了注册
-缺失" average, quantile,  percentile, vecter op实现难度应该不太大
-ptp (Range of values (maximum - minimum) along an axis.) -> Aminmax
-
-
-### similar ops 需要验证numpy行为是否一致
-1. fmin, nanmin, min, amin
-2. remainder, fmod, modf
-3. rint, round, around
-4. dot, matmul, mm, gemm, inner
+===================================================================================================
+# Developer Notes
 
 ## 1. 开发环境
 没有NPU开发: 需要注释掉 runtime.pyx `initialize_backend(0)` 否则不能`import cupy`

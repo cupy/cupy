@@ -5,6 +5,7 @@ from collections import namedtuple
 
 from cupy._core import _dtype
 from cupy._core.core import _ndarray_base
+from libc.stdint cimport int32_t, int16_t
 from libcpp.unordered_map cimport unordered_map as cpp_map
 from libcpp.vector cimport vector
 
@@ -35,7 +36,7 @@ cdef extern from "aclnn/opdev/common_types.h" nogil:
     aclnnStatus aclDestroyTensor(const aclTensor *tensor)
     aclnnStatus aclDestroyScalar(const aclScalar *scalar)
     aclnnStatus aclDestroyIntArray(const aclIntArray *array)
-
+    const char *aclGetRecentErrMsg()
 
 cdef aclDataType numpy_to_acl_dtype(dtype,
     bint is_half_allowed=True, bint is_double_supported=True):
@@ -96,44 +97,76 @@ cdef aclScalar* cupy_scalar_to_acl_scalar(_cupy_scalar s) except*:
     cdef void* value_ptr = NULL
     cdef aclScalar* acl_scalar = NULL
     cdef aclDataType dtype
+    cdef string msg
     
     try:
-        dtype = numpy_to_acl_dtype(s.dtype)
         # 根据数据类型分配内存并复制值
         #TODO: "S" for string, "O" for object, "C" for complex
-        if s.dtype.kind == 'i':  # 整数类型
-            value_ptr = PyMem_Malloc(sizeof(long))
+        if s.kind == 'i' and s.size == 8:  # 整数类型
+            value_ptr = PyMem_Malloc(sizeof(int64_t))
             if value_ptr == NULL:
-                raise MemoryError("Failed to allocate memory for integer scalar")
-            (<long*>value_ptr)[0] = s.item()
-        elif s.dtype.kind == 'f':  # 浮点类型
+                raise MemoryError("Failed to allocate memory for integer64 scalar")
+            (<int64_t*>value_ptr)[0] = (<int64_t*>s.ptr)[0]
+            dtype = ACL_INT64
+        elif s.kind == 'i' and s.size == 4:  # 整数类型
+            value_ptr = PyMem_Malloc(sizeof(int32_t))
+            if value_ptr == NULL:
+                raise MemoryError("Failed to allocate memory for integer32 scalar")
+            (<int32_t*>value_ptr)[0] = (<int32_t*>s.ptr)[0]
+            dtype = ACL_INT32
+        elif s.kind == 'i' and s.size == 2:  # 整数类型
+            value_ptr = PyMem_Malloc(sizeof(int16_t))
+            if value_ptr == NULL:
+                raise MemoryError("Failed to allocate memory for integer32 scalar")
+            (<int16_t*>value_ptr)[0] = (<int16_t*>s.ptr)[0]
+            dtype = ACL_INT16
+        elif s.kind == 'u':  # unsign 整数类型
+            raise TypeError("Unsigned integer scalar is not supported yet, TODO")
+        elif s.dtype.kind == 'f' and s.size == 8:  # 浮点类型
             value_ptr = PyMem_Malloc(sizeof(double))
             if value_ptr == NULL:
-                raise MemoryError("Failed to allocate memory for float scalar")
-            (<double*>value_ptr)[0] = s.item()
-        elif s.dtype.kind == 'b':  # 布尔类型
-            value_ptr = PyMem_Malloc(sizeof(bool))
+                raise MemoryError("Failed to allocate memory for float64 scalar")
+            (<double*>value_ptr)[0] = (<double*>s.ptr)[0]
+            dtype = ACL_DOUBLE
+        elif s.dtype.kind == 'f' and s.size == 4:  # 浮点类型
+            value_ptr = PyMem_Malloc(sizeof(float))
+            if value_ptr == NULL:
+                raise MemoryError("Failed to allocate memory for float32 scalar")
+            (<float*>value_ptr)[0] = (<float*>s.ptr)[0]
+            dtype = ACL_FLOAT
+        elif s.dtype.kind == 'f' and s.size == 2:  # 浮点类型
+            value_ptr = PyMem_Malloc(sizeof(unsigned short))
+            if value_ptr == NULL:
+                raise MemoryError("Failed to allocate memory for float16 scalar")
+            (<float*>value_ptr)[0] = (<unsigned short*>s.ptr)[0]
+            dtype = ACL_FLOAT16
+        elif s.dtype.kind == 'C':  # complex
+            raise TypeError("Complex scalar is not supported yet, TODO")
+        elif s.dtype.kind == 'S':  # string type
+            raise TypeError("string scalar is not supported yet, TODO")
+        elif s.dtype.kind == 'b':  # bool
+            value_ptr = PyMem_Malloc(sizeof(bint))
             if value_ptr == NULL:
                 raise MemoryError("Failed to allocate memory for bool scalar")
-            (<bint*>value_ptr)[0] = s.item()
+            (<bint*>value_ptr)[0] = (<bint*>s.ptr)[0]
+            dtype = ACL_BOOL
         else:
-            raise TypeError(f"Unsupported dtype kind: {s.dtype.kind}")
+            raise TypeError(f"Unsupported dtype kind: {s.kind}")
         
-        # 创建aclScalar
         acl_scalar = aclCreateScalar(value_ptr, dtype)
         if acl_scalar == NULL:
-            raise RuntimeError("Failed to create aclScalar")
+            msg = aclGetRecentErrMsg()
+            raise RuntimeError("Failed to create aclScalar with error: %s", msg)
         return acl_scalar
-    except Exception:
+    except Exception as e:
         # 异常处理：确保资源清理
         if value_ptr != NULL:
             PyMem_Free(value_ptr)
         if acl_scalar != NULL:
             aclDestroyScalar(acl_scalar)
-        raise MemoryError("Failed to free aclScalar")
+        raise MemoryError("Failed to create aclScalar with error %s" % e)
 
 
-# 主转换函数
 cdef aclTensor* cupy_ndarray_to_acl_tensor(_ndarray_base cupy_array) except *:
     """
     将CuPy _ndarray_base转换为ACL Tensor
@@ -892,7 +925,7 @@ cdef void register_math_operators():
     register_acl_ufunc("ascend_erfinv", UNARY_OP, func_union)
 
 #################### reduction ops ####################
-cdef extern from "../acl_math_ops.h" nogil:
+cdef extern from "../acl_reduction_ops.h" nogil:
 
     aclError aclop_Any(const aclTensor* self, const aclIntArray* dim, bint keepdim, aclTensor* out, aclrtStream stream)
     aclError aclop_All(const aclTensor* self, const aclIntArray* dim, bint keepdim, aclTensor* out, aclrtStream stream)

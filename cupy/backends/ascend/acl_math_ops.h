@@ -16,7 +16,7 @@
 #include "aclnnop/aclnn_atan.h"
 #include "aclnnop/aclnn_atanh.h"
 #include "aclnnop/aclnn_atan2.h"
-// ldexp Returns x1 * 2**x2, element-wise.
+
 #include "aclnnop/aclnn_erf.h"
 #include "aclnnop/aclnn_erfc.h"
 #include "aclnnop/aclnn_erfinv.h"
@@ -42,12 +42,13 @@
 //#include "aclnnop/aclnn_pos.h" // no such op
 #include "aclnnop/aclnn_ceil.h"
 #include "aclnnop/aclnn_floor.h"
-#include "aclnnop/aclnn_clamp.h" // clip? 
+#include "aclnnop/aclnn_clamp.h" // numpy.clip
 #include "aclnnop/aclnn_signbit.h"
 #include "aclnnop/aclnn_sign.h"
 #include "aclnnop/aclnn_reciprocal.h"
 // TODO: not yet register
 #include "aclnnop/aclnn_heaviside.h"
+// ldexp Returns x1 * 2**x2, element-wise.
 
 // equal scalar, tensor, vector/list is_nan (no such)
 #include "aclnnop/aclnn_is_inf.h"
@@ -93,8 +94,8 @@
 #include "aclnnop/aclnn_bitwise_or_scalar.h"
 #include "aclnnop/aclnn_bitwise_xor_tensor.h"
 #include "aclnnop/aclnn_bitwise_xor_scalar.h"
-#include "aclnnop/aclnn_bitwise_not.h" // numpy op: np.invert
-// #include "aclnnop/aclnn_shift_left.h"  // numpy op: _left_shift
+#include "aclnnop/aclnn_bitwise_not.h" // numpy op name: np.invert
+// #include "aclnnop/aclnn_shift_left.h"  // missing numpy op: _left_shift
 
 // binary op
 #include "aclnnop/aclnn_add.h"
@@ -102,7 +103,7 @@
 #include "aclnnop/aclnn_mul.h"
 #include "aclnnop/aclnn_div.h"
 #include "aclnnop/aclnn_gcd.h"
-//#include "aclnnop/aclnn_lcm.h" // no such
+//#include "aclnnop/aclnn_lcm.h" // no such alcop, we impl
 #include "aclnnop/aclnn_remainder.h" // tensor scalar 4 combinations
 #include "aclnnop/aclnn_fmod_scalar.h"
 #include "aclnnop/aclnn_fmod_tensor.h" 
@@ -362,11 +363,11 @@ extern "C" {
 
     DECLARE_ACL_UNARY_OP(Inverse)
     //DECLARE_ACL_UNARY_OP(Diag)  // depends on how cupy_XXX is defined, ufunc/elementwiseKernel
-    aclError aclop_Det(const aclTensor* self, aclTensor* out, aclrtStream stream) {
-        uint8_t math_type = 0; // 0 means keeping dtype precision KEEP_DTYPE
-        return aclBinaryOpRun(self, other, out,
-            aclnnMatmulGetWorkspaceSize, aclnnMatmul, stream, false, math_type); 
-    }
+    
+    // aclError aclop_Det(const aclTensor* self, aclTensor* out, aclrtStream stream) {
+    //     return aclUnaryOpRun(self, out,
+    //         aclnnDetGetWorkspaceSize, aclnnDet, stream, false, math_type); 
+    // }
     
 #ifdef __cplusplus
 }

@@ -3,6 +3,15 @@ import cupy as cp
 from cupy import xpu # from cupy import cuda as xpu
 import time
 
+# 配置参数
+dtype = np.float32  # 使用float32以获得最佳GPU性能
+N = 200000000       # 向量长度200M
+M = 4000            # 矩阵尺寸4K x 4K
+repeating = 10
+use_async = False
+mode = "AsyncMode异步模式" if use_async else "SyncMode同步模式"
+
+
 def warmup(gpu_func, gpu_data):
     """
     预热GPU：通过运行一次操作来初始化GPU上下文，避免首次运行的开销。
@@ -143,11 +152,6 @@ def benchmark_mat_op(np_func, cp_func, np_mat_a, np_mat_b, cp_mat_a, cp_mat_b,
     return np_avg, cp_avg, speedup_ratio
 
 if __name__ == "__main__":
-    # 配置参数
-    dtype = np.float32  # 使用float32以获得最佳GPU性能
-    N = 200000000       # 向量长度200M
-    M = 4000            # 矩阵尺寸4K x 4K
-    repeating = 10
     
     # 定义测试函数
     np_cos, cp_cos = np.cos, cp.cos
@@ -181,6 +185,7 @@ if __name__ == "__main__":
         print(f"生成矩阵数据时出错：{e}。请检查可用内存/显存。")
         exit(1)
 
+    # function unit test
     print("\n" + "="*60)
     cp_vec_ret += cp_vec1
     print("test inplace add op, with result", cp_vec_ret)
@@ -188,7 +193,12 @@ if __name__ == "__main__":
 
     print("\n" + "="*60)
     cp_vec_ret += cp.float32(2.0)
-    print("test inplace add op, with result", cp_vec_ret)
+    print("test tensor + sclar op, with result", cp_vec_ret)
+    print("="*60)
+
+    print("\n" + "="*60)
+    _ = cp.add(cp_mat_a, cp_mat_b)
+    print("test dot op, with result", cp_vec_ret)
     print("="*60)
 
     print("\n" + "="*60)
@@ -197,31 +207,37 @@ if __name__ == "__main__":
     print("="*60)
         
     print("\n" + "="*60)
-    print("基准测试向量COS操作（单目运算，同步模式）")
+    print(f"基准测试向量COS操作（单目运算，{mode}）")
     print("="*60)
     np_time, cp_time, speedup = benchmark_vector_op(np_cos, cp_cos, np_vec1, None, cp_vec1, None, 
-                                                    unary=True, repeating=repeating, use_async=False)
+                                                    unary=True, repeating=repeating, use_async=use_async)
     
     print("\n" + "="*60)
-    print("基准测试向量Sum操作（Reduction运算，异步模式）")
+    print(f"基准测试向量Sum操作（Reduction运算， {mode}）")
     print("="*60)
     np_time, cp_time, speedup = benchmark_vector_op(np_sum, cp_sum, np_vec1, None, cp_vec1, None, 
-                                                    unary=True, repeating=repeating, use_async=True)
+                                                    unary=True, repeating=repeating, use_async=use_async)
 
     print("\n" + "="*60)
-    print("基准测试向量加法操作（双目运算，异步模式）")
+    print(f"基准测试向量加法操作（双目运算，{mode}）")
     print("="*60)
     np_time, cp_time, speedup = benchmark_vector_op(np_add, cp_add, np_vec1, np_vec2, cp_vec1, cp_vec2, 
-                                                    unary=False, repeating=repeating, use_async=True)
+                                                    unary=False, repeating=repeating, use_async=use_async)
     
     print("\n" + "="*60)
-    print("基准测试矩阵乘法操作（双目运算，异步模式）")
+    print(f"基准测试矩阵乘法操作（双目运算，{mode}）")
     print("="*60)
     np_time, cp_time, speedup = benchmark_mat_op(np_dot, cp_dot, np_mat_a, np_mat_b, cp_mat_a, cp_mat_b, 
-                                                unary=False, repeating=repeating, use_async=True)
+                                                unary=False, repeating=repeating, use_async=use_async)
+    
+    print("\n" + "="*60)
+    print(f"基准测试Vector乘法操作（双目运算，{mode}）")
+    print("="*60)
+    np_time, cp_time, speedup = benchmark_mat_op(np.multiply, cp.multiply, np_vec1, np_vec2, cp_vec1, cp_vec2, 
+                                                unary=False, repeating=repeating, use_async=use_async)
 
     # print("\n" + "="*60) # cos, add is not supported for dim = 2 matrix for ASCEND
     # print("基准测试矩阵COS操作（单目运算，同步模式）")
     # print("="*60)
     # np_time, cp_time, speedup = benchmark_mat_op(np_cos, cp_cos, np_mat_a, None, cp_mat_a, None, 
-    #                                              unary=True, repeating=repeating, use_async=False)
+    #                                              unary=True, repeating=repeating, use_async=use_async)
