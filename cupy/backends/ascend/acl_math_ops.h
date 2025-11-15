@@ -82,11 +82,6 @@
 #include <aclnnop/aclnn_ne_scalar.h>
 #include <aclnnop/aclnn_ne_tensor.h>
 
-
-// bool reduction op
-#include "aclnnop/aclnn_all.h"
-#include "aclnnop/aclnn_any.h"
-
 // bitwise op: and not not xor
 #include "aclnnop/aclnn_bitwise_and_tensor.h"
 #include "aclnnop/aclnn_bitwise_and_scalar.h"
@@ -104,7 +99,7 @@
 #include "aclnnop/aclnn_div.h"
 #include "aclnnop/aclnn_gcd.h"
 //#include "aclnnop/aclnn_lcm.h" // no such alcop, we impl
-#include "aclnnop/aclnn_remainder.h" // tensor scalar 4 combinations
+#include "aclnnop/aclnn_remainder.h" // containing tensor scalar 4 combinations
 #include "aclnnop/aclnn_fmod_scalar.h"
 #include "aclnnop/aclnn_fmod_tensor.h" 
 #include "aclnnop/aclnn_floor_divide.h"
@@ -127,7 +122,6 @@
 #include "aclnnop/aclnn_max.h"  // nan?
 #include "aclnnop/aclnn_min.h"
 #include "aclnnop/aclnn_einsum.h" // TODO
-#include "aclnnop/aclnn_reduce_nansum.h"
 #include <aclnnop/aclnn_nan_to_num.h> // TODO, numpy has more control arg
 
 #include "aclnnop/aclnn_argmax.h"  // return the index instead of value
@@ -155,23 +149,6 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-    // aclError aclop_BitwiseAndTensor(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream) {
-    //     return aclBinaryOpRun(self, other, out,
-    //         aclnnBitwiseAndTensorGetWorkspaceSize, aclnnBitwiseAndTensor, stream, false); 
-    // }
-    // aclError aclop_InplaceBitwiseAndTensor(aclTensor* self, const aclTensor* other, aclrtStream stream) {
-    //     return aclInplaceBinaryOpRun(self, other,
-    //         aclnnInplaceBitwiseAndTensorGetWorkspaceSize, aclnnBitwiseAndTensor, stream, false); 
-    // }
-    // aclError aclop_BitwiseAndScalar(const aclTensor* self, const aclScalar* other, aclTensor* out, aclrtStream stream) {
-    //     return aclBinaryOpRun(self, other, out,
-    //         aclnnBitwiseAndScalarGetWorkspaceSize, aclnnBitwiseAndScalar, stream, false); 
-    // }
-    // aclError aclop_InplaceBitwiseAndScalar(aclTensor* self, const aclScalar* other, aclrtStream stream) {
-    //     return aclInplaceBinaryOpRun(self, other,
-    //         aclnnInplaceBitwiseAndScalarGetWorkspaceSize, aclnnBitwiseAndScalar, stream, false); 
-    // }
 
     DECLARE_ACL_BINARY_OPS_FUNC(BitwiseAndTensor)
     DECLARE_ACL_BINARY_SCALAR_OPS_FUNC(BitwiseAndScalar)
@@ -253,10 +230,16 @@ extern "C" {
     }
     DECLARE_ACL_BINARY_OPS_FUNC(Mul)
     DECLARE_ACL_BINARY_OPS_FUNC(Div)
-    // true_divide
+    // true_divide == divide
     DECLARE_ACL_BINARY_OPS_FUNC(FloorDivide) // python  `//` int div op, output int
     DECLARE_ACL_BINARY_OPS_FUNC(FmodTensor)  // for float and ints
+    DECLARE_ACL_BINARY_SCALAR_OPS_FUNC(FmodScalar)
+
     DECLARE_ACL_BINARY_OPS_FUNC(RemainderTensorTensor) // remainder has 4 version
+    DECLARE_ACL_BINARY_SCALAR_OP(RemainderTensorScalar) // remainder has 4 version
+    // Power has 3 version, Remainder has 4 version
+    DECLARE_ACL_BINARY_OP(PowTensorTensor)
+    DECLARE_ACL_BINARY_SCALAR_OPS_FUNC(PowTensorScalar)
 
     DECLARE_ACL_BINARY_OP(Gcd)
     aclError aclop_Lcm(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream) {
@@ -349,9 +332,7 @@ extern "C" {
     DECLARE_ACL_BINARY_OP(LogAddExp2)
     DECLARE_ACL_BINARY_OP(LogAddExp)
 
-    // Power has 3 version, Remainder has 4 version
-    DECLARE_ACL_BINARY_OP(PowTensorTensor)
-    DECLARE_ACL_BINARY_SCALAR_OPS_FUNC(PowTensorScalar)
+    // ================================================================================
 
     aclError aclop_Matmul(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream) {
         uint8_t math_type = 0; // 0 means keeping dtype precision KEEP_DTYPE

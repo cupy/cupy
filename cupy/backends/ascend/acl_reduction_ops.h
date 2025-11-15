@@ -3,6 +3,10 @@
 
 #include <cmath>
 
+// bool reduction op
+#include "aclnnop/aclnn_all.h"
+#include "aclnnop/aclnn_any.h"
+
 // statistics, TODO: keyword args
 #include "aclnnop/aclnn_mean.h"
 #include "aclnnop/aclnn_std.h"
@@ -13,6 +17,7 @@
 #include "aclnnop/aclnn_aminmax.h" // ptp :  aminmax
 // missing quantile, percentile
 #include "aclnnop/aclnn_histc.h"
+#include "aclnnop/aclnn_reduce_nansum.h"
 
 #include "./acl_op_template.h"
 #include "acl/acl.h"
@@ -57,6 +62,17 @@ aclError aclop_Mean(const aclTensor* self, const aclIntArray* dim, bool keepdim,
     return aclReductionOpRun(self, out,
         aclnnMeanGetWorkspaceSize, aclnnMean, stream, false, dim, keepdim, dtype); 
 }
+// aclnn also provide nanMedian version
+aclError aclop_Median(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out, aclrtStream stream) {
+    return aclReductionOpRun(self, out,
+        aclnnMedianGetWorkspaceSize, aclnnMedian, stream, false); 
+}
+// aclError aclop_Bincount(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out, aclrtStream stream) {
+//     // need weights tensor, int64_t minLength 
+//     return aclReductionOpRun(self, out,
+//         aclnnBincountGetWorkspaceSize, aclnnBincount, stream, false); 
+// }
+
 aclError aclop_Std(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out, aclrtStream stream) {
     int64_t correction = 0; // numpy ddof default to 0, correction is added in numpy 2.0
     return aclReductionOpRun(self, out,

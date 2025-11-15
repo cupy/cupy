@@ -634,6 +634,8 @@ cdef extern from "../acl_math_ops.h" nogil:
     aclError aclop_InplaceMul(aclTensor* self, const aclTensor* other, aclrtStream stream)
     aclError aclop_Div(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream)
     aclError aclop_InplaceDiv(aclTensor* self, const aclTensor* other, aclrtStream stream)
+    aclError aclop_FloorDivide(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream)
+    aclError aclop_FmodTensor(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream)
 
     aclError aclop_Maximum(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream)
     aclError aclop_Minimum(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream)
@@ -646,6 +648,9 @@ cdef extern from "../acl_math_ops.h" nogil:
     aclError aclop_Subs(const aclTensor* self, const aclScalar* other, aclTensor* out, aclrtStream stream)
     aclError aclop_Muls(const aclTensor* self, const aclScalar* other, aclTensor* out, aclrtStream stream)
     aclError aclop_Divs(const aclTensor* self, const aclScalar* other, aclTensor* out, aclrtStream stream)
+    aclError aclop_PowTensorScalar(const aclTensor* self, const aclScalar* other, aclTensor* out, aclrtStream stream)
+    aclError aclop_RemainderTensorScalar(const aclTensor* self, const aclScalar* other, aclTensor* out, aclrtStream stream)
+    aclError aclop_FmodScalar(const aclTensor* self, const aclScalar* other, aclTensor* out, aclrtStream stream)
 
     aclError aclop_Neg(const aclTensor* self,  aclTensor* out, aclrtStream stream)
     aclError aclop_InplaceNeg(aclTensor* self,  aclrtStream stream)
@@ -783,9 +788,13 @@ cdef void register_math_operators():
     func_union.inplace_binary_op = aclop_InplaceMul
     register_acl_ufunc("ascend_inplace_multiply", INPLACE_BINARY_OP, func_union)
     func_union.binary_op = aclop_Div
-    register_acl_ufunc("ascend_divide", BINARY_OP, func_union)
+    register_acl_ufunc("ascend_true_divide", BINARY_OP, func_union)
+    func_union.binary_op = aclop_FloorDivide
+    register_acl_ufunc("ascend_floor_divide", BINARY_OP, func_union)
     func_union.inplace_binary_op = aclop_InplaceDiv
     register_acl_ufunc("ascend_inplace_divide", INPLACE_BINARY_OP, func_union)
+    func_union.binary_op = aclop_FmodTensor
+    register_acl_ufunc("ascend_fmod", BINARY_OP, func_union)
 
     func_union.scalar_binary_op = aclop_Adds
     register_acl_ufunc("ascend_add", SCALAR_BINARY_OP, func_union)
@@ -794,7 +803,9 @@ cdef void register_math_operators():
     func_union.scalar_binary_op = aclop_Muls
     register_acl_ufunc("ascend_multiply", SCALAR_BINARY_OP, func_union)
     func_union.scalar_binary_op = aclop_Divs
-    register_acl_ufunc("ascend_divide", SCALAR_BINARY_OP, func_union)
+    register_acl_ufunc("ascend_true_divide", SCALAR_BINARY_OP, func_union)
+    func_union.scalar_binary_op = aclop_FmodScalar
+    register_acl_ufunc("ascend_fmod", SCALAR_BINARY_OP, func_union)
 
     func_union.binary_op = aclop_Maximum
     register_acl_ufunc("ascend_maximum", BINARY_OP, func_union)
@@ -806,8 +817,10 @@ cdef void register_math_operators():
     register_acl_ufunc("ascend_remainder", BINARY_OP, func_union)
     func_union.binary_op = aclop_PowTensorTensor
     register_acl_ufunc("ascend_pow", BINARY_OP, func_union)
-    func_union.binary_op = aclop_Minimum
-    register_acl_ufunc("ascend_minimum", BINARY_OP, func_union)
+    func_union.scalar_binary_op = aclop_RemainderTensorScalar
+    register_acl_ufunc("ascend_remainder", SCALAR_BINARY_OP, func_union)
+    func_union.scalar_binary_op = aclop_PowTensorScalar
+    register_acl_ufunc("ascend_pow", SCALAR_BINARY_OP, func_union)
 
     func_union.unary_op = aclop_Reciprocal
     register_acl_ufunc("ascend_reciprocal", UNARY_OP, func_union)
@@ -818,7 +831,7 @@ cdef void register_math_operators():
     func_union.inplace_unary_op = aclop_InplaceNeg
     register_acl_ufunc("ascend_inplace_negative", INPLACE_UNARY_OP, func_union)
     func_union.unary_op = aclop_Abs
-    register_acl_ufunc("ascend_abs", UNARY_OP, func_union)
+    register_acl_ufunc("ascend_absolute", UNARY_OP, func_union)
     func_union.unary_op = aclop_Signbit
     register_acl_ufunc("ascend_signbit", UNARY_OP, func_union)
     func_union.unary_op = aclop_Sign

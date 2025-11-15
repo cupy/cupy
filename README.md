@@ -53,9 +53,10 @@ z_gpu = cpx.matmul(y_gpu, y_gpu)
 + 未注册  einsum, cbrt, fix (Trunc), rint (Round), round/around, convolve (?),
 + 自己实现: radians (deg2rad), degrees (rad2deg), deg2rad, rad2deg. lcm, divmod 
 + missing 数值计算: gradient, interp, trapezoid, diff
-+ missing: frexp, ldexp
++ missing: frexp, ldexp (logit ??)
 + complex numpy ops: angle, conj,  缺少几个ops但是自己实现很简单,  real, complex
 + scan (numpy has no such op), true_divide
++ cupy.math_op(scalar, tensor), can aclop kernel broadcast deal with this?
 
 ### indexing ops
 slicing ? working, but it does not use `Slice` aclop
@@ -71,7 +72,9 @@ squeeze: Removes size-one axes from the shape of an array
 
 ### Logica/bitwise ops:  
 ACLOP misses numpy op: `_left_shift`, `_left_right`
-`cupy_is_close` half done
+`cupy_is_close` half done, not tested yet
+is_nan(): TODO  `aclnnEqual`
+why equal op has no tensor-scalar version?
 
 ### statistics reduction ops: 
 registered: median, var, mean, std,  bincount, histgram (histc), 主要是看nan怎么处理, 部分做了注册
