@@ -28,6 +28,62 @@ The following :mod:`cupy` submodules have been removed, with replacements in :mo
 * ``cupy.cusparse`` -> :mod:`cupyx.scipy.sparse.cusparse` (undocumented API, deprecated in CuPy v12)
 * ``cupy.cutensor`` -> :mod:`cupyx.scipy.linalg.cutensor` (undocumented API, deprecated in CuPy v12)
 
+Requirement Changes
+-------------------
+
+The following versions are no longer supported in CuPy v14.
+
+* CUDA 11.x or earlier (CUDA 12.0 or later is now required)
+* Python 3.9 or earlier (Python 3.10 or later is now required)
+* NumPy 1.x (NumPy 2.0 or later is now required)
+* ROCm 6.x or earlier (ROCm 7.0 or later is now required)
+* NCCL 2.17 or earlier (NCCL 2.18 or later is now required)
+
+Change in :func:`cupy.cuda.is_available` Behavior
+-------------------------------------------------
+
+:func:`cupy.cuda.is_available` now guards against all CUDA errors and will return ``False`` instead of raising an exception.
+This change improves compatibility with environments where CUDA is partially configured or unavailable.
+
+Previously, calling :func:`cupy.cuda.is_available` could raise exceptions in certain edge cases (e.g., when CUDA MPS daemon is misconfigured).
+In CuPy v14, the function consistently returns a boolean value, making it safe to use for environment detection without requiring exception handling.
+
+Change in Default C++ Standard for RTC
+--------------------------------------
+
+The default C++ standard for Runtime Compilation (RTC) has been changed from C++11 to C++14.
+
+This change enables the use of modern C++ features in CuPy kernels, including:
+
+* Generic lambdas
+* Lambda init-capture
+* Return type deduction for normal functions
+* Relaxed ``constexpr`` functions
+* Variable templates
+
+Existing code that relies on the previous default should continue to work, as C++14 is backward compatible with C++11.
+
+Change in :func:`cupy.cuda.nccl.get_unique_id` Return Type
+----------------------------------------------------------
+
+:func:`cupy.cuda.nccl.get_unique_id` now returns a bytes string instead of a tuple of integers.
+
+This change simplifies the API and avoids platform-specific issues related to char signedness.
+Users who were previously unpacking the tuple should update their code to work with bytes.
+
+API Changes
+-----------
+
+* :func:`cupy.nvrtc.getNVVM`, which was deprecated in CuPy v11, has been removed.
+* ``cupyx.tools.install_library`` tool has been deprecated and will be removed in a future release.
+* :mod:`cupy.testing` module has been updated to follow NumPy's testing API changes. Some testing utilities may have different behavior or signatures.
+* Legacy cuFFT callback support has been deprecated and will be removed in a future release. Users should migrate to the new cuFFT callback API.
+
+Update of Docker Images
+-----------------------
+
+CuPy official Docker images (see :doc:`install` for details) are now updated to use CUDA 13.x and Ubuntu 24.04.
+
 
 CuPy v13
 ========
@@ -609,13 +665,13 @@ Compatibility Matrix
      - Docs
    * - v14
      - 3.5~
-     - 11.2~
-     - 4.3~
+     - 12.0~
+     - 7.0~
      - 2.0~
-     - 2.16~
+     - 2.18~
      - n/a
      - 3.10~
-     - 1.22~
+     - 2.0~
      - 1.7~
      - NumPy 1.26 & SciPy 1.11
      - `latest <https://docs.cupy.dev/en/latest/install.html>`__
