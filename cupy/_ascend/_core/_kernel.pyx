@@ -860,7 +860,7 @@ cdef class ufunc:
         _copy_in_args_if_needed(in_args, given_out_args)
         _copy_in_args_if_needed(where_args, given_out_args)
         broad_values = in_args + where_args + given_out_args
-        # _broadcast updates shape
+        # _broadcast updates output shape
         internal._broadcast_core(broad_values, shape)
 
         op = self._ops.guess_routine(
@@ -880,8 +880,11 @@ cdef class ufunc:
                 template = in_arg
                 break
 
+        # this func will create array if out is None, so shape here is out_shape
+        print(f"ASCEND: DEBUG, the output shape dim = {shape.size()}, {shape.at(0)}")
         out_args = _get_out_args_from_optionals(
             subtype, out_args, op.out_types, shape, casting, template)
+        print(f"ASCEND: DEBUG, the output args are {out_args}")
 
         if self.nout == 1:
             ret = out_args[0]
@@ -891,26 +894,35 @@ cdef class ufunc:
         if _contains_zero(shape):
             return ret
 
+        # ASCEND NOTE: code below has been significantly modified for ASCEND
         inout_args = []
         for i, t in enumerate(op.in_types):
             x = broad_values[i]
-            inout_args.append(
-                x if isinstance(x, _ndarray_base) else
-                _scalar.CScalar.from_numpy_scalar_with_dtype(x, t))
+            if isinstance(x, _ndarray_base):
+                s = x
+            elif isinstance(x, _ndarray_base):
+                s = _scalar.CScalar.from_numpy_scalar_with_dtype(x, t)
+            else:
+                # not yet tested, maybe ufunc should not accept python scalar?
+                s = _scalar.CScalar._from_python_scalar(x)
+            inout_args.append(s)
         if has_where:
             x = broad_values[self.nin]
             #inout_args.append(x)
-            kwargs["where"] = x # TODO: not sure this is proper treatment
+            # TODO: not sure adding `where` to kwargs is a proper treatment
+            kwargs["where"] = x
+        # ASCEND: passing ins and outs in diff list
         #inout_args.extend(out_args)
-        shape = _reduce_dims(inout_args, self._params, shape)
-        indexer = _carray._indexer_init(shape)
-        #inout_args.append(indexer) # TODO ASCEND does not support indexer yet
-        arginfos = _get_arginfos(inout_args)
+        indexer_shape = _reduce_dims(inout_args.extend(out_args), self._params, shape)
+        # indexer = _carray._indexer_init(indexer_shape)
+        # TODO: ASCEND does not support indexer yet. indexer is CUDA only?
+        #inout_args.append(indexer)
+        arginfos = _get_arginfos(inout_args.extend(out_args))
 
         # TODO: ASCEND launch_kernel, inplace, scalar as op detection
         runtime._ensure_context()
         s = _get_stream(None)
-        pos_args = list(args[(self.nin + self.nout):])
+        pos_args = list(args[(self.nin + self.nout):]) # the rest of positional args
 
         launch_general_func(self.name, list(inout_args), list(out_args), pos_args, kwargs, s)
         #kern = self._get_ufunc_kernel(dev_id, op, arginfos, has_where)
@@ -1376,7 +1388,7 @@ cdef class ElementwiseKernel:
 
         if self.reduce_dims:
             shape = _reduce_dims(inout_args, self.params, shape)
-        #indexer = _carray._indexer_init(shape)
+        #indexer = _carray._indexer_init(shape)  # ASCEND: not understund
         #inout_args.append(indexer)
 
         arginfos = _get_arginfos(inout_args)

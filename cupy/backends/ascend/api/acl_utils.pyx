@@ -122,29 +122,29 @@ cdef aclScalar* cupy_scalar_to_acl_scalar(_cupy_scalar s) except*:
             dtype = ACL_INT16
         elif s.kind == 'u':  # unsign 整数类型
             raise TypeError("Unsigned integer scalar is not supported yet, TODO")
-        elif s.dtype.kind == 'f' and s.size == 8:  # 浮点类型
+        elif s.kind == 'f' and s.size == 8:  # 浮点类型
             value_ptr = PyMem_Malloc(sizeof(double))
             if value_ptr == NULL:
                 raise MemoryError("Failed to allocate memory for float64 scalar")
             (<double*>value_ptr)[0] = (<double*>s.ptr)[0]
             dtype = ACL_DOUBLE
-        elif s.dtype.kind == 'f' and s.size == 4:  # 浮点类型
+        elif s.kind == 'f' and s.size == 4:  # 浮点类型
             value_ptr = PyMem_Malloc(sizeof(float))
             if value_ptr == NULL:
                 raise MemoryError("Failed to allocate memory for float32 scalar")
             (<float*>value_ptr)[0] = (<float*>s.ptr)[0]
             dtype = ACL_FLOAT
-        elif s.dtype.kind == 'f' and s.size == 2:  # 浮点类型
+        elif s.kind == 'f' and s.size == 2:  # 浮点类型
             value_ptr = PyMem_Malloc(sizeof(unsigned short))
             if value_ptr == NULL:
                 raise MemoryError("Failed to allocate memory for float16 scalar")
             (<float*>value_ptr)[0] = (<unsigned short*>s.ptr)[0]
             dtype = ACL_FLOAT16
-        elif s.dtype.kind == 'C':  # complex
+        elif s.kind == 'C':  # complex
             raise TypeError("Complex scalar is not supported yet, TODO")
-        elif s.dtype.kind == 'S':  # string type
+        elif s.kind == 'S':  # string type
             raise TypeError("string scalar is not supported yet, TODO")
-        elif s.dtype.kind == 'b':  # bool
+        elif s.kind == 'b':  # bool
             value_ptr = PyMem_Malloc(sizeof(bint))
             if value_ptr == NULL:
                 raise MemoryError("Failed to allocate memory for bool scalar")
@@ -567,16 +567,14 @@ cdef aclError launch_reduction_op(str opname, sequence ins, sequence outs, objec
 
     try:
         ret = func_ptr.reduction_op(tensors[0], dim, keepdims, tensors[1], stream)
+        if ret != 0:
+            print("Failed to run the reduction operator ", opname)
     finally:
         # does not deallocate array buffer, but shapes, strides
         for t in tensors:
             aclDestroyTensor(t)  # 假设destroyAclTensor函数已存在
         if dim:
             aclDestroyIntArray(dim)
-
-        if ret != 0:
-            print("Failed to run the operator ", opname)
-            # TODO: check ret error code
     return ret
 
 cdef extern from "../acl_math_ops.h" nogil:

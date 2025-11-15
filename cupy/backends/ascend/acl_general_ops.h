@@ -44,11 +44,12 @@
 #include "aclnnop/aclnn_cast.h"
 
 // manipulation: transpose, reshape, cast, pad continguous in aclnn_kernels/
-#include "aclnn_kernels/transpose.h"
-#include "aclnn_kernels/cast.h"
-#include "aclnn_kernels/pad.h"
-#include "aclnn_kernels/slice.h"
-#include "aclnn_kernels/reshape.h"  // use experiment/platform header
+// including these experiment/platform headers can cause `segmentation fault`
+// #include "aclnn_kernels/transpose.h"
+// #include "aclnn_kernels/cast.h"
+// #include "aclnn_kernels/pad.h"
+// #include "aclnn_kernels/slice.h"
+// #include "aclnn_kernels/reshape.h"
 
 #include "./acl_op_template.h"
 #include "./acl_scalar_arg.h"

@@ -9,9 +9,8 @@ from cupy.backends.backend.api import runtime
 if not runtime.is_ascend():
     # TODO(ASCEND) better deal with not supported feature
     from cupy._core import _fusion_interface
-    from cupy._core import fusion
     from cupy._sorting import search
-
+from cupy._core import fusion
 
 def copyto(dst, src, casting='same_kind', where=None):
     """Copies values from one array to another with broadcasting.
@@ -41,7 +40,7 @@ def copyto(dst, src, casting='same_kind', where=None):
         numpy.copyto(dst_arr, src, casting=casting)
         can_cast = True
         src_is_scalar = True
-    elif src_type in (fusion._FusionVarScalar, _fusion_interface._ScalarProxy):
+    elif fusion._is_fusing() and src_type in (fusion._FusionVarScalar, _fusion_interface._ScalarProxy):
         src_dtype = src.dtype
         can_cast = numpy.can_cast(src_dtype, dst.dtype, casting)
         src_is_scalar = True

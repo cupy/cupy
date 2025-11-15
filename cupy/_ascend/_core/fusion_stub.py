@@ -2,3 +2,6 @@
 
 def _is_fusing():
     return False
+
+def is_fusing():
+    return False

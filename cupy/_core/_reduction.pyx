@@ -497,9 +497,10 @@ cdef class _AbstractReductionKernel:
 
             params = self._params
             cdef s = _get_stream(stream)
-            print(f"ASCEND: DEBUG {self.name}, axis = {axis}, {keepdims}, {self._params}")
-            # TODO: kargs
+            print(f"ASCEND: DEBUG reduction op {self.name}, axis = {axis}, {keepdims}, {self._params}")
+            # TODO(ASCEND): kargs
             launch_reduction_op(self.name, list(in_args), [ret], axis, keepdims, None, s)
+            return ret
 
     def _get_optimized_params(
             self, optimize_config, in_args, out_args, in_shape, out_shape,

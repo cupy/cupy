@@ -121,30 +121,36 @@ cpdef _ndarray_base dot(_ndarray_base a, _ndarray_base b, _ndarray_base out=None
 
     input_a_is_vec = a_ndim == 1
     input_b_is_vec = b_ndim == 1
-    if input_a_is_vec:
-        shape.clear()
-        shape.push_back(1)
-        shape.push_back(a.size)
-        a = _manipulation._reshape(a, shape)
-        a_ndim = 2
-    if input_b_is_vec:
-        shape.clear()
-        shape.push_back(b.size)
-        shape.push_back(1)
-        b = _manipulation._reshape(b, shape)
-        b_ndim = 2
+    # ASCEND dot op does not need reshape vector into 2D tensor [1, N], [N, 1]
+    IF CUPY_CANN_VERSION <= 0:
+        if input_a_is_vec:
+            shape.clear()
+            shape.push_back(1)
+            shape.push_back(a.size)
+            a = _manipulation._reshape(a, shape)
+            a_ndim = 2
+        if input_b_is_vec:
+            shape.clear()
+            shape.push_back(b.size)
+            shape.push_back(1)
+            b = _manipulation._reshape(b, shape)
+            b_ndim = 2
 
-    a_axis = a_ndim - 1
-    b_axis = b_ndim - 2
+        a_axis = a_ndim - 1
+        b_axis = b_ndim - 2
 
-    if a._shape[a_axis] != b._shape[b_axis]:
-        raise ValueError('Axis dimension mismatch')
+        if a._shape[a_axis] != b._shape[b_axis]:
+            raise ValueError('Axis dimension mismatch')
 
-    # TODO: ASCEND
-    #if a_axis:
-    #    a = _manipulation.rollaxis(a, a_axis, 0)
-    #if b_axis:
-    #    b = _manipulation.rollaxis(b, b_axis, 0)
+        if a_axis:
+            a = _manipulation.rollaxis(a, a_axis, 0)
+        if b_axis:
+            b = _manipulation.rollaxis(b, b_axis, 0)
+    ELSE:
+        if input_a_is_vec:
+            a_ndim = 2
+        if input_b_is_vec:
+            b_ndim = 2 
 
     k = a._shape[0]
     if k != 0:
@@ -189,12 +195,13 @@ cpdef _ndarray_base tensordot_core(
         assert out.flags.c_contiguous and out.dtype == dtype
     else:
         out = _ndarray_init(cupy.ndarray, ret_shape, dtype, None)
-    
-    launch_general_func("ascend_dot", [a, b], [out], None, None, 0)
+    print(f"ASCEND: DEBUG, dot() output shaep {ret_shape}")
+    _ascend_dot([a, b], [out])
     return out
 
 cdef _ndarray_base _ascend_matmul(_ndarray_base a, _ndarray_base b, _ndarray_base out):
     # only for 2dim mat mul
+    # TODO: mathtype arg can be passed down to aclop
     if out is None:
         assert a.shape[1] == b.shape[0]
         ret_shape = [a.shape[0], b.shape[1]]
@@ -253,6 +260,8 @@ cpdef _ndarray_base matmul(
     ELSE:
         if ndim == 2:
             _ascend_matmul(a, b, out)
+        else:
+            raise NotImplementedError("ASCEND: matmul only support dim=2 matrix mul")
 
     # TODO: code below lead to _ascend_matmul not working correctly
     orig_a = a

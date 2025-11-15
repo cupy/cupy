@@ -3,8 +3,7 @@ from __future__ import annotations
 import numpy
 
 from cupy import _core
-# TODO(ASCEND) better deal with not supported feature
-#from cupy._core import fusion
+from cupy._core import fusion
 
 
 def array(obj, dtype=None, copy=True, order='K', subok=False, ndmin=0, *,
