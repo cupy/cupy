@@ -65,10 +65,13 @@ aclop has `take, put(InplacePut), slice`, but no `choose`
 ### manipulation ops
 CUPY reshape, split, does not need kernel, it is done in cython code on host (Reshape api)
 ACLOP having: roll, permute, flip, repeat, 
+cupy: use concatenate to impl vstack, stack, hstack without using CUDA kernel
+_manipulation/rearange.py  slicing is used to flip, rotate
+squeeze: Removes size-one axes from the shape of an array
 
 ### Logica/bitwise ops:  
 ACLOP misses numpy op: `_left_shift`, `_left_right`
-`cupy_is_close` not registered?
+`cupy_is_close` half done
 
 ### statistics reduction ops: 
 registered: median, var, mean, std,  bincount, histgram (histc), 主要是看nan怎么处理, 部分做了注册

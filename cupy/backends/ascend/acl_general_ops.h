@@ -2,7 +2,7 @@
 #define CUPY_ACL_GENERAL_OPS_HEADER
 
 // creation op:  with dim info
-// arange, eye, diag, linspace, ones, zeros, 
+// arange, eye, diag, linspace (no such) ones, zeros, 
 #include "aclnnop/aclnn_arange.h"
 #include "aclnnop/aclnn_eye.h"  //  np.eye == np.identity(N)
 #include "aclnnop/aclnn_diag.h"  // UnaryScalarOp   not sure TODO
@@ -10,7 +10,9 @@
 
 // math ops, but it is irregular ops
 #include <aclnnop/aclnn_round.h>
+#include <aclnnop/aclnn_isclose.h>
 #include <aclnnop/aclnn_clamp.h>
+#include <aclnnop/aclnn_nonzero.h>
 
 // convolve,  mode='fill'
 #include "aclnnop/aclnn_fill_scalar.h"
@@ -114,6 +116,14 @@
         }
     }
 
+    // dims is a int/tuple of int/None
+    aclError aclop_Flip(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream) {
+            const aclIntArray* dims = nullptr; // default to axis = None
+            return aclIrregularOpRun(aclnnFlipGetWorkspaceSize, aclnnFlip, stream,
+                ins[0], dims, outs[0]);
+    }
+
     // numpy has op resize, but diff from the scaling
     // aclnnResizeGetWorkspaceSize(const aclTensor* self, const aclFloatArray* scales, const char* mode, aclTensor* out,
 
@@ -163,7 +173,6 @@
     // aclnnTakeGetWorkspaceSize(const aclTensor* self, const aclTensor* index, aclTensor* out, ...);
     // aclnnInplacePutGetWorkspaceSize(aclTensor* selfRef, const aclTensor* index,
     //                                                 const aclTensor* source, bool accumulate,
-    // aclnnInplaceCopyGetWorkspaceSize(aclTensor* selfRef, const aclTensor* src,
 
     // aclError aclop_Copy(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
     //     const ArgsType& args, const KwargsType& kwargs, aclrtStream stream) {
@@ -173,6 +182,15 @@
     //     return aclIrregularOpRun(aclnnInplaceCopyGetWorkspaceSize, aclnnInplaceCopy, stream,
     //         out, other);
     // }
+
+    // experimental api style
+    aclError aclop_fill(const aclTensorList* ins, const aclTensorList* outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream) {
+            // aclTensor* self = aclGetTensorList(tensorList, 0);  // no such api
+            // if (self) {
+            //     return 0;
+            // }
+    }
     
     // astype():  casting UnaryOp with dtype
     // aclnnCastGetWorkspaceSize(const aclTensor* self, const aclDataType dtype, aclTensor* out,
@@ -231,51 +249,6 @@
             start, stop, step, outs[0]);
     }
 
-    // experimental api style
-    aclError aclop_fill(const aclTensorList* ins, const aclTensorList* outs,
-        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream) {
-            // aclTensor* self = aclGetTensorList(tensorList, 0);  // no such api
-            // if (self) {
-            //     return 0;
-            // }
-    }
-
-    // This is a general function, must be launched differently, keyward args?
-    aclError aclop_Round(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
-        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream) {
-        if (args.size() && ins.size()) {
-            const aclTensor* self = ins[0];
-            aclTensor* out = outs[0];
-            int64_t decimals = ToScalarArg<int64_t>(args[0]); // will arithmetic scalar do static_cast?
-            return aclIrregularOpRun(aclnnRoundDecimalsGetWorkspaceSize, aclnnRoundDecimals, stream,
-                self, decimals, out);
-        } else {
-            std::cout << "ASCEND Error: Round() take a tensor and a int as input parameters\n";
-            return ACL_ERROR_INVALID_PARAM;
-        }
-    }
-
-    // `cupy_copy` register it as ufunc,  numpy has extra order=K args
-    aclError aclop_Copy(const aclTensor* other, aclTensor* out, aclrtStream stream) {
-        return aclIrregularOpRun(aclnnInplaceCopyGetWorkspaceSize, aclnnInplaceCopy, stream,
-            out, other);
-    }
-
-    // cupy_clip -> aclnnClamp  'ddd->d'
-    aclError aclop_Clamp(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
-        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream) {
-        const aclTensor* self = ins[0];
-        aclTensor* out = outs[0];
-        if (args.size() >=2) {
-            const aclScalar* amin = args[0];
-            const aclScalar* amax = args[1];
-            return aclTernaryOpRun(self, amin, amax, out,
-                aclnnClampGetWorkspaceSize, aclnnClamp, stream, false);
-        } else {
-            std::cout << "ASCEND: cupy/numpy support both amax and amin can be array/tensor, yet impl \n";
-        }
-    }
-
     // numpy using `kind` to specify method, always in ascending order, `order` for sort objects
     // cupy_sort: support only stable, as cupy does not support string scalar as arg
     // ArrayAPI standard: not yet checked, TODO
@@ -293,6 +266,36 @@
             self, stable, axis, descending, outs[1], indices); // value and index out arrays
     }
 
+    // This is a general function, must be launched differently, keyward args?
+    aclError aclop_Round(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream) {
+        if (args.size() && ins.size()) {
+            const aclTensor* self = ins[0];
+            aclTensor* out = outs[0];
+            int64_t decimals = ToScalarArg<int64_t>(args[0]); // will arithmetic scalar do static_cast?
+            return aclIrregularOpRun(aclnnRoundDecimalsGetWorkspaceSize, aclnnRoundDecimals, stream,
+                self, decimals, out);
+        } else {
+            std::cout << "ASCEND Error: Round() take a tensor and a int as input parameters\n";
+            return ACL_ERROR_INVALID_PARAM;
+        }
+    }
+
+    // cupy_clip -> aclnnClamp  'ddd->d'
+    aclError aclop_Clamp(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream) {
+        const aclTensor* self = ins[0];
+        aclTensor* out = outs[0];
+        if (args.size() >=2) {
+            const aclScalar* amin = args[0];
+            const aclScalar* amax = args[1];
+            return aclTernaryOpRun(self, amin, amax, out,
+                aclnnClampGetWorkspaceSize, aclnnClamp, stream, false);
+        } else {
+            std::cout << "ASCEND: cupy/numpy support both amax and amin can be array/tensor, yet impl \n";
+        }
+    }
+
     // Remainder has TT, ST, TS , inplace version, aclnnRemainderTensorScalar&aclnnInplaceRemainderTensorScalar
     aclError aclop_Divmod(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
         const ArgsType& args, const KwargsType& kwargs, aclrtStream stream) {
@@ -307,6 +310,34 @@
             self, ins[0], outs[1]);
         return ret;
     }
+
+    // this aclnn api perfectly match cupy's, while `cupy_is_close`, `cupy_is_close_complex`
+    // TODO: dtype
+    aclError aclop_IsClose(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream) {
+        const aclTensor* self = ins[0];
+        double atol = GetScalarArg<double>(args, 0, kwargs, "rtol", 1e-5); 
+        double rtol = GetScalarArg<double>(args, 1, kwargs, "atol", 1e-8);
+        bool equal_nan = GetScalarArg<bool>(args, 1, kwargs, "order", false);
+        aclTensor* indices = nullptr;  // alcop sort can accept nullptr for indexOut
+        if (outs.size() > 1) {
+            indices = outs[1];  // int64 tensor
+        }
+        return aclIrregularOpRun(aclnnIsCloseGetWorkspaceSize, aclnnIsClose, stream,
+            self, ins[1], rtol, atol, equal_nan, outs[0]); // value and index out arrays
+    }
+
+    // `cupy_copy` register it as ufunc,  numpy has extra order=K args
+    aclError aclop_Copy(const aclTensor* src, aclTensor* out, aclrtStream stream) {
+        return aclIrregularOpRun(aclnnInplaceCopyGetWorkspaceSize, aclnnInplaceCopy, stream,
+            out, src);
+    }
+    // `argwhere` find nonzero index, similar as `nonzero`
+    aclError aclop_Nonzero(const aclTensor* self, aclTensor* out, aclrtStream stream) {
+        return aclIrregularOpRun(aclnnNonzeroGetWorkspaceSize, aclnnNonzero, stream,
+            self, out);
+    }
+    
 
 #ifdef __cplusplus
 extern "C" {

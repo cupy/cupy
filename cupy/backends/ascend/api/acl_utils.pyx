@@ -8,6 +8,7 @@ from cupy._core.core import _ndarray_base
 from libc.stdint cimport int32_t, int16_t
 from libcpp.unordered_map cimport unordered_map as cpp_map
 from libcpp.vector cimport vector
+from libcpp.complex cimport complex
 
 import threading as _threading
 
@@ -141,7 +142,20 @@ cdef aclScalar* cupy_scalar_to_acl_scalar(_cupy_scalar s) except*:
             (<float*>value_ptr)[0] = (<unsigned short*>s.ptr)[0]
             dtype = ACL_FLOAT16
         elif s.kind == 'C':  # complex
-            raise TypeError("Complex scalar is not supported yet, TODO")
+            if s.size == 8:
+                value_ptr = PyMem_Malloc(s.size)
+                if value_ptr == NULL:
+                    raise MemoryError("Failed to allocate memory for complex64 scalar")
+                (<complex[float]*>value_ptr)[0] = (<complex[float]*>s.ptr)[0]
+                dtype = ACL_COMPLEX64
+            elif s.size == 16:
+                value_ptr = PyMem_Malloc(s.size)
+                if value_ptr == NULL:
+                    raise MemoryError("Failed to allocate memory for complex128 scalar")
+                (<complex[double]*>value_ptr)[0] = (<complex[double]*>s.ptr)[0]
+                dtype = ACL_COMPLEX128
+            else:
+                raise TypeError("Complex scalar is not supported yet, TODO")
         elif s.kind == 'S':  # string type
             raise TypeError("string scalar is not supported yet, TODO")
         elif s.kind == 'b':  # bool
@@ -972,14 +986,15 @@ cdef void register_reduction_operators():
 # general ops
 cdef extern from "../acl_general_ops.h" nogil:
     aclError aclop_Copy(const aclTensor* self,  aclTensor* out, aclrtStream stream)
-    # aclError aclop_Copy(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
-    #     const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
+    aclError aclop_Nonzero(const aclTensor* self,  aclTensor* out, aclrtStream stream)
 
     aclError aclop_Arange(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
         const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
     aclError aclop_Concat(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
         const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
     aclError aclop_Stack(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
+    aclError aclop_Flip(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
         const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
     aclError aclop_Sort(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
         const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
@@ -991,14 +1006,18 @@ cdef extern from "../acl_general_ops.h" nogil:
         const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
     aclError aclop_Clamp(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
         const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
-
+    aclError aclop_IsClose(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
 
 cdef void register_irregular_operators():
     cdef FuncPtrUnion func_union
     func_union.general_op = aclop_Concat
     register_acl_ufunc("ascend_concatenate", GENERAL_OP, func_union)
-    func_union.general_op = aclop_Stack
+    func_union.general_op = aclop_Stack # cupy has no such kernel
     register_acl_ufunc("ascend_stack", GENERAL_OP, func_union)
+    func_union.general_op = aclop_Flip # cupy has no such kernel
+    register_acl_ufunc("ascend_flip", GENERAL_OP, func_union)
+
     func_union.general_op = aclop_Sort
     register_acl_ufunc("ascend_sort", GENERAL_OP, func_union)
     func_union.general_op = aclop_Arange
@@ -1010,9 +1029,13 @@ cdef void register_irregular_operators():
     register_acl_ufunc("ascend_divmod", GENERAL_OP, func_union)
     func_union.general_op = aclop_Clamp
     register_acl_ufunc("ascend_clip", GENERAL_OP, func_union)
+    func_union.general_op = aclop_IsClose
+    register_acl_ufunc("ascend_is_close", GENERAL_OP, func_union)
 
     func_union.unary_op = aclop_Copy
     register_acl_ufunc("ascend_copy", UNARY_OP, func_union)
+    func_union.unary_op = aclop_Nonzero
+    register_acl_ufunc("ascend_nonzero", UNARY_OP, func_union)
 
 def py_register_acl_ufunc(str opname, int func_type, long func_ptr):
     """Python层级的操作注册函数, func_type is OpType enum value"""

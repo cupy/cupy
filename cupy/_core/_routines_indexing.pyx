@@ -18,7 +18,7 @@ from cupy._core cimport _routines_math as _math
 from cupy._core cimport _routines_manipulation as _manipulation
 from cupy._core.core cimport _ndarray_base
 from cupy._core cimport internal
-
+from cupy.backends.ascend.api.acl_utils cimport launch_general_func
 
 # _ndarray_base members
 
@@ -60,61 +60,80 @@ cdef tuple _ndarray_nonzero(_ndarray_base self):
         raise ValueError("Calling nonzero on 0d arrays is not allowed. "
                          "Use cp.atleast_1d(scalar).nonzero() instead.")
 
-
-# TODO(kataoka): Rename the function because `_ndarray_base` does not have
-# `argwhere` method
-cpdef _ndarray_base _ndarray_argwhere(_ndarray_base self):
-    cdef Py_ssize_t count_nonzero
-    cdef int ndim
-    cdef _ndarray_base nonzero
-    numpy_int64 = numpy.int64
-    if self.size == 0:
-        count_nonzero = 0
-    else:
-        if self.dtype == numpy.bool_:
-            nonzero = self.ravel()
+IF CUPY_CANN_VERSION <= 0:
+    # TODO(kataoka): Rename the function because `_ndarray_base` does not have
+    # `argwhere` method
+    cpdef _ndarray_base _ndarray_argwhere(_ndarray_base self):
+        cdef Py_ssize_t count_nonzero
+        cdef int ndim
+        cdef _ndarray_base nonzero
+        numpy_int64 = numpy.int64
+        if self.size == 0:
+            count_nonzero = 0
         else:
-            nonzero = cupy._core.not_equal(self, 0)
-            nonzero = nonzero.ravel()
+            if self.dtype == numpy.bool_:
+                nonzero = self.ravel()
+            else:
+                nonzero = cupy._core.not_equal(self, 0)
+                nonzero = nonzero.ravel()
 
-        # Get number of True in the mask to determine the shape of the array
-        # after masking.
-        if nonzero.size <= 2 ** 31 - 1:
-            scan_dtype = numpy.int32
+            # Get number of True in the mask to determine the shape of the array
+            # after masking.
+            if nonzero.size <= 2 ** 31 - 1:
+                scan_dtype = numpy.int32
+            else:
+                scan_dtype = numpy_int64
+
+            chunk_size = 512
+
+            # TODO(anaruse): Use Optuna to automatically tune the threshold
+            # that determines whether "incomplete scan" is enabled or not.
+            # Basically, "incomplete scan" is fast when the array size is large,
+            # but for small arrays, it is better to use the normal method.
+            incomplete_scan = nonzero.size > chunk_size
+
+            scan_index = _math.scan(
+                nonzero, op=_math.scan_op.SCAN_SUM, dtype=scan_dtype, out=None,
+                incomplete=incomplete_scan, chunk_size=chunk_size)
+            count_nonzero = int(scan_index[-1])  # synchronize!
+
+        ndim = self._shape.size()
+        dst = core.ndarray((count_nonzero, ndim), dtype=numpy_int64)
+        if dst.size == 0:
+            return dst
+
+        nonzero.shape = self.shape
+        if incomplete_scan:
+            warp_size = _get_warpsize()
+            size = scan_index.size * chunk_size
+            _nonzero_kernel_incomplete_scan(chunk_size, warp_size)(
+                nonzero, scan_index, dst,
+                size=size, block_size=chunk_size)
         else:
-            scan_dtype = numpy_int64
+            scan_index.shape = self.shape
+            _nonzero_kernel(nonzero, scan_index, dst)
 
-        chunk_size = 512
-
-        # TODO(anaruse): Use Optuna to automatically tune the threshold
-        # that determines whether "incomplete scan" is enabled or not.
-        # Basically, "incomplete scan" is fast when the array size is large,
-        # but for small arrays, it is better to use the normal method.
-        incomplete_scan = nonzero.size > chunk_size
-
-        scan_index = _math.scan(
-            nonzero, op=_math.scan_op.SCAN_SUM, dtype=scan_dtype, out=None,
-            incomplete=incomplete_scan, chunk_size=chunk_size)
-        count_nonzero = int(scan_index[-1])  # synchronize!
-
-    ndim = self._shape.size()
-    dst = core.ndarray((count_nonzero, ndim), dtype=numpy_int64)
-    if dst.size == 0:
         return dst
+ELSE:
+    cpdef _ndarray_base _ndarray_argwhere(_ndarray_base self):
+        cdef Py_ssize_t count_nonzero
+        cdef int ndim
+        cdef _ndarray_base nonzero
+        numpy_int64 = numpy.int64
+        if self.size == 0:
+            count_nonzero = 0
+        else:
+            if self.dtype == numpy.bool_:
+                nonzero = self.ravel()
+            else:
+                nonzero = cupy._core.not_equal(self, 0)
+                nonzero = nonzero.ravel()
 
-    nonzero.shape = self.shape
-    if incomplete_scan:
-        warp_size = _get_warpsize()
-        size = scan_index.size * chunk_size
-        _nonzero_kernel_incomplete_scan(chunk_size, warp_size)(
-            nonzero, scan_index, dst,
-            size=size, block_size=chunk_size)
-    else:
-        scan_index.shape = self.shape
-        _nonzero_kernel(nonzero, scan_index, dst)
-
-    return dst
-
+        ndim = self._shape.size()
+        dst = core.ndarray((count_nonzero, ndim), dtype=numpy_int64)
+        if dst.size == 0:
+            return dst
+        launch_general_func("ascend_nonzero", [self], [dst], None, None, 0)
 
 cdef _ndarray_base _ndarray_take(_ndarray_base self, indices, axis, out):
     cdef Py_ssize_t ndim = self._shape.size()
