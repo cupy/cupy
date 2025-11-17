@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import unittest
+import pytest
 
 import cupy
 from cupy import testing
@@ -57,6 +58,7 @@ class TestCArray(unittest.TestCase):
     {'size': 2 ** 32},
     {'size': 2 ** 32 + 1024},
 )
+@pytest.mark.thread_unsafe(reason="too large allocations")
 @testing.slow
 class TestCArray32BitBoundary(unittest.TestCase):
     # This test case is intended to confirm CArray indexing work correctly
