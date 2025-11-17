@@ -278,7 +278,6 @@ class TestElementwiseKernelTexture(unittest.TestCase):
         shape = (depth, height, width) if dim == 3 else \
                 (height, width) if dim == 2 else \
                 (width,)
-        self.shape = shape
 
         # prepare input, output, and texture memory
         # self.data holds the data stored in the texture memory
@@ -287,7 +286,6 @@ class TestElementwiseKernelTexture(unittest.TestCase):
                                      runtime.cudaChannelFormatKindFloat)
         arr = CUDAarray(ch, width, height, depth)
         arr.copy_from(tex_data)
-        self.data = tex_data
 
         # create resource and texture descriptors
         res = ResourceDescriptor(runtime.cudaResourceTypeArray, cuArr=arr)
@@ -297,7 +295,7 @@ class TestElementwiseKernelTexture(unittest.TestCase):
                                 runtime.cudaReadModeElementType)
 
         # create a texture object
-        return TextureObject(res, tex)
+        return TextureObject(res, tex), tex_data, shape
 
     def _prep_kernel1D(self):
         return cupy.ElementwiseKernel(
@@ -339,7 +337,7 @@ class TestElementwiseKernelTexture(unittest.TestCase):
         width, height, depth = self.dimensions
         dim = 3 if depth != 0 else 2 if height != 0 else 1
 
-        texobj = self._prep_texture()
+        texobj, data, shape = self._prep_texture()
         ker = getattr(self, f'_prep_kernel{dim}D')()
 
         # prepare input
@@ -352,10 +350,10 @@ class TestElementwiseKernelTexture(unittest.TestCase):
             size *= depth
             args.append(height)
         in_arr = cupy.arange(size, dtype=cupy.float32)
-        in_arr = in_arr.reshape(self.shape)
+        in_arr = in_arr.reshape(shape)
         args[0] = in_arr
 
         # compute and validate output
         out_arr = ker(*args)
-        expected = in_arr + self.data
+        expected = in_arr + data
         testing.assert_allclose(out_arr, expected)

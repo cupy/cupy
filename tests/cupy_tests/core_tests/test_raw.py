@@ -403,44 +403,45 @@ class _TestRawBase:
     _nvcc_ver = None
     _nvrtc_ver = None
 
-    def setUp(self):
-        if hasattr(self, 'clean_up'):
+    def setup_class(cls):
+        if getattr(cls, 'clean_up', False):
             if cupy.cuda.runtime.is_hip:
                 # Clearing memo triggers recompiling kernels using name
                 # expressions in other tests, e.g. dot and matmul, which
                 # hits a nvrtc bug. See #5843, #5945 and #6725.
-                self.skipTest('Clearing memo hits a nvrtc bug in other tests')
+                pytest.skip('Clearing memo hits a nvrtc bug in other tests')
             _util.clear_memo()
-        self.dev = cupy.cuda.runtime.getDevice()
-        assert self.dev != 1
-        if not hasattr(self, 'jitify'):
-            self.jitify = False
-        if cupy.cuda.runtime.is_hip and self.jitify:
-            self.skipTest('Jitify does not support ROCm/HIP')
+        cls.dev = cupy.cuda.runtime.getDevice()
+        assert cls.dev != 1
 
-        self.temporary_cache_dir_context = use_temporary_cache_dir()
-        self.in_memory_context = compile_in_memory(self.in_memory)
-        self.cache_dir = self.temporary_cache_dir_context.__enter__()
-        self.in_memory_context.__enter__()
+        cls.jitify = getattr(cls, 'jitify', False)
+        if cupy.cuda.runtime.is_hip and cls.jitify:
+            pytest.skip('Jitify does not support ROCm/HIP')
 
-        self.kern = cupy.RawKernel(
+        cls.temporary_cache_dir_context = use_temporary_cache_dir()
+        cls.in_memory_context = compile_in_memory(cls.in_memory)
+        cls.cache_dir = cls.temporary_cache_dir_context.__enter__()
+        cls.in_memory_context.__enter__()
+
+        cls.kern = cupy.RawKernel(
             _test_source1, 'test_sum',
-            backend=self.backend, jitify=self.jitify)
-        self.mod2 = cupy.RawModule(
+            backend=cls.backend, jitify=cls.jitify)
+        cls.mod2 = cupy.RawModule(
             code=_test_source2,
-            backend=self.backend, jitify=self.jitify)
-        self.mod3 = cupy.RawModule(
+            backend=cls.backend, jitify=cls.jitify)
+        cls.mod3 = cupy.RawModule(
             code=_test_source3,
             options=('-DPRECISION=2',),
-            backend=self.backend, jitify=self.jitify)
+            backend=cls.backend, jitify=cls.jitify)
 
-    def tearDown(self):
-        if (self.in_memory
+    @classmethod
+    def teardown_class(cls):
+        if (cls.in_memory
                 and _accelerator.ACCELERATOR_CUB not in
                 _accelerator.get_reduction_accelerators()):
             # should not write any file to the cache dir, but the CUB reduction
             # kernel uses nvcc, with which I/O cannot be avoided
-            files = os.listdir(self.cache_dir)
+            files = os.listdir(cls.cache_dir)
             for f in files:
                 if f == 'test_load_cubin.cu':
                     count = 1
@@ -449,8 +450,8 @@ class _TestRawBase:
                 count = 0
             assert len(files) == count
 
-        self.in_memory_context.__exit__(*sys.exc_info())
-        self.temporary_cache_dir_context.__exit__(*sys.exc_info())
+        cls.in_memory_context.__exit__(*sys.exc_info())
+        cls.temporary_cache_dir_context.__exit__(*sys.exc_info())
 
     def _helper(self, kernel, dtype):
         N = 10
@@ -828,6 +829,7 @@ class _TestRawBase:
         ker((grid,), (block,), (a, b, out))
         assert (out == a + b).all()
 
+    @pytest.mark.thread_unsafe(reason="mutates global in RawModule")
     def test_const_memory(self):
         mod = cupy.RawModule(code=test_const_mem,
                              backend=self.backend,
@@ -1236,23 +1238,24 @@ assert ker.enable_cooperative_groups
 @unittest.skipIf(cupy.cuda.runtime.is_hip,
                  'HIP does not support enable_cooperative_groups')
 class TestRawPicklable(unittest.TestCase):
-
-    def setUp(self):
-        self.temporary_dir_context = use_temporary_cache_dir()
-        self.temp_dir = self.temporary_dir_context.__enter__()
+    @classmethod
+    def setup_class(cls):
+        cls.temporary_dir_context = use_temporary_cache_dir()
+        cls.temp_dir = cls.temporary_dir_context.__enter__()
 
         # test if kw-only arguments are properly handled or not
-        if self.raw == 'ker':
-            self.ker = cupy.RawKernel(_test_source1, 'test_sum',
-                                      backend='nvcc',
-                                      enable_cooperative_groups=True)
+        if cls.raw == 'ker':
+            cls.ker = cupy.RawKernel(_test_source1, 'test_sum',
+                                     backend='nvcc',
+                                     enable_cooperative_groups=True)
         else:
-            self.mod = cupy.RawModule(code=_test_source1,
-                                      backend='nvcc',
-                                      enable_cooperative_groups=True)
+            cls.mod = cupy.RawModule(code=_test_source1,
+                                     backend='nvcc',
+                                     enable_cooperative_groups=True)
 
-    def tearDown(self):
-        self.temporary_dir_context.__exit__(*sys.exc_info())
+    @classmethod
+    def teardown_class(cls):
+        cls.temporary_dir_context.__exit__(*sys.exc_info())
 
     def _helper(self):
         N = 10
@@ -1319,13 +1322,14 @@ __global__ void shift (T* a, int N) {
                  'Jitify does not support ROCm/HIP')
 @testing.slow
 class TestRawJitify(unittest.TestCase):
+    @classmethod
+    def setup_class(cls):
+        cls.temporary_dir_context = use_temporary_cache_dir()
+        cls.temp_dir = cls.temporary_dir_context.__enter__()
 
-    def setUp(self):
-        self.temporary_dir_context = use_temporary_cache_dir()
-        self.temp_dir = self.temporary_dir_context.__enter__()
-
-    def tearDown(self):
-        self.temporary_dir_context.__exit__(*sys.exc_info())
+    @classmethod
+    def teardown_class(cls):
+        cls.temporary_dir_context.__exit__(*sys.exc_info())
 
     def _helper(self, header, options=()):
         code = header
