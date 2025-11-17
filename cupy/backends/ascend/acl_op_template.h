@@ -10,7 +10,7 @@
 
 using AclnnKernelFunc = aclnnStatus (*)(void* workspace, uint64_t workspaceSize, 
                                        aclOpExecutor* executor, aclrtStream stream);
-
+using KwargsType = std::unordered_map<std::string, const aclScalar*>;
 
 #define CHECK_STATUS(status) \
 do { \
@@ -442,7 +442,7 @@ aclError aclReductionOpRun(
     //DimType dim, bool keepdim,
     OutType outTensor,
     WsFunc wsfunc, AclnnKernelFunc kfunc,
-    aclrtStream stream, bool sync,
+    aclrtStream stream,
     Args&&... args)
 {
     uint64_t workspaceSize = 0;
@@ -469,9 +469,6 @@ aclError aclReductionOpRun(
         return ACL_ERROR_RT_FAILURE;
     }
 
-    if(sync) {
-        aclrtSynchronizeStream(stream);
-    }
     if (workspaceSize > 0) {
         ret = aclrtFree(workspaceAddr);
     }
@@ -535,9 +532,9 @@ aclError aclop_##opname(const aclTensor* self, aclTensor* out, aclrtStream strea
 // declare the reduction op (sum, prod, any, all), dim may have diff type
 #define DECLARE_ACL_REDUCTION_OP(opname) \
     aclError aclop_##opname(const aclTensor* self, const aclIntArray* dim, bool keepdim, \
-        aclTensor* out, aclrtStream stream) { \
+        aclTensor* out, const KwargsType& kwargs, aclrtStream stream) { \
         return aclReductionOpRun(self, out, \
-            aclnn##opname##GetWorkspaceSize, aclnn##opname, stream, false, dim, keepdim); \
+            aclnn##opname##GetWorkspaceSize, aclnn##opname, stream, dim, keepdim); \
     } \
 
 #endif // end of header file

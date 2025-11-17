@@ -13,6 +13,7 @@
 #include <aclnnop/aclnn_isclose.h>
 #include <aclnnop/aclnn_clamp.h>
 #include <aclnnop/aclnn_nonzero.h>
+#include <aclnnop/aclnn_heaviside.h>
 
 // convolve,  mode='fill'
 #include "aclnnop/aclnn_fill_scalar.h"
@@ -209,6 +210,21 @@
         }
     }
 
+    aclError aclop_Heaviside(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream) {
+        aclTensor* self = outs[0];
+        if (args.size()) {
+            std::cout << "ASCEND: scaler version is yet impl for heaviside op\n";
+            return ACL_ERROR_INVALID_PARAM;
+        } else if (ins.size() >= 1) {
+            // return aclBinaryOpRun(self, ins[0], outs[0],
+            //     aclnnHeavisideGetWorkspaceSize, aclnnHeaviside, stream, false);
+            return ACL_ERROR_INVALID_PARAM;  // need link a new so file?
+        } else {
+            return ACL_ERROR_INVALID_PARAM;
+        }
+    }
+
     // args such as `device, like, dtype` will be dealt by caller
     // numpy.arange(numpy.arange([start, ]stop, [step, ]) 
     // cupy.arange() kernel is so diff, can not reuse the cupy_arange kernel name to register?
@@ -216,14 +232,24 @@
     aclError aclop_Arange(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
         const ArgsType& args, const KwargsType& kwargs, aclrtStream stream) {
         const aclScalar* step = nullptr;
-        const aclScalar* start = args[0];
-        const aclScalar* stop = args[1];
+        const aclScalar* start = nullptr;
+        const aclScalar* stop = nullptr;
         if (args.size() >= 3 ) {
             step = args.at(2);
         } else if (HasScalarKwarg(kwargs, "step")) {
             step = kwargs.at("step");
         } else {
             // TODO: calc step? or aclop accept nullptr for step?
+        }
+        
+        if (args.size() >= 2) {
+            start = args[0];
+            stop = args[1];
+        } else if (args.size() >= 1) {
+            stop = args[0];
+            // start = args[0]; // TODO: create a zero_like_scalar
+        } else {
+            // print error
         }
         return aclIrregularOpRun(aclnnArangeGetWorkspaceSize, aclnnArange, stream,
             start, stop, step, outs[0]);
@@ -312,14 +338,14 @@
     }
 
     // this aclnn api perfectly match cupy's, while `cupy_is_close`, `cupy_is_close_complex`
-    // TODO: dtype
+    // TODO: dtype check
     aclError aclop_IsClose(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
         const ArgsType& args, const KwargsType& kwargs, aclrtStream stream) {
         const aclTensor* self = ins[0];
         double atol = GetScalarArg<double>(args, 0, kwargs, "rtol", 1e-5); 
         double rtol = GetScalarArg<double>(args, 1, kwargs, "atol", 1e-8);
         bool equal_nan = GetScalarArg<bool>(args, 1, kwargs, "order", false);
-        aclTensor* indices = nullptr;  // alcop sort can accept nullptr for indexOut
+        aclTensor* indices = nullptr;
         if (outs.size() > 1) {
             indices = outs[1];  // int64 tensor
         }

@@ -21,6 +21,7 @@
 
 #include "./acl_op_template.h"
 #include "acl/acl.h"
+#include "acl_scalar_arg.h"
 
 
 #ifdef __cplusplus
@@ -29,43 +30,50 @@ extern "C" {
 
 // ================================================================================================================
 // DECLARE_ACL_REDUCTION_OP(Any)
-aclError aclop_Any(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out, aclrtStream stream) {
+aclError aclop_Any(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out,
+    const KwargsType& kwargs, aclrtStream stream) {
     return aclReductionOpRun(self, out,
-        aclnnAnyGetWorkspaceSize, aclnnAny, stream, false, dim, keepdim); 
+        aclnnAnyGetWorkspaceSize, aclnnAny, stream, dim, keepdim); 
 }
 DECLARE_ACL_REDUCTION_OP(All)
 
 // why this Min has no dim and keepdim control
-aclError aclop_Max(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out, aclrtStream stream) {
+aclError aclop_Max(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out,
+    const KwargsType& kwargs, aclrtStream stream) {
     return aclReductionOpRun(self, out,
-        aclnnMaxGetWorkspaceSize, aclnnMax, stream, false); 
+        aclnnMaxGetWorkspaceSize, aclnnMax, stream); 
 }
-aclError aclop_Min(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out, aclrtStream stream) {
+aclError aclop_Min(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out,
+    const KwargsType& kwargs, aclrtStream stream) {
     return aclReductionOpRun(self, out,
-        aclnnMinGetWorkspaceSize, aclnnMin, stream, false); 
+        aclnnMinGetWorkspaceSize, aclnnMin, stream); 
 }
 //DECLARE_ACL_REDUCTION_OP(Amin)
 //DECLARE_ACL_REDUCTION_OP(Amax)
-aclError aclop_ArgMax(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out, aclrtStream stream) {
+aclError aclop_ArgMax(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out,
+    const KwargsType& kwargs, aclrtStream stream) {
     int64_t dim_index = dim->GetData()[0];  // TODO, not sure how to convert
     return aclReductionOpRun(self, out,
-        aclnnArgMaxGetWorkspaceSize, aclnnArgMax, stream, false, dim_index, keepdim); 
+        aclnnArgMaxGetWorkspaceSize, aclnnArgMax, stream, dim_index, keepdim); 
 }
-aclError aclop_ArgMin(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out, aclrtStream stream) {
+aclError aclop_ArgMin(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out,
+    const KwargsType& kwargs, aclrtStream stream) {
     int64_t dim_index = dim->GetData()[0];  // TODO caller will put int64_t dim into aclIntArray
     return aclReductionOpRun(self, out,
-        aclnnArgMinGetWorkspaceSize, aclnnArgMin, stream, false, dim_index, keepdim); 
+        aclnnArgMinGetWorkspaceSize, aclnnArgMin, stream, dim_index, keepdim); 
 }
 
-aclError aclop_Mean(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out, aclrtStream stream) {
+aclError aclop_Mean(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out,
+    const KwargsType& kwargs, aclrtStream stream) {
     aclDataType dtype = GetDataType(out, self);
     return aclReductionOpRun(self, out,
-        aclnnMeanGetWorkspaceSize, aclnnMean, stream, false, dim, keepdim, dtype); 
+        aclnnMeanGetWorkspaceSize, aclnnMean, stream, dim, keepdim, dtype); 
 }
 // aclnn also provide nanMedian version
-aclError aclop_Median(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out, aclrtStream stream) {
+aclError aclop_Median(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out,
+    const KwargsType& kwargs, aclrtStream stream) {
     return aclReductionOpRun(self, out,
-        aclnnMedianGetWorkspaceSize, aclnnMedian, stream, false); 
+        aclnnMedianGetWorkspaceSize, aclnnMedian, stream); 
 }
 // aclError aclop_Bincount(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out, aclrtStream stream) {
 //     // need weights tensor, int64_t minLength 
@@ -73,29 +81,33 @@ aclError aclop_Median(const aclTensor* self, const aclIntArray* dim, bool keepdi
 //         aclnnBincountGetWorkspaceSize, aclnnBincount, stream, false); 
 // }
 
-aclError aclop_Std(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out, aclrtStream stream) {
+aclError aclop_Std(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out,
+    const KwargsType& kwargs, aclrtStream stream) {
     int64_t correction = 0; // numpy ddof default to 0, correction is added in numpy 2.0
     return aclReductionOpRun(self, out,
-        aclnnStdGetWorkspaceSize, aclnnStd, stream, false, dim, correction, keepdim); 
+        aclnnStdGetWorkspaceSize, aclnnStd, stream, dim, correction, keepdim); 
 }
-aclError aclop_Var(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out, aclrtStream stream) {
+aclError aclop_Var(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out,
+    const KwargsType& kwargs, aclrtStream stream) {
     bool unbiased = true;
     // TODO:  ddof/correction, default to zero, if keyword arg ddof is given, add impl here
     return aclReductionOpRun(self, out,
-        aclnnVarGetWorkspaceSize, aclnnVar, stream, false, dim, unbiased, keepdim); 
+        aclnnVarGetWorkspaceSize, aclnnVar, stream, dim, unbiased, keepdim); 
 }
 
-aclError aclop_Prod(const aclTensor* self, const aclIntArray* axis, bool keepdim, aclTensor* out, aclrtStream stream) {
+aclError aclop_Prod(const aclTensor* self, const aclIntArray* axis, bool keepdim, aclTensor* out,
+    const KwargsType& kwargs, aclrtStream stream) {
     int64_t dim_index = axis->GetData()[0];  // TODO, not sure how to convert
     aclDataType dtype = GetDataType(out, self);
     return aclReductionOpRun(self, out,
-        aclnnProdDimGetWorkspaceSize, aclnnProdDim, stream, false, dim_index, keepdim, dtype); 
+        aclnnProdDimGetWorkspaceSize, aclnnProdDim, stream, dim_index, keepdim, dtype); 
 }
 
-aclError aclop_Sum(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out, aclrtStream stream) {
+aclError aclop_Sum(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out,
+    const KwargsType& kwargs, aclrtStream stream) {
     aclDataType dtype = GetDataType(out, self);
     return aclReductionOpRun(self, out,
-        aclnnReduceSumGetWorkspaceSize, aclnnReduceSum, stream, false, dim, keepdim, dtype); 
+        aclnnReduceSumGetWorkspaceSize, aclnnReduceSum, stream, dim, keepdim, dtype); 
 }
 
 aclError aclop_NanToNum(const aclTensor* self, float scalar, aclTensor* out, aclrtStream stream) {
@@ -103,30 +115,35 @@ aclError aclop_NanToNum(const aclTensor* self, float scalar, aclTensor* out, acl
         self, scalar, std::numeric_limits<float>::infinity(), -std::numeric_limits<float>::infinity(), out);
 }
 
-aclError aclop_Cumsum(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out, aclrtStream stream) {
+aclError aclop_Cumsum(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out,
+    const KwargsType& kwargs, aclrtStream stream) {
     int64_t dim_index = dim->GetData()[0];  // TODO, not sure how to convert
     aclDataType dtype = GetDataType(out, self); // extra parameter from out Tensor, maybe do the conversion outside this func
     return aclReductionOpRun(self, out,
-        aclnnCumsumGetWorkspaceSize, aclnnCumsum, stream, false, dim_index, dtype); 
+        aclnnCumsumGetWorkspaceSize, aclnnCumsum, stream, dim_index, dtype); 
 }
 // dim: why it is a aclScalar?
-aclError aclop_Cumprod(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out, aclrtStream stream) {
+aclError aclop_Cumprod(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out,
+    const KwargsType& kwargs, aclrtStream stream) {
     aclScalar* dim_index = nullptr; // TODO, not sure how to convert
     aclDataType dtype = GetDataType(out, self); // TODO extra parameter from out Tensor, maybe do the conversion outside this func
     return aclReductionOpRun(self, out,
-        aclnnCumprodGetWorkspaceSize, aclnnCumprod, stream, false, dim_index, dtype); 
+        aclnnCumprodGetWorkspaceSize, aclnnCumprod, stream, dim_index, dtype); 
 }
-aclError aclop_Nansum(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out, aclrtStream stream) {
+aclError aclop_Nansum(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out,
+    const KwargsType& kwargs, aclrtStream stream) {
     aclDataType dtype = GetDataType(out, self);
     return aclReductionOpRun(self, out,
-        aclnnReduceNansumGetWorkspaceSize, aclnnReduceNansum, stream, false, dim, keepdim, dtype); 
+        aclnnReduceNansumGetWorkspaceSize, aclnnReduceNansum, stream, dim, keepdim, dtype); 
 }
-// aclError aclop_Nanprod(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out, aclrtStream stream) {
+// aclError aclop_Nanprod(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out,
+//     const KwargsType& kwargs, aclrtStream stream) {
 //     aclDataType dtype; // self->GetDataType();
 //     return aclReductionOpRun(self, out,
-//         aclnnReduceNanprodGetWorkspaceSize, aclnnReduceNanprod, stream, false, dim, keepdim, dtype); 
+//         aclnnReduceNanprodGetWorkspaceSize, aclnnReduceNanprod, stream, dim, keepdim, dtype); 
 // }
-aclError aclop_Nancumprod(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out, aclrtStream stream) {
+aclError aclop_Nancumprod(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out,
+    const KwargsType& kwargs, aclrtStream stream) {
     aclScalar* dim_index = nullptr; // TODO, not sure how to convert
     aclDataType dtype = GetDataType(out, self);
     aclTensor* temp = aclTensorLike(self, dtype);
@@ -134,12 +151,13 @@ aclError aclop_Nancumprod(const aclTensor* self, const aclIntArray* dim, bool ke
     aclError ret = aclop_NanToNum(self, scalar, temp, stream);
 
     ret = aclReductionOpRun(temp, out,
-        aclnnCumprodGetWorkspaceSize, aclnnCumprod, stream, false, dim_index, dtype); 
+        aclnnCumprodGetWorkspaceSize, aclnnCumprod, stream, dim_index, dtype); 
     aclDestroyTensor(temp);
     return ret;
 }
 
-aclError aclop_Nancumsum(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out, aclrtStream stream) {
+aclError aclop_Nancumsum(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out,
+    const KwargsType& kwargs, aclrtStream stream) {
     int64_t dim_index = dim->GetData()[0];  // TODO, not sure how to convert
     aclDataType dtype = GetDataType(out, self);
     aclTensor* temp = aclTensorLike(self, dtype);
@@ -147,7 +165,7 @@ aclError aclop_Nancumsum(const aclTensor* self, const aclIntArray* dim, bool kee
     aclError ret = aclop_NanToNum(self, scalar, temp, stream);
 
     ret = aclReductionOpRun(temp, out,
-        aclnnCumsumGetWorkspaceSize, aclnnCumsum, stream, false, dim_index, dtype); 
+        aclnnCumsumGetWorkspaceSize, aclnnCumsum, stream, dim_index, dtype); 
     aclDestroyTensor(temp);
     return ret;
 }

@@ -7,6 +7,7 @@ from cupy._core import _dtype
 from cupy._core.core import _ndarray_base
 from libc.stdint cimport int32_t, int16_t
 from libcpp.unordered_map cimport unordered_map as cpp_map
+from cython.operator cimport dereference as deref, preincrement as inc
 from libcpp.vector cimport vector
 from libcpp.complex cimport complex
 
@@ -15,6 +16,15 @@ import threading as _threading
 from cupy.xpu import stream as stream_module
 
 ASCEND_OP_PREFIX = "ascend_"
+
+# 为vector[const aclScalar*]&创建类型别名
+ctypedef vector[const aclScalar*] ArgsType
+ctypedef cpp_map[string, const aclScalar*] KwargsType
+
+# 4. 为迭代器创建别名（便于遍历）
+ctypedef vector[const aclScalar*].iterator ArgsIterator
+ctypedef cpp_map[string, const aclScalar*].const_iterator KargsConstIterator
+#ctypedef pair[const string, const aclScalar*] KwargsItem
 
 #include "backends/ascend/api/acl_types.pxi" # already included in pxd file
 
@@ -180,6 +190,28 @@ cdef aclScalar* cupy_scalar_to_acl_scalar(_cupy_scalar s) except*:
             aclDestroyScalar(acl_scalar)
         raise MemoryError("Failed to create aclScalar with error %s" % e)
 
+cdef KwargsType _create_keyword_args(dict kwargs) except *:
+    cdef KwargsType acl_kwargs
+    for key, value in kwargs.items():
+        acl_kwargs[key] = cupy_scalar_to_acl_scalar(value)
+    return acl_kwargs
+
+cdef void _delete_keyword_args(KwargsType& my_map) except *:
+    cdef:
+        # 使用非常量迭代器，因为我们需要修改map（删除元素）
+        cpp_map[string, const aclScalar*].iterator it = my_map.begin()
+        cpp_map[string, const aclScalar*].iterator end = my_map.end()
+        const aclScalar* scalar_ptr
+
+    # 安全遍历并删除
+    while it != end:
+        scalar_ptr = deref(it).second
+        if scalar_ptr != NULL:
+            aclDestroyScalar(<const aclScalar*>scalar_ptr)
+
+        # 3. 将迭代器指向下一个元素，并擦除当前元素。
+        #    it = my_map.erase(it) 会返回指向下一个有效元素的迭代器，这是安全的方法。
+        it = my_map.erase(it)
 
 cdef aclTensor* cupy_ndarray_to_acl_tensor(_ndarray_base cupy_array) except *:
     """
@@ -328,28 +360,19 @@ ctypedef aclError (*InplaceScalarBinaryOpFunc)(aclTensor* self, const aclScalar*
 ctypedef aclError (*UnaryOpFunc)(const aclTensor* self, aclTensor* out, aclrtStream stream)
 ctypedef aclError (*InplaceUnaryOpFunc)(aclTensor* self, aclrtStream stream)
 
-ctypedef aclError (*ReductionOpFunc)(const aclTensor* self, const aclIntArray* dim, bool keepdim,
-    aclTensor* out, aclrtStream stream)
-
 
 ###########################################################################################
-# 为vector[const aclScalar*]&创建类型别名
-ctypedef vector[const aclScalar*] ArgsType
-ctypedef cpp_map[string, const aclScalar*] KwargsType
 
-# 4. 为迭代器创建别名（便于遍历）
-ctypedef vector[const aclScalar*].iterator ArgsIterator
-ctypedef cpp_map[string, const aclScalar*].const_iterator KargsConstIterator
-#ctypedef pair[const string, const aclScalar*] KwargsItem
 
 # aclTensorList is not convenient to use in C++, so use std::vector directly
 ctypedef aclError (*GeneralOpFunc)(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
     const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
 
+ctypedef aclError (*ReductionOpFunc)(const aclTensor* self, const aclIntArray* dim, bool keepdim,
+    aclTensor* out, const KwargsType& kwargs, aclrtStream stream)
 
 # 函数指针联合体，用于存储不同类型的操作
 ctypedef union FuncPtrUnion:
-    # TODO: failed nullptr is that a choice?
     UnaryOpFunc unary_op
     InplaceUnaryOpFunc inplace_unary_op
     BinaryOpFunc binary_op
@@ -404,13 +427,19 @@ cdef aclError launch_general_func(str opname, sequence ins, sequence outs, list 
         return launch_acl_func(opname, ins, outs, args, kwargs, stream_ptr)
     func_ptr = _builtin_operators[op_info]
 
-    # TODO:  convert all ins, outs, args, kwargs, into aclTesnor/aclScalar
+    cdef ArgsType acl_args
+    cdef KwargsType acl_kwargs = _create_keyword_args(kwargs)
+    cdef const aclTensor* ct
     cdef vector[const aclTensor*] intensors
     for op in ins:
         typ = type(op)
         if issubclass(typ, _ndarray_base):
             intensors.push_back(cupy_ndarray_to_acl_tensor(op))
-        # aclScalar
+        elif issubclass(typ, _ndarray_base):
+            acl_args.push_back(cupy_scalar_to_acl_scalar(op))
+    for cupy_scalar in args:
+        acl_args.push_back(cupy_scalar_to_acl_scalar(cupy_scalar))
+
     cdef vector[aclTensor*] outtensors
     for op in outs:
         typ = type(op)
@@ -422,11 +451,8 @@ cdef aclError launch_general_func(str opname, sequence ins, sequence outs, list 
     if stream_ptr != <intptr_t>0:
         stream = <aclrtStream>stream_ptr
 
-    cdef ArgsType acl_args
-    cdef KwargsType acl_kargs
-    cdef const aclTensor* ct
     try:
-        ret = func_ptr.general_op(intensors, outtensors, acl_args, acl_kargs, stream)
+        ret = func_ptr.general_op(intensors, outtensors, acl_args, acl_kwargs, stream)
     finally:
         # aclDestroyTensor does not deallocate array buffer, but shapes, strides
         for i in range(intensors.size()):
@@ -434,7 +460,9 @@ cdef aclError launch_general_func(str opname, sequence ins, sequence outs, list 
             aclDestroyTensor(ct)
         for t in outtensors:
             aclDestroyTensor(t)
-        # TODO: aclDestroyScalar
+        for acl_scalar in acl_args:
+            aclDestroyScalar(acl_scalar)
+        _delete_keyword_args(acl_kwargs)
         if ret != 0:
             print("Failed to run the operator: ", opname)
     return ret
@@ -461,7 +489,7 @@ cdef vector[aclTensor*] _create_ops_vector(sequence ins, sequence outs) except *
     return tensors
 
 cdef aclError launch_acl_func(str opname, sequence ins, sequence outs, list args, dict kwargs, intptr_t stream_ptr) except *:
-
+    # 
     cdef aclScalar* scalar_ptr = NULL
     cdef OpInfo op_info
     cdef FuncPtrUnion func_ptr
@@ -474,7 +502,7 @@ cdef aclError launch_acl_func(str opname, sequence ins, sequence outs, list args
         typ = type(op)
         if typ is _cupy_scalar:
             scalar_ptr = cupy_scalar_to_acl_scalar(op)
-        # TODO: python int/float
+
     cdef has_scalar = scalar_ptr != NULL
     # cupy inplace op does not generate a new op, but make self == out
     cdef bint inplace = ("inplace" in opname) or not outs
@@ -537,7 +565,6 @@ cdef aclError launch_acl_func(str opname, sequence ins, sequence outs, list args
     return ret
 
 
-# TODO: add output `dtype` param, set as outTensor's dtype
 cdef aclError launch_reduction_op(str opname, sequence ins, sequence outs, object axes, bint keepdims, dict kwargs, intptr_t stream_ptr) except *:
     # 检查操作是否已注册
     if opname.startswith("cupy_"):
@@ -578,9 +605,9 @@ cdef aclError launch_reduction_op(str opname, sequence ins, sequence outs, objec
     if not shape.size():
         shape.push_back(0)
     dim = aclCreateIntArray(shape.data(), shape.size())
-
+    cdef KwargsType acl_kwargs = _create_keyword_args(kwargs)
     try:
-        ret = func_ptr.reduction_op(tensors[0], dim, keepdims, tensors[1], stream)
+        ret = func_ptr.reduction_op(tensors[0], dim, keepdims, tensors[1], acl_kwargs, stream)
         if ret != 0:
             print("Failed to run the reduction operator ", opname)
     finally:
@@ -589,6 +616,7 @@ cdef aclError launch_reduction_op(str opname, sequence ins, sequence outs, objec
             aclDestroyTensor(t)  # 假设destroyAclTensor函数已存在
         if dim:
             aclDestroyIntArray(dim)
+        _delete_keyword_args(acl_kwargs)
     return ret
 
 cdef extern from "../acl_math_ops.h" nogil:
@@ -772,7 +800,6 @@ cdef void register_math_operators():
     register_acl_ufunc("ascend_not_equal", BINARY_OP, func_union)
     func_union.scalar_binary_op = aclop_NeScalar
     register_acl_ufunc("ascend_not_equal", SCALAR_BINARY_OP, func_union)
-    # TODO: IsInf
     #############################################
     # 注册aclop_Add作为二元操作
     func_union.binary_op = aclop_Add
@@ -952,19 +979,19 @@ cdef void register_math_operators():
 #################### reduction ops ####################
 cdef extern from "../acl_reduction_ops.h" nogil:
 
-    aclError aclop_Any(const aclTensor* self, const aclIntArray* dim, bint keepdim, aclTensor* out, aclrtStream stream)
-    aclError aclop_All(const aclTensor* self, const aclIntArray* dim, bint keepdim, aclTensor* out, aclrtStream stream)
-    aclError aclop_Max(const aclTensor* self, const aclIntArray* dim, bint keepdim, aclTensor* out, aclrtStream stream)
-    aclError aclop_Min(const aclTensor* self, const aclIntArray* dim, bint keepdim, aclTensor* out, aclrtStream stream)
-    aclError aclop_ArgMax(const aclTensor* self, const aclIntArray* dim, bint keepdim, aclTensor* out, aclrtStream stream)
-    aclError aclop_ArgMin(const aclTensor* self, const aclIntArray* dim, bint keepdim, aclTensor* out, aclrtStream stream)
-    aclError aclop_Mean(const aclTensor* self, const aclIntArray* dim, bint keepdim, aclTensor* out, aclrtStream stream)
-    aclError aclop_Sum(const aclTensor* self, const aclIntArray* dim, bint keepdim, aclTensor* out, aclrtStream stream)
-    aclError aclop_Prod(const aclTensor* self, const aclIntArray* dim, bint keepdim, aclTensor* out, aclrtStream stream)
-    aclError aclop_Nansum(const aclTensor* self, const aclIntArray* dim, bint keepdim, aclTensor* out, aclrtStream stream)
-    #aclError aclop_Nanprod(const aclTensor* self, const aclIntArray* dim, bint keepdim, aclTensor* out, aclrtStream stream)
-    aclError aclop_Nancumprod(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out, aclrtStream stream)
-    aclError aclop_Nancumsum(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out, aclrtStream stream)
+    aclError aclop_Any(const aclTensor* self, const aclIntArray* dim, bint keepdim, aclTensor* out, const KwargsType& kwargs, aclrtStream stream)
+    aclError aclop_All(const aclTensor* self, const aclIntArray* dim, bint keepdim, aclTensor* out, const KwargsType& kwargs, aclrtStream stream)
+    aclError aclop_Max(const aclTensor* self, const aclIntArray* dim, bint keepdim, aclTensor* out, const KwargsType& kwargs, aclrtStream stream)
+    aclError aclop_Min(const aclTensor* self, const aclIntArray* dim, bint keepdim, aclTensor* out, const KwargsType& kwargs, aclrtStream stream)
+    aclError aclop_ArgMax(const aclTensor* self, const aclIntArray* dim, bint keepdim, aclTensor* out, const KwargsType& kwargs, aclrtStream stream)
+    aclError aclop_ArgMin(const aclTensor* self, const aclIntArray* dim, bint keepdim, aclTensor* out, const KwargsType& kwargs, aclrtStream stream)
+    aclError aclop_Mean(const aclTensor* self, const aclIntArray* dim, bint keepdim, aclTensor* out, const KwargsType& kwargs, aclrtStream stream)
+    aclError aclop_Sum(const aclTensor* self, const aclIntArray* dim, bint keepdim, aclTensor* out, const KwargsType& kwargs, aclrtStream stream)
+    aclError aclop_Prod(const aclTensor* self, const aclIntArray* dim, bint keepdim, aclTensor* out, const KwargsType& kwargs, aclrtStream stream)
+    aclError aclop_Nansum(const aclTensor* self, const aclIntArray* dim, bint keepdim, aclTensor* out, const KwargsType& kwargs, aclrtStream stream)
+    #aclError aclop_Nanprod(const aclTensor* self, const aclIntArray* dim, bint keepdim, aclTensor* out, const KwargsType& kwargs, aclrtStream stream)
+    aclError aclop_Nancumprod(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out, const KwargsType& kwargs, aclrtStream stream)
+    aclError aclop_Nancumsum(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out, const KwargsType& kwargs, aclrtStream stream)
 
 cdef void register_reduction_operators():
     cdef FuncPtrUnion func_union
@@ -1000,6 +1027,8 @@ cdef void register_reduction_operators():
 cdef extern from "../acl_general_ops.h" nogil:
     aclError aclop_Copy(const aclTensor* self,  aclTensor* out, aclrtStream stream)
     aclError aclop_Nonzero(const aclTensor* self,  aclTensor* out, aclrtStream stream)
+    aclError aclop_Fill(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
 
     aclError aclop_Arange(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
         const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
@@ -1021,6 +1050,9 @@ cdef extern from "../acl_general_ops.h" nogil:
         const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
     aclError aclop_IsClose(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
         const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
+    aclError aclop_Heaviside(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
+
 
 cdef void register_irregular_operators():
     cdef FuncPtrUnion func_union
@@ -1044,9 +1076,13 @@ cdef void register_irregular_operators():
     register_acl_ufunc("ascend_clip", GENERAL_OP, func_union)
     func_union.general_op = aclop_IsClose
     register_acl_ufunc("ascend_is_close", GENERAL_OP, func_union)
+    func_union.general_op = aclop_Heaviside
+    register_acl_ufunc("ascend_heaviside", GENERAL_OP, func_union)
 
     func_union.unary_op = aclop_Copy
     register_acl_ufunc("ascend_copy", UNARY_OP, func_union)
+    func_union.general_op  = aclop_Fill
+    register_acl_ufunc("ascend_fill", GENERAL_OP, func_union)
     func_union.unary_op = aclop_Nonzero
     register_acl_ufunc("ascend_nonzero", UNARY_OP, func_union)
 

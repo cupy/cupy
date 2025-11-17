@@ -229,7 +229,7 @@ ToScalarType GetScalarArg(const ArgsType& args, int argIndex, const KwargsType& 
     const aclScalar* arg = nullptr;
     if (kargs.find(key) != kargs.end()) {
         arg = kargs.at(key);
-    } else if (argIndex < args.size()) {
+    } else if (argIndex >= 0 && argIndex < static_cast<int>(args.size())) {
         arg = args.at(argIndex);
     } else {
         std::cerr << "WARNING: Failed to get argument from args list or kargs dict, use the default scalar value\n";
