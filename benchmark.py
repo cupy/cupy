@@ -156,7 +156,6 @@ if __name__ == "__main__":
     # 定义测试函数
     np_cos, cp_cos = np.cos, cp.cos
     np_add, cp_add = np.add, cp.add
-    np_dot, cp_dot = np.matmul, cp.matmul
     np_sum, cp_sum = np.sum, cp.sum
 
     print("正在生成测试数据...（这可能需要一些时间）")
@@ -195,11 +194,6 @@ if __name__ == "__main__":
     cp_vec_ret += cp.float32(2.0)
     print("test tensor + sclar op, with result", cp_vec_ret)
     print("="*60)
-
-    print("\n" + "="*60)
-    cp_vec_ret = cp.dot(cp_vec1, cp_vec2)
-    print("test dot op, with result", cp_vec_ret)
-    print("="*60)
         
     print("\n" + "="*60)
     print(f"基准测试向量COS操作（单目运算，{mode}）")
@@ -211,6 +205,12 @@ if __name__ == "__main__":
     print(f"基准测试Vector乘法操作（双目运算，{mode}）")
     print("="*60)
     np_time, cp_time, speedup = benchmark_mat_op(np.multiply, cp.multiply, np_vec1, np_vec2, cp_vec1, cp_vec2, 
+                                                unary=False, repeating=repeating, use_async=use_async)
+    
+    print("\n" + "="*60)
+    print(f"基准测试Vector.dot操作（双目运算，{mode}）")
+    print("="*60)
+    np_time, cp_time, speedup = benchmark_mat_op(np.dot, cp.dot, np_vec1, np_vec2, cp_vec1, cp_vec2, 
                                                 unary=False, repeating=repeating, use_async=use_async)
     
     print("\n" + "="*60)
@@ -228,13 +228,13 @@ if __name__ == "__main__":
     print("\n" + "="*60)
     print(f"基准测试矩阵乘法操作（双目运算，{mode}）")
     print("="*60)
-    np_time, cp_time, speedup = benchmark_mat_op(np_dot, cp_dot, np_mat_a, np_mat_b, cp_mat_a, cp_mat_b, 
+    np_time, cp_time, speedup = benchmark_mat_op(np.matmul, cp.matmul, np_mat_a, np_mat_b, cp_mat_a, cp_mat_b, 
                                                 unary=False, repeating=repeating, use_async=use_async)
 
 
     print("\n" + "="*60)
     _ = cp.add(cp_mat_a, cp_mat_b)
-    print("test mat add, with result", cp_vec_ret)
+    print("test mat add, with result", _)
     print("="*60)
 
     # print("\n" + "="*60) # cos, add is not supported for dim = 2 matrix for ASCEND

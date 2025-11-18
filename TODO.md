@@ -106,6 +106,37 @@ cusparse + cusolver：  aicpu， torch-npu
 
 ```
 
+#### TODO:  CUBLAS_COMPUTE ,  cudaDataType 下沉到backend层次
+
+`_numpy_to_backend_dtype()`  不同的backend实现不同的pyx文件
+
+####  TODO: HCCL NCCL, MPI, RCCL 应该可以抽象
+
+sparse, 等ascend缺失的暂不做中性化处理, 直接放入cuda/libs
+
+#### split out cuda enum from backend
+
+这些基本GPU专用, 或者不是核心必须得代码, 拆出到cuda backend去维护
+cupy.backends.backend._runtime.pyx 
+
+```python
+IF CUPY_CANN_VERSION <= 0:
+    # Provide access to constants from Python.
+    # TODO(kmaehashi): Deprecate aliases above so that we can just do:
+    # from cupy.backends.cuda.api._runtime_enum import *
+    # from cupy.backends.cuda.api._device_prop import *
+    def _export_enum():
+        import sys
+        import cupy.backends.backend.api._runtime_enum as _runtime_enum
+        this = sys.modules[__name__]
+        for key in dir(_runtime_enum):
+            if not key.startswith('_'):
+                setattr(this, key, getattr(_runtime_enum, key))
+
+    _export_enum()
+ELSE:
+    # in  the future, add ascend cann enum here
+```
 
 
 ### cuTensor： 昇腾CANN对应？

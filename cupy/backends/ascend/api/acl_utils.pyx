@@ -192,8 +192,9 @@ cdef aclScalar* cupy_scalar_to_acl_scalar(_cupy_scalar s) except*:
 
 cdef KwargsType _create_keyword_args(dict kwargs) except *:
     cdef KwargsType acl_kwargs
-    for key, value in kwargs.items():
-        acl_kwargs[key] = cupy_scalar_to_acl_scalar(value)
+    if kwargs:
+        for key, value in kwargs.items():
+            acl_kwargs[key] = cupy_scalar_to_acl_scalar(value)
     return acl_kwargs
 
 cdef void _delete_keyword_args(KwargsType& my_map) except *:
@@ -1052,7 +1053,6 @@ cdef extern from "../acl_general_ops.h" nogil:
         const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
     aclError aclop_Heaviside(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
         const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
-
 
 cdef void register_irregular_operators():
     cdef FuncPtrUnion func_union

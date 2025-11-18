@@ -1,6 +1,8 @@
 # numpy for Ascend: fork from Cupy
 
-ascend-numpy's architecture from top to bottom
+By Qingfeng Xia
+
+`ascend-numpy` architecture from top to bottom
 
 1. numpy api in Python lang
 2. cupy._core in Cython lang
@@ -8,24 +10,30 @@ ascend-numpy's architecture from top to bottom
 4. cupy.backends.backend: abstraction of xpu low level backend api in c lang
 5. cupy.backends.ascend: impl in cython/c++
 
-## status
+## 1. Status
 
-### progress
-Oct 12: MVP for add, cos, matmul, benchmark
-Oct 23: benchmark.py 经过xpu重构后, NPU测试可以运行
-Nov 08: reduction op such as `sum()` is working, 90% math ops ACLOP supported has been added into numpy-ascend
-        UnitTest: `pytest tests/cupy_tests/math_tests/test_truth.py `
-Nov 15: concatenate(), clip(), copy(), non-math/irregular ops initially supported
-       + round(a, 2) segmentation fault, possible error in c++ arg conversion
-       + exp(a, 2.0) scalar 转化 not working, 可能是exp scalar op 没有注册
-       + matmul(a, b) 结果和np.matmul(b, a) 相同, 应该是代码某处有bug
-       + arange()  cupy_arange kernel is different arange numpy API
+### 1.1 Progress
+- Oct 12: MVP for add, cos, matmul, benchmark
+
+- Oct 23: benchmark.py 经过xpu重构后, NPU测试可以运行
+
+- Nov 08: reduction op such as `sum()` is working, 90% math ops ACLOP supported has been added into numpy-ascend
+        UnitTest: `pytest tests/cupy_tests/logic_tests/test_truth.py `
+
+- Nov 15: concatenate(), clip(), copy(), non-math/irregular ops initially supported
+    + round(a, 2) segmentation fault fixed, 
+    + but `array()` seems not working properly
+    + scalar 转化 not working, 可能是exp scalar op 没有注册
+    + matmul(a, b) 结果和np.matmul(b, a) 相同, 应该是代码某处有bug
        
-TODO:  creation/manipulation/indexing ops
+TODO:  
+- creation/manipulation/indexing/linalg ops
+    + creation ops: arange()  cupy_arange kernel is different arange numpy API
+    + statistics ops: passing string arg
 
-## 核心op支持情况 ( see also Array API standard)
+## 2. 核心op支持情况 ( see also Array API standard)
 
-### introduction to Array API
+### 2.1 introduction to Array API
 https://github.com/data-apis/array-api
 
 ``` py
@@ -49,39 +57,46 @@ y_gpu = cpx.reshape(x_gpu, (2, 2))
 z_gpu = cpx.matmul(y_gpu, y_gpu)
 ```
 
-### math ops: 
-+ 未注册  einsum, cbrt, fix (Trunc), rint (Round), round/around, convolve (?),
+### 2.2 math ops: 
++ 未注册  einsum, cbrt(cube root), fix (Trunc), rint (Round), round/around, convolve (?),
 + 自己实现: radians (deg2rad), degrees (rad2deg), deg2rad, rad2deg. lcm, divmod 
 + missing 数值计算: gradient, interp, trapezoid, diff
-+ missing: frexp, ldexp (logit ??)
++ missing: frexp, ldexp ()
 + complex numpy ops: angle, conj,  缺少几个ops但是自己实现很简单,  real, complex
 + scan (numpy has no such op), true_divide
 + cupy.math_op(scalar, tensor), can aclop kernel broadcast deal with this?
 
-### indexing ops
-slicing ? working, but it does not use `Slice` aclop
-`math.scan()` is a dummy/empty func, no such aclop
-aclop has `take, put(InplacePut), slice`, but no `choose`
+### 2.3 indexing ops
+- slicing ? working, but it does not use `Slice` aclop
+- `math.scan()` is a dummy/empty func, no such aclop
+- aclop has `take, put(InplacePut), slice`, but no `choose`
 
-### manipulation ops
-CUPY reshape, split, does not need kernel, it is done in cython code on host (Reshape api)
-ACLOP having: roll, permute, flip, repeat, 
-cupy: use concatenate to impl vstack, stack, hstack without using CUDA kernel
-_manipulation/rearange.py  slicing is used to flip, rotate
-squeeze: Removes size-one axes from the shape of an array
+### 2.4 manipulation ops
+可能有大量不兼容, 测试工作量不小
++ CUPY `reshape, split` does not need kernel, it is done in cython code on host (Reshape api)
++ ACLOP having: `roll, permute, flip, repeat` 
++ cupy uses `concatenate` to impl vstack, stack, hstack without using CUDA kernel
++ `_manipulation/rearange.py`  slicing is used to flip, rotate
++ `squeeze`: Removes size-one axes from the shape of an array
 
-### Logica/bitwise ops:  
-ACLOP misses numpy op: `_left_shift`, `_left_right`
-`cupy_is_close` half done, not tested yet
-is_nan(): TODO  `aclnnEqual`
-why equal op has no tensor-scalar version?
+### 2.5 logical/bitwise ops:  
++ ACLOP misses numpy op: `_left_shift`, `_left_right`
++ `cupy_is_close` should be used as `a.isclose(b)`
++ `is_nan()`: 
 
-### statistics reduction ops: 
-registered: median, var, mean, std,  bincount, histgram (histc), 主要是看nan怎么处理, 部分做了注册
-missing: average, quantile,  percentile, vecter op实现难度应该不太大
-ptp (Range of values (maximum - minimum) along an axis.) -> Aminmax
+TODO   but why `aclnnEqual`has no tensor-scalar version?
 
-### random and distribution
+### 2.6 statistics reduction ops: 
++ registered: median, var, mean, std,  bincount, histgram (histc), 主要是看nan怎么处理, 部分做了注册
++ missing: average, quantile,  percentile, vecter op实现难度应该不太大
++ ptp (Range of values (maximum - minimum) along an axis.) -> Aminmax
+
+TODO: passing keyword args
+
+### 2.7 set
++ `is1d`
+
+### 2.8 random and distribution
 
 AsNumpy project has impl
 
@@ -90,16 +105,18 @@ AsNumpy project has impl
 2. remainder, fmod, modf
 3. rint, round, around
 4. dot, matmul, mm, gemm, inner
+5. fabs(real number only), abs
 
 
-### Extra user notes
 
-#### ascend backends
+## 3. Extra user notes
+
+### 3.1  ascend backends
 
 1. `aclEvent` mapping is may have error to fix, causing memory error
 2. multiple NPU intialization yet design/tested
 
-#### dtype
+### 3.2 dtype
 0. most ACLOP does not support `double`, `int64` while `+-*/` seems supported but slow
 1. `add` (all algorith op) support double vector, int64 vector,  but it is slow, probably done by AICPU
 2. matrix/linalgo: `dot/matmul` support only float32, float16, bfloat
@@ -109,21 +126,21 @@ AsNumpy project has impl
 5. cupy scalar operands must be cupy._scalar type, it may be extended to python scalar in numpy-ascend (TODO)
 6. if two operands have diff dtype, cupy will do promote_types in `ElementwiseKernel`
 
-#### shape
+### 3.3  shape
 
 2. CANN aclnn op kernel inside can deal with broadcast, just as pytorch/numpy, while cupy deal with itself not in kernel
 
-#### 一些说明
+### 3.4 notes
 currently, only support tensor op tensor, some op support tensor op scalar (aclScalar not python double/int)
 1. `power(scalar, tensor)` not supported, need some refactoring, Operand as union of aclTensor* and aclScalar*
 2. inplace operator like `add` is working, while not sure it use InplaceOp or ASCEND nonIplanceOp
    inplace and nonInplace may have some diff, the save memory addr self and out  passed to op may lead to some error
 3. creation/manipulation/indexing, geneal_ops not registered, not tested
-8. masked tensor/ndarray: its possible using kargs, using aclnn op
+4. masked tensor/ndarray: its possible using kargs, using aclnn op
 5. scalar op scalar: numpy/cupy 是不是也不支持这样的操作? 
 
 
-===================================================================================================
+=====================================================
 # Developer Notes
 
 ## 1. 开发环境
@@ -244,7 +261,7 @@ pip3 install triton-ascend
 
 
 
-### 昇腾硬件测试环境
+### 2.5 昇腾硬件测试环境
 
 ModelArts EulerOS (对应是OpenEuler 20.03) in docker  CANN 8.2, python 3.9 （华为modelarts 4 910B 服务器）. 
 
@@ -312,7 +329,7 @@ https://github.com/qingfengxia/numpy-ascend/commit/863e0ff4c07994a45a204b8032db7
 export CUPY_INSTALL_USE_ASCEND=1 && python setup.py develop && python -c "import cupy._core"
 ```
 
-### 4.1 4 kinds of minimum (consider NaN)
+### 4.1 Four kinds of minimum (consider NaN)
 only float number can represent NaN (like inf, special value of float)
 + fmin 两个数组的逐元素最小值，忽略 NaN。binary op
 + minimum 两个数组的逐元素最小值，传播 NaN。binary op
@@ -338,10 +355,10 @@ NVIDIA的EULA**并未禁止重新编译CUDA源代码**
 
 CUDA的runtime API emulate 可能不违反EULA, 但是没有必要冒着未来的法律, 直接中性化.
 
-#### 中性化重构
-+ cupy.cuda -> cupy.xpu                            XPU 泛指任何CPU之外的计算加速器
+#### XPU API 中性化重构
++ cupy.cuda -> cupy.xpu ,  XPU 泛指任何CPU之外的计算加速器
 
-+ cupy_backends.cuda -> cupy.backends.backend           为什么叫backends, 这是和torch保持移植. 
++ cupy_backends.cuda -> cupy.backends.backend , 为什么叫backends, 这是和torch保持移植. 
 
 + xpuXXX 作为runtime的抽象API
 
@@ -351,39 +368,8 @@ CUDA的runtime API emulate 可能不违反EULA, 但是没有必要冒着未来�
 
 架构中性化, 也可以和cupy作者沟通, 看这种架构的重构上游是否可以接受. nvidia在致力做自己官方的pynumeric, 那么社区驱动cupy未来就有不确定性. 
 
-#### TODO:  CUBLAS_COMPUTE ,  cudaDataType 下沉到backend层次
 
-`_numpy_to_backend_dtype()`  不同的backend实现不同的pyx文件
-
-####  TODO: HCCL NCCL, MPI, RCCL 应该可以抽象
-
-sparse, 等ascend缺失的暂不做中性化处理, 直接放入cuda/libs
-
-#### split out cuda enum from backend
-
-这些基本GPU专用, 或者不是核心必须得代码, 拆出到cuda backend去维护
-cupy.backends.backend._runtime.pyx 
-
-```python
-IF CUPY_CANN_VERSION <= 0:
-    # Provide access to constants from Python.
-    # TODO(kmaehashi): Deprecate aliases above so that we can just do:
-    # from cupy.backends.cuda.api._runtime_enum import *
-    # from cupy.backends.cuda.api._device_prop import *
-    def _export_enum():
-        import sys
-        import cupy.backends.backend.api._runtime_enum as _runtime_enum
-        this = sys.modules[__name__]
-        for key in dir(_runtime_enum):
-            if not key.startswith('_'):
-                setattr(this, key, getattr(_runtime_enum, key))
-
-    _export_enum()
-ELSE:
-    # in  the future, add ascend cann enum here
-```
-
-#### TODO (refactor underway): cuda backend need xpu -> cuda API mapping
+### 5.3 (refactor underway): cuda backend need xpu -> cuda API mapping
 有一个python的脚本(api_replace_tool.py)来负责处理. 
 这样处理后, cuda backend有工作量, cuda api -> xpu api, 暂时不能编译. 所以我放在新的分支 xpu开发
 
@@ -392,7 +378,7 @@ cuDoubleComplex -> xpuComplex128,  numpy,torch use this style
 enum xpuFunction_attribute
 cuGetErrorString -> 
 
-```
+```c++
 // Context
 xpuBlasStatus cublasCreate(...) {
     return CUBLAS_STATUS_SUCCESS;
