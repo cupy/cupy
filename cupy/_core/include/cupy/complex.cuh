@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cupy/complex/complex.h>
+#include <cuda_bf16.h>
 
 using thrust::complex;
 using thrust::conj;
