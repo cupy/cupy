@@ -1516,23 +1516,31 @@ cdef class _Op:
 
     @staticmethod
     cdef _Op _from_type_and_routine_or_error_func(
-            str typ, object routine, object error_func):
+            typ, object routine, object error_func):
         # TODO(niboshi): Write type mapping specification.
-        types = typ.split('->')
-        if len(types) == 1:
-            in_types = out_types = tuple(types)
+        if isinstance(typ, list):
+            # TODO: A bit of a hack for now, use dtype(...).type to normalize.
+            in_types = tuple(numpy.dtype(t).type for t in typ[0])
+            out_types = tuple(numpy.dtype(t).type for t in typ[1])
+        elif isinstance(typ, str):
+            types = typ.split('->')
+            if len(types) == 1:
+                in_types = out_types = tuple(types)
+            else:
+                in_types, out_types = map(tuple, types)
+            in_types = tuple([get_dtype(t).type for t in in_types])
+            out_types = tuple([get_dtype(t).type for t in out_types])
         else:
-            in_types, out_types = map(tuple, types)
-        in_types = tuple([get_dtype(t).type for t in in_types])
-        out_types = tuple([get_dtype(t).type for t in out_types])
+            raise TypeError("Expected string or list for typ identifier.")
+
         return _Op(in_types, out_types, routine, error_func)
 
     @staticmethod
-    cdef _Op from_type_and_routine(str typ, routine):
+    cdef _Op from_type_and_routine(typ, routine):
         return _Op._from_type_and_routine_or_error_func(typ, routine, None)
 
     @staticmethod
-    cdef _Op from_type_and_error_func(str typ, error_func):
+    cdef _Op from_type_and_error_func(typ, error_func):
         return _Op._from_type_and_routine_or_error_func(typ, None, error_func)
 
     cdef check_valid(self):
@@ -1566,12 +1574,12 @@ cdef class _Ops:
                 typ, rt = t
                 if isinstance(rt, tuple):
                     rt = tuple([r1 or r2 for r1, r2 in zip(rt, routine)])
-                elif not isinstance(rt, str):
+                elif not isinstance(rt, (str, list)):
                     assert callable(rt)
                     ops_.append(_Op.from_type_and_error_func(typ, rt))
                     continue
             else:
-                assert isinstance(t, str)
+                assert isinstance(t, (str, list))
                 typ, rt = t, routine
             ops_.append(_Op.from_type_and_routine(typ, rt))
         return _Ops(tuple(ops_))
