@@ -59,6 +59,16 @@ cdef _setup_type_dict():
     for t in ('cudaTextureObject_t',):
         _typenames[t] = t
 
+    try:
+        import ml_dtypes
+    except ImportError:
+        pass
+    else:
+        dt = numpy.dtype(ml_dtypes.bfloat16)
+        _dtype_kind_size_dict[dt] = ("V", 2)
+        _typenames[dt.type] = "__nv_bfloat16"
+        _dtype_kind_size_dict[dt] = ("V", 2)
+        _typenames[dt.type] = "__nv_bfloat16"
 
 _setup_type_dict()
 

@@ -866,11 +866,20 @@ cdef create_arithmetic(
     if isinstance(boolop, str):
         boolop = 'out0 = in0 %s in1' % boolop
 
+    try:
+        import ml_dtypes
+    except ImportError:
+        EE_E = ()
+    else:
+        # Name unfortunately collides with complex32 a bit.
+        E = numpy.dtype(ml_dtypes.bfloat16)
+        EE_E = ([(E, E), (E,)],)
+
     return create_ufunc(
         'cupy_' + name,
         (('??->?', boolop),
          'bb->b', 'BB->B', 'hh->h', 'HH->H', 'ii->i', 'II->I', 'll->l',
-         'LL->L', 'qq->q', 'QQ->Q', 'ee->e', 'ff->f', 'dd->d', 'FF->F',
+         'LL->L', 'qq->q', 'QQ->Q', 'ee->e', *EE_E, 'ff->f', 'dd->d', 'FF->F',
          'DD->D'),
         'out0 = in0 %s in1' % op,
         doc=doc,
