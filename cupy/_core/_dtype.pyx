@@ -5,6 +5,7 @@ import warnings
 
 from cupy_backends.cuda.api cimport runtime
 from cupy.exceptions import ComplexWarning
+from . cimport _scalar
 
 
 cdef str all_type_chars = '?bhilqBHILQefdFD'
@@ -61,10 +62,14 @@ cdef bint check_supported_dtype(dtype, bint error) except -1:
         # possible that the included fields will not be usable in the end.
         # The simplest path is to inform users
         return True
-    elif not error:
-        return False
-    else:
-        raise ValueError(f'Unsupported dtype {dtype}')
+
+    try:
+        _scalar.get_typename(dtype)  # allow if this succeeds.
+    except ValueError:
+        if not error:
+            return False
+        else:
+            raise ValueError(f'Unsupported dtype {dtype}')
 
 
 cdef _init_dtype_dict():
