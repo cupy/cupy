@@ -164,7 +164,8 @@ class TestTwoArgumentDistribution(_TestDistributionsBase):
     @pytest.mark.skipif(cupy.cuda.runtime.is_hip,
                         reason="avoid failures observed on HIP")
     @pytest.mark.parametrize('function', ['chdtr', 'chdtrc', 'chdtri',
-                                          'pdtr', 'pdtrc', 'pdtri'])
+                                          'pdtr', 'pdtrc', 'pdtri',
+                                          'stdtr'])
     @testing.for_float_dtypes()
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
     def test_linspace_broadcast(self, xp, scp, dtype, function):
@@ -206,6 +207,15 @@ class TestTwoArgumentDistribution(_TestDistributionsBase):
     )
     def test_scalar(self, function, args, expected):
         self._test_scalar(function, args, expected)
+
+    @testing.for_float_dtypes()
+    @testing.for_int_dtypes(name='int_dtype', no_bool=True)
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
+    def test_linspace_stdtr(self, xp, scp, int_dtype, dtype):
+        func = getattr(scp.special, 'stdtr')
+        df = xp.arange(1, 10, dtype=int_dtype)[:, xp.newaxis]
+        t = xp.linspace(-5, 5, 20, dtype=dtype)[xp.newaxis, :]
+        return func(df, t)
 
 
 @testing.with_requires('scipy')
