@@ -735,8 +735,8 @@ cpdef memPrefetchAsync(intptr_t devPtr, size_t count, int dstDevice,
     ELSE:
         cdef _MemLocation loc_c
         c_memset(&loc_c, 0, sizeof(_MemLocation))
-        loc_c.location.type = cudaMemLocationTypeDevice
-        loc_c.location.id = dstDevice
+        loc_c.type = cudaMemLocationTypeDevice
+        loc_c.id = dstDevice
         with nogil:
             status = cudaMemPrefetchAsync(<void*>devPtr, count,
                                           loc_c, 0,
@@ -753,8 +753,8 @@ cpdef memAdvise(intptr_t devPtr, size_t count, int advice, int device):
     ELSE:
         cdef _MemLocation loc_c
         c_memset(&loc_c, 0, sizeof(_MemLocation))
-        loc_c.location.type = cudaMemLocationTypeDevice
-        loc_c.location.id = device
+        loc_c.type = cudaMemLocationTypeDevice
+        loc_c.id = device
         with nogil:
             status = cudaMemAdvise(<void*>devPtr, count,
                                    <MemoryAdvise>advice, loc_c)
