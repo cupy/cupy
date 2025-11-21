@@ -172,6 +172,7 @@ cdef class CScalar(CPointer):
         (<int32_t *>s.ptr)[0] = value
         s.kind = b'i'
         s.size = 4
+        s.dtype = cnp.dtype("int32")
         return s
 
     @staticmethod
@@ -315,7 +316,7 @@ cdef class CScalar(CPointer):
             assert False
         self.kind = kind
         self.size = size
-        self.dtype = dtype
+        self.dtype = cnp.dtype(dtype)
 
     cpdef get_numpy_type(self):
         # Use Python level `.type` lookup (different in cython level)
