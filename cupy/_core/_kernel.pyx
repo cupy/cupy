@@ -1534,7 +1534,7 @@ cdef class _Op:
             typ, object routine, object error_func):
         # TODO(niboshi): Write type mapping specification.
         if isinstance(typ, list):
-            # TODO: A bit of a hack for now to use dtype(...).type to normalize.
+            # TODO: A bit of a hack for now, use dtype(...).type to normalize.
             in_types = tuple(numpy.dtype(t).type for t in typ[0])
             out_types = tuple(numpy.dtype(t).type for t in typ[1])
         elif isinstance(typ, str):
