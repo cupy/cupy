@@ -8,6 +8,7 @@ from cupy.exceptions import ComplexWarning
 
 
 cdef str all_type_chars = '?bhilqBHILQefdFD'
+cdef bytes all_type_chars_b = b'?bhilqBHILQefdFD'
 # for c in '?bhilqBHILQefdFD':
 #    print('#', c, '...', np.dtype(c).name)
 # ? ... bool
@@ -31,19 +32,18 @@ cdef dict _dtype_dict = {}
 cdef _dtype = numpy.dtype
 
 
-cdef bint check_supported_dtype(dtype, bint error) except -1:
+cdef bint check_supported_dtype(cnp.dtype dtype, bint error) except -1:
     """ Returns true on success but otherwise raises an error. """
-    cdef str dtype_char = dtype.char
 
-    if dtype.byteorder == ">":
+    if dtype.byteorder == b">":
         if not error:
             return False
         raise ValueError(
             f'Unsupported dtype {dtype} with big-endian byte-order')
 
-    if dtype_char in all_type_chars:
-        return True
-    elif dtype_char == "V" and dtype.fields is not None:
+    if dtype.type in all_type_chars_b:
+        return True  # fast-path, these are always OK
+    elif dtype.type == "V" and (<object>dtype).fields is not None:
         # Support structured dtypes (not subarray here specifically).
         # We don't really need to know anything about the dtype, but cannot
         # do references (copying back to CPU would be wrong).
@@ -61,10 +61,14 @@ cdef bint check_supported_dtype(dtype, bint error) except -1:
         # possible that the included fields will not be usable in the end.
         # The simplest path is to inform users
         return True
-    elif not error:
-        return False
-    else:
-        raise ValueError(f'Unsupported dtype {dtype}')
+
+    try:
+        _scalar.get_typename(dtype)  # allow if we know a C typename.
+    except (ValueError, KeyError):
+        if not error:
+            return False
+        else:
+            raise ValueError(f'Unsupported dtype {dtype}') from None
 
 
 cdef _init_dtype_dict():

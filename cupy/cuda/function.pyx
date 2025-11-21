@@ -12,6 +12,7 @@ from libc.stdint cimport uintmax_t
 from libcpp cimport vector
 
 from cupy._core cimport _carray
+from cupy._core cimport _scalar
 from cupy._core.core cimport _ndarray_base
 from cupy_backends.cuda.api cimport driver
 from cupy_backends.cuda.api cimport runtime
@@ -98,13 +99,7 @@ cdef class CNumpyArray(CPointer):
         self.ptr = <void*><size_t>v.__array_interface__['data'][0]
 
 
-cdef set _pointer_numpy_types = {numpy.dtype(i).type
-                                 for i in '?bhilqBHILQefdFD'}
-
-
 cdef inline CPointer _pointer(x):
-    cdef Py_ssize_t itemsize
-
     if x is None:
         return CPointer()
     if isinstance(x, _ndarray_base):
@@ -132,30 +127,8 @@ cdef inline CPointer _pointer(x):
                    'al__ memory, you need to pass a cupy.ndarray instead.')
             raise TypeError(msg.format(x.shape))
 
-    if type(x) not in _pointer_numpy_types:
-        if isinstance(x, int):
-            x = numpy.int64(x)
-        elif isinstance(x, float):
-            x = numpy.float64(x)
-        elif isinstance(x, bool):
-            x = numpy.bool_(x)
-        elif isinstance(x, complex):
-            x = numpy.complex128(x)
-        else:
-            raise TypeError('Unsupported type %s' % type(x))
-
-    itemsize = x.itemsize
-    if itemsize == 1:
-        return CInt8(x.view(numpy.int8))
-    if itemsize == 2:
-        return CInt16(x.view(numpy.int16))
-    if itemsize == 4:
-        return CInt32(x.view(numpy.int32))
-    if itemsize == 8:
-        return CInt64(x.view(numpy.int64))
-    if itemsize == 16:
-        return CInt128(x.view(numpy.complex128))
-    raise TypeError('Unsupported type %s. (size=%d)', type(x), itemsize)
+    # This should be a scalar understood by NumPy (and us).
+    return _scalar.CScalar(x)
 
 
 cdef inline size_t _get_stream(stream) except *:

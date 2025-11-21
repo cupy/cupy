@@ -13,6 +13,7 @@ import pickle
 import shutil
 import sys
 
+import numpy as np
 import setuptools
 
 import cupy_builder.install_build as build
@@ -321,6 +322,7 @@ def make_extensions(ctx: Context, compiler, use_cython):
     settings = build.get_compiler_setting(ctx, use_hip)
 
     include_dirs = settings['include_dirs']
+    include_dirs.append(np.get_include())
 
     settings['include_dirs'] = [
         x for x in include_dirs if os.path.exists(x)]
@@ -330,6 +332,10 @@ def make_extensions(ctx: Context, compiler, use_cython):
     # Adjust rpath to use CUDA libraries in `cupy/.data/lib/*.so`) from CuPy.
     use_wheel_libs_rpath = (
         0 < len(ctx.wheel_libs) and not PLATFORM_WIN32)
+
+    # We don't support NumPy <2 anyway (doesn't matter, but might as well)
+    settings['define_macros'].append(
+        ('NPY_TARGET_VERSION', 'NPY_2_0_API_VERSION'))
 
     # In the environment with CUDA 7.5 on Ubuntu 16.04, gcc5.3 does not
     # automatically deal with memcpy because string.h header file has

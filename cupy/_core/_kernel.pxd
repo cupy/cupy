@@ -166,6 +166,6 @@ cdef list _get_out_args_with_params(
 
 cpdef _check_peer_access(_ndarray_base arr, int device_id)
 
-cdef tuple _preprocess_args(int dev_id, args, bint use_c_scalar)
+cdef tuple _preprocess_args(int dev_id, args)
 
 cdef shape_t _reduce_dims(list args, tuple params, const shape_t& shape)
