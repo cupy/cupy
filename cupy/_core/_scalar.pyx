@@ -120,7 +120,7 @@ cdef class CScalar(CPointer):
         self._store_c_value()
 
     cdef _free(self):
-        if self.ptr != <void *>&(self._data):
+        if self.ptr != <void *>self._data:
             mem.PyMem_Free(self.ptr)
         self.ptr = <void*>0
 
@@ -128,7 +128,7 @@ cdef class CScalar(CPointer):
         cdef void *new_ptr
         if old_size < 0:
             old_size = sizeof(self._data)
-            self.ptr = <void *>&(self._data)
+            self.ptr = <void *>self._data
 
         if self.dtype.itemsize > old_size:
             new_ptr = mem.PyMem_Malloc(self.dtype.itemsize)
@@ -145,7 +145,7 @@ cdef class CScalar(CPointer):
         cdef CScalar self = CScalar.__new__(CScalar)
         self.value = None
         self.dtype = _numpy_int32
-        self.ptr = <void *>&self._data
+        self.ptr = <void *>self._data
         (<int32_t *>self.ptr)[0] = value
         return self
 
@@ -158,6 +158,9 @@ cdef class CScalar(CPointer):
 
     cpdef apply_dtype(self, dtype):
         cdef cnp.dtype npdtype = cnp.dtype(dtype)
+        if npdtype == self.dtype:
+            self.dtype = npdtype  # update dtype, may not be identical.
+            return
         if self.value is None:
             # Internal/theoretical but e.g. from_int32 has no value
             raise RuntimeError("Cannot modify dtype if value is None.")
@@ -168,9 +171,7 @@ cdef class CScalar(CPointer):
         self._store_c_value()
 
     cpdef get_numpy_type(self):
-        # Use Python level `.type` lookup (different in cython level)
-        # (This should use `type(self.dtype)` eventually.)
-        return (<object>self.dtype).type
+        return <object>self.dtype.typeobj  # typeobj is the C-level .type
 
 
 cpdef str _get_cuda_scalar_repr(obj, dtype):

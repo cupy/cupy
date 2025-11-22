@@ -1,5 +1,7 @@
 cimport cython  # NOQA
 
+from . cimport _scalar
+
 import numpy
 import warnings
 

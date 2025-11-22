@@ -594,7 +594,7 @@ cpdef _ndarray_base concatenate_method(
         dtype = get_dtype(dtype)
 
     dev_id = device.get_device_id()
-    arrays = _preprocess_args(dev_id, tup)[0]
+    arrays = _preprocess_args(dev_id, tup)
 
     # Check if the input is not an empty sequence
     if len(arrays) == 0:
