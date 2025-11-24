@@ -9,20 +9,6 @@
 #include <thrust/tuple.h>
 #include <thrust/execution_policy.h>
 #include <type_traits>
-#if (__CUDACC_VER_MAJOR__ >11 || (__CUDACC_VER_MAJOR__ == 11 && __CUDACC_VER_MINOR__ >= 2) || HIP_VERSION >= 402)
-// This is used to avoid a problem with constexpr in functions declarations introduced in
-// cuda 11.2, MSVC 15 does not fully support it so we need a dummy constexpr declaration
-// that is provided by this header. However optional.h is only available
-// starting CUDA 10.1
-#include <thrust/optional.h>
-
-#ifdef _MSC_VER
-#define THRUST_OPTIONAL_CPP11_CONSTEXPR_LESS constexpr
-#else
-#define THRUST_OPTIONAL_CPP11_CONSTEXPR_LESS THRUST_OPTIONAL_CPP11_CONSTEXPR
-#endif
-
-#endif
 
 
 #if CUPY_USE_HIP
@@ -79,18 +65,6 @@ public:
     #define ENABLE_HALF
 #endif
 
-#if (__CUDACC_VER_MAJOR__ >11 || (__CUDACC_VER_MAJOR__ == 11 && __CUDACC_VER_MINOR__ >= 2))
-    #define CONSTEXPR_FUNC THRUST_OPTIONAL_CPP11_CONSTEXPR
-#else
-    #define CONSTEXPR_FUNC
-#endif
-
-#if (__CUDACC_VER_MAJOR__ >11 || (__CUDACC_VER_MAJOR__ == 11 && __CUDACC_VER_MINOR__ >= 2) || HIP_VERSION >= 402)
-    #define CONSTEXPR_COMPARATOR THRUST_OPTIONAL_CPP11_CONSTEXPR_LESS
-#else
-    #define CONSTEXPR_COMPARATOR
-#endif
-
 #ifdef ENABLE_HALF
 __host__ __device__ __forceinline__ bool isnan(const __half& x) {
     #if (defined(__CUDA_ARCH__) || defined(__HIP_DEVICE_COMPILE__))
@@ -102,7 +76,7 @@ __host__ __device__ __forceinline__ bool isnan(const __half& x) {
 #endif // ENABLE_HALF
 
 template <typename T>
-__host__ __device__ __forceinline__ CONSTEXPR_FUNC
+__host__ __device__ __forceinline__ constexpr
 static bool real_less(const T& lhs, const T& rhs) {
 #if  (defined(__CUDA_ARCH__) || defined(__HIP_DEVICE_COMPILE__))
     if (isnan(lhs)) {
@@ -118,7 +92,7 @@ static bool real_less(const T& lhs, const T& rhs) {
 }
 
 template <typename T>
-__host__ __device__ __forceinline__ CONSTEXPR_FUNC
+__host__ __device__ __forceinline__ constexpr
 static bool tuple_less(const thrust::tuple<size_t, T>& lhs,
 		 const thrust::tuple<size_t, T>& rhs) {
     const size_t& lhs_k = thrust::get<0>(lhs);
@@ -145,7 +119,7 @@ static bool tuple_less(const thrust::tuple<size_t, T>& lhs,
  */
 
 template <typename T>
-__host__ __device__ __forceinline__ CONSTEXPR_FUNC
+__host__ __device__ __forceinline__ constexpr
 static bool complex_less(const T& lhs, const T& rhs) {
     const bool lhsRe = isnan(lhs.real());
     const bool lhsIm = isnan(lhs.imag());
@@ -196,7 +170,7 @@ struct select_less {
 template <>
 struct select_less<complex<float>> {
     struct type {
-        __host__ __device__ __forceinline__ CONSTEXPR_COMPARATOR
+        __host__ __device__ __forceinline__ constexpr
         bool operator() (
             const complex<float>& lhs, const complex<float>& rhs) const {
             return complex_less(lhs, rhs);
@@ -207,7 +181,7 @@ struct select_less<complex<float>> {
 template <>
 struct select_less<complex<double>> {
     struct type {
-        __host__ __device__ __forceinline__ CONSTEXPR_COMPARATOR
+        __host__ __device__ __forceinline__ constexpr
         bool operator() (
             const complex<double>& lhs, const complex<double>& rhs) const {
             return complex_less(lhs, rhs);
@@ -218,7 +192,7 @@ struct select_less<complex<double>> {
 template <>
 struct select_less<thrust::tuple<size_t, complex<float>>> {
     struct type {
-        __host__ __device__ __forceinline__ CONSTEXPR_COMPARATOR
+        __host__ __device__ __forceinline__ constexpr
         bool operator() (
             const thrust::tuple<size_t, complex<float>>& lhs, const thrust::tuple<size_t, complex<float>>& rhs) const {
             return tuple_less(lhs, rhs);
@@ -229,7 +203,7 @@ struct select_less<thrust::tuple<size_t, complex<float>>> {
 template <>
 struct select_less<thrust::tuple<size_t, complex<double>>> {
     struct type {
-        __host__ __device__ __forceinline__ CONSTEXPR_COMPARATOR
+        __host__ __device__ __forceinline__ constexpr
         bool operator() (
             const thrust::tuple<size_t, complex<double>>& lhs, const thrust::tuple<size_t, complex<double>>& rhs) const {
             return tuple_less(lhs, rhs);
@@ -240,7 +214,7 @@ struct select_less<thrust::tuple<size_t, complex<double>>> {
 template <>
 struct select_less<thrust::tuple<size_t, float>> {
     struct type {
-        __host__ __device__ __forceinline__ CONSTEXPR_COMPARATOR
+        __host__ __device__ __forceinline__ constexpr
         bool operator() (
             const thrust::tuple<size_t, float>& lhs, const thrust::tuple<size_t, float>& rhs) const {
             return tuple_less(lhs, rhs);
@@ -251,7 +225,7 @@ struct select_less<thrust::tuple<size_t, float>> {
 template <>
 struct select_less<thrust::tuple<size_t, double>> {
     struct type {
-        __host__ __device__ __forceinline__ CONSTEXPR_COMPARATOR
+        __host__ __device__ __forceinline__ constexpr
         bool operator() (
             const thrust::tuple<size_t, double>& lhs, const thrust::tuple<size_t, double>& rhs) const {
             return tuple_less(lhs, rhs);
@@ -264,7 +238,7 @@ struct select_less<thrust::tuple<size_t, double>> {
 template <>
 struct select_less<float> {
     struct type {
-        __host__ __device__ __forceinline__ CONSTEXPR_COMPARATOR
+        __host__ __device__ __forceinline__ constexpr
         bool operator() (const float& lhs, const float& rhs) const {
             return real_less(lhs, rhs);
         }
@@ -274,7 +248,7 @@ struct select_less<float> {
 template <>
 struct select_less<double> {
     struct type {
-        __host__ __device__ __forceinline__ CONSTEXPR_COMPARATOR
+        __host__ __device__ __forceinline__ constexpr
         bool operator() (const double& lhs, const double& rhs) const {
             return real_less(lhs, rhs);
         }
@@ -285,7 +259,7 @@ struct select_less<double> {
 template <>
 struct select_less<__half> {
     struct type {
-        __host__ __device__ __forceinline__ CONSTEXPR_COMPARATOR
+        __host__ __device__ __forceinline__ constexpr
         bool operator() (const __half& lhs, const __half& rhs) const {
             return real_less(lhs, rhs);
         }
@@ -295,7 +269,7 @@ struct select_less<__half> {
 template <>
 struct select_less<thrust::tuple<size_t, __half>> {
     struct type {
-        __host__ __device__ __forceinline__ CONSTEXPR_COMPARATOR
+        __host__ __device__ __forceinline__ constexpr
         bool operator() (
             const thrust::tuple<size_t, __half>& lhs, const thrust::tuple<size_t, __half>& rhs) const {
 

@@ -5,13 +5,13 @@
 #include <cfloat> // For FLT_MAX definitions
 #include <cub/device/device_reduce.cuh>
 #include <cub/device/device_segmented_reduce.cuh>
-#include <cub/device/device_spmv.cuh>
 #include <cub/device/device_scan.cuh>
 #include <cub/device/device_histogram.cuh>
 #include <cub/iterator/counting_input_iterator.cuh>
 #include <cub/iterator/transform_input_iterator.cuh>
 #include <cuda/functional>
 #include <cuda/std/functional>
+#include <cuda/std/limits> // numeric_limits
 #else
 #include <hipcub/device/device_reduce.hpp>
 #include <hipcub/device/device_segmented_reduce.hpp>
@@ -33,86 +33,45 @@
 using namespace cub;
 #define CUPY_CUB_NAMESPACE cub
 
-template <>
-struct FpLimits<complex<float>>
-{
-    static __host__ __device__ __forceinline__ complex<float> Max() {
-        return (complex<float>(FLT_MAX, FLT_MAX));
-    }
-
-    static __host__ __device__ __forceinline__ complex<float> Lowest() {
-        return (complex<float>(FLT_MAX * float(-1), FLT_MAX * float(-1)));
-    }
-};
-
-template <>
-struct FpLimits<complex<double>>
-{
-    static __host__ __device__ __forceinline__ complex<double> Max() {
-        return (complex<double>(DBL_MAX, DBL_MAX));
-    }
-
-    static __host__ __device__ __forceinline__ complex<double> Lowest() {
-        return (complex<double>(DBL_MAX * double(-1), DBL_MAX * double(-1)));
-    }
-};
-
-template <> struct NumericTraits<complex<float>>  : BaseTraits<FLOATING_POINT, true, false, unsigned int, complex<float>> {};
-template <> struct NumericTraits<complex<double>> : BaseTraits<FLOATING_POINT, true, false, unsigned long long, complex<double>> {};
-
-// need specializations for initial values
-namespace std {
-
+namespace cuda::std {
 template <>
 class numeric_limits<thrust::complex<float>> {
   public:
+    static __host__ __device__ thrust::complex<float> max() noexcept {
+        return thrust::complex<float>(cuda::std::numeric_limits<float>::max(), cuda::std::numeric_limits<float>::max());
+    }
+
+    static __host__ __device__ thrust::complex<float> lowest() noexcept {
+        return thrust::complex<float>(-cuda::std::numeric_limits<float>::max(), -cuda::std::numeric_limits<float>::max());
+    }
+
     static __host__ __device__ thrust::complex<float> infinity() noexcept {
-        return thrust::complex<float>(std::numeric_limits<float>::infinity(), std::numeric_limits<float>::infinity());
+        return thrust::complex<float>(cuda::std::numeric_limits<float>::infinity(), cuda::std::numeric_limits<float>::infinity());
     }
 
     static constexpr bool has_infinity = true;
+    static constexpr bool is_specialized = true;
 };
 
 template <>
 class numeric_limits<thrust::complex<double>> {
   public:
+    static __host__ __device__ thrust::complex<double> max() noexcept {
+        return thrust::complex<double>(cuda::std::numeric_limits<double>::max(), cuda::std::numeric_limits<double>::max());
+    }
+
+    static __host__ __device__ thrust::complex<double> lowest() noexcept {
+        return thrust::complex<double>(-cuda::std::numeric_limits<double>::max(), -cuda::std::numeric_limits<double>::max());
+    }
+
     static __host__ __device__ thrust::complex<double> infinity() noexcept {
-        return thrust::complex<double>(std::numeric_limits<double>::infinity(), std::numeric_limits<double>::infinity());
+        return thrust::complex<double>(cuda::std::numeric_limits<double>::infinity(), cuda::std::numeric_limits<double>::infinity());
     }
 
     static constexpr bool has_infinity = true;
+    static constexpr bool is_specialized = true;
 };
-
-template <>
-class numeric_limits<__half> {
-  public:
-    static __host__ __device__ constexpr __half infinity() noexcept {
-        unsigned short inf_half = 0x7C00U;
-        #if (defined(_MSC_VER) && _MSC_VER >= 1920)
-        #if CUDA_VERSION < 11030
-        // WAR: CUDA 11.2.x + VS 2019 fails with __builtin_bit_cast
-        union caster {
-            unsigned short u_;
-            __half h_;
-        };
-        return caster{inf_half}.h_;
-        #else  // CUDA_VERSION < 11030
-        // WAR:
-        // - we want a constexpr here, but reinterpret_cast cannot be used
-        // - we want to use std::bit_cast, but it requires C++20 which is too new
-        // - we use the compiler builtin, fortunately both gcc and msvc have it
-        return __builtin_bit_cast(__half, inf_half);
-        #endif
-        #else
-        return *reinterpret_cast<__half*>(&inf_half);
-        #endif
-    }
-
-    static constexpr bool has_infinity = true;
-};
-
-}  // namespace std
-
+}  // namespace cuda::std
 
 #else
 
@@ -907,24 +866,6 @@ struct _cub_reduce_argmax {
 // TODO(leofang): add _cub_segmented_reduce_argmax
 
 //
-// **** CUB SpMV ****
-//
-struct _cub_device_spmv {
-    template <typename T>
-    void operator()(void* workspace, size_t& workspace_size, void* values,
-        void* row_offsets, void* column_indices, void* x, void* y,
-        int num_rows, int num_cols, int num_nonzeros, cudaStream_t stream)
-    {
-        #ifndef CUPY_USE_HIP
-        DeviceSpmv::CsrMV(workspace, workspace_size, static_cast<T*>(values),
-            static_cast<int*>(row_offsets), static_cast<int*>(column_indices),
-            static_cast<T*>(x), static_cast<T*>(y), num_rows, num_cols,
-            num_nonzeros, stream);
-        #endif
-    }
-};
-
-//
 // **** CUB InclusiveSum  ****
 //
 struct _cub_inclusive_sum {
@@ -1090,33 +1031,6 @@ size_t cub_device_segmented_reduce_get_workspace_size(void* x, void* y,
     cub_device_segmented_reduce(NULL, workspace_size, x, y,
                                 num_segments, segment_size, stream,
                                 op, dtype_id);
-    return workspace_size;
-}
-
-/*--------- device spmv (sparse-matrix dense-vector multiply) ---------*/
-
-void cub_device_spmv(void* workspace, size_t& workspace_size, void* values,
-    void* row_offsets, void* column_indices, void* x, void* y, int num_rows,
-    int num_cols, int num_nonzeros, cudaStream_t stream,
-    int dtype_id)
-{
-    #ifndef CUPY_USE_HIP
-    return dtype_dispatcher(dtype_id, _cub_device_spmv(),
-                            workspace, workspace_size, values, row_offsets,
-                            column_indices, x, y, num_rows, num_cols,
-                            num_nonzeros, stream);
-    #endif
-}
-
-size_t cub_device_spmv_get_workspace_size(void* values, void* row_offsets,
-    void* column_indices, void* x, void* y, int num_rows, int num_cols,
-    int num_nonzeros, cudaStream_t stream, int dtype_id)
-{
-    size_t workspace_size = 0;
-    #ifndef CUPY_USE_HIP
-    cub_device_spmv(NULL, workspace_size, values, row_offsets, column_indices,
-                    x, y, num_rows, num_cols, num_nonzeros, stream, dtype_id);
-    #endif
     return workspace_size;
 }
 
