@@ -95,6 +95,9 @@ cpdef tuple numpy_dtype_from_pyscalar(x):
 cdef class CScalar(CPointer):
     """Wrapper around NumPy/Python scalars to simplify internal
     processing and make a pointer to the data cleanly available.
+    This is used as arguments for kernel launches were and may
+    be cast to the kernel dtype via `apply_dtype()` (currently
+    this will store the value a second time when needed).
     """
     ndim = 0
 
@@ -111,7 +114,6 @@ cdef class CScalar(CPointer):
                 pass  # Python scalar was processed
             elif isinstance(value, cnp.generic):
                 self.dtype = value.dtype
-                _dtype.check_supported_dtype(self.dtype, True)
             else:
                 # Future dtypes may have scalars where this is not the case
                 # but for now, it should be fine.
@@ -152,7 +154,8 @@ cdef class CScalar(CPointer):
     cdef _store_c_value(self):
         self._ensure_allocated(self.dtype.itemsize, -1)
         # NOTE(seberg): This uses assignment logic, which is very subtly
-        # different from casting by rejecting nan -> int.
+        # different from casting by rejecting nan -> int. This is *only*
+        # relevant for `casting="unsafe"` passed to ufuncs though...
         # However, it means that we fail well for the weak scalar conversion.
         PyArray_Pack(self.dtype, self.ptr, self.value)
 
@@ -164,7 +167,6 @@ cdef class CScalar(CPointer):
         if self.value is None:
             # Internal/theoretical but e.g. from_int32 has no value
             raise RuntimeError("Cannot modify dtype if value is None.")
-        _dtype.check_supported_dtype(npdtype, True)
         self._ensure_allocated(npdtype.itemsize, self.dtype.itemsize)
 
         self.dtype = npdtype  # modify dtype if allocation succeeded
