@@ -89,7 +89,7 @@ By default, the above command only installs CuPy itself, assuming a CUDA Toolkit
 smaller installation footprint and better interoperability with other Python GPU libraries), you can pass ``[ctk]`` to install them all as
 optional dependencies, e.g.::
 
-   $ pip install cupy-cuda12x[ctk]
+   $ pip install "cupy-cuda12x[ctk]"
 
 .. note::
 
