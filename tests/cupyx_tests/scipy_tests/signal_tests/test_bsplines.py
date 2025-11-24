@@ -95,14 +95,15 @@ class TestCSplineEval:
         cj = scp.signal.cspline1d(y)
         return scp.signal.cspline1d_eval(cj, newx, dx=dx, x0=x[0])
 
-    def test_cspline_eval_cj_empty(self):
+    @pytest.mark.parametrize("xp,scp", [(cupy, cupyx.scipy), (np, scipy)])
+    def test_cspline_eval_cj_empty(self, xp, scp):
         with pytest.raises(
                 ValueError,
                 match="Spline coefficients 'cj' must not be empty."
         ):
-            cupyx.scipy.signal.cspline1d_eval(
-                cupy.asarray([], dtype=cupy.float64),
-                cupy.asarray([0.0], dtype=cupy.float64)
+            scp.signal.cspline1d_eval(
+                xp.asarray([], dtype=xp.float64),
+                xp.asarray([0.0], dtype=xp.float64)
             )
 
 
@@ -126,14 +127,15 @@ class TestQSplineEval:
         cj = scp.signal.qspline1d(y)
         return scp.signal.qspline1d_eval(cj, newx, dx=dx, x0=x[0])
 
-    def test_qspline_eval_cj_empty(self):
+    @pytest.mark.parametrize("xp,scp", [(cupy, cupyx.scipy), (np, scipy)])
+    def test_qspline_eval_cj_empty(self, xp, scp):
         with pytest.raises(
                 ValueError,
                 match="Spline coefficients 'cj' must not be empty."
         ):
-            cupyx.scipy.signal.qspline1d_eval(
-                cupy.asarray([], dtype=cupy.float64),
-                cupy.asarray([0.0], dtype=cupy.float64)
+            scp.signal.qspline1d_eval(
+                xp.asarray([], dtype=xp.float64),
+                xp.asarray([0.0], dtype=xp.float64)
             )
 
 
