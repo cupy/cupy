@@ -333,7 +333,7 @@ def make_extensions(ctx: Context, compiler, use_cython):
     use_wheel_libs_rpath = (
         0 < len(ctx.wheel_libs) and not PLATFORM_WIN32)
 
-    # We don't support NumPy <2 anyway (doesn't matter, but might as well)
+    # We don't support NumPy <2 anyway and use some new API.
     settings['define_macros'].append(
         ('NPY_TARGET_VERSION', 'NPY_2_0_API_VERSION'))
 

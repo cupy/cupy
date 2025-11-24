@@ -103,15 +103,15 @@ cdef class CScalar(CPointer):
         self.value = value
         if dtype is not None:
             self.value = value
-            self.dtype = numpy.dtype(dtype)
+            self.descr = numpy.dtype(dtype)
             self.weak_t = False
         else:
-            self.dtype, self.weak_t = numpy_dtype_from_pyscalar(value)
+            self.descr, self.weak_t = numpy_dtype_from_pyscalar(value)
 
-            if self.dtype is not None:
+            if self.descr is not None:
                 pass  # Python scalar was processed
             elif isinstance(value, cnp.generic):
-                self.dtype = value.dtype
+                self.descr = value.dtype
             else:
                 # Future dtypes may have scalars where this is not the case
                 # but for now, it should be fine.
