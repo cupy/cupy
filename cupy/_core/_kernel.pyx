@@ -886,7 +886,6 @@ cdef class ElementwiseKernel:
 
         for i, x in enumerate(in_args):
             if type(x) is _scalar.CScalar:
-                # TODO(seberg): Path not supported for all scalars, when used?
                 (<_scalar.CScalar>x).apply_dtype(in_types[i])
 
         inout_args = in_args + out_args
@@ -932,7 +931,7 @@ cdef class ElementwiseKernel:
         in_types = []
         for x in arginfos:
             if x.type is cupy.ndarray:
-                in_types.append(cupy.dtype(x.dtype))
+                in_types.append(cupy.dtype(x.dtype).char)
         in_types = tuple(in_types)
         if in_types not in self._cached_codes:
             code = _get_elementwise_kernel_code(
@@ -1590,7 +1589,7 @@ cdef class _Ops:
             for a in in_args:
                 if type(a) is _scalar.CScalar:
                     # .typeobj is the C-level type (as a PyTypeObject *)
-                    t = <object>(<_scalar.CScalar>a).dtype.typeobj
+                    t = <object>(<_scalar.CScalar>a).descr.typeobj
                     weak_t = (<_scalar.CScalar>a).weak_t
                     if weak_t is not False:
                         any_weak = True

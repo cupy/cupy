@@ -1,5 +1,3 @@
-from cpython cimport mem
-
 cimport numpy as cnp
 
 import numpy
@@ -121,59 +119,41 @@ cdef class CScalar(CPointer):
 
         self._store_c_value()
 
-    cdef _free(self):
-        if self.ptr != <void *>self._data:
-            mem.PyMem_Free(self.ptr)
-        self.ptr = <void*>0
-
-    cdef _ensure_allocated(self, Py_ssize_t size, Py_ssize_t old_size):
-        cdef void *new_ptr
-        if old_size < 0:
-            old_size = sizeof(self._data)
-            self.ptr = <void *>self._data
-
-        if self.dtype.itemsize > old_size:
-            new_ptr = mem.PyMem_Malloc(self.dtype.itemsize)
-            if new_ptr == NULL:
-                raise MemoryError()
-            self._free()  # free old allocation (if there was one)
-            self.ptr = new_ptr
-
-    def __dealloc__(self):
-        self._free()
-
     @staticmethod
     cdef CScalar from_int32(int32_t value):
         cdef CScalar self = CScalar.__new__(CScalar)
         self.value = None
-        self.dtype = _numpy_int32
+        self.descr = _numpy_int32
         self.ptr = <void *>self._data
         (<int32_t *>self.ptr)[0] = value
         return self
 
     cdef _store_c_value(self):
-        self._ensure_allocated(self.dtype.itemsize, -1)
+        # If we ever support dtypes larger than this (e.g. strings)
+        # we will have to introduce a conditional allocation here.
+        assert self.descr.itemsize < sizeof(self._data)
+        self.ptr = <void *>self._data  # make sure ptr points to _data.
+
         # NOTE(seberg): This uses assignment logic, which is very subtly
         # different from casting by rejecting nan -> int. This is *only*
         # relevant for `casting="unsafe"` passed to ufuncs though...
         # However, it means that we fail well for the weak scalar conversion.
-        PyArray_Pack(self.dtype, self.ptr, self.value)
+        PyArray_Pack(self.descr, self.ptr, self.value)
 
     cpdef apply_dtype(self, dtype):
         cdef cnp.dtype npdtype = cnp.dtype(dtype)
-        if npdtype == self.dtype:
-            self.dtype = npdtype  # update dtype, may not be identical.
+        if npdtype == self.descr:
+            self.descr = npdtype  # update dtype, may not be identical.
             return
         if self.value is None:
             # Internal/theoretical but e.g. from_int32 has no value
             raise RuntimeError("Cannot modify dtype if value is None.")
-        self._ensure_allocated(npdtype.itemsize, self.dtype.itemsize)
 
-        self.dtype = npdtype  # modify dtype if allocation succeeded
+        self.descr = npdtype  # modify dtype if allocation succeeded
         self._store_c_value()
 
     cpdef get_numpy_type(self):
-        return <object>self.dtype.typeobj  # typeobj is the C-level .type
+        return <object>self.descr.typeobj  # typeobj is the C-level .type
 
 
 cpdef str _get_cuda_scalar_repr(obj, dtype):
