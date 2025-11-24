@@ -3,10 +3,6 @@
 import numpy
 import warnings
 
-from libc.stdint cimport int8_t
-from libc.stdint cimport int16_t
-from libc.stdint cimport int32_t
-from libc.stdint cimport int64_t
 from libc.stdint cimport intptr_t
 from libc.stdint cimport uintmax_t
 from libcpp cimport vector
@@ -25,51 +21,6 @@ from cupy.cuda import device
 cdef class CPointer:
     def __init__(self, p=0):
         self.ptr = <void*>p
-
-
-cdef class CInt8(CPointer):
-    cdef:
-        int8_t val
-
-    def __init__(self, int8_t v):
-        self.val = v
-        self.ptr = <void*>&self.val
-
-
-cdef class CInt16(CPointer):
-    cdef:
-        int16_t val
-
-    def __init__(self, int16_t v):
-        self.val = v
-        self.ptr = <void*>&self.val
-
-
-cdef class CInt32(CPointer):
-    cdef:
-        int32_t val
-
-    def __init__(self, int32_t v):
-        self.val = v
-        self.ptr = <void*>&self.val
-
-
-cdef class CInt64(CPointer):
-    cdef:
-        int64_t val
-
-    def __init__(self, int64_t v):
-        self.val = v
-        self.ptr = <void*>&self.val
-
-
-cdef class CInt128(CPointer):
-    cdef:
-        double complex val
-
-    def __init__(self, double complex v):
-        self.val = v
-        self.ptr = <void*>&self.val
 
 
 cdef class CUIntMax(CPointer):
