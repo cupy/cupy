@@ -12,7 +12,6 @@ except ImportError:
     _scipy_available = False
 
 import cupy
-from cupy._core import _accelerator
 from cupy.cuda import runtime
 from cupyx.scipy.sparse import _base
 from cupyx.scipy.sparse import _compressed
