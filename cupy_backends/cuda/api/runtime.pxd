@@ -26,7 +26,7 @@ cdef class MemPoolProps:
 ###############################################################################
 
 IF CUPY_USE_CUDA_PYTHON:
-    from cuda.ccudart cimport *
+    from cuda.bindings.cyruntime cimport *
     # Aliases for compatibillity with existing CuPy codebase.
     # Keep in sync with names defined in `_runtime_typedef.pxi`.
     # TODO(kmaehashi): Remove these aliases.

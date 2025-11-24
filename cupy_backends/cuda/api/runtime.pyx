@@ -75,7 +75,7 @@ include '_runtime_softlink.pxi'
 
 IF CUPY_USE_CUDA_PYTHON:
     # this means CUPY_CUDA_VERSION >= 12000
-    from cuda.ccudart cimport *
+    from cuda.bindings.cyruntime cimport *
 ELSE:
     include '_runtime_extern.pxi'
     pass  # for cython-lint
