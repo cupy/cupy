@@ -1,11 +1,12 @@
 # distutils: language = c++
 
+cimport cython
+from cupy._core._threadlocal cimport _ThreadLocalBase, PyThread_tss_create
+
 import gc
 import weakref
 
 from cupy_backends.cuda.api cimport runtime
-
-import threading
 
 from cupy import _util
 
@@ -14,10 +15,13 @@ from cupy import _util
 # Internal implementation                                           #
 #####################################################################
 
-cdef object _thread_local = threading.local()
+cdef Py_tss_t _tlocal_key
+if PyThread_tss_create(&_tlocal_key) != 0:
+    raise MemoryError()
 
 
-cdef class _ThreadLocal:
+@cython.no_gc
+cdef class _ThreadLocal(_ThreadLocalBase):
 
     cdef list per_device_cufft_cache
 
@@ -28,12 +32,7 @@ cdef class _ThreadLocal:
 
     @staticmethod
     cdef _ThreadLocal get():
-        cdef _ThreadLocal tls
-        tls = getattr(_thread_local, 'tls', None)
-        if tls is None:
-            tls = _ThreadLocal()
-            setattr(_thread_local, 'tls', tls)
-        return tls
+        return <_ThreadLocal>_ThreadLocal._get(_ThreadLocal, _tlocal_key)
 
 
 cdef inline Py_ssize_t _get_plan_memsize(plan, int curr_dev=-1) except -1:
