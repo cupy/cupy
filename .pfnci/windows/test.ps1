@@ -29,7 +29,7 @@ function DownloadCache([String]$gcs_dir, [String]$cupy_kernel_cache_file) {
 function UploadCache([String]$gcs_dir, [String]$cupy_kernel_cache_file) {
     # Maximum 3 GiB
     echo "Trimming kernel cache..."
-    RunOrDie python .pfnci\trim_cupy_kernel_cache.py --max-size 3221225472 --rm
+    RunOrDie python .pfnci\trim_cupy_kernel_cache.py --max-size 6442450944 --rm
 
     pushd $Env:USERPROFILE
     # -mx=0 ... no compression

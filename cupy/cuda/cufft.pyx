@@ -70,6 +70,9 @@ cdef SoftLink _get_softlink():
             else:  # win
                 libname = 'cufft64_12.dll'
 
+        from cuda import pathfinder
+        pathfinder.load_nvidia_dynamic_lib('cufft')
+
     if libname is None:
         raise NotImplementedError
 
