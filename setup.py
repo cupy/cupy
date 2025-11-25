@@ -86,15 +86,11 @@ optional_dependencies = {
 }
 if not ctx.use_hip:
     dependencies.append("cuda-pathfinder>=1.3.2,==1.*")
-    if ext_modules:
-        try:
-            cuda_major = ctx.features["cuda"].get_version() // 1000
-        except AssertionError as e:
-            assert 'not configured yet' in str(e)
-        else:
-            optional_dependencies["ctk"] = [
-                f"cuda-toolkit[nvrtc,cublas,cufft,cusolver,cusparse,curand]=={cuda_major}.*"  # NOQA
-            ]
+    if len(ext_modules) != 0 and not ctx.use_stub:
+        cuda_major = ctx.features["cuda"].get_version() // 1000
+        optional_dependencies["ctk"] = [
+            f"cuda-toolkit[nvrtc,cublas,cufft,cusolver,cusparse,curand]=={cuda_major}.*"  # NOQA
+        ]
 
 
 setup(
