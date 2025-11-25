@@ -7,8 +7,8 @@
 #include <cub/device/device_segmented_reduce.cuh>
 #include <cub/device/device_scan.cuh>
 #include <cub/device/device_histogram.cuh>
-#include <cub/iterator/counting_input_iterator.cuh>
-#include <cub/iterator/transform_input_iterator.cuh>
+#include <thrust/iterator/counting_iterator.h>
+#include <thrust/iterator/transform_iterator.h>
 #include <cuda/functional>
 #include <cuda/std/functional>
 #include <cuda/std/limits> // numeric_limits
@@ -194,7 +194,7 @@ struct _arange
 };
 
 #ifndef CUPY_USE_HIP
-typedef TransformInputIterator<int, _arange, CountingInputIterator<int>> seg_offset_itr;
+typedef thrust::transform_iterator<_arange, thrust::counting_iterator<int>> seg_offset_itr;
 #else
 typedef TransformInputIterator<int, _arange, rocprim::counting_iterator<int>> seg_offset_itr;
 #endif
@@ -998,7 +998,7 @@ void cub_device_segmented_reduce(void* workspace, size_t& workspace_size,
     // CUB internally use int for offset...
     // This iterates over [0, segment_size, 2*segment_size, 3*segment_size, ...]
     #ifndef CUPY_USE_HIP
-    CountingInputIterator<int> count_itr(0);
+    thrust::counting_iterator<int> count_itr(0);
     #else
     rocprim::counting_iterator<int> count_itr(0);
     #endif
