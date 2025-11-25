@@ -1,6 +1,9 @@
 from libc.stdint cimport intptr_t
 
+cimport cython
+
 from cupy_backends.cuda.api cimport runtime
+from cupy._core._threadlocal cimport _ThreadLocalBase, PyThread_tss_create
 from cupy._core.core cimport _ndarray_base
 from cupy.cuda.device cimport get_compute_capability
 from cupy.cuda.memory cimport MemoryPointer
@@ -15,7 +18,6 @@ import subprocess
 import sys
 import sysconfig
 import tempfile
-import threading
 import warnings
 
 from cupy import __version__ as _cupy_ver
@@ -44,10 +46,14 @@ cdef bint _is_init = False
 cdef str _callback_dev_code = None
 cdef str _callback_cache_dir = None
 cdef dict _callback_mgr = {}  # keep the Python modules alive
-cdef object _callback_thread_local = threading.local()
+
+cdef Py_tss_t _tlocal_key
+if PyThread_tss_create(&_tlocal_key) != 0:
+    raise MemoryError()
 
 
-cdef class _ThreadLocal:
+@cython.no_gc
+cdef class _ThreadLocal(_ThreadLocalBase):
     cdef _CallbackManager _current_cufft_callback
 
     def __init__(self):
@@ -55,12 +61,7 @@ cdef class _ThreadLocal:
 
     @staticmethod
     cdef _ThreadLocal get():
-        cdef _ThreadLocal tls
-        try:
-            tls = _callback_thread_local.tls
-        except AttributeError:
-            tls = _callback_thread_local.tls = _ThreadLocal()
-        return tls
+        return <_ThreadLocal>_ThreadLocal._get(_ThreadLocal, _tlocal_key)
 
 
 cdef inline void _set_vars() except*:
