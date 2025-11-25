@@ -263,7 +263,7 @@ cdef inline void _nvcc_compile(
     cmd = _nvcc + ['-arch=sm_'+arch, '-dc',
                    '-I' + _cupy_include,
                    '-c', os.path.join(tempdir, 'cupy_cufftXt.cu'),
-                   '-Xcompiler', '-fPIC', '-O2', '-std=c++11']
+                   '-Xcompiler', '-fPIC', '-O2', '-std=c++17']
     if cb_load:
         cmd.append('-DHAS_LOAD_CALLBACK')
     if cb_store:
