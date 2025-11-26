@@ -17,6 +17,17 @@ All cuDNN-related functionality has been completely removed from CuPy.
 
 Users who need to access cuDNN functionality from Python should consider using `cuDNN Frontend <https://github.com/NVIDIA/cudnn-frontend>`_ instead, which provides direct access to the NVIDIA cuDNN library in both C++ and Python.
 
+New cuFFT callback support
+--------------------------
+
+CuPy v14 supports cuFFT's new JIT LTO callbacks, which is much more performant (for both compiling and executing callbacks) and has cross-platform (Linux/Windows) support.
+To use this feature, it requires the precense of nvJitLink (which is part of CUDA Toolkit and is available from pip/conda too) and cuFFT from CUDA 12.2+,
+and users should pass ``cb_ver="jit"`` to :func:~`cupy.fft.config.set_cufft_callbacks`.
+
+Accompanying with this new feature, two new arguments ``cb_load_data``/``cb_store_data`` are added and the existing arguments ``cb_load_aux_arr``/``cb_store_aux_arr`` are deprecated.
+
+The legacy cuFFT callback support (which can still be enabled by passing ``cb_ver="legacy"``) has been deprecated and will be removed in a future release.
+
 Various deprecated modules have been moved to :mod:`cupyx`
 ----------------------------------------------------------
 
@@ -27,6 +38,27 @@ The following :mod:`cupy` submodules have been removed, with replacements in :mo
 * ``cupy.cusolver`` -> :mod:`cupyx.scipy.linalg.cusolver` (undocumented API, deprecated in CuPy v12)
 * ``cupy.cusparse`` -> :mod:`cupyx.scipy.sparse.cusparse` (undocumented API, deprecated in CuPy v12)
 * ``cupy.cutensor`` -> :mod:`cupyx.scipy.linalg.cutensor` (undocumented API, deprecated in CuPy v12)
+
+Change in :func:`cupy.cuda.is_available` Behavior
+-------------------------------------------------
+
+:func:`cupy.cuda.is_available` now guards against all CUDA errors and will return ``False`` instead of raising an exception.
+This change improves compatibility with environments where CUDA is partially configured or unavailable, causing an exception to be raised in certain edge cases.
+In CuPy v14, the function consistently returns a boolean value and guarantees to not raise any exception.
+
+Change in Default C++ Standard for RTC
+--------------------------------------
+
+The default C++ standard for Runtime Compilation (RTC) has been changed from C++11 to C++14 (for ROCm) and C++17 (for CUDA).
+Existing code that relies on the previous default should continue to work, as C++14/C++17 are backward compatible with C++11.
+
+Change in :func:`cupy.cuda.nccl.get_unique_id` Return Type
+----------------------------------------------------------
+
+:func:`cupy.cuda.nccl.get_unique_id` now returns a bytes string instead of a tuple of integers.
+
+This change simplifies the API and avoids platform-specific issues related to char signedness.
+Users who were previously unpacking the tuple should update their code to work with bytes.
 
 Requirement Changes
 -------------------
@@ -39,45 +71,11 @@ The following versions are no longer supported in CuPy v14.
 * ROCm 6.x or earlier (ROCm 7.0 or later is now required)
 * NCCL 2.17 or earlier (NCCL 2.18 or later is now required)
 
-Change in :func:`cupy.cuda.is_available` Behavior
--------------------------------------------------
+Other API Changes
+-----------------
 
-:func:`cupy.cuda.is_available` now guards against all CUDA errors and will return ``False`` instead of raising an exception.
-This change improves compatibility with environments where CUDA is partially configured or unavailable.
-
-Previously, calling :func:`cupy.cuda.is_available` could raise exceptions in certain edge cases (e.g., when CUDA MPS daemon is misconfigured).
-In CuPy v14, the function consistently returns a boolean value, making it safe to use for environment detection without requiring exception handling.
-
-Change in Default C++ Standard for RTC
---------------------------------------
-
-The default C++ standard for Runtime Compilation (RTC) has been changed from C++11 to C++14.
-
-This change enables the use of modern C++ features in CuPy kernels, including:
-
-* Generic lambdas
-* Lambda init-capture
-* Return type deduction for normal functions
-* Relaxed ``constexpr`` functions
-* Variable templates
-
-Existing code that relies on the previous default should continue to work, as C++14 is backward compatible with C++11.
-
-Change in :func:`cupy.cuda.nccl.get_unique_id` Return Type
-----------------------------------------------------------
-
-:func:`cupy.cuda.nccl.get_unique_id` now returns a bytes string instead of a tuple of integers.
-
-This change simplifies the API and avoids platform-specific issues related to char signedness.
-Users who were previously unpacking the tuple should update their code to work with bytes.
-
-API Changes
------------
-
-* :func:`cupy.nvrtc.getNVVM`, which was deprecated in CuPy v11, has been removed.
 * ``cupyx.tools.install_library`` tool has been deprecated and will be removed in a future release.
 * :mod:`cupy.testing` module has been updated to follow NumPy's testing API changes. Some testing utilities may have different behavior or signatures.
-* Legacy cuFFT callback support has been deprecated and will be removed in a future release. Users should migrate to the new cuFFT callback API.
 
 Update of Docker Images
 -----------------------
