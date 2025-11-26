@@ -355,19 +355,15 @@ def potrs(L, b, lower):
     A x = b given the cholesky decomposition of A, namely L. Supports also
     batches of linear systems and more than one right-hand side (NRHS > 1).
 
-    Args
-    ----------
-    L (cupy.ndarray): Array of Cholesky decomposition of real symmetric or
-        complex hermitian matrices with dimension (..., N, N).
+    Args:
+        L (cupy.ndarray): Array of Cholesky decomposition of real symmetric or
+            complex hermitian matrices with dimension (..., N, N).
+        b (cupy.ndarray): right-hand side (..., N) or (..., N, NRHS). Note that
+            this array may be modified in place, as usually done in LAPACK.
+        lower (bool): If True, L is lower triangular. If False, L is upper
+            triangular.
 
-    b (cupy.ndarray): right-hand side (..., N) or (..., N, NRHS). Note that
-        this array may be modified in place, as usually done in LAPACK
-
-    lower (bool): If True, L is lower triangular. If False, L is upper
-        triangular.
-
-    Returns
-    -------
+    Returns:
         cupy.ndarray: The solution to the linear system. Note this may point to
             the same memory as b, since b may be modified in place.
 
@@ -382,13 +378,16 @@ def potrs(L, b, lower):
 
     from cupy_backends.cuda.libs import cusolver as _cusolver
 
+    _util = _cupy.linalg._util
+    _util._assert_cupy_array(L, b)
+    _util._assert_stacked_2d(L)
+    _util._assert_stacked_square(L)
+
     # Check if batched should be used
-    if len(L.shape) > 2:
+    if L.ndim > 2:
         return _batched_potrs(L, b, lower)
 
     # Check input arguments
-    assert L.ndim == 2, "L is not a matrix"
-    assert L.shape[0] == L.shape[1], "L is not a square matrix"
     n = L.shape[-1]
     b_shape = b.shape
     if b.ndim == 1:
@@ -457,7 +456,6 @@ def _batched_potrs(L, b, lower: bool):
         raise RuntimeError('potrsBatched is not available')
 
     # CHeck input arrays
-    assert L.shape[-1] == L.shape[-2], "L is not a batch of square matrices"
     assert b.ndim >= L.ndim-1, "Batch dimension of b is different than that \
         of L"
     b_shape = b.shape
