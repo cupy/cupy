@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import cupy as cp
 import cupyx.scipy.sparse as sp
 
