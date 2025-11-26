@@ -1,7 +1,9 @@
 import cupy as cp
 import cupyx.scipy.sparse as sp
 
-# dummy csr 
+# dummy csr
+
+
 def make_csr():
     data = cp.array([1, 2, 3], dtype=cp.float32)
     row = cp.array([0, 1, 2], dtype=cp.int32)
@@ -9,6 +11,8 @@ def make_csr():
     return sp.csr_matrix((data, (row, col)), shape=(3, 3))
 
 # dummy csc
+
+
 def make_csc():
     data = cp.array([1, 2, 3], dtype=cp.float32)
     row = cp.array([0, 1, 2], dtype=cp.int32)
@@ -16,6 +20,8 @@ def make_csc():
     return sp.csc_matrix((data, (row, col)), shape=(3, 3))
 
 # dummy coo
+
+
 def make_coo():
     data = cp.array([1, 2, 3], dtype=cp.float32)
     row = cp.array([0, 1, 2], dtype=cp.int32)
@@ -23,6 +29,8 @@ def make_coo():
     return sp.coo_matrix((data, (row, col)), shape=(3, 3))
 
 # dummy dia
+
+
 def make_dia():
     dia_data = cp.array([[1, 2, 3]], dtype=cp.float32)
     offsets = cp.array([0], dtype=cp.int32)
