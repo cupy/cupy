@@ -43,8 +43,8 @@ __device__ long long atomicAdd(long long *address, long long val) {
                      static_cast<unsigned long long>(val));
 }
 __device__ long long atomicAdd_block(long long *address, long long val) {
-    return atomicAdd(reinterpret_cast<unsigned long long*>(address),
-                     static_cast<unsigned long long>(val));
+    return atomicAdd_block(reinterpret_cast<unsigned long long*>(address),
+                           static_cast<unsigned long long>(val));
 }
 #endif // __CUDA_ARCH__
 
