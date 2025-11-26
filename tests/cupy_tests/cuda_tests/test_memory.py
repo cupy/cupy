@@ -3,6 +3,7 @@ from __future__ import annotations
 import ctypes
 import gc
 import pickle
+import sys
 import threading
 import unittest
 
@@ -1341,6 +1342,8 @@ def test_managed_memory_prefetch_basic():
         mem.mem.prefetch(stream_module.Stream(), device_id=10**8)
 
 
+@pytest.mark.skipif(sys.platform != 'linux',
+                    reason='madvise not supported on non-Linux platforms')
 def test_managed_memory_madvise_basic():
     # Check that the madvise API (and runtime API) seem to work.
     mem = memory.malloc_managed(1024)
