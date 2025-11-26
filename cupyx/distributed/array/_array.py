@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Callable, Iterable
 from itertools import chain
-from typing import Any, Callable
-from collections.abc import Iterable
+from typing import Any
 
 import numpy
 from numpy.typing import ArrayLike

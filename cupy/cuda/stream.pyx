@@ -204,6 +204,7 @@ class _BaseStream:
     def __init__(self, ptr, device_id):
         self.ptr = ptr
         self.device_id = device_id
+        self._graph_host_funcargs: list[tuple] | None = None
 
     def __eq__(self, other):
         # This operator needed as the ptr may be shared between multiple Stream
@@ -265,7 +266,8 @@ class _BaseStream:
         .. note::
             Whenever possible, use the :meth:`launch_host_func` method
             instead of this one, as it may be deprecated and removed from
-            CUDA at some point.
+            CUDA at some point. Also note that this function does not support
+            CUDA graph capture.
 
         """
         def f(stream, status, dummy):
@@ -281,21 +283,23 @@ class _BaseStream:
                 argument (user data object), and returns nothing.
             arg (object): Argument to the callback.
 
-        .. note::
-            Whenever possible, this method is recommended over
-            :meth:`add_callback`, which may be deprecated and removed from
-            CUDA at some point.
-
         .. seealso:: `cudaLaunchHostFunc()`_
 
         .. _cudaLaunchHostFunc():
             https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__EXECUTION.html#group__CUDART__EXECUTION_1g05841eaa5f90f27124241baafb3e856f
 
         """
-        def f(dummy):
-            callback(arg)
-
-        runtime.launchHostFunc(self.ptr, f, 0)
+        if self.is_capturing():
+            func_arg = (callback, arg)
+            runtime._launchHostFuncUnmanaged(self.ptr, func_arg)
+            # Keep reference to the host callback function and arguments.
+            # The ownership is later transferred to the captured Graph
+            # instance in `end_capture()`.
+            self._graph_host_funcargs.append(func_arg)
+        else:
+            def f(dummy):
+                callback(arg)
+            runtime.launchHostFunc(self.ptr, f, 0)
 
     def record(self, event=None):
         """Records an event on the stream.
@@ -369,8 +373,6 @@ class _BaseStream:
             https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__STREAM.html#group__CUDART__STREAM_1g793d7d4e474388ddfda531603dc34aa3
 
         """
-        if runtime._is_hip_environment:
-            raise RuntimeError('This function is not supported on HIP')
         if self.ptr == 0 or self.ptr == 1:
             raise RuntimeError('cannot capture on the default (legacy) stream')
         if mode is None:
@@ -383,6 +385,7 @@ class _BaseStream:
             # the async APIs, such as cudaMallocAsync.)
             mode = runtime.streamCaptureModeRelaxed
         runtime.streamBeginCapture(self.ptr, mode)
+        self._graph_host_funcargs = []
 
     def end_capture(self):
         """End stream capture and retrieve the constructed CUDA graph.
@@ -399,10 +402,10 @@ class _BaseStream:
             https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__STREAM.html#group__CUDART__STREAM_1gf5a0efebc818054ceecd1e3e5e76d93e
 
         """
-        if runtime._is_hip_environment:
-            raise RuntimeError('This function is not supported on HIP')
+        host_funcargs = self._graph_host_funcargs
+        self._graph_host_funcargs = None
         cdef intptr_t g = runtime.streamEndCapture(self.ptr)
-        return graph.Graph.from_stream(g)
+        return graph.Graph.from_stream(g, host_funcargs)
 
     def is_capturing(self):
         """Check if the stream is capturing.
@@ -415,9 +418,6 @@ class _BaseStream:
                 Programming Guide for detail.
 
         """
-        # TODO(leofang): is it better to be a property?
-        if runtime._is_hip_environment:
-            raise RuntimeError('This function is not supported on HIP')
         try:
             return runtime.streamIsCapturing(self.ptr)
         except RuntimeError:  # can be RuntimeError or CUDARuntimeError
@@ -483,9 +483,6 @@ class Stream(_BaseStream):
             ptr = 0
             device_id = -1
         elif ptds:
-            if runtime._is_hip_environment:
-                raise ValueError('HIP does not support per-thread '
-                                 'default stream (ptds)')
             ptr = runtime.streamPerThread
             device_id = -1
         else:
@@ -544,5 +541,4 @@ class ExternalStream(_BaseStream):
 
 
 Stream.null = Stream(null=True)
-if not runtime._is_hip_environment:
-    Stream.ptds = Stream(ptds=True)
+Stream.ptds = Stream(ptds=True)

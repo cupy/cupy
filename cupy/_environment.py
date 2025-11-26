@@ -29,11 +29,9 @@ Library Preloading
 ------------------
 
 Wheel packages are built against specific versions of CUDA libraries
-(cuTENSOR/NCCL/cuDNN).
+(cuTENSOR/NCCL).
 To avoid loading wrong version, these shared libraries are manually
 preloaded.
-
-# TODO(kmaehashi): Support NCCL
 
 Example of `_preload_config` is as follows:
 
@@ -44,12 +42,12 @@ Example of `_preload_config` is as follows:
     # CUDA version string
     'cuda': '11.0',
 
-    'cudnn': {
-        # cuDNN version string
-        'version': '8.0.0',
+    'nccl': {
+        # NCCL version string
+        'version': '2.8.0',
 
         # names of the shared library
-        'filenames': ['libcudnn.so.X.Y.Z']  # or `cudnn64_X.dll` for Windows
+        'filenames': ['libnccl.so.X.Y.Z']
     }
 }
 
@@ -60,7 +58,6 @@ not expected to be parsed by end-users.
 _preload_config = None
 
 _preload_libs = {
-    'cudnn': None,
     'nccl': None,
     'cutensor': None,
 }
@@ -236,6 +233,11 @@ def _setup_win32_dll_directory():
             if cuda_bin_path is not None:
                 _log('Adding DLL search path: {}'.format(cuda_bin_path))
                 os.add_dll_directory(cuda_bin_path)
+                cuda_bin_x64_path = os.path.join(cuda_bin_path, 'x64')
+                if os.path.exists(cuda_bin_x64_path):
+                    _log('Adding DLL search path (for CUDA 13): '
+                         f'{cuda_bin_x64_path}')
+                    os.add_dll_directory(cuda_bin_x64_path)
             if wheel_libdir is not None:
                 _log('Adding DLL search path: {}'.format(wheel_libdir))
                 os.add_dll_directory(wheel_libdir)
@@ -260,7 +262,7 @@ def get_cupy_cuda_lib_path():
 
     Shared libraries are looked up from
     `$CUPY_CUDA_LIB_PATH/$CUDA_VER/$LIB_NAME/$LIB_VER/{lib,lib64,bin}`,
-    e.g., `~/.cupy/cuda_lib/11.2/cudnn/8.1.1/lib64/libcudnn.so.8.1.1`.
+    e.g., `~/.cupy/cuda_lib/11.2/nccl/2.8.0/lib64/libnccl.so.2.8.0`.
 
     The default $CUPY_CUDA_LIB_PATH is `~/.cupy/cuda_lib`.
     """
@@ -340,8 +342,8 @@ def _preload_library(lib):
         _log(f'Looking for {lib} version {version} ({filename})')
 
         # "lib": cuTENSOR (Linux/Windows) / NCCL (Linux)
-        # "lib64": cuDNN (Linux)
-        # "bin": cuDNN (Windows)
+        # "lib64": NCCL (Linux)
+        # "bin": NCCL (Windows)
         libpath_cands = [
             os.path.join(
                 cupy_cuda_lib_path, config['cuda'], lib, version, x,
@@ -351,6 +353,11 @@ def _preload_library(lib):
             min_pypi_version = config[lib]['min_pypi_version']
             libpath_cands = (
                 _get_cutensor_from_wheel(min_pypi_version, config['cuda']) +
+                libpath_cands)
+        elif lib == 'nccl':
+            min_pypi_version = config[lib]['min_pypi_version']
+            libpath_cands = (
+                _get_nccl_from_wheel(min_pypi_version, config['cuda']) +
                 libpath_cands)
 
         for libpath in libpath_cands:
@@ -375,14 +382,14 @@ def _preload_library(lib):
             _log('File {} could not be found'.format(filename))
 
             # Lookup library with fully-qualified version (e.g.,
-            # `libcudnn.so.X.Y.Z`).
+            # `libnccl.so.X.Y.Z`).
             _log(f'Trying to load {filename} from default search path')
             try:
                 _preload_libs[lib][filename] = ctypes.CDLL(filename)
                 _log('Loaded')
             except Exception as e:
                 # Fallback to the standard shared library lookup which only
-                # uses the major version (e.g., `libcudnn.so.X`).
+                # uses the major version (e.g., `libnccl.so.X`).
                 _log(f'Library {lib} could not be preloaded: {e}')
 
 
@@ -394,47 +401,79 @@ def _parse_version(version: str) -> tuple[int, int, int]:
     return major, minor, patch
 
 
+def _find_compatible_wheel(
+        package_prefix: str, version: str, cuda: str
+) -> importlib.metadata.Distribution | None:
+    """
+    Returns the distribution of the given package name and version
+    installed via pip (e.g., cutensor-cuXX).
+    If the package is not found or incompatible, returns None.
+    """
+    cuda_major_ver, _ = cuda.split('.')
+    pkg = f'{package_prefix}-cu{cuda_major_ver}'
+    try:
+        dist = importlib.metadata.distribution(pkg)
+    except importlib.metadata.PackageNotFoundError:
+        _log(f'{package_prefix} wheel package ({pkg}) not installed')
+        return None
+
+    actual = _parse_version(dist.version)
+    expected = _parse_version(version)
+    is_compatible = (
+        actual[0] == expected[0] and
+        (
+            actual[1] > expected[1] or
+            (actual[1] == expected[1] and actual[2] >= expected[2])
+        )
+    )
+    if not is_compatible:
+        _log(f'{package_prefix} wheel package ({pkg}) incompatible: '
+             f'expected {version}, found {dist.version}')
+        return None
+    _log(f'{package_prefix} wheel package ({pkg}) found: {dist.version}')
+    return dist
+
+
 def _get_cutensor_from_wheel(version: str, cuda: str) -> list[str]:
     """
     Returns the list of shared library path candidates for cuTENSOR
     installed via Pip (cutensor-cuXX package).
     """
-    cuda_major_ver, _ = cuda.split('.')
-    cutensor_pkg = f'cutensor-cu{cuda_major_ver}'
-    try:
-        cutensor_dist = importlib.metadata.distribution(cutensor_pkg)
-    except importlib.metadata.PackageNotFoundError:
-        _log(f'cuTENSOR wheel package not installed: {cutensor_pkg}')
+    dist = _find_compatible_wheel('cutensor', version, cuda)
+    if dist is None:
         return []
-
-    actual = _parse_version(cutensor_dist.version)
-    expected = _parse_version(version)
-    is_compatible = (
-        actual[0] == expected[0] and
-        actual[1] >= expected[1] and
-        actual[2] >= expected[2]
-    )
-    if is_compatible:
-        _log(f'cuTENSOR wheel found: {cutensor_dist.version}')
-    else:
-        _log('cuTENSOR wheel incompatible: '
-             f'expected {version}, found {cutensor_dist.version}')
-        return []
-
     if sys.platform == 'linux':
         shared_libs = [
-            cutensor_dist.locate_file(
+            dist.locate_file(
                 f'cutensor/lib/libcutensor.so.{version.split(".")[0]}'
             ),
-            cutensor_dist.locate_file(
+            dist.locate_file(
                 f'cutensor/lib/libcutensorMg.so.{version.split(".")[0]}'
             ),
         ]
     else:
         shared_libs = [
-            cutensor_dist.locate_file('cutensor\\bin\\cutensor.dll'),
-            cutensor_dist.locate_file('cutensor\\bin\\cutensorMg.dll'),
+            dist.locate_file('cutensor\\bin\\cutensor.dll'),
+            dist.locate_file('cutensor\\bin\\cutensorMg.dll'),
         ]
+    return [str(lib) for lib in shared_libs]
+
+
+def _get_nccl_from_wheel(version: str, cuda: str) -> list[str]:
+    """
+    Returns the list of shared library path candidates for NCCL
+    installed via Pip (nvidia-nccl-cuXX package).
+    """
+    if sys.platform != 'linux':
+        return []
+    dist = _find_compatible_wheel('nvidia-nccl', version, cuda)
+    if dist is None:
+        return []
+    shared_libs = [
+        dist.locate_file(
+            f'nvidia/nccl/lib/libnccl.so.{version.split(".")[0]}'
+        ),
+    ]
     return [str(lib) for lib in shared_libs]
 
 
@@ -445,13 +484,17 @@ def _preload_warning(lib, exc):
 
     if config['packaging'] == 'pip':
         cuda = config['cuda']
+        cuda_major = cuda.split('.')[0]
         if lib == 'cutensor':
-            cuda_major = cuda.split('.')[0]
             version = config['cutensor']['min_pypi_version']
             major = _parse_version(version)[0]
             cmd = f'pip install "cutensor-cu{cuda_major}>={version},<{major+1}"'  # NOQA
+        elif lib == 'nccl':
+            version = config['nccl']['min_pypi_version']
+            major = _parse_version(version)[0]
+            cmd = f'pip install "nvidia-nccl-cu{cuda_major}>={version},<{major+1}"'  # NOQA
         else:
-            cmd = f'python -m cupyx.tools.install_library --library {lib} --cuda {cuda}'  # NOQA
+            raise AssertionError(f'Unknown library: {lib}')
     elif config['packaging'] == 'conda':
         cmd = f'conda install -c conda-forge {lib}'
     else:
@@ -493,7 +536,13 @@ def _get_include_dir_from_conda_or_wheel(major: int, minor: int) -> list[str]:
             return []
 
     # Look for headers in wheels
-    pkg_name = f'nvidia-cuda-runtime-cu{major}'
+    if major in (11, 12):
+        pkg_name = f'nvidia-cuda-runtime-cu{major}'
+        dir_name = 'cuda_runtime'
+    else:
+        # New layout (CUDA 13+)
+        pkg_name = 'nvidia-cuda-runtime'
+        dir_name = f'cu{major}'
     ver_str = f'{major}.{minor}'
     _log(f'Looking for {pkg_name}=={ver_str}.*')
     try:
@@ -503,7 +552,7 @@ def _get_include_dir_from_conda_or_wheel(major: int, minor: int) -> list[str]:
         return []
 
     if dist.version == ver_str or dist.version.startswith(f'{ver_str}.'):
-        include_dir = dist.locate_file('nvidia/cuda_runtime/include')
+        include_dir = dist.locate_file(f'nvidia/{dir_name}/include')
         if not include_dir.exists():
             _log('The include directory could not be found')
             return []
@@ -515,14 +564,8 @@ def _get_include_dir_from_conda_or_wheel(major: int, minor: int) -> list[str]:
 
 def _detect_duplicate_installation():
     # List of all CuPy packages, including out-dated ones.
-    known = {
+    known = (
         'cupy',
-        'cupy-cuda80',
-        'cupy-cuda90',
-        'cupy-cuda91',
-        'cupy-cuda92',
-        'cupy-cuda100',
-        'cupy-cuda101',
         'cupy-cuda102',
         'cupy-cuda110',
         'cupy-cuda111',
@@ -532,24 +575,25 @@ def _detect_duplicate_installation():
         'cupy-cuda115',
         'cupy-cuda116',
         'cupy-cuda117',
-        'cupy-cuda118',
         'cupy-cuda11x',
         'cupy-cuda12x',
+        'cupy-cuda13x',
         'cupy-rocm-4-0',
-        'cupy-rocm-4-1',
         'cupy-rocm-4-2',
         'cupy-rocm-4-3',
         'cupy-rocm-5-0',
-    }
-    # use metadata.get to be resilient to namespace packages
-    # that may be leftover in the user's path???
-    # something else might be triggering "Name" not existing
-    # But without a safe ".get" a KeyError might be raised
-    # not allowing us to get through the setup
-    # https://github.com/cupy/cupy/issues/8440
-    installed_names = {d.metadata.get("Name", None)
-                       for d in importlib.metadata.distributions()}
-    cupy_installed = known & installed_names
+
+        # Known forks that cannot coexist with official CuPy installations.
+        'amd-cupy',
+    )
+    cupy_installed = []
+    for k in known:
+        try:
+            importlib.metadata.distribution(k)
+            cupy_installed.append(k)
+        except importlib.metadata.PackageNotFoundError:
+            pass
+
     if 1 < len(cupy_installed):
         cupy_packages_list = ', '.join(sorted(cupy_installed))
         warnings.warn(f'''

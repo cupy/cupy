@@ -57,11 +57,11 @@ cdef F_nvrtcGetNumSupportedArchs nvrtcGetNumSupportedArchs
 ctypedef nvrtcResult (*F_nvrtcGetSupportedArchs)(int* supportedArchs) noexcept nogil  # NOQA
 cdef F_nvrtcGetSupportedArchs nvrtcGetSupportedArchs
 
-ctypedef nvrtcResult (*F_nvrtcGetNVVMSize)(nvrtcProgram prog, size_t *nvvmSizeRet) noexcept nogil  # NOQA
-cdef F_nvrtcGetNVVMSize nvrtcGetNVVMSize
+ctypedef nvrtcResult (*F_nvrtcGetLTOIRSize)(nvrtcProgram prog, size_t *ltoirSizeRet) nogil  # NOQA
+cdef F_nvrtcGetLTOIRSize nvrtcGetLTOIRSize
 
-ctypedef nvrtcResult (*F_nvrtcGetNVVM)(nvrtcProgram prog, char *nvvm) noexcept nogil  # NOQA
-cdef F_nvrtcGetNVVM nvrtcGetNVVM
+ctypedef nvrtcResult (*F_nvrtcGetLTOIR)(nvrtcProgram prog, char *ltoir) nogil
+cdef F_nvrtcGetLTOIR nvrtcGetLTOIR
 
 
 cdef SoftLink _L = None
@@ -104,10 +104,10 @@ cdef SoftLink _initialize():
     nvrtcGetNumSupportedArchs = <F_nvrtcGetNumSupportedArchs>_L.get('GetNumSupportedArchs')  # NOQA
     global nvrtcGetSupportedArchs
     nvrtcGetSupportedArchs = <F_nvrtcGetSupportedArchs>_L.get('GetSupportedArchs')  # NOQA
-    global nvrtcGetNVVMSize
-    nvrtcGetNVVMSize = <F_nvrtcGetNVVMSize>_L.get('GetNVVMSize')
-    global nvrtcGetNVVM
-    nvrtcGetNVVM = <F_nvrtcGetNVVM>_L.get('GetNVVM')
+    global nvrtcGetLTOIRSize
+    nvrtcGetLTOIRSize = <F_nvrtcGetLTOIRSize>_L.get('GetLTOIRSize')
+    global nvrtcGetLTOIR
+    nvrtcGetLTOIR = <F_nvrtcGetLTOIR>_L.get('GetLTOIR')
 
     return _L
 
@@ -131,6 +131,14 @@ cdef SoftLink _get_softlink():
                 libname = 'libnvrtc.so.12'
             else:
                 libname = 'nvrtc64_120_0.dll'
+        elif runtime_version == 13:
+            # CUDA 13.x
+            if _sys.platform == 'linux':
+                libname = 'libnvrtc.so.13'
+            else:
+                libname = 'nvrtc64_130_0.dll'
+        from cuda import pathfinder
+        pathfinder.load_nvidia_dynamic_lib('nvrtc')
     elif CUPY_HIP_VERSION != 0:
         runtime_version = runtime.runtimeGetVersion()
         prefix = 'hiprtc'
@@ -143,5 +151,15 @@ cdef SoftLink _get_softlink():
         elif runtime_version < 7_00_00000:
             # ROCm 6.x
             libname = 'libamdhip64.so.6'
+        elif runtime_version < 8_00_00000:
+            # ROCm 7.x:
+            libname = 'libhiprtc.so.7'
+        else:
+            # Unsupported ROCm version. If using a new ROCm
+            # major please add support above.
+            raise RuntimeError(
+                f"Unsupported ROCm version: {runtime_version} detected in "
+                f"_cnvrtc.pxi - Please update code to support this version."
+            )
 
     return SoftLink(libname, prefix, mandatory=True)

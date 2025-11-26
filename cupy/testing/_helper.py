@@ -13,8 +13,6 @@ from unittest import mock
 import numpy
 
 import cupy
-import cupyx
-import cupyx.scipy.sparse
 from cupy._core import internal
 from cupy.testing._pytest_impl import is_available
 
@@ -67,7 +65,7 @@ def installed(*specifiers: str) -> bool:
         except PackageNotFoundError:
             return False
         expected = req.specifier
-        # If no constrait is given, skip
+        # If no constraint is given, skip
         if expected and (not expected.contains(found, prereleases=True)):
             return False
     return True
@@ -171,13 +169,13 @@ def shaped_random(
 
 
 def shaped_sparse_random(
-        shape, sp=cupyx.scipy.sparse, dtype=numpy.float32,
+        shape, sp=None, dtype=numpy.float32,
         density=0.01, format='coo', seed=0):
     """Returns an array filled with random values.
 
     Args:
         shape (tuple): Shape of returned sparse matrix.
-        sp (scipy.sparse or cupyx.scipy.sparse): Sparce matrix module to use.
+        sp (scipy.sparse or cupyx.scipy.sparse): Sparse matrix module to use.
         dtype (dtype): Dtype of returned sparse matrix.
         density (float): Density of returned sparse matrix.
         format (str): Format of returned sparse matrix.
@@ -187,6 +185,10 @@ def shaped_sparse_random(
         The sparse matrix with given shape, array module,
     """
     import scipy.sparse
+    import cupyx.scipy.sparse
+
+    if sp is None:
+        sp = cupyx.scipy.sparse
     n_rows, n_cols = shape
     numpy.random.seed(seed)
     a = scipy.sparse.random(n_rows, n_cols, density).astype(dtype)

@@ -1,7 +1,7 @@
 [build-system]
 # Need to be installed manually when using `--no-build-isolation`.
 # Keep in sync with `docs/source/contribution.rst`.
-requires = ["setuptools>=77", "wheel", "Cython>=3,<3.2", "fastrlock>=0.5"]
+requires = ["setuptools>=77", "wheel", "Cython>=3.1,<3.2"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -17,7 +17,6 @@ classifiers = [
   "Intended Audience :: Developers",
   "Programming Language :: Python",
   "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
@@ -29,26 +28,23 @@ classifiers = [
   "Operating System :: POSIX",
   "Operating System :: Microsoft :: Windows",
 ]
-requires-python = ">=3.9"
-dependencies = [
-  "numpy>=1.24,<2.6", # see #4773
-  "fastrlock>=0.5",
+requires-python = ">=3.10"
+dynamic = [
+  "version",
+  "readme",  # long_description
+  "dependencies",  # install_requires
+  "optional-dependencies",  # extras_require
 ]
-dynamic = ["version"]
-
-[project.optional-dependencies]
-"all" = [
-  "scipy>=1.10,<1.17", # see #4773
-  "Cython>=3",
-  "optuna>=2.0",
-]
-"test" = ["packaging", "pytest>=7.2", "hypothesis>=6.37.2,<6.55.0", "mpmath"]
 
 [project.urls]
 "Homepage" = "https://cupy.dev/"
 "Documentation" = "https://docs.cupy.dev/"
 "Bug Tracker" = "https://github.com/cupy/cupy/issues"
 "Source Code" = "https://github.com/cupy/cupy"
+
+[tool.setuptools]
+# Do not include files listed in MANIFEST.in to wheels.
+include-package-data = false
 
 [tool.setuptools.packages.find]
 include = ["cupy*", "cupyx*", "cupy_backends*"]
@@ -136,6 +132,7 @@ select = ["E", "F", "W", "UP", "I002", "FA", "PYI", "PLC01"]
 extend-ignore = [
   "UP031", # printf-string-formatting
   "UP032", # f-string
+  "UP038", # Use `X | Y` in `isinstance` call instead of `(X, Y)`
 ]
 
 [tool.ruff.lint.per-file-ignores]

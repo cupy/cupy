@@ -19,7 +19,7 @@ os:
     system: "linux"
   "centos:8":
     system: "linux"
-  "ws:2016":
+  "ws:2022":
     system: "windows"
 
 ###############################################################################
@@ -36,27 +36,6 @@ cuda:
   null:
     full_version: null
     repository: null
-  "11.2":
-    full_version: "11.2.2"
-    repository: "nvidia/cuda"
-  "11.3":
-    full_version: "11.3.1"
-    repository: "nvidia/cuda"
-  "11.4":
-    full_version: "11.4.3"
-    repository: "nvidia/cuda"
-  "11.5":
-    full_version: "11.5.2"
-    repository: "nvidia/cuda"
-  "11.6":
-    full_version: "11.6.2"
-    repository: "nvidia/cuda"
-  "11.7":
-    full_version: "11.7.1"
-    repository: "nvidia/cuda"
-  "11.8":
-    full_version: "11.8.0"
-    repository: "nvidia/cuda"
   "12.0":
     full_version: "12.0.1"
     repository: "nvidia/cuda"
@@ -70,7 +49,7 @@ cuda:
     full_version: "12.3.0"
     repository: "nvidia/cuda"
   "12.4":
-    full_version: "12.4.0"
+    full_version: "12.4.1"
     repository: "nvidia/cuda"
   "12.5":
     full_version: "12.5.0"
@@ -81,38 +60,27 @@ cuda:
   "12.8":
     full_version: "12.8.0"
     repository: "nvidia/cuda"
+  "12.9":
+    full_version: "12.9.1"
+    repository: "nvidia/cuda"
+  "13.0":
+    full_version: "13.0.0"
+    repository: "nvidia/cuda"
 rocm:
   null:
     full_version: null
     packages: []
-  "4.3":
-    full_version: "4.3.1"
-    packages: ['rocm-dev', 'hipblas', 'hipfft', 'hipsparse', 'hipcub',
-               'rocsparse', 'rocrand', 'rocthrust', 'rocsolver', 'rocfft',
-               'rocprim', 'rccl']
-  "5.0":
-    full_version: "5.0"
-    packages: ['rocm-dev', 'hipblas', 'hipfft', 'hipsparse', 'hipcub',
-               'rocsparse', 'rocrand', 'rocthrust', 'rocsolver', 'rocfft',
-               'rocprim', 'rccl']
-  "5.3":
-    full_version: "5.3"
-    packages: ['rocm-dev', 'hipblas', 'hipfft', 'hipsparse', 'hipcub',
-               'rocsparse', 'rocrand', 'rocthrust', 'rocsolver', 'rocfft',
-               'rocprim', 'rccl']
-  "6.2":
-    full_version: "6.2"
-    packages: ['rocm-dev', 'hipblas', 'hipfft', 'hipsparse', 'hipcub',
-               'rocsparse', 'rocrand', 'hiprand', 'rocthrust', 'rocsolver', 'rocfft',
-               'rocprim', 'rccl', 'roctracer-dev']
+  "7.0":
+    full_version: "7.0.2-complete"
+    packages: []
 
 ###############################################################################
 # CUDA Optional Libraries
 ###############################################################################
-# The optional libraries to install: NCCL, cuTENSOR, cuSPARSELt and cuDNN.
+# The optional libraries to install: NCCL, cuTENSOR, and cuSPARSELt.
 # `spec` must be a version specifier accepted by apt and yum.
 # `cuda` lists the supported CUDA version.
-# `cuda.alias` (cuDNN/NCCL) is an alias name for package name suffix.
+# `cuda.alias` (ex: NCCL) is an alias name for package name suffix.
 nccl:
   # https://docs.nvidia.com/deeplearning/nccl/archives/
   # https://developer.nvidia.com/nccl/nccl-download
@@ -121,45 +89,26 @@ nccl:
   "2.16":
     spec: "2.16.*"
     cuda:
-      # Note: DEB package for CUDA 11.x unavailable on Ubuntu 22.04
-      # "11.0":
-      "11.2":  # assumed
-        alias: "11.8"
-      "11.3":  # assumed
-        alias: "11.8"
-      "11.4":  # assumed
-        alias: "11.8"
-      "11.5":  # assumed
-        alias: "11.8"
-      "11.6":  # assumed
-        alias: "11.8"
-      "11.7":  # assumed
-        alias: "11.8"
-      "11.8":
       "12.0":
   "2.17":
     spec: "2.17.*"
     cuda:
-      # "11.0":  -- DEB/RPM packages are unavailable
       "12.0":  # Note: DEB package unavailable on Ubuntu 22.04
       "12.1":
   "2.18":
     spec: "2.18.*"
     cuda:
-      # "11.0":  -- DEB/RPM packages are unavailable
       "12.0":  # Note: DEB package unavailable on Ubuntu 22.04
       "12.2":
   "2.19":
     spec: "2.19.*"
     cuda:
-      # "11.0":  -- DEB/RPM packages are unavailable
       "12.0":  # Note: DEB package unavailable on Ubuntu 22.04
       "12.2":
       "12.3":
   "2.20":
     spec: "2.20.*"
     cuda:
-      # "11.0":  -- DEB/RPM packages are unavailable
       "12.0":  # Note: DEB package unavailable on Ubuntu 22.04
       "12.2":  # Note: DEB package unavailable on Ubuntu 22.04
       "12.3":
@@ -180,25 +129,31 @@ nccl:
   "2.25":
     spec: "2.25.*"
     cuda:
+      "12.2":
       "12.4":
       "12.8":
+  "2.26":
+    spec: "2.26.*"
+    cuda:
+      "12.2":
+      "12.4":
+      "12.8":
+      "12.9":
+  "2.27":
+    spec: "2.27.*"
+    cuda:
+      "12.2":
+      "12.4":
+      "12.9":
+      "13.0":
 cutensor:
   # https://docs.nvidia.com/cuda/cutensor/
   # https://developer.nvidia.com/cutensor/downloads
   null:
     spec: null
-  "2.0":
-    spec: "2.0.*"
+  "2.3":
+    spec: "2.3.*"
     cuda:
-      # "10.2":  -- cuTENSOR distributed through binary package does not support CUDA 10.2
-      # "11.0":
-      "11.2":
-      "11.3":
-      "11.4":
-      "11.5":
-      "11.6":
-      "11.7":
-      "11.8":
       "12.0":
       "12.1":
       "12.2":
@@ -207,6 +162,8 @@ cutensor:
       "12.5":
       "12.6":
       "12.8":
+      "12.9":
+      "13.0":
 cusparselt:
   # https://docs.nvidia.com/cuda/cusparselt/
   # https://developer.nvidia.com/cusparselt/downloads
@@ -216,49 +173,8 @@ cusparselt:
     spec: "0.7.1.*"
     cuda:
       "12.8":
-cudnn:
-  # https://docs.nvidia.com/deeplearning/cudnn/support-matrix/index.html
-  # https://docs.nvidia.com/deeplearning/cudnn/archives/
-  # https://developer.nvidia.com/rdp/cudnn-download
-  null:
-    spec: null
-  "8.8":
-    spec: "8.8.*"
-    cuda:
-      # "11.0":
-      #   alias: "11.8"
-      # "11.1":
-      #   alias: "11.8"
-      "11.2":
-        alias: "11.8"
-      "11.3":
-        alias: "11.8"
-      "11.4":
-        alias: "11.8"
-      "11.5":
-        alias: "11.8"
-      "11.6":
-        alias: "11.8"
-      "11.7":
-        alias: "11.8"
-      "11.8":
-        alias: "11.8"
-      "12.0":
-        alias: "12.0"
-      "12.1":  # TODO(kmaehashi): cuDNN 8.9 should be used
-        alias: "12.0"
-      "12.2":  # assumed
-        alias: "12.0"
-      "12.3":  # assumed
-        alias: "12.0"
-      "12.4":  # assumed
-        alias: "12.0"
-      "12.5": # assumed
-        alias: "12.0"
-      "12.6": # assumed
-        alias: "12.0"
-      "12.8": # assumed
-        alias: "12.0"
+      "12.9":
+      "13.0":
 
 ###############################################################################
 # Python
@@ -269,15 +185,17 @@ cudnn:
 # list of supported Python versions in the Python libraries.
 python:
   "3.10":
-    spec: "3.10.15"
+    spec: "3.10.18"
   "3.11":
-    spec: "3.11.10"
+    spec: "3.11.13"
   "3.12":
-    spec: "3.12.6"
+    spec: "3.12.11"
   "3.13":
-    spec: "3.13.1"
+    spec: "3.13.8"
+  "3.14":
+    spec: "3.14.0"
   "pre":
-    spec: "3.14-dev"  # note that dependency python libraies may not work
+    spec: "3.15-dev"  # note that dependency python libraies may not work
 
 ###############################################################################
 # Python Libraries
@@ -287,22 +205,6 @@ python:
 # When adding a new NumPy version, you may also need to add the version to the
 # list of supported Python versions in SciPy.
 numpy:
-  "1.24":
-    spec: "==1.24.*"
-    python:
-      - "3.10"
-      - "3.11"
-  "1.25":
-    spec: "==1.25.*"
-    python:
-      - "3.10"
-      - "3.11"
-  "1.26":
-    spec: "==1.26.*"
-    python:
-      - "3.10"
-      - "3.11"
-      - "3.12"
   "2.0":
     spec: "==2.0.*"
     python:
@@ -328,7 +230,7 @@ numpy:
       - "3.11"
       - "3.12"
       - "3.13"
-      # - "3.14"
+      - "3.14"
   "pre":
     spec: ">=0a0"  # latest, including pre-releases
 scipy:
@@ -337,43 +239,6 @@ scipy:
     # Note: Optuna depends on SciPy, so Optuna must also be set to null when
     # setting SciPy to null to run tests without SciPy.
     spec: null
-  "1.10":
-    spec: "==1.10.*"
-    python:
-      - "3.10"
-      - "3.11"
-    numpy:
-      - "1.24"
-  "1.11":
-    spec: "==1.11.*"
-    python:
-      - "3.10"
-      - "3.11"
-      - "3.12"
-    numpy:
-      - "1.24"
-      - "1.25"
-      - "1.26"
-  "1.12":
-    spec: "==1.12.*"
-    python:
-      - "3.10"
-      - "3.11"
-      - "3.12"
-    numpy:
-      - "1.24"
-      - "1.25"
-      - "1.26"
-  "1.13":
-    spec: "==1.13.*"
-    python:
-      - "3.10"
-      - "3.11"
-      - "3.12"
-    numpy:
-      - "1.24"
-      - "1.25"
-      - "1.26"
   "1.14":
     spec: "==1.14.*"
     python:
@@ -382,9 +247,6 @@ scipy:
       - "3.12"
       - "3.13"
     numpy:
-      - "1.24"
-      - "1.25"
-      - "1.26"
       - "2.0"
       - "2.1"
       - "2.2"
@@ -396,9 +258,18 @@ scipy:
       - "3.12"
       - "3.13"
     numpy:
-      - "1.24"
-      - "1.25"
-      - "1.26"
+      - "2.0"
+      - "2.1"
+      - "2.2"
+      - "2.3"
+  "1.16":
+    spec: "==1.16.*"
+    python:
+      - "3.11"
+      - "3.12"
+      - "3.13"
+      - "3.14"
+    numpy:
       - "2.0"
       - "2.1"
       - "2.2"
@@ -430,21 +301,17 @@ mpi4py:
       - "3.11"
       - "3.12"
       - "3.13"
+      - "3.14"
 cython:
-  "3.0":
-    spec: "==3.0.*"
   "3.1":
     spec: "==3.1.*"
   "pre":
     spec: ">=0a0"  # latest, including pre-releases
-fastrlock:
-  "latest":
-    spec: ">=0.5"  # latest, stable
 cuda-python:
   null:
     spec: null
-  "11":
-    spec: "==11.*"
+  "12":
+    spec: "==12.*"
 
 ###############################################################################
 # Environment Variables

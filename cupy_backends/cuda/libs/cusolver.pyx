@@ -661,7 +661,7 @@ cdef extern from '../../cupy_lapack.h' nogil:
                          cuDoubleComplex* Work, int lwork,
                          double* rwork, int* devInfo)
 
-    # gesvdj ... Singular value decomposition using Jacobi mathod
+    # gesvdj ... Singular value decomposition using Jacobi method
     int cusolverDnCreateGesvdjInfo(GesvdjInfo *info)
     int cusolverDnDestroyGesvdjInfo(GesvdjInfo info)
 
@@ -1005,10 +1005,17 @@ cdef extern from '../../cupy_lapack.h' nogil:
 
 ctypedef int (*f_type)(...) nogil  # NOQA
 IF 12000 <= CUPY_CUDA_VERSION < 13000:
+    # CUDA 12.x
     if _sys.platform == 'linux':
         _libname = 'libcusolver.so.11'
     else:
         _libname = 'cusolver64_11.dll'
+ELIF 13000 <= CUPY_CUDA_VERSION < 14000:
+    # CUDA 13.x
+    if _sys.platform == 'linux':
+        _libname = 'libcusolver.so.12'
+    else:
+        _libname = 'cusolver64_12.dll'
 ELSE:
     _libname = None
 
@@ -2779,7 +2786,7 @@ cpdef zgesvd(intptr_t handle, char jobu, char jobvt, int m, int n, size_t A,
             <cuDoubleComplex*>Work, lwork, <double*>rwork, <int*>devInfo)
     check_status(status)
 
-# gesvdj ... Singular value decomposition using Jacobi mathod
+# gesvdj ... Singular value decomposition using Jacobi method
 cpdef intptr_t createGesvdjInfo() except? 0:
     cdef GesvdjInfo info
     status = cusolverDnCreateGesvdjInfo(&info)

@@ -64,6 +64,46 @@ cdef _invert = create_ufunc(
     ''')
 
 
+cdef _bitwise_count = create_ufunc(
+    'cupy_bitwise_count',
+    (
+        'b->B', 'B->B', 'h->B', 'H->B', 'i->B', 'I->B',
+        'l->B', 'L->B', 'q->B', 'Q->B',
+    ),
+    'out0 = _cupy_bitcount(in0);',
+    doc='''Computes the number of 1-bits in each element.
+
+    Only integer arrays are handled.
+
+    .. seealso:: :data:`numpy.bitwise_count`
+
+    ''',
+    preamble='''
+#include <cupy/cuda_workaround.h>
+
+template <typename T>
+__device__ inline int _cupy_bitcount(T x) {
+    if constexpr (sizeof(T) <= 4) {
+        unsigned int ux = static_cast<unsigned int>(x);
+        if constexpr (std::is_signed<T>::value) {
+            if(x<0){
+                ux = ~ux + 1u;
+            }
+        }
+        return static_cast<int>(__popc(ux));
+    } else {
+        unsigned long long ux = static_cast<unsigned long long>(x);
+        if constexpr (std::is_signed<T>::value) {
+            if(x<0){
+                ux = ~ux + 1ull;
+            }
+        }
+        return static_cast<int>(__popcll(ux));
+    }
+}
+''')
+
+
 cdef _left_shift = _create_bit_op(
     'left_shift', '<<', True,
     '''Shifts the bits of each integer element to the left.
@@ -91,6 +131,7 @@ cdef _right_shift = _create_bit_op(
 bitwise_and = _bitwise_and
 bitwise_or = _bitwise_or
 bitwise_xor = _bitwise_xor
+bitwise_count = _bitwise_count
 invert = _invert
 left_shift = _left_shift
 right_shift = _right_shift

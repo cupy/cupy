@@ -366,7 +366,8 @@ def make_extensions(ctx: Context, compiler, use_cython):
                        f'{os.environ["BUILD_PREFIX"]}/bin/ld')
         if (PLATFORM_LINUX and (
                 int(os.environ.get('CONDA_BUILD_CROSS_COMPILATION', 0)) == 1 or
-                os.environ.get('CONDA_OVERRIDE_CUDA', '0').startswith('12'))):
+                os.environ.get('CONDA_OVERRIDE_CUDA', '0').startswith(
+                    ('12', '13')))):
             # If cross-compiling, we need build_and_run() & build_shlib() to
             # use the compiler on the build platform to generate stub files
             # that are executable in the build environment, not the target
@@ -459,9 +460,6 @@ def make_extensions(ctx: Context, compiler, use_cython):
             s_file = copy.deepcopy(s)
             name = module_extension_name(f)
 
-            if name.endswith('fft._callback') and not PLATFORM_LINUX:
-                continue
-
             rpath = []
             if not ctx.no_rpath:
                 # Add library directories (e.g., `/usr/local/cuda/lib64`) to
@@ -472,9 +470,9 @@ def make_extensions(ctx: Context, compiler, use_cython):
                 # Add `cupy/.data/lib` (where shared libraries included in
                 # wheels reside) to RPATH.
                 # The path is resolved relative to the module, e.g., use
-                # `$ORIGIN/../cupy/.data/lib` for `cupy/cudnn.so` and
+                # `$ORIGIN/../cupy/.data/lib` for `cupy/nccl.so` and
                 # `$ORIGIN/../../../cupy/.data/lib` for
-                # `cupy_backends/cuda/libs/cudnn.so`.
+                # `cupy_backends/cuda/libs/nccl.so`.
                 depth = name.count('.')
                 rpath.append(
                     '{}{}/cupy/.data/lib'.format(_rpath_base(), '/..' * depth))

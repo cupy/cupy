@@ -28,7 +28,6 @@ DEALINGS IN THE SOFTWARE.
 from __future__ import annotations
 
 
-from math import ceil
 import cupy
 
 _upfirdn_modes = [
@@ -61,12 +60,10 @@ __device__ void _cupy_upfirdn1D( const T *__restrict__ inp,
 
     for ( size_t tid = t; tid < outW; tid += stride ) {
 
-#if ( __CUDACC_VER_MAJOR__ >= 11 ) && ( __CUDACC_VER_MINOR__ >= 2 )
         __builtin_assume( padded_len > 0 );
         __builtin_assume( up > 0 );
         __builtin_assume( down > 0 );
         __builtin_assume( tid > 0 );
-#endif
 
         const int x_idx { static_cast<int>( ( tid * down ) / up ) % padded_len };
         int       h_idx { static_cast<int>( ( tid * down ) % up * h_per_phase ) };
@@ -174,22 +171,16 @@ __device__ void _cupy_upfirdn2D( const T *__restrict__ inp,
             int x_idx {};
             int h_idx {};
 
-#if ( __CUDACC_VER_MAJOR__ >= 11 ) && ( __CUDACC_VER_MINOR__ >= 2 )
             __builtin_assume( padded_len > 0 );
             __builtin_assume( up > 0 );
             __builtin_assume( down > 0 );
-#endif
 
             if ( axis == 1 ) {
-#if ( __CUDACC_VER_MAJOR__ >= 11 ) && ( __CUDACC_VER_MINOR__ >= 2 )
                 __builtin_assume( x > 0 );
-#endif
                 x_idx = ( static_cast<int>( x * down ) / up ) % padded_len;
                 h_idx = ( x * down ) % up * h_per_phase;
             } else {
-#if ( __CUDACC_VER_MAJOR__ >= 11 ) && ( __CUDACC_VER_MINOR__ >= 2 )
                 __builtin_assume( y > 0 );
-#endif
                 x_idx = ( static_cast<int>( y * down ) / up ) % padded_len;
                 h_idx = ( y * down ) % up * h_per_phase;
             }
@@ -286,7 +277,7 @@ extern "C" __global__ void __launch_bounds__( 64 )
 
 
 UPFIRDN_MODULE = cupy.RawModule(
-    code=UPFIRDN_KERNEL, options=('-std=c++11',),
+    code=UPFIRDN_KERNEL,
     name_expressions=[
         '_cupy_upfirdn1D_float32',
         '_cupy_upfirdn1D_float64',
@@ -403,11 +394,14 @@ class _UpFIRDn:
         elif out.ndim == 2:
             # set up the kernel launch parameters
             threadsperblock = (8, 8)
-            blocks = ceil(out.shape[0] / threadsperblock[0])
+
+            blocks = (x.shape[0] + threadsperblock[0] -
+                      1) // threadsperblock[0]
             blockspergrid_x = (
                 blocks if blocks < _get_max_gdx() else _get_max_gdx())
 
-            blocks = ceil(out.shape[1] / threadsperblock[1])
+            blocks = (x.shape[1] + threadsperblock[1] -
+                      1) // threadsperblock[1]
             blockspergrid_y = (
                 blocks if blocks < _get_max_gdy() else _get_max_gdy())
 
@@ -416,7 +410,7 @@ class _UpFIRDn:
             # do computations
             kernel = UPFIRDN_MODULE.get_function(
                 f'_cupy_upfirdn2D_{out.dtype.name}')
-            kernel(threadsperblock, blockspergrid,
+            kernel(blockspergrid, threadsperblock,
                    (x,
                     x.shape[1],
                     self._h_trans_flip,

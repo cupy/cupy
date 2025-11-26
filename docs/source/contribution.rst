@@ -293,18 +293,13 @@ In order to run unit tests at the repository root, you first have to build Cytho
 
   In addition, you need to manually install the build-time dependencies listed in the ``build-system.requires`` section of ``pyproject.toml`` before running the above command::
 
-    $ pip install "setuptools>=77" wheel "Cython>=3,<3.2" "fastrlock>=0.5"
+    $ pip install "setuptools>=77" wheel "Cython>=3.1,<3.2"
 
 Once Cython modules are built, you can run unit tests by running the following command at the repository root::
 
   $ python -m pytest
 
 CUDA must be installed to run unit tests.
-
-Some GPU tests require cuDNN to run.
-In order to skip unit tests that require cuDNN, specify ``-m='not cudnn'`` option::
-
-  $ python -m pytest path/to/your/test.py -m='not cudnn'
 
 Some GPU tests involve multiple GPUs.
 If you want to run GPU tests with insufficient number of GPUs, specify the number of available GPUs to ``CUPY_TEST_GPU_LIMIT``.

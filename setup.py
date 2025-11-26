@@ -33,6 +33,7 @@ cupy_package_data = [
     'cupy/cuda/cupy_cufft.h',  # for cuFFT callback
     'cupy/cuda/cufft.pxd',  # for cuFFT callback
     'cupy/cuda/cufft.pyx',  # for cuFFT callback
+    'cupy_backends/cuda/_softlink.pxd',  # for cuFFT callback
     'cupy/random/cupy_distributions.cu',
     'cupy/random/cupy_distributions.cuh',
     'cupyx/scipy/ndimage/cuda/LICENSE',
@@ -61,16 +62,43 @@ else:
     ext_modules = cupy_setup_build.get_ext_modules(True, ctx)
 
 
-long_description = None
+long_description = ''
 if ctx.long_description_path is not None:
     with open(ctx.long_description_path) as f:
         long_description = f.read()
+
+
+dependencies = [
+    "numpy>=1.24,<2.6",  # see #4773
+]
+optional_dependencies = {
+    "all": [
+        "scipy>=1.10,<1.17",  # see #4773
+        "Cython>=3",
+        "optuna>=2.0",
+    ],
+    "test": [
+        "packaging",
+        "pytest>=7.2",
+        "hypothesis>=6.37.2,<6.55.0",
+        "mpmath",
+    ],
+}
+if not ctx.use_hip:
+    dependencies.append("cuda-pathfinder>=1.3.2,==1.*")
+    if len(ext_modules) != 0 and not ctx.use_stub:
+        cuda_major = ctx.features["cuda"].get_version() // 1000
+        optional_dependencies["ctk"] = [
+            f"cuda-toolkit[nvrtc,cublas,cufft,cusolver,cusparse,curand]=={cuda_major}.*"  # NOQA
+        ]
 
 
 setup(
     long_description=long_description,
     long_description_content_type='text/x-rst',
     package_data=package_data,
+    install_requires=dependencies,
+    extras_require=optional_dependencies,
     zip_safe=False,
     ext_modules=ext_modules,
     cmdclass={'build_ext': cupy_builder._command.custom_build_ext},
