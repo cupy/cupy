@@ -32,7 +32,10 @@
 using namespace cub;
 #define CUPY_CUB_NAMESPACE cub
 
-namespace cuda::std {
+namespace cuda {
+
+namespace std {
+
 template <>
 class numeric_limits<thrust::complex<float>> {
   public:
@@ -70,7 +73,72 @@ class numeric_limits<thrust::complex<double>> {
     static constexpr bool has_infinity = true;
     static constexpr bool is_specialized = true;
 };
-}  // namespace cuda::std
+
+}  // namespace std
+
+template <>
+inline constexpr bool is_floating_point_v<thrust::complex<float>> = true;
+
+template <>
+inline constexpr bool is_floating_point_v<thrust::complex<double>> = true;
+
+}  // namespace cuda
+
+template <> struct NumericTraits<complex<float>>  : BaseTraits<FLOATING_POINT, true, unsigned int, thrust::complex<float>> {};
+template <> struct NumericTraits<complex<double>> : BaseTraits<FLOATING_POINT, true, unsigned long long, thrust::complex<double>> {};
+
+// need specializations for initial values
+namespace std {
+
+template <>
+class numeric_limits<thrust::complex<float>> {
+  public:
+    static __host__ __device__ thrust::complex<float> infinity() noexcept {
+        return thrust::complex<float>(std::numeric_limits<float>::infinity(), std::numeric_limits<float>::infinity());
+    }
+
+    static constexpr bool has_infinity = true;
+};
+
+template <>
+class numeric_limits<thrust::complex<double>> {
+  public:
+    static __host__ __device__ thrust::complex<double> infinity() noexcept {
+        return thrust::complex<double>(std::numeric_limits<double>::infinity(), std::numeric_limits<double>::infinity());
+    }
+
+    static constexpr bool has_infinity = true;
+};
+
+template <>
+class numeric_limits<__half> {
+  public:
+    static __host__ __device__ constexpr __half infinity() noexcept {
+        unsigned short inf_half = 0x7C00U;
+        #if (defined(_MSC_VER) && _MSC_VER >= 1920)
+        #if CUDA_VERSION < 11030
+        // WAR: CUDA 11.2.x + VS 2019 fails with __builtin_bit_cast
+        union caster {
+            unsigned short u_;
+            __half h_;
+        };
+        return caster{inf_half}.h_;
+        #else  // CUDA_VERSION < 11030
+        // WAR:
+        // - we want a constexpr here, but reinterpret_cast cannot be used
+        // - we want to use std::bit_cast, but it requires C++20 which is too new
+        // - we use the compiler builtin, fortunately both gcc and msvc have it
+        return __builtin_bit_cast(__half, inf_half);
+        #endif
+        #else
+        return *reinterpret_cast<__half*>(&inf_half);
+        #endif
+    }
+
+    static constexpr bool has_infinity = true;
+};
+
+}  // namespace std
 
 #else
 
