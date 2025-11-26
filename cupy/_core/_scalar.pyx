@@ -6,9 +6,36 @@ from cupy._core cimport _dtype
 
 
 cdef extern from 'numpy/ndarraytypes.h':
-    # Not exported by NumPy's `.pxd` due to being NumPy 2+ only.
+    """
+    // PyArray_Pack is only defined if NPY_TARGET_VERSION=NPY_2_0_API_VERSION
+    // which would hard disable 1.x support, so define it manually.
+    #ifndef PyArray_Pack
+    #define PyArray_Pack \
+            (*(int (*)(PyArray_Descr *, void *, PyObject *)) \
+        PyArray_API[65])
+    #endif
+
+    // Defined for NumPy 2.x builds, this define allows a local 1.x build.
+    #ifndef PyDataType_GetArrFuncs
+    static inline PyArray_ArrFuncs *
+    PyDataType_GetArrFuncs(const PyArray_Descr *descr)
+    {
+        return descr->f;
+    }
+    #endif
+    """
+    # The above can be replaced with `NPY_TARGET_VERSION=NPY_2_0_API_VERSION`
+    # as a define once NumPy 1.x is hard unsupported (raises on import).
     cdef int PyArray_Pack(cnp.dtype dtype, void *ptr, object value) except -1
 
+    ctypedef int PyArray_SetItemFunc(object, void *ptr, void *arr) except -1
+    cdef struct PyArray_ArrFuncs:
+        PyArray_SetItemFunc setitem
+    cdef PyArray_ArrFuncs *PyDataType_GetArrFuncs(cnp.dtype descr)
+
+
+# Needed on C-side but Python side check should be safe enough.
+cdef bint _IS_NUMPY_2 = numpy.__version__ >= '2'
 
 cdef dict _typenames_base = {
     numpy.dtype('float64'): 'double',
@@ -130,26 +157,39 @@ cdef class CScalar(CPointer):
 
     cdef _store_c_value(self):
         # If we ever support dtypes larger than this (e.g. strings)
-        # we will have to introduce a conditional allocation here.
+        # we will have to introduce a conditional allocation here and
+        # should memset memory to NULL (must if dtype NEEDS_INIT).
         assert self.descr.itemsize < sizeof(self._data)
         self.ptr = <void *>self._data  # make sure ptr points to _data.
 
         # NOTE(seberg): This uses assignment logic, which is very subtly
         # different from casting by rejecting nan -> int. This is *only*
-        # relevant for `casting="unsafe"` passed to ufuncs though...
-        # However, it means that we fail well for the weak scalar conversion.
-        PyArray_Pack(self.descr, self.ptr, self.value)
+        # relevant for `casting="unsafe"` passed to ufuncs with `dtype=`.
+        # It also means we fail for out of bound integers (NEP 50 change).
+        if _IS_NUMPY_2:
+            PyArray_Pack(self.descr, self.ptr, self.value)
+        elif self.descr.type in _dtype.all_type_chars_b:
+            # Path can't support e.g. structured dtypes but we know it's OK
+            # for all the above ones (last NULL needs an array sometimes).
+            PyDataType_GetArrFuncs(self.descr).setitem(
+                self.value, self.ptr, NULL)
+        else:
+            raise ValueError(f"Unsupported dtype {self.descr} (on NumPy 1.x)")
 
     cpdef apply_dtype(self, dtype):
-        cdef cnp.dtype npdtype = cnp.dtype(dtype)
-        if npdtype == self.descr:
-            self.descr = npdtype  # update dtype, may not be identical.
+        cdef cnp.dtype descr = cnp.dtype(dtype)
+        if descr.flags & (0x01 | 0x04):
+            # Can't support this, so make sure we raise appropriate error.
+            _dtype.check_supported_dtype(descr, True)
+            raise RuntimeError("Unsupported dtype {dtype} not raised earlier")
+        if descr == self.descr:
+            self.descr = descr  # update dtype, may not be identical.
             return
         if self.value is None:
             # Internal/theoretical but e.g. from_int32 has no value
             raise RuntimeError("Cannot modify dtype if value is None.")
 
-        self.descr = npdtype  # modify dtype if allocation succeeded
+        self.descr = descr  # modify dtype if allocation succeeded
         self._store_c_value()
 
     cpdef get_numpy_type(self):

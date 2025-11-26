@@ -333,10 +333,6 @@ def make_extensions(ctx: Context, compiler, use_cython):
     use_wheel_libs_rpath = (
         0 < len(ctx.wheel_libs) and not PLATFORM_WIN32)
 
-    # We don't support NumPy <2 anyway and use some new API.
-    settings['define_macros'].append(
-        ('NPY_TARGET_VERSION', 'NPY_2_0_API_VERSION'))
-
     # In the environment with CUDA 7.5 on Ubuntu 16.04, gcc5.3 does not
     # automatically deal with memcpy because string.h header file has
     # been changed. This is a workaround for that environment.
