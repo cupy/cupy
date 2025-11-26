@@ -9,14 +9,14 @@ cdef extern from 'numpy/ndarraytypes.h':
     """
     // PyArray_Pack is only defined if NPY_TARGET_VERSION=NPY_2_0_API_VERSION
     // which would hard disable 1.x support, so define it manually.
-    #ifndef PyArray_Pack
+    #if NPY_FEATURE_VERSION < NPY_2_0_API_VERSION
     #define PyArray_Pack \
             (*(int (*)(PyArray_Descr *, void *, PyObject *)) \
         PyArray_API[65])
     #endif
 
     // Defined for NumPy 2.x builds, this define allows a local 1.x build.
-    #ifndef PyDataType_GetArrFuncs
+    #if NPY_ABI_VERSION < 0x02000000
     static inline PyArray_ArrFuncs *
     PyDataType_GetArrFuncs(const PyArray_Descr *descr)
     {
@@ -181,7 +181,7 @@ cdef class CScalar(CPointer):
         if descr.flags & (0x01 | 0x04):
             # Can't support this, so make sure we raise appropriate error.
             _dtype.check_supported_dtype(descr, True)
-            raise RuntimeError("Unsupported dtype {dtype} not raised earlier")
+            raise RuntimeError(f"Unsupported dtype {dtype} (but not raised?)")
         if descr == self.descr:
             self.descr = descr  # update dtype, may not be identical.
             return
