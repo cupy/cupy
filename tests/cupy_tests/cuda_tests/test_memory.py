@@ -1333,7 +1333,7 @@ class TestMemoryAsyncPool(unittest.TestCase):
 
 
 @pytest.mark.skipif(sys.platform != 'linux',
-                    reason='madvise not supported on non-Linux platforms')
+                    reason='prefetch not supported on non-Linux platforms')
 def test_managed_memory_prefetch_basic():
     # Check that the prefetch API (and runtime API) seem to work.
     mem = memory.malloc_managed(1024)
