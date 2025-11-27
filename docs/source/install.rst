@@ -11,8 +11,8 @@ Requirements
     * If you have multiple versions of CUDA Toolkit installed, CuPy will automatically choose one of the CUDA installations.
       See :ref:`install_cuda` for details.
 
-    * This requirement is optional if you install CuPy from ``conda-forge``. However, you still need to have a compatible
-      driver installed for your GPU. See :ref:`install_cupy_from_conda_forge` for details.
+    * This requirement is optional if you install both CUDA and CuPy from either PyPI or conda-forge. However, you still need to have a compatible
+      driver installed for your GPU. See :ref:`install_cupy_from_pypi` and :ref:`install_cupy_from_conda_forge` for details.
 
 * `Python <https://python.org/>`_: v3.10 / v3.11 / v3.12 / v3.13
 
@@ -66,6 +66,8 @@ Part of the CUDA features in CuPy will be activated only when the corresponding 
 Installing CuPy
 ---------------
 
+.. _install_cupy_from_pypi:
+
 Installing CuPy from PyPI
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -81,6 +83,13 @@ Package names are different depending on your CUDA Toolkit version.
      - ``pip install cupy-cuda12x``
    * - **v13.x** (x86_64 / aarch64)
      - ``pip install cupy-cuda13x``
+
+By default, the above command only installs CuPy itself, assuming a CUDA Toolkit is already installed on the system. To use NVIDIA's CUDA component wheels
+(so as to quickly spinning up a fresh virtual environment without installing a system-wide CUDA Toolkit -- only the CUDA driver is needed -- and allowing
+smaller installation footprint and better interoperability with other Python GPU libraries), you can pass ``[ctk]`` to install them all as
+optional dependencies, e.g.::
+
+   $ pip install "cupy-cuda12x[ctk]"
 
 .. note::
 
@@ -108,30 +117,30 @@ Installing CuPy from Conda-Forge
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Conda is a cross-language, cross-platform package management solution widely used in scientific computing and other fields.
-The above ``pip install`` instruction is compatible with ``conda`` environments. Alternatively, for both Linux (x86_64,
-ppc64le, aarch64-sbsa) and
-Windows once the CUDA driver is correctly set up, you can also install CuPy from the ``conda-forge`` channel::
+The above ``pip install`` instruction is compatible with ``conda`` environments. Alternatively, for both Linux (x86_64, aarch64) and
+Windows once the CUDA driver is correctly set up, you can also install CuPy from the conda-forge channel::
 
     $ conda install -c conda-forge cupy
 
-and ``conda`` will install a pre-built CuPy binary package for you, along with the CUDA runtime libraries
-(``cudatoolkit`` for CUDA 11 and below, or ``cuda-XXXXX`` for CUDA 12 and above). It is not necessary to install CUDA Toolkit in advance.
+and ``conda`` will install a pre-built CuPy binary package for you, along with all needed CUDA runtime libraries.
+It is not necessary to install CUDA Toolkit in advance, and is equivalent to the wheel counterpart ``pip install cupy-cudaXX[ctk]``,
+but with everything installed from conda-forge instead of PyPI.
 
 If you aim at minimizing the installation footprint, you can install the ``cupy-core`` package::
 
     $ conda install -c conda-forge cupy-core
 
 which only depends on ``numpy``. None of the CUDA libraries will be installed this way, and it is your responsibility to install the needed
-dependencies yourself, either from conda-forge or elsewhere. This is equivalent of the ``cupy-cudaXX`` wheel installation.
+dependencies yourself, either from conda-forge or elsewhere. This is equivalent to the wheel counterpart ``pip install cupy-cudaXX`` (without any extras).
 
-Conda has a built-in mechanism to determine and install the latest version of ``cudatoolkit`` or any other CUDA components supported by your driver.
-However, if for any reason you need to force-install a particular CUDA version (say 11.8), you can do::
+Conda has a built-in mechanism to determine and install the latest version of any CUDA components supported by your CUDA driver.
+However, if for any reason you need to force-install a particular CUDA version (say 12.9), you can do::
 
-    $ conda install -c conda-forge cupy cuda-version=11.8
+    $ conda install -c conda-forge cupy cuda-version=12.9
 
 .. note::
 
-    cuTENSOR, and NCCL are available on ``conda-forge`` as optional dependencies. The following command can install them all at once::
+    cuTENSOR and NCCL are available on conda-forge as optional dependencies. The following command can install them all at once::
 
         $ conda install -c conda-forge cupy cutensor nccl
 
@@ -139,16 +148,13 @@ However, if for any reason you need to force-install a particular CUDA version (
 
 .. note::
 
-    If you encounter any problem with CuPy installed from ``conda-forge``, please feel free to report to `cupy-feedstock
+    If you encounter any problem with CuPy installed from conda-forge, please feel free to report to `cupy-feedstock
     <https://github.com/conda-forge/cupy-feedstock/issues>`_, and we will help investigate if it is just a packaging
-    issue in ``conda-forge``'s recipe or a real issue in CuPy.
+    issue in conda-forge's recipe or a real issue in CuPy.
 
 .. note::
 
-    If you did not install CUDA Toolkit by yourself, for CUDA 11 and below the ``nvcc`` compiler might not be available, as
-    the ``cudatoolkit`` package from ``conda-forge`` does not include the ``nvcc`` compiler toolchain. If you would like to use
-    it from a local CUDA installation, you need to make sure the version of CUDA Toolkit matches that of ``cudatoolkit`` to
-    avoid surprises. For CUDA 12 and above, ``nvcc`` can be installed on a per-``conda`` environment basis via
+    If you did not install CUDA Toolkit by yourself, for CUDA 12 and above, ``nvcc`` can be installed on a per-``conda`` environment basis via
 
         $ conda install -c conda-forge cuda-nvcc
 
@@ -307,6 +313,7 @@ If you have installed CUDA on the non-default directory or multiple CUDA version
 
 CuPy uses the first CUDA installation directory found by the following order.
 
+#. ``cuda-pathfinder``'s `documented search order <https://nvidia.github.io/cuda-python/cuda-pathfinder/latest/generated/cuda.pathfinder.load_nvidia_dynamic_lib.html>`_.
 #. ``CUDA_PATH`` environment variable.
 #. The parent directory of ``nvcc`` command. CuPy looks for ``nvcc`` command from ``PATH`` environment variable.
 #. ``/usr/local/cuda``

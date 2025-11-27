@@ -29,21 +29,12 @@ classifiers = [
   "Operating System :: Microsoft :: Windows",
 ]
 requires-python = ">=3.10"
-dependencies = [
-  "numpy>=1.24,<2.6", # see #4773
-]
 dynamic = [
   "version",
   "readme",  # long_description
+  "dependencies",  # install_requires
+  "optional-dependencies",  # extras_require
 ]
-
-[project.optional-dependencies]
-"all" = [
-  "scipy>=1.10,<1.17", # see #4773
-  "Cython>=3",
-  "optuna>=2.0",
-]
-"test" = ["packaging", "pytest>=7.2", "hypothesis>=6.37.2,<6.55.0", "mpmath"]
 
 [project.urls]
 "Homepage" = "https://cupy.dev/"
