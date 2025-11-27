@@ -552,19 +552,19 @@ out = a[out_i];
 
 
 _take_kernel = ElementwiseKernel(
-    'raw T a, S indices, uint32 ldim, uint32 cdim, uint32 rdim, '
+    'raw T a, S indices, int64 ldim, int64 cdim, int64 rdim, '
     'int64 index_range',
     'T out', _take_kernel_core, 'cupy_take')
 
 
 _take_kernel_scalar = ElementwiseKernel(
-    'raw T a, int64 indices, uint32 ldim, uint32 cdim, uint32 rdim, '
+    'raw T a, int64 indices, int64 ldim, int64 cdim, int64 rdim, '
     'int64 index_range',
     'T out', _take_kernel_core, 'cupy_take_scalar')
 
 
 _choose_kernel = ElementwiseKernel(
-    'S a, raw T choices, int32 n_channel',
+    'S a, raw T choices, int64 n_channel',
     'T y',
     'y = choices[i + n_channel * a]',
     'cupy_choose')
@@ -629,7 +629,7 @@ cdef _put_clip_kernel = ElementwiseKernel(
 
 cdef _create_scatter_kernel(name, code):
     return ElementwiseKernel(
-        'T v, S indices, int32 cdim, int32 rdim, int32 adim',
+        'T v, S indices, int64 cdim, int64 rdim, int64 adim',
         'raw T a',
         string.Template('''
             S wrap_indices = indices % adim;
