@@ -2358,7 +2358,7 @@ cpdef void warn_on_unsupported_std(tuple options):
                 )
         # TODO(leofang): Update this. We need C++17 now.
         elif '-std=c++03' in opt:
-            warnings.warn('CCCL requires c++11 or above')
+            warnings.warn('CCCL requires c++17 or above')
 
 
 cpdef tuple assemble_cupy_compiler_options(tuple options):

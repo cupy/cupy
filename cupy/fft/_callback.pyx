@@ -584,7 +584,7 @@ cdef class _JITCallbackManager(_CallbackManager):
                 raise ValueError('store callback is not given')
 
     cdef bytes compile_lto(self, str source, tuple options):
-        options += ('--std=c++11', '-I' + self._get_cuda_include())
+        options += ('--std=c++17', '-I' + self._get_cuda_include())
         # TODO(leofang): support log_stream & jitify
         return _compile_with_cache_cuda(
             source, options, None, get_cache_dir(), to_ltoir=True)
