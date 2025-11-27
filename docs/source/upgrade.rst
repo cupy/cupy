@@ -12,9 +12,9 @@ CuPy v14
 Support for NVIDIA CUDA component wheels
 ----------------------------------------
 
-CuPy v14 can be installed together with a minimal CUDA installation all from PyPI (ex: ``pip install cupy-cuda13x[ctk]``),
-allowing quickly spinning up a fresh virtual environment without a system-wide CUDA Toolkit (only the CUDA driver is needed),
-smaller installation footprint, and better interoperability with other Python GPU libraries. See :doc:`install` for details.
+CuPy v14 can be installed together with a minimal CUDA installation all from PyPI (ex: ``pip install "cupy-cuda13x[ctk]"``),
+allowing quickly spinning up a fresh virtual environment without any system-wide CUDA Toolkit pre-installed (only the CUDA driver is needed),
+thereby enabling smaller installation footprint and better interoperability with other Python GPU libraries. See :doc:`install` for details.
 
 Dropping cuDNN Support
 ----------------------
@@ -27,9 +27,9 @@ Users who need to access cuDNN functionality from Python should consider using `
 New cuFFT callback support
 --------------------------
 
-CuPy v14 supports cuFFT's new JIT LTO callbacks, which is much more performant (for both compiling and executing callbacks) and has cross-platform (Linux/Windows) support.
+CuPy v14 supports cuFFT's new `LTO callbacks <https://docs.nvidia.com/cuda/cufft/#cufft-callback-routines>`_, which are much more performant (for both compiling and executing callbacks) and has cross-platform (Linux/Windows) support.
 To use this feature, it requires the precense of nvJitLink (which is part of CUDA Toolkit and is available from pip/conda too) and cuFFT from CUDA 12.2+,
-and users should pass ``cb_ver="jit"`` to :func:~`cupy.fft.config.set_cufft_callbacks`.
+and users should pass ``cb_ver="jit"`` to :func:`~cupy.fft.config.set_cufft_callbacks`.
 
 Accompanying with this new feature, two new arguments ``cb_load_data``/``cb_store_data`` are added and the existing arguments ``cb_load_aux_arr``/``cb_store_aux_arr`` are deprecated.
 
@@ -49,7 +49,7 @@ The following :mod:`cupy` submodules have been removed, with replacements in :mo
 Change in :func:`cupy.cuda.is_available` Behavior
 -------------------------------------------------
 
-:func:`cupy.cuda.is_available` now guards against all CUDA errors and will return ``False`` instead of raising an exception.
+:attr:`cupy.cuda.is_available` now guards against all CUDA errors and will return ``False`` instead of raising an exception.
 This change improves compatibility with environments where CUDA is partially configured or unavailable, causing an exception to be raised in certain edge cases.
 In CuPy v14, the function consistently returns a boolean value and guarantees to not raise any exception.
 
@@ -672,7 +672,7 @@ Compatibility Matrix
      - 3.5~
      - 12.0~
      - 7.0~
-     - 2.0~
+     - 2.3~
      - 2.18~
      - n/a
      - 3.10~
