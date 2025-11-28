@@ -733,8 +733,8 @@ class TestHugeArrays:
             del res
 
             arr[indx, :] = cupy.array([[1], [2], [3]], dtype=cupy.int8)
-            # Sanity check (note that the result could be 1, 2, 3 in theory)
-            assert arr.sum() == 3 * 2**30 * 3
+            # Check 3 got written (order may not be strictly guaranteed)
+            assert arr.sum() == 2**30 * 3
         except MemoryError:
             pytest.skip("out of memory in test.")
 
