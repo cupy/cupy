@@ -24,6 +24,40 @@ All cuDNN-related functionality has been completely removed from CuPy.
 
 Users who need to access cuDNN functionality from Python should consider using `cuDNN Frontend <https://github.com/NVIDIA/cudnn-frontend>`_ instead, which provides direct access to the NVIDIA cuDNN library in both C++ and Python.
 
+NumPy 2 related changes
+-----------------------
+
+CuPy v14 follows NumPy 2 in most of its behavior. This means that type promotion rules
+changed in many places as per `NumPy 2 Migration Guide`_.
+
+.. _NumPy 2 Migration Guide: https://numpy.org/devdocs/numpy_2_0_migration_guide.html#changes-to-numpy-data-type-promotion
+
+Much code may not notice this, but some code may have to explicitly change
+the type of scalars:
+
+* Use Python scalars when possible if the scalar must not promote an array
+  (``cp.ones(3, dtype="float32") + cp.float64(3.)`` returns float64 now).
+* Type integers to allow unsafe casts ``uint8_arr[0] = cp.int8(-1)``
+
+Please refer to the NumPy documentation and NEP 50 for additional information.
+
+Minimal support for structured dtypes
+-------------------------------------
+
+CuPy v14 now accepts most structured dtypes when converting from NumPy or
+creating a new array with ``empty`` and ``zeros``.
+However, the only supported operation on these is accessing a single field::
+
+    arr[field_name]
+    arr[field_name] = value
+
+As of v14.0 any kernel launch with a structured dtype will fail
+(including ``arr.copy()``).
+
+Note that ``arr[field_name]`` must be sufficiently aligned for the GPU.
+This is not guaranteed by NumPy even with ``align=True`` as the GPU has
+larger alignment requirements.
+
 New cuFFT callback support
 --------------------------
 
