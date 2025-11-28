@@ -12,9 +12,9 @@ CuPy v14
 Support for NVIDIA CUDA component wheels
 ----------------------------------------
 
-CuPy v14 can be installed together with a minimal CUDA installation all from PyPI (ex: ``pip install "cupy-cuda13x[ctk]"``),
-allowing quickly spinning up a fresh virtual environment without any system-wide CUDA Toolkit pre-installed (only the CUDA driver is needed),
-thereby enabling smaller installation footprint and better interoperability with other Python GPU libraries. See :doc:`install` for details.
+CuPy v14 can be installed together with a minimal CUDA installation from PyPI (ex: ``pip install "cupy-cuda13x[ctk]"``),
+allowing to quickly spin up a fresh virtual environment without a pre-installed CUDA Toolkit (only the CUDA driver is needed).
+This enables a smaller installation footprint and better interoperability with other Python GPU libraries. See :doc:`install` for details.
 
 Dropping cuDNN Support
 ----------------------
@@ -62,8 +62,9 @@ New cuFFT callback support
 --------------------------
 
 CuPy v14 supports cuFFT's new `LTO callbacks <https://docs.nvidia.com/cuda/cufft/#cufft-callback-routines>`_, which are much more performant (for both compiling and executing callbacks) and has cross-platform (Linux/Windows) support.
-To use this feature, it requires the precense of nvJitLink (which is part of CUDA Toolkit and is available from pip/conda too) and cuFFT from CUDA 12.2+,
-and users should pass ``cb_ver="jit"`` to :func:`~cupy.fft.config.set_cufft_callbacks`.
+To use this feature pass ``cb_ver="jit"`` to :func:`~cupy.fft.config.set_cufft_callbacks`. The new callback requires
+nvJitLink and cuFFT from CUDA 12.2+. nvJitLink is part of the CUDA toolkit
+and also available from pip and conda.
 
 Accompanying with this new feature, two new arguments ``cb_load_data``/``cb_store_data`` are added and the existing arguments ``cb_load_aux_arr``/``cb_store_aux_arr`` are deprecated.
 
