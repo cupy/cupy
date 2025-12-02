@@ -185,6 +185,10 @@ def shaped_sparse_random(
         The sparse matrix with given shape, array module,
     """
     import scipy.sparse
+    import cupyx.scipy.sparse
+
+    if sp is None:
+        sp = cupyx.scipy.sparse
     n_rows, n_cols = shape
     numpy.random.seed(seed)
 

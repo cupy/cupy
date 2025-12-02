@@ -140,7 +140,9 @@ library_records['nccl'] = _nccl_records
 
 
 def _unpack_archive(filename, extract_dir):
-    kwargs = {} if sys.version_info < (3, 12) else {"filter": "data"}
+    kwargs = {"filter": "data"}
+    if sys.version_info < (3, 12) or filename.endswith(".zip"):
+        kwargs = {}
     try:
         shutil.unpack_archive(filename, extract_dir, **kwargs)
     except shutil.ReadError:

@@ -357,6 +357,9 @@ def cspline1d_eval(cj, newx, dx=1.0, x0=0):
     cspline1d : Compute cubic spline coefficients for rank-1 array.
 
     """
+    if cj.size == 0:
+        raise ValueError("Spline coefficients 'cj' must not be empty.")
+
     newx = (cupy.asarray(newx) - x0) / float(dx)
     res = cupy.zeros_like(newx, dtype=cj.dtype)
     if res.size == 0:
@@ -415,6 +418,9 @@ def qspline1d_eval(cj, newx, dx=1.0, x0=0):
     Edges are handled using mirror-symmetric boundary conditions.
 
     """
+    if cj.size == 0:
+        raise ValueError("Spline coefficients 'cj' must not be empty.")
+
     newx = (cupy.asarray(newx) - x0) / dx
     res = cupy.zeros_like(newx)
     if res.size == 0:

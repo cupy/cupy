@@ -660,15 +660,19 @@ def _compile_with_cache_cuda(
         # Write to disk cache
         cubin_hash = _hash_hexdigest(cubin).encode('ascii')
 
-        # shutil.move is not atomic operation, so it could result in a
-        # corrupted file. We detect it by appending a hash at the beginning
-        # of each cache file. If the file is corrupted, it will be ignored
-        # next time it is read.
+        # Replacing the file should be atomic. But we add a hash for safety
+        # to detect possible corruption.
         with tempfile.NamedTemporaryFile(dir=cache_dir, delete=False) as tf:
             tf.write(cubin_hash)
             tf.write(cubin)
             temp_path = tf.name
-        shutil.move(temp_path, path)
+
+        try:
+            os.replace(temp_path, path)
+        except PermissionError:
+            # Windows may refuse to replace the file, assume this is a race
+            # and the existing file is OK (but keep using our copy)
+            pass
 
         # Save .cu source file along with .cubin
         if _get_bool_env_variable('CUPY_CACHE_SAVE_CUDA_SOURCE', False):
@@ -987,15 +991,19 @@ def _compile_with_cache_hip(source, options, arch, cache_dir, extra_source,
         # Write to disk cache
         binary_hash = _hash_hexdigest(binary).encode('ascii')
 
-        # shutil.move is not atomic operation, so it could result in a
-        # corrupted file. We detect it by appending a hash at the beginning
-        # of each cache file. If the file is corrupted, it will be ignored
-        # next time it is read.
+        # Replacing the file should be atomic. But we add a hash for safety
+        # to detect possible corruption.
         with tempfile.NamedTemporaryFile(dir=cache_dir, delete=False) as tf:
             tf.write(binary_hash)
             tf.write(binary)
             temp_path = tf.name
-        shutil.move(temp_path, path)
+
+        try:
+            os.replace(temp_path, path)
+        except PermissionError:
+            # Windows may refuse to replace the file, assume this is a race
+            # and the existing file is OK (but keep using our copy)
+            pass
 
         # Save .cu source file along with .hsaco
         if _get_bool_env_variable('CUPY_CACHE_SAVE_CUDA_SOURCE', False):
