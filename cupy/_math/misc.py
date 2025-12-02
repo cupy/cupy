@@ -79,8 +79,6 @@ def convolve(a, v, mode='full'):
 
 
 def _fft_convolve(a1, a2, mode):
-    import cupyx.scipy.fft
-
     offset = 0
     if a1.shape[-1] < a2.shape[-1]:
         a1, a2 = a2, a1
