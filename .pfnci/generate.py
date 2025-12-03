@@ -264,11 +264,15 @@ class LinuxGenerator:
                 cudamajor = cuda.split('.')[0]
                 spltmajor = cusparselt.split('.')[0]
                 if apt:
-                    packages.append(f'libcusparselt{spltmajor}-cuda-{cudamajor}={spec}')
-                    packages.append(f'libcusparselt{spltmajor}-dev-cuda-{cudamajor}={spec}')
+                    packages.append(
+                        f'libcusparselt{spltmajor}-cuda-{cudamajor}={spec}')
+                    packages.append(
+                        f'libcusparselt{spltmajor}-dev-cuda-{cudamajor}={spec}')
                 else:
-                    packages.append(f'libcusparselt{spltmajor}-cuda-{cudamajor}-{spec}')
-                    packages.append(f'libcusparselt{spltmajor}-devel-cuda-{cudamajor}-{spec}')
+                    packages.append(
+                        f'libcusparselt{spltmajor}-cuda-{cudamajor}-{spec}')
+                    packages.append(
+                        f'libcusparselt{spltmajor}-devel-cuda-{cudamajor}-{spec}')
             return packages
         elif matrix.rocm is not None:
             return self.schema['rocm'][matrix.rocm]['packages']  # type: ignore[no-any-return] # NOQA
