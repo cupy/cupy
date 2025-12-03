@@ -42,6 +42,7 @@ class TestSize(unittest.TestCase):
 
     @testing.numpy_cupy_equal()
     @testing.slow
+    @pytest.mark.thread_unsafe(reason="Allocation too large.")
     def test_size_huge(self, xp):
         a = xp.ndarray(2 ** 32, 'b')  # 4 GiB
         return xp.size(a)

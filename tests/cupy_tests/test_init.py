@@ -70,6 +70,7 @@ class TestAvailable(unittest.TestCase):
         assert available
 
 
+@pytest.mark.thread_unsafe("modifies environment variables in an unsafe way")
 class TestNotAvailable(unittest.TestCase):
 
     def setUp(self):

@@ -403,6 +403,7 @@ class _TestRawBase:
     _nvcc_ver = None
     _nvrtc_ver = None
 
+    @classmethod
     def setup_class(cls):
         if getattr(cls, 'clean_up', False):
             if cupy.cuda.runtime.is_hip:
