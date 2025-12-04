@@ -68,8 +68,8 @@ def test_major_version():
 
 
 def test_get_local_runtime_version_after_import():
-    """Test that get_local_runtime_version works after importing cupy.cuda.runtime.
-    
+    """Test get_local_runtime_version after importing cupy.cuda.runtime.
+
     This is a regression test for issue #9473.
     When users explicitly import cupy.cuda.runtime, it should not break
     cupy.cuda.get_local_runtime_version() which depends on the private
@@ -77,7 +77,7 @@ def test_get_local_runtime_version_after_import():
     """
     # Import cupy.cuda.runtime explicitly to trigger the issue
     import cupy.cuda.runtime  # noqa: F401
-    
+
     # This should work without raising AttributeError
     version = cupy.cuda.get_local_runtime_version()
     assert isinstance(version, int)
