@@ -12,6 +12,8 @@ from cupyx import time  # NOQA
 from cupyx import scipy  # NOQA
 from cupyx import optimizing  # NOQA
 
+from cupyx.tools._gpu_timeit import load_ipython_extension  # noqa: F401
+
 from cupyx._ufunc_config import errstate  # NOQA
 from cupyx._ufunc_config import geterr  # NOQA
 from cupyx._ufunc_config import seterr  # NOQA
