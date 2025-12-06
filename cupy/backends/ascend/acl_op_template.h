@@ -4,9 +4,9 @@
 #include <iostream>
 #include <utility> // for std::forward
 
-
 #include "acl/acl.h"
 #include "aclnn/opdev/common_types.h"
+#include "acl_type_traits.h"
 
 using AclnnKernelFunc = aclnnStatus (*)(void* workspace, uint64_t workspaceSize, 
                                        aclOpExecutor* executor, aclrtStream stream);
@@ -36,7 +36,7 @@ inline aclDataType GetDataType(const aclTensor* out, const aclTensor* self = nul
 }
 
 /**
- * 根据源张量创建新张量，保持相同形状但使用指定数据类型
+ * 根据源张量创建新张量，保持相同形状但使用指定数据类型, numpy.empty_like()
  * 
  * @param source 源张量指针
  * @param dtype 目标数据类型
@@ -221,8 +221,9 @@ aclError aclTernaryOpRun(
 {
     const aclScalar* alpha = nullptr;
     if constexpr (std::is_scalar_v<Scalar>  && ! std::is_pointer_v<Scalar>) {
-        float alphaValue = scalar;
-        alpha = aclCreateScalar(&alphaValue, ACL_FLOAT);
+        aclDataType dtype = ACL_DT_UNDEFINED;
+        aclGetDataType(selfTensor, &dtype);
+        alpha = CreateAclScalar(scalar, dtype);
     } else {
         alpha = scalar;
     }
@@ -262,15 +263,21 @@ aclError aclTernaryOpRun(
     return ACL_SUCCESS;
 }
 
-// output = self <op> other * scalar,  3 operands here scalar is one operand
+// output = self <op> other * scalar,  3 operands here `scalar` is one operand
 template<typename WsFunc, typename Operand, typename Scalar, typename... Args>
 aclError aclTernaryInplaceOpRun(
     aclTensor* selfTensor, Operand otherTensor, Scalar scalar,
     WsFunc wsfunc, AclnnKernelFunc kfunc, aclrtStream stream, bool sync,
     Args&&... args)
 {
-    float alphaValue = scalar; // TODO
-    aclScalar* alpha = aclCreateScalar(&alphaValue, ACL_FLOAT);
+    const aclScalar* alpha = nullptr;
+    if constexpr (std::is_scalar_v<Scalar>  && ! std::is_pointer_v<Scalar>) {
+        aclDataType dtype = ACL_DT_UNDEFINED;
+        aclGetDataType(selfTensor, &dtype);
+        alpha = CreateAclScalar(scalar, dtype);
+    } else {
+        alpha = scalar;
+    }
 
     uint64_t workspaceSize = 0;
     aclOpExecutor* executor = nullptr;

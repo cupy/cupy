@@ -32,6 +32,7 @@ TODO:
     + statistics ops: passing string arg
 
 ## 2. 核心op支持情况 ( see also Array API standard)
+https://data-apis.org/array-api/latest/API_specification/index.html
 
 ### 2.1 introduction to Array API
 https://github.com/data-apis/array-api
@@ -58,7 +59,7 @@ z_gpu = cpx.matmul(y_gpu, y_gpu)
 ```
 
 ### 2.2 math ops: 
-+ 未注册  einsum, cbrt(cube root), fix (Trunc), rint (Round), round/around, convolve (?),
++ 未注册  einsum, cbrt(cube root, not std api), fix (Trunc), rint (Round), round/around, convolve (?),
 + 自己实现: radians (deg2rad), degrees (rad2deg), deg2rad, rad2deg. lcm, divmod 
 + missing 数值计算: gradient, interp, trapezoid, diff
 + missing: frexp, ldexp ()
@@ -88,13 +89,19 @@ TODO   but why `aclnnEqual`has no tensor-scalar version?
 
 ### 2.6 statistics reduction ops: 
 + registered: median, var, mean, std,  bincount, histgram (histc), 主要是看nan怎么处理, 部分做了注册
+
 + missing: average, quantile,  percentile, vecter op实现难度应该不太大
 + ptp (Range of values (maximum - minimum) along an axis.) -> Aminmax
 
 TODO: passing keyword args
 
-### 2.7 set
+### 2.7 set op
 + `is1d`
+Array Std support only:
++ unique_all
++ unique_counts
++ unique_inverse
++ unique_values
 
 ### 2.8 random and distribution
 
@@ -117,6 +124,8 @@ AsNumpy project has impl
 2. multiple NPU intialization yet design/tested
 
 ### 3.2 dtype
+`get_default_dtype()` torch has such API, while cupy/numpy has no such, float64 is the default
+
 0. most ACLOP does not support `double`, `int64` while `+-*/` seems supported but slow
 1. `add` (all algorith op) support double vector, int64 vector,  but it is slow, probably done by AICPU
 2. matrix/linalgo: `dot/matmul` support only float32, float16, bfloat
@@ -127,7 +136,8 @@ AsNumpy project has impl
 6. if two operands have diff dtype, cupy will do promote_types in `ElementwiseKernel`
 
 ### 3.3  shape
-
+1. `astype()`  involved cast op
+https://data-apis.org/array-api/latest/API_specification/index.html
 2. CANN aclnn op kernel inside can deal with broadcast, just as pytorch/numpy, while cupy deal with itself not in kernel
 
 ### 3.4 notes

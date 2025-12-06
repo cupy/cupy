@@ -213,22 +213,22 @@ extern "C" {
 
     // ascend ADD is ternary op with one extra scalar coeff, so can not use the macro to declare
     aclError aclop_Add(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream) {
-        float alpha = 1.0f;
+        double alpha = 1.0;  // double will be converted to aclScalar of the same dtype of self aclTensor
         return aclTernaryOpRun(self, other, alpha, out,
         aclnnAddGetWorkspaceSize, aclnnAdd, stream, false);
     }
     aclError aclop_InplaceAdd(aclTensor* self, const aclTensor* other, aclrtStream stream) {
-        float alpha = 1.0f;
+        double alpha = 1.0;
         return aclTernaryInplaceOpRun(self, other, alpha,
         aclnnInplaceAddGetWorkspaceSize, aclnnInplaceAdd, stream, false);
     }
     aclError aclop_Sub(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream) {
-        float alpha = 1.0f;
+        double alpha = 1.0;
         return aclTernaryOpRun(self, other, alpha, out,
         aclnnSubGetWorkspaceSize, aclnnSub, stream, false);
     }
     aclError aclop_InplaceSub(aclTensor* self, const aclTensor* other, aclrtStream stream) {
-        float alpha = 1.0f;
+        double alpha = 1.0;
         return aclTernaryInplaceOpRun(self, other, alpha,
         aclnnInplaceSubGetWorkspaceSize, aclnnInplaceSub, stream, false);
     }

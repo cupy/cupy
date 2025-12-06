@@ -113,6 +113,7 @@
                 tl, dim, outs[0]);
         } else {
             std::cout << "Error:" <<  __FUNCTION__  << " take args: tensorList, axis, out) \n";
+            PrintArgs(__func__, args, kwargs, std::cout);
             return ACL_ERROR_INVALID_PARAM;
         }
     }
@@ -137,6 +138,7 @@
                 ins[0], axis, outs[0]);
         } else {
             std::cout << "Error:" <<  __FUNCTION__  << " take input tensors (self), arg axis, and out tensor \n";
+            PrintArgs(__func__, args, kwargs, std::cout);
             return ACL_ERROR_INVALID_PARAM;
         }
     }
@@ -206,6 +208,7 @@
             return aclInplaceBinaryOpRun(self, ins[0],
                 aclnnInplaceFillTensorGetWorkspaceSize, aclnnInplaceFillTensor, stream, false);
         } else {
+            PrintArgs(__func__, args, kwargs, std::cout);
             return ACL_ERROR_INVALID_PARAM;
         }
     }
@@ -302,7 +305,7 @@
             return aclIrregularOpRun(aclnnRoundDecimalsGetWorkspaceSize, aclnnRoundDecimals, stream,
                 self, decimals, out);
         } else {
-            std::cout << "ASCEND Error: Round() take a tensor and a int as input parameters\n";
+            PrintArgs(__func__, args, kwargs, std::cout);
             return ACL_ERROR_INVALID_PARAM;
         }
     }
@@ -318,7 +321,9 @@
             return aclTernaryOpRun(self, amin, amax, out,
                 aclnnClampGetWorkspaceSize, aclnnClamp, stream, false);
         } else {
+            PrintArgs(__func__, args, kwargs, std::cout);
             std::cout << "ASCEND: cupy/numpy support both amax and amin can be array/tensor, yet impl \n";
+            return ACL_ERROR_INVALID_PARAM;
         }
     }
 

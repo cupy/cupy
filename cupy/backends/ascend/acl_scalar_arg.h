@@ -13,6 +13,7 @@
 #include "acl/acl.h"
 #include "aclnn/opdev/common_types.h"
 #include "aclnn/opdev/data_type_utils.h"
+#include "acl_type_traits.h"
 
 using KwargsType = std::unordered_map<std::string, const aclScalar*>;
 using ArgsType = std::vector<const aclScalar*>;
@@ -46,27 +47,6 @@ bool HasScalarKwarg(const KwargsType& kargs, std::string key)
     }
 }
 
-
-// 获取类型名称的辅助函数
-// template<typename T>
-// constexpr const char* type_name() {
-//     if constexpr (std::is_same_v<T, int32_t>) return "int32_t";
-//     else if constexpr (std::is_same_v<T, float>) return "float";
-//     else if constexpr (std::is_same_v<T, double>) return "double";
-//     else if constexpr (std::is_same_v<T, bool>) return "bool";
-//     else return "unknown";
-// }
-
-// // 获取aclScalar类型名称
-// const char* get_acl_scalar_type_name(aclScalar::DataType type) {
-//     switch (type) {
-//         case aclScalar::DataType::INT32: return "int32_t";
-//         case aclScalar::DataType::FLOAT: return "float";
-//         case aclScalar::DataType::DOUBLE: return "double";
-//         case aclScalar::DataType::BOOL: return "bool";
-//         default: return "unknown";
-//     }
-// }
 
 // 整数类型转换
 template<typename ToScalarType> ToScalarType CheckIntegerArg(double source_value, op::DataType dtype,
@@ -232,12 +212,47 @@ ToScalarType GetScalarArg(const ArgsType& args, int argIndex, const KwargsType& 
     } else if (argIndex >= 0 && argIndex < static_cast<int>(args.size())) {
         arg = args.at(argIndex);
     } else {
-        std::cerr << "WARNING: Failed to get argument from args list or kargs dict, use the default scalar value\n";
+        std::cerr << "WARNING: Failed to get argument from args list or kargs dict, "
+        "use the default scalar value\n";
     }
     if (arg) {
         scalar = ToScalarArg<ToScalarType>(arg);
     }
     return scalar;
+}
+
+
+void PrintArgs(const char* func, const ArgsType& args, const KwargsType& kwargs, std::ostream& os) {
+    // 1. 打印位置参数信息
+    os << "=== function name: " << func << " ===" << std::endl;
+    os << "=== Positional Arguments (Args) ===" << "Count: " << args.size() << std::endl;
+    
+    for (size_t i = 0; i < args.size(); ++i) {
+        os << "  Args[" << i << "]: ";
+        if (args[i] == nullptr) {
+            os << "NULL pointer" << std::endl;
+            continue;
+        }
+        aclDataType dtype = ACL_DT_UNDEFINED; // TODO
+        os << "Type=" << aclDtypeToString(dtype) << ", Value=";
+        PrintScalarValue(args[i], os);
+        os << std::endl;
+    }
+    
+    // 2. 打印关键字参数信息
+    os << "\n=== Keyword Arguments (Kwargs) ===" << "Count: " << kwargs.size() << std::endl;
+    for (const auto& pair : kwargs) {
+        os << "  Kwargs['" << pair.first << "']: ";
+        
+        if (pair.second == nullptr) {
+            os << "NULL pointer" << std::endl;
+            continue;
+        }
+        aclDataType dtype = ACL_DT_UNDEFINED; // TODO
+        os << "Type=" << aclDtypeToString(dtype) << ", Value=";
+        PrintScalarValue(pair.second, os);
+        os << std::endl;
+    }
 }
 
 #endif // header file
