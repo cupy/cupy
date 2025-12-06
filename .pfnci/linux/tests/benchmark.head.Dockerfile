@@ -21,6 +21,9 @@ ENV PATH "/usr/lib/ccache:${PATH}"
 ENV CUPY_INCLUDE_PATH=/usr/include/libcutensor/13:${CUPY_INCLUDE_PATH}
 ENV CUPY_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu/libcutensor/13:${CUPY_LIBRARY_PATH}
 ENV LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu/libcutensor/13:${LD_LIBRARY_PATH}
+ENV CUPY_INCLUDE_PATH=/usr/include/libcusparseLt/13:${CUPY_INCLUDE_PATH}
+ENV CUPY_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu/libcusparseLt/13:${CUPY_LIBRARY_PATH}
+ENV LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu/libcusparseLt/13:${LD_LIBRARY_PATH}
 RUN git clone https://github.com/pyenv/pyenv.git /opt/pyenv
 ENV PYENV_ROOT "/opt/pyenv"
 ENV PATH "${PYENV_ROOT}/shims:${PYENV_ROOT}/bin:${PATH}"

@@ -170,6 +170,26 @@ class LinuxGenerator:
                 ':${LD_LIBRARY_PATH}'
             )
 
+        # Define env vars to discover cuTENSOR during build/runtime.
+        if matrix.cusparselt is not None:
+            # The following assumes cuTENSOR 2.3+ package layout.
+            cuda_major = matrix.cuda.split('.')[0]
+            lines.append(
+                'ENV CUPY_INCLUDE_PATH='
+                f'/usr/include/libcusparseLt/{cuda_major}'
+                ':${CUPY_INCLUDE_PATH}'
+            )
+            lines.append(
+                'ENV CUPY_LIBRARY_PATH='
+                f'/usr/lib/x86_64-linux-gnu/libcusparseLt/{cuda_major}'
+                ':${CUPY_LIBRARY_PATH}'
+            )
+            lines.append(
+                'ENV LD_LIBRARY_PATH='
+                f'/usr/lib/x86_64-linux-gnu/libcusparseLt/{cuda_major}'
+                ':${LD_LIBRARY_PATH}'
+            )
+
         # Set environment variables for ROCm.
         if matrix.rocm is not None:
             lines += [
