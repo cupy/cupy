@@ -81,6 +81,8 @@
 #include <aclnnop/aclnn_equal.h>
 #include <aclnnop/aclnn_ne_scalar.h>
 #include <aclnnop/aclnn_ne_tensor.h>
+#include <aclnnop/aclnn_eq_scalar.h>
+#include <aclnnop/aclnn_eq_tensor.h>
 
 // bitwise op: and not not xor
 #include "aclnnop/aclnn_bitwise_and_tensor.h"
@@ -180,7 +182,9 @@ extern "C" {
     DECLARE_ACL_BINARY_OP(LeTensor)
     DECLARE_ACL_BINARY_SCALAR_OP(LeScalar)
 
-    DECLARE_ACL_BINARY_OP(Equal) // no inplace version, no scalar version
+    // Equal is  all(equal(tensor1, tensor2)) -> scalar
+    DECLARE_ACL_BINARY_OP(EqTensor)
+    DECLARE_ACL_BINARY_SCALAR_OP(EqScalar)
     DECLARE_ACL_BINARY_SCALAR_OP(NeScalar)
     DECLARE_ACL_BINARY_OP(NeTensor)
     // IsClose() has extra args: double rtol, double atol, bool equal_nan

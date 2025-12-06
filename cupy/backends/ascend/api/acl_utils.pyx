@@ -642,12 +642,13 @@ cdef extern from "../acl_math_ops.h" nogil:
     aclError aclop_GtTensor(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream)
     aclError aclop_LtTensor(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream)
     aclError aclop_NeTensor(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream)
-    aclError aclop_Equal(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream)
+    aclError aclop_EqTensor(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream)
     # scalar operand
     aclError aclop_GeScalar(const aclTensor* self, const aclScalar* other, aclTensor* out, aclrtStream stream)
     aclError aclop_LeScalar(const aclTensor* self, const aclScalar* other, aclTensor* out, aclrtStream stream)
     aclError aclop_GtScalar(const aclTensor* self, const aclScalar* other, aclTensor* out, aclrtStream stream)
     aclError aclop_LtScalar(const aclTensor* self, const aclScalar* other, aclTensor* out, aclrtStream stream)
+    aclError aclop_EqScalar(const aclTensor* self, const aclScalar* other, aclTensor* out, aclrtStream stream)
     aclError aclop_NeScalar(const aclTensor* self, const aclScalar* other, aclTensor* out, aclrtStream stream)
 
     aclError aclop_IsInf(const aclTensor* self, aclTensor* out, aclrtStream stream)
@@ -795,8 +796,10 @@ cdef void register_math_operators():
     register_acl_ufunc("ascend_less", BINARY_OP, func_union)
     func_union.scalar_binary_op = aclop_LtScalar
     register_acl_ufunc("ascend_less", SCALAR_BINARY_OP, func_union)
-    func_union.binary_op = aclop_Equal
+    func_union.binary_op = aclop_EqTensor
     register_acl_ufunc("ascend_equal", BINARY_OP, func_union)
+    func_union.scalar_binary_op = aclop_EqScalar
+    register_acl_ufunc("ascend_equal", SCALAR_BINARY_OP, func_union)
     func_union.binary_op = aclop_NeTensor
     register_acl_ufunc("ascend_not_equal", BINARY_OP, func_union)
     func_union.scalar_binary_op = aclop_NeScalar
