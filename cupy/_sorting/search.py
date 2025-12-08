@@ -433,7 +433,7 @@ def _searchsorted(a, v, side, sorter, assume_increasing):
         if not isinstance(v, int | float | complex):
             raise NotImplementedError(
                 'Only python scalars or ndarrays are supported for v')
-        v = cupy.asarray(v, dtype=a.dtype)
+        v = cupy.asarray(v)
 
     if a.ndim > 1:
         raise ValueError('object too deep for desired array')

@@ -699,7 +699,7 @@ class TestSearchSorted:
         x = testing.shaped_arange(self.shape, xp, dtype)
         bins = xp.array(self.bins)
         y = xp.searchsorted(bins, x, side=self.side)
-        y1 = xp.searchsorted(bins, 2, side=self.side)   # python scalar for `v`
+        y1 = xp.searchsorted(bins, 42.5, side=self.side)   # python scalar for `v`
         return y, y1
 
     @testing.for_all_dtypes(no_bool=True)
