@@ -699,7 +699,8 @@ class TestSearchSorted:
         x = testing.shaped_arange(self.shape, xp, dtype)
         bins = xp.array(self.bins)
         y = xp.searchsorted(bins, x, side=self.side)
-        y1 = xp.searchsorted(bins, 42.5, side=self.side)   # python scalar for `v`
+        # python scalar for `v`
+        y1 = xp.searchsorted(bins, 42.5, side=self.side)
         return y, y1
 
     @testing.for_all_dtypes(no_bool=True)
@@ -708,6 +709,15 @@ class TestSearchSorted:
         x = testing.shaped_arange(self.shape, xp, dtype)
         bins = xp.array(self.bins)
         y = bins.searchsorted(x, side=self.side)
+        return y,
+
+
+class TestSearchSortedScalar:
+    @pytest.mark.parametrize('side', ['left', 'right'])
+    @pytest.mark.parametrize('v', [-1.0, 0.0, 1.0, 1.5, 2.0, 4.0, 4.5])
+    @testing.numpy_cupy_array_equal()
+    def test_searchsorted_scalar(self, xp, v, side):
+        y = xp.searchsorted(xp.arange(3), v)
         return y,
 
 
