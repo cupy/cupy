@@ -5,6 +5,7 @@ from collections import namedtuple
 
 from cupy._core import _dtype
 from cupy._core.core import _ndarray_base
+from cupy._core._scalar cimport CScalar
 from libc.stdint cimport int32_t, int16_t
 from libcpp.unordered_map cimport unordered_map as cpp_map
 from cython.operator cimport dereference as deref, preincrement as inc
@@ -93,7 +94,6 @@ cdef aclDataType numpy_to_acl_dtype(dtype,
         print('ASCEND: DEBUG dtype is not supported: {}'.format(dtype))
         return aclDataType.ACL_DT_UNDEFINED
 
-
 cdef aclScalar* cupy_scalar_to_acl_scalar(_cupy_scalar s) except*:
     """
     将 CuPy 标量对象转换为 aclScalar。
@@ -166,7 +166,7 @@ cdef aclScalar* cupy_scalar_to_acl_scalar(_cupy_scalar s) except*:
                 dtype = ACL_COMPLEX128
             else:
                 raise TypeError("Complex scalar is not supported yet, TODO")
-        elif s.kind == 'S':  # string type
+        elif s.kind == 'S':  # string type is not supported by cupy.CScalar
             raise TypeError("string scalar is not supported yet, TODO")
         elif s.kind == 'b':  # bool
             value_ptr = PyMem_Malloc(sizeof(bint))
@@ -436,10 +436,15 @@ cdef aclError launch_general_func(str opname, sequence ins, sequence outs, list 
         typ = type(op)
         if issubclass(typ, _ndarray_base):
             intensors.push_back(cupy_ndarray_to_acl_tensor(op))
-        elif issubclass(typ, _ndarray_base):
+        elif issubclass(typ, CScalar):
             acl_args.push_back(cupy_scalar_to_acl_scalar(op))
+        else:
+            print("Ascend DEBUG: operand is neither ndarray nor CScalar, skip it")
     for cupy_scalar in args:
-        acl_args.push_back(cupy_scalar_to_acl_scalar(cupy_scalar))
+        if issubclass(typ, CScalar):
+            acl_args.push_back(cupy_scalar_to_acl_scalar(cupy_scalar))
+        else:
+            print("Ascend DEBUG: ufunc's args is neither ndarray nor CScalar, skip it")
 
     cdef vector[aclTensor*] outtensors
     for op in outs:
@@ -1031,6 +1036,7 @@ cdef void register_reduction_operators():
 cdef extern from "../acl_general_ops.h" nogil:
     aclError aclop_Copy(const aclTensor* self,  aclTensor* out, aclrtStream stream)
     aclError aclop_Nonzero(const aclTensor* self,  aclTensor* out, aclrtStream stream)
+
     aclError aclop_Fill(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
         const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
 
@@ -1056,6 +1062,7 @@ cdef extern from "../acl_general_ops.h" nogil:
         const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
     aclError aclop_Heaviside(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
         const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
+
 
 cdef void register_irregular_operators():
     cdef FuncPtrUnion func_union

@@ -24,6 +24,7 @@ cdef extern from "acl/acl.h" nogil:
         ACL_UINT64 = 10,
         ACL_DOUBLE = 11,
         ACL_BOOL = 12,
+        ACL_STRING = 13,
         ACL_COMPLEX32 = 33,
         ACL_COMPLEX64 = 16,
         ACL_COMPLEX128 = 17,

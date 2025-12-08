@@ -234,6 +234,20 @@ extern "C" {
     }
     DECLARE_ACL_BINARY_OPS_FUNC(Mul)
     DECLARE_ACL_BINARY_OPS_FUNC(Div)
+    // Tensor op Scalar
+    DECLARE_ACL_BINARY_SCALAR_OP(Muls)
+    DECLARE_ACL_BINARY_SCALAR_OP(Divs)
+    aclError aclop_Adds(const aclTensor* self, const aclScalar* other, aclTensor* out, aclrtStream stream) {
+        double alpha = 1.0;
+        return aclTernaryOpRun(self, other, alpha, out,
+        aclnnAddsGetWorkspaceSize, aclnnAdds, stream, false);
+    }
+    aclError aclop_Subs(const aclTensor* self, const aclScalar* other, aclTensor* out, aclrtStream stream) {
+        double alpha = 1.0;
+        return aclTernaryOpRun(self, other, alpha, out,
+        aclnnSubsGetWorkspaceSize, aclnnSubs, stream, false);
+    }
+
     // true_divide == divide
     DECLARE_ACL_BINARY_OPS_FUNC(FloorDivide) // python  `//` int div op, output int
     DECLARE_ACL_BINARY_OPS_FUNC(FmodTensor)  // for float and ints
@@ -263,20 +277,6 @@ extern "C" {
         aclDestroyTensor(temp);
         aclDestroyTensor(gcd);
         return ret;
-    }
-
-    // Tensor op Scalar
-    DECLARE_ACL_BINARY_SCALAR_OP(Muls)
-    DECLARE_ACL_BINARY_SCALAR_OP(Divs)
-    aclError aclop_Adds(const aclTensor* self, const aclScalar* other, aclTensor* out, aclrtStream stream) {
-        float alpha = 1.0f;
-        return aclTernaryOpRun(self, other, alpha, out,
-        aclnnAddsGetWorkspaceSize, aclnnAdds, stream, false);
-    }
-    aclError aclop_Subs(const aclTensor* self, const aclScalar* other, aclTensor* out, aclrtStream stream) {
-        float alpha = 1.0f;
-        return aclTernaryOpRun(self, other, alpha, out,
-        aclnnSubsGetWorkspaceSize, aclnnSubs, stream, false);
     }
 
 

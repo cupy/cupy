@@ -27,6 +27,7 @@ inline aclTensorList* ToAclTensorList(const std::vector<const aclTensor*>& tempV
     return tensorList;
 }
 
+// check keyword kargs first then position args
 bool HasScalarArg(const ArgsType& args, int argIndex, const KwargsType& kargs, std::string key)
 {
     if (kargs.find(key) != kargs.end()) {
