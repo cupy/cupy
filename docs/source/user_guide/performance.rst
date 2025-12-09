@@ -76,7 +76,82 @@ When running CI/CD to test CuPy or any downstream packages that heavily rely on 
 In-depth profiling
 ------------------
 
-Under construction. To mark with NVTX/rocTX ranges, you can use the :func:`cupyx.profiler.time_range` API. To start/stop the profiler, you can use the :func:`cupyx.profiler.profile` API.
+To mark with NVTX/rocTX ranges, you can use the :func:`cupyx.profiler.time_range` API. To start/stop the profiler, you can use the :func:`cupyx.profiler.profile` API.
+
+Profiling kernels with Nsight Compute
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+When profiling CuPy kernels (whether they are part of the CuPy codebase or user-provided kernels using 
+:class:`~cupy.RawKernel`, :class:`~cupy.RawModule`, :class:`~cupy.ElementwiseKernel`, etc.), 
+it is often useful to correlate the source code with performance metrics in tools like NVIDIA Nsight Compute. 
+This allows you to analyze which lines translate to which instructions and see the time each one takes.
+
+The trick is to leverage CuPy's ability to dump kernel source code to disk and then load it into the profiler.
+
+Prerequisites
+.............
+
+1. CuPy can dump the kernel source to disk if the environment variable :envvar:`CUPY_CACHE_SAVE_CUDA_SOURCE` is set to 1.
+2. When running ``ncu`` with ``--import-source 1``, it may raise a warning, but as long as ``-lineinfo`` is passed at compile time, 
+   the counter data will be available. You just need to load the source code dumped by CuPy.
+
+Steps
+.....
+
+1. Write a script with your kernel using :class:`~cupy.RawKernel` or :class:`~cupy.RawModule`. For example:
+
+   .. code-block:: python
+
+       import sys
+       import cupy as cp
+
+       code = r"""
+       extern "C"
+       __global__ void my_kernel(int n)
+       {
+           if (threadIdx.x < n)
+           {
+              printf("oh ya fnaerjkngjknresgnsfkgf'kmafdklmakfelgaenk!\n");
+           }
+       }
+       """
+
+       mod = cp.RawModule(code=code, options=('-Xptxas', '-v', "-std=c++11", '-lineinfo'), 
+                          backend='nvrtc')
+       mod.compile(log_stream=sys.stdout)
+       ker = mod.get_function("my_kernel")
+       ker((1,), (4,), (16,))
+
+   Note that ``-lineinfo`` is passed in the compile options, which is essential for source-level profiling.
+
+2. Run Nsight Compute with the :envvar:`CUPY_CACHE_SAVE_CUDA_SOURCE` environment variable set:
+
+   .. code-block:: console
+
+       $ CUPY_CACHE_SAVE_CUDA_SOURCE=1 ncu -f -o output_profile --set full --import-source 1 -k regex:my python your_script.py
+
+   Replace ``your_script.py`` with the name of your script, and adjust the kernel name filter (``-k regex:my``) as needed.
+
+3. Verify that the source file is cached in the CuPy cache directory:
+
+   .. code-block:: console
+
+       $ ls -l $CUPY_CACHE_DIR/*.cu
+
+   If :envvar:`CUPY_CACHE_DIR` is not set, the default location is typically ``~/.cupy/kernel_cache``.
+   You should see a ``.cu`` file corresponding to your kernel.
+
+4. If profiling remotely, make sure to transfer both the Nsight Compute output and the dumped source code back to your local machine.
+
+5. Load the Nsight Compute output in the GUI. When switching to the Source page, it may show that the source code is not found. 
+   Click "Resolve" and navigate to the CuPy cache directory to load the corresponding ``.cu`` file. 
+   Once loaded, you can see resource usage correlated with line numbers:
+
+   .. image:: https://github.com/user-attachments/assets/088b9f30-b955-4131-a645-f06cd5948cb1
+      :alt: Nsight Compute showing source-level profiling with CuPy kernel
+
+This approach works for any kernel compiled through CuPy's machinery, including :class:`~cupy.ElementwiseKernel`, 
+:class:`~cupy.ReductionKernel`, and other user-defined kernels.
 
 
 Use CUB/cuTENSOR backends for reduction and other routines
