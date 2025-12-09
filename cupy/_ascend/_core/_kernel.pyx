@@ -1392,7 +1392,12 @@ cdef class ElementwiseKernel:
         #indexer = _carray._indexer_init(shape)  # ASCEND: not understund
         #inout_args.append(indexer)
 
-        arginfos = _get_arginfos(inout_args)
+        runtime._ensure_context()
+        s = _get_stream(None)
+        pos_args = list(args[(self.nin + self.nout):]) # the rest of positional args
+        launch_general_func(self.name, list(in_args), list(out_args), pos_args, kwargs, s)
+
+        #arginfos = _get_arginfos(inout_args)
         #kern = self._get_elementwise_kernel(dev_id, arginfos, type_map)
         #kern.linear_launch(indexer.size, inout_args, shared_mem=0,
         #                   block_max_size=block_size, stream=stream)
