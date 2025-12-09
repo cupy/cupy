@@ -81,7 +81,7 @@ To mark with NVTX/rocTX ranges, you can use the :func:`cupyx.profiler.time_range
 Profiling kernels with Nsight Compute
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-When profiling CuPy kernels (whether they are part of the CuPy codebase or user-provided kernels using 
+When profiling CuPy kernels (whether they are part of the CuPy codebase or :ref:`user-provided kernels <udkernel>` using 
 :class:`~cupy.RawKernel`, :class:`~cupy.RawModule`, :class:`~cupy.ElementwiseKernel`, etc.), 
 it is often useful to correlate the source code with performance metrics in tools like NVIDIA Nsight Compute. 
 This allows you to analyze which lines translate to which instructions and see the time each one takes.
@@ -147,7 +147,7 @@ Steps
    Click "Resolve" and navigate to the CuPy cache directory to load the corresponding ``.cu`` file. 
    Once loaded, you can see resource usage correlated with line numbers:
 
-   .. image:: https://github.com/user-attachments/assets/088b9f30-b955-4131-a645-f06cd5948cb1
+   .. image:: ../../image/nsight_compute_profiling_cupy.png
       :alt: Nsight Compute showing source-level profiling with CuPy kernel
 
 This approach works for any kernel compiled through CuPy's machinery, including :class:`~cupy.ElementwiseKernel`, 
