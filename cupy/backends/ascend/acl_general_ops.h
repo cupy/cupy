@@ -228,54 +228,54 @@
         }
     }
 
-    // args such as `device, like, dtype` will be dealt by caller
-    // numpy.arange(numpy.arange([start, ]stop, [step, ]) 
-    // cupy.arange() kernel is so diff, can not reuse the cupy_arange kernel name to register?
-    // cupy_arange  take  start and step as input parameter
+    // numpy.arange(numpy.arange([start = 0, ]stop, [step = , ]) 
+    // `cupy_arange` kernel takes only start and step as input parameter, num is output tensor's elem_count
     aclError aclop_Arange(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
         const ArgsType& args, const KwargsType& kwargs, aclrtStream stream) {
         const aclScalar* step = nullptr;
         const aclScalar* start = nullptr;
-        const aclScalar* stop = nullptr;
-        if (args.size() >= 3 ) {
-            step = args.at(2);
-        } else if (HasScalarKwarg(kwargs, "step")) {
-            step = kwargs.at("step");
-        } else {
-            // TODO: calc step? or aclop accept nullptr for step?
-        }
-        
+        aclDataType dtype;
+        aclGetDataType(outs[0], &dtype);
+        auto numel = GetAclTensorElementCount(outs[0]);
         if (args.size() >= 2) {
             start = args[0];
-            stop = args[1];
-        } else if (args.size() >= 1) {
-            stop = args[0];
-            // start = args[0]; // TODO: create a zero_like_scalar
+            step = args[1];
+            // stop can keep it as nullptr? or must have the same dtype as output tensor?
+            double dstart = GetScalarArg<double>(args, 0, kwargs, "start", 0.0);
+            double dstep = GetScalarArg<double>(args, 1, kwargs, "step", 1.0);
+            const aclScalar* stop = CreateAclScalar(dstart + dstep * (numel - 1), dtype);
+            return aclIrregularOpRun(aclnnArangeGetWorkspaceSize, aclnnArange, stream,
+                start, stop, step, outs[0]);
         } else {
-            // print error
+            PrintArgs(__func__, args, kwargs, std::cout);
+            return ACL_ERROR_INVALID_PARAM;
         }
-        return aclIrregularOpRun(aclnnArangeGetWorkspaceSize, aclnnArange, stream,
-            start, stop, step, outs[0]);
     }
 
     // cupy conforms to numpy's API: linspace(start, stop, num=50, endpoint=True, retstep=False)
+    // numpy/Array API standard
+    // cupy_linspace kernel has 2 variants, one is actually the same as cupy_arange()
     // aclnn does not have such op, so use arange to mimic
     aclError aclop_Linspace(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
         const ArgsType& args, const KwargsType& kwargs, aclrtStream stream) {
-        if (args.size() < 3 ) {
+        if (args.size() < 2 ) {
             std::cout << "ASCEND Error: linspace must have 3 arg, start, stop, count\n";
+            PrintArgs(__func__, args, kwargs, std::cout);
             return ACL_ERROR_INVALID_PARAM;
+        } else {
+            aclop_Arange(ins, outs, args, kwargs, stream);
         }
-        double dstart = GetScalarArg<double>(args, 0, kwargs, "start", 0);
-        double dstop = GetScalarArg<double>(args, 1, kwargs, "stop", 0);
-        double dcount = GetScalarArg<double>(args, 1, kwargs, "stop", 0);
-        double dstep = (dstop - dstart ) / dcount;
-        const aclScalar* step = nullptr;  // TODO: create scalar of start same type?
-        const aclScalar* start = args[0];
-        const aclScalar* stop = args[1];
 
-        return aclIrregularOpRun(aclnnArangeGetWorkspaceSize, aclnnArange, stream,
-            start, stop, step, outs[0]);
+        // double dstart = GetScalarArg<double>(args, 0, kwargs, "start", 0);
+        // double dstop = GetScalarArg<double>(args, 1, kwargs, "stop", 0);
+        // double dcount = GetScalarArg<double>(args, 1, kwargs, "stop", 0);
+        // double dstep = (dstop - dstart ) / dcount;
+        // const aclScalar* step = nullptr;  // TODO: create scalar of start same type?
+        // const aclScalar* start = args[0];
+        // const aclScalar* stop = args[1];
+
+        // return aclIrregularOpRun(aclnnArangeGetWorkspaceSize, aclnnArange, stream,
+        //     start, stop, step, outs[0]);
     }
 
     // numpy using `kind` to specify method, always in ascending order, `order` for sort objects
@@ -368,7 +368,20 @@
         return aclIrregularOpRun(aclnnNonzeroGetWorkspaceSize, aclnnNonzero, stream,
             self, out);
     }
+
+    // random
+    aclError aclop_Normal(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream) {
+        // return aclIrregularOpRun(aclnnInplaceNormalGetWorkspaceSize, 
+            // const aclTensor* selfRef, float mean, float std, int64_t seed,
+            //                                              int64_t offset, uint64_t* workspaceSize,
+            //                                              aclOpExecutor** executor);
+    }
     
+    // random uniform
+    aclError aclop_Uniform(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream) {
+    }
 
 #ifdef __cplusplus
 extern "C" {

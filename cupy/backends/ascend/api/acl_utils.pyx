@@ -1042,6 +1042,8 @@ cdef extern from "../acl_general_ops.h" nogil:
 
     aclError aclop_Arange(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
         const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
+    aclError aclop_Linspace(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
     aclError aclop_Concat(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
         const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
     aclError aclop_Stack(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
@@ -1076,6 +1078,8 @@ cdef void register_irregular_operators():
     func_union.general_op = aclop_Sort
     register_acl_ufunc("ascend_sort", GENERAL_OP, func_union)
     func_union.general_op = aclop_Arange
+    register_acl_ufunc("ascend_arange", GENERAL_OP, func_union)
+    func_union.general_op = aclop_Linspace
     register_acl_ufunc("ascend_arange", GENERAL_OP, func_union)
 
     func_union.general_op = aclop_Round

@@ -35,6 +35,32 @@ inline aclDataType GetDataType(const aclTensor* out, const aclTensor* self = nul
     return dtype;
 }
 
+int64_t GetAclTensorElementCount(const aclTensor* tensor) {
+    std::vector<int64_t> shape_vec;
+    int64_t numel = 0;
+    if (tensor == nullptr) {
+        return numel;
+    }
+    
+    int64_t* shape = nullptr;
+    uint64_t dim_count = 0;
+    
+    aclError ret = aclGetViewShape(tensor, &shape, &dim_count);
+    if (ret == ACL_SUCCESS) {
+        shape_vec.assign(shape, shape + dim_count);
+        delete[] shape;
+    }
+    
+    if (!shape_vec.empty()) {
+        int64_t element_count = 1;
+        for (auto dim : shape_vec) {
+            element_count *= dim;
+        }
+        numel = element_count;
+    }
+    return numel;
+}
+
 /**
  * 根据源张量创建新张量，保持相同形状但使用指定数据类型, numpy.empty_like()
  * 
