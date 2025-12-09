@@ -58,7 +58,7 @@ Part of the CUDA features in CuPy will be activated only when the corresponding 
 
     * The library to perform collective multi-GPU / multi-node computations.
 
-* `cuSPARSELt <https://docs.nvidia.com/cuda/cusparselt/>`_: v0.7.0 / v0.7.1
+* `cuSPARSELt <https://docs.nvidia.com/cuda/cusparselt/>`_: v0.8.0 / v0.8.1
 
     * The library to accelerate sparse matrix-matrix multiplication.
 
