@@ -128,9 +128,9 @@ Steps
 
    .. code-block:: console
 
-       $ CUPY_CACHE_SAVE_CUDA_SOURCE=1 ncu -f -o output_profile --set full --import-source 1 -k regex:my python your_script.py
+       $ CUPY_CACHE_SAVE_CUDA_SOURCE=1 ncu -f -o output_profile --set full --import-source 1 -k regex:my_kernel python your_script.py
 
-   Replace ``your_script.py`` with the name of your script, and adjust the kernel name filter (``-k regex:my``) as needed.
+   Replace ``your_script.py`` with the name of your script, and adjust the kernel name filter (``-k regex:my_kernel``) to match your kernel's name.
 
 3. Verify that the source file is cached in the CuPy cache directory:
 
