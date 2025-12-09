@@ -81,7 +81,7 @@ To mark with NVTX/rocTX ranges, you can use the :func:`cupyx.profiler.time_range
 Profiling kernels with Nsight Compute
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-When profiling CuPy kernels (whether they are part of the CuPy codebase or :ref:`user-provided kernels <udkernel>` using 
+When profiling CuPy kernels (whether they are part of the CuPy codebase or :ref:`user-provided kernels <udkernel>` including 
 :class:`~cupy.RawKernel`, :class:`~cupy.RawModule`, :class:`~cupy.ElementwiseKernel`, etc.), 
 it is often useful to correlate the source code with performance metrics in tools like NVIDIA Nsight Compute. 
 This allows you to analyze which lines translate to which instructions and see the time each one takes.
@@ -98,29 +98,28 @@ Prerequisites
 Steps
 .....
 
-1. Write a script with your kernel using :class:`~cupy.RawKernel` or :class:`~cupy.RawModule`. For example:
+1. Taking the script below as an example, we would like to profile the kernel named ``my_kernel``:
 
    .. code-block:: python
 
-       import sys
-       import cupy as cp
+      # profiling_example.py
+      import cupy as cp
 
-       code = r"""
-       extern "C"
-       __global__ void my_kernel(int n)
-       {
-           if (threadIdx.x < n)
-           {
-              printf("oh ya fnaerjkngjknresgnsfkgf'kmafdklmakfelgaenk!\n");
-           }
-       }
-       """
+      code = r"""
+      extern "C"
+      __global__ void my_kernel(int n)
+      {
+          if (threadIdx.x < n)
+          {
+             printf("I am called!\n");
+          }
+      }
+      """
 
-       mod = cp.RawModule(code=code, options=('-Xptxas', '-v', "-std=c++11", '-lineinfo'), 
-                          backend='nvrtc')
-       mod.compile(log_stream=sys.stdout)
-       ker = mod.get_function("my_kernel")
-       ker((1,), (4,), (16,))
+      mod = cp.RawModule(code=code, options=("-std=c++17", '-lineinfo'))
+      mod.compile()
+      ker = mod.get_function("my_kernel")
+      ker((1,), (4,), (16,))
 
    Note that ``-lineinfo`` is passed in the compile options, which is essential for source-level profiling.
 
@@ -128,9 +127,10 @@ Steps
 
    .. code-block:: console
 
-       $ CUPY_CACHE_SAVE_CUDA_SOURCE=1 ncu -f -o output_profile --set full --import-source 1 -k regex:my_kernel python your_script.py
+       $ CUPY_CACHE_SAVE_CUDA_SOURCE=1 ncu -f -o profiling_example --set full --import-source 1 -k regex:my_kernel python profiling_example.py
 
-   Replace ``your_script.py`` with the name of your script, and adjust the kernel name filter (``-k regex:my_kernel``) to match your kernel's name.
+   Replace ``profiling_example.py`` with the name of your script, and adjust the kernel name filter (``-k regex:my_kernel``) to match your kernel's name.
+   If no filter is provided, ncu defaults to profile all kernels run in the program, which may or may not be desired.
 
 3. Verify that the source file is cached in the CuPy cache directory:
 
@@ -141,9 +141,9 @@ Steps
    If :envvar:`CUPY_CACHE_DIR` is not set, the default location is typically ``~/.cupy/kernel_cache``.
    You should see a ``.cu`` file corresponding to your kernel.
 
-4. If profiling remotely, make sure to transfer both the Nsight Compute output and the dumped source code back to your local machine.
+4. If profiling remotely, make sure to transfer both the Nsight Compute output (``profiling_example.ncu-rep`` for the above example) and the dumped source code in ``$CUPY_CACHE_DIR`` back to your local machine.
 
-5. Load the Nsight Compute output in the GUI. When switching to the Source page, it may show that the source code is not found. 
+5. Load the Nsight Compute output in the GUI. When switching to the "Source" tab, it may show that the source code is not found. 
    Click "Resolve" and navigate to the CuPy cache directory to load the corresponding ``.cu`` file. 
    Once loaded, you can see resource usage correlated with line numbers:
 
@@ -151,7 +151,7 @@ Steps
       :alt: Nsight Compute showing source-level profiling with CuPy kernel
 
 This approach works for any kernel compiled through CuPy's machinery, including :class:`~cupy.ElementwiseKernel`, 
-:class:`~cupy.ReductionKernel`, and other user-defined kernels.
+:class:`~cupy.ReductionKernel`, :func:`~cupyx.jit.rawkernel`, and other user-defined kernels.
 
 
 Use CUB/cuTENSOR backends for reduction and other routines
