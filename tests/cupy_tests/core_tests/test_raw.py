@@ -352,6 +352,8 @@ extern "C" __global__ void my_func(void* input, int N) {
 
 @contextlib.contextmanager
 def use_temporary_cache_dir():
+    # Note uses mock, so not thread-safe (except at class level setup)
+    # tempdir fixture could be used instead.
     target1 = 'cupy.cuda.compiler.get_cache_dir'
     target2 = 'cupy.cuda.compiler._empty_file_preprocess_cache'
     temp_cache = {}
@@ -386,9 +388,8 @@ def find_nvcc_ver():
     nvcc_ver_pattern = r'release (\d+\.\d+)'
     cmd = cupy.cuda.get_nvcc_path().split()
     cmd += ['--version']
-    cache_ctx = use_temporary_cache_dir()
-    with cache_ctx as cache_path:
-        output = compiler._run_cc(cmd, cache_path, 'nvcc')
+
+    output = compiler._run_cc(cmd, cupy.cuda.compiler.get_cache_dir(), 'nvcc')
     match = re.search(nvcc_ver_pattern, output)
     assert match
 
@@ -434,6 +435,8 @@ class _TestRawBase:
             code=_test_source3,
             options=('-DPRECISION=2',),
             backend=cls.backend, jitify=cls.jitify)
+
+        cls._generate_cu_file()
 
     @classmethod
     def teardown_class(cls):
@@ -555,25 +558,34 @@ class _TestRawBase:
         if driver_ver < compiler_ver:
             raise pytest.skip()
 
-    def _generate_file(self, ext: str):
-        # generate cubin/ptx by calling nvcc/hipcc
+    @classmethod
+    def _generate_cu_file(cls):
+        # Own function, we run this once per class (not per test).
+        if not cupy.cuda.runtime.is_hip:
+            code = _test_source5
+        else:
+            code = compiler._convert_to_hip_source(_test_source5, None, False)
 
+        source = '{}/test_load_cubin.cu'.format(cls.cache_dir)
+        with open(source, 'w') as f:
+            f.write(code)
+
+    def _generate_file(self, ext: str):
         if not cupy.cuda.runtime.is_hip:
             cc = cupy.cuda.get_nvcc_path()
             arch = '-gencode=arch=compute_{CC},code=sm_{CC}'.format(
                 CC=compiler._get_arch())
-            code = _test_source5
         else:
             # TODO(leofang): expose get_hipcc_path() to cupy.cuda?
             cc = cupy._environment.get_hipcc_path()
             arch = '-v'  # dummy
-            code = compiler._convert_to_hip_source(_test_source5, None, False)
         # split() is needed because nvcc could come from the env var NVCC
         cmd = cc.split()
+
         source = '{}/test_load_cubin.cu'.format(self.cache_dir)
         file_path = self.cache_dir + 'test_load_cubin'
-        with open(source, 'w') as f:
-            f.write(code)
+
+        # generate cubin/ptx by calling nvcc/hipcc
         if not cupy.cuda.runtime.is_hip:
             if ext == 'cubin':
                 file_path += '.cubin'
@@ -1077,6 +1089,7 @@ class _TestRawBase:
 
     @unittest.skipUnless(not cupy.cuda.runtime.is_hip,
                          'only CUDA raises warning')
+    @pytest.mark.thread_unsafe(reason="mutates global cache directory")
     def test_compile_kernel(self):
         kern = cupy.RawKernel(
             _test_compile_src, 'test_op',
@@ -1092,6 +1105,7 @@ class _TestRawBase:
 
     @unittest.skipUnless(not cupy.cuda.runtime.is_hip,
                          'only CUDA raises warning')
+    @pytest.mark.thread_unsafe(reason="mutates global cache directory")
     def test_compile_module(self):
         module = cupy.RawModule(
             code=_test_compile_src,
@@ -1134,6 +1148,8 @@ class TestRaw(_TestRawBase, unittest.TestCase):
     {'backend': 'nvrtc', 'in_memory': True, 'clean_up': True, 'jitify': True},
 )
 @testing.slow
+@pytest.mark.thread_unsafe(
+    reason="Jitify seems to have problems, skip as largely unmaintained.")
 class TestRawWithJitify(_TestRawBase, unittest.TestCase):
     pass
 
@@ -1172,7 +1188,7 @@ void test_grid_sync(const float* x1, const float* x2, float* y, int n) {
     60 <= int(cupy.cuda.device.get_compute_capability()),
     'Requires compute capability 6.0 or later')
 class TestRawGridSync(unittest.TestCase):
-
+    @pytest.mark.thread_unsafe(reason="mutates global cache directory")
     def test_grid_sync_rawkernel(self):
         n = self.n
         with use_temporary_cache_dir():
@@ -1187,6 +1203,7 @@ class TestRawGridSync(unittest.TestCase):
             kern_grid_sync((grid,), (block,), (x1, x2, y, n ** 2))
             assert cupy.allclose(y, x1 + x2)
 
+    @pytest.mark.thread_unsafe(reason="mutates global cache directory")
     def test_grid_sync_rawmodule(self):
         n = self.n
         with use_temporary_cache_dir():
@@ -1316,13 +1333,7 @@ __global__ void shift (T* a, int N) {
 # Recent CCCL has made Jitify cold-launch very slow, see the discussion
 # starting https://github.com/cupy/cupy/pull/8899#issuecomment-2613022424.
 # TODO(leofang): Further refactor the test suite?
-@testing.parameterize(*testing.product({
-    'jitify': (False, True),
-}))
-@unittest.skipIf(cupy.cuda.runtime.is_hip,
-                 'Jitify does not support ROCm/HIP')
-@testing.slow
-class TestRawJitify(unittest.TestCase):
+class _TestRawJitify:
     @classmethod
     def setup_class(cls):
         cls.temporary_dir_context = use_temporary_cache_dir()
@@ -1430,3 +1441,19 @@ class TestRawJitify(unittest.TestCase):
             with pytest.raises(cupy.cuda.compiler.CompileException) as ex:
                 self._helper(hdr, options=('-I'+self.temp_dir,))
             assert 'cannot open source file' in str(ex.value)
+
+
+@unittest.skipIf(cupy.cuda.runtime.is_hip,
+                 'Jitify does not support ROCm/HIP')
+@testing.slow
+class TestRawJitifyNoJitify(_TestRawJitify):
+    jitify = False
+
+
+@unittest.skipIf(cupy.cuda.runtime.is_hip,
+                 'Jitify does not support ROCm/HIP')
+@testing.slow
+@pytest.mark.thread_unsafe(
+    reason="Jitify seems to have problems, skip as largely unmaintained.")
+class TestRawJitifyJitify(_TestRawJitify):
+    jitify = True

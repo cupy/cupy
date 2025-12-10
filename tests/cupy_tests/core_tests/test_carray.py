@@ -67,13 +67,15 @@ class TestCArray32BitBoundary(unittest.TestCase):
     # This test requires approx. 8 GiB GPU memory to run.
     # See https://github.com/cupy/cupy/pull/882 for detailed discussions.
 
-    def tearDown(self):
-        # Free huge memory for slow test
+    @classmethod
+    def teardown_class(self):
+        # Clean up on test start and (here) fully done with this test class.
         cupy.get_default_memory_pool().free_all_blocks()
 
     # HIP is known to fail with sizes > 2**32-1024
     @unittest.skipIf(cupy.cuda.runtime.is_hip, 'HIP does not support this')
     def test(self):
+        cupy.get_default_memory_pool().free_all_blocks()
         # Elementwise
         a = cupy.full((1, self.size), 7, dtype=cupy.int8)
         # Reduction
@@ -84,6 +86,8 @@ class TestCArray32BitBoundary(unittest.TestCase):
     # HIP is known to fail with sizes > 2**32-1024
     @unittest.skipIf(cupy.cuda.runtime.is_hip, 'HIP does not support this')
     def test_assign(self):
+        cupy.get_default_memory_pool().free_all_blocks()
+
         a = cupy.zeros(self.size, dtype=cupy.int8)
         a[-1] = 1.0
         assert a.sum() == 1
