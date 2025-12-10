@@ -33,3 +33,16 @@ def __getattr__(key):
 
     raise AttributeError(
         "module '{}' has no attribute '{}'".format(__name__, key))
+
+
+# Auto-register IPython magics only when running in IPython/Jupyter
+try:
+    from IPython import get_ipython
+
+    ip = get_ipython()
+    if ip is not None:
+        from cupyx.profiler._gpu_timeit import try_register_ipython_magic
+        try_register_ipython_magic()
+except Exception:
+    # Must never fail in a normal Python environment
+    pass
