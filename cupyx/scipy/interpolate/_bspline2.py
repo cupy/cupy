@@ -713,7 +713,7 @@ qr_reduce(double *a, int m, int nz, // a(m, nz), packed
 TYPES = ['double']
 
 QR_MODULE = cupy.RawModule(
-    code=QR_KERNEL, options=('-std=c++14',),
+    code=QR_KERNEL, options=('-std=c++17',),
     name_expressions=[
         f'dlartg<{type_name}>' for type_name in TYPES] + ['qr_reduce'],
 )
