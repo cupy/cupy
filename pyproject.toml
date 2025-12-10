@@ -77,8 +77,8 @@ filterwarnings = [
   "ignore::UserWarning",
   "error::DeprecationWarning",
   "error::PendingDeprecationWarning",
-  "error::cupy.exceptions.VisibleDeprecationWarning",
-  "error::cupy.exceptions.ComplexWarning",
+  "error::numpy.exceptions.VisibleDeprecationWarning",
+  "error::numpy.exceptions.ComplexWarning",
   # distutils (Python 3.10)
   "ignore:The distutils(.+) is deprecated:DeprecationWarning",
   "ignore:dep_util is Deprecated:DeprecationWarning",
