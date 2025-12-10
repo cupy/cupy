@@ -58,7 +58,7 @@ cpdef get_allocator()
 cdef class MemoryPool:
 
     cdef:
-        object _pools
+        cdef tuple _pools
 
     cpdef MemoryPointer malloc(self, size_t size)
     cpdef free_all_blocks(self, stream=?)
