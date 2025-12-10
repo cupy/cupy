@@ -42,6 +42,8 @@ class TestGraph:
         return result
 
     @pytest.mark.parametrize('upload', (True, False))
+    @pytest.mark.thread_unsafe(
+        reason="FFT capture fails threaded (CuPy 14, may be fixable).")
     def test_capture_run_on_same_stream(self, upload):
         s = cupy.cuda.Stream(non_blocking=True)
 
@@ -62,6 +64,8 @@ class TestGraph:
             testing.assert_array_equal(out1, out2)
 
     @pytest.mark.parametrize('upload', (True, False))
+    @pytest.mark.thread_unsafe(
+        reason="FFT capture fails threaded (CuPy 14, may be fixable).")
     def test_capture_run_on_different_streams(self, upload):
         s1 = cupy.cuda.Stream(non_blocking=True)
         s2 = cupy.cuda.Stream(non_blocking=True)
@@ -162,6 +166,7 @@ class TestGraph:
         testing.assert_array_equal(out2, func(a * 100))
 
     @pytest.mark.parametrize('upload', (True, False))
+    @pytest.mark.thread_unsafe(reason="blocking stream so not parallelizable.")
     def test_null_stream_cannot_capture(self, upload):
         s = cupy.cuda.Stream(non_blocking=False)
         a = cupy.random.random((100,))
@@ -308,6 +313,8 @@ class TestGraph:
         assert not s.is_capturing()
         s.synchronize()
 
+    @pytest.mark.thread_unsafe(
+        reason="as of CuPy 14.0, one threads handle cleanup disrupts others.")
     def test_stream_capture_failure_cublas(self):
         s = cupy.cuda.Stream(non_blocking=True)
         a = cupy.random.random((3, 4))
@@ -324,6 +331,8 @@ class TestGraph:
         assert not s.is_capturing()
         s.synchronize()
 
+    @pytest.mark.thread_unsafe(
+        reason="as of CuPy 14.0, one threads handle cleanup disrupts others.")
     def test_stream_capture_failure_cusolver(self):
         s = cupy.cuda.Stream(non_blocking=True)
         a = cupy.random.random((8, 8))
@@ -354,6 +363,8 @@ class TestGraph:
         assert not s.is_capturing()
         s.synchronize()
 
+    @pytest.mark.thread_unsafe(
+        reason="as of CuPy 14.0, one threads handle cleanup disrupts others.")
     def test_stream_capture_failure_cusparse(self):
         s = cupy.cuda.Stream(non_blocking=True)
         a = cupy.zeros((3, 4))

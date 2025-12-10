@@ -116,6 +116,7 @@ class TestUnownedMemory(unittest.TestCase):
         self.check(1)
 
 
+@pytest.mark.thread_unsafe(reason="MockMemory.cur_ptr is shared")
 class TestMemoryPointer(unittest.TestCase):
 
     def test_int(self):
@@ -286,6 +287,7 @@ class TestMemoryPointerAsync(unittest.TestCase):
 # -----------------------------------------------------------------------------
 # Memory pool
 
+@pytest.mark.thread_unsafe(reason="tests self.pool on a low level")
 class TestSingleDeviceMemoryPool(unittest.TestCase):
 
     def setUp(self):
@@ -708,6 +710,7 @@ class TestMemoryPool(unittest.TestCase):
             mem.free()
             mem.free()
 
+    @pytest.mark.thread_unsafe(reason="counts free blocks on shared pool")
     def test_free_all_blocks(self):
         with cupy.cuda.Device():
             mem = self.pool.malloc(1).mem
@@ -719,12 +722,14 @@ class TestMemoryPool(unittest.TestCase):
             self.pool.free_all_blocks()
             assert self.pool.n_free_blocks() == 0
 
+    @pytest.mark.thread_unsafe(reason="counts free blocks on shared pool")
     def test_free_all_blocks_without_malloc(self):
         with cupy.cuda.Device():
             # call directly without malloc.
             self.pool.free_all_blocks()
             assert self.pool.n_free_blocks() == 0
 
+    @pytest.mark.thread_unsafe(reason="counts free blocks on shared pool")
     def test_free_all_free(self):
         with cupy.cuda.Device():
             mem = self.pool.malloc(1).mem
@@ -737,6 +742,7 @@ class TestMemoryPool(unittest.TestCase):
                 self.pool.free_all_free()
             assert self.pool.n_free_blocks() == 0
 
+    @pytest.mark.thread_unsafe(reason="counts free blocks on shared pool")
     def test_free_all_free_without_malloc(self):
         with cupy.cuda.Device():
             # call directly without malloc.
@@ -744,6 +750,7 @@ class TestMemoryPool(unittest.TestCase):
                 self.pool.free_all_free()
             assert self.pool.n_free_blocks() == 0
 
+    @pytest.mark.thread_unsafe(reason="counts free blocks on shared pool")
     def test_n_free_blocks_without_malloc(self):
         with cupy.cuda.Device():
             # call directly without malloc/free_all_free.
@@ -791,6 +798,7 @@ class TestAllocator(unittest.TestCase):
         self.pool.free_all_blocks()
         memory.set_allocator(self.old_pool.malloc)
 
+    @pytest.mark.thread_unsafe(reason="checks usage of shared pool")
     def test_set_allocator(self):
         with cupy.cuda.Device():
             assert 0 == self.pool.used_bytes()
@@ -824,6 +832,7 @@ class TestAllocator(unittest.TestCase):
             assert memory.get_allocator() == new_pool.malloc
         assert memory.get_allocator() == self.pool.malloc
 
+    @pytest.mark.thread_unsafe(reason="test already threaded")
     def test_allocator_thread_local(self):
         barrier = threading.Barrier(2)
 
@@ -893,22 +902,26 @@ class TestAllocator(unittest.TestCase):
         assert not self._error
         return main_ptr, self._ptr
 
+    @pytest.mark.thread_unsafe(reason="test already threaded")
     def test_reuse_between_thread(self):
         stream = cupy.cuda.Stream.null
         main_ptr, sub_ptr = self._reuse_between_thread(stream, stream)
         assert main_ptr == sub_ptr
 
+    @pytest.mark.thread_unsafe(reason="test already threaded")
     def test_reuse_between_thread_same_stream(self):
         stream = cupy.cuda.Stream()
         main_ptr, sub_ptr = self._reuse_between_thread(stream, stream)
         assert main_ptr == sub_ptr
 
+    @pytest.mark.thread_unsafe(reason="test already threaded")
     def test_reuse_between_thread_different_stream(self):
         stream1 = cupy.cuda.Stream()
         stream2 = cupy.cuda.Stream()
         main_ptr, sub_ptr = self._reuse_between_thread(stream1, stream2)
         assert main_ptr != sub_ptr
 
+    @pytest.mark.thread_unsafe(reason="test already threaded")
     def test_reuse_between_thread_ptds(self):
         stream = cupy.cuda.Stream.ptds
         main_ptr, sub_ptr = self._reuse_between_thread(stream, stream)
@@ -953,6 +966,7 @@ class PythonAllocator:
         cupy.cuda.runtime.free(size)
 
 
+@pytest.mark.thread_unsafe(reason="uses global set_allocator")
 class TestPythonFunctionAllocator(unittest.TestCase):
     def setUp(self):
         self.old_pool = cupy.get_default_memory_pool()
@@ -1082,6 +1096,7 @@ free_bytes_watermark = 0
 @pytest.mark.skipif(not cupy.cuda.driver._is_cuda_python()
                     and cupy.cuda.driver.get_build_version() < 11020,
                     reason='malloc_async is supported since CUDA 11.2')
+@pytest.mark.thread_unsafe(reason="tests shared self.pool properties")
 class TestMemoryAsyncPool(unittest.TestCase):
 
     def setUp(self):

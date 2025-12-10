@@ -5,11 +5,14 @@ import io
 import json
 import unittest
 
+import pytest
+
 import cupy.cuda
 from cupy.cuda import memory
 from cupy.cuda import memory_hooks
 
 
+@pytest.mark.thread_unsafe(reason="uses global memory hook")
 class TestDebugPrintHook(unittest.TestCase):
 
     def setUp(self):

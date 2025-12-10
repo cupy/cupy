@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 import gc
 import threading
 
@@ -11,13 +12,16 @@ from cupy import cuda
 from cupy import testing
 
 
+@contextlib.contextmanager
+def restore_stream():
+    # We need to restore the stream on every thread individually, this cannot
+    # be done with a fixture, so use a custom decorator.
+    _prev_stream = cuda.get_current_stream()
+    yield
+    _prev_stream.use()
+
+
 class TestStream:
-
-    def setup_method(self):
-        self._prev_stream = cuda.get_current_stream()
-
-    def teardown_method(self):
-        self._prev_stream.use()
 
     def _get_stream(self, stream_name):
         if stream_name == 'null':
@@ -26,6 +30,7 @@ class TestStream:
             return cuda.Stream.ptds
 
     @pytest.mark.parametrize('stream_name', ['null', 'ptds'])
+    @restore_stream()
     def test_eq(self, stream_name):
         stream = self._get_stream(stream_name)
         stream.use()
@@ -46,6 +51,7 @@ class TestStream:
         assert null2 != null4
 
     @pytest.mark.parametrize('stream_name', ['null', 'ptds'])
+    @restore_stream()
     def test_hash(self, stream_name):
         stream = self._get_stream(stream_name)
         stream.use()
@@ -67,10 +73,12 @@ class TestStream:
         # runtime.streamQuery(stream_ptr) causes SEGV. We cannot test...
         del x
 
+    @restore_stream()
     def test_del_default(self):
         self.check_del(null=False, ptds=False)
 
     @pytest.mark.parametrize('stream_name', ['null', 'ptds'])
+    @restore_stream()
     def test_del(self, stream_name):
         stream = self._get_stream(stream_name)
         stream.use()
@@ -118,6 +126,7 @@ class TestStream:
         assert out == list(range(N))
 
     @pytest.mark.parametrize('stream_name', ['null', 'ptds'])
+    @restore_stream()
     def test_with_statement(self, stream_name):
         stream = self._get_stream(stream_name)
         stream.use()
@@ -133,6 +142,7 @@ class TestStream:
         assert cuda.Stream.null == cuda.get_current_stream()
 
     @pytest.mark.parametrize('stream_name', ['null', 'ptds'])
+    @restore_stream()
     def test_use(self, stream_name):
         stream = self._get_stream(stream_name)
         stream.use()
@@ -154,6 +164,7 @@ class TestStream:
                 assert stream0 == cuda.get_current_stream()
 
     @testing.multi_gpu(2)
+    @restore_stream()
     def test_per_device_failure(self):
         with cuda.Device(0):
             stream0 = cuda.Stream()
@@ -165,6 +176,7 @@ class TestStream:
                 stream0.use()
 
     @pytest.mark.parametrize('stream_name', ['null', 'ptds'])
+    @restore_stream()
     def test_mix_use_context(self, stream_name):
         stream = self._get_stream(stream_name)
         stream.use()
@@ -184,6 +196,7 @@ class TestStream:
         # self.stream is "forgotten"!
         assert cuda.get_current_stream() == cuda.Stream.null
 
+    @restore_stream()
     def test_stream_thread(self):
         s1 = None
 
