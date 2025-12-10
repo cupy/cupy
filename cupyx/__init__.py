@@ -32,12 +32,10 @@ def __getattr__(key):
         return cupyx.lapack
 
     raise AttributeError(
-        "module '{}' has no attribute '{}'".format(__name__, key)
-    )
+        "module '{}' has no attribute '{}'".format(__name__, key))
+
 
 # Auto-register IPython magics only when running in IPython/Jupyter
-
-
 try:
     from IPython import get_ipython
 
