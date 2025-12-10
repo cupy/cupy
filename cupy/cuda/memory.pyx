@@ -5,7 +5,6 @@ cimport cython  # NOQA
 from libcpp.mutex cimport recursive_mutex
 
 import atexit
-import collections
 import gc
 import os
 import threading
@@ -1603,8 +1602,10 @@ cdef class MemoryPool:
     def __init__(self, allocator=None):
         if allocator is None:
             allocator = _malloc
-        self._pools = collections.defaultdict(
-            lambda: SingleDeviceMemoryPool(allocator))
+
+        dev_counts = runtime.getDeviceCount()
+        self._pools = tuple(
+            SingleDeviceMemoryPool(allocator) for i in range(dev_counts))
 
     cpdef MemoryPointer malloc(self, size_t size):
         """Allocates the memory, from the pool if possible.
