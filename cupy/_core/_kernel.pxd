@@ -105,11 +105,11 @@ concrete dtype mapping.
 
     @staticmethod
     cdef _Op _from_type_and_routine_or_error_func(
-        str typ, object routine, object error_func)
+        typ, object routine, object error_func)
 
     # Creates an op instance parsing a dtype mapping.
     @staticmethod
-    cdef _Op from_type_and_routine(str typ, routine)
+    cdef _Op from_type_and_routine(typ, routine)
 
     cpdef tuple get_in_dtypes(self)
 
