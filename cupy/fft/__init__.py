@@ -1,3 +1,4 @@
+from cupy.fft._config import config  # NOQA
 from cupy.fft._fft import fft  # NOQA
 from cupy.fft._fft import fft2  # NOQA
 from cupy.fft._fft import fftfreq  # NOQA
@@ -16,7 +17,6 @@ from cupy.fft._fft import rfft  # NOQA
 from cupy.fft._fft import rfft2  # NOQA
 from cupy.fft._fft import rfftfreq  # NOQA
 from cupy.fft._fft import rfftn  # NOQA
-from cupy.fft import config  # NOQA
 
 __all__ = ["fft", "fft2", "fftfreq", "fftn", "fftshift", "hfft",
            "ifft", "ifft2", "ifftn", "ifftshift", "ihfft",

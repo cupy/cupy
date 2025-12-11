@@ -71,8 +71,8 @@ def multi_gpu_config(gpu_configs=None):
     def decorator(impl):
         @functools.wraps(impl)
         def test_func(self, *args, **kw):
-            use_multi_gpus = config.use_multi_gpus
-            _devices = config._devices
+            use_multi_gpus = config._use_multi_gpus.get()
+            _devices = config._devices.get()
 
             try:
                 for gpus in gpu_configs:
@@ -81,16 +81,14 @@ def multi_gpu_config(gpu_configs=None):
                         assert nGPUs >= 2, 'Must use at least two gpus'
                         config.use_multi_gpus = True
                         config.set_cufft_gpus(gpus)
-                        self.gpus = gpus
 
-                        impl(self, *args, **kw)
+                        impl(self, *args, **kw, gpus=gpus)
                     except Exception:
                         print('GPU config is:', gpus)
                         raise
             finally:
-                config.use_multi_gpus = use_multi_gpus
-                config._devices = _devices
-                del self.gpus
+                config._use_multi_gpus.set(use_multi_gpus)
+                config._devices.set(_devices)
 
         return test_func
     return decorator
@@ -180,8 +178,8 @@ class TestMultiGpuFft:
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
-    def test_fft(self, xp, dtype):
-        _skip_multi_gpu_bug(self.shape, self.gpus)
+    def test_fft(self, xp, dtype, gpus=None):
+        _skip_multi_gpu_bug(self.shape, gpus)
 
         a = testing.shaped_random(self.shape, xp, dtype)
         return xp.fft.fft(a, n=self.n, norm=self.norm)
@@ -193,8 +191,8 @@ class TestMultiGpuFft:
     # NumPy 1.17.0 and 1.17.1 raises ZeroDivisonError due to a bug
     @testing.with_requires('numpy!=1.17.0')
     @testing.with_requires('numpy!=1.17.1')
-    def test_ifft(self, xp, dtype):
-        _skip_multi_gpu_bug(self.shape, self.gpus)
+    def test_ifft(self, xp, dtype, gpus=None):
+        _skip_multi_gpu_bug(self.shape, gpus)
 
         a = testing.shaped_random(self.shape, xp, dtype)
         return xp.fft.ifft(a, n=self.n, norm=self.norm)
@@ -217,8 +215,8 @@ class TestMultiGpuFftOrder:
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
-    def test_fft(self, xp, dtype):
-        _skip_multi_gpu_bug(self.shape, self.gpus)
+    def test_fft(self, xp, dtype, gpus=None):
+        _skip_multi_gpu_bug(self.shape, gpus)
 
         a = testing.shaped_random(self.shape, xp, dtype)
         if self.data_order == 'F':
@@ -229,8 +227,8 @@ class TestMultiGpuFftOrder:
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
-    def test_ifft(self, xp, dtype):
-        _skip_multi_gpu_bug(self.shape, self.gpus)
+    def test_ifft(self, xp, dtype, gpus=None):
+        _skip_multi_gpu_bug(self.shape, gpus)
 
         a = testing.shaped_random(self.shape, xp, dtype)
         if self.data_order == 'F':
@@ -311,7 +309,7 @@ class TestDefaultPlanType:
                     reason='avoid a cuFFT bug (cupy/cupy#3777)')
 @testing.slow
 class TestFftAllocate:
-
+    @pytest.mark.thread_unsafe(reason="does large allocations")
     def test_fft_allocate(self):
         # Check CuFFTError is not raised when the GPU memory is enough.
         # See https://github.com/cupy/cupy/issues/1063
@@ -663,8 +661,8 @@ class TestMultiGpuPlanCtxManagerFft:
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
-    def test_fft(self, xp, dtype):
-        _skip_multi_gpu_bug(self.shape, self.gpus)
+    def test_fft(self, xp, dtype, gpus=None):
+        _skip_multi_gpu_bug(self.shape, gpus)
 
         a = testing.shaped_random(self.shape, xp, dtype)
 
@@ -682,8 +680,8 @@ class TestMultiGpuPlanCtxManagerFft:
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
-    def test_ifft(self, xp, dtype):
-        _skip_multi_gpu_bug(self.shape, self.gpus)
+    def test_ifft(self, xp, dtype, gpus=None):
+        _skip_multi_gpu_bug(self.shape, gpus)
 
         a = testing.shaped_random(self.shape, xp, dtype)
 
@@ -699,7 +697,7 @@ class TestMultiGpuPlanCtxManagerFft:
 
     @multi_gpu_config(gpu_configs=[[0, 1], [1, 0]])
     @testing.for_complex_dtypes()
-    def test_fft_error_on_wrong_plan(self, dtype):
+    def test_fft_error_on_wrong_plan(self, dtype, gpus=None):
         # This test ensures the context manager plan is picked up
 
         from cupyx.scipy.fftpack import get_fft_plan
