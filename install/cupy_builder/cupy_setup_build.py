@@ -13,6 +13,7 @@ import pickle
 import shutil
 import sys
 
+import numpy as np
 import setuptools
 
 import cupy_builder.install_build as build
@@ -321,6 +322,7 @@ def make_extensions(ctx: Context, compiler, use_cython):
     settings = build.get_compiler_setting(ctx, use_hip)
 
     include_dirs = settings['include_dirs']
+    include_dirs.append(np.get_include())
 
     settings['include_dirs'] = [
         x for x in include_dirs if os.path.exists(x)]

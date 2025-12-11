@@ -3,17 +3,12 @@
 cimport cpython  # NOQA
 cimport cython  # NOQA
 from libcpp cimport bool as cpp_bool
-from libc.stdint cimport uint32_t, intptr_t
+from libc.stdint cimport intptr_t
 
 import warnings
 
 import numpy
 from cupy.exceptions import AxisError
-
-
-cdef extern from 'halffloat.h':
-    uint16_t npy_floatbits_to_halfbits(uint32_t f)
-    uint32_t npy_halfbits_to_floatbits(uint16_t h)
 
 
 @cython.profile(False)
@@ -300,23 +295,6 @@ cpdef size_t clp2(size_t x):
     x |= x >> 16
     x |= x >> 32
     return x + 1
-
-
-cdef union float32_int:
-    uint32_t n
-    float f
-
-
-cpdef uint16_t to_float16(float f):
-    cdef float32_int c
-    c.f = f
-    return npy_floatbits_to_halfbits(c.n)
-
-
-cpdef float from_float16(uint16_t v):
-    cdef float32_int c
-    c.n = npy_halfbits_to_floatbits(v)
-    return c.f
 
 
 @cython.profile(False)
