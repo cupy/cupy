@@ -135,6 +135,36 @@ class TestNanMedian:
         return xp.ascontiguousarray(out)
 
 
+class TestNanMedianZeroDim:
+    def test_nanmedian_0d_no_axis(self):
+        array_cp = cupy.array(5.0)
+        array_np = numpy.array(5.0)
+        cupy.testing.assert_array_equal(cupy.nanmedian(
+            array_cp), cupy.array(numpy.nanmedian(array_np)))
+
+    def test_nanmedian_0d_empty_tuple(self):
+        array_cp = cupy.array(5.0)
+        array_np = numpy.array(5.0)
+        cupy.testing.assert_array_equal(cupy.nanmedian(
+            array_cp, axis=()), cupy.array(numpy.nanmedian(array_np, axis=())))
+
+    def test_nanmedian_0d_axis_defined(self):
+        array_cp = cupy.array(5.0)
+        array_np = numpy.array(5.0)
+        with pytest.raises(ValueError):
+            cupy.nanmedian(array_cp, axis=0)
+        with pytest.raises(ValueError):
+            numpy.nanmedian(array_np, axis=0)
+
+    def test_nanmedian_0d_incomplete_axis(self):
+        array_cp = cupy.array(5.0)
+        array_np = numpy.array(5.0)
+        with pytest.raises(ValueError):
+            cupy.nanmedian(array_cp, axis=(0,))
+        with pytest.raises(ValueError):
+            numpy.nanmedian(array_np, axis=(0,))
+
+
 class TestAverage:
 
     _multiprocess_can_split_ = True
