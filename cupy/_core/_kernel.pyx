@@ -1625,7 +1625,7 @@ cdef class _Ops:
             return op
 
         if dtype is None:
-            dtype = tuple([a.dtype.type for a in in_args])
+            dtype = in_types
         raise TypeError('Wrong type (%s) of arguments for %s' %
                         (dtype, name))
 
