@@ -236,8 +236,7 @@ class DeviceCompilerUnix(DeviceCompilerBase):
         # Note: we only support CUDA 11.2+ since CuPy v13.0.0.
         # Bumping C++ standard from C++14 to C++17 for "if constexpr"
         postargs += ['--std=c++17',
-                     f'-t{num_threads}',
-                     '-Xcompiler=-fno-gnu-unique']
+                     f'-t{num_threads}']
         print('NVCC options:', postargs)
         self.spawn(compiler_so + base_opts + cc_args + [src, '-o', obj] +
                    postargs)
