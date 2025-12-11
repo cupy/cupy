@@ -59,6 +59,7 @@ cdef class MemoryPool:
 
     cdef:
         cdef tuple _pools
+        cdef object _allocator
 
     cpdef MemoryPointer malloc(self, size_t size)
     cpdef free_all_blocks(self, stream=?)
@@ -69,6 +70,19 @@ cdef class MemoryPool:
     cpdef size_t total_bytes(self)
     cpdef set_limit(self, size=?, fraction=?)
     cpdef size_t get_limit(self)
+
+    cdef _ensure_pools_and_return_device_pool(self)
+
+    cdef inline device_pool(self):
+        # This criticial section should strictly speaking be necessary since
+        # `self._pools` could in theory be ub an inconsistent state
+        # (not fully written itself as the `_pools` should be finished).
+        # Although, on the systems we care about that is probably not possible.
+        with cython.critical_section(self):
+            if self._pools is not None:
+                return self._pools[device.get_device_id()]
+
+        return self._ensure_pools_and_return_device_pool()
 
 
 @cython.no_gc
