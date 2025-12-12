@@ -5,6 +5,7 @@ import functools
 import os
 import pickle
 import re
+import types
 import warnings
 
 import numpy
@@ -212,7 +213,7 @@ cdef class _ndarray_base:
         raise RuntimeError('Must not be directly instantiated')
 
     def _init(self, shape, dtype=float, memptr=None, strides=None,
-              order='C'):
+              order=None):
         cdef Py_ssize_t x, itemsize, alloc_size, left, right
         cdef tuple s = internal.get_size(shape)
         del shape
@@ -1630,11 +1631,7 @@ cdef class _ndarray_base:
             'Implicit conversion to a NumPy array is not allowed. '
             'Please use `.get()` to construct a NumPy array explicitly.')
 
-    @classmethod
-    def __class_getitem__(cls, tuple item):
-        from types import GenericAlias
-        item1, item2 = item
-        return GenericAlias(ndarray, (item1, item2))
+    __class_getitem__ = classmethod(types.GenericAlias)
 
     # TODO(okuta): Implement __array_wrap__
 
