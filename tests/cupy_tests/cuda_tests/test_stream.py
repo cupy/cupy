@@ -19,9 +19,6 @@ from cupy import testing
 class TestStream(unittest.TestCase):
 
     def setUp(self):
-        if cuda.runtime.is_hip and self.stream_name == 'ptds':
-            self.skipTest('HIP does not support PTDS')
-
         self._prev_stream = cuda.get_current_stream()
 
         if self.stream_name == 'null':
@@ -33,8 +30,7 @@ class TestStream(unittest.TestCase):
     def tearDown(self):
         self._prev_stream.use()
 
-    @unittest.skipIf(cuda.runtime.is_hip, 'This test is only for CUDA')
-    def test_eq_cuda(self):
+    def test_eq(self):
         null0 = self.stream
         if self.stream == cuda.Stream.null:
             null1 = cuda.Stream(True)
@@ -50,17 +46,6 @@ class TestStream(unittest.TestCase):
         assert null1 == null2
         assert null2 != null3
         assert null2 != null4
-
-    @unittest.skipIf(not cuda.runtime.is_hip, 'This test is only for HIP')
-    def test_eq_hip(self):
-        null0 = self.stream
-        null1 = cuda.Stream(True)
-        null2 = cuda.Stream(True)
-        null3 = cuda.Stream()
-
-        assert null0 == null1
-        assert null1 == null2
-        assert null2 != null3
 
     def test_hash(self):
         hash(self.stream)
@@ -86,10 +71,7 @@ class TestStream(unittest.TestCase):
 
     def test_del(self):
         null = self.stream == cuda.Stream.null
-        if cuda.runtime.is_hip:
-            ptds = False
-        else:
-            ptds = self.stream == cuda.Stream.ptds
+        ptds = self.stream == cuda.Stream.ptds
 
         self.check_del(null=null, ptds=ptds)
 
@@ -97,11 +79,7 @@ class TestStream(unittest.TestCase):
         N = 100
         cupy_arrays = [testing.shaped_random((2, 3)) for _ in range(N)]
 
-        if not cuda.runtime.is_hip:
-            stream = self.stream
-        else:
-            # adding callbacks to the null stream in HIP would segfault...
-            stream = cuda.Stream()
+        stream = cuda.Stream()
 
         out = []
         stream_list = []
@@ -120,8 +98,6 @@ class TestStream(unittest.TestCase):
         assert out == list(range(N))
         assert all(s == stream.ptr for s in stream_list)
 
-    @unittest.skipIf(cuda.runtime.is_hip,
-                     'HIP does not support launch_host_func')
     def test_launch_host_func(self):
         N = 100
         cupy_arrays = [testing.shaped_random((2, 3)) for _ in range(N)]
@@ -260,7 +236,8 @@ class TestStream(unittest.TestCase):
         s3 = cuda.Stream(priority=-3)
         assert s1.priority == 0
         assert s2.priority == -1
-        assert s3.priority == -3
+        # HIP clamps to -1
+        assert s3.priority == -1 if cupy.cuda.runtime.is_hip else -3
 
 
 class TestExternalStream(unittest.TestCase):
@@ -288,8 +265,6 @@ class TestExternalStream(unittest.TestCase):
         stream.synchronize()
         assert out == list(range(N))
 
-    @unittest.skipIf(cuda.runtime.is_hip,
-                     'HIP does not support launch_host_func')
     def test_launch_host_func(self):
         N = 100
         cupy_arrays = [testing.shaped_random((2, 3)) for _ in range(N)]

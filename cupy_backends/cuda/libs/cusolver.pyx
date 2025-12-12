@@ -661,7 +661,7 @@ cdef extern from '../../cupy_lapack.h' nogil:
                          cuDoubleComplex* Work, int lwork,
                          double* rwork, int* devInfo)
 
-    # gesvdj ... Singular value decomposition using Jacobi mathod
+    # gesvdj ... Singular value decomposition using Jacobi method
     int cusolverDnCreateGesvdjInfo(GesvdjInfo *info)
     int cusolverDnDestroyGesvdjInfo(GesvdjInfo info)
 
@@ -2786,7 +2786,7 @@ cpdef zgesvd(intptr_t handle, char jobu, char jobvt, int m, int n, size_t A,
             <cuDoubleComplex*>Work, lwork, <double*>rwork, <int*>devInfo)
     check_status(status)
 
-# gesvdj ... Singular value decomposition using Jacobi mathod
+# gesvdj ... Singular value decomposition using Jacobi method
 cpdef intptr_t createGesvdjInfo() except? 0:
     cdef GesvdjInfo info
     status = cusolverDnCreateGesvdjInfo(&info)

@@ -3,14 +3,12 @@
 cimport cpython  # NOQA
 cimport cython  # NOQA
 from libcpp cimport bool as cpp_bool
-from libc.stdint cimport uint32_t
+from libc.stdint cimport uint32_t, intptr_t
 
 import warnings
 
 import numpy
 from cupy.exceptions import AxisError
-
-from cupy._core.core cimport _ndarray_base
 
 
 cdef extern from 'halffloat.h':
@@ -547,3 +545,37 @@ cdef bint _is_layout_expected(
         return True
     else:
         return False
+
+
+cdef bint check_aligned(_ndarray_base arr) except -1:
+    """Check if an array is aligned with its dtype. We usually assume
+    that this is the case, since cuda allocations are aligned.
+
+    NOTE: We currently assume structured dtypes are always aligned for lack
+    of a clearer definition of what it means for them to be aligned.
+    """
+    cdef Py_ssize_t itemsize = arr.dtype.itemsize
+    cdef Py_ssize_t pow_2_mask = itemsize - 1
+    cdef Py_ssize_t i
+
+    if arr.dtype.char == "V":
+        return True
+
+    # all basic types have a power of two itemsize, we use this fact.
+    assert (itemsize & pow_2_mask) == 0 and itemsize != 0
+
+    for i in range(arr.ndim):
+        if arr._shape[i] == 0:
+            return True  # Empty array so alignment is meaningles enough.
+        if arr._strides[i] & pow_2_mask:
+            break
+    else:
+        # Strides were all OK, check pointer as well.
+        if (<intptr_t>arr.data.ptr & <intptr_t>pow_2_mask) == 0:
+            return True
+
+    raise ValueError(
+        f"result array with dtype {arr.dtype} would not be sufficiently "
+        "aligned for GPU operations. When using structured dtypes you must "
+        "manually align the dtype and its fields; CuPy may provide "
+        "utilities for this in the future.")

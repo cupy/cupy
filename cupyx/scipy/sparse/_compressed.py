@@ -578,7 +578,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         Bp = cupy.empty(M + 1, dtype=cupy.int32)
         Bp[0] = 0
 
-        # Count occurences of each column
+        # Count occurrences of each column
         thread_count = 256
 
         block_count = (n_idx + thread_count - 1) // thread_count

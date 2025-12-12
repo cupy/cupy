@@ -144,7 +144,7 @@ __global__ void d_boor(
             xb = t[ind];
             xa = t[ind - j];
             if (xb == xa) {
-                h[mu] = 0.0;
+                h[n] = 0.0;
                 continue;
             }
             w = ((double) j) * hh[n - 1]/(xb - xa);

@@ -9,6 +9,13 @@ Please see also the :ref:`compatibility_matrix` for supported environments of ea
 CuPy v14
 ========
 
+Support for NVIDIA CUDA component wheels
+----------------------------------------
+
+CuPy v14 can be installed together with a minimal CUDA installation all from PyPI (ex: ``pip install cupy-cuda13x[ctk]``),
+allowing quickly spinning up a fresh virtual environment without a system-wide CUDA Toolkit (only the CUDA driver is needed),
+smaller installation footprint, and better interoperability with other Python GPU libraries. See :doc:`install` for details.
+
 Dropping cuDNN Support
 ----------------------
 

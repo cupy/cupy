@@ -166,7 +166,7 @@ class Generator:
             _core.elementwise_copy(y, out)
             y = out
         # we cast the array to a python object because
-        # cython cant call astype with the default values for
+        # cython can't call astype with the default values for
         # omitted args.
         return (<object>y).astype(dtype, copy=False)
 
@@ -231,7 +231,7 @@ class Generator:
         y = low + (high - low) * y
 
         # we cast the array to a python object because
-        # cython cant call astype with the default values for
+        # cython can't call astype with the default values for
         # omitted args.
         return (<object>y).astype(dtype, copy=False)
 
@@ -353,7 +353,7 @@ class Generator:
 
         _launch_dist(self.bit_generator, beta, y, (a, b))
         # we cast the array to a python object because
-        # cython cant call astype with the default values for
+        # cython can't call astype with the default values for
         # omitted args.
         return (<object>y).astype(dtype, copy=False)
 
@@ -730,7 +730,7 @@ class Generator:
             _core.elementwise_copy(y, out)
             y = out
         # we cast the array to a python object because
-        # cython cant call astype with the default values for
+        # cython can't call astype with the default values for
         # omitted args.
         return (<object>y).astype(dtype, copy=False)
 
@@ -957,7 +957,7 @@ class Generator:
             _core.elementwise_copy(y, out)
             y = out
         # we cast the array to a python object because
-        # cython cant call astype with the default values for
+        # cython can't call astype with the default values for
         # omitted args.
         return (<object>y).astype(dtype, copy=False)
 

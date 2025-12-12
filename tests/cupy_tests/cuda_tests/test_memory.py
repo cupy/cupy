@@ -3,6 +3,7 @@ from __future__ import annotations
 import ctypes
 import gc
 import pickle
+import sys
 import threading
 import unittest
 
@@ -911,7 +912,6 @@ class TestAllocator(unittest.TestCase):
         main_ptr, sub_ptr = self._reuse_between_thread(stream1, stream2)
         assert main_ptr != sub_ptr
 
-    @pytest.mark.skipif(cupy.cuda.runtime.is_hip, reason='No PTDS on HIP')
     def test_reuse_between_thread_ptds(self):
         stream = cupy.cuda.Stream.ptds
         main_ptr, sub_ptr = self._reuse_between_thread(stream, stream)
@@ -1327,3 +1327,24 @@ class TestMemoryAsyncPool(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             self.pool.set_limit(fraction=1.1)
+
+
+@pytest.mark.skipif(sys.platform != 'linux',
+                    reason='prefetch not supported on non-Linux platforms')
+def test_managed_memory_prefetch_basic():
+    # Check that the prefetch API (and runtime API) seem to work.
+    mem = memory.malloc_managed(1024)
+    mem.mem.prefetch(stream_module.get_current_stream())
+    mem.mem.prefetch(stream_module.Stream(), device_id=0)
+    with pytest.raises(RuntimeError):
+        # invalid device ID
+        mem.mem.prefetch(stream_module.Stream(), device_id=10**8)
+
+
+def test_managed_memory_madvise_basic():
+    # Check that the madvise API (and runtime API) seem to work.
+    mem = memory.malloc_managed(1024)
+    # Set cudaMemAdviseSetReadMostly for device 0.
+    mem.mem.advise(1, cupy.cuda.Device(0))
+    with pytest.raises(RuntimeError):
+        mem.mem.advise(-1, cupy.cuda.Device(0))  # invalid advise

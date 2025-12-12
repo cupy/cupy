@@ -146,7 +146,7 @@ class TestPermutationRandomness(unittest.TestCase):
     # This test is to check kind of randomness of permutation.
     # An intuition behind this test is that, when you make a sub-array
     # by regularly extracting half elements from the permuted array,
-    # the sub-array should also hold randomeness and accordingly
+    # the sub-array should also hold randomness and accordingly
     # frequency of appearance of 0 and 1 at each bit position of
     # whole elements in the sub-array should become similar
     # when elements count of original array is 2^N.

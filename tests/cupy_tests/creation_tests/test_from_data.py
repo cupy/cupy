@@ -595,6 +595,20 @@ class TestFromData(unittest.TestCase):
             return a + a
 
 
+@pytest.mark.parametrize("func", [
+    lambda x: cupy.array(x),  # NumPy array
+    lambda x: cupy.asarray([x]),  # Nested NumPy array
+])
+def test_from_numpy_byteswapped(func):
+    # Cupy will byte-swap for the user when converting from NumPy
+    np_arr = numpy.arange(10, dtype=">i4")
+
+    cupy_arr = func(np_arr)
+    assert cupy_arr.dtype == "<i4"
+    # ignore first dimension we just care about byte-order
+    testing.assert_array_equal(np_arr, cupy_arr.reshape(-1))
+
+
 max_cuda_array_interface_version = 3
 
 
@@ -754,3 +768,26 @@ class TestArrayCuPyGetNDArray(unittest.TestCase):
         dummy = DummyObjectWithCuPyGetNDArray(a)
         res = cupy.asarray(dummy)
         assert a is res  # OK if it was a view
+
+
+class TestArrayNestedCuPyLike:
+    @pytest.mark.parametrize('cupy_like', [
+        DummyObjectWithCuPyGetNDArray,
+        DummyObjectWithCudaArrayInterface,
+    ])
+    def test_nested_gpu_arrays_simple(self, cupy_like):
+        cupy_arr = cupy.array([1, 2, 3])
+        arr = cupy_like(cupy_arr)
+        if cupy_like is DummyObjectWithCuPyGetNDArray:
+            # __cupy_get_ndarray__ path currently assumes .shape and .dtype
+            arr.shape = (3,)
+            arr.dtype = cupy_arr.dtype
+
+        with pytest.raises(Exception):
+            # Make sure we would fail if going via numpy
+            # (numpy object arrays are likely here which fail cupy)
+            cupy.array(numpy.asarray(arr))
+
+        res = cupy.asarray([arr, arr])
+        expected = cupy.array([cupy_arr, cupy_arr])
+        testing.assert_array_equal(res, expected)

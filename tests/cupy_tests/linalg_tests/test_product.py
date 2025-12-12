@@ -523,7 +523,7 @@ class TestMatrixPower(unittest.TestCase):
         return xp.linalg.matrix_power(a, 123456789123456789)
 
     @pytest.mark.skipif(sys.platform == "win32",
-                        reason="python int overlows C long")
+                        reason="python int overflows C long")
     @testing.for_float_dtypes(no_float16=True)
     @testing.numpy_cupy_allclose()
     def test_matrix_power_invlarge(self, xp, dtype):

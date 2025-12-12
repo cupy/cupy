@@ -82,7 +82,7 @@ cdef class _ShapeConstraints:
 
     # Used in runtime.
     def satisfy(self, dict dim_map):
-        """Check if the given dicionary satisfies the constraints.
+        """Check if the given dictionary satisfies the constraints.
 
         Args:
             dim_map (dict):
@@ -128,7 +128,7 @@ def _base(array):
 
 
 class _VariableCoordinator:
-    """Variable constuct manager.
+    """Variable construct manager.
 
     This class calls ``_TraceArray`` or ``_TraceScalar`` internally
     with unique serial numbers and returns the variable object. In

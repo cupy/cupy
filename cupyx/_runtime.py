@@ -198,7 +198,7 @@ class _RuntimeInfo:
                     '(not loaded; try `import cupy.cuda.nccl` first)')
                 self.nccl_runtime_version = self.nccl_build_version
         try:
-            import cupy_backends.cuda.libs.nccl as nccl
+            from cupy_backends.cuda.libs import nccl
             self.nccl_build_version = nccl.get_build_version()
             nccl_runtime_version = nccl.get_version()
             if nccl_runtime_version == 0:
@@ -218,14 +218,14 @@ class _RuntimeInfo:
 
         # cuTENSOR
         try:
-            import cupy_backends.cuda.libs.cutensor as cutensor
+            from cupy_backends.cuda.libs import cutensor
             self.cutensor_version = cutensor.get_version()
         except ImportError:
             pass
 
         # cuSparseLT
         try:
-            import cupy_backends.cuda.libs.cusparselt as cusparselt
+            from cupy_backends.cuda.libs import cusparselt
             self.cusparselt_version = cusparselt.get_build_version()
         except ImportError:
             pass
