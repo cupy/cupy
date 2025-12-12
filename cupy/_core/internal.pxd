@@ -4,6 +4,7 @@ from libc.stdint cimport uint16_t
 
 from cupy._core._carray cimport shape_t
 from cupy._core._carray cimport strides_t
+from cupy._core.core cimport _ndarray_base
 
 
 cpdef Py_ssize_t prod(const vector.vector[Py_ssize_t]& args)
@@ -68,3 +69,5 @@ cpdef tuple _broadcast_shapes(shapes)
 cdef bint _is_layout_expected(
     const bint c_contiguous, const bint f_contiguous,
     expected_order) except*
+
+cdef bint check_aligned(_ndarray_base arr) except -1

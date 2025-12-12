@@ -26,7 +26,7 @@ cdef class MemPoolProps:
 ###############################################################################
 
 IF CUPY_USE_CUDA_PYTHON:
-    from cuda.ccudart cimport *
+    from cuda.bindings.cyruntime cimport *
     # Aliases for compatibillity with existing CuPy codebase.
     # Keep in sync with names defined in `_runtime_typedef.pxi`.
     # TODO(kmaehashi): Remove these aliases.
@@ -275,6 +275,7 @@ cpdef streamSynchronize(intptr_t stream)
 cpdef streamAddCallback(intptr_t stream, callback, intptr_t arg,
                         unsigned int flags=*)
 cpdef launchHostFunc(intptr_t stream, callback, intptr_t arg)
+cpdef _launchHostFuncUnmanaged(intptr_t stream, tuple func_arg)
 cpdef streamQuery(intptr_t stream)
 cpdef streamWaitEvent(intptr_t stream, intptr_t event, unsigned int flags=*)
 cpdef streamBeginCapture(intptr_t stream, int mode=*)

@@ -25,8 +25,6 @@ if os.environ.get('CONDA_BUILD', '0') == '1':
 PLATFORM_LINUX = sys.platform.startswith('linux')
 PLATFORM_WIN32 = sys.platform.startswith('win32')
 
-minimum_cudnn_version = 7600
-
 minimum_hip_version = 305  # for ROCm 3.5.0+
 
 _cuda_path = 'NOT_INITIALIZED'
@@ -291,7 +289,6 @@ def _get_compiler_base_options(compiler_path):
 
 _hip_version = None
 _thrust_version = None
-_cudnn_version = None
 _nccl_version = None
 _cutensor_version = None
 _cub_path = None
@@ -408,45 +405,6 @@ def get_thrust_version(formatted=False):
     if formatted:
         return str(_thrust_version)
     return _thrust_version
-
-
-def check_cudnn_version(compiler, settings):
-    global _cudnn_version
-    try:
-        out = build_and_run(compiler, '''
-        #include <cudnn.h>
-        #include <stdio.h>
-        int main() {
-          printf("%d", CUDNN_VERSION);
-          return 0;
-        }
-        ''', include_dirs=settings['include_dirs'])
-
-    except Exception as e:
-        utils.print_warning('Cannot check cuDNN version\n{}'.format(e))
-        return False
-
-    _cudnn_version = int(out)
-
-    if not minimum_cudnn_version <= _cudnn_version:
-        min_major = str(minimum_cudnn_version)
-        utils.print_warning(
-            'Unsupported cuDNN version: {}'.format(str(_cudnn_version)),
-            'cuDNN >=v{} is required'.format(min_major))
-        return False
-
-    return True
-
-
-def get_cudnn_version(formatted=False):
-    """Return cuDNN version cached in check_cudnn_version()."""
-    global _cudnn_version
-    if _cudnn_version is None:
-        msg = 'check_cudnn_version() must be called first.'
-        raise RuntimeError(msg)
-    if formatted:
-        return str(_cudnn_version)
-    return _cudnn_version
 
 
 def check_nccl_version(compiler, settings):
@@ -738,7 +696,7 @@ def conda_update_dirs(include_dirs, library_dirs):
         # executable in the build environment, not the target environment.
         # This assumes, however, that the build/host environments see the same
         # CUDA Toolkit.
-        if os.environ.get('CONDA_OVERRIDE_CUDA', '0').startswith('12'):
+        if os.environ.get('CONDA_OVERRIDE_CUDA', '0').startswith(('12', '13')):
             include_dirs.insert(
                 0,
                 f'{os.environ["BUILD_PREFIX"]}/targets/x86_64-linux/include')
@@ -753,7 +711,7 @@ def conda_update_dirs(include_dirs, library_dirs):
         include_dirs.append(f'{os.environ["BUILD_PREFIX"]}/include')
         library_dirs.append(f'{os.environ["BUILD_PREFIX"]}/lib')
 
-    if os.environ.get('CONDA_OVERRIDE_CUDA', '0').startswith('12'):
+    if os.environ.get('CONDA_OVERRIDE_CUDA', '0').startswith(('12', '13')):
         if PLATFORM_LINUX:
             include_dirs.append(
                 f'{os.environ["BUILD_PREFIX"]}/targets/'

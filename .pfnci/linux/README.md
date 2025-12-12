@@ -21,6 +21,18 @@ Here are some examples:
 ./run.sh rocm-4-2 build
 ```
 
+When running locally, you might want to configure several environment variables:
+
+```
+# Disable Docker image build cache.
+# Without this you will see `ERROR importing cache manifest from ...` if you
+# don't have access to the CuPy's Docker repository.
+export DOCKER_IMAGE_CACHE=0
+
+# Persist cache (build/kernel cache) across multiple `run.sh` invocations.
+export CACHE_DIR="/tmp/cupy-ci-cache"
+```
+
 ## Test Targets
 
 `tests/` directory contains Dockerfiles and bootstrap shell scripts with TARGET name prefixed.

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import contextlib
+import importlib as _importlib
+import os as _os
 import warnings
 
 import cupy as _cupy
@@ -71,6 +73,16 @@ def __getattr__(key):
             jitify = _UnavailableModule('cupy.cuda.jitify')
         _cupy.cuda.jitify = jitify
         return jitify
+    elif key == 'cufft':
+        if not runtime.is_hip:
+            from cuda import pathfinder
+            try:
+                pathfinder.load_nvidia_dynamic_lib("cufft")
+            except pathfinder.DynamicLibNotFoundError as e:
+                if (not (_os.environ.get('READTHEDOCS') == 'True') and
+                        not (_os.environ.get('CUPY_CI') is not None)):
+                    raise ImportError(str(e)) from e
+        return _importlib.import_module('cupy.cuda.cufft')
 
     # `nvtx_enabled` flags are kept for backward compatibility with Chainer.
     # Note: module-level getattr only runs on Python 3.7+.
@@ -93,12 +105,8 @@ def is_available():
         _available = False
         try:
             _available = runtime.getDeviceCount() > 0
-        except Exception as e:
-            if (not runtime.is_hip and e.args[0] !=
-                    'cudaErrorNoDevice: no CUDA-capable device is detected'):
-                raise
-            elif runtime.is_hip and 'hipErrorNoDevice' not in e.args[0]:
-                raise
+        except Exception:
+            pass
     return _available
 
 

@@ -33,6 +33,16 @@ import cupyx as _cupyx  # NOQA
 
 
 def is_available():
+    """Return True if GPU execution is available.
+
+    This function can be used to guard code for cases where CuPy is installed
+    but not usable, typically because the system has no GPU.
+    It checks whether the driver can be queried for devices and that there is
+    at least one device available.
+
+    Returns:
+        bool: True if GPU execution is possible.
+    """
     return cuda.is_available()
 
 
@@ -43,10 +53,6 @@ from cupy import fft  # NOQA
 from cupy import linalg  # NOQA
 from cupy import polynomial  # NOQA
 from cupy import random  # NOQA
-# `cupy.sparse` is deprecated in v8
-from cupy import sparse  # NOQA
-from cupy import testing  # NOQA  # NOQA
-
 
 # import class and function
 from cupy._core import ndarray  # NOQA
@@ -311,6 +317,7 @@ from cupy._binary.elementwise import bitwise_and  # NOQA
 from cupy._binary.elementwise import bitwise_or  # NOQA
 from cupy._binary.elementwise import bitwise_xor  # NOQA
 from cupy._binary.elementwise import bitwise_not  # NOQA
+from cupy._binary.elementwise import bitwise_count  # NOQA
 from cupy._binary.elementwise import invert  # NOQA
 from cupy._binary.elementwise import left_shift  # NOQA
 from cupy._binary.elementwise import right_shift  # NOQA
@@ -1065,6 +1072,17 @@ def issctype(rep):
         return False
 
 
+# np 2.0: XXX shims for things newly added in np 2.0
+if _numpy.__version__ < "2":
+    from numpy import bool_ as bool  # NOQA
+    from numpy import int_ as long  # NOQA
+    from numpy import uint as ulong  # NOQA
+else:
+    from numpy import bool  # type: ignore [no-redef]  # NOQA
+    from numpy import long  # type: ignore [no-redef]  # NOQA
+    from numpy import ulong  # type: ignore [no-redef]  # NOQA
+
+
 # np 2.0: XXX shims for things moved in np 2.0
 if _numpy.__version__ < "2":
     from numpy import format_parser  # NOQA
@@ -1084,14 +1102,8 @@ if _numpy.__version__ < "2":
 else:
 
     _template = '''\
-''This function has been removed in NumPy v2.
+This function has been removed in NumPy v2.
 Use {recommendation} instead.
-
-CuPy has been providing this function as an alias to the NumPy
-implementation, so it cannot be used in environments with NumPy
-v2 installed. If you rely on this function and you cannot modify
-the code to use {recommendation}, please downgrade NumPy to v1.26
-or earlier.
 '''
 
     def find_common_type(*args, **kwds):
@@ -1135,8 +1147,22 @@ def _embed_signatures(dirs):
 
 
 _embed_signatures(globals())
-_embed_signatures(fft.__dict__)
-_embed_signatures(linalg.__dict__)
-_embed_signatures(random.__dict__)
-_embed_signatures(sparse.__dict__)
-_embed_signatures(testing.__dict__)
+
+# Lazy import testing. Set up after _embed_signatures so that we don't access
+# any cupy.testing attributes. cupy.testing does not contain any ufuncs so it
+# is not necessary to call _embed_signatures on it.
+# https://docs.python.org/3/library/importlib.html#implementing-lazy-imports
+
+
+def _lazy_import(name):
+    import importlib.util
+    spec = importlib.util.find_spec(name)
+    loader = importlib.util.LazyLoader(spec.loader)
+    spec.loader = loader
+    module = importlib.util.module_from_spec(spec)
+    _sys.modules[name] = module
+    loader.exec_module(module)
+    return module
+
+
+testing = _lazy_import("cupy.testing")

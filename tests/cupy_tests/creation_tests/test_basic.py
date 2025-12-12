@@ -228,6 +228,14 @@ class TestBasic:
         with pytest.raises(TypeError):
             cupy.zeros_like(a, subok=True)
 
+    def test_reject_byteswap(self):
+        # Reject creation of arrays with bad byte-order at a low level
+        with pytest.raises(ValueError, match=".*byte-order"):
+            cupy.ndarray((2, 3, 4), dtype=">i")
+
+        with pytest.raises(ValueError, match=".*byte-order"):
+            cupy.zeros((2, 3, 4), dtype=">i")
+
     @testing.for_CF_orders()
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
@@ -245,6 +253,24 @@ class TestBasic:
         a = cupy.ndarray((2, 3, 4))
         with pytest.raises(TypeError):
             cupy.ones_like(a, subok=True)
+
+    @pytest.mark.parametrize('shape, strides', [
+        ((2, 3, 4), (8 * 3 * 4, 8 * 4, 8)),  # contiguous
+        ((2, 3, 4), (8, 0, 8)),  # smaller than contiguous needed
+        ((2, 0, 4), (8, 128, 1024)),  # empty can be OK
+    ])
+    def test_ndarray_strides(self, shape, strides):
+        a = cupy.ndarray(shape, strides=strides, dtype="float64")
+        assert cupy.byte_bounds(a)[0] == a.data.ptr
+        assert cupy.byte_bounds(a)[1] - a.data.ptr <= a.data.mem.size
+
+    @pytest.mark.parametrize('shape, strides', [
+        ((2, 3, 4), (8, 128, 1024)),  # too large
+        ((2, 3, 4), (-8, 8, 8)),  # negative (needs offset)
+    ])
+    def test_ndarray_strides_raises(self, shape, strides):
+        with pytest.raises(ValueError, match=r"ndarray\(\) with strides.*"):
+            cupy.ndarray(shape, strides=strides)
 
     @testing.for_CF_orders()
     @testing.for_all_dtypes()

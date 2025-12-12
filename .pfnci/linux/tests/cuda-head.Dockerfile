@@ -1,5 +1,5 @@
 # AUTO GENERATED: DO NOT EDIT!
-ARG BASE_IMAGE="nvidia/cuda:11.8.0-devel-ubuntu20.04"
+ARG BASE_IMAGE="nvidia/cuda:12.9.1-devel-ubuntu20.04"
 FROM ${BASE_IMAGE}
 
 RUN export DEBIAN_FRONTEND=noninteractive && \
@@ -14,20 +14,22 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
        && \
     apt-get -qqy install ccache git curl && \
     apt-get -qqy --allow-change-held-packages \
-            --allow-downgrades install 'libnccl2=2.16.*+cuda11.8' 'libnccl-dev=2.16.*+cuda11.8' 'libcutensor2=2.0.*' 'libcutensor-dev=2.0.*' 'libcudnn8=8.8.*+cuda11.8' 'libcudnn8-dev=8.8.*+cuda11.8'
+            --allow-downgrades install 'libnccl2=2.27.*+cuda12.9' 'libnccl-dev=2.27.*+cuda12.9' 'libcutensor2-cuda-12=2.3.*' 'libcutensor2-dev-cuda-12=2.3.*'
 
 ENV PATH "/usr/lib/ccache:${PATH}"
 
-COPY setup/update-alternatives-cutensor.sh /
-RUN /update-alternatives-cutensor.sh
-
+ENV CUPY_INCLUDE_PATH=/usr/include/libcutensor/12:${CUPY_INCLUDE_PATH}
+ENV CUPY_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu/libcutensor/12:${CUPY_LIBRARY_PATH}
+ENV LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu/libcutensor/12:${LD_LIBRARY_PATH}
 RUN git clone https://github.com/pyenv/pyenv.git /opt/pyenv
 ENV PYENV_ROOT "/opt/pyenv"
 ENV PATH "${PYENV_ROOT}/shims:${PYENV_ROOT}/bin:${PATH}"
-RUN pyenv install 3.12.6 && \
-    pyenv global 3.12.6 && \
+RUN pyenv install 3.12.11 && \
+    pyenv global 3.12.11 && \
     pip install -U setuptools pip wheel
 
-RUN pip install -U 'numpy>=0a0' 'scipy>=0a0' 'optuna>=0a0' 'cython==3.0.*' 'fastrlock>=0.5'
+RUN pip install -U 'numpy>=0a0' 'scipy>=0a0' 'optuna>=0a0' 'cython==3.1.*'
 RUN pip uninstall -y mpi4py cuda-python && \
     pip check
+
+RUN mkdir /home/cupy-user && chmod 777 /home/cupy-user

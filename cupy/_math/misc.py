@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import cupy
-import cupyx.scipy.fft
 
 from cupy import _core
 from cupy._core import _routines_math as _math
@@ -94,6 +93,7 @@ def _fft_convolve(a1, a2, mode):
 
     dtype = cupy.result_type(a1, a2)
     n1, n2 = a1.shape[-1], a2.shape[-1]
+    import cupyx.scipy.fft
     out_size = cupyx.scipy.fft.next_fast_len(n1 + n2 - 1)
     fa1 = fft(a1, out_size)
     fa2 = fft(a2, out_size)
@@ -416,10 +416,6 @@ def _check_nan_inf(x, dtype, neg=None):
         x = 0
     elif x is None and neg is not None:
         x = cupy.finfo(dtype).min if neg else cupy.finfo(dtype).max
-    elif cupy.isnan(x):
-        x = cupy.nan
-    elif cupy.isinf(x):
-        x = cupy.inf * (-1)**(x < 0)
     return cupy.asanyarray(x, dtype)
 
 

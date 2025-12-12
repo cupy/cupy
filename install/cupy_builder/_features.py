@@ -208,21 +208,7 @@ def get_features(ctx: Context) -> dict[str, Feature]:
             'cusolver',
         ],
     }
-    CUDA_cudnn = {
-        'name': 'cudnn',
-        'file': [
-            'cupy_backends.cuda.libs.cudnn',
-            'cupyx.cudnn',
-        ],
-        'include': [
-            'cudnn.h',
-        ],
-        'libraries': [
-            'cudnn',
-        ],
-        'check_method': build.check_cudnn_version,
-        'version_method': build.get_cudnn_version,
-    }
+
     CUDA_nccl = {
         'name': 'nccl',
         'file': [
@@ -431,7 +417,6 @@ def get_features(ctx: Context) -> dict[str, Feature]:
         features = [
             CUDA_cuda(ctx),
             _from_dict(CUDA_cusolver, ctx),
-            _from_dict(CUDA_cudnn, ctx),
             _from_dict(CUDA_nccl, ctx),
             _from_dict(CUDA_nvtx, ctx),
             _from_dict(CUDA_cutensor, ctx),

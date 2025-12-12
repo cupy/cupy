@@ -419,7 +419,8 @@ class TestFreqz:
         w, h = scp.signal.freqz([1.0], worN=N)
         return w, h
 
-    @pytest.mark.parametrize("w", [8.0, 8.0 + 0j])
+    @pytest.mark.parametrize("w", [8.0, 8.0 + 0j, 8.0 + 3j])
+    @testing.with_requires('scipy>=1.16')
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_w_or_N_types_3(self, xp, scp, w):
         # Measure at frequency 8 Hz

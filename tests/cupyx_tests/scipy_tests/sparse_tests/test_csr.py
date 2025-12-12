@@ -1119,11 +1119,11 @@ class TestCsrMatrixScipyComparison:
         assert m.has_sorted_indices
         return m
 
-    def test_sum_tuple_axis(self):
-        for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
-            m = self.make(xp, sp, self.dtype)
-            with pytest.raises(TypeError):
-                m.sum(axis=(0, 1))
+    @testing.with_requires('scipy>=1.16')
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_sum_tuple_axis(self, xp, sp):
+        m = self.make(xp, sp, self.dtype)
+        return m.sum(axis=(0, 1))
 
     def test_sum_str_axis(self):
         for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
@@ -1925,27 +1925,21 @@ class TestCsrMatrixMaximumMinimum:
         b = self._make_sp_matrix_col(self.b_dtype, xp, sp).toarray()
         return getattr(a, self.opt)(b)
 
+    @testing.with_requires('scipy>=1.16')
     @testing.numpy_cupy_array_equal(sp_name='sp')
     def test_scalar_plus(self, xp, sp):
-        if (self.a_dtype in ('float32', 'complex64')):
-            pytest.xfail(reason="XXX: np2.0: weak promotion")
-
         a = self._make_sp_matrix(self.a_dtype, xp, sp)
         return getattr(a, self.opt)(0.5)
 
+    @testing.with_requires('scipy>=1.16')
     @testing.numpy_cupy_array_equal(sp_name='sp')
     def test_scalar_minus(self, xp, sp):
-        if (self.a_dtype in ('float32', 'complex64')):
-            pytest.xfail(reason="XXX: np2.0: weak promotion")
-
         a = self._make_sp_matrix(self.a_dtype, xp, sp)
         return getattr(a, self.opt)(-0.5)
 
+    @testing.with_requires('scipy>=1.16')
     @testing.numpy_cupy_array_equal(sp_name='sp')
     def test_scalar_zero(self, xp, sp):
-        if self.a_dtype in ('float32', 'complex64'):
-            pytest.xfail(reason="XXX: np2.0: weak promotion")
-
         a = self._make_sp_matrix(self.a_dtype, xp, sp)
         return getattr(a, self.opt)(0)
 
@@ -2086,18 +2080,21 @@ class TestCsrMatrixComparison:
         b = self._make_sp_matrix_col(self.b_dtype, xp, sp).toarray()
         return self._compare(a, b)
 
+    @testing.with_requires('numpy>=2.0')
     @testing.numpy_cupy_array_equal(sp_name='sp')
     def test_scalar_plus(self, xp, sp):
         a = self._make_sp_matrix(self.a_dtype, xp, sp)
         with self._assert_warns_efficiency(sp, 0.5):
             return self._compare(a, 0.5)
 
+    @testing.with_requires('numpy>=2.0')
     @testing.numpy_cupy_array_equal(sp_name='sp')
     def test_scalar_minus(self, xp, sp):
         a = self._make_sp_matrix(self.a_dtype, xp, sp)
         with self._assert_warns_efficiency(sp, -0.5):
             return self._compare(a, -0.5)
 
+    @testing.with_requires('numpy>=2.0')
     @testing.numpy_cupy_array_equal(sp_name='sp')
     def test_scalar_zero(self, xp, sp):
         if self.opt in ('_le_', '_ge_'):
