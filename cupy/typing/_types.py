@@ -16,7 +16,7 @@ from numpy.typing import NBitBase  # NOQA
 _Shape = tuple[int, ...]
 _ShapeLike = SupportsIndex | Sequence[SupportsIndex]
 
-_OrderKACF = Literal[None, "K", "A", "C", "F"]
-_OrderCF = Literal[None, "C", "F"]
+_OrderKACF = Literal["K", "A", "C", "F"] | None
+_OrderCF = Literal["C", "F"] | None
 _ScalarType_co = TypeVar("_ScalarType_co", bound=numpy.generic, covariant=True)
 NDArray = core.ndarray[Any, numpy.dtype[_ScalarType_co]]

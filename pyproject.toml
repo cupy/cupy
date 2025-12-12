@@ -132,7 +132,6 @@ select = ["E", "F", "W", "UP", "I002", "FA", "PYI", "PLC01"]
 extend-ignore = [
   "UP031", # printf-string-formatting
   "UP032", # f-string
-  "UP038", # Use `X | Y` in `isinstance` call instead of `(X, Y)`
 ]
 
 [tool.ruff.lint.per-file-ignores]

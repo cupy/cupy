@@ -525,7 +525,7 @@ cdef class _AbstractReductionKernel:
             warnings.warn(
                 'No codes are cached because compilation is deferred until '
                 'the first function call or CUB is enabled.')
-        return dict([(k, v) for k, v in self._cached_codes.items()])
+        return {(k, v) for k, v in self._cached_codes.items()}
 
     @property
     def cached_code(self):
