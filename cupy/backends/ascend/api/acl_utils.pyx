@@ -1073,6 +1073,7 @@ cdef extern from "../acl_general_ops.h" nogil:
         const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
     aclError aclop_Linspace(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
         const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
+
     aclError aclop_Concat(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
         const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
     aclError aclop_Stack(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
@@ -1082,6 +1083,11 @@ cdef extern from "../acl_general_ops.h" nogil:
     aclError aclop_Sort(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
         const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
     aclError aclop_Argsort(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
+
+    aclError aclop_Put(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
+    aclError aclop_Take(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
         const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
 
     # special math ops
@@ -1110,6 +1116,12 @@ cdef void register_irregular_operators():
     register_acl_ufunc("ascend_sort", GENERAL_OP, func_union)
     func_union.general_op = aclop_Sort
     register_acl_ufunc("ascend_argsort", GENERAL_OP, func_union)
+
+    func_union.general_op = aclop_Take
+    register_acl_ufunc("ascend_take", GENERAL_OP, func_union)
+    register_acl_ufunc("ascend_take_scalar", GENERAL_OP, func_union)
+    func_union.general_op = aclop_Put
+    register_acl_ufunc("ascend_raise_put", GENERAL_OP, func_union)
 
     func_union.general_op = aclop_Arange
     register_acl_ufunc("ascend_arange", GENERAL_OP, func_union)

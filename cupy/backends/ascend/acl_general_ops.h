@@ -154,10 +154,6 @@
         }
     }
 
-    // aclnnTakeGetWorkspaceSize(const aclTensor* self, const aclTensor* index, aclTensor* out, ...);
-    // aclnnInplacePutGetWorkspaceSize(aclTensor* selfRef, const aclTensor* index,
-    //                                                 const aclTensor* source, bool accumulate,
-    
 
     // fill_kernel = ElementwiseKernel('T x', 'T y', 'y = x', 'cupy_fill')
     aclError aclop_Fill(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
@@ -351,22 +347,37 @@
 
     // choose
     // numpy.take_along_axis(arr, indices, axis=-1)
+
     // ElementwiseKernel('raw T a, S indices, uint32 ldim, uint32 cdim, uint32 rdim, int64 index_range', 'T out'
-    DECLARE_ACL_BINARY_OP(Take)  // axis=None, out=None, mode='raise'
+    // axis=None, out=None, mode='raise',  there is _take_scalar_kernel, will not be supported
+    aclError aclop_Take(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream) {
+        const aclTensor* self = ins[0];
+        if (ins.size() == 2) {
+            return aclIrregularOpRun(aclnnTakeGetWorkspaceSize, aclnnTake, stream,
+                self, ins[1], outs[0]);
+        } else {
+            std::cout << "Error:" <<  __FUNCTION__  << " take 3 input tensors take(self, index, out) \n";
+            return ACL_ERROR_INVALID_PARAM;
+        }
+    }
+    // aclnnTakeGetWorkspaceSize(const aclTensor* self, const aclTensor* index, aclTensor* out, ...);
 
-    // numpy.put(a, ind, v, mode='raise')
-    // aclError aclop_Put(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
-    //     const ArgsType& args, const KwargsType& kwargs, aclrtStream stream) {
-    //     aclTensor* self = ins[0];
-    //     if (args.size() == 3) {
-    //         return aclInplaceBinaryOpRun(self, ins[1], ins[2],
-    //             aclnnInplacePutGetWorkspaceSize, aclnnInplacePut, stream);
-    //     } else {
-    //         std::cout << "Error:" <<  __FUNCTION__  << " take 3 input tensors (self, index, value) \n";
-    //         return ACL_ERROR_INVALID_PARAM;
-    //     }
-    // }
-
+    // numpy.put(a, ind, v, mode='raise'), while ACLOP has accumulate arg
+    // cupy support ('raise', 'wrap', 'clip') mode, by diff kernel
+    // cdef _put_raise_kernel = ElementwiseKernel('S ind, raw T vals, int64 n_vals, int64 n',
+    aclError aclop_Put(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream) {
+        bool accumulate = false;
+        if (ins.size() + outs.size() == 3) {
+            aclTensor* self = outs[0];
+            return aclIrregularOpRun(aclnnInplacePutGetWorkspaceSize, aclnnInplacePut, stream,
+                self, ins[0], ins[1], accumulate);
+        } else {
+            std::cout << "Error:" <<  __FUNCTION__  << " put 3 input tensors put(self, index, value) \n";
+            return ACL_ERROR_INVALID_PARAM;
+        }
+    }
 
     // random.normal(loc=0.0, scale=1.0, size=None), normal distribution
     aclError aclop_Normal(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
