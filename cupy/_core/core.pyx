@@ -39,7 +39,7 @@ from cupy._core cimport _routines_linalg as _linalg
 from cupy._core cimport _routines_logic as _logic
 from cupy._core cimport _routines_manipulation as _manipulation
 from cupy._core cimport _routines_math as _math
-#from cupy._core cimport _routines_sorting as _sorting
+from cupy._core cimport _routines_sorting as _sorting
 from cupy._core cimport _routines_statistics as _statistics
 
 from cupy._core cimport _scalar
@@ -957,105 +957,104 @@ cdef class _ndarray_base:
         d = self.diagonal(offset, axis1, axis2)
         return d.sum(-1, dtype, out, False)
 
-    IF CUPY_CANN_VERSION <= 0: # TODO: sorting later
-        @staticmethod
-        def _check_kind_sort(kind):
-            if kind is not None and kind != "stable":
-                raise ValueError("kind can only be None or 'stable'")
+    @staticmethod
+    def _check_kind_sort(kind):
+        if kind is not None and kind != "stable":
+            raise ValueError("kind can only be None or 'stable'")
 
-        cpdef sort(self, int axis=-1, kind=None):
-            """Sort an array, in-place with a stable sorting algorithm.
+    cpdef sort(self, int axis=-1, kind=None):
+        """Sort an array, in-place with a stable sorting algorithm.
 
-            Args:
-                axis (int): Axis along which to sort. Default is -1, which means
-                    sort along the last axis.
-                kind: Default is `None`, which is equivalent to 'stable'. Unlike in
-                    NumPy any other options are not accepted here.
+        Args:
+            axis (int): Axis along which to sort. Default is -1, which means
+                sort along the last axis.
+            kind: Default is `None`, which is equivalent to 'stable'. Unlike in
+                NumPy any other options are not accepted here.
 
-            .. note::
-            For its implementation reason, ``ndarray.sort`` currently supports
-            only arrays with their own data, and does not fully support ``kind``
-            and ``order`` parameters that ``numpy.ndarray.sort`` does support.
+        .. note::
+        For its implementation reason, ``ndarray.sort`` currently supports
+        only arrays with their own data, and does not fully support ``kind``
+        and ``order`` parameters that ``numpy.ndarray.sort`` does support.
 
-            .. seealso::
-                :func:`cupy.sort` for full documentation,
-                :meth:`numpy.ndarray.sort`
+        .. seealso::
+            :func:`cupy.sort` for full documentation,
+            :meth:`numpy.ndarray.sort`
 
-            """
-            self._check_kind_sort(kind)
-            _sorting._ndarray_sort(self, axis)
+        """
+        self._check_kind_sort(kind)
+        _sorting._ndarray_sort(self, axis)
 
-        cpdef _ndarray_base argsort(self, axis=-1, kind=None):
-            """Returns the indices that would sort an array with stable sorting
+    cpdef _ndarray_base argsort(self, axis=-1, kind=None):
+        """Returns the indices that would sort an array with stable sorting
 
-            Args:
-                axis (int or None): Axis along which to sort. Default is -1, which
-                    means sort along the last axis. If None is supplied, the array
-                    is flattened before sorting.
-                kind: Default is `None`, which is equivalent to 'stable'. Unlike in
-                    NumPy any other options are not accepted here.
+        Args:
+            axis (int or None): Axis along which to sort. Default is -1, which
+                means sort along the last axis. If None is supplied, the array
+                is flattened before sorting.
+            kind: Default is `None`, which is equivalent to 'stable'. Unlike in
+                NumPy any other options are not accepted here.
 
-            Returns:
-                cupy.ndarray: Array of indices that sort the array.
+        Returns:
+            cupy.ndarray: Array of indices that sort the array.
 
-            .. seealso::
-                :func:`cupy.argsort` for full documentation,
-                :meth:`numpy.ndarray.argsort`
+        .. seealso::
+            :func:`cupy.argsort` for full documentation,
+            :meth:`numpy.ndarray.argsort`
 
-            """
-            self._check_kind_sort(kind)
-            return _sorting._ndarray_argsort(self, axis)
+        """
+        self._check_kind_sort(kind)
+        return _sorting._ndarray_argsort(self, axis)
 
-        cpdef partition(self, kth, int axis=-1):
-            """Partitions an array.
+    cpdef partition(self, kth, int axis=-1):
+        """Partitions an array.
 
-            Args:
-                kth (int or sequence of ints): Element index to partition by. If
-                    supplied with a sequence of k-th it will partition all elements
-                    indexed by k-th of them into their sorted position at once.
+        Args:
+            kth (int or sequence of ints): Element index to partition by. If
+                supplied with a sequence of k-th it will partition all elements
+                indexed by k-th of them into their sorted position at once.
 
-                axis (int): Axis along which to sort. Default is -1, which means
-                    sort along the last axis.
+            axis (int): Axis along which to sort. Default is -1, which means
+                sort along the last axis.
 
-            .. seealso::
-                :func:`cupy.partition` for full documentation,
-                :meth:`numpy.ndarray.partition`
+        .. seealso::
+            :func:`cupy.partition` for full documentation,
+            :meth:`numpy.ndarray.partition`
 
-            """
-            _sorting._ndarray_partition(self, kth, axis)
+        """
+        _sorting._ndarray_partition(self, kth, axis)
 
-        cpdef _ndarray_base argpartition(self, kth, axis=-1):
-            """Returns the indices that would partially sort an array.
+    cpdef _ndarray_base argpartition(self, kth, axis=-1):
+        """Returns the indices that would partially sort an array.
 
-            Args:
-                kth (int or sequence of ints): Element index to partition by. If
-                    supplied with a sequence of k-th it will partition all elements
-                    indexed by k-th of them into their sorted position at once.
-                axis (int or None): Axis along which to sort. Default is -1, which
-                    means sort along the last axis. If None is supplied, the array
-                    is flattened before sorting.
+        Args:
+            kth (int or sequence of ints): Element index to partition by. If
+                supplied with a sequence of k-th it will partition all elements
+                indexed by k-th of them into their sorted position at once.
+            axis (int or None): Axis along which to sort. Default is -1, which
+                means sort along the last axis. If None is supplied, the array
+                is flattened before sorting.
 
-            Returns:
-                cupy.ndarray: Array of the same type and shape as ``a``.
+        Returns:
+            cupy.ndarray: Array of the same type and shape as ``a``.
 
-            .. seealso::
-                :func:`cupy.argpartition` for full documentation,
-                :meth:`numpy.ndarray.argpartition`
+        .. seealso::
+            :func:`cupy.argpartition` for full documentation,
+            :meth:`numpy.ndarray.argpartition`
 
-            """
-            return _sorting._ndarray_argpartition(self, kth, axis)
+        """
+        return _sorting._ndarray_argpartition(self, kth, axis)
 
-        def searchsorted(self, v, side='left', sorter=None):
-            """Finds indices where elements of v should be inserted to maintain order.
+    def searchsorted(self, v, side='left', sorter=None):
+        """Finds indices where elements of v should be inserted to maintain order.
 
-            For full documentation, see :func:`cupy.searchsorted`
+        For full documentation, see :func:`cupy.searchsorted`
 
-            Returns:
+        Returns:
 
-            .. seealso:: :func:`numpy.searchsorted`
+        .. seealso:: :func:`numpy.searchsorted`
 
-            """  # NOQA
-            return cupy.searchsorted(self, v, side, sorter)
+        """  # NOQA
+        return cupy.searchsorted(self, v, side, sorter)
 
     # -------------------------------------------------------------------------
     # Calculation

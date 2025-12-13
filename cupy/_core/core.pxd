@@ -43,7 +43,7 @@ cdef class _ndarray_base:
     cpdef _ndarray_base ravel(self, order=*)
     cpdef _ndarray_base squeeze(self, axis=*)
     cpdef repeat(self, repeats, axis=*)
-    # ASCEND: TODO indexing op not ested
+    # ASCEND: TODO indexing op not tested, most of ascend ops not registered yet
     cpdef _ndarray_base _add_reduceat(self, indices, axis, dtype, out)
     cpdef _ndarray_base take(self, indices, axis=*, out=*)
     cpdef put(self, indices, values, mode=*)
@@ -52,11 +52,11 @@ cdef class _ndarray_base:
     cpdef _ndarray_base compress(self, condition, axis=*, out=*)
     cpdef _ndarray_base diagonal(self, offset=*, axis1=*, axis2=*)
     cpdef _ndarray_base trace(self, offset=*, axis1=*, axis2=*, dtype=*, out=*)
-    IF CUPY_CANN_VERSION <= 0: # TODO ASCEND
-        cpdef sort(self, int axis=*, kind=*)
-        cpdef _ndarray_base argsort(self, axis=*, kind=*)
-        cpdef partition(self, kth, int axis=*)
-        cpdef _ndarray_base argpartition(self, kth, axis=*)
+    #IF CUPY_CANN_VERSION <= 0: # TODO: ASCEND
+    cpdef sort(self, int axis=*, kind=*)
+    cpdef _ndarray_base argsort(self, axis=*, kind=*)
+    cpdef partition(self, kth, int axis=*)
+    cpdef _ndarray_base argpartition(self, kth, axis=*)
     
     cpdef _ndarray_base max(self, axis=*, out=*, keepdims=*)
     cpdef _ndarray_base argmax(self, axis=*, out=*, dtype=*, keepdims=*)

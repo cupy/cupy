@@ -90,14 +90,20 @@ aclScalar* CreateAclScalar(double value, aclDataType dtype) {
     if (dtype == ACL_FLOAT) {
         float float_value = static_cast<float>(value);
         return aclCreateScalar(static_cast<void*>(&float_value), dtype);
-    }
-    // 如果确实需要double，则直接使用（请确保硬件和算子支持ACL_DOUBLE）
-    else if (dtype == ACL_DOUBLE) {
+    } else if (dtype == ACL_DOUBLE) {
+        // 如果确实需要double，则直接使用（请确保硬件和算子支持ACL_DOUBLE）
         return aclCreateScalar(static_cast<void*>(&value), dtype);
-    }
-    // 处理不期望的数据类型
-    else {
-        // 在实际代码中，可能需要更复杂的错误处理逻辑，如记录日志或抛出异常
+    } else if (dtype == ACL_INT64) {
+        int64_t myvalue = static_cast<int64_t>(value);
+        return aclCreateScalar(static_cast<void*>(&myvalue), dtype);
+    } else if (dtype == ACL_INT32) {
+        int32_t myvalue = static_cast<int32_t>(value);
+        return aclCreateScalar(static_cast<void*>(&myvalue), dtype);
+    } else if (dtype == ACL_BOOL) {
+        bool myvalue = value != 0;
+        return aclCreateScalar(static_cast<void*>(&myvalue), dtype);
+    }  else { // 处理不期望的数据类型
+        std::cout << "WARNING: ASCEND unsupported aclDataType: " << dtype << " to create aclScalar\n";
         return nullptr;
     }
 }

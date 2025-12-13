@@ -21,14 +21,20 @@ By Qingfeng Xia
         UnitTest: `pytest tests/cupy_tests/logic_tests/test_truth.py `
 
 - Nov 15: concatenate(), clip(), copy(), non-math/irregular ops initially supported
-    + round(a, 2) segmentation fault fixed, 
-    + but `array()` seems not working properly
-    + scalar 转化 not working, 可能是exp scalar op 没有注册
+    + but `array()` seems not working properly 
+    > reason is async_copy, two arrays created without print the first will have the same value as the second array
+    + scalar 转化 not working, 可能是exp scalar op 没有注册   DONE
     + matmul(a, b) 结果和np.matmul(b, a) 相同, 应该是代码某处有bug
-       
+
+- Dec 06: 
+    + creation apis:  `arrange()` added, but test failed
+    + `concatenate` test passed
+- Dec 13:  sorting API
+    + `sort()/argosrt()` added, but no `partition()` alcop, 
+    + sort also depending on `rollaxis()`
+
 TODO:  
 - creation/manipulation/indexing/linalg ops
-    + creation ops: arange()  cupy_arange kernel is different arange numpy API
     + statistics ops: passing string arg
 
 ## 2. 核心op支持情况 ( see also Array API standard)

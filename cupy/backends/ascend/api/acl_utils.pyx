@@ -1052,6 +1052,8 @@ cdef extern from "../acl_general_ops.h" nogil:
         const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
     aclError aclop_Sort(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
         const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
+    aclError aclop_Argsort(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
 
     # special math ops
     aclError aclop_Round(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
@@ -1070,17 +1072,20 @@ cdef void register_irregular_operators():
     cdef FuncPtrUnion func_union
     func_union.general_op = aclop_Concat
     register_acl_ufunc("ascend_concatenate", GENERAL_OP, func_union)
-    func_union.general_op = aclop_Stack # cupy has no such kernel
+    func_union.general_op = aclop_Stack
     register_acl_ufunc("ascend_stack", GENERAL_OP, func_union)
-    func_union.general_op = aclop_Flip # cupy has no such kernel
+    func_union.general_op = aclop_Flip
     register_acl_ufunc("ascend_flip", GENERAL_OP, func_union)
 
     func_union.general_op = aclop_Sort
     register_acl_ufunc("ascend_sort", GENERAL_OP, func_union)
+    func_union.general_op = aclop_Sort
+    register_acl_ufunc("ascend_argsort", GENERAL_OP, func_union)
+
     func_union.general_op = aclop_Arange
     register_acl_ufunc("ascend_arange", GENERAL_OP, func_union)
     func_union.general_op = aclop_Linspace
-    register_acl_ufunc("ascend_arange", GENERAL_OP, func_union)
+    register_acl_ufunc("ascend_linspace", GENERAL_OP, func_union)
 
     func_union.general_op = aclop_Round
     register_acl_ufunc("ascend_round", GENERAL_OP, func_union)
