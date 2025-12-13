@@ -200,6 +200,7 @@
         aclDataType dtype;
         aclGetDataType(outs[0], &dtype);
         auto numel = GetAclTensorElementCount(outs[0]);
+        PrintArgs(__func__, args, kwargs, std::cout);
         if (args.size() >= 2) {
             start = args[0];
             step = args[1];
@@ -254,6 +255,7 @@
         if (outs.size() > 1) {
             indices = outs[1];  // int64 tensor
         }
+        PrintArgs(__func__, args, kwargs, std::cout);
         return aclIrregularOpRun(aclnnSortGetWorkspaceSize, aclnnSort, stream,
             self, stable, axis, descending, outs[0], indices); // value and index out arrays
     }

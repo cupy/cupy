@@ -5,8 +5,9 @@ from collections import namedtuple
 
 from cupy._core import _dtype
 from cupy._core.core import _ndarray_base
-from cupy._core._scalar cimport CScalar
+from cupy._core._scalar cimport CScalar, scalar_to_c_scalar
 from libc.stdint cimport int32_t, int16_t
+from libc.string cimport memcpy
 from libcpp.unordered_map cimport unordered_map as cpp_map
 from cython.operator cimport dereference as deref, preincrement as inc
 from libcpp.vector cimport vector
@@ -93,6 +94,27 @@ cdef aclDataType numpy_to_acl_dtype(dtype,
     else:
         print('ASCEND: DEBUG dtype is not supported: {}'.format(dtype))
         return aclDataType.ACL_DT_UNDEFINED
+
+cdef aclScalar* create_acl_scalar_from_str_ptr(str py_str):
+    """
+    将Python字符串转换为aclScalar，其中存储的是字符串数据的指针地址。
+    注意：必须确保返回的aclScalar在使用时，原始字符串py_str未被销毁。
+    """
+    cdef:
+        # 转换为UTF-8编码的bytes，并获取C风格字符串指针
+        py_bytes = py_str.encode('utf-8') # not compilabl
+    # Get pointer to the underlying data
+    cdef const char* c_str = py_bytes
+    cdef aclScalar* scalar_ptr = NULL
+    cdef char* buffer = <char*>PyMem_Malloc(len(py_bytes) + 1)
+    if buffer == NULL:
+        raise MemoryError("Failed to allocate memory")
+    memcpy(buffer, c_str, len(py_bytes) + 1)
+    # 创建aclScalar，将指针地址作为值存入, not sure if str buffer will be copied
+    scalar_ptr = aclCreateScalar(<void*>c_str, aclDataType.ACL_STRING)
+    if scalar_ptr == NULL:
+        raise MemoryError("Failed to create aclScalar")
+    return scalar_ptr # 通常将aclScalar*本身也转换为整数在Python间传递
 
 cdef aclScalar* cupy_scalar_to_acl_scalar(_cupy_scalar s) except*:
     """
@@ -441,10 +463,17 @@ cdef aclError launch_general_func(str opname, sequence ins, sequence outs, list 
         else:
             print("Ascend DEBUG: operand is neither ndarray nor CScalar, skip it")
     for cupy_scalar in args:
+        typ = type(cupy_scalar)
         if issubclass(typ, CScalar):
             acl_args.push_back(cupy_scalar_to_acl_scalar(cupy_scalar))
+        elif type is str:
+            print("Ascend DEBUG: arg is str", cupy_scalar)
         else:
-            print("Ascend DEBUG: ufunc's args is neither ndarray nor CScalar, skip it")
+            pyarg = scalar_to_c_scalar(cupy_scalar)
+            if pyarg:
+                acl_args.push_back(cupy_scalar_to_acl_scalar(pyarg))
+            else:
+                print("Ascend DEBUG: ufunc's args is neither cupy/numpy.scalar nor python scalar: ", cupy_scalar)
 
     cdef vector[aclTensor*] outtensors
     for op in outs:
