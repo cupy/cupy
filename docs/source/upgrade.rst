@@ -112,11 +112,17 @@ The following versions are no longer supported in CuPy v14.
 * NumPy 1.x (NumPy 2.0 or later is now required)
 * ROCm 6.x or earlier (ROCm 7.0 or later is now required)
 * NCCL 2.17 or earlier (NCCL 2.18 or later is now required)
+* cuSPARSELt 0.8.0 or earlier (cuSPARSELt 0.8.1 is now required)
 
 Other API Changes
 -----------------
 
-* ``cupyx.tools.install_library`` tool has been deprecated and will be removed in a future release.
+* APIs removed in NumPy v2 are intentionally kept available in CuPy v14 for smooth transition. These functions are considered as deprecated, and will be removed in CuPy v15.
+* ``cupyx.scipy.linalg.{tri,tril,triu}`` APIs were removed from CuPy to follow the latest SciPy’s specification. Use ``cupy.{tri,tril.triu}`` instead.
+* Legacy DLPack APIs (``cupy.toDlpack`` and ``cupy.fromDlpack``) are now marked deprecated. Use ``cupy.from_dlpack`` instead.
+* ``cupy.random.choice`` has been updated to provide optimal performance. Due to this change, the function may return different results from CuPy v13.
+* The NumPy fallback mode (``cupyx.fallback_mode``) has been removed.
+* ``cupyx.tools.install_library`` tool has been deprecated and will be removed in a future release. See :doc:`install` for the instructions on setting up cuTENSOR/NCCL for CuPy using Pip or Conda.
 * :mod:`cupy.testing` module has been updated to follow NumPy's testing API changes. Some testing utilities may have different behavior or signatures.
 
 Update of Docker Images
@@ -704,7 +710,7 @@ Compatibility Matrix
      - Baseline API Spec.
      - Docs
    * - v14
-     - 3.5~
+     - 5.0~
      - 12.0~
      - 7.0~
      - 2.3~
@@ -712,8 +718,8 @@ Compatibility Matrix
      - n/a
      - 3.10~
      - 2.0~
-     - 1.7~
-     - NumPy 1.26 & SciPy 1.11
+     - 1.14~
+     - NumPy 2.3 & SciPy 1.16
      - `latest <https://docs.cupy.dev/en/latest/install.html>`__
    * - v13
      - 3.5~
