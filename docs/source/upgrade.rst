@@ -627,15 +627,15 @@ Compatibility Matrix
      - NumPy 1.26 & SciPy 1.11
      - `latest <https://docs.cupy.dev/en/latest/install.html>`__
    * - v13
-     - 3.5-
-     - 11.2-
-     - 4.3-
-     - 2.0-
-     - 2.16-
-     - 8.8-
-     - 3.9-
-     - 1.22-
-     - 1.7-
+     - 3.5-12.x
+     - 11.2-13.x
+     - 4.3-6.x
+     - 2.0
+     - 2.16-2.26
+     - 8.8
+     - 3.9-3.13
+     - 1.22-2.3
+     - 1.7-1.14
      - NumPy 1.26 & SciPy 1.11
      - `stable <https://docs.cupy.dev/en/stable/install.html>`__
    * - v12
