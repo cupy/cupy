@@ -220,9 +220,10 @@ The current platform ({}) is not supported.'''.format(target_platform))
             shutil.move(
                 os.path.join(outdir, dir_name, 'include'),
                 os.path.join(destination, 'include'))
+            lib_dir = 'lib' if platform.system() == 'Linux' else 'bin'
             shutil.move(
-                os.path.join(outdir, dir_name, 'lib'),
-                os.path.join(destination, 'lib'))
+                os.path.join(outdir, dir_name, lib_dir),
+                os.path.join(destination, lib_dir))
             shutil.move(
                 os.path.join(outdir, dir_name, license), destination)
         elif library == 'nccl':
