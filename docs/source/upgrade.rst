@@ -179,7 +179,7 @@ Unified Binary Package for CUDA 11.2+
 -------------------------------------
 
 CuPy v11 provides a unified binary package named ``cupy-cuda11x`` that supports all CUDA 11.2+ releases.
-This replaces per-CUDA version binary packages (``cupy-cuda112`` ~ ``cupy-cuda117``).
+This replaces per-CUDA version binary packages (``cupy-cuda112`` - ``cupy-cuda117``).
 
 Note that CUDA 11.1 or earlier still requires per-CUDA version binary packages.
 ``cupy-cuda102``, ``cupy-cuda110``, and ``cupy-cuda111`` will be provided for CUDA 10.2, 11.0, and 11.1, respectively.
@@ -615,134 +615,134 @@ Compatibility Matrix
      - Baseline API Spec.
      - Docs
    * - v14
-     - 3.5~
-     - 11.2~
-     - 4.3~
-     - 2.0~
-     - 2.16~
+     - 3.5-
+     - 11.2-
+     - 4.3-
+     - 2.0-
+     - 2.16-
      - n/a
-     - 3.10~
-     - 1.22~
-     - 1.7~
+     - 3.10-
+     - 1.22-
+     - 1.7-
      - NumPy 1.26 & SciPy 1.11
      - `latest <https://docs.cupy.dev/en/latest/install.html>`__
    * - v13
-     - 3.5~
-     - 11.2~
-     - 4.3~
-     - 2.0~
-     - 2.16~
-     - 8.8~
-     - 3.9~
-     - 1.22~
-     - 1.7~
+     - 3.5-
+     - 11.2-
+     - 4.3-
+     - 2.0-
+     - 2.16-
+     - 8.8-
+     - 3.9-
+     - 1.22-
+     - 1.7-
      - NumPy 1.26 & SciPy 1.11
      - `stable <https://docs.cupy.dev/en/stable/install.html>`__
    * - v12
-     - 3.0~9.0
-     - 10.2~12.x
+     - 3.0-9.0
+     - 10.2-12.x
      - 4.3 & 5.0
-     - 1.4~1.7
-     - 2.8~2.17
-     - 7.6~8.8
-     - 3.8~3.12
-     - 1.21~1.26
-     - 1.7~1.11
+     - 1.4-1.7
+     - 2.8-2.17
+     - 7.6-8.8
+     - 3.8-3.12
+     - 1.21-1.26
+     - 1.7-1.11
      - NumPy 1.24 & SciPy 1.9
      - `v12.3.0 <https://docs.cupy.dev/en/v12.3.0/install.html>`__
    * - v11
-     - 3.0~9.0
-     - 10.2~12.0
+     - 3.0-9.0
+     - 10.2-12.0
      - 4.3 & 5.0
-     - 1.4~1.6
-     - 2.8~2.16
-     - 7.6~8.7
-     - 3.7~3.11
-     - 1.20~1.24
-     - 1.6~1.9
+     - 1.4-1.6
+     - 2.8-2.16
+     - 7.6-8.7
+     - 3.7-3.11
+     - 1.20-1.24
+     - 1.6-1.9
      - NumPy 1.23 & SciPy 1.8
      - `v11.6.0 <https://docs.cupy.dev/en/v11.6.0/install.html>`__
    * - v10
-     - 3.0~8.x
-     - 10.2~11.7
+     - 3.0-8.x
+     - 10.2-11.7
      - 4.0 & 4.2 & 4.3 & 5.0
-     - 1.3~1.5
-     - 2.8~2.11
-     - 7.6~8.4
-     - 3.7~3.10
-     - 1.18~1.22
-     - 1.4~1.8
+     - 1.3-1.5
+     - 2.8-2.11
+     - 7.6-8.4
+     - 3.7-3.10
+     - 1.18-1.22
+     - 1.4-1.8
      - NumPy 1.21 & SciPy 1.7
      - `v10.6.0 <https://docs.cupy.dev/en/v10.6.0/install.html>`__
    * - v9
-     - 3.0~8.x
-     - 9.2~11.5
-     - 3.5~4.3
-     - 1.2~1.3
-     - 2.4 & 2.6~2.11
-     - 7.6~8.2
-     - 3.6~3.9
-     - 1.17~1.21
-     - 1.4~1.7
+     - 3.0-8.x
+     - 9.2-11.5
+     - 3.5-4.3
+     - 1.2-1.3
+     - 2.4 & 2.6-2.11
+     - 7.6-8.2
+     - 3.6-3.9
+     - 1.17-1.21
+     - 1.4-1.7
      - NumPy 1.20 & SciPy 1.6
      - `v9.6.0 <https://docs.cupy.dev/en/v9.6.0/install.html>`__
    * - v8
-     - 3.0~8.x
-     - 9.0 & 9.2~11.2
+     - 3.0-8.x
+     - 9.0 & 9.2-11.2
      - 3.x [2]_
      - 1.2
-     - 2.0~2.8
-     - 7.0~8.1
-     - 3.5~3.9
-     - 1.16~1.20
-     - 1.3~1.6
+     - 2.0-2.8
+     - 7.0-8.1
+     - 3.5-3.9
+     - 1.16-1.20
+     - 1.3-1.6
      - NumPy 1.19 & SciPy 1.5
      - `v8.6.0 <https://docs.cupy.dev/en/v8.6.0/install.html>`__
    * - v7
-     - 3.0~8.x
-     - 8.0~11.0
+     - 3.0-8.x
+     - 8.0-11.0
      - 2.x [2]_
      - 1.0
-     - 1.3~2.7
-     - 5.0~8.0
-     - 3.5~3.8
-     - 1.9~1.19
+     - 1.3-2.7
+     - 5.0-8.0
+     - 3.5-3.8
+     - 1.9-1.19
      - (not specified)
      - (not specified)
      - `v7.8.0 <https://docs.cupy.dev/en/v7.8.0/install.html>`__
    * - v6
-     - 3.0~7.x
-     - 8.0~10.1
+     - 3.0-7.x
+     - 8.0-10.1
      - n/a
      - n/a
-     - 1.3~2.4
-     - 5.0~7.5
-     - 2.7 & 3.4~3.8
-     - 1.9~1.17
+     - 1.3-2.4
+     - 5.0-7.5
+     - 2.7 & 3.4-3.8
+     - 1.9-1.17
      - (not specified)
      - (not specified)
      - `v6.7.0 <https://docs.cupy.dev/en/v6.7.0/install.html>`__
    * - v5
-     - 3.0~7.x
-     - 8.0~10.1
+     - 3.0-7.x
+     - 8.0-10.1
      - n/a
      - n/a
-     - 1.3~2.4
-     - 5.0~7.5
-     - 2.7 & 3.4~3.7
-     - 1.9~1.16
+     - 1.3-2.4
+     - 5.0-7.5
+     - 2.7 & 3.4-3.7
+     - 1.9-1.16
      - (not specified)
      - (not specified)
      - `v5.4.0 <https://docs.cupy.dev/en/v5.4.0/install.html>`__
    * - v4
-     - 3.0~7.x
-     - 7.0~9.2
+     - 3.0-7.x
+     - 7.0-9.2
      - n/a
      - n/a
-     - 1.3~2.2
-     - 4.0~7.1
-     - 2.7 & 3.4~3.6
-     - 1.9~1.14
+     - 1.3-2.2
+     - 4.0-7.1
+     - 2.7 & 3.4-3.6
+     - 1.9-1.14
      - (not specified)
      - (not specified)
      - `v4.5.0 <https://docs.cupy.dev/en/v4.5.0/install.html>`__
