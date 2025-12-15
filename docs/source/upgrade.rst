@@ -12,9 +12,9 @@ CuPy v14
 Support for NVIDIA CUDA component wheels
 ----------------------------------------
 
-CuPy v14 can be installed together with a minimal CUDA installation all from PyPI (ex: ``pip install cupy-cuda13x[ctk]``),
-allowing quickly spinning up a fresh virtual environment without a system-wide CUDA Toolkit (only the CUDA driver is needed),
-smaller installation footprint, and better interoperability with other Python GPU libraries. See :doc:`install` for details.
+CuPy v14 can be installed together with a minimal CUDA installation from PyPI (ex: ``pip install "cupy-cuda13x[ctk]"``),
+allowing to quickly spin up a fresh virtual environment without a pre-installed CUDA Toolkit (only the CUDA driver is needed).
+This enables a smaller installation footprint and better interoperability with other Python GPU libraries. See :doc:`install` for details.
 
 Dropping cuDNN Support
 ----------------------
@@ -23,6 +23,52 @@ CuPy v14 no longer supports cuDNN.
 All cuDNN-related functionality has been completely removed from CuPy.
 
 Users who need to access cuDNN functionality from Python should consider using `cuDNN Frontend <https://github.com/NVIDIA/cudnn-frontend>`_ instead, which provides direct access to the NVIDIA cuDNN library in both C++ and Python.
+
+NumPy 2 related changes
+-----------------------
+
+CuPy v14 follows NumPy 2 in most of its behavior. This means that type promotion rules
+changed in many places as per `NumPy 2 Migration Guide`_.
+
+.. _NumPy 2 Migration Guide: https://numpy.org/devdocs/numpy_2_0_migration_guide.html#changes-to-numpy-data-type-promotion
+
+Much code may not notice this, but some code may have to explicitly change
+the type of scalars:
+
+* Use Python scalars when possible if the scalar must not promote an array
+  (``cp.ones(3, dtype="float32") + cp.float64(3.)`` returns float64 now).
+* Type integers to allow unsafe casts ``uint8_arr[0] = cp.int8(-1)``
+
+Please refer to the NumPy documentation and NEP 50 for additional information.
+
+Minimal support for structured dtypes
+-------------------------------------
+
+CuPy v14 now accepts most structured dtypes when converting from NumPy or
+creating a new array with ``empty`` and ``zeros``.
+However, the only supported operation on these is accessing a single field::
+
+    arr[field_name]
+    arr[field_name] = value
+
+As of v14.0 any kernel launch with a structured dtype will fail
+(including ``arr.copy()``).
+
+Note that ``arr[field_name]`` must be sufficiently aligned for the GPU.
+This is not guaranteed by NumPy even with ``align=True`` as the GPU has
+larger alignment requirements.
+
+New cuFFT callback support
+--------------------------
+
+CuPy v14 supports cuFFT's new `LTO callbacks <https://docs.nvidia.com/cuda/cufft/#cufft-callback-routines>`_, which are much more performant (for both compiling and executing callbacks) and has cross-platform (Linux/Windows) support.
+To use this feature pass ``cb_ver="jit"`` to :func:`~cupy.fft.config.set_cufft_callbacks`. The new callback requires
+nvJitLink and cuFFT from CUDA 12.2+. nvJitLink is part of the CUDA toolkit
+and also available from pip and conda.
+
+Accompanying with this new feature, two new arguments ``cb_load_data``/``cb_store_data`` are added and the existing arguments ``cb_load_aux_arr``/``cb_store_aux_arr`` are deprecated.
+
+The legacy cuFFT callback support (which can still be enabled by passing ``cb_ver="legacy"``) has been deprecated and will be removed in a future release.
 
 Various deprecated modules have been moved to :mod:`cupyx`
 ----------------------------------------------------------
@@ -34,6 +80,55 @@ The following :mod:`cupy` submodules have been removed, with replacements in :mo
 * ``cupy.cusolver`` -> :mod:`cupyx.scipy.linalg.cusolver` (undocumented API, deprecated in CuPy v12)
 * ``cupy.cusparse`` -> :mod:`cupyx.scipy.sparse.cusparse` (undocumented API, deprecated in CuPy v12)
 * ``cupy.cutensor`` -> :mod:`cupyx.scipy.linalg.cutensor` (undocumented API, deprecated in CuPy v12)
+
+Change in :func:`cupy.cuda.is_available` Behavior
+-------------------------------------------------
+
+:attr:`cupy.cuda.is_available` now guards against all CUDA errors and will return ``False`` instead of raising an exception.
+This change improves compatibility with environments where CUDA is partially configured or unavailable, causing an exception to be raised in certain edge cases.
+In CuPy v14, the function consistently returns a boolean value and guarantees to not raise any exception.
+
+Change in Default C++ Standard for RTC
+--------------------------------------
+
+The default C++ standard for Runtime Compilation (RTC) has been changed from C++11 to C++14 (for ROCm) and C++17 (for CUDA).
+Existing code that relies on the previous default should continue to work, as C++14/C++17 are backward compatible with C++11.
+
+Change in :func:`cupy.cuda.nccl.get_unique_id` Return Type
+----------------------------------------------------------
+
+:func:`cupy.cuda.nccl.get_unique_id` now returns a bytes string instead of a tuple of integers.
+
+This change simplifies the API and avoids platform-specific issues related to char signedness.
+Users who were previously unpacking the tuple should update their code to work with bytes.
+
+Requirement Changes
+-------------------
+
+The following versions are no longer supported in CuPy v14.
+
+* CUDA 11.x or earlier (CUDA 12.0 or later is now required)
+* Python 3.9 or earlier (Python 3.10 or later is now required)
+* NumPy 1.x (NumPy 2.0 or later is now required)
+* ROCm 6.x or earlier (ROCm 7.0 or later is now required)
+* NCCL 2.17 or earlier (NCCL 2.18 or later is now required)
+* cuSPARSELt 0.8.0 or earlier (cuSPARSELt 0.8.1 is now required)
+
+Other API Changes
+-----------------
+
+* APIs removed in NumPy v2 are intentionally kept available in CuPy v14 for smooth transition. These functions are considered as deprecated, and will be removed in CuPy v15.
+* ``cupyx.scipy.linalg.{tri,tril,triu}`` APIs were removed from CuPy to follow the latest SciPy’s specification. Use ``cupy.{tri,tril.triu}`` instead.
+* Legacy DLPack APIs (``cupy.toDlpack`` and ``cupy.fromDlpack``) are now marked deprecated. Use ``cupy.from_dlpack`` instead.
+* ``cupy.random.choice`` has been updated to provide optimal performance. Due to this change, the function may return different results from CuPy v13.
+* The NumPy fallback mode (``cupyx.fallback_mode``) has been removed.
+* ``cupyx.tools.install_library`` tool has been deprecated and will be removed in a future release. See :doc:`install` for the instructions on setting up cuTENSOR/NCCL for CuPy using Pip or Conda.
+* :mod:`cupy.testing` module has been updated to follow NumPy's testing API changes. Some testing utilities may have different behavior or signatures.
+
+Update of Docker Images
+-----------------------
+
+CuPy official Docker images (see :doc:`install` for details) are now updated to use CUDA 13.x and Ubuntu 24.04.
 
 
 CuPy v13
@@ -615,16 +710,16 @@ Compatibility Matrix
      - Baseline API Spec.
      - Docs
    * - v14
-     - 3.5~
-     - 11.2~
-     - 4.3~
-     - 2.0~
-     - 2.16~
+     - 5.0~
+     - 12.0~
+     - 7.0~
+     - 2.3~
+     - 2.18~
      - n/a
      - 3.10~
-     - 1.22~
-     - 1.7~
-     - NumPy 1.26 & SciPy 1.11
+     - 2.0~
+     - 1.14~
+     - NumPy 2.3 & SciPy 1.16
      - `latest <https://docs.cupy.dev/en/latest/install.html>`__
    * - v13
      - 3.5~
