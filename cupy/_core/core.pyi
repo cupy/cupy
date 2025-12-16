@@ -1,51 +1,130 @@
+import typing
 from collections.abc import Callable, Iterable, Iterator, Mapping
+from types import EllipsisType
 from typing import (
     Any,
     ClassVar,
     Generic,
     Literal,
+    Protocol,
     SupportsIndex,
     overload,
+    TypeAlias,
 )
 
 import numpy
 from _typeshed import StrOrBytesPath, SupportsWrite
-
-# Necessary to use `default`
 from typing_extensions import TypeVar
 
+from cupy.typing._standalone import _Buffer, _ScalarT
+from cupy._core import core
 from cupy._core.flags import Flags
 from cupy.cuda.device import Device
 from cupy.cuda.memory import MemoryPointer
 from cupy.cuda.stream import Stream
 from cupy.typing import DTypeLike
-from cupy.typing._array import (
-    ArrayLike,
-    NDArray,
-    _ArrayInt_co,
-    _ArrayT,
-    _IntArrayT,
-    _IntegralArrayT,
-    _NumericArrayT,
-    _RealArrayT,
-    _SupportsArrayA,
-    _SupportsRealImag,
-)
-from cupy.typing._internal import _ArrayLike, _ArrayLikeInt_co, _ToIndices
 from cupy.typing._standalone import (
+    _T,
     _DTypeLike,
+    _DTypeT,
+    _DTypeT_co,
     _FloatT,
     _InexactT,
     _ModeKind,
+    _NestedSequence,
     _NonNullCAF,
     _NumpyArrayT,
     _OrderKACF,
     _ScalarLike_co,
-    _ScalarT,
     _ShapeLike,
     _SortSide,
     _SupportsFileMethods,
 )
+
+@typing.runtime_checkable
+class _SupportsArrayD(Protocol[_DTypeT_co]):
+    # Only covers default signature (no optional args provided)
+    def __array__(self) -> core.ndarray[Any, _DTypeT_co]: ...
+
+_ArrayLike: TypeAlias = (
+    _SupportsArrayD[numpy.dtype[_ScalarT]]
+    | _NestedSequence[_SupportsArrayD[numpy.dtype[_ScalarT]]]
+)
+_DualArrayLike: TypeAlias = (
+    _SupportsArrayD[_DTypeT]
+    | _NestedSequence[_SupportsArrayD[_DTypeT]]
+    | _T
+    | _NestedSequence[_T]
+)
+
+# Anything castable to ndarray with specified dtype (work in progress)
+_ArrayLikeBool_co: TypeAlias = _DualArrayLike[numpy.dtype[numpy.bool], bool]
+_ArrayLikeUInt_co: TypeAlias = _DualArrayLike[
+    numpy.dtype[numpy.bool | numpy.unsignedinteger], bool
+]
+_ArrayLikeInt_co: TypeAlias = _DualArrayLike[
+    numpy.dtype[numpy.bool | numpy.integer], int
+]
+_ArrayLikeFloat_co: TypeAlias = _DualArrayLike[
+    numpy.dtype[numpy.bool | numpy.integer | numpy.floating], float
+]
+_ArrayLikeComplex_co: TypeAlias = _DualArrayLike[
+    numpy.dtype[numpy.bool | numpy.number], complex
+]
+_ArrayLikeNumber_co = _ArrayLikeComplex_co
+
+# Index-like
+_ToIndex: TypeAlias = (
+    SupportsIndex | slice | EllipsisType | _ArrayLikeInt_co | None
+)
+_ToIndices: TypeAlias = _ToIndex | tuple[_ToIndex, ...]
+
+# numpy.typing.ArrayLike minus str/bytes
+ArrayLike: TypeAlias = _Buffer | _DualArrayLike[numpy.dtype[Any], complex]
+NDArray: TypeAlias = core.ndarray[Any, numpy.dtype[_ScalarT]]
+
+_ArrayT = TypeVar("_ArrayT", bound=core.ndarray)
+_ArrayT_co = TypeVar("_ArrayT_co", bound=core.ndarray, covariant=True)
+_IntArrayT = TypeVar("_IntArrayT", bound=NDArray[numpy.integer])
+_NumericArrayT = TypeVar("_NumericArrayT", bound=NDArray[numpy.number])
+_RealArrayT = TypeVar(
+    "_RealArrayT", bound=NDArray[numpy.floating | numpy.integer | numpy.bool]
+)
+_IntegralArrayT = TypeVar(
+    "_IntegralArrayT", bound=NDArray[numpy.integer | numpy.bool]
+)
+
+_ArrayUInt_co: TypeAlias = NDArray[numpy.unsignedinteger | numpy.bool]
+_ArrayInt_co: TypeAlias = NDArray[numpy.integer | numpy.bool]
+_ArrayFloat_co: TypeAlias = NDArray[
+    numpy.floating | numpy.integer | numpy.bool
+]
+_ArrayComplex_co: TypeAlias = NDArray[
+    numpy.inexact | numpy.integer | numpy.bool
+]
+
+class _SupportsRealImag(Protocol):
+    @overload
+    def __get__(
+        self, instance: _RealArrayT, owner: type | None = ...
+    ) -> _RealArrayT: ...
+    @overload
+    def __get__(
+        self, instance: NDArray[numpy.complex64], owner: type | None = ...
+    ) -> NDArray[numpy.float32]: ...
+    @overload
+    def __get__(
+        self, instance: NDArray[numpy.complex128], owner: type | None = ...
+    ) -> NDArray[numpy.float64]: ...
+    @overload
+    def __get__(
+        self, instance: None, owner: type | None = ...
+    ) -> _SupportsRealImag: ...
+    def __set__(self, instance: NDArray[Any], value: ArrayLike) -> None: ...
+
+@typing.runtime_checkable
+class _SupportsArrayA(Protocol[_ArrayT_co]):
+    def __array__(self) -> _ArrayT_co: ...
 
 _ShapeWithDefaultT_co = TypeVar(
     "_ShapeWithDefaultT_co",

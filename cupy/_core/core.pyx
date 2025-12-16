@@ -3078,3 +3078,7 @@ cpdef min_scalar_type(a):
     if concat_type is not None:
         return concat_dtype
     return numpy.min_scalar_type(a)
+
+# typing dummies
+NDArray = object
+ArrayLike = object
