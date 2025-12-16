@@ -42,6 +42,7 @@ class TestSize(unittest.TestCase):
 
     @testing.numpy_cupy_equal()
     @testing.slow
+    @pytest.mark.thread_unsafe(reason="Allocation too large.")
     def test_size_huge(self, xp):
         a = xp.ndarray(2 ** 32, 'b')  # 4 GiB
         return xp.size(a)
@@ -117,16 +118,17 @@ class TestMinScalarType:
 @testing.parameterize(*testing.product({
     'cxx': (None, '--std=c++14'),
 }))
-class TestCuPyHeaders(unittest.TestCase):
+class TestCuPyHeaders:
+    @classmethod
+    def setup_class(cls):
+        cls.temporary_cache_dir_context = test_raw.use_temporary_cache_dir()
+        cls.cache_dir = cls.temporary_cache_dir_context.__enter__()
+        cls.header = '\n'.join(['#include <' + h + '>'
+                                for h in core._cupy_header_list])
 
-    def setUp(self):
-        self.temporary_cache_dir_context = test_raw.use_temporary_cache_dir()
-        self.cache_dir = self.temporary_cache_dir_context.__enter__()
-        self.header = '\n'.join(['#include <' + h + '>'
-                                 for h in core._cupy_header_list])
-
-    def tearDown(self):
-        self.temporary_cache_dir_context.__exit__(*sys.exc_info())
+    @classmethod
+    def teardown_class(cls):
+        cls.temporary_cache_dir_context.__exit__(*sys.exc_info())
 
     def test_compiling_core_header(self):
         code = r'''
