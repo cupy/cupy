@@ -36,7 +36,7 @@ repos:
         args: ["--max-line-length", "79"]
 
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.19.0
+    rev: v1.19.1
     hooks:
       - id: mypy
         # Keep in sync with the list in pyproject.toml
