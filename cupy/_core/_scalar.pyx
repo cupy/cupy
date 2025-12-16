@@ -7,6 +7,7 @@ from libc.stdint cimport uint8_t
 from libc.stdint cimport uint16_t
 from libc.stdint cimport uint32_t
 from libc.stdint cimport uint64_t
+from libc.stdint cimport intptr_t
 
 import numpy
 
@@ -131,14 +132,14 @@ cdef class CScalar(CPointer):
     ndim = 0
 
     def __cinit__(self):
-        self.ptr = mem.PyMem_Malloc(
+        self.ptr = <intptr_t>mem.PyMem_Malloc(
             max(sizeof(Scalar), sizeof(double complex)))
         self.kind = 0
         self.size = -1
 
     def __dealloc__(self):
-        mem.PyMem_Free(self.ptr)
-        self.ptr = <void*>0
+        mem.PyMem_Free(<void*>(self.ptr))
+        self.ptr = 0
 
     @staticmethod
     cdef CScalar from_int32(int32_t value):
