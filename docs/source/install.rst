@@ -169,12 +169,6 @@ However, if wheels cannot meet your requirements (e.g., you are running non-Linu
 
 .. note::
 
-   CuPy source build requires ``g++-6`` or later.
-   For Ubuntu 18.04, run ``apt-get install g++``.
-   For Ubuntu 16.04, CentOS 6 or 7, follow the instructions :ref:`here <install_gcc6>`.
-
-.. note::
-
    When installing CuPy from source, features provided by additional CUDA libraries will be disabled if these libraries are not available at the build time.
    See :ref:`install_nccl` for the instructions.
 
@@ -382,27 +376,6 @@ For example, if you have CUDA installed at ``/usr/local/cuda-12.6``::
   $ export LD_LIBRARY_PATH=$CUDA_PATH/lib64:$LD_LIBRARY_PATH
 
 Also see :ref:`install_cuda`.
-
-.. _install_gcc6:
-
-Build fails on Ubuntu 16.04, CentOS 6 or 7
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-In order to build CuPy from source on systems with legacy GCC (g++-5 or earlier), you need to manually set up g++-6 or later and configure ``NVCC`` environment variable.
-
-On Ubuntu 16.04::
-
-  $ sudo add-apt-repository ppa:ubuntu-toolchain-r/test
-  $ sudo apt update
-  $ sudo apt install g++-6
-  $ export NVCC="nvcc --compiler-bindir gcc-6"
-
-On CentOS 6 / 7::
-
-  $ sudo yum install centos-release-scl
-  $ sudo yum install devtoolset-7-gcc-c++
-  $ source /opt/rh/devtoolset-7/enable
-  $ export NVCC="nvcc --compiler-bindir gcc"
 
 
 Using CuPy on AMD GPU (experimental)
