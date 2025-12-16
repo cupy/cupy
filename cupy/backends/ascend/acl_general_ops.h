@@ -244,12 +244,14 @@
     aclError aclop_Sort(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
         const ArgsType& args, const KwargsType& kwargs, aclrtStream stream) {
         const aclTensor* self = ins[0];
-        int64_t axis = GetScalarArg<int64_t>(args, 0, kwargs, "dim", -1); // -1 means last axis
+        int64_t axis = GetScalarArg<int64_t>(args, 0, kwargs, "axis", -1); // -1 means last axis
         bool stable = GetScalarArg<bool>(args, 1, kwargs, "stable", true);
         bool descending = GetScalarArg<bool>(args, 1, kwargs, "order", false);
         aclTensor* indices = nullptr;  // alcop sort can accept nullptr for indexOut
         if (outs.size() > 1) {
             indices = outs[1];  // int64 tensor
+        } else {
+            indices = aclTensorLike(self, ACL_INT64);
         }
         PrintArgs(__func__, args, kwargs, std::cout);
         return aclIrregularOpRun(aclnnSortGetWorkspaceSize, aclnnSort, stream,
@@ -271,7 +273,7 @@
             self, dim, descending, indices); // index out arrays
     }
 
-    // This is a general function, must be launched differently, keyward args?
+    // This is a general function, aclnnRoundDecimals() still round to 0 decimal, why?
     aclError aclop_Round(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
         const ArgsType& args, const KwargsType& kwargs, aclrtStream stream) {
         if (args.size() && ins.size()) {
@@ -286,19 +288,21 @@
         }
     }
 
-    // cupy_clip -> aclnnClamp  'ddd->d'
+    // ufunc: cupy_clip -> aclnnClamp  'ddd->d'
     aclError aclop_Clamp(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
         const ArgsType& args, const KwargsType& kwargs, aclrtStream stream) {
         const aclTensor* self = ins[0];
         aclTensor* out = outs[0];
-        if (args.size() >=2) {
+        if (args.size() >= 2) {
             const aclScalar* amin = args[0];
             const aclScalar* amax = args[1];
             return aclTernaryOpRun(self, amin, amax, out,
                 aclnnClampGetWorkspaceSize, aclnnClamp, stream, false);
+        } else if (ins.size() >= 3) {
+            std::cout << "ASCEND: cupy/numpy support both amax and amin can be array/tensor, yet impl \n";
+            return ACL_ERROR_INVALID_PARAM;
         } else {
             PrintArgs(__func__, args, kwargs, std::cout);
-            std::cout << "ASCEND: cupy/numpy support both amax and amin can be array/tensor, yet impl \n";
             return ACL_ERROR_INVALID_PARAM;
         }
     }

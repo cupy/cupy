@@ -38,13 +38,26 @@ template<> struct TypeToAclDataType<bool> {
 std::string aclDtypeToString(aclDataType dtype) {
     switch(dtype) {
         case ACL_FLOAT: return "ACL_FLOAT";
+        case ACL_DOUBLE: return "ACL_DOUBLE";
+        case ACL_FLOAT16: return "ACL_FLOAT16";
+        case ACL_INT16: return "ACL_INT16";
         case ACL_INT32: return "ACL_INT32";
         case ACL_INT64: return "ACL_INT64";
-        case ACL_FLOAT16: return "ACL_FLOAT16";
         case ACL_BOOL: return "ACL_BOOL";
         case ACL_UINT8: return "ACL_UINT8";
+        case ACL_STRING: return "ACL_STRING";
         default: return "UNKNOWN";
     }
+}
+
+void PrintScalarType(const aclScalar* opscalar, std::ostream& os) {
+    if (!opscalar) {
+        os << "NULL";
+        return;
+    }
+    // op::DataType is ge::DataType is aclDataType enum
+    op::DataType dtype = opscalar->GetDataType();
+    os << aclDtypeToString(static_cast<aclDataType>(dtype));
 }
 
 // 辅助函数：打印单个 aclScalar 的值
@@ -60,8 +73,18 @@ void PrintScalarValue(const aclScalar* opscalar, std::ostream& os) {
         case ACL_FLOAT:
             os << opscalar->ToFloat(); // *static_cast<const float*>(vdata);
             break;
+        case ACL_FLOAT16:
+            //os << opscalar->ToFp16();
+            os << "float16_value";
+            break;
         case ACL_DOUBLE:
             os << *static_cast<const double*>(vdata);
+            break;
+        case ACL_UINT8:
+            os << *static_cast<const uint8_t*>(vdata);
+            break;
+        case ACL_INT16:
+            os << *static_cast<const int16_t*>(vdata);
             break;
         case ACL_INT32:
             os << *static_cast<const int32_t*>(vdata);
@@ -71,6 +94,9 @@ void PrintScalarValue(const aclScalar* opscalar, std::ostream& os) {
             break;
         case ACL_BOOL:
             os << *static_cast<const bool*>(vdata);
+            break;
+        case ACL_STRING:
+            os << opscalar->ToString().GetString();
             break;
         default:
             os << "[Unprintable Type]";
@@ -99,24 +125,16 @@ aclScalar* CreateAclScalar(double value, aclDataType dtype) {
     } else if (dtype == ACL_INT32) {
         int32_t myvalue = static_cast<int32_t>(value);
         return aclCreateScalar(static_cast<void*>(&myvalue), dtype);
+    } else if (dtype == ACL_INT16) {
+        int16_t myvalue = static_cast<int16_t>(value);
+        return aclCreateScalar(static_cast<void*>(&myvalue), dtype);
     } else if (dtype == ACL_BOOL) {
         bool myvalue = value != 0;
         return aclCreateScalar(static_cast<void*>(&myvalue), dtype);
     }  else { // 处理不期望的数据类型
-        std::cout << "WARNING: ASCEND unsupported aclDataType: " << dtype << " to create aclScalar\n";
+        std::cout << "WARNING: ASCEND unsupported aclDataType: " << aclDtypeToString(dtype) << " to create aclScalar\n";
         return nullptr;
     }
 }
-
-
-// 获取类型名称的辅助函数
-// template<typename T>
-// constexpr const char* type_name() {
-//     if constexpr (std::is_same_v<T, int32_t>) return "int32_t";
-//     else if constexpr (std::is_same_v<T, float>) return "float";
-//     else if constexpr (std::is_same_v<T, double>) return "double";
-//     else if constexpr (std::is_same_v<T, bool>) return "bool";
-//     else return "unknown";
-// }
 
 #endif

@@ -234,8 +234,9 @@ void PrintArgs(const char* func, const ArgsType& args, const KwargsType& kwargs,
             os << "NULL pointer" << std::endl;
             continue;
         }
-        aclDataType dtype = ACL_DT_UNDEFINED; // TODO
-        os << "Type=" << aclDtypeToString(dtype) << ", Value=";
+        os << "Type=";
+        PrintScalarType(args[i], os);
+        os << ", Value=";
         PrintScalarValue(args[i], os);
         os << std::endl;
     }
@@ -249,8 +250,9 @@ void PrintArgs(const char* func, const ArgsType& args, const KwargsType& kwargs,
             os << "NULL pointer" << std::endl;
             continue;
         }
-        aclDataType dtype = ACL_DT_UNDEFINED; // TODO
-        os << "Type=" << aclDtypeToString(dtype) << ", Value=";
+        os << "Type=";
+        PrintScalarType(pair.second, os);
+        os << ", Value=";
         PrintScalarValue(pair.second, os);
         os << std::endl;
     }

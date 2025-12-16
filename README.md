@@ -64,6 +64,19 @@ y_gpu = cpx.reshape(x_gpu, (2, 2))
 z_gpu = cpx.matmul(y_gpu, y_gpu)
 ```
 
+### torch_npu used as numpy array API
+
+```py
+import torch
+import torch_npu
+# 直接导入 torch 的 Array API 模块
+import torch._numpy as cp
+
+device = "npu"  # can also "cuda" for torch-cuda
+a_xpu = cpx.asarray([1, 2, 3, 4], dtype=cp.int32).tensor.to(device)
+# here _numpy wrap/proxy  torch.Tensor into a ndarray class type 
+```
+
 ### 2.2 math ops: 
 + 未注册  einsum, cbrt(cube root, not std api), fix (Trunc), rint (Round), round/around, convolve (?),
 + 自己实现: radians (deg2rad), degrees (rad2deg), deg2rad, rad2deg. lcm, divmod 
@@ -81,7 +94,7 @@ z_gpu = cpx.matmul(y_gpu, y_gpu)
 ### 2.4 manipulation ops
 可能有大量不兼容, 测试工作量不小
 + CUPY `reshape, split` does not need kernel, it is done in cython code on host (Reshape api)
-+ ACLOP having: `roll, permute, flip, repeat` 
++ ACLOP having: `roll, permute, flip, repeat` , while repeat/rollaxis() is written in cython, no kernel needed
 + cupy uses `concatenate` to impl vstack, stack, hstack without using CUDA kernel
 + `_manipulation/rearange.py`  slicing is used to flip, rotate
 + `squeeze`: Removes size-one axes from the shape of an array

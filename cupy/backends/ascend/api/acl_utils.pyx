@@ -95,7 +95,7 @@ cdef aclDataType numpy_to_acl_dtype(dtype,
         print('ASCEND: DEBUG dtype is not supported: {}'.format(dtype))
         return aclDataType.ACL_DT_UNDEFINED
 
-cdef aclScalar* create_acl_scalar_from_str_ptr(str py_str):
+cdef aclScalar* create_acl_scalar_from_py_str(str py_str):
     """
     将Python字符串转换为aclScalar，其中存储的是字符串数据的指针地址。
     注意：必须确保返回的aclScalar在使用时，原始字符串py_str未被销毁。
@@ -212,11 +212,32 @@ cdef aclScalar* cupy_scalar_to_acl_scalar(_cupy_scalar s) except*:
             aclDestroyScalar(acl_scalar)
         raise MemoryError("Failed to create aclScalar with error %s" % e)
 
+cdef aclScalar* _convert_arg_to_acl_scalar(arg):
+    typ = type(arg)
+    if issubclass(typ, CScalar):
+        return cupy_scalar_to_acl_scalar(arg)
+    elif typ is str:
+        return create_acl_scalar_from_py_str(arg)
+    else:
+        pyarg = scalar_to_c_scalar(arg)
+        if pyarg:
+            return cupy_scalar_to_acl_scalar(pyarg)
+        else:
+            print("ASCEND: arg can not be converted to aclScalar: ", arg)
+            return NULL
+
 cdef KwargsType _create_keyword_args(dict kwargs) except *:
     cdef KwargsType acl_kwargs
+    cdef string cpp_str
+    cdef const char* c_str
     if kwargs:
         for key, value in kwargs.items():
-            acl_kwargs[key] = cupy_scalar_to_acl_scalar(value)
+            sarg = _convert_arg_to_acl_scalar(value)
+            if sarg:
+                py_bytes = key.encode("utf-8")
+                c_str = py_bytes
+                cpp_str = c_str
+                acl_kwargs[cpp_str] = sarg
     return acl_kwargs
 
 cdef void _delete_keyword_args(KwargsType& my_map) except *:
@@ -458,22 +479,14 @@ cdef aclError launch_general_func(str opname, sequence ins, sequence outs, list 
         typ = type(op)
         if issubclass(typ, _ndarray_base):
             intensors.push_back(cupy_ndarray_to_acl_tensor(op))
-        elif issubclass(typ, CScalar):
-            acl_args.push_back(cupy_scalar_to_acl_scalar(op))
         else:
-            print("Ascend DEBUG: operand is neither ndarray nor CScalar, skip it")
-    for cupy_scalar in args:
-        typ = type(cupy_scalar)
-        if issubclass(typ, CScalar):
-            acl_args.push_back(cupy_scalar_to_acl_scalar(cupy_scalar))
-        elif type is str:
-            print("Ascend DEBUG: arg is str", cupy_scalar)
-        else:
-            pyarg = scalar_to_c_scalar(cupy_scalar)
-            if pyarg:
-                acl_args.push_back(cupy_scalar_to_acl_scalar(pyarg))
-            else:
-                print("Ascend DEBUG: ufunc's args is neither cupy/numpy.scalar nor python scalar: ", cupy_scalar)
+            ascalar = _convert_arg_to_acl_scalar(op)
+            if ascalar:
+                acl_args.push_back(ascalar)
+    for pos_arg in args:
+        pscalar = _convert_arg_to_acl_scalar(pos_arg)
+        if pscalar:
+            acl_args.push_back(pscalar)
 
     cdef vector[aclTensor*] outtensors
     for op in outs:

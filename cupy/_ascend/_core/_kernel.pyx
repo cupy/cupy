@@ -903,8 +903,8 @@ cdef class ufunc:
             elif isinstance(x, _ndarray_base):
                 s = _scalar.CScalar.from_numpy_scalar_with_dtype(x, t)
             else:
-                # not yet tested, maybe ufunc should not accept python scalar?
-                s = _scalar.CScalar._from_python_scalar(x)
+                # accept python int/float/bool and numpy.scalar
+                s = _scalar.scalar_to_c_scalar(x)
             inout_args.append(s)
         if has_where:
             x = broad_values[self.nin]

@@ -19,11 +19,11 @@ cdef _ascend_sort(_ndarray_base self, int axis):
     # inplace sort op
     cdef _ndarray_base out
     out = core.ndarray(self.shape, dtype=self.dtype)
-    launch_general_func("ascend_sort", [self], [out], None, {"axis": axis}, 0)
+    launch_general_func("ascend_sort", [self], [out], [], {"axis": axis, "mode": "stable"}, 0)
     elementwise_copy(out, self)
 
 cdef _ascend_argsort(_ndarray_base self, _ndarray_base out, int axis):
-    launch_general_func("ascend_argsort", [self], [out], None, {"axis": axis}, 0)
+    launch_general_func("ascend_argsort", [self], [out], [], {"axis": axis}, 0)
 
 cdef _ascend_partition(_ndarray_base self, kth, int axis):
     print("Error: Ascend has no such aclop")
