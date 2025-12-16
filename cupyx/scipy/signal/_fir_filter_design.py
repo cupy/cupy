@@ -12,6 +12,14 @@ from cupyx.scipy.signal.windows import get_window
 import cupy
 import numpy
 
+scipy_available = False
+
+try:
+    import scipy.signal
+    scipy_available = True
+except ImportError:
+    pass
+
 
 __all__ = ["firls", "minimum_phase"]
 
@@ -925,3 +933,92 @@ def minimum_phase(h, method='homomorphic', n_fft=None, half=True):
         h_minimum = h_temp.real
     n_out = (n_half + len(h) % 2) if half else len(h)
     return h_minimum[:n_out]
+
+
+def remez(numtaps, bands, desired, *, weight=None, type='bandpass',
+          maxiter=25, grid_density=16, fs=None):
+    """
+    Calculate the minimax optimal filter using the Remez exchange algorithm.
+
+    Calculate the filter-coefficients for the finite impulse response
+    (FIR) filter whose transfer function minimizes the maximum error
+    between the desired gain and the realized gain in the specified
+    frequency bands using the Parks-McClellan algorithm _[1], _[2].
+
+    Parameters
+    ----------
+    numtaps : int
+        The desired number of taps in the filter. The number of taps is
+        the number of terms in the filter, or the filter order plus one.
+    bands : array_like
+        A monotonic sequence containing the band edges.
+        All elements must be non-negative and less than half the sampling
+        frequency as given by `fs`.
+    desired : array_like
+        A sequence half the size of bands containing the desired gain
+        in each of the specified bands.
+    weight : array_like, optional
+        A relative weighting to give to each band region. The length of
+        `weight` has to be half the length of `bands`.
+    type : {'bandpass', 'differentiator', 'hilbert'}, optional
+        The type of filter:
+
+          * 'bandpass' : flat response in bands. This is the default.
+
+          * 'differentiator' : frequency proportional response in bands.
+
+          * 'hilbert' : filter with odd symmetry, that is, type III
+                        (for even order) or type IV (for odd order)
+                        linear phase filters.
+
+    maxiter : int, optional
+        Maximum number of iterations of the algorithm. Default is 25.
+    grid_density : int, optional
+        Grid density. The dense grid used in `remez` is of size
+        ``(numtaps + 1) * grid_density``. Default is 16.
+    fs : float, optional
+        The sampling frequency of the signal.  Default is 1.
+
+    Returns
+    -------
+    out : ndarray
+        A rank-1 array containing the coefficients of the optimal
+        (in a minimax sense) filter.
+
+    See Also
+    --------
+    firls
+    firwin
+    firwin2
+    minimum_phase
+
+    References
+    ----------
+    .. [1] J. H. McClellan and T. W. Parks, "A unified approach to the
+           design of optimum FIR linear phase digital filters",
+           IEEE Trans. Circuit Theory, vol. CT-20, pp. 697-701, 1973.
+    .. [2] J. H. McClellan, T. W. Parks and L. R. Rabiner, "A Computer
+           Program for Designing Optimum FIR Linear Phase Digital
+           Filters", IEEE Trans. Audio Electroacoust., vol. AU-21,
+           pp. 506-525, 1973.
+
+    Notes
+    -----
+    This function defers to SciPy remez implementation, since filter
+    computation will be slower if performed in GPU. Instead, values will be
+    transferred from CPU to GPU.
+
+    """
+    if scipy_available:
+        if isinstance(bands, cupy.ndarray):
+            bands = bands.get()
+
+        if isinstance(desired, cupy.ndarray):
+            desired = desired.get()
+
+        out = scipy.signal.remez(numtaps, bands, desired,
+                                 weight=weight, type=type, maxiter=maxiter,
+                                 grid_density=grid_density, fs=fs)
+        return cupy.asarray(out)
+    else:
+        raise RuntimeError('remez requires SciPy ')
