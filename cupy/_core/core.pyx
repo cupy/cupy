@@ -5,8 +5,8 @@ import functools
 import os
 import pickle
 import re
-import types
 import warnings
+from types import GenericAlias
 
 import numpy
 
@@ -1631,7 +1631,7 @@ cdef class _ndarray_base:
             'Implicit conversion to a NumPy array is not allowed. '
             'Please use `.get()` to construct a NumPy array explicitly.')
 
-    __class_getitem__ = classmethod(types.GenericAlias)
+    __class_getitem__ = classmethod(GenericAlias)
 
     # TODO(okuta): Implement __array_wrap__
 
