@@ -929,7 +929,7 @@ def _call_reduction(fusion_op, *args, **kwargs):
 
     arg = args[0]
     kwargs = {
-        (key, value)
+        key: value
         for key, value in kwargs.items()
         if (key in ('axis', 'out') and value is not None)
     }

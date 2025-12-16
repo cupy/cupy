@@ -144,7 +144,7 @@ class _TraceVariable:
         """Returns a string following the format taken as an input.
         """
         kwargs = {
-            (k, get_typename(v) if isinstance(v, numpy.dtype) else v)
+            k: get_typename(v) if isinstance(v, numpy.dtype) else v
             for k, v in kwargs.items()
         }
         return string.Template(form).substitute(
