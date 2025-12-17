@@ -1,5 +1,7 @@
 cimport cython  # NOQA
 
+cimport numpy as cnp
+
 from libc.stdint cimport int8_t
 from libc.stdint cimport int32_t
 
@@ -10,8 +12,12 @@ from cupy.cuda.function cimport CPointer
 cdef class CScalar(CPointer):
 
     cdef:
+        cnp.clongdouble_t data[2]  # assume largest alignment
         char kind
-        int8_t size
+        Py_ssize_t size
+        readonly cnp.dtype dtype
+
+    cdef _init(self, Py_ssize_t size)
 
     @staticmethod
     cdef CScalar from_int32(int32_t value)

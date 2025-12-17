@@ -1,4 +1,5 @@
 from cpython cimport mem
+
 from libc.stdint cimport int8_t
 from libc.stdint cimport int16_t
 from libc.stdint cimport int32_t
@@ -8,10 +9,16 @@ from libc.stdint cimport uint16_t
 from libc.stdint cimport uint32_t
 from libc.stdint cimport uint64_t
 
+cimport numpy as cnp
+
 import numpy
 
 from cupy._core cimport _dtype
 from cupy._core cimport internal
+
+
+cdef extern from 'numpy/ndarraytypes.h':
+    cdef int PyArray_Pack(cnp.dtype dtype, void *ptr, object value) except -1
 
 
 cdef union Scalar:
@@ -88,6 +95,16 @@ cdef _setup_type_dict():
     for t in ('cudaTextureObject_t',):
         _typenames[t] = t
 
+    try:
+        import ml_dtypes
+    except ImportError:
+        pass
+    else:
+        dt = numpy.dtype(ml_dtypes.bfloat16)
+        _dtype_kind_size_dict[dt] = ("V", 2)
+        _typenames[dt.type] = "__nv_bfloat16"
+        _dtype_kind_size_dict[dt] = ("V", 2)
+        _typenames[dt.type] = "__nv_bfloat16"
 
 _setup_type_dict()
 
@@ -130,79 +147,95 @@ cdef class CScalar(CPointer):
 
     ndim = 0
 
-    def __cinit__(self):
-        self.ptr = mem.PyMem_Malloc(
-            max(sizeof(Scalar), sizeof(double complex)))
+    def __init__(self, Py_ssize_t size):
+        self._init(size)
+
+    cdef _init(self, Py_ssize_t size):
+        if size > sizeof(self.data):
+            self.ptr = mem.PyMem_Malloc(size)
+            if self.ptr == NULL:
+                raise MemoryError()
+        else:
+            self.ptr = <void *>&(self.data)
         self.kind = 0
         self.size = -1
 
     def __dealloc__(self):
-        mem.PyMem_Free(self.ptr)
+        if self.ptr != <void *>&(self.data):
+            mem.PyMem_Free(self.ptr)
         self.ptr = <void*>0
 
     @staticmethod
     cdef CScalar from_int32(int32_t value):
         cdef CScalar s = CScalar.__new__(CScalar)
+        s._init(4)
         (<int32_t *>s.ptr)[0] = value
         s.kind = b'i'
         s.size = 4
+        s.dtype = cnp.dtype("int32")
         return s
 
     @staticmethod
-    cdef CScalar from_numpy_scalar_with_dtype(object x, object dtype):
-        cdef CScalar ret = CScalar._from_numpy_scalar(x)
-        ret.apply_dtype(dtype)
+    cdef CScalar from_numpy_scalar_with_dtype(object x, object dtype_obj):
+        # NOTE(seberg): This uses assignment logic, which is very subtly
+        # different from casting by rejecting nan -> int. This should be fine.
+        cdef CScalar ret = CScalar.__new__(CScalar)
+        ret._init(16)
+        cdef cnp.dtype dtype = cnp.dtype(dtype_obj)
+        ret.kind = dtype.kind
+        ret.size = dtype.itemsize
+        ret.dtype = dtype
+
+        _dtype.check_supported_dtype(dtype, True)
+
+        PyArray_Pack(dtype, ret.ptr, x)
         return ret
 
     @staticmethod
     cdef CScalar _from_python_scalar(object x):
         cdef CScalar ret = CScalar.__new__(CScalar)
+        ret._init(16)
         cdef Scalar* s = <Scalar*>ret.ptr
         typ = type(x)
         if typ is bool:
             s.bool_ = x
             ret.kind = b'b'
             ret.size = 1
+            ret.dtype = cnp.dtype(bool)
         elif typ is float:
             s.float64_ = x
             ret.kind = b'f'
             ret.size = 8
+            ret.dtype = cnp.dtype(float)
         elif typ is complex:
             (<double complex*>ret.ptr)[0] = x
             ret.kind = b'c'
             ret.size = 16
+            ret.dtype = cnp.dtype(complex)
         else:
             if 0x8000000000000000 <= x:
                 s.uint64_ = x
                 ret.kind = b'u'
+                ret.dtype = cnp.dtype("uint64")
             else:
                 s.int64_ = x
                 ret.kind = b'i'
+                ret.dtype = cnp.dtype("int64")
             ret.size = 8
         return ret
 
     @staticmethod
     cdef CScalar _from_numpy_scalar(object x):
         cdef CScalar ret = CScalar.__new__(CScalar)
-        cdef Scalar* s = <Scalar*>ret.ptr
-        ret.kind = ord(x.dtype.kind)
-        if ret.kind == b'i':
-            s.int64_ = x
-            ret.size = 8
-        elif ret.kind == b'u':
-            s.uint64_ = x
-            ret.size = 8
-        elif ret.kind == b'f':
-            s.float64_ = x
-            ret.size = 8
-        elif ret.kind == b'b':
-            s.bool_ = x
-            ret.size = 1
-        elif ret.kind == b'c':
-            (<double complex*>ret.ptr)[0] = x
-            ret.size = 16
-        else:
-            assert False
+        ret._init(16)
+        cdef cnp.dtype dtype = x.dtype
+        ret.kind = dtype.kind
+        ret.size = dtype.itemsize
+        ret.dtype = dtype
+
+        _dtype.check_supported_dtype(dtype, True)
+
+        PyArray_Pack(dtype, ret.ptr, x)
         return ret
 
     cpdef apply_dtype(self, dtype):
@@ -283,41 +316,12 @@ cdef class CScalar(CPointer):
             assert False
         self.kind = kind
         self.size = size
+        self.dtype = cnp.dtype(dtype)
 
     cpdef get_numpy_type(self):
-        if self.kind == b'b':
-            return _numpy_bool_
-        elif self.kind == b'i':
-            if self.size == 1:
-                return _numpy_int8
-            elif self.size == 2:
-                return _numpy_int16
-            elif self.size == 4:
-                return _numpy_int32
-            elif self.size == 8:
-                return _numpy_int64
-        elif self.kind == b'u':
-            if self.size == 1:
-                return _numpy_uint8
-            elif self.size == 2:
-                return _numpy_uint16
-            elif self.size == 4:
-                return _numpy_uint32
-            elif self.size == 8:
-                return _numpy_uint64
-        elif self.kind == b'f':
-            if self.size == 2:
-                return _numpy_float16
-            elif self.size == 4:
-                return _numpy_float32
-            elif self.size == 8:
-                return _numpy_float64
-        elif self.kind == b'c':
-            if self.size == 8:
-                return _numpy_complex64
-            elif self.size == 16:
-                return _numpy_complex128
-        assert False
+        # Use Python level `.type` lookup (different in cython level)
+        # (This should use `type(self.dtype)` eventually.)
+        return (<object>self.dtype).type
 
 
 cdef CScalar scalar_to_c_scalar(object x):
