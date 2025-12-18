@@ -4,6 +4,7 @@ import cupy as cp
 from cupy import testing
 import cupyx.scipy.sparse as sp
 
+
 @testing.parameterize(*testing.product({
     'format': ['csr', 'csc', 'coo', 'dia'],
 }))
