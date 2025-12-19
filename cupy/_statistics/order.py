@@ -241,7 +241,7 @@ def _quantile_unchecked(a, q, axis=None, out=None,
     elif method == 'nearest':
         indices = cupy.around(indices).astype(cupy.int32)
     elif method == 'inverted_cdf':
-        indices = cupy.clip(cupy.ceil(q*Nx).astype(cupy.int32)-1,0,Nx-1)
+        indices = cupy.clip(cupy.ceil(q*Nx).astype(cupy.int32)-1, 0, Nx-1)
     elif method == 'linear':
         pass
     else:
@@ -317,7 +317,7 @@ def percentile(a, q, axis=None, out=None,
         method (str): Interpolation method when a quantile lies between
             two data points. ``linear`` interpolation is used by default.
             Supported interpolations are ``lower``, ``higher``, ``midpoint``,
-            ``nearest`` and ``linear``.
+            ``nearest``, ``inverted_cdf``  and ``linear``.
         keepdims (bool): If ``True``, the axis is remained as an axis of
             size one.
         interpolation (str): Deprecated name for the method keyword argument.
@@ -366,7 +366,7 @@ def quantile(a, q, axis=None, out=None,
         method (str): Interpolation method when a quantile lies between
             two data points. ``linear`` interpolation is used by default.
             Supported interpolations are ``lower``, ``higher``, ``midpoint``,
-            ``nearest`` and ``linear``.
+            ``nearest``, ``inverted_cdf`` and ``linear``.
         keepdims (bool): If ``True``, the axis is remained as an axis of
             size one.
         interpolation (str): Deprecated name for the method keyword argument.
