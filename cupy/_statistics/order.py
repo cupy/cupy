@@ -246,8 +246,9 @@ def _quantile_unchecked(a, q, axis=None, out=None,
         pass
     else:
         raise ValueError('Unexpected interpolation method.\n'
-                         'Actual: \'{}\' not in (\'linear\', \'lower\', '
-                         '\'higher\', \'midpoint\', \'inverted_cdf\', \'nearest\')'.format(method))
+                         'Actual: \'{}\' not in (\'linear\', \'lower\','
+                         ' \'higher\',\'midpoint\', \'inverted_cdf\', '
+                         '\'nearest\')'.format(method))
 
     if indices.dtype == cupy.int32:
         ret = cupy.rollaxis(ap, axis)
