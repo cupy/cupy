@@ -226,7 +226,7 @@ def _quantile_unchecked(a, q, axis=None, out=None,
     Nx = ap.shape[axis]
     indices = q * (Nx - 1.)
 
-    if method in ['inverted_cdf', 'averaged_inverted_cdf',
+    if method in ['averaged_inverted_cdf',
                   'closest_observation', 'interpolated_inverted_cdf',
                   'hazen', 'weibull', 'median_unbiased', 'normal_unbiased']:
         # TODO(takagi) Implement new methods introduced in NumPy 1.22
@@ -240,6 +240,8 @@ def _quantile_unchecked(a, q, axis=None, out=None,
         indices = 0.5 * (cupy.floor(indices) + cupy.ceil(indices))
     elif method == 'nearest':
         indices = cupy.around(indices).astype(cupy.int32)
+    elif method == 'inverted_cdf':
+        indices = cupy.clip(cupy.ceil(q*Nx).astype(cupy.int32)-1,0,Nx-1)
     elif method == 'linear':
         pass
     else:
