@@ -170,9 +170,9 @@ class LinuxGenerator:
                 ':${LD_LIBRARY_PATH}'
             )
 
-        # Define env vars to discover cuTENSOR during build/runtime.
+        # Define env vars to discover cuSPARSELt during build/runtime.
         if matrix.cusparselt is not None:
-            # The following assumes cuTENSOR 2.3+ package layout.
+            # The following assumes cuSPARSELt 0.8.0+ package layout.
             cuda_major = matrix.cuda.split('.')[0]
             lines.append(
                 'ENV CUPY_INCLUDE_PATH='

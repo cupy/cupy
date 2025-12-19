@@ -191,14 +191,13 @@ def shaped_sparse_random(
         sp = cupyx.scipy.sparse
     n_rows, n_cols = shape
     numpy.random.seed(seed)
+
     a = scipy.sparse.random(n_rows, n_cols, density).astype(dtype)
 
-    if sp is cupyx.scipy.sparse:
-        a = cupyx.scipy.sparse.coo_matrix(a)
-    elif sp is not scipy.sparse:
-        raise ValueError('Unknown module: {}'.format(sp))
-
-    return a.asformat(format)
+    try:
+        return sp.coo_matrix(a).asformat(format)
+    except AttributeError:
+        raise ValueError(f'Module {sp} does not have the expected sparse APIs')
 
 
 def shaped_linspace(start, stop, shape, xp=cupy, dtype=numpy.float32):
