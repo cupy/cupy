@@ -10,7 +10,7 @@ from cupy.exceptions import ComplexWarning
 
 
 cdef str all_type_chars = '?bhilqBHILQefdFD'
-cdef bytes all_type_chars_b = b'?bhilqBHILQefdFD'
+cdef bytes all_type_chars_b = all_type_chars.encode()
 # for c in '?bhilqBHILQefdFD':
 #    print('#', c, '...', np.dtype(c).name)
 # ? ... bool
@@ -66,6 +66,7 @@ cdef bint check_supported_dtype(cnp.dtype dtype, bint error) except -1:
 
     try:
         _scalar.get_typename(dtype)  # allow if we know a C typename.
+        return True
     except (ValueError, KeyError):
         if not error:
             return False

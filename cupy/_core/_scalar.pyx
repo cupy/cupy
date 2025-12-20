@@ -129,7 +129,6 @@ cdef class CScalar(CPointer):
     def __init__(self, value, dtype=None):
         self.value = value
         if dtype is not None:
-            self.value = value
             self.descr = numpy.dtype(dtype)
             self.weak_t = False
         else:
@@ -151,8 +150,8 @@ cdef class CScalar(CPointer):
         cdef CScalar self = CScalar.__new__(CScalar)
         self.value = None
         self.descr = _numpy_int32
-        self.ptr = <void *>self._data
-        (<int32_t *>self.ptr)[0] = value
+        self.ptr = <void *>(self._data)
+        (<int32_t *>(self.ptr))[0] = value
         return self
 
     cdef _store_c_value(self):
@@ -160,7 +159,7 @@ cdef class CScalar(CPointer):
         # we will have to introduce a conditional allocation here and
         # should memset memory to NULL (must if dtype NEEDS_INIT).
         assert self.descr.itemsize < sizeof(self._data)
-        self.ptr = <void *>self._data  # make sure ptr points to _data.
+        self.ptr = <void *>(self._data)  # make sure ptr points to _data.
 
         # NOTE(seberg): This uses assignment logic, which is very subtly
         # different from casting by rejecting nan -> int. This is *only*
@@ -193,7 +192,7 @@ cdef class CScalar(CPointer):
         self._store_c_value()
 
     cpdef get_numpy_type(self):
-        return <object>self.descr.typeobj  # typeobj is the C-level .type
+        return <object>(self.descr.typeobj)  # typeobj is the C-level .type
 
 
 cpdef str _get_cuda_scalar_repr(obj, dtype):

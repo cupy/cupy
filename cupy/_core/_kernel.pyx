@@ -1297,7 +1297,7 @@ cdef class ufunc:
                 # NumPy does not seem raising TypeError, so just `bool()`.
                 # CuPy does not have to support `where=object()` etc. and
                 # `_preprocess_args` rejects it anyway.
-                where_args[0] = _scalar.CScalar(bool(where_args[0].value))
+                where_args[0] = _scalar.CScalar(bool(x.value))
         else:
             where_args = []
 
@@ -1589,7 +1589,7 @@ cdef class _Ops:
             for a in in_args:
                 if type(a) is _scalar.CScalar:
                     # .typeobj is the C-level type (as a PyTypeObject *)
-                    t = <object>(<_scalar.CScalar>a).descr.typeobj
+                    t = <object>((<_scalar.CScalar>a).descr.typeobj)
                     weak_t = (<_scalar.CScalar>a).weak_t
                     if weak_t is not False:
                         any_weak = True
