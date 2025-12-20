@@ -344,6 +344,9 @@ def make_extensions(ctx: Context, compiler, use_cython):
     # Ensure all "cdef public" APIs have C linkage.
     settings['define_macros'].append(('CYTHON_EXTERN_C', 'extern "C"'))
 
+    # We use NumPy 2.x only C-API, so need to define this:
+    settings['define_macros'].append(('NPY_TARGET_VERSION', 'NPY_2_0_API_VERSION'))
+
     if ctx.linetrace:
         settings['define_macros'].append(('CYTHON_TRACE', '1'))
         settings['define_macros'].append(('CYTHON_TRACE_NOGIL', '1'))

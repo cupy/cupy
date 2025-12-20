@@ -6,36 +6,8 @@ from cupy._core cimport _dtype
 
 
 cdef extern from 'numpy/ndarraytypes.h':
-    """
-    // PyArray_Pack is only defined if NPY_TARGET_VERSION=NPY_2_0_API_VERSION
-    // which would hard disable 1.x support, so define it manually.
-    #if NPY_FEATURE_VERSION < NPY_2_0_API_VERSION
-    #define PyArray_Pack \
-            (*(int (*)(PyArray_Descr *, void *, PyObject *)) \
-        PyArray_API[65])
-    #endif
-
-    // Defined for NumPy 2.x builds, this define allows a local 1.x build.
-    #if NPY_ABI_VERSION < 0x02000000
-    static inline PyArray_ArrFuncs *
-    PyDataType_GetArrFuncs(const PyArray_Descr *descr)
-    {
-        return descr->f;
-    }
-    #endif
-    """
-    # The above can be replaced with `NPY_TARGET_VERSION=NPY_2_0_API_VERSION`
-    # as a define once NumPy 1.x is hard unsupported (raises on import).
     cdef int PyArray_Pack(cnp.dtype dtype, void *ptr, object value) except -1
 
-    ctypedef int PyArray_SetItemFunc(object, void *ptr, void *arr) except -1
-    cdef struct PyArray_ArrFuncs:
-        PyArray_SetItemFunc setitem
-    cdef PyArray_ArrFuncs *PyDataType_GetArrFuncs(cnp.dtype descr)
-
-
-# Needed on C-side but Python side check should be safe enough.
-cdef bint _IS_NUMPY_2 = numpy.__version__ >= '2'
 
 cdef dict _typenames_base = {
     numpy.dtype('float64'): 'double',
@@ -165,15 +137,7 @@ cdef class CScalar(CPointer):
         # different from casting by rejecting nan -> int. This is *only*
         # relevant for `casting="unsafe"` passed to ufuncs with `dtype=`.
         # It also means we fail for out of bound integers (NEP 50 change).
-        if _IS_NUMPY_2:
-            PyArray_Pack(self.descr, self.ptr, self.value)
-        elif self.descr.type in _dtype.all_type_chars_b:
-            # Path can't support e.g. structured dtypes but we know it's OK
-            # for all the above ones (last NULL needs an array sometimes).
-            PyDataType_GetArrFuncs(self.descr).setitem(
-                self.value, self.ptr, NULL)
-        else:
-            raise ValueError(f"Unsupported dtype {self.descr} (on NumPy 1.x)")
+        PyArray_Pack(self.descr, self.ptr, self.value)
 
     cpdef apply_dtype(self, dtype):
         cdef cnp.dtype descr = cnp.dtype(dtype)
