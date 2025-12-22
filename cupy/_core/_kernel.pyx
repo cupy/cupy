@@ -952,7 +952,7 @@ cdef class ElementwiseKernel:
             warnings.warn(
                 'No codes are cached because compilation is deferred until '
                 'the first function call.')
-        return dict([(k, v) for k, v in self._cached_codes.items()])
+        return dict(self._cached_codes.items())
 
     @property
     def cached_code(self):

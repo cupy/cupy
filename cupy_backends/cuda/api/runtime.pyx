@@ -217,11 +217,11 @@ cpdef getDeviceProperties(int device):
         computeMode = deviceGetAttribute(cudaDevAttrComputeMode, device)
         cooperativeMultiDeviceLaunch = False
     ELSE:
-        clockRate = props.clockRate
-        kernelExecTimeoutEnabled = props.kernelExecTimeoutEnabled
-        memoryClockRate = props.memoryClockRate
-        computeMode = props.computeMode
-        cooperativeMultiDeviceLaunch = props.cooperativeMultiDeviceLaunch
+        clockRate = props.clockRate  # no-cython-lint
+        kernelExecTimeoutEnabled = props.kernelExecTimeoutEnabled  # no-cython-lint
+        memoryClockRate = props.memoryClockRate  # no-cython-lint
+        computeMode = props.computeMode  # no-cython-lint
+        cooperativeMultiDeviceLaunch = props.cooperativeMultiDeviceLaunch  # no-cython-lint
 
     IF CUPY_CUDA_VERSION > 0 or CUPY_HIP_VERSION > 0:
         properties = {
