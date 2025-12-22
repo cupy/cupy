@@ -585,6 +585,10 @@ cdef class _ndarray_base:
         """
         return _CArray_from_ndarray(self)
 
+    @property
+    def mdspan(self):
+        return _mdspan_from_ndarray(self)
+
     # -------------------------------------------------------------------------
     # Array conversion
     # -------------------------------------------------------------------------
@@ -2211,6 +2215,16 @@ cdef class _ndarray_base:
         """
         # Note: We use the "public" API to show the deprecation warning.
         return dlpack.toDlpack(self)
+
+
+cdef inline _carray.mdspan _mdspan_from_ndarray(_ndarray_base arr):
+    # Creates mdspan from ndarray.
+    # Note that this function cannot be defined in _carray.pxd because that
+    # would cause cyclic cimport dependencies.
+    cdef _carray.mdspan carr = _carray.mdspan.__new__(_carray.mdspan)
+    # TODO(leofang): cache self.itemsize?
+    carr.init(<void*>arr.data.ptr, arr.itemsize, arr._shape, arr._strides)
+    return carr
 
 
 cdef inline _carray.CArray _CArray_from_ndarray(_ndarray_base arr):

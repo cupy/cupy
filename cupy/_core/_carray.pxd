@@ -20,6 +20,14 @@ cdef struct _CArray:
 
 
 @cython.final
+cdef class mdspan(function.CPointer):
+
+    cdef int init(
+        self, void* data_ptr, int itemsize,
+        const shape_t& shape, const strides_t& strides) except?-1
+
+
+@cython.final
 cdef class CArray(function.CPointer):
 
     cdef void init(
