@@ -399,7 +399,7 @@ cdef (Py_ssize_t, Py_ssize_t) _get_cub_block_specs(  # NOQA
 cdef _scalar.CScalar _cub_convert_to_c_scalar(
         Py_ssize_t segment_size, Py_ssize_t value):
     if segment_size > 0x7fffffff:
-        return _scalar.scalar_to_c_scalar(value)
+        return _scalar.CScalar(value)
     else:
         return _scalar.CScalar.from_int32(value)
 
