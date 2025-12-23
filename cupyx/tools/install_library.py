@@ -140,7 +140,9 @@ library_records['nccl'] = _nccl_records
 
 
 def _unpack_archive(filename, extract_dir):
-    kwargs = {} if sys.version_info < (3, 12) else {"filter": "data"}
+    kwargs = {"filter": "data"}
+    if sys.version_info < (3, 12) or filename.endswith(".zip"):
+        kwargs = {}
     try:
         shutil.unpack_archive(filename, extract_dir, **kwargs)
     except shutil.ReadError:
@@ -218,6 +220,10 @@ The current platform ({}) is not supported.'''.format(target_platform))
             shutil.move(
                 os.path.join(outdir, dir_name, 'include'),
                 os.path.join(destination, 'include'))
+            if platform.system() == 'Windows':
+                shutil.move(
+                    os.path.join(outdir, dir_name, 'bin'),
+                    os.path.join(destination, 'bin'))
             shutil.move(
                 os.path.join(outdir, dir_name, 'lib'),
                 os.path.join(destination, 'lib'))

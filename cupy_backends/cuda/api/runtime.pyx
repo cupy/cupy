@@ -18,7 +18,6 @@ cimport cpython  # NOQA
 cimport cython  # NOQA
 
 from cupy_backends.cuda.api cimport driver  # NOQA
-from cupy_backends.cuda.libs cimport nvrtc  # no-cython-lint
 
 
 ###############################################################################
@@ -165,16 +164,8 @@ cpdef int runtimeGetVersion() except? -1:
     """
 
     cdef int version
-    IF CUPY_USE_CUDA_PYTHON:
-        # Workarounds an issue that cuda-python returns its version instead of
-        # the real runtime version.
-        # https://github.com/NVIDIA/cuda-python/issues/16
-        cdef int major, minor
-        (major, minor) = nvrtc.getVersion()
-        version = major * 1000 + minor * 10
-    ELSE:
-        status = cudaRuntimeGetVersion(&version)
-        check_status(status)
+    status = cudaRuntimeGetVersion(&version)
+    check_status(status)
     return version
 
 
@@ -735,8 +726,8 @@ cpdef memPrefetchAsync(intptr_t devPtr, size_t count, int dstDevice,
     ELSE:
         cdef _MemLocation loc_c
         c_memset(&loc_c, 0, sizeof(_MemLocation))
-        loc_c.location.type = cudaMemLocationTypeDevice
-        loc_c.location.id = dstDevice
+        loc_c.type = <MemLocationType>cudaMemLocationTypeDevice
+        loc_c.id = dstDevice
         with nogil:
             status = cudaMemPrefetchAsync(<void*>devPtr, count,
                                           loc_c, 0,
@@ -753,8 +744,8 @@ cpdef memAdvise(intptr_t devPtr, size_t count, int advice, int device):
     ELSE:
         cdef _MemLocation loc_c
         c_memset(&loc_c, 0, sizeof(_MemLocation))
-        loc_c.location.type = cudaMemLocationTypeDevice
-        loc_c.location.id = device
+        loc_c.type = <MemLocationType>cudaMemLocationTypeDevice
+        loc_c.id = device
         with nogil:
             status = cudaMemAdvise(<void*>devPtr, count,
                                    <MemoryAdvise>advice, loc_c)

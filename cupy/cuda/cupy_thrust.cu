@@ -14,11 +14,11 @@
 #if CUPY_USE_HIP
 typedef hipStream_t cudaStream_t;
 namespace cuda {
-    using thrust::hip::par;
+    using thrust::hip::par_nosync;
 }
 #else // #if CUPY_USE_HIP
 namespace cuda {
-    using thrust::cuda::par;
+    using thrust::cuda::par_nosync;
 }
 #endif // #if CUPY_USE_HIP
 
@@ -312,12 +312,12 @@ struct _sort {
         if (ndim == 1) {
             // we use thrust::less directly to sort floating points, because then it can use radix sort, which happens to sort NaNs to the back
             using compare_op = std::conditional_t<std::is_floating_point<T>::value, thrust::less<T>, typename select_less<T>::type>;
-            stable_sort(cuda::par(alloc).on(stream_), dp_data_first, dp_data_last, compare_op{});
+            stable_sort(cuda::par_nosync(alloc).on(stream_), dp_data_first, dp_data_last, compare_op{});
         } else {
             // Generate key indices.
             dp_keys_first = thrust::device_pointer_cast(keys_start);
             dp_keys_last  = thrust::device_pointer_cast(keys_start + size);
-            transform(cuda::par(alloc).on(stream_),
+            transform(cuda::par_nosync(alloc).on(stream_),
                       #ifdef __HIP_PLATFORM_HCC__
                       rocprim::make_counting_iterator<size_t>(0),
                       rocprim::make_counting_iterator<size_t>(size),
@@ -331,7 +331,7 @@ struct _sort {
                       thrust::divides<size_t>());
 
             stable_sort(
-                cuda::par(alloc).on(stream_),
+                cuda::par_nosync(alloc).on(stream_),
                 make_zip_iterator(dp_keys_first, dp_data_first),
                 make_zip_iterator(dp_keys_last, dp_data_last),
                 typename select_less<thrust::tuple<size_t, T>>::type{});
@@ -366,11 +366,11 @@ struct _lexsort {
         thrust::device_ptr<size_t> dp_last  = thrust::device_pointer_cast(idx_start + n);
         cudaStream_t stream_ = (cudaStream_t)stream;
         cupy_allocator alloc(memory);
-        sequence(cuda::par(alloc).on(stream_), dp_first, dp_last);
+        sequence(cuda::par_nosync(alloc).on(stream_), dp_first, dp_last);
         for (size_t i = 0; i < k; ++i) {
             T *key_start = static_cast<T*>(keys_start) + i * n;
             stable_sort(
-                cuda::par(alloc).on(stream_),
+                cuda::par_nosync(alloc).on(stream_),
                 dp_first,
                 dp_last,
                 elem_less<T>(key_start)
@@ -416,7 +416,7 @@ struct _argsort {
         // Generate an index sequence.
         dp_idx_first = thrust::device_pointer_cast(static_cast<size_t*>(idx_start));
         dp_idx_last  = thrust::device_pointer_cast(static_cast<size_t*>(idx_start) + size);
-        transform(cuda::par(alloc).on(stream_),
+        transform(cuda::par_nosync(alloc).on(stream_),
                   #ifdef __HIP_PLATFORM_HCC__
                   rocprim::make_counting_iterator<size_t>(0),
                   rocprim::make_counting_iterator<size_t>(size),
@@ -433,7 +433,7 @@ struct _argsort {
             // we use thrust::less directly to sort floating points, because then it can use radix sort, which happens to sort NaNs to the back
             using compare_op = std::conditional_t<std::is_floating_point<T>::value, thrust::less<T>, typename select_less<T>::type>;
             // Sort the index sequence by data.
-            stable_sort_by_key(cuda::par(alloc).on(stream_),
+            stable_sort_by_key(cuda::par_nosync(alloc).on(stream_),
                                dp_data_first,
                                dp_data_last,
                                dp_idx_first,
@@ -442,7 +442,7 @@ struct _argsort {
             // Generate key indices.
             dp_keys_first = thrust::device_pointer_cast(static_cast<size_t*>(keys_start));
             dp_keys_last  = thrust::device_pointer_cast(static_cast<size_t*>(keys_start) + size);
-            transform(cuda::par(alloc).on(stream_),
+            transform(cuda::par_nosync(alloc).on(stream_),
                       #ifdef __HIP_PLATFORM_HCC__
                       rocprim::make_counting_iterator<size_t>(0),
                       rocprim::make_counting_iterator<size_t>(size),
@@ -456,7 +456,7 @@ struct _argsort {
                       thrust::divides<size_t>());
 
             stable_sort_by_key(
-                cuda::par(alloc).on(stream_),
+                cuda::par_nosync(alloc).on(stream_),
                 make_zip_iterator(dp_keys_first, dp_data_first),
                 make_zip_iterator(dp_keys_last, dp_data_last),
                 dp_idx_first,
