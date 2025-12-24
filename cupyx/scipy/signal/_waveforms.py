@@ -141,8 +141,9 @@ _square_kernel = cupy.ElementwiseKernel(
         y = nan("0xfff8000000000000ULL");
     }
 
-    const T tmod { fmod( t, 2.0 * M_PI ) };
-    const bool mask2 { ( ( 1 - mask1 ) && ( tmod < ( w * 2.0 * M_PI ) ) ) };
+    const T period = (T)(2.0 * M_PI);
+    const T tmod { fmod( t, period ) };
+    const bool mask2 { ( ( 1 - mask1 ) && ( tmod < ( w * period ) ) ) };
 
     if ( mask2 ) {
         y = 1;

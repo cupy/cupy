@@ -188,6 +188,14 @@ class TestSquare:
         t = xp.linspace(0, 1, 500)
         return scp.signal.square(t, duty)
 
+    @pytest.mark.parametrize("dtype_t", [cupy.float32, cupy.float64])
+    def test_square_dtype(self, dtype_t):
+        t = cupy.asarray(1.0, dtype=dtype_t)
+        w = cupy.asarray(0.5, dtype=dtype_t)
+
+        y = cupyx.scipy.signal.square(t, duty=w)
+
+        assert y.dtype == cupy.float64
 
 @testing.with_requires('scipy')
 class TestSweepPoly:
