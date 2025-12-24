@@ -42,10 +42,12 @@ __device__ long long atomicAdd(long long *address, long long val) {
     return atomicAdd(reinterpret_cast<unsigned long long*>(address),
                      static_cast<unsigned long long>(val));
 }
+#if __CUDA_ARCH__ >= 600
 __device__ long long atomicAdd_block(long long *address, long long val) {
     return atomicAdd_block(reinterpret_cast<unsigned long long*>(address),
                            static_cast<unsigned long long>(val));
 }
+#endif // __CUDA_ARCH__ >= 600
 #endif // __CUDA_ARCH__
 
 #if (defined(_MSC_VER) && (__CUDACC_VER_MAJOR__ == 11 && __CUDACC_VER_MINOR__ == 2))
