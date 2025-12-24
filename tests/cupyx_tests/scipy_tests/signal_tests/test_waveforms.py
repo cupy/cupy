@@ -197,6 +197,7 @@ class TestSquare:
 
         assert y.dtype == cupy.float64
 
+
 @testing.with_requires('scipy')
 class TestSweepPoly:
 
