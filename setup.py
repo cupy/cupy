@@ -89,7 +89,7 @@ if not ctx.use_hip:
     if len(ext_modules) != 0 and not ctx.use_stub:
         cuda_major = ctx.features["cuda"].get_version() // 1000
         optional_dependencies["ctk"] = [
-            f"cuda-toolkit[nvrtc,cublas,cufft,cusolver,cusparse,curand]=={cuda_major}.*"  # NOQA
+            f"cuda-toolkit[cudart,nvrtc,cublas,cufft,cusolver,cusparse,curand]=={cuda_major}.*"  # NOQA
         ]
 
 
