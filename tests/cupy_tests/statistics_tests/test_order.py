@@ -16,11 +16,11 @@ _all_methods = (
     # 'averaged_inverted_cdf',      # TODO(takagi) Not implemented
     # 'closest_observation',        # TODO(takagi) Not implemented
     # 'interpolated_inverted_cdf',  # TODO(takagi) Not implemented
-    # 'hazen',                      # TODO(takagi) Not implemented
-    # 'weibull',                    # TODO(takagi) Not implemented
+    'hazen',
+    'weibull',
     'linear',
-    # 'median_unbiased',            # TODO(takagi) Not implemented
-    # 'normal_unbiased',            # TODO(takagi) Not implemented
+    'median_unbiased',
+    'normal_unbiased',
     'lower',
     'higher',
     'midpoint',
