@@ -41,12 +41,6 @@ cpdef tuple complete_slice_list(list slice_list, Py_ssize_t ndim)
 
 cpdef size_t clp2(size_t x)
 
-ctypedef unsigned short _float16
-
-cpdef uint16_t to_float16(float f)
-
-cpdef float from_float16(uint16_t v)
-
 cdef int _normalize_order(order, cpp_bool allow_k=*) except? 0
 
 cdef _broadcast_core(list arrays, shape_t& shape)
