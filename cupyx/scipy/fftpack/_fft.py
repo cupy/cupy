@@ -139,7 +139,7 @@ def get_fft_plan(a, shape=None, axes=None, value_type='C2C'):
             out_size = _get_fftn_out_size(
                 shape, transformed_shape, axis1D, value_type)
         batch = prod(shape) // shape[axis1D]
-        devices = None if not config.use_multi_gpus else config._devices
+        devices = config.devices
 
         keys = (out_size, fft_type, batch, devices)
         mgr = config.get_current_callback_manager()
