@@ -506,7 +506,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
     _fill_B = _core.RawModule(
         code=_fill_B_kernel,
-        options=('-std=c++11',),
+        options=('-std=c++17',),
         name_expressions=['fill_B<float>',
                           'fill_B<double>',
                           ],
@@ -557,7 +557,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
     _fill_B_complex = _core.RawModule(
         code=_fill_B_kernel_complex,
-        options=('-std=c++11',),
+        options=('-std=c++17',),
         name_expressions=['fill_B_complex<float>',
                           'fill_B_complex<double>',
                           ],

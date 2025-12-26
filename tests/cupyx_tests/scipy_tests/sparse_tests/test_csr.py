@@ -16,7 +16,6 @@ except ImportError:
 from cupy_backends.cuda.api import driver
 from cupy_backends.cuda.api import runtime
 import cupy
-from cupy._core import _accelerator
 from cupy import testing
 import cupyx.cusparse
 from cupyx.scipy import sparse
@@ -1795,47 +1794,6 @@ class TestCsrMatrixGetitem2:
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_getitem_slice_stop_too_large(self, xp, sp):
         return _make(xp, sp, self.dtype)[None:4]
-
-
-# CUB SpMV works only when the matrix size is nonzero
-@testing.parameterize(*testing.product({
-    'make_method': ['_make', '_make_unordered', '_make_duplicate'],
-    'dtype': [numpy.float32, numpy.float64, cupy.complex64, cupy.complex128],
-}))
-@testing.with_requires('scipy')
-@pytest.mark.skipif(
-    cupy.cuda.cub._get_cuda_build_version() >= 11000,
-    reason='CUDA built-in CUB SpMV is buggy, see cupy/cupy#3822')
-@pytest.mark.skipif(runtime.is_hip, reason='hipCUB does not provide spmv')
-@pytest.mark.skipif(
-    not cupy.cuda.cub.available,
-    reason='The CUB routine is not enabled')
-class TestCubSpmv:
-
-    @pytest.fixture(autouse=True, scope='class')
-    def cub(self):
-        old_accelerators = _accelerator.get_routine_accelerators()
-        _accelerator.set_routine_accelerators(['cub'])
-        yield
-        _accelerator.set_routine_accelerators(old_accelerators)
-
-    @property
-    def make(self):
-        return globals()[self.make_method]
-
-    @testing.numpy_cupy_allclose(sp_name='sp')
-    def test_mul_dense_vector(self, xp, sp):
-        m = self.make(xp, sp, self.dtype)
-        x = xp.arange(4).astype(self.dtype)
-        if xp is numpy:
-            return m * x
-
-        # xp is cupy, first ensure we really use CUB
-        func = 'cupyx.scipy.sparse._csr.cub.device_csrmv'
-        with testing.AssertFunctionIsCalled(func):
-            m * x
-        # ...then perform the actual computation
-        return m * x
 
 
 @testing.parameterize(*testing.product({

@@ -169,7 +169,7 @@ class _JitRawKernel:
                 self._cached_codes[in_types] = result
 
             options = (
-                '-DCUPY_JIT_MODE', '--std=c++14', '-dlto',
+                '-DCUPY_JIT_MODE', '--std=c++17', '-dlto',
                 f'-arch=compute_{_get_arch()}')
             backend = result.backend
             if backend != 'nvrtc':
