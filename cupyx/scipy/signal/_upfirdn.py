@@ -392,43 +392,62 @@ class _UpFIRDn:
                    )
 
         elif out.ndim == 2:
-            # set up the kernel launch parameters
-            threadsperblock = (8, 8)
-
-            blocks = (x.shape[0] + threadsperblock[0] -
-                      1) // threadsperblock[0]
-            blockspergrid_x = (
-                blocks if blocks < _get_max_gdx() else _get_max_gdx())
-
-            blocks = (x.shape[1] + threadsperblock[1] -
-                      1) // threadsperblock[1]
-            blockspergrid_y = (
-                blocks if blocks < _get_max_gdy() else _get_max_gdy())
-
-            blockspergrid = (blockspergrid_x, blockspergrid_y)
-
-            # do computations
-            kernel = UPFIRDN_MODULE.get_function(
-                f'_cupy_upfirdn2D_{out.dtype.name}')
-            kernel(blockspergrid, threadsperblock,
-                   (x,
-                    x.shape[1],
-                    self._h_trans_flip,
-                    self._up,
-                    self._down,
-                    axis,
-                    x_shape_a,
-                    h_per_phase,
-                    padded_len,
-                    out,
-                    out.shape[0],
-                    out.shape[1]
-                    )
-                   )
+            self._apply_filter_2d(
+                x, out, axis, x_shape_a, h_per_phase, padded_len)
         else:
-            raise NotImplementedError("upfirdn() requires ndim <= 2")
+            # N-D case: reshape to 2D, apply filter, reshape back
+
+            # Move target axis to the end
+            x_moved = cupy.ascontiguousarray(cupy.moveaxis(x, axis, -1))
+            shape_with_axis_at_end = x_moved.shape
+
+            # Reshape to 2d
+            x_2d = x_moved.reshape(-1, x_moved.shape[-1])
+            out_2d = cupy.empty((x_2d.shape[0], output_len),
+                                dtype=self._output_type, order="C")
+            self._apply_filter_2d(x_2d, out_2d, axis=1,
+                                  x_shape_a=x_shape_a,
+                                  h_per_phase=h_per_phase,
+                                  padded_len=padded_len)
+
+            # Reshape back to N-D
+            new_shape = shape_with_axis_at_end[:-1] + (output_len,)
+            out_nd = out_2d.reshape(new_shape)
+            out = cupy.ascontiguousarray(cupy.moveaxis(out_nd, -1, axis))
 
         return out
+
+    def _apply_filter_2d(self, x, out, axis,
+                         x_shape_a, h_per_phase,
+                         padded_len):
+        """Apply the 2D upfirdn kernel."""
+        # set up the kernel launch parameters
+        threadsperblock = (8, 8)
+
+        blocks = (out.shape[0] + threadsperblock[0] - 1) // threadsperblock[0]
+        blockspergrid_x = min(blocks, _get_max_gdx())
+
+        blocks = (out.shape[1] + threadsperblock[1] - 1) // threadsperblock[1]
+        blockspergrid_y = min(blocks, _get_max_gdy())
+
+        blockspergrid = (blockspergrid_x, blockspergrid_y)
+
+        # do computations
+        kernel = UPFIRDN_MODULE.get_function(
+            f'_cupy_upfirdn2D_{out.dtype.name}')
+        kernel(blockspergrid, threadsperblock,
+               (x,
+                x.shape[1],
+                self._h_trans_flip,
+                self._up,
+                self._down,
+                axis,
+                x_shape_a,
+                h_per_phase,
+                padded_len,
+                out,
+                out.shape[0],
+                out.shape[1]))
 
 
 def upfirdn(

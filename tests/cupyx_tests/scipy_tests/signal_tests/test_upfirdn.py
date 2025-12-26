@@ -226,6 +226,32 @@ class TestUpfirdn:
         return y
 
     @pytest.mark.parametrize('x_dtype', _UPFIRDN_TYPES)
+    @pytest.mark.parametrize('h', (1., 1j))
+    @pytest.mark.parametrize('up, down', [(1, 1), (2, 2), (3, 2), (2, 3)])
+    @pytest.mark.parametrize('shape, axis', [
+        # 3D
+        ((2, 3, 4), 0),
+        ((2, 3, 4), 1),
+        ((2, 3, 4), 2),
+        ((2, 3, 4), -1),
+        # 4D
+        ((2, 3, 4, 5), 0),
+        ((2, 3, 4, 5), 2),
+        ((2, 3, 4, 5), -1),
+    ])
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_vs_naive_delta_nd(self, x_dtype, h, up, down, shape, axis,
+                               xp, scp):
+        rng = np.random.RandomState(17)
+        x = rng.randn(*shape).astype(x_dtype)
+        if x_dtype in (np.complex64, np.complex128):
+            x += 1j * rng.randn(*shape)
+        x = xp.asarray(x)
+        h = xp.asarray(np.atleast_1d(h))
+        y = scp.signal.upfirdn(h, x, up, down, axis=axis)
+        return y
+
+    @pytest.mark.parametrize('x_dtype', _UPFIRDN_TYPES)
     @pytest.mark.parametrize('h_dtype', _UPFIRDN_TYPES)
     @pytest.mark.parametrize('p_max, q_max',
                              list(product((10, 100), (10, 100))))
