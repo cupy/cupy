@@ -53,13 +53,7 @@ package_data = {
 package_data['cupy'] += cupy_setup_build.prepare_wheel_libs(ctx)
 
 
-if ctx.setup_command in ('dist_info', 'egg_info'):
-    # Extensions are unnecessary for dist_info generation as all sources files
-    # can be enumerated via MANIFEST.in.
-    print('Skipping extensions configuration')
-    ext_modules = []
-else:
-    ext_modules = cupy_setup_build.get_ext_modules(True, ctx)
+ext_modules = cupy_setup_build.get_ext_modules(True, ctx)
 
 
 long_description = ''
@@ -86,10 +80,10 @@ optional_dependencies = {
 }
 if not ctx.use_hip:
     dependencies.append("cuda-pathfinder>=1.3.2,==1.*")
-    if len(ext_modules) != 0 and not ctx.use_stub:
+    if not ctx.use_stub:
         cuda_major = ctx.features["cuda"].get_version() // 1000
         optional_dependencies["ctk"] = [
-            f"cuda-toolkit[nvrtc,cublas,cufft,cusolver,cusparse,curand]=={cuda_major}.*"  # NOQA
+            f"cuda-toolkit[cudart,nvrtc,cublas,cufft,cusolver,cusparse,curand]=={cuda_major}.*"  # NOQA
         ]
 
 
