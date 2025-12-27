@@ -79,7 +79,7 @@ optional_dependencies = {
     ],
 }
 if not ctx.use_hip:
-    dependencies.append("cuda-pathfinder>=1.3.2,==1.*")
+    dependencies.append("cuda-pathfinder>=1.3.3,==1.*")
     if not ctx.use_stub:
         cuda_major = ctx.features["cuda"].get_version() // 1000
         optional_dependencies["ctk"] = [
