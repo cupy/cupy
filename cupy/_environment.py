@@ -569,36 +569,25 @@ def _get_include_dir_from_conda_or_wheel(major: int, minor: int) -> list[str]:
     if config is not None and config['packaging'] == 'conda':
         cuda_path = _get_conda_cuda_path()
         if cuda_path is not None:
-            return [os.path.join(cuda_path, 'include')]
-        else:
-            # No idea what this platform is. Do nothing?
-            return []
+            # Note: this assumes that we prefer headers installed via conda.
+            result = [os.path.join(cuda_path, 'include')]
+            _log(f'found CUDA headers from conda: {result}')
+            return result
 
-    # Look for headers in wheels
-    if major in (11, 12):
-        pkg_name = f'nvidia-cuda-runtime-cu{major}'
-        dir_name = 'cuda_runtime'
-    else:
-        # New layout (CUDA 13+)
-        pkg_name = 'nvidia-cuda-runtime'
-        dir_name = f'cu{major}'
-    ver_str = f'{major}.{minor}'
-    _log(f'Looking for {pkg_name}=={ver_str}.*')
+    # Look for headers via cuda-pathfinder
+    from cuda.pathfinder import find_nvidia_header_directory
     try:
-        dist = importlib.metadata.distribution(pkg_name)
-    except importlib.metadata.PackageNotFoundError:
-        _log('The package could not be found')
+        include_dir = find_nvidia_header_directory('cudart')
+    except RuntimeError:
+        _log('CUDA headers not found via cuda-pathfinder')
         return []
-
-    if dist.version == ver_str or dist.version.startswith(f'{ver_str}.'):
-        include_dir = dist.locate_file(f'nvidia/{dir_name}/include')
-        if not include_dir.exists():
-            _log('The include directory could not be found')
-            return []
-        return [str(include_dir)]
     else:
-        _log(f'Found incompatible version ({dist.version})')
-        return []
+        if include_dir is not None:
+            _log(f'found CUDA headers via cuda-pathfinder: {include_dir}')
+            return [include_dir]
+        else:
+            _log('CUDA headers not found via cuda-pathfinder')
+            return []
 
 
 def _detect_duplicate_installation():
