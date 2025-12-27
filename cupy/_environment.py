@@ -3,7 +3,6 @@ This file must not depend on any other CuPy modules.
 """
 from __future__ import annotations
 
-
 import ctypes
 import importlib.metadata
 import json
@@ -111,16 +110,51 @@ def get_cub_path():
     return _cub_path
 
 
+_PLATFORM_LINUX = sys.platform.startswith('linux')
+_PLATFORM_WIN32 = sys.platform.startswith('win32')
+
+
+def _get_conda_cuda_path():
+    """This works since CUDA 12.0+."""
+    conda_prefix = os.environ.get('CONDA_PREFIX')
+    if _PLATFORM_LINUX:
+        plat = platform.machine()
+        # TODO(leofang): how about Tegra?
+        if plat == 'aarch64':
+            arch = 'sbsa-linux'
+        else:
+            arch = f'{plat}-linux'
+        cuda_path = os.path.join(conda_prefix, 'targets', arch)
+    elif _PLATFORM_WIN32:
+        cuda_path = os.path.join(conda_prefix, 'Library')
+    else:
+        assert False
+
+    return cuda_path if os.path.exists(cuda_path) else None
+
+
 def _get_cuda_path():
     # Use environment variable
     cuda_path = os.environ.get('CUDA_PATH', '')  # Nvidia default on Windows
     if os.path.exists(cuda_path):
         return cuda_path
 
-    # Use nvcc path
-    nvcc_path = shutil.which('nvcc')
-    if nvcc_path is not None:
-        return os.path.dirname(os.path.dirname(nvcc_path))
+    # Use NVRTC path
+    from cuda.pathfinder import (
+        load_nvidia_dynamic_lib, DynamicLibNotFoundError)
+    try:
+        nvrtc = load_nvidia_dynamic_lib('nvrtc')
+    except DynamicLibNotFoundError:
+        pass
+    else:
+        cuda_path = os.path.dirname(os.path.dirname(nvrtc.abs_path))
+        if nvrtc.found_via == 'conda':
+            # In this case we'd find cuda_path == $CONDA_PREFIX, which is
+            # not the actual CUDA path in conda. So we need to adjust it.
+            conda_cuda_path = _get_conda_cuda_path()
+            assert conda_cuda_path.startswith(cuda_path)
+            return conda_cuda_path
+        return cuda_path
 
     # Use typical path
     if os.path.exists('/usr/local/cuda'):
@@ -533,20 +567,9 @@ def _get_include_dir_from_conda_or_wheel(major: int, minor: int) -> list[str]:
 
     config = get_preload_config()
     if config is not None and config['packaging'] == 'conda':
-        if sys.platform.startswith('linux'):
-            arch = platform.machine()
-            if arch == "aarch64":
-                arch = "sbsa"
-            assert arch, "platform.machine() returned an empty string"
-            target_dir = f"{arch}-linux"
-            return [
-                os.path.join(sys.prefix, "targets", target_dir, "include"),
-                os.path.join(sys.prefix, "include"),
-            ]
-        elif sys.platform.startswith('win'):
-            return [
-                os.path.join(sys.prefix, "Library", "include"),
-            ]
+        cuda_path = _get_conda_cuda_path()
+        if cuda_path is not None:
+            return [os.path.join(cuda_path, 'include')]
         else:
             # No idea what this platform is. Do nothing?
             return []
