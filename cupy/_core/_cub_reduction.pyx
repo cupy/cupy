@@ -250,7 +250,8 @@ def _SimpleCubReductionKernel_get_cached_function(
 
 
 cdef str _cub_path = _environment.get_cub_path()
-cdef str _nvcc_path = _environment.get_nvcc_path()
+cdef str _nvcc_path = (
+    _environment.get_nvcc_path() if not runtime._is_hip_environment else None)
 cdef str _rocm_path = _environment.get_rocm_path()
 cdef str _hipcc_path = _environment.get_hipcc_path()
 cdef str _cub_header = None
