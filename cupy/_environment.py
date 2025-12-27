@@ -329,6 +329,22 @@ def _preload_library(lib):
         return
     _preload_libs[lib] = {}
 
+    # Starting here, we assume exeucting on CUDA.
+    from cuda.pathfinder import (
+        load_nvidia_dynamic_lib, DynamicLibNotFoundError)
+    try:
+        loaded_dl = load_nvidia_dynamic_lib(lib)
+    except DynamicLibNotFoundError as e:
+        # Note: This is very noisy. We might want to consider printing the
+        # exception only when turning on the verbose mode.
+        _log(f'{lib} could not be loaded by cuda-pathfinder: {e}')
+    else:
+        _preload_libs[lib]['pathfinder'] = loaded_dl
+        _log(f'{lib} is loaded by cuda-pathfinder: {loaded_dl}')
+        return
+
+    # Use CuPy's existing preload mechanism as fallback. For example, this is
+    # needed when a library is installed via CuPy's installer tool.
     config = get_preload_config()
     cuda_version = config['cuda']
     _log('CuPy wheel package built for CUDA {}'.format(cuda_version))
