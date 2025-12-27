@@ -1,8 +1,8 @@
 # mypy: ignore-errors
 from __future__ import annotations
 
-
 import contextlib
+import functools
 import logging
 import os
 import platform
@@ -684,6 +684,15 @@ def conda_get_target_name():
     return out
 
 
+@functools.cache
+def is_conda_cross_compiling() -> bool:
+    is_cross_compiling = os.environ.get('CONDA_BUILD_CROSS_COMPILATION', '0')
+    # Recent conda compilers might set CONDA_BUILD_CROSS_COMPILATION to empty.
+    if is_cross_compiling == '':
+        is_cross_compiling = '0'
+    return (int(is_cross_compiling, 0) == 1)
+
+
 def conda_update_dirs(include_dirs, library_dirs):
     # Note: These hacks are needed for the dependency detection stage to
     # function, because we create a fresh compiler instance that does not
@@ -691,7 +700,7 @@ def conda_update_dirs(include_dirs, library_dirs):
     include_dirs = list(include_dirs)
     library_dirs = list(library_dirs)
 
-    if (int(os.environ.get('CONDA_BUILD_CROSS_COMPILATION', 0)) == 1):
+    if is_conda_cross_compiling():
         # If we're cross compiling, we need to generate stub files that are
         # executable in the build environment, not the target environment.
         # This assumes, however, that the build/host environments see the same
