@@ -119,9 +119,11 @@ def _get_conda_cuda_path():
     conda_prefix = os.environ.get('CONDA_PREFIX')
     if _PLATFORM_LINUX:
         plat = platform.machine()
-        # TODO(leofang): how about Tegra?
         if plat == 'aarch64':
-            arch = 'sbsa-linux'
+            if os.path.exists('/etc/nv_tegra_release'):
+                arch = f'{plat}-linux'
+            else:
+                arch = 'sbsa-linux'
         else:
             arch = f'{plat}-linux'
         cuda_path = os.path.join(conda_prefix, 'targets', arch)
