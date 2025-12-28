@@ -169,6 +169,13 @@ def get_compiler_setting(ctx: Context, use_hip):
     if use_hip:
         # ROCm 5.3 and above requires c++14
         extra_compile_args.append('-std=c++14')
+    else:
+        # CCCL 3.x (for CUDA) requires c++17
+        if PLATFORM_LINUX:
+            extra_compile_args.append('-std=c++17')
+        else:
+            assert PLATFORM_WIN32
+            extra_compile_args.append('/std:c++17')
 
     if PLATFORM_WIN32:
         nvtx_path = _environment.get_nvtx_path()
@@ -309,7 +316,8 @@ def check_hip_version(compiler, settings):
           printf("%d", HIP_VERSION);
           return 0;
         }
-        ''', include_dirs=settings['include_dirs'])
+        ''', include_dirs=settings['include_dirs'],
+                            extra_compile_args=settings['extra_compile_args'])
 
     except Exception as e:
         utils.print_warning('Cannot check HIP version', str(e))
@@ -361,7 +369,8 @@ def check_compute_capabilities(compiler, settings):
             compiler, src,
             include_dirs=settings['include_dirs'],
             libraries=('cudart',),
-            library_dirs=settings['library_dirs'])
+            library_dirs=settings['library_dirs'],
+            extra_compile_args=settings['extra_compile_args'])
         _compute_capabilities = set([int(o) for o in out.split()])
     except Exception as e:
         utils.print_warning('Cannot check compute capability\n{}'.format(e))
@@ -386,7 +395,8 @@ def check_thrust_version(compiler, settings):
           printf("%d", THRUST_VERSION);
           return 0;
         }
-        ''', include_dirs=settings['include_dirs'])
+        ''', include_dirs=settings['include_dirs'],
+                            extra_compile_args=settings['extra_compile_args'])
     except Exception as e:
         utils.print_warning('Cannot check Thrust version\n{}'.format(e))
         return False
@@ -434,7 +444,8 @@ def check_nccl_version(compiler, settings):
                             }
                             ''',
                             include_dirs=settings['include_dirs'],
-                            define_macros=settings['define_macros'])
+                            define_macros=settings['define_macros'],
+                            extra_compile_args=settings['extra_compile_args'])
 
     except Exception as e:
         utils.print_warning('Cannot include NCCL\n{}'.format(e))
@@ -493,7 +504,8 @@ def check_cub_version(compiler, settings):
                               return 0;
                             }''',
                             include_dirs=settings['include_dirs'],
-                            define_macros=settings['define_macros'])
+                            define_macros=settings['define_macros'],
+                            extra_compile_args=settings['extra_compile_args'])
     except Exception as e:
         # could be in a git submodule?
         try:
@@ -610,8 +622,8 @@ def check_cutensor_version(compiler, settings):
           printf("%d", CUTENSOR_VERSION);
           return 0;
         }
-        ''', include_dirs=settings['include_dirs'])
-
+        ''', include_dirs=settings['include_dirs'],
+                            extra_compile_args=settings['extra_compile_args'])
     except Exception as e:
         utils.print_warning('Cannot check cuTENSOR version\n{}'.format(e))
         return False
@@ -649,8 +661,8 @@ def check_cusparselt_version(compiler, settings):
           printf("%d", CUSPARSELT_VERSION);
           return 0;
         }
-        ''', include_dirs=settings['include_dirs'])
-
+        ''', include_dirs=settings['include_dirs'],
+                            extra_compile_args=settings['extra_compile_args'])
     except Exception as e:
         utils.print_warning('Cannot check cuSPARSELt version\n{}'.format(e))
         return False

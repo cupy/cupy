@@ -263,7 +263,7 @@ cdef inline void _nvcc_compile(
     cmd = _nvcc + ['-arch=sm_'+arch, '-dc',
                    '-I' + _cupy_include,
                    '-c', os.path.join(tempdir, 'cupy_cufftXt.cu'),
-                   '-Xcompiler', '-fPIC', '-O2', '-std=c++11']
+                   '-Xcompiler', '-fPIC', '-O2', '-std=c++17']
     if cb_load:
         cmd.append('-DHAS_LOAD_CALLBACK')
     if cb_store:
@@ -595,7 +595,7 @@ cdef class _JITCallbackManager(_CallbackManager):
                 raise ValueError('store callback is not given')
 
     cdef bytes compile_lto(self, str source, tuple options):
-        options += ('--std=c++11', '-I' + self._get_cuda_include())
+        options += ('--std=c++17', '-I' + self._get_cuda_include())
         # TODO(leofang): support log_stream & jitify
         return _compile_with_cache_cuda(
             source, options, None, get_cache_dir(), to_ltoir=True)

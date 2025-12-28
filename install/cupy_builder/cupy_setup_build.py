@@ -426,8 +426,6 @@ def make_extensions(ctx: Context, compiler, use_cython):
         link_args = s.setdefault('extra_link_args', [])
 
         if module['name'] == 'cusolver':
-            # cupy_backends/cupy_lapack.h has C++ template code
-            compile_args.append('--std=c++11')
             # openmp is required for cusolver
             if use_hip:
                 pass
@@ -442,8 +440,6 @@ def make_extensions(ctx: Context, compiler, use_cython):
                 compile_args.append('-D_USE_MATH_DEFINES')
 
         if module['name'] == 'jitify':
-            # this fixes RTD (no_cuda) builds...
-            compile_args.append('--std=c++11')
             # suppress printing Jitify logging to stdout
             compile_args.append('-DJITIFY_PRINT_LOG=0')
             # Uncomment to diagnose Jitify issues.
