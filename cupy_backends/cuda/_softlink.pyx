@@ -11,16 +11,24 @@ def _log(msg: str) -> None:
 
 
 cdef class SoftLink:
-    def __init__(self, object libname, str prefix, *, bint mandatory=False):
+    def __init__(
+            self, str libname, str prefix, *, bint mandatory=False, handle=0):
         self.error = None
         self.prefix = prefix
         self._libname = libname
         self._cdll = None
-        if libname is None:
+        if libname is None and handle == 0:
             # Stub build or CUDA/HIP only library.
             self.error = RuntimeError(
                 'The library is unavailable in the current platform.')
+        elif libname is None and handle > 0:
+            self._cdll = ctypes.CDLL(None, handle=handle)
+            # Note: It seems CDLL does not honor handle starting Python 3.13,
+            # so we overwrite it to be safe.
+            self._cdll._handle = handle
+            _log(f'Library already loaded (handle={handle})')
         else:
+            # Ignore handle.
             try:
                 self._cdll = ctypes.CDLL(libname)
                 _log(f'Library "{libname}" loaded')

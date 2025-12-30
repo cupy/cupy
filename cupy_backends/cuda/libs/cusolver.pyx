@@ -1004,6 +1004,11 @@ cdef extern from '../../cupy_lapack.h' nogil:
 
 
 ctypedef int (*f_type)(...) nogil  # NOQA
+
+# FIXME(leofang): SoftLink could load a different version of the library
+# than the one loaded by the pathfinder. Since we already require CUDA 12.0+,
+# these code can probably be removed entirely. Alternatively, check how we
+# handle NVRTC/cuFFT loading in which we avoid double loading.
 IF 12000 <= CUPY_CUDA_VERSION < 13000:
     # CUDA 12.x
     if _sys.platform == 'linux':
