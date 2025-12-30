@@ -141,7 +141,18 @@ def _get_cuda_path():
     if os.path.exists(cuda_path):
         return cuda_path
 
-    # Use NVRTC path
+    # Use conda CUDA path. This ensures that only when CuPy is installed via
+    # conda will we pick up the conda CUDA path. If CuPy is installed to a
+    # conda env but via pip, we proceed to the next detection method so as to
+    # help avoid mix-n-match (between pip/conda).
+    config = get_preload_config()
+    if config is not None and config['packaging'] == 'conda':
+        conda_cuda_path = _get_conda_cuda_path()
+        if conda_cuda_path is not None:
+            return conda_cuda_path
+
+    # Use NVRTC path. We don't use NVCC path because NVCC is not always
+    # installed, whereas NVRTC is a hard dependency.
     from cuda.pathfinder import (
         load_nvidia_dynamic_lib, DynamicLibNotFoundError)
     try:
