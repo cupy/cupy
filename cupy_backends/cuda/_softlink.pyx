@@ -26,7 +26,7 @@ cdef class SoftLink:
             # Note: It seems CDLL does not honor handle starting Python 3.13,
             # so we overwrite it to be safe.
             self._cdll._handle = handle
-            _log(f'Library already loaded (handle={handle})')
+            _log(f'Library already loaded (prefix={prefix}, handle={handle})')
         else:
             # Ignore handle.
             try:
