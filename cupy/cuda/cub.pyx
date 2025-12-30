@@ -55,8 +55,6 @@ cdef extern from 'cupy_cub.h' nogil:
                            int, int)
     void cub_device_segmented_reduce(void*, size_t&, void*, void*, int, int,
                                      Stream_t, int, int)
-    void cub_device_spmv(void*, size_t&, void*, void*, void*, void*, void*,
-                         int, int, int, Stream_t, int)
     void cub_device_scan(void*, size_t&, void*, void*, int, Stream_t, int, int)
     void cub_device_histogram_range(void*, size_t&, void*, void*, int, void*,
                                     size_t, Stream_t, int)
@@ -66,8 +64,6 @@ cdef extern from 'cupy_cub.h' nogil:
                                                 int, int)
     size_t cub_device_segmented_reduce_get_workspace_size(
         void*, void*, int, int, Stream_t, int, int)
-    size_t cub_device_spmv_get_workspace_size(
-        void*, void*, void*, void*, void*, int, int, int, Stream_t, int)
     size_t cub_device_scan_get_workspace_size(
         void*, void*, int, Stream_t, int, int)
     size_t cub_device_histogram_range_get_workspace_size(
@@ -272,62 +268,6 @@ def device_segmented_reduce(_ndarray_base x, op, tuple reduce_axis,
     if out is not None:
         cupy._core.elementwise_copy(y, out)
         y = out
-    return y
-
-
-def device_csrmv(int n_rows, int n_cols, int nnz, _ndarray_base values,
-                 _ndarray_base indptr, _ndarray_base indices, _ndarray_base x):
-    cdef _ndarray_base y
-    cdef memory.MemoryPointer ws
-    cdef void* values_ptr
-    cdef void* row_offsets_ptr
-    cdef void* col_indices_ptr
-    cdef void* x_ptr
-    cdef void* y_ptr
-    cdef void* ws_ptr
-    cdef int dtype_id
-    cdef size_t ws_size
-    cdef Stream_t s
-
-    if x.ndim != 1:
-        raise ValueError('array must be 1d')
-    if x.size != n_cols:
-        raise ValueError("size of array does not match the CSR matrix")
-    if runtime._is_hip_environment:
-        raise RuntimeError("hipCUB does not support SpMV")
-
-    if values.dtype == x.dtype:
-        dtype = values.dtype
-    else:
-        dtype = numpy.promote_types(values.dtype, x.dtype)
-        values = values.astype(dtype, "C", None, None, False)
-        x = x.astype(dtype, "C", None, None, False)
-
-    # CSR matrix attributes
-    values_ptr = <void*>values.data.ptr
-    row_offsets_ptr = <void*>indptr.data.ptr
-    col_indices_ptr = <void*>indices.data.ptr
-
-    x_ptr = <void*>x.data.ptr
-
-    # prepare output array
-    y = _core.ndarray((n_rows,), dtype=dtype)
-    y_ptr = <void*>y.data.ptr
-
-    s = <Stream_t>stream.get_current_stream_ptr()
-    dtype_id = common._get_dtype_id(dtype)
-
-    # get workspace size and then fire up
-    ws_size = cub_device_spmv_get_workspace_size(
-        values_ptr, row_offsets_ptr, col_indices_ptr, x_ptr, y_ptr, n_rows,
-        n_cols, nnz, s, dtype_id)
-    ws = memory.alloc(ws_size)
-    ws_ptr = <void *>ws.ptr
-    with nogil:
-        cub_device_spmv(ws_ptr, ws_size, values_ptr, row_offsets_ptr,
-                        col_indices_ptr, x_ptr, y_ptr, n_rows, n_cols, nnz, s,
-                        dtype_id)
-
     return y
 
 
