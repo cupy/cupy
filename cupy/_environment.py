@@ -4,6 +4,7 @@ This file must not depend on any other CuPy modules.
 from __future__ import annotations
 
 import ctypes
+import functools
 import importlib.metadata
 import json
 import os
@@ -572,6 +573,7 @@ You can install the library by:
 ''')
 
 
+@functools.cache
 def _get_include_dir_from_conda_or_wheel(major: int, minor: int) -> list[str]:
     # FP16 headers from CUDA 12.2+ depends on headers from CUDA Runtime.
     # See https://github.com/cupy/cupy/issues/8466.
