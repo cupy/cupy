@@ -21,9 +21,30 @@ for timing the elapsed time of a Python function on both CPU and GPU:
     >>> print(benchmark(my_func, (a,), n_repeat=20))  # doctest: +SKIP
     my_func             :    CPU:   44.407 us   +/- 2.428 (min:   42.516 / max:   53.098) us     GPU-0:  181.565 us   +/- 1.853 (min:  180.288 / max:  188.608) us
 
+For users working in IPython or Jupyter notebooks, CuPy provides a convenient ``%gpu_timeit`` magic that wraps :func:`cupyx.profiler.benchmark`.
+First load the extension, then use it as either a line or cell magic:
+
+.. code-block:: python
+
+    In [1]: %load_ext cupyx.profiler
+
+    In [2]: import cupy as cp
+
+    In [3]: %gpu_timeit cp.arange(1000).sum()
+    run                 :    CPU:    49.439 us   +/-  1.875 (min:    47.769 / max:    95.190) us     GPU-0:    53.416 us   +/-  1.966 (min:    51.200 / max:    99.328) us
+
+    In [4]: %%gpu_timeit
+       ...: x = cp.random.random((1000, 1000))
+       ...: y = x @ x.T
+       ...:
+       ...:
+    run                 :    CPU:    76.095 us   +/-  3.544 (min:    72.168 / max:   140.140) us     GPU-0:  1615.272 us   +/- 19.859 (min:  1605.536 / max:  1818.624) us
+
+The magic accepts the same options as :func:`cupyx.profiler.benchmark` (``-n``/``--n-repeat``, ``-w``/``--n-warmup``, ``--max-duration``).
+
 Because GPU executions run asynchronously with respect to CPU executions, a common pitfall in GPU programming is to mistakenly
 measure the elapsed time using CPU timing utilities (such as :py:func:`time.perf_counter` from the Python Standard Library
-or the ``%timeit`` magic from IPython), which have no knowledge in the GPU runtime. :func:`cupyx.profiler.benchmark` addresses
+or the ``%timeit`` magic from IPython), which have no knowledge in the GPU runtime. :func:`cupyx.profiler.benchmark` and ``%gpu_timeit`` address
 this by setting up CUDA events on the :ref:`current_stream` right before and after the function to be measured and
 synchronizing over the end event (see :ref:`cuda_stream_event` for detail). Below we sketch what is done internally in :func:`cupyx.profiler.benchmark`:
 
@@ -42,7 +63,7 @@ synchronizing over the end event (see :ref:`cuda_stream_event` for detail). Belo
     >>> t_gpu = cp.cuda.get_elapsed_time(start_gpu, end_gpu)
     >>> t_cpu = end_cpu - start_cpu
 
-Additionally, :func:`cupyx.profiler.benchmark` runs a few warm-up runs to reduce timing fluctuation and exclude the overhead in first invocations.
+Additionally, :func:`cupyx.profiler.benchmark` and ``%gpu_timeit``/``%%gpu_timeit`` run a few warm-up runs to reduce timing fluctuation and exclude the overhead in first invocations.
 
 
 One-Time Overheads
