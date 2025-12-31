@@ -24,7 +24,7 @@ cdef class SoftLink:
         elif libname is None and handle > 0:
             self._cdll = ctypes.CDLL(None, handle=handle)
             # Note: It seems CDLL does not honor handle starting Python 3.13,
-            # so we overwrite it to be safe.
+            # so we overwrite it to be safe. (xref: python/cpython#143304)
             self._cdll._handle = handle
             _log(f'Library already loaded (prefix={prefix}, handle={handle})')
         else:
