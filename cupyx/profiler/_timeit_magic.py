@@ -16,7 +16,7 @@ You can also pass options to control benchmark behavior:
 """
 from __future__ import annotations
 
-import math as _math
+import inspect as _inspect
 import textwrap
 
 try:
@@ -29,7 +29,22 @@ except ImportError:
     _IPYTHON_AVAILABLE = False
 
 
+# Get default values from benchmark function signature
+def _get_benchmark_defaults():
+    """Extract default parameter values from benchmark function."""
+    from cupyx.profiler import benchmark
+    sig = _inspect.signature(benchmark)
+    defaults = {}
+    for param_name, param in sig.parameters.items():
+        if param.default != _inspect.Parameter.empty:
+            defaults[param_name] = param.default
+    return defaults
+
+
 if _IPYTHON_AVAILABLE:
+    # Get benchmark defaults once when module loads
+    _benchmark_defaults = _get_benchmark_defaults()
+
     @magics_class
     class GPUTimeitMagics(Magics):
         """GPU-aware timing magics using cupyx.profiler.benchmark."""
@@ -37,16 +52,21 @@ if _IPYTHON_AVAILABLE:
         @line_cell_magic
         @magic_arguments()
         @argument(
-            '-n', '--repeat', type=int, default=10000,
-            help='Number of times to repeat the benchmark (default: 10000)'
+            '-n', '--n-repeat', type=int,
+            default=_benchmark_defaults['n_repeat'],
+            help=f'Number of repeats '
+                 f'(default: {_benchmark_defaults["n_repeat"]})'
         )
         @argument(
-            '-w', '--warmup', type=int, default=10,
-            help='Number of warmup runs (default: 10)'
+            '-w', '--n-warmup', type=int,
+            default=_benchmark_defaults['n_warmup'],
+            help=f'Number of warmup runs '
+                 f'(default: {_benchmark_defaults["n_warmup"]})'
         )
         @argument(
-            '--max-duration', type=float, default=_math.inf,
-            help='Maximum duration in seconds for the benchmark (default: inf)'
+            '--max-duration', type=float,
+            default=_benchmark_defaults['max_duration'],
+            help='Maximum duration in seconds (default: inf)'
         )
         @argument(
             'code', nargs='*',
@@ -58,11 +78,11 @@ if _IPYTHON_AVAILABLE:
             Works as both line and cell magic.
 
             Line magic usage:
-                %gpu_timeit [-n REPEAT] [-w WARMUP] \
+                %gpu_timeit [-n N_REPEAT] [-w N_WARMUP] \
 [--max-duration SEC] expression
 
             Cell magic usage:
-                %%gpu_timeit [-n REPEAT] [-w WARMUP] [--max-duration SEC]
+                %%gpu_timeit [-n N_REPEAT] [-w N_WARMUP] [--max-duration SEC]
                 <code>
 
             Examples:
@@ -92,8 +112,8 @@ if _IPYTHON_AVAILABLE:
 
             result = benchmark(
                 run,
-                n_repeat=args.repeat,
-                n_warmup=args.warmup,
+                n_repeat=args.n_repeat,
+                n_warmup=args.n_warmup,
                 max_duration=args.max_duration
             )
             print(result)

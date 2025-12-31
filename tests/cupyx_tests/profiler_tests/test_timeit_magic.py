@@ -1,6 +1,7 @@
 """Tests for IPython %gpu_timeit magic."""
 from __future__ import annotations
 
+import re
 import pytest
 
 import cupy
@@ -30,22 +31,62 @@ def ipython_shell():
         ip.user_ns.pop(key, None)
 
 
+def _capture_output(ipython_shell, magic_type, line, cell=None):
+    """Capture stdout from running a magic command."""
+    import io
+    import sys
+
+    old_stdout = sys.stdout
+    sys.stdout = io.StringIO()
+
+    try:
+        if magic_type == 'line':
+            ipython_shell.run_line_magic('gpu_timeit', line)
+        else:
+            ipython_shell.run_cell_magic('gpu_timeit', line, cell)
+        output = sys.stdout.getvalue()
+    finally:
+        sys.stdout = old_stdout
+
+    return output
+
+
+def _verify_benchmark_output(output):
+    """Verify output contains expected benchmark results."""
+    # Check for presence of CPU and GPU timing info
+    assert 'CPU:' in output, "Output should contain CPU timing"
+    assert 'GPU' in output, "Output should contain GPU timing"
+    assert 'us' in output or 'ms' in output, "Output should contain time units"
+
+    # Verify format matches benchmark output (contains numbers)
+    # Example: "CPU:    40.705 us   +/-  1.570"
+    number_pattern = r'\d+\.\d+'
+    assert re.search(
+        number_pattern, output), "Output should contain timing numbers"
+
+
 class TestGPUTimeitMagic:
     """Test %gpu_timeit magic functionality."""
 
     def test_line_magic_simple_expression(self, ipython_shell):
         """Test line magic with a simple expression."""
-        result = ipython_shell.run_line_magic(
-            'gpu_timeit', 'cp.array([1, 2, 3]).sum()'
+        output = _capture_output(
+            ipython_shell, 'line', 'cp.array([1, 2, 3]).sum()'
         )
-        # Should return None and print output
-        assert result is None
+        _verify_benchmark_output(output)
 
     def test_line_magic_with_namespace(self, ipython_shell):
         """Test that line magic can access user namespace."""
         ipython_shell.user_ns['x'] = cupy.array([1, 2, 3, 4, 5])
-        result = ipython_shell.run_line_magic('gpu_timeit', 'x.sum()')
-        assert result is None
+        output = _capture_output(ipython_shell, 'line', 'x.sum()')
+        _verify_benchmark_output(output)
+
+    def test_line_magic_with_options(self, ipython_shell):
+        """Test line magic with custom options."""
+        output = _capture_output(
+            ipython_shell, 'line', '-n 10 -w 2 cp.ones(100).sum()'
+        )
+        _verify_benchmark_output(output)
 
     def test_cell_magic_simple(self, ipython_shell):
         """Test cell magic with simple code."""
@@ -53,8 +94,8 @@ class TestGPUTimeitMagic:
 x = cp.random.random((100, 100))
 y = x @ x.T
 """
-        result = ipython_shell.run_cell_magic('gpu_timeit', '', cell_code)
-        assert result is None
+        output = _capture_output(ipython_shell, 'cell', '', cell_code)
+        _verify_benchmark_output(output)
 
     def test_cell_magic_with_existing_namespace(self, ipython_shell):
         """Test cell magic can access existing variables."""
@@ -63,8 +104,8 @@ y = x @ x.T
 x = cp.random.random((n, n))
 result = x.sum()
 """
-        result = ipython_shell.run_cell_magic('gpu_timeit', '', cell_code)
-        assert result is None
+        output = _capture_output(ipython_shell, 'cell', '', cell_code)
+        _verify_benchmark_output(output)
 
     def test_cell_magic_multiline(self, ipython_shell):
         """Test cell magic with multiple operations."""
@@ -75,8 +116,19 @@ c = a + b
 d = c * 2
 result = d.sum()
 """
-        result = ipython_shell.run_cell_magic('gpu_timeit', '', cell_code)
-        assert result is None
+        output = _capture_output(ipython_shell, 'cell', '', cell_code)
+        _verify_benchmark_output(output)
+
+    def test_cell_magic_with_options(self, ipython_shell):
+        """Test cell magic with custom options."""
+        cell_code = """
+x = cp.ones((10, 10))
+y = x.sum()
+"""
+        output = _capture_output(
+            ipython_shell, 'cell', '-n 5 --max-duration 1', cell_code
+        )
+        _verify_benchmark_output(output)
 
     def test_extension_registered(self, ipython_shell):
         """Test that extension loads and registers magics properly."""
