@@ -137,8 +137,5 @@ y = x.sum()
 
 
 def test_import_without_ipython():
-    """Test importing module doesn't fail without IPython."""
-    # This test just verifies the module can be imported
-    # The actual import happens at module level, so if we got here, it worked
-    from cupyx.profiler import _timeit_magic
-    assert hasattr(_timeit_magic, 'load_ipython_extension')
+    import cupyx.profiler
+    assert hasattr(cupyx.profiler, 'load_ipython_extension')

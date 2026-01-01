@@ -4,8 +4,6 @@ import contextlib as _contextlib
 from cupy.cuda import runtime as _runtime
 from cupyx.profiler._time import benchmark  # NOQA
 from cupyx.profiler._time_range import time_range  # NOQA
-from cupyx.profiler._timeit_magic import load_ipython_extension  # NOQA
-from cupyx.profiler._timeit_magic import unload_ipython_extension  # NOQA
 
 
 @_contextlib.contextmanager
@@ -33,3 +31,13 @@ def profile():
         yield
     finally:
         _runtime.profilerStop()
+
+
+def load_ipython_extension(ipython):
+    """Load the %gpu_timeit magic.
+
+    This function is called when the extension is loaded via:
+        %load_ext cupyx.profiler
+    """
+    from cupyx.profiler._timeit_magic import GPUTimeitMagics
+    ipython.register_magics(GPUTimeitMagics)
