@@ -809,7 +809,7 @@ CuPy CI Test Coverage
      - 
    * - nccl
      - null
-     - 1
+     - 3
      - 
      - 
      - 
@@ -830,8 +830,8 @@ CuPy CI Test Coverage
      - 
      - 
      - 
-     - 
-     - 
+     - ✅
+     - ✅
      - ✅
      - 
      - 
@@ -1129,7 +1129,12 @@ CuPy CI Test Coverage
      - 
    * - 
      - 2.27
-     - 7
+     - 3
+     - 
+     - 
+     - 
+     - 
+     - 
      - 
      - 
      - 
@@ -1150,20 +1155,13 @@ CuPy CI Test Coverage
      - 
      - ✅
      - ✅
-     - 
-     - 
-     - 
-     - ✅
-     - ✅
      - ✅
      - 
-     - ✅
-     - ✅
+     - 
+     - 
    * - 
      - 2.28
-     - 2
-     - 
-     - 
+     - 4
      - 
      - 
      - 
@@ -1191,6 +1189,8 @@ CuPy CI Test Coverage
      - 
      - 
      - 
+     - ✅
+     - ✅
    * - cutensor
      - null
      - 5
