@@ -139,7 +139,7 @@ def _exec_fft(a, direction, value_type, norm, axis, overwrite_x,
                                ' or as an argument.')
 
     if plan is None:
-        devices = None if not config.use_multi_gpus else config._devices
+        devices = config.devices
         # TODO(leofang): do we need to add the current stream to keys?
         keys = (out_size, fft_type, batch, devices)
         mgr = config.get_current_callback_manager()

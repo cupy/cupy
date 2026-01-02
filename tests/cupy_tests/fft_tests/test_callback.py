@@ -174,6 +174,12 @@ class TestInputValidationWith1dCallbacks:
     norm = 'ortho'
     dtype = np.complex64
 
+    @classmethod
+    def setup_class(cls):
+        # All tests in this class use a temporary cache dir (also if threaded)
+        with use_temporary_cache_dir():
+            yield
+
     def test_fft_load_legacy(self):
         check_should_skip_legacy_test()
 
@@ -186,10 +192,9 @@ class TestInputValidationWith1dCallbacks:
         a = testing.shaped_random(self.shape, cupy, self.dtype)
         with pytest.deprecated_call(
                 match='legacy callback is considered deprecated'):
-            with use_temporary_cache_dir():
-                with cupy.fft.config.set_cufft_callbacks(
-                        cb_load=cb_load, cb_ver='legacy'):
-                    fft(a, norm=self.norm)
+            with cupy.fft.config.set_cufft_callbacks(
+                    cb_load=cb_load, cb_ver='legacy'):
+                fft(a, norm=self.norm)
 
     def test_fft_load_jit_no_name(self):
         check_should_skip_jit_test()
@@ -201,12 +206,11 @@ class TestInputValidationWith1dCallbacks:
         cb_load = _set_load_cb(code, *types, cb_ver='jit')
 
         a = testing.shaped_random(self.shape, cupy, self.dtype)
-        with use_temporary_cache_dir():
-            # We omit passing cb_load_name. The test infra setup would check
-            # if we can infer it correctly.
-            with cupy.fft.config.set_cufft_callbacks(
-                    cb_load=cb_load, cb_ver='jit'):
-                fft(a, norm=self.norm)
+        # We omit passing cb_load_name. The test infra setup would check
+        # if we can infer it correctly.
+        with cupy.fft.config.set_cufft_callbacks(
+                cb_load=cb_load, cb_ver='jit'):
+            fft(a, norm=self.norm)
 
     def test_fft_store_legacy(self):
         check_should_skip_legacy_test()
@@ -220,10 +224,9 @@ class TestInputValidationWith1dCallbacks:
         a = testing.shaped_random(self.shape, cupy, self.dtype)
         with pytest.deprecated_call(
                 match='legacy callback is considered deprecated'):
-            with use_temporary_cache_dir():
-                with cupy.fft.config.set_cufft_callbacks(
-                        cb_store=cb_store, cb_ver='legacy'):
-                    fft(a, norm=self.norm)
+            with cupy.fft.config.set_cufft_callbacks(
+                    cb_store=cb_store, cb_ver='legacy'):
+                fft(a, norm=self.norm)
 
     def test_fft_store_jit_no_name(self):
         check_should_skip_jit_test()
@@ -235,12 +238,11 @@ class TestInputValidationWith1dCallbacks:
         cb_store = _set_store_cb(code, *types, cb_ver='jit')
 
         a = testing.shaped_random(self.shape, cupy, self.dtype)
-        with use_temporary_cache_dir():
-            # We omit passing cb_store_name. The test infra setup would check
-            # if we can infer it correctly.
-            with cupy.fft.config.set_cufft_callbacks(
-                    cb_store=cb_store, cb_ver='jit'):
-                fft(a, norm=self.norm)
+        # We omit passing cb_store_name. The test infra setup would check
+        # if we can infer it correctly.
+        with cupy.fft.config.set_cufft_callbacks(
+                cb_store=cb_store, cb_ver='jit'):
+            fft(a, norm=self.norm)
 
     def test_fft_load_store_legacy_aux(self):
         check_should_skip_legacy_test()
@@ -266,12 +268,11 @@ class TestInputValidationWith1dCallbacks:
                 match='cb_load_aux_arr or cb_store_aux_arr is deprecated'), \
             pytest.deprecated_call(
                 match='legacy callback is considered deprecated'):
-            with use_temporary_cache_dir():
-                with cupy.fft.config.set_cufft_callbacks(
-                        cb_load=cb_load, cb_store=cb_store,
-                        cb_load_aux_arr=load_aux, cb_store_aux_arr=store_aux,
-                        cb_ver='legacy'):
-                    fft(a, norm=self.norm)
+            with cupy.fft.config.set_cufft_callbacks(
+                    cb_load=cb_load, cb_store=cb_store,
+                    cb_load_aux_arr=load_aux, cb_store_aux_arr=store_aux,
+                    cb_ver='legacy'):
+                fft(a, norm=self.norm)
 
 
 @testing.parameterize(*testing.product({
@@ -283,6 +284,12 @@ class TestInputValidationWith1dCallbacks:
 @pytest.mark.skipif(cupy.cuda.runtime.is_hip,
                     reason='hipFFT does not support callbacks')
 class Test1dCallbacks:
+
+    @classmethod
+    def setup_class(cls):
+        # All tests in this class use a temporary cache dir (also if threaded)
+        with use_temporary_cache_dir():
+            yield
 
     def _test_load_helper(self, xp, dtype, fft_func):
         if self.cb_ver == 'legacy':
@@ -318,11 +325,10 @@ class Test1dCallbacks:
                 else:
                     out = out.astype(np.float32)
         else:
-            with use_temporary_cache_dir():
-                with xp.fft.config.set_cufft_callbacks(
-                        cb_load=cb_load, cb_load_name=cb_load_name,
-                        cb_ver=self.cb_ver):
-                    out = fft(a, n=self.n, norm=self.norm)
+            with xp.fft.config.set_cufft_callbacks(
+                    cb_load=cb_load, cb_load_name=cb_load_name,
+                    cb_ver=self.cb_ver):
+                out = fft(a, n=self.n, norm=self.norm)
 
         return out
 
@@ -395,11 +401,10 @@ class Test1dCallbacks:
                 if dtype in (np.float32, np.complex64):
                     out = out.astype(np.float32)
         else:
-            with use_temporary_cache_dir():
-                with xp.fft.config.set_cufft_callbacks(
-                        cb_store=cb_store, cb_store_name=cb_store_name,
-                        cb_ver=self.cb_ver):
-                    out = fft(a, n=self.n, norm=self.norm)
+            with xp.fft.config.set_cufft_callbacks(
+                    cb_store=cb_store, cb_store_name=cb_store_name,
+                    cb_ver=self.cb_ver):
+                out = fft(a, n=self.n, norm=self.norm)
 
         return out
 
@@ -492,12 +497,11 @@ class Test1dCallbacks:
                 if dtype in (np.float32, np.complex64):
                     out = out.astype(np.float32)
         else:
-            with use_temporary_cache_dir():
-                with xp.fft.config.set_cufft_callbacks(
-                        cb_load=cb_load, cb_load_name=cb_load_name,
-                        cb_store=cb_store, cb_store_name=cb_store_name,
-                        cb_ver=self.cb_ver):
-                    out = fft(a, n=self.n, norm=self.norm)
+            with xp.fft.config.set_cufft_callbacks(
+                    cb_load=cb_load, cb_load_name=cb_load_name,
+                    cb_store=cb_store, cb_store_name=cb_store_name,
+                    cb_ver=self.cb_ver):
+                out = fft(a, n=self.n, norm=self.norm)
 
         return out
 
@@ -561,11 +565,10 @@ class Test1dCallbacks:
             if dtype in (np.float32, np.complex64):
                 out = out.astype(np.complex64)
         else:
-            with use_temporary_cache_dir():
-                with xp.fft.config.set_cufft_callbacks(
-                        cb_load=cb_load, cb_load_name=cb_load_name,
-                        cb_load_data=b.data, cb_ver=self.cb_ver):
-                    out = fft(a, n=self.n, norm=self.norm)
+            with xp.fft.config.set_cufft_callbacks(
+                    cb_load=cb_load, cb_load_name=cb_load_name,
+                    cb_load_data=b.data, cb_ver=self.cb_ver):
+                out = fft(a, n=self.n, norm=self.norm)
 
         return out
 
@@ -646,14 +649,13 @@ class Test1dCallbacks:
                 if dtype in (np.float32, np.complex64):
                     out = out.astype(np.float32)
         else:
-            with use_temporary_cache_dir():
-                with xp.fft.config.set_cufft_callbacks(
-                        cb_load=cb_load, cb_load_name=cb_load_name,
-                        cb_store=cb_store, cb_store_name=cb_store_name,
-                        cb_load_data=load_aux.data,
-                        cb_store_data=store_aux.data,
-                        cb_ver=self.cb_ver):
-                    out = fft(a, n=self.n, norm=self.norm)
+            with xp.fft.config.set_cufft_callbacks(
+                    cb_load=cb_load, cb_load_name=cb_load_name,
+                    cb_store=cb_store, cb_store_name=cb_store_name,
+                    cb_load_data=load_aux.data,
+                    cb_store_data=store_aux.data,
+                    cb_ver=self.cb_ver):
+                out = fft(a, n=self.n, norm=self.norm)
 
         return out
 
@@ -708,6 +710,12 @@ class Test1dCallbacks:
                     reason='hipFFT does not support callbacks')
 class TestNdCallbacks:
 
+    @classmethod
+    def setup_class(cls):
+        # All tests in this class use a temporary cache dir (also if threaded)
+        with use_temporary_cache_dir():
+            yield
+
     def _test_load_helper(self, xp, dtype, fft_func):
         if self.cb_ver == 'legacy':
             check_should_skip_legacy_test()
@@ -742,11 +750,10 @@ class TestNdCallbacks:
                 else:
                     out = out.astype(np.float32)
         else:
-            with use_temporary_cache_dir():
-                with xp.fft.config.set_cufft_callbacks(
-                        cb_load=cb_load, cb_load_name=cb_load_name,
-                        cb_ver=self.cb_ver):
-                    out = fft(a, s=self.s, axes=self.axes, norm=self.norm)
+            with xp.fft.config.set_cufft_callbacks(
+                    cb_load=cb_load, cb_load_name=cb_load_name,
+                    cb_ver=self.cb_ver):
+                out = fft(a, s=self.s, axes=self.axes, norm=self.norm)
 
         return out
 
@@ -823,11 +830,10 @@ class TestNdCallbacks:
                 if dtype in (np.float32, np.complex64):
                     out = out.astype(np.float32)
         else:
-            with use_temporary_cache_dir():
-                with xp.fft.config.set_cufft_callbacks(
-                        cb_store=cb_store, cb_store_name=cb_store_name,
-                        cb_ver=self.cb_ver):
-                    out = fft(a, s=self.s, axes=self.axes, norm=self.norm)
+            with xp.fft.config.set_cufft_callbacks(
+                    cb_store=cb_store, cb_store_name=cb_store_name,
+                    cb_ver=self.cb_ver):
+                out = fft(a, s=self.s, axes=self.axes, norm=self.norm)
 
         return out
 
@@ -925,12 +931,11 @@ class TestNdCallbacks:
                 if dtype in (np.float32, np.complex64):
                     out = out.astype(np.float32)
         else:
-            with use_temporary_cache_dir():
-                with xp.fft.config.set_cufft_callbacks(
-                        cb_load=cb_load, cb_load_name=cb_load_name,
-                        cb_store=cb_store, cb_store_name=cb_store_name,
-                        cb_ver=self.cb_ver):
-                    out = fft(a, s=self.s, axes=self.axes, norm=self.norm)
+            with xp.fft.config.set_cufft_callbacks(
+                    cb_load=cb_load, cb_load_name=cb_load_name,
+                    cb_store=cb_store, cb_store_name=cb_store_name,
+                    cb_ver=self.cb_ver):
+                out = fft(a, s=self.s, axes=self.axes, norm=self.norm)
 
         return out
 
@@ -1031,14 +1036,13 @@ class TestNdCallbacks:
                 if dtype in (np.float32, np.complex64):
                     out = out.astype(np.float32)
         else:
-            with use_temporary_cache_dir():
-                with xp.fft.config.set_cufft_callbacks(
-                        cb_load=cb_load, cb_load_name=cb_load_name,
-                        cb_store=cb_store, cb_store_name=cb_store_name,
-                        cb_load_data=load_aux.data,
-                        cb_store_data=store_aux.data,
-                        cb_ver=self.cb_ver):
-                    out = fft(a, s=self.s, axes=self.axes, norm=self.norm)
+            with xp.fft.config.set_cufft_callbacks(
+                    cb_load=cb_load, cb_load_name=cb_load_name,
+                    cb_store=cb_store, cb_store_name=cb_store_name,
+                    cb_load_data=load_aux.data,
+                    cb_store_data=store_aux.data,
+                    cb_ver=self.cb_ver):
+                out = fft(a, s=self.s, axes=self.axes, norm=self.norm)
 
         return out
 

@@ -37,8 +37,8 @@ class TestMultiGpuPlan1dNumPy(unittest.TestCase):
 
     @multi_gpu_config(gpu_configs=[[0, 1], [1, 0]])
     @testing.for_complex_dtypes()
-    def test_fft(self, dtype):
-        _skip_multi_gpu_bug(self.shape, self.gpus)
+    def test_fft(self, dtype, gpus):
+        _skip_multi_gpu_bug(self.shape, gpus=None)
 
         a = testing.shaped_random(self.shape, numpy, dtype)
 
@@ -51,7 +51,7 @@ class TestMultiGpuPlan1dNumPy(unittest.TestCase):
 
         # compute via cuFFT
         cufft_type = _convert_fft_type(a.dtype, 'C2C')
-        plan = cufft.Plan1d(nx, cufft_type, batch, devices=config._devices)
+        plan = cufft.Plan1d(nx, cufft_type, batch, devices=config.devices)
         out_cp = numpy.empty_like(a)
         plan.fft(a, out_cp, cufft.CUFFT_FORWARD)
 
@@ -69,8 +69,8 @@ class TestMultiGpuPlan1dNumPy(unittest.TestCase):
 
     @multi_gpu_config(gpu_configs=[[0, 1], [1, 0]])
     @testing.for_complex_dtypes()
-    def test_ifft(self, dtype):
-        _skip_multi_gpu_bug(self.shape, self.gpus)
+    def test_ifft(self, dtype, gpus=None):
+        _skip_multi_gpu_bug(self.shape, gpus)
 
         a = testing.shaped_random(self.shape, numpy, dtype)
 
@@ -83,7 +83,7 @@ class TestMultiGpuPlan1dNumPy(unittest.TestCase):
 
         # compute via cuFFT
         cufft_type = _convert_fft_type(a.dtype, 'C2C')
-        plan = cufft.Plan1d(nx, cufft_type, batch, devices=config._devices)
+        plan = cufft.Plan1d(nx, cufft_type, batch, devices=config.devices)
         out_cp = numpy.empty_like(a)
         plan.fft(a, out_cp, cufft.CUFFT_INVERSE)
         # normalization
