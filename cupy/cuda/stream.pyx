@@ -1,4 +1,5 @@
 import threading
+import warnings
 
 from cupy_backends.cuda.api cimport runtime
 from cupy_backends.cuda cimport stream as backends_stream
@@ -233,6 +234,25 @@ class _BaseStream:
 
     def __hash__(self):
         return self.ptr
+
+    def __cuda_stream__(self):
+        """Return the stream pointer and device ID for CUDA stream protocol.
+
+        This method implements the CUDA stream protocol, which allows
+        interoperability with other libraries that support this protocol.
+
+        Returns:
+            tuple: A tuple of (stream_ptr, device_id) where stream_ptr is an
+                intptr_t and device_id is an int.
+
+        .. seealso:: `CUDA Stream Protocol
+            <https://nvidia.github.io/cuda-python/cuda-core/latest/interoperability.html#cuda-stream-protocol>`_
+
+        """
+        cdef int device_id = self.device_id
+        if device_id == -1:
+            device_id = runtime.getDevice()
+        return (self.ptr, device_id)
 
     def use(self):
         """Makes this stream current.
@@ -504,10 +524,74 @@ class Stream(_BaseStream):
         # Note that we can not release memory pool of the stream held in CPU
         # because the memory would still be used in kernels executed in GPU.
 
+    @classmethod
+    def from_external(cls, obj):
+        """Create a Stream from an external stream object via the CUDA stream protocol.
+
+        This method creates a CuPy Stream from a foreign stream object that
+        implements the CUDA stream protocol (i.e., has a ``__cuda_stream__``
+        method). The created Stream holds a reference to the foreign stream
+        object to ensure it remains alive.
+
+        Args:
+            obj: A stream-like object that implements the ``__cuda_stream__``
+                method. This method should return a tuple of
+                ``(stream_ptr, device_id)`` where ``stream_ptr`` is an
+                ``intptr_t`` and ``device_id`` is an ``int``.
+
+        Returns:
+            Stream: A CuPy Stream wrapping the external stream.
+
+        Raises:
+            AttributeError: If the object does not implement ``__cuda_stream__``.
+            TypeError: If ``__cuda_stream__`` does not return a valid tuple.
+
+        .. note::
+            This classmethod supersedes :class:`~cupy.cuda.ExternalStream`.
+            Users are encouraged to use this method for interoperability with
+            other libraries that support the CUDA stream protocol.
+
+        .. seealso:: `CUDA Stream Protocol
+            <https://nvidia.github.io/cuda-python/cuda-core/latest/interoperability.html#cuda-stream-protocol>`_
+
+        Examples:
+            >>> # Assuming torch_stream is a PyTorch CUDA stream
+            >>> cupy_stream = cupy.cuda.Stream.from_external(torch_stream)
+
+        """
+        if not hasattr(obj, '__cuda_stream__'):
+            raise AttributeError(
+                f"Object of type {type(obj).__name__} does not implement "
+                "the CUDA stream protocol (__cuda_stream__ method)")
+
+        result = obj.__cuda_stream__()
+        if not isinstance(result, tuple) or len(result) != 2:
+            raise TypeError(
+                f"__cuda_stream__() must return a tuple of (stream_ptr, device_id), "
+                f"got {type(result).__name__}")
+
+        stream_ptr, device_id = result
+        if not isinstance(stream_ptr, int) or not isinstance(device_id, int):
+            raise TypeError(
+                f"__cuda_stream__() must return (intptr_t, int), "
+                f"got ({type(stream_ptr).__name__}, {type(device_id).__name__})")
+
+        # Create a new Stream instance that wraps the external stream
+        stream = cls.__new__(cls)
+        _BaseStream.__init__(stream, stream_ptr, device_id)
+        # Hold a reference to the foreign stream to keep it alive
+        stream._foreign_stream_ref = obj
+        return stream
+
 
 class ExternalStream(_BaseStream):
 
     """CUDA stream not managed by CuPy.
+
+    .. deprecated:: 14.0
+        :class:`~cupy.cuda.ExternalStream` is deprecated. Use
+        :meth:`cupy.cuda.Stream.from_external` instead to interoperate with
+        external streams that implement the CUDA stream protocol.
 
     This class allows to use external streams in CuPy by providing the
     stream pointer obtained from the CUDA runtime call.
@@ -531,6 +615,13 @@ class ExternalStream(_BaseStream):
     """
 
     def __init__(self, ptr, device_id=-1):
+        warnings.warn(
+            'ExternalStream is deprecated. Use Stream.from_external() instead '
+            'to interoperate with external streams that implement the CUDA '
+            'stream protocol.',
+            DeprecationWarning,
+            stacklevel=2
+        )
         # It is in theory unsafe to just call runtime.getDevice() here, as the
         # stream pointer could come from a different device (although
         # unlikely). While we could use driver API combos cuStreamGetCtx ->
