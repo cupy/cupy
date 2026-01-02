@@ -296,50 +296,47 @@ class TestExternalStream(unittest.TestCase):
 class TestCUDAStreamProtocol(unittest.TestCase):
 
     def test_cuda_stream_method(self):
-        # Test that __cuda_stream__ returns the correct dict
+        # Test that __cuda_stream__ returns the correct 2-tuple
         stream = cuda.Stream()
         result = stream.__cuda_stream__()
 
-        # Check that it returns a dict with 'ptr' and 'device_id' keys
-        assert isinstance(result, dict)
-        assert 'ptr' in result
-        assert 'device_id' in result
+        # Check that it returns a 2-tuple of (version, stream_ptr)
+        assert isinstance(result, tuple)
+        assert len(result) == 2
 
-        stream_ptr = result['ptr']
-        device_id = result['device_id']
+        version, stream_ptr = result
+        assert isinstance(version, int)
         assert isinstance(stream_ptr, int)
-        assert isinstance(device_id, int)
+        assert version == 0  # Protocol version
         assert stream_ptr == stream.ptr
-        assert device_id >= 0  # Should be a valid device ID
 
     def test_cuda_stream_method_null_stream(self):
         # Test __cuda_stream__ on null stream
         stream = cuda.Stream.null
         result = stream.__cuda_stream__()
-        stream_ptr = result['ptr']
-        device_id = result['device_id']
+        version, stream_ptr = result
+        assert version == 0
         assert stream_ptr == stream.ptr
-        assert device_id >= 0  # Device ID should be resolved
 
     def test_from_external_with_mock_stream(self):
         # Test Stream.from_external with a mock stream object
         class MockStream:
-            def __init__(self, ptr, device_id):
+            def __init__(self, ptr):
                 self._ptr = ptr
-                self._device_id = device_id
 
             def __cuda_stream__(self):
-                return {'ptr': self._ptr, 'device_id': self._device_id}
+                return (0, self._ptr)
 
         # Create a real CUDA stream to get a valid pointer
         real_stream = cuda.Stream()
-        mock_stream = MockStream(real_stream.ptr, real_stream.device_id)
+        mock_stream = MockStream(real_stream.ptr)
 
         # Create a CuPy stream from the mock stream
         cupy_stream = cuda.Stream.from_external(mock_stream)
 
         assert cupy_stream.ptr == real_stream.ptr
-        assert cupy_stream.device_id == real_stream.device_id
+        # Device ID should be the current device
+        assert cupy_stream.device_id >= 0
         # Verify that the foreign stream reference is kept
         assert hasattr(cupy_stream, '_foreign_stream_ref')
         assert cupy_stream._foreign_stream_ref is mock_stream
@@ -352,7 +349,7 @@ class TestCUDAStreamProtocol(unittest.TestCase):
         new_stream = cuda.Stream.from_external(original_stream)
 
         assert new_stream.ptr == original_stream.ptr
-        assert new_stream.device_id == original_stream.device_id
+        # Device ID may differ since protocol doesn't provide it
         assert new_stream._foreign_stream_ref is original_stream
 
     def test_from_external_without_protocol(self):
@@ -367,41 +364,44 @@ class TestCUDAStreamProtocol(unittest.TestCase):
         # Test that from_external raises TypeError for invalid return types
         class BadStream1:
             def __cuda_stream__(self):
-                return 123  # Should return a dict
+                return 123  # Should return a 2-tuple
 
-        with pytest.raises(TypeError, match='must return a dict-like'):
+        with pytest.raises(TypeError, match='must return a 2-tuple'):
             cuda.Stream.from_external(BadStream1())
 
-    def test_from_external_invalid_missing_keys(self):
-        # Test missing keys in return dict
+    def test_from_external_invalid_tuple_length(self):
+        # Test invalid tuple length
         class BadStream2:
             def __cuda_stream__(self):
-                return {'ptr': 123}  # Missing 'device_id' key
+                return (0,)  # Should return a 2-tuple
 
-        with pytest.raises(TypeError, match='must return a dict-like'):
+        with pytest.raises(TypeError, match='must return a 2-tuple'):
             cuda.Stream.from_external(BadStream2())
 
     def test_from_external_invalid_element_types(self):
-        # Test invalid element types in dict
+        # Test invalid element types in tuple
         class BadStream3:
             def __cuda_stream__(self):
-                return {'ptr': "not_an_int", 'device_id': 0}
+                return ("not_an_int", 0)  # First element should be int
 
-        with pytest.raises(
-            TypeError,
-            match="must return 'ptr' and 'device_id' as int"
-        ):
+        with pytest.raises(TypeError, match=r'must return \(int, int\)'):
             cuda.Stream.from_external(BadStream3())
 
         class BadStream4:
             def __cuda_stream__(self):
-                return {'ptr': 0, 'device_id': "not_an_int"}
+                return (0, "not_an_int")  # Second element should be int
 
-        with pytest.raises(
-            TypeError,
-            match="must return 'ptr' and 'device_id' as int"
-        ):
+        with pytest.raises(TypeError, match=r'must return \(int, int\)'):
             cuda.Stream.from_external(BadStream4())
+
+    def test_from_external_invalid_version(self):
+        # Test unsupported protocol version
+        class BadStream5:
+            def __cuda_stream__(self):
+                return (1, 12345)  # Version 1 is not supported
+
+        with pytest.raises(ValueError, match='unsupported version'):
+            cuda.Stream.from_external(BadStream5())
 
     def test_from_external_keeps_stream_alive(self):
         # Test that from_external keeps the foreign stream alive
@@ -409,15 +409,14 @@ class TestCUDAStreamProtocol(unittest.TestCase):
         import weakref
 
         class MockStream:
-            def __init__(self, ptr, device_id):
+            def __init__(self, ptr):
                 self._ptr = ptr
-                self._device_id = device_id
 
             def __cuda_stream__(self):
-                return {'ptr': self._ptr, 'device_id': self._device_id}
+                return (0, self._ptr)
 
         real_stream = cuda.Stream()
-        mock_stream = MockStream(real_stream.ptr, real_stream.device_id)
+        mock_stream = MockStream(real_stream.ptr)
         weak_ref = weakref.ref(mock_stream)
 
         # Create CuPy stream from mock stream
@@ -442,15 +441,14 @@ class TestCUDAStreamProtocol(unittest.TestCase):
     def test_from_external_stream_usage(self):
         # Test that a stream created with from_external can be used normally
         class MockStream:
-            def __init__(self, ptr, device_id):
+            def __init__(self, ptr):
                 self._ptr = ptr
-                self._device_id = device_id
 
             def __cuda_stream__(self):
-                return {'ptr': self._ptr, 'device_id': self._device_id}
+                return (0, self._ptr)
 
         real_stream = cuda.Stream()
-        mock_stream = MockStream(real_stream.ptr, real_stream.device_id)
+        mock_stream = MockStream(real_stream.ptr)
         cupy_stream = cuda.Stream.from_external(mock_stream)
 
         # Test that we can use the stream

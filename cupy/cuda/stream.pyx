@@ -236,23 +236,20 @@ class _BaseStream:
         return self.ptr
 
     def __cuda_stream__(self):
-        """Return the stream pointer and device ID for CUDA stream protocol.
+        """Return the version and stream pointer for CUDA stream protocol.
 
         This method implements the CUDA stream protocol, which allows
         interoperability with other libraries that support this protocol.
 
         Returns:
-            dict: A dict with 'ptr' (stream pointer as intptr_t) and
-                'device_id' (device ID as int) keys.
+            tuple: A 2-tuple of (version, stream_ptr) where version is 0
+                and stream_ptr is the address of cudaStream_t (both as int).
 
         .. seealso:: `CUDA Stream Protocol
             <https://nvidia.github.io/cuda-python/cuda-core/latest/interoperability.html#cuda-stream-protocol>`_
 
         """
-        cdef int device_id = self.device_id
-        if device_id == -1:
-            device_id = runtime.getDevice()
-        return {'ptr': self.ptr, 'device_id': device_id}
+        return (0, self.ptr)
 
     def use(self):
         """Makes this stream current.
@@ -536,9 +533,9 @@ class Stream(_BaseStream):
 
         Args:
             obj: A stream-like object that implements the ``__cuda_stream__``
-                method. This method should return a tuple of
-                ``(stream_ptr, device_id)`` where ``stream_ptr`` is an
-                ``intptr_t`` and ``device_id`` is an ``int``.
+                method. This method should return a 2-tuple of
+                ``(version, stream_ptr)`` where version is 0 and
+                ``stream_ptr`` is the address of cudaStream_t (both as int).
 
         Returns:
             Stream: A CuPy Stream wrapping the external stream.
@@ -547,7 +544,7 @@ class Stream(_BaseStream):
             AttributeError: If the object does not implement
                 ``__cuda_stream__``.
             TypeError: If ``__cuda_stream__`` does not return a valid
-                tuple.
+                2-tuple.
 
         .. note::
             This classmethod supersedes :class:`~cupy.cuda.ExternalStream`.
@@ -569,20 +566,26 @@ class Stream(_BaseStream):
                 f"Object of type {type(obj).__name__} does not implement "
                 "the CUDA stream protocol (__cuda_stream__ method)")
 
-        # Validate result is a mapping with 'ptr' and 'device_id' keys
-        try:
-            stream_ptr = result['ptr']
-            device_id = result['device_id']
-        except (TypeError, KeyError):
+        # Validate result is a 2-tuple (version, stream_ptr)
+        if not isinstance(result, tuple) or len(result) != 2:
             raise TypeError(
-                f"__cuda_stream__() must return a dict-like object with "
-                f"'ptr' and 'device_id' keys, got {type(result).__name__}")
+                f"__cuda_stream__() must return a 2-tuple of "
+                f"(version, stream_ptr), got {type(result).__name__}")
 
-        if not isinstance(stream_ptr, int) or not isinstance(device_id, int):
+        version, stream_ptr = result
+        if not isinstance(version, int) or not isinstance(stream_ptr, int):
             raise TypeError(
-                f"__cuda_stream__() must return 'ptr' and 'device_id' as "
-                f"int, got ptr={type(stream_ptr).__name__}, "
-                f"device_id={type(device_id).__name__}")
+                f"__cuda_stream__() must return (int, int), got "
+                f"({type(version).__name__}, {type(stream_ptr).__name__})")
+
+        if version != 0:
+            raise ValueError(
+                f"__cuda_stream__() returned unsupported version "
+                f"{version}, only version 0 is supported")
+
+        # Get device ID from the current context since the protocol
+        # doesn't provide it
+        device_id = runtime.getDevice()
 
         # Create a new Stream instance that wraps the external stream
         stream = cls.__new__(cls)
