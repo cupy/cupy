@@ -379,13 +379,14 @@ that implements the ``__cuda_stream__`` protocol.
    # Create a stream on PyTorch.
    s = torch.cuda.Stream()
 
-   # Create a CuPy Stream from the PyTorch stream.
-   cupy_stream = cupy.cuda.Stream.from_external(s)
-
-   # Switch the current stream in CuPy.
-   with cupy_stream:
-       # This block runs on the same CUDA stream as PyTorch.
-       cupy.arange(10)
+   # Switch the current stream in PyTorch.
+   with torch.cuda.stream(s):
+       # Switch the current stream in CuPy, using the stream from PyTorch.
+       cupy_stream = cupy.cuda.Stream.from_external(s)
+       with cupy_stream:
+           # This block runs on the same CUDA stream.
+           torch.arange(10, device='cuda')
+           cupy.arange(10)
 
 The :meth:`~cupy.cuda.Stream.from_external` method automatically manages the lifetime of the foreign stream
 by holding a reference to it, ensuring it remains alive while in use by CuPy.
@@ -396,8 +397,10 @@ For libraries that do not implement the CUDA Stream Protocol, you can still use 
 .. code:: python
 
    # Legacy approach (deprecated)
-   with cupy.cuda.ExternalStream(s.cuda_stream):
-       cupy.arange(10)
+   with torch.cuda.stream(s):
+       with cupy.cuda.ExternalStream(s.cuda_stream):
+           torch.arange(10, device='cuda')
+           cupy.arange(10)
 
 The :class:`~cupy.cuda.ExternalStream` API does not manage the lifetime of the stream.
 You must ensure that the stream pointer is alive while in use by CuPy.

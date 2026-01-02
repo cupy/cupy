@@ -533,9 +533,7 @@ class Stream(_BaseStream):
 
         Args:
             obj: A stream-like object that implements the ``__cuda_stream__``
-                method. This method should return a 2-tuple of
-                ``(version, stream_ptr)`` where version is 0 and
-                ``stream_ptr`` is the address of cudaStream_t (both as int).
+                method.
 
         Returns:
             Stream: A CuPy Stream wrapping the external stream.
