@@ -267,7 +267,7 @@ def _rpath_base():
 def _find_static_library(name: str) -> str:
     if PLATFORM_LINUX:
         filename = f'lib{name}.a'
-        if (int(os.environ.get('CONDA_BUILD_CROSS_COMPILATION', 0)) == 1 and
+        if (build.is_conda_cross_compiling() and
                 os.environ.get('CONDA_OVERRIDE_CUDA', '0').startswith('11')):
             # CUDA 11 on conda-forge has an ad hoc layout to support cross
             # compiling
@@ -366,12 +366,12 @@ def make_extensions(ctx: Context, compiler, use_cython):
 
     try:
         host_compiler = compiler
-        if int(os.environ.get('CONDA_BUILD_CROSS_COMPILATION', 0)) == 1:
+        if build.is_conda_cross_compiling():
             os.symlink(f'{os.environ["BUILD_PREFIX"]}/x86_64-conda-linux-gnu/'
                        'bin/x86_64-conda-linux-gnu-ld',
                        f'{os.environ["BUILD_PREFIX"]}/bin/ld')
         if (PLATFORM_LINUX and (
-                int(os.environ.get('CONDA_BUILD_CROSS_COMPILATION', 0)) == 1 or
+                build.is_conda_cross_compiling() or
                 os.environ.get('CONDA_OVERRIDE_CUDA', '0').startswith(
                     ('12', '13')))):
             # If cross-compiling, we need build_and_run() & build_shlib() to
@@ -413,7 +413,7 @@ def make_extensions(ctx: Context, compiler, use_cython):
                                 'Please check above error log.')
     finally:
         compiler = host_compiler
-        if int(os.environ.get('CONDA_BUILD_CROSS_COMPILATION', 0)) == 1:
+        if build.is_conda_cross_compiling():
             os.remove(f'{os.environ["BUILD_PREFIX"]}/bin/ld')
 
     ret = []
