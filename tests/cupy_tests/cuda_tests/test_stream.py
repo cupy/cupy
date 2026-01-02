@@ -335,8 +335,8 @@ class TestCUDAStreamProtocol(unittest.TestCase):
         cupy_stream = cuda.Stream.from_external(mock_stream)
 
         assert cupy_stream.ptr == real_stream.ptr
-        # Device ID should be the current device
-        assert cupy_stream.device_id >= 0
+        # Device ID should be -1 (unknown) per protocol design
+        assert cupy_stream.device_id == -1
         # Verify that the foreign stream reference is kept
         assert hasattr(cupy_stream, '_foreign_stream_ref')
         assert cupy_stream._foreign_stream_ref is mock_stream
@@ -349,7 +349,8 @@ class TestCUDAStreamProtocol(unittest.TestCase):
         new_stream = cuda.Stream.from_external(original_stream)
 
         assert new_stream.ptr == original_stream.ptr
-        # Device ID may differ since protocol doesn't provide it
+        # Device ID is -1 since protocol doesn't provide it
+        assert new_stream.device_id == -1
         assert new_stream._foreign_stream_ref is original_stream
 
     def test_from_external_without_protocol(self):

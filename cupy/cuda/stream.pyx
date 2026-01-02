@@ -560,19 +560,16 @@ class Stream(_BaseStream):
 
         """
         try:
-            result = obj.__cuda_stream__()
-        except AttributeError:
+            version, stream_ptr = obj.__cuda_stream__()
+        except AttributeError as e:
             raise AttributeError(
                 f"Object of type {type(obj).__name__} does not implement "
-                "the CUDA stream protocol (__cuda_stream__ method)")
-
-        # Validate result is a 2-tuple (version, stream_ptr)
-        if not isinstance(result, tuple) or len(result) != 2:
+                "the CUDA stream protocol (__cuda_stream__ method)") from e
+        except (TypeError, ValueError) as e:
             raise TypeError(
-                f"__cuda_stream__() must return a 2-tuple of "
-                f"(version, stream_ptr), got {type(result).__name__}")
+                "__cuda_stream__() must return a 2-tuple of "
+                "(version, stream_ptr)") from e
 
-        version, stream_ptr = result
         if not isinstance(version, int) or not isinstance(stream_ptr, int):
             raise TypeError(
                 f"__cuda_stream__() must return (int, int), got "
@@ -583,9 +580,13 @@ class Stream(_BaseStream):
                 f"__cuda_stream__() returned unsupported version "
                 f"{version}, only version 0 is supported")
 
-        # Get device ID from the current context since the protocol
-        # doesn't provide it
-        device_id = runtime.getDevice()
+        # It is in theory unsafe to just call runtime.getDevice() here, as the
+        # stream pointer could come from a different device (although
+        # unlikely). While we could use driver API combos cuStreamGetCtx ->
+        # cuCtxSetCurrent -> cuCtxGetDevice -> ... to retrieve the device ID
+        # associated with the stream, it is way too complicated and does not
+        # work with HIP. Let us keep this as thin as possible.
+        device_id = -1
 
         # Create a new Stream instance that wraps the external stream
         stream = cls.__new__(cls)
