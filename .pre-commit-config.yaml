@@ -3,7 +3,7 @@
 
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v5.0.0
+    rev: v6.0.0
     hooks:
       # Git
       - id: check-added-large-files
@@ -25,18 +25,18 @@ repos:
       - id: autopep8
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.12.0
+    rev: v0.14.9
     hooks:
       - id: ruff-check
 
   - repo: https://github.com/MarcoGorelli/cython-lint
-    rev: v0.16.6
+    rev: v0.18.1
     hooks:
       - id: cython-lint
         args: ["--max-line-length", "79"]
 
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.16.1
+    rev: v1.19.1
     hooks:
       - id: mypy
         # Keep in sync with the list in pyproject.toml

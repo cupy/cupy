@@ -928,8 +928,11 @@ def _call_reduction(fusion_op, *args, **kwargs):
         raise TypeError(mes.format(fusion_op._ops.name, len(args)))
 
     arg = args[0]
-    kwargs = dict([(key, value) for key, value in kwargs.items()
-                   if (key in ('axis', 'out') and value is not None)])
+    kwargs = {
+        key: value
+        for key, value in kwargs.items()
+        if (key in ('axis', 'out') and value is not None)
+    }
 
     if arg._is_postmap:
         # Multiple reduction

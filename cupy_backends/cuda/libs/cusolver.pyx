@@ -2,7 +2,7 @@
 
 """Thin wrapper of CUSOLVER."""
 
-import sys as _sys
+import sys as _sys  # no-cython-lint
 cimport cython  # NOQA
 
 from cupy_backends.cuda.api cimport runtime
