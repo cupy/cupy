@@ -259,10 +259,14 @@ def _quantile_unchecked(a, q, axis=None, out=None,
                          'Actual: \'{}\' not in (\'linear\', \'lower\', '
                          '\'higher\', \'midpoint\')'.format(method))
 
-    if indices.dtype == cupy.int32:
+    if cupy.issubdtype(indices.dtype, cupy.integer):
         ret = cupy.rollaxis(ap, axis)
         ret = ret.take(indices, axis=0, out=out)
+        if cupy.issubdtype(ret.dtype, cupy.integer):
+            ret = ret.astype(cupy.int64)
     else:
+        if not cupy.issubdtype(dtype, cupy.floating):
+            dtype = cupy.float64
         if out is None:
             ret = cupy.empty(ap.shape[:-1] + q.shape, dtype=dtype)
         else:
