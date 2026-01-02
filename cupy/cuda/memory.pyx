@@ -1755,9 +1755,16 @@ cdef class MemoryAsyncPool:
             be set independently.
 
     .. note::
-        :class:`MemoryAsyncPool` currently cannot work with memory hooks.
+        To customize a new mempool, use `cuda.core`_ and
+        :func:`~cupy.cuda.cuda_core_device_memory_resource_adaptor`.
+
+    .. note::
+        :class:`MemoryAsyncPool` does not work with memory hooks.
 
     .. seealso:: `Stream Ordered Memory Allocator`_
+
+    .. _cuda.core:
+        https://nvidia.github.io/cuda-python/cuda-core/latest/index.html
 
     .. _Stream Ordered Memory Allocator:
         https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#stream-ordered-memory-allocator
@@ -1819,11 +1826,8 @@ cdef class MemoryAsyncPool:
         elif handle == 'current':
             # Use the device's current pool
             pool = runtime.deviceGetMemPool(dev_id)
-        elif handle == 'create':
-            # TODO(leofang): Support cudaMemPoolCreate
-            raise NotImplementedError('cudaMemPoolCreate is not yet supported')
         elif isinstance(handle, int):
-            # Use an existing pool (likely from other applications?)
+            # Use an existing pool (from other applications)
             pool = <intptr_t>(handle)
         else:
             raise ValueError("handle must be "
