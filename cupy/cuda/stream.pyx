@@ -526,7 +526,8 @@ class Stream(_BaseStream):
 
     @classmethod
     def from_external(cls, obj):
-        """Create a Stream from an external stream object via the CUDA stream protocol.
+        """Create a Stream from an external stream object via the CUDA
+        stream protocol.
 
         This method creates a CuPy Stream from a foreign stream object that
         implements the CUDA stream protocol (i.e., has a ``__cuda_stream__``
@@ -543,13 +544,15 @@ class Stream(_BaseStream):
             Stream: A CuPy Stream wrapping the external stream.
 
         Raises:
-            AttributeError: If the object does not implement ``__cuda_stream__``.
-            TypeError: If ``__cuda_stream__`` does not return a valid tuple.
+            AttributeError: If the object does not implement
+                ``__cuda_stream__``.
+            TypeError: If ``__cuda_stream__`` does not return a valid
+                tuple.
 
         .. note::
             This classmethod supersedes :class:`~cupy.cuda.ExternalStream`.
-            Users are encouraged to use this method for interoperability with
-            other libraries that support the CUDA stream protocol.
+            Users are encouraged to use this method for interoperability
+            with other libraries that support the CUDA stream protocol.
 
         .. seealso:: `CUDA Stream Protocol
             <https://nvidia.github.io/cuda-python/cuda-core/latest/interoperability.html#cuda-stream-protocol>`_
@@ -567,14 +570,15 @@ class Stream(_BaseStream):
         result = obj.__cuda_stream__()
         if not isinstance(result, tuple) or len(result) != 2:
             raise TypeError(
-                f"__cuda_stream__() must return a tuple of (stream_ptr, device_id), "
-                f"got {type(result).__name__}")
+                f"__cuda_stream__() must return a tuple of "
+                f"(stream_ptr, device_id), got {type(result).__name__}")
 
         stream_ptr, device_id = result
         if not isinstance(stream_ptr, int) or not isinstance(device_id, int):
             raise TypeError(
-                f"__cuda_stream__() must return (intptr_t, int), "
-                f"got ({type(stream_ptr).__name__}, {type(device_id).__name__})")
+                f"__cuda_stream__() must return (intptr_t, int), got "
+                f"({type(stream_ptr).__name__}, "
+                f"{type(device_id).__name__})")
 
         # Create a new Stream instance that wraps the external stream
         stream = cls.__new__(cls)
