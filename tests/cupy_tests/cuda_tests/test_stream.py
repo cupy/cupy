@@ -381,14 +381,14 @@ class TestCUDAStreamProtocol(unittest.TestCase):
             def __cuda_stream__(self):
                 return ("not_an_int", 0)  # First element should be int
         
-        with pytest.raises(TypeError, match='must return \(intptr_t, int\)'):
+        with pytest.raises(TypeError, match=r'must return \(intptr_t, int\)'):
             cuda.Stream.from_external(BadStream3())
         
         class BadStream4:
             def __cuda_stream__(self):
                 return (0, "not_an_int")  # Second element should be int
         
-        with pytest.raises(TypeError, match='must return \(intptr_t, int\)'):
+        with pytest.raises(TypeError, match=r'must return \(intptr_t, int\)'):
             cuda.Stream.from_external(BadStream4())
 
     def test_from_external_keeps_stream_alive(self):
