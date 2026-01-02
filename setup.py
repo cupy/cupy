@@ -53,13 +53,7 @@ package_data = {
 package_data['cupy'] += cupy_setup_build.prepare_wheel_libs(ctx)
 
 
-if ctx.setup_command in ('dist_info', 'egg_info'):
-    # Extensions are unnecessary for dist_info generation as all sources files
-    # can be enumerated via MANIFEST.in.
-    print('Skipping extensions configuration')
-    ext_modules = []
-else:
-    ext_modules = cupy_setup_build.get_ext_modules(True, ctx)
+ext_modules = cupy_setup_build.get_ext_modules(True, ctx)
 
 
 long_description = ''
@@ -68,10 +62,37 @@ if ctx.long_description_path is not None:
         long_description = f.read()
 
 
+dependencies = [
+    "numpy>=2.0,<2.6",  # see #4773
+]
+optional_dependencies = {
+    "all": [
+        "scipy>=1.10,<1.17",  # see #4773
+        "Cython>=3",
+        "optuna>=2.0",
+    ],
+    "test": [
+        "packaging",
+        "pytest>=7.2",
+        "hypothesis>=6.37.2,<6.55.0",
+        "mpmath",
+    ],
+}
+if not ctx.use_hip:
+    dependencies.append("cuda-pathfinder>=1.3.2,==1.*")
+    if not ctx.use_stub:
+        cuda_major = ctx.features["cuda"].get_version() // 1000
+        optional_dependencies["ctk"] = [
+            f"cuda-toolkit[cudart,nvrtc,cublas,cufft,cusolver,cusparse,curand]=={cuda_major}.*"  # NOQA
+        ]
+
+
 setup(
     long_description=long_description,
     long_description_content_type='text/x-rst',
     package_data=package_data,
+    install_requires=dependencies,
+    extras_require=optional_dependencies,
     zip_safe=False,
     ext_modules=ext_modules,
     cmdclass={'build_ext': cupy_builder._command.custom_build_ext},

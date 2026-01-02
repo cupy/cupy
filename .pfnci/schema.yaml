@@ -66,6 +66,9 @@ cuda:
   "13.0":
     full_version: "13.0.0"
     repository: "nvidia/cuda"
+  "13.1":
+    full_version: "13.1.0"
+    repository: "nvidia/cuda"
 rocm:
   null:
     full_version: null
@@ -146,6 +149,20 @@ nccl:
       "12.4":
       "12.9":
       "13.0":
+  "2.28":
+    spec: "2.28.*"
+    cuda:
+      "12.0":
+      "12.1":
+      "12.2":
+      "12.3":
+      "12.4":
+      "12.5":
+      "12.6":
+      "12.8":
+      "12.9":
+      "13.0":
+      "13.1":
 cutensor:
   # https://docs.nvidia.com/cuda/cutensor/
   # https://developer.nvidia.com/cutensor/downloads
@@ -164,17 +181,18 @@ cutensor:
       "12.8":
       "12.9":
       "13.0":
+      "13.1":
 cusparselt:
   # https://docs.nvidia.com/cuda/cusparselt/
   # https://developer.nvidia.com/cusparselt/downloads
   null:
     spec: null
-  "0.7.1":
-    spec: "0.7.1.*"
+  "0.8.1":
+    spec: "0.8.1.*"
     cuda:
-      "12.8":
       "12.9":
       "13.0":
+      "13.1":
 
 ###############################################################################
 # Python

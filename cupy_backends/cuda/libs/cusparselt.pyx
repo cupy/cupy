@@ -50,6 +50,8 @@ cdef extern from '../../cupy_cusparselt.h' nogil:
     # Management Functions
     cusparseStatus_t cusparseLtInit(cusparseLtHandle_t* handle)
     cusparseStatus_t cusparseLtDestroy(const cusparseLtHandle_t* handle)
+    const char* cusparseLtGetErrorName(cusparseStatus_t status)
+    const char* cusparseLtGetErrorString(cusparseStatus_t status)
     cusparseStatus_t cusparseLtGetVersion(
         const cusparseLtHandle_t* handle, int* version)
     cusparseStatus_t cusparseLtGetProperty(
@@ -109,6 +111,8 @@ cdef extern from '../../cupy_cusparselt.h' nogil:
         cusparseLtMatmulAlgSelection_t* algSelection,
         const cusparseLtMatmulDescriptor_t* matmulDescr,
         cusparseLtMatmulAlg_t alg)
+    cusparseStatus_t cusparseLtMatmulAlgSelectionDestroy(
+        const cusparseLtMatmulAlgSelection_t* algSelection)
     cusparseStatus_t cusparseLtMatmulAlgSetAttribute(
         const cusparseLtHandle_t* handle,
         cusparseLtMatmulAlgSelection_t* algSelection,
@@ -286,6 +290,16 @@ cpdef destroy(Handle handle):
     status = cusparseLtDestroy(<cusparseLtHandle_t*> handle._ptr)
     check_status(status)
 
+cpdef str getErrorName(const cusparseStatus_t status) :
+    """Returns the string representation of an error code enum name. """
+    cdef bytes msg = cusparseLtGetErrorName(status)
+    return msg.decode()
+
+cpdef str getErrorString(const cusparseStatus_t status) :
+    """Returns the description string for an error code."""
+    cdef bytes msg = cusparseLtGetErrorString(status)
+    return msg.decode()
+
 cpdef int getVersion(Handle handle) except? -1:
     """Get the version number of the cuSPARSELt library"""
     cdef int version
@@ -396,6 +410,12 @@ cpdef matmulAlgSelectionInit(Handle handle, MatmulAlgSelection algSelection,
         <cusparseLtMatmulAlgSelection_t*> algSelection._ptr,
         <const cusparseLtMatmulDescriptor_t*> matmulDescr._ptr,
         <cusparseLtMatmulAlg_t> alg)
+    check_status(status)
+
+cpdef matmulAlgSelectionDestroy(MatmulAlgSelection algSelection):
+    """ Releases resources used by an instance of the algorithm selection. """
+    status = cusparseLtMatmulAlgSelectionDestroy(
+        <const cusparseLtMatmulAlgSelection_t*> algSelection._ptr)
     check_status(status)
 
 cpdef matmulAlgSetAttribute(Handle handle, MatmulAlgSelection algSelection,

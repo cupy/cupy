@@ -348,3 +348,187 @@ def posv(a, b):
         potrs, dev_info)
 
     return _cupy.ascontiguousarray(b.reshape(b_shape))
+
+
+def potrs(L, b, lower):
+    """ Implements lapack XPOTRS through cusolver.potrs. Solves linear system
+    A x = b given the cholesky decomposition of A, namely L. Supports also
+    batches of linear systems and more than one right-hand side (NRHS > 1).
+
+    Args:
+        L (cupy.ndarray): Array of Cholesky decomposition of real symmetric or
+            complex hermitian matrices with dimension (..., N, N).
+        b (cupy.ndarray): right-hand side (..., N) or (..., N, NRHS). Note that
+            this array may be modified in place, as usually done in LAPACK.
+        lower (bool): If True, L is lower triangular. If False, L is upper
+            triangular.
+
+    Returns:
+        cupy.ndarray: The solution to the linear system. Note this may point to
+            the same memory as b, since b may be modified in place.
+
+    .. warning::
+        This function calls one or more cuSOLVER routine(s) which may yield
+        invalid results if input conditions are not met.
+        To detect these invalid results, you can set the `linalg`
+        configuration to a value that is not `ignore` in
+        :func:`cupyx.errstate` or :func:`cupyx.seterr`.
+
+    """
+
+    from cupy_backends.cuda.libs import cusolver as _cusolver
+
+    _util = _cupy.linalg._util
+    _util._assert_cupy_array(L, b)
+    _util._assert_stacked_2d(L)
+    _util._assert_stacked_square(L)
+
+    # Check if batched should be used
+    if L.ndim > 2:
+        return _batched_potrs(L, b, lower)
+
+    # Check input arguments
+    n = L.shape[-1]
+    b_shape = b.shape
+    if b.ndim == 1:
+        b = b[:, None]
+    assert b.ndim == 2, "b is not a vector or a matrix"
+    assert b.shape[0] == n, "length of arrays in b does not match size of L"
+
+    # Check memory order and type
+    dtype = _numpy.promote_types(L.dtype, b.dtype)
+    dtype = _numpy.promote_types(dtype, 'f')
+    L, b = L.astype(dtype, copy=False), b.astype(dtype, copy=False)
+    if (not L.flags.f_contiguous) and (not L.flags.c_contiguous):
+        L = _cupy.asfortranarray(L)
+    if L.flags.c_contiguous:
+        lower = not lower  # Cusolver assumes F-order
+        # For complex types, we need to conjugate the matrix
+        if b.size < L.size:  # Conjugate the one with lower memory footprint
+            b = b.conj()
+        else:
+            L = L.conj()
+    if (b.dtype != dtype) or (not b.flags.f_contiguous):
+        b = _cupy.asfortranarray(b)
+
+    # Take correct dtype
+    if dtype == 'f':
+        potrs = _cusolver.spotrs
+    elif dtype == 'd':
+        potrs = _cusolver.dpotrs
+    elif dtype == 'F':
+        potrs = _cusolver.cpotrs
+    elif dtype == 'D':
+        potrs = _cusolver.zpotrs
+    else:
+        msg = ('dtype must be float32, float64, complex64 or complex128'
+               ' (actual: {})'.format(L.dtype))
+        raise ValueError(msg)
+
+    handle = _device.get_cusolver_handle()
+    dev_info = _cupy.empty(1, dtype=_cupy.int32)
+
+    potrs(
+        handle,
+        _cublas.CUBLAS_FILL_MODE_LOWER if lower else
+        _cublas.CUBLAS_FILL_MODE_UPPER,
+        L.shape[0],  # n, matrix size
+        b.shape[1],  # nrhs
+        L.data.ptr,
+        L.shape[0],  # ldL
+        b.data.ptr,
+        b.shape[0],  # ldB
+        dev_info.data.ptr)
+    _cupy.linalg._util._check_cusolver_dev_info_if_synchronization_allowed(
+        potrs, dev_info)
+
+    # Conjugate back if necessary
+    if L.flags.c_contiguous and b.size < L.size:
+        b = b.conj()
+    return b.reshape(b_shape)
+
+
+def _batched_potrs(L, b, lower: bool):
+    from cupy_backends.cuda.libs import cusolver as _cusolver
+    import cupyx.cusolver
+
+    if not cupyx.cusolver.check_availability('potrsBatched'):
+        raise RuntimeError('potrsBatched is not available')
+
+    # CHeck input arrays
+    assert b.ndim >= L.ndim-1, "Batch dimension of b is different than that \
+        of L"
+    b_shape = b.shape
+    if b.ndim < L.ndim:
+        b = b[..., None]
+    assert b.shape[:-2] == L.shape[:-2], \
+        "Batch dimension of L and b do not match"
+
+    # Check dtype and memory alignment
+    dtype = _numpy.promote_types(L.dtype, b.dtype)
+    dtype = _numpy.promote_types(dtype, 'f')
+    L = L.astype(dtype, order='C', copy=False)
+    b = b.astype(dtype, order='C', copy=False)
+    assert L.flags.c_contiguous and b.flags.c_contiguous, \
+        "Unexpected non C-contiguous arrays"
+    lower = not lower  # Cusolver assumes F-order
+
+    # Pick function handle
+    if dtype == 'f':
+        potrsBatched = _cusolver.spotrsBatched
+    elif dtype == 'd':
+        potrsBatched = _cusolver.dpotrsBatched
+    elif dtype == 'F':
+        potrsBatched = _cusolver.cpotrsBatched
+    elif dtype == 'D':
+        potrsBatched = _cusolver.zpotrsBatched
+    else:
+        msg = ('dtype must be float32, float64, complex64 or complex128'
+               ' (actual: {})'.format(L.dtype))
+        raise ValueError(msg)
+
+    # Variables for potrs batched
+    handle = _device.get_cusolver_handle()
+    dev_info = _cupy.empty(1, dtype=_numpy.int32)
+    batch_size = _numpy.prod(L.shape[:-2])
+    n = L.shape[-1]
+    b = b.conj()
+    L_p = _cupy._core._mat_ptrs(L)
+    nrhs = b.shape[-1]
+
+    # Allocate temporary working array in case nrhs > 1
+    if nrhs == 1:
+        b_tmp = b[..., 0]
+    else:
+        b_tmp = _cupy.empty(b.shape[:-1], dtype=b.dtype, order='C')
+    b_tmp_p = _cupy._core._mat_ptrs(b_tmp[..., None])
+
+    # potrs_batched supports only nrhs=1, so we have to loop over the nrhs
+    for i in range(b.shape[-1]):
+
+        if nrhs > 1:  # Copy results back to the original array
+            b_tmp[...] = b[..., i]
+
+        potrsBatched(
+            handle,
+            _cublas.CUBLAS_FILL_MODE_LOWER if lower else
+            _cublas.CUBLAS_FILL_MODE_UPPER,
+            n,  # n
+            1,  # nrhs
+            L_p.data.ptr,  # A
+            L.shape[-2],  # lda
+            b_tmp_p.data.ptr,  # Barray
+            b_tmp.shape[-1],  # ldb
+            dev_info.data.ptr,  # info
+            batch_size  # batchSize
+        )
+        _cupy.linalg._util._check_cusolver_dev_info_if_synchronization_allowed(
+            potrsBatched, dev_info)
+
+        if nrhs > 1:  # Copy results back to the original array
+            b[..., i] = b_tmp.conj()
+        else:
+            b = b_tmp.conj()
+
+    # Return b in the original shape
+    return b.reshape(b_shape)
