@@ -242,8 +242,8 @@ class _BaseStream:
         interoperability with other libraries that support this protocol.
 
         Returns:
-            tuple: A tuple of (stream_ptr, device_id) where stream_ptr is an
-                intptr_t and device_id is an int.
+            dict: A dict with 'ptr' (stream pointer as intptr_t) and
+                'device_id' (device ID as int) keys.
 
         .. seealso:: `CUDA Stream Protocol
             <https://nvidia.github.io/cuda-python/cuda-core/latest/interoperability.html#cuda-stream-protocol>`_
@@ -252,7 +252,7 @@ class _BaseStream:
         cdef int device_id = self.device_id
         if device_id == -1:
             device_id = runtime.getDevice()
-        return (self.ptr, device_id)
+        return {'ptr': self.ptr, 'device_id': device_id}
 
     def use(self):
         """Makes this stream current.
@@ -562,23 +562,27 @@ class Stream(_BaseStream):
             >>> cupy_stream = cupy.cuda.Stream.from_external(torch_stream)
 
         """
-        if not hasattr(obj, '__cuda_stream__'):
+        try:
+            result = obj.__cuda_stream__()
+        except AttributeError:
             raise AttributeError(
                 f"Object of type {type(obj).__name__} does not implement "
                 "the CUDA stream protocol (__cuda_stream__ method)")
 
-        result = obj.__cuda_stream__()
-        if not isinstance(result, tuple) or len(result) != 2:
+        # Validate result is a mapping with 'ptr' and 'device_id' keys
+        try:
+            stream_ptr = result['ptr']
+            device_id = result['device_id']
+        except (TypeError, KeyError):
             raise TypeError(
-                f"__cuda_stream__() must return a tuple of "
-                f"(stream_ptr, device_id), got {type(result).__name__}")
+                f"__cuda_stream__() must return a dict-like object with "
+                f"'ptr' and 'device_id' keys, got {type(result).__name__}")
 
-        stream_ptr, device_id = result
         if not isinstance(stream_ptr, int) or not isinstance(device_id, int):
             raise TypeError(
-                f"__cuda_stream__() must return (intptr_t, int), got "
-                f"({type(stream_ptr).__name__}, "
-                f"{type(device_id).__name__})")
+                f"__cuda_stream__() must return 'ptr' and 'device_id' as "
+                f"int, got ptr={type(stream_ptr).__name__}, "
+                f"device_id={type(device_id).__name__}")
 
         # Create a new Stream instance that wraps the external stream
         stream = cls.__new__(cls)

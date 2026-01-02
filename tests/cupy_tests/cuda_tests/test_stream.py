@@ -296,15 +296,17 @@ class TestExternalStream(unittest.TestCase):
 class TestCUDAStreamProtocol(unittest.TestCase):
 
     def test_cuda_stream_method(self):
-        # Test that __cuda_stream__ returns the correct tuple
+        # Test that __cuda_stream__ returns the correct dict
         stream = cuda.Stream()
         result = stream.__cuda_stream__()
 
-        # Check that it returns a tuple of (stream_ptr, device_id)
-        assert isinstance(result, tuple)
-        assert len(result) == 2
+        # Check that it returns a dict with 'ptr' and 'device_id' keys
+        assert isinstance(result, dict)
+        assert 'ptr' in result
+        assert 'device_id' in result
 
-        stream_ptr, device_id = result
+        stream_ptr = result['ptr']
+        device_id = result['device_id']
         assert isinstance(stream_ptr, int)
         assert isinstance(device_id, int)
         assert stream_ptr == stream.ptr
@@ -314,7 +316,8 @@ class TestCUDAStreamProtocol(unittest.TestCase):
         # Test __cuda_stream__ on null stream
         stream = cuda.Stream.null
         result = stream.__cuda_stream__()
-        stream_ptr, device_id = result
+        stream_ptr = result['ptr']
+        device_id = result['device_id']
         assert stream_ptr == stream.ptr
         assert device_id >= 0  # Device ID should be resolved
 
@@ -326,7 +329,7 @@ class TestCUDAStreamProtocol(unittest.TestCase):
                 self._device_id = device_id
 
             def __cuda_stream__(self):
-                return (self._ptr, self._device_id)
+                return {'ptr': self._ptr, 'device_id': self._device_id}
 
         # Create a real CUDA stream to get a valid pointer
         real_stream = cuda.Stream()
@@ -364,34 +367,40 @@ class TestCUDAStreamProtocol(unittest.TestCase):
         # Test that from_external raises TypeError for invalid return types
         class BadStream1:
             def __cuda_stream__(self):
-                return 123  # Should return a tuple
+                return 123  # Should return a dict
 
-        with pytest.raises(TypeError, match='must return a tuple'):
+        with pytest.raises(TypeError, match='must return a dict-like'):
             cuda.Stream.from_external(BadStream1())
 
-    def test_from_external_invalid_tuple_length(self):
-        # Test invalid tuple length
+    def test_from_external_invalid_missing_keys(self):
+        # Test missing keys in return dict
         class BadStream2:
             def __cuda_stream__(self):
-                return (123,)  # Should return a 2-tuple
+                return {'ptr': 123}  # Missing 'device_id' key
 
-        with pytest.raises(TypeError, match='must return a tuple'):
+        with pytest.raises(TypeError, match='must return a dict-like'):
             cuda.Stream.from_external(BadStream2())
 
     def test_from_external_invalid_element_types(self):
-        # Test invalid element types in tuple
+        # Test invalid element types in dict
         class BadStream3:
             def __cuda_stream__(self):
-                return ("not_an_int", 0)  # First element should be int
+                return {'ptr': "not_an_int", 'device_id': 0}
 
-        with pytest.raises(TypeError, match=r'must return \(intptr_t, int\)'):
+        with pytest.raises(
+            TypeError,
+            match="must return 'ptr' and 'device_id' as int"
+        ):
             cuda.Stream.from_external(BadStream3())
 
         class BadStream4:
             def __cuda_stream__(self):
-                return (0, "not_an_int")  # Second element should be int
+                return {'ptr': 0, 'device_id': "not_an_int"}
 
-        with pytest.raises(TypeError, match=r'must return \(intptr_t, int\)'):
+        with pytest.raises(
+            TypeError,
+            match="must return 'ptr' and 'device_id' as int"
+        ):
             cuda.Stream.from_external(BadStream4())
 
     def test_from_external_keeps_stream_alive(self):
@@ -405,7 +414,7 @@ class TestCUDAStreamProtocol(unittest.TestCase):
                 self._device_id = device_id
 
             def __cuda_stream__(self):
-                return (self._ptr, self._device_id)
+                return {'ptr': self._ptr, 'device_id': self._device_id}
 
         real_stream = cuda.Stream()
         mock_stream = MockStream(real_stream.ptr, real_stream.device_id)
@@ -438,7 +447,7 @@ class TestCUDAStreamProtocol(unittest.TestCase):
                 self._device_id = device_id
 
             def __cuda_stream__(self):
-                return (self._ptr, self._device_id)
+                return {'ptr': self._ptr, 'device_id': self._device_id}
 
         real_stream = cuda.Stream()
         mock_stream = MockStream(real_stream.ptr, real_stream.device_id)

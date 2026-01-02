@@ -416,11 +416,14 @@ CuPy streams implement the ``__cuda_stream__`` method:
    s = cupy.cuda.Stream()
    
    # Get stream pointer and device ID using the protocol
-   stream_ptr, device_id = s.__cuda_stream__()
-   print(stream_ptr, device_id)  # => (93997451352336, 0)
+   stream_info = s.__cuda_stream__()
+   print(stream_info['ptr'], stream_info['device_id'])
+   # => 93997451352336 0
    
    # Or directly access the attributes
-   print(s.ptr, s.device_id)  # => (93997451352336, 0)
+   print(s.ptr, s.device_id)  # => 93997451352336 0
 
-The CUDA stream will be destroyed when the :class:`~cupy.cuda.Stream` (``s``) gets destructed.
-You must keep the :class:`~cupy.cuda.Stream` instance alive while the pointer is in use by other libraries.
+The CUDA stream will be destroyed when the :class:`~cupy.cuda.Stream`
+(``s``) gets destructed.
+You must keep the :class:`~cupy.cuda.Stream` instance alive while the
+pointer is in use by other libraries.
