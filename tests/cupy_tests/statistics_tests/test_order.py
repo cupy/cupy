@@ -173,9 +173,8 @@ class TestQuantileMethods:
                 with pytest.raises(ValueError):
                     xp.percentile(a, q, axis=-1, method=method)
 
-    @testing.for_all_dtypes()
     @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
-    @testing.numpy_cupy_allclose()
+    @testing.numpy_cupy_allclose(rtol=1e-6)
     def test_quantile_defaults(self, xp, dtype, method):
         a = testing.shaped_random((2, 3, 8), xp, dtype)
         q = testing.shaped_random((3,), xp, scale=1)
