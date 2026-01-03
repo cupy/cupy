@@ -168,6 +168,17 @@ def _get_cuda_path():
             conda_cuda_path = _get_conda_cuda_path()
             assert conda_cuda_path.startswith(cuda_path)
             return conda_cuda_path
+        elif nvrtc.found_via == 'site-packages':
+            # For CUDA 13.0+, the CTK wheels are installed to
+            # site-packages/nvidia/cuXX/{bin,include,lib,...}; CUDA 12.x and
+            # below have a splayed layout, so a single CUDA_PATH is not well
+            # defined.
+            if re.search(r'site-packages.*nvidia.*cu\d{2}', cuda_path):
+                if _PLATFORM_WIN32:
+                    # dll locates in site-packages\nvidia\cuXX\bin\x86_64
+                    cuda_path = os.path.dirname(cuda_path)
+                return cuda_path
+            return None
         return cuda_path
 
     # Use typical path
