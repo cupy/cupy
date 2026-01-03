@@ -5,6 +5,8 @@
 #
 # Cephes Math Library Release 2.8:  June, 2000
 # Copyright 1984, 1987, 1992, 2000 by Stephen L. Moshier
+from __future__ import annotations
+
 
 from cupy import _core
 from cupyx.scipy.special._digamma import polevl_definition
@@ -233,12 +235,12 @@ ellipj = _core.create_ufunc(
     """
 )
 
-ellipkinc_preamble = "#include <cupy/special/cephes/ellik.h>"
-ellipeinc_preamble = "#include <cupy/special/cephes/ellie.h>"
+ellipkinc_preamble = "#include <cupy/xsf/cephes/ellik.h>"
+ellipeinc_preamble = "#include <cupy/xsf/cephes/ellie.h>"
 
 ellipkinc = _core.create_ufunc(
     'cupyx_scipy_special_ellipkinc', ('ff->f', 'dd->d'),
-    'out0 = special::cephes::ellik(in0, in1)',
+    'out0 = xsf::cephes::ellik(in0, in1)',
     preamble=ellipkinc_preamble,
     doc="""ellipkinc
 
@@ -251,7 +253,7 @@ ellipkinc = _core.create_ufunc(
 
 ellipeinc = _core.create_ufunc(
     'cupyx_scipy_special_ellipeinc', ('ff->f', 'dd->d'),
-    'out0 = special::cephes::ellie(in0, in1)',
+    'out0 = xsf::cephes::ellie(in0, in1)',
     preamble=ellipeinc_preamble,
     doc="""ellipeinc
 

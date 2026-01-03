@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+
 import contextlib
 import importlib.metadata
 import inspect
@@ -12,8 +13,6 @@ from unittest import mock
 import numpy
 
 import cupy
-import cupyx
-import cupyx.scipy.sparse
 from cupy._core import internal
 from cupy.testing._pytest_impl import is_available
 
@@ -66,7 +65,7 @@ def installed(*specifiers: str) -> bool:
         except PackageNotFoundError:
             return False
         expected = req.specifier
-        # If no constrait is given, skip
+        # If no constraint is given, skip
         if expected and (not expected.contains(found, prereleases=True)):
             return False
     return True
@@ -170,13 +169,13 @@ def shaped_random(
 
 
 def shaped_sparse_random(
-        shape, sp=cupyx.scipy.sparse, dtype=numpy.float32,
+        shape, sp=None, dtype=numpy.float32,
         density=0.01, format='coo', seed=0):
     """Returns an array filled with random values.
 
     Args:
         shape (tuple): Shape of returned sparse matrix.
-        sp (scipy.sparse or cupyx.scipy.sparse): Sparce matrix module to use.
+        sp (scipy.sparse or cupyx.scipy.sparse): Sparse matrix module to use.
         dtype (dtype): Dtype of returned sparse matrix.
         density (float): Density of returned sparse matrix.
         format (str): Format of returned sparse matrix.
@@ -186,16 +185,43 @@ def shaped_sparse_random(
         The sparse matrix with given shape, array module,
     """
     import scipy.sparse
+    import cupyx.scipy.sparse
+
+    if sp is None:
+        sp = cupyx.scipy.sparse
     n_rows, n_cols = shape
     numpy.random.seed(seed)
+
     a = scipy.sparse.random(n_rows, n_cols, density).astype(dtype)
 
-    if sp is cupyx.scipy.sparse:
-        a = cupyx.scipy.sparse.coo_matrix(a)
-    elif sp is not scipy.sparse:
-        raise ValueError('Unknown module: {}'.format(sp))
+    try:
+        return sp.coo_matrix(a).asformat(format)
+    except AttributeError:
+        raise ValueError(f'Module {sp} does not have the expected sparse APIs')
 
-    return a.asformat(format)
+
+def shaped_linspace(start, stop, shape, xp=cupy, dtype=numpy.float32):
+    """Returns an array with given shape, array module, and dtype.
+
+    Args:
+        start (int): The starting value.
+        stop (int): The end value.
+        shape (tuple of int): Shape of returned ndarray.
+        xp (numpy or cupy): Array module to use.
+        dtype (dtype): Dtype of returned ndarray.
+
+    Returns:
+        numpy.ndarray or cupy.ndarray:
+    """
+    dtype = numpy.dtype(dtype)
+    size = numpy.prod(shape)
+    if dtype == '?':
+        start = max(start, 0)
+        stop = min(stop, 1)
+    elif dtype.kind == 'u':
+        start = max(start, 0)
+    a = numpy.linspace(start, stop, size)
+    return xp.array(a.astype(dtype).reshape(shape))
 
 
 def generate_matrix(

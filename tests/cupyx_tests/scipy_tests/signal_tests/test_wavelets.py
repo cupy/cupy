@@ -1,4 +1,4 @@
-import warnings
+from __future__ import annotations
 
 import pytest
 
@@ -11,30 +11,27 @@ except ImportError:
     pass
 
 
+@pytest.mark.filterwarnings('ignore::DeprecationWarning')
+@pytest.mark.filterwarnings('ignore::cupy.exceptions.VisibleDeprecationWarning')
+@testing.with_requires("scipy<1.15")
 class TestWavelets:
     @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_qmf(self, xp, scp):
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore', DeprecationWarning)
-            return scp.signal.qmf([1, 1])
+        return scp.signal.qmf([1, 1])
 
     @pytest.mark.skip(reason='daub is not available on cupyx.scipy.signal')
     @pytest.mark.parametrize('p', list(range(1, 15)))
     @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_daub(self, p, xp, scp):
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore', DeprecationWarning)
-            return scp.signal.daub(p)
+        return scp.signal.daub(p)
 
     @pytest.mark.skip(reason='cascade is not available on cupyx.scipy.signal')
     @pytest.mark.parametrize('J', list(range(1, 7)))
     @pytest.mark.parametrize('i', list(range(1, 5)))
     @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_cascade(self, J, i, xp, scp):
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore', DeprecationWarning)
-            lpcoef = scp.signal.daub(i)
-            x, phi, psi = scp.signal.cascade(lpcoef, J)
+        lpcoef = scp.signal.daub(i)
+        x, phi, psi = scp.signal.cascade(lpcoef, J)
         return x, phi, psi
 
     @pytest.mark.parametrize('args,kwargs', [
@@ -52,60 +49,44 @@ class TestWavelets:
     ])
     @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_morlet(self, args, kwargs, xp, scp):
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore', DeprecationWarning)
-            return scp.signal.morlet(*args, **kwargs)
+        return scp.signal.morlet(*args, **kwargs)
 
     @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_morlet2(self, xp, scp):
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore', DeprecationWarning)
-            return scp.signal.morlet2(1.0, 0.5)
+        return scp.signal.morlet2(1.0, 0.5)
 
     @pytest.mark.parametrize('length', [5, 11, 15, 51, 101])
     @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_morlet2_length(self, length, xp, scp):
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore', DeprecationWarning)
-            return scp.signal.morlet2(length, 1.0)
+        return scp.signal.morlet2(length, 1.0)
 
     @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_morlet2_points(self, xp, scp):
         points = 100
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore', DeprecationWarning)
-            w = scp.signal.morlet2(points, 2.0)
-            y = scp.signal.morlet2(3, s=1/(2*xp.pi), w=2)
+        w = scp.signal.morlet2(points, 2.0)
+        y = scp.signal.morlet2(3, s=1/(2*xp.pi), w=2)
         return w, y
 
     @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_ricker(self, xp, scp):
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore', DeprecationWarning)
-            return scp.signal.ricker(1.0, 1)
+        return scp.signal.ricker(1.0, 1)
 
     @pytest.mark.parametrize('length', [5, 11, 15, 51, 101])
     @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_ricker_length(self, length, xp, scp):
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore', DeprecationWarning)
-            return scp.signal.ricker(length, 1.0)
+        return scp.signal.ricker(length, 1.0)
 
     @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_ricker_points(self, xp, scp):
         points = 100
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore', DeprecationWarning)
-            return scp.signal.ricker(points, 2.0)
+        return scp.signal.ricker(points, 2.0)
 
     @pytest.mark.parametrize('a', [5, 10, 15, 20, 30])
     @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_ricker_zeros(self, a, xp, scp):
         # Check zeros
         points = 99
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore', DeprecationWarning)
-            return scp.signal.ricker(points, a)
+        return scp.signal.ricker(points, a)
 
     @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_cwt_delta(self, xp, scp):
@@ -116,9 +97,7 @@ class TestWavelets:
         def delta_wavelet(s, t):
             return xp.array([1])
 
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore', DeprecationWarning)
-            return scp.signal.cwt(test_data, delta_wavelet, widths)
+        return scp.signal.cwt(test_data, delta_wavelet, widths)
 
     @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_cwt_ricker(self, xp, scp):
@@ -126,6 +105,4 @@ class TestWavelets:
         test_data = xp.sin(xp.pi * xp.arange(0, len_data) / 10.0)
         # Check proper shape on output
         widths = [1, 3, 4, 5, 10]
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore', DeprecationWarning)
-            return scp.signal.cwt(test_data, scp.signal.ricker, widths)
+        return scp.signal.cwt(test_data, scp.signal.ricker, widths)

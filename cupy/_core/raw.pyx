@@ -41,8 +41,13 @@ cdef class RawKernel:
             compile C++ kernels. Defaults to ``False``.
 
     .. note::
-        Starting CuPy v13.0.0, `RawKernel` by default compiles with the C++11
-        standard (``-std=c++11``) if it's not specified in ``options``.
+        Starting CuPy v14.0.0, `RawKernel` by default compiles with the C++17
+        standard (``-std=c++17``) if it's not specified in ``options``.
+
+    .. note::
+        Unlike `ElementwiseKernel`, `RawKernel` ignores any views on
+        CuPy arrays. You are responsible for handling strides manually.
+        For example, passing `matrix.T` is treated as if you passed `matrix`.
 
     .. _Jitify:
         https://github.com/NVIDIA/jitify
@@ -76,7 +81,7 @@ cdef class RawKernel:
         self.__name__ = name
 
     def __call__(self, grid, block, args, **kwargs):
-        """__call__(self, grid, block, args, *, shared_mem=0)
+        """__call__(self, grid, block, args, \\*, shared_mem=0)
 
         Compiles and invokes the kernel.
 
@@ -338,8 +343,8 @@ cdef class RawModule:
             compile C++ kernels. Defaults to ``False``.
 
     .. note::
-        Starting CuPy v13.0.0, `RawModule` by default compiles with the C++11
-        standard (``-std=c++11``) if it's not specified in ``options``.
+        Starting CuPy v14.0.0, `RawModule` by default compiles with the C++17
+        standard (``-std=c++17``) if it's not specified in ``options``.
 
     .. note::
         Each kernel in ``RawModule`` possesses independent function attributes.
@@ -449,7 +454,7 @@ cdef class RawModule:
                 '''
 
                 kers = ('func<int>', 'func<float>', 'func<double>')
-                mod = cupy.RawModule(code=code, options=('--std=c++11',),
+                mod = cupy.RawModule(code=code, options=('--std=c++17',),
                                      name_expressions=kers)
 
                 // retrieve func<int>

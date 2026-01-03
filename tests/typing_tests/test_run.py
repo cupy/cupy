@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from pathlib import Path
 
 import pytest
@@ -10,10 +12,11 @@ def test_run(t: Path) -> None:
     with open(t) as f:
         lines = f.readlines()
 
+    exec_locals = {}
     for _lineno, _line in enumerate(lines, start=1):
         if "# E: " not in _line:
             try:
-                exec(_line)
+                exec(_line, None, exec_locals)
             except Exception:
                 print(f"{t}:{_lineno} {_line}")
                 raise

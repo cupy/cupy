@@ -1,3 +1,4 @@
+from __future__ import annotations
 
 import cupy
 from cupy import testing
@@ -136,7 +137,7 @@ class TestEstimateGradients2DGlobal:
 
         tri = scp.spatial.Delaunay(x)
         z = func(x[:, 0], x[:, 1])
-        if xp is cupy:
+        if xp is cupy or np.lib.NumpyVersion(scipy.__version__) >= "1.15.0":
             grad_fn = scp.interpolate._interpnd.estimate_gradients_2d_global
         else:
             grad_fn = scp.interpolate.interpnd.estimate_gradients_2d_global

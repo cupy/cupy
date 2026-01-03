@@ -1,4 +1,7 @@
-from typing import Mapping, Optional, Sequence, Union, TYPE_CHECKING
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+from collections.abc import Mapping, Sequence
 
 import numpy
 import numpy.typing as npt
@@ -16,12 +19,12 @@ class TypeBase:
     def __str__(self) -> str:
         raise NotImplementedError
 
-    def declvar(self, x: str, init: Optional['Data']) -> str:
+    def declvar(self, x: str, init: Data | None) -> str:
         if init is None:
             return f'{self} {x}'
         return f'{self} {x} = {init.code}'
 
-    def assign(self, var: 'Data', value: 'Data') -> str:
+    def assign(self, var: Data, value: Data) -> str:
         return f'{var.code} = {value.code}'
 
 
@@ -36,7 +39,7 @@ class Void(TypeBase):
 
 class Unknown(TypeBase):
 
-    def __init__(self, *, label: Optional[str] = None) -> None:
+    def __init__(self, *, label: str | None = None) -> None:
         self.label = label
 
     def __str__(self) -> str:
@@ -74,7 +77,7 @@ class PtrDiff(Scalar):
 
 class ArrayBase(TypeBase):
 
-    def ndim(self, instance: 'Data'):
+    def ndim(self, instance: Data):
         from cupyx.jit import _internal_types  # avoid circular import
         return _internal_types.Constant(self._ndim)
 
@@ -90,21 +93,21 @@ class PointerBase(ArrayBase):
         super().__init__(child_type, 1)
 
     @staticmethod
-    def _add(env, x: 'Data', y: 'Data') -> 'Data':
+    def _add(env, x: Data, y: Data) -> Data:
         from cupyx.jit import _internal_types  # avoid circular import
         if isinstance(y.ctype, Scalar) and y.ctype.dtype.kind in 'iu':
             return _internal_types.Data(f'({x.code} + {y.code})', x.ctype)
         return NotImplemented
 
     @staticmethod
-    def _radd(env, x: 'Data', y: 'Data') -> 'Data':
+    def _radd(env, x: Data, y: Data) -> Data:
         from cupyx.jit import _internal_types  # avoid circular import
         if isinstance(x.ctype, Scalar) and x.ctype.dtype.kind in 'iu':
             return _internal_types.Data(f'({x.code} + {y.code})', y.ctype)
         return NotImplemented
 
     @staticmethod
-    def _sub(env, x: 'Data', y: 'Data') -> 'Data':
+    def _sub(env, x: Data, y: Data) -> Data:
         from cupyx.jit import _internal_types  # avoid circular import
         if isinstance(y.ctype, Scalar) and y.ctype.dtype.kind in 'iu':
             return _internal_types.Data(f'({x.code} - {y.code})', x.ctype)
@@ -130,15 +133,15 @@ class CArray(ArrayBase):
         super().__init__(Scalar(dtype), ndim)
 
     @classmethod
-    def from_ndarray(cls, x: cupy.ndarray) -> 'CArray':
+    def from_ndarray(cls, x: cupy.ndarray) -> CArray:
         return CArray(x.dtype, x.ndim, x._c_contiguous, x._index_32_bits)
 
-    def size(self, instance: 'Data') -> 'Data':
+    def size(self, instance: Data) -> Data:
         from cupyx.jit import _internal_types  # avoid circular import
         return _internal_types.Data(
             f'static_cast<long long>({instance.code}.size())', Scalar('q'))
 
-    def shape(self, instance: 'Data') -> 'Data':
+    def shape(self, instance: Data) -> Data:
         from cupyx.jit import _internal_types  # avoid circular import
         if self._ndim > 10:
             raise NotImplementedError(
@@ -147,7 +150,7 @@ class CArray(ArrayBase):
         return _internal_types.Data(
             f'{instance.code}.get_shape()', Tuple([PtrDiff()] * self._ndim))
 
-    def strides(self, instance: 'Data') -> 'Data':
+    def strides(self, instance: Data) -> Data:
         from cupyx.jit import _internal_types  # avoid circular import
         if self._ndim > 10:
             raise NotImplementedError(
@@ -157,7 +160,7 @@ class CArray(ArrayBase):
             f'{instance.code}.get_strides()', Tuple([PtrDiff()] * self._ndim))
 
     @_internal_types.wraps_class_method
-    def begin(self, env, instance: 'Data', *args) -> 'Data':
+    def begin(self, env, instance: Data, *args) -> Data:
         from cupyx.jit import _internal_types  # avoid circular import
         if self._ndim != 1:
             raise NotImplementedError(
@@ -169,7 +172,7 @@ class CArray(ArrayBase):
             CArrayIterator(instance.ctype))  # type: ignore
 
     @_internal_types.wraps_class_method
-    def end(self, env, instance: 'Data', *args) -> 'Data':
+    def end(self, env, instance: Data, *args) -> Data:
         from cupyx.jit import _internal_types  # avoid circular import
         if self._ndim != 1:
             raise NotImplementedError(
@@ -220,8 +223,8 @@ class SharedMem(ArrayBase):
     def __init__(
             self,
             child_type: TypeBase,
-            size: Optional[int],
-            alignment: Optional[int] = None,
+            size: int | None,
+            alignment: int | None = None,
     ) -> None:
         if not (isinstance(size, int) or size is None):
             raise 'size of shared_memory must be integer or `None`'
@@ -231,7 +234,7 @@ class SharedMem(ArrayBase):
         self._alignment = alignment
         super().__init__(child_type, 1)
 
-    def declvar(self, x: str, init: Optional['Data']) -> str:
+    def declvar(self, x: str, init: Data | None) -> str:
         assert init is None
         if self._alignment is not None:
             code = f'__align__({self._alignment})'
@@ -288,15 +291,15 @@ class Dim3(TypeBase):
         z (uint32)
     """
 
-    def x(self, instance: 'Data') -> 'Data':
+    def x(self, instance: Data) -> Data:
         from cupyx.jit import _internal_types  # avoid circular import
         return _internal_types.Data(f'{instance.code}.x', uint32)
 
-    def y(self, instance: 'Data') -> 'Data':
+    def y(self, instance: Data) -> Data:
         from cupyx.jit import _internal_types  # avoid circular import
         return _internal_types.Data(f'{instance.code}.y', uint32)
 
-    def z(self, instance: 'Data') -> 'Data':
+    def z(self, instance: Data) -> Data:
         from cupyx.jit import _internal_types  # avoid circular import
         return _internal_types.Data(f'{instance.code}.z', uint32)
 
@@ -319,17 +322,27 @@ _suffix_literals_dict: Mapping[str, str] = {
 
 
 def get_cuda_code_from_constant(
-        x: Union[bool, int, float, complex],
-        ctype: Scalar,
+    x: bool | complex,
+    ctype: Scalar,
 ) -> str:
     dtype = ctype.dtype
+    ctype_str = str(ctype)
+    if dtype.kind == 'c':
+        child_ctype = Scalar(dtype.char.lower())
+        real = get_cuda_code_from_constant(x.real, child_ctype)
+        imag = get_cuda_code_from_constant(x.imag, child_ctype)
+        return f'{ctype_str}({real}, {imag})'
+
     suffix_literal = _suffix_literals_dict.get(dtype.name)
+    if not numpy.isfinite(x):
+        s = str(x)
+        if dtype == numpy.float64:
+            return s.replace('nan', 'nan("")').replace('inf', 'CUDART_INF')
+        else:
+            return s.replace('nan', 'nanf("")').replace('inf', 'CUDART_INF_F')
     if suffix_literal is not None:
         s = str(x).lower()
         return f'{s}{suffix_literal}'
-    ctype_str = str(ctype)
-    if dtype.kind == 'c':
-        return f'{ctype_str}({x.real}, {x.imag})'
     if ' ' in ctype_str:
         return f'({ctype_str}){x}'
     return f'{ctype_str}({x})'

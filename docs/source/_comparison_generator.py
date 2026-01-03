@@ -138,6 +138,9 @@ def generate():
             '_add_newdoc_ufunc',
             'fastCopyAndTranspose',
             'kernel_version',
+            'ScalarType',
+            'sctypeDict',
+            'typecodes',
             'test',
             'Tester',
         ], footnotes={

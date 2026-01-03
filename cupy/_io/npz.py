@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import warnings
 
 import numpy
@@ -8,7 +10,7 @@ import cupy
 _support_allow_pickle = (numpy.lib.NumpyVersion(numpy.__version__) >= '1.10.0')
 
 
-class NpzFile(object):
+class NpzFile:
 
     def __init__(self, npz_file):
         self.npz_file = npz_file

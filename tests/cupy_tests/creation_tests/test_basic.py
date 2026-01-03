@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import numpy
 import pytest
 import warnings
@@ -42,15 +44,13 @@ class TestBasic:
         a.fill(0)
         return a
 
-    @testing.with_requires('numpy>=1.20')
+    @testing.with_requires('numpy>=2.3')
     @testing.for_CF_orders()
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_equal()
-    def test_empty_scalar_none(self, xp, dtype, order):
-        with testing.assert_warns(DeprecationWarning):
-            a = xp.empty(None, dtype=dtype, order=order)
-        a.fill(0)
-        return a
+    def test_empty_scalar_none(self, dtype, order):
+        for xp in (numpy, cupy):
+            with pytest.raises(TypeError, match=r"Use ()"):
+                xp.empty(None, dtype=dtype, order=order)
 
     @testing.for_CF_orders()
     @testing.for_all_dtypes()
@@ -196,13 +196,13 @@ class TestBasic:
     def test_zeros_scalar(self, xp, dtype, order):
         return xp.zeros((), dtype=dtype, order=order)
 
-    @testing.with_requires('numpy>=1.20')
+    @testing.with_requires('numpy>=2.3')
     @testing.for_CF_orders()
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_equal()
-    def test_zeros_scalar_none(self, xp, dtype, order):
-        with testing.assert_warns(DeprecationWarning):
-            return xp.zeros(None, dtype=dtype, order=order)
+    def test_zeros_scalar_none(self, dtype, order):
+        for xp in (numpy, cupy):
+            with pytest.raises(TypeError, match=r"Use ()"):
+                xp.zeros(None, dtype=dtype, order=order)
 
     @testing.for_CF_orders()
     @testing.for_all_dtypes()
@@ -228,6 +228,14 @@ class TestBasic:
         with pytest.raises(TypeError):
             cupy.zeros_like(a, subok=True)
 
+    def test_reject_byteswap(self):
+        # Reject creation of arrays with bad byte-order at a low level
+        with pytest.raises(ValueError, match=".*byte-order"):
+            cupy.ndarray((2, 3, 4), dtype=">i")
+
+        with pytest.raises(ValueError, match=".*byte-order"):
+            cupy.zeros((2, 3, 4), dtype=">i")
+
     @testing.for_CF_orders()
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
@@ -245,6 +253,24 @@ class TestBasic:
         a = cupy.ndarray((2, 3, 4))
         with pytest.raises(TypeError):
             cupy.ones_like(a, subok=True)
+
+    @pytest.mark.parametrize('shape, strides', [
+        ((2, 3, 4), (8 * 3 * 4, 8 * 4, 8)),  # contiguous
+        ((2, 3, 4), (8, 0, 8)),  # smaller than contiguous needed
+        ((2, 0, 4), (8, 128, 1024)),  # empty can be OK
+    ])
+    def test_ndarray_strides(self, shape, strides):
+        a = cupy.ndarray(shape, strides=strides, dtype="float64")
+        assert cupy.byte_bounds(a)[0] == a.data.ptr
+        assert cupy.byte_bounds(a)[1] - a.data.ptr <= a.data.mem.size
+
+    @pytest.mark.parametrize('shape, strides', [
+        ((2, 3, 4), (8, 128, 1024)),  # too large
+        ((2, 3, 4), (-8, 8, 8)),  # negative (needs offset)
+    ])
+    def test_ndarray_strides_raises(self, shape, strides):
+        with pytest.raises(ValueError, match=r"ndarray\(\) with strides.*"):
+            cupy.ndarray(shape, strides=strides)
 
     @testing.for_CF_orders()
     @testing.for_all_dtypes()

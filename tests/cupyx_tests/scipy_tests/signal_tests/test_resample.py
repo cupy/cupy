@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 
 import cupy
 from cupy import testing
@@ -9,7 +11,7 @@ try:
     import scipy.signal  # NOQA
     import scipy.signal.windows  # NOQA
 except ImportError:
-    pass
+    scipy = None
 
 import numpy as np
 
@@ -188,6 +190,21 @@ class TestResample:
 
         return results
 
+    @pytest.mark.parametrize('nx, ny, axis',
+                             [(12_357, 1, 0),
+                              (70_000, 5, 1),
+                              (10_000, 15, 0)])
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_resample2d(self, xp, scp, nx, ny, axis):
+        down = 3
+        x = testing.shaped_random(
+            (nx * (1 - axis) + ny * axis,
+             ny * (1 - axis) + nx * axis),
+            xp, xp.float64, scale=1.0)
+        y_s = scp.signal.resample_poly(
+            x, up=1, down=down, axis=axis)
+        return y_s
+
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_poly_vs_filtfilt(self, xp, scp):
         # Check that up=1.0 gives same answer as filtfilt + slicing
@@ -292,7 +309,7 @@ class TestDecimate:
         rate = 120
         rates_to = [15, 20, 30, 40]  # q = 8, 6, 4, 3
 
-        t_tot = int(100)  # Need to let antialiasing filters settle
+        t_tot = 100  # Need to let antialiasing filters settle
         t = xp.arange(rate * t_tot + 1) / float(rate)
 
         # Sinusoids at 0.8*nyquist, windowed to avoid edge artifacts

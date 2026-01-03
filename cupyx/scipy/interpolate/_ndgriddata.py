@@ -1,6 +1,8 @@
 """
 Convenience interface to N-D interpolation
 """
+from __future__ import annotations
+
 
 import cupy
 from cupyx.scipy.interpolate._interpnd import (
@@ -8,9 +10,9 @@ from cupyx.scipy.interpolate._interpnd import (
 from cupyx.scipy.spatial import KDTree
 
 
-# ------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 # Nearest-neighbor interpolation
-# ------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 
 
 class NearestNDInterpolator(NDInterpolatorBase):
@@ -127,7 +129,7 @@ class NearestNDInterpolator(NDInterpolatorBase):
         # if distance_upper_bound is set to not be infinite,
         # then we need to consider the case where cKDtree
         # does not find any points within distance_upper_bound to return.
-        # It marks those points as having infinte distance, which is what
+        # It marks those points as having infinite distance, which is what
         # will be used below to mask the array and return only the points
         # that were deemed to have a close enough neighbor to return
         # something useful.

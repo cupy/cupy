@@ -1,4 +1,6 @@
 # mypy: ignore-errors
+from __future__ import annotations
+
 
 from cupy._core import core  # NOQA
 from cupy._core import fusion  # NOQA
@@ -24,6 +26,7 @@ from cupy._core._reduction import ReductionKernel  # NOQA
 from cupy._core._routines_binary import bitwise_and  # NOQA
 from cupy._core._routines_binary import bitwise_or  # NOQA
 from cupy._core._routines_binary import bitwise_xor  # NOQA
+from cupy._core._routines_binary import bitwise_count  # NOQA
 from cupy._core._routines_binary import invert  # NOQA
 from cupy._core._routines_binary import left_shift  # NOQA
 from cupy._core._routines_binary import right_shift  # NOQA
@@ -46,7 +49,7 @@ from cupy._core._routines_manipulation import broadcast_to  # NOQA
 from cupy._core._routines_manipulation import concatenate_method  # NOQA
 from cupy._core._routines_manipulation import moveaxis  # NOQA
 from cupy._core._routines_manipulation import rollaxis  # NOQA
-from cupy._core._routines_manipulation import size  # NOQA'
+from cupy._core._routines_manipulation import size  # NOQA
 from cupy._core._routines_math import absolute  # NOQA
 from cupy._core._routines_math import add  # NOQA
 from cupy._core._routines_math import angle, angle_deg  # NOQA

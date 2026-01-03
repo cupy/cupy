@@ -371,7 +371,7 @@ class _FusionVarArray(_FusionVarScalar):
 
 class _FusionHistory(object):
 
-    """History of operation exectuted in the target function of fusion.
+    """History of operation executed in the target function of fusion.
 
     Attributes:
         preamble_set (set of str): The preambles of submodules.

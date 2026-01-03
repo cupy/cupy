@@ -1,6 +1,7 @@
 import numpy
 
 from cupy._core import _kernel
+from cupy._core import _scalar
 from cupy._core import _reduction
 from cupy._core import core
 from cupy._core._fusion_interface import _VariableProxy
@@ -82,7 +83,7 @@ cdef class _ShapeConstraints:
 
     # Used in runtime.
     def satisfy(self, dict dim_map):
-        """Check if the given dicionary satisfies the constraints.
+        """Check if the given dictionary satisfies the constraints.
 
         Args:
             dim_map (dict):
@@ -103,20 +104,20 @@ def _guess_routine(func, args, dtype):
 
     # Feeds dummy arguments with appropriate dtypes passed to `guess_routine`.
     dummy_args = []
-    weaks = []
+
     for x in args:
         if isinstance(x, _TraceScalar):
-            obj = x.dtype.type(0)
-            weak_t = x.pytype
+            if x.pytype:
+                obj = _scalar.CScalar(x.pytype(0))
+            else:
+                obj = _scalar.CScalar(0, x.dtype)
         else:
             assert isinstance(x, _TraceArray)
             obj = core.ndarray((0,), x.dtype)
-            weak_t = False
         dummy_args.append(obj)
-        weaks.append(weak_t)
 
     op = func._ops.guess_routine(
-        func.name, func._routine_cache, dummy_args, tuple(weaks), dtype, None)
+        func.name, func._routine_cache, dummy_args, dtype, None)
     return op.get_in_dtypes(), op.get_out_dtypes(), op.routine
 
 
@@ -128,7 +129,7 @@ def _base(array):
 
 
 class _VariableCoordinator:
-    """Variable constuct manager.
+    """Variable construct manager.
 
     This class calls ``_TraceArray`` or ``_TraceScalar`` internally
     with unique serial numbers and returns the variable object. In

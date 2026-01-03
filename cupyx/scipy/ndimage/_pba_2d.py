@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import math
 import numbers
 import os
@@ -68,7 +70,7 @@ def get_pba2d_src(block_size_2d=64, marker=-32768, pixel_int2_t="short2"):
         make_pixel_func=make_pixel_func
     )
     kernel_directory = os.path.join(os.path.dirname(__file__), "cuda")
-    with open(os.path.join(kernel_directory, "pba_kernels_2d.h"), "rt") as f:
+    with open(os.path.join(kernel_directory, "pba_kernels_2d.h")) as f:
         pba2d_kernels = "\n".join(f.readlines())
 
     pba2d_code += pba2d_kernels
@@ -111,7 +113,6 @@ def _get_pack_kernel(int_type, marker=-32768):
         in_params="raw B arr",
         out_params="raw I out",
         operation=code,
-        options=("--std=c++11",),
     )
 
 
@@ -194,7 +195,6 @@ def _get_distance_kernel(int_type, dist_int_type):
         in_params="raw I y, raw I x",
         out_params="raw F dist",
         operation=operation,
-        options=("--std=c++11",),
     )
 
 
@@ -223,7 +223,6 @@ def _get_aniso_distance_kernel(int_type):
         in_params="raw I y, raw I x, raw F sampling",
         out_params="raw F dist",
         operation=operation,
-        options=("--std=c++11",),
     )
 
 

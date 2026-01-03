@@ -17,7 +17,6 @@ Data type routines
    :align: left
 
    ``promote_types`` (alias of :func:`numpy.promote_types`)
-   ``obj2sctype`` (alias of :func:`numpy.obj2sctype`)
 
 Creating data types
 -------------------
@@ -26,7 +25,7 @@ Creating data types
    :align: left
 
    ``dtype`` (alias of :class:`numpy.dtype`)
-   ``format_parser`` (alias of :class:`numpy.format_parser`)
+   ``format_parser`` (alias of :class:`numpy.rec.format_parser`)
 
 Data type information
 ---------------------
@@ -36,7 +35,6 @@ Data type information
 
    ``finfo`` (alias of :class:`numpy.finfo`)
    ``iinfo`` (alias of :class:`numpy.iinfo`)
-   ``MachAr`` (alias of :class:`numpy.MachAr`)
 
 Data type testing
 -----------------
@@ -44,11 +42,7 @@ Data type testing
 .. csv-table::
    :align: left
 
-   ``issctype`` (alias of :func:`numpy.issctype`)
    ``issubdtype`` (alias of :func:`numpy.issubdtype`)
-   ``issubsctype`` (alias of :func:`numpy.issubsctype`)
-   ``issubclass_`` (alias of :func:`numpy.issubclass_`)
-   ``find_common_type`` (alias of :func:`numpy.find_common_type`)
 
 Miscellaneous
 -------------
@@ -57,5 +51,4 @@ Miscellaneous
    :align: left
 
    ``typename`` (alias of :func:`numpy.typename`)
-   ``sctype2char`` (alias of :func:`numpy.sctype2char`)
    ``mintypecode`` (alias of :func:`numpy.mintypecode`)

@@ -3,6 +3,20 @@
 .. This page is to generate documentation for deprecated APIs removed from the
    public table of contents.
 
+NumPy Routines
+--------------
+
+.. autosummary::
+   :toctree: generated/
+
+   # Removed in NumPy v2.0
+   cupy.asfarray
+
+   # Marked deprecated in NumPy v2.0
+   cupy.in1d
+   cupy.row_stack
+   cupy.trapz
+
 DLPack helper
 -------------
 
@@ -10,15 +24,6 @@ DLPack helper
    :toctree: generated/
 
    cupy.fromDlpack
-
-Time range
-----------
-
-.. autosummary::
-   :toctree: generated/
-
-   cupy.prof.TimeRangeDecorator
-   cupy.prof.time_range
 
 Timing helper
 -------------

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import numpy as np
 import pytest
 
@@ -134,7 +136,7 @@ class TestDctDst:
     )
 )
 @testing.with_requires('scipy>=1.12.0rc1')
-class TestDctnDstn():
+class TestDctnDstn:
 
     def _run_transform(self, dct_func, xp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)

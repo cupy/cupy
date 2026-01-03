@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import operator
 from math import prod
 
@@ -711,7 +713,7 @@ qr_reduce(double *a, int m, int nz, // a(m, nz), packed
 TYPES = ['double']
 
 QR_MODULE = cupy.RawModule(
-    code=QR_KERNEL, options=('-std=c++14',),
+    code=QR_KERNEL, options=('-std=c++17',),
     name_expressions=[
         f'dlartg<{type_name}>' for type_name in TYPES] + ['qr_reduce'],
 )
@@ -856,7 +858,7 @@ def make_lsq_spline(x, y, t, k=3, w=None, axis=0, check_finite=True, *,
         raise ValueError(
             f'Shapes of x {x.shape} and w {w.shape} are incompatible')
     if method != "qr":
-        raise ValueError(f"{method = } is not supported.")
+        raise ValueError(f"{method=} is not supported.")
     if any(x[1:] - x[:-1] < 0):
         raise ValueError("Expect x to be a 1D non-decreasing sequence.")
 

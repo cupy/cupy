@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import numpy
 
 import cupy
@@ -339,7 +341,6 @@ def _make_fast_matvec(A):
     from cupy_backends.cuda.libs import cusparse as _cusparse
     from cupyx import cusparse
 
-    matvec = None
     if _csr.isspmatrix_csr(A) and cusparse.check_availability('spmv'):
         handle = device.get_cusparse_handle()
         op_a = _cusparse.CUSPARSE_OPERATION_NON_TRANSPOSE
@@ -367,7 +368,8 @@ def _make_fast_matvec(A):
                 beta.ctypes.data, desc_y.desc, cuda_dtype, alg, buff.data.ptr)
             return y
 
-    return matvec
+        return matvec
+    return None
 
 
 def _make_compute_hu(V):

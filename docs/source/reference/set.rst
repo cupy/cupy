@@ -12,6 +12,10 @@ Making proper sets
    :toctree: generated/
 
    unique
+   # unique_all
+   # unique_counts
+   # unique_inverse
+   # unique_values
 
 
 Boolean operations
@@ -25,3 +29,4 @@ Boolean operations
    isin
    setdiff1d
    setxor1d
+   union1d

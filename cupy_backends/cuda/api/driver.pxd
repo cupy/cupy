@@ -6,7 +6,7 @@ from libc.stdint cimport intptr_t
 ###############################################################################
 
 IF CUPY_USE_CUDA_PYTHON:
-    from cuda.ccuda cimport *
+    from cuda.bindings.cydriver cimport *
     # Aliases for compatibillity with existing CuPy codebase.
     # Keep in sync with names defined in `_driver_typedef.pxi`.
     # TODO(kmaehashi): Remove these aliases.

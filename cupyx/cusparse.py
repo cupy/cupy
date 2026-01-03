@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import functools as _functools
 
 import numpy as _numpy
@@ -14,7 +16,7 @@ from cupy import _util
 import cupyx.scipy.sparse
 
 
-class MatDescriptor(object):
+class MatDescriptor:
 
     def __init__(self, descriptor):
         self.descriptor = descriptor
@@ -768,7 +770,7 @@ def csr2dense(x, out=None):
 
     Args:
         x (cupyx.scipy.sparse.csr_matrix): A sparse matrix to convert.
-        out (cupy.ndarray or None): A dense metrix to store the result.
+        out (cupy.ndarray or None): A dense matrix to store the result.
             It must be F-contiguous.
 
     Returns:
@@ -800,7 +802,7 @@ def csc2dense(x, out=None):
 
     Args:
         x (cupyx.scipy.sparse.csc_matrix): A sparse matrix to convert.
-        out (cupy.ndarray or None): A dense metrix to store the result.
+        out (cupy.ndarray or None): A dense matrix to store the result.
             It must be F-contiguous.
 
     Returns:
@@ -1268,7 +1270,7 @@ def _dtype_to_IndexType(dtype):
         raise TypeError
 
 
-class BaseDescriptor(object):
+class BaseDescriptor:
 
     def __init__(self, descriptor, get=None, destroyer=None):
         self.desc = descriptor
@@ -1805,7 +1807,7 @@ def sparseToDense(x, out=None):
 
     Args:
         x (cupyx.scipy.sparse.spmatrix): A sparse matrix to convert.
-        out (cupy.ndarray or None): A dense metrix to store the result.
+        out (cupy.ndarray or None): A dense matrix to store the result.
             It must be F-contiguous.
 
     Returns:

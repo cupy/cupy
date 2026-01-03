@@ -3,19 +3,12 @@
 cimport cpython  # NOQA
 cimport cython  # NOQA
 from libcpp cimport bool as cpp_bool
-from libc.stdint cimport uint32_t
+from libc.stdint cimport intptr_t
 
 import warnings
 
 import numpy
 from cupy.exceptions import AxisError
-
-from cupy._core.core cimport _ndarray_base
-
-
-cdef extern from 'halffloat.h':
-    uint16_t npy_floatbits_to_halfbits(uint32_t f)
-    uint32_t npy_halfbits_to_floatbits(uint16_t h)
 
 
 @cython.profile(False)
@@ -58,12 +51,7 @@ cpdef inline void _check_not_bool(object x) except *:
 @cython.profile(False)
 cpdef inline tuple get_size(object size):
     if size is None:
-        warnings.warn(
-            'Passing None into shape arguments as an alias for () is '
-            'deprecated.',
-            DeprecationWarning,
-        )
-        return ()
+        raise TypeError("Use () not None as shape arguments")
     if cpython.PySequence_Check(size):
         # A numpy.ndarray unconditionally succeeds in PySequence_Check as
         # it implements __getitem__, but zero-dim one is an unsized object
@@ -309,23 +297,6 @@ cpdef size_t clp2(size_t x):
     return x + 1
 
 
-cdef union float32_int:
-    uint32_t n
-    float f
-
-
-cpdef uint16_t to_float16(float f):
-    cdef float32_int c
-    c.f = f
-    return npy_floatbits_to_halfbits(c.n)
-
-
-cpdef float from_float16(uint16_t v):
-    cdef float32_int c
-    c.n = npy_halfbits_to_floatbits(v)
-    return c.f
-
-
 @cython.profile(False)
 cdef inline int _normalize_order(order, cpp_bool allow_k=True) except? 0:
     cdef int order_char
@@ -535,3 +506,54 @@ cpdef tuple _broadcast_shapes(shapes):
         result_shape.append(out_dim)
 
     return tuple(result_shape)
+
+
+cdef bint _is_layout_expected(
+        const bint c_contiguous, const bint f_contiguous,
+        expected_order) except*:
+    cdef int order_char = _normalize_order(expected_order)
+    order_char = _update_order_char(
+        c_contiguous, f_contiguous, order_char)
+    # order_char is either C or F from now on
+    if c_contiguous and f_contiguous:
+        return True
+    if c_contiguous and order_char == b'C':
+        return True
+    elif f_contiguous and order_char == b'F':
+        return True
+    else:
+        return False
+
+
+cdef bint check_aligned(_ndarray_base arr) except -1:
+    """Check if an array is aligned with its dtype. We usually assume
+    that this is the case, since cuda allocations are aligned.
+
+    NOTE: We currently assume structured dtypes are always aligned for lack
+    of a clearer definition of what it means for them to be aligned.
+    """
+    cdef Py_ssize_t itemsize = arr.dtype.itemsize
+    cdef Py_ssize_t pow_2_mask = itemsize - 1
+    cdef Py_ssize_t i
+
+    if arr.dtype.char == "V":
+        return True
+
+    # all basic types have a power of two itemsize, we use this fact.
+    assert (itemsize & pow_2_mask) == 0 and itemsize != 0
+
+    for i in range(arr.ndim):
+        if arr._shape[i] == 0:
+            return True  # Empty array so alignment is meaningles enough.
+        if arr._strides[i] & pow_2_mask:
+            break
+    else:
+        # Strides were all OK, check pointer as well.
+        if (<intptr_t>arr.data.ptr & <intptr_t>pow_2_mask) == 0:
+            return True
+
+    raise ValueError(
+        f"result array with dtype {arr.dtype} would not be sufficiently "
+        "aligned for GPU operations. When using structured dtypes you must "
+        "manually align the dtype and its fields; CuPy may provide "
+        "utilities for this in the future.")

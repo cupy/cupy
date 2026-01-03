@@ -1,4 +1,5 @@
-import math
+from __future__ import annotations
+
 import unittest
 
 import numpy
@@ -33,10 +34,6 @@ class TestProdSequence(unittest.TestCase):
 
 
 class TestGetSize:
-
-    def test_none(self):
-        with testing.assert_warns(DeprecationWarning):
-            assert internal.get_size(None) == ()
 
     def check_collection(self, a):
         assert internal.get_size(a) == tuple(a)
@@ -222,24 +219,3 @@ class TestClp2(unittest.TestCase):
 
     def test_clp2(self):
         assert internal.clp2(self.x) == self.expect
-
-
-@testing.parameterize(*testing.product({
-    'value': [0.0, 1.0, -1.0,
-              0.25, -0.25,
-              11.0, -11.0,
-              2 ** -15, -(2 ** -15),  # Denormalized Number
-              float('inf'), float('-inf')],
-}))
-class TestConvertFloat16(unittest.TestCase):
-
-    def test_conversion(self):
-        half = internal.to_float16(self.value)
-        assert internal.from_float16(half) == self.value
-
-
-class TestConvertFloat16Nan(unittest.TestCase):
-
-    def test_conversion(self):
-        half = internal.to_float16(float('nan'))
-        assert math.isnan(internal.from_float16(half))

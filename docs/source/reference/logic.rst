@@ -13,7 +13,6 @@ Truth value testing
 
    all
    any
-   union1d
 
 
 Array contents
@@ -25,6 +24,7 @@ Array contents
    isfinite
    isinf
    isnan
+   # isnat
    isneginf
    isposinf
 
@@ -65,6 +65,10 @@ Comparison
    isclose
    array_equal
    array_equiv
+
+.. autosummary::
+   :toctree: generated/
+
    greater
    greater_equal
    less

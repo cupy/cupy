@@ -14,6 +14,7 @@ Sorting
    sort
    lexsort
    argsort
+   # ndarray.sort
    msort
    sort_complex
    partition

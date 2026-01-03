@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import unittest
 from unittest import mock
 
@@ -6,7 +8,7 @@ from cupy import testing
 from cupy_tests.core_tests.fusion_tests import fusion_utils
 
 
-class CreateMock(object):
+class CreateMock:
 
     def __init__(self, target):
         self.target = eval(target)

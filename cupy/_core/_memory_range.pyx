@@ -4,24 +4,35 @@ from cupy.cuda cimport memory
 from libcpp.pair cimport pair
 
 
-cpdef pair[Py_ssize_t, Py_ssize_t] get_bound(_ndarray_base array):
-    cdef Py_ssize_t left = array.data.ptr
-    cdef Py_ssize_t right = left
-    cdef Py_ssize_t tmp
-    cdef pair[Py_ssize_t, Py_ssize_t] ret
-    cdef size_t i
+cdef get_range(
+        Py_ssize_t itemsize, shape_t& shape, strides_t & strides,
+        Py_ssize_t& out_left, Py_ssize_t& out_right):
+    """Discover the byte range (out_left, out_right] (without ptr offset).
+    """
+    cdef Py_ssize_t tmp, i
+    out_left = 0
+    out_right = itemsize
 
-    for i in range(array._shape.size()):
-        # shape[i] != 0 is assumed
-        tmp = (array._shape[i] - 1) * array._strides[i]
+    for i in range(shape.size()):
+        if shape[i] == 0:  # empty just return 0 for both
+            out_left = 0
+            out_right = 0
+            return
+
+        tmp = (shape[i] - 1) * strides[i]
         if tmp > 0:
-            right += tmp
+            out_right += tmp
         else:
-            left += tmp
+            out_left += tmp
 
-    ret.first = left
-    ret.second = right + <Py_ssize_t>array.dtype.itemsize
-    return ret
+
+cpdef pair[Py_ssize_t, Py_ssize_t] get_bound(_ndarray_base array):
+    """Discover the pointer byte bounds (left, right] of the array.
+    """
+    cdef Py_ssize_t left, right
+    get_range(array.dtype.itemsize, array._shape, array._strides, left, right)
+
+    return array.data.ptr + left, array.data.ptr + right
 
 
 cpdef bint may_share_bounds(_ndarray_base a, _ndarray_base b):

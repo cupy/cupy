@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import contextlib
 import threading
 
@@ -49,23 +51,15 @@ def get_config_linalg():
     return value
 
 
-def get_config_fallback_mode():
-    try:
-        value = _config.fallback_mode
-    except AttributeError:
-        value = _config.fallback_mode = 'ignore'
-    return value
-
-
 @contextlib.contextmanager
 def errstate(*, divide=None, over=None, under=None,
-             invalid=None, linalg=None, fallback_mode=None):
+             invalid=None, linalg=None):
     """
     TODO(hvy): Write docs.
     """
     old_state = seterr(
         divide=divide, over=over, under=under,
-        invalid=invalid, linalg=linalg, fallback_mode=fallback_mode)
+        invalid=invalid, linalg=linalg)
     try:
         yield  # Return `None` similar to `numpy.errstate`.
     finally:
@@ -73,7 +67,7 @@ def errstate(*, divide=None, over=None, under=None,
 
 
 def seterr(*, divide=None, over=None, under=None,
-           invalid=None, linalg=None, fallback_mode=None):
+           invalid=None, linalg=None):
     """
     TODO(hvy): Write docs.
     """
@@ -92,14 +86,6 @@ def seterr(*, divide=None, over=None, under=None,
             _config.linalg = linalg
         else:
             raise NotImplementedError()
-    if fallback_mode is not None:
-        if fallback_mode in ['print', 'warn', 'ignore', 'raise']:
-            _config.fallback_mode = fallback_mode
-        elif fallback_mode in ['log', 'call']:
-            raise NotImplementedError
-        else:
-            raise ValueError(
-                '{} is not a valid dispatch type'.format(fallback_mode))
 
     _config.divide = divide
     _config.under = under
@@ -119,5 +105,4 @@ def geterr():
         under=get_config_under(),
         invalid=get_config_invalid(),
         linalg=get_config_linalg(),
-        fallback_mode=get_config_fallback_mode(),
     )

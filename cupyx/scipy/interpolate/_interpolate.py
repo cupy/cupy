@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 
 import math
 
@@ -117,7 +119,7 @@ __global__ void find_breakpoint_position_nd(
 '''
 
 INTERVAL_MODULE = cupy.RawModule(
-    code=INTERVAL_KERNEL, options=('-std=c++11',),
+    code=INTERVAL_KERNEL,
     name_expressions=[
         'find_breakpoint_position_1d', 'find_breakpoint_position_nd'])
 
@@ -388,7 +390,7 @@ __global__ void integrate(
 """
 
 PPOLY_MODULE = cupy.RawModule(
-    code=PPOLY_KERNEL, options=('-std=c++11',),
+    code=PPOLY_KERNEL,
     name_expressions=(
         [f'eval_ppoly<{type_name}>' for type_name in TYPES] +
         [f'eval_ppoly_nd<{type_name}>' for type_name in TYPES] +
@@ -533,18 +535,13 @@ __global__ void eval_bpoly(
 """
 
 BPOLY_MODULE = cupy.RawModule(
-    code=BPOLY_KERNEL, options=('-std=c++11',),
+    code=BPOLY_KERNEL,
     name_expressions=(
         [f'eval_bpoly<{type_name}>' for type_name in TYPES]))
 
 
 def _get_module_func(module, func_name, *template_args):
-    def _get_typename(dtype):
-        typename = get_typename(dtype)
-        if dtype.kind == 'c':
-            typename = 'thrust::' + typename
-        return typename
-    args_dtypes = [_get_typename(arg.dtype) for arg in template_args]
+    args_dtypes = [get_typename(arg.dtype) for arg in template_args]
     template = ', '.join(args_dtypes)
     kernel_name = f'{func_name}<{template}>' if template_args else func_name
     kernel = module.get_function(kernel_name)

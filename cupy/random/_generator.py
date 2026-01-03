@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import atexit
 import binascii
 import functools
@@ -5,6 +7,7 @@ import hashlib
 import operator
 import os
 import time
+import weakref
 
 import numpy
 import warnings
@@ -17,14 +20,28 @@ from cupy.cuda import device
 from cupy.random import _kernels
 from cupy import _util
 
-import cupyx
+import importlib
+import sys
+
+
+def lazy_import(name):
+    spec = importlib.util.find_spec(name)
+    loader = importlib.util.LazyLoader(spec.loader)
+    spec.loader = loader
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[name] = module
+    loader.exec_module(module)
+    return module
+
+
+cupyx = lazy_import('cupyx')
 
 
 _UINT32_MAX = 0xffffffff
 _UINT64_MAX = 0xffffffffffffffff
 
 
-class RandomState(object):
+class RandomState:
 
     """Portable container of a pseudo-random number generator.
 
@@ -58,17 +75,10 @@ class RandomState(object):
         if method is None:
             method = curand.CURAND_RNG_PSEUDO_DEFAULT
         self._generator = curand.createGenerator(method)
+        self._finalizer = weakref.finalize(
+            self, curand.destroyGenerator, self._generator)
         self.method = method
         self.seed(seed)
-
-    def __del__(self, is_shutting_down=_util.is_shutting_down):
-        from cupy_backends.cuda.libs import curand
-
-        # When createGenerator raises an error, _generator is not initialized
-        if is_shutting_down():
-            return
-        if hasattr(self, '_generator'):
-            curand.destroyGenerator(self._generator)
 
     def _update_seed(self, size):
         self._rk_seed = (self._rk_seed + size) % _UINT64_MAX
@@ -208,7 +218,7 @@ class RandomState(object):
         self._update_seed(y.size)
         return y
 
-    def geometric(self, p, size=None, dtype=int):
+    def geometric(self, p, size=None, dtype='l'):
         """Returns an array of samples drawn from the geometric distribution.
 
         .. seealso::
@@ -223,7 +233,7 @@ class RandomState(object):
         self._update_seed(y.size)
         return y
 
-    def hypergeometric(self, ngood, nbad, nsample, size=None, dtype=int):
+    def hypergeometric(self, ngood, nbad, nsample, size=None, dtype='l'):
         """Returns an array of samples drawn from the hypergeometric distribution.
 
         .. seealso::
@@ -301,7 +311,7 @@ class RandomState(object):
             func = curand.generateLogNormalDouble
         return self._generate_normal(func, size, dtype, mean, sigma)
 
-    def logseries(self, p, size=None, dtype=int):
+    def logseries(self, p, size=None, dtype='l'):
         """Returns an array of samples drawn from a log series distribution.
 
         .. warning::
@@ -536,7 +546,7 @@ class RandomState(object):
         self._update_seed(y.size)
         return y
 
-    def poisson(self, lam=1.0, size=None, dtype=int):
+    def poisson(self, lam=1.0, size=None, dtype='l'):
         """Returns an array of samples drawn from the poisson distribution.
 
         .. seealso::
@@ -693,10 +703,10 @@ class RandomState(object):
                     'mx must be non-negative (actual: {})'.format(mx))
             elif mx <= _UINT32_MAX:
                 dtype = numpy.uint32
-                upper_limit = _UINT32_MAX - (1 << 32) % (mx + 1)
+                upper_limit = dtype(_UINT32_MAX - (1 << 32) % (mx + 1))
             elif mx <= _UINT64_MAX:
                 dtype = numpy.uint64
-                upper_limit = _UINT64_MAX - (1 << 64) % (mx + 1)
+                upper_limit = dtype(_UINT64_MAX - (1 << 64) % (mx + 1))
             else:
                 raise ValueError(
                     'mx must be within uint64 range (actual: {})'.format(mx))
@@ -807,7 +817,8 @@ class RandomState(object):
                 seed = (time.time() * 1000000) % _UINT64_MAX
         else:
             if isinstance(seed, numpy.ndarray):
-                seed = int(hashlib.md5(seed).hexdigest()[:16], 16)
+                seed = int(hashlib.md5(
+                    seed, usedforsecurity=False).hexdigest()[:16], 16)
             else:
                 seed_arr = numpy.asarray(seed)
                 if seed_arr.dtype.kind not in 'biu':

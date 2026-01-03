@@ -1,4 +1,7 @@
+from __future__ import annotations
+
 import unittest
+import warnings
 
 from cupy import testing
 import cupyx.scipy.linalg  # NOQA
@@ -63,7 +66,13 @@ class TestSpecialMatrices(TestSpecialMatricesBase):
                                  accept_error=ValueError)
     def test_special_matrix(self, xp, scp):
         function = getattr(scp.linalg, self.function)
-        return function(*[self._get_arg(xp, arg) for arg in self.args])
+
+        if self.function == "kron":
+            with warnings.catch_warnings():
+                warnings.filterwarnings('ignore', category=DeprecationWarning)
+                return function(*[self._get_arg(xp, arg) for arg in self.args])
+        else:
+            return function(*[self._get_arg(xp, arg) for arg in self.args])
 
 
 @testing.parameterize(*(

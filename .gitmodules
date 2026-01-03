@@ -1,9 +1,12 @@
 [submodule "third_party/cccl"]
 	path = third_party/cccl
-	url = https://github.com/cupy/cccl.git
+	url = https://github.com/NVIDIA/cccl.git
 [submodule "third_party/jitify"]
 	path = third_party/jitify
 	url = https://github.com/NVIDIA/jitify.git
 [submodule "third_party/dlpack"]
 	path = third_party/dlpack
 	url = https://github.com/dmlc/dlpack.git
+[submodule "third_party/xsf"]
+	path = third_party/xsf
+	url = https://github.com/scipy/xsf.git

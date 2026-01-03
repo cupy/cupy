@@ -23,7 +23,7 @@ python3 -m pip install --user pytest-timeout pytest-xdist
 pushd tests
 timeout --signal INT --kill-after 10 60 python3 -c 'import cupy; cupy.show_config(_full=True)'
 test_retval=0
-timeout --signal INT --kill-after 60 36000 python3 -m pytest "${pytest_opts[@]}" "${PYTEST_FILES[@]}" || test_retval=$?
+timeout --signal INT --kill-after 60 18000 python3 -m pytest "${pytest_opts[@]}" "${PYTEST_FILES[@]}" || test_retval=$?
 popd
 
 case ${test_retval} in
@@ -43,3 +43,7 @@ case ${test_retval} in
         exit $test_retval
         ;;
 esac
+
+# Validate that importing cupy does not import cupyx
+# grep returns 0 if it finds anything so invert the result.
+! $(python3 -Ximporttime -c "import cupy" |& grep -q cupyx) || (echo "Found forbidden import 'cupyx'" && exit 1)

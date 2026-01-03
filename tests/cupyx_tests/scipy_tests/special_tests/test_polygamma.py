@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import platform
 import unittest
 
@@ -43,9 +45,9 @@ class TestPolygamma(unittest.TestCase):
             dtype(2.), dtype(1.5)).astype(numpy.float32)
 
     @pytest.mark.xfail(
-        platform.processor() == "aarch64",
+        platform.machine() == "aarch64",
         reason="aarch64 scipy does not match cupy/x86 see Scipy #20159")
-    @testing.for_all_dtypes(no_complex=True)
+    @testing.for_float_dtypes()
     @testing.numpy_cupy_allclose(atol=1e-2, rtol=1e-3, scipy_name='scp')
     def test_inf_and_nan(self, xp, scp, dtype):
         import scipy.special  # NOQA

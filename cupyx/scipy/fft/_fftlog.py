@@ -1,6 +1,8 @@
 '''Fast Hankel transforms using the FFTLog algorithm.
 The implementation closely follows the Fortran code of Hamilton (2000).
 '''
+from __future__ import annotations
+
 
 import math
 from warnings import warn
@@ -177,7 +179,8 @@ def fhtcoeff(n, dln, mu, offset=0.0, bias=0.0):
     cupy.exp(u, out=u)
 
     # fix last coefficient to be real
-    u.imag[-1] = 0
+    if n % 2 == 0:
+        u.imag[-1] = 0
 
     # deal with special cases
     if not cupy.isfinite(u[0]):

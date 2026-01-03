@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import cupy
 from cupy import _core
 from cupy._core import fusion
@@ -57,9 +59,9 @@ def nanargmax(a, axis=None, dtype=None, out=None, keepdims=False):
     .. seealso:: :func:`numpy.nanargmax`
     """
     if a.dtype.kind in 'biu':
-        return argmax(a, axis=axis)
+        return argmax(a, axis=axis, dtype=dtype, out=out, keepdims=keepdims)
 
-    return _statistics._nanargmax(a, axis, dtype, out, keepdims)
+    return _statistics._nanargmax(a, axis, out, dtype, keepdims)
 
 
 def argmin(a, axis=None, dtype=None, out=None, keepdims=False):
@@ -112,9 +114,9 @@ def nanargmin(a, axis=None, dtype=None, out=None, keepdims=False):
     .. seealso:: :func:`numpy.nanargmin`
     """
     if a.dtype.kind in 'biu':
-        return argmin(a, axis=axis)
+        return argmin(a, axis=axis, dtype=dtype, out=out, keepdims=keepdims)
 
-    return _statistics._nanargmin(a, axis, dtype, out, keepdims)
+    return _statistics._nanargmin(a, axis, out, dtype, keepdims)
 
 
 def nonzero(a):
@@ -166,10 +168,6 @@ _where_ufunc = _core.create_ufunc(
     'cupy_where',
     ('???->?', '?bb->b', '?BB->B', '?hh->h', '?HH->H', '?ii->i', '?II->I',
      '?ll->l', '?LL->L', '?qq->q', '?QQ->Q', '?ee->e', '?ff->f',
-     # On CUDA 6.5 these combinations don't work correctly (on CUDA >=7.0, it
-     # works).
-     # See issue #551.
-     '?hd->d', '?Hd->d',
      '?dd->d', '?FF->F', '?DD->D'),
     'out0 = in0 ? in1 : in2')
 
@@ -209,10 +207,7 @@ def where(condition, x=None, y=None):
     if fusion._is_fusing():
         return fusion._call_ufunc(_where_ufunc, condition, x, y)
 
-    x = cupy.asarray(x)
-    y = cupy.asarray(y)
-
-    return _where_ufunc(condition.astype('?'), x, y)
+    return _where_ufunc(condition.astype('?', copy=False), x, y)
 
 
 def argwhere(a):
@@ -370,6 +365,12 @@ _exists_kernel = _core.ElementwiseKernel(
     'S x, raw T bins, int64 n_bins, bool invert',
     'bool out',
     '''
+    // Handle empty bins array to avoid illegal memory access
+    if (n_bins == 0) {
+        out = (invert ? true : false);
+        return;
+    }
+
     const bool assume_increasing = true;
     const bool side_is_right = false;
     long long y;
@@ -384,6 +385,13 @@ _exists_and_searchsorted_kernel = _core.ElementwiseKernel(
     'S x, raw T bins, int64 n_bins, bool invert',
     'bool out, int64 y',
     '''
+    // Handle empty bins array to avoid illegal memory access
+    if (n_bins == 0) {
+        out = (invert ? true : false);
+        y = 0;
+        return;
+    }
+
     const bool assume_increasing = true;
     const bool side_is_right = false;
     '''
@@ -435,7 +443,10 @@ def _searchsorted(a, v, side, sorter, assume_increasing):
         raise NotImplementedError('Only int or ndarray are supported for a')
 
     if not isinstance(v, cupy.ndarray):
-        raise NotImplementedError('Only int or ndarray are supported for v')
+        if not isinstance(v, int | float | complex):
+            raise NotImplementedError(
+                'Only python scalars or ndarrays are supported for v')
+        v = cupy.asarray(v)
 
     if a.ndim > 1:
         raise ValueError('object too deep for desired array')

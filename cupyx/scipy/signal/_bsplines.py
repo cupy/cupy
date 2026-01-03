@@ -25,6 +25,8 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 """
+from __future__ import annotations
+
 
 import cupy
 import cupyx.scipy.ndimage
@@ -69,8 +71,9 @@ def sepfir2d(input, hrow, hcol):
     hrow = hrow.astype(dtype, copy=False)
     hcol = hcol.astype(dtype, copy=False)
     filters = (hcol[::-1].conj(), hrow[::-1].conj())
+    axes = (0, 1)
     return cupyx.scipy.ndimage._filters._run_1d_correlates(
-        input, (0, 1), lambda i: filters[i], None, 'reflect', 0)
+        input, axes, (0, 1), lambda i: filters[i], None, 'reflect', 0)
 
 
 def _quadratic(x):
@@ -253,7 +256,7 @@ def compute_root_from_lambda(lamb):
     omega = np.arctan(np.sqrt((144 * lamb - 1.0) / xi))
     tmp2 = np.sqrt(xi)
     r = ((24 * lamb - 1 - tmp2) / (24 * lamb) *
-         np.sqrt((48*lamb + 24 * lamb * tmp)) / tmp2)
+         np.sqrt(48*lamb + 24 * lamb * tmp) / tmp2)
     return r, omega
 
 
@@ -354,6 +357,9 @@ def cspline1d_eval(cj, newx, dx=1.0, x0=0):
     cspline1d : Compute cubic spline coefficients for rank-1 array.
 
     """
+    if cj.size == 0:
+        raise ValueError("Spline coefficients 'cj' must not be empty.")
+
     newx = (cupy.asarray(newx) - x0) / float(dx)
     res = cupy.zeros_like(newx, dtype=cj.dtype)
     if res.size == 0:
@@ -412,6 +418,9 @@ def qspline1d_eval(cj, newx, dx=1.0, x0=0):
     Edges are handled using mirror-symmetric boundary conditions.
 
     """
+    if cj.size == 0:
+        raise ValueError("Spline coefficients 'cj' must not be empty.")
+
     newx = (cupy.asarray(newx) - x0) / dx
     res = cupy.zeros_like(newx)
     if res.size == 0:
@@ -518,7 +527,7 @@ def spline_filter(Iin, lmbda=5.0):
     Iin : array_like
         input data set
     lmbda : float, optional
-        spline smooghing fall-off value, default is `5.0`.
+        spline smoothing fall-off value, default is `5.0`.
 
     Returns
     -------
@@ -551,7 +560,6 @@ _gauss_spline_kernel = cupy.ElementwiseKernel(
     output = 1 / sqrt( 2.0 * M_PI * signsq ) * exp( -( x * x ) * r_signsq );
     """,
     "_gauss_spline_kernel",
-    options=("-std=c++11",),
     loop_prep="const double signsq { ( n + 1 ) / 12.0 }; \
                const double r_signsq { 0.5 / signsq };",
 )

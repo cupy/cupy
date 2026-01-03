@@ -12,7 +12,9 @@ Basic operations
    :toctree: generated/
 
    copyto
+   ndim
    shape
+   size
 
 
 Changing array shape
@@ -23,8 +25,11 @@ Changing array shape
 
    reshape
    ravel
+   # ndarray.flat
+   # ndarray.flatten
 
 .. seealso:: :attr:`cupy.ndarray.flat` and :func:`cupy.ndarray.flatten`
+
 
 Transpose-like operations
 -------------------------
@@ -35,7 +40,10 @@ Transpose-like operations
    moveaxis
    rollaxis
    swapaxes
+   # ndarray.T
    transpose
+   permute_dims
+   # matrix_transpose (Array API compatible)
 
 .. seealso:: :attr:`cupy.ndarray.T`
 
@@ -63,7 +71,7 @@ Changing kind of array
 
    asarray
    asanyarray
-   asfarray
+   # asmatrix
    asfortranarray
    ascontiguousarray
    asarray_chkfinite
@@ -77,12 +85,13 @@ Joining arrays
    :toctree: generated/
 
    concatenate
+   concat
    stack
+   # block
    vstack
    hstack
    dstack
    column_stack
-   row_stack
 
 
 Splitting arrays
@@ -96,6 +105,7 @@ Splitting arrays
    dsplit
    hsplit
    vsplit
+   # unstack
 
 
 Tiling arrays
@@ -115,10 +125,12 @@ Adding and removing elements
    :toctree: generated/
 
    delete
+   # insert
    append
    resize
-   unique
    trim_zeros
+   unique
+   pad
 
 
 Rearranging elements
@@ -130,6 +142,5 @@ Rearranging elements
    flip
    fliplr
    flipud
-   reshape
    roll
    rot90

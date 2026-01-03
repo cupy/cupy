@@ -4,6 +4,7 @@ from libc.stdint cimport uint16_t
 
 from cupy._core._carray cimport shape_t
 from cupy._core._carray cimport strides_t
+from cupy._core.core cimport _ndarray_base
 
 
 cpdef Py_ssize_t prod(const vector.vector[Py_ssize_t]& args)
@@ -40,12 +41,6 @@ cpdef tuple complete_slice_list(list slice_list, Py_ssize_t ndim)
 
 cpdef size_t clp2(size_t x)
 
-ctypedef unsigned short _float16
-
-cpdef uint16_t to_float16(float f)
-
-cpdef float from_float16(uint16_t v)
-
 cdef int _normalize_order(order, cpp_bool allow_k=*) except? 0
 
 cdef _broadcast_core(list arrays, shape_t& shape)
@@ -64,3 +59,9 @@ cpdef int _update_order_char(
     bint is_c_contiguous, bint is_f_contiguous, int order_char)
 
 cpdef tuple _broadcast_shapes(shapes)
+
+cdef bint _is_layout_expected(
+    const bint c_contiguous, const bint f_contiguous,
+    expected_order) except*
+
+cdef bint check_aligned(_ndarray_base arr) except -1

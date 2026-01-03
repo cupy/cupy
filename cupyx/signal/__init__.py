@@ -10,3 +10,4 @@ from cupyx.signal._radartools import pulse_compression  # NOQA
 from cupyx.signal._radartools import pulse_doppler  # NOQA
 from cupyx.signal._radartools import cfar_alpha  # NOQA
 from cupyx.signal._radartools import ca_cfar  # NOQA
+from cupyx.signal._radartools import mvdr  # NOQA

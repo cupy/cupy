@@ -8,36 +8,23 @@
 #include <thrust/sort.h>
 #include <thrust/tuple.h>
 #include <thrust/execution_policy.h>
-#if (__CUDACC_VER_MAJOR__ >11 || (__CUDACC_VER_MAJOR__ == 11 && __CUDACC_VER_MINOR__ >= 2) || HIP_VERSION >= 402)
-// This is used to avoid a problem with constexpr in functions declarations introduced in
-// cuda 11.2, MSVC 15 does not fully support it so we need a dummy constexpr declaration
-// that is provided by this header. However optional.h is only available
-// starting CUDA 10.1
-#include <thrust/optional.h>
-
-#ifdef _MSC_VER
-#define THRUST_OPTIONAL_CPP11_CONSTEXPR_LESS constexpr
-#else
-#define THRUST_OPTIONAL_CPP11_CONSTEXPR_LESS THRUST_OPTIONAL_CPP11_CONSTEXPR
-#endif
-
-#endif
+#include <type_traits>
 
 
 #if CUPY_USE_HIP
 typedef hipStream_t cudaStream_t;
 namespace cuda {
-    using thrust::hip::par;
+    using thrust::hip::par_nosync;
 }
 #else // #if CUPY_USE_HIP
 namespace cuda {
-    using thrust::cuda::par;
+    using thrust::cuda::par_nosync;
 }
 #endif // #if CUPY_USE_HIP
 
 
 extern "C" char *cupy_malloc(void *, size_t);
-extern "C" void cupy_free(void *, char *);
+extern "C" int cupy_free(void *, char *);
 
 
 class cupy_allocator {
@@ -73,18 +60,45 @@ public:
  * Ref: https://numpy.org/doc/stable/reference/generated/numpy.sort.html
  */
 
-template <typename T>
-__host__ __device__ __forceinline__
-#if (__CUDACC_VER_MAJOR__ >11 || (__CUDACC_VER_MAJOR__ == 11 && __CUDACC_VER_MINOR__ >= 2))
-THRUST_OPTIONAL_CPP11_CONSTEXPR
+#if ((__CUDACC_VER_MAJOR__ > 9 || (__CUDACC_VER_MAJOR__ == 9 && __CUDACC_VER_MINOR__ == 2)) \
+&& (__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))) || (defined(__HIPCC__) || defined(CUPY_USE_HIP))
+    #define ENABLE_HALF
 #endif
-bool _tuple_less(const thrust::tuple<size_t, T>& lhs,
+
+#ifdef ENABLE_HALF
+__host__ __device__ __forceinline__ bool isnan(const __half& x) {
+    #if (defined(__CUDA_ARCH__) || defined(__HIP_DEVICE_COMPILE__))
+    return __hisnan(x);
+    #else
+    return false;  // This will never be called on the host
+    #endif
+}
+#endif // ENABLE_HALF
+
+template <typename T>
+__host__ __device__ __forceinline__ constexpr
+static bool real_less(const T& lhs, const T& rhs) {
+#if  (defined(__CUDA_ARCH__) || defined(__HIP_DEVICE_COMPILE__))
+    if (isnan(lhs)) {
+        return false;
+    } else if (isnan(rhs)) {
+        return true;
+    } else {
+        return lhs < rhs;
+    }
+#else
+    return false;  // This will be never executed in the host
+#endif
+}
+
+template <typename T>
+__host__ __device__ __forceinline__ constexpr
+static bool tuple_less(const thrust::tuple<size_t, T>& lhs,
 		 const thrust::tuple<size_t, T>& rhs) {
     const size_t& lhs_k = thrust::get<0>(lhs);
     const size_t& rhs_k = thrust::get<0>(rhs);
     const T& lhs_v = thrust::get<1>(lhs);
     const T& rhs_v = thrust::get<1>(rhs);
-    const thrust::less<T> _less;
 
     // tuple's comparison rule: compare the 1st member, then 2nd, then 3rd, ...,
     // which should be respected
@@ -92,9 +106,8 @@ bool _tuple_less(const thrust::tuple<size_t, T>& lhs,
         return true;
     } else if (lhs_k == rhs_k) {
         // same key, compare values
-        // note that we can't rely on native operator< due to NaN, so we rely on
-        // thrust::less() to be specialized shortly
-        return _less(lhs_v, rhs_v);
+        // note that we can't rely on native operator< due to NaN, so we rely on our custom comparison object
+        return real_less(lhs_v, rhs_v);
     } else {
         return false;
     }
@@ -102,19 +115,16 @@ bool _tuple_less(const thrust::tuple<size_t, T>& lhs,
 
 /*
  * ********** complex numbers **********
- * We need to specialize thrust::less because obviously we can't overload operator< for complex numbers...
+ * We need a custom comparator because we can't overload operator< for complex numbers...
  */
 
 template <typename T>
-__host__ __device__ __forceinline__
-#if (__CUDACC_VER_MAJOR__ >11 || (__CUDACC_VER_MAJOR__ == 11 && __CUDACC_VER_MINOR__ >= 2))
-THRUST_OPTIONAL_CPP11_CONSTEXPR
-#endif
-bool _cmp_less(const T& lhs, const T& rhs) {
-    bool lhsRe = isnan(lhs.real());
-    bool lhsIm = isnan(lhs.imag());
-    bool rhsRe = isnan(rhs.real());
-    bool rhsIm = isnan(rhs.imag());
+__host__ __device__ __forceinline__ constexpr
+static bool complex_less(const T& lhs, const T& rhs) {
+    const bool lhsRe = isnan(lhs.real());
+    const bool lhsIm = isnan(lhs.imag());
+    const bool rhsRe = isnan(rhs.real());
+    const bool rhsIm = isnan(rhs.imag());
 
     // neither side has nan
     if (!lhsRe && !lhsIm && !rhsRe && !rhsIm) {
@@ -147,169 +157,127 @@ bool _cmp_less(const T& lhs, const T& rhs) {
     return (((lhsIm && rhsIm) && (lhs.real() < rhs.real())) || ((lhsRe && rhsRe) && (lhs.imag() < rhs.imag())));
 }
 
-// specialize thrust::less for single complex
-template <>
-__host__ __device__ __forceinline__
-#if (__CUDACC_VER_MAJOR__ >11 || (__CUDACC_VER_MAJOR__ == 11 && __CUDACC_VER_MINOR__ >= 2) || HIP_VERSION >= 402)
-THRUST_OPTIONAL_CPP11_CONSTEXPR_LESS
-#endif
-bool thrust::less<complex<float>>::operator() (
-    const complex<float>& lhs, const complex<float>& rhs) const {
-
-    return _cmp_less<complex<float>>(lhs, rhs);
-}
-
-// specialize thrust::less for double complex
-template <>
-__host__ __device__ __forceinline__
-#if (__CUDACC_VER_MAJOR__ >11 || (__CUDACC_VER_MAJOR__ == 11 && __CUDACC_VER_MINOR__ >= 2) || HIP_VERSION >= 402)
-THRUST_OPTIONAL_CPP11_CONSTEXPR_LESS
-#endif
-bool thrust::less<complex<double>>::operator() (
-    const complex<double>& lhs, const complex<double>& rhs) const {
-
-    return _cmp_less<complex<double>>(lhs, rhs);
-}
-
-// specialize thrust::less for tuple<size_t, complex<float>>
-template <>
-__host__ __device__ __forceinline__
-#if (__CUDACC_VER_MAJOR__ >11 || (__CUDACC_VER_MAJOR__ == 11 && __CUDACC_VER_MINOR__ >= 2) || HIP_VERSION >= 402)
-THRUST_OPTIONAL_CPP11_CONSTEXPR_LESS
-#endif
-bool thrust::less< thrust::tuple<size_t, complex<float>> >::operator() (
-    const thrust::tuple<size_t, complex<float>>& lhs, const thrust::tuple<size_t, complex<float>>& rhs) const {
-
-    return _tuple_less<complex<float>>(lhs, rhs);
-}
-
-// specialize thrust::less for tuple<size_t, complex<double>>
-template <>
-__host__ __device__ __forceinline__
-#if (__CUDACC_VER_MAJOR__ >11 || (__CUDACC_VER_MAJOR__ == 11 && __CUDACC_VER_MINOR__ >= 2) || HIP_VERSION >= 402)
-THRUST_OPTIONAL_CPP11_CONSTEXPR_LESS
-#endif
-bool thrust::less< thrust::tuple<size_t, complex<double>> >::operator() (
-    const thrust::tuple<size_t, complex<double>>& lhs, const thrust::tuple<size_t, complex<double>>& rhs) const {
-
-    return _tuple_less<complex<double>>(lhs, rhs);
-}
-
-/*
- * ********** real numbers (templates) **********
- * We need to specialize thrust::less because obviously we can't overload operator< for floating point numbers...
- */
-
+// Type function giving us the right comparison operator. We use a custom one for all the specializations below,
+// but otherwise just default to thrust::less. We notable do not define a specialization for float and double, since
+// thrust uses radix sort for them and sorts NaNs to the back.
 template <typename T>
-__host__ __device__ __forceinline__
-#if (__CUDACC_VER_MAJOR__ >11 || (__CUDACC_VER_MAJOR__ == 11 && __CUDACC_VER_MINOR__ >= 2))
-THRUST_OPTIONAL_CPP11_CONSTEXPR
-#endif
-bool _real_less(const T& lhs, const T& rhs) {
-    #if  (defined(__CUDA_ARCH__) || defined(__HIP_DEVICE_COMPILE__))
-    if (isnan(lhs)) {
-        return false;
-    } else if (isnan(rhs)) {
-        return true;
-    } else {
-        return lhs < rhs;
-    }
-    #else
-    return false;  // This will be never executed in the host
-    #endif
-}
+struct select_less {
+    using type = thrust::less<T>;
+};
 
-/*
- * ********** real numbers (specializations for single & double precisions) **********
- */
+// complex numbers
 
-// specialize thrust::less for float
 template <>
-__host__ __device__ __forceinline__
-#if (__CUDACC_VER_MAJOR__ >11 || (__CUDACC_VER_MAJOR__ == 11 && __CUDACC_VER_MINOR__ >= 2) || HIP_VERSION >= 402)
-THRUST_OPTIONAL_CPP11_CONSTEXPR_LESS
-#endif
-bool thrust::less<float>::operator() (
-    const float& lhs, const float& rhs) const {
+struct select_less<complex<float>> {
+    struct type {
+        __host__ __device__ __forceinline__ constexpr
+        bool operator() (
+            const complex<float>& lhs, const complex<float>& rhs) const {
+            return complex_less(lhs, rhs);
+        }
+    };
+};
 
-    return _real_less<float>(lhs, rhs);
-}
-
-// specialize thrust::less for double
 template <>
-__host__ __device__ __forceinline__
-#if (__CUDACC_VER_MAJOR__ >11 || (__CUDACC_VER_MAJOR__ == 11 && __CUDACC_VER_MINOR__ >= 2) || HIP_VERSION >= 402)
-THRUST_OPTIONAL_CPP11_CONSTEXPR_LESS
-#endif
-bool thrust::less<double>::operator() (
-    const double& lhs, const double& rhs) const {
+struct select_less<complex<double>> {
+    struct type {
+        __host__ __device__ __forceinline__ constexpr
+        bool operator() (
+            const complex<double>& lhs, const complex<double>& rhs) const {
+            return complex_less(lhs, rhs);
+        }
+    };
+};
 
-    return _real_less<double>(lhs, rhs);
-}
-
-// specialize thrust::less for tuple<size_t, float>
 template <>
-__host__ __device__ __forceinline__
-#if (__CUDACC_VER_MAJOR__ >11 || (__CUDACC_VER_MAJOR__ == 11 && __CUDACC_VER_MINOR__ >= 2) || HIP_VERSION >= 402)
-THRUST_OPTIONAL_CPP11_CONSTEXPR_LESS
-#endif
-bool thrust::less< thrust::tuple<size_t, float> >::operator() (
-    const thrust::tuple<size_t, float>& lhs, const thrust::tuple<size_t, float>& rhs) const {
+struct select_less<thrust::tuple<size_t, complex<float>>> {
+    struct type {
+        __host__ __device__ __forceinline__ constexpr
+        bool operator() (
+            const thrust::tuple<size_t, complex<float>>& lhs, const thrust::tuple<size_t, complex<float>>& rhs) const {
+            return tuple_less(lhs, rhs);
+        }
+    };
+};
 
-    return _tuple_less<float>(lhs, rhs);
-}
-
-// specialize thrust::less for tuple<size_t, double>
 template <>
-__host__ __device__ __forceinline__
-#if (__CUDACC_VER_MAJOR__ >11 || (__CUDACC_VER_MAJOR__ == 11 && __CUDACC_VER_MINOR__ >= 2) || HIP_VERSION >= 402)
-THRUST_OPTIONAL_CPP11_CONSTEXPR_LESS
-#endif
-bool thrust::less< thrust::tuple<size_t, double> >::operator() (
-    const thrust::tuple<size_t, double>& lhs, const thrust::tuple<size_t, double>& rhs) const {
+struct select_less<thrust::tuple<size_t, complex<double>>> {
+    struct type {
+        __host__ __device__ __forceinline__ constexpr
+        bool operator() (
+            const thrust::tuple<size_t, complex<double>>& lhs, const thrust::tuple<size_t, complex<double>>& rhs) const {
+            return tuple_less(lhs, rhs);
+        }
+    };
+};
 
-    return _tuple_less<double>(lhs, rhs);
-}
-
-/*
- * ********** real numbers (specializations for half precision) **********
- */
-
-#if ((__CUDACC_VER_MAJOR__ > 9 || (__CUDACC_VER_MAJOR__ == 9 && __CUDACC_VER_MINOR__ == 2)) \
-     && (__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))) || (defined(__HIPCC__) || defined(CUPY_USE_HIP))
-
-// it seems Thrust doesn't care the code path on host, so we just need a wrapper for device
-__host__ __device__ __forceinline__ bool isnan(const __half& x) {
-    #if (defined(__CUDA_ARCH__) || defined(__HIP_DEVICE_COMPILE__))
-    return __hisnan(x);
-    #else
-    return false;  // This will never be called on the host
-    #endif
-}
-
-// specialize thrust::less for __half
 template <>
-__host__ __device__ __forceinline__
-#if (__CUDACC_VER_MAJOR__ >11 || (__CUDACC_VER_MAJOR__ == 11 && __CUDACC_VER_MINOR__ >= 2) || HIP_VERSION >= 402)
-THRUST_OPTIONAL_CPP11_CONSTEXPR_LESS
-#endif
-bool thrust::less<__half>::operator() (const __half& lhs, const __half& rhs) const {
-    return _real_less<__half>(lhs, rhs);
-}
+struct select_less<thrust::tuple<size_t, float>> {
+    struct type {
+        __host__ __device__ __forceinline__ constexpr
+        bool operator() (
+            const thrust::tuple<size_t, float>& lhs, const thrust::tuple<size_t, float>& rhs) const {
+            return tuple_less(lhs, rhs);
+        }
+    };
+};
 
-// specialize thrust::less for tuple<size_t, __half>
 template <>
-__host__ __device__ __forceinline__
-#if (__CUDACC_VER_MAJOR__ >11 || (__CUDACC_VER_MAJOR__ == 11 && __CUDACC_VER_MINOR__ >= 2) || HIP_VERSION >= 402)
-THRUST_OPTIONAL_CPP11_CONSTEXPR_LESS
-#endif
-bool thrust::less< thrust::tuple<size_t, __half> >::operator() (
-    const thrust::tuple<size_t, __half>& lhs, const thrust::tuple<size_t, __half>& rhs) const {
+struct select_less<thrust::tuple<size_t, double>> {
+    struct type {
+        __host__ __device__ __forceinline__ constexpr
+        bool operator() (
+            const thrust::tuple<size_t, double>& lhs, const thrust::tuple<size_t, double>& rhs) const {
+            return tuple_less(lhs, rhs);
+        }
+    };
+};
 
-    return _tuple_less<__half>(lhs, rhs);
-}
+// floating points
 
-#endif  // include cupy_fp16.h
+template <>
+struct select_less<float> {
+    struct type {
+        __host__ __device__ __forceinline__ constexpr
+        bool operator() (const float& lhs, const float& rhs) const {
+            return real_less(lhs, rhs);
+        }
+    };
+};
+
+template <>
+struct select_less<double> {
+    struct type {
+        __host__ __device__ __forceinline__ constexpr
+        bool operator() (const double& lhs, const double& rhs) const {
+            return real_less(lhs, rhs);
+        }
+    };
+};
+
+#ifdef ENABLE_HALF
+template <>
+struct select_less<__half> {
+    struct type {
+        __host__ __device__ __forceinline__ constexpr
+        bool operator() (const __half& lhs, const __half& rhs) const {
+            return real_less(lhs, rhs);
+        }
+    };
+};
+
+template <>
+struct select_less<thrust::tuple<size_t, __half>> {
+    struct type {
+        __host__ __device__ __forceinline__ constexpr
+        bool operator() (
+            const thrust::tuple<size_t, __half>& lhs, const thrust::tuple<size_t, __half>& rhs) const {
+
+            return tuple_less(lhs, rhs);
+        }
+    };
+};
+#endif  // ENABLE_HALF
 
 /*
  * -------------------------------------------------- end of boilerplate --------------------------------------------------
@@ -327,7 +295,7 @@ struct _sort {
                                     void* memory) {
         size_t ndim = shape.size();
         ptrdiff_t size;
-	thrust::device_ptr<T> dp_data_first, dp_data_last;
+        thrust::device_ptr<T> dp_data_first, dp_data_last;
         thrust::device_ptr<size_t> dp_keys_first, dp_keys_last;
         cudaStream_t stream_ = (cudaStream_t)stream;
         cupy_allocator alloc(memory);
@@ -342,12 +310,14 @@ struct _sort {
         dp_data_last  = thrust::device_pointer_cast(static_cast<T*>(data_start) + size);
 
         if (ndim == 1) {
-            stable_sort(cuda::par(alloc).on(stream_), dp_data_first, dp_data_last, thrust::less<T>());
+            // we use thrust::less directly to sort floating points, because then it can use radix sort, which happens to sort NaNs to the back
+            using compare_op = std::conditional_t<std::is_floating_point<T>::value, thrust::less<T>, typename select_less<T>::type>;
+            stable_sort(cuda::par_nosync(alloc).on(stream_), dp_data_first, dp_data_last, compare_op{});
         } else {
             // Generate key indices.
             dp_keys_first = thrust::device_pointer_cast(keys_start);
             dp_keys_last  = thrust::device_pointer_cast(keys_start + size);
-            transform(cuda::par(alloc).on(stream_),
+            transform(cuda::par_nosync(alloc).on(stream_),
                       #ifdef __HIP_PLATFORM_HCC__
                       rocprim::make_counting_iterator<size_t>(0),
                       rocprim::make_counting_iterator<size_t>(size),
@@ -361,10 +331,10 @@ struct _sort {
                       thrust::divides<size_t>());
 
             stable_sort(
-                cuda::par(alloc).on(stream_),
-                make_zip_iterator(make_tuple(dp_keys_first, dp_data_first)),
-                make_zip_iterator(make_tuple(dp_keys_last, dp_data_last)),
-                thrust::less< thrust::tuple<size_t, T> >());
+                cuda::par_nosync(alloc).on(stream_),
+                make_zip_iterator(dp_keys_first, dp_data_first),
+                make_zip_iterator(dp_keys_last, dp_data_last),
+                typename select_less<thrust::tuple<size_t, T>>::type{});
         }
     }
 };
@@ -379,7 +349,7 @@ class elem_less {
 public:
     elem_less(const T *data):_data(data) {}
     __device__ __forceinline__ bool operator()(size_t i, size_t j) const {
-        return thrust::less<T>()(_data[i], _data[j]);
+        return typename select_less<T>::type{}(_data[i], _data[j]);
     }
 private:
     const T *_data;
@@ -396,11 +366,11 @@ struct _lexsort {
         thrust::device_ptr<size_t> dp_last  = thrust::device_pointer_cast(idx_start + n);
         cudaStream_t stream_ = (cudaStream_t)stream;
         cupy_allocator alloc(memory);
-        sequence(cuda::par(alloc).on(stream_), dp_first, dp_last);
+        sequence(cuda::par_nosync(alloc).on(stream_), dp_first, dp_last);
         for (size_t i = 0; i < k; ++i) {
             T *key_start = static_cast<T*>(keys_start) + i * n;
             stable_sort(
-                cuda::par(alloc).on(stream_),
+                cuda::par_nosync(alloc).on(stream_),
                 dp_first,
                 dp_last,
                 elem_less<T>(key_start)
@@ -446,7 +416,7 @@ struct _argsort {
         // Generate an index sequence.
         dp_idx_first = thrust::device_pointer_cast(static_cast<size_t*>(idx_start));
         dp_idx_last  = thrust::device_pointer_cast(static_cast<size_t*>(idx_start) + size);
-        transform(cuda::par(alloc).on(stream_),
+        transform(cuda::par_nosync(alloc).on(stream_),
                   #ifdef __HIP_PLATFORM_HCC__
                   rocprim::make_counting_iterator<size_t>(0),
                   rocprim::make_counting_iterator<size_t>(size),
@@ -460,16 +430,19 @@ struct _argsort {
                   thrust::modulus<size_t>());
 
         if (ndim == 1) {
+            // we use thrust::less directly to sort floating points, because then it can use radix sort, which happens to sort NaNs to the back
+            using compare_op = std::conditional_t<std::is_floating_point<T>::value, thrust::less<T>, typename select_less<T>::type>;
             // Sort the index sequence by data.
-            stable_sort_by_key(cuda::par(alloc).on(stream_),
+            stable_sort_by_key(cuda::par_nosync(alloc).on(stream_),
                                dp_data_first,
                                dp_data_last,
-                               dp_idx_first);
+                               dp_idx_first,
+                               compare_op{});
         } else {
             // Generate key indices.
             dp_keys_first = thrust::device_pointer_cast(static_cast<size_t*>(keys_start));
             dp_keys_last  = thrust::device_pointer_cast(static_cast<size_t*>(keys_start) + size);
-            transform(cuda::par(alloc).on(stream_),
+            transform(cuda::par_nosync(alloc).on(stream_),
                       #ifdef __HIP_PLATFORM_HCC__
                       rocprim::make_counting_iterator<size_t>(0),
                       rocprim::make_counting_iterator<size_t>(size),
@@ -483,10 +456,11 @@ struct _argsort {
                       thrust::divides<size_t>());
 
             stable_sort_by_key(
-                cuda::par(alloc).on(stream_),
-                make_zip_iterator(make_tuple(dp_keys_first, dp_data_first)),
-                make_zip_iterator(make_tuple(dp_keys_last, dp_data_last)),
-                dp_idx_first);
+                cuda::par_nosync(alloc).on(stream_),
+                make_zip_iterator(dp_keys_first, dp_data_first),
+                make_zip_iterator(dp_keys_last, dp_data_last),
+                dp_idx_first,
+                typename select_less<thrust::tuple<size_t, T>>::type{});
         }
     }
 };

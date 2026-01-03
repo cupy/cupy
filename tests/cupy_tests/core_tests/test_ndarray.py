@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import copy
 import unittest
 
@@ -26,9 +28,8 @@ def wrap_take(array, *args, **kwargs):
 class TestNdarrayInit(unittest.TestCase):
 
     def test_shape_none(self):
-        with testing.assert_warns(DeprecationWarning):
-            a = cupy.ndarray(None)
-        assert a.shape == ()
+        with pytest.raises(TypeError):
+            cupy.ndarray(None)
 
     def test_shape_int(self):
         a = cupy.ndarray(3)
@@ -144,11 +145,17 @@ class TestNdarrayInitRaise(unittest.TestCase):
         with pytest.raises(ValueError):
             _core.array(arr)
 
+    @testing.with_requires('numpy>=2.0')
+    @testing.numpy_cupy_array_equal()
+    def test_upper_limit_ndim(self, xp):
+        shape = [1 for i in range(64)]
+        return xp.zeros(shape, dtype=xp.int8)
+
     def test_excessive_ndim(self):
         for xp in (numpy, cupy):
             with pytest.raises(ValueError):
                 xp.ndarray(
-                    shape=[1 for i in range(33)], dtype=xp.int8)
+                    shape=[1 for i in range(65)], dtype=xp.int8)
 
 
 @testing.parameterize(
@@ -276,8 +283,6 @@ class TestNdarrayShape(unittest.TestCase):
             assert 'incompatible shape' in str(e.value).lower()
 
 
-@pytest.mark.skipif(cupy.cuda.runtime.is_hip,
-                    reason='HIP does not support this')
 class TestNdarrayCudaInterface(unittest.TestCase):
 
     def test_cuda_array_interface(self):
@@ -338,8 +343,6 @@ class TestNdarrayCudaInterface(unittest.TestCase):
     'stream': ('null', 'new', 'ptds'),
     'ver': (2, 3),
 }))
-@pytest.mark.skipif(cupy.cuda.runtime.is_hip,
-                    reason='HIP does not support this')
 class TestNdarrayCudaInterfaceStream(unittest.TestCase):
     def setUp(self):
         if self.stream == 'null':
@@ -379,22 +382,6 @@ class TestNdarrayCudaInterfaceStream(unittest.TestCase):
                 assert iface['stream'] == ptr
             else:
                 assert iface['stream'] == stream.ptr
-
-
-@pytest.mark.skipif(not cupy.cuda.runtime.is_hip,
-                    reason='This is supported on CUDA')
-class TestNdarrayCudaInterfaceNoneCUDA(unittest.TestCase):
-
-    def setUp(self):
-        self.arr = cupy.zeros(shape=(2, 3), dtype=cupy.float64)
-
-    def test_cuda_array_interface_hasattr(self):
-        assert not hasattr(self.arr, '__cuda_array_interface__')
-
-    def test_cuda_array_interface_getattr(self):
-        with pytest.raises(AttributeError) as e:
-            getattr(self.arr, '__cuda_array_interface__')
-        assert 'HIP' in str(e.value)
 
 
 @testing.parameterize(

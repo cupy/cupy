@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import re
 import unittest
 
@@ -215,7 +217,7 @@ class TestCheckCupyNumpyError(unittest.TestCase):
             dummy_axis_error(self)
 
 
-class NumPyCuPyDecoratorBase(object):
+class NumPyCuPyDecoratorBase:
 
     def test_valid(self):
         decorator = getattr(testing, self.decorator)()
@@ -248,7 +250,7 @@ def cupy_error(_, xp):
         raise ValueError()
 
 
-class NumPyCuPyDecoratorBase2(object):
+class NumPyCuPyDecoratorBase2:
 
     def test_accept_error_numpy(self):
         decorator = getattr(testing, self.decorator)(accept_error=False)

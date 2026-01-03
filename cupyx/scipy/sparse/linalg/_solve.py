@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import numpy
 
 import cupy
@@ -168,12 +170,17 @@ def lsmr(A, b, x0=None, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8,
     if maxiter is None:
         maxiter = minDim * 5
 
+    if x0 is None:
+        dtype = cupy.result_type(A, b, float)
+    else:
+        dtype = cupy.result_type(A, b, x0, float)
+
     u = b.copy()
     normb = cublas.nrm2(b)
     beta = normb.copy()
     normb = normb.get().item()
     if x0 is None:
-        x = cupy.zeros((n,), dtype=A.dtype)
+        x = cupy.zeros((n,), dtype=dtype)
     else:
         if not (x0.shape == (n,) or x0.shape == (n, 1)):
             raise ValueError('x0 has incompatible dimensions')
@@ -183,7 +190,7 @@ def lsmr(A, b, x0=None, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8,
 
     beta_cpu = beta.get().item()
 
-    v = cupy.zeros(n)
+    v = cupy.zeros(n, dtype)
     alpha = cupy.zeros((), dtype=beta.dtype)
     alpha_cpu = 0
 
@@ -207,7 +214,7 @@ def lsmr(A, b, x0=None, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8,
     sbar = 0
 
     h = v.copy()
-    hbar = cupy.zeros(n)
+    hbar = cupy.zeros(n, dtype)
     # x = cupy.zeros(n)
 
     # Initialize variables for estimation of ||r||.
@@ -525,7 +532,7 @@ def spsolve(A, b):
         return cupyx.cusolver.csrlsvqr(A, b)
 
 
-class SuperLU():
+class SuperLU:
 
     def __init__(self, obj):
         """LU factorization of a sparse matrix.

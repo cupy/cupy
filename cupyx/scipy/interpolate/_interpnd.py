@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 
 import cupy
 from cupy._core._scalar import get_typename
@@ -10,12 +12,7 @@ TYPES = ['double', 'thrust::complex<double>']
 
 
 def _get_module_func(module, func_name, *template_args):
-    def _get_typename(dtype):
-        typename = get_typename(dtype)
-        if dtype.kind == 'c':
-            typename = 'thrust::' + typename
-        return typename
-    args_dtypes = [_get_typename(arg.dtype) for arg in template_args]
+    args_dtypes = [get_typename(arg.dtype) for arg in template_args]
     template = ', '.join(args_dtypes)
     kernel_name = f'{func_name}<{template}>' if template_args else func_name
     kernel = module.get_function(kernel_name)
@@ -234,7 +231,7 @@ __global__ void evaluate_linear_nd_interp(
 """
 
 LINEAR_INTERP_ND_MODULE = cupy.RawModule(
-    code=LINEAR_INTERP_ND_DEF, options=('-std=c++11',),
+    code=LINEAR_INTERP_ND_DEF, options=('-std=c++17',),
     name_expressions=[f'evaluate_linear_nd_interp<{t}>' for t in TYPES])
 
 
@@ -640,7 +637,7 @@ __global__ void clough_tocher_2d(
 """
 
 CT_MODULE = cupy.RawModule(
-    code=CT_DEF, options=('-std=c++11',),
+    code=CT_DEF, options=('-std=c++17',),
     name_expressions=['estimate_gradients_2d'] +
                      [f'clough_tocher_2d<{t}>' for t in TYPES])
 

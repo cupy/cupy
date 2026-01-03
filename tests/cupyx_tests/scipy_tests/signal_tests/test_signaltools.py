@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import sys
 
 import numpy as np
@@ -11,6 +13,7 @@ import cupyx.scipy.signal
 
 try:
     import scipy.signal  # NOQA
+    scipy_version = np.lib.NumpyVersion(scipy.__version__)
 except ImportError:
     pass
 
@@ -343,6 +346,9 @@ class TestOrderFilter:
     @testing.numpy_cupy_allclose(atol=1e-8, rtol=1e-8, scipy_name='scp',
                                  accept_error=ValueError)  # for even kernels
     def test_order_filter(self, xp, scp, dtype):
+        if dtype == xp.longlong and "1.15.0" <= scipy_version < "1.17.0":
+            # https://github.com/scipy/scipy/issues/22368
+            return xp.array([])  # Skip
         a = testing.shaped_random(self.a, xp, dtype)
         d = self.domain
         d = d[:a.ndim] if isinstance(d, tuple) else (d,)*a.ndim
@@ -375,6 +381,9 @@ class TestMedFilt:
         atol=1e-8, rtol=1e-8, scipy_name='scp',
         accept_error=ValueError)  # for even kernels
     def test_medfilt(self, xp, scp, dtype):
+        if dtype == xp.longlong and "1.15.0" <= scipy_version < "1.17.0":
+            # https://github.com/scipy/scipy/issues/22368
+            return xp.array([])  # Skip
         if sys.platform == 'win32':
             pytest.xfail('medfilt broken for Scipy 1.7.0 in windows')
         volume = testing.shaped_random(self.volume, xp, dtype)
@@ -814,6 +823,13 @@ class TestSosFilt:
         out, _ = scp.signal.sosfilt(sos, x, zi=zi)
         return out
 
+    def test_sosfilt_zi_sosfilt(self):
+        sos = cupyx.scipy.signal.butter(6, 0.2, output='sos')
+        zi = cupyx.scipy.signal.sosfilt_zi(sos)
+        _, zf = cupyx.scipy.signal.sosfilt(
+            sos, cupy.ones(40, dtype=cupy.float64), zi=zi)
+        testing.assert_allclose(zi, zf)
+
 
 @testing.with_requires('scipy')
 class TestDetrend:
@@ -1075,3 +1091,32 @@ class TestHilbert2:
     def test_hilbert2_types(self, dtype, xp, scp):
         in_typed = xp.zeros((2, 32), dtype=dtype)
         return scp.signal.hilbert2(in_typed)
+
+    @testing.with_requires("scipy>=1.17")
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_1d_input(self, xp, scp):
+        x = xp.asarray([0., 1., 1., 0., -1., -1.])
+        x0a = scp.signal.hilbert2(xp.reshape(x, (6, 1)))
+        return x0a
+
+    @testing.with_requires("scipy>=1.17")
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @pytest.mark.parametrize("N", [4, (4, 4)])
+    def test_parameter_N(self, xp, scp, N):
+        """Compare passing tuple to single int. """
+        x = xp.zeros((5, 5))
+        x_a = scp.signal.hilbert2(x, N=N)
+        return x_a
+
+    @testing.with_requires("scipy>=1.17")
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-15)
+    @pytest.mark.parametrize('shape', [(4, 5), (5, 4), (4, 4), (5, 5)])
+    def test_quadrant_values(self, shape, xp, scp):
+        x_f = xp.ones(shape, dtype=xp.complex128)  # FFT of input signal
+        x_f[0, 0] += 7
+        x = xp.real(scp.fft.ifft2(x_f))  # x.imag is zero
+
+        x_as = scp.signal.hilbert2(x)
+        x_as_f = scp.fft.fft2(x_as)
+
+        return x_as_f

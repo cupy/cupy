@@ -309,7 +309,7 @@ Half-precision FFT
     out_np = out_np.view(np.float32)
     out_np = out_np.astype(np.float16)
 
-    # don't worry about accruacy for now, as we probably lost a lot during casting
+    # don't worry about accuracy for now, as we probably lost a lot during casting
     print('ok' if cp.mean(cp.abs(out - cp.asarray(out_np))) < 0.1 else 'not ok')
 
 The 64-bit indexing support for all high-level FFT APIs is planned for a future CuPy release.

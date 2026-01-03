@@ -17,6 +17,7 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE
+from __future__ import annotations
 
 
 import cupy
@@ -29,7 +30,6 @@ _real_cepstrum_kernel = cupy.ElementwiseKernel(
     output = log( abs( spectrum ) );
     """,
     "_real_cepstrum_kernel",
-    options=("-std=c++11",),
 )
 
 
@@ -70,7 +70,6 @@ _complex_cepstrum_kernel = cupy.ElementwiseKernel(
     output = log( abs( spectrum ) ) + C( 0, temp );
     """,
     "_complex_cepstrum_kernel",
-    options=("-std=c++11",),
     return_tuple=True,
     loop_prep="const int center { static_cast<int>( 0.5 * \
         ( _ind.size() + 1 ) ) };",
@@ -116,7 +115,6 @@ _inverse_complex_cepstrum_kernel = cupy.ElementwiseKernel(
     spectrum = exp( C( log_spectrum.real(), wrapped ) )
     """,
     "_inverse_complex_cepstrum_kernel",
-    options=("-std=c++11",),
     loop_prep="const double center { 0.5 * ( _ind.size() + 1 ) };",
 )
 
@@ -159,8 +157,7 @@ _minimum_phase_kernel = cupy.ElementwiseKernel(
     }
     """,
     "_minimum_phase_kernel",
-    options=("-std=c++11",),
-    loop_prep="const bool odd { _ind.size() & 1 }; \
+    loop_prep="const bool odd { (_ind.size() & 1) != 0 }; \
                const int bend { static_cast<int>( 0.5 * \
                     ( _ind.size() + odd ) ) };",
 )

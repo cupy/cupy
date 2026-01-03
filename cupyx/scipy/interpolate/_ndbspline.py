@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import itertools
 import operator
 from math import prod
@@ -239,7 +241,7 @@ __global__ void store_nd_bsplines(
 """
 
 NDBSPL_MOD = cupy.RawModule(
-    code=NDBSPL_DEF, options=('-std=c++11',),
+    code=NDBSPL_DEF, options=('-std=c++17',),
     name_expressions=['compute_nd_bsplines', 'store_nd_bsplines'] +
                      [f'eval_nd_bspline<{t}>' for t in TYPES])
 
@@ -497,7 +499,7 @@ class NdBSpline:
             k = (k,) * ndim
 
         if len(k) != ndim:
-            raise ValueError(f"{len(t) = } != {len(k) = }.")
+            raise ValueError(f"{len(t)=} != {len(k)=}.")
 
         self.k = tuple(operator.index(ki) for ki in k)
         self.t = tuple(cupy.ascontiguousarray(ti, dtype=float) for ti in t)
@@ -577,10 +579,10 @@ class NdBSpline:
             nu = cupy.asarray(nu, dtype=cupy.int32)
             if nu.ndim != 1 or nu.shape[0] != ndim:
                 raise ValueError(
-                    f"invalid number of derivative orders {nu = } for "
+                    f"invalid number of derivative orders {nu=} for "
                     f"ndim = {len(self.t)}.")
             if cupy.any(nu < 0).item():
-                raise ValueError(f"derivatives must be positive, got {nu = }")
+                raise ValueError(f"derivatives must be positive, got {nu=}")
 
         # prepare xi : shape (..., m1, ..., md) -> (1, m1, ..., md)
         xi = cupy.asarray(xi, dtype=float)
@@ -661,7 +663,7 @@ class NdBSpline:
         if len(t) != ndim:
             raise ValueError(
                 f"Data and knots are inconsistent: len(t) = {len(t)} for "
-                f" {ndim = }."
+                f" {ndim=}."
             )
         try:
             len(k)

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import pickle
 import sys
 
@@ -611,13 +613,12 @@ class TestCooMatrixScipyComparison:
         x = _make3(xp, sp, self.dtype).tocoo()
         return m.dot(x)
 
-    @testing.with_requires('scipy>=1.8.0rc1')
-    def test_dot_zero_dim(self):
-        for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
-            m = _make(xp, sp, self.dtype)
-            x = xp.array(2, dtype=self.dtype)
-            with pytest.raises(ValueError):
-                m.dot(x)
+    @testing.with_requires('scipy>=1.16')
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_dot_zero_dim(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        x = xp.array(2, dtype=self.dtype)
+        return m.dot(x)
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_dot_dense_vector(self, xp, sp):
@@ -632,7 +633,7 @@ class TestCooMatrixScipyComparison:
             with pytest.raises(ValueError):
                 m.dot(x)
 
-    @testing.numpy_cupy_allclose(sp_name='sp')
+    @testing.numpy_cupy_allclose(sp_name='sp', contiguous_check=False)
     def test_dot_dense_matrix(self, xp, sp):
         m = _make(xp, sp, self.dtype)
         x = xp.arange(8).reshape(4, 2).astype(self.dtype)
@@ -652,6 +653,7 @@ class TestCooMatrixScipyComparison:
             with pytest.raises(ValueError):
                 m.dot(x)
 
+    @testing.with_requires("scipy!=1.15.0", "scipy!=1.15.1")
     def test_dot_unsupported(self):
         for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
             m = _make(xp, sp, self.dtype)
@@ -811,7 +813,7 @@ class TestCooMatrixScipyComparison:
             with pytest.raises(ValueError):
                 m * x
 
-    @testing.numpy_cupy_allclose(sp_name='sp')
+    @testing.numpy_cupy_allclose(sp_name='sp', contiguous_check=False)
     def test_mul_dense_matrix(self, xp, sp):
         m = _make(xp, sp, self.dtype)
         x = xp.arange(8).reshape(4, 2).astype(self.dtype)
@@ -874,7 +876,7 @@ class TestCooMatrixScipyComparison:
         x = xp.array(2, dtype=self.dtype)
         return x * m
 
-    @testing.numpy_cupy_allclose(sp_name='sp')
+    @testing.numpy_cupy_allclose(sp_name='sp', contiguous_check=False)
     def test_rmul_dense_matrix(self, xp, sp):
         m = _make(xp, sp, self.dtype)
         x = xp.arange(12).reshape(4, 3).astype(self.dtype)
@@ -954,11 +956,11 @@ class TestCooMatrixScipyComparison:
             with pytest.raises(ValueError):
                 m ** -1
 
-    def test_sum_tuple_axis(self):
-        for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
-            m = _make(xp, sp, self.dtype)
-            with pytest.raises(TypeError):
-                m.sum(axis=(0, 1))
+    @testing.with_requires('scipy>=1.16')
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_sum_tuple_axis(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        return m.sum(axis=(0, 1))
 
     def test_sum_float_axis(self):
         for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):

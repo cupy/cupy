@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import atexit
 from ctypes import sizeof
 import multiprocessing
@@ -85,7 +87,7 @@ class TCPStore:
             while self._run.value == 1:
                 try:
                     c_socket, addr = s.accept()
-                except socket.timeout:
+                except TimeoutError:
                     continue
 
                 t = threading.Thread(

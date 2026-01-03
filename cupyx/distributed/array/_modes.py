@@ -1,5 +1,8 @@
+from __future__ import annotations
+
+from collections.abc import Callable
 import functools
-from typing import Callable, Final, Optional
+from typing import Final
 
 import numpy
 
@@ -55,7 +58,7 @@ class _OpMode:
         self.identity_of = identity_of
 
 
-Mode = Optional[_OpMode]
+Mode = _OpMode | None
 
 
 REPLICA: Final[None] = None

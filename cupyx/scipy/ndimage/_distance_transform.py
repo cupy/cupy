@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import numbers
 
 from ._pba_2d import _pba_2d

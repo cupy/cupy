@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import numpy
 
 from cupy import _core
@@ -14,8 +16,9 @@ def array(obj, dtype=None, copy=True, order='K', subok=False, ndmin=0, *,
         obj: :class:`cupy.ndarray` object or any other object that can be
             passed to :func:`numpy.array`.
         dtype: Data type specifier.
-        copy (bool): If ``False``, this function returns ``obj`` if possible.
-            Otherwise this function always returns a new array.
+        copy (bool, optional): If ``True`` (default), ``obj`` is always copied.
+            If ``False``, prohibits copy and raises `ValueError` on failure.
+            If ``None``, ``obj`` is copied only when necessary.
         order ({'C', 'F', 'A', 'K'}): Row-major (C-style) or column-major
             (Fortran-style) order.
             When ``order`` is ``'A'``, it uses ``'F'`` if ``a`` is column-major
@@ -53,7 +56,7 @@ def array(obj, dtype=None, copy=True, order='K', subok=False, ndmin=0, *,
     return _core.array(obj, dtype, copy, order, subok, ndmin, blocking)
 
 
-def asarray(a, dtype=None, order=None, *, blocking=False):
+def asarray(a, dtype=None, order=None, *, copy=None, blocking=False):
     """Converts an object to array.
 
     This is equivalent to ``array(a, dtype, copy=False, order=order)``.
@@ -66,6 +69,9 @@ def asarray(a, dtype=None, order=None, *, blocking=False):
             memory representation. Defaults to ``'K'``. ``order`` is ignored
             for objects that are not :class:`cupy.ndarray`, but have the
             ``__cuda_array_interface__`` attribute.
+        copy (bool, optional): If ``True``, ``obj`` is always copied.
+            If ``False``, prohibits copy and raises `ValueError` on failure.
+            If ``None`` (default), ``obj`` is copied only when necessary.
         blocking (bool): Default is ``False``, meaning if a H2D copy is needed
             it would run asynchronously on the current stream, and users are
             responsible for ensuring the stream order. For example, writing to
@@ -85,10 +91,10 @@ def asarray(a, dtype=None, order=None, *, blocking=False):
     .. seealso:: :func:`numpy.asarray`
 
     """
-    return _core.array(a, dtype, False, order, blocking=blocking)
+    return _core.array(a, dtype, copy, order, blocking=blocking)
 
 
-def asanyarray(a, dtype=None, order=None, *, blocking=False):
+def asanyarray(a, dtype=None, order=None, *, copy=None, blocking=False):
     """Converts an object to array.
 
     This is currently equivalent to :func:`cupy.asarray`, since there is no
@@ -99,7 +105,7 @@ def asanyarray(a, dtype=None, order=None, *, blocking=False):
     .. seealso:: :func:`cupy.asarray`, :func:`numpy.asanyarray`
 
     """
-    return _core.array(a, dtype, False, order, blocking=blocking)
+    return _core.array(a, dtype, copy, order, blocking=blocking)
 
 
 def ascontiguousarray(a, dtype=None):

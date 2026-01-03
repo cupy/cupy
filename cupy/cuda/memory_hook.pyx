@@ -61,7 +61,7 @@ class MemoryHook(object):
     of all memory hooks registered are called before (resp. after)
     memory is retrieved from memory pool.
 
-    Below is a pseudo code to descirbe how malloc and hooks work.
+    Below is a pseudo code to describe how malloc and hooks work.
     Please note that :meth:`~cupy.cuda.MemoryHook.alloc_preprocess` and
     :meth:`~cupy.cuda.MemoryHook.alloc_postprocess` are not invoked if a cached
     free chunk is found::
@@ -80,7 +80,7 @@ class MemoryHook(object):
     of all memory hooks registered are called before (resp. after)
     memory is released to memory pool.
 
-    Below is a pseudo code to descirbe how free and hooks work::
+    Below is a pseudo code to describe how free and hooks work::
 
         def free(ptr):
             Call free_preprocess of all memory hooks

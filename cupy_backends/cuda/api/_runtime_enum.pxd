@@ -11,6 +11,9 @@ cpdef enum:
     cudaMemAttachHost = 2
     cudaMemAttachSingle = 4
 
+    cudaCpuDeviceId = -1
+    cudaInvalidDeviceId = -2
+
     cudaMemAdviseSetReadMostly = 1
     cudaMemAdviseUnsetReadMostly = 2
     cudaMemAdviseSetPreferredLocation = 3
@@ -92,7 +95,11 @@ cpdef enum:
     # cudaMemHandleTypeWin32Kmt = 0x4
 
     # cudaMemLocationType
+    cudaMemLocationTypeInvalid = 0          # CUDA 12.0
     cudaMemLocationTypeDevice = 1
+    cudaMemLocationTypeHost = 2             # CUDA 12.0
+    cudaMemLocationTypeHostNuma = 3         # CUDA 12.0
+    cudaMemLocationTypeHostNumaCurrent = 4  # CUDA 12.0
 
     # cudaGraphDebugDotFlags
     cudaGraphDebugDotFlagsVerbose = 1<<0

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import contextlib
 import io
 import os
@@ -395,24 +397,8 @@ def find_nvcc_ver():
     return int(major) * 1000 + int(minor) * 10
 
 
-@testing.parameterize(
-    # First test NVRTC
-    {'backend': 'nvrtc', 'in_memory': False},
-    # this run will read from in-memory cache
-    {'backend': 'nvrtc', 'in_memory': True},
-    # this run will force recompilation
-    {'backend': 'nvrtc', 'in_memory': True, 'clean_up': True},
-    # Below is the same set of NVRTC tests, with Jitify turned on. For tests
-    # that can already pass, it shouldn't matter whether Jitify is on or not,
-    # and the only side effect is to add overhead. It doesn't make sense to
-    # test NVCC + Jitify.
-    {'backend': 'nvrtc', 'in_memory': False, 'jitify': True},
-    {'backend': 'nvrtc', 'in_memory': True, 'jitify': True},
-    {'backend': 'nvrtc', 'in_memory': True, 'clean_up': True, 'jitify': True},
-    # Finally, we test NVCC
-    {'backend': 'nvcc', 'in_memory': False},
-)
-class TestRaw(unittest.TestCase):
+# TODO(leofang): Further refactor the test suite to avoid using unittest?
+class _TestRawBase:
 
     _nvcc_ver = None
     _nvrtc_ver = None
@@ -1118,6 +1104,37 @@ class TestRaw(unittest.TestCase):
         assert cupy.allclose(y, x1 + x2)
 
 
+@testing.parameterize(
+    # First test NVRTC
+    {'backend': 'nvrtc', 'in_memory': False},
+    # this run will read from in-memory cache
+    {'backend': 'nvrtc', 'in_memory': True},
+    # this run will force recompilation
+    {'backend': 'nvrtc', 'in_memory': True, 'clean_up': True},
+    # Finally, we test NVCC
+    {'backend': 'nvcc', 'in_memory': False},
+)
+class TestRaw(_TestRawBase, unittest.TestCase):
+    pass
+
+
+# Recent CCCL has made Jitify cold-launch very slow, see the discussion
+# starting https://github.com/cupy/cupy/pull/8899#issuecomment-2613022424.
+# TODO(leofang): Further refactor the test suite?
+@testing.parameterize(
+    # Below is the same set of NVRTC tests, with Jitify turned on. For tests
+    # that can already pass, it shouldn't matter whether Jitify is on or not,
+    # and the only side effect is to add overhead. It doesn't make sense to
+    # test NVCC + Jitify.
+    {'backend': 'nvrtc', 'in_memory': False, 'jitify': True},
+    {'backend': 'nvrtc', 'in_memory': True, 'jitify': True},
+    {'backend': 'nvrtc', 'in_memory': True, 'clean_up': True, 'jitify': True},
+)
+@testing.slow
+class TestRawWithJitify(_TestRawBase, unittest.TestCase):
+    pass
+
+
 _test_grid_sync = r'''
 #include <cooperative_groups.h>
 
@@ -1143,15 +1160,14 @@ void test_grid_sync(const float* x1, const float* x2, float* y, int n) {
     'block': [64, 256],
 }))
 @unittest.skipIf(
-    find_nvcc_ver() >= 12020,
-    "fp16 header compatibility issue, see cupy#8412")
+    cupy.cuda.runtime.is_hip or find_nvcc_ver() >= 12020,
+    "fp16 header compatibility issue, see cupy#8412 (Skip on HIP)")
 @unittest.skipUnless(
     9000 <= cupy.cuda.runtime.runtimeGetVersion(),
     'Requires CUDA 9.x or later')
 @unittest.skipUnless(
     60 <= int(cupy.cuda.device.get_compute_capability()),
     'Requires compute capability 6.0 or later')
-@unittest.skipIf(cupy.cuda.runtime.is_hip, 'Skip on HIP')
 class TestRawGridSync(unittest.TestCase):
 
     def test_grid_sync_rawkernel(self):
@@ -1293,11 +1309,15 @@ __global__ void shift (T* a, int N) {
 '''
 
 
+# Recent CCCL has made Jitify cold-launch very slow, see the discussion
+# starting https://github.com/cupy/cupy/pull/8899#issuecomment-2613022424.
+# TODO(leofang): Further refactor the test suite?
 @testing.parameterize(*testing.product({
     'jitify': (False, True),
 }))
 @unittest.skipIf(cupy.cuda.runtime.is_hip,
                  'Jitify does not support ROCm/HIP')
+@testing.slow
 class TestRawJitify(unittest.TestCase):
 
     def setUp(self):

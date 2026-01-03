@@ -27,6 +27,8 @@ czt : array
 zoom_fft : array
    Compute the Fourier transform on a range of frequencies.
 """
+from __future__ import annotations
+
 
 import cmath
 import numbers

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 
 SCHEWCHUK_DEF = r"""
 #include <cupy/math_constants.h>

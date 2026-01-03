@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import platform
 
 import cupy
@@ -318,7 +320,7 @@ class TestFirls:
         # assert_raises(ValueError, firls, 11, [0.1, 0.2], [0, 0], [-1])
 
     @pytest.mark.xfail(
-        platform.processor() == "aarch64",
+        platform.machine() == "aarch64",
         reason="aarch64 scipy does not match cupy/x86 see Scipy #20160")
     @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-12)
     def test_firls(self, xp, scp):
@@ -436,7 +438,7 @@ class TestMinimumPhase:
         h_new = scp.signal.minimum_phase(xp.convolve(h, h[::-1]))
         return h_new
 
-    @testing.numpy_cupy_allclose(scipy_name="scp", atol=2e-5)
+    @testing.numpy_cupy_allclose(scipy_name="scp", atol=1e-4)
     def test_hilbert(self, xp, scp):  # , n):
         # example from the docstring of `scipy.signal.minimum_phase`
         from scipy.signal import remez

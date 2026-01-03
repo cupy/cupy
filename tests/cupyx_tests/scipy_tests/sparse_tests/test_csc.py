@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import pickle
 import sys
 
@@ -203,10 +205,10 @@ class TestCscMatrix:
         cupy.testing.assert_array_equal(n.indptr, self.m.indptr)
         assert n.shape == self.m.shape
 
-    @testing.with_requires('scipy')
+    @testing.with_requires('scipy>=1.15')
     def test_init_dense_invalid_ndim(self):
         for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
-            with pytest.raises(TypeError):
+            with pytest.raises(ValueError):
                 m = xp.zeros((1, 1, 1), dtype=self.dtype)
                 sp.csc_matrix(m)
 
@@ -1086,11 +1088,11 @@ class TestCscMatrixScipyComparison:
         assert m.has_sorted_indices
         return m
 
-    def test_sum_tuple_axis(self):
-        for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
-            m = self.make(xp, sp, self.dtype)
-            with pytest.raises(TypeError):
-                m.sum(axis=(0, 1))
+    @testing.with_requires('scipy>=1.16')
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_sum_tuple_axis(self, xp, sp):
+        m = self.make(xp, sp, self.dtype)
+        return m.sum(axis=(0, 1))
 
     def test_sum_too_large_axis(self):
         for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):

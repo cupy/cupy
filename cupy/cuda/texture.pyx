@@ -519,7 +519,7 @@ cdef class TextureObject:
     :class:`~cupy.ElementwiseKernel`.
 
     Args:
-        ResDesc (ResourceDescriptor): an intance of the resource descriptor.
+        ResDesc (ResourceDescriptor): an instance of the resource descriptor.
         TexDesc (TextureDescriptor): an instance of the texture descriptor.
 
     .. seealso:: `cudaCreateTextureObject()`_
@@ -544,7 +544,7 @@ cdef class SurfaceObject:
     be passed as a argument when launching :class:`~cupy.RawKernel`.
 
     Args:
-        ResDesc (ResourceDescriptor): an intance of the resource descriptor.
+        ResDesc (ResourceDescriptor): an instance of the resource descriptor.
 
     .. seealso:: `cudaCreateSurfaceObject()`_
 

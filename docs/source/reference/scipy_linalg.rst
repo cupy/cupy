@@ -12,6 +12,8 @@ Basics
    :toctree: generated/
 
    solve_triangular
+   kron
+   khatri_rao
 
 
 Matrix Functions
@@ -51,6 +53,5 @@ Special Matrices
    hankel
    helmert
    hilbert
-   kron
    leslie
    toeplitz

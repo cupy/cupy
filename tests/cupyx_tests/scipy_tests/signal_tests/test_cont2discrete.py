@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import math
 
 import cupyx.scipy.signal as signal  # noqa
@@ -46,7 +48,7 @@ class TestC2D:
                                  method='impulse')
         return ad, bd, cd, dd, dt
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name='scp', contiguous_check=False)
     def test_gbt(self, xp, scp):
         ac = xp.eye(2)
         bc = xp.full((2, 1), 0.5)
@@ -61,7 +63,7 @@ class TestC2D:
                                  method='gbt', alpha=alpha)
         return ad, bd, cd, dd, dt
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name='scp', contiguous_check=False)
     def test_euler(self, xp, scp):
         ac = xp.eye(2)
         bc = xp.full((2, 1), 0.5)
@@ -74,7 +76,7 @@ class TestC2D:
                                  method='euler')
         return ad, bd, cd, dd, dt
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name='scp', contiguous_check=False)
     def test_backward_diff(self, xp, scp):
         ac = xp.eye(2)
         bc = xp.full((2, 1), 0.5)
@@ -88,7 +90,7 @@ class TestC2D:
         return ad, bd, cd, dd, dt
 
     @pytest.mark.parametrize('dt_requested', [0.5, 1.0 / 3.0])
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name='scp', contiguous_check=False)
     def test_bilinear(self, xp, scp, dt_requested):
         ac = xp.eye(2)
         bc = xp.full((2, 1), 0.5)

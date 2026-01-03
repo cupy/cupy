@@ -1,4 +1,7 @@
+from __future__ import annotations
+
 import math
+import warnings
 
 import cupy
 from cupy import _core
@@ -178,6 +181,12 @@ def kron(a, b):
 
     .. seealso:: :func:`scipy.linalg.kron`
     """
+    warnings.warn(
+        '`cupyx.scipy.linalg.kron` has been deprecated in CuPy v14 and will '
+        'be removed in the near future. Please use `cupy.kron` instead.',
+        DeprecationWarning,
+    )
+
     o = cupy.outer(a, b)
     o = o.reshape(a.shape + b.shape)
     return cupy.concatenate(cupy.concatenate(o, axis=1), axis=1)

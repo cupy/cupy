@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import math
 
 import cupy
@@ -410,10 +412,10 @@ def _get_channelizer_8x8_module():
     return cupy.RawModule(
         code=_CHANNELIZER_8X8_KERNEL, options=('-std=c++17',),
         name_expressions=[
-            '_cupy_channelizer_8x8<float,complex<float>>',
-            '_cupy_channelizer_8x8<complex<float>,complex<float>>',
-            '_cupy_channelizer_8x8<double,complex<double>>',
-            '_cupy_channelizer_8x8<complex<double>,complex<double>>'],
+            '_cupy_channelizer_8x8<float,thrust::complex<float>>',
+            '_cupy_channelizer_8x8<thrust::complex<float>,thrust::complex<float>>',
+            '_cupy_channelizer_8x8<double,thrust::complex<double>>',
+            '_cupy_channelizer_8x8<thrust::complex<double>,thrust::complex<double>>'],
     )
 
 
@@ -525,10 +527,10 @@ def _get_channelizer_16x16_module():
     return cupy.RawModule(
         code=_CHANNELIZER_16X16_KERNEL, options=('-std=c++17',),
         name_expressions=[
-            '_cupy_channelizer_16x16<float,complex<float>>',
-            '_cupy_channelizer_16x16<complex<float>,complex<float>>',
-            '_cupy_channelizer_16x16<double,complex<double>>',
-            '_cupy_channelizer_16x16<complex<double>,complex<double>>'],
+            '_cupy_channelizer_16x16<float,thrust::complex<float>>',
+            '_cupy_channelizer_16x16<thrust::complex<float>,thrust::complex<float>>',
+            '_cupy_channelizer_16x16<double,thrust::complex<double>>',
+            '_cupy_channelizer_16x16<thrust::complex<double>,thrust::complex<double>>'],
     )
 
 
@@ -639,10 +641,10 @@ def _get_channelizer_32x32_module():
     return cupy.RawModule(
         code=_CHANNELIZER_32X32_KERNEL, options=('-std=c++17',),
         name_expressions=[
-            '_cupy_channelizer_32x32<float,complex<float>>',
-            '_cupy_channelizer_32x32<complex<float>,complex<float>>',
-            '_cupy_channelizer_32x32<double,complex<double>>',
-            '_cupy_channelizer_32x32<complex<double>,complex<double>>'],
+            '_cupy_channelizer_32x32<float,thrust::complex<float>>',
+            '_cupy_channelizer_32x32<thrust::complex<float>,thrust::complex<float>>',
+            '_cupy_channelizer_32x32<double,thrust::complex<double>>',
+            '_cupy_channelizer_32x32<thrust::complex<double>,thrust::complex<double>>'],
     )
 
 

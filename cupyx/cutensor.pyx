@@ -250,7 +250,7 @@ cpdef TensorDescriptor create_tensor_descriptor(_ndarray_base a):
     """Create a tensor descriptor
 
     Args:
-        a (cupy.ndarray): tensor for which a descritpor are created.
+        a (cupy.ndarray): tensor for which a descriptor are created.
 
     Returns:
         (TensorDescriptor): A instance of class TensorDescriptor.
@@ -798,9 +798,16 @@ def contraction(
         desc_A, mode_A, op_A, desc_B, mode_B, op_B, desc_C, mode_C, op_C,
         compute_desc)
     plan_pref = create_plan_preference(algo=algo, jit_mode=jit_mode)
-    ws_size = cutensor.estimateWorkspaceSize(
+    # Query the estimated workspace size
+    estimated_ws_size = cutensor.estimateWorkspaceSize(
         _get_handle().ptr, operator.ptr, plan_pref.ptr, ws_pref)
-    plan = create_plan(operator, plan_pref, ws_limit=ws_size)
+    plan = create_plan(operator, plan_pref, ws_limit=estimated_ws_size)
+    actual_ws_size = _numpy.empty(1, dtype=_numpy.uint64)
+    cutensor.planGetAttribute(
+        _get_handle().ptr, plan.ptr, cutensor.PLAN_REQUIRED_WORKSPACE,
+        actual_ws_size.ctypes.data, actual_ws_size.itemsize)
+    ws_size = actual_ws_size.item()
+    assert ws_size <= estimated_ws_size, "Workspace size is larger than the estimated workspace size"  # NOQA
     ws = core._ndarray_init(
         _cupy.ndarray, shape_t(1, ws_size), dtype=_numpy.int8, obj=None)
     scalar_dtype = _get_scalar_dtype(C.dtype)
@@ -1288,7 +1295,7 @@ class ndarray_mg:
         """
         Args:
             x (numpy.ndarray or cupy.ndarray or list of cupy.ndarray): Arrays
-                to wrap. Non-distributed host(device) storage scheme is meaned
+                to wrap. Non-distributed host(device) storage scheme is meant
                 if x is a numpy(cupy) ndarray. Both pinned memory and pageable
                 host memory are allowed.
             **kwargs: Arbitrary keyword arguments.
@@ -1429,7 +1436,7 @@ cpdef MgTensorDescriptor create_mg_tensor_descriptor(a, devices=None):
     """Create a multi-GPU tensor descriptor
 
     Args:
-        a (cupy.ndarrayMg): The multi-GPU tensor for which a descritpor are
+        a (cupy.ndarrayMg): The multi-GPU tensor for which a descriptor are
             created.
         devices: device list to determine the multi-GPU handle.
 
@@ -1736,7 +1743,7 @@ def contractionMg(alpha, A, modeA, B, modeB, beta, C, modeC,
                 COMPUTE_DESC_32F = 4
                 COMPUTE_DESC_64F = 16
         ws_pref (cutensorWorksizePreference_t): User preference for the
-            workspace of cuTensor. Defaule value is
+            workspace of cuTensor. Default value is
             'cutensor.WORKSPACE_RECOMMENDED'.
         deviceBuf (list of cupy.ndarray or None): `None` means allocated
             when needed.
@@ -1846,7 +1853,7 @@ def contractionMgWorkspace(
                 COMPUTE_DESC_32F = 4
                 COMPUTE_DESC_64F = 16
         ws_pref (cutensorWorksizePreference_t): User preference for the
-            workspace of cuTensor. Defaule value is
+            workspace of cuTensor. Default value is
             'cutensor.WORKSPACE_RECOMMENDED'.
         devices (Sequence): device list to determine the multi-GPU handle.
 

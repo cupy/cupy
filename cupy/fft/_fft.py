@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import functools
 import math
 
@@ -143,13 +145,13 @@ def _exec_fft(a, direction, value_type, norm, axis, overwrite_x,
         mgr = config.get_current_callback_manager()
         if mgr is not None:
             # to avoid a weird segfault, we generate and cache distinct plans
-            # for every possible (load_aux, store_aux) pairs; the plans are
+            # for every possible (load_data, store_data) pairs; the plans are
             # still generated from the same external Python module
-            load_aux = mgr.cb_load_aux_arr
-            store_aux = mgr.cb_store_aux_arr
+            load_data = mgr.cb_load_data
+            store_data = mgr.cb_store_data
             keys += (mgr.cb_load, mgr.cb_store,
-                     0 if load_aux is None else load_aux.data.ptr,
-                     0 if store_aux is None else store_aux.data.ptr)
+                     0 if load_data is None else load_data.ptr,
+                     0 if store_data is None else store_data.ptr)
         cache = get_plan_cache()
         cached_plan = cache.get(keys)
         if cached_plan is not None:
@@ -162,8 +164,12 @@ def _exec_fft(a, direction, value_type, norm, axis, overwrite_x,
             if devices:
                 raise NotImplementedError('multi-GPU cuFFT callbacks are not '
                                           'yet supported')
-            plan = mgr.create_plan(('Plan1d', keys[:-5]))
-            mgr.set_callbacks(plan)
+            if mgr.identity == "legacy":
+                plan = mgr.create_plan(('Plan1d', keys[:-5]))
+                mgr.set_callbacks(plan)
+            else:  # identity = "jit"
+                plan = mgr.set_callbacks(fft_type)
+                plan = mgr.create_plan(plan, ('Plan1d', keys[:-5]))
             cache[keys] = plan
     else:
         # check plan validity
@@ -447,13 +453,13 @@ def _get_cufft_plan_nd(
     mgr = config.get_current_callback_manager()
     if mgr is not None:
         # to avoid a weird segfault, we generate and cache distinct plans
-        # for every possible (load_aux, store_aux) pairs; the plans are
+        # for every possible (load_data, store_data) pairs; the plans are
         # still generated from the same external Python module
-        load_aux = mgr.cb_load_aux_arr
-        store_aux = mgr.cb_store_aux_arr
+        load_data = mgr.cb_load_data
+        store_data = mgr.cb_store_data
         keys += (mgr.cb_load, mgr.cb_store,
-                 0 if load_aux is None else load_aux.data.ptr,
-                 0 if store_aux is None else store_aux.data.ptr)
+                 0 if load_data is None else load_data.ptr,
+                 0 if store_data is None else store_data.ptr)
     cache = get_plan_cache()
     cached_plan = cache.get(keys)
     if cached_plan is not None:
@@ -463,8 +469,12 @@ def _get_cufft_plan_nd(
         if to_cache:
             cache[keys] = plan
     else:  # has callback
-        plan = mgr.create_plan(('PlanNd', keys[:-4]))
-        mgr.set_callbacks(plan)
+        if mgr.identity == "legacy":
+            plan = mgr.create_plan(('PlanNd', keys[:-4]))
+            mgr.set_callbacks(plan)
+        else:  # identity = "jit"
+            plan = mgr.set_callbacks(fft_type)
+            plan = mgr.create_plan(plan, ('PlanNd', keys[:-4]))
         if to_cache:
             cache[keys] = plan
 
@@ -660,6 +670,13 @@ def _default_fft_func(a, s=None, axes=None, plan=None, value_type='C2C'):
         # prefer Plan1D in the 1D case
         return _fftn
     return _fft
+
+
+def _compat_caster(a, axes):
+    real_dtype = np.result_type(a.real.dtype, 1.0)
+    if axes is not None and len(axes) == 1:
+        return lambda x: x.astype(real_dtype, copy=False)
+    return lambda x: x
 
 
 def fft(a, n=None, axis=-1, norm=None):
@@ -865,7 +882,8 @@ def irfft(a, n=None, axis=-1, norm=None):
     """
     from cupy.cuda import cufft
 
-    return _fft(a, (n,), (axis,), norm, cufft.CUFFT_INVERSE, 'C2R')
+    caster = _compat_caster(a, (axis,))
+    return caster(_fft(a, (n,), (axis,), norm, cufft.CUFFT_INVERSE, 'C2R'))
 
 
 def rfft2(a, s=None, axes=(-2, -1), norm=None):
@@ -920,8 +938,9 @@ def irfft2(a, s=None, axes=(-2, -1), norm=None):
     """
     from cupy.cuda import cufft
 
+    caster = _compat_caster(a, axes)
     func = _default_fft_func(a, s, axes, value_type='C2R')
-    return func(a, s, axes, norm, cufft.CUFFT_INVERSE, 'C2R')
+    return caster(func(a, s, axes, norm, cufft.CUFFT_INVERSE, 'C2R'))
 
 
 def rfftn(a, s=None, axes=None, norm=None):
@@ -985,8 +1004,9 @@ def irfftn(a, s=None, axes=None, norm=None):
     """
     from cupy.cuda import cufft
 
+    caster = _compat_caster(a, axes)
     func = _default_fft_func(a, s, axes, value_type='C2R')
-    return func(a, s, axes, norm, cufft.CUFFT_INVERSE, 'C2R')
+    return caster(func(a, s, axes, norm, cufft.CUFFT_INVERSE, 'C2R'))
 
 
 def _swap_direction(norm):

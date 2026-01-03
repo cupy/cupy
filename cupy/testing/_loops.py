@@ -1,8 +1,9 @@
+from __future__ import annotations
+
 import functools
 import inspect
 import os
 import random
-from typing import Tuple, Type
 import traceback
 import unittest
 import warnings
@@ -13,8 +14,6 @@ import cupy
 from cupy.exceptions import AxisError
 from cupy.testing import _array
 from cupy.testing import _parameterized
-import cupyx
-import cupyx.scipy.sparse
 
 from cupy.testing._pytest_impl import is_available
 
@@ -22,7 +21,7 @@ from cupy.testing._pytest_impl import is_available
 if is_available():
     import _pytest.outcomes
     _is_pytest_available = True
-    _skip_classes: Tuple[Type, ...] = (
+    _skip_classes: tuple[type, ...] = (
         unittest.SkipTest, _pytest.outcomes.Skipped)
 else:
     _is_pytest_available = False
@@ -64,8 +63,10 @@ def _call_func_cupy(impl, args, kw, name, sp_name, scipy_name):
 
     # Run cupy
     if sp_name:
+        import cupyx.scipy.sparse
         kw[sp_name] = cupyx.scipy.sparse
     if scipy_name:
+        import cupyx
         kw[scipy_name] = cupyx.scipy
     kw[name] = cupy
     result, error = _call_func(impl, args, kw)
@@ -382,6 +383,7 @@ def _convert_output_to_ndarray(c_out, n_out, sp_name, check_sparse_format):
     Returns:
         The tuple of cupy.ndarray and numpy.ndarray.
     """
+    import cupyx.scipy.sparse
     if sp_name is not None and cupyx.scipy.sparse.issparse(c_out):
         # Sparse output case.
         import scipy.sparse
@@ -511,7 +513,8 @@ def numpy_cupy_allclose(rtol=1e-7, atol=0, err_msg='', verbose=True,
 
     def check_func(c, n):
         rtol1, atol1 = _resolve_tolerance(type_check, c, rtol, atol)
-        _array.assert_allclose(c, n, rtol1, atol1, err_msg, verbose)
+        _array.assert_allclose(
+            c, n, rtol1, atol1, err_msg=err_msg, verbose=verbose)
     return _make_decorator(check_func, name, type_check, contiguous_check,
                            accept_error, sp_name, scipy_name,
                            _check_sparse_format)
@@ -664,7 +667,8 @@ def numpy_cupy_array_equal(err_msg='', verbose=True, name='xp',
     .. seealso:: :func:`cupy.testing.assert_array_equal`
     """
     def check_func(x, y):
-        _array.assert_array_equal(x, y, err_msg, verbose, strides_check)
+        _array.assert_array_equal(
+            x, y, err_msg, verbose, strides_check=strides_check)
     return _make_decorator(check_func, name, type_check, False,
                            accept_error, sp_name, scipy_name)
 

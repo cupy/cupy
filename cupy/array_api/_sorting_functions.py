@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+
 from ._array_object import Array
 
 import cupy as np

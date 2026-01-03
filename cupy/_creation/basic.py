@@ -1,4 +1,7 @@
-from typing import Any, Optional
+from __future__ import annotations
+
+import math
+from typing import Any
 
 import numpy
 
@@ -56,7 +59,8 @@ def _new_like_order_and_strides(
     if order == 'K':
         strides = _get_strides_for_order_K(a, numpy.dtype(dtype), shape)
         order = 'C'
-        memptr = cupy.empty(a.size, dtype=dtype).data if get_memptr else None
+        size = math.prod(shape) if shape is not None else a.size
+        memptr = cupy.empty(size, dtype=dtype).data if get_memptr else None
         return order, strides, memptr
     else:
         return order, None, None
@@ -67,7 +71,7 @@ def empty_like(
         dtype: DTypeLike = None,
         order: _OrderKACF = 'K',
         subok: None = None,
-        shape: Optional[_ShapeLike] = None,
+        shape: _ShapeLike | None = None,
 ) -> NDArray[Any]:
     """Returns a new array with same shape and dtype of a given array.
 
@@ -106,7 +110,7 @@ def empty_like(
 
 def eye(
         N: int,
-        M: Optional[int] = None,
+        M: int | None = None,
         k: int = 0,
         dtype: DTypeLike = float,
         order: _OrderCF = 'C',
@@ -188,7 +192,7 @@ def ones_like(
         dtype: DTypeLike = None,
         order: _OrderKACF = 'K',
         subok: None = None,
-        shape: Optional[_ShapeLike] = None,
+        shape: _ShapeLike | None = None,
 ) -> NDArray[Any]:
     """Returns an array of ones with same shape and dtype as a given array.
 
@@ -255,7 +259,7 @@ def zeros_like(
         dtype: DTypeLike = None,
         order: _OrderKACF = 'K',
         subok: None = None,
-        shape: Optional[_ShapeLike] = None,
+        shape: _ShapeLike | None = None,
 ) -> NDArray[Any]:
     """Returns an array of zeros with same shape and dtype as a given array.
 
@@ -332,7 +336,7 @@ def full_like(
         dtype: DTypeLike = None,
         order: _OrderKACF = 'K',
         subok: None = None,
-        shape: Optional[_ShapeLike] = None,
+        shape: _ShapeLike | None = None,
 ) -> NDArray[Any]:
     """Returns a full array with same shape and dtype as a given array.
 
@@ -369,3 +373,44 @@ def full_like(
     a = cupy.ndarray(shape, dtype, memptr, strides, order)
     cupy.copyto(a, fill_value, casting='unsafe')
     return a
+
+
+# Array API compatible array.astype wrapper
+
+def astype(x, dtype, /, *, copy=True):
+    """
+    Copies an array to a specified data type.
+
+    This function is an Array API compatible alternative to
+    `cupy.ndarray.astype`.
+
+    Parameters
+    ----------
+    x : ndarray
+        Input CuPy array to cast.
+    dtype : dtype
+        Data type of the result.
+    copy : bool, optional
+        Specifies whether to copy an array when the specified dtype matches
+        the data type of the input array ``x``. If ``True``, a newly allocated
+        array must always be returned. If ``False`` and the specified dtype
+        matches the data type of the input array, the input array must be
+        returned; otherwise, a newly allocated array must be returned.
+        Defaults to ``True``.
+
+    Returns
+    -------
+    out : ndarray
+        An array having the specified data type.
+
+    See Also
+    --------
+    ndarray.astype
+    numpy.astype
+
+    """
+    if not isinstance(x, cupy.ndarray):
+        raise TypeError(
+            f"Input should be a CuPy array. It is a {type(x)} instead."
+        )
+    return x.astype(dtype, copy=copy)

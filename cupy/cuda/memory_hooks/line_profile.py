@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from os import path
 import sys
 import traceback
@@ -54,13 +56,13 @@ class LineProfileHook(memory_hook.MemoryHook):
 
     # callback
     def malloc_preprocess(self, device_id, size, mem_size):
-        self._cretate_frame_tree(used_bytes=mem_size)
+        self._create_frame_tree(used_bytes=mem_size)
 
     # callback
     def alloc_preprocess(self, device_id, mem_size):
-        self._cretate_frame_tree(acquired_bytes=mem_size)
+        self._create_frame_tree(acquired_bytes=mem_size)
 
-    def _cretate_frame_tree(self, used_bytes=0, acquired_bytes=0):
+    def _create_frame_tree(self, used_bytes=0, acquired_bytes=0):
         self._root.used_bytes += used_bytes
         self._root.acquired_bytes += acquired_bytes
         parent = self._root
@@ -114,7 +116,7 @@ class LineProfileHook(memory_hook.MemoryHook):
             self._print_frame(child, depth=depth + 1, file=file)
 
 
-class StackFrame(object):
+class StackFrame:
     """Compatibility layer for outputs of traceback.extract_stack().
 
     Attributes:
@@ -134,7 +136,7 @@ class StackFrame(object):
             self.name = obj.name
 
 
-class MemoryFrame(object):
+class MemoryFrame:
     """A single stack frame along with sum of memory usage at the frame.
 
     Attributes:

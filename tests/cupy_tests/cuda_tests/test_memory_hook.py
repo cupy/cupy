@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+import gc
 import unittest
 
 import cupy.cuda
@@ -38,6 +41,7 @@ class SimpleMemoryHook(memory_hook.MemoryHook):
 class TestMemoryHook(unittest.TestCase):
 
     def setUp(self):
+        gc.collect()
         self.pool = memory.MemoryPool()
         self.unit = 512
 

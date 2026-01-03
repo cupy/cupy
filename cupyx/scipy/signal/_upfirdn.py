@@ -25,8 +25,9 @@ FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 
 """
+from __future__ import annotations
 
-from math import ceil
+
 import cupy
 
 _upfirdn_modes = [
@@ -59,12 +60,10 @@ __device__ void _cupy_upfirdn1D( const T *__restrict__ inp,
 
     for ( size_t tid = t; tid < outW; tid += stride ) {
 
-#if ( __CUDACC_VER_MAJOR__ >= 11 ) && ( __CUDACC_VER_MINOR__ >= 2 )
         __builtin_assume( padded_len > 0 );
         __builtin_assume( up > 0 );
         __builtin_assume( down > 0 );
         __builtin_assume( tid > 0 );
-#endif
 
         const int x_idx { static_cast<int>( ( tid * down ) / up ) % padded_len };
         int       h_idx { static_cast<int>( ( tid * down ) % up * h_per_phase ) };
@@ -172,22 +171,16 @@ __device__ void _cupy_upfirdn2D( const T *__restrict__ inp,
             int x_idx {};
             int h_idx {};
 
-#if ( __CUDACC_VER_MAJOR__ >= 11 ) && ( __CUDACC_VER_MINOR__ >= 2 )
             __builtin_assume( padded_len > 0 );
             __builtin_assume( up > 0 );
             __builtin_assume( down > 0 );
-#endif
 
             if ( axis == 1 ) {
-#if ( __CUDACC_VER_MAJOR__ >= 11 ) && ( __CUDACC_VER_MINOR__ >= 2 )
                 __builtin_assume( x > 0 );
-#endif
                 x_idx = ( static_cast<int>( x * down ) / up ) % padded_len;
                 h_idx = ( x * down ) % up * h_per_phase;
             } else {
-#if ( __CUDACC_VER_MAJOR__ >= 11 ) && ( __CUDACC_VER_MINOR__ >= 2 )
                 __builtin_assume( y > 0 );
-#endif
                 x_idx = ( static_cast<int>( y * down ) / up ) % padded_len;
                 h_idx = ( y * down ) % up * h_per_phase;
             }
@@ -284,7 +277,7 @@ extern "C" __global__ void __launch_bounds__( 64 )
 
 
 UPFIRDN_MODULE = cupy.RawModule(
-    code=UPFIRDN_KERNEL, options=('-std=c++11',),
+    code=UPFIRDN_KERNEL,
     name_expressions=[
         '_cupy_upfirdn1D_float32',
         '_cupy_upfirdn1D_float64',
@@ -338,7 +331,7 @@ def _get_tpb_bpg():
     return threadsperblock, blockspergrid
 
 
-class _UpFIRDn(object):
+class _UpFIRDn:
     def __init__(self, h, x_dtype, up, down):
         """Helper for resampling"""
         h = cupy.asarray(h)
@@ -399,40 +392,62 @@ class _UpFIRDn(object):
                    )
 
         elif out.ndim == 2:
-            # set up the kernel launch parameters
-            threadsperblock = (8, 8)
-            blocks = ceil(out.shape[0] / threadsperblock[0])
-            blockspergrid_x = (
-                blocks if blocks < _get_max_gdx() else _get_max_gdx())
-
-            blocks = ceil(out.shape[1] / threadsperblock[1])
-            blockspergrid_y = (
-                blocks if blocks < _get_max_gdy() else _get_max_gdy())
-
-            blockspergrid = (blockspergrid_x, blockspergrid_y)
-
-            # do computations
-            kernel = UPFIRDN_MODULE.get_function(
-                f'_cupy_upfirdn2D_{out.dtype.name}')
-            kernel(threadsperblock, blockspergrid,
-                   (x,
-                    x.shape[1],
-                    self._h_trans_flip,
-                    self._up,
-                    self._down,
-                    axis,
-                    x_shape_a,
-                    h_per_phase,
-                    padded_len,
-                    out,
-                    out.shape[0],
-                    out.shape[1]
-                    )
-                   )
+            self._apply_filter_2d(
+                x, out, axis, x_shape_a, h_per_phase, padded_len)
         else:
-            raise NotImplementedError("upfirdn() requires ndim <= 2")
+            # N-D case: reshape to 2D, apply filter, reshape back
+
+            # Move target axis to the end
+            x_moved = cupy.ascontiguousarray(cupy.moveaxis(x, axis, -1))
+            shape_with_axis_at_end = x_moved.shape
+
+            # Reshape to 2d
+            x_2d = x_moved.reshape(-1, x_moved.shape[-1])
+            out_2d = cupy.empty((x_2d.shape[0], output_len),
+                                dtype=self._output_type, order="C")
+            self._apply_filter_2d(x_2d, out_2d, axis=1,
+                                  x_shape_a=x_shape_a,
+                                  h_per_phase=h_per_phase,
+                                  padded_len=padded_len)
+
+            # Reshape back to N-D
+            new_shape = shape_with_axis_at_end[:-1] + (output_len,)
+            out_nd = out_2d.reshape(new_shape)
+            out = cupy.ascontiguousarray(cupy.moveaxis(out_nd, -1, axis))
 
         return out
+
+    def _apply_filter_2d(self, x, out, axis,
+                         x_shape_a, h_per_phase,
+                         padded_len):
+        """Apply the 2D upfirdn kernel."""
+        # set up the kernel launch parameters
+        threadsperblock = (8, 8)
+
+        blocks = (out.shape[0] + threadsperblock[0] - 1) // threadsperblock[0]
+        blockspergrid_x = min(blocks, _get_max_gdx())
+
+        blocks = (out.shape[1] + threadsperblock[1] - 1) // threadsperblock[1]
+        blockspergrid_y = min(blocks, _get_max_gdy())
+
+        blockspergrid = (blockspergrid_x, blockspergrid_y)
+
+        # do computations
+        kernel = UPFIRDN_MODULE.get_function(
+            f'_cupy_upfirdn2D_{out.dtype.name}')
+        kernel(blockspergrid, threadsperblock,
+               (x,
+                x.shape[1],
+                self._h_trans_flip,
+                self._up,
+                self._down,
+                axis,
+                x_shape_a,
+                h_per_phase,
+                padded_len,
+                out,
+                out.shape[0],
+                out.shape[1]))
 
 
 def upfirdn(
@@ -495,7 +510,7 @@ def upfirdn(
     if mode is None:
         mode = "constant"  # For backwards compatibility
     if mode != "constant" or cval != 0:
-        raise NotImplementedError(f"{mode = } and {cval =} not implemented.")
+        raise NotImplementedError(f"{mode=} and {cval=} not implemented.")
 
     ufd = _UpFIRDn(h, x.dtype, int(up), int(down))
     # This is equivalent to (but faster than) using cp.apply_along_axis

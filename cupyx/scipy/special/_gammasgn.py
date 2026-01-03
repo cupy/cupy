@@ -8,6 +8,8 @@ Cephes Math Library Release 2.0:  April, 1987
 Copyright 1984, 1987 by Stephen L. Moshier
 Direct inquiries to 30 Frost Street, Cambridge, MA 02140
 """
+from __future__ import annotations
+
 
 from cupy import _core
 
@@ -20,13 +22,13 @@ __device__ double gammasgn(double x)
     if (isnan(x)) {
       return x;
     }
-    if (x > 0) {
+    if (x >= 0) {
         return 1.0;
     }
     else {
         fx = floor(x);
         if (x - fx == 0.0) {
-            return 0.0;
+            return CUDART_NAN;
         }
         else if ((int)fx % 2) {
             return -1.0;
@@ -40,7 +42,7 @@ __device__ double gammasgn(double x)
 
 gammasgn = _core.create_ufunc(
     "cupyx_scipy_gammasgn",
-    ("f->f", "d->d"),
+    ("l->d", "L->d", "e->d", "f->f", "d->d"),
     "out0 = out0_type(gammasgn(in0));",
     preamble=gammasgn_definition,
     doc="""Elementwise function for scipy.special.gammasgn

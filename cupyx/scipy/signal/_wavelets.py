@@ -23,6 +23,8 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 """
+from __future__ import annotations
+
 
 import warnings
 
@@ -36,7 +38,7 @@ _deprecate_msg = (
     "Following the change in SciPy 1.12, all wavelet functions have been "
     "deprecated in CuPy v14 and are planned to be removed in the future. "
     "To request continued support of the features, "
-    "please leave a comment at https://github.com/cupy/cupy/pull/8061."
+    "please leave a comment at https://github.com/cupy/cupy/issues/8864."
 )
 
 
@@ -48,7 +50,6 @@ _qmf_kernel = cupy.ElementwiseKernel(
     output = ( coef[_ind.size() - ( i + 1 )] ) * sign;
     """,
     "_qmf_kernel",
-    options=("-std=c++11",),
 )
 
 
@@ -62,7 +63,7 @@ def qmf(hk):
         Coefficients of high-pass filter.
 
     """
-    warnings.warn(_deprecate_msg, DeprecationWarning)
+    warnings.warn(_deprecate_msg, cupy.exceptions.VisibleDeprecationWarning)
 
     hk = cupy.asarray(hk)
     return _qmf_kernel(hk, size=len(hk))
@@ -84,7 +85,6 @@ _morlet_kernel = cupy.ElementwiseKernel(
     output = temp * exp( -0.5 * ( x * x ) ) * pow( M_PI, -0.25 )
     """,
     "_morlet_kernel",
-    options=("-std=c++11",),
     loop_prep="const double end { s * 2.0 * M_PI }; \
                const double start { -s * 2.0 * M_PI }; \
                const double delta { ( end - start ) / ( _ind.size() - 1 ) };",
@@ -142,7 +142,7 @@ def morlet(M, w=5.0, s=1.0, complete=True):
     with it.
 
     """
-    warnings.warn(_deprecate_msg, DeprecationWarning)
+    warnings.warn(_deprecate_msg, cupy.exceptions.VisibleDeprecationWarning)
 
     return _morlet_kernel(w, s, complete, size=M)
 
@@ -159,7 +159,6 @@ _ricker_kernel = cupy.ElementwiseKernel(
     total = A * mod * gauss;
     """,
     "_ricker_kernel",
-    options=("-std=c++11",),
     loop_prep="const double A { 2.0 / ( sqrt( 3 * a ) * pow( M_PI, 0.25 ) ) };"
     " const double wsq { a * a };",
 )
@@ -203,7 +202,7 @@ def ricker(points, a):
     >>> plt.show()
 
     """
-    warnings.warn(_deprecate_msg, DeprecationWarning)
+    warnings.warn(_deprecate_msg, cupy.exceptions.VisibleDeprecationWarning)
 
     return _ricker_kernel(a, size=int(points))
 
@@ -221,7 +220,6 @@ _morlet2_kernel = cupy.ElementwiseKernel(
         pow( M_PI, -0.25 )
     """,
     "_morlet_kernel",
-    options=("-std=c++11",),
     loop_prep="",
 )
 
@@ -294,7 +292,7 @@ def morlet2(M, s, w=5):
         cmap='viridis', shading='gouraud')
     >>> plt.show()
     """
-    warnings.warn(_deprecate_msg, DeprecationWarning)
+    warnings.warn(_deprecate_msg, cupy.exceptions.VisibleDeprecationWarning)
 
     return _morlet2_kernel(w, s, size=int(M))
 
@@ -350,7 +348,7 @@ def cwt(data, wavelet, widths):
     >>> plt.show()
 
     """  # NOQA
-    warnings.warn(_deprecate_msg, DeprecationWarning)
+    warnings.warn(_deprecate_msg, cupy.exceptions.VisibleDeprecationWarning)
 
     if cupy.asarray(wavelet(1, 1)).dtype.char in "FDG":
         dtype = cupy.complex128

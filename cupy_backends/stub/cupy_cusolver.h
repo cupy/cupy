@@ -1,4 +1,4 @@
-// This file is a stub header file of cudnn for Read the Docs.
+// This file is a stub header file of cusolver for Read the Docs.
 
 #ifndef INCLUDE_GUARD_STUB_CUPY_CUSOLVER_H
 #define INCLUDE_GUARD_STUB_CUPY_CUSOLVER_H
@@ -992,6 +992,15 @@ cusolverStatus_t cusolverDnXsyevd_bufferSize(...) {
 }
 
 cusolverStatus_t cusolverDnXsyevd(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+// Functions added in cuSOLVER 11.7 (CUDA 12.6.2)
+cusolverStatus_t cusolverDnXgeev_bufferSize(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+cusolverStatus_t cusolverDnXgeev(...) {
     return CUSOLVER_STATUS_SUCCESS;
 }
 

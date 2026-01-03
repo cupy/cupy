@@ -1,11 +1,16 @@
 cimport cython  # NOQA
+
+from . cimport _scalar
+
 import numpy
 import warnings
 
 from cupy_backends.cuda.api cimport runtime
+from cupy.exceptions import ComplexWarning
 
 
-all_type_chars = '?bhilqBHILQefdFD'
+cdef str all_type_chars = '?bhilqBHILQefdFD'
+cdef bytes all_type_chars_b = all_type_chars.encode()
 # for c in '?bhilqBHILQefdFD':
 #    print('#', c, '...', np.dtype(c).name)
 # ? ... bool
@@ -27,6 +32,46 @@ all_type_chars = '?bhilqBHILQefdFD'
 
 cdef dict _dtype_dict = {}
 cdef _dtype = numpy.dtype
+
+
+cdef bint check_supported_dtype(cnp.dtype dtype, bint error) except -1:
+    """ Returns true on success but otherwise raises an error. """
+
+    if dtype.byteorder == b">":
+        if not error:
+            return False
+        raise ValueError(
+            f'Unsupported dtype {dtype} with big-endian byte-order')
+
+    if dtype.type in all_type_chars_b:
+        return True  # fast-path, these are always OK
+    elif dtype.type == "V" and (<object>dtype).fields is not None:
+        # Support structured dtypes (not subarray here specifically).
+        # We don't really need to know anything about the dtype, but cannot
+        # do references (copying back to CPU would be wrong).
+        # Of course... the user may not be able to _do_ anything with it!
+        if dtype.flags & (0x01 | 0x04):
+            # Note, NumPy may (currently) flag this if a dtype has "holes"
+            # such as `np.ones(10, dtype="i,O,i")[["f0", "f1"]]`.
+            raise ValueError(
+                f"Unsupported dtype {dtype} because it contains references "
+                "which cannot be supported by CuPy.\n"
+                "This may happen even if a dtype only contains basic types "
+                "if the original array contained e.g. object dtype.")
+
+        # We can represents the underlying bytes in CuPy, although it is very
+        # possible that the included fields will not be usable in the end.
+        # The simplest path is to inform users
+        return True
+
+    try:
+        _scalar.get_typename(dtype)  # allow if we know a C typename.
+        return True
+    except (ValueError, KeyError):
+        if not error:
+            return False
+        else:
+            raise ValueError(f'Unsupported dtype {dtype}') from None
 
 
 cdef _init_dtype_dict():
@@ -55,12 +100,17 @@ cpdef get_dtype(t):
 
 
 @cython.profile(False)
-cpdef tuple get_dtype_with_itemsize(t):
+cpdef tuple get_dtype_with_itemsize(t, bint check_support):
+    # check_support for clarity, mainly array creation has to check.
     ret = _dtype_dict.get(t, None)
-    if ret is None:
-        t = _dtype(t)
-        return t, t.itemsize
-    return ret
+    if ret is not None:
+        # Simple dtype request by user, always valid.
+        return ret
+
+    t = _dtype(t)
+    if check_support:
+        check_supported_dtype(t, error=True)
+    return t, t.itemsize
 
 
 cpdef int to_cuda_dtype(dtype, bint is_half_allowed=False) except -1:
@@ -114,7 +164,7 @@ cpdef void _raise_if_invalid_cast(
             # Complex warning, we are dropping the imagine part:
             warnings.warn(
                 'Casting complex values to real discards the imaginary part',
-                numpy.ComplexWarning)
+                ComplexWarning)
 
         return
 
@@ -124,3 +174,28 @@ cpdef void _raise_if_invalid_cast(
     raise TypeError(
         f'Cannot cast {argname} from {from_dt!r} to {to_dt!r} '
         f'according to the rule \'{casting}\'')
+
+
+cdef dict dtype_format = {
+    intern("?"): intern("?"),
+    intern("b"): intern("b"),
+    intern("h"): intern("h"),
+    intern("i"): intern("i"),
+    intern("l"): intern("l"),
+    intern("q"): intern("q"),
+    intern("B"): intern("B"),
+    intern("H"): intern("H"),
+    intern("I"): intern("I"),
+    intern("L"): intern("L"),
+    intern("Q"): intern("Q"),
+    intern("e"): intern("e"),
+    intern("f"): intern("f"),
+    intern("d"): intern("d"),
+    intern("F"): intern("Zf"),
+    intern("D"): intern("Zd"),
+}
+
+
+@cython.profile(False)
+cdef void populate_format(Py_buffer* buf, str dtype) except*:
+    buf.format = dtype_format[dtype]

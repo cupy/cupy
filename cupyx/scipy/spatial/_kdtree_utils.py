@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 
 import cupy
 from cupy._core._scalar import get_typename
@@ -8,9 +10,7 @@ import numpy as np
 
 def _get_typename(dtype):
     typename = get_typename(dtype)
-    if cupy.dtype(dtype).kind == 'c':
-        typename = 'thrust::' + typename
-    elif typename == 'float16':
+    if typename == 'float16':
         if runtime.is_hip:
             # 'half' in name_expressions weirdly raises
             # HIPRTC_ERROR_NAME_EXPRESSION_NOT_VALID in getLoweredName() on
@@ -691,12 +691,12 @@ __global__ void query_ball_periodic(
 
 
 KD_MODULE = cupy.RawModule(
-    code=KD_KERNEL, options=('-std=c++11',),
+    code=KD_KERNEL, options=('-std=c++17',),
     name_expressions=['update_tags', 'tag_pairs'] + [
         f'compute_bounds<{x}>' for x in TYPE_NAMES])
 
 KNN_MODULE = cupy.RawModule(
-    code=KNN_KERNEL, options=('-std=c++11',),
+    code=KNN_KERNEL, options=('-std=c++17',),
     name_expressions=['knn_periodic', 'query_ball_periodic'] +
     [f'knn<{x}>' for x in TYPE_NAMES] +
     [f'query_ball<{x}>' for x in TYPE_NAMES])

@@ -1,7 +1,6 @@
 """Thin wrapper of CUSOLVER."""
 from libc.stdint cimport intptr_t, int64_t
 
-cpdef _get_cuda_build_version()
 
 ###############################################################################
 # Types
@@ -49,6 +48,7 @@ cpdef enum:
 
 cpdef int getProperty(int type) except? -1
 cpdef tuple _getVersion()
+cpdef int _getVersionNumber() except? -1
 
 ###############################################################################
 # Context

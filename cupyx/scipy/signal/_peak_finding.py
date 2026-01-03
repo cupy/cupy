@@ -24,6 +24,8 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 """
+from __future__ import annotations
+
 
 import math
 import cupy
@@ -36,9 +38,7 @@ from cupyx import jit
 
 def _get_typename(dtype):
     typename = get_typename(dtype)
-    if cupy.dtype(dtype).kind == 'c':
-        typename = 'thrust::' + typename
-    elif typename == 'float16':
+    if typename == 'float16':
         if runtime.is_hip:
             # 'half' in name_expressions weirdly raises
             # HIPRTC_ERROR_NAME_EXPRESSION_NOT_VALID in getLoweredName() on
@@ -306,7 +306,7 @@ __global__ void peak_widths<half>(
 """  # NOQA
 
 PEAKS_MODULE = cupy.RawModule(
-    code=PEAKS_KERNEL, options=('-std=c++11',),
+    code=PEAKS_KERNEL,
     name_expressions=[f'local_maxima_1d<{x}>' for x in TYPE_NAMES] +
     [f'peak_prominences<{x}>' for x in TYPE_NAMES] +
     [f'peak_widths<{x}>' for x in TYPE_NAMES])
@@ -474,7 +474,7 @@ __global__ void boolrelextrema_2D( const int  in_x,
 
 
 ARGREL_MODULE = cupy.RawModule(
-    code=ARGREL_KERNEL, options=('-std=c++11',),
+    code=ARGREL_KERNEL,
     name_expressions=[f'boolrelextrema_1D<{x}>' for x in FLOAT_INT_NAMES] +
     [f'boolrelextrema_2D<{x}>' for x in FLOAT_INT_NAMES])
 
@@ -727,9 +727,8 @@ def _arg_wlen_as_expected(value):
         value = -1
     elif 1 < value:
         # Round up to a positive integer
-        if not cupy.can_cast(value, cupy.int64, "safe"):
-            value = math.ceil(value)
-        value = int(value)
+        value = math.ceil(value)
+        value = cupy.intp(value)
     else:
         raise ValueError('`wlen` must be larger than 1, was {}'
                          .format(value))

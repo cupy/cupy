@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 
 import operator
 
@@ -57,7 +59,7 @@ __global__ void find_interval(
     int default_value = left - 1 < k ? k : left - 1;
     int result = found ? mid + 1 : default_value + 1;
 
-    while(xp >= *&t[result] && result != n) {
+    while(result != n && xp >= *&t[result]) {
         result++;
     }
 
@@ -66,8 +68,7 @@ __global__ void find_interval(
 }
 '''
 
-INTERVAL_MODULE = cupy.RawModule(
-    code=INTERVAL_KERNEL, options=('-std=c++11',),)
+INTERVAL_MODULE = cupy.RawModule(code=INTERVAL_KERNEL,)
 #    name_expressions=[f'find_interval<{type_name}>' for type_name in TYPES])
 
 
@@ -143,7 +144,7 @@ __global__ void d_boor(
             xb = t[ind];
             xa = t[ind - j];
             if (xb == xa) {
-                h[mu] = 0.0;
+                h[n] = 0.0;
                 continue;
             }
             w = ((double) j) * hh[n - 1]/(xb - xa);
@@ -169,9 +170,9 @@ __global__ void d_boor(
 }
 '''
 
-D_BOOR_MODULE = cupy.RawModule(
-    code=D_BOOR_KERNEL, options=('-std=c++11',),
-    name_expressions=[f'd_boor<{type_name}>' for type_name in TYPES])
+D_BOOR_MODULE = cupy.RawModule(code=D_BOOR_KERNEL,
+                               name_expressions=[f'd_boor<{type_name}>'
+                                                 for type_name in TYPES])
 
 
 DESIGN_MAT_KERNEL = r'''
@@ -200,18 +201,13 @@ __global__ void compute_design_matrix(
 '''
 
 DESIGN_MAT_MODULE = cupy.RawModule(
-    code=DESIGN_MAT_KERNEL, options=('-std=c++11',),
+    code=DESIGN_MAT_KERNEL,
     name_expressions=[f'compute_design_matrix<{itype}>'
                       for itype in INT_TYPES])
 
 
 def _get_module_func(module, func_name, *template_args):
-    def _get_typename(dtype):
-        typename = get_typename(dtype)
-        if dtype.kind == 'c':
-            typename = 'thrust::' + typename
-        return typename
-    args_dtypes = [_get_typename(arg.dtype) for arg in template_args]
+    args_dtypes = [get_typename(arg.dtype) for arg in template_args]
     template = ', '.join(args_dtypes)
     kernel_name = f'{func_name}<{template}>' if template_args else func_name
     kernel = module.get_function(kernel_name)

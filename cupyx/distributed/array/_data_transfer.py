@@ -1,6 +1,9 @@
+from __future__ import annotations
+
 import contextlib
 import dataclasses
-from typing import Any, Iterable, Iterator
+from typing import Any
+from collections.abc import Iterable, Iterator
 
 from cupy._core.core import ndarray
 import cupy._creation.from_data as _creation_from_data
@@ -28,7 +31,7 @@ class _AsyncData:
     ready: Event
     prevent_gc: Any = None      # TODO: Release it to avoid OOM
 
-    def copy(self) -> '_AsyncData':
+    def copy(self) -> _AsyncData:
         with self.on_ready() as stream:
             array = self.array.copy()
             stream.record(self.ready)

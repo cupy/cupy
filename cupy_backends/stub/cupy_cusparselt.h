@@ -21,6 +21,7 @@ typedef enum {} cusparseLtMatmulAlg_t;
 typedef enum {} cusparseLtMatmulAlgAttribute_t;
 typedef enum {} cusparseLtSplitKMode_t;
 typedef enum {} cusparseLtPruneAlg_t;
+typedef enum {} cusparseLtMatmulMatrixScale_t;
 
 typedef void* cudaStream_t;
 typedef void* cusparseLtHandle_t;
@@ -35,6 +36,14 @@ cusparseStatus_t cusparseLtInit(...) {
 
 cusparseStatus_t cusparseLtDestroy(...) {
     return CUSPARSE_STATUS_SUCCESS;
+}
+
+const char* cusparseLtGetErrorName(...) {
+    return "";
+}
+
+const char* cusparseLtGetErrorString(...) {
+    return "";
 }
 
 cusparseStatus_t cusparseLtGetVersion(...) {
@@ -78,6 +87,10 @@ cusparseStatus_t cusparseLtMatmulDescGetAttribute(...) {
 }
 
 cusparseStatus_t cusparseLtMatmulAlgSelectionInit(...) {
+    return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseLtMatmulAlgSelectionDestroy(...) {
     return CUSPARSE_STATUS_SUCCESS;
 }
 

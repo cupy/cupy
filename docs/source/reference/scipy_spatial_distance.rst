@@ -5,8 +5,8 @@ Distance computations (:mod:`cupyx.scipy.spatial.distance`)
 
 .. note::
 
-   The ``distance`` module uses ``pylibraft`` as a backend.
-   You need to install `pylibraft package <https://anaconda.org/rapidsai/pylibraft>` from ``rapidsai`` Conda channel to use features listed on this page.
+   The ``distance`` module uses the ``cuVS`` library as a backend.
+   You need to install `cuVS package <https://anaconda.org/rapidsai/cuvs>` from ``rapidsai`` Conda channel to use features listed on this page.
 
 .. note::
    Currently, the ``distance`` module is not supported on AMD ROCm platforms.
