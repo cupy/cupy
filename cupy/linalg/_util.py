@@ -8,7 +8,6 @@ from numpy import linalg
 import cupy
 import cupy._util
 from cupy import _core
-import cupyx
 
 
 _default_precision = os.getenv('CUPY_DEFAULT_PRECISION')
@@ -112,6 +111,7 @@ def _check_cusolver_dev_info_if_synchronization_allowed(routine, dev_info):
     # `dev_info` contains integers, the status code of a cuSOLVER
     # routine call. It is referred to as "infoArray" or "devInfo" in the
     # official cuSOLVER documentation.
+    import cupyx
     assert isinstance(dev_info, _core.ndarray)
     config_linalg = cupyx._ufunc_config.get_config_linalg()
     # Only 'ignore' and 'raise' are currently supported.
@@ -135,6 +135,7 @@ def _check_cublas_info_array_if_synchronization_allowed(routine, info_array):
     # `info_array` contains integers, the status codes of a cuBLAS routine
     # call. It is referrd to as "infoArray" or "devInfoArray" in the official
     # cuBLAS documentation.
+    import cupyx
     assert isinstance(info_array, _core.ndarray)
     assert info_array.ndim == 1
 

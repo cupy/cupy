@@ -13,6 +13,7 @@ import pickle
 import shutil
 import sys
 
+import numpy as np
 import setuptools
 
 import cupy_builder.install_build as build
@@ -321,6 +322,7 @@ def make_extensions(ctx: Context, compiler, use_cython):
     settings = build.get_compiler_setting(ctx, use_hip)
 
     include_dirs = settings['include_dirs']
+    include_dirs.append(np.get_include())
 
     settings['include_dirs'] = [
         x for x in include_dirs if os.path.exists(x)]
@@ -341,6 +343,10 @@ def make_extensions(ctx: Context, compiler, use_cython):
 
     # Ensure all "cdef public" APIs have C linkage.
     settings['define_macros'].append(('CYTHON_EXTERN_C', 'extern "C"'))
+
+    # We use NumPy 2.x only C-API, so need to define this:
+    settings['define_macros'].append(
+        ('NPY_TARGET_VERSION', 'NPY_2_0_API_VERSION'))
 
     if ctx.linetrace:
         settings['define_macros'].append(('CYTHON_TRACE', '1'))
@@ -426,8 +432,6 @@ def make_extensions(ctx: Context, compiler, use_cython):
         link_args = s.setdefault('extra_link_args', [])
 
         if module['name'] == 'cusolver':
-            # cupy_backends/cupy_lapack.h has C++ template code
-            compile_args.append('--std=c++11')
             # openmp is required for cusolver
             if use_hip:
                 pass
@@ -442,8 +446,6 @@ def make_extensions(ctx: Context, compiler, use_cython):
                 compile_args.append('-D_USE_MATH_DEFINES')
 
         if module['name'] == 'jitify':
-            # this fixes RTD (no_cuda) builds...
-            compile_args.append('--std=c++11')
             # suppress printing Jitify logging to stdout
             compile_args.append('-DJITIFY_PRINT_LOG=0')
             # Uncomment to diagnose Jitify issues.

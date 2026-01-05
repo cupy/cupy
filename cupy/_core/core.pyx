@@ -2353,13 +2353,14 @@ cpdef void warn_on_unsupported_std(tuple options):
                     'that causes RTC to break when the standard is set '
                     'to c++11. Please use c++14, or use ROCm > 7.0'
                 )
+        # TODO(leofang): Update this. We need C++17 now.
         elif '-std=c++03' in opt:
-            warnings.warn('CCCL requires c++11 or above')
+            warnings.warn('CCCL requires c++17 or above')
 
 
 cpdef tuple assemble_cupy_compiler_options(tuple options):
     if use_default_std(options):
-        options += ('--std=c++14',)
+        options += ('--std=c++17',)
     else:
         warn_on_unsupported_std(options)
 
