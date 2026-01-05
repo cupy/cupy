@@ -1,5 +1,5 @@
 # AUTO GENERATED: DO NOT EDIT!
-ARG BASE_IMAGE="nvidia/cuda:13.0.0-devel-ubuntu22.04"
+ARG BASE_IMAGE="nvidia/cuda:13.1.0-devel-ubuntu22.04"
 FROM ${BASE_IMAGE}
 
 RUN export DEBIAN_FRONTEND=noninteractive && \
@@ -10,11 +10,11 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
        curl llvm libncursesw5-dev xz-utils tk-dev \
        libxml2-dev libxmlsec1-dev libffi-dev \
        liblzma-dev \
-\
+       libopenmpi-dev \
        && \
     apt-get -qqy install ccache git curl && \
     apt-get -qqy --allow-change-held-packages \
-            --allow-downgrades install 'libnccl2=2.28.*+cuda13.0' 'libnccl-dev=2.28.*+cuda13.0' 'libcutensor2-cuda-13=2.3.*' 'libcutensor2-dev-cuda-13=2.3.*' 'libcusparselt0-cuda-13=0.8.1.*' 'libcusparselt0-dev-cuda-13=0.8.1.*'
+            --allow-downgrades install 'libcutensor2-cuda-13=2.3.*' 'libcutensor2-dev-cuda-13=2.3.*' 'libcusparselt0-cuda-13=0.8.1.*' 'libcusparselt0-dev-cuda-13=0.8.1.*'
 
 ENV PATH "/usr/lib/ccache:${PATH}"
 
@@ -31,8 +31,8 @@ RUN pyenv install 3.14.0 && \
     pyenv global 3.14.0 && \
     pip install -U setuptools pip wheel
 
-RUN pip install -U 'numpy==2.3.*' 'scipy==1.16.*' 'optuna==4.*' 'cython==3.1.*'
-RUN pip uninstall -y mpi4py cuda-python && \
+RUN pip install -U 'numpy==2.3.*' 'scipy==1.16.*' 'optuna==4.*' 'mpi4py==4.*' 'cython==3.1.*'
+RUN pip uninstall -y cuda-python && \
     pip check
 
 RUN mkdir /home/cupy-user && chmod 777 /home/cupy-user
