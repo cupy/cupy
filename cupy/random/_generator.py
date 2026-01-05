@@ -42,8 +42,6 @@ _UINT32_MAX = 0xffffffff
 _UINT64_MAX = 0xffffffffffffffff
 
 
-
-
 class RandomState:
 
     """Portable container of a pseudo-random number generator.
@@ -1139,24 +1137,23 @@ class RandomState:
                 raise ValueError(
                     'Cannot take a larger sample than population when '
                     '\'replace=False\'')
-            
+
             # Use memory-efficient bijection approach
             use_bijection = True
-            
-            if use_bijection and isinstance(a, int):
-                print("I am here")
 
+            if use_bijection and isinstance(a, int):
                 # Generate 24 random keys for the bijection
-                keys = numpy.random.randint(0, _UINT32_MAX + 1, size=24, dtype=cupy.uint32)
-                
+                keys = numpy.random.randint(
+                    0, _UINT32_MAX + 1, size=24, dtype=cupy.uint32)
+
                 # Create bijection object
                 bijection = FeistelBijection(a_size, keys)
                 params = bijection.get_params()
-                
+
                 # Allocate output
                 # TODO(leofang): check if this equals to dtype='l' on Windows
                 indices = cupy.empty(size, dtype=cupy.int64)
-                
+
                 # Launch kernel
                 block_size = 256
                 grid_size = (a_size + block_size - 1) // block_size
@@ -1183,17 +1180,6 @@ class RandomState:
                     unsigned int tid = blockIdx.x * blockDim.x + threadIdx.x;
                     if (tid >= arr_size)
                         return;
-                    if (tid == 0) {
-                        printf("params.right_side_bits: %llu\n", params.right_side_bits);
-                        printf("params.left_side_bits: %llu\n", params.left_side_bits);
-                        printf("params.right_side_mask: %llu\n", params.right_side_mask);
-                        printf("params.left_side_mask: %llu\n", params.left_side_mask);
-                        for (int i = 0; i < 24; i++) {
-                            printf("params.keys[%d]: %u\n", i, params.keys[i]);
-                        }
-                        printf("cutoff_size: %llu\n", cutoff_size);
-                        printf("arr_size: %llu\n", arr_size);
-                    }
                     
                     // Apply Feistel bijection to tid
                     uint64_t val = static_cast<uint64_t>(tid);
@@ -1214,7 +1200,6 @@ class RandomState:
                     // Combine left and right sides
                     long long idx = (long long)((static_cast<uint64_t>(high) << params.right_side_bits) | static_cast<uint64_t>(low));
                     if (tid < cutoff_size) {
-                        printf("writing to output: tid=%u, idx=%llu. high=%u, low%u \n", tid, idx, high, low);
                         out[tid] = idx; 
                     }
                 }
@@ -1223,7 +1208,6 @@ class RandomState:
                     (grid_size,), (block_size,),
                     (indices, params, size, a_size)
                 )
-                print(f"{indices=}")
             else:
                 indices = a.copy()
             self.shuffle(indices)
