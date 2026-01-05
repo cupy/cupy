@@ -1130,9 +1130,9 @@ cdef class FeistelBijection:
 
         # Copy keys from the input array
         assert len(keys_array) == 24
-        cdef int i
-        for i in range(24):
-            self.param.keys[i] = keys_array[i]
+        memcpy(<void*> &self.param.keys[0],
+               <void*> &keys_array[0],
+               sizeof(self.param.keys))
 
     cdef get_params(self):
         """Get bijection parameters as a structured array for device code.
@@ -1183,26 +1183,33 @@ cdef class FeistelBijection:
                 if (tid >= arr_size)
                     return;
                 
-                // Apply Feistel bijection to tid
+                // Apply Feistel bijection to tid, re-apply until valid
                 uint64_t val = static_cast<uint64_t>(tid);
-                uint32_t high = (uint32_t)(val >> params.right_side_bits);
-                uint32_t low = (uint32_t)(val & params.right_side_mask);
+                long long idx;
                 
-                // 24 rounds of Feistel network
-                for (uint32_t i = 0; i < 24; i++) {
-                    constexpr uint64_t __m0  = 0xD2B74407B1CE6E93;
-                    const uint64_t __product = __m0 * high;
-                    const uint32_t __high    = static_cast<uint32_t>(__product >> 32);
-                    uint32_t __low           = static_cast<uint32_t>(__product);
-                    __low                    = (__low << (params.right_side_bits - params.left_side_bits)) | low >> params.left_side_bits;
-                    high                     = ((__high ^ params.keys[i]) ^ low) & params.left_side_mask;
-                    low                      = __low & params.right_side_mask;
-                }
+                do {
+                    uint32_t high = (uint32_t)(val >> params.right_side_bits);
+                    uint32_t low = (uint32_t)(val & params.right_side_mask);
+                    
+                    // 24 rounds of Feistel network
+                    for (uint32_t i = 0; i < 24; i++) {
+                        constexpr uint64_t __m0  = 0xD2B74407B1CE6E93;
+                        const uint64_t __product = __m0 * high;
+                        const uint32_t __high    = static_cast<uint32_t>(__product >> 32);
+                        uint32_t __low           = static_cast<uint32_t>(__product);
+                        __low                    = (__low << (params.right_side_bits - params.left_side_bits)) | low >> params.left_side_bits;
+                        high                     = ((__high ^ params.keys[i]) ^ low) & params.left_side_mask;
+                        low                      = __low & params.right_side_mask;
+                    }
+                    
+                    // Combine left and right sides
+                    idx = (long long)((static_cast<uint64_t>(high) << params.right_side_bits) | static_cast<uint64_t>(low));
+                    val = static_cast<uint64_t>(idx);
+                } while (idx >= static_cast<long long>(arr_size));
                 
-                // Combine left and right sides
-                long long idx = (long long)((static_cast<uint64_t>(high) << params.right_side_bits) | static_cast<uint64_t>(low));
+                // Write valid output if within cutoff
                 if (tid < cutoff_size) {
-                    out[tid] = idx; 
+                    out[tid] = idx;
                 }
             }
             ''',
