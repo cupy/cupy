@@ -8,16 +8,14 @@ from typing import (
     Literal,
     Protocol,
     SupportsIndex,
-    overload,
     TypeAlias,
+    overload,
 )
 
 import numpy
 from _typeshed import StrOrBytesPath, SupportsWrite
 from typing_extensions import TypeVar
 
-from cupy.typing._standalone import _Buffer, _ScalarT
-from cupy._core import core
 from cupy._core.flags import Flags
 from cupy.cuda.device import Device
 from cupy.cuda.memory import MemoryPointer
@@ -25,6 +23,7 @@ from cupy.cuda.stream import Stream
 from cupy.typing import DTypeLike
 from cupy.typing._standalone import (
     _T,
+    _Buffer,
     _DTypeLike,
     _DTypeT,
     _DTypeT_co,
@@ -36,6 +35,7 @@ from cupy.typing._standalone import (
     _NumpyArrayT,
     _OrderKACF,
     _ScalarLike_co,
+    _ScalarT,
     _ShapeLike,
     _SortSide,
     _SupportsFileMethods,
@@ -44,7 +44,7 @@ from cupy.typing._standalone import (
 @typing.runtime_checkable
 class _SupportsArrayD(Protocol[_DTypeT_co]):
     # Only covers default signature (no optional args provided)
-    def __array__(self) -> core.ndarray[Any, _DTypeT_co]: ...
+    def __array__(self) -> ndarray[Any, _DTypeT_co]: ...
 
 _ArrayLike: TypeAlias = (
     _SupportsArrayD[numpy.dtype[_ScalarT]]
@@ -81,10 +81,10 @@ _ToIndices: TypeAlias = _ToIndex | tuple[_ToIndex, ...]
 
 # numpy.typing.ArrayLike minus str/bytes
 ArrayLike: TypeAlias = _Buffer | _DualArrayLike[numpy.dtype[Any], complex]
-NDArray: TypeAlias = core.ndarray[Any, numpy.dtype[_ScalarT]]
+NDArray: TypeAlias = ndarray[Any, numpy.dtype[_ScalarT]]
 
-_ArrayT = TypeVar("_ArrayT", bound=core.ndarray)
-_ArrayT_co = TypeVar("_ArrayT_co", bound=core.ndarray, covariant=True)
+_ArrayT = TypeVar("_ArrayT", bound=ndarray)
+_ArrayT_co = TypeVar("_ArrayT_co", bound=ndarray, covariant=True)
 _IntArrayT = TypeVar("_IntArrayT", bound=NDArray[numpy.integer])
 _NumericArrayT = TypeVar("_NumericArrayT", bound=NDArray[numpy.number])
 _RealArrayT = TypeVar(
