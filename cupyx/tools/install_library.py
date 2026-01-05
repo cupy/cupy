@@ -220,6 +220,10 @@ The current platform ({}) is not supported.'''.format(target_platform))
             shutil.move(
                 os.path.join(outdir, dir_name, 'include'),
                 os.path.join(destination, 'include'))
+            if platform.system() == 'Windows':
+                shutil.move(
+                    os.path.join(outdir, dir_name, 'bin'),
+                    os.path.join(destination, 'bin'))
             shutil.move(
                 os.path.join(outdir, dir_name, 'lib'),
                 os.path.join(destination, 'lib'))

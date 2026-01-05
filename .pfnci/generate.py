@@ -170,6 +170,26 @@ class LinuxGenerator:
                 ':${LD_LIBRARY_PATH}'
             )
 
+        # Define env vars to discover cuSPARSELt during build/runtime.
+        if matrix.cusparselt is not None:
+            # The following assumes cuSPARSELt 0.8.0+ package layout.
+            cuda_major = matrix.cuda.split('.')[0]
+            lines.append(
+                'ENV CUPY_INCLUDE_PATH='
+                f'/usr/include/libcusparseLt/{cuda_major}'
+                ':${CUPY_INCLUDE_PATH}'
+            )
+            lines.append(
+                'ENV CUPY_LIBRARY_PATH='
+                f'/usr/lib/x86_64-linux-gnu/libcusparseLt/{cuda_major}'
+                ':${CUPY_LIBRARY_PATH}'
+            )
+            lines.append(
+                'ENV LD_LIBRARY_PATH='
+                f'/usr/lib/x86_64-linux-gnu/libcusparseLt/{cuda_major}'
+                ':${LD_LIBRARY_PATH}'
+            )
+
         # Set environment variables for ROCm.
         if matrix.rocm is not None:
             lines += [
@@ -261,13 +281,18 @@ class LinuxGenerator:
                     packages.append(f'libcutensor-devel-{spec}')
             if cusparselt is not None:
                 spec = self.schema['cusparselt'][cusparselt]['spec']
-                major = cusparselt.split('.')[0]
+                cudamajor = cuda.split('.')[0]
+                spltmajor = cusparselt.split('.')[0]
                 if apt:
-                    packages.append(f'libcusparselt{major}={spec}')
-                    packages.append(f'libcusparselt-dev={spec}')
+                    packages.append(
+                        f'libcusparselt{spltmajor}-cuda-{cudamajor}={spec}')
+                    packages.append(
+                        f'libcusparselt{spltmajor}-dev-cuda-{cudamajor}={spec}')
                 else:
-                    packages.append(f'libcusparselt{major}-{spec}')
-                    packages.append(f'libcusparselt-devel-{spec}')
+                    packages.append(
+                        f'libcusparselt{spltmajor}-cuda-{cudamajor}-{spec}')
+                    packages.append(
+                        f'libcusparselt{spltmajor}-devel-cuda-{cudamajor}-{spec}')
             return packages
         elif matrix.rocm is not None:
             return self.schema['rocm'][matrix.rocm]['packages']  # type: ignore[no-any-return] # NOQA

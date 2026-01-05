@@ -215,7 +215,7 @@
   rocm: null
   nccl: "2.26"
   cutensor: null
-  cusparselt: "0.7.1"
+  cusparselt: null
   python: "3.12"
   numpy: "2.3"
   scipy: "1.15"
@@ -244,7 +244,7 @@
   rocm: null
   nccl: "2.26"
   cutensor: "2.3"
-  cusparselt: "0.7.1"
+  cusparselt: "0.8.1"
   python: "3.12"
   numpy: "2.3"
   scipy: "1.16"
@@ -274,7 +274,7 @@
   rocm: null
   nccl: "2.27"
   cutensor: "2.3"
-  cusparselt: "0.7.1"
+  cusparselt: "0.8.1"
   python: "3.14"
   numpy: "2.3"
   scipy: "1.16"

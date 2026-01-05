@@ -43,3 +43,7 @@ case ${test_retval} in
         exit $test_retval
         ;;
 esac
+
+# Validate that importing cupy does not import cupyx
+# grep returns 0 if it finds anything so invert the result.
+! $(python3 -Ximporttime -c "import cupy" |& grep -q cupyx) || (echo "Found forbidden import 'cupyx'" && exit 1)

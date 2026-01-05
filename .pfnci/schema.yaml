@@ -169,10 +169,9 @@ cusparselt:
   # https://developer.nvidia.com/cusparselt/downloads
   null:
     spec: null
-  "0.7.1":
-    spec: "0.7.1.*"
+  "0.8.1":
+    spec: "0.8.1.*"
     cuda:
-      "12.8":
       "12.9":
       "13.0":
 
