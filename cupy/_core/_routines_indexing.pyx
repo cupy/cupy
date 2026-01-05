@@ -585,7 +585,7 @@ _choose_clip_kernel = ElementwiseKernel(
     '''
       using idx_t = decltype(choices)::index_t;
       idx_t n_channel = static_cast<idx_t>n_channel_;
-      idx_t n = static_cast<indx_t>n_;
+      idx_t n = static_cast<idx_t>n_;
 
       idx_t x;
       if (a < 0) {
@@ -594,7 +594,7 @@ _choose_clip_kernel = ElementwiseKernel(
         x = n - 1;
       }
       else {
-        x = static_cast<indx_t>(a);
+        x = static_cast<idx_t>(a);
       }
       y = choices[i + n_channel * x];
     ''',
@@ -654,7 +654,7 @@ cdef _create_scatter_kernel(name, code):
         'T v, S indices, int64 cdim_, int64 rdim_, int64 adim_',
         'raw T a',
         string.Template('''
-            using i_idx_t = decltype(indices)::index_t;
+            using i_idx_t = decltype(i);
             using a_idx_t = decltype(a)::index_t;
             i_idx_t cdim = static_cast<i_idx_t>(cdim_);
             a_idx_t rdim = static_cast<a_idx_t>(rdim_);
@@ -665,7 +665,6 @@ cdef _create_scatter_kernel(name, code):
             a_idx_t li = i / (rdim * cdim);
             a_idx_t ri = i % rdim;
             T &out0 = a[(li * adim + wrap_indices) * rdim + ri];
-            T &in0 = out0;
             const T &in1 = v;
             ${code};
         ''').substitute(code=code),
