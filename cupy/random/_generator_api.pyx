@@ -1118,6 +1118,7 @@ cdef class FeistelBijection:
         cdef uint64_t total_bits
 
         # Round up to at least 4 bits, then to next power of 2
+        # Note: This is a bug fix to cuda::shuffle_iterator (NVIDIA/cccl#7073).
         total_bits = get_cipher_bits(num_elements)
 
         # Half bits rounded down
@@ -1139,12 +1140,18 @@ cdef class FeistelBijection:
 
         Returns:
             numpy.ndarray: Structured array containing all bijection parameters
+
+        Warning:
+            The returned array references self's internal memory without
+            holding a reference. It must be used immediately while self
+            is alive. Do not store or return it to Python code.
         """
         # Create and populate the params array
-        # TODO(leofang): use NumPy C API
-        params = numpy.empty(1, dtype=_feistel_bijection_dtype)
+        # TODO(leofang): use NumPy C API PyArray_NewFromDescr once it's exposed
+        # to Cython.
         assert (
             _feistel_bijection_dtype.itemsize == sizeof(_FeistelBijection))
+        params = numpy.empty(1, dtype=_feistel_bijection_dtype)
         memcpy(<void*><intptr_t>(params.ctypes.data),
                &(self.param),
                sizeof(_FeistelBijection))
@@ -1159,8 +1166,6 @@ cdef class FeistelBijection:
         global _feistel_bijection_with_cutoff_kernel
         if _feistel_bijection_with_cutoff_kernel is None:
             # FIXME(leofang): currently only supports a_size <= 2**32
-            # FIXME(leofang): move kernel to separate file
-            # Feistel bijection kernel for choice without replacement
             _feistel_bijection_with_cutoff_kernel = cupy.RawKernel(
                 r'''  // # noqa: E501
             #include <cuda/std/cstdint>
