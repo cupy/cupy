@@ -1,7 +1,7 @@
-# distutils: language = c++
-import numpy
+from libc.stdint cimport intptr_t, uint64_t, int32_t, int64_t, uint32_t
+from libc.string cimport memcpy
 
-from libc.stdint cimport intptr_t, uint64_t, int32_t, int64_t
+import numpy
 
 import cupy
 from cupy import _core
@@ -11,6 +11,7 @@ from cupy_backends.cuda.api import runtime
 
 _UINT32_MAX = 0xffffffff
 _UINT64_MAX = 0xffffffffffffffff
+
 
 cdef extern from 'cupy_distributions.cuh' nogil:
     cppclass rk_binomial_state:
@@ -1061,3 +1062,90 @@ cdef void _launch_dist(bit_generator, func, out, args) except*:
     cdef int generator = bit_generator.generator
     cdef bsize = bit_generator._state_size()
     _launch(func, generator, state, strm, bsize, out, args)
+
+
+cdef struct _FeistelBijection:
+    uint64_t right_side_bits
+    uint64_t left_side_bits
+    uint64_t right_side_mask
+    uint64_t left_side_mask
+    uint32_t[24] keys  # num_rounds = 24
+
+
+cdef object _feistel_bijection_dtype = numpy.dtype([
+    ('right_side_bits', numpy.uint64),
+    ('left_side_bits', numpy.uint64),
+    ('right_side_mask', numpy.uint64),
+    ('left_side_mask', numpy.uint64),
+    ('keys', numpy.uint32, (24,))
+], align=True)
+
+
+cdef uint64_t bit_ceil(uint64_t x) nogil noexcept:
+    """Return the smallest power of two greater than or equal to n."""
+    if x <= 1:
+        return 1
+    x = x - 1
+    x = x | (x >> 1)
+    x = x | (x >> 2)
+    x = x | (x >> 4)
+    x = x | (x >> 8)
+    x = x | (x >> 16)
+    x = x | (x >> 32)
+    return x + 1
+
+
+cdef class FeistelBijection:
+    """Feistel cipher for creating random bijections on power-of-two sized domains.
+    
+    This class implements the Feistel bijection from libcudacxx for use in
+    memory-efficient random sampling without replacement.
+    """
+    cdef _FeistelBijection param
+
+    def __init__(self, uint64_t num_elements, uint32_t[::1] keys_array):
+        """Initialize Feistel bijection with pre-generated random keys.
+        
+        Args:
+            num_elements: Size of the domain (will be rounded up to power of 2)
+            keys_array: Array of 24 uint32 random numbers to use as keys
+        """
+        cdef uint64_t total_bits
+        
+        # Round up to at least 4 bits, then to next power of 2
+        total_bits = max(4, bit_ceil(num_elements))
+        
+        # Half bits rounded down
+        self.param.left_side_bits = total_bits // 2
+        self.param.left_side_mask = (1 << self.param.left_side_bits) - 1
+        
+        # Half the bits rounded up
+        self.param.right_side_bits = total_bits - self.param.left_side_bits
+        self.param.right_side_mask = (1 << self.param.right_side_bits) - 1
+
+        print(self.param.right_side_bits)
+        print(self.param.left_side_bits)
+        print(self.param.right_side_mask)
+        print(self.param.left_side_mask)
+        
+        # Copy keys from the input array
+        assert len(keys_array) == 24
+        cdef int i
+        for i in range(24):
+            self.param.keys[i] = keys_array[i]
+            print(self.param.keys[i])
+    
+    def get_params(self):
+        """Get bijection parameters as a structured array for device code.
+        
+        Returns:
+            numpy.ndarray: Structured array containing all bijection parameters
+        """
+        # Create and populate the params array
+        # TODO(leofang): use NumPy C API
+        params = numpy.empty(1, dtype=_feistel_bijection_dtype)
+        assert _feistel_bijection_dtype.itemsize == sizeof(_FeistelBijection)
+        memcpy(<void*><intptr_t>(params.ctypes.data),
+               &(self.param),
+               sizeof(_FeistelBijection))
+        return params
