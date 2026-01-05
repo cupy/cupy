@@ -512,9 +512,13 @@ class Stream(_BaseStream):
             ptr = runtime.streamCreateWithPriority(flag, priority)
             device_id = runtime.getDevice()
         super().__init__(ptr, device_id)
+        self._foreign_stream_ref = None
 
     def __del__(self, is_shutting_down=_util.is_shutting_down):
         if is_shutting_down():
+            return
+        if self._foreign_stream_ref is not None:
+            self._foreign_stream_ref = None
             return
         if self.ptr not in (0, runtime.streamLegacy, runtime.streamPerThread):
             runtime.streamDestroy(self.ptr)

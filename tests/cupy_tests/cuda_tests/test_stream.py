@@ -244,7 +244,12 @@ class TestExternalStream(unittest.TestCase):
 
     def setUp(self):
         self.stream_ptr = cuda.runtime.streamCreate()
-        self.stream = cuda.ExternalStream(self.stream_ptr)
+        # Test that ExternalStream raises a deprecation warning
+        with pytest.warns(
+            DeprecationWarning,
+            match='ExternalStream is deprecated'
+        ):
+            self.stream = cuda.ExternalStream(self.stream_ptr)
 
     def tearDown(self):
         cuda.runtime.streamDestroy(self.stream_ptr)
@@ -279,18 +284,6 @@ class TestExternalStream(unittest.TestCase):
 
         stream.synchronize()
         assert out == list(range(N))
-
-    def test_deprecation_warning(self):
-        # Test that ExternalStream raises a deprecation warning
-        stream_ptr = cuda.runtime.streamCreate()
-        try:
-            with pytest.warns(
-                DeprecationWarning,
-                match='ExternalStream is deprecated'
-            ):
-                cuda.ExternalStream(stream_ptr)
-        finally:
-            cuda.runtime.streamDestroy(stream_ptr)
 
 
 class TestCUDAStreamProtocol(unittest.TestCase):
@@ -455,7 +448,7 @@ class TestCUDAStreamProtocol(unittest.TestCase):
         # Test that we can use the stream
         with cupy_stream:
             cupy.arange(10)  # Create array on stream
-            assert cupy.get_current_stream() == cupy_stream
+            assert cuda.get_current_stream() == cupy_stream
 
         # Test that synchronize works
         cupy_stream.synchronize()
