@@ -14,7 +14,7 @@ Requirements
     * This requirement is optional if you install both CUDA and CuPy from either PyPI or conda-forge. However, you still need to have a compatible
       driver installed for your GPU. See :ref:`install_cupy_from_pypi` and :ref:`install_cupy_from_conda_forge` for details.
 
-* `Python <https://python.org/>`_: v3.10 / v3.11 / v3.12 / v3.13
+* `Python <https://python.org/>`_: v3.10 / v3.11 / v3.12 / v3.13 / v3.14
 
 .. note::
 
