@@ -1081,18 +1081,15 @@ cdef object _feistel_bijection_dtype = numpy.dtype([
 ], align=True)
 
 
-cdef uint64_t bit_ceil(uint64_t x) nogil noexcept:
-    """Return the smallest power of two greater than or equal to n."""
-    if x <= 1:
-        return 1
-    x = x - 1
-    x = x | (x >> 1)
-    x = x | (x >> 2)
-    x = x | (x >> 4)
-    x = x | (x >> 8)
-    x = x | (x >> 16)
-    x = x | (x >> 32)
-    return x + 1
+cdef uint64_t get_cipher_bits(uint64_t m) nogil noexcept:
+    if (m <= 16):
+        return 4
+    cdef uint64_t i = 0
+    m -= 1
+    while m != 0:
+      i += 1
+      m >>= 1
+    return i
 
 
 cdef class FeistelBijection:
@@ -1113,7 +1110,7 @@ cdef class FeistelBijection:
         cdef uint64_t total_bits
         
         # Round up to at least 4 bits, then to next power of 2
-        total_bits = max(4, bit_ceil(num_elements))
+        total_bits = get_cipher_bits(num_elements)
         
         # Half bits rounded down
         self.param.left_side_bits = total_bits // 2
