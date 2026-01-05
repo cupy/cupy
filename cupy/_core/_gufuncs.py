@@ -6,6 +6,7 @@ import numpy
 
 import cupy
 import cupy._core._routines_manipulation as _manipulation
+from cupy._core.internal import _normalize_axis_indices
 from cupy._core._dtype import get_dtype, _raise_if_invalid_cast
 from cupy._core import internal
 
@@ -13,7 +14,7 @@ from cupy._core import internal
 # Signature parsing code and dimension accessing has been borrowed
 # from dask
 # https://github.com/dask/dask/blob/61b578f5a3ad88cbc6a8b9a73ce08c551bd969fa/dask/array/gufunc.py#L12-L55
-_DIMENSION_NAME = r'\w+\?*'
+_DIMENSION_NAME = r'\w+(\?|\|1)?'
 _CORE_DIMENSION_LIST = '(?:{0:}(?:,{0:})*,?)?'.format(_DIMENSION_NAME)
 _ARGUMENT = r'\({}\)'.format(_CORE_DIMENSION_LIST)
 _INPUT_ARGUMENTS = '(?:{0:}(?:,{0:})*,?)?'.format(_ARGUMENT)
@@ -25,6 +26,13 @@ _SIGNATURE = '^{:}->{:}$'.format(_INPUT_ARGUMENTS, _OUTPUT_ARGUMENTS)
 
 
 def _parse_gufunc_signature(signature):
+    """Parse and prepare gufunc signature for internal use, we convert
+    each operand into a tuple of dimensions and for each dimension return
+    (name, optional, broadcastable).
+    Additionally, returns the number of unique core dimensions (for later).
+    """
+    coredims = set()
+
     # The code has been modified from dask to support optional dimensions
     if not isinstance(signature, str):
         raise TypeError('Signature is not a string')
@@ -36,111 +44,39 @@ def _parse_gufunc_signature(signature):
     if not re.match(_SIGNATURE, signature):
         raise ValueError('Not a valid gufunc signature: {}'.format(signature))
     in_txt, out_txt = signature.split('->')
-    ins = [tuple(x.split(',')) if x != '' else ()
+    ins = [list(x.split(',')) if x != '' else ()
            for x in in_txt[1:-1].split('),(')]
-    outs = [tuple(y.split(',')) if y != '' else ()
+    outs = [list(y.split(',')) if y != '' else ()
             for y in out_txt[1:-1].split('),(')]
-    # TODO(ecastill) multiple output support
-    if len(outs) > 1:
-        raise ValueError('Currently more than 1 output is not supported')
-    return ins, outs
 
+    # Modify the signature information to be a tuple of
+    # (name, optional, broadcastable)
+    for cds in ins:
+        for i in range(len(cds)):
+            optional = cds[i].endswith('?')
+            broadcastable = cds[i].endswith('|1')
+            # Remove either (can't be both)
+            name = cds[i].removesuffix('?').removesuffix('|1')
+            cds[i] = (name, optional, broadcastable)
 
-def _validate_normalize_axes(
-    axes, axis, keepdims, input_coredimss, output_coredimss
-):
-    # This code credit goes to Dask
-    # https://github.com/dask/dask/blob/61b578f5a3ad88cbc6a8b9a73ce08c551bd969fa/dask/array/gufunc.py#L58-L172
-    nin = len(input_coredimss)
-    nout = (
-        1 if not isinstance(output_coredimss, list) else len(output_coredimss)
-    )
+    for cds in outs:
+        for i in range(len(cds)):
+            optional = cds[i].endswith('?')
+            broadcastable = cds[i].endswith('|1')
+            if broadcastable:
+                raise ValueError('Output name cannot indicate |1.')
+            # Remove either (can't be both)
+            name = cds[i].removesuffix('?')
+            cds[i] = (name, optional, broadcastable)
 
-    if axes is not None and axis is not None:
-        raise ValueError(
-            'Only one of `axis` or `axes` keyword arguments should be given')
-    if axes and not isinstance(axes, list):
-        raise ValueError('`axes` has to be of type list')
+    ins = [tuple(_) for _ in ins]
+    outs = [tuple(_) for _ in outs]
 
-    # output_coredimss = output_coredimss if nout > 1 else [output_coredimss]
-    filtered_core_dims = list(filter(len, input_coredimss))
-    nr_outputs_with_coredims = len(
-        [True for x in output_coredimss if len(x) > 0])
+    for cds in ins + outs:
+        for cd in cds:
+            coredims.add(cd[0])  # add coredim name
 
-    if keepdims:
-        if nr_outputs_with_coredims > 0:
-            raise ValueError('`keepdims` can only be used for scalar outputs')
-        output_coredimss = len(output_coredimss) * [filtered_core_dims[0]]
-
-    core_dims = input_coredimss + output_coredimss
-    if axis is not None:
-        if not isinstance(axis, int):
-            raise ValueError('`axis` argument has to be an integer value')
-        if filtered_core_dims:
-            cd0 = filtered_core_dims[0]
-            if len(cd0) != 1:
-                raise ValueError(
-                    '`axis` can be used only, if one core dimension is present'
-                )
-            for cd in filtered_core_dims:
-                if cd0 != cd:
-                    raise ValueError(
-                        'To use `axis`, all core dimensions have to be equal'
-                    )
-
-    # Expand defaults or axis
-    if axes is None:
-        if axis is not None:
-            axes = [(axis,) if cd else tuple() for cd in core_dims]
-        else:
-            axes = [tuple(range(-len(icd), 0)) for icd in core_dims]
-
-    axes = [(a,) if isinstance(a, int) else a for a in axes]
-
-    if (
-        (nr_outputs_with_coredims == 0)
-        and (nin != len(axes))
-        and (nin + nout != len(axes))
-    ) or ((nr_outputs_with_coredims > 0) and (nin + nout != len(axes))):
-        raise ValueError(
-            'The number of `axes` entries is not equal the number'
-            ' of input and output arguments')
-
-    # Treat outputs
-    output_axes = axes[nin:]
-    output_axes = (
-        output_axes
-        if output_axes
-        else [tuple(range(-len(ocd), 0)) for ocd in output_coredimss]
-    )
-    input_axes = axes[:nin]
-
-    # Assert we have as many axes as output core dimensions
-    for idx, (iax, icd) in enumerate(zip(input_axes, input_coredimss)):
-        if len(iax) != len(icd):
-            raise ValueError(
-                f'The number of `axes` entries for argument #{idx}'
-                ' is not equal the number of respective input core'
-                ' dimensions in signature')
-    if not keepdims:
-        for idx, (oax, ocd) in enumerate(zip(output_axes, output_coredimss)):
-            if len(oax) != len(ocd):
-                raise ValueError(
-                    f'The number of `axes` entries for argument #{idx}'
-                    ' is not equal the number of respective output core'
-                    ' dimensions in signature')
-    else:
-        if input_coredimss:
-            icd0 = input_coredimss[0]
-            for icd in input_coredimss:
-                if icd0 != icd:
-                    raise ValueError(
-                        'To use `keepdims`, all core dimensions'
-                        ' have to be equal')
-            iax0 = input_axes[0]
-            output_axes = [iax0 for _ in output_coredimss]
-
-    return input_axes, output_axes
+    return ins, outs, len(coredims)
 
 
 class _OpsRegister:
@@ -254,6 +190,9 @@ class _OpsRegister:
                         f' casting was found for ufunc {self._name}')
 
     def determine_dtype(self, args, dtype, casting, signature):
+        if self._nout != 1:
+            # dtype discovery doesn't yet support this (the rest should)
+            raise NotImplementedError('Multiple output gufuncs not supported')
         ret_dtype = None
         func = self._default_func
         if signature is not None:
@@ -320,6 +259,10 @@ class _GUFunc:
         supports_out (bool, optional):
             If the wrapped function supports out as one of its kwargs.
             Defaults to `False`.
+        try_fastcall_func (None, optional):
+            If not None this function is called with same arguments as the
+            gufunc itself.  Must return the final result or ``NotImplemented``
+            if the fast-path is not possible.
         signatures (list of tuple of str):
             Contains strings in the form of 'ii->i' with i being the char of a
             dtype. Each element of the list is a tuple with the string
@@ -333,30 +276,31 @@ class _GUFunc:
             is used.
     '''
 
-    def __init__(self, func, signature, **kwargs):
+    def __init__(
+            self, func, signature, *,
+            name=None, doc=None,
+            supports_batched=False, supports_out=False, signatures=None,
+            try_fastcall_func=None):
         # We would like to create gufuncs from cupy regular ufuncs
         # so we can avoid most of the __call__ stuff
         self._func = func
         self._signature = signature
-        self.__name__ = kwargs.pop('name', func.__name__)
-        self.__doc__ = kwargs.pop('doc', func.__doc__)
+        self.__name__ = name if name is not None else func.__name__
+        self.__doc__ = doc if doc is not None else func.__doc__
 
         # The following are attributes to avoid applying certain steps
         # when wrapping cupy functions that do some of the gufunc
         # stuff internally due to CUDA libraries requirements
-        self._supports_batched = kwargs.pop('supports_batched', False)
-        self._supports_out = kwargs.pop('supports_out', False)
-        signatures = kwargs.pop('signatures', [])
-
-        if kwargs:
-            raise TypeError(
-                'got unexpected keyword arguments: '
-                + ', '.join([repr(k) for k in kwargs])
-            )
+        self._supports_batched = supports_batched
+        self._supports_out = supports_out
+        self._try_fastcall_func = try_fastcall_func
+        signatures = signatures if signatures is not None else []
 
         # Preprocess the signature here
-        input_coredimss, output_coredimss = _parse_gufunc_signature(
+        input_coredimss, output_coredimss, cndim_ix = _parse_gufunc_signature(
             self._signature)
+        self._core_num_dim_ix = cndim_ix
+        self._core_dims = input_coredimss + output_coredimss
         self._input_coredimss = input_coredimss
         self._output_coredimss = output_coredimss
         # This is pre-calculated to later check the minimum number of
@@ -364,21 +308,12 @@ class _GUFunc:
         self._min_dims = [0] * len(input_coredimss)
         for i, inp in enumerate(input_coredimss):
             for d in inp:
-                if d[-1] != '?':
+                if d[1]:  # name, optional, broadcastable
                     self._min_dims[i] += 1
 
-        # Determine nout: nout = None for functions of one
-        # direct return; nout = int for return tuples
-        self._nout = (
-            0
-            if not isinstance(output_coredimss, list)
-            else len(output_coredimss)
-        )
-        self._nin = (
-            0
-            if not isinstance(input_coredimss, list)
-            else len(input_coredimss)
-        )
+        self._nout = len(output_coredimss)
+        self._nin = len(input_coredimss)
+
         # Determines the function that will be run depending on the datatypes
         # Pass a list of signatures that are either the types in format
         # ii->o or a tuple with the string and a function other than func to be
@@ -387,12 +322,98 @@ class _GUFunc:
         self._ops_register = _OpsRegister(
             signatures, self._func, self._nin, self._nout, self.__name__)
 
-    def _apply_func_to_inputs(self, func, dim, sizes, dims, args, outs):
+    def _validate_normalize_axes(self, arrays, axes, axis, keepdims):
+        # This code originally came from Dask and was later heavily modified:
+        # https://github.com/dask/dask/blob/61b578f5a3ad88cbc6a8b9a73ce08c551bd969fa/dask/array/gufunc.py#L58-L172
+        if axes is not None and axis is not None:
+            raise ValueError(
+                'Only one of `axis` or `axes` keyword arguments '
+                'should be given')
+        if axes and not isinstance(axes, list):
+            raise ValueError('`axes` has to be of type list')
+
+        if keepdims:
+            # Store the number of core dimensions to append into keepdims.
+            keepdims = None
+            for icd in self._input_coredimss:
+                ndim_core = len(icd)
+                if keepdims is not None and keepdims != ndim_core:
+                    raise ValueError(
+                        '`keepdims` requires all inputs to have the same '
+                        'number of core dimensions')
+                keepdims = ndim_core
+
+            for ocd in self._output_coredimss:
+                if len(ocd) > 0:
+                    raise ValueError(
+                        '`keepdims` can only be used for scalar outputs')
+
+        if axis is not None:
+            if not isinstance(axis, int):
+                raise ValueError('`axis` argument has to be an integer value')
+            if self._core_num_dim_ix != 1:
+                raise ValueError(
+                    '`axis` can be used only, if there is a single shared '
+                    f'core dimension, but {self._core_num_dim_ix} are '
+                    f'present in the signature {self._signature}'
+                )
+            if not keepdims:
+                axes = [(axis,) if cd else () for cd in self._core_dims]
+            else:
+                # When keepdims is used with axis, it applies to the output
+                axes = [(axis,) if cd else () for cd in self._input_coredimss]
+                axes.extend([(axis,)] * self._nout)
+        elif axes is not None:
+            # Allow a single integer in axes.
+            axes = [(a,) if isinstance(a, int) else a for a in axes]
+        else:
+            axes = [None] * (self._nin + self._nout)
+
+        if len(axes) == self._nin:
+            for ocd in self._output_coredimss:
+                if len(ocd) > 0:
+                    raise ValueError(
+                        '`axes` entries for outputs can only be omitted if '
+                        'none of them has core axes.')
+            # Output axes may be ommitted, fill them in if this is the case.
+            # This seems actually more relaxes as NumPy as of NumPy 2.4.
+            axes.extend([None] * self._nout)
+        elif len(axes) != self._nin + self._nout:
+            raise ValueError(
+                'The number of `axes` entries is not equal to the number of '
+                'input and output arguments. Outputs may only be omitted if '
+                'they are all scalar.')
+
+        return axes[:self._nin], axes[self._nin:], keepdims
+
+    def _get_transpose(self, i, axs, ndim, n_core_dims):
+        """Normalize the axes tuple and check the bounds may be None at this
+        point.
+        """
+        if axs is None:
+            if ndim < n_core_dims:
+                raise ValueError(
+                    f'Argument {i} has too few dimensions.')
+            return None
+        elif len(axs) != n_core_dims:
+            # NOTE(seberg): Like NumPy, this rejects partial axes when axes
+            # are optional. The kernel (e.g. matmul) would need the info.
+            raise cupy.exceptions.AxisError(
+                f'Number of axes passed for argument {i} does not match the '
+                f'the number of core dimensions.')
+
+        axs = _normalize_axis_indices(axs, ndim, sort_axes=False)
+        if axs == tuple(range(ndim-n_core_dims, ndim)):
+            return None  # normalize for no transpose needed
+
+        return tuple(i for i in range(ndim) if i not in axs) + axs
+
+    def _apply_func_to_inputs(self, func, outer_shape, args, outs):
         # Apply function
         # The resulting array is loop_output_dims+the specified dims
         # Some functions have batching logic inside due to highly
         # optimized CUDA libraries so we just call them
-        if self._supports_batched or dim == len(dims):
+        if self._supports_batched or len(outer_shape) == 0:
             # Check if the function supports out, order and other args
             if self._supports_out and outs is not None:
                 outs = outs[0] if len(outs) == 1 else outs
@@ -405,120 +426,169 @@ class _GUFunc:
                 for o, fo in zip(outs, fouts):
                     cupy._core.elementwise_copy(fo, o)
         else:
-            dim_size = sizes[dims[dim]][0]
-            for i in range(dim_size):
+            # iterate over first outer dimension and recurse.
+            for i in range(outer_shape[0]):
                 n_args = [a[i] for a in args]
-                if outs is not None:
-                    n_outs = [o[i] for o in outs]
-                    self._apply_func_to_inputs(
-                        func, dim + 1, sizes, dims, n_args, n_outs)
+                n_outs = [o[i] for o in outs]
+                self._apply_func_to_inputs(
+                    func, outer_shape[1:], n_args, n_outs)
 
-    def _transpose_element(self, arg, iax, shape):
-        iax = tuple(a if a < 0 else a - len(shape) for a in iax)
-        tidc = (
-            tuple(i for i in range(
-                -len(shape) + 0, 0) if i not in iax) + iax
-        )
-        return arg.transpose(tidc)
-
-    def _get_args_transposed(self, args, input_axes, outs, output_axes):
-        # This code credit goes to Dask
-        # https://github.com/dask/dask/blob/61b578f5a3ad88cbc6a8b9a73ce08c551bd969fa/dask/array/gufunc.py#L349-L377
-        # modifications have been done to support arguments broadcast
-        # out argument, and optional core dims.
-        transposed_args = []
-        # This is used when reshaping the outputs so that we can delete
-        # dims that were not specified in the input
-        missing_dims = set()
-        for i, (arg, iax, input_coredims, md) in enumerate(zip(
-                args, input_axes, self._input_coredimss, self._min_dims)):
-            shape = arg.shape
-            nds = len(shape)
-            # For the inputs that has missing dimensions we need to reshape
-            if nds < md:
-                raise ValueError(f'Input operand {i} does not have enough'
-                                 f' dimensions (has {nds}, gufunc core with'
-                                 f' signature {self._signature} requires {md}')
-            optionals = len(input_coredims) - nds
-            if optionals > 0:
-                # Look for optional dimensions
-                # We only allow the first or the last dimensions to be optional
-                if input_coredims[0][-1] == '?':
-                    shape = (1,) * optionals + shape
-                    missing_dims.update(set(input_coredims[:optionals]))
-                else:
-                    shape = shape + (1,) * optionals
-                    missing_dims.update(
-                        set(input_coredims[min(0, len(shape)-1):]))
-                arg = arg.reshape(shape)
-            transposed_args.append(self._transpose_element(arg, iax, shape))
-        args = transposed_args
-
-        if outs is not None:
-            transposed_outs = []
-            # outs should be transposed to the intermediate form before
-            # copying all results
-            for out, iox, coredims in zip(
-                    outs, output_axes, self._output_coredimss):
-                transposed_outs.append(self._transpose_element(
-                    out, iox, out.shape))
-            # check that outs has been correctly transposed
-            # if the function returns a scalar, outs will be ignored
-            if len(transposed_outs) == len(outs):
-                outs = transposed_outs
-
-        # we can't directly broadcast arrays together since their core dims
-        # might differ. Only the loop dimensions are broadcastable
-        shape = internal._broadcast_shapes(
-            [a.shape[:-len(self._input_coredimss)] for a in args])
-        args = [_manipulation.broadcast_to(
-            a, shape + a.shape[-len(self._input_coredimss):]) for a in args]
-
-        # Assess input args for loop dims
-        input_shapes = [a.shape for a in args]
-        num_loopdims = [
-            len(s) - len(cd) for s, cd in zip(
-                input_shapes, self._input_coredimss)
-        ]
-        max_loopdims = max(num_loopdims) if num_loopdims else None
-        core_input_shapes = [
-            dict(zip(icd, s[n:]))
-            for s, n, icd in zip(
-                input_shapes, num_loopdims, self._input_coredimss)
-        ]
-        core_shapes = {}
-        for d in core_input_shapes:
-            core_shapes.update(d)
-
-        loop_input_dimss = [
-            tuple(
-                '__loopdim%d__' % d for d in range(
-                    max_loopdims - n, max_loopdims)
-            )
-            for n in num_loopdims
-        ]
-        input_dimss = [li + c for li, c in zip(
-            loop_input_dimss, self._input_coredimss)]
-
-        loop_output_dims = max(loop_input_dimss, key=len, default=())
-
-        # Assess input args for same size and chunk sizes
-        # Collect sizes and chunksizes of all dims in all arrays
-        dimsizess = {}
-        for dims, shape in zip(input_dimss, input_shapes):
-            for dim, size in zip(dims, shape):
-                dimsizes = dimsizess.get(dim, [])
-                dimsizes.append(size)
-                dimsizess[dim] = dimsizes
-
-        # Assert correct partitioning, for case:
-        for dim, sizes in dimsizess.items():
-            if set(sizes).union({1}) != {1, max(sizes)}:
+    def _update_dims(self, i, core_dims, cd, length):
+        # Helper to update dimensions, just to not repeat error messages.
+        name = cd[0]
+        prev_length = core_dims.get(name, None)
+        if prev_length is None:
+            if cd[2] and length == 1:
+                return  # broadcastable, other operand may set it.
+            core_dims[name] = length
+        elif length == 1 and cd[2]:  # cd[2] indicates broadcastable
+            # broadcastable core-dim of size 1, ignore it.
+            return
+        elif prev_length != length:
+            if prev_length == -1 or length == -1:
                 raise ValueError(
-                    f'Dimension {dim} with different lengths in arrays'
-                )
+                    'An optional core-dimension must be skipped in '
+                    'all or no inputs.')
+            raise ValueError(
+                f'Input operand {i} has mismatch in its core '
+                f'dimension {name} with signature {self._signature} '
+                f'({prev_length} != {length}).')
 
-        return args, dimsizess, loop_output_dims, outs, missing_dims
+    def _setup_operands(
+            self, args, in_axes, outs, out_axes, keepdims,
+            ret_dtype, filter_order, casting):
+        """Set up the operands for the function call, this needs to figure out
+        the actual core axes and shapes and make sure core-dimensions match.
+        We then transpose the core dimensions to the end for the actual
+        operation.
+
+        This function also sets up the output operands, note that there are two
+        versions. The untransposed ones for user-return and the transposed ones
+        for the actual result.
+        """
+        core_dims = {}
+        outer_shapes = []
+        for i, (arg, axs, coredims) in enumerate(
+                zip(args, in_axes, self._input_coredimss)):
+            ndim = arg.ndim
+            n_core_dims = max(self._min_dims[i], min(ndim, len(coredims)))
+            transpose = self._get_transpose(i, axs, ndim, n_core_dims)
+            if transpose is None:
+                outer_shape = arg.shape[:-n_core_dims]
+                core_shape = arg.shape[-n_core_dims:]
+            else:
+                outer_shape = tuple(arg.shape[i]
+                                    for i in transpose[:-n_core_dims])
+                core_shape = tuple(arg.shape[i]
+                                   for i in transpose[-n_core_dims:])
+
+            n_skipped = len(coredims) - n_core_dims
+            ommitted_coredims = []
+            i_coredim = 0
+            for length in core_shape:
+                # Process the core dimension shape and store the result into
+                # `core_dims` for each dimension.
+
+                # If there are optional coredims skip them from the front
+                while (cd := coredims[i_coredim])[1] and n_skipped > 0:
+                    ommitted_coredims.append(i_coredim)
+                    self._update_dims(i, core_dims, cd, -1)
+                    i_coredim += 1
+                    n_skipped -= 1
+                else:
+                    i_coredim += 1
+
+                self._update_dims(i, core_dims, cd, length)
+
+            # The above may not have processed all optional dimensions, do it
+            # to ensure errors for missing ones (and simplify output shape).
+            while i_coredim < len(coredims):
+                ommitted_coredims.append(i_coredim)
+                self._update_dims(i, core_dims, coredims[i_coredim], -1)
+                i_coredim += 1
+
+            if transpose is not None:
+                args[i] = arg.transpose(transpose)
+
+            if ommitted_coredims:
+                assert transpose is None  # currently guaranteed
+                args[i] = cupy.expand_dims(arg, axis=tuple(ommitted_coredims))
+
+            outer_shapes.append(outer_shape)
+
+        # The outer shape needs to be broadcast across all input operands.
+        bc_outer_shape = internal._broadcast_shapes(outer_shapes)
+
+        for i, (arg, outer_shape) in enumerate(zip(args, outer_shapes)):
+            # Above, we figured out the transpose and outer shape, we still
+            # need to apply it to broadcast (potentially)
+            if outer_shape != bc_outer_shape:
+                arg = _manipulation.broadcast_to(
+                    arg, bc_outer_shape + arg.shape[len(outer_shape):])
+
+            args[i] = arg
+
+        # Figure out the outputs now based on the input shapes and core dims.
+        # (NumPy supports `out=` to fill in shapes sometimes, we do not yet.)
+        untransposed_outs = []  # The return array is the untransposed one.
+        for i, (out, axs, coredims) in enumerate(
+                zip(outs, out_axes, self._output_coredimss)):
+            ommitted_dims = []
+            if not keepdims:
+                core_shape = []
+                for i_cd, cd in enumerate(coredims):
+                    dim = core_dims.get(cd[0], None)
+                    if dim == -1:
+                        # Ommit dim in output is core-dim + outer ndim
+                        ommitted_dims.append(i_cd + len(bc_outer_shape))
+                    elif dim is None:
+                        core_shape.append(1)  # should be a |1 core-dim
+                    else:
+                        core_shape.append(dim)
+            else:
+                assert not self._output_coredimss[i]
+                core_shape = [1] * keepdims
+
+            shape = bc_outer_shape + tuple(core_shape)
+            trans = self._get_transpose(
+                self._nin + i, axs, len(shape), len(core_shape))
+
+            if out is not None:
+                untransposed_outs.append(out)
+                if trans is not None:
+                    out = out.transpose(trans)
+                if out.shape != shape:
+                    # Inverse transpose for error message (if needed)
+                    itrans = range(len(shape))
+                    if trans is not None:
+                        itrans = sorted(itrans, key=lambda i: trans[i])
+                    actual = tuple(out.shape[i] for i in itrans)
+                    expected = tuple(shape[i] for i in itrans)
+                    raise ValueError(
+                        f'Output operand {i} has invalid shape {actual} '
+                        f'expected {expected}')
+
+                _raise_if_invalid_cast(
+                    ret_dtype, out.dtype, casting, "out dtype")
+            else:
+                if trans is not None:
+                    itrans = sorted(range(len(trans)), key=lambda i: trans[i])
+                    shape = tuple(shape[i] for i in itrans)
+                # Note: Order logic here may be weird/wrong as core dims should
+                # be preferred contiguous.
+                out = cupy.empty(shape, dtype=ret_dtype, order=filter_order)
+                untransposed_outs.append(out)
+                if trans is not None:
+                    out = out.transpose(trans)
+
+            if ommitted_dims:
+                out = cupy.expand_dims(out, axis=tuple(ommitted_dims))
+            if keepdims:
+                # The core function should not see the keepdims, strip them.
+                out = out[(...,) + (0,) * keepdims]
+            outs[i] = out  # The operand "out" may have been transposed
+
+        return args, outs, untransposed_outs, bc_outer_shape
 
     def _determine_order(self, args, order):
         if order.upper() in ('C', 'K'):
@@ -538,7 +608,10 @@ class _GUFunc:
         else:
             raise RuntimeError(f'Unknown order {order}')
 
-    def __call__(self, *args, **kwargs):
+    def __call__(
+            self, *args,
+            axes=None, axis=None, keepdims=False, casting='same_kind',
+            dtype=None, signature=None, order='K', out=None):
         '''
         Apply a generalized ufunc.
 
@@ -608,124 +681,51 @@ class _GUFunc:
         Returns:
             Output array or a tuple of output arrays.
         '''
-
-        #  This argument cannot be used for generalized ufuncs
-        #  as those take non-scalar input.
-        # where = kwargs.pop('where', None)
-
-        outs = kwargs.pop('out', None)
-        axes = kwargs.pop('axes', None)
-        axis = kwargs.pop('axis', None)
-        order = kwargs.pop('order', 'K')
-        dtype = kwargs.pop('dtype', None)
-        keepdims = kwargs.pop('keepdims', False)
-        signature = kwargs.pop('signature', None)
-        casting = kwargs.pop('casting', 'same_kind')
-        if len(kwargs) > 0:
-            raise RuntimeError(
-                'Unknown kwargs {}'.format(' '.join(kwargs.keys())))
-
-        ret_dtype = None
-        func = self._func
+        if self._try_fastcall_func is not None:
+            result = self._try_fastcall_func(
+                *args, out=out, axes=axes, axis=axis, keepdims=keepdims,
+                casting=casting, dtype=dtype, signature=signature, order=order)
+            if result is not NotImplemented:
+                return result
 
         # this will cast the inputs appropriately
         args, ret_dtype, func = self._ops_register.determine_dtype(
             args, dtype, casting, signature)
+        args = list(args)  # make args mutable to transpose later
+        if len(args) != self._nin:
+            raise ValueError(
+                'According to `signature`, `func` requires %d arguments,'
+                ' but %s given' % (self._nin, len(args)))
 
         if not isinstance(self._signature, str):
             raise TypeError('`signature` has to be of type string')
 
-        if outs is not None and not isinstance(outs, tuple):
-            if isinstance(outs, cupy.ndarray):
-                outs = (outs,)
-            else:
-                raise TypeError('`outs` must be a tuple or `cupy.ndarray`')
+        if out is None:
+            outs = [None] * self._nout
+        elif not isinstance(out, tuple):
+            if not isinstance(out, cupy.ndarray):
+                raise TypeError('`out` must be a tuple or `cupy.ndarray`')
+            outs = [out]
+        else:
+            outs = list(out)  # make outs mutable to transpose later
+            for out in outs:
+                if out is not None and not isinstance(out, cupy.ndarray):
+                    raise TypeError(
+                        '`out` tuple must contain `cupy.ndarray` or None')
 
         filter_order = self._determine_order(args, order)
 
-        input_coredimss = self._input_coredimss
-        output_coredimss = self._output_coredimss
-        if outs is not None and not isinstance(outs, tuple):
-            raise TypeError('`outs` must be a tuple')
-        # Axes
-        input_axes, output_axes = _validate_normalize_axes(
-            axes, axis, keepdims, input_coredimss, output_coredimss
-        )
+        # Preproces axes/axis (does not check out of bound axes)
+        in_axes, out_axes, keepdims = self._validate_normalize_axes(
+            args, axes, axis, keepdims)
 
-        if len(input_coredimss) != len(args):
-            ValueError(
-                'According to `signature`, `func` requires %d arguments,'
-                ' but %s given' % (len(input_coredimss), len(args)))
+        args, outs, untransposed_outs, outer_shape = self._setup_operands(
+            args, in_axes, outs, out_axes, keepdims, ret_dtype, filter_order,
+            casting)
 
-        args, dimsizess, loop_output_dims, outs, m_dims = self._get_args_transposed(  # NOQA
-            args, input_axes, outs, output_axes)
+        self._apply_func_to_inputs(func, outer_shape, args, outs)
 
-        # The output shape varies depending on optional dims or not
-        # TODO(ecastill) this only works for one out argument
-        out_shape = [dimsizess[od][0] for od in loop_output_dims]
-        if self._nout > 0:
-            out_shape += [dimsizess[od][0] for od in output_coredimss[0]]
-        out_shape = tuple(out_shape)
-
-        if outs is None:
-            outs = cupy.empty(out_shape, dtype=ret_dtype, order=filter_order)
-            if order == 'K':
-                strides = internal._get_strides_for_order_K(
-                    outs, ret_dtype, out_shape)
-                outs._set_shape_and_strides(out_shape, strides, True, True)
-            outs = (outs,)
+        if len(untransposed_outs) == 1:
+            return untransposed_outs[0]
         else:
-            if outs[0].shape != out_shape:
-                raise ValueError(f'Invalid shape for out {outs[0].shape}'
-                                 f' needs {out_shape}')
-
-            _raise_if_invalid_cast(
-                ret_dtype, outs[0].dtype, casting, "out dtype")
-
-        self._apply_func_to_inputs(
-            func, 0, dimsizess, loop_output_dims, args, outs)
-
-        # This code credit goes to Dask
-        # https://github.com/dask/dask/blob/61b578f5a3ad88cbc6a8b9a73ce08c551bd969fa/dask/array/gufunc.py#L462-L503
-        # Treat direct output
-
-        if self._nout == 0:
-            output_coredimss = [output_coredimss]
-
-        # Split output
-        # tmp might be a tuple of outs
-        # we changed the way we apply the function compared to dask
-        # we have added support for optional dims
-        leaf_arrs = []
-        for tmp in outs:
-            for i, (ocd, oax) in enumerate(zip(output_coredimss, output_axes)):
-                leaf_arr = tmp
-
-                # Axes:
-                if keepdims:
-                    slices = (len(leaf_arr.shape) * (slice(None),)
-                              + len(oax) * (numpy.newaxis,))
-                    leaf_arr = leaf_arr[slices]
-
-                tidcs = [None] * len(leaf_arr.shape)
-                for i, oa in zip(range(-len(oax), 0), oax):
-                    tidcs[oa] = i
-                j = 0
-                for i in range(len(tidcs)):
-                    if tidcs[i] is None:
-                        tidcs[i] = j
-                        j += 1
-                leaf_arr = leaf_arr.transpose(tidcs)
-                # Delete the dims that were optionals after the input expansion
-                if len(m_dims) > 0:
-                    shape = leaf_arr.shape
-                    # This line deletes the dimensions that were not present
-                    # in the input
-                    core_shape = shape[-len(ocd):]
-                    core_shape = tuple([
-                        d for d, n in zip(core_shape, ocd) if n not in m_dims])
-                    shape = shape[:-len(ocd)] + core_shape
-                    leaf_arr = leaf_arr.reshape(shape)
-                # leaf_arrs.append(leaf_arr.astype(leaf_arr.dtype, order=order))  # NOQA
-                leaf_arrs.append(leaf_arr)
-        return tuple(leaf_arrs) if self._nout > 1 else leaf_arrs[0]
+            return tuple(untransposed_outs)
