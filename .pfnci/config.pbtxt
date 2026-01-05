@@ -363,7 +363,7 @@ configs {
   value {
     requirement {
       cpu: 8
-      memory: 50
+      memory: 60
       disk: 10
       gpu: 1
     }
