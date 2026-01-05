@@ -1,5 +1,6 @@
 from collections.abc import Callable
 from typing import ClassVar, TypeVar
+
 from typing_extensions import Self
 
 from cupy.cuda.graph import Graph

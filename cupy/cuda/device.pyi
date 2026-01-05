@@ -1,4 +1,5 @@
 from typing import Any
+
 from typing_extensions import Self
 
 def get_device_id() -> int: ...

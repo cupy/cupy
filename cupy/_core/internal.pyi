@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from numpy import dtype # MEMO: mypy complains if imported from cupy
+from numpy import dtype  # MEMO: mypy complains if imported from cupy
 
 from cupy._core.core import NDArray
 

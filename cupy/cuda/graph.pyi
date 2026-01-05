@@ -1,6 +1,5 @@
 from cupy.cuda.stream import Stream
 
-
 class Graph:
     def launch(self, stream: Stream | None = ...) -> None: ...
     def upload(self, stream: Stream | None = ...) -> None: ...
