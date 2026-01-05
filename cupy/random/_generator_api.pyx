@@ -1120,17 +1120,11 @@ cdef class FeistelBijection:
         self.param.right_side_bits = total_bits - self.param.left_side_bits
         self.param.right_side_mask = (1 << self.param.right_side_bits) - 1
 
-        print(self.param.right_side_bits)
-        print(self.param.left_side_bits)
-        print(self.param.right_side_mask)
-        print(self.param.left_side_mask)
-        
         # Copy keys from the input array
         assert len(keys_array) == 24
         cdef int i
         for i in range(24):
             self.param.keys[i] = keys_array[i]
-            print(self.param.keys[i])
     
     def get_params(self):
         """Get bijection parameters as a structured array for device code.
