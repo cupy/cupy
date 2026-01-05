@@ -1138,76 +1138,12 @@ class RandomState:
                     'Cannot take a larger sample than population when '
                     '\'replace=False\'')
 
-            # Use memory-efficient bijection approach
-            use_bijection = True
-
-            if use_bijection and isinstance(a, int):
-                # Generate 24 random keys for the bijection
+            if isinstance(a, int):
+                # Use memory-efficient bijection approach
                 keys = numpy.random.randint(
                     0, _UINT32_MAX + 1, size=24, dtype=cupy.uint32)
-
-                # Create bijection object
                 bijection = FeistelBijection(a_size, keys)
-                params = bijection.get_params()
-
-                # Allocate output
-                # TODO(leofang): check if this equals to dtype='l' on Windows
-                indices = cupy.empty(size, dtype=cupy.int64)
-
-                # Launch kernel
-                block_size = 256
-                grid_size = (a_size + block_size - 1) // block_size
-                # FIXME(leofang): currently only supports a_size <= 2**32
-                # FIXME(leofang): move kernel to separate file
-                # Feistel bijection kernel for memory-efficient choice without replacement
-                _feistel_bijection_with_cutoff_kernel = cupy.RawKernel(r'''
-                #include <cuda/std/cstdint>
-
-                struct FeistelParams {
-                    uint64_t right_side_bits;
-                    uint64_t left_side_bits;
-                    uint64_t right_side_mask;
-                    uint64_t left_side_mask;
-                    uint32_t keys[24];
-                };
-                
-                extern "C" __global__ void feistel_bijection_choice(
-                    long long* out,
-                    const FeistelParams params,
-                    const size_t cutoff_size,
-                    const size_t arr_size
-                ) {
-                    unsigned int tid = blockIdx.x * blockDim.x + threadIdx.x;
-                    if (tid >= arr_size)
-                        return;
-                    
-                    // Apply Feistel bijection to tid
-                    uint64_t val = static_cast<uint64_t>(tid);
-                    uint32_t high = (uint32_t)(val >> params.right_side_bits);
-                    uint32_t low = (uint32_t)(val & params.right_side_mask);
-                    
-                    // 24 rounds of Feistel network
-                    for (uint32_t i = 0; i < 24; i++) {
-                        constexpr uint64_t __m0  = 0xD2B74407B1CE6E93;
-                        const uint64_t __product = __m0 * high;
-                        const uint32_t __high    = static_cast<uint32_t>(__product >> 32);
-                        uint32_t __low           = static_cast<uint32_t>(__product);
-                        __low                    = (__low << (params.right_side_bits - params.left_side_bits)) | low >> params.left_side_bits;
-                        high                     = ((__high ^ params.keys[i]) ^ low) & params.left_side_mask;
-                        low                      = __low & params.right_side_mask;
-                    }
-                    
-                    // Combine left and right sides
-                    long long idx = (long long)((static_cast<uint64_t>(high) << params.right_side_bits) | static_cast<uint64_t>(low));
-                    if (tid < cutoff_size) {
-                        out[tid] = idx; 
-                    }
-                }
-                ''', 'feistel_bijection_choice')
-                _feistel_bijection_with_cutoff_kernel(
-                    (grid_size,), (block_size,),
-                    (indices, params, size, a_size)
-                )
+                indices = bijection(size, a_size)
             else:
                 indices = a.copy()
             self.shuffle(indices)

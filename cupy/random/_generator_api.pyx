@@ -1081,20 +1081,28 @@ cdef object _feistel_bijection_dtype = numpy.dtype([
 ], align=True)
 
 
+cdef object _feistel_bijection_with_cutoff_kernel = None
+
+
 cdef uint64_t get_cipher_bits(uint64_t m) nogil noexcept:
     if (m <= 16):
         return 4
     cdef uint64_t i = 0
     m -= 1
     while m != 0:
-      i += 1
-      m >>= 1
+        i += 1
+        m >>= 1
     return i
 
 
 cdef class FeistelBijection:
-    """Feistel cipher for creating random bijections on power-of-two sized domains.
-    
+    # This is a re-implementation of cuda::shuffle_iterator. We can't use it as
+    # is because it is stateful and needs to be initialized on the host, which
+    # would require AOT compilation in CuPy and add to the binary size. We
+    # should keep this in sync with libcudacxx:
+    # https://github.com/NVIDIA/cccl/blob/v3.2.0-rc2/libcudacxx/include/cuda/__random/feistel_bijection.h
+    """Feistel cipher for random bijections on power-of-two domains.
+
     This class implements the Feistel bijection from libcudacxx for use in
     memory-efficient random sampling without replacement.
     """
@@ -1102,20 +1110,20 @@ cdef class FeistelBijection:
 
     def __init__(self, uint64_t num_elements, uint32_t[::1] keys_array):
         """Initialize Feistel bijection with pre-generated random keys.
-        
+
         Args:
             num_elements: Size of the domain (will be rounded up to power of 2)
             keys_array: Array of 24 uint32 random numbers to use as keys
         """
         cdef uint64_t total_bits
-        
+
         # Round up to at least 4 bits, then to next power of 2
         total_bits = get_cipher_bits(num_elements)
-        
+
         # Half bits rounded down
         self.param.left_side_bits = total_bits // 2
         self.param.left_side_mask = (1 << self.param.left_side_bits) - 1
-        
+
         # Half the bits rounded up
         self.param.right_side_bits = total_bits - self.param.left_side_bits
         self.param.right_side_mask = (1 << self.param.right_side_bits) - 1
@@ -1125,18 +1133,97 @@ cdef class FeistelBijection:
         cdef int i
         for i in range(24):
             self.param.keys[i] = keys_array[i]
-    
-    def get_params(self):
+
+    cdef get_params(self):
         """Get bijection parameters as a structured array for device code.
-        
+
         Returns:
             numpy.ndarray: Structured array containing all bijection parameters
         """
         # Create and populate the params array
         # TODO(leofang): use NumPy C API
         params = numpy.empty(1, dtype=_feistel_bijection_dtype)
-        assert _feistel_bijection_dtype.itemsize == sizeof(_FeistelBijection)
+        assert (
+            _feistel_bijection_dtype.itemsize == sizeof(_FeistelBijection))
         memcpy(<void*><intptr_t>(params.ctypes.data),
                &(self.param),
                sizeof(_FeistelBijection))
         return params
+
+    cdef get_kernel(self):
+        """Get or compile the Feistel bijection kernel.
+
+        Returns:
+            cupy.RawKernel: The compiled CUDA kernel for the bijection
+        """
+        global _feistel_bijection_with_cutoff_kernel
+        if _feistel_bijection_with_cutoff_kernel is None:
+            # FIXME(leofang): currently only supports a_size <= 2**32
+            # FIXME(leofang): move kernel to separate file
+            # Feistel bijection kernel for choice without replacement
+            _feistel_bijection_with_cutoff_kernel = cupy.RawKernel(
+                r'''  // # noqa: E501
+            #include <cuda/std/cstdint>
+
+            struct FeistelParams {
+                uint64_t right_side_bits;
+                uint64_t left_side_bits;
+                uint64_t right_side_mask;
+                uint64_t left_side_mask;
+                uint32_t keys[24];
+            };
+            
+            extern "C" __global__ void feistel_bijection_choice(
+                long long* out,
+                const FeistelParams params,
+                const size_t cutoff_size,
+                const size_t arr_size
+            ) {
+                unsigned int tid = blockIdx.x * blockDim.x + threadIdx.x;
+                if (tid >= arr_size)
+                    return;
+                
+                // Apply Feistel bijection to tid
+                uint64_t val = static_cast<uint64_t>(tid);
+                uint32_t high = (uint32_t)(val >> params.right_side_bits);
+                uint32_t low = (uint32_t)(val & params.right_side_mask);
+                
+                // 24 rounds of Feistel network
+                for (uint32_t i = 0; i < 24; i++) {
+                    constexpr uint64_t __m0  = 0xD2B74407B1CE6E93;
+                    const uint64_t __product = __m0 * high;
+                    const uint32_t __high    = static_cast<uint32_t>(__product >> 32);
+                    uint32_t __low           = static_cast<uint32_t>(__product);
+                    __low                    = (__low << (params.right_side_bits - params.left_side_bits)) | low >> params.left_side_bits;
+                    high                     = ((__high ^ params.keys[i]) ^ low) & params.left_side_mask;
+                    low                      = __low & params.right_side_mask;
+                }
+                
+                // Combine left and right sides
+                long long idx = (long long)((static_cast<uint64_t>(high) << params.right_side_bits) | static_cast<uint64_t>(low));
+                if (tid < cutoff_size) {
+                    out[tid] = idx; 
+                }
+            }
+            ''',
+                'feistel_bijection_choice')
+        return _feistel_bijection_with_cutoff_kernel
+
+    def __call__(self, size, a_size):
+        # TODO(leofang): memoize a_size
+        params = self.get_params()
+        kernel = self.get_kernel()
+
+        # Allocate output
+        # TODO(leofang): check if this equals to dtype='l' on Windows
+        indices = cupy.empty(size, dtype=cupy.int64)
+
+        # Launch kernel
+        block_size = 256
+        grid_size = (a_size + block_size - 1) // block_size
+        kernel(
+            (grid_size,), (block_size,),
+            (indices, params, size, a_size)
+        )
+
+        return indices
