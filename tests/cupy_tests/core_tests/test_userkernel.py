@@ -240,12 +240,12 @@ class TestUserkernelScalar(unittest.TestCase):
     @testing.numpy_cupy_array_equal()
     def test_scalar(self, xp, dtype):
         x = testing.shaped_arange((2, 3, 4), xp, dtype)
+        y = numpy.array(self.value).astype(dtype)[()]
         if xp is numpy:
-            y = numpy.array(self.value).astype(dtype)
             return x + y
         else:
             kernel = cupy.ElementwiseKernel('T x, T y', 'T z', 'z = x + y')
-            return kernel(x, self.value)
+            return kernel(x, y)
 
 
 class TestUserkernelManualBlockSize(unittest.TestCase):
