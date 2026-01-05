@@ -1,8 +1,9 @@
 # TODO: Add entries when necessary
 
 from typing import Any
+
 import cupy
-from cupy.typing._array import NDArray
+from cupy.typing import NDArray
 
 def _get_strides_for_order_K(
     x: NDArray[Any], dtype: cupy.dtype, shape: list[int] | None = ...
