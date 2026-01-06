@@ -584,8 +584,8 @@ _choose_clip_kernel = ElementwiseKernel(
     'T y',
     '''
       using idx_t = decltype(choices)::index_t;
-      idx_t n_channel = static_cast<idx_t>n_channel_;
-      idx_t n = static_cast<idx_t>n_;
+      idx_t n_channel = static_cast<idx_t>(n_channel_);
+      idx_t n = static_cast<idx_t>(n_);
 
       idx_t x;
       if (a < 0) {
