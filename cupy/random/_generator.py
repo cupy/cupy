@@ -1143,7 +1143,7 @@ class RandomState:
                 keys = numpy.random.randint(
                     0, _UINT32_MAX + 1, size=24, dtype=numpy.uint32)
                 bijection = FeistelBijection(a_size, keys)
-                indices = bijection(size, a_size)
+                indices = bijection(size)
                 return indices.reshape(shape)
             else:
                 indices = a.copy()
