@@ -1185,7 +1185,7 @@ cdef class FeistelBijection:
                 const size_t arr_size
             ) {
                 unsigned int tid = blockIdx.x * blockDim.x + threadIdx.x;
-                if (tid >= arr_size)
+                if (tid >= cutoff_size)
                     return;
                 
                 // Apply Feistel bijection to tid, re-apply until valid
@@ -1212,10 +1212,8 @@ cdef class FeistelBijection:
                     val = static_cast<uint64_t>(idx);
                 } while (idx >= static_cast<long long>(arr_size));
                 
-                // Write valid output if within cutoff
-                if (tid < cutoff_size) {
-                    out[tid] = idx;
-                }
+                // Write output (tid is always < cutoff_size due to early return)
+                out[tid] = idx;
             }
             ''',
                 'feistel_bijection_choice')
@@ -1230,9 +1228,9 @@ cdef class FeistelBijection:
         # TODO(leofang): check if this equals to dtype='l' on Windows
         indices = cupy.empty(size, dtype=cupy.int64)
 
-        # Launch kernel
+        # Launch kernel with only 'size' threads, not 'a_size'
         block_size = 256
-        grid_size = (a_size + block_size - 1) // block_size
+        grid_size = (size + block_size - 1) // block_size
         kernel(
             (grid_size,), (block_size,),
             (indices, params, size, a_size)
