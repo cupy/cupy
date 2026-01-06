@@ -14,7 +14,7 @@ Requirements
     * This requirement is optional if you install both CUDA and CuPy from either PyPI or conda-forge. However, you still need to have a compatible
       driver installed for your GPU. See :ref:`install_cupy_from_pypi` and :ref:`install_cupy_from_conda_forge` for details.
 
-* `Python <https://python.org/>`_: v3.10 / v3.11 / v3.12 / v3.13
+* `Python <https://python.org/>`_: v3.10 / v3.11 / v3.12 / v3.13 / v3.14
 
 .. note::
 
@@ -58,7 +58,7 @@ Part of the CUDA features in CuPy will be activated only when the corresponding 
 
     * The library to perform collective multi-GPU / multi-node computations.
 
-* `cuSPARSELt <https://docs.nvidia.com/cuda/cusparselt/>`_: v0.7.0 / v0.7.1
+* `cuSPARSELt <https://docs.nvidia.com/cuda/cusparselt/>`_: v0.8.0 / v0.8.1
 
     * The library to accelerate sparse matrix-matrix multiplication.
 
@@ -166,12 +166,6 @@ Installing CuPy from Source
 
 Use of wheel packages is recommended whenever possible.
 However, if wheels cannot meet your requirements (e.g., you are running non-Linux environment or want to use a version of CUDA / NCCL not supported by wheels), you can also build CuPy from source.
-
-.. note::
-
-   CuPy source build requires ``g++-6`` or later.
-   For Ubuntu 18.04, run ``apt-get install g++``.
-   For Ubuntu 16.04, CentOS 6 or 7, follow the instructions :ref:`here <install_gcc6>`.
 
 .. note::
 
@@ -382,27 +376,6 @@ For example, if you have CUDA installed at ``/usr/local/cuda-12.6``::
   $ export LD_LIBRARY_PATH=$CUDA_PATH/lib64:$LD_LIBRARY_PATH
 
 Also see :ref:`install_cuda`.
-
-.. _install_gcc6:
-
-Build fails on Ubuntu 16.04, CentOS 6 or 7
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-In order to build CuPy from source on systems with legacy GCC (g++-5 or earlier), you need to manually set up g++-6 or later and configure ``NVCC`` environment variable.
-
-On Ubuntu 16.04::
-
-  $ sudo add-apt-repository ppa:ubuntu-toolchain-r/test
-  $ sudo apt update
-  $ sudo apt install g++-6
-  $ export NVCC="nvcc --compiler-bindir gcc-6"
-
-On CentOS 6 / 7::
-
-  $ sudo yum install centos-release-scl
-  $ sudo yum install devtoolset-7-gcc-c++
-  $ source /opt/rh/devtoolset-7/enable
-  $ export NVCC="nvcc --compiler-bindir gcc"
 
 
 Using CuPy on AMD GPU (experimental)
