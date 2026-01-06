@@ -1084,7 +1084,7 @@ cdef object _feistel_bijection_dtype = numpy.dtype([
 cdef object _feistel_bijection_with_cutoff_kernel = None
 
 
-cdef uint64_t get_cipher_bits(uint64_t m) nogil noexcept:
+cdef inline uint64_t get_cipher_bits(uint64_t m) nogil noexcept:
     if (m <= 16):
         return 4
     cdef uint64_t i = 0
@@ -1107,8 +1107,9 @@ cdef class FeistelBijection:
     memory-efficient random sampling without replacement.
     """
     cdef _FeistelBijection param
+    cdef object arr_size
 
-    def __init__(self, uint64_t num_elements, uint32_t[::1] keys_array):
+    def __init__(self, num_elements, uint32_t[::1] keys_array):
         """Initialize Feistel bijection with pre-generated random keys.
 
         Args:
@@ -1120,6 +1121,7 @@ cdef class FeistelBijection:
         # Round up to at least 4 bits, then to next power of 2
         # Note: This is a bug fix to cuda::shuffle_iterator (NVIDIA/cccl#7073).
         total_bits = get_cipher_bits(num_elements)
+        self.arr_size = num_elements
 
         # Half bits rounded down
         self.param.left_side_bits = total_bits // 2
@@ -1219,8 +1221,7 @@ cdef class FeistelBijection:
                 'feistel_bijection_choice')
         return _feistel_bijection_with_cutoff_kernel
 
-    def __call__(self, size, a_size):
-        # TODO(leofang): memoize a_size
+    def __call__(self, size):
         params = self.get_params()
         kernel = self.get_kernel()
 
@@ -1228,12 +1229,11 @@ cdef class FeistelBijection:
         # TODO(leofang): check if this equals to dtype='l' on Windows
         indices = cupy.empty(size, dtype=cupy.int64)
 
-        # Launch kernel with only 'size' threads, not 'a_size'
         block_size = 256
         grid_size = (size + block_size - 1) // block_size
         kernel(
             (grid_size,), (block_size,),
-            (indices, params, size, a_size)
+            (indices, params, size, self.arr_size)
         )
 
         return indices
