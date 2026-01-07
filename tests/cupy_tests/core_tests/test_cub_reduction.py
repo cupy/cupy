@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from itertools import combinations
-import unittest
 import sys
 
 import pytest
@@ -17,27 +16,26 @@ from cupy.cuda import memory
 # This test class and its children below only test if CUB backend can be used
 # or not; they don't verify its correctness as it's already extensively covered
 # by existing tests
-class CubReductionTestBase(unittest.TestCase):
+class CubReductionTestBase:
     """
     Note: call self.can_use() when arrays are already allocated, otherwise
     call self._test_can_use().
     """
-    @classmethod
-    def setup_class(cls):
+
+    def setup_method(self):
         if _environment.get_cub_path() is None:
             pytest.skip('CUB not found')
         if cupy.cuda.runtime.is_hip:
             if _environment.get_hipcc_path() is None:
                 pytest.skip('hipcc is not found')
 
-        cls.can_use = cupy._core._cub_reduction._can_use_cub_block_reduction
+        self.can_use = cupy._core._cub_reduction._can_use_cub_block_reduction
 
-        cls.old_accelerators = _accelerator.get_reduction_accelerators()
+        self.old_accelerators = _accelerator.get_reduction_accelerators()
         _accelerator.set_reduction_accelerators(['cub'])
 
-    @classmethod
-    def teardown_class(cls):
-        _accelerator.set_reduction_accelerators(cls.old_accelerators)
+    def teardown_method(self):
+        _accelerator.set_reduction_accelerators(self.old_accelerators)
 
     def _test_can_use(
             self, i_shape, o_shape, r_axis, o_axis, order, expected):

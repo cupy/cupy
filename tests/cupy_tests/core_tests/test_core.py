@@ -119,16 +119,14 @@ class TestMinScalarType:
     'cxx': (None, '--std=c++17'),
 }))
 class TestCuPyHeaders:
-    @classmethod
-    def setup_class(cls):
-        cls.temporary_cache_dir_context = test_raw.use_temporary_cache_dir()
-        cls.cache_dir = cls.temporary_cache_dir_context.__enter__()
-        cls.header = '\n'.join(['#include <' + h + '>'
+    def setup_method(self):
+        self.temporary_cache_dir_context = test_raw.use_temporary_cache_dir()
+        self.cache_dir = self.temporary_cache_dir_context.__enter__()
+        self.header = '\n'.join(['#include <' + h + '>'
                                 for h in core._cupy_header_list])
 
-    @classmethod
-    def teardown_class(cls):
-        cls.temporary_cache_dir_context.__exit__(*sys.exc_info())
+    def teardown_method(self):
+        self.temporary_cache_dir_context.__exit__(*sys.exc_info())
 
     def test_compiling_core_header(self):
         code = r'''

@@ -38,7 +38,7 @@ if is_available():
 
         @pytest.fixture(autouse=True)
         def _cupy_testing_parameterize(self, _cupy_testing_param):
-            assert not self.__dict__, \
+            assert all(not hasattr(self, p) for p in _cupy_testing_param), \
                 'There should not be another hack with instance attribute.'
             self.__dict__.update(_cupy_testing_param)
 
