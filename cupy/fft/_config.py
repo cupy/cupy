@@ -69,14 +69,14 @@ class _FFTConfig:
     @property
     def enable_nd_planning(self):
         warnings.warn(
-            'enable_nd_planning is deprecated as of CuPy 15 and will always '
+            'enable_nd_planning is deprecated as of CuPy 14 and will always '
             'be True in the future.', DeprecationWarning, stacklevel=2)
         return self._enable_nd_planning.get()
 
     @enable_nd_planning.setter
     def enable_nd_planning(self, value):
         warnings.warn(
-            'enable_nd_planning is deprecated as of CuPy 15 and will always '
+            'enable_nd_planning is deprecated as of CuPy 14 and will always '
             'be True in the future.', DeprecationWarning, stacklevel=2)
         self._enable_nd_planning.set(value)
 

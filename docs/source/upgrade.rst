@@ -124,6 +124,8 @@ Other API Changes
 * The NumPy fallback mode (``cupyx.fallback_mode``) has been removed.
 * ``cupyx.tools.install_library`` tool has been deprecated and will be removed in a future release. See :doc:`install` for the instructions on setting up cuTENSOR/NCCL for CuPy using Pip or Conda.
 * :mod:`cupy.testing` module has been updated to follow NumPy's testing API changes. Some testing utilities may have different behavior or signatures.
+* ``cupy.fft.config`` is now thread and context safe. However, this also means that config is not inherited by threads (using ``contextvars``, so Python is likely to change this for newly created threads in the future).
+* ``cupy.fft.config.enable_nd_planning`` has been deprecated and will be removed in a future release (planning will always be enabled).
 
 Update of Docker Images
 -----------------------
