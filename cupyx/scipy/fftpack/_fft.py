@@ -52,8 +52,7 @@ def get_fft_plan(a, shape=None, axes=None, value_type='C2C'):
             # alternatively:
             y = cupyx.scipy.fftpack.fftn(x, plan=plan)  # pass plan explicitly
 
-        In the first case, no cuFFT plan will be generated automatically,
-        even if ``cupy.fft.config.enable_nd_planning = True`` is set.
+        In both cases the user created ``plan`` will be used.
 
     .. note::
         If this function is called under the context of
@@ -253,9 +252,7 @@ def fft2(x, shape=None, axes=(-2, -1), overwrite_x=False, plan=None):
                 plan = cupyx.scipy.fftpack.get_fft_plan(x, axes)
 
             Note that `plan` is defaulted to None, meaning CuPy will either
-            use an auto-generated plan behind the scene if cupy.fft.config.
-            enable_nd_planning = True, or use no cuFFT plan if it is set to
-            False.
+            use an auto-generated plan.
 
     Returns:
         cupy.ndarray:
@@ -291,9 +288,7 @@ def ifft2(x, shape=None, axes=(-2, -1), overwrite_x=False, plan=None):
                 plan = cupyx.scipy.fftpack.get_fft_plan(x, axes)
 
             Note that `plan` is defaulted to None, meaning CuPy will either
-            use an auto-generated plan behind the scene if cupy.fft.config.
-            enable_nd_planning = True, or use no cuFFT plan if it is set to
-            False.
+            use an auto-generated plan.
 
     Returns:
         cupy.ndarray:
@@ -329,9 +324,7 @@ def fftn(x, shape=None, axes=None, overwrite_x=False, plan=None):
                 plan = cupyx.scipy.fftpack.get_fft_plan(x, axes)
 
             Note that `plan` is defaulted to None, meaning CuPy will either
-            use an auto-generated plan behind the scene if cupy.fft.config.
-            enable_nd_planning = True, or use no cuFFT plan if it is set to
-            False.
+            use an auto-generated plan.
 
     Returns:
         cupy.ndarray:
@@ -367,9 +360,7 @@ def ifftn(x, shape=None, axes=None, overwrite_x=False, plan=None):
                 plan = cupyx.scipy.fftpack.get_fft_plan(x, axes)
 
             Note that `plan` is defaulted to None, meaning CuPy will either
-            use an auto-generated plan behind the scene if cupy.fft.config.
-            enable_nd_planning = True, or use no cuFFT plan if it is set to
-            False.
+            use an auto-generated plan.
 
     Returns:
         cupy.ndarray:
@@ -413,9 +404,7 @@ def rfft(x, n=None, axis=-1, overwrite_x=False, plan=None):
                     x, axes, value_type='R2C')
 
             Note that `plan` is defaulted to None, meaning CuPy will either
-            use an auto-generated plan behind the scene if cupy.fft.config.
-            enable_nd_planning = True, or use no cuFFT plan if it is set to
-            False.
+            use an auto-generated plan.
 
     Returns:
         cupy.ndarray:

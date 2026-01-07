@@ -44,7 +44,9 @@ def nd_planning_states(states=[True, False], name='enable_nd'):
                 for nd_planning in states:
                     try:
                         # enable or disable nd planning
-                        config.enable_nd_planning = nd_planning
+                        with pytest.warns(DeprecationWarning,
+                                          match='enable_nd_planning'):
+                            config.enable_nd_planning = nd_planning
 
                         kw[name] = nd_planning
                         impl(self, *args, **kw)
@@ -53,7 +55,9 @@ def nd_planning_states(states=[True, False], name='enable_nd'):
                         raise
             finally:
                 # restore original global planning state
-                config.enable_nd_planning = planning_state
+                with pytest.warns(DeprecationWarning,
+                                  match='enable_nd_planning'):
+                    config.enable_nd_planning = planning_state
 
         return test_func
     return decorator
@@ -364,7 +368,8 @@ class TestFft2:
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_fft2(self, xp, dtype, order, enable_nd):
-        assert config.enable_nd_planning == enable_nd
+        with pytest.warns(DeprecationWarning, match='enable_nd_planning'):
+            assert config.enable_nd_planning == enable_nd
         a = testing.shaped_random(self.shape, xp, dtype)
         if order == 'F':
             a = xp.asfortranarray(a)
@@ -386,7 +391,8 @@ class TestFft2:
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_ifft2(self, xp, dtype, order, enable_nd):
-        assert config.enable_nd_planning == enable_nd
+        with pytest.warns(DeprecationWarning, match='enable_nd_planning'):
+            assert config.enable_nd_planning == enable_nd
         a = testing.shaped_random(self.shape, xp, dtype)
         if order == 'F':
             a = xp.asfortranarray(a)
@@ -441,7 +447,8 @@ class TestFftn:
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_fftn(self, xp, dtype, order, enable_nd):
-        assert config.enable_nd_planning == enable_nd
+        with pytest.warns(DeprecationWarning, match='enable_nd_planning'):
+            assert config.enable_nd_planning == enable_nd
         a = testing.shaped_random(self.shape, xp, dtype)
         if order == 'F':
             a = xp.asfortranarray(a)
@@ -463,7 +470,8 @@ class TestFftn:
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_ifftn(self, xp, dtype, order, enable_nd):
-        assert config.enable_nd_planning == enable_nd
+        with pytest.warns(DeprecationWarning, match='enable_nd_planning'):
+            assert config.enable_nd_planning == enable_nd
         a = testing.shaped_random(self.shape, xp, dtype)
         if order == 'F':
             a = xp.asfortranarray(a)
@@ -521,7 +529,8 @@ class TestPlanCtxManagerFftn:
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_fftn(self, xp, dtype, enable_nd):
-        assert config.enable_nd_planning == enable_nd
+        with pytest.warns(DeprecationWarning, match='enable_nd_planning'):
+            assert config.enable_nd_planning == enable_nd
         a = testing.shaped_random(self.shape, xp, dtype)
 
         if xp is np:
@@ -537,7 +546,8 @@ class TestPlanCtxManagerFftn:
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_ifftn(self, xp, dtype, enable_nd):
-        assert config.enable_nd_planning == enable_nd
+        with pytest.warns(DeprecationWarning, match='enable_nd_planning'):
+            assert config.enable_nd_planning == enable_nd
         a = testing.shaped_random(self.shape, xp, dtype)
 
         if xp is np:
@@ -557,7 +567,8 @@ class TestPlanCtxManagerFftn:
 
         from cupyx.scipy.fftpack import get_fft_plan
         from cupy.fft import fftn
-        assert config.enable_nd_planning == enable_nd
+        with pytest.warns(DeprecationWarning, match='enable_nd_planning'):
+            assert config.enable_nd_planning == enable_nd
 
         # can't get a plan, so skip
         if self.axes is not None:
@@ -894,7 +905,8 @@ class TestRfft2:
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_rfft2(self, xp, dtype, order, enable_nd):
-        assert config.enable_nd_planning == enable_nd
+        with pytest.warns(DeprecationWarning, match='enable_nd_planning'):
+            assert config.enable_nd_planning == enable_nd
         a = testing.shaped_random(self.shape, xp, dtype)
         if order == 'F':
             a = xp.asfortranarray(a)
@@ -906,7 +918,8 @@ class TestRfft2:
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_irfft2(self, xp, dtype, order, enable_nd):
-        assert config.enable_nd_planning == enable_nd
+        with pytest.warns(DeprecationWarning, match='enable_nd_planning'):
+            assert config.enable_nd_planning == enable_nd
         if (10020 >= cupy.cuda.runtime.runtimeGetVersion() >= 10010
                 and int(cupy.cuda.device.get_compute_capability()) < 70
                 and _size_last_transform_axis(
@@ -970,7 +983,8 @@ class TestRfftn:
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_rfftn(self, xp, dtype, order, enable_nd):
-        assert config.enable_nd_planning == enable_nd
+        with pytest.warns(DeprecationWarning, match='enable_nd_planning'):
+            assert config.enable_nd_planning == enable_nd
         a = testing.shaped_random(self.shape, xp, dtype)
         if order == 'F':
             a = xp.asfortranarray(a)
@@ -982,7 +996,8 @@ class TestRfftn:
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_irfftn(self, xp, dtype, order, enable_nd):
-        assert config.enable_nd_planning == enable_nd
+        with pytest.warns(DeprecationWarning, match='enable_nd_planning'):
+            assert config.enable_nd_planning == enable_nd
         if (10020 >= cupy.cuda.runtime.runtimeGetVersion() >= 10010
                 and int(cupy.cuda.device.get_compute_capability()) < 70
                 and _size_last_transform_axis(
@@ -1030,7 +1045,8 @@ class TestPlanCtxManagerRfftn:
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_rfftn(self, xp, dtype, enable_nd):
-        assert config.enable_nd_planning == enable_nd
+        with pytest.warns(DeprecationWarning, match='enable_nd_planning'):
+            assert config.enable_nd_planning == enable_nd
         a = testing.shaped_random(self.shape, xp, dtype)
 
         if xp is np:
@@ -1048,7 +1064,8 @@ class TestPlanCtxManagerRfftn:
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_irfftn(self, xp, dtype, enable_nd):
-        assert config.enable_nd_planning == enable_nd
+        with pytest.warns(DeprecationWarning, match='enable_nd_planning'):
+            assert config.enable_nd_planning == enable_nd
         a = testing.shaped_random(self.shape, xp, dtype)
         if xp is np:
             return xp.fft.irfftn(a, s=self.s, axes=self.axes, norm=self.norm)
