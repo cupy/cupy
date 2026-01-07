@@ -404,7 +404,7 @@ class _TestRawBase:
     _nvcc_ver = None
     _nvrtc_ver = None
 
-    def setup_method(self):
+    def setUp(self):
         if getattr(self, 'clean_up', False):
             if cupy.cuda.runtime.is_hip:
                 # Clearing memo triggers recompiling kernels using name
@@ -435,7 +435,7 @@ class _TestRawBase:
             options=('-DPRECISION=2',),
             backend=self.backend, jitify=self.jitify)
 
-    def teardown_method(self):
+    def tearDown(self):
         if (self.in_memory
                 and _accelerator.ACCELERATOR_CUB not in
                 _accelerator.get_reduction_accelerators()):
@@ -1242,8 +1242,8 @@ assert ker.enable_cooperative_groups
     'Requires compute capability 6.0 or later')
 @unittest.skipIf(cupy.cuda.runtime.is_hip,
                  'HIP does not support enable_cooperative_groups')
-class TestRawPicklable:
-    def setup_method(self):
+class TestRawPicklable(unittest.TestCase):
+    def setUp(self):
         self.temporary_dir_context = use_temporary_cache_dir()
         self.temp_dir = self.temporary_dir_context.__enter__()
 
@@ -1257,7 +1257,7 @@ class TestRawPicklable:
                                       backend='nvcc',
                                       enable_cooperative_groups=True)
 
-    def teardown_method(self):
+    def tearDown(self):
         self.temporary_dir_context.__exit__(*sys.exc_info())
 
     def _helper(self):
@@ -1319,11 +1319,11 @@ __global__ void shift (T* a, int N) {
 # starting https://github.com/cupy/cupy/pull/8899#issuecomment-2613022424.
 # TODO(leofang): Further refactor the test suite?
 class _TestRawJitify:
-    def setup_method(self):
+    def setUp(self):
         self.temporary_dir_context = use_temporary_cache_dir()
         self.temp_dir = self.temporary_dir_context.__enter__()
 
-    def teardown_method(self):
+    def tearDown(self):
         self.temporary_dir_context.__exit__(*sys.exc_info())
 
     def _helper(self, header, options=()):
@@ -1429,7 +1429,7 @@ class _TestRawJitify:
 @unittest.skipIf(cupy.cuda.runtime.is_hip,
                  'Jitify does not support ROCm/HIP')
 @testing.slow
-class TestRawJitifyNoJitify(_TestRawJitify):
+class TestRawJitifyNoJitify(_TestRawJitify, unittest.TestCase):
     jitify = False
 
 
@@ -1438,5 +1438,5 @@ class TestRawJitifyNoJitify(_TestRawJitify):
 @testing.slow
 @pytest.mark.thread_unsafe(
     reason="Jitify seems to have problems, skip as largely unmaintained.")
-class TestRawJitifyJitify(_TestRawJitify):
+class TestRawJitifyJitify(_TestRawJitify, unittest.TestCase):
     jitify = True
