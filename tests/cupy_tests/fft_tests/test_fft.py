@@ -39,7 +39,9 @@ def nd_planning_states(states=[True, False], name='enable_nd'):
         @_wraps_partial(impl, name)
         def test_func(self, *args, **kw):
             # get original global planning state
-            planning_state = config.enable_nd_planning
+            with pytest.warns(DeprecationWarning,
+                              match='enable_nd_planning'):
+                planning_state = config.enable_nd_planning
             try:
                 for nd_planning in states:
                     try:
