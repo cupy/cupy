@@ -68,6 +68,7 @@ cdef inline void _set_vars() except*:
 
     global _cc, _python_include, _cuda_path, _cuda_include, _nvprune
     global _build_ver, _cufft_ver, _ext_suffix, _is_init
+    global _cc_major_map
 
     cdef str cxx = sysconfig.get_config_var('CXX')
     if cxx is not None:
@@ -89,6 +90,13 @@ cdef inline void _set_vars() except*:
 
     _build_ver = str(runtime.runtimeGetVersion())
     _cufft_ver = get_cufft_version()
+    # Many archs are removed since CUDA 13.0.0 (cuFFT 12.0.0).
+    if _cufft_ver < 12000:
+        _cc_major_map = {**_cc_major_map, **{
+            '7': ('70', '72', '75'),
+            '6': ('60', '61', '62'),
+            '5': ('50', '52', '53'),
+        }}
     _ext_suffix = sysconfig.get_config_var('EXT_SUFFIX')
 
     _set_cupy_paths()
@@ -201,10 +209,6 @@ cdef dict _cc_major_map = {
     '10': ('100', '103'),
     '9': ('90',),
     '8': ('80', '86', '87'),
-    '7': ('70', '72', '75'),
-    '6': ('60', '61', '62'),
-    '5': ('50', '52', '53'),
-    '3': ('35', '37'),
 }
 
 
@@ -263,7 +267,7 @@ cdef inline void _nvcc_compile(
     cmd = _nvcc + ['-arch=sm_'+arch, '-dc',
                    '-I' + _cupy_include,
                    '-c', os.path.join(tempdir, 'cupy_cufftXt.cu'),
-                   '-Xcompiler', '-fPIC', '-O2', '-std=c++11']
+                   '-Xcompiler', '-fPIC', '-O2', '-std=c++17']
     if cb_load:
         cmd.append('-DHAS_LOAD_CALLBACK')
     if cb_store:
@@ -595,7 +599,7 @@ cdef class _JITCallbackManager(_CallbackManager):
                 raise ValueError('store callback is not given')
 
     cdef bytes compile_lto(self, str source, tuple options):
-        options += ('--std=c++11', '-I' + self._get_cuda_include())
+        options += ('--std=c++17', '-I' + self._get_cuda_include())
         # TODO(leofang): support log_stream & jitify
         return _compile_with_cache_cuda(
             source, options, None, get_cache_dir(), to_ltoir=True)

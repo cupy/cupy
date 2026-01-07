@@ -115,7 +115,7 @@ class TestMinScalarType:
 
 
 @testing.parameterize(*testing.product({
-    'cxx': (None, '--std=c++14'),
+    'cxx': (None, '--std=c++17'),
 }))
 class TestCuPyHeaders(unittest.TestCase):
 

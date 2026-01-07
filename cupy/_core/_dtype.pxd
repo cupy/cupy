@@ -1,8 +1,11 @@
 from cpython cimport Py_buffer
 
+cimport numpy as cnp
 
 cdef str all_type_chars
-cdef bint check_supported_dtype(dtype, bint error) except -1
+cdef bytes all_type_chars_b
+
+cdef bint check_supported_dtype(cnp.dtype dtype, bint error) except -1
 cpdef get_dtype(t)
 cpdef tuple get_dtype_with_itemsize(t, bint check_support)
 cpdef int to_cuda_dtype(dtype, bint is_half_allowed=*) except -1

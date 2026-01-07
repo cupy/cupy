@@ -691,12 +691,12 @@ __global__ void query_ball_periodic(
 
 
 KD_MODULE = cupy.RawModule(
-    code=KD_KERNEL, options=('-std=c++11',),
+    code=KD_KERNEL, options=('-std=c++17',),
     name_expressions=['update_tags', 'tag_pairs'] + [
         f'compute_bounds<{x}>' for x in TYPE_NAMES])
 
 KNN_MODULE = cupy.RawModule(
-    code=KNN_KERNEL, options=('-std=c++11',),
+    code=KNN_KERNEL, options=('-std=c++17',),
     name_expressions=['knn_periodic', 'query_ball_periodic'] +
     [f'knn<{x}>' for x in TYPE_NAMES] +
     [f'query_ball<{x}>' for x in TYPE_NAMES])

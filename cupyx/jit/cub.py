@@ -38,6 +38,10 @@ def _get_cub_namespace():
     return 'hipcub' if _runtime.is_hip else 'cub'
 
 
+def _get_cub_op_namespace():
+    return 'hipcub' if _runtime.is_hip else 'cuda'
+
+
 class _TempStorageType(_cuda_types.TypeBase):
 
     def __init__(self, parent_type):
@@ -109,7 +113,7 @@ BlockReduce = _ClassTemplate(_BlockReduceType)
 class _CubFunctor(_internal_types.BuiltinFunc):
 
     def __init__(self, name):
-        namespace = _get_cub_namespace()
+        namespace = _get_cub_op_namespace()
         self.fname = f'{namespace}::{name}()'
 
     def call_const(self, env):
@@ -117,6 +121,6 @@ class _CubFunctor(_internal_types.BuiltinFunc):
             self.fname, _cuda_types.Unknown(label='cub_functor'))
 
 
-Sum = _CubFunctor('Sum')
-Max = _CubFunctor('Max')
-Min = _CubFunctor('Min')
+Sum = _CubFunctor('Sum' if _runtime.is_hip else 'std::plus')
+Max = _CubFunctor('Max' if _runtime.is_hip else 'maximum')
+Min = _CubFunctor('Min' if _runtime.is_hip else 'minimum')

@@ -365,6 +365,12 @@ _exists_kernel = _core.ElementwiseKernel(
     'S x, raw T bins, int64 n_bins, bool invert',
     'bool out',
     '''
+    // Handle empty bins array to avoid illegal memory access
+    if (n_bins == 0) {
+        out = (invert ? true : false);
+        return;
+    }
+
     const bool assume_increasing = true;
     const bool side_is_right = false;
     long long y;
@@ -379,6 +385,13 @@ _exists_and_searchsorted_kernel = _core.ElementwiseKernel(
     'S x, raw T bins, int64 n_bins, bool invert',
     'bool out, int64 y',
     '''
+    // Handle empty bins array to avoid illegal memory access
+    if (n_bins == 0) {
+        out = (invert ? true : false);
+        y = 0;
+        return;
+    }
+
     const bool assume_increasing = true;
     const bool side_is_right = false;
     '''

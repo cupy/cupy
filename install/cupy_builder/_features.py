@@ -466,7 +466,8 @@ class CUDA_cuda(Feature):
               printf("%d", CUDA_VERSION);
               return 0;
             }
-            ''', include_dirs=settings['include_dirs'])  # type: ignore[no-untyped-call] # NOQA
+            ''', include_dirs=settings['include_dirs'],
+            extra_compile_args=settings['extra_compile_args'])  # type: ignore[no-untyped-call] # NOQA
         except Exception as e:
             utils.print_warning('Cannot check CUDA version', str(e))
             return False

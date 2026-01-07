@@ -38,8 +38,8 @@ def check_should_skip_legacy_test():
     if 'LD_PRELOAD' in os.environ:
         pytest.skip("legacy callback does not work if libcufft.so "
                     "is preloaded")
-    if cufft.getVersion() == 12000 and get_compute_capability() == '75':
-        pytest.skip('cuFFT legacy callbacks in CUDA 13.0.0 do not support '
+    if cufft.getVersion() >= 12000 and get_compute_capability() == '75':
+        pytest.skip('cuFFT legacy callbacks in CUDA 13.0+ do not support '
                     'cc 7.5')
     if cufft.getVersion() == 11303 and get_compute_capability() == '120':
         pytest.skip('cuFFT legacy callbacks in CUDA 12.8.0 do not support '

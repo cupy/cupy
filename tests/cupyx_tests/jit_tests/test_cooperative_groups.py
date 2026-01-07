@@ -80,7 +80,7 @@ class TestCooperativeGroups:
             g.sync()  # this should just work!
 
         x = cupy.empty((16,), dtype=cupy.uint64)
-        x[:] = -1
+        x[:] = cupy.int64(-1)  # wrap-around cast to uint
         test_grid[2, 32](x)
         assert x[0] == 1
         assert x[1] == 64
@@ -115,7 +115,7 @@ class TestCooperativeGroups:
             g.sync()  # this should just work!
 
         x = cupy.empty((16,), dtype=cupy.uint64)
-        x[:] = -1
+        x[:] = cupy.int64(-1)  # wrap-around cast to uint
         test_grid[2, 32](x)
         assert x[1] == 64
         assert (x[2], x[3], x[4]) == (2, 1, 1)

@@ -195,7 +195,7 @@ cdef inline void _init_cupy_headers_from_scratch() except*:
     # headers)
     # need to defer import to avoid circular dependency
     from cupy._core.core import assemble_cupy_compiler_options
-    cdef tuple options = ('-std=c++11', '-DCUB_DISABLE_BF16_SUPPORT',)
+    cdef tuple options = ('-std=c++17', '-DCUB_DISABLE_BF16_SUPPORT',)
     options = assemble_cupy_compiler_options(options)
     jitify(warmup_kernel, options)
 
