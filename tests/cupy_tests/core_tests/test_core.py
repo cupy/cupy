@@ -123,7 +123,7 @@ class TestCuPyHeaders:
         self.temporary_cache_dir_context = test_raw.use_temporary_cache_dir()
         self.cache_dir = self.temporary_cache_dir_context.__enter__()
         self.header = '\n'.join(['#include <' + h + '>'
-                                for h in core._cupy_header_list])
+                                 for h in core._cupy_header_list])
 
     def teardown_method(self):
         self.temporary_cache_dir_context.__exit__(*sys.exc_info())
