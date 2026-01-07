@@ -26,4 +26,5 @@ __all__ = ["fft", "fft2", "fftfreq", "fftn", "fftshift", "hfft",
 # Make config accessible as a submodule for backward compatibility.
 # Allows `from cupy.fft.config import get_plan_cache` and even
 # `import cupy.fft.config as fft_config` to work.
-__import__("sys").modules[__spec__.name + ".config"] = config
+# (older mypy versions do not know about __spec__)
+__import__("sys").modules[__spec__.name + ".config"] = config  # type: ignore
