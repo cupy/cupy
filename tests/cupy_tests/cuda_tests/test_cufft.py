@@ -12,7 +12,7 @@ from cupy.cuda import cufft
 from cupy.fft import config
 from cupy.fft._fft import _convert_fft_type
 
-from ..fft_tests.test_fft import (multi_gpu_config, _skip_multi_gpu_bug)
+from ..fft_tests.test_fft import multi_gpu_config
 
 
 class TestExceptionPicklable(unittest.TestCase):
@@ -37,9 +37,7 @@ class TestMultiGpuPlan1dNumPy(unittest.TestCase):
 
     @multi_gpu_config(gpu_configs=[[0, 1], [1, 0]])
     @testing.for_complex_dtypes()
-    def test_fft(self, dtype, gpus):
-        _skip_multi_gpu_bug(self.shape, gpus=None)
-
+    def test_fft(self, dtype):
         a = testing.shaped_random(self.shape, numpy, dtype)
 
         if len(self.shape) == 1:
@@ -69,9 +67,7 @@ class TestMultiGpuPlan1dNumPy(unittest.TestCase):
 
     @multi_gpu_config(gpu_configs=[[0, 1], [1, 0]])
     @testing.for_complex_dtypes()
-    def test_ifft(self, dtype, gpus=None):
-        _skip_multi_gpu_bug(self.shape, gpus)
-
+    def test_ifft(self, dtype):
         a = testing.shaped_random(self.shape, numpy, dtype)
 
         if len(self.shape) == 1:

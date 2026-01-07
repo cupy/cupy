@@ -15,7 +15,7 @@ from cupy.cuda import device
 from cupy.cuda import runtime
 from cupy.fft import config
 
-from .test_fft import (multi_gpu_config, _skip_multi_gpu_bug)
+from .test_fft import multi_gpu_config
 
 
 def intercept_stdout(func):
@@ -413,9 +413,8 @@ class TestPlanCache(unittest.TestCase):
     @pytest.mark.skipif(runtime.is_hip,
                         reason="hipFFT doesn't support multi-GPU")
     @prepare_and_restore_caches()
-    def test_LRU_cache11(self, gpus=None):
+    def test_LRU_cache11(self):
         # test if collectively deleting a multi-GPU plan works
-        _skip_multi_gpu_bug((128,), gpus)
         with device.Device(0):
             cache0 = config.get_plan_cache()
         with device.Device(1):
@@ -450,7 +449,7 @@ class TestPlanCache(unittest.TestCase):
     @pytest.mark.skipif(runtime.is_hip,
                         reason="hipFFT doesn't support multi-GPU")
     @prepare_and_restore_caches()
-    def test_LRU_cache12(self, gpus=None):
+    def test_LRU_cache12(self):
         # test if an error is raise when one of the caches is unable
         # to fit it a multi-GPU plan
         with device.Device(0):

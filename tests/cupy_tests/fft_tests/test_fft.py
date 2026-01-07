@@ -86,7 +86,7 @@ def multi_gpu_config(gpu_configs=None):
                         config.use_multi_gpus = True
                         config.set_cufft_gpus(gpus)
 
-                        impl(self, *args, **kw, gpus=gpus)
+                        impl(self, *args, **kw)
                     except Exception:
                         print('GPU config is:', gpus)
                         raise
@@ -152,17 +152,6 @@ class TestFftOrder:
         return xp.fft.ifft(a, axis=self.axis)
 
 
-# See #3757 and NVIDIA internal ticket 3093094
-def _skip_multi_gpu_bug(shape, gpus):
-    # avoid CUDA 11.0 (will be fixed by CUDA 11.2) bug triggered by
-    # - batch = 1
-    # - gpus = [1, 0]
-    if (11000 <= cupy.cuda.runtime.runtimeGetVersion() < 11020
-            and len(shape) == 1
-            and gpus == [1, 0]):
-        pytest.skip('avoid CUDA 11 bug')
-
-
 # Almost identical to the TestFft class, except that
 # 1. multi-GPU cuFFT is used
 # 2. the tested parameter combinations are adjusted to meet the requirements
@@ -182,9 +171,7 @@ class TestMultiGpuFft:
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
-    def test_fft(self, xp, dtype, gpus=None):
-        _skip_multi_gpu_bug(self.shape, gpus)
-
+    def test_fft(self, xp, dtype):
         a = testing.shaped_random(self.shape, xp, dtype)
         return xp.fft.fft(a, n=self.n, norm=self.norm)
 
@@ -195,9 +182,7 @@ class TestMultiGpuFft:
     # NumPy 1.17.0 and 1.17.1 raises ZeroDivisonError due to a bug
     @testing.with_requires('numpy!=1.17.0')
     @testing.with_requires('numpy!=1.17.1')
-    def test_ifft(self, xp, dtype, gpus=None):
-        _skip_multi_gpu_bug(self.shape, gpus)
-
+    def test_ifft(self, xp, dtype):
         a = testing.shaped_random(self.shape, xp, dtype)
         return xp.fft.ifft(a, n=self.n, norm=self.norm)
 
@@ -219,9 +204,7 @@ class TestMultiGpuFftOrder:
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
-    def test_fft(self, xp, dtype, gpus=None):
-        _skip_multi_gpu_bug(self.shape, gpus)
-
+    def test_fft(self, xp, dtype):
         a = testing.shaped_random(self.shape, xp, dtype)
         if self.data_order == 'F':
             a = xp.asfortranarray(a)
@@ -231,9 +214,7 @@ class TestMultiGpuFftOrder:
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
-    def test_ifft(self, xp, dtype, gpus=None):
-        _skip_multi_gpu_bug(self.shape, gpus)
-
+    def test_ifft(self, xp, dtype):
         a = testing.shaped_random(self.shape, xp, dtype)
         if self.data_order == 'F':
             a = xp.asfortranarray(a)
@@ -672,9 +653,7 @@ class TestMultiGpuPlanCtxManagerFft:
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
-    def test_fft(self, xp, dtype, gpus=None):
-        _skip_multi_gpu_bug(self.shape, gpus)
-
+    def test_fft(self, xp, dtype):
         a = testing.shaped_random(self.shape, xp, dtype)
 
         if xp is np:
@@ -691,9 +670,7 @@ class TestMultiGpuPlanCtxManagerFft:
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
-    def test_ifft(self, xp, dtype, gpus=None):
-        _skip_multi_gpu_bug(self.shape, gpus)
-
+    def test_ifft(self, xp, dtype):
         a = testing.shaped_random(self.shape, xp, dtype)
 
         if xp is np:
@@ -708,7 +685,7 @@ class TestMultiGpuPlanCtxManagerFft:
 
     @multi_gpu_config(gpu_configs=[[0, 1], [1, 0]])
     @testing.for_complex_dtypes()
-    def test_fft_error_on_wrong_plan(self, dtype, gpus=None):
+    def test_fft_error_on_wrong_plan(self, dtype):
         # This test ensures the context manager plan is picked up
 
         from cupyx.scipy.fftpack import get_fft_plan
