@@ -115,9 +115,6 @@ class TestMinScalarType:
         assert cupy.min_scalar_type([obj, obj]) is arr.dtype
 
 
-@testing.parameterize(*testing.product({
-    'cxx': (None, '--std=c++17'),
-}))
 class TestCuPyHeaders:
     def setup_method(self):
         self.temporary_cache_dir_context = test_raw.use_temporary_cache_dir()
@@ -128,12 +125,13 @@ class TestCuPyHeaders:
     def teardown_method(self):
         self.temporary_cache_dir_context.__exit__(*sys.exc_info())
 
-    def test_compiling_core_header(self):
+    @pytest.mark.parametrize("cxx", (None, '--std=c++17'))
+    def test_compiling_core_header(self, cxx):
         code = r'''
         extern "C" __global__ void _test_ker_() { }
         '''
         code = self.header + code
-        options = () if self.cxx is None else (self.cxx,)
+        options = () if cxx is None else (cxx,)
         ker = cupy.RawKernel(code, '_test_ker_',
                              options=options, backend='nvrtc')
         ker((1,), (1,), ())
