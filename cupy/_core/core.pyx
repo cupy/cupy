@@ -3083,5 +3083,5 @@ cpdef min_scalar_type(a):
     return numpy.min_scalar_type(a)
 
 # typing dummies
-NDArray = object
+NDArray = ndarray
 ArrayLike = object
