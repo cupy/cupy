@@ -44,7 +44,7 @@ from cupy.typing._standalone import (
 
 # TODO: tuple vs. Sequence
 
-@typing.runtime_checkable
+@typing.type_check_only
 class _SupportsArray(Protocol[_DTypeT_co]):
     # Only covers default signature (no optional args provided)
     def __array__(self) -> ndarray[Any, _DTypeT_co]: ...
@@ -106,6 +106,7 @@ _ArrayComplex_co: TypeAlias = NDArray[
     numpy.inexact | numpy.integer | numpy.bool
 ]
 
+@typing.type_check_only
 class _SupportsRealImag(Protocol):
     @overload
     def __get__(
@@ -125,7 +126,7 @@ class _SupportsRealImag(Protocol):
     ) -> _SupportsRealImag: ...
     def __set__(self, instance: NDArray[Any], value: ArrayLike) -> None: ...
 
-@typing.runtime_checkable
+@typing.type_check_only
 class _SupportsArrayA(Protocol[_ArrayT_co]):
     def __array__(self) -> _ArrayT_co: ...
 
