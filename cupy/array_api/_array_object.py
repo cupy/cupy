@@ -1058,7 +1058,7 @@ class Array:
         else:
             # see cupy/cupy#5985 for the reason how we handle device/stream here
             prev_device = runtime.getDevice()
-            prev_stream: stream_module.Stream = None
+            prev_stream: stream_module.Stream | None = None
             if stream is not None:
                 prev_stream = stream_module.get_current_stream()
                 # stream can be an int as specified in __dlpack__, or a CuPy stream
@@ -1075,6 +1075,7 @@ class Array:
             finally:
                 runtime.setDevice(prev_device)
                 if stream is not None:
+                    assert prev_stream is not None
                     prev_stream.use()
             return Array._new(arr)
 
