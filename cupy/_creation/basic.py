@@ -82,7 +82,7 @@ def _new_like_order_and_strides(
 
 def empty_like(
     prototype: NDArray[Any],
-    dtype: DTypeLike = None,
+    dtype: DTypeLike | None = None,
     order: _NonNullKACF = "K",
     subok: None = None,
     shape: _ShapeLike | None = None,
@@ -204,7 +204,7 @@ def ones(
 
 def ones_like(
     a: NDArray[Any],
-    dtype: DTypeLike = None,
+    dtype: DTypeLike | None = None,
     order: _NonNullKACF = "K",
     subok: None = None,
     shape: _ShapeLike | None = None,
@@ -272,7 +272,7 @@ def zeros(
 
 def zeros_like(
     a: NDArray[Any],
-    dtype: DTypeLike = None,
+    dtype: DTypeLike | None = None,
     order: _NonNullKACF = "K",
     subok: None = None,
     shape: _ShapeLike | None = None,
@@ -317,7 +317,7 @@ def zeros_like(
 def full(
     shape: _ShapeLike,
     fill_value: Any,
-    dtype: DTypeLike = None,
+    dtype: DTypeLike | None = None,
     order: _NonNullCF = "C",
 ) -> NDArray[Any]:
     """Returns a new array of given shape and dtype, filled with a given value.
@@ -350,7 +350,7 @@ def full(
 def full_like(
     a: NDArray[Any],
     fill_value: Any,
-    dtype: DTypeLike = None,
+    dtype: DTypeLike | None = None,
     order: _NonNullKACF = "K",
     subok: None = None,
     shape: _ShapeLike | None = None,
