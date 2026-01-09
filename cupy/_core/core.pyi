@@ -137,7 +137,7 @@ _ShapeWithDefaultT_co = TypeVar(
 )
 _DTypeWithDefaultT_co = TypeVar(
     "_DTypeWithDefaultT_co",
-    bound=numpy.dtype,
+    bound=numpy.dtype[Any],
     default=numpy.dtype[Any],
     covariant=True,
 )
