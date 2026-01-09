@@ -5,6 +5,8 @@ from typing_extensions import Self
 
 from cupy.cuda.graph import Graph
 
+def get_current_stream(device_id: int = ...) -> Stream: ...
+
 class Event:
     ptr: int
 
