@@ -989,13 +989,14 @@ def distributed_array(
             array._comms,
         )
 
+    arr_owned: numpy.ndarray | ndarray
     if isinstance(array, (numpy.ndarray, ndarray)):
         if mode != _modes.REPLICA:
-            array = array.copy()
+            arr_owned = array.copy()
     else:
-        array = numpy.array(array)
+        arr_owned = numpy.array(array)
 
-    index_map = _index_arith._normalize_index_map(array.shape, index_map)
+    index_map = _index_arith._normalize_index_map(arr_owned.shape, index_map)
     comms = None
 
     # Define how to form a chunk from (dev, idx, src_array)
@@ -1003,9 +1004,9 @@ def distributed_array(
         [int, int, tuple[slice, ...], ndarray, list[Any] | None], _Chunk
     ]
 
-    if isinstance(array, ndarray):
-        src_dev = array.device.id
-        devices = index_map.keys() | {array.device.id}
+    if isinstance(arr_owned, ndarray):
+        src_dev = arr_owned.device.id
+        devices = index_map.keys() | {arr_owned.device.id}
         comms = _data_transfer._create_communicators(devices)
         make_chunk = _make_chunk_async
     else:
@@ -1017,10 +1018,11 @@ def distributed_array(
         chunks_map[dev] = []
 
         for idx in idxs:
-            chunk_array = array[idx]
+            chunk_array = arr_owned[idx]
             chunk = make_chunk(src_dev, dev, idx, chunk_array, comms)
             chunks_map[dev].append(chunk)
             if mode is not _modes.REPLICA and not mode.idempotent:
-                array[idx] = mode.identity_of(array.dtype)
-
-    return DistributedArray(array.shape, array.dtype, chunks_map, mode, comms)
+                arr_owned[idx] = mode.identity_of(arr_owned.dtype)
+    return DistributedArray(
+        arr_owned.shape, arr_owned.dtype, chunks_map, mode, comms
+    )
