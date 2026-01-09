@@ -7,6 +7,7 @@ from typing import (
     Generic,
     Literal,
     Protocol,
+    Self,
     SupportsIndex,
     TypeAlias,
     overload,
@@ -41,18 +42,20 @@ from cupy.typing._standalone import (
     _SupportsFileMethods,
 )
 
+# TODO: tuple vs. Sequence
+
 @typing.runtime_checkable
-class _SupportsArrayD(Protocol[_DTypeT_co]):
+class _SupportsArray(Protocol[_DTypeT_co]):
     # Only covers default signature (no optional args provided)
     def __array__(self) -> ndarray[Any, _DTypeT_co]: ...
 
 _ArrayLike: TypeAlias = (
-    _SupportsArrayD[numpy.dtype[_ScalarT]]
-    | _NestedSequence[_SupportsArrayD[numpy.dtype[_ScalarT]]]
+    _SupportsArray[numpy.dtype[_ScalarT]]
+    | _NestedSequence[_SupportsArray[numpy.dtype[_ScalarT]]]
 )
 _DualArrayLike: TypeAlias = (
-    _SupportsArrayD[_DTypeT]
-    | _NestedSequence[_SupportsArrayD[_DTypeT]]
+    _SupportsArray[_DTypeT]
+    | _NestedSequence[_SupportsArray[_DTypeT]]
     | _T
     | _NestedSequence[_T]
 )
@@ -219,6 +222,11 @@ class ndarray(Generic[_ShapeWithDefaultT_co, _DTypeWithDefaultT_co]):
     @overload
     def view(self, dtype: DTypeLike, type: type[_ArrayT]) -> _ArrayT: ...
     def fill(self, value: Any) -> None: ...
+    @overload
+    def reshape(
+        self, shape: tuple[SupportsIndex, ...], order: _OrderKACF = ...
+    ) -> ndarray[Any, _DTypeWithDefaultT_co]: ...
+    @overload
     def reshape(
         self, *shape: SupportsIndex, order: _OrderKACF = ...
     ) -> ndarray[Any, _DTypeWithDefaultT_co]: ...
@@ -872,6 +880,22 @@ class ndarray(Generic[_ShapeWithDefaultT_co, _DTypeWithDefaultT_co]):
         stream: Stream | None = ...,
     ) -> None: ...
     def reduced_view(self) -> ndarray[Any, _DTypeWithDefaultT_co]: ...
+    @overload
+    def __array__(
+        self: NDArray[_ScalarT], dtype: None = None
+    ) -> NDArray[_ScalarT]: ...
+    @overload
+    def __array__(
+        self,
+        dtype: _DTypeT,
+    ) -> ndarray[Any, _DTypeT]: ...
+    def __new__(
+        cls,
+        shape: tuple[SupportsIndex, ...],
+        dtype: DTypeLike,  # MEMO: Not completely sure
+        memptr: MemoryPointer = ...,
+        strides: tuple[SupportsIndex, ...] = ...,
+    ) -> Self: ...
 
 @overload
 def array(
