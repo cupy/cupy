@@ -52,7 +52,7 @@ class _BaseStream:
 
 class Stream(_BaseStream):
     null: ClassVar[Stream]
-    ptds: ClassVar[Stream] # Missing in HIP
+    ptds: ClassVar[Stream]  # Missing in HIP
 
     def __init__(
         self,
