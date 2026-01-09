@@ -143,10 +143,10 @@ class _TraceVariable:
     def format(self, form, **kwargs):
         """Returns a string following the format taken as an input.
         """
-        kwargs = dict([
-            (k, get_typename(v) if isinstance(v, numpy.dtype) else v)
-            for k, v in kwargs.items()]
-        )
+        kwargs = {
+            k: get_typename(v) if isinstance(v, numpy.dtype) else v
+            for k, v in kwargs.items()
+        }
         return string.Template(form).substitute(
             type=get_typename(self.dtype),
             var=self.var_name,
