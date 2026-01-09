@@ -149,7 +149,7 @@ class ndarray(Generic[_ShapeWithDefaultT_co, _DTypeWithDefaultT_co]):
     def __init__(
         self,
         shape: _ShapeLike,
-        dtype: DTypeLike = ...,
+        dtype: DTypeLike | None = ...,
         memptr: MemoryPointer | None = ...,
         strides: _ShapeLike | None = ...,
         order: str | None = ...,
