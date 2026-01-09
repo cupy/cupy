@@ -74,10 +74,10 @@ cdef class MemoryPool:
     cdef _ensure_pools_and_return_device_pool(self)
 
     cdef inline device_pool(self):
-        # This criticial section should strictly speaking be necessary since
-        # `self._pools` could in theory be ub an inconsistent state
-        # (not fully written itself as the `_pools` should be finished).
-        # Although, on the systems we care about that is probably not possible.
+        # This criticial section may not be needed in practice. But without it
+        # `self._pools` could be in an inconsistent state (the `PyObject *`
+        # or the tuple not fully written due to CPU/compiler optimizations).
+        # Atomics would be another way to ensure complete safety here.
         with cython.critical_section(self):
             if self._pools is not None:
                 return self._pools[device.get_device_id()]
