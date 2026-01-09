@@ -4,23 +4,16 @@ from __future__ import annotations
 
 import sys
 import typing
-from collections.abc import Iterator
+from collections.abc import Iterator, Sequence
 from typing import (
-    TYPE_CHECKING,
     Any,
     Literal,
     Protocol,
     SupportsIndex,
     TypeVar,
 )
-from collections.abc import Sequence
 
 import numpy
-
-if TYPE_CHECKING:
-    from _typeshed import SupportsFlush
-else:
-    SupportsFlush = object
 
 if sys.version_info >= (3, 12):
     from collections.abc import Buffer as _Buffer
@@ -31,7 +24,8 @@ else:
         def __buffer__(self, flags: int, /) -> memoryview: ...
 
 
-class _SupportsFileMethods(SupportsFlush, Protocol):
+class _SupportsFileMethods(Protocol):
+    def flush(self) -> object: ...
     def fileno(self) -> SupportsIndex: ...
     def tell(self) -> SupportsIndex: ...
     def seek(self, offset: int, whence: int, /) -> object: ...
