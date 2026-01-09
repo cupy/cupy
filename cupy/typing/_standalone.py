@@ -10,6 +10,7 @@ from typing import (
     Literal,
     Protocol,
     SupportsIndex,
+    TypeAlias,
     TypeVar,
 )
 
@@ -62,22 +63,23 @@ class _NestedSequence(Protocol[_T_co]):
 
 
 # Miscellaneous types
+_NumpyArrayT = TypeVar("_NumpyArrayT", bound=numpy.ndarray)
 _ScalarT = TypeVar("_ScalarT", bound=numpy.generic)
-_ScalarLike_co = complex | numpy.generic
 _DTypeT_co = TypeVar("_DTypeT_co", bound=numpy.dtype, covariant=True)
 _ShapeT_co = TypeVar("_ShapeT_co", bound=tuple[int, ...], covariant=True)
 _DTypeT = TypeVar("_DTypeT", bound=numpy.dtype)
-_ShapeLike = SupportsIndex | Sequence[SupportsIndex]
-_NonNullKACF = Literal["K", "A", "C", "F"]
-_NonNullCAF = Literal["A", "C", "F"]
-_NonNullCF = Literal["C", "F"]
-_OrderKACF = _NonNullKACF | None
-_OrderCAF = _NonNullCAF | None
-_OrderCF = _NonNullCF | None
-_DTypeLike = type[_ScalarT] | numpy.dtype[_ScalarT]
-_ModeKind = Literal["raise", "wrap", "clip"]
-_SortSide = Literal["left", "right"]
-_NumpyArrayT = TypeVar("_NumpyArrayT", bound=numpy.ndarray)
+
+_ScalarLike_co: TypeAlias = complex | numpy.generic
+_ShapeLike: TypeAlias = SupportsIndex | Sequence[SupportsIndex]
+_NonNullKACF: TypeAlias = Literal["K", "A", "C", "F"]
+_NonNullCAF: TypeAlias = Literal["A", "C", "F"]
+_NonNullCF: TypeAlias = Literal["C", "F"]
+_OrderKACF: TypeAlias = _NonNullKACF | None
+_OrderCAF: TypeAlias = _NonNullCAF | None
+_OrderCF: TypeAlias = _NonNullCF | None
+_DTypeLike: TypeAlias = type[_ScalarT] | numpy.dtype[_ScalarT]
+_ModeKind: TypeAlias = Literal["raise", "wrap", "clip"]
+_SortSide: TypeAlias = Literal["left", "right"]
 
 # Typed scalars
 _FloatT = TypeVar("_FloatT", bound=numpy.floating)
