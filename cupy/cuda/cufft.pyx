@@ -51,32 +51,27 @@ cdef SoftLink _get_softlink():
     cdef int runtime_version
     cdef str prefix = None
     cdef str libname = None
+    cdef object handle = 0
 
     if CUPY_CUDA_VERSION != 0:
+        # FIXME(leofang): we should use cuFFT version instead of cudart
+        # version.
         runtime_version = runtime.runtimeGetVersion()
         if 12080 <= runtime_version < 13000:
             # CUDA 12.8+
             prefix = '__cufft'
-            if _sys.platform == 'linux':
-                libname = 'libcufft.so.11'
-            else:  # win
-                libname = 'cufft64_11.dll'
         # TODO(leofang): we don't actually know the upper bound!
         elif 13000 <= runtime_version < 14000:
             # CUDA 13.0+
             prefix = 'cufft'
-            if _sys.platform == 'linux':
-                libname = 'libcufft.so.12'
-            else:  # win
-                libname = 'cufft64_12.dll'
 
+        # We let libname be None here to avoid loading the library twice,
+        # which could potentially be loading different versions of the library.
         from cuda import pathfinder
-        pathfinder.load_nvidia_dynamic_lib('cufft')
+        loaded_dl = pathfinder.load_nvidia_dynamic_lib('cufft')
+        handle = loaded_dl._handle_uint
 
-    if libname is None:
-        raise NotImplementedError
-
-    return SoftLink(libname, prefix, mandatory=True)
+    return SoftLink(libname, prefix, mandatory=True, handle=handle)
 
 ####################################################
 
