@@ -143,6 +143,12 @@ extend-ignore = [
 "tests/typing_tests/cupy_tests/creation_tests/test_basic.pyi" = [
   "E501", # line-too-long (long comments)
 ]
+"*.pyi" = [
+  # Allow unused typing stuff beginning with `_`
+  "PYI018",
+  "PYI046",
+  "PYI047",
+]
 "cupy/typing/**" = [
   # Allow unused typing stuff beginning with `_`
   "PYI018",
