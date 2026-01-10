@@ -41,6 +41,7 @@ Memory management
    cupy.cuda.PinnedMemoryPool
    cupy.cuda.PythonFunctionAllocator
    cupy.cuda.CFunctionAllocator
+   cupy.cuda.cuda_core_device_memory_resource_adaptor
 
 
 Memory hook
