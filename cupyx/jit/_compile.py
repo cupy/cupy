@@ -34,7 +34,7 @@ _typeclasses = (bool, numpy.bool_, numbers.Number)
 
 if (3, 8) <= sys.version_info:
     from typing import Literal
-    _CastingType = Literal['no', 'equiv', 'safe', 'same_kind', 'unsafe'] | None
+    _CastingType = Literal['no', 'equiv', 'safe', 'same_kind', 'unsafe']
 else:
     _CastingType = str
 
