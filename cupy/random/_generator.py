@@ -1141,7 +1141,8 @@ class RandomState:
             if isinstance(a, int):
                 # Use memory-efficient bijection approach
                 keys = numpy.random.randint(
-                    0, _UINT32_MAX + 1, size=24, dtype=numpy.uint32)
+                    0, _UINT32_MAX + 1,
+                    size=FeistelBijection.num_rounds, dtype=numpy.uint32)
                 bijection = FeistelBijection(a_size, keys)
                 indices = bijection(size)
                 return indices.reshape(shape)

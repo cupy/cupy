@@ -1064,12 +1064,16 @@ cdef void _launch_dist(bit_generator, func, out, args) except*:
     _launch(func, generator, state, strm, bsize, out, args)
 
 
+cdef enum:
+    _FEISTEL_NUM_ROUNDS = 24
+
+
 cdef struct _FeistelBijection:
     uint64_t right_side_bits
     uint64_t left_side_bits
     uint64_t right_side_mask
     uint64_t left_side_mask
-    uint32_t[24] keys  # num_rounds = 24
+    uint32_t[_FEISTEL_NUM_ROUNDS] keys
 
 
 cdef object _feistel_bijection_dtype = numpy.dtype([
@@ -1077,7 +1081,7 @@ cdef object _feistel_bijection_dtype = numpy.dtype([
     ('left_side_bits', numpy.uint64),
     ('right_side_mask', numpy.uint64),
     ('left_side_mask', numpy.uint64),
-    ('keys', numpy.uint32, (24,))
+    ('keys', numpy.uint32, (_FEISTEL_NUM_ROUNDS,))
 ], align=True)
 
 
@@ -1114,7 +1118,8 @@ cdef class FeistelBijection:
 
         Args:
             num_elements: Size of the domain (will be rounded up to power of 2)
-            keys_array: Array of 24 uint32 random numbers to use as keys
+            keys_array: Array of :attr:`num_rounds` uint32 random numbers to
+                use as keys
         """
         cdef uint64_t total_bits
 
@@ -1132,7 +1137,7 @@ cdef class FeistelBijection:
         self.param.right_side_mask = (1 << self.param.right_side_bits) - 1
 
         # Copy keys from the input array
-        assert len(keys_array) == 24
+        assert len(keys_array) == _FEISTEL_NUM_ROUNDS
         memcpy(<void*> &self.param.keys[0],
                <void*> &keys_array[0],
                sizeof(self.param.keys))
@@ -1168,24 +1173,23 @@ cdef class FeistelBijection:
         global _feistel_bijection_with_cutoff_kernel
         if _feistel_bijection_with_cutoff_kernel is None:
             # FIXME(leofang): currently only supports a_size <= 2**32
-            _feistel_bijection_with_cutoff_kernel = cupy.RawKernel(
-                r'''  // # noqa: E501
+            _feistel_bijection_with_cutoff_kernel = cupy.RawKernel(rf'''
             #include <cuda/std/cstdint>
 
-            struct FeistelParams {
+            struct FeistelParams {{
                 uint64_t right_side_bits;
                 uint64_t left_side_bits;
                 uint64_t right_side_mask;
                 uint64_t left_side_mask;
-                uint32_t keys[24];
-            };
+                uint32_t keys[{_FEISTEL_NUM_ROUNDS}];
+            }};
             
             extern "C" __global__ void feistel_bijection_choice(
                 long long* out,
                 const FeistelParams params,
                 const size_t cutoff_size,
                 const size_t arr_size
-            ) {
+            ) {{
                 unsigned int tid = blockIdx.x * blockDim.x + threadIdx.x;
                 if (tid >= cutoff_size)
                     return;
@@ -1194,12 +1198,12 @@ cdef class FeistelBijection:
                 uint64_t val = static_cast<uint64_t>(tid);
                 long long idx;
                 
-                do {
+                do {{
                     uint32_t high = (uint32_t)(val >> params.right_side_bits);
                     uint32_t low = (uint32_t)(val & params.right_side_mask);
                     
                     // 24 rounds of Feistel network
-                    for (uint32_t i = 0; i < 24; i++) {
+                    for (uint32_t i = 0; i < {_FEISTEL_NUM_ROUNDS}; i++) {{
                         constexpr uint64_t __m0  = 0xD2B74407B1CE6E93;
                         const uint64_t __product = __m0 * high;
                         const uint32_t __high    = static_cast<uint32_t>(__product >> 32);
@@ -1207,18 +1211,18 @@ cdef class FeistelBijection:
                         __low                    = (__low << (params.right_side_bits - params.left_side_bits)) | low >> params.left_side_bits;
                         high                     = ((__high ^ params.keys[i]) ^ low) & params.left_side_mask;
                         low                      = __low & params.right_side_mask;
-                    }
+                    }}
                     
                     // Combine left and right sides
                     idx = (long long)((static_cast<uint64_t>(high) << params.right_side_bits) | static_cast<uint64_t>(low));
                     val = static_cast<uint64_t>(idx);
-                } while (idx >= static_cast<long long>(arr_size));
+                }} while (idx >= static_cast<long long>(arr_size));
                 
                 // Write output (tid is always < cutoff_size due to early return)
                 out[tid] = idx;
-            }
-            ''',
-                'feistel_bijection_choice')
+            }}
+            '''  # noqa: E501
+            , 'feistel_bijection_choice')
         return _feistel_bijection_with_cutoff_kernel
 
     def __call__(self, size):
@@ -1237,3 +1241,12 @@ cdef class FeistelBijection:
         )
 
         return indices
+
+    @staticmethod
+    def num_rounds():
+        """Get the number of Feistel rounds used.
+
+        Returns:
+            int: Number of Feistel rounds
+        """
+        return _FEISTEL_NUM_ROUNDS
