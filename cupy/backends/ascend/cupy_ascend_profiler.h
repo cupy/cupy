@@ -8,7 +8,7 @@ extern "C" {
 
 // profiler init
 cudaError_t cudaProfilerStart() {
-    //return aclprofStart();
+    //return aclprofStart();  // TODO: this lead to runtime error?
     return CUDA_SUCCESS;
 }
 

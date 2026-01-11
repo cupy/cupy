@@ -13,12 +13,13 @@ By Qingfeng Xia
 ## 1. Status
 
 ### 1.1 Progress
-- Oct 12: MVP for add, cos, matmul, benchmark
+- Oct 12: MVP for add, cos, matmul, benchmark 10-100X acceleration
 
 - Oct 23: benchmark.py 经过xpu重构后, NPU测试可以运行
 
-- Nov 08: reduction op such as `sum()` is working, 90% math ops ACLOP supported has been added into numpy-ascend
-        UnitTest: `pytest tests/cupy_tests/logic_tests/test_truth.py `
+- Nov 08: reduction op such as `sum()` is working, 
+    90% math ops ACLOP supported has been added into numpy-ascend
+    UnitTest: `pytest tests/cupy_tests/logic_tests/test_truth.py `
 
 - Nov 15: concatenate(), clip(), copy(), non-math/irregular ops initially supported
     + but `array()` seems not working properly 
@@ -35,7 +36,11 @@ By Qingfeng Xia
 
 TODO:  
 - creation/manipulation/indexing/linalg ops
-    + statistics ops: passing string arg
+    + statistics ops: passing string arg, 
+    it may need CANN 8.5 to construct aclScalar of string type
+
+- once CANN 8.5 stable released, and pyPTO will be used to write customised kernel
+
 
 ## 2. 核心op支持情况 ( see also Array API standard)
 https://data-apis.org/array-api/latest/API_specification/index.html
@@ -224,7 +229,7 @@ pip3 install fastrlock
 
 cython 3.0 is not higher enough, use cython 3.1 for string auto conversion
 
-## 2. CANN 安装（社区版）
+## 2. CANN 安装（社区版 8.2）
 
 CANN社区版本是新特性较多的先行版.
 
@@ -273,7 +278,7 @@ If you want to use asdsip module:
 -  To take effect for current user, you can exec command below: source /home/qingfeng/Ascend/nnal/asdsip/set_env.sh or add "source /home/qingfeng/Ascend/nnal/asdsip/set_env.sh" to ~/.bashrc.
 ```
 
-### 2.4 install triton-ascend, torch-cpu (2.6) 
+### 2.4 install triton-ascend, torch-cpu (2.6)  => install pyPTO
 
 ```bash
 # gitee上的torch-npu安装指南 依赖torch cpu 2.6.0
@@ -289,6 +294,27 @@ pip3 install triton-ascend
 > ImportError: libascend_hal.so: cannot open shared object file: No such file or directory, You can disable extension auto-loading with TORCH_DEVICE_BACKEND_AUTOLOAD=0.
 
 
+## install CANN 8.5 (first开源版本)
+
+### 源代码:  算子库被进一步拆分为四个包
+ops-nn
+ops-math:  https://gitcode.com/cann/ops-math
+ops-cv
+ops-transfomer
+
+FFT ops 还是在nnal asdsip
+### v8.5 alpha2 算子二进制包 kernel (安装方法同CANN 8.2)
+二进制包,不确定是否开源版本构建的.
+https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/850alpha001/softwareinst/instg/instg_quick.html?Mode=PmIns&OS=openEuler&Software=cannToolKit
+
+```py
+# cupy_builder will check if runtime dll/so file existing
+# $HOME/Ascend/ascend-toolkit/latest/lib64/
+["ascendcl", "runtime", "aclnn_ops_train", "aclnn_ops_infer",  "nnopbase","aclnn_math",
+    "aclnn_rand", "acl_op_compiler",  "graph", "profapi"]
+```
+
+版本判断需要新的方法
 
 ### 2.5 昇腾硬件测试环境
 

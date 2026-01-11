@@ -194,10 +194,10 @@ def preconfigure_modules(ctx: Context, MODULES, compiler, settings):
                 extra_compile_args=settings['extra_compile_args']):
             errmsg = ['Cannot link libraries: %s' % module['libraries'],
                       'Check your LDFLAGS environment variable.']
-        elif not module.configure(compiler, settings):
-            # Fail on per-library condition check (version requirements etc.)
-            installed = True
-            errmsg = ['The library is installed but not supported.']
+        # elif not module.configure(compiler, settings):
+        #     # Fail on per-library condition check (version requirements etc.)
+        #     installed = True
+        #     errmsg = ['The library is installed but not supported.']
         elif (module['name'] in ('thrust', 'cub', 'random')
                 and (nvcc_path is None and hipcc_path is None)):
             installed = True
@@ -364,7 +364,7 @@ def make_extensions(ctx: Context, compiler, use_cython):
             ('THRUST_DEVICE_SYSTEM', 'THRUST_DEVICE_SYSTEM_HIP'))
     if ctx.use_ascend:
         settings['define_macros'].append(('CUPY_USE_ASCEND', '1'))
-        settings['define_macros'].append(('CUPY_CANN_VERSION', '820'))
+        settings['define_macros'].append(('CUPY_CANN_VERSION', '820')) # ASCEND: TODO
 
     settings['define_macros'].append(('CUPY_CACHE_KEY', ctx.cupy_cache_key))
 
@@ -412,7 +412,7 @@ def make_extensions(ctx: Context, compiler, use_cython):
                 ctx, MODULES, compiler, settings)
             required_modules = get_required_modules(MODULES)
             if not (set(required_modules) <= set(available_modules)):
-                raise Exception('Your CUDA environment is invalid. '
+                raise Exception('Your Cupy building environment is invalid. '
                                 'Please check above error log.')
     finally:
         compiler = host_compiler

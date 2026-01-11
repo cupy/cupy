@@ -424,7 +424,9 @@ def get_cann_version(formatted: bool = False) -> int:
     global _cann_version
     if _cann_version is None:
         msg = 'check_cann_version() must be called first.'
-        raise RuntimeError(msg)
+        print(msg, "set can version to 850")
+        _cann_version = 850
+        #raise RuntimeError(msg)
     if formatted:
         return str(_hip_version)
     return _cann_version
