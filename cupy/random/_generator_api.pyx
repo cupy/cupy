@@ -1186,7 +1186,6 @@ cdef class FeistelBijection:
         """
         global _feistel_bijection_with_cutoff_kernel
         if _feistel_bijection_with_cutoff_kernel is None:
-            # FIXME(leofang): currently only supports a_size <= 2**32
             _feistel_bijection_with_cutoff_kernel = cupy.RawKernel(rf'''
             #include <cuda/std/cstdint>
 
@@ -1204,36 +1203,37 @@ cdef class FeistelBijection:
                 const size_t cutoff_size,
                 const size_t arr_size
             ) {{
-                unsigned int tid = blockIdx.x * blockDim.x + threadIdx.x;
-                if (tid >= cutoff_size)
-                    return;
-                
-                // Apply Feistel bijection to tid, re-apply until valid
-                uint64_t val = static_cast<uint64_t>(tid);
-                long long idx;
-                
-                do {{
-                    uint32_t low = (uint32_t)(val >> params.right_side_bits);
-                    uint32_t high = (uint32_t)(val & params.right_side_mask);
+                for (size_t tid = static_cast<size_t>(blockIdx.x) * static_cast<size_t>(blockDim.x) + static_cast<size_t>(threadIdx.x);
+                     tid < cutoff_size;
+                     tid += static_cast<size_t>(gridDim.x) * static_cast<size_t>(blockDim.x))
+                {{
+                    // Apply Feistel bijection to tid, re-apply until valid
+                    uint64_t val = static_cast<uint64_t>(tid);
+                    long long idx;
                     
-                    // 24 rounds of Feistel network
-                    for (uint32_t i = 0; i < {_FEISTEL_NUM_ROUNDS}; i++) {{
-                        constexpr uint64_t __m0  = 0xD2B74407B1CE6E93;
-                        const uint64_t __product = __m0 * high;
-                        const uint32_t __high    = static_cast<uint32_t>(__product >> 32);
-                        uint32_t __low           = static_cast<uint32_t>(__product);
-                        __low                    = (__low << (params.right_side_bits - params.left_side_bits)) | low >> params.left_side_bits;
-                        high                     = ((__high ^ params.keys[i]) ^ low) & params.left_side_mask;
-                        low                      = __low & params.right_side_mask;
-                    }}
+                    do {{
+                        uint32_t low = (uint32_t)(val >> params.right_side_bits);
+                        uint32_t high = (uint32_t)(val & params.right_side_mask);
+                        
+                        // 24 rounds of Feistel network
+                        for (uint32_t i = 0; i < {_FEISTEL_NUM_ROUNDS}; i++) {{
+                            constexpr uint64_t __m0  = 0xD2B74407B1CE6E93;
+                            const uint64_t __product = __m0 * high;
+                            const uint32_t __high    = static_cast<uint32_t>(__product >> 32);
+                            uint32_t __low           = static_cast<uint32_t>(__product);
+                            __low                    = (__low << (params.right_side_bits - params.left_side_bits)) | low >> params.left_side_bits;
+                            high                     = ((__high ^ params.keys[i]) ^ low) & params.left_side_mask;
+                            low                      = __low & params.right_side_mask;
+                        }}
+                        
+                        // Combine left and right sides
+                        idx = (long long)((static_cast<uint64_t>(high) << params.right_side_bits) | static_cast<uint64_t>(low));
+                        val = static_cast<uint64_t>(idx);
+                    }} while (idx >= static_cast<long long>(arr_size));
                     
-                    // Combine left and right sides
-                    idx = (long long)((static_cast<uint64_t>(high) << params.right_side_bits) | static_cast<uint64_t>(low));
-                    val = static_cast<uint64_t>(idx);
-                }} while (idx >= static_cast<long long>(arr_size));
-                
-                // Write output (tid is always < cutoff_size due to early return)
-                out[tid] = idx;
+                    // Write output (tid is always < cutoff_size due to early return)
+                    out[tid] = idx;
+                }}
             }}
             '''  # noqa: E501
             , 'feistel_bijection_choice')
