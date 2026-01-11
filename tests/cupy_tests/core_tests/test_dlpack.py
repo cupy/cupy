@@ -223,6 +223,7 @@ class TestDLTensorMemory:
         cupy.cuda.set_allocator(old_pool.malloc)
 
     @pytest.mark.parametrize('max_version', [None, (1, 0)])
+    @pytest.mark.thread_unsafe(reason="modifies pool and tracks allocations")
     def test_deleter(self, pool, max_version):
         # memory is freed when tensor is deleted, as it's not consumed
         array = cupy.empty(10)
@@ -237,6 +238,7 @@ class TestDLTensorMemory:
         assert pool.n_free_blocks() == 1
 
     @pytest.mark.parametrize('max_version', [None, (1, 0)])
+    @pytest.mark.thread_unsafe(reason="modifies pool and tracks allocations")
     def test_deleter2(self, pool, max_version):
         # memory is freed when array2 is deleted, as tensor is consumed
         array = cupy.empty(10)

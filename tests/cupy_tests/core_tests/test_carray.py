@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-import unittest
+import pytest
 
 import cupy
 from cupy import testing
 
 
-class TestCArray(unittest.TestCase):
+class TestCArray:
 
     def test_size(self):
         x = cupy.arange(3).astype('i')
@@ -49,39 +49,40 @@ class TestCArray(unittest.TestCase):
         testing.assert_array_equal(y, x)
 
 
-@testing.parameterize(
-    {'size': 2 ** 31 - 1024},
-    {'size': 2 ** 31},
-    {'size': 2 ** 31 + 1024},
-    {'size': 2 ** 32 - 1024},
-    {'size': 2 ** 32},
-    {'size': 2 ** 32 + 1024},
-)
-@testing.slow
-class TestCArray32BitBoundary(unittest.TestCase):
+@pytest.mark.parametrize('size', [
+    2 ** 31 - 1024,
+    2 ** 31,
+    2 ** 31 + 1024,
+    2 ** 32 - 1024,
+    2 ** 32,
+    2 ** 32 + 1024
+])
+@pytest.mark.slow
+@pytest.mark.thread_unsafe(reason="too large allocations")
+class TestCArray32BitBoundary:
     # This test case is intended to confirm CArray indexing work correctly
     # with input/output arrays whose size is so large that it crosses the
     # 32-bit boundary (in terms of both number of elements and size in bytes).
     # This test requires approx. 8 GiB GPU memory to run.
     # See https://github.com/cupy/cupy/pull/882 for detailed discussions.
-
-    def tearDown(self):
-        # Free huge memory for slow test
+    def teardown_method(self):
         cupy.get_default_memory_pool().free_all_blocks()
 
     # HIP is known to fail with sizes > 2**32-1024
-    @unittest.skipIf(cupy.cuda.runtime.is_hip, 'HIP does not support this')
-    def test(self):
+    @pytest.mark.skipif(
+        cupy.cuda.runtime.is_hip, reason='HIP does not support this')
+    def test(self, size):
         # Elementwise
-        a = cupy.full((1, self.size), 7, dtype=cupy.int8)
+        a = cupy.full((1, size), 7, dtype=cupy.int8)
         # Reduction
         result = a.sum(axis=0, dtype=cupy.int8)
         # Explicitly specify the dtype to absorb Linux/Windows difference.
-        assert result.sum(dtype=cupy.int64) == self.size * 7
+        assert result.sum(dtype=cupy.int64) == size * 7
 
     # HIP is known to fail with sizes > 2**32-1024
-    @unittest.skipIf(cupy.cuda.runtime.is_hip, 'HIP does not support this')
-    def test_assign(self):
-        a = cupy.zeros(self.size, dtype=cupy.int8)
+    @pytest.mark.skipif(
+        cupy.cuda.runtime.is_hip, reason='HIP does not support this')
+    def test_assign(self, size):
+        a = cupy.zeros(size, dtype=cupy.int8)
         a[-1] = 1.0
         assert a.sum() == 1
