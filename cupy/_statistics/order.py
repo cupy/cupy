@@ -10,6 +10,15 @@ from cupy._core import _routines_statistics as _statistics
 from cupy._core import _fusion_thread_local
 from cupy._logic import content
 
+# Quantile method parameters (alpha, beta) from Hyndman & Fan (1996)
+# Used for continuous interpolation methods in percentile/quantile
+_QUANTILE_PARAMS = {
+    'hazen': (0.5, 0.5),            # H&F type 5
+    'weibull': (0, 0),              # H&F type 6
+    'median_unbiased': (1/3, 1/3),  # H&F type 8
+    'normal_unbiased': (3/8, 3/8),  # H&F type 9
+}
+
 
 def amin(a, axis=None, out=None, keepdims=False):
     """Returns the minimum of an array or the minimum along an axis.
@@ -227,11 +236,14 @@ def _quantile_unchecked(a, q, axis=None, out=None,
     indices = q * (Nx - 1.)
 
     if method in ['inverted_cdf', 'averaged_inverted_cdf',
-                  'closest_observation', 'interpolated_inverted_cdf',
-                  'hazen', 'weibull', 'median_unbiased', 'normal_unbiased']:
+                  'closest_observation', 'interpolated_inverted_cdf']:
         # TODO(takagi) Implement new methods introduced in NumPy 1.22
         raise ValueError(f'\'{method}\' method is not yet supported. '
                          'Please use any other method.')
+    elif method in _QUANTILE_PARAMS:
+        alpha, beta = _QUANTILE_PARAMS[method]
+        indices = q * (Nx - alpha - beta + 1) + alpha - 1
+        indices = cupy.clip(indices, 0, Nx - 1)
     elif method == 'lower':
         indices = cupy.floor(indices).astype(cupy.int32)
     elif method == 'higher':
