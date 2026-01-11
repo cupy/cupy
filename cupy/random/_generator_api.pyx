@@ -1,5 +1,7 @@
+from cpython cimport PyTypeObject, Py_INCREF
 from libc.stdint cimport intptr_t, uint64_t, int32_t, int64_t, uint32_t
 from libc.string cimport memcpy
+cimport numpy as cnp
 
 import numpy
 
@@ -71,6 +73,13 @@ cdef extern from 'cupy_distributions.cuh' nogil:
         int generator, intptr_t state, ssize_t state_size, intptr_t out,
         ssize_t size, intptr_t stream,
         intptr_t arg1, intptr_t arg2, intptr_t arg3)
+
+
+# NumPy commented out this declaration in its __init__.pxd...
+cdef extern from "numpy/arrayobject.h":
+    object PyArray_NewFromDescr(
+        PyTypeObject*, cnp.dtype, int, cnp.npy_intp*, cnp.npy_intp*, void*,
+        int, object)
 
 
 cdef _ndarray_base _array_data(_ndarray_base x):
@@ -1154,14 +1163,19 @@ cdef class FeistelBijection:
             is alive. Do not store or return it to Python code.
         """
         # Create and populate the params array
-        # TODO(leofang): use NumPy C API PyArray_NewFromDescr once it's exposed
-        # to Cython.
         assert (
             _feistel_bijection_dtype.itemsize == sizeof(_FeistelBijection))
-        params = numpy.empty(1, dtype=_feistel_bijection_dtype)
-        memcpy(<void*><intptr_t>(params.ctypes.data),
-               &(self.param),
-               sizeof(_FeistelBijection))
+        cdef cnp.npy_intp[1] dims = [1]
+        Py_INCREF(_feistel_bijection_dtype)
+        cdef cnp.ndarray params = PyArray_NewFromDescr(
+            <PyTypeObject*>cnp.ndarray,
+            <cnp.dtype>_feistel_bijection_dtype,
+            1,
+            &dims[0],
+            <cnp.npy_intp*>NULL,
+            <void*>(&self.param),
+            cnp.NPY_ARRAY_ALIGNED | cnp.NPY_ARRAY_C_CONTIGUOUS,
+            None)
         return params
 
     cdef get_kernel(self):
