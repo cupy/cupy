@@ -115,23 +115,21 @@ class numeric_limits<__half> {
   public:
     static __host__ __device__ constexpr __half infinity() noexcept {
         unsigned short inf_half = 0x7C00U;
-        #if (defined(_MSC_VER) && _MSC_VER >= 1920)
-        #if CUDA_VERSION < 11030
-        // WAR: CUDA 11.2.x + VS 2019 fails with __builtin_bit_cast
+        // With C++20, should use std::bit_cast, until then use __builtin_bit_cast when
+        // we know it is supported.
+        // Otherwise use a union (which is technically not standard compliant).
+        #if (  \
+            (defined(_MSC_VER) && _MSC_VER >= 1920) ||  \
+            (defined(__clang__) && __clang_major__ >= 9) || \
+            (defined(__GNUC__) && (__GNUC__ > 11 || (__GNUC__ == 11 && __GNUC_MINOR__ >= 1)))  \
+        )
+        return __builtin_bit_cast(__half, inf_half);
+        #else
         union caster {
             unsigned short u_;
             __half h_;
         };
         return caster{inf_half}.h_;
-        #else  // CUDA_VERSION < 11030
-        // WAR:
-        // - we want a constexpr here, but reinterpret_cast cannot be used
-        // - we want to use std::bit_cast, but it requires C++20 which is too new
-        // - we use the compiler builtin, fortunately both gcc and msvc have it
-        return __builtin_bit_cast(__half, inf_half);
-        #endif
-        #else
-        return *reinterpret_cast<__half*>(&inf_half);
         #endif
     }
 
