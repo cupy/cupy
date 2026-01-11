@@ -18,6 +18,7 @@ from cupy import _core
 from cupy import cuda
 from cupy.cuda import device
 from cupy.random import _kernels
+from cupy.random._generator_api import FeistelBijection
 from cupy import _util
 
 import importlib
@@ -1136,12 +1137,18 @@ class RandomState:
                 raise ValueError(
                     'Cannot take a larger sample than population when '
                     '\'replace=False\'')
+
             if isinstance(a, int):
-                indices = cupy.arange(a, dtype='l')
+                # Use memory-efficient bijection approach
+                keys = numpy.random.randint(
+                    0, _UINT32_MAX + 1, size=24, dtype=numpy.uint32)
+                bijection = FeistelBijection(a_size, keys)
+                indices = bijection(size)
+                return indices.reshape(shape)
             else:
                 indices = a.copy()
-            self.shuffle(indices)
-            return indices[:size].reshape(shape)
+                self.shuffle(indices)
+                return indices[:size].reshape(shape)
 
         if not replace:
             raise NotImplementedError
