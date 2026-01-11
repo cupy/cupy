@@ -139,7 +139,7 @@ def _exec_fft(a, direction, value_type, norm, axis, overwrite_x,
                                ' or as an argument.')
 
     if plan is None:
-        devices = None if not config.use_multi_gpus else config._devices
+        devices = config.devices
         # TODO(leofang): do we need to add the current stream to keys?
         keys = (out_size, fft_type, batch, devices)
         mgr = config.get_current_callback_manager()
@@ -647,7 +647,7 @@ def _default_fft_func(a, s=None, axes=None, plan=None, value_type='C2C'):
     if isinstance(plan, cufft.PlanNd):  # a shortcut for using _fftn
         return _fftn
     elif (isinstance(plan, cufft.Plan1d) or
-          a.ndim == 1 or not config.enable_nd_planning):
+          a.ndim == 1 or not config._enable_nd_planning.get()):
         return _fft
 
     # cuFFT's N-D C2R/R2C transforms may not agree with NumPy's outcomes

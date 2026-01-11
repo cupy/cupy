@@ -233,10 +233,12 @@ class TestFft2(unittest.TestCase):
             return x
         if scp is cupyx.scipy:
             import cupy.fft.config as config
-            config.enable_nd_planning = False  # use explicit plan
+            with pytest.warns(DeprecationWarning, match='enable_nd_planning'):
+                config.enable_nd_planning = False  # use explicit plan
             plan = scp.fftpack.get_fft_plan(x, shape=self.s, axes=self.axes)
             out = scp.fftpack.fft2(x, shape=self.s, axes=self.axes, plan=plan)
-            config.enable_nd_planning = True  # default
+            with pytest.warns(DeprecationWarning, match='enable_nd_planning'):
+                config.enable_nd_planning = True  # default
         else:  # scipy
             out = scp.fftpack.fft2(x, shape=self.s, axes=self.axes)
         return out
@@ -251,11 +253,13 @@ class TestFft2(unittest.TestCase):
             return x
         if scp is cupyx.scipy:
             import cupy.fft.config as config
-            config.enable_nd_planning = False  # use explicit plan
+            with pytest.warns(DeprecationWarning, match='enable_nd_planning'):
+                config.enable_nd_planning = False  # use explicit plan
             plan = scp.fftpack.get_fft_plan(x, shape=self.s, axes=self.axes)
             x = scp.fftpack.fft2(x, shape=self.s, axes=self.axes,
                                  overwrite_x=True, plan=plan)
-            config.enable_nd_planning = True  # default
+            with pytest.warns(DeprecationWarning, match='enable_nd_planning'):
+                config.enable_nd_planning = True  # default
         else:  # scipy
             x = scp.fftpack.fft2(x, shape=self.s, axes=self.axes,
                                  overwrite_x=True)
@@ -308,10 +312,12 @@ class TestFft2(unittest.TestCase):
             return x
         if scp is cupyx.scipy:
             import cupy.fft.config as config
-            config.enable_nd_planning = False  # use explicit plan
+            with pytest.warns(DeprecationWarning, match='enable_nd_planning'):
+                config.enable_nd_planning = False  # use explicit plan
             plan = scp.fftpack.get_fft_plan(x, shape=self.s, axes=self.axes)
             out = scp.fftpack.ifft2(x, shape=self.s, axes=self.axes, plan=plan)
-            config.enable_nd_planning = True  # default
+            with pytest.warns(DeprecationWarning, match='enable_nd_planning'):
+                config.enable_nd_planning = True  # default
         else:  # scipy
             out = scp.fftpack.ifft2(x, shape=self.s, axes=self.axes)
         return out
@@ -326,11 +332,13 @@ class TestFft2(unittest.TestCase):
             return x
         if scp is cupyx.scipy:
             import cupy.fft.config as config
-            config.enable_nd_planning = False  # use explicit plan
+            with pytest.warns(DeprecationWarning, match='enable_nd_planning'):
+                config.enable_nd_planning = False  # use explicit plan
             plan = scp.fftpack.get_fft_plan(x, shape=self.s, axes=self.axes)
             x = scp.fftpack.ifft2(x, shape=self.s, axes=self.axes,
                                   overwrite_x=True, plan=plan)
-            config.enable_nd_planning = True  # default
+            with pytest.warns(DeprecationWarning, match='enable_nd_planning'):
+                config.enable_nd_planning = True  # default
         else:  # scipy
             x = scp.fftpack.ifft2(x, shape=self.s, axes=self.axes,
                                   overwrite_x=True)
@@ -400,10 +408,12 @@ class TestFftn(unittest.TestCase):
             return x
         if scp is cupyx.scipy:
             import cupy.fft.config as config
-            config.enable_nd_planning = False  # use explicit plan
+            with pytest.warns(DeprecationWarning, match='enable_nd_planning'):
+                config.enable_nd_planning = False  # use explicit plan
             plan = scp.fftpack.get_fft_plan(x, shape=self.s, axes=self.axes)
             out = scp.fftpack.fftn(x, shape=self.s, axes=self.axes, plan=plan)
-            config.enable_nd_planning = True  # default
+            with pytest.warns(DeprecationWarning, match='enable_nd_planning'):
+                config.enable_nd_planning = True  # default
         else:  # scipy
             out = scp.fftpack.fftn(x, shape=self.s, axes=self.axes)
         return out
@@ -418,11 +428,13 @@ class TestFftn(unittest.TestCase):
             return x
         if scp is cupyx.scipy:
             import cupy.fft.config as config
-            config.enable_nd_planning = False  # use explicit plan
+            with pytest.warns(DeprecationWarning, match='enable_nd_planning'):
+                config.enable_nd_planning = False  # use explicit plan
             plan = scp.fftpack.get_fft_plan(x, shape=self.s, axes=self.axes)
             x = scp.fftpack.fftn(x, shape=self.s, axes=self.axes,
                                  overwrite_x=True, plan=plan)
-            config.enable_nd_planning = True  # default
+            with pytest.warns(DeprecationWarning, match='enable_nd_planning'):
+                config.enable_nd_planning = True  # default
         else:  # scipy
             x = scp.fftpack.fftn(x, shape=self.s, axes=self.axes,
                                  overwrite_x=True)
@@ -475,10 +487,12 @@ class TestFftn(unittest.TestCase):
             return x
         if scp is cupyx.scipy:
             import cupy.fft.config as config
-            config.enable_nd_planning = False  # use explicit plan
+            with pytest.warns(DeprecationWarning, match='enable_nd_planning'):
+                config.enable_nd_planning = False  # use explicit plan
             plan = scp.fftpack.get_fft_plan(x, shape=self.s, axes=self.axes)
             out = scp.fftpack.ifftn(x, shape=self.s, axes=self.axes, plan=plan)
-            config.enable_nd_planning = True  # default
+            with pytest.warns(DeprecationWarning, match='enable_nd_planning'):
+                config.enable_nd_planning = True  # default
         else:  # scipy
             out = scp.fftpack.ifftn(x, shape=self.s, axes=self.axes)
         return out
@@ -493,11 +507,13 @@ class TestFftn(unittest.TestCase):
             return x
         if scp is cupyx.scipy:
             import cupy.fft.config as config
-            config.enable_nd_planning = False  # use explicit plan
+            with pytest.warns(DeprecationWarning, match='enable_nd_planning'):
+                config.enable_nd_planning = False  # use explicit plan
             plan = scp.fftpack.get_fft_plan(x, shape=self.s, axes=self.axes)
             x = scp.fftpack.ifftn(x, shape=self.s, axes=self.axes,
                                   overwrite_x=True, plan=plan)
-            config.enable_nd_planning = True  # default
+            with pytest.warns(DeprecationWarning, match='enable_nd_planning'):
+                config.enable_nd_planning = True  # default
         else:  # scipy
             x = scp.fftpack.ifftn(x, shape=self.s, axes=self.axes,
                                   overwrite_x=True)
