@@ -1089,8 +1089,8 @@ cdef object _feistel_bijection_with_cutoff_kernel = None
 
 
 cdef inline uint64_t get_cipher_bits(uint64_t m) nogil noexcept:
-    if (m <= 16):
-        return 4
+    if (m <= 256):
+        return 8
     cdef uint64_t i = 0
     m -= 1
     while m != 0:
@@ -1199,8 +1199,8 @@ cdef class FeistelBijection:
                 long long idx;
                 
                 do {{
-                    uint32_t high = (uint32_t)(val >> params.right_side_bits);
-                    uint32_t low = (uint32_t)(val & params.right_side_mask);
+                    uint32_t low = (uint32_t)(val >> params.right_side_bits);
+                    uint32_t high = (uint32_t)(val & params.right_side_mask);
                     
                     // 24 rounds of Feistel network
                     for (uint32_t i = 0; i < {_FEISTEL_NUM_ROUNDS}; i++) {{
