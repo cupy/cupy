@@ -934,14 +934,14 @@ class TestChoiceReplaceFalseLargeScale(RandomGeneratorTestCase):
         """Test that large samples have no duplicates and correct bounds."""
         val = self.generate(a=self.a, size=self.size, replace=False).get()
         size = self.size if isinstance(self.size, tuple) else (self.size,)
-        
+
         # Check shape
         assert val.shape == size
-        
+
         # Check bounds
         assert (0 <= val).all()
         assert (val < self.a).all()
-        
+
         # Check uniqueness
         val_flat = numpy.asarray(val).flatten()
         assert numpy.unique(val_flat).size == val_flat.size, \
@@ -973,11 +973,11 @@ class TestChoiceReplaceFalsePowerOfTwo(RandomGeneratorTestCase):
     def test_power_of_two_boundaries(self):
         """Test correctness at power-of-2 boundaries (critical for Feistel)."""
         val = self.generate(a=self.a, size=self.size, replace=False).get()
-        
+
         # Check bounds
         assert (0 <= val).all()
         assert (val < self.a).all()
-        
+
         # Check uniqueness
         val_flat = numpy.asarray(val).flatten()
         assert numpy.unique(val_flat).size == val_flat.size
@@ -997,7 +997,7 @@ class TestChoiceReplaceFalseFullPermutation(RandomGeneratorTestCase):
     def test_full_permutation(self):
         """Test that size=n produces a valid permutation."""
         val = self.generate(a=self.a, size=self.size, replace=False).get()
-        
+
         # Should contain all values from 0 to a-1 exactly once
         val_sorted = numpy.sort(val)
         expected = numpy.arange(self.a)
@@ -1018,10 +1018,10 @@ class TestChoiceReplaceFalseMultiDimShape(RandomGeneratorTestCase):
     def test_multidim_shape_uniqueness(self):
         """Test multi-dimensional outputs maintain uniqueness."""
         val = self.generate(a=self.a, size=self.size, replace=False).get()
-        
+
         # Check shape
         assert val.shape == self.size
-        
+
         # Check uniqueness across all dimensions
         val_flat = val.flatten()
         assert numpy.unique(val_flat).size == val_flat.size
@@ -1041,13 +1041,14 @@ class TestChoiceReplaceFalseStatistical(RandomGeneratorTestCase):
         n = 10
         sample_size = 5
         n_trials = 1000
-        
+
         counts = cupy.zeros(n, dtype=int)
-        vals = self.generate_many(n, size=sample_size, replace=False, _count=n_trials)
+        vals = self.generate_many(
+            n, size=sample_size, replace=False, _count=n_trials)
         for val in vals:
             counts[val] += 1
         counts = counts.get()
-        
+
         # Each index should appear ~500 times (5/10 * 1000)
         expected = numpy.ones(n, dtype=int) * (sample_size * n_trials // n)
         assert _hypothesis.chi_square_test(counts, expected)
@@ -1082,11 +1083,11 @@ class TestChoiceReplaceFalseSmallDomains(RandomGeneratorTestCase):
     def test_small_domains(self):
         """Test correctness for small domain sizes."""
         val = self.generate(a=self.a, size=self.size, replace=False).get()
-        
+
         # Check bounds
         assert (0 <= val).all()
         assert (val < self.a).all()
-        
+
         # Check uniqueness
         val_flat = numpy.asarray(val).flatten()
         assert numpy.unique(val_flat).size == val_flat.size
@@ -1106,13 +1107,13 @@ class TestChoiceReplaceFalseVeryLargeDomain(unittest.TestCase):
         # If it did, it would require ~8GB of memory
         a = 2**30
         size = 1000
-        
+
         val = self.rs.choice(a=a, size=size, replace=False).get()
-        
+
         # Check bounds
         assert (0 <= val).all()
         assert (val < a).all()
-        
+
         # Check uniqueness
         assert numpy.unique(val).size == size
 
@@ -1121,13 +1122,13 @@ class TestChoiceReplaceFalseVeryLargeDomain(unittest.TestCase):
         # Current implementation supports up to 2^32
         a = 2**31
         size = 500
-        
+
         val = self.rs.choice(a=a, size=size, replace=False).get()
-        
+
         # Check bounds
         assert (0 <= val).all()
         assert (val < a).all()
-        
+
         # Check uniqueness
         assert numpy.unique(val).size == size
 
@@ -1141,7 +1142,7 @@ class TestChoiceReplaceFalseDtypeConsistency(RandomGeneratorTestCase):
     def test_integer_input_dtype(self):
         """Integer input should produce int64/long dtype."""
         val = self.generate(a=100, size=50, replace=False)
-        
+
         # Should be 'l' (long) dtype, which is int64 on most platforms
         assert val.dtype == numpy.dtype('l') or val.dtype == numpy.int64
 
