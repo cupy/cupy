@@ -69,7 +69,11 @@ disable_error_code = ["attr-defined"]
 xfail_strict = true
 testpaths = "tests"
 addopts = "--strict-markers"
-markers = ["slow", "multi_gpu"]
+markers = [
+  "slow", "multi_gpu",
+  # If pytest-run-parallel is not available
+  "parallel_threads", "iterations", "thread_unsafe",
+]
 filterwarnings = [
   "error::FutureWarning",
   # ignore FutureWarning from cupy._util.experimental
