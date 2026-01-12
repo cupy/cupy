@@ -918,6 +918,234 @@ class TestChoiceReplaceFalse(RandomGeneratorTestCase):
         assert numpy.unique(val).size == val.size
 
 
+@testing.parameterize(
+    {'a': 100, 'size': 50},
+    {'a': 1000, 'size': 500},
+    {'a': 10000, 'size': 5000},
+    {'a': 100000, 'size': 50000},
+)
+@testing.fix_random()
+class TestChoiceReplaceFalseLargeScale(RandomGeneratorTestCase):
+    """Test large-scale uniqueness for Feistel bijection implementation."""
+
+    target_method = 'choice'
+
+    def test_large_scale_uniqueness_and_bounds(self):
+        """Test that large samples have no duplicates and correct bounds."""
+        val = self.generate(a=self.a, size=self.size, replace=False).get()
+        size = self.size if isinstance(self.size, tuple) else (self.size,)
+        
+        # Check shape
+        assert val.shape == size
+        
+        # Check bounds
+        assert (0 <= val).all()
+        assert (val < self.a).all()
+        
+        # Check uniqueness
+        val_flat = numpy.asarray(val).flatten()
+        assert numpy.unique(val_flat).size == val_flat.size, \
+            "Found duplicate values in replace=False sample"
+
+
+@testing.parameterize(
+    # Power of 2
+    {'a': 2**8, 'size': 100},
+    {'a': 2**10, 'size': 500},
+    {'a': 2**16, 'size': 1000},
+    {'a': 2**20, 'size': 5000},
+    {'a': 2**24, 'size': 10000},
+    # Just below power of 2
+    {'a': 2**8 - 1, 'size': 100},
+    {'a': 2**16 - 1, 'size': 1000},
+    {'a': 2**20 - 1, 'size': 5000},
+    # Just above power of 2
+    {'a': 2**8 + 1, 'size': 100},
+    {'a': 2**16 + 1, 'size': 1000},
+    {'a': 2**20 + 1, 'size': 5000},
+)
+@testing.fix_random()
+class TestChoiceReplaceFalsePowerOfTwo(RandomGeneratorTestCase):
+    """Test Feistel bijection at power-of-2 boundaries."""
+
+    target_method = 'choice'
+
+    def test_power_of_two_boundaries(self):
+        """Test correctness at power-of-2 boundaries (critical for Feistel)."""
+        val = self.generate(a=self.a, size=self.size, replace=False).get()
+        
+        # Check bounds
+        assert (0 <= val).all()
+        assert (val < self.a).all()
+        
+        # Check uniqueness
+        val_flat = numpy.asarray(val).flatten()
+        assert numpy.unique(val_flat).size == val_flat.size
+
+
+@testing.parameterize(
+    {'a': 10, 'size': 10},  # Full permutation
+    {'a': 100, 'size': 100},
+    {'a': 1000, 'size': 1000},
+)
+@testing.fix_random()
+class TestChoiceReplaceFalseFullPermutation(RandomGeneratorTestCase):
+    """Test full permutation case (size = n)."""
+
+    target_method = 'choice'
+
+    def test_full_permutation(self):
+        """Test that size=n produces a valid permutation."""
+        val = self.generate(a=self.a, size=self.size, replace=False).get()
+        
+        # Should contain all values from 0 to a-1 exactly once
+        val_sorted = numpy.sort(val)
+        expected = numpy.arange(self.a)
+        numpy.testing.assert_array_equal(val_sorted, expected)
+
+
+@testing.parameterize(
+    {'a': 5, 'size': (2, 3)},
+    {'a': 20, 'size': (4, 5)},
+    {'a': 100, 'size': (5, 4, 5)},
+)
+@testing.fix_random()
+class TestChoiceReplaceFalseMultiDimShape(RandomGeneratorTestCase):
+    """Test multi-dimensional output shapes."""
+
+    target_method = 'choice'
+
+    def test_multidim_shape_uniqueness(self):
+        """Test multi-dimensional outputs maintain uniqueness."""
+        val = self.generate(a=self.a, size=self.size, replace=False).get()
+        
+        # Check shape
+        assert val.shape == self.size
+        
+        # Check uniqueness across all dimensions
+        val_flat = val.flatten()
+        assert numpy.unique(val_flat).size == val_flat.size
+
+
+@testing.fix_random()
+class TestChoiceReplaceFalseStatistical(RandomGeneratorTestCase):
+    """Statistical tests for uniformity of Feistel bijection."""
+
+    target_method = 'choice'
+
+    @_condition.repeat_with_success_at_least(10, 8)
+    def test_small_domain_uniformity(self):
+        """Chi-square test for uniform sampling in small domain."""
+        # Sample from domain of size 10, taking 5 elements
+        # Repeat many times and check each index appears uniformly
+        n = 10
+        sample_size = 5
+        n_trials = 1000
+        
+        counts = numpy.zeros(n, dtype=int)
+        for _ in range(n_trials):
+            val = self.generate(a=n, size=sample_size, replace=False).get()
+            for v in val:
+                counts[v] += 1
+        
+        # Each index should appear ~500 times (5/10 * 1000)
+        expected = numpy.array([sample_size * n_trials / n] * n)
+        assert _hypothesis.chi_square_test(counts, expected)
+
+    @_condition.repeat(3, 10)
+    def test_permutation_variability(self):
+        """Test that repeated full permutations are different."""
+        n = 20
+        perms = []
+        for _ in range(10):
+            val = self.generate(a=n, size=n, replace=False).get()
+            perms.append(tuple(val))
+        
+        # Should have multiple unique permutations
+        unique_perms = set(perms)
+        assert len(unique_perms) > 1, \
+            "Permutations should vary across multiple calls"
+
+
+@testing.parameterize(
+    {'a': 1, 'size': 1},
+    {'a': 2, 'size': 1},
+    {'a': 256, 'size': 100},  # Minimum cipher bits threshold
+    {'a': 257, 'size': 100},
+)
+@testing.fix_random()
+class TestChoiceReplaceFalseSmallDomains(RandomGeneratorTestCase):
+    """Test edge cases with small domain sizes."""
+
+    target_method = 'choice'
+
+    def test_small_domains(self):
+        """Test correctness for small domain sizes."""
+        val = self.generate(a=self.a, size=self.size, replace=False).get()
+        
+        # Check bounds
+        assert (0 <= val).all()
+        assert (val < self.a).all()
+        
+        # Check uniqueness
+        val_flat = numpy.asarray(val).flatten()
+        assert numpy.unique(val_flat).size == val_flat.size
+
+
+@testing.slow
+@testing.fix_random()
+class TestChoiceReplaceFalseVeryLargeDomain(unittest.TestCase):
+    """Test memory efficiency with very large domains."""
+
+    def setUp(self):
+        self.rs = _generator.RandomState(seed=testing.generate_seed())
+
+    def test_large_domain_memory_efficiency(self):
+        """Test that very large domains don't allocate full arrays."""
+        # This should NOT allocate a 2^30 element array
+        # If it did, it would require ~8GB of memory
+        a = 2**30
+        size = 1000
+        
+        val = self.rs.choice(a=a, size=size, replace=False).get()
+        
+        # Check bounds
+        assert (0 <= val).all()
+        assert (val < a).all()
+        
+        # Check uniqueness
+        assert numpy.unique(val).size == size
+
+    def test_near_32bit_limit(self):
+        """Test at the 32-bit boundary."""
+        # Current implementation supports up to 2^32
+        a = 2**31
+        size = 500
+        
+        val = self.rs.choice(a=a, size=size, replace=False).get()
+        
+        # Check bounds
+        assert (0 <= val).all()
+        assert (val < a).all()
+        
+        # Check uniqueness
+        assert numpy.unique(val).size == size
+
+
+@testing.fix_random()
+class TestChoiceReplaceFalseDtypeConsistency(RandomGeneratorTestCase):
+    """Test output dtype consistency."""
+
+    target_method = 'choice'
+
+    def test_integer_input_dtype(self):
+        """Integer input should produce int64/long dtype."""
+        val = self.generate(a=100, size=50, replace=False)
+        
+        # Should be 'l' (long) dtype, which is int64 on most platforms
+        assert val.dtype == numpy.dtype('l') or val.dtype == numpy.int64
+
+
 @testing.fix_random()
 class TestGumbel(RandomGeneratorTestCase):
 
