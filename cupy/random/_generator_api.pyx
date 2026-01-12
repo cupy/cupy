@@ -1078,19 +1078,19 @@ cdef enum:
 
 
 cdef struct _FeistelBijection:
-    uint64_t right_side_bits
-    uint64_t left_side_bits
-    uint64_t right_side_mask
-    uint64_t left_side_mask
-    uint32_t[_FEISTEL_NUM_ROUNDS] keys
+    uint64_t __R_bits_
+    uint64_t __L_bits_
+    uint64_t __R_mask_
+    uint64_t __L_mask_
+    uint32_t[_FEISTEL_NUM_ROUNDS] __keys_
 
 
 cdef object _feistel_bijection_dtype = numpy.dtype([
-    ('right_side_bits', numpy.uint64),
-    ('left_side_bits', numpy.uint64),
-    ('right_side_mask', numpy.uint64),
-    ('left_side_mask', numpy.uint64),
-    ('keys', numpy.uint32, (_FEISTEL_NUM_ROUNDS,))
+    ('__R_bits_', numpy.uint64),
+    ('__L_bits_', numpy.uint64),
+    ('__R_mask_', numpy.uint64),
+    ('__L_mask_', numpy.uint64),
+    ('__keys_', numpy.uint32, (_FEISTEL_NUM_ROUNDS,))
 ], align=True)
 
 
@@ -1141,18 +1141,18 @@ cdef class FeistelBijection:
         self.arr_size = num_elements
 
         # Half bits rounded down
-        self.param.left_side_bits = total_bits // 2
-        self.param.left_side_mask = (1 << self.param.left_side_bits) - 1
+        self.param.__L_bits_ = total_bits // 2
+        self.param.__L_mask_ = (1 << self.param.__L_bits_) - 1
 
         # Half the bits rounded up
-        self.param.right_side_bits = total_bits - self.param.left_side_bits
-        self.param.right_side_mask = (1 << self.param.right_side_bits) - 1
+        self.param.__R_bits_ = total_bits - self.param.__L_bits_
+        self.param.__R_mask_ = (1 << self.param.__R_bits_) - 1
 
         # Copy keys from the input array
         assert len(keys_array) == _FEISTEL_NUM_ROUNDS
-        memcpy(<void*> &self.param.keys[0],
+        memcpy(<void*> &self.param.__keys_[0],
                <void*> &keys_array[0],
-               sizeof(self.param.keys))
+               sizeof(self.param.__keys_))
 
     cdef get_params(self):
         """Get bijection parameters as a structured array for device code.
@@ -1193,11 +1193,11 @@ cdef class FeistelBijection:
             #include <cuda/std/cstdint>
 
             struct FeistelParams {{
-                uint64_t right_side_bits;
-                uint64_t left_side_bits;
-                uint64_t right_side_mask;
-                uint64_t left_side_mask;
-                uint32_t keys[{_FEISTEL_NUM_ROUNDS}];
+                uint64_t __R_bits_;
+                uint64_t __L_bits_;
+                uint64_t __R_mask_;
+                uint64_t __L_mask_;
+                uint32_t __keys_[{_FEISTEL_NUM_ROUNDS}];
             }};
             
             extern "C" __global__ void feistel_bijection_choice(
@@ -1211,27 +1211,28 @@ cdef class FeistelBijection:
                      tid += static_cast<size_t>(gridDim.x) * static_cast<size_t>(blockDim.x))
                 {{
                     // Apply Feistel bijection to tid, re-apply until valid
-                    uint64_t val = static_cast<uint64_t>(tid);
+                    uint64_t __val = static_cast<uint64_t>(tid);
                     long long idx;
                     
                     do {{
-                        uint32_t low = (uint32_t)(val >> params.right_side_bits);
-                        uint32_t high = (uint32_t)(val & params.right_side_mask);
+                        uint32_t __L = (uint32_t)(__val >> params.__R_bits_);
+                        uint32_t __R = (uint32_t)(__val & params.__R_mask_);
                         
                         // 24 rounds of Feistel network
-                        for (uint32_t i = 0; i < {_FEISTEL_NUM_ROUNDS}; i++) {{
+                        for (uint32_t __i = 0; __i < {_FEISTEL_NUM_ROUNDS}; __i++) {{
                             constexpr uint64_t __m0  = 0xD2B74407B1CE6E93;
-                            const uint64_t __product = __m0 * high;
-                            const uint32_t __high    = static_cast<uint32_t>(__product >> 32);
-                            uint32_t __low           = static_cast<uint32_t>(__product);
-                            __low                    = (__low << (params.right_side_bits - params.left_side_bits)) | low >> params.left_side_bits;
-                            high                     = ((__high ^ params.keys[i]) ^ low) & params.left_side_mask;
-                            low                      = __low & params.right_side_mask;
+                            const uint64_t __product = __m0 * __L;
+                            uint32_t __F_k           = (__product >> 32) ^ params.__keys_[__i];
+                            uint32_t __B_k           = static_cast<uint32_t>(__product);
+                            uint32_t __L_prime       = __F_k ^ __R;
+                            uint32_t __R_prime       = (__B_k << (params.__R_bits_ - params.__L_bits_)) | __R >> params.__L_bits_;
+                            __L                      = __L_prime & params.__L_mask_;
+                            __R                      = __R_prime & params.__R_mask_;
                         }}
                         
                         // Combine left and right sides
-                        idx = (long long)((static_cast<uint64_t>(high) << params.right_side_bits) | static_cast<uint64_t>(low));
-                        val = static_cast<uint64_t>(idx);
+                        idx = (long long)((static_cast<uint64_t>(__L) << params.__R_bits_) | static_cast<uint64_t>(__R));
+                        __val = static_cast<uint64_t>(idx);
                     }} while (idx >= static_cast<long long>(arr_size));
                     
                     // Write output (tid is always < cutoff_size due to early return)
