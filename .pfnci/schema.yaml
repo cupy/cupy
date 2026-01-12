@@ -167,8 +167,8 @@ cutensor:
   # https://developer.nvidia.com/cutensor/downloads
   null:
     spec: null
-  "2.3":
-    spec: "2.3.*"
+  "2.4":
+    spec: "2.4.*"
     cuda:
       "12.0":
       "12.1":
