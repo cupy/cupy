@@ -1005,9 +1005,9 @@ class TestChoiceReplaceFalseFullPermutation(RandomGeneratorTestCase):
 
 
 @testing.parameterize(
-    {'a': 5, 'size': (2, 3)},
-    {'a': 20, 'size': (4, 5)},
-    {'a': 100, 'size': (5, 4, 5)},
+    {'a': 6, 'size': (2, 3)},
+    {'a': 32, 'size': (4, 5)},
+    {'a': 120, 'size': (5, 4, 5)},
 )
 @testing.fix_random()
 class TestChoiceReplaceFalseMultiDimShape(RandomGeneratorTestCase):
@@ -1033,7 +1033,7 @@ class TestChoiceReplaceFalseStatistical(RandomGeneratorTestCase):
 
     target_method = 'choice'
 
-    @_condition.repeat_with_success_at_least(10, 8)
+    @_condition.repeat(3)
     def test_small_domain_uniformity(self):
         """Chi-square test for uniform sampling in small domain."""
         # Sample from domain of size 10, taking 5 elements
@@ -1042,28 +1042,28 @@ class TestChoiceReplaceFalseStatistical(RandomGeneratorTestCase):
         sample_size = 5
         n_trials = 1000
         
-        counts = numpy.zeros(n, dtype=int)
-        for _ in range(n_trials):
-            val = self.generate(a=n, size=sample_size, replace=False).get()
-            for v in val:
-                counts[v] += 1
+        counts = cupy.zeros(n, dtype=int)
+        vals = self.generate_many(n, size=sample_size, replace=False, _count=n_trials)
+        for val in vals:
+            counts[val] += 1
+        counts = counts.get()
         
         # Each index should appear ~500 times (5/10 * 1000)
-        expected = numpy.array([sample_size * n_trials / n] * n)
+        expected = numpy.ones(n, dtype=int) * (sample_size * n_trials // n)
         assert _hypothesis.chi_square_test(counts, expected)
 
     @_condition.repeat(3, 10)
     def test_permutation_variability(self):
         """Test that repeated full permutations are different."""
         n = 20
-        perms = []
-        for _ in range(10):
-            val = self.generate(a=n, size=n, replace=False).get()
-            perms.append(tuple(val))
-        
+        n_trials = 10
+
+        vals = self.generate_many(n, size=n, replace=False, _count=n_trials)
+        perms = cupy.vstack(vals)
+
         # Should have multiple unique permutations
-        unique_perms = set(perms)
-        assert len(unique_perms) > 1, \
+        unique_perms = cupy.unique(perms, axis=0)
+        assert len(unique_perms) == n_trials, \
             "Permutations should vary across multiple calls"
 
 
