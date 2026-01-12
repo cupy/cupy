@@ -301,7 +301,7 @@ def meshgrid(*xi, **kwargs):
         if not isinstance(x, cupy.ndarray):
             raise ValueError('input has to be cupy.ndarray')
     if len(xi) <= 1:
-        return list(xi)
+        return tuple(xi)
 
     meshes = []
     for i, x in enumerate(xi):
