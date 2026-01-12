@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import gc
 import threading
-import unittest
 
 import pytest
 
@@ -16,9 +15,9 @@ from cupy import testing
     *testing.product({
         'stream_name': ['null', 'ptds'],
     }))
-class TestStream(unittest.TestCase):
+class TestStream:
 
-    def setUp(self):
+    def setup_method(self, method):
         self._prev_stream = cuda.get_current_stream()
 
         if self.stream_name == 'null':
@@ -27,7 +26,7 @@ class TestStream(unittest.TestCase):
             self.stream = cuda.Stream.ptds
         self.stream.use()
 
-    def tearDown(self):
+    def teardown_method(self, method):
         self._prev_stream.use()
 
     def test_eq(self):
@@ -240,9 +239,9 @@ class TestStream(unittest.TestCase):
         assert s3.priority == -1 if cupy.cuda.runtime.is_hip else -3
 
 
-class TestExternalStream(unittest.TestCase):
+class TestExternalStream:
 
-    def setUp(self):
+    def setup_method(self, method):
         self.stream_ptr = cuda.runtime.streamCreate()
         # Test that ExternalStream raises a deprecation warning
         with pytest.warns(
@@ -251,7 +250,7 @@ class TestExternalStream(unittest.TestCase):
         ):
             self.stream = cuda.ExternalStream(self.stream_ptr)
 
-    def tearDown(self):
+    def teardown_method(self, method):
         cuda.runtime.streamDestroy(self.stream_ptr)
 
     def test_get_and_add_callback(self):
@@ -286,7 +285,7 @@ class TestExternalStream(unittest.TestCase):
         assert out == list(range(N))
 
 
-class TestCUDAStreamProtocol(unittest.TestCase):
+class TestCUDAStreamProtocol:
 
     def test_cuda_stream_method(self):
         # Test that __cuda_stream__ returns the correct 2-tuple
