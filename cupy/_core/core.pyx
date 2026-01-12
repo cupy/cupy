@@ -405,7 +405,10 @@ cdef class _ndarray_base:
             # Establish no stream order for now (for `stream=None` do it later)
             stream = None
         elif stream != curr_stream_ptr:
-            stream = stream_mod.ExternalStream(stream)
+            # Suppress deprecation warning for internal use of ExternalStream
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", DeprecationWarning)
+                stream = stream_mod.ExternalStream(stream)
             event = curr_stream.record()
             stream.wait_event(event)
 

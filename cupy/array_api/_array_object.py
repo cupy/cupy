@@ -17,6 +17,7 @@ from __future__ import annotations
 
 
 import operator
+import warnings
 from enum import IntEnum
 from ._creation_functions import asarray
 from ._dtypes import (
@@ -1063,7 +1064,10 @@ class Array:
                 prev_stream = stream_module.get_current_stream()
                 # stream can be an int as specified in __dlpack__, or a CuPy stream
                 if isinstance(stream, int):
-                    stream = np.cuda.ExternalStream(stream)
+                    # Suppress deprecation warning for internal use of ExternalStream
+                    with warnings.catch_warnings():
+                        warnings.simplefilter("ignore", DeprecationWarning)
+                        stream = np.cuda.ExternalStream(stream)
                 elif isinstance(stream, np.cuda.Stream):
                     pass
                 else:
