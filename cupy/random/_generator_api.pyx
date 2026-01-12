@@ -1119,8 +1119,11 @@ cdef class FeistelBijection:
     This class implements the Feistel bijection from libcudacxx for use in
     memory-efficient random sampling without replacement.
     """
-    cdef _FeistelBijection param
-    cdef object arr_size
+    cdef:
+        _FeistelBijection param
+        object arr_size
+
+    num_rounds = _FEISTEL_NUM_ROUNDS
 
     def __init__(self, num_elements, uint32_t[::1] keys_array):
         """Initialize Feistel bijection with pre-generated random keys.
@@ -1255,12 +1258,3 @@ cdef class FeistelBijection:
         )
 
         return indices
-
-    @staticmethod
-    def num_rounds():
-        """Get the number of Feistel rounds used.
-
-        Returns:
-            int: Number of Feistel rounds
-        """
-        return _FEISTEL_NUM_ROUNDS
