@@ -1127,7 +1127,11 @@ class RandomState:
             raise NotImplementedError(
                 'choice() without specifying size is not supported yet')
         shape = size
-        size = numpy.prod(shape)
+        try:
+            size = _core.internal.prod(shape)
+        except TypeError:
+            # size is e.g. int
+            pass
 
         if a_size == 0 and size > 0:
             raise ValueError('a cannot be empty unless no samples are taken')
