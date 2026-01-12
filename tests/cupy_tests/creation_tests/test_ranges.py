@@ -324,8 +324,8 @@ class TestMeshgrid(unittest.TestCase):
         x = xp.arange(2).astype(dtype)
         result = xp.meshgrid(x, indexing=self.indexing, sparse=self.sparse,
                              copy=self.copy)
-        if self.copy and xp == numpy:
-            # XXX cf numpy#30641
+        if xp == cupy:
+            # XXX cf numpy#30641, should be fixed in NumPy 2.5
             assert isinstance(result, tuple)
         return result
 
