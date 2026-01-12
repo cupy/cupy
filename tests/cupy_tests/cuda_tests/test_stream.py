@@ -244,11 +244,11 @@ class TestExternalStream(unittest.TestCase):
 
     def setUp(self):
         self.stream_ptr = cuda.runtime.streamCreate()
-        # Suppress the deprecation warning in setUp since we're testing
-        # the functionality, not the deprecation itself
-        import warnings
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", DeprecationWarning)
+        # Test that ExternalStream raises a deprecation warning
+        with pytest.warns(
+            DeprecationWarning,
+            match='ExternalStream is deprecated'
+        ):
             self.stream = cuda.ExternalStream(self.stream_ptr)
 
     def tearDown(self):
@@ -284,15 +284,6 @@ class TestExternalStream(unittest.TestCase):
 
         stream.synchronize()
         assert out == list(range(N))
-
-    def test_deprecation_warning(self):
-        # Test that ExternalStream raises a deprecation warning
-        stream_ptr = cuda.runtime.streamCreate()
-        try:
-            with pytest.deprecated_call():
-                cuda.ExternalStream(stream_ptr)
-        finally:
-            cuda.runtime.streamDestroy(stream_ptr)
 
 
 class TestCUDAStreamProtocol(unittest.TestCase):
