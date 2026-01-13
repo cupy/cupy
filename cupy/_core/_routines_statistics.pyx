@@ -14,6 +14,7 @@ from cupy._core._ufuncs import elementwise_copy
 from cupy._core cimport _accelerator
 from cupy._core cimport _routines_math as _math
 from cupy._core.core cimport _ndarray_base
+from cupy._util import bf16_loop
 
 from cupy.cuda import cub
 
@@ -277,6 +278,7 @@ cdef _amin = create_reduction_func(
     ('?->?', 'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
      'q->q', 'Q->Q',
      ('e->e', (None, 'my_min_float(a, b)', None, None)),
+     *bf16_loop(code=(None, 'my_min_float(a, b)', None, None)),
      ('f->f', (None, 'my_min_float(a, b)', None, None)),
      ('d->d', (None, 'my_min_float(a, b)', None, None)),
      ('F->F', (None, 'my_min_float(a, b)', None, None)),
@@ -291,6 +293,7 @@ cdef _amax = create_reduction_func(
     ('?->?', 'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
      'q->q', 'Q->Q',
      ('e->e', (None, 'my_max_float(a, b)', None, None)),
+     *bf16_loop(code=(None, 'my_max_float(a, b)', None, None)),
      ('f->f', (None, 'my_max_float(a, b)', None, None)),
      ('d->d', (None, 'my_max_float(a, b)', None, None)),
      ('F->F', (None, 'my_max_float(a, b)', None, None)),
@@ -642,6 +645,7 @@ cdef _mean_core = create_reduction_func(
     'cupy_mean',
     ('?->d', 'B->d', 'h->d', 'H->d', 'i->d', 'I->d', 'l->d', 'L->d',
      'q->d', 'Q->d',
+     *bf16_loop(code=(None, None, None, 'float')),
      ('e->e', (None, None, None, 'float')),
      'f->f', 'd->d', 'F->F', 'D->D'),
     ('in0', 'a + b',
@@ -651,6 +655,7 @@ cdef _mean_core_empty = create_reduction_func(
     'cupy_mean_empty',
     ('?->d', 'B->d', 'h->d', 'H->d', 'i->d', 'I->d', 'l->d', 'L->d',
      'q->d', 'Q->d',
+     *bf16_loop(code=(None, None, None, 'float')),
      ('e->e', (None, None, None, 'float')),
      'f->f', 'd->d', 'F->F', 'D->D'),
     ('in0', 'a + b',
@@ -678,7 +683,9 @@ __device__ nanmean_st<T> my_nanmean(
 
 cdef _nanmean_func = create_reduction_func(
     'cupy_nanmean',
-    ('e->e', 'f->f', 'd->d', 'F->F', 'D->D'),
+    ('e->e',
+     *bf16_loop(code=(None, None, None, 'float')),
+     'f->f', 'd->d', 'F->F', 'D->D'),
     ('in0', 'my_nanmean(a, b)',
      'out0 = a.value / type_out0_raw(a.count)', 'nanmean_st<type_out0_raw>'),
     None, _nanmean_preamble)
@@ -686,7 +693,7 @@ cdef _nanmean_func = create_reduction_func(
 
 _count_non_nan = create_reduction_func(
     'cupy_count_non_nan',
-    ('e->q', 'f->q', 'd->q', 'F->q', 'D->q'),
+    ('e->q', *bf16_loop(1, "q"), 'f->q', 'd->q', 'F->q', 'D->q'),
     ('isnan(in0) ? 0 : 1', 'a + b', 'out0 = a', None), 0)
 
 

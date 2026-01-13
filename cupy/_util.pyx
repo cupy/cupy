@@ -6,6 +6,7 @@ import os
 import warnings
 
 import cython
+import numpy
 
 import cupy
 from cupy_backends.cuda.api cimport runtime
@@ -219,3 +220,41 @@ def is_shutting_down(_shutting_down=_shutting_down):
     since at shutdown module globals may be cleared.
     """
     return _shutting_down[0]
+
+
+try:
+    import ml_dtypes
+except ImportError:
+    def bf16_loop(in_types=1, out_types=1, code=None):
+        """No-op when bfloat16 is not available.
+
+        This helper is used to add bfloat16 support to ufuncs.
+        When ml_dtypes is not available, it returns an empty tuple,
+        effectively making bfloat16 loops a no-op.
+        """
+        return ()
+else:
+    _bf16_type = numpy.dtype(ml_dtypes.bfloat16).type
+
+    def bf16_loop(in_types=1, out_types=1, code=None):
+        """Define bfloat16 loop for ufuncs.
+
+        This helper generates type signatures for bfloat16 operations in ufuncs.
+        Use with unpacking: *bf16_loop(...).
+        in/out types can be a number of bfloat16 or precise type specifiers we
+        convert them to dtypes for now (to sit in for the `type(dtype)` which is
+        in theory more spot-on but in practice the same).
+        """
+        # Convert int to tuple of bfloat16 types
+        if isinstance(in_types, int):
+            in_tuple = (_bf16_type,) * in_types
+        else:
+            in_tuple = tuple(in_types)
+
+        if isinstance(out_types, int):
+            out_tuple = (_bf16_type,) * out_types
+        else:
+            out_tuple = tuple(out_types)
+
+        signature = [in_tuple, out_tuple]
+        return ((signature, code),)

@@ -1553,6 +1553,10 @@ cdef class _Op:
     cpdef tuple get_out_dtypes(self):
         return tuple([get_dtype(t) for t in self.out_types])
 
+    def __repr__(self):
+        # Just for debugging purposes.
+        return (f"cupy._core._kernel._Op({self.in_types}, {self.out_types}, "
+                f"routine={self.routine}, error_func={self.error_func})")
 
 cdef class _Ops:
 
@@ -1560,8 +1564,9 @@ cdef class _Ops:
         assert len(ops) > 0
         nin = ops[0].nin
         nout = ops[0].nout
-        assert all(op.nin == nin for op in ops)
-        assert all(op.nout == nout for op in ops)
+        for op in ops:
+            if op.nin != nin or op.nout != nout:
+                raise ValueError(f"invalid op {op}, wrong nin or nout.")
         self.ops = ops
         self.nin = nin
         self.nout = nout
@@ -1572,14 +1577,21 @@ cdef class _Ops:
         for t in ops:
             if isinstance(t, tuple):
                 typ, rt = t
-                if isinstance(rt, tuple):
+                if rt is None:
+                    rt = routine
+                elif isinstance(rt, tuple):
                     rt = tuple([r1 or r2 for r1, r2 in zip(rt, routine)])
                 elif not isinstance(rt, (str, list)):
+                    if not callable(rt):
+                        raise ValueError(
+                            f"invalid op {t}, expected callable {rt}")
                     assert callable(rt)
                     ops_.append(_Op.from_type_and_error_func(typ, rt))
                     continue
             else:
-                assert isinstance(t, (str, list))
+                if not isinstance(t, (str, list)):
+                        raise ValueError(
+                            f"invalid op {t}, expected string or list")
                 typ, rt = t, routine
             ops_.append(_Op.from_type_and_routine(typ, rt))
         return _Ops(tuple(ops_))
