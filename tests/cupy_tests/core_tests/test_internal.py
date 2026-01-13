@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import unittest
-
 import numpy
 import pytest
 
@@ -9,7 +7,7 @@ from cupy._core import internal
 from cupy import testing
 
 
-class TestProd(unittest.TestCase):
+class TestProd:
 
     def test_empty(self):
         assert internal.prod([]) == 1
@@ -21,7 +19,7 @@ class TestProd(unittest.TestCase):
         assert internal.prod([2, 3]) == 6
 
 
-class TestProdSequence(unittest.TestCase):
+class TestProdSequence:
 
     def test_empty(self):
         assert internal.prod_sequence(()) == 1
@@ -70,7 +68,7 @@ class TestGetSize:
         assert internal.get_size(1.0) == (1.0,)
 
 
-class TestVectorEqual(unittest.TestCase):
+class TestVectorEqual:
 
     def test_empty(self):
         assert internal.vector_equal([], []) is True
@@ -85,7 +83,7 @@ class TestVectorEqual(unittest.TestCase):
         assert internal.vector_equal([1, 2, 3], [1, 2]) is False
 
 
-class TestGetCContiguity(unittest.TestCase):
+class TestGetCContiguity:
 
     def test_zero_in_shape(self):
         assert internal.get_c_contiguity((1, 0, 1), (1, 1, 1), 3)
@@ -118,13 +116,13 @@ class TestGetCContiguity(unittest.TestCase):
         assert not internal.get_c_contiguity((3, 1, 3), (6, 6, 4), 2)
 
 
-class TestInferUnknownDimension(unittest.TestCase):
+class TestInferUnknownDimension:
 
     def test_known_all(self):
         assert internal.infer_unknown_dimension((1, 2, 3), 6) == [1, 2, 3]
 
     def test_multiple_unknown(self):
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             internal.infer_unknown_dimension((-1, 1, -1), 10)
 
     def test_infer(self):
@@ -173,33 +171,33 @@ class TestInferUnknownDimension(unittest.TestCase):
     {'slice': (-11, -11, -1), 'expect': (-1, -1, -1)},
     {'slice': (-11, -12, -1), 'expect': (-1, -1, -1)},
 )
-class TestCompleteSlice(unittest.TestCase):
+class TestCompleteSlice:
 
     def test_complete_slice(self):
         assert internal.complete_slice(
             slice(*self.slice), 10) == slice(*self.expect)
 
 
-class TestCompleteSliceError(unittest.TestCase):
+class TestCompleteSliceError:
 
     def test_invalid_step_value(self):
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             internal.complete_slice(slice(1, 1, 0), 1)
 
     def test_invalid_step_type(self):
-        with self.assertRaises(TypeError):
+        with pytest.raises(TypeError):
             internal.complete_slice(slice(1, 1, (1, 2)), 1)
 
     def test_invalid_start_type(self):
-        with self.assertRaises(TypeError):
+        with pytest.raises(TypeError):
             internal.complete_slice(slice((1, 2), 1, 1), 1)
-        with self.assertRaises(TypeError):
+        with pytest.raises(TypeError):
             internal.complete_slice(slice((1, 2), 1, -1), 1)
 
     def test_invalid_stop_type(self):
-        with self.assertRaises(TypeError):
+        with pytest.raises(TypeError):
             internal.complete_slice(slice((1, 2), 1, 1), 1)
-        with self.assertRaises(TypeError):
+        with pytest.raises(TypeError):
             internal.complete_slice(slice((1, 2), 1, -1), 1)
 
 
@@ -215,7 +213,7 @@ class TestCompleteSliceError(unittest.TestCase):
     {'x': 2 ** 40 - 1, 'expect': 2 ** 40},
     {'x': 2 ** 40 + 1, 'expect': 2 ** 41},
 )
-class TestClp2(unittest.TestCase):
+class TestClp2:
 
     def test_clp2(self):
         assert internal.clp2(self.x) == self.expect
