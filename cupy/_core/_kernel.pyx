@@ -938,7 +938,7 @@ cdef class ElementwiseKernel:
                 arginfos, type_map, self.params, self.operation,
                 self.name, self.preamble, **self.kwargs)
             self._cached_codes[in_types] = code
-        self._elementwise_kernel_memo[key] = kern
+        kern = self._elementwise_kernel_memo.setdefault(key, kern)
         return kern
 
     @property
@@ -1395,7 +1395,7 @@ cdef class ufunc:
             kern = _get_ufunc_kernel(
                 op.in_types, op.out_types, op.routine, arginfos, has_where,
                 params, name, self._preamble, self._loop_prep)
-            self._kernel_memo[key] = kern
+            kern = self._kernel_memo.setdefault(key, kern)
         return kern
 
     def outer(self, A, B, **kwargs):
