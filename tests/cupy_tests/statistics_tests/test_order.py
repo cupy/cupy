@@ -13,9 +13,9 @@ from cupy import testing
 
 _all_methods = (
     # 'inverted_cdf',               # TODO(takagi) Not implemented
-    # 'averaged_inverted_cdf',      # TODO(takagi) Not implemented
-    # 'closest_observation',        # TODO(takagi) Not implemented
-    # 'interpolated_inverted_cdf',  # TODO(takagi) Not implemented
+    'averaged_inverted_cdf',
+    'closest_observation',
+    'interpolated_inverted_cdf',
     'hazen',
     'weibull',
     'linear',
