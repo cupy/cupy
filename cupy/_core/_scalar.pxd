@@ -25,6 +25,7 @@ cdef class CScalar(CPointer):
     cpdef get_numpy_type(self)
 
 
+cpdef tuple get_typename_and_preamble(dtype)
 cpdef str get_typename(dtype)
 
 cdef set scalar_type_set
