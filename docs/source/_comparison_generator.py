@@ -294,16 +294,6 @@ def generate():
         'scipy.stats', 'cupyx.scipy.stats', 'SciPy',
         exclude=['test'])
 
-    # numpy.array_api is not ready yet...
-    #    buf += [
-    #        'NumPy / CuPy Array APIs',
-    #        '-----------------------',
-    #        '',
-    #    ]
-    #    buf += _section(
-    #        'Python array API compliance',
-    #        'numpy.array_api', 'cupy.array_api', 'NumPy')
-
     buf += [
         '',
         '.. rubric:: Footnotes',
