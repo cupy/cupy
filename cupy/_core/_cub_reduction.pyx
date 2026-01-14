@@ -61,6 +61,7 @@ cdef function.Function _create_cub_reduction_function(
 
     cdef str module_code = _get_cub_header_include()
     module_code += '''
+${params_preamble}
 ${type_preamble}
 ${preamble}
 
@@ -209,12 +210,14 @@ __global__ void ${name}(${params}) {
 }
 '''
 
+    params, params_preamble = _get_cub_kernel_params(params, arginfos)
     module_code = string.Template(module_code).substitute(
         name=name,
         block_size=block_size,
         items_per_thread=items_per_thread,
         reduce_type=reduce_type,
-        params=_get_cub_kernel_params(params, arginfos),
+        params=params,
+        params_preamble=params_preamble,
         identity=identity,
         reduce_expr=reduce_expr,
         pre_map_expr=pre_map_expr,
@@ -352,10 +355,11 @@ cpdef inline tuple _can_use_cub_block_reduction(
 
 
 # similar to cupy._core._kernel._get_kernel_params()
-cdef str _get_cub_kernel_params(tuple params, tuple arginfos):
+cdef tuple _get_cub_kernel_params(tuple params, tuple arginfos):
     cdef _kernel.ParameterInfo p
     cdef _kernel._ArgInfo arginfo
-    cdef lst = []
+    cdef list lst = []
+    cdef set preambles = set()
     cdef str c_type, c_name
     cdef int i
     assert len(params) == len(arginfos)
@@ -366,9 +370,11 @@ cdef str _get_cub_kernel_params(tuple params, tuple arginfos):
             c_type = 'const void*' if p.is_const else 'void*'
         else:
             # for segment size and array size
-            c_type = arginfo.get_param_c_type(p)
+            c_type, preamble = arginfo.get_param_c_type(p)
+            if preamble is not None:
+                preambles.add(preamble)
         lst.append('{} {}'.format(c_type, c_name))
-    return ', '.join(lst)
+    return ', '.join(lst), "\n".join(sorted(preambles))
 
 
 cdef Py_ssize_t _cub_default_block_size = (

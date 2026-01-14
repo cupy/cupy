@@ -1,8 +1,3 @@
-"""Tests for bfloat16 support in ufuncs.
-
-These tests verify that all ufuncs modified to support bfloat16 work correctly.
-Tests are minimal sanity checks, not comprehensive coverage.
-"""
 from __future__ import annotations
 
 import numpy
@@ -25,6 +20,7 @@ TEST_VALUES = numpy.array(
 
 @pytest.mark.parametrize('func', [
     'positive', 'negative', 'absolute', 'sqrt', 'conjugate',
+    'isnan', 'isinf', 'isfinite', 'signbit',
 ])
 @testing.numpy_cupy_allclose(rtol=TOL, atol=TOL)
 def test_unary(xp, func):
@@ -84,7 +80,8 @@ def test_reductions(xp, func):
         return getattr(xp, func)(a, axis=1)
 
 
-@pytest.mark.parametrize('from_dtype', [numpy.float32, numpy.float64, numpy.int32])
+@pytest.mark.parametrize('from_dtype', [
+    numpy.float16, numpy.float32, numpy.float64, numpy.int32])
 @testing.numpy_cupy_allclose(rtol=TOL, atol=TOL)
 def test_astype_to_bfloat16(xp, from_dtype):
     a = xp.asarray(TEST_VALUES)
@@ -93,7 +90,8 @@ def test_astype_to_bfloat16(xp, from_dtype):
     return a.astype(from_dtype).astype(BF16)
 
 
-@pytest.mark.parametrize('to_dtype', [numpy.float32, numpy.float64, numpy.int32])
+@pytest.mark.parametrize('to_dtype', [
+    numpy.float16, numpy.float32, numpy.float64, numpy.int32])
 @testing.numpy_cupy_allclose(rtol=TOL, atol=TOL)
 def test_astype_from_bfloat16(xp, to_dtype):
     a = xp.asarray(TEST_VALUES)

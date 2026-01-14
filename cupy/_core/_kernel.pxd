@@ -70,9 +70,9 @@ cdef class _ArgInfo:
 
     cdef bint is_scalar(self)
 
-    cdef str get_c_type(self)
+    cdef tuple get_c_type(self)
 
-    cdef str get_param_c_type(self, ParameterInfo p)
+    cdef tuple get_param_c_type(self, ParameterInfo p)
 
     cdef str get_c_var_name(self, ParameterInfo p)
 
@@ -152,7 +152,7 @@ cpdef create_ufunc(name, ops, routine=*, preamble=*, doc=*,
 
 cdef tuple _get_arginfos(list args)
 
-cdef str _get_kernel_params(tuple params, tuple arginfos)
+cdef tuple _get_kernel_params(tuple params, tuple arginfos)
 
 cdef list _broadcast(list args, tuple params, bint use_size, shape_t& shape)
 
