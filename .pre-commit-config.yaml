@@ -41,6 +41,7 @@ repos:
       - id: mypy
         # Keep in sync with the list in pyproject.toml
         files: "^(cupy|cupyx|cupy_backends|.github|.pfnci)/"
+        exclude: "^cupy/array_api/" # Will soon be deleted
         additional_dependencies: [numpy, types-setuptools, types-PyYAML]
       - id: mypy
         name: "mypy (install)"

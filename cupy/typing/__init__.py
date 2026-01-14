@@ -1,4 +1,7 @@
-from cupy.typing._types import ArrayLike  # NOQA
-from cupy.typing._types import DTypeLike  # NOQA
-from cupy.typing._types import NBitBase  # NOQA
-from cupy.typing._types import NDArray  # NOQA
+from __future__ import annotations
+
+from numpy.typing import DTypeLike
+
+from cupy._core.core import NDArray, ArrayLike
+
+__all__ = ["ArrayLike", "DTypeLike", "NDArray"]
