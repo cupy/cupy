@@ -1,7 +1,16 @@
 #pragma once
 
 #include "cupy/carray.cuh"  // for float16
+#ifdef __HIPCC__
+
+#include <hip/hip_bf16.h>
+#define __nv_bfloat16 __hip_bfloat16;
+
+#else
+
 #include <cuda_bf16.h>
+
+#endif
 
 // Wrapper class that inherits from __nv_bfloat16 to get all operators
 class bfloat16 : public __nv_bfloat16 {
