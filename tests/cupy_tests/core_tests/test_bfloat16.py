@@ -22,6 +22,7 @@ TEST_VALUES = numpy.array(
     'positive', 'negative', 'absolute', 'sqrt', 'conjugate',
     'isnan', 'isinf', 'isfinite', 'signbit',
 ])
+@numpy.errstate(invalid='ignore')
 @testing.numpy_cupy_allclose(rtol=TOL, atol=TOL)
 def test_unary(xp, func):
     a = xp.array(TEST_VALUES, dtype=BF16)
@@ -61,15 +62,20 @@ def test_clip(xp):
 
 
 @pytest.mark.parametrize('shapes', [
-    ((2, 3), (3, 2)),  # matrix @ matrix
-    ((3,), (3,)),      # vector @ vector
+    # Make size large enough that float32 compute type should matter
+    ((100, 20_000), (20_000, 100)),
+    ((30_000,), (30_000,)),
 ])
 @testing.numpy_cupy_allclose(rtol=TOL, atol=TOL)
 def test_matmul(xp, shapes):
     shape_a, shape_b = shapes
     a = testing.shaped_arange(shape_a, xp, dtype=BF16)
     b = testing.shaped_arange(shape_b, xp, dtype=BF16)
-    return xp.matmul(a, b)
+    res = xp.matmul(a, b)
+    if xp == numpy:
+        # NumPy returns float32 we don't
+        res = res.astype(BF16)
+    return res
 
 
 @pytest.mark.parametrize('func', ['sum', 'prod', 'min', 'max', 'mean'])
@@ -78,6 +84,27 @@ def test_reductions(xp, func):
     a = xp.asarray(TEST_VALUES.reshape(3, 4))
     with numpy.errstate(all='ignore'):
         return getattr(xp, func)(a, axis=1)
+
+
+@pytest.mark.parametrize('func', ['sum', 'prod', 'min', 'max', 'mean'])
+@pytest.mark.parametrize('data', [
+    numpy.arange(1, 10_000),
+    numpy.random.uniform(0.5, 2, 10_000),
+])
+@testing.numpy_cupy_allclose(rtol=TOL, atol=TOL)
+def test_reductions_large(xp, func, data):
+    # Mainly for sum test that we use a float32 compute type, this makes
+    # sense, but NumPy + bfloat16 isn't great about it (at least yet).
+    # NOTE(seberg): Using values that underflow to 0 in product returns
+    # NaN on CuPy when testing (but also for float32).
+    a = xp.asarray(data, dtype=BF16)
+    if xp == numpy:
+        a = a.astype(numpy.float32)
+        with numpy.errstate(over='ignore'):
+            res = getattr(xp, func)(a).astype(BF16)
+    else:
+        res = getattr(xp, func)(a)
+    return res
 
 
 @pytest.mark.parametrize('from_dtype', [
@@ -98,5 +125,3 @@ def test_astype_from_bfloat16(xp, to_dtype):
     if to_dtype == numpy.int32:
         a = a[xp.isfinite(a)]
     return a.astype(to_dtype)
-
-

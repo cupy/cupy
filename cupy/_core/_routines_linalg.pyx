@@ -37,7 +37,8 @@ cdef extern from '../../cupy_backends/cupy_complex.h':
         double x, y
 
 
-cdef list compute_types = [COMPUTE_TYPE_TBD,  # float16
+cdef list compute_types = [COMPUTE_TYPE_TBD,  # bfloat16
+                           COMPUTE_TYPE_TBD,  # float16
                            COMPUTE_TYPE_TBD,  # float32
                            COMPUTE_TYPE_TBD]  # float64
 cdef dict compute_type_str = {
@@ -55,11 +56,13 @@ cdef dict compute_type_str = {
 cpdef int to_compute_type_index(dtype) except -1:
     cdef str dtype_char = numpy.dtype(dtype).char
     if dtype_char == 'e':
-        return 0
-    elif dtype_char in 'fF':
         return 1
-    elif dtype_char in 'dD':
+    elif dtype_char in 'fF':
         return 2
+    elif dtype_char in 'dD':
+        return 3
+    elif dtype.name == "bfloat16":
+        return 0
     else:
         raise TypeError('dtype is not supported: {}'.format(dtype))
 

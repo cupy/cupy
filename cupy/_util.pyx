@@ -239,11 +239,15 @@ else:
     def bf16_loop(in_types=1, out_types=1, code=None):
         """Define bfloat16 loop for ufuncs.
 
-        This helper generates type signatures for bfloat16 operations in ufuncs.
-        Use with unpacking: *bf16_loop(...).
+        This helper generates type signatures for bfloat16 operations in
+        ufuncs to be used with unpacking: *bf16_loop(...).
         in/out types can be a number of bfloat16 or precise type specifiers we
-        convert them to dtypes for now (to sit in for the `type(dtype)` which is
-        in theory more spot-on but in practice the same).
+        convert them to dtypes for now (to sit in for the `type(dtype)` which
+        is in theory more spot-on but in practice the same).
+
+        NOTE: Always insert after a matching float16 loop to make sure the
+        half precision loop is preferred for odd cases (such as int8 being --
+        probably incorrectly -- promoted to float16).
         """
         # Convert int to tuple of bfloat16 types
         if isinstance(in_types, int):
