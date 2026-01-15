@@ -43,15 +43,21 @@ cpdef tuple get_typename_and_preamble(dtype):
     return _typenames[dtype]
 
 
-cpdef str get_typename(dtype):
+cpdef str get_typename(dtype, preambles=None):
     """Fetch the C type name. Note that some names may require
     additionally headers to be included in order to be available.
+
+    If not None, `preambles` must be a set and the dtype preamble
+    (i.e. this should be required headers) will be inserted.
     """
     if dtype is None:
         raise ValueError('dtype is None')
     if dtype not in _typenames:
         dtype = _dtype.get_dtype(dtype).type
-    return _typenames[dtype][0]
+    name, preamble = _typenames[dtype]
+    if preambles is not None and preamble is not None:
+        preambles.add(preamble)
+    return name
 
 
 cdef dict _typenames = {}
@@ -221,6 +227,9 @@ cpdef str _get_cuda_scalar_repr(obj, dtype):
             return f'thrust::complex<float>({obj.real}, {obj.imag})'
         elif dtype.itemsize == 16:
             return f'thrust::complex<double>({obj.real}, {obj.imag})'
-    # TODO: repr for bfloat16, add very simple fusion tests (or expand them)
+    elif dtype.name == "bfloat16":
+        # NOTE(seberg): It would be nice to find a more extensible path here.
+        float_repr = _get_cuda_scalar_repr(obj, numpy.dtype(numpy.float32))
+        return f"bfloat16({float_repr})"
 
     raise TypeError(f'Unsupported dtype: {dtype}')

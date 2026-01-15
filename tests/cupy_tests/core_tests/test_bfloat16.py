@@ -3,6 +3,7 @@ from __future__ import annotations
 import numpy
 import pytest
 
+import cupy
 from cupy import testing
 
 
@@ -125,3 +126,19 @@ def test_astype_from_bfloat16(xp, to_dtype):
     if to_dtype == numpy.int32:
         a = a[xp.isfinite(a)]
     return a.astype(to_dtype)
+
+
+@pytest.mark.parametrize('func', [
+    lambda x: x + ml_dtypes.bfloat16(numpy.inf),
+    lambda x: x + x,
+    lambda x: cupy.sqrt(x),
+    lambda x: x.astype(numpy.float32),
+    lambda x: x + ml_dtypes.bfloat16(2),
+])
+def test_fusion_basic(func):
+    # NOTE(seberg): As of writing v14.0 no attempt made for old-fusion.
+    arr = cupy.asarray(TEST_VALUES)
+    expected = func(arr)
+
+    actual = cupy.fuse(func)(arr)
+    assert cupy.allclose(actual, expected, rtol=TOL, atol=TOL)
