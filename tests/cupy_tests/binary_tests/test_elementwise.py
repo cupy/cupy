@@ -1,11 +1,9 @@
 from __future__ import annotations
 
-import unittest
-
 from cupy import testing
 
 
-class TestElementwise(unittest.TestCase):
+class TestElementwise:
 
     @testing.for_int_dtypes()
     @testing.numpy_cupy_array_equal()
