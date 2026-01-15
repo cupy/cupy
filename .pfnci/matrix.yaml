@@ -17,6 +17,7 @@
   numpy: "2.0"
   scipy: "1.14"
   optuna: "3"
+  ml_dtypes: "0.5"
   mpi4py: null
   cython: "3.1"
   cuda-python: null
@@ -46,6 +47,7 @@
   numpy: "2.1"
   scipy: "1.14"
   optuna: "3"
+  ml_dtypes: "0.5"
   mpi4py: null
   cython: "3.1"
   cuda-python: null
@@ -75,6 +77,7 @@
   numpy: "2.0"
   scipy: "1.16"
   optuna: "3"
+  ml_dtypes: null
   mpi4py: null
   cython: "3.1"
   cuda-python: null
@@ -104,6 +107,7 @@
   numpy: "2.1"
   scipy: "1.16"
   optuna: "3"
+  ml_dtypes: "0.5"
   mpi4py: null
   cython: "3.1"
   cuda-python: null
@@ -133,6 +137,7 @@
   numpy: "2.2"
   scipy: "1.16"
   optuna: "3"
+  ml_dtypes: null
   mpi4py: null
   cython: "3.1"
   cuda-python: null
@@ -162,6 +167,7 @@
   numpy: "2.0"
   scipy: "1.15"
   optuna: "3"
+  ml_dtypes: "0.5"
   mpi4py: null
   cython: "3.1"
   cuda-python: null
@@ -191,6 +197,7 @@
   numpy: "2.2"
   scipy: "1.14"
   optuna: "4"
+  ml_dtypes: "0.5"
   mpi4py: null
   cython: "3.1"
   cuda-python: null
@@ -220,6 +227,7 @@
   numpy: "2.3"
   scipy: "1.15"
   optuna: "4"
+  ml_dtypes: "0.5"
   mpi4py: null
   cython: "3.1"
   cuda-python: null
@@ -249,6 +257,7 @@
   numpy: "2.3"
   scipy: "1.16"
   optuna: "4"
+  ml_dtypes: "0.5"
   mpi4py: null
   cython: "3.1"
   cuda-python: null
@@ -278,6 +287,7 @@
   numpy: "2.3"
   scipy: "1.16"
   optuna: "4"
+  ml_dtypes: "0.5"
   mpi4py: null
   cython: "3.1"
   cuda-python: null
@@ -308,6 +318,7 @@
   numpy: "2.3"
   scipy: "1.16"
   optuna: "4"
+  ml_dtypes: "0.5"
   mpi4py: null
   cython: "3.1"
   cuda-python: null
@@ -352,6 +363,7 @@
   numpy: "2.3"
   scipy: "1.16"
   optuna: "3"
+  ml_dtypes: "0.5"
   mpi4py: null
   cython: "3.1"
   cuda-python: null
@@ -377,6 +389,7 @@
   numpy: "2.3"
   scipy: "1.16"
   optuna: "3"
+  ml_dtypes: "0.5"
   mpi4py: null
   cython: "3.1"
   cuda-python: null
@@ -406,6 +419,7 @@
   numpy: "2.3"
   scipy: "1.16"
   optuna: "3"
+  ml_dtypes: "0.5"
   mpi4py: null
   cython: "3.1"
   cuda-python: null
@@ -432,6 +446,7 @@
   numpy: "pre"
   scipy: "pre"
   optuna: "pre"
+  ml_dtypes: "pre"
   mpi4py: null
   cython: "3.1"
   cuda-python: null
@@ -458,6 +473,7 @@
   scipy: "1.16"
   optuna: "4"
   mpi4py: null
+  ml_dtypes: null
   cython: "3.1"
   cuda-python: "12"
   env:CUPY_ACCELERATORS: "cutensor,cub"
