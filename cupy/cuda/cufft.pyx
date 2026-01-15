@@ -5,7 +5,6 @@ from libcpp cimport vector
 
 from cupy_backends.cuda._softlink cimport SoftLink
 
-import sys as _sys
 import threading
 
 import numpy
