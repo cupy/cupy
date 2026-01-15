@@ -28,12 +28,13 @@ public:
   explicit __device__ bfloat16(unsigned int v) : __nv_bfloat16(float(v)) {}
   explicit __device__ bfloat16(long long v) : __nv_bfloat16(float(v)) {}
   explicit __device__ bfloat16(unsigned long long v) : __nv_bfloat16(float(v)) {}
-  
+
+  // Conversion with float16
+  __device__ bfloat16(float16 v) : __nv_bfloat16(float(v)) {}
+  __device__ operator float16() { return float16(float(*this)); }
+
   // Constructor from base type
   __device__ bfloat16(const __nv_bfloat16 &v) : __nv_bfloat16(v) {}
-  
-  // Implicit conversion from float16
-  __device__ bfloat16(const float16 &v);
   
   // Special value checking methods
   __device__ int iszero() const {
@@ -89,20 +90,9 @@ __device__ int isfinite(bfloat16 x) {
   return x.isfinite();
 }
 
-
-// bfloat16 <- float16 conversion
-inline __device__ bfloat16::bfloat16(const float16 &v) : __nv_bfloat16(float(v)) {}
-
-// float16 <- bfloat16 conversion
-inline __device__ float16::float16(const bfloat16 &v) : data_(float(v)) {}
-
-// float16 -> bfloat16 helper (can't modify float16 class, so provide conversion function)
-inline __device__ bfloat16 to_bfloat16(const float16 &v) {
-  return bfloat16(float(v));
-}
-
-// bfloat16 -> float16 helper
-inline __device__ float16 to_float16(const bfloat16 &v) {
-  return float16(float(v));
+__device__ bfloat16 _floor_divide(bfloat16 x, bfloat16 y) {
+  // Used for floor_divide and remainder ufuncs (a bit unclear what
+  // the computation type should be for this and the rest/return).
+  return floor(float(x) / float(y));
 }
 

@@ -84,9 +84,6 @@ public:
 
 #endif  // #if __CUDACC_VER_MAJOR__ >= 9
 
-// Forward declaration for bfloat16
-class bfloat16;
-
 class float16 {
 private:
   half  data_;
@@ -103,11 +100,6 @@ public:
 
   explicit __device__ float16(const half &v): data_(v) {}
   explicit __device__ float16(const __half_raw &v): data_(v) {}
-
-  // TODO(seberg): This and the other conversions feel all not great.
-  // Maybe we should have a `cast()` function to allow overloading and use that
-  // for `CArray operator[]` assignments?
-  __device__ float16(const bfloat16 &v);
 
   __device__ operator float() const {return float(data_);}
 
