@@ -38,7 +38,7 @@ class _UfuncRoutine:
         self.routine_code = routine_code
         self.compute_dtypes = compute_dtypes
 
-    def emit_code(self):
+    def emit_code(self, preambles):
         """Returns a CUDA device function code.
 
         Returns a string like:
@@ -59,11 +59,13 @@ class _UfuncRoutine:
         dtypes = self.compute_dtypes
         assert len(self.in_params) == len(self.compute_dtypes[:nin])
         in_params = [
-            (get_typename(p.dtype), get_typename(t), 'in{}'.format(i))
+            (get_typename(p.dtype, preambles), get_typename(t, preambles),
+                'in{}'.format(i))
             for i, (p, t) in enumerate(zip(self.in_params, dtypes[:nin]))
         ]
         out_params = [
-            (get_typename(p.dtype), get_typename(t), 'out{}'.format(i))
+            (get_typename(p.dtype, preambles), get_typename(t, preambles),
+                'out{}'.format(i))
             for i, (p, t) in enumerate(zip(self.out_params, dtypes[nin:]))
         ]
         params = in_params + out_params
@@ -114,7 +116,7 @@ class _ElementwiseTraceOp:
         return res
 
     @staticmethod
-    def _emit_declaration(params, in_params):
+    def _emit_declaration(params, in_params, preambles):
         """Returns a tuple of size 2.
 
         1. CUDA code: declaring local variables.
@@ -133,12 +135,12 @@ class _ElementwiseTraceOp:
                     f = '${type} ${lvar} = ${var};'
             else:
                 f = '${type} ${lvar};'
-            code.append(var.format(f))
+            code.append(var.format(f, preambles))
 
         return code, indexed_arrays
 
     @staticmethod
-    def _emit_after_operation(out_params):
+    def _emit_after_operation(out_params, preambles):
         """Returns a tuple of size 2.
         1. CUDA code: writing the results of operations back to global memory.
         2. The set of arrays which require indexer.
@@ -154,7 +156,7 @@ class _ElementwiseTraceOp:
                 f = '${var}[${indexer}.get()] = ${lvar};'
             else:
                 f = '${var} = ${lvar};'
-            codes.append(var.format(f))
+            codes.append(var.format(f, preambles))
 
         return codes, indexed_arrays
 
@@ -170,12 +172,14 @@ class _ElementwiseTraceOp:
             for p in indexed_params
         ]
 
-    def emit_code(self):
+    def emit_code(self, preambles):
         _fusion_thread_local.check_not_runtime()
 
-        declaration, s1 = self._emit_declaration(self.params, self.in_params)
+        declaration, s1 = self._emit_declaration(
+            self.params, self.in_params, preambles)
         operation = [op.emit_call_code() for op in self.ops]
-        after_operation, s2 = self._emit_after_operation(self.out_params)
+        after_operation, s2 = self._emit_after_operation(
+            self.out_params, preambles)
         index_name = 'i'
         indexed_array = s1 + s2
         indexer_name = next(iter(indexed_array)).indexer_name
@@ -188,8 +192,8 @@ class _ElementwiseTraceOp:
     def emit_preamble_codes(self):
         return [subm.preamble for subm in self.ops if subm.preamble != '']
 
-    def emit_submodule_codes(self):
-        return [str(subm.emit_code()) for subm in self.ops]
+    def emit_submodule_codes(self, param_preambles):
+        return [str(subm.emit_code(param_preambles)) for subm in self.ops]
 
 
 class _ReductionTraceOp:
@@ -228,7 +232,7 @@ class _ReductionTraceOp:
     def params(self):
         return self.in_params + self.out_params
 
-    def emit_code(self):
+    def emit_code(self, preambles):
         _fusion_thread_local.check_not_runtime()
         assert len(self.in_params) == 1
         assert len(self.out_params) == 1
@@ -247,7 +251,7 @@ class _ReductionTraceOp:
         preamble = self.preamble
         return [preamble] if preamble != '' else []
 
-    def emit_submodule_codes(self):
+    def emit_submodule_codes(self, param_preambles):
         """Returns a CUDA device function code.
 
         The emitted code assumes that ``block_stride`` and `blockDim.x` is a
@@ -307,8 +311,8 @@ __device__ void ${name}(
             name=self.name,
             op_name=op_name,
             postmap_name=postmap_name,
-            in_type=get_typename(in_param.dtype),
-            out_type=get_typename(out_param.dtype),
+            in_type=get_typename(in_param.dtype, param_preambles),
+            out_type=get_typename(out_param.dtype, param_preambles),
             reduce_ctype=self.reduce_ctype,
             reduce_expr=self.expr,
             identity=self.identity,
