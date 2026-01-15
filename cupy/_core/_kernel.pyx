@@ -1613,8 +1613,8 @@ cdef class _Ops:
                     continue
             else:
                 if not isinstance(t, (str, list)):
-                        raise ValueError(
-                            f"invalid op {t}, expected string or list")
+                    raise ValueError(
+                        f"invalid op {t}, expected string or list")
                 typ, rt = t, routine
             ops_.append(_Op.from_type_and_routine(typ, rt))
         return _Ops(tuple(ops_))

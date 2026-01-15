@@ -130,13 +130,16 @@ cdef _ndarray_base _ndarray_mean(
     cdef Py_ssize_t n
 
     dtype_sum = dtype_out = dtype
-    if dtype is None:
+    if dtype is None and self.dtype.char not in "dD":
         if self.dtype.kind in 'iub':
             dtype_out = numpy.float64
             dtype_sum = numpy.float64
         elif self.dtype.char == 'e':
             dtype_sum = numpy.float32
             dtype_out = numpy.float16
+        elif self.dtype.name == "bfloat16":
+            dtype_sum = numpy.float32
+            dtype_out = self.dtype
     elif numpy.dtype(dtype).kind in 'iub':
         # output will be the requested type, but compute the mean using float
         dtype_out = dtype
