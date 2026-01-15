@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import unittest
 import sys
 
 import numpy
@@ -15,9 +14,9 @@ from cupy.testing._protocol_helpers import (
     DummyObjectWithCuPyGetNDArray, DummyObjectWithCudaArrayInterface)
 
 
-class TestSize(unittest.TestCase):
+class TestSize:
 
-    def tearDown(self):
+    def teardown_method(self):
         # Free huge memory for slow test
         cupy.get_default_memory_pool().free_all_blocks()
 
@@ -58,7 +57,7 @@ _orders = {
 }
 
 
-class TestOrder(unittest.TestCase):
+class TestOrder:
 
     @testing.for_orders(_orders.keys())
     def test_ndarray(self, order):
