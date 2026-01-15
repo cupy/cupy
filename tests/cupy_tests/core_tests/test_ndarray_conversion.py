@@ -49,14 +49,11 @@ class TestNdarrayToBytes:
     @testing.for_all_dtypes()
     @testing.numpy_cupy_equal()
     def test_item(self, xp, dtype, shape, order):
-        # We handle the conditional logic by checking if order is None
         if (runtime.is_hip and
             (shape == (1,) or
              (shape == (2, 3) and order is None))):
             pytest.xfail('ROCm/HIP may have a bug')
-
         a = testing.shaped_arange(shape, xp, dtype)
-
         if order is not None:
             return a.tobytes(order)
         else:
