@@ -18,7 +18,6 @@ class TestNdarrayItem:
     @testing.for_all_dtypes()
     @testing.numpy_cupy_equal()
     def test_item(self, xp, dtype, shape):
-        # 'shape' is passed as an argument, not accessed via self
         a = xp.full(shape, 3, dtype)
         return a.item()
 
