@@ -140,5 +140,6 @@ def test_fusion_basic(func):
     arr = cupy.asarray(TEST_VALUES)
     expected = func(arr)
 
-    actual = cupy.fuse(func)(arr)
-    assert cupy.allclose(actual, expected, rtol=TOL, atol=TOL)
+    fused = cupy._core.new_fusion.Fusion(func, 'bf16_fuse_test')
+    actual = fused(arr)
+    cupy.testing.assert_allclose(actual, expected, rtol=TOL, atol=TOL)
