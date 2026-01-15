@@ -11,27 +11,26 @@ from cupy import cuda
 from cupy import testing
 
 
-@testing.parameterize(
-    *testing.product({
-        'stream_name': ['null', 'ptds'],
-    }))
 class TestStream:
 
-    def setup_method(self, method):
+    def setup_method(self):
         self._prev_stream = cuda.get_current_stream()
 
-        if self.stream_name == 'null':
-            self.stream = cuda.Stream.null
-        elif self.stream_name == 'ptds':
-            self.stream = cuda.Stream.ptds
-        self.stream.use()
-
-    def teardown_method(self, method):
+    def teardown_method(self):
         self._prev_stream.use()
 
-    def test_eq(self):
-        null0 = self.stream
-        if self.stream == cuda.Stream.null:
+    def _get_stream(self, stream_name):
+        if stream_name == 'null':
+            return cuda.Stream.null
+        elif stream_name == 'ptds':
+            return cuda.Stream.ptds
+
+    @pytest.mark.parametrize('stream_name', ['null', 'ptds'])
+    def test_eq(self, stream_name):
+        stream = self._get_stream(stream_name)
+        stream.use()
+        null0 = stream
+        if stream == cuda.Stream.null:
             null1 = cuda.Stream(True)
             null2 = cuda.Stream(True)
             null3 = cuda.Stream(ptds=True)
@@ -46,8 +45,11 @@ class TestStream:
         assert null2 != null3
         assert null2 != null4
 
-    def test_hash(self):
-        hash(self.stream)
+    @pytest.mark.parametrize('stream_name', ['null', 'ptds'])
+    def test_hash(self, stream_name):
+        stream = self._get_stream(stream_name)
+        stream.use()
+        hash(stream)
         hash(cuda.Stream(True))
         hash(cuda.Stream(False))
         mapping = {cuda.Stream(): 1, cuda.Stream(): 2}  # noqa
@@ -68,9 +70,12 @@ class TestStream:
     def test_del_default(self):
         self.check_del(null=False, ptds=False)
 
-    def test_del(self):
-        null = self.stream == cuda.Stream.null
-        ptds = self.stream == cuda.Stream.ptds
+    @pytest.mark.parametrize('stream_name', ['null', 'ptds'])
+    def test_del(self, stream_name):
+        stream = self._get_stream(stream_name)
+        stream.use()
+        null = stream == cuda.Stream.null
+        ptds = stream == cuda.Stream.ptds
 
         self.check_del(null=null, ptds=ptds)
 
@@ -112,10 +117,13 @@ class TestStream:
         stream.synchronize()
         assert out == list(range(N))
 
-    def test_with_statement(self):
+    @pytest.mark.parametrize('stream_name', ['null', 'ptds'])
+    def test_with_statement(self, stream_name):
+        stream = self._get_stream(stream_name)
+        stream.use()
         stream1 = cuda.Stream()
         stream2 = cuda.Stream()
-        assert self.stream == cuda.get_current_stream()
+        assert stream == cuda.get_current_stream()
         with stream1:
             assert stream1 == cuda.get_current_stream()
             with stream2:
@@ -124,11 +132,14 @@ class TestStream:
         # self.stream is "forgotten"!
         assert cuda.Stream.null == cuda.get_current_stream()
 
-    def test_use(self):
+    @pytest.mark.parametrize('stream_name', ['null', 'ptds'])
+    def test_use(self, stream_name):
+        stream = self._get_stream(stream_name)
+        stream.use()
         stream1 = cuda.Stream().use()
         assert stream1 == cuda.get_current_stream()
-        self.stream.use()
-        assert self.stream == cuda.get_current_stream()
+        stream.use()
+        assert stream == cuda.get_current_stream()
 
     @testing.multi_gpu(2)
     def test_per_device(self):
@@ -153,12 +164,15 @@ class TestStream:
             with pytest.raises(RuntimeError):
                 stream0.use()
 
-    def test_mix_use_context(self):
+    @pytest.mark.parametrize('stream_name', ['null', 'ptds'])
+    def test_mix_use_context(self, stream_name):
+        stream = self._get_stream(stream_name)
+        stream.use()
         # See cupy/cupy#5143
         s1 = cuda.Stream()
         s2 = cuda.Stream()
         s3 = cuda.Stream()
-        assert cuda.get_current_stream() == self.stream
+        assert cuda.get_current_stream() == stream
         with s1:
             assert cuda.get_current_stream() == s1
             s2.use()
@@ -241,7 +255,7 @@ class TestStream:
 
 class TestExternalStream:
 
-    def setup_method(self, method):
+    def setup_method(self):
         self.stream_ptr = cuda.runtime.streamCreate()
         # Test that ExternalStream raises a deprecation warning
         with pytest.warns(
@@ -250,7 +264,7 @@ class TestExternalStream:
         ):
             self.stream = cuda.ExternalStream(self.stream_ptr)
 
-    def teardown_method(self, method):
+    def teardown_method(self):
         cuda.runtime.streamDestroy(self.stream_ptr)
 
     def test_get_and_add_callback(self):
