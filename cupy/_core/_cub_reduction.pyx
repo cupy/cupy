@@ -61,8 +61,7 @@ cdef function.Function _create_cub_reduction_function(
 
     cdef str module_code = _get_cub_header_include()
     module_code += '''
-${params_preamble}
-${type_preamble}
+${param_preambles}${type_preamble}
 ${preamble}
 
 typedef ${reduce_type} _type_reduce;
@@ -209,20 +208,27 @@ __global__ void ${name}(${params}) {
   }
 }
 '''
+    param_preambles = set()
+    params = _get_cub_kernel_params(params, arginfos, param_preambles)
+    type_preambles = type_map.get_typedef_code(param_preambles)
 
-    params, params_preamble = _get_cub_kernel_params(params, arginfos)
+    if not param_preambles:
+        param_preambles = ''
+    else:
+        param_preambles = '\n'.join(sorted(param_preambles)) + "\n\n"
+
     module_code = string.Template(module_code).substitute(
         name=name,
         block_size=block_size,
         items_per_thread=items_per_thread,
         reduce_type=reduce_type,
         params=params,
-        params_preamble=params_preamble,
+        param_preambles=param_preambles,
         identity=identity,
         reduce_expr=reduce_expr,
         pre_map_expr=pre_map_expr,
         post_map_expr=post_map_expr,
-        type_preamble=type_map.get_typedef_code(),
+        type_preamble=type_preambles,
         preamble=preamble)
 
     # To specify the backend, we have to explicitly spell out the default
@@ -355,11 +361,10 @@ cpdef inline tuple _can_use_cub_block_reduction(
 
 
 # similar to cupy._core._kernel._get_kernel_params()
-cdef tuple _get_cub_kernel_params(tuple params, tuple arginfos):
+cdef str _get_cub_kernel_params(tuple params, tuple arginfos, param_preambles):
     cdef _kernel.ParameterInfo p
     cdef _kernel._ArgInfo arginfo
-    cdef list lst = []
-    cdef set preambles = set()
+    cdef lst = []
     cdef str c_type, c_name
     cdef int i
     assert len(params) == len(arginfos)
@@ -370,11 +375,9 @@ cdef tuple _get_cub_kernel_params(tuple params, tuple arginfos):
             c_type = 'const void*' if p.is_const else 'void*'
         else:
             # for segment size and array size
-            c_type, preamble = arginfo.get_param_c_type(p)
-            if preamble is not None:
-                preambles.add(preamble)
+            c_type = arginfo.get_param_c_type(p, param_preambles)
         lst.append('{} {}'.format(c_type, c_name))
-    return ', '.join(lst), "\n".join(sorted(preambles))
+    return ', '.join(lst)
 
 
 cdef Py_ssize_t _cub_default_block_size = (
