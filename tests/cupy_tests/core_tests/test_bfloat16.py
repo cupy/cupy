@@ -63,7 +63,7 @@ def test_clip(xp):
 
 @pytest.mark.parametrize('shapes', [
     # Make size large enough that float32 compute type should matter
-    ((100, 20_000), (20_000, 100)),
+    ((10, 20_000), (20_000, 10)),
     ((30_000,), (30_000,)),
 ])
 @testing.numpy_cupy_allclose(rtol=TOL, atol=TOL)
@@ -89,7 +89,7 @@ def test_reductions(xp, func):
 @pytest.mark.parametrize('func', ['sum', 'prod', 'min', 'max', 'mean'])
 @pytest.mark.parametrize('data', [
     numpy.arange(1, 10_000),
-    numpy.random.uniform(0.5, 2, 10_000),
+    numpy.random.uniform(0.5, 2, size=10_000),
 ])
 @testing.numpy_cupy_allclose(rtol=TOL, atol=TOL)
 def test_reductions_large(xp, func, data):

@@ -1068,10 +1068,7 @@ _divide = _true_divide
 _floor_divide = create_ufunc(
     'cupy_floor_divide',
     ('bb->b', 'BB->B', 'hh->h', 'HH->H', 'ii->i', 'II->I', 'll->l', 'LL->L',
-     'qq->q', 'QQ->Q', 'ee->e',
-     # Could move code to carray.cuh (or the other way around)
-     *bf16_loop(2, code="out0 = floor(in0 / in1)"),
-     'ff->f', 'dd->d'),
+     'qq->q', 'QQ->Q', 'ee->e', *bf16_loop(2), 'ff->f', 'dd->d'),
     'out0 = _floor_divide(in0, in1)',
     doc='''Elementwise floor division (i.e. integer quotient).
 
@@ -1084,8 +1081,8 @@ _remainder = create_ufunc(
     'cupy_remainder',
     ('bb->b', 'BB->B', 'hh->h', 'HH->H', 'ii->i', 'II->I', 'll->l', 'LL->L',
      'qq->q', 'QQ->Q',
-     *bf16_loop(2, code=(
-        'out0 = in0 - static_cast<decltype(in0)>(floor(in0 / in1)) * in1')),
+     ('ee->e', 'out0 = in0 - _floor_divide(in0, in1) * in1'),
+     *bf16_loop(2, code='out0 = in0 - _floor_divide(in0, in1) * in1'),
      ('ff->f', 'out0 = in0 - _floor_divide(in0, in1) * in1'),
      ('dd->d', 'out0 = in0 - _floor_divide(in0, in1) * in1')),
     'out0 = (in0 - _floor_divide(in0, in1) * in1) * (in1 != 0)',
