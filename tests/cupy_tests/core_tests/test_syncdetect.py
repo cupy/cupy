@@ -1,15 +1,12 @@
 from __future__ import annotations
 
-import unittest
-
 import pytest
 
 import cupy
 import cupyx
 
 
-class TestSyncDetect(unittest.TestCase):
-
+class TestSyncDetect:
     def test_disallowed(self):
         a = cupy.array([2, 3])
         with cupyx.allow_synchronize(False):
