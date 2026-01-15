@@ -619,6 +619,7 @@ private:
 
 public:
   static const int ndim = 0;
+  typedef typename cupy::type_traits::conditional<_use_32bit_indexing, int, ptrdiff_t>::type index_t;
 
   __device__ CArray() : data_(NULL), size_(1) { }
   

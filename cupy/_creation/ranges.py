@@ -280,7 +280,7 @@ def meshgrid(*xi, **kwargs):
             into the original arrays are returned. Default is ``True``.
 
     Returns:
-        list of cupy.ndarray
+        tuple of cupy.ndarray
 
     .. seealso:: :func:`numpy.meshgrid`
 
@@ -301,7 +301,7 @@ def meshgrid(*xi, **kwargs):
         if not isinstance(x, cupy.ndarray):
             raise ValueError('input has to be cupy.ndarray')
     if len(xi) <= 1:
-        return list(xi)
+        return tuple(xi)
 
     meshes = []
     for i, x in enumerate(xi):
@@ -325,7 +325,7 @@ def meshgrid(*xi, **kwargs):
     if copy:
         for i in range(len(meshes_br)):
             meshes_br[i] = meshes_br[i].copy()
-    return meshes_br
+    return tuple(meshes_br)
 
 
 class nd_grid:

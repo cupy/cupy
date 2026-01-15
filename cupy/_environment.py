@@ -617,25 +617,34 @@ def _get_include_dir_from_conda_or_wheel(major: int, minor: int) -> list[str]:
 
 
 def _detect_duplicate_installation():
-    # List of all CuPy packages, including out-dated ones.
+    # List of CuPy packages that cannot co-exist.
+    # Outdated ones can be removed once we drop support for Python version
+    # supported by that package.
     known = (
         'cupy',
+        'cupy-cuda12x',
+        'cupy-cuda13x',
+        'cupy-rocm-7-0',
+
+        # EOL - latest Python supported: 3.13
+        'cupy-cuda11x',
+
+        # EOL - latest Python supported: 3.12
         'cupy-cuda102',
         'cupy-cuda110',
         'cupy-cuda111',
+        'cupy-rocm-4-3',
+        'cupy-rocm-5-0',
+
+        # EOL - latest Python supported: 3.10
         'cupy-cuda112',
         'cupy-cuda113',
         'cupy-cuda114',
         'cupy-cuda115',
         'cupy-cuda116',
         'cupy-cuda117',
-        'cupy-cuda11x',
-        'cupy-cuda12x',
-        'cupy-cuda13x',
         'cupy-rocm-4-0',
         'cupy-rocm-4-2',
-        'cupy-rocm-4-3',
-        'cupy-rocm-5-0',
 
         # Known forks that cannot coexist with official CuPy installations.
         'amd-cupy',
