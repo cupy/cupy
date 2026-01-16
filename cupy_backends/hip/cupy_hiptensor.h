@@ -23,7 +23,8 @@ typedef hiptensorPlanAttribute_t cutensorPlanAttribute_t;
 typedef hiptensorPlanPreferenceAttribute_t cutensorPlanPreferenceAttribute_t;
 typedef hiptensorCacheMode_t cutensorCacheMode_t;
 typedef hiptensorDataType_t cutensorDataType_t;
-typedef hiptensorComputeType_t cutensorComputeType_t;
+// hipTensor 2.0 does not expose hiptensorComputeType_t; keep ABI compatible.
+typedef int cutensorComputeType_t;
 
 typedef hiptensorComputeDescriptor_t cutensorComputeDescriptor_t;
 
@@ -37,25 +38,33 @@ typedef hiptensorComputeDescriptor_t cutensorComputeDescriptor_t;
 #endif
 
 // Status mapping (for stubs below)
-#ifndef CUTENSOR_STATUS_SUCCESS
+static const cutensorStatus_t CUTENSOR_STATUS_SUCCESS =
 #ifdef HIPTENSOR_STATUS_SUCCESS
-#define CUTENSOR_STATUS_SUCCESS HIPTENSOR_STATUS_SUCCESS
+    HIPTENSOR_STATUS_SUCCESS;
 #else
-#define CUTENSOR_STATUS_SUCCESS 0
-#endif
+    static_cast<cutensorStatus_t>(0);
 #endif
 
-#ifndef CUTENSOR_STATUS_NOT_SUPPORTED
+static const cutensorStatus_t CUTENSOR_STATUS_NOT_SUPPORTED =
 #ifdef HIPTENSOR_STATUS_NOT_SUPPORTED
-#define CUTENSOR_STATUS_NOT_SUPPORTED HIPTENSOR_STATUS_NOT_SUPPORTED
+    HIPTENSOR_STATUS_NOT_SUPPORTED;
 #else
-#define CUTENSOR_STATUS_NOT_SUPPORTED 15
-#endif
+    static_cast<cutensorStatus_t>(15);
 #endif
 
 // Function mapping (core APIs)
 #define cutensorGetErrorString hiptensorGetErrorString
-#define cutensorGetVersion hiptensorGetVersion
+static inline size_t cutensorGetVersion() {
+#ifdef HIPTENSOR_VERSION
+    return static_cast<size_t>(HIPTENSOR_VERSION);
+#elif defined(HIPTENSOR_MAJOR_VERSION)
+    return static_cast<size_t>(HIPTENSOR_MAJOR_VERSION * 1000 +
+                               HIPTENSOR_MINOR_VERSION * 100 +
+                               HIPTENSOR_PATCH_VERSION);
+#else
+    return 0;
+#endif
+}
 
 #define cutensorCreate hiptensorCreate
 #define cutensorDestroy hiptensorDestroy
@@ -96,37 +105,37 @@ typedef hiptensorComputeDescriptor_t cutensorComputeDescriptor_t;
 static const cutensorComputeDescriptor_t CUTENSOR_COMPUTE_DESC_16F =
     HIPTENSOR_COMPUTE_DESC_16F;
 #else
-static const cutensorComputeDescriptor_t CUTENSOR_COMPUTE_DESC_16F = NULL;
+static const cutensorComputeDescriptor_t CUTENSOR_COMPUTE_DESC_16F = {};
 #endif
 #ifdef HIPTENSOR_COMPUTE_DESC_16BF
 static const cutensorComputeDescriptor_t CUTENSOR_COMPUTE_DESC_16BF =
     HIPTENSOR_COMPUTE_DESC_16BF;
 #else
-static const cutensorComputeDescriptor_t CUTENSOR_COMPUTE_DESC_16BF = NULL;
+static const cutensorComputeDescriptor_t CUTENSOR_COMPUTE_DESC_16BF = {};
 #endif
 #ifdef HIPTENSOR_COMPUTE_DESC_TF32
 static const cutensorComputeDescriptor_t CUTENSOR_COMPUTE_DESC_TF32 =
     HIPTENSOR_COMPUTE_DESC_TF32;
 #else
-static const cutensorComputeDescriptor_t CUTENSOR_COMPUTE_DESC_TF32 = NULL;
+static const cutensorComputeDescriptor_t CUTENSOR_COMPUTE_DESC_TF32 = {};
 #endif
 #ifdef HIPTENSOR_COMPUTE_DESC_3XTF32
 static const cutensorComputeDescriptor_t CUTENSOR_COMPUTE_DESC_3XTF32 =
     HIPTENSOR_COMPUTE_DESC_3XTF32;
 #else
-static const cutensorComputeDescriptor_t CUTENSOR_COMPUTE_DESC_3XTF32 = NULL;
+static const cutensorComputeDescriptor_t CUTENSOR_COMPUTE_DESC_3XTF32 = {};
 #endif
 #ifdef HIPTENSOR_COMPUTE_DESC_32F
 static const cutensorComputeDescriptor_t CUTENSOR_COMPUTE_DESC_32F =
     HIPTENSOR_COMPUTE_DESC_32F;
 #else
-static const cutensorComputeDescriptor_t CUTENSOR_COMPUTE_DESC_32F = NULL;
+static const cutensorComputeDescriptor_t CUTENSOR_COMPUTE_DESC_32F = {};
 #endif
 #ifdef HIPTENSOR_COMPUTE_DESC_64F
 static const cutensorComputeDescriptor_t CUTENSOR_COMPUTE_DESC_64F =
     HIPTENSOR_COMPUTE_DESC_64F;
 #else
-static const cutensorComputeDescriptor_t CUTENSOR_COMPUTE_DESC_64F = NULL;
+static const cutensorComputeDescriptor_t CUTENSOR_COMPUTE_DESC_64F = {};
 #endif
 
 // hipTensor does not expose a CUDA runtime version query; fall back to HIP.
