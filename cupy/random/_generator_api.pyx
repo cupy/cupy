@@ -1,7 +1,5 @@
-from cpython cimport PyTypeObject, Py_INCREF
 from libc.stdint cimport intptr_t, uint64_t, int32_t, int64_t, uint32_t
 from libc.string cimport memcpy
-cimport numpy as cnp
 
 import numpy
 
