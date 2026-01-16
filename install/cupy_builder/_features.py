@@ -370,7 +370,7 @@ def get_features(ctx: Context) -> dict[str, Feature]:
             'cupyx.cutensor',
         ],
         'include': [
-            'hiptensor/hiptensor.h',
+            'cupy/hiptensor.h',
         ],
         'libraries': [
             'hiptensor',

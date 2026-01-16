@@ -172,6 +172,9 @@ def get_compiler_setting(ctx: Context, use_hip):
     if use_hip:
         # ROCm 5.3 and above requires c++14
         extra_compile_args.append('-std=c++14')
+        # HIP headers require one of the HIP platform macros.
+        define_macros.append(('__HIP_PLATFORM_AMD__', '1'))
+        define_macros.append(('__HIP_PLATFORM_HCC__', '1'))
     else:
         # CCCL 3.x (for CUDA) requires c++17
         if PLATFORM_LINUX:
@@ -656,13 +659,7 @@ def check_hiptensor_version(compiler, settings):
     global _hiptensor_version
     try:
         out = build_and_run(compiler, '''
-        #if __has_include(<hiptensor/hiptensor.h>)
-        #include <hiptensor/hiptensor.h>
-        #elif __has_include(<hiptensor.h>)
-        #include <hiptensor.h>
-        #else
-        #error "hipTensor header not found"
-        #endif
+        #include <cupy/hiptensor.h>
         #include <stdio.h>
         #ifdef HIPTENSOR_MAJOR
         #ifndef HIPTENSOR_VERSION
@@ -677,9 +674,12 @@ def check_hiptensor_version(compiler, settings):
           return 0;
         }
         ''', include_dirs=settings['include_dirs'],
-                            extra_compile_args=settings['extra_compile_args'])
+                            extra_compile_args=(
+                                settings['extra_compile_args'] +
+                                ['-D__HIP_PLATFORM_AMD__=1']))
     except Exception as e:
         utils.print_warning('Cannot check hipTensor version\n{}'.format(e))
+        _hiptensor_version = -1
         return False
 
     _hiptensor_version = int(out)
@@ -687,6 +687,7 @@ def check_hiptensor_version(compiler, settings):
         utils.print_warning(
             'Unsupported hipTensor version: {}'.format(_hiptensor_version)
         )
+        _hiptensor_version = -1
         return False
 
     return True

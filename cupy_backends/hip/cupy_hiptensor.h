@@ -3,13 +3,7 @@
 
 #include "cupy_hip.h"
 
-#if __has_include(<hiptensor/hiptensor.h>)
-#include <hiptensor/hiptensor.h>
-#elif __has_include(<hiptensor.h>)
-#include <hiptensor.h>
-#else
-#error "hipTensor header not found"
-#endif
+#include <cupy/hiptensor.h>
 
 extern "C" {
 
