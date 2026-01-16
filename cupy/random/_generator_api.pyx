@@ -8,6 +8,7 @@ import numpy
 import cupy
 from cupy import _core
 from cupy.cuda cimport stream
+from cupy.cuda.function cimport CPointer
 from cupy._core.core cimport _ndarray_base
 from cupy_backends.cuda.api import runtime
 
@@ -73,13 +74,6 @@ cdef extern from 'cupy_distributions.cuh' nogil:
         int generator, intptr_t state, ssize_t state_size, intptr_t out,
         ssize_t size, intptr_t stream,
         intptr_t arg1, intptr_t arg2, intptr_t arg3)
-
-
-# NumPy commented out this declaration in its __init__.pxd...
-cdef extern from "numpy/arrayobject.h":
-    object PyArray_NewFromDescr(
-        PyTypeObject*, cnp.dtype, int, cnp.npy_intp*, cnp.npy_intp*, void*,
-        int, object)
 
 
 cdef _ndarray_base _array_data(_ndarray_base x):
@@ -1085,13 +1079,11 @@ cdef struct _FeistelBijection:
     uint32_t[_FEISTEL_NUM_ROUNDS] __keys_
 
 
-cdef object _feistel_bijection_dtype = numpy.dtype([
-    ('__R_bits_', numpy.uint64),
-    ('__L_bits_', numpy.uint64),
-    ('__R_mask_', numpy.uint64),
-    ('__L_mask_', numpy.uint64),
-    ('__keys_', numpy.uint32, (_FEISTEL_NUM_ROUNDS,))
-], align=True)
+cdef class _FeistelBijectionParam(CPointer):
+    cdef _FeistelBijection struct
+
+    def __init__(self):
+        self.ptr = &self.struct
 
 
 cdef object _feistel_bijection_with_cutoff_kernel = None
@@ -1120,7 +1112,7 @@ cdef class FeistelBijection:
     memory-efficient random sampling without replacement.
     """
     cdef:
-        _FeistelBijection param
+        _FeistelBijectionParam params
         object arr_size
 
     num_rounds = _FEISTEL_NUM_ROUNDS
@@ -1134,6 +1126,10 @@ cdef class FeistelBijection:
                 use as keys
         """
         cdef uint64_t total_bits
+        cdef _FeistelBijection *params_struct
+
+        self.params = _FeistelBijectionParam()
+        params_struct = &self.params.struct
 
         # Round up to at least 4 bits, then to next power of 2
         # Note: This is a bug fix to cuda::shuffle_iterator (NVIDIA/cccl#7073).
@@ -1141,45 +1137,18 @@ cdef class FeistelBijection:
         self.arr_size = num_elements
 
         # Half bits rounded down
-        self.param.__L_bits_ = total_bits // 2
-        self.param.__L_mask_ = (1 << self.param.__L_bits_) - 1
+        params_struct.__L_bits_ = total_bits // 2
+        params_struct.__L_mask_ = (1 << params_struct.__L_bits_) - 1
 
         # Half the bits rounded up
-        self.param.__R_bits_ = total_bits - self.param.__L_bits_
-        self.param.__R_mask_ = (1 << self.param.__R_bits_) - 1
+        params_struct.__R_bits_ = total_bits - params_struct.__L_bits_
+        params_struct.__R_mask_ = (1 << params_struct.__R_bits_) - 1
 
         # Copy keys from the input array
         assert len(keys_array) == _FEISTEL_NUM_ROUNDS
-        memcpy(<void*> &self.param.__keys_[0],
+        memcpy(<void*> &params_struct.__keys_[0],
                <void*> &keys_array[0],
-               sizeof(self.param.__keys_))
-
-    cdef get_params(self):
-        """Get bijection parameters as a structured array for device code.
-
-        Returns:
-            numpy.ndarray: Structured array containing all bijection parameters
-
-        Warning:
-            The returned array references self's internal memory without
-            holding a reference. It must be used immediately while self
-            is alive. Do not store or return it to Python code.
-        """
-        # Create and populate the params array
-        assert (
-            _feistel_bijection_dtype.itemsize == sizeof(_FeistelBijection))
-        cdef cnp.npy_intp[1] dims = [1]
-        Py_INCREF(_feistel_bijection_dtype)
-        cdef cnp.ndarray params = PyArray_NewFromDescr(
-            <PyTypeObject*>cnp.ndarray,
-            <cnp.dtype>_feistel_bijection_dtype,
-            1,
-            &dims[0],
-            <cnp.npy_intp*>NULL,
-            <void*>(&self.param),
-            cnp.NPY_ARRAY_ALIGNED | cnp.NPY_ARRAY_C_CONTIGUOUS,
-            None)
-        return params
+               sizeof(params_struct.__keys_))
 
     cdef get_kernel(self):
         """Get or compile the Feistel bijection kernel.
@@ -1244,7 +1213,6 @@ cdef class FeistelBijection:
         return _feistel_bijection_with_cutoff_kernel
 
     def __call__(self, size):
-        params = self.get_params()
         kernel = self.get_kernel()
 
         # Allocate output
@@ -1255,7 +1223,7 @@ cdef class FeistelBijection:
         grid_size = (size + block_size - 1) // block_size
         kernel(
             (grid_size,), (block_size,),
-            (indices, params, size, self.arr_size)
+            (indices, self.params, size, self.arr_size)
         )
 
         return indices
