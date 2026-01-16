@@ -127,7 +127,7 @@ cdef inline bint is_ump_supported(int device_id) except*:
 
 class ndarray(_ndarray_base):
     """
-    __init__(self, shape, dtype=float, memptr=None, strides=None, order='C')
+    __init__(shape, dtype=float, memptr=None, strides=None, order='C')
 
     Multi-dimensional array on a CUDA device.
 
