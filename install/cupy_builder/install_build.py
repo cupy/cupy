@@ -660,8 +660,16 @@ def check_hiptensor_version(compiler, settings):
     try:
         out = build_and_run(compiler, '''
         #include <cupy/hiptensor.h>
+        #if __has_include(<hiptensor/hiptensor-version.hpp>)
+        #include <hiptensor/hiptensor-version.hpp>
+        #endif
         #include <stdio.h>
-        #ifdef HIPTENSOR_MAJOR
+        #if defined(HIPTENSOR_MAJOR_VERSION)
+        #  ifndef HIPTENSOR_VERSION
+        #    define HIPTENSOR_VERSION \
+              (HIPTENSOR_MAJOR_VERSION * 1000 + HIPTENSOR_MINOR_VERSION * 100 + HIPTENSOR_PATCH_VERSION)
+        #  endif
+        #elif defined(HIPTENSOR_MAJOR)
         #ifndef HIPTENSOR_VERSION
         #define HIPTENSOR_VERSION \
                 (HIPTENSOR_MAJOR * 1000 + HIPTENSOR_MINOR * 100 + HIPTENSOR_PATCH)
