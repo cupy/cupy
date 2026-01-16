@@ -716,7 +716,7 @@ cpdef _ndarray_base tensordot_core_v11(
 
     if (c_cuda_dtype in {
             runtime.CUDA_R_16F, runtime.CUDA_R_16BF, runtime.CUDA_R_32F,
-            runtime.CUDA_C_16F, runtime.CUDA_C_32F}):
+            runtime.CUDA_C_32F}):
         if compute_type == COMPUTE_TYPE_PEDANTIC:
             cublas_compute_type = cublas.CUBLAS_COMPUTE_32F_PEDANTIC
         elif compute_type == COMPUTE_TYPE_TF32 and c_cuda_dtype in {
@@ -740,7 +740,7 @@ cpdef _ndarray_base tensordot_core_v11(
     if cublas_compute_type in (cublas.CUBLAS_COMPUTE_32F,
                                cublas.CUBLAS_COMPUTE_32F_PEDANTIC,
                                cublas.CUBLAS_COMPUTE_32F_FAST_TF32):
-        if c_cuda_dtype not in {runtime.CUDA_R_64F, runtime.CUDA_C_64F}:
+        if c_cuda_dtype not in {runtime.CUDA_C_32F, runtime.CUDA_C_64F}:
             one_f = 1
             zero_f = 0
             one_ptr = <size_t>&one_f
@@ -752,7 +752,7 @@ cpdef _ndarray_base tensordot_core_v11(
             zero_ptr = <size_t>&zero_F
     elif cublas_compute_type in (cublas.CUBLAS_COMPUTE_64F,
                                  cublas.CUBLAS_COMPUTE_64F_PEDANTIC):
-        if c_cuda_dtype not in {runtime.CUDA_R_64F, runtime.CUDA_C_64F}:
+        if c_cuda_dtype not in {runtime.CUDA_C_32F, runtime.CUDA_C_64F}:
             one_d = 1
             zero_d = 0
             one_ptr = <size_t>&one_d
