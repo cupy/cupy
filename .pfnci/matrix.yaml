@@ -344,17 +344,17 @@
 # ROCm (Linux)
 ###############################################################################
 
-# ROCm 7.0 | Linux
+# ROCm 7.1 | Linux
 # The lowest ROCm version matrix is intended to cover the lowest supported combination.
 # The latest ROCm version matrix is intended to cover the highest supported combination.
-- project: "cupy.linux.rocm-7-0"
+- project: "cupy.linux.rocm-7-1"
   _url: "https://jenkins.preferred.jp/job/chainer/job/cupy_main/TEST=rocm-7-0,label=mnj-mi50/"
   tags: null  # self-hosted
-  target: "rocm-7-0"
+  target: "rocm-7-1"
   system: "linux"
   os: "ubuntu:22.04"
   cuda: null
-  rocm: '7.0'
+  rocm: '7.1'
   nccl: null
   cutensor: null
   cusparselt: null
