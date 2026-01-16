@@ -570,7 +570,7 @@ def _detect_duplicate_installation():
         'cupy',
         'cupy-cuda12x',
         'cupy-cuda13x',
-        'cupy-rocm-7-0',
+        'cupy-rocm-7-1',
 
         # EOL - latest Python supported: 3.13
         'cupy-cuda11x',
