@@ -46,14 +46,14 @@ cpdef str _create_reduction_function_code(
         pre_map_expr, reduce_expr, post_map_expr,
         _kernel._TypeMap type_map, input_expr, output_expr, preamble, options):
 
-    param_preambles = set()
-    params = _kernel._get_kernel_params(params, arginfos, param_preambles)
-    type_preamble = type_map.get_typedef_code(param_preambles)
+    type_headers = set()
+    params = _kernel._get_kernel_params(params, arginfos, type_headers)
+    type_preamble = type_map.get_typedef_code(type_headers)
 
-    if not param_preambles:
-        param_preambles = ''
+    if not type_headers:
+        type_headers = ''
     else:
-        param_preambles = '\n'.join(sorted(param_preambles)) + "\n\n"
+        type_headers = '\n'.join(sorted(type_headers)) + "\n\n"
 
     # A (incomplete) list of internal variables:
     # _J            : the index of an element in the array
@@ -62,7 +62,7 @@ cpdef str _create_reduction_function_code(
     #                 be power of 2 and <= _block_size
 
     module_code = string.Template('''
-${param_preambles}${type_preamble}
+${type_headers}${type_preamble}
 ${preamble}
 #define REDUCE(a, b) (${reduce_expr})
 #define POST_MAP(a) (${post_map_expr})
@@ -119,7 +119,7 @@ extern "C" __global__ void ${name}(${params}) {
         block_size=block_size,
         reduce_type=reduce_type,
         params=params,
-        param_preambles=param_preambles,
+        type_headers=type_headers,
         identity=identity,
         reduce_expr=reduce_expr,
         pre_map_expr=pre_map_expr,

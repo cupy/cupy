@@ -53,17 +53,17 @@ def _get_warpsize():
 cdef str _get_simple_elementwise_kernel_code(
         tuple params_, tuple arginfos, str operation, str name,
         _TypeMap type_map, str preamble, str loop_prep='', str after_loop=''):
-    param_preambles = set()
-    params = _get_kernel_params(params_, arginfos, param_preambles)
-    typedef_preamble = type_map.get_typedef_code(param_preambles)
-    if not param_preambles:
-        param_preambles = ""
+    type_headers = set()
+    params = _get_kernel_params(params_, arginfos, type_headers)
+    typedef_preamble = type_map.get_typedef_code(type_headers)
+    if not type_headers:
+        type_headers = ""
     else:
-        param_preambles = "\n".join(sorted(param_preambles)) + "\n\n"
+        type_headers = "\n".join(sorted(type_headers)) + "\n\n"
 
     # No loop unrolling due to avoid 64-bit division
     module_code = string.Template('''
-    ${param_preambles}${typedef_preamble}
+    ${type_headers}${typedef_preamble}
     ${preamble}
     extern "C" __global__ void ${name}(${params}) {
       ${loop_prep};
@@ -77,7 +77,7 @@ cdef str _get_simple_elementwise_kernel_code(
     ''').substitute(
         typedef_preamble=typedef_preamble,
         params=params,
-        param_preambles=param_preambles,
+        type_headers=type_headers,
         operation=operation,
         name=name,
         preamble=preamble,
@@ -287,26 +287,26 @@ cdef class _ArgInfo:
     cdef bint is_scalar(self):
         return self.arg_kind == ARG_KIND_SCALAR
 
-    cdef str get_c_type(self, preambles=None):
+    cdef str get_c_type(self, type_headers=None):
         # Returns the C type representation.
         if self.arg_kind == ARG_KIND_NDARRAY:
-            name = _get_typename(self.dtype, preambles)
+            name = _get_typename(self.dtype, type_headers)
             name = 'CArray<%s, %d, %d, %d>' % (
                 name, self.ndim,
                 self.c_contiguous, self.index_32_bits)
             return name
         if self.arg_kind == ARG_KIND_SCALAR:
-            return _get_typename(self.dtype, preambles)
+            return _get_typename(self.dtype, type_headers)
         if self.arg_kind == ARG_KIND_INDEXER:
             return 'CIndexer<%d, %d>' % (self.ndim, self.index_32_bits)
         if self.arg_kind == ARG_KIND_TEXTURE:
             return 'cudaTextureObject_t'
         assert False
 
-    cdef str get_param_c_type(self, ParameterInfo p, preambles=None):
+    cdef str get_param_c_type(self, ParameterInfo p, type_headers=None):
         # Returns the C type representation in the global function's
         # parameter list.
-        cdef str ctyp = self.get_c_type(preambles)
+        cdef str ctyp = self.get_c_type(type_headers)
         if p.is_const:
             return 'const ' + ctyp
         return ctyp
@@ -321,7 +321,7 @@ cdef tuple _get_arginfos(list args):
     return tuple([_ArgInfo.from_arg(a) for a in args])
 
 
-cdef str _get_kernel_params(tuple params, tuple arginfos, preambles=None):
+cdef str _get_kernel_params(tuple params, tuple arginfos, type_headers=None):
     cdef ParameterInfo p
     cdef _ArgInfo arginfo
     cdef lst = []
@@ -330,7 +330,7 @@ cdef str _get_kernel_params(tuple params, tuple arginfos, preambles=None):
     for i in range(len(params)):
         p = params[i]
         arginfo = arginfos[i]
-        arg = arginfo.get_param_c_type(p, preambles)
+        arg = arginfo.get_param_c_type(p, type_headers)
         lst.append('{} {}'.format(arg, arginfo.get_c_var_name(p)))
 
     return ', '.join(lst)
@@ -526,10 +526,10 @@ cdef class _TypeMap:
     def __str__(self):
         return '<_TypeMap {}>'.format(self._pairs)
 
-    cdef str get_typedef_code(self, preambles=None):
+    cdef str get_typedef_code(self, type_headers=None):
         # Returns a code fragment of typedef statements used as preamble.
         return ''.join([
-            'typedef %s %s;\n' % (_get_typename(ctype2, preambles), ctype1)
+            'typedef %s %s;\n' % (_get_typename(ctype2, type_headers), ctype1)
             for ctype1, ctype2 in self._pairs])
 
 

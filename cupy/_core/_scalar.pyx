@@ -43,11 +43,11 @@ cpdef tuple get_typename_and_preamble(dtype):
     return _typenames[dtype]
 
 
-cpdef str get_typename(dtype, preambles=None):
+cpdef str get_typename(dtype, type_headers=None):
     """Fetch the C type name. Note that some names may require
     additionally headers to be included in order to be available.
 
-    If not None, `preambles` must be a set and the dtype preamble
+    If not None, `type_headers` must be a set and the dtype preamble
     (i.e. this should be required headers) will be inserted.
     """
     if dtype is None:
@@ -55,8 +55,8 @@ cpdef str get_typename(dtype, preambles=None):
     if dtype not in _typenames:
         dtype = _dtype.get_dtype(dtype).type
     name, preamble = _typenames[dtype]
-    if preambles is not None and preamble is not None:
-        preambles.add(preamble)
+    if type_headers is not None and preamble is not None:
+        type_headers.add(preamble)
     return name
 
 

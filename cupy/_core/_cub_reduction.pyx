@@ -61,7 +61,7 @@ cdef function.Function _create_cub_reduction_function(
 
     cdef str module_code = _get_cub_header_include()
     module_code += '''
-${param_preambles}${type_preamble}
+${type_headers}${type_preamble}
 ${preamble}
 
 typedef ${reduce_type} _type_reduce;
@@ -208,14 +208,14 @@ __global__ void ${name}(${params}) {
   }
 }
 '''
-    param_preambles = set()
-    params = _get_cub_kernel_params(params, arginfos, param_preambles)
-    type_preambles = type_map.get_typedef_code(param_preambles)
+    type_headers = set()
+    params = _get_cub_kernel_params(params, arginfos, type_headers)
+    type_preambles = type_map.get_typedef_code(type_headers)
 
-    if not param_preambles:
-        param_preambles = ''
+    if not type_headers:
+        type_headers = ''
     else:
-        param_preambles = '\n'.join(sorted(param_preambles)) + "\n\n"
+        type_headers = '\n'.join(sorted(type_headers)) + "\n\n"
 
     module_code = string.Template(module_code).substitute(
         name=name,
@@ -223,7 +223,7 @@ __global__ void ${name}(${params}) {
         items_per_thread=items_per_thread,
         reduce_type=reduce_type,
         params=params,
-        param_preambles=param_preambles,
+        type_headers=type_headers,
         identity=identity,
         reduce_expr=reduce_expr,
         pre_map_expr=pre_map_expr,
@@ -361,7 +361,7 @@ cpdef inline tuple _can_use_cub_block_reduction(
 
 
 # similar to cupy._core._kernel._get_kernel_params()
-cdef str _get_cub_kernel_params(tuple params, tuple arginfos, param_preambles):
+cdef str _get_cub_kernel_params(tuple params, tuple arginfos, type_headers):
     cdef _kernel.ParameterInfo p
     cdef _kernel._ArgInfo arginfo
     cdef lst = []
@@ -375,7 +375,7 @@ cdef str _get_cub_kernel_params(tuple params, tuple arginfos, param_preambles):
             c_type = 'const void*' if p.is_const else 'void*'
         else:
             # for segment size and array size
-            c_type = arginfo.get_param_c_type(p, param_preambles)
+            c_type = arginfo.get_param_c_type(p, type_headers)
         lst.append('{} {}'.format(c_type, c_name))
     return ', '.join(lst)
 
