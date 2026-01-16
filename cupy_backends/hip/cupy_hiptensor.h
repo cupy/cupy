@@ -4,6 +4,9 @@
 #include "cupy_hip.h"
 
 #include <cupy/hiptensor.h>
+#if __has_include(<hiptensor/hiptensor-version.hpp>)
+#include <hiptensor/hiptensor-version.hpp>
+#endif
 
 extern "C" {
 
@@ -58,8 +61,8 @@ static inline size_t cutensorGetVersion() {
 #ifdef HIPTENSOR_VERSION
     return static_cast<size_t>(HIPTENSOR_VERSION);
 #elif defined(HIPTENSOR_MAJOR_VERSION)
-    return static_cast<size_t>(HIPTENSOR_MAJOR_VERSION * 1000 +
-                               HIPTENSOR_MINOR_VERSION * 100 +
+    return static_cast<size_t>(HIPTENSOR_MAJOR_VERSION * 1000000 +
+                               HIPTENSOR_MINOR_VERSION * 1000 +
                                HIPTENSOR_PATCH_VERSION);
 #else
     return 0;
