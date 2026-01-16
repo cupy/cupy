@@ -1129,7 +1129,7 @@ cdef class FeistelBijection:
         self.params = _FeistelBijectionParam()
         params_struct = &self.params.struct
 
-        # Round up to at least 4 bits, then to next power of 2
+        # Round up to at least 8 bits, then to next power of 2
         # Note: This is a bug fix to cuda::shuffle_iterator (NVIDIA/cccl#7073).
         total_bits = get_cipher_bits(num_elements)
         self.arr_size = num_elements
