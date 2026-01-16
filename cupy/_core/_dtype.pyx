@@ -130,8 +130,9 @@ cpdef int to_cuda_dtype(dtype, bint is_half_allowed=False) except -1:
         return runtime.CUDA_C_32F
     elif dtype_char == 'D':
         return runtime.CUDA_C_64F
-    elif dtype_char == "E" and dtype.kind == "V":
-        # TODO(seberg): Better way to map this?
+    elif dtype_char is not dtype and dtype.name == "bfloat16":
+        # TODO(seberg): Better way to map this, doesn't support chars
+        # due to ml_dtypes using 'E' (for now 2025-01)
         return runtime.CUDA_R_16BF
     elif dtype_char == 'E' and is_half_allowed:
         # complex32, not supported in NumPy
