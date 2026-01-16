@@ -919,36 +919,21 @@ class TestChoiceReplaceFalse(RandomGeneratorTestCase):
 
 
 @testing.parameterize(
+    # Edge cases with small domain sizes
+    {'a': 0, 'size': 0},
+    {'a': 1, 'size': 1},
+    {'a': 2, 'size': 1},
+    {'a': 256, 'size': 100},  # Minimum cipher bits threshold
+    {'a': 257, 'size': 100},
+    # large scalare uniqueness
     {'a': 100, 'size': 50},
     {'a': 1000, 'size': 500},
     {'a': 10000, 'size': 5000},
     {'a': 100000, 'size': 50000},
-)
-@testing.fix_random()
-class TestChoiceReplaceFalseLargeScale(RandomGeneratorTestCase):
-    """Test large-scale uniqueness for Feistel bijection implementation."""
-
-    target_method = 'choice'
-
-    def test_large_scale_uniqueness_and_bounds(self):
-        """Test that large samples have no duplicates and correct bounds."""
-        val = self.generate(a=self.a, size=self.size, replace=False).get()
-        size = self.size if isinstance(self.size, tuple) else (self.size,)
-
-        # Check shape
-        assert val.shape == size
-
-        # Check bounds
-        assert (0 <= val).all()
-        assert (val < self.a).all()
-
-        # Check uniqueness
-        val_flat = numpy.asarray(val).flatten()
-        assert numpy.unique(val_flat).size == val_flat.size, \
-            "Found duplicate values in replace=False sample"
-
-
-@testing.parameterize(
+    # full inpupt permutation
+    {'a': 10, 'size': 10},
+    {'a': 100, 'size': 100},
+    {'a': 1000, 'size': 1000},
     # Power of 2
     {'a': 2**8, 'size': 100},
     {'a': 2**10, 'size': 500},
@@ -963,16 +948,24 @@ class TestChoiceReplaceFalseLargeScale(RandomGeneratorTestCase):
     {'a': 2**8 + 1, 'size': 100},
     {'a': 2**16 + 1, 'size': 1000},
     {'a': 2**20 + 1, 'size': 5000},
+    # Test multi-dimensional shapes.
+    {'a': 6, 'size': (2, 3)},
+    {'a': 32, 'size': (4, 5)},
+    {'a': 120, 'size': (5, 4, 5)},
 )
 @testing.fix_random()
-class TestChoiceReplaceFalsePowerOfTwo(RandomGeneratorTestCase):
-    """Test Feistel bijection at power-of-2 boundaries."""
+class TestChoiceReplaceFalseLargeScale(RandomGeneratorTestCase):
+    """Test large-scale uniqueness for Feistel bijection implementation."""
 
     target_method = 'choice'
 
-    def test_power_of_two_boundaries(self):
-        """Test correctness at power-of-2 boundaries (critical for Feistel)."""
+    def test_uniqueness_and_bounds(self):
+        """Test that samples have no duplicates and correct bounds."""
         val = self.generate(a=self.a, size=self.size, replace=False).get()
+        size = self.size if isinstance(self.size, tuple) else (self.size,)
+
+        # Check shape
+        assert val.shape == size
 
         # Check bounds
         assert (0 <= val).all()
@@ -980,51 +973,8 @@ class TestChoiceReplaceFalsePowerOfTwo(RandomGeneratorTestCase):
 
         # Check uniqueness
         val_flat = numpy.asarray(val).flatten()
-        assert numpy.unique(val_flat).size == val_flat.size
-
-
-@testing.parameterize(
-    {'a': 10, 'size': 10},  # Full permutation
-    {'a': 100, 'size': 100},
-    {'a': 1000, 'size': 1000},
-)
-@testing.fix_random()
-class TestChoiceReplaceFalseFullPermutation(RandomGeneratorTestCase):
-    """Test full permutation case (size = n)."""
-
-    target_method = 'choice'
-
-    def test_full_permutation(self):
-        """Test that size=n produces a valid permutation."""
-        val = self.generate(a=self.a, size=self.size, replace=False).get()
-
-        # Should contain all values from 0 to a-1 exactly once
-        val_sorted = numpy.sort(val)
-        expected = numpy.arange(self.a)
-        numpy.testing.assert_array_equal(val_sorted, expected)
-
-
-@testing.parameterize(
-    {'a': 6, 'size': (2, 3)},
-    {'a': 32, 'size': (4, 5)},
-    {'a': 120, 'size': (5, 4, 5)},
-)
-@testing.fix_random()
-class TestChoiceReplaceFalseMultiDimShape(RandomGeneratorTestCase):
-    """Test multi-dimensional output shapes."""
-
-    target_method = 'choice'
-
-    def test_multidim_shape_uniqueness(self):
-        """Test multi-dimensional outputs maintain uniqueness."""
-        val = self.generate(a=self.a, size=self.size, replace=False).get()
-
-        # Check shape
-        assert val.shape == self.size
-
-        # Check uniqueness across all dimensions
-        val_flat = val.flatten()
-        assert numpy.unique(val_flat).size == val_flat.size
+        assert numpy.unique(val_flat).size == val_flat.size, \
+            "Found duplicate values in replace=False sample"
 
 
 @testing.fix_random()
@@ -1066,31 +1016,6 @@ class TestChoiceReplaceFalseStatistical(RandomGeneratorTestCase):
         unique_perms = cupy.unique(perms, axis=0)
         assert len(unique_perms) == n_trials, \
             "Permutations should vary across multiple calls"
-
-
-@testing.parameterize(
-    {'a': 1, 'size': 1},
-    {'a': 2, 'size': 1},
-    {'a': 256, 'size': 100},  # Minimum cipher bits threshold
-    {'a': 257, 'size': 100},
-)
-@testing.fix_random()
-class TestChoiceReplaceFalseSmallDomains(RandomGeneratorTestCase):
-    """Test edge cases with small domain sizes."""
-
-    target_method = 'choice'
-
-    def test_small_domains(self):
-        """Test correctness for small domain sizes."""
-        val = self.generate(a=self.a, size=self.size, replace=False).get()
-
-        # Check bounds
-        assert (0 <= val).all()
-        assert (val < self.a).all()
-
-        # Check uniqueness
-        val_flat = numpy.asarray(val).flatten()
-        assert numpy.unique(val_flat).size == val_flat.size
 
 
 @testing.slow
