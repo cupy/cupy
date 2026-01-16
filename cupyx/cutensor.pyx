@@ -3,6 +3,7 @@ import numpy as _numpy
 import cupy as _cupy
 from cupy import _util
 from cupy.cuda import device as _device
+from cupy_backends.cuda.api import runtime as _runtime
 
 cimport cython
 from libcpp cimport vector
@@ -50,6 +51,8 @@ cdef dict _available_compute_capability = {
 
 @_util.memoize(for_each_device=True)
 def check_availability(name):
+    if _runtime.is_hip:
+        return True
     if name in _available_compute_capability:
         compute_capability = int(_device.get_compute_capability())
         if compute_capability < _available_compute_capability[name]:
