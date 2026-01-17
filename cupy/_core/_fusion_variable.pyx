@@ -140,15 +140,15 @@ class _TraceVariable:
         # same shape, for performance improvements.
         return 'ind{}_{}'.format(self.memory.id, self.serial_number)
 
-    def format(self, form, **kwargs):
+    def format(self, form, preamble=None, /, **kwargs):
         """Returns a string following the format taken as an input.
         """
         kwargs = {
-            k: get_typename(v) if isinstance(v, numpy.dtype) else v
+            k: get_typename(v, preamble) if isinstance(v, numpy.dtype) else v
             for k, v in kwargs.items()
         }
         return string.Template(form).substitute(
-            type=get_typename(self.dtype),
+            type=get_typename(self.dtype, preamble),
             var=self.var_name,
             lvar=self.lvar_name,
             indexer=self.indexer_name,

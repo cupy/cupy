@@ -25,7 +25,8 @@ cdef class CScalar(CPointer):
     cpdef get_numpy_type(self)
 
 
-cpdef str get_typename(dtype)
+cpdef tuple get_typename_and_preamble(dtype)
+cpdef str get_typename(dtype, type_headers=*)
 
 cdef set scalar_type_set
 cpdef str _get_cuda_scalar_repr(obj, dtype)
