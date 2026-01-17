@@ -1,13 +1,11 @@
 from __future__ import annotations
 
-import unittest
-
 from cupy import _core
 
 
-class TestArrayOwndata(unittest.TestCase):
+class TestArrayOwndata:
 
-    def setUp(self):
+    def setup_method(self):
         self.a = _core.ndarray(())
 
     def test_original_array(self):

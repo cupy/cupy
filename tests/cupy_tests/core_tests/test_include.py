@@ -1,10 +1,8 @@
 from __future__ import annotations
 
 import os
-from unittest import mock
 
 import cupy
-
 import pytest
 
 
@@ -71,18 +69,23 @@ class TestIncludesCompileCUDA:
             cupy.cuda.compiler.compile_using_nvcc(
                 _code_nvcc, options=options, arch=arch)
 
-    def test_nvrtc(self):
+    def test_nvrtc(self, monkeypatch):
         cuda_ver = cupy.cuda.runtime.runtimeGetVersion()
         options = self._get_options()
         for arch in self._get_cuda_archs():
-            with mock.patch(
-                    'cupy.cuda.compiler._get_arch_for_options_for_nvrtc',
-                    lambda _: (f'-arch=compute_{arch}', 'ptx')):
+            monkeypatch.setattr(
+                cupy.cuda.compiler,
+                "_get_arch_for_options_for_nvrtc",
+                lambda _: (f'-arch=compute_{arch}', 'ptx'),
+            )
+            cupy.cuda.compiler.compile_using_nvrtc(
+                _code_nvrtc, options=options)
+
+            if cuda_ver >= 11010:
+                monkeypatch.setattr(
+                    cupy.cuda.compiler,
+                    "_get_arch_for_options_for_nvrtc",
+                    lambda _: (f'-arch=sm_{arch}', 'cubin'),
+                )
                 cupy.cuda.compiler.compile_using_nvrtc(
                     _code_nvrtc, options=options)
-            if cuda_ver >= 11010:
-                with mock.patch(
-                        'cupy.cuda.compiler._get_arch_for_options_for_nvrtc',
-                        lambda _: (f'-arch=sm_{arch}', 'cubin')):
-                    cupy.cuda.compiler.compile_using_nvrtc(
-                        _code_nvrtc, options=options)

@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-import unittest
 import pytest
-
 import numpy
 
 import cupy
@@ -19,7 +17,7 @@ def _compile_func(kernel_name, code):
     return mod.get_function(kernel_name)
 
 
-class TestFunction(unittest.TestCase):
+class TestFunction:
 
     def test_python_scalar(self):
         code = '''

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import unittest
+import pytest
 
 import cupy
 from cupy import cuda
@@ -8,12 +8,11 @@ from cupy._core._routines_math import _scan_for_test as scan
 from cupy import testing
 
 
-class TestScan(unittest.TestCase):
+class TestScan:
 
     @testing.for_all_dtypes()
     def test_scan(self, dtype):
         element_num = 10000
-
         if dtype in {cupy.int8, cupy.uint8, cupy.float16}:
             element_num = 100
 
@@ -24,7 +23,7 @@ class TestScan(unittest.TestCase):
         testing.assert_array_equal(prefix_sum, expect)
 
     def test_check_1d_array(self):
-        with self.assertRaises(TypeError):
+        with pytest.raises(TypeError):
             a = cupy.zeros((2, 2))
             scan(a)
 
@@ -40,7 +39,6 @@ class TestScan(unittest.TestCase):
     @testing.for_all_dtypes()
     def test_scan_out(self, dtype):
         element_num = 10000
-
         if dtype in {cupy.int8, cupy.uint8, cupy.float16}:
             element_num = 100
 
