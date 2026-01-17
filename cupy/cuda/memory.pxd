@@ -58,7 +58,8 @@ cpdef get_allocator()
 cdef class MemoryPool:
 
     cdef:
-        object _pools
+        tuple _pools
+        object _allocator
 
     cpdef MemoryPointer malloc(self, size_t size)
     cpdef free_all_blocks(self, stream=?)
@@ -69,6 +70,19 @@ cdef class MemoryPool:
     cpdef size_t total_bytes(self)
     cpdef set_limit(self, size=?, fraction=?)
     cpdef size_t get_limit(self)
+
+    cdef _ensure_pools_and_return_device_pool(self)
+
+    cdef inline device_pool(self):
+        # This criticial section may not be needed in practice. But without it
+        # `self._pools` could be in an inconsistent state (the `PyObject *`
+        # or the tuple not fully written due to CPU/compiler optimizations).
+        # Atomics would be another way to ensure complete safety here.
+        with cython.critical_section(self):
+            if self._pools is not None:
+                return self._pools[device.get_device_id()]
+
+        return self._ensure_pools_and_return_device_pool()
 
 
 @cython.no_gc

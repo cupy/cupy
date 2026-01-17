@@ -65,7 +65,7 @@ def memoize(bint for_each_device=False):
             result = m.get(arg_key, m)
             if result is m:
                 result = f(*args, **kwargs)
-                m[arg_key] = result
+                result = m.setdefault(arg_key, result)
             return result
 
         return ret

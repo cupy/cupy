@@ -5,7 +5,6 @@ cimport cython  # NOQA
 from libcpp.mutex cimport recursive_mutex
 
 import atexit
-import collections
 import gc
 import os
 import threading
@@ -1603,8 +1602,21 @@ cdef class MemoryPool:
     def __init__(self, allocator=None):
         if allocator is None:
             allocator = _malloc
-        self._pools = collections.defaultdict(
-            lambda: SingleDeviceMemoryPool(allocator))
+        self._allocator = allocator
+
+    @cython.critical_section  # ensure we are only one setting _pools
+    cdef _ensure_pools_and_return_device_pool(self):
+        if self._pools is None:
+            # It would actually be OK if we create pools more than once
+            # as long we do not set `self._pools` exactly once and always
+            # return the pool from those in `self._pools`.
+            n_gpu = runtime.getDeviceCount()
+            pools = tuple(
+                SingleDeviceMemoryPool(self._allocator) for i in range(n_gpu))
+            assert self._pools is None  # Criticial section/GIL ensures this
+            self._pools = pools
+
+        return self._pools[device.get_device_id()]
 
     cpdef MemoryPointer malloc(self, size_t size):
         """Allocates the memory, from the pool if possible.
@@ -1626,7 +1638,7 @@ cdef class MemoryPool:
             ~cupy.cuda.MemoryPointer: Pointer to the allocated buffer.
 
         """
-        mp = <SingleDeviceMemoryPool>self._pools[device.get_device_id()]
+        mp = <SingleDeviceMemoryPool>self.device_pool()
         return mp.malloc(size)
 
     cpdef free_all_blocks(self, stream=None):
@@ -1642,7 +1654,7 @@ cdef class MemoryPool:
             block is not released until all its parts are merged back into one
             even if :meth:`free_all_blocks` is called.
         """
-        mp = <SingleDeviceMemoryPool>self._pools[device.get_device_id()]
+        mp = <SingleDeviceMemoryPool>self.device_pool()
         mp.free_all_blocks(stream=stream)
 
     cpdef free_all_free(self):
@@ -1658,7 +1670,7 @@ cdef class MemoryPool:
         Returns:
             int: The total number of free blocks.
         """
-        mp = <SingleDeviceMemoryPool>self._pools[device.get_device_id()]
+        mp = <SingleDeviceMemoryPool>self.device_pool()
         return mp.n_free_blocks()
 
     cpdef size_t used_bytes(self):
@@ -1667,7 +1679,7 @@ cdef class MemoryPool:
         Returns:
             int: The total number of bytes used by the pool.
         """
-        mp = <SingleDeviceMemoryPool>self._pools[device.get_device_id()]
+        mp = <SingleDeviceMemoryPool>self.device_pool()
         return mp.used_bytes()
 
     cpdef size_t free_bytes(self):
@@ -1676,7 +1688,7 @@ cdef class MemoryPool:
         Returns:
             int: The total number of bytes acquired but not used by the pool.
         """
-        mp = <SingleDeviceMemoryPool>self._pools[device.get_device_id()]
+        mp = <SingleDeviceMemoryPool>self.device_pool()
         return mp.free_bytes()
 
     cpdef size_t total_bytes(self):
@@ -1685,7 +1697,7 @@ cdef class MemoryPool:
         Returns:
             int: The total number of bytes acquired by the pool.
         """
-        mp = <SingleDeviceMemoryPool>self._pools[device.get_device_id()]
+        mp = <SingleDeviceMemoryPool>self.device_pool()
         return mp.total_bytes()
 
     cpdef set_limit(self, size=None, fraction=None):
@@ -1715,7 +1727,7 @@ cdef class MemoryPool:
             size (int): Limit size in bytes.
             fraction (float): Fraction in the range of ``[0, 1]``.
         """
-        mp = <SingleDeviceMemoryPool>self._pools[device.get_device_id()]
+        mp = <SingleDeviceMemoryPool>self.device_pool()
         mp.set_limit(size, fraction)
 
     cpdef size_t get_limit(self):
@@ -1724,7 +1736,7 @@ cdef class MemoryPool:
         Returns:
             int: The number of bytes
         """
-        mp = <SingleDeviceMemoryPool>self._pools[device.get_device_id()]
+        mp = <SingleDeviceMemoryPool>self.device_pool()
         return mp.get_limit()
 
 

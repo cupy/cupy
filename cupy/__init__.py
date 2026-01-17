@@ -28,8 +28,6 @@ Original error:
 
 
 from cupy import cuda  # NOQA
-# Do not make `cupy.cupyx` available because it is confusing.
-import cupyx as _cupyx  # NOQA
 
 
 def is_available():
@@ -882,8 +880,9 @@ def get_array_module(*args):
        ...     return xp.maximum(0, x) + xp.log1p(xp.exp(-abs(x)))
 
     """
+    import cupyx
     for arg in args:
-        if isinstance(arg, (ndarray, _cupyx.scipy.sparse.spmatrix,
+        if isinstance(arg, (ndarray, cupyx.scipy.sparse.spmatrix,
                             _core.fusion._FusionVarArray,
                             _core.new_fusion._ArrayProxy)):
             return _cupy
@@ -935,7 +934,8 @@ def get_default_pinned_memory_pool():
 
 def show_config(*, _full=False):
     """Prints the current runtime configuration to standard output."""
-    _sys.stdout.write(str(_cupyx.get_runtime_info(full=_full)))
+    import cupyx
+    _sys.stdout.write(str(cupyx.get_runtime_info(full=_full)))
     _sys.stdout.flush()
 
 

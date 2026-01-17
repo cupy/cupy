@@ -51,7 +51,7 @@ library_records = {}
 
 
 def _make_cutensor_url(platform, filename):
-    # https://developer.download.nvidia.com/compute/cutensor/redist/libcutensor/windows-x86_64/libcutensor-windows-x86_64-2.3.1.0_cuda13-archive.zip
+    # https://developer.download.nvidia.com/compute/cutensor/redist/libcutensor/windows-x86_64/libcutensor-windows-x86_64-2.4.1.4_cuda13-archive.zip
     return (
         'https://developer.download.nvidia.com/compute/cutensor/' +
         f'redist/libcutensor/{platform}-x86_64/{filename}')
@@ -87,9 +87,9 @@ def _make_cutensor_record(cuda_version):
     # (2) CuPy started to use APIs introduced in minor versions
     cuda_major = cuda_version.split('.')[0]
     return __make_cutensor_record(
-        cuda_version, '2.3.1', '2.3.0',
-        f'libcutensor-linux-x86_64-2.3.1.0_cuda{cuda_major}-archive.tar.xz',
-        f'libcutensor-windows-x86_64-2.3.1.0_cuda{cuda_major}-archive.zip',
+        cuda_version, '2.4.1', '2.3.0',
+        f'libcutensor-linux-x86_64-2.4.1.4_cuda{cuda_major}-archive.tar.xz',
+        f'libcutensor-windows-x86_64-2.4.1.4_cuda{cuda_major}-archive.zip',
     )
 
 
@@ -220,10 +220,13 @@ The current platform ({}) is not supported.'''.format(target_platform))
             shutil.move(
                 os.path.join(outdir, dir_name, 'include'),
                 os.path.join(destination, 'include'))
-            lib_dir = 'lib' if platform.system() == 'Linux' else 'bin'
+            if platform.system() == 'Windows':
+                shutil.move(
+                    os.path.join(outdir, dir_name, 'bin'),
+                    os.path.join(destination, 'bin'))
             shutil.move(
-                os.path.join(outdir, dir_name, lib_dir),
-                os.path.join(destination, lib_dir))
+                os.path.join(outdir, dir_name, 'lib'),
+                os.path.join(destination, 'lib'))
             shutil.move(
                 os.path.join(outdir, dir_name, license), destination)
         elif library == 'nccl':
