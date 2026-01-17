@@ -82,7 +82,7 @@ class TestQuantile:
                 xp.quantile(a, q, axis=-1, method='deadbeef')
 
 
-@testing.with_requires('numpy>=2.0')
+@testing.with_requires('numpy>=2.4')
 @for_all_methods()
 class TestQuantileMethods:
 
@@ -421,9 +421,9 @@ class TestOrder:
 }))
 class TestPercentileMonotonic:
 
-    @testing.with_requires('numpy>=1.22.0rc1')
+    @testing.with_requires('numpy>=2.4')
     @testing.for_float_dtypes(no_float16=True)
-    @testing.numpy_cupy_allclose()
+    @testing.numpy_cupy_allclose(rtol=2e-7)
     def test_percentile_monotonic(self, dtype, xp):
         a = testing.shaped_random((5,), xp, dtype)
 

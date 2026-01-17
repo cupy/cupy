@@ -187,11 +187,10 @@ def ptp(a, axis=None, out=None, keepdims=False):
     return a.ptp(axis=axis, out=out, keepdims=keepdims)
 
 
-def _quantile_unchecked(a, q, axis=None, out=None,
+def _quantile_unchecked(a, q, dtype, axis=None, out=None,
                         overwrite_input=False,
                         method='linear',
                         keepdims=False):
-    dtype = cupy.result_type(a, q)
     q = cupy.asarray(q)
 
     if q.ndim == 0:
@@ -340,6 +339,7 @@ def percentile(a, q, axis=None, out=None,
     if interpolation is not None:
         method = _check_interpolation_as_method(
             method, interpolation, 'percentile')
+    dtype = numpy.common_type(a)
     if isinstance(q, (tuple, list)):
         # float is intentionally excluded here to compute the correct output
         # dtype in _quantile_unchecked
@@ -348,7 +348,7 @@ def percentile(a, q, axis=None, out=None,
     if not _quantile_is_valid(q):  # synchronize if `q` is of cupy.ndarray
         raise ValueError('Percentiles must be in the range [0, 100]')
     return _quantile_unchecked(
-        a, q, axis=axis, out=out,
+        a, q, dtype, axis=axis, out=out,
         overwrite_input=overwrite_input,
         method=method,
         keepdims=keepdims)
@@ -389,6 +389,7 @@ def quantile(a, q, axis=None, out=None,
     if interpolation is not None:
         method = _check_interpolation_as_method(
             method, interpolation, 'quantile')
+    dtype = numpy.common_type(a)
     if isinstance(q, (tuple, list)):
         # float is intentionally excluded here to compute the correct output
         # dtype in _quantile_unchecked
@@ -396,7 +397,7 @@ def quantile(a, q, axis=None, out=None,
     if not _quantile_is_valid(q):  # synchronize if `q` is of cupy.ndarray
         raise ValueError('Quantiles must be in the range [0, 1]')
     return _quantile_unchecked(
-        a, q, axis=axis, out=out,
+        a, q, dtype, axis=axis, out=out,
         overwrite_input=overwrite_input,
         method=method,
         keepdims=keepdims)
