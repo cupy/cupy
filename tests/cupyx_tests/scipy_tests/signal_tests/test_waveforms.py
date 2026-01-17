@@ -182,11 +182,15 @@ class TestSawtooth:
 
 @testing.with_requires('scipy')
 class TestSquare:
+
     @pytest.mark.parametrize('duty', [1.0, 0.5, 3.0])
-    @testing.numpy_cupy_allclose(scipy_name="scp")
-    def test_square(self, duty, xp, scp):
-        t = xp.linspace(0, 1, 500)
-        return scp.signal.square(t, duty)
+    @testing.for_float_dtypes(no_float16=True)
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_square(self, duty, dtype, xp, scp):
+        t = xp.linspace(0, 1, 500, dtype=dtype)
+        duty = dtype(duty)
+        y = scp.signal.square(t, duty=duty)
+        return y
 
 
 @testing.with_requires('scipy')
