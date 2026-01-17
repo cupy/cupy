@@ -131,6 +131,7 @@ class TestJoin:
         return xp.concatenate((a, b) * 1024, axis=1)
 
     @testing.slow
+    @pytest.mark.thread_unsafe(reason="too large allocations")
     def test_concatenate_32bit_boundary(self):
         a = cupy.zeros((2 ** 30,), dtype=cupy.int8)
         b = cupy.zeros((2 ** 30,), dtype=cupy.int8)

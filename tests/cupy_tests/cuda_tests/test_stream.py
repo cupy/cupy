@@ -12,24 +12,29 @@ from cupy import cuda
 from cupy import testing
 
 
-@testing.parameterize(
-    *testing.product({
-        'stream_name': ['null', 'ptds'],
-    }))
-class TestStream(unittest.TestCase):
-
-    def setUp(self):
-        self._prev_stream = cuda.get_current_stream()
-
+def set_and_restore_stream(func):
+    # Custom decorator to ensure per-thread in pytest-run-parallel.
+    def wrapper(self, *args, **kwargs):
+        prev_stream = cuda.get_current_stream()
         if self.stream_name == 'null':
             self.stream = cuda.Stream.null
         elif self.stream_name == 'ptds':
             self.stream = cuda.Stream.ptds
         self.stream.use()
+        try:
+            return func(self, *args, **kwargs)
+        finally:
+            prev_stream.use()
 
-    def tearDown(self):
-        self._prev_stream.use()
+    return wrapper
 
+
+@testing.parameterize(
+    *testing.product({
+        'stream_name': ['null', 'ptds'],
+    }))
+class TestStream(unittest.TestCase):
+    @set_and_restore_stream
     def test_eq(self):
         null0 = self.stream
         if self.stream == cuda.Stream.null:
@@ -47,12 +52,14 @@ class TestStream(unittest.TestCase):
         assert null2 != null3
         assert null2 != null4
 
+    @set_and_restore_stream
     def test_hash(self):
         hash(self.stream)
         hash(cuda.Stream(True))
         hash(cuda.Stream(False))
         mapping = {cuda.Stream(): 1, cuda.Stream(): 2}  # noqa
 
+    @set_and_restore_stream
     def check_del(self, null, ptds):
         stream = cuda.Stream(null=null, ptds=ptds).use()
         assert stream is cuda.get_current_stream()
@@ -66,15 +73,18 @@ class TestStream(unittest.TestCase):
         # runtime.streamQuery(stream_ptr) causes SEGV. We cannot test...
         del x
 
+    @set_and_restore_stream
     def test_del_default(self):
         self.check_del(null=False, ptds=False)
 
+    @set_and_restore_stream
     def test_del(self):
         null = self.stream == cuda.Stream.null
         ptds = self.stream == cuda.Stream.ptds
 
         self.check_del(null=null, ptds=ptds)
 
+    @set_and_restore_stream
     def test_get_and_add_callback(self):
         N = 100
         cupy_arrays = [testing.shaped_random((2, 3)) for _ in range(N)]
@@ -98,6 +108,7 @@ class TestStream(unittest.TestCase):
         assert out == list(range(N))
         assert all(s == stream.ptr for s in stream_list)
 
+    @set_and_restore_stream
     def test_launch_host_func(self):
         N = 100
         cupy_arrays = [testing.shaped_random((2, 3)) for _ in range(N)]
@@ -113,6 +124,7 @@ class TestStream(unittest.TestCase):
         stream.synchronize()
         assert out == list(range(N))
 
+    @set_and_restore_stream
     def test_with_statement(self):
         stream1 = cuda.Stream()
         stream2 = cuda.Stream()
@@ -125,6 +137,7 @@ class TestStream(unittest.TestCase):
         # self.stream is "forgotten"!
         assert cuda.Stream.null == cuda.get_current_stream()
 
+    @set_and_restore_stream
     def test_use(self):
         stream1 = cuda.Stream().use()
         assert stream1 == cuda.get_current_stream()
@@ -132,6 +145,7 @@ class TestStream(unittest.TestCase):
         assert self.stream == cuda.get_current_stream()
 
     @testing.multi_gpu(2)
+    @set_and_restore_stream
     def test_per_device(self):
         with cuda.Device(0):
             stream0 = cuda.Stream()
@@ -144,6 +158,7 @@ class TestStream(unittest.TestCase):
                 assert stream0 == cuda.get_current_stream()
 
     @testing.multi_gpu(2)
+    @set_and_restore_stream
     def test_per_device_failure(self):
         with cuda.Device(0):
             stream0 = cuda.Stream()
@@ -154,6 +169,7 @@ class TestStream(unittest.TestCase):
             with pytest.raises(RuntimeError):
                 stream0.use()
 
+    @set_and_restore_stream
     def test_mix_use_context(self):
         # See cupy/cupy#5143
         s1 = cuda.Stream()
@@ -171,11 +187,12 @@ class TestStream(unittest.TestCase):
         # self.stream is "forgotten"!
         assert cuda.get_current_stream() == cuda.Stream.null
 
+    @set_and_restore_stream
     def test_stream_thread(self):
         s1 = None
 
         def f1(barrier, errors):
-            global s1
+            nonlocal s1
             tid = barrier.wait()
             try:
                 s1 = cuda.Stream()
@@ -192,7 +209,7 @@ class TestStream(unittest.TestCase):
                 print(f'error in {tid}: {e}')
 
         def f2(barrier, errors):
-            global s1
+            nonlocal s1
             tid = barrier.wait()
             try:
                 barrier.wait()  # until t1 creates the stream
@@ -240,20 +257,18 @@ class TestStream(unittest.TestCase):
         assert s3.priority == -1 if cupy.cuda.runtime.is_hip else -3
 
 
-class TestExternalStream(unittest.TestCase):
+class TestExternalStream:
+    @pytest.fixture
+    def stream(self):
+        # In pytest-run-parallel, shared between threads.
+        stream_ptr = cuda.runtime.streamCreate()
+        stream = cuda.ExternalStream(stream_ptr)
+        yield stream
+        cuda.runtime.streamDestroy(stream_ptr)
 
-    def setUp(self):
-        self.stream_ptr = cuda.runtime.streamCreate()
-        self.stream = cuda.ExternalStream(self.stream_ptr)
-
-    def tearDown(self):
-        cuda.runtime.streamDestroy(self.stream_ptr)
-
-    def test_get_and_add_callback(self):
+    def test_get_and_add_callback(self, stream):
         N = 100
         cupy_arrays = [testing.shaped_random((2, 3)) for _ in range(N)]
-
-        stream = self.stream
 
         out = []
         for i in range(N):
@@ -265,11 +280,9 @@ class TestExternalStream(unittest.TestCase):
         stream.synchronize()
         assert out == list(range(N))
 
-    def test_launch_host_func(self):
+    def test_launch_host_func(self, stream):
         N = 100
         cupy_arrays = [testing.shaped_random((2, 3)) for _ in range(N)]
-
-        stream = self.stream
 
         out = []
         for i in range(N):
