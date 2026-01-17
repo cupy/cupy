@@ -73,8 +73,8 @@ rocm:
   null:
     full_version: null
     packages: []
-  "7.0":
-    full_version: "7.0.2-complete"
+  "7.1":
+    full_version: "7.1.1-complete"
     packages: []
 
 ###############################################################################
