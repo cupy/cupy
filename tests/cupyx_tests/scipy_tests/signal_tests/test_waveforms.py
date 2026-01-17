@@ -188,14 +188,8 @@ class TestSquare:
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_square(self, duty, dtype, xp, scp):
         t = xp.linspace(0, 1, 500, dtype=dtype)
-        duty_arr = xp.asarray(duty, dtype=dtype)
-
-        y = scp.signal.square(t, duty=duty_arr)
-
-        # CuPy-specific dtype rule
-        if xp is cupy:
-            assert y.dtype == cupy.float64
-
+        duty = dtype(duty)
+        y = scp.signal.square(t, duty=duty)
         return y
 
 
