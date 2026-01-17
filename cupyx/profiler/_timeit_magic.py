@@ -36,13 +36,13 @@ class GPUTimeitMagics(Magics):
         '-n', '--n-repeat', type=int,
         default=_get_benchmark_defaults()['n_repeat'],
         help=f'Number of repeats '
-             f'(default: {_get_benchmark_defaults()["n_repeat"]})'
+        f'(default: {_get_benchmark_defaults()["n_repeat"]})'
     )
     @argument(
         '-w', '--n-warmup', type=int,
         default=_get_benchmark_defaults()['n_warmup'],
         help=f'Number of warmup runs '
-             f'(default: {_get_benchmark_defaults()["n_warmup"]})'
+        f'(default: {_get_benchmark_defaults()["n_warmup"]})'
     )
     @argument(
         '--max-duration', type=float,
