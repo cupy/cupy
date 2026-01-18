@@ -256,6 +256,18 @@ class Ptr(PointerBase):
         return f'{self.child_type}*'
 
 
+class ReferenceTo(Scalar):
+
+    def declvar(self, x: str, init: Optional['Data']) -> str:
+        ctype = get_typename(self.dtype)
+        if (x[0] == "&"):
+            x = x[1:]
+        if (init is None):
+            return f"{ctype} &{x}"
+        else:
+            return f'{ctype} &{x} = {init.code}'
+
+
 class Tuple(TypeBase):
 
     def __init__(self, types: Sequence[TypeBase]) -> None:
