@@ -109,21 +109,21 @@ def test_reductions_large(xp, func, data):
 
 
 @pytest.mark.parametrize('from_dtype', [
-    numpy.float16, numpy.float32, numpy.float64, numpy.int32])
+    numpy.float16, numpy.float32, numpy.float64, numpy.int8, numpy.int32])
 @testing.numpy_cupy_allclose(rtol=TOL, atol=TOL)
 def test_astype_to_bfloat16(xp, from_dtype):
     a = xp.asarray(TEST_VALUES)
-    if from_dtype == numpy.int32:
+    if numpy.dtype(from_dtype).kind == "i":
         a = a[xp.isfinite(a)]
     return a.astype(from_dtype).astype(BF16)
 
 
 @pytest.mark.parametrize('to_dtype', [
-    numpy.float16, numpy.float32, numpy.float64, numpy.int32])
+    numpy.float16, numpy.float32, numpy.float64, numpy.int8, numpy.int32])
 @testing.numpy_cupy_allclose(rtol=TOL, atol=TOL)
 def test_astype_from_bfloat16(xp, to_dtype):
     a = xp.asarray(TEST_VALUES)
-    if to_dtype == numpy.int32:
+    if numpy.dtype(to_dtype).kind == "i":
         a = a[xp.isfinite(a)]
     return a.astype(to_dtype)
 
@@ -134,6 +134,7 @@ def test_astype_from_bfloat16(xp, to_dtype):
     lambda x: cupy.sqrt(x),
     lambda x: x.astype(numpy.float32),
     lambda x: x + ml_dtypes.bfloat16(2),
+    lambda x: x.sum(),
 ])
 def test_fusion_basic(func):
     # NOTE(seberg): As of writing v14.0 no attempt made for old-fusion.

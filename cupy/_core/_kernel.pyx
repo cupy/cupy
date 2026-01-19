@@ -1530,21 +1530,20 @@ cdef class _Op:
     cdef _Op _from_type_and_routine_or_error_func(
             typ, object routine, object error_func):
         # TODO(niboshi): Write type mapping specification.
-        if isinstance(typ, list):
-            # TODO: A bit of a hack for now, use dtype(...).type to normalize.
-            in_types = tuple(numpy.dtype(t).type for t in typ[0])
-            out_types = tuple(numpy.dtype(t).type for t in typ[1])
-        elif isinstance(typ, str):
+        if isinstance(typ, str):
             types = typ.split('->')
             if len(types) == 1:
                 in_types = out_types = tuple(types)
             else:
                 in_types, out_types = map(tuple, types)
-            in_types = tuple([get_dtype(t).type for t in in_types])
-            out_types = tuple([get_dtype(t).type for t in out_types])
+        elif isinstance(typ, list):
+            # E.g. bfloat16 can't be represented well via character.
+            in_types, out_types = typ
         else:
             raise TypeError("Expected string or list for typ identifier.")
 
+        in_types = tuple([get_dtype(t).type for t in in_types])
+        out_types = tuple([get_dtype(t).type for t in out_types])
         return _Op(in_types, out_types, routine, error_func)
 
     @staticmethod

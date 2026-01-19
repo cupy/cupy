@@ -911,7 +911,11 @@ _angle = create_ufunc(
     ('?->d', 'e->e', *bf16_loop(), 'f->f', 'd->d',
      ('F->f', 'out0 = arg(in0)'),
      ('D->d', 'out0 = arg(in0)')),
-    'out0 = in0 >= decltype(in0){0} ? 0 : M_PI',
+    '''
+    // For bfloat16 compare within type. Unary + strips ref (for fusion).
+    const decltype(+in0) zero = 0;
+    out0 = in0 >= zero ? 0.0 : M_PI
+    ''',
     doc='''Returns the angle of the complex argument.
 
     .. seealso:: :func:`numpy.angle`
@@ -924,7 +928,11 @@ _angle_deg = create_ufunc(
     ('?->d', 'e->e', *bf16_loop(), 'f->f', 'd->d',
      ('F->f', 'out0 = arg(in0) * (180.0 / M_PI)'),
      ('D->d', 'out0 = arg(in0) * (180.0 / M_PI)')),
-    'out0 = in0 >= decltype(in0){0} ? 0 : 180.0',
+    '''
+    // For bfloat16 compare within type. Unary + strips ref (for fusion).
+    const decltype(+in0) zero = 0;
+    out0 = in0 >= zero ? 0.0 : 180.0
+    ''',
     doc='''Returns the angle of the complex argument.
 
     .. seealso:: :func:`numpy.angle`
