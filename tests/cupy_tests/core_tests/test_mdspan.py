@@ -73,11 +73,13 @@ class TestMdspan:
             name_expressions=name_expressions
         )
 
+    # TODO(leofang): it does not seem 'AK' makes any difference here?
+    @testing.for_orders('CF')
     @testing.for_all_dtypes()
-    def test_mdspan_layout_stride(self, dtype, index_type):
+    def test_mdspan_layout_stride(self, dtype, order, index_type):
         shape = (4, 8)
 
-        a = testing.shaped_random(shape, dtype=dtype)
+        a = testing.shaped_random(shape, dtype=dtype, order=order)
         a_mdspan = a.mdspan(index_type=index_type)
         out = cupy.zeros_like(a)
         out_mdspan = out.mdspan(index_type=index_type)
@@ -91,3 +93,27 @@ class TestMdspan:
 
         ker((1,), shape, (a_mdspan, out_mdspan))
         assert cupy.all(out == a + cupy.ones(shape, dtype=dtype))
+
+    # TODO(leofang): it does not seem 'AK' makes any difference here?
+    @testing.for_orders('CFAK')
+    @testing.for_all_dtypes()
+    def test_mdspan_layout_stride_sliced(self, dtype, order, index_type):
+        shape = (4, 16)
+        slice1 = slice(None, None, 2)
+        slice2 = slice(None, None, 3)
+
+        a = testing.shaped_random(shape, dtype=dtype, order=order)
+        a_mdspan = a[slice1, slice2].mdspan(index_type=index_type)
+        out = cupy.zeros_like(a)
+        out_mdspan = out[slice1, slice2].mdspan(index_type=index_type)
+
+        dtype_str = get_typename(dtype)
+        index_type_str = get_typename(index_type)
+
+        ker = self.mod.get_function(
+            f'verify_mdspan_layout_stride<{dtype_str}, {index_type_str}>'
+        )
+
+        ker((1,), shape, (a_mdspan, out_mdspan))
+        assert cupy.all(out[slice1, slice2] == \
+            a[slice1, slice2] + cupy.ones(shape, dtype=dtype)[slice1, slice2])
