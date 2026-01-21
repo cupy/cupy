@@ -22,12 +22,35 @@ TEST_VALUES = numpy.array(
 @pytest.mark.parametrize('func', [
     'positive', 'negative', 'absolute', 'sqrt', 'conjugate',
     'isnan', 'isinf', 'isfinite', 'signbit',
+    # Exponential and logarithmic functions:
+    'exp', 'expm1', 'log', 'log10', 'log2', 'log1p',
+    # Trigonometric functions:
+    'sin', 'cos', 'tan', 'arcsin', 'arccos', 'arctan',
+    'deg2rad', 'rad2deg',
+    # Hyperbolic functions:
+    'sinh', 'cosh', 'tanh', 'arcsinh', 'arccosh', 'arctanh',
+    # Rounding:
+    'rint',
 ])
-@numpy.errstate(invalid='ignore')
+@numpy.errstate(all='ignore')
 @testing.numpy_cupy_allclose(rtol=TOL, atol=TOL)
 def test_unary(xp, func):
     a = xp.array(TEST_VALUES, dtype=BF16)
     return getattr(xp, func)(a)
+
+
+@testing.numpy_cupy_allclose(rtol=TOL, atol=TOL)
+@numpy.errstate(over='ignore')
+def test_i0(xp):
+    a = xp.array(TEST_VALUES, dtype=BF16)
+    # CuPy inf's go to NaNs, ignore that
+    a = a[~xp.isinf(a)]
+
+    res = xp.i0(a)
+    if xp == numpy:
+        # NumPy always returns float64.
+        res = res.astype(BF16)
+    return res
 
 
 @testing.numpy_cupy_allclose(rtol=TOL, atol=TOL)
@@ -41,12 +64,14 @@ def test_angle(xp):
     'add', 'subtract', 'multiply', 'divide', 'power', 'floor_divide',
     'remainder',
     # Comparisons:
-    'greater', 'greater_equal', 'less', 'less_equal', 'equal', 'not_equal'
+    'greater', 'greater_equal', 'less', 'less_equal', 'equal', 'not_equal',
+    # Math functions (binary):
+    'copysign', 'nextafter', 'hypot', 'arctan2',
 ])
 @testing.numpy_cupy_allclose(rtol=TOL, atol=TOL)
 def test_binary(xp, func):
     x = xp.asarray(TEST_VALUES)
-    if func in {'floor_divide', 'remainder'}:
+    if func in {'floor_divide', 'remainder', 'nextafter'}:
         # XXX(seberg): CUDA handles some non-finite values differently
         x = x[xp.isfinite(x)]
 
