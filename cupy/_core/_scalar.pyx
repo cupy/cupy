@@ -133,7 +133,8 @@ cdef class CScalar(CPointer):
         # we will have to introduce a conditional allocation here and
         # should memset memory to NULL (must if dtype NEEDS_INIT).
         assert self.descr.itemsize < sizeof(self._data)
-        self.ptr = <intptr_t><void *>(self._data)  # make sure ptr points to _data.
+        # make sure ptr points to _data.
+        self.ptr = <intptr_t><void *>(self._data)
 
         # NOTE(seberg): This uses assignment logic, which is very subtly
         # different from casting by rejecting nan -> int. This is *only*
