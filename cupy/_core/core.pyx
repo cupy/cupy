@@ -74,6 +74,10 @@ cdef extern from *:
 
 CUPY_CACHE_KEY = cupy_cache_key.decode()
 
+cdef tuple _HANDLED_TYPES
+
+cdef object _null_context = contextlib.nullcontext()
+
 
 # If rop of cupy.ndarray is called, cupy's op is the last chance.
 # If op of cupy.ndarray is called and the `other` is cupy.ndarray, too,
@@ -97,19 +101,16 @@ CUPY_CACHE_KEY = cupy_cache_key.decode()
 #   `numpy.ndarray.__array_function__` does not disable `__array_priority__`.
 @cython.profile(False)
 cdef inline _should_use_rop(x, y):
-    try:
-        y_ufunc = y.__array_ufunc__
-    except AttributeError:
-        # NEP 13's recommendation is `return False`.
-        xp = getattr(x, '__array_priority__', 0)
-        yp = getattr(y, '__array_priority__', 0)
-        return xp < yp
-    return y_ufunc is None
+    # _HANDLED_TYPES is just a random private object as "singleton".
+    y_ufunc = getattr(y, "__array_ufunc__", _HANDLED_TYPES)
+    if y_ufunc is not _HANDLED_TYPES:
+        return y_ufunc is None
 
-
-cdef tuple _HANDLED_TYPES
-
-cdef object _null_context = contextlib.nullcontext()
+    # Did not find __array_ufunc__ so check array-priority.
+    # NEP 13's recommendation is `return False`.
+    xp = getattr(x, '__array_priority__', 0)
+    yp = getattr(y, '__array_priority__', 0)
+    return xp < yp
 
 cdef bint _is_ump_enabled = (int(os.environ.get('CUPY_ENABLE_UMP', '0')) != 0)
 
@@ -126,7 +127,7 @@ cdef inline bint is_ump_supported(int device_id) except*:
 
 class ndarray(_ndarray_base):
     """
-    __init__(self, shape, dtype=float, memptr=None, strides=None, order='C')
+    __init__(shape, dtype=float, memptr=None, strides=None, order='C')
 
     Multi-dimensional array on a CUDA device.
 
@@ -1830,11 +1831,12 @@ cdef class _ndarray_base:
                 # implicit host-to-device conversion.
                 # Except for numpy.ndarray, types should be supported by
                 # `_kernel._preprocess_args`.
-                check = (hasattr(x, '__cuda_array_interface__')
-                         or hasattr(x, '__cupy_get_ndarray__'))
-                if (not check
-                        and not type(x) in _scalar.scalar_type_set
-                        and not isinstance(x, numpy.ndarray)):
+                if (
+                    not type(x) in _scalar.scalar_type_set
+                    and not isinstance(x, (_ndarray_base, numpy.ndarray))
+                    and not hasattr(x, '__cuda_array_interface__')
+                    and not hasattr(x, '__cupy_get_ndarray__')
+                ):
                     return NotImplemented
             if name in [
                     'greater', 'greater_equal', 'less', 'less_equal',
@@ -2370,13 +2372,14 @@ cpdef void warn_on_unsupported_std(tuple options):
                     'that causes RTC to break when the standard is set '
                     'to c++11. Please use c++14, or use ROCm > 7.0'
                 )
+        # TODO(leofang): Update this. We need C++17 now.
         elif '-std=c++03' in opt:
-            warnings.warn('CCCL requires c++11 or above')
+            warnings.warn('CCCL requires c++17 or above')
 
 
 cpdef tuple assemble_cupy_compiler_options(tuple options):
     if use_default_std(options):
-        options += ('--std=c++14',)
+        options += ('--std=c++17',)
     else:
         warn_on_unsupported_std(options)
 

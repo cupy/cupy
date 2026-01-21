@@ -543,6 +543,12 @@ _nonzero_kernel = ElementwiseKernel(
 
 
 _take_kernel_core = '''
+using idx_t = decltype(a)::index_t;
+idx_t index_range = static_cast<idx_t>(index_range_);
+idx_t ldim = static_cast<idx_t>(ldim_);
+idx_t cdim = static_cast<idx_t>(cdim_);
+idx_t rdim = static_cast<idx_t>(rdim_);
+
 ptrdiff_t out_i = indices % index_range;
 if (out_i < 0) out_i += index_range;
 if (ldim != 1) out_i += (i / (cdim * rdim)) * index_range;
@@ -552,33 +558,43 @@ out = a[out_i];
 
 
 _take_kernel = ElementwiseKernel(
-    'raw T a, S indices, uint32 ldim, uint32 cdim, uint32 rdim, '
-    'int64 index_range',
+    'raw T a, S indices, int64 ldim_, int64 cdim_, int64 rdim_, '
+    'int64 index_range_',
     'T out', _take_kernel_core, 'cupy_take')
 
 
 _take_kernel_scalar = ElementwiseKernel(
-    'raw T a, int64 indices, uint32 ldim, uint32 cdim, uint32 rdim, '
-    'int64 index_range',
+    'raw T a, int64 indices, int64 ldim_, int64 cdim_, int64 rdim_, '
+    'int64 index_range_',
     'T out', _take_kernel_core, 'cupy_take_scalar')
 
 
 _choose_kernel = ElementwiseKernel(
-    'S a, raw T choices, int32 n_channel',
+    'S a, raw T choices, int64 n_channel',
     'T y',
-    'y = choices[i + n_channel * a]',
+    '''
+      using idx_t = decltype(choices)::index_t;
+      y = choices[i + static_cast<idx_t>(n_channel) * static_cast<idx_t>(a)];
+    ''',
     'cupy_choose')
 
 
 _choose_clip_kernel = ElementwiseKernel(
-    'S a, raw T choices, int32 n_channel, int32 n',
+    'S a, raw T choices, int64 n_channel_, int64 n_',
     'T y',
     '''
-      S x = a;
+      using idx_t = decltype(choices)::index_t;
+      idx_t n_channel = static_cast<idx_t>(n_channel_);
+      idx_t n = static_cast<idx_t>(n_);
+
+      idx_t x;
       if (a < 0) {
         x = 0;
       } else if (a >= n) {
         x = n - 1;
+      }
+      else {
+        x = static_cast<idx_t>(a);
       }
       y = choices[i + n_channel * x];
     ''',
@@ -589,12 +605,14 @@ cdef _put_raise_kernel = ElementwiseKernel(
     'S ind, raw T vals, int64 n_vals, int64 n',
     'raw U data, raw bool err',
     '''
+      using v_idx_t = decltype(vals)::index_t;
+
       ptrdiff_t ind_ = ind;
       if (!(-n <= ind_ && ind_ < n)) {
         err[0] = 1;
       } else {
         if (ind_ < 0) ind_ += n;
-        data[ind_] = (U)(vals[i % n_vals]);
+        data[ind_] = (U)(vals[i % static_cast<v_idx_t>(n_vals)]);
       }
     ''',
     'cupy_put_raise')
@@ -604,10 +622,12 @@ cdef _put_wrap_kernel = ElementwiseKernel(
     'S ind, raw T vals, int64 n_vals, int64 n',
     'raw U data',
     '''
+      using v_idx_t = decltype(vals)::index_t;
+
       ptrdiff_t ind_ = ind;
       ind_ %= n;
       if (ind_ < 0) ind_ += n;
-      data[ind_] = (U)(vals[i % n_vals]);
+      data[ind_] = (U)(vals[i % static_cast<v_idx_t>(n_vals)]);
     ''',
     'cupy_put_wrap')
 
@@ -616,28 +636,35 @@ cdef _put_clip_kernel = ElementwiseKernel(
     'S ind, raw T vals, int64 n_vals, int64 n',
     'raw U data',
     '''
+      using v_idx_t = decltype(vals)::index_t;
+
       ptrdiff_t ind_ = ind;
       if (ind_ < 0) {
         ind_ = 0;
       } else if (ind_ >= n) {
         ind_ = n - 1;
       }
-      data[ind_] = (U)(vals[i % n_vals]);
+      data[ind_] = (U)(vals[i % static_cast<v_idx_t>(n_vals)]);
     ''',
     'cupy_put_clip')
 
 
 cdef _create_scatter_kernel(name, code):
     return ElementwiseKernel(
-        'T v, S indices, int32 cdim, int32 rdim, int32 adim',
+        'T v, S indices, int64 cdim_, int64 rdim_, int64 adim_',
         'raw T a',
         string.Template('''
-            S wrap_indices = indices % adim;
+            using i_idx_t = decltype(i);
+            using a_idx_t = decltype(a)::index_t;
+            i_idx_t cdim = static_cast<i_idx_t>(cdim_);
+            a_idx_t rdim = static_cast<a_idx_t>(rdim_);
+            a_idx_t adim = static_cast<a_idx_t>(adim_);
+
+            a_idx_t wrap_indices = indices % adim;
             if (wrap_indices < 0) wrap_indices += adim;
-            ptrdiff_t li = i / (rdim * cdim);
-            ptrdiff_t ri = i % rdim;
+            a_idx_t li = i / (rdim * cdim);
+            a_idx_t ri = i % rdim;
             T &out0 = a[(li * adim + wrap_indices) * rdim + ri];
-            T &in0 = out0;
             const T &in1 = v;
             ${code};
         ''').substitute(code=code),

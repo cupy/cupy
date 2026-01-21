@@ -9,8 +9,6 @@ from cupy.linalg import _util
 
 import functools
 
-import cupyx
-
 
 def _multi_svd_norm(x, row_axis, col_axis, op):
     y = cupy.moveaxis(x, (row_axis, col_axis), (-2, -1))
@@ -184,6 +182,7 @@ def cond(x, p=None):
     Returns:
         cupy.ndarray: The condition number of the matrix. May be infinite.
     """
+    import cupyx
     # This function is implemented as a direct adaption of the numpy
     # implementation to cupy API. This includes comments.
     x = cupy.asarray(x)  # in case we have a matrix

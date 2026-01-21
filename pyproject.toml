@@ -1,7 +1,7 @@
 [build-system]
 # Need to be installed manually when using `--no-build-isolation`.
 # Keep in sync with `docs/source/contribution.rst`.
-requires = ["setuptools>=77", "wheel", "Cython>=3.1,<3.2"]
+requires = ["setuptools>=77", "wheel", "Cython>=3.1,<3.2", "numpy>=2.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -21,6 +21,7 @@ classifiers = [
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
   "Programming Language :: Python :: 3 :: Only",
   "Programming Language :: Cython",
   "Topic :: Software Development",
@@ -53,7 +54,7 @@ include = ["cupy*", "cupyx*", "cupy_backends*"]
 version = { attr = "cupy._version.__version__" }
 
 [tool.autopep8]
-exclude = "*.git*, *.eggs*, *cupy/array_api*, *tests/cupy_tests/array_api_tests*, *docs/source*"
+exclude = "*.git*, *.eggs*, *docs/source*"
 
 [tool.autopep8.per-file-ignores]
 # ignore long lines containing arrays of numerical constants
@@ -69,7 +70,11 @@ disable_error_code = ["attr-defined"]
 xfail_strict = true
 testpaths = "tests"
 addopts = "--strict-markers"
-markers = ["slow", "multi_gpu"]
+markers = [
+  "slow", "multi_gpu",
+  # If pytest-run-parallel is not available
+  "parallel_threads", "iterations", "thread_unsafe",
+]
 filterwarnings = [
   "error::FutureWarning",
   # ignore FutureWarning from cupy._util.experimental
@@ -121,9 +126,7 @@ ecxlude_lines = ["if __name__ == .__main__.:"]
 [tool.ruff]
 line-length = 79
 extend-exclude = [
-  "cupy/array_api",
   "docs/source",
-  "tests/cupy_tests/array_api_tests",
   "third_party",
 ]
 
@@ -132,7 +135,6 @@ select = ["E", "F", "W", "UP", "I002", "FA", "PYI", "PLC01"]
 extend-ignore = [
   "UP031", # printf-string-formatting
   "UP032", # f-string
-  "UP038", # Use `X | Y` in `isinstance` call instead of `(X, Y)`
 ]
 
 [tool.ruff.lint.per-file-ignores]

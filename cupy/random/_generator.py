@@ -18,9 +18,24 @@ from cupy import _core
 from cupy import cuda
 from cupy.cuda import device
 from cupy.random import _kernels
+from cupy.random._generator_api import FeistelBijection
 from cupy import _util
 
-import cupyx
+import importlib
+import sys
+
+
+def lazy_import(name):
+    spec = importlib.util.find_spec(name)
+    loader = importlib.util.LazyLoader(spec.loader)
+    spec.loader = loader
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[name] = module
+    loader.exec_module(module)
+    return module
+
+
+cupyx = lazy_import('cupyx')
 
 
 _UINT32_MAX = 0xffffffff
@@ -1112,7 +1127,11 @@ class RandomState:
             raise NotImplementedError(
                 'choice() without specifying size is not supported yet')
         shape = size
-        size = numpy.prod(shape)
+        try:
+            size = _core.internal.prod(shape)
+        except TypeError:
+            # size is e.g. int
+            pass
 
         if a_size == 0 and size > 0:
             raise ValueError('a cannot be empty unless no samples are taken')
@@ -1122,12 +1141,21 @@ class RandomState:
                 raise ValueError(
                     'Cannot take a larger sample than population when '
                     '\'replace=False\'')
+
             if isinstance(a, int):
-                indices = cupy.arange(a, dtype='l')
+                # Use memory-efficient bijection approach
+                rng = numpy.random.default_rng(self._rk_seed)
+                n_rounds = FeistelBijection.num_rounds
+                keys = rng.integers(
+                    0, _UINT32_MAX + 1, size=n_rounds, dtype=numpy.uint32)
+                self._update_seed(n_rounds)
+                bijection = FeistelBijection(a_size, keys)
+                indices = bijection(size)
+                return indices.reshape(shape)
             else:
                 indices = a.copy()
-            self.shuffle(indices)
-            return indices[:size].reshape(shape)
+                self.shuffle(indices)
+                return indices[:size].reshape(shape)
 
         if not replace:
             raise NotImplementedError

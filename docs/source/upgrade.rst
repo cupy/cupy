@@ -124,6 +124,8 @@ Other API Changes
 * The NumPy fallback mode (``cupyx.fallback_mode``) has been removed.
 * ``cupyx.tools.install_library`` tool has been deprecated and will be removed in a future release. See :doc:`install` for the instructions on setting up cuTENSOR/NCCL for CuPy using Pip or Conda.
 * :mod:`cupy.testing` module has been updated to follow NumPy's testing API changes. Some testing utilities may have different behavior or signatures.
+* ``cupy.fft.config`` is now thread and context safe. However, this also means that config is not inherited by threads (using ``contextvars``, so Python is likely to change this for newly created threads in the future).
+* ``cupy.fft.config.enable_nd_planning`` has been deprecated and will be removed in a future release (planning will always be enabled).
 
 Update of Docker Images
 -----------------------
@@ -709,7 +711,7 @@ Compatibility Matrix
      - SciPy
      - Baseline API Spec.
      - Docs
-   * - v14
+   * - v15
      - 5.0-
      - 12.0-
      - 7.0-
@@ -721,6 +723,18 @@ Compatibility Matrix
      - 1.14-
      - NumPy 2.3 & SciPy 1.16
      - `latest <https://docs.cupy.dev/en/latest/install.html>`__
+   * - v14
+     - 5.0-
+     - 12.0-
+     - 7.0-
+     - 2.3-
+     - 2.18-
+     - n/a
+     - 3.10-
+     - 2.0-
+     - 1.14-
+     - NumPy 2.3 & SciPy 1.16
+     - `stable <https://docs.cupy.dev/en/stable/install.html>`__
    * - v13
      - 3.5-12.x
      - 11.2-13.x
@@ -732,7 +746,7 @@ Compatibility Matrix
      - 1.22-2.3
      - 1.7-1.14
      - NumPy 1.26 & SciPy 1.11
-     - `stable <https://docs.cupy.dev/en/stable/install.html>`__
+     - `v13.6.0 <https://docs.cupy.dev/en/v13.6.0/install.html>`__
    * - v12
      - 3.0-9.0
      - 10.2-12.x
