@@ -587,17 +587,56 @@ cdef class _ndarray_base:
         return _CArray_from_ndarray(self)
 
     def mdspan(self, index_type=None):
-        """Returns an mdspan view of the array.
+        """Returns an mdspan view of the array for use in CUDA kernels.
+
+        This method creates a view of the CuPy array that is compatible with
+        ``cuda::std::mdspan`` for use in custom CUDA kernels.
 
         Args:
-            index_type: The data type for extent and stride indices.
-                Defaults to cupy.int64. Can be cupy.int32 or cupy.int64.
+            index_type (dtype): The data type for extent and stride indices.
+                Defaults to ``cupy.int64``. Must be either ``cupy.int32`` or
+                ``cupy.int64``.
 
         Returns:
-            mdspan: An mdspan view of the array.
+            mdspan: An mdspan view of the array that can be passed to CUDA
+            kernels as a kernel argument.
+
+        Note:
+            The returned mdspan uses **dynamic extents** with
+            ``layout_stride``. Your kernel must declare the mdspan parameter
+            with all dynamic extents:
+
+            .. code-block:: cpp
+
+                template<typename T, typename IndexType>
+                __global__ void my_kernel(
+                    cuda::std::mdspan<
+                        T,
+                        cuda::std::extents<
+                            IndexType,
+                            cuda::std::dynamic_extent,
+                            cuda::std::dynamic_extent>,
+                        cuda::std::layout_stride> arr
+                ) {
+                    // Access: arr(i, j)
+                }
+
+            **Static extents are NOT supported.** For example, using
+            ``extents<int, 4, 8>`` will result in incorrect memory layout
+            and undefined behavior.
+
+            The mdspan uses element strides (not byte strides) and supports
+            arbitrary stride patterns including sliced and transposed arrays.
+
+        Example:
+            >>> import cupy
+            >>> a = cupy.arange(12, dtype=cupy.float32).reshape(3, 4)
+            >>> a_mdspan = a.mdspan(index_type=cupy.int64)
+            >>> # Pass a_mdspan to a kernel expecting:
+            >>> # mdspan<float, extents<long long, dyn, dyn>, layout_stride>
+
         """
         if index_type is None:
-            import cupy
             index_type = cupy.int64
         return _mdspan_from_ndarray(self, index_type)
 
