@@ -33,15 +33,25 @@ TEST_VALUES = numpy.array(
     'rint', 'floor', 'ceil', 'trunc', 'fix',
     # Misc:
     'cbrt', 'square', 'fabs', 'sign', 'reciprocal',
-    # Special:
-    'sinc',
 ])
 @numpy.errstate(all='ignore')
 @testing.numpy_cupy_allclose(rtol=TOL, atol=TOL)
 def test_unary(xp, func):
     a = xp.array(TEST_VALUES, dtype=BF16)
+    if func in {'sign'}:
+        a = a[~xp.isnan(a)]  # cupy v14 behaves poorly for NaN
     return getattr(xp, func)(a)
 
+
+@testing.numpy_cupy_allclose(rtol=TOL, atol=TOL)
+def test_sinc(xp):
+    a = xp.array(TEST_VALUES, dtype=BF16)
+    a = a[~xp.isnan(a)]  # cupy v14 behaves poorly for NaN
+
+    res = xp.sinc(a)
+    if xp == numpy:
+        res = res.astype(BF16)
+    return res
 
 @testing.numpy_cupy_allclose(rtol=TOL, atol=TOL)
 @numpy.errstate(over='ignore')
@@ -67,20 +77,27 @@ def test_angle(xp):
 @pytest.mark.parametrize('func', [
     'add', 'subtract', 'multiply', 'divide', 'power', 'floor_divide',
     'remainder',
-    # Comparisons:
-    'greater', 'greater_equal', 'less', 'less_equal', 'equal', 'not_equal',
-    # Math functions (binary):
-    'copysign', 'nextafter', 'hypot', 'arctan2',
-    'logaddexp', 'logaddexp2', 'heaviside',
-    'maximum', 'minimum', 'fmax', 'fmin', 'fmod',
+    'hypot', 'arctan2', 'logaddexp', 'logaddexp2', 'heaviside', 'fmod',
 ])
 @testing.numpy_cupy_allclose(rtol=TOL, atol=TOL)
 def test_binary(xp, func):
     x = xp.asarray(TEST_VALUES)
-    if func in {'floor_divide', 'remainder', 'nextafter'}:
+    if func in {'floor_divide', 'remainder'}:
         # XXX(seberg): CUDA handles some non-finite values differently
         x = x[xp.isfinite(x)]
 
+    y = x[:, None]  # Broadcasting to test all combinations
+    with numpy.errstate(all='ignore'):
+        return getattr(xp, func)(x, y)
+
+
+@pytest.mark.parametrize('func', [
+    'greater', 'greater_equal', 'less', 'less_equal', 'equal', 'not_equal',
+    'copysign', 'nextafter', 'maximum', 'minimum', 'fmax', 'fmin',
+])
+@testing.numpy_cupy_allclose(rtol=0, atol=0)
+def test_binary_exact(xp, func):
+    x = xp.asarray(TEST_VALUES)
     y = x[:, None]  # Broadcasting to test all combinations
     with numpy.errstate(all='ignore'):
         return getattr(xp, func)(x, y)

@@ -1,6 +1,10 @@
 #pragma once
 
-#include "cupy/carray.cuh"  // for float16
+#define CUPY_BFLOAT16_CUH_
+
+#include "cupy/carray.cuh"
+#include "cupy/cuda_workaround.h"
+
 #ifdef __HIPCC__
 
 #include <hip/hip_bf16.h>
@@ -12,48 +16,63 @@
 
 #endif
 
+
 // Wrapper class that inherits from __nv_bfloat16 to get all operators
-class bfloat16 : public __nv_bfloat16 {
+class bfloat16 {
+private: 
+  __nv_bfloat16 data_;
 public:
   // Default constructor
-  __device__ bfloat16() : __nv_bfloat16() {}
-  
-  // Implicit constructor from float (most common use case)
-  __device__ bfloat16(float v) : __nv_bfloat16(v) {}
-  
+  __device__ bfloat16() : data_() {}
+  __device__ bfloat16(const __nv_bfloat16 &v) : data_(v) {}
+  __device__ bfloat16(float v) : data_(v) {}
+
   // Explicit constructors from other numeric types
-  explicit __device__ bfloat16(bool v) : __nv_bfloat16(float(v)) {}
-  explicit __device__ bfloat16(double v) : __nv_bfloat16(float(v)) {}
-  explicit __device__ bfloat16(int v) : __nv_bfloat16(float(v)) {}
-  explicit __device__ bfloat16(unsigned int v) : __nv_bfloat16(float(v)) {}
-  explicit __device__ bfloat16(long long v) : __nv_bfloat16(float(v)) {}
-  explicit __device__ bfloat16(unsigned long long v) : __nv_bfloat16(float(v)) {}
+  explicit __device__ bfloat16(bool v) : data_(float(v)) {}
+  explicit __device__ bfloat16(double v) : data_(float(v)) {}
+  explicit __device__ bfloat16(int v) : data_(float(v)) {}
+  explicit __device__ bfloat16(unsigned int v) : data_(float(v)) {}
+  explicit __device__ bfloat16(long long v) : data_(float(v)) {}
+  explicit __device__ bfloat16(unsigned long long v) : data_(float(v)) {}
 
-  // Conversion with float16
-  __device__ bfloat16(float16 v) : __nv_bfloat16(float(v)) {}
-  __device__ operator float16() { return float16(float(*this)); }
+  __device__ operator float() const {return float(data_);}
 
-  // Constructor from base type
-  __device__ bfloat16(const __nv_bfloat16 &v) : __nv_bfloat16(v) {}
-  
+  // From float16: using template so it's ok if float16 is undefined
+  template<typename T, 
+    typename = typename cupy::type_traits::enable_if<
+      cuda::std::is_same_v<T, float16>>::type>
+  explicit __device__ bfloat16(T v) : data_(float(v)) {}
+
+  // Generally allow assignments if explicit conversion is available
+  // We may want a better solution for this (e.g. fix kernels to explicitly
+  // convert)
+  bfloat16& operator=(const bfloat16&) = default;
+
+  template <typename T>
+  __device__ bfloat16& operator=(const T &rhs) {
+    *this = static_cast<bfloat16>(rhs);
+    return *this;
+  }
+
   // Special value checking methods
   __device__ int iszero() const {
-    return *this == __nv_bfloat16(0.0f);
+    return data_ == __nv_bfloat16(0.0f);
   }
-  
+
   __device__ int isnan() const {
-    return __hisnan(*this);
+    return __hisnan(data_);
   }
-  
+
   __device__ int isinf() const {
-    return __hisinf(*this);
+    return __hisinf(data_);
   }
-  
+
   __device__ int isfinite() const {
-    return !__hisnan(*this) && !__hisinf(*this);
+    return !__hisnan(data_) && !__hisinf(data_);
   }
-  
-  // Note: All arithmetic and comparison operators are inherited from __nv_bfloat16
+
+  friend __device__ int signbit(bfloat16 x);
+  friend __device__ bfloat16 nextafter(bfloat16 x, bfloat16 y);
 };
 
 // Min/max functions
@@ -90,9 +109,42 @@ __device__ int isfinite(bfloat16 x) {
   return x.isfinite();
 }
 
+// TODO(seberg): There should be an easy direct definition?
+__device__ int signbit(bfloat16 x) {
+  return (__bfloat16_as_ushort(x.data_) & 0x8000u) != 0;
+}
+
 __device__ bfloat16 _floor_divide(bfloat16 x, bfloat16 y) {
   // Used for floor_divide and remainder ufuncs (a bit unclear what
   // the computation type should be for this and the rest/return).
-  return floor(float(x) / float(y));
+  return bfloat16(floor(float(x) / float(y)));
 }
 
+__device__ bfloat16 nextafter(bfloat16 x, bfloat16 y) {
+  unsigned short x_raw = __bfloat16_as_ushort(x.data_);
+  unsigned short y_raw = __bfloat16_as_ushort(y.data_);
+  unsigned short ret_raw;
+  
+  if (x.isnan() || y.isnan()) {
+    ret_raw = 0x7fc0u;  // NaN
+  } else if (x == y) {
+    ret_raw = x_raw;
+  } else if (isinf(x)) {
+    // maximum finite value plus sign bit
+    ret_raw = 0x7f7fu | (x_raw & 0x8000u);
+  } else if (x == 0) {
+    ret_raw = (y_raw & 0x8000u) + 1;
+  } else if (!(x_raw & 0x8000u)) {
+    if (static_cast<signed short>(x_raw) > static_cast<signed short>(y_raw)) {
+      ret_raw = x_raw - 1;
+    } else {
+      ret_raw = x_raw + 1;
+    }
+  } else if (!(y_raw & 0x8000u) || (x_raw & 0x7fffu) > (y_raw & 0x7fffu)) {
+    ret_raw = x_raw - 1;
+  } else {
+    ret_raw = x_raw + 1;
+  }
+  
+  return *reinterpret_cast<bfloat16*>(&ret_raw);
+}

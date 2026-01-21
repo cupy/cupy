@@ -1,5 +1,8 @@
 #pragma once
 
+#include "cupy/carray.cuh"
+#include "cupy/cuda_workaround.h"
+
 #if defined(__CUDA_ARCH__) && (__CUDA_ARCH__ < 600)
 
 __device__ double atomicAdd(double *address, double val)
@@ -17,7 +20,12 @@ __device__ double atomicAdd(double *address, double val)
 
 #endif // #if defined(__CUDA_ARCH__) && (__CUDA_ARCH__ < 600)
 
-__device__ float16 atomicAdd(float16* address, float16 val) {
+
+// Templated to defer in case float16 is not fully defined.
+template<typename T, 
+typename = typename cupy::type_traits::enable_if<
+    cuda::std::is_same_v<T, float16>>::type>
+__device__ T atomicAdd(T* address, T val) {
   unsigned int *aligned = (unsigned int*)((size_t)address - ((size_t)address & 2));
   unsigned int old = *aligned;
   unsigned int assumed;

@@ -28,7 +28,8 @@ copysign = ufunc.create_math_ufunc(
 
 ldexp = _core.create_ufunc(
     'cupy_ldexp',
-    ('ei->e', 'fi->f', 'el->e', 'fl->f', 'di->d', 'dq->d'),
+    ('ei->e', *bf16_loop((None, 'i'), 1), 'fi->f',
+     'el->e', *bf16_loop((None, 'l'), 1), 'fl->f', 'di->d', 'dq->d'),
     'out0 = ldexp(in0, in1)',
     doc='''Computes ``x1 * 2 ** x2`` elementwise.
 
@@ -39,7 +40,7 @@ ldexp = _core.create_ufunc(
 # HIP supports frexpf but not frexp ...
 frexp = _core.create_ufunc(
     'cupy_frexp',
-    ('e->ei', 'f->fi', 'd->di'),
+    ('e->ei', *bf16_loop(1, (None, 'i')), 'f->fi', 'd->di'),
     'int nptr; out0 = {}(in0, &nptr); out1 = nptr'.format(
         'frexpf' if runtime.is_hip else 'frexp'),
     doc='''Decomposes each element to mantissa and two's exponent.

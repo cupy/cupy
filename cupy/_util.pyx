@@ -245,6 +245,8 @@ else:
         convert them to dtypes for now (to sit in for the `type(dtype)` which
         is in theory more spot-on but in practice the same).
 
+        For mixed signatures, supports `None` as an alias for bfloat16.
+
         NOTE: Always insert after a matching float16 loop to make sure the
         half precision loop is preferred for odd cases (such as int8 being --
         probably incorrectly -- promoted to float16).
@@ -254,11 +256,15 @@ else:
             in_tuple = (_bf16_type,) * in_types
         else:
             in_tuple = tuple(in_types)
+            in_tuple = tuple(
+                _bf16_type if t is None else t for t in in_tuple)
 
         if isinstance(out_types, int):
             out_tuple = (_bf16_type,) * out_types
         else:
             out_tuple = tuple(out_types)
+            out_tuple = tuple(
+                _bf16_type if t is None else t for t in out_tuple)
 
         signature = [in_tuple, out_tuple]
         return ((signature, code),)

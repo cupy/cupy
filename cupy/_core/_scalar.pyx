@@ -12,7 +12,7 @@ cdef extern from 'numpy/ndarraytypes.h':
 cdef dict _typenames_base = {
     numpy.dtype('float64'): ('double', None),
     numpy.dtype('float32'): ('float', None),
-    numpy.dtype('float16'): ('float16', None),
+    numpy.dtype('float16'): ('float16', '#include "cupy/float16.cuh"'),
     numpy.dtype('complex128'): ('thrust::complex<double>', None),
     numpy.dtype('complex64'): ('thrust::complex<float>', None),
     numpy.dtype('int64'): ('long long', None),
