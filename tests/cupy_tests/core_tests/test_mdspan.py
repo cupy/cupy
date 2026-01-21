@@ -103,9 +103,11 @@ class TestMdspan:
         slice2 = slice(None, None, 3)
 
         a = testing.shaped_random(shape, dtype=dtype, order=order)
-        a_mdspan = a[slice1, slice2].mdspan(index_type=index_type)
+        a_sliced = a[slice1, slice2]
+        a_mdspan = a_sliced.mdspan(index_type=index_type)
         out = cupy.zeros_like(a)
-        out_mdspan = out[slice1, slice2].mdspan(index_type=index_type)
+        out_sliced = out[slice1, slice2]
+        out_mdspan = out_sliced.mdspan(index_type=index_type)
 
         dtype_str = get_typename(dtype)
         index_type_str = get_typename(index_type)
@@ -115,5 +117,5 @@ class TestMdspan:
         )
 
         ker((1,), shape, (a_mdspan, out_mdspan))
-        assert cupy.all(out[slice1, slice2] == \
-            a[slice1, slice2] + cupy.ones(shape, dtype=dtype)[slice1, slice2])
+        assert cupy.all(out_sliced == a_sliced +
+                        cupy.ones(shape, dtype=dtype)[slice1, slice2])
