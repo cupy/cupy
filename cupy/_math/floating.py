@@ -2,12 +2,13 @@ from __future__ import annotations
 
 from cupy import _core
 from cupy._math import ufunc
+from cupy._util import bf16_loop
 from cupy_backends.cuda.api import runtime
 
 
 signbit = _core.create_ufunc(
     'cupy_signbit',
-    ('e->?', 'f->?', 'd->?'),
+    ('e->?', *bf16_loop(1, '?'), 'f->?', 'd->?'),
     'out0 = signbit(in0)',
     doc='''Tests elementwise if the sign bit is set (i.e. less than zero).
 

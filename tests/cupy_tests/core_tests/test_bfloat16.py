@@ -23,14 +23,18 @@ TEST_VALUES = numpy.array(
     'positive', 'negative', 'absolute', 'sqrt', 'conjugate',
     'isnan', 'isinf', 'isfinite', 'signbit',
     # Exponential and logarithmic functions:
-    'exp', 'expm1', 'log', 'log10', 'log2', 'log1p',
+    'exp', 'expm1', 'exp2', 'log', 'log10', 'log2', 'log1p',
     # Trigonometric functions:
     'sin', 'cos', 'tan', 'arcsin', 'arccos', 'arctan',
     'deg2rad', 'rad2deg',
     # Hyperbolic functions:
     'sinh', 'cosh', 'tanh', 'arcsinh', 'arccosh', 'arctanh',
     # Rounding:
-    'rint',
+    'rint', 'floor', 'ceil', 'trunc', 'fix',
+    # Misc:
+    'cbrt', 'square', 'fabs', 'sign', 'reciprocal',
+    # Special:
+    'sinc',
 ])
 @numpy.errstate(all='ignore')
 @testing.numpy_cupy_allclose(rtol=TOL, atol=TOL)
@@ -67,6 +71,8 @@ def test_angle(xp):
     'greater', 'greater_equal', 'less', 'less_equal', 'equal', 'not_equal',
     # Math functions (binary):
     'copysign', 'nextafter', 'hypot', 'arctan2',
+    'logaddexp', 'logaddexp2', 'heaviside',
+    'maximum', 'minimum', 'fmax', 'fmin', 'fmod',
 ])
 @testing.numpy_cupy_allclose(rtol=TOL, atol=TOL)
 def test_binary(xp, func):
@@ -85,6 +91,31 @@ def test_clip(xp):
     # XXX(seberg): Unimplemented in ml_dtypes if this fails add loop.
     a = xp.array([0.0, 2.0, 5.0, 10.0, -5.0], dtype=BF16)
     return xp.clip(a, 1, 4)
+
+
+@testing.numpy_cupy_allclose(rtol=TOL, atol=TOL)
+def test_modf(xp):
+    a = xp.array(TEST_VALUES, dtype=BF16)
+    a = a[xp.isfinite(a)]
+    frac, integer = xp.modf(a)
+    # Stack the results to compare both outputs
+    return xp.stack([frac, integer])
+
+
+@testing.numpy_cupy_allclose(rtol=TOL, atol=TOL)
+def test_frexp(xp):
+    a = xp.array(TEST_VALUES, dtype=BF16)
+    a = a[xp.isfinite(a)]
+    mantissa, exponent = xp.frexp(a)
+    # Return mantissa for comparison (exponent is int)
+    return mantissa
+
+
+@testing.numpy_cupy_allclose(rtol=TOL, atol=TOL)
+def test_ldexp(xp):
+    a = xp.array([1.0, 2.0, 0.5, -1.0, 0.0], dtype=BF16)
+    b = xp.array([1, 2, -1, 3, 0], dtype=xp.int32)
+    return xp.ldexp(a, b)
 
 
 @pytest.mark.parametrize('shapes', [

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from cupy import _core
 from cupy._core import fusion
+from cupy._util import bf16_loop
 
 
 add = _core.add
@@ -11,6 +12,7 @@ reciprocal = _core.create_ufunc(
     'cupy_reciprocal',
     ('b', 'B', 'h', 'H', 'i', 'I', 'l', 'L', 'q', 'Q',
      ('e', 'out0 = 1 / in0'),
+     *bf16_loop(code='out0 = 1 / in0'),
      ('f', 'out0 = 1 / in0'),
      ('d', 'out0 = 1 / in0'),
      ('F', 'out0 = in0_type(1) / in0'),
@@ -37,7 +39,7 @@ conjugate = _core.conjugate
 _real_ufunc = _core.create_ufunc(
     'cupy_real',
     ('?->?', 'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
-     'q->q', 'Q->Q', 'e->e', 'f->f', 'd->d',
+     'q->q', 'Q->Q', 'e->e', *bf16_loop(), 'f->f', 'd->d',
      ('F->f', 'out0 = in0.real()'),
      ('D->d', 'out0 = in0.real()')),
     'out0 = in0',
@@ -53,7 +55,7 @@ _real_ufunc = _core.create_ufunc(
 _imag_ufunc = _core.create_ufunc(
     'cupy_imag',
     ('?->?', 'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
-     'q->q', 'Q->Q', 'e->e', 'f->f', 'd->d',
+     'q->q', 'Q->Q', 'e->e', *bf16_loop(), 'f->f', 'd->d',
      ('F->f', 'out0 = in0.imag()'),
      ('D->d', 'out0 = in0.imag()')),
     'out0 = 0',
@@ -138,6 +140,7 @@ fmod = _core.create_ufunc(
     ('bb->b', 'BB->B', 'hh->h', 'HH->H', 'ii->i', 'II->I', 'll->l', 'LL->L',
      'qq->q', 'QQ->Q',
      ('ee->e', 'out0 = fmodf(in0, in1)'),
+     *bf16_loop(2, code='out0 = fmodf(in0, in1)'),
      ('ff->f', 'out0 = fmodf(in0, in1)'),
      ('dd->d', 'out0 = fmod(in0, in1)')),
     'out0 = in1 == 0 ? 0 : fmod((double)in0, (double)in1)',
@@ -150,7 +153,7 @@ fmod = _core.create_ufunc(
 
 modf = _core.create_ufunc(
     'cupy_modf',
-    ('e->ee', 'f->ff',
+    ('e->ee',*bf16_loop(1, 2), 'f->ff',
      ('d->dd', 'double iptr; out0 = modf(in0, &iptr); out1 = iptr')),
     'float iptr; out0 = modff(in0, &iptr); out1 = iptr',
     doc='''Extracts the fractional and integral parts of an array elementwise.
