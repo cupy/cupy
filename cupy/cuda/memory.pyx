@@ -1604,17 +1604,18 @@ cdef class MemoryPool:
             allocator = _malloc
         self._allocator = allocator
 
-    @cython.critical_section  # ensure we are only one setting _pools
     cdef _ensure_pools_and_return_device_pool(self):
-        if self._pools is None:
-            # It would actually be OK if we create pools more than once
-            # as long we do not set `self._pools` exactly once and always
-            # return the pool from those in `self._pools`.
-            n_gpu = runtime.getDeviceCount()
-            pools = tuple(
-                SingleDeviceMemoryPool(self._allocator) for i in range(n_gpu))
-            assert self._pools is None  # Criticial section/GIL ensures this
-            self._pools = pools
+        # assume we get to create the pools (we may not be the only one)
+        n_gpu = runtime.getDeviceCount()
+        pools = tuple(
+            SingleDeviceMemoryPool(self._allocator) for i in range(n_gpu))
+
+        # If no-one beat us to it, set _pools. Note that the above seems to
+        # release the critical section, so including it doesn't work and
+        # would require a proper mutex.
+        with cython.critical_section(self):
+            if self._pools is None:
+                self._pools = pools
 
         return self._pools[device.get_device_id()]
 
