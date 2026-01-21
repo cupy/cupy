@@ -586,9 +586,20 @@ cdef class _ndarray_base:
         """
         return _CArray_from_ndarray(self)
 
-    @property
-    def mdspan(self):
-        return _mdspan_from_ndarray(self)
+    def mdspan(self, index_type=None):
+        """Returns an mdspan view of the array.
+
+        Args:
+            index_type: The data type for extent and stride indices.
+                Defaults to cupy.int64. Can be cupy.int32 or cupy.int64.
+
+        Returns:
+            mdspan: An mdspan view of the array.
+        """
+        if index_type is None:
+            import cupy
+            index_type = cupy.int64
+        return _mdspan_from_ndarray(self, index_type)
 
     # -------------------------------------------------------------------------
     # Array conversion
@@ -2219,13 +2230,25 @@ cdef class _ndarray_base:
         return dlpack.toDlpack(self)
 
 
-cdef inline _carray.mdspan _mdspan_from_ndarray(_ndarray_base arr):
+cdef inline _carray.mdspan _mdspan_from_ndarray(_ndarray_base arr, index_type):
     # Creates mdspan from ndarray.
     # Note that this function cannot be defined in _carray.pxd because that
     # would cause cyclic cimport dependencies.
     cdef _carray.mdspan carr = _carray.mdspan.__new__(_carray.mdspan)
-    # TODO(leofang): cache self.itemsize?
-    carr.init(<void*>arr.data.ptr, arr.itemsize, arr._shape, arr._strides)
+    cdef int index_itemsize
+    if index_type == cupy.int32:
+        index_itemsize = 4
+    elif index_type == cupy.int64:
+        index_itemsize = 8
+    else:
+        raise ValueError(
+            f"Unsupported index_type: {index_type}. "
+            "Must be cupy.int32 or cupy.int64."
+        )
+    carr.init(
+        <void*>arr.data.ptr, arr.itemsize, arr._shape, arr._strides,
+        index_itemsize
+    )
     return carr
 
 

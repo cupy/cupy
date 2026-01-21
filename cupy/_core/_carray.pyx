@@ -7,16 +7,16 @@ from cupy._core cimport internal
 
 cdef class mdspan(function.CPointer):
 
-    # TODO: add a casting arg to choose the indexint type
     cdef int init(
             self, void* data_ptr, int itemsize,
-            const shape_t& shape, const strides_t& strides) except?-1:
+            const shape_t& shape, const strides_t& strides,
+            int index_itemsize) except?-1:
         cdef size_t ndim = shape.size()
         assert ndim == strides.size()
         assert ndim <= MAX_NDIM
 
         cdef size_t total_size = \
-            sizeof(void*) + ndim * 2 * sizeof(size_t)
+            sizeof(void*) + ndim * 2 * index_itemsize
         cdef void* data = PyMem_Malloc(total_size)
         if data == NULL:
             raise MemoryError
@@ -27,21 +27,33 @@ cdef class mdspan(function.CPointer):
         memcpy(<char*>(data) + offset, &data_ptr, sizeof(data_ptr))
         offset += sizeof(data_ptr)
         if ndim != 0:
-            # FIXME: we used size_t for experiment only
-            for i in range(ndim):
-                (<size_t*>(<char*>(data) + offset))[0] = shape[i]
-                offset += sizeof(size_t)
+            if index_itemsize == 4:
+                for i in range(ndim):
+                    (<int*>(<char*>(data) + offset))[0] = <int>shape[i]
+                    offset += sizeof(int)
 
-            for i in range(ndim):
-                print("stride", i, "=", strides[i] // itemsize)
-                (<size_t*>(<char*>(data) + offset))[0] = strides[i] // itemsize
-                offset += sizeof(size_t)
+                for i in range(ndim):
+                    (<int*>(<char*>(data) + offset))[0] = (
+                        <int>(strides[i] // itemsize)
+                    )
+                    offset += sizeof(int)
+            elif index_itemsize == 8:
+                for i in range(ndim):
+                    (<long long*>(<char*>(data) + offset))[0] = (
+                        <long long>shape[i]
+                    )
+                    offset += sizeof(long long)
+
+                for i in range(ndim):
+                    (<long long*>(<char*>(data) + offset))[0] = (
+                        <long long>(strides[i] // itemsize)
+                    )
+                    offset += sizeof(long long)
+            else:
+                raise ValueError(
+                    f"Unsupported index_itemsize: {index_itemsize}"
+                )
         assert offset == total_size
-        print("mdspan self.ptr =", self.ptr, hex(self.ptr), total_size)
-
-        print(<intptr_t>((<void**><char*>(self.ptr))[0]), <intptr_t>data_ptr)
-        print((<size_t*><char*>(self.ptr + 8))[0])
-        print((<size_t*><char*>(self.ptr + 16))[0])
 
     def __cinit__(self):
         self.ptr = 0
