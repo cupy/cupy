@@ -297,10 +297,10 @@ class TestMdspan1D:
         # Check if strides are actually negative
         assert a_rev.strides[0] < 0, "Expected negative stride"
 
-        a_mdspan = a_rev.mdspan(index_type=index_type)
+        a_mdspan = a_rev.mdspan(index_type=index_type, allow_unsafe=True)
         out = cupy.zeros_like(a)
         out_rev = out[::-1]
-        out_mdspan = out_rev.mdspan(index_type=index_type)
+        out_mdspan = out_rev.mdspan(index_type=index_type, allow_unsafe=True)
 
         dtype_str = get_typename(dtype)
         index_type_str = get_typename(index_type)
@@ -379,10 +379,10 @@ class TestMdspan2D:
         a_rev = a[::-1, :]  # Negative stride in first dimension
         assert a_rev.strides[0] < 0, "Expected negative stride"
 
-        a_mdspan = a_rev.mdspan(index_type=index_type)
+        a_mdspan = a_rev.mdspan(index_type=index_type, allow_unsafe=True)
         out = cupy.zeros_like(a)
         out_rev = out[::-1, :]
-        out_mdspan = out_rev.mdspan(index_type=index_type)
+        out_mdspan = out_rev.mdspan(index_type=index_type, allow_unsafe=True)
 
         dtype_str = get_typename(dtype)
         index_type_str = get_typename(index_type)
@@ -515,7 +515,8 @@ class TestMdspanBroadcast:
         # Verify it has zero stride
         assert a_broadcast.strides[0] == 0
 
-        a_mdspan = a_broadcast.mdspan(index_type=index_type)
+        a_mdspan = a_broadcast.mdspan(
+            index_type=index_type, allow_unsafe=True)
         out = cupy.zeros(shape, dtype=dtype)
         out_mdspan = out.mdspan(index_type=index_type)
 
@@ -545,7 +546,8 @@ class TestMdspanBroadcast:
         # Verify zero stride in axis 0
         assert a_broadcast.strides[0] == 0
 
-        a_mdspan = a_broadcast.mdspan(index_type=index_type)
+        a_mdspan = a_broadcast.mdspan(
+            index_type=index_type, allow_unsafe=True)
         out = cupy.zeros(shape, dtype=dtype)
         out_mdspan = out.mdspan(index_type=index_type)
 
@@ -573,7 +575,8 @@ class TestMdspanBroadcast:
         # Verify zero stride in axis 1
         assert a_broadcast.strides[1] == 0
 
-        a_mdspan = a_broadcast.mdspan(index_type=index_type)
+        a_mdspan = a_broadcast.mdspan(
+            index_type=index_type, allow_unsafe=True)
         out = cupy.zeros(shape, dtype=dtype)
         out_mdspan = out.mdspan(index_type=index_type)
 
@@ -603,7 +606,8 @@ class TestMdspanBroadcast:
         assert a_broadcast.strides[0] == 0
         assert a_broadcast.strides[1] == 0
 
-        a_mdspan = a_broadcast.mdspan(index_type=index_type)
+        a_mdspan = a_broadcast.mdspan(
+            index_type=index_type, allow_unsafe=True)
         out = cupy.zeros(shape, dtype=dtype)
         out_mdspan = out.mdspan(index_type=index_type)
 
@@ -616,3 +620,175 @@ class TestMdspanBroadcast:
         ker((1,), shape, (a_mdspan, out_mdspan))
         expected = cupy.full(shape, a[0, 0] + dtype(1), dtype=dtype)
         testing.assert_array_equal(out, expected)
+
+
+@pytest.mark.skipif(
+    cupy.cuda.runtime.is_hip, reason='libcudacxx not supported in HIP'
+)
+class TestMdspanValidationUnsafe:
+    """Test mdspan validation with allow_unsafe parameter."""
+
+    def test_zero_size_dimension_rejected(self):
+        """Test that zero-size dimensions raise RuntimeError by default."""
+        # 1D case
+        a = cupy.empty((0,), dtype=cupy.float32)
+        with pytest.raises(RuntimeError, match="0-th dimension has size zero"):
+            a.mdspan()
+
+        # 2D case - first dimension zero
+        a = cupy.empty((0, 5), dtype=cupy.float32)
+        with pytest.raises(RuntimeError, match="0-th dimension has size zero"):
+            a.mdspan()
+
+        # 2D case - second dimension zero
+        a = cupy.empty((5, 0), dtype=cupy.float32)
+        with pytest.raises(RuntimeError, match="1-th dimension has size zero"):
+            a.mdspan()
+
+    def test_zero_size_dimension_allowed_with_flag(self):
+        """Test that zero-size dimensions work with allow_unsafe=True."""
+        a = cupy.empty((0,), dtype=cupy.float32)
+        mdspan = a.mdspan(allow_unsafe=True)
+        assert mdspan is not None
+
+        a = cupy.empty((0, 5), dtype=cupy.float32)
+        mdspan = a.mdspan(allow_unsafe=True)
+        assert mdspan is not None
+
+        a = cupy.empty((5, 0), dtype=cupy.float32)
+        mdspan = a.mdspan(allow_unsafe=True)
+        assert mdspan is not None
+
+    def test_zero_stride_rejected(self):
+        """Test that zero strides raise RuntimeError by default."""
+        # 1D broadcast
+        a = cupy.array([42], dtype=cupy.float32)
+        a_broadcast = cupy.broadcast_to(a, (10,))
+        assert a_broadcast.strides[0] == 0
+
+        with pytest.raises(
+                RuntimeError, match="0-th dimension has non-positive stride"):
+            a_broadcast.mdspan()
+
+        # 2D broadcast along axis 0
+        a = cupy.array([[1, 2, 3]], dtype=cupy.float32)
+        a_broadcast = cupy.broadcast_to(a, (5, 3))
+        assert a_broadcast.strides[0] == 0
+
+        with pytest.raises(
+                RuntimeError, match="0-th dimension has non-positive stride"):
+            a_broadcast.mdspan()
+
+    def test_zero_stride_allowed_with_flag(self):
+        """Test that zero strides work with allow_unsafe=True."""
+        a = cupy.array([42], dtype=cupy.float32)
+        a_broadcast = cupy.broadcast_to(a, (10,))
+
+        mdspan = a_broadcast.mdspan(allow_unsafe=True)
+        assert mdspan is not None
+
+        # 2D case
+        a = cupy.array([[1, 2, 3]], dtype=cupy.float32)
+        a_broadcast = cupy.broadcast_to(a, (5, 3))
+
+        mdspan = a_broadcast.mdspan(allow_unsafe=True)
+        assert mdspan is not None
+
+    def test_negative_stride_rejected(self):
+        """Test that negative strides raise RuntimeError by default."""
+        # 1D reversed
+        a = cupy.arange(10, dtype=cupy.float32)
+        a_rev = a[::-1]
+        assert a_rev.strides[0] < 0
+
+        with pytest.raises(
+                RuntimeError, match="0-th dimension has non-positive stride"):
+            a_rev.mdspan()
+
+        # 2D reversed first dimension
+        a = cupy.arange(20, dtype=cupy.float32).reshape(4, 5)
+        a_rev = a[::-1, :]
+        assert a_rev.strides[0] < 0
+
+        with pytest.raises(
+                RuntimeError, match="0-th dimension has non-positive stride"):
+            a_rev.mdspan()
+
+    def test_negative_stride_allowed_with_flag(self):
+        """Test that negative strides work with allow_unsafe=True."""
+        a = cupy.arange(10, dtype=cupy.float32)
+        a_rev = a[::-1]
+
+        mdspan = a_rev.mdspan(allow_unsafe=True)
+        assert mdspan is not None
+
+        # 2D case
+        a = cupy.arange(20, dtype=cupy.float32).reshape(4, 5)
+        a_rev = a[::-1, :]
+
+        mdspan = a_rev.mdspan(allow_unsafe=True)
+        assert mdspan is not None
+
+    def test_validation_with_int32_index(self):
+        """Test validation works with int32 index type."""
+        a = cupy.empty((0,), dtype=cupy.float32)
+        with pytest.raises(RuntimeError, match="has size zero"):
+            a.mdspan(index_type=cupy.int32)
+
+        # Should work with flag
+        mdspan = a.mdspan(index_type=cupy.int32, allow_unsafe=True)
+        assert mdspan is not None
+
+        # Test zero stride
+        a = cupy.broadcast_to(cupy.array([1]), (10,))
+        with pytest.raises(RuntimeError, match="non-positive stride"):
+            a.mdspan(index_type=cupy.int32)
+
+        mdspan = a.mdspan(index_type=cupy.int32, allow_unsafe=True)
+        assert mdspan is not None
+
+    def test_validation_with_int64_index(self):
+        """Test validation works with int64 index type."""
+        a = cupy.empty((0,), dtype=cupy.float32)
+        with pytest.raises(RuntimeError, match="has size zero"):
+            a.mdspan(index_type=cupy.int64)
+
+        # Should work with flag
+        mdspan = a.mdspan(index_type=cupy.int64, allow_unsafe=True)
+        assert mdspan is not None
+
+        # Test negative stride
+        a = cupy.arange(10)[::-1]
+        with pytest.raises(RuntimeError, match="non-positive stride"):
+            a.mdspan(index_type=cupy.int64)
+
+        mdspan = a.mdspan(index_type=cupy.int64, allow_unsafe=True)
+        assert mdspan is not None
+
+    def test_multiple_zero_dimensions(self):
+        """Test multiple zero-size dimensions."""
+        a = cupy.empty((0, 0, 5), dtype=cupy.float32)
+        # Should fail on first zero dimension
+        with pytest.raises(RuntimeError, match="0-th dimension has size zero"):
+            a.mdspan()
+
+        # Should work with flag
+        mdspan = a.mdspan(allow_unsafe=True)
+        assert mdspan is not None
+
+    def test_default_is_safe(self):
+        """Verify that default behavior is safe (allow_unsafe=False)."""
+        # Normal arrays should work without flag
+        a = cupy.arange(10, dtype=cupy.float32)
+        mdspan = a.mdspan()  # No allow_unsafe needed
+        assert mdspan is not None
+
+        # 2D contiguous array
+        a = cupy.arange(20, dtype=cupy.float32).reshape(4, 5)
+        mdspan = a.mdspan()
+        assert mdspan is not None
+
+        # But unsafe arrays should fail without flag
+        a_broadcast = cupy.broadcast_to(cupy.array([1]), (10,))
+        with pytest.raises(RuntimeError):
+            a_broadcast.mdspan()  # Should fail without allow_unsafe=True

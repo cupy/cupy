@@ -25,7 +25,7 @@ cdef class mdspan(function.CPointer):
     cdef int init(
         self, void* data_ptr, int itemsize,
         const shape_t& shape, const strides_t& strides,
-        int index_itemsize) except?-1
+        int index_itemsize, bint allow_unsafe) except?-1
 
 
 @cython.final

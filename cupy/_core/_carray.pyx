@@ -5,12 +5,42 @@ from cupy.cuda cimport function
 from cupy._core cimport internal
 
 
+cdef fused index_t:
+    int
+    long long
+
+
+cdef inline int populate_shape_strides(
+        index_t val, size_t ndim, bint allow_unsafe,
+        void* data, size_t& offset, int itemsize,
+        const shape_t& shape, const strides_t& strides) except?-1:
+    cdef int i
+
+    for i in range(ndim):
+        if not allow_unsafe and shape[i] == 0:
+            raise RuntimeError(
+                f"{i}-th dimension has size zero")
+        (<index_t*>(<char*>(data) + offset))[0] = <index_t>shape[i]
+        offset += sizeof(index_t)
+
+    for i in range(ndim):
+        if not allow_unsafe and strides[i] <= 0:
+            raise RuntimeError(
+                f"{i}-th dimension has non-positive stride")
+        (<index_t*>(<char*>(data) + offset))[0] = (
+            <index_t>(strides[i] // itemsize)
+        )
+        offset += sizeof(index_t)
+
+    return 0
+
+
 cdef class mdspan(function.CPointer):
 
     cdef int init(
             self, void* data_ptr, int itemsize,
             const shape_t& shape, const strides_t& strides,
-            int index_itemsize) except?-1:
+            int index_itemsize, bint allow_unsafe) except?-1:
         cdef size_t ndim = shape.size()
         assert ndim == strides.size()
         assert ndim <= MAX_NDIM
@@ -23,36 +53,29 @@ cdef class mdspan(function.CPointer):
         self.ptr = <intptr_t>data
 
         cdef size_t offset = 0
-        cdef int i
         memcpy(<char*>(data) + offset, &data_ptr, sizeof(data_ptr))
         offset += sizeof(data_ptr)
         if ndim != 0:
-            if index_itemsize == 4:
-                for i in range(ndim):
-                    (<int*>(<char*>(data) + offset))[0] = <int>shape[i]
-                    offset += sizeof(int)
+            try:
+                if index_itemsize == 4:
+                    populate_shape_strides(
+                        <int>(0),  # dummy
+                        ndim, allow_unsafe, data, offset, itemsize,
+                        shape, strides)
+                elif index_itemsize == 8:
+                    populate_shape_strides(
+                        <long long>(0),  # dummy
+                        ndim, allow_unsafe, data, offset, itemsize,
+                        shape, strides)
+                else:
+                    raise ValueError(
+                        f"Unsupported index_itemsize: {index_itemsize}"
+                    )
+            except Exception:
+                PyMem_Free(data)
+                self.ptr = 0
+                raise
 
-                for i in range(ndim):
-                    (<int*>(<char*>(data) + offset))[0] = (
-                        <int>(strides[i] // itemsize)
-                    )
-                    offset += sizeof(int)
-            elif index_itemsize == 8:
-                for i in range(ndim):
-                    (<long long*>(<char*>(data) + offset))[0] = (
-                        <long long>shape[i]
-                    )
-                    offset += sizeof(long long)
-
-                for i in range(ndim):
-                    (<long long*>(<char*>(data) + offset))[0] = (
-                        <long long>(strides[i] // itemsize)
-                    )
-                    offset += sizeof(long long)
-            else:
-                raise ValueError(
-                    f"Unsupported index_itemsize: {index_itemsize}"
-                )
         assert offset == total_size
 
     def __cinit__(self):

@@ -586,7 +586,7 @@ cdef class _ndarray_base:
         """
         return _CArray_from_ndarray(self)
 
-    def mdspan(self, index_type=None):
+    def mdspan(self, index_type=None, allow_unsafe=False):
         """Returns an mdspan view of the array for use in CUDA kernels.
 
         This method creates a view of the CuPy array that is compatible with
@@ -596,15 +596,22 @@ cdef class _ndarray_base:
             index_type (dtype): The data type for extent and stride indices.
                 Defaults to ``cupy.int64``. Must be either ``cupy.int32`` or
                 ``cupy.int64``.
+            allow_unsafe (bool): If True, allows creating an mdspan for arrays
+                that have either zero or negative strides, or one or more
+                dimensions of size zero. Depending on the access pattern such
+                mdspan may lead to undefined behavior when described with
+                either a left-, right, or stride- layout_stride as per C++
+                standard. For example, ``mdspan.required_span_size()`` might
+                become negative. Default is False.
 
         Returns:
             mdspan: An mdspan view of the array that can be passed to CUDA
             kernels as a kernel argument.
 
         Note:
-            The returned mdspan uses **dynamic extents** with
-            ``layout_stride``. Your kernel must declare the mdspan parameter
-            with all dynamic extents:
+            The returned mdspan can work with either ``layout_stride``,
+            ``layout_left``, or ``layout_right``, but your kernel must declare
+            the mdspan type with all extents being **dynamic**:
 
             .. code-block:: cpp
 
@@ -618,27 +625,24 @@ cdef class _ndarray_base:
                             cuda::std::dynamic_extent>,
                         cuda::std::layout_stride> arr
                 ) {
+                    // arr is a 2D mdspan
                     // Access: arr(i, j)
                 }
 
             **Static extents are NOT supported.** For example, using
-            ``extents<int, 4, 8>`` will result in incorrect memory layout
-            and undefined behavior.
-
-            The mdspan uses element strides (not byte strides) and supports
-            arbitrary stride patterns including sliced and transposed arrays.
+            ``extents<int, 4, 8>`` will result in undefined behavior.
 
         Example:
             >>> import cupy
             >>> a = cupy.arange(12, dtype=cupy.float32).reshape(3, 4)
             >>> a_mdspan = a.mdspan(index_type=cupy.int64)
-            >>> # Pass a_mdspan to a kernel expecting:
-            >>> # mdspan<float, extents<long long, dyn, dyn>, layout_stride>
+            >>> # Pass a_mdspan to a cupy.RawKernel expecting:
+            >>> # mdspan<float, extents<int64_t, dyn, dyn>, layout_stride>
 
         """
         if index_type is None:
             index_type = cupy.int64
-        return _mdspan_from_ndarray(self, index_type)
+        return _mdspan_from_ndarray(self, index_type, allow_unsafe)
 
     # -------------------------------------------------------------------------
     # Array conversion
@@ -2269,7 +2273,8 @@ cdef class _ndarray_base:
         return dlpack.toDlpack(self)
 
 
-cdef inline _carray.mdspan _mdspan_from_ndarray(_ndarray_base arr, index_type):
+cdef inline _carray.mdspan _mdspan_from_ndarray(
+        _ndarray_base arr, index_type, bint allow_unsafe):
     # Creates mdspan from ndarray.
     # Note that this function cannot be defined in _carray.pxd because that
     # would cause cyclic cimport dependencies.
@@ -2286,7 +2291,7 @@ cdef inline _carray.mdspan _mdspan_from_ndarray(_ndarray_base arr, index_type):
         )
     carr.init(
         <void*>arr.data.ptr, arr.itemsize, arr._shape, arr._strides,
-        index_itemsize
+        index_itemsize, allow_unsafe
     )
     return carr
 
