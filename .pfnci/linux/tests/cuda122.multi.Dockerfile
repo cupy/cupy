@@ -29,7 +29,7 @@ RUN pyenv install 3.11.13 && \
     pip install -U setuptools pip wheel
 
 RUN pip install -U 'numpy==2.0.*' 'scipy==1.16.*' 'optuna==3.*' 'mpi4py==3.*' 'cython==3.1.*'
-RUN pip uninstall -y cuda-python && \
+RUN pip uninstall -y ml_dtypes cuda-python && \
     pip check
 
 RUN mkdir /home/cupy-user && chmod 777 /home/cupy-user
