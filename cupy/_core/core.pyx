@@ -26,7 +26,7 @@ from cupy import _util
 
 cimport cython  # NOQA
 cimport cpython
-from libc.stdint cimport int64_t, intptr_t
+from libc.stdint cimport int64_t, intptr_t, INT32_MAX
 from libc cimport stdlib
 from cpython cimport Py_buffer
 
@@ -591,7 +591,7 @@ cdef class _ndarray_base:
         """
         return _CArray_from_ndarray(self)
 
-    def mdspan(self, index_type=None, allow_unsafe=False):
+    def mdspan(self, *, index_type, allow_unsafe=False):
         """Returns an mdspan view of the array for use in CUDA kernels.
 
         This method creates a view of the CuPy array that is compatible with
@@ -599,8 +599,9 @@ cdef class _ndarray_base:
 
         Args:
             index_type (dtype): The data type for extent and stride indices.
-                Defaults to ``cupy.int64``. Must be either ``cupy.int32`` or
-                ``cupy.int64``.
+                Must be either ``cupy.int32`` or ``cupy.int64``. If
+                ``cupy.int32`` is specified, the array size must not exceed
+                ``INT32_MAX``.
             allow_unsafe (bool): If True, allows creating an mdspan for arrays
                 that have either zero or negative strides, or one or more
                 dimensions of size zero. Depending on the access pattern such
@@ -612,6 +613,11 @@ cdef class _ndarray_base:
         Returns:
             mdspan: An mdspan view of the array that can be passed to CUDA
             kernels as a kernel argument.
+
+        Raises:
+            ValueError: If ``index_type`` is not ``cupy.int32`` or
+                ``cupy.int64``, or if the array size exceeds the range of
+                the specified ``index_type``.
 
         Note:
             The returned mdspan can work with either ``layout_stride``,
@@ -645,8 +651,6 @@ cdef class _ndarray_base:
             >>> # mdspan<float, extents<int64_t, dyn, dyn>, layout_stride>
 
         """
-        if index_type is None:
-            index_type = cupy.int64
         return _mdspan_from_ndarray(self, index_type, allow_unsafe)
 
     # -------------------------------------------------------------------------
@@ -2285,13 +2289,15 @@ cdef inline _carray.mdspan _mdspan_from_ndarray(
     # would cause cyclic cimport dependencies.
     global _MDSPAN_SUPPORTED_INDEX_TYPES, _MDSPAN_INDEX_TYPE_TO_ITEMSIZE
 
+    cdef _carray.mdspan carr
+    cdef int index_itemsize
+
     # Initialize cached constants on first use (avoid circular import)
     if _MDSPAN_SUPPORTED_INDEX_TYPES is None:
         _MDSPAN_SUPPORTED_INDEX_TYPES = (cupy.int32, cupy.int64)
         _MDSPAN_INDEX_TYPE_TO_ITEMSIZE = {cupy.int32: 4, cupy.int64: 8}
 
-    cdef _carray.mdspan carr = _carray.mdspan.__new__(_carray.mdspan)
-    cdef int index_itemsize
+    carr = _carray.mdspan.__new__(_carray.mdspan)
 
     # Use dict lookup with membership check for validation
     if index_type not in _MDSPAN_SUPPORTED_INDEX_TYPES:
@@ -2300,6 +2306,14 @@ cdef inline _carray.mdspan _mdspan_from_ndarray(
             "Must be cupy.int32 or cupy.int64."
         )
     index_itemsize = _MDSPAN_INDEX_TYPE_TO_ITEMSIZE[index_type]
+
+    # Validate that array size fits in index_type
+    if index_type == cupy.int32 and arr.size > INT32_MAX:
+        raise ValueError(
+            f"Array size {arr.size} exceeds int32 maximum ({INT32_MAX}). "
+            "Use index_type=cupy.int64 instead."
+        )
+
     carr.init(
         <void*>arr.data.ptr, arr.itemsize, arr._shape, arr._strides,
         index_itemsize, allow_unsafe

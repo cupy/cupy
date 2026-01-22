@@ -633,30 +633,30 @@ class TestMdspanValidationUnsafe:
         # 1D case
         a = cupy.empty((0,), dtype=cupy.float32)
         with pytest.raises(RuntimeError, match="0-th dimension has size zero"):
-            a.mdspan()
+            a.mdspan(index_type=cupy.int64)
 
         # 2D case - first dimension zero
         a = cupy.empty((0, 5), dtype=cupy.float32)
         with pytest.raises(RuntimeError, match="0-th dimension has size zero"):
-            a.mdspan()
+            a.mdspan(index_type=cupy.int64)
 
         # 2D case - second dimension zero
         a = cupy.empty((5, 0), dtype=cupy.float32)
         with pytest.raises(RuntimeError, match="1-th dimension has size zero"):
-            a.mdspan()
+            a.mdspan(index_type=cupy.int64)
 
     def test_zero_size_dimension_allowed_with_flag(self):
         """Test that zero-size dimensions work with allow_unsafe=True."""
         a = cupy.empty((0,), dtype=cupy.float32)
-        mdspan = a.mdspan(allow_unsafe=True)
+        mdspan = a.mdspan(index_type=cupy.int64, allow_unsafe=True)
         assert mdspan is not None
 
         a = cupy.empty((0, 5), dtype=cupy.float32)
-        mdspan = a.mdspan(allow_unsafe=True)
+        mdspan = a.mdspan(index_type=cupy.int64, allow_unsafe=True)
         assert mdspan is not None
 
         a = cupy.empty((5, 0), dtype=cupy.float32)
-        mdspan = a.mdspan(allow_unsafe=True)
+        mdspan = a.mdspan(index_type=cupy.int64, allow_unsafe=True)
         assert mdspan is not None
 
     def test_zero_stride_rejected(self):
@@ -668,7 +668,7 @@ class TestMdspanValidationUnsafe:
 
         with pytest.raises(
                 RuntimeError, match="0-th dimension has non-positive stride"):
-            a_broadcast.mdspan()
+            a_broadcast.mdspan(index_type=cupy.int64)
 
         # 2D broadcast along axis 0
         a = cupy.array([[1, 2, 3]], dtype=cupy.float32)
@@ -677,21 +677,21 @@ class TestMdspanValidationUnsafe:
 
         with pytest.raises(
                 RuntimeError, match="0-th dimension has non-positive stride"):
-            a_broadcast.mdspan()
+            a_broadcast.mdspan(index_type=cupy.int64)
 
     def test_zero_stride_allowed_with_flag(self):
         """Test that zero strides work with allow_unsafe=True."""
         a = cupy.array([42], dtype=cupy.float32)
         a_broadcast = cupy.broadcast_to(a, (10,))
 
-        mdspan = a_broadcast.mdspan(allow_unsafe=True)
+        mdspan = a_broadcast.mdspan(index_type=cupy.int64, allow_unsafe=True)
         assert mdspan is not None
 
         # 2D case
         a = cupy.array([[1, 2, 3]], dtype=cupy.float32)
         a_broadcast = cupy.broadcast_to(a, (5, 3))
 
-        mdspan = a_broadcast.mdspan(allow_unsafe=True)
+        mdspan = a_broadcast.mdspan(index_type=cupy.int64, allow_unsafe=True)
         assert mdspan is not None
 
     def test_negative_stride_rejected(self):
@@ -703,7 +703,7 @@ class TestMdspanValidationUnsafe:
 
         with pytest.raises(
                 RuntimeError, match="0-th dimension has non-positive stride"):
-            a_rev.mdspan()
+            a_rev.mdspan(index_type=cupy.int64)
 
         # 2D reversed first dimension
         a = cupy.arange(20, dtype=cupy.float32).reshape(4, 5)
@@ -712,21 +712,21 @@ class TestMdspanValidationUnsafe:
 
         with pytest.raises(
                 RuntimeError, match="0-th dimension has non-positive stride"):
-            a_rev.mdspan()
+            a_rev.mdspan(index_type=cupy.int64)
 
     def test_negative_stride_allowed_with_flag(self):
         """Test that negative strides work with allow_unsafe=True."""
         a = cupy.arange(10, dtype=cupy.float32)
         a_rev = a[::-1]
 
-        mdspan = a_rev.mdspan(allow_unsafe=True)
+        mdspan = a_rev.mdspan(index_type=cupy.int64, allow_unsafe=True)
         assert mdspan is not None
 
         # 2D case
         a = cupy.arange(20, dtype=cupy.float32).reshape(4, 5)
         a_rev = a[::-1, :]
 
-        mdspan = a_rev.mdspan(allow_unsafe=True)
+        mdspan = a_rev.mdspan(index_type=cupy.int64, allow_unsafe=True)
         assert mdspan is not None
 
     def test_validation_with_int32_index(self):
@@ -770,25 +770,51 @@ class TestMdspanValidationUnsafe:
         a = cupy.empty((0, 0, 5), dtype=cupy.float32)
         # Should fail on first zero dimension
         with pytest.raises(RuntimeError, match="0-th dimension has size zero"):
-            a.mdspan()
+            a.mdspan(index_type=cupy.int64)
 
         # Should work with flag
-        mdspan = a.mdspan(allow_unsafe=True)
+        mdspan = a.mdspan(index_type=cupy.int64, allow_unsafe=True)
         assert mdspan is not None
 
     def test_default_is_safe(self):
         """Verify that default behavior is safe (allow_unsafe=False)."""
         # Normal arrays should work without flag
         a = cupy.arange(10, dtype=cupy.float32)
-        mdspan = a.mdspan()  # No allow_unsafe needed
+        mdspan = a.mdspan(index_type=cupy.int64)  # No allow_unsafe needed
         assert mdspan is not None
 
         # 2D contiguous array
         a = cupy.arange(20, dtype=cupy.float32).reshape(4, 5)
-        mdspan = a.mdspan()
+        mdspan = a.mdspan(index_type=cupy.int64)
         assert mdspan is not None
 
         # But unsafe arrays should fail without flag
         a_broadcast = cupy.broadcast_to(cupy.array([1]), (10,))
         with pytest.raises(RuntimeError):
-            a_broadcast.mdspan()  # Should fail without allow_unsafe=True
+            # Should fail without allow_unsafe=True
+            a_broadcast.mdspan(index_type=cupy.int64)
+
+
+class TestMdspanInt32Validation:
+    """Test validation of int32 index type against array dimensions/strides."""
+
+    def test_int32_valid_dimensions(self):
+        # Small array - should work fine
+        a = cupy.arange(1000, dtype=cupy.float32)
+        mdspan = a.mdspan(index_type=cupy.int32)
+        assert mdspan is not None
+
+        # Multi-dimensional small array
+        a = cupy.arange(10000, dtype=cupy.float32).reshape(100, 100)
+        mdspan = a.mdspan(index_type=cupy.int32)
+        assert mdspan is not None
+
+    @testing.slow
+    def test_int32_dimension_overflow(self):
+        a = cupy.empty(2**31, dtype=cupy.int8)
+        with pytest.raises(ValueError, match="exceeds int32 maximum"):
+            a.mdspan(index_type=cupy.int32)
+
+        # Should work with int64
+        mdspan = a.mdspan(index_type=cupy.int64)
+        assert mdspan is not None
