@@ -238,6 +238,12 @@ cpdef set_pinned_memory_allocator(allocator=None):
     _current_allocator = allocator
 
 
+cpdef get_pinned_memory_allocator():
+    """Gets the current allocator for the pinned memory.
+    """
+    return _current_allocator
+
+
 class PooledPinnedMemory(PinnedMemory):
 
     """Memory allocation for a memory pool.
