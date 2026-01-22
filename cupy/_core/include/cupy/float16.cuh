@@ -1,9 +1,6 @@
 #pragma once
 
-#define CUPY_FLOAT16_CUH_
-
 #include "cupy/carray.cuh"
-#include "cupy/cuda_workaround.h"
 
 #ifdef __HIPCC_RTC__
 

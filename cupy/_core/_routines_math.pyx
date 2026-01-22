@@ -628,7 +628,7 @@ def _add_scan_batch_blocked_sum_kernel(dtype, op, block_size, c_cont):
 
     ops = {scan_op.SCAN_SUM: '+', scan_op.SCAN_PROD: '*'}
     source = string.Template("""
-    {type_headers}
+    ${type_headers}
     extern "C" __global__ void ${name}(CArray<${dtype}, 2, ${c_cont}> src_dst,
         int batch_size){
         long long n = src_dst.size();

@@ -1,14 +1,20 @@
 #pragma once
 
-#define CUPY_BFLOAT16_CUH_
-
 #include "cupy/carray.cuh"
-#include "cupy/cuda_workaround.h"
 
-#ifdef __HIPCC__
+#ifdef __HIPCC_RTC__
 
-#include <hip/hip_bf16.h>
-#define __nv_bfloat16 __hip_bfloat16;
+#include <hip/hip_version.h>
+
+#if HIP_VERSION < 40400000
+#include <hip/hip_fp16.h>
+#endif  // #if HIP_VERSION < 40400000
+#define __nv_bfloat16 __hip_bfloat16
+
+#elif __HIPCC__
+
+#include <hip/hip_fp16.h>
+#define __nv_bfloat16 __hip_bfloat16
 
 #else
 
