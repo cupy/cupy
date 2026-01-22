@@ -50,6 +50,12 @@ namespace cupy {
 #define __forceinline__ inline __attribute__((always_inline))
 
 #endif  // #if HIP_VERSION >= 40400000
+
+#elif __HIPCC__
+
+#include <cassert>
+#include <cstddef>
+
 #endif  // #ifdef __HIPCC_RTC__
 
 
