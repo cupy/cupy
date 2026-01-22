@@ -27,6 +27,18 @@ _all_methods = (
     'nearest',
 )
 
+if numpy.__version__ == "2.4.1":
+    # NumPy 2.4.0 had a surprisingly large change, but I (seberg)
+    # incorrectly undid the change, making things maybe worse...
+    # this fixes that...
+    # See also https://github.com/numpy/numpy/pull/30710
+    def _get_gamma(virtual_indexes, previous_indexes, method):
+        gamma = numpy.asanyarray(virtual_indexes - previous_indexes)
+        gamma = method["fix_gamma"](gamma, virtual_indexes)
+        return numpy.asanyarray(gamma, dtype=virtual_indexes.dtype)
+
+    numpy.lib._function_base_impl._get_gamma = _get_gamma
+
 
 def for_all_methods(name='method'):
     return pytest.mark.parametrize(name, _all_methods)
