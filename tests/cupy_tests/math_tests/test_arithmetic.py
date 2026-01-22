@@ -567,3 +567,67 @@ class TestBoolSubtract:
         y = testing.shaped_random(shape, xp, dtype=numpy.bool_)
         with pytest.raises(TypeError):
             xp.subtract(x, y)
+
+
+class TestRemainderForInf:
+
+    @testing.for_float_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_remainder_with_inf_scalar(self, xp, dtype):
+        # Test remainder when divisor is +ve or -ve inf (scalar case)
+        a = xp.array(1.0, dtype=dtype)
+        b_pos_inf = xp.array(xp.inf, dtype=dtype)
+        b_neg_inf = xp.array(-xp.inf, dtype=dtype)
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=RuntimeWarning)
+            result_pos_inf = xp.where(
+                xp.isinf(b_pos_inf), a, xp.remainder(a, b_pos_inf))
+            result_neg_inf = xp.where(
+                xp.isinf(b_neg_inf), a, xp.remainder(a, b_neg_inf))
+
+        return result_pos_inf, result_neg_inf
+
+    @testing.for_float_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_remainder_with_inf_array(self, xp, dtype):
+        # when divisor is +ve or -ve inf (array case)
+        a = xp.array([1.0, -2.0, 3.0], dtype=dtype)
+        b_pos_inf = xp.array([xp.inf, xp.inf, xp.inf], dtype=dtype)
+        b_neg_inf = xp.array([-xp.inf, -xp.inf, -xp.inf], dtype=dtype)
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=RuntimeWarning)
+            result_pos_inf = xp.where(
+                xp.isinf(b_pos_inf), a, xp.remainder(a, b_pos_inf))
+            result_neg_inf = xp.where(
+                xp.isinf(b_neg_inf), a, xp.remainder(a, b_neg_inf))
+
+        return result_pos_inf, result_neg_inf
+
+    @testing.for_float_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_remainder_with_nan(self, xp, dtype):
+        a = xp.array([1.0, -2.0, 3.0], dtype=dtype)
+        b = xp.array([xp.nan, 2.0, xp.nan], dtype=dtype)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=RuntimeWarning)
+            return xp.remainder(a, b)
+
+    @testing.for_float_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_remainder_with_zero_divisor(self, xp, dtype):
+        a = xp.array([1.0, -2.0, 3.0], dtype=dtype)
+        b = xp.array([0.0, 0.0, 0.0], dtype=dtype)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=RuntimeWarning)
+            return xp.remainder(a, b)
+
+    @testing.for_float_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_remainder_both_inf(self, xp, dtype):
+        a = xp.array([xp.inf, -xp.inf, xp.inf], dtype=dtype)
+        b = xp.array([xp.inf, xp.inf, -xp.inf], dtype=dtype)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=RuntimeWarning)
+            return xp.remainder(a, b)
