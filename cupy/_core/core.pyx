@@ -78,6 +78,11 @@ cdef tuple _HANDLED_TYPES
 
 cdef object _null_context = contextlib.nullcontext()
 
+# Supported index types for mdspan - initialized at runtime to avoid
+# circular import
+cdef tuple _MDSPAN_SUPPORTED_INDEX_TYPES = None
+cdef dict _MDSPAN_INDEX_TYPE_TO_ITEMSIZE = None
+
 
 # If rop of cupy.ndarray is called, cupy's op is the last chance.
 # If op of cupy.ndarray is called and the `other` is cupy.ndarray, too,
@@ -2278,17 +2283,23 @@ cdef inline _carray.mdspan _mdspan_from_ndarray(
     # Creates mdspan from ndarray.
     # Note that this function cannot be defined in _carray.pxd because that
     # would cause cyclic cimport dependencies.
+    global _MDSPAN_SUPPORTED_INDEX_TYPES, _MDSPAN_INDEX_TYPE_TO_ITEMSIZE
+
+    # Initialize cached constants on first use (avoid circular import)
+    if _MDSPAN_SUPPORTED_INDEX_TYPES is None:
+        _MDSPAN_SUPPORTED_INDEX_TYPES = (cupy.int32, cupy.int64)
+        _MDSPAN_INDEX_TYPE_TO_ITEMSIZE = {cupy.int32: 4, cupy.int64: 8}
+
     cdef _carray.mdspan carr = _carray.mdspan.__new__(_carray.mdspan)
     cdef int index_itemsize
-    if index_type == cupy.int32:
-        index_itemsize = 4
-    elif index_type == cupy.int64:
-        index_itemsize = 8
-    else:
+
+    # Use dict lookup with membership check for validation
+    if index_type not in _MDSPAN_SUPPORTED_INDEX_TYPES:
         raise ValueError(
             f"Unsupported index_type: {index_type}. "
             "Must be cupy.int32 or cupy.int64."
         )
+    index_itemsize = _MDSPAN_INDEX_TYPE_TO_ITEMSIZE[index_type]
     carr.init(
         <void*>arr.data.ptr, arr.itemsize, arr._shape, arr._strides,
         index_itemsize, allow_unsafe
