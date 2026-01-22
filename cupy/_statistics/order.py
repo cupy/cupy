@@ -94,34 +94,58 @@ def amax(a, axis=None, out=None, keepdims=False):
     return a.max(axis=axis, out=out, keepdims=keepdims)
 
 
-def nanmin(a, axis=None, out=None, keepdims=False):
+def nanmin(a, axis=None, out=None, keepdims=False, initial=None, where=True):
     """Returns the minimum of an array along an axis ignoring NaN.
 
     When there is a slice whose elements are all NaN, a :class:`RuntimeWarning`
     is raised and NaN is returned.
 
     Args:
-        a (cupy.ndarray): Array to take the minimum.
-        axis (int): Along which axis to take the minimum. The flattened array
-            is used by default.
-        out (cupy.ndarray): Output array.
-        keepdims (bool): If ``True``, the axis is remained as an axis of
-            size one.
+        a (cupy.ndarray):
+            Array to take the minimum.
+        axis (int or tuple of ints, optional):
+            Axis or axes along which to compute the minimum.
+        out (cupy.ndarray, optional):
+            Output array to store results.
+        keepdims (bool, optional):
+            If ``True``, retains reduced dimensions.
+        initial (scalar, optional):
+            Initial value for the minimum.
+        where (array-like of bool, optional):
+            A condition array that specifies which elements to consider.
 
     Returns:
-        cupy.ndarray: The minimum of ``a``, along the axis if specified.
+        cupy.ndarray: The minimum of ``a``, along the specified axis.
 
     .. warning::
-
         This function may synchronize the device.
 
     .. seealso:: :func:`numpy.nanmin`
-
     """
-    # TODO(niboshi): Avoid synchronization.
+
+    # Convert where to a CuPy array if it's not already
+    where = cupy.asarray(where, dtype=bool)
+
+    # Apply 'where' mask: elements where 'where' is False are ignored
+    if where.shape != a.shape:
+        raise ValueError("The shape of 'where' must match the shape of 'a'.")
+
+    a = cupy.where(where, a, cupy.nan)
+
+    # Compute minimum ignoring NaNs
     res = _core.nanmin(a, axis=axis, out=out, keepdims=keepdims)
-    if content.isnan(res).any():  # synchronize!
+
+    # Handle 'initial' parameter
+    if initial is not None:
+        if out is None:
+            res = cupy.minimum(res, initial)
+        else:
+            cupy.minimum(res, initial, out=out)
+
+    # Check for all-NaN slices and raise a warning
+    if cupy.isnan(res).any():  # This causes synchronization
         warnings.warn('All-NaN slice encountered', RuntimeWarning)
+
     return res
 
 
