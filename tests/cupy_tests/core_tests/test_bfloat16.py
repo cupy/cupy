@@ -53,6 +53,7 @@ def test_sinc(xp):
         res = res.astype(BF16)
     return res
 
+
 @testing.numpy_cupy_allclose(rtol=TOL, atol=TOL)
 @numpy.errstate(over='ignore')
 def test_i0(xp):

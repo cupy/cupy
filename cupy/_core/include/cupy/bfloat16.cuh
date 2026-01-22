@@ -40,7 +40,7 @@ public:
   // From float16: using template so it's ok if float16 is undefined
   template<typename T, 
     typename = typename cupy::type_traits::enable_if<
-      cuda::std::is_same_v<T, float16>>::type>
+    cupy::type_traits::is_same<T, float16>::value>::type>
   explicit __device__ bfloat16(T v) : data_(float(v)) {}
 
   // Generally allow assignments if explicit conversion is available
@@ -52,6 +52,15 @@ public:
   __device__ bfloat16& operator=(const T &rhs) {
     *this = static_cast<bfloat16>(rhs);
     return *this;
+  }
+
+  // Bit conversions
+  __device__ unsigned short to_bits() const {
+    return __bfloat16_as_ushort(data_);
+  }
+
+  __device__ static bfloat16 from_bits(unsigned short v) {
+    return bfloat16(__ushort_as_bfloat16(v));
   }
 
   // Special value checking methods
@@ -70,9 +79,6 @@ public:
   __device__ int isfinite() const {
     return !__hisnan(data_) && !__hisinf(data_);
   }
-
-  friend __device__ int signbit(bfloat16 x);
-  friend __device__ bfloat16 nextafter(bfloat16 x, bfloat16 y);
 };
 
 // Min/max functions
@@ -111,7 +117,7 @@ __device__ int isfinite(bfloat16 x) {
 
 // TODO(seberg): There should be an easy direct definition?
 __device__ int signbit(bfloat16 x) {
-  return (__bfloat16_as_ushort(x.data_) & 0x8000u) != 0;
+  return (x.to_bits() & 0x8000u) != 0;
 }
 
 __device__ bfloat16 _floor_divide(bfloat16 x, bfloat16 y) {
@@ -121,8 +127,8 @@ __device__ bfloat16 _floor_divide(bfloat16 x, bfloat16 y) {
 }
 
 __device__ bfloat16 nextafter(bfloat16 x, bfloat16 y) {
-  unsigned short x_raw = __bfloat16_as_ushort(x.data_);
-  unsigned short y_raw = __bfloat16_as_ushort(y.data_);
+  unsigned short x_raw = x.to_bits();
+  unsigned short y_raw = y.to_bits();
   unsigned short ret_raw;
   
   if (x.isnan() || y.isnan()) {

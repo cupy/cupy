@@ -153,7 +153,7 @@ fmod = _core.create_ufunc(
 
 modf = _core.create_ufunc(
     'cupy_modf',
-    ('e->ee',*bf16_loop(1, 2), 'f->ff',
+    ('e->ee', *bf16_loop(1, 2), 'f->ff',
      ('d->dd', 'double iptr; out0 = modf(in0, &iptr); out1 = iptr')),
     'float iptr; out0 = modff(in0, &iptr); out1 = iptr',
     doc='''Extracts the fractional and integral parts of an array elementwise.

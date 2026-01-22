@@ -72,7 +72,7 @@ public:
   // To float16: using template so it's ok if float16 is undefined
   template<typename T, 
     typename = typename cupy::type_traits::enable_if<
-      cuda::std::is_same_v<T, bfloat16>>::type>
+      cupy::type_traits::is_same<T, bfloat16>::value>::type>
   explicit __device__ float16(T v) : data_(float(v)) {}
 
   // Generally allow assignments if explicit conversion is available
@@ -87,6 +87,15 @@ public:
   }
 
   static const unsigned short nan = 0x7e00u;
+
+  // Bit conversions. TODO(seberg): Some of raw_ code could use this instead.
+  __device__ unsigned short to_bits() const {
+    return __half_as_ushort(data_);
+  }
+
+  __device__ static float16 from_bits(unsigned short v) {
+    return float16(__ushort_as_half(v));
+  }
 
   __device__ int iszero() const {
     return (__half_raw(data_).x & 0x7fffu) == 0;

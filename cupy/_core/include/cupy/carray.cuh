@@ -22,6 +22,11 @@ namespace cupy {
     struct enable_if {};
     template<class T>
     struct enable_if<true, T> { typedef T type; };
+
+    template<typename T, typename U>
+    struct is_same { static const bool value = false; };
+    template<typename T>
+    struct is_same<T, T> { static const bool value = true; };
   }
 }
 

@@ -1,7 +1,6 @@
 #pragma once
 
 #include "cupy/carray.cuh"
-#include "cupy/cuda_workaround.h"
 
 #if defined(__CUDA_ARCH__) && (__CUDA_ARCH__ < 600)
 
@@ -21,10 +20,11 @@ __device__ double atomicAdd(double *address, double val)
 #endif // #if defined(__CUDA_ARCH__) && (__CUDA_ARCH__ < 600)
 
 
-// Templated to defer in case float16 is not fully defined.
+// Templated to defer in case float16/bfloat16 are not fully defined.
 template<typename T, 
 typename = typename cupy::type_traits::enable_if<
-    cuda::std::is_same_v<T, float16>>::type>
+    cupy::type_traits::is_same<T, float16>::value ||
+    cupy::type_traits::is_same<T, bfloat16>::value>::type>
 __device__ T atomicAdd(T* address, T val) {
   unsigned int *aligned = (unsigned int*)((size_t)address - ((size_t)address & 2));
   unsigned int old = *aligned;
@@ -33,19 +33,16 @@ __device__ T atomicAdd(T* address, T val) {
   do {
     assumed = old;
     old_as_us = (unsigned short)((size_t)address & 2 ? old >> 16 : old & 0xffff);
-#if __CUDACC_VER_MAJOR__ >= 9
-    half sum = __float2half_rn(__half2float(__ushort_as_half(old_as_us)) + float(val));
-    unsigned short sum_as_us = __half_as_ushort(sum);
-#else
-    unsigned short sum_as_us = __float2half_rn(__half2float(old_as_us) + float(val));
-#endif
+
+    T sum = T::from_bits(old_as_us) + val;
+    unsigned short sum_as_us = sum.to_bits();
+
     unsigned int sum_as_ui = (size_t)address & 2 ? (sum_as_us << 16) | (old & 0xffff)
                                                  : (old & 0xffff0000) | sum_as_us;
     old = atomicCAS(aligned, assumed, sum_as_ui);
-  } while(assumed != old);
-  __half_raw raw;
-  raw.x = old_as_us;
-  return float16(raw);
+  } while (assumed != old);
+
+  return T::from_bits(old_as_us);
 };
 
 
