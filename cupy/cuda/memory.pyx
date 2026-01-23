@@ -2,7 +2,7 @@
 cimport cpython  # NOQA
 cimport cython  # NOQA
 
-from cython.operator cimport dereference as deref, preincrement
+from cython.operator cimport dereference as deref, postincrement
 
 import atexit
 import gc
@@ -11,12 +11,13 @@ import threading
 import warnings
 import weakref
 
-from libc.stdint cimport intptr_t
+from libc.stdint cimport intptr_t, uintptr_t
 from libc.stdint cimport UINT64_MAX
 from libc.stdlib cimport malloc as c_malloc
 from libc.stdlib cimport free as c_free
 from libcpp.atomic cimport atomic as std_atomic
-from libcpp.map cimport map as std_map
+from libcpp.set cimport set as std_set
+from libcpp.pair cimport pair as std_pair
 from libcpp.mutex cimport mutex as cpp_mutex
 
 from cupy.cuda cimport device
@@ -354,6 +355,7 @@ cdef class SystemMemory(BaseMemory):
 
 
 @cython.final
+@cython.no_gc  # reference cycle would be a bug
 cdef class _Chunk:
 
     """A chunk points to a device memory.
@@ -450,7 +452,8 @@ cdef class _Chunk:
     # since if it happens we leak the memory.
     # def __del__(self):
     #    if self.arena is not None:
-    #         print("Chunk deleted with active arena, bug?", chunk)
+    #         print("Chunk deleted with active arena, bug?", self)
+
 
 cdef class MemoryPointer:
     """Pointer to a point on a device memory.
@@ -1036,24 +1039,28 @@ cpdef inline size_t _round_size(size_t size):
     size = (size + ALLOCATION_UNIT_SIZE - 1) // ALLOCATION_UNIT_SIZE
     return size * ALLOCATION_UNIT_SIZE
 
-cpdef size_t _bin_index_from_size(size_t size):
-    """Returns appropriate bins index from the memory size."""
-    # avoid 0 div checking
-    return (size - 1) // ALLOCATION_UNIT_SIZE
+
+# The std::set contains the size, _Chunk pair (as uintptr_t)
+# The uintptr_t means we can compare well defined (including to 0)
+ctypedef std_pair[size_t, uintptr_t] index_type
 
 
 @cython.final
 cdef class _Arena:
     # Arena class managing all free chunks belonging to a single stream ident.
     # A few notes on safety:
-    # * All access to `index` requires a lock, the callers must ensure this
-    # * `_add_pending_free_atomic` is atomic and safe without a lock, though.
-    # * Functions (potentially) modifying `index` must hold an exclusive lock.
-    # * This function needs no `__dealloc__` because its lifetime is tied to
-    #   the `_Chunks`.  Thus a non-empty arena cannot possibly be deallocated.
+    #   * All access to `index` requires a lock, the callers must ensure this.
+    #     these means almost all methods must be called with a lock held.
+    #   * `_add_pending_free_atomic` is atomic and safe without a lock, though.
+    #   * No custom `__dealloc__`: the lifetime is tied to the `_Chunks`.
+    #     Only an empty Arena can be free'd (except maybe at shutdown).
+    #
+    # The index owns all chunks, we have one entry per chunk (rather than
+    # buckets) for simplicity. Making it a `map` to buckets may be useful
+    # including possibly to try and achieve less locking.
     cdef:
         list _pending_free  # "lock free" list to stage chunks
-        std_map[size_t, cpython.PyObject *] index  # bin_size -> set()
+        std_set[index_type] index  # bin_size, _Chunk
         cdef object __weakref__
 
     def __cinit__(self):
@@ -1073,7 +1080,7 @@ cdef class _Arena:
 
         This also attempts to merge chunks that have been split up.
         """
-        cdef size_t i
+        cdef Py_ssize_t i
         cdef _Chunk chunk
 
         for i in range(len(self._pending_free)):
@@ -1092,56 +1099,37 @@ cdef class _Arena:
         return chunk
 
     cdef insert_chunk(self, _Chunk chunk, bint merge=True):
-        cdef std_map[size_t, cpython.PyObject *].iterator it
-        cdef bin_index
         if merge:
             chunk = self.try_merge_chunk(chunk)
 
-        bin_index = _bin_index_from_size(chunk.size)
-        it = self.index.find(bin_index)
-        if it != self.index.end():
-            (<set>deref(it).second).add(chunk)
-        else:
-            new_entry = {chunk}
-            cpython.Py_INCREF(new_entry)
-            self.index[bin_index] = <cpython.PyObject *>new_entry
+        self.index.insert(index_type(chunk.size, <uintptr_t><void *>chunk))
+        cpython.Py_INCREF(chunk)  # index holds a reference now
 
     cdef size_t free_all(self) except -1:
         """Frees all chunks (that can be free'd, split ones cannot).
         """
         cdef _Chunk chunk
         cdef size_t bytes_freed = 0
-        cdef set current_set
-        cdef set new_set = set()
 
         self._commit_pending_free()
 
         it = self.index.begin()
         while it != self.index.end():
+            chunk = <_Chunk><void *>deref(it).second
+            if chunk.next is not None or chunk.prev is not None:
+                # Cannot free this chunk, continue to next.
+                postincrement(it)
+                continue
+
+            # Otherwise, advance iterator and remove chunk
+            self.index.erase(postincrement(it))
+            cpython.Py_DECREF(chunk)
+
             # Freeing means removing the chunks from this arena. Because
             # chunks hold on the arena, we need to break that cycle.
-            current_set = <set>deref(it).second
-            cpython.Py_INCREF(new_set)
-            cpython.Py_DECREF(current_set)
-            deref(it).second = <cpython.PyObject *>new_set
-
-            for chunk in current_set:
-                if chunk.next is None and chunk.prev is None:
-                    bytes_freed += chunk.size
-                    chunk.arena = None  # Critical to remove from arena.
-                    del chunk
-                else:
-                    (<set>deref(it).second).add(chunk)
-
-            new_set = current_set  # keep re-using the sets
-            new_set.clear()
-
-            # Compact the index (if it became empty)
-            if not <set>deref(it).second:
-                cpython.Py_DECREF(<object>deref(it).second)
-                it = self.index.erase(it)
-            else:
-                preincrement(it)
+            chunk.arena = None
+            bytes_freed += chunk.size
+            del chunk
 
         return bytes_freed
 
@@ -1154,46 +1142,29 @@ cdef class _Arena:
             bool: ``True`` if the chunk can successfully be removed from
             the free list. ``False`` if the chunk is not free.
         """
-        cdef bin_index = _bin_index_from_size(chunk.size)
-        cdef std_map[size_t, cpython.PyObject *].iterator it
+        cdef std_set[index_type].iterator it
 
-        it = self.index.find(bin_index)
+        it = self.index.find(index_type(chunk.size, <uintptr_t><void *>chunk))
         if it == self.index.end():
             return False  # chunk seems not to be free
 
-        if chunk not in <set>deref(it).second:
-            return False
-
-        (<set>deref(it).second).remove(chunk)
+        chunk = <_Chunk><void *>deref(it).second
+        self.index.erase(it)  # Remove and decref
+        cpython.Py_DECREF(chunk)
         return True
 
     cdef _Chunk get_chunk(self, size_t size):
         """Get a free chunk of at least the given size from the arena.
         """
-        cdef std_map[size_t, cpython.PyObject *].iterator it
+        cdef std_set[index_type].iterator it
         cdef _Chunk chunk = None
-        cdef size_t empty_seen = 0
-        cdef size_t bin_index = _bin_index_from_size(size)
 
-        it = self.index.lower_bound(bin_index)
-        while it != self.index.end():
-            if <set>deref(it).second:
-                chunk = (<set>deref(it).second).pop()
-                break
-
-            # Avoid too many empty buckets, start pruning every 4 one.
-            # TODO(seberg): What is a good heuristic here? The old code kept a
-            # vector of which bins are empty. Could also add that info to the
-            # map. Aggressively cleaning means re-creating the bucket on free.
-            empty_seen += 1
-            if empty_seen % 4 != 3:
-                preincrement(it)
-            else:
-                # Prune this to avoid index growing indefinitely.
-                cpython.Py_DECREF(<object>deref(it).second)
-                it = self.index.erase(it)
-
-        if chunk is None:
+        it = self.index.lower_bound(index_type(size, 0))
+        if it != self.index.end():
+            chunk = <_Chunk><void *>deref(it).second
+            self.index.erase(it)  # Remove and decref
+            cpython.Py_DECREF(chunk)
+        else:
             return None
 
         remaining = chunk.split(size)
@@ -1201,19 +1172,23 @@ cdef class _Arena:
             self.insert_chunk(remaining, merge=False)
         return chunk
 
+    cdef _get_size(self):
+        return self.index.size()
+
     cdef _index_to_python(self):
         # For debug purpose, expose index into Python.
-        cdef std_map[size_t, cpython.PyObject *].iterator it
-        cdef dict result = {}
+        cdef std_set[index_type].iterator it
+        cdef list result = []
 
         self._commit_pending_free()
 
         it = self.index.begin()
         while it != self.index.end():
-            result[deref(it).first] = <object>deref(it).second
-            preincrement(it)
+            result.append((deref(it).first, <object><void *>deref(it).second))
+            postincrement(it)
 
         return result
+
 
 # cpdef because uint-tested
 # module-level function can be inlined
@@ -1255,10 +1230,8 @@ cdef class SingleDeviceMemoryPool:
         # WeakValueDict). They must only be taken via `_arena(ident)` or the
         # `_Chunk` attribute that keeps the arena alive.
         # NOTE: If you work with any arena you must hold the `_arena_mutex`.
-        # Some operations require an exclusive lock and have a (dummy)
-        # `exclusive_lock=` parameter.
-        # The only always safe operation is `add_pending_free_atomic` (note
-        # the atomic in the name).
+        # The only safe operation is `add_pending_free_atomic` (note the
+        # atomic # in the name).
         dict _arenas
         # NOTE: Never use `.lock()` outside a `with nogil:` statement as it
         # may deadlock (GIL may be unlocked and another thread also locks).
@@ -1474,8 +1447,7 @@ cdef class SingleDeviceMemoryPool:
                 arena = ref()
                 if arena is None:
                     continue
-                for v in arena._index_to_python().values():
-                    n += len(v)
+                n += arena._get_size()
         finally:
             self._arena_mutex.unlock()
 
@@ -1493,7 +1465,7 @@ cdef class SingleDeviceMemoryPool:
 
     cdef bint _try_block_total_bytes(self, size_t size) except -1:
         """Try to block off `size` bytes from the total pool size.
-        Returns True if successfull (caller should try to allocate that may
+        Returns True if successfull (caller should try to allocate that many
         bytes) and False if allocation would go above the threshold.
         May raise `OutOfMemoryError` if `size` is too large for the pool.
         """
@@ -1574,6 +1546,7 @@ cdef class SingleDeviceMemoryPool:
             except CUDARuntimeError as e:
                 if e.status != runtime.errorMemoryAllocation:
                     raise
+                gc.collect()
                 gc.collect()
                 self.free_all_blocks(None)
                 try:
