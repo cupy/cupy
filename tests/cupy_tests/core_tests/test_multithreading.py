@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 import concurrent.futures
+import gc
+import random
 import threading
 
 import pytest
 
 import cupy
+from cupy.cuda.memory import alloc
 
 
 pytestmark = pytest.mark.thread_unsafe(
@@ -102,3 +105,45 @@ def test_ufunc_kernel_cache():
 
     run_threaded(func, outer_iterations=20,
                  pass_barrier=True, prepare_args=prepare_args)
+
+
+@pytest.mark.slow
+def test_default_memory_pool_threaded(iterations=500):
+    # This test is designed to stress-test the memory pool, we will
+    # create various usage patterns and mix them in a threaded way.
+    # To seriously stress-test it make the iterations very large and watch
+    # the long-term behavior.
+
+    def random_allocation():
+        # choose a random allocation size, hopefully this will (occasionally)
+        # lead to allocations being split.
+        size = random.randint(1, 200_000)
+        return alloc(size)
+
+    def make_allocations():
+        allocations = []
+        for i in range(random.randint(1, 50)):
+            allocations.append(random_allocation())
+
+        # And now let's make a few that can't be cleand up easily.
+        first = [None, random_allocation()]
+        curr = first
+        for i in range(2, 50):
+            node = [curr, random_allocation()]
+            curr = node
+
+        first[0] = curr  # close the circle
+
+        return allocations
+
+    def func():
+        for i in range(iterations):  # increase to test for longer
+            _ = make_allocations()
+            # once in a while, we either collect or free all blocks.
+            if i % 10 == 0:
+                gc.collect()
+            elif i % 10 == 5:
+                cupy.get_default_memory_pool().free_all_blocks()
+            _ = make_allocations()
+
+    run_threaded(func)
