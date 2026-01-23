@@ -18,5 +18,5 @@ env
 echo "======================================================="
 
 "$ACTIONS/build.sh"
-"$ACTIONS/unittest.sh" "not slow and not multi_gpu" cupy_tests/core_tests/test_bfloat16.py
+"$ACTIONS/unittest.sh" "not slow and not multi_gpu" cupy_tests/core_tests/test_bfloat16.py cupyx_tests/scipy_tests/sparse_tests/test_csc.py
 "$ACTIONS/cleanup.sh"
