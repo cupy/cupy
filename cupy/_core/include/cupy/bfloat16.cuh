@@ -14,7 +14,6 @@
 #endif
 
 
-// Wrapper class that inherits from __nv_bfloat16 to get all operators
 class bfloat16 {
 private: 
   __nv_bfloat16 data_;
@@ -112,7 +111,6 @@ __device__ int isfinite(bfloat16 x) {
   return x.isfinite();
 }
 
-// TODO(seberg): There should be an easy direct definition?
 __device__ int signbit(bfloat16 x) {
   return (x.to_bits() & 0x8000u) != 0;
 }

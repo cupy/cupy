@@ -550,7 +550,7 @@ cpdef _ndarray_base tensordot_core(
     cdef _ndarray_base copy_to_out = None
     cdef dtype = a.dtype
     cdef int compute_capability = int(device.get_compute_capability())
-    cdef int cuda_dtype
+    cdef int c_cuda_dtype
 
     if dtype != b.dtype:
         dtype = numpy.promote_types(dtype, b.dtype)
