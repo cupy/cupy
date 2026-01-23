@@ -108,7 +108,10 @@ def test_ufunc_kernel_cache():
 
 
 @pytest.mark.slow
-def test_default_memory_pool_threaded(iterations=500):
+# NOTE: With clean=False, this test can OOM, since the cycles may not
+# be cleaned up sufficiently in the `gc.collect()` we do on OOM.
+@pytest.mark.parametrize("clean", [True, False])
+def test_default_memory_pool_threaded(clean, iterations=500):
     # This test is designed to stress-test the memory pool, we will
     # create various usage patterns and mix them in a threaded way.
     # To seriously stress-test it make the iterations very large and watch
@@ -117,7 +120,7 @@ def test_default_memory_pool_threaded(iterations=500):
     def random_allocation():
         # choose a random allocation size, hopefully this will (occasionally)
         # lead to allocations being split.
-        size = random.randint(1, 200_000)
+        size = random.randint(1, 50_000)
         return alloc(size)
 
     def make_allocations():
@@ -139,11 +142,14 @@ def test_default_memory_pool_threaded(iterations=500):
     def func():
         for i in range(iterations):  # increase to test for longer
             _ = make_allocations()
-            # once in a while, we either collect or free all blocks.
-            if i % 10 == 0:
-                gc.collect()
-            elif i % 10 == 5:
-                cupy.get_default_memory_pool().free_all_blocks()
+            # once in a while, we either collect or free all blocks
+            # to stress those paths more. But hitting the high-water mark
+            # with clean=False is also interesting.
+            if clean:
+                if i % 10 == 0:
+                    gc.collect()
+                elif i % 10 == 5:
+                    cupy.get_default_memory_pool().free_all_blocks()
             _ = make_allocations()
 
     run_threaded(func)
