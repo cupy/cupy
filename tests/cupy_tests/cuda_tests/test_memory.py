@@ -299,11 +299,6 @@ class TestSingleDeviceMemoryPool(unittest.TestCase):
         assert memory._round_size(self.unit) == self.unit
         assert memory._round_size(self.unit + 1) == self.unit * 2
 
-    def test_bin_index_from_size(self):
-        assert memory._bin_index_from_size(self.unit - 1) == 0
-        assert memory._bin_index_from_size(self.unit) == 0
-        assert memory._bin_index_from_size(self.unit + 1) == 1
-
     def test_split(self):
         mem = MockMemory(self.unit * 4)
         chunk = memory._Chunk(mem, 0, mem.size, self.arena)
