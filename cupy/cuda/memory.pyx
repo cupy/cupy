@@ -1424,7 +1424,7 @@ cdef class SingleDeviceMemoryPool:
             finally:
                 self._arena_mutex.unlock()
         else:
-            chunk.arena.add_pending_free_atomic(self)
+            chunk.arena.add_pending_free_atomic(chunk)
 
     cpdef free_all_blocks(self, stream=None):
         """Free all **non-split** blocks for one or all arenas.
