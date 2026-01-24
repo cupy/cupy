@@ -52,7 +52,7 @@ cdef class CNumpyArray(CPointer):
 
 cdef inline CPointer _pointer(x):
     if x is None:
-        return CPointer()
+        return CIntptr(0)
     if isinstance(x, _ndarray_base):
         return (<_ndarray_base>x).get_pointer()
     if isinstance(x, _carray.Indexer):
