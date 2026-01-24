@@ -147,7 +147,7 @@ _square_kernel = cupy.ElementwiseKernel(
     }
 
     constexpr T period = static_cast<T>(2.0 * M_PI);
-    T tmod { fmod( t, period ) }; 
+    T tmod { fmod( t, period ) };
     if(tmod < 0){
       tmod += period;
     }
