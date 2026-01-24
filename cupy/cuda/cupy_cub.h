@@ -27,13 +27,11 @@
 
 void cub_device_reduce(void*, size_t&, void*, void*, int, cudaStream_t, int, int);
 void cub_device_segmented_reduce(void*, size_t&, void*, void*, int, int, cudaStream_t, int, int);
-void cub_device_spmv(void*, size_t&, void*, void*, void*, void*, void*, int, int, int, cudaStream_t, int);
 void cub_device_scan(void*, size_t&, void*, void*, int, cudaStream_t, int, int);
 void cub_device_histogram_range(void*, size_t&, void*, void*, int, void*, size_t, cudaStream_t, int);
 void cub_device_histogram_even(void*, size_t&, void*, void*, int, int, int, size_t, cudaStream_t, int);
 size_t cub_device_reduce_get_workspace_size(void*, void*, int, cudaStream_t, int, int);
 size_t cub_device_segmented_reduce_get_workspace_size(void*, void*, int, int, cudaStream_t, int, int);
-size_t cub_device_spmv_get_workspace_size(void*, void*, void*, void*, void*, int, int, int, cudaStream_t, int);
 size_t cub_device_scan_get_workspace_size(void*, void*, int, cudaStream_t, int, int);
 size_t cub_device_histogram_range_get_workspace_size(void*, void*, int, void*, size_t, cudaStream_t, int);
 size_t cub_device_histogram_even_get_workspace_size(void*, void*, int, int, int, size_t, cudaStream_t, int);
@@ -44,6 +42,12 @@ __device__ long long atomicAdd(long long *address, long long val) {
     return atomicAdd(reinterpret_cast<unsigned long long*>(address),
                      static_cast<unsigned long long>(val));
 }
+#if __CUDA_ARCH__ >= 600
+__device__ long long atomicAdd_block(long long *address, long long val) {
+    return atomicAdd_block(reinterpret_cast<unsigned long long*>(address),
+                           static_cast<unsigned long long>(val));
+}
+#endif // __CUDA_ARCH__ >= 600
 #endif // __CUDA_ARCH__
 
 #if (defined(_MSC_VER) && (__CUDACC_VER_MAJOR__ == 11 && __CUDACC_VER_MINOR__ == 2))
@@ -60,9 +64,6 @@ void cub_device_reduce(...) {
 void cub_device_segmented_reduce(...) {
 }
 
-void cub_device_spmv(...) {
-}
-
 void cub_device_scan(...) {
 }
 
@@ -77,10 +78,6 @@ size_t cub_device_reduce_get_workspace_size(...) {
 }
 
 size_t cub_device_segmented_reduce_get_workspace_size(...) {
-    return 0;
-}
-
-size_t cub_device_spmv_get_workspace_size(...) {
     return 0;
 }
 

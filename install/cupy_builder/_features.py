@@ -431,7 +431,8 @@ def get_features(ctx: Context) -> dict[str, Feature]:
 
 
 class CUDA_cuda(Feature):
-    minimum_cuda_version = 11020
+    _minimum_cuda_version = 12000
+    _minimum_cuda_version_str = "12.0"
 
     def __init__(self, ctx: Context):
         super().__init__(ctx)
@@ -466,16 +467,17 @@ class CUDA_cuda(Feature):
               printf("%d", CUDA_VERSION);
               return 0;
             }
-            ''', include_dirs=settings['include_dirs'])  # type: ignore[no-untyped-call] # NOQA
+            ''', include_dirs=settings['include_dirs'],
+            extra_compile_args=settings['extra_compile_args'])  # type: ignore[no-untyped-call] # NOQA
         except Exception as e:
             utils.print_warning('Cannot check CUDA version', str(e))
             return False
 
         self._version = int(out)
 
-        if self._version < self.minimum_cuda_version:
+        if self._version < self._minimum_cuda_version:
             utils.print_warning(
-                'CUDA version is too old: %d' % self._version,
-                'CUDA 11.2 or newer is required')
+                f'CUDA version is too old: {self._version}',
+                f'CUDA {self._minimum_cuda_version_str} or newer is required')
             return False
         return True
