@@ -352,9 +352,10 @@ cdef class _AbstractReductionKernel:
             index_type = ('IndexT', 'int32')
         type_map = _kernel._TypeMap(type_map._pairs + (index_type,))
 
-        in_args = [x if isinstance(x, _ndarray_base) else
-                   _scalar.CScalar.from_numpy_scalar_with_dtype(x, t)
-                   for x, t in zip(in_args, in_types)]
+        for x, t in zip(in_args, in_types):
+            # If necessary, cast scalars here (deals with Python ints also)
+            if type(x) is _scalar.CScalar:
+                (<_scalar.CScalar>x).apply_dtype(t)
 
         optimize_context = _optimize_config.get_current_context()
         key = ()
@@ -525,7 +526,7 @@ cdef class _AbstractReductionKernel:
             warnings.warn(
                 'No codes are cached because compilation is deferred until '
                 'the first function call or CUB is enabled.')
-        return dict([(k, v) for k, v in self._cached_codes.items()])
+        return dict(self._cached_codes.items())
 
     @property
     def cached_code(self):
@@ -615,10 +616,8 @@ cdef class _SimpleReductionKernel(_AbstractReductionKernel):
             self, list in_args, list out_args, dtype):
         cdef _kernel._Op op
 
-        # XXX: weaks
-        weaks = None
         op = self._ops.guess_routine(
-            self.name, self._routine_cache, in_args, weaks, dtype, self._ops)
+            self.name, self._routine_cache, in_args, dtype, self._ops)
         map_expr, reduce_expr, post_map_expr, reduce_type = op.routine
 
         if reduce_type is None:
@@ -813,10 +812,11 @@ cdef class ReductionKernel(_AbstractReductionKernel):
                                  "a positional and keyword argument")
             out_args = [out]
 
-        # XXX: needs to handle weak scalars from _preprocess_args?
+        # _preprocess args allows weak NEP 50 scalars, this isn't needed for
+        # reductions (but also does not matter).
         dev_id = device.get_device_id()
-        in_args, _ = _preprocess_args(dev_id, args[:self.nin], False)
-        out_args, _ = _preprocess_args(dev_id, out_args, False)
+        in_args = _preprocess_args(dev_id, args[:self.nin])
+        out_args = _preprocess_args(dev_id, out_args)
         in_args = _broadcast(in_args, self.in_params, False, broad_shape)
 
         return self._call(

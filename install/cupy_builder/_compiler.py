@@ -126,54 +126,6 @@ def _nvcc_gencode_options(cuda_version: int) -> list[str]:
                     ('compute_72', 'sm_72'),  # Jetson (Xavier)
                     ('compute_87', 'sm_87'),  # Jetson (Orin)
                 ]
-        elif cuda_version >= 11080:
-            arch_list = [('compute_35', 'sm_35'),
-                         ('compute_37', 'sm_37'),
-                         ('compute_50', 'sm_50'),
-                         ('compute_52', 'sm_52'),
-                         ('compute_60', 'sm_60'),
-                         ('compute_61', 'sm_61'),
-                         ('compute_70', 'sm_70'),
-                         ('compute_75', 'sm_75'),
-                         ('compute_80', 'sm_80'),
-                         ('compute_86', 'sm_86'),
-                         ('compute_89', 'sm_89'),
-                         ('compute_90', 'sm_90'),
-                         'compute_90']
-            if aarch64:
-                # JetPack 5 (CUDA 11.4/11.8)
-                arch_list += [
-                    ('compute_72', 'sm_72'),  # Jetson (Xavier)
-                    ('compute_87', 'sm_87'),  # Jetson (Orin)
-                ]
-        elif cuda_version >= 11040:
-            arch_list = [('compute_35', 'sm_35'),
-                         ('compute_37', 'sm_37'),
-                         ('compute_50', 'sm_50'),
-                         ('compute_52', 'sm_52'),
-                         ('compute_60', 'sm_60'),
-                         ('compute_61', 'sm_61'),
-                         ('compute_70', 'sm_70'),
-                         ('compute_75', 'sm_75'),
-                         ('compute_80', 'sm_80'),
-                         ('compute_86', 'sm_86'),
-                         'compute_86']
-            if aarch64:
-                # JetPack 5 (CUDA 11.4/11.8)
-                arch_list += [
-                    ('compute_72', 'sm_72'),  # Jetson (Xavier)
-                    ('compute_87', 'sm_87'),  # Jetson (Orin)
-                ]
-        elif cuda_version >= 11020:
-            arch_list = ['compute_35',
-                         'compute_50',
-                         ('compute_60', 'sm_60'),
-                         ('compute_61', 'sm_61'),
-                         ('compute_70', 'sm_70'),
-                         ('compute_75', 'sm_75'),
-                         ('compute_80', 'sm_80'),
-                         ('compute_86', 'sm_86'),
-                         'compute_86']
         else:
             # This should not happen.
             assert False

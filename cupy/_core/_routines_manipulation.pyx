@@ -594,7 +594,7 @@ cpdef _ndarray_base concatenate_method(
         dtype = get_dtype(dtype)
 
     dev_id = device.get_device_id()
-    arrays = _preprocess_args(dev_id, tup, False)[0]
+    arrays = _preprocess_args(dev_id, tup)
 
     # Check if the input is not an empty sequence
     if len(arrays) == 0:
@@ -641,7 +641,7 @@ cpdef _ndarray_base concatenate_method(
                 have_same_types = have_same_types and (o.dtype == dtype)
             if not have_same_types:
                 dtype = functools.reduce(
-                    numpy.promote_types, set([a.dtype for a in arrays]))
+                    numpy.promote_types, {a.dtype for a in arrays})
     else:
         if dtype is not None:
             raise TypeError('concatenate() only takes `out` or `dtype` as an '
