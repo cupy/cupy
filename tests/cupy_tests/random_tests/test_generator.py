@@ -902,9 +902,9 @@ class TestChoiceReplaceFalse(RandomGeneratorTestCase):
             expected_shape = self.size
         if isinstance(self.a, numpy.ndarray):
             expected_dtype = 'float'
-            assert v.dtype == expected_dtype
         else:
-            assert v.dtype == numpy.dtype('l') or v.dtype == numpy.int64
+            expected_dtype = 'int64'
+        assert v.dtype == expected_dtype
         assert v.shape == expected_shape
 
     @_condition.repeat(3, 10)
