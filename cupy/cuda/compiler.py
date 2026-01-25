@@ -169,22 +169,15 @@ _tegra_archs = ('32', '53', '62', '72', '87')
 @_util.memoize()
 def _get_max_compute_capability():
     major, minor = _get_nvrtc_version()
-    if major < 11:
-        # CUDA 10.2
-        nvrtc_max_compute_capability = '75'
-    elif major == 11 and minor == 0:
-        # CUDA 11.0
-        nvrtc_max_compute_capability = '80'
-    elif major == 11 and minor < 8:
-        # CUDA 11.1 - 11.7
-        # Note: 87 is for Jetson Orin
-        nvrtc_max_compute_capability = '86'
-    elif (major == 11 and minor == 8) or (major == 12 and minor < 8):
-        # CUDA 11.8, 12.0 - 12.7
+    if (major == 12 and minor < 8):
+        # 12.0 - 12.7
         nvrtc_max_compute_capability = '90'
-    else:
-        # CUDA 12.8+
+    elif (major == 12 and minor == 8):
+        # CUDA 12.8
         nvrtc_max_compute_capability = '120'
+    else:
+        # CUDA 12.9, CUDA 13.0+
+        nvrtc_max_compute_capability = '121'
 
     return nvrtc_max_compute_capability
 

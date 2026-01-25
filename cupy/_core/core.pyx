@@ -127,7 +127,7 @@ cdef inline bint is_ump_supported(int device_id) except*:
 
 class ndarray(_ndarray_base):
     """
-    __init__(self, shape, dtype=float, memptr=None, strides=None, order='C')
+    __init__(shape, dtype=float, memptr=None, strides=None, order='C')
 
     Multi-dimensional array on a CUDA device.
 
@@ -2387,9 +2387,7 @@ cpdef tuple assemble_cupy_compiler_options(tuple options):
         global _bundled_include, _headers_from_wheel_available
         if _bundled_include == '':
             major, minor = nvrtc.getVersion()
-            if major == 11:
-                _bundled_include = 'cuda-11'
-            elif major == 12 and minor < 2:
+            if major == 12 and minor < 2:
                 # Use bundled header for CUDA 12.0 and 12.1 only.
                 _bundled_include = 'cuda-12'
             else:

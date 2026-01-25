@@ -1,16 +1,18 @@
-# distutils: language = c++
-import numpy
+from libc.stdint cimport intptr_t, uint64_t, int32_t, int64_t, uint32_t
+from libc.string cimport memcpy
 
-from libc.stdint cimport intptr_t, uint64_t, int32_t, int64_t
+import numpy
 
 import cupy
 from cupy import _core
 from cupy.cuda cimport stream
+from cupy.cuda.function cimport CPointer
 from cupy._core.core cimport _ndarray_base
 from cupy_backends.cuda.api import runtime
 
 _UINT32_MAX = 0xffffffff
 _UINT64_MAX = 0xffffffffffffffff
+
 
 cdef extern from 'cupy_distributions.cuh' nogil:
     cppclass rk_binomial_state:
@@ -1061,3 +1063,165 @@ cdef void _launch_dist(bit_generator, func, out, args) except*:
     cdef int generator = bit_generator.generator
     cdef bsize = bit_generator._state_size()
     _launch(func, generator, state, strm, bsize, out, args)
+
+
+cdef enum:
+    _FEISTEL_NUM_ROUNDS = 24
+
+
+cdef struct _FeistelBijection:
+    uint64_t __R_bits_
+    uint64_t __L_bits_
+    uint64_t __R_mask_
+    uint64_t __L_mask_
+    uint32_t[_FEISTEL_NUM_ROUNDS] __keys_
+
+
+cdef class _FeistelBijectionParam(CPointer):
+    cdef _FeistelBijection struct
+
+    def __init__(self):
+        self.ptr = &self.struct
+
+
+cdef object _feistel_bijection_with_cutoff_kernel = None
+
+
+cdef inline uint64_t get_cipher_bits(uint64_t m) nogil noexcept:
+    if (m <= 256):
+        return 8
+    cdef uint64_t i = 0
+    m -= 1
+    while m != 0:
+        i += 1
+        m >>= 1
+    return i
+
+
+cdef class FeistelBijection:
+    # This is a re-implementation of cuda::shuffle_iterator. We can't use it as
+    # is because it is stateful and needs to be initialized on the host, which
+    # would require AOT compilation in CuPy and add to the binary size. We
+    # should keep this in sync with libcudacxx:
+    # https://github.com/NVIDIA/cccl/blob/v3.2.0-rc2/libcudacxx/include/cuda/__random/feistel_bijection.h
+    """Feistel cipher for random bijections on power-of-two domains.
+
+    This class implements the Feistel bijection from libcudacxx for use in
+    memory-efficient random sampling without replacement.
+    """
+    cdef:
+        _FeistelBijectionParam params
+        object arr_size
+
+    num_rounds = _FEISTEL_NUM_ROUNDS
+
+    def __init__(self, num_elements, uint32_t[::1] keys_array):
+        """Initialize Feistel bijection with pre-generated random keys.
+
+        Args:
+            num_elements: Size of the domain (will be rounded up to power of 2)
+            keys_array: Array of :attr:`num_rounds` uint32 random numbers to
+                use as keys
+        """
+        cdef uint64_t total_bits
+        cdef _FeistelBijection *params_struct
+
+        self.params = _FeistelBijectionParam()
+        params_struct = &self.params.struct
+
+        # Round up to at least 8 bits, then to next power of 2
+        # Note: This is a bug fix to cuda::shuffle_iterator (NVIDIA/cccl#7073).
+        total_bits = get_cipher_bits(num_elements)
+        self.arr_size = num_elements
+
+        # Half bits rounded down
+        params_struct.__L_bits_ = total_bits // 2
+        params_struct.__L_mask_ = (1 << params_struct.__L_bits_) - 1
+
+        # Half the bits rounded up
+        params_struct.__R_bits_ = total_bits - params_struct.__L_bits_
+        params_struct.__R_mask_ = (1 << params_struct.__R_bits_) - 1
+
+        # Copy keys from the input array
+        assert len(keys_array) == _FEISTEL_NUM_ROUNDS
+        memcpy(<void*> &params_struct.__keys_[0],
+               <void*> &keys_array[0],
+               sizeof(params_struct.__keys_))
+
+    cdef get_kernel(self):
+        """Get or compile the Feistel bijection kernel.
+
+        Returns:
+            cupy.RawKernel: The compiled CUDA kernel for the bijection
+        """
+        global _feistel_bijection_with_cutoff_kernel
+        if _feistel_bijection_with_cutoff_kernel is None:
+            _feistel_bijection_with_cutoff_kernel = cupy.RawKernel(rf'''
+            #include <cuda/std/cstdint>
+
+            struct FeistelParams {{
+                uint64_t __R_bits_;
+                uint64_t __L_bits_;
+                uint64_t __R_mask_;
+                uint64_t __L_mask_;
+                uint32_t __keys_[{_FEISTEL_NUM_ROUNDS}];
+            }};
+            
+            extern "C" __global__ void feistel_bijection_choice(
+                long long* out,
+                const FeistelParams params,
+                const size_t cutoff_size,
+                const size_t arr_size
+            ) {{
+                for (size_t tid = static_cast<size_t>(blockIdx.x) * static_cast<size_t>(blockDim.x) + static_cast<size_t>(threadIdx.x);
+                     tid < cutoff_size;
+                     tid += static_cast<size_t>(gridDim.x) * static_cast<size_t>(blockDim.x))
+                {{
+                    // Apply Feistel bijection to tid, re-apply until valid
+                    uint64_t __val = static_cast<uint64_t>(tid);
+                    long long idx;
+                    
+                    do {{
+                        uint32_t __L = (uint32_t)(__val >> params.__R_bits_);
+                        uint32_t __R = (uint32_t)(__val & params.__R_mask_);
+                        
+                        // 24 rounds of Feistel network
+                        for (uint32_t __i = 0; __i < {_FEISTEL_NUM_ROUNDS}; __i++) {{
+                            constexpr uint64_t __m0  = 0xD2B74407B1CE6E93;
+                            const uint64_t __product = __m0 * __L;
+                            uint32_t __F_k           = (__product >> 32) ^ params.__keys_[__i];
+                            uint32_t __B_k           = static_cast<uint32_t>(__product);
+                            uint32_t __L_prime       = __F_k ^ __R;
+                            uint32_t __R_prime       = (__B_k << (params.__R_bits_ - params.__L_bits_)) | __R >> params.__L_bits_;
+                            __L                      = __L_prime & params.__L_mask_;
+                            __R                      = __R_prime & params.__R_mask_;
+                        }}
+                        
+                        // Combine left and right sides
+                        idx = (long long)((static_cast<uint64_t>(__L) << params.__R_bits_) | static_cast<uint64_t>(__R));
+                        __val = static_cast<uint64_t>(idx);
+                    }} while (idx >= static_cast<long long>(arr_size));
+                    
+                    // Write output (tid is always < cutoff_size due to early return)
+                    out[tid] = idx;
+                }}
+            }}
+            '''  # noqa: E501
+            , 'feistel_bijection_choice')
+        return _feistel_bijection_with_cutoff_kernel
+
+    def __call__(self, size):
+        kernel = self.get_kernel()
+
+        # Allocate output
+        # TODO(leofang): check if this equals to dtype='l' on Windows
+        indices = cupy.empty(size, dtype=cupy.int64)
+
+        block_size = 256
+        grid_size = (size + block_size - 1) // block_size
+        kernel(
+            (grid_size,), (block_size,),
+            (indices, self.params, size, self.arr_size)
+        )
+
+        return indices
