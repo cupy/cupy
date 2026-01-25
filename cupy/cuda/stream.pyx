@@ -543,10 +543,9 @@ class Stream(_BaseStream):
             Stream: A CuPy Stream wrapping the external stream.
 
         Raises:
-            AttributeError: If the object does not implement
-                ``__cuda_stream__``.
-            TypeError: If ``__cuda_stream__`` does not return a valid
-                2-tuple.
+            TypeError: If the object does not implement
+                ``__cuda_stream__`` or if ``__cuda_stream__`` does not return a
+                valid 2-tuple.
 
         .. note::
             This classmethod supersedes :class:`~cupy.cuda.ExternalStream`.
@@ -564,7 +563,7 @@ class Stream(_BaseStream):
         try:
             version, stream_ptr = obj.__cuda_stream__()
         except AttributeError as e:
-            raise AttributeError(
+            raise TypeError(
                 f"Object of type {type(obj).__name__} does not implement "
                 "the CUDA stream protocol (__cuda_stream__ method)") from e
         except (TypeError, ValueError) as e:
@@ -578,7 +577,7 @@ class Stream(_BaseStream):
                 f"({type(version).__name__}, {type(stream_ptr).__name__})")
 
         if version != 0:
-            raise ValueError(
+            raise TypeError(
                 f"__cuda_stream__() returned unsupported version "
                 f"{version}, only version 0 is supported")
 

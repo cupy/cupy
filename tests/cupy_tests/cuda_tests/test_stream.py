@@ -360,55 +360,32 @@ class TestCUDAStreamProtocol:
         assert new_stream._foreign_stream_ref is original_stream
 
     def test_from_external_without_protocol(self):
-        # Test that from_external raises AttributeError for objects
+        # Test that from_external raises TypeError for objects
         # without __cuda_stream__
         obj = object()
 
-        with pytest.raises(AttributeError, match='does not implement'):
+        with pytest.raises(TypeError, match='does not implement'):
             cuda.Stream.from_external(obj)
 
-    def test_from_external_invalid_return_type(self):
-        # Test that from_external raises TypeError for invalid return types
-        class BadStream1:
+    @pytest.mark.parametrize(
+        'bad_return, expected_error, expected_match',
+        [
+            (123, TypeError, 'must return a 2-tuple'),
+            ((0,), TypeError, 'must return a 2-tuple'),
+            (('not_an_int', 0), TypeError, r'must return \(int, int\)'),
+            ((0, 'not_an_int'), TypeError, r'must return \(int, int\)'),
+            ((1, 12345), TypeError, 'unsupported version'),
+            ((-1, 12345), TypeError, 'unsupported version'),
+        ],
+    )
+    def test_from_external_invalid_returns(
+            self, bad_return, expected_error, expected_match):
+        class BadStream:
             def __cuda_stream__(self):
-                return 123  # Should return a 2-tuple
+                return bad_return
 
-        with pytest.raises(TypeError, match='must return a 2-tuple'):
-            cuda.Stream.from_external(BadStream1())
-
-    def test_from_external_invalid_tuple_length(self):
-        # Test invalid tuple length
-        class BadStream2:
-            def __cuda_stream__(self):
-                return (0,)  # Should return a 2-tuple
-
-        with pytest.raises(TypeError, match='must return a 2-tuple'):
-            cuda.Stream.from_external(BadStream2())
-
-    def test_from_external_invalid_element_types(self):
-        # Test invalid element types in tuple
-        class BadStream3:
-            def __cuda_stream__(self):
-                return ("not_an_int", 0)  # First element should be int
-
-        with pytest.raises(TypeError, match=r'must return \(int, int\)'):
-            cuda.Stream.from_external(BadStream3())
-
-        class BadStream4:
-            def __cuda_stream__(self):
-                return (0, "not_an_int")  # Second element should be int
-
-        with pytest.raises(TypeError, match=r'must return \(int, int\)'):
-            cuda.Stream.from_external(BadStream4())
-
-    def test_from_external_invalid_version(self):
-        # Test unsupported protocol version
-        class BadStream5:
-            def __cuda_stream__(self):
-                return (1, 12345)  # Version 1 is not supported
-
-        with pytest.raises(ValueError, match='unsupported version'):
-            cuda.Stream.from_external(BadStream5())
+        with pytest.raises(expected_error, match=expected_match):
+            cuda.Stream.from_external(BadStream())
 
     def test_from_external_keeps_stream_alive(self):
         # Test that from_external keeps the foreign stream alive
