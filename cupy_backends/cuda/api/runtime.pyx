@@ -17,6 +17,7 @@ import threading as _threading
 cimport cpython  # NOQA
 cimport cython  # NOQA
 
+from cupy._core._threadlocal cimport _ThreadLocalBase, PyThread_tss_create
 from cupy_backends.cuda.api cimport driver  # NOQA
 
 
@@ -47,11 +48,13 @@ cdef class MemPoolProps:
 # Thread-local storage
 ###############################################################################
 
-cdef object _thread_local = _threading.local()
+cdef Py_tss_t _tlocal_key
+if PyThread_tss_create(&_tlocal_key) != 0:
+    raise MemoryError()
 
 
-cdef class _ThreadLocal:
-
+@cython.no_gc
+cdef class _ThreadLocal(_ThreadLocalBase):
     cdef list context_initialized
 
     def __init__(self):
@@ -60,11 +63,7 @@ cdef class _ThreadLocal:
 
     @staticmethod
     cdef _ThreadLocal get():
-        try:
-            tls = _thread_local.tls
-        except AttributeError:
-            tls = _thread_local.tls = _ThreadLocal()
-        return <_ThreadLocal>tls
+        return <_ThreadLocal>_ThreadLocal._get(_ThreadLocal, _tlocal_key)
 
 
 ###############################################################################
