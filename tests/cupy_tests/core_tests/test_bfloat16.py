@@ -8,6 +8,12 @@ from cupy.cuda import runtime
 from cupy import testing
 
 
+if not runtime.is_hip and runtime.runtimeGetVersion() < 12020:
+    # We may be ablel to enable this, but for now skip to pass tests.
+    pytest.skip(allow_module_level=True,
+                reason="bfloat16 is missing some features")
+
+
 ml_dtypes = pytest.importorskip('ml_dtypes')
 BF16 = numpy.dtype(ml_dtypes.bfloat16)
 TOL = float(ml_dtypes.finfo(BF16).eps)
