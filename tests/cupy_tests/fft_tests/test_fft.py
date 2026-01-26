@@ -224,6 +224,7 @@ class TestMultiGpuFftOrder:
 
 
 @testing.with_requires('numpy>=2.0')
+@pytest.mark.thread_unsafe(reason="`nd_planning_states` is not thread-safe")
 class TestDefaultPlanType:
 
     @nd_planning_states()
@@ -343,6 +344,7 @@ class TestFftAllocate:
         testing.product({'norm': [None, 'backward', 'ortho', 'forward']})
     )
 ))
+@pytest.mark.thread_unsafe(reason="`nd_planning_states` is not thread-safe")
 class TestFft2:
 
     @nd_planning_states()
@@ -422,6 +424,7 @@ class TestFft2:
         testing.product({'norm': [None, 'backward', 'ortho', 'forward']})
     )
 ))
+@pytest.mark.thread_unsafe(reason="`nd_planning_states` is not thread-safe")
 class TestFftn:
 
     @nd_planning_states()
@@ -496,6 +499,7 @@ class TestFftn:
         testing.product({'norm': [None, 'backward', 'ortho', 'forward']})
     )
 ))
+@pytest.mark.thread_unsafe(reason="`nd_planning_states` is not thread-safe")
 class TestPlanCtxManagerFftn:
 
     @pytest.fixture(autouse=True)
@@ -729,6 +733,7 @@ class TestMultiGpuPlanCtxManagerFft:
         testing.product({'norm': [None, 'backward', 'ortho', 'forward', '']})
     )
 ))
+@pytest.mark.thread_unsafe(reason="`nd_planning_states` is not thread-safe")
 class TestFftnContiguity:
 
     @nd_planning_states([True])
@@ -954,6 +959,7 @@ class TestRfft2EmptyAxes:
         testing.product({'norm': [None, 'backward', 'ortho', 'forward', '']})
     )
 ))
+@pytest.mark.thread_unsafe(reason="`nd_planning_states` is not thread-safe")
 class TestRfftn:
 
     @nd_planning_states()
@@ -1008,6 +1014,7 @@ class TestRfftn:
         testing.product({'norm': [None, 'backward', 'ortho', 'forward']})
     )
 ))
+@pytest.mark.thread_unsafe(reason="`nd_planning_states` is not thread-safe")
 class TestPlanCtxManagerRfftn:
 
     @pytest.fixture(autouse=True)
@@ -1077,6 +1084,7 @@ class TestPlanCtxManagerRfftn:
         testing.product({'norm': [None, 'backward', 'ortho', 'forward']})
     )
 ))
+@pytest.mark.thread_unsafe(reason="`nd_planning_states` is not thread-safe")
 class TestRfftnContiguity:
 
     @nd_planning_states([True])
