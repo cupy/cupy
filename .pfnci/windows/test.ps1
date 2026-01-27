@@ -28,9 +28,10 @@ function DownloadCache([String]$gcs_dir, [String]$cupy_kernel_cache_file) {
 
 function UploadCache([String]$gcs_dir, [String]$cupy_kernel_cache_file) {
     # Limit *.cubin cache by total size.
-    # TODO: Also clean up $CUPY_CACHE_DIR/callback_cache/*.ltoir
+    # Note: --expiry cannot be used as access time is not updated on Windows.
+    # TODO: Also clean up ~/.cupy/callback_cache/*.ltoir
     echo "Trimming kernel cache..."
-    RunOrDie python .pfnci\trim_cupy_kernel_cache.py --max-size 6442450944 --rm
+    RunOrDie python .pfnci\trim_cupy_kernel_cache.py --max-size 4831838208 --rm
 
     pushd $Env:USERPROFILE
     # -mx=0 ... no compression
