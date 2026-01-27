@@ -236,7 +236,7 @@ def main(argv: Any) -> int:
     projects_dispatch: set[str] = set()
     projects_skip: set[str] = set()
     for project, tags in project_tags.items():
-        dispatch = (len(set(tags) & requested_tags) != 0)
+        dispatch = (requested_tags <= set(tags))
         if dispatch:
             projects_dispatch.add(project)
         else:
