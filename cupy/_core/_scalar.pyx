@@ -37,14 +37,6 @@ cdef object _numpy_float64 = numpy.dtype(numpy.float64)
 cdef object _numpy_complex128 = numpy.dtype(numpy.complex128)
 
 
-cpdef tuple get_typename_and_preamble(dtype):
-    if dtype is None:
-        raise ValueError('dtype is None')
-    if dtype not in _typenames:
-        dtype = _dtype.get_dtype(dtype).type
-    return _typenames[dtype]
-
-
 cpdef str get_typename(dtype, type_headers=None):
     """Fetch the C type name. Note that some names may require
     additionally headers to be included in order to be available.
