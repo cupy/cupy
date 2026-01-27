@@ -1,3 +1,5 @@
+from libc.stdint cimport intptr_t
+
 cimport numpy as cnp
 
 import numpy
@@ -151,7 +153,7 @@ cdef class CScalar(CPointer):
         cdef CScalar self = CScalar.__new__(CScalar)
         self.value = None
         self.descr = _numpy_int32
-        self.ptr = <void *>(self._data)
+        self.ptr = <intptr_t><void *>(self._data)
         (<int32_t *>(self.ptr))[0] = value
         return self
 
@@ -160,13 +162,14 @@ cdef class CScalar(CPointer):
         # we will have to introduce a conditional allocation here and
         # should memset memory to NULL (must if dtype NEEDS_INIT).
         assert self.descr.itemsize < sizeof(self._data)
-        self.ptr = <void *>(self._data)  # make sure ptr points to _data.
+        # make sure ptr points to _data.
+        self.ptr = <intptr_t><void *>(self._data)
 
         # NOTE(seberg): This uses assignment logic, which is very subtly
         # different from casting by rejecting nan -> int. This is *only*
         # relevant for `casting="unsafe"` passed to ufuncs with `dtype=`.
         # It also means we fail for out of bound integers (NEP 50 change).
-        PyArray_Pack(self.descr, self.ptr, self.value)
+        PyArray_Pack(self.descr, <void*>(self.ptr), self.value)
 
     cpdef apply_dtype(self, dtype):
         cdef cnp.dtype descr = cnp.dtype(dtype)
