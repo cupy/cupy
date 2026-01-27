@@ -20,7 +20,7 @@ from cupy.cuda import device
 
 cdef class CPointer:
     def __init__(self, p=0):
-        self.ptr = <void*>p
+        self.ptr = p
 
 
 cdef class CUIntMax(CPointer):
@@ -29,7 +29,7 @@ cdef class CUIntMax(CPointer):
 
     def __init__(self, uintmax_t v):
         self.val = v
-        self.ptr = <void*>&self.val
+        self.ptr = <intptr_t><void*>(&self.val)
 
 
 cdef class CIntptr(CPointer):
@@ -38,7 +38,7 @@ cdef class CIntptr(CPointer):
 
     def __init__(self, intptr_t v):
         self.val = v
-        self.ptr = <void*>&self.val
+        self.ptr = <intptr_t><void*>(&self.val)
 
 
 cdef class CNumpyArray(CPointer):
@@ -47,12 +47,12 @@ cdef class CNumpyArray(CPointer):
 
     def __init__(self, v):
         self.val = v
-        self.ptr = <void*><size_t>v.__array_interface__['data'][0]
+        self.ptr = <intptr_t><void*><size_t>v.__array_interface__['data'][0]
 
 
 cdef inline CPointer _pointer(x):
     if x is None:
-        return CPointer()
+        return CIntptr(0)
     if isinstance(x, _ndarray_base):
         return (<_ndarray_base>x).get_pointer()
     if isinstance(x, _carray.Indexer):
@@ -100,7 +100,7 @@ cdef _launch(intptr_t func, Py_ssize_t grid0, int grid1, int grid2,
     for a in args:
         cp = _pointer(a)
         pargs.append(cp)  # keep the CPointer objects alive
-        kargs.push_back(cp.ptr)
+        kargs.push_back(<void*>(cp.ptr))
 
     runtime._ensure_context()
 
