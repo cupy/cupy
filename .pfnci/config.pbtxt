@@ -489,7 +489,7 @@ configs {
     requirement {
       cpu: 8
       memory: 50
-      disk: 10
+      disk: 20
       gpu: 2
     }
     time_limit: {
