@@ -5,7 +5,7 @@
 # CUDA 12.0 | Linux
 - project: "cupy.linux.cuda120"
   target: "cuda120"
-  tags: ["@push", "full", "mini", "cuda120"]
+  tags: ["@push", "full", "mini", "linux", "cuda120"]
   system: "linux"
   os: "ubuntu:20.04"
   cuda: "12.0"
@@ -26,7 +26,7 @@
 # CUDA 12.0 (Multi-GPU) | Linux
 - project: "cupy.linux.cuda120.multi"
   _inherits: "cupy.linux.cuda120"
-  tags: ["@push", "full", "mini", "multi", "cuda120"]
+  tags: ["@push", "full", "mini", "multi", "linux", "cuda120"]
   target: "cuda120.multi"
   mpi4py: "4"
   test: "unit-multi"
@@ -34,7 +34,7 @@
 # CUDA 12.1 | Linux
 - project: "cupy.linux.cuda121"
   target: "cuda121"
-  tags: ["@push", "full", "cuda121"]
+  tags: ["@push", "full", "linux", "cuda121"]
   system: "linux"
   os: "ubuntu:20.04"
   cuda: "12.1"
@@ -55,7 +55,7 @@
 # CUDA 12.1 (Multi-GPU) | Linux
 - project: "cupy.linux.cuda121.multi"
   _inherits: "cupy.linux.cuda121"
-  tags: ["@push", "full", "multi", "cuda121"]
+  tags: ["@push", "full", "multi", "linux", "cuda121"]
   target: "cuda121.multi"
   mpi4py: "3"
   test: "unit-multi"
@@ -63,7 +63,7 @@
 # CUDA 12.2 | Linux
 - project: "cupy.linux.cuda122"
   target: "cuda122"
-  tags: ["@push", "full", "cuda122"]
+  tags: ["@push", "full", "linux", "cuda122"]
   system: "linux"
   os: "ubuntu:20.04"
   cuda: "12.2"
@@ -84,7 +84,7 @@
 # CUDA 12.2 (Multi-GPU) | Linux
 - project: "cupy.linux.cuda122.multi"
   _inherits: "cupy.linux.cuda122"
-  tags: ["@push", "full", "multi", "cuda122"]
+  tags: ["@push", "full", "multi", "linux", "cuda122"]
   target: "cuda122.multi"
   mpi4py: "3"
   test: "unit-multi"
@@ -92,7 +92,7 @@
 # CUDA 12.3 | Linux
 - project: "cupy.linux.cuda123"
   target: "cuda123"
-  tags: ["@push", "full", "cuda123"]
+  tags: ["@push", "full", "linux", "cuda123"]
   system: "linux"
   os: "ubuntu:20.04"
   cuda: "12.3"
@@ -113,7 +113,7 @@
 # CUDA 12.3 (Multi-GPU) | Linux
 - project: "cupy.linux.cuda123.multi"
   _inherits: "cupy.linux.cuda123"
-  tags: ["@push", "full", "multi", "cuda123"]
+  tags: ["@push", "full", "multi", "linux", "cuda123"]
   target: "cuda123.multi"
   mpi4py: "3"
   test: "unit-multi"
@@ -121,7 +121,7 @@
 # CUDA 12.4 | Linux
 - project: "cupy.linux.cuda124"
   target: "cuda124"
-  tags: ["@push", "full", "cuda124"]
+  tags: ["@push", "full", "linux", "cuda124"]
   system: "linux"
   os: "ubuntu:20.04"
   cuda: "12.4"
@@ -142,7 +142,7 @@
 # CUDA 12.4 (Multi-GPU) | Linux
 - project: "cupy.linux.cuda124.multi"
   _inherits: "cupy.linux.cuda124"
-  tags: ["@push", "full", "multi", "cuda124"]
+  tags: ["@push", "full", "multi", "linux", "cuda124"]
   target: "cuda124.multi"
   mpi4py: "3"
   test: "unit-multi"
@@ -150,7 +150,7 @@
 # CUDA 12.5 | Linux
 - project: "cupy.linux.cuda125"
   target: "cuda125"
-  tags: ["@push", "full", "cuda125"]
+  tags: ["@push", "full", "linux", "cuda125"]
   system: "linux"
   os: "ubuntu:20.04"
   cuda: "12.5"
@@ -171,7 +171,7 @@
 # CUDA 12.5 (Multi-GPU) | Linux
 - project: "cupy.linux.cuda125.multi"
   _inherits: "cupy.linux.cuda125"
-  tags: ["@push", "full", "multi", "cuda125"]
+  tags: ["@push", "full", "multi", "linux", "cuda125"]
   target: "cuda125.multi"
   mpi4py: "3"
   test: "unit-multi"
@@ -179,7 +179,7 @@
 # CUDA 12.6 | Linux
 - project: "cupy.linux.cuda126"
   target: "cuda126"
-  tags: ["@push", "full", "cuda126"]
+  tags: ["@push", "full", "linux", "cuda126"]
   system: "linux"
   os: "ubuntu:20.04"
   cuda: "12.6"
@@ -200,7 +200,7 @@
 # CUDA 12.6 (Multi-GPU) | Linux
 - project: "cupy.linux.cuda126.multi"
   _inherits: "cupy.linux.cuda126"
-  tags: ["@push", "full", "multi", "cuda126"]
+  tags: ["@push", "full", "multi", "linux", "cuda126"]
   target: "cuda126.multi"
   mpi4py: "4"
   test: "unit-multi"
@@ -208,7 +208,7 @@
 # CUDA 12.8 | Linux
 - project: "cupy.linux.cuda128"
   target: "cuda128"
-  tags: ["@push", "full", "cuda128"]
+  tags: ["@push", "full", "linux", "cuda128"]
   system: "linux"
   os: "ubuntu:20.04"
   cuda: "12.8"
@@ -229,7 +229,7 @@
 # CUDA 12.8 (Multi-GPU) | Linux
 - project: "cupy.linux.cuda128.multi"
   _inherits: "cupy.linux.cuda128"
-  tags: ["@push", "full", "multi", "cuda128"]
+  tags: ["@push", "full", "multi", "linux", "cuda128"]
   target: "cuda128.multi"
   mpi4py: "3"
   test: "unit-multi"
@@ -237,7 +237,7 @@
 # CUDA 12.9 | Linux
 - project: "cupy.linux.cuda129"
   target: "cuda129"
-  tags: ["@push", "full", "mini", "cuda129"]
+  tags: ["@push", "full", "mini", "linux", "cuda129"]
   system: "linux"
   os: "ubuntu:20.04"
   cuda: "12.9"
@@ -258,7 +258,7 @@
 # CUDA 12.9 (Multi-GPU) | Linux
 - project: "cupy.linux.cuda129.multi"
   _inherits: "cupy.linux.cuda129"
-  tags: ["@push", "full", "mini", "multi", "cuda129"]
+  tags: ["@push", "full", "mini", "multi", "linux", "cuda129"]
   target: "cuda129.multi"
   mpi4py: "3"
   test: "unit-multi"
@@ -266,7 +266,7 @@
 # CUDA 13.0 | Linux
 - project: "cupy.linux.cuda130"
   target: "cuda130"
-  tags: ["@push", "full", "mini", "cuda130"]
+  tags: ["@push", "full", "mini", "linux", "cuda130"]
   system: "linux"
   os: "ubuntu:22.04"
   cuda: "13.0"
@@ -287,7 +287,7 @@
 # CUDA 13.0 (Multi-GPU) | Linux
 - project: "cupy.linux.cuda130.multi"
   _inherits: "cupy.linux.cuda130"
-  tags: ["@push", "full", "mini", "multi", "cuda130"]
+  tags: ["@push", "full", "mini", "multi", "linux", "cuda130"]
   target: "cuda130.multi"
   mpi4py: "4"
   test: "unit-multi"
@@ -296,7 +296,7 @@
 # The latest CUDA version matrix is intended to cover the highest supported combination.
 - project: "cupy.linux.cuda131"
   target: "cuda131"
-  tags: ["@push", "full", "mini", "cuda131"]
+  tags: ["@push", "full", "mini", "linux", "cuda131"]
   system: "linux"
   os: "ubuntu:22.04"
   cuda: "13.1"
@@ -317,7 +317,7 @@
 # CUDA 13.1 (Multi-GPU) | Linux
 - project: "cupy.linux.cuda131.multi"
   _inherits: "cupy.linux.cuda131"
-  tags: ["@push", "full", "mini", "multi", "cuda131"]
+  tags: ["@push", "full", "mini", "multi", "linux", "cuda131"]
   target: "cuda131.multi"
   mpi4py: "4"
   test: "unit-multi"
@@ -365,7 +365,7 @@
 # Slow | Linux
 - project: "cupy.linux.cuda-slow"
   target: "cuda-slow"
-  tags: ["slow"]
+  tags: ["slow", "linux"]
   system: "linux"
   os: "ubuntu:20.04"
   cuda: "12.9"
@@ -394,7 +394,7 @@
 # - Accelerators are disabled as doctests expect it (#5891)
 - project: "cupy.linux.cuda-example"
   target: "cuda-example"
-  tags: ["@push", "full", "mini", "example"]
+  tags: ["@push", "full", "mini", "linux", "example"]
   system: "linux"
   os: "ubuntu:20.04"
   cuda: "12.9"
@@ -420,7 +420,7 @@
 # This combination tests against pre-releases. Use the highest supported combination.
 - project: "cupy.linux.cuda-head"
   target: "cuda-head"
-  tags: ["head"]
+  tags: ["head", "linux"]
   system: "linux"
   os: "ubuntu:20.04"
   cuda: "12.9"
@@ -445,7 +445,7 @@
 # CUDA 12.x / CUDA Python | Linux
 - project: "cupy.linux.cuda12x-cuda-python"
   target: "cuda12x-cuda-python"
-  tags: ["@push", "full", "mini", "cuda-python"]
+  tags: ["@push", "full", "mini", "linux", "cuda-python"]
   system: "linux"
   os: "ubuntu:20.04"
   cuda: "12.9"
@@ -531,31 +531,31 @@
 - project: "cupy.linux.cuda-rapids"
   _extern: true
   target: "cuda-rapids"
-  tags: ["@push", "full", "rapids"]
+  tags: ["@push", "full", "linux", "rapids"]
   system: "linux"
 
 - project: "cupy.linux.cuda-build"
   _extern: true
   target: "cuda-build"
-  tags: ["@push", "full", "mini"]
+  tags: ["@push", "full", "mini", "linux"]
   system: "linux"
 
 - project: "cupy.linux.array-api"
   _extern: true
   target: "array-api"
-  tags: ["array-api"]
+  tags: ["array-api", "linux"]
   system: "linux"
 
 - project: "cupy.linux.benchmark.head"
   _inherits: "cupy.linux.cuda130"
   target: "benchmark.head"
-  tags: ["benchmark"]
+  tags: ["benchmark", "linux"]
   system: "linux"
   test: "benchmark"
 
 - project: "cupy.linux.benchmark.pr"
   _inherits: "cupy.linux.cuda130"
   target: "benchmark"
-  tags: ["benchmark"]
+  tags: ["benchmark", "linux"]
   system: "linux"
   test: "benchmark"
