@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import math
-import warnings
 
 import cupy
 from cupy import _core
@@ -160,36 +159,6 @@ def leslie(f, s):
     a[0] = f
     cupy.fill_diagonal(a[1:], s)
     return a
-
-
-@_uarray.implements('kron')
-def kron(a, b):
-    """Kronecker product.
-
-    The result is the block matrix::
-        a[0,0]*b    a[0,1]*b  ... a[0,-1]*b
-        a[1,0]*b    a[1,1]*b  ... a[1,-1]*b
-        ...
-        a[-1,0]*b   a[-1,1]*b ... a[-1,-1]*b
-
-    Args:
-        a (cupy.ndarray): Input array
-        b (cupy.ndarray): Input array
-
-    Returns:
-        cupy.ndarray: Kronecker product of ``a`` and ``b``.
-
-    .. seealso:: :func:`scipy.linalg.kron`
-    """
-    warnings.warn(
-        '`cupyx.scipy.linalg.kron` has been deprecated in CuPy v14 and will '
-        'be removed in the near future. Please use `cupy.kron` instead.',
-        DeprecationWarning,
-    )
-
-    o = cupy.outer(a, b)
-    o = o.reshape(a.shape + b.shape)
-    return cupy.concatenate(cupy.concatenate(o, axis=1), axis=1)
 
 
 @_uarray.implements('block_diag')

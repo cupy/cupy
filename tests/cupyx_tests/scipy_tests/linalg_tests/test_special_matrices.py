@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import unittest
-import warnings
 
 from cupy import testing
 import cupyx.scipy.linalg  # NOQA
@@ -50,10 +49,6 @@ class TestSpecialMatricesBase(unittest.TestCase):
         'function': ['dft'],
         'args': [(4, 'sqrtn'), (5, 'n')],
     }) + testing.product({
-        # 2 arguments: both 2D arrays
-        'function': ['kron'],
-        'args': [((5, 5), (4, 5),), ((5, 4), (4, 4),), ((1, 2), (4, 5))],
-    }) + testing.product({
         # 0 or more arguments: all 1 or 2D arrays
         'function': ['block_diag'],
         'args': [(), ((5,),), ((4, 5),), ((5,), (4, 4),), ((1, 2), (4, 5)),
@@ -66,13 +61,7 @@ class TestSpecialMatrices(TestSpecialMatricesBase):
                                  accept_error=ValueError)
     def test_special_matrix(self, xp, scp):
         function = getattr(scp.linalg, self.function)
-
-        if self.function == "kron":
-            with warnings.catch_warnings():
-                warnings.filterwarnings('ignore', category=DeprecationWarning)
-                return function(*[self._get_arg(xp, arg) for arg in self.args])
-        else:
-            return function(*[self._get_arg(xp, arg) for arg in self.args])
+        return function(*[self._get_arg(xp, arg) for arg in self.args])
 
 
 @testing.parameterize(*(
