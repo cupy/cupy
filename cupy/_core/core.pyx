@@ -406,7 +406,7 @@ cdef class _ndarray_base:
             # Establish no stream order for now (for `stream=None` do it later)
             stream = None
         elif stream != curr_stream_ptr:
-            stream = stream_mod.ExternalStream(stream)
+            stream = stream_mod._BaseStream(stream, -1)
             event = curr_stream.record()
             stream.wait_event(event)
 

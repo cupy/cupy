@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import gc
 import threading
-import unittest
 
 import pytest
 
@@ -12,27 +11,26 @@ from cupy import cuda
 from cupy import testing
 
 
-@testing.parameterize(
-    *testing.product({
-        'stream_name': ['null', 'ptds'],
-    }))
-class TestStream(unittest.TestCase):
+class TestStream:
 
-    def setUp(self):
+    def setup_method(self):
         self._prev_stream = cuda.get_current_stream()
 
-        if self.stream_name == 'null':
-            self.stream = cuda.Stream.null
-        elif self.stream_name == 'ptds':
-            self.stream = cuda.Stream.ptds
-        self.stream.use()
-
-    def tearDown(self):
+    def teardown_method(self):
         self._prev_stream.use()
 
-    def test_eq(self):
-        null0 = self.stream
-        if self.stream == cuda.Stream.null:
+    def _get_stream(self, stream_name):
+        if stream_name == 'null':
+            return cuda.Stream.null
+        elif stream_name == 'ptds':
+            return cuda.Stream.ptds
+
+    @pytest.mark.parametrize('stream_name', ['null', 'ptds'])
+    def test_eq(self, stream_name):
+        stream = self._get_stream(stream_name)
+        stream.use()
+        null0 = stream
+        if stream == cuda.Stream.null:
             null1 = cuda.Stream(True)
             null2 = cuda.Stream(True)
             null3 = cuda.Stream(ptds=True)
@@ -47,8 +45,11 @@ class TestStream(unittest.TestCase):
         assert null2 != null3
         assert null2 != null4
 
-    def test_hash(self):
-        hash(self.stream)
+    @pytest.mark.parametrize('stream_name', ['null', 'ptds'])
+    def test_hash(self, stream_name):
+        stream = self._get_stream(stream_name)
+        stream.use()
+        hash(stream)
         hash(cuda.Stream(True))
         hash(cuda.Stream(False))
         mapping = {cuda.Stream(): 1, cuda.Stream(): 2}  # noqa
@@ -69,9 +70,12 @@ class TestStream(unittest.TestCase):
     def test_del_default(self):
         self.check_del(null=False, ptds=False)
 
-    def test_del(self):
-        null = self.stream == cuda.Stream.null
-        ptds = self.stream == cuda.Stream.ptds
+    @pytest.mark.parametrize('stream_name', ['null', 'ptds'])
+    def test_del(self, stream_name):
+        stream = self._get_stream(stream_name)
+        stream.use()
+        null = stream == cuda.Stream.null
+        ptds = stream == cuda.Stream.ptds
 
         self.check_del(null=null, ptds=ptds)
 
@@ -113,10 +117,13 @@ class TestStream(unittest.TestCase):
         stream.synchronize()
         assert out == list(range(N))
 
-    def test_with_statement(self):
+    @pytest.mark.parametrize('stream_name', ['null', 'ptds'])
+    def test_with_statement(self, stream_name):
+        stream = self._get_stream(stream_name)
+        stream.use()
         stream1 = cuda.Stream()
         stream2 = cuda.Stream()
-        assert self.stream == cuda.get_current_stream()
+        assert stream == cuda.get_current_stream()
         with stream1:
             assert stream1 == cuda.get_current_stream()
             with stream2:
@@ -125,11 +132,14 @@ class TestStream(unittest.TestCase):
         # self.stream is "forgotten"!
         assert cuda.Stream.null == cuda.get_current_stream()
 
-    def test_use(self):
+    @pytest.mark.parametrize('stream_name', ['null', 'ptds'])
+    def test_use(self, stream_name):
+        stream = self._get_stream(stream_name)
+        stream.use()
         stream1 = cuda.Stream().use()
         assert stream1 == cuda.get_current_stream()
-        self.stream.use()
-        assert self.stream == cuda.get_current_stream()
+        stream.use()
+        assert stream == cuda.get_current_stream()
 
     @testing.multi_gpu(2)
     def test_per_device(self):
@@ -154,12 +164,15 @@ class TestStream(unittest.TestCase):
             with pytest.raises(RuntimeError):
                 stream0.use()
 
-    def test_mix_use_context(self):
+    @pytest.mark.parametrize('stream_name', ['null', 'ptds'])
+    def test_mix_use_context(self, stream_name):
+        stream = self._get_stream(stream_name)
+        stream.use()
         # See cupy/cupy#5143
         s1 = cuda.Stream()
         s2 = cuda.Stream()
         s3 = cuda.Stream()
-        assert cuda.get_current_stream() == self.stream
+        assert cuda.get_current_stream() == stream
         with s1:
             assert cuda.get_current_stream() == s1
             s2.use()
@@ -240,13 +253,18 @@ class TestStream(unittest.TestCase):
         assert s3.priority == -1 if cupy.cuda.runtime.is_hip else -3
 
 
-class TestExternalStream(unittest.TestCase):
+class TestExternalStream:
 
-    def setUp(self):
+    def setup_method(self):
         self.stream_ptr = cuda.runtime.streamCreate()
-        self.stream = cuda.ExternalStream(self.stream_ptr)
+        # Test that ExternalStream raises a deprecation warning
+        with pytest.warns(
+            DeprecationWarning,
+            match='ExternalStream is deprecated'
+        ):
+            self.stream = cuda.ExternalStream(self.stream_ptr)
 
-    def tearDown(self):
+    def teardown_method(self):
         cuda.runtime.streamDestroy(self.stream_ptr)
 
     def test_get_and_add_callback(self):
@@ -279,3 +297,152 @@ class TestExternalStream(unittest.TestCase):
 
         stream.synchronize()
         assert out == list(range(N))
+
+
+class TestCUDAStreamProtocol:
+
+    def test_cuda_stream_method(self):
+        # Test that __cuda_stream__ returns the correct 2-tuple
+        stream = cuda.Stream()
+        result = stream.__cuda_stream__()
+
+        # Check that it returns a 2-tuple of (version, stream_ptr)
+        assert isinstance(result, tuple)
+        assert len(result) == 2
+
+        version, stream_ptr = result
+        assert isinstance(version, int)
+        assert isinstance(stream_ptr, int)
+        assert version == 0  # Protocol version
+        assert stream_ptr == stream.ptr
+
+    def test_cuda_stream_method_null_stream(self):
+        # Test __cuda_stream__ on null stream
+        stream = cuda.Stream.null
+        result = stream.__cuda_stream__()
+        version, stream_ptr = result
+        assert version == 0
+        assert stream_ptr == stream.ptr
+
+    def test_from_external_with_mock_stream(self):
+        # Test Stream.from_external with a mock stream object
+        class MockStream:
+            def __init__(self, ptr):
+                self._ptr = ptr
+
+            def __cuda_stream__(self):
+                return (0, self._ptr)
+
+        # Create a real CUDA stream to get a valid pointer
+        real_stream = cuda.Stream()
+        mock_stream = MockStream(real_stream.ptr)
+
+        # Create a CuPy stream from the mock stream
+        cupy_stream = cuda.Stream.from_external(mock_stream)
+
+        assert cupy_stream.ptr == real_stream.ptr
+        # Device ID should be -1 (unknown) per protocol design
+        assert cupy_stream.device_id == -1
+        # Verify that the foreign stream reference is kept
+        assert hasattr(cupy_stream, '_foreign_stream_ref')
+        assert cupy_stream._foreign_stream_ref is mock_stream
+
+    def test_from_external_with_cupy_stream(self):
+        # Test interoperability: CuPy stream -> external -> CuPy stream
+        original_stream = cuda.Stream()
+
+        # Use from_external to create a new stream from the original
+        new_stream = cuda.Stream.from_external(original_stream)
+
+        assert new_stream.ptr == original_stream.ptr
+        # Device ID is -1 since protocol doesn't provide it
+        assert new_stream.device_id == -1
+        assert new_stream._foreign_stream_ref is original_stream
+
+    def test_from_external_without_protocol(self):
+        # Test that from_external raises TypeError for objects
+        # without __cuda_stream__
+        obj = object()
+
+        with pytest.raises(TypeError, match='does not implement'):
+            cuda.Stream.from_external(obj)
+
+    @pytest.mark.parametrize(
+        'bad_return, expected_error, expected_match',
+        [
+            (123, TypeError, 'must return a 2-tuple'),
+            ((0,), TypeError, 'must return a 2-tuple'),
+            (('not_an_int', 0), TypeError, r'must return \(int, int\)'),
+            ((0, 'not_an_int'), TypeError, r'must return \(int, int\)'),
+            ((1, 12345), TypeError, 'unsupported version'),
+            ((-1, 12345), TypeError, 'unsupported version'),
+        ],
+    )
+    def test_from_external_invalid_returns(
+            self, bad_return, expected_error, expected_match):
+        class BadStream:
+            def __cuda_stream__(self):
+                return bad_return
+
+        with pytest.raises(expected_error, match=expected_match):
+            cuda.Stream.from_external(BadStream())
+
+    def test_from_external_keeps_stream_alive(self):
+        # Test that from_external keeps the foreign stream alive
+        import gc
+        import weakref
+
+        class MockStream:
+            def __init__(self, ptr):
+                self._ptr = ptr
+
+            def __cuda_stream__(self):
+                return (0, self._ptr)
+
+        real_stream = cuda.Stream()
+        mock_stream = MockStream(real_stream.ptr)
+        weak_ref = weakref.ref(mock_stream)
+
+        # Create CuPy stream from mock stream
+        cupy_stream = cuda.Stream.from_external(mock_stream)
+
+        # Delete the mock stream reference
+        del mock_stream
+        gc.collect()
+
+        # The mock stream should still be alive because cupy_stream holds
+        # a reference
+        assert weak_ref() is not None
+        assert weak_ref() is cupy_stream._foreign_stream_ref
+
+        # Delete cupy_stream
+        del cupy_stream
+        gc.collect()
+
+        # Now the mock stream should be garbage collected
+        assert weak_ref() is None
+
+    def test_from_external_stream_usage(self):
+        # Test that a stream created with from_external can be used normally
+        class MockStream:
+            def __init__(self, ptr):
+                self._ptr = ptr
+
+            def __cuda_stream__(self):
+                return (0, self._ptr)
+
+        real_stream = cuda.Stream()
+        mock_stream = MockStream(real_stream.ptr)
+        cupy_stream = cuda.Stream.from_external(mock_stream)
+
+        # Test that we can use the stream
+        with cupy_stream:
+            cupy.arange(10)  # Create array on stream
+            assert cuda.get_current_stream() == cupy_stream
+
+        # Test that synchronize works
+        cupy_stream.synchronize()
+
+        # Test that we can get the stream's properties
+        # Just check it doesn't error
+        assert cupy_stream.done or not cupy_stream.done
