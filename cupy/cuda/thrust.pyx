@@ -24,7 +24,7 @@ cdef class _MemoryManager:
         self.memory = dict()
 
 
-cdef public char* cupy_malloc(void *m, size_t size) with gil:
+cdef public char* cupy_malloc(void *m, size_t size) except NULL with gil:
     if size == 0:
         return <char *>0
     cdef _MemoryManager mm = <_MemoryManager>m

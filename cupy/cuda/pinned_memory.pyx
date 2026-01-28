@@ -89,7 +89,7 @@ cdef class PinnedMemoryPointer:
         """Subtracts an offset from the pointer in place."""
         return self.__iadd__(-offset)
 
-    cpdef size_t size(self):
+    cpdef size_t size(self) noexcept:
         return self.mem.size - (self.ptr - self.mem.ptr)
 
     def __getbuffer__(self, Py_buffer *buffer, int flags):

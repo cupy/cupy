@@ -70,7 +70,7 @@ cdef extern from './include/cupy/_dlpack/dlpack.h' nogil:
         DLTensor dl_tensor
 
 
-cdef DLDevice get_dlpack_device(_ndarray_base array)
+cdef DLDevice get_dlpack_device(_ndarray_base array) except *
 cpdef object toDlpack(
     _ndarray_base array, bint use_versioned=*, bint to_cpu=*,
     bint ensure_copy=*, stream=*) except +

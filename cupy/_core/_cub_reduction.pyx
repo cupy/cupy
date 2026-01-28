@@ -383,7 +383,7 @@ cdef Py_ssize_t _cub_default_block_size = (
 
 
 cdef (Py_ssize_t, Py_ssize_t) _get_cub_block_specs(  # NOQA
-        Py_ssize_t contiguous_size):
+        Py_ssize_t contiguous_size) noexcept:
     # This is recommended in the CUB internal and should be an
     # even number
     items_per_thread = 4

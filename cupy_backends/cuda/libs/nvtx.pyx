@@ -68,7 +68,7 @@ colors[9] = 0xFF7F7F7F
 available = True
 
 
-cdef nvtxEventAttributes_t make_event_attributes(message, color):
+cdef nvtxEventAttributes_t make_event_attributes(message, color) except *:
     cdef bytes b_message
     cdef nvtxEventAttributes_t attrib
 

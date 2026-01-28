@@ -398,7 +398,7 @@ cdef class _Chunk:
         self.size = size
         self.stream_ident = stream_ident
 
-    cpdef intptr_t ptr(self):
+    cpdef intptr_t ptr(self) noexcept:
         return self.mem.ptr + self.offset
 
     cpdef _Chunk split(self, size_t size):
@@ -847,7 +847,7 @@ def _set_thread_local_allocator(allocator):
     _thread_local.allocator = allocator
 
 
-cdef inline intptr_t _get_stream_identifier(intptr_t stream_ptr):
+cdef inline intptr_t _get_stream_identifier(intptr_t stream_ptr) except? -1:
     # When PTDS is enabled, return an ID to uniquely identify the default
     # stream for each thread. (#5069)
     if stream_ptr != runtime.streamPerThread:
@@ -1009,19 +1009,19 @@ cdef class PooledMemory(BaseMemory):
 cdef size_t _index_compaction_threshold = 512
 
 
-cpdef inline size_t _round_size(size_t size):
+cpdef inline size_t _round_size(size_t size) noexcept:
     """Rounds up the memory size to fit memory alignment of cudaMalloc."""
     # avoid 0 div checking
     size = (size + ALLOCATION_UNIT_SIZE - 1) // ALLOCATION_UNIT_SIZE
     return size * ALLOCATION_UNIT_SIZE
 
-cpdef size_t _bin_index_from_size(size_t size):
+cpdef size_t _bin_index_from_size(size_t size) noexcept:
     """Returns appropriate bins index from the memory size."""
     # avoid 0 div checking
     return (size - 1) // ALLOCATION_UNIT_SIZE
 
 
-cdef bint _lock_no_gc(recursive_mutex& lock):
+cdef bint _lock_no_gc(recursive_mutex& lock) except -1:
     """Lock to ensure single thread execution and no garbage collection.
 
     Returns:
@@ -1128,7 +1128,7 @@ cdef class _Arena:
         free_list.add(chunk)
         self._flag[index] = 1
 
-    cdef bint remove_from_free_list(self, _Chunk chunk):
+    cdef bint remove_from_free_list(self, _Chunk chunk) except -1:
         """Removes the chunk from the free list (need self._free_lock).
 
         Returns:
@@ -1375,7 +1375,7 @@ cdef class SingleDeviceMemoryPool:
             DeprecationWarning)
         self.free_all_blocks()
 
-    cpdef size_t n_free_blocks(self):
+    cpdef size_t n_free_blocks(self) except -1:
         cdef size_t n = 0
         cdef _Arena arena
         if not self._free_lock.try_lock():
@@ -1390,7 +1390,7 @@ cdef class SingleDeviceMemoryPool:
             self._free_lock.unlock()
         return n
 
-    cpdef size_t used_bytes(self):
+    cpdef size_t used_bytes(self) except -1:
         cdef size_t size = 0
         cdef _Chunk chunk
         if not self._in_use_lock.try_lock():
@@ -1403,7 +1403,7 @@ cdef class SingleDeviceMemoryPool:
             self._in_use_lock.unlock()
         return size
 
-    cpdef size_t free_bytes(self):
+    cpdef size_t free_bytes(self) except -1:
         cdef size_t size = 0
         cdef set free_list
         cdef _Chunk chunk
@@ -1422,7 +1422,7 @@ cdef class SingleDeviceMemoryPool:
             self._free_lock.unlock()
         return size
 
-    cpdef size_t total_bytes(self):
+    cpdef size_t total_bytes(self) except -1:
         with lock_and_no_gc(self._total_bytes_lock):
             return self._total_bytes
 
@@ -1450,7 +1450,7 @@ cdef class SingleDeviceMemoryPool:
         with lock_and_no_gc(self._total_bytes_lock):
             self._total_bytes_limit = size
 
-    cpdef size_t get_limit(self):
+    cpdef size_t get_limit(self) except -1:
         with lock_and_no_gc(self._total_bytes_lock):
             return self._total_bytes_limit
 
@@ -1665,7 +1665,7 @@ cdef class MemoryPool:
             DeprecationWarning)
         self.free_all_blocks()
 
-    cpdef size_t n_free_blocks(self):
+    cpdef size_t n_free_blocks(self) except -1:
         """Counts the total number of free blocks.
 
         Returns:
@@ -1674,7 +1674,7 @@ cdef class MemoryPool:
         mp = <SingleDeviceMemoryPool>self.device_pool()
         return mp.n_free_blocks()
 
-    cpdef size_t used_bytes(self):
+    cpdef size_t used_bytes(self) except -1:
         """Gets the total number of bytes used by the pool.
 
         Returns:
@@ -1683,7 +1683,7 @@ cdef class MemoryPool:
         mp = <SingleDeviceMemoryPool>self.device_pool()
         return mp.used_bytes()
 
-    cpdef size_t free_bytes(self):
+    cpdef size_t free_bytes(self) except -1:
         """Gets the total number of bytes acquired but not used by the pool.
 
         Returns:
@@ -1692,7 +1692,7 @@ cdef class MemoryPool:
         mp = <SingleDeviceMemoryPool>self.device_pool()
         return mp.free_bytes()
 
-    cpdef size_t total_bytes(self):
+    cpdef size_t total_bytes(self) except -1:
         """Gets the total number of bytes acquired by the pool.
 
         Returns:
@@ -1731,7 +1731,7 @@ cdef class MemoryPool:
         mp = <SingleDeviceMemoryPool>self.device_pool()
         mp.set_limit(size, fraction)
 
-    cpdef size_t get_limit(self):
+    cpdef size_t get_limit(self) except -1:
         """Gets the upper limit of memory allocation of the current device.
 
         Returns:
@@ -1929,7 +1929,7 @@ cdef class MemoryAsyncPool:
         # to reserve at least 0 bytes
         runtime.memPoolTrimTo(pool, 0)
 
-    cpdef size_t n_free_blocks(self):
+    cpdef size_t n_free_blocks(self) except -1:
         raise NotImplementedError(
             'This function is not supported in MemoryAsyncPool')
 
@@ -2027,7 +2027,7 @@ cdef class MemoryAsyncPool:
         runtime.memPoolSetAttribute(
             pool, runtime.cudaMemPoolAttrReleaseThreshold, size)
 
-    cpdef size_t get_limit(self):
+    cpdef size_t get_limit(self) except -1:
         """Gets the upper limit of memory allocation of the current device.
 
         Returns:
@@ -2044,18 +2044,20 @@ cdef class MemoryAsyncPool:
             pool, runtime.cudaMemPoolAttrReleaseThreshold)
 
 
-ctypedef void*(*malloc_func_type)(void*, size_t, int)
-ctypedef void(*free_func_type)(void*, void*, int)
+ctypedef void*(*malloc_func_type)(void*, size_t, int) noexcept
+ctypedef void(*free_func_type)(void*, void*, int) noexcept
 
 
 cdef intptr_t _call_malloc(
-        intptr_t param, intptr_t malloc_func, Py_ssize_t size, int device_id):
+        intptr_t param, intptr_t malloc_func, Py_ssize_t size,
+        int device_id) noexcept:
     return <intptr_t>(
         (<malloc_func_type>malloc_func)(<void*>param, size, device_id))
 
 
 cdef void _call_free(
-        intptr_t param, intptr_t free_func, intptr_t ptr, int device_id):
+        intptr_t param, intptr_t free_func, intptr_t ptr,
+        int device_id) noexcept:
     (<free_func_type>free_func)(<void*>param, <void*>ptr, device_id)
 
 

@@ -95,7 +95,7 @@ cdef uint8_t get_dlpack_dtype_code(dtype) except? 255:
             raise BufferError('dtype is not supported for dlpack export')
 
 
-cdef DLDevice get_dlpack_device(_ndarray_base array):
+cdef DLDevice get_dlpack_device(_ndarray_base array) except *:
     cdef DLDevice device
     cdef bint is_managed
 

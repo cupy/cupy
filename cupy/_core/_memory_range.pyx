@@ -4,9 +4,9 @@ from cupy.cuda cimport memory
 from libcpp.pair cimport pair
 
 
-cdef get_range(
+cdef void get_range(
         Py_ssize_t itemsize, shape_t& shape, strides_t & strides,
-        Py_ssize_t& out_left, Py_ssize_t& out_right):
+        Py_ssize_t& out_left, Py_ssize_t& out_right) noexcept:
     """Discover the byte range (out_left, out_right] (without ptr offset).
     """
     cdef Py_ssize_t tmp, i
@@ -26,7 +26,7 @@ cdef get_range(
             out_left += tmp
 
 
-cpdef pair[Py_ssize_t, Py_ssize_t] get_bound(_ndarray_base array):
+cpdef pair[Py_ssize_t, Py_ssize_t] get_bound(_ndarray_base array) noexcept:
     """Discover the pointer byte bounds (left, right] of the array.
     """
     cdef Py_ssize_t left, right
@@ -35,7 +35,7 @@ cpdef pair[Py_ssize_t, Py_ssize_t] get_bound(_ndarray_base array):
     return array.data.ptr + left, array.data.ptr + right
 
 
-cpdef bint may_share_bounds(_ndarray_base a, _ndarray_base b):
+cpdef bint may_share_bounds(_ndarray_base a, _ndarray_base b) noexcept:
     cdef memory.MemoryPointer a_data = a.data
     cdef memory.MemoryPointer b_data = b.data
     cdef pair[Py_ssize_t, Py_ssize_t] a_range, b_range

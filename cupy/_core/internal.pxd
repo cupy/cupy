@@ -7,18 +7,19 @@ from cupy._core._carray cimport strides_t
 from cupy._core.core cimport _ndarray_base
 
 
-cpdef Py_ssize_t prod(const vector.vector[Py_ssize_t]& args)
+cpdef Py_ssize_t prod(const vector.vector[Py_ssize_t]& args) noexcept
 
-cpdef Py_ssize_t prod_sequence(object args)
+cpdef Py_ssize_t prod_sequence(object args) except? -1
 
-cpdef bint is_in(const vector.vector[Py_ssize_t]& args, Py_ssize_t x)
+cpdef bint is_in(const vector.vector[Py_ssize_t]& args, Py_ssize_t x) noexcept
 
 cpdef tuple get_size(object size)
 
 cpdef bint vector_equal(
-    const vector.vector[Py_ssize_t]& x, const vector.vector[Py_ssize_t]& y)
+    const vector.vector[Py_ssize_t]& x,
+    const vector.vector[Py_ssize_t]& y) noexcept
 
-cdef void get_reduced_dims(
+cdef get_reduced_dims(
     shape_t& shape, strides_t& strides,
     Py_ssize_t itemsize, shape_t& reduced_shape,
     strides_t& reduced_strides)
@@ -26,11 +27,11 @@ cdef void get_reduced_dims(
 # Computes the contiguous strides given a shape and itemsize.
 # Returns the size (total number of elements).
 cdef Py_ssize_t get_contiguous_strides_inplace(
-    const shape_t& shape, strides_t& strides,
-    Py_ssize_t itemsize, bint is_c_contiguous, bint zeros_for_zerosize)
+    const shape_t& shape, strides_t& strides, Py_ssize_t itemsize,
+    bint is_c_contiguous, bint zeros_for_zerosize) except? -1
 
 cpdef bint get_c_contiguity(
-    shape_t& shape, strides_t& strides, Py_ssize_t itemsize)
+    shape_t& shape, strides_t& strides, Py_ssize_t itemsize) noexcept
 
 cpdef shape_t infer_unknown_dimension(
     const shape_t& shape, Py_ssize_t size) except *
@@ -39,13 +40,13 @@ cpdef slice complete_slice(slice slc, Py_ssize_t dim)
 
 cpdef tuple complete_slice_list(list slice_list, Py_ssize_t ndim)
 
-cpdef size_t clp2(size_t x)
+cpdef size_t clp2(size_t x) noexcept
 
 cdef int _normalize_order(order, cpp_bool allow_k=*) except? 0
 
 cdef _broadcast_core(list arrays, shape_t& shape)
 
-cpdef bint _contig_axes(tuple axes)
+cpdef bint _contig_axes(tuple axes) except -1
 
 cpdef Py_ssize_t _normalize_axis_index(
     Py_ssize_t axis, Py_ssize_t ndim) except -1
@@ -53,10 +54,10 @@ cpdef Py_ssize_t _normalize_axis_index(
 cpdef tuple _normalize_axis_indices(
     axes, Py_ssize_t ndim, cpp_bool sort_axes=*)
 
-cpdef strides_t _get_strides_for_order_K(x, dtype, shape=*)
+cpdef strides_t _get_strides_for_order_K(x, dtype, shape=*) except *
 
 cpdef int _update_order_char(
-    bint is_c_contiguous, bint is_f_contiguous, int order_char)
+    bint is_c_contiguous, bint is_f_contiguous, int order_char) noexcept
 
 cpdef tuple _broadcast_shapes(shapes)
 

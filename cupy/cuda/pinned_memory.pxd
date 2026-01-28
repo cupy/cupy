@@ -10,7 +10,7 @@ cdef class PinnedMemoryPointer:
         Py_ssize_t _shape[1]
         Py_ssize_t _strides[1]
 
-    cpdef size_t size(self)
+    cpdef size_t size(self) noexcept
 
 
 cpdef _add_to_watch_list(event, obj)

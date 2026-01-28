@@ -291,46 +291,46 @@ cpdef size_t shgesv_bufferSize(intptr_t handle, int n, int nrhs, size_t dA,
 
 cpdef int zzgesv(intptr_t handle, int n, int nrhs, size_t dA, int ldda,
                  size_t dipiv, size_t dB, int lddb, size_t dX, int lddx,
-                 size_t dwork, size_t lwork_bytes, size_t dInfo)
+                 size_t dwork, size_t lwork_bytes, size_t dInfo) except? -1
 cpdef int zcgesv(intptr_t handle, int n, int nrhs, size_t dA, int ldda,
                  size_t dipiv, size_t dB, int lddb, size_t dX, int lddx,
-                 size_t dwork, size_t lwork_bytes, size_t dInfo)
+                 size_t dwork, size_t lwork_bytes, size_t dInfo) except? -1
 cpdef int zygesv(intptr_t handle, int n, int nrhs, size_t dA, int ldda,
                  size_t dipiv, size_t dB, int lddb, size_t dX, int lddx,
-                 size_t dwork, size_t lwork_bytes, size_t dInfo)
+                 size_t dwork, size_t lwork_bytes, size_t dInfo) except? -1
 cpdef int zkgesv(intptr_t handle, int n, int nrhs, size_t dA, int ldda,
                  size_t dipiv, size_t dB, int lddb, size_t dX, int lddx,
-                 size_t dwork, size_t lwork_bytes, size_t dInfo)
+                 size_t dwork, size_t lwork_bytes, size_t dInfo) except? -1
 cpdef int ccgesv(intptr_t handle, int n, int nrhs, size_t dA, int ldda,
                  size_t dipiv, size_t dB, int lddb, size_t dX, int lddx,
-                 size_t dwork, size_t lwork_bytes, size_t dInfo)
+                 size_t dwork, size_t lwork_bytes, size_t dInfo) except? -1
 cpdef int ckgesv(intptr_t handle, int n, int nrhs, size_t dA, int ldda,
                  size_t dipiv, size_t dB, int lddb, size_t dX, int lddx,
-                 size_t dwork, size_t lwork_bytes, size_t dInfo)
+                 size_t dwork, size_t lwork_bytes, size_t dInfo) except? -1
 cpdef int cygesv(intptr_t handle, int n, int nrhs, size_t dA, int ldda,
                  size_t dipiv, size_t dB, int lddb, size_t dX, int lddx,
-                 size_t dwork, size_t lwork_bytes, size_t dInfo)
+                 size_t dwork, size_t lwork_bytes, size_t dInfo) except? -1
 cpdef int ddgesv(intptr_t handle, int n, int nrhs, size_t dA, int ldda,
                  size_t dipiv, size_t dB, int lddb, size_t dX, int lddx,
-                 size_t dwork, size_t lwork_bytes, size_t dInfo)
+                 size_t dwork, size_t lwork_bytes, size_t dInfo) except? -1
 cpdef int dsgesv(intptr_t handle, int n, int nrhs, size_t dA, int ldda,
                  size_t dipiv, size_t dB, int lddb, size_t dX, int lddx,
-                 size_t dwork, size_t lwork_bytes, size_t dInfo)
+                 size_t dwork, size_t lwork_bytes, size_t dInfo) except? -1
 cpdef int dxgesv(intptr_t handle, int n, int nrhs, size_t dA, int ldda,
                  size_t dipiv, size_t dB, int lddb, size_t dX, int lddx,
-                 size_t dwork, size_t lwork_bytes, size_t dInfo)
+                 size_t dwork, size_t lwork_bytes, size_t dInfo) except? -1
 cpdef int dhgesv(intptr_t handle, int n, int nrhs, size_t dA, int ldda,
                  size_t dipiv, size_t dB, int lddb, size_t dX, int lddx,
-                 size_t dwork, size_t lwork_bytes, size_t dInfo)
+                 size_t dwork, size_t lwork_bytes, size_t dInfo) except? -1
 cpdef int ssgesv(intptr_t handle, int n, int nrhs, size_t dA, int ldda,
                  size_t dipiv, size_t dB, int lddb, size_t dX, int lddx,
-                 size_t dwork, size_t lwork_bytes, size_t dInfo)
+                 size_t dwork, size_t lwork_bytes, size_t dInfo) except? -1
 cpdef int sxgesv(intptr_t handle, int n, int nrhs, size_t dA, int ldda,
                  size_t dipiv, size_t dB, int lddb, size_t dX, int lddx,
-                 size_t dwork, size_t lwork_bytes, size_t dInfo)
+                 size_t dwork, size_t lwork_bytes, size_t dInfo) except? -1
 cpdef int shgesv(intptr_t handle, int n, int nrhs, size_t dA, int ldda,
                  size_t dipiv, size_t dB, int lddb, size_t dX, int lddx,
-                 size_t dwork, size_t lwork_bytes, size_t dInfo)
+                 size_t dwork, size_t lwork_bytes, size_t dInfo) except? -1
 
 # Compute least-saure solution of A * X = B using iterative refinement
 cpdef size_t zzgels_bufferSize(intptr_t handle, int m, int n, int nrhs,
@@ -378,46 +378,46 @@ cpdef size_t shgels_bufferSize(intptr_t handle, int m, int n, int nrhs,
 
 cpdef int zzgels(intptr_t handle, int m, int n, int nrhs, size_t dA, int ldda,
                  size_t dB, int lddb, size_t dX, int lddx,
-                 size_t dwork, size_t lwork_bytes, size_t dInfo)
+                 size_t dwork, size_t lwork_bytes, size_t dInfo) except? -1
 cpdef int zcgels(intptr_t handle, int m, int n, int nrhs, size_t dA, int ldda,
                  size_t dB, int lddb, size_t dX, int lddx,
-                 size_t dwork, size_t lwork_bytes, size_t dInfo)
+                 size_t dwork, size_t lwork_bytes, size_t dInfo) except? -1
 cpdef int zygels(intptr_t handle, int m, int n, int nrhs, size_t dA, int ldda,
                  size_t dB, int lddb, size_t dX, int lddx,
-                 size_t dwork, size_t lwork_bytes, size_t dInfo)
+                 size_t dwork, size_t lwork_bytes, size_t dInfo) except? -1
 cpdef int zkgels(intptr_t handle, int m, int n, int nrhs, size_t dA, int ldda,
                  size_t dB, int lddb, size_t dX, int lddx,
-                 size_t dwork, size_t lwork_bytes, size_t dInfo)
+                 size_t dwork, size_t lwork_bytes, size_t dInfo) except? -1
 cpdef int ccgels(intptr_t handle, int m, int n, int nrhs, size_t dA, int ldda,
                  size_t dB, int lddb, size_t dX, int lddx,
-                 size_t dwork, size_t lwork_bytes, size_t dInfo)
+                 size_t dwork, size_t lwork_bytes, size_t dInfo) except? -1
 cpdef int ckgels(intptr_t handle, int m, int n, int nrhs, size_t dA, int ldda,
                  size_t dB, int lddb, size_t dX, int lddx,
-                 size_t dwork, size_t lwork_bytes, size_t dInfo)
+                 size_t dwork, size_t lwork_bytes, size_t dInfo) except? -1
 cpdef int cygels(intptr_t handle, int m, int n, int nrhs, size_t dA, int ldda,
                  size_t dB, int lddb, size_t dX, int lddx,
-                 size_t dwork, size_t lwork_bytes, size_t dInfo)
+                 size_t dwork, size_t lwork_bytes, size_t dInfo) except? -1
 cpdef int ddgels(intptr_t handle, int m, int n, int nrhs, size_t dA, int ldda,
                  size_t dB, int lddb, size_t dX, int lddx,
-                 size_t dwork, size_t lwork_bytes, size_t dInfo)
+                 size_t dwork, size_t lwork_bytes, size_t dInfo) except? -1
 cpdef int dsgels(intptr_t handle, int m, int n, int nrhs, size_t dA, int ldda,
                  size_t dB, int lddb, size_t dX, int lddx,
-                 size_t dwork, size_t lwork_bytes, size_t dInfo)
+                 size_t dwork, size_t lwork_bytes, size_t dInfo) except? -1
 cpdef int dxgels(intptr_t handle, int m, int n, int nrhs, size_t dA, int ldda,
                  size_t dB, int lddb, size_t dX, int lddx,
-                 size_t dwork, size_t lwork_bytes, size_t dInfo)
+                 size_t dwork, size_t lwork_bytes, size_t dInfo) except? -1
 cpdef int dhgels(intptr_t handle, int m, int n, int nrhs, size_t dA, int ldda,
                  size_t dB, int lddb, size_t dX, int lddx,
-                 size_t dwork, size_t lwork_bytes, size_t dInfo)
+                 size_t dwork, size_t lwork_bytes, size_t dInfo) except? -1
 cpdef int ssgels(intptr_t handle, int m, int n, int nrhs, size_t dA, int ldda,
                  size_t dB, int lddb, size_t dX, int lddx,
-                 size_t dwork, size_t lwork_bytes, size_t dInfo)
+                 size_t dwork, size_t lwork_bytes, size_t dInfo) except? -1
 cpdef int sxgels(intptr_t handle, int m, int n, int nrhs, size_t dA, int ldda,
                  size_t dB, int lddb, size_t dX, int lddx,
-                 size_t dwork, size_t lwork_bytes, size_t dInfo)
+                 size_t dwork, size_t lwork_bytes, size_t dInfo) except? -1
 cpdef int shgels(intptr_t handle, int m, int n, int nrhs, size_t dA, int ldda,
                  size_t dB, int lddb, size_t dX, int lddx,
-                 size_t dwork, size_t lwork_bytes, size_t dInfo)
+                 size_t dwork, size_t lwork_bytes, size_t dInfo) except? -1
 
 ###############################################################################
 # Dense LAPACK Functions (Eigenvalue Solver)
@@ -470,21 +470,25 @@ cpdef destroyGesvdjInfo(intptr_t info)
 cpdef xgesvdjSetTolerance(intptr_t info, double tolerance)
 cpdef xgesvdjSetMaxSweeps(intptr_t info, int max_sweeps)
 cpdef xgesvdjSetSortEig(intptr_t info, int sort_svd)
-cpdef double xgesvdjGetResidual(intptr_t handle, intptr_t info)
-cpdef int xgesvdjGetSweeps(intptr_t handle, intptr_t info)
+cpdef double xgesvdjGetResidual(intptr_t handle, intptr_t info) except? -1
+cpdef int xgesvdjGetSweeps(intptr_t handle, intptr_t info) except? -1
 
-cpdef int sgesvdj_bufferSize(intptr_t handle, int jobz, int econ, int m, int n,
-                             intptr_t A, int lda, intptr_t S, intptr_t U,
-                             int ldu, intptr_t V, int ldv, intptr_t params)
-cpdef int dgesvdj_bufferSize(intptr_t handle, int jobz, int econ, int m, int n,
-                             intptr_t A, int lda, intptr_t S, intptr_t U,
-                             int ldu, intptr_t V, int ldv, intptr_t params)
-cpdef int cgesvdj_bufferSize(intptr_t handle, int jobz, int econ, int m, int n,
-                             intptr_t A, int lda, intptr_t S, intptr_t U,
-                             int ldu, intptr_t V, int ldv, intptr_t params)
-cpdef int zgesvdj_bufferSize(intptr_t handle, int jobz, int econ, int m, int n,
-                             intptr_t A, int lda, intptr_t S, intptr_t U,
-                             int ldu, intptr_t V, int ldv, intptr_t params)
+cpdef int sgesvdj_bufferSize(
+        intptr_t handle, int jobz, int econ, int m, int n,
+        intptr_t A, int lda, intptr_t S, intptr_t U,
+        int ldu, intptr_t V, int ldv, intptr_t params) except? -1
+cpdef int dgesvdj_bufferSize(
+        intptr_t handle, int jobz, int econ, int m, int n,
+        intptr_t A, int lda, intptr_t S, intptr_t U,
+        int ldu, intptr_t V, int ldv, intptr_t params) except? -1
+cpdef int cgesvdj_bufferSize(
+        intptr_t handle, int jobz, int econ, int m, int n,
+        intptr_t A, int lda, intptr_t S, intptr_t U,
+        int ldu, intptr_t V, int ldv, intptr_t params) except? -1
+cpdef int zgesvdj_bufferSize(
+        intptr_t handle, int jobz, int econ, int m, int n,
+        intptr_t A, int lda, intptr_t S, intptr_t U,
+        int ldu, intptr_t V, int ldv, intptr_t params) except? -1
 
 cpdef sgesvdj(intptr_t handle, int jobz, int econ, int m, int n, intptr_t A,
               int lda, intptr_t S, intptr_t U, int ldu, intptr_t V, int ldv,
@@ -542,22 +546,22 @@ cpdef int sgesvdaStridedBatched_bufferSize(
     intptr_t handle, int jobz, int rank, int m, int n, intptr_t d_A,
     int lda, long long int strideA, intptr_t d_S, long long int strideS,
     intptr_t d_U, int ldu, long long int strideU, intptr_t d_V, int ldv,
-    long long int strideV, int batchSize)
+    long long int strideV, int batchSize) except? -1
 cpdef int dgesvdaStridedBatched_bufferSize(
     intptr_t handle, int jobz, int rank, int m, int n, intptr_t d_A,
     int lda, long long int strideA, intptr_t d_S, long long int strideS,
     intptr_t d_U, int ldu, long long int strideU, intptr_t d_V, int ldv,
-    long long int strideV, int batchSize)
+    long long int strideV, int batchSize) except? -1
 cpdef int cgesvdaStridedBatched_bufferSize(
     intptr_t handle, int jobz, int rank, int m, int n, intptr_t d_A,
     int lda, long long int strideA, intptr_t d_S, long long int strideS,
     intptr_t d_U, int ldu, long long int strideU, intptr_t d_V, int ldv,
-    long long int strideV, int batchSize)
+    long long int strideV, int batchSize) except? -1
 cpdef int zgesvdaStridedBatched_bufferSize(
     intptr_t handle, int jobz, int rank, int m, int n, intptr_t d_A,
     int lda, long long int strideA, intptr_t d_S, long long int strideS,
     intptr_t d_U, int ldu, long long int strideU, intptr_t d_V, int ldv,
-    long long int strideV, int batchSize)
+    long long int strideV, int batchSize) except? -1
 
 cpdef sgesvdaStridedBatched(
     intptr_t handle, int jobz, int rank, int m, int n, intptr_t d_A,
@@ -612,8 +616,8 @@ cpdef destroySyevjInfo(intptr_t info)
 cpdef xsyevjSetTolerance(intptr_t info, double tolerance)
 cpdef xsyevjSetMaxSweeps(intptr_t info, int max_sweeps)
 cpdef xsyevjSetSortEig(intptr_t info, int sort_eig)
-cpdef double xsyevjGetResidual(intptr_t handle, intptr_t info)
-cpdef int xsyevjGetSweeps(intptr_t handle, intptr_t info)
+cpdef double xsyevjGetResidual(intptr_t handle, intptr_t info) except? -1
+cpdef int xsyevjGetSweeps(intptr_t handle, intptr_t info) except? -1
 
 cpdef int ssyevj_bufferSize(
     intptr_t handle, int jobz, int uplo, int n,

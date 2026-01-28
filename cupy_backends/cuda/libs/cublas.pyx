@@ -1408,9 +1408,10 @@ cpdef zgetrfBatched(intptr_t handle, int n, size_t Aarray, int lda,
     check_status(status)
 
 
-cpdef int sgetrsBatched(intptr_t handle, int trans, int n, int nrhs,
-                        size_t Aarray, int lda, size_t devIpiv,
-                        size_t Barray, int ldb, size_t info, int batchSize):
+cpdef int sgetrsBatched(
+        intptr_t handle, int trans, int n, int nrhs,
+        size_t Aarray, int lda, size_t devIpiv,
+        size_t Barray, int ldb, size_t info, int batchSize) except? -1:
     _setStream(handle)
     with nogil:
         status = cublasSgetrsBatched(
@@ -1419,9 +1420,10 @@ cpdef int sgetrsBatched(intptr_t handle, int trans, int n, int nrhs,
             <float**>Barray, ldb, <int*>info, batchSize)
     check_status(status)
 
-cpdef int dgetrsBatched(intptr_t handle, int trans, int n, int nrhs,
-                        size_t Aarray, int lda, size_t devIpiv,
-                        size_t Barray, int ldb, size_t info, int batchSize):
+cpdef int dgetrsBatched(
+        intptr_t handle, int trans, int n, int nrhs,
+        size_t Aarray, int lda, size_t devIpiv,
+        size_t Barray, int ldb, size_t info, int batchSize) except? -1:
     _setStream(handle)
     with nogil:
         status = cublasDgetrsBatched(
@@ -1430,9 +1432,10 @@ cpdef int dgetrsBatched(intptr_t handle, int trans, int n, int nrhs,
             <double**>Barray, ldb, <int*>info, batchSize)
     check_status(status)
 
-cpdef int cgetrsBatched(intptr_t handle, int trans, int n, int nrhs,
-                        size_t Aarray, int lda, size_t devIpiv,
-                        size_t Barray, int ldb, size_t info, int batchSize):
+cpdef int cgetrsBatched(
+        intptr_t handle, int trans, int n, int nrhs,
+        size_t Aarray, int lda, size_t devIpiv,
+        size_t Barray, int ldb, size_t info, int batchSize) except? -1:
     _setStream(handle)
     with nogil:
         status = cublasCgetrsBatched(
@@ -1441,9 +1444,10 @@ cpdef int cgetrsBatched(intptr_t handle, int trans, int n, int nrhs,
             <cuComplex**>Barray, ldb, <int*>info, batchSize)
     check_status(status)
 
-cpdef int zgetrsBatched(intptr_t handle, int trans, int n, int nrhs,
-                        size_t Aarray, int lda, size_t devIpiv,
-                        size_t Barray, int ldb, size_t info, int batchSize):
+cpdef int zgetrsBatched(
+        intptr_t handle, int trans, int n, int nrhs,
+        size_t Aarray, int lda, size_t devIpiv,
+        size_t Barray, int ldb, size_t info, int batchSize) except? -1:
     _setStream(handle)
     with nogil:
         status = cublasZgetrsBatched(

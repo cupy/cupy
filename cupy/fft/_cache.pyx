@@ -106,7 +106,7 @@ cdef class _Node:
         return output
 
 
-cpdef void _clear_LinkedList(_LinkedList ll):
+cpdef _clear_LinkedList(_LinkedList ll):
     """ Delete all the nodes to ensure they are cleaned up.
 
     This serves for the purpose of destructor and is invoked by weakref's
@@ -151,7 +151,7 @@ cdef class _LinkedList:
         # the finalizer is called when clearing the cache or at exit
         self._finalizer = weakref.finalize(self, _clear_LinkedList, self)
 
-    cdef void remove_node(self, _Node node):
+    cdef remove_node(self, _Node node):
         """ Remove the node from the linked list. """
         cdef _Node p = node.prev
         cdef _Node n = node.next
@@ -161,7 +161,7 @@ cdef class _LinkedList:
         node.next = None
         self.count -= 1
 
-    cdef void append_node(self, _Node node):
+    cdef append_node(self, _Node node):
         """ Add a node to the tail of the linked list. """
         cdef _Node t = self.tail
         cdef _Node p = t.prev
@@ -378,7 +378,7 @@ cdef class PlanCache:
 
     # --------------------- internal helpers --------------------- #
 
-    cdef void _reset(self):
+    cdef _reset(self):
         self.curr_size = 0
         self.curr_memsize = 0
         self.hits = 0
@@ -386,7 +386,7 @@ cdef class PlanCache:
         self.cache = {}
         self.lru = _LinkedList()
 
-    cdef void _cleanup(self):
+    cdef _cleanup(self):
         # remove circular reference and kick off garbage collection by
         # invoking the finalizer
         self.cache.clear()
@@ -397,7 +397,8 @@ cdef class PlanCache:
         if size < -1 or memsize < -1:
             raise ValueError('invalid input')
 
-    cdef void _set_size_memsize(self, Py_ssize_t size, Py_ssize_t memsize):
+    cdef void _set_size_memsize(
+            self, Py_ssize_t size, Py_ssize_t memsize) noexcept:
         self.size = size
         self.memsize = memsize
         self.is_enabled = (size != 0 and memsize != 0)
@@ -454,7 +455,7 @@ cdef class PlanCache:
         self.curr_size -= 1
         self.curr_memsize -= node.memsize
 
-    cdef void _eject_until_fit(
+    cdef _eject_until_fit(
             self, Py_ssize_t size, Py_ssize_t memsize):
         cdef _Node unwanted_node
         cdef list gpus
@@ -481,10 +482,10 @@ cdef class PlanCache:
         self._eject_until_fit(size, self.memsize)
         self._set_size_memsize(size, self.memsize)
 
-    cpdef Py_ssize_t get_size(self):
+    cpdef Py_ssize_t get_size(self) noexcept:
         return self.size
 
-    cpdef Py_ssize_t get_curr_size(self):
+    cpdef Py_ssize_t get_curr_size(self) noexcept:
         return self.curr_size
 
     cpdef set_memsize(self, Py_ssize_t memsize):
@@ -492,10 +493,10 @@ cdef class PlanCache:
         self._eject_until_fit(self.size, memsize)
         self._set_size_memsize(self.size, memsize)
 
-    cpdef Py_ssize_t get_memsize(self):
+    cpdef Py_ssize_t get_memsize(self) noexcept:
         return self.memsize
 
-    cpdef Py_ssize_t get_curr_memsize(self):
+    cpdef Py_ssize_t get_curr_memsize(self) noexcept:
         return self.curr_memsize
 
     cpdef get(self, tuple key, default=None):
@@ -619,7 +620,7 @@ cpdef inline PlanCache get_plan_cache():
 
 
 # TODO(leofang): remove experimental warning when scipy/scipy#12512 is merged
-cpdef Py_ssize_t get_plan_cache_size():
+cpdef Py_ssize_t get_plan_cache_size() except? -1:
     _util.experimental('cupy.fft.cache.get_plan_cache_size')
     cdef PlanCache cache = get_plan_cache()
     return cache.get_size()
@@ -633,7 +634,7 @@ cpdef set_plan_cache_size(size):
 
 
 # TODO(leofang): remove experimental warning when scipy/scipy#12512 is merged
-cpdef Py_ssize_t get_plan_cache_max_memsize():
+cpdef Py_ssize_t get_plan_cache_max_memsize() except? -1:
     _util.experimental('cupy.fft.cache.get_plan_cache_max_memsize')
     cdef PlanCache cache = get_plan_cache()
     return cache.get_memsize()

@@ -88,8 +88,9 @@ cpdef funcSetAttribute(intptr_t func, int attribute, int value)
 # Occupancy
 ###############################################################################
 
+# can raise CUDARuntimeError
 cpdef int occupancyMaxActiveBlocksPerMultiprocessor(
-    intptr_t func, int blockSize, size_t dynamicSMemSize)
+    intptr_t func, int blockSize, size_t dynamicSMemSize) except? -1
 
 cpdef occupancyMaxPotentialBlockSize(intptr_t func, size_t dynamicSMemSize,
                                      int blockSizeLimit)

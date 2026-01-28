@@ -1370,7 +1370,7 @@ cdef extern from '../../cupy_sparse.h' nogil:
     # Build-time version
     int CUSPARSE_VERSION
 
-ctypedef Status (*f_type)(...) nogil  # NOQA
+ctypedef Status (*f_type)(...) noexcept nogil  # NOQA
 
 # TODO(leofang): Since we already require CUDA 12.0+, these code can probably
 # be removed entirely.
@@ -1535,7 +1535,7 @@ cpdef inline check_status(int status):
 
 
 @cython.profile(False)
-cdef inline cuComplex complex_to_cuda(complex value):
+cdef inline cuComplex complex_to_cuda(complex value) noexcept:
     cdef cuComplex value_cuda
     value_cuda.x = value.real
     value_cuda.y = value.imag
@@ -1543,7 +1543,8 @@ cdef inline cuComplex complex_to_cuda(complex value):
 
 
 @cython.profile(False)
-cdef inline cuDoubleComplex double_complex_to_cuda(double complex value):
+cdef inline cuDoubleComplex double_complex_to_cuda(
+        double complex value) noexcept:
     cdef cuDoubleComplex value_cuda
     value_cuda.x = value.real
     value_cuda.y = value.imag
@@ -4345,7 +4346,7 @@ cpdef size_t sgtsv2StridedBatch_bufferSizeExt(
 
 cpdef size_t dgtsv2StridedBatch_bufferSizeExt(
         intptr_t handle, int m, size_t dl, size_t d, size_t du, size_t x,
-        int batchCount, int batchStride):
+        int batchCount, int batchStride) except? -1:
     cdef size_t bufferSizeInBytes
     _setStream(handle)
     with nogil:

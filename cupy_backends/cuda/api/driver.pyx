@@ -97,7 +97,7 @@ cpdef get_build_version():
         return 0
 
 
-cpdef bint _is_cuda_python():
+cpdef bint _is_cuda_python() noexcept:
     return CUPY_USE_CUDA_PYTHON
 
 
@@ -320,7 +320,7 @@ cpdef funcSetAttribute(intptr_t f, int attribute, int value):
 ###############################################################################
 
 cpdef int occupancyMaxActiveBlocksPerMultiprocessor(
-        intptr_t func, int blockSize, size_t dynamicSMemSize):
+        intptr_t func, int blockSize, size_t dynamicSMemSize) except? -1:
     initialize()
     cdef int numBlocks
     with nogil:
