@@ -61,7 +61,7 @@ cdef function.Function _create_cub_reduction_function(
 
     cdef str module_code = _get_cub_header_include()
     module_code += '''
-${type_preamble}
+${type_headers}${type_preamble}
 ${preamble}
 
 typedef ${reduce_type} _type_reduce;
@@ -208,18 +208,27 @@ __global__ void ${name}(${params}) {
   }
 }
 '''
+    type_headers = set()
+    params = _get_cub_kernel_params(params, arginfos, type_headers)
+    type_preambles = type_map.get_typedef_code(type_headers)
+
+    if not type_headers:
+        type_headers = ''
+    else:
+        type_headers = '\n'.join(sorted(type_headers)) + "\n\n"
 
     module_code = string.Template(module_code).substitute(
         name=name,
         block_size=block_size,
         items_per_thread=items_per_thread,
         reduce_type=reduce_type,
-        params=_get_cub_kernel_params(params, arginfos),
+        params=params,
+        type_headers=type_headers,
         identity=identity,
         reduce_expr=reduce_expr,
         pre_map_expr=pre_map_expr,
         post_map_expr=post_map_expr,
-        type_preamble=type_map.get_typedef_code(),
+        type_preamble=type_preambles,
         preamble=preamble)
 
     # To specify the backend, we have to explicitly spell out the default
@@ -352,7 +361,7 @@ cpdef inline tuple _can_use_cub_block_reduction(
 
 
 # similar to cupy._core._kernel._get_kernel_params()
-cdef str _get_cub_kernel_params(tuple params, tuple arginfos):
+cdef str _get_cub_kernel_params(tuple params, tuple arginfos, type_headers):
     cdef _kernel.ParameterInfo p
     cdef _kernel._ArgInfo arginfo
     cdef lst = []
@@ -366,7 +375,7 @@ cdef str _get_cub_kernel_params(tuple params, tuple arginfos):
             c_type = 'const void*' if p.is_const else 'void*'
         else:
             # for segment size and array size
-            c_type = arginfo.get_param_c_type(p)
+            c_type = arginfo.get_param_c_type(p, type_headers)
         lst.append('{} {}'.format(c_type, c_name))
     return ', '.join(lst)
 

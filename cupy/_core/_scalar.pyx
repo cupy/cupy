@@ -2,6 +2,9 @@ from libc.stdint cimport intptr_t
 
 cimport numpy as cnp
 
+import hashlib
+import textwrap
+
 import numpy
 
 from cupy._core cimport _dtype
@@ -12,20 +15,20 @@ cdef extern from 'numpy/ndarraytypes.h':
 
 
 cdef dict _typenames_base = {
-    numpy.dtype('float64'): 'double',
-    numpy.dtype('float32'): 'float',
-    numpy.dtype('float16'): 'float16',
-    numpy.dtype('complex128'): 'thrust::complex<double>',
-    numpy.dtype('complex64'): 'thrust::complex<float>',
-    numpy.dtype('int64'): 'long long',
-    numpy.dtype('int32'): 'int',
-    numpy.dtype('int16'): 'short',
-    numpy.dtype('int8'): 'signed char',
-    numpy.dtype('uint64'): 'unsigned long long',
-    numpy.dtype('uint32'): 'unsigned int',
-    numpy.dtype('uint16'): 'unsigned short',
-    numpy.dtype('uint8'): 'unsigned char',
-    numpy.dtype('bool'): 'bool',
+    numpy.dtype('float64'): ('double', None),
+    numpy.dtype('float32'): ('float', None),
+    numpy.dtype('float16'): ('float16', '#include "cupy/float16.cuh"'),
+    numpy.dtype('complex128'): ('thrust::complex<double>', None),
+    numpy.dtype('complex64'): ('thrust::complex<float>', None),
+    numpy.dtype('int64'): ('long long', None),
+    numpy.dtype('int32'): ('int', None),
+    numpy.dtype('int16'): ('short', None),
+    numpy.dtype('int8'): ('signed char', None),
+    numpy.dtype('uint64'): ('unsigned long long', None),
+    numpy.dtype('uint32'): ('unsigned int', None),
+    numpy.dtype('uint16'): ('unsigned short', None),
+    numpy.dtype('uint8'): ('unsigned char', None),
+    numpy.dtype('bool'): ('bool', None),
 }
 
 
@@ -37,12 +40,113 @@ cdef object _numpy_float64 = numpy.dtype(numpy.float64)
 cdef object _numpy_complex128 = numpy.dtype(numpy.complex128)
 
 
-cpdef str get_typename(dtype):
+cpdef str get_typename(dtype, type_headers=None):
+    """Fetch the C type name. Note that some names may require
+    additionally headers to be included in order to be available.
+
+    If not None, `type_headers` must be a set and the dtype preamble
+    (i.e. this should be required headers) will be inserted.
+    """
     if dtype is None:
         raise ValueError('dtype is None')
-    if dtype not in _typenames:
-        dtype = _dtype.get_dtype(dtype).type
-    return _typenames[dtype]
+
+    # TODO: Fix and make fast, using NumPy C-API.
+    info = _typenames.get(dtype, None)
+    if info is None:
+        sctype = _dtype.get_dtype(dtype).type
+        info = _typenames.get(sctype, None)
+
+    if info is not None:
+        name, header = info
+        if type_headers is not None and header is not None:
+            type_headers.add(header)
+        return name
+    elif isinstance(dtype, numpy.dtype):
+        if dtype.kind == "V" and dtype.fields is not None:
+            type_headers.add('#include "cupy/structview.cuh"')
+            name, _ = _build_struct_typename(dtype, type_headers)
+            return name
+
+    raise ValueError(f"Unable to find C++ type for dtype {dtype}")
+
+
+def _build_struct_typename(dtype, type_headers):
+    """Builds the struct typename and additionally returns the alignment
+    (we consider the maximum alignment of any of the fields here).
+    """
+    struct_fields = []
+    fields = []
+
+    alignment = 1
+    curr_start = 0
+    field_types = []
+    offsets = []
+
+    for name, (subdtype, offset, *title) in dtype.fields.items():
+         # The fields tupe can contain a 4th title, we ignore it.
+         # (A title is an alternative field name...)
+
+        # TODO(seberg): We should be able to query the JIT for the actual
+        # alignment constraints (making this a trivial recursion)
+        if subdtype.kind == "V" and subdtype.fields is not None:
+            subname, subalignment = _build_struct_typename(
+                subdtype, type_headers)
+        else:
+            # Assume that cupy requires itemsize alignment.
+            subalignment = subdtype.itemsize
+            # Assume dtypes right now are power of twos see comment above!
+            subname = get_typename(subdtype, type_headers)
+
+        assert (subalignment - 1) & subalignment == 0
+        alignment = max(alignment, subalignment)
+
+        if offset % subalignment != 0:
+            # NOTE: We don't error earlier (for field access yet).
+            raise ValueError(f"Field {name} with offset {offset} is not "
+                             f"aligned to {alignment} in dtype {dtype}. "
+                             f"This is not supported by CuPy please ensure "
+                             "the structure is aligned (may need offsets).")
+
+        if not (0 < (offset - curr_start) < subalignment):
+            # Addign `__align__({subalignment})` would not align with the
+            # actual offset. So we cannot describe it by a struct.
+            # (If the offset is larger, we could achieve this via padding)
+            struct_compatible = False
+        else:
+            curr_start += (offset - curr_start) % subalignment
+
+        curr_start += subdtype.itemsize
+
+        offsets.append(offset)
+        # fields are only used if all fields are indeed compatible
+        struct_fields.append(f"  __align__({subalignment}) {subname} {name};")
+        fields.append(f"sv::Field<{subname}, {offset}>")
+
+    if not struct_compatible:
+        # If the struct doesn't work out, just use a single _data field.
+        struct_fields = [
+            f"  __align__({alignment}) char _data[{dtype.itemsize}];"]
+
+    struct_fields = "\n".join(struct_fields)
+    hash = hashlib.sha1(
+        struct_fields.encode("utf8"), usedforsecurity=False).hexdigest()
+    struct_name = "struct_" + hash
+
+    # NOTE: We add this to the "headers", but the headers are always sorted
+    # before use and actual includes start with `#` and go first. We must not
+    # start with a space or newline, though!
+    # We have to do this here, because it is a template parameter.
+    # TODO(seberg): Maybe type-map should be passed through actually?!
+    definition = textwrap.dedent(f"""\
+        struct {struct_name} {{
+        {struct_fields}
+        }};
+    """).lstrip("\n")  # for sorting, don't start with \n
+    type_headers.add(definition)
+
+    fields = ', '.join(fields)
+    name = f"sv::StructView<{struct_name}, {dtype.itemsize}, {fields}>"
+    return name, alignment
 
 
 cdef dict _typenames = {}
@@ -59,9 +163,21 @@ cdef _setup_type_dict():
         _dtype_kind_size_dict[t] = (k, d.itemsize)
     # CUDA types
     for t in ('cudaTextureObject_t',):
-        _typenames[t] = t
+        _typenames[t] = (t, None)
 
-
+    try:
+        import ml_dtypes
+    except ImportError:
+        pass
+    else:
+        dt = numpy.dtype(ml_dtypes.bfloat16)
+        _dtype_kind_size_dict[dt] = ("V", 2)
+        _typenames[dt] = (
+            "bfloat16", '#include "cupy/bfloat16.cuh"')
+        _dtype_kind_size_dict[dt.type] = ("V", 2)
+        _typenames[dt.type] = (
+            "bfloat16", '#include "cupy/bfloat16.cuh"')
+ 
 _setup_type_dict()
 
 
@@ -201,5 +317,9 @@ cpdef str _get_cuda_scalar_repr(obj, dtype):
             return f'thrust::complex<float>({obj.real}, {obj.imag})'
         elif dtype.itemsize == 16:
             return f'thrust::complex<double>({obj.real}, {obj.imag})'
+    elif dtype.name == "bfloat16":
+        # NOTE(seberg): It would be nice to find a more extensible path here.
+        float_repr = _get_cuda_scalar_repr(obj, numpy.dtype(numpy.float32))
+        return f"bfloat16({float_repr})"
 
     raise TypeError(f'Unsupported dtype: {dtype}')

@@ -3,11 +3,17 @@
 
 #ifdef __HIP_DEVICE_COMPILE__
 
+// As per the comment below, use workaround conditionally:
+// https://github.com/ROCm/clr/blob/68147fe9b20a72aa43e7898bdd9ba39bca4afd14/hipamd/include/hip/amd_detail/amd_warp_sync_functions.h#L25
+#if (HIP_VERSION < 60200000) || defined(HIP_DISABLE_WARP_SYNC_BUILTINS)
+
 // ignore mask
 #define __shfl_sync(mask, ...) __shfl(__VA_ARGS__)
 #define __shfl_up_sync(mask, ...) __shfl_up(__VA_ARGS__)
 #define __shfl_down_sync(mask, ...) __shfl_down(__VA_ARGS__)
 #define __shfl_xor_sync(mask, ...) __shfl_xor(__VA_ARGS__)
+
+#endif  // (HIP_VERSION < 60200000) || defined(HIP_DISABLE_WARP_SYNC_BUILTINS)
 
 // In ROCm, threads in a warp march in lock-step, so we don't need to
 // synchronize the threads. But it doesn't guarantee the memory order,
