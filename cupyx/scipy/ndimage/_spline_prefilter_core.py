@@ -193,6 +193,8 @@ def _get_spline1d_code(mode, poles, n_boundary):
 _FILTER_GENERAL = '''
 #include "cupy/carray.cuh"
 #include "cupy/complex.cuh"
+#include <cupy/float16.cuh>  // TODO(seberg): Add this via type_headers?
+
 typedef {data_type} T;
 typedef {pole_type} P;
 typedef {index_type} idx_t;

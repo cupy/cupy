@@ -310,6 +310,13 @@ optuna:
     spec: "==4.*"
   "pre":
     spec: ">=0a0"  # latest, including pre-releases
+ml_dtypes:
+  null:
+    spec: null
+  "0.5":
+    spec: "==0.5.*"
+  "pre":
+    spec: ">=0a0"  # latest, including pre-releases
 mpi4py:
   null:
     spec: null

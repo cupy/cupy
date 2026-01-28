@@ -219,7 +219,7 @@ class LinuxGenerator:
         pip_args = []
         pip_uninstall_args = []
         for pylib in ('numpy', 'scipy', 'optuna', 'mpi4py',
-                      'cython', 'cuda-python'):
+                      'ml_dtypes', 'cython', 'cuda-python'):
             pylib_ver = getattr(matrix, pylib)
             if pylib_ver is None:
                 pip_uninstall_args.append(pylib)
@@ -484,7 +484,7 @@ def validate_schema(schema: SchemaType) -> None:
                         raise ValueError(
                             f'unknown CUDA version: {cuda} '
                             f'while parsing schema {key}:{value}')
-        elif key in ('numpy', 'scipy', 'mpi4py'):
+        elif key in ('numpy', 'scipy', 'mpi4py', 'ml_dtypes'):
             for value, value_schema in key_schema.items():
                 for python in value_schema.get('python', []):
                     if python not in schema['python'].keys():
@@ -553,7 +553,7 @@ def validate_matrixes(schema: SchemaType, matrixes: list[Matrix]) -> None:
                     errors.append(
                         f'{matrix.project}: CUDA {matrix.cuda} '
                         f'not supported by {key} {value}')
-            elif key in ('numpy', 'scipy', 'mpi4py'):
+            elif key in ('numpy', 'scipy', 'mpi4py', 'ml_dtypes'):
                 supports = schema[key][value].get('python', None)
                 if supports is not None and matrix.python not in supports:
                     errors.append(
