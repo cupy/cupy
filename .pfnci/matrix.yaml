@@ -305,8 +305,8 @@
   cutensor: "2.4"
   cusparselt: "0.8.1"
   python: "3.14"
-  numpy: "2.3"
-  scipy: "1.16"
+  numpy: "2.4"
+  scipy: "1.17"
   optuna: "4"
   mpi4py: null
   cython: "3.1"
