@@ -33,7 +33,7 @@ def make_kernel_code(kernel_name, ndim, layout='layout_stride'):
     # Common header
     code = r"""
 #include <cuda/std/mdspan>
-#include <cupy/carray.cuh>  // TODO(leofang): replace this by fp16 header once available
+#include <cupy/float16.cuh>
 #include <cupy/complex.cuh>
 
 template<typename T, typename IndexType>
@@ -106,7 +106,7 @@ __global__ void {kernel_name}(
 # Kernel with compile-time size validation
 code_verify_with_validation = r"""
 #include <cuda/std/mdspan>
-#include <cupy/carray.cuh>  // TODO(leofang): replace this by fp16 header once available
+#include <cupy/float16.cuh>
 #include <cupy/complex.cuh>
 
 template<typename T, typename IndexType>
