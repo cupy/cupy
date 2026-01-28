@@ -343,7 +343,11 @@ class LinuxGenerator:
             '',
         ]
 
-        lines += ['"$ACTIONS/build.sh"']
+        lines += [
+            '',
+            'trap "$ACTIONS/cleanup.sh" EXIT',
+            '"$ACTIONS/build.sh"',
+        ]
         if matrix.test.startswith('unit'):
             if matrix.test == 'unit':
                 spec = 'not slow and not multi_gpu'
@@ -367,7 +371,6 @@ class LinuxGenerator:
             raise AssertionError
 
         lines += [
-            '"$ACTIONS/cleanup.sh"',
             ''
         ]
 
