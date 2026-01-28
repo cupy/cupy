@@ -67,11 +67,26 @@ public:
   static constexpr size_t size = Size;
   static constexpr size_t field_count = sizeof...(Fields);
 
-  // Constructors
-  StructView() : StructType{} {}
+  StructView() {
+    init<0>();
+  };
 
-  template<typename... Args>
-  explicit StructView(Args&&... args) : StructType{std::forward<Args>(args)...} {}
+  StructView(const StructView<StructType, Size, Fields...>& other) {
+    assign<0>(other);  // non-trivial to try and honor "holes"
+  }
+
+  // Construct from other struct
+  template<typename OtherStruct, size_t OtherSize, typename... OtherFields>
+  explicit StructView(const StructView<OtherStruct, OtherSize, OtherFields...>& other) : StructType{} {
+    static_assert(sizeof...(Fields) == sizeof...(OtherFields), "Field count must match");
+    assign<0>(other);
+  }
+
+  // Construct from "scalar" by broadcasting.
+  template<typename T>
+  explicit StructView(const T& value) : StructType{} {
+    assign_broadcast<0>(value);
+  }
 
   StructView(const StructType& s) : StructType(s) {}
   StructView(StructType&& s) : StructType(std::move(s)) {}
@@ -111,7 +126,7 @@ public:
     return !(*this == other);
   }
 
-  // Cross-type assignment (by field order)
+  // Same as constructor.
   template<typename OtherStruct, size_t OtherSize, typename... OtherFields>
   StructView& operator=(const StructView<OtherStruct, OtherSize, OtherFields...>& other) {
     static_assert(sizeof...(Fields) == sizeof...(OtherFields), "Field count must match");
@@ -119,9 +134,8 @@ public:
     return *this;
   }
 
-  // Broadcast assignment - assign single value to all fields
-  // (disabled if T is another StructView to avoid ambiguity)
-  // std::enable_if_t<!is_struct_view_v<std::decay_t<T>>>
+  // Broadcast assignment - assign single value to all fields.
+  // NOTE(seberg): Can ommitting enable_if lead to ambiguity?
   template<typename T>
   StructView& operator=(const T& value) {
     assign_broadcast<0>(value);
@@ -145,6 +159,17 @@ private:
     if constexpr (Index < sizeof...(Fields)) {
       at<Index>() = other.template at<Index>();
       assign<Index + 1>(other);
+    }
+  }
+
+  // Initialization helper (field-by-field init)
+  template<size_t Index>
+  void init() {
+    if constexpr (Index < sizeof...(Fields)) {
+      using FT = FieldAt<Index>;
+      using T = typename FT::type;
+      at<Index>() = T{};
+      init<Index + 1>();
     }
   }
 

@@ -290,7 +290,6 @@ cdef class _ArgInfo:
     cdef str get_c_type(self, type_headers=None):
         # Returns the C type representation.
         if self.arg_kind == ARG_KIND_NDARRAY:
-            print(self.dtype)
             name = _get_typename(self.dtype, type_headers)
             name = 'CArray<%s, %d, %d, %d>' % (
                 name, self.ndim,
@@ -1352,8 +1351,10 @@ cdef class ufunc:
                 template = in_arg
                 break
 
+        core_in_dtypes, core_out_dtypes = op.resolve_dtypes(in_args, out_args)
+
         out_args = _get_out_args_from_optionals(
-            subtype, out_args, op.out_types, shape, casting, template)
+            subtype, out_args, core_out_dtypes, shape, casting, template)
         # inout_args may have included given outputs for broadcasting, replace:
         inout_args[len(in_args) + has_where:] = out_args
 
@@ -1375,7 +1376,8 @@ cdef class ufunc:
         inout_args.append(indexer)
         arginfos = _get_arginfos(inout_args)
 
-        kern = self._get_ufunc_kernel(dev_id, op, arginfos, has_where)
+        kern = self._get_ufunc_kernel(
+            core_in_dtypes, core_out_dtypes, dev_id, op, arginfos, has_where)
 
         kern.linear_launch(indexer.size, inout_args)
         return ret
@@ -1395,7 +1397,8 @@ cdef class ufunc:
         return '{}__{}'.format(name, '_'.join(inout_type_words))
 
     cdef function.Function _get_ufunc_kernel(
-            self, int dev_id, _Op op, tuple arginfos, bint has_where):
+            self, tuple in_dtypes, tuple out_dtypes,
+            int dev_id, _Op op, tuple arginfos, bint has_where):
         cdef function.Function kern
         key = (dev_id, op, arginfos, has_where)
         kern = self._kernel_memo.get(key, None)
@@ -1403,7 +1406,7 @@ cdef class ufunc:
             name = self._get_name_with_type(arginfos, has_where)
             params = self._params_with_where if has_where else self._params
             kern = _get_ufunc_kernel(
-                op.in_types, op.out_types, op.routine, arginfos, has_where,
+                in_dtypes, out_dtypes, op.routine, arginfos, has_where,
                 params, name, self._preamble, self._loop_prep)
             kern = self._kernel_memo.setdefault(key, kern)
         return kern
@@ -1512,7 +1515,7 @@ cdef class _Op:
 
     def __init__(
             self, tuple in_types, tuple out_types, object routine,
-            object error_func):
+            object error_func, object resolution_func):
         if error_func is None:
             assert routine is not None
         else:
@@ -1524,9 +1527,21 @@ cdef class _Op:
         self.routine = routine
         self.error_func = error_func
 
+        # Resolution func is typically None (non parametric dtypes) but can
+        # implement more complex logic.
+        # NOTE(seberg): Unlike NumPy, we currently have a more "raw" resolution
+        # function which is passed the *original* dtypes rather than preprocessed
+        # ones.
+        # NumPy normally already casts input dtypes to the loop types and we skip
+        # this. Because (a) it is a bit tricky and (b) it is actually in the way
+        # for structured. I could see a future flag in NumPy to use this.
+        self._resolution_func = resolution_func
+        self._in_dtypes = tuple([get_dtype(t) for t in in_types])
+        self._out_dtypes = tuple([get_dtype(t) for t in out_types])
+
     @staticmethod
     cdef _Op _from_type_and_routine_or_error_func(
-            typ, object routine, object error_func):
+            typ, object routine, object error_func, object resolution_func):
         # TODO(niboshi): Write type mapping specification.
         if isinstance(typ, str):
             types = typ.split('->')
@@ -1542,25 +1557,31 @@ cdef class _Op:
 
         in_types = tuple([get_dtype(t) for t in in_types])  # TODO: fast-path?
         out_types = tuple([get_dtype(t) for t in out_types])
-        return _Op(in_types, out_types, routine, error_func)
+        return _Op(in_types, out_types, routine, error_func, resolution_func)
 
     @staticmethod
-    cdef _Op from_type_and_routine(typ, routine):
-        return _Op._from_type_and_routine_or_error_func(typ, routine, None)
+    cdef _Op from_type_and_routine(typ, routine, resolution_func):
+        return _Op._from_type_and_routine_or_error_func(typ, routine, None, resolution_func)
 
     @staticmethod
     cdef _Op from_type_and_error_func(typ, error_func):
-        return _Op._from_type_and_routine_or_error_func(typ, None, error_func)
+        return _Op._from_type_and_routine_or_error_func(typ, None, error_func, None)
 
     cdef check_valid(self):
         if self.error_func is not None:
             self.error_func()
 
-    cpdef tuple get_in_dtypes(self):
-        return tuple([get_dtype(t) for t in self.in_types])
+    cpdef tuple resolve_dtypes(self, list in_args, list out_args):
+        # In most cases, this just returns the typical dtypes matching the
+        # the dtype kind (or DType class, as of now represented by the scalar).
+        # For parametric DTypes, more complex handling may be necessary and
+        # can be implemented by providing the resolver function.
+        if self._resolution_func is None:
+            return self._in_dtypes, self._out_dtypes
 
-    cpdef tuple get_out_dtypes(self):
-        return tuple([get_dtype(t) for t in self.out_types])
+        in_dtypes = [None if arg is None else arg.dtype for arg in in_args]
+        out_dtypes = [None if arg is None else arg.dtype for arg in out_args]
+        return self._resolution_func(self, tuple(in_dtypes), tuple(out_dtypes))
 
     def __repr__(self):
         # Just for debugging purposes.
@@ -1584,8 +1605,12 @@ cdef class _Ops:
     cdef _Ops from_tuples(object ops, routine):
         ops_ = []
         for t in ops:
+            resolution_func = None
             if isinstance(t, tuple):
-                typ, rt = t
+                typ, rt, *res_func = t
+                if res_func:
+                    resolution_func, = res_func
+
                 if rt is None:
                     rt = routine
                 elif isinstance(rt, tuple):
@@ -1595,6 +1620,7 @@ cdef class _Ops:
                         raise ValueError(
                             f"invalid op {t}, expected callable {rt}")
                     assert callable(rt)
+                    assert resolution_func is None  # can't error and resolve
                     ops_.append(_Op.from_type_and_error_func(typ, rt))
                     continue
             else:
@@ -1602,7 +1628,7 @@ cdef class _Ops:
                     raise ValueError(
                         f"invalid op {t}, expected string or list")
                 typ, rt = t, routine
-            ops_.append(_Op.from_type_and_routine(typ, rt))
+            ops_.append(_Op.from_type_and_routine(typ, rt, resolution_func))
         return _Ops(tuple(ops_))
 
     cpdef _Op guess_routine(

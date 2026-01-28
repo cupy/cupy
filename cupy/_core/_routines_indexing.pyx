@@ -28,8 +28,16 @@ cdef _ndarray_base _ndarray_getitem(_ndarray_base self, slices):
     cdef list slice_list
     cdef _ndarray_base a
 
-    if isinstance(slices, str) and self.dtype.fields is not None:
-        return _getitem_fields(self, slices)
+    # TODO: Use NumPy C-API to fast-path this.
+    if self.dtype.fields is not None:
+        # The array has fields, check whether this may be field access
+        if (
+            isinstance(slices, str) or (
+                isinstance(slices, list) and
+                all(isinstance(s, str) for s in slices)
+            )
+        ):
+            return _getitem_fields(self, slices)
 
     slice_list = _prepare_slice_list(slices)
     a, adv = _view_getitem(self, slice_list)
@@ -51,11 +59,17 @@ cdef _ndarray_setitem(_ndarray_base self, slices, value):
     if isinstance(value, _ndarray_base):
         value = _squeeze_leading_unit_dims(value)
 
-    if isinstance(slices, str) and self.dtype.fields is not None:
-        # TODO: This is kinda right, but not quite due to finalization
-        # for subclasses.
-        self = _getitem_fields(self, slices)
-        slices = ...  # Need to assign the full thing as if an Ellipsis
+    # TODO: Use NumPy C-API to fast-path this.
+    if self.dtype.fields is not None:
+        # The array has fields, check whether this may be field access
+        if (
+            isinstance(slices, str) or (
+                isinstance(slices, list) and
+                all(isinstance(s, str) for s in slices)
+            )
+        ):
+            self = _getitem_fields(self, slices)
+            slices = ...  # Need to assign the full thing as if an Ellipsis
 
     _scatter_op(self, slices, value, 'update')
 
@@ -1196,8 +1210,15 @@ cdef _ndarray_base _getitem_multiple(
     return _take(a, reduced_idx, start, stop)
 
 
-cdef _ndarray_base _getitem_fields(_ndarray_base a, str name):
+cdef _ndarray_base _getitem_fields(_ndarray_base a, slices):
+    cdef str name
     cdef _ndarray_base v
+    if isinstance(slices, list):
+        new_dtype = a.dtype[slices]
+        return a.view(new_dtype)
+
+    # Otherwise, we got a single field name.
+    name = slices
     try:
         new_dtype, offset, *_ = a.dtype.fields[name]
     except KeyError:

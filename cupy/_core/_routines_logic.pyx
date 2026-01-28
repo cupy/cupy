@@ -1,3 +1,5 @@
+import numpy
+
 from cupy._core._kernel import create_ufunc
 from cupy._core._reduction import create_reduction_func
 from cupy._util import bf16_loop
@@ -53,7 +55,30 @@ cdef _any = create_reduction_func(
     'false', '')
 
 
-cpdef create_comparison(name, op, doc='', no_complex_dtype=True):
+
+def struct_compare_resolution(op, in_dtypes, out_dtypes):
+    # NumPy ignores field names, so we'll do that as well.
+    dt1, dt2 = in_dtypes
+    if dt1.fields is None or dt2.fields is None:
+        raise TypeError("Cannot compare structured and non-structured dtypes")
+
+    # NumPy drops the field names, so do so as well:
+    dt1_ = numpy.dtype({str(i): f for i, f in enumerate(dt1.fields.values())}, align=True)
+    dt2_ = numpy.dtype({str(i): f for i, f in enumerate(dt1.fields.values())}, align=True)
+
+    try:
+        cmp_dtype = numpy.promote_types(dt1_, dt2_)
+        # TODO: The promotion result may not be sufficiently aligned. We will
+        # need to call a new helper to align it sufficiently!
+    except TypeError:
+        raise TypeError(f"Cannot compare dtypes {dt1} and {dt2}")
+
+    out_dtypes = (numpy.dtype(bool),)
+    return (cmp_dtype, cmp_dtype), out_dtypes
+
+
+cpdef create_comparison(
+        name, op, doc='', no_complex_dtype=True, allow_structured=False):
 
     if no_complex_dtype:
         ops = ('??->?', 'qq->?', 'qQ->?', 'Qq->?', 'QQ->?',
@@ -62,6 +87,9 @@ cpdef create_comparison(name, op, doc='', no_complex_dtype=True):
         ops = ('??->?', 'qq->?', 'qQ->?', 'Qq->?', 'QQ->?',
                'ee->?', *bf16_loop(2, '?'), 'ff->?', 'dd->?',
                'FF->?', 'DD->?')
+
+    if allow_structured:
+        ops += (("VV->?", None, struct_compare_resolution),)
 
     return create_ufunc(
         'cupy_' + name,
@@ -117,7 +145,7 @@ cdef _equal = create_comparison(
     .. seealso:: :data:`numpy.equal`
 
     ''',
-    no_complex_dtype=False)
+    no_complex_dtype=False, allow_structured=True)
 
 
 cdef _not_equal = create_comparison(
@@ -127,7 +155,7 @@ cdef _not_equal = create_comparison(
     .. seealso:: :data:`numpy.equal`
 
     ''',
-    no_complex_dtype=False)
+    no_complex_dtype=False, allow_structured=True)
 
 
 # Variables to expose to Python
