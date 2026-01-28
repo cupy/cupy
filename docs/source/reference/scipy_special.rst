@@ -147,7 +147,7 @@ Legendre functions
    :toctree: generated/
 
    lpmv
-   sph_harm
+   sph_harm_y
 
 
 Lambert W and related functions
