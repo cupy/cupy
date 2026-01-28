@@ -79,7 +79,10 @@ def test_i0(xp):
 def test_angle(xp):
     # XXX(seberg): CuPy doesn't handle NaN correctly, so don't test.
     a = xp.array(TEST_VALUES[:-1], dtype=BF16)
-    return xp.angle(a, deg=False)
+    res = xp.angle(a, deg=False)
+    if xp == numpy:
+        res = res.astype(BF16)  # some versions of NumPy return float32
+    return res
 
 
 @pytest.mark.parametrize('func', [
