@@ -406,7 +406,9 @@ class DistributedArray(ndarray):
                 np_array[idx] = cupy.asnumpy(chunk.array)
             else:
                 self._mode.numpy_func(
-                    np_array[idx], cupy.asnumpy(chunk.array), np_array[idx])
+                    np_array[idx],
+                    cupy.asnumpy(chunk.array),
+                    out=np_array[idx])
 
         # Undo numpy.atleast_1d
         return np_array.reshape(self.shape)
