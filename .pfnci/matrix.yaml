@@ -77,7 +77,7 @@
   numpy: "2.0"
   scipy: "1.16"
   optuna: "3"
-  ml_dtypes: null
+  ml_dtypes: "0.5"
   mpi4py: null
   cython: "3.1"
   cuda-python: null

@@ -1993,13 +1993,13 @@ CuPy CI Test Coverage
      - 
    * - ml_dtypes
      - null
-     - 5
+     - 3
      - 
      - 
      - 
      - 
-     - ✅
-     - ✅
+     - 
+     - 
      - 
      - 
      - ✅
@@ -2025,13 +2025,13 @@ CuPy CI Test Coverage
      - 
    * - 
      - 0.5
-     - 23
+     - 25
      - ✅
      - ✅
      - ✅
      - ✅
-     - 
-     - 
+     - ✅
+     - ✅
      - ✅
      - ✅
      - 
