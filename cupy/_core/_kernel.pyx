@@ -209,7 +209,7 @@ cdef class _ArgInfo:
         ret._init(
             ARG_KIND_NDARRAY,
             type(arg),
-            arg.dtype.type,
+            arg.dtype,
             arg._shape.size(),
             arg._c_contiguous,
             arg._index_32_bits)
@@ -218,7 +218,7 @@ cdef class _ArgInfo:
     @staticmethod
     cdef _ArgInfo from_scalar(_scalar.CScalar arg):
         cdef _ArgInfo ret = _ArgInfo.__new__(_ArgInfo)
-        dtype = arg.get_numpy_type()
+        dtype = arg.descr
         ret._init(ARG_KIND_SCALAR, _scalar.CScalar, dtype, 0, True, True)
         return ret
 
@@ -290,6 +290,7 @@ cdef class _ArgInfo:
     cdef str get_c_type(self, type_headers=None):
         # Returns the C type representation.
         if self.arg_kind == ARG_KIND_NDARRAY:
+            print(self.dtype)
             name = _get_typename(self.dtype, type_headers)
             name = 'CArray<%s, %d, %d, %d>' % (
                 name, self.ndim,
@@ -457,9 +458,10 @@ cdef class ParameterInfo:
             self.ctype = t
         else:
             dtype = get_dtype(t)
-            self.dtype = dtype.type
-            if dtype.name != t:
-                raise ValueError('Wrong type %s' % t)
+            self.dtype = dtype
+            # TODO: Why this comparison, it seems also slow?!
+            #if dtype.name != t:
+            #    raise ValueError('Wrong type %s' % t)
             self.ctype = _get_typename(self.dtype)
 
         for i in s[:-2]:
@@ -867,14 +869,14 @@ cdef class ElementwiseKernel:
         in_ndarray_types = []
         for a in in_args:
             if isinstance(a, _ndarray_base):
-                t = a.dtype.type
+                t = a.dtype
             elif isinstance(a, texture.TextureObject):
                 t = 'cudaTextureObject_t'
             else:
                 t = None
             in_ndarray_types.append(t)
         in_ndarray_types = tuple(in_ndarray_types)
-        out_ndarray_types = tuple([a.dtype.type for a in out_args])
+        out_ndarray_types = tuple([a.dtype for a in out_args])
 
         in_types, out_types, type_map = self._decide_params_type(
             in_ndarray_types, out_ndarray_types)
@@ -943,7 +945,7 @@ cdef class ElementwiseKernel:
         in_types = []
         for x in arginfos:
             if x.type is cupy.ndarray:
-                in_types.append(cupy.dtype(x.dtype).char)
+                in_types.append(cupy.dtype(x.dtype))
         in_types = tuple(in_types)
         if in_types not in self._cached_codes:
             code = _get_elementwise_kernel_code(
@@ -1079,13 +1081,9 @@ cdef function.Function _get_ufunc_kernel(
         loop_prep=loop_prep, after_loop='', options=("--std=c++17",))
 
 
-cdef dict _mst_unsigned_to_signed = {
-    i: (numpy.iinfo(j).max, (i, j))
-    for i, j in [(numpy.dtype(i).type, numpy.dtype(i.lower()).type)
-                 for i in "BHILQ"]}
-
-
-cdef inline int _get_kind_score(type kind):
+cdef inline int _get_kind_score(kind):
+    if kind not in (int, float, complex):
+        kind = kind.type  # TODO: Make pretty.
     if issubclass(kind, numpy.bool_):
         return 0
     if issubclass(kind, (numpy.integer, int)):
@@ -1257,7 +1255,7 @@ cdef class ufunc:
         # Note default behavior of casting is 'same_kind' on numpy>=1.10
         casting = kwargs.pop('casting', self._default_casting)
         if dtype is not None:
-            dtype = get_dtype(dtype).type
+            dtype = get_dtype(dtype)
         if kwargs:
             raise TypeError('Wrong arguments %s' % kwargs)
 
@@ -1389,7 +1387,7 @@ cdef class ufunc:
         cdef _ArgInfo arginfo
         inout_type_words = []
         for arginfo in arginfos:
-            dtype = str(numpy.dtype(arginfo.dtype))
+            dtype = numpy.dtype(arginfo.dtype).name  # TODO: better scheme!
             if arginfo.is_ndarray():
                 inout_type_words.append(dtype)
             elif arginfo.is_scalar():
@@ -1542,8 +1540,8 @@ cdef class _Op:
         else:
             raise TypeError("Expected string or list for typ identifier.")
 
-        in_types = tuple([get_dtype(t).type for t in in_types])
-        out_types = tuple([get_dtype(t).type for t in out_types])
+        in_types = tuple([get_dtype(t) for t in in_types])  # TODO: fast-path?
+        out_types = tuple([get_dtype(t) for t in out_types])
         return _Op(in_types, out_types, routine, error_func)
 
     @staticmethod
@@ -1619,17 +1617,17 @@ cdef class _Ops:
             in_types_l = []
             for a in in_args:
                 if type(a) is _scalar.CScalar:
-                    # .typeobj is the C-level type (as a PyTypeObject *)
-                    t = <object>((<_scalar.CScalar>a).descr.typeobj)
+                    t = (<_scalar.CScalar>a).descr
                     weak_t = (<_scalar.CScalar>a).weak_t
                     if weak_t is not False:
                         any_weak = True
                 elif isinstance(a, _ndarray_base):
-                    t = (<_ndarray_base>a).dtype.type
+                    t = (<_ndarray_base>a).dtype
                     weak_t = False
                 else:
                     raise RuntimeError(f"Need array or CScalar got {type(a)}")
 
+                # TODO: We are using the dtype now, check where it's used and fast-paths/typing would be good?
                 in_types_l.append(t)
                 weaks_l.append(weak_t)
 

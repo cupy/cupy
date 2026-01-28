@@ -1,11 +1,21 @@
 #ifndef STRUCT_VIEW_H_
 #define STRUCT_VIEW_H_
 
-#include <cstddef>
-#include <type_traits>
-#include <utility>
+#include "cupy/carray.cuh"
+
+//#include <cstddef>
+//#include <type_traits>
+//#include <utility>
 
 namespace sv {
+
+// Hack to replace std::false_type and std::true_type
+template<bool Value>
+struct my_integral_constant {
+    static constexpr bool value = Value;
+    using type = my_integral_constant;
+    constexpr operator bool() const noexcept { return value; }
+};
 
 // Forward declaration for SFINAE
 template<typename, size_t, typename...>
@@ -13,10 +23,10 @@ class StructView;
 
 // Trait to detect StructView
 template<typename T>
-struct is_struct_view : std::false_type {};
+struct is_struct_view : my_integral_constant<false> {};
 
 template<typename StructType, size_t Size, typename... Fields>
-struct is_struct_view<StructView<StructType, Size, Fields...>> : std::true_type {};
+struct is_struct_view<StructView<StructType, Size, Fields...>> : my_integral_constant<true> {};
 
 template<typename T>
 inline constexpr bool is_struct_view_v = is_struct_view<T>::value;
@@ -111,7 +121,8 @@ public:
 
   // Broadcast assignment - assign single value to all fields
   // (disabled if T is another StructView to avoid ambiguity)
-  template<typename T, typename = std::enable_if_t<!is_struct_view_v<std::decay_t<T>>>>
+  // std::enable_if_t<!is_struct_view_v<std::decay_t<T>>>
+  template<typename T>
   StructView& operator=(const T& value) {
     assign_broadcast<0>(value);
     return *this;
