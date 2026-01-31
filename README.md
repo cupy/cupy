@@ -1,3 +1,10 @@
+# Deprecation warning
+
+> [!CAUTION]
+> This AMD fork only exists to push new commits to the [upstream repository](https://github.com/cupy/cupy). Please use the upstream repository for the latest AMD functionality and report any bugs there rather than on this fork.
+
+---
+
 <div align="center"><img src="https://raw.githubusercontent.com/cupy/cupy/main/docs/image/cupy_logo_1000px.png" width="400"/></div>
 
 # CuPy : NumPy & SciPy for GPU
