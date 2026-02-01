@@ -20,6 +20,7 @@ from cupy._core cimport _reduction
 from cupy.cuda cimport device
 from cupy.cuda.pinned_memory cimport alloc_pinned_memory, is_memory_pinned
 from cupy_backends.cuda.libs cimport cutensor
+from cupy_backends.cuda.libs import cutensor as _cutensor_py
 from cupy.cuda import Device
 
 cdef dict _handles = {}
@@ -89,12 +90,22 @@ cdef class Handle:
 cdef class TensorDescriptor:
     cdef intptr_t _ptr
     cdef int _cutensor_dtype
+    cdef object _extent
+    cdef object _stride
 
-    def __init__(self, intptr_t handle, uint32_t num_modes, intptr_t extent,
-                 intptr_t stride, int cutensor_dtype,
+    def __init__(self, intptr_t handle, uint32_t num_modes, extent, stride,
+                 int cutensor_dtype,
                  uint32_t alignment_req=256):
+        # hipTensor appears to keep pointers to `extent`/`stride` arrays instead
+        # of copying them internally. Keep them alive for the descriptor's
+        # lifetime to avoid use-after-free and stateful correctness issues.
+        self._extent = extent
+        self._stride = stride
         self._ptr = cutensor.createTensorDescriptor(
-            handle, num_modes, extent, stride, cutensor_dtype, alignment_req)
+            handle, num_modes,
+            extent.ctypes.data,
+            stride.ctypes.data,
+            cutensor_dtype, alignment_req)
         self._cutensor_dtype = cutensor_dtype
 
     def __dealloc__(self):
@@ -270,7 +281,7 @@ cpdef TensorDescriptor create_tensor_descriptor(_ndarray_base a):
         stride = _numpy.array(a.strides, dtype=_numpy.int64) // a.itemsize
         cutensor_dtype = _get_cutensor_dtype(a.dtype)
         _tensor_descriptors[key] = TensorDescriptor(
-            handle.ptr, num_modes, extent.ctypes.data, stride.ctypes.data,
+            handle.ptr, num_modes, extent, stride,
             cutensor_dtype, alignment_req=alignment_req)
     return _tensor_descriptors[key]
 
@@ -308,6 +319,10 @@ cpdef Plan create_plan(
         (Plan): A instance of class Plan.
     """
     handle = _get_handle()
+    if _runtime.is_hip:
+        # hipTensor plans are not reliably reusable across executions (observed
+        # "second call returns zeros" behavior). Avoid caching plans on HIP.
+        return Plan(handle.ptr, desc.ptr, pref.ptr, ws_limit)
     key = (handle.ptr, desc.ptr, pref.ptr, ws_limit)
     if key not in _plans:
         _plans[key] = Plan(handle.ptr, desc.ptr, pref.ptr, ws_limit)
@@ -457,12 +472,14 @@ cpdef OperationDescriptor create_elementwise_binary(
            desc_C.ptr, mode_C.data, op_C,
            desc_D.ptr, mode_D.data, op_AC, compute_desc)
     if key not in _elementwise_binary_operators:
-        _elementwise_binary_operators[key] = OperationDescriptor()
-        _elementwise_binary_operators[key].create_elementwise_binary(
+        # Avoid caching a partially-initialized descriptor if creation fails.
+        op = OperationDescriptor()
+        op.create_elementwise_binary(
             handle.ptr,
             desc_A.ptr, mode_A.data, op_A,
             desc_C.ptr, mode_C.data, op_C,
             desc_D.ptr, mode_D.data, op_AC, compute_desc)
+        _elementwise_binary_operators[key] = op
     return _elementwise_binary_operators[key]
 
 
@@ -497,6 +514,32 @@ def elementwise_binary(
     Examples:
         See examples/cutensor/elementwise_binary.py
     """
+    # hipTensor's elementwise kernels currently do not correctly handle inputs
+    # with permuted mode orders. Work around this by materializing A in C's mode
+    # order so that all tensors share the same mode ordering.
+    if _runtime.is_hip:
+        try:
+            if isinstance(mode_A, Mode):
+                labels_A = tuple(int(x) for x in (<Mode>mode_A)._array)
+            else:
+                labels_A = tuple((ord(x) if isinstance(x, str) else int(x)) for x in mode_A)
+            if isinstance(mode_C, Mode):
+                labels_C = tuple(int(x) for x in (<Mode>mode_C)._array)
+            else:
+                labels_C = tuple((ord(x) if isinstance(x, str) else int(x)) for x in mode_C)
+        except Exception:
+            labels_A = None
+            labels_C = None
+        if labels_A is not None and labels_C is not None:
+            if (len(labels_A) == len(labels_C)
+                    and set(labels_A) == set(labels_C)
+                    and labels_A != labels_C):
+                perm = tuple(labels_A.index(x) for x in labels_C)
+                A_t = A.transpose(perm).copy()
+                if A_t.shape == C.shape:
+                    A = A_t
+                    mode_A = mode_C
+
     if out is None:
         out = core._ndarray_init(
             _cupy.ndarray, C._shape, dtype=C.dtype, obj=None)
@@ -505,9 +548,32 @@ def elementwise_binary(
     elif not internal.vector_equal(C._shape, out._shape):
         raise ValueError('shape mismatch: {} != {}'.format(C.shape, out.shape))
 
+    cdef _ndarray_base C_view = C
+    cdef _ndarray_base out_view = out
+    cdef _ndarray_base out_exec = out
+    cdef bint copy_back_out = False
+    if _runtime.is_hip:
+        # hipTensor currently appears unstable on general strided views. As a
+        # safety fallback, materialize unsupported layouts as contiguous arrays.
+        if not A._c_contiguous:
+            A = _cupy.ascontiguousarray(A)
+        if out is C_view:
+            # In-place elementwise: keep input/output consistent.
+            if not C_view._c_contiguous:
+                C = _cupy.ascontiguousarray(C_view)
+                out_exec = C
+                copy_back_out = True
+        else:
+            if not C_view._c_contiguous:
+                C = _cupy.ascontiguousarray(C_view)
+            if not out_view._c_contiguous:
+                out_exec = core._ndarray_init(
+                    _cupy.ndarray, out_view._shape, dtype=out_view.dtype, obj=None)
+                copy_back_out = True
+
     desc_A = create_tensor_descriptor(A)
     desc_C = create_tensor_descriptor(C)
-    desc_out = create_tensor_descriptor(out)
+    desc_out = create_tensor_descriptor(out_exec)
     mode_A = _auto_create_mode(A, mode_A)
     mode_C = _auto_create_mode(C, mode_C)
     mode_out = mode_C
@@ -518,10 +584,13 @@ def elementwise_binary(
     plan = create_plan(operator, plan_pref)
     cutensor.elementwiseBinaryExecute(
         _get_handle().ptr, plan.ptr,
-        _create_scalar(alpha, out.dtype).ptr, A.data.ptr,
-        _create_scalar(gamma, out.dtype).ptr, C.data.ptr,
-        out.data.ptr)
-    return out
+        _create_scalar(alpha, out_exec.dtype).ptr, A.data.ptr,
+        _create_scalar(gamma, out_exec.dtype).ptr, C.data.ptr,
+        out_exec.data.ptr)
+    if copy_back_out:
+        out_view[...] = out_exec
+        return out_view
+    return out_exec
 
 
 cdef dict _elementwise_trinary_compute_descs = {
@@ -590,13 +659,15 @@ cpdef OperationDescriptor create_elementwise_trinary(
            desc_C.ptr, mode_C.data, op_C,
            desc_D.ptr, mode_D.data, op_AB, op_ABC, compute_desc)
     if key not in _elementwise_trinary_operators:
-        _elementwise_trinary_operators[key] = OperationDescriptor()
-        _elementwise_trinary_operators[key].create_elementwise_trinary(
+        # Avoid caching a partially-initialized descriptor if creation fails.
+        op = OperationDescriptor()
+        op.create_elementwise_trinary(
             handle.ptr,
             desc_A.ptr, mode_A.data, op_A,
             desc_B.ptr, mode_B.data, op_B,
             desc_C.ptr, mode_C.data, op_C,
             desc_D.ptr, mode_D.data, op_AB, op_ABC, compute_desc)
+        _elementwise_trinary_operators[key] = op
     return _elementwise_trinary_operators[key]
 
 
@@ -638,6 +709,73 @@ def elementwise_trinary(
     Examples:
         See examples/cutensor/elementwise_trinary.py
     """
+    if _runtime.is_hip:
+        # hipTensor's elementwise kernels currently do not correctly handle
+        # inputs with permuted mode orders. Work around this by materializing A
+        # and B in C's mode order so that all tensors share the same ordering.
+        try:
+            if isinstance(mode_A, Mode):
+                labels_A = tuple(int(x) for x in (<Mode>mode_A)._array)
+            else:
+                labels_A = tuple((ord(x) if isinstance(x, str) else int(x)) for x in mode_A)
+            if isinstance(mode_B, Mode):
+                labels_B = tuple(int(x) for x in (<Mode>mode_B)._array)
+            else:
+                labels_B = tuple((ord(x) if isinstance(x, str) else int(x)) for x in mode_B)
+            if isinstance(mode_C, Mode):
+                labels_C = tuple(int(x) for x in (<Mode>mode_C)._array)
+            else:
+                labels_C = tuple((ord(x) if isinstance(x, str) else int(x)) for x in mode_C)
+        except Exception:
+            labels_A = None
+            labels_B = None
+            labels_C = None
+        if labels_A is not None and labels_B is not None and labels_C is not None:
+            if (len(labels_A) == len(labels_B) == len(labels_C)
+                    and set(labels_A) == set(labels_C)
+                    and set(labels_B) == set(labels_C)):
+                if labels_A != labels_C:
+                    permA = tuple(labels_A.index(x) for x in labels_C)
+                    A_t = A.transpose(permA).copy()
+                    if A_t.shape == C.shape:
+                        A = A_t
+                        mode_A = mode_C
+                if labels_B != labels_C:
+                    permB = tuple(labels_B.index(x) for x in labels_C)
+                    B_t = B.transpose(permB).copy()
+                    if B_t.shape == C.shape:
+                        B = B_t
+                        mode_B = mode_C
+    if (_runtime.is_hip
+            and not isinstance(mode_A, Mode)
+            and not isinstance(mode_B, Mode)
+            and not isinstance(mode_C, Mode)):
+        try:
+            labels_A = tuple((ord(x) if isinstance(x, str) else int(x)) for x in mode_A)
+            labels_B = tuple((ord(x) if isinstance(x, str) else int(x)) for x in mode_B)
+            labels_C = tuple((ord(x) if isinstance(x, str) else int(x)) for x in mode_C)
+        except Exception:
+            labels_A = None
+            labels_B = None
+            labels_C = None
+        if labels_A is not None and labels_B is not None and labels_C is not None:
+            if (len(labels_A) == len(labels_C)
+                    and set(labels_A) == set(labels_C)
+                    and labels_A != labels_C):
+                permA = tuple(labels_A.index(x) for x in labels_C)
+                A_t = A.transpose(permA).copy()
+                if A_t.shape == C.shape:
+                    A = A_t
+                    mode_A = mode_C
+            if (len(labels_B) == len(labels_C)
+                    and set(labels_B) == set(labels_C)
+                    and labels_B != labels_C):
+                permB = tuple(labels_B.index(x) for x in labels_C)
+                B_t = B.transpose(permB).copy()
+                if B_t.shape == C.shape:
+                    B = B_t
+                    mode_B = mode_C
+
     if out is None:
         out = core._ndarray_init(
             _cupy.ndarray, C._shape, dtype=C.dtype, obj=None)
@@ -646,10 +784,56 @@ def elementwise_trinary(
     elif not internal.vector_equal(C._shape, out._shape):
         raise ValueError('shape mismatch: {} != {}'.format(C.shape, out.shape))
 
+    if _runtime.is_hip and op_ABC == cutensor.OP_MUL and op_AB == cutensor.OP_ADD:
+        # hipTensor's elementwise trinary path is currently unreliable for
+        # OP_MUL. For common use cases, compute the result via plain CuPy ops.
+        def _apply_unary(op, x):
+            if op == cutensor.OP_IDENTITY:
+                return x
+            if op == cutensor.OP_SQRT:
+                return _cupy.sqrt(x)
+            if op == cutensor.OP_TANH:
+                return _cupy.tanh(x)
+            if op == cutensor.OP_COS:
+                return _cupy.cos(x)
+            return None
+
+        A_u = _apply_unary(op_A, A)
+        B_u = _apply_unary(op_B, B)
+        C_u = _apply_unary(op_C, C)
+        if A_u is not None and B_u is not None and C_u is not None:
+            out[...] = (alpha * A_u + beta * B_u) * (gamma * C_u)
+            return out
+
+    cdef _ndarray_base C_view = C
+    cdef _ndarray_base out_view = out
+    cdef _ndarray_base out_exec = out
+    cdef bint copy_back_out = False
+    if _runtime.is_hip:
+        # hipTensor currently appears unstable on general strided views. As a
+        # safety fallback, materialize unsupported layouts as contiguous arrays.
+        if not A._c_contiguous:
+            A = _cupy.ascontiguousarray(A)
+        if not B._c_contiguous:
+            B = _cupy.ascontiguousarray(B)
+        if out is C_view:
+            # In-place elementwise: keep input/output consistent.
+            if not C_view._c_contiguous:
+                C = _cupy.ascontiguousarray(C_view)
+                out_exec = C
+                copy_back_out = True
+        else:
+            if not C_view._c_contiguous:
+                C = _cupy.ascontiguousarray(C_view)
+            if not out_view._c_contiguous:
+                out_exec = core._ndarray_init(
+                    _cupy.ndarray, out_view._shape, dtype=out_view.dtype, obj=None)
+                copy_back_out = True
+
     desc_A = create_tensor_descriptor(A)
     desc_B = create_tensor_descriptor(B)
     desc_C = create_tensor_descriptor(C)
-    desc_out = create_tensor_descriptor(out)
+    desc_out = create_tensor_descriptor(out_exec)
     mode_A = _auto_create_mode(A, mode_A)
     mode_B = _auto_create_mode(B, mode_B)
     mode_C = _auto_create_mode(C, mode_C)
@@ -662,11 +846,14 @@ def elementwise_trinary(
     plan = create_plan(operator, plan_pref)
     cutensor.elementwiseTrinaryExecute(
         _get_handle().ptr, plan.ptr,
-        _create_scalar(alpha, out.dtype).ptr, A.data.ptr,
-        _create_scalar(beta, out.dtype).ptr, B.data.ptr,
-        _create_scalar(gamma, out.dtype).ptr, C.data.ptr,
-        out.data.ptr)
-    return out
+        _create_scalar(alpha, out_exec.dtype).ptr, A.data.ptr,
+        _create_scalar(beta, out_exec.dtype).ptr, B.data.ptr,
+        _create_scalar(gamma, out_exec.dtype).ptr, C.data.ptr,
+        out_exec.data.ptr)
+    if copy_back_out:
+        out_view[...] = out_exec
+        return out_view
+    return out_exec
 
 
 cdef dict _contraction_compute_descs = {
@@ -735,13 +922,15 @@ cpdef OperationDescriptor create_contraction(
            desc_C.ptr, mode_C.data, op_C,
            compute_desc)
     if key not in _contraction_operators:
-        _contraction_operators[key] = OperationDescriptor()
-        _contraction_operators[key].create_contraction(
+        # Avoid caching a partially-initialized descriptor if creation fails.
+        op = OperationDescriptor()
+        op.create_contraction(
             handle.ptr,
             desc_A.ptr, mode_A.data, op_A,
             desc_B.ptr, mode_B.data, op_B,
             desc_C.ptr, mode_C.data, op_C,
             desc_C.ptr, mode_C.data, compute_desc)
+        _contraction_operators[key] = op
     return _contraction_operators[key]
 
 
@@ -791,6 +980,78 @@ def contraction(
     Examples:
         See examples/cutensor/contraction.py
     """
+    cdef _ndarray_base C_view = C
+    cdef bint copy_back_C = False
+    if _runtime.is_hip:
+        # hipTensor currently appears unstable on general strided views. As a
+        # safety fallback, materialize unsupported layouts as contiguous arrays.
+        if not (A._c_contiguous or A._f_contiguous):
+            A = _cupy.ascontiguousarray(A)
+        if not (B._c_contiguous or B._f_contiguous):
+            B = _cupy.ascontiguousarray(B)
+        if not (C._c_contiguous or C._f_contiguous):
+            C = _cupy.ascontiguousarray(C)
+            copy_back_C = True
+
+    if _runtime.is_hip and C.dtype == _numpy.float16 and beta != 0:
+        # hipTensor's float16 contraction path is currently unreliable when
+        # beta != 0 (observed wrong outputs / NaNs). Work around this by
+        # splitting the epilogue into two steps:
+        #   1) C <- alpha * A * B (beta=0)
+        #   2) C <- C + beta * C_orig
+        C_orig = C.copy()
+        contraction(alpha, A, mode_A, B, mode_B, 0, C, mode_C,
+                    op_A=op_A, op_B=op_B, op_C=op_C, algo=algo,
+                    jit_mode=jit_mode, compute_desc=compute_desc,
+                    ws_pref=ws_pref)
+        C += beta * C_orig
+        if copy_back_C:
+            C_view[...] = C
+            return C_view
+        return C
+
+    if (_runtime.is_hip
+            and not isinstance(mode_A, Mode)
+            and not isinstance(mode_B, Mode)
+            and not isinstance(mode_C, Mode)):
+        # hipTensor's contraction path appears to be broken for the special case
+        # where there is no actual contraction (no reduction indices), i.e. all
+        # tensors share the same set of modes. In this case, the operation is a
+        # pure elementwise multiply+add and can be routed to elementwise trinary.
+        try:
+            labels_A = tuple((ord(x) if isinstance(x, str) else int(x)) for x in mode_A)
+            labels_B = tuple((ord(x) if isinstance(x, str) else int(x)) for x in mode_B)
+            labels_C = tuple((ord(x) if isinstance(x, str) else int(x)) for x in mode_C)
+        except Exception:
+            labels_A = None
+            labels_B = None
+            labels_C = None
+        if labels_A is not None and labels_B is not None and labels_C is not None:
+            if (len(labels_A) == len(labels_B) == len(labels_C)
+                    and len(set(labels_C)) == len(labels_C)
+                    and set(labels_A) == set(labels_C)
+                    and set(labels_B) == set(labels_C)):
+                permA = tuple(labels_A.index(x) for x in labels_C)
+                permB = tuple(labels_B.index(x) for x in labels_C)
+                A_t = A.transpose(permA).copy()
+                B_t = B.transpose(permB).copy()
+                if A_t.shape == C.shape and B_t.shape == C.shape:
+                    # NOTE: hipTensor's elementwise trinary currently produces
+                    # incorrect results for OP_MUL, so we can't implement this
+                    # as an elementwise trinary op. Use plain CuPy elementwise
+                    # kernels as a correctness fallback.
+                    if (op_A == cutensor.OP_IDENTITY
+                            and op_B == cutensor.OP_IDENTITY
+                            and op_C == cutensor.OP_IDENTITY):
+                        if beta == 0:
+                            C[...] = alpha * A_t * B_t
+                        else:
+                            C *= beta
+                            C += alpha * A_t * B_t
+                        if copy_back_C:
+                            C_view[...] = C
+                            return C_view
+                        return C
     desc_A = create_tensor_descriptor(A)
     desc_B = create_tensor_descriptor(B)
     desc_C = create_tensor_descriptor(C)
@@ -810,16 +1071,35 @@ def contraction(
         _get_handle().ptr, plan.ptr, cutensor.PLAN_REQUIRED_WORKSPACE,
         actual_ws_size.ctypes.data, actual_ws_size.itemsize)
     ws_size = actual_ws_size.item()
-    assert ws_size <= estimated_ws_size, "Workspace size is larger than the estimated workspace size"  # NOQA
-    ws = core._ndarray_init(
-        _cupy.ndarray, shape_t(1, ws_size), dtype=_numpy.int8, obj=None)
+    if _runtime.is_hip and ws_size > (1 << 40):
+        # hipTensor can sporadically return a garbage workspace size (seen as
+        # multi-exabyte values) for some mode patterns. Treat it as "no
+        # workspace" to avoid attempting absurd allocations.
+        ws_size = 0
+    # hipTensor commonly reports ws_size > estimated_ws_size (often 0 vs 4) even
+    # when the plan is valid. Don't recreate plans on HIP to avoid leaking
+    # cached plans and triggering HIPTENSOR_STATUS_ALLOC_FAILED.
+    if (not _runtime.is_hip) and ws_size > estimated_ws_size:
+        plan = create_plan(operator, plan_pref, ws_limit=ws_size)
+        cutensor.planGetAttribute(
+            _get_handle().ptr, plan.ptr, cutensor.PLAN_REQUIRED_WORKSPACE,
+            actual_ws_size.ctypes.data, actual_ws_size.itemsize)
+        ws_size = actual_ws_size.item()
+    cdef intptr_t ws_ptr = <intptr_t>0
+    if ws_size != 0:
+        ws = core._ndarray_init(
+            _cupy.ndarray, shape_t(1, ws_size), dtype=_numpy.int8, obj=None)
+        ws_ptr = ws.data.ptr
     scalar_dtype = _get_scalar_dtype(C.dtype)
     out = C
     cutensor.contract(
         _get_handle().ptr, plan.ptr,
         _create_scalar(alpha, scalar_dtype).ptr, A.data.ptr, B.data.ptr,
         _create_scalar(beta, scalar_dtype).ptr, C.data.ptr, out.data.ptr,
-        ws.data.ptr, ws_size)
+        ws_ptr, ws_size)
+    if copy_back_C:
+        C_view[...] = out
+        return C_view
     return out
 
 
@@ -869,13 +1149,15 @@ cpdef OperationDescriptor create_reduction(
            desc_C.ptr, mode_C.data, op_C,
            op_reduce, compute_desc)
     if key not in _reduction_operators:
-        _reduction_operators[key] = OperationDescriptor()
-        _reduction_operators[key].create_reduction(
+        # Avoid caching a partially-initialized descriptor if creation fails.
+        op = OperationDescriptor()
+        op.create_reduction(
             handle.ptr,
             desc_A.ptr, mode_A.data, op_A,
             desc_C.ptr, mode_C.data, op_C,
             desc_C.ptr, mode_C.data,
             op_reduce, compute_desc)
+        _reduction_operators[key] = op
     return _reduction_operators[key]
 
 
@@ -909,6 +1191,17 @@ def reduction(
     Examples:
         See examples/cutensor/reduction.py
     """
+    cdef _ndarray_base C_view = C
+    cdef bint copy_back_C = False
+    if _runtime.is_hip:
+        # hipTensor currently appears unstable on general strided views. As a
+        # safety fallback, materialize unsupported layouts as contiguous arrays.
+        if not (A._c_contiguous or A._f_contiguous):
+            A = _cupy.ascontiguousarray(A)
+        if not (C._c_contiguous or C._f_contiguous):
+            C = _cupy.ascontiguousarray(C)
+            copy_back_C = True
+
     desc_A = create_tensor_descriptor(A)
     desc_C = create_tensor_descriptor(C)
     mode_A = _auto_create_mode(A, mode_A)
@@ -917,17 +1210,39 @@ def reduction(
     operator = create_reduction(
         desc_A, mode_A, op_A, desc_C, mode_C, op_C, op_reduce, compute_desc)
     plan_pref = create_plan_preference()
-    ws_size = cutensor.estimateWorkspaceSize(
-        _get_handle().ptr, operator.ptr, plan_pref.ptr,
-        cutensor.WORKSPACE_RECOMMENDED)
-    plan = create_plan(operator, plan_pref, ws_limit=ws_size)
-    ws = core._ndarray_init(
-        _cupy.ndarray, shape_t(1, ws_size), dtype=_numpy.int8, obj=None)
+    if _runtime.is_hip:
+        # hipTensor's estimateWorkspaceSize() can return garbage values; query
+        # the required workspace from the created plan instead.
+        plan = create_plan(operator, plan_pref, ws_limit=0)
+        actual_ws_size = _numpy.empty(1, dtype=_numpy.uint64)
+        cutensor.planGetAttribute(
+            _get_handle().ptr, plan.ptr, cutensor.PLAN_REQUIRED_WORKSPACE,
+            actual_ws_size.ctypes.data, actual_ws_size.itemsize)
+        ws_size = actual_ws_size.item()
+        if ws_size > (1 << 40):
+            # hipTensor can sporadically return a garbage workspace size (seen
+            # as multi-exabyte values) for some mode patterns. Treat it as "no
+            # workspace" to avoid attempting absurd allocations.
+            ws_size = 0
+    else:
+        ws_size = cutensor.estimateWorkspaceSize(
+            _get_handle().ptr, operator.ptr, plan_pref.ptr,
+            cutensor.WORKSPACE_RECOMMENDED)
+        plan = create_plan(operator, plan_pref, ws_limit=ws_size)
+
+    cdef intptr_t ws_ptr = <intptr_t>0
+    if ws_size != 0:
+        ws = core._ndarray_init(
+            _cupy.ndarray, shape_t(1, ws_size), dtype=_numpy.int8, obj=None)
+        ws_ptr = ws.data.ptr
     cutensor.reduce(
         _get_handle().ptr, plan.ptr,
         _create_scalar(alpha, out.dtype).ptr, A.data.ptr,
         _create_scalar(beta, out.dtype).ptr, C.data.ptr, out.data.ptr,
-        ws.data.ptr, ws_size)
+        ws_ptr, ws_size)
+    if copy_back_C:
+        C_view[...] = out
+        return C_view
     return out
 
 
@@ -1006,6 +1321,13 @@ def _try_reduction_routine(
             alpha, in_arg, _create_mode_with_cache(in_arg._shape.size()),
             beta, out_arg, _create_mode_with_cache(out_axis),
             op_reduce=reduce_op)
+    except _cutensor_py.CuTensorError as e:
+        # cuTENSOR/hipTensor can report "not supported" for otherwise-valid
+        # inputs (for example depending on dtype/operator support). In such
+        # cases we should fall back to CuPy's implementation instead of raising.
+        if e.status == cutensor.STATUS_NOT_SUPPORTED:
+            return None
+        raise
     except ValueError:
         return None
 
