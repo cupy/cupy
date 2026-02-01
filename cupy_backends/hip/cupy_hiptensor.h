@@ -41,19 +41,11 @@ typedef hiptensorComputeDescriptor_t cutensorComputeDescriptor_t;
 #endif
 
 // Status mapping (for stubs below)
-static const cutensorStatus_t CUTENSOR_STATUS_SUCCESS =
-#ifdef HIPTENSOR_STATUS_SUCCESS
-    HIPTENSOR_STATUS_SUCCESS;
-#else
-    static_cast<cutensorStatus_t>(0);
-#endif
-
-static const cutensorStatus_t CUTENSOR_STATUS_NOT_SUPPORTED =
-#ifdef HIPTENSOR_STATUS_NOT_SUPPORTED
-    HIPTENSOR_STATUS_NOT_SUPPORTED;
-#else
-    static_cast<cutensorStatus_t>(15);
-#endif
+//
+// Note: HIPTENSOR_STATUS_* are enum values, not preprocessor macros, so we
+// should not use #ifdef to test for their existence.
+static const cutensorStatus_t CUTENSOR_STATUS_SUCCESS = HIPTENSOR_STATUS_SUCCESS;
+static const cutensorStatus_t CUTENSOR_STATUS_NOT_SUPPORTED = HIPTENSOR_STATUS_NOT_SUPPORTED;
 
 // Function mapping (core APIs)
 #define cutensorGetErrorString hiptensorGetErrorString
@@ -104,42 +96,16 @@ static inline size_t cutensorGetVersion() {
 #define cutensorGetAlignmentRequirement hiptensorGetAlignmentRequirement
 
 // cuTENSOR compute descriptor constants
-#ifdef HIPTENSOR_COMPUTE_DESC_16F
-static const cutensorComputeDescriptor_t CUTENSOR_COMPUTE_DESC_16F =
-    HIPTENSOR_COMPUTE_DESC_16F;
-#else
-static const cutensorComputeDescriptor_t CUTENSOR_COMPUTE_DESC_16F = {};
-#endif
-#ifdef HIPTENSOR_COMPUTE_DESC_16BF
-static const cutensorComputeDescriptor_t CUTENSOR_COMPUTE_DESC_16BF =
-    HIPTENSOR_COMPUTE_DESC_16BF;
-#else
-static const cutensorComputeDescriptor_t CUTENSOR_COMPUTE_DESC_16BF = {};
-#endif
-#ifdef HIPTENSOR_COMPUTE_DESC_TF32
-static const cutensorComputeDescriptor_t CUTENSOR_COMPUTE_DESC_TF32 =
-    HIPTENSOR_COMPUTE_DESC_TF32;
-#else
-static const cutensorComputeDescriptor_t CUTENSOR_COMPUTE_DESC_TF32 = {};
-#endif
-#ifdef HIPTENSOR_COMPUTE_DESC_3XTF32
-static const cutensorComputeDescriptor_t CUTENSOR_COMPUTE_DESC_3XTF32 =
-    HIPTENSOR_COMPUTE_DESC_3XTF32;
-#else
-static const cutensorComputeDescriptor_t CUTENSOR_COMPUTE_DESC_3XTF32 = {};
-#endif
-#ifdef HIPTENSOR_COMPUTE_DESC_32F
-static const cutensorComputeDescriptor_t CUTENSOR_COMPUTE_DESC_32F =
-    HIPTENSOR_COMPUTE_DESC_32F;
-#else
-static const cutensorComputeDescriptor_t CUTENSOR_COMPUTE_DESC_32F = {};
-#endif
-#ifdef HIPTENSOR_COMPUTE_DESC_64F
-static const cutensorComputeDescriptor_t CUTENSOR_COMPUTE_DESC_64F =
-    HIPTENSOR_COMPUTE_DESC_64F;
-#else
-static const cutensorComputeDescriptor_t CUTENSOR_COMPUTE_DESC_64F = {};
-#endif
+//
+// Note: HIPTENSOR_COMPUTE_DESC_* are enum values, not preprocessor macros, so
+// #ifdef checks will always fail and incorrectly map them to 0.
+static const cutensorComputeDescriptor_t CUTENSOR_COMPUTE_DESC_16F = HIPTENSOR_COMPUTE_DESC_16F;
+static const cutensorComputeDescriptor_t CUTENSOR_COMPUTE_DESC_16BF = HIPTENSOR_COMPUTE_DESC_16BF;
+// hipTensor does not currently define TF32 variants; map them to FP32.
+static const cutensorComputeDescriptor_t CUTENSOR_COMPUTE_DESC_TF32 = HIPTENSOR_COMPUTE_DESC_32F;
+static const cutensorComputeDescriptor_t CUTENSOR_COMPUTE_DESC_3XTF32 = HIPTENSOR_COMPUTE_DESC_32F;
+static const cutensorComputeDescriptor_t CUTENSOR_COMPUTE_DESC_32F = HIPTENSOR_COMPUTE_DESC_32F;
+static const cutensorComputeDescriptor_t CUTENSOR_COMPUTE_DESC_64F = HIPTENSOR_COMPUTE_DESC_64F;
 
 // hipTensor does not expose a CUDA runtime version query; fall back to HIP.
 static inline size_t cutensorGetCudartVersion() {
