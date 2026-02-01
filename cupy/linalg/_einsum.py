@@ -383,15 +383,23 @@ def reduced_binary_einsum(arr0, sub0, arr1, sub1, sub_others):
         if accelerator != _accelerator.ACCELERATOR_CUTENSOR:
             continue
         try:
-            import cupy_backends.cuda.libs.cutensor  # NOQA
+            import cupy_backends.cuda.libs.cutensor as _cutensor_backend
             from cupyx import cutensor
         except ImportError:
             continue
         else:
+            # hipTensor support is more limited than cuTENSOR. In particular,
+            # complex dtypes are not reliably supported; avoid calling into the
+            # backend and fall back to the default implementation.
+            from cupy_backends.cuda.api import runtime as _runtime
+            if _runtime.is_hip:
+                _einsum_cutensor_dtypes = (cupy.float32, cupy.float64)
+            else:
+                _einsum_cutensor_dtypes = (
+                    cupy.float32, cupy.float64, cupy.complex64, cupy.complex128)
             if (
                 arr0.dtype != arr1.dtype
-                or arr0.dtype not in (cupy.float32, cupy.float64,
-                                      cupy.complex64, cupy.complex128)
+                or arr0.dtype not in _einsum_cutensor_dtypes
             ):
                 continue
             if len(sub_out) == len(sub_others):
@@ -402,12 +410,23 @@ def reduced_binary_einsum(arr0, sub0, arr1, sub1, sub_others):
             arr_out = cupy.empty(out_shape, arr0.dtype)
             arr0 = cupy.ascontiguousarray(arr0)
             arr1 = cupy.ascontiguousarray(arr1)
-            arr_out = cutensor.contraction(
-                1.0,
-                arr0, sub0,
-                arr1, sub1,
-                0.0,
-                arr_out, sub_out)
+            try:
+                arr_out = cutensor.contraction(
+                    1.0,
+                    arr0, sub0,
+                    arr1, sub1,
+                    0.0,
+                    arr_out, sub_out)
+            except _cutensor_backend.CuTensorError as e:
+                # cuTENSOR/hipTensor can be present but not support certain
+                # dtypes/operators on a given architecture. In such cases, fall
+                # back to the default implementation.
+                if e.status in (
+                    _cutensor_backend.STATUS_NOT_SUPPORTED,
+                    _cutensor_backend.STATUS_ARCH_MISMATCH,
+                ):
+                    continue
+                raise
             return arr_out, sub_out
 
     tmp0, shapes0 = _flatten_transpose(arr0, [bs0, ts0, cs0])
