@@ -1143,12 +1143,33 @@ _sqrt = create_ufunc(
     ''')
 
 
+# Define the specialized logic for floats
+_float_routine = '''
+if (isnan(in1) || isnan(in2)) {
+    out0 = (out0_type)nan("");
+} else {
+    out0 = in1 > in2 ? in2 : (in0 < in1 ? in1 : (in0 > in2 ? in2 : in0));
+}
+'''
+
+# Define the default logic for integers
+_default_routine = (
+    'out0 = in1 > in2 ? in2 : '
+    '(in0 < in1 ? in1 : (in0 > in2 ? in2 : in0))'
+)
+
+
 _clip = create_ufunc(
     'cupy_clip',
-    ('???->?', 'bbb->b', 'BBB->B', 'hhh->h', 'HHH->H', 'iii->i', 'III->I',
-     'lll->l', 'LLL->L', 'qqq->q', 'QQQ->Q',
-     'eee->e', 'fff->f', 'ddd->d'),
-    'out0 = in1 > in2 ? in2 : (in0 < in1 ? in1 : (in0 > in2 ? in2 : in0))')
+    (
+        '???->?', 'bbb->b', 'BBB->B', 'hhh->h', 'HHH->H', 'iii->i', 'III->I',
+        'lll->l', 'LLL->L', 'qqq->q', 'QQQ->Q',
+        ('eee->e', _float_routine),
+        ('fff->f', _float_routine),
+        ('ddd->d', _float_routine)
+    ),
+    _default_routine
+)
 
 
 # Variables to expose to Python
