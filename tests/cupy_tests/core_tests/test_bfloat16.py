@@ -8,10 +8,14 @@ from cupy.cuda import runtime
 from cupy import testing
 
 
-if not runtime.is_hip and runtime.runtimeGetVersion() < 12020:
+if not runtime.is_hip and cupy.cuda.get_local_runtime_version() < 12020:
     # We may be ablel to enable this, but for now skip to pass tests.
     pytest.skip(allow_module_level=True,
                 reason="bfloat16 is missing some features")
+
+if numpy.lib.NumpyVersion(numpy.__version__) < "2.1.2":
+    pytest.skip(allow_module_level=True,
+                reason="bfloat16 not enabled due to NumPy bug.")
 
 
 ml_dtypes = pytest.importorskip('ml_dtypes')

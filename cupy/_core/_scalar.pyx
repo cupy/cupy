@@ -70,18 +70,21 @@ cdef _setup_type_dict():
     for t in ('cudaTextureObject_t',):
         _typenames[t] = (t, None)
 
-    try:
-        import ml_dtypes
-    except ImportError:
-        pass
-    else:
-        dt = numpy.dtype(ml_dtypes.bfloat16)
-        _dtype_kind_size_dict[dt] = ("V", 2)
-        _typenames[dt] = (
-            "bfloat16", '#include "cupy/bfloat16.cuh"')
-        _dtype_kind_size_dict[dt.type] = ("V", 2)
-        _typenames[dt.type] = (
-            "bfloat16", '#include "cupy/bfloat16.cuh"')
+    # See also _util.pyx. older NumPy versions will cause crashes if we add
+    # bfloat16 loops, so don't enable it.
+    if numpy.lib.NumpyVersion(numpy.__version__) >= "2.1.2":
+        try:
+            import ml_dtypes
+        except ImportError:
+            pass
+        else:
+            dt = numpy.dtype(ml_dtypes.bfloat16)
+            _dtype_kind_size_dict[dt] = ("V", 2)
+            _typenames[dt] = (
+                "bfloat16", '#include "cupy/bfloat16.cuh"')
+            _dtype_kind_size_dict[dt.type] = ("V", 2)
+            _typenames[dt.type] = (
+                "bfloat16", '#include "cupy/bfloat16.cuh"')
 
 _setup_type_dict()
 
