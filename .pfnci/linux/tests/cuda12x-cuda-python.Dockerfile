@@ -29,7 +29,7 @@ RUN pyenv install 3.12.11 && \
     pip install -U setuptools pip wheel
 
 RUN pip install -U 'numpy==2.3.*' 'scipy==1.16.*' 'optuna==4.*' 'cython==3.1.*' 'cuda-python==12.*'
-RUN pip uninstall -y mpi4py && \
+RUN pip uninstall -y mpi4py ml_dtypes && \
     pip check
 
 RUN mkdir /home/cupy-user && chmod 777 /home/cupy-user
