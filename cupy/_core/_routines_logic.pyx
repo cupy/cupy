@@ -1,5 +1,6 @@
 from cupy._core._kernel import create_ufunc
 from cupy._core._reduction import create_reduction_func
+from cupy._util import bf16_loop
 
 from cupy._core.core cimport _ndarray_base
 
@@ -56,10 +57,10 @@ cpdef create_comparison(name, op, doc='', no_complex_dtype=True):
 
     if no_complex_dtype:
         ops = ('??->?', 'qq->?', 'qQ->?', 'Qq->?', 'QQ->?',
-               'ee->?', 'ff->?', 'dd->?')
+               'ee->?', *bf16_loop(2, '?'), 'ff->?', 'dd->?')
     else:
         ops = ('??->?', 'qq->?', 'qQ->?', 'Qq->?', 'QQ->?',
-               'ee->?', 'ff->?', 'dd->?',
+               'ee->?', *bf16_loop(2, '?'), 'ff->?', 'dd->?',
                'FF->?', 'DD->?')
 
     return create_ufunc(

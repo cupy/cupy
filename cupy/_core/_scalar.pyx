@@ -12,20 +12,20 @@ cdef extern from 'numpy/ndarraytypes.h':
 
 
 cdef dict _typenames_base = {
-    numpy.dtype('float64'): 'double',
-    numpy.dtype('float32'): 'float',
-    numpy.dtype('float16'): 'float16',
-    numpy.dtype('complex128'): 'thrust::complex<double>',
-    numpy.dtype('complex64'): 'thrust::complex<float>',
-    numpy.dtype('int64'): 'long long',
-    numpy.dtype('int32'): 'int',
-    numpy.dtype('int16'): 'short',
-    numpy.dtype('int8'): 'signed char',
-    numpy.dtype('uint64'): 'unsigned long long',
-    numpy.dtype('uint32'): 'unsigned int',
-    numpy.dtype('uint16'): 'unsigned short',
-    numpy.dtype('uint8'): 'unsigned char',
-    numpy.dtype('bool'): 'bool',
+    numpy.dtype('float64'): ('double', None),
+    numpy.dtype('float32'): ('float', None),
+    numpy.dtype('float16'): ('float16', '#include "cupy/float16.cuh"'),
+    numpy.dtype('complex128'): ('thrust::complex<double>', None),
+    numpy.dtype('complex64'): ('thrust::complex<float>', None),
+    numpy.dtype('int64'): ('long long', None),
+    numpy.dtype('int32'): ('int', None),
+    numpy.dtype('int16'): ('short', None),
+    numpy.dtype('int8'): ('signed char', None),
+    numpy.dtype('uint64'): ('unsigned long long', None),
+    numpy.dtype('uint32'): ('unsigned int', None),
+    numpy.dtype('uint16'): ('unsigned short', None),
+    numpy.dtype('uint8'): ('unsigned char', None),
+    numpy.dtype('bool'): ('bool', None),
 }
 
 
@@ -37,12 +37,21 @@ cdef object _numpy_float64 = numpy.dtype(numpy.float64)
 cdef object _numpy_complex128 = numpy.dtype(numpy.complex128)
 
 
-cpdef str get_typename(dtype):
+cpdef str get_typename(dtype, type_headers=None):
+    """Fetch the C type name. Note that some names may require
+    additionally headers to be included in order to be available.
+
+    If not None, `type_headers` must be a set and the dtype preamble
+    (i.e. this should be required headers) will be inserted.
+    """
     if dtype is None:
         raise ValueError('dtype is None')
     if dtype not in _typenames:
         dtype = _dtype.get_dtype(dtype).type
-    return _typenames[dtype]
+    name, preamble = _typenames[dtype]
+    if type_headers is not None and preamble is not None:
+        type_headers.add(preamble)
+    return name
 
 
 cdef dict _typenames = {}
@@ -59,8 +68,20 @@ cdef _setup_type_dict():
         _dtype_kind_size_dict[t] = (k, d.itemsize)
     # CUDA types
     for t in ('cudaTextureObject_t',):
-        _typenames[t] = t
+        _typenames[t] = (t, None)
 
+    try:
+        import ml_dtypes
+    except ImportError:
+        pass
+    else:
+        dt = numpy.dtype(ml_dtypes.bfloat16)
+        _dtype_kind_size_dict[dt] = ("V", 2)
+        _typenames[dt] = (
+            "bfloat16", '#include "cupy/bfloat16.cuh"')
+        _dtype_kind_size_dict[dt.type] = ("V", 2)
+        _typenames[dt.type] = (
+            "bfloat16", '#include "cupy/bfloat16.cuh"')
 
 _setup_type_dict()
 
@@ -201,5 +222,9 @@ cpdef str _get_cuda_scalar_repr(obj, dtype):
             return f'thrust::complex<float>({obj.real}, {obj.imag})'
         elif dtype.itemsize == 16:
             return f'thrust::complex<double>({obj.real}, {obj.imag})'
+    elif dtype.name == "bfloat16":
+        # NOTE(seberg): It would be nice to find a more extensible path here.
+        float_repr = _get_cuda_scalar_repr(obj, numpy.dtype(numpy.float32))
+        return f"bfloat16({float_repr})"
 
     raise TypeError(f'Unsupported dtype: {dtype}')

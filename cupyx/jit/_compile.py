@@ -204,6 +204,9 @@ def transpile(func, attributes, mode, in_types, ret_type):
         func, attributes, mode, in_types, ret_type, generated)
     func_name, _ = generated.device_function[(func, in_types)]
     code = '\n'.join(generated.codes)
+    # TODO(seberg): We should include this based on `get_typename()`
+    # (That is also necessary for bfloat16 support.)
+    code = '#include "cupy/float16.cuh"\n' + code
     backend = generated.backend
     options = generated.options
     jitify = generated.jitify
