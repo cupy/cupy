@@ -801,3 +801,23 @@ configs {
     command: ".pfnci\\windows\\run.bat 13.0 3.14 2.3 1.16 test"
   }
 }
+configs {
+  key: "cupy.win.cuda131"
+  value {
+    requirement {
+      cpu: 8
+      memory: 36
+      disk: 10
+      gpu: 2
+      image: "windows"
+    }
+    time_limit {
+      seconds: 72000
+    }
+    checkout_strategy {
+      include_dot_git: true
+    }
+    environment_variables { key: "GPU" value: "2" }
+    command: ".pfnci\\windows\\run.bat 13.1 3.14 2.3 1.16 test"
+  }
+}
