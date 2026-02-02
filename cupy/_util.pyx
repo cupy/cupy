@@ -223,6 +223,11 @@ def is_shutting_down(_shutting_down=_shutting_down):
 
 
 try:
+    # We cannot add loops for bfloat16 on because the loops existance alone
+    # means NumPy code-paths are used that will lead to segfaults.
+    # (I.e. these crashes happen even without bfloat16 ever being used.)
+    if numpy.lib.NumpyVersion(numpy.__version__) < "2.1.2":
+        raise ImportError("NumPy had a critical result-type issue")
     import ml_dtypes
 except ImportError:
     def bf16_loop(in_types=1, out_types=1, code=None):
