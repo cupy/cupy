@@ -26,6 +26,7 @@ cdef class CScalar(CPointer):
 
 
 cpdef str get_typename(dtype, type_headers=*)
+cdef Py_ssize_t get_cuda_alignment(dtype) except -1
 
 cdef set scalar_type_set
 cpdef str _get_cuda_scalar_repr(obj, dtype)

@@ -2,8 +2,12 @@ from libc.stdint cimport intptr_t
 
 cimport numpy as cnp
 
+import hashlib
+import textwrap
+
 import numpy
 
+import cupy
 from cupy._core cimport _dtype
 
 
@@ -46,12 +50,147 @@ cpdef str get_typename(dtype, type_headers=None):
     """
     if dtype is None:
         raise ValueError('dtype is None')
-    if dtype not in _typenames:
-        dtype = _dtype.get_dtype(dtype).type
-    name, preamble = _typenames[dtype]
-    if type_headers is not None and preamble is not None:
-        type_headers.add(preamble)
-    return name
+
+    # TODO: Fix and make fast, using NumPy C-API.
+    info = _typenames.get(dtype, None)
+    if info is None:
+        sctype = _dtype.get_dtype(dtype).type
+        info = _typenames.get(sctype, None)
+
+    if info is not None:
+        name, header = info
+        if type_headers is not None and header is not None:
+            type_headers.add(header)
+        return name
+    elif isinstance(dtype, numpy.dtype):
+        if dtype.kind == "V" and dtype.fields is not None:
+            if type_headers is not None:
+                type_headers.add('#include "cupy/structview.cuh"')
+            # NOTE: This may not be cacheable, since we use metadata.
+            name, _ = _build_struct_typename(dtype, type_headers)
+            return name
+
+    raise ValueError(f"Unable to find C++ type for dtype {dtype}")
+
+
+cdef dict _cuda_alignments = {}
+cdef object _alignment_kernel = None
+
+
+cdef Py_ssize_t get_cuda_alignment(dtype) except -1:
+    """Get the alignment of a given dtype within the kernel. This currently
+    uses an ElementwiseKernel to compile and get the actual alignment.
+    (Although, normally that should just be the itemsize.)
+    """
+    global _cuda_alignments, _alignment_kernel
+
+    alignment = _cuda_alignments.get(dtype)
+    if alignment is not None:
+        return alignment
+
+    if dtype.num == cnp.NPY_VOID:
+        # It is unclear that this would be useful. Effectively, we would find
+        # out the right alignment already as part of `get_typename` before we
+        # launch the kernel.
+        raise NotImplementedError(
+            f"get_cuda_alignment() only supports structured dtypes, "
+            f"got {dtype}")
+
+    if _alignment_kernel is None:
+        _alignment_kernel = cupy.ElementwiseKernel(
+            "T in", "int64 out",
+            "using in_t = decltype(in); out = alignof(in_t);",
+        )
+
+    alignment = int(_alignment_kernel(cupy.empty((), dtype=dtype))[()])
+    _cuda_alignments[dtype] = alignment
+    return alignment
+
+
+def _build_struct_typename(dtype, type_headers):
+    """Builds the struct typename and additionally returns the alignment
+    (we consider the maximum alignment of any of the fields here).
+    """
+    # The alignment must be too small pretty much, but use it anyway.
+    # If `make_gpu_aligned_dtype` was used may use __cupy_alignment__.
+    alignment = dtype.alignment
+    if dtype.metadata:
+        # If manually overridden, use that alignment:
+        alignment = dtype.metadata.get("__cupy_alignment__", alignment)
+    curr_start = 0
+    offsets = []
+    struct_fields = []
+    fields = []
+
+    for name, (subdtype, offset, *_) in dtype.fields.items():
+        # The fields tupe can contain a 4th title, we ignore it.
+        # (A title is an alternative field name...)
+
+        # TODO(seberg): We should be able to query the JIT for the actual
+        # alignment constraints (making this a trivial recursion)
+        if subdtype.num == cnp.NPY_VOID and subdtype.fields is not None:
+            subname, subalignment = _build_struct_typename(
+                subdtype, type_headers)
+        else:
+            subalignment = get_cuda_alignment(subdtype)
+            subname = get_typename(subdtype, type_headers)
+            if subdtype.metadata:
+                # If manually overridden, use that alignment:
+                subalignment = subdtype.metadata.get(
+                    "__cupy_alignment__", subalignment)
+
+        assert (subalignment - 1) & subalignment == 0
+        alignment = max(alignment, subalignment)
+
+        if offset % subalignment != 0:
+            # NOTE: We don't error earlier (for field access yet).
+            raise ValueError(f"Field {name} with offset {offset} is not "
+                             f"aligned to {alignment} in dtype {dtype}. "
+                             f"This is not supported by CuPy please ensure "
+                             "the structure is aligned. You can do so with "
+                             "the `make_gpu_aligned_dtype()` helper.")
+
+        if not (0 < (offset - curr_start) < subalignment):
+            # Addign `alignas({subalignment})` would not align with the
+            # actual offset. So we cannot describe it by a struct.
+            # (If the offset is larger, we could achieve this via padding)
+            struct_compatible = False
+        else:
+            curr_start = offset
+
+        curr_start += subdtype.itemsize
+
+        offsets.append(offset)
+        # fields are only used if all fields are indeed compatible
+        struct_fields.append(f"  alignas({subalignment}) {subname} {name};")
+        fields.append(f"sv::Field<{subname}, {offset}>")
+
+    if not struct_compatible:
+        # If the struct doesn't work out, just use a single _data field.
+        struct_fields = [
+            f"  char _data[{dtype.itemsize}];"]
+
+    struct_fields = "\n".join(struct_fields)
+    hash = hashlib.sha1(
+        struct_fields.encode("utf8"), usedforsecurity=False).hexdigest()
+    struct_name = "struct_" + hash
+
+    # NOTE: We add this to the "headers", but the headers are always sorted
+    # before use and actual includes start with `#` and go first. We must not
+    # start with a space or newline, though!
+    # We have to do this here, because it is a template parameter.
+    # TODO(seberg): Maybe type-map should be passed through actually?!
+    definition = textwrap.dedent(f"""\
+        struct alignas({alignment}) {struct_name} {{
+        {struct_fields}
+        }};
+    """).lstrip("\n")  # for sorting, don't start with \n
+    if type_headers is not None:
+        type_headers.add(definition)
+
+    fields = ', '.join(fields)
+    name = f"sv::StructView<{struct_name}, {dtype.itemsize}, {fields}>"
+    return name, alignment
 
 
 cdef dict _typenames = {}

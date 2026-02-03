@@ -62,7 +62,7 @@ cdef bint check_supported_dtype(cnp.dtype dtype, bint error) except -1:
 
         # We can represents the underlying bytes in CuPy, although it is very
         # possible that the included fields will not be usable in the end.
-        # The simplest path is to inform users
+        # I.e. an error may be raised when launching a kernel with this.
         return True
 
     try:
@@ -204,3 +204,117 @@ cdef dict dtype_format = {
 @cython.profile(False)
 cdef void populate_format(Py_buffer* buf, str dtype) except*:
     buf.format = dtype_format[dtype]
+
+
+def make_gpu_aligned_dtype(
+        dtype, *, int alignment=-1, field_alignments=None, int recurse=False):
+    """Create a new structured dtype from a NumPy dtype or dtype-like with
+    sufficient algnment for GPU use.
+
+    Args:
+        dtype: Data type specifier compatible with NumPy.
+        alignment: Desired alignment of the resulting dtype. The dtype
+            will be padded to ensure this alignment for CuPy.
+
+            .. note::
+                When the requested alignment is smaller than the minimal
+                inferred one an error will be raised.
+                When it is larger, CuPy will attach this alignment as
+                metadata to the structured dtype. This is used for structured
+                dtypes in the kernel and when nesting.
+
+                Note that metadata may be lost in many operations.
+
+    Returns:
+        cupy.ndarray: A view of the array with reduced dimensions.
+
+
+    Notes:
+        By default this function recurses into nested structures as if
+        `alignment=-1` is passed for these.  You can nest a dtype with
+        larger alignment by creating it with ``make_gpu_aligned_dtype()``.
+
+        NumPy promotion (e.g. in concatenate) may "canonicalize" the dtype
+        and drop the struct layout and CuPy alignment metadata.
+    """
+    cdef Py_ssize_t final_alignment = 1
+    cdef Py_ssize_t itemsize = 0
+    cdef Py_ssize_t curr_offset = 0
+    cdef Py_ssize_t min_offset = 0  # offset before additional padding
+    cdef cnp.dtype descr = cnp.dtype(dtype, align=True)
+
+    if alignment != -1 and (alignment <= 0 or alignment.bit_count() != 1):
+        raise ValueError("Reasonable alignments must be >0 and a power of 2.")
+
+    if descr.type_num != cnp.NPY_VOID or (<object>descr).fields is None:
+        # Allow this when `alignment=` is passed, we try to add the meatadat
+        dtype_info = descr  # unchanged for now
+        final_alignment = descr.alignment
+    else:
+        names = []
+        offsets = []
+        subdtypes = []
+
+        for name, (subdtype, offset, *_) in (<object>descr).fields.items():
+            # The fields tupe can contain a 4th title, we ignore it.
+            # (A title is an alternative field name...)
+            if offset < min_offset:
+                raise ValueError(
+                    "make_gpu_aligned_dtype() only supports well behaved "
+                    "in order fields as it ignores field offsets).")
+
+            # Keep track of field offset to reject non-ordered inputs.
+            min_offset = offset + subdtype.itemsize
+
+            if subdtype.num != cnp.NPY_VOID or subdtype.fields is None:
+                subalignment = _scalar.get_cuda_alignment(subdtype)
+            elif not recurse:
+                # We assume the alignment of the subdtype makes sense.
+                subalignment = subdtype.alignment
+            else:
+                subdtype = make_gpu_aligned_dtype(subdtype, recurse=recurse)
+                subalignment = dtype.alignment
+                if dtype.metadata:
+                    subalignment = subdtype.metadata.get(
+                        "__cupy_alignment__", subalignment)
+
+            if curr_offset % subalignment != 0:
+                curr_offset += subalignment - (curr_offset % subalignment)
+
+            final_alignment = max(final_alignment, subalignment)
+
+            names.append(name)
+            subdtypes.append(subdtype)
+            offsets.append(curr_offset)
+            curr_offset += subdtype.itemsize
+
+        dtype_info = dict(names=names, offsets=offsets, formats=subdtypes,
+                          itemsize=itemsize)
+
+    metadata = {}
+    if alignment != -1:
+        if alignment >= final_alignment:
+            final_alignment = alignment
+            metadata = {"metadata": {"__cupy_alignment__": alignment}}
+        else:
+            raise ValueError(
+                f"make_gpu_aligned_dtype(): given alignment={alignment} "
+                f"smaller than minimum alignment {final_alignment}"
+            )
+
+    itemsize = (
+        (curr_offset + final_alignment - 1) // final_alignment
+        * final_alignment)
+
+    if descr.type_num != cnp.NPY_VOID:
+        if descr.itemsize != itemsize:
+            raise ValueError(
+                "Alignment larger than itemsize for non-structured dtype.")
+    else:
+        if descr.itemsize > itemsize:
+            raise ValueError(
+                "Input descriptor had larger itemsize than inferred.")
+        dtype_info["itemsize"] = itemsize
+
+    # Create a new dtype enforcing the newly computed offsets.
+    return cnp.dtype(dtype_info, align=True, **metadata)
