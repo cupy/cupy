@@ -6,6 +6,7 @@ import cupy
 from cupy import _core
 from cupy._math import sumprod
 from cupy._math import ufunc
+from cupy._util import bf16_loop
 
 
 sin = ufunc.create_math_ufunc(
@@ -85,7 +86,7 @@ arctan2 = ufunc.create_math_ufunc(
 
 deg2rad = _core.create_ufunc(
     'cupy_deg2rad',
-    ('e->e', 'f->f', 'd->d'),
+    ('e->e', *bf16_loop(), 'f->f', 'd->d'),
     'out0 = in0 * (out0_type)(M_PI / 180)',
     doc='''Converts angles from degrees to radians elementwise.
 
@@ -96,7 +97,7 @@ deg2rad = _core.create_ufunc(
 
 rad2deg = _core.create_ufunc(
     'cupy_rad2deg',
-    ('e->e', 'f->f', 'd->d'),
+    ('e->e', *bf16_loop(), 'f->f', 'd->d'),
     'out0 = in0 * (out0_type)(180 / M_PI)',
     doc='''Converts angles from radians to degrees elementwise.
 
