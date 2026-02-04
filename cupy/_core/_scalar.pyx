@@ -66,8 +66,8 @@ cpdef str get_typename(dtype, type_headers=None):
         if dtype.kind == "V" and dtype.fields is not None:
             if type_headers is not None:
                 type_headers.add('#include "cupy/structview.cuh"')
-            # NOTE: This may not be cacheable, since we use metadata.
-            name, _ = _build_struct_typename(dtype, type_headers)
+            # NOTE: Caching this may not be trivial since/if we use metadata.
+            name, *_ = _build_struct_typename(dtype, type_headers)
             return name
 
     raise ValueError(f"Unable to find C++ type for dtype {dtype}")
@@ -121,6 +121,7 @@ def _build_struct_typename(dtype, type_headers):
     offsets = []
     struct_fields = []
     fields = []
+    struct_compatible = True
 
     for name, (subdtype, offset, *_) in dtype.fields.items():
         # The fields tupe can contain a 4th title, we ignore it.
@@ -129,11 +130,11 @@ def _build_struct_typename(dtype, type_headers):
         # TODO(seberg): We should be able to query the JIT for the actual
         # alignment constraints (making this a trivial recursion)
         if subdtype.num == cnp.NPY_VOID and subdtype.fields is not None:
-            subname, subalignment = _build_struct_typename(
+            subname, struct_name, subalignment = _build_struct_typename(
                 subdtype, type_headers)
         else:
             subalignment = get_cuda_alignment(subdtype)
-            subname = get_typename(subdtype, type_headers)
+            subname = struct_name = get_typename(subdtype, type_headers)
             if subdtype.metadata:
                 # If manually overridden, use that alignment:
                 subalignment = subdtype.metadata.get(
@@ -150,7 +151,7 @@ def _build_struct_typename(dtype, type_headers):
                              "the structure is aligned. You can do so with "
                              "the `make_gpu_aligned_dtype()` helper.")
 
-        if not (0 < (offset - curr_start) < subalignment):
+        if not (0 <= (offset - curr_start) < subalignment):
             # Addign `alignas({subalignment})` would not align with the
             # actual offset. So we cannot describe it by a struct.
             # (If the offset is larger, we could achieve this via padding)
@@ -162,7 +163,8 @@ def _build_struct_typename(dtype, type_headers):
 
         offsets.append(offset)
         # fields are only used if all fields are indeed compatible
-        struct_fields.append(f"  alignas({subalignment}) {subname} {name};")
+        struct_fields.append(
+            f"  alignas({subalignment}) {struct_name} {name};")
         fields.append(f"sv::Field<{subname}, {offset}>")
 
     if not struct_compatible:
@@ -180,7 +182,7 @@ def _build_struct_typename(dtype, type_headers):
     # start with a space or newline, though!
     # We have to do this here, because it is a template parameter.
     # TODO(seberg): Maybe type-map should be passed through actually?!
-    definition = textwrap.dedent(f"""\
+    definition = textwrap.dedent(f"""
         struct alignas({alignment}) {struct_name} {{
         {struct_fields}
         }};
@@ -190,7 +192,7 @@ def _build_struct_typename(dtype, type_headers):
 
     fields = ', '.join(fields)
     name = f"sv::StructView<{struct_name}, {dtype.itemsize}, {fields}>"
-    return name, alignment
+    return name, struct_name, alignment
 
 
 cdef dict _typenames = {}
