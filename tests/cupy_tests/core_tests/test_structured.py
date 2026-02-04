@@ -209,3 +209,18 @@ class TestIndexing:
         # Compare fields, because we cannot copy the strided structured array
         # to a contiguous one to copy back to the CPU.
         return (a[sl]["f0"], a[sl]["f1"])
+
+
+class TestKernelStructAccess:
+    def test_elementwise_kernel(self):
+        # When the data can be defined as a normal struct, then
+        # we allow access via `.data`.
+        kernel = cupy.ElementwiseKernel(
+            'T in', 'T out', 'out.data.f1 = -in.data.f0;',
+            'test_struct_access')
+        x = cupy.array([1, 2, 3], dtype="i,i")
+        y = cupy.array([4, 5, 6], dtype="i,i")
+        # kernel mutates field 1.
+        kernel(x, y)
+        expected = cupy.array([(4, -1), (5, -2), (6, -3)], dtype="i,i")
+        testing.assert_array_equal(y, expected)
