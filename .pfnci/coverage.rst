@@ -2698,7 +2698,7 @@ CuPy CI Test Coverage
 .. _t21: https://ci.preferred.jp/cupy.linux.cuda131.multi/
 .. _d21: linux/tests/cuda131.multi.Dockerfile
 .. _s21: linux/tests/cuda131.multi.sh
-.. _t22: https://jenkins.preferred.jp/job/chainer/job/cupy_main/TEST=rocm-7-0,label=mnj-mi50/
+.. _t22: https://jenkins.preferred.jp/job/chainer/job/cupy_main/TEST=rocm-7-1,label=mnj-mi50/
 .. _d22: linux/tests/rocm-7-1.Dockerfile
 .. _s22: linux/tests/rocm-7-1.sh
 .. _t23: https://ci.preferred.jp/cupy.linux.cuda-slow/
