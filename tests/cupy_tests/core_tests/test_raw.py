@@ -1118,6 +1118,7 @@ class _TestRawBase:
     # Finally, we test NVCC
     {'backend': 'nvcc', 'in_memory': False},
 )
+@pytest.mark.filterwarnings("ignore:.*jitify=False:DeprecationWarning")
 class TestRaw(_TestRawBase, unittest.TestCase):
     pass
 
@@ -1137,6 +1138,7 @@ class TestRaw(_TestRawBase, unittest.TestCase):
 @testing.slow
 @pytest.mark.thread_unsafe(
     reason="Jitify seems to have problems, skip as largely unmaintained.")
+@pytest.mark.filterwarnings("ignore:jitify=True:DeprecationWarning")
 class TestRawWithJitify(_TestRawBase, unittest.TestCase):
     pass
 
@@ -1429,6 +1431,7 @@ class _TestRawJitify:
 @unittest.skipIf(cupy.cuda.runtime.is_hip,
                  'Jitify does not support ROCm/HIP')
 @testing.slow
+@pytest.mark.filterwarnings("ignore:.*jitify=False:DeprecationWarning")
 class TestRawJitifyNoJitify(_TestRawJitify, unittest.TestCase):
     jitify = False
 
@@ -1438,5 +1441,28 @@ class TestRawJitifyNoJitify(_TestRawJitify, unittest.TestCase):
 @testing.slow
 @pytest.mark.thread_unsafe(
     reason="Jitify seems to have problems, skip as largely unmaintained.")
+@pytest.mark.filterwarnings("ignore:jitify=True:DeprecationWarning")
 class TestRawJitifyJitify(_TestRawJitify, unittest.TestCase):
     jitify = True
+
+
+@pytest.mark.parametrize("jitify,match", [
+    (True, ".*"),
+    (False, "Avoid passing.*jitify=False")
+])
+@pytest.mark.thread_unsafe(reason="uses temporary cache dir")
+@use_temporary_cache_dir()
+def test_jitify_deprecation_warning(jitify, match):
+    with pytest.warns(DeprecationWarning, match=match):
+        cupy.RawKernel(
+            _test_source1, 'test_sum',
+            backend='nvrtc', jitify=jitify)
+
+    with pytest.warns(DeprecationWarning, match=match):
+        cupy.RawModule(
+            code=_test_source1,
+            backend='nvrtc', jitify=jitify)
+
+    # Not technically part of the rawkernel, but test warning in compile here:
+    with pytest.warns(DeprecationWarning, match=match):
+        compiler.compile_using_nvrtc("", options=(), jitify=jitify)
