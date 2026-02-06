@@ -15,6 +15,11 @@ import cupy
 import cupy._core.core as core
 from cupy.cuda cimport stream as py_stream_module
 
+try:
+    from ml_dtypes import bfloat16
+except ImportError:
+    bfloat16 = None
+
 
 cdef const char* CAPSULE_NAME = "dltensor"
 cdef const char* CAPSULE_NAME_VER = "dltensor_versioned"
@@ -77,7 +82,11 @@ cdef uint8_t get_dlpack_dtype_code(dtype) except? 255:
     elif kind == b'b':
         return <uint8_t>kDLBool
     else:
-        raise BufferError('dtype is not supported for dlpack export')
+        # One-off special handling for `ml_dtypes`
+        if dtype.name == "bfloat16":
+            return <uint8_t>kDLBfloat
+        else:
+            raise BufferError('dtype is not supported for dlpack export')
 
 
 cdef DLDevice get_dlpack_device(_ndarray_base array):
@@ -464,7 +473,13 @@ cdef inline _ndarray_base _dlpack_to_cupy_array(dltensor):
         else:
             raise TypeError(f'{bits}-bit bool is not supported')
     elif dtype.code == kDLBfloat:
-        raise NotImplementedError('CuPy does not support bfloat16 yet')
+        if bfloat16 is None:
+            raise NotImplementedError(
+                'CuPy does not support bfloat16. Please install ml_dtypes to '
+                'use bfloat16.'
+            )
+        else:
+            cp_dtype = bfloat16
     else:
         raise TypeError('Unsupported dtype. dtype code: {}'.format(dtype.code))
 
