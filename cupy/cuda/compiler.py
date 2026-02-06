@@ -324,10 +324,10 @@ def _jitify_deprecation_warning(jitify):
         warnings.warn(
             'jitify=True is deprecated and its support is staged for '
             'removal in CuPy v15.0.\n'
-            'Please try compiling without jitify using CCCL headers '
+            'Please try compiling without jitify using the CCCL headers '
             'as needed.\n'
-            'You may also check `cuda-cccl` e.g. for Thrust/CUB '
-            'algorithm support.',
+            'Also see https://nvidia.github.io/cccl/python/ for e.g. '
+            'Thrust/CUB algorithm exposure to Python.',
             DeprecationWarning, stacklevel=3)
     else:
         warnings.warn(
