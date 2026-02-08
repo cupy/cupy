@@ -52,9 +52,6 @@ cdef function.Function _create_cub_reduction_function(
         options += ('-I' + _rocm_path + '/include', '-O2')
         backend = 'nvcc'  # this is confusing...
 
-    # We rely on the type traits in cccl to avoid using jitify
-    jitify = False
-
     # TODO(leofang): try splitting the for-loop into full tiles and partial
     # tiles to utilize LoadDirectBlockedVectorized? See, for example,
     # https://github.com/NVlabs/cub/blob/c3cceac115c072fb63df1836ff46d8c60d9eb304/cub/agent/agent_reduce.cuh#L311-L346
@@ -238,7 +235,7 @@ __global__ void ${name}(${params}) {
         module_code, options, arch=None, cachd_dir=None,
         prepend_cupy_headers=True, backend=backend, translate_cucomplex=False,
         enable_cooperative_groups=False, name_expressions=None,
-        log_stream=None, jitify=jitify)
+        log_stream=None, jitify=False)
     return module.get_function(name)
 
 
