@@ -1450,6 +1450,9 @@ class TestRawJitifyJitify(_TestRawJitify, unittest.TestCase):
     (True, ".*"),
     (False, "Avoid passing.*jitify=False")
 ])
+@unittest.skipIf(cupy.cuda.runtime.is_hip,
+                 'Jitify does not support ROCm/HIP')
+@testing.slow
 @pytest.mark.thread_unsafe(reason="uses temporary cache dir")
 @use_temporary_cache_dir()
 def test_jitify_deprecation_warning(jitify, match):
