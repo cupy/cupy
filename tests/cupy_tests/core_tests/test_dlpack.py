@@ -94,6 +94,9 @@ class TestNewDLPackConversion:
         testing.assert_array_equal(
             orig_array.data.ptr, out_array.data.ptr)
 
+    @pytest.mark.skipif(
+        numpy.lib.NumpyVersion(numpy.__version__) < "2.1.2",
+        reason="bfloat16 not enabled due to NumPy bug.")
     def test_conversion_bfloat16(self):
         ml_dtypes = pytest.importorskip('ml_dtypes')
         orig_array = _gen_array(numpy.dtype(ml_dtypes.bfloat16))
