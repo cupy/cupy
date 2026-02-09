@@ -1377,7 +1377,6 @@ ctypedef Status (*f_type)(...) nogil  # NOQA
 cdef object _libname = None
 cdef object _handle = 0
 IF 12000 <= CUPY_CUDA_VERSION:
-    from cuda import pathfinder
     # We let libname be None here to avoid loading the library twice,
     # which could potentially be loading different versions of the library.
     from cuda import pathfinder
