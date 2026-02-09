@@ -70,9 +70,9 @@ cdef class _ArgInfo:
 
     cdef bint is_scalar(self)
 
-    cdef str get_c_type(self)
+    cdef str get_c_type(self, type_headers=*)
 
-    cdef str get_param_c_type(self, ParameterInfo p)
+    cdef str get_param_c_type(self, ParameterInfo p, type_headers=*)
 
     cdef str get_c_var_name(self, ParameterInfo p)
 
@@ -84,7 +84,7 @@ cdef class _TypeMap:
     cdef public:
         tuple _pairs
 
-    cdef str get_typedef_code(self)
+    cdef str get_typedef_code(self, type_headers=*)
 
 
 cdef class _Op:
@@ -105,11 +105,11 @@ concrete dtype mapping.
 
     @staticmethod
     cdef _Op _from_type_and_routine_or_error_func(
-        str typ, object routine, object error_func)
+        typ, object routine, object error_func)
 
     # Creates an op instance parsing a dtype mapping.
     @staticmethod
-    cdef _Op from_type_and_routine(str typ, routine)
+    cdef _Op from_type_and_routine(typ, routine)
 
     cpdef tuple get_in_dtypes(self)
 
@@ -152,7 +152,7 @@ cpdef create_ufunc(name, ops, routine=*, preamble=*, doc=*,
 
 cdef tuple _get_arginfos(list args)
 
-cdef str _get_kernel_params(tuple params, tuple arginfos)
+cdef str _get_kernel_params(tuple params, tuple arginfos, type_headers=*)
 
 cdef list _broadcast(list args, tuple params, bint use_size, shape_t& shape)
 

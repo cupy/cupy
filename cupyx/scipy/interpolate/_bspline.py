@@ -16,6 +16,8 @@ INT_TYPES = ['int', 'long long']
 
 INTERVAL_KERNEL = r'''
 #include <cupy/complex.cuh>
+#include <cupy/float16.cuh>  // TODO(seberg): Add this via type_headers?
+
 extern "C" {
 __global__ void find_interval(
         const double* t, const double* x, long long* out,
@@ -75,6 +77,7 @@ INTERVAL_MODULE = cupy.RawModule(code=INTERVAL_KERNEL,)
 D_BOOR_KERNEL = r'''
 #include <cupy/complex.cuh>
 #include <cupy/math_constants.h>
+#include <cupy/float16.cuh>  // TODO(seberg): Add this via type_headers?
 #define COMPUTE_LINEAR 0x1
 
 template<typename T>
@@ -177,6 +180,7 @@ D_BOOR_MODULE = cupy.RawModule(code=D_BOOR_KERNEL,
 
 DESIGN_MAT_KERNEL = r'''
 #include <cupy/complex.cuh>
+#include <cupy/float16.cuh>  // TODO(seberg): Add this via type_headers?
 
 template<typename U>
 __global__ void compute_design_matrix(

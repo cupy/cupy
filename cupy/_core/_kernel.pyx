@@ -51,11 +51,19 @@ def _get_warpsize():
 
 
 cdef str _get_simple_elementwise_kernel_code(
-        tuple params, tuple arginfos, str operation, str name,
+        tuple params_, tuple arginfos, str operation, str name,
         _TypeMap type_map, str preamble, str loop_prep='', str after_loop=''):
+    type_headers = set()
+    params = _get_kernel_params(params_, arginfos, type_headers)
+    typedef_preamble = type_map.get_typedef_code(type_headers)
+    if not type_headers:
+        type_headers = ""
+    else:
+        type_headers = "\n".join(sorted(type_headers)) + "\n\n"
+
     # No loop unrolling due to avoid 64-bit division
     module_code = string.Template('''
-    ${typedef_preamble}
+    ${type_headers}${typedef_preamble}
     ${preamble}
     extern "C" __global__ void ${name}(${params}) {
       ${loop_prep};
@@ -67,8 +75,9 @@ cdef str _get_simple_elementwise_kernel_code(
       ${after_loop};
     }
     ''').substitute(
-        typedef_preamble=type_map.get_typedef_code(),
-        params=_get_kernel_params(params, arginfos),
+        typedef_preamble=typedef_preamble,
+        params=params,
+        type_headers=type_headers,
         operation=operation,
         name=name,
         preamble=preamble,
@@ -278,24 +287,26 @@ cdef class _ArgInfo:
     cdef bint is_scalar(self):
         return self.arg_kind == ARG_KIND_SCALAR
 
-    cdef str get_c_type(self):
+    cdef str get_c_type(self, type_headers=None):
         # Returns the C type representation.
         if self.arg_kind == ARG_KIND_NDARRAY:
-            return 'CArray<%s, %d, %d, %d>' % (
-                _get_typename(self.dtype), self.ndim,
+            name = _get_typename(self.dtype, type_headers)
+            name = 'CArray<%s, %d, %d, %d>' % (
+                name, self.ndim,
                 self.c_contiguous, self.index_32_bits)
+            return name
         if self.arg_kind == ARG_KIND_SCALAR:
-            return _get_typename(self.dtype)
+            return _get_typename(self.dtype, type_headers)
         if self.arg_kind == ARG_KIND_INDEXER:
             return 'CIndexer<%d, %d>' % (self.ndim, self.index_32_bits)
         if self.arg_kind == ARG_KIND_TEXTURE:
             return 'cudaTextureObject_t'
         assert False
 
-    cdef str get_param_c_type(self, ParameterInfo p):
+    cdef str get_param_c_type(self, ParameterInfo p, type_headers=None):
         # Returns the C type representation in the global function's
         # parameter list.
-        cdef str ctyp = self.get_c_type()
+        cdef str ctyp = self.get_c_type(type_headers)
         if p.is_const:
             return 'const ' + ctyp
         return ctyp
@@ -310,17 +321,18 @@ cdef tuple _get_arginfos(list args):
     return tuple([_ArgInfo.from_arg(a) for a in args])
 
 
-cdef str _get_kernel_params(tuple params, tuple arginfos):
+cdef str _get_kernel_params(tuple params, tuple arginfos, type_headers=None):
     cdef ParameterInfo p
     cdef _ArgInfo arginfo
+    cdef lst = []
     assert len(params) == len(arginfos)
-    lst = []
+
     for i in range(len(params)):
         p = params[i]
         arginfo = arginfos[i]
-        lst.append('{} {}'.format(
-            arginfo.get_param_c_type(p),
-            arginfo.get_c_var_name(p)))
+        arg = arginfo.get_param_c_type(p, type_headers)
+        lst.append('{} {}'.format(arg, arginfo.get_c_var_name(p)))
+
     return ', '.join(lst)
 
 
@@ -514,10 +526,10 @@ cdef class _TypeMap:
     def __str__(self):
         return '<_TypeMap {}>'.format(self._pairs)
 
-    cdef str get_typedef_code(self):
+    cdef str get_typedef_code(self, type_headers=None):
         # Returns a code fragment of typedef statements used as preamble.
         return ''.join([
-            'typedef %s %s;\n' % (_get_typename(ctype2), ctype1)
+            'typedef %s %s;\n' % (_get_typename(ctype2, type_headers), ctype1)
             for ctype1, ctype2 in self._pairs])
 
 
@@ -938,7 +950,7 @@ cdef class ElementwiseKernel:
                 arginfos, type_map, self.params, self.operation,
                 self.name, self.preamble, **self.kwargs)
             self._cached_codes[in_types] = code
-        self._elementwise_kernel_memo[key] = kern
+        kern = self._elementwise_kernel_memo.setdefault(key, kern)
         return kern
 
     @property
@@ -1395,7 +1407,7 @@ cdef class ufunc:
             kern = _get_ufunc_kernel(
                 op.in_types, op.out_types, op.routine, arginfos, has_where,
                 params, name, self._preamble, self._loop_prep)
-            self._kernel_memo[key] = kern
+            kern = self._kernel_memo.setdefault(key, kern)
         return kern
 
     def outer(self, A, B, **kwargs):
@@ -1516,23 +1528,30 @@ cdef class _Op:
 
     @staticmethod
     cdef _Op _from_type_and_routine_or_error_func(
-            str typ, object routine, object error_func):
+            typ, object routine, object error_func):
         # TODO(niboshi): Write type mapping specification.
-        types = typ.split('->')
-        if len(types) == 1:
-            in_types = out_types = tuple(types)
+        if isinstance(typ, str):
+            types = typ.split('->')
+            if len(types) == 1:
+                in_types = out_types = tuple(types)
+            else:
+                in_types, out_types = map(tuple, types)
+        elif isinstance(typ, list):
+            # E.g. bfloat16 can't be represented well via character.
+            in_types, out_types = typ
         else:
-            in_types, out_types = map(tuple, types)
+            raise TypeError("Expected string or list for typ identifier.")
+
         in_types = tuple([get_dtype(t).type for t in in_types])
         out_types = tuple([get_dtype(t).type for t in out_types])
         return _Op(in_types, out_types, routine, error_func)
 
     @staticmethod
-    cdef _Op from_type_and_routine(str typ, routine):
+    cdef _Op from_type_and_routine(typ, routine):
         return _Op._from_type_and_routine_or_error_func(typ, routine, None)
 
     @staticmethod
-    cdef _Op from_type_and_error_func(str typ, error_func):
+    cdef _Op from_type_and_error_func(typ, error_func):
         return _Op._from_type_and_routine_or_error_func(typ, None, error_func)
 
     cdef check_valid(self):
@@ -1545,6 +1564,10 @@ cdef class _Op:
     cpdef tuple get_out_dtypes(self):
         return tuple([get_dtype(t) for t in self.out_types])
 
+    def __repr__(self):
+        # Just for debugging purposes.
+        return (f"cupy._core._kernel._Op({self.in_types}, {self.out_types}, "
+                f"routine={self.routine}, error_func={self.error_func})")
 
 cdef class _Ops:
 
@@ -1552,8 +1575,9 @@ cdef class _Ops:
         assert len(ops) > 0
         nin = ops[0].nin
         nout = ops[0].nout
-        assert all(op.nin == nin for op in ops)
-        assert all(op.nout == nout for op in ops)
+        for op in ops:
+            if op.nin != nin or op.nout != nout:
+                raise ValueError(f"invalid op {op}, wrong nin or nout.")
         self.ops = ops
         self.nin = nin
         self.nout = nout
@@ -1564,14 +1588,21 @@ cdef class _Ops:
         for t in ops:
             if isinstance(t, tuple):
                 typ, rt = t
-                if isinstance(rt, tuple):
+                if rt is None:
+                    rt = routine
+                elif isinstance(rt, tuple):
                     rt = tuple([r1 or r2 for r1, r2 in zip(rt, routine)])
-                elif not isinstance(rt, str):
+                elif not isinstance(rt, (str, list)):
+                    if not callable(rt):
+                        raise ValueError(
+                            f"invalid op {t}, expected callable {rt}")
                     assert callable(rt)
                     ops_.append(_Op.from_type_and_error_func(typ, rt))
                     continue
             else:
-                assert isinstance(t, str)
+                if not isinstance(t, (str, list)):
+                    raise ValueError(
+                        f"invalid op {t}, expected string or list")
                 typ, rt = t, routine
             ops_.append(_Op.from_type_and_routine(typ, rt))
         return _Ops(tuple(ops_))

@@ -27,10 +27,11 @@ function DownloadCache([String]$gcs_dir, [String]$cupy_kernel_cache_file) {
 }
 
 function UploadCache([String]$gcs_dir, [String]$cupy_kernel_cache_file) {
-    # Maximum 3 GiB
-    # TODO(leofang): allow larger/adjustable cache? It seems we need 4-5 GiB.
+    # Limit *.cubin cache by total size.
+    # Note: --expiry cannot be used as access time is not updated on Windows.
+    # TODO: Also clean up ~/.cupy/callback_cache/*.ltoir
     echo "Trimming kernel cache..."
-    RunOrDie python .pfnci\trim_cupy_kernel_cache.py --max-size 6442450944 --rm
+    RunOrDie python .pfnci\trim_cupy_kernel_cache.py --max-size 4831838208 --rm
 
     pushd $Env:USERPROFILE
     # -mx=0 ... no compression
@@ -134,12 +135,8 @@ function Main {
     echo "CuPy Configuration:"
     RunOrDie python -c "import cupy; print(cupy); cupy.show_config()"
     echo "Running test..."
-    $test_retval = 0
     # TODO(leofang): allow larger/adjustable timeout?
-    RunWithTimeout -timeout 18000 -output ../cupy_test_log.txt -- python -m pytest -rfEX @pytest_opts .
-    if (-not $?) {
-        $test_retval = $LastExitCode
-    }
+    $test_retval = RunWithTimeout -timeout 18000 -output ../cupy_test_log.txt -- python -m pytest -rfEX @pytest_opts .
     popd
 
     if ($is_pull_request) {

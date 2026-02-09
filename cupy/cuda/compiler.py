@@ -169,22 +169,15 @@ _tegra_archs = ('32', '53', '62', '72', '87')
 @_util.memoize()
 def _get_max_compute_capability():
     major, minor = _get_nvrtc_version()
-    if major < 11:
-        # CUDA 10.2
-        nvrtc_max_compute_capability = '75'
-    elif major == 11 and minor == 0:
-        # CUDA 11.0
-        nvrtc_max_compute_capability = '80'
-    elif major == 11 and minor < 8:
-        # CUDA 11.1 - 11.7
-        # Note: 87 is for Jetson Orin
-        nvrtc_max_compute_capability = '86'
-    elif (major == 11 and minor == 8) or (major == 12 and minor < 8):
-        # CUDA 11.8, 12.0 - 12.7
+    if (major == 12 and minor < 8):
+        # 12.0 - 12.7
         nvrtc_max_compute_capability = '90'
-    else:
-        # CUDA 12.8+
+    elif (major == 12 and minor == 8):
+        # CUDA 12.8
         nvrtc_max_compute_capability = '120'
+    else:
+        # CUDA 12.9, CUDA 13.0+
+        nvrtc_max_compute_capability = '121'
 
     return nvrtc_max_compute_capability
 
@@ -326,9 +319,30 @@ def _hash_hexdigest(value):
 _hash_length = len(_hash_hexdigest(b''))  # 40 for SHA1
 
 
-def compile_using_nvrtc(source, options=(), arch=None, filename='kern.cu',
-                        name_expressions=None, log_stream=None,
-                        cache_in_memory=False, jitify=False, method=None):
+def _jitify_deprecation_warning(jitify):
+    if jitify:
+        warnings.warn(
+            'jitify=True is deprecated and its support is staged for '
+            'removal in CuPy v15.0.\n'
+            'Please try compiling without jitify using the CCCL headers '
+            'as needed.\n'
+            'Also see https://nvidia.github.io/cccl/python/ for e.g. '
+            'Thrust/CUB algorithm exposure to Python.',
+            DeprecationWarning, stacklevel=3)
+    else:
+        warnings.warn(
+            'The jitify argument is deprecated and staged for '
+            'removal in CuPy v15.0. '
+            'Avoid passing `jitify=False` to silence this warning.',
+            DeprecationWarning, stacklevel=3)
+
+
+def _compile_using_nvrtc_no_warning(
+    source, options=(), arch=None, filename='kern.cu',
+    name_expressions=None, log_stream=None,
+    cache_in_memory=False, jitify=None, method=None
+):
+
     def _compile(
             source, options, cu_path, name_expressions, log_stream, jitify,
             method):
@@ -376,6 +390,19 @@ def compile_using_nvrtc(source, options=(), arch=None, filename='kern.cu',
 
     return _compile(source, options, cu_path, name_expressions,
                     log_stream, jitify, method)
+
+
+def compile_using_nvrtc(
+    source, options=(), arch=None, filename='kern.cu',
+    name_expressions=None, log_stream=None,
+    cache_in_memory=False, jitify=None, method=None
+):
+    if jitify is not None:
+        _jitify_deprecation_warning(jitify)
+
+    return _compile_using_nvrtc_no_warning(
+        source, options, arch, filename, name_expressions, log_stream,
+        cache_in_memory, jitify, method)
 
 
 def compile_using_nvcc(source, options=(), arch=None,
@@ -630,7 +657,7 @@ def _compile_with_cache_cuda(
 
     if backend == 'nvrtc':
         cu_name = '' if cache_in_memory else name + '.cu'
-        ptx, mapping = compile_using_nvrtc(
+        ptx, mapping = _compile_using_nvrtc_no_warning(
             source, options, arch, cu_name, name_expressions,
             log_stream, cache_in_memory, jitify, 'lto' if to_ltoir else None)
         if _is_cudadevrt_needed(options) and not to_ltoir:
