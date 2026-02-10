@@ -53,7 +53,7 @@ cdef class mdspan(function.CPointer):
         self.ptr = <intptr_t>data
 
         cdef size_t offset = 0
-        memcpy(<char*>(data) + offset, &data_ptr, sizeof(data_ptr))
+        (<void**>(<char*>(data) + offset))[0] = data_ptr
         offset += sizeof(data_ptr)
         if ndim != 0:
             try:
@@ -104,10 +104,11 @@ cdef class CArray(function.CPointer):
         self.ptr = <intptr_t>data
 
         cdef size_t offset = 0
-        memcpy(<char*>(data) + offset, &data_ptr, sizeof(data_ptr))
+        (<void **>(<char*>(data) + offset))[0] = data_ptr
         offset += sizeof(data_ptr)
-        memcpy(<char*>(data) + offset, &data_size, sizeof(data_size))
+        (<Py_ssize_t*>(<char*>(data) + offset))[0] = data_size
         offset += sizeof(data_size)
+
         if ndim != 0:
             memcpy(<char*>(data) + offset,
                    shape.data(),
@@ -142,7 +143,7 @@ cdef class CIndexer(function.CPointer):
         self.ptr = <intptr_t>data
 
         cdef size_t offset = 0
-        memcpy(<char*>(data) + offset, &size, sizeof(size))
+        (<Py_ssize_t*>(<char*>(data) + offset))[0] = size
         offset += sizeof(size)
         if ndim != 0:
             memcpy(<char*>(data) + offset,
@@ -165,7 +166,7 @@ cdef class Indexer:
     cdef void init(self, const shape_t& shape):
         self.shape = shape
         self.size = internal.prod(shape)
-        self._index_32_bits = self.size <= (1 << 31)
+        self._index_32_bits = self.size <= <Py_ssize_t>(1 << 31)
 
     @property
     def ndim(self):

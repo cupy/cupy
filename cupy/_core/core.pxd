@@ -77,9 +77,9 @@ cdef class _ndarray_base:
     cpdef get(self, stream=*, order=*, out=*, blocking=*)
     cpdef set(self, arr, stream=*)
     cpdef _ndarray_base reduced_view(self, dtype=*)
-    cpdef _update_c_contiguity(self)
-    cpdef _update_f_contiguity(self)
-    cpdef _update_contiguity(self)
+    cdef _update_c_contiguity(self)
+    cdef _update_f_contiguity(self)
+    cdef _update_contiguity(self)
     cpdef _set_shape_and_strides(self, const shape_t& shape,
                                  const strides_t& strides,
                                  bint update_c_contiguity,
@@ -88,7 +88,7 @@ cdef class _ndarray_base:
                              const strides_t& strides,
                              bint update_c_contiguity,
                              bint update_f_contiguity, obj)
-    cpdef _set_contiguous_strides(
+    cdef _set_contiguous_strides(
         self, Py_ssize_t itemsize, bint is_c_contiguous)
     cdef CPointer get_pointer(self)
     cpdef object toDlpack(self)
