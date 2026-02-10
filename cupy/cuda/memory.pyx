@@ -954,12 +954,14 @@ cdef class PooledMemory(BaseMemory):
     cdef:
         readonly object pool
         readonly str identity
+        _Chunk chunk
         dict __dict__
 
     def __init__(self, _Chunk chunk, pool):
         self._init(chunk, pool)
 
     cdef _init(self, _Chunk chunk, pool):
+        self.chunk = chunk
         self.ptr = chunk.ptr()
         self.size = chunk.size
         self.device_id = chunk.mem.device_id
@@ -1017,7 +1019,7 @@ cdef class PooledMemory(BaseMemory):
                                          mem_ptr=ptr,
                                          pmem_id=pmem_id)
                 try:
-                    (<SingleDeviceMemoryPool>pool).free(ptr, size)
+                    (<SingleDeviceMemoryPool>pool).free(self.chunk)
                 finally:
                     for hook in hooks.values():
                         hook.free_postprocess(device_id=device_id,
@@ -1025,7 +1027,7 @@ cdef class PooledMemory(BaseMemory):
                                               mem_ptr=ptr,
                                               pmem_id=pmem_id)
                 return
-        (<SingleDeviceMemoryPool>pool).free(ptr, size)
+        (<SingleDeviceMemoryPool>pool).free(self.chunk)
 
     def __dealloc__(self):
         if _exit_mode:
@@ -1220,12 +1222,6 @@ cdef class SingleDeviceMemoryPool:
     cdef:
         object _allocator
 
-        # Map from memory pointer of the chunk (intptr_t) to the corresponding
-        # Chunk object. All chunks currently allocated to the application from
-        # this pool are stored.
-        # No locking is necessary but update `_in_use_bytes` when modifying.
-        dict _in_use
-
         # Arenas are stored as weak references inside this dict (very minimal
         # WeakValueDict). They must only be taken via `_arena(ident)` or the
         # `_Chunk` attribute that keeps the arena alive.
@@ -1254,7 +1250,6 @@ cdef class SingleDeviceMemoryPool:
     def __init__(self, allocator=None):
         if allocator is None:
             allocator = _malloc
-        self._in_use = {}
         self._arenas = {}
         self._allocator = allocator
         self._weakref = weakref.ref(self)
@@ -1371,7 +1366,6 @@ cdef class SingleDeviceMemoryPool:
             chunk = _Chunk.__new__(_Chunk)
             chunk._init(mem, 0, size, arena)
 
-        self._in_use[chunk.ptr()] = chunk
         self._in_use_bytes += chunk.size
 
         pmem = PooledMemory.__new__(PooledMemory)
@@ -1380,14 +1374,7 @@ cdef class SingleDeviceMemoryPool:
         ret._init(pmem, 0)
         return ret
 
-    cpdef free(self, intptr_t ptr, size_t size):
-        cdef _Chunk chunk
-
-        try:
-            chunk = self._in_use.pop(ptr)
-        except KeyError:
-            raise RuntimeError('Cannot free out-of-pool memory')
-
+    cdef free(self, _Chunk chunk):
         self._in_use_bytes -= chunk.size
 
         # Make sure freeing is always safe, but if we can lock do it.
