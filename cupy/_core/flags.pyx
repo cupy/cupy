@@ -1,24 +1,11 @@
 # distutils: language = c++
 
 
-class Flags(object):
-
+cdef class Flags:
     def __init__(self, c_contiguous, f_contiguous, owndata):
         self._c_contiguous = c_contiguous
         self._f_contiguous = f_contiguous
         self._owndata = owndata
-
-    @property
-    def c_contiguous(self):
-        return self._c_contiguous
-
-    @property
-    def f_contiguous(self):
-        return self._f_contiguous
-
-    @property
-    def owndata(self):
-        return self._owndata
 
     @property
     def fnc(self):
