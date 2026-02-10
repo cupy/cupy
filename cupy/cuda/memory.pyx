@@ -997,14 +997,17 @@ cdef class PooledMemory(BaseMemory):
         buffer to the memory pool for reuse.
 
         """
+        cdef cpython.PyObject *pool_ref
         cdef intptr_t ptr
         ptr = self.ptr
         if ptr == 0:
             return
         self.ptr = 0
-        pool = self.pool()
-        if pool is None:
-            return
+        if cpython.PyWeakref_GetRef(self.pool, &pool_ref) == 1:
+            pool = <object>pool_ref
+            cpython.Py_DECREF(pool)  # pool_ref owned a reference
+        else:
+            return  # The pool does not exist anymore
 
         size = self.size
         if memory_hook._has_memory_hooks():
@@ -1264,10 +1267,13 @@ cdef class SingleDeviceMemoryPool:
         All free chunks in the stream belong to one of the bin in the arena.
         """
         cdef cpython.PyObject *ret
+        cdef _Arena arena
         ref = self._arenas.get(stream_ident, None)
         if ref is not None:
             if cpython.PyWeakref_GetRef(ref, &ret) == 1:
-                return <object>ret
+                arena = <_Arena>ret
+                cpython.Py_DECREF(arena)  # ret owned a reference
+                return arena
 
         # Assume there are not many arenas being created and deleted so
         # just clean up dead refs here.
@@ -1275,10 +1281,10 @@ cdef class SingleDeviceMemoryPool:
             if self._arenas[key]() is None:
                 del self._arenas[key]
 
-        new_arena = _Arena()
-        ref = weakref.ref(new_arena)
+        arena = _Arena()
+        ref = weakref.ref(arena)
         self._arenas[stream_ident] = ref
-        return new_arena
+        return arena
 
     def _debug_arena_get_index(self, intptr_t stream_ident):
         # Sets returned are not copies, mutating them will break things
