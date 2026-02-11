@@ -1144,7 +1144,7 @@ _sqrt = create_ufunc(
 
 
 # Define the specialized logic for floats
-_float_routine = '''
+_float_clip = '''
 if (isnan(in1) || isnan(in2)) {
     out0 = (out0_type)nan("");
 } else {
@@ -1164,9 +1164,9 @@ _clip = create_ufunc(
     (
         '???->?', 'bbb->b', 'BBB->B', 'hhh->h', 'HHH->H', 'iii->i', 'III->I',
         'lll->l', 'LLL->L', 'qqq->q', 'QQQ->Q',
-        ('eee->e', _float_routine),
-        ('fff->f', _float_routine),
-        ('ddd->d', _float_routine)
+        ('eee->e', _float_clip),
+        ('fff->f', _float_clip),
+        ('ddd->d', _float_clip)
     ),
     _default_routine
 )
