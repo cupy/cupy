@@ -97,6 +97,10 @@ class TestNewDLPackConversion:
     @pytest.mark.skipif(
         numpy.lib.NumpyVersion(numpy.__version__) < "2.1.2",
         reason="bfloat16 not enabled due to NumPy bug.")
+    @pytest.mark.skipif(
+        not cuda.runtime.is_hip and cuda.get_local_runtime_version() < 12020,
+        reason="bfloat16 is missing some features (__hisnan)"
+    )
     def test_conversion_bfloat16(self):
         ml_dtypes = pytest.importorskip('ml_dtypes')
         orig_array = _gen_array(numpy.dtype(ml_dtypes.bfloat16))
