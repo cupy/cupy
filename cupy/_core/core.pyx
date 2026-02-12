@@ -270,7 +270,7 @@ cdef class _ndarray_base:
             alloc_size = self.size * itemsize
 
         max_diff = max(alloc_size, self.size * itemsize)
-        self._index_32_bits = max_diff <= (1 << 31)
+        self._index_32_bits = max_diff <= <Py_ssize_t>(1 << 31)
 
         # data
         if memptr is None:
@@ -293,7 +293,7 @@ cdef class _ndarray_base:
             dtype, check_support=True)
         self._set_contiguous_strides(itemsize, c_order)
         self.data = memory.alloc(self.size * itemsize)
-        self._index_32_bits = (self.size * itemsize) <= (1 << 31)
+        self._index_32_bits = (self.size * itemsize) <= <Py_ssize_t>(1 << 31)
 
     @property
     def __cuda_array_interface__(self):
@@ -2173,14 +2173,14 @@ cdef class _ndarray_base:
         # TODO(niboshi): Confirm update_x_contiguity flags
         return self._view(type(self), shape, strides, False, True, self)
 
-    cpdef _update_c_contiguity(self):
+    cdef _update_c_contiguity(self):
         if self.size == 0:
             self._c_contiguous = True
             return
         self._c_contiguous = internal.get_c_contiguity(
             self._shape, self._strides, self.dtype.itemsize)
 
-    cpdef _update_f_contiguity(self):
+    cdef _update_f_contiguity(self):
         if self.size == 0:
             self._f_contiguous = True
             return
@@ -2199,7 +2199,7 @@ cdef class _ndarray_base:
         self._f_contiguous = internal.get_c_contiguity(
             rev_shape, rev_strides, self.dtype.itemsize)
 
-    cpdef _update_contiguity(self):
+    cdef _update_contiguity(self):
         self._update_c_contiguity()
         self._update_f_contiguity()
 
@@ -2241,7 +2241,7 @@ cdef class _ndarray_base:
             v.__array_finalize__(self)
         return v
 
-    cpdef _set_contiguous_strides(
+    cdef _set_contiguous_strides(
             self, Py_ssize_t itemsize, bint is_c_contiguous):
         self.size = internal.get_contiguous_strides_inplace(
             self._shape, self._strides, itemsize, is_c_contiguous, True)
