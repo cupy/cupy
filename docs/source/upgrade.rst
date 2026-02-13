@@ -41,6 +41,11 @@ the type of scalars:
 
 Please refer to the NumPy documentation and NEP 50 for additional information.
 
+Minimal support for bfloat16
+----------------------------
+
+CuPy now has initial support for bfloat16 via ``ml_dtypes.bfloat16``. Most functionality in CuPy should work, although there are still some smaller gaps, especially in ``cupyx``. Note that bfloat16 support requires NumPy 2.1.2+ and using bfloat16 may lead to compilation issues with CUDA 12.1.
+
 Minimal support for structured dtypes
 -------------------------------------
 
