@@ -109,4 +109,4 @@ jobs:
     - name: Build & Test
       run: |
         # Note: "-complete" Docker image variants exceeds disk size on GitHub hosted runners.
-        docker run --rm -v "${PWD}:/src" -w /src "rocm/dev-ubuntu-22.04:7.0.2" bash .github/workflows/scripts/pretest-rocm-test.sh
+        docker run --rm -v "${PWD}:/src" -w /src "rocm/dev-ubuntu-22.04:7.1.1" bash .github/workflows/scripts/pretest-rocm-test.sh
