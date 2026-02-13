@@ -133,38 +133,6 @@ cdef inline _preprocess_arg(int dev_id, arg):
         s = _scalar.CScalar(arg)
 
     return s
-
-
-cdef list _preprocess_args(int dev_id, args):
-    """Preprocesses arguments for kernel invocation
-
-    - Checks device compatibility for ndarrays
-    - Wraps Python/NumPy scalars into CScalars for easier processing.
-    """
-    cdef list ret = []
-    for arg in args:
-        p_arg = _preprocess_arg(dev_id, arg)
-        ret.append(p_arg)
-    return ret
-
-
-cdef list _preprocess_optional_args(int dev_id, args):
-    """Preprocesses arguments for kernel invocation
-
-    - Checks device compatibility for ndarrays
-    - Converts Python/NumPy scalars:
-      - If use_c_scalar is True, into CScalars.
-      - If use_c_scalar is False, into NumPy scalars.
-    """
-    cdef list ret = []
-    for arg in args:
-        if arg is None:
-            ret.append(None)
-        else:
-            ret.append(_preprocess_arg(dev_id, arg))
-    return ret
-
-
 cdef class _ArgInfo:
     # Holds metadata of an argument.
     # This class is immutable and used as a part of hash keys.
@@ -497,6 +465,260 @@ cdef class ParameterInfo:
             ]))
 
 
+@cython.final
+@cython.no_gc
+cdef class KernelArguments:
+    # A kernels friendly helper to organize preparation of input and
+    # output arguments.
+    @staticmethod
+    cdef KernelArguments create(
+            Py_ssize_t nin, Py_ssize_t nout, tuple args, out,
+            where, bint is_ufunc, int dev_id, str name):
+        cdef Py_ssize_t i, len_args = len(args), nargs = nin + nout
+        cdef KernelArguments self = KernelArguments.__new__(KernelArguments)
+        self.nin = nin
+        self.nout = nout
+        self.is_ufunc = is_ufunc
+        # Args is a list containing inputs, [where], outputs, and indexer.
+        self.has_where = where is not None
+        self.args = [None] * (nin + nout + self.has_where + 1)  # +1 indexer
+
+        # Check number of arguments. NumPy allows weird partial output tuples
+        # in ufuncs, so this checks takes that into account.
+        if not is_ufunc:
+            if len_args != self.nin and len_args != nargs:
+                raise TypeError(
+                    'Wrong number of arguments for {!r}. '
+                    'It must be either {} or {} (with outputs), '
+                    'but given {}.'.format(
+                        self.name, self.nin, nargs, len_args))
+        else:
+            if len_args < self.nin or len_args > nargs:
+                raise TypeError(
+                    'Wrong number of arguments for {!r}. '
+                    'It must be between {} and {} (with outputs), '
+                    'but given {}.'.format(
+                        self.name, self.nin, nargs, len_args))
+
+        for i in range(nin):
+            self.set_in(i, args[i])
+
+        for i in range(nin, len_args):
+            self.set_out(i - nin, args[i])
+
+        if self.has_where:
+            self.set_where(where)
+
+        # Deal with outputs if provided via the `out=` kwarg.
+        if out is not None:
+            if len_args > self.nin:
+                raise ValueError('Cannot specify \'out\' as both '
+                                 'a positional and keyword argument')
+            if isinstance(out, tuple):
+                if len(out) != self.nout:
+                    raise ValueError(
+                        "The 'out' tuple must have exactly one entry per "
+                        "ufunc output")
+                for i in range(len(<tuple>out)):
+                    self.set_out(i, (<tuple>out)[i])
+            else:
+                if 1 != self.nout:
+                    raise ValueError("'out' must be a tuple of arrays")
+                self.set_out(0, out)
+
+        # TODO(seberg): It may be nice to move the check for
+        # __cupy_override_elementwise_kernel__ here. But if we find one the
+        # returned `self` would be invalid (or something else).
+        self._preprocess_args(dev_id)
+
+        if self.is_ufunc:
+            # TODO(seberg): Should ElementwiseKernel do this?
+            self._copy_in_args_if_needed()
+
+        return self
+
+    cdef _copy_in_args_if_needed(self):
+        cdef _ndarray_base inp, outp
+        for i in range(self.nin):
+            a = self.get_in(i)
+            if isinstance(a, _ndarray_base):
+                inp = a
+                for j in range(self.nout):
+                    outp = self.get_out(j)
+                    if outp is None:
+                        # NOTE(seberg): Repeatedly skipping should be OK,
+                        # but may not be best for many inputs.
+                        continue
+                    if inp is not outp and may_share_bounds(inp, outp):
+                        self.set_in(i, inp.copy())
+                        break
+
+    cdef _preprocess_args(self, dev_id):
+        for i in range(self.nin):
+            self.set_in(i, _preprocess_arg(dev_id, self.get_in(i)))
+
+        for i in range(self.nout):
+            arg = self.get_out(i)
+            if arg is None:
+                continue
+            self.set_out(i, _preprocess_arg(dev_id, arg))
+
+        # Where needs a bit of special handling (could be moved to later)
+        if not self.has_where:
+            return
+
+        x = _preprocess_arg(dev_id, self.get_where())
+        if isinstance(x, _ndarray_base):
+            self.set_where(x)
+            # NumPy seems using casting=safe here
+            if x.dtype != bool:
+                raise TypeError(
+                    f'Cannot cast array data from {x.dtype!r} to '
+                    f'{get_dtype(bool)!r} according to the rule \'safe\'')
+        else:
+            # NumPy does not seem raising TypeError, so just `bool()`.
+            # CuPy does not have to support `where=object()` etc. and
+            # `_preprocess_args` rejects it anyway.
+            self.set_where(_scalar.CScalar(bool(x.value)))
+
+    cdef find_shape(self):
+        # TODO(seberg): Some functions should not broadcast outputs in
+        # principle. Right now `broadcast_shapes` mutates outputs.
+        # So until we refactor this, pass in a copy of the arguments.
+        # we must NOT mutate output because a broadcasted output is bad.
+        assert self.is_ufunc
+        copy = self.args[:]
+        internal._broadcast_core(copy, self.broadcast_shape)
+        self.args[:self.nin+self.has_where] = copy[:self.nin+self.has_where]
+
+    cdef find_shape_raw(self, tuple params, Py_ssize_t size):
+        # TODO(seberg): Try to merge with `find_shape()` ideally, but requires
+        # restructure to do nicely.
+        # (This version must inspect out arguments when there are no inputs
+        # -- or only raw/scalar ones -- to infer the shape from them.)
+        assert not self.is_ufunc
+        self.args[:self.nin] = _broadcast(
+            self.args, params, size, self.broadcast_shape)[:self.nin]
+
+    cdef create_out_args_with_types(self, tuple out_types, casting):
+        # TODO(seberg): Moved code, merge with below.  Differences are just
+        # that this checks casting and the other allows `p.raw`.
+        assert self.is_ufunc
+        cdef _ndarray_base arr
+
+        # Determine a template object from which we initialize the output when
+        # inputs have subclass instances
+        def issubclass1(cls, classinfo):
+            return issubclass(cls, classinfo) and cls is not classinfo
+        subtype = cupy.ndarray
+        template = None
+        for i in range(self.nin):
+            in_arg = self.get_in(i)
+            in_arg_type = type(in_arg)
+            if issubclass1(in_arg_type, cupy.ndarray):
+                subtype = in_arg_type
+                template = in_arg
+                break
+
+        for i in range(self.nout):
+            a = self.get_out(i)
+            if a is None:
+                new = _ndarray_init(
+                    subtype, self.broadcast_shape, out_types[i], template)
+                self.set_out(i, new)
+                continue
+
+            if not isinstance(a, _ndarray_base):
+                raise TypeError(
+                    'Output arguments type must be cupy.ndarray')
+            arr = a
+            if not internal.vector_equal(arr._shape, self.broadcast_shape):
+                raise ValueError('Out shape is mismatched')
+
+            out_type = get_dtype(out_types[i])
+            _raise_if_invalid_cast(
+                out_type, arr.dtype, casting, "output operand")
+
+    cdef create_out_args_with_params(
+            self, tuple out_types, tuple out_params, bint is_size_specified):
+        # TODO(seberg): Mostly moved code, can we merge these?
+        assert not self.is_ufunc  # only makes sense for ElementwiseKernel
+        cdef ParameterInfo p
+        cdef _ndarray_base arr
+        for i in range(self.nout):
+            p = out_params[i]
+            a = self.get_out(i)
+            if a is None:
+                # NOTE: Versions up to 14.0 did not allow explicit `None`.
+                if p.raw and not is_size_specified:
+                    raise ValueError('Output array size is Undecided')
+                new = _ndarray_init(
+                    cupy.ndarray, self.broadcast_shape, out_types[i], None)
+                self.set_out(i, new)
+                continue
+
+            if not isinstance(a, _ndarray_base):
+                raise TypeError(
+                    'Output arguments type must be cupy.ndarray')
+            arr = <_ndarray_base>a
+            if not p.raw and not internal.vector_equal(
+                    arr._shape, self.broadcast_shape):
+                raise ValueError('Out shape is mismatched')
+
+    cdef result(self, bint tuple_return):
+        if self.nout == 1 and not tuple_return:
+            return self.get_out(0)
+        else:
+            return tuple([self.get_out(i) for i in range(self.nout)])
+
+    cdef finalize_scalars(self, tuple in_types):
+        # Scalars are cast before building/launching the kernel
+        # so they require a finalization step.
+        for i in range(self.nin):
+            a = self.get_in(i)
+            if type(a) is _scalar.CScalar:
+                (<_scalar.CScalar>a).apply_dtype(in_types[i])
+
+    cdef tuple get_ndarray_dtypes(self):
+        """Helper for decide_params_type_core, should refactor it to
+        directly use KernelArguments or ArgInfos."""
+        # TODO(seberg): See above, refactor this away!
+        in_ndarray_types = []
+        for i in range(self.nin):
+            a = self.get_in(i)
+            if isinstance(a, _ndarray_base):
+                t = a.dtype.type
+            elif isinstance(a, texture.TextureObject):
+                t = 'cudaTextureObject_t'
+            else:
+                t = None
+            in_ndarray_types.append(t)
+
+        in_ndarray_types = tuple(in_ndarray_types)
+
+        out_ndarray_types = []
+        for i in range(self.nout):
+            a = self.get_out(i)
+            if a is None:
+                out_ndarray_types.append(None)
+            else:
+                out_ndarray_types.append(a.dtype.type)
+
+        out_ndarray_types = tuple(out_ndarray_types)
+        return in_ndarray_types, out_ndarray_types
+
+    @property
+    def in_args(self):
+        # NOTE(seberg): Would be nice to refactor things so this is not
+        # needed anywhere (or only for debugging purposes).
+        return self.args[:self.nin]
+
+    @property
+    def out_args(self):
+        cdef Py_ssize_t offset = self.nin + self.has_where
+        return self.args[offset:offset + self.nout]
+
+
 @_util.memoize()
 def _get_param_info(str s, is_const):
     if len(s) == 0:
@@ -541,7 +763,8 @@ cdef tuple _decide_params_type_core(
         assert len(out_params) == len(out_args_dtype)
         for p, a in zip(out_params, out_args_dtype):
             if a is None:
-                raise TypeError('Output arguments must be cupy.ndarray')
+                # output is not yet created, so skip for now
+                continue
             if p.dtype is not None:
                 if get_dtype(a) != get_dtype(p.dtype):
                     raise TypeError(
@@ -583,7 +806,7 @@ cdef tuple _decide_params_type_core(
     return in_types, out_types, type_map
 
 
-cdef list _broadcast(list args, tuple params, bint use_size, shape_t& shape):
+cdef list _broadcast(list args, tuple params, Py_ssize_t size, shape_t& shape):
     # `shape` is an output argument
     cdef Py_ssize_t i
     cdef ParameterInfo p
@@ -600,7 +823,7 @@ cdef list _broadcast(list args, tuple params, bint use_size, shape_t& shape):
         else:
             value.append(None)
 
-    if use_size:
+    if size != -1:
         if any_nonraw_array:
             raise ValueError('Specified \'size\' can be used only '
                              'if all of the ndarray are \'raw\'.')
@@ -611,6 +834,10 @@ cdef list _broadcast(list args, tuple params, bint use_size, shape_t& shape):
     # Perform broadcast.
     # Note that arrays in `value` are replaced with broadcasted ones.
     internal._broadcast_core(value, shape)
+    if size != -1:
+        # TODO(seberg): Does it make sense to even broadcast here if
+        # we ignore the shape?
+        shape.assign(1, size)
 
     # Restore raw arrays and scalars from the original list.
     for i, a in enumerate(value):
@@ -621,68 +848,6 @@ cdef list _broadcast(list args, tuple params, bint use_size, shape_t& shape):
 
 cdef _numpy_can_cast = numpy.can_cast
 cdef _numpy_result_type = numpy.result_type
-
-cdef list _get_out_args_from_optionals(
-    subtype, list out_args, tuple out_types, const shape_t& out_shape, casting,
-    obj
-):
-    cdef _ndarray_base arr
-
-    while len(out_args) < len(out_types):
-        out_args.append(None)
-
-    for i, a in enumerate(out_args):
-        if a is None:
-            out_args[i] = _ndarray_init(
-                subtype, out_shape, out_types[i], obj)
-            continue
-
-        if not isinstance(a, _ndarray_base):
-            raise TypeError(
-                'Output arguments type must be cupy.ndarray')
-        arr = a
-        if not internal.vector_equal(arr._shape, out_shape):
-            raise ValueError('Out shape is mismatched')
-        out_type = get_dtype(out_types[i])
-
-        _raise_if_invalid_cast(out_type, arr.dtype, casting, "output operand")
-    return out_args
-
-
-cdef _copy_in_args_if_needed(list in_args, list out_args):
-    # `in_args` is an input and output argument
-    cdef _ndarray_base inp, out
-    for i in range(len(in_args)):
-        a = in_args[i]
-        if isinstance(a, _ndarray_base):
-            inp = a
-            for out in out_args:
-                if inp is not out and may_share_bounds(inp, out):
-                    in_args[i] = inp.copy()
-                    break
-
-
-cdef list _get_out_args_with_params(
-        list out_args, tuple out_types, const shape_t& out_shape,
-        tuple out_params, bint is_size_specified):
-    cdef ParameterInfo p
-    cdef _ndarray_base arr
-    if not out_args:
-        for p in out_params:
-            if p.raw and not is_size_specified:
-                raise ValueError('Output array size is Undecided')
-        return [_ndarray_init(
-            cupy.ndarray, out_shape, t, None) for t in out_types]
-
-    for i, p in enumerate(out_params):
-        a = out_args[i]
-        if not isinstance(a, _ndarray_base):
-            raise TypeError(
-                'Output arguments type must be cupy.ndarray')
-        arr = a
-        if not p.raw and not internal.vector_equal(arr._shape, out_shape):
-            raise ValueError('Out shape is mismatched')
-    return out_args
 
 
 @_util.memoize()
@@ -833,9 +998,9 @@ cdef class ElementwiseKernel:
 
         """
         cdef function.Function kern
-        cdef Py_ssize_t size, i
-        cdef list in_args, out_args
+        cdef Py_ssize_t size
         cdef tuple in_types, out_types
+        cdef KernelArguments kargs
         cdef shape_t shape
 
         size = kwargs.pop('size', -1)
@@ -845,71 +1010,43 @@ cdef class ElementwiseKernel:
             raise TypeError('Wrong arguments %s' % kwargs)
         if block_size <= 0:
             raise ValueError('block_size must be greater than zero')
-        n_args = len(args)
-        if n_args != self.nin and n_args != self.nargs:
-            raise TypeError(
-                'Wrong number of arguments for {!r}. '
-                'It must be either {} or {} (with outputs), '
-                'but given {}.'.format(
-                    self.name, self.nin, self.nargs, n_args))
-        for arg in args:
-            if hasattr(arg, '__cupy_override_elementwise_kernel__'):
-                return arg.__cupy_override_elementwise_kernel__(
-                    self, *args, **kwargs)
+
         dev_id = device.get_device_id()
-        arg_list = _preprocess_args(dev_id, args)
 
-        out_args = arg_list[self.nin:]
-        # _broadcast updates shape
-        in_args = _broadcast(
-            arg_list, self.params, size != -1, shape)[:self.nin]
+        kargs = KernelArguments.create(
+            self.nin, self.nout, args, None, None, False, dev_id, self.name)
 
-        in_ndarray_types = []
-        for a in in_args:
-            if isinstance(a, _ndarray_base):
-                t = a.dtype.type
-            elif isinstance(a, texture.TextureObject):
-                t = 'cudaTextureObject_t'
-            else:
-                t = None
-            in_ndarray_types.append(t)
-        in_ndarray_types = tuple(in_ndarray_types)
-        out_ndarray_types = tuple([a.dtype.type for a in out_args])
+        kargs.find_shape_raw(self.params, size)
 
+        # Find parameter types after extracting dtypes.
+        in_ndarray_types, out_ndarray_types = kargs.get_ndarray_dtypes()
         in_types, out_types, type_map = self._decide_params_type(
             in_ndarray_types, out_ndarray_types)
 
-        is_size_specified = False
-        if size != -1:
-            shape.assign(1, size)
-            is_size_specified = True
+        kargs.create_out_args_with_params(
+            out_types, self.out_params, size != -1)
 
-        out_args = _get_out_args_with_params(
-            out_args, out_types, shape, self.out_params, is_size_specified)
-        if self.no_return:
-            ret = None
-        elif not self.return_tuple and self.nout == 1:
-            ret = out_args[0]
-        else:
-            ret = tuple(out_args)
+        ret = None
+        if not self.no_return:
+            ret = kargs.result(self.return_tuple)
 
-        if _contains_zero(shape):
+        if _contains_zero(kargs.broadcast_shape):
             return ret
 
-        for i, x in enumerate(in_args):
-            if type(x) is _scalar.CScalar:
-                (<_scalar.CScalar>x).apply_dtype(in_types[i])
-
-        inout_args = in_args + out_args
+        kargs.finalize_scalars(in_types)
 
         if self.reduce_dims:
-            shape = _reduce_dims(inout_args, self.params, shape)
-        indexer = _carray._indexer_init(shape)
-        inout_args.append(indexer)
+            shape = _reduce_dims(
+                kargs.args, self.params, kargs.broadcast_shape)
+            indexer = _carray._indexer_init(shape)
+        else:
+            indexer = _carray._indexer_init(kargs.broadcast_shape)
 
-        arginfos = _get_arginfos(inout_args)
+        kargs.set_indexer(indexer)
+
+        arginfos = _get_arginfos(kargs.args)
         kern = self._get_elementwise_kernel(dev_id, arginfos, type_map)
-        kern.linear_launch(indexer.size, inout_args, shared_mem=0,
+        kern.linear_launch(indexer.size, kargs.args, shared_mem=0,
                            block_max_size=block_size, stream=stream)
         return ret
 
@@ -1246,13 +1383,13 @@ cdef class ufunc:
         if _fusion_thread_local.is_fusing():
             return _fusion_thread_local.call_ufunc(self, *args, **kwargs)
 
+        cdef KernelArguments kargs
         cdef function.Function kern
-        cdef list inout_args
+        cdef int dev_id
         cdef shape_t shape
 
         out = kwargs.pop('out', None)
         where = kwargs.pop('_where', None)
-        cdef bint has_where = where is not None
         dtype = kwargs.pop('dtype', None)
         # Note default behavior of casting is 'same_kind' on numpy>=1.10
         casting = kwargs.pop('casting', self._default_casting)
@@ -1261,75 +1398,23 @@ cdef class ufunc:
         if kwargs:
             raise TypeError('Wrong arguments %s' % kwargs)
 
-        n_args = len(args)
-        if not (self.nin <= n_args <= self.nargs):
-            # TODO(kataoka): Fix error message for nout >= 2 (e.g. divmod)
-            raise TypeError(
-                'Wrong number of arguments for {!r}. '
-                'It must be either {} or {} (with outputs), '
-                'but given {}.'.format(
-                    self.name, self.nin, self.nargs, n_args))
-
-        # parse inputs (positional) and outputs (positional or keyword)
-        in_args = args[:self.nin]
-        out_args = args[self.nin:]
-
-        if out is not None:
-            if out_args:
-                raise ValueError('Cannot specify \'out\' as both '
-                                 'a positional and keyword argument')
-            if isinstance(out, tuple):
-                if len(out) != self.nout:
-                    raise ValueError(
-                        "The 'out' tuple must have exactly one entry per "
-                        "ufunc output")
-                out_args = out
-            else:
-                if 1 != self.nout:
-                    raise ValueError("'out' must be a tuple of arrays")
-                out_args = out,
-
         dev_id = device.get_device_id()
-        in_args = _preprocess_args(dev_id, in_args)
-        out_args = _preprocess_optional_args(dev_id, out_args)
-        given_out_args = [o for o in out_args if o is not None]
 
-        # TODO(kataoka): Typecheck `in_args` w.r.t. `casting` (before
-        # broadcast).
-        if has_where:
-            where_args = _preprocess_args(dev_id, (where,))
-            x = where_args[0]
-            if isinstance(x, _ndarray_base):
-                # NumPy seems using casting=safe here
-                if x.dtype != bool:
-                    raise TypeError(
-                        f'Cannot cast array data from {x.dtype!r} to '
-                        f'{get_dtype(bool)!r} according to the rule \'safe\'')
-            else:
-                # NumPy does not seem raising TypeError, so just `bool()`.
-                # CuPy does not have to support `where=object()` etc. and
-                # `_preprocess_args` rejects it anyway.
-                where_args[0] = _scalar.CScalar(bool(x.value))
-        else:
-            where_args = []
+        kargs = KernelArguments.create(
+            self.nin, self.nout, args, out, where, True, dev_id, self.name)
 
-        # _copy_in_args_if_needed updates in_args
-        _copy_in_args_if_needed(in_args, given_out_args)
-        _copy_in_args_if_needed(where_args, given_out_args)
-        inout_args = in_args + where_args + given_out_args
-        # _broadcast updates shape
-        internal._broadcast_core(inout_args, shape)
+        kargs.find_shape()
 
         if (self._cutensor_op is not None
                 and _accelerator.ACCELERATOR_CUTENSOR in
                 _accelerator._elementwise_accelerators):
             if (self.nin == 2 and self.nout == 1 and
-                    isinstance(in_args[0], _ndarray_base) and
-                    isinstance(in_args[1], _ndarray_base)):
+                    isinstance(kargs.get_in(0), _ndarray_base) and
+                    isinstance(kargs.get_in(1), _ndarray_base)):
                 import cupyx.cutensor
                 ret = cupyx.cutensor._try_elementwise_binary_routine(
-                    in_args[0], in_args[1], dtype,
-                    out_args[0] if len(out_args) == 1 else None,
+                    kargs.get_in(0), kargs.get_in(1), dtype,
+                    kargs.get_out(0),
                     self._cutensor_op,
                     self._cutensor_alpha,
                     self._cutensor_gamma,
@@ -1337,49 +1422,28 @@ cdef class ufunc:
                 if ret is not None:
                     return ret
 
+        # TODO(seberg): Refactor to not fetch list (especially not slice)
         op = self._ops.guess_routine(
-            self.name, self._routine_cache, in_args, dtype,
+            self.name, self._routine_cache, kargs.in_args, dtype,
             self._out_ops)
 
-        # Determine a template object from which we initialize the output when
-        # inputs have subclass instances
-        def issubclass1(cls, classinfo):
-            return issubclass(cls, classinfo) and cls is not classinfo
-        subtype = cupy.ndarray
-        template = None
-        for in_arg in in_args:
-            in_arg_type = type(in_arg)
-            if issubclass1(in_arg_type, cupy.ndarray):
-                subtype = in_arg_type
-                template = in_arg
-                break
+        kargs.create_out_args_with_types(op.out_types, casting)
 
-        out_args = _get_out_args_from_optionals(
-            subtype, out_args, op.out_types, shape, casting, template)
-        # inout_args may have included given outputs for broadcasting, replace:
-        inout_args[len(in_args) + has_where:] = out_args
+        ret = kargs.result(self.nout > 1)
 
-        if self.nout == 1:
-            ret = out_args[0]
-        else:
-            ret = tuple(out_args)
-
-        if _contains_zero(shape):
+        if _contains_zero(kargs.broadcast_shape):
             return ret
 
-        for i, t in enumerate(op.in_types):
-            # If necessary, cast scalars here (deals with Python ints also)
-            if type(inout_args[i]) is _scalar.CScalar:
-                (<_scalar.CScalar>inout_args[i]).apply_dtype(t)
+        kargs.finalize_scalars(op.in_types)
 
-        shape = _reduce_dims(inout_args, self._params, shape)
+        _params = self._params_with_where if kargs.has_where else self._params
+        shape = _reduce_dims(kargs.args, _params, kargs.broadcast_shape)
         indexer = _carray._indexer_init(shape)
-        inout_args.append(indexer)
-        arginfos = _get_arginfos(inout_args)
+        kargs.set_indexer(indexer)
 
-        kern = self._get_ufunc_kernel(dev_id, op, arginfos, has_where)
-
-        kern.linear_launch(indexer.size, inout_args)
+        arginfos = _get_arginfos(kargs.args)
+        kern = self._get_ufunc_kernel(dev_id, op, arginfos, kargs.has_where)
+        kern.linear_launch(indexer.size, kargs.args)
         return ret
 
     cdef str _get_name_with_type(self, tuple arginfos, bint has_where):

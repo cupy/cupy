@@ -14,9 +14,9 @@ from libcpp cimport vector
 
 from cupy._core._dtype cimport get_dtype, _raise_if_invalid_cast
 from cupy._core cimport core
-from cupy._core.core cimport _ndarray_base
+from cupy._core.core cimport _ndarray_base, _convert_from_cupy_like
 from cupy._core cimport internal
-from cupy._core._kernel cimport _check_peer_access, _preprocess_args
+from cupy._core._kernel cimport _check_peer_access
 
 from cupy.cuda import device
 
@@ -588,26 +588,25 @@ cpdef _ndarray_base concatenate_method(
         casting='same_kind'):
     cdef int ndim0
     cdef int i
+    cdef int dev_id = device.get_device_id()
     cdef _ndarray_base a, a0
+    cdef list arrays
 
     if dtype is not None:
         dtype = get_dtype(dtype)
 
-    dev_id = device.get_device_id()
-    arrays = _preprocess_args(dev_id, tup)
+    arrays = [_convert_from_cupy_like(
+                  a, error="Only cupy arrays can be concatenated: argument")
+              for a in tup]
 
     # Check if the input is not an empty sequence
     if len(arrays) == 0:
         raise ValueError('Cannot concatenate from empty tuple')
 
-    # Check types of the input arrays
-    for o in arrays:
-        if not isinstance(o, _ndarray_base):
-            raise TypeError('Only cupy arrays can be concatenated')
-
     # Check ndim > 0 for the input arrays
     for o in arrays:
         a = o
+        _check_peer_access(a, dev_id)
         if a._shape.size() == 0:
             raise TypeError('zero-dimensional arrays cannot be concatenated')
 
