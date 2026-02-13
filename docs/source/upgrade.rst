@@ -41,6 +41,11 @@ the type of scalars:
 
 Please refer to the NumPy documentation and NEP 50 for additional information.
 
+Minimal support for bfloat16
+----------------------------
+
+CuPy now has initial support for bfloat16 via ``ml_dtypes.bfloat16``. Most functionality in CuPy should work, although there are still some smaller gaps, especially in ``cupyx``. Note that bfloat16 support requires NumPy 2.1.2+ and using bfloat16 may lead to compilation issues with CUDA 12.1.
+
 Minimal support for structured dtypes
 -------------------------------------
 
@@ -102,6 +107,11 @@ Change in :func:`cupy.cuda.nccl.get_unique_id` Return Type
 This change simplifies the API and avoids platform-specific issues related to char signedness.
 Users who were previously unpacking the tuple should update their code to work with bytes.
 
+Change in :func:`cupy.random.choice` Return Type
+------------------------------------------------
+
+Passing an array to :func:`cupy.random.choice` along with ``size`` and ``replace=False`` is now made a lot faster and more consistent. It always returns an array of dtype ``int64`` on all platforms.
+
 Requirement Changes
 -------------------
 
@@ -126,6 +136,8 @@ Other API Changes
 * :mod:`cupy.testing` module has been updated to follow NumPy's testing API changes. Some testing utilities may have different behavior or signatures.
 * ``cupy.fft.config`` is now thread and context safe. However, this also means that config is not inherited by threads (using ``contextvars``, so Python is likely to change this for newly created threads in the future).
 * ``cupy.fft.config.enable_nd_planning`` has been deprecated and will be removed in a future release (planning will always be enabled).
+* Jitify support is deprecated and will be removed in a future release. Avoid passing ``jitify=True`` to or setting ``-DCUPY_USE_JITIFY`` (which is an undocumented CuPy internal macro) in :class:`~cupy.RawModule` or :class:`~cupy.RawKernel`. Most things should just work today.
+* The experimental namespace ``cupy.array_api`` is now removed.
 
 Update of Docker Images
 -----------------------
