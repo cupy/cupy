@@ -15,6 +15,7 @@ export CUPY_NUM_BUILD_JOBS=8
 # Setup CuPy env vars (for runtime)
 export CUPY_CACHE_DIR="${_cache_dir}/.cupy/kernel_cache"
 export CUPY_DUMP_CUDA_SOURCE_ON_ERROR="1"
+export CUPY_NVRTC_USE_PCH="1"
 
 # Setup CuPy env vars (for unit tests)
 export CUPY_TEST_GPU_LIMIT="${GPU:--1}"

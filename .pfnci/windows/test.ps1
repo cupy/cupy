@@ -100,6 +100,7 @@ function Main {
 
     $Env:CUPY_TEST_GPU_LIMIT = $Env:GPU
     $Env:CUPY_DUMP_CUDA_SOURCE_ON_ERROR = "1"
+    $Env:CUPY_NVRTC_USE_PCH = "1"
 
     # Unit test
     if ($test -eq "build") {

@@ -36,6 +36,19 @@ Here are the environment variables that CuPy uses at runtime.
   If set to ``1``, :envvar:`CUPY_CACHE_DIR` and :envvar:`CUPY_CACHE_SAVE_CUDA_SOURCE` will be ignored, and the cache is in memory.
   This environment variable allows reducing disk I/O, but is ignoed when ``nvcc`` is set to be the compiler backend.
 
+.. envvar:: CUPY_NVRTC_USE_PCH
+
+  Default: ``0``
+
+  If set to ``1``, precompiled headers (PCH) will be used to drastically speed up compilation when many kernels are compiled
+  (e.g. because the CuPy kernel cache is empty or due to ``CUPY_CACHE_IN_MEMORY``).
+  I.e. if set, CuPy always passes the ``--pch`` option to all NVRTC kernel compilations.
+
+  PCH does come at at the cost of temporary files which can be configured further, see:
+  https://docs.nvidia.com/cuda/nvrtc/index.html#precompiled-header-pch-cuda-12-8
+
+  The option is only available for CUDA 12.8 or later.
+
 .. envvar:: CUPY_DISABLE_JITIFY_CACHE
 
   Default: ``0``
@@ -71,7 +84,7 @@ Here are the environment variables that CuPy uses at runtime.
 .. envvar:: CUPY_EXPERIMENTAL_SLICE_COPY
 
   Default: ``0``
-  
+
   If set to ``1``, the following syntax is enabled::
 
     cupy_ndarray[:] = numpy_ndarray
