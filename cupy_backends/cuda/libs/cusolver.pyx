@@ -1004,22 +1004,17 @@ cdef extern from '../../cupy_lapack.h' nogil:
 
 
 ctypedef int (*f_type)(...) nogil  # NOQA
-IF 12000 <= CUPY_CUDA_VERSION < 13000:
-    # CUDA 12.x
-    if _sys.platform == 'linux':
-        _libname = 'libcusolver.so.11'
-    else:
-        _libname = 'cusolver64_11.dll'
-ELIF 13000 <= CUPY_CUDA_VERSION < 14000:
-    # CUDA 13.x
-    if _sys.platform == 'linux':
-        _libname = 'libcusolver.so.12'
-    else:
-        _libname = 'cusolver64_12.dll'
-ELSE:
-    _libname = None
 
-cdef SoftLink _lib = SoftLink(_libname, 'cusolver')
+cdef object _libname = None
+cdef object _handle = 0
+IF 12000 <= CUPY_CUDA_VERSION:
+    # We let libname be None here to avoid loading the library twice,
+    # which could potentially be loading different versions of the library.
+    from cuda import pathfinder
+    loaded_dl = pathfinder.load_nvidia_dynamic_lib('cusolver')
+    _handle = loaded_dl._handle_uint
+
+cdef SoftLink _lib = SoftLink(_libname, 'cusolver', handle=_handle)
 # cuSOLVER 11.7+ (CUDA 12.6.2+)
 cdef f_type cusolverDnXgeev = <f_type>_lib.get('DnXgeev')
 cdef f_type cusolverDnXgeev_bufferSize = <f_type>_lib.get('DnXgeev_bufferSize')

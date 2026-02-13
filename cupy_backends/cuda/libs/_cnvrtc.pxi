@@ -116,29 +116,14 @@ cdef SoftLink _get_softlink():
     cdef int runtime_version
     cdef str prefix = 'nvrtc'
     cdef object libname = None
+    cdef object handle = 0
 
     if CUPY_CUDA_VERSION != 0:
-        runtime_version = runtime._getCUDAMajorVersion()
-        if runtime_version == 11:
-            # CUDA 11.x (11.2+)
-            if _sys.platform == 'linux':
-                libname = 'libnvrtc.so.11.2'
-            else:
-                libname = 'nvrtc64_112_0.dll'
-        elif runtime_version == 12:
-            # CUDA 12.x
-            if _sys.platform == 'linux':
-                libname = 'libnvrtc.so.12'
-            else:
-                libname = 'nvrtc64_120_0.dll'
-        elif runtime_version == 13:
-            # CUDA 13.x
-            if _sys.platform == 'linux':
-                libname = 'libnvrtc.so.13'
-            else:
-                libname = 'nvrtc64_130_0.dll'
+        # We let libname be None here to avoid loading the library twice,
+        # which could potentially be loading different versions of the library.
         from cuda import pathfinder
-        pathfinder.load_nvidia_dynamic_lib('nvrtc')
+        loaded_dl = pathfinder.load_nvidia_dynamic_lib('nvrtc')
+        handle = loaded_dl._handle_uint
     elif CUPY_HIP_VERSION != 0:
         runtime_version = runtime.runtimeGetVersion()
         prefix = 'hiprtc'
@@ -162,4 +147,4 @@ cdef SoftLink _get_softlink():
                 f"_cnvrtc.pxi - Please update code to support this version."
             )
 
-    return SoftLink(libname, prefix, mandatory=True)
+    return SoftLink(libname, prefix, mandatory=True, handle=handle)
