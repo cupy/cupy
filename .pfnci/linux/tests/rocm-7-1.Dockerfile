@@ -1,5 +1,5 @@
 # AUTO GENERATED: DO NOT EDIT!
-ARG BASE_IMAGE="rocm/dev-ubuntu-22.04:7.0.2-complete"
+ARG BASE_IMAGE="rocm/dev-ubuntu-22.04:7.1.1-complete"
 FROM ${BASE_IMAGE}
 
 RUN export DEBIAN_FRONTEND=noninteractive && \
