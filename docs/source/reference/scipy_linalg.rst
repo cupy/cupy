@@ -12,7 +12,6 @@ Basics
    :toctree: generated/
 
    solve_triangular
-   kron
    khatri_rao
 
 
