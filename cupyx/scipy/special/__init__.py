@@ -7,6 +7,7 @@ from cupyx.scipy.special._bessel import i1  # NOQA
 from cupyx.scipy.special._bessel import i1e  # NOQA
 from cupyx.scipy.special._bessel import j0  # NOQA
 from cupyx.scipy.special._bessel import j1  # NOQA
+from cupyx.scipy.special._bessel import jn  # NOQA
 from cupyx.scipy.special._bessel import k0  # NOQA
 from cupyx.scipy.special._bessel import k0e  # NOQA
 from cupyx.scipy.special._bessel import k1  # NOQA
