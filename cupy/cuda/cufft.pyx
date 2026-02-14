@@ -63,6 +63,8 @@ cdef SoftLink _get_softlink():
         elif 13000 <= runtime_version < 14000:
             # CUDA 13.0+
             prefix = 'cufft'
+        else:
+            raise RuntimeError("This feature requires CUDA 12.8+ or CUDA 13")
 
         # We let libname be None here to avoid loading the library twice,
         # which could potentially be loading different versions of the library.
