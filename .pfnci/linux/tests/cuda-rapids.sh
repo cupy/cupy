@@ -19,6 +19,10 @@ echo "======================================================="
 
 
 trap "$ACTIONS/cleanup.sh" EXIT
+
+# Remove CuPy installed in base Docker image
+conda remove --force cupy cupy-core
+
 # Overwrite:
 #  - CUPY_NVCC_GENERATE_CODE to accelerate build
 #  - CXX to use ccache
