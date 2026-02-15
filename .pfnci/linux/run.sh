@@ -157,8 +157,6 @@ main() {
       fi
       if [[ "${TARGET}" == *rocm* ]]; then
         docker_args+=(--device=/dev/kfd --device=/dev/dri)
-      elif [[ "${TARGET}" == cuda-build ]]; then
-        docker_args+=()
       else
         docker_args+=(--runtime=nvidia)
       fi
