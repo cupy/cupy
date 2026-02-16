@@ -133,7 +133,7 @@ _nccl_records.append(_make_nccl_record(
     'nccl_2.27.7-1+cuda13.0_x86_64.txz',
     'nccl_2.27.7-1+cuda13.0_aarch64.txz'))
 _nccl_records.append(_make_nccl_record(
-    '12.x', '2.25.1', '2.25.1', '2.16.5',
+    '12.x', '2.25.1', '2.25.1', '2.18.1',
     'nccl_2.25.1-1+cuda12.8_x86_64.txz',
     'nccl_2.25.1-1+cuda12.8_aarch64.txz'))
 library_records['nccl'] = _nccl_records
