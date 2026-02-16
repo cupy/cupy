@@ -171,7 +171,7 @@ cpdef int runtimeGetVersion() except? -1:
 
 cpdef int _getCUDAMajorVersion() except? -1:
     cdef int major = 0
-    IF 0 < CUPY_CUDA_VERSION:
+    if 0 < CUPY_CUDA_VERSION:
         major = runtimeGetVersion() // 1000
     return major
 
@@ -206,9 +206,10 @@ cpdef getDeviceProperties(int device):
     check_status(status)
 
     cdef dict properties = {'name': b'UNAVAILABLE'}  # for RTD
+    cdef dict arch
 
     # Common properties to CUDA 9.0, 9.2, 10.x, 11.x, and HIP
-    IF CUPY_CUDA_VERSION >= 13000:
+    if CUPY_CUDA_VERSION >= 13000:
         clockRate = deviceGetAttribute(cudaDevAttrClockRate, device)
         kernelExecTimeoutEnabled = deviceGetAttribute(
             cudaDevAttrKernelExecTimeout, device)
@@ -216,14 +217,14 @@ cpdef getDeviceProperties(int device):
             cudaDevAttrMemoryClockRate, device)
         computeMode = deviceGetAttribute(cudaDevAttrComputeMode, device)
         cooperativeMultiDeviceLaunch = False
-    ELSE:
+    else:
         clockRate = props.clockRate  # no-cython-lint
         kernelExecTimeoutEnabled = props.kernelExecTimeoutEnabled  # no-cython-lint
         memoryClockRate = props.memoryClockRate  # no-cython-lint
         computeMode = props.computeMode  # no-cython-lint
         cooperativeMultiDeviceLaunch = props.cooperativeMultiDeviceLaunch  # no-cython-lint
 
-    IF CUPY_CUDA_VERSION > 0 or CUPY_HIP_VERSION > 0:
+    if CUPY_CUDA_VERSION > 0 or CUPY_HIP_VERSION > 0:
         properties = {
             'name': props.name,
             'totalGlobalMem': props.totalGlobalMem,
@@ -261,7 +262,7 @@ cpdef getDeviceProperties(int device):
             'cooperativeLaunch': props.cooperativeLaunch,
             'cooperativeMultiDeviceLaunch': cooperativeMultiDeviceLaunch,
         }
-    IF CUPY_USE_CUDA_PYTHON or CUPY_CUDA_VERSION >= 9020:
+    if CUPY_USE_CUDA_PYTHON or CUPY_CUDA_VERSION >= 9020:
         properties['maxTexture1DMipmap'] = props.maxTexture1DMipmap
         properties['maxTexture1DLayered'] = tuple(props.maxTexture1DLayered)
         properties['maxTexture2DMipmap'] = tuple(props.maxTexture2DMipmap)
@@ -335,7 +336,7 @@ cpdef getDeviceProperties(int device):
         properties['maxTexture1DLinear'] = maxTexture1DLinear
         properties['singleToDoublePrecisionPerfRatio'] = (
             singleToDoublePrecisionPerfRatio)
-    IF CUPY_HIP_VERSION > 0:  # HIP-only props
+    if CUPY_HIP_VERSION > 0:  # HIP-only props
         properties['clockInstructionRate'] = props.clockInstructionRate
         properties['maxSharedMemoryPerMultiProcessor'] = (
             props.maxSharedMemoryPerMultiProcessor)
@@ -352,7 +353,7 @@ cpdef getDeviceProperties(int device):
             props.cooperativeMultiDeviceUnmatchedSharedMem)
         properties['isLargeBar'] = props.isLargeBar
 
-        cdef dict arch = {}  # for hipDeviceArch_t
+        arch = {}  # for hipDeviceArch_t
         arch['hasGlobalInt32Atomics'] = props.arch.hasGlobalInt32Atomics
         arch['hasGlobalFloatAtomicExch'] = props.arch.hasGlobalFloatAtomicExch
         arch['hasSharedInt32Atomics'] = props.arch.hasSharedInt32Atomics
@@ -371,9 +372,9 @@ cpdef getDeviceProperties(int device):
         arch['has3dGrid'] = props.arch.has3dGrid
         arch['hasDynamicParallelism'] = props.arch.hasDynamicParallelism
         properties['arch'] = arch
-    IF 0 < CUPY_HIP_VERSION < 60000000:  # removed in HIP 6.0.0
+    if 0 < CUPY_HIP_VERSION < 60000000:  # removed in HIP 6.0.0
         properties['gcnArch'] = props.gcnArch
-    IF CUPY_HIP_VERSION >= 310:
+    if CUPY_HIP_VERSION >= 310:
         properties['gcnArchName'] = props.gcnArchName
         properties['asicRevision'] = props.asicRevision
         properties['managedMemory'] = props.managedMemory
@@ -717,14 +718,14 @@ cpdef memsetAsync(intptr_t ptr, int value, size_t size, intptr_t stream):
 
 cpdef memPrefetchAsync(intptr_t devPtr, size_t count, int dstDevice,
                        intptr_t stream):
+    cdef _MemLocation loc_c
     if 0 < CUPY_HIP_VERSION < 40300000:
         raise RuntimeError('Managed memory requires ROCm 4.3+')
-    IF CUPY_CUDA_VERSION < 13000:
+    if CUPY_CUDA_VERSION < 13000:
         with nogil:
             status = cudaMemPrefetchAsync(<void*>devPtr, count, dstDevice,
                                           <driver.Stream> stream)
-    ELSE:
-        cdef _MemLocation loc_c
+    else:
         c_memset(&loc_c, 0, sizeof(_MemLocation))
         loc_c.type = <MemLocationType>cudaMemLocationTypeDevice
         loc_c.id = dstDevice
@@ -735,14 +736,14 @@ cpdef memPrefetchAsync(intptr_t devPtr, size_t count, int dstDevice,
     check_status(status)
 
 cpdef memAdvise(intptr_t devPtr, size_t count, int advice, int device):
+    cdef _MemLocation loc_c
     if 0 < CUPY_HIP_VERSION < 40300000:
         raise RuntimeError('Managed memory requires ROCm 4.3+')
-    IF CUPY_CUDA_VERSION < 13000:
+    if CUPY_CUDA_VERSION < 13000:
         with nogil:
             status = cudaMemAdvise(<void*>devPtr, count,
                                    <MemoryAdvise>advice, device)
-    ELSE:
-        cdef _MemLocation loc_c
+    else:
         c_memset(&loc_c, 0, sizeof(_MemLocation))
         loc_c.type = <MemLocationType>cudaMemLocationTypeDevice
         loc_c.id = device
@@ -756,25 +757,25 @@ cpdef PointerAttributes pointerGetAttributes(intptr_t ptr):
     cdef _PointerAttributes attrs
     status = cudaPointerGetAttributes(&attrs, <void*>ptr)
     check_status(status)
-    IF CUPY_CUDA_VERSION > 0:
+    if CUPY_CUDA_VERSION > 0:
         return PointerAttributes(
             attrs.device,
             <intptr_t>attrs.devicePointer,
             <intptr_t>attrs.hostPointer,
             attrs.type)
-    ELIF 0 < CUPY_HIP_VERSION < 60000000:
+    elif 0 < CUPY_HIP_VERSION < 60000000:
         return PointerAttributes(
             attrs.device,
             <intptr_t>attrs.devicePointer,
             <intptr_t>attrs.hostPointer,
             attrs.memoryType)
-    ELIF 60000000 <= CUPY_HIP_VERSION:
+    elif 60000000 <= CUPY_HIP_VERSION:
         return PointerAttributes(
             attrs.device,
             <intptr_t>attrs.devicePointer,
             <intptr_t>attrs.hostPointer,
             attrs.type)
-    ELSE:  # for RTD
+    else:  # for RTD
         return None
 
 cpdef intptr_t deviceGetDefaultMemPool(int device) except? 0:
@@ -1159,11 +1160,11 @@ cpdef graphExecDestroy(intptr_t graphExec):
 cpdef intptr_t graphInstantiate(intptr_t graph) except? 0:
     # TODO(leofang): support reporting error log?
     cdef GraphExec ge
-    IF CUPY_HIP_VERSION > 0 or 12000 > CUPY_CUDA_VERSION > 0:
+    if CUPY_HIP_VERSION > 0 or 12000 > CUPY_CUDA_VERSION > 0:
         with nogil:
             status = cudaGraphInstantiate(<GraphExec*>(&ge), <Graph>graph,
                                           NULL, NULL, 0)
-    ELSE:
+    else:
         with nogil:
             status = cudaGraphInstantiate(<GraphExec*>(&ge), <Graph>graph, 0)
     check_status(status)
