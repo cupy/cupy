@@ -133,6 +133,8 @@ cdef inline _preprocess_arg(int dev_id, arg):
         s = _scalar.CScalar(arg)
 
     return s
+
+
 cdef class _ArgInfo:
     # Holds metadata of an argument.
     # This class is immutable and used as a part of hash keys.
@@ -581,26 +583,66 @@ cdef class KernelArguments:
             # `_preprocess_args` rejects it anyway.
             self.set_where(_scalar.CScalar(bool(x.value)))
 
-    cdef find_shape(self):
-        # TODO(seberg): Some functions should not broadcast outputs in
-        # principle. Right now `broadcast_shapes` mutates outputs.
-        # So until we refactor this, pass in a copy of the arguments.
-        # we must NOT mutate output because a broadcasted output is bad.
-        assert self.is_ufunc
-        copy = self.args[:]
-        internal._broadcast_core(copy, self.broadcast_shape)
-        self.args[:self.nin+self.has_where] = copy[:self.nin+self.has_where]
+    cdef find_and_apply_shape(
+            self, tuple params, shape_t& shape, bint shape_fixed):
+        """
+        Find the broadcast shape of the arguments and adjust it into `shape`.
+        Then broadcast all inputs+where to the new shape. Output arguments
+        are checked later, since reductions find a different shape.
+        If `shape_fixed=True` then the shape will NOT be broadcast.
 
-    cdef find_shape_raw(self, tuple params, Py_ssize_t size):
-        # TODO(seberg): Try to merge with `find_shape()` ideally, but requires
-        # restructure to do nicely.
-        # (This version must inspect out arguments when there are no inputs
-        # -- or only raw/scalar ones -- to infer the shape from them.)
-        assert not self.is_ufunc
-        self.args[:self.nin] = _broadcast(
-            self.args, params, size, self.broadcast_shape)[:self.nin]
+        `params` is either the ParameterInfo tuple or None. If None, we assume
+        all parameters are non-raw arrays.
+        """
+        assert shape.size() == 0 or shape_fixed
+        cdef Py_ssize_t i
+        cdef bint any_raw_array = False
+        cdef bint shape_discovered = shape_fixed
 
-    cdef create_out_args_with_types(self, tuple out_types, casting):
+        # Broadcast non-raw arrays.
+        # TODO(seberg): broadcasting outputs isn't really quite right here.
+        for i in range(self.nin + self.has_where + self.nout):
+            a = self.args[i]
+            if not isinstance(a, _ndarray_base):
+                continue
+            if params is not None and (<ParameterInfo>params[i]).raw:
+                # Ignore raw arrays params (assume no raw if params is None)
+                any_raw_array = True
+                continue
+
+            if shape_fixed:
+                # User passed size is fixed and cannot be broadcast.
+                raise ValueError('Specified \'size\' can be used only '
+                                 'if all of the ndarray are \'raw\'.')
+
+            shape_discovered = True
+            # Update shape and raise an error if broadcast fails:
+            if not internal._broadcast_shape(
+                        shape, (<_ndarray_base>a)._shape):
+                internal._raise_broadcast_error(
+                    [a for a in self.args[:self.nin + self.has_where]
+                     if params is None or not params[i].raw])
+
+        if any_raw_array and not shape_discovered:
+            # If there are raw arrays we require a shape discovery. For ufuncs
+            # there will be no raw arrays but scalar inputs are OK.
+            raise ValueError('Loop size is undecided.')
+
+        # TODO(seberg): It would be cool to defer this to CArray creation.
+        # Update the array shapes if needed replacing the original ones.
+        for i in range(self.nin + self.has_where):
+            a = self.args[i]
+            if not isinstance(a, _ndarray_base):
+                continue
+            if params is not None and (<ParameterInfo>params[i]).raw:
+                # Ignore raw arrays params (assume no raw if params is None)
+                continue
+
+            self.args[i] = internal._broadcast_to_unchecked(
+                    <_ndarray_base>a, shape)
+
+    cdef create_out_args_with_types(
+            self, tuple out_types, casting, const shape_t& shape):
         # TODO(seberg): Moved code, merge with below.  Differences are just
         # that this checks casting and the other allows `p.raw`.
         assert self.is_ufunc
@@ -623,8 +665,7 @@ cdef class KernelArguments:
         for i in range(self.nout):
             a = self.get_out(i)
             if a is None:
-                new = _ndarray_init(
-                    subtype, self.broadcast_shape, out_types[i], template)
+                new = _ndarray_init(subtype, shape, out_types[i], template)
                 self.set_out(i, new)
                 continue
 
@@ -632,7 +673,7 @@ cdef class KernelArguments:
                 raise TypeError(
                     'Output arguments type must be cupy.ndarray')
             arr = a
-            if not internal.vector_equal(arr._shape, self.broadcast_shape):
+            if not internal.vector_equal(arr._shape, shape):
                 raise ValueError('Out shape is mismatched')
 
             out_type = get_dtype(out_types[i])
@@ -640,7 +681,8 @@ cdef class KernelArguments:
                 out_type, arr.dtype, casting, "output operand")
 
     cdef create_out_args_with_params(
-            self, tuple out_types, tuple out_params, bint is_size_specified):
+            self, tuple out_types, tuple out_params, bint is_size_specified,
+            const shape_t& shape):
         # TODO(seberg): Mostly moved code, can we merge these?
         assert not self.is_ufunc  # only makes sense for ElementwiseKernel
         cdef ParameterInfo p
@@ -652,8 +694,7 @@ cdef class KernelArguments:
                 # NOTE: Versions up to 14.0 did not allow explicit `None`.
                 if p.raw and not is_size_specified:
                     raise ValueError('Output array size is Undecided')
-                new = _ndarray_init(
-                    cupy.ndarray, self.broadcast_shape, out_types[i], None)
+                new = _ndarray_init(cupy.ndarray, shape, out_types[i], None)
                 self.set_out(i, new)
                 continue
 
@@ -661,8 +702,7 @@ cdef class KernelArguments:
                 raise TypeError(
                     'Output arguments type must be cupy.ndarray')
             arr = <_ndarray_base>a
-            if not p.raw and not internal.vector_equal(
-                    arr._shape, self.broadcast_shape):
+            if not p.raw and not internal.vector_equal(arr._shape, shape):
                 raise ValueError('Out shape is mismatched')
 
     cdef result(self, bint tuple_return):
@@ -804,46 +844,6 @@ cdef tuple _decide_params_type_core(
                        for p in out_params])
     type_map = _TypeMap(tuple(sorted(type_dict.items())))
     return in_types, out_types, type_map
-
-
-cdef list _broadcast(list args, tuple params, Py_ssize_t size, shape_t& shape):
-    # `shape` is an output argument
-    cdef Py_ssize_t i
-    cdef ParameterInfo p
-    cdef bint any_nonraw_array = False
-
-    # Collect non-raw arrays
-    value = []
-    for i, a in enumerate(args):
-        p = params[i]
-        if not p.raw and isinstance(a, _ndarray_base):
-            # Non-raw array
-            any_nonraw_array = True
-            value.append(a)
-        else:
-            value.append(None)
-
-    if size != -1:
-        if any_nonraw_array:
-            raise ValueError('Specified \'size\' can be used only '
-                             'if all of the ndarray are \'raw\'.')
-    else:
-        if not any_nonraw_array:
-            raise ValueError('Loop size is undecided.')
-
-    # Perform broadcast.
-    # Note that arrays in `value` are replaced with broadcasted ones.
-    internal._broadcast_core(value, shape)
-    if size != -1:
-        # TODO(seberg): Does it make sense to even broadcast here if
-        # we ignore the shape?
-        shape.assign(1, size)
-
-    # Restore raw arrays and scalars from the original list.
-    for i, a in enumerate(value):
-        if a is None:
-            value[i] = args[i]
-    return value
 
 
 cdef _numpy_can_cast = numpy.can_cast
@@ -1016,7 +1016,10 @@ cdef class ElementwiseKernel:
         kargs = KernelArguments.create(
             self.nin, self.nout, args, None, None, False, dev_id, self.name)
 
-        kargs.find_shape_raw(self.params, size)
+        if size != -1:
+            shape.assign(1, size)
+
+        kargs.find_and_apply_shape(self.params, shape, shape_fixed=size != -1)
 
         # Find parameter types after extracting dtypes.
         in_ndarray_types, out_ndarray_types = kargs.get_ndarray_dtypes()
@@ -1024,24 +1027,21 @@ cdef class ElementwiseKernel:
             in_ndarray_types, out_ndarray_types)
 
         kargs.create_out_args_with_params(
-            out_types, self.out_params, size != -1)
+            out_types, self.out_params, size != -1, shape)
 
         ret = None
         if not self.no_return:
             ret = kargs.result(self.return_tuple)
 
-        if _contains_zero(kargs.broadcast_shape):
+        if _contains_zero(shape):
             return ret
 
         kargs.finalize_scalars(in_types)
 
         if self.reduce_dims:
-            shape = _reduce_dims(
-                kargs.args, self.params, kargs.broadcast_shape)
-            indexer = _carray._indexer_init(shape)
-        else:
-            indexer = _carray._indexer_init(kargs.broadcast_shape)
+            shape = _reduce_dims(kargs.args, self.params, shape)
 
+        indexer = _carray._indexer_init(shape)
         kargs.set_indexer(indexer)
 
         arginfos = _get_arginfos(kargs.args)
@@ -1403,7 +1403,7 @@ cdef class ufunc:
         kargs = KernelArguments.create(
             self.nin, self.nout, args, out, where, True, dev_id, self.name)
 
-        kargs.find_shape()
+        kargs.find_and_apply_shape(None, shape, shape_fixed=False)
 
         if (self._cutensor_op is not None
                 and _accelerator.ACCELERATOR_CUTENSOR in
@@ -1422,22 +1422,22 @@ cdef class ufunc:
                 if ret is not None:
                     return ret
 
-        # TODO(seberg): Refactor to not fetch list (especially not slice)
+        # TODO(seberg): Refactor to not fetch in_args
         op = self._ops.guess_routine(
             self.name, self._routine_cache, kargs.in_args, dtype,
             self._out_ops)
 
-        kargs.create_out_args_with_types(op.out_types, casting)
+        kargs.create_out_args_with_types(op.out_types, casting, shape)
 
         ret = kargs.result(self.nout > 1)
 
-        if _contains_zero(kargs.broadcast_shape):
+        if _contains_zero(shape):
             return ret
 
         kargs.finalize_scalars(op.in_types)
 
         _params = self._params_with_where if kargs.has_where else self._params
-        shape = _reduce_dims(kargs.args, _params, kargs.broadcast_shape)
+        shape = _reduce_dims(kargs.args, _params, shape)
         indexer = _carray._indexer_init(shape)
         kargs.set_indexer(indexer)
 

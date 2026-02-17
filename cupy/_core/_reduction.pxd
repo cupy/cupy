@@ -26,7 +26,7 @@ cdef class _AbstractReductionKernel:
         readonly dict _cached_codes
 
     cpdef _ndarray_base _call(
-        self, KernelArguments kargs, axis, dtype,
+        self, KernelArguments kargs, shape_t& in_shape, axis, dtype,
         bint keepdims, bint reduce_dims, int device_id,
         stream, bint try_use_cub=*, bint sort_reduce_axis=*)
 
@@ -39,7 +39,9 @@ cdef class _AbstractReductionKernel:
     cdef tuple _get_expressions_and_types(
         self, KernelArguments kargs, dtype)
 
-    cdef _create_out_args(self, KernelArguments kargs, tuple out_types)
+    cdef _create_out_args(
+        self, KernelArguments kargs, tuple out_types,
+        shape_t& shape)
 
     cdef function.Function _get_function(
         self,

@@ -87,7 +87,6 @@ cdef class _TypeMap:
     cdef str get_typedef_code(self, type_headers=*)
 
 
-
 cdef class KernelArguments:
     # A kernels friendly helper to organize preparation of input and
     # output arguments.
@@ -97,7 +96,6 @@ cdef class KernelArguments:
         # `args` is the argument storage, may micro-optimize this
         # but right now it's a list and that is used in broadcasting.
         list args
-        shape_t broadcast_shape
         bint has_where
         bint is_ufunc
 
@@ -110,12 +108,14 @@ cdef class KernelArguments:
 
     cdef _preprocess_args(self, dev_id)
 
-    cdef find_shape(self)
-    cdef find_shape_raw(self, tuple params, Py_ssize_t size)
+    cdef find_and_apply_shape(
+        self, tuple params, shape_t& shape, bint shape_fixed)
 
-    cdef create_out_args_with_types(self, tuple out_types, casting)
+    cdef create_out_args_with_types(
+        self, tuple out_types, casting, const shape_t& shape)
     cdef create_out_args_with_params(
-            self, tuple out_types, tuple out_params, bint is_size_specified)
+        self, tuple out_types, tuple out_params, bint is_size_specified,
+        const shape_t& shape)
 
     cdef result(self, bint tuple_return)
     cdef finalize_scalars(self, tuple in_types)

@@ -308,7 +308,7 @@ cdef class _AbstractReductionKernel:
 
     cpdef _ndarray_base _call(
             self,
-            KernelArguments kargs,
+            KernelArguments kargs, shape_t& in_shape,
             axis, dtype,
             bint keepdims, bint reduce_dims, int device_id,
             stream, bint try_use_cub=False, bint sort_reduce_axis=True):
@@ -317,7 +317,7 @@ cdef class _AbstractReductionKernel:
         cdef tuple shape_and_strides
         cdef Py_ssize_t contiguous_size = -1
         cdef Py_ssize_t block_size, block_stride, out_block_num = 0
-        cdef shape_t in_shape, out_shape
+        cdef shape_t out_shape
         cdef _ndarray_base ret
         cdef bint cub_success
 
@@ -330,7 +330,7 @@ cdef class _AbstractReductionKernel:
             type_map,
         ) = self._get_expressions_and_types(kargs, dtype)
 
-        reduce_axis, out_axis = _get_axis(axis, kargs.broadcast_shape.size())
+        reduce_axis, out_axis = _get_axis(axis, in_shape.size())
 
         # When there is only one input array, sort the axes in such a way that
         # contiguous (C or F) axes can be squashed in _reduce_dims() later.
@@ -343,12 +343,8 @@ cdef class _AbstractReductionKernel:
                 reduce_axis = _sort_axis(reduce_axis, strides)
             out_axis = _sort_axis(out_axis, strides)
 
-        in_shape = kargs.broadcast_shape  # broadcast input shape.
-        out_shape = _get_out_shape(
-            kargs.broadcast_shape, reduce_axis, out_axis, keepdims)
-        # TODO(seberg): This needs a clearer approach (and/or rename broadcast_shape?)
-        kargs.broadcast_shape = out_shape
-        self._create_out_args(kargs, out_types)
+        out_shape = _get_out_shape(in_shape, reduce_axis, out_axis, keepdims)
+        self._create_out_args(kargs, out_types, out_shape)
         ret = kargs.get_out(0)  # result(), always one argument
         if ret.size == 0:
             return ret
@@ -378,7 +374,7 @@ cdef class _AbstractReductionKernel:
         out_args = kargs.out_args
         for accelerator in _accelerator._reduction_accelerators:
             if try_use_cub and accelerator == _accelerator.ACCELERATOR_CUB:
-                # TODO(seberg): pass kargs instead of in_args, out_args, in_shape
+                # TODO(seberg): pass kargs instead of in_args, out_args.
                 cub_success = _cub_reduction._try_to_call_cub_reduction(
                     self, in_args, out_args, in_shape, stream,
                     optimize_context, key, map_expr, reduce_expr,
@@ -391,13 +387,8 @@ cdef class _AbstractReductionKernel:
         in_shape = _set_permuted_args(
             in_args, axis_permutes, in_shape, self.in_params)
 
-        # TODO(seberg): Also here we shouldn't need `in_args`. But the
-        # solution IMO should not be refactoring this, but rather moving
-        # _reduce_dims to a later step (that is, to the CArray).
-        # That should be important for removing overheads, but the problem is
-        # that we need to have this info for ArgInfos which means re-arranging
-        # things a fair bit.
         if reduce_dims:
+            # TODO(seberg): Would be nice to move _reduce_dims logic to later.
             in_shape = _reduce_dims(in_args, self.in_params, in_shape)
             out_shape = _reduce_dims(out_args, self.out_params, out_shape)
 
@@ -522,7 +513,9 @@ cdef class _AbstractReductionKernel:
             self, KernelArguments kargs, dtype):
         raise NotImplementedError()
 
-    cdef _create_out_args(self, KernelArguments kargs, tuple out_types):
+    cdef _create_out_args(
+            self, KernelArguments kargs, tuple out_types,
+            const shape_t& shape):
         raise NotImplementedError()
 
     cdef function.Function _get_function(
@@ -604,7 +597,7 @@ cdef class _SimpleReductionKernel(_AbstractReductionKernel):
 
     def __call__(self, object a, axis=None, dtype=None, _ndarray_base out=None,
                  bint keepdims=False):
-
+        cdef shape_t in_shape
         if hasattr(a, '__cupy_override_reduction_kernel__'):
             return a.__cupy_override_reduction_kernel__(
                 self, axis, dtype, out, keepdims)
@@ -616,12 +609,11 @@ cdef class _SimpleReductionKernel(_AbstractReductionKernel):
 
         kargs = KernelArguments.create(
             1, 1, (arr,), out, None, True, dev_id, self.name)
-        # Note: For now, just use arr.shape (one arg cannot broadcast)
-        kargs.broadcast_shape = arr.shape
 
         reduce_dims = True
+        in_shape = arr._shape
         return self._call(
-            kargs, axis, dtype, keepdims, reduce_dims, dev_id,
+            kargs, in_shape, axis, dtype, keepdims, reduce_dims, dev_id,
             None, True, self._sort_reduce_axis)
 
     cdef tuple _get_expressions_and_types(
@@ -661,8 +653,10 @@ cdef class _SimpleReductionKernel(_AbstractReductionKernel):
             op.in_types, op.out_types, reduce_type,
             type_map)
 
-    cdef _create_out_args(self, KernelArguments kargs, tuple out_types):
-        kargs.create_out_args_with_types(out_types, 'unsafe')
+    cdef _create_out_args(
+            self, KernelArguments kargs, tuple out_types,
+            const shape_t& shape):
+        kargs.create_out_args_with_types(out_types, 'unsafe', shape)
 
     cdef function.Function _get_function(
             self,
@@ -831,11 +825,11 @@ cdef class ReductionKernel(_AbstractReductionKernel):
         kargs = KernelArguments.create(
             self.nin, self.nout, args, out, None, False, dev_id, self.name)
 
-        # TODO(seberg): What happened before if out was given?
-        kargs.find_shape_raw(self._params, -1)
+        kargs.find_and_apply_shape(
+            self._params, broad_shape, shape_fixed=False)
 
         return self._call(
-            kargs, axis, None,
+            kargs, broad_shape, axis, None,
             keepdims, self.reduce_dims, dev_id, stream, True, True)
 
     cdef tuple _get_expressions_and_types(
@@ -851,9 +845,11 @@ cdef class ReductionKernel(_AbstractReductionKernel):
             in_types, out_types, self.reduce_type,
             type_map)
 
-    cdef _create_out_args(self, KernelArguments kargs, tuple out_types):
+    cdef _create_out_args(
+            self, KernelArguments kargs, tuple out_types,
+            const shape_t& shape):
         kargs.create_out_args_with_params(
-            out_types, self.out_params, False)
+            out_types, self.out_params, False, shape)
 
     cdef function.Function _get_function(
             self,
