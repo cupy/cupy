@@ -1011,6 +1011,11 @@ cdef class ElementwiseKernel:
         if block_size <= 0:
             raise ValueError('block_size must be greater than zero')
 
+        for arg in args:
+            if hasattr(arg, '__cupy_override_elementwise_kernel__'):
+                return arg.__cupy_override_elementwise_kernel__(
+                    self, *args, **kwargs)
+
         dev_id = device.get_device_id()
 
         kargs = KernelArguments.create(
