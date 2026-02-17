@@ -110,7 +110,7 @@ Users who were previously unpacking the tuple should update their code to work w
 Change in :func:`cupy.random.choice` Return Type
 ------------------------------------------------
 
-Passing an array to :func:`cupy.random.choice` along with ``size`` and ``replace=False`` is now made a lot faster and more consistent. It always returns an array of dtype ``int64`` on all platforms.
+Passing an `int` to :func:`cupy.random.choice` along with ``size`` and ``replace=False`` is now made a lot faster and more consistent. It always returns an array of dtype ``int64`` on all platforms.
 
 Requirement Changes
 -------------------
