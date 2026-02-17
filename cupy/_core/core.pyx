@@ -874,7 +874,7 @@ cdef class _ndarray_base:
             return v
 
         v.dtype, v_is = _dtype.get_dtype_with_itemsize(
-            dtype, check_support=True)
+            dtype, check_support=False)
         self_is = self.dtype.itemsize
         if v_is == self_is:
             return v
