@@ -21,7 +21,7 @@ _submodules = (
     'cusparselt',
 )
 _submodules_runtime_link = (
-    'nvrtc',
+    'nvrtc', 'nvtx'
 )
 
 
