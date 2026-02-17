@@ -13,6 +13,7 @@ Basics
 
    solve_triangular
    khatri_rao
+   bandwidth
 
 
 Matrix Functions
