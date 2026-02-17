@@ -241,7 +241,7 @@ cdef class _ndarray_base:
 
         # dtype
         self.dtype, itemsize = _dtype.get_dtype_with_itemsize(
-            dtype, check_support=True)
+            dtype, check_support=False)
 
         # Store strides
         if strides is not None:
