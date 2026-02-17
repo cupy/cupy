@@ -130,7 +130,6 @@ Other API Changes
 * APIs removed in NumPy v2 are intentionally kept available in CuPy v14 for smooth transition. These functions are considered as deprecated, and will be removed in CuPy v15.
 * ``cupyx.scipy.linalg.{tri,tril,triu}`` APIs were removed from CuPy to follow the latest SciPy’s specification. Use ``cupy.{tri,tril.triu}`` instead.
 * Legacy DLPack APIs (``cupy.toDlpack`` and ``cupy.fromDlpack``) are now marked deprecated. Use ``cupy.from_dlpack`` instead.
-* ``cupy.random.choice`` has been updated to provide optimal performance. Due to this change, the function may return different results from CuPy v13.
 * The NumPy fallback mode (``cupyx.fallback_mode``) has been removed.
 * ``cupyx.tools.install_library`` tool has been deprecated and will be removed in a future release. See :doc:`install` for the instructions on setting up cuTENSOR/NCCL for CuPy using Pip or Conda.
 * :mod:`cupy.testing` module has been updated to follow NumPy's testing API changes. Some testing utilities may have different behavior or signatures.
