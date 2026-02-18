@@ -29,6 +29,10 @@ class TestCreation:
         with pytest.raises(ValueError):
             func(arr)
 
+        if func is cupy.asarray:
+            # We currently allow viewing into a GPU array unsafely...
+            return
+
         # Check coming from a bad cupy array-like
         base = cupy.zeros(3, dtype="q,q")
 

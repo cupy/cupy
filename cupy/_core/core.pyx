@@ -240,8 +240,10 @@ cdef class _ndarray_base:
         del s
 
         # dtype
+        # When memptr is provided (e.g. wrapping existing CAI memory),
+        # skip dtype support check to allow non-builtin dtypes as containers.
         self.dtype, itemsize = _dtype.get_dtype_with_itemsize(
-            dtype, check_support=False)
+            dtype, check_support=(memptr is None))
 
         # Store strides
         if strides is not None:
@@ -3120,7 +3122,8 @@ cpdef _ndarray_base _convert_object_with_cuda_array_interface(a):
 
     ptr = desc['data'][0]
     dtype = numpy.dtype(desc['typestr'])
-
+    if dtype.byteorder == '>':
+        raise ValueError('CuPy does not support the big-endian byte-order')
     mask = desc.get('mask')
     if mask is not None:
         raise ValueError('CuPy currently does not support masked arrays.')
