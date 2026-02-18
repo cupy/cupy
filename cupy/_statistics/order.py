@@ -13,10 +13,11 @@ from cupy._logic import content
 # Quantile method parameters (alpha, beta) from Hyndman & Fan (1996)
 # Used for continuous interpolation methods in percentile/quantile
 _QUANTILE_PARAMS = {
-    'hazen': (0.5, 0.5),            # H&F type 5
-    'weibull': (0, 0),              # H&F type 6
-    'median_unbiased': (1/3, 1/3),  # H&F type 8
-    'normal_unbiased': (3/8, 3/8),  # H&F type 9
+    'interpolated_inverted_cdf': (0, 1),  # H&F type 4
+    'hazen': (0.5, 0.5),                  # H&F type 5
+    'weibull': (0, 0),                    # H&F type 6
+    'median_unbiased': (1/3, 1/3),        # H&F type 8
+    'normal_unbiased': (3/8, 3/8),        # H&F type 9
 }
 
 
@@ -234,12 +235,56 @@ def _quantile_unchecked(a, q, axis=None, out=None,
     ap.sort(axis=axis)
     Nx = ap.shape[axis]
     indices = q * (Nx - 1.)
-
-    if method in ['inverted_cdf', 'averaged_inverted_cdf',
-                  'closest_observation', 'interpolated_inverted_cdf']:
+    if method == 'inverted_cdf':
         # TODO(takagi) Implement new methods introduced in NumPy 1.22
         raise ValueError(f'\'{method}\' method is not yet supported. '
                          'Please use any other method.')
+
+    elif method == 'averaged_inverted_cdf':
+        # H&F type 2: if g > 0 take j, if g = 0 average of i and j
+        virtual_indices = q * Nx
+        g = virtual_indices - cupy.floor(virtual_indices).astype(cupy.float64)
+        floor_vi = cupy.floor(virtual_indices)
+
+        idx_j = cupy.clip(floor_vi, 0, Nx - 1).astype(cupy.int32)
+        idx_i = cupy.clip(floor_vi - 1, 0, Nx - 1).astype(cupy.int32)
+
+        if out is None:
+            ret = cupy.empty(ap.shape[:-1] + q.shape, dtype=dtype)
+        else:
+            ret = cupy.rollaxis(out, 0, out.ndim)
+
+        cupy.ElementwiseKernel(
+            'int32 idx_i, int32 idx_j, float64 g, '
+            'raw T a, raw int32 offset',
+            'U ret',
+            '''
+            ptrdiff_t base = _ind.get()[0] * offset;
+            if (g > 0) {
+                ret = a[base + idx_j];
+            } else {
+                // Average of a[i] and a[j]
+                ret = (a[base + idx_i] + a[base + idx_j]) / 2.0;
+            }
+            ''',
+            'cupy_quantile_averaged_inverted_cdf'
+        )(idx_i, idx_j, g, ap, ap.shape[-1] if ap.ndim > 1 else 0, ret)
+        ret = cupy.rollaxis(ret, -1)
+
+        if zerod:
+            ret = ret.squeeze(0)
+        if keepdims:
+            if q.size > 1:
+                keepdim = (-1,) + keepdim
+            ret = ret.reshape(keepdim)
+        return _core._internal_ascontiguousarray(ret)
+
+    elif method == 'closest_observation':
+        # H&F type 3: Round to nearest observation
+        virtual_indices = q * Nx
+        indices = cupy.around(virtual_indices) - 1
+        indices = cupy.clip(indices, 0, Nx - 1).astype(cupy.int32)
+
     elif method in _QUANTILE_PARAMS:
         alpha, beta = _QUANTILE_PARAMS[method]
         indices = q * (Nx - alpha - beta + 1) + alpha - 1
@@ -255,9 +300,14 @@ def _quantile_unchecked(a, q, axis=None, out=None,
     elif method == 'linear':
         pass
     else:
-        raise ValueError('Unexpected interpolation method.\n'
+        raise ValueError('Unexpected method.\n'
                          'Actual: \'{}\' not in (\'linear\', \'lower\', '
-                         '\'higher\', \'midpoint\')'.format(method))
+                         '\'higher\', \'midpoint\', \'nearest\','
+                         '\'averaged_inverted_cdf\', '
+                         '\'closest_observation\', '
+                         '\'interpolated_inverted_cdf\', '
+                         '\'hazen\', \'weibull\', \'median_unbiased\', '
+                         '\'normal_unbiased\')'.format(method))
 
     if indices.dtype == cupy.int32:
         ret = cupy.rollaxis(ap, axis)
