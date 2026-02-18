@@ -121,11 +121,9 @@ CuPy now validates dtypes more strictly at array creation time, which may lead t
     ValueError: Unsupported dtype datetime64[ns]
 
 This rejects the creation of new arrays with dtypes that CuPy does not support to avoid harder to
-understand errors later.
-We do not expect many users to be using this for newly created arrays and suggest to use ``uint8``
-for simple cases.
-At this time it is still possible to indirectly create the identical array using ``uint8_arr.view(dtype)``
-but we appreciate feedback if you require a better solution for creating such arrays.
+understand errors later. As a work-around, the unstructured void dtypes ``V<itemsize>``
+such as ``"V8"`` are still accepted and ``arr.view()`` can also still be used in an unsafe way.
+We expect future CuPy versions will support some kernels for ``V<itemsize>`` dtypes (mainly copies).
 
 Requirement Changes
 -------------------

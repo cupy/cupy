@@ -29,10 +29,6 @@ class TestCreation:
         with pytest.raises(ValueError):
             func(arr)
 
-        if func is cupy.asarray:
-            # We currently allow viewing into a GPU array unsafely...
-            return
-
         # Check coming from a bad cupy array-like
         base = cupy.zeros(3, dtype="q,q")
 
@@ -45,8 +41,16 @@ class TestCreation:
                 iface["descr"] = arr.dtype.descr
                 return iface
 
-        with pytest.raises(ValueError):
-            func(ByteSwapped(base))
+        # Right now, structured dtypes round-trip as V<itemsize> and lose
+        # their structure in the __cuda_array_interface__. As long as that
+        # is the case, this always passes.
+        # with pytest.raises(ValueError):
+        #     func(ByteSwapped(base))
+        if func != cupy.asarray:
+            with pytest.raises(TypeError):
+                func(ByteSwapped(base))
+        else:
+            assert func(ByteSwapped(base)).dtype == f"V{base.dtype.itemsize}"
 
 
 class TestFieldAccess:
