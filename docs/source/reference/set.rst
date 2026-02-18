@@ -12,10 +12,10 @@ Making proper sets
    :toctree: generated/
 
    unique
-   # unique_all
-   # unique_counts
-   # unique_inverse
-   # unique_values
+   unique_all
+   unique_counts
+   unique_inverse
+   unique_values
 
 
 Boolean operations
