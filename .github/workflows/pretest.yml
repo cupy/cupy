@@ -87,7 +87,7 @@ jobs:
       # We ignore __dealloc__ or the pycapsule_deleter as it is hard to avoid there.
       run: |
         result=$(grep -r 'Pyx_WriteUnraisable' --include='*.cpp' . \
-                | grep -v -E '(__dealloc__|const char \*name|pycapsule_deletder)' || true)
+                | grep -v -E '(__dealloc__|const char \*name|pycapsule_deleter)' || true)
         if [ -n "$result" ]; then
           echo "$result"
           echo "Found possibly bad functions (see above). If this check fails a function"
