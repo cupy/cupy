@@ -1108,7 +1108,7 @@ cpdef tuple _getVersion():
             getProperty(PATCH_LEVEL))
 
 
-cpdef int _getVersionNumber() noexcept:
+cpdef int _getVersionNumber() except? -1:
     """
     Returns cuSOLVER's runtime version in the same expression as
     `CUSOLVER_VERSION` defined in `cusolver_common.h`.

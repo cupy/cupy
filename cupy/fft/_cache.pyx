@@ -482,10 +482,10 @@ cdef class PlanCache:
         self._eject_until_fit(size, self.memsize)
         self._set_size_memsize(size, self.memsize)
 
-    cpdef Py_ssize_t get_size(self) noexcept:
+    cpdef Py_ssize_t get_size(self):
         return self.size
 
-    cpdef Py_ssize_t get_curr_size(self) noexcept:
+    cpdef Py_ssize_t get_curr_size(self):
         return self.curr_size
 
     cpdef set_memsize(self, Py_ssize_t memsize):
@@ -493,10 +493,10 @@ cdef class PlanCache:
         self._eject_until_fit(self.size, memsize)
         self._set_size_memsize(self.size, memsize)
 
-    cpdef Py_ssize_t get_memsize(self) noexcept:
+    cpdef Py_ssize_t get_memsize(self):
         return self.memsize
 
-    cpdef Py_ssize_t get_curr_memsize(self) noexcept:
+    cpdef Py_ssize_t get_curr_memsize(self):
         return self.curr_memsize
 
     cpdef get(self, tuple key, default=None):

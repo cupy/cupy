@@ -83,6 +83,18 @@ jobs:
         READTHEDOCS=True pip install -v -e .
         ccache --max-size 0.5Gi --cleanup --show-stats
 
+    - name: Try to check for `noexcept` functions that may raise errors
+      # We ignore __dealloc__ or the pycapsule_deleter as it is hard to avoid there.
+      run: |
+        result=$(grep -r 'Pyx_WriteUnraisable' --include='*.cpp' . \
+                | grep -v -E '(__dealloc__|const char \*name|pycapsule_deletder)' || true)
+        if [ -n "$result" ]; then
+          echo "$result"
+          echo "Found possibly bad functions (see above). If this check fails a function"
+          echo "could (theoretically) raise an error but is marked as noexcept."
+          exit 1
+        fi
+
     - name: Docs Build
       run: |
         # Test to detect invalid escape sequences in docstrings (#1619)

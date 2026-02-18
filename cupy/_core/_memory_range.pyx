@@ -26,16 +26,24 @@ cdef void get_range(
             out_left += tmp
 
 
-cpdef pair[Py_ssize_t, Py_ssize_t] get_bound(_ndarray_base array) noexcept:
-    """Discover the pointer byte bounds (left, right] of the array.
-    """
+cdef _get_bound(_ndarray_base array, pair[Py_ssize_t, Py_ssize_t] bounds):
+    # C-version of get_bounds (really to avoid the need for `except *`...)
     cdef Py_ssize_t left, right
     get_range(array.dtype.itemsize, array._shape, array._strides, left, right)
 
-    return array.data.ptr + left, array.data.ptr + right
+    bounds.first = array.data.ptr + left
+    bounds.second = array.data.ptr + right
 
 
-cpdef bint may_share_bounds(_ndarray_base a, _ndarray_base b) noexcept:
+def get_bound(_ndarray_base array):
+    """Discover the pointer byte bounds (left, right] of the array.
+    """
+    cdef pair[Py_ssize_t, Py_ssize_t] bounds
+    _get_bound(array, bounds)
+    return bounds
+
+
+cpdef bint may_share_bounds(_ndarray_base a, _ndarray_base b):
     cdef memory.MemoryPointer a_data = a.data
     cdef memory.MemoryPointer b_data = b.data
     cdef pair[Py_ssize_t, Py_ssize_t] a_range, b_range
@@ -45,7 +53,7 @@ cpdef bint may_share_bounds(_ndarray_base a, _ndarray_base b) noexcept:
             or a.size == 0 or b.size == 0):
         return False
 
-    a_range = get_bound(a)
-    b_range = get_bound(b)
+    _get_bound(a, a_range)
+    _get_bound(b, b_range)
 
     return a_range.first < b_range.second and b_range.first < a_range.second
