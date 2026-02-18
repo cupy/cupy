@@ -112,6 +112,21 @@ Change in :func:`cupy.random.choice` Return Type
 
 Passing an `int` to :func:`cupy.random.choice` along with ``size`` and ``replace=False`` is now made a lot faster and more consistent. It always returns an array of dtype ``int64`` on all platforms.
 
+Tighter checks for unsupported dtypes
+-------------------------------------
+
+CuPy now validates dtypes more strictly at array creation time, which may lead to errors such as::
+
+    >>> cp.empty(3, dtype="datetime64[ns]")
+    ValueError: Unsupported dtype datetime64[ns]
+
+This rejects the creation of new arrays with dtypes that CuPy does not support to avoid harder to
+understand errors later.
+We do not expect many users to be using this for newly created arrays and suggest to use ``uint8``
+for simple cases.
+At this time it is still possible to indirectly create the identical array using ``uint8_arr.view(dtype)``
+but we appreciate feedback if you require a better solution for creating such arrays.
+
 Requirement Changes
 -------------------
 
@@ -394,7 +409,7 @@ For example, the following code raises an error in CuPy v9 or earlier:
            cupy.arange(10)  # -> CUDA_ERROR_INVALID_HANDLE: invalid resource handle
 
 CuPy v10 manages the current stream per-device, thus eliminating the need of switching the stream every time the active device is changed.
-When using CuPy v10, the above example behaves differently because whenever a stream is created, it is automatically associated with the current device and will be ignored when switching devices. 
+When using CuPy v10, the above example behaves differently because whenever a stream is created, it is automatically associated with the current device and will be ignored when switching devices.
 In early versions, trying to use `s0` in device 1 raises an error because `s0` is associated with device 0. However, in v10, this `s0` is ignored and the default stream for device 1 will be used instead.
 
 Current stream set via ``use()`` will not be restored when exiting ``with`` block
@@ -488,7 +503,7 @@ Python 3.5 is no longer supported in CuPy v9.
 NCCL and cuDNN No Longer Included in Wheels
 -------------------------------------------
 
-NCCL and cuDNN shared libraries are no longer included in wheels (see `#4850 <https://github.com/cupy/cupy/issues/4850>`_ for discussions). 
+NCCL and cuDNN shared libraries are no longer included in wheels (see `#4850 <https://github.com/cupy/cupy/issues/4850>`_ for discussions).
 You can manually install them after installing wheel if you don't have a previous installation; see :doc:`install` for details.
 
 cuTENSOR Enabled in Wheels
