@@ -134,3 +134,15 @@ class TestPolynomial(unittest.TestCase):
             a = testing.shaped_random((5,), xp, dtype=bool)
             with pytest.raises(Exception):
                 xp.polynomial.polynomial.polycompanion(a)
+
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_allclose(rtol=1e-6, atol=1e-7)
+    def test_polysub_mononomials(self, xp, dtype):
+        results = []
+        for i in range(5):
+            for j in range(5):
+                c1 = xp.array([0] * i + [1], dtype=dtype)
+                c2 = xp.array([0] * j + [1], dtype=dtype)
+                out = xp.polynomial.polynomial.polysub(c1, c2)
+                results.append(out)
+        return results
