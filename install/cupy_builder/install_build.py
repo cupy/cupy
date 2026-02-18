@@ -164,11 +164,17 @@ def get_compiler_setting(ctx: Context, use_hip):
         include_dirs.append(os.path.join(rocm_path, 'include', 'hipfft'))
         include_dirs.append(os.path.join(rocm_path, 'include', 'rocsolver'))
         include_dirs.append(os.path.join(rocm_path, 'include', 'rccl'))
+        include_dirs.append(os.path.join(rocm_path, 'include', 'hiptensor'))
+        include_dirs.append(os.path.join(rocm_path, 'hiptensor', 'include'))
         library_dirs.append(os.path.join(rocm_path, 'lib'))
+        library_dirs.append(os.path.join(rocm_path, 'hiptensor', 'lib'))
 
     if use_hip:
         # ROCm 5.3 and above requires c++14
         extra_compile_args.append('-std=c++14')
+        # HIP headers require one of the HIP platform macros.
+        define_macros.append(('__HIP_PLATFORM_AMD__', '1'))
+        define_macros.append(('__HIP_PLATFORM_HCC__', '1'))
     else:
         # CCCL 3.x (for CUDA) requires c++17
         if PLATFORM_LINUX:
@@ -298,6 +304,7 @@ _hip_version = None
 _thrust_version = None
 _nccl_version = None
 _cutensor_version = None
+_hiptensor_version = None
 _cub_path = None
 _cub_version = None
 _jitify_path = None
@@ -646,6 +653,61 @@ def get_cutensor_version(formatted=False):
         msg = 'check_cutensor_version() must be called first.'
         raise RuntimeError(msg)
     return _cutensor_version
+
+
+def check_hiptensor_version(compiler, settings):
+    global _hiptensor_version
+    try:
+        out = build_and_run(compiler, '''
+        #include <cupy/hiptensor.h>
+        #if __has_include(<hiptensor/hiptensor-version.hpp>)
+        #include <hiptensor/hiptensor-version.hpp>
+        #endif
+        #include <stdio.h>
+        #if defined(HIPTENSOR_MAJOR_VERSION)
+        #  ifndef HIPTENSOR_VERSION
+        #    define HIPTENSOR_VERSION \
+              (HIPTENSOR_MAJOR_VERSION * 1000 + HIPTENSOR_MINOR_VERSION * 100 + HIPTENSOR_PATCH_VERSION)
+        #  endif
+        #elif defined(HIPTENSOR_MAJOR)
+        #ifndef HIPTENSOR_VERSION
+        #define HIPTENSOR_VERSION \
+                (HIPTENSOR_MAJOR * 1000 + HIPTENSOR_MINOR * 100 + HIPTENSOR_PATCH)
+        #endif
+        #else
+        #  define HIPTENSOR_VERSION 0
+        #endif
+        int main(int argc, char* argv[]) {
+          printf("%d", HIPTENSOR_VERSION);
+          return 0;
+        }
+        ''', include_dirs=settings['include_dirs'],
+                            extra_compile_args=(
+                                settings['extra_compile_args'] +
+                                ['-D__HIP_PLATFORM_AMD__=1']))
+    except Exception as e:
+        utils.print_warning('Cannot check hipTensor version\n{}'.format(e))
+        _hiptensor_version = -1
+        return False
+
+    _hiptensor_version = int(out)
+    if _hiptensor_version <= 0:
+        utils.print_warning(
+            'Unsupported hipTensor version: {}'.format(_hiptensor_version)
+        )
+        _hiptensor_version = -1
+        return False
+
+    return True
+
+
+def get_hiptensor_version(formatted=False):
+    """Return hipTensor version cached in check_hiptensor_version()."""
+    global _hiptensor_version
+    if _hiptensor_version is None:
+        msg = 'check_hiptensor_version() must be called first.'
+        raise RuntimeError(msg)
+    return _hiptensor_version
 
 
 def check_cusparselt_version(compiler, settings):

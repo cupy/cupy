@@ -5,7 +5,6 @@ Use `cupy_backends.cuda.libs.cutensor` directly in CuPy codebase.
 """
 from __future__ import annotations
 
-
 available = True
 
 try:
