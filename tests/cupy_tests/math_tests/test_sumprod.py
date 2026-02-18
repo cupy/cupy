@@ -14,7 +14,6 @@ from cupy.exceptions import AxisError
 
 
 class TestSumprod:
-
     @pytest.fixture(autouse=True)
     def tearDown(self):
         yield
@@ -66,6 +65,7 @@ class TestSumprod:
 
     @testing.slow
     @testing.numpy_cupy_allclose()
+    @pytest.mark.thread_unsafe(reason="too large allocations")
     def test_sum_axis_huge(self, xp):
         a = testing.shaped_random((2048, 1, 1024), xp, 'b')
         a = xp.broadcast_to(a, (2048, 1024, 1024))
@@ -233,6 +233,7 @@ class TestCubReduction:
     # sum supports less dtypes; don't test float16 as it's not as accurate?
     @testing.for_dtypes('qQfdFD')
     @testing.numpy_cupy_allclose(rtol=1E-5)
+    @pytest.mark.thread_unsafe(reason="unsafe AssertFunctionIsCalled.")
     def test_cub_sum(self, xp, dtype, axis):
         a = testing.shaped_random(self.shape, xp, dtype)
         if self.order in ('c', 'C'):
@@ -279,6 +280,7 @@ class TestCubReduction:
             a = xp.asfortranarray(a)
         return a.sum(axis=())
 
+    @pytest.mark.thread_unsafe(reason="unsafe AssertFunctionIsCalled.")
     @testing.for_contiguous_axes()
     # prod supports less dtypes; don't test float16 as it's not as accurate?
     @testing.for_dtypes('qQfdFD')
@@ -320,6 +322,7 @@ class TestCubReduction:
 
     # TODO(leofang): test axis after support is added
     # don't test float16 as it's not as accurate?
+    @pytest.mark.thread_unsafe(reason="unsafe AssertFunctionIsCalled.")
     @testing.for_dtypes('bhilBHILfdF')
     @testing.numpy_cupy_allclose(rtol=1E-4)
     def test_cub_cumsum(self, xp, dtype):
@@ -345,6 +348,7 @@ class TestCubReduction:
 
     # TODO(leofang): test axis after support is added
     # don't test float16 as it's not as accurate?
+    @pytest.mark.thread_unsafe(reason="unsafe AssertFunctionIsCalled.")
     @testing.for_dtypes('bhilBHILfdF')
     @testing.numpy_cupy_allclose(rtol=1E-4)
     def test_cub_cumprod(self, xp, dtype):
@@ -393,8 +397,8 @@ class TestCubReduction:
     reason='The cuTENSOR routine is not enabled')
 class TestCuTensorReduction:
 
-    @pytest.fixture(autouse=True)
-    def setUp(self):
+    @pytest.fixture(autouse=True, scope='class')
+    def setup(self):
         old_accelerators = cupy._core.get_routine_accelerators()
         cupy._core.set_routine_accelerators(['cutensor'])
         yield
