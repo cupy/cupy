@@ -199,6 +199,20 @@ class SyncWarp(BuiltinFunc):
         return Data(code, _cuda_types.void)
 
 
+class Ref(BuiltinFunc):
+    def __call__(self, var):
+        """Returns a reference to the specified (scalar) variable
+
+        Args:
+            var (int or float):
+                The variable to return a reference to
+        """
+        super().__call__()
+
+    def call(self, env, var):
+        return Data(var.code, _cuda_types.ReferenceTo(var.ctype))
+
+
 class SharedMemory(BuiltinFunc):
 
     def __call__(self, dtype, size, alignment=None):
@@ -450,6 +464,7 @@ builtin_functions_dict: Mapping[Any, BuiltinFunc] = {
 range_ = RangeFunc()
 syncthreads = SyncThreads()
 syncwarp = SyncWarp()
+ref = Ref()
 shared_memory = SharedMemory()
 grid = GridFunc('grid')
 gridsize = GridFunc('gridsize')
