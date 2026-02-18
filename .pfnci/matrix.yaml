@@ -59,7 +59,7 @@
   _inherits: "cupy.linux.cuda121"
   tags: ["@push", "full", "multi", "linux", "cuda121"]
   target: "cuda121.multi"
-  mpi4py: "3"
+  mpi4py: "4"
   test: "unit-multi"
 
 # CUDA 12.2 | Linux
@@ -89,7 +89,7 @@
   _inherits: "cupy.linux.cuda122"
   tags: ["@push", "full", "multi", "linux", "cuda122"]
   target: "cuda122.multi"
-  mpi4py: "3"
+  mpi4py: "4"
   test: "unit-multi"
 
 # CUDA 12.3 | Linux
@@ -119,7 +119,7 @@
   _inherits: "cupy.linux.cuda123"
   tags: ["@push", "full", "multi", "linux", "cuda123"]
   target: "cuda123.multi"
-  mpi4py: "3"
+  mpi4py: "4"
   test: "unit-multi"
 
 # CUDA 12.4 | Linux
@@ -149,7 +149,7 @@
   _inherits: "cupy.linux.cuda124"
   tags: ["@push", "full", "multi", "linux", "cuda124"]
   target: "cuda124.multi"
-  mpi4py: "3"
+  mpi4py: "4"
   test: "unit-multi"
 
 # CUDA 12.5 | Linux
@@ -179,7 +179,7 @@
   _inherits: "cupy.linux.cuda125"
   tags: ["@push", "full", "multi", "linux", "cuda125"]
   target: "cuda125.multi"
-  mpi4py: "3"
+  mpi4py: "4"
   test: "unit-multi"
 
 # CUDA 12.6 | Linux
@@ -239,7 +239,7 @@
   _inherits: "cupy.linux.cuda128"
   tags: ["@push", "full", "multi", "linux", "cuda128"]
   target: "cuda128.multi"
-  mpi4py: "3"
+  mpi4py: "4"
   test: "unit-multi"
 
 # CUDA 12.9 | Linux
@@ -269,7 +269,7 @@
   _inherits: "cupy.linux.cuda129"
   tags: ["@push", "full", "mini", "multi", "linux", "cuda129"]
   target: "cuda129.multi"
-  mpi4py: "3"
+  mpi4py: "4"
   test: "unit-multi"
 
 # CUDA 13.0 | Linux
