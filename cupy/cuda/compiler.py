@@ -29,6 +29,7 @@ _win32 = sys.platform.startswith('win32')
 _rdc_flags = ('--device-c', '-dc', '-rdc=true',
               '--relocatable-device-code=true')
 _cudadevrt = None
+_show_cuda_source = False
 
 
 class NVCCException(Exception):
@@ -542,6 +543,13 @@ def _compile_module_with_cache(
         source, options=(), arch=None, cache_dir=None, extra_source=None,
         backend='nvrtc', *, enable_cooperative_groups=False,
         name_expressions=None, log_stream=None, jitify=False, to_ltoir=False):
+
+    if _show_cuda_source:
+        print("==========")
+        print(f"source: \n{source}")
+        print(f"{options = }")
+        print(f"{cache_dir = }")
+        print(f"{backend = }")
 
     if enable_cooperative_groups:
         if runtime.is_hip:
