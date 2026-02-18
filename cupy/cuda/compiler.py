@@ -645,11 +645,19 @@ def _compile_with_cache_cuda(
                 cubin = data[_hash_length:]
                 cubin_hash = _hash_hexdigest(cubin).encode('ascii')
                 if hash == cubin_hash:
+                    print('*** CACHE HIT ***')
+                    print(f'*** {env} ***')
+                    print(f'*** {source} ***')
+                    print('*****************')
                     if to_ltoir:
                         return cubin
                     else:
                         mod.load(cubin)
                         return mod
+        print('*** CACHE MISS ***')
+        print(f'*** {env} ***')
+        print(f'*** {source} ***')
+        print('*****************')
     else:
         # Enforce compiling -- the resulting kernel will be cached elsewhere,
         # so we do nothing
