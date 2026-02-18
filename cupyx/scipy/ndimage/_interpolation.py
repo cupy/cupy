@@ -450,21 +450,24 @@ def affine_transform(input, matrix, offset=0.0, output_shape=None, output=None,
     integer_output = output.dtype.kind in 'iu'
     _util._check_cval(mode, cval, integer_output)
     large_int = max(_prod(input.shape), _prod(output_shape)) > 1 << 31
+
+    output_shape_cp = cupy.asarray(output_shape, dtype=cupy.int32)
+
     if matrix.ndim == 1:
         offset = cupy.asarray(offset, dtype=cupy.float64)
         offset = -offset / matrix
         kern = _interp_kernels._get_zoom_shift_kernel(
-            ndim, large_int, output_shape, mode, cval=cval, order=order,
+            ndim, large_int, mode, cval=cval, order=order,
             integer_output=integer_output, nprepad=nprepad)
-        kern(filtered, offset, matrix, output)
+        kern(filtered, offset, matrix, output_shape_cp, output)
     else:
         kern = _interp_kernels._get_affine_kernel(
-            ndim, large_int, output_shape, mode, cval=cval, order=order,
+            ndim, large_int, mode, cval=cval, order=order,
             integer_output=integer_output, nprepad=nprepad)
         m = cupy.zeros((ndim, ndim + 1), dtype=cupy.float64)
         m[:, :-1] = matrix
         m[:, -1] = cupy.asarray(offset, dtype=cupy.float64)
-        kern(filtered, m, output)
+        kern(filtered, m, output_shape_cp, output)
     return output
 
 
@@ -648,14 +651,16 @@ def shift(input, shift, output=None, order=3, mode='constant', cval=0.0,
         _util._check_cval(mode, cval, integer_output)
         large_int = _prod(input.shape) > 1 << 31
         kern = _interp_kernels._get_shift_kernel(
-            input.ndim, large_int, input.shape, mode, cval=cval, order=order,
+            input.ndim, large_int, mode, cval=cval, order=order,
             integer_output=integer_output, nprepad=nprepad)
         shift = cupy.asarray(shift, dtype=cupy.float64, order='C')
         if shift.ndim != 1:
             raise ValueError('shift must be 1d')
         if shift.size != filtered.ndim:
             raise ValueError('len(shift) must equal input.ndim')
-        kern(filtered, shift, output)
+        output_shape = input.shape
+        output_shape_cp = cupy.asarray(output_shape, dtype=cupy.int32)
+        kern(filtered, shift, output_shape_cp, output)
     return output
 
 
@@ -774,9 +779,10 @@ def zoom(input, zoom, output=None, order=3, mode='constant', cval=0.0,
         _util._check_cval(mode, cval, integer_output)
         large_int = max(_prod(input.shape), _prod(output_shape)) > 1 << 31
         kern = _interp_kernels._get_zoom_kernel(
-            input.ndim, large_int, output_shape, mode, order=order,
+            input.ndim, large_int, mode, order=order,
             integer_output=integer_output, grid_mode=grid_mode,
             nprepad=nprepad)
         zoom = cupy.asarray(zoom, dtype=cupy.float64)
-        kern(filtered, zoom, output)
+        output_shape_cp = cupy.asarray(output_shape, dtype=cupy.int32)
+        kern(filtered, zoom, output_shape_cp, output)
     return output
