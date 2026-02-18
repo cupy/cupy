@@ -1,5 +1,7 @@
-import threading
 import warnings
+
+cimport cython
+from cupy._core._threadlocal cimport _ThreadLocalBase, PyThread_tss_create
 
 from cupy_backends.cuda.api cimport runtime
 from cupy_backends.cuda cimport stream as backends_stream
@@ -8,10 +10,13 @@ from cupy.cuda cimport graph
 from cupy import _util
 
 
-cdef object _thread_local = threading.local()
+cdef Py_tss_t _tlocal_key
+if PyThread_tss_create(&_tlocal_key) != 0:
+    raise MemoryError()
 
 
-cdef class _ThreadLocal:
+@cython.no_gc
+cdef class _ThreadLocal(_ThreadLocalBase):
     # We keep both current_stream and current_stream_stack because the
     # former is also used when calling stream.use(). This bookkeeping enables
     # correct rewinding when "with" blocks are mixed with ".use()" (though
@@ -33,11 +38,7 @@ cdef class _ThreadLocal:
 
     @staticmethod
     cdef _ThreadLocal get():
-        try:
-            tls = _thread_local.tls
-        except AttributeError:
-            tls = _thread_local.tls = _ThreadLocal()
-        return <_ThreadLocal>tls
+        return <_ThreadLocal>_ThreadLocal._get(_ThreadLocal, _tlocal_key)
 
     cdef void push_stream(self, stream, int device_id) except*:
         assert device_id >= 0
