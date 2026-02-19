@@ -1,6 +1,9 @@
 # Automatically use "/tmp" as cache directory if not set
 _cache_dir="${CACHE_DIR:-/tmp}"
 
+# With buffering we might overwhelm `tee` or so and lose output
+export PYTHONUNBUFFERED=1
+
 # Setup ccache env vars
 export CCACHE_DIR="${_cache_dir}/.ccache"
 export CCACHE_NOHASHDIR="true"
