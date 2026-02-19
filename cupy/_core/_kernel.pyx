@@ -493,14 +493,14 @@ cdef class KernelArguments:
                     'Wrong number of arguments for {!r}. '
                     'It must be either {} or {} (with outputs), '
                     'but given {}.'.format(
-                        self.name, self.nin, nargs, len_args))
+                        name, self.nin, nargs, len_args))
         else:
             if len_args < self.nin or len_args > nargs:
                 raise TypeError(
                     'Wrong number of arguments for {!r}. '
                     'It must be between {} and {} (with outputs), '
                     'but given {}.'.format(
-                        self.name, self.nin, nargs, len_args))
+                        name, self.nin, nargs, len_args))
 
         for i in range(nin):
             self.set_in(i, args[i])
