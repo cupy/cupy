@@ -20,6 +20,9 @@ _submodules = (
     'cublas', 'cusolver', 'cusparse', 'curand', 'nccl', 'cutensor',
     'cusparselt',
 )
+_submodules_runtime_link = (
+    'nvrtc', 'nvtx'
+)
 
 
 def __getattr__(name):
@@ -33,4 +36,9 @@ def __getattr__(name):
             if (not (_os.environ.get('READTHEDOCS') == 'True') and
                     not (_os.environ.get('CUPY_CI') is not None)):
                 raise ImportError(str(e)) from e
-    return _importlib.import_module(f'cupy_backends.cuda.libs.{name}')
+
+    if name in (_submodules + _submodules_runtime_link):
+        return _importlib.import_module(f'cupy_backends.cuda.libs.{name}')
+
+    raise AttributeError(
+        f"module {__name__!r} has no attribute {name!r}")
