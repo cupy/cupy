@@ -343,6 +343,8 @@ def _compile_using_nvrtc_no_warning(
     cache_in_memory=False, jitify=None, method=None
 ):
 
+    log_stream = sys.stdout
+
     def _compile(
             source, options, cu_path, name_expressions, log_stream, jitify,
             method):
