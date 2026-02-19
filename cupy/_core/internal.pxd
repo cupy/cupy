@@ -9,7 +9,7 @@ from cupy._core.core cimport _ndarray_base
 
 cpdef Py_ssize_t prod(const vector.vector[Py_ssize_t]& args) noexcept
 
-cpdef Py_ssize_t prod_sequence(object args) except? -1
+cpdef Py_ssize_t prod_sequence(object args)
 
 cpdef bint is_in(const vector.vector[Py_ssize_t]& args, Py_ssize_t x) noexcept
 
@@ -28,7 +28,7 @@ cdef get_reduced_dims(
 # Returns the size (total number of elements).
 cdef Py_ssize_t get_contiguous_strides_inplace(
     const shape_t& shape, strides_t& strides, Py_ssize_t itemsize,
-    bint is_c_contiguous, bint zeros_for_zerosize) except? -1
+    bint is_c_contiguous, bint zeros_for_zerosize)
 
 cpdef bint get_c_contiguity(
     shape_t& shape, strides_t& strides, Py_ssize_t itemsize) noexcept

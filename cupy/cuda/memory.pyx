@@ -2044,13 +2044,13 @@ cdef class MemoryAsyncPool:
             pool, runtime.cudaMemPoolAttrReleaseThreshold)
 
 
-ctypedef void*(*malloc_func_type)(void*, size_t, int) noexcept
+ctypedef void*(*malloc_func_type)(void*, size_t, int) except +
 ctypedef void(*free_func_type)(void*, void*, int) noexcept
 
 
 cdef intptr_t _call_malloc(
         intptr_t param, intptr_t malloc_func, Py_ssize_t size,
-        int device_id) noexcept:
+        int device_id) except *:
     return <intptr_t>(
         (<malloc_func_type>malloc_func)(<void*>param, size, device_id))
 

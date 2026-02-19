@@ -620,7 +620,7 @@ cpdef inline PlanCache get_plan_cache():
 
 
 # TODO(leofang): remove experimental warning when scipy/scipy#12512 is merged
-cpdef Py_ssize_t get_plan_cache_size() except? -1:
+cpdef Py_ssize_t get_plan_cache_size():
     _util.experimental('cupy.fft.cache.get_plan_cache_size')
     cdef PlanCache cache = get_plan_cache()
     return cache.get_size()
@@ -634,7 +634,7 @@ cpdef set_plan_cache_size(size):
 
 
 # TODO(leofang): remove experimental warning when scipy/scipy#12512 is merged
-cpdef Py_ssize_t get_plan_cache_max_memsize() except? -1:
+cpdef Py_ssize_t get_plan_cache_max_memsize():
     _util.experimental('cupy.fft.cache.get_plan_cache_max_memsize')
     cdef PlanCache cache = get_plan_cache()
     return cache.get_memsize()

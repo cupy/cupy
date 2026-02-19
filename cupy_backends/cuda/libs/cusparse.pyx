@@ -4346,7 +4346,7 @@ cpdef size_t sgtsv2StridedBatch_bufferSizeExt(
 
 cpdef size_t dgtsv2StridedBatch_bufferSizeExt(
         intptr_t handle, int m, size_t dl, size_t d, size_t du, size_t x,
-        int batchCount, int batchStride) except? -1:
+        int batchCount, int batchStride):
     cdef size_t bufferSizeInBytes
     _setStream(handle)
     with nogil:

@@ -1411,7 +1411,7 @@ cpdef zgetrfBatched(intptr_t handle, int n, size_t Aarray, int lda,
 cpdef int sgetrsBatched(
         intptr_t handle, int trans, int n, int nrhs,
         size_t Aarray, int lda, size_t devIpiv,
-        size_t Barray, int ldb, size_t info, int batchSize) except? -1:
+        size_t Barray, int ldb, size_t info, int batchSize):
     _setStream(handle)
     with nogil:
         status = cublasSgetrsBatched(
@@ -1423,7 +1423,7 @@ cpdef int sgetrsBatched(
 cpdef int dgetrsBatched(
         intptr_t handle, int trans, int n, int nrhs,
         size_t Aarray, int lda, size_t devIpiv,
-        size_t Barray, int ldb, size_t info, int batchSize) except? -1:
+        size_t Barray, int ldb, size_t info, int batchSize):
     _setStream(handle)
     with nogil:
         status = cublasDgetrsBatched(
@@ -1435,7 +1435,7 @@ cpdef int dgetrsBatched(
 cpdef int cgetrsBatched(
         intptr_t handle, int trans, int n, int nrhs,
         size_t Aarray, int lda, size_t devIpiv,
-        size_t Barray, int ldb, size_t info, int batchSize) except? -1:
+        size_t Barray, int ldb, size_t info, int batchSize):
     _setStream(handle)
     with nogil:
         status = cublasCgetrsBatched(
@@ -1447,7 +1447,7 @@ cpdef int cgetrsBatched(
 cpdef int zgetrsBatched(
         intptr_t handle, int trans, int n, int nrhs,
         size_t Aarray, int lda, size_t devIpiv,
-        size_t Barray, int ldb, size_t info, int batchSize) except? -1:
+        size_t Barray, int ldb, size_t info, int batchSize):
     _setStream(handle)
     with nogil:
         status = cublasZgetrsBatched(

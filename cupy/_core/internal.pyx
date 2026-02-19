@@ -20,7 +20,7 @@ cpdef inline Py_ssize_t prod(const vector.vector[Py_ssize_t]& args) noexcept:
 
 
 @cython.profile(False)
-cpdef inline Py_ssize_t prod_sequence(object args) except? -1:
+cpdef inline Py_ssize_t prod_sequence(object args):
     cdef Py_ssize_t i, n = 1
     for i in args:
         n *= i

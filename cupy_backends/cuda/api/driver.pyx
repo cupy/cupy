@@ -320,7 +320,7 @@ cpdef funcSetAttribute(intptr_t f, int attribute, int value):
 ###############################################################################
 
 cpdef int occupancyMaxActiveBlocksPerMultiprocessor(
-        intptr_t func, int blockSize, size_t dynamicSMemSize) except? -1:
+        intptr_t func, int blockSize, size_t dynamicSMemSize):
     initialize()
     cdef int numBlocks
     with nogil:

@@ -1108,7 +1108,7 @@ cpdef tuple _getVersion():
             getProperty(PATCH_LEVEL))
 
 
-cpdef int _getVersionNumber() except? -1:
+cpdef int _getVersionNumber():
     """
     Returns cuSOLVER's runtime version in the same expression as
     `CUSOLVER_VERSION` defined in `cusolver_common.h`.
@@ -2080,7 +2080,7 @@ cpdef size_t shgesv_bufferSize(intptr_t handle, int n, int nrhs, size_t dA,
 
 cpdef int zzgesv(intptr_t handle, int n, int nrhs, size_t dA, int ldda,
                  size_t dipiv, size_t dB, int lddb, size_t dX, int lddx,
-                 size_t dwork, size_t lwork, size_t dInfo) except? -1:
+                 size_t dwork, size_t lwork, size_t dInfo):
     cdef int iter
     _setStream(handle)
     with nogil:
@@ -2093,7 +2093,7 @@ cpdef int zzgesv(intptr_t handle, int n, int nrhs, size_t dA, int ldda,
 
 cpdef int zcgesv(intptr_t handle, int n, int nrhs, size_t dA, int ldda,
                  size_t dipiv, size_t dB, int lddb, size_t dX, int lddx,
-                 size_t dwork, size_t lwork, size_t dInfo) except? -1:
+                 size_t dwork, size_t lwork, size_t dInfo):
     cdef int iter
     _setStream(handle)
     with nogil:
@@ -2106,7 +2106,7 @@ cpdef int zcgesv(intptr_t handle, int n, int nrhs, size_t dA, int ldda,
 
 cpdef int zygesv(intptr_t handle, int n, int nrhs, size_t dA, int ldda,
                  size_t dipiv, size_t dB, int lddb, size_t dX, int lddx,
-                 size_t dwork, size_t lwork, size_t dInfo) except? -1:
+                 size_t dwork, size_t lwork, size_t dInfo):
     cdef int iter
     _setStream(handle)
     with nogil:
@@ -2119,7 +2119,7 @@ cpdef int zygesv(intptr_t handle, int n, int nrhs, size_t dA, int ldda,
 
 cpdef int zkgesv(intptr_t handle, int n, int nrhs, size_t dA, int ldda,
                  size_t dipiv, size_t dB, int lddb, size_t dX, int lddx,
-                 size_t dwork, size_t lwork, size_t dInfo) except? -1:
+                 size_t dwork, size_t lwork, size_t dInfo):
     cdef int iter
     _setStream(handle)
     with nogil:
@@ -2132,7 +2132,7 @@ cpdef int zkgesv(intptr_t handle, int n, int nrhs, size_t dA, int ldda,
 
 cpdef int ccgesv(intptr_t handle, int n, int nrhs, size_t dA, int ldda,
                  size_t dipiv, size_t dB, int lddb, size_t dX, int lddx,
-                 size_t dwork, size_t lwork, size_t dInfo) except? -1:
+                 size_t dwork, size_t lwork, size_t dInfo):
     cdef int iter
     _setStream(handle)
     with nogil:
@@ -2145,7 +2145,7 @@ cpdef int ccgesv(intptr_t handle, int n, int nrhs, size_t dA, int ldda,
 
 cpdef int cygesv(intptr_t handle, int n, int nrhs, size_t dA, int ldda,
                  size_t dipiv, size_t dB, int lddb, size_t dX, int lddx,
-                 size_t dwork, size_t lwork, size_t dInfo) except? -1:
+                 size_t dwork, size_t lwork, size_t dInfo):
     cdef int iter
     _setStream(handle)
     with nogil:
@@ -2158,7 +2158,7 @@ cpdef int cygesv(intptr_t handle, int n, int nrhs, size_t dA, int ldda,
 
 cpdef int ckgesv(intptr_t handle, int n, int nrhs, size_t dA, int ldda,
                  size_t dipiv, size_t dB, int lddb, size_t dX, int lddx,
-                 size_t dwork, size_t lwork, size_t dInfo) except? -1:
+                 size_t dwork, size_t lwork, size_t dInfo):
     cdef int iter
     _setStream(handle)
     with nogil:
@@ -2171,7 +2171,7 @@ cpdef int ckgesv(intptr_t handle, int n, int nrhs, size_t dA, int ldda,
 
 cpdef int ddgesv(intptr_t handle, int n, int nrhs, size_t dA, int ldda,
                  size_t dipiv, size_t dB, int lddb, size_t dX, int lddx,
-                 size_t dwork, size_t lwork, size_t dInfo) except? -1:
+                 size_t dwork, size_t lwork, size_t dInfo):
     cdef int iter
     _setStream(handle)
     with nogil:
@@ -2184,7 +2184,7 @@ cpdef int ddgesv(intptr_t handle, int n, int nrhs, size_t dA, int ldda,
 
 cpdef int dsgesv(intptr_t handle, int n, int nrhs, size_t dA, int ldda,
                  size_t dipiv, size_t dB, int lddb, size_t dX, int lddx,
-                 size_t dwork, size_t lwork, size_t dInfo) except? -1:
+                 size_t dwork, size_t lwork, size_t dInfo):
     cdef int iter
     _setStream(handle)
     with nogil:
@@ -2197,7 +2197,7 @@ cpdef int dsgesv(intptr_t handle, int n, int nrhs, size_t dA, int ldda,
 
 cpdef int dxgesv(intptr_t handle, int n, int nrhs, size_t dA, int ldda,
                  size_t dipiv, size_t dB, int lddb, size_t dX, int lddx,
-                 size_t dwork, size_t lwork, size_t dInfo) except? -1:
+                 size_t dwork, size_t lwork, size_t dInfo):
     cdef int iter
     _setStream(handle)
     with nogil:
@@ -2210,7 +2210,7 @@ cpdef int dxgesv(intptr_t handle, int n, int nrhs, size_t dA, int ldda,
 
 cpdef int dhgesv(intptr_t handle, int n, int nrhs, size_t dA, int ldda,
                  size_t dipiv, size_t dB, int lddb, size_t dX, int lddx,
-                 size_t dwork, size_t lwork, size_t dInfo) except? -1:
+                 size_t dwork, size_t lwork, size_t dInfo):
     cdef int iter
     _setStream(handle)
     with nogil:
@@ -2223,7 +2223,7 @@ cpdef int dhgesv(intptr_t handle, int n, int nrhs, size_t dA, int ldda,
 
 cpdef int ssgesv(intptr_t handle, int n, int nrhs, size_t dA, int ldda,
                  size_t dipiv, size_t dB, int lddb, size_t dX, int lddx,
-                 size_t dwork, size_t lwork, size_t dInfo) except? -1:
+                 size_t dwork, size_t lwork, size_t dInfo):
     cdef int iter
     _setStream(handle)
     with nogil:
@@ -2236,7 +2236,7 @@ cpdef int ssgesv(intptr_t handle, int n, int nrhs, size_t dA, int ldda,
 
 cpdef int sxgesv(intptr_t handle, int n, int nrhs, size_t dA, int ldda,
                  size_t dipiv, size_t dB, int lddb, size_t dX, int lddx,
-                 size_t dwork, size_t lwork, size_t dInfo) except? -1:
+                 size_t dwork, size_t lwork, size_t dInfo):
     cdef int iter
     _setStream(handle)
     with nogil:
@@ -2249,7 +2249,7 @@ cpdef int sxgesv(intptr_t handle, int n, int nrhs, size_t dA, int ldda,
 
 cpdef int shgesv(intptr_t handle, int n, int nrhs, size_t dA, int ldda,
                  size_t dipiv, size_t dB, int lddb, size_t dX, int lddx,
-                 size_t dwork, size_t lwork, size_t dInfo) except? -1:
+                 size_t dwork, size_t lwork, size_t dInfo):
     cdef int iter
     _setStream(handle)
     with nogil:
@@ -2434,7 +2434,7 @@ cpdef size_t shgels_bufferSize(intptr_t handle, int m, int n, int nrhs,
 
 cpdef int zzgels(intptr_t handle, int m, int n, int nrhs, size_t dA, int ldda,
                  size_t dB, int lddb, size_t dX, int lddx,
-                 size_t dwork, size_t lwork, size_t dInfo) except? -1:
+                 size_t dwork, size_t lwork, size_t dInfo):
     cdef int iter
     _setStream(handle)
     with nogil:
@@ -2447,7 +2447,7 @@ cpdef int zzgels(intptr_t handle, int m, int n, int nrhs, size_t dA, int ldda,
 
 cpdef int zcgels(intptr_t handle, int m, int n, int nrhs, size_t dA, int ldda,
                  size_t dB, int lddb, size_t dX, int lddx,
-                 size_t dwork, size_t lwork, size_t dInfo) except? -1:
+                 size_t dwork, size_t lwork, size_t dInfo):
     cdef int iter
     _setStream(handle)
     with nogil:
@@ -2460,7 +2460,7 @@ cpdef int zcgels(intptr_t handle, int m, int n, int nrhs, size_t dA, int ldda,
 
 cpdef int zygels(intptr_t handle, int m, int n, int nrhs, size_t dA, int ldda,
                  size_t dB, int lddb, size_t dX, int lddx,
-                 size_t dwork, size_t lwork, size_t dInfo) except? -1:
+                 size_t dwork, size_t lwork, size_t dInfo):
     cdef int iter
     _setStream(handle)
     with nogil:
@@ -2473,7 +2473,7 @@ cpdef int zygels(intptr_t handle, int m, int n, int nrhs, size_t dA, int ldda,
 
 cpdef int zkgels(intptr_t handle, int m, int n, int nrhs, size_t dA, int ldda,
                  size_t dB, int lddb, size_t dX, int lddx,
-                 size_t dwork, size_t lwork, size_t dInfo) except? -1:
+                 size_t dwork, size_t lwork, size_t dInfo):
     cdef int iter
     _setStream(handle)
     with nogil:
@@ -2486,7 +2486,7 @@ cpdef int zkgels(intptr_t handle, int m, int n, int nrhs, size_t dA, int ldda,
 
 cpdef int ccgels(intptr_t handle, int m, int n, int nrhs, size_t dA, int ldda,
                  size_t dB, int lddb, size_t dX, int lddx,
-                 size_t dwork, size_t lwork, size_t dInfo) except? -1:
+                 size_t dwork, size_t lwork, size_t dInfo):
     cdef int iter
     _setStream(handle)
     with nogil:
@@ -2499,7 +2499,7 @@ cpdef int ccgels(intptr_t handle, int m, int n, int nrhs, size_t dA, int ldda,
 
 cpdef int cygels(intptr_t handle, int m, int n, int nrhs, size_t dA, int ldda,
                  size_t dB, int lddb, size_t dX, int lddx,
-                 size_t dwork, size_t lwork, size_t dInfo) except? -1:
+                 size_t dwork, size_t lwork, size_t dInfo):
     cdef int iter
     _setStream(handle)
     with nogil:
@@ -2512,7 +2512,7 @@ cpdef int cygels(intptr_t handle, int m, int n, int nrhs, size_t dA, int ldda,
 
 cpdef int ckgels(intptr_t handle, int m, int n, int nrhs, size_t dA, int ldda,
                  size_t dB, int lddb, size_t dX, int lddx,
-                 size_t dwork, size_t lwork, size_t dInfo) except? -1:
+                 size_t dwork, size_t lwork, size_t dInfo):
     cdef int iter
     _setStream(handle)
     with nogil:
@@ -2525,7 +2525,7 @@ cpdef int ckgels(intptr_t handle, int m, int n, int nrhs, size_t dA, int ldda,
 
 cpdef int ddgels(intptr_t handle, int m, int n, int nrhs, size_t dA, int ldda,
                  size_t dB, int lddb, size_t dX, int lddx,
-                 size_t dwork, size_t lwork, size_t dInfo) except? -1:
+                 size_t dwork, size_t lwork, size_t dInfo):
     cdef int iter
     _setStream(handle)
     with nogil:
@@ -2538,7 +2538,7 @@ cpdef int ddgels(intptr_t handle, int m, int n, int nrhs, size_t dA, int ldda,
 
 cpdef int dsgels(intptr_t handle, int m, int n, int nrhs, size_t dA, int ldda,
                  size_t dB, int lddb, size_t dX, int lddx,
-                 size_t dwork, size_t lwork, size_t dInfo) except? -1:
+                 size_t dwork, size_t lwork, size_t dInfo):
     cdef int iter
     _setStream(handle)
     with nogil:
@@ -2551,7 +2551,7 @@ cpdef int dsgels(intptr_t handle, int m, int n, int nrhs, size_t dA, int ldda,
 
 cpdef int dxgels(intptr_t handle, int m, int n, int nrhs, size_t dA, int ldda,
                  size_t dB, int lddb, size_t dX, int lddx,
-                 size_t dwork, size_t lwork, size_t dInfo) except? -1:
+                 size_t dwork, size_t lwork, size_t dInfo):
     cdef int iter
     _setStream(handle)
     with nogil:
@@ -2564,7 +2564,7 @@ cpdef int dxgels(intptr_t handle, int m, int n, int nrhs, size_t dA, int ldda,
 
 cpdef int dhgels(intptr_t handle, int m, int n, int nrhs, size_t dA, int ldda,
                  size_t dB, int lddb, size_t dX, int lddx,
-                 size_t dwork, size_t lwork, size_t dInfo) except? -1:
+                 size_t dwork, size_t lwork, size_t dInfo):
     cdef int iter
     _setStream(handle)
     with nogil:
@@ -2577,7 +2577,7 @@ cpdef int dhgels(intptr_t handle, int m, int n, int nrhs, size_t dA, int ldda,
 
 cpdef int ssgels(intptr_t handle, int m, int n, int nrhs, size_t dA, int ldda,
                  size_t dB, int lddb, size_t dX, int lddx,
-                 size_t dwork, size_t lwork, size_t dInfo) except? -1:
+                 size_t dwork, size_t lwork, size_t dInfo):
     cdef int iter
     _setStream(handle)
     with nogil:
@@ -2590,7 +2590,7 @@ cpdef int ssgels(intptr_t handle, int m, int n, int nrhs, size_t dA, int ldda,
 
 cpdef int sxgels(intptr_t handle, int m, int n, int nrhs, size_t dA, int ldda,
                  size_t dB, int lddb, size_t dX, int lddx,
-                 size_t dwork, size_t lwork, size_t dInfo) except? -1:
+                 size_t dwork, size_t lwork, size_t dInfo):
     cdef int iter
     _setStream(handle)
     with nogil:
@@ -2603,7 +2603,7 @@ cpdef int sxgels(intptr_t handle, int m, int n, int nrhs, size_t dA, int ldda,
 
 cpdef int shgels(intptr_t handle, int m, int n, int nrhs, size_t dA, int ldda,
                  size_t dB, int lddb, size_t dX, int lddx,
-                 size_t dwork, size_t lwork, size_t dInfo) except? -1:
+                 size_t dwork, size_t lwork, size_t dInfo):
     cdef int iter
     _setStream(handle)
     with nogil:
@@ -2804,14 +2804,14 @@ cpdef xgesvdjSetSortEig(intptr_t info, int sort_svd):
     status = cusolverDnXgesvdjSetSortEig(<GesvdjInfo>info, sort_svd)
     check_status(status)
 
-cpdef double xgesvdjGetResidual(intptr_t handle, intptr_t info) except? -1:
+cpdef double xgesvdjGetResidual(intptr_t handle, intptr_t info):
     cdef double residual
     status = cusolverDnXgesvdjGetResidual(<Handle>handle, <GesvdjInfo>info,
                                           &residual)
     check_status(status)
     return residual
 
-cpdef int xgesvdjGetSweeps(intptr_t handle, intptr_t info) except? -1:
+cpdef int xgesvdjGetSweeps(intptr_t handle, intptr_t info):
     cdef int executed_sweeps
     status = cusolverDnXgesvdjGetSweeps(<Handle>handle, <GesvdjInfo>info,
                                         &executed_sweeps)
@@ -2821,7 +2821,7 @@ cpdef int xgesvdjGetSweeps(intptr_t handle, intptr_t info) except? -1:
 cpdef int sgesvdj_bufferSize(
         intptr_t handle, int jobz, int econ, int m, int n,
         intptr_t A, int lda, intptr_t S, intptr_t U,
-        int ldu, intptr_t V, int ldv, intptr_t params) except? -1:
+        int ldu, intptr_t V, int ldv, intptr_t params):
     cdef int lwork, status
     _setStream(handle)
     with nogil:
@@ -2835,7 +2835,7 @@ cpdef int sgesvdj_bufferSize(
 cpdef int dgesvdj_bufferSize(
         intptr_t handle, int jobz, int econ, int m, int n,
         intptr_t A, int lda, intptr_t S, intptr_t U,
-        int ldu, intptr_t V, int ldv, intptr_t params) except? -1:
+        int ldu, intptr_t V, int ldv, intptr_t params):
     cdef int lwork, status
     _setStream(handle)
     with nogil:
@@ -2849,7 +2849,7 @@ cpdef int dgesvdj_bufferSize(
 cpdef int cgesvdj_bufferSize(
         intptr_t handle, int jobz, int econ, int m, int n,
         intptr_t A, int lda, intptr_t S, intptr_t U,
-        int ldu, intptr_t V, int ldv, intptr_t params) except? -1:
+        int ldu, intptr_t V, int ldv, intptr_t params):
     cdef int lwork, status
     _setStream(handle)
     with nogil:
@@ -2863,7 +2863,7 @@ cpdef int cgesvdj_bufferSize(
 cpdef int zgesvdj_bufferSize(
         intptr_t handle, int jobz, int econ, int m, int n,
         intptr_t A, int lda, intptr_t S, intptr_t U,
-        int ldu, intptr_t V, int ldv, intptr_t params) except? -1:
+        int ldu, intptr_t V, int ldv, intptr_t params):
     cdef int lwork, status
     _setStream(handle)
     with nogil:
@@ -3037,7 +3037,7 @@ cpdef int sgesvdaStridedBatched_bufferSize(
         intptr_t handle, int jobz, int rank, int m, int n, intptr_t d_A,
         int lda, long long int strideA, intptr_t d_S, long long int strideS,
         intptr_t d_U, int ldu, long long int strideU, intptr_t d_V, int ldv,
-        long long int strideV, int batchSize) except? -1:
+        long long int strideV, int batchSize):
     cdef int lwork
     status = cusolverDnSgesvdaStridedBatched_bufferSize(
         <Handle>handle, <EigMode>jobz, rank, m, n, <const float*>d_A, lda,
@@ -3050,7 +3050,7 @@ cpdef int dgesvdaStridedBatched_bufferSize(
         intptr_t handle, int jobz, int rank, int m, int n, intptr_t d_A,
         int lda, long long int strideA, intptr_t d_S, long long int strideS,
         intptr_t d_U, int ldu, long long int strideU, intptr_t d_V, int ldv,
-        long long int strideV, int batchSize) except? -1:
+        long long int strideV, int batchSize):
     cdef int lwork
     status = cusolverDnDgesvdaStridedBatched_bufferSize(
         <Handle>handle, <EigMode>jobz, rank, m, n, <const double*>d_A, lda,
@@ -3063,7 +3063,7 @@ cpdef int cgesvdaStridedBatched_bufferSize(
         intptr_t handle, int jobz, int rank, int m, int n, intptr_t d_A,
         int lda, long long int strideA, intptr_t d_S, long long int strideS,
         intptr_t d_U, int ldu, long long int strideU, intptr_t d_V, int ldv,
-        long long int strideV, int batchSize) except? -1:
+        long long int strideV, int batchSize):
     cdef int lwork
     status = cusolverDnCgesvdaStridedBatched_bufferSize(
         <Handle>handle, <EigMode>jobz, rank, m, n, <const cuComplex*>d_A, lda,
@@ -3076,7 +3076,7 @@ cpdef int zgesvdaStridedBatched_bufferSize(
         intptr_t handle, int jobz, int rank, int m, int n, intptr_t d_A,
         int lda, long long int strideA, intptr_t d_S, long long int strideS,
         intptr_t d_U, int ldu, long long int strideU, intptr_t d_V, int ldv,
-        long long int strideV, int batchSize) except? -1:
+        long long int strideV, int batchSize):
     cdef int lwork
     status = cusolverDnZgesvdaStridedBatched_bufferSize(
         <Handle>handle, <EigMode>jobz, rank, m, n, <const cuDoubleComplex*>d_A,
@@ -3263,14 +3263,14 @@ cpdef xsyevjSetSortEig(intptr_t info, int sort_eig):
     status = cusolverDnXsyevjSetSortEig(<SyevjInfo>info, sort_eig)
     check_status(status)
 
-cpdef double xsyevjGetResidual(intptr_t handle, intptr_t info) except? -1:
+cpdef double xsyevjGetResidual(intptr_t handle, intptr_t info):
     cdef double residual
     status = cusolverDnXsyevjGetResidual(
         <Handle>handle, <SyevjInfo>info, &residual)
     check_status(status)
     return residual
 
-cpdef int xsyevjGetSweeps(intptr_t handle, intptr_t info) except? -1:
+cpdef int xsyevjGetSweeps(intptr_t handle, intptr_t info):
     cdef int executed_sweeps
     status = cusolverDnXsyevjGetSweeps(
         <Handle>handle, <SyevjInfo>info, &executed_sweeps)
