@@ -65,12 +65,12 @@ cdef class MemoryPool:
     cpdef free_all_blocks(self, stream=?)
     cpdef free_all_free(self)
     # they call device_pool so they may raise error.
-    cpdef size_t n_free_blocks(self) except -1
-    cpdef size_t used_bytes(self) except -1
-    cpdef size_t free_bytes(self) except -1
-    cpdef size_t total_bytes(self) except -1
+    cpdef size_t n_free_blocks(self)
+    cpdef size_t used_bytes(self)
+    cpdef size_t free_bytes(self)
+    cpdef size_t total_bytes(self)
     cpdef set_limit(self, size=?, fraction=?)
-    cpdef size_t get_limit(self) except -1
+    cpdef size_t get_limit(self)
 
     cdef _ensure_pools_and_return_device_pool(self)
 

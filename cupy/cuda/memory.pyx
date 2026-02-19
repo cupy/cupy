@@ -1375,7 +1375,7 @@ cdef class SingleDeviceMemoryPool:
             DeprecationWarning)
         self.free_all_blocks()
 
-    cpdef size_t n_free_blocks(self) except -1:
+    cpdef size_t n_free_blocks(self):
         cdef size_t n = 0
         cdef _Arena arena
         if not self._free_lock.try_lock():
@@ -1390,7 +1390,7 @@ cdef class SingleDeviceMemoryPool:
             self._free_lock.unlock()
         return n
 
-    cpdef size_t used_bytes(self) except -1:
+    cpdef size_t used_bytes(self):
         cdef size_t size = 0
         cdef _Chunk chunk
         if not self._in_use_lock.try_lock():
@@ -1403,7 +1403,7 @@ cdef class SingleDeviceMemoryPool:
             self._in_use_lock.unlock()
         return size
 
-    cpdef size_t free_bytes(self) except -1:
+    cpdef size_t free_bytes(self):
         cdef size_t size = 0
         cdef set free_list
         cdef _Chunk chunk
@@ -1422,7 +1422,7 @@ cdef class SingleDeviceMemoryPool:
             self._free_lock.unlock()
         return size
 
-    cpdef size_t total_bytes(self) except -1:
+    cpdef size_t total_bytes(self):
         with lock_and_no_gc(self._total_bytes_lock):
             return self._total_bytes
 
@@ -1450,7 +1450,7 @@ cdef class SingleDeviceMemoryPool:
         with lock_and_no_gc(self._total_bytes_lock):
             self._total_bytes_limit = size
 
-    cpdef size_t get_limit(self) except -1:
+    cpdef size_t get_limit(self):
         with lock_and_no_gc(self._total_bytes_lock):
             return self._total_bytes_limit
 
@@ -1665,7 +1665,7 @@ cdef class MemoryPool:
             DeprecationWarning)
         self.free_all_blocks()
 
-    cpdef size_t n_free_blocks(self) except -1:
+    cpdef size_t n_free_blocks(self):
         """Counts the total number of free blocks.
 
         Returns:
@@ -1674,7 +1674,7 @@ cdef class MemoryPool:
         mp = <SingleDeviceMemoryPool>self.device_pool()
         return mp.n_free_blocks()
 
-    cpdef size_t used_bytes(self) except -1:
+    cpdef size_t used_bytes(self):
         """Gets the total number of bytes used by the pool.
 
         Returns:
@@ -1683,7 +1683,7 @@ cdef class MemoryPool:
         mp = <SingleDeviceMemoryPool>self.device_pool()
         return mp.used_bytes()
 
-    cpdef size_t free_bytes(self) except -1:
+    cpdef size_t free_bytes(self):
         """Gets the total number of bytes acquired but not used by the pool.
 
         Returns:
@@ -1692,7 +1692,7 @@ cdef class MemoryPool:
         mp = <SingleDeviceMemoryPool>self.device_pool()
         return mp.free_bytes()
 
-    cpdef size_t total_bytes(self) except -1:
+    cpdef size_t total_bytes(self):
         """Gets the total number of bytes acquired by the pool.
 
         Returns:
@@ -1731,7 +1731,7 @@ cdef class MemoryPool:
         mp = <SingleDeviceMemoryPool>self.device_pool()
         mp.set_limit(size, fraction)
 
-    cpdef size_t get_limit(self) except -1:
+    cpdef size_t get_limit(self):
         """Gets the upper limit of memory allocation of the current device.
 
         Returns:
@@ -1929,11 +1929,11 @@ cdef class MemoryAsyncPool:
         # to reserve at least 0 bytes
         runtime.memPoolTrimTo(pool, 0)
 
-    cpdef size_t n_free_blocks(self) except -1:
+    cpdef size_t n_free_blocks(self):
         raise NotImplementedError(
             'This function is not supported in MemoryAsyncPool')
 
-    cpdef size_t used_bytes(self) except*:
+    cpdef size_t used_bytes(self):
         """Gets the total number of bytes used by the pool.
 
         Returns:
@@ -1946,7 +1946,7 @@ cdef class MemoryAsyncPool:
         return runtime.memPoolGetAttribute(
             pool, runtime.cudaMemPoolAttrUsedMemCurrent)
 
-    cpdef size_t free_bytes(self) except*:
+    cpdef size_t free_bytes(self):
         """Gets the total number of bytes acquired but not used by the pool.
 
         Returns:
@@ -1954,7 +1954,7 @@ cdef class MemoryAsyncPool:
         """
         return self.total_bytes() - self.used_bytes()
 
-    cpdef size_t total_bytes(self) except*:
+    cpdef size_t total_bytes(self):
         """Gets the total number of bytes acquired by the pool.
 
         Returns:
@@ -2027,7 +2027,7 @@ cdef class MemoryAsyncPool:
         runtime.memPoolSetAttribute(
             pool, runtime.cudaMemPoolAttrReleaseThreshold, size)
 
-    cpdef size_t get_limit(self) except -1:
+    cpdef size_t get_limit(self):
         """Gets the upper limit of memory allocation of the current device.
 
         Returns:

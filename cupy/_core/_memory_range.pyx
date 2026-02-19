@@ -26,7 +26,7 @@ cdef void get_range(
             out_left += tmp
 
 
-cdef _get_bound(_ndarray_base array, pair[Py_ssize_t, Py_ssize_t] bounds):
+cdef _get_bound(_ndarray_base array, pair[Py_ssize_t, Py_ssize_t]& bounds):
     # C-version of get_bounds (really to avoid the need for `except *`...)
     cdef Py_ssize_t left, right
     get_range(array.dtype.itemsize, array._shape, array._strides, left, right)
