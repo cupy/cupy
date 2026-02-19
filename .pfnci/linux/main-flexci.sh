@@ -28,8 +28,9 @@ STAGES="cache_get build test"
 if [[ "${TARGET}" == "benchmark" ]]; then
     STAGES="cache_get build benchmark"
 fi
-BENCHMARK_DIR=/tmp/benchmark CACHE_DIR=/tmp/cupy_cache PULL_REQUEST="${pull_req}" "$(dirname ${0})/run.sh" "${TARGET}" "${STAGES}" 2>&1 | tee "${LOG_FILE}"
-test_retval=${PIPESTATUS[0]}
+BENCHMARK_DIR=/tmp/benchmark CACHE_DIR=/tmp/cupy_cache PULL_REQUEST="${pull_req}" "$(dirname ${0})/run.sh" "${TARGET}" "${STAGES}" > "${LOG_FILE}" 2>&1
+test_retval=$?
+echo "${LOG_FILE}"
 
 echo "****************************************************************************************************"
 echo "Build & Test: Exit with status ${test_retval}"
@@ -37,8 +38,9 @@ echo "Build & Test: Exit with status ${test_retval}"
 if [[ "${pull_req}" == "" ]]; then
     # Upload cache when testing a branch, even when test failed.
     echo "Uploading cache and Docker image..."
-    CACHE_DIR=/tmp/cupy_cache PULL_REQUEST="${pull_req}" "$(dirname ${0})/run.sh" "${TARGET}" cache_put push | tee --append "${LOG_FILE}"
-    echo "Upload: Exit with status ${PIPESTATUS[0]}"
+    CACHE_DIR=/tmp/cupy_cache PULL_REQUEST="${pull_req}" "$(dirname ${0})/run.sh" "${TARGET}" cache_put push >> "${LOG_FILE}" 2>&1
+    echo "Upload: Exit with status $?"
+    echo "${LOG_FILE}"
 
     # Notify.
     if [[ ${test_retval} != 0 ]]; then
