@@ -680,6 +680,52 @@ class TestCudaArrayInterface(unittest.TestCase):
             cupy.asarray(b)
 
 
+class TestCudaArrayInterfaceNonBuiltinDtype:
+    # CuPy can accept non-builtin dtypes as containers when wrapping
+    # existing GPU memory via CAI. See cupy/cupy#9709 and cupy/cupy#9712
+    # for details.
+
+    @pytest.mark.parametrize('ver', range(max_cuda_array_interface_version+1))
+    @pytest.mark.parametrize('strides', [False, None, True])
+    @pytest.mark.parametrize('typestr', [
+        '<M8[s]', '<M8[ms]', '<M8[us]', '<M8[ns]',
+        '<m8[s]', '<m8[ms]', '<m8[us]', '<m8[ns]',
+    ])
+    def test_datetime_timedelta(self, typestr, ver, strides):
+        dtype = numpy.dtype(typestr)
+        a = cupy.zeros(4, dtype='i8')
+        b = DummyObjectWithCudaArrayInterface(
+            (a.shape, a.strides, dtype.str, dtype.descr, a.data.ptr),
+            ver, strides)
+        c = cupy.asarray(b)
+        assert c.dtype == dtype
+        assert c.shape == (4,)
+
+    @pytest.mark.parametrize('ver', range(max_cuda_array_interface_version+1))
+    @pytest.mark.parametrize('strides', [False, None, True])
+    def test_structured(self, ver, strides):
+        dtype = numpy.dtype('i4,f8')
+        a = cupy.zeros(3, dtype=dtype)
+        b = DummyObjectWithCudaArrayInterface(a, ver, strides)
+        c = cupy.asarray(b)
+        # CAI typestr for structured dtypes is |V<n>; field info is lost
+        assert c.dtype == numpy.dtype(dtype.str)
+        assert c.shape == (3,)
+
+    @pytest.mark.parametrize('ver', range(max_cuda_array_interface_version+1))
+    @pytest.mark.parametrize('strides', [False, None, True])
+    def test_datetime64_view(self, ver, strides):
+        dtype = numpy.dtype('datetime64[ns]')
+        a = cupy.zeros(4, dtype='i8')
+        b = DummyObjectWithCudaArrayInterface(
+            (a.shape, a.strides, dtype.str, dtype.descr, a.data.ptr),
+            ver, strides)
+        c = cupy.asarray(b)
+        # Should be able to view back as int64
+        d = c.view('i8')
+        assert d.dtype == numpy.dtype('i8')
+
+
 @testing.parameterize(*testing.product({
     'ver': tuple(range(1, max_cuda_array_interface_version+1)),
     'strides': (False, None, True),
