@@ -136,7 +136,7 @@ function Main {
     RunOrDie python -c "import cupy; print(cupy); cupy.show_config()"
     echo "Running test..."
     # TODO(leofang): allow larger/adjustable timeout?
-    $test_retval = RunWithTimeout -timeout 18000 -output ../cupy_test_log.txt -- python -m pytest -rfEX @pytest_opts cupy_tests/core_tests/test_elementwise.py
+    $test_retval = RunWithTimeout -timeout 18000 -output ../cupy_test_log.txt -- python -m pytest -rfEXA -s @pytest_opts cupy_tests/core_tests/test_elementwise.py
     popd
 
     if ($is_pull_request) {
