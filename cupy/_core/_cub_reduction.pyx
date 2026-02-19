@@ -52,16 +52,13 @@ cdef function.Function _create_cub_reduction_function(
         options += ('-I' + _rocm_path + '/include', '-O2')
         backend = 'nvcc'  # this is confusing...
 
-    # We rely on the type traits in cccl to avoid using jitify
-    jitify = False
-
     # TODO(leofang): try splitting the for-loop into full tiles and partial
     # tiles to utilize LoadDirectBlockedVectorized? See, for example,
     # https://github.com/NVlabs/cub/blob/c3cceac115c072fb63df1836ff46d8c60d9eb304/cub/agent/agent_reduce.cuh#L311-L346
 
     cdef str module_code = _get_cub_header_include()
     module_code += '''
-${type_preamble}
+${type_headers}${type_preamble}
 ${preamble}
 
 typedef ${reduce_type} _type_reduce;
@@ -208,18 +205,27 @@ __global__ void ${name}(${params}) {
   }
 }
 '''
+    type_headers = set()
+    params = _get_cub_kernel_params(params, arginfos, type_headers)
+    type_preambles = type_map.get_typedef_code(type_headers)
+
+    if not type_headers:
+        type_headers = ''
+    else:
+        type_headers = '\n'.join(sorted(type_headers)) + "\n\n"
 
     module_code = string.Template(module_code).substitute(
         name=name,
         block_size=block_size,
         items_per_thread=items_per_thread,
         reduce_type=reduce_type,
-        params=_get_cub_kernel_params(params, arginfos),
+        params=params,
+        type_headers=type_headers,
         identity=identity,
         reduce_expr=reduce_expr,
         pre_map_expr=pre_map_expr,
         post_map_expr=post_map_expr,
-        type_preamble=type_map.get_typedef_code(),
+        type_preamble=type_preambles,
         preamble=preamble)
 
     # To specify the backend, we have to explicitly spell out the default
@@ -229,7 +235,7 @@ __global__ void ${name}(${params}) {
         module_code, options, arch=None, cachd_dir=None,
         prepend_cupy_headers=True, backend=backend, translate_cucomplex=False,
         enable_cooperative_groups=False, name_expressions=None,
-        log_stream=None, jitify=jitify)
+        log_stream=None, jitify=False)
     return module.get_function(name)
 
 
@@ -250,7 +256,8 @@ def _SimpleCubReductionKernel_get_cached_function(
 
 
 cdef str _cub_path = _environment.get_cub_path()
-cdef str _nvcc_path = _environment.get_nvcc_path()
+cdef str _nvcc_path = (
+    _environment.get_nvcc_path() if not runtime._is_hip_environment else None)
 cdef str _rocm_path = _environment.get_rocm_path()
 cdef str _hipcc_path = _environment.get_hipcc_path()
 cdef str _cub_header = None
@@ -352,7 +359,7 @@ cpdef inline tuple _can_use_cub_block_reduction(
 
 
 # similar to cupy._core._kernel._get_kernel_params()
-cdef str _get_cub_kernel_params(tuple params, tuple arginfos):
+cdef str _get_cub_kernel_params(tuple params, tuple arginfos, type_headers):
     cdef _kernel.ParameterInfo p
     cdef _kernel._ArgInfo arginfo
     cdef lst = []
@@ -366,7 +373,7 @@ cdef str _get_cub_kernel_params(tuple params, tuple arginfos):
             c_type = 'const void*' if p.is_const else 'void*'
         else:
             # for segment size and array size
-            c_type = arginfo.get_param_c_type(p)
+            c_type = arginfo.get_param_c_type(p, type_headers)
         lst.append('{} {}'.format(c_type, c_name))
     return ', '.join(lst)
 

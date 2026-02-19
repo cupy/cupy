@@ -41,6 +41,11 @@ the type of scalars:
 
 Please refer to the NumPy documentation and NEP 50 for additional information.
 
+Minimal support for bfloat16
+----------------------------
+
+CuPy now has initial support for bfloat16 via ``ml_dtypes.bfloat16``. Most functionality in CuPy should work, although there are still some smaller gaps, especially in ``cupyx``. Note that bfloat16 support requires NumPy 2.1.2+ and using bfloat16 may lead to compilation issues with CUDA 12.1.
+
 Minimal support for structured dtypes
 -------------------------------------
 
@@ -102,6 +107,24 @@ Change in :func:`cupy.cuda.nccl.get_unique_id` Return Type
 This change simplifies the API and avoids platform-specific issues related to char signedness.
 Users who were previously unpacking the tuple should update their code to work with bytes.
 
+Change in :func:`cupy.random.choice` Return Type
+------------------------------------------------
+
+Passing an `int` to :func:`cupy.random.choice` along with ``size`` and ``replace=False`` is now made a lot faster and more consistent. It always returns an array of dtype ``int64`` on all platforms.
+
+Tighter checks for unsupported dtypes
+-------------------------------------
+
+CuPy now validates dtypes more strictly at array creation time, which may lead to errors such as::
+
+    >>> cp.empty(3, dtype="datetime64[ns]")
+    ValueError: Unsupported dtype datetime64[ns]
+
+This rejects the creation of new arrays with dtypes that CuPy does not support to avoid harder to
+understand errors later. As a work-around, the unstructured void dtypes ``V<itemsize>``
+such as ``"V8"`` are still accepted and ``arr.view()`` can also still be used in an unsafe way.
+We expect future CuPy versions will support some kernels for ``V<itemsize>`` dtypes (mainly copies).
+
 Requirement Changes
 -------------------
 
@@ -120,12 +143,13 @@ Other API Changes
 * APIs removed in NumPy v2 are intentionally kept available in CuPy v14 for smooth transition. These functions are considered as deprecated, and will be removed in CuPy v15.
 * ``cupyx.scipy.linalg.{tri,tril,triu}`` APIs were removed from CuPy to follow the latest SciPy’s specification. Use ``cupy.{tri,tril.triu}`` instead.
 * Legacy DLPack APIs (``cupy.toDlpack`` and ``cupy.fromDlpack``) are now marked deprecated. Use ``cupy.from_dlpack`` instead.
-* ``cupy.random.choice`` has been updated to provide optimal performance. Due to this change, the function may return different results from CuPy v13.
 * The NumPy fallback mode (``cupyx.fallback_mode``) has been removed.
 * ``cupyx.tools.install_library`` tool has been deprecated and will be removed in a future release. See :doc:`install` for the instructions on setting up cuTENSOR/NCCL for CuPy using Pip or Conda.
 * :mod:`cupy.testing` module has been updated to follow NumPy's testing API changes. Some testing utilities may have different behavior or signatures.
 * ``cupy.fft.config`` is now thread and context safe. However, this also means that config is not inherited by threads (using ``contextvars``, so Python is likely to change this for newly created threads in the future).
 * ``cupy.fft.config.enable_nd_planning`` has been deprecated and will be removed in a future release (planning will always be enabled).
+* Jitify support is deprecated and will be removed in a future release. Avoid passing ``jitify=True`` to or setting ``-DCUPY_USE_JITIFY`` (which is an undocumented CuPy internal macro) in :class:`~cupy.RawModule` or :class:`~cupy.RawKernel`. Most things should just work today.
+* The experimental namespace ``cupy.array_api`` is now removed.
 
 Update of Docker Images
 -----------------------
@@ -383,7 +407,7 @@ For example, the following code raises an error in CuPy v9 or earlier:
            cupy.arange(10)  # -> CUDA_ERROR_INVALID_HANDLE: invalid resource handle
 
 CuPy v10 manages the current stream per-device, thus eliminating the need of switching the stream every time the active device is changed.
-When using CuPy v10, the above example behaves differently because whenever a stream is created, it is automatically associated with the current device and will be ignored when switching devices. 
+When using CuPy v10, the above example behaves differently because whenever a stream is created, it is automatically associated with the current device and will be ignored when switching devices.
 In early versions, trying to use `s0` in device 1 raises an error because `s0` is associated with device 0. However, in v10, this `s0` is ignored and the default stream for device 1 will be used instead.
 
 Current stream set via ``use()`` will not be restored when exiting ``with`` block
@@ -477,7 +501,7 @@ Python 3.5 is no longer supported in CuPy v9.
 NCCL and cuDNN No Longer Included in Wheels
 -------------------------------------------
 
-NCCL and cuDNN shared libraries are no longer included in wheels (see `#4850 <https://github.com/cupy/cupy/issues/4850>`_ for discussions). 
+NCCL and cuDNN shared libraries are no longer included in wheels (see `#4850 <https://github.com/cupy/cupy/issues/4850>`_ for discussions).
 You can manually install them after installing wheel if you don't have a previous installation; see :doc:`install` for details.
 
 cuTENSOR Enabled in Wheels

@@ -1081,7 +1081,7 @@ cdef class _FeistelBijectionParam(CPointer):
     cdef _FeistelBijection struct
 
     def __init__(self):
-        self.ptr = &self.struct
+        self.ptr = <intptr_t>(&self.struct)
 
 
 cdef object _feistel_bijection_with_cutoff_kernel = None

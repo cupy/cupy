@@ -17,6 +17,7 @@
   numpy: "2.0"
   scipy: "1.14"
   optuna: "3"
+  ml_dtypes: "0.5"
   mpi4py: null
   cython: "3.1"
   cuda-python: null
@@ -46,6 +47,7 @@
   numpy: "2.1"
   scipy: "1.14"
   optuna: "3"
+  ml_dtypes: "0.5"
   mpi4py: null
   cython: "3.1"
   cuda-python: null
@@ -57,7 +59,7 @@
   _inherits: "cupy.linux.cuda121"
   tags: ["@push", "full", "multi", "linux", "cuda121"]
   target: "cuda121.multi"
-  mpi4py: "3"
+  mpi4py: "4"
   test: "unit-multi"
 
 # CUDA 12.2 | Linux
@@ -75,6 +77,7 @@
   numpy: "2.0"
   scipy: "1.16"
   optuna: "3"
+  ml_dtypes: "0.5"
   mpi4py: null
   cython: "3.1"
   cuda-python: null
@@ -86,7 +89,7 @@
   _inherits: "cupy.linux.cuda122"
   tags: ["@push", "full", "multi", "linux", "cuda122"]
   target: "cuda122.multi"
-  mpi4py: "3"
+  mpi4py: "4"
   test: "unit-multi"
 
 # CUDA 12.3 | Linux
@@ -104,6 +107,7 @@
   numpy: "2.1"
   scipy: "1.16"
   optuna: "3"
+  ml_dtypes: "0.5"
   mpi4py: null
   cython: "3.1"
   cuda-python: null
@@ -115,7 +119,7 @@
   _inherits: "cupy.linux.cuda123"
   tags: ["@push", "full", "multi", "linux", "cuda123"]
   target: "cuda123.multi"
-  mpi4py: "3"
+  mpi4py: "4"
   test: "unit-multi"
 
 # CUDA 12.4 | Linux
@@ -133,6 +137,7 @@
   numpy: "2.2"
   scipy: "1.16"
   optuna: "3"
+  ml_dtypes: null
   mpi4py: null
   cython: "3.1"
   cuda-python: null
@@ -144,7 +149,7 @@
   _inherits: "cupy.linux.cuda124"
   tags: ["@push", "full", "multi", "linux", "cuda124"]
   target: "cuda124.multi"
-  mpi4py: "3"
+  mpi4py: "4"
   test: "unit-multi"
 
 # CUDA 12.5 | Linux
@@ -162,6 +167,7 @@
   numpy: "2.0"
   scipy: "1.15"
   optuna: "3"
+  ml_dtypes: "0.5"
   mpi4py: null
   cython: "3.1"
   cuda-python: null
@@ -173,7 +179,7 @@
   _inherits: "cupy.linux.cuda125"
   tags: ["@push", "full", "multi", "linux", "cuda125"]
   target: "cuda125.multi"
-  mpi4py: "3"
+  mpi4py: "4"
   test: "unit-multi"
 
 # CUDA 12.6 | Linux
@@ -191,6 +197,7 @@
   numpy: "2.2"
   scipy: "1.14"
   optuna: "4"
+  ml_dtypes: "0.5"
   mpi4py: null
   cython: "3.1"
   cuda-python: null
@@ -220,6 +227,7 @@
   numpy: "2.3"
   scipy: "1.15"
   optuna: "4"
+  ml_dtypes: "0.5"
   mpi4py: null
   cython: "3.1"
   cuda-python: null
@@ -231,7 +239,7 @@
   _inherits: "cupy.linux.cuda128"
   tags: ["@push", "full", "multi", "linux", "cuda128"]
   target: "cuda128.multi"
-  mpi4py: "3"
+  mpi4py: "4"
   test: "unit-multi"
 
 # CUDA 12.9 | Linux
@@ -249,6 +257,7 @@
   numpy: "2.3"
   scipy: "1.16"
   optuna: "4"
+  ml_dtypes: "0.5"
   mpi4py: null
   cython: "3.1"
   cuda-python: null
@@ -260,7 +269,7 @@
   _inherits: "cupy.linux.cuda129"
   tags: ["@push", "full", "mini", "multi", "linux", "cuda129"]
   target: "cuda129.multi"
-  mpi4py: "3"
+  mpi4py: "4"
   test: "unit-multi"
 
 # CUDA 13.0 | Linux
@@ -278,6 +287,7 @@
   numpy: "2.4"
   scipy: "1.16"
   optuna: "4"
+  ml_dtypes: "0.5"
   mpi4py: null
   cython: "3.1"
   cuda-python: null
@@ -308,6 +318,7 @@
   numpy: "2.3"
   scipy: "1.16"
   optuna: "4"
+  ml_dtypes: "0.5"
   mpi4py: null
   cython: "3.1"
   cuda-python: null
@@ -333,17 +344,17 @@
 # ROCm (Linux)
 ###############################################################################
 
-# ROCm 7.0 | Linux
+# ROCm 7.1 | Linux
 # The lowest ROCm version matrix is intended to cover the lowest supported combination.
 # The latest ROCm version matrix is intended to cover the highest supported combination.
-- project: "cupy.linux.rocm-7-0"
-  _url: "https://jenkins.preferred.jp/job/chainer/job/cupy_main/TEST=rocm-7-0,label=mnj-mi50/"
+- project: "cupy.linux.rocm-7-1"
+  _url: "https://jenkins.preferred.jp/job/chainer/job/cupy_main/TEST=rocm-7-1,label=mnj-mi50/"
   tags: null  # self-hosted
-  target: "rocm-7-0"
+  target: "rocm-7-1"
   system: "linux"
   os: "ubuntu:22.04"
   cuda: null
-  rocm: '7.0'
+  rocm: '7.1'
   nccl: null
   cutensor: null
   cusparselt: null
@@ -352,6 +363,7 @@
   numpy: "2.3"
   scipy: "1.16"
   optuna: "3"
+  ml_dtypes: "0.5"
   mpi4py: null
   cython: "3.1"
   cuda-python: null
@@ -377,6 +389,7 @@
   numpy: "2.3"
   scipy: "1.16"
   optuna: "3"
+  ml_dtypes: "0.5"
   mpi4py: null
   cython: "3.1"
   cuda-python: null
@@ -406,6 +419,7 @@
   numpy: "2.3"
   scipy: "1.16"
   optuna: "3"
+  ml_dtypes: "0.5"
   mpi4py: null
   cython: "3.1"
   cuda-python: null
@@ -432,6 +446,7 @@
   numpy: "pre"
   scipy: "pre"
   optuna: "pre"
+  ml_dtypes: "pre"
   mpi4py: null
   cython: "3.1"
   cuda-python: null
@@ -458,6 +473,7 @@
   scipy: "1.16"
   optuna: "4"
   mpi4py: null
+  ml_dtypes: null
   cython: "3.1"
   cuda-python: "12"
   env:CUPY_ACCELERATORS: "cutensor,cub"

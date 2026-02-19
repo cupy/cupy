@@ -28,7 +28,7 @@ RUN pyenv install 3.11.13 && \
     pyenv global 3.11.13 && \
     pip install -U setuptools pip wheel
 
-RUN pip install -U 'numpy==2.0.*' 'scipy==1.16.*' 'optuna==3.*' 'mpi4py==3.*' 'cython==3.1.*'
+RUN pip install -U 'numpy==2.0.*' 'scipy==1.16.*' 'optuna==3.*' 'mpi4py==4.*' 'ml_dtypes==0.5.*' 'cython==3.1.*'
 RUN pip uninstall -y cuda-python && \
     pip check
 
