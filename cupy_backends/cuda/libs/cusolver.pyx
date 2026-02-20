@@ -2818,10 +2818,9 @@ cpdef int xgesvdjGetSweeps(intptr_t handle, intptr_t info):
     check_status(status)
     return executed_sweeps
 
-cpdef int sgesvdj_bufferSize(
-        intptr_t handle, int jobz, int econ, int m, int n,
-        intptr_t A, int lda, intptr_t S, intptr_t U,
-        int ldu, intptr_t V, int ldv, intptr_t params):
+cpdef int sgesvdj_bufferSize(intptr_t handle, int jobz, int econ, int m, int n,
+                             intptr_t A, int lda, intptr_t S, intptr_t U,
+                             int ldu, intptr_t V, int ldv, intptr_t params):
     cdef int lwork, status
     _setStream(handle)
     with nogil:
@@ -2832,10 +2831,9 @@ cpdef int sgesvdj_bufferSize(
     check_status(status)
     return lwork
 
-cpdef int dgesvdj_bufferSize(
-        intptr_t handle, int jobz, int econ, int m, int n,
-        intptr_t A, int lda, intptr_t S, intptr_t U,
-        int ldu, intptr_t V, int ldv, intptr_t params):
+cpdef int dgesvdj_bufferSize(intptr_t handle, int jobz, int econ, int m, int n,
+                             intptr_t A, int lda, intptr_t S, intptr_t U,
+                             int ldu, intptr_t V, int ldv, intptr_t params):
     cdef int lwork, status
     _setStream(handle)
     with nogil:
@@ -2846,10 +2844,9 @@ cpdef int dgesvdj_bufferSize(
     check_status(status)
     return lwork
 
-cpdef int cgesvdj_bufferSize(
-        intptr_t handle, int jobz, int econ, int m, int n,
-        intptr_t A, int lda, intptr_t S, intptr_t U,
-        int ldu, intptr_t V, int ldv, intptr_t params):
+cpdef int cgesvdj_bufferSize(intptr_t handle, int jobz, int econ, int m, int n,
+                             intptr_t A, int lda, intptr_t S, intptr_t U,
+                             int ldu, intptr_t V, int ldv, intptr_t params):
     cdef int lwork, status
     _setStream(handle)
     with nogil:
@@ -2860,10 +2857,9 @@ cpdef int cgesvdj_bufferSize(
     check_status(status)
     return lwork
 
-cpdef int zgesvdj_bufferSize(
-        intptr_t handle, int jobz, int econ, int m, int n,
-        intptr_t A, int lda, intptr_t S, intptr_t U,
-        int ldu, intptr_t V, int ldv, intptr_t params):
+cpdef int zgesvdj_bufferSize(intptr_t handle, int jobz, int econ, int m, int n,
+                             intptr_t A, int lda, intptr_t S, intptr_t U,
+                             int ldu, intptr_t V, int ldv, intptr_t params):
     cdef int lwork, status
     _setStream(handle)
     with nogil:

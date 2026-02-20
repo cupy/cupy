@@ -473,22 +473,18 @@ cpdef xgesvdjSetSortEig(intptr_t info, int sort_svd)
 cpdef double xgesvdjGetResidual(intptr_t handle, intptr_t info)
 cpdef int xgesvdjGetSweeps(intptr_t handle, intptr_t info)
 
-cpdef int sgesvdj_bufferSize(
-        intptr_t handle, int jobz, int econ, int m, int n,
-        intptr_t A, int lda, intptr_t S, intptr_t U,
-        int ldu, intptr_t V, int ldv, intptr_t params)
-cpdef int dgesvdj_bufferSize(
-        intptr_t handle, int jobz, int econ, int m, int n,
-        intptr_t A, int lda, intptr_t S, intptr_t U,
-        int ldu, intptr_t V, int ldv, intptr_t params)
-cpdef int cgesvdj_bufferSize(
-        intptr_t handle, int jobz, int econ, int m, int n,
-        intptr_t A, int lda, intptr_t S, intptr_t U,
-        int ldu, intptr_t V, int ldv, intptr_t params)
-cpdef int zgesvdj_bufferSize(
-        intptr_t handle, int jobz, int econ, int m, int n,
-        intptr_t A, int lda, intptr_t S, intptr_t U,
-        int ldu, intptr_t V, int ldv, intptr_t params)
+cpdef int sgesvdj_bufferSize(intptr_t handle, int jobz, int econ, int m, int n,
+                             intptr_t A, int lda, intptr_t S, intptr_t U,
+                             int ldu, intptr_t V, int ldv, intptr_t params)
+cpdef int dgesvdj_bufferSize(intptr_t handle, int jobz, int econ, int m, int n,
+                             intptr_t A, int lda, intptr_t S, intptr_t U,
+                             int ldu, intptr_t V, int ldv, intptr_t params)
+cpdef int cgesvdj_bufferSize(intptr_t handle, int jobz, int econ, int m, int n,
+                             intptr_t A, int lda, intptr_t S, intptr_t U,
+                             int ldu, intptr_t V, int ldv, intptr_t params)
+cpdef int zgesvdj_bufferSize(intptr_t handle, int jobz, int econ, int m, int n,
+                             intptr_t A, int lda, intptr_t S, intptr_t U,
+                             int ldu, intptr_t V, int ldv, intptr_t params)
 
 cpdef sgesvdj(intptr_t handle, int jobz, int econ, int m, int n, intptr_t A,
               int lda, intptr_t S, intptr_t U, int ldu, intptr_t V, int ldv,
