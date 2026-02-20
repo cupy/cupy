@@ -13,7 +13,7 @@ from cupy.exceptions import AxisError
 
 @cython.profile(False)
 cpdef inline Py_ssize_t prod(const vector.vector[Py_ssize_t]& args) noexcept:
-    cdef Py_ssize_t n = 1
+    cdef Py_ssize_t i, n = 1
     for i in range(args.size()):
         n *= args[i]
     return n

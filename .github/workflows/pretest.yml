@@ -85,6 +85,7 @@ jobs:
 
     - name: Try to check for `noexcept` functions that may raise errors
       # We ignore __dealloc__ or the pycapsule_deleter as it is hard to avoid there.
+      # Cython does give a warning with all warnings enabled (but those are many).
       run: |
         result=$(grep -r 'Pyx_WriteUnraisable' --include='*.cpp' . \
                 | grep -v -E '(__dealloc__|const char \*name|pycapsule_deleter|cupy\.cuda\.thrust\.cupy_malloc)' || true)
