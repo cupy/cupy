@@ -169,7 +169,7 @@ main() {
       fi
 
       if [[ ${stage} = test || ${stage} = benchmark ]]; then
-        stdbuf -oL -eL "${docker_args[@]}" --volume="${repo_root}:/src:ro" --workdir "/src" \
+        "${docker_args[@]}" --volume="${repo_root}:/src:ro" --workdir "/src" \
             "${docker_image}" timeout 8h bash "/src/.pfnci/linux/tests/${TARGET}.sh" &
         docker_pid=$!
         trap "kill -KILL ${docker_pid}; docker kill '${container_name}' & wait; exit 1" TERM INT HUP
