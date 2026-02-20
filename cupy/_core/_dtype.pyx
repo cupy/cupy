@@ -276,7 +276,7 @@ def make_gpu_aligned_dtype(
                 subalignment = dtype.alignment
                 if dtype.metadata:
                     subalignment = subdtype.metadata.get(
-                        "__cupy_alignment__", subalignment)
+                        "__cuda_alignment__", subalignment)
 
             if curr_offset % subalignment != 0:
                 curr_offset += subalignment - (curr_offset % subalignment)
@@ -295,7 +295,7 @@ def make_gpu_aligned_dtype(
     if alignment != -1:
         if alignment >= final_alignment:
             final_alignment = alignment
-            metadata = {"metadata": {"__cupy_alignment__": alignment}}
+            metadata = {"metadata": {"__cuda_alignment__": alignment}}
         else:
             raise ValueError(
                 f"make_gpu_aligned_dtype(): given alignment={alignment} "

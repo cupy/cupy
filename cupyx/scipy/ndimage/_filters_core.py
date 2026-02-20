@@ -191,13 +191,13 @@ if runtime.is_hip:
     includes = r'''
 // workaround for HIP: line begins with #include
 #include <cupy/math_constants.h>
-#include <cupy/float16.cuh>  // TODO(seberg): Add this via type_headers?
+#include <cupy/float16.cuh>  // TODO(seberg): Add this via type_decls?
 #include <type_traits>
 '''
 else:
     includes = r'''
 #include <cupy/cuda_workaround.h>  // provide C++ std:: coverage
-#include <cupy/float16.cuh>  // TODO(seberg): Add this via type_headers?
+#include <cupy/float16.cuh>  // TODO(seberg): Add this via type_decls?
 #include <cupy/math_constants.h>
 
 template<> struct std::is_floating_point<float16> : std::true_type {};
