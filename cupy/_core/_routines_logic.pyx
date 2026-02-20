@@ -70,7 +70,7 @@ def struct_compare_resolution(op, in_dtypes, out_dtypes):
             "dtype.  I.e. `np.result_type(arr1, arr2)` must be defined.")
 
     # Ensure the comparison dtype actually has sufficient alignment.
-    cmp_dtype = cupy.make_gpu_aligned_dtype(cmp_dtype)
+    cmp_dtype = cupy.make_aligned_dtype(cmp_dtype)
 
     out_dtypes = (numpy.dtype(bool),)
     return (cmp_dtype, cmp_dtype), out_dtypes
