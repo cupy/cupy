@@ -31,7 +31,7 @@ function UploadCache([String]$gcs_dir, [String]$cupy_kernel_cache_file) {
     # Note: --expiry cannot be used as access time is not updated on Windows.
     # TODO: Also clean up ~/.cupy/callback_cache/*.ltoir
     echo "Trimming kernel cache..."
-    RunOrDie python .pfnci\trim_cupy_kernel_cache.py --max-size 4831838208 --rm
+    RunOrDie python .pfnci\trim_cupy_kernel_cache.py --max-size 10737418240 --rm
 
     pushd $Env:USERPROFILE
     # -mx=0 ... no compression
