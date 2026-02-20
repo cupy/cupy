@@ -133,7 +133,7 @@ class TestComparison:
         assert cmp_dtype.itemsize == 24
         # However, this isn't aligned for the GPU which wants itemsize
         # alignment for complex.
-        assert cupy.make_gpu_aligned_dtype(cmp_dtype).itemsize == 32
+        assert cupy.make_aligned_dtype(cmp_dtype).itemsize == 32
         res = op(a, b)
         assert numpy.array_equal(res.get(), op(a.get(), b.get()))
 

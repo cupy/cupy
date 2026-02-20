@@ -172,7 +172,7 @@ def _build_struct_typename(dtype, type_decls):
     (we consider the maximum alignment of any of the fields here).
     """
     # The alignment must be too small pretty much, but use it anyway.
-    # If `make_gpu_aligned_dtype` was used may use __cuda_alignment__.
+    # If `make_aligned_dtype` was used may use __cuda_alignment__.
     alignment = dtype.alignment
     if dtype.metadata:
         # If manually overridden, use that alignment:
@@ -214,7 +214,7 @@ def _build_struct_typename(dtype, type_decls):
                              f"aligned to {alignment} in dtype {dtype}. "
                              f"This is not supported by CuPy please ensure "
                              "the structure is aligned. You can do so with "
-                             "the `make_gpu_aligned_dtype()` helper.")
+                             "the `make_aligned_dtype()` helper.")
 
         if not (0 <= (offset - curr_start) < subalignment):
             # Addign `alignas({subalignment})` would not align with the
@@ -242,7 +242,7 @@ def _build_struct_typename(dtype, type_decls):
             f"Itemsize {dtype.itemsize} is not a multiple of alignment "
             f"{alignment} for dtype {dtype} and kernel launches are not "
             "supported. You can ensure compatibility with the "
-            "`make_gpu_aligned_dtype()` helper (or try `align=True`).")
+            "`make_aligned_dtype()` helper (or try `align=True`).")
 
     struct_fields = "\n".join(struct_fields)
     hash_ = hashlib.sha1(
