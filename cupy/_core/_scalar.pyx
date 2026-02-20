@@ -137,7 +137,7 @@ cdef dict _cuda_alignments = {}
 cdef object _alignment_kernel = None
 
 
-cdef Py_ssize_t get_cuda_alignment(dtype) except -1:
+cdef Py_ssize_t get_cuda_alignment(cnp.dtype dtype) except -1:
     """Get the alignment of a given dtype within the kernel. This currently
     uses an ElementwiseKernel to compile and get the actual alignment.
     (Although, normally that should just be the itemsize.)
@@ -148,13 +148,16 @@ cdef Py_ssize_t get_cuda_alignment(dtype) except -1:
     if alignment is not None:
         return alignment
 
-    if dtype.num == cnp.NPY_VOID:
+    if dtype.type_num == cnp.NPY_VOID:
         # It is unclear that this would be useful. Effectively, we would find
         # out the right alignment already as part of `get_typename` before we
         # launch the kernel.
-        raise NotImplementedError(
-            f"get_cuda_alignment() only supports structured dtypes, "
-            f"got {dtype}")
+        if (cnp.PyDataType_HASFIELDS(dtype)
+                or cnp.PyDataType_HASSUBARRAY(dtype)):
+            # Subarray would be obvious, but we don't suppor them yet.
+            raise NotImplementedError(
+                f"get_cuda_alignment() only supports unstructured dtypes, "
+                f"got {dtype}")
 
     if _alignment_kernel is None:
         _alignment_kernel = cupy.ElementwiseKernel(
