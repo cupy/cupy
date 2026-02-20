@@ -8,7 +8,7 @@ RUN apt-get update -y && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends python3.12 && \
     rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
 
-RUN python3 -m pip install --no-cache-dir --break-system-packages "cupy-rocm-7-0[all]==14.0.0"
+RUN python3 -m pip install --no-cache-dir --break-system-packages "cupy-rocm-7-0[all]==14.0.1"
 
 ENV LD_LIBRARY_PATH=/opt/rocm/lib:$LD_LIBRARY_PATH
 RUN python3 -c "import cupy; cupy.show_config()"

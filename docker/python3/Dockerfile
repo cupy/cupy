@@ -8,4 +8,4 @@ RUN apt-get update -y && \
     python3-setuptools && \
     rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
 
-RUN pip3 install --no-cache-dir --break-system-packages "cupy-cuda13x[all]==14.0.0"
+RUN pip3 install --no-cache-dir --break-system-packages "cupy-cuda13x[all]==14.0.1"
