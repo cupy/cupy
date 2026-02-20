@@ -192,7 +192,7 @@ class NDInterpolatorBase:
 LINEAR_INTERP_ND_DEF = r"""
 #include <cupy/complex.cuh>
 #include <cupy/math_constants.h>
-#include <cupy/float16.cuh>  // TODO(seberg): Add this via type_headers?
+#include <cupy/float16.cuh>  // TODO(seberg): Add this via type_decls?
 
 template<typename T>
 __global__ void evaluate_linear_nd_interp(

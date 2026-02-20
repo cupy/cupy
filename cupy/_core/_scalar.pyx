@@ -2,6 +2,7 @@ from libc.stdint cimport intptr_t
 
 cimport numpy as cnp
 
+import graphlib
 import hashlib
 import textwrap
 
@@ -41,12 +42,65 @@ cdef object _numpy_float64 = numpy.dtype(numpy.float64)
 cdef object _numpy_complex128 = numpy.dtype(numpy.complex128)
 
 
-cpdef str get_typename(dtype, type_headers=None):
+cdef _flatten_type_decls(type_decls, dict declarations):
+    cdef str decl
+    cdef frozenset decl_deps
+    cdef set direct_deps = set()
+
+    # NOTE(seberg): It would be strange if two entries weren't identical
+    # in what they depend on. So we don't guard against it here.
+    for decl in type_decls:
+        if isinstance(decl, str):
+            direct_deps.add(decl)
+            declarations[decl] = ()
+        elif isinstance(decl, tuple):
+            decl, decl_deps = decl
+
+            direct_deps.add(decl)
+            declarations[decl] = _flatten_type_decls(decl_deps, declarations)
+        else:
+            raise TypeError("type_decls must be str or (str, frozenset)")
+
+    return direct_deps
+
+
+cpdef str format_type_decls(set type_decls):
+    """
+    When using `type_decls` to support e.g. header specific types and
+    structured dtype declarations, we would like the result to be stable
+    so e.g. caching cannot be disturbed.
+    This function does the right formatting/flattening and pairs with
+    `get_typename`.  It returns either an empty string or a correct code
+    block (with two trailing newlines to separate it from what follows).
+    """
+    if not type_decls:
+        return ""
+
+    # Formatting the is unfortunately not as simple as `sorted()` as it can
+    # be nested, etc.
+    cdef dict declarations = {}
+    # Recursively flatten the type declarations into a dict
+    _flatten_type_decls(type_decls, declarations)
+    # Sort the dictionary by it's keys (to achieve a stable order)
+    declarations = dict(sorted(declarations.items()))
+
+    ts = graphlib.TopologicalSorter(declarations)
+    return "\n".join(ts.static_order()) + '\n\n'
+
+
+cpdef str get_typename(dtype, type_decls=None):
     """Fetch the C type name. Note that some names may require
     additionally headers to be included in order to be available.
 
-    If not None, `type_headers` must be a set and the dtype preamble
+    If not None, `type_decls` must be a set and the dtype preamble
     (i.e. this should be required headers) will be inserted.
+    A preamble is either a string or a tuple of (string, frozenset)
+    where the frozenset is also a set of `type_decls` (the the first
+    depends on).
+
+    If you just have a header, order should normally not matter so you
+    can just pass a string. It matters for structured dtypes that
+    need their field declaration to come first.
     """
     if dtype is None:
         raise ValueError('dtype is None')
@@ -59,15 +113,15 @@ cpdef str get_typename(dtype, type_headers=None):
 
     if info is not None:
         name, header = info
-        if type_headers is not None and header is not None:
-            type_headers.add(header)
+        if type_decls is not None and header is not None:
+            type_decls.add(header)
         return name
     elif isinstance(dtype, numpy.dtype):
         if dtype.kind == "V" and dtype.fields is not None:
-            if type_headers is not None:
-                type_headers.add('#include "cupy/structview.cuh"')
+            if type_decls is not None:
+                type_decls.add('#include "cupy/structview.cuh"')
             # NOTE: Caching this may not be trivial since/if we use metadata.
-            name, *_ = _build_struct_typename(dtype, type_headers)
+            name, *_ = _build_struct_typename(dtype, type_decls)
             return name
 
     raise ValueError(f"Unable to find C++ type for dtype {dtype}")
@@ -107,21 +161,23 @@ cdef Py_ssize_t get_cuda_alignment(dtype) except -1:
     return alignment
 
 
-def _build_struct_typename(dtype, type_headers):
+def _build_struct_typename(dtype, type_decls):
     """Builds the struct typename and additionally returns the alignment
     (we consider the maximum alignment of any of the fields here).
     """
     # The alignment must be too small pretty much, but use it anyway.
-    # If `make_gpu_aligned_dtype` was used may use __cupy_alignment__.
+    # If `make_gpu_aligned_dtype` was used may use __cuda_alignment__.
     alignment = dtype.alignment
     if dtype.metadata:
         # If manually overridden, use that alignment:
-        alignment = dtype.metadata.get("__cupy_alignment__", alignment)
+        alignment = dtype.metadata.get("__cuda_alignment__", alignment)
     curr_start = 0
     offsets = []
     struct_fields = []
     fields = []
     struct_compatible = True
+
+    cdef set subtype_decls = set()
 
     for name, (subdtype, offset, *_) in dtype.fields.items():
         # The fields tupe can contain a 4th title, we ignore it.
@@ -131,14 +187,14 @@ def _build_struct_typename(dtype, type_headers):
         # alignment constraints (making this a trivial recursion)
         if subdtype.num == cnp.NPY_VOID and subdtype.fields is not None:
             subname, struct_name, subalignment = _build_struct_typename(
-                subdtype, type_headers)
+                subdtype, subtype_decls)
         else:
             subalignment = get_cuda_alignment(subdtype)
-            subname = struct_name = get_typename(subdtype, type_headers)
+            subname = struct_name = get_typename(subdtype, subtype_decls)
             if subdtype.metadata:
                 # If manually overridden, use that alignment:
                 subalignment = subdtype.metadata.get(
-                    "__cupy_alignment__", subalignment)
+                    "__cuda_alignment__", subalignment)
 
         assert (subalignment - 1) & subalignment == 0
         alignment = max(alignment, subalignment)
@@ -173,9 +229,9 @@ def _build_struct_typename(dtype, type_headers):
             f"  char _data[{dtype.itemsize}];"]
 
     struct_fields = "\n".join(struct_fields)
-    hash = hashlib.sha1(
+    hash_ = hashlib.sha1(
         struct_fields.encode("utf8"), usedforsecurity=False).hexdigest()
-    struct_name = "struct_" + hash
+    struct_name = "struct_" + hash_
 
     # NOTE: We add this to the "headers", but the headers are always sorted
     # before use and actual includes start with `#` and go first. We must not
@@ -187,8 +243,8 @@ def _build_struct_typename(dtype, type_headers):
         {struct_fields}
         }};
     """).lstrip("\n")  # for sorting, don't start with \n
-    if type_headers is not None:
-        type_headers.add(definition)
+    if type_decls is not None:
+        type_decls.add((definition, frozenset(subtype_decls)))
 
     fields = ', '.join(fields)
     name = f"sv::StructView<{struct_name}, {dtype.itemsize}, {fields}>"

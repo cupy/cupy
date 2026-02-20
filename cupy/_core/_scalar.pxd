@@ -25,7 +25,9 @@ cdef class CScalar(CPointer):
     cpdef get_numpy_type(self)
 
 
-cpdef str get_typename(dtype, type_headers=*)
+cpdef str format_type_decls(set type_decls)
+
+cpdef str get_typename(dtype, type_decls=*)
 cdef Py_ssize_t get_cuda_alignment(dtype) except -1
 
 cdef set scalar_type_set
