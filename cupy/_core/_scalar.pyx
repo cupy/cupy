@@ -43,7 +43,7 @@ cdef object _numpy_complex128 = numpy.dtype(numpy.complex128)
 
 
 cdef _flatten_type_decls(type_decls, dict declarations):
-    cdef str decl
+    cdef decl
     cdef frozenset decl_deps
     cdef set direct_deps = set()
 
@@ -102,8 +102,9 @@ cpdef str get_typename(dtype, type_decls=None):
     can just pass a string. It matters for structured dtypes that
     need their field declaration to come first.
     """
+    cdef cnp.dtype descr
     if dtype is None:
-        raise ValueError('dtype is None')
+        raise TypeError('dtype is None')
 
     # TODO: Fix and make fast, using NumPy C-API.
     info = _typenames.get(dtype, None)
@@ -117,14 +118,19 @@ cpdef str get_typename(dtype, type_decls=None):
             type_decls.add(header)
         return name
     elif isinstance(dtype, numpy.dtype):
-        if dtype.kind == "V" and dtype.fields is not None:
-            if type_decls is not None:
-                type_decls.add('#include "cupy/structview.cuh"')
-            # NOTE: Caching this may not be trivial since/if we use metadata.
-            name, *_ = _build_struct_typename(dtype, type_decls)
-            return name
+        descr = <cnp.dtype>dtype
+        if descr.type_num == cnp.NPY_VOID:
+            if cnp.PyDataType_HASFIELDS(descr):
+                # NOTE: Caching this may not be trivial if we use metadata.
+                name, *_ = _build_struct_typename(dtype, type_decls)
+                return name
+            elif not cnp.PyDataType_HASSUBARRAY(descr):
+                # Unstructured void is just a blob bytes.
+                if type_decls is not None:
+                    type_decls.add('#include "cupy/unstructued_void.cuh"')
+                return f"cupy::UnstructuredVoid<{descr.itemsize}>"
 
-    raise ValueError(f"Unable to find C++ type for dtype {dtype}")
+    raise TypeError(f"Unable to find C++ type for dtype {dtype}")
 
 
 cdef dict _cuda_alignments = {}
@@ -177,7 +183,10 @@ def _build_struct_typename(dtype, type_decls):
     fields = []
     struct_compatible = True
 
+    # subdtype_decls are dependencies for this type, we iclude the header
+    # itself here as well:
     cdef set subtype_decls = set()
+    subtype_decls.add('#include "cupy/structview.cuh"')
 
     for name, (subdtype, offset, *_) in dtype.fields.items():
         # The fields tupe can contain a 4th title, we ignore it.
@@ -221,12 +230,19 @@ def _build_struct_typename(dtype, type_decls):
         # fields are only used if all fields are indeed compatible
         struct_fields.append(
             f"  alignas({subalignment}) {struct_name} {name};")
-        fields.append(f"sv::Field<{subname}, {offset}>")
+        fields.append(f"cupy::Field<{subname}, {offset}>")
 
     if not struct_compatible:
         # If the struct doesn't work out, just use a single _data field.
         struct_fields = [
             f"  char _data[{dtype.itemsize}];"]
+
+    if dtype.itemsize % alignment != 0:
+        raise ValueError(
+            f"Itemsize {dtype.itemsize} is not a multiple of alignment "
+            f"{alignment} for dtype {dtype} and kernel launches are not "
+            "supported. You can ensure compatibility with the "
+            "`make_gpu_aligned_dtype()` helper (or try `align=True`).")
 
     struct_fields = "\n".join(struct_fields)
     hash_ = hashlib.sha1(
@@ -247,7 +263,7 @@ def _build_struct_typename(dtype, type_decls):
         type_decls.add((definition, frozenset(subtype_decls)))
 
     fields = ', '.join(fields)
-    name = f"sv::StructView<{struct_name}, {dtype.itemsize}, {fields}>"
+    name = f"cupy::StructView<{struct_name}, {dtype.itemsize}, {fields}>"
     return name, struct_name, alignment
 
 

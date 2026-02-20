@@ -7,7 +7,7 @@
 //#include <type_traits>
 //#include <utility>
 
-namespace sv {
+namespace cupy {
 
 // Hack to replace std::false_type and std::true_type
 template<bool Value>
@@ -187,6 +187,6 @@ private:
   }
 };
 
-} // namespace sv
+} // namespace cupy
 
 #endif // STRUCT_VIEW_H_
