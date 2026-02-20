@@ -206,37 +206,9 @@ cdef void populate_format(Py_buffer* buf, str dtype) except*:
     buf.format = dtype_format[dtype]
 
 
-def make_gpu_aligned_dtype(
-        dtype, *, int alignment=-1, field_alignments=None, int recurse=False):
-    """Create a new structured dtype from a NumPy dtype or dtype-like with
-    sufficient algnment for GPU use.
-
-    Args:
-        dtype: Data type specifier compatible with NumPy.
-        alignment: Desired alignment of the resulting dtype. The dtype
-            will be padded to ensure this alignment for CuPy.
-
-            .. note::
-                When the requested alignment is smaller than the minimal
-                inferred one an error will be raised.
-                When it is larger, CuPy will attach this alignment as
-                metadata to the structured dtype. This is used for structured
-                dtypes in the kernel and when nesting.
-
-                Note that metadata may be lost in many operations.
-
-    Returns:
-        cupy.ndarray: A view of the array with reduced dimensions.
-
-
-    Notes:
-        By default this function recurses into nested structures as if
-        `alignment=-1` is passed for these.  You can nest a dtype with
-        larger alignment by creating it with ``make_gpu_aligned_dtype()``.
-
-        NumPy promotion (e.g. in concatenate) may "canonicalize" the dtype
-        and drop the struct layout and CuPy alignment metadata.
-    """
+def _make_gpu_aligned_dtype(
+        dtype, *, int alignment=-1, bint recurse=True):
+    # Internal version that also return the final alignment for recursion.
     cdef Py_ssize_t final_alignment = 1
     cdef Py_ssize_t itemsize = 0
     cdef Py_ssize_t curr_offset = 0
@@ -266,17 +238,21 @@ def make_gpu_aligned_dtype(
             # Keep track of field offset to reject non-ordered inputs.
             min_offset = offset + subdtype.itemsize
 
-            if subdtype.num != cnp.NPY_VOID or subdtype.fields is None:
+            subalignment = None
+            if subdtype.metadata:
+                subalignment = subdtype.metadata.get("__cuda_alignment__")
+
+            if subalignment is not None:
+                # __cuda_alignment__ is defined and overrides everything else.
+                pass
+            elif subdtype.num != cnp.NPY_VOID or subdtype.fields is None:
                 subalignment = _scalar.get_cuda_alignment(subdtype)
             elif not recurse:
-                # We assume the alignment of the subdtype makes sense.
+                # Must assume the alignment of the subdtype makes sense.
                 subalignment = subdtype.alignment
             else:
-                subdtype = make_gpu_aligned_dtype(subdtype, recurse=recurse)
-                subalignment = dtype.alignment
-                if dtype.metadata:
-                    subalignment = subdtype.metadata.get(
-                        "__cuda_alignment__", subalignment)
+                subdtype, subalignment = _make_gpu_aligned_dtype(
+                    subdtype, recurse=recurse)
 
             if curr_offset % subalignment != 0:
                 curr_offset += subalignment - (curr_offset % subalignment)
@@ -317,4 +293,43 @@ def make_gpu_aligned_dtype(
         dtype_info["itemsize"] = itemsize
 
     # Create a new dtype enforcing the newly computed offsets.
-    return cnp.dtype(dtype_info, align=True, **metadata)
+    return cnp.dtype(dtype_info, align=True, **metadata), final_alignment
+
+
+def make_gpu_aligned_dtype(
+        dtype, *, int alignment=-1, bint recurse=True):
+    """Create a new structured dtype from a NumPy dtype or dtype-like with
+    sufficient algnment for GPU use.
+
+    Args:
+        dtype: Data type specifier compatible with NumPy.
+        alignment: Desired alignment of the resulting dtype. The dtype
+            will be padded to ensure this alignment for CuPy.
+
+            .. note::
+                When the requested alignment is smaller than the minimal
+                inferred one an error will be raised.
+                When it is larger, CuPy will attach this alignment as
+                metadata to the structured dtype. This is used for structured
+                dtypes in the kernel and when nesting.
+
+                Note that metadata may be lost in many operations.
+
+        recurse: Whether to recurse into nested structures, defaults to True.
+            When ``False``, the nested struct is assumed to be already
+            sufficientlyaligned.
+
+    Returns:
+        cupy.ndarray: A view of the array with reduced dimensions.
+
+
+    Notes:
+        By default this function recurses into nested structures as if
+        `alignment=-1` is passed for these.  You can nest a dtype with
+        larger alignment by creating it with ``make_gpu_aligned_dtype()``.
+
+        NumPy promotion (e.g. in concatenate) may "canonicalize" the dtype
+        and drop the struct layout and CuPy alignment metadata.
+    """
+    return _make_gpu_aligned_dtype(
+        dtype, alignment=alignment, recurse=recurse)[0]

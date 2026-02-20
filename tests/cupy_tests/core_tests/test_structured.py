@@ -48,11 +48,7 @@ class TestCreation:
         # is the case, this always passes.
         # with pytest.raises(ValueError):
         #     func(ByteSwapped(base))
-        if func != cupy.asarray:
-            with pytest.raises(TypeError):
-                func(ByteSwapped(base))
-        else:
-            assert func(ByteSwapped(base)).dtype == f"V{base.dtype.itemsize}"
+        assert func(ByteSwapped(base)).dtype == f"V{base.dtype.itemsize}"
 
 
 class TestFieldCasting:
@@ -75,6 +71,24 @@ class TestFieldCasting:
         new_nested = xp.dtype("f4,i4")
         new_dtype = xp.dtype([("a", "f4"), ("b", new_nested)])
         return a.astype(new_dtype)
+
+
+class TestGetTypename:
+    def test_final_alignment_check(self):
+        dt = numpy.dtype("f8,?")
+        with pytest.raises(ValueError, match="Itemsize 9 is not a multiple"):
+            cupy._core._scalar.get_typename(dt, None)
+
+        with pytest.raises(ValueError, match="Itemsize 9 is not a multiple"):
+            cupy.ones(10, dtype=dt)  # kernel launch should fail the same way
+
+    def test_bad_field(self):
+        dt = numpy.dtype("?,f8")
+        with pytest.raises(ValueError, match="Field f1 with offset 1 is not "):
+            cupy._core._scalar.get_typename(dt, None)
+
+        with pytest.raises(ValueError, match="Field f1 with offset 1 is not "):
+            cupy.ones(10, dtype=dt)  # kernel launch should fail the same way
 
 
 @pytest.mark.parametrize("op", [operator.eq, operator.ne])
@@ -215,6 +229,7 @@ class TestKernelStructAccess:
     def test_elementwise_kernel(self):
         # When the data can be defined as a normal struct, then
         # we allow access via `.data`.
+        # TODO/NOTE(seberg): Is this even desired?!
         kernel = cupy.ElementwiseKernel(
             'T in', 'T out', 'out.data.f1 = -in.data.f0;',
             'test_struct_access')
@@ -224,3 +239,31 @@ class TestKernelStructAccess:
         kernel(x, y)
         expected = cupy.array([(4, -1), (5, -2), (6, -3)], dtype="i,i")
         testing.assert_array_equal(y, expected)
+
+
+class TestUnstructuredVoid:
+    # Unstructured void support is a bit shaky with it being easy to
+    # run into compilation errors e.g. due to using "V" dtype which is
+    # then V0.
+    @pytest.mark.parametrize("func", [cupy.empty, cupy.zeros])
+    def test_creation(self, func):
+        a = func(10, dtype="V10")
+        assert a.dtype == "V10"
+
+    @pytest.mark.parametrize("from_values", [
+        numpy.arange(10).astype("int64"),
+        numpy.arange(10).astype("float32"),
+        numpy.arange(10).astype("int8"),
+        numpy.arange(10).astype("complex128"),
+        numpy.arange(10).astype("int8").astype("V1"),
+        numpy.arange(10).astype("int64").astype("V8"),
+        numpy.arange(10).astype("complex128").astype("V16"),
+    ])
+    @testing.numpy_cupy_array_equal()
+    def test_casts_assignments(self, xp, from_values):
+        a = xp.empty(10, dtype="int64")
+        a[...] = -1
+        a = a.view("V8")  # filled with all 1bits.
+
+        xp.copyto(a, xp.array(from_values), casting="unsafe")
+        return a
