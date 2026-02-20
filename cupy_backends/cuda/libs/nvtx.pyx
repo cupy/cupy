@@ -68,9 +68,8 @@ colors[9] = 0xFF7F7F7F
 available = True
 
 
-cdef nvtxEventAttributes_t make_event_attributes(message, color) except *:
+cdef make_event_attributes(message, color, nvtxEventAttributes_t& attrib):
     cdef bytes b_message
-    cdef nvtxEventAttributes_t attrib
 
     string.memset(&attrib, 0, sizeof(attrib))
     attrib.version = NVTX_VERSION
@@ -88,8 +87,6 @@ cdef nvtxEventAttributes_t make_event_attributes(message, color) except *:
         attrib.messageType = NVTX_MESSAGE_TYPE_ASCII
         b_message = message.encode()
         attrib.message.ascii = b_message
-
-    return attrib
 
 
 cpdef MarkC(message, uint32_t color=0):
@@ -224,7 +221,8 @@ cpdef RangePop():
 
 
 cpdef unsigned long long RangeStart(message, color) except? 0:
-    cdef nvtxEventAttributes_t attrib = make_event_attributes(message, color)
+    cdef nvtxEventAttributes_t attrib
+    make_event_attributes(message, color, attrib)
     return nvtxRangeStartEx(&attrib)
 
 

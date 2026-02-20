@@ -6,6 +6,14 @@ from libc.stdint cimport (
 
 
 cdef extern from './include/cupy/_dlpack/dlpack.h' nogil:
+    """
+    // missing piece to help Cython & C++ to enable `except DLDevice_err`.
+    inline bool operator==(const DLDevice& lhs, const DLDevice& rhs) {
+        return ((lhs.device_type == rhs.device_type)
+                && (lhs.device_id == rhs.device_id));
+    }
+    """
+
     int DLPACK_MAJOR_VERSION
     int DLPACK_MINOR_VERSION
     int DLPACK_FLAG_BITMASK_READ_ONLY
@@ -30,6 +38,9 @@ cdef extern from './include/cupy/_dlpack/dlpack.h' nogil:
     ctypedef struct DLDevice:
         DLDeviceType device_type
         int32_t device_id
+
+    # Enable using `except DLDevice_err` (there is no direct way)
+    const DLDevice DLDevice_err "((DLDevice){(DLDeviceType)-1, -1})"
 
     ctypedef enum DLDataTypeCode:
         kDLInt
@@ -70,7 +81,7 @@ cdef extern from './include/cupy/_dlpack/dlpack.h' nogil:
         DLTensor dl_tensor
 
 
-cdef DLDevice get_dlpack_device(_ndarray_base array) except *
+cdef DLDevice get_dlpack_device(_ndarray_base array) except DLDevice_err
 cpdef object toDlpack(
     _ndarray_base array, bint use_versioned=*, bint to_cpu=*,
     bint ensure_copy=*, stream=*) except +
