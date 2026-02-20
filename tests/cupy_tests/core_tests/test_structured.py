@@ -128,7 +128,8 @@ class TestComparison:
     def test_promotion_aligned(self, op):
         a = cupy.array([(1, 2)], dtype="f8,c8")
         b = cupy.array([(1, 2), (1, 3), (2, 3)], dtype="f8,f8")
-        # For comparison, promotion would go to f8,c16
+        # For comparison, promotion would go to f8,c16. But the NumPy
+        # promoted dtype would not be sufficiently aligned for this.
         cmp_dtype = numpy.result_type(a.dtype, b.dtype)
         assert cmp_dtype.itemsize == 24
         # However, this isn't aligned for the GPU which wants itemsize
