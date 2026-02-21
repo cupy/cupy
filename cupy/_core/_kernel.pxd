@@ -66,9 +66,9 @@ cdef class _ArgInfo:
 
     cdef _ArgInfo as_ndarray_with_ndim(self, int ndim)
 
-    cdef bint is_ndarray(self)
+    cdef bint is_ndarray(self) noexcept
 
-    cdef bint is_scalar(self)
+    cdef bint is_scalar(self) noexcept
 
     cdef str get_c_type(self, type_headers=*)
 
@@ -168,4 +168,5 @@ cpdef _check_peer_access(_ndarray_base arr, int device_id)
 
 cdef list _preprocess_args(int dev_id, args)
 
-cdef shape_t _reduce_dims(list args, tuple params, const shape_t& shape)
+cdef shape_t _reduce_dims(
+    list args, tuple params, const shape_t& shape) except *
