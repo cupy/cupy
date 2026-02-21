@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import operator
+
 import numpy
 import pytest
 
@@ -46,11 +48,95 @@ class TestCreation:
         # is the case, this always passes.
         # with pytest.raises(ValueError):
         #     func(ByteSwapped(base))
-        if func != cupy.asarray:
-            with pytest.raises(TypeError):
-                func(ByteSwapped(base))
-        else:
-            assert func(ByteSwapped(base)).dtype == f"V{base.dtype.itemsize}"
+        assert func(ByteSwapped(base)).dtype == f"V{base.dtype.itemsize}"
+
+
+class TestFieldCasting:
+    @testing.numpy_cupy_array_equal()
+    def test_casting_simple(self, xp):
+        a = xp.array([(1, 2.), (3, 4.)], dtype="i8,f8")
+        return a.astype("f8,i8")
+
+    @testing.numpy_cupy_array_equal()
+    def test_casting_swapped_fields(self, xp):
+        a = xp.array([(1, 2.), (3, 4.)], dtype="i8,f8")
+        return a[["f0", "f1"]].astype("f8,i8")
+
+    @testing.numpy_cupy_array_equal()
+    def test_casting_nested(self, xp):
+        dt_nested = xp.dtype("i8,f8")
+        dtype = xp.dtype([("a", "f8"), ("b", dt_nested)])
+        a = xp.array([(1, 2.), (3, 4.)], dtype=dtype)
+
+        new_nested = xp.dtype("f4,i4")
+        new_dtype = xp.dtype([("a", "f4"), ("b", new_nested)])
+        return a.astype(new_dtype)
+
+
+class TestGetTypename:
+    def test_final_alignment_check(self):
+        dt = numpy.dtype("f8,?")
+        with pytest.raises(ValueError, match="Itemsize 9 is not a multiple"):
+            cupy._core._scalar.get_typename(dt, None)
+
+        with pytest.raises(ValueError, match="Itemsize 9 is not a multiple"):
+            cupy.ones(10, dtype=dt)  # kernel launch should fail the same way
+
+    def test_bad_field(self):
+        dt = numpy.dtype("?,f8")
+        with pytest.raises(ValueError, match="Field f1 with offset 1 is not "):
+            cupy._core._scalar.get_typename(dt, None)
+
+        with pytest.raises(ValueError, match="Field f1 with offset 1 is not "):
+            cupy.ones(10, dtype=dt)  # kernel launch should fail the same way
+
+
+@pytest.mark.parametrize("op", [operator.eq, operator.ne])
+class TestComparison:
+    @testing.numpy_cupy_array_equal()
+    def test_simple(self, xp, op):
+        a = xp.array([(1, 2)], dtype="i8,f8")
+        b = xp.array([(1, 2.), (1, 3), (3, 2)], dtype="i8,f8")
+        return op(a, b)
+
+    @testing.numpy_cupy_array_equal()
+    def test_with_cast_simple(self, xp, op):
+        a = xp.array([(1, 2)], dtype="i8,f8")
+        b = xp.array([(1, 2.), (1, 3), (3, 2)], dtype="f8,i8")
+        return op(a, b)
+
+    @testing.numpy_cupy_array_equal(accept_error=TypeError)
+    def test_field_order(self, xp, op):
+        # Swapped fields with name mis-match are unclear how they
+        # should be compared, so NumPy raises.
+        a = xp.array([(1, 2)], dtype="i8,f8")[["f1", "f0"]]
+        b = xp.array([(1, 2.), (1, 3), (3, 2)], dtype="f8,i8")
+        return op(a, b)
+
+    @testing.numpy_cupy_array_equal()
+    def test_nested(self, xp, op):
+        adt_nested = xp.dtype("i8,f8")
+        adtype = xp.dtype([("a", "f8"), ("b", adt_nested)])
+        bdt_nested = xp.dtype("f4,i4")
+        bdtype = xp.dtype([("a", "f4"), ("b", bdt_nested)])
+
+        a = xp.array([(1, (2, 3))], dtype=adtype)
+        b = xp.array([(1, (2, 3)), (1, (2, 4)), (1, (3, 3))], dtype=bdtype)
+
+        return op(a, b)
+
+    def test_promotion_aligned(self, op):
+        a = cupy.array([(1, 2)], dtype="f8,c8")
+        b = cupy.array([(1, 2), (1, 3), (2, 3)], dtype="f8,f8")
+        # For comparison, promotion would go to f8,c16. But the NumPy
+        # promoted dtype would not be sufficiently aligned for this.
+        cmp_dtype = numpy.result_type(a.dtype, b.dtype)
+        assert cmp_dtype.itemsize == 24
+        # However, this isn't aligned for the GPU which wants itemsize
+        # alignment for complex.
+        assert cupy.make_aligned_dtype(cmp_dtype).itemsize == 32
+        res = op(a, b)
+        assert numpy.array_equal(res.get(), op(a.get(), b.get()))
 
 
 class TestFieldAccess:
@@ -107,6 +193,26 @@ class TestFieldAccess:
         with pytest.raises(ValueError, match=msg):
             a["f1"]
 
+    @testing.numpy_cupy_array_equal()
+    def test_multiple_fields(self, xp):
+        a = xp.ones(10, "i,f,i")
+        a["f1"] = xp.arange(10)
+        a["f2"] = -xp.arange(10)
+        return a[["f2", "f1"]]
+
+    @testing.numpy_cupy_array_equal()
+    def test_multifield_assignment(self, xp):
+        a = xp.ones(10, "i,f,i,f,i,f")
+        for i in range(6):
+            a[f'f{i}'] = xp.arange(i, 10+i)
+
+        # in-place modify `a` with mixed fields that have holes.
+        # This also requires casting the fields.
+        # NOTE(seberg): Behavior is not identical if source and destination
+        # point to the same memory. Don't do that... (i.e. the copy is needed)
+        a[["f1", "f0", "f4"]] = a[["f2", "f1", "f5"]].copy()
+        return a
+
 
 class TestIndexing:
     @testing.numpy_cupy_array_equal()
@@ -118,3 +224,76 @@ class TestIndexing:
         # Compare fields, because we cannot copy the strided structured array
         # to a contiguous one to copy back to the CPU.
         return (a[sl]["f0"], a[sl]["f1"])
+
+
+class TestKernelStructAccess:
+    def test_elementwise_kernel(self):
+        # When the data can be defined as a normal struct, then
+        # we allow access via `.data`.
+        # TODO/NOTE(seberg): Is this even desired?!
+        kernel = cupy.ElementwiseKernel(
+            'T in', 'T out', 'out.data.f1 = -in.data.f0;',
+            'test_struct_access')
+        x = cupy.array([1, 2, 3], dtype="i,i")
+        y = cupy.array([4, 5, 6], dtype="i,i")
+        # kernel mutates field 1.
+        kernel(x, y)
+        expected = cupy.array([(4, -1), (5, -2), (6, -3)], dtype="i,i")
+        testing.assert_array_equal(y, expected)
+
+
+class TestUnstructuredVoid:
+    # Unstructured void support is a bit shaky with it being easy to
+    # run into compilation errors e.g. due to using "V" dtype which is
+    # then V0.
+    @pytest.mark.parametrize("func", [cupy.empty, cupy.zeros])
+    def test_creation(self, func):
+        a = func(10, dtype="V10")
+        assert a.dtype == "V10"
+
+    @pytest.mark.parametrize("from_values", [
+        numpy.arange(10).astype("int64"),
+        numpy.arange(10).astype("float32"),
+        numpy.arange(10).astype("int8"),
+        numpy.arange(10).astype("complex128"),
+        numpy.arange(10).astype("int8").astype("V1"),
+        numpy.arange(10).astype("int64").astype("V8"),
+        numpy.arange(10).astype("complex128").astype("V16"),
+    ])
+    @testing.numpy_cupy_array_equal()
+    def test_casts_assignments(self, xp, from_values):
+        a = xp.empty(10, dtype="int64")
+        a[...] = -1
+        a = a.view("V8")  # filled with all 1bits.
+
+        xp.copyto(a, xp.array(from_values), casting="unsafe")
+        return a
+
+
+@pytest.mark.parametrize("scalar", [
+    1.0,
+    numpy.int32(-1),
+    # Structured scalar and larger than the CScalar data storage:
+    numpy.void((1, 2, 3, 4, 5, 6), dtype="q,q,q,q,i,i"),
+    # Scalar has larger dtype than array:
+    numpy.void((-1, 2, 3, 4, 5, -6), dtype="d,d,d,d,d,d"),
+])
+class TestScalar:
+    @testing.numpy_cupy_array_equal()
+    def test_full(self, xp, scalar):
+        return xp.full(10, scalar, dtype="i,i,q,q,q,q")
+
+    @testing.numpy_cupy_array_equal()
+    def test_assignment(self, xp, scalar):
+        a = xp.empty(10, dtype="i,i,q,q,q,q")
+        a[...] = scalar
+        return a
+
+    @pytest.mark.parametrize("op", [operator.eq, operator.ne])
+    @testing.numpy_cupy_array_equal(accept_error=TypeError)
+    def test_comparison_with_scalar_large(self, xp, scalar, op):
+        scalar = xp.array(scalar)
+        arr = xp.array([(1, 2, 3, 4, 5, 6), (-1, 2, 3, 4, 5, -6)],
+                       dtype="i,i,q,q,q,q")
+        # Comparison should work (but only with structured ones).
+        return op(arr, scalar)
