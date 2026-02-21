@@ -373,6 +373,8 @@ def _compile_using_nvrtc_no_warning(
                     int(os.environ.get('CUPY_NVRTC_USE_PCH', 0))):
                 options += ('--pch',)
 
+        options += ('-time=-',)
+
         prog = _NVRTCProgram(source, cu_path, headers, include_names,
                              name_expressions=name_expressions, method=method)
         try:

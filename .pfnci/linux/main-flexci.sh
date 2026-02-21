@@ -30,10 +30,9 @@ if [[ "${TARGET}" == "benchmark" ]]; then
 fi
 
 # `dd` seems to help avoid overwhelming pipes (with very verbose build output)
-BENCHMARK_DIR=/tmp/benchmark CACHE_DIR=/tmp/cupy_cache PULL_REQUEST="${pull_req}" "$(dirname ${0})/run.sh" "${TARGET}" "${STAGES}" 2>&1 \
-    | tee "${LOG_FILE}" \
-    | dd status=none iflag=fullblock ibs=1M
+BENCHMARK_DIR=/tmp/benchmark CACHE_DIR=/tmp/cupy_cache PULL_REQUEST="${pull_req}" "$(dirname ${0})/run.sh" "${TARGET}" "${STAGES}" 2>&1 > "${LOG_FILE}"
 test_retval=${PIPESTATUS[0]}
+cat "${LOG_FILE}"
 
 echo "****************************************************************************************************"
 echo "Build & Test: Exit with status ${test_retval}"
