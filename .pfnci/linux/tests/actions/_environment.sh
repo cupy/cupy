@@ -1,6 +1,9 @@
 # Automatically use "/tmp" as cache directory if not set
 _cache_dir="${CACHE_DIR:-/tmp}"
 
+# With buffering we might overwhelm `tee` or so and lose output
+export PYTHONUNBUFFERED=1
+
 # Setup ccache env vars
 export CCACHE_DIR="${_cache_dir}/.ccache"
 export CCACHE_NOHASHDIR="true"
@@ -15,6 +18,8 @@ export CUPY_NUM_BUILD_JOBS=8
 # Setup CuPy env vars (for runtime)
 export CUPY_CACHE_DIR="${_cache_dir}/.cupy/kernel_cache"
 export CUPY_DUMP_CUDA_SOURCE_ON_ERROR="1"
+# export CUPY_NVRTC_USE_PCH="1"
+export CUPY_CACHE_IN_MEMORY="1"
 
 # Setup CuPy env vars (for unit tests)
 export CUPY_TEST_GPU_LIMIT="${GPU:--1}"
