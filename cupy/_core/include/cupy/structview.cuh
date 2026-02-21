@@ -2,20 +2,10 @@
 #define STRUCT_VIEW_H_
 
 #include "cupy/carray.cuh"
+#include "cupy/cuda_workaround.h"
 
-//#include <cstddef>
-//#include <type_traits>
-//#include <utility>
 
 namespace cupy {
-
-// Hack to replace std::false_type and std::true_type
-template<bool Value>
-struct my_integral_constant {
-    static constexpr bool value = Value;
-    using type = my_integral_constant;
-    constexpr operator bool() const noexcept { return value; }
-};
 
 // Forward declaration for SFINAE
 template<typename, size_t, typename...>
@@ -23,10 +13,10 @@ class StructView;
 
 // Trait to detect StructView
 template<typename T>
-struct is_struct_view : my_integral_constant<false> {};
+struct is_struct_view : std::false_type {};
 
 template<typename StructType, size_t Size, typename... Fields>
-struct is_struct_view<StructView<StructType, Size, Fields...>> : my_integral_constant<true> {};
+struct is_struct_view<StructView<StructType, Size, Fields...>> : std::true_type {};
 
 template<typename T>
 inline constexpr bool is_struct_view_v = is_struct_view<T>::value;
@@ -46,14 +36,13 @@ struct FieldAtImpl<0, First, Rest...> { using type = First; };
 template<size_t Index, typename First, typename... Rest>
 struct FieldAtImpl<Index, First, Rest...> { using type = typename FieldAtImpl<Index - 1, Rest...>::type; };
 
-// ============================================================================
-// StructView - inherits from any struct (real or dummy)
-// ============================================================================
-// Provides:
-// 1. Direct field access: view.x (via struct inheritance)
-// 2. Index-based access: view.at<0>()
-// 3. Cross-type comparisons and assignments (by field order)
-// ============================================================================
+// StructView represents a NumPy structured dtype as a C struct.
+// For convenience in RawKernels the structview may be backed by an actual C
+// struct (but this is generated in Python!)
+// Generally, NumPy structured dtypes operate by field index `.at<0>()`
+// will fetch the first index and casts/assignment only use fields.
+// The C type (if not backed by the struct) currently does not know the field
+// names at all.
 template<typename StructType, size_t Size, typename... Fields>
 class StructView {
   template<size_t Index>
