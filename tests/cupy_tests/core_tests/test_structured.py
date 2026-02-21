@@ -268,3 +268,32 @@ class TestUnstructuredVoid:
 
         xp.copyto(a, xp.array(from_values), casting="unsafe")
         return a
+
+
+@pytest.mark.parametrize("scalar", [
+    1.0,
+    numpy.int32(-1),
+    # Structured scalar and larger than the CScalar data storage:
+    numpy.void((1, 2, 3, 4, 5, 6), dtype="q,q,q,q,i,i"),
+    # Scalar has larger dtype than array:
+    numpy.void((-1, 2, 3, 4, 5, -6), dtype="d,d,d,d,d,d"),
+])
+class TestScalar:
+    @testing.numpy_cupy_array_equal()
+    def test_full(self, xp, scalar):
+        return xp.full(10, scalar, dtype="i,i,q,q,q,q")
+
+    @testing.numpy_cupy_array_equal()
+    def test_assignment(self, xp, scalar):
+        a = xp.empty(10, dtype="i,i,q,q,q,q")
+        a[...] = scalar
+        return a
+
+    @pytest.mark.parametrize("op", [operator.eq, operator.ne])
+    @testing.numpy_cupy_array_equal(accept_error=TypeError)
+    def test_comparison_with_scalar_large(self, xp, scalar, op):
+        scalar = xp.array(scalar)
+        arr = xp.array([(1, 2, 3, 4, 5, 6), (-1, 2, 3, 4, 5, -6)],
+                       dtype="i,i,q,q,q,q")
+        # Comparison should work (but only with structured ones).
+        return op(arr, scalar)

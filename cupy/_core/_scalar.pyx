@@ -1,5 +1,6 @@
 from libc.stdint cimport intptr_t
 
+cimport cpython
 cimport numpy as cnp
 
 import graphlib
@@ -368,13 +369,24 @@ cdef class CScalar(CPointer):
         (<int32_t *>(self.ptr))[0] = value
         return self
 
+    cdef inline void _free_ptr(self) noexcept:
+        # CScalar may allocate if the scalar is very large, this cleans up
+        if self.ptr != <intptr_t><void *>(self._data) and self.ptr != 0:
+            cpython.PyMem_Free(<void*>(self.ptr))
+        self.ptr = 0
+
     cdef _store_c_value(self):
-        # If we ever support dtypes larger than this (e.g. strings)
-        # we will have to introduce a conditional allocation here and
-        # should memset memory to NULL (must if dtype NEEDS_INIT).
-        assert self.descr.itemsize < sizeof(self._data)
-        # make sure ptr points to _data.
-        self.ptr = <intptr_t><void *>(self._data)
+        # No current support for dtypes that may require initialization
+        assert not self.descr.flags & 0x08
+        assert self.ptr == 0
+
+        if self.descr.itemsize < sizeof(self._data):
+            self.ptr = <intptr_t><void *>(self._data)
+        else:
+            self.ptr = <intptr_t><void *>(
+                cpython.PyMem_Malloc(self.descr.itemsize))
+            if self.ptr == 0:
+                raise MemoryError("Failed to allocate memory for scalar")
 
         # NOTE(seberg): This uses assignment logic, which is very subtly
         # different from casting by rejecting nan -> int. This is *only*
@@ -396,10 +408,18 @@ cdef class CScalar(CPointer):
             raise RuntimeError("Cannot modify dtype if value is None.")
 
         self.descr = descr  # modify dtype if allocation succeeded
+        self._free_ptr()
         self._store_c_value()
 
     cpdef get_numpy_type(self):
         return <object>(self.descr.typeobj)  # typeobj is the C-level .type
+
+    @property
+    def dtype(self):
+        return self.descr
+
+    def __dealloc__(self):
+        self._free_ptr()
 
 
 cpdef str _get_cuda_scalar_repr(obj, dtype):

@@ -1359,7 +1359,7 @@ cdef class ufunc:
         if _contains_zero(shape):
             return ret
 
-        for i, t in enumerate(op.in_types):
+        for i, t in enumerate(core_in_dtypes):
             # If necessary, cast scalars here (deals with Python ints also)
             if type(inout_args[i]) is _scalar.CScalar:
                 (<_scalar.CScalar>inout_args[i]).apply_dtype(t)

@@ -20,6 +20,7 @@ cdef class CScalar(CPointer):
     @staticmethod
     cdef CScalar from_int32(int32_t value)
 
+    cdef inline void _free_ptr(self) noexcept
     cdef _store_c_value(self)
     cpdef apply_dtype(self, dtype)
     cpdef get_numpy_type(self)
@@ -28,7 +29,7 @@ cdef class CScalar(CPointer):
 cpdef str format_type_decls(set type_decls)
 
 cpdef str get_typename(dtype, type_decls=*)
-cdef Py_ssize_t get_cuda_alignment(dtype) except -1
+cdef Py_ssize_t get_cuda_alignment(cnp.dtype dtype) except -1
 
 cdef set scalar_type_set
 cpdef str _get_cuda_scalar_repr(obj, dtype)
