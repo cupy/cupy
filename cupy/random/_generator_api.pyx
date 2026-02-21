@@ -1039,13 +1039,13 @@ def random_raw(generator, out):
     _launch_dist(generator, raw, out, ())
 
 
-cdef _launch(
+cdef int _launch(
         func, int generator, intptr_t state, intptr_t strm,
-        int bsize, out, args):
+        int bsize, out, args) except -1:
     cdef ssize_t size = out.size
     if size == 0:
         # Avoid issues launching empty grids in CUDA 10.2
-        return
+        return 0
     nargs = [
         _array_data(a)
         if isinstance(a, cupy.ndarray) else a for a in args]

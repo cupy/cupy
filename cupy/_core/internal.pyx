@@ -83,15 +83,15 @@ cpdef inline bint vector_equal(
 
 
 @cython.profile(False)
-cdef get_reduced_dims(
+cdef int get_reduced_dims(
         shape_t& shape, strides_t& strides, Py_ssize_t itemsize,
-        shape_t& reduced_shape, strides_t& reduced_strides):
+        shape_t& reduced_shape, strides_t& reduced_strides) except -1:
     cdef Py_ssize_t i, ndim, sh, st, prev_st, index
     ndim = shape.size()
     reduced_shape.clear()
     reduced_strides.clear()
     if ndim == 0:
-        return
+        return 0
     reduced_shape.reserve(ndim)
     reduced_strides.reserve(ndim)
 
@@ -102,7 +102,7 @@ cdef get_reduced_dims(
         if sh == 0:
             reduced_shape.assign(1, 0)
             reduced_strides.assign(1, itemsize)
-            return
+            return 0
         if sh == 1:
             continue
         st = strides[i]

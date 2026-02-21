@@ -151,7 +151,7 @@ cdef class _LinkedList:
         # the finalizer is called when clearing the cache or at exit
         self._finalizer = weakref.finalize(self, _clear_LinkedList, self)
 
-    cdef remove_node(self, _Node node):
+    cdef int remove_node(self, _Node node) except -1:
         """ Remove the node from the linked list. """
         cdef _Node p = node.prev
         cdef _Node n = node.next
@@ -161,7 +161,7 @@ cdef class _LinkedList:
         node.next = None
         self.count -= 1
 
-    cdef append_node(self, _Node node):
+    cdef int append_node(self, _Node node) except -1:
         """ Add a node to the tail of the linked list. """
         cdef _Node t = self.tail
         cdef _Node p = t.prev
@@ -378,7 +378,7 @@ cdef class PlanCache:
 
     # --------------------- internal helpers --------------------- #
 
-    cdef _reset(self):
+    cdef int _reset(self) except -1:
         self.curr_size = 0
         self.curr_memsize = 0
         self.hits = 0
@@ -386,7 +386,7 @@ cdef class PlanCache:
         self.cache = {}
         self.lru = _LinkedList()
 
-    cdef _cleanup(self):
+    cdef int _cleanup(self) except -1:
         # remove circular reference and kick off garbage collection by
         # invoking the finalizer
         self.cache.clear()
@@ -455,8 +455,8 @@ cdef class PlanCache:
         self.curr_size -= 1
         self.curr_memsize -= node.memsize
 
-    cdef _eject_until_fit(
-            self, Py_ssize_t size, Py_ssize_t memsize):
+    cdef int _eject_until_fit(
+            self, Py_ssize_t size, Py_ssize_t memsize) except -1:
         cdef _Node unwanted_node
         cdef list gpus
 

@@ -19,10 +19,10 @@ cpdef bint vector_equal(
     const vector.vector[Py_ssize_t]& x,
     const vector.vector[Py_ssize_t]& y) noexcept
 
-cdef get_reduced_dims(
+cdef int get_reduced_dims(
     shape_t& shape, strides_t& strides,
     Py_ssize_t itemsize, shape_t& reduced_shape,
-    strides_t& reduced_strides)
+    strides_t& reduced_strides) except -1
 
 # Computes the contiguous strides given a shape and itemsize.
 # Returns the size (total number of elements).
