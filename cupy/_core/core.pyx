@@ -30,6 +30,8 @@ from libc.stdint cimport int64_t, intptr_t, INT32_MAX
 from libc cimport stdlib
 from cpython cimport Py_buffer
 
+cimport numpy as cnp
+
 from cupy._core cimport _carray
 from cupy._core cimport _dtype
 from cupy._core._dtype cimport get_dtype
@@ -943,9 +945,12 @@ cdef class _ndarray_base:
             if value.shape != ():
                 raise ValueError(
                     'non-scalar numpy.ndarray cannot be used for fill')
-            value = value.astype(self.dtype, copy=False).item()
+            value = value.astype(self.dtype, copy=False)[()]
 
-        if value == 0 and self._c_contiguous:
+        if ((<cnp.dtype>(self.dtype)).type_num != cnp.NPY_VOID
+                and value == 0 and self._c_contiguous):
+            # For most types, we can just memset if the value is zero.
+            # (Void also works mostly, but the `value == 0` could fail.)
             self.data.memset_async(0, self.nbytes)
         else:
             fill_kernel(value, self)
