@@ -15,6 +15,10 @@ import warnings
 from cupy.cuda import device
 from cupy.cuda import function
 from cupy.cuda import get_rocm_path
+from cupy.cuda._compiler_cache import (
+    DiskKernelCacheBackend as _DiskKernelCacheBackend,
+    KernelCacheBackend as _KernelCacheBackend,
+)
 from cupy_backends.cuda.api import driver
 from cupy_backends.cuda.api import runtime
 from cupy_backends.cuda.libs import nvrtc
@@ -29,6 +33,22 @@ _win32 = sys.platform.startswith('win32')
 _rdc_flags = ('--device-c', '-dc', '-rdc=true',
               '--relocatable-device-code=true')
 _cudadevrt = None
+
+
+# Global kernel cache backend instance
+_kernel_cache_backend: _KernelCacheBackend = _DiskKernelCacheBackend()
+
+
+def _set_kernel_cache_backend(backend: _KernelCacheBackend) -> None:
+    """Set the global kernel cache backend.
+
+    This is a private API to allow programmatically changing the cache backend.
+
+    Args:
+        backend: The kernel cache backend instance to use.
+    """
+    global _kernel_cache_backend
+    _kernel_cache_backend = backend
 
 
 class NVCCException(Exception):
@@ -575,6 +595,7 @@ def _compile_with_cache_cuda(
         log_stream=None, cache_in_memory=False, jitify=False, to_ltoir=False):
     # NVRTC does not use extra_source. extra_source is used for cache key.
     global _empty_file_preprocess_cache
+
     if cache_dir is None:
         cache_dir = get_cache_dir()
     if arch is None:
@@ -629,27 +650,16 @@ def _compile_with_cache_cuda(
         mod = function.Module()
 
     if not cache_in_memory:
-        # Read from disk cache
-        if not os.path.isdir(cache_dir):
-            os.makedirs(cache_dir, exist_ok=True)
-
-        # To handle conflicts in concurrent situation, we adopt lock-free
-        # method to avoid performance degradation.
+        # Read from cache using global backend
         # We force recompiling to retrieve C++ mangled names if so desired.
-        path = os.path.join(cache_dir, name)
-        if os.path.exists(path) and not name_expressions:
-            with open(path, 'rb') as file:
-                data = file.read()
-            if len(data) >= _hash_length:
-                hash = data[:_hash_length]
-                cubin = data[_hash_length:]
-                cubin_hash = _hash_hexdigest(cubin).encode('ascii')
-                if hash == cubin_hash:
-                    if to_ltoir:
-                        return cubin
-                    else:
-                        mod.load(cubin)
-                        return mod
+        if not name_expressions:
+            cubin = _kernel_cache_backend.load(name)
+            if cubin is not None:
+                if to_ltoir:
+                    return cubin
+                else:
+                    mod.load(cubin)
+                    return mod
     else:
         # Enforce compiling -- the resulting kernel will be cached elsewhere,
         # so we do nothing
@@ -684,27 +694,8 @@ def _compile_with_cache_cuda(
         raise ValueError('Invalid backend %s' % backend)
 
     if not cache_in_memory:
-        # Write to disk cache
-        cubin_hash = _hash_hexdigest(cubin).encode('ascii')
-
-        # Replacing the file should be atomic. But we add a hash for safety
-        # to detect possible corruption.
-        with tempfile.NamedTemporaryFile(dir=cache_dir, delete=False) as tf:
-            tf.write(cubin_hash)
-            tf.write(cubin)
-            temp_path = tf.name
-
-        try:
-            os.replace(temp_path, path)
-        except PermissionError:
-            # Windows may refuse to replace the file, assume this is a race
-            # and the existing file is OK (but keep using our copy)
-            pass
-
-        # Save .cu source file along with .cubin
-        if _get_bool_env_variable('CUPY_CACHE_SAVE_CUDA_SOURCE', False):
-            with open(path + '.cu', 'w') as f:
-                f.write(source)
+        # Write to cache using global backend
+        _kernel_cache_backend.save(name, cubin, source)
     else:
         # we don't do any disk I/O
         pass
