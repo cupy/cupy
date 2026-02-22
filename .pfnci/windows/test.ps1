@@ -77,6 +77,7 @@ function Main {
     echo "Setting up test environment"
     RunOrDie python -V
     RunOrDie python -m pip install -U pip setuptools wheel
+    RunOrDie python -m pip install -U google-cloud-storage  # For GCP kernel cache backend
     RunOrDie python -m pip freeze
 
     echo "Building..."
