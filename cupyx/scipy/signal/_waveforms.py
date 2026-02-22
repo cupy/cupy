@@ -146,13 +146,12 @@ _square_kernel = cupy.ElementwiseKernel(
         y = nan("0xfff8000000000000ULL");
     }
 
-    // Use Python-compatible modulo: result is always in [0, 2*pi)
-    // C fmod can return negative values for negative inputs
-    T tmod { fmod( t, 2.0 * M_PI ) };
-    if ( tmod < 0 ) {
-        tmod += 2.0 * M_PI;
+    constexpr T period = static_cast<T>(2.0 * M_PI);
+    T tmod { fmod( t, period ) };
+    if(tmod < 0){
+      tmod += period;
     }
-    const bool mask2 { ( ( 1 - mask1 ) && ( tmod < ( w * 2.0 * M_PI ) ) ) };
+    const bool mask2 { ( ( 1 - mask1 ) && ( tmod < ( w * period ) ) ) };
 
     if ( mask2 ) {
         y = 1;
