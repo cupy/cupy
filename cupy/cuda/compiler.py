@@ -542,19 +542,12 @@ def _preprocess(source, options, arch, backend):
         x for x in result.decode().splitlines() if x.startswith('//'))
 
 
-_default_cache_dir = os.path.expanduser('~/.cupy/kernel_cache')
-
-
-def get_cache_dir():
-    return os.environ.get('CUPY_CACHE_DIR', _default_cache_dir)
-
-
 _empty_file_preprocess_cache: dict = {}
 
 
 def _compile_module_with_cache(
-        source, options=(), arch=None, cache_dir=None, extra_source=None,
-        backend='nvrtc', *, enable_cooperative_groups=False,
+        source, options=(), *, arch=None, extra_source=None,
+        backend='nvrtc', enable_cooperative_groups=False,
         name_expressions=None, log_stream=None, jitify=False, to_ltoir=False):
 
     if enable_cooperative_groups:
@@ -574,24 +567,22 @@ def _compile_module_with_cache(
     if runtime.is_hip:
         backend = 'hiprtc' if backend == 'nvrtc' else 'hipcc'
         return _compile_with_cache_hip(
-            source, options, arch, cache_dir, extra_source, backend,
+            source, options, arch, extra_source, backend,
             name_expressions, log_stream, cache_in_memory)
     else:
         return _compile_with_cache_cuda(
-            source, options, arch, cache_dir, extra_source, backend,
+            source, options, arch, extra_source, backend,
             enable_cooperative_groups, name_expressions, log_stream,
             cache_in_memory, jitify, to_ltoir)
 
 
 def _compile_with_cache_cuda(
-        source, options, arch, cache_dir, extra_source=None, backend='nvrtc',
+        source, options, arch, extra_source=None, backend='nvrtc',
         enable_cooperative_groups=False, name_expressions=None,
         log_stream=None, cache_in_memory=False, jitify=False, to_ltoir=False):
     # NVRTC does not use extra_source. extra_source is used for cache key.
     global _empty_file_preprocess_cache
 
-    if cache_dir is None:
-        cache_dir = get_cache_dir()
     if arch is None:
         arch = _get_arch()
 
@@ -911,7 +902,7 @@ def _convert_to_hip_source(source, extra_source, is_hiprtc):
 
 
 # TODO(leofang): evaluate if this can be merged with _compile_with_cache_cuda()
-def _compile_with_cache_hip(source, options, arch, cache_dir, extra_source,
+def _compile_with_cache_hip(source, options, arch, extra_source,
                             backend='hiprtc', name_expressions=None,
                             log_stream=None, cache_in_memory=False,
                             use_converter=True):
@@ -936,8 +927,6 @@ def _compile_with_cache_hip(source, options, arch, cache_dir, extra_source,
         options += (
             '-I' + get_rocm_path() + '/llvm/lib/clang/13.0.0/include/',)
 
-    if cache_dir is None:
-        cache_dir = get_cache_dir()
     # As of ROCm 3.5.0 hiprtc/hipcc can automatically pick up the
     # right arch without setting HCC_AMDGPU_TARGET, so we don't need
     # to tell the compiler which arch we are targeting. But, we still
