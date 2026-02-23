@@ -973,24 +973,13 @@ def _compile_with_cache_hip(source, options, arch, cache_dir, extra_source,
     mod = function.Module()
 
     if not cache_in_memory:
-        # Read from disk cache
-        if not os.path.isdir(cache_dir):
-            os.makedirs(cache_dir, exist_ok=True)
-
-        # To handle conflicts in concurrent situation, we adopt lock-free
-        # method to avoid performance degradation.
+        # Read from cache using global backend
         # We force recompiling to retrieve C++ mangled names if so desired.
-        path = os.path.join(cache_dir, name)
-        if os.path.exists(path) and not name_expressions:
-            with open(path, 'rb') as f:
-                data = f.read()
-            if len(data) >= _hash_length:
-                hash_value = data[:_hash_length]
-                binary = data[_hash_length:]
-                binary_hash = _hash_hexdigest(binary).encode('ascii')
-                if hash_value == binary_hash:
-                    mod.load(binary)
-                    return mod
+        if not name_expressions:
+            binary = _kernel_cache_backend.load(name)
+            if binary is not None:
+                mod.load(binary)
+                return mod
     else:
         # Enforce compiling -- the resulting kernel will be cached elsewhere,
         # so we do nothing
@@ -1006,27 +995,8 @@ def _compile_with_cache_hip(source, options, arch, cache_dir, extra_source,
         binary = compile_using_hipcc(source, options, arch, log_stream)
 
     if not cache_in_memory:
-        # Write to disk cache
-        binary_hash = _hash_hexdigest(binary).encode('ascii')
-
-        # Replacing the file should be atomic. But we add a hash for safety
-        # to detect possible corruption.
-        with tempfile.NamedTemporaryFile(dir=cache_dir, delete=False) as tf:
-            tf.write(binary_hash)
-            tf.write(binary)
-            temp_path = tf.name
-
-        try:
-            os.replace(temp_path, path)
-        except PermissionError:
-            # Windows may refuse to replace the file, assume this is a race
-            # and the existing file is OK (but keep using our copy)
-            pass
-
-        # Save .cu source file along with .hsaco
-        if _get_bool_env_variable('CUPY_CACHE_SAVE_CUDA_SOURCE', False):
-            with open(path + '.cpp', 'w') as f:
-                f.write(source)
+        # Write to cache using global backend
+        _kernel_cache_backend.save(name, binary, source)
     else:
         # we don't do any disk I/O
         pass
