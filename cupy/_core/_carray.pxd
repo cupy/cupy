@@ -1,6 +1,7 @@
 cimport cython  # NOQA
 from libc.stdint cimport intptr_t
 from libcpp cimport vector
+from libcpp cimport bool as cpp_bool
 
 from cupy.cuda cimport function
 
@@ -31,9 +32,16 @@ cdef class mdspan(function.CPointer):
 @cython.final
 cdef class CArray(function.CPointer):
 
-    cdef void init(
+    cdef int init(
         self, void* data_ptr, Py_ssize_t data_size,
-        const shape_t& shape, const strides_t& strides) except*
+        const shape_t& shape, const strides_t& strides) except -1
+
+    @staticmethod
+    cdef int create_squashed(
+        void *data_ptr, Py_ssize_t data_size,
+        const shape_t& shape, const strides_t& strides,
+        int final_ndim, vector.vector[cpp_bool]& squash,
+    ) except -1
 
 
 # This is now excluding shape/strides only for getting the compiler-time size

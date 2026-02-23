@@ -13,6 +13,7 @@ cimport cython  # NOQA
 cimport cpython
 
 from libcpp cimport vector
+from libcpp cimport bool as cpp_bool
 
 from cupy.cuda cimport device
 from cupy.cuda cimport function
@@ -342,41 +343,67 @@ cdef str _get_kernel_params(tuple params, tuple arginfos, type_decls=None):
     return ', '.join(lst)
 
 
-cdef shape_t _reduce_dims(list args, tuple params,
-                          const shape_t& shape) except *:
-    """ Remove contiguous stride to optimize CUDA kernel."""
-    cdef _ndarray_base arr
+cdef inline int init_reducable(
+        int ndim, vector.vector[cpp_bool]& squashable) except -1:
+    squashable.assign(ndim, True)
+    if ndim > 0:
+        squashable[0] = False  # never reduce first dimension
+    return ndim
 
-    if shape.size() <= 1 or len(args) == 0:
-        return shape
 
-    if len(args) == 1:  # fast path for reduction
-        a = args[0]
-        if (<ParameterInfo>params[0]).raw or not isinstance(a, _ndarray_base):
-            return shape
-        arr = a
-        arr = arr.reduced_view()
-        if arr is a:
-            return shape
+cdef int unmark_non_reducable(
+        _ndarray_base arr, const shape_t& broadcast_shape,
+        vector.vector[cpp_bool]& squashable) except -1:
+    """
+    Set squashable[i] = False for broadcast dimensions that cannot be merged
+    with the previous dimension (for this operand). broadcast_shape may have
+    more leading dimensions than arr; shapes are right-aligned.
+
+    Note that this function assumes squashing in a C-contiguous order.
+    Return value only used for exception handling.
+    """
+    cdef int ndim_broadcast = broadcast_shape.size()
+    cdef int ndim_arr = arr._shape.size()
+    cdef int arr_dim, bc_dim
+    cdef Py_ssize_t stride, prev_stride
+
+    # Note, we cannot fast-path contiguous arrays unless we knew that no
+    # broadcasting happened.  Except size 1 arrays or 1-d broadcast shapes.
+    if arr.size == 1:
+        return 0
+
+    stride = 0  # assume there are leading broadcast dimensions.
+    bc_dim = ndim_broadcast - ndim_arr
+    for arr_dim in range(0, ndim_arr):
+        bc_dim = arr_dim + (ndim_broadcast - ndim_arr)
+        if broadcast_shape[bc_dim] == 1:
+            continue  # size one dimension can always be squashed.
+
+        prev_stride = stride
+
+        if arr._shape[arr_dim] == 1:
+            stride = 0  # broadcast dimension needs stride 0
         else:
-            args[0] = arr
-            return arr._shape
-    return _reduced_view_core(args, params, shape)
+            stride = arr._strides[arr_dim]
+
+        if stride * broadcast_shape[bc_dim] != prev_stride:
+            squashable[bc_dim] = False
 
 
-cdef shape_t _reduced_view_core(
-        list args, tuple params, const shape_t& shape) except *:
-    cdef int i, ax, last_ax, ndim
-    cdef Py_ssize_t total_size
-    cdef shape_t vecshape, newshape, newstrides
-    cdef vector.vector[int] array_indexes, axes
-    cdef vector.vector[int] strides_indexes
+cdef int _reduce_dims(list args, tuple params, shape_t& shape) except -1:
+    cdef int i, ax, ndim
+    cdef shape_t vecshape, newstrides
+    cdef vector.vector[cpp_bool] squashable
+    cdef vector.vector[int] array_indexes
     cdef ParameterInfo p
     cdef _ndarray_base arr
 
     ndim = shape.size()
-    array_indexes.reserve(len(args))
-    strides_indexes.reserve(len(args))
+    init_reducable(ndim, squashable)
+
+    if shape.size() <= 1 or len(args) == 0:
+        return 0
+
     for i in range(len(args)):
         p = params[i]
         if p.raw:
@@ -384,66 +411,39 @@ cdef shape_t _reduced_view_core(
         a = args[i]
         if isinstance(a, _ndarray_base):
             array_indexes.push_back(i)
-            arr = a
-            if not arr._c_contiguous:
-                if ndim == 2:  # short cut
-                    return shape
-                strides_indexes.push_back(i)
+            unmark_non_reducable(a, shape, squashable)
 
-    if array_indexes.size() == 0:
-        return shape
+    result_ndim = 0
+    for i in range(ndim):
+        result_ndim += (not squashable[i])
 
-    if strides_indexes.size() == 0:
-        # The input arrays are all c_contiguous
-        i = array_indexes[0]
-        arr = args[i]
-        total_size = arr.size
-        newshape.assign(<Py_ssize_t>1, total_size)
-        newstrides.resize(1)
-        for i in array_indexes:
-            arr = args[i]
-            newstrides[0] = arr.dtype.itemsize
-            # TODO(niboshi): Confirm update_x_contiguity flags
-            args[i] = arr._view(
-                type(arr), newshape, newstrides, False, True, arr)
-        return newshape
+    if result_ndim == ndim:
+        return 0  # no dimensions to reduce
 
-    axes.reserve(ndim)
-    vecshape.reserve(ndim)
-    for ax in range(ndim):
-        vecshape.push_back(shape[ax])
-    last_ax = -1
-    for ax in range(ndim):
-        if vecshape[ax] == 1:
-            continue
-        if last_ax < 0:
-            last_ax = ax
-            continue
-        for i in strides_indexes:
-            arr = args[i]
-            if arr._strides[ax] * vecshape[ax] != arr._strides[last_ax]:
-                axes.push_back(last_ax)
-                break
+    vecshape.reserve(result_ndim)
+    for i in range(ndim):
+        if not squashable[i]:
+            vecshape.push_back(shape[i])
         else:
-            vecshape[ax] *= vecshape[last_ax]
-        last_ax = ax
-    if last_ax >= 0:
-        axes.push_back(last_ax)
-    if <int>axes.size() == ndim:
-        return shape
+            (&vecshape.back())[0] *= shape[i]
 
-    newshape.reserve(axes.size())
-    newstrides.reserve(axes.size())
-    for ax in axes:
-        newshape.push_back(vecshape[ax])
+    newstrides.reserve(result_ndim)
     for i in array_indexes:
         arr = args[i]
         newstrides.clear()
-        for ax in axes:
-            newstrides.push_back(arr._strides[ax])
-        # TODO(niboshi): Confirm update_x_contiguity flags
-        args[i] = arr._view(type(arr), newshape, newstrides, False, True, arr)
-    return newshape
+        for ax in range(ndim):
+            if not squashable[ax]:
+                newstrides.push_back(
+                    arr._strides[ax] if arr._shape[ax] != 1 else 0)
+            else:
+                if arr._shape[ax] != 1:
+                    # If the original shape isn't 1, this is the stride
+                    # otherwise the previous must be OK (both may be 0)
+                    (&newstrides.back())[0] = arr._strides[ax]
+
+        args[i] = arr._view(type(arr), vecshape, newstrides, False, True, arr)
+
+    shape.swap(vecshape)
 
 
 def _parse_param_info(t):
@@ -1323,8 +1323,8 @@ cdef class ElementwiseKernel:
 
         kargs.finalize_scalars(in_types)
 
-        if self.reduce_dims and not self._is_gufunc_like:
-            shape = _reduce_dims(kargs.args, self.params, shape)
+        if self.reduce_dims:
+            _reduce_dims(kargs.args, self.params, shape)
 
         indexer = _carray._indexer_init(shape)
         kargs.set_indexer(indexer)
@@ -1795,7 +1795,7 @@ cdef class ufunc:
         kargs.finalize_scalars(core_in_dtypes)
 
         _params = self._params_with_where if kargs.has_where else self._params
-        shape = _reduce_dims(kargs.args, _params, shape)
+        _reduce_dims(kargs.args, _params, shape)
         indexer = _carray._indexer_init(shape)
         kargs.set_indexer(indexer)
 

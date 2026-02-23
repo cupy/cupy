@@ -93,7 +93,7 @@ cdef class _TypeMap:
 
 cdef class KernelArguments:
     # A kernels friendly helper to organize preparation of input and
-    # output arguments.
+    # output arguments.shape_t
     cdef:
         Py_ssize_t nin
         Py_ssize_t nout
@@ -231,5 +231,4 @@ cdef str _get_kernel_params(tuple params, tuple arginfos, type_decls=*)
 
 cpdef _check_peer_access(_ndarray_base arr, int device_id)
 
-cdef shape_t _reduce_dims(
-    list args, tuple params, const shape_t& shape) except *
+cdef int _reduce_dims(list args, tuple params, shape_t& shape) except -1

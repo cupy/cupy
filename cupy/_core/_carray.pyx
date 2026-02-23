@@ -89,9 +89,9 @@ cdef class mdspan(function.CPointer):
 
 cdef class CArray(function.CPointer):
 
-    cdef void init(
+    cdef int init(
             self, void* data_ptr, Py_ssize_t data_size,
-            const shape_t& shape, const strides_t& strides) except*:
+            const shape_t& shape, const strides_t& strides) except -1:
         cdef size_t ndim = shape.size()
         assert ndim == strides.size()
         assert ndim <= MAX_NDIM
@@ -119,6 +119,48 @@ cdef class CArray(function.CPointer):
                    sizeof(Py_ssize_t) * ndim)
             offset += sizeof(Py_ssize_t) * ndim
         assert offset == total_size
+
+    @staticmethod
+    cdef int create_squashed(
+        void *data_ptr, Py_ssize_t data_size,
+        const shape_t& shape, const strides_t& strides,
+        int final_ndim, vector.vector[cpp_bool]& squash,
+    ) except -1:
+        """Init the CArray while removing dimensions that are flagged
+        to be squashed, `final_ndim` has to be correct already.
+
+        As of now this function only works for C-order squashing.
+        """
+        cdef CArray self = <CArray>CArray.__new__(CArray)
+
+        cdef int ndim = shape.size()  # the original ndim
+        cdef int i, curr_ndim = 0
+
+        cdef size_t total_size = (
+            sizeof(_CArray) + final_ndim * 2 * sizeof(Py_ssize_t))
+        cdef void* data = PyMem_Malloc(total_size)
+        if data == NULL:
+            raise MemoryError
+        self.ptr = <intptr_t>data
+
+        cdef size_t offset = 0
+        (<void **>(<char*>(data) + offset))[0] = data_ptr
+
+        cdef Py_ssize_t *cshape = (<Py_ssize_t*>(<char*>(data) + offset))
+        cdef Py_ssize_t *cstrides = (<Py_ssize_t*>(<char*>(data) + offset))
+        for i in range(ndim):
+            # TODO(seberg): This is wrong, make it right!
+            if squash[i]:
+                # Squash dimension into previous, in C-order the new stride
+                # is the stride for the combined dimension.
+                cshape[curr_ndim] *= shape[i]
+                cstrides[curr_ndim] = strides[i]
+            else:
+                cshape[curr_ndim] = shape[i]
+                cstrides[curr_ndim] = strides[i]
+                curr_ndim += 1
+
+        assert curr_ndim == final_ndim
 
     def __cinit__(self):
         self.ptr = 0

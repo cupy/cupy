@@ -401,8 +401,8 @@ cdef class _AbstractReductionKernel:
 
         if reduce_dims:
             # TODO(seberg): Would be nice to move _reduce_dims logic to later.
-            in_shape = _reduce_dims(in_args, self.in_params, in_shape)
-            out_shape = _reduce_dims(out_args, self.out_params, out_shape)
+            _reduce_dims(in_args, self.in_params, in_shape)
+            _reduce_dims(out_args, self.out_params, out_shape)
 
         params = self._params
 
