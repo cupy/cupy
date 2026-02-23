@@ -24,7 +24,7 @@ gcloud auth configure-docker asia-northeast1-docker.pkg.dev
 echo "Starting: "${TARGET}""
 echo "****************************************************************************************************"
 
-STAGES="cache_get build test"
+STAGES="build test"
 if [[ "${TARGET}" == "benchmark" ]]; then
     STAGES="cache_get build benchmark"
 fi
