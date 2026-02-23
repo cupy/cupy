@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import copy
-import hashlib
 import math
 import os
 import platform
@@ -18,12 +17,14 @@ from cupy.cuda import get_rocm_path
 from cupy.cuda._compiler_cache import (
     DiskKernelCacheBackend as _DiskKernelCacheBackend,
     KernelCacheBackend as _KernelCacheBackend,
+    _hash_hexdigest,
 )
 from cupy_backends.cuda.api import driver
 from cupy_backends.cuda.api import runtime
 from cupy_backends.cuda.libs import nvrtc
 from cupy import _environment
 from cupy import _util
+
 
 _cuda_hip_version = driver.get_build_version()
 
@@ -330,13 +331,6 @@ def _jitify_prep(source, options, cu_path):
     assert name == cu_path
 
     return options, headers, include_names
-
-
-def _hash_hexdigest(value):
-    return hashlib.sha1(value, usedforsecurity=False).hexdigest()
-
-
-_hash_length = len(_hash_hexdigest(b''))  # 40 for SHA1
 
 
 def _jitify_deprecation_warning(jitify):
