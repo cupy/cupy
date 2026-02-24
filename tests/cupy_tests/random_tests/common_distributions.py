@@ -40,27 +40,28 @@ class BaseGeneratorTestCase(unittest.TestCase):
     target_method = None
 
     def get_rng(self, xp, seed):
-        pass
+        raise NotImplementedError
 
-    def set_rng_seed(self, seed):
-        pass
+    def set_rng_seed(self, rng, seed):
+        raise NotImplementedError
 
-    def setUp(self):
-        self.__seed = testing.generate_seed()
+    def _get_rng_and_seed(self):
+        seed = testing.generate_seed()
         # rng will be a new or old generator API object
-        self.rng = self.get_rng(cupy, self.__seed)
+        rng = self.get_rng(cupy, seed)
+        return rng, seed
 
-    def _get_generator_func(self, *args, **kwargs):
+    def _get_generator_func(self, rng, *args, **kwargs):
         assert isinstance(self.target_method, str), (
             'generate_method must be overridden')
-        f = getattr(self.rng, self.target_method)
+        f = getattr(rng, self.target_method)
         return lambda: f(*args, **kwargs)
 
-    def _generate_check_repro(self, func, seed):
+    def _generate_check_repro(self, func, rng, seed):
         # Sample a random array while checking reproducibility
-        self.set_rng_seed(seed)
+        self.set_rng_seed(rng, seed)
         x = func()
-        self.set_rng_seed(seed)
+        self.set_rng_seed(rng, seed)
         y = func()
         testing.assert_array_equal(
             x, y,
@@ -70,8 +71,9 @@ class BaseGeneratorTestCase(unittest.TestCase):
     def generate(self, *args, **kwargs):
         # Pick one sample from generator.
         # Reproducibility is checked by repeating seed-and-sample cycle twice.
-        func = self._get_generator_func(*args, **kwargs)
-        return self._generate_check_repro(func, self.__seed)
+        rng, seed = self._get_rng_and_seed()
+        func = self._get_generator_func(rng, *args, **kwargs)
+        return self._generate_check_repro(func, rng, seed)
 
     def generate_many(self, *args, **kwargs):
         # Pick many samples from generator.
@@ -79,12 +81,13 @@ class BaseGeneratorTestCase(unittest.TestCase):
         # because it's very slow to set seed every time.
         _count = kwargs.pop('_count', None)
         assert _count is not None, '_count is required'
-        func = self._get_generator_func(*args, **kwargs)
+        rng, seed = self._get_rng_and_seed()
+        func = self._get_generator_func(rng, *args, **kwargs)
 
         if _count == 0:
             return []
 
-        vals = [self._generate_check_repro(func, self.__seed)]
+        vals = [self._generate_check_repro(func, rng, seed)]
         for _ in range(1, _count):
             vals.append(func())
         return vals
@@ -99,7 +102,8 @@ class BaseGeneratorTestCase(unittest.TestCase):
         assert 'size' in kwargs
 
         # cupy
-        func = self._get_generator_func(*args, **kwargs)
+        rng, seed = self._get_rng_and_seed()
+        func = self._get_generator_func(rng, *args, **kwargs)
         vals_cupy = func()
         assert vals_cupy.size > 0
         count = 1 + (cupy_len - 1) // vals_cupy.size
@@ -111,7 +115,7 @@ class BaseGeneratorTestCase(unittest.TestCase):
         # numpy
         kwargs['size'] = numpy_len
         dtype = kwargs.pop('dtype', None)
-        numpy_rng = self.get_rng(numpy, self.__seed)
+        numpy_rng = self.get_rng(numpy, seed)
         vals_numpy = getattr(numpy_rng, self.target_method)(*args, **kwargs)
         if dtype is not None:
             vals_numpy = vals_numpy.astype(dtype, copy=False)

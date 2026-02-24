@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import unittest
 
+import pytest
+
 from cupy.testing import _condition
 
 
@@ -79,6 +81,7 @@ def _should_skip(self, f):
         assert SKIP_REASON in str(e)
 
 
+@pytest.mark.thread_unsafe(reason="MockUnitTest use is global")
 class TestRepeatWithSuccessAtLeast(unittest.TestCase):
 
     def _decorate(self, f, times, min_success):
@@ -128,6 +131,7 @@ class TestRepeatWithSuccessAtLeast(unittest.TestCase):
         assert self.unit_test.probabilistic_case_failure_counter >= 5
 
 
+@pytest.mark.thread_unsafe(reason="MockUnitTest use is global")
 class TestRepeat(unittest.TestCase):
 
     def _decorate(self, f, times):
@@ -160,6 +164,7 @@ class TestRepeat(unittest.TestCase):
         assert self.unit_test.probabilistic_case_failure_counter > 0
 
 
+@pytest.mark.thread_unsafe(reason="MockUnitTest use is global")
 class TestRetry(unittest.TestCase):
 
     def _decorate(self, f, times):

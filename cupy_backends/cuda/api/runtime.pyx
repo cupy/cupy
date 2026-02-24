@@ -875,14 +875,16 @@ cpdef memPoolSetAttribute(intptr_t pool, int attr, object value):
 
 cpdef intptr_t streamCreate() except? 0:
     cdef driver.Stream stream
-    status = cudaStreamCreate(&stream)
+    with nogil:
+        status = cudaStreamCreate(&stream)
     check_status(status)
     return <intptr_t>stream
 
 
 cpdef intptr_t streamCreateWithFlags(unsigned int flags) except? 0:
     cdef driver.Stream stream
-    status = cudaStreamCreateWithFlags(&stream, flags)
+    with nogil:
+        status = cudaStreamCreateWithFlags(&stream, flags)
     check_status(status)
     return <intptr_t>stream
 
@@ -890,7 +892,8 @@ cpdef intptr_t streamCreateWithFlags(unsigned int flags) except? 0:
 cpdef intptr_t streamCreateWithPriority(unsigned int flags,
                                         int priority) except? 0:
     cdef driver.Stream stream
-    status = cudaStreamCreateWithPriority(&stream, flags, priority)
+    with nogil:
+        status = cudaStreamCreateWithPriority(&stream, flags, priority)
     check_status(status)
     return <intptr_t>stream
 
@@ -910,7 +913,8 @@ cpdef int streamGetPriority(intptr_t stream) except? 0:
 
 
 cpdef streamDestroy(intptr_t stream):
-    status = cudaStreamDestroy(<driver.Stream>stream)
+    with nogil:
+        status = cudaStreamDestroy(<driver.Stream>stream)
     check_status(status)
 
 
@@ -920,25 +924,28 @@ cpdef streamSynchronize(intptr_t stream):
     check_status(status)
 
 
-cdef _streamCallbackFunc(driver.Stream hStream, int status,
-                         void* func_arg) with gil:
-    obj = <object>func_arg
-    func, arg = obj
-    func(<intptr_t>hStream, status, arg)
-    cpython.Py_DECREF(obj)
+cdef void _streamCallbackFunc(driver.Stream hStream, int status,
+                              void* func_arg) nogil noexcept:
+    with gil:
+        obj = <object>func_arg
+        cpython.Py_DECREF(obj)
+        func, arg = obj
+        func(<intptr_t>hStream, status, arg)
 
 
-cdef _HostFnFunc(void* func_arg) with gil:
-    obj = <object>func_arg
-    func, arg = obj
-    func(arg)
-    cpython.Py_DECREF(obj)
+cdef void _HostFnFunc(void* func_arg) nogil noexcept:
+    with gil:
+        obj = <object>func_arg
+        cpython.Py_DECREF(obj)
+        func, arg = obj
+        func(arg)
 
 
-cdef _HostFnFuncUnmanaged(void* func_arg) with gil:
-    obj = <object>func_arg
-    func, arg = obj
-    func(arg)
+cdef void _HostFnFuncUnmanaged(void* func_arg) nogil noexcept:
+    with gil:
+        obj = <object>func_arg
+        func, arg = obj
+        func(arg)
 
 
 cpdef streamAddCallback(intptr_t stream, callback, intptr_t arg,
@@ -1022,25 +1029,30 @@ cpdef bint streamIsCapturing(intptr_t stream) except*:
 
 cpdef intptr_t eventCreate() except? 0:
     cdef driver.Event event
-    status = cudaEventCreate(&event)
+    with nogil:
+        status = cudaEventCreate(&event)
     check_status(status)
     return <intptr_t>event
 
 cpdef intptr_t eventCreateWithFlags(unsigned int flags) except? 0:
     cdef driver.Event event
-    status = cudaEventCreateWithFlags(&event, flags)
+    with nogil:
+        status = cudaEventCreateWithFlags(&event, flags)
     check_status(status)
     return <intptr_t>event
 
 
 cpdef eventDestroy(intptr_t event):
-    status = cudaEventDestroy(<driver.Event>event)
+    with nogil:
+        status = cudaEventDestroy(<driver.Event>event)
     check_status(status)
 
 
 cpdef float eventElapsedTime(intptr_t start, intptr_t end) except? 0:
     cdef float ms
-    status = cudaEventElapsedTime(&ms, <driver.Event>start, <driver.Event>end)
+    with nogil:
+        status = cudaEventElapsedTime(
+            &ms, <driver.Event>start, <driver.Event>end)
     check_status(status)
     return ms
 
@@ -1050,7 +1062,8 @@ cpdef eventQuery(intptr_t event):
 
 
 cpdef eventRecord(intptr_t event, intptr_t stream):
-    status = cudaEventRecord(<driver.Event>event, <driver.Stream>stream)
+    with nogil:
+        status = cudaEventRecord(<driver.Event>event, <driver.Stream>stream)
     check_status(status)
 
 
