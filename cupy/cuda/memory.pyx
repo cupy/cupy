@@ -2,7 +2,7 @@
 cimport cpython  # NOQA
 cimport cython  # NOQA
 
-from libcpp.mutex cimport recursive_mutex
+from cython.operator cimport dereference as deref, postincrement
 
 import atexit
 import gc
@@ -11,12 +11,14 @@ import threading
 import warnings
 import weakref
 
-from libc.stdint cimport int8_t
-from libc.stdint cimport intptr_t
+from libc.stdint cimport intptr_t, uintptr_t
 from libc.stdint cimport UINT64_MAX
 from libc.stdlib cimport malloc as c_malloc
 from libc.stdlib cimport free as c_free
-from libcpp cimport algorithm
+from libcpp.atomic cimport atomic as std_atomic
+from libcpp.set cimport set as std_set
+from libcpp.pair cimport pair as std_pair
+from libcpp.mutex cimport mutex as cpp_mutex
 
 from cupy.cuda cimport device
 from cupy.cuda cimport memory_hook
@@ -353,6 +355,7 @@ cdef class SystemMemory(BaseMemory):
 
 
 @cython.final
+@cython.no_gc  # reference cycle would be a bug
 cdef class _Chunk:
 
     """A chunk points to a device memory.
@@ -365,38 +368,53 @@ cdef class _Chunk:
         mem (~cupy.cuda.Memory): The device memory buffer.
         offset (int): An offset bytes from the head of the buffer.
         size (int): Chunk size in bytes.
-        stream_ident (intptr_t): Value to uniquely identify the stream.
+        arena (_Arena): The _Arena this chunk is associated with.
 
     Attributes:
         mem (Memory): The device memory buffer.
         ptr (int): Memory address.
         offset (int): An offset bytes from the head of the buffer.
         size (int): Chunk size in bytes.
-        prev (Chunk): prev memory pointer if split from a larger allocation
-        next (Chunk): next memory pointer if split from a larger allocation
-        stream_ident (intptr_t): Value to uniquely identify the stream.
+        arena (_Arena): The _Arena this chunk is associated with (or None
+            if this chunk is free'd). Allows us to find the arena on free
+            without the need of locking and ensures the arena isn't deleted
+            while chunks still exists.
+            But, we should set arena=None when we are done with the chunk.
+
+    Notes:
+        Mutating chunks is only safe if the arena mutex is held since
+        otherwise another thread may mutate it (e.g. split or merge).
     """
 
     cdef:
         readonly BaseMemory mem
         readonly ptrdiff_t offset
         readonly size_t size
-        readonly intptr_t stream_ident
+        readonly _Arena arena
         public _Chunk prev
         public _Chunk next
 
     def __init__(self, *args):
         # For debug
-        mem, offset, size, stream_ident = args
-        self._init(mem, offset, size, stream_ident)
+        mem, offset, size, arena = args
+        self._init(mem, offset, size, arena)
+
+    def __repr__(self):
+        # To simplify debugging if needed.
+        mem, offset, prev, next = self.mem, self.offset, self.prev, self.next
+        prev = "None" if prev is None else hex(id(prev))
+        next = "None" if next is None else hex(id(next))
+        return (
+            f"<{type(self)} at {hex(id(self))}, {mem=}, {offset=}, "
+            f"prev={prev} next={next}>")
 
     cdef _init(self, BaseMemory mem, ptrdiff_t offset,
-               size_t size, intptr_t stream_ident):
+               size_t size, _Arena arena):
         assert mem.ptr != 0 or offset == 0
         self.mem = mem
         self.offset = offset
         self.size = size
-        self.stream_ident = stream_ident
+        self.arena = arena
 
     cpdef intptr_t ptr(self):
         return self.mem.ptr + self.offset
@@ -409,7 +427,7 @@ cdef class _Chunk:
             return None
         remaining = _Chunk.__new__(_Chunk)
         remaining._init(self.mem, self.offset + size, self.size - size,
-                        self.stream_ident)
+                        self.arena)
         self.size = size
 
         if self.next is not None:
@@ -419,13 +437,22 @@ cdef class _Chunk:
         remaining.prev = self
         return remaining
 
-    cpdef merge(self, _Chunk remaining):
-        """Merge previously splitted block (chunk)"""
-        assert self.stream_ident == remaining.stream_ident
-        self.size += remaining.size
-        self.next = remaining.next
-        if remaining.next is not None:
+    cpdef merge_next(self):
+        """Merge previously splitted next block into this one"""
+        self.next.arena = None  # chunk is free so no arena
+        self.size += self.next.size
+        self.next = self.next.next
+        if self.next is not None:
             self.next.prev = self
+
+    # Note on __del__/__dealloc__ of a chunk.
+    # If a chunk get's deleted and still has an arena assigned something isn't
+    # ideal as we set the arena to `None` when we free chunks explicitly.
+    # So this _should_ only happen due to critical errors or at shutdown
+    # since if it happens we leak the memory.
+    # def __del__(self):
+    #    if self.arena is not None:
+    #         print("Chunk deleted with active arena, bug?", self)
 
 
 cdef class MemoryPointer:
@@ -927,12 +954,14 @@ cdef class PooledMemory(BaseMemory):
     cdef:
         readonly object pool
         readonly str identity
+        _Chunk chunk
         dict __dict__
 
     def __init__(self, _Chunk chunk, pool):
         self._init(chunk, pool)
 
     cdef _init(self, _Chunk chunk, pool):
+        self.chunk = chunk
         self.ptr = chunk.ptr()
         self.size = chunk.size
         self.device_id = chunk.mem.device_id
@@ -968,14 +997,17 @@ cdef class PooledMemory(BaseMemory):
         buffer to the memory pool for reuse.
 
         """
+        cdef cpython.PyObject *pool_ref
         cdef intptr_t ptr
         ptr = self.ptr
         if ptr == 0:
             return
         self.ptr = 0
-        pool = self.pool()
-        if pool is None:
-            return
+        if cpython.PyWeakref_GetRef(self.pool, &pool_ref) == 1:
+            pool = <object>pool_ref
+            cpython.Py_DECREF(pool)  # pool_ref owned a reference
+        else:
+            return  # The pool does not exist anymore
 
         size = self.size
         if memory_hook._has_memory_hooks():
@@ -990,7 +1022,7 @@ cdef class PooledMemory(BaseMemory):
                                          mem_ptr=ptr,
                                          pmem_id=pmem_id)
                 try:
-                    (<SingleDeviceMemoryPool>pool).free(ptr, size)
+                    (<SingleDeviceMemoryPool>pool).free(self.chunk)
                 finally:
                     for hook in hooks.values():
                         hook.free_postprocess(device_id=device_id,
@@ -998,15 +1030,12 @@ cdef class PooledMemory(BaseMemory):
                                               mem_ptr=ptr,
                                               pmem_id=pmem_id)
                 return
-        (<SingleDeviceMemoryPool>pool).free(ptr, size)
+        (<SingleDeviceMemoryPool>pool).free(self.chunk)
 
     def __dealloc__(self):
         if _exit_mode:
             return  # To avoid error at exit
         self.free()
-
-
-cdef size_t _index_compaction_threshold = 512
 
 
 cpdef inline size_t _round_size(size_t size):
@@ -1015,151 +1044,155 @@ cpdef inline size_t _round_size(size_t size):
     size = (size + ALLOCATION_UNIT_SIZE - 1) // ALLOCATION_UNIT_SIZE
     return size * ALLOCATION_UNIT_SIZE
 
-cpdef size_t _bin_index_from_size(size_t size):
-    """Returns appropriate bins index from the memory size."""
-    # avoid 0 div checking
-    return (size - 1) // ALLOCATION_UNIT_SIZE
 
-
-cdef bint _lock_no_gc(recursive_mutex& lock):
-    """Lock to ensure single thread execution and no garbage collection.
-
-    Returns:
-        bool: Whether GC is disabled.
-    """
-    if not lock.try_lock():
-        with nogil:
-            lock.lock()
-
-    # This function may be called from the context of finalizer
-    # (e.g., `__dealloc__` of PooledMemory class).
-    # If the process is going to be terminated, the module itself may
-    # already been unavailable.
-    if not _exit_mode and PyGC_IsEnabled():
-        PyGC_Disable()
-        return True
-    return False
-
-
-cdef _unlock_no_gc(recursive_mutex& lock, bint gc_mode):
-    if gc_mode:
-        PyGC_Enable()
-    lock.unlock()
-
-
-cdef class _LockAndNoGc:
-    """A context manager that ensures single-thread execution
-    and no garbage collection in the wrapped code.
-    The purpose of disabling GC is to prevent unexpected recursion.
-    See gh-2074 for details.
-    """
-
-    cdef recursive_mutex *_lock
-    cdef bint _gc
-
-    def __init__(self):
-        raise TypeError("cannot create _LockAndNoGc from Python")
-
-    def __cinit__(self):
-        self._lock = NULL
-
-    def __enter__(self):
-        self._gc = _lock_no_gc(cython.operator.dereference(self._lock))
-
-    def __exit__(self, t, v, tb):
-        _unlock_no_gc(cython.operator.dereference(self._lock), self._gc)
-
-
-cdef lock_and_no_gc(recursive_mutex& lock):
-    cdef _LockAndNoGc self = _LockAndNoGc.__new__(_LockAndNoGc)
-    self._lock = &lock
-    return self
-
-
-def _test_lock_and_no_gc():
-    # Test function defined here as it requires the C++ mutex
-    # unfortunately we can only test the GC part of the manager
-    # easily because C++ locks can't be introspected.  We would need
-    # a second thread just to see if that can lock or not.
-    import gc
-    cdef recursive_mutex lock
-    ctx = lock_and_no_gc(lock)
-
-    assert gc.isenabled()
-    with ctx:
-        assert not gc.isenabled()
-
-    assert gc.isenabled()
+# The std::set contains the size, _Chunk pair (as uintptr_t)
+# The uintptr_t means we can compare well defined (including to 0)
+ctypedef std_pair[size_t, uintptr_t] index_type
 
 
 @cython.final
 cdef class _Arena:
-
+    # Arena class managing all free chunks belonging to a single stream ident.
+    # A few notes on safety:
+    #   * All access to `index` requires a lock, the callers must ensure this.
+    #     these means almost all methods must be called with a lock held.
+    #   * `_add_pending_free_atomic` is atomic and safe without a lock, though.
+    #   * No custom `__dealloc__`: the lifetime is tied to the `_Chunks`.
+    #     Only an empty Arena can be free'd (except maybe at shutdown).
+    #
+    # The index owns all chunks, we have one entry per chunk (rather than
+    # buckets) for simplicity. Making it a `map` to buckets may be useful
+    # including possibly to try and achieve less locking.
     cdef:
-        # `_free_lock` must be acquired to access it.
-        list _free
-        # `_free_lock` must be acquired to access it.
-        vector.vector[size_t] _index
-        # `_free_lock` must be acquired to access it.
-        vector.vector[int8_t] _flag
+        list _pending_free  # "lock free" list to stage chunks
+        std_set[index_type] index  # bin_size, _Chunk
+        cdef object __weakref__
 
-    def __init__(self):
-        self._free = []
+    def __cinit__(self):
+        self._pending_free = []
 
-    cdef append_to_free_list(self, _Chunk chunk):
-        # need self._free_lock
-        cdef size_t index, bin_index
-        cdef set free_list
-        cdef vector.vector[size_t].iterator it
+    cdef add_pending_free_atomic(self, _Chunk chunk):
+        """Add a chunk back to the arena as free. If you are holding the lock,
+        use `insert_chunk()` directly (it will merge unless `merge=False`).
+        """
+        # In theory we could try to lock here, but in practice the caller
+        # should handle that when relevant.
+        self._pending_free.append(chunk)
 
-        bin_index = _bin_index_from_size(chunk.size)
-        it = algorithm.lower_bound(
-            self._index.begin(), self._index.end(), bin_index)
-        index = <size_t>(it - self._index.begin())
-        if index < self._index.size() and self._index.at(index) == bin_index:
-            free_list = self._free[index]
-            if free_list is None:
-                self._free[index] = free_list = set()
-        else:
-            free_list = set()
-            self._index.insert(self._index.begin() + index, bin_index)
-            self._flag.insert(self._flag.begin() + index, 0)
-            self._free.insert(index, free_list)
-        free_list.add(chunk)
-        self._flag[index] = 1
+    cdef _commit_pending_free(self):
+        """Clean up the current free list. An exclusive lock must
+        be held for this, since we may have to insert.
 
-    cdef bint remove_from_free_list(self, _Chunk chunk):
-        """Removes the chunk from the free list (need self._free_lock).
+        This also attempts to merge chunks that have been split up.
+        """
+        cdef Py_ssize_t i
+        cdef _Chunk chunk
+
+        for i in range(len(self._pending_free)):
+            chunk = self._pending_free.pop()
+            self.insert_chunk(chunk)
+
+    cdef _Chunk try_merge_chunk(self, _Chunk chunk):
+        # If this chunk was split try to merge it again.
+        while chunk.next is not None and self.try_remove_chunk(chunk.next):
+            chunk.merge_next()
+
+        while chunk.prev is not None and self.try_remove_chunk(chunk.prev):
+            chunk = chunk.prev
+            chunk.merge_next()
+
+        return chunk
+
+    cdef insert_chunk(self, _Chunk chunk, bint merge=True):
+        if merge:
+            chunk = self.try_merge_chunk(chunk)
+
+        self.index.insert(index_type(chunk.size, <uintptr_t><void *>chunk))
+        cpython.Py_INCREF(chunk)  # index holds a reference now
+
+    cdef size_t free_all(self) except -1:
+        """Frees all chunks (that can be free'd, split ones cannot).
+        """
+        cdef _Chunk chunk
+        cdef size_t bytes_freed = 0
+
+        self._commit_pending_free()
+
+        it = self.index.begin()
+        while it != self.index.end():
+            chunk = <_Chunk><void *>deref(it).second
+            if chunk.next is not None or chunk.prev is not None:
+                # Cannot free this chunk, continue to next.
+                postincrement(it)
+                continue
+
+            # Otherwise, advance iterator and remove chunk
+            self.index.erase(postincrement(it))
+            cpython.Py_DECREF(chunk)
+
+            # Freeing means removing the chunks from this arena. Because
+            # chunks hold on the arena, we need to break that cycle.
+            chunk.arena = None
+            bytes_freed += chunk.size
+            del chunk
+
+        return bytes_freed
+
+    cdef bint try_remove_chunk(self, _Chunk chunk) except -1:
+        """Checks if the chunk appears to be currently free and if yes
+        unlinks (removes) it from the arena (free chunks).
+        This is used for merging previously split chunks again.
 
         Returns:
             bool: ``True`` if the chunk can successfully be removed from
-            the free list. ``False`` otherwise (e.g., the chunk could not
-            be found in the free list as the chunk is allocated.)
+            the free list. ``False`` if the chunk is not free.
         """
+        cdef std_set[index_type].iterator it
 
-        cdef size_t index, bin_index
-        cdef set free_list
-        cdef vector.vector[size_t].iterator it
+        it = self.index.find(index_type(chunk.size, <uintptr_t><void *>chunk))
+        if it == self.index.end():
+            return False  # chunk seems not to be free
 
-        bin_index = _bin_index_from_size(chunk.size)
-        if self._index.size() == 0:
-            return False
-        it = algorithm.lower_bound(
-            self._index.begin(), self._index.end(), bin_index)
-        index = <size_t>(it - self._index.begin())
-        if index == self._index.size():
-            # Bin does not exist for the given chunk size.
-            return False
-        if self._index.at(index) != bin_index or self._flag.at(index) == 0:
-            return False
-        free_list = self._free[index]
-        if chunk in free_list:
-            free_list.remove(chunk)
-            if len(free_list) == 0:
-                self._free[index] = None
-                self._flag[index] = 0
-            return True
-        return False
+        chunk = <_Chunk><void *>deref(it).second
+        self.index.erase(it)  # Remove and decref
+        cpython.Py_DECREF(chunk)
+        return True
+
+    cdef _Chunk get_chunk(self, size_t size):
+        """Get a free chunk of at least the given size from the arena.
+        """
+        cdef std_set[index_type].iterator it
+        cdef _Chunk chunk = None
+
+        it = self.index.lower_bound(index_type(size, 0))
+        if it != self.index.end():
+            chunk = <_Chunk><void *>deref(it).second
+            self.index.erase(it)  # Remove and decref
+            cpython.Py_DECREF(chunk)
+        else:
+            return None
+
+        remaining = chunk.split(size)
+        if remaining is not None:
+            self.insert_chunk(remaining, merge=False)
+        return chunk
+
+    cdef _get_size(self):
+        return self.index.size()
+
+    cdef _index_to_python(self):
+        # For debug purpose, expose index into Python.
+        cdef std_set[index_type].iterator it
+        cdef list result = []
+
+        self._commit_pending_free()
+
+        it = self.index.begin()
+        while it != self.index.end():
+            result.append((deref(it).first, <object><void *>deref(it).second))
+            postincrement(it)
+
+        return result
 
 
 # cpdef because uint-tested
@@ -1192,35 +1225,34 @@ cdef class SingleDeviceMemoryPool:
     cdef:
         object _allocator
 
-        # Map from memory pointer of the chunk (intptr_t) to the corresponding
-        # Chunk object. All chunks currently allocated to the application from
-        # this pool are stored.
-        # `_in_use_lock` must be acquired to access it.
-        dict _in_use
-
-        # Map from stream identifier to its arena for the stream.
-        # `_free_lock` must be acquired to access it.
+        # Arenas are stored as weak references inside this dict (very minimal
+        # WeakValueDict). They must only be taken via `_arena(ident)` or the
+        # `_Chunk` attribute that keeps the arena alive.
+        # NOTE: If you work with any arena you must hold the `_arena_mutex`.
+        # The only safe operation is `add_pending_free_atomic` (note the
+        # atomic # in the name).
         dict _arenas
+        # NOTE: Never use `.lock()` outside a `with nogil:` statement as it
+        # may deadlock (GIL may be unlocked and another thread also locks).
+        cpp_mutex _arena_mutex
 
         # Number of total bytes actually allocated on GPU.
-        # `_total_bytes_lock` must be acquired to access it.
-        size_t _total_bytes
-
-        # Upper limit of the amount to be allocated by this pool.
-        # `_total_bytes_lock` must be acquired to access it.
-        size_t _total_bytes_limit
+        # NOTE: You MUST use _try_block_total_bytes to increase the value
+        # (This ensures correct checks for whether memory is available).
+        std_atomic[size_t] _total_bytes
+        # Number of used bytes, modify with normal +=/-=.
+        std_atomic[size_t] _in_use_bytes
+        # Upper limit of the amount to be allocated by this pool, we don't
+        # care too much about thread-safety for it, but make it atomic anyway.
+        std_atomic[size_t] _total_bytes_limit
 
         object __weakref__
         object _weakref
-        recursive_mutex _free_lock
-        recursive_mutex _in_use_lock
-        recursive_mutex _total_bytes_lock
         readonly int _device_id
 
     def __init__(self, allocator=None):
         if allocator is None:
             allocator = _malloc
-        self._in_use = {}
         self._arenas = {}
         self._allocator = allocator
         self._weakref = weakref.ref(self)
@@ -1228,17 +1260,40 @@ cdef class SingleDeviceMemoryPool:
 
         self.set_limit(**(_parse_limit_string()))
 
-    cdef _Arena _arena(self, intptr_t stream_ident):
-        """Returns appropriate arena of a given stream.
+    cpdef _Arena _arena(self, intptr_t stream_ident):
+        """Returns appropriate arena of a given stream, you should hold the
+        arena mutex when getting this (to ensure nobody else changes things)
 
         All free chunks in the stream belong to one of the bin in the arena.
-
-        Caller is responsible to acquire `_free_lock`.
         """
-        ret = self._arenas.get(stream_ident, None)
-        if ret is None:
-            self._arenas[stream_ident] = ret = _Arena()
-        return ret
+        cdef cpython.PyObject *ret
+        cdef _Arena arena
+        ref = self._arenas.get(stream_ident, None)
+        if ref is not None:
+            if cpython.PyWeakref_GetRef(ref, &ret) == 1:
+                arena = <_Arena>ret
+                cpython.Py_DECREF(arena)  # ret owned a reference
+                return arena
+
+        # Assume there are not many arenas being created and deleted so
+        # just clean up dead refs here.
+        for key in list(self._arenas):
+            if self._arenas[key]() is None:
+                del self._arenas[key]
+
+        arena = _Arena()
+        ref = weakref.ref(arena)
+        self._arenas[stream_ident] = ref
+        return arena
+
+    def _debug_arena_get_index(self, intptr_t stream_ident):
+        # Sets returned are not copies, mutating them will break things
+        with nogil:
+            self._arena_mutex.lock()
+        try:
+            return self._arena(stream_ident)._index_to_python()
+        finally:
+            self._arena_mutex.unlock()
 
     cdef MemoryPointer _alloc(self, Py_ssize_t rounded_size):
         if memory_hook._has_memory_hooks():
@@ -1290,6 +1345,7 @@ cdef class SingleDeviceMemoryPool:
         return self._malloc(rounded_size)
 
     cdef MemoryPointer _malloc(self, size_t size):
+        cdef _Arena arena
         cdef _Chunk chunk
         cdef BaseMemory mem
         cdef PooledMemory pmem
@@ -1300,74 +1356,71 @@ cdef class SingleDeviceMemoryPool:
         stream_ident = _get_stream_identifier(
             stream_module.get_current_stream_ptr())
 
-        # find best-fit, or a smallest larger allocation
-        gc_mode = _lock_no_gc(self._free_lock)
+        if not self._arena_mutex.try_lock():
+            with nogil:
+                self._arena_mutex.lock()
         try:
-            chunk = self._get_chunk(size, stream_ident)
+            arena = self._arena(stream_ident)
+            # find best-fit, or a smallest larger allocation
+            chunk = arena.get_chunk(size)
         finally:
-            _unlock_no_gc(self._free_lock, gc_mode)
+            self._arena_mutex.unlock()
 
         if chunk is None:
+            # cudaMalloc if a cache chunk is not found
             mem = self._try_malloc(size)
             chunk = _Chunk.__new__(_Chunk)
-            # cudaMalloc if a cache is not found
-            chunk._init(mem, 0, size, stream_ident)
+            chunk._init(mem, 0, size, arena)
 
-        if not self._in_use_lock.try_lock():
-            with nogil:
-                self._in_use_lock.lock()
-        try:
-            self._in_use[chunk.ptr()] = chunk
-        finally:
-            self._in_use_lock.unlock()
+        self._in_use_bytes += chunk.size
+
         pmem = PooledMemory.__new__(PooledMemory)
         pmem._init(chunk, self._weakref)
         ret = MemoryPointer.__new__(MemoryPointer)
         ret._init(pmem, 0)
         return ret
 
-    cpdef free(self, intptr_t ptr, size_t size):
-        cdef _Chunk chunk, c
+    cdef free(self, _Chunk chunk):
+        self._in_use_bytes -= chunk.size
 
-        if not self._in_use_lock.try_lock():
-            with nogil:
-                self._in_use_lock.lock()
-        try:
-            chunk = self._in_use.pop(ptr)
-        except KeyError:
-            raise RuntimeError('Cannot free out-of-pool memory')
-        finally:
-            self._in_use_lock.unlock()
-        stream_ident = chunk.stream_ident
-
-        gc_mode = _lock_no_gc(self._free_lock)
-        try:
-            arena = self._arena(stream_ident)
-
-            c = chunk.next
-            if c is not None and arena.remove_from_free_list(c):
-                chunk.merge(c)
-
-            c = chunk.prev
-            if c is not None and arena.remove_from_free_list(c):
-                c.merge(chunk)
-                chunk = c
-
-            arena.append_to_free_list(chunk)
-        finally:
-            _unlock_no_gc(self._free_lock, gc_mode)
+        # Make sure freeing is always safe, but if we can lock do it.
+        if self._arena_mutex.try_lock():
+            try:
+                chunk.arena.insert_chunk(chunk)
+            finally:
+                self._arena_mutex.unlock()
+        else:
+            chunk.arena.add_pending_free_atomic(chunk)
 
     cpdef free_all_blocks(self, stream=None):
-        """Free all **non-split** chunks"""
+        """Free all **non-split** blocks for one or all arenas.
+        """
         cdef intptr_t stream_ident
+        cdef _Arena arena
+        cdef tuple idents
+        cdef size_t bytes_freed = 0
 
-        with lock_and_no_gc(self._free_lock):
-            # free blocks in all arenas
+        if not self._arena_mutex.try_lock():
+            with nogil:
+                self._arena_mutex.lock()
+        try:
             if stream is None:
-                for stream_ident in list(self._arenas.iterkeys()):
-                    self._compact_index(stream_ident, True)
+                idents = tuple(self._arenas.keys())
             else:
-                self._compact_index(_get_stream_identifier(stream.ptr), True)
+                stream_ident = _get_stream_identifier(stream.ptr)
+                if stream_ident not in self._arenas:
+                    return  # stream doesn't exist, just return
+                idents = (stream_ident,)
+
+            for ident in idents:
+                arena = self._arenas[ident]()
+                if arena is None:
+                    del self._arenas[ident]
+                else:
+                    bytes_freed += arena.free_all()
+        finally:
+            self._arena_mutex.unlock()
+            self._total_bytes -= bytes_freed
 
     cpdef free_all_free(self):
         warnings.warn(
@@ -1375,56 +1428,61 @@ cdef class SingleDeviceMemoryPool:
             DeprecationWarning)
         self.free_all_blocks()
 
-    cpdef size_t n_free_blocks(self):
+    cpdef size_t n_free_blocks(self) except -1:
         cdef size_t n = 0
         cdef _Arena arena
-        if not self._free_lock.try_lock():
+
+        if not self._arena_mutex.try_lock():
             with nogil:
-                self._free_lock.lock()
+                self._arena_mutex.lock()
         try:
-            for arena in self._arenas.itervalues():
-                for v in arena._free:
-                    if v is not None:
-                        n += len(v)
+            for ref in self._arenas.itervalues():
+                arena = ref()
+                if arena is None:
+                    continue
+                n += arena._get_size()
         finally:
-            self._free_lock.unlock()
+            self._arena_mutex.unlock()
+
         return n
 
     cpdef size_t used_bytes(self):
-        cdef size_t size = 0
-        cdef _Chunk chunk
-        if not self._in_use_lock.try_lock():
-            with nogil:
-                self._in_use_lock.lock()
-        try:
-            for chunk in self._in_use.itervalues():
-                size += chunk.size
-        finally:
-            self._in_use_lock.unlock()
-        return size
+        """Currently used bytes."""
+        return self._in_use_bytes.load()
 
     cpdef size_t free_bytes(self):
-        cdef size_t size = 0
-        cdef set free_list
-        cdef _Chunk chunk
-        cdef _Arena arena
-        if not self._free_lock.try_lock():
-            with nogil:
-                self._free_lock.lock()
-        try:
-            for arena in self._arenas.itervalues():
-                for free_list in arena._free:
-                    if free_list is None:
-                        continue
-                    for chunk in free_list:
-                        size += chunk.size
-        finally:
-            self._free_lock.unlock()
-        return size
+        return self._total_bytes.load() - self._in_use_bytes.load()
 
     cpdef size_t total_bytes(self):
-        with lock_and_no_gc(self._total_bytes_lock):
-            return self._total_bytes
+        return self._total_bytes.load()
+
+    cdef bint _try_block_total_bytes(self, size_t size) except -1:
+        """Try to block off `size` bytes from the total pool size.
+        Returns True if successfull (caller should try to allocate that many
+        bytes) and False if allocation would go above the threshold.
+        May raise `OutOfMemoryError` if `size` is too large for the pool.
+        """
+        cdef size_t limit = self._total_bytes_limit.load()
+        cdef size_t curr_total_bytes = self._total_bytes.load()
+        cdef bint limit_ok
+
+        if limit == 0:
+            limit = UINT64_MAX
+
+        if size > limit:
+            # Check also protects against integer overflow below.
+            raise OutOfMemoryError(size, self._total_bytes.load(), limit)
+
+        limit_ok = curr_total_bytes <= limit - size
+
+        while limit_ok and not self._total_bytes.compare_exchange_weak(
+                curr_total_bytes, curr_total_bytes+size):
+            # If we reach here, `_total_bytes` was changed by another thread.
+            # TODO(seberg): Presumably we could use weaker memory order.
+            curr_total_bytes = self._total_bytes.load()
+            limit_ok = curr_total_bytes <= limit - size
+
+        return limit_ok
 
     cpdef set_limit(self, size=None, fraction=None):
         if size is None:
@@ -1447,99 +1505,26 @@ cdef class SingleDeviceMemoryPool:
             raise ValueError(
                 'memory limit size out of range: {}'.format(size))
 
-        with lock_and_no_gc(self._total_bytes_lock):
-            self._total_bytes_limit = size
+        self._total_bytes_limit.store(size)
 
     cpdef size_t get_limit(self):
-        with lock_and_no_gc(self._total_bytes_lock):
-            return self._total_bytes_limit
-
-    cdef _compact_index(self, intptr_t stream_ident, bint free):
-        # need self._free_lock
-        cdef _Arena arena
-        cdef list new_free
-        cdef set free_list, keep_list
-        cdef vector.vector[size_t] new_index
-        cdef size_t index
-        cdef size_t size_to_free = 0
-
-        if stream_ident not in self._arenas:
-            return
-        new_free = []
-        arena = self._arenas[stream_ident]
-
-        for index, free_list in enumerate(arena._free):
-            if not free_list:
-                continue
-            if free:
-                keep_list = set()
-                for chunk in free_list:
-                    if chunk.prev is not None or chunk.next is not None:
-                        keep_list.add(chunk)
-                    else:
-                        size_to_free += chunk.size
-                if len(keep_list) == 0:
-                    continue
-                free_list = keep_list
-
-            new_index.push_back(arena._index.at(index))
-            new_free.append(free_list)
-        if free and len(new_free) == 0:
-            del self._arenas[stream_ident]
-        else:
-            arena._free = new_free
-            arena._index.swap(new_index)
-            arena._flag.assign(new_index.size(), <int8_t>1)
-        if size_to_free > 0:
-            with lock_and_no_gc(self._total_bytes_lock):
-                self._total_bytes -= size_to_free
-
-    cdef object _get_chunk(self, size_t size, intptr_t stream_ident):
-        # need self._free_lock
-        cdef set free_list
-        cdef size_t i, index, length
-        cdef _Chunk chunk
-        cdef size_t bin_index = _bin_index_from_size(size)
-        cdef _Arena a = self._arena(stream_ident)
-        index = <size_t>(
-            algorithm.lower_bound(a._index.begin(), a._index.end(), bin_index)
-            - a._index.begin())
-        length = a._index.size()
-        for i in range(index, length):
-            if a._flag.at(i) == 0:
-                continue
-            free_list = a._free[i]
-            chunk = free_list.pop()
-            if len(free_list) == 0:
-                a._flag[i] = 0
-                a._free[i] = None
-            if i - index >= _index_compaction_threshold:
-                self._compact_index(stream_ident, False)
-            remaining = chunk.split(size)
-            if remaining is not None:
-                a.append_to_free_list(remaining)
-            assert chunk.stream_ident == stream_ident
-            return chunk
-        return None
+        return self._total_bytes_limit.load()
 
     cdef BaseMemory _try_malloc(self, size_t size):
-        cdef size_t limit
-        cdef bint limit_ok
-        with lock_and_no_gc(self._total_bytes_lock):
-            limit = self._total_bytes_limit
-            if limit != 0:
-                limit_ok = (self._total_bytes + size) <= limit
-                if not limit_ok:
-                    self.free_all_blocks()
-                    limit_ok = (self._total_bytes + size) <= limit
-                if not limit_ok:
-                    gc.collect()
-                    self.free_all_blocks()
-                    limit_ok = (self._total_bytes + size) <= limit
-                if not limit_ok:
-                    raise OutOfMemoryError(size, self._total_bytes, limit)
-            self._total_bytes += size
+        cdef size_t limit = self._total_bytes_limit.load()
+        cdef bint ok
 
+        if not (ok := self._try_block_total_bytes(size)):
+            self.free_all_blocks(None)
+        if not ok and not (ok := self._try_block_total_bytes(size)):
+            gc.collect()
+            self.free_all_blocks(None)
+        if not ok and not (ok := self._try_block_total_bytes(size)):
+            raise OutOfMemoryError(size, self._total_bytes.load(), limit)
+
+        # If we reach here, we are allowed to allocate size bytes based on
+        # the limit. But the actual allocation may still fail (and we must
+        # reduce _total_bytes again if it does).
         mem = None
         oom_error = False
         try:
@@ -1547,14 +1532,16 @@ cdef class SingleDeviceMemoryPool:
         except CUDARuntimeError as e:
             if e.status != runtime.errorMemoryAllocation:
                 raise
-            self.free_all_blocks()
+
+            self.free_all_blocks(None)
             try:
                 mem = self._alloc(size).mem
             except CUDARuntimeError as e:
                 if e.status != runtime.errorMemoryAllocation:
                     raise
                 gc.collect()
-                self.free_all_blocks()
+                gc.collect()
+                self.free_all_blocks(None)
                 try:
                     mem = self._alloc(size).mem
                 except CUDARuntimeError as e:
@@ -1563,10 +1550,10 @@ cdef class SingleDeviceMemoryPool:
                     oom_error = True
         finally:
             if mem is None:
-                with lock_and_no_gc(self._total_bytes_lock):
-                    self._total_bytes -= size
-                    if oom_error:
-                        raise OutOfMemoryError(size, self._total_bytes, limit)
+                self._total_bytes -= size
+                if oom_error:
+                    raise OutOfMemoryError(
+                        size, self._total_bytes.load(), limit)
 
         return mem
 
@@ -1723,6 +1710,10 @@ cdef class MemoryPool:
             Also note that this method only changes the limit for the current
             device, whereas the environment variable sets the default limit for
             all devices.
+
+        .. note::
+            Changing the limit is not thread-safe. Other threads may use an
+            outdated value for example if currently performing allocations.
 
         Args:
             size (int): Limit size in bytes.
