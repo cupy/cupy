@@ -7,7 +7,6 @@ from libcpp.mutex cimport recursive_mutex
 import atexit
 import gc
 import os
-import threading
 import warnings
 import weakref
 
@@ -18,6 +17,7 @@ from libc.stdlib cimport malloc as c_malloc
 from libc.stdlib cimport free as c_free
 from libcpp cimport algorithm
 
+from cupy._core._threadlocal cimport _ThreadLocalBase, PyThread_tss_create
 from cupy.cuda cimport device
 from cupy.cuda cimport memory_hook
 from cupy.cuda cimport stream as stream_module
@@ -125,16 +125,8 @@ cdef class Memory(BaseMemory):
 cdef inline void check_async_alloc_supported(int device_id) except*:
     if runtime._is_hip_environment:
         raise RuntimeError('HIP does not support memory_async')
-    cdef int dev_id
-    cdef list support
-    try:
-        is_supported = _thread_local.device_support_async_alloc[device_id]
-    except AttributeError:
-        support = [runtime.deviceGetAttribute(
-            runtime.cudaDevAttrMemoryPoolsSupported, dev_id)
-            for dev_id in range(runtime.getDeviceCount())]
-        _thread_local.device_support_async_alloc = support
-        is_supported = support[device_id]
+
+    is_supported = _ThreadLocal.get().device_support_async_alloc[device_id]
     if not is_supported:
         raise RuntimeError('Device {} does not support '
                            'malloc_async'.format(device_id))
@@ -832,19 +824,38 @@ cpdef MemoryPointer malloc_system(size_t size):
 
 
 cdef object _current_allocator = _malloc
-cdef object _thread_local = threading.local()
+cdef Py_tss_t _tlocal_key
+if PyThread_tss_create(&_tlocal_key) != 0:
+    raise MemoryError()
+
+
+@cython.no_gc
+cdef class _ThreadLocal(_ThreadLocalBase):
+    cdef object allocator
+    cdef object device_support_async_alloc
+
+    def __init__(self):
+        self.allocator = None
+
+        if not runtime._is_hip_environment:
+            self.device_support_async_alloc = [runtime.deviceGetAttribute(
+                runtime.cudaDevAttrMemoryPoolsSupported, dev_id)
+                for dev_id in range(runtime.getDeviceCount())]
+        else:
+            self.device_support_async_alloc = None
+
+    @staticmethod
+    cdef _ThreadLocal get():
+        return <_ThreadLocal>_ThreadLocal._get(_ThreadLocal, _tlocal_key)
 
 
 def _get_thread_local_allocator():
-    try:
-        allocator = _thread_local.allocator
-    except AttributeError:
-        allocator = _thread_local.allocator = None
-    return allocator
+    return _ThreadLocal.get().allocator
 
 
 def _set_thread_local_allocator(allocator):
-    _thread_local.allocator = allocator
+    thread_local = _ThreadLocal.get()
+    thread_local.allocator = allocator
 
 
 cdef inline intptr_t _get_stream_identifier(intptr_t stream_ptr):
@@ -853,12 +864,7 @@ cdef inline intptr_t _get_stream_identifier(intptr_t stream_ptr):
     if stream_ptr != runtime.streamPerThread:
         return stream_ptr
 
-    cdef intptr_t tid
-    try:
-        tid = _thread_local._tid
-    except AttributeError:
-        _thread_local._tid_obj = tid_obj = object()
-        _thread_local._tid = tid = id(tid_obj)
+    cdef intptr_t tid = id(_ThreadLocal.get())
     return -tid
 
 
@@ -891,7 +897,7 @@ cpdef set_allocator(allocator=None):
     global _current_allocator
     if allocator is None:
         allocator = _malloc
-    if getattr(_thread_local, 'allocator', None) is not None:
+    if _ThreadLocal.get().allocator is not None:
         raise ValueError('Can\'t change the global allocator inside '
                          '`using_allocator` context manager')
     _current_allocator = allocator
@@ -903,10 +909,7 @@ cpdef get_allocator():
     Returns:
         function: CuPy memory allocator.
     """
-    try:
-        allocator = _thread_local.allocator
-    except AttributeError:
-        _thread_local.allocator = allocator = None
+    allocator = _ThreadLocal.get().allocator
     if allocator is None:
         return _current_allocator
     else:

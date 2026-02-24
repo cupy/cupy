@@ -1,11 +1,16 @@
+cimport cython
+from cupy._core._threadlocal cimport _ThreadLocalBase, PyThread_tss_create
+
 import collections
-import threading
-
-cdef object _thread_local = threading.local()
 
 
-cdef class _ThreadLocal:
+cdef Py_tss_t _tlocal_key
+if PyThread_tss_create(&_tlocal_key) != 0:
+    raise MemoryError()
 
+
+@cython.no_gc
+cdef class _ThreadLocal(_ThreadLocalBase):
     cdef object memory_hooks
 
     def __init__(self):
@@ -13,11 +18,7 @@ cdef class _ThreadLocal:
 
     @staticmethod
     cdef _ThreadLocal get():
-        try:
-            tls = _thread_local.tls
-        except AttributeError:
-            tls = _thread_local.tls = _ThreadLocal()
-        return <_ThreadLocal>tls
+        return <_ThreadLocal>_ThreadLocal._get(_ThreadLocal, _tlocal_key)
 
 
 cpdef bint _has_memory_hooks():

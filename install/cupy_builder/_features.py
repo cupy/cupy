@@ -125,6 +125,7 @@ _cuda_files = [
     'cupy._core._routines_sorting',
     'cupy._core._routines_statistics',
     'cupy._core._scalar',
+    'cupy._core._threadlocal',
     'cupy._core.core',
     'cupy._core.flags',
     'cupy._core.internal',
