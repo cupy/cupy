@@ -354,11 +354,11 @@ extern "C" __global__ void my_func(void* input, int N) {
 def use_temporary_cache_dir():
     # Note uses mock, so not thread-safe (except at class/method level)
     # tempdir fixture could be used instead.
-    target1 = 'cupy.cuda.compiler.get_cache_dir'
+    target1 = 'cupy.cuda.compiler._kernel_cache_backend._cache_dir'
     target2 = 'cupy.cuda.compiler._empty_file_preprocess_cache'
     temp_cache = {}
     with tempfile.TemporaryDirectory() as path:
-        with mock.patch(target1, lambda: path):
+        with mock.patch(target1, path):
             with mock.patch(target2, temp_cache):
                 yield path
 
@@ -389,7 +389,7 @@ def find_nvcc_ver():
     cmd = cupy.cuda.get_nvcc_path().split()
     cmd += ['--version']
 
-    output = compiler._run_cc(cmd, cupy.cuda.compiler.get_cache_dir(), 'nvcc')
+    output = compiler._run_cc(cmd, None, 'nvcc')
     match = re.search(nvcc_ver_pattern, output)
     assert match
 

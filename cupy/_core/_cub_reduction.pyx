@@ -232,7 +232,7 @@ __global__ void ${name}(${params}) {
     # values for arch, cachd, prepend_cupy_headers, ... to bypass cdef/cpdef
     # limitation...
     module = compile_with_cache(
-        module_code, options, arch=None, cachd_dir=None,
+        module_code, options, arch=None,
         prepend_cupy_headers=True, backend=backend, translate_cucomplex=False,
         enable_cooperative_groups=False, name_expressions=None,
         log_stream=None, jitify=False)

@@ -2532,7 +2532,7 @@ cpdef tuple assemble_cupy_compiler_options(tuple options):
 
 
 cpdef function.Module compile_with_cache(
-        str source, tuple options=(), arch=None, cachd_dir=None,
+        str source, tuple options=(), arch=None,
         prepend_cupy_headers=True, backend='nvrtc', translate_cucomplex=False,
         enable_cooperative_groups=False, name_expressions=None,
         log_stream=None, bint jitify=False):
@@ -2550,7 +2550,7 @@ cpdef function.Module compile_with_cache(
     options = assemble_cupy_compiler_options(options)
 
     return cuda.compiler._compile_module_with_cache(
-        source, options, arch, cachd_dir, extra_source, backend,
+        source, options, arch=arch, extra_source=extra_source, backend=backend,
         enable_cooperative_groups=enable_cooperative_groups,
         name_expressions=name_expressions, log_stream=log_stream,
         jitify=jitify)
