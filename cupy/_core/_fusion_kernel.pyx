@@ -47,7 +47,9 @@ def _cuda_compile(preamble, name, cuda_params, cuda_body, use_grid_sync):
     # print(code)
 
     module = compile_with_cache(
-        code, (), None, None, True, 'nvrtc', False, use_grid_sync)
+        code, (), arch=None, prepend_cupy_headers=True,
+        backend='nvrtc', translate_cucomplex=False,
+        enable_cooperative_groups=use_grid_sync)
     return module.get_function(name)
 
 
