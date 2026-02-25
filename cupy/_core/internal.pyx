@@ -316,60 +316,81 @@ cdef inline int _normalize_order(order, cpp_bool allow_k=True) except? 0:
     return order_char
 
 
+cdef bint _broadcast_shape(shape_t& bshape, const shape_t& next_shape):
+    """
+    Broadcast the first shape to the second one expanding it if necessary.
+    A typical broadcast operation is a reduction over this function.
+
+    NOTE: The function returns False if the shapes cannot be broadcast, it
+    does NOT raise an exception (except for memory errors) since it does not
+    have the necessary information to format a useful error message.
+    """
+    cdef Py_ssize_t i_next, i_bshape
+    if next_shape.size() > bshape.size():
+        bshape.insert(bshape.begin(), next_shape.size() - bshape.size(), 1)
+
+    for i_next in range(next_shape.size()):
+        i_bshape = i_next + (bshape.size() - next_shape.size())
+
+        if next_shape[i_next] == 1 or next_shape[i_next] == bshape[i_bshape]:
+            pass
+        elif bshape[i_bshape] == 1:
+            bshape[i_bshape] = next_shape[i_next]
+        else:
+            return False
+
+    return True
+
+
+cdef _raise_broadcast_error(list arrays):
+    raise ValueError(
+        'operands could not be broadcast together with shapes {}'
+        .format(
+            ' '.join([str(x.shape) if isinstance(x, _ndarray_base)
+                      else '()' for x in arrays])))
+
+
+cdef _ndarray_base _broadcast_to_unchecked(
+        _ndarray_base a, const shape_t& shape):
+    cdef:
+        strides_t strides
+        Py_ssize_t j, a_sh
+        Py_ssize_t nd = shape.size()
+        Py_ssize_t a_ndim = <Py_ssize_t>a._shape.size()
+
+    if vector_equal(a._shape, shape):
+        return a
+
+    strides.assign(nd, <Py_ssize_t>0)
+    for j in range(a_ndim):
+        a_sh = a._shape[j]
+        if a_sh == shape[j + nd - a_ndim]:
+            strides[j + nd - a_ndim] = a._strides[j]
+
+    return a._view(type(a), shape, strides, True, True, a)
+
+
 cdef _broadcast_core(list arrays, shape_t& shape):
-    cdef Py_ssize_t i, j, s, a_ndim, a_sh, nd
-    cdef strides_t strides
+    cdef Py_ssize_t i
     cdef vector.vector[int] index
     cdef _ndarray_base a
 
     shape.clear()
     index.reserve(len(arrays))
-    nd = 0
     for i, x in enumerate(arrays):
         if not isinstance(x, _ndarray_base):
             continue
         a = x
         index.push_back(i)
-        nd = max(nd, <Py_ssize_t>a._shape.size())
+        if not _broadcast_shape(shape, a._shape):
+            _raise_broadcast_error(arrays)
 
-    if index.size() == 0:
-        return
-
-    shape.reserve(nd)
-    for i in range(nd):
-        s = 1
-        for j in index:
-            a = arrays[j]
-            a_ndim = <Py_ssize_t>a._shape.size()
-            if i < nd - a_ndim:
-                continue
-            a_sh = a._shape[i - (nd - a_ndim)]
-            if a_sh == s or a_sh == 1:
-                continue
-            if s == 1:
-                s = a_sh
-                continue
-            raise ValueError(
-                'operands could not be broadcast together with shapes {}'
-                .format(
-                    ' '.join([str(x.shape) if isinstance(x, _ndarray_base)
-                              else '()' for x in arrays])))
-        shape.push_back(s)
+    if shape.size() == 0:
+        return  # No arrays or all zero dimensional.
 
     for i in index:
         a = arrays[i]
-        if vector_equal(a._shape, shape):
-            continue
-
-        strides.assign(nd, <Py_ssize_t>0)
-        a_ndim = <Py_ssize_t>a._shape.size()
-        for j in range(a_ndim):
-            a_sh = a._shape[j]
-            if a_sh == shape[j + nd - a_ndim]:
-                strides[j + nd - a_ndim] = a._strides[j]
-
-        # TODO(niboshi): Confirm update_x_contiguity flags
-        arrays[i] = a._view(type(a), shape, strides, True, True, a)
+        arrays[i] = _broadcast_to_unchecked(a, shape)
 
 
 @cython.boundscheck(False)
