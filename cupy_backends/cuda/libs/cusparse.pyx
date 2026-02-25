@@ -1376,13 +1376,13 @@ ctypedef Status (*f_type)(...) nogil  # NOQA
 # be removed entirely.
 cdef object _libname = None
 cdef object _handle = 0
-IF 12000 <= CUPY_CUDA_VERSION:
+if 12000 <= CUPY_CUDA_VERSION:
     # We let libname be None here to avoid loading the library twice,
     # which could potentially be loading different versions of the library.
     from cuda import pathfinder
     loaded_dl = pathfinder.load_nvidia_dynamic_lib('cusparse')
     _handle = loaded_dl._handle_uint
-ELIF 0 < CUPY_HIP_VERSION:
+elif 0 < CUPY_HIP_VERSION:
     _libname = __file__
 
 cdef SoftLink _lib = SoftLink(_libname, 'cusparse', handle=_handle)
@@ -4984,7 +4984,7 @@ cpdef void spSM_solve(
         size_t matA, size_t matB, size_t matC, DataType computeType,
         SpSMAlg alg, size_t spsmDescr, intptr_t externalBuffer=0) except *:
     _setStream(handle)
-    IF CUPY_HIP_VERSION > 0:
+    if CUPY_HIP_VERSION > 0:
         # hipsparseSpSM_solve has the extra `externalBuffer` parameter that
         # cusparseSpSM_solve does not require.
         status = cusparseSpSM_solve(<Handle> handle, opA, opB, <void*>alpha,
@@ -4992,7 +4992,7 @@ cpdef void spSM_solve(
                                     <DnMatDescr>matC, computeType, alg,
                                     <SpSMDescr>spsmDescr,
                                     <void*>externalBuffer)
-    ELSE:
+    else:
         status = cusparseSpSM_solve(<Handle> handle, opA, opB, <void*>alpha,
                                     <SpMatDescr>matA, <DnMatDescr>matB,
                                     <DnMatDescr>matC, computeType, alg,
