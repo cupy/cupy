@@ -89,78 +89,80 @@ cdef class mdspan(function.CPointer):
 
 cdef class CArray(function.CPointer):
 
+    cdef _CArray* _allocate(
+            self, void* data_ptr, Py_ssize_t element_count,
+            size_t ndim) except NULL:
+        assert ndim <= MAX_NDIM
+        cdef _CArray* data = <_CArray*>PyMem_Malloc(
+            sizeof(_CArray) + ndim * 2 * sizeof(Py_ssize_t))
+        if data == NULL:
+            raise MemoryError
+        self.ptr = <intptr_t>data
+        self.ndim = ndim
+        data.data = data_ptr
+        data.size = element_count
+        return data
+
     cdef int init(
-            self, void* data_ptr, Py_ssize_t data_size,
+            self, void* data_ptr, Py_ssize_t element_count,
             const shape_t& shape, const strides_t& strides) except -1:
         cdef size_t ndim = shape.size()
         assert ndim == strides.size()
-        assert ndim <= MAX_NDIM
-
-        cdef size_t total_size = \
-            sizeof(_CArray) + ndim * 2 * sizeof(Py_ssize_t)
-        cdef void* data = PyMem_Malloc(total_size)
-        if data == NULL:
-            raise MemoryError
-        self.ptr = <intptr_t>data
-
-        cdef size_t offset = 0
-        (<void **>(<char*>(data) + offset))[0] = data_ptr
-        offset += sizeof(data_ptr)
-        (<Py_ssize_t*>(<char*>(data) + offset))[0] = data_size
-        offset += sizeof(data_size)
+        cdef _CArray* data = self._allocate(data_ptr, element_count, ndim)
 
         if ndim != 0:
-            memcpy(<char*>(data) + offset,
-                   shape.data(),
+            memcpy(data + 1, shape.data(), sizeof(Py_ssize_t) * ndim)
+            memcpy(<Py_ssize_t*>(data + 1) + ndim, strides.data(),
                    sizeof(Py_ssize_t) * ndim)
-            offset += sizeof(Py_ssize_t) * ndim
-            memcpy(<char*>(data) + offset,
-                   strides.data(),
-                   sizeof(Py_ssize_t) * ndim)
-            offset += sizeof(Py_ssize_t) * ndim
-        assert offset == total_size
+        return 0
 
     @staticmethod
-    cdef int create_squashed(
-        void *data_ptr, Py_ssize_t data_size,
-        const shape_t& shape, const strides_t& strides,
-        int final_ndim, vector.vector[cpp_bool]& squash,
-    ) except -1:
-        """Init the CArray while removing dimensions that are flagged
-        to be squashed, `final_ndim` has to be correct already.
-
-        As of now this function only works for C-order squashing.
+    cdef CArray create_squashed(
+            void* data_ptr, Py_ssize_t element_count,
+            const shape_t& shape, const strides_t& strides,
+            const vector.vector[cpp_bool]& squashable,
+            const vector.vector[int]* output_axes):
+        """For a reduction output, output_axes maps the retained suffix of the
+        input loop axes to the corresponding axes in shape and strides.
         """
-        cdef CArray self = <CArray>CArray.__new__(CArray)
+        cdef CArray self = CArray.__new__(CArray)
+        cdef size_t ndim = shape.size()
+        cdef size_t loop_ndim = squashable.size()
+        cdef size_t ax, array_axis, start = 0, curr_ndim = 0, packed_ndim
+        assert ndim == strides.size()
+        if output_axes == NULL:
+            assert loop_ndim <= ndim
+            packed_ndim = ndim - loop_ndim
+        else:
+            assert output_axes[0].size() <= loop_ndim
+            start = loop_ndim - output_axes[0].size()
+            packed_ndim = 0
 
-        cdef int ndim = shape.size()  # the original ndim
-        cdef int i, curr_ndim = 0
+        for ax in range(start, loop_ndim):
+            if ax == start or not squashable[ax]:
+                packed_ndim += 1
 
-        cdef size_t total_size = (
-            sizeof(_CArray) + final_ndim * 2 * sizeof(Py_ssize_t))
-        cdef void* data = PyMem_Malloc(total_size)
-        if data == NULL:
-            raise MemoryError
-        self.ptr = <intptr_t>data
-
-        cdef size_t offset = 0
-        (<void **>(<char*>(data) + offset))[0] = data_ptr
-
-        cdef Py_ssize_t *cshape = (<Py_ssize_t*>(<char*>(data) + offset))
-        cdef Py_ssize_t *cstrides = (<Py_ssize_t*>(<char*>(data) + offset))
-        for i in range(ndim):
-            # TODO(seberg): This is wrong, make it right!
-            if squash[i]:
-                # Squash dimension into previous, in C-order the new stride
-                # is the stride for the combined dimension.
-                cshape[curr_ndim] *= shape[i]
-                cstrides[curr_ndim] = strides[i]
-            else:
-                cshape[curr_ndim] = shape[i]
-                cstrides[curr_ndim] = strides[i]
+        cdef _CArray* data = self._allocate(
+            data_ptr, element_count, packed_ndim)
+        cdef Py_ssize_t* cshape = <Py_ssize_t*>(data + 1)
+        cdef Py_ssize_t* cstrides = cshape + packed_ndim
+        for ax in range(start, loop_ndim):
+            array_axis = (
+                ax if output_axes == NULL else output_axes[0][ax - start])
+            if ax == start or not squashable[ax]:
+                cshape[curr_ndim] = shape[array_axis]
+                cstrides[curr_ndim] = strides[array_axis]
                 curr_ndim += 1
-
-        assert curr_ndim == final_ndim
+            elif shape[array_axis] != 1:
+                cshape[curr_ndim - 1] *= shape[array_axis]
+                cstrides[curr_ndim - 1] = strides[array_axis]
+        if output_axes == NULL:
+            for ax in range(loop_ndim, ndim):
+                cshape[curr_ndim] = shape[ax]
+                cstrides[curr_ndim] = strides[ax]
+                curr_ndim += 1
+        assert curr_ndim == packed_ndim
+        return self
 
     def __cinit__(self):
         self.ptr = 0
@@ -173,26 +175,30 @@ cdef class CArray(function.CPointer):
 
 cdef class CIndexer(function.CPointer):
 
-    cdef void init(self, Py_ssize_t size, const shape_t &shape) except*:
+    @staticmethod
+    cdef CIndexer create(const shape_t& shape):
+        cdef CIndexer self = CIndexer.__new__(CIndexer)
         cdef size_t ndim = shape.size()
         assert ndim <= MAX_NDIM
 
-        cdef size_t total_size = \
-            sizeof(_CIndexer) + ndim * 2 * sizeof(Py_ssize_t)
-        cdef void* data = PyMem_Malloc(total_size)
+        cdef _CIndexer* data = <_CIndexer*>PyMem_Malloc(
+            sizeof(_CIndexer) + ndim * 2 * sizeof(Py_ssize_t))
         if data == NULL:
             raise MemoryError
         self.ptr = <intptr_t>data
+        self.ndim = ndim
+        data.size = internal.prod(shape)
 
-        cdef size_t offset = 0
-        (<Py_ssize_t*>(<char*>(data) + offset))[0] = size
-        offset += sizeof(size)
         if ndim != 0:
-            memcpy(<char*>(data) + offset,
-                   shape.data(),
-                   sizeof(Py_ssize_t) * ndim)
-            offset += sizeof(Py_ssize_t) * ndim
-        assert offset + sizeof(Py_ssize_t) * ndim == total_size
+            # The device fills the index slots when it calls set().
+            memcpy(data + 1, shape.data(), sizeof(Py_ssize_t) * ndim)
+        return self
+
+    cdef Py_ssize_t size(self) noexcept:
+        return (<_CIndexer*>self.ptr).size
+
+    cdef bint _index_32_bits(self) noexcept:
+        return self.size() < <Py_ssize_t>(1 << 31)
 
     def __cinit__(self):
         self.ptr = 0
@@ -201,26 +207,3 @@ cdef class CIndexer(function.CPointer):
         if self.ptr != 0:
             PyMem_Free(<void*>(self.ptr))
             self.ptr = 0
-
-
-cdef class Indexer:
-
-    cdef void init(self, const shape_t& shape) noexcept:
-        self.shape = shape
-        self.size = internal.prod(shape)
-        self._index_32_bits = self.size < <Py_ssize_t>(1 << 31)
-
-    @property
-    def ndim(self):
-        return self.shape.size()
-
-    cdef function.CPointer get_pointer(self):
-        cdef CIndexer indexer = CIndexer.__new__(CIndexer)
-        indexer.init(self.size, self.shape)
-        return indexer
-
-
-cdef inline Indexer _indexer_init(const shape_t& shape):
-    cdef Indexer indexer = Indexer.__new__(Indexer)
-    indexer.init(shape)
-    return indexer

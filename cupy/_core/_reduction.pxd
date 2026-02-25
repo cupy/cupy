@@ -32,18 +32,18 @@ cdef class _AbstractReductionKernel:
         stream, bint try_use_cub=*, bint try_use_cuda_compute=*,
         bint sort_reduce_axis=*, bint cuda_compute_only=*)
 
-    cdef bint _launch(
-        self, out_block_num, block_size, block_stride,
-        in_args, out_args, in_shape, out_shape, types,
-        map_expr, reduce_expr, post_map_expr, reduce_type,
-        stream, params) except -1
+    cdef _launch(
+        self, Py_ssize_t out_block_num, Py_ssize_t block_size,
+        Py_ssize_t block_stride, tuple arginfos, list launch_args,
+        _kernel._TypeMap type_map, str map_expr, str reduce_expr,
+        str post_map_expr, str reduce_type, stream)
 
     cdef tuple _get_expressions_and_types(
         self, KernelArguments kargs, dtype)
 
     cdef _create_out_args(
         self, KernelArguments kargs, tuple out_types,
-        shape_t& shape)
+        const shape_t& shape)
 
     cdef function.Function _get_function(
         self,

@@ -3442,7 +3442,7 @@ cdef _ndarray_base _create_ndarray_from_shape_strides(
             end += strides[i] * (shape[i] - 1)
         elif strides[i] < 0:
             begin += strides[i] * (shape[i] - 1)
-    ptr = memory.alloc(end - begin) + begin
+    ptr = memory.alloc(end - begin) - begin
     return ndarray.__new__(
         subtype, shape, dtype, _obj=obj, memptr=ptr, strides=strides)
 

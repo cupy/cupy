@@ -14,7 +14,6 @@ ctypedef vector.vector[Py_ssize_t] strides_t
 cdef enum: MAX_NDIM = 64
 
 
-# This is now excluding shape/strides only for getting the compiler-time size
 cdef struct _CArray:
     void* data
     Py_ssize_t size
@@ -32,37 +31,35 @@ cdef class mdspan(function.CPointer):
 @cython.final
 cdef class CArray(function.CPointer):
 
+    cdef int ndim
+
+    cdef _CArray* _allocate(
+        self, void* data_ptr, Py_ssize_t element_count, size_t ndim,
+    ) except NULL
+
     cdef int init(
-        self, void* data_ptr, Py_ssize_t data_size,
+        self, void* data_ptr, Py_ssize_t element_count,
         const shape_t& shape, const strides_t& strides) except -1
 
     @staticmethod
-    cdef int create_squashed(
-        void *data_ptr, Py_ssize_t data_size,
+    cdef CArray create_squashed(
+        void* data_ptr, Py_ssize_t element_count,
         const shape_t& shape, const strides_t& strides,
-        int final_ndim, vector.vector[cpp_bool]& squash,
-    ) except -1
+        const vector.vector[cpp_bool]& squashable,
+        const vector.vector[int]* output_axes,
+    )
 
 
-# This is now excluding shape/strides only for getting the compiler-time size
 cdef struct _CIndexer:
     Py_ssize_t size
 
 
 cdef class CIndexer(function.CPointer):
 
-    cdef void init(self, Py_ssize_t size, const shape_t &shape) except*
+    cdef int ndim
 
+    @staticmethod
+    cdef CIndexer create(const shape_t& shape)
 
-cdef class Indexer:
-    cdef:
-        readonly Py_ssize_t size
-        readonly shape_t shape
-        readonly bint _index_32_bits
-
-    cdef void init(self, const shape_t& shape) noexcept
-
-    cdef function.CPointer get_pointer(self)
-
-
-cdef Indexer _indexer_init(const shape_t& shape)
+    cdef Py_ssize_t size(self) noexcept
+    cdef bint _index_32_bits(self) noexcept

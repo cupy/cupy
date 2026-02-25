@@ -1,5 +1,9 @@
 from cpython cimport sequence
 
+from libcpp cimport vector
+from libcpp.optional cimport optional
+from libcpp cimport bool as cpp_bool
+
 from cupy._core cimport _carray
 from cupy._core cimport _accelerator
 from cupy._core._carray cimport shape_t
@@ -7,8 +11,6 @@ from cupy._core cimport _cub_reduction
 from cupy._core cimport _cuda_compute_reduction
 from cupy._core._dtype cimport get_dtype
 from cupy._core cimport _kernel
-from cupy._core._kernel cimport _get_arginfos
-from cupy._core._kernel cimport _reduce_dims
 from cupy._core._kernel cimport ParameterInfo, _ArgInfo
 from cupy._core cimport _optimize_config
 from cupy._core cimport _routines_manipulation as _manipulation
@@ -200,28 +202,21 @@ cdef shape_t _set_permuted_args(
 
 
 cdef Py_ssize_t _get_contiguous_size(
-        list args, tuple params, list out_shape, Py_ssize_t ndim) except -1:
-    '''
-    get contiguous size in the *output* axis (not *reduce* axis!)
-    '''
-    cdef int i, j
-    cdef ParameterInfo p
-    cdef Py_ssize_t contiguous_size, tmp_contiguous_size, itemsize
-    out_ndim = len(out_shape)
-    contiguous_size = 1
+        list args, tuple params, int reduce_ndim) except -1:
+    cdef Py_ssize_t i, ax, span, contiguous_size = 1
+    cdef _ndarray_base arr
     for i, a in enumerate(args):
-        if not isinstance(a, _ndarray_base):
+        if (<ParameterInfo>params[i]).raw or not isinstance(a, _ndarray_base):
             continue
-        p = params[i]
-        if p.raw:
-            continue
-        tmp_contiguous_size = 1
-        itemsize = a.dtype.itemsize
-        for j in range(out_ndim):
-            if a._strides[ndim-j-1] != tmp_contiguous_size * itemsize:
+        arr = a
+        span = 1
+        for ax in range(<int>arr._shape.size() - 1, reduce_ndim - 1, -1):
+            if arr._shape[ax] == 1:
+                continue
+            if arr._strides[ax] != span * arr.itemsize:
                 break
-            tmp_contiguous_size *= out_shape[out_ndim-j-1]
-        contiguous_size = max(contiguous_size, tmp_contiguous_size)
+            span *= arr._shape[ax]
+        contiguous_size = max(contiguous_size, span)
     return contiguous_size
 
 
@@ -311,11 +306,16 @@ cdef class _AbstractReductionKernel:
             stream, bint try_use_cub=False, bint try_use_cuda_compute=False,
             bint sort_reduce_axis=True, bint cuda_compute_only=False):
         cdef tuple reduce_axis, out_axis, axis_permutes
-        cdef tuple params, opt_params
+        cdef tuple opt_params, arginfos, extra_args
         cdef tuple shape_and_strides
-        cdef Py_ssize_t contiguous_size = -1
-        cdef Py_ssize_t block_size, block_stride, out_block_num = 0
-        cdef shape_t out_shape
+        cdef list launch_args
+        cdef KernelArguments trial_args
+        cdef vector.vector[cpp_bool] squashable
+        cdef optional[vector.vector[int]] launch_out_axes
+        cdef int output_axis
+        cdef Py_ssize_t in_size, out_size
+        cdef Py_ssize_t block_size, block_stride, out_block_num
+        cdef optional[shape_t] out_shape
         cdef _ndarray_base ret
         cdef bint cub_success, cuda_compute_success
 
@@ -331,7 +331,7 @@ cdef class _AbstractReductionKernel:
         reduce_axis, out_axis = _get_axis(axis, in_shape.size())
 
         # When there is only one input array, sort the axes in such a way that
-        # contiguous (C or F) axes can be squashed in _reduce_dims() later.
+        # contiguous (C or F) axes can be squashed together later.
         # TODO(niboshi): Support (out_axis) > 1
         if (kargs.nin == 1
                 and len(out_axis) <= 1
@@ -341,8 +341,9 @@ cdef class _AbstractReductionKernel:
                 reduce_axis = _sort_axis(reduce_axis, strides)
             out_axis = _sort_axis(out_axis, strides)
 
-        out_shape = _get_out_shape(in_shape, reduce_axis, out_axis, keepdims)
-        self._create_out_args(kargs, out_types, out_shape)
+        out_shape.emplace(
+            _get_out_shape(in_shape, reduce_axis, out_axis, keepdims))
+        self._create_out_args(kargs, out_types, out_shape.value())
         ret = kargs.get_out(0)  # result(), always one argument
         if ret.size == 0:
             return ret
@@ -351,13 +352,13 @@ cdef class _AbstractReductionKernel:
             raise ValueError(('zero-size array to reduction operation'
                               ' %s which has no identity') % self.name)
 
-        if internal.prod(in_shape) / internal.prod(out_shape) > 0x7fffffff:
+        in_size = internal.prod(in_shape)
+        out_size = internal.prod(out_shape.value())
+        if in_size / out_size > 0x7fffffff:
             index_type = ('IndexT', 'int64')
         else:
             index_type = ('IndexT', 'int32')
         type_map = _kernel._TypeMap(type_map._pairs + (index_type,))
-
-        kargs.finalize_scalars(in_types)
 
         optimize_context = _optimize_config.get_current_context()
         key = ()
@@ -381,12 +382,11 @@ cdef class _AbstractReductionKernel:
                 if cuda_compute_success:
                     return ret
             if try_use_cub and accelerator == _accelerator.ACCELERATOR_CUB:
-                # TODO(seberg): pass kargs instead of in_args, out_args.
                 cub_success = _cub_reduction._try_to_call_cub_reduction(
                     self, in_args, out_args, in_shape, stream,
                     optimize_context, key, map_expr, reduce_expr,
                     post_map_expr, reduce_type, type_map, reduce_axis,
-                    out_axis, out_shape, ret)
+                    out_axis, out_shape.value(), ret)
                 if cub_success:
                     return ret
 
@@ -398,70 +398,70 @@ cdef class _AbstractReductionKernel:
         axis_permutes = reduce_axis + out_axis
         in_shape = _set_permuted_args(
             in_args, axis_permutes, in_shape, self.in_params)
+        kargs.args[:kargs.nin] = in_args
 
         if reduce_dims:
-            # TODO(seberg): Would be nice to move _reduce_dims logic to later.
-            _reduce_dims(in_args, self.in_params, in_shape)
-            _reduce_dims(out_args, self.out_params, out_shape)
+            launch_out_axes.emplace()
+            for output_axis in (
+                    out_axis if keepdims else range(len(out_axis))):
+                launch_out_axes.value().push_back(output_axis)
+            kargs.squash_dims_reduce(
+                self._params, in_shape, squashable, out_shape, launch_out_axes)
 
-        params = self._params
+        extra_args = (
+            _carray.CIndexer.create(in_shape),
+            _carray.CIndexer.create(out_shape.value()),
+            _scalar.CScalar.from_int32(1))
+        block_size, block_stride, out_block_num = _get_block_specs(
+            in_size, out_size,
+            _get_contiguous_size(
+                in_args, self.in_params, <int>len(reduce_axis)), -1)
 
-        # Calculate the reduction block dimensions.
-        if optimize_context is None:
-            # Calculate manually
-            contiguous_size = _get_contiguous_size(
-                in_args, self.in_params, out_shape, in_shape.size())
-            block_size, block_stride, out_block_num = _get_block_specs(
-                internal.prod(in_shape),
-                internal.prod(out_shape),
-                contiguous_size, -1)
-        else:
-            # Optimize dynamically
-            key = ('simple_reduction',) + key
+        if optimize_context is not None:
+            key = ('simple_reduction', reduce_axis, reduce_dims) + key
             opt_params = optimize_context.get_params(key)
             if opt_params is None:
+                # Run tuning on separate buffers and reuse the packed arrays
+                # across all candidate launches.
+                # NOTE(seberg): Use a KernelArguments copy method once
+                # cub_reduction also uses KernelArguments.
+                trial_args = KernelArguments.__new__(KernelArguments)
+                trial_args.nin = kargs.nin
+                trial_args.nout = kargs.nout
+                trial_args.args = [_optimizer_copy_arg(a) for a in kargs.args]
+
+                arginfos, launch_args = trial_args.finalize_launch_args(
+                    self._params, in_types, squashable, extra_args,
+                    launch_out_axes)
                 opt_params = self._get_optimized_params(
-                    optimize_context.config, in_args, out_args,
-                    in_shape, out_shape, type_map, map_expr, reduce_expr,
+                    optimize_context.config, out_size,
+                    (block_size, block_stride, out_block_num),
+                    arginfos, launch_args, type_map, map_expr, reduce_expr,
                     post_map_expr, reduce_type, stream)
                 optimize_context.set_params(key, opt_params)
             block_size, block_stride, out_block_num = opt_params
 
-        # Launch the kernel
+        arginfos, launch_args = kargs.finalize_launch_args(
+            self._params, in_types, squashable, extra_args, launch_out_axes)
         self._launch(
-            out_block_num,
-            block_size,
-            block_stride,
-            in_args, out_args,
-            in_shape, out_shape,
-            type_map,
-            map_expr, reduce_expr, post_map_expr, reduce_type,
-            stream, params)
-
+            out_block_num, block_size, block_stride, arginfos, launch_args,
+            type_map, map_expr, reduce_expr, post_map_expr, reduce_type,
+            stream)
         return ret
 
     def _get_optimized_params(
-            self, optimize_config, in_args, out_args, in_shape, out_shape,
-            type_map, map_expr, reduce_expr, post_map_expr, reduce_type,
-            stream):
-        out_size = internal.prod(out_shape)
-        in_args = [_optimizer_copy_arg(a) for a in in_args]
-        out_args = [_optimizer_copy_arg(a) for a in out_args]
-
-        contiguous_size = _get_contiguous_size(
-            in_args, self.in_params, out_shape, len(in_shape))
-        block_size, block_stride, default_out_block_num = _get_block_specs(
-            internal.prod(in_shape),
-            internal.prod(out_shape),
-            contiguous_size, -1)
+            self, optimize_config, out_size, default_block_specs,
+            arginfos, launch_args, type_map, map_expr, reduce_expr,
+            post_map_expr, reduce_type, stream):
+        block_size, block_stride, default_out_block_num = default_block_specs
         default_block_size_log = math.floor(math.log2(block_size))
         default_block_stride_log = math.floor(math.log2(block_stride))
 
         def target_func(block_size, block_stride, out_block_num):
             self._launch(
-                out_block_num, block_size, block_stride, in_args, out_args,
-                in_shape, out_shape, type_map, map_expr, reduce_expr,
-                post_map_expr, reduce_type, stream, self._params)
+                out_block_num, block_size, block_stride, arginfos, launch_args,
+                type_map, map_expr, reduce_expr, post_map_expr, reduce_type,
+                stream)
 
         def suggest_func(trial):
             block_size_log = trial.suggest_int(
@@ -492,34 +492,17 @@ cdef class _AbstractReductionKernel:
             best.user_attrs['block_stride'],
             best.params['out_block_num'])
 
-    cdef inline bint _launch(
-            self, out_block_num, block_size, block_stride,
-            in_args, out_args, in_shape, out_shape, type_map,
-            map_expr, reduce_expr, post_map_expr, reduce_type,
-            stream, params) except -1:
-        cdef function.Function func
-
-        inout_args = (
-            in_args
-            + out_args
-            + [
-                _carray._indexer_init(in_shape),
-                _carray._indexer_init(out_shape),
-                # block_stride is passed as the last argument.
-                _scalar.CScalar.from_int32(block_stride),
-            ])
-
-        # Retrieve the kernel function
-        func = self._get_function(
-            params,
-            _get_arginfos(inout_args),
-            type_map,
-            map_expr, reduce_expr, post_map_expr, reduce_type,
-            block_size)
-
-        # Launch the kernel
+    cdef _launch(
+            self, Py_ssize_t out_block_num, Py_ssize_t block_size,
+            Py_ssize_t block_stride, tuple arginfos, list launch_args,
+            _kernel._TypeMap type_map, str map_expr, str reduce_expr,
+            str post_map_expr, str reduce_type, stream):
+        cdef function.Function func = self._get_function(
+            self._params, arginfos, type_map, map_expr, reduce_expr,
+            post_map_expr, reduce_type, block_size)
+        launch_args[-1] = _scalar.CScalar.from_int32(block_stride)
         func.linear_launch(
-            out_block_num * block_size, inout_args, 0, block_size, stream)
+            out_block_num * block_size, launch_args, 0, block_size, stream)
 
     cdef tuple _get_expressions_and_types(
             self, KernelArguments kargs, dtype):
