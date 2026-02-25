@@ -12,6 +12,7 @@ import os.path
 import platform
 import re
 import shutil
+import subprocess
 import sys
 from typing import Any
 import warnings
@@ -614,6 +615,36 @@ def _get_include_dir_from_conda_or_wheel(major: int, minor: int) -> list[str]:
         else:
             _log('CUDA headers not found via cuda-pathfinder')
             return []
+
+
+@functools.cache
+def _get_hipcc_include_dirs():
+    cmd = ["hipcc", "-x", "hip", "-E", "-v", "/dev/null"]
+    proc = subprocess.run(cmd, stdout=subprocess.DEVNULL,
+                          stderr=subprocess.PIPE, text=True)
+
+    if proc.returncode != 0:
+        raise RuntimeError(f"Subprocess command '{proc}' failed.")
+
+    matches = re.search(
+        r"#include <\.\.\.> search starts here:\n(.*?)\nEnd of search list.",
+        proc.stderr,
+        re.S,
+    )
+
+    if matches is None:
+        raise RuntimeError(
+            f"Could not find any hipcc default include directories using "
+            f"command: '{cmd}'. Possible errors are changed "
+            f"hipcc output format, or hipcc was not found."
+        )
+
+    include_paths = matches.group(1).splitlines()
+
+    return tuple(
+        include_path.strip()
+        for include_path in include_paths if include_path.strip()
+    )
 
 
 def _detect_duplicate_installation():
