@@ -385,6 +385,33 @@ class TestOrder:
         assert w[0].category is RuntimeWarning
         return m
 
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_nanmin_with_initial(self, xp, dtype):
+        """Test nanmin with initial parameter."""
+        a = xp.array([float('nan'), float('nan')], dtype)
+        # Should return 5 since all values are NaN
+        return xp.nanmin(a, initial=5)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_nanmin_with_where(self, xp, dtype):
+        """Test nanmin with where parameter."""
+        a = xp.array([[1, 2, 3], [4, numpy.nan, 6]], dtype)
+        where = xp.array(
+            [[True, False, True], [False, True, True]], dtype=bool)
+        return xp.nanmin(a, where=where)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_nanmin_with_initial_and_where(self, xp, dtype):
+        """Test nanmin with both initial and where parameters."""
+        a = xp.array([[numpy.nan, numpy.nan, 3], [4, numpy.nan, 6]], dtype)
+        where = xp.array(
+            [[True, False, True], [False, True, True]], dtype=bool)
+        # Should return min of {2, 3, 6}
+        return xp.nanmin(a, where=where, initial=2)
+
     @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_allclose()
     def test_ptp_all(self, xp, dtype):
