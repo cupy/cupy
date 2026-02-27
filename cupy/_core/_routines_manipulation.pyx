@@ -499,6 +499,8 @@ cpdef _ndarray_base broadcast_to(_ndarray_base array, shape):
     view = array.view()
     # TODO(niboshi): Confirm update_x_contiguity flags
     view._set_shape_and_strides(_shape, strides, True, True)
+    if view.size * view.itemsize > 2**31:
+        view._index_32_bits = False
     return view
 
 
