@@ -204,32 +204,27 @@ Unified memory programming (UMP) support (**experimental!**)
 ............................................................
 
 It is possible to make both NumPy and CuPy use/share system allocated memory on Heterogeneous Memory Management
-(HMM) or Address Translation Services (ATS) enabled systems, such as the NVIDIA Grace Hopper Superchip.
-To activate this capability, currently you need to:
+(HMM) or Address Translation Services (ATS) enabled systems, such as the NVIDIA Grace Hopper Superchip or via
+software support on Linux with new enough driver (535+) and kernels.
+To activate this capability, currently you should:
 
-1. Install `numpy_allocator <https://github.com/inaccel/numpy-allocator/>`_
-2. Set the environment variable ``CUPY_ENABLE_UMP=1``
-3. Make a memory pool for CuPy to draw system memory (``malloc_system``), for example:
+1. Make a memory pool for CuPy to draw system memory (``malloc_system``), for example:
 
 .. code-block:: py
 
     import cupy as cp
     cp.cuda.set_allocator(cp.cuda.MemoryPool(cp.cuda.memory.malloc_system).malloc)
 
-4. Switch to the aligned allocator for NumPy to draw system memory
+2. Set up NumPy to use the CuPy allocator to ensure aligned allocations:
 
 .. code-block:: py
-   
-    import cupy._core.numpy_allocator as ac
-    import numpy_allocator
-    import ctypes
-    lib = ctypes.CDLL(ac.__file__)
-    class my_allocator(metaclass=numpy_allocator.type):
-        _calloc_ = ctypes.addressof(lib._calloc)
-        _malloc_ = ctypes.addressof(lib._malloc)
-        _realloc_ = ctypes.addressof(lib._realloc)
-        _free_ = ctypes.addressof(lib._free)
-    my_allocator.__enter__()  # change the allocator globally
+
+    from cupy._core.numpy_allocator import CuPyNumPyAllocator
+
+    CuPyNumPyAllocator().use()
+    # or locally as a context manager:
+    with CuPyNumPyAllocator():
+        # NumPy code creating NumPy arrays.
 
 With this setup change, all the data movement APIs such as :meth:`~cupy.ndarray.get()`, :func:`~cupy.asnumpy`  and
 :func:`~cupy.asarray` become no-op (no copy is done), and the following code is accelerated:
@@ -246,3 +241,12 @@ Essentially, the distinction of CPU/GPU *memory* spaces is gone, and ``np``/``cp
 the *execution* space (whether the code should run on CPU or GPU).
 
 Apart from the setup configuration for NumPy/CuPy, no user code change is required.
+
+You may also set the environment variable ``CUPY_ENABLE_UMP=1`` to relax checks further.
+CuPy will accept NumPy arrays not strictly backed by it's own allocator as well as support
+system memory allocations in ``UnownedMemory``.
+
+**Managed memory:** The above is also possible on systems without HMM support. In this
+case ``CuPyNumPyAllocator()`` defaults to ``CuPyNumPyAllocator("managed")`` backing the
+NumPy allocations with managed rather than system memory (otherwise the default is
+``CuPyNumPyAllocator("system")``.

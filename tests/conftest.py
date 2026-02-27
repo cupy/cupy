@@ -1,4 +1,6 @@
 from __future__ import annotations
+import cupy._core.numpy_allocator as ac
+import cupy as cp
 
 import collections
 import os
@@ -146,3 +148,11 @@ if int(os.environ.get('CUPY_TEST_RANDOM_SUBSAMPLE', '0')):
                         kwargs['strict'] = False
                         node.own_markers[i] = pytest.mark.xfail(
                             *marker.args, **kwargs).mark
+
+
+# TODO(seberg): Just for testing during development, remove again!
+cp.cuda.set_allocator(cp.cuda.MemoryPool(
+    cp.cuda.memory.malloc_managed).malloc)
+
+
+ac.CuPyNumPyAllocator("managed").use()

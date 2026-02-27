@@ -48,6 +48,7 @@ from cupy._core cimport _routines_statistics as _statistics
 from cupy._core cimport _scalar
 from cupy._core cimport dlpack
 from cupy._core cimport internal
+from cupy._core.numpy_allocator cimport array_uses_cupy_allocator
 from cupy.cuda cimport device
 from cupy.cuda cimport function
 from cupy.cuda cimport pinned_memory
@@ -2976,10 +2977,20 @@ cdef inline _ndarray_base _try_skip_h2d_copy(
     if copy:
         return None
 
-    if not is_ump_supported(device.get_device_id()):
+    if not isinstance(obj, numpy.ndarray):
         return None
 
-    if not isinstance(obj, numpy.ndarray):
+    cdef int device_id = device.get_device_id()
+    if is_ump_supported(device_id):
+        allocator = "system"
+    elif (
+        (allocator := array_uses_cupy_allocator(<cnp.ndarray>obj)) is not None
+    ):
+        if allocator == "system" and not runtime.deviceGetAttribute(
+                runtime.cudaDevAttrPageableMemoryAccess, device_id):
+            return None  # system memory access not supported by this device
+    else:
+        # Neither UMP enabled, nor is this using the CuPy allocator for NumPy.
         return None
 
     # dtype should not change
@@ -3011,8 +3022,15 @@ cdef inline _ndarray_base _try_skip_h2d_copy(
         shape = (1,) * (ndmin - ndim) + shape
         strides = (shape[0] * strides[0],) * (ndmin - ndim) + strides
 
-    cdef memory.SystemMemory ext_mem = memory.SystemMemory.from_external(
-        ptr, nbytes, obj)
+    if allocator == "system":
+        ext_mem = memory.SystemMemory.from_external(
+            ptr, nbytes, obj)
+    elif allocator == "managed":
+        ext_mem = memory.ManagedMemory.from_external(
+            ptr, nbytes, obj)
+    else:
+        raise SystemError(f"internal error, bad allocator kind: {allocator}")
+
     cdef memory.MemoryPointer memptr = memory.MemoryPointer(ext_mem, 0)
     return ndarray(shape, obj_dtype, memptr, strides)
 
