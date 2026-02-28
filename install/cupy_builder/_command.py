@@ -114,7 +114,6 @@ class custom_build_ext(setuptools.command.build_ext.build_ext):
             # Keep the behavior same as Cython 0.29.x.
             # https://github.com/cupy/cupy/pull/8457#issuecomment-2656568499
             'binding': False,
-            'legacy_implicit_noexcept': True,
         }
 
         # Compile-time constants to be used in Cython code

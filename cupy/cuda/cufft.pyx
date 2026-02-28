@@ -18,7 +18,8 @@ from cupy.cuda import stream
 
 ctypedef Result (*F_cufftXtSetJITCallback)(
     Handle plan, const char* callback_name, const void* callback,
-    size_t callback_size, callbackType callback_type, void **caller_info) nogil
+    size_t callback_size, callbackType callback_type,
+    void **caller_info) noexcept nogil
 cdef F_cufftXtSetJITCallback _cufftXtSetJITCallback
 
 
@@ -32,7 +33,7 @@ cdef inline void initialize() except *:
         return
     _L = _initialize()
 
-cdef SoftLink _initialize() except *:
+cdef SoftLink _initialize():
     _L = _get_softlink()
 
     global _cufftXtSetJITCallback

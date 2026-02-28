@@ -64,6 +64,7 @@ cdef class MemoryPool:
     cpdef MemoryPointer malloc(self, size_t size)
     cpdef free_all_blocks(self, stream=?)
     cpdef free_all_free(self)
+    # they call device_pool so they may raise error.
     cpdef size_t n_free_blocks(self)
     cpdef size_t used_bytes(self)
     cpdef size_t free_bytes(self)
