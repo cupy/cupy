@@ -52,7 +52,7 @@ cdef class Indexer:
         readonly shape_t shape
         readonly bint _index_32_bits
 
-    cdef void init(self, const shape_t& shape)
+    cdef void init(self, const shape_t& shape) noexcept
 
     cdef function.CPointer get_pointer(self)
 

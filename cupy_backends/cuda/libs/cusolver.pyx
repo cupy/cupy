@@ -1003,7 +1003,7 @@ cdef extern from '../../cupy_lapack.h' nogil:
         cuDoubleComplex *x)
 
 
-ctypedef int (*f_type)(...) nogil  # NOQA
+ctypedef int (*f_type)(...) noexcept nogil  # NOQA
 
 cdef object _libname = None
 cdef object _handle = 0
