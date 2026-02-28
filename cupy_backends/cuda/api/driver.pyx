@@ -97,7 +97,7 @@ cpdef get_build_version():
         return 0
 
 
-cpdef bint _is_cuda_python():
+cpdef bint _is_cuda_python() noexcept:
     return CUPY_USE_CUDA_PYTHON
 
 
