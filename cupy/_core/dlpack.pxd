@@ -40,7 +40,7 @@ cdef extern from './include/cupy/_dlpack/dlpack.h' nogil:
         int32_t device_id
 
     # Enable using `except DLDevice_err` (there is no direct way)
-    const DLDevice DLDevice_err "((DLDevice){(DLDeviceType)-1, -1})"
+    const DLDevice DLDevice_err "(DLDevice{(DLDeviceType)-1, -1})"
 
     ctypedef enum DLDataTypeCode:
         kDLInt
