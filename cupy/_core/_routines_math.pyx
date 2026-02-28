@@ -155,6 +155,11 @@ cdef _ndarray_base _ndarray_clip(_ndarray_base self, a_min, a_max, out):
 _op_char = {scan_op.SCAN_SUM: '+', scan_op.SCAN_PROD: '*'}
 _identity = {scan_op.SCAN_SUM: 0, scan_op.SCAN_PROD: 1}
 
+# ROCm 7.2+ requires a 64-bit mask type for __shfl_*_sync / __any_sync.
+# ~0ULL sets all bits, covering any wavefront size (32 or 64).
+_full_mask = ('~0ULL'
+              if runtime._is_hip_environment else '0xffffffff')
+
 
 @cupy._util.memoize(for_each_device=True)
 def _cupy_bsum_shfl(op, chunk_size, warp_size=32):
@@ -193,7 +198,7 @@ def _cupy_bsum_shfl(op, chunk_size, warp_size=32):
         if (2*i < a.size()) x = a[2*i];
         if (2*i + 1 < a.size()) x ${op}= a[2*i + 1];
         for (int j = 1; j < ${warp_size}; j *= 2) {
-            x ${op}= __shfl_xor_sync(0xffffffff, x, j, ${warp_size});
+            x ${op}= __shfl_xor_sync(${full_mask}, x, j, ${warp_size});
         }
         if (lane_id == 0) smem[warp_id] = x;
         __syncthreads();
@@ -201,13 +206,14 @@ def _cupy_bsum_shfl(op, chunk_size, warp_size=32):
             x = ${identity};
             if (lane_id < n_warp) x = smem[lane_id];
             for (int j = 1; j < n_warp; j *= 2) {
-                x ${op}= __shfl_xor_sync(0xffffffff, x, j, ${warp_size});
+                x ${op}= __shfl_xor_sync(${full_mask}, x, j, ${warp_size});
             }
             int block_id = i / ${block_size};
             if (lane_id == 0) b[block_id] = x;
         }
     """).substitute(block_size=block_size, warp_size=warp_size,
-                    op=_op_char[op], identity=_identity[op])
+                    op=_op_char[op], identity=_identity[op],
+                    full_mask=_full_mask)
     return cupy.ElementwiseKernel(in_params, out_params, loop_body,
                                   'cupy_bsum_shfl', loop_prep=loop_prep)
 

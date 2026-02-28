@@ -654,10 +654,11 @@ class TestRaw:
         N = 5
         # __shfl_down() on HIP does not seem to have the same behavior...
         block = cupy._core._get_warpsize()
+        full_mask = (1 << block) - 1
 
         @jit.rawkernel()
         def f(a):
-            value = jit.shfl_down_sync(0xffffffff, a[jit.threadIdx.x], N)
+            value = jit.shfl_down_sync(full_mask, a[jit.threadIdx.x], N)
             a[jit.threadIdx.x] = value
 
         a = cupy.arange(block, dtype=dtype)
