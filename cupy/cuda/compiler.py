@@ -356,6 +356,8 @@ def _compile_using_nvrtc_no_warning(
     cache_in_memory=False, jitify=None, method=None
 ):
 
+    log_stream = sys.stdout
+
     def _compile(
             source, options, cu_path, name_expressions, log_stream, jitify,
             method):
@@ -379,6 +381,12 @@ def _compile_using_nvrtc_no_warning(
                 # Starting with CUDA 12.0, even without using jitify, some
                 # tests cause an error if the following option is not included.
                 options += ('--device-as-default-execution-space',)
+            if ((major_version >= 13 or
+                    (major_version == 12 and minor_version >= 8)) and
+                    int(os.environ.get('CUPY_NVRTC_USE_PCH', 0))):
+                options += ('--pch',)
+
+        options += ('-time=-',)
 
         prog = _NVRTCProgram(source, cu_path, headers, include_names,
                              name_expressions=name_expressions, method=method)
