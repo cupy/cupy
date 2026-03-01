@@ -94,7 +94,8 @@ def _get_coord_zoom_and_shift_grid(ndim, nprepad=0):
     pre = f" + (W){nprepad}" if nprepad > 0 else ''
     for j in range(ndim):
         ops.append(f'''
-    W c_{j} = zoom[{j}] * ((W)in_coord[{j}] - shift[j] + 0.5) - 0.5{pre};''')
+    W c_{j} = zoom[{j}] * ((W)in_coord[{j}] - shift[j] + (W)0.5)
+              - (W)0.5{pre};''')
     return ops
 
 
@@ -144,7 +145,7 @@ def _get_coord_zoom_grid(ndim, nprepad=0):
     pre = f" + (W){nprepad}" if nprepad > 0 else ''
     for j in range(ndim):
         ops.append(f'''
-    W c_{j} = zoom[{j}] * ((W)in_coord[{j}] + 0.5) - 0.5{pre};''')
+    W c_{j} = zoom[{j}] * ((W)in_coord[{j}] + (W)0.5) - (W)0.5{pre};''')
     return ops
 
 
@@ -249,7 +250,7 @@ def _generate_interp_custom(coord_func, ndim, large_int, yshape, mode, cval,
     """
 
     ops = []
-    internal_dtype = 'double' if integer_output else 'Y'
+    internal_dtype = 'W' if integer_output else 'Y'
     ops.append(f'{internal_dtype} out = 0.0;')
 
     if large_int:
@@ -303,8 +304,10 @@ def _generate_interp_custom(coord_func, ndim, large_int, yshape, mode, cval,
                 ops.append(f'''
                 dcoord = c_{j};''')
             else:
-                ops.append(f'''
-                {int_t} cf_{j} = ({int_t})floor((double)c_{j} + 0.5);''')
+                ops.append(
+                    f'''{int_t} cf_{j} = ({int_t})floor(
+                                          ({internal_dtype})c_{j} + (W)0.5);'''
+                )
 
             # handle boundary
             if mode != 'constant':
@@ -319,7 +322,7 @@ def _generate_interp_custom(coord_func, ndim, large_int, yshape, mode, cval,
                         mode, ixvar, f'xsize_{j}', int_t, float_ix))
                 if mode == 'wrap':
                     ops.append(f'''
-                {int_t} cf_{j} = ({int_t})floor(dcoord + 0.5);''')
+                {int_t} cf_{j} = ({int_t})floor(dcoord + (W)0.5);''')
 
             # sum over ic_j will give the raveled coordinate in the input
             ops.append(f'''
@@ -341,7 +344,7 @@ def _generate_interp_custom(coord_func, ndim, large_int, yshape, mode, cval,
         for j in range(ndim):
             # get coordinates for linear interpolation along axis j
             ops.append(f'''
-            {int_t} cf_{j} = ({int_t})floor((double)c_{j});
+            {int_t} cf_{j} = ({int_t})floor(({internal_dtype})c_{j});
             {int_t} cc_{j} = cf_{j} + 1;
             {int_t} n_{j} = (c_{j} == cf_{j}) ? 1 : 2;  // points needed
             ''')
@@ -419,14 +422,14 @@ def _generate_interp_custom(coord_func, ndim, large_int, yshape, mode, cval,
                     _util._generate_boundary_condition_ops(
                         mode, coord_var, f'xsize_{j}', int_t, True))
             else:
-                coord_var = f'(double)c_{j}'
+                coord_var = f'({internal_dtype})c_{j}'
 
             if order & 1:
                 op_str = '''
                 start = ({int_t})floor({coord_var}) - {order_2};'''
             else:
                 op_str = '''
-                start = ({int_t})floor({coord_var} + 0.5) - {order_2};'''
+                start = ({int_t})floor({coord_var} + ((W)0.5) - {order_2};'''
             ops.append(
                 op_str.format(
                     int_t=int_t, coord_var=coord_var, order_2=order // 2
@@ -476,7 +479,7 @@ def _generate_interp_custom(coord_func, ndim, large_int, yshape, mode, cval,
         ops.append('}')
 
     if integer_output:
-        ops.append('y = (Y)rint((double)out);')
+        ops.append('y = (Y)rint(({internal_dtype})out);')
     else:
         ops.append('y = (Y)out;')
     operation = '\n'.join(ops)

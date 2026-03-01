@@ -429,10 +429,11 @@ def affine_transform(input, matrix, offset=0.0, output_shape=None, output=None,
     if output_shape is None:
         output_shape = input.shape
 
+    float_dtype = cupy.promote_types(input.dtype, cupy.float32)
     if mode == 'opencv' or mode == '_opencv_edge':
         if matrix.ndim == 1:
             matrix = cupy.diag(matrix)
-        coordinates = cupy.indices(output_shape, dtype=cupy.float64)
+        coordinates = cupy.indices(output_shape, dtype=float_dtype)
         coordinates = cupy.dot(matrix, coordinates.reshape((input.ndim, -1)))
         coordinates += cupy.expand_dims(cupy.asarray(offset), -1)
         ret = _util._get_output(output, input, shape=output_shape)
@@ -440,7 +441,7 @@ def affine_transform(input, matrix, offset=0.0, output_shape=None, output=None,
                                  cval, prefilter).reshape(output_shape)
         return ret
 
-    matrix = matrix.astype(cupy.float64, copy=False)
+    matrix = matrix.astype(float_dtype, copy=False)
     ndim = input.ndim
     output = _util._get_output(output, input, shape=output_shape)
     if input.dtype.kind in 'iu':
@@ -451,7 +452,7 @@ def affine_transform(input, matrix, offset=0.0, output_shape=None, output=None,
     _util._check_cval(mode, cval, integer_output)
     large_int = max(_prod(input.shape), _prod(output_shape)) > 1 << 31
     if matrix.ndim == 1:
-        offset = cupy.asarray(offset, dtype=cupy.float64)
+        offset = cupy.asarray(offset, dtype=float_dtype)
         offset = -offset / matrix
         kern = _interp_kernels._get_zoom_shift_kernel(
             ndim, large_int, output_shape, mode, cval=cval, order=order,
@@ -461,9 +462,9 @@ def affine_transform(input, matrix, offset=0.0, output_shape=None, output=None,
         kern = _interp_kernels._get_affine_kernel(
             ndim, large_int, output_shape, mode, cval=cval, order=order,
             integer_output=integer_output, nprepad=nprepad)
-        m = cupy.zeros((ndim, ndim + 1), dtype=cupy.float64)
+        m = cupy.zeros((ndim, ndim + 1), dtype=float_dtype)
         m[:, :-1] = matrix
-        m[:, -1] = cupy.asarray(offset, dtype=cupy.float64)
+        m[:, -1] = cupy.asarray(offset, dtype=float_dtype)
         kern(filtered, m, output)
     return output
 
@@ -541,10 +542,11 @@ def rotate(input, angle, axes=(1, 0), reshape=True, output=None, order=3,
     rad = numpy.deg2rad(angle)
     sin = math.sin(rad)
     cos = math.cos(rad)
+    float_dtype = cupy.promote_types(input_arr, cupy.float32)
 
     # determine offsets and output shape as in scipy.ndimage.rotate
     rot_matrix = numpy.array([[cos, sin],
-                              [-sin, cos]])
+                              [-sin, cos]], dtype=float_dtype)
 
     img_shape = numpy.asarray(input_arr.shape)
     in_plane_shape = img_shape[axes]
@@ -566,13 +568,13 @@ def rotate(input, angle, axes=(1, 0), reshape=True, output=None, order=3,
     output_shape[axes] = out_plane_shape
     output_shape = tuple(output_shape)
 
-    matrix = numpy.identity(ndim)
+    matrix = numpy.identity(ndim, dtype=float_dtype)
     matrix[axes[0], axes[0]] = cos
     matrix[axes[0], axes[1]] = sin
     matrix[axes[1], axes[0]] = -sin
     matrix[axes[1], axes[1]] = cos
 
-    offset = numpy.zeros(ndim, dtype=cupy.float64)
+    offset = numpy.zeros(ndim, dtype=float_dtype)
     offset[axes] = in_center - out_center
 
     matrix = cupy.asarray(matrix)
