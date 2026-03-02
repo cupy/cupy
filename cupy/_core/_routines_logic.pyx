@@ -53,21 +53,31 @@ cdef _any = create_reduction_func(
     'false', '')
 
 
-cpdef create_comparison(name, op, doc='', no_complex_dtype=True):
+def promote_weak_int(in_types, weaks):
+    # Python integers can be originally discovered as uint or int.
+    # For comparison we define loops for both so take whatever it is.
+    if weaks is None:
+        return in_types, weaks
 
-    if no_complex_dtype:
-        ops = ('??->?', 'qq->?', 'qQ->?', 'Qq->?', 'QQ->?',
-               'ee->?', *bf16_loop(2, '?'), 'ff->?', 'dd->?')
-    else:
-        ops = ('??->?', 'qq->?', 'qQ->?', 'Qq->?', 'QQ->?',
-               'ee->?', *bf16_loop(2, '?'), 'ff->?', 'dd->?',
-               'FF->?', 'DD->?')
+    return in_types, tuple([w if w is not int else False for w in weaks])
+
+
+cpdef create_comparison(name, op, doc='', no_complex_dtype=True):
+    ops = (
+        '??->?',
+        'qq->?', 'QQ->?',
+        ('qQ->?', f'out0 = in0 < 0 ? in0 {op} 0 : in0 {op} in1'),
+        ('Qq->?', f'out0 = in1 < 0 ? 0 {op} in1 : in0 {op} in1'),
+        'ee->?', *bf16_loop(2, '?'), 'ff->?', 'dd->?')
+
+    if not no_complex_dtype:
+        ops += ('FF->?', 'DD->?')
 
     return create_ufunc(
         'cupy_' + name,
         ops,
         'out0 = in0 %s in1' % op,
-        doc=doc)
+        doc=doc, promote_types=promote_weak_int)
 
 
 cdef _greater = create_comparison(

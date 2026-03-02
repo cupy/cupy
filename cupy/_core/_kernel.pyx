@@ -1573,7 +1573,7 @@ cdef class _Op:
 
 cdef class _Ops:
 
-    def __init__(self, tuple ops):
+    def __init__(self, tuple ops, promote_types=None):
         assert len(ops) > 0
         nin = ops[0].nin
         nout = ops[0].nout
@@ -1583,9 +1583,10 @@ cdef class _Ops:
         self.ops = ops
         self.nin = nin
         self.nout = nout
+        self.promote_types = promote_types
 
     @staticmethod
-    cdef _Ops from_tuples(object ops, routine):
+    cdef _Ops from_tuples(object ops, routine, object promote_types=None):
         ops_ = []
         for t in ops:
             if isinstance(t, tuple):
@@ -1607,7 +1608,7 @@ cdef class _Ops:
                         f"invalid op {t}, expected string or list")
                 typ, rt = t, routine
             ops_.append(_Op.from_type_and_routine(typ, rt))
-        return _Ops(tuple(ops_))
+        return _Ops(tuple(ops_), promote_types=promote_types)
 
     cpdef _Op guess_routine(
             self, str name, dict cache, list in_args, dtype, _Ops out_ops):
@@ -1671,15 +1672,17 @@ cdef class _Ops:
         cdef Py_ssize_t n = len(in_types)
         cdef Py_ssize_t i
 
+        if self.promote_types is not None:
+            # NOTE(seberg): This works fine, but should maybe be considered
+            # in flux. NumPy needs more (but mostly for loop registration).
+            in_types, weaks = self.promote_types(in_types, weaks)
+
         for op in self.ops:
             op_types = op.in_types
             for i in range(n):
                 it = in_types[i]
                 ot = op_types[i]
                 weak_t = weaks[i] if weaks is not None else False
-
-                # XXX: Remove assert (reachable only for pre NEP 50 logic)
-                assert(not isinstance(it, tuple))
 
                 if not can_cast(it, ot):
                     if not weak_t:
@@ -1711,9 +1714,11 @@ cdef class _Ops:
 
 cpdef create_ufunc(name, ops, routine=None, preamble='', doc='',
                    default_casting=None, loop_prep='', out_ops=None,
-                   cutensor_op=None, scatter_op=None):
-    ops_ = _Ops.from_tuples(ops, routine)
-    _out_ops = None if out_ops is None else _Ops.from_tuples(out_ops, routine)
+                   cutensor_op=None, scatter_op=None,
+                   promote_types=None):
+    ops_ = _Ops.from_tuples(ops, routine, promote_types)
+    _out_ops = None if out_ops is None else _Ops.from_tuples(
+        out_ops, routine, promote_types)
     return ufunc(
         name, ops_.nin, ops_.nout, ops_, preamble,
         loop_prep, doc, default_casting=default_casting, out_ops=_out_ops,

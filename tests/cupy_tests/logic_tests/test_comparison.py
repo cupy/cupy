@@ -4,6 +4,7 @@ import operator
 import unittest
 
 import numpy
+import pytest
 
 import cupy
 from cupy import testing
@@ -37,13 +38,15 @@ class TestComparison(unittest.TestCase):
         self.check_binary('equal')
 
 
-class TestComparisonOperator(unittest.TestCase):
+operators = [
+    operator.lt, operator.le,
+    operator.eq, operator.ne,
+    operator.gt, operator.ge,
+]
 
-    operators = [
-        operator.lt, operator.le,
-        operator.eq, operator.ne,
-        operator.gt, operator.ge,
-    ]
+
+class TestComparisonOperator:
+    operators = operators
 
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_array_equal()
@@ -72,6 +75,21 @@ class TestComparisonOperator(unittest.TestCase):
         a = testing.shaped_arange((2, 3), xp, dtype)
         b = 3
         return [op(a, b) for op in self.operators]
+
+    @pytest.mark.parametrize('dtype', [
+        numpy.int8, numpy.int64, numpy.uint8, numpy.uint64])
+    @pytest.mark.parametrize('scalar', [-1, 0, 2**32, 2**63, 2**64-1])
+    @pytest.mark.parametrize('op', operators)
+    @testing.numpy_cupy_array_equal()
+    def test_binary_array_pyscalar_int(self, xp, dtype, scalar, op):
+        # This test also checks large mixed unsigned/signed comparisons.
+        min_, max_ = numpy.iinfo(dtype).min, numpy.iinfo(dtype).max
+
+        a = xp.array(
+            [min_, 0, max_, xp.dtype(dtype).type(0) - 1],
+            dtype=dtype)
+        b = scalar
+        return [op(a, b), op(b, a)]
 
 
 class TestArrayEqual(unittest.TestCase):
