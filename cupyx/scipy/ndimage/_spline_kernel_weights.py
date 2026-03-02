@@ -38,7 +38,7 @@ weights_{j}[3] = ({F})1.0 - weights_{j}[0] - weights_{j}[1] - weights_{j}[2];
 '''
 
 spline_weights_inline[4] = '''
-wx = c_{j} - floor({order} & 1 ? c_{j} : c_{j} + 0.5);
+wx = c_{j} - floor({order} & 1 ? c_{j} : c_{j} + ({F})0.5);
 wy = wx * wx;
 weights_{j}[2] = wy * (wy * ({F})0.25 - ({F})0.625) + ({F})115.0 / ({F})192.0;
 wy = ({F})1.0 + wx;
@@ -76,7 +76,7 @@ weights_{j}[4] =
     - ({F})1.75) + ({F})0.625) + ({F})0.425;
 wy = ({F})1.0 - wx;
 wy = wy * wy;
-weights_{j}[0] = (({F})1.0 - wx) * wy * wy / 120.0;
+weights_{j}[0] = (({F})1.0 - wx) * wy * wy / ({F})120.0;
 weights_{j}[5] = ({F})1.0 - weights_{j}[0] - weights_{j}[1] - weights_{j}[2]
                         - weights_{j}[3] - weights_{j}[4];
 '''
