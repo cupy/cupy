@@ -808,6 +808,8 @@ from cupy._core import RawKernel  # NOQA
 from cupy._core import RawModule  # NOQA
 from cupy._core._reduction import ReductionKernel  # NOQA
 
+from cupy._core._dtype import make_aligned_dtype  # NOQA
+
 # -----------------------------------------------------------------------------
 # DLPack
 # -----------------------------------------------------------------------------

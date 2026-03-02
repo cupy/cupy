@@ -526,15 +526,11 @@ def _inclusive_batch_scan_kernel(
     op_char = {scan_op.SCAN_SUM: '+', scan_op.SCAN_PROD: '*'}
     identity = {scan_op.SCAN_SUM: 0, scan_op.SCAN_PROD: 1}
     name = 'cupy_inclusive_batch_scan_kernel'
-    type_headers = set()
-    dtype = get_typename(dtype, type_headers)
-    if not type_headers:
-        type_headers = ''
-    else:
-        type_headers = '\n'.join(sorted(type_headers)) + "\n\n"
+    type_decls = set()
+    dtype = get_typename(dtype, type_decls)
 
     source = string.Template("""
-    ${type_headers}
+    ${type_decls}
     extern "C" __global__ void ${name}(
         const CArray<${dtype}, 2, ${src_c_cont}> src,
         CArray<${dtype}, 2, ${out_c_cont}> dst, int batch_size){
@@ -611,7 +607,7 @@ def _inclusive_batch_scan_kernel(
     """).substitute(name=name, dtype=dtype, block_size=block_size,
                     op=op_char[op], identity=identity[op],
                     src_c_cont=src_c_cont, out_c_cont=out_c_cont,
-                    type_headers=type_headers)
+                    type_decls=_scalar.format_type_decls(type_decls))
     module = compile_with_cache(source)
     return module.get_function(name)
 
@@ -619,16 +615,12 @@ def _inclusive_batch_scan_kernel(
 @_util.memoize(for_each_device=True)
 def _add_scan_batch_blocked_sum_kernel(dtype, op, block_size, c_cont):
     name = 'cupy_add_scan_blocked_sum_kernel'
-    type_headers = set()
-    dtype = get_typename(dtype, type_headers)
-    if not type_headers:
-        type_headers = ''
-    else:
-        type_headers = '\n'.join(sorted(type_headers)) + "\n\n"
+    type_decls = set()
+    dtype = get_typename(dtype, type_decls)
 
     ops = {scan_op.SCAN_SUM: '+', scan_op.SCAN_PROD: '*'}
     source = string.Template("""
-    ${type_headers}
+    ${type_decls}
     extern "C" __global__ void ${name}(CArray<${dtype}, 2, ${c_cont}> src_dst,
         int batch_size){
         long long n = src_dst.size();
@@ -654,7 +646,8 @@ def _add_scan_batch_blocked_sum_kernel(dtype, op, block_size, c_cont):
         }
     }
     """).substitute(name=name, dtype=dtype, op=ops[op], block_size=block_size,
-                    c_cont=c_cont, type_headers=type_headers)
+                    c_cont=c_cont,
+                    type_decls=_scalar.format_type_decls(type_decls))
     module = compile_with_cache(source)
     return module.get_function(name)
 

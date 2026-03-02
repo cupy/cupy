@@ -33,7 +33,7 @@ KD_KERNEL = r'''
 #include <cupy/math_constants.h>
 #include <cupy/carray.cuh>
 #include <cupy/complex.cuh>
-#include <cupy/float16.cuh>  // TODO(seberg): Add this via type_headers?
+#include <cupy/float16.cuh>  // TODO(seberg): Add this via type_decls?
 
 __device__ long long sb(
         const long long s_level, const int n,
@@ -197,7 +197,7 @@ KNN_KERNEL = r'''
 #include <cupy/math_constants.h>
 #include <cupy/carray.cuh>
 #include <cupy/complex.cuh>
-#include <cupy/float16.cuh>  // TODO(seberg): Add this via type_headers?
+#include <cupy/float16.cuh>  // TODO(seberg): Add this via type_decls?
 
 __device__ unsigned long long abs(unsigned long long x) {
     return x;

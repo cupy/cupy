@@ -1,3 +1,6 @@
+import numpy
+
+import cupy
 from cupy._core._kernel import create_ufunc
 from cupy._core._reduction import create_reduction_func
 from cupy._util import bf16_loop
@@ -53,7 +56,28 @@ cdef _any = create_reduction_func(
     'false', '')
 
 
-cpdef create_comparison(name, op, doc='', no_complex_dtype=True):
+def struct_compare_resolution(op, in_dtypes, out_dtypes):
+    # NumPy ignores field names, so we'll do that as well.
+    dt1, dt2 = in_dtypes
+    if dt1.fields is None or dt2.fields is None:
+        raise TypeError("Cannot compare structured and non-structured dtypes")
+
+    try:
+        cmp_dtype = numpy.promote_types(dt1, dt2)
+    except TypeError:
+        raise TypeError(
+            "Cannot compare structured arrays unless they have a common "
+            "dtype.  I.e. `np.result_type(arr1, arr2)` must be defined.")
+
+    # Ensure the comparison dtype actually has sufficient alignment.
+    cmp_dtype = cupy.make_aligned_dtype(cmp_dtype)
+
+    out_dtypes = (numpy.dtype(bool),)
+    return (cmp_dtype, cmp_dtype), out_dtypes
+
+
+cpdef create_comparison(
+        name, op, doc='', no_complex_dtype=True, allow_structured=False):
 
     if no_complex_dtype:
         ops = ('??->?', 'qq->?', 'qQ->?', 'Qq->?', 'QQ->?',
@@ -62,6 +86,9 @@ cpdef create_comparison(name, op, doc='', no_complex_dtype=True):
         ops = ('??->?', 'qq->?', 'qQ->?', 'Qq->?', 'QQ->?',
                'ee->?', *bf16_loop(2, '?'), 'ff->?', 'dd->?',
                'FF->?', 'DD->?')
+
+    if allow_structured:
+        ops += (("VV->?", None, struct_compare_resolution),)
 
     return create_ufunc(
         'cupy_' + name,
@@ -117,7 +144,7 @@ cdef _equal = create_comparison(
     .. seealso:: :data:`numpy.equal`
 
     ''',
-    no_complex_dtype=False)
+    no_complex_dtype=False, allow_structured=True)
 
 
 cdef _not_equal = create_comparison(
@@ -127,7 +154,7 @@ cdef _not_equal = create_comparison(
     .. seealso:: :data:`numpy.equal`
 
     ''',
-    no_complex_dtype=False)
+    no_complex_dtype=False, allow_structured=True)
 
 
 # Variables to expose to Python
