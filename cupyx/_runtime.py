@@ -24,7 +24,18 @@ def _eval_or_error(func, errors):
     try:
         return func()
     except errors as e:
-        return repr(e)
+        return _format_error(e)
+
+
+def _format_error(error):
+    msg = str(error)
+    if '\n' not in msg and '\r' not in msg:
+        return repr(error)
+
+    first_line = msg.splitlines()[0].strip()
+    if not first_line:
+        return type(error).__name__
+    return f'{type(error).__name__}: {first_line}'
 
 
 def _load_and_get_path(lib_name):
