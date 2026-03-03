@@ -113,23 +113,6 @@ cdef class PinnedMemoryPointer:
     def __releasebuffer__(self, Py_buffer *buffer):
         pass
 
-    def __getsegcount__(self, Py_ssize_t *lenp):
-        if lenp != NULL:
-            lenp[0] = self.size()
-        return 1
-
-    def __getreadbuffer__(self, Py_ssize_t idx, void **p):
-        if idx != 0:
-            raise SystemError('accessing non-existent buffer segment')
-        p[0] = <void*>self.ptr
-        return self.size()
-
-    def __getwritebuffer__(self, Py_ssize_t idx, void **p):
-        if idx != 0:
-            raise SystemError('accessing non-existent buffer segment')
-        p[0] = <void*>self.ptr
-        return self.size()
-
 
 cdef class _EventWatcher:
     cdef:
