@@ -4,9 +4,6 @@ import inspect
 import numpy
 
 
-_footnotes = {}
-
-
 def _get_functions(obj, exclude=None):
     return set([
         n for n, target in [(n, getattr(obj, n)) for n in dir(obj)]
@@ -38,7 +35,9 @@ def _import(mod, klass):
 
 def _generate_comparison_rst(
         base_mod, cupy_mod, base_type, klass, exclude_mod, exclude,
-        footnotes=None):
+        footnotes=None, footnote_registry=None):
+    if footnote_registry is None:
+        footnote_registry = {}
     base_obj, base_fmt = _import(base_mod, klass)
     base_funcs = _get_functions(base_obj, exclude)
     cp_obj, cp_fmt = _import(cupy_mod, klass)
@@ -59,8 +58,8 @@ def _generate_comparison_rst(
     for f in sorted(base_funcs):
         footnote_id = None
         if footnotes is not None and f in footnotes:
-            footnote_id = _footnotes.setdefault(
-                footnotes[f], f'f{len(_footnotes)}')
+            footnote_id = footnote_registry.setdefault(
+                footnotes[f], f'f{len(footnote_registry)}')
 
         base_cell = base_fmt.format(f)
         cp_cell = r'\-'
@@ -89,13 +88,14 @@ def _generate_comparison_rst(
 def _section(
         header, base_mod, cupy_mod,
         base_type='NumPy', klass=None, exclude_mod=None, exclude=None,
-        footnotes=None, header_char='~'):
+        footnotes=None, header_char='~', footnote_registry=None):
     return [
         header,
         header_char * len(header),
         '',
     ] + _generate_comparison_rst(
-        base_mod, cupy_mod, base_type, klass, exclude_mod, exclude, footnotes
+        base_mod, cupy_mod, base_type, klass, exclude_mod, exclude, footnotes,
+        footnote_registry
     ) + [
         '',
     ]
@@ -122,6 +122,7 @@ _byte_order = 'Not supported as GPUs only support little-endian byte-encoding.'
 
 
 def generate():
+    footnote_registry = {}
     buf = []
 
     buf += [
@@ -203,7 +204,7 @@ def generate():
             'seterr': _float_error_state,
             'seterrcall': _float_error_state,
             'seterrobj': _float_error_state,
-        })
+        }, footnote_registry=footnote_registry)
     buf += _section(
         'Multi-Dimensional Array',
         'numpy', 'cupy', klass='ndarray', footnotes={
@@ -211,27 +212,31 @@ def generate():
 
             'byteswap': _byte_order,
             'newbyteorder': _byte_order,
-        })
+        }, footnote_registry=footnote_registry)
     buf += _section(
         'Linear Algebra',
-        'numpy.linalg', 'cupy.linalg', exclude=['test'])
+        'numpy.linalg', 'cupy.linalg', exclude=['test'],
+        footnote_registry=footnote_registry)
     buf += _section(
         'Discrete Fourier Transform',
-        'numpy.fft', 'cupy.fft', exclude=['test'])
+        'numpy.fft', 'cupy.fft', exclude=['test'],
+        footnote_registry=footnote_registry)
     buf += _section(
         'Random Sampling',
-        'numpy.random', 'cupy.random', exclude=['test'])
+        'numpy.random', 'cupy.random', exclude=['test'],
+        footnote_registry=footnote_registry)
     buf += _section(
         'Polynomials',
-        'numpy.polynomial', 'cupy.polynomial', exclude=['test'])
+        'numpy.polynomial', 'cupy.polynomial', exclude=['test'],
+        footnote_registry=footnote_registry)
     buf += _section(
         'Power Series',
         'numpy.polynomial.polynomial', 'cupy.polynomial.polynomial',
-        header_char='"')
+        header_char='"', footnote_registry=footnote_registry)
     buf += _section(
         'Polyutils',
         'numpy.polynomial.polyutils', 'cupy.polynomial.polyutils',
-        header_char='"')
+        header_char='"', footnote_registry=footnote_registry)
 
     buf += [
         'SciPy / CuPy APIs',
@@ -240,59 +245,64 @@ def generate():
     ]
     buf += _section(
         'Discrete Fourier Transform',
-        'scipy.fft', 'cupyx.scipy.fft', 'SciPy', exclude=['test'])
+        'scipy.fft', 'cupyx.scipy.fft', 'SciPy', exclude=['test'],
+        footnote_registry=footnote_registry)
     buf += _section(
         'Legacy Discrete Fourier Transform',
-        'scipy.fftpack', 'cupyx.scipy.fftpack', 'SciPy', exclude=['test'])
+        'scipy.fftpack', 'cupyx.scipy.fftpack', 'SciPy', exclude=['test'],
+        footnote_registry=footnote_registry)
     buf += _section(
         'Interpolation',
         'scipy.interpolate', 'cupyx.scipy.interpolate', 'SciPy',
-        exclude=['test'])
+        exclude=['test'], footnote_registry=footnote_registry)
     buf += _section(
         'Advanced Linear Algebra',
         'scipy.linalg', 'cupyx.scipy.linalg', 'SciPy',
-        exclude=['test'])
+        exclude=['test'], footnote_registry=footnote_registry)
     buf += _section(
         'Multidimensional Image Processing',
-        'scipy.ndimage', 'cupyx.scipy.ndimage', 'SciPy', exclude=['test'])
+        'scipy.ndimage', 'cupyx.scipy.ndimage', 'SciPy', exclude=['test'],
+        footnote_registry=footnote_registry)
     buf += _section(
         'Signal processing',
-        'scipy.signal', 'cupyx.scipy.signal', 'SciPy', exclude=['test'])
+        'scipy.signal', 'cupyx.scipy.signal', 'SciPy', exclude=['test'],
+        footnote_registry=footnote_registry)
     buf += _section(
         'Sparse Matrices',
-        'scipy.sparse', 'cupyx.scipy.sparse', 'SciPy', exclude=['test'])
+        'scipy.sparse', 'cupyx.scipy.sparse', 'SciPy', exclude=['test'],
+        footnote_registry=footnote_registry)
     buf += _section(
         'Sparse Matrices: COOrdinate Format',
         'scipy.sparse', 'cupyx.scipy.sparse', 'SciPy', klass='coo_matrix', 
-        exclude=['test'])
+        exclude=['test'], footnote_registry=footnote_registry)
     buf += _section(
         'Sparse Matrices: Compressed Sparse Column',
         'scipy.sparse', 'cupyx.scipy.sparse', 'SciPy', klass='csc_matrix', 
-        exclude=['test'])
+        exclude=['test'], footnote_registry=footnote_registry)
     buf += _section(
         'Sparse Matrices: Compressed Sparse Row',
         'scipy.sparse', 'cupyx.scipy.sparse', 'SciPy', klass='csr_matrix', 
-        exclude=['test'])
+        exclude=['test'], footnote_registry=footnote_registry)
     buf += _section(
         'Sparse Matrices: DIAgonal Storage',
         'scipy.sparse', 'cupyx.scipy.sparse', 'SciPy', klass='dia_matrix', 
-        exclude=['test'])
+        exclude=['test'], footnote_registry=footnote_registry)
     buf += _section(
         'Sparse Linear Algebra',
         'scipy.sparse.linalg', 'cupyx.scipy.sparse.linalg', 'SciPy',
-        exclude=['test'])
+        exclude=['test'], footnote_registry=footnote_registry)
     buf += _section(
         'Compressed sparse graph routines',
         'scipy.sparse.csgraph', 'cupyx.scipy.sparse.csgraph', 'SciPy',
-        exclude=['test'])
+        exclude=['test'], footnote_registry=footnote_registry)
     buf += _section(
         'Special Functions',
         'scipy.special', 'cupyx.scipy.special', 'SciPy',
-        exclude=['test'])
+        exclude=['test'], footnote_registry=footnote_registry)
     buf += _section(
         'Statistical Functions',
         'scipy.stats', 'cupyx.scipy.stats', 'SciPy',
-        exclude=['test'])
+        exclude=['test'], footnote_registry=footnote_registry)
 
     buf += [
         '',
@@ -300,7 +310,7 @@ def generate():
         '',
     ] + [
         f'.. [#{footnote_id}] {footnote}'
-        for footnote, footnote_id in _footnotes.items()
+        for footnote, footnote_id in footnote_registry.items()
     ]
 
     return '\n'.join(buf)
