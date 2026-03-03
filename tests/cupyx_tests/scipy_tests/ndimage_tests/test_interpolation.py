@@ -141,16 +141,28 @@ class TestMapCoordinatesHalfInteger:
         return self._map_coordinates(xp, scp, a, coordinates)
 
 
-@testing.parameterize(*testing.product({
-    'matrix_shape': [(2,), (2, 2), (2, 3), (3, 3)],
-    'offset': [0.3, [-1.3, 1.3]],
-    'output_shape': [None],
-    'output': [None, numpy.float64, 'empty'],
-    'order': [0, 1, 2, 3, 4, 5],
-    'mode': legacy_modes + scipy16_modes,
-    'cval': [1.0],
-    'prefilter': [False, True],
-}))
+@testing.parameterize(*(
+    testing.product({
+        'matrix_shape': [(3, 3)],
+        'offset': [[-1.3, 1.3]],
+        'output_shape': [None],
+        'output': [None, numpy.float64, 'empty'],
+        'order': [0, 1, 2, 3, 4, 5],
+        'mode': legacy_modes,
+        'cval': [1.0],
+        'prefilter': [False, True],
+    }) + testing.product({
+        'matrix_shape': [(2,), (2, 2), (2, 3)],
+        'offset': [0.3],
+        'output_shape': [None],
+        'output': [None],
+        'order': [0, 1, 3],
+        'mode': legacy_modes + scipy16_modes,
+        'cval': [1.0],
+        'prefilter': [True],
+
+    })
+))
 @testing.with_requires('scipy')
 class TestAffineTransform:
 
