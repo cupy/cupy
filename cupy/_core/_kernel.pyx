@@ -1076,8 +1076,6 @@ cdef function.Function _get_ufunc_kernel(
 
 
 cdef inline int _get_kind_score(kind) except -1:
-    if kind not in (int, float, complex):
-        kind = kind.type  # TODO: Make pretty.
     if issubclass(kind, numpy.bool_):
         return 0
     if issubclass(kind, (numpy.integer, int)):
@@ -1113,7 +1111,7 @@ cdef inline bint _check_should_use_weak_scalar(
             kind = _get_kind_score(w_t)
             max_scalar_kind = max(max_scalar_kind, kind)
         else:
-            kind = _get_kind_score(in_t)
+            kind = _get_kind_score(in_t.type)  # kind score uses scalar type
             max_array_kind = max(max_array_kind, kind)
 
     all_scalars_or_arrays = max_scalar_kind == -1 or max_array_kind == -1

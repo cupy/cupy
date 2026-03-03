@@ -49,7 +49,7 @@ def copyto(dst, src, casting='same_kind', where=None):
                 'non-scalar numpy.ndarray cannot be used for copyto')
         src_dtype = src.dtype
         can_cast = numpy.can_cast(src, dst.dtype, casting)
-        src = src[()]  # work with the scalar value
+        src = src.squeeze()[()]  # work with the scalar value
         src_is_scalar = True
     elif numpy.isscalar(src):
         can_cast = numpy.can_cast(src, dst.dtype, casting)

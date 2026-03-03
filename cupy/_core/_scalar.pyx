@@ -125,13 +125,13 @@ cpdef str get_typename(dtype, type_decls=None):
                 # NOTE: Caching this may not be trivial if we use metadata.
                 name, *_ = _build_struct_typename(dtype, type_decls)
                 return name
-            elif not cnp.PyDataType_HASSUBARRAY(descr):
+            elif not cnp.PyDataType_HASSUBARRAY(descr) and descr.itemsize > 0:
                 # Unstructured void is just a blob bytes.
                 if type_decls is not None:
                     type_decls.add('#include "cupy/unstructued_void.cuh"')
                 return f"cupy::UnstructuredVoid<{descr.itemsize}>"
 
-    raise TypeError(f"Unable to find C++ type for dtype {dtype}")
+    raise ValueError(f"Unsupported dtype {dtype}")
 
 
 cdef dict _cuda_alignments = {}
