@@ -1075,7 +1075,6 @@ cdef function.Function _get_ufunc_kernel(
         loop_prep=loop_prep, after_loop='', options=("--std=c++17",))
 
 
-
 cdef inline int _get_kind_score(kind) except -1:
     if kind not in (int, float, complex):
         kind = kind.type  # TODO: Make pretty.
