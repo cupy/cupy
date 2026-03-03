@@ -57,10 +57,12 @@ cdef F_nvrtcGetNumSupportedArchs nvrtcGetNumSupportedArchs
 ctypedef nvrtcResult (*F_nvrtcGetSupportedArchs)(int* supportedArchs) noexcept nogil  # NOQA
 cdef F_nvrtcGetSupportedArchs nvrtcGetSupportedArchs
 
-ctypedef nvrtcResult (*F_nvrtcGetLTOIRSize)(nvrtcProgram prog, size_t *ltoirSizeRet) nogil  # NOQA
+ctypedef nvrtcResult (*F_nvrtcGetLTOIRSize)(
+    nvrtcProgram prog, size_t *ltoirSizeRet) noexcept nogil  # NOQA
 cdef F_nvrtcGetLTOIRSize nvrtcGetLTOIRSize
 
-ctypedef nvrtcResult (*F_nvrtcGetLTOIR)(nvrtcProgram prog, char *ltoir) nogil
+ctypedef nvrtcResult (*F_nvrtcGetLTOIR)(
+    nvrtcProgram prog, char *ltoir) noexcept nogil
 cdef F_nvrtcGetLTOIR nvrtcGetLTOIR
 
 

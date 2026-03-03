@@ -20,7 +20,7 @@ cdef class _ThreadLocal:
         return <_ThreadLocal>tls
 
 
-cpdef bint _has_memory_hooks():
+cpdef bint _has_memory_hooks() except -1:
     tls = _ThreadLocal.get()
     return tls.memory_hooks is not None
 
