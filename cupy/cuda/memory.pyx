@@ -1107,8 +1107,8 @@ cdef class _Arena:
         if merge:
             chunk = self.try_merge_chunk(chunk)
 
-        self.index.insert(index_type(chunk.size, <uintptr_t><void *>chunk))
         cpython.Py_INCREF(chunk)  # index holds a reference now
+        self.index.insert(index_type(chunk.size, <uintptr_t><void *>chunk))
 
     cdef size_t free_all(self) except -1:
         """Frees all chunks (that can be free'd, split ones cannot).
