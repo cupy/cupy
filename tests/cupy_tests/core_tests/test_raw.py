@@ -18,6 +18,7 @@ from cupy import testing
 from cupy import _util
 from cupy._core import _accelerator
 from cupy.cuda import compiler
+from cupy.cuda import _compiler_cache
 from cupy.cuda import memory
 from cupy_backends.cuda.libs import nvrtc
 
@@ -354,11 +355,11 @@ extern "C" __global__ void my_func(void* input, int N) {
 def use_temporary_cache_dir():
     # Note uses mock, so not thread-safe (except at class/method level)
     # tempdir fixture could be used instead.
-    target1 = 'cupy.cuda.compiler._kernel_cache_backend._cache_dir'
+    target1 = 'cupy.cuda.compiler._kernel_cache_backend'
     target2 = 'cupy.cuda.compiler._empty_file_preprocess_cache'
     temp_cache = {}
     with tempfile.TemporaryDirectory() as path:
-        with mock.patch(target1, path):
+        with mock.patch(target1, _compiler_cache.DiskKernelCacheBackend(path)):
             with mock.patch(target2, temp_cache):
                 yield path
 

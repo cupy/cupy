@@ -1,3 +1,5 @@
+import cython
+
 from cupy._core._carray cimport shape_t
 from cupy._core cimport _kernel
 from cupy._core cimport _optimize_config
@@ -382,11 +384,13 @@ cdef Py_ssize_t _cub_default_block_size = (
     256 if runtime._is_hip_environment else 512)
 
 
+@cython.cdivision(True)
 cdef (Py_ssize_t, Py_ssize_t) _get_cub_block_specs(  # NOQA
-        Py_ssize_t contiguous_size):
+        Py_ssize_t contiguous_size) noexcept:
     # This is recommended in the CUB internal and should be an
-    # even number
-    items_per_thread = 4
+    # even number.
+    cdef Py_ssize_t block_size, warp_size
+    cdef Py_ssize_t items_per_thread = 4
 
     # Calculate the reduction block dimensions.
     # Ideally, we want each block to handle one segment, so:

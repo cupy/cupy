@@ -2455,7 +2455,7 @@ cpdef bint use_default_std(tuple options):
             return False
     return True
 
-cpdef void warn_on_unsupported_std(tuple options):
+cpdef warn_on_unsupported_std(tuple options):
     cdef str opt
     for opt in options:
         if _is_hip:

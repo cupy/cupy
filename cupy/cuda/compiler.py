@@ -13,7 +13,6 @@ import warnings
 
 from cupy.cuda import device
 from cupy.cuda import function
-from cupy.cuda import get_rocm_path
 from cupy.cuda._compiler_cache import (
     DiskKernelCacheBackend as _DiskKernelCacheBackend,
     KernelCacheBackend as _KernelCacheBackend,
@@ -921,11 +920,12 @@ def _compile_with_cache_hip(source, options, arch, extra_source,
     #   ROCm-Developer-Tools/HIP#2248
     options += ('-fcuda-flush-denormals-to-zero',)
 
-    # Workaround ROCm 4.3 LLVM_PATH issue in hipRTC #5689
-    rocm_build_version = driver.get_build_version()
-    if rocm_build_version >= 40300000 and rocm_build_version < 40500000:
-        options += (
-            '-I' + get_rocm_path() + '/llvm/lib/clang/13.0.0/include/',)
+    # hiprtc doesn't always include the correct include dirs, so we always
+    # query hipcc to get them
+    options += tuple(
+        f"-I{include_dir}"
+        for include_dir in _environment._get_hipcc_include_dirs()
+    )
 
     # As of ROCm 3.5.0 hiprtc/hipcc can automatically pick up the
     # right arch without setting HCC_AMDGPU_TARGET, so we don't need
