@@ -13,14 +13,15 @@ def argmax(a, axis=None, out=None, keepdims=False):
 
     Args:
         a (cupy.ndarray): Array to take argmax.
-        axis (int): Along which axis to find the maximum. ``a`` is flattened by default.
+        axis (int): Along which axis to find the maximum.
+            ``a`` is flattened by default.
         out (cupy.ndarray): Output array.
-        keepdims (bool): If ``True``, the axis ``axis`` is preserved as an axis of length one.
+        keepdims (bool): If ``True``, the axis ``axis`` is preserved
+            as an axis of length one.
 
     Returns:
         cupy.ndarray: The indices of the maximum of ``a`` along an axis.
     """
-
     return a.argmax(axis=axis, out=out, keepdims=keepdims)
 
 
