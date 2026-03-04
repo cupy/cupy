@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 import cupy
+
 from cupy import _core
 from cupy._core import fusion
 from cupy import _util
 
 from cupy._core import _routines_indexing as _indexing
 from cupy._core import _routines_statistics as _statistics
+
+
 
 def argmax(a, axis=None, out=None, keepdims=False):
     """Returns the indices of the maximum along an axis.
