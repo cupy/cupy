@@ -829,7 +829,7 @@ def grey_dilation(input, size=None, footprint=None, structure=None,
         size (tuple of ints): Shape of a flat and full structuring element used
             for the greyscale dilation. Optional if ``footprint`` or
             ``structure`` is provided.
-       footprint (array of ints): Positions of non-infinite elements of a flat
+        footprint (array of ints): Positions of non-infinite elements of a flat
             structuring element used for greyscale dilation. Non-zero values
             give the set of neighbors of the center over which maximum is
             chosen.
