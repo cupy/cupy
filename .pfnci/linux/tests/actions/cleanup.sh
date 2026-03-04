@@ -20,8 +20,13 @@ find "${CUPY_CACHE_DIR}" -type f \
     -name "jitify_*.json" \
     -atime +30 -mtime +30 -ctime +30 -print -delete | wc -l
 
-# Purge all local *.cubin cache (they are stored separately via GCS kernel cache backend)
-python3 .pfnci/trim_cupy_kernel_cache.py --max-size 0 --rm
+if [[ "${CUPY_CI_ENABLE_GCP_KERNEL_CACHE:-0}" == "1" ]]; then
+    # Purge all local *.cubin cache (they are stored separately via GCS kernel cache backend)
+    python3 .pfnci/trim_cupy_kernel_cache.py --max-size 0 --rm
+else
+    # Expire *.cubin cache in 30 days, and also limit by total size.
+    python3 .pfnci/trim_cupy_kernel_cache.py --max-size $((3*1024*1024*1024)) --expiry $((30*24*60*60)) --rm
+fi
 
 # Limit ccache by total size.
 ccache --max-size 0.5Gi --cleanup --show-stats
