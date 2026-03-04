@@ -192,14 +192,14 @@ class TestAffineTransform:
                                     self.cval, self.prefilter)
 
     @testing.for_float_dtypes(no_float16=True)
-    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-5, scipy_name='scp')
+    @testing.numpy_cupy_allclose(atol=1e-5, scipy_name='scp')
     def test_affine_transform_float(self, xp, scp, dtype):
         a = testing.shaped_random((100, 100), xp, dtype)
         matrix = testing.shaped_random(self.matrix_shape, xp, dtype)
         return self._affine_transform(xp, scp, a, matrix)
 
     @testing.for_complex_dtypes()
-    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-5, scipy_name='scp')
+    @testing.numpy_cupy_allclose(rtol=1e-6, atol=1e-5, scipy_name='scp')
     @testing.with_requires('scipy>=1.6.0')
     def test_affine_transform_complex_float(self, xp, scp, dtype):
         if self.output == numpy.float64:
@@ -210,7 +210,7 @@ class TestAffineTransform:
         return self._affine_transform(xp, scp, a, matrix)
 
     @testing.for_float_dtypes(no_float16=True)
-    @testing.numpy_cupy_allclose(atol=1e-3, scipy_name='scp')
+    @testing.numpy_cupy_allclose(atol=1e-5, scipy_name='scp')
     def test_affine_transform_fortran_order(self, xp, scp, dtype):
         a = testing.shaped_random((100, 100), xp, dtype)
         a = xp.asfortranarray(a)
