@@ -827,9 +827,7 @@ def grey_dilation(input, size=None, footprint=None, structure=None,
     Args:
         input (cupy.ndarray): The input array.
         size (tuple of ints): Shape of a flat and full structuring element used
-            for the greyscale dilation. Optional if ``footprint`` or
-            ``structure`` is provided.
-        footprint (array of ints): Positions of non-infinite elements of a flat
+       footprint (array of ints): Positions of non-infinite elements of a flat
             structuring element used for greyscale dilation. Non-zero values
             give the set of neighbors of the center over which maximum is
             chosen.
@@ -1149,7 +1147,9 @@ def white_tophat(
     kwargs = dict(mode=mode, cval=cval, origin=origin, axes=axes)
     tmp = grey_erosion(input, size, footprint, structure, None, **kwargs)
     tmp = grey_dilation(tmp, size, footprint, structure, output, **kwargs)
-    if input.dtype == numpy.bool_ and tmp.dtype == numpy.bool_:
+    if tmp is None:
+        tmp = output
+    if input.dtype == cupy.bool_ and tmp.dtype == cupy.bool_:
         cupy.bitwise_xor(input, tmp, out=tmp)
     else:
         cupy.subtract(input, tmp, out=tmp)
@@ -1209,7 +1209,9 @@ def black_tophat(
     kwargs = dict(mode=mode, cval=cval, origin=origin, axes=axes)
     tmp = grey_dilation(input, size, footprint, structure, None, **kwargs)
     tmp = grey_erosion(tmp, size, footprint, structure, output, **kwargs)
-    if input.dtype == numpy.bool_ and tmp.dtype == numpy.bool_:
+    if tmp is None:
+        tmp = output
+    if input.dtype == cupy.bool_ and tmp.dtype == cupy.bool_:
         cupy.bitwise_xor(tmp, input, out=tmp)
     else:
         cupy.subtract(tmp, input, out=tmp)
