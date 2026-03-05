@@ -205,6 +205,12 @@ class LinuxGenerator:
             raise ValueError('Python cannot be null')
 
         py_spec = self.schema['python'][matrix.python]['spec']
+        # For GCP kernel cache backend, install google-cloud-storage.
+        # google-api-core>=2.28.0 raises FutureWarning on Python 3.10; pin it
+        # to the last version before the warning was introduced.
+        gcs_packages = ['google-cloud-storage']
+        if matrix.python == '3.10':
+            gcs_packages.append('google-api-core<2.28.0')
         lines += [
             'RUN git clone https://github.com/pyenv/pyenv.git /opt/pyenv',
             'ENV PYENV_ROOT "/opt/pyenv"',
@@ -212,8 +218,7 @@ class LinuxGenerator:
             f'RUN pyenv install {py_spec} && \\',
             f'    pyenv global {py_spec} && \\',
             '    pip install -U setuptools pip wheel && \\',
-            # For GCP kernel cache backend
-            '    pip install -U google-cloud-storage',
+            f'    pip install -U {shlex.join(gcs_packages)}',
             '',
         ]
 
