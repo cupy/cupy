@@ -35,7 +35,7 @@ cdef extern from "Python.h":
 
 # cudaMalloc() is aligned to at least 512 bytes
 # cf. https://gist.github.com/sonots/41daaa6432b1c8b27ef782cd14064269
-DEF ALLOCATION_UNIT_SIZE = 512
+cdef const int ALLOCATION_UNIT_SIZE = 512
 # for test
 _allocation_unit_size = ALLOCATION_UNIT_SIZE
 

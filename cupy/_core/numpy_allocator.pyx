@@ -25,7 +25,7 @@ ELSE:
 
 
 # CuPy mempool requirement, see ALLOCATION_UNIT_SIZE in cupy/cuda/memory.pyx
-DEF ALIGNMENT = 512
+cdef const int ALIGNMENT = 512
 
 
 cdef public void* _calloc(size_t nmemb, size_t size) noexcept nogil:

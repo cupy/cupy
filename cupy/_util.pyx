@@ -12,7 +12,7 @@ import cupy
 from cupy_backends.cuda.api cimport runtime
 
 
-DEF CYTHON_BUILD_VER = CUPY_CYTHON_VERSION
+cdef const char* CYTHON_BUILD_VER = CUPY_CYTHON_VERSION
 cython_build_ver = CYTHON_BUILD_VER
 
 
