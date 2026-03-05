@@ -114,6 +114,8 @@ class custom_build_ext(setuptools.command.build_ext.build_ext):
             # Keep the behavior same as Cython 0.29.x.
             # https://github.com/cupy/cupy/pull/8457#issuecomment-2656568499
             'binding': False,
+            'warn.deprecated.IF': False,   # suppress IF deprecation warning
+            'warn.deprecated.DEF': False,  # suppress DEF deprecation warning
         }
 
         # Compile-time constants to be used in Cython code
