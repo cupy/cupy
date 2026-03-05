@@ -4,9 +4,9 @@ from cupy.cuda cimport memory
 from libcpp.pair cimport pair
 
 
-cdef get_range(
+cdef void get_range(
         Py_ssize_t itemsize, shape_t& shape, strides_t & strides,
-        Py_ssize_t& out_left, Py_ssize_t& out_right):
+        Py_ssize_t& out_left, Py_ssize_t& out_right) noexcept:
     """Discover the byte range (out_left, out_right] (without ptr offset).
     """
     cdef Py_ssize_t tmp, i
@@ -26,13 +26,21 @@ cdef get_range(
             out_left += tmp
 
 
-cpdef pair[Py_ssize_t, Py_ssize_t] get_bound(_ndarray_base array):
-    """Discover the pointer byte bounds (left, right] of the array.
-    """
+cdef _get_bound(_ndarray_base array, pair[Py_ssize_t, Py_ssize_t]& bounds):
+    # C-version of get_bounds (really to avoid the need for `except *`...)
     cdef Py_ssize_t left, right
     get_range(array.dtype.itemsize, array._shape, array._strides, left, right)
 
-    return array.data.ptr + left, array.data.ptr + right
+    bounds.first = array.data.ptr + left
+    bounds.second = array.data.ptr + right
+
+
+def get_bound(_ndarray_base array):
+    """Discover the pointer byte bounds (left, right] of the array.
+    """
+    cdef pair[Py_ssize_t, Py_ssize_t] bounds
+    _get_bound(array, bounds)
+    return bounds
 
 
 cpdef bint may_share_bounds(_ndarray_base a, _ndarray_base b):
@@ -45,7 +53,7 @@ cpdef bint may_share_bounds(_ndarray_base a, _ndarray_base b):
             or a.size == 0 or b.size == 0):
         return False
 
-    a_range = get_bound(a)
-    b_range = get_bound(b)
+    _get_bound(a, a_range)
+    _get_bound(b, b_range)
 
     return a_range.first < b_range.second and b_range.first < a_range.second

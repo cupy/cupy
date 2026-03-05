@@ -100,7 +100,7 @@ cpdef _ndarray_base ascontiguousarray(_ndarray_base a, dtype=*)
 cpdef _ndarray_base asfortranarray(_ndarray_base a, dtype=*)
 
 cpdef Module compile_with_cache(str source, tuple options=*, arch=*,
-                                cachd_dir=*, prepend_cupy_headers=*,
+                                prepend_cupy_headers=*,
                                 backend=*, translate_cucomplex=*,
                                 enable_cooperative_groups=*,
                                 name_expressions=*, log_stream=*,

@@ -251,7 +251,7 @@ def generate():
     buf += _section(
         'Advanced Linear Algebra',
         'scipy.linalg', 'cupyx.scipy.linalg', 'SciPy',
-        exclude_mod='numpy.linalg', exclude=['test'])
+        exclude=['test'])
     buf += _section(
         'Multidimensional Image Processing',
         'scipy.ndimage', 'cupyx.scipy.ndimage', 'SciPy', exclude=['test'])
@@ -304,3 +304,7 @@ def generate():
     ]
 
     return '\n'.join(buf)
+
+
+if __name__ == '__main__':
+    print(generate())
