@@ -205,7 +205,6 @@ class LinuxGenerator:
             raise ValueError('Python cannot be null')
 
         py_spec = self.schema['python'][matrix.python]['spec']
-        # For GCP kernel cache backend, install google-cloud-storage.
         lines += [
             'RUN git clone https://github.com/pyenv/pyenv.git /opt/pyenv',
             'ENV PYENV_ROOT "/opt/pyenv"',
@@ -213,6 +212,7 @@ class LinuxGenerator:
             f'RUN pyenv install {py_spec} && \\',
             f'    pyenv global {py_spec} && \\',
             '    pip install -U setuptools pip wheel && \\',
+            # For GCP kernel cache backend
             '    pip install -U google-cloud-storage',
             '',
         ]
