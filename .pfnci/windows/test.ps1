@@ -77,7 +77,13 @@ function Main {
     echo "Setting up test environment"
     RunOrDie python -V
     RunOrDie python -m pip install -U pip setuptools wheel
-    RunOrDie python -m pip install -U google-cloud-storage  # For GCP kernel cache backend
+    # For GCP kernel cache backend; google-api-core>=2.28.0 raises FutureWarning
+    # on Python 3.10 which pytest treats as an error, so pin it for Python 3.10.
+    $gcs_packages = @("google-cloud-storage")
+    if ($python -eq "3.10") {
+        $gcs_packages += "google-api-core<2.28.0"
+    }
+    RunOrDie python -m pip install -U @gcs_packages
     RunOrDie python -m pip freeze
 
     echo "Building..."
