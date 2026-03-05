@@ -1,5 +1,7 @@
 # distutils: language = c++
 
+cimport cython
+
 from libc cimport errno
 from libc cimport stdlib
 from libc.stdint cimport intptr_t
@@ -42,6 +44,7 @@ cdef public void* _malloc(size_t size) noexcept nogil:
     return aligned_alloc(ALIGNMENT, size)
 
 
+@cython.cdivision(True)
 cdef public void* _realloc(void *ptr, size_t size) noexcept nogil:
     errno.errno = 0
     cdef void* buf = stdlib.realloc(ptr, size)

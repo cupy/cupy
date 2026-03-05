@@ -12,8 +12,7 @@ import cupy
 from cupy_backends.cuda.api cimport runtime
 
 
-cdef const char* CYTHON_BUILD_VER = CUPY_CYTHON_VERSION
-cython_build_ver = CYTHON_BUILD_VER
+cython_build_ver = CUPY_CYTHON_VERSION
 
 
 ENABLE_SLICE_COPY = bool(

@@ -1009,12 +1009,15 @@ cdef class PooledMemory(BaseMemory):
 cdef size_t _index_compaction_threshold = 512
 
 
+@cython.cdivision(True)
 cpdef inline size_t _round_size(size_t size) noexcept:
     """Rounds up the memory size to fit memory alignment of cudaMalloc."""
     # avoid 0 div checking
     size = (size + ALLOCATION_UNIT_SIZE - 1) // ALLOCATION_UNIT_SIZE
     return size * ALLOCATION_UNIT_SIZE
 
+
+@cython.cdivision(True)
 cpdef size_t _bin_index_from_size(size_t size) noexcept:
     """Returns appropriate bins index from the memory size."""
     # avoid 0 div checking
