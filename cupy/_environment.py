@@ -118,7 +118,7 @@ _PLATFORM_WIN32 = sys.platform.startswith('win32')
 
 def _get_conda_cuda_path():
     """This works since CUDA 12.0+."""
-    conda_prefix = os.environ.get('CONDA_PREFIX')
+    conda_prefix = os.environ.get('CONDA_PREFIX', sys.prefix)
     if _PLATFORM_LINUX:
         plat = platform.machine()
         if plat == 'aarch64':
