@@ -51,25 +51,25 @@ CUB_sum_support_dtype = {}
 cdef extern from 'cupy_cub.h' nogil:
     ctypedef void* Stream_t 'cudaStream_t'
 
-    void cub_device_reduce(void*, size_t&, void*, void*, int, Stream_t,
+    void cub_device_reduce(void*, size_t&, void*, void*, size_t, Stream_t,
                            int, int)
-    void cub_device_segmented_reduce(void*, size_t&, void*, void*, int, int,
+    void cub_device_segmented_reduce(void*, size_t&, void*, void*, size_t, size_t,
                                      Stream_t, int, int)
-    void cub_device_scan(void*, size_t&, void*, void*, int, Stream_t, int, int)
-    void cub_device_histogram_range(void*, size_t&, void*, void*, int, void*,
+    void cub_device_scan(void*, size_t&, void*, void*, size_t, Stream_t, int, int)
+    void cub_device_histogram_range(void*, size_t&, void*, void*, size_t, void*,
                                     size_t, Stream_t, int)
-    void cub_device_histogram_even(void*, size_t&, void*, void*, int, int, int,
+    void cub_device_histogram_even(void*, size_t&, void*, void*, size_t, size_t, size_t,
                                    size_t, Stream_t, int)
-    size_t cub_device_reduce_get_workspace_size(void*, void*, int, Stream_t,
+    size_t cub_device_reduce_get_workspace_size(void*, void*, size_t, Stream_t,
                                                 int, int)
     size_t cub_device_segmented_reduce_get_workspace_size(
-        void*, void*, int, int, Stream_t, int, int)
+        void*, void*, size_t, size_t, Stream_t, int, int)
     size_t cub_device_scan_get_workspace_size(
-        void*, void*, int, Stream_t, int, int)
+        void*, void*, size_t, Stream_t, int, int)
     size_t cub_device_histogram_range_get_workspace_size(
-        void*, void*, int, void*, size_t, Stream_t, int)
+        void*, void*, size_t, void*, size_t, Stream_t, int)
     size_t cub_device_histogram_even_get_workspace_size(
-        void*, void*, int, int, int, size_t, Stream_t, int)
+        void*, void*, size_t, size_t, size_t, size_t, Stream_t, int)
 
     # Build-time version
     int CUPY_CUB_VERSION_CODE
@@ -138,7 +138,8 @@ def device_reduce(_ndarray_base x, op, tuple reduce_axis, tuple out_axis,
                   out=None, bint keepdims=False):
     cdef _ndarray_base y
     cdef memory.MemoryPointer ws
-    cdef int dtype_id, ndim_out, kv_bytes, x_size, op_code
+    cdef int dtype_id, ndim_out, kv_bytes, op_code
+    cdef size_t x_size
     cdef size_t ws_size
     cdef void *x_ptr
     cdef void *y_ptr
@@ -184,7 +185,7 @@ def device_reduce(_ndarray_base x, op, tuple reduce_axis, tuple out_axis,
     y_ptr = <void *>y.data.ptr
     dtype_id = common._get_dtype_id(x.dtype)
     s = <Stream_t>stream.get_current_stream_ptr()
-    x_size = <int>x.size
+    x_size = <size_t>x.size
     ws_size = cub_device_reduce_get_workspace_size(x_ptr, y_ptr, x.size, s,
                                                    op, dtype_id)
     ws = memory.alloc(ws_size)
@@ -216,7 +217,8 @@ def device_segmented_reduce(_ndarray_base x, op, tuple reduce_axis,
     cdef void* x_ptr
     cdef void* y_ptr
     cdef void* ws_ptr
-    cdef int dtype_id, n_segments, op_code
+    cdef int dtype_id, op_code
+    cdef size_t n_segments
     cdef size_t ws_size
     cdef tuple out_shape
     cdef Stream_t s
@@ -273,7 +275,8 @@ def device_segmented_reduce(_ndarray_base x, op, tuple reduce_axis,
 
 def device_scan(_ndarray_base x, op):
     cdef memory.MemoryPointer ws
-    cdef int dtype_id, x_size, op_code
+    cdef int dtype_id, op_code
+    cdef size_t x_size
     cdef size_t ws_size
     cdef void *x_ptr
     cdef void *ws_ptr
@@ -284,7 +287,7 @@ def device_scan(_ndarray_base x, op):
                          'are supported.')
 
     # determine shape: x is either 1D (with axis=None,0) or ND but ravelled.
-    x_size = <int>x.size
+    x_size = <size_t>x.size
     if x_size == 0:
         return x
 
@@ -307,7 +310,8 @@ def device_scan(_ndarray_base x, op):
 def device_histogram(_ndarray_base x, _ndarray_base y, bins):
     cdef memory.MemoryPointer ws
     cdef size_t ws_size, n_samples
-    cdef int dtype_id, n_bins
+    cdef int dtype_id
+    cdef size_t n_bins
     cdef void* x_ptr
     cdef void* bins_ptr
     cdef void* y_ptr
@@ -374,8 +378,7 @@ cdef bint can_use_device_reduce(
         _ndarray_base x, int op, tuple out_axis, dtype=None) except*:
     return (
         out_axis is ()
-        and _cub_reduce_dtype_compatible(x.dtype, op, dtype)
-        and x.size <= 0x7fffffff)  # until we resolve cupy/cupy#3309
+        and _cub_reduce_dtype_compatible(x.dtype, op, dtype))
 
 
 cdef (bint, Py_ssize_t) can_use_device_segmented_reduce(  # noqa: E211
@@ -390,10 +393,9 @@ cdef (bint, Py_ssize_t) can_use_device_segmented_reduce(  # noqa: E211
             return (False, 0)
     else:
         order = 'CF'  # for computing the contig size
-    # until we resolve cupy/cupy#3309
     cdef Py_ssize_t contiguous_size = _preprocess_array(
         x.shape, reduce_axis, out_axis, order)
-    return (contiguous_size <= 0x7fffffff, contiguous_size)
+    return (True, contiguous_size)
 
 
 cdef _cub_support_dtype(bint sum_mode, int dev_id):

@@ -387,6 +387,86 @@ class TestCubReduction:
         return result
 
 
+INT32_MAX = numpy.iinfo(numpy.int32).max
+
+
+@pytest.mark.skipif(
+    not cupy.cuda.cub.available, reason='The CUB routine is not enabled')
+@testing.slow
+class TestReductionSizeOverInt32Max:
+
+    @pytest.fixture(autouse=True)
+    def _cub_device_and_memory(self):
+        cupy.get_default_memory_pool().free_all_blocks()
+        cupy.get_default_pinned_memory_pool().free_all_blocks()
+        old_routine = _acc.get_routine_accelerators()
+        old_red = _acc.get_reduction_accelerators()
+        _acc.set_routine_accelerators(['cub'])
+        _acc.set_reduction_accelerators([])
+        yield
+        _acc.set_routine_accelerators(old_routine)
+        _acc.set_reduction_accelerators(old_red)
+        cupy.get_default_memory_pool().free_all_blocks()
+        cupy.get_default_pinned_memory_pool().free_all_blocks()
+
+    @pytest.mark.parametrize('shape,axis', [
+        ((INT32_MAX + 1024,), None),
+        ((4, 2**30 + 512), 1),
+        ((INT32_MAX + 1024, 2), 0),
+    ], ids=['full', 'axis1', 'axis0'])
+    @pytest.mark.parametrize('dtype', [
+        numpy.int8, numpy.int32, numpy.float32,
+    ])
+    def test_sum_max_min_prod(self, shape, axis, dtype):
+        a = cupy.ones(shape, dtype=dtype)
+        # First element of each reduction segment = 2 (one pattern for all cases)
+        if len(shape) == 1:
+            a[0] = 2
+        else:
+            idx = [slice(None)] * len(shape)
+            idx[axis] = 0
+            a[tuple(idx)] = 2
+        if axis is None:
+            # Full reduction: one segment, one 2 and (size-1) ones
+            assert a.sum() == a.size + 1
+            assert a.max() == 2
+            assert a.min() == 1
+            assert a.prod() == 2
+        else:
+            s = a.sum(axis=axis)
+            expected_sum = shape[axis] + 1
+            testing.assert_array_equal(s, cupy.full(
+                s.shape, expected_sum, dtype=s.dtype))
+            testing.assert_array_equal(
+                a.max(axis=axis), cupy.full(s.shape, 2, dtype=dtype))
+            testing.assert_array_equal(
+                a.min(axis=axis), cupy.ones(s.shape, dtype=dtype))
+            testing.assert_array_equal(
+                a.prod(axis=axis), cupy.full(s.shape, 2, dtype=dtype))
+
+    @pytest.mark.parametrize('dtype', [numpy.int8, numpy.int32, numpy.float32])
+    def test_cumsum_size_over_int32_max(self, dtype):
+        """CUB device_scan with size > INT32_MAX."""
+        n = INT32_MAX + 1024
+        a = cupy.ones(n, dtype=dtype)
+        a[0] = 2
+        out = a.cumsum()
+        expected = n + 1
+        if dtype in (numpy.float32, numpy.float64):
+            testing.assert_allclose(float(out[-1]), expected, rtol=2e-4)
+        else:
+            assert int(out[-1]) == expected
+
+    @pytest.mark.parametrize('dtype', [numpy.int8, numpy.int32, numpy.float32])
+    def test_cumprod_size_over_int32_max(self, dtype):
+        """CUB device_scan (cumprod) with size > INT32_MAX."""
+        n = INT32_MAX + 1024
+        a = cupy.ones(n, dtype=dtype)
+        a[0] = 2
+        out = a.cumprod()
+        assert out[-1] == 2  # product of array
+
+
 # This class compares cuTENSOR results against NumPy's
 @testing.parameterize(*testing.product({
     'shape': [(10,), (10, 20), (10, 20, 30), (10, 20, 30, 40)],

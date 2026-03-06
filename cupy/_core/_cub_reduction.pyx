@@ -335,7 +335,6 @@ cpdef inline tuple _can_use_cub_block_reduction(
     cdef bint full_reduction = True if len(out_axis) == 0 else False
 
     # check if the number of elements is too large
-    # (ref: cupy/cupy#3309 for CUB limit)
     for i in reduce_axis:
         contiguous_size *= in_arr.shape[i]
     if contiguous_size > 0x7fffffffffffffff or contiguous_size == 0:
