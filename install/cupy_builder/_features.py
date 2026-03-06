@@ -363,6 +363,22 @@ def get_features(ctx: Context) -> dict[str, Feature]:
         'check_method': build.check_nccl_version,
         'version_method': build.get_nccl_version,
     }
+    HIP_cutensor = {
+        'name': 'cutensor',
+        'file': [
+            'cupy_backends.cuda.libs.cutensor',
+            'cupyx.cutensor',
+        ],
+        'include': [
+            'cupy/hiptensor.h',
+        ],
+        'libraries': [
+            'hiptensor',
+            'hipblas',
+        ],
+        'check_method': build.check_hiptensor_version,
+        'version_method': build.get_hiptensor_version,
+    }
     HIP_thrust = {
         'name': 'thrust',
         'required': True,
@@ -409,6 +425,7 @@ def get_features(ctx: Context) -> dict[str, Feature]:
             _from_dict(HIP_cuda_nvtx_cusolver, ctx),
             _from_dict(HIP_cub, ctx),
             _from_dict(HIP_nccl, ctx),
+            _from_dict(HIP_cutensor, ctx),
             _from_dict(HIP_random, ctx),
             _from_dict(HIP_thrust, ctx),
             _from_dict(COMMON_dlpack, ctx),
