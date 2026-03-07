@@ -162,7 +162,7 @@ static bool complex_less(const T& lhs, const T& rhs) {
 // thrust uses radix sort for them and sorts NaNs to the back.
 template <typename T>
 struct select_less {
-    using type = thrust::less<T>;
+    using type = cuda::std::less<T>;
 };
 
 // complex numbers
@@ -311,7 +311,7 @@ struct _sort {
 
         if (ndim == 1) {
             // we use thrust::less directly to sort floating points, because then it can use radix sort, which happens to sort NaNs to the back
-            using compare_op = std::conditional_t<std::is_floating_point<T>::value, thrust::less<T>, typename select_less<T>::type>;
+            using compare_op = std::conditional_t<std::is_floating_point<T>::value, cuda::std::less<T>, typename select_less<T>::type>;
             stable_sort(cuda::par_nosync(alloc).on(stream_), dp_data_first, dp_data_last, compare_op{});
         } else {
             // Generate key indices.
@@ -431,7 +431,7 @@ struct _argsort {
 
         if (ndim == 1) {
             // we use thrust::less directly to sort floating points, because then it can use radix sort, which happens to sort NaNs to the back
-            using compare_op = std::conditional_t<std::is_floating_point<T>::value, thrust::less<T>, typename select_less<T>::type>;
+            using compare_op = std::conditional_t<std::is_floating_point<T>::value, cuda::std::less<T>, typename select_less<T>::type>;
             // Sort the index sequence by data.
             stable_sort_by_key(cuda::par_nosync(alloc).on(stream_),
                                dp_data_first,
