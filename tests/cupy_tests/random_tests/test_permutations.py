@@ -55,6 +55,7 @@ class TestPermutations(unittest.TestCase):
 
     # Test seed
 
+    @pytest.mark.thread_unsafe(reason="relies on global random state")
     @testing.for_all_dtypes()
     def test_permutation_seed1(self, dtype):
         a = testing.shaped_random((10,), cupy, dtype)
@@ -99,7 +100,7 @@ class TestShuffle(unittest.TestCase):
         testing.assert_allclose(cupy.sort(a, axis=0), b)
 
     # Test seed
-
+    @pytest.mark.thread_unsafe(reason="relies on global random state")
     @testing.for_all_dtypes()
     def test_shuffle_seed1(self, dtype):
         a = testing.shaped_random((10,), cupy, dtype)

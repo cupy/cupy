@@ -88,7 +88,9 @@ jobs:
       # Cython does give a warning with all warnings enabled (but those are many).
       run: |
         result=$(grep -r 'Pyx_WriteUnraisable' --include='*.cpp' . \
-                | grep -v -E '(__dealloc__|const char \*name|pycapsule_deleter|cupy\.cuda\.thrust\.cupy_malloc)' || true)
+                | grep -v -E \
+                '(__dealloc__|const char \*name|pycapsule_deleter|cupy\.cuda\.thrust\.cupy_malloc|\._streamCallbackFunc|\._HostFnFunc)' \
+                || true)
         if [ -n "$result" ]; then
           echo "$result"
           echo "Found possibly bad functions (see above). If this check fails a function"
